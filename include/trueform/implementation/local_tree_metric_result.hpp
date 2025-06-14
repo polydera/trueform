@@ -33,19 +33,21 @@ public:
   }
 
   auto reject_aabbs(real_t val) const {
-    return val > _best.load() || val > _aabb_max.load();
+    return val > _best.load(std::memory_order_acquire) ||
+           val > _aabb_max.load(std::memory_order_acquire);
   }
 
   auto update(typename TreeInfo::element_t c_element,
               const typename TreeInfo::info_t &c_point) -> bool {
     if (tf::assign_if(_best, c_point.metric, std::less<>{})) {
+      // assignment is thread_local
       *_info = {c_element, c_point};
       return c_point.metric < std::numeric_limits<real_t>::epsilon();
     }
     return false;
   }
 
-  auto metric() const { return _best.load(); }
+  auto metric() const { return _best.load(std::memory_order_acquire); }
 
   auto info() const {
     return _info.aggregate([](const auto &x0, const auto &x1) {
