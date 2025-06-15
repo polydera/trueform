@@ -104,9 +104,8 @@ private:
   vtkActor *selected_actor = nullptr;
   bool selected_mode = false;
   bool camera_mode = false;
-  int last_mouse_x=0;
-  int last_mouse_y=0;
-
+  int last_mouse_x = 0;
+  int last_mouse_y = 0;
 
   void dolly_to_position(double factor) {
     // 1) Get mouse display position and the renderer under it
@@ -221,7 +220,7 @@ private:
     auto pt0 = neighbors.info.first;
     auto pt1 = neighbors.info.second;
     auto ray = tf::make_ray_between_points(pt0, pt1);
-    auto eps = 0.25f / ray.direction.length();
+    auto eps = 0.1f;
     float t = 0;
     auto prev_pt = ray.origin;
     tf::tick();
@@ -412,10 +411,8 @@ int main(int argc, char *argv[]) {
   auto interactor = vtk_make_unique<vtkRenderWindowInteractor>();
   interactor->SetInteractorStyle(inter.get());
   std::size_t poly_index = 0;
-  std::size_t total_polygons = 0;
   for (int i = 0; i < 2; ++i) {
     auto &poly = polys[poly_index];
-    total_polygons += poly->GetNumberOfPolys();
     auto mapper = vtk_make_unique<vtkOpenGLPolyDataMapper>();
     auto actor = vtk_make_unique<vtkOpenGLActor>();
     actor->SetMapper(mapper.get());
@@ -440,10 +437,8 @@ int main(int argc, char *argv[]) {
   renderer_text->SetViewport(0, 0.0, 1.0, 0.12); // bottom 20%
   renderer_text->InteractiveOff();
 
-  
   auto text3 = vtk_make_unique<vtkTextActor>();
-  text3->SetInput(
-                  "Drag one mesh away from the other.\n"
+  text3->SetInput("Drag one mesh away from the other.\n"
                   "Their nearest neighbors will be\n"
                   "brought back together on release.");
   auto textprop3 = text3->GetTextProperty();
@@ -459,7 +454,6 @@ int main(int argc, char *argv[]) {
   render_window->AddObserver(vtkCommand::WindowResizeEvent, aligner.get());
 
   renderer_text->AddActor2D(text3.get());
-
 
   renderer_text->SetBackground(0.090, 0.143, 0.173); // darker tone
   render_window->AddRenderer(renderer_text.get());

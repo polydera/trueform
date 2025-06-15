@@ -4,29 +4,41 @@
 
 namespace tf {
 /// @ingroup algorithms
-/// @brief Recursively partitions a range into a given number of parts and applies a user function to each part.
+/// @brief Recursively partitions a range into a given number of parts and
+/// applies a user function to each part.
 ///
-/// This utility enables balanced, recursive partitioning of a range into `parts` disjoint subranges,
-/// optionally executing the process in parallel. It is typically used to build hierarchical spatial
-/// structures (e.g., BVHs or spatial trees), where you want to partition a data range and apply
-/// a function (e.g., to assign nodes or record split information) to each partition.
+/// This utility enables balanced, recursive partitioning of a range into
+/// `parts` disjoint subranges, optionally executing the process in parallel. It
+/// is typically used to build hierarchical spatial structures (e.g., BVHs or
+/// spatial trees), where you want to partition a data range and apply a
+/// function (e.g., to assign nodes or record split information) to each
+/// partition.
 ///
 /// The user supplies:
-/// - `partition_range_f`: a function that reorders or partitions elements in `[begin, end)`
-///                        so that the middle point `mid` creates two logical subranges.
-/// - `apply_f`: a function that will be applied to each resulting range after partitioning, with its partition id.
+/// - `partition_range_f`: a function that reorders or partitions elements in
+/// `[begin, end)`
+///                        so that the middle point `mid` creates two logical
+///                        subranges.
+/// - `apply_f`: a function that will be applied to each resulting range after
+/// partitioning, with its partition id.
 ///
-/// If the range is small (≤ 1000 elements), it runs sequentially; otherwise it uses `tbb::parallel_invoke`.
+/// If the range is small (≤ 1000 elements), it runs sequentially; otherwise it
+/// uses `tbb::parallel_invoke`.
 ///
-/// @tparam Range The input range type (should support `.begin()`, `.end()`, and `operator-`).
-/// @tparam F0 Type of the partitioning function. Should have signature `(Iterator begin, Iterator mid, Iterator end)`.
-/// @tparam F1 Type of the apply function. Should have signature `(Range subrange, std::size_t partition_id)`.
+/// @tparam Range The input range type (should support `.begin()`, `.end()`, and
+/// `operator-`).
+/// @tparam F0 Type of the partitioning function. Should have signature
+/// `(Iterator begin, Iterator mid, Iterator end)`.
+/// @tparam F1 Type of the apply function. Should have signature `(Range
+/// subrange, std::size_t partition_id)`.
 /// @param range The full range to be partitioned.
 /// @param parts The number of parts to divide the range into.
 /// @param partition_range_f A function to partition the range at midpoint.
 /// @param apply_f A function to apply to each resulting subrange.
-/// @param partition_id Internal use (default 0). Tracks the base index of the current partition.
-/// @return The total number of successfully partitioned subranges (should equal `parts`).
+/// @param partition_id Internal use (default 0). Tracks the base index of the
+/// current partition.
+/// @return The total number of successfully partitioned subranges (should equal
+/// `parts`).
 ///
 /// @code
 /// // Partition a vector into 4 parts, sorting each part independently.
@@ -84,8 +96,8 @@ auto partition_range_into_parts(Range &&range, std::size_t parts,
                                             left_parts, partition_range_f,
                                             apply_f, partition_id);
     count_right = partition_range_into_parts(
-        tf::make_range(mid, range.end()), right_parts, partition_range_f, apply_f,
-        partition_id + left_parts);
+        tf::make_range(mid, range.end()), right_parts, partition_range_f,
+        apply_f, partition_id + left_parts);
   }
 
   return count_left + count_right;
