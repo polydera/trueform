@@ -6,6 +6,7 @@
 
 #pragma once
 #include "./indirect_range.hpp"
+#include "./unwrap.hpp"
 #include <utility>
 
 namespace tf {
@@ -75,9 +76,12 @@ auto inject_ids(Range &&ids, Base &&base) {
       return static_cast<Base>(base);
     else
       return static_cast<Base &&>(base);
-  else
-    return inject_ids_t<std::decay_t<Range>, std::decay_t<Base>>{
-        static_cast<Range &&>(ids), static_cast<Base &&>(base)};
+  else {
+    auto &b_base = unwrap(base);
+    return wrap_like(
+        base, inject_ids_t<std::decay_t<Range>, std::decay_t<decltype(b_base)>>{
+                  static_cast<Range &&>(ids), b_base});
+  }
 }
 
 } // namespace tf

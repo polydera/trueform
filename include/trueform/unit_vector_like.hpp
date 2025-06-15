@@ -110,6 +110,39 @@ template <std::size_t Dims, typename Policy>
 struct static_size<unit_vector_like<Dims, Policy>>
     : std::integral_constant<std::size_t, Dims> {};
 
+template <std::size_t Dims, typename Policy>
+auto unwrap(const unit_vector_like<Dims, Policy> &vec) -> decltype(auto) {
+  return static_cast<const Policy &>(vec);
+}
+
+template <std::size_t Dims, typename Policy>
+auto unwrap(unit_vector_like<Dims, Policy> &vec) -> decltype(auto) {
+  return static_cast<Policy &>(vec);
+}
+
+template <std::size_t Dims, typename Policy>
+auto unwrap(unit_vector_like<Dims, Policy> &&vec) -> decltype(auto) {
+  return static_cast<Policy &&>(vec);
+}
+
+template <std::size_t Dims, typename Policy, typename T>
+auto wrap_like(const unit_vector_like<Dims, Policy> &, T &&t) {
+  return unit_vector_like<Dims, std::decay_t<T>>{
+      tf::unsafe, tf::vector_like<Dims, std::decay_t<T>>{static_cast<T &&>(t)}};
+}
+
+template <std::size_t Dims, typename Policy, typename T>
+auto wrap_like(unit_vector_like<Dims, Policy> &, T &&t) {
+  return unit_vector_like<Dims, std::decay_t<T>>{
+      tf::unsafe, tf::vector_like<Dims, std::decay_t<T>>{static_cast<T &&>(t)}};
+}
+
+template <std::size_t Dims, typename Policy, typename T>
+auto wrap_like(unit_vector_like<Dims, Policy> &&, T &&t) {
+  return unit_vector_like<Dims, std::decay_t<T>>{
+      tf::unsafe, tf::vector_like<Dims, std::decay_t<T>>{static_cast<T &&>(t)}};
+}
+
 } // namespace tf
 
 namespace std {

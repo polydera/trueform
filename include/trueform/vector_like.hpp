@@ -277,28 +277,34 @@ template <std::size_t Dims, typename Policy>
 struct static_size<vector_like<Dims, Policy>>
     : std::integral_constant<std::size_t, Dims> {};
 
-template <typename Index, std::size_t Dims, typename Policy>
-auto inject_id(Index index, tf::vector_like<Dims, Policy> &pt)
-    -> decltype(auto) {
-  if constexpr (has_injected_id<Policy>)
-    return pt;
-  else {
-    auto base = tf::inject_id(index, static_cast<const Policy &>(pt));
-    return tf::vector_like<Dims, decltype(base)>{{base}};
-  }
+template <std::size_t Dims, typename Policy>
+auto unwrap(const vector_like<Dims, Policy> &vec) -> decltype(auto) {
+  return static_cast<const Policy &>(vec);
 }
 
-template <typename Index, std::size_t Dims, typename Policy>
-auto inject_id(Index index, const tf::vector_like<Dims, Policy> &pt)
-    -> decltype(auto) {
-  if constexpr (has_injected_id<Policy>)
-    return pt;
-  else {
-    auto base = tf::inject_id(index, static_cast<const Policy &>(pt));
-    return tf::vector_like<Dims, decltype(base)>{{base}};
-  }
+template <std::size_t Dims, typename Policy>
+auto unwrap(vector_like<Dims, Policy> &vec) -> decltype(auto) {
+  return static_cast<Policy &>(vec);
 }
 
+template <std::size_t Dims, typename Policy>
+auto unwrap(vector_like<Dims, Policy> &&vec) -> decltype(auto) {
+  return static_cast<Policy &&>(vec);
+}
+
+template <std::size_t Dims, typename Policy, typename T>
+auto wrap_like(const vector_like<Dims, Policy> &, T &&t) {
+  return vector_like<Dims, std::decay_t<T>>{static_cast<T &&>(t)};
+}
+
+template <std::size_t Dims, typename Policy, typename T>
+auto wrap_like(vector_like<Dims, Policy> &, T &&t) {
+  return vector_like<Dims, std::decay_t<T>>{static_cast<T &&>(t)};
+}
+template <std::size_t Dims, typename Policy, typename T>
+auto wrap_like(vector_like<Dims, Policy> &&, T &&t) {
+  return vector_like<Dims, std::decay_t<T>>{static_cast<T &&>(t)};
+}
 } // namespace tf
 
 namespace std {

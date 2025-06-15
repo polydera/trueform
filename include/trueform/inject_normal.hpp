@@ -7,6 +7,7 @@
 #pragma once
 #include "./unit_vector.hpp"
 #include "./unit_vector_like.hpp"
+#include "./unwrap.hpp"
 #include <utility>
 
 namespace tf {
@@ -96,9 +97,12 @@ auto inject_normal(const unit_vector_like<Dims, T> &normal, Base &&base) {
       return static_cast<Base>(base);
     else
       return static_cast<Base &&>(base);
-  else
-    return inject_normal_t<tf::value_type<T>, Dims, std::decay_t<Base>>{
-        normal, static_cast<Base &&>(base)};
+  else {
+    auto &b_base = unwrap(base);
+    return wrap_like(
+        base, inject_normal_t<tf::value_type<T>, Dims,
+                              std::decay_t<decltype(b_base)>>{normal, b_base});
+  }
 }
 
 } // namespace tf

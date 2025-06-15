@@ -246,37 +246,34 @@ template <std::size_t Dims, typename Policy>
 struct static_size<point_like<Dims, Policy>>
     : std::integral_constant<std::size_t, Dims> {};
 
-template <typename Index, std::size_t Dims, typename Policy>
-auto inject_id(Index index, tf::point_like<Dims, Policy> &pt)
-    -> decltype(auto) {
-  if constexpr (has_injected_id<Policy>)
-    return pt;
-  else {
-    auto base = tf::inject_id(index, static_cast<const Policy &>(pt));
-    return tf::point_like<Dims, decltype(base)>{{base}};
-  }
+template <std::size_t Dims, typename Policy>
+auto unwrap(const point_like<Dims, Policy> &vec) -> decltype(auto) {
+  return static_cast<const Policy &>(vec);
 }
 
-template <typename Index, std::size_t Dims, typename Policy>
-auto inject_id(Index index, const tf::point_like<Dims, Policy> &pt)
-    -> decltype(auto) {
-  if constexpr (has_injected_id<Policy>)
-    return pt;
-  else {
-    auto base = tf::inject_id(index, static_cast<const Policy &>(pt));
-    return tf::point_like<Dims, decltype(base)>{{base}};
-  }
+template <std::size_t Dims, typename Policy>
+auto unwrap(point_like<Dims, Policy> &vec) -> decltype(auto) {
+  return static_cast<Policy &>(vec);
 }
 
-template <typename Index, std::size_t Dims, typename Policy>
-auto inject_id(Index index, tf::point_like<Dims, Policy> &&pt)
-    -> decltype(auto) {
-  if constexpr (has_injected_id<Policy>)
-    return static_cast<tf::point_like<Dims, Policy>>(pt);
-  else {
-    auto base = tf::inject_id(index, static_cast<const Policy &>(pt));
-    return tf::point_like<Dims, decltype(base)>{{base}};
-  }
+template <std::size_t Dims, typename Policy>
+auto unwrap(point_like<Dims, Policy> &&vec) -> decltype(auto) {
+  return static_cast<Policy &&>(vec);
+}
+
+template <std::size_t Dims, typename Policy, typename T>
+auto wrap_like(const point_like<Dims, Policy> &, T &&t) {
+  return point_like<Dims, std::decay_t<T>>{static_cast<T &&>(t)};
+}
+
+template <std::size_t Dims, typename Policy, typename T>
+auto wrap_like(point_like<Dims, Policy> &, T &&t) {
+  return point_like<Dims, std::decay_t<T>>{static_cast<T &&>(t)};
+}
+
+template <std::size_t Dims, typename Policy, typename T>
+auto wrap_like(point_like<Dims, Policy> &&, T &&t) {
+  return point_like<Dims, std::decay_t<T>>{static_cast<T &&>(t)};
 }
 
 } // namespace tf

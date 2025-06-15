@@ -7,6 +7,7 @@
 #pragma once
 #include "./implementation/inject_plane.hpp"
 #include "./plane.hpp"
+#include "./unwrap.hpp"
 
 namespace tf {
 /**
@@ -70,9 +71,12 @@ auto inject_plane(const plane<T, Dims> &plane, Base &&base) -> decltype(auto) {
       return static_cast<Base>(base);
     else
       return static_cast<Base &&>(base);
-  else
-    return inject_plane_t<T, Dims, std::decay_t<Base>>{
-        plane, static_cast<Base &&>(base)};
+  else {
+    auto &b_base = unwrap(base);
+    return wrap_like(
+        base,
+        inject_plane_t<T, Dims, std::decay_t<decltype(b_base)>>{plane, b_base});
+  }
 }
 
 } // namespace tf

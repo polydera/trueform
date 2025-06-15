@@ -6,6 +6,7 @@
 
 #pragma once
 #include "./static_size.hpp"
+#include "./unwrap.hpp"
 #include <type_traits>
 #include <utility>
 
@@ -86,9 +87,12 @@ auto inject_id(Index &&id, Base &&base) {
       return static_cast<Base>(base);
     else
       return static_cast<Base &&>(base);
-  else
-    return inject_id_t<std::decay_t<Index>, std::decay_t<Base>>{
-        static_cast<Index &&>(id), static_cast<Base &&>(base)};
+  else {
+    auto &b_base = unwrap(base);
+    return wrap_like(
+        base, inject_id_t<std::decay_t<Index>, std::decay_t<decltype(b_base)>>{
+                  static_cast<Index &&>(id), b_base});
+  }
 }
 
 } // namespace tf
