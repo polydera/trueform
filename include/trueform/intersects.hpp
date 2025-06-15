@@ -532,12 +532,21 @@ auto intersects(const tf::form<Dims, Policy0> &form,
       tf::intersects_f);
 }
 
+template <std::size_t Dims, typename Policy0, std::size_t V, typename Policy1>
+auto intersects(const tf::form<Dims, Policy0> &form,
+                const tf::polygon<V, Policy1> &obj) -> bool {
+  auto obj_aabb = tf::aabb_from(obj);
+  return tf::search(
+      form, [&](const auto &aabb) { return intersects(aabb, obj_aabb); },
+      [&](const auto &other) { return tf::intersects(other, obj); });
+}
+
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const tf::form<Dims, Policy0> &form,
                 const tf::segment<Policy1> &obj) -> bool {
   auto ray = tf::make_ray_between_points(obj[0], obj[1]);
   using real_t = tf::value_type<decltype(ray.origin)>;
-  return tf::ray_cast(obj, form, tf::make_ray_config(real_t(0), real_t(1)));
+  return tf::ray_cast(ray, form, tf::make_ray_config(real_t(0), real_t(1)));
 }
 
 template <std::size_t Dims, typename Policy0, typename RealT>
@@ -549,9 +558,9 @@ auto intersects(const tf::form<Dims, Policy0> &form,
 template <std::size_t Dims, typename Policy0, typename RealT>
 auto intersects(const tf::form<Dims, Policy0> &form,
                 const tf::line<RealT, Dims> &obj) -> bool {
-  auto ray = tf::make_ray_between_points(obj[0], obj[1]);
+  auto ray = tf::make_ray(obj.origin, obj.direction);
   using real_t = tf::value_type<decltype(ray.origin)>;
-  return tf::ray_cast(obj, form,
+  return tf::ray_cast(ray, form,
                       tf::make_ray_config(-std::numeric_limits<real_t>::max(),
                                           std::numeric_limits<real_t>::max()));
 }

@@ -17,9 +17,9 @@ template <std::size_t N, typename Policy0, typename Policy1, typename F0,
           typename F1>
 auto search(const tf::form<N, Policy0> &form0,
             const tf::form<N, Policy1> &form1, const F0 &check_aabbs,
-            const F1 &primitive_apply, int paralelism_depth = 6) -> bool {
+            const F1 &primitive_apply) -> bool {
   return implementation::dual_form_search_dispatch<typename Policy0::index_t>(
-      form0, form1, check_aabbs, primitive_apply, paralelism_depth);
+      form0, form1, check_aabbs, primitive_apply, 6);
 }
 
 /// @brief Perform a spatial query against a single tree structure.

@@ -14,24 +14,36 @@ namespace tf {
 /// @ingroup spatial_structures
 /// @brief A general-purpose spatial acceleration structure.
 ///
-/// `tf::tree` is a balanced bounding volume hierarchy (BVH) optimized for fast and flexible
-/// spatial queries, including intersection, self-intersection, proximity queries, and nearest-neighbor searches.
+/// `tf::tree` is a balanced bounding volume hierarchy (BVH) optimized for fast
+/// and flexible spatial queries, including intersection, self-intersection,
+/// proximity queries, and nearest-neighbor searches.
 ///
-/// Trees are constructed over user-defined primitives using parallel partitioning strategies,
-/// ensuring efficient memory layout and predictable query performance.
+/// Trees are constructed over user-defined primitives using parallel
+/// partitioning strategies, ensuring efficient memory layout and predictable
+/// query performance.
 ///
 /// All query operations are exposed as free functions in the `tf::` namespace—
-/// including @ref tf::search, @ref tf::search_self, and @ref tf::nearness_search —and accept
-/// user-defined callbacks for full control over traversal and primitive evaluation.
+/// including @ref tf::search, @ref tf::search_self, and @ref
+/// tf::nearness_search —and accept user-defined callbacks for full control over
+/// traversal and primitive evaluation.
 ///
-/// For details on the underlying methodology and performance characteristics, refer to the accompanying technical paper.
+/// For details on the underlying methodology and performance characteristics,
+/// refer to the accompanying technical paper.
 ///
-/// @tparam Index The type used for primitive identifiers (typically an integer type).
+/// @tparam Index The type used for primitive identifiers (typically an integer
+/// type).
 /// @tparam RealT The real-valued coordinate type (e.g., float or double).
 /// @tparam N The spatial dimension (typically 2 or 3).
 
 template <typename Index, typename RealT, std::size_t N> class tree {
 public:
+  tree() = default;
+
+  template <typename Range, typename FC>
+  tree(const Range &objects, const tf::tree_config<FC> &config) {
+    build(objects, config);
+  }
+
   template <typename Partitioner, typename Range, typename FC>
   auto build(const Range &objects, const tf::tree_config<FC> &config) -> void {
     _aabbs.allocate(objects.size());
@@ -43,24 +55,26 @@ public:
                                                       config.node_config);
   }
 
-
-/// @brief Build the tree from a range of user-defined primitives.
-///
-/// Constructs the tree by computing AABBs for the input range and recursively partitioning
-/// them into a balanced hierarchy, using the parameters defined in `config`.
-///
-/// The input range must support indexed access, and `config` must define a bounding box
-/// construction function (`make_aabb`) that maps each object to an AABB.
-///
-/// @tparam Range A random-access range of user-defined primitives.
-/// @tparam FC A callable type used by `tree_config` for bounding box generation.
-///
-/// @param objects The range of primitives to insert into the tree.
-/// @param config Configuration parameters including the `make_aabb` function,
-///               leaf size, and partitioning strategy. It is constructed via
-///               @ref tf::config_tree free function for convenience.
-///
-/// @return void
+  /// @brief Build the tree from a range of user-defined primitives.
+  ///
+  /// Constructs the tree by computing AABBs for the input range and recursively
+  /// partitioning them into a balanced hierarchy, using the parameters defined
+  /// in `config`.
+  ///
+  /// The input range must support indexed access, and `config` must define a
+  /// bounding box construction function (`make_aabb`) that maps each object to
+  /// an AABB.
+  ///
+  /// @tparam Range A random-access range of user-defined primitives.
+  /// @tparam FC A callable type used by `tree_config` for bounding box
+  /// generation.
+  ///
+  /// @param objects The range of primitives to insert into the tree.
+  /// @param config Configuration parameters including the `make_aabb` function,
+  ///               leaf size, and partitioning strategy. It is constructed via
+  ///               @ref tf::config_tree free function for convenience.
+  ///
+  /// @return void
   template <typename Range, typename FC>
   auto build(const Range &objects, const tf::tree_config<FC> &config) -> void {
     return build<strategy::nth_element_t>(objects, config);
@@ -107,43 +121,41 @@ public:
     return build<strategy::heap_select_t>(objects, config);
   }
 
-
-/// @brief Access the axis-aligned bounding boxes (AABBs) of the input primitives.
-///
-/// Returns the buffer of primitive-level AABBs computed during tree construction.
-/// These correspond one-to-one with the input range provided during `build(...)`.
-///
-/// @return A constant reference to the internal AABB buffer.
+  /// @brief Access the axis-aligned bounding boxes (AABBs) of the input
+  /// primitives.
+  ///
+  /// Returns the buffer of primitive-level AABBs computed during tree
+  /// construction. These correspond one-to-one with the input range provided
+  /// during `build(...)`.
+  ///
+  /// @return A constant reference to the internal AABB buffer.
   auto primitive_aabbs() const -> const tf::buffer<tf::aabb<RealT, N>> & {
     return _aabbs;
   }
 
-
-/// @brief Access the internal nodes of the tree.
-///
-/// Returns the buffer of tree nodes representing the hierarchy. Each node stores
-/// its bounding box, child indices, and axis split information.
-///
-/// @return A constant reference to the node buffer.
+  /// @brief Access the internal nodes of the tree.
+  ///
+  /// Returns the buffer of tree nodes representing the hierarchy. Each node
+  /// stores its bounding box, child indices, and axis split information.
+  ///
+  /// @return A constant reference to the node buffer.
   auto nodes() const -> const tf::buffer<tf::tree_node<Index, RealT, N>> & {
     return _nodes;
   }
 
-
-/// @brief Access the leaf-level primitive ID buffer.
-///
-/// Returns the buffer of primitive indices used during tree construction.
-/// Leaf nodes index into this buffer to refer to associated primitives.
-///
-/// @return A constant reference to the primitive ID buffer.
+  /// @brief Access the leaf-level primitive ID buffer.
+  ///
+  /// Returns the buffer of primitive indices used during tree construction.
+  /// Leaf nodes index into this buffer to refer to associated primitives.
+  ///
+  /// @return A constant reference to the primitive ID buffer.
   auto ids() const -> const tf::buffer<Index> & { return _ids; }
 
-
-/// @brief Clear all internal tree data.
-///
-/// Empties the node, ID, and AABB buffers. This does not shrink capacity,
-/// but invalidates the current tree structure. A new build must be performed
-/// before queries can be issued again.
+  /// @brief Clear all internal tree data.
+  ///
+  /// Empties the node, ID, and AABB buffers. This does not shrink capacity,
+  /// but invalidates the current tree structure. A new build must be performed
+  /// before queries can be issued again.
   auto clear() {
     _aabbs.clear();
     _nodes.clear();

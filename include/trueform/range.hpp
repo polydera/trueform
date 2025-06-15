@@ -70,6 +70,13 @@ auto get(range<Iterator_, N_> &s) -> decltype(auto) {
   static_assert(I < N_, "Index out of bounds");
   return s[I];
 }
+
+template <std::size_t I, typename Iterator_, std::size_t N_>
+auto get(range<Iterator_, N_> &&s) -> decltype(auto) {
+  static_assert(N_ != tf::dynamic_size, "Dynamic size does not support get.");
+  static_assert(I < N_, "Index out of bounds");
+  return s[I];
+}
 } // namespace tf
 
 namespace std {

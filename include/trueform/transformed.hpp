@@ -130,7 +130,7 @@ auto transformed(const ray<T, Dims> &_this,
 template <typename T, std::size_t Dims, typename U>
 auto transformed(const line<T, Dims> &_this,
                  const transformation<U, Dims> &transform) {
-  ray<T, Dims> out{transform(_this.origin), transform(_this.direction)};
+  line<T, Dims> out{transform(_this.origin), transform(_this.direction)};
   return out;
 }
 

@@ -6,7 +6,9 @@
 #pragma once
 
 #include "./mapped_range.hpp"
+#include "./point_range.hpp"
 #include "./polygon.hpp"
+#include "./unit_vector_range.hpp"
 namespace tf {
 namespace implementation {
 template <typename Range0> struct polygon_range_policy {
@@ -53,13 +55,11 @@ public:
             faces, implementation::polygon_range_policy<Range1>{points})} {}
 
   auto faces() const {
-    return tf::make_range(base_t::begin().base_iter().base_iter(),
-                          base_t::size());
+    return tf::make_range(base_t::begin().base_iter(), base_t::size());
   }
 
   auto points() const {
-    return tf::make_range(
-        base_t::begin().base_iter().dereference_policy().range);
+    return tf::make_point_range(base_t::begin().dereference_policy().points);
   }
 };
 
@@ -83,13 +83,13 @@ public:
   }
 
   auto points() const {
-    return tf::make_range(
+    return tf::make_point_range(
         base_t::begin().base_iter().dereference_policy().range);
   }
 
   auto normals() const {
-    return tf::make_range(base_t::begin().base_iter().base_iter().second,
-                          base_t::size());
+    return tf::make_unit_vector_range(tf::make_range(
+        base_t::begin().base_iter().base_iter().second, base_t::size()));
   }
 };
 
@@ -129,15 +129,15 @@ public:
 template <typename Range0, typename Range1>
 auto make_polygon_range(Range0 &&faces, Range1 &&points) {
   auto r0 = tf::make_range(faces);
-  auto r1 = tf::make_range(points);
+  auto r1 = tf::make_point_range(points);
   return polygon_range<decltype(r0), decltype(r1)>{r0, r1};
 }
 
 template <typename Range0, typename Range1, typename Range2>
 auto make_polygon_range(Range0 &&faces, Range1 &&points, Range2 &&normals) {
   auto r0 = tf::make_range(faces);
-  auto r1 = tf::make_range(points);
-  auto r2 = tf::make_range(normals);
+  auto r1 = tf::make_point_range(points);
+  auto r2 = tf::make_unit_vector_range(normals);
   return polygon_range<decltype(r0), decltype(r1), decltype(r2)>{r0, r1, r2};
 }
 } // namespace tf

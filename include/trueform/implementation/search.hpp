@@ -26,10 +26,16 @@ auto search(const tf::form<N, Policy> &form, const F0 &check_aabb,
         for (const auto &id : r)
           if (check_aabb(tf::transformed(form.tree().primitive_aabbs()[id],
                                          form.frame().transformation()))) {
-            if constexpr (std::is_same_v<decltype(primitive_apply(id)), void>) {
-              primitive_apply(tf::inject_id(id, tf::transformed(form[id])));
+            if constexpr (std::is_same_v<decltype(tf::inject_id(
+                                             id, tf::transformed(
+                                                     form[id],
+                                                     form.transformation()))),
+                                         void>) {
+              primitive_apply(tf::inject_id(
+                  id, tf::transformed(form[id], form.transformation())));
             } else {
-              if (primitive_apply(tf::inject_id(id, tf::transformed(form[id]))))
+              if (primitive_apply(tf::inject_id(
+                      id, tf::transformed(form[id], form.transformation()))))
                 return true;
             }
           }

@@ -217,7 +217,7 @@ auto closest_point_parametric(const tf::line<RealT, Dims> &line,
                               const tf::segment<Policy0> &segment) {
   auto line_segment = tf::make_line_between_points(segment[0], segment[1]);
   auto [non_parallel, t0, t1] =
-      tf::implementation::line_line_check(line, segment);
+      tf::implementation::line_line_check(line, line_segment);
   using real_t = decltype(t0);
 
   if (non_parallel) {

@@ -29,7 +29,7 @@ auto closest_metric_point(const tf::point_like<Dims, T0> &v0,
 /// @brief Computes the closest @ref tf::metric_point on the first object.
 template <typename RealT, std::size_t Dims, typename T1>
 auto closest_metric_point(const tf::line<RealT, Dims> &l,
-                          const tf::vector_like<Dims, T1> &v1) {
+                          const tf::point_like<Dims, T1> &v1) {
   auto t = tf::closest_point_parametric(l, v1);
   auto pt = l.origin + t * l.direction;
   return tf::make_metric_point((pt - v1).length2(), pt);
@@ -38,7 +38,7 @@ auto closest_metric_point(const tf::line<RealT, Dims> &l,
 /// @ingroup geometry
 /// @brief Computes the closest @ref tf::metric_point on the first object.
 template <std::size_t Dims, typename T1, typename RealT>
-auto closest_metric_point(const tf::vector_like<Dims, T1> &v0,
+auto closest_metric_point(const tf::point_like<Dims, T1> &v0,
                           const tf::line<RealT, Dims> &l) {
   auto t = tf::closest_point_parametric(l, v0);
   auto pt = l.origin + t * l.direction;
@@ -49,7 +49,7 @@ auto closest_metric_point(const tf::vector_like<Dims, T1> &v0,
 /// @brief Computes the closest @ref tf::metric_point on the first object.
 template <typename RealT, std::size_t Dims, typename T1>
 auto closest_metric_point(const tf::ray<RealT, Dims> &r,
-                          const tf::vector_like<Dims, T1> &v1) {
+                          const tf::point_like<Dims, T1> &v1) {
   auto t = tf::closest_point_parametric(r, v1);
   auto pt = r.origin + t * r.direction;
   return tf::make_metric_point((pt - v1).length2(), pt);
@@ -58,7 +58,7 @@ auto closest_metric_point(const tf::ray<RealT, Dims> &r,
 /// @ingroup geometry
 /// @brief Computes the closest @ref tf::metric_point on the first object.
 template <std::size_t Dims, typename T1, typename RealT>
-auto closest_metric_point(const tf::vector_like<Dims, T1> &v0,
+auto closest_metric_point(const tf::point_like<Dims, T1> &v0,
                           const tf::ray<RealT, Dims> &r) {
   auto t = tf::closest_point_parametric(r, v0);
   auto pt = r.origin + t * r.direction;
@@ -69,7 +69,7 @@ auto closest_metric_point(const tf::vector_like<Dims, T1> &v0,
 /// @brief Computes the closest @ref tf::metric_point on the first object.
 template <typename T0, std::size_t Dims, typename T1>
 auto closest_metric_point(const tf::segment<T0> &s,
-                          const tf::vector_like<Dims, T1> &v1) {
+                          const tf::point_like<Dims, T1> &v1) {
   auto t = tf::closest_point_parametric(s, v1);
   auto l = tf::make_line_between_points(s[0], s[1]);
   auto pt = l.origin + t * l.direction;
@@ -79,7 +79,7 @@ auto closest_metric_point(const tf::segment<T0> &s,
 /// @ingroup geometry
 /// @brief Computes the closest @ref tf::metric_point on the first object.
 template <std::size_t Dims, typename T0, typename T1>
-auto closest_metric_point(const tf::vector_like<Dims, T0> &v0,
+auto closest_metric_point(const tf::point_like<Dims, T0> &v0,
                           const tf::segment<T1> &s) {
   auto t = tf::closest_point_parametric(s, v0);
   auto l = tf::make_line_between_points(s[0], s[1]);
@@ -195,7 +195,7 @@ auto closest_metric_point(const tf::segment<T0> &s0,
 /// @brief Computes the closest @ref tf::metric_point on the first object.
 template <typename Policy0, std::size_t Dims, typename Policy1>
 auto closest_metric_point(const tf::polygon<3, Policy0> &poly,
-                          const tf::vector_like<Dims, Policy1> &pt) {
+                          const tf::point_like<Dims, Policy1> &pt) {
   auto res = tf::closest_metric_point_pair(poly, pt);
   return tf::make_metric_point(res.metric, res.first);
 }
@@ -203,7 +203,7 @@ auto closest_metric_point(const tf::polygon<3, Policy0> &poly,
 /// @ingroup geometry
 /// @brief Computes the closest @ref tf::metric_point on the first object.
 template <std::size_t Dims, typename Policy1, typename Policy0>
-auto closest_metric_point(const tf::vector_like<Dims, Policy1> &pt,
+auto closest_metric_point(const tf::point_like<Dims, Policy1> &pt,
                           const tf::polygon<3, Policy0> &poly) {
   auto res = tf::closest_metric_point_pair(pt, poly);
   return tf::make_metric_point(res.metric, res.first);
@@ -213,7 +213,7 @@ auto closest_metric_point(const tf::vector_like<Dims, Policy1> &pt,
 /// @brief Computes the closest @ref tf::metric_point on the first object.
 template <std::size_t V, typename Policy0, std::size_t Dims, typename Policy1>
 auto closest_metric_point(const tf::polygon<V, Policy0> &poly_in,
-                          const tf::vector_like<Dims, Policy1> &pt) {
+                          const tf::point_like<Dims, Policy1> &pt) {
   auto res = tf::closest_metric_point_pair(poly_in, pt);
   return tf::make_metric_point(res.metric, res.first);
 }
@@ -221,7 +221,7 @@ auto closest_metric_point(const tf::polygon<V, Policy0> &poly_in,
 /// @ingroup geometry
 /// @brief Computes the closest @ref tf::metric_point on the first object.
 template <std::size_t Dims, typename Policy1, std::size_t V, typename Policy0>
-auto closest_metric_point(const tf::vector_like<Dims, Policy1> &pt,
+auto closest_metric_point(const tf::point_like<Dims, Policy1> &pt,
                           const tf::polygon<V, Policy0> &poly) {
   auto res = tf::closest_metric_point_pair(pt, poly);
   return tf::make_metric_point(res.metric, res.first);

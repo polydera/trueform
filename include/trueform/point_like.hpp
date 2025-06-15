@@ -268,6 +268,17 @@ auto inject_id(Index index, const tf::point_like<Dims, Policy> &pt)
   }
 }
 
+template <typename Index, std::size_t Dims, typename Policy>
+auto inject_id(Index index, tf::point_like<Dims, Policy> &&pt)
+    -> decltype(auto) {
+  if constexpr (has_injected_id<Policy>)
+    return static_cast<tf::point_like<Dims, Policy>>(pt);
+  else {
+    auto base = tf::inject_id(index, static_cast<const Policy &>(pt));
+    return tf::point_like<Dims, decltype(base)>{{base}};
+  }
+}
+
 } // namespace tf
 
 namespace std {

@@ -160,21 +160,30 @@ auto make_segment_between_points(const tf::point_like<Dims, T0> &pt0,
       std::array<pt_t, 2>{pt_t{pt0}, pt_t{pt1}});
 }
 
-template <typename Policy, typename Range>
-auto inject_ids(const segment<Policy> &seg, Range &&ids) -> decltype(auto) {
+template <typename Range, typename Policy>
+auto inject_ids(Range &&ids, segment<Policy> &seg) -> decltype(auto) {
   if constexpr (has_injected_ids<Policy>) {
     return seg;
   } else {
     return tf::make_segment( //
-        tf::inject_ids(static_cast<Range &&>(ids),
-                       static_cast<const Policy &>(seg)));
+        tf::inject_ids(static_cast<Range &&>(ids), static_cast<Policy &>(seg)));
   }
 }
 
-template <typename Policy, typename Range>
-auto inject_ids(segment<Policy> &seg, Range &&ids) -> decltype(auto) {
+template <typename Range, typename Policy>
+auto inject_ids(Range &&ids, const segment<Policy> &seg) -> decltype(auto) {
   if constexpr (has_injected_ids<Policy>) {
     return seg;
+  } else {
+    return tf::make_segment( //
+        tf::inject_ids(static_cast<Range &&>(ids), static_cast<Policy &>(seg)));
+  }
+}
+
+template <typename Range, typename Policy>
+auto inject_ids(Range &&ids, segment<Policy> &&seg) -> decltype(auto) {
+  if constexpr (has_injected_ids<Policy>) {
+    return static_cast<tf::segment<Policy>>(seg);
   } else {
     return tf::make_segment( //
         tf::inject_ids(static_cast<Range &&>(ids), static_cast<Policy &>(seg)));
@@ -195,6 +204,16 @@ template <typename Index, typename Policy>
 auto inject_id(Index index, tf::segment<Policy> &pt) -> decltype(auto) {
   if constexpr (has_injected_id<Policy>)
     return pt;
+  else {
+    auto base = tf::inject_id(index, static_cast<const Policy &>(pt));
+    return tf::segment<decltype(base)>{base};
+  }
+}
+
+template <typename Index, typename Policy>
+auto inject_id(Index index, tf::segment<Policy> &&pt) -> decltype(auto) {
+  if constexpr (has_injected_id<Policy>)
+    return static_cast<tf::segment<Policy>>(pt);
   else {
     auto base = tf::inject_id(index, static_cast<const Policy &>(pt));
     return tf::segment<decltype(base)>{base};
