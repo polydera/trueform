@@ -81,36 +81,4 @@ int main(int argc, char *argv[]) {
   std::cout << "Closest points are on primitives: " << primitive_id0 << ", "
             << primitive_id1 << std::endl;
   std::cout << "At distance: " << tf::sqrt(metric) << std::endl;
-
-  std::cout << "---------------------------------" << std::endl;
-  std::cout << "Now we will compute 4 nearest points" << std::endl;
-  /*std::cout << "(If the closest point is on a vertex, these might be the
-   * same)"*/
-  /*          << std::endl;*/
-
-  std::array<tf::tree_closest_point_pair<int, float, 3>, 4> closest_points;
-  auto knn = tf::make_tree_knn(closest_points.begin(), 4 /*, search_radius */);
-
-  tf::nearness_search(
-      tree, tree,
-      [&](const auto &aabb0, const auto &aabb1) { // transform the aabb
-        return tf::make_aabb_metrics(aabb0,
-                                     tf::transformed(aabb1, transformation));
-      },
-      [&points = points, &transformation](auto id0, auto id1) {
-        auto tpt = tf::transformed(points[id1], transformation);
-        auto d2 = (points[id0] - tpt).length2();
-        return tf::make_metric_point_pair(d2, points[id0], tpt);
-      },
-      knn);
-
-  std::cout << "---------------------------------" << std::endl;
-  std::cout << "Closest points: " << knn.size() << std::endl;
-  for (auto [primitive_ids, closest_point_pair] : knn) {
-    auto [primitive_id0, primitive_id1] = primitive_ids;
-    auto [metric, point0, point1] = closest_point_pair;
-    std::cout << "  Closest points are on primitives: " << primitive_id0 << ", "
-              << primitive_id1 << std::endl;
-    std::cout << "  At distance: " << tf::sqrt(metric) << std::endl;
-  }
 }

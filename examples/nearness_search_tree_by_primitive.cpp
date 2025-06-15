@@ -1,8 +1,9 @@
 #include "./util/read_mesh.hpp"
 #include "trueform/blocked_range.hpp"
-#include "trueform/metric_point.hpp"
 #include "trueform/closest_point_on_triangle.hpp"
 #include "trueform/distance.hpp"
+#include "trueform/metric_point.hpp"
+#include "trueform/nearest_neighbor.hpp"
 #include "trueform/nearness_search.hpp"
 #include "trueform/normalized.hpp"
 #include "trueform/point_range.hpp"
@@ -69,8 +70,9 @@ int main(int argc, char *argv[]) {
   std::cout << "(If the closest point is on a vertex, these might be the same)"
             << std::endl;
 
-  std::array<tf::tree_closest_point<int, float, 3>, 4> closest_points;
-  auto knn = tf::make_nearest_neighbors(closest_points.begin(), 4 /*, search_radius */);
+  std::array<tf::nearest_neighbor<int, float, 3>, 4> closest_points;
+  auto knn = tf::make_nearest_neighbors(closest_points.begin(),
+                                        4 /*, search_radius */);
 
   tf::nearness_search(
       mesh_tree,
