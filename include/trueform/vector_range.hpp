@@ -23,6 +23,36 @@ template <typename Policy> struct vector_range : Policy {
   vector_range(Policy &&r) : Policy{r} {}
 };
 
+template <typename Policy>
+auto unwrap(const vector_range<Policy> &seg) -> decltype(auto) {
+  return static_cast<const Policy &>(seg);
+}
+
+template <typename Policy>
+auto unwrap(vector_range<Policy> &seg) -> decltype(auto) {
+  return static_cast<Policy &>(seg);
+}
+
+template <typename Policy>
+auto unwrap(vector_range<Policy> &&seg) -> decltype(auto) {
+  return static_cast<Policy &&>(seg);
+}
+
+template <typename Policy, typename T>
+auto wrap_like(const vector_range<Policy> &, T &&t) {
+  return vector_range<std::decay_t<T>>{static_cast<T &&>(t)};
+}
+
+template <typename Policy, typename T>
+auto wrap_like(vector_range<Policy> &, T &&t) {
+  return vector_range<std::decay_t<T>>{static_cast<T &&>(t)};
+}
+
+template <typename Policy, typename T>
+auto wrap_like(vector_range<Policy> &&, T &&t) {
+  return vector_range<std::decay_t<T>>{static_cast<T &&>(t)};
+}
+
 /// @ingroup ranges
 /// @brief Creates a range of vectors from a flat scalar sequence.
 ///

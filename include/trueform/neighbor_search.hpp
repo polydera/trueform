@@ -35,6 +35,14 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
   return implementation::neighbor_search(form, obj, obj, knn);
 }
 
+template <std::size_t Dims, typename Policy0, typename Policy1,
+          typename RandomIter>
+auto neighbor_search(const tf::form<Dims, Policy0> &form,
+                     const tf::point_like<Dims, Policy1> &obj,
+                     tf::nearest_neighbors<RandomIter> &&knn) {
+  return implementation::neighbor_search(form, obj, obj, knn);
+}
+
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::segment<Policy1> &obj) {
@@ -54,6 +62,14 @@ template <std::size_t Dims, typename Policy0, typename Policy1,
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::segment<Policy1> &obj,
                      tf::nearest_neighbors<RandomIter> &knn) {
+  return implementation::admissible_neighbor_search(form, obj, knn);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1,
+          typename RandomIter>
+auto neighbor_search(const tf::form<Dims, Policy0> &form,
+                     const tf::segment<Policy1> &obj,
+                     tf::nearest_neighbors<RandomIter> &&knn) {
   return implementation::admissible_neighbor_search(form, obj, knn);
 }
 
@@ -79,6 +95,14 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
   return implementation::admissible_neighbor_search(form, obj, knn);
 }
 
+template <std::size_t Dims, typename Policy0, typename RealT,
+          typename RandomIter>
+auto neighbor_search(const tf::form<Dims, Policy0> &form,
+                     const tf::ray<RealT, Dims> &obj,
+                     tf::nearest_neighbors<RandomIter> &&knn) {
+  return implementation::admissible_neighbor_search(form, obj, knn);
+}
+
 template <std::size_t Dims, typename Policy0, typename RealT>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::line<RealT, Dims> &obj) {
@@ -98,6 +122,14 @@ template <std::size_t Dims, typename Policy0, typename RealT,
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::line<RealT, Dims> &obj,
                      tf::nearest_neighbors<RandomIter> &knn) {
+  return implementation::admissible_neighbor_search(form, obj, knn);
+}
+
+template <std::size_t Dims, typename Policy0, typename RealT,
+          typename RandomIter>
+auto neighbor_search(const tf::form<Dims, Policy0> &form,
+                     const tf::line<RealT, Dims> &obj,
+                     tf::nearest_neighbors<RandomIter> &&knn) {
   return implementation::admissible_neighbor_search(form, obj, knn);
 }
 
@@ -121,6 +153,15 @@ template <std::size_t Dims, typename Policy0, std::size_t V, typename Policy1,
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::polygon<V, Policy1> &obj,
                      tf::nearest_neighbors<RandomIter> &knn) {
+  return implementation::neighbor_search(form, tf::aabb_from(obj),
+                                         tf::inject_plane(obj), knn);
+}
+
+template <std::size_t Dims, typename Policy0, std::size_t V, typename Policy1,
+          typename RandomIter>
+auto neighbor_search(const tf::form<Dims, Policy0> &form,
+                     const tf::polygon<V, Policy1> &obj,
+                     tf::nearest_neighbors<RandomIter> &&knn) {
   return implementation::neighbor_search(form, tf::aabb_from(obj),
                                          tf::inject_plane(obj), knn);
 }

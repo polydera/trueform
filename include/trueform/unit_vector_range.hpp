@@ -25,6 +25,36 @@ template <typename Policy> struct unit_vector_range : Policy {
   unit_vector_range(Policy &&r) : Policy{r} {}
 };
 
+template <typename Policy>
+auto unwrap(const unit_vector_range<Policy> &seg) -> decltype(auto) {
+  return static_cast<const Policy &>(seg);
+}
+
+template <typename Policy>
+auto unwrap(unit_vector_range<Policy> &seg) -> decltype(auto) {
+  return static_cast<Policy &>(seg);
+}
+
+template <typename Policy>
+auto unwrap(unit_vector_range<Policy> &&seg) -> decltype(auto) {
+  return static_cast<Policy &&>(seg);
+}
+
+template <typename Policy, typename T>
+auto wrap_like(const unit_vector_range<Policy> &, T &&t) {
+  return unit_vector_range<std::decay_t<T>>{static_cast<T &&>(t)};
+}
+
+template <typename Policy, typename T>
+auto wrap_like(unit_vector_range<Policy> &, T &&t) {
+  return unit_vector_range<std::decay_t<T>>{static_cast<T &&>(t)};
+}
+
+template <typename Policy, typename T>
+auto wrap_like(unit_vector_range<Policy> &&, T &&t) {
+  return unit_vector_range<std::decay_t<T>>{static_cast<T &&>(t)};
+}
+
 /// @ingroup ranges
 /// @brief Creates a range of unit_vectors from a flat scalar sequence.
 ///
@@ -70,7 +100,8 @@ template <typename Range> auto make_unit_vector_range(Range &&r) {
 }
 
 template <typename Range>
-auto make_unit_vector_range(unit_vector_range<Range> r) -> unit_vector_range<Range> {
+auto make_unit_vector_range(unit_vector_range<Range> r)
+    -> unit_vector_range<Range> {
   return r;
 }
 } // namespace tf

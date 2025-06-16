@@ -8,6 +8,7 @@
 #include "./closest_point_parametric.hpp"
 #include "./contains_coplanar_point.hpp"
 #include "./metric_point_pair.hpp"
+#include "./min.hpp"
 #include "./polygon.hpp"
 #include "./ray_hit.hpp"
 
@@ -335,8 +336,8 @@ auto closest_metric_point_pair_impl(const tf::polygon<V, Policy0> &poly_in,
       t1 = std::clamp(t1, RealT(0), RealT(1));
       auto pt0 = line0.origin + t0 * line0.direction;
       auto pt1 = ray.origin + t1 * ray.direction;
-      best = tf::min(
-          best, tf::make_metric_point_pair((pt0 - pt1).length2(), pt0, pt1));
+      best = min(best,
+                 tf::make_metric_point_pair((pt0 - pt1).length2(), pt0, pt1));
     } // else check vertex-vertex which is already done from vertex-polygon
   }
   return best;
@@ -361,7 +362,7 @@ auto closest_metric_point_pair(const tf::polygon<V, Policy0> &poly_in,
   auto best = implementation::closest_metric_point_pair_impl(poly, seg1);
   if (best.metric == 0)
     return best;
-  return tf::min(best, closest_metric_point_pair(poly, seg1[1]));
+  return min(best, closest_metric_point_pair(poly, seg1[1]));
 }
 
 /// @ingroup geometry
@@ -388,9 +389,10 @@ auto closest_metric_point_pair(const tf::polygon<V0, Policy0> &poly_in0,
       poly0, tf::make_segment_between_points(poly1[prev], poly1[0]));
 
   for (std::size_t i = 1; i < size; prev = i++) {
-    best = tf::min(best, implementation::closest_metric_point_pair_impl(
-                             poly0, tf::make_segment_between_points(poly1[prev],
-                                                                    poly1[i])));
+    best =
+        min(best,
+            implementation::closest_metric_point_pair_impl(
+                poly0, tf::make_segment_between_points(poly1[prev], poly1[i])));
     if (best.metric < std::numeric_limits<decltype(best.metric)>::epsilon())
       return best;
   }
@@ -398,10 +400,9 @@ auto closest_metric_point_pair(const tf::polygon<V0, Policy0> &poly_in0,
   size = poly0.size();
   prev = size - 1;
   for (std::size_t i = 0; i < size; prev = i++) {
-    best = tf::min(
-        best,
-        implementation::closest_metric_point_pair_impl(
-            tf::make_segment_between_points(poly0[prev], poly0[i]), poly1));
+    best = min(best, implementation::closest_metric_point_pair_impl(
+                         tf::make_segment_between_points(poly0[prev], poly0[i]),
+                         poly1));
     if (best.metric < std::numeric_limits<decltype(best.metric)>::epsilon())
       return best;
   }

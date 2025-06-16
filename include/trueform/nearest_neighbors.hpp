@@ -131,4 +131,5 @@ template <typename RandomIt, typename RealT>
 auto make_nearest_neighbors(RandomIt iterator, std::size_t k, RealT radius) {
   return nearest_neighbors<RandomIt>{iterator, k, radius};
 }
+
 } // namespace tf

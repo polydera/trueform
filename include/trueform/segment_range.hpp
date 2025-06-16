@@ -5,7 +5,7 @@
  */
 #pragma once
 
-#include "./mapped_range.hpp"
+#include "./implementation/mapped_iterator.hpp"
 #include "./point_range.hpp"
 #include "./segment.hpp"
 
@@ -19,28 +19,46 @@ template <typename Range0> struct segment_range_policy {
 };
 } // namespace implementation
 
-template <typename Range0, typename Range1, typename...>
-struct segment_range
-    : decltype(tf::make_mapped_range(
-          std::declval<Range0>(),
-          std::declval<implementation::segment_range_policy<Range1>>())) {
+template <typename Range0, typename Range1, typename...> struct segment_range {
+  using iterator = decltype(tf::implementation::iter::make_mapped(
+      std::declval<const Range0>().begin(),
+      implementation::segment_range_policy<Range1>{
+          tf::make_range(std::declval<const Range1>())}));
+  using value_type = typename std::iterator_traits<iterator>::value_type;
+  using reference = typename std::iterator_traits<iterator>::reference;
+  using pointer = typename std::iterator_traits<iterator>::pointer;
+  using const_iterator = iterator;
+  using size_type = std::size_t;
+
+  segment_range(const Range0 &edges, const Range1 &points)
+      : _edges(edges), _points{points} {}
+
+  auto edges() const -> const Range0 & { return _edges; }
+
+  auto points() const -> const Range1 & { return _points; }
+
+  auto begin() const {
+    return tf::implementation::iter::make_mapped(
+        _edges.begin(),
+        implementation::segment_range_policy<Range1>{tf::make_range(_points)});
+  }
+
+  auto end() const {
+    return tf::implementation::iter::make_mapped(
+        _edges.end(),
+        implementation::segment_range_policy<Range1>{tf::make_range(_points)});
+  }
+
+  auto size() const -> size_type { return _edges.size(); }
+  auto empty() const -> bool { return _edges.size() == 0; }
+
+  auto front() const -> reference { return *begin(); }
+  auto back() const -> reference { return *(begin() + size() - 1); }
+  auto operator[](size_type i) const -> reference { return *(begin() + i); }
+
 private:
-  using base_t = decltype(tf::make_mapped_range(
-      std::declval<Range0>(),
-      std::declval<implementation::segment_range_policy<Range1>>()));
-
-public:
-  segment_range(const Range0 &faces, const Range1 &points)
-      : base_t{tf::make_mapped_range(
-            faces, implementation::segment_range_policy<Range1>{points})} {}
-
-  auto edges() const {
-    return tf::make_range(base_t::begin().base_iter(), base_t::size());
-  }
-
-  auto points() const {
-    return tf::make_point_range(base_t::begin().dereference_policy().points);
-  }
+  Range0 _edges;
+  Range1 _points;
 };
 
 template <typename Range0, typename Range1>

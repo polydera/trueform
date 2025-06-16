@@ -43,6 +43,36 @@ template <typename Policy> struct point_range : Policy {
   }
 };
 
+template <typename Policy>
+auto unwrap(const point_range<Policy> &seg) -> decltype(auto) {
+  return static_cast<const Policy &>(seg);
+}
+
+template <typename Policy>
+auto unwrap(point_range<Policy> &seg) -> decltype(auto) {
+  return static_cast<Policy &>(seg);
+}
+
+template <typename Policy>
+auto unwrap(point_range<Policy> &&seg) -> decltype(auto) {
+  return static_cast<Policy &&>(seg);
+}
+
+template <typename Policy, typename T>
+auto wrap_like(const point_range<Policy> &, T &&t) {
+  return point_range<std::decay_t<T>>{static_cast<T &&>(t)};
+}
+
+template <typename Policy, typename T>
+auto wrap_like(point_range<Policy> &, T &&t) {
+  return point_range<std::decay_t<T>>{static_cast<T &&>(t)};
+}
+
+template <typename Policy, typename T>
+auto wrap_like(point_range<Policy> &&, T &&t) {
+  return point_range<std::decay_t<T>>{static_cast<T &&>(t)};
+}
+
 /// @ingroup ranges
 /// @brief Creates a range of points from a flat scalar sequence.
 ///
@@ -83,7 +113,8 @@ template <std::size_t Dims, typename Range> auto make_point_range(Range &&r) {
 }
 
 template <typename Range> auto make_point_range(Range &&r) {
-  return tf::point_range<std::decay_t<Range>>{r};
+  auto pts = tf::make_range(r);
+  return tf::point_range<decltype(pts)>{pts};
 }
 
 template <typename Range>

@@ -67,6 +67,13 @@ public:
     return out;
   }
 
+  template<typename Iterator>
+  auto to_iterator(Iterator out) const -> Iterator {
+    for (const auto &v : _vectors)
+      out = std::copy(v.begin(), v.end(), out);
+    return out;
+  }
+
   /// @brief Clears only the local vector.
   void clear() { local().clear(); }
 
@@ -103,6 +110,10 @@ public:
 
   /// @brief Check if local vector is empty.
   auto empty() const -> bool { return local().empty(); }
+
+  auto vectors() const -> const std::vector<std::vector<T>> & {
+    return _vectors;
+  }
 
 private:
   /// @brief Returns reference to the local vector.

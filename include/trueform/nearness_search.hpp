@@ -84,6 +84,15 @@ auto nearness_search(const tf::tree<Index, RealT, N> &tree,
       tree.nodes(), tree.ids(), aabb_metric, closest_point_f, knn);
 }
 
+template <typename Index, typename RealT, std::size_t N, typename F0,
+          typename F1, typename RandomIt>
+auto nearness_search(const tf::tree<Index, RealT, N> &tree,
+                     const F0 &aabb_metric, const F1 &closest_point_f,
+                     tf::nearest_neighbors<RandomIt> &&knn) {
+  tf::implementation::tree_closest_point_using_sort_by_level(
+      tree.nodes(), tree.ids(), aabb_metric, closest_point_f, knn);
+}
+
 template <std::size_t Dims, typename Policy0, typename F0, typename F1>
 auto nearness_search(const tf::form<Dims, Policy0> &form, const F0 &aabb_metric,
                      const F1 &closest_point_f) {
@@ -129,6 +138,14 @@ auto nearness_search(const tf::form<Dims, Policy0> &form, const F0 &aabb_metric,
             tf::transformed(form[id], form.transformation()));
       },
       knn);
+}
+
+template <std::size_t Dims, typename Policy0, typename F0, typename F1,
+          typename RandomIt>
+auto nearness_search(const tf::form<Dims, Policy0> &form, const F0 &aabb_metric,
+                     const F1 &closest_point_f,
+                     nearest_neighbors<RandomIt> &&knn) {
+  return nearness_search(form, aabb_metric, closest_point_f, knn);
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1, typename F>

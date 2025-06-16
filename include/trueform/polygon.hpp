@@ -228,13 +228,9 @@ auto inject_plane(const polygon<V, Policy> &poly) -> decltype(auto) {
   if constexpr (has_injected_plane<Policy>) {
     return poly;
   } else if constexpr (has_injected_normal<Policy>) {
-    return tf::make_polygon<V>(
-        tf::inject_plane(tf::make_plane(poly.normal(), poly[0]),
-                         static_cast<const Policy &>(poly)));
+    return tf::inject_plane(tf::make_plane(poly.normal(), poly[0]), poly);
   } else {
-    return tf::make_polygon<V>(
-        tf::inject_plane(tf::make_plane(poly[0], poly[1], poly[2]),
-                         static_cast<const Policy &>(poly)));
+    return tf::inject_plane(tf::make_plane(poly[0], poly[1], poly[2]), poly);
   }
 }
 
@@ -243,12 +239,10 @@ auto inject_plane(polygon<V, Policy> &poly) -> decltype(auto) {
   if constexpr (has_injected_plane<Policy>) {
     return poly;
   } else if constexpr (has_injected_normal<Policy>) {
-    return tf::make_polygon<V>(tf::inject_plane(
-        -tf::dot(poly.normal(), poly[0]), static_cast<const Policy &>(poly)));
+    return tf::inject_plane(-tf::dot(poly.normal(), poly[0]), poly);
   } else {
-    return tf::make_polygon<V>(
-        tf::inject_plane(tf::make_plane(poly[0], poly[1], poly[2]),
-                         static_cast<const Policy &>(poly)));
+    return tf::inject_plane(tf::make_plane(poly[0], poly[1], poly[2]),
+                            static_cast<const Policy &>(poly));
   }
 }
 
@@ -257,9 +251,7 @@ auto inject_normal(const polygon<V, Policy> &poly) -> decltype(auto) {
   if constexpr (has_injected_plane<Policy> || has_injected_normal<Policy>) {
     return poly;
   } else {
-    return tf::make_polygon<V>(
-        tf::inject_normal(tf::normal(poly[0], poly[1], poly[2]),
-                          static_cast<const Policy &>(poly)));
+    return tf::inject_normal(tf::normal(poly[0], poly[1], poly[2]), poly);
   }
 }
 
@@ -268,9 +260,7 @@ auto inject_normal(polygon<V, Policy> &poly) -> decltype(auto) {
   if constexpr (has_injected_plane<Policy> || has_injected_normal<Policy>) {
     return poly;
   } else {
-    return tf::make_polygon<V>(
-        tf::inject_normal(tf::normal(poly[0], poly[1], poly[2]),
-                          static_cast<const Policy &>(poly)));
+    return tf::inject_normal(tf::normal(poly[0], poly[1], poly[2]), poly);
   }
 }
 
