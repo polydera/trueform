@@ -15,6 +15,11 @@ public:
   frame(const tf::transformation<RealT, Dims> &_transformation)
       : _transformation{_transformation}, _is_dirty{true} {}
 
+  frame(const tf::transformation<RealT, Dims> &_transformation,
+        const tf::transformation<RealT, Dims> &_inv_transformation)
+      : _transformation{_transformation},
+        _inv_transformation{_inv_transformation}, _is_dirty{false} {}
+
   frame() : _transformation{tf::make_identity_transformation<RealT, Dims>()} {
     _inv_transformation = _transformation;
     _is_dirty = false;
@@ -50,4 +55,15 @@ private:
   mutable tf::transformation<RealT, Dims> _inv_transformation;
   mutable bool _is_dirty;
 };
+
+template <typename RealT, std::size_t Dims>
+auto make_frame(const tf::transformation<RealT, Dims> &_transformation,
+                const tf::transformation<RealT, Dims> &_inv_transformation) {
+  return tf::frame<RealT, 3>{_transformation, _inv_transformation};
+}
+
+template <typename RealT, std::size_t Dims>
+auto make_frame(const tf::transformation<RealT, Dims> &_transformation) {
+  return tf::frame<RealT, 3>{_transformation};
+}
 } // namespace tf
