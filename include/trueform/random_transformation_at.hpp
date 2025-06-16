@@ -13,7 +13,16 @@ auto random_transformation_at(tf::point_like<3, Policy> pivot)
     -> tf::transformation<T, 3> {
   return tf::transformed(
       tf::make_transformation_from_translation(-pivot.as_vector_view()),
-      tf::random_transformation<float>(pivot.as_vector_view()));
+      tf::random_transformation<T>(pivot.as_vector_view()));
+}
+
+template <typename Policy>
+auto random_transformation_at(tf::point_like<3, Policy> pivot)
+    -> tf::transformation<tf::value_type<Policy>, 3> {
+  return tf::transformed(
+      tf::make_transformation_from_translation(-pivot.as_vector_view()),
+      tf::random_transformation<tf::value_type<Policy>>(
+          pivot.as_vector_view()));
 }
 
 template <typename T, typename Policy, typename Policy1>
@@ -22,6 +31,16 @@ auto random_transformation_at(tf::point_like<3, Policy> pivot,
     -> tf::transformation<T, 3> {
   return tf::transformed(
       tf::make_transformation_from_translation(-pivot.as_vector_view()),
-      tf::random_transformation<float>(new_origin.as_vector_view()));
+      tf::random_transformation<T>(new_origin.as_vector_view()));
+}
+
+template <typename Policy, typename Policy1>
+auto random_transformation_at(tf::point_like<3, Policy> pivot,
+                              tf::point_like<3, Policy1> new_origin)
+    -> tf::transformation<tf::common_value<Policy, Policy1>, 3> {
+  return tf::transformed(
+      tf::make_transformation_from_translation(-pivot.as_vector_view()),
+      tf::random_transformation<tf::common_value<Policy, Policy1>>(
+          new_origin.as_vector_view()));
 }
 } // namespace tf
