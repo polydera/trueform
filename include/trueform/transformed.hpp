@@ -5,9 +5,9 @@
  */
 #pragma once
 #include "./aabb.hpp"
+#include "./identity_frame.hpp"
 #include "./identity_transformation.hpp"
-#include "./indirect_range.hpp"
-#include "./inject_ids.hpp"
+#include "./implementation/transformed.hpp"
 #include "./inject_normal.hpp"
 #include "./inject_plane.hpp"
 #include "./line.hpp"
@@ -16,6 +16,7 @@
 #include "./ray.hpp"
 #include "./segment.hpp"
 #include "./transformation.hpp"
+#include "./unit_vector_like.hpp"
 #include "./vector_like.hpp"
 
 namespace tf {
@@ -26,16 +27,45 @@ auto transformed(const T &_this, const identity_transformation_t<U> &)
   return _this;
 }
 
+template <typename T, typename U>
+auto transformed(const T &_this, const identity_frame_t<U> &) -> const T & {
+  return _this;
+}
+
 template <std::size_t Dims, typename T, typename U>
 auto transformed(const point_like<Dims, T> &_this,
                  const transformation<U, Dims> &transform) {
-  return transform(_this);
+  return transformed_impl(implementation::as_point_t{}, _this, transform);
+}
+
+template <std::size_t Dims, typename T, typename U>
+auto transformed(const point_like<Dims, T> &_this,
+                 const frame_like<Dims, U> &frame) {
+  return transformed_impl(implementation::as_point_t{}, _this, frame);
 }
 
 template <std::size_t Dims, typename T, typename U>
 auto transformed(const vector_like<Dims, T> &_this,
                  const transformation<U, Dims> &transform) {
-  return transform(_this);
+  return transformed_impl(implementation::as_vector_t{}, _this, transform);
+}
+
+template <std::size_t Dims, typename T, typename U>
+auto transformed(const vector_like<Dims, T> &_this,
+                 const frame_like<Dims, U> &frame) {
+  return transformed_impl(implementation::as_vector_t{}, _this, frame);
+}
+
+template <std::size_t Dims, typename T, typename U>
+auto transformed(const unit_vector_like<Dims, T> &_this,
+                 const transformation<U, Dims> &transform) {
+  return transformed_impl(implementation::as_vector_t{}, _this, transform);
+}
+
+template <std::size_t Dims, typename T, typename U>
+auto transformed(const unit_vector_like<Dims, T> &_this,
+                 const frame_like<Dims, U> &frame) {
+  return transformed_impl(implementation::as_vector_t{}, _this, frame);
 }
 
 /// @ingroup geometry
@@ -109,6 +139,11 @@ auto transformed(const aabb<T, Dims> &_this,
   return out;
 }
 
+template <typename T, std::size_t Dims, typename U>
+auto transformed(const aabb<T, Dims> &_this, const frame_like<Dims, U> &frame) {
+  return transformed(_this, frame.transformation());
+}
+
 /// @ingroup geometry
 /// @brief Apply a transformation to a ray
 ///
@@ -125,6 +160,11 @@ auto transformed(const ray<T, Dims> &_this,
   return out;
 }
 
+template <typename T, std::size_t Dims, typename U>
+auto transformed(const ray<T, Dims> &_this, const frame_like<Dims, U> &frame) {
+  return transformed(_this, frame.transformation());
+}
+
 /// @ingroup geometry
 /// @brief Apply a transformation to a line
 template <typename T, std::size_t Dims, typename U>
@@ -134,33 +174,9 @@ auto transformed(const line<T, Dims> &_this,
   return out;
 }
 
-template <typename Range, std::size_t Dims, typename U>
-auto transformed(const Range &_this, const transformation<U, Dims> &transform) {
-  constexpr std::size_t V = tf::static_size_v<Range>;
-  static_assert(V != tf::dynamic_size);
-  using el_t = decltype(transformed(_this[0], transform));
-  std::array<el_t, V> out;
-  for (std::size_t i = 0; i < V; ++i)
-    out[i] = transformed(_this[i], transform);
-  return out;
-}
-
-template <typename Iterator, std::size_t V, std::size_t Dims, typename U>
-auto transformed(const tf::indirect_range<Iterator, V> &_this,
-                 const transformation<U, Dims> &transform) {
-  static_assert(V != tf::dynamic_size);
-  using el_t = decltype(transformed(_this[0], transform));
-  std::array<el_t, V> out;
-  for (std::size_t i = 0; i < V; ++i)
-    out[i] = transformed(_this[i], transform);
-  return tf::inject_ids(_this.ids(), out);
-}
-
-template <typename Range, typename Base, std::size_t Dims, typename U>
-auto transformed(const tf::inject_ids_t<Range, Base> &_this,
-                 const transformation<U, Dims> &transform) {
-  return tf::inject_ids(
-      _this.ids(), transformed(static_cast<const Base &>(_this), transform));
+template <typename T, std::size_t Dims, typename U>
+auto transformed(const line<T, Dims> &_this, const frame_like<Dims, U> &frame) {
+  return transformed(_this, frame.transformation());
 }
 
 /// @ingroup geometry
@@ -168,8 +184,8 @@ auto transformed(const tf::inject_ids_t<Range, Base> &_this,
 template <std::size_t V, typename T, std::size_t Dims, typename U>
 auto transformed(const polygon<V, T> &_this,
                  const transformation<U, Dims> &transform) {
-  auto out = tf::make_polygon<V>(
-      transformed(static_cast<const T &>(_this), transform));
+  auto out = tf::make_polygon<V>(transformed_impl(
+      implementation::as_point_t{}, static_cast<const T &>(_this), transform));
   if constexpr (has_injected_plane<T>) {
     return tf::inject_plane(out);
   } else if constexpr (has_injected_normal<T>)
@@ -178,16 +194,27 @@ auto transformed(const polygon<V, T> &_this,
     return out;
 }
 
+template <std::size_t V, typename T, std::size_t Dims, typename U>
+auto transformed(const polygon<V, T> &_this, const frame_like<Dims, U> &frame) {
+  return tf::make_polygon<V>(transformed_impl(
+      implementation::as_point_t{}, static_cast<const T &>(_this), frame));
+}
+
 template <typename T, std::size_t Dims, typename U>
 auto transformed(const polygon<tf::dynamic_size, T> &_this,
                  const transformation<U, Dims> &transform) = delete;
+
+template <typename T, std::size_t Dims, typename U>
+auto transformed(const polygon<tf::dynamic_size, T> &_this,
+                 const frame_like<Dims, U> &frame) = delete;
 
 /// @ingroup geometry
 /// @brief Apply a transformation to a segment
 template <typename Policy, std::size_t Dims, typename U>
 auto transformed(const segment<Policy> &_this,
                  const transformation<U, Dims> &transform) {
-  return tf::make_segment(
-      transformed(static_cast<const Policy &>(_this), transform));
+  return tf::make_segment(transformed_impl(implementation::as_point_t{},
+                                           static_cast<const Policy &>(_this),
+                                           transform));
 }
 } // namespace tf

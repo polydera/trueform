@@ -4,9 +4,9 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "./normalize.hpp"
+#include "./unit_vector.hpp"
 #include "./value_type.hpp"
-#include "./vector.hpp"
+#include "./vector_like.hpp"
 
 namespace tf {
 /// @ingroup geometry
@@ -21,8 +21,7 @@ namespace tf {
 /// @return A normalized vector of type @ref tf::vector<T, Dims>.
 template <std::size_t N, typename T>
 auto normalized(const vector_like<N, T> &v)
-    -> tf::vector<tf::value_type<T>, N> {
-  tf::vector<tf::value_type<T>, N> out = v;
-  return normalize(out);
+    -> tf::unit_vector<tf::value_type<T>, N> {
+  return v;
 }
 } // namespace tf

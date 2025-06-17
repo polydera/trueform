@@ -1,6 +1,6 @@
 # trueform
 
-**High-Performance Geometry Processing**
+**Real-time geometry built on composable range-based policies**
 
 `trueform` is a geometry processing library built for performance and call-site integration.
 It operates directly on your existing data using zero-copy views and inline policy injection — no changes to your architecture required.
@@ -43,9 +43,13 @@ tf::gather_id_pairs(
 
 This reflects `trueform`’s design principles: it’s meant to feel like composing ranges and lambdas — inline, expressive, and non-invasive.
 
-## Quickstart
+## How to use
 
-Add this to your `CMakeLists.txt` to fetch and link `trueform`:
+`trueform` is a header-only library that requires C++17 and depends on TBB.
+
+### Quickstart
+
+Add this to your `CMakeLists.txt` to fetch and link `trueform`
 
 ```cmake
 include(FetchContent)

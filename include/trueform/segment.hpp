@@ -6,7 +6,6 @@
 #pragma once
 
 #include "./indirect_range.hpp"
-#include "./inject_ids.hpp"
 #include "./point.hpp"
 #include "./static_size.hpp"
 #include "./value_type.hpp"
@@ -105,6 +104,26 @@ template <std::size_t I, typename Policy>
 auto get(tf::segment<Policy> &t) -> decltype(auto) {
   return t[I];
 }
+
+template <std::size_t I, typename Policy>
+auto get(tf::segment<Policy> &&t) -> decltype(auto) {
+  return t[I];
+}
+
+} // namespace tf
+
+namespace std {
+
+template <std::size_t I, typename Policy>
+struct tuple_element<I, tf::segment<Policy>> : tuple_element<I, Policy> {};
+
+template <typename Policy>
+struct tuple_size<tf::segment<Policy>>
+    : std::integral_constant<std::size_t, 2> {};
+
+} // namespace std
+
+namespace tf {
 
 template <typename Policy>
 struct static_size<tf::segment<Policy>>

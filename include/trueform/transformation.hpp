@@ -54,32 +54,50 @@ public:
     return _transform[i][j];
   }
 
-  /// @brief Transform a point and return the result.
-  /// @param point The input point to transform.
-  /// @return A new point of type `tf::vector<T, Dims>` representing the result.
-  template <typename U>
-  auto operator()(const point_like<Dims, U> &point) const {
-    tf::point<decltype(point[0] * T()), Dims> out;
+  template <typename Point0, typename Point1>
+  auto transform_point(const Point0 &point, Point1 &out) const {
     for (std::size_t i = 0; i < Dims; ++i) {
       out[i] = _transform[i][Dims];
       for (std::size_t j = 0; j < Dims; ++j) {
         out[i] += point[j] * _transform[i][j];
       }
     }
+  }
+
+  template <typename Point> auto transform_point(const Point &point) const {
+    tf::point<decltype(point[0] * T()), Dims> out;
+    transform_point(point, out);
     return out;
   }
 
-  /// @brief Transform a vector (ignores translation).
-  /// @param point The input vector to transform.
-  template <typename U> auto operator()(const vector_like<Dims, U> &v) const {
-    tf::vector<decltype(v[0] * T()), Dims> out;
+  /// @brief Transform a point and return the result.
+  /// @param point The input point to transform.
+  /// @return A new point of type `tf::vector<T, Dims>` representing the result.
+  template <typename U>
+  auto operator()(const point_like<Dims, U> &point) const {
+    return transform_point(point);
+  }
+
+  template <typename Vector0, typename Vector1>
+  auto transform_vector(const Vector0 &v, Vector1 &out) const {
     for (std::size_t i = 0; i < Dims; ++i) {
       out[i] = 0;
       for (std::size_t j = 0; j < Dims; ++j) {
         out[i] += v[j] * _transform[i][j];
       }
     }
+  }
+
+  template <typename Vector> auto transform_vector(const Vector &v) const {
+    tf::vector<decltype(v[0] * T()), Dims> out;
+    transform_vector(v, out);
     return out;
+  }
+
+  /// @brief Transform a vector (ignores translation).
+  /// @param point The input vector to transform.
+  template <typename U> auto operator()(const vector_like<Dims, U> &v) const {
+    return transform_vector(v);
   }
 
   template <typename U> auto fill(const U *ptr) -> void {

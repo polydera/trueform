@@ -8,6 +8,7 @@
 #include "./unit_vector_like.hpp"
 #include "./unsafe.hpp"
 #include "./value_type.hpp"
+#include "./vector_view.hpp"
 
 namespace tf {
 
@@ -38,17 +39,20 @@ using unit_vector_view = tf::unit_vector_like<Dims, tf::borrowed_data<T, Dims>>;
 /// @param v A vector that will be normalized before being wrapped.
 /// @return A `unit_vector_view` instance with length 1.
 template <std::size_t Dims, typename T>
-auto make_unit_vector_view(const tf::vector_like<Dims, T> &v) {
-  return unit_vector_view<tf::value_type<T>, Dims>{v};
+auto make_unit_vector_view(tf::vector_like<Dims, T> v) {
+  return unit_vector_view<tf::value_type<T>, Dims>{
+      tf::make_vector_view<Dims>(v.data())};
 }
 
 template <std::size_t Dims, typename T>
-auto make_unit_vector_view(tf::unsafe_t, const tf::vector_like<Dims, T> &v) {
-  return unit_vector_view<tf::value_type<T>, Dims>{tf::unsafe, v};
+auto make_unit_vector_view(tf::unsafe_t, tf::vector_like<Dims, T> v) {
+  return unit_vector_view<tf::value_type<T>, Dims>{
+      tf::unsafe, tf::make_vector_view<Dims>(v.data())};
 }
 
 template <std::size_t Dims, typename T>
-auto make_unit_vector_view(const tf::unit_vector_like<Dims, T> &v) {
-  return unit_vector_view<tf::value_type<T>, Dims>{v};
+auto make_unit_vector_view(tf::unit_vector_like<Dims, T> v) {
+  return make_unit_vector_view(tf::unsafe, tf::make_vector_view<Dims>(v.data()));
 }
+
 } // namespace tf

@@ -65,4 +65,9 @@ auto make_point_view(T *ptr) -> point_view<T, N> {
   return point_view<T, N>(ptr);
 }
 
+template <typename T, std::size_t N>
+auto make_point_view(T (&array)[N]) -> point_view<T, N> {
+  return point_view<T, N>(&array[0]);
+}
+
 } // namespace tf

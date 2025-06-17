@@ -5,13 +5,17 @@
  */
 #pragma once
 
+#include "./frame_like.hpp"
 #include "./inverted.hpp"
 #include "./transformation.hpp"
 
 namespace tf {
 
-template <typename RealT, std::size_t Dims> class frame {
+template <typename RealT, std::size_t Dims>
+class frame : public frame_like<Dims, frame<RealT, Dims>> {
 public:
+  using real_t = RealT;
+
   frame(const tf::transformation<RealT, Dims> &_transformation)
       : _transformation{_transformation}, _is_dirty{true} {}
 

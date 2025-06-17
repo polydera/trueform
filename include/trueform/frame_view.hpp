@@ -6,10 +6,14 @@
 #pragma once
 
 #include "./frame.hpp"
+#include "./frame_like.hpp"
 
 namespace tf {
-template <typename RealT, std::size_t Dims> class frame_view {
+template <typename RealT, std::size_t Dims>
+class frame_view : public frame_like<Dims, frame_view<RealT, Dims>> {
 public:
+  using real_t = RealT;
+
   frame_view(const tf::transformation<RealT, Dims> &_transformation,
              const tf::transformation<RealT, Dims> &_inv_transformation)
       : _transformation{_transformation},

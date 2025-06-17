@@ -28,4 +28,5 @@ template <typename T, std::size_t Size> struct owned_data {
 private:
   std::array<T, Size> _data;
 };
+
 } // namespace tf

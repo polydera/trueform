@@ -65,4 +65,8 @@ auto make_vector_view(T *ptr) -> vector_view<T, N> {
   return vector_view<T, N>(ptr);
 }
 
+template <typename T, std::size_t N>
+auto make_vector_view(T (&array)[N]) -> vector_view<T, N> {
+  return vector_view<T, N>(&array[0]);
+}
 } // namespace tf

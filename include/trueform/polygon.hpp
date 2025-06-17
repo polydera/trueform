@@ -239,7 +239,7 @@ auto inject_plane(polygon<V, Policy> &poly) -> decltype(auto) {
   if constexpr (has_injected_plane<Policy>) {
     return poly;
   } else if constexpr (has_injected_normal<Policy>) {
-    return tf::inject_plane(-tf::dot(poly.normal(), poly[0]), poly);
+    return tf::inject_plane(tf::make_plane(poly.normal(), poly[0]), poly);
   } else {
     return tf::inject_plane(tf::make_plane(poly[0], poly[1], poly[2]),
                             static_cast<const Policy &>(poly));
