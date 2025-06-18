@@ -11,7 +11,7 @@ template <typename T> auto unwrap(T &&t) -> T && {
 }
 
 template <typename T0, typename T1>
-auto wrap_like(T0 &, T1 &&t) -> T1 && {
+auto wrap_like(const T0 &, T1 &&t) -> T1 && {
   return static_cast<T1 &&>(t);
 }
 } // namespace tf

@@ -6,8 +6,8 @@
 #include "trueform/nearest_neighbor.hpp"
 #include "trueform/nearness_search.hpp"
 #include "trueform/normalized.hpp"
-#include "trueform/point_range.hpp"
-#include "trueform/polygon_range.hpp"
+#include "trueform/points.hpp"
+#include "trueform/polygons.hpp"
 #include "trueform/random_vector.hpp"
 #include "trueform/tree.hpp"
 #include <iostream>
@@ -22,9 +22,9 @@ int main(int argc, char *argv[]) {
   std::cout << "Reading file: " << argv[1] << std::endl;
   auto [raw_points, raw_triangle_faces] = tf::examples::read_mesh(argv[1]);
   // create a point range from std::vector<float>
-  auto points = tf::make_point_range<3>(raw_points);
+  auto points = tf::make_points<3>(raw_points);
   // create a polygon range from std::vector<int> and points range
-  auto triangles = tf::make_polygon_range(
+  auto triangles = tf::make_polygons(
       tf::make_blocked_range<3>(raw_triangle_faces), points);
   std::cout << "  number of triangles: " << triangles.size() << std::endl;
   std::cout << "  number of points   : " << points.size() << std::endl;

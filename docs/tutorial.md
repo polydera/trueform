@@ -88,7 +88,7 @@ tf::point<float, 3> v4 = pview0 + (pview0 - pview1);
 
 If you need algebra on points, such as computing a centroid, use the `::as_vector_view()` method.
 
-Additionally, they support comparison operators.
+Additionally, they support comparison operators and `tf::dot` and `tf::cross`.
 
 #### Segment
 
@@ -176,7 +176,6 @@ Policy injections are **idempotent**:
 
 Injecting the same behavior twice is a no-op.
 
-
 These policy injections are a core part of trueform’s design philosophy — enabling inline, composable expressions without boilerplate. We will introduce injections on primitives here and injections on ranges of primitives when we get to them.
 
 ### Policy injections on primitives
@@ -228,14 +227,234 @@ auto polygon3 = tf::inject_plane(polygon1);
 auto polygon4 = tf::inject_plane(polygon2);
 const tf::plane<float, 3> &plane0 = polygon3.plane();
 
-// Double injection is a no-op
-auto polygon5 = tf::inject_ids(ids, polygon4);
-static_assert(std::is_same_v<decltype(polygon4), decltype(polygon5)>);
-
 // They all view the same data
 assert(&r[0][0] == &polygon4[0][0]);
 ```
 
+> **Note**: Because injections are idempotent, you can safely inject a plane in any generic context — whether or not it has already been computed:
+```c++
+auto polygon5 = tf::inject_plane(polygon4);
+static_assert(std::is_same_v<decltype(polygon4), decltype(polygon5)>);
+```
+> The compiler will resolve whether the injection is necessary. No redundant computations are performed.
+
 Policy injections on primitives are preserved under transformations, allowing behavior to remain consistent as geometry moves through space.
 
 ## Frames and Transformations
+
+A `tf::transformation<RealType, Dims>` consists of a rotation `R` and a translation `t`. It maps points and vectors according to the table below:
+
+| **Type**       | **Mapping**        |
+|----------------|--------------------|
+| `point_like`   | `R.dot(pt) + T`    |
+| `vector_like`  | `R.dot(vec)`       |
+
+A `tf::frame<RealType, Dims>` wraps a transformation and its inverse, effectively framing the object in the scene. The frame tracks changes to the transformation and computes the inverse on request.
+
+```c++
+tf::transformation<float, 3> transform = tf::random_transformation<float>();
+// copies the transformation
+tf::frame<float, 3> frame{transform};
+const tf::transformation<float, 3> & inv_transform = frame.inverse_transformation();
+```
+
+Since `trueform` is often integrated into systems that already manage transformations, you can simply `fill` them in where needed:
+
+```c++
+// the last row of a Dims x Dims matrix is
+// implicitly [0, ...., 1] 
+float raw_transform[Dims * (Dims + 1)];
+transform.fill(raw_transform);
+// this sets the inverse as dirty
+frame.fill(raw_transform);
+// as does this
+frame = transform;
+```
+
+If you already have the inverse computed, you may set it together with the transformation:
+
+```c++
+frame.fill(raw_transform, raw_inverse_transform);
+frame.set(transform, inverse_transform);
+```
+
+We also provide two convenience factories: `tf::make_identity_transformation` and `tf::make_transformation_from_translation`.
+
+### Transforming Primitives
+
+Any primitive from the `tf::` namespace can be transformed using `tf::transformed(_this, _by_transformation)`. Transformations can be performed using either `tf::transformation` or `tf::frame`. This includes composing transformations:
+
+```c++
+auto tr0 = tf::random_transformation<float>();
+auto tr1 = tf::random_transformation<float>();
+auto tr1_dot_tr0 = tf::transformed(tr0, tr1);
+```
+
+### Transformations and Injectable Policies
+
+Transformations via `tf::frame` always preserve injectable policies.  
+Transformations via `tf::transformation` may drop `inject_plane_t` or `inject_normal_t` when inverses are needed but not available (e.g. for points and segments). For this reason, transforming with a frame is generally more efficient.
+
+#### Example
+
+```c++
+std::array<tf::point<float, 3>, 6> pts{};
+using base_t = decltype(pts);
+std::array<int, 3> ids{3, 4, 5};
+auto poly0 = tf::make_polygon(ids, pts);
+auto poly1 = tf::inject_plane(poly0);
+auto poly2 = tf::inject_id(0, poly1);
+
+using point_holder_t = std::array<tf::point<float, 3>, 3>;
+tf::polygon<
+    3, tf::inject_id_t<
+            int, tf::inject_plane_t<float, 3,
+                                    tf::inject_ids_t< //
+                                        tf::range<int *, 3>, point_holder_t>>>>
+    transformed_poly = tf::transformed(poly2, fr);
+```
+
+> **Note**: `poly2` indexed into `pts` using IDs. After transformation, it holds the three transformed points and still views the original ID range.
+
+## Primitive Ranges
+
+One rarely operates on individual primitives, but on a collection of them, i.e., `tf::points`, `tf::segments`, `tf::polygons` etc.
+
+### Range Adaptors
+
+While `trueform` is not a range library, it provides several range adaptors that allow you to work with your existing data layout directly. These adaptors enable efficient traversal, transformation, and indexing of data in a composable way.
+
+
+- **`blocked_range`**  
+  - Call: `make_blocked_range` (static or dynamic block size)
+  - Example: `make_blocked_range<2>([0, 1, 2, 3])` → `[[0, 1], [2, 3]]`
+  - Use Case: Interpreting polygon or segment vertex IDs
+
+- **`tag_blocked_range`**  
+  - Call: `make_tag_blocked_range` (static or dynamic block size)
+  - Example: `make_tag_blocked_range<2>([t0, 0, 1, t1, 2, 3])` → `[[0, 1], [2, 3]]`
+  - Use Case: For layouts such as those used in legacy VTK (<8) polygon buffers
+
+- **`slide_range`**  
+  - Call: `make_slide_range` (static or dynamic window size)
+  - Example: `make_slide_range<2>([0, 1, 2])` → `[[0, 1], [1, 2]]`
+  - Use Case: Converting a curve to segment IDs (sliding window)
+
+- **`indirect_range`**  
+  - Call: `make_indirect_range(ids, data_range)`
+  - Example: `make_indirect_range([1, 3], [a, b, c, d])` → `[b, d]`
+  - Use Case: Offsetting into a point array by primitive vertex IDs
+
+- **`block_indirect_range`**  
+  - Call: `make_block_indirect_range(blocked_range, data)`
+  - Example: `make_block_indirect_range([[0, 1], [2, 3]], [a, b, c, d])` → `[[a, b], [c, d]`
+  - Use Case: Indirect into point using blocked polygon or segment vertex IDs
+
+- **`mapped_range`**  
+  - Call: `make_mapped_range(range, f)`
+  - Example: `make_mapped_range([0, 1, 2], f)` → `[f(0), f(1), f(2)]`
+  - Use Case: Applying functions to every element in a range
+
+- **`sequence_range`**  
+  - Call: `make_sequence_range(start, end)`
+  - Example: `make_sequence_range(3, 6)` → `[3, 4, 5]`
+  - Use Case: Efficient for loop-style iteration or index generation
+
+- **`offset_blocked_range`**  
+  - Call: `make_offset_blocked_range(offsets, data)`
+  - Example: `make_offset_blocked_range([0, 2, 3, 5], [a, b, c, d, e])` → `[[a, b], [c], [d, e]]`
+  - Use Case: Offset layout for unstructured lists
+
+> **Note**: `trueform` range adaptors propagate static size information where it is known at compile time.
+
+```c++
+auto [a, b, c] = tf::make_blocked_range<3>(r).front();
+```
+
+### Ranges of Primitives
+
+Range adaptors are primarily used to prepare views for constructing geometric primitives into collections. They allow compositional definition of complex data without introducing custom wrappers or data duplication.
+
+#### Points and Vectors
+
+Points and vectors are created using factory functions.
+
+```c++
+std::vector<float> raw_data;
+auto points = tf::make_points<Dims>(raw_data);
+auto vectors = tf::make_vectors<Dims>(raw_data);
+// does not normalize
+auto unit_vectors = tf::make_unit_vectors<Dims>(raw_data)
+
+tf::vector<float, Dims> sum = vectors.front() + vectors.back();
+```
+
+These are ranges over `point|vector|unit_vector` views over raw data. `tf::points` additionally provide a conversion method `as_vector_views()`, when one needs vector algebra over their points (like computing a centroid).
+```c++
+auto vector_views = points.as_vector_views();
+```
+
+#### Segments
+
+Segments are created using the factory `tf::make_segments`. 
+
+- **Without ids**: Assume we have a sequence of points representing a curve.
+```c++
+auto segments0 = tf::make_segments(tf::make_blocked_range<2>(points));
+auto [pt0, pt1] = segments0.front();
+```
+- **With ids:** Assume ids `std::vector<int> ids;`
+    - Assume the ids are a sequence of point ids representing a curve
+    ```c++
+    auto segments1 = tf::make_segments(tf::make_slide_range<2>(ids), points);
+    auto [id0, id1] = segments1.front().ids();
+    auto [id0_, id1_] = segments1.edges().front();
+    auto points_view = segments1.points();
+    ```
+    - Assume the ids are a flat sequence of ids of segments
+    ```c++
+    auto segments2 = tf::make_segments(tf::make_blocked_range<2>(ids), points);
+    auto [id0, id1] = segments2.front().ids();
+    auto [id0_, id1_] = segments2.edges().front();
+    auto points_view = segments2.points();
+
+#### Polygons
+
+Polygons are created using the factory `tf::make_polygons`. 
+
+- **Without ids**: Assume we have a sequence of points `points`.
+    - Assume points represent a sequence of triangles
+    ```c++
+    auto polygons0 = tf::make_polygons(tf::make_blocked_range<3>(points));
+    auto [pt0, pt1, pt2] = polygons0.front();
+    ```
+    - Assume points represent a strip of triangles
+    ```c++
+    auto polygons1 = tf::make_polygons(tf::make_slide_range<3>(points));
+    auto [pt0, pt1, pt2] = polygons1.front();
+    ```
+- **With ids:** Assume ids `std::vector<int> ids;`
+    - Assume the ids are a flat sequence of ids of triangles
+    ```c++
+    auto polygons2 = tf::make_polygons(tf::make_blocked_range<3>(ids), points);
+    auto [id0, id1, id2] = polygons2.front().ids();
+    auto [id0_, id1_, id2_] = polygons2.faces().front();
+    auto points_view = polygons2.points();
+    ```
+    - Assume ids are tagged likle in legacy VTK layout, i.e. `[3, a, b, c, 3, e, f, g, ...]`
+    ```c++
+    auto polygons3 = tf::make_polygons(tf::make_tag_blocked_range<3>(ids), points);
+    ```
+    - Assume the ids represent a strip of triangles ids
+    ```c++
+    auto polygons4 = tf::make_polygons(tf::make_slide_range<3>(ids), points);
+    ```
+- **With ids and normals:** Additionally assume `auto normals = tf::make_unit_vectors(r)`
+    ```c++
+    auto polygons5 = tf::make_polygons(tf::make_blocked_range<3>(ids), points, normals);
+    auto [id0, id1, id2] = polygons5.front().ids();
+    auto normal = polygons5.front().normal();
+    auto [id0_, id1_, id2_] = polygons5.faces().front();
+    auto points_view = polygons5.points();
+    auto unit_vectors = polygons5.normals()
+    ```

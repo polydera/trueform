@@ -154,6 +154,11 @@ auto wrap_like(polygon<V, Policy> &&, T &&t) {
   return polygon<V, std::decay_t<T>>{static_cast<T &&>(t)};
 }
 
+template <std::size_t V, typename Policy, typename T>
+auto wrap_like(const polygon<V, Policy> &&, T &&t) {
+  return polygon<V, std::decay_t<T>>{static_cast<T &&>(t)};
+}
+
 /// @ingroup geometry
 /// @brief Constructs a polygon by indirectly indexing into a point range.
 ///
@@ -242,7 +247,7 @@ auto inject_plane(polygon<V, Policy> &poly) -> decltype(auto) {
     return tf::inject_plane(tf::make_plane(poly.normal(), poly[0]), poly);
   } else {
     return tf::inject_plane(tf::make_plane(poly[0], poly[1], poly[2]),
-                            static_cast<const Policy &>(poly));
+                            poly);
   }
 }
 

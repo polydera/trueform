@@ -8,7 +8,7 @@ It operates directly on your existing data using zero-copy views and inline poli
 For example, you can replace your use of `nanoflann` for *k-NN* queries with just a few lines of code — and gain performance:
 ```c++
 std::vector<float> raw_points;
-auto pts = tf::make_point_range<3>(raw_points);
+auto pts = tf::make_points<3>(raw_points);
 tf::tree<int, float, 3> point_tree(pts, tf::config_tree(4, 4));
 auto query_pt = tf::random_point<float, 3>();
 std::array<tf::nearest_neighbor<int, float, 3>, 10> knn_buffer;
@@ -26,7 +26,7 @@ tf::neighbor_search(tf::make_form( // optional_transformation,
 or replace your use of `CGAL` for *mesh-intersection* queries with an equally minimal call — and significantly faster execution:
 ```c++
 std::vector<int> raw_triangle_ids;
-auto triangles = tf::make_polygon_range(
+auto triangles = tf::make_polygons(
     tf::make_blocked_range<3>(raw_triangle_ids), pts);
 tf::tree<int, float, 3> tree(triangles, tf::config_tree(4, 4));
 std::vector<std::pair<int, int>> intersecting_primitives;

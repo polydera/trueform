@@ -17,7 +17,7 @@ public:
   using element_t = typename std::iterator_traits<Iterator>::value_type;
   using reference = tf::unit_vector_view<element_t, BlockSize>;
   using value_type = tf::unit_vector<element_t, BlockSize>;
-  using unit_vectorer = void;
+  using pointer = void;
   using difference_type =
       typename std::iterator_traits<Iterator>::difference_type;
 
@@ -27,7 +27,8 @@ public:
   auto base_iter() -> Iterator & { return iter; }
   constexpr auto iterator_stride() const -> std::size_t { return BlockSize; }
   auto dereference() const -> reference {
-    return tf::unit_vector_view<element_t, BlockSize>(&(*iter));
+    return tf::make_unit_vector_view<BlockSize>(
+        tf::unsafe, tf::make_vector_view<BlockSize>(&(*iter)));
   }
 
 private:

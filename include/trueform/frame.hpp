@@ -36,9 +36,22 @@ public:
     return *this;
   }
 
+  auto set(const tf::transformation<RealT, Dims> &transformation,
+           const tf::transformation<RealT, Dims> &inv_transformation) {
+    _transformation = transformation;
+    _inv_transformation = inv_transformation;
+    _is_dirty = false;
+  }
+
   template <typename U> auto fill(const U *ptr) -> void {
     _transformation.fill(ptr);
     _is_dirty = true;
+  }
+
+  template <typename U> auto fill(const U *ptr, const U *inv_ptr) -> void {
+    _transformation.fill(ptr);
+    _inv_transformation.fill(inv_ptr);
+    _is_dirty = false;
   }
 
   auto transformation() const -> const tf::transformation<RealT, Dims> & {

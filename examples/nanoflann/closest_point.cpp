@@ -1,13 +1,11 @@
 #include "../util/read_mesh.hpp"
 #include "./nanoflann.hpp"
 #include "trueform/aabb_from.hpp"
-#include "trueform/closest_metric_point.hpp"
-#include "trueform/distance.hpp"
 #include "trueform/nearest_neighbor.hpp"
 #include "trueform/nearest_neighbors.hpp"
 #include "trueform/neighbor_search.hpp"
 #include "trueform/normalized.hpp"
-#include "trueform/point_range.hpp"
+#include "trueform/points.hpp"
 #include "trueform/random_vector.hpp"
 #include "trueform/tick_tock.hpp"
 #include "trueform/tree.hpp"
@@ -53,7 +51,7 @@ int main(int argc, char *argv[]) {
             << std::endl;
   std::cout << "----------------------------------" << std::endl;
 
-  auto points = tf::make_point_range<3>(raw_points);
+  auto points = tf::make_points<3>(raw_points);
   PointCloud cloud;
   for (auto p : points)
     cloud.pts.push_back(p);

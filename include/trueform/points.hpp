@@ -8,18 +8,18 @@
 #include "./implementation/point_iterator.hpp"
 #include "./mapped_range.hpp"
 #include "./range.hpp"
-#include "./vector_range.hpp"
+#include "./vectors.hpp"
 
 namespace tf {
 
 namespace implementation {
-template <std::size_t Dims, typename Range> auto make_point_range(Range &&r) {
+template <std::size_t Dims, typename Range> auto make_points(Range &&r) {
   auto begin = tf::implementation::iter::make_point_iterator<Dims>(r.begin());
   auto end = tf::implementation::iter::make_point_iterator<Dims>(r.end());
   return tf::make_range(std::move(begin), std::move(end));
 }
 
-struct point_range_as_vector_view_dereference {
+struct points {
   template <std::size_t Dims, typename Policy>
   auto operator()(point_like<Dims, Policy> &pt) const {
     return pt.as_vector_view();
@@ -32,45 +32,41 @@ struct point_range_as_vector_view_dereference {
 };
 } // namespace implementation
 
-template <typename Policy> struct point_range : Policy {
-  point_range(const Policy &r) : Policy{r} {}
-  point_range(Policy &&r) : Policy{r} {}
+template <typename Policy> struct points : Policy {
+  points(const Policy &r) : Policy{r} {}
+  points(Policy &&r) : Policy{r} {}
 
   auto as_vector_view() const {
-    auto r = tf::make_mapped_range(
-        *this, implementation::point_range_as_vector_view_dereference{});
-    return vector_range<decltype(r)>{r};
+    auto r = tf::make_mapped_range(*this, implementation::points{});
+    return vectors<decltype(r)>{r};
   }
 };
 
 template <typename Policy>
-auto unwrap(const point_range<Policy> &seg) -> decltype(auto) {
+auto unwrap(const points<Policy> &seg) -> decltype(auto) {
   return static_cast<const Policy &>(seg);
 }
 
-template <typename Policy>
-auto unwrap(point_range<Policy> &seg) -> decltype(auto) {
+template <typename Policy> auto unwrap(points<Policy> &seg) -> decltype(auto) {
   return static_cast<Policy &>(seg);
 }
 
-template <typename Policy>
-auto unwrap(point_range<Policy> &&seg) -> decltype(auto) {
+template <typename Policy> auto unwrap(points<Policy> &&seg) -> decltype(auto) {
   return static_cast<Policy &&>(seg);
 }
 
 template <typename Policy, typename T>
-auto wrap_like(const point_range<Policy> &, T &&t) {
-  return point_range<std::decay_t<T>>{static_cast<T &&>(t)};
+auto wrap_like(const points<Policy> &, T &&t) {
+  return points<std::decay_t<T>>{static_cast<T &&>(t)};
+}
+
+template <typename Policy, typename T> auto wrap_like(points<Policy> &, T &&t) {
+  return points<std::decay_t<T>>{static_cast<T &&>(t)};
 }
 
 template <typename Policy, typename T>
-auto wrap_like(point_range<Policy> &, T &&t) {
-  return point_range<std::decay_t<T>>{static_cast<T &&>(t)};
-}
-
-template <typename Policy, typename T>
-auto wrap_like(point_range<Policy> &&, T &&t) {
-  return point_range<std::decay_t<T>>{static_cast<T &&>(t)};
+auto wrap_like(points<Policy> &&, T &&t) {
+  return points<std::decay_t<T>>{static_cast<T &&>(t)};
 }
 
 /// @ingroup ranges
@@ -107,18 +103,17 @@ auto wrap_like(point_range<Policy> &&, T &&t) {
 /// // 1, 2, 3,
 /// // 4, 5, 6
 /// @endcode
-template <std::size_t Dims, typename Range> auto make_point_range(Range &&r) {
-  auto pts = tf::implementation::make_point_range<Dims>(r);
-  return tf::point_range<decltype(pts)>{pts};
+template <std::size_t Dims, typename Range> auto make_points(Range &&r) {
+  auto pts = tf::implementation::make_points<Dims>(r);
+  return tf::points<decltype(pts)>{pts};
 }
 
-template <typename Range> auto make_point_range(Range &&r) {
+template <typename Range> auto make_points(Range &&r) {
   auto pts = tf::make_range(r);
-  return tf::point_range<decltype(pts)>{pts};
+  return tf::points<decltype(pts)>{pts};
 }
 
-template <typename Range>
-auto make_point_range(point_range<Range> r) -> point_range<Range> {
+template <typename Range> auto make_points(points<Range> r) -> points<Range> {
   return r;
 }
 } // namespace tf

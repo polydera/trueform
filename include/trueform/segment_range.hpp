@@ -6,7 +6,6 @@
 #pragma once
 
 #include "./implementation/mapped_iterator.hpp"
-#include "./point_range.hpp"
 #include "./segment.hpp"
 
 namespace tf {
@@ -60,11 +59,4 @@ private:
   Range0 _edges;
   Range1 _points;
 };
-
-template <typename Range0, typename Range1>
-auto make_segment_range(Range0 &&edges, Range1 &&points) {
-  auto r0 = tf::make_range(edges);
-  auto r1 = tf::make_point_range(points);
-  return segment_range<decltype(r0), decltype(r1)>{r0, r1};
-}
 } // namespace tf

@@ -11,46 +11,46 @@
 namespace tf {
 
 namespace implementation {
-template <std::size_t Dims, typename Range> auto make_vector_range(Range &&r) {
+template <std::size_t Dims, typename Range> auto make_vectors(Range &&r) {
   auto begin = tf::implementation::iter::make_vector_iterator<Dims>(r.begin());
   auto end = tf::implementation::iter::make_vector_iterator<Dims>(r.end());
   return tf::make_range(std::move(begin), std::move(end));
 }
 } // namespace implementation
 
-template <typename Policy> struct vector_range : Policy {
-  vector_range(const Policy &r) : Policy{r} {}
-  vector_range(Policy &&r) : Policy{r} {}
+template <typename Policy> struct vectors : Policy {
+  vectors(const Policy &r) : Policy{r} {}
+  vectors(Policy &&r) : Policy{r} {}
 };
 
 template <typename Policy>
-auto unwrap(const vector_range<Policy> &seg) -> decltype(auto) {
+auto unwrap(const vectors<Policy> &seg) -> decltype(auto) {
   return static_cast<const Policy &>(seg);
 }
 
 template <typename Policy>
-auto unwrap(vector_range<Policy> &seg) -> decltype(auto) {
+auto unwrap(vectors<Policy> &seg) -> decltype(auto) {
   return static_cast<Policy &>(seg);
 }
 
 template <typename Policy>
-auto unwrap(vector_range<Policy> &&seg) -> decltype(auto) {
+auto unwrap(vectors<Policy> &&seg) -> decltype(auto) {
   return static_cast<Policy &&>(seg);
 }
 
 template <typename Policy, typename T>
-auto wrap_like(const vector_range<Policy> &, T &&t) {
-  return vector_range<std::decay_t<T>>{static_cast<T &&>(t)};
+auto wrap_like(const vectors<Policy> &, T &&t) {
+  return vectors<std::decay_t<T>>{static_cast<T &&>(t)};
 }
 
 template <typename Policy, typename T>
-auto wrap_like(vector_range<Policy> &, T &&t) {
-  return vector_range<std::decay_t<T>>{static_cast<T &&>(t)};
+auto wrap_like(vectors<Policy> &, T &&t) {
+  return vectors<std::decay_t<T>>{static_cast<T &&>(t)};
 }
 
 template <typename Policy, typename T>
-auto wrap_like(vector_range<Policy> &&, T &&t) {
-  return vector_range<std::decay_t<T>>{static_cast<T &&>(t)};
+auto wrap_like(vectors<Policy> &&, T &&t) {
+  return vectors<std::decay_t<T>>{static_cast<T &&>(t)};
 }
 
 /// @ingroup ranges
@@ -87,17 +87,17 @@ auto wrap_like(vector_range<Policy> &&, T &&t) {
 /// // 1, 2, 3,
 /// // 4, 5, 6
 /// @endcode
-template <std::size_t Dims, typename Range> auto make_vector_range(Range &&r) {
-  auto pts = tf::implementation::make_vector_range<Dims>(r);
-  return tf::vector_range<decltype(pts)>{pts};
+template <std::size_t Dims, typename Range> auto make_vectors(Range &&r) {
+  auto pts = tf::implementation::make_vectors<Dims>(r);
+  return tf::vectors<decltype(pts)>{pts};
 }
 
-template <typename Range> auto make_vector_range(Range &&r) {
-  return tf::vector_range<std::decay_t<Range>>{r};
+template <typename Range> auto make_vectors(Range &&r) {
+  return tf::vectors<std::decay_t<Range>>{r};
 }
 
 template <typename Range>
-auto make_vector_range(vector_range<Range> r) -> vector_range<Range> {
+auto make_vectors(vectors<Range> r) -> vectors<Range> {
   return r;
 }
 } // namespace tf

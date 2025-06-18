@@ -182,6 +182,22 @@ auto transformed_impl(As, const tf::inject_ids_t<Range, Base> &_this,
       transformed_impl(As{}, static_cast<const Base &>(_this), frame));
 }
 
+template <typename As, typename Iterator, std::size_t N, std::size_t Dims,
+          typename U>
+auto transformed_impl(As, const tf::indirect_range<Iterator, N> &_this,
+                      const transformation<U, Dims> &transform) {
+  return tf::inject_ids(
+      _this.ids(), transformed_impl(As{}, tf::make_range(_this), transform));
+}
+
+template <typename As, typename Iterator, std::size_t N, std::size_t Dims,
+          typename U>
+auto transformed_impl(As, const tf::indirect_range<Iterator, N> &_this,
+                      const frame_like<Dims, U> &frame) {
+  return tf::inject_ids(_this.ids(),
+                        transformed_impl(As{}, tf::make_range(_this), frame));
+}
+
 template <typename As, typename T, std::size_t Dims, typename Base, typename U>
 auto transformed_impl(As, const tf::inject_normal_t<T, Dims, Base> &_this,
                       const tf::transformation<U, Dims> &transform) {
@@ -214,7 +230,7 @@ auto transformed_impl(As, const tf::inject_plane_t<T, Dims, Base> &_this,
     else
       return base[0];
   };
-  if constexpr (has_injected_normal<Base>) {
+  if constexpr (tf::has_injected_normal<Base>) {
     return tf::inject_plane(tf::make_plane(base.normal(), get_pt()), base);
   } else {
     return tf::inject_plane(

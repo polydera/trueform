@@ -1,20 +1,20 @@
 #pragma once
 #include "trueform/blocked_range.hpp"
-#include "trueform/point_range.hpp"
-#include "trueform/polygon_range.hpp"
+#include "trueform/points.hpp"
+#include "trueform/polygons.hpp"
 #include "vtkPolyData.h"
 
 inline auto get_points(vtkPoints * points) {
   auto ptr =
       static_cast<float *>(points->GetData()->GetVoidPointer(0));
-  return tf::make_point_range<3>(
+  return tf::make_points<3>(
       tf::make_range(ptr, 3 * points->GetNumberOfPoints()));
 }
 
 inline auto get_points(vtkPolyData *poly) {
   auto ptr =
       static_cast<float *>(poly->GetPoints()->GetData()->GetVoidPointer(0));
-  return tf::make_point_range<3>(
+  return tf::make_points<3>(
       tf::make_range(ptr, 3 * poly->GetNumberOfPoints()));
 }
 
@@ -40,5 +40,5 @@ inline auto get_triangle_faces(vtkPolyData *poly) {
 }
 
 inline auto get_triangles(vtkPolyData *poly) {
-  return tf::make_polygon_range(get_triangle_faces(poly), get_points(poly));
+  return tf::make_polygons(get_triangle_faces(poly), get_points(poly));
 }

@@ -1,7 +1,7 @@
 #include "trueform/blocked_range.hpp"
 #include "trueform/intersects.hpp"
 #include "trueform/polygon.hpp"
-#include "trueform/polygon_range.hpp"
+#include "trueform/polygons.hpp"
 #include "trueform/segment.hpp"
 #include <iostream>
 #include <ostream>
@@ -19,7 +19,7 @@ int main() {
                                         {{1, 10, -1}},
                                         {{0, 10, 1}}}};
   std::vector<int> ids{{0, 1, 2, 3, 4, 5, 6, 7, 8}};
-  auto polygons = tf::make_polygon_range(tf::make_blocked_range<3>(ids), pts);
+  auto polygons = tf::make_polygons(tf::make_blocked_range<3>(ids), pts);
 
   auto polygon0 = polygons[0];
   auto polygon1 = polygons[1];
