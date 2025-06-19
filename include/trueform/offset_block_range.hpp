@@ -15,23 +15,43 @@ template <typename Range> struct offset_block_policy {
                           range.begin() + *std::next(start));
   }
 };
+
+template <typename Range0, typename Range1>
+auto make_offset_block_begin(Range0 &&offsets, Range1 &&data) {
+  auto data_view = tf::make_range(data);
+  return tf::implementation::iter::make_iter_mapped(
+      offsets.begin(),
+      implementation::offset_block_policy<decltype(data_view)>{data_view});
+}
+
+template <typename Range0, typename Range1>
+auto make_offset_block_end(Range0 &&offsets, Range1 &&data) {
+  auto data_view = tf::make_range(data);
+  return tf::implementation::iter::make_iter_mapped(
+      offsets.size() ? std::prev(offsets.end()) : offsets.end(),
+      implementation::offset_block_policy<decltype(data_view)>{data_view});
+}
 } // namespace implementation
 
 /// @ingroup ranges
 /// @brief Creates a range view over a sequence of blocks defined by offsets.
 ///
-/// This utility allows you to iterate over subranges ("blocks") of a data range.
-/// The start and end of each block is defined by two consecutive elements in the
-/// `offsets` range. The number of blocks is thus `offsets.size() - 1`.
+/// This utility allows you to iterate over subranges ("blocks") of a data
+/// range. The start and end of each block is defined by two consecutive
+/// elements in the `offsets` range. The number of blocks is thus
+/// `offsets.size() - 1`.
 ///
-/// This is especially useful for grouping elements like polygons, faces, or variable-sized clusters,
-/// where each block may contain a different number of elements.
+/// This is especially useful for grouping elements like polygons, faces, or
+/// variable-sized clusters, where each block may contain a different number of
+/// elements.
 ///
 /// @tparam Range0 A range of integral offsets (e.g. `std::vector<size_t>`).
 /// @tparam Range1 A range of underlying data values.
-/// @param offsets A range of offsets. Must contain `n + 1` elements to define `n` blocks.
+/// @param offsets A range of offsets. Must contain `n + 1` elements to define
+/// `n` blocks.
 /// @param data A range of elements from which the blocks are constructed.
-/// @return A range view over blocks of data, where each block is itself a `tf::range`.
+/// @return A range view over blocks of data, where each block is itself a
+/// `tf::range`.
 ///
 /// @code
 /// tf::buffer<std::size_t> offsets{0, 3, 6};
@@ -48,13 +68,7 @@ template <typename Range> struct offset_block_policy {
 /// @note This function returns a view — it does not copy the underlying data.
 template <typename Range0, typename Range1>
 auto make_offset_block_range(Range0 &&offsets, Range1 &&data) {
-  auto data_view = tf::make_range(data);
-  auto begin = tf::implementation::iter::make_iter_mapped(
-      offsets.begin(),
-      implementation::offset_block_policy<decltype(data_view)>{data_view});
-  auto end = tf::implementation::iter::make_iter_mapped(
-      offsets.size() ? std::prev(offsets.end()) : offsets.end(),
-      implementation::offset_block_policy<decltype(data_view)>{data_view});
-  return tf::make_range(std::move(begin), std::move(end));
+  return tf::make_range(implementation::make_offset_block_begin(offsets, data),
+                        implementation::make_offset_block_end(offsets, data));
 }
 } // namespace tf
