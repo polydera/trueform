@@ -1,14 +1,8 @@
 #include "../util/read_mesh.hpp"
 #include "./nanoflann.hpp"
-#include "trueform/aabb_from.hpp"
-#include "trueform/nearest_neighbor.hpp"
-#include "trueform/nearest_neighbors.hpp"
-#include "trueform/neighbor_search.hpp"
-#include "trueform/normalized.hpp"
-#include "trueform/points.hpp"
-#include "trueform/random_vector.hpp"
-#include "trueform/tick_tock.hpp"
-#include "trueform/tree.hpp"
+#include "trueform/spatial.hpp"
+#include "trueform/core.hpp"
+#include "trueform/random.hpp"
 #include <filesystem>
 #include <vector>
 

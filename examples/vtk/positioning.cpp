@@ -1,16 +1,7 @@
 #include "./util/common.hpp"
 #include "./util/data_bridge.hpp"
-#include "trueform/form.hpp"
-#include "trueform/frame.hpp"
-#include "trueform/intersects.hpp"
-#include "trueform/neighbor_search.hpp"
-#include "trueform/plane.hpp"
-#include "trueform/random_transformation.hpp"
-#include "trueform/ray_config.hpp"
-#include "trueform/ray_hit.hpp"
-#include "trueform/tick_tock.hpp"
-#include "trueform/transformation.hpp"
-#include "trueform/tree.hpp"
+#include "trueform/random.hpp"
+#include "trueform/spatial.hpp"
 #include "vtkInteractorStyleTrackballCamera.h"
 #include "vtkMatrix4x4.h"
 #include "vtkOpenGLActor.h"
@@ -95,8 +86,8 @@ private:
 class cursor_interactor : public vtkInteractorStyleTrackballCamera {
 private:
   geometry_handle_t geometry_handle;
-  tf::point<double, 3> normal_mesh_color{{0.8, 0.8, 0.8}};
-  tf::point<double, 3> selected_mesh_color{{1, 0.9, 1}};
+  tf::point<double, 3> normal_mesh_color{0.8, 0.8, 0.8};
+  tf::point<double, 3> selected_mesh_color{1., 0.9, 1.};
 
   tf::plane<float, 3> moving_plane;
   tf::point<float, 3> last_point;
@@ -106,73 +97,6 @@ private:
   bool camera_mode = false;
   int last_mouse_x = 0;
   int last_mouse_y = 0;
-
-  void dolly_to_position(double factor) {
-    // 1) Get mouse display position and the renderer under it
-    auto *rwi = this->Interactor;
-    int *event_pos = rwi->GetEventPosition();
-    int x = event_pos[0], y = event_pos[1];
-    auto *renderer = rwi->FindPokedRenderer(x, y);
-    if (!renderer)
-      return;
-
-    // 2) Access the camera
-    auto *camera = renderer->GetActiveCamera();
-    if (!camera)
-      return;
-
-    // 3) Project current focal point to display to fetch its depth
-    double fp_world[4];
-    camera->GetFocalPoint(fp_world);
-    fp_world[3] = 1.;
-    renderer->SetWorldPoint(fp_world);
-    renderer->WorldToDisplay();
-    double fp_disp[3];
-    renderer->GetDisplayPoint(fp_disp);
-    double depth = fp_disp[2];
-
-    // 4) Unproject the cursor (x,y,depth) back into world space → pivot point
-    renderer->SetDisplayPoint(x, y, depth);
-    renderer->DisplayToWorld();
-    double pivot[4];
-    renderer->GetWorldPoint(pivot);
-    if (pivot[3] == 0.)
-      return;
-    for (int i = 0; i < 3; ++i)
-      pivot[i] /= pivot[3];
-
-    // 5) Grab the old camera position & focal point
-    double old_pos[3], old_fp[3];
-    camera->GetPosition(old_pos);
-    camera->GetFocalPoint(old_fp);
-
-    // 6) Compute the vector from pivot→camera
-    double v[3];
-    for (int i = 0; i < 3; ++i)
-      v[i] = old_pos[i] - pivot[i];
-
-    // 7) Scale that vector by 1/factor to move camera closer/further
-    double new_pos[3];
-    for (int i = 0; i < 3; ++i)
-      new_pos[i] = pivot[i] + v[i] / factor;
-
-    // 8) Compute how much we shifted the camera by
-    double delta[3];
-    for (int i = 0; i < 3; ++i)
-      delta[i] = new_pos[i] - old_pos[i];
-
-    // 9) Move the focal point by the *same* shift so view direction stays the
-    // same
-    double new_fp[3];
-    for (int i = 0; i < 3; ++i)
-      new_fp[i] = old_fp[i] + delta[i];
-
-    // 10) Apply, reset clipping, and redraw
-    camera->SetPosition(new_pos);
-    camera->SetFocalPoint(new_fp);
-    renderer->ResetCameraClippingRange();
-    rwi->Render();
-  }
 
   auto get_ray_and_renderer() {
     auto x = this->Interactor->GetEventPosition()[0];
@@ -205,7 +129,7 @@ private:
     geometry_handle.update_frame(selected_actor);
   }
 
-  auto move_selected(vtkActor *selected_actor, tf::point<float, 3> pt) {
+  auto move_selected(vtkActor *selected_actor, tf::vector<float, 3> pt) {
     for (int i = 0; i < 3; ++i)
       selected_actor->GetUserMatrix()->Element[i][3] += pt[i];
     selected_actor->GetUserMatrix()->Modified();
@@ -220,7 +144,17 @@ private:
     auto pt0 = neighbors.info.first;
     auto pt1 = neighbors.info.second;
     auto ray = tf::make_ray_between_points(pt0, pt1);
-    auto eps = 0.1f;
+    //
+
+    auto *camera =
+        this->Interactor->FindPokedRenderer(last_mouse_x, last_mouse_y)
+            ->GetActiveCamera();
+    tf::point<double, 3> old_focal =
+        tf::make_point_view<3>(camera->GetFocalPoint());
+    tf::point<double, 3> new_focal = pt1;
+    auto focal_ray = tf::make_ray_between_points(old_focal, new_focal);
+    //
+    auto eps = 0.01f;
     float t = 0;
     auto prev_pt = ray.origin;
     tf::tick();
@@ -232,25 +166,18 @@ private:
       auto color = selected_mesh_color +
                    t_use * (normal_mesh_color - selected_mesh_color);
       move_selected(selected_actor, pt - prev_pt);
+      auto focal = focal_ray(s_t);
+      camera->SetFocalPoint(focal.data());
       selected_actor->GetProperty()->SetColor(color.data());
       selected_actor->Modified();
       prev_pt = pt;
       this->Interactor->Render();
     }
+
+    camera->SetFocalPoint(pt1[0], pt1[1], pt1[2]);
   }
 
 public:
-  // Override the mouse wheel events
-  void OnMouseWheelForward() override {
-    // A positive factor zooms in
-    dolly_to_position(1.1);
-  }
-
-  void OnMouseWheelBackward() override {
-    // A negative factor zooms out
-    dolly_to_position(0.9);
-  }
-
   auto reset_active_color(vtkActor *selected_actor) -> void {
     if (!selected_actor)
       return;
@@ -286,6 +213,7 @@ public:
     if (selected_mode) {
       selected_mode = false;
       position_them();
+
       reset_active_color(selected_actor);
       this->Interactor->GetRenderWindow()->ShowCursor();
       this->Interactor->Render();
@@ -419,7 +347,7 @@ int main(int argc, char *argv[]) {
     mapper->SetInputData(poly.get());
     auto matrix = vtk_make_unique<vtkMatrix4x4>();
     matrix->Identity();
-    set_at(matrix.get(), {{i * 15.f, (i + 2) * 15.f, 0.f}});
+    set_at(matrix.get(), {i * 15.f, (i + 2) * 15.f, 0.f});
     actor->SetUserMatrix(matrix.get());
     inter->push_back(actor.get(), poly.get(), trees[poly_index]);
     renderer->AddActor(actor.get());
@@ -463,4 +391,3 @@ int main(int argc, char *argv[]) {
 
   return 0;
 }
-

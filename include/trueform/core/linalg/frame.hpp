@@ -1,0 +1,34 @@
+/*
+ * Copyright (c) 2025 Žiga Sajovic, XLAB
+ * Distributed under the Boost Software License, Version 1.0.
+ * https://github.com/xlabmedical/trueform
+ */
+#pragma once
+#include "../transformation_like.hpp"
+namespace tf::linalg {
+
+template <std::size_t Dims, typename Policy0, typename Policy1> class frame {
+public:
+  using coordinate_type = typename Policy0::coordinate_type;
+
+  frame() = default;
+  frame(const tf::transformation_like<Dims, Policy0> &_transformation,
+        const tf::transformation_like<Dims, Policy1> &_inv_transformation)
+      : _transformation{_transformation},
+        _inv_transformation{_inv_transformation} {}
+
+  auto transformation() const
+      -> const tf::transformation_like<Dims, Policy0> & {
+    return _transformation;
+  }
+
+  auto inverse_transformation() const
+      -> const tf::transformation_like<Dims, Policy1> & {
+    return _inv_transformation;
+  }
+
+private:
+  tf::transformation_like<Dims, Policy0> _transformation;
+  tf::transformation_like<Dims, Policy1> _inv_transformation;
+};
+} // namespace tf::linalg

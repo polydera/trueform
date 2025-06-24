@@ -1,16 +1,7 @@
 #include "./util/common.hpp"
 #include "./util/data_bridge.hpp"
-#include "trueform/form.hpp"
-#include "trueform/frame.hpp"
-#include "trueform/intersects.hpp"
-#include "trueform/neighbor_search.hpp"
-#include "trueform/plane.hpp"
-#include "trueform/random_transformation.hpp"
-#include "trueform/ray_config.hpp"
-#include "trueform/ray_hit.hpp"
-#include "trueform/tick_tock.hpp"
-#include "trueform/transformation.hpp"
-#include "trueform/tree.hpp"
+#include "trueform/random.hpp"
+#include "trueform/spatial.hpp"
 #include "vtkInteractorStyleTrackballCamera.h"
 #include "vtkMatrix4x4.h"
 #include "vtkOpenGLActor.h"
@@ -56,16 +47,6 @@ public:
       }
     }
     return std::make_pair(picked, ray.origin + result.info.t * ray.direction);
-  }
-
-  auto closest_metric_point_pair(int id0, int id1, float radius) {
-    auto form0 =
-        tf::make_form(frames[id0], *trees[id0], get_triangles(polys[id0]));
-    auto form1 =
-        tf::make_form(frames[id1], *trees[id1], get_triangles(polys[id1]));
-
-    auto result0 = tf::neighbor_search(form0, form1, radius);
-    return result0;
   }
 
   auto intersects_any(vtkActor *actor, std::set<vtkActor *> &colliding) {
@@ -365,7 +346,7 @@ int main(int argc, char *argv[]) {
       mapper->SetInputData(poly.get());
       auto matrix = vtk_make_unique<vtkMatrix4x4>();
       matrix->Identity();
-      set_at(matrix.get(), {{i * 15.f, j * 15.f, 0.f}});
+      set_at(matrix.get(), {i * 15.f, j * 15.f, 0.f});
       actor->SetUserMatrix(matrix.get());
       inter->push_back(actor.get(), poly.get(), trees[poly_index]);
       renderer->AddActor(actor.get());

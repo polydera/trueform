@@ -1,7 +1,5 @@
 #pragma once
-#include "trueform/blocked_range.hpp"
-#include "trueform/points.hpp"
-#include "trueform/polygons.hpp"
+#include "trueform/core.hpp"
 #include "vtkPolyData.h"
 
 inline auto get_points(vtkPoints * points) {
@@ -19,7 +17,7 @@ inline auto get_points(vtkPolyData *poly) {
 }
 
 #ifdef VTK_CELL_ARRAY_V2
-#include "trueform/blocked_range.hpp"
+#include "trueform/core/views/blocked_range.hpp"
 inline auto get_triangle_faces(vtkCellArray *_cell_array) {
   return tf::make_blocked_range<3>(tf::make_range(
       static_cast<vtkIdType *>(
@@ -27,7 +25,7 @@ inline auto get_triangle_faces(vtkCellArray *_cell_array) {
       3 * _cell_array->GetNumberOfCells()));
 }
 #else
-#include "trueform/tag_blocked_range.hpp"
+#include "trueform/core/views/tag_blocked_range.hpp"
 inline auto get_triangle_faces(vtkCellArray *_cell_array) {
   return tf::make_tag_blocked_range<3>(
       tf::make_range(_cell_array->GetPointer(),
