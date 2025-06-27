@@ -150,6 +150,14 @@ auto tag_plane(polygon<V, Policy> &poly) -> decltype(auto) {
     return tf::tag_plane(tf::make_plane(poly[0], poly[1], poly[2]), poly);
   }
 }
+namespace policy {
+struct tag_plane_self_op {};
+
+template <typename U> auto operator|(U &&u, tag_plane_self_op) {
+  return tf::tag_plane(static_cast<U &&>(u));
+}
+} // namespace policy
+inline auto tag_plane() { return policy::tag_plane_self_op{}; }
 } // namespace tf
 namespace std {
 template <std::size_t Dims, typename Policy, typename Base>

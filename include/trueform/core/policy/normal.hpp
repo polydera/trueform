@@ -149,6 +149,15 @@ auto make_normal(const polygon<Dims, Policy> &p)
     return tf::make_normal(p[0], p[1], p[2]);
 }
 
+namespace policy {
+struct tag_normal_self_op {};
+
+template <typename U> auto operator|(U &&u, tag_normal_self_op) {
+  return tf::tag_normal(static_cast<U &&>(u));
+}
+} // namespace policy
+inline auto tag_normal() { return policy::tag_normal_self_op{}; }
+
 } // namespace tf
 namespace std {
 template <std::size_t Dims, typename Policy, typename Base>

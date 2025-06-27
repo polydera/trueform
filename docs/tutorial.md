@@ -433,20 +433,25 @@ auto points_range = polygons2.points();
 
 To achieve *lamdba-like*, inline class-building, we support policy tagging and zipping on [primitives](#primitives) and [primitive_ranges](#primitive-ranges).
 
-A policy injection like `inject_x` composes additional behavior onto an object by wrapping its existing policy.  
-It maps a type `object_t<..., Policy>` to a new version with added semantics:
+A policy injection, like `tag_x`, composes additional behavior onto an object by wrapping its existing policy.  
+It maps a type `object_t<..., Policy>` to:
 
 ```c++
-inject_x: object_t<..., Policy> -> object_t<..., inject_x<Policy>>
+tag_x: object_t<..., Policy> -> object_t<..., tag_x<Policy>>
 ```
 
-Policy injections are **idempotent**:
+Policy injections are **hierarchy-idempotent**:
 
 ```c++
-(inject_x)^2 = inject_x
+(tag_x)(... tag_x ...) =(... tag_x ...) 
 ```
 
-Injecting the same behavior twice is a no-op.
+Meaning that tagging a type which already contains the tag in its hierarchy is a no-op.
+
+#### Policies on primitives
+
+
+
 
 
 ## Spatial

@@ -21,6 +21,7 @@
 #include "./policy/ids.hpp"
 #include "./policy/indices.hpp"
 #include "./policy/normal.hpp"
+#include "./policy/normals.hpp"
 #include "./policy/plane.hpp"
 #include "./policy/state.hpp"
 #include "./policy/states.hpp"
@@ -264,6 +265,19 @@ auto transformed(const tuple<Ts...> &_this,
 } // namespace tf
 
 namespace tf::core {
+
+template <std::size_t N, typename Range, typename U>
+auto transformed_range(Range &&r, const U &transform) {
+  static_assert(N != tf::dynamic_size);
+  if constexpr (tf::core::is_transformable<decltype(r[0]), U>) {
+    std::array<decltype(transformed(r[0], transform)), N> out;
+    for (std::size_t i = 0; i < N; ++i)
+      out[i] = transformed(r[i], transform);
+    return out;
+  } else
+    return r;
+}
+
 template <typename T, std::size_t Size, typename U>
 auto transformed(const pt<T, Size> &data,
                  const transformation_like<Size, U> &transform) {
@@ -522,12 +536,37 @@ auto transformed(const tag_states<Range, Base> &_this,
 template <typename Range, typename Base, std::size_t Dims, typename U>
 auto transformed(const zip_states<Range, Base> &_this,
                  const transformation_like<Dims, U> &transform) {
-  return wrap_like(_this, transformed(unwrap(_this), transform));
+  auto states = core::transformed_range<tf::static_size_v<Base>>(_this.states(),
+                                                                 transform);
+  auto base = transformed(unwrap(_this), transform);
+  return zip_states<decltype(states), decltype(base)>{states, base};
 }
 template <typename Range, typename Base, std::size_t Dims, typename U>
 auto transformed(const zip_states<Range, Base> &_this,
                  const frame_like<Dims, U> &transform) {
-  return wrap_like(_this, transformed(unwrap(_this), transform));
+
+  auto states = core::transformed_range<tf::static_size_v<Base>>(_this.states(),
+                                                                 transform);
+  auto base = transformed(unwrap(_this), transform);
+  return zip_states<decltype(states), decltype(base)>{states, base};
+}
+
+template <typename Range, typename Base, std::size_t Dims, typename U>
+auto transformed(const zip_normals<Range, Base> &_this,
+                 const transformation_like<Dims, U> &transform) {
+  auto normals = core::transformed_range<tf::static_size_v<Base>>(
+      _this.normals(), transform);
+  auto base = transformed(unwrap(_this), transform);
+  return zip_normals<decltype(normals), decltype(base)>{normals, base};
+}
+template <typename Range, typename Base, std::size_t Dims, typename U>
+auto transformed(const zip_normals<Range, Base> &_this,
+                 const frame_like<Dims, U> &transform) {
+
+  auto normals = core::transformed_range<tf::static_size_v<Base>>(
+      _this.normals(), transform);
+  auto base = transformed(unwrap(_this), transform);
+  return zip_normals<decltype(normals), decltype(base)>{normals, base};
 }
 
 template <typename Index, typename Base, std::size_t Dims, typename U>

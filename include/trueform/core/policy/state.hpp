@@ -6,6 +6,7 @@
 
 #pragma once
 #include "../static_size.hpp"
+#include "../tuple.hpp"
 #include "./type.hpp"
 #include "./unwrap.hpp"
 #include <type_traits>
@@ -45,7 +46,8 @@ template <typename Index, typename Base> struct tag_state : Base {
   /**
    * @brief Constructs an instance.
    */
-  tag_state(const Index &_state, const Base &base) : Base{base}, _state{_state} {}
+  tag_state(const Index &_state, const Base &base)
+      : Base{base}, _state{_state} {}
 
   /**
    * @brief Constructs an instance.
@@ -80,7 +82,9 @@ private:
     return static_cast<const Base &>(val);
   }
 
-  friend auto unwrap(tag_state &val) -> Base & { return static_cast<Base &>(val); }
+  friend auto unwrap(tag_state &val) -> Base & {
+    return static_cast<Base &>(val);
+  }
 
   friend auto unwrap(tag_state &&val) -> Base && {
     return static_cast<Base &&>(val);
@@ -99,7 +103,8 @@ struct static_size<policy::tag_state<Range, Base>> : static_size<Base> {};
  * @ingroup injectors
  * @brief Constructs an `tag_state` by injecting state into a base
  */
-template <typename Index, typename Base> auto tag_state(Index &&state, Base &&base) {
+template <typename Index, typename Base>
+auto tag_state(Index &&state, Base &&base) {
   if constexpr (has_state_policy<Base>)
     if constexpr (std::is_rvalue_reference_v<Base &&>)
       return static_cast<Base>(base);
@@ -123,7 +128,8 @@ template <typename Proxy, typename Base> struct tag_state_ptr : Base {
   /**
    * @brief Constructs an instance.
    */
-  tag_state_ptr(const Proxy &_state, const Base &base) : Base{base}, _state{_state} {}
+  tag_state_ptr(const Proxy &_state, const Base &base)
+      : Base{base}, _state{_state} {}
 
   /**
    * @brief Constructs an instance.
@@ -168,7 +174,7 @@ private:
 
   template <typename T> friend auto wrap_like(const tag_state_ptr &val, T &&t) {
     return tag_state_ptr<Proxy, std::decay_t<T>>{val._state,
-                                                  static_cast<T &&>(t)};
+                                                 static_cast<T &&>(t)};
   }
 };
 } // namespace policy
@@ -188,9 +194,10 @@ auto tag_state_ptr(Iterator &&state, Base &&base) {
       return static_cast<Base &&>(base);
   else {
     auto &b_base = unwrap(base);
-    return wrap_like(base, policy::tag_state_ptr<std::decay_t<Iterator>,
-                                               std::decay_t<decltype(b_base)>>{
-                               static_cast<Iterator &&>(state), b_base});
+    return wrap_like(base,
+                     policy::tag_state_ptr<std::decay_t<Iterator>,
+                                           std::decay_t<decltype(b_base)>>{
+                         static_cast<Iterator &&>(state), b_base});
   }
 }
 
@@ -212,7 +219,12 @@ template <typename U, typename T> auto operator|(U &&u, tag_state_op<T> t) {
 } // namespace policy
 
 template <typename Index> auto tag_state(Index &&state) {
-  return policy::tag_state_op<std::decay_t<Index>>{static_cast<Index &&>(state)};
+  return policy::tag_state_op<std::decay_t<Index>>{
+      static_cast<Index &&>(state)};
+}
+template <typename... Ts> auto tag_state_tuple(Ts &&...states) {
+  auto tup = tf::make_tuple(static_cast<Ts &&>(states)...);
+  return policy::tag_state_op<decltype(tup)>{std::move(tup)};
 }
 } // namespace tf
 namespace std {
@@ -225,4 +237,3 @@ struct tuple_element<I, tf::policy::tag_state<Index, Policy>> {
       decltype(declval<Policy>().begin())>::value_type;
 };
 } // namespace std
-
