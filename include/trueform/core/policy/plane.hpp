@@ -11,6 +11,22 @@
 
 namespace tf {
 namespace policy {
+
+template <std::size_t Dims, typename Policy, typename Base> struct tag_plane;
+template <std::size_t Dims, typename Policy, typename Base>
+auto has_normal(type, const tag_plane<Dims, Policy, Base> *) -> std::true_type;
+
+template <std::size_t Dims, typename Policy, typename Base>
+auto has_plane(type, const tag_plane<Dims, Policy, Base> *) -> std::true_type;
+
+auto has_plane(type, const void *) -> std::false_type;
+} // namespace policy
+
+template <typename T>
+inline constexpr bool has_plane_policy = decltype(has_plane(
+    policy::type{}, static_cast<const std::decay_t<T> *>(nullptr)))::value;
+
+namespace policy {
 template <std::size_t Dims, typename Policy, typename Base>
 struct tag_plane : Base {
   /**
@@ -30,6 +46,18 @@ struct tag_plane : Base {
    */
   tag_plane(tf::plane_like<Dims, Policy> &&_plane, Base &&base)
       : Base{std::move(base)}, _plane{std::move(_plane)} {}
+
+  template <typename Other>
+  auto operator=(Other &&other) -> std::enable_if_t<
+      has_plane_policy<Other> &&
+          std::is_assignable_v<tf::plane_like<Dims, Policy> &,
+                               decltype(other.plane())> &&
+          std::is_assignable_v<Base &, Other &&>,
+      tag_plane &> {
+    Base::operator=(static_cast<Other &&>(other));
+    _plane = other.plane();
+    return *this;
+  }
 
   /**
    * @brief Returns a const reference to the injected plane.
@@ -64,19 +92,7 @@ private:
                                                     static_cast<T &&>(t)};
   }
 };
-
-template <std::size_t Dims, typename Policy, typename Base>
-auto has_normal(type, const tag_plane<Dims, Policy, Base> *) -> std::true_type;
-
-template <std::size_t Dims, typename Policy, typename Base>
-auto has_plane(type, const tag_plane<Dims, Policy, Base> *) -> std::true_type;
-
-auto has_plane(type, const void *) -> std::false_type;
 } // namespace policy
-
-template <typename T>
-inline constexpr bool has_plane_policy = decltype(has_plane(
-    policy::type{}, static_cast<const std::decay_t<T> *>(nullptr)))::value;
 
 template <std::size_t Dims, typename Policy, typename Base>
 struct static_size<policy::tag_plane<Dims, Policy, Base>> : static_size<Base> {
@@ -150,6 +166,19 @@ auto tag_plane(polygon<V, Policy> &poly) -> decltype(auto) {
     return tf::tag_plane(tf::make_plane(poly[0], poly[1], poly[2]), poly);
   }
 }
+
+template <std::size_t V, typename Policy>
+auto make_plane(const polygon<V, Policy> &poly)
+    -> tf::plane<tf::coordinate_type<Policy>, V> {
+  if constexpr (has_plane_policy<Policy>) {
+    return poly.plane();
+  } else if constexpr (has_normal_policy<Policy>) {
+    return tf::make_plane(poly.normal(), tf::dot(poly[0], poly.normal()));
+  } else {
+    return tf::make_plane(poly[0], poly[1], poly[2]);
+  }
+}
+
 namespace policy {
 struct tag_plane_self_op {};
 

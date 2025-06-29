@@ -87,4 +87,6 @@
 #include "./core/vector_like.hpp"               // IWYU pragma: export
 #include "./core/vector_view.hpp"               // IWYU pragma: export
 #include "./core/vectors.hpp"                   // IWYU pragma: export
+#include "./core/view.hpp"                      // IWYU pragma: export
 #include "./core/views.hpp"                     // IWYU pragma: export
+#include "./core/zip_range.hpp"                 // IWYU pragma: export

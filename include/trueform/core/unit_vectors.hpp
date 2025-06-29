@@ -91,4 +91,7 @@ template <typename Range>
 auto make_unit_vectors(unit_vectors<Range> r) -> unit_vectors<Range> {
   return r;
 }
+template <typename Policy> auto make_view(const tf::unit_vectors<Policy> &obj) {
+  return obj;
+}
 } // namespace tf

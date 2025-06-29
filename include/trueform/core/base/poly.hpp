@@ -5,18 +5,24 @@
  */
 #pragma once
 
+#include "../assignable_range.hpp"
 #include "../coordinate_type.hpp"
 #include "../static_size.hpp"
 #include "../views/indirect_range.hpp"
 namespace tf::core {
-template <std::size_t V, typename Policy> class poly : public Policy {
+template <std::size_t V, typename Policy>
+class poly : public tf::core::assignable_range<V, Policy> {
 private:
-  using base_t = Policy;
+  using base_t = tf::core::assignable_range<V, Policy>;
 
 public:
   poly(const Policy &policy) : base_t{policy} {}
   poly(Policy &&policy) : base_t{std::move(policy)} {}
   poly() = default;
+  poly(const poly &) = default;
+  poly(poly &&) = default;
+  auto operator=(const poly &) -> poly & = default;
+  auto operator=(poly &&) -> poly & = default;
   using coordinate_type = tf::coordinate_type<typename Policy::value_type>;
   using base_t::base_t;
   using base_t::operator=;
@@ -28,14 +34,19 @@ public:
 };
 
 template <typename Policy>
-class poly<tf::dynamic_size, Policy> : public Policy {
+class poly<tf::dynamic_size, Policy>
+    : public tf::core::assignable_range<tf::dynamic_size, Policy> {
 private:
-  using base_t = Policy;
+  using base_t = tf::core::assignable_range<tf::dynamic_size, Policy>;
 
 public:
   poly(const Policy &policy) : base_t{policy} {}
   poly(Policy &&policy) : base_t{std::move(policy)} {}
   poly() = default;
+  poly(const poly &) = default;
+  poly(poly &&) = default;
+  auto operator=(const poly &) -> poly & = default;
+  auto operator=(poly &&) -> poly & = default;
   using coordinate_type = tf::coordinate_type<typename Policy::value_type>;
   using base_t::base_t;
   using base_t::operator=;
@@ -97,4 +108,3 @@ struct tuple_size<tf::core::poly<V, Policy>>
     : std::integral_constant<std::size_t, V> {};
 
 } // namespace std
-

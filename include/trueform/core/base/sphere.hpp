@@ -15,6 +15,18 @@ template <std::size_t Dims, typename Policy> struct sphere {
   sphere(const tf::point_like<Dims, Policy> &origin, coordinate_type r)
       : origin{origin}, r{r} {}
 
+  template <typename Policy1>
+  auto operator=(const sphere<Dims, Policy1> &other) -> std::enable_if_t<
+      std::is_assignable_v<tf::point_like<Dims, Policy> &,
+                           tf::point_like<Dims, Policy1>> &&
+          std::is_assignable_v<coordinate_type &,
+                               typename Policy1::coordinate_type>,
+      sphere &> {
+    origin = other.origin;
+    r = other.r;
+    return *this;
+  }
+
   tf::point_like<Dims, Policy> origin;
   coordinate_type r;
 };

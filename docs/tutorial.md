@@ -1,5 +1,123 @@
 # Tutorial
 
+`trueform` is a C++ library for real-time geometric processing, built on the principles of composable views and inline policy injection. It operates directly on you *plain-old-data*, by providing semantic views that wrap it with geometric meaning. From individual primitives to structured ranges, from meta-data injection to spatial queries, every operation happens directly on your data; enriched with semantics without architectural changes.
+
+The library integrates directly at the call site: no boilerplate, no architectural rewrites, no heavyweight setup. It acts as a lightweight, expressive layer over your existing data. Like C++ ranges or lambdas, it lets you build rich, semantic geometry inline, without sacrificing performance or control.
+
+### Simplifying Common Tasks
+
+`trueform` can serve as a simpler, faster replacement for common operations you already perform with other libraries. For example, you can replace `nanoflann` for *k-NN* queries with just a few lines of code:
+```c++
+std::vector<float> raw_points;
+auto pts = tf::make_points<3>(raw_points);
+tf::tree<int, float, 3> point_tree(pts, tf::config_tree(4, 4));
+auto query_pt = tf::random_point<float, 3>();
+std::array<tf::nearest_neighbor<int, float, 3>, 10> knn_buffer;
+tf::neighbor_search(tf::make_form( // optional_transformation,
+                        point_tree, pts),
+                    query_pt,
+                    tf::make_nearest_neighbors(knn_buffer.begin(), 10 /*, search_radius*/));
+```
+
+<p float="left">
+  <img src="./img/nano-build.png" width="49%" />
+  <img src="./img/nano-knn.png" width="49%" />
+</p>
+
+or replace your use of `CGAL` for *mesh-intersection* queries with an equally minimal call — and significantly faster execution:
+```c++
+std::vector<int> raw_triangle_ids;
+auto triangles = tf::make_polygons(
+    tf::make_blocked_range<3>(raw_triangle_ids), pts);
+tf::tree<int, float, 3> tree(triangles, tf::config_tree(4, 4));
+std::vector<std::pair<int, int>> intersecting_primitives;
+tf::gather_ids(
+    tf::make_form(tree, triangles),
+    tf::make_form( // M.dot(x - pts[0]) + pts[10]
+        tf::random_frame_at(pts[0], pts[10]), tree, triangles),
+    tf::intersects_f, std::back_inserter(intersecting_primitives));
+```
+<p float="left">
+  <img src="./img/cgal-build.png" width="49%" />
+  <img src="./img/cgal_speedup.png" width="49%" />
+</p>
+
+This reflects `trueform`’s design principles: it’s meant to feel like composing ranges and lambdas — inline, expressive, and non-invasive. 
+
+### Showcase: The Power of Composition
+
+While `trueform` can replace existing tools, its real power is its expressive, compositional API. Consider a common challenge: modeling a moving point cloud of "emitters." Each emitter needs a unique ID, a static mounting normal, a dynamic aiming direction, and a color—all sourced from different data vectors. With `trueform`, this complex assembly becomes a single, readable pipeline:
+```c++
+// --- Raw Data ---
+std::vector<float> raw_pts;
+std::vector<float> raw_normals;
+std::vector<std::string> ids;
+std::vector<float> raw_direction;
+std::vector<std::array<float, 3>> colors;
+
+// --- Composition Pipeline ---
+// Start with raw points and progressively enrich them with semantics.
+auto emitters =
+    tf::make_points<3>(raw_pts)
+    // 1. Tag the entire collection with a single ID.
+    | tf::tag_id("emitter_array_alpha")
+    // 2. Zip per-element data onto the range.
+    | tf::zip_ids(ids)
+    | tf::zip_normals(
+          tf::make_unit_vectors<3>(raw_normals)
+          // Policies can be nested: tag the zipped normals themselves.
+          | tf::tag_id("mount_normals"))
+    // 3. Zip a composite state from multiple data sources.
+    | tf::zip_states(
+          tf::make_unit_vectors<3>(raw_direction)
+          | tf::tag_id("aim_directions"),
+          tf::make_view(colors)
+          | tf::tag_id("color_data"));
+```
+The `emitters` object still behaves like a simple range of points, compatible with any algorithm on point primitives. The real power is realized in the query, where its attached policies are correctly preserved or transformed, enabling complex, stateful logic:
+```c++
+// --- Using the Enriched Object in a Query ---
+tf::tree<int, float, 3> emitter_tree{emitters, tf::config_tree(4, 4)};
+tf::frame<float, 3> frame = tf::random_transformation<float, 3>();
+auto query_pt = tf::random_point<float, 3>() | tf::tag_id("target");
+
+float aim_radius2 = 4.0f; // Use squared distance for performance
+float aim_cos_angle = 0.95f;
+
+tf::search(
+    // The form applies the dynamic frame to the static tree and emitters.
+    tf::make_form(frame, emitter_tree, emitters),
+    // Broad-phase: Quickly cull any nodes outside the target radius.
+    [&](const auto &aabb) {
+        return tf::distance2(aabb, query_pt) < aim_radius2;
+    },
+    // Narrow-phase: The "brain" of the query. Evaluate each potential
+    // emitter.
+    // auto transformed_emitter = tf::transformed(emitters.front(), frame);
+    [&](const auto &transformed_emitter) {
+        if (tf::distance2(transformed_emitter, query_pt) >= aim_radius2)
+        return;
+        // Access all the policy data, which has been correctly handled.
+        const auto &id =
+            transformed_emitter.id(); // The per-emitter ID is preserved.
+        const auto &mount_normal =
+            transformed_emitter.normal(); // The normal vector is transformed.
+        // `direction` was transformed, while `color` was passed through
+        // unchanged.
+        const auto &[aim_direction, color] = transformed_emitter.state();
+        auto to_target = tf::normalized(query_pt - transformed_emitter);
+        // Check if the target is in the turret's firing arc and aimed
+        // correctly.
+        if (tf::dot(to_target, mount_normal) > 0 &&
+            tf::dot(to_target, aim_direction) > aim_cos_angle) {
+
+        std::cout << "Emitter " << id << " can hit " << query_pt.id()
+                    << "!\n";
+        }
+    });
+```
+The result is a highly expressive, architecture-agnostic approach to geometry that integrates into your existing code.
+
 ## Core
 
 At its core, `trueform` is a collection of geometric primitives that view your data, and ranges of these primitives. The primitives and their ranges can be injected with additional semantics
@@ -171,7 +289,7 @@ It additionally supports `::diagonal()`, `::center()`, and `::size()` methods.
 
 ##### AABB of Primitives
 
-To create an `aabb` of a finitie primitive:
+To create an `aabb` of a finite primitive:
 
 ```c++
 tf::aabb<float, 3> aabb = tf::aabb_from(primitive);
@@ -297,7 +415,7 @@ auto [status, t, point] = r_hit;
 ```c++
 primitive_range<std::size_t(Dims), Policy>
 ```
-The `Policy` parameter defines the primitive_range's behavior (e.g. does it have normals, does it have state, does it have connectivity structures like vertex_link, etc) and enables extensions. The underlying coordinate type (e.g., float, double) can be extracted from any policy:
+The `Policy` parameter defines the primitive_range's behavior (e.g. does it have normals, does it have state, does it have connectivity structures like vertex_link, etc) and enables extensions. These will be presented in [Policies](#policies). The underlying coordinate type (e.g., float, double) can be extracted from any policy:
 
 ```c++
 // Deduces the scalar type from one or more policies
@@ -326,15 +444,15 @@ auto [s1id0, s1id1] = segments1.front();
 
 To create a view of your data:
 ```c++
-auto r0 = tf::make_range(your_container);
+auto r0 = tf::make_view(your_container);
 // if you know it has n-elements and this
 // is not known to tf::static_size
-auto r1 = tf::make_range<N>(your_container);
+auto r1 = tf::make_view<N>(your_container);
 ```
 
 #### Points and Vectors
 
-These are the mose fundamental primitive ranges, provided in three variants:
+These are the most fundamental primitive ranges, provided in three variants:
 
 |Concept     |Template                  |Factory          |
 |------------|--------------------------|-----------------|
@@ -356,7 +474,7 @@ auto pts = tf::make_points(pts0);
 
 > **NOTE:** The `points<Dims, Policy>` provide an additional method `.as_vector_view()`, when one needs complete vector algebra over their points.
 
-> **See:** Points and vectors may be tagged with additional sementics (normals, ids, state, topological connectivity, etc), as we will learn when we learn about [policies](#policies).
+> **See:** Points and vectors may be tagged with additional semantics (normals, ids, state, topological connectivity, etc), as we will learn when we learn about [policies](#policies).
 
 #### Segments
 
@@ -392,7 +510,7 @@ auto [s3_id0_, s3_id1_] = segments3.edges().front();
 auto points_range = segments3.points();
 ```
 
-> **See:** Segments may be tagged with additional sementics (normals, ids, state, topological connectivity, etc), as we will learn when we learn about [policies](#policies).
+> **See:** Segments may be tagged with additional semantics (normals, ids, state, topological connectivity, etc), as we will learn when we learn about [policies](#policies).
 
 #### Polygons
 
@@ -427,398 +545,101 @@ auto [p2_id0_, p2_id1_, p2_id2_] = polygons2.faces().front();
 auto points_range = polygons2.points();
 ```
 
-> **See:** Polygons may be tagged with additional sementics (normals, ids, state, topological connectivity, etc), as we will learn when we learn about [policies](#policies).
+> **See:** Polygons may be tagged with additional semantics (normals, ids, state, topological connectivity, etc), as we will learn when we learn about [policies](#policies).
 
 ### Policies
 
-To achieve *lamdba-like*, inline class-building, we support policy tagging and zipping on [primitives](#primitives) and [primitive_ranges](#primitive-ranges).
+The `trueform` policy system allows you to compositionally add semantic information and behavior to primitives and ranges. This is achieved through two main operations, `tag` and `zip`, which are designed to feel like building up an object with a clean, expressive pipeline.
 
-A policy injection, like `tag_x`, composes additional behavior onto an object by wrapping its existing policy.  
-It maps a type `object_t<..., Policy>` to:
+A policy operation maps an object to a new version with an enriched policy:
+> object_t<Policy> -> object_t<new_policy<Policy>>
+
+These operations are **hierarchy-idempotent**: applying the same policy twice has no additional effect, making them safe to use in generic code.
+
+> **NOTE:** Topological policies will be presented in [Topology](#topology).
+
+#### Policy tag
+
+A `tag` applies a single piece of metadata to an entire object, whether it's a single primitive or a range of primitives. We support tagging with an `id`, `normal`, `plane`, and `state`.
+
+This enables you to build up a complex object on-the-fly. For example, here we create a single point and enrich it with an ID, a normal (which itself has an ID), and a composite state made from a direction and a color.
 
 ```c++
-tag_x: object_t<..., Policy> -> object_t<..., tag_x<Policy>>
+auto base_pt = tf::random_point<float, 3>();
+auto point_normal = tf::normalized(tf::random_vector<float, 3>());
+auto direction = tf::normalized(tf::random_vector<float, 3>());
+std::array<float, 3> color;
+auto point = base_pt                        
+                | tf::tag_id("point")          
+                | tf::tag_normal(point_normal | tf::tag_id("normal"))
+                | tf::tag_state(direction, color);
+```
+Even after being enriched, the `point` is still a `point_like<3, Policy>` and can be used in any geometric calculation. Policies are preserved and correctly transformed through transformations (i.e. the normal and the direction component of the state are transformed).
+```c++
+// still behaves like a point
+point += tf::random_vector<float, 3>();
+auto d2 = tf::distance2(point, tf::random_point<float, 3>());
+// Transformations correctly handle the object and its policies.
+tf::frame<float, 3> frame = tf::random_transformation<float, 3>();
+auto transformed_point = tf::transformed(point, frame);
+
+const auto &id = transformed_point.id();
+const auto &transformed_normal = transformed_point.normal();
+const auto &transformed_normal_id = transformed_normal.id();
+const auto &[transformed_direction, same_color] = transformed_point.state();
 ```
 
-Policy injections are **hierarchy-idempotent**:
+#### Policy zip
+
+A `zip` operation applies per-element data to a `primitive_range`. It effectively "zips" a range of data (like normals or IDs) with the range of primitives, so that each primitive in the range gets its own corresponding piece of data, i.e.:
+```c++
+primitive_range_t<..., zip_x<Policy>>::reference =
+     tag_x<primitive_range<Policy>::reference>
+```
+
+We support zipping with `ids`, `normals`, and `states` on [primitive range](#primitive-ranges).
+For example, to create`tf::points` where each point has its own `normal`, `id` and a `state` consisting of a direction and a color array:
+
 
 ```c++
-(tag_x)(... tag_x ...) =(... tag_x ...) 
+std::vector<float> raw_pts;
+std::vector<float> raw_normals;
+std::vector<std::string> ids;
+std::vector<float> raw_direction;
+std::vector<std::array<float, 3>> colors;
+
+auto points =
+    tf::make_points<3>(raw_pts)                              
+    | tf::tag_id("enriched points")                          
+    | tf::zip_ids(ids)                                       
+    | tf::zip_normals(tf::make_unit_vectors<3>(raw_normals)) 
+    | tf::zip_states(tf::make_unit_vectors<3>(raw_direction), colors);
+
+const auto & [directions_, colors_] = points.states();
+const auto &id_ = points.id();
+const auto &ids_ = points.ids();
+const auto &normals_ = points.normals();
 ```
 
-Meaning that tagging a type which already contains the tag in its hierarchy is a no-op.
+The `points` are still a `tf::points<Policy>` and behave like one
+```c++
+auto transformed_point = tf::transformed(points.front(), frame);
+const auto &id = transformed_point.id();
+const auto &transformed_normal = transformed_point.normal();
+const auto &[transformed_direction, color_t] = transformed_point.state();
+```
 
-#### Policies on primitives
+#### Plain primitives and primitive ranges
 
+To remove all policies from an object:
 
-
-
+```c++
+auto plain_points = points | tf::plain();
+```
 
 ## Spatial
 
-## Topology
-
-
-
-
-### Fixed Primitives
-
-These primitives have a fixed internal structure and do not support policy injection. They are:
-
-* `tf::ray<Type, Dims>`
-* `tf::line<Type, Dims>`
-* `tf::plane<Type, Dims>`
-* `tf::aabb<Type, Dims>`
-
-They are primarily used for queries such as ray casting, line intersection, or point projection. Each comes with its own factory:
-
-```c++
-auto ray0 = tf::make_ray(origin, direction);
-auto ray1 = tf::make_ray_between_points(pt0, pt1);
-auto line0 = tf::make_ray(origin, direction);
-auto line1 = tf::make_line_between_points(p0, p1);
-auto plane0 = tf::make_plane(pt0, pt1, pt2);
-auto plane1 = tf::make_plane(unit_vector, pt);
-auto aabb0 = tf::make_aabb(min_pt max_pt);
-auto aabb1 = tf::aabb_from(finite_primitive);
-```
-
-These types support relevant operations but are not part of the policy/composable hierarchy.
-
-## Semantic Views
-
-`primitive -> **semantic_view** -> form`
-
-Primitives are joined into ranges (e.g., `tf::points`, `tf::segments`, `tf::polygons`) that have additional semantics injected via policies.
-
-One rarely operates on individual primitives, but on a range of them, i.e., `tf::points`, `tf::segments`, `tf::polygons` etc.
-
-### Range Adaptors
-
-While `trueform` is not a range library, it provides several range adaptors that allow you to work with your existing data layout directly. These adaptors enable efficient traversal, transformation, and indexing of data in a composable way.
-
-
-- **`blocked_range`**  
-  - Call: `make_blocked_range` (static or dynamic block size)
-  - Example: `make_blocked_range<2>([0, 1, 2, 3])` → `[[0, 1], [2, 3]]`
-  - Use Case: Interpreting polygon or segment vertex IDs
-
-- **`tag_blocked_range`**  
-  - Call: `make_tag_blocked_range` (static or dynamic block size)
-  - Example: `make_tag_blocked_range<2>([t0, 0, 1, t1, 2, 3])` → `[[0, 1], [2, 3]]`
-  - Use Case: For layouts such as those used in legacy VTK (<8) polygon buffers
-
-- **`slide_range`**  
-  - Call: `make_slide_range` (static or dynamic window size)
-  - Example: `make_slide_range<2>([0, 1, 2])` → `[[0, 1], [1, 2]]`
-  - Use Case: Converting a curve to segment IDs (sliding window)
-
-- **`indirect_range`**  
-  - Call: `make_indirect_range(ids, data_range)`
-  - Example: `make_indirect_range([1, 3], [a, b, c, d])` → `[b, d]`
-  - Use Case: Offsetting into a point array by primitive vertex IDs
-
-- **`block_indirect_range`**  
-  - Call: `make_block_indirect_range(blocked_range, data)`
-  - Example: `make_block_indirect_range([[0, 1], [2, 3]], [a, b, c, d])` → `[[a, b], [c, d]`
-  - Use Case: Indirect into point using blocked polygon or segment vertex IDs
-
-- **`mapped_range`**  
-  - Call: `make_mapped_range(range, f)`
-  - Example: `make_mapped_range([0, 1, 2], f)` → `[f(0), f(1), f(2)]`
-  - Use Case: Applying functions to every element in a range
-
-- **`sequence_range`**  
-  - Call: `make_sequence_range(start, end)`
-  - Example: `make_sequence_range(3, 6)` → `[3, 4, 5]`
-  - Use Case: Efficient for loop-style iteration or index generation
-
-- **`offset_blocked_range`**  
-  - Call: `make_offset_blocked_range(offsets, data)`
-  - Example: `make_offset_blocked_range([0, 2, 3, 5], [a, b, c, d, e])` → `[[a, b], [c], [d, e]]`
-  - Use Case: Offset layout for unstructured lists
-
-> **Note**: `trueform` range adaptors propagate static size information where it is known at compile time.
-
-```c++
-auto [a, b, c] = tf::make_blocked_range<3>(r).front();
-std::array<int, 2> ids{0, 1}; // as ids
-for(auto [a, b]: tf::make_indirect_range(ids, r));
-for(auto [id0, id1]: tf::make_indirect_range(ids, r).ids());
-```
-
-### Views of Primitives
-
-Range adaptors are primarily used to prepare views for constructing geometric primitives into collections. They allow compositional definition of complex data without introducing custom wrappers or data duplication. Furthermore, all ranges of primitives support policy injection.
-
-#### Points and Vectors
-
-Points and vectors are created using factory functions.
-
-```c++
-std::vector<float> raw_data;
-auto points = tf::make_points<Dims>(raw_data);
-auto vectors = tf::make_vectors<Dims>(raw_data);
-// does not normalize
-auto unit_vectors = tf::make_unit_vectors<Dims>(raw_data)
-
-tf::vector<float, Dims> sum = vectors.front() + vectors.back();
-```
-
-These are ranges over `point|vector|unit_vector` views over raw data. `tf::points` additionally provide a conversion method `as_vector_views()`, when one needs vector algebra over their points (like computing a centroid).
-```c++
-auto vector_views = points.as_vector_views();
-```
-
-#### Segments
-
-Segments are created using the factory `tf::make_segments`. 
-
-- **Without ids**: Assume we have a sequence of points representing a curve.
-```c++
-auto segments0 = tf::make_segments(tf::make_blocked_range<2>(points));
-auto [pt0, pt1] = segments0.front();
-```
-- **With ids:** Assume ids `std::vector<int> ids;`
-    - Assume the ids are a sequence of point ids representing a curve
-    ```c++
-    auto segments1 = tf::make_segments(tf::make_slide_range<2>(ids), points);
-    auto [id0, id1] = segments1.front().ids();
-    auto [id0_, id1_] = segments1.edges().front();
-    auto points_view = segments1.points();
-    ```
-    - Assume the ids are a flat sequence of ids of segments
-    ```c++
-    auto segments2 = tf::make_segments(tf::make_blocked_range<2>(ids), points);
-    auto [id0, id1] = segments2.front().ids();
-    auto [id0_, id1_] = segments2.edges().front();
-    auto points_view = segments2.points();
-
-#### Polygons
-
-Polygons are created using the factory `tf::make_polygons`. 
-
-- **Without ids**: Assume we have a sequence of points `points`.
-    - Assume points represent a sequence of triangles
-    ```c++
-    auto polygons0 = tf::make_polygons(tf::make_blocked_range<3>(points));
-    auto [pt0, pt1, pt2] = polygons0.front();
-    ```
-    - Assume points represent a strip of triangles
-    ```c++
-    auto polygons1 = tf::make_polygons(tf::make_slide_range<3>(points));
-    ```
-- **With ids:** Assume ids `std::vector<int> ids;`
-    - Assume the ids are a flat sequence of ids of triangles
-    ```c++
-    auto polygons2 = tf::make_polygons(tf::make_blocked_range<3>(ids), points);
-    auto [id0, id1, id2] = polygons2.front().ids();
-    auto [id0_, id1_, id2_] = polygons2.faces().front();
-    auto points_view = polygons2.points();
-    ```
-    - Assume ids are tagged like in legacy VTK layout, i.e. `[3, a, b, c, 3, e, f, g, ...]`
-    ```c++
-    auto polygons3 = tf::make_polygons(tf::make_tag_blocked_range<3>(ids), points);
-    ```
-    - Assume the ids represent a strip of triangles ids
-    ```c++
-    auto polygons4 = tf::make_polygons(tf::make_slide_range<3>(ids), points);
-    ```
-- **With ids and normals:** Additionally assume `auto normals = tf::make_unit_vectors(r)`
-    ```c++
-    auto polygons5 = tf::make_polygons(tf::make_blocked_range<3>(ids), points, normals);
-    auto [id0, id1, id2] = polygons5.front().ids();
-    auto normal = polygons5.front().normal();
-    auto [id0_, id1_, id2_] = polygons5.faces().front();
-    auto points_view = polygons5.points();
-    auto unit_vectors = polygons5.normals()
-    ```
-
-## Policy Injections
-
-To achieve *lamdba-like*, inline class-building, we support policy injections into primitives and semantic views.
-
-A policy injection like `inject_x` composes additional behavior onto an object by wrapping its existing policy.  
-It maps a type `object_t<..., Policy>` to a new version with added semantics:
-
-```c++
-inject_x: object_t<..., Policy> -> object_t<..., inject_x<Policy>>
-```
-
-Policy injections are **idempotent**:
-
-```c++
-(inject_x)^2 = inject_x
-```
-
-Injecting the same behavior twice is a no-op.
-
-### Mechanics
-
-An `injectable class` implements two free functions:
-- `unwrap: injectable_class<..., Policy> -> Policy`
-- `wrap_like: (injectable_class<..., Policy0>, Policy1) -> injectable_class<..., Policy1>`
-
-
-Each injection provides a `has_injected_X<Type>` compile time check, if the policy is already present in the `Type`.
-
-These are used by an injection like so:
-```c++
-if constexpr(has_injected_X<decltype(injectable)>)
-    return injectable;
-auto && policy = unwrap(injectable);
-return wrap_like(injectable, inject_X(policy));
-```
-> **NOTE:** `wrap` and `unwrap_like` default to the identity function.
-
-These policy injections are a core part of `trueform`’s design philosophy — enabling inline, composable expressions without boilerplate. We will introduce injections on primitives here and injections on ranges of primitives when we get to them.
-
-### Policy injections on primitives
-
-The following policy injections are provided for primitives:
-
-- `inject_id(id, object)`  
-  Adds an `id()` method to the object, returning the given scalar ID.
-
-- `inject_ids(id_range, object)`  
-  Adds an `ids()` method, returning a view of the ID range (e.g. vertex indices of a polygon).
-
-- `inject_normal(unit_vector, object)`  
-  Adds a `normal()` method returning the supplied unit vector. If the object is a polygon, the normal can be computed automatically.
-
-- `inject_plane(plane, object)`  
-  Adds both `plane()` and `normal()` methods. For polygons, the plane can also be computed if not provided.
-
-### Example on a polygon
-
-```c++
-std::array<tf::point<float, 3>, 3> r; // any range of 3 points
-using policy0_t = decltype(r);
-tf::polygon<3, policy0_t> polygon0 = tf::make_polygon(r);
-
-std::array<int, 3> ids{2, 3, 4};
-using ids_t = decltype(ids);
-using policy1_t = tf::inject_ids_t<ids_t, policy0_t>;
-
-// Injects a copy of ids
-tf::polygon<3, policy1_t> polygon1 = tf::inject_ids(ids, polygon0);
-
-// Injects a view of ids
-auto polygon1_id_view = tf::inject_ids(tf::make_range(ids), polygon0);
-
-// Because make_range propagates static size information
-auto [id0, id1, id2] = polygon1_id_view.ids();
-
-tf::unit_vector<float, 3> normal0{{1, 0, 0}};
-auto polygon_with_normal = tf::inject_normal(normal0, polygon1);
-
-// Or have it be computed
-auto polygon2 = tf::inject_normal(polygon1);
-
-// You can also inject a plane
-auto polygon3 = tf::inject_plane(polygon1);
-
-// This detects the already injected normal
-auto polygon4 = tf::inject_plane(polygon2);
-const tf::plane<float, 3> &plane0 = polygon3.plane();
-
-// They all view the same data
-assert(&r[0][0] == &polygon4[0][0]);
-```
-
-> **Note**: Because injections are idempotent, you can safely inject a plane in any generic context — whether or not it has already been computed:
-```c++
-auto polygon5 = tf::inject_plane(polygon4);
-static_assert(std::is_same_v<decltype(polygon4), decltype(polygon5)>);
-```
-> The compiler will resolve whether the injection is necessary. No redundant computations are performed.
-
-Policy injections on primitives are preserved under transformations, allowing behavior to remain consistent as geometry moves through space.
-
-
-## Policy Injections: Primitive Ranges
-
-Policy injections on primitive ranges operate in the same manner as [those on primitives](#policy-injections-primitives). We will return to them after we learn about the spatial and connectivity structures.
-
-
-
-
-
-## Frames and Transformations
-
-A `tf::transformation<RealType, Dims>` consists of a rotation `R` and a translation `t`. It maps points and vectors according to the table below:
-
-| **Type**       | **Mapping**        |
-|----------------|--------------------|
-| `point_like`   | `R.dot(pt) + T`    |
-| `vector_like`  | `R.dot(vec)`       |
-
-A `tf::frame<RealType, Dims>` wraps a transformation and its inverse, effectively framing the object in the scene. The frame tracks changes to the transformation and computes the inverse on request.
-
-```c++
-tf::transformation<float, 3> transform = tf::random_transformation<float>();
-// copies the transformation
-tf::frame<float, 3> frame{transform};
-const tf::transformation<float, 3> & inv_transform = frame.inverse_transformation();
-```
-
-Since `trueform` is often integrated into systems that already manage transformations, you can simply `fill` them in where needed:
-
-```c++
-// the last row of a Dims x Dims matrix is
-// implicitly [0, ...., 1] 
-float raw_transform[Dims * (Dims + 1)];
-transform.fill(raw_transform);
-// this sets the inverse as dirty
-frame.fill(raw_transform);
-// as does this
-frame = transform;
-```
-
-If you already have the inverse computed, you may set it together with the transformation:
-
-```c++
-frame.fill(raw_transform, raw_inverse_transform);
-frame.set(transform, inverse_transform);
-```
-
-We also provide two convenience factories: `tf::make_identity_transformation` and `tf::make_transformation_from_translation`.
-
-### Transforming Primitives
-
-Any primitive from the `tf::` namespace can be transformed using `tf::transformed(_this, _by_transformation)`. Transformations can be performed using either `tf::transformation` or `tf::frame`. This includes composing transformations:
-
-```c++
-auto tr0 = tf::random_transformation<float>();
-auto tr1 = tf::random_transformation<float>();
-auto tr1_dot_tr0 = tf::transformed(tr0, tr1);
-```
-
-### Transformations and Injectable Policies
-
-Transformations via `tf::frame` always preserve injectable policies.  
-Transformations via `tf::transformation` may drop `inject_plane_t` or `inject_normal_t` when inverses are needed but not available (e.g. for points and segments). For this reason, transforming with a frame is generally more efficient.
-
-#### Example
-
-```c++
-std::array<tf::point<float, 3>, 6> pts{};
-using base_t = decltype(pts);
-std::array<int, 3> ids{3, 4, 5};
-auto poly0 = tf::make_polygon(ids, pts);
-auto poly1 = tf::inject_plane(poly0);
-auto poly2 = tf::inject_id(0, poly1);
-
-using point_holder_t = std::array<tf::point<float, 3>, 3>;
-tf::polygon<
-    3, tf::inject_id_t<
-            int, tf::inject_plane_t<float, 3,
-                                    tf::inject_ids_t< //
-                                        tf::range<int *, 3>, point_holder_t>>>>
-    transformed_poly = tf::transformed(poly2, fr);
-```
-
-> **Note**: `poly2` indexed into `pts` using IDs. After transformation, it holds the three transformed points and still views the original ID range.
+Spatial module extends the [Queries on Primitives](#queries-of-primitives) to primitive ranges by introducing [Forms](#forms), that bundle a [primitive range](#primitive-ranges), a [Frame](#transformations-and-frames) and a [Spatial structure](#spatial-structures).
 
 ## Spatial Structures
 
@@ -858,25 +679,19 @@ tf::config_tree(4, 4, [](const auto& primitive) {
 
 Tree construction uses a partitioning strategy analogous to `std::nth_element`. We support several [selection-based algorithms](https://github.com/danlark1/miniselect):
 
-- `tf::strategy::floyd_rivest`  
-- `tf::strategy::pdq`  
-- `tf::strategy::median_of_medians`  
-- `tf::strategy::median_of_ninthers`  
-- `tf::strategy::median_of_3_random`  
-- `tf::strategy::heap_select`  
-- `tf::strategy::nth_element` *(default)*
+- `tf::spatial::floyd_rivest_t`  
+- `tf::spatial::pdq_t`  
+- `tf::spatial::median_of_medians_t`  
+- `tf::spatial::median_of_ninthers_t`  
+- `tf::spatial::median_of_3_random_t`  
+- `tf::spatial::heap_select_t`  
+- `tf::spatial::nth_element_t` *(default)*
 
 Example:
 
 ```c++
-tree.build(tf::strategy::nth_element, primitive_range, tf::config_tree(4, 4));
+tree.build<tf::spatial::nth_element>(primitive_range, tf::config_tree(4, 4));
 ```
-
-#### Queries on the Tree
-
-Tree queries are described in the [Spatial Queries](#spatial-queries) section, after introducing [Forms](#form).
-
----
 
 ### `tf::mod_tree`
 
@@ -884,12 +699,160 @@ Tree queries are described in the [Spatial Queries](#spatial-queries) section, a
 
 ## Forms
 
-`primitive -> semantic_view -> **form**`
+> primitive → primitive_range → **form**
+
+A `tf::form` is a composite of a [primitive_range](#primitive-ranges), a [spatial structure](#spatial-structures) and a [frame](#transformations-and-frames) (the frame may be omittted). It is used for spatial queries.
+
+```c++
+std::vector<float> raw_pts;
+auto pts = tf::make_points<3>(raw_pts)
+           | tf::tag_id("point cloud");
+tf::tree<int, float, 3> tree(pts, tf::config_tree(4, 4));
+tf::frame<float, 3> frame = tf::random_transformation<float, 3>();
+auto form = tf::make_form(frame, tree, pts);
+```
+A form behaves like the [primitive range](#primitive-ranges) it wraps:
+```c++
+auto pt0 = form[0];
+```
 
 ## Spatial Queries
 
-## Topology and Connectivity Structures
+We extend the [queries on primitives](#queries-of-primitives) to forms. All queries are supported between a `form` and a `primitive` and between two `forms`. The queries `tf::distance`, `tf::distance2` and `tf::intersects` are trivially extended:
+```c++
+auto d2_0 = tf::distance2(form0, form1);
+auto d2_1 = tf::distance2(form0, form1[0]);
+bool do_intersects_0 = tf::intersects(form0, form1);
+bool do_intersects_1 = tf::intersects(form0, form1[0]);
+```
+The queries `closest_metric_point` and `closest_metric_point_pair` are extended via [Neighbor Search](#neighbor-search), and `ray_cast` and `ray_hit` via [Ray Casting on Forms](#ray-casting-on-forms). We additionally support a generic [Search](#search) query.
 
-## Algorithms
+### Search
+We support searching a form, searching over a pair of forms, and self-searching a form.
 
-## Utilities
+#### Searching a Form
+
+A form is searched via:
+
+```c++
+tf::search(form, check_aabb_f, apply_to_primitive_f);
+```
+where `check_aabb_f: tf::aabb_like -> bool` is applied to aabbs in the tree, and `apply_to_primitive_f: primitive -> void | bool` is applied to individual primitives. If `apply_to_primitive_f` returns a boolean, the search stops on the first returned `true`. Additionally, the call to `tf::search` returns this boolean value.
+
+For example, `tf::intersects(form, primitive)` is implemented like so:
+```c++
+tf::search(
+    form,
+    [obj_aabb = tf::aabb_from(primitive)](const auto &aabb) {
+        return tf::intersects(aabb, point_like);
+    },
+    [&primitive](const auto &point) {
+        return tf::intersects(point, primitive);
+    });
+```
+
+While `gather_ids(form, predicate_f, out_iter)` is implemented like so:
+```c++
+tf::search(form, predicate, [&out_iter](const auto &obj) {
+    if (predicate(obj))
+        *outout_iter++ = obj.id();
+    // note the absence of a return
+});
+```
+> **NOTE:** if the primitive does not have an id policy, it is tagged with its index in the primitive range.
+
+#### Searching a pair of Forms
+
+A pair of forms is searched via:
+
+```c++
+tf::search(form0, form1, check_aabb_f, apply_to_primitives_f);
+```
+where `check_aabb_f: (tf::aabb_like, tf::aabb_like) -> bool` is applied to pairs of aabbs in the tree, and `apply_to_primitives_f: (primitive0, primitive1) -> void | bool` is applied to pairs of primitives. If `apply_to_primitives_f` returns a boolean, the search stops on the first returned `true`. Additionally, the call to `tf::search` returns this boolean value.
+
+> **NOTE:** A search call over a pair of primitives is done in parallel. Hence, you must ensure thread-safety of the `apply_to_primitives_f`. Use `tf::local_value` and `tf::local_vector`.
+
+For example, `tf::gather_ids(form0, form1, predicate, out_iter)` is implemented like so:
+```c++
+tf::local_vector<std::pair<id_t0, id_t1>> local;
+tf::search(
+    form, form, predicate,
+    [&local, &predicate](const auto &primitive0, const auto &primitive1) {
+        if (predicate(primitive0, primitive1))
+            local.push_back(primitive0.id(), primitive1.id());
+    });
+local.to_iterator(out_iter);
+```
+
+#### Searching a Form against itself
+
+A form is searched against itself via:
+
+```c++
+tf::search_self(form, check_aabb_f, apply_to_primitives_f);
+```
+
+where everything follows the behavior of [Searching a pair of Forms](#searching-a-pair-of-forms). This is useful for finding self intersections or epsilon-duplicates.
+
+### Neighbor Search
+
+`tf::neighbor_search` generalizes the `tf::closest_metric_point` and `tf::closest_metric_point_pair` queries between primitives. We support `tf::neighbor_search` between a form and a primitive and between a pair of forms.
+
+```c++
+auto nearest_neighbor =
+    tf::neighbor_search(form, primitive /*, search_radius*/);
+// when using a search_radius, nearest_neighbor might not exist
+if (nearest_neighbor)
+    auto [primitive_id, metric_point] = nearest_neighbor;
+
+auto nearest_neighbor_pair =
+    tf::neighbor_search(form0, form1, /*, search_radius*/);
+if (nearest_neighbor_pair) {
+    auto [primitive_ids, metric_point_pair] = nearest_neighbor_pair;
+    auto [primitive_id0, primitive_id1] = primitive_ids;
+}
+```
+
+#### kNN Queries
+
+The general query for k nearest neighbors uses a helper class `tf::nearest_neighbors`. It maintains a sorted range of `k` nearest neighbors, as a view into your buffer. It behaves as a range of size `n`, where `n` is the number of found neighbors (when using a search-radius, `n` might be less than `k`).
+
+```c++
+std::array<tf::nearest_neighbor<int, float, 3>, 10> buffer;
+auto knn = tf::make_nearest_neighbors(buffer.begin(), k
+                                      /*, search_radius*/);
+tf::neighbor_search(form, primitive, knn);
+for (auto [primitive_id, metric_point] : knn) {}
+```
+
+### Ray Casting on Forms
+
+We extend the [Ray Casting on Primitives](#ray-casting) in the following way:
+
+```c++
+auto result0 = tf::ray_cast(
+                ray, form,
+                tf::make_ray_config(min_t, max_t));
+if(result0) {
+    auto [primitive_id, r_cast] = result0;
+}
+
+auto result1 = tf::ray_hit(
+                ray, form,
+                tf::make_ray_config(min_t, max_t));
+if(result1) {
+    auto [primitive_id, r_hit] = result0;
+}
+```
+
+## Topology
+
+### Connectivity Structures
+
+#### Face Membership
+
+#### Vertex Link
+
+#### Face Link
+
+#### Manifold Edge Link

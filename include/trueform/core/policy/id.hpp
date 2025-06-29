@@ -5,6 +5,7 @@
  */
 
 #pragma once
+#include "../proxy_val.hpp"
 #include "../static_size.hpp"
 #include "./type.hpp"
 #include "./unwrap.hpp"
@@ -40,7 +41,6 @@ namespace policy {
  */
 template <typename Index, typename Base> struct tag_id : Base {
 
-  using Base::Base;
   using Base::operator=;
   /**
    * @brief Constructs an instance.
@@ -54,10 +54,11 @@ template <typename Index, typename Base> struct tag_id : Base {
       : Base{std::move(base)}, _id{std::move(_id)} {}
 
   template <typename Other>
-  auto operator=(Other &&other)
-      -> std::enable_if_t<has_id_policy<Other> &&
-                              std::is_assignable_v<Base &, Other &&>,
-                          tag_id &> {
+  auto operator=(Other &&other) -> std::enable_if_t<
+      has_id_policy<Other> &&
+          std::is_assignable_v<Index &, decltype(other.id())> &&
+          std::is_assignable_v<Base &, Other &&>,
+      tag_id &> {
     Base::operator=(static_cast<Other &&>(other));
     id() = other.id();
     return *this;
@@ -118,24 +119,26 @@ namespace policy {
 
 template <typename Iterator, typename Base> struct tag_id_iter : Base {
 
-  using Base::Base;
   using Base::operator=;
   /**
    * @brief Constructs an instance.
    */
-  tag_id_iter(const Iterator &_id, const Base &base) : Base{base}, _id{_id} {}
+  tag_id_iter(const tf::proxy_val<Iterator> &_id, const Base &base)
+      : Base{base}, _id{_id} {}
 
   /**
    * @brief Constructs an instance.
    */
-  tag_id_iter(Iterator &&_id, Base &&base)
+  tag_id_iter(tf::proxy_val<Iterator> &&_id, Base &&base)
       : Base{std::move(base)}, _id{std::move(_id)} {}
 
   template <typename Other>
-  auto operator=(Other &&other)
-      -> std::enable_if_t<has_id_policy<Other> &&
-                              std::is_assignable_v<Base &, Other &&>,
-                          tag_id_iter &> {
+  auto operator=(Other &&other) -> std::enable_if_t<
+      has_id_policy<Other> &&
+          std::is_assignable_v<decltype(*std::declval<Iterator>()),
+                               decltype(other.id())> &&
+          std::is_assignable_v<Base &, Other &&>,
+      tag_id_iter &> {
     Base::operator=(static_cast<Other &&>(other));
     id() = other.id();
     return *this;
@@ -152,7 +155,7 @@ template <typename Iterator, typename Base> struct tag_id_iter : Base {
   auto id() -> decltype(auto) { return *_id; }
 
 private:
-  Iterator _id;
+  tf::proxy_val<Iterator> _id;
 
   friend auto unwrap(const tag_id_iter &val) -> const Base & {
     return static_cast<const Base &>(val);

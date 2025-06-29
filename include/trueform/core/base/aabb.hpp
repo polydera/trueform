@@ -19,6 +19,18 @@ template <std::size_t Dims, typename Policy0, typename Policy1> struct aabb {
        const tf::point_like<Dims, Policy1> &max)
       : min{min}, max{max} {}
 
+  template <typename Policy2, typename Policy3>
+  auto operator=(const aabb<Dims, Policy2, Policy3> &other) -> std::enable_if_t<
+      std::is_assignable_v<tf::point_like<Dims, Policy0> &,
+                           tf::point_like<Dims, Policy2>> &&
+          std::is_assignable_v<tf::point_like<Dims, Policy1> &,
+                               tf::point_like<Dims, Policy3>>,
+      aabb &> {
+    min = other.min;
+    max = other.max;
+    return *this;
+  }
+
   tf::point_like<Dims, Policy0> min;
   tf::point_like<Dims, Policy0> max;
 };

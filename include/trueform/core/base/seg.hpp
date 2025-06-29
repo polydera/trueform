@@ -5,18 +5,24 @@
  */
 #pragma once
 
+#include "../assignable_range.hpp"
 #include "../coordinate_type.hpp"
 #include "../static_size.hpp"
 #include "../views/indirect_range.hpp"
 namespace tf::core {
-template <typename Policy> class seg : public Policy {
+template <typename Policy>
+class seg : public tf::core::assignable_range<2, Policy> {
 private:
-  using base_t = Policy;
+  using base_t = tf::core::assignable_range<2, Policy>;
 
 public:
   seg(const Policy &policy) : base_t{policy} {}
   seg(Policy &&policy) : base_t{std::move(policy)} {}
   seg() = default;
+  seg(const seg &) = default;
+  seg(seg &&) = default;
+  auto operator=(const seg &) -> seg & = default;
+  auto operator=(seg &&) -> seg & = default;
   using coordinate_type = tf::coordinate_type<typename Policy::value_type>;
   using base_t::base_t;
   using base_t::operator=;
@@ -106,6 +112,5 @@ namespace std {
 template <typename Policy>
 struct tuple_size<tf::core::seg<Policy>> : tuple_size<Policy> {};
 template <std::size_t I, typename Policy>
-struct tuple_element<I, tf::core::seg<Policy>>
-    : tuple_element<I, Policy> {};
+struct tuple_element<I, tf::core::seg<Policy>> : tuple_element<I, Policy> {};
 } // namespace std

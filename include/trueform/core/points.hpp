@@ -110,4 +110,8 @@ template <typename Range> auto make_points(Range &&r) {
 template <typename Range> auto make_points(points<Range> r) -> points<Range> {
   return r;
 }
+
+template <typename Policy> auto make_view(const tf::points<Policy> &obj) {
+  return obj;
+}
 } // namespace tf

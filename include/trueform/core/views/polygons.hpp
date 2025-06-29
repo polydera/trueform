@@ -5,6 +5,7 @@
  */
 #pragma once
 
+#include "../policy/unwrap.hpp"
 #include "../polygon.hpp"
 namespace tf::views {
 template <typename Range0> struct polygons_dref {
@@ -22,7 +23,8 @@ auto make_polygon_range_iter(Iterator0 faces_iter, Range1 &&points) {
 
 template <typename Range0, typename Range1> struct polygons {
   using iterator = decltype(tf::views::make_polygon_range_iter(
-      std::declval<const Range0>().begin(), std::declval<const Range1>()));
+      std::declval<const Range0>().begin(),
+      unwrapped(std::declval<const Range1>())));
   using value_type = typename std::iterator_traits<iterator>::value_type;
   using reference = typename std::iterator_traits<iterator>::reference;
   using pointer = typename std::iterator_traits<iterator>::pointer;
@@ -37,11 +39,11 @@ template <typename Range0, typename Range1> struct polygons {
   auto points() const -> const Range1 & { return _points; }
 
   auto begin() const {
-    return views::make_polygon_range_iter(_faces.begin(), _points);
+    return views::make_polygon_range_iter(_faces.begin(), unwrapped(_points));
   }
 
   auto end() const {
-    return views::make_polygon_range_iter(_faces.end(), _points);
+    return views::make_polygon_range_iter(_faces.end(), unwrapped(_points));
   }
 
   auto size() const -> size_type { return _faces.size(); }

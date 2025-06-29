@@ -30,8 +30,8 @@ using plane =
 /// @return A `plane<T, N>` representing the given plane.
 template <std::size_t N, typename T>
 auto make_plane(const unit_vector_like<N, T> &normal,
-                typename T::value_type d) {
-  return plane<typename T::value_type, N>{normal, d};
+                tf::coordinate_type<T> d) {
+  return plane<tf::coordinate_type<T>, N>{normal, d};
 }
 
 /// @ingroup geometry

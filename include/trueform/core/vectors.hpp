@@ -89,4 +89,7 @@ template <typename Range>
 auto make_vectors(vectors<Range> r) -> vectors<Range> {
   return r;
 }
+template <typename Policy> auto make_view(const tf::vectors<Policy> &obj) {
+  return obj;
+}
 } // namespace tf

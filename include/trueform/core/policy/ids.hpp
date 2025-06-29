@@ -119,10 +119,19 @@ template <typename Range, typename Base>
 auto has_ids(type, const zip_ids<Range, Base> *) -> std::true_type;
 
 auto has_ids(type, const void *) -> std::false_type;
+
+template <typename Range, typename Base>
+auto has_ids_zip_impl(type, const zip_ids<Range, Base> *) -> std::true_type;
+
+auto has_ids_zip_impl(type, const void *) -> std::false_type;
 } // namespace policy
 
 template <typename T>
-inline constexpr bool has_ids_policy = decltype(has_ids(
+inline constexpr bool has_ids_tag = decltype(has_ids(
+    policy::type{}, static_cast<const std::decay_t<T> *>(nullptr)))::value;
+
+template <typename T>
+inline constexpr bool has_ids_zip = decltype(has_ids_zip_impl(
     policy::type{}, static_cast<const std::decay_t<T> *>(nullptr)))::value;
 
 /**
@@ -131,7 +140,7 @@ inline constexpr bool has_ids_policy = decltype(has_ids(
  */
 template <typename Range, typename Base>
 auto tag_ids(Range &&ids, Base &&base) {
-  if constexpr (has_ids_policy<Base>)
+  if constexpr (has_ids_tag<Base>)
     if constexpr (std::is_rvalue_reference_v<Base &&>)
       return static_cast<Base>(base);
     else
@@ -147,7 +156,7 @@ auto tag_ids(Range &&ids, Base &&base) {
 
 template <typename Range, typename Base>
 auto zip_ids(Range &&ids, Base &&base) {
-  if constexpr (has_ids_policy<Base>)
+  if constexpr (has_ids_tag<Base>)
     if constexpr (std::is_rvalue_reference_v<Base &&>)
       return static_cast<Base>(base);
     else

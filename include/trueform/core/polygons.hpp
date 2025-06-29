@@ -62,4 +62,8 @@ auto make_polygons(Range &&r) -> polygons<std::decay_t<Range>> {
   return polygons<std::decay_t<Range>>{static_cast<Range &&>(r)};
 }
 
+template <typename Policy> auto make_view(const tf::polygons<Policy> &obj) {
+  return obj;
+}
+
 } // namespace tf

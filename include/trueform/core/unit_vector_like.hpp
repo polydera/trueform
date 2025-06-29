@@ -37,8 +37,7 @@ private:
   using self_value_type = value_vec_type<typename base_t::value_type>;
 
 public:
-  using base_t::base_t;
-
+  unit_vector_like() = default;
   unit_vector_like(const unit_vector_like &other) : base_t{other} {}
   unit_vector_like(unit_vector_like &&other) : base_t{other} {}
   unit_vector_like(const base_t &other) : base_t{other} {

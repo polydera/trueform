@@ -5,7 +5,8 @@
  */
 
 #pragma once
-#include "../views/zip_ranges.hpp"
+#include "../view.hpp"
+#include "../zip_range.hpp"
 #include "./state.hpp"
 #include "./unwrap.hpp"
 #include "./zipped.hpp"
@@ -191,15 +192,17 @@ template <typename U, typename T> auto operator|(U &&u, zip_states_op<T> t) {
 } // namespace policy
 template <typename Range, typename... Ranges>
 auto tag_states(Range &&state, Ranges &&...states) {
-  auto r = tf::zip_ranges(static_cast<Range &&>(state),
-                          static_cast<Ranges &&>(states)...);
+  auto r = tf::core::make_zip_range(
+      tf::make_view(static_cast<Range &&>(state)),
+      tf::make_view(static_cast<Ranges &&>(states))...);
   return policy::tag_states_op<decltype(r)>{std::move(r)};
 }
 
 template <typename Range, typename... Ranges>
 auto zip_states(Range &&state, Ranges &&...states) {
-  auto r = tf::zip_ranges(static_cast<Range &&>(state),
-                          static_cast<Ranges &&>(states)...);
+  auto r = tf::core::make_zip_range(
+      tf::make_view(static_cast<Range &&>(state)),
+      tf::make_view(static_cast<Ranges &&>(states))...);
   return policy::zip_states_op<decltype(r)>{std::move(r)};
 }
 } // namespace tf

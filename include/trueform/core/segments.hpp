@@ -62,4 +62,8 @@ auto make_segments(Range &&r) -> segments<std::decay_t<Range>> {
   return segments<std::decay_t<Range>>{static_cast<Range &&>(r)};
 }
 
+template <typename Policy> auto make_view(const tf::segments<Policy> &obj) {
+  return obj;
+}
+
 } // namespace tf

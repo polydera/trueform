@@ -241,5 +241,4 @@ auto make_range(const Container &c)
   return range<decltype(std::begin(c)), tf::static_size_v<Container>>(
       std::begin(c), std::end(c));
 }
-
 } // namespace tf

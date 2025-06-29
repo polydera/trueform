@@ -20,6 +20,18 @@ template <std::size_t Dims, typename Policy0, typename Policy1> struct line {
        const tf::vector_like<Dims, Policy1> &direction)
       : origin{origin}, direction{direction} {}
 
+  template <typename Policy2, typename Policy3>
+  auto operator=(const line<Dims, Policy2, Policy3> &other) -> std::enable_if_t<
+      std::is_assignable_v<tf::point_like<Dims, Policy0> &,
+                           tf::point_like<Dims, Policy2>> &&
+          std::is_assignable_v<tf::vector_like<Dims, Policy1> &,
+                               tf::vector_like<Dims, Policy3>>,
+      line &> {
+    origin = other.origin;
+    direction = other.direction;
+    return *this;
+  }
+
   tf::point_like<Dims, Policy0> origin;
   tf::vector_like<Dims, Policy1> direction;
 };

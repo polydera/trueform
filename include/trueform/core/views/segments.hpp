@@ -6,6 +6,7 @@
 #pragma once
 
 #include "../iter/mapped_iterator.hpp"
+#include "../policy/unwrap.hpp"
 #include "../segment.hpp"
 
 namespace tf::views {
@@ -22,10 +23,11 @@ auto make_segment_range_iter(Iterator0 faces_iter, Range1 &&points) {
   return iter::make_mapped(faces_iter, segment_dref<decltype(pts)>{pts});
 }
 
-template <typename Range0, typename Range1, typename...> struct segments {
+template <typename Range0, typename Range1> struct segments {
 
   using iterator = decltype(tf::views::make_segment_range_iter(
-      std::declval<const Range0>().begin(), std::declval<const Range1>()));
+      std::declval<const Range0>().begin(),
+      unwrapped(std::declval<const Range1>())));
   using value_type = typename std::iterator_traits<iterator>::value_type;
   using reference = typename std::iterator_traits<iterator>::reference;
   using pointer = typename std::iterator_traits<iterator>::pointer;
@@ -40,10 +42,12 @@ template <typename Range0, typename Range1, typename...> struct segments {
   auto points() const -> const Range1 & { return _points; }
 
   auto begin() const {
-    return make_segment_range_iter(_edges.begin(), _points);
+    return make_segment_range_iter(_edges.begin(), unwrapped(_points));
   }
 
-  auto end() const { return make_segment_range_iter(_edges.end(), _points); }
+  auto end() const {
+    return make_segment_range_iter(_edges.end(), unwrapped(_points));
+  }
 
   auto size() const -> size_type { return _edges.size(); }
   auto empty() const -> bool { return _edges.size() == 0; }
