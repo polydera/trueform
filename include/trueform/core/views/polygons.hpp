@@ -14,7 +14,6 @@ template <typename Range0> struct polygons_dref {
     return tf::make_polygon(ids, points);
   }
 };
-
 template <typename Iterator0, typename Range1>
 auto make_polygon_range_iter(Iterator0 faces_iter, Range1 &&points) {
   auto pts = tf::make_range(points);
@@ -23,8 +22,8 @@ auto make_polygon_range_iter(Iterator0 faces_iter, Range1 &&points) {
 
 template <typename Range0, typename Range1> struct polygons {
   using iterator = decltype(tf::views::make_polygon_range_iter(
-      std::declval<const Range0>().begin(),
-      unwrapped(std::declval<const Range1>())));
+      std::declval<const Range0 &>().begin(),
+      unwrapped(std::declval<const Range1 &>())));
   using value_type = typename std::iterator_traits<iterator>::value_type;
   using reference = typename std::iterator_traits<iterator>::reference;
   using pointer = typename std::iterator_traits<iterator>::pointer;

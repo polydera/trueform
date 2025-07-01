@@ -97,3 +97,14 @@ public:
     Text->SetDisplayPosition(size[0] - x, y);
   }
 };
+
+inline auto center_and_scale(vtkPolyData *poly) -> void {
+  auto pts = get_points(poly);
+  auto aabb = tf::aabb_from(tf::make_polygon(pts));
+  auto center = aabb.center().as_vector();
+  auto r = aabb.diagonal().length() / 2;
+  tf::parallel_apply(pts.as_vector_view(), [&](auto pt) {
+    pt -= center;
+    pt *= 10 / r;
+  });
+}

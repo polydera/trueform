@@ -78,9 +78,11 @@ template <typename Index, typename RealT, std::size_t N, typename F0,
           typename F1, typename RandomIt>
 auto nearness_search(const tf::tree<Index, RealT, N> &tree,
                      const F0 &aabb_metric, const F1 &closest_point_f,
-                     tf::nearest_neighbors<RandomIt> &knn) {
+                     tf::nearest_neighbors<RandomIt> &knn)
+    -> tf::nearest_neighbors<RandomIt> & {
   tf::spatial::tree_proximity(tree.nodes(), tree.ids(), aabb_metric,
                               closest_point_f, knn);
+  return knn;
 }
 
 template <typename Index, typename RealT, std::size_t N, typename F0,
@@ -90,6 +92,7 @@ auto nearness_search(const tf::tree<Index, RealT, N> &tree,
                      tf::nearest_neighbors<RandomIt> &&knn) {
   tf::spatial::tree_proximity(tree.nodes(), tree.ids(), aabb_metric,
                               closest_point_f, knn);
+  return knn;
 }
 
 template <std::size_t Dims, typename Policy0, typename F0, typename F1>
@@ -124,8 +127,9 @@ template <std::size_t Dims, typename Policy0, typename F0, typename F1,
           typename RandomIt>
 auto nearness_search(const tf::form<Dims, Policy0> &form, const F0 &aabb_metric,
                      const F1 &closest_point_f,
-                     nearest_neighbors<RandomIt> &knn) {
-  return nearness_search(
+                     nearest_neighbors<RandomIt> &knn)
+    -> tf::nearest_neighbors<RandomIt> & {
+  nearness_search(
       form.tree(),
       [&](const auto &aabb) {
         return aabb_metric(tf::transformed(aabb, form.frame()));
@@ -134,6 +138,7 @@ auto nearness_search(const tf::form<Dims, Policy0> &form, const F0 &aabb_metric,
         return closest_point_f(tf::transformed(form[id], form.frame()));
       },
       knn);
+  return knn;
 }
 
 template <std::size_t Dims, typename Policy0, typename F0, typename F1,
@@ -141,7 +146,8 @@ template <std::size_t Dims, typename Policy0, typename F0, typename F1,
 auto nearness_search(const tf::form<Dims, Policy0> &form, const F0 &aabb_metric,
                      const F1 &closest_point_f,
                      nearest_neighbors<RandomIt> &&knn) {
-  return nearness_search(form, aabb_metric, closest_point_f, knn);
+  nearness_search(form, aabb_metric, closest_point_f, knn);
+  return knn;
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1, typename F>

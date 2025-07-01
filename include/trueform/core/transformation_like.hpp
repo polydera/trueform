@@ -96,6 +96,12 @@ struct transformation_like : Policy {
         (*this)(i, j) = *_ptr++;
     }
   }
+
+  template <typename U>
+  auto fill(std::initializer_list<U> list) -> std::enable_if_t<
+      std::is_assignable_v<typename Policy::element_type &, U>> {
+    fill(list.begin());
+  }
 };
 
 template <std::size_t Dims, typename T>

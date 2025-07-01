@@ -13,10 +13,14 @@ auto pts = tf::make_points<3>(raw_points);
 tf::tree<int, float, 3> point_tree(pts, tf::config_tree(4, 4));
 auto query_pt = tf::random_point<float, 3>();
 std::array<tf::nearest_neighbor<int, float, 3>, 10> knn_buffer;
-tf::neighbor_search(tf::make_form( // optional_transformation,
-                        point_tree, pts),
-                    query_pt,
-                    tf::make_nearest_neighbors(knn_buffer.begin(), 10 /*, search_radius*/));
+auto knn = tf::neighbor_search(
+    tf::make_form( // optional_transformation,
+        point_tree, pts),
+    query_pt,
+    tf::make_nearest_neighbors(knn_buffer.begin(), 10 /*, search_radius*/));
+for (auto [primitive_id, metric_point] : knn) {
+    auto [distance2, closest_point] = metric_point;
+}
 ```
 
 <p float="left">

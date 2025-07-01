@@ -20,8 +20,8 @@ namespace tf {
 ///
 /// Users must supply a random-access iterator to a preallocated buffer of
 /// either:
-/// - `tf::tree_closest_point<Index, RealT, Dims>`
-/// - `tf::tree_closest_point_pair<Index, RealT, Dims>`,
+/// - `tf::nearest_neighbor<Index, RealT, Dims>`
+/// - `tf::nearest_neighbor_pair<Index, RealT, Dims>`,
 /// depending on the query.
 ///
 /// It supports optional radius-limited queries, which discard elements beyond

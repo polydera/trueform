@@ -276,19 +276,6 @@ public:
 
 vtkStandardNewMacro(cursor_interactor);
 
-auto center_and_scale(vtkPolyData *poly) -> void {
-  auto pts = get_points(poly);
-  auto aabb = tf::aabb_from(tf::make_polygon(pts));
-  auto center = aabb.center().as_vector();
-  auto r = aabb.diagonal().length() / 2;
-  for (auto pt : pts) {
-    pt -= center;
-    auto v = pt.as_vector_view();
-    v *= 10 / r;
-    pt = tf::make_point(v);
-  }
-}
-
 auto set_at(vtkMatrix4x4 *mat, tf::vector<float, 3> at) -> void {
   auto tr = tf::random_transformation(at);
   for (int i = 0; i < 3; ++i)

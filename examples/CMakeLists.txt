@@ -34,19 +34,6 @@ add_subdirectory(nanoflann)
 list(APPEND EXAMPLE_EXECUTABLES ${NANOFLANN_EXAMPLE_EXECUTABLES})
 list(APPEND EXAMPLE_TARGETS ${NANOFLANN_EXAMPLE_TARGETS})
 
-# Optionally try to find VTK and store result for subdir
-find_package(CGAL QUIET)
-set(TRUEFORM_HAS_CGAL ${CGAL_FOUND})
-if(CGAL_FOUND)
-  message(STATUS "GCAL found (version ${CGAL_VERSION}), adding CGAL examples.")
-  add_subdirectory(cgal)
-else()
-  message(STATUS "CGAL not found — skipping CGAL examples.")
-endif()
-
-list(APPEND EXAMPLE_EXECUTABLES ${CGAL_EXAMPLE_EXECUTABLES})
-list(APPEND EXAMPLE_TARGETS ${CGAL_EXAMPLE_TARGETS})
-
 if(ENABLE_ASAN)
   foreach(target ${EXAMPLE_EXECUTABLES})
     target_compile_options(${target} PRIVATE -fsanitize=address

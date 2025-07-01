@@ -15,10 +15,14 @@ auto pts = tf::make_points<3>(raw_points);
 tf::tree<int, float, 3> point_tree(pts, tf::config_tree(4, 4));
 auto query_pt = tf::random_point<float, 3>();
 std::array<tf::nearest_neighbor<int, float, 3>, 10> knn_buffer;
-tf::neighbor_search(tf::make_form( // optional_transformation,
-                        point_tree, pts),
-                    query_pt,
-                    tf::make_nearest_neighbors(knn_buffer.begin(), 10 /*, search_radius*/));
+auto knn = tf::neighbor_search(
+    tf::make_form( // optional_transformation,
+        point_tree, pts),
+    query_pt,
+    tf::make_nearest_neighbors(knn_buffer.begin(), 10 /*, search_radius*/));
+for (auto [primitive_id, metric_point] : knn) {
+    auto [distance2, closest_point] = metric_point;
+}
 ```
 
 <p float="left">
@@ -148,9 +152,18 @@ target_link_libraries(my_target PRIVATE tf::trueform)
 ```
 
 ## Documentation
+We provide two main resources to help you get started and master trueform:
 
-* [Tutorial](./docs/tutorial.md): A detailed, narrative guide that walks you through the entire library, from core concepts to advanced queries. This is the best place to start.
-* [Examples](./examples/): A directory of standalone examples demonstrating various features and use cases.
+### [Tutorial](./docs/tutorial.md)
+
+**This is the best place to start.** It's a comprehensive document that serves as both a guided tour of the library's philosophy and a complete reference manual for the `core`, `spatial`, and `topology` modules.
+
+### [Examples](./examples/)
+
+For hands-on, practical applications, explore the examples directory. It contains a collection of standalone programs organized into three categories:
+    * **Core Functionality**: Self-contained demonstrations of primary features.
+    * **Comparisons**: Performance and usage comparisons against libraries like `nanoflann`.
+    * **VTK Integration**: Guides for using trueform with tools like `VTK`.
 
 ## Publications
 

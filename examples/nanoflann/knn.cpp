@@ -1,8 +1,8 @@
 #include "../util/read_mesh.hpp"
 #include "./nanoflann.hpp"
-#include "trueform/spatial.hpp"
 #include "trueform/core.hpp"
 #include "trueform/random.hpp"
+#include "trueform/spatial.hpp"
 #include <filesystem>
 #include <vector>
 
@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
   }
 
   std::cout << "Reading file: " << path.filename() << std::endl;
-  auto [raw_points, raw_triangle_faces] = tf::examples::read_mesh(path.c_str());
+  auto [raw_points, raw_triangle_faces] = tf::examples::read_mesh(argv[1]);
   // create a point range from std::vector<float>
   std::cout << "  Contains " << (raw_points.size() / 3) << " points."
             << std::endl;
@@ -47,8 +47,7 @@ int main(int argc, char *argv[]) {
 
   auto points = tf::make_points<3>(raw_points);
   PointCloud cloud;
-  for (auto p : points)
-    cloud.pts.push_back(p);
+  std::copy(points.begin(), points.end(), std::back_inserter(cloud.pts));
 
   tf::tick();
   KDTree index(3, cloud, KDTreeSingleIndexAdaptorParams(10));

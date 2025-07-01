@@ -23,6 +23,11 @@ struct pt_vec_dref {
   auto operator()(const point_like<Dims, Policy> &pt) const {
     return pt.as_vector_view();
   }
+
+  template <std::size_t Dims, typename Policy>
+  auto operator()(point_like<Dims, Policy> &&pt) const {
+    return pt.as_vector_view();
+  }
 };
 } // namespace core
 
@@ -31,6 +36,11 @@ template <typename Policy> struct points : Policy {
   points(Policy &&r) : Policy{r} {}
 
   auto as_vector_view() const {
+    auto r = tf::make_mapped_range(*this, core::pt_vec_dref{});
+    return vectors<decltype(r)>{r};
+  }
+
+  auto as_vector_view() {
     auto r = tf::make_mapped_range(*this, core::pt_vec_dref{});
     return vectors<decltype(r)>{r};
   }

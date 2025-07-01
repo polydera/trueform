@@ -24,7 +24,7 @@ namespace core {
 template <typename Policy, typename T>
 auto contains_point(const tf::polygon<2, Policy> &poly,
                     const point_like<2, T> &input_pt) -> containment {
-  return contains_coplanar_point(
+  return core::contains_coplanar_point(
       poly, input_pt,
       std::numeric_limits<tf::coordinate_type<Policy, T>>::epsilon());
 }
@@ -44,9 +44,10 @@ auto contains_point(const tf::polygon<Dims, Policy> &poly_in,
   auto d = tf::dot(poly.plane().normal, input_pt) + poly.plane().d;
   if (std::abs(d) > std::numeric_limits<decltype(d)>::epsilon())
     return containment::outside;
-  return contains_coplanar_point(poly, input_pt - d * poly.plane().normal,
-                                 tf::make_simple_projector(poly.plane().normal),
-                                 std::numeric_limits<decltype(d)>::epsilon());
+  return core::contains_coplanar_point(
+      poly, input_pt - d * poly.plane().normal,
+      tf::make_simple_projector(poly.plane().normal),
+      std::numeric_limits<decltype(d)>::epsilon());
 }
 } // namespace core
 template <std::size_t Dims, typename Policy, typename T>

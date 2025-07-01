@@ -17,10 +17,13 @@ auto wrap_like(const T0 &, T1 &&t) -> T1 && {
 }
 
 template <typename T> auto unwrapped(T &&t) -> decltype(auto) {
-  auto unwrap_ = unwrap(static_cast<T &&>(t));
+  auto &&unwrap_ = unwrap(static_cast<T &&>(t));
   if constexpr (std::is_same_v<std::decay_t<T>,
                                std::decay_t<decltype(unwrap_)>>)
-    return static_cast<T &&>(t);
+    if constexpr (std::is_rvalue_reference_v<T &&>)
+      return static_cast<T>(t);
+    else
+      return static_cast<T &&>(t);
   else
     return unwrapped(unwrap_);
 }

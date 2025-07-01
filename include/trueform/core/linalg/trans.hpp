@@ -16,6 +16,14 @@ template <typename T, std::size_t Dims> struct trans {
   trans() = default;
   trans(std::array<std::array<T, Dims + 1>, Dims> _trans) : _trans{_trans} {}
 
+  trans(std::initializer_list<T> list) {
+    auto _ptr = list.begin();
+    for (std::size_t i = 0; i < n_rows; ++i) {
+      for (std::size_t j = 0; j < n_columns; ++j)
+        (*this)(i, j) = *_ptr++;
+    }
+  }
+
   auto operator()(std::size_t i, std::size_t j) const -> decltype(auto) {
     return _trans[i][j];
   }
