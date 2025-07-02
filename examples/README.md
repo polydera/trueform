@@ -3,7 +3,7 @@
 The examples are grouped into three main categories:
 
 * [Core Functionality](#core-functionality): Self-contained examples that demonstrate the primary features of the trueform library, from primitive queries to the compositional policy system.
-* [Comparisons](#comparison-nanoflannnanoflann): Performance and usage comparisons against other well-established libraries, showcasing the efficiency of trueform's data structures and algorithms.
+* [Comparisons](#comparisons): Performance and usage comparisons against other well-established libraries like `CGAL` and `nanoflann`, showcasing the efficiency of trueform's data structures and algorithms.
 * [VTK Integration](#vtk-integrationvtk): Practical guides on how to integrate `trueform` into a larger framework like `VTK`, demonstrating how to create `trueform` views directly over `VTK`'s data structures.
 
 To build examples, run:
@@ -56,11 +56,11 @@ This example demonstrates how to find all intersecting triangles between a mesh 
 * Using the general-purpose tf::search to perform the same query, showing how to use tf::intersects as a predicate for both the broad-phase and narrow-phase checks.
 * Using tf::local_vector for thread-safe parallel collection.
 
-## [Comparison: nanoflann](./nanoflann)
+## Comparisons
 
-This examples contain a direct comparison against the well-established nanoflann library.
+These examples contain a direct comparison against well-established libraries.
 
-### [k-NN Queries](./nanoflann/knn.cpp)
+### [nanoflann: k-NN Queries](./nanoflann/knn.cpp)
 
 This example provides a direct performance benchmark for k-Nearest Neighbor (k-NN) queries, comparing trueform's tf::tree against nanoflann. It demonstrates how to create a nanoflann-compatible adaptor for trueform data structures.
 
@@ -69,6 +69,18 @@ This example provides a direct performance benchmark for k-Nearest Neighbor (k-N
 * Building a tf::tree and a nanoflann::KDTree from the same data source.
 * Benchmarking k-NN query performance for both libraries over a range of k values.
 * Demonstrating the performance advantage of trueform's spatial query system.
+
+### [CGAL: Intersecting Primitives](./cgal/intersecting_primitives.cpp)
+
+This example provides direct performance benchmark for collecting intersecting primitives, comparing trueform's gather_ids against CGAL.
+
+**NOTE:** CGALS call `all_intersecting_primitives` produces less information and terminates early, as it only returns primitives on the first mesh that intersect any primitive on the second mesh, while trueform's `tf::gather_ids` returns all intersecting primitive pairs. Hence it does more work in less time.
+
+#### Features Showcased:
+
+* Building a `tf::tree`
+* Transformations of a `tf::tree`
+* Using `tf::gather_ids`
 
 ## [VTK Integration](./vtk/)
 

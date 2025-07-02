@@ -11,10 +11,11 @@ namespace tf {
 template <typename Index, typename T> class offset_block_buffer {
 public:
   using iterator = decltype(views::make_offset_block_begin(
-      std::declval<tf::buffer<Index>>(), std::declval<tf::buffer<Index>>()));
+      std::declval<tf::buffer<Index> &>(),
+      std::declval<tf::buffer<Index> &>()));
   using const_iterator = decltype(views::make_offset_block_begin(
-      std::declval<const tf::buffer<Index>>(),
-      std::declval<const tf::buffer<Index>>()));
+      std::declval<const tf::buffer<Index> &>(),
+      std::declval<const tf::buffer<Index> &>()));
   using value_type = typename std::iterator_traits<iterator>::value_type;
   using reference = typename std::iterator_traits<iterator>::reference;
   using const_reference =
@@ -51,7 +52,7 @@ public:
 
   auto back() -> reference { return *(end() - 1); }
 
-  auto operator[](std::size_t i) const -> const reference {
+  auto operator[](std::size_t i) const -> const_reference {
     return *(begin() + i);
   }
 

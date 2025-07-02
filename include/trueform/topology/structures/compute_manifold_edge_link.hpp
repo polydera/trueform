@@ -17,7 +17,7 @@ auto compute_manifold_edge_link(
     const Range0 &faces, const tf::face_membership<Index> &blink,
     tf::blocked_buffer<manifold_edge_peer<Index>, N> &peer_blocks) {
   auto task_f = [&](Index face_id) {
-    auto &peers = peer_blocks[face_id];
+    auto &&peers = peer_blocks[face_id];
     const auto &face = faces[face_id];
     Index current = N - 1;
     std::array<Index, 2> inner_peers;

@@ -1,8 +1,10 @@
 # trueform
 
-**Real-time geometry built on composable range-based policies**
+**Real-time geometric processing built on composable range-based policies**
 
-`trueform` is a C++ library for real-time geometric processing, built on the principles of composable views and inline policy injection. It operates directly on you *plain-old-data*, by providing semantic views that wrap it with geometric meaning. From individual primitives to structured ranges, from meta-data injection to spatial queries, every operation happens directly on your data; enriched with semantics without architectural changes.
+`trueform` is a C++ library for real-time geometric processing, built on the principles of composable views and inline policy injection. It operates directly on your *plain-old-data*, by providing semantic views that wrap it with geometric meaning.
+
+From individual primitives to structured ranges, from metadata injection to spatial and topological processing — every operation happens directly on your data; enriched with semantics, without architectural changes.
 
 The library integrates directly at the call site: no boilerplate, no architectural rewrites, no heavyweight setup. It acts as a lightweight, expressive layer over your existing data. Like C++ ranges or lambdas, it lets you build rich, semantic geometry inline, without sacrificing performance or control.
 
@@ -162,7 +164,7 @@ We provide two main resources to help you get started and master trueform:
 
 For hands-on, practical applications, explore the examples directory. It contains a collection of standalone programs organized into three categories:
 * **Core Functionality**: Self-contained demonstrations of primary features.
-* **Comparisons**: Performance and usage comparisons against libraries like `nanoflann`.
+* **Comparisons**: Performance and usage comparisons against libraries like `CGAL` and `nanoflann`.
 * **VTK Integration**: Guides for using trueform with tools like `VTK`.
 
 ## Publications

@@ -22,17 +22,28 @@ set(TRUEFORM_HAS_VTK ${VTK_FOUND})
 if(VTK_FOUND)
   message(STATUS "VTK found (version ${VTK_VERSION}), adding VTK examples.")
   add_subdirectory(vtk)
+
+  list(APPEND EXAMPLE_EXECUTABLES ${VTK_EXAMPLE_EXECUTABLES})
+  list(APPEND EXAMPLE_TARGETS ${VTK_EXAMPLE_TARGETS})
 else()
   message(STATUS "VTK not found — skipping VTK examples.")
 endif()
 
-# Combine subdirectory results (populated via PARENT_SCOPE)
-list(APPEND EXAMPLE_EXECUTABLES ${VTK_EXAMPLE_EXECUTABLES})
-list(APPEND EXAMPLE_TARGETS ${VTK_EXAMPLE_TARGETS})
-
 add_subdirectory(nanoflann)
 list(APPEND EXAMPLE_EXECUTABLES ${NANOFLANN_EXAMPLE_EXECUTABLES})
 list(APPEND EXAMPLE_TARGETS ${NANOFLANN_EXAMPLE_TARGETS})
+
+find_package(CGAL QUIET)
+set(TRUEFORM_HAS_CGAL ${CGAL_FOUND})
+if(CGAL_FOUND)
+  message(STATUS "GCAL found (version ${CGAL_VERSION}), adding CGAL examples.")
+  add_subdirectory(cgal)
+
+  list(APPEND EXAMPLE_EXECUTABLES ${CGAL_EXAMPLE_EXECUTABLES})
+  list(APPEND EXAMPLE_TARGETS ${CGAL_EXAMPLE_TARGETS})
+else()
+  message(STATUS "CGAL not found — skipping CGAL examples.")
+endif()
 
 if(ENABLE_ASAN)
   foreach(target ${EXAMPLE_EXECUTABLES})
