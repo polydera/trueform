@@ -1,29 +1,141 @@
 # trueform
 
-**High-Performance Geometry Processing**
+**Real-time geometry built on composable range-based policies**
 
-This repository is a growing collection of fast, production-grade tools for general-purpose geometric computing.
+`trueform` is a C++ library for real-time geometric processing, built on the principles of composable views and inline policy injection. It operates directly on you *plain-old-data*, by providing semantic views that wrap it with geometric meaning. From individual primitives to structured ranges, from meta-data injection to spatial queries, every operation happens directly on your data; enriched with semantics without architectural changes.
 
-For usage examples and benchmarks, see the [Features](#-features) section.
+The library integrates directly at the call site: no boilerplate, no architectural rewrites, no heavyweight setup. It acts as a lightweight, expressive layer over your existing data. Like C++ ranges or lambdas, it lets you build rich, semantic geometry inline, without sacrificing performance or control.
 
----
+### Simplifying Common Tasks
 
-## 🔧 How to Use
+`trueform` can serve as a simpler, faster replacement for common operations you already perform with other libraries. For example, you can replace `nanoflann` for *k-NN* queries with just a few lines of code:
+```c++
+std::vector<float> raw_points;
+auto pts = tf::make_points<3>(raw_points);
+tf::tree<int, float, 3> point_tree(pts, tf::config_tree(4, 4));
+auto query_pt = tf::random_point<float, 3>();
+std::array<tf::nearest_neighbor<int, float, 3>, 10> knn_buffer;
+auto knn = tf::neighbor_search(
+    tf::make_form( // optional_transformation,
+        point_tree, pts),
+    query_pt,
+    tf::make_nearest_neighbors(knn_buffer.begin(), 10 /*, search_radius*/));
+for (auto [primitive_id, metric_point] : knn) {
+    auto [distance2, closest_point] = metric_point;
+}
+```
 
-`trueform` is a modern C++17 header-only library and is designed to be simple to integrate.
+<p float="left">
+  <img src="./docs/img/nano-build.png" width="49%" />
+  <img src="./docs/img/nano-knn.png" width="49%" />
+</p>
 
-### 📦 Requirements
+or replace your use of `CGAL` for *mesh-intersection* queries with an equally minimal call — and significantly faster execution:
+```c++
+std::vector<int> raw_triangle_ids;
+auto triangles = tf::make_polygons(
+    tf::make_blocked_range<3>(raw_triangle_ids), pts);
+tf::tree<int, float, 3> tree(triangles, tf::config_tree(4, 4));
+std::vector<std::pair<int, int>> intersecting_primitives;
+tf::gather_ids(
+    tf::make_form(tree, triangles),
+    tf::make_form( // M.dot(x - pts[0]) + pts[10]
+        tf::random_frame_at(pts[0], pts[10]), tree, triangles),
+    tf::intersects_f, std::back_inserter(intersecting_primitives));
+```
+<p float="left">
+  <img src="./docs/img/cgal-build.png" width="49%" />
+  <img src="./docs/img/cgal_speedup.png" width="49%" />
+</p>
 
-- C++17 or later
-- CMake ≥ 3.14
-- TBB (Threading Building Blocks)
+This reflects `trueform`’s design principles: it’s meant to feel like composing ranges and lambdas — inline, expressive, and non-invasive. 
 
+### Showcase: The Power of Composition
 
-### 🛠️ CMake Integration
+While `trueform` can replace existing tools, its real power is its expressive, compositional API. Consider a common challenge: modeling a moving point cloud of "emitters." Each emitter needs a unique ID, a static mounting normal, a dynamic aiming direction, and a color—all sourced from different data vectors. With `trueform`, this complex assembly becomes a single, readable pipeline:
+```c++
+// --- Raw Data ---
+std::vector<float> raw_pts;
+std::vector<float> raw_normals;
+std::vector<std::string> ids;
+std::vector<float> raw_direction;
+std::vector<std::array<float, 3>> colors;
 
-#### Using FetchContent
+// --- Composition Pipeline ---
+// Start with raw points and progressively enrich them with semantics.
+auto emitters =
+    tf::make_points<3>(raw_pts)
+    // 1. Tag the entire collection with a single ID.
+    | tf::tag_id("emitter_array_alpha")
+    // 2. Zip per-element data onto the range.
+    | tf::zip_ids(ids)
+    | tf::zip_normals(
+          tf::make_unit_vectors<3>(raw_normals)
+          // Policies can be nested: tag the zipped normals themselves.
+          | tf::tag_id("mount_normals"))
+    // 3. Zip a composite state from multiple data sources.
+    | tf::zip_states(
+          tf::make_unit_vectors<3>(raw_direction)
+          | tf::tag_id("aim_directions"),
+          tf::make_view(colors)
+          | tf::tag_id("color_data"));
+```
+The `emitters` object still behaves like a simple range of points, compatible with any algorithm on point primitives. The real power is realized in the query, where its attached policies are correctly preserved or transformed, enabling complex, stateful logic:
+```c++
+// --- Using the Enriched Object in a Query ---
+tf::tree<int, float, 3> emitter_tree{emitters, tf::config_tree(4, 4)};
+tf::frame<float, 3> frame = tf::random_transformation<float, 3>();
+auto query_pt = tf::random_point<float, 3>() | tf::tag_id("target");
 
-Add this to your `CMakeLists.txt`:
+float aim_radius2 = 4.0f; // Use squared distance for performance
+float aim_cos_angle = 0.95f;
+
+tf::search(
+    // The form applies the dynamic frame to the static tree and emitters.
+    tf::make_form(frame, emitter_tree, emitters),
+    // Broad-phase: Quickly cull any nodes outside the target radius.
+    [&](const auto &aabb) {
+        return tf::distance2(aabb, query_pt) < aim_radius2;
+    },
+    // Narrow-phase: The "brain" of the query. Evaluate each potential
+    // emitter.
+    // auto transformed_emitter = tf::transformed(emitters[index], frame);
+    [&](const auto &transformed_emitter) {
+        if (tf::distance2(transformed_emitter, query_pt) >= aim_radius2)
+        return;
+        // Access all the policy data, which has been correctly handled.
+        const auto &id =
+            transformed_emitter.id(); // The per-emitter ID is preserved.
+        const auto &mount_normal =
+            transformed_emitter.normal(); // The normal vector is transformed.
+        // `direction` was transformed, while `color` was passed through
+        // unchanged.
+        const auto &[aim_direction, color] = transformed_emitter.state();
+        auto to_target = tf::normalized(query_pt - transformed_emitter);
+        // Check if the target is in the turret's firing arc and aimed
+        // correctly.
+        if (tf::dot(to_target, mount_normal) > 0 &&
+            tf::dot(to_target, aim_direction) > aim_cos_angle) {
+
+        std::cout << "Emitter " << id << " can hit " << query_pt.id()
+                    << "!\n";
+        }
+    });
+```
+The result is a highly expressive, architecture-agnostic approach to geometry that integrates into your existing code.
+
+## Getting Started
+
+### Requirements
+
+* **C++17** or later
+* **Intel TBB** (Threading Building Blocks) for parallelism
+
+### Installation
+
+`trueform` is a header-only library. The recommended way to integrate it into your project is with CMake's `FetchContent`.
+
+Add the following to your `CMakeLists.txt`:
 
 ```cmake
 include(FetchContent)
@@ -39,89 +151,28 @@ FetchContent_MakeAvailable(trueform)
 target_link_libraries(my_target PRIVATE tf::trueform)
 ```
 
-### Examples
+## Documentation
+We provide two main resources to help you get started and master trueform:
 
-Examples are located in the directory [examples](./examples/). To build them, run:
+### [Tutorial](./docs/tutorial.md)
 
-```bash
-mkdir build
-cd build
-cmake ..
-make examples -j8
-```
----
+**This is the best place to start.** It's a comprehensive document that serves as both a guided tour of the library's philosophy and a complete reference manual for the `core`, `spatial`, and `topology` modules.
 
-# ✨ Features
+### [Examples](./examples/)
 
+For hands-on, practical applications, explore the examples directory. It contains a collection of standalone programs organized into three categories:
+* **Core Functionality**: Self-contained demonstrations of primary features.
+* **Comparisons**: Performance and usage comparisons against libraries like `nanoflann`.
+* **VTK Integration**: Guides for using trueform with tools like `VTK`.
 
-## 📦 tf::tree
+## Publications
 
-**A General-Purpose Spatial Hierarchy for Real-Time Geometry Queries.**
+- > **tf::tree: A General-Purpose Spatial Hierarchy for Real-Time Geometry Queries.**  
+Žiga Sajovic, Dejan Knez, and Robert Korez.  
+*Institute of Electrical and Electronics Engineers (IEEE),* June 2025.  
+[https://doi.org/10.36227/techrxiv.174952959.92977743/v1](https://doi.org/10.36227/techrxiv.174952959.92977743/v1)
 
-`tf::tree` is written in modern C++ with an STL-inspired interface. Its behavior, from construction to queries, is fully customizable using lambdas. This allows you to easily build trees over any kind of primitives and inject custom behaviour, like transformations or filtering, directly into the query.
-
----
-
-### 🔨 Building the Tree
-
-Trees are built from geometric primitives (e.g. triangles) using a parallel partitioning strategy. You can control leaf size, branching factor, and the partitioning algorithm.
-
-📎 **Example:** [`build_tree.cpp`](./examples/build_tree.cpp)  
-Builds one spatial tree from an input mesh and one from its points (taken as a point cloud).
-
----
-
-### 🔍 Search Queries
-
-Supports search queries between: 
-- A primitive and a tree
-- Two trees
-- A tree and itself (for self-intersection or duplication detection)
-
-📎 **Examples:**
-- [`search_tree_by_primitive.cpp`](./examples/search_tree_by_primitive.cpp)  
-  Finds the all triangles within epsilon of a query point.
-- [`search_tree_by_tree.cpp`](./examples/search_tree_by_tree.cpp)  
-  Finds all primitive-id pairs within epsilon of each other.
-- [`search_tree_by_tree_collision.cpp`](./examples/search_tree_by_tree_collision.cpp)  
-  Finds first collision of primitives within epsilon of each other.
-- [`search_tree_by_self.cpp`](./examples/search_tree_by_self.cpp)  
-  Finds all primitive-id pairs within epislon of each other in a point cloud.
-
----
-
-### 🌌 Nearness Queries
-
-Supports nearness queries between:
-- A primitive and a tree
-- Two trees
-
-📎 **Examples:**
-- [`nearness_search_tree_by_primitive.cpp`](./examples/nearness_search_tree_by_primitive.cpp)  
-  Finds the closest point (and knn) on the triangle mesh to a query point.
-- [`nearness_search_tree_by_tree.cpp`](./examples/nearness_search_tree_by_tree.cpp)  
-  Finds a closest point pair (and knn) between two point clouds.
-
----
-
-### 📊Benchmarks
-
-The evaluations below were compiled with *Clang 18* using maximum optimization settings. Benchmarks were conducted on an `Intel i7-9750H` CPU with 6 physical cores.
-
-
-<p align="center">
-  <img src="papers/tree/figures/libraries-cons.png" width="45%" alt="Libraries Comparison">
-  <img src="papers/tree/figures/self_search_matrix.png" width="45%" alt="Self Search Matrix">
-</p>
-
-**Left:** Construction time comparison between <code>tf::tree</code>, CGAL, and libigl.  
-**Right:** Performance of <code>tf::tree</code> on ε-self-intersection detection. Each curve shows query time over varying rates of duplicated points perturbed by ε.
-
-<p align="center">
-  <img src="papers/tree/figures/closest-kde.png" width="45%" alt="Closest KDE">
-  <img src="papers/tree/figures/intersect-kde.png" width="45%" alt="Intersect KDE">
-</p>
-
-Distributions generated from 10,000 randomized relative placements of model pairs.  
-**Left:** Closest-point queries with non-intersecting configurations.  
-**Right:** Intersection queries with intersecting configurations.
+- > **Real-Time Mesh Booleans that Commute with Mesh Idealization.**  
+Žiga Sajovic and Dejan Knez  
+ *Institute of Electrical and Electronics Engineers (IEEE),* May 2025.  
+ [https://doi.org/10.36227/techrxiv.174667714.42575478/v1](https://doi.org/10.36227/techrxiv.174667714.42575478/v1)

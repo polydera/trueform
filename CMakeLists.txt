@@ -6,6 +6,14 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
       CACHE STRING "Build type (default Release)" FORCE)
 endif()
 
+
+option(ENABLE_ASAN "Enable Address Sanitizer" OFF)
+
+if(ENABLE_ASAN)
+  message("Enabling ASAN and DEBUG")
+  set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
+endif()
+
 project(trueform LANGUAGES CXX)
 
 add_library(trueform INTERFACE)

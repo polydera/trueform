@@ -1,0 +1,32 @@
+/*
+ * Copyright (c) 2025 Žiga Sajovic, XLAB
+ * Distributed under the Boost Software License, Version 1.0.
+ * https://github.com/xlabmedical/trueform
+ */
+#pragma once
+#include "./tuple.hpp"
+#include <type_traits>
+
+namespace tf::core {
+
+namespace detail {
+template <typename, typename, typename = std::void_t<>>
+struct is_transformable : std::false_type {};
+
+template <typename T, typename U>
+struct is_transformable<
+    T, U,
+    std::void_t<decltype(transformed(std::declval<T>(), std::declval<U>()))>>
+    : std::true_type {};
+
+template <typename... Ts, typename U>
+struct is_transformable<tf::tuple<Ts...>, U>
+    : std::integral_constant<bool,
+                             (... && detail::is_transformable<Ts, U>::value)> {
+};
+} // namespace detail
+
+template <typename T, typename U>
+inline constexpr bool is_transformable =
+    detail::is_transformable<std::decay_t<T>, U>::value;
+} // namespace tf::core
