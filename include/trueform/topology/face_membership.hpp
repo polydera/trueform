@@ -28,7 +28,7 @@ public:
     auto n_unique_ids = polygons.points().size();
     constexpr auto n_gons = tf::static_size_v<decltype(polygons[0])>;
     static_assert(n_gons != tf::dynamic_size);
-    build(polygons, n_unique_ids, n_gons * polygons.size());
+    build(polygons.faces(), n_unique_ids, n_gons * polygons.size());
   }
 };
 

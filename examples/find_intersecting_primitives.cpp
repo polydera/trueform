@@ -1,5 +1,4 @@
 #include <iostream>
-#include <set> // Added for result deduplication
 #include <utility>
 #include <vector>
 
@@ -9,14 +8,11 @@
 // Helper function to print the results in a standardized way.
 void print_results(const std::string &method_name,
                    const std::vector<std::pair<int, int>> &pairs) {
-  // Use a set to store and print unique pairs, as some methods might find
-  // duplicates.
-  std::set<std::pair<int, int>> unique_pairs(pairs.begin(), pairs.end());
 
   std::cout << "\n--- Results from " << method_name << " ---" << std::endl;
-  std::cout << "Found " << unique_pairs.size()
-            << " unique intersecting pairs:" << std::endl;
-  for (const auto &pair : unique_pairs) {
+  std::cout << "Found " << pairs.size()
+            << " intersecting pairs:" << std::endl;
+  for (const auto &pair : pairs) {
     std::cout << "  - Original Triangle " << pair.first
               << " intersects Transformed Triangle " << pair.second
               << std::endl;

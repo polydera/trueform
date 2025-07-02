@@ -10,7 +10,7 @@ void print_results(const std::string &method_name,
                    const std::vector<std::pair<int, int>> &pairs) {
   std::cout << "\n--- Results from " << method_name << " ---" << std::endl;
   std::cout << "Found " << pairs.size()
-            << " unique coincident pairs:" << std::endl;
+            << " coincident pairs:" << std::endl;
   for (const auto &pair : pairs) {
     std::cout << "  - Pair: (" << pair.first << ", " << pair.second << ")"
               << std::endl;

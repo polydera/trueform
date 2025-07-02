@@ -82,7 +82,7 @@ template <typename T, std::size_t Dims> struct pt {
   template <typename... Ts,
             typename V = std::enable_if_t<
                 (sizeof...(Ts) == Dims) &&
-                    (... && std::is_same_v<std::decay_t<Ts>, coordinate_type>),
+                    (... && std::is_convertible_v<std::decay_t<Ts>, T>),
                 void>>
   pt(Ts &&...ts) : _data{static_cast<Ts &&>(ts)...} {}
 

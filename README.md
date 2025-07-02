@@ -161,9 +161,9 @@ We provide two main resources to help you get started and master trueform:
 ### [Examples](./examples/)
 
 For hands-on, practical applications, explore the examples directory. It contains a collection of standalone programs organized into three categories:
-    * **Core Functionality**: Self-contained demonstrations of primary features.
-    * **Comparisons**: Performance and usage comparisons against libraries like `nanoflann`.
-    * **VTK Integration**: Guides for using trueform with tools like `VTK`.
+* **Core Functionality**: Self-contained demonstrations of primary features.
+* **Comparisons**: Performance and usage comparisons against libraries like `nanoflann`.
+* **VTK Integration**: Guides for using trueform with tools like `VTK`.
 
 ## Publications
 

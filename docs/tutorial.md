@@ -855,8 +855,32 @@ if(result1) {
 
 #### Face Membership
 
+```c++
+tf::face_membership<int> fm;
+fm.build(polygons);
+int n_unique_ids = polygons.points().size();
+int total_values = polygons.size() * n_vertices_per_polygon;
+fm.build(polygons.faces(), n_unique_ids, total_values);
+//
+for(auto face_id : fm[vertex_id]){}
+```
+
 #### Vertex Link
 
+```c++
+tf::vertex_link<int> v_link;
+v_link.build(polygons.faces(), face_membership);
+//
+for(auto next_vertex_id: v_link[vertex_id]) {}
+```
+
 #### Face Link
+
+```c++
+tf::face_link<int> f_link;
+f_link.build(polygons.faces(), face_membership);
+//
+for(auto next_face_id: f_link[face_id]) {}
+```
 
 #### Manifold Edge Link
