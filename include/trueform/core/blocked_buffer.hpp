@@ -46,7 +46,7 @@ public:
 
   auto back() -> reference { return *(end() - 1); }
 
-  auto operator[](std::size_t i) const -> const reference {
+  auto operator[](std::size_t i) const -> const_reference {
     return *(begin() + i);
   }
 

@@ -21,14 +21,15 @@ auto compute_vertex_link(const Range &input_blocks,
   auto fill_f = [&input_blocks, &blink](Index id, tf::buffer<Index> &buff) {
     auto old_size = buff.size();
     for (const auto &block : tf::make_indirect_range(blink[id], input_blocks)) {
-      auto sub_id = std::find(block.begin(), block.end(), id) - block.begin();
+      Index sub_id = std::find(block.begin(), block.end(), id) - block.begin();
       auto push_f = [&](auto n_id) {
         if (std::find(buff.begin() + old_size, buff.end(), block[n_id]) ==
             buff.end())
           buff.push_back(block[n_id]);
       };
-      push_f(tf::circular_decrement(sub_id, block.size()));
-      push_f(tf::circular_increment(sub_id, block.size()));
+      Index size = block.size();
+      push_f(tf::circular_decrement(sub_id, size));
+      push_f(tf::circular_increment(sub_id, size));
     }
   };
   tf::generate_offset_blocks(tf::make_sequence_range(blink.size()), offsets,
@@ -57,8 +58,9 @@ auto compute_vertex_link(
             buff.end())
           buff.push_back(block[n_id]);
       };
-      push_f(tf::circular_decrement(sub_id, block.size()));
-      push_f(tf::circular_increment(sub_id, block.size()));
+      Index size = block.size();
+      push_f(tf::circular_decrement(Index(sub_id), size));
+      push_f(tf::circular_increment(Index(sub_id), size));
     }
   };
   tf::generate_offset_blocks(tf::make_sequence_range(blink.size()), offsets,

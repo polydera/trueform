@@ -73,7 +73,7 @@ public:
 
   auto back() -> reference { return *(end() - 1); }
 
-  auto operator[](std::size_t i) const -> const reference {
+  auto operator[](std::size_t i) const -> const_reference {
     return *(begin() + i);
   }
 
@@ -109,7 +109,7 @@ template <typename Range> auto make_zip_range(Range &&r) -> Range && {
 template <typename Range0, typename Range1, typename... Ranges>
 auto make_zip_range(Range0 &&r0, Range1 &&r1, Ranges &&...r) {
   return tf::core::zip_range<std::decay_t<Range0>, std::decay_t<Range1>,
-                              std::decay_t<Ranges>...>(
+                             std::decay_t<Ranges>...>(
       static_cast<Range0 &&>(r0), static_cast<Range1 &&>(r1),
       static_cast<Ranges &&>(r)...);
 }
@@ -125,7 +125,6 @@ struct tuple_element<I, tf::core::zip_range<Ts...>>
     : tuple_element<I, tf::tuple<Ts...>> {};
 
 template <typename... Ts>
-struct tuple_size<tf::core::zip_range<Ts...>> : tuple_size<tf::tuple<Ts...>> {
-};
+struct tuple_size<tf::core::zip_range<Ts...>> : tuple_size<tf::tuple<Ts...>> {};
 
 } // namespace std

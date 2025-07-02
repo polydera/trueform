@@ -1,6 +1,10 @@
 # Tutorial
 
-`trueform` is a C++ library for real-time geometric processing, built on the principles of composable views and inline policy injection. It operates directly on you *plain-old-data*, by providing semantic views that wrap it with geometric meaning. From individual primitives to structured ranges, from meta-data injection to spatial queries, every operation happens directly on your data; enriched with semantics without architectural changes.
+**Real-time geometric processing built on composable range-based policies**
+
+`trueform` is a C++ library for real-time geometric processing, built on the principles of composable views and inline policy injection. It operates directly on your *plain-old-data*, by providing semantic views that wrap it with geometric meaning.
+
+From individual primitives to structured ranges, from metadata injection to spatial and topological processing — every operation happens directly on your data; enriched with semantics, without architectural changes.
 
 The library integrates directly at the call site: no boilerplate, no architectural rewrites, no heavyweight setup. It acts as a lightweight, expressive layer over your existing data. Like C++ ranges or lambdas, it lets you build rich, semantic geometry inline, without sacrificing performance or control.
 
@@ -851,36 +855,80 @@ if(result1) {
 
 ## Topology
 
+The `topology` module provides tools for understanding the structure and connectivity of a mesh. It contains both data structures for efficient adjacency queries and high-level algorithms for tasks like feature detection, path finding, and structural modification.
+
 ### Connectivity Structures
+
+To enable efficient traversal of the mesh graph, `trueform` provides several data structures that pre-compute adjacency information. This is essential for many geometry processing algorithms like smoothing, simplification, and feature detection.
 
 #### Face Membership
 
+The `tf::face_membership` structure is a fundamental building block for other topological queries. For each vertex ID, it stores a list of all the face IDs that include that vertex.
+
 ```c++
+// Assumes 'polygons' is a valid tf::polygons object.
 tf::face_membership<int> fm;
+
+// Build can be called on the polygons object directly...
 fm.build(polygons);
+
+// ...or on its underlying face and point data for more control.
 int n_unique_ids = polygons.points().size();
-int total_values = polygons.size() * n_vertices_per_polygon;
+int total_values = polygons.size() * 3; // Assuming triangles
 fm.build(polygons.faces(), n_unique_ids, total_values);
-//
-for(auto face_id : fm[vertex_id]){}
+
+// Query: get all faces connected to a specific vertex.
+for(auto face_id : fm[vertex_id]) {
+    // ... do something with the face ID ...
+}
 ```
 
 #### Vertex Link
 
+The `tf::vertex_link` (or "1-ring") stores, for each vertex, a list of all its adjacent (neighboring) vertices. It requires a pre-computed `face_membership` structure.
+
 ```c++
 tf::vertex_link<int> v_link;
 v_link.build(polygons.faces(), face_membership);
-//
-for(auto next_vertex_id: v_link[vertex_id]) {}
-```
+
+// Query: iterate over the 1-ring neighbors of a vertex.
+for(auto next_vertex_id: v_link[vertex_id]) {
+    // ... do something with the neighbor vertex ID ...
+}```
 
 #### Face Link
+
+The `tf::face_link` stores, for each face, a list of all its adjacent faces (those that share an edge). It also requires a pre-computed `face_membership` structure.
 
 ```c++
 tf::face_link<int> f_link;
 f_link.build(polygons.faces(), face_membership);
-//
-for(auto next_face_id: f_link[face_id]) {}
+
+// Query: iterate over the neighbors of a specific face.
+for(auto next_face_id: f_link[face_id]) {
+    // ... do something with the neighbor face ID ...
+}
 ```
 
 #### Manifold Edge Link
+
+The `tf::manifold_edge_link` is a more advanced structure that provides detailed information about each edge of a given face. It can determine if an edge is on a boundary or if it is a "manifold" edge shared with exactly one other face.
+
+```c++
+tf::manifold_edge_link<int, 3> me_link;
+me_link.build(polygons.faces(), face_membership);
+
+// Query: iterate over the edges of a face and inspect their properties.
+for (const tf::manifold_edge_peer<int>& peer : me_link[face_id]) {
+    std::cout << "Edge is manifold: " << (peer.is_manifold() ? "yes" : "no")
+              << std::endl;
+    std::cout << "Edge is boundary: " << (peer.is_boundary() ? "yes" : "no")
+              << std::endl;
+    
+    // A "simple" edge is a non-boundary, manifold edge.
+    if (peer.is_simple()) {
+        std::cout << "Edge is simple. Neighboring face id: " << peer.face_peer 
+                  << std::endl;
+    }
+}
+```
