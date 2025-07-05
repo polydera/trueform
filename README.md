@@ -8,123 +8,182 @@ From individual primitives to structured ranges, from metadata injection to spat
 
 The library integrates directly at the call site: no boilerplate, no architectural rewrites, no heavyweight setup. It acts as a lightweight, expressive layer over your existing data. Like C++ ranges or lambdas, it lets you build rich, semantic geometry inline, without sacrificing performance or control.
 
-### Simplifying Common Tasks
 
-`trueform` can serve as a simpler, faster replacement for common operations you already perform with other libraries. For example, you can replace `nanoflann` for *k-NN* queries with just a few lines of code:
-```c++
-std::vector<float> raw_points;
+## Features
+
+This section is a live showcase of key features. For in-depth usage and advanced patterns, see [Tutorial](./docs/tutorial.md) and [Examples](./examples/).
+
+### 🧠 Minimal, Expressive Primitives
+
+Create semantically rich geometry directly from your raw data.
+
+````c++
+std::vector<float> raw_points = { 0, 0, 0, 1, 0, 0, 0, 1, 0 };
+std::vector<int> triangle_indices = { 0, 1, 2 };
 auto pts = tf::make_points<3>(raw_points);
-tf::tree<int, float, 3> point_tree(pts, tf::config_tree(4, 4));
+auto triangles = tf::make_polygons(tf::make_blocked_range<3>(triangle_indices), pts);
+
+std::vector<std::string_view> ids = {"a"};
+std::vector<float> raw_normals = {0, 0, 1};
+std::vector<float> raw_directions = {1.f, 0.f, 0.f};
+std::vector<std::string_view> labels = {"label_A"};
+
+auto enriched_triangles = triangles
+    | tf::zip_ids(ids)
+    | tf::zip_normals(tf::make_unit_vectors<3>(raw_normals))
+    | tf::zip_states(tf::make_vectors<3>(raw_directions), labels);
+
+auto poly = enriched_triangles.front();
+````
+
+Geometric queries work on enriched primitives:
+
+```c++
+auto [metric, pt0, pt1] = tf::closest_metric_point_pair(poly, triangles.front());
+auto d2 = tf::distance2(poly, triangles.front());
+bool hit = tf::intersects(poly, triangles.front());
+auto [status, t, hit_pt] = tf::ray_hit(
+    tf::make_ray_between_points(pts[2], pts[0]),
+    triangles.front());
+//
+std::vector<float> distance_field{enriched_triangles.size()};
+tf::parallel_transform(enriched_triangles,
+                      distance_field,
+                      tf::distance_f(tf::make_plane(triangles.front()));
+```
+
+Metadata policies are preserved and transformed correctly:
+
+```c++
+tf::frame<float, 3> frame = tf::random_transformation<float, 3>();
+auto transformed = tf::transformed(poly, frame);
+
+const auto &id = transformed.id();
+const auto &n = transformed.normal();
+const auto &[transformed_direction, label] = transformed.state();
+```
+
+#### Tutorial: Core
+
+See [Tutorial: Core](./docs/tutorial.md#core) for a detailed walk-through.
+
+### 🌌 Spatial Queries
+
+Use `trueform` to build fast acceleration structures over any range of geometric primitives. With `tf::tree`, you can organize space for nearest-neighbor queries, intersection tests, and spatial reasoning. Combine it with `tf::form` to apply transformations at query time — without altering your raw data.
+
+#### 🧱 Build a Tree from Any Primitive Range
+
+```c++
+auto points = tf::make_points<3>(raw);
+tf::tree<int, float, 3> tree(points, tf::config_tree(4, 4));
+```
+
+Any range of primitives — points, segments, polygons — can be used to build a tree.
+
+Use `make_form(...)` to express transformations inline:
+
+```c++
+auto query_form = tf::make_form(frame, tree, points);
+```
+A `tf::form` is a lightweight wrapper that allows you to run queries or evaluations on transformed geometry — without copying or mutating your original structure.
+
+#### 🔍 Nearest Neighbors
+
+Fast k-NN or radius-based queries with no external dependencies:
+
+```c++
 auto query_pt = tf::random_point<float, 3>();
 std::array<tf::nearest_neighbor<int, float, 3>, 10> knn_buffer;
 auto knn = tf::neighbor_search(
-    tf::make_form( // optional_transformation,
-        point_tree, pts),
+    tf::make_form(tree, points),
     query_pt,
-    tf::make_nearest_neighbors(knn_buffer.begin(), 10 /*, search_radius*/));
-for (auto [primitive_id, metric_point] : knn) {
-    auto [distance2, closest_point] = metric_point;
-}
+    tf::make_nearest_neighbors(knn_buffer.begin(), 10/*, search radius*/));
 ```
+
+See how it compares with `nanoflann`:
 
 <p float="left">
   <img src="./docs/img/nano-build.png" width="49%" />
   <img src="./docs/img/nano-knn.png" width="49%" />
 </p>
 
-or replace your use of `CGAL` for *mesh-intersection* queries with an equally minimal call — and significantly faster execution:
+#### ⚡️ Searching Forms
+
+The `tf::form`s may be searched using primitives or other forms, or themselves (for self-intersections, etc.). Additionally, use higher-level functions like `tf::gather_ids` to collect primitives satisfying a predicate, e.g. all pairs of intersecting primitives between two forms:
+
 ```c++
-std::vector<int> raw_triangle_ids;
-auto triangles = tf::make_polygons(
-    tf::make_blocked_range<3>(raw_triangle_ids), pts);
-tf::tree<int, float, 3> tree(triangles, tf::config_tree(4, 4));
-std::vector<std::pair<int, int>> intersecting_primitives;
+auto dynamic = tf::make_form(tf::random_frame_at(pts[0], pts[10]), tree, triangles);
 tf::gather_ids(
+    dynamic,
     tf::make_form(tree, triangles),
-    tf::make_form( // M.dot(x - pts[0]) + pts[10]
-        tf::random_frame_at(pts[0], pts[10]), tree, triangles),
-    tf::intersects_f, std::back_inserter(intersecting_primitives));
+    tf::intersects_f,
+    std::back_inserter(results));
 ```
+See how it compares with `CGAL`:
+
 <p float="left">
   <img src="./docs/img/cgal-build.png" width="49%" />
   <img src="./docs/img/cgal_speedup.png" width="49%" />
 </p>
 
-This reflects `trueform`’s design principles: it’s meant to feel like composing ranges and lambdas — inline, expressive, and non-invasive. 
 
-### Showcase: The Power of Composition
+#### Tutorial: Spatial
 
-While `trueform` can replace existing tools, its real power is its expressive, compositional API. Consider a common challenge: modeling a moving point cloud of "emitters." Each emitter needs a unique ID, a static mounting normal, a dynamic aiming direction, and a color—all sourced from different data vectors. With `trueform`, this complex assembly becomes a single, readable pipeline:
+See [Tutorial: Spatial](./docs/tutorial.md#spatial) for a detailed walk-through and additional features like `tf::distance`, `tf::intersects`, and `tf::ray_hit` on forms.
+
+### 🧩 Topology
+
+Define topological connectivity over raw primitives for richer geometric queries and traversal. `trueform` supports composable connectivity structures to enable mesh-level logic like membership, linking, and boundary traversal:
+
 ```c++
-// --- Raw Data ---
-std::vector<float> raw_pts;
-std::vector<float> raw_normals;
-std::vector<std::string> ids;
-std::vector<float> raw_direction;
-std::vector<std::array<float, 3>> colors;
-
-// --- Composition Pipeline ---
-// Start with raw points and progressively enrich them with semantics.
-auto emitters =
-    tf::make_points<3>(raw_pts)
-    // 1. Tag the entire collection with a single ID.
-    | tf::tag_id("emitter_array_alpha")
-    // 2. Zip per-element data onto the range.
-    | tf::zip_ids(ids)
-    | tf::zip_normals(
-          tf::make_unit_vectors<3>(raw_normals)
-          // Policies can be nested: tag the zipped normals themselves.
-          | tf::tag_id("mount_normals"))
-    // 3. Zip a composite state from multiple data sources.
-    | tf::zip_states(
-          tf::make_unit_vectors<3>(raw_direction)
-          | tf::tag_id("aim_directions"),
-          tf::make_view(colors)
-          | tf::tag_id("color_data"));
+tf::face_membership<int> face_membership;
+face_membership.build(polygons);
+tf::manifold_edge_link<int, 3> manifold_edge_link;
+manifold_edge_link.build(polygons, face_membership)
 ```
-The `emitters` object still behaves like a simple range of points, compatible with any algorithm on point primitives. The real power is realized in the query, where its attached policies are correctly preserved or transformed, enabling complex, stateful logic:
+You can attach them to a primitive range or a `form` using `tf::tag` for use in topology-aware algorithms:
 ```c++
-// --- Using the Enriched Object in a Query ---
-tf::tree<int, float, 3> emitter_tree{emitters, tf::config_tree(4, 4)};
-tf::frame<float, 3> frame = tf::random_transformation<float, 3>();
-auto query_pt = tf::random_point<float, 3>() | tf::tag_id("target");
-
-float aim_radius2 = 4.0f; // Use squared distance for performance
-float aim_cos_angle = 0.95f;
-
-tf::search(
-    // The form applies the dynamic frame to the static tree and emitters.
-    tf::make_form(frame, emitter_tree, emitters),
-    // Broad-phase: Quickly cull any nodes outside the target radius.
-    [&](const auto &aabb) {
-        return tf::distance2(aabb, query_pt) < aim_radius2;
-    },
-    // Narrow-phase: The "brain" of the query. Evaluate each potential
-    // emitter.
-    // auto transformed_emitter = tf::transformed(emitters[index], frame);
-    [&](const auto &transformed_emitter) {
-        if (tf::distance2(transformed_emitter, query_pt) >= aim_radius2)
-        return;
-        // Access all the policy data, which has been correctly handled.
-        const auto &id =
-            transformed_emitter.id(); // The per-emitter ID is preserved.
-        const auto &mount_normal =
-            transformed_emitter.normal(); // The normal vector is transformed.
-        // `direction` was transformed, while `color` was passed through
-        // unchanged.
-        const auto &[aim_direction, color] = transformed_emitter.state();
-        auto to_target = tf::normalized(query_pt - transformed_emitter);
-        // Check if the target is in the turret's firing arc and aimed
-        // correctly.
-        if (tf::dot(to_target, mount_normal) > 0 &&
-            tf::dot(to_target, aim_direction) > aim_cos_angle) {
-
-        std::cout << "Emitter " << id << " can hit " << query_pt.id()
-                    << "!\n";
-        }
-    });
+auto topological_form = form
+    | tf::tag(face_membership)
+    | tf::tag(manifold_edge_link);
 ```
-The result is a highly expressive, architecture-agnostic approach to geometry that integrates into your existing code.
+
+#### Tutorial: Topology
+
+See [Tutorial: Topology](./docs/tutorial.md#topology) for a detailed walk-through and additional features like `tf::vertex_link` and `tf::face_link`.
+
+### ✂️ Intersections
+
+Detect exact geometric intersections — from scalar field slices to full polygonal collisions — with simple, expressive calls.
+
+#### 🔸 Scalar Field Slicing
+
+Slice polygonal geometry using a scalar field (e.g., height, temperature, distance). Outputs interpolated intersection points:
+
+```c++
+tf::scalar_field_intersections<int, float, 3> sfi;
+sfi.build(polygons, scalar_field, cut_value);
+auto edges = tf::make_intersection_edges(sfi);
+auto segments = tf::make_segments(edges, sfi.intersection_points());
+```
+
+#### ✖️ Form-Form Intersections
+
+Detect all intersections between two polygonal `forms` — transformed or static:
+```c++
+tf::forms_intersections<int, double, 3> fi;
+fi.build(form0 | tf::tag(face_membership0) | tf::tag(manifold_edge_link0),  
+         form1 | tf::tag(face_membership1) | tf::tag(manifold_edge_link1));
+auto edges = tf::make_intersection_edges(fi);
+auto segments = tf::make_segments(edges, fi.intersection_points());
+```
+
+
+[Watch a Demo](./examples/vtk/forms_intersections_example.mp4).
+
+#### Tutorial: Intersections
+
+See [Tutorial: Intersections](./docs/tutorial.md#intersect) for a walk-through and additional features.
 
 ## Getting Started
 
@@ -158,14 +217,14 @@ We provide two main resources to help you get started and master trueform:
 
 ### [Tutorial](./docs/tutorial.md)
 
-**This is the best place to start.** It's a comprehensive document that serves as both a guided tour of the library's philosophy and a complete reference manual for the `core`, `spatial`, and `topology` modules.
+**This is the best place to start.** It's a comprehensive document that serves as both a guided tour of the library's philosophy and a complete reference manual for the `core`, `spatial`, `topology`, and `intersect` modules.
 
 ### [Examples](./examples/)
 
 For hands-on, practical applications, explore the examples directory. It contains a collection of standalone programs organized into three categories:
 * **Core Functionality**: Self-contained demonstrations of primary features.
 * **Comparisons**: Performance and usage comparisons against libraries like `CGAL` and `nanoflann`.
-* **VTK Integration**: Guides for using trueform with tools like `VTK`.
+* **VTK Integration**: Guides for using `trueform` with tools like `VTK`.
 
 ## Publications
 

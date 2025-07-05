@@ -11,7 +11,7 @@ namespace tf {
 
 template <typename Policy> struct view : Policy {
   view(const Policy &r) : Policy{r} {}
-  view(Policy &&r) : Policy{r} {}
+  view(Policy &&r) : Policy{std::move(r)} {}
 };
 
 template <typename Policy>

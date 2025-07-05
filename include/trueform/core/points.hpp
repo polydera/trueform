@@ -29,11 +29,28 @@ struct pt_vec_dref {
     return pt.as_vector_view();
   }
 };
+
+template <typename T> struct pt_as_dref {
+  template <std::size_t Dims, typename Policy>
+  auto operator()(point_like<Dims, Policy> &pt) const {
+    return pt.template as<T>();
+  }
+
+  template <std::size_t Dims, typename Policy>
+  auto operator()(const point_like<Dims, Policy> &pt) const {
+    return pt.template as<T>();
+  }
+
+  template <std::size_t Dims, typename Policy>
+  auto operator()(point_like<Dims, Policy> &&pt) const {
+    return pt.template as<T>();
+  }
+};
 } // namespace core
 
 template <typename Policy> struct points : Policy {
   points(const Policy &r) : Policy{r} {}
-  points(Policy &&r) : Policy{r} {}
+  points(Policy &&r) : Policy{std::move(r)} {}
 
   auto as_vector_view() const {
     auto r = tf::make_mapped_range(*this, core::pt_vec_dref{});
@@ -43,6 +60,16 @@ template <typename Policy> struct points : Policy {
   auto as_vector_view() {
     auto r = tf::make_mapped_range(*this, core::pt_vec_dref{});
     return vectors<decltype(r)>{r};
+  }
+
+  template <typename T> auto as() const {
+    auto r = tf::make_mapped_range(*this, core::pt_as_dref<T>{});
+    return points<decltype(r)>{r};
+  }
+
+  template <typename T> auto as() {
+    auto r = tf::make_mapped_range(*this, core::pt_as_dref<T>{});
+    return points<decltype(r)>{r};
   }
 };
 

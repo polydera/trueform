@@ -5,12 +5,43 @@
  */
 #pragma once
 
+#include "./views/mapped_range.hpp"
 #include "./views/vectors.hpp"
 
 namespace tf {
+
+namespace core {
+template <typename T> struct vec_as_dref {
+  template <std::size_t Dims, typename Policy>
+  auto operator()(vector_like<Dims, Policy> &pt) const {
+    return pt.template as<T>();
+  }
+
+  template <std::size_t Dims, typename Policy>
+  auto operator()(const vector_like<Dims, Policy> &pt) const {
+    return pt.template as<T>();
+  }
+
+  template <std::size_t Dims, typename Policy>
+  auto operator()(vector_like<Dims, Policy> &&pt) const {
+    return pt.template as<T>();
+  }
+};
+} // namespace core
+
 template <typename Policy> struct vectors : Policy {
   vectors(const Policy &r) : Policy{r} {}
-  vectors(Policy &&r) : Policy{r} {}
+  vectors(Policy &&r) : Policy{std::move(r)} {}
+
+  template <typename T> auto as() const {
+    auto r = tf::make_mapped_range(*this, core::vec_as_dref<T>{});
+    return vectors<decltype(r)>{r};
+  }
+
+  template <typename T> auto as() {
+    auto r = tf::make_mapped_range(*this, core::vec_as_dref<T>{});
+    return vectors<decltype(r)>{r};
+  }
 };
 
 template <typename Policy>
@@ -82,7 +113,8 @@ template <std::size_t Dims, typename Range> auto make_vectors(Range &&r) {
 }
 
 template <typename Range> auto make_vectors(Range &&r) {
-  return tf::vectors<std::decay_t<Range>>{r};
+  auto vec = tf::make_range(r);
+  return tf::vectors<decltype(r)>{r};
 }
 
 template <typename Range>

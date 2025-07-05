@@ -1,0 +1,35 @@
+/*
+ * Copyright (c) 2025 Žiga Sajovic, XLAB
+ * Distributed under the Boost Software License, Version 1.0.
+ * https://github.com/xlabmedical/trueform
+ */
+#pragma once
+#include "../../core/buffer.hpp"
+#include "../intersection.hpp"
+#include "../intersection_id.hpp"
+#include "../polygon/vertex_vertex.hpp"
+
+namespace tf::intersect::generate {
+template <typename Handle0, typename Handle1, typename Index, typename T,
+          std::size_t Dims>
+auto vertex_vertex(const Handle0 &handle0, const Handle1 &handle1,
+                   tf::buffer<intersection<Index>> &intersections,
+                   tf::buffer<intersection_id<Index>> &intersection_ids,
+                   tf::buffer<tf::point<T, Dims>> &points) {
+  tf::intersect::polygon::vertex_vertex(
+      [&](Index sub_id0, Index sub_id1) {
+        Index id = points.size();
+        intersection_ids.push_back(intersection_id<Index>{}.make_vertex_vertex(
+            handle0.polygon.indices()[sub_id0],
+            handle1.polygon.indices()[sub_id1], id));
+        points.push_back(handle0.polygon[sub_id0]);
+        intersections.push_back({Index(0),
+                                 Index(handle0.id),
+                                 Index(handle1.id),
+                                 {sub_id0, tf::topo_type::vertex},
+                                 {sub_id1, tf::topo_type::vertex},
+                                 id});
+      },
+      handle0, handle1);
+}
+} // namespace tf::intersect::generate

@@ -36,4 +36,10 @@ auto make_frame_like(
 
 template <typename T, std::size_t Dims>
 using identity_frame = frame_like<Dims, linalg::identity_frame<T, Dims>>;
+
+template <typename T0, typename T1, std::size_t Dims>
+auto make_frame_like(const identity_transformation<T0, Dims> &,
+                     const identity_transformation<T1, Dims> &) {
+  return identity_frame<std::common_type_t<T0, T1>, Dims>{};
+}
 } // namespace tf

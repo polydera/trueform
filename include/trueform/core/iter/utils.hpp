@@ -90,9 +90,9 @@ auto difference(const Iterator &it0, const Iterator &it1) {
   return it0 - it1;
 }
 
-template <typename... Iterators0, typename... Iterators1>
-auto difference(const std::tuple<Iterators0...> &it0,
-                const std::tuple<Iterators1...> &it1) {
+template <typename... Iterators>
+auto difference(const std::tuple<Iterators...> &it0,
+                const std::tuple<Iterators...> &it1) {
   return std::get<0>(it0) - std::get<0>(it1);
 }
 

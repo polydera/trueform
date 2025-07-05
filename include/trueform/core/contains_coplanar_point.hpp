@@ -87,7 +87,8 @@ auto contains_coplanar_point(const tf::polygon<Dims, Policy> &poly,
 template <typename Policy, typename T>
 auto contains_coplanar_point(const tf::polygon<2, Policy> &poly,
                              const point_like<2, T> &input_pt) -> bool {
-  return contains_coplanar_point(poly, input_pt, tf::make_identity_projector());
+  return tf::contains_coplanar_point(poly, input_pt,
+                                     tf::make_identity_projector());
 }
 
 /// @ingroup geometry
@@ -97,8 +98,8 @@ auto contains_coplanar_point(const tf::polygon<2, Policy> &poly,
 template <std::size_t Dims, typename Policy, typename T>
 auto contains_coplanar_point(const tf::polygon<Dims, Policy> &poly,
                              const point_like<Dims, T> &input_pt) -> bool {
-  return contains_coplanar_point(poly, input_pt,
-                                 tf::make_simple_projector(poly));
+  return tf::contains_coplanar_point(poly, input_pt,
+                                     tf::make_simple_projector(poly));
 }
 namespace core {
 /**
@@ -189,8 +190,8 @@ template <typename Policy, typename T>
 auto contains_coplanar_point(const tf::polygon<2, Policy> &poly,
                              const point_like<2, T> &input_pt,
                              tf::coordinate_type<T, Policy> epsilon) -> bool {
-  return contains_coplanar_point(poly, input_pt, tf::make_identity_projector(),
-                                 epsilon);
+  return tf::contains_coplanar_point(poly, input_pt,
+                                     tf::make_identity_projector(), epsilon);
 }
 
 /// @ingroup geometry
@@ -201,7 +202,7 @@ template <std::size_t Dims, typename Policy, typename T>
 auto contains_coplanar_point(const tf::polygon<Dims, Policy> &poly,
                              const point_like<Dims, T> &input_pt,
                              tf::coordinate_type<T, Policy> epsilon) -> bool {
-  return contains_coplanar_point(poly, input_pt,
-                                 tf::make_simple_projector(poly), epsilon);
+  return tf::contains_coplanar_point(poly, input_pt,
+                                     tf::make_simple_projector(poly), epsilon);
 }
 } // namespace tf

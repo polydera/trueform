@@ -1,0 +1,125 @@
+/*
+ * Copyright (c) 2025 Žiga Sajovic, XLAB
+ * Distributed under the Boost Software License, Version 1.0.
+ * https://github.com/xlabmedical/trueform
+ */
+#pragma once
+#include "../core/algorithm/block_reduce.hpp"
+#include "../core/polygons.hpp"
+#include "../core/views/enumerate.hpp"
+#include "./base/simple_intersections.hpp"
+
+namespace tf {
+template <typename Index, typename RealT, std::size_t Dims>
+class scalar_field_intersections
+    : public intersect::simple_intersections<Index, RealT, Dims> {
+  using base_t = intersect::simple_intersections<Index, RealT, Dims>;
+
+public:
+  template <typename Policy, typename Range>
+  auto build(const tf::polygons<Policy> &polygons, const Range &scalar_field,
+             typename Range::value_type cut_value = {}) {
+    base_t::clear();
+    tf::buffer<tf::intersect::simple_edge_point_id<Index>> edge_ids;
+    std::tuple<tf::buffer<tf::intersect::simple_intersection<Index>>,
+               tf::buffer<tf::intersect::simple_edge_point_id<Index>>,
+               tf::buffer<tf::point<RealT, Dims>>>
+        local_result;
+
+    tf::blocked_reduce(
+        tf::enumerate(polygons),
+        std::tie(base_t::_intersections, edge_ids, base_t::_points),
+        local_result,
+        [&scalar_field, cut_value](const auto &r, auto &local_result) {
+          auto &&[intersections, edge_point_ids, points] = local_result;
+          intersections.reserve(1000);
+          edge_point_ids.reserve(1000);
+          points.reserve(1000);
+          for (const auto &[polygon_id, polygon] : r) {
+            const auto &face = polygon.indices();
+            std::size_t size = polygon.size();
+            std::size_t prev = size - 1;
+            for (std::size_t i = 0; i < size; prev = i++) {
+              Index v0 = prev;
+              Index v1 = i;
+              if (scalar_field[face[v1]] < scalar_field[face[v0]])
+                std::swap(v0, v1);
+              Index id0 = face[v0];
+              Index id1 = face[v1];
+              if (!(scalar_field[id0] < cut_value &&
+                    scalar_field[id1] > cut_value))
+                continue;
+
+              auto edge = polygon[v1] - polygon[v0];
+
+              auto t = (cut_value - scalar_field[id0]) /
+                       (scalar_field[id1] - scalar_field[id0]);
+              auto created_point = polygon[v0] + t * edge;
+              auto d0 = (polygon[v0] - created_point).length2();
+              auto d1 = (polygon[v1] - created_point).length2();
+              Index pt_id = points.size();
+              if (d0 <= std::numeric_limits<decltype(d0)>::epsilon()) {
+                points.push_back(polygon[v0]);
+                edge_point_ids.push_back(
+                    {Index(id0), Index(id0), Index(pt_id)});
+                intersections.push_back(
+                    {Index(polygon_id),
+                     tf::intersect::intersection_target<Index>{
+                         v0, tf::topo_type::vertex},
+                     pt_id});
+              } else if (d1 <= std::numeric_limits<decltype(d1)>::epsilon()) {
+                points.push_back(polygon[v1]);
+                edge_point_ids.push_back(
+                    {Index(id1), Index(id1), Index(pt_id)});
+                intersections.push_back(
+                    {Index(polygon_id),
+                     tf::intersect::intersection_target<Index>{
+                         v1, tf::topo_type::vertex},
+                     pt_id});
+              } else {
+                points.push_back(created_point);
+                edge_point_ids.push_back(
+                    {Index(id0), Index(id1), Index(pt_id)});
+                intersections.push_back(
+                    {Index(polygon_id),
+                     tf::intersect::intersection_target<Index>{
+                         Index(prev), tf::topo_type::edge},
+                     pt_id});
+              }
+            }
+          }
+        },
+        [](const auto &local_result, auto &result) {
+          auto &&[l_intersections, l_edge_point_ids, l_points] = local_result;
+          auto &&[intersections, edge_point_ids, points] = result;
+          Index pt_offset = points.size();
+          auto intersections_old_size = intersections.size();
+          intersections.reallocate(intersections.size() +
+                                   l_intersections.size());
+          auto intersections_it =
+              intersections.begin() + intersections_old_size;
+          for (auto e : l_intersections) {
+            e.id += pt_offset;
+            *intersections_it++ = e;
+          }
+          //
+          auto edge_point_ids_old_size = edge_point_ids.size();
+          edge_point_ids.reallocate(edge_point_ids.size() +
+                                    l_edge_point_ids.size());
+          auto edge_point_ids_it =
+              edge_point_ids.begin() + edge_point_ids_old_size;
+          for (const auto &e : l_edge_point_ids) {
+            *edge_point_ids_it = e;
+            (*edge_point_ids_it++).point_id += pt_offset;
+          }
+          //
+          auto points_old_size = points.size();
+          points.reallocate(points.size() + l_points.size());
+          auto points_it = points.begin() + points_old_size;
+          std::copy(l_points.begin(), l_points.end(), points_it);
+        });
+
+    base_t::finalize(std::move(edge_ids));
+  }
+};
+} // namespace tf

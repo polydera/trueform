@@ -19,15 +19,17 @@ namespace tf {
 /// excluded elements to a sentinel value (e.g., for compacted arrays).
 ///
 /// @tparam Range0 Type of the boolean mask (must support `.begin()`, `.end()`).
-/// @tparam Range1 Type of the output mapping range (must support `.begin()`, `.end()`).
+/// @tparam Range1 Type of the output mapping range (must support `.begin()`,
+/// `.end()`).
 /// @tparam Index Type of the index values.
 /// @param mask A range of booleans indicating which elements to include.
-/// @param map A range to be filled with the computed mapping (must be same size as `mask`).
+/// @param map A range to be filled with the computed mapping (must be same size
+/// as `mask`).
 /// @param none_tag The value to assign to entries where the mask is `false`.
-/// @return The number of `true` elements in the mask (i.e., the number of valid mappings).
+/// @return The number of `true` elements in the mask (i.e., the number of valid
+/// mappings).
 template <typename Range0, typename Range1, typename Index>
-auto mask_to_map(const Range0 &mask, const Range1 &&map,
-                 const Index &none_tag) {
+auto mask_to_map(const Range0 &mask, Range1 &&map, const Index &none_tag) {
   Index current_id = 0;
   auto it0 = mask.begin();
   auto end0 = mask.end();
@@ -53,10 +55,10 @@ auto mask_to_map(const Range0 &mask, const Range1 &&map,
 /// @param map A range to be filled with the computed mapping.
 /// @return The number of `true` elements in the mask.
 template <typename Range0, typename Range1>
-auto mask_to_map(const Range0 &mask, const Range1 &&map) {
+auto mask_to_map(const Range0 &mask, Range1 &&map) {
   using index_t = std::decay_t<decltype(map[0])>;
   index_t none_tag = map.size();
-  return mask_to_map(map, mask, none_tag);
+  return mask_to_map(mask, map, none_tag);
 }
 
 } // namespace tf

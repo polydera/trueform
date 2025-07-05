@@ -21,6 +21,11 @@ auto make_frame_ptr(const frame_like<Dims, Policy> &frame) {
       tf::linalg::make_trans_ptr(frame.inverse_transformation()));
 }
 
+template <typename T, std::size_t Dims>
+auto make_frame_ptr(tf::identity_frame<T, Dims> id) {
+  return id;
+}
+
 template <std::size_t Dims, typename Policy>
 auto make_frame_ptr(frame_like<Dims, Policy> &&frame) = delete;
 } // namespace tf

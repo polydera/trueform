@@ -4,6 +4,7 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
+#include "../core/faces.hpp"
 #include "../core/offset_block_buffer.hpp"
 #include "../core/polygons.hpp"
 #include "./structures/compute_face_membership.hpp"
@@ -14,12 +15,12 @@ class face_membership : public offset_block_buffer<Index, Index> {
   using base_t = offset_block_buffer<Index, Index>;
 
 public:
-  template <typename Range>
-  auto build(const Range &blocks, std::size_t n_unique_ids,
+  template <typename Policy>
+  auto build(const tf::faces<Policy> &faces, std::size_t n_unique_ids,
              std::size_t total_size) -> void {
     base_t::offsets_buffer().allocate(n_unique_ids + 1);
     base_t::data_buffer().allocate(total_size);
-    topology::compute_face_membership(blocks, base_t::offsets_buffer(),
+    topology::compute_face_membership(faces, base_t::offsets_buffer(),
                                       base_t::data_buffer());
   }
 

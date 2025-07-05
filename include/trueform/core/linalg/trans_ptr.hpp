@@ -44,8 +44,7 @@ struct trans_ptr<Dims, const Policy> {
   trans_ptr() = default;
   trans_ptr(const Policy &policy) : _policy{&policy} {}
   trans_ptr(const trans_ptr &) = default;
-  auto operator=(const trans_ptr &other)
-      -> trans_ptr & = delete;
+  auto operator=(const trans_ptr &other) -> trans_ptr & = delete;
 
   auto operator()(std::size_t i, std::size_t j) const -> decltype(auto) {
     return (*_policy)(i, j);
@@ -62,17 +61,17 @@ auto is_trans_ptr(const void *) -> std::false_type;
 } // namespace implementation
 
 template <typename T>
-inline constexpr bool is_trans_ptr =
-    decltype(implementation::is_trans_ptr(
-        static_cast<const std::decay_t<T> *>(nullptr)))::value;
+inline constexpr bool is_trans_ptr = decltype(implementation::is_trans_ptr(
+    static_cast<const std::decay_t<T> *>(nullptr)))::value;
 
 template <std::size_t Dims, typename Policy>
 auto make_trans_ptr(const tf::transformation_like<Dims, Policy> &t) {
   if constexpr (is_trans_ptr<Policy>)
     return t;
   else
-    return tf::transformation_like<
-        Dims, tf::linalg::trans_ptr<Dims, const Policy>>{t};
+    return tf::transformation_like<Dims,
+                                   tf::linalg::trans_ptr<Dims, const Policy>>{
+        t};
 }
 
 template <std::size_t Dims, typename Policy>
@@ -80,8 +79,13 @@ auto make_trans_ptr(tf::transformation_like<Dims, Policy> &t) {
   if constexpr (is_trans_ptr<Policy>)
     return t;
   else
-    return tf::transformation_like<
-        Dims, tf::linalg::trans_ptr<Dims, Policy>>{t};
+    return tf::transformation_like<Dims, tf::linalg::trans_ptr<Dims, Policy>>{
+        t};
+}
+
+template <typename T, std::size_t Dims>
+auto make_trans_ptr(tf::identity_transformation<T, Dims> id) {
+  return id;
 }
 
 template <std::size_t Dims, typename Policy>

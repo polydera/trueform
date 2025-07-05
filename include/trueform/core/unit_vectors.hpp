@@ -5,13 +5,43 @@
  */
 #pragma once
 
+#include "./views/mapped_range.hpp"
 #include "./views/unit_vectors.hpp"
 
 namespace tf {
 
+namespace core {
+template <typename T> struct unit_vec_as_dref {
+  template <std::size_t Dims, typename Policy>
+  auto operator()(unit_vector_like<Dims, Policy> &pt) const {
+    return pt.template as<T>();
+  }
+
+  template <std::size_t Dims, typename Policy>
+  auto operator()(const unit_vector_like<Dims, Policy> &pt) const {
+    return pt.template as<T>();
+  }
+
+  template <std::size_t Dims, typename Policy>
+  auto operator()(unit_vector_like<Dims, Policy> &&pt) const {
+    return pt.template as<T>();
+  }
+};
+} // namespace core
+
 template <typename Policy> struct unit_vectors : Policy {
   unit_vectors(const Policy &r) : Policy{r} {}
-  unit_vectors(Policy &&r) : Policy{r} {}
+  unit_vectors(Policy &&r) : Policy{std::move(r)} {}
+
+  template <typename T> auto as() const {
+    auto r = tf::make_mapped_range(*this, core::unit_vec_as_dref<T>{});
+    return unit_vectors<decltype(r)>{r};
+  }
+
+  template <typename T> auto as() {
+    auto r = tf::make_mapped_range(*this, core::unit_vec_as_dref<T>{});
+    return unit_vectors<decltype(r)>{r};
+  }
 };
 
 template <typename Policy>
@@ -84,7 +114,8 @@ template <std::size_t Dims, typename Range> auto make_unit_vectors(Range &&r) {
 }
 
 template <typename Range> auto make_unit_vectors(Range &&r) {
-  return tf::unit_vectors<std::decay_t<Range>>{r};
+  auto vec = tf::make_range(r);
+  return tf::unit_vectors<decltype(r)>{r};
 }
 
 template <typename Range>

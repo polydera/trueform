@@ -25,8 +25,6 @@ auto gather_ids(const tf::form<Dims, Policy0> &form0,
   struct holder_t {
     index_t0 id0;
     index_t1 id1;
-
-    operator std::pair<index_t0, index_t1>() const { return {id0, id1}; }
   };
   tf::local_vector<holder_t> l_ids;
   tf::search(form0, form1, aabbs_predicate,
@@ -34,7 +32,10 @@ auto gather_ids(const tf::form<Dims, Policy0> &form0,
                if (primitives_predicate(obj0, obj1))
                  l_ids.push_back(holder_t{obj0.id(), obj1.id()});
              });
-  return l_ids.to_iterator(out);
+  for (const auto &v : l_ids.vectors())
+    for (const auto &e : v)
+      *out++ = std::make_pair(e.id0, e.id1);
+  return out;
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1, typename F,

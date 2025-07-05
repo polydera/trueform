@@ -8,6 +8,7 @@
 #include "vtkRenderWindow.h"
 #include "vtkRenderer.h"
 #include "vtkSTLReader.h"
+#include "vtkStripper.h"
 #include "vtkTextActor.h"
 #include <memory>
 
@@ -107,4 +108,42 @@ inline auto center_and_scale(vtkPolyData *poly) -> void {
     pt -= center;
     pt *= 10 / r;
   });
+}
+
+template <typename Policy>
+auto curves_to_polydata(const tf::curves<Policy> &curves) {
+  auto cells = vtk_make_unique<vtkCellArray>();
+
+  for (auto path : curves.paths()) {
+    std::vector<vtkIdType> ids(path.begin(), path.end());
+    cells->InsertNextCell(path.size(), ids.data());
+  }
+  auto points = vtk_make_unique<vtkPoints>();
+  points->SetNumberOfPoints(curves.points().size());
+  tf::parallel_copy(curves.points(), get_points(points.get()));
+  auto tmp_poly = vtk_make_unique<vtkPolyData>();
+  tmp_poly->SetPoints(points.get());
+  tmp_poly->SetLines(cells.get());
+  return tmp_poly;
+}
+
+template <typename Policy>
+auto segments_to_lines(const tf::segments<Policy> &segments) {
+  auto cells = vtk_make_unique<vtkCellArray>();
+  cells->AllocateEstimate(segments.size(), 2);
+  for (auto [id0, id1] : segments.edges()) {
+    vtkIdType ids[2]{id0, id1};
+    cells->InsertNextCell(2, ids);
+  }
+  auto points = vtk_make_unique<vtkPoints>();
+  points->SetNumberOfPoints(segments.points().size());
+  tf::parallel_copy(segments.points(), get_points(points.get()));
+  auto tmp_poly = vtk_make_unique<vtkPolyData>();
+  tmp_poly->SetPoints(points.get());
+  tmp_poly->SetLines(cells.get());
+  auto stripper = vtk_make_unique<vtkStripper>();
+  stripper->SetInputData(tmp_poly.get());
+  stripper->Update();
+  tmp_poly->ShallowCopy(stripper->GetOutput());
+  return tmp_poly;
 }

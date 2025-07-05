@@ -18,6 +18,10 @@ public:
       typename std::iterator_traits<const_iterator>::reference;
   using size_type = typename std::iterator_traits<iterator>::difference_type;
 
+  blocked_buffer() = default;
+  blocked_buffer(const tf::buffer<T> &_data) : _data{_data} {}
+  blocked_buffer(tf::buffer<T> &&_data) : _data{std::move(_data)} {}
+
   auto begin() const -> const_iterator {
     return iter::make_blocked_iterator<BlockSize>(_data.begin());
   }

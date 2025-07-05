@@ -15,6 +15,30 @@ namespace tf {
 template <std::size_t Dims, typename Policy> struct form : public Policy {
   form(Policy &&policy) : Policy{std::move(policy)} {}
   form(const Policy &policy) : Policy{policy} {}
+
+  friend auto unwrap(const form &seg) -> decltype(auto) {
+    return static_cast<const Policy &>(seg);
+  }
+
+  friend auto unwrap(form &seg) -> decltype(auto) {
+    return static_cast<Policy &>(seg);
+  }
+
+  friend auto unwrap(form &&seg) -> decltype(auto) {
+    return static_cast<Policy &&>(seg);
+  }
+
+  template <typename T> friend auto wrap_like(const form &, T &&t) {
+    return form<Dims, std::decay_t<T>>{static_cast<T &&>(t)};
+  }
+
+  template <typename T> friend auto wrap_like(form &, T &&t) {
+    return form<Dims, std::decay_t<T>>{static_cast<T &&>(t)};
+  }
+
+  template <typename T> friend auto wrap_like(form &&, T &&t) {
+    return form<Dims, std::decay_t<T>>{static_cast<T &&>(t)};
+  }
 };
 
 template <std::size_t Dims, typename FPolicy, typename Index, typename RealT,

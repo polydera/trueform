@@ -42,8 +42,9 @@ auto ray_cast(
 
   t = -V0 / Vd;
   return tf::make_ray_cast_info(
-      static_cast<tf::intersect_status>(char(t >= config.min_t) &
-                                        char(t <= config.max_t)),
+      static_cast<tf::intersect_status>(
+          char(t >= config.min_t - std::numeric_limits<RealT>::epsilon()) &
+          char(t <= config.max_t + std::numeric_limits<RealT>::epsilon())),
       t);
 }
 
@@ -69,11 +70,15 @@ template <std::size_t Dims, typename Policy0, typename Policy1>
 auto ray_cast(
     const ray_like<Dims, Policy0> &ray, const tf::segment<Dims, Policy1> &seg,
     const tf::ray_config<tf::coordinate_type<Policy0, Policy1>> &config = {}) {
+  using RealT = tf::coordinate_type<Policy0, Policy1>;
   auto ray1 = tf::make_ray_between_points(seg[0], seg[1]);
   auto [non_parallel, t0, t1] = tf::core::line_line_check(ray, ray1);
   intersect_status status = intersect_status::none;
-  if (non_parallel && t0 >= config.min_t && t0 <= config.max_t && t1 >= 0 &&
-      t1 <= 1) {
+  if (non_parallel &&
+      t0 >= config.min_t - std::numeric_limits<RealT>::epsilon() &&
+      t0 <= config.max_t + std::numeric_limits<RealT>::epsilon() &&
+      t1 >= -std::numeric_limits<RealT>::epsilon() &&
+      t1 <= 1 + std::numeric_limits<RealT>::epsilon()) {
     auto pt0 = ray.origin + t0 * ray.direction;
     auto pt1 = ray1.origin + t1 * ray1.direction;
     auto d2 = (pt0 - pt1).length2();
@@ -88,9 +93,12 @@ auto ray_cast(
     const ray_like<Dims, Policy0> &ray,
     const tf::line_like<Dims, Policy1> &line,
     const tf::ray_config<tf::coordinate_type<Policy0, Policy1>> &config = {}) {
+  using RealT = tf::coordinate_type<Policy0, Policy1>;
   auto [non_parallel, t0, t1] = tf::core::line_line_check(ray, line);
   intersect_status status = intersect_status::none;
-  if (non_parallel && t0 >= config.min_t && t0 <= config.max_t) {
+  if (non_parallel &&
+      t0 >= config.min_t - std::numeric_limits<RealT>::epsilon() &&
+      t0 <= config.max_t + std::numeric_limits<RealT>::epsilon()) {
     auto pt0 = ray.origin + t0 * ray.direction;
     auto pt1 = line.origin + t1 * line.direction;
     auto d2 = (pt0 - pt1).length2();
@@ -104,9 +112,13 @@ template <std::size_t Dims, typename Policy0, typename Policy1>
 auto ray_cast(
     const ray_like<Dims, Policy0> &ray, const tf::ray_like<Dims, Policy1> &ray1,
     const tf::ray_config<tf::coordinate_type<Policy0, Policy1>> &config = {}) {
+  using RealT = tf::coordinate_type<Policy0, Policy1>;
   auto [non_parallel, t0, t1] = tf::core::line_line_check(ray, ray1);
   intersect_status status = intersect_status::none;
-  if (non_parallel && t0 >= config.min_t && t0 <= config.max_t && t1 >= 0) {
+  if (non_parallel &&
+      t0 >= config.min_t - std::numeric_limits<RealT>::epsilon() &&
+      t0 <= config.max_t + std::numeric_limits<RealT>::epsilon() &&
+      t1 >= -std::numeric_limits<RealT>::epsilon()) {
     auto pt0 = ray.origin + t0 * ray.direction;
     auto pt1 = ray1.origin + t1 * ray1.direction;
     auto d2 = (pt0 - pt1).length2();
@@ -121,13 +133,15 @@ auto ray_cast(
     const ray_like<Dims, Policy0> &ray,
     const tf::point_like<Dims, Policy1> &point,
     const tf::ray_config<tf::coordinate_type<Policy0, Policy1>> &config = {}) {
+  using RealT = tf::coordinate_type<Policy0, Policy1>;
   auto dist_vec = point - ray.origin;
   auto t = tf::dot(dist_vec, ray.direction) / ray.direction.length2();
   auto area2 = tf::parallelogram_area2(ray.direction, dist_vec);
   return tf::make_ray_cast_info(
       static_cast<tf::intersect_status>(
           char(area2 < std::numeric_limits<decltype(area2)>::epsilon()) &
-          char(t >= config.min_t) & char(t <= config.max_t)),
+          char(t >= config.min_t - std::numeric_limits<RealT>::epsilon()) &
+          char(t <= config.max_t + std::numeric_limits<RealT>::epsilon())),
       t);
 }
 

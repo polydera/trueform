@@ -567,4 +567,45 @@ auto distance2(const segment<Dims, T1> &seg, const sphere_like<Dims, T0> &s) {
   return distance2(seg, s);
 }
 
+namespace core {
+template <typename Obj> struct distance_with {
+  Obj obj;
+  template <typename T> auto operator()(const T &t) const {
+    return tf::distance(obj, t);
+  }
+};
+
+template <typename Obj> struct distance2_with {
+  Obj obj;
+  template <typename T> auto operator()(const T &t) const {
+    return tf::distance2(obj, t);
+  }
+};
+
+struct distancer {
+  template <typename T> auto operator()(T &&t) const {
+    return core::distance_with<std::decay_t<T>>{static_cast<T &&>(t)};
+  }
+
+  template <typename T0, typename T1>
+  auto operator()(const T0 &t0, const T1 &t1) const {
+    return tf::distance(t0, t1);
+  }
+};
+
+struct distancer2 {
+  template <typename T> auto operator()(T &&t) const {
+    return core::distance2_with<std::decay_t<T>>{static_cast<T &&>(t)};
+  }
+
+  template <typename T0, typename T1>
+  auto operator()(const T0 &t0, const T1 &t1) const {
+    return tf::distance2(t0, t1);
+  }
+};
+} // namespace core
+
+constexpr core::distancer distance_f;
+constexpr core::distancer2 distance2_f;
+
 } // namespace tf

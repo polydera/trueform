@@ -1,0 +1,37 @@
+/*
+ * Copyright (c) 2025 Žiga Sajovic, XLAB
+ * Distributed under the Boost Software License, Version 1.0.
+ * https://github.com/xlabmedical/trueform
+ */
+#pragma once
+#include "../../core/buffer.hpp"
+#include "../intersection.hpp"
+#include "../intersection_id.hpp"
+#include "../polygon/edge_edge.hpp"
+
+namespace tf::intersect::generate {
+
+template <typename Handle0, typename Handle1, typename Index, typename T,
+          std::size_t Dims>
+auto edge_edge(const Handle0 &handle0, const Handle1 &handle1,
+               tf::buffer<intersection<Index>> &intersections,
+               tf::buffer<intersection_id<Index>> &intersection_ids,
+               tf::buffer<tf::point<T, Dims>> &points) {
+  tf::intersect::polygon::edge_edge(
+      [&](Index e0_0, Index e0_1, Index e1_0, Index e1_1, const auto &pt) {
+        Index id = points.size();
+        points.push_back(pt);
+        intersection_ids.push_back(intersection_id<Index>{}.make_edge_edge(
+            handle0.polygon.indices()[e0_0], handle0.polygon.indices()[e0_1],
+            handle1.polygon.indices()[e1_0], handle1.polygon.indices()[e1_1],
+            id));
+        intersections.push_back({Index(0),
+                                 Index(handle0.id),
+                                 Index(handle1.id),
+                                 {e0_0, tf::topo_type::edge},
+                                 {e1_0, tf::topo_type::edge},
+                                 id});
+      },
+      handle0, handle1);
+}
+} // namespace tf::intersect::generate

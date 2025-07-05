@@ -49,12 +49,16 @@ template <std::size_t Dims, typename Policy0, typename Policy1>
 auto ray_hit(
     const ray_like<Dims, Policy0> &ray, const tf::segment<Dims, Policy1> &seg,
     const tf::ray_config<tf::coordinate_type<Policy0, Policy1>> &config = {}) {
+  using RealT = tf::coordinate_type<Policy0, Policy1>;
   auto ray1 = tf::make_ray_between_points(seg[0], seg[1]);
   auto [non_parallel, t0, t1] = tf::core::line_line_check(ray, ray1);
   intersect_status status = intersect_status::none;
-  tf::point<tf::coordinate_type<decltype(t0), decltype(t1)>, Dims> pt;
-  if (non_parallel && t0 >= config.min_t && t0 <= config.max_t && t1 >= 0 &&
-      t1 <= 1) {
+  tf::point<tf::coordinate_type<decltype(t0), decltype(t1)>, Dims> pt{};
+  if (non_parallel &&
+      t0 >= config.min_t - std::numeric_limits<RealT>::epsilon() &&
+      t0 <= config.max_t + std::numeric_limits<RealT>::epsilon() &&
+      t1 >= -std::numeric_limits<RealT>::epsilon() &&
+      t1 <= 1 + std::numeric_limits<RealT>::epsilon()) {
     auto pt0 = ray.origin + t0 * ray.direction;
     auto pt1 = ray1.origin + t1 * ray1.direction;
     auto d2 = (pt0 - pt1).length2();
@@ -71,10 +75,13 @@ auto ray_hit(
     const ray_like<Dims, Policy0> &ray,
     const tf::line_like<Dims, Policy1> &line,
     const tf::ray_config<tf::coordinate_type<Policy0, Policy1>> &config = {}) {
+  using RealT = tf::coordinate_type<Policy0, Policy1>;
   auto [non_parallel, t0, t1] = tf::core::line_line_check(ray, line);
   intersect_status status = intersect_status::none;
-  tf::point<tf::coordinate_type<Policy0, Policy1>, Dims> pt;
-  if (non_parallel && t0 >= config.min_t && t0 <= config.max_t) {
+  tf::point<tf::coordinate_type<Policy0, Policy1>, Dims> pt{};
+  if (non_parallel &&
+      t0 >= config.min_t - std::numeric_limits<RealT>::epsilon() &&
+      t0 <= config.max_t + std::numeric_limits<RealT>::epsilon()) {
     auto pt0 = ray.origin + t0 * ray.direction;
     auto pt1 = line.origin + t1 * line.direction;
     auto d2 = (pt0 - pt1).length2();
@@ -90,10 +97,14 @@ template <std::size_t Dims, typename Policy0, typename Policy1>
 auto ray_hit(
     const ray_like<Dims, Policy0> &ray, const tf::ray_like<Dims, Policy1> &ray1,
     const tf::ray_config<tf::coordinate_type<Policy0, Policy1>> &config = {}) {
+  using RealT = tf::coordinate_type<Policy0, Policy1>;
   auto [non_parallel, t0, t1] = tf::core::line_line_check(ray, ray1);
   intersect_status status = intersect_status::none;
-  tf::point<tf::coordinate_type<Policy0, Policy1>, Dims> pt;
-  if (non_parallel && t0 >= config.min_t && t0 <= config.max_t && t1 >= 0) {
+  tf::point<tf::coordinate_type<Policy0, Policy1>, Dims> pt{};
+  if (non_parallel &&
+      t0 >= config.min_t - std::numeric_limits<RealT>::epsilon() &&
+      t0 <= config.max_t + std::numeric_limits<RealT>::epsilon() &&
+      t1 >= -std::numeric_limits<RealT>::epsilon()) {
     auto pt0 = ray.origin + t0 * ray.direction;
     auto pt1 = ray1.origin + t1 * ray1.direction;
     auto d2 = (pt0 - pt1).length2();

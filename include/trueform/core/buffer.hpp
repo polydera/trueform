@@ -122,7 +122,7 @@ public:
   auto erase_till_end(T *const _new_end) { _end = _new_end; }
 
   /// @brief Erases a range of elements and compacts the remaining content.
-  auto erase(const T *_from, const T *_to) {
+  auto erase(T *_from, const T *_to) {
     auto it = _to;
     while (it != _end) {
       *_from++ = *it++;

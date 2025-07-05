@@ -7,6 +7,7 @@
 
 #include "./aabb_like.hpp"
 #include "./closest_point_parametric.hpp"
+#include "./interval.hpp"
 #include "./line.hpp"
 #include "./point_like.hpp"
 #include "./polygon.hpp"
@@ -15,6 +16,13 @@
 #include "./segment.hpp"
 
 namespace tf {
+
+template <typename T0, typename T1>
+auto intersects(const interval<T0> &r0, const interval<T1> &r1) -> bool {
+  using RealT = std::common_type_t<T0, T1>;
+  return !(r1.max + std::numeric_limits<RealT>::epsilon() < r0.min ||
+           r0.max + std::numeric_limits<RealT>::epsilon() < r1.min);
+}
 
 /// @ingroup geometry
 /// @brief Check whether two geometric primitives intersect.
@@ -26,8 +34,10 @@ namespace tf {
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const aabb_like<Dims, Policy0> &a,
                 const aabb_like<Dims, Policy1> &b) -> bool {
+  using RealT = tf::coordinate_type<Policy0, Policy1>;
   for (std::size_t i = 0; i < Dims; ++i) {
-    if (a.max[i] < b.min[i] || b.max[i] < a.min[i])
+    if (a.max[i] + std::numeric_limits<RealT>::epsilon() < b.min[i] ||
+        b.max[i] + std::numeric_limits<RealT>::epsilon() < a.min[i])
       return false;
   }
   return true;
@@ -63,8 +73,10 @@ auto intersects(const aabb_like<Dims, Policy0> &a,
 template <std::size_t N, typename T0, typename T1>
 auto intersects(const point_like<N, T0> &point, const aabb_like<N, T1> &box)
     -> bool {
+  using RealT = tf::coordinate_type<T0, T1>;
   for (std::size_t i = 0; i < N; ++i) {
-    if (point[i] < box.min[i] || point[i] > box.max[i])
+    if (point[i] + std::numeric_limits<RealT>::epsilon() < box.min[i] ||
+        point[i] - std::numeric_limits<RealT>::epsilon() > box.max[i])
       return false;
   }
   return true;
@@ -527,7 +539,7 @@ auto intersects(const tf::plane_like<Dims, Policy0> &plane,
                 const tf::point_like<Dims, Policy1> &pt) -> bool {
   auto d = tf::dot(plane.normal, pt) + plane.d;
   ;
-  return d < std::numeric_limits<decltype(d)>::epsilon();
+  return std::abs(d) < std::numeric_limits<decltype(d)>::epsilon();
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>
@@ -577,6 +589,29 @@ template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const tf::segment<Dims, Policy0> &seg,
                 const tf::plane_like<Dims, Policy0> &plane) -> bool {
   return intersects(plane, seg);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::aabb_like<Dims, Policy0> &bbox,
+                const tf::plane_like<Dims, Policy1> &plane) {
+  tf::coordinate_type<Policy0, Policy1> n_min = 0;
+  decltype(n_min) n_max = 0;
+  for (std::size_t i = 0; i < Dims; ++i) {
+    std::array<decltype(n_min), 2> ds{bbox.min[i], bbox.max[i]};
+    bool test = plane.normal[i] < 0;
+    n_min += ds[test] * plane.normal[i];
+    n_max += ds[!test] * plane.normal[i];
+  }
+  n_min += plane.d;
+  n_max += plane.d;
+  return n_min <= std::numeric_limits<decltype(n_min)>::epsilon() &&
+         n_max >= -std::numeric_limits<decltype(n_max)>::epsilon();
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::plane_like<Dims, Policy0> &plane,
+                const tf::aabb_like<Dims, Policy1> &bbox) {
+  return intersects(bbox, plane);
 }
 
 namespace core {

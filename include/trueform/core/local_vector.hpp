@@ -67,7 +67,7 @@ public:
     return out;
   }
 
-  template<typename Iterator>
+  template <typename Iterator>
   auto to_iterator(Iterator out) const -> Iterator {
     for (const auto &v : _vectors)
       out = std::copy(v.begin(), v.end(), out);
@@ -110,6 +110,10 @@ public:
 
   /// @brief Check if local vector is empty.
   auto empty() const -> bool { return local().empty(); }
+
+  auto operator*() const -> const std::vector<T> & { return local(); }
+
+  auto operator*() -> std::vector<T> & { return local(); }
 
   auto vectors() const -> const std::vector<std::vector<T>> & {
     return _vectors;

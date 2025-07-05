@@ -53,6 +53,23 @@ if(ENABLE_ASAN)
   endforeach()
 endif()
 
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+  include(CheckCXXCompilerFlag)
+
+  check_cxx_compiler_flag("-march=native" SUPPORTS_MARCH_NATIVE)
+  if(SUPPORTS_MARCH_NATIVE)
+    message(STATUS "Compiler supports -march=native")
+  else()
+    message(WARNING "Compiler does NOT support -march=native")
+  endif()
+
+  foreach(target ${EXAMPLE_EXECUTABLES})
+    if(SUPPORTS_MARCH_NATIVE)
+      target_compile_options(${target} PRIVATE -march=native)
+    endif()
+  endforeach()
+endif()
+
 # Group target to build all
 add_custom_target(examples DEPENDS ${EXAMPLE_EXECUTABLES})
 

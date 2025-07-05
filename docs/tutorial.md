@@ -932,3 +932,5 @@ for (const tf::manifold_edge_peer<int>& peer : me_link[face_id]) {
     }
 }
 ```
+
+## Intersect

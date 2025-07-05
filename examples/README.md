@@ -15,7 +15,7 @@ cmake ..
 make examples -j8
 ```
 
-## [Core Functionality](./)
+## Core Functionality
 
 This directory contains a set of standalone examples demonstrating various features and use cases of the trueform library. Each example is designed to be a practical, focused demonstration of a specific workflow.
 
@@ -25,12 +25,12 @@ This example demonstrates how to perform fundamental geometric queries between i
 
 #### Features Showcased:
 
-* Creating basic owning primitives like tf::polygon and tf::segment.
-* Performing boolean intersection tests with tf::intersects.
-* Finding the closest points between two primitives with tf::closest_metric_point_pair.
-* Calculating the minimum distance with tf::distance.
-* Classifying points against polygons, planes and lines using tf::classify to get tf::containment and tf::sidedness results.
-* Casting rays against primitives with tf::ray_cast and tf::ray_hit.
+* Creating basic owning primitives like `tf::polygon` and `tf::segment`.
+* Performing boolean intersection tests with `tf::intersects`
+* Finding the closest points between two primitives with `tf::closest_metric_point_pair`
+* Calculating the minimum distance with `tf::distance`
+* Classifying points against polygons, planes and lines using `tf::classify` to get `tf::containment` and `tf::sidedness` results.
+* Casting rays against primitives with `tf::ray_cast` and `tf::ray_hit.`
 
 ### [Finding Coincident Points with Tolerance](./find_coincident_points_with_tolerance.cpp)
 
@@ -38,23 +38,23 @@ This example demonstrates a common and practical geometry processing workflow: c
 
 #### Features Showcased:
 
-* Generating a random tf::points collection.
-* Building a tf::tree acceleration structure over a point cloud.
-* Using the high-level tf::gather_self_ids query to collect all pairs of points within a given tolerance.
+* Generating a random `tf::points` collection.
+* Building a `tf::tree` acceleration structure over a point cloud.
+* Using the high-level `tf::gather_self_ids` query to collect all pairs of points within a given tolerance.
 * Using the more general tf::search_self query to perform the same task, demonstrating how to use the flexible broad-phase and narrow-phase lambdas.
-* Using tf::local_vector for thread-safe parallel collection.
+* Using `tf::local_vector` for thread-safe parallel collection.
 
 ### [Find Intersecting Primitives in a Mesh](./find_intersecting_primitives.cpp)
 This example demonstrates how to find all intersecting triangles between a mesh and a dynamically transformed version of itself. This is a core task for collision detection with articulated bodies (e.g., a robot arm colliding with itself) or general self-intersection tests.
 
 #### Features Showcased:
 
-* Creating a tf::polygons view from raw vertex and index data.
-* Building a tf::tree over a polygon mesh.
-* Applying a dynamic tf::frame to a tf::form to perform a query on transformed geometry without modifying the original data.
-* Using the high-level tf::gather_ids to quickly collect all intersecting pairs.
-* Using the general-purpose tf::search to perform the same query, showing how to use tf::intersects as a predicate for both the broad-phase and narrow-phase checks.
-* Using tf::local_vector for thread-safe parallel collection.
+* Creating a `tf::polygons` view from raw vertex and index data.
+* Building a `tf::tree` over a polygon mesh.
+* Applying a dynamic `tf::frame` to a `tf::form` to perform a query on transformed geometry without modifying the original data.
+* Using the high-level `tf::gather_ids` to quickly collect all intersecting pairs.
+* Using the general-purpose tf::search to perform the same query, showing how to use `tf::intersects` as a predicate for both the broad-phase and narrow-phase checks.
+* Using `tf::local_vector` for thread-safe parallel collection.
 
 ## Comparisons
 
@@ -66,7 +66,7 @@ This example provides a direct performance benchmark for k-Nearest Neighbor (k-N
 
 #### Features Showcased:
 
-* Building a tf::tree and a nanoflann::KDTree from the same data source.
+* Building a `tf::tree` and a `nanoflann::KDTree` from the same data source.
 * Benchmarking k-NN query performance for both libraries over a range of k values.
 * Demonstrating the performance advantage of trueform's spatial query system.
 
@@ -92,16 +92,39 @@ This example demonstrates how to integrate trueform into an interactive VTK appl
 
 #### Features Showcased:
 
-* Creating tf::polygons views directly over VTK data buffers.
-* Building a tf::tree over a collection of objects.
-* Using tf::intersects with a dynamic tf::form to detect collisions 
-* Using tf::ray_cast for mouse picking.
+* Creating `tf::polygons` views directly over VTK data buffers.
+* Building a `tf::tree` over a collection of objects.
+* Using `tf::intersects`` with a dynamic `tf::form` to detect collisions 
+* Using `tf::ray_cast` for mouse picking.
 
 ### [Automatic Positioning](./vtk/positioning.cpp)
-This example showcases a common task in assembly or scene layout: precisely positioning two objects. It loads two copies of a mesh randomly rotated, allowing the user to move them freely. It then uses trueform's tf::neighbor_search to find the closest points between the two meshes and calculates the exact transformation needed to bring them into contact along the shortest path.
+This example showcases a common task in assembly or scene layout: precisely positioning two objects. It loads two copies of a mesh randomly rotated, allowing the user to move them freely. It then uses `trueform`'s `tf::neighbor_search` to find the closest points between the two meshes and calculates the exact transformation needed to bring them into contact along the shortest path.
 
 #### Features Showcased:
 
-* Using tf::neighbor_search between two tf::form objects to find the closest points on complex meshes.
-* Using the result of a query to compute a precise placement tf::frame.
+* Using `tf::neighbor_search` between two `tf::form` objects to find the closest points on complex meshes.
+* Using the result of a query to compute a precise placement `tf::frame`.
 * Demonstrating a practical application for CAD, robotics, or virtual assembly.
+
+### [Scalar-Field Intersection Curve](./vtk/scalar_field_intersections.cpp)
+
+This example showcases how to compute intersection curves on a mesh, based on a scalar field on its points. It loads a mesh and picks a random plane. When you scroll the mouse wheel, it adjust the plane in the normal direction in a continous way. Pressing `n` randomizes the plane.
+
+#### Features Showcased
+
+* Using `tf::scalar_field_intersections`
+* Using `tf::make_intersection_edges` 
+* Demonstrates a practical application for CAD
+
+### [Mesh-Mesh Intersection Curve](./vtk/forms_intersections.cpp)
+
+This example showcases how to compute intersection curves between two meshes (as `tf::form`). It loads two meshes (or one and duplicates it). You interact with the scene by grabbing one of the meshes and move it. When the `forms` are intersecting, the intersection curve will be shown. Pressing `n` randomizes the rotations of the meshes.
+
+#### Features Showcased
+
+* Using `tf::forms_intersections` to compute intersections between two `tf::form`s.
+* Using `tf::make_intersection_edges` to extract intersection edges from `tf::forms_intersections`
+* Using `tf::face_membership` and how to `tf::tag` it to a `tf::form` 
+* Using `tf::manifold_edge_link` and how to `tf::tag` it to a `tf::form` 
+* Using `points.as<double>()` to get a view into points where each point is cast to `tf::point<double,3>`
+* Demonstrates a practical application for CAD

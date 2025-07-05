@@ -183,7 +183,7 @@ template <typename T> struct tag_ids_op {
 };
 
 template <typename U, typename T> auto operator|(U &&u, tag_ids_op<T> t) {
-  return tf::tag_ids(t.ids, static_cast<U &&>(u));
+  return tf::tag_ids(std::move(t.ids), static_cast<U &&>(u));
 }
 
 template <typename T> struct zip_ids_op {
@@ -191,7 +191,7 @@ template <typename T> struct zip_ids_op {
 };
 
 template <typename U, typename T> auto operator|(U &&u, zip_ids_op<T> t) {
-  return tf::zip_ids(t.ids, static_cast<U &&>(u));
+  return tf::zip_ids(std::move(t.ids), static_cast<U &&>(u));
 }
 } // namespace policy
 template <typename Range> auto tag_ids(Range &&ids) {

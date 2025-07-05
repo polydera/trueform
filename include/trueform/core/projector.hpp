@@ -4,9 +4,11 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
+#include "./basis.hpp"
 #include "./coordinate_type.hpp"
 #include "./point.hpp"
 #include "./policy/normal.hpp"
+#include "./policy/plane.hpp"
 #include "./polygon.hpp"
 #include "./vector_like.hpp"
 
@@ -17,27 +19,19 @@ namespace tf {
 /// lower-dimensional space.
 ///
 /// `projector<F>` wraps a callable object `F` and provides a projection
-/// operator for `vector_like` inputs. This allows geometric structures like
+/// operator for `point_like` inputs. This allows geometric structures like
 /// planes or polygons to define custom projection behavior for operations such
 /// as containment or distance calculation.
 ///
-/// @tparam F A callable type implementing `operator()(vector_like)` returning a
+/// @tparam F A callable type implementing `operator()(point_like)` returning a
 /// projected point.
-template <typename F> struct projector : private F {
+template <typename Policy> struct projector : Policy {
   /// @brief Constructs a projector from a given function object.
   /// @param f The projection function or functor to wrap.
-  projector(F f) : F{std::move(f)} {}
-
-  /// @brief Applies the projector to a vector-like object.
-  /// @tparam Dims The number of dimensions of the input vector.
-  /// @tparam T The vector data type.
-  /// @param pt The point to project.
-  /// @return The result of applying the wrapped projection function.
-  template <std::size_t Dims, typename T>
-  auto operator()(const point_like<Dims, T> &pt) const -> decltype(auto) {
-    return static_cast<const F &>(*this)(pt);
-  }
+  projector(Policy f) : Policy{std::move(f)} {}
 };
+
+namespace core {
 
 /// @ingroup geometry
 /// @brief Creates a `projector` from a given callable object.
@@ -50,6 +44,7 @@ template <typename F> struct projector : private F {
 template <typename F> auto make_projector(F &&f) {
   return projector<std::decay_t<F>>{static_cast<F &&>(f)};
 }
+} // namespace core
 
 /// @ingroup geometry
 /// @brief Creates an identity projector that returns the input unchanged.
@@ -58,7 +53,7 @@ template <typename F> auto make_projector(F &&f) {
 ///
 /// @return A projector that returns its input unchanged.
 inline auto make_identity_projector() {
-  return tf::make_projector([](const auto &x) -> const auto & { return x; });
+  return core::make_projector([](const auto &x) -> const auto & { return x; });
 }
 
 /// @ingroup geometry
@@ -95,7 +90,7 @@ auto make_simple_projector(const vector_like<3, T> &normal) {
   if (normal[k] < 0)
     std::swap(ids[0], ids[1]);
 
-  return make_projector([x = ids[0], y = ids[1]](const auto &pt) {
+  return core::make_projector([x = ids[0], y = ids[1]](const auto &pt) {
     return tf::point<tf::coordinate_type<T>, 2>{pt[x], pt[y]};
   });
 }
@@ -103,6 +98,25 @@ auto make_simple_projector(const vector_like<3, T> &normal) {
 template <std::size_t Dims, typename Policy>
 auto make_simple_projector(const tf::polygon<Dims, Policy> &poly) {
   auto tagged = tf::tag_normal(poly);
-  return make_simple_projector(poly.normal());
+  return make_simple_projector(tagged.normal());
+}
+
+template <std::size_t Dims, typename Policy>
+auto make_projector(const tf::plane_like<Dims, Policy> &plane) {
+  auto _basis = tf::make_basis(plane);
+  struct projector_t {
+    decltype(_basis) basis;
+    auto operator()(tf::point<tf::coordinate_type<Policy>, Dims> point) const {
+      return tf::point<tf::coordinate_type<Policy>, 2>{
+          tf::dot(basis[0], point), tf::dot(basis[1], point)};
+    }
+  };
+  return core::make_projector(projector_t{_basis});
+}
+
+template <std::size_t Dims, typename Policy>
+auto make_projector(const tf::polygon<Dims, Policy> &poly) {
+  auto tagged = tf::tag_plane(poly);
+  return make_projector(tagged.plane());
 }
 } // namespace tf

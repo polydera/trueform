@@ -1,0 +1,51 @@
+/*
+ * Copyright (c) 2025 Žiga Sajovic, XLAB
+ * Distributed under the Boost Software License, Version 1.0.
+ * https://github.com/xlabmedical/trueform
+ */
+#pragma once
+#include "../../core/buffer.hpp"
+#include "../intersection.hpp"
+#include "../intersection_id.hpp"
+#include "../polygon/vertex_edge.hpp"
+
+namespace tf::intersect::generate {
+
+template <typename Handle0, typename Handle1, typename Index, typename T,
+          std::size_t Dims>
+auto vertex_edge(const Handle0 &handle0, const Handle1 &handle1,
+                 tf::buffer<intersection<Index>> &intersections,
+                 tf::buffer<intersection_id<Index>> &intersection_ids,
+                 tf::buffer<tf::point<T, Dims>> &points) {
+  tf::intersect::polygon::vertex_edge(
+      [&](Index sub_v_id, Index sub_e_id0, Index sub_e_id1, bool ordering) {
+        Index id = points.size();
+        if (!ordering) {
+          intersection_ids.push_back(intersection_id<Index>{}.make_vertex_edge(
+              handle0.polygon.indices()[sub_v_id],
+              handle1.polygon.indices()[sub_e_id0],
+              handle1.polygon.indices()[sub_e_id1], id));
+          points.push_back(handle0.polygon[sub_v_id]);
+          intersections.push_back({Index(0),
+                                   Index(handle0.id),
+                                   Index(handle1.id),
+                                   {sub_v_id, tf::topo_type::vertex},
+                                   {sub_e_id0, tf::topo_type::edge},
+                                   id});
+        } else {
+          intersection_ids.push_back(intersection_id<Index>{}.make_edge_vertex(
+              handle0.polygon.indices()[sub_e_id0],
+              handle0.polygon.indices()[sub_e_id1],
+              handle1.polygon.indices()[sub_v_id], id));
+          points.push_back(handle1.polygon[sub_v_id]);
+          intersections.push_back({Index(0),
+                                   Index(handle0.id),
+                                   Index(handle1.id),
+                                   {sub_e_id0, tf::topo_type::edge},
+                                   {sub_v_id, tf::topo_type::vertex},
+                                   id});
+        }
+      },
+      handle0, handle1);
+}
+} // namespace tf::intersect::generate
