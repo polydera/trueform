@@ -143,9 +143,12 @@ manifold_edge_link.build(polygons, face_membership)
 ```
 You can attach them to a primitive range or a `form` using `tf::tag` for use in topology-aware algorithms:
 ```c++
-auto topological_form = form
+auto t_polygons = polygons
     | tf::tag(face_membership)
     | tf::tag(manifold_edge_link);
+
+auto paths = tf::make_boundary_paths(t_polygons);
+auto curves = tf::make_curves(paths, t_polygons.points());
 ```
 
 #### Tutorial: Topology

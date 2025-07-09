@@ -5,6 +5,8 @@
  */
 #pragma once
 
+#include "./topology/boundary_edges.hpp"           // IWYU pragma: export
+#include "./topology/boundary_paths.hpp"           // IWYU pragma: export
 #include "./topology/directed_edge_id_in_face.hpp" // IWYU pragma: export
 #include "./topology/edge_id_in_face.hpp"          // IWYU pragma: export
 #include "./topology/edge_orientation.hpp"         // IWYU pragma: export
