@@ -100,7 +100,7 @@ auto knn = tf::neighbor_search(
     tf::make_nearest_neighbors(knn_buffer.begin(), 10/*, search radius*/));
 ```
 
-See how it compares with `nanoflann`:
+See how it compares with `nanoflann` (on *Intel i7-9750H*):
 
 <p float="left">
   <img src="./docs/img/nano-build.png" width="49%" />
@@ -119,7 +119,7 @@ tf::gather_ids(
     tf::intersects_f,
     std::back_inserter(results));
 ```
-See how it compares with `CGAL`:
+See how it compares with `CGAL` (on *Intel i7-9750H*):
 
 <p float="left">
   <img src="./docs/img/cgal-build.png" width="49%" />
@@ -177,9 +177,6 @@ fi.build(form0 | tf::tag(face_membership0) | tf::tag(manifold_edge_link0),
 auto edges = tf::make_intersection_edges(fi);
 auto segments = tf::make_segments(edges, fi.intersection_points());
 ```
-
-
-[Watch a Demo](./examples/vtk/forms_intersections_example.mp4).
 
 #### Tutorial: Intersections
 
