@@ -13,6 +13,7 @@
 #include "./ray_like.hpp"
 #include "./segment.hpp"
 #include "./sidedness.hpp"
+#include "./wedge.hpp"
 namespace tf {
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto classify(const point_like<Dims, Policy0> &pt,
@@ -44,6 +45,28 @@ template <typename Policy0, typename Policy1>
 auto classify(const point_like<2, Policy0> &point,
               const ray_like<2, Policy1> &ray) -> sidedness {
   return classify(point, tf::make_segment_between_points(ray.origin, ray(1)));
+}
+
+template <typename Policy0, typename Policy1>
+auto classify(const point_like<2, Policy0> &pt, const wedge<Policy1> &w)
+    -> strict_containment {
+  using tf::sidedness;
+
+  const auto o0 = classify(w[0], make_segment(w[1], w[2]));
+  const auto o1 = classify(w[0], make_segment(w[1], pt));
+  const auto o2 = classify(w[0], make_segment(w[2], pt));
+
+  const bool convex = o0 != sidedness::on_negative_side;
+
+  const bool inside_convex =
+      o1 == sidedness::on_positive_side && o2 == sidedness::on_positive_side;
+
+  const bool inside_reflex =
+      o1 != sidedness::on_negative_side || o2 != sidedness::on_negative_side;
+
+  const bool inside = convex ? inside_convex : inside_reflex;
+
+  return static_cast<strict_containment>(!inside);
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>

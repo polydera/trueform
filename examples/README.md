@@ -3,7 +3,7 @@
 The examples are grouped into three main categories:
 
 * [Core Functionality](#core-functionality): Self-contained examples that demonstrate the primary features of the trueform library, from primitive queries to the compositional policy system.
-* [Comparisons](#comparisons): Performance and usage comparisons against other well-established libraries like `CGAL` and `nanoflann`, showcasing the efficiency of trueform's data structures and algorithms.
+* [Comparisons](#comparisons): Performance and usage comparisons against other well-established libraries like `VTK`, `CGAL` and `nanoflann`, showcasing the efficiency of trueform's data structures and algorithms.
 * [VTK Integration](#vtk-integrationvtk): Practical guides on how to integrate `trueform` into a larger framework like `VTK`, demonstrating how to create `trueform` views directly over `VTK`'s data structures.
 
 To build examples, run:
@@ -81,6 +81,16 @@ This example provides direct performance benchmark for collecting intersecting p
 * Building a `tf::tree`
 * Transformations of a `tf::tree`
 * Using `tf::gather_ids`
+
+
+### [VTK: Feature Edges](./vtk/feature_edges.cpp)
+
+This example provides direct performance benchmark for collecting boundary and non_manifold edges.
+
+#### Features Showcased
+
+* Using `tf::make_boundary_edges`
+* Using `tf::make_non_manifold_edges`
 
 ## [VTK Integration](./vtk/)
 

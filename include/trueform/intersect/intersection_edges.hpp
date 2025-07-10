@@ -43,6 +43,45 @@ auto make_intersection_edges(
   return buffer;
 }
 
+template <typename Index, typename RealT, std::size_t Dims, typename Policy,
+          typename Range, typename Iterator, std::size_t N>
+auto make_intersection_edges(
+    const tf::scalar_field_intersections<Index, RealT, Dims> &sfi,
+    const tf::polygons<Policy> &polygons, const Range &scalar_field,
+    const tf::range<Iterator, N> &cut_values) {
+  tf::blocked_buffer<Index, 2> buffer;
+  tf::generic_generate(
+      sfi.intersections(), buffer.data_buffer(),
+      [&](const auto &r, auto &buff) {
+        // scalar field intersections either have 1
+        // or 2 elements.
+        if (r.size() != 2)
+          return;
+        auto i0 = r[0];
+        auto i1 = r[1];
+        const auto &face = polygons.faces()[i0.polygon];
+        auto s0 = scalar_field[face[i0.target.id]];
+        auto s1 = scalar_field[face[i1.target.id]];
+        if (s0 > s1)
+          std::swap(s0, s1);
+        auto cut_value =
+            *std::upper_bound(cut_values.begin(), cut_values.end(), s0);
+        Index size = polygons[i0.polygon].size();
+        auto next_id = tf::circular_increment(i1.target.id, size);
+        if (i0.target.id == next_id) {
+          std::swap(i0, i1);
+          next_id = tf::circular_increment(i1.target.id, size);
+        }
+        if (scalar_field[polygons[i0.polygon].indices()[next_id]] < cut_value) {
+          std::swap(i0, i1);
+        }
+        buff.push_back(i0.id);
+        buff.push_back(i1.id);
+      });
+
+  return buffer;
+}
+
 template <typename Index, typename RealT, std::size_t Dims>
 auto make_intersection_edges(
     const tf::intersect::simple_intersections<Index, RealT, Dims>

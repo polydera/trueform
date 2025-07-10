@@ -19,6 +19,23 @@ public:
   template <typename Policy, typename Range>
   auto build(const tf::polygons<Policy> &polygons, const Range &scalar_field,
              typename Range::value_type cut_value = {}) {
+    return build_impl(polygons, scalar_field, [cut_value](auto min, auto max) {
+      return std::make_pair(min < cut_value && max > cut_value, cut_value);
+    });
+  }
+
+  template <typename Policy, typename Range0, typename Range1>
+  auto build_many(const tf::polygons<Policy> &polygons,
+                  const Range0 &scalar_field, const Range1 &cut_values) {
+    return build_impl(polygons, scalar_field, [&](auto min, auto max) {
+      return handle_cut(min, max, cut_values);
+    });
+  }
+
+private:
+  template <typename Policy, typename Range, typename F>
+  auto build_impl(const tf::polygons<Policy> &polygons,
+                  const Range &scalar_field, const F &handler_f) {
     base_t::clear();
     tf::buffer<tf::intersect::simple_edge_point_id<Index>> edge_ids;
     std::tuple<tf::buffer<tf::intersect::simple_intersection<Index>>,
@@ -30,7 +47,7 @@ public:
         tf::enumerate(polygons),
         std::tie(base_t::_intersections, edge_ids, base_t::_points),
         local_result,
-        [&scalar_field, cut_value](const auto &r, auto &local_result) {
+        [&scalar_field, &handler_f](const auto &r, auto &local_result) {
           auto &&[intersections, edge_point_ids, points] = local_result;
           intersections.reserve(1000);
           edge_point_ids.reserve(1000);
@@ -46,8 +63,9 @@ public:
                 std::swap(v0, v1);
               Index id0 = face[v0];
               Index id1 = face[v1];
-              if (!(scalar_field[id0] < cut_value &&
-                    scalar_field[id1] > cut_value))
+              auto [should_cut, cut_value] =
+                  handler_f(scalar_field[id0], scalar_field[id1]);
+              if (!should_cut)
                 continue;
 
               auto edge = polygon[v1] - polygon[v0];
@@ -120,6 +138,18 @@ public:
         });
 
     base_t::finalize(std::move(edge_ids));
+  }
+
+  template <typename T, typename Range>
+  auto handle_cut(T min, T max, const Range &cut_values) {
+    // Find the first cut value strictly greater than min
+    auto it = std::upper_bound(cut_values.begin(), cut_values.end(), min);
+
+    // Check if that cut value is still below max
+    if (it == cut_values.end() || *it >= max)
+      return std::make_pair(false, RealT(0));
+
+    return std::make_pair(true, RealT(*it));
   }
 };
 } // namespace tf

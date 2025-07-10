@@ -16,6 +16,7 @@
 #include "./topology/find_eulerian_paths.hpp"      // IWYU pragma: export
 #include "./topology/manifold_edge_link.hpp"       // IWYU pragma: export
 #include "./topology/manifold_edge_peer.hpp"       // IWYU pragma: export
+#include "./topology/non_manifold_edges.hpp"       // IWYU pragma: export
 #include "./topology/policy.hpp"                   // IWYU pragma: export
 #include "./topology/scoped_face_membership.hpp"   // IWYU pragma: export
 #include "./topology/scoped_id.hpp"                // IWYU pragma: export

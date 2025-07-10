@@ -110,15 +110,15 @@ vtkStandardNewMacro(cursor_interactor);
 
 int main(int argc, char *argv[]) {
   if (argc < 2) {
-    std::cerr << "Usage: program <input.stl>  ...\n";
+    std::cerr << "Usage: program <input.stl|obj>  ...\n";
     return 1;
   } else if (argc == 2 && (std::string_view(argv[1]) == "-h" ||
                            std::string_view(argv[1]) == "--help")) {
-    std::cerr << "Usage: program <input.stl>  ...\n";
+    std::cerr << "Usage: program <input.stl|obj>  ...\n";
     return 1;
   }
 
-  auto poly = readSTL(argv[1]);
+  auto poly = read_mesh(argv[1]);
   center_and_scale(poly.get());
 
   auto inter = vtk_make_unique<cursor_interactor>();

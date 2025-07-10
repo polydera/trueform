@@ -34,4 +34,17 @@ auto make_intersection_paths(
   return tf::make_intersection_paths(tf::make_edges(ie),
                                      sfi.intersection_points().size());
 }
+
+template <typename Index, typename RealT, std::size_t Dims, typename Policy,
+          typename Range, typename Iterator, std::size_t N>
+auto make_intersection_paths(
+    const tf::scalar_field_intersections<Index, RealT, Dims> &sfi,
+    const tf::polygons<Policy> &polygons, const Range &scalar_field,
+    const tf::range<Iterator, N> &cut_values) {
+  auto ie =
+      tf::make_intersection_edges(sfi, polygons, scalar_field, cut_values);
+  return tf::make_intersection_paths(tf::make_edges(ie),
+                                     sfi.intersection_points().size());
+}
+
 } // namespace tf

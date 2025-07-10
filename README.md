@@ -65,7 +65,7 @@ const auto &[transformed_direction, label] = transformed.state();
 
 #### Tutorial: Core
 
-See [Tutorial: Core](./docs/tutorial.md#core) for a detailed walk-through.
+See [Tutorial: Core](./docs/tutorial.md#core) for a detailed walk-through. Additional examples are provided in the [examples directory](./examples/).
 
 ### 🌌 Spatial Queries
 
@@ -109,7 +109,7 @@ See how it compares with `nanoflann` (on *Intel i7-9750H*):
 
 #### ⚡️ Searching Forms
 
-The `tf::form`s may be searched using primitives or other forms, or themselves (for self-intersections, etc.). Additionally, use higher-level functions like `tf::gather_ids` to collect primitives satisfying a predicate, e.g. all pairs of intersecting primitives between two forms:
+The `tf::form`s may be searched (`tf::search`) using primitives or other forms, or themselves (`tf::search_self`). Additionally, use higher-level functions like `tf::gather_ids` to collect primitives satisfying a predicate, e.g. all pairs of intersecting primitives between two forms:
 
 ```c++
 auto dynamic = tf::make_form(tf::random_frame_at(pts[0], pts[10]), tree, triangles);
@@ -129,7 +129,7 @@ See how it compares with `CGAL` (on *Intel i7-9750H*):
 
 #### Tutorial: Spatial
 
-See [Tutorial: Spatial](./docs/tutorial.md#spatial) for a detailed walk-through and additional features like `tf::distance`, `tf::intersects`, and `tf::ray_hit` on forms.
+See [Tutorial: Spatial](./docs/tutorial.md#spatial) for a detailed walk-through and additional features like `tf::search`, `tf::distance`, `tf::intersects`, and `tf::ray_hit` on forms. Additional examples are provided in the [examples directory](./examples/).
 
 ### 🧩 Topology
 
@@ -151,9 +151,16 @@ auto paths = tf::make_boundary_paths(t_polygons);
 auto curves = tf::make_curves(paths, t_polygons.points());
 ```
 
+See how it compares with `VTK` (on *Intel i7-9750H*):
+
+<p float="left">
+  <img src="./docs/img/vtk_boundary_speed_up.png" width="49%" />
+  <img src="./docs/img/vtk_non_manifold_speed_up.png" width="49%" />
+</p>
+
 #### Tutorial: Topology
 
-See [Tutorial: Topology](./docs/tutorial.md#topology) for a detailed walk-through and additional features like `tf::vertex_link` and `tf::face_link`.
+See [Tutorial: Topology](./docs/tutorial.md#topology) for a detailed walk-through and additional features like `tf::vertex_link` and `tf::face_link`. Additional examples are provided in the [examples directory](./examples/).
 
 ### ✂️ Intersections
 
@@ -170,6 +177,13 @@ auto edges = tf::make_intersection_edges(sfi);
 auto segments = tf::make_segments(edges, sfi.intersection_points());
 ```
 
+See how it compares with `VTK` (on *Intel i7-9750H*):
+
+<p float="left">
+  <img src="./docs/img/scalar_field_contours_speed_up.png" width="49%" />
+  <img src="./docs/img/scalar_field_multi_contours_speed_up.png" width="49%" />
+</p>
+
 #### ✖️ Form-Form Intersections
 
 Detect all intersections between two polygonal `forms` — transformed or static:
@@ -183,7 +197,7 @@ auto segments = tf::make_segments(edges, fi.intersection_points());
 
 #### Tutorial: Intersections
 
-See [Tutorial: Intersections](./docs/tutorial.md#intersect) for a walk-through and additional features.
+See [Tutorial: Intersections](./docs/tutorial.md#intersect) for a walk-through and additional features. Additional examples are provided in the [examples directory](./examples/).
 
 ## Getting Started
 

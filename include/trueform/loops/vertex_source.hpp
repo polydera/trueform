@@ -5,8 +5,6 @@
  */
 #pragma once
 
-namespace tf {
-enum class containment { inside = 0, outside = 1, on_boundary = 2 };
-
-enum class strict_containment { inside = 0, outside = 1};
+namespace tf::loop {
+enum class vertex_source { original, created };
 }

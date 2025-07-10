@@ -7,6 +7,7 @@
 
 #include "./core.hpp"      // IWYU pragma: export
 #include "./intersect.hpp" // IWYU pragma: export
+#include "./loops.hpp"     // IWYU pragma: export
 #include "./random.hpp"    // IWYU pragma: export
 #include "./spatial.hpp"   // IWYU pragma: export
 #include "./topology.hpp"  // IWYU pragma: export

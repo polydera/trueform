@@ -35,7 +35,7 @@ public:
     clear();
     auto [intersection_ids, intersections, intersection_points] =
         compute_buffers(form0, form1);
-    if(!intersections.size())
+    if (!intersections.size())
       return;
 
     auto keep_mask = tf::intersect::compute_simplification_mask(
@@ -65,6 +65,19 @@ public:
     return tf::make_offset_block_range(_intersections_offsets, _intersections);
   }
 
+  auto intersections0() const {
+    return tf::make_offset_block_range(
+        tf::make_range(_intersections_offsets.begin(), _partition_id),
+        _intersections);
+  }
+
+  auto intersections1() const {
+    return tf::make_offset_block_range(
+        tf::make_range(_intersections_offsets.begin() + _partition_id,
+                       _intersections_offsets.end()),
+        _intersections);
+  }
+
   auto intersection_points() const {
     return tf::make_range(_intersection_points);
   }
@@ -73,10 +86,13 @@ public:
     _intersections.clear();
     _intersections_offsets.clear();
     _intersection_points.clear();
+    _partition_id = 0;
   }
 
 private:
   auto finalize(Index n_ids) {
+    if (n_ids == 0)
+      return;
     tbb::parallel_sort(_intersections.begin(), _intersections.end());
     _intersections_offsets.reserve(n_ids * 2 + 1);
     tf::compute_offsets(_intersections,
@@ -84,6 +100,15 @@ private:
                         [](const auto &x0, const auto &x1) {
                           return x0.polygon_key() == x1.polygon_key();
                         });
+    auto r = tf::make_indirect_range(
+        tf::make_range(_intersections_offsets.begin(),
+                       _intersections_offsets.size() - 1),
+        _intersections);
+    _partition_id = std::upper_bound(r.begin(), r.end(), 0,
+                                     [](const auto &value, const auto &r1) {
+                                       return value < r1.mesh;
+                                     }) -
+                    r.begin();
   }
 
   template <typename Policy0, typename Policy1>
@@ -155,6 +180,7 @@ private:
                            l_intersection_points.to_buffer());
   }
 
+  Index _partition_id = 0;
   tf::buffer<intersect::intersection<Index>> _intersections;
   tf::buffer<Index> _intersections_offsets;
   tf::buffer<tf::point<RealType, Dims>> _intersection_points;

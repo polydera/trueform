@@ -27,6 +27,26 @@ auto generic_generate(const Range &r, tf::buffer<T> &buffer,
       });
 }
 
+template <typename Range, typename T, typename State, typename F>
+auto generic_generate(const Range &r, tf::buffer<T> &buffer, State local_state,
+                      const F &generator) {
+  tf::blocked_reduce(
+      r, buffer, std::make_pair(tf::buffer<T>{}, local_state),
+      [generator](const auto &r, auto &pair) {
+        auto &[buffer, local_state] = pair;
+        buffer.reserve(r.size());
+        for (const auto &element : r)
+          generator(element, buffer, local_state);
+      },
+      [](const auto &pair, auto &buffer) {
+        auto &local_buffer = pair.first;
+        auto old_size = buffer.size();
+        buffer.reallocate(old_size + local_buffer.size());
+        std::copy(local_buffer.begin(), local_buffer.end(),
+                  buffer.begin() + old_size);
+      });
+}
+
 template <typename Range, typename... Ts, typename F>
 auto generic_generate(const Range &r, std::tuple<tf::buffer<Ts> &...> buffers,
                       const F &generator) {
@@ -39,6 +59,36 @@ auto generic_generate(const Range &r, std::tuple<tf::buffer<Ts> &...> buffers,
           generator(element, buffers);
       },
       [](const auto &local_buffer, auto &buffer) {
+        tf::zip_apply(
+            [](auto &&...tups) {
+              (
+                  [](auto &&tup) {
+                    auto &&[local_buffer, buffer] = tup;
+                    auto old_size = buffer.size();
+                    buffer.reallocate(old_size + local_buffer.size());
+                    std::copy(local_buffer.begin(), local_buffer.end(),
+                              buffer.begin() + old_size);
+                  }(tups),
+                  ...);
+            },
+            local_buffer, buffer);
+      });
+}
+
+template <typename Range, typename... Ts, typename State, typename F>
+auto generic_generate(const Range &r, std::tuple<tf::buffer<Ts> &...> buffers,
+                      State local_state, const F &generator) {
+  tf::blocked_reduce(
+      r, buffers, std::make_pair(std::tuple<tf::buffer<Ts>...>{}, local_state),
+      [generator](const auto &r, auto &pair) {
+        auto &[buffers, local_state] = pair;
+        std::apply([&](auto &...buffer) { (buffer.reserve(r.size()), ...); },
+                   buffers);
+        for (const auto &element : r)
+          generator(element, buffers, local_state);
+      },
+      [](const auto &pair, auto &buffer) {
+        auto &local_buffer = pair.first;
         tf::zip_apply(
             [](auto &&...tups) {
               (

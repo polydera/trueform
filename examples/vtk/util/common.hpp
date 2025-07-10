@@ -1,8 +1,8 @@
 #pragma once
+#include "../../util/read_mesh.hpp"
 #include "./data_bridge.hpp"
 #include "vtkCamera.h"
 #include "vtkCommand.h"
-#include "vtkOBJReader.h"
 #include "vtkPolyData.h"
 #include "vtkProperty.h"
 #include "vtkRenderWindow.h"
@@ -10,6 +10,7 @@
 #include "vtkSTLReader.h"
 #include "vtkStripper.h"
 #include "vtkTextActor.h"
+#include <filesystem>
 #include <memory>
 
 template <typename T> struct vtk_deleter {
@@ -36,12 +37,49 @@ inline auto readSTL(std::string name) {
 }
 
 inline auto readOBJ(std::string name) {
-  auto reader = vtk_make_unique<vtkOBJReader>();
-  reader->SetFileName(name.c_str());
-  reader->Update();
+  auto [raw_points, raw_triangle_faces] = tf::examples::read_mesh(name);
+  auto points_r = tf::make_points<3>(raw_points);
+  auto faces_r = tf::make_blocked_range<3>(raw_triangle_faces);
+  auto cells = vtk_make_unique<vtkCellArray>();
+  cells->Initialize();
+  auto offsets = cells->GetOffsetsArray();
+  offsets->SetNumberOfComponents(1);
+  offsets->SetNumberOfTuples(faces_r.size() + 1);
+  auto offsets_r =
+      tf::make_range(static_cast<vtkIdType *>(offsets->GetVoidPointer(0)),
+                     offsets->GetNumberOfValues());
+  tf::parallel_apply(tf::enumerate(offsets_r), [](auto pair) {
+    auto &&[id, offset] = pair;
+    offset = 3 * id;
+  });
+  auto ids = cells->GetConnectivityArray();
+  ids->SetNumberOfComponents(3);
+  ids->SetNumberOfTuples(faces_r.size());
+  auto ids_r = tf::make_range(static_cast<vtkIdType *>(ids->GetVoidPointer(0)),
+                              offsets->GetNumberOfValues());
+  tf::parallel_copy(raw_triangle_faces, ids_r);
+  auto points = vtk_make_unique<vtkPoints>();
+  points->SetNumberOfPoints(points_r.size());
+  tf::parallel_copy(points_r, get_points(points.get()));
   auto out = vtk_make_unique<vtkPolyData>();
-  out->ShallowCopy(reader->GetOutput());
+  out->SetPoints(points.get());
+  out->SetPolys(cells.get());
   return out;
+}
+
+inline auto read_mesh(std::string filename) {
+  std::filesystem::path path{filename};
+
+  if (!path.has_extension()) {
+    return vtk_make_unique<vtkPolyData>();
+  }
+  if (path.extension() == ".stl") {
+    return readSTL(filename);
+  }
+  if (path.extension() == ".obj") {
+    return readOBJ(filename);
+  }
+  return vtk_make_unique<vtkPolyData>();
 }
 
 inline auto get_world_point_ray(vtkRenderer *renderer, int x, int y) {

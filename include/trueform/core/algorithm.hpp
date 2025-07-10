@@ -22,3 +22,4 @@
 #include "./algorithm/parallel_for.hpp"
 #include "./algorithm/parallel_iota.hpp"
 #include "./algorithm/parallel_transform.hpp"
+#include "./algorithm/reduce.hpp"

@@ -16,12 +16,13 @@
 #include <atomic>
 
 namespace tf::topology {
-template <typename Index> class connected_components_finder {
-  using label_t = short;
+template <typename Index, typename LabelType = short>
+class connected_components_finder {
+  using label_t = LabelType;
 
 public:
   template <typename Range0, typename Range1, typename F>
-  auto run(Range0 &&labels, const Range1 &mask, const F &applier) -> Index {
+  auto run(Range0 &&labels, const Range1 &mask, const F &applier) -> label_t {
     clear();
     initialize(labels.size());
     auto n_labels = run_propagation(mask, applier);
@@ -115,7 +116,7 @@ private:
       if (n_processed.load(std::memory_order_relaxed) == initial_size)
         break;
       ids.erase(std::remove_if(ids.begin(), ids.end(),
-                               [&](const auto &x) {
+                               [&](const auto &x) -> bool {
                                  return _work_labels[x].load(
                                             std::memory_order_relaxed) !=
                                         label_t{-1};
@@ -151,8 +152,7 @@ private:
   }
 
   auto resolve_collisions(const tf::hash_set<label_t> &collisions) {
-    auto unite = [&](label_t a, label_t b) {
-      label_t root_a = find_parent(a);
+    auto unite = [&](label_t root_a, label_t b) {
       label_t root_b = find_parent(b);
       if (root_a != root_b)
         _parent[root_b] = root_a;

@@ -15,6 +15,7 @@
 #include "./core/basis.hpp"                     // IWYU pragma: export
 #include "./core/blocked_buffer.hpp"            // IWYU pragma: export
 #include "./core/buffer.hpp"                    // IWYU pragma: export
+#include "./core/centroid.hpp"                  // IWYU pragma: export
 #include "./core/classify.hpp"                  // IWYU pragma: export
 #include "./core/closest_metric_point.hpp"      // IWYU pragma: export
 #include "./core/closest_metric_point_pair.hpp" // IWYU pragma: export
@@ -100,5 +101,6 @@
 #include "./core/vectors.hpp"                   // IWYU pragma: export
 #include "./core/view.hpp"                      // IWYU pragma: export
 #include "./core/views.hpp"                     // IWYU pragma: export
+#include "./core/wedge.hpp"                     // IWYU pragma: export
 #include "./core/zip_apply.hpp"                 // IWYU pragma: export
 #include "./core/zip_range.hpp"                 // IWYU pragma: export
