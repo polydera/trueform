@@ -195,7 +195,7 @@ auto edges = tf::make_intersection_edges(fi);
 auto segments = tf::make_segments(edges, fi.intersection_points());
 ```
 
-See how it compares with `VTK` and `CGAL` (on *Intel i7-9750H*):
+See how it compares with `VTK` and `CGAL` when continuously computing the intersection curve between two moving meshes (on *Intel i7-9750H*):
 
 <p float="left">
   <img src="./docs/img/vtk_intersection_curve_speed_up.png" width="49%" />
