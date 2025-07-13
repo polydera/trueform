@@ -83,6 +83,18 @@ This example provides direct performance benchmark for collecting intersecting p
 * Using `tf::gather_ids`
 
 
+### [CGAL: Intersection Curve](./cgal/intersection_curve.cpp)
+
+This example provides a direct comparison with `CGAL` for computing the intersection curve between two transforming meshes.
+
+#### Features Showcased
+
+* Using `tf::forms_intersections` to compute intersections between two `tf::form`s.
+* Using `tf::make_intersection_edges` to extract intersection edges from `tf::forms_intersections`
+* Using `tf::face_membership` and how to `tf::tag` it to a `tf::form` 
+* Using `tf::manifold_edge_link` and how to `tf::tag` it to a `tf::form` 
+* Using `points.as<double>()` to get a view into points where each point is cast to `tf::point<double,3>`
+
 ### [VTK: Feature Edges](./vtk/feature_edges.cpp)
 
 This example provides direct performance benchmark for collecting boundary and non_manifold edges.
@@ -91,6 +103,18 @@ This example provides direct performance benchmark for collecting boundary and n
 
 * Using `tf::make_boundary_edges`
 * Using `tf::make_non_manifold_edges`
+
+### [VTK: Intersection Curve](./vtk/vtk_intersection_curve.cpp)
+
+This example provides a direct comparison with `VTK` for computing the intersection curve between two transforming meshes.
+
+#### Features Showcased
+
+* Using `tf::forms_intersections` to compute intersections between two `tf::form`s.
+* Using `tf::make_intersection_edges` to extract intersection edges from `tf::forms_intersections`
+* Using `tf::face_membership` and how to `tf::tag` it to a `tf::form` 
+* Using `tf::manifold_edge_link` and how to `tf::tag` it to a `tf::form` 
+* Using `points.as<double>()` to get a view into points where each point is cast to `tf::point<double,3>`
 
 ## [VTK Integration](./vtk/)
 

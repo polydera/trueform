@@ -61,21 +61,16 @@ int test_non_manifold(vtkPolyData *poly, int n_iters) {
 
 int main(int argc, char *argv[]) {
   if (argc < 2) {
-    std::cerr << "Usage: program <input1.stl>\n";
+    std::cerr << "Usage: program <input1.stl|obj>\n";
     return 1;
   } else if (argc == 2 && (std::string_view(argv[1]) == "-h" ||
                            std::string_view(argv[1]) == "--help")) {
-    std::cerr << "Usage: program <input1.stl>\n";
+    std::cerr << "Usage: program <input1.stl|obj>\n";
     return 1;
   }
   std::filesystem::path path{argv[1]};
 
-  if (!path.has_extension() || path.extension() != ".stl") {
-    std::cerr << "Skipping file " << path.filename() << ": not an .stl file\n";
-    return 1;
-  }
-
-  auto poly = readSTL(argv[1]);
+  auto poly = read_mesh(argv[1]);
   int dummy = 0;
   std::cout << "number of polygons: " << poly->GetNumberOfPolys() << std::endl;
   dummy += test_boundary(poly.get(), 10);
