@@ -9,6 +9,7 @@
 #include "../core/buffer.hpp"
 #include "../core/polygons.hpp"
 #include "../core/views/block_indirect_range.hpp"
+#include "../core/views/enumerate.hpp"
 #include "../intersect/base/simple_intersections.hpp"
 #include "./loop_extractor.hpp"
 #include "./vertex.hpp"
@@ -23,25 +24,37 @@ public:
     clear();
     initialize(polygons.points().size(), si.intersection_points().size());
     Index offset = 0;
-    auto result = std::tie(_loop_vertices, _loop_offsets, _vertices);
+    auto result =
+        std::tie(_polygon_ids, _loop_vertices, _loop_offsets, _vertices);
     auto local_result =
-        std::make_tuple(tf::buffer<vertex<Index>>{}, tf::buffer<Index>{},
-                        loop_extractor<Index, RealT>{});
+        std::make_tuple(tf::buffer<Index>{}, tf::buffer<vertex<Index>>{},
+                        tf::buffer<Index>{}, loop_extractor<Index, RealT>{});
 
     auto task_f = [&](const auto &r, auto &tup) {
-      auto &[loop_vertices, loop_offsets, extractor] = tup;
+      auto &[polygon_ids, loop_vertices, loop_offsets, extractor] = tup;
       for (const auto &intersections : r) {
         extractor.build(polygons.faces()[intersections.front().polygon],
                         si.intersection_points(), polygons.points(),
                         intersections);
-        extractor.extract(loop_offsets, loop_vertices);
+
+        Index n_loops = extractor.extract(loop_offsets, loop_vertices);
+
+        for (Index i = 0; i < n_loops; ++i)
+          polygon_ids.push_back(intersections.front().polygon);
       }
     };
 
     auto aggregate_f = [&](const auto &local_result, auto &result) {
-      const auto &[l_loop_vertices, l_loop_offsets, _] = local_result;
+      const auto &[l_polygon_ids, l_loop_vertices, l_loop_offsets, _] =
+          local_result;
       (void)_; // suppress unused warning
-      auto &[loop_vertices, loop_offsets, vertices] = result;
+      auto &[polygon_ids, loop_vertices, loop_offsets, vertices] = result;
+      //
+      auto old_ids_size = polygon_ids.size();
+      polygon_ids.reallocate(old_ids_size + l_polygon_ids.size());
+      std::copy(l_polygon_ids.begin(), l_polygon_ids.end(),
+                polygon_ids.begin() + old_ids_size);
+      //
       auto old_offsets_size = loop_offsets.size();
       loop_offsets.reallocate(old_offsets_size + l_loop_offsets.size());
       auto it_offsets = loop_offsets.begin() + old_offsets_size;
@@ -75,6 +88,8 @@ public:
     return tf::make_offset_block_range(_loop_offsets, _loop_vertices);
   }
 
+  auto polygon_ids() const { return tf::make_range(_polygon_ids); }
+
   auto mapped_loops() const {
     return tf::make_block_indirect_range(loops(), _vertices);
   }
@@ -86,6 +101,7 @@ public:
   auto clear() {
     _loop_vertices.clear();
     _loop_offsets.clear();
+    _polygon_ids.clear();
     _vertices.clear();
     _map.clear();
     _map_offset = 0;
@@ -96,11 +112,17 @@ private:
     _map_offset = n_intersection_points;
     _map.allocate(n_points);
     tf::parallel_fill(_map, -1);
+    _vertices.allocate(n_intersection_points);
+    tf::parallel_apply(tf::enumerate(_vertices), [](auto &&pair) {
+      auto &&[id, v] = pair;
+      v = {Index(id), vertex_source::created};
+    });
   }
   Index _map_offset;
   tf::buffer<Index> _loop_vertices;
   tf::buffer<Index> _loop_offsets;
   tf::buffer<vertex<Index>> _vertices;
   tf::buffer<Index> _map;
+  tf::buffer<Index> _polygon_ids;
 };
 } // namespace tf::loop

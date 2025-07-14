@@ -23,6 +23,7 @@ public:
     clear();
     extract_base_loop_from_intersections(face, intersection_points, mesh_points,
                                          intersections);
+    build_base_loop_edges();
     extract_edges(intersections, intersections[0]);
   }
 
@@ -32,17 +33,22 @@ public:
       offsets.push_back(vertices.size());
       std::copy(base_loop().begin(), base_loop().end(),
                 std::back_inserter(vertices));
+      return Index(1);
 
-    } else if (edges().size() == 1)
+    } else if (edges().size() == 1) {
       tf::simple_loop_split(base_loop(),
                             std::array<vertex<Index>, 2>{_edges[0], _edges[1]},
                             offsets, vertices);
+      return Index(2);
+    }
+    return Index(0);
   }
 
   auto clear() {
     _edges.clear();
     _work_buffer.clear();
     _base_loop.clear();
+    _base_loop_edges.clear();
   }
 
   auto base_loop() const -> const tf::buffer<vertex<Index>> & {
@@ -52,13 +58,44 @@ public:
   auto edges() const { return tf::make_blocked_range<2>(_edges); }
 
 private:
+  auto build_base_loop_edges() {
+    Index size = _base_loop.size();
+    Index prev = size - 1;
+    for (Index i = 0; i < size; prev = i++) {
+      if (_base_loop[prev] < _base_loop[i])
+        _base_loop_edges.push_back({_base_loop[prev], _base_loop[i]});
+      else
+        _base_loop_edges.push_back({_base_loop[i], _base_loop[prev]});
+    }
+    std::sort(_base_loop_edges.begin(), _base_loop_edges.end());
+  }
+
+  auto should_add_edge(const vertex<Index> &v0, const vertex<Index> &v1) {
+    auto edge = std::array<vertex<Index>, 2>{v0, v1};
+    if (edge[1] < edge[0])
+      std::swap(edge[0], edge[1]); // ensure canonical order
+    auto it = std::lower_bound(_base_loop_edges.begin(), _base_loop_edges.end(),
+                               edge);
+    if (it != _base_loop_edges.end() && *it == edge)
+      return false;
+    return true;
+  }
+
+  auto add_edge(vertex<Index> v0, vertex<Index> v1) {
+    if (should_add_edge(v0, v1)) {
+      _edges.push_back(v0);
+      _edges.push_back(v1);
+    }
+  }
+
   template <typename Range>
   auto extract_edges(const Range &intersections,
                      tf::intersect::simple_intersection<Index>) {
     if (intersections.size() != 2)
       return;
-    _edges.push_back({intersections[0].id, vertex_source::created});
-    _edges.push_back({intersections[1].id, vertex_source::created});
+
+    add_edge({intersections[0].id, vertex_source::created},
+             {intersections[1].id, vertex_source::created});
   }
 
   template <typename Range>
@@ -74,8 +111,8 @@ private:
       // each polygon has 1 or 2 intersections with another
       // convex polygon
       if (next - it == 2) {
-        _edges.push_back({it->id, vertex_source::created});
-        _edges.push_back({(it + 1)->id, vertex_source::created});
+        add_edge({it->id, vertex_source::created},
+                 {(it + 1)->id, vertex_source::created});
       }
       it = next;
     }
@@ -145,6 +182,7 @@ private:
   tf::buffer<node_t> _work_buffer;
   tf::buffer<vertex<Index>> _base_loop;
   tf::buffer<vertex<Index>> _edges;
+  tf::buffer<std::array<vertex<Index>, 2>> _base_loop_edges;
 };
 
 } // namespace tf::loop

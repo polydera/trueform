@@ -19,5 +19,9 @@ template <typename Index> struct vertex {
   friend auto operator!=(const vertex &v0, const vertex &v1) -> bool {
     return !(v0 == v1);
   }
+
+  friend auto operator<(const vertex &v0, const vertex &v1) -> bool {
+    return std::make_pair(v0.source, v0.id) < std::make_pair(v1.source, v1.id);
+  }
 };
 } // namespace tf::loop

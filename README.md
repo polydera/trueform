@@ -39,15 +39,16 @@ auto poly = enriched_triangles.front();
 Geometric queries work on enriched primitives:
 
 ```c++
-auto [metric, pt0, pt1] = tf::closest_metric_point_pair(poly, triangles.front());
-auto d2 = tf::distance2(poly, triangles.front());
-bool hit = tf::intersects(poly, triangles.front());
+auto seg= tf::make_segment_between_points(pts.front(), pts.back());
+auto [distance2, pt0, pt1] = tf::closest_metric_point_pair(poly, seg);
+auto d2 = tf::distance2(poly, seg);
+bool hit = tf::intersects(poly, seg);
 auto [status, t, hit_pt] = tf::ray_hit(
     tf::make_ray_between_points(pts[2], pts[0]),
     triangles.front());
 //
-std::vector<float> distance_field{enriched_triangles.size()};
-tf::parallel_transform(enriched_triangles,
+std::vector<float> distance_field{enriched_triangles.points().size()};
+tf::parallel_transform(enriched_triangles.points(),
                       distance_field,
                       tf::distance_f(tf::make_plane(triangles.front()));
 ```
@@ -244,7 +245,7 @@ We provide two main resources to help you get started and master trueform:
 
 For hands-on, practical applications, explore the examples directory. It contains a collection of standalone programs organized into three categories:
 * **Core Functionality**: Self-contained demonstrations of primary features.
-* **Comparisons**: Performance and usage comparisons against libraries like `CGAL` and `nanoflann`.
+* **Comparisons**: Performance and usage comparisons against libraries like `VTK`, `CGAL` and `nanoflann`.
 * **VTK Integration**: Guides for using `trueform` with tools like `VTK`.
 
 ## Publications

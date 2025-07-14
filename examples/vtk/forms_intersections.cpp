@@ -268,29 +268,25 @@ auto set_at(vtkMatrix4x4 *mat, tf::vector<float, 3> at) -> void {
 
 int main(int argc, char *argv[]) {
   if (argc < 2) {
-    std::cerr << "Usage: program <input1.stl> <input2.stl> \n";
+    std::cerr << "Usage: program <input1.stl|obj> <input2.stl|obj> \n";
     return 1;
   } else if (argc == 2 && (std::string_view(argv[1]) == "-h" ||
                            std::string_view(argv[1]) == "--help")) {
-    std::cerr << "Usage: program <input1.stl> <input2.stl> \n";
+    std::cerr << "Usage: program <input1.stl|obj> <input2.stl|obj> \n";
     return 1;
   }
 
-  std::vector<decltype(readSTL(argv[1]))> polys;
+  std::vector<decltype(read_mesh(argv[1]))> polys;
 
   for (int i = 1; i < argc; ++i) {
     std::filesystem::path path{argv[i]};
 
-    if (!path.has_extension() || path.extension() != ".stl") {
-      std::cerr << "Skipping file " << path.filename()
-                << ": not an .stl file\n";
-      continue;
-    }
-
     std::cout << "Reading file: " << path.filename() << std::endl;
-    auto poly = readSTL(argv[i]);
-    center_and_scale(poly.get());
-    polys.emplace_back(std::move(poly));
+    auto poly = read_mesh(argv[i]);
+    if (poly->GetPoints()) {
+      center_and_scale(poly.get());
+      polys.emplace_back(std::move(poly));
+    }
     if (polys.size() == 2)
       break;
   }

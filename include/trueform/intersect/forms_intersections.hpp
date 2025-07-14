@@ -12,8 +12,10 @@
 #include "../core/views/zip.hpp"
 #include "../spatial/form.hpp"
 #include "../spatial/search.hpp"
+#include "../topology/edge_representation.hpp"
 #include "../topology/policy/face_membership.hpp"
 #include "../topology/policy/manifold_edge_link.hpp"
+#include "../topology/vertex_representation.hpp"
 #include "./compute_simplification_mask.hpp"
 #include "./duplicate_intersection.hpp"
 #include "./generate/polygon_polygon.hpp"
@@ -115,28 +117,11 @@ private:
   auto compute_buffers(const tf::form<Dims, Policy0> &form0,
                        const tf::form<Dims, Policy1> &form1) {
 
-    auto make_vertex_representation = [&](Index id, const auto &face,
-                                          const auto &fe) {
-      constexpr std::size_t N = tf::static_size_v<decltype(face)>;
-      std::array<bool, N> out;
-      for (std::size_t i = 0; i < N; ++i)
-        out[i] = fe[face[i]].front() == id;
-      return out;
-    };
-
-    auto make_edge_representation = [&](Index id, const auto &mel) {
-      constexpr std::size_t N = tf::static_size_v<decltype(mel[id])>;
-      std::array<bool, N> out;
-      for (std::size_t i = 0; i < N; ++i)
-        out[i] = mel[id][i].is_representative(id);
-      return out;
-    };
-
     auto make_handle = [&](auto poly, const auto &fe, const auto &mel) {
       return tf::intersect::polygon::make_handle(
           poly, poly.id(),
-          make_vertex_representation(poly.id(), poly.indices(), fe),
-          make_edge_representation(poly.id(), mel));
+          tf::make_vertex_representation(Index(poly.id()), poly.indices(), fe),
+          tf::make_edge_representation(Index(poly.id()), mel));
     };
 
     tf::local_buffer<tf::intersect::intersection_id<Index>> l_intersection_ids;
