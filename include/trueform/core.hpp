@@ -11,6 +11,7 @@
 #include "./core/aabb_metrics.hpp"              // IWYU pragma: export
 #include "./core/aabb_union.hpp"                // IWYU pragma: export
 #include "./core/algorithm.hpp"                 // IWYU pragma: export
+#include "./core/area.hpp"                      // IWYU pragma: export
 #include "./core/array_hash.hpp"                // IWYU pragma: export
 #include "./core/basis.hpp"                     // IWYU pragma: export
 #include "./core/blocked_buffer.hpp"            // IWYU pragma: export
