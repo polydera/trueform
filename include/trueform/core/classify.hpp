@@ -21,7 +21,8 @@ auto classify(const point_like<Dims, Policy0> &pt,
   auto d = tf::dot(pt, pl.normal) + pl.d;
   if (std::abs(d) < std::numeric_limits<decltype(d)>::epsilon())
     return sidedness::on_boundary;
-  return d > 0 ? sidedness::on_positive_side : sidedness::on_negative_side;
+  // on_negative_side == 1
+  return static_cast<tf::sidedness>(d < 0);
 }
 
 template <typename Policy0, typename Policy1>
@@ -32,7 +33,8 @@ auto classify(const point_like<2, Policy0> &point,
   auto test = ac[0] * bc[1] - ac[1] * bc[0];
   if (std::abs(test) < std::numeric_limits<decltype(test)>::epsilon())
     return sidedness::on_boundary;
-  return test > 0 ? sidedness::on_positive_side : sidedness::on_negative_side;
+  // on_negative_side == 1
+  return static_cast<tf::sidedness>(test < 0);
 }
 
 template <typename Policy0, typename Policy1>
@@ -64,7 +66,7 @@ auto classify(const point_like<2, Policy0> &pt, const wedge<Policy1> &w)
   const bool inside_reflex =
       o1 != sidedness::on_negative_side || o2 != sidedness::on_negative_side;
 
-  const bool inside = convex ? inside_convex : inside_reflex;
+  const bool inside = (convex && inside_convex) || (!convex && inside_reflex);
 
   return static_cast<strict_containment>(!inside);
 }

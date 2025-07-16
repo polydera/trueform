@@ -159,9 +159,29 @@ See how it compares with `VTK` (on *Intel i7-9750H*):
   <img src="./docs/img/vtk_non_manifold_speed_up.png" width="49%" />
 </p>
 
+#### 🗺️ Planar Arrangments and Graph Regions
+
+Efficiently extract oriented faces and hole relations from unordered 2D edge soups.
+
+```c++
+tf::planar_arrangments<int, double> pa;
+pa.build(edges, points);
+
+for (auto [face, hole_ids] :
+    tf::zip(pa.faces(), pa.holes_for_faces()))
+  for (auto hole : tf::make_indirect_range(hole_ids, pa.holes()));
+```
+
+See how it compares with `CGAL` (on *Intel i7-9750H*):
+
+<p float="left">
+  <img src="./docs/img/cgal_planar_arrangments_speed_up.png" width="49%" />
+  <img src="./docs/img/cgal_planar_arrangments_lines.png" width="49%" />
+</p>
+
 #### Tutorial: Topology
 
-See [Tutorial: Topology](./docs/tutorial.md#topology) for a detailed walk-through and additional features like `tf::vertex_link` and `tf::face_link`. Additional examples are provided in the [examples directory](./examples/).
+See [Tutorial: Topology](./docs/tutorial.md#topology) for a detailed walk-through and additional features like `tf::vertex_link`, `tf::face_link`, and `tf::planar_graph_regions`. Additional examples are provided in the [examples directory](./examples/).
 
 ### ✂️ Intersections
 

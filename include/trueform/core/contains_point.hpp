@@ -25,7 +25,7 @@ template <typename Policy, typename T>
 auto contains_point(const tf::polygon<2, Policy> &poly,
                     const point_like<2, T> &input_pt) -> containment {
   return core::contains_coplanar_point(
-      poly, input_pt,
+      poly, input_pt, tf::make_identity_projector(),
       std::numeric_limits<tf::coordinate_type<Policy, T>>::epsilon());
 }
 /// @ingroup geometry

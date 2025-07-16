@@ -18,6 +18,16 @@ struct zip_reference
   using base_t::operator=;
   zip_reference() = default;
   zip_reference(Iterators... iters) : base_t{*iters...} {}
+
+  friend auto swap(zip_reference &&zr0, zip_reference &&zr1) -> void {
+    using std::swap;
+    return swap(static_cast<base_t &>(zr0), static_cast<base_t &>(zr1));
+  }
+
+  friend auto swap(zip_reference &zr0, zip_reference &zr1) -> void {
+    using std::swap;
+    return swap(static_cast<base_t &>(zr0), static_cast<base_t &>(zr1));
+  }
 };
 
 template <typename... Iterators>

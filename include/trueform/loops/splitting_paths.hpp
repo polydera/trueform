@@ -16,6 +16,7 @@ public:
     clear();
     _extractor.build(base_loop, edges, points.size());
     build_path_categories(points);
+    order_crossing_paths();
   }
 
   auto clear() {
@@ -25,6 +26,26 @@ public:
     _loops.clear();
     _cuts.clear();
     _descriptors.clear();
+  }
+
+  auto crossing_paths() const {
+    return tf::make_indirect_range(_crossing_paths, _extractor.paths());
+  }
+
+  auto crossing_path_descriptors() const {
+    return tf::make_indirect_range(_crossing_paths, _descriptors);
+  }
+
+  auto non_crossing_paths() const {
+    return tf::make_indirect_range(_non_crossing_paths, _extractor.paths());
+  }
+
+  auto loop_paths() const {
+    return tf::make_indirect_range(_loops, _extractor.paths());
+  }
+
+  auto cut_paths() const {
+    return tf::make_indirect_range(_cuts, _extractor.paths());
   }
 
 private:
@@ -73,11 +94,11 @@ private:
      */
     std::sort(_crossing_paths.begin(), _crossing_paths.end(),
               [this](Index i0, Index i1) {
-                return std::make_tuple(_descriptors[i0].start_id,
-                                       -_descriptors[i0].end_id,
+                return std::make_tuple(_descriptors[i0].start,
+                                       -_descriptors[i0].end,
                                        _descriptors[i0].signed_area) <
-                       std::make_tuple(_descriptors[i1].start_id,
-                                       -_descriptors[i1].end_id,
+                       std::make_tuple(_descriptors[i1].start,
+                                       -_descriptors[i1].end,
                                        _descriptors[i1].signed_area);
               });
   }

@@ -6,6 +6,7 @@
 #pragma once
 
 #include "./aabb_like.hpp"
+#include "./classify.hpp"
 #include "./closest_point_parametric.hpp"
 #include "./interval.hpp"
 #include "./line.hpp"
@@ -227,6 +228,11 @@ auto intersects(const tf::segment<Dims, T0> &s,
   return d2 < std::numeric_limits<decltype(d2)>::epsilon();
 }
 
+template <typename T0, typename T1>
+auto intersects(const tf::segment<2, T0> &s, const tf::point_like<2, T1> &v1) {
+  return tf::classify(v1, s) == tf::sidedness::on_boundary;
+}
+
 /// @ingroup geometry
 /// @brief Check whether two geometric primitives intersect.
 ///
@@ -237,6 +243,11 @@ auto intersects(const tf::segment<Dims, T0> &s,
 template <std::size_t Dims, typename T0, typename T1>
 auto intersects(const tf::point_like<Dims, T0> &v0,
                 const tf::segment<Dims, T1> &s) {
+  return intersects(s, v0);
+}
+
+template <typename T0, typename T1>
+auto intersects(const tf::point_like<2, T0> &v0, const tf::segment<2, T1> &s) {
   return intersects(s, v0);
 }
 
@@ -389,6 +400,32 @@ auto intersects(const tf::segment<Dims, T0> &s0,
   return d2 < std::numeric_limits<decltype(d2)>::epsilon();
 }
 
+template <typename T0, typename T1>
+auto intersects(const tf::segment<2, T0> &s0, const tf::segment<2, T1> &s1)
+    -> bool {
+  using tf::classify;
+  using tf::sidedness;
+
+  const auto &a = s0[0];
+  const auto &b = s0[1];
+  const auto &c = s1[0];
+  const auto &d = s1[1];
+
+  // Use orientation tests
+  auto s1_ac = classify(a, tf::make_segment_between_points(c, d));
+  auto s1_bc = classify(b, tf::make_segment_between_points(c, d));
+  auto s0_cd = classify(c, tf::make_segment_between_points(a, b));
+  auto s0_dd = classify(d, tf::make_segment_between_points(a, b));
+
+  // Check for proper straddling (sign change)
+  const bool straddle1 = s1_ac != s1_bc && s1_ac != sidedness::on_boundary &&
+                         s1_bc != sidedness::on_boundary;
+  const bool straddle2 = s0_cd != s0_dd && s0_cd != sidedness::on_boundary &&
+                         s0_dd != sidedness::on_boundary;
+
+  return straddle1 && straddle2;
+}
+
 /// @ingroup geometry
 /// @brief Check whether two geometric primitives intersect.
 ///
@@ -406,6 +443,12 @@ auto intersects(const tf::polygon<Dims, Policy0> &poly_in,
          tf::contains_coplanar_point(poly, c_pt);
 }
 
+template <typename Policy0, typename Policy1>
+auto intersects(const tf::polygon<2, Policy0> &poly_in,
+                const tf::point_like<2, Policy1> &pt) -> bool {
+  return tf::contains_coplanar_point(poly_in, pt);
+}
+
 /// @ingroup geometry
 /// @brief Check whether two geometric primitives intersect.
 ///
@@ -416,6 +459,12 @@ auto intersects(const tf::polygon<Dims, Policy0> &poly_in,
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const tf::point_like<Dims, Policy0> &pt,
                 const tf::polygon<Dims, Policy1> &poly) -> bool {
+  return intersects(poly, pt);
+}
+
+template <typename Policy0, typename Policy1>
+auto intersects(const tf::point_like<2, Policy0> &pt,
+                const tf::polygon<2, Policy1> &poly) -> bool {
   return intersects(poly, pt);
 }
 
@@ -490,6 +539,21 @@ auto intersects(const tf::polygon<Dims, Policy0> &poly_in,
   using RealT = tf::coordinate_type<Policy0, Policy1>;
   return tf::ray_cast(ray, poly, tf::make_ray_config(RealT(0), RealT(1)));
 }
+
+template <typename Policy0, typename Policy1>
+auto intersects(const tf::polygon<2, Policy0> &poly_in,
+                const tf::segment<2, Policy1> &seg1) -> bool {
+  if (tf::contains_coplanar_point(poly_in, seg1[0]) ||
+      tf::contains_coplanar_point(poly_in, seg1[1]))
+    return true;
+  std::size_t size = poly_in.size();
+  auto prev = size - 1;
+  for (std::size_t i = 0; i < size; prev = i++)
+    if (tf::intersects(
+            tf::make_segment_between_points(poly_in[prev], poly_in[i]), seg1))
+      return true;
+  return false;
+}
 /// @ingroup geometry
 /// @brief Check whether two geometric primitives intersect.
 ///
@@ -503,6 +567,12 @@ auto intersects(const tf::segment<Dims, Policy> &seg,
   return intersects(poly, seg);
 }
 
+template <typename Policy, typename Policy0>
+auto intersects(const tf::segment<2, Policy> &seg,
+                const tf::polygon<2, Policy0> &poly) {
+  return intersects(poly, seg);
+}
+
 /// @ingroup geometry
 /// @brief Check whether two geometric primitives intersect.
 ///
@@ -513,7 +583,13 @@ auto intersects(const tf::segment<Dims, Policy> &seg,
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const tf::polygon<Dims, Policy0> &poly_in0,
                 const tf::polygon<Dims, Policy1> &poly_in1) -> bool {
-  const auto &poly0 = tf::tag_plane(poly_in0);
+  auto get_poly = [](const auto &poly) -> decltype(auto) {
+    if constexpr (Dims == 2)
+      return poly;
+    else
+      return tf::tag_plane(poly);
+  };
+  const auto &poly0 = get_poly(poly_in0);
 
   std::size_t size = poly0.size();
   std::size_t prev = size - 1;
@@ -522,7 +598,7 @@ auto intersects(const tf::polygon<Dims, Policy0> &poly_in0,
                                                           poly_in1[i])))
       return true;
   }
-  const auto &poly1 = tf::tag_plane(poly_in1);
+  const auto &poly1 = get_poly(poly_in1);
 
   size = poly1.size();
   prev = size - 1;

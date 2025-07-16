@@ -109,7 +109,7 @@ auto wrap_like(unit_vectors<Policy> &&, T &&t) {
 /// // 4, 5, 6
 /// @endcode
 template <std::size_t Dims, typename Range> auto make_unit_vectors(Range &&r) {
-  auto pts = tf::views::make_unit_vectors<3>(r);
+  auto pts = tf::views::make_unit_vectors<Dims>(r);
   return tf::unit_vectors<decltype(pts)>{pts};
 }
 

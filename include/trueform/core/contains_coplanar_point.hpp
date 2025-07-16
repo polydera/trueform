@@ -73,34 +73,34 @@ auto contains_coplanar_point(const tf::polygon<Dims, Policy> &poly,
 }
 } // namespace core
 
-template <std::size_t Dims, typename Policy, typename T, typename F>
-auto contains_coplanar_point(const tf::polygon<Dims, Policy> &poly,
-                             const point_like<Dims, T> &input_pt,
-                             const tf::projector<F> &projector) -> bool {
-  return core::contains_coplanar_point(poly, input_pt, projector) !=
-         containment::outside;
-}
+/*template <std::size_t Dims, typename Policy, typename T, typename F>*/
+/*auto contains_coplanar_point(const tf::polygon<Dims, Policy> &poly,*/
+/*                             const point_like<Dims, T> &input_pt,*/
+/*                             const tf::projector<F> &projector) -> bool {*/
+/*  return core::contains_coplanar_point(poly, input_pt, projector) !=*/
+/*         containment::outside;*/
+/*}*/
 /// @ingroup geometry
 /// @brief Overload for 2D input points without projection
 /// @copydoc contains_coplanar_point
 
-template <typename Policy, typename T>
-auto contains_coplanar_point(const tf::polygon<2, Policy> &poly,
-                             const point_like<2, T> &input_pt) -> bool {
-  return tf::contains_coplanar_point(poly, input_pt,
-                                     tf::make_identity_projector());
-}
+/*template <typename Policy, typename T>*/
+/*auto contains_coplanar_point(const tf::polygon<2, Policy> &poly,*/
+/*                             const point_like<2, T> &input_pt) -> bool {*/
+/*  return tf::contains_coplanar_point(poly, input_pt,*/
+/*                                     tf::make_identity_projector());*/
+/*}*/
 
 /// @ingroup geometry
 /// @brief Overload for N-dimensional input points using automatic projection
 /// @copydoc contains_coplanar_point
 
-template <std::size_t Dims, typename Policy, typename T>
-auto contains_coplanar_point(const tf::polygon<Dims, Policy> &poly,
-                             const point_like<Dims, T> &input_pt) -> bool {
-  return tf::contains_coplanar_point(poly, input_pt,
-                                     tf::make_simple_projector(poly));
-}
+/*template <std::size_t Dims, typename Policy, typename T>*/
+/*auto contains_coplanar_point(const tf::polygon<Dims, Policy> &poly,*/
+/*                             const point_like<Dims, T> &input_pt) -> bool {*/
+/*  return tf::contains_coplanar_point(poly, input_pt,*/
+/*                                     tf::make_simple_projector(poly));*/
+/*}*/
 namespace core {
 /**
  * @ingroup geometry
@@ -188,10 +188,10 @@ auto contains_coplanar_point(const tf::polygon<Dims, Policy> &poly,
 
 template <typename Policy, typename T>
 auto contains_coplanar_point(const tf::polygon<2, Policy> &poly,
-                             const point_like<2, T> &input_pt,
-                             tf::coordinate_type<T, Policy> epsilon) -> bool {
-  return tf::contains_coplanar_point(poly, input_pt,
-                                     tf::make_identity_projector(), epsilon);
+                             const point_like<2, T> &input_pt) -> bool {
+  return tf::contains_coplanar_point(
+      poly, input_pt, tf::make_identity_projector(),
+      std::numeric_limits<tf::coordinate_type<T, Policy>>::epsilon());
 }
 
 /// @ingroup geometry
@@ -200,9 +200,9 @@ auto contains_coplanar_point(const tf::polygon<2, Policy> &poly,
 
 template <std::size_t Dims, typename Policy, typename T>
 auto contains_coplanar_point(const tf::polygon<Dims, Policy> &poly,
-                             const point_like<Dims, T> &input_pt,
-                             tf::coordinate_type<T, Policy> epsilon) -> bool {
-  return tf::contains_coplanar_point(poly, input_pt,
-                                     tf::make_simple_projector(poly), epsilon);
+                             const point_like<Dims, T> &input_pt) -> bool {
+  return tf::contains_coplanar_point(
+      poly, input_pt, tf::make_simple_projector(poly),
+      std::numeric_limits<tf::coordinate_type<T, Policy>>::epsilon());
 }
 } // namespace tf
