@@ -5,6 +5,7 @@
  */
 #pragma once
 
+#include "./clean.hpp"     // IWYU pragma: export
 #include "./core.hpp"      // IWYU pragma: export
 #include "./intersect.hpp" // IWYU pragma: export
 #include "./loops.hpp"     // IWYU pragma: export

@@ -261,6 +261,11 @@ public:
       -> bool {
     return !(a < b);
   }
+
+  friend auto swap(vector_like &a, vector_like &b) -> void {
+    for (std::size_t i = 0; i < Dims; ++i)
+      std::swap(a[i], b[i]);
+  }
 };
 
 template <std::size_t Dims, typename Policy>

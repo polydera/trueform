@@ -159,25 +159,18 @@ See how it compares with `VTK` (on *Intel i7-9750H*):
   <img src="./docs/img/vtk_non_manifold_speed_up.png" width="49%" />
 </p>
 
-#### 🗺️ Planar Arrangments and Graph Regions
+#### 🔄 Planar Embeddings and Graph Regions
 
-Efficiently extract oriented faces and hole relations from unordered 2D edge soups.
+Efficiently extract oriented faces and hole relations from ordered edges.
 
 ```c++
-tf::planar_arrangments<int, double> pa;
-pa.build(edges, points);
+tf::planar_embedding<int, double> pe;
+pe.build(edges, points);
 
 for (auto [face, hole_ids] :
-    tf::zip(pa.faces(), pa.holes_for_faces()))
+    tf::zip(pa.faces(), pe.holes_for_faces()))
   for (auto hole : tf::make_indirect_range(hole_ids, pa.holes()));
 ```
-
-See how it compares with `CGAL` (on *Intel i7-9750H*):
-
-<p float="left">
-  <img src="./docs/img/cgal_planar_arrangments_speed_up.png" width="49%" />
-  <img src="./docs/img/cgal_planar_arrangments_lines.png" width="49%" />
-</p>
 
 #### Tutorial: Topology
 
@@ -186,6 +179,30 @@ See [Tutorial: Topology](./docs/tutorial.md#topology) for a detailed walk-throug
 ### ✂️ Intersections
 
 Detect exact geometric intersections — from scalar field slices to full polygonal collisions — with simple, expressive calls.
+
+#### 🗺️ Planar Arrangements
+
+Efficiently extract oriented faces and hole relations from unordered 2D edge soups.
+
+```c++
+tf::planar_arrangments<int, double> pa;
+pa.build(segments);
+
+for (auto [face, hole_ids] :
+    tf::zip(pa.faces(), pa.holes_for_faces())){
+    auto polygon = tf::make_polygon(face, pa.points());
+    for (auto hole : tf::make_indirect_range(hole_ids, pa.holes())) {
+      auto hole_polygon = tf::make_polygon(hole, pa.points());
+    }
+}
+```
+
+See how it compares with `CGAL` (on *Intel i7-9750H*):
+
+<p float="left">
+  <img src="./docs/img/cgal_planar_arrangments_speed_up.png" width="49%" />
+  <img src="./docs/img/cgal_planar_arrangments_lines.png" width="49%" />
+</p>
 
 #### 🔸 Scalar Field Slicing
 
@@ -222,6 +239,7 @@ See how it compares with `VTK` and `CGAL` when continuously computing the inters
   <img src="./docs/img/vtk_intersection_curve_speed_up.png" width="49%" />
   <img src="./docs/img/cgal_intersection_curve_speed_up.png" width="49%" />
 </p>
+
 
 #### Tutorial: Intersections
 

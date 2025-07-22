@@ -11,7 +11,7 @@
 #include "./planar_graph_regions.hpp"
 
 namespace tf {
-template <typename Index, typename RealT> class planar_arrangments {
+template <typename Index, typename RealT> class planar_embedding {
 public:
   template <typename Policy0, typename Policy1>
   auto build(const tf::edges<Policy0> &directed_edges,
@@ -19,9 +19,8 @@ public:
     clear();
     _pgr.build(directed_edges, points);
     build_data(points);
-    _fhr.build(tf::make_faces(faces()),
-               tf::make_indirect_range(_faces, _signed_areas),
-               tf::make_faces(holes()), points);
+    _fhr.build(tf::make_faces(faces()), face_areas(), tf::make_faces(holes()),
+               points);
   }
 
   auto faces() const { return tf::make_indirect_range(_faces, _pgr); }
@@ -51,9 +50,22 @@ public:
 
 private:
   template <typename Policy> auto build_data(const tf::points<Policy> &points) {
+    Index min_area_id = -1;
+    RealT min_area = std::numeric_limits<RealT>::max();
+    for (const auto &region : _pgr) {
+      auto sa = region.size() < 3
+                    ? RealT(0)
+                    : RealT(tf::signed_area(tf::make_polygon(region, points)));
+      if (sa < 0 && sa < min_area) {
+        min_area = sa;
+        min_area_id = _signed_areas.size();
+      }
+      _signed_areas.push_back(sa);
+    }
     for (auto [i, loop] : tf::enumerate(_pgr)) {
-      _signed_areas.push_back(tf::signed_area(tf::make_polygon(loop, points)));
-      if (_signed_areas.back() > 0)
+      if (i == min_area_id)
+        continue;
+      if (_signed_areas[i] > 0)
         _faces.push_back(i);
       else
         _holes.push_back(i);

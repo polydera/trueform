@@ -80,6 +80,7 @@
 #include "./core/ray_like.hpp"                  // IWYU pragma: export
 #include "./core/segment.hpp"                   // IWYU pragma: export
 #include "./core/segments.hpp"                  // IWYU pragma: export
+#include "./core/segments_buffer.hpp"           // IWYU pragma: export
 #include "./core/sidedness.hpp"                 // IWYU pragma: export
 #include "./core/small_vector.hpp"              // IWYU pragma: export
 #include "./core/sphere.hpp"                    // IWYU pragma: export
@@ -91,6 +92,8 @@
 #include "./core/transformation_like.hpp"       // IWYU pragma: export
 #include "./core/transformation_view.hpp"       // IWYU pragma: export
 #include "./core/transformed.hpp"               // IWYU pragma: export
+#include "./core/tuple.hpp"                     // IWYU pragma: export
+#include "./core/tuple_hash.hpp"                // IWYU pragma: export
 #include "./core/unit_vector.hpp"               // IWYU pragma: export
 #include "./core/unit_vector_like.hpp"          // IWYU pragma: export
 #include "./core/unit_vector_view.hpp"          // IWYU pragma: export

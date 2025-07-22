@@ -5,7 +5,7 @@
  */
 #pragma once
 #include "../../core/buffer.hpp"
-#include "../intersection.hpp"
+#include "../tagged_intersection.hpp"
 #include "../intersection_id.hpp"
 #include "../polygon/edge_face.hpp"
 
@@ -14,7 +14,7 @@ namespace tf::intersect::generate {
 template <typename Handle0, typename Handle1, typename Index, typename T,
           std::size_t Dims>
 auto edge_face(const Handle0 &handle0, const Handle1 &handle1,
-               tf::buffer<intersection<Index>> &intersections,
+               tf::buffer<tagged_intersection<Index>> &intersections,
                tf::buffer<intersection_id<Index>> &intersection_ids,
                tf::buffer<tf::point<T, Dims>> &points) {
   tf::intersect::polygon::edge_face(

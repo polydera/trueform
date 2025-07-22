@@ -169,7 +169,7 @@ namespace policy {
 struct tag_normal_self_op {};
 
 template <typename U> auto operator|(U &&u, tag_normal_self_op) {
-  return tf::tag_normal(static_cast<U &&>(u));
+return tf::tag_normal(static_cast<U &&>(u));
 }
 } // namespace policy
 inline auto tag_normal() { return policy::tag_normal_self_op{}; }
@@ -178,11 +178,11 @@ inline auto tag_normal() { return policy::tag_normal_self_op{}; }
 namespace std {
 template <std::size_t Dims, typename Policy, typename Base>
 struct tuple_size<tf::policy::tag_normal<Dims, Policy, Base>>
-    : tuple_size<Base> {};
+  : tuple_size<Base> {};
 
 template <std::size_t I, std::size_t Dims, typename Policy, typename Base>
 struct tuple_element<I, tf::policy::tag_normal<Dims, Policy, Base>> {
-  using type = typename std::iterator_traits<
-      decltype(declval<Base>().begin())>::value_type;
+using type = typename std::iterator_traits<
+    decltype(declval<Base>().begin())>::value_type;
 };
 } // namespace std

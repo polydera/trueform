@@ -4,18 +4,18 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "../core/offset_block_buffer.hpp"
-#include "../core/algorithm/circular_increment.hpp"
 #include "../core/algorithm/circular_decrement.hpp"
-#include "../core/points.hpp"
-#include "../core/faces.hpp"
-#include "../core/views/slide_range.hpp"
-#include "../core/views/enumerate.hpp"
-#include "../core/intersects.hpp"
+#include "../core/algorithm/circular_increment.hpp"
 #include "../core/centroid.hpp"
+#include "../core/faces.hpp"
+#include "../core/intersects.hpp"
+#include "../core/offset_block_buffer.hpp"
+#include "../core/points.hpp"
 #include "../core/polygons.hpp"
-#include "../spatial/tree.hpp"
+#include "../core/views/enumerate.hpp"
+#include "../core/views/slide_range.hpp"
 #include "../spatial/search.hpp"
+#include "../spatial/tree.hpp"
 
 namespace tf {
 template <typename Index, typename RealT>
@@ -91,7 +91,8 @@ private:
                    if (face_areas[face_id] < area) {
                      auto [not_same, v_id] = find_first_non_equal_vertex(
                          faces, holes, face_id, hole_id);
-                     if (not_same && tf::intersects(fcs[face_id], hole[v_id])) {
+                     if (not_same && tf::contains_coplanar_point(fcs[face_id],
+                                                                 hole[v_id])) {
                        in_face = face_id;
                        area = face_areas[face_id];
                      }
@@ -113,4 +114,3 @@ private:
   tf::buffer<Index> _hole_in_face;
 };
 } // namespace tf
-

@@ -95,6 +95,15 @@ This example provides a direct comparison with `CGAL` for computing the intersec
 * Using `tf::manifold_edge_link` and how to `tf::tag` it to a `tf::form` 
 * Using `points.as<double>()` to get a view into points where each point is cast to `tf::point<double,3>`
 
+### [CGAL:  Planar Arrangments](./cgal/planar_arrangments.cpp)
+
+This example provides a direct comparison with `CGAL` for computing [planar arrangments](https://doc.cgal.org/latest/Arrangement_on_surface_2/index.html) of on an unordered collection of edges.
+
+#### Features Showcased
+
+* Using `tf::planar_arrangments` to extract oriented faces and hole relations.
+* Using `tf::make_edges` and `tf::make_points` to impart semantic meaning onto ranges
+
 ### [VTK: Feature Edges](./vtk/feature_edges.cpp)
 
 This example provides direct performance benchmark for collecting boundary and non_manifold edges.

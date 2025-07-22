@@ -65,8 +65,8 @@ public:
   point_like() = default;
   point_like(const point_like &) = default;
   point_like(point_like &&) = default;
-  auto operator=(const point_like &) -> point_like& = default;
-  auto operator=(point_like &&) -> point_like& = default;
+  auto operator=(const point_like &) -> point_like & = default;
+  auto operator=(point_like &&) -> point_like & = default;
   point_like(const Policy &policy) : Policy{policy} {}
   point_like(Policy &&policy) : Policy{std::move(policy)} {}
 
@@ -241,6 +241,11 @@ public:
   friend auto operator>=(const point_like &a, const point_like<Dims, B> &b)
       -> bool {
     return !(a < b);
+  }
+
+  friend auto swap(point_like &a, point_like &b) -> void {
+    for (std::size_t i = 0; i < Dims; ++i)
+      std::swap(a[i], b[i]);
   }
 };
 

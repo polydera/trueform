@@ -14,7 +14,7 @@ namespace tf::intersect::generate {
 template <typename Handle0, typename Handle1, typename Index, typename T,
           std::size_t Dims>
 auto polygon_polygon(const Handle0 &handle0, const Handle1 &handle1,
-                     tf::buffer<intersection<Index>> &intersections,
+                     tf::buffer<tagged_intersection<Index>> &intersections,
                      tf::buffer<intersection_id<Index>> &intersection_ids,
                      tf::buffer<tf::point<T, Dims>> &points) {
   generate::vertex_vertex(handle0, handle1, intersections, intersection_ids,

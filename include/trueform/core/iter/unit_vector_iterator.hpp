@@ -47,6 +47,7 @@ private:
 public:
   explicit unit_vector_iterator(Iterator iter)
       : base_t{handle_t{std::move(iter)}} {}
+  unit_vector_iterator() = default;
 };
 
 template <std::size_t BlockSize, typename Iterator>
@@ -54,4 +55,4 @@ auto make_unit_vector_iterator(Iterator iter) {
   return unit_vector_iterator<Iterator, BlockSize>{std::move(iter)};
 }
 
-} // namespace tf::implementation::iter
+} // namespace tf::iter

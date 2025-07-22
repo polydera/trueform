@@ -583,13 +583,8 @@ auto intersects(const tf::segment<2, Policy> &seg,
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const tf::polygon<Dims, Policy0> &poly_in0,
                 const tf::polygon<Dims, Policy1> &poly_in1) -> bool {
-  auto get_poly = [](const auto &poly) -> decltype(auto) {
-    if constexpr (Dims == 2)
-      return poly;
-    else
-      return tf::tag_plane(poly);
-  };
-  const auto &poly0 = get_poly(poly_in0);
+
+  const auto &poly0 = tf::tag_plane(poly_in0);
 
   std::size_t size = poly0.size();
   std::size_t prev = size - 1;
@@ -598,7 +593,7 @@ auto intersects(const tf::polygon<Dims, Policy0> &poly_in0,
                                                           poly_in1[i])))
       return true;
   }
-  const auto &poly1 = get_poly(poly_in1);
+  const auto &poly1 = tf::tag_plane(poly_in1);
 
   size = poly1.size();
   prev = size - 1;
@@ -608,6 +603,27 @@ auto intersects(const tf::polygon<Dims, Policy0> &poly_in0,
       return true;
   }
   return false;
+}
+
+template <typename Policy0, typename Policy1>
+auto intersects(const tf::polygon<2, Policy0> &poly0,
+                const tf::polygon<2, Policy1> &poly1) -> bool {
+
+  std::size_t size0 = poly0.size();
+  std::size_t prev0 = size0 - 1;
+  std::size_t size1 = poly1.size();
+  std::size_t prev1 = size1 - 1;
+  for (std::size_t i = 0; i < size0; prev0 = i++) {
+    auto seg0 = tf::make_segment_between_points(poly0[prev0], poly0[i]);
+    for (std::size_t j = 0; j < size1; prev1 = j++) {
+      auto seg1 = tf::make_segment_between_points(poly1[prev1], poly1[j]);
+      if (intersects(seg0, seg1))
+        return true;
+    }
+  }
+  // we came here, either no intersection, or
+  // one of the polygons is completely within the other
+  return intersects(poly0, poly1[0]) || intersects(poly1, poly0[0]);
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>

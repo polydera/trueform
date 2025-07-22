@@ -45,6 +45,20 @@ auto ray_hit(
   return out;
 }
 
+template <typename Policy0, typename Policy1>
+auto ray_hit(
+    const ray_like<2, Policy0> &ray, const tf::polygon<2, Policy1> &poly,
+    const tf::ray_config<tf::coordinate_type<Policy0, Policy1>> &config = {}) {
+  using RealT = tf::coordinate_type<Policy0, Policy1>;
+  auto result = ray_cast(ray, poly, config);
+  tf::ray_hit_info<RealT, 2> out;
+  out.status = result.status;
+  out.t = result.t;
+  if (result)
+    out.point = ray.origin + result.t * ray.direction;
+  return out;
+}
+
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto ray_hit(
     const ray_like<Dims, Policy0> &ray, const tf::segment<Dims, Policy1> &seg,
@@ -70,6 +84,20 @@ auto ray_hit(
   return tf::make_ray_hit_info(status, t0, pt);
 }
 
+template <typename Policy0, typename Policy1>
+auto ray_hit(
+    const ray_like<2, Policy0> &ray, const tf::segment<2, Policy1> &seg,
+    const tf::ray_config<tf::coordinate_type<Policy0, Policy1>> &config = {}) {
+  using RealT = tf::coordinate_type<Policy0, Policy1>;
+  auto result = ray_cast(ray, seg, config);
+  tf::ray_hit_info<RealT, 2> out;
+  out.status = result.status;
+  out.t = result.t;
+  if (result)
+    out.point = ray.origin + result.t * ray.direction;
+  return out;
+}
+
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto ray_hit(
     const ray_like<Dims, Policy0> &ray,
@@ -93,6 +121,20 @@ auto ray_hit(
   return tf::make_ray_hit_info(status, t0, pt);
 }
 
+template <typename Policy0, typename Policy1>
+auto ray_hit(
+    const ray_like<2, Policy0> &ray, const tf::line_like<2, Policy1> &line,
+    const tf::ray_config<tf::coordinate_type<Policy0, Policy1>> &config = {}) {
+  using RealT = tf::coordinate_type<Policy0, Policy1>;
+  auto result = ray_cast(ray, line, config);
+  tf::ray_hit_info<RealT, 2> out;
+  out.status = result.status;
+  out.t = result.t;
+  if (result)
+    out.point = ray.origin + result.t * ray.direction;
+  return out;
+}
+
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto ray_hit(
     const ray_like<Dims, Policy0> &ray, const tf::ray_like<Dims, Policy1> &ray1,
@@ -114,6 +156,20 @@ auto ray_hit(
     pt_view = (pt0.as_vector_view() + pt1.as_vector_view()) / 2;
   }
   return tf::make_ray_hit_info(status, t0, pt);
+}
+
+template <typename Policy0, typename Policy1>
+auto ray_hit(
+    const ray_like<2, Policy0> &ray, const tf::ray_like<2, Policy1> &ray1,
+    const tf::ray_config<tf::coordinate_type<Policy0, Policy1>> &config = {}) {
+  using RealT = tf::coordinate_type<Policy0, Policy1>;
+  auto result = ray_cast(ray, ray1, config);
+  tf::ray_hit_info<RealT, 2> out;
+  out.status = result.status;
+  out.t = result.t;
+  if (result)
+    out.point = ray.origin + result.t * ray.direction;
+  return out;
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>

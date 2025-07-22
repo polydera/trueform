@@ -67,12 +67,17 @@ public:
   auto capacity() const -> std::size_t { return local().capacity(); }
 
   /// @brief Returns a merged buffer from all threads.
-  auto to_buffer() const -> tf::buffer<T> {
-    tf::buffer<T> out;
+
+  auto to_buffer(tf::buffer<T> &out) const -> void {
     out.allocate(total_size());
     auto it = out.begin();
     for (const auto &v : _buffers)
       it = std::copy(v.begin(), v.end(), it);
+  }
+
+  auto to_buffer() const -> tf::buffer<T> {
+    tf::buffer<T> out;
+    to_buffer(out);
     return out;
   }
 

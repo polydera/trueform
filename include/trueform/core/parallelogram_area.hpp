@@ -34,4 +34,10 @@ auto parallelogram_area(const vector_like<2, Policy0> &v0,
   auto tmp = v0[0] * v1[1] - v0[1] * v1[0];
   return std::abs(tmp);
 }
+
+template <typename Policy0, typename Policy1>
+auto signed_parallelogram_area(const vector_like<2, Policy0> &v0,
+                               const vector_like<2, Policy1> &v1) {
+  return v0[0] * v1[1] - v0[1] * v1[0];
+}
 } // namespace tf

@@ -18,12 +18,15 @@ auto search_self(const tf::tree<Index, RealT, N> &tree, const F0 &check_aabbs,
                  int paralelism_depth = 6) -> bool {
   return tf::spatial::tree_self_search(
       tree.nodes(), tree.ids(), check_aabbs,
-      [primitive_apply](const auto &ids0, const auto &ids1, bool is_self) {
+      [primitive_apply, &tree, &check_aabbs](const auto &ids0, const auto &ids1,
+                                             bool is_self) {
         for (Index i0 = 0; i0 < Index(ids0.size()); ++i0) {
           auto id0 = ids0[i0];
           for (Index i1 = (i0 + 1) * is_self; i1 < Index(ids1.size()); ++i1) {
             auto id1 = ids1[i1];
-            if (primitive_apply(id0, id1))
+            if (check_aabbs(tree.primitive_aabbs()[id0],
+                            tree.primitive_aabbs()[id1]) &&
+                primitive_apply(id0, id1))
               return true;
           }
         }
@@ -44,7 +47,7 @@ auto search_self(const tf::form<N, Policy> &form, const F0 &check_aabbs,
   return tf::spatial::tree_self_search(
       form.tree().nodes(), form.tree().ids(), aabb_f,
       [primitive_apply, &form, &aabb_f](const auto &ids0, const auto &ids1,
-                               bool is_self) {
+                                        bool is_self) {
         for (Index i0 = 0; i0 < Index(ids0.size()); ++i0) {
           auto id0 = ids0[i0];
           auto obj0 = tf::tag_id(

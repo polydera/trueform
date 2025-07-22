@@ -5,15 +5,15 @@
  */
 #pragma once
 #include "../../core/buffer.hpp"
-#include "../intersection.hpp"
 #include "../intersection_id.hpp"
 #include "../polygon/vertex_vertex.hpp"
+#include "../tagged_intersection.hpp"
 
 namespace tf::intersect::generate {
 template <typename Handle0, typename Handle1, typename Index, typename T,
           std::size_t Dims>
 auto vertex_vertex(const Handle0 &handle0, const Handle1 &handle1,
-                   tf::buffer<intersection<Index>> &intersections,
+                   tf::buffer<tagged_intersection<Index>> &intersections,
                    tf::buffer<intersection_id<Index>> &intersection_ids,
                    tf::buffer<tf::point<T, Dims>> &points) {
   tf::intersect::polygon::vertex_vertex(

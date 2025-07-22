@@ -20,6 +20,7 @@
 #include "./spatial/nearness_search.hpp"       // IWYU pragma: export
 #include "./spatial/neighbor_search.hpp"       // IWYU pragma: export
 #include "./spatial/partitioning.hpp"          // IWYU pragma: export
+#include "./spatial/policy.hpp"                // IWYU pragma: export
 #include "./spatial/ray_cast.hpp"              // IWYU pragma: export
 #include "./spatial/ray_hit.hpp"               // IWYU pragma: export
 #include "./spatial/search.hpp"                // IWYU pragma: export

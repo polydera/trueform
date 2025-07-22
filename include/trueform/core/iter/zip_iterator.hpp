@@ -6,6 +6,7 @@
 #pragma once
 
 #include "../tuple.hpp"
+#include "../zip_apply.hpp"
 #include "./mapped_iterator.hpp"
 
 namespace tf::iter {
@@ -19,14 +20,20 @@ struct zip_reference
   zip_reference() = default;
   zip_reference(Iterators... iters) : base_t{*iters...} {}
 
-  friend auto swap(zip_reference &&zr0, zip_reference &&zr1) -> void {
+  friend auto swap(zip_reference &zr0, zip_reference &zr1) -> void {
+    using std::get;
     using std::swap;
-    return swap(static_cast<base_t &>(zr0), static_cast<base_t &>(zr1));
+    tf::zip_apply(
+        [](auto &...pairs) { (swap(get<0>(pairs), get<1>(pairs)), ...); }, zr0,
+        zr1);
   }
 
-  friend auto swap(zip_reference &zr0, zip_reference &zr1) -> void {
+  friend auto swap(zip_reference &&zr0, zip_reference &&zr1) -> void {
+    using std::get;
     using std::swap;
-    return swap(static_cast<base_t &>(zr0), static_cast<base_t &>(zr1));
+    tf::zip_apply(
+        [](auto &...pairs) { (swap(get<0>(pairs), get<1>(pairs)), ...); }, zr0,
+        zr1);
   }
 };
 

@@ -105,7 +105,6 @@ namespace tf {
 /// and `end()` iterators internally. Compatible with STL-style iteration.
 ///
 /// @tparam Iterator The iterator type.
-template <typename Iterator> class range<Iterator, tf::dynamic_size>;
 template <typename Iterator> class range<Iterator, tf::dynamic_size> {
 public:
   using value_type = typename std::iterator_traits<Iterator>::value_type;

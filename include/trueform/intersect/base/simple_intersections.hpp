@@ -78,7 +78,7 @@ private:
     tf::compute_offsets(_intersections,
                         std::back_inserter(_intersections_offsets), 0,
                         [](const auto &x0, const auto &x1) {
-                          return x0.polygon_key() == x1.polygon_key();
+                          return x0.object_key() == x1.object_key();
                         });
   }
 

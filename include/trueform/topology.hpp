@@ -19,7 +19,7 @@
 #include "./topology/manifold_edge_link.hpp"       // IWYU pragma: export
 #include "./topology/manifold_edge_peer.hpp"       // IWYU pragma: export
 #include "./topology/non_manifold_edges.hpp"       // IWYU pragma: export
-#include "./topology/planar_arrangments.hpp"       // IWYU pragma: export
+#include "./topology/planar_embedding.hpp"         // IWYU pragma: export
 #include "./topology/planar_graph_regions.hpp"     // IWYU pragma: export
 #include "./topology/policy.hpp"                   // IWYU pragma: export
 #include "./topology/scoped_face_membership.hpp"   // IWYU pragma: export

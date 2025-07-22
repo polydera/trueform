@@ -43,6 +43,7 @@ private:
 
 public:
   explicit vector_iterator(Iterator iter) : base_t{handle_t{std::move(iter)}} {}
+  vector_iterator() = default;
 };
 
 template <std::size_t BlockSize, typename Iterator>

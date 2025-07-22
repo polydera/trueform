@@ -5,6 +5,7 @@
  */
 #pragma once
 
+#include "./policy/frame.hpp"
 #include "./policy/id.hpp"
 #include "./policy/ids.hpp"
 #include "./policy/indices.hpp"

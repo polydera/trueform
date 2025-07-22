@@ -7,7 +7,6 @@
 #include "../core/algorithm/compute_offsets.hpp"
 #include "../core/algorithm/generic_generate.hpp"
 #include "../core/algorithm/mask_to_map.hpp"
-#include "../core/intersects.hpp"
 #include "../core/local_buffer.hpp"
 #include "../core/views/zip.hpp"
 #include "../spatial/form.hpp"
@@ -29,10 +28,14 @@ public:
   template <typename Policy0, typename Policy1>
   auto build(const tf::form<Dims, Policy0> &form0,
              const tf::form<Dims, Policy1> &form1) {
-    static_assert(tf::has_face_membership_policy<Policy0>);
-    static_assert(tf::has_face_membership_policy<Policy1>);
-    static_assert(tf::has_manifold_edge_link_policy<Policy0>);
-    static_assert(tf::has_manifold_edge_link_policy<Policy1>);
+    static_assert(tf::has_face_membership_policy<Policy0>,
+                  "Use polygons | tf::tag(face_membership)");
+    static_assert(tf::has_face_membership_policy<Policy1>,
+                  "Use polygons | tf::tag(face_membership)");
+    static_assert(tf::has_manifold_edge_link_policy<Policy0>,
+                  "Use polygons | tf::tag(manifold_edge_link)");
+    static_assert(tf::has_manifold_edge_link_policy<Policy1>,
+                  "Use polygons | tf::tag(manifold_edge_link)");
     //
     clear();
     auto [intersection_ids, intersections, intersection_points] =
@@ -100,7 +103,7 @@ private:
     tf::compute_offsets(_intersections,
                         std::back_inserter(_intersections_offsets), Index(0),
                         [](const auto &x0, const auto &x1) {
-                          return x0.polygon_key() == x1.polygon_key();
+                          return x0.object_key() == x1.object_key();
                         });
     auto r = tf::make_indirect_range(
         tf::make_range(_intersections_offsets.begin(),
@@ -108,7 +111,7 @@ private:
         _intersections);
     _partition_id = std::upper_bound(r.begin(), r.end(), 0,
                                      [](const auto &value, const auto &r1) {
-                                       return value < r1.mesh;
+                                       return value < r1.tag;
                                      }) -
                     r.begin();
   }
@@ -125,15 +128,15 @@ private:
     };
 
     tf::local_buffer<tf::intersect::intersection_id<Index>> l_intersection_ids;
-    tf::local_buffer<tf::intersect::intersection<Index>> l_intersections;
+    tf::local_buffer<tf::intersect::tagged_intersection<Index>> l_intersections;
     tf::local_buffer<tf::point<RealType, Dims>> l_intersection_points;
     l_intersection_points.reserve_all(1000);
     l_intersections.reserve_all(1000);
     l_intersection_ids.reserve_all(1000);
     tf::search(form0, form1, tf::intersects_f,
-               [&](const auto &obj0, const auto &obj1) {
-                 auto poly0 = tf::tag_plane(obj0);
-                 auto poly1 = tf::tag_plane(obj1);
+               [&](const auto &object, const auto &object_other) {
+                 auto poly0 = tf::tag_plane(object);
+                 auto poly1 = tf::tag_plane(object_other);
                  if (!tf::intersect::normal_intervals(poly0, poly1))
                    return;
                  tf::intersect::generate::polygon_polygon(
@@ -166,7 +169,7 @@ private:
   }
 
   Index _partition_id = 0;
-  tf::buffer<intersect::intersection<Index>> _intersections;
+  tf::buffer<intersect::tagged_intersection<Index>> _intersections;
   tf::buffer<Index> _intersections_offsets;
   tf::buffer<tf::point<RealType, Dims>> _intersection_points;
 };

@@ -27,13 +27,13 @@ auto make_intersection_edges(
           return;
         auto i0 = r[0];
         auto i1 = r[1];
-        Index size = polygons[i0.polygon].size();
+        Index size = polygons[i0.object].size();
         auto next_id = tf::circular_increment(i1.target.id, size);
         if (i0.target.id == next_id) {
           std::swap(i0, i1);
           next_id = tf::circular_increment(i1.target.id, size);
         }
-        if (scalar_field[polygons[i0.polygon].indices()[next_id]] < cut_value) {
+        if (scalar_field[polygons[i0.object].indices()[next_id]] < cut_value) {
           std::swap(i0, i1);
         }
         buff.push_back(i0.id);
@@ -59,20 +59,20 @@ auto make_intersection_edges(
           return;
         auto i0 = r[0];
         auto i1 = r[1];
-        const auto &face = polygons.faces()[i0.polygon];
+        const auto &face = polygons.faces()[i0.object];
         auto s0 = scalar_field[face[i0.target.id]];
         auto s1 = scalar_field[face[i1.target.id]];
         if (s0 > s1)
           std::swap(s0, s1);
         auto cut_value =
             *std::upper_bound(cut_values.begin(), cut_values.end(), s0);
-        Index size = polygons[i0.polygon].size();
+        Index size = polygons[i0.object].size();
         auto next_id = tf::circular_increment(i1.target.id, size);
         if (i0.target.id == next_id) {
           std::swap(i0, i1);
           next_id = tf::circular_increment(i1.target.id, size);
         }
-        if (scalar_field[polygons[i0.polygon].indices()[next_id]] < cut_value) {
+        if (scalar_field[polygons[i0.object].indices()[next_id]] < cut_value) {
           std::swap(i0, i1);
         }
         buff.push_back(i0.id);
@@ -110,7 +110,7 @@ auto make_intersection_edges(
                          while (it != end) {
                            auto next =
                                std::find_if(it + 1, end, [it](const auto &x) {
-                                 return x.polygon_other != it->polygon_other;
+                                 return x.object_other != it->object_other;
                                });
                            // each polygon has 1 or 2 intersections with another
                            // polygon

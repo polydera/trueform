@@ -8,7 +8,7 @@
 
 #include "trueform/trueform.hpp"
 
-using Kernel = CGAL::Exact_predicates_exact_constructions_kernel;
+using Kernel = CGAL::Exact_predicates_inexact_constructions_kernel;
 using Traits_2 = CGAL::Arr_segment_traits_2<Kernel>;
 using Point_2 = Traits_2::Point_2;
 using Segment_2 = Traits_2::X_monotone_curve_2;
@@ -16,14 +16,24 @@ using Arrangement_2 = CGAL::Arrangement_2<Traits_2>;
 
 auto run_tl(const std::vector<std::array<int, 2>> &edges,
             const std::vector<tf::point<double, 2>> &points) {
+
+  auto segments = tf::make_segments(edges, points);
+  tf::tree<int, double, 2> tree(segments, tf::config_tree(4, 4));
+  tf::edge_membership<int> em;
+  em.build(segments, tf::edge_orientation::bidirectional);
+  tf::segment_intersections<int, double, 2> ssi;
+  ssi.build(segments | tf::tag(em), tree);
+  tf::intersected_segments<int, double, 2> is;
+  is.build(segments, ssi);
+
   tf::buffer<std::array<int, 2>> all_edges;
-  all_edges.reserve(edges.size() * 2);
-  for (auto edge : edges) {
-    all_edges.push_back(edge);
+  all_edges.reserve(is.edges().size() * 2);
+  for (auto edge : is.edges()) {
+    all_edges.push_back({edge[0], edge[1]});
     all_edges.push_back({edge[1], edge[0]});
   }
-  tf::planar_arrangments<int, double> pgr;
-  pgr.build(tf::make_edges(all_edges), tf::make_points(points));
+  tf::planar_embedding<int, double> pgr;
+  pgr.build(tf::make_edges(all_edges), tf::make_points(is.points()));
   return pgr;
 }
 
@@ -117,7 +127,9 @@ void run_test(const std::vector<std::array<int, 2>> &edges,
     dummy_out += out_tf.faces().size() + out_tf.holes_for_faces().size();
     dummy_out += out_cgal.first.size() + out_cgal.second.size();
   }
-  std::cout << "\r                                                                " << std::flush;
+  std::cout
+      << "\r                                                                "
+      << std::flush;
   std::cout << "\r     tf: " << tf_time << " ms" << std::endl;
   std::cout << "   cgal: " << cgal_time << " ms" << std::endl;
   std::cout << "speedup: " << (cgal_time / tf_time) << std::endl;
@@ -127,14 +139,14 @@ int main() {
   std::vector<int> base_loop{{0, 1, 2, 3, 13, 4, 5, 6}};
   std::vector<std::array<int, 2>> edges{{1, 7},   {7, 8},   {8, 6},   {1, 9},
                                         {9, 5},   {10, 11}, {11, 12}, {12, 10},
-                                        {13, 14}, {13, 15}, {14, 15}, {15, 16}};
+                                        {13, 14}, {13, 15}, {16, 17}, {17, 18}};
   std::vector<tf::point<double, 2>> points{
       {0.f, 0.f},
       {0.2f, 0.f},
       {1.f, 0.f},
       {1.f, 1.f},
       {0.f, 1.f},
-      {0.f, 0.9f},
+      {0.f, 0.9f}, // 2
       {0.f, 0.8f},
       //
       {0.2f, 0.5f},
@@ -149,18 +161,15 @@ int main() {
       {0.8f, 1.f},
       {0.7f, 0.9f},
       {0.9f, 0.9f},
-      {0.9f, 0.8f},
+      //
+      {0.1f, 0.9f},
+      {0.2f, 0.9f},
+      {0.25f, 0.9f},
   };
 
   int prev = base_loop.size() - 1;
   for (int i = 0; i < int(base_loop.size()); prev = i++)
     edges.push_back({base_loop[prev], base_loop[i]});
-
-  // Create point-to-index map
-  std::map<tf::point<double, 2>, int> point_id_map;
-  for (size_t i = 0; i < points.size(); ++i) {
-    point_id_map[points[i]] = static_cast<int>(i);
-  }
 
   auto tf_out = run_tl(edges, points);
   std::cout << "---- tf::planar_arrangments ----" << std::endl;
@@ -195,8 +204,7 @@ int main() {
   }
 
   std::cout << "---- Benchmarking ----" << std::endl;
-  for (int duplicate_n : {1, 5, 10, 100, 250, 500})
+  for (int duplicate_n : {10, 100, 250, 500, 1000, 2000})
     run_test(edges, points, 10, duplicate_n);
   return dummy_out;
 }
-

@@ -9,28 +9,27 @@
 
 namespace tf::intersect {
 template <typename Index> struct intersection {
-  Index mesh;
-  Index polygon;
-  Index polygon_other;
+  Index object;
+  Index object_other;
   intersection_target<Index> target;
   intersection_target<Index> target_other;
   Index id;
 
-  auto polygon_key() const { return std::make_pair(mesh, polygon); }
+  auto object_key() const { return object; }
 
   friend auto operator<(const intersection &i0, const intersection &i1)
       -> bool {
-    return std::make_tuple(i0.mesh, i0.polygon, i0.polygon_other, i0.target,
+    return std::make_tuple(i0.object, i0.object_other, i0.target,
                            i0.target_other, i0.id) <
-           std::make_tuple(i1.mesh, i1.polygon, i1.polygon_other, i1.target,
+           std::make_tuple(i1.object, i1.object_other, i1.target,
                            i1.target_other, i1.id);
   }
 
   friend auto operator==(const intersection &i0, const intersection &i1)
       -> bool {
-    return std::make_tuple(i0.mesh, i0.polygon, i0.polygon_other, i0.target,
+    return std::make_tuple(i0.object, i0.object_other, i0.target,
                            i0.target_other, i0.id) ==
-           std::make_tuple(i1.mesh, i1.polygon, i1.polygon_other, i1.target,
+           std::make_tuple(i1.object, i1.object_other, i1.target,
                            i1.target_other, i1.id);
   }
 };

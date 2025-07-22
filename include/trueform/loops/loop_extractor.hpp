@@ -7,7 +7,7 @@
 #include "../core/buffer.hpp"
 #include "../core/dot.hpp"
 #include "../core/views/blocked_range.hpp"
-#include "../intersect/intersection.hpp"
+#include "../intersect/tagged_intersection.hpp"
 #include "../intersect/simple_intersection.hpp"
 #include "./simple_loop_split.hpp"
 #include "./vertex.hpp"
@@ -100,13 +100,13 @@ private:
 
   template <typename Range>
   auto extract_edges(const Range &intersections,
-                     tf::intersect::intersection<Index>) {
+                     tf::intersect::tagged_intersection<Index>) {
 
     auto it = intersections.begin();
     auto end = intersections.end();
     while (it != end) {
       auto next = std::find_if(it + 1, end, [it](const auto &x) {
-        return x.polygon_other != it->polygon_other;
+        return x.object_other != it->object_other;
       });
       // each polygon has 1 or 2 intersections with another
       // convex polygon

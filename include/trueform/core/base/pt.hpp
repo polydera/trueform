@@ -43,6 +43,11 @@ template <typename T, std::size_t Dims> struct pt_view {
   auto data() -> T * { return _data; }
   auto data() const -> const T * { return _data; }
 
+  friend auto swap(pt_view &&p0, pt_view &&p1) {
+    for (std::size_t i = 0; i < Dims; ++i)
+      std::swap(p0.data()[i], p1.data()[i]);
+  }
+
 private:
   T *_data;
 };
@@ -65,7 +70,7 @@ template <typename T, std::size_t Dims> struct pt_view<const T, Dims> {
   template <typename U>
   auto operator=(const pt<U, Dims> &) -> pt_view & = delete;
 
-  auto data() -> T * { return _data; }
+  auto data() -> const T * { return _data; }
   auto data() const -> const T * { return _data; }
 
 private:

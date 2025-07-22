@@ -64,7 +64,7 @@ template <typename T, std::size_t Dims> struct vec_view<const T, Dims> {
   template <typename U>
   auto operator=(const vec<U, Dims> &) -> vec_view & = delete;
 
-  auto data() -> T * { return _data; }
+  auto data() -> const T * { return _data; }
   auto data() const -> const T * { return _data; }
 
 private:

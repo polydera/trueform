@@ -4,8 +4,8 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "./directed_edge_link.hpp"
 #include "../core/small_vector.hpp"
+#include "./directed_edge_link.hpp"
 
 namespace tf {
 template <typename Index, typename RealT = double>
@@ -99,6 +99,13 @@ private:
     _visited.allocate(edges.size());
     std::fill(_visited.begin(), _visited.end(), false);
     Index n_edges_left = edges.size();
+    // if we start on branches, regions with area == 0
+    // might be their own regions
+    for (Index current = 0; n_edges_left && current < Index(_dil.size());
+         ++current) {
+      if (_dil[current].size() == 2)
+        n_edges_left -= make_walk(edges, current);
+    }
     for (Index current = 0; n_edges_left && current < Index(_dil.size());
          ++current) {
       n_edges_left -= make_walk(edges, current);
@@ -114,4 +121,3 @@ private:
   tf::buffer<bool> _visited;
 };
 } // namespace tf
-

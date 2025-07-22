@@ -14,7 +14,9 @@ public:
   using iterator_category =
       typename std::iterator_traits<Iterator>::iterator_category;
   using element_t = typename std::iterator_traits<Iterator>::value_type;
-  using reference = tf::point_view<element_t, BlockSize>;
+  using element_view_t = std::remove_reference_t<
+      typename std::iterator_traits<Iterator>::reference>;
+  using reference = tf::point_view<element_view_t, BlockSize>;
   using value_type = tf::point<element_t, BlockSize>;
   using pointer = void;
   using difference_type =
@@ -26,7 +28,7 @@ public:
   auto base_iter() -> Iterator & { return iter; }
   constexpr auto iterator_stride() const -> std::size_t { return BlockSize; }
   auto dereference() const -> reference {
-    return tf::point_view<element_t, BlockSize>(&(*iter));
+    return tf::point_view<element_view_t, BlockSize>(&(*iter));
   }
 
 private:
@@ -43,6 +45,7 @@ private:
 
 public:
   explicit point_iterator(Iterator iter) : base_t{handle_t{std::move(iter)}} {}
+  point_iterator() = default;
 };
 
 template <std::size_t BlockSize, typename Iterator>
