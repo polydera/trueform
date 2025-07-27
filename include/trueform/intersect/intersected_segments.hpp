@@ -27,12 +27,13 @@ public:
     tf::buffer<Index> edge_map;
     edge_map.allocate(segments.size());
     auto n_edges = tf::mask_to_map(used_edges, edge_map);
-    base_t::raw_edges_buffer().allocate(n_edges * 2 + raw_created_edges.size());
-    auto raw0 = tf::make_range(base_t::raw_edges_buffer().begin(),
+    base_t::edges_buffer().data_buffer().allocate(n_edges * 2 +
+                                                  raw_created_edges.size());
+    auto raw0 = tf::make_range(base_t::edges_buffer().data_buffer().begin(),
                                raw_created_edges.size());
-    auto raw1 = tf::make_range(base_t::raw_edges_buffer().begin() +
+    auto raw1 = tf::make_range(base_t::edges_buffer().data_buffer().begin() +
                                    raw_created_edges.size(),
-                               base_t::raw_edges_buffer().end());
+                               base_t::edges_buffer().data_buffer().end());
     tf::parallel_copy(raw_created_edges, raw0);
     tf::parallel_copy_by_map_with_nones(
         tf::make_mapped_range(
@@ -44,7 +45,7 @@ public:
         tf::make_points<2>(raw1), edge_map);
 
     tf::parallel_apply(
-        base_t::raw_edges_buffer(),
+        base_t::edges_buffer().data_buffer(),
         [&pt_map, offset = Index(si.intersection_points().size())](auto &x) {
           if (x > offset)
             x = pt_map[x - offset] + offset;
@@ -143,13 +144,13 @@ private:
     tf::buffer<Index> pt_map;
     pt_map.allocate(segments.points().size());
     auto n_pts = tf::mask_to_map(used_points, pt_map);
-    base_t::raw_points_buffer().allocate(
+    base_t::points_buffer().data_buffer().allocate(
         (n_pts + si.intersection_points().size()) * Dims);
-    auto raw0 = tf::make_range(base_t::raw_points_buffer().begin(),
+    auto raw0 = tf::make_range(base_t::points_buffer().data_buffer().begin(),
                                Dims * si.intersection_points().size());
-    auto raw1 = tf::make_range(base_t::raw_points_buffer().begin() +
+    auto raw1 = tf::make_range(base_t::points_buffer().data_buffer().begin() +
                                    Dims * si.intersection_points().size(),
-                               base_t::raw_points_buffer().end());
+                               base_t::points_buffer().data_buffer().end());
     tf::parallel_copy(si.intersection_points(), tf::make_points<Dims>(raw0));
     tf::parallel_copy_by_map_with_nones(segments.points(),
                                         tf::make_points<Dims>(raw1), pt_map);

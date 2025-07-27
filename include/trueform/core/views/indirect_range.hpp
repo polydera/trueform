@@ -5,6 +5,7 @@
  */
 #pragma once
 
+#include "../array_like.hpp"
 #include "../iter/indirect_iterator.hpp"
 #include "../range.hpp"
 #include "../static_size.hpp"
@@ -44,8 +45,8 @@ public:
       return tf::make_range(Policy::begin().base_iter(),
                             Policy::end().base_iter());
     else
-      return tf::make_range<tf::static_size_v<Policy>>(
-          Policy::begin().base_iter());
+      return tf::make_array_like(tf::make_range<tf::static_size_v<Policy>>(
+          Policy::begin().base_iter()));
   }
 };
 

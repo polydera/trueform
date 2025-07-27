@@ -14,7 +14,9 @@ public:
   using iterator_category =
       typename std::iterator_traits<Iterator>::iterator_category;
   using element_t = typename std::iterator_traits<Iterator>::value_type;
-  using reference = tf::vector_view<element_t, BlockSize>;
+  using element_view_t = std::remove_reference_t<
+      typename std::iterator_traits<Iterator>::reference>;
+  using reference = tf::vector_view<element_view_t, BlockSize>;
   using value_type = tf::vector<element_t, BlockSize>;
   using pointer = void;
   using difference_type =

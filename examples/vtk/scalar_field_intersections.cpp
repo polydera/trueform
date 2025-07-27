@@ -42,8 +42,13 @@ private:
 
   auto compute_curves() {
     auto polygons = get_triangles(poly);
+    std::vector<float> cutvalues;
+    for(int i=-10;i<10;++i)
+      cutvalues.push_back(distance + i*0.5);
     tf::tick();
-    sfi.build(polygons, scalars, distance);
+    sfi.build_many(polygons, scalars,
+                   cutvalues);
+    /*sfi.build(polygons, scalars, distance);*/
     auto edges = tf::make_intersection_edges(sfi);
     add_time(tf::tock());
     auto tmp_poly =

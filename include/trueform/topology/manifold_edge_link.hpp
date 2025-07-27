@@ -13,6 +13,14 @@ class manifold_edge_link : public blocked_buffer<manifold_edge_peer<Index>, N> {
   using base_t = blocked_buffer<manifold_edge_peer<Index>, N>;
 
 public:
+  manifold_edge_link() = default;
+
+  template <typename Policy>
+  manifold_edge_link(const tf::faces<Policy> &faces,
+                     const tf::face_membership<Index> &blink) {
+    build(faces, blink);
+  }
+
   template <typename Range>
   auto build(const Range &blocks, const tf::face_membership<Index> &blink)
       -> void {

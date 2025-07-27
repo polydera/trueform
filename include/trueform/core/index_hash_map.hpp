@@ -1,0 +1,31 @@
+/*
+ * Copyright (c) 2025 Žiga Sajovic, XLAB
+ * Distributed under the Boost Software License, Version 1.0.
+ * https://github.com/xlabmedical/trueform
+ */
+#pragma once
+#include "./buffer.hpp"
+#include "./hash_map.hpp"
+
+namespace tf {
+template <typename T, typename Index, typename Hash = std::hash<T>>
+class index_hash_map {
+public:
+  auto f() const -> const tf::hash_map<T, Index> & { return _f; }
+
+  auto f() -> tf::hash_map<T, Index> & { return _f; }
+
+  auto kept_ids() -> tf::buffer<T> & { return _kept_ids; }
+
+  auto kept_ids() const -> const tf::buffer<T> & { return _kept_ids; }
+
+  auto clear() {
+    _f.clear();
+    _kept_ids.clear();
+  }
+
+private:
+  tf::hash_map<T, Index, Hash> _f;
+  tf::buffer<T> _kept_ids;
+};
+} // namespace tf

@@ -1,6 +1,7 @@
 #pragma once
 #include "../../util/read_mesh.hpp"
 #include "./data_bridge.hpp"
+#include "trueform/trueform.hpp"
 #include "vtkCamera.h"
 #include "vtkCommand.h"
 #include "vtkPolyData.h"
@@ -8,7 +9,6 @@
 #include "vtkRenderWindow.h"
 #include "vtkRenderer.h"
 #include "vtkSTLReader.h"
-#include "vtkStripper.h"
 #include "vtkTextActor.h"
 #include <filesystem>
 #include <memory>
@@ -167,21 +167,6 @@ auto curves_to_polydata(const tf::curves<Policy> &curves) {
 
 template <typename Policy>
 auto segments_to_lines(const tf::segments<Policy> &segments) {
-  auto cells = vtk_make_unique<vtkCellArray>();
-  cells->AllocateEstimate(segments.size(), 2);
-  for (auto [id0, id1] : segments.edges()) {
-    vtkIdType ids[2]{id0, id1};
-    cells->InsertNextCell(2, ids);
-  }
-  auto points = vtk_make_unique<vtkPoints>();
-  points->SetNumberOfPoints(segments.points().size());
-  tf::parallel_copy(segments.points(), get_points(points.get()));
-  auto tmp_poly = vtk_make_unique<vtkPolyData>();
-  tmp_poly->SetPoints(points.get());
-  tmp_poly->SetLines(cells.get());
-  auto stripper = vtk_make_unique<vtkStripper>();
-  stripper->SetInputData(tmp_poly.get());
-  stripper->Update();
-  tmp_poly->ShallowCopy(stripper->GetOutput());
-  return tmp_poly;
+  auto paths = tf::connect_edges_to_paths(segments.edges());
+  return curves_to_polydata(tf::make_curves(paths, segments.points()));
 }

@@ -15,6 +15,12 @@ class face_membership : public offset_block_buffer<Index, Index> {
   using base_t = offset_block_buffer<Index, Index>;
 
 public:
+  face_membership() = default;
+
+  template <typename Policy> face_membership(const polygons<Policy> &polygons) {
+    build(polygons);
+  }
+
   template <typename Policy>
   auto build(const tf::faces<Policy> &faces, std::size_t n_unique_ids,
              std::size_t total_size) -> void {

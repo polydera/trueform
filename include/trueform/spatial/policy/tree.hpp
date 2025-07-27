@@ -34,6 +34,8 @@ inline constexpr bool has_tree_policy = decltype(policy::has_tree(
 namespace policy {
 template <typename Index, typename RealT, std::size_t Dims, typename Base>
 struct tag_tree : Base {
+  using real_t = RealT;
+  using index_t = Index;
   using Base::operator=;
   tag_tree(tf::tree<Index, RealT, Dims> *_tree, const Base &base)
       : Base{base}, _tree{_tree} {}
@@ -132,6 +134,10 @@ namespace tf {
 namespace policy {
 template <typename Index, typename RealT, std::size_t Dims, typename Base>
 struct tag_const_tree : Base {
+
+  using real_t = RealT;
+  using index_t = Index;
+
   using Base::operator=;
   tag_const_tree(const tf::tree<Index, RealT, Dims> *_tree, const Base &base)
       : Base{base}, _tree{_tree} {}

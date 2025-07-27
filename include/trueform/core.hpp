@@ -25,6 +25,7 @@
 #include "./core/containment.hpp"               // IWYU pragma: export
 #include "./core/contains_coplanar_point.hpp"   // IWYU pragma: export
 #include "./core/contains_point.hpp"            // IWYU pragma: export
+#include "./core/contiguous_index_hash_map.hpp" // IWYU pragma: export
 #include "./core/coordinate_type.hpp"           // IWYU pragma: export
 #include "./core/cross.hpp"                     // IWYU pragma: export
 #include "./core/curve.hpp"                     // IWYU pragma: export
@@ -40,6 +41,7 @@
 #include "./core/frame_ptr.hpp"                 // IWYU pragma: export
 #include "./core/hash_map.hpp"                  // IWYU pragma: export
 #include "./core/hash_set.hpp"                  // IWYU pragma: export
+#include "./core/index_hash_map.hpp"            // IWYU pragma: export
 #include "./core/intersect_status.hpp"          // IWYU pragma: export
 #include "./core/intersects.hpp"                // IWYU pragma: export
 #include "./core/interval.hpp"                  // IWYU pragma: export
@@ -65,6 +67,7 @@
 #include "./core/point_like.hpp"                // IWYU pragma: export
 #include "./core/point_view.hpp"                // IWYU pragma: export
 #include "./core/points.hpp"                    // IWYU pragma: export
+#include "./core/points_buffer.hpp"             // IWYU pragma: export
 #include "./core/policy.hpp"                    // IWYU pragma: export
 #include "./core/polygon.hpp"                   // IWYU pragma: export
 #include "./core/polygons.hpp"                  // IWYU pragma: export

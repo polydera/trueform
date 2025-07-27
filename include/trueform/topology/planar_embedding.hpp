@@ -63,7 +63,7 @@ private:
       _signed_areas.push_back(sa);
     }
     for (auto [i, loop] : tf::enumerate(_pgr)) {
-      if (i == min_area_id)
+      if (Index(i) == min_area_id)
         continue;
       if (_signed_areas[i] > 0)
         _faces.push_back(i);

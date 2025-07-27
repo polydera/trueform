@@ -81,7 +81,7 @@ private:
     tf::buffer<std::array<Index, 2>> ids;
     tf::gather_self_ids(tf::make_form(tree, _intersection_points),
                         tf::intersects_f, std::back_inserter(ids));
-    auto im = tf::make_equivalence_class_index_map<Index>(
+    auto im = tf::make_dense_equivalence_class_index_map<Index>(
         ids, _intersection_points.size());
     if (im.kept_ids().size() == _intersection_points.size())
       return;

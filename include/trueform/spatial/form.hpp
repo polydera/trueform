@@ -7,8 +7,8 @@
 
 #include "../core/frame_like.hpp"
 #include "../core/frame_ptr.hpp"
-#include "./dyn_model.hpp"
-#include "./model.hpp"
+#include "../core/policy/frame.hpp"
+#include "./policy/tree.hpp"
 
 namespace tf {
 
@@ -17,27 +17,30 @@ template <std::size_t Dims, typename Policy> struct form : public Policy {
   form(const Policy &policy) : Policy{policy} {}
 
   friend auto unwrap(const form &seg) -> decltype(auto) {
-    return static_cast<const Policy &>(seg);
+    return unwrap(static_cast<const Policy &>(seg));
   }
 
   friend auto unwrap(form &seg) -> decltype(auto) {
-    return static_cast<Policy &>(seg);
+    return unwrap(static_cast<Policy &>(seg));
   }
 
   friend auto unwrap(form &&seg) -> decltype(auto) {
-    return static_cast<Policy &&>(seg);
+    return unwrap(static_cast<Policy &&>(seg));
   }
 
-  template <typename T> friend auto wrap_like(const form &, T &&t) {
-    return form<Dims, std::decay_t<T>>{static_cast<T &&>(t)};
+  template <typename T> friend auto wrap_like(const form &f, T &&t) {
+    auto base = wrap_like(static_cast<const Policy &>(f), static_cast<T &&>(t));
+    return form<Dims, decltype(base)>{std::move(base)};
   }
 
-  template <typename T> friend auto wrap_like(form &, T &&t) {
-    return form<Dims, std::decay_t<T>>{static_cast<T &&>(t)};
+  template <typename T> friend auto wrap_like(form &f, T &&t) {
+    auto base = wrap_like(static_cast<Policy &>(f), static_cast<T &&>(t));
+    return form<Dims, decltype(base)>{std::move(base)};
   }
 
-  template <typename T> friend auto wrap_like(form &&, T &&t) {
-    return form<Dims, std::decay_t<T>>{static_cast<T &&>(t)};
+  template <typename T> friend auto wrap_like(form &&f, T &&t) {
+    auto base = wrap_like(static_cast<Policy &&>(f), static_cast<T &&>(t));
+    return form<Dims, decltype(base)>{std::move(base)};
   }
 };
 
@@ -46,7 +49,8 @@ template <std::size_t Dims, typename FPolicy, typename Index, typename RealT,
 auto make_form(const tf::frame_like<Dims, FPolicy> &_frame,
                const tf::tree<Index, RealT, Dims> &_tree, Policy &&policy) {
   auto base =
-      tf::spatial::make_dyn_model(tf::make_frame_ptr(_frame), _tree, policy);
+      tf::tag_frame(tf::make_frame_ptr(_frame),
+                    tf::tag_const_tree(&_tree, static_cast<Policy &&>(policy)));
   return form<Dims, decltype(base)>{std::move(base)};
 }
 
@@ -54,16 +58,17 @@ template <std::size_t Dims, typename FPolicy, typename Index, typename RealT,
           typename Policy>
 auto make_form(tf::frame_like<Dims, FPolicy> &&_frame,
                const tf::tree<Index, RealT, Dims> &_tree, Policy &&policy) {
-  auto base = tf::spatial::make_dyn_model(
-      tf::make_frame_like(_frame.transformation(),
-                          _frame.inverse_transformation()),
-      _tree, policy);
+  auto base =
+      tf::tag_frame(tf::make_frame_like(_frame.transformation(),
+                                        _frame.inverse_transformation()),
+                    tf::tag_const_tree(&_tree, static_cast<Policy &&>(policy)));
   return form<Dims, decltype(base)>{std::move(base)};
 }
 
 template <typename Index, typename RealT, std::size_t Dims, typename Policy>
 auto make_form(const tf::tree<Index, RealT, Dims> &_tree, Policy &&policy) {
-  auto base = tf::spatial::make_model(_tree, policy);
+  auto base = tf::tag_identity_frame<RealT, Dims>(
+      tf::tag_const_tree(&_tree, static_cast<Policy &&>(policy)));
   return form<Dims, decltype(base)>{std::move(base)};
 }
 

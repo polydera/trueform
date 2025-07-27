@@ -20,7 +20,27 @@ public:
   using reference = typename std::iterator_traits<iterator>::reference;
   using const_reference =
       typename std::iterator_traits<const_iterator>::reference;
-  using size_type = typename std::iterator_traits<iterator>::difference_type;
+  using size_type = std::size_t;
+
+  template <typename Iterator, std::size_t Size>
+  auto push_back(const tf::range<Iterator, Size> &r) {
+    if (!_offsets.size())
+      _offsets.push_back(0);
+    auto old_size = _data.size();
+    _data.reallocate(old_size + r.size());
+    std::copy(r.begin(), r.end(), _data.begin() + old_size);
+    _offsets.push_back(_data.size());
+  }
+
+  template <typename U>
+  auto push_back(const std::initializer_list<U> &r) {
+    if (!_offsets.size())
+      _offsets.push_back(0);
+    auto old_size = _data.size();
+    _data.reallocate(old_size + r.size());
+    std::copy(r.begin(), r.end(), _data.begin() + old_size);
+    _offsets.push_back(_data.size());
+  }
 
   auto begin() const -> const_iterator {
     return views::make_offset_block_begin(_offsets, _data);

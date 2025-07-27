@@ -19,7 +19,7 @@ public:
     tf::parallel_fill(labels, -1);
     label_t label = 0;
     for (Index i = 0; i < Index(labels.size()); ++i) {
-      if (labels[i] != -1 || mask[i])
+      if (labels[i] != -1 || !mask[i])
         continue;
       _stack.push_back(i);
       while (_stack.size()) {

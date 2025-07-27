@@ -159,6 +159,22 @@ See how it compares with `VTK` (on *Intel i7-9750H*):
   <img src="./docs/img/vtk_non_manifold_speed_up.png" width="49%" />
 </p>
 
+#### 🔗 Labeling Connected Components
+
+Label connectivity-based regions using any traversal rule. For example, `manifold_edge_link` ensures components are only connected through manifold edges:
+
+```c++
+auto n_components = tf::label_connected_components(
+    labels_range, tf::make_applier(manifold_edge_link));
+```
+
+See how it compares with `CGAL` (on *Intel i7-9750H*):
+
+<p float="left">
+  <img src="./docs/img/cgal_components_bars.png" width="49%" />
+  <img src="./docs/img/cgal_components_lines.png" width="49%" />
+</p>
+
 #### 🔄 Planar Embeddings and Graph Regions
 
 Efficiently extract oriented faces and hole relations from ordered edges.
