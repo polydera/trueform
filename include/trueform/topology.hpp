@@ -18,6 +18,7 @@
 #include "./topology/face_link.hpp"                  // IWYU pragma: export
 #include "./topology/face_membership.hpp"            // IWYU pragma: export
 #include "./topology/find_eulerian_paths.hpp"        // IWYU pragma: export
+#include "./topology/hole_patcher.hpp"               // IWYU pragma: export
 #include "./topology/label_connected_components.hpp" // IWYU pragma: export
 #include "./topology/make_applier.hpp"               // IWYU pragma: export
 #include "./topology/manifold_edge_link.hpp"         // IWYU pragma: export

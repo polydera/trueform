@@ -295,8 +295,8 @@ private:
           // n.b. can only do this if the shard is pointing out of the polygon.
           // i.e. b is outside z-a-c
           if (tf::classify(next(v).point(points),
-                           tf::make_wedge(next(next(next(v))).point(points),
-                                          v.point(points),
+                           tf::make_wedge(v.point(points),
+                                          next(next(next(v))).point(points),
                                           prev(v).point(points))) ==
               tf::strict_containment::outside) {
             return v.next;

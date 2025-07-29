@@ -54,9 +54,9 @@ auto classify(const point_like<2, Policy0> &pt, const wedge<Policy1> &w)
     -> strict_containment {
   using tf::sidedness;
 
-  const auto o0 = classify(w[0], make_segment(w[1], w[2]));
-  const auto o1 = classify(w[0], make_segment(w[1], pt));
-  const auto o2 = classify(w[0], make_segment(w[2], pt));
+  const auto o0 = classify(w[0], make_segment_between_points(w[1], w[2]));
+  const auto o1 = classify(w[0], make_segment_between_points(w[1], pt));
+  const auto o2 = classify(w[0], make_segment_between_points(w[2], pt));
 
   const bool convex = o0 != sidedness::on_negative_side;
 
