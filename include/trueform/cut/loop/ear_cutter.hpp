@@ -5,9 +5,9 @@
  */
 #pragma once
 
-#include "../core/buffer.hpp"
-#include "../core/classify.hpp"
-#include "../core/point_view.hpp"
+#include "../../core/buffer.hpp"
+#include "../../core/classify.hpp"
+#include "../../core/point_view.hpp"
 #include <numeric>
 
 namespace tf {

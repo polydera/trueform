@@ -9,6 +9,10 @@
 namespace tf {
 template <typename Range, typename T>
 auto parallel_fill(Range &&r, const T &val) -> void {
-  tf::parallel_for(r, [&](auto begin, auto end) { std::fill(begin, end, val); });
+  if (r.size() < 1000)
+    std::fill(r.begin(), r.end(), val);
+  else
+    tf::parallel_for(r,
+                     [&](auto begin, auto end) { std::fill(begin, end, val); });
 }
 } // namespace tf

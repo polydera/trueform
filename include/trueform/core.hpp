@@ -38,6 +38,7 @@
 #include "./core/faces.hpp"                     // IWYU pragma: export
 #include "./core/frame.hpp"                     // IWYU pragma: export
 #include "./core/frame_like.hpp"                // IWYU pragma: export
+#include "./core/frame_of.hpp"                  // IWYU pragma: export
 #include "./core/frame_ptr.hpp"                 // IWYU pragma: export
 #include "./core/hash_map.hpp"                  // IWYU pragma: export
 #include "./core/hash_set.hpp"                  // IWYU pragma: export

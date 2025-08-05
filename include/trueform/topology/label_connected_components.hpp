@@ -14,7 +14,7 @@ auto label_connected_components(Range0 &&labels, const Range1 &mask,
                                 const F &applier,
                                 Index expected_number_of_components = 2) {
   using label_t = std::decay_t<decltype(labels[0])>;
-  if (expected_number_of_components > 200) {
+  if (labels.size() < 5000 || expected_number_of_components > 200) {
     tf::topology::sequential_connected_components_finder<Index, label_t> finder;
     return finder.run(labels, mask, applier);
   } else {

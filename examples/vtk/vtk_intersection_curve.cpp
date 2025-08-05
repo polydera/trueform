@@ -68,7 +68,7 @@ int run_intersections(const std::string &file_name, int n_iters) {
                                polygons | tf::tag(fe) | tf::tag(mel));
     auto form1 = tf::make_form(tree_tf, polygons | tf::tag(fe) | tf::tag(mel));
     tf::tick();
-    tf::forms_intersections<int, double, 3> fi;
+    tf::polygons_intersections<int, double, 3> fi;
     fi.build(form0, form1);
     auto edges = tf::make_intersection_edges(fi);
     time_tf += tf::tock();

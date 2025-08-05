@@ -104,6 +104,20 @@ auto transformed(const unit_vector_like<Dims, Policy> &_this,
 }
 
 template <std::size_t Dims, typename Policy, typename U>
+auto transformed_normal(const unit_vector_like<Dims, Policy> &_this,
+                        const frame_like<Dims, U> &frame) {
+  if constexpr (!linalg::is_identity<U>) {
+    auto inv_frame = tf::make_frame_like(
+        tf::linalg::make_transpose_view(frame.inverse_transformation()),
+        tf::linalg::make_transpose_view(frame.transformation()));
+    auto out = transformed(_this, inv_frame);
+    tf::normalize(out);
+    return out;
+  } else
+    return _this;
+}
+
+template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const ray_like<Dims, Policy> &_this,
                  const transformation_like<Dims, U> &transform) {
   if constexpr (!linalg::is_identity<U>)

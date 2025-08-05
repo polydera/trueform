@@ -15,6 +15,7 @@
 #include "./intersection_id.hpp"
 #include "tbb/parallel_sort.h"
 
+#include <iostream>
 namespace tf::intersect {
 template <typename Index, typename Handle0, typename Handle1>
 auto compute_simplification_mask(
@@ -123,6 +124,8 @@ auto compute_simplification_mask(
       if (e1 < e0)
         std::swap(e0, e1);
       if ((id_counts[3] && !not_seen_yet(v0, v1, e0, e1)) ||
+          (id_counts[2] &&
+           !not_seen_yet(v0, v1, intersection_id<Index>::vertex_tag, ev0)) ||
           (id_counts[1] &&
            (!not_seen_yet(intersection_id<Index>::vertex_tag, v0, e0, e1) ||
             !not_seen_yet(intersection_id<Index>::vertex_tag, v1, e0, e1))) ||
@@ -156,7 +159,10 @@ auto compute_simplification_mask(
       if ((id_counts[3] && !not_seen_yet(e0, e1, v0, v1)) ||
           !not_seen_yet(e0, e1, intersection_id<Index>::vertex_tag, v0) ||
           (id_counts[2] &&
-           !not_seen_yet(e0, e1, intersection_id<Index>::vertex_tag, v1)) ||
+           (!not_seen_yet(e0, e1, intersection_id<Index>::vertex_tag, v0) ||
+            !not_seen_yet(e0, e1, intersection_id<Index>::vertex_tag, v1))) ||
+          (id_counts[1] &&
+           !not_seen_yet(intersection_id<Index>::vertex_tag, ev0, v0, v1)) ||
           (id_counts[0] &&
            (!not_seen_yet(intersection_id<Index>::vertex_tag, ev0,
                           intersection_id<Index>::vertex_tag, v0) ||

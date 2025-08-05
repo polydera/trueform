@@ -238,11 +238,11 @@ See how it compares with `VTK` (on *Intel i7-9750H*):
   <img src="./docs/img/scalar_field_multi_contours_speed_up.png" width="49%" />
 </p>
 
-#### ✖️ Form-Form Intersections
+#### ✖️ Mesh-Mesh Intersections
 
 Detect all intersections between two polygonal `forms` — transformed or static:
 ```c++
-tf::forms_intersections<int, double, 3> fi;
+tf::polygons_intersections<int, double, 3> fi;
 fi.build(form0 | tf::tag(face_membership0) | tf::tag(manifold_edge_link0),  
          form1 | tf::tag(face_membership1) | tf::tag(manifold_edge_link1));
 auto edges = tf::make_intersection_edges(fi);

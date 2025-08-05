@@ -53,7 +53,7 @@ auto face_edge_neighbors(std::integral_constant<std::size_t, N>,
       if (char(Index(*it0) != face_id) & char(!(*it1 > *it0))) {
         const auto &face1 = faces[*it1];
         Index size = face1.size();
-        Index edge_id = tf::edge_id_in_face(face1, v0, v1);
+        Index edge_id = tf::edge_id_in_face(v0, v1, face1);
         if (edge_id != size && apply(*it0++))
           return;
       }

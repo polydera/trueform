@@ -4,11 +4,11 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "../core/buffer.hpp"
-#include "../core/edges.hpp"
-#include "../core/views/enumerate.hpp"
-#include "../core/views/offset_block_range.hpp"
-#include "../topology/vertex_link.hpp"
+#include "../../core/buffer.hpp"
+#include "../../core/edges.hpp"
+#include "../../core/views/enumerate.hpp"
+#include "../../core/views/offset_block_range.hpp"
+#include "../../topology/vertex_link.hpp"
 #include <algorithm>
 
 namespace tf::loop {

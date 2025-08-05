@@ -4,7 +4,7 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "../core/area.hpp"
+#include "../../core/area.hpp"
 #include "./path_extractor.hpp"
 
 namespace tf::loop {
@@ -92,15 +92,14 @@ private:
      * crossing is always contained in the previous one
      * (for those begining and ending in the same point).
      */
-    std::sort(_crossing_paths.begin(), _crossing_paths.end(),
-              [this](Index i0, Index i1) {
-                return std::make_tuple(_descriptors[i0].start,
-                                       -_descriptors[i0].end,
-                                       _descriptors[i0].signed_area) <
-                       std::make_tuple(_descriptors[i1].start,
-                                       -_descriptors[i1].end,
-                                       _descriptors[i1].signed_area);
-              });
+    std::sort(
+        _crossing_paths.begin(), _crossing_paths.end(),
+        [this](Index i0, Index i1) {
+          return std::make_tuple(_descriptors[i0].start, -_descriptors[i0].end,
+                                 _descriptors[i0].signed_area) <
+                 std::make_tuple(_descriptors[i1].start, -_descriptors[i1].end,
+                                 _descriptors[i1].signed_area);
+        });
   }
   struct path_descriptor {
     Index start;

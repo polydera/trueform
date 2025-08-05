@@ -64,13 +64,18 @@ public:
               tf::make_mapped_range(edges, [](const auto &r) { return r[0]; })),
           as_em.data_buffer());
     case tf::edge_orientation::bidirectional:
-      tf::parallel_apply(tf::enumerate(as_em), [&](auto pair) {
+      auto f = [&](auto pair) {
         auto &&[id, block] = pair;
         for (auto &edge_id : block) {
           const auto &edge = edges[edge_id];
-          edge_id = edge[edge[0] == id];
+          edge_id = edge[edge[0] == Index(id)];
         }
-      });
+      };
+      if (edges.size() < 1000)
+        for (auto pair : tf::enumerate(as_em))
+          f(pair);
+      else
+        tf::parallel_apply(tf::enumerate(as_em), f);
     }
   }
 

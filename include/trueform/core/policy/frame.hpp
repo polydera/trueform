@@ -243,6 +243,11 @@ template <std::size_t Dims, typename T> auto tag(frame_like<Dims, T> frame) {
   return policy::tag_frame_op<Dims, T>{std::move(frame)};
 }
 
+template <typename RealT, std::size_t Dims>
+auto tag(identity_frame<RealT, Dims>) {
+  return tag_identity_frame<RealT, Dims>();
+}
+
 } // namespace tf
 namespace std {
 template <std::size_t Dims, typename Policy, typename Base>

@@ -4,10 +4,10 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "../core/buffer.hpp"
+#include "../../core/buffer.hpp"
 #include <algorithm>
 
-namespace tf {
+namespace tf::loop {
 template <typename Range, typename Index, typename T>
 auto simple_loop_split(const Range &base_loop, std::array<T, 2> edge,
                        tf::buffer<Index> &offsets, tf::buffer<T> &vertices) {

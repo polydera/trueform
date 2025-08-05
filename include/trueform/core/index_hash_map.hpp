@@ -11,9 +11,9 @@ namespace tf {
 template <typename T, typename Index, typename Hash = std::hash<T>>
 class index_hash_map {
 public:
-  auto f() const -> const tf::hash_map<T, Index> & { return _f; }
+  auto f() const -> const tf::hash_map<T, Index, Hash> & { return _f; }
 
-  auto f() -> tf::hash_map<T, Index> & { return _f; }
+  auto f() -> tf::hash_map<T, Index, Hash> & { return _f; }
 
   auto kept_ids() -> tf::buffer<T> & { return _kept_ids; }
 

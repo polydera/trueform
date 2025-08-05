@@ -4,12 +4,14 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "./block_reduce_sequenced_aggregate.hpp"
 #include "../offset_block_buffer.hpp"
+#include "./block_reduce_sequenced_aggregate.hpp"
 namespace tf {
 template <typename Range, typename Index, typename T, typename F>
-auto generate_offset_blocks(const Range &input_data, tf::buffer<Index> &offsets,
-                            tf::buffer<T> &data, const F &fill_block_f) {
+auto generate_offset_blocks(
+    const Range &input_data, tf::buffer<Index> &offsets, tf::buffer<T> &data,
+    const F &fill_block_f,
+    std::size_t n_tasks = std::thread::hardware_concurrency() * 5) {
   if (!input_data.size())
     return;
   offsets.allocate(input_data.size() + 1);
@@ -43,14 +45,16 @@ auto generate_offset_blocks(const Range &input_data, tf::buffer<Index> &offsets,
       };
   tf::blocked_reduce_sequenced_aggregate(
       input_data, std::tie(offsets, data),
-      std::pair<tf::buffer<Index>, tf::buffer<T>>{}, task_f, aggregate_f);
+      std::pair<tf::buffer<Index>, tf::buffer<T>>{}, task_f, aggregate_f,
+      n_tasks);
 }
 
 template <typename Range, typename Index, typename T, typename F>
-auto generate_offset_blocks(const Range &input_data,
-                            tf::offset_block_buffer<Index, T> &buff,
-                            const F &fill_block_f) {
+auto generate_offset_blocks(
+    const Range &input_data, tf::offset_block_buffer<Index, T> &buff,
+    const F &fill_block_f,
+    std::size_t n_tasks = std::thread::hardware_concurrency() * 5) {
   generate_offset_blocks(input_data, buff.offsets_buffer(), buff.data_buffer(),
-                         fill_block_f);
+                         fill_block_f, n_tasks);
 }
 } // namespace tf

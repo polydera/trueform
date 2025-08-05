@@ -4,13 +4,13 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "../core/algorithm/block_reduce_sequenced_aggregate.hpp"
-#include "../core/algorithm/parallel_fill.hpp"
-#include "../core/buffer.hpp"
-#include "../core/polygons.hpp"
-#include "../core/views/block_indirect_range.hpp"
-#include "../core/views/enumerate.hpp"
-#include "../intersect/base/simple_intersections.hpp"
+#include "../../core/algorithm/block_reduce_sequenced_aggregate.hpp"
+#include "../../core/algorithm/parallel_fill.hpp"
+#include "../../core/buffer.hpp"
+#include "../../core/polygons.hpp"
+#include "../../core/views/block_indirect_range.hpp"
+#include "../../core/views/enumerate.hpp"
+#include "../../intersect/base/simple_intersections.hpp"
 #include "./loop_extractor.hpp"
 #include "./vertex.hpp"
 
@@ -33,11 +33,10 @@ public:
     auto task_f = [&](const auto &r, auto &tup) {
       auto &[polygon_ids, loop_vertices, loop_offsets, extractor] = tup;
       for (const auto &intersections : r) {
-        extractor.build(polygons.faces()[intersections.front().object],
-                        si.intersection_points(), polygons.points(),
-                        intersections);
-
-        Index n_loops = extractor.extract(loop_offsets, loop_vertices);
+        Index n_loops = extractor.build(
+            polygons.faces()[intersections.front().object],
+            tf::make_points(si.intersection_points()), polygons.points(),
+            intersections, loop_offsets, loop_vertices);
 
         for (Index i = 0; i < n_loops; ++i)
           polygon_ids.push_back(intersections.front().object);

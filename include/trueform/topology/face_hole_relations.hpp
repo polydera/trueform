@@ -29,6 +29,8 @@ public:
              const tf::faces<Policy1> &holes,
              const tf::points<Policy2> &points) {
     clear();
+    if(!holes.size())
+      return;
     _tree.build(tf::make_polygons(faces, points), tf::config_tree(4, 4));
     build_hole_structures(faces, face_areas, holes, points);
   }

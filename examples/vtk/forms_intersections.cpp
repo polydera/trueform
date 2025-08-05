@@ -77,7 +77,7 @@ public:
   }
 
   auto get_forms_intersections() const
-      -> const tf::forms_intersections<int, double, 3> & {
+      -> const tf::polygons_intersections<int, double, 3> & {
     return forms_intersections;
   }
 
@@ -91,7 +91,7 @@ private:
   std::vector<tf::tree<int, float, 3>> trees;
   std::vector<tf::face_membership<int>> face_memberships;
   std::vector<tf::manifold_edge_link<int, 3>> manifold_edge_links;
-  tf::forms_intersections<int, double, 3> forms_intersections;
+  tf::polygons_intersections<int, double, 3> forms_intersections;
 };
 
 class cursor_interactor : public vtkInteractorStyleTrackballCamera {
