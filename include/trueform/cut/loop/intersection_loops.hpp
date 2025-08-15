@@ -6,8 +6,6 @@
 #pragma once
 #include "../../core/algorithm/block_reduce_sequenced_aggregate.hpp"
 #include "../../core/buffer.hpp"
-#include "../../core/views/block_indirect_range.hpp"
-#include "../../core/views/enumerate.hpp"
 #include "./loop_extractor.hpp"
 #include "./vertex.hpp"
 
@@ -21,7 +19,7 @@ public:
   auto descriptors() const { return tf::make_range(_object_keys); }
 
   auto mapped_loops() const {
-    return tf::make_block_indirect_range(loops(), _vertices);
+    return tf::make_offset_block_range(_loop_offsets, _vertices);
   }
 
   auto vertices() const -> const tf::buffer<vertex<Index>> & {
@@ -36,20 +34,13 @@ public:
   }
 
 protected:
-  auto initialize(std::size_t n_intersection_points) {
-    _vertices.allocate(n_intersection_points);
-    tf::parallel_apply(tf::enumerate(_vertices), [](auto &&pair) {
-      auto &&[id, v] = pair;
-      v = {Index(id), vertex_source::created};
-    });
-  }
-
-  template <typename Range, typename Policy1, typename F0, typename F1>
+  template <typename Range, typename Policy1, typename F0, typename F1,
+            typename F2>
   auto build(const Range &intersections,
              const tf::points<Policy1> &intersection_points,
-             const F0 &apply_to_polygons, const F1 &handle_id) {
+             const F0 &apply_to_polygons, const F1 &handle_id,
+             const F2 &get_flat_id) {
     clear();
-    initialize(intersection_points.size());
     Index offset = 0;
     auto result =
         std::tie(_object_keys, _loop_vertices, _loop_offsets, _vertices);
@@ -65,13 +56,13 @@ protected:
             intersections.front(),
             [&object_keys = object_keys, &loop_vertices = loop_vertices,
              &loop_offsets = loop_offsets, &intersections = intersections,
-             &intersection_points = intersection_points,
-             &extractor = extractor](const auto &polygons) {
+             &intersection_points = intersection_points, &extractor = extractor,
+             &get_flat_id](const auto &polygons) {
               Index n_loops = extractor.build(
                   polygons.faces()[intersections.front().object],
                   intersection_points,
                   polygons.points() | tf::tag(tf::frame_of(polygons)),
-                  intersections, loop_offsets, loop_vertices);
+                  intersections, get_flat_id, loop_offsets, loop_vertices);
               ObjectKey key{intersections.front().object_key()};
 
               for (Index i = 0; i < n_loops; ++i)
@@ -102,14 +93,18 @@ protected:
       loop_vertices.reallocate(old_loop_vertices_size + l_loop_vertices.size());
       auto it_loop_vertices = loop_vertices.begin() + old_loop_vertices_size;
       auto l_it_vertices = l_loop_vertices.begin();
+      //
+      auto old_vertices_size = vertices.size();
+      vertices.reallocate(old_vertices_size + l_loop_vertices.size());
+      auto it_loop_vertices2 = vertices.begin() + old_vertices_size;
 
-      auto copy_loop_f = [&, &vertices = vertices](auto key, auto end) {
+      auto copy_loop_f = [&](auto key, auto end) {
         while (l_it_vertices != end) {
           auto vertex = *l_it_vertices++;
           auto [is_new, id] = handle_id(key, vertex);
-          if (is_new)
-            vertices.push_back(vertex);
+          (void)is_new;
           *it_loop_vertices++ = id;
+          *it_loop_vertices2++ = vertex;
         }
       };
 

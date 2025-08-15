@@ -17,6 +17,7 @@
 #include "./core/blocked_buffer.hpp"            // IWYU pragma: export
 #include "./core/buffer.hpp"                    // IWYU pragma: export
 #include "./core/centroid.hpp"                  // IWYU pragma: export
+#include "./core/checked.hpp"                   // IWYU pragma: export
 #include "./core/classify.hpp"                  // IWYU pragma: export
 #include "./core/closest_metric_point.hpp"      // IWYU pragma: export
 #include "./core/closest_metric_point_pair.hpp" // IWYU pragma: export

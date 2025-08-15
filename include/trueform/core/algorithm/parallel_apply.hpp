@@ -4,6 +4,7 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
+#include "../checked.hpp"
 #include "tbb/parallel_for.h"
 
 namespace tf {
@@ -23,9 +24,9 @@ auto parallel_apply(Iterator first, Iterator last, Func &&f) -> void {
 /// @ingroup algorithms
 /// @brief Applies a function to each element of a range in parallel.
 ///
-/// This function applies the given functor `f` to each element of the input range `r`,
-/// using parallel execution. Internally, it leverages @ref parallel_for to split
-/// the range and apply the function concurrently.
+/// This function applies the given functor `f` to each element of the input
+/// range `r`, using parallel execution. Internally, it leverages @ref
+/// parallel_for to split the range and apply the function concurrently.
 ///
 /// @tparam Range A range type that supports random-access iteration.
 /// @tparam Func A callable that takes a reference to an element of the range.
@@ -41,6 +42,15 @@ auto parallel_apply(Iterator first, Iterator last, Func &&f) -> void {
 template <typename Range, typename Func>
 auto parallel_apply(Range &&r, Func &&f) -> void {
   return parallel_apply(r.begin(), r.end(), static_cast<Func &&>(f));
+}
+
+template <typename Range, typename Func>
+auto parallel_apply(Range &&r, Func &&f, tf::checked_t) -> void {
+  if (r.size() < 1000) {
+    for (auto &&e : r)
+      f(e);
+  } else
+    return parallel_apply(r.begin(), r.end(), static_cast<Func &&>(f));
 }
 
 template <typename Iterator0, typename Iterator1, typename Func>

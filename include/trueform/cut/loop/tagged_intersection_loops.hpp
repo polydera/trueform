@@ -10,8 +10,8 @@
 #include "./descriptor.hpp"
 #include "./intersection_loops.hpp"
 
-#include "../../topology/face_link.hpp"
 #include "../../topology/face_membership.hpp"
+#include "../../topology/structures/compute_face_link_per_edge.hpp"
 namespace tf::loop {
 template <typename Index, typename RealT>
 class tagged_intersection_loops
@@ -36,7 +36,8 @@ public:
 
     base_t::build(tgs.intersections(),
                   tf::make_points(tgs.intersection_points()), apply_f,
-                  handle_id_f);
+                  handle_id_f,
+                  [&tgs](const auto &x) { return tgs.get_flat_index(x); });
 
     _partition_id =
         std::upper_bound(
@@ -46,7 +47,7 @@ public:
 
     _fm.build(tf::make_faces(base_t::loops()), base_t::_vertices.size(),
               base_t::_loop_vertices.size());
-    _fl.build(tf::make_faces(base_t::loops()), _fm);
+    tf::topology::compute_face_link_per_edge(base_t::loops(), _fm, _ob);
   }
 
   auto clear() {
@@ -78,7 +79,7 @@ public:
 
 private:
   auto handle_id(descriptor<Index> d, tf::loop::vertex<Index> v) {
-    if (v.source == vertex_source::created)
+    if (v.source() == vertex_source::created)
       return std::make_pair(false, v.id);
     else {
       auto key = std::array<Index, 2>{d.tag, v.id};
@@ -91,8 +92,8 @@ private:
     }
   }
 
+  tf::offset_block_buffer<Index, Index> _ob;
   tf::face_membership<Index> _fm;
-  tf::face_link<Index> _fl;
   Index _map_offset;
   Index _partition_id;
   tf::hash_map<std::array<Index, 2>, Index, tf::array_hash<Index, 2>> _own_map;

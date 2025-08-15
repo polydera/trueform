@@ -45,6 +45,11 @@ public:
     _partition_id = 0;
   }
 
+  auto get_flat_index(const intersect::tagged_intersection<Index> &i) const
+      -> Index {
+    return &i - _intersections.begin();
+  }
+
 protected:
   auto finalize(Index n_ids) {
     if (n_ids == 0)

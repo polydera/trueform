@@ -17,23 +17,26 @@
 #include "./vertex.hpp"
 #include <algorithm>
 
-inline float time_tf0=0;
 namespace tf::loop {
 template <typename Index, typename RealT> class loop_extractor {
 
 public:
-  template <typename Range0, typename Policy0, typename Policy, typename Range2>
+  template <typename Range0, typename Policy0, typename Policy, typename Range2,
+            typename F>
   auto build(const Range0 &face, const tf::points<Policy0> &intersection_points,
              const tf::points<Policy> &mesh_points, const Range2 &intersections,
-             tf::buffer<Index> &offsets, tf::buffer<vertex<Index>> &vertices) {
+             const F &get_flat_id, tf::buffer<Index> &offsets,
+             tf::buffer<vertex<Index>> &vertices) {
     if (is_simple_case(intersections)) {
-      return extract_simple_case(face, intersections, offsets, vertices);
+      return extract_simple_case(face, intersections, get_flat_id, offsets,
+                                 vertices);
     }
     clear();
     extract_base_loop_from_intersections(face, intersection_points, mesh_points,
-                                         intersections);
+                                         intersections, get_flat_id);
     build_base_loop_edges();
-    extract_edges(intersections, intersection_points, intersections[0]);
+    extract_edges(intersections, intersection_points, intersections[0],
+                  get_flat_id);
     return extract(face, intersection_points, mesh_points, offsets, vertices);
   }
 
@@ -52,30 +55,32 @@ public:
   auto edges() const { return tf::make_blocked_range<2>(_edges); }
 
 private:
-  template <typename Range0, typename Range>
+  template <typename Range0, typename Range, typename F>
   auto extract_simple_case(const Range0 &face, const Range &r,
+                           const F &get_flat_id,
+
                            tf::buffer<Index> &offsets,
                            tf::buffer<vertex<Index>> &vertices) {
-    auto i0 = r[0];
-    auto i1 = r[1];
-    if (i0.target.id > i1.target.id)
+    auto i0 = std::make_pair(r[0], get_flat_id(r[0]));
+    auto i1 = std::make_pair(r[1], get_flat_id(r[1]));
+    if (i0.first.target.id > i1.first.target.id)
       std::swap(i0, i1);
 
     offsets.push_back(vertices.size());
-    for (Index i = 0; i <= Index(i0.target.id); ++i)
-      vertices.push_back({Index(face[i]), vertex_source::original});
-    vertices.push_back({i0.id, vertex_source::created});
-    vertices.push_back({i1.id, vertex_source::created});
+    for (Index i = 0; i <= Index(i0.first.target.id); ++i)
+      vertices.push_back({Index(face[i]), -1});
+    vertices.push_back({i0.first.id, i0.second});
+    vertices.push_back({i1.first.id, i1.second});
 
-    for (Index i = i1.target.id + 1; i < Index(face.size()); ++i)
-      vertices.push_back({Index(face[i]), vertex_source::original});
+    for (Index i = i1.first.target.id + 1; i < Index(face.size()); ++i)
+      vertices.push_back({Index(face[i]), -1});
 
     // add second loop
     offsets.push_back(vertices.size());
-    vertices.push_back({i1.id, vertex_source::created});
-    vertices.push_back({i0.id, vertex_source::created});
-    for (Index i = i0.target.id + 1; i <= i1.target.id; ++i)
-      vertices.push_back({Index(face[i]), vertex_source::original});
+    vertices.push_back({i1.first.id, i1.second});
+    vertices.push_back({i0.first.id, i0.second});
+    for (Index i = i0.first.target.id + 1; i <= i1.first.target.id; ++i)
+      vertices.push_back({Index(face[i]), -1});
     return Index(2);
   }
 
@@ -114,7 +119,7 @@ private:
         tf::make_normal(tf::make_polygon(face, mesh_points)), frame));
     _cf.build(base_loop(), tf::make_edges(edges()),
               [&](const vertex<Index> &v) -> tf::point<RealT, 2> {
-                if (v.source == vertex_source::created)
+                if (v.source() == vertex_source::created)
                   return projector(intersection_points[v.id]);
                 else
                   return projector(tf::transformed(mesh_points[v.id], frame));
@@ -157,20 +162,22 @@ private:
     }
   }
 
-  template <typename Range, typename Policy>
+  template <typename Range, typename Policy, typename F>
   auto extract_edges(const Range &intersections, const tf::points<Policy> &,
-                     tf::intersect::simple_intersection<Index>) {
+                     tf::intersect::simple_intersection<Index>,
+                     const F &get_flat_id) {
     if (intersections.size() != 2)
       return;
 
-    add_edge({intersections[0].id, vertex_source::created},
-             {intersections[1].id, vertex_source::created});
+    add_edge({intersections[0].id, get_flat_id(intersections[0])},
+             {intersections[1].id, get_flat_id(intersections[1])});
   }
 
-  template <typename Range, typename Policy>
+  template <typename Range, typename Policy, typename F>
   auto extract_edges(const Range &intersections,
                      const tf::points<Policy> &intersection_points,
-                     tf::intersect::tagged_intersection<Index>) {
+                     tf::intersect::tagged_intersection<Index>,
+                     const F &get_flat_id) {
     auto it = intersections.begin();
     auto end = intersections.end();
     while (it != end) {
@@ -178,19 +185,20 @@ private:
         return x.object_other != it->object_other;
       });
       if (next - it == 2) {
-        add_edge({it->id, vertex_source::created},
-                 {(it + 1)->id, vertex_source::created});
+        add_edge({it->id, get_flat_id(*it)},
+                 {(it + 1)->id, get_flat_id(*(it + 1))});
       } else if (next - it > 2) {
-        extract_edges(it, next, intersection_points);
+        extract_edges(it, next, intersection_points, get_flat_id);
       }
       it = next;
     }
     make_edges_unique();
   }
 
-  template <typename Iterator, typename Policy>
+  template <typename Iterator, typename Policy, typename F>
   auto extract_edges(Iterator begin, Iterator end,
-                     const tf::points<Policy> &intersection_points) {
+                     const tf::points<Policy> &intersection_points,
+                     const F &get_flat_id) {
     std::array<std::pair<RealT, Iterator>,
                tf::static_size_v<decltype(intersection_points.front())>>
         min;
@@ -203,13 +211,14 @@ private:
     _work_buffer.clear();
     auto it = begin;
     while (it != end) {
-      auto pt = intersection_points[it->id];
-      _work_buffer.push_back({it->target, it->id, RealT(0)});
+      auto i = *it;
+      auto flat_id = get_flat_id(*it++);
+      auto pt = intersection_points[i.id];
+      _work_buffer.push_back({i.target, i.id, flat_id, RealT(0)});
       for (std::size_t i = 0; i < min.size(); ++i) {
         min[i] = std::min(min[i], std::make_pair(pt[i], it));
         max[i] = std::max(max[i], std::make_pair(pt[i], it));
       }
-      ++it;
     }
     auto res = std::make_pair(max[0].first - min[0].first, std::size_t(0));
     for (std::size_t i = 1; i < min.size(); ++i) {
@@ -225,7 +234,7 @@ private:
                 return std::make_pair(x.t, x.id) < std::make_pair(y.t, y.id);
               });
     for (auto [a, b] : tf::make_slide_range<2>(_work_buffer))
-      add_edge({a.id, vertex_source::created}, {b.id, vertex_source::created});
+      add_edge({a.id, a.intersection_id}, {b.id, b.intersection_id});
   }
 
   auto make_edges_unique() {
@@ -235,13 +244,15 @@ private:
     _edges.erase_till_end(_edges.begin() + n);
   }
 
-  template <typename Range0, typename Range1, typename Policy, typename Range2>
+  template <typename Range0, typename Range1, typename Policy, typename Range2,
+            typename F>
   auto extract_base_loop_from_intersections(
       const Range0 &face, const Range1 &intersection_points,
-      const tf::points<Policy> &mesh_points, const Range2 &intersections) {
+      const tf::points<Policy> &mesh_points, const Range2 &intersections,
+      const F &get_flat_id) {
     for (const auto &x : intersections)
       if (x.target.label != tf::topo_type::face)
-        _work_buffer.push_back({x.target, x.id, RealT(0)});
+        _work_buffer.push_back({x.target, x.id, get_flat_id(x), RealT(0)});
     // (vertex:0|edge:1, sub_id)
     // all vertices will appear before edges
     std::sort(_work_buffer.begin(), _work_buffer.end(),
@@ -271,7 +282,7 @@ private:
       auto next_it = find_and_fill_on_edge(it, end, i, pt0, edge_dir);
       // no points on this edge
       if (it == next_it) {
-        _base_loop.push_back({Index(face[i]), vertex_source::original});
+        _base_loop.push_back({Index(face[i]), -1});
         continue;
       }
       std::sort(it, next_it, [](const auto &x, const auto &y) {
@@ -285,9 +296,11 @@ private:
         return x.id == y.id;
       });
       if (it != it_end && it->target.label != tf::topo_type::vertex)
-        _base_loop.push_back({Index(face[i]), vertex_source::original});
-      while (it != it_end)
-        _base_loop.push_back({it++->id, vertex_source::created});
+        _base_loop.push_back({Index(face[i]), -1});
+      while (it != it_end) {
+        _base_loop.push_back({it->id, it->intersection_id});
+        ++it;
+      }
       it = next_it;
     }
   }
@@ -295,6 +308,7 @@ private:
   struct node_t {
     tf::intersect::intersection_target<Index> target;
     Index id;
+    Index intersection_id;
     RealT t;
   };
 

@@ -8,7 +8,9 @@
 #include "../../core/algorithm/parallel_apply.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/point.hpp"
+#include "../../core/policy/ids.hpp"
 #include "../../core/views/offset_block_range.hpp"
+#include "../../core/views/sequence_range.hpp"
 #include "../simple_edge_point_id.hpp"
 #include "../simple_intersection.hpp"
 #include "tbb/parallel_sort.h"
@@ -28,11 +30,23 @@ public:
     return tf::make_offset_block_range(_intersections_offsets, _intersections);
   }
 
+  auto intersections_with_ids() const {
+    return tf::make_offset_block_range(
+        _intersections_offsets,
+        tf::make_range(_intersections) |
+            tf::zip_ids(tf::make_sequence_range(_intersections.size())));
+  }
+
   auto intersection_points() const { return tf::make_range(_points); }
 
   auto created_intersection_points() const {
     return tf::make_range(_points.begin(),
                           _points.begin() + _vertex_points_offset);
+  }
+
+  auto get_flat_index(const intersect::simple_intersection<Index> &i) const
+      -> Index {
+    return i - _intersections.begin();
   }
 
 private:

@@ -42,14 +42,13 @@ auto make_dense_equivalence_class_index_map(const PairRange &identified_pairs,
   for (const auto &[a, b] : identified_pairs) {
     Index ra = find(a);
     Index rb = find(b);
+    if (rb < ra)
+      std::swap(ra, rb);
     if (ra != rb)
       root_map[rb] = ra;
   }
 
   // Assign compact IDs to roots
-  tf::buffer<Index> root_to_id;
-  root_to_id.allocate(map.size());
-  tf::parallel_fill(root_to_id, none);
   Index current_id = 0;
   im.kept_ids().reserve(n_ids);
 
@@ -59,11 +58,14 @@ auto make_dense_equivalence_class_index_map(const PairRange &identified_pairs,
       map[i] = current_id++;
     } else {
       Index root = find(i);
-      if (root_to_id[root] == none) {
+      // root is always the smallest
+      // off the the is in the eq. class
+      if (i == root) {
         im.kept_ids().push_back(i);
-        root_to_id[root] = current_id++;
+        map[root] = current_id++;
+      } else {
+        map[i] = map[root];
       }
-      map[i] = root_to_id[root];
     }
   }
   return current_id;
@@ -109,25 +111,27 @@ auto make_sparse_equivalence_class_index_map(const PairRange &identified_pairs,
   for (const auto &[a, b] : identified_pairs) {
     Index ra = find(a);
     Index rb = find(b);
+    if (rb < ra)
+      std::swap(ra, rb);
     if (ra != rb)
       root_map[rb] = ra;
   }
 
   // Assign compact IDs to roots
-  tf::buffer<Index> root_to_id;
-  root_to_id.allocate(map.size());
-  tf::parallel_fill(root_to_id, none);
   Index current_id = 0;
   im.kept_ids().reserve(n_ids);
 
   for (Index i = 0; i < static_cast<Index>(map.size()); ++i) {
     if (root_map[i] != none) {
       Index root = find(i);
-      if (root_to_id[root] == none) {
+      // root is always the smallest
+      // off the the is in the eq. class
+      if (i == root) {
         im.kept_ids().push_back(i);
-        root_to_id[root] = current_id++;
+        map[root] = current_id++;
+      } else {
+        map[i] = map[root];
       }
-      map[i] = root_to_id[root];
     }
   }
   return current_id;

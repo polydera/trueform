@@ -5,6 +5,8 @@
  */
 #pragma once
 
-namespace tf::loop {
-enum class vertex_source { original = 0, created = 1 };
-}
+namespace tf {
+struct checked_t {};
+
+static constexpr checked_t checked;
+} // namespace tf

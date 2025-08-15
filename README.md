@@ -220,7 +220,7 @@ See how it compares with `CGAL` (on *Intel i7-9750H*):
   <img src="./docs/img/cgal_planar_arrangments_lines.png" width="49%" />
 </p>
 
-#### 🔸 Scalar Field Slicing
+#### 🔸 Scalar Field Intersections and Contours
 
 Slice polygonal geometry using a scalar field (e.g., height, temperature, distance). Outputs interpolated intersection points:
 
@@ -228,7 +228,8 @@ Slice polygonal geometry using a scalar field (e.g., height, temperature, distan
 tf::scalar_field_intersections<int, float, 3> sfi;
 sfi.build(polygons, scalar_field, cut_value);
 auto edges = tf::make_intersection_edges(sfi);
-auto segments = tf::make_segments(edges, sfi.intersection_points());
+auto paths = tf::connect_edges_to_paths(tf::make_edges(edges));
+auto curves = tf::make_curves(paths, sfi.intersection_points());
 ```
 
 See how it compares with `VTK` (on *Intel i7-9750H*):
@@ -246,7 +247,8 @@ tf::polygons_intersections<int, double, 3> fi;
 fi.build(form0 | tf::tag(face_membership0) | tf::tag(manifold_edge_link0),  
          form1 | tf::tag(face_membership1) | tf::tag(manifold_edge_link1));
 auto edges = tf::make_intersection_edges(fi);
-auto segments = tf::make_segments(edges, fi.intersection_points());
+auto paths = tf::connect_edges_to_paths(tf::make_edges(edges));
+auto curves = tf::make_curves(paths, fi.intersection_points());
 ```
 
 See how it compares with `VTK` and `CGAL` when continuously computing the intersection curve between two moving meshes (on *Intel i7-9750H*):
