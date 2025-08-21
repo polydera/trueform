@@ -11,21 +11,21 @@
 #include "../../topology/structures/compute_face_link_per_edge.hpp"
 namespace tf::loop {
 template <typename Index, typename RealT>
-class simple_intersection_loops
-    : public intersection_loops<Index, Index> {
+class simple_intersection_loops : public intersection_loops<Index, Index> {
   using base_t = intersection_loops<Index, Index>;
 
 public:
   template <typename Policy, std::size_t Dims>
-  auto build(const tf::polygons<Policy> &polygons,
-             const tf::intersect::simple_intersections<Index, RealT, Dims> &tgs) {
+  auto
+  build(const tf::polygons<Policy> &polygons,
+        const tf::intersect::simple_intersections<Index, RealT, Dims> &tgs) {
     clear();
     _own_map.reserve(tgs.intersections().size() * 3);
     _map_offset = tgs.intersection_points().size();
     auto apply_f = [&](auto, const auto &f) {
-        f(polygons);
+      f(tf::make_polygons(polygons.faces(), polygons.points()));
     };
-    auto handle_id_f = [this](auto , auto v) { return this->handle_id(v); };
+    auto handle_id_f = [this](auto, auto v) { return this->handle_id(v); };
 
     base_t::build(tgs.intersections(),
                   tf::make_points(tgs.intersection_points()), apply_f,

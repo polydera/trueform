@@ -14,11 +14,17 @@ auto update_by_mask(tf::index_map_buffer<Index> &im, const Range0 &mask) {
   tf::buffer<Index> map;
   map.allocate(im.kept_ids().size());
   auto none = Index(mask.size());
-  im.kept_ids().erase_till_end(tf::remove_if_and_make_map(
-      im.kept_ids(), [&](Index id) { return !mask[id]; }, map, none));
-  tf::parallel_apply(im.f(), [&](Index &id) {
-    if (id != none)
-      id = map[id];
-  });
+  auto it = tf::remove_if_and_make_map(
+      im.kept_ids(), [&](Index id) { return !mask[id]; }, map, none);
+  if (it == im.kept_ids().end())
+    return;
+  im.kept_ids().erase_till_end(it);
+  tf::parallel_apply(
+      im.f(),
+      [&](Index &id) {
+        if (id != none)
+          id = map[id];
+      },
+      tf::checked);
 }
 } // namespace tf

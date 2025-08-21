@@ -72,4 +72,10 @@ auto make_form(const tf::tree<Index, RealT, Dims> &_tree, Policy &&policy) {
   return form<Dims, decltype(base)>{std::move(base)};
 }
 
+template <std::size_t Dims, typename Policy> auto make_form(Policy &&policy) {
+  static_assert(tf::has_tree_policy<Policy>, "Form needs a tree");
+  return form<Dims, std::decay_t<Policy>>{
+      std::move(static_cast<Policy &&>(policy))};
+}
+
 } // namespace tf

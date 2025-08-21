@@ -5,5 +5,4 @@
  */
 #pragma once
 
-#include "./clean/index_map.hpp" // IWYU pragma: export
-#include "./clean/soup.hpp"  // IWYU pragma: export
+#include "./soup/segments.hpp" // IWYU pragma: export

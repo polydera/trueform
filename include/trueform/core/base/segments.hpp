@@ -100,4 +100,13 @@ auto make_segments(Range0 &&_edges, Range1 &&_points) {
   return segments<std::decay_t<Range0>, std::decay_t<Range1>>{
       static_cast<Range0 &&>(_edges), static_cast<Range1 &&>(_points)};
 }
+
+template <typename Range0, typename Range1>
+auto has_edges_policy(const segments<Range0, Range1> *) -> std::true_type;
+auto has_edges_policy(const void *) -> std::false_type;
 } // namespace tf::core
+namespace tf {
+template <typename T>
+inline constexpr bool has_edges = decltype(has_edges_policy(
+    static_cast<const std::decay_t<T> *>(nullptr)))::value;
+}

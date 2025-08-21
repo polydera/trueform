@@ -4,23 +4,30 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "../core/algorithm/make_unique_index_map.hpp"
-#include "../core/algorithm/parallel_apply.hpp"
-#include "../core/segments.hpp"
-#include "../core/segments_buffer.hpp"
-#include "../core/views/blocked_range.hpp"
-#include "../core/views/zip.hpp"
+#include "../../core/algorithm/make_unique_index_map.hpp"
+#include "../../core/algorithm/parallel_apply.hpp"
+#include "../../core/algorithm/parallel_fill.hpp"
+#include "../../core/algorithm/remove_if_and_make_map.hpp"
+#include "../../core/buffer.hpp"
+#include "../../core/segments.hpp"
+#include "../../core/segments_buffer.hpp"
+#include "../../core/views/blocked_range.hpp"
+#include "../../core/views/zip.hpp"
 
-namespace tf {
+namespace tf::clean {
 template <typename Index, typename RealT, std::size_t Dims>
-class cleaned_segments : public segments_buffer<Index, RealT, Dims> {
+class segment_soup : public segments_buffer<Index, RealT, Dims> {
   using base_t = segments_buffer<Index, RealT, Dims>;
 
 public:
-  template <typename Policy> auto build(const tf::segments<Policy> &segments) {
+  template <typename Policy>
+  auto build(const tf::segments<Policy> &segments,
+             bool should_remove_uncontained_points = false) {
     clear();
     make_initial_points(segments);
     make_initial_edges();
+    if (should_remove_uncontained_points)
+      remove_uncontained_points();
   }
 
   auto clear() {
@@ -30,6 +37,30 @@ public:
   }
 
 private:
+  auto remove_uncontained_points() {
+    tf::buffer<bool> contained_points;
+    contained_points.allocate(base_t::points().size());
+    tf::parallel_fill(contained_points, false);
+    tf::parallel_apply(
+        base_t::edges(),
+        [&](const auto &edge) {
+          contained_points[edge[0]] = true;
+          contained_points[edge[1]] = true;
+        },
+        tf::checked);
+    auto &map = _im.f();
+    map.allocate(base_t::points().size());
+    auto r = tf::zip(contained_points, base_t::points());
+    tf::remove_if_and_make_map(r, [](auto &&pair) { return !pair.first; }, map);
+    tf::parallel_apply(
+        base_t::edges(),
+        [&](auto &&edge) {
+          edge[0] = map[edge[0]];
+          edge[1] = map[edge[1]];
+        },
+        tf::checked);
+  }
+
   template <typename Policy>
   auto make_initial_points(const tf::segments<Policy> &segments) {
     base_t::points_buffer().allocate(segments.size() * 2);
@@ -83,4 +114,4 @@ private:
 
   tf::index_map_buffer<Index> _im;
 };
-} // namespace tf
+} // namespace tf::clean

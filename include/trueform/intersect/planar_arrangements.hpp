@@ -4,7 +4,7 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "../clean/segments.hpp"
+#include "../clean/soup/segments.hpp"
 #include "../topology/planar_embedding.hpp"
 #include "./intersected_segments.hpp"
 namespace tf {
@@ -49,7 +49,7 @@ public:
 private:
   tf::edge_membership<Index> _em;
   tf::tree<Index, RealType, 2> _tree;
-  tf::cleaned_segments<Index, RealType, 2> _cs;
+  tf::clean::segment_soup<Index, RealType, 2> _cs;
   tf::segment_intersections<Index, RealType, 2> _si;
   tf::buffer<Index> _work_buffer;
 };
