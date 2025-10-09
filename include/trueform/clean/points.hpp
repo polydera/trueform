@@ -17,23 +17,11 @@ auto cleaned(const tf::points<Policy> &points,
   return std::make_pair(std::move(out), std::move(im));
 }
 
-template <typename Policy>
-auto cleaned(const tf::points<Policy> &points,
-             tf::coordinate_type<Policy> tolerance, tf::return_index_map_t) {
-  using index_t = typename Policy::size_type;
-  return cleaned<index_t>(points, tolerance, tf::return_index_map);
-}
 template <typename Index, typename Policy>
 auto cleaned(const tf::points<Policy> &points, tf::return_index_map_t) {
   auto im = tf::make_clean_index_map<Index>(points);
   auto out = tf::reindexed(points, im);
   return std::make_pair(std::move(out), std::move(im));
-}
-
-template <typename Policy>
-auto cleaned(const tf::points<Policy> &points, tf::return_index_map_t) {
-  using index_t = typename Policy::size_type;
-  return cleaned<index_t>(points, tf::return_index_map);
 }
 
 template <typename Index, typename Policy>
@@ -44,22 +32,10 @@ auto cleaned(const tf::points<Policy> &points,
   return out;
 }
 
-template <typename Policy>
-auto cleaned(const tf::points<Policy> &points,
-             tf::coordinate_type<Policy> tolerance) {
-  using index_t = typename Policy::size_type;
-  return cleaned<index_t>(points, tolerance);
-}
-
 template <typename Index, typename Policy>
 auto cleaned(const tf::points<Policy> &points) {
   auto im = tf::make_clean_index_map<Index>(points);
   auto out = tf::reindexed(points, im);
   return out;
-}
-
-template <typename Policy> auto cleaned(const tf::points<Policy> &points) {
-  using index_t = typename Policy::size_type;
-  return cleaned<index_t>(points);
 }
 } // namespace tf

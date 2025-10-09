@@ -30,7 +30,7 @@ auto make_clean_index_map(const tf::core::polygons<Range0, Range1> &polygons,
           for (auto e : face)
             buff.push_back(point_map.f()[e]);
           std::sort(buff.begin(), buff.end());
-          keep = std::unique(face.begin(), face.end()) - face.begin() > 2;
+          keep = std::unique(buff.begin(), buff.end()) - buff.begin() > 2;
         }
       },
       tf::checked);
@@ -61,7 +61,7 @@ auto make_clean_index_map(const tf::core::polygons<Range0, Range1> &polygons,
   clean::make_clean_index_map(polygons, face_map, point_map);
 }
 
-template <typename Range0, typename Range1, typename RealType, typename Index>
+template <typename Range0, typename Range1, typename Index>
 auto make_clean_index_map(
     const tf::core::polygons<Range0, Range1> &polygons,
     tf::coordinate_type<decltype(polygons.points())> tolerance,
@@ -88,18 +88,5 @@ auto make_clean_index_map(const tf::core::polygons<Range0, Range1> &polygons,
   tf::index_map_buffer<Index> point_map;
   make_clean_index_map(polygons, tolerance, face_map, point_map);
   return std::make_pair(std::move(face_map), std::move(point_map));
-}
-
-template <typename Range0, typename Range1>
-auto make_clean_index_map(const tf::core::polygons<Range0, Range1> &polygons) {
-  using index_t = std::decay_t<decltype(polygons.faces()[0][0])>;
-  return make_clean_index_map<index_t>(polygons);
-}
-
-template <typename Range0, typename Range1>
-auto make_clean_index_map(const tf::core::polygons<Range0, Range1> &polygons,
-                          tf::coordinate_type<Range1> tolerance) {
-  using index_t = std::decay_t<decltype(polygons.faces()[0][0])>;
-  return make_clean_index_map<index_t>(polygons, tolerance);
 }
 } // namespace tf

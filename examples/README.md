@@ -113,6 +113,14 @@ This example provides direct performance benchmark for collecting boundary and n
 * Using `tf::make_boundary_edges`
 * Using `tf::make_non_manifold_edges`
 
+### [VTK: Clean Mesh](./vtk/compare_clean.cpp.cpp)
+
+This example provides direct performance benchmark for cleaning a mesh with a specified tolerance (our implementation additionally removes all uncontained points).
+
+#### Features Showcased
+
+* Using `tf::cleaned`
+
 ### [VTK: Intersection Curve](./vtk/vtk_intersection_curve.cpp)
 
 This example provides a direct comparison with `VTK` for computing the intersection curve between two transforming meshes.

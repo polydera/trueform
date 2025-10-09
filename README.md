@@ -108,6 +108,22 @@ See how it compares with `nanoflann` (on *Intel i7-9750H*):
   <img src="./docs/img/nano-knn.png" width="49%" />
 </p>
 
+#### 🧭 Neighbor Search
+
+`tf::neighbor_search` unifies closest-point queries across primitives. It generalised both `tf::closest_metric_point` (from vs primitive) and `tf::closest_metric_point_pair` (form vs form).
+
+```c++
+auto nearest = tf::neighbor_search(form, primitive /*, search_radius*/);
+if (nearest)
+    auto [primitive_id, metric_point] = nearest;
+
+auto nearest_pair = tf::neighbor_search(form0, form1 /*, search_radius*/);
+if (nearest_pair) {
+    auto [primitive_ids, metric_points] = nearest_pair;
+    auto [id0, id1] = primitive_ids;
+}
+```
+
 #### ⚡️ Searching Forms
 
 The `tf::form`s may be searched (`tf::search`) using primitives or other forms, or themselves (`tf::search_self`). Additionally, use higher-level functions like `tf::gather_ids` to collect primitives satisfying a predicate, e.g. all pairs of intersecting primitives between two forms:
@@ -131,6 +147,45 @@ See how it compares with `CGAL` (on *Intel i7-9750H*):
 #### Tutorial: Spatial
 
 See [Tutorial: Spatial](./docs/tutorial.md#spatial) for a detailed walk-through and additional features like `tf::search`, `tf::distance`, `tf::intersects`, and `tf::ray_hit` on forms. Additional examples are provided in the [examples directory](./examples/).
+
+### 🧼 Cleaning & Reindexing
+
+Remove duplicate, degenerate and uncontained elements, and compact your data (e.g. `points`, `segments`, `polygons`) — with optional index maps for downstream reindexing.
+
+```c++
+auto clean_polygons = tf::cleaned<int>(polygons /*, tolerance*/);
+auto [clean_polygons, face_index_map, point_index_map] =
+    tf::cleaned<int>(polygons /*, tolerance*/, tf::return_index_map);
+```
+
+See how it compares with **VTK** (on *Intel i7-9750H*):
+
+<p float="left">
+  <img src="./docs/img/vtk_clean_lines.png" width="49%" />
+  <img src="./docs/img/vtk_clean_bars.png" width="49%" />
+</p>
+
+Index maps can be used to reindex other data you might have:
+
+```c++
+// Use any primitive range, e.g., unit_vectors
+auto reindexed_normals = tf::reindexed(normals, index_map);
+
+std::vector<std::string> attributes;
+auto reindexed_attributes =
+    tf::reindexed(tf::make_range(attributes), index_map);
+```
+
+You can also reindex by **IDs** or by **mask**:
+
+```c++
+auto sub_polygons = tf::reindexed_by_mask<int>(triangles, mask);
+auto [sub_polygons, face_index_map, point_index_map] =
+    tf::reindexed_by_mask<int>(triangles, mask, tf::return_index_map);
+```
+
+For `tf::polygons` and `tf::segments` we additionally provide `reindexed_by_ids_on_points` and `reindexed_by_mask_on_points`, which filter based on point inclusion.
+
 
 ### 🧩 Topology
 
@@ -227,6 +282,8 @@ Slice polygonal geometry using a scalar field (e.g., height, temperature, distan
 ```c++
 tf::scalar_field_intersections<int, float, 3> sfi;
 sfi.build(polygons, scalar_field, cut_value);
+// or for multiple Contours (range needs to be sorted)
+sfi.build_many(polygons, scalar_field, range_of_cut_values);
 auto edges = tf::make_intersection_edges(sfi);
 auto paths = tf::connect_edges_to_paths(tf::make_edges(edges));
 auto curves = tf::make_curves(paths, sfi.intersection_points());
