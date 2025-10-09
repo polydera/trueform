@@ -17,24 +17,9 @@ using Arrangement_2 = CGAL::Arrangement_2<Traits_2>;
 auto run_tl(const std::vector<std::array<int, 2>> &edges,
             const std::vector<tf::point<double, 2>> &points) {
 
-  auto segments = tf::make_segments(edges, points);
-  tf::tree<int, double, 2> tree(segments, tf::config_tree(4, 4));
-  tf::edge_membership<int> em;
-  em.build(segments, tf::edge_orientation::bidirectional);
-  tf::segment_intersections<int, double, 2> ssi;
-  ssi.build(segments | tf::tag(em), tree);
-  tf::intersected_segments<int, double, 2> is;
-  is.build(segments, ssi);
-
-  tf::buffer<std::array<int, 2>> all_edges;
-  all_edges.reserve(is.edges().size() * 2);
-  for (auto edge : is.edges()) {
-    all_edges.push_back({edge[0], edge[1]});
-    all_edges.push_back({edge[1], edge[0]});
-  }
-  tf::planar_embedding<int, double> pgr;
-  pgr.build(tf::make_edges(all_edges), tf::make_points(is.points()));
-  return pgr;
+  tf::planar_arrangements<int, double> pa;
+  pa.build(tf::make_segments(edges, points));
+  return pa;
 }
 
 auto run_cgal(const std::vector<std::array<int, 2>> &edges,
@@ -172,36 +157,36 @@ int main() {
     edges.push_back({base_loop[prev], base_loop[i]});
 
   auto tf_out = run_tl(edges, points);
-  std::cout << "---- tf::planar_arrangments ----" << std::endl;
-  for (auto [face, holes] :
-       tf::zip(tf_out.faces(), tf::make_block_indirect_range(
-                                   tf_out.holes_for_faces(), tf_out.holes()))) {
-    std::cout << "face: ";
-    for (auto e : face)
-      std::cout << e << ", ";
-    std::cout << std::endl;
-    for (auto hole : holes) {
-      std::cout << "  hole: ";
-      for (auto e : hole)
-        std::cout << e << ", ";
-      std::cout << std::endl;
-    }
-  }
-
-  auto cgal_out = run_cgal(edges, points);
-  std::cout << "---- CGAL::Arrangement_2 ----" << std::endl;
-  for (auto [face, holes] : tf::zip(cgal_out.first, cgal_out.second)) {
-    std::cout << "face: ";
-    for (auto e : face)
-      std::cout << e << ", ";
-    std::cout << std::endl;
-    for (auto hole : holes) {
-      std::cout << "  hole: ";
-      for (auto e : hole)
-        std::cout << e << ", ";
-      std::cout << std::endl;
-    }
-  }
+  /*std::cout << "---- tf::planar_arrangments ----" << std::endl;*/
+  /*for (auto [face, holes] :*/
+  /*     tf::zip(tf_out.faces(), tf::make_block_indirect_range(*/
+  /*                                 tf_out.holes_for_faces(), tf_out.holes()))) {*/
+  /*  std::cout << "face: ";*/
+  /*  for (auto e : face)*/
+  /*    std::cout << e << ", ";*/
+  /*  std::cout << std::endl;*/
+  /*  for (auto hole : holes) {*/
+  /*    std::cout << "  hole: ";*/
+  /*    for (auto e : hole)*/
+  /*      std::cout << e << ", ";*/
+  /*    std::cout << std::endl;*/
+  /*  }*/
+  /*}*/
+  /**/
+  /*auto cgal_out = run_cgal(edges, points);*/
+  /*std::cout << "---- CGAL::Arrangement_2 ----" << std::endl;*/
+  /*for (auto [face, holes] : tf::zip(cgal_out.first, cgal_out.second)) {*/
+  /*  std::cout << "face: ";*/
+  /*  for (auto e : face)*/
+  /*    std::cout << e << ", ";*/
+  /*  std::cout << std::endl;*/
+  /*  for (auto hole : holes) {*/
+  /*    std::cout << "  hole: ";*/
+  /*    for (auto e : hole)*/
+  /*      std::cout << e << ", ";*/
+  /*    std::cout << std::endl;*/
+  /*  }*/
+  /*}*/
 
   std::cout << "---- Benchmarking ----" << std::endl;
   for (int duplicate_n : {10, 100, 250, 500, 1000, 2000})

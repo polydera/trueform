@@ -6,4 +6,6 @@
 #pragma once
 
 #include "./clean/index_map.hpp" // IWYU pragma: export
-#include "./clean/soup.hpp"  // IWYU pragma: export
+#include "./clean/points.hpp"    // IWYU pragma: export
+#include "./clean/polygons.hpp"  // IWYU pragma: export
+#include "./clean/segments.hpp"  // IWYU pragma: export

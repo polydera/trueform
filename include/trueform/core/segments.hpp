@@ -4,8 +4,8 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "./base/segment_soup.hpp"
 #include "./base/segments.hpp"
+#include "./base/soup.hpp"
 #include "./edges.hpp"
 #include "./points.hpp"
 
@@ -61,8 +61,7 @@ auto make_segments(segments<Range> p) -> segments<Range> {
 
 template <typename Range> auto make_segments(Range &&r) {
   auto segs = tf::make_range(r);
-  return segments<core::segment_soup<decltype(segs)>>{
-      core::segment_soup<decltype(segs)>{segs}};
+  return segments<core::soup<decltype(segs)>>{core::soup<decltype(segs)>{segs}};
 }
 
 template <typename Policy> auto make_view(const tf::segments<Policy> &obj) {

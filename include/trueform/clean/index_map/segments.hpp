@@ -32,7 +32,7 @@ auto make_clean_index_map(const tf::core::segments<Range0, Range1> &segments,
       [&](const auto &x0, const auto &x1) {
         return make_edge(x0) == make_edge(x1);
       },
-      [](const auto &x0, const auto &x1) {
+      [&](const auto &x0, const auto &x1) {
         return make_edge(x0) < make_edge(x1);
       });
 
@@ -64,7 +64,7 @@ template <typename Range0, typename Range1, typename Index>
 auto make_clean_index_map(const tf::core::segments<Range0, Range1> &segments,
                           tf::index_map_buffer<Index> &edge_map,
                           tf::index_map_buffer<Index> &point_map) {
-  if(!segments.size())
+  if (!segments.size())
     return;
   make_clean_index_map(segments.points(), point_map);
   clean::make_clean_index_map(segments, edge_map, point_map);
@@ -76,9 +76,39 @@ auto make_clean_index_map(
     tf::coordinate_type<decltype(segments.points())> tolerance,
     tf::index_map_buffer<Index> &edge_map,
     tf::index_map_buffer<Index> &point_map) {
-  if(!segments.size())
+  if (!segments.size())
     return;
   make_clean_index_map(segments.points(), tolerance, point_map);
   clean::make_clean_index_map(segments, edge_map, point_map);
+}
+
+template <typename Index, typename Range0, typename Range1>
+auto make_clean_index_map(const tf::core::segments<Range0, Range1> &segments) {
+  tf::index_map_buffer<Index> edge_map;
+  tf::index_map_buffer<Index> point_map;
+  make_clean_index_map(segments, edge_map, point_map);
+  return std::make_pair(std::move(edge_map), std::move(point_map));
+}
+
+template <typename Index, typename Range0, typename Range1>
+auto make_clean_index_map(const tf::core::segments<Range0, Range1> &segments,
+                          tf::coordinate_type<Range1> tolerance) {
+  tf::index_map_buffer<Index> edge_map;
+  tf::index_map_buffer<Index> point_map;
+  make_clean_index_map(segments, tolerance, edge_map, point_map);
+  return std::make_pair(std::move(edge_map), std::move(point_map));
+}
+
+template <typename Range0, typename Range1>
+auto make_clean_index_map(const tf::core::segments<Range0, Range1> &segments) {
+  using index_t = std::decay_t<decltype(segments.edges()[0][0])>;
+  return make_clean_index_map<index_t>(segments);
+}
+
+template <typename Range0, typename Range1>
+auto make_clean_index_map(const tf::core::segments<Range0, Range1> &segments,
+                          tf::coordinate_type<Range1> tolerance) {
+  using index_t = std::decay_t<decltype(segments.edges()[0][0])>;
+  return make_clean_index_map<index_t>(segments, tolerance);
 }
 } // namespace tf

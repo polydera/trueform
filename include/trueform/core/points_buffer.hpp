@@ -6,6 +6,7 @@
 #pragma once
 #include "./buffer.hpp"
 #include "./iter/point_iterator.hpp"
+#include "./points.hpp"
 namespace tf {
 template <typename T, std::size_t Dims> class points_buffer {
 public:
@@ -82,6 +83,10 @@ public:
   }
 
   auto operator[](std::size_t i) -> reference { return *(begin() + i); }
+
+  auto points() const { return tf::make_points(*this); }
+
+  auto points() { return tf::make_points(*this); }
 
 private:
   tf::buffer<T> _raw_buffer;

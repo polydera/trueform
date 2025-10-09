@@ -7,6 +7,7 @@
 
 #include "../assignable_range.hpp"
 #include "../coordinate_type.hpp"
+#include "../coordinate_dims.hpp"
 #include "../static_size.hpp"
 #include "../views/indirect_range.hpp"
 namespace tf::core {
@@ -24,6 +25,7 @@ public:
   auto operator=(const curve &) -> curve & = default;
   auto operator=(curve &&) -> curve & = default;
   using coordinate_type = tf::coordinate_type<typename Policy::value_type>;
+  using coordinate_dims = tf::coordinate_dims<typename Policy::value_type>;
   using base_t::base_t;
   using base_t::operator=;
   using base_t::operator[];
@@ -48,6 +50,7 @@ public:
   auto operator=(const curve &) -> curve & = default;
   auto operator=(curve &&) -> curve & = default;
   using coordinate_type = tf::coordinate_type<typename Policy::value_type>;
+  using coordinate_dims = tf::coordinate_dims<typename Policy::value_type>;
   using base_t::base_t;
   using base_t::operator=;
   using base_t::operator[];

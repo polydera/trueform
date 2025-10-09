@@ -1,0 +1,97 @@
+/*
+ * Copyright (c) 2025 Žiga Sajovic, XLAB
+ * Distributed under the Boost Software License, Version 1.0.
+ * https://github.com/xlabmedical/trueform
+ */
+#pragma once
+#include "../core/is_soup.hpp"
+#include "../reindex/polygons.hpp"
+#include "../reindex/return_index_map.hpp"
+#include "./index_map/polygons.hpp"
+#include "./soup/polygons.hpp"
+
+namespace tf {
+template <typename Index, typename Policy>
+auto cleaned(const tf::polygons<Policy> &polygons,
+             tf::coordinate_type<Policy> tolerance)
+    -> tf::polygons_buffer<Index, tf::coordinate_type<Policy>,
+                           tf::coordinate_dims_v<Policy>,
+                           tf::static_size_v<decltype(polygons[0])>> {
+  if constexpr (tf::is_soup<Policy>) {
+    tf::clean::polygon_soup<Index, tf::coordinate_type<Policy>,
+                            tf::coordinate_dims_v<Policy>,
+                            tf::static_size_v<decltype(polygons[0])>>
+        out;
+    out.build(polygons, tolerance);
+    return out;
+  } else {
+    auto [face_im, point_im] =
+        tf::make_clean_index_map<Index>(polygons, tolerance);
+    return tf::reindexed(polygons, face_im, point_im);
+  }
+}
+
+template <typename Index, typename Range0, typename Range1>
+auto cleaned(const tf::core::polygons<Range0, Range1> &polygons,
+             tf::coordinate_type<Range1> tolerance, tf::return_index_map_t) {
+  auto [face_im, point_im] =
+      tf::make_clean_index_map<Index>(polygons, tolerance);
+  auto out = tf::reindexed(polygons, face_im, point_im);
+  return std::make_tuple(std::move(out), std::move(face_im),
+                         std::move(point_im));
+}
+
+template <typename Policy>
+auto cleaned(const tf::polygons<Policy> &polygons,
+             tf::coordinate_type<Policy> tolerance) {
+  using index_t = std::decay_t<decltype(polygons.faces()[0][0])>;
+  return cleaned<index_t>(polygons, tolerance);
+}
+
+template <typename Range0, typename Range1>
+auto cleaned(const tf::core::polygons<Range0, Range1> &polygons,
+             tf::coordinate_type<Range1> tolerance, tf::return_index_map_t) {
+  using index_t = std::decay_t<decltype(polygons.faces()[0][0])>;
+  return cleaned<index_t>(polygons, tolerance, tf::return_index_map);
+}
+
+template <typename Index, typename Policy>
+auto cleaned(const tf::polygons<Policy> &polygons)
+    -> tf::polygons_buffer<Index, tf::coordinate_type<Policy>,
+                           tf::coordinate_dims_v<Policy>,
+                           tf::static_size_v<decltype(polygons[0])>> {
+  if constexpr (tf::is_soup<Policy>) {
+    tf::clean::polygon_soup<Index, tf::coordinate_type<Policy>,
+                            tf::coordinate_dims_v<Policy>,
+                            tf::static_size_v<decltype(polygons[0])>>
+        out;
+    out.build(polygons);
+    return out;
+  } else {
+    auto [face_im, point_im] = tf::make_clean_index_map<Index>(polygons);
+    return tf::reindexed(polygons, face_im, point_im);
+  }
+}
+
+template <typename Index, typename Range0, typename Range1>
+auto cleaned(const tf::core::polygons<Range0, Range1> &polygons,
+             tf::return_index_map_t) {
+  auto [face_im, point_im] = tf::make_clean_index_map<Index>(polygons);
+  auto out = tf::reindexed(polygons, face_im, point_im);
+  return std::make_tuple(std::move(out), std::move(face_im),
+                         std::move(point_im));
+}
+
+template <typename Policy> auto cleaned(const tf::polygons<Policy> &polygons) {
+  using index_t = std::decay_t<decltype(polygons.faces()[0][0])>;
+  return cleaned<index_t>(polygons);
+}
+
+template <typename Range0, typename Range1>
+auto cleaned(const tf::core::polygons<Range0, Range1> &polygons,
+             tf::return_index_map_t) {
+  using index_t = std::decay_t<decltype(polygons.faces()[0][0])>;
+  return cleaned<index_t>(polygons, tf::return_index_map);
+}
+
+} // namespace tf

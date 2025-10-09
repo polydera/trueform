@@ -19,6 +19,7 @@ template <std::size_t Dims, typename Policy> struct aabb_like : Policy {
   using Policy::max;
   using Policy::min;
   using coordinate_type = typename Policy::coordinate_type;
+  using coordinate_dims = std::integral_constant<std::size_t, Dims>;
 
   /// @brief Compute the center point of the AABB.
   ///

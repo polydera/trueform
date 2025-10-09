@@ -5,6 +5,7 @@
  */
 #pragma once
 #include "./base/polygons.hpp"
+#include "./base/soup.hpp"
 #include "./faces.hpp"
 #include "./points.hpp"
 
@@ -60,7 +61,8 @@ auto make_polygons(polygons<Range> p) -> polygons<Range> {
 
 template <typename Range> auto make_polygons(Range &&r) {
   auto polys = tf::make_range(r);
-  return polygons<decltype(polys)>{polys};
+  return polygons<core::soup<decltype(polys)>>{
+      core::soup<decltype(polys)>{std::move(polys)}};
 }
 
 template <typename Policy> auto make_view(const tf::polygons<Policy> &obj) {

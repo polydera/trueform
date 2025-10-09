@@ -5,6 +5,7 @@
  */
 #pragma once
 #include "../clean/soup/segments.hpp"
+#include "../core/is_soup.hpp"
 #include "../topology/planar_embedding.hpp"
 #include "./intersected_segments.hpp"
 namespace tf {
@@ -18,11 +19,19 @@ class planar_arrangements
 public:
   template <typename Policy> auto build(const tf::segments<Policy> &segments) {
     clear();
-    _cs.build(segments);
-    _em.build(_cs.segments());
-    _tree.build(_cs.segments(), tf::config_tree(4, 4));
-    _si.build(_cs.segments() | tf::tag(_em), _tree);
-    is_base_t::build(_cs.segments(), _si);
+
+    auto build_intersections = [&](auto &&segments) {
+      _em.build(segments);
+      _tree.build(segments, tf::config_tree(4, 4));
+      _si.build(segments | tf::tag(_em), _tree);
+      is_base_t::build(segments, _si);
+    };
+    if constexpr (tf::is_soup<Policy>) {
+      tf::clean::segment_soup<Index, RealType, 2> _cs;
+      _cs.build(segments);
+      build_intersections(_cs.segments());
+    } else
+      build_intersections(segments);
     _work_buffer.allocate(is_base_t::edges().size() * 4);
     tf::parallel_apply(
         tf::zip(is_base_t::edges(), tf::make_blocked_range<4>(_work_buffer)),
@@ -40,7 +49,6 @@ public:
   auto clear() {
     _em.clear();
     _tree.clear();
-    _cs.clear();
     _si.clear();
     is_base_t::clear();
     pe_base_t::clear();
@@ -49,7 +57,6 @@ public:
 private:
   tf::edge_membership<Index> _em;
   tf::tree<Index, RealType, 2> _tree;
-  tf::clean::segment_soup<Index, RealType, 2> _cs;
   tf::segment_intersections<Index, RealType, 2> _si;
   tf::buffer<Index> _work_buffer;
 };

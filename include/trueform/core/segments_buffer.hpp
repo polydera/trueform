@@ -14,6 +14,7 @@ namespace tf {
 
 template <typename Index, typename RealT, std::size_t Dims>
 class segments_buffer {
+public:
   using iterator = decltype(core::make_segment_range_iter(
       std::declval<tf::blocked_buffer<Index, 2> &>().begin(),
       std::declval<tf::points_buffer<RealT, Dims> &>()));
@@ -27,7 +28,6 @@ class segments_buffer {
   using pointer = typename std::iterator_traits<iterator>::pointer;
   using size_type = std::size_t;
 
-public:
   auto begin() const -> const_iterator {
     return core::make_segment_range_iter(_edges_buffer.begin(),
                                          points_buffer());

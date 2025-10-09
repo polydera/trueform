@@ -14,6 +14,7 @@ template <std::size_t Dims, typename Policy0, typename Policy1> struct ray {
   static_assert(std::is_same_v<tf::coordinate_type<Policy0>,
                                tf::coordinate_type<Policy1>>);
   using coordinate_type = tf::coordinate_type<Policy0>;
+  using coordinate_dims = std::integral_constant<std::size_t, Dims>;
 
   ray() = default;
   ray(const tf::point_like<Dims, Policy0> &origin,
