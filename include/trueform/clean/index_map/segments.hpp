@@ -98,17 +98,4 @@ auto make_clean_index_map(const tf::core::segments<Range0, Range1> &segments,
   make_clean_index_map(segments, tolerance, edge_map, point_map);
   return std::make_pair(std::move(edge_map), std::move(point_map));
 }
-
-template <typename Range0, typename Range1>
-auto make_clean_index_map(const tf::core::segments<Range0, Range1> &segments) {
-  using index_t = std::decay_t<decltype(segments.edges()[0][0])>;
-  return make_clean_index_map<index_t>(segments);
-}
-
-template <typename Range0, typename Range1>
-auto make_clean_index_map(const tf::core::segments<Range0, Range1> &segments,
-                          tf::coordinate_type<Range1> tolerance) {
-  using index_t = std::decay_t<decltype(segments.edges()[0][0])>;
-  return make_clean_index_map<index_t>(segments, tolerance);
-}
 } // namespace tf

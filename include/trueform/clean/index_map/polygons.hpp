@@ -89,17 +89,4 @@ auto make_clean_index_map(const tf::core::polygons<Range0, Range1> &polygons,
   make_clean_index_map(polygons, tolerance, face_map, point_map);
   return std::make_pair(std::move(face_map), std::move(point_map));
 }
-
-template <typename Range0, typename Range1>
-auto make_clean_index_map(const tf::core::polygons<Range0, Range1> &polygons) {
-  using index_t = std::decay_t<decltype(polygons.faces()[0][0])>;
-  return make_clean_index_map<index_t>(polygons);
-}
-
-template <typename Range0, typename Range1>
-auto make_clean_index_map(const tf::core::polygons<Range0, Range1> &polygons,
-                          tf::coordinate_type<Range1> tolerance) {
-  using index_t = std::decay_t<decltype(polygons.faces()[0][0])>;
-  return make_clean_index_map<index_t>(polygons, tolerance);
-}
 } // namespace tf

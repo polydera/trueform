@@ -4,15 +4,13 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
+#include "../clean/index_map/points.hpp"
 #include "../core/algorithm/compute_offsets.hpp"
 #include "../core/algorithm/generic_generate.hpp"
-#include "../core/algorithm/make_equivalence_class_index_map.hpp"
 #include "../core/algorithm/mask_to_map.hpp"
 #include "../core/algorithm/parallel_copy.hpp"
 #include "../core/local_buffer.hpp"
 #include "../core/views/offset_block_range.hpp"
-#include "../spatial/form.hpp"
-#include "../spatial/gather_self_ids.hpp"
 #include "../spatial/search_self.hpp"
 #include "../spatial/tree.hpp"
 #include "../topology/policy/edge_membership.hpp"
@@ -76,13 +74,9 @@ public:
 
 private:
   auto collapse_points(tf::buffer<tf::point<RealT, Dims>> &&points) {
-    tf::tree<Index, RealT, Dims> tree;
-    tree.build(_intersection_points, tf::config_tree(4, 4));
-    tf::buffer<std::array<Index, 2>> ids;
-    tf::gather_self_ids(tf::make_form(tree, _intersection_points),
-                        tf::intersects_f, std::back_inserter(ids));
-    auto im = tf::make_dense_equivalence_class_index_map<Index>(
-        ids, _intersection_points.size());
+    auto im =
+        tf::make_clean_index_map<Index>(tf::make_points(_intersection_points),
+                                        std::numeric_limits<RealT>::epsilon());
     if (im.kept_ids().size() == _intersection_points.size())
       return;
     points.allocate(im.kept_ids().size());

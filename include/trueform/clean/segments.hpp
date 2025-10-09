@@ -39,20 +39,6 @@ auto cleaned(const tf::core::segments<Range0, Range1> &segments,
                          std::move(point_im));
 }
 
-template <typename Policy>
-auto cleaned(const tf::segments<Policy> &segments,
-             tf::coordinate_type<Policy> tolerance) {
-  using index_t = std::decay_t<decltype(segments.edges()[0][0])>;
-  return cleaned<index_t>(segments, tolerance);
-}
-
-template <typename Range0, typename Range1>
-auto cleaned(const tf::core::segments<Range0, Range1> &segments,
-             tf::coordinate_type<Range1> tolerance, tf::return_index_map_t) {
-  using index_t = std::decay_t<decltype(segments.edges()[0][0])>;
-  return cleaned<index_t>(segments, tolerance, tf::return_index_map);
-}
-
 template <typename Index, typename Policy>
 auto cleaned(const tf::segments<Policy> &segments)
     -> tf::segments_buffer<Index, tf::coordinate_type<Policy>,
@@ -77,17 +63,4 @@ auto cleaned(const tf::core::segments<Range0, Range1> &segments,
   return std::make_tuple(std::move(out), std::move(edge_im),
                          std::move(point_im));
 }
-
-template <typename Policy> auto cleaned(const tf::segments<Policy> &segments) {
-  using index_t = std::decay_t<decltype(segments.edges()[0][0])>;
-  return cleaned<index_t>(segments);
-}
-
-template <typename Range0, typename Range1>
-auto cleaned(const tf::core::segments<Range0, Range1> &segments,
-             tf::return_index_map_t) {
-  using index_t = std::decay_t<decltype(segments.edges()[0][0])>;
-  return cleaned<index_t>(segments, tf::return_index_map);
-}
-
 } // namespace tf

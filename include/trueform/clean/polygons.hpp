@@ -41,20 +41,6 @@ auto cleaned(const tf::core::polygons<Range0, Range1> &polygons,
                          std::move(point_im));
 }
 
-template <typename Policy>
-auto cleaned(const tf::polygons<Policy> &polygons,
-             tf::coordinate_type<Policy> tolerance) {
-  using index_t = std::decay_t<decltype(polygons.faces()[0][0])>;
-  return cleaned<index_t>(polygons, tolerance);
-}
-
-template <typename Range0, typename Range1>
-auto cleaned(const tf::core::polygons<Range0, Range1> &polygons,
-             tf::coordinate_type<Range1> tolerance, tf::return_index_map_t) {
-  using index_t = std::decay_t<decltype(polygons.faces()[0][0])>;
-  return cleaned<index_t>(polygons, tolerance, tf::return_index_map);
-}
-
 template <typename Index, typename Policy>
 auto cleaned(const tf::polygons<Policy> &polygons)
     -> tf::polygons_buffer<Index, tf::coordinate_type<Policy>,
@@ -81,17 +67,4 @@ auto cleaned(const tf::core::polygons<Range0, Range1> &polygons,
   return std::make_tuple(std::move(out), std::move(face_im),
                          std::move(point_im));
 }
-
-template <typename Policy> auto cleaned(const tf::polygons<Policy> &polygons) {
-  using index_t = std::decay_t<decltype(polygons.faces()[0][0])>;
-  return cleaned<index_t>(polygons);
-}
-
-template <typename Range0, typename Range1>
-auto cleaned(const tf::core::polygons<Range0, Range1> &polygons,
-             tf::return_index_map_t) {
-  using index_t = std::decay_t<decltype(polygons.faces()[0][0])>;
-  return cleaned<index_t>(polygons, tf::return_index_map);
-}
-
 } // namespace tf

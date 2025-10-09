@@ -115,7 +115,7 @@ template <std::size_t Dims, typename Range> auto make_unit_vectors(Range &&r) {
 
 template <typename Range> auto make_unit_vectors(Range &&r) {
   auto vec = tf::make_range(r);
-  return tf::unit_vectors<decltype(r)>{r};
+  return tf::unit_vectors<decltype(vec)>{vec};
 }
 
 template <typename Range>

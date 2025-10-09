@@ -9,10 +9,28 @@
 #include "../core/algorithm/parallel_fill.hpp"
 #include "./points.hpp"
 #include "./polygons.hpp"
+#include "./range.hpp"
 #include "./return_index_map.hpp"
 #include "./segments.hpp"
+#include "./unit_vectors.hpp"
+#include "./vectors.hpp"
 
 namespace tf {
+
+template <typename Index, typename Iter, std::size_t N, typename Range>
+auto reindexed_by_mask(const tf::range<Iter, N> &r, const Range &mask,
+                       tf::return_index_map_t) {
+  auto im = tf::mask_to_index_map<Index>(mask);
+  auto out = tf::reindexed(r, im);
+  return std::make_pair(std::move(out), std::move(im));
+}
+
+template <typename Index, typename Iter, std::size_t N, typename Range>
+auto reindexed_by_mask(const tf::range<Iter, N> &r, const Range &mask) {
+  auto im = tf::mask_to_index_map<Index>(mask);
+  return tf::reindexed(r, im);
+}
+
 template <typename Index, typename Policy, typename Range>
 auto reindexed_by_mask(const tf::points<Policy> &points, const Range &mask,
                        tf::return_index_map_t) {
@@ -27,17 +45,33 @@ auto reindexed_by_mask(const tf::points<Policy> &points, const Range &mask) {
   return tf::reindexed(points, im);
 }
 
-template <typename Policy, typename Range>
-auto reindexed_by_mask(const tf::points<Policy> &points, const Range &mask,
+template <typename Index, typename Policy, typename Range>
+auto reindexed_by_mask(const tf::vectors<Policy> &vectors, const Range &mask,
                        tf::return_index_map_t) {
-  using index_t = typename Policy::size_type;
-  return tf::reindexed_by_mask<index_t>(points, mask, tf::return_index_map);
+  auto im = tf::mask_to_index_map<Index>(mask);
+  auto out = tf::reindexed(vectors, im);
+  return std::make_pair(std::move(out), std::move(im));
 }
 
-template <typename Policy, typename Range>
-auto reindexed_by_mask(const tf::points<Policy> &points, const Range &mask) {
-  using index_t = typename Policy::size_type;
-  return tf::reindexed_by_mask<index_t>(points, mask);
+template <typename Index, typename Policy, typename Range>
+auto reindexed_by_mask(const tf::vectors<Policy> &vectors, const Range &mask) {
+  auto im = tf::mask_to_index_map<Index>(mask);
+  return tf::reindexed(vectors, im);
+}
+
+template <typename Index, typename Policy, typename Range>
+auto reindexed_by_mask(const tf::unit_vectors<Policy> &unit_vectors,
+                       const Range &mask, tf::return_index_map_t) {
+  auto im = tf::mask_to_index_map<Index>(mask);
+  auto out = tf::reindexed(unit_vectors, im);
+  return std::make_pair(std::move(out), std::move(im));
+}
+
+template <typename Index, typename Policy, typename Range>
+auto reindexed_by_mask(const tf::unit_vectors<Policy> &unit_vectors,
+                       const Range &mask) {
+  auto im = tf::mask_to_index_map<Index>(mask);
+  return tf::reindexed(unit_vectors, im);
 }
 
 template <typename Index, typename Policy, typename Range>
@@ -52,31 +86,19 @@ auto reindexed_by_mask(const tf::polygons<Policy> &polygons, const Range &mask,
       [&](auto &&face) {
         for (auto &e : face)
           point_mask[e] = true;
-      });
+      },
+      tf::checked);
   auto point_im = tf::mask_to_index_map<Index>(point_mask);
   auto out = tf::reindexed(polygons, face_im, point_im);
   return std::make_tuple(std::move(out), std::move(face_im),
                          std::move(point_im));
 }
 
-template <typename Policy, typename Range>
-auto reindexed_by_mask(const tf::polygons<Policy> &polygons, const Range &mask,
-                       tf::return_index_map_t) {
-  using index_t = std::decay_t<decltype(polygons.faces()[0][0])>;
-  return tf::reindexed_by_mask<index_t>(polygons, mask, tf::return_index_map);
-}
-
-template <typename Policy, typename Range>
-auto reindexed_by_mask(const tf::polygons<Policy> &polygons,
-                       const Range &mask) {
-  using index_t = std::decay_t<decltype(polygons.faces()[0][0])>;
-  return tf::reindexed_by_mask<index_t>(polygons, mask);
-}
-
 template <typename Index, typename Policy, typename Range>
 auto reindexed_by_mask(const tf::polygons<Policy> &polygons,
                        const Range &mask) {
-  return std::get<0>(reindexed_by_mask(polygons, mask, tf::return_index_map));
+  return std::get<0>(
+      reindexed_by_mask<Index>(polygons, mask, tf::return_index_map));
 }
 
 template <typename Index, typename Policy, typename Range>
@@ -91,7 +113,8 @@ auto reindexed_by_mask(const tf::segments<Policy> &segments, const Range &mask,
       [&](auto &&edge) {
         for (auto &e : edge)
           point_mask[e] = true;
-      });
+      },
+      tf::checked);
   auto point_im = tf::mask_to_index_map<Index>(point_mask);
   auto out = tf::reindexed(segments, edge_im, point_im);
   return std::make_tuple(std::move(out), std::move(edge_im),
@@ -101,20 +124,7 @@ auto reindexed_by_mask(const tf::segments<Policy> &segments, const Range &mask,
 template <typename Index, typename Policy, typename Range>
 auto reindexed_by_mask(const tf::segments<Policy> &segments,
                        const Range &mask) {
-  return std::get<0>(reindexed_by_mask(segments, mask, tf::return_index_map));
-}
-
-template <typename Policy, typename Range>
-auto reindexed_by_mask(const tf::segments<Policy> &segments, const Range &mask,
-                       tf::return_index_map_t) {
-  using index_t = std::decay_t<decltype(segments.edges()[0][0])>;
-  return tf::reindexed_by_mask<index_t>(segments, mask, tf::return_index_map);
-}
-
-template <typename Policy, typename Range>
-auto reindexed_by_mask(const tf::segments<Policy> &segments,
-                       const Range &mask) {
-  using index_t = std::decay_t<decltype(segments.edges()[0][0])>;
-  return tf::reindexed_by_mask<index_t>(segments, mask);
+  return std::get<0>(
+      reindexed_by_mask<Index>(segments, mask, tf::return_index_map));
 }
 } // namespace tf
