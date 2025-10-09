@@ -18,6 +18,7 @@ template <std::size_t Dims, typename Policy> struct ray_like : Policy {
   using Policy::direction;
   using Policy::origin;
   using coordinate_type = typename Policy::coordinate_type;
+  using coordinate_dims = std::integral_constant<std::size_t, Dims>;
 
   auto operator()(coordinate_type t) const { return origin + t * direction; }
 

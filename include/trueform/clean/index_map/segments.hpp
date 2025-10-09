@@ -32,7 +32,7 @@ auto make_clean_index_map(const tf::core::segments<Range0, Range1> &segments,
       [&](const auto &x0, const auto &x1) {
         return make_edge(x0) == make_edge(x1);
       },
-      [](const auto &x0, const auto &x1) {
+      [&](const auto &x0, const auto &x1) {
         return make_edge(x0) < make_edge(x1);
       });
 

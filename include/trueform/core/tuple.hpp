@@ -31,6 +31,10 @@ template <typename... Ts> struct tuple : core::tuple_base<Ts...> {
   using base_t = core::tuple_base<Ts...>;
   using base_t::base_t;
   using base_t::operator=;
+  tuple(const tuple &) = default;
+  tuple(tuple &&) = default;
+  auto operator=(const tuple &) -> tuple & = default;
+  auto operator=(tuple &&) -> tuple & = default;
 };
 
 template <typename... Ts> auto make_tuple(Ts &&...ts) {

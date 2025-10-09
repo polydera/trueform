@@ -15,6 +15,7 @@ template <typename T, std::size_t Dims> struct vec_view {
   using element_type = T;
   using value_type = T;
   using coordinate_type = std::decay_t<T>;
+  using coordinate_dims = std::integral_constant<std::size_t, Dims>;
 
   vec_view() = default;
   explicit vec_view(T *vecr) : _data(vecr) {}
@@ -50,6 +51,7 @@ template <typename T, std::size_t Dims> struct vec_view<const T, Dims> {
   using element_type = const T;
   using value_type = T;
   using coordinate_type = std::decay_t<T>;
+  using coordinate_dims = std::integral_constant<std::size_t, Dims>;
 
   vec_view() = default;
   explicit vec_view(const T *vecr) : _data(vecr) {}
@@ -75,6 +77,7 @@ template <typename T, std::size_t Dims> struct vec {
   using element_type = T;
   using value_type = T;
   using coordinate_type = std::decay_t<T>;
+  using coordinate_dims = std::integral_constant<std::size_t, Dims>;
 
   vec() = default;
   vec(std::array<T, Dims> _data) : _data{_data} {}

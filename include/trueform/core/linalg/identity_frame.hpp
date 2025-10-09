@@ -10,6 +10,7 @@ namespace tf::linalg {
 template <typename T, std::size_t Dims> class identity_frame {
 public:
   using coordinate_type = std::decay_t<T>;
+  using coordinate_dims = std::integral_constant<std::size_t, Dims>;
 
   auto transformation() const -> identity_transformation<T, Dims> { return {}; }
 

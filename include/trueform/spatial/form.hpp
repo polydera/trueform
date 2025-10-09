@@ -5,6 +5,7 @@
  */
 #pragma once
 
+#include "../core/coordinate_dims.hpp"
 #include "../core/frame_like.hpp"
 #include "../core/frame_ptr.hpp"
 #include "../core/policy/frame.hpp"
@@ -74,8 +75,14 @@ auto make_form(const tf::tree<Index, RealT, Dims> &_tree, Policy &&policy) {
 
 template <std::size_t Dims, typename Policy> auto make_form(Policy &&policy) {
   static_assert(tf::has_tree_policy<Policy>, "Form needs a tree");
-  return form<Dims, std::decay_t<Policy>>{
-      std::move(static_cast<Policy &&>(policy))};
+  auto base = tf::tag_identity_frame<tf::coordinate_type<Policy>, Dims>(
+      static_cast<Policy &&>(policy));
+  return form<Dims, decltype(base)>{std::move(base)};
+}
+
+template <typename Policy> auto make_form(Policy &&policy) {
+  return make_form<tf::coordinate_dims_v<Policy>>(
+      static_cast<Policy &&>(policy));
 }
 
 } // namespace tf

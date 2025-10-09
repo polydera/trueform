@@ -5,4 +5,5 @@
  */
 #pragma once
 
+#include "./soup/polygons.hpp" // IWYU pragma: export
 #include "./soup/segments.hpp" // IWYU pragma: export

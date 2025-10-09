@@ -16,6 +16,7 @@ template <typename T, std::size_t Dims> struct pt_view {
   using element_type = T;
   using value_type = T;
   using coordinate_type = std::decay_t<T>;
+  using coordinate_dims = std::integral_constant<std::size_t, Dims>;
 
   pt_view() = default;
   explicit pt_view(T *ptr) : _data(ptr) {}
@@ -56,6 +57,7 @@ template <typename T, std::size_t Dims> struct pt_view<const T, Dims> {
   using element_type = const T;
   using value_type = T;
   using coordinate_type = std::decay_t<T>;
+  using coordinate_dims = std::integral_constant<std::size_t, Dims>;
 
   pt_view() = default;
   explicit pt_view(const T *ptr) : _data(ptr) {}
@@ -81,6 +83,7 @@ template <typename T, std::size_t Dims> struct pt {
   using element_type = T;
   using value_type = T;
   using coordinate_type = std::decay_t<T>;
+  using coordinate_dims = std::integral_constant<std::size_t, Dims>;
 
   pt() = default;
   pt(std::array<T, Dims> _data) : _data{_data} {}

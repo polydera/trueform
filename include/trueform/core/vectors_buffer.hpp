@@ -5,25 +5,25 @@
  */
 #pragma once
 #include "./buffer.hpp"
-#include "./iter/point_iterator.hpp"
-#include "./points.hpp"
+#include "./iter/vector_iterator.hpp"
+#include "./vectors.hpp"
 namespace tf {
-template <typename T, std::size_t Dims> class points_buffer {
+template <typename T, std::size_t Dims> class vectors_buffer {
 public:
-  using iterator = tf::iter::point_iterator<T *, Dims>;
-  using const_iterator = tf::iter::point_iterator<const T *, Dims>;
+  using iterator = tf::iter::vector_iterator<T *, Dims>;
+  using const_iterator = tf::iter::vector_iterator<const T *, Dims>;
   using reference = typename std::iterator_traits<iterator>::reference;
   using const_reference =
       typename std::iterator_traits<const_iterator>::reference;
-  using value_type = tf::point<T, Dims>;
+  using value_type = tf::vector<T, Dims>;
   using size_type = std::size_t;
 
-  points_buffer() = default;
-  points_buffer(const tf::buffer<T> &_data) : _raw_buffer{_data} {}
-  points_buffer(tf::buffer<T> &&_data) : _raw_buffer{std::move(_data)} {}
+  vectors_buffer() = default;
+  vectors_buffer(const tf::buffer<T> &_data) : _raw_buffer{_data} {}
+  vectors_buffer(tf::buffer<T> &&_data) : _raw_buffer{std::move(_data)} {}
 
   template <typename Policy>
-  auto push_back(const tf::point_like<Dims, Policy> &pt) {
+  auto push_back(const tf::vector_like<Dims, Policy> &pt) {
     for (std::size_t i = 0; i < Dims; ++i)
       _raw_buffer.push_back(pt[i]);
   }
@@ -51,19 +51,19 @@ public:
   auto data_buffer() -> tf::buffer<T> & { return _raw_buffer; }
 
   auto begin() const -> const_iterator {
-    return tf::iter::make_point_iterator<Dims>(_raw_buffer.begin());
+    return tf::iter::make_vector_iterator<Dims>(_raw_buffer.begin());
   }
 
   auto begin() -> iterator {
-    return tf::iter::make_point_iterator<Dims>(_raw_buffer.begin());
+    return tf::iter::make_vector_iterator<Dims>(_raw_buffer.begin());
   }
 
   auto end() const -> const_iterator {
-    return tf::iter::make_point_iterator<Dims>(_raw_buffer.end());
+    return tf::iter::make_vector_iterator<Dims>(_raw_buffer.end());
   }
 
   auto end() -> iterator {
-    return tf::iter::make_point_iterator<Dims>(_raw_buffer.end());
+    return tf::iter::make_vector_iterator<Dims>(_raw_buffer.end());
   }
 
   auto size() const -> size_type { return _raw_buffer.size() / Dims; }
@@ -84,9 +84,9 @@ public:
 
   auto operator[](std::size_t i) -> reference { return *(begin() + i); }
 
-  auto points() const { return tf::make_points(*this); }
+  auto vectors() const { return tf::make_vectors(*this); }
 
-  auto points() { return tf::make_points(*this); }
+  auto vectors() { return tf::make_vectors(*this); }
 
 private:
   tf::buffer<T> _raw_buffer;

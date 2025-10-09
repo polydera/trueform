@@ -10,6 +10,7 @@
 namespace tf::core {
 template <std::size_t Dims, typename Policy> struct sphere {
   using coordinate_type = tf::coordinate_type<Policy>;
+  using coordinate_dims = std::integral_constant<std::size_t, Dims>;
 
   sphere() = default;
   sphere(const tf::point_like<Dims, Policy> &origin, coordinate_type r)

@@ -34,24 +34,28 @@ public:
     base_t::clear();
     _im.f().clear();
     _im.kept_ids().clear();
+    _contained_points.clear();
   }
 
 private:
   auto remove_uncontained_points() {
-    tf::buffer<bool> contained_points;
-    contained_points.allocate(base_t::points().size());
-    tf::parallel_fill(contained_points, false);
+    _contained_points.allocate(base_t::points().size());
+    tf::parallel_fill(_contained_points, false);
     tf::parallel_apply(
         base_t::edges(),
         [&](const auto &edge) {
-          contained_points[edge[0]] = true;
-          contained_points[edge[1]] = true;
+          _contained_points[edge[0]] = true;
+          _contained_points[edge[1]] = true;
         },
         tf::checked);
     auto &map = _im.f();
     map.allocate(base_t::points().size());
-    auto r = tf::zip(contained_points, base_t::points());
-    tf::remove_if_and_make_map(r, [](auto &&pair) { return !pair.first; }, map);
+    auto r = tf::zip(_contained_points, base_t::points());
+    auto n_kept = tf::remove_if_and_make_map(
+                      r, [](auto &&pair) { return std::get<0>(pair); }, map) -
+                  r.begin();
+    base_t::points_buffer().erase(base_t::points_buffer().begin() + n_kept,
+                                  base_t::points_buffer().end());
     tf::parallel_apply(
         base_t::edges(),
         [&](auto &&edge) {
@@ -113,5 +117,6 @@ private:
   }
 
   tf::index_map_buffer<Index> _im;
+  tf::buffer<bool> _contained_points;
 };
 } // namespace tf::clean

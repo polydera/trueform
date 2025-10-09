@@ -6,7 +6,7 @@
 #pragma once
 #include "./base/polygons.hpp"
 #include "./blocked_buffer.hpp"
-#include "./edges.hpp"
+#include "./faces.hpp"
 #include "./offset_block_buffer.hpp"
 #include "./points.hpp"
 #include "./points_buffer.hpp"
@@ -15,6 +15,7 @@ namespace tf {
 
 template <typename Index, typename RealT, std::size_t Dims, std::size_t Ngon>
 class polygons_buffer {
+public:
   using iterator = decltype(core::make_polygon_range_iter(
       std::declval<tf::blocked_buffer<Index, Ngon> &>().begin(),
       std::declval<tf::points_buffer<RealT, Dims> &>()));
@@ -28,7 +29,6 @@ class polygons_buffer {
   using pointer = typename std::iterator_traits<iterator>::pointer;
   using size_type = std::size_t;
 
-public:
   auto begin() const -> const_iterator {
     return core::make_polygon_range_iter(_faces_buffer.begin(),
                                          points_buffer());
@@ -55,17 +55,17 @@ public:
 
   auto front() -> reference { return *begin(); }
 
-  auto polygons() const { return tf::make_polygons(edges(), points()); }
+  auto polygons() const { return tf::make_polygons(faces(), points()); }
 
-  auto polygons() { return tf::make_polygons(edges(), points()); }
+  auto polygons() { return tf::make_polygons(faces(), points()); }
 
   auto points() const { return tf::make_points(points_buffer()); }
 
   auto points() { return tf::make_points(points_buffer()); }
 
-  auto edges() const { return tf::make_edges(faces_buffer()); }
+  auto faces() const { return tf::make_faces(faces_buffer()); }
 
-  auto edges() { return tf::make_edges(faces_buffer()); }
+  auto faces() { return tf::make_faces(faces_buffer()); }
 
   auto faces_buffer() -> tf::blocked_buffer<Index, Ngon> & {
     return _faces_buffer;
@@ -135,17 +135,17 @@ public:
 
   auto front() -> reference { return *begin(); }
 
-  auto polygons() const { return tf::make_polygons(edges(), points()); }
+  auto polygons() const { return tf::make_polygons(faces(), points()); }
 
-  auto polygons() { return tf::make_polygons(edges(), points()); }
+  auto polygons() { return tf::make_polygons(faces(), points()); }
 
   auto points() const { return tf::make_points(points_buffer()); }
 
   auto points() { return tf::make_points(points_buffer()); }
 
-  auto edges() const { return tf::make_edges(faces_buffer()); }
+  auto faces() const { return tf::make_faces(faces_buffer()); }
 
-  auto edges() { return tf::make_edges(faces_buffer()); }
+  auto faces() { return tf::make_faces(faces_buffer()); }
 
   auto faces_buffer() -> tf::offset_block_buffer<Index, Index> & {
     return _faces_buffer;

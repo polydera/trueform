@@ -19,6 +19,10 @@ struct zip_reference
   using base_t::operator=;
   zip_reference() = default;
   zip_reference(Iterators... iters) : base_t{*iters...} {}
+  zip_reference(const zip_reference &) = default;
+  zip_reference(zip_reference &&) = default;
+  auto operator=(const zip_reference &) -> zip_reference & = default;
+  auto operator=(zip_reference &&) -> zip_reference & = default;
 
   friend auto swap(zip_reference &zr0, zip_reference &zr1) -> void {
     using std::get;

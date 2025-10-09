@@ -48,6 +48,7 @@
 #include "./core/intersects.hpp"                // IWYU pragma: export
 #include "./core/interval.hpp"                  // IWYU pragma: export
 #include "./core/inverted.hpp"                  // IWYU pragma: export
+#include "./core/is_soup.hpp"                   // IWYU pragma: export
 #include "./core/line.hpp"                      // IWYU pragma: export
 #include "./core/line_like.hpp"                 // IWYU pragma: export
 #include "./core/line_line_check.hpp"           // IWYU pragma: export
@@ -103,11 +104,13 @@
 #include "./core/unit_vector_like.hpp"          // IWYU pragma: export
 #include "./core/unit_vector_view.hpp"          // IWYU pragma: export
 #include "./core/unit_vectors.hpp"              // IWYU pragma: export
+#include "./core/unit_vectors_buffer.hpp"       // IWYU pragma: export
 #include "./core/unsafe.hpp"                    // IWYU pragma: export
 #include "./core/vector.hpp"                    // IWYU pragma: export
 #include "./core/vector_like.hpp"               // IWYU pragma: export
 #include "./core/vector_view.hpp"               // IWYU pragma: export
 #include "./core/vectors.hpp"                   // IWYU pragma: export
+#include "./core/vectors_buffer.hpp"            // IWYU pragma: export
 #include "./core/view.hpp"                      // IWYU pragma: export
 #include "./core/views.hpp"                     // IWYU pragma: export
 #include "./core/wedge.hpp"                     // IWYU pragma: export

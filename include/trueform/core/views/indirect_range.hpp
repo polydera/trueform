@@ -58,7 +58,11 @@ template <typename Range0, typename Range1>
 auto make_indirect_range_base(Range0 &&ids, Range1 &&data) {
   auto begin = tf::iter::make_indirect(ids.begin(), data.begin());
   auto end = tf::iter::make_indirect(ids.end(), data.end());
-  return tf::make_range<tf::static_size_v<Range0>>(begin, end);
+  if constexpr (tf::static_size_v<Range0> == tf::dynamic_size)
+    return tf::make_range<tf::static_size_v<Range0>>(begin, end);
+  else
+    return tf::make_array_like(
+        tf::make_range<tf::static_size_v<Range0>>(begin, end));
 }
 
 /// @brief Specialization of `tf::static_size` for `tf::indirect_range`.
