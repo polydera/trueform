@@ -45,7 +45,6 @@ auto cleaned(const tf::segments<Policy> &segments)
   }
 }
 
-
 template <typename Index, typename Range0, typename Range1>
 auto cleaned(const tf::core::segments<Range0, Range1> &segments,
              tf::coordinate_type<Range1> tolerance, tf::return_index_map_t) {
@@ -55,7 +54,6 @@ auto cleaned(const tf::core::segments<Range0, Range1> &segments,
   return std::make_tuple(std::move(out), std::move(edge_im),
                          std::move(point_im));
 }
-
 
 template <typename Index, typename Range0, typename Range1>
 auto cleaned(const tf::core::segments<Range0, Range1> &segments,
