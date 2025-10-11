@@ -34,7 +34,7 @@ auto ray_cast(
   RealT t = 0;
   if (std::abs(Vd) < std::numeric_limits<RealT>::epsilon()) {
     if (std::abs(V0) < std::numeric_limits<RealT>::epsilon()) {
-      return tf::make_ray_cast_info(tf::intersect_status::error, t);
+      return tf::make_ray_cast_info(tf::intersect_status::coplanar, t);
     } else {
       return tf::make_ray_cast_info(tf::intersect_status::parallel, t);
     }
@@ -85,6 +85,10 @@ auto ray_cast(
       hit = true;
     }
   }
+  if (!hit && contains_coplanar_point(poly, ray.origin)) {
+    hit = true;
+    closest_t = 0;
+  }
 
   return tf::make_ray_cast_info(static_cast<tf::intersect_status>(hit),
                                 closest_t);
@@ -96,9 +100,8 @@ auto ray_cast(
     const tf::ray_config<tf::coordinate_type<Policy0, Policy1>> &config = {}) {
   using RealT = tf::coordinate_type<Policy0, Policy1>;
   auto ray1 = tf::make_ray_between_points(seg[0], seg[1]);
-  auto [non_parallel, t0, t1] = tf::core::line_line_check(ray, ray1);
-  intersect_status status = intersect_status::none;
-  if (non_parallel &&
+  auto [status, t0, t1] = tf::core::line_line_check_full(ray, ray1);
+  if (status == tf::intersect_status::non_parallel &&
       t0 >= config.min_t - std::numeric_limits<RealT>::epsilon() &&
       t0 <= config.max_t + std::numeric_limits<RealT>::epsilon() &&
       t1 >= -std::numeric_limits<RealT>::epsilon() &&
@@ -130,10 +133,11 @@ auto ray_cast(
 
   constexpr RealT eps = std::numeric_limits<RealT>::epsilon();
 
-  // Parallel case
-  if (std::abs(rxs) < eps)
-    return tf::make_ray_cast_info(tf::intersect_status::none, RealT(0));
-
+  if (std::abs(rxs) < eps) {
+    if (std::abs(q_p_x_r) < eps)
+      return tf::make_ray_cast_info(tf::intersect_status::colinear, RealT(0));
+    return tf::make_ray_cast_info(tf::intersect_status::parallel, RealT(0));
+  }
   const RealT t = tf::signed_parallelogram_area(q - p, s) / rxs;
   const RealT u = q_p_x_r / rxs;
 
@@ -151,9 +155,8 @@ auto ray_cast(
     const tf::line_like<Dims, Policy1> &line,
     const tf::ray_config<tf::coordinate_type<Policy0, Policy1>> &config = {}) {
   using RealT = tf::coordinate_type<Policy0, Policy1>;
-  auto [non_parallel, t0, t1] = tf::core::line_line_check(ray, line);
-  intersect_status status = intersect_status::none;
-  if (non_parallel &&
+  auto [status, t0, t1] = tf::core::line_line_check_full(ray, line);
+  if (status == tf::intersect_status::non_parallel &&
       t0 >= config.min_t - std::numeric_limits<RealT>::epsilon() &&
       t0 <= config.max_t + std::numeric_limits<RealT>::epsilon()) {
     auto pt0 = ray.origin + t0 * ray.direction;
@@ -183,8 +186,11 @@ auto ray_cast(
 
   constexpr RealT eps = std::numeric_limits<RealT>::epsilon();
 
-  if (std::abs(rxs) < eps)
-    return tf::make_ray_cast_info(tf::intersect_status::none, RealT(0));
+  if (std::abs(rxs) < eps) {
+    if (std::abs(q_p_x_r) < eps)
+      return tf::make_ray_cast_info(tf::intersect_status::colinear, RealT(0));
+    return tf::make_ray_cast_info(tf::intersect_status::parallel, RealT(0));
+  }
 
   const RealT t = tf::signed_parallelogram_area(q - p, s) / rxs;
 
@@ -200,9 +206,8 @@ auto ray_cast(
     const ray_like<Dims, Policy0> &ray, const tf::ray_like<Dims, Policy1> &ray1,
     const tf::ray_config<tf::coordinate_type<Policy0, Policy1>> &config = {}) {
   using RealT = tf::coordinate_type<Policy0, Policy1>;
-  auto [non_parallel, t0, t1] = tf::core::line_line_check(ray, ray1);
-  intersect_status status = intersect_status::none;
-  if (non_parallel &&
+  auto [status, t0, t1] = tf::core::line_line_check_full(ray, ray1);
+  if (status == tf::intersect_status::non_parallel &&
       t0 >= config.min_t - std::numeric_limits<RealT>::epsilon() &&
       t0 <= config.max_t + std::numeric_limits<RealT>::epsilon() &&
       t1 >= -std::numeric_limits<RealT>::epsilon()) {
@@ -233,8 +238,11 @@ auto ray_cast(
 
   constexpr RealT eps = std::numeric_limits<RealT>::epsilon();
 
-  if (std::abs(rxs) < eps)
-    return tf::make_ray_cast_info(tf::intersect_status::none, RealT(0));
+  if (std::abs(rxs) < eps) {
+    if (std::abs(q_p_x_r) < eps)
+      return tf::make_ray_cast_info(tf::intersect_status::colinear, RealT(0));
+    return tf::make_ray_cast_info(tf::intersect_status::parallel, RealT(0));
+  }
 
   const RealT t = tf::signed_parallelogram_area(q - p, s) / rxs;
   const RealT u = q_p_x_r / rxs;

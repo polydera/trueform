@@ -26,14 +26,25 @@ auto classify(const point_like<Dims, Policy0> &pt,
 }
 
 template <typename Policy0, typename Policy1>
-auto classify(const point_like<2, Policy0> &point,
-              const segment<2, Policy1> &seg) -> sidedness {
-  auto ac = seg[0] - point;
-  auto bc = seg[1] - point;
-  auto test = ac[0] * bc[1] - ac[1] * bc[0];
-  if (std::abs(test) < std::numeric_limits<decltype(test)>::epsilon())
-    return sidedness::on_boundary;
-  // on_negative_side == 1
+auto classify(const tf::point_like<2, Policy0> &point,
+              const tf::segment<2, Policy1> &seg) -> tf::sidedness {
+  const auto ac = seg[0] - point;
+  const auto bc = seg[1] - point;
+
+  const auto test = ac[0] * bc[1] - ac[1] * bc[0];
+  const auto eps = std::numeric_limits<decltype(test)>::epsilon();
+
+  if (std::abs(test) < eps) {
+    const auto ab = seg[1] - seg[0];
+    const auto ap = point - seg[0];
+    const auto t = ap[0] * ab[0] + ap[1] * ab[1];
+    const auto ab2 = ab[0] * ab[0] + ab[1] * ab[1];
+
+    if (t >= -eps && t <= ab2 + eps)
+      return tf::sidedness::on_boundary;
+    return static_cast<tf::sidedness>(t < 0);
+  }
+
   return static_cast<tf::sidedness>(test < 0);
 }
 

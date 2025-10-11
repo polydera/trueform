@@ -161,8 +161,6 @@ auto make_intersection_edges(
           auto next = std::find_if(it + 1, end, [it](const auto &x) {
             return x.object_other != it->object_other;
           });
-          // each polygon has 1 or 2 intersections with another
-          // polygon
           auto n = next - it;
           if (n == 2) {
             buff.push_back(it->id);

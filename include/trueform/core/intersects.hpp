@@ -468,83 +468,103 @@ auto intersects(const tf::point_like<2, Policy0> &pt,
   return intersects(poly, pt);
 }
 
-/// @ingroup geometry
-/// @brief Check whether two geometric primitives intersect.
-///
-/// This overload of `intersects` checks for intersection between specific
-/// types.
-///
-/// @return `true` if the primitives intersect; otherwise `false`.
+namespace core {
+template <typename Policy0, std::size_t Dims, typename Policy>
+auto intersects_coplanar(const tf::polygon<Dims, Policy0> &poly_in,
+                         const tf::ray_like<Dims, Policy> &ray) -> bool {
+  if (tf::intersects(poly_in, ray.origin))
+    return true;
+  std::size_t size = poly_in.size();
+  auto prev = size - 1;
+  for (std::size_t i = 0; i < size; prev = i++)
+    if (tf::intersects(
+            tf::make_segment_between_points(poly_in[prev], poly_in[i]), ray))
+      return true;
+  return false;
+}
+} // namespace core
+
 template <typename Policy0, std::size_t Dims, typename Policy>
 auto intersects(const tf::polygon<Dims, Policy0> &poly_in,
                 const tf::ray_like<Dims, Policy> &ray) -> bool {
   const auto &poly = tf::tag_plane(poly_in);
-  return tf::ray_cast(ray, poly);
-  ;
+  auto result = tf::ray_cast(ray, poly);
+  if (result.status != tf::intersect_status::coplanar)
+    return result;
+  else
+    return core::intersects_coplanar(poly_in, ray);
 }
-/// @ingroup geometry
-/// @brief Check whether two geometric primitives intersect.
-///
-/// This overload of `intersects` checks for intersection between specific
-/// types.
-///
-/// @return `true` if the primitives intersect; otherwise `false`.
+
 template <std::size_t Dims, typename Policy, typename Policy0>
 auto intersects(const tf::ray_like<Dims, Policy> &ray,
                 const tf::polygon<Dims, Policy0> &poly) {
   return intersects(poly, ray);
 }
 
-/// @ingroup geometry
-/// @brief Check whether two geometric primitives intersect.
-///
-/// This overload of `intersects` checks for intersection between specific
-/// types.
-///
-/// @return `true` if the primitives intersect; otherwise `false`.
+template <typename Policy0, typename Policy>
+auto intersects(const tf::polygon<2, Policy0> &poly_in,
+                const tf::ray_like<2, Policy> &ray) -> bool {
+  return core::intersects_coplanar(poly_in, ray);
+}
+
+template <typename Policy0, typename Policy>
+auto intersects(const tf::ray_like<2, Policy> &ray,
+                const tf::polygon<2, Policy0> &poly_in) -> bool {
+  return intersects(poly_in, ray);
+}
+
+namespace core {
+template <typename Policy0, std::size_t Dims, typename Policy>
+auto intersects_coplanar(const tf::polygon<Dims, Policy0> &poly_in,
+                         const tf::line_like<Dims, Policy> &line) -> bool {
+  std::size_t size = poly_in.size();
+  auto prev = size - 1;
+  for (std::size_t i = 0; i < size; prev = i++)
+    if (tf::intersects(
+            tf::make_segment_between_points(poly_in[prev], poly_in[i]), line))
+      return true;
+  return false;
+}
+} // namespace core
 template <typename Policy0, std::size_t Dims, typename Policy>
 auto intersects(const tf::polygon<Dims, Policy0> &poly_in,
                 const tf::line_like<Dims, Policy> &line) -> bool {
   using RealT = tf::coordinate_type<Policy0, Policy>;
   const auto &poly = tf::tag_plane(poly_in);
-  return tf::ray_cast(tf::make_ray(line.origin, line.direction), poly,
-                      tf::make_ray_config(-std::numeric_limits<RealT>::max(),
-                                          std::numeric_limits<RealT>::max()));
-  ;
+  auto result =
+      tf::ray_cast(tf::make_ray(line.origin, line.direction), poly,
+                   tf::make_ray_config(-std::numeric_limits<RealT>::max(),
+                                       std::numeric_limits<RealT>::max()));
+  if (result.status != tf::intersect_status::coplanar)
+    return result;
+  else
+    return core::intersects_coplanar(poly_in, line);
 }
-/// @ingroup geometry
-/// @brief Check whether two geometric primitives intersect.
-///
-/// This overload of `intersects` checks for intersection between specific
-/// types.
-///
-/// @return `true` if the primitives intersect; otherwise `false`.
+
 template <std::size_t Dims, typename Policy, typename Policy0>
 auto intersects(const tf::line_like<Dims, Policy> &line,
                 const tf::polygon<Dims, Policy0> &poly) {
   return intersects(poly, line);
 }
-/// @ingroup geometry
-/// @brief Check whether two geometric primitives intersect.
-///
-/// This overload of `intersects` checks for intersection between specific
-/// types.
-///
-/// @return `true` if the primitives intersect; otherwise `false`.
-template <std::size_t Dims, typename Policy0, typename Policy1>
-auto intersects(const tf::polygon<Dims, Policy0> &poly_in,
-                const tf::segment<Dims, Policy1> &seg1) -> bool {
-  const auto &poly = tf::tag_plane(poly_in);
-  auto ray = tf::make_ray_between_points(seg1[0], seg1[1]);
-  using RealT = tf::coordinate_type<Policy0, Policy1>;
-  return tf::ray_cast(ray, poly, tf::make_ray_config(RealT(0), RealT(1)));
+
+template <typename Policy0, typename Policy>
+auto intersects(const tf::polygon<2, Policy0> &poly_in,
+                const tf::line_like<2, Policy> &line) -> bool {
+  return core::intersects_coplanar(poly_in, line);
 }
 
-template <typename Policy0, typename Policy1>
-auto intersects(const tf::polygon<2, Policy0> &poly_in,
-                const tf::segment<2, Policy1> &seg1) -> bool {
-  if (tf::contains_coplanar_point(poly_in, seg1[0]) ||
-      tf::contains_coplanar_point(poly_in, seg1[1]))
+template <typename Policy0, typename Policy>
+auto intersects(const tf::line_like<2, Policy> &line,
+                const tf::polygon<2, Policy0> &poly_in) -> bool {
+  return intersects(poly_in, line);
+}
+
+namespace core {
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects_coplanar(const tf::polygon<Dims, Policy0> &poly_in,
+                         const tf::segment<Dims, Policy1> &seg1) -> bool {
+  if (tf::contains_point(poly_in, seg1[0]) ||
+      tf::contains_point(poly_in, seg1[1]))
     return true;
   std::size_t size = poly_in.size();
   auto prev = size - 1;
@@ -553,6 +573,27 @@ auto intersects(const tf::polygon<2, Policy0> &poly_in,
             tf::make_segment_between_points(poly_in[prev], poly_in[i]), seg1))
       return true;
   return false;
+}
+} // namespace core
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::polygon<Dims, Policy0> &poly_in,
+                const tf::segment<Dims, Policy1> &seg1) -> bool {
+  const auto &poly = tf::tag_plane(poly_in);
+  auto ray = tf::make_ray_between_points(seg1[0], seg1[1]);
+  using RealT = tf::coordinate_type<Policy0, Policy1>;
+  auto result =
+      tf::ray_cast(ray, poly, tf::make_ray_config(RealT(0), RealT(1)));
+  if (result.status != tf::intersect_status::coplanar)
+    return result;
+  else
+    return tf::core::intersects_coplanar(poly_in, seg1);
+}
+
+template <typename Policy0, typename Policy1>
+auto intersects(const tf::polygon<2, Policy0> &poly_in,
+                const tf::segment<2, Policy1> &seg1) -> bool {
+  return tf::core::intersects_coplanar(poly_in, seg1);
 }
 /// @ingroup geometry
 /// @brief Check whether two geometric primitives intersect.
@@ -579,12 +620,42 @@ auto intersects(const tf::segment<2, Policy> &seg,
 /// This overload of `intersects` checks for intersection between specific
 /// types.
 ///
-/// @return `true` if the primitives intersect; otherwise `false`.
+/// @return `true` if the primitives intersect; otherwise `false`
+
+namespace core {
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects_coplanar(const tf::polygon<Dims, Policy0> &poly0,
+                         const tf::polygon<Dims, Policy1> &poly1) -> bool {
+
+  std::size_t size0 = poly0.size();
+  std::size_t prev0 = size0 - 1;
+  std::size_t size1 = poly1.size();
+  std::size_t prev1 = size1 - 1;
+  for (std::size_t i = 0; i < size0; prev0 = i++) {
+    auto seg0 = tf::make_segment_between_points(poly0[prev0], poly0[i]);
+    for (std::size_t j = 0; j < size1; prev1 = j++) {
+      auto seg1 = tf::make_segment_between_points(poly1[prev1], poly1[j]);
+      if (intersects(seg0, seg1))
+        return true;
+    }
+  }
+  return intersects(poly0, poly1[0]) || intersects(poly1, poly0[0]);
+}
+} // namespace core
+
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const tf::polygon<Dims, Policy0> &poly_in0,
                 const tf::polygon<Dims, Policy1> &poly_in1) -> bool {
 
   const auto &poly0 = tf::tag_plane(poly_in0);
+  const auto &poly1 = tf::tag_plane(poly_in1);
+  auto dot = std::abs(tf::dot(poly0.normal(), poly1.normal()));
+  if (1 - dot < std::numeric_limits<decltype(dot)>::epsilon()) {
+    if (intersects(poly0.plane(), poly_in1[0]))
+      return core::intersects_coplanar(poly_in0, poly_in1);
+    else
+      return false;
+  }
 
   std::size_t size = poly0.size();
   std::size_t prev = size - 1;
@@ -593,7 +664,6 @@ auto intersects(const tf::polygon<Dims, Policy0> &poly_in0,
                                                           poly_in1[i])))
       return true;
   }
-  const auto &poly1 = tf::tag_plane(poly_in1);
 
   size = poly1.size();
   prev = size - 1;
@@ -608,22 +678,7 @@ auto intersects(const tf::polygon<Dims, Policy0> &poly_in0,
 template <typename Policy0, typename Policy1>
 auto intersects(const tf::polygon<2, Policy0> &poly0,
                 const tf::polygon<2, Policy1> &poly1) -> bool {
-
-  std::size_t size0 = poly0.size();
-  std::size_t prev0 = size0 - 1;
-  std::size_t size1 = poly1.size();
-  std::size_t prev1 = size1 - 1;
-  for (std::size_t i = 0; i < size0; prev0 = i++) {
-    auto seg0 = tf::make_segment_between_points(poly0[prev0], poly0[i]);
-    for (std::size_t j = 0; j < size1; prev1 = j++) {
-      auto seg1 = tf::make_segment_between_points(poly1[prev1], poly1[j]);
-      if (intersects(seg0, seg1))
-        return true;
-    }
-  }
-  // we came here, either no intersection, or
-  // one of the polygons is completely within the other
-  return intersects(poly0, poly1[0]) || intersects(poly1, poly0[0]);
+  return core::intersects_coplanar(poly0, poly1);
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>

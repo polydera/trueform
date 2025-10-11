@@ -10,8 +10,8 @@ namespace tf {
 /// @ingroup geometry
 /// @brief Enumeration of possible outcomes for intersection queries.
 ///
-/// Used to indicate the status of intersection tests between geometric primitives,
-/// such as lines, rays, segments, or polygons.
+/// Used to indicate the status of intersection tests between geometric
+/// primitives, such as lines, rays, segments, or polygons.
 enum class intersect_status {
   /// No intersection occurred.
   none = 0,
@@ -22,8 +22,9 @@ enum class intersect_status {
   /// The objects are parallel
   parallel = 2,
 
-  /// An error occurred during computation (e.g., degenerate input).
-  error = 3
+  coplanar = 3,
+  colinear = 3,
+  non_parallel = 4
 };
 
-}
+} // namespace tf

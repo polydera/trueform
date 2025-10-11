@@ -65,10 +65,9 @@ auto ray_hit(
     const tf::ray_config<tf::coordinate_type<Policy0, Policy1>> &config = {}) {
   using RealT = tf::coordinate_type<Policy0, Policy1>;
   auto ray1 = tf::make_ray_between_points(seg[0], seg[1]);
-  auto [non_parallel, t0, t1] = tf::core::line_line_check(ray, ray1);
-  intersect_status status = intersect_status::none;
+  auto [status, t0, t1] = tf::core::line_line_check_full(ray, ray1);
   tf::point<tf::coordinate_type<decltype(t0), decltype(t1)>, Dims> pt{};
-  if (non_parallel &&
+  if (status == tf::intersect_status::non_parallel &&
       t0 >= config.min_t - std::numeric_limits<RealT>::epsilon() &&
       t0 <= config.max_t + std::numeric_limits<RealT>::epsilon() &&
       t1 >= -std::numeric_limits<RealT>::epsilon() &&
@@ -104,10 +103,9 @@ auto ray_hit(
     const tf::line_like<Dims, Policy1> &line,
     const tf::ray_config<tf::coordinate_type<Policy0, Policy1>> &config = {}) {
   using RealT = tf::coordinate_type<Policy0, Policy1>;
-  auto [non_parallel, t0, t1] = tf::core::line_line_check(ray, line);
-  intersect_status status = intersect_status::none;
+  auto [status, t0, t1] = tf::core::line_line_check_full(ray, line);
   tf::point<tf::coordinate_type<Policy0, Policy1>, Dims> pt{};
-  if (non_parallel &&
+  if (status == tf::intersect_status::non_parallel &&
       t0 >= config.min_t - std::numeric_limits<RealT>::epsilon() &&
       t0 <= config.max_t + std::numeric_limits<RealT>::epsilon()) {
     auto pt0 = ray.origin + t0 * ray.direction;
@@ -140,10 +138,9 @@ auto ray_hit(
     const ray_like<Dims, Policy0> &ray, const tf::ray_like<Dims, Policy1> &ray1,
     const tf::ray_config<tf::coordinate_type<Policy0, Policy1>> &config = {}) {
   using RealT = tf::coordinate_type<Policy0, Policy1>;
-  auto [non_parallel, t0, t1] = tf::core::line_line_check(ray, ray1);
-  intersect_status status = intersect_status::none;
+  auto [status, t0, t1] = tf::core::line_line_check_full(ray, ray1);
   tf::point<tf::coordinate_type<Policy0, Policy1>, Dims> pt{};
-  if (non_parallel &&
+  if (status == tf::intersect_status::non_parallel &&
       t0 >= config.min_t - std::numeric_limits<RealT>::epsilon() &&
       t0 <= config.max_t + std::numeric_limits<RealT>::epsilon() &&
       t1 >= -std::numeric_limits<RealT>::epsilon()) {
