@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - docs-ui
+      - develop
   workflow_dispatch:
 
 jobs:
