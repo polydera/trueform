@@ -1,0 +1,80 @@
+# Clean
+
+The `clean` module provides high-performance tools for removing duplicate, degenerate, and unreferenced elements from geometric data. It operates directly on `trueform`'s primitive ranges and automatically maintains referential integrity across complex data structures while providing optional index maps for downstream processing.
+
+## Core Concepts
+
+Cleaning in `trueform` addresses several common geometric data quality issues:
+
+1. **Duplicate Points**: Multiple vertices at the same spatial location
+2. **Duplicate Elements**: Identical polygons or segments
+3. **Degenerate Elements**: Zero-area polygons or zero-length segments
+4. **Unreferenced Points**: Vertices not used by any primitive
+5. **Soup vs. Structured Data**: Different cleaning strategies based on data organization
+
+The module provides both immediate cleaning operations and optional index map returns for tracking transformations.
+
+## Basic Cleaning Operations
+
+### Point Cleaning
+
+Remove duplicate points from point collections:
+
+```cpp
+// Basic point cleaning - removes exact duplicates
+auto cleaned_points = tf::cleaned<int>(points);
+
+// Tolerance-based cleaning - merges points within distance
+float tolerance = 1e-6f;
+auto tolerance_cleaned_points = tf::cleaned<int>(points, tolerance);
+
+// Get index map for downstream processing
+auto [clean_points, point_map] =
+    tf::cleaned<int>(points, tolerance, tf::return_index_map);
+
+// Reindex associated data using the map
+auto clean_normals = tf::reindexed(point_normals, point_map);
+auto clean_attributes = tf::reindexed(tf::make_range(point_attributes), point_map);
+```
+
+### Segment Cleaning
+
+Clean segment collections by removing duplicates, degenerates, and unreferenced points:
+
+```cpp
+// Clean segments - removes duplicate edges and unused points
+auto clean_segments = tf::cleaned<int>(segments);
+
+// Tolerance-based segment cleaning
+float tolerance = 1e-5f;
+auto tolerance_clean_segments = tf::cleaned<int>(segments, tolerance);
+
+// Get both edge and point index maps
+auto [clean_segments_with_maps, edge_map, point_map] =
+    tf::cleaned<int>(segments, tolerance, tf::return_index_map);
+
+// Reindex edge and point attributes
+auto clean_edge_properties = tf::reindexed(tf::make_edges(edge_properties), edge_map);
+auto clean_point_properties = tf::reindexed(tf::make_edges(point_properties), point_map);
+```
+
+### Polygon Cleaning
+
+Clean mesh data by removing duplicates, degenerate faces, and unreferenced vertices:
+
+```cpp
+// Clean polygons - removes duplicate faces and unused vertices
+auto clean_polygons = tf::cleaned<int>(polygons);
+
+// Tolerance-based polygon cleaning
+double tolerance = 1e-8;
+auto tolerance_clean_polygons = tf::cleaned<int>(polygons, tolerance);
+
+// Get both face and point index maps
+auto [clean_polygons_with_maps, face_map, point_map] =
+    tf::cleaned<int>(polygons, tolerance, tf::return_index_map);
+
+// Reindex all associated mesh data
+auto clean_face_normals = tf::reindexed(face_normals, face_map);
+auto clean_vertex_attributes = tf::reindexed(tf::make_edges(vertex_attributes), point_map);
+```

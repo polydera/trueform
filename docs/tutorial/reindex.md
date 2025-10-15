@@ -1,0 +1,197 @@
+# Reindex
+
+The `reindex` module provides efficient tools for extracting, filtering, and reorganizing geometric data while maintaining referential integrity. It operates on `trueform`'s range-based primitives and supports both simple data extraction and complex multi-level reindexing with automatic index map generation.
+
+## Core Concepts
+
+Reindexing in `trueform` revolves around two key concepts:
+
+1. **Index Maps**: Structures that map old indices to new indices, enabling efficient data reorganization
+2. **Referential Integrity**: Ensuring that relationships between different data structures (e.g., faces and points) remain consistent after reindexing
+
+The module provides both immediate reindexing operations and optional index map returns for downstream processing.
+
+## Basic Reindexing Operations
+
+### Points and Vectors
+
+Reindex point and vector collections using index maps:
+
+```cpp
+// Basic point reindexing with an existing index map
+tf::index_map_buffer<int> point_map;
+auto reindexed_points = tf::reindexed(points, point_map);
+
+// Reindex vectors similarly
+auto reindexed_vectors = tf::reindexed(vectors, point_map);
+auto reindexed_unit_vectors = tf::reindexed(unit_vectors, point_map);
+
+// Reindex into pre-allocated buffers
+tf::points_buffer<float, 3> point_buffer;
+tf::reindexed(points, point_map, point_buffer);
+
+// Reindex generic ranges
+auto reindexed_attributes = tf::reindexed(tf::make_range(attribute_range), point_map);
+```
+
+### Complex Primitives
+
+For primitives that reference other data (like polygons and segments), reindexing requires both element and point index maps:
+
+```cpp
+// Polygon reindexing requires both face and point index maps
+tf::index_map_buffer<int> face_map = /* ... */;
+tf::index_map_buffer<int> point_map = /* ... */;
+auto reindexed_polygons = tf::reindexed(polygons, face_map, point_map);
+
+// Segment reindexing works similarly
+tf::index_map_buffer<int> edge_map = /* ... */;
+auto reindexed_segments = tf::reindexed(segments, edge_map, point_map);
+
+// Reindex into pre-allocated buffers for performance
+tf::polygons_buffer<int, float, 3, 3> poly_buffer; // triangles
+tf::reindexed(polygons, face_map, point_map, poly_buffer);
+
+// Dynamic polygon sizes
+tf::polygons_buffer<int, float, 3, tf::dynamic_size> dynamic_buffer;
+tf::reindexed(polygons, face_map, point_map, dynamic_buffer);
+```
+
+## Reindexing by Mask
+
+Filter data using boolean masks, automatically generating index maps:
+
+```cpp
+// Create a mask for filtering
+tf::buffer<bool> point_mask;
+point_mask.allocate(points.size());
+
+// Mark specific points to keep
+tf::parallel_apply(tf::zip(point_mask, points), [&](auto pair) {
+    auto &&[masked, point] = pair;
+    masked = meets_criteria(point);
+});
+
+// Reindex points by mask
+auto filtered_points = tf::reindexed_by_mask<int>(points, point_mask);
+
+// Get index map for downstream processing
+auto [filtered_points, index_map] =
+    tf::reindexed_by_mask<int>(points, point_mask, tf::return_index_map);
+```
+
+For complex primitives, mask-based reindexing automatically handles dependent point filtering:
+
+```cpp
+// Face mask for polygon filtering
+tf::buffer<bool> face_mask;
+face_mask.allocate(polygons.size());
+tf::parallel_transform(polygons, face_mask, [&](auto poly) {
+    return tf::area(poly) > min_area_threshold;
+});
+
+// Reindex polygons - automatically filters unused points
+auto [filtered_polygons, face_map, point_map] =
+    tf::reindexed_by_mask<int>(polygons, face_mask, tf::return_index_map);
+
+// Use maps to reindex associated data
+auto filtered_normals = tf::reindexed(face_normals, face_map);
+auto filtered_attributes = tf::reindexed(point_attributes, point_map);
+```
+
+## Reindexing by IDs
+
+Extract specific elements by their IDs:
+
+```cpp
+// Extract specific points by ID
+std::vector<int> desired_point_ids = {10, 25, 30, 45};
+auto extracted_points = tf::reindexed_by_ids<int>(points, desired_point_ids);
+
+// Get index map for consistency
+auto [extracted_points, point_map] =
+    tf::reindexed_by_ids<int>(points, desired_point_ids, tf::return_index_map);
+
+// Extract specific polygons
+std::vector<int> face_ids = {0, 2, 5, 8};
+auto [extracted_polygons, face_map, generated_point_map] =
+    tf::reindexed_by_ids<int>(polygons, face_ids, tf::return_index_map);
+```
+
+## Point-Based Filtering
+
+Filter complex primitives based on point criteria:
+
+### Mask on Points
+
+```cpp
+// Create point mask based on spatial criteria
+tf::buffer<bool> point_mask;
+point_mask.allocate(points.size());
+
+auto point_mask = tf::parallel_transform(points, [&](auto point) {
+    return point[2] > height_threshold; // Keep points above certain height
+});
+
+// Filter polygons - keep only those with ALL vertices in the mask
+auto [filtered_polygons, face_map, point_map] =
+    tf::reindexed_by_mask_on_points<int>(polygons, point_mask, tf::return_index_map);
+
+// Filter segments similarly
+auto [filtered_segments, edge_map, point_map_segments] =
+    tf::reindexed_by_mask_on_points<int>(segments, point_mask, tf::return_index_map);
+```
+
+### IDs on Points
+
+```cpp
+// Select specific point IDs
+tf::buffer<int> selected_point_ids;
+tf::generic_generate(tf::enumerate(points), selected_point_ids, [&](auto pair, auto &buffer) {
+    auto [point_id, point] = pair;
+    if (is_feature_point(point)) {
+        buffer.push_back(point_id);
+    }
+});
+
+// Extract polygons that use only the selected points
+auto [feature_polygons, face_map, point_map] =
+    tf::reindexed_by_ids_on_points<int>(polygons, selected_point_ids, tf::return_index_map);
+```
+
+## Concatenation
+
+The `tf::concatenated` function efficiently merges multiple geometric structures into a single unified structure, automatically handling index offsetting to maintain referential integrity.
+
+### Concatenating Polygons
+
+```cpp
+// Works with fixed-size polygons (e.g., all triangles)
+tf::polygons_buffer<int, float, 3, 3> triangles1, triangles2;
+auto combined_triangles = tf::concatenated(triangles1.polygons(),
+                                          triangles2.polygons());
+
+// Also works with mixed polygon sizes (dynamic)
+tf::polygons_buffer<int, float, 3, tf::dynamic_size> quads, tris;
+auto mixed_mesh = tf::concatenated(quads.polygons(), tris.polygons());
+// Result automatically uses dynamic_size when inputs differ
+```
+
+The implementation handles two cases:
+- **Same N-gons**: When all inputs have the same polygon size (e.g., all triangles), produces fixed-size output
+- **Different N-gons**: When inputs have varying polygon sizes, produces dynamic-size output
+
+### Concatenating Segments
+
+```cpp
+// Merge multiple line segment collections
+auto edges1 = extract_boundary_edges(mesh1);
+auto edges2 = extract_boundary_edges(mesh2);
+
+auto all_edges = tf::concatenated<int>(edges1, edges2);
+
+// Each segment collection has its own points - concatenated handles the offsets
+// If edges1 references points [0-99] and edges2 references points [0-49],
+// the result will have edges1 as-is and edges2 offset to reference [100-149]
+```
+
