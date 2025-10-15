@@ -106,8 +106,8 @@ auto knn = tf::neighbor_search(
 See how it compares with `nanoflann` (on *Intel i7-9750H*):
 
 <p float="left">
-  <img src="./docs/img/nano-build.png" width="49%" />
-  <img src="./docs/img/nano-knn.png" width="49%" />
+  <img src="./docs/public/img/nano-build.png" width="49%" />
+  <img src="./docs/public/img/nano-knn.png" width="49%" />
 </p>
 
 #### 🧭 Neighbor Search
@@ -141,8 +141,8 @@ tf::gather_ids(
 See how it compares with `CGAL` (on *Intel i7-9750H*):
 
 <p float="left">
-  <img src="./docs/img/cgal-build.png" width="49%" />
-  <img src="./docs/img/cgal_speedup.png" width="49%" />
+  <img src="./docs/public/img/cgal-build.png" width="49%" />
+  <img src="./docs/public/img/cgal_speedup.png" width="49%" />
 </p>
 
 
@@ -212,8 +212,8 @@ auto curves = tf::make_curves(paths, t_polygons.points());
 See how it compares with `VTK` (on *Intel i7-9750H*):
 
 <p float="left">
-  <img src="./docs/img/vtk_boundary_speed_up.png" width="49%" />
-  <img src="./docs/img/vtk_non_manifold_speed_up.png" width="49%" />
+  <img src="./docs/public/img/vtk_boundary_speed_up.png" width="49%" />
+  <img src="./docs/public/img/vtk_non_manifold_speed_up.png" width="49%" />
 </p>
 
 #### 🔗 Labeling Connected Components
@@ -273,8 +273,8 @@ for (auto [face, hole_ids] :
 See how it compares with `CGAL` (on *Intel i7-9750H*):
 
 <p float="left">
-  <img src="./docs/img/cgal_planar_arrangments_speed_up.png" width="49%" />
-  <img src="./docs/img/cgal_planar_arrangments_lines.png" width="49%" />
+  <img src="./docs/public/img/cgal_planar_arrangments_speed_up.png" width="49%" />
+  <img src="./docs/public/img/cgal_planar_arrangments_lines.png" width="49%" />
 </p>
 
 #### 🔸 Scalar Field Intersections and Contours
@@ -288,8 +288,8 @@ auto curves = tf::make_isocurves(polygons, scalar_field, range_of_cut_values);
 See how it compares with `VTK` (on *Intel i7-9750H*):
 
 <p float="left">
-  <img src="./docs/img/scalar_field_contours_speed_up.png" width="49%" />
-  <img src="./docs/img/scalar_field_multi_contours_speed_up.png" width="49%" />
+  <img src="./docs/public/img/scalar_field_contours_speed_up.png" width="49%" />
+  <img src="./docs/public/img/scalar_field_multi_contours_speed_up.png" width="49%" />
 </p>
 
 #### ✖️ Mesh-Mesh Intersections
@@ -304,8 +304,8 @@ auto curves = tf::make_intersection_curves(
 See how it compares with `VTK` and `CGAL` when continuously computing the intersection curve between two moving meshes (on *Intel i7-9750H*):
 
 <p float="left">
-  <img src="./docs/img/vtk_intersection_curve_speed_up.png" width="49%" />
-  <img src="./docs/img/cgal_intersection_curve_speed_up.png" width="49%" />
+  <img src="./docs/public/img/vtk_intersection_curve_speed_up.png" width="49%" />
+  <img src="./docs/public/img/cgal_intersection_curve_speed_up.png" width="49%" />
 </p>
 
 
