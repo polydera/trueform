@@ -125,6 +125,49 @@ This directory contains benchmark data comparing `trueform` performance against 
   - 750k/1M: 5.9x-7.7x
 - **Analysis**: Speedup grows to 8.5x at 500k triangles with some variation at larger sizes. Both implementations use efficient algorithms (union-find or BFS), with performance differences attributable to parallel execution and cache optimization.
 
+### Spatial Queries
+
+**k-Nearest Neighbor Queries**: `knn_queries_vs_nanoflann.csv`
+- Performs k-nearest neighbor queries on point clouds
+- Dataset: Queries with k ranging from 1 to 10 neighbors
+- **Result: 1.8x to 2.0x speedup**
+- **Pattern**: Speedup decreases slightly as k increases
+  - k=1: 2.0x
+  - k=2-3: 1.94x-1.86x
+  - k=4-10: 1.80x-1.83x
+- **Analysis**: Speedup stabilizes at approximately 1.8x for k≥5. Both implementations use efficient kd-tree structures, with performance differences arising from trueform's parallel query processing and cache-optimized memory layout.
+
+**Collecting Intersecting Primitives**: `spatial_queries_vs_cgal.csv`
+- Collects all primitives intersecting a query region
+- Dataset: Two meshes from 50k to 1M triangles each (100k to 2M total)
+- **Result: 8.1x to 12.4x speedup**
+- **Pattern**: Speedup fluctuates with moderate variation across sizes
+  - 100k triangles: 8.1x
+  - 250k triangles: 11.3x
+  - 500k-1M triangles: 9.4x-9.5x
+  - 2M triangles: 12.4x
+- **Analysis**: Average speedup of approximately 10x with peak performance at 2M triangles. The variation suggests mesh-dependent spatial distribution effects, while the consistent order of magnitude advantage indicates efficient BVH traversal and intersection testing.
+
+**Tree Construction vs Nanoflann**: `tree_construction_vs_nanoflann.csv`
+- Builds spatial acceleration structure (BVH/kd-tree) for point clouds
+- Dataset: Point clouds from 27k to 502k points
+- **Result: 3.5x to 6.7x speedup**
+- **Pattern**: Speedup increases with point cloud size
+  - 27k points: 3.5x (1.69ms vs 5.91ms)
+  - 127k points: 6.5x (6.72ms vs 43.53ms)
+  - 502k points: 6.7x (29.22ms vs 196.76ms)
+- **Analysis**: Speedup stabilizes around 6-7x for point clouds larger than 100k points. Trueform's parallel tree construction algorithm demonstrates superior scaling characteristics, with build time remaining under 30ms even for 502k points compared to nanoflann's 197ms.
+
+**Tree Construction vs CGAL**: `tree_construction_vs_cgal.csv`
+- Builds spatial acceleration structure (AABB tree) for triangle meshes
+- Dataset: Meshes from 50k to 1M triangles
+- **Result: 26x to 31x speedup**
+- **Pattern**: Speedup remains relatively constant across sizes
+  - 50k triangles: 28.2x (2ms vs 56.3ms)
+  - 250k triangles: 31.0x (12ms vs 372.5ms)
+  - 1M triangles: 27.9x (61ms vs 1702.5ms)
+- **Analysis**: Consistent speedup of approximately 28-31x across all mesh sizes. At 1M triangles, trueform constructs the tree in 61ms compared to CGAL's 1.7 seconds. The constant speedup factor indicates both implementations scale linearly, with trueform's parallel construction providing a uniform performance advantage.
+
 ## Data Format
 
 All CSV files use standard format:
@@ -138,9 +181,10 @@ All CSV files use standard format:
 **Common columns:**
 - `triangles`: Number of triangles in mesh
 - `edges`: Number of edges in arrangement
+- `neighbors`: Number of nearest neighbors (k) in kNN queries
 - `speedup`: Performance ratio (baseline_time / trueform_time)
 - `trueform_ms`: Trueform execution time in milliseconds
-- `vtk_ms` / `cgal_ms`: Baseline library time in milliseconds
+- `vtk_ms` / `cgal_ms` / `nanoflann_ms`: Baseline library time in milliseconds
 - `num_contours`: Number of isocontour levels extracted
 
 ## Usage Examples
@@ -227,6 +271,9 @@ The 2273x speedup at 40k edges compared to CGAL indicates different algorithmic 
 ### Topology Operations
 Cleaning and feature detection operations show consistent 10-30x speedups, indicating efficient parallel execution and memory access patterns.
 
+### Spatial Acceleration
+Tree construction shows 3.5x to 6.7x speedup over nanoflann for point clouds and 26x to 31x speedup over CGAL for triangle meshes. kNN queries demonstrate consistent 1.8x-2.0x speedup, while spatial intersection queries achieve 8-12x speedup over CGAL.
+
 ### Scaling Characteristics
 Across multiple operation types, trueform maintains near-linear time complexity while competing libraries exhibit superlinear growth, providing increasing advantage at larger problem sizes.
 
@@ -235,6 +282,7 @@ At 1M+ triangle scales, operations that require seconds in other libraries compl
 - Mesh intersection: 42ms vs 21 seconds (CGAL)
 - Planar arrangement (40k edges): 9.8ms vs 21 seconds (CGAL)
 - Mesh cleaning: 43ms vs 1.2 seconds (VTK)
+- Tree construction (502k points): 29ms vs 197ms (nanoflann)
 
 ## Citation
 
