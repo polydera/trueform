@@ -28,6 +28,11 @@ public:
       _raw_buffer.push_back(pt[i]);
   }
 
+  auto push_back(const tf::point<T, Dims> &pt) {
+    for (std::size_t i = 0; i < Dims; ++i)
+      _raw_buffer.push_back(pt[i]);
+  }
+
   template <typename... Ts>
   auto emplace_back(Ts &&...ts)
       -> std::enable_if_t<(sizeof...(Ts) == Dims), void> {

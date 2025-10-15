@@ -11,6 +11,7 @@
 #include "../../topology/planar_graph_regions.hpp"
 #include "./splitting_paths.hpp"
 
+/*#include<iostream>*/
 namespace tf::loop {
 template <typename Index, typename RealType> class face_split_by_edges {
 public:
@@ -23,6 +24,34 @@ public:
     assign_categories();
     _fhr.build(tf::make_faces(faces()), face_areas(), tf::make_faces(holes()),
                points);
+
+    /*std::cout << "faces" << std::endl;*/
+    /*for (auto f : faces()) {*/
+    /*  for (auto e : f)*/
+    /*    std::cout << e << ", ";*/
+    /*  std::cout << std::endl;*/
+    /*}*/
+    /*std::cout << "holes" << std::endl;*/
+    /*for (auto f : holes()) {*/
+    /*  for (auto e : f)*/
+    /*    std::cout << e << ", ";*/
+    /*  std::cout << std::endl;*/
+    /*}*/
+    /*std::cout << faces().size() << " == " << holes().size() << " == " << holes_for_faces().size() << std::endl;*/
+    /*std::cout << "holes for faces" << std::endl;*/
+    /*for (auto [v, f] : tf::zip(holes_for_faces(), faces())) {*/
+    /*  std::cout << "face" << std::endl;*/
+    /*  for (auto e : f)*/
+    /*    std::cout << e << ", ";*/
+    /*  std::cout << std::endl;*/
+    /*  for (auto h : tf::make_indirect_range(v, holes())) {*/
+    /*    std::cout << "  hole" << std::endl;*/
+    /*    std::cout << "  ";*/
+    /*    for (auto e : h)*/
+    /*      std::cout << e << ", ";*/
+    /*    std::cout << std::endl;*/
+    /*  }*/
+    /*}*/
   }
 
   auto faces() const { return tf::make_indirect_range(_faces, all_loops()); }
@@ -62,8 +91,14 @@ private:
   template <typename Range>
   auto divide_base_loop_with_crossing_paths(const Range &base_loop) {
     const auto &crossings = _spaths.crossing_paths();
-    if (!crossings.size())
+    if (!crossings.size()) {
+      _base_loops_offsets.push_back(0);
+      _base_loops_vertices.allocate(base_loop.size());
+      std::copy(base_loop.begin(), base_loop.end(),
+                _base_loops_vertices.begin());
+      _base_loops_offsets.push_back(_base_loops_vertices.size());
       return;
+    }
     const auto &descriptors = _spaths.crossing_path_descriptors();
     std::array<Index, 2> left_over{base_loop.front(), base_loop.back()};
     // so that we can start with the "left_over", making

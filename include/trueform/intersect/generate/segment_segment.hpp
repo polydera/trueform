@@ -9,7 +9,7 @@
 #include "../../core/ray.hpp"
 #include "../../core/ray_hit.hpp"
 #include "../../topology/edge_membership.hpp"
-#include "../intersection.hpp"
+#include "../types/intersection.hpp"
 
 namespace tf::intersect::generate {
 namespace detail {

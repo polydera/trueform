@@ -11,12 +11,13 @@
 #include "../../core/points.hpp"
 #include "../../core/transformed.hpp"
 #include "../../core/views/blocked_range.hpp"
-#include "../../intersect/simple_intersection.hpp"
-#include "../../intersect/tagged_intersection.hpp"
+#include "../../intersect/types/simple_intersection.hpp"
+#include "../../intersect/types/tagged_intersection.hpp"
 #include "./cut_face_by_intersections.hpp"
 #include "./vertex.hpp"
 #include <algorithm>
 
+/*#include <iostream>*/
 namespace tf::loop {
 template <typename Index, typename RealT> class loop_extractor {
 
@@ -37,6 +38,28 @@ public:
     build_base_loop_edges();
     extract_edges(intersections, intersection_points, intersections[0],
                   get_flat_id);
+    /*std::cout << "base loop" << std::endl;*/
+    /*for (auto e : base_loop()) {*/
+    /*  std::cout << "(" << int(e.source()) << ", " << e.id << ", "*/
+    /*            << e.intersection_index << "), ";*/
+    /*}*/
+    /*std::cout << std::endl;*/
+    /*std::cout << "edges" << std::endl;*/
+    /*for (const auto &[e0, e1] : edges()) {*/
+    /*  std::cout << "(" << int(e0.source()) << ", " << e0.id << ", "*/
+    /*            << e0.intersection_index << ") -- ";*/
+    /*  std::cout << "(" << int(e1.source()) << ", " << e1.id << ", "*/
+    /*            << e1.intersection_index << ")" << std::endl;*/
+    /*}*/
+    /*std::cout << std::endl;*/
+    /*std::cout << "base_loop edges" << std::endl;*/
+    /*for (const auto &[e0, e1] : _base_loop_edges) {*/
+    /*  std::cout << "(" << int(e0.source()) << ", " << e0.id << ", "*/
+    /*            << e0.intersection_index << ") -- ";*/
+    /*  std::cout << "(" << int(e1.source()) << ", " << e1.id << ", "*/
+    /*            << e1.intersection_index << ")" << std::endl;*/
+    /*}*/
+    /*std::cout << std::endl;*/
     return extract(face, intersection_points, mesh_points, offsets, vertices);
   }
 
@@ -212,13 +235,14 @@ private:
     auto it = begin;
     while (it != end) {
       auto i = *it;
-      auto flat_id = get_flat_id(*it++);
+      auto flat_id = get_flat_id(*it);
       auto pt = intersection_points[i.id];
       _work_buffer.push_back({i.target, i.id, flat_id, RealT(0)});
       for (std::size_t i = 0; i < min.size(); ++i) {
         min[i] = std::min(min[i], std::make_pair(pt[i], it));
         max[i] = std::max(max[i], std::make_pair(pt[i], it));
       }
+      ++it;
     }
     auto res = std::make_pair(max[0].first - min[0].first, std::size_t(0));
     for (std::size_t i = 1; i < min.size(); ++i) {
@@ -233,8 +257,9 @@ private:
               [](const auto &x, const auto &y) {
                 return std::make_pair(x.t, x.id) < std::make_pair(y.t, y.id);
               });
-    for (auto [a, b] : tf::make_slide_range<2>(_work_buffer))
+    for (auto [a, b] : tf::make_slide_range<2>(_work_buffer)) {
       add_edge({a.id, a.intersection_id}, {b.id, b.intersection_id});
+    }
   }
 
   auto make_edges_unique() {

@@ -1,0 +1,31 @@
+/*
+ * Copyright (c) 2025 Žiga Sajovic, XLAB
+ * Distributed under the Boost Software License, Version 1.0.
+ * https://github.com/xlabmedical/trueform
+ */
+#pragma once
+#include "./self_edge_edge.hpp"
+#include "./self_edge_face.hpp"
+#include "./self_vertex_edge.hpp"
+#include "./self_vertex_face.hpp"
+#include "./self_vertex_vertex.hpp"
+
+namespace tf::intersect::generate {
+template <typename Handle0, typename Handle1, typename Index, typename T,
+          std::size_t Dims>
+auto self_polygon_polygon(const Handle0 &handle0, const Handle1 &handle1,
+                          tf::buffer<intersection<Index>> &intersections,
+                          tf::buffer<intersection_id<Index>> &intersection_ids,
+                          tf::buffer<tf::point<T, Dims>> &points) {
+  generate::self_vertex_vertex(handle0, handle1, intersections,
+                               intersection_ids, points);
+  generate::self_vertex_edge(handle0, handle1, intersections, intersection_ids,
+                             points);
+  generate::self_edge_edge(handle0, handle1, intersections, intersection_ids,
+                           points);
+  generate::self_vertex_face(handle0, handle1, intersections, intersection_ids,
+                             points);
+  generate::self_edge_face(handle0, handle1, intersections, intersection_ids,
+                           points);
+}
+} // namespace tf::intersect::generate

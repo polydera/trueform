@@ -7,7 +7,7 @@
 #include "../core/algorithm/block_reduce.hpp"
 #include "../core/polygons.hpp"
 #include "../core/views/enumerate.hpp"
-#include "./base/simple_intersections.hpp"
+#include "./types/simple_intersections.hpp"
 
 namespace tf {
 template <typename Index, typename RealT, std::size_t Dims>

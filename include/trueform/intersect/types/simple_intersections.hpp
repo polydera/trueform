@@ -11,8 +11,8 @@
 #include "../../core/policy/ids.hpp"
 #include "../../core/views/offset_block_range.hpp"
 #include "../../core/views/sequence_range.hpp"
-#include "../simple_edge_point_id.hpp"
-#include "../simple_intersection.hpp"
+#include "./simple_edge_point_id.hpp"
+#include "./simple_intersection.hpp"
 #include "tbb/parallel_sort.h"
 
 namespace tf::intersect {

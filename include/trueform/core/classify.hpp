@@ -28,57 +28,90 @@ auto classify(const point_like<Dims, Policy0> &pt,
 template <typename Policy0, typename Policy1>
 auto classify(const tf::point_like<2, Policy0> &point,
               const tf::segment<2, Policy1> &seg) -> tf::sidedness {
-  const auto ac = seg[0] - point;
-  const auto bc = seg[1] - point;
+  using real = decltype(seg[0][0] * seg[1][1]);
 
-  const auto test = ac[0] * bc[1] - ac[1] * bc[0];
-  const auto eps = std::numeric_limits<decltype(test)>::epsilon();
+  const auto ab = seg[1] - seg[0];
+  const auto ap = point - seg[0];
 
-  if (std::abs(test) < eps) {
-    const auto ab = seg[1] - seg[0];
-    const auto ap = point - seg[0];
-    const auto t = ap[0] * ab[0] + ap[1] * ab[1];
-    const auto ab2 = ab[0] * ab[0] + ab[1] * ab[1];
+  const real test = ab[0] * ap[1] - ab[1] * ap[0];
+  const real eps = std::numeric_limits<real>::epsilon();
 
-    if (t >= -eps && t <= ab2 + eps)
-      return tf::sidedness::on_boundary;
-    return static_cast<tf::sidedness>(t < 0);
-  }
+  if (test > eps)
+    return tf::sidedness::on_positive_side;
+  if (test < -eps)
+    return tf::sidedness::on_negative_side;
 
-  return static_cast<tf::sidedness>(test < 0);
+  const real t = ap[0] * ab[0] + ap[1] * ab[1];
+  const real ab2 = ab[0] * ab[0] + ab[1] * ab[1];
+  if (t >= -eps && t <= ab2 + eps)
+    return tf::sidedness::on_boundary;
+
+  return tf::sidedness::on_negative_side;
 }
 
 template <typename Policy0, typename Policy1>
-auto classify(const point_like<2, Policy0> &point,
-              const line_like<2, Policy1> &line) -> sidedness {
-  return classify(point, tf::make_segment_between_points(line.origin, line(1)));
+auto classify(const tf::point_like<2, Policy0> &point,
+              const tf::line_like<2, Policy1> &line) -> tf::sidedness {
+  using real = decltype(point[0] * line.origin[0]);
+  const auto dir = line.direction;
+  const auto ap = point - line.origin;
+
+  const real test = dir[0] * ap[1] - dir[1] * ap[0];
+  const real eps = std::numeric_limits<real>::epsilon();
+
+  if (test > eps)
+    return tf::sidedness::on_positive_side;
+  if (test < -eps)
+    return tf::sidedness::on_negative_side;
+
+  return tf::sidedness::on_boundary;
 }
 
 template <typename Policy0, typename Policy1>
-auto classify(const point_like<2, Policy0> &point,
-              const ray_like<2, Policy1> &ray) -> sidedness {
-  return classify(point, tf::make_segment_between_points(ray.origin, ray(1)));
+auto classify(const tf::point_like<2, Policy0> &point,
+              const tf::ray_like<2, Policy1> &ray) -> tf::sidedness {
+  using real = decltype(point[0] * ray.origin[0]);
+  const auto dir = ray.direction;
+  const auto ap = point - ray.origin;
+
+  const real test = dir[0] * ap[1] - dir[1] * ap[0];
+  const real eps = std::numeric_limits<real>::epsilon();
+
+  if (test > eps)
+    return tf::sidedness::on_positive_side;
+  if (test < -eps)
+    return tf::sidedness::on_negative_side;
+
+  const real t = ap[0] * dir[0] + ap[1] * dir[1];
+  if (t >= -eps)
+    return tf::sidedness::on_boundary;
+
+  return tf::sidedness::on_negative_side;
 }
 
 template <typename Policy0, typename Policy1>
-auto classify(const point_like<2, Policy0> &pt, const wedge<Policy1> &w)
+auto classify(const tf::point_like<2, Policy0> &pt, const tf::wedge<Policy1> &w)
     -> strict_containment {
   using tf::sidedness;
 
-  const auto o0 = classify(w[0], make_segment_between_points(w[1], w[2]));
-  const auto o1 = classify(w[0], make_segment_between_points(w[1], pt));
-  const auto o2 = classify(w[0], make_segment_between_points(w[2], pt));
+  // o0 = orient(O,A,B)
+  const auto o0 = classify(w[2], tf::make_segment_between_points(w[0], w[1]));
+  // o1 = orient(O,A,pt)
+  const auto o1 = classify(pt, tf::make_segment_between_points(w[0], w[1]));
+  // o2 = orient(A,B,pt)
+  const auto o2 = classify(pt, tf::make_segment_between_points(w[1], w[2]));
 
-  const bool convex = o0 != sidedness::on_negative_side;
+  const bool convex = (o0 != sidedness::on_negative_side);
 
-  const bool inside_convex =
-      o1 == sidedness::on_positive_side && o2 == sidedness::on_positive_side;
+  // Convex: include boundary (>=0)
+  const bool inside_convex = (o1 != sidedness::on_negative_side) &&
+                             (o2 != sidedness::on_negative_side);
 
-  const bool inside_reflex =
-      o1 != sidedness::on_negative_side || o2 != sidedness::on_negative_side;
+  // Reflex: exclude boundary (strict >0)
+  const bool inside_reflex = (o1 == sidedness::on_positive_side) ||
+                             (o2 == sidedness::on_positive_side);
 
   const bool inside = (convex && inside_convex) || (!convex && inside_reflex);
-
   return static_cast<strict_containment>(!inside);
 }
 

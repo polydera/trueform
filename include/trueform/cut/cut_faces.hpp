@@ -4,15 +4,15 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "../../intersect/base/simple_intersections.hpp"
-#include "./intersection_loops.hpp"
+#include "../intersect/types/simple_intersections.hpp"
+#include "./loop/cut_faces.hpp"
 
-#include "../../topology/face_membership.hpp"
-#include "../../topology/structures/compute_face_link_per_edge.hpp"
-namespace tf::loop {
+#include "../topology/face_membership.hpp"
+#include "../topology/structures/compute_face_link_per_edge.hpp"
+namespace tf {
 template <typename Index, typename RealT>
-class simple_intersection_loops : public intersection_loops<Index, Index> {
-  using base_t = intersection_loops<Index, Index>;
+class cut_faces : public loop::cut_faces<Index, Index> {
+  using base_t = loop::cut_faces<Index, Index>;
 
 public:
   template <typename Policy, std::size_t Dims>
@@ -45,7 +45,7 @@ public:
 
 private:
   auto handle_id(tf::loop::vertex<Index> v) {
-    if (v.source() == vertex_source::created)
+    if (v.source() == loop::vertex_source::created)
       return std::make_pair(false, v.id);
     else {
       auto it = _own_map.find(v.id);
@@ -62,5 +62,4 @@ private:
   Index _map_offset;
   tf::hash_map<Index, Index, Index> _own_map;
 };
-} // namespace tf::loop
-
+} // namespace tf

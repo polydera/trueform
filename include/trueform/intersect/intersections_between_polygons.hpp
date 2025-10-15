@@ -4,8 +4,10 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
+#include "../clean/index_map/points.hpp"
 #include "../core/algorithm/generic_generate.hpp"
 #include "../core/algorithm/mask_to_map.hpp"
+#include "../core/algorithm/parallel_copy.hpp"
 #include "../core/local_buffer.hpp"
 #include "../core/views/zip.hpp"
 #include "../spatial/form.hpp"
@@ -14,22 +16,23 @@
 #include "../topology/policy/face_membership.hpp"
 #include "../topology/policy/manifold_edge_link.hpp"
 #include "../topology/vertex_representation.hpp"
-#include "./compute_simplification_mask.hpp"
-#include "./duplicate_intersection.hpp"
+#include "./detail/compute_simplification_mask.hpp"
+#include "./detail/duplicate_intersection.hpp"
+#include "./detail/normal_intervals.hpp"
 #include "./generate/polygon_polygon.hpp"
-#include "./normal_intervals.hpp"
 #include "./polygon/handle.hpp"
-#include "./tagged_intersections.hpp"
+#include "./types/tagged_intersections.hpp"
 
 namespace tf {
 template <typename Index, typename RealType, std::size_t Dims>
-class polygons_intersections : public tagged_intersections<Index, RealType, Dims> {
-  using base_t = tagged_intersections<Index, RealType, Dims>;
+class intersections_between_polygons
+    : public intersect::tagged_intersections<Index, RealType, Dims> {
+  using base_t = intersect::tagged_intersections<Index, RealType, Dims>;
 
 public:
   template <typename Policy0, typename Policy1>
-  auto build(const tf::form<Dims, Policy0> &form0,
-             const tf::form<Dims, Policy1> &form1) {
+  auto build(const tf::form<Dims, Policy0> &_form0,
+             const tf::form<Dims, Policy1> &_form1) {
     static_assert(tf::has_face_membership_policy<Policy0>,
                   "Use polygons | tf::tag(face_membership)");
     static_assert(tf::has_face_membership_policy<Policy1>,
@@ -38,6 +41,14 @@ public:
                   "Use polygons | tf::tag(manifold_edge_link)");
     static_assert(tf::has_manifold_edge_link_policy<Policy1>,
                   "Use polygons | tf::tag(manifold_edge_link)");
+    auto make_form = [](const auto &form) {
+      return tf::wrap_map(form, [](auto &&x) {
+        return tf::core::make_polygons(x.faces(),
+                                       x.points().template as<RealType>());
+      });
+    };
+    const auto &form0 = make_form(_form0);
+    const auto &form1 = make_form(_form1);
     //
     base_t::clear();
     auto [intersection_ids, intersections, intersection_points] =
@@ -65,10 +76,27 @@ public:
               form0.face_membership(), form0.manifold_edge_link(),
               form1.face_membership(), form1.manifold_edge_link(), buffer);
         });
+    collapse_points();
     base_t::finalize(n_ids);
   }
 
 private:
+  auto collapse_points() {
+    auto im = tf::make_clean_index_map<Index>(
+        tf::make_points(base_t::_intersection_points),
+        std::numeric_limits<RealType>::epsilon());
+    if (im.kept_ids().size() == base_t::_intersection_points.size())
+      return;
+    tf::buffer<tf::point<RealType, Dims>> points;
+    points.allocate(im.kept_ids().size());
+    tf::parallel_copy(
+        tf::make_indirect_range(im.kept_ids(), base_t::_intersection_points),
+        points);
+    base_t::_intersection_points = std::move(points);
+    tf::parallel_apply(base_t::_intersections,
+                       [&](auto &i) { i.id = im.f()[i.id]; });
+  }
+
   template <typename Policy0, typename Policy1>
   auto compute_buffers(const tf::form<Dims, Policy0> &form0,
                        const tf::form<Dims, Policy1> &form1) {

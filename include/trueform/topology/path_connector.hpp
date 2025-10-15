@@ -96,7 +96,7 @@ private:
     } while (last_path);
   }
 
-  auto move_to_next(Index v_id) {
+  auto move_to_next(Index v_id) -> Index {
     auto next_iter = std::find_if(_v_link[v_id].begin(), _v_link[v_id].end(),
                                   [](const auto &x) { return x != -1; });
     if (next_iter == _v_link[v_id].end())

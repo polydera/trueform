@@ -14,7 +14,6 @@
 
 class cursor_interactor : public vtkInteractorStyleTrackballCamera {
 private:
-  tf::scalar_field_intersections<int, float, 3> sfi;
   tf::buffer<float> scalars;
   std::vector<float> times;
   int time_index = 0;
@@ -43,16 +42,13 @@ private:
   auto compute_curves() {
     auto polygons = get_triangles(poly);
     std::vector<float> cutvalues;
-    for(int i=-10;i<10;++i)
-      cutvalues.push_back(distance + i*0.5);
+    for (int i = -10; i < 10; ++i)
+      cutvalues.push_back(distance + i * 0.5);
     tf::tick();
-    sfi.build_many(polygons, scalars,
-                   cutvalues);
-    /*sfi.build(polygons, scalars, distance);*/
-    auto edges = tf::make_intersection_edges(sfi);
+    auto curves = tf::make_isocontours(polygons, tf::make_range(scalars),
+                                       tf::make_range(cutvalues));
     add_time(tf::tock());
-    auto tmp_poly =
-        segments_to_lines(tf::make_segments(edges, sfi.intersection_points()));
+    auto tmp_poly = curves_to_polydata(curves.curves());
     auto tubes = vtk_make_unique<vtkTubeFilter>();
     tubes->SetRadius(0.05);
     tubes->SetInputData(tmp_poly.get());

@@ -7,6 +7,7 @@
 #include "../../core/area.hpp"
 #include "./path_extractor.hpp"
 
+/*#include <iostream>*/
 namespace tf::loop {
 template <typename Index, typename RealType> class splitting_paths {
 public:
@@ -16,6 +17,37 @@ public:
     clear();
     _extractor.build(base_loop, edges, points.size());
     build_path_categories(points);
+
+    /*std::cout << "crossing paths:" << std::endl;*/
+    /*for (auto path :*/
+    /*     tf::make_indirect_range(_crossing_paths, _extractor.paths())) {*/
+    /*  for (auto e : path)*/
+    /*    std::cout << e << ", ";*/
+    /*  std::cout << std::endl;*/
+    /*}*/
+    /**/
+    /*std::cout << "non_crossing paths:" << std::endl;*/
+    /*for (auto path :*/
+    /*     tf::make_indirect_range(_non_crossing_paths, _extractor.paths())) {*/
+    /*  for (auto e : path)*/
+    /*    std::cout << e << ", ";*/
+    /*  std::cout << std::endl;*/
+    /*}*/
+    /**/
+    /*std::cout << "loop paths:" << std::endl;*/
+    /*for (auto path : tf::make_indirect_range(_loops, _extractor.paths())) {*/
+    /*  for (auto e : path)*/
+    /*    std::cout << e << ", ";*/
+    /*  std::cout << std::endl;*/
+    /*}*/
+    /**/
+    /*std::cout << "cut paths:" << std::endl;*/
+    /*for (auto path : tf::make_indirect_range(_cuts, _extractor.paths())) {*/
+    /*  for (auto e : path)*/
+    /*    std::cout << e << ", ";*/
+    /*  std::cout << std::endl;*/
+    /*}*/
+
     order_crossing_paths();
   }
 

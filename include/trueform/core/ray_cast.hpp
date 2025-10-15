@@ -85,9 +85,9 @@ auto ray_cast(
       hit = true;
     }
   }
-  if (!hit && contains_coplanar_point(poly, ray.origin)) {
+  if (!hit && contains_coplanar_point(poly, ray(config.min_t))) {
     hit = true;
-    closest_t = 0;
+    closest_t = config.min_t;
   }
 
   return tf::make_ray_cast_info(static_cast<tf::intersect_status>(hit),

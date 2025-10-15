@@ -5,4 +5,9 @@
  */
 #pragma once
 
-#include "./cut/loops.hpp" // IWYU pragma: export
+#include "./cut/cut_faces.hpp"           // IWYU pragma: export
+#include "./cut/loops.hpp"               // IWYU pragma: export
+#include "./cut/planar_arrangements.hpp" // IWYU pragma: export
+#include "./cut/planar_overlay.hpp"      // IWYU pragma: export
+#include "./cut/tagged_cut_faces.hpp"    // IWYU pragma: export
+#include "./cut/tagged_cut_faces.hpp"    // IWYU pragma: export

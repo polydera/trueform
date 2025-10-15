@@ -7,14 +7,13 @@
 #include "../clean/soup/segments.hpp"
 #include "../core/is_soup.hpp"
 #include "../topology/planar_embedding.hpp"
-#include "./intersected_segments.hpp"
+#include "./planar_overlay.hpp"
 namespace tf {
 template <typename Index, typename RealType>
-class planar_arrangements
-    : public tf::planar_embedding<Index, RealType>,
-      public tf::intersected_segments<Index, RealType, 2> {
+class planar_arrangements : public tf::planar_embedding<Index, RealType>,
+                            public tf::planar_overlay<Index, RealType, 2> {
   using pe_base_t = tf::planar_embedding<Index, RealType>;
-  using is_base_t = tf::intersected_segments<Index, RealType, 2>;
+  using is_base_t = tf::planar_overlay<Index, RealType, 2>;
 
 public:
   template <typename Policy> auto build(const tf::segments<Policy> &segments) {
@@ -57,7 +56,7 @@ public:
 private:
   tf::edge_membership<Index> _em;
   tf::tree<Index, RealType, 2> _tree;
-  tf::segment_intersections<Index, RealType, 2> _si;
+  tf::intersections_within_segments<Index, RealType, 2> _si;
   tf::buffer<Index> _work_buffer;
 };
 } // namespace tf

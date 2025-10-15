@@ -4,13 +4,13 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "../core/algorithm/circular_increment.hpp"
-#include "../topology/edge_id_in_face.hpp"
-#include "../topology/edge_membership.hpp"
-#include "../topology/face_membership.hpp"
-#include "../topology/manifold_edge_link.hpp"
-#include "./intersection.hpp"
-#include "./tagged_intersection.hpp"
+#include "../../core/algorithm/circular_increment.hpp"
+#include "../../topology/edge_id_in_face.hpp"
+#include "../../topology/edge_membership.hpp"
+#include "../../topology/face_membership.hpp"
+#include "../../topology/manifold_edge_link.hpp"
+#include "../types/intersection.hpp"
+#include "../types/tagged_intersection.hpp"
 
 namespace tf::intersect {
 template <typename Policy, typename Index, std::size_t N>

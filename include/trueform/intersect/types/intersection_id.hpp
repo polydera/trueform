@@ -4,7 +4,7 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "./intersection_type.hpp"
+#include "../intersection_type.hpp"
 #include <utility>
 
 namespace tf::intersect {

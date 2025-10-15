@@ -43,18 +43,11 @@ auto line_line_check(const Line0 &line0, const Line1 &line1) {
 }
 
 template <typename Line0, typename Line1>
-auto line_line_check_full(const Line0 &line0, const Line1 &line1)
-    -> std::tuple<tf::intersect_status,
-                  tf::coordinate_type<typename Line0::origin_type,
-                                      typename Line0::direction_type>,
-                  tf::coordinate_type<typename Line1::origin_type,
-                                      typename Line1::direction_type>> {
+auto line_line_check_full(const Line0 &line0, const Line1 &line1) {
   using tf::dot;
 
-  using R0 = tf::coordinate_type<typename Line0::origin_type,
-                                 typename Line0::direction_type>;
-  using R1 = tf::coordinate_type<typename Line1::origin_type,
-                                 typename Line1::direction_type>;
+  using R0 = tf::coordinate_type<Line0>;
+  using R1 = tf::coordinate_type<Line1>;
   using Real = tf::coordinate_type<R0, R1>;
 
   const auto &o0 = line0.origin;
@@ -86,9 +79,9 @@ auto line_line_check_full(const Line0 &line0, const Line1 &line1)
     const Real tol = eps * (n2 + m2 + Real(1));
 
     if (area2 <= tol) {
-      return {tf::intersect_status::colinear, t0_out, t1_out};
+      return std::make_tuple(tf::intersect_status::colinear, t0_out, t1_out);
     } else {
-      return {tf::intersect_status::parallel, t0_out, t1_out};
+      return std::make_tuple(tf::intersect_status::parallel, t0_out, t1_out);
     }
   }
 
@@ -97,7 +90,7 @@ auto line_line_check_full(const Line0 &line0, const Line1 &line1)
 
   t0_out = t0;
   t1_out = t1;
-  return {tf::intersect_status::non_parallel, t0_out, t1_out};
+  return std::make_tuple(tf::intersect_status::non_parallel, t0_out, t1_out);
 }
 
 } // namespace tf::core

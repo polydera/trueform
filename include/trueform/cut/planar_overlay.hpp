@@ -7,17 +7,17 @@
 #include "../core/algorithm/parallel_copy_by_map_with_nones.hpp"
 #include "../core/segments_buffer.hpp"
 #include "../core/views/slide_range.hpp"
-#include "./segment_intersections.hpp"
+#include "../intersect/intersections_within_segments.hpp"
 namespace tf {
 
 template <typename Index, typename RealT, std::size_t Dims>
-class intersected_segments : public segments_buffer<Index, RealT, Dims> {
+class planar_overlay : public segments_buffer<Index, RealT, Dims> {
   using base_t = segments_buffer<Index, RealT, Dims>;
 
 public:
   template <typename Policy>
   auto build(const tf::segments<Policy> &segments,
-             tf::segment_intersections<Index, RealT, Dims> &si) {
+             tf::intersections_within_segments<Index, RealT, Dims> &si) {
     base_t::clear();
     auto [used_points, used_edges, raw_created_edges] =
         build_edges(segments, si);
@@ -55,7 +55,7 @@ public:
 private:
   template <typename Policy>
   auto build_edges(const tf::segments<Policy> &segments,
-                   tf::segment_intersections<Index, RealT, Dims> &si) {
+                   tf::intersections_within_segments<Index, RealT, Dims> &si) {
     tf::buffer<bool> used_points;
     used_points.allocate(segments.points().size());
     tf::parallel_fill(used_points, true);
@@ -138,9 +138,10 @@ private:
   }
 
   template <typename Policy>
-  auto handle_points(const tf::buffer<bool> &used_points,
-                     const tf::segments<Policy> &segments,
-                     tf::segment_intersections<Index, RealT, Dims> &si) {
+  auto
+  handle_points(const tf::buffer<bool> &used_points,
+                const tf::segments<Policy> &segments,
+                tf::intersections_within_segments<Index, RealT, Dims> &si) {
     tf::buffer<Index> pt_map;
     pt_map.allocate(segments.points().size());
     auto n_pts = tf::mask_to_map(used_points, pt_map);

@@ -14,13 +14,13 @@
 #include "../spatial/search_self.hpp"
 #include "../spatial/tree.hpp"
 #include "../topology/policy/edge_membership.hpp"
-#include "./compute_simplification_mask.hpp"
-#include "./duplicate_intersection.hpp"
+#include "./detail/compute_simplification_mask.hpp"
+#include "./detail/duplicate_intersection.hpp"
 #include "./generate/segment_segment.hpp"
 
 namespace tf {
 template <typename Index, typename RealT, std::size_t Dims>
-class segment_intersections {
+class intersections_within_segments {
 public:
   template <typename Policy, typename RealT2>
   auto build(const tf::segments<Policy> &segments,

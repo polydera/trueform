@@ -39,10 +39,12 @@ auto poly = enriched_triangles.front();
 Geometric queries work on enriched primitives:
 
 ```c++
+auto pts = enriched_triangles.points();
 auto seg= tf::make_segment_between_points(pts.front(), pts.back());
 auto [distance2, pt0, pt1] = tf::closest_metric_point_pair(poly, seg);
 auto d2 = tf::distance2(poly, seg);
-bool hit = tf::intersects(poly, seg);
+bool does_intersect = tf::intersects(poly, seg);
+bool does_contain = tf::contains_point(poly, seg[0]);
 auto [status, t, hit_pt] = tf::ray_hit(
     tf::make_ray_between_points(pts[2], pts[0]),
     triangles.front());
@@ -300,7 +302,7 @@ See how it compares with `VTK` (on *Intel i7-9750H*):
 
 Detect all intersections between two polygonal `forms` — transformed or static:
 ```c++
-tf::polygons_intersections<int, double, 3> fi;
+tf::intersections_between_polygons<int, double, 3> fi;
 fi.build(form0 | tf::tag(face_membership0) | tf::tag(manifold_edge_link0),  
          form1 | tf::tag(face_membership1) | tf::tag(manifold_edge_link1));
 auto edges = tf::make_intersection_edges(fi);

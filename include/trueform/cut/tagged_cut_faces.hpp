@@ -4,26 +4,35 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "../../core/views/drop.hpp"
-#include "../../core/views/take.hpp"
-#include "../../intersect/tagged_intersections.hpp"
-#include "./descriptor.hpp"
-#include "./intersection_loops.hpp"
+#include "../core/views/drop.hpp"
+#include "../core/views/take.hpp"
+#include "../intersect/types/tagged_intersections.hpp"
+#include "./loop/cut_faces.hpp"
+#include "./loop/descriptor.hpp"
 
-#include "../../topology/face_membership.hpp"
-#include "../../topology/structures/compute_face_link_per_edge.hpp"
-namespace tf::loop {
+#include "../topology/face_membership.hpp"
+#include "../topology/structures/compute_face_link_per_edge.hpp"
+namespace tf {
 template <typename Index, typename RealT>
-class tagged_intersection_loops
-    : public intersection_loops<Index, descriptor<Index>> {
-  using base_t = intersection_loops<Index, descriptor<Index>>;
+class tagged_cut_faces
+    : public loop::cut_faces<Index, loop::descriptor<Index>> {
+  using base_t = loop::cut_faces<Index, loop::descriptor<Index>>;
 
 public:
   template <typename Policy0, typename Policy1, std::size_t Dims>
-  auto build(const tf::polygons<Policy0> &polygons0,
-             const tf::polygons<Policy1> &polygons1,
-             const tf::tagged_intersections<Index, RealT, Dims> &tgs) {
+  auto
+  build(const tf::polygons<Policy0> &_polygons0,
+        const tf::polygons<Policy1> &_polygons1,
+        const tf::intersect::tagged_intersections<Index, RealT, Dims> &tgs) {
     clear();
+    auto make_polygons = [](const auto &polygons) {
+      return tf::wrap_map(polygons, [](auto &&x) {
+        return tf::core::make_polygons(x.faces(),
+                                       x.points().template as<RealT>());
+      });
+    };
+    const auto &polygons0 = make_polygons(_polygons0);
+    const auto &polygons1 = make_polygons(_polygons1);
     _own_map.reserve(tgs.intersections().size() * 3);
     _map_offset = tgs.intersection_points().size();
     auto apply_f = [&](auto intersection, const auto &f) {
@@ -78,8 +87,8 @@ public:
   }
 
 private:
-  auto handle_id(descriptor<Index> d, tf::loop::vertex<Index> v) {
-    if (v.source() == vertex_source::created)
+  auto handle_id(loop::descriptor<Index> d, tf::loop::vertex<Index> v) {
+    if (v.source() == loop::vertex_source::created)
       return std::make_pair(false, v.id);
     else {
       auto key = std::array<Index, 2>{d.tag, v.id};
@@ -98,4 +107,4 @@ private:
   Index _partition_id;
   tf::hash_map<std::array<Index, 2>, Index, tf::array_hash<Index, 2>> _own_map;
 };
-} // namespace tf::loop
+} // namespace tf

@@ -23,6 +23,16 @@ public:
   auto build(const Range0 &loop, const tf::faces<Policy0> &holes,
              const tf::points<Policy1> &points) {
     clear();
+    /*std::cout << "hole patcher:" << std::endl;*/
+    /*for(auto e:loop)*/
+    /*  std::cout << e << ", ";*/
+    /*std::cout << std::endl;*/
+    /*for(auto loop:holes) {*/
+    /*  std::cout << "  ";*/
+    /*for(auto e:loop)*/
+    /*  std::cout << e << ", ";*/
+    /*std::cout << std::endl;*/
+    /*}*/
     patch_holes(loop, holes, points);
     fill_buffer();
   }

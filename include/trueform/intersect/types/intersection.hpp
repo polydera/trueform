@@ -33,4 +33,11 @@ template <typename Index> struct intersection {
                            i1.target_other, i1.id);
   }
 };
+template <typename Index>
+auto make_canonical_intersection(Index object, Index object_other,
+                                 intersection_target<Index> target,
+                                 intersection_target<Index> target_other,
+                                 Index id) {
+  return intersection<Index>{object, object_other, target, target_other, id};
+}
 } // namespace tf::intersect

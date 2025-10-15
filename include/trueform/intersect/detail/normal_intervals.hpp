@@ -5,10 +5,10 @@
  */
 #pragma once
 
-#include "../core/intersects.hpp"
-#include "../core/interval.hpp"
-#include "../core/policy/normal.hpp"
-#include "../core/polygon.hpp"
+#include "../../core/intersects.hpp"
+#include "../../core/interval.hpp"
+#include "../../core/policy/normal.hpp"
+#include "../../core/polygon.hpp"
 
 namespace tf::intersect {
 template <std::size_t Dims, typename Policy0, typename Policy1>

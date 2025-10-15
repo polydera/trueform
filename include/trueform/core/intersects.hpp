@@ -137,7 +137,7 @@ auto intersects(const aabb_like<N, Policy> &box, const point_like<N, T1> &point,
 template <std::size_t N, typename T0, typename T1>
 auto intersects(const point_like<N, T0> &v0, const point_like<N, T1> &v1,
                 tf::coordinate_type<T0, T1> epsilon) -> bool {
-  return (v0 - v1).length2() < epsilon * epsilon;
+  return (v0 - v1).length2() < epsilon;
 }
 /// @ingroup geometry
 /// @brief Check whether two geometric primitives intersect.
@@ -411,17 +411,24 @@ auto intersects(const tf::segment<2, T0> &s0, const tf::segment<2, T1> &s1)
   const auto &c = s1[0];
   const auto &d = s1[1];
 
-  // Use orientation tests
-  auto s1_ac = classify(a, tf::make_segment_between_points(c, d));
-  auto s1_bc = classify(b, tf::make_segment_between_points(c, d));
-  auto s0_cd = classify(c, tf::make_segment_between_points(a, b));
-  auto s0_dd = classify(d, tf::make_segment_between_points(a, b));
+  const auto cd = tf::make_segment_between_points(c, d);
+  const auto ab = tf::make_segment_between_points(a, b);
 
-  // Check for proper straddling (sign change)
-  const bool straddle1 = s1_ac != s1_bc && s1_ac != sidedness::on_boundary &&
-                         s1_bc != sidedness::on_boundary;
-  const bool straddle2 = s0_cd != s0_dd && s0_cd != sidedness::on_boundary &&
-                         s0_dd != sidedness::on_boundary;
+  const auto s_ac = classify(a, cd);
+  const auto s_bc = classify(b, cd);
+  const auto s_ca = classify(c, ab);
+  const auto s_da = classify(d, ab);
+
+  if (s_ac == sidedness::on_boundary || s_bc == sidedness::on_boundary ||
+      s_ca == sidedness::on_boundary || s_da == sidedness::on_boundary) {
+    return true;
+  }
+
+  const bool straddle1 = (s_ac != s_bc) && s_ac != sidedness::on_boundary &&
+                         s_bc != sidedness::on_boundary;
+
+  const bool straddle2 = (s_ca != s_da) && s_ca != sidedness::on_boundary &&
+                         s_da != sidedness::on_boundary;
 
   return straddle1 && straddle2;
 }

@@ -5,9 +5,9 @@
  */
 #pragma once
 #include "../../core/buffer.hpp"
-#include "../intersection_id.hpp"
 #include "../polygon/vertex_edge.hpp"
-#include "../tagged_intersection.hpp"
+#include "../types/intersection_id.hpp"
+#include "../types/tagged_intersection.hpp"
 
 namespace tf::intersect::generate {
 

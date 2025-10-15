@@ -10,7 +10,7 @@
 #include "./vertex.hpp"
 
 namespace tf::loop {
-template <typename Index, typename ObjectKey> class intersection_loops {
+template <typename Index, typename ObjectKey> class cut_faces {
 public:
   auto loops() const {
     return tf::make_offset_block_range(_loop_offsets, _loop_vertices);
@@ -74,6 +74,8 @@ protected:
     auto aggregate_f = [&](const auto &local_result, auto &result) {
       const auto &[l_object_keys, l_loop_vertices, l_loop_offsets, _] =
           local_result;
+      if(l_object_keys.size() == 0)
+        return;
       (void)_; // suppress unused warning
       auto &[object_keys, loop_vertices, loop_offsets, vertices] = result;
       //

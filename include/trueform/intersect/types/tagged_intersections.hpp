@@ -4,15 +4,15 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "../core/algorithm/compute_offsets.hpp"
-#include "../core/buffer.hpp"
-#include "../core/point.hpp"
-#include "../core/views/indirect_range.hpp"
-#include "../core/views/offset_block_range.hpp"
+#include "../../core/algorithm/compute_offsets.hpp"
+#include "../../core/buffer.hpp"
+#include "../../core/point.hpp"
+#include "../../core/views/indirect_range.hpp"
+#include "../../core/views/offset_block_range.hpp"
 #include "./tagged_intersection.hpp"
 #include "tbb/parallel_sort.h"
 
-namespace tf {
+namespace tf::intersect {
 
 template <typename Index, typename RealType, std::size_t Dims>
 class tagged_intersections {

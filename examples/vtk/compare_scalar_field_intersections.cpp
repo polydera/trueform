@@ -42,11 +42,8 @@ auto run_test(vtkPolyData *poly, int n_contours, tf::plane<float, 3> plane) {
   dummy += stripper->GetOutput()->GetNumberOfLines();
   //
   tf::tick();
-  tf::scalar_field_intersections<int, float, 3> sfi;
-  sfi.build_many(polygons, scalars, cut_values);
-  auto paths = tf::make_intersection_paths(sfi, polygons, scalars,
-                                           tf::make_range(cut_values));
-  auto curves = tf::make_curves(paths, sfi.intersection_points());
+  auto curves = tf::make_isocontours(polygons, tf::make_range(scalars),
+                                     tf::make_range(cut_values));
   float t_tf = tf::tock();
   dummy += curves.paths().size();
   //

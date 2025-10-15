@@ -4,7 +4,7 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "../topology/topo_type.hpp"
+#include "../../topology/topo_type.hpp"
 #include <utility>
 namespace tf::intersect {
 

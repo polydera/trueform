@@ -89,8 +89,8 @@ This example provides a direct comparison with `CGAL` for computing the intersec
 
 #### Features Showcased
 
-* Using `tf::polygons_intersections` to compute intersections between two `tf::form`s.
-* Using `tf::make_intersection_edges` to extract intersection edges from `tf::polygons_intersections`
+* Using `tf::intersections_between_polygons` to compute intersections between two `tf::form`s.
+* Using `tf::make_intersection_edges` to extract intersection edges from `tf::intersections_between_polygons`
 * Using `tf::face_membership` and how to `tf::tag` it to a `tf::form` 
 * Using `tf::manifold_edge_link` and how to `tf::tag` it to a `tf::form` 
 * Using `points.as<double>()` to get a view into points where each point is cast to `tf::point<double,3>`
@@ -127,8 +127,8 @@ This example provides a direct comparison with `VTK` for computing the intersect
 
 #### Features Showcased
 
-* Using `tf::polygons_intersections` to compute intersections between two `tf::form`s.
-* Using `tf::make_intersection_edges` to extract intersection edges from `tf::polygons_intersections`
+* Using `tf::intersections_between_polygons` to compute intersections between two `tf::form`s.
+* Using `tf::make_intersection_edges` to extract intersection edges from `tf::intersections_between_polygons`
 * Using `tf::face_membership` and how to `tf::tag` it to a `tf::form` 
 * Using `tf::manifold_edge_link` and how to `tf::tag` it to a `tf::form` 
 * Using `points.as<double>()` to get a view into points where each point is cast to `tf::point<double,3>`
@@ -173,8 +173,8 @@ This example showcases how to compute intersection curves between two meshes (as
 
 #### Features Showcased
 
-* Using `tf::polygons_intersections` to compute intersections between two `tf::form`s.
-* Using `tf::make_intersection_edges` to extract intersection edges from `tf::polygons_intersections`
+* Using `tf::intersections_between_polygons` to compute intersections between two `tf::form`s.
+* Using `tf::make_intersection_edges` to extract intersection edges from `tf::intersections_between_polygons`
 * Using `tf::face_membership` and how to `tf::tag` it to a `tf::form` 
 * Using `tf::manifold_edge_link` and how to `tf::tag` it to a `tf::form` 
 * Using `points.as<double>()` to get a view into points where each point is cast to `tf::point<double,3>`

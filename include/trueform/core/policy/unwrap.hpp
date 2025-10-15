@@ -28,6 +28,15 @@ template <typename T> auto unwrapped(T &&t) -> decltype(auto) {
     return unwrapped(unwrap_);
 }
 
+template <typename T, typename F> auto wrap_map(T &&t, const F& map) -> decltype(auto) {
+  auto &&unwrap_ = unwrap(static_cast<T &&>(t));
+  if constexpr (std::is_same_v<std::decay_t<T>,
+                               std::decay_t<decltype(unwrap_)>>)
+    return map(static_cast<T&&>(t));
+  else
+    return wrap_like(t, wrap_map(unwrap_, map));
+}
+
 namespace policy {
 struct plain_op {};
 template <typename T> auto operator|(T &&t, plain_op) -> decltype(auto) {
