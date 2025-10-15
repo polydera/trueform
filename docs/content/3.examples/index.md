@@ -5,14 +5,13 @@ description: Core functionality, comparisons, and VTK integration.
 
 The examples are grouped into three categories. Build them with CMake and explore practical programs and benchmarks.
 
-:::callout{icon=i-lucide-terminal}
 ```bash [Terminal]
 mkdir build
 cd build
 cmake ..
 make examples -j8
 ```
-:::
+
 
 ## Core Functionality
 
