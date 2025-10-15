@@ -40,34 +40,7 @@ Real-time [geometric processing]{.text-primary} for C++.
   :::
 
 #default
-  :::prose-pre
-  ---
-  code: |
-    // Minimal, expressive primitives
-    std::vector<float> raw_points = { 0, 0, 0, 1, 0, 0, 0, 1, 0 };
-    std::vector<int> triangle_indices = { 0, 1, 2 };
-    auto pts = tf::make_points<3>(raw_points);
-    auto triangles = tf::make_polygons(tf::make_blocked_range<3>(triangle_indices), pts);
-
-    // Build a spatial tree and query
-    tf::tree<int, float, 3> tree(triangles, tf::config_tree(4, 4));
-    auto query_pt = tf::random_point<float, 3>();
-    auto nearest = tf::neighbor_search(tf::make_form(tree, triangles), query_pt);
-  filename: example.cpp
-  ---
-
-  ```cpp [example.cpp]
-  // Minimal, expressive primitives
-  std::vector<float> raw_points = { 0, 0, 0, 1, 0, 0, 0, 1, 0 };
-  std::vector<int> triangle_indices = { 0, 1, 2 };
-  auto pts = tf::make_points<3>(raw_points);
-  auto triangles = tf::make_polygons(tf::make_blocked_range<3>(triangle_indices), pts);
-
-  // Build a spatial tree and query
-  tf::tree<int, float, 3> tree(triangles, tf::config_tree(4, 4));
-  auto query_pt = tf::random_point<float, 3>();
-  auto nearest = tf::neighbor_search(tf::make_form(tree, triangles), query_pt);
-  ```
+  ::chart-carousel
   :::
 ::
 
