@@ -282,13 +282,7 @@ See how it compares with `CGAL` (on *Intel i7-9750H*):
 Slice polygonal geometry using a scalar field (e.g., height, temperature, distance). Outputs interpolated intersection points:
 
 ```c++
-tf::scalar_field_intersections<int, float, 3> sfi;
-sfi.build(polygons, scalar_field, cut_value);
-// or for multiple Contours (range needs to be sorted)
-sfi.build_many(polygons, scalar_field, range_of_cut_values);
-auto edges = tf::make_intersection_edges(sfi);
-auto paths = tf::connect_edges_to_paths(tf::make_edges(edges));
-auto curves = tf::make_curves(paths, sfi.intersection_points());
+auto curves = tf::make_isocurves(polygons, scalar_field, range_of_cut_values);
 ```
 
 See how it compares with `VTK` (on *Intel i7-9750H*):
@@ -302,12 +296,9 @@ See how it compares with `VTK` (on *Intel i7-9750H*):
 
 Detect all intersections between two polygonal `forms` — transformed or static:
 ```c++
-tf::intersections_between_polygons<int, double, 3> fi;
-fi.build(form0 | tf::tag(face_membership0) | tf::tag(manifold_edge_link0),  
-         form1 | tf::tag(face_membership1) | tf::tag(manifold_edge_link1));
-auto edges = tf::make_intersection_edges(fi);
-auto paths = tf::connect_edges_to_paths(tf::make_edges(edges));
-auto curves = tf::make_curves(paths, fi.intersection_points());
+auto curves = tf::make_intersection_curves(
+                form0 | tf::tag(face_membership0) | tf::tag(manifold_edge_link0),  
+                form1 | tf::tag(face_membership1) | tf::tag(manifold_edge_link1));
 ```
 
 See how it compares with `VTK` and `CGAL` when continuously computing the intersection curve between two moving meshes (on *Intel i7-9750H*):
