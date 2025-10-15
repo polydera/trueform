@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 545.53 545.87">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #3eae2b;
+      }
+
+      .cls-1, .cls-2, .cls-3, .cls-4 {
+        stroke-width: 0px;
+      }
+
+      .cls-2 {
+        fill: #0068c7;
+      }
+
+      .cls-3 {
+        fill: #f32735;
+      }
+
+      .cls-4 {
+        fill: #dce3ec;
+      }
+    </style>
+  </defs>
+  <g id="red_right" data-name="red right">
+    <polygon class="cls-3" points="545.53 533.66 281.78 8.92 320.88 443.12 545.53 533.66"/>
+  </g>
+  <g id="green_bottom" data-name="green bottom">
+    <polygon class="cls-1" points="524.85 545.87 169.87 402.85 1.47 545.87 524.85 545.87"/>
+  </g>
+  <g id="blue_left" data-name="blue left">
+    <polygon class="cls-2" points="262.72 0 0 522.35 287.75 277.81 262.72 0"/>
+  </g>
+  <g id="gray_center" data-name="gray center">
+    <polygon class="cls-4" points="290.92 299.25 185.74 388.49 303.03 435.65 290.92 299.25"/>
+  </g>
+</svg>

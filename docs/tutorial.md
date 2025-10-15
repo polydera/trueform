@@ -28,8 +28,8 @@ for (auto [primitive_id, metric_point] : knn) {
 ```
 
 <p float="left">
-  <img src="./img/nano-build.png" width="49%" />
-  <img src="./img/nano-knn.png" width="49%" />
+  <img src="./public/img/nano-build.png" width="49%" />
+  <img src="./public/img/nano-knn.png" width="49%" />
 </p>
 
 or replace your use of `CGAL` for *mesh-intersection* queries with an equally minimal call — and significantly faster execution:
@@ -46,8 +46,8 @@ tf::gather_ids(
     tf::intersects_f, std::back_inserter(intersecting_primitives));
 ```
 <p float="left">
-  <img src="./img/cgal-build.png" width="49%" />
-  <img src="./img/cgal_speedup.png" width="49%" />
+  <img src="./public/img/cgal-build.png" width="49%" />
+  <img src="./public/img/cgal_speedup.png" width="49%" />
 </p>
 
 This reflects `trueform`’s design principles: it’s meant to feel like composing ranges and lambdas — inline, expressive, and non-invasive. 
