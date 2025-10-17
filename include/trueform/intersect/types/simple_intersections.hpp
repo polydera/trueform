@@ -44,6 +44,8 @@ public:
                           _points.begin() + _vertex_points_offset);
   }
 
+  auto flat_intersections() const { return tf::make_range(_intersections); }
+
   auto get_flat_index(const intersect::simple_intersection<Index> &i) const
       -> Index {
     return i - _intersections.begin();

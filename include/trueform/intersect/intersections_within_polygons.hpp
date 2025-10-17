@@ -80,6 +80,8 @@ public:
     _intersection_points.clear();
   }
 
+  auto flat_intersections() const { return tf::make_range(_intersections); }
+
   auto get_flat_index(const intersect::intersection<Index> &i) const -> Index {
     return &i - _intersections.begin();
   }

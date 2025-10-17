@@ -10,16 +10,15 @@
 #include "./loop/cut_faces.hpp"
 #include "./loop/descriptor.hpp"
 
-#include "../topology/face_membership.hpp"
-#include "../topology/structures/compute_face_link_per_edge.hpp"
 namespace tf {
-template <typename Index, typename RealT>
+template <typename Index>
 class tagged_cut_faces
     : public loop::cut_faces<Index, loop::descriptor<Index>> {
   using base_t = loop::cut_faces<Index, loop::descriptor<Index>>;
 
 public:
-  template <typename Policy0, typename Policy1, std::size_t Dims>
+  template <typename Policy0, typename Policy1, typename RealT,
+            std::size_t Dims>
   auto
   build(const tf::polygons<Policy0> &_polygons0,
         const tf::polygons<Policy1> &_polygons1,
@@ -53,10 +52,6 @@ public:
             base_t::descriptors().begin(), base_t::descriptors().end(), 0,
             [](const auto &value, const auto &r1) { return value < r1.tag; }) -
         base_t::descriptors().begin();
-
-    _fm.build(tf::make_faces(base_t::loops()), base_t::_vertices.size(),
-              base_t::_loop_vertices.size());
-    tf::topology::compute_face_link_per_edge(base_t::loops(), _fm, _ob);
   }
 
   auto clear() {
@@ -64,6 +59,16 @@ public:
     _partition_id = 0;
     _own_map.clear();
     base_t::clear();
+  }
+
+  auto partition_id() const { return _partition_id; }
+
+  auto connectivity_per_face_edge0() const {
+    return tf::take(base_t::connectivity_per_face_edge(), _partition_id);
+  }
+
+  auto connectivity_per_face_edge1() const {
+    return tf::drop(base_t::connectivity_per_face_edge(), _partition_id);
   }
 
   auto descriptors0() const {
@@ -88,7 +93,7 @@ public:
 
 private:
   auto handle_id(loop::descriptor<Index> d, tf::loop::vertex<Index> v) {
-    if (v.source() == loop::vertex_source::created)
+    if (v.source == loop::vertex_source::created)
       return std::make_pair(false, v.id);
     else {
       auto key = std::array<Index, 2>{d.tag, v.id};
@@ -101,8 +106,6 @@ private:
     }
   }
 
-  tf::offset_block_buffer<Index, Index> _ob;
-  tf::face_membership<Index> _fm;
   Index _map_offset;
   Index _partition_id;
   tf::hash_map<std::array<Index, 2>, Index, tf::array_hash<Index, 2>> _own_map;

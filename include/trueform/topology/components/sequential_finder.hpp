@@ -28,7 +28,10 @@ public:
         if (labels[next] != -1)
           continue;
         labels[next] = label;
-        applier(next, [&](Index id) { _stack.push_back(id); });
+        applier(next, [&](Index id) {
+          if (mask[id])
+            _stack.push_back(id);
+        });
       }
       label++;
     }

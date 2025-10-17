@@ -7,8 +7,10 @@
 #include "../../core/algorithm/compute_offsets.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/point.hpp"
+#include "../../core/views/drop.hpp"
 #include "../../core/views/indirect_range.hpp"
 #include "../../core/views/offset_block_range.hpp"
+#include "../../core/views/take.hpp"
 #include "./tagged_intersection.hpp"
 #include "tbb/parallel_sort.h"
 
@@ -22,20 +24,19 @@ public:
   }
 
   auto intersections0() const {
-    return tf::make_offset_block_range(
-        tf::make_range(_intersections_offsets.begin(), _partition_id),
-        _intersections);
+    return tf::take(intersections(), _partition_id);
   }
 
   auto intersections1() const {
-    return tf::make_offset_block_range(
-        tf::make_range(_intersections_offsets.begin() + _partition_id,
-                       _intersections_offsets.end()),
-        _intersections);
+    return tf::drop(intersections(), _partition_id);
   }
 
   auto intersection_points() const {
     return tf::make_range(_intersection_points);
+  }
+
+  auto flat_intersections() const {
+    return tf::make_range(_intersections);
   }
 
   auto clear() {
@@ -77,4 +78,4 @@ protected:
   tf::buffer<Index> _intersections_offsets;
   tf::buffer<tf::point<RealType, Dims>> _intersection_points;
 };
-} // namespace tf
+} // namespace tf::intersect

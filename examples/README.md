@@ -104,6 +104,14 @@ This example provides a direct comparison with `CGAL` for computing [planar arra
 * Using `tf::planar_arrangments` to extract oriented faces and hole relations.
 * Using `tf::make_edges` and `tf::make_points` to impart semantic meaning onto ranges
 
+### [CGAL: Connected Components](./cgal/connected_components.cpp)
+
+This example provides a direct comparison with `CGAL` for computing connected components fo a mesh.
+
+#### Features Showcased
+
+* Using `tf::label_connected_components`
+
 ### [VTK: Feature Edges](./vtk/feature_edges.cpp)
 
 This example provides direct performance benchmark for collecting boundary and non_manifold edges.

@@ -27,7 +27,9 @@ public:
     auto n_components = run_propagation(mask, applier);
     tf::parallel_apply(tf::zip(_work_labels, labels), [&](auto pair) {
       auto &&[wl, l] = pair;
-      l = _label_map[wl.load(std::memory_order_relaxed)];
+      auto wll = wl.load(std::memory_order_relaxed);
+      if (wll != -1)
+        l = _label_map[wll];
     });
     return n_components;
   }
@@ -43,12 +45,15 @@ public:
   }
 
 private:
-  template <typename F>
-  auto propagate_label(tf::buffer<Index> &stack,
+  template <typename Range, typename F>
+  auto propagate_label(const Range &mask, tf::buffer<Index> &stack,
                        tf::hash_set<label_t> &collisions, label_t label,
                        F applier) {
     Index count = 0;
-    auto pusher = [&stack](Index id) { stack.push_back(id); };
+    auto pusher = [&stack, &mask](Index id) {
+      if (mask[id])
+        stack.push_back(id);
+    };
     while (stack.size()) {
       Index current = stack.back();
       stack.pop_back();
@@ -94,7 +99,8 @@ private:
           collisions.clear();
           auto label = current_label++;
           stack.push_back(i);
-          auto processed = propagate_label(stack, collisions, label, applier);
+          auto processed =
+              propagate_label(mask, stack, collisions, label, applier);
           if (processed) {
             if (!collisions.size())
               merge_labels.push_back({label, label});

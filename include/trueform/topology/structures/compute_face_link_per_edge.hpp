@@ -45,7 +45,7 @@ auto compute_face_link_per_edge(const Range &faces,
     auto &[offsets, ids] = pair;
     for (const auto &[face_id, face] : r) {
       Index size = face.size();
-      for (Index next = 1; next < size - 1; ++next) {
+      for (Index next = 1; next < size; ++next) {
         offsets.push_back(ids.size());
         tf::face_edge_neighbors(blink, faces, Index(face_id), Index(face[next - 1]),
                                 Index(face[next]), std::back_inserter(ids));

@@ -9,6 +9,7 @@
 #include "./topology/boundary_paths.hpp"             // IWYU pragma: export
 #include "./topology/components/finder.hpp"          // IWYU pragma: export
 #include "./topology/connect_edges_to_paths.hpp"     // IWYU pragma: export
+#include "./topology/connected_component_labels.hpp" // IWYU pragma: export
 #include "./topology/directed_edge_id_in_face.hpp"   // IWYU pragma: export
 #include "./topology/directed_edge_link.hpp"         // IWYU pragma: export
 #include "./topology/edge_id_in_face.hpp"            // IWYU pragma: export
@@ -30,4 +31,5 @@
 #include "./topology/policy.hpp"                     // IWYU pragma: export
 #include "./topology/scoped_face_membership.hpp"     // IWYU pragma: export
 #include "./topology/scoped_id.hpp"                  // IWYU pragma: export
+#include "./topology/vertex_id_in_face.hpp"          // IWYU pragma: export
 #include "./topology/vertex_link.hpp"                // IWYU pragma: export

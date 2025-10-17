@@ -12,14 +12,11 @@ template <typename Index> struct vertex {
   static constexpr Index original_tag = -1;
   Index id;
   Index intersection_index;
-
-  auto source() const {
-    return static_cast<vertex_source>(intersection_index != original_tag);
-  }
+  vertex_source source;
 
   friend auto operator==(const vertex &v0, const vertex &v1) -> bool {
-    return std::make_pair(v0.source(), v0.id) ==
-           std::make_pair(v1.source(), v1.id);
+    return std::make_pair(v0.source, v0.id) ==
+           std::make_pair(v1.source, v1.id);
   }
 
   friend auto operator!=(const vertex &v0, const vertex &v1) -> bool {
@@ -27,8 +24,8 @@ template <typename Index> struct vertex {
   }
 
   friend auto operator<(const vertex &v0, const vertex &v1) -> bool {
-    return std::make_pair(v0.source(), v0.id) <
-           std::make_pair(v1.source(), v1.id);
+    return std::make_pair(v0.source, v0.id) <
+           std::make_pair(v1.source, v1.id);
   }
 };
 } // namespace tf::loop

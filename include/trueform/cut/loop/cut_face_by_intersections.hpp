@@ -89,7 +89,7 @@ private:
 
   struct hash_t {
     auto operator()(const loop::vertex<Index> &v) const {
-      return hash(std::array<Index, 2>{Index(v.source()), Index(v.id)});
+      return hash(std::array<Index, 2>{Index(v.source), Index(v.id)});
     }
     tf::array_hash<Index, 2> hash;
   };
