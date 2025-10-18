@@ -1,6 +1,8 @@
 ---
 title: Publications
 description: Research behind trueform’s spatial hierarchy and mesh booleans.
+navigation:
+  icon: i-lucide-book
 ---
 
 ## Papers

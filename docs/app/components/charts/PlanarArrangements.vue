@@ -51,7 +51,7 @@ const annotations = computed(() => [
     },
     subject: {
       x: "100%",
-      y: "99%",
+      y: "99.4%",
       connectorLineStrokeDasharray: "2 2",
       radius: 3,
     },
@@ -61,31 +61,29 @@ const annotations = computed(() => [
 ]);
 </script>
 <template>
-  <UContainer>
-    <div class="w-full unovis my-5 flex flex-col gap-2.5 items-center justify-center">
-      <h2 class="text-xl font-medium text-center">
-        Planar Arrangements:<br />
-        Comparison of <span class="text-primary font-bold">trueform</span> vs CGAL
-      </h2>
-      <div class="flex gap-4 items-center justify-center">
-        <div class="flex gap-1.5 items-center">
-          <div class="size-3 bg-primary rounded"></div>
-          <NuxtImg src="/tf.png" class="h-4 w-auto shrink-0" />
-        </div>
-        <div class="flex gap-1.5 items-center">
-          <div class="size-3 bg-[#fdff4e] rounded"></div>
-          <NuxtImg src="/img/cgal_logo.png" class="h-4 w-auto shrink-0" />
-        </div>
+  <div class="w-full unovis flex flex-col gap-2.5 items-center justify-center">
+    <h2 class="text-xl font-medium text-center">
+      Planar Arrangements:<br />
+      Comparison of <span class="text-primary font-bold">trueform</span> vs CGAL
+    </h2>
+    <div class="flex gap-4 items-center justify-center">
+      <div class="flex gap-1.5 items-center">
+        <div class="size-3 bg-primary rounded"></div>
+        <NuxtImg src="/tf.png" class="h-4 w-auto shrink-0" />
       </div>
-      <VisXYContainer :data="dataS" :x-domain="[0, 40000]">
-        <VisLine :x="x" :y="y" :color="color" :duration="1200" />
-        <VisTooltip />
-        <VisAxis type="x" label="Number of Edges in the Arrangement" />
-        <VisAxis type="y" label="Time [ms]" />
-        <VisCrosshair :template="template" :color="color" />
-        <!-- @vue-expect-error -->
-        <VisAnnotations :items="annotations" />
-      </VisXYContainer>
+      <div class="flex gap-1.5 items-center">
+        <div class="size-3 bg-[#fdff4e] rounded"></div>
+        <NuxtImg src="/img/cgal_logo.png" class="h-4 w-auto shrink-0" />
+      </div>
     </div>
-  </UContainer>
+    <VisXYContainer :data="dataS" :x-domain="[0, 40000]">
+      <VisLine :x="x" :y="y" :color="color" :duration="1200" />
+      <VisTooltip />
+      <VisAxis type="x" label="Number of Edges in the Arrangement" :tickFormat="(value: number) => numKM(value)" />
+      <VisAxis type="y" label="Time [ms]" />
+      <VisCrosshair :template="template" :color="color" />
+      <!-- @vue-expect-error -->
+      <VisAnnotations :items="annotations" />
+    </VisXYContainer>
+  </div>
 </template>

@@ -31,7 +31,7 @@ const triggers = {
 };
 </script>
 <template>
-  <div class="w-full unovis my-5 flex flex-col gap-2.5 items-center justify-center">
+  <div class="w-full unovis flex flex-col gap-2.5 items-center justify-center">
     <h2 class="text-xl font-medium text-center">
       Mesh-Mesh Intersection Curves:<br />
       Speed-up of <span class="text-primary font-bold">trueform</span> vs VTK and CGAL

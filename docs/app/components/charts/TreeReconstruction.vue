@@ -61,31 +61,29 @@ const annotations = computed(() => [
 ]);
 </script>
 <template>
-  <UContainer>
-    <div class="w-full unovis my-5 flex flex-col gap-2.5 items-center justify-center">
-      <h2 class="text-xl font-medium text-center">
-        Tree Reconstruction:<br />
-        Comparison of <code class="text-primary font-medium">tf::tree</code> vs nanoflann
-      </h2>
-      <div class="flex gap-4 items-center justify-center">
-        <div class="flex gap-1.5 items-center">
-          <div class="size-3 bg-primary rounded"></div>
-          <NuxtImg src="/tf.png" class="h-4 w-auto shrink-0" />
-        </div>
-        <div class="flex gap-1.5 items-center">
-          <div class="size-3 bg-[#a82d12] rounded"></div>
-          <NuxtImg src="/img/nanoflann_logo.png" class="h-4 w-auto shrink-0" />
-        </div>
+  <div class="w-full unovis flex flex-col gap-2.5 items-center justify-center">
+    <h2 class="text-xl font-medium text-center">
+      Tree Reconstruction:<br />
+      Comparison of <code class="text-primary font-medium">tf::tree</code> vs nanoflann
+    </h2>
+    <div class="flex gap-4 items-center justify-center">
+      <div class="flex gap-1.5 items-center">
+        <div class="size-3 bg-primary rounded"></div>
+        <NuxtImg src="/tf.png" class="h-4 w-auto shrink-0" />
       </div>
-      <VisXYContainer :data="dataS">
-        <VisLine :x="x" :y="y" :color="color" :duration="1200" />
-        <VisTooltip />
-        <VisAxis type="x" label="Number of Points" />
-        <VisAxis type="y" label="Time [ms]" />
-        <VisCrosshair :template="template" :color="color" />
-        <!-- @vue-expect-error -->
-        <VisAnnotations :items="annotations" />
-      </VisXYContainer>
+      <div class="flex gap-1.5 items-center">
+        <div class="size-3 bg-[#a82d12] rounded"></div>
+        <img src="/img/nanoflann_logo.png" class="h-4 w-auto shrink-0" alt="nanoflann logo" />
+      </div>
     </div>
-  </UContainer>
+    <VisXYContainer :data="dataS">
+      <VisLine :x="x" :y="y" :color="color" :duration="1200" />
+      <VisTooltip />
+      <VisAxis type="x" label="Number of Points" :tickFormat="(value: number) => numKM(value)" />
+      <VisAxis type="y" label="Time [ms]" />
+      <VisCrosshair :template="template" :color="color" />
+      <!-- @vue-expect-error -->
+      <VisAnnotations :items="annotations" />
+    </VisXYContainer>
+  </div>
 </template>
