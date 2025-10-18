@@ -76,7 +76,7 @@ public:
               form0.face_membership(), form0.manifold_edge_link(),
               form1.face_membership(), form1.manifold_edge_link(), buffer);
         });
-    collapse_points();
+    /*collapse_points();*/
     base_t::finalize(n_ids);
   }
 

@@ -23,6 +23,7 @@ public:
     tf::make_contiguous_index_hash_map(base_loop, _ihm, Index(0));
     tf::make_contiguous_index_hash_map(edges, _ihm,
                                        Index(_ihm.kept_ids().size()));
+
     _base_loop.reserve(base_loop.size());
     for (auto v : base_loop)
       _base_loop.push_back(_ihm.f()[v]);
@@ -34,6 +35,19 @@ public:
     _points.reserve(_ihm.kept_ids().size());
     for (auto v : _ihm.kept_ids())
       _points.push_back(get_point(v));
+    /*std::cout << "map" << std::endl;*/
+    /*for(auto [e, b]:_ihm.f()){*/
+    /*  std::cout << "(" << int(e.source) << ", " << e.id << ", "*/
+    /*              << e.intersection_index << "): " << b << std::endl;*/
+    /*} */
+    /**/
+    /*std::cout << "base_loop" << std::endl;*/
+    /*for(auto e:_base_loop)*/
+    /*  std::cout << e << ", ";*/
+    /*std::cout << std::endl;*/
+    /*std::cout << "edges" << std::endl;*/
+    /*for(auto [a, b]: tf::make_blocked_range<2>(_edges))*/
+    /*  std::cout << a << ", " << b << std::endl;*/
 
     _fs.build(_base_loop, tf::make_edges(tf::make_blocked_range<2>(_edges)),
               tf::make_points(_points));

@@ -80,6 +80,8 @@ protected:
 
     auto task_f = [&](const auto &r, auto &tup) {
       for (const auto &intersections : r) {
+        /*if(intersections.front().object != 500559)*/
+        /*  continue;*/
         apply_to_polygons(intersections.front(), [&](const auto &polygons) {
           auto &[object_keys, loop_vertices, loop_offsets, intersection_edges,
                  extractor] = tup;

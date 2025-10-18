@@ -11,7 +11,7 @@
 #include "../../topology/planar_graph_regions.hpp"
 #include "./splitting_paths.hpp"
 
-/*#include<iostream>*/
+/*#include <iostream>*/
 namespace tf::loop {
 template <typename Index, typename RealType> class face_split_by_edges {
 public:
@@ -37,7 +37,8 @@ public:
     /*    std::cout << e << ", ";*/
     /*  std::cout << std::endl;*/
     /*}*/
-    /*std::cout << faces().size() << " == " << holes().size() << " == " << holes_for_faces().size() << std::endl;*/
+    /*std::cout << faces().size() << " == " << holes().size() << " == " <<
+     * holes_for_faces().size() << std::endl;*/
     /*std::cout << "holes for faces" << std::endl;*/
     /*for (auto [v, f] : tf::zip(holes_for_faces(), faces())) {*/
     /*  std::cout << "face" << std::endl;*/
@@ -208,13 +209,34 @@ private:
 
   template <typename Policy>
   auto copy_from_planar_regions(const tf::points<Policy> &points) {
+
+    auto is_empty = [&](const auto &region) -> bool {
+      const int n = int(region.size());
+      if (n < 3)
+        return true;
+      if (region[1] != region[n - 1])
+        return false;
+
+      int i = 2;
+      int j = n - 1;
+
+      while (i < j && region[j] == region[i - 1] &&
+             region[j - 1] == region[i]) {
+        ++i;
+        --j;
+      }
+
+      const int remaining = j - (i - 1) + 1;
+      return remaining < 3;
+    };
+
     Index area_offset = _signed_areas.size();
     Index min_area_id = -1;
     RealType min_area = std::numeric_limits<RealType>::max();
     // first accumulate areas
     for (const auto &region : _pgr) {
       auto sa =
-          region.size() < 3
+          is_empty(region)
               ? RealType(0)
               : RealType(tf::signed_area(tf::make_polygon(region, points)));
       if (sa < 0 && sa < min_area) {
@@ -242,7 +264,14 @@ private:
   auto process_non_crossings(const tf::points<Policy> &points) {
     assign_base_loop_to_non_crossings(points);
     for (auto [i, base_loop] : tf::enumerate(base_loops())) {
+      /*std::cout << "base loop: " << i << "\n" << std::endl;*/
+      /*for(auto e:base_loop)*/
+      /*  std::cout << e << ", ";*/
+      /*std::cout << std::endl;*/
       if (fill_for_base_loop(i, base_loop)) {
+        /*std::cout << "  edges:" << std::endl;*/
+        /*for(auto [a, b]:tf::make_blocked_range<2>(_work_edges))*/
+        /*  std::cout << "    " << a << ", " << b << std::endl;*/
         _pgr.build(tf::make_edges(tf::make_blocked_range<2>(_work_edges)),
                    points);
         copy_from_planar_regions(points);
