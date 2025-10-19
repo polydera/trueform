@@ -4,6 +4,7 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
+#include "../core/epsilon.hpp"
 #include <algorithm>
 #include <iterator>
 #include <limits>
@@ -13,10 +14,10 @@ namespace tf {
 /// @brief Helper structure for k-nearest-neighbor (k-NN) queries in spatial
 /// trees.
 ///
-/// `tf::nearest_neighbors` maintains a sorted buffer of up to `k` nearest elements
-/// during spatial traversal. It is used internally by `tf::nearness_search`
-/// when the result is a ranked set of closest elements. The structure may be
-/// iterated over like a range.
+/// `tf::nearest_neighbors` maintains a sorted buffer of up to `k` nearest
+/// elements during spatial traversal. It is used internally by
+/// `tf::nearness_search` when the result is a ranked set of closest elements.
+/// The structure may be iterated over like a range.
 ///
 /// Users must supply a random-access iterator to a preallocated buffer of
 /// either:
@@ -62,7 +63,7 @@ public:
       *it = tree_metric_info_t{element, point};
       worst_metric = out[k - 1].metric();
     }
-    return count == k && metric() < std::numeric_limits<real_t>::epsilon();
+    return count == k && metric() < tf::epsilon2<real_t>;
   }
 
   /// @brief Return the current worst (farthest) distance among stored results.

@@ -6,6 +6,7 @@
 #pragma once
 #include "./containment.hpp"
 #include "./coordinate_type.hpp"
+#include "./epsilon.hpp"
 #include "./point_like.hpp"
 #include "./polygon.hpp"
 #include "./projector.hpp"
@@ -126,6 +127,7 @@ auto contains_coplanar_point(const tf::polygon<Dims, Policy> &poly,
                              const tf::projector<F> &projector,
                              tf::coordinate_type<T, Policy> epsilon)
     -> containment {
+  auto epsilon2 = epsilon * epsilon;
   static_assert(tf::static_size_v<decltype(projector(poly[0]))> == 2,
                 "We must project into 2D");
   using real_t = tf::coordinate_type<T, decltype(poly[0][0])>;
@@ -135,27 +137,24 @@ auto contains_coplanar_point(const tf::polygon<Dims, Policy> &poly,
   tf::point<real_t, 2> pt = projector(input_pt);
 
   auto check_edge = [&](const auto &a, const auto &b) {
-    // Check if point is on the edge (epsilon-based)
-
     auto ab = b - a;
     auto ap = pt - a;
-    auto bp = pt - b;
 
-    auto area = ab[0] * ap[1] - ab[1] * ap[0]; // Cross product
-    auto dot0 = ap[0] * bp[0];
-    auto dot1 = ap[1] * bp[1];
+    auto area = ab[0] * ap[1] - ab[1] * ap[0];
+    auto ab_len2 = ab[0] * ab[0] + ab[1] * ab[1];
 
-    if (std::abs(area) < epsilon && dot0 <= 0 && dot1 <= 0) {
-      return containment::on_boundary; // On edge → considered inside
+    if (ab_len2 > real_t(0) && area * area <= ab_len2 * epsilon2) {
+      auto dot_ap_ab = ap[0] * ab[0] + ap[1] * ab[1];
+      auto t = dot_ap_ab / ab_len2;
+      if (t >= -epsilon && t <= real_t(1) + epsilon)
+        return containment::on_boundary;
     }
 
-    auto dy = b[1] - a[1];
-
     if (a[1] <= pt[1]) {
-      if (b[1] > pt[1] && (ab[0] * ap[1] - ap[0] * dy) > 0)
+      if (b[1] > pt[1] && area > 0)
         ++winding_number;
     } else {
-      if (b[1] <= pt[1] && (ab[0] * ap[1] - ap[0] * dy) < 0)
+      if (b[1] <= pt[1] && area < 0)
         --winding_number;
     }
     return containment::outside;
@@ -191,7 +190,7 @@ auto contains_coplanar_point(const tf::polygon<2, Policy> &poly,
                              const point_like<2, T> &input_pt) -> bool {
   return tf::contains_coplanar_point(
       poly, input_pt, tf::make_identity_projector(),
-      std::numeric_limits<tf::coordinate_type<T, Policy>>::epsilon());
+      tf::epsilon<tf::coordinate_type<T, Policy>>);
 }
 
 /// @ingroup geometry
@@ -203,6 +202,6 @@ auto contains_coplanar_point(const tf::polygon<Dims, Policy> &poly,
                              const point_like<Dims, T> &input_pt) -> bool {
   return tf::contains_coplanar_point(
       poly, input_pt, tf::make_simple_projector(poly),
-      std::numeric_limits<tf::coordinate_type<T, Policy>>::epsilon());
+      tf::epsilon<tf::coordinate_type<T, Policy>>);
 }
 } // namespace tf

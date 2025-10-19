@@ -480,7 +480,7 @@ auto distance(const tf::polygon<Dims, Policy0> &poly_in0,
 template <std::size_t Dims, typename T0, typename T1>
 auto distance(const sphere_like<Dims, T0> &s, const point_like<Dims, T1> &pt) {
   auto d2 = (s.origin - pt).length2();
-  if (d2 + std::numeric_limits<decltype(d2)>::epsilon() < s.r * s.r)
+  if (d2 + tf::epsilon2<decltype(d2)> < s.r * s.r)
     return decltype(d2)(0);
   return tf::sqrt(d2) - s.r;
 }

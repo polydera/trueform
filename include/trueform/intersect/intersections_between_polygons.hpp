@@ -8,6 +8,7 @@
 #include "../core/algorithm/generic_generate.hpp"
 #include "../core/algorithm/mask_to_map.hpp"
 #include "../core/algorithm/parallel_copy.hpp"
+#include "../core/epsilon.hpp"
 #include "../core/local_buffer.hpp"
 #include "../core/views/zip.hpp"
 #include "../spatial/form.hpp"
@@ -76,15 +77,14 @@ public:
               form0.face_membership(), form0.manifold_edge_link(),
               form1.face_membership(), form1.manifold_edge_link(), buffer);
         });
-    /*collapse_points();*/
+    collapse_points();
     base_t::finalize(n_ids);
   }
 
 private:
   auto collapse_points() {
     auto im = tf::make_clean_index_map<Index>(
-        tf::make_points(base_t::_intersection_points),
-        std::numeric_limits<RealType>::epsilon());
+        tf::make_points(base_t::_intersection_points), tf::epsilon<RealType>);
     if (im.kept_ids().size() == base_t::_intersection_points.size())
       return;
     tf::buffer<tf::point<RealType, Dims>> points;

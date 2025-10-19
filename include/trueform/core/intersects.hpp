@@ -149,8 +149,7 @@ auto intersects(const point_like<N, T0> &v0, const point_like<N, T1> &v1,
 template <std::size_t N, typename T0, typename T1>
 auto intersects(const tf::point_like<N, T0> &v0,
                 const tf::point_like<N, T1> &v1) -> bool {
-  return (v0 - v1).length2() <
-         std::numeric_limits<tf::coordinate_type<T0, T1>>::epsilon();
+  return (v0 - v1).length2() < tf::epsilon2<tf::coordinate_type<T0, T1>>;
 }
 
 /// @ingroup geometry
@@ -166,7 +165,7 @@ auto intersects(const tf::line_like<Dims, Policy> &l,
   auto t = tf::closest_point_parametric(l, v1);
   auto pt = l.origin + t * l.direction;
   auto d2 = (pt - v1).length2();
-  return d2 < std::numeric_limits<decltype(d2)>::epsilon();
+  return d2 < tf::epsilon2<decltype(d2)>;
 }
 
 /// @ingroup geometry
@@ -195,7 +194,7 @@ auto intersects(const tf::ray_like<Dims, Policy> &r,
   auto t = tf::closest_point_parametric(r, v1);
   auto pt = r.origin + t * r.direction;
   auto d2 = (pt - v1).length2();
-  return d2 < std::numeric_limits<decltype(d2)>::epsilon();
+  return d2 < tf::epsilon2<decltype(d2)>;
 }
 
 /// @ingroup geometry
@@ -225,7 +224,7 @@ auto intersects(const tf::segment<Dims, T0> &s,
   auto l = tf::make_line_between_points(s[0], s[1]);
   auto pt = l.origin + t * l.direction;
   auto d2 = (pt - v1).length2();
-  return d2 < std::numeric_limits<decltype(d2)>::epsilon();
+  return d2 < tf::epsilon2<decltype(d2)>;
 }
 
 template <typename T0, typename T1>
@@ -265,7 +264,7 @@ auto intersects(const tf::line_like<Dims, Policy0> &l0,
   auto pt0 = l0.origin + t0 * l0.direction;
   auto pt1 = l1.origin + t1 * l1.direction;
   auto d2 = (pt0 - pt1).length2();
-  return d2 < std::numeric_limits<decltype(d2)>::epsilon();
+  return d2 < tf::epsilon2<decltype(d2)>;
 }
 
 /// @ingroup geometry
@@ -282,7 +281,7 @@ auto intersects(const tf::ray_like<Dims, Policy0> &r0,
   auto pt0 = r0.origin + t0 * r0.direction;
   auto pt1 = r1.origin + t1 * r1.direction;
   auto d2 = (pt0 - pt1).length2();
-  return d2 < std::numeric_limits<decltype(d2)>::epsilon();
+  return d2 < tf::epsilon2<decltype(d2)>;
 }
 
 /// @ingroup geometry
@@ -299,7 +298,7 @@ auto intersects(const tf::line_like<Dims, Policy0> &l0,
   auto pt0 = l0.origin + t0 * l0.direction;
   auto pt1 = r1.origin + t1 * r1.direction;
   auto d2 = (pt0 - pt1).length2();
-  return d2 < std::numeric_limits<decltype(d2)>::epsilon();
+  return d2 < tf::epsilon2<decltype(d2)>;
 }
 /// @ingroup geometry
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
@@ -324,7 +323,7 @@ auto intersects(const tf::ray_like<Dims, Policy> &r0,
   auto pt0 = r0.origin + t0 * r0.direction;
   auto pt1 = l1.origin + t1 * l1.direction;
   auto d2 = (pt0 - pt1).length2();
-  return d2 < std::numeric_limits<decltype(d2)>::epsilon();
+  return d2 < tf::epsilon2<decltype(d2)>;
 }
 
 /// @ingroup geometry
@@ -342,7 +341,7 @@ auto intersects(const tf::line_like<Dims, Policy> &l0,
   auto pt0 = l0.origin + t0 * l0.direction;
   auto pt1 = l1.origin + t1 * l1.direction;
   auto d2 = (pt0 - pt1).length2();
-  return d2 < std::numeric_limits<decltype(d2)>::epsilon();
+  return d2 < tf::epsilon2<decltype(d2)>;
 }
 
 /// @ingroup geometry
@@ -360,7 +359,7 @@ auto intersects(const tf::segment<Dims, T> &s0,
   auto pt0 = l0.origin + t0 * l0.direction;
   auto pt1 = l1.origin + t1 * l1.direction;
   auto d2 = (pt0 - pt1).length2();
-  return d2 < std::numeric_limits<decltype(d2)>::epsilon();
+  return d2 < tf::epsilon2<decltype(d2)>;
 }
 
 /// @ingroup geometry
@@ -378,7 +377,7 @@ auto intersects(const tf::segment<Dims, T> &s0,
   auto pt0 = l0.origin + t0 * l0.direction;
   auto pt1 = r1.origin + t1 * r1.direction;
   auto d2 = (pt0 - pt1).length2();
-  return d2 < std::numeric_limits<decltype(d2)>::epsilon();
+  return d2 < tf::epsilon2<decltype(d2)>;
 }
 
 /// @ingroup geometry
@@ -397,7 +396,7 @@ auto intersects(const tf::segment<Dims, T0> &s0,
   auto pt0 = l0.origin + t0 * l0.direction;
   auto pt1 = l1.origin + t1 * l1.direction;
   auto d2 = (pt0 - pt1).length2();
-  return d2 < std::numeric_limits<decltype(d2)>::epsilon();
+  return d2 < tf::epsilon2<decltype(d2)>;
 }
 
 template <typename T0, typename T1>
@@ -446,7 +445,7 @@ auto intersects(const tf::polygon<Dims, Policy0> &poly_in,
   const auto &poly = tf::tag_plane(poly_in);
   auto d = tf::dot(poly.plane().normal, pt) + poly.plane().d;
   auto c_pt = pt - d * poly.plane().normal;
-  return std::abs(d) < std::numeric_limits<decltype(d)>::epsilon() &&
+  return std::abs(d) < tf::epsilon<decltype(d)> &&
          tf::contains_coplanar_point(poly, c_pt);
 }
 
@@ -657,7 +656,7 @@ auto intersects(const tf::polygon<Dims, Policy0> &poly_in0,
   const auto &poly0 = tf::tag_plane(poly_in0);
   const auto &poly1 = tf::tag_plane(poly_in1);
   auto dot = std::abs(tf::dot(poly0.normal(), poly1.normal()));
-  if (1 - dot < std::numeric_limits<decltype(dot)>::epsilon()) {
+  if (1 - dot < tf::epsilon<decltype(dot)>) {
     if (intersects(poly0.plane(), poly_in1[0]))
       return core::intersects_coplanar(poly_in0, poly_in1);
     else
@@ -693,7 +692,7 @@ auto intersects(const tf::plane_like<Dims, Policy0> &plane,
                 const tf::point_like<Dims, Policy1> &pt) -> bool {
   auto d = tf::dot(plane.normal, pt) + plane.d;
   ;
-  return std::abs(d) < std::numeric_limits<decltype(d)>::epsilon();
+  return std::abs(d) < tf::epsilon<decltype(d)>;
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>
@@ -758,8 +757,8 @@ auto intersects(const tf::aabb_like<Dims, Policy0> &bbox,
   }
   n_min += plane.d;
   n_max += plane.d;
-  return n_min <= std::numeric_limits<decltype(n_min)>::epsilon() &&
-         n_max >= -std::numeric_limits<decltype(n_max)>::epsilon();
+  return n_min <= tf::epsilon<decltype(n_min)> &&
+         n_max >= -tf::epsilon<decltype(n_max)>;
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>

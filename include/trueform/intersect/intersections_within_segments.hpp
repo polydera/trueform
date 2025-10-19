@@ -74,9 +74,8 @@ public:
 
 private:
   auto collapse_points(tf::buffer<tf::point<RealT, Dims>> &&points) {
-    auto im =
-        tf::make_clean_index_map<Index>(tf::make_points(_intersection_points),
-                                        std::numeric_limits<RealT>::epsilon());
+    auto im = tf::make_clean_index_map<Index>(
+        tf::make_points(_intersection_points), tf::epsilon<RealT>);
     if (im.kept_ids().size() == _intersection_points.size())
       return;
     points.allocate(im.kept_ids().size());

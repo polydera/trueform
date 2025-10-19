@@ -5,6 +5,7 @@
  */
 #pragma once
 #include "../core/algorithm/block_reduce.hpp"
+#include "../core/epsilon.hpp"
 #include "../core/polygons.hpp"
 #include "../core/views/enumerate.hpp"
 #include "./types/simple_intersections.hpp"
@@ -76,7 +77,7 @@ private:
               auto d0 = (polygon[v0] - created_point).length2();
               auto d1 = (polygon[v1] - created_point).length2();
               Index pt_id = points.size();
-              if (d0 <= std::numeric_limits<decltype(d0)>::epsilon()) {
+              if (d0 <= tf::epsilon2<decltype(d0)>) {
                 points.push_back(polygon[v0]);
                 edge_point_ids.push_back(
                     {Index(id0), Index(id0), Index(pt_id)});
@@ -85,7 +86,7 @@ private:
                      tf::intersect::intersection_target<Index>{
                          v0, tf::topo_type::vertex},
                      pt_id});
-              } else if (d1 <= std::numeric_limits<decltype(d1)>::epsilon()) {
+              } else if (d1 <= tf::epsilon2<decltype(d1)>) {
                 points.push_back(polygon[v1]);
                 edge_point_ids.push_back(
                     {Index(id1), Index(id1), Index(pt_id)});

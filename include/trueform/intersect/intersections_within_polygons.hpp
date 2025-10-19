@@ -90,7 +90,7 @@ private:
   auto collapse_points() {
     auto im =
         tf::make_clean_index_map<Index>(tf::make_points(_intersection_points),
-                                        std::numeric_limits<RealT>::epsilon());
+                                        tf::epsilon<RealT>);
     if (im.kept_ids().size() == _intersection_points.size())
       return;
     tf::buffer<tf::point<RealT, Dims>> points;
@@ -127,7 +127,7 @@ private:
           ids[i++] = id0;
       }
 
-      const RealT eps = std::numeric_limits<RealT>::epsilon();
+      const RealT eps = tf::epsilon<RealT>;
 
       if (count == 2) {
         if (std::abs(distance(poly1.plane(), points[ids[0]])) > eps)

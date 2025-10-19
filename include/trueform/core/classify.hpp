@@ -19,7 +19,7 @@ template <std::size_t Dims, typename Policy0, typename Policy1>
 auto classify(const point_like<Dims, Policy0> &pt,
               const plane_like<Dims, Policy1> &pl) -> sidedness {
   auto d = tf::dot(pt, pl.normal) + pl.d;
-  if (std::abs(d) < std::numeric_limits<decltype(d)>::epsilon())
+  if (std::abs(d) < tf::epsilon<decltype(d)>)
     return sidedness::on_boundary;
   // on_negative_side == 1
   return static_cast<tf::sidedness>(d < 0);
@@ -34,7 +34,7 @@ auto classify(const tf::point_like<2, Policy0> &point,
   const auto ap = point - seg[0];
 
   const real test = ab[0] * ap[1] - ab[1] * ap[0];
-  const real eps = std::numeric_limits<real>::epsilon();
+  const real eps = tf::epsilon2<real>;
 
   if (test > eps)
     return tf::sidedness::on_positive_side;
@@ -57,7 +57,7 @@ auto classify(const tf::point_like<2, Policy0> &point,
   const auto ap = point - line.origin;
 
   const real test = dir[0] * ap[1] - dir[1] * ap[0];
-  const real eps = std::numeric_limits<real>::epsilon();
+  const real eps = tf::epsilon2<real>;
 
   if (test > eps)
     return tf::sidedness::on_positive_side;
@@ -75,7 +75,7 @@ auto classify(const tf::point_like<2, Policy0> &point,
   const auto ap = point - ray.origin;
 
   const real test = dir[0] * ap[1] - dir[1] * ap[0];
-  const real eps = std::numeric_limits<real>::epsilon();
+  const real eps = tf::epsilon2<real>;
 
   if (test > eps)
     return tf::sidedness::on_positive_side;

@@ -23,7 +23,8 @@ auto closest_point_parametric(const tf::ray_like<Dims, Policy0> &ray,
   auto Vd = tf::dot(plane.normal, ray.direction);
   auto V0 = tf::dot(plane.normal, ray.origin) + plane.d;
   decltype(Vd) t;
-  if (std::abs(Vd) < std::numeric_limits<decltype(t)>::epsilon()) {
+  if (Vd * Vd <
+      ray.direction.length2() * std::numeric_limits<decltype(t)>::epsilon()) {
     t = 0;
   } else {
     t = -V0 / Vd;
@@ -40,7 +41,8 @@ auto closest_point_parametric(const tf::line_like<Dims, Policy0> &line,
   auto Vd = tf::dot(plane.normal, line.direction);
   auto V0 = tf::dot(plane.normal, line.origin) + plane.d;
   decltype(Vd) t;
-  if (std::abs(Vd) < std::numeric_limits<decltype(t)>::epsilon()) {
+  if (Vd * Vd <
+      line.direction.length2() * std::numeric_limits<decltype(t)>::epsilon()) {
     t = 0;
   } else {
     t = -V0 / Vd;

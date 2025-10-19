@@ -30,8 +30,9 @@ auto line_line_check(const Line0 &line0, const Line1 &line1) {
   real_t t1 = real_t(0);
   bool non_parallel = false;
 
-  auto eps = std::numeric_limits<decltype(denom)>::epsilon() *
-             (std::abs(d2121) + std::abs(d4343));
+  const auto scale_den =
+      std::abs(d2121) * std::abs(d4343) + std::abs(d4321) * std::abs(d4321);
+  auto eps = std::numeric_limits<decltype(denom)>::epsilon() * (1 + scale_den);
 
   if (std::abs(denom) > eps) {
     t0 = numer / denom;
@@ -45,7 +46,6 @@ auto line_line_check(const Line0 &line0, const Line1 &line1) {
 template <typename Line0, typename Line1>
 auto line_line_check_full(const Line0 &line0, const Line1 &line1) {
   using tf::dot;
-
   using R0 = tf::coordinate_type<Line0>;
   using R1 = tf::coordinate_type<Line1>;
   using Real = tf::coordinate_type<R0, R1>;
@@ -66,23 +66,22 @@ auto line_line_check_full(const Line0 &line0, const Line1 &line1) {
   const Real denom = d2121 * d4343 - d4321 * d4321;
 
   const Real eps = std::numeric_limits<Real>::epsilon();
-  const Real eps_den = eps * (std::abs(d2121) + std::abs(d4343) + Real(1));
+  const Real scale_den =
+      std::abs(d2121) * std::abs(d4343) + std::abs(d4321) * std::abs(d4321);
+  const Real eps_den = eps * (scale_den + Real(1));
 
   const Real NaN = std::numeric_limits<Real>::quiet_NaN();
-  Real t0_out = NaN;
-  Real t1_out = NaN;
+  Real t0_out = NaN, t1_out = NaN;
 
   if (std::abs(denom) <= eps_den) {
     const auto area2 = tf::parallelogram_area2(d0, o1 - o0);
     const Real n2 = d2121;
     const Real m2 = dot(o1 - o0, o1 - o0);
-    const Real tol = eps * (n2 + m2 + Real(1));
-
-    if (area2 <= tol) {
+    const Real tol2 = eps * (n2 * m2 + Real(1));
+    if (area2 <= tol2)
       return std::make_tuple(tf::intersect_status::colinear, t0_out, t1_out);
-    } else {
+    else
       return std::make_tuple(tf::intersect_status::parallel, t0_out, t1_out);
-    }
   }
 
   const Real t0 = numer / denom;
