@@ -5,7 +5,6 @@
  */
 #pragma once
 #include "../core/algorithm/block_reduce.hpp"
-#include "../core/epsilon.hpp"
 #include "../core/polygons.hpp"
 #include "../core/views/enumerate.hpp"
 #include "./types/simple_intersections.hpp"
@@ -74,37 +73,14 @@ private:
               auto t = (cut_value - scalar_field[id0]) /
                        (scalar_field[id1] - scalar_field[id0]);
               auto created_point = polygon[v0] + t * edge;
-              auto d0 = (polygon[v0] - created_point).length2();
-              auto d1 = (polygon[v1] - created_point).length2();
               Index pt_id = points.size();
-              if (d0 <= tf::epsilon2<decltype(d0)>) {
-                points.push_back(polygon[v0]);
-                edge_point_ids.push_back(
-                    {Index(id0), Index(id0), Index(pt_id)});
-                intersections.push_back(
-                    {Index(polygon_id),
-                     tf::intersect::intersection_target<Index>{
-                         v0, tf::topo_type::vertex},
-                     pt_id});
-              } else if (d1 <= tf::epsilon2<decltype(d1)>) {
-                points.push_back(polygon[v1]);
-                edge_point_ids.push_back(
-                    {Index(id1), Index(id1), Index(pt_id)});
-                intersections.push_back(
-                    {Index(polygon_id),
-                     tf::intersect::intersection_target<Index>{
-                         v1, tf::topo_type::vertex},
-                     pt_id});
-              } else {
-                points.push_back(created_point);
-                edge_point_ids.push_back(
-                    {Index(id0), Index(id1), Index(pt_id)});
-                intersections.push_back(
-                    {Index(polygon_id),
-                     tf::intersect::intersection_target<Index>{
-                         Index(prev), tf::topo_type::edge},
-                     pt_id});
-              }
+              points.push_back(created_point);
+              edge_point_ids.push_back({Index(id0), Index(id1), Index(pt_id)});
+              intersections.push_back(
+                  {Index(polygon_id),
+                   tf::intersect::intersection_target<Index>{
+                       Index(prev), tf::topo_type::edge},
+                   pt_id});
             }
           }
         },

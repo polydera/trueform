@@ -47,7 +47,8 @@ auto make_cut_faces_scalar_labels(const tf::polygons<Policy> &polygons,
             decltype(i_id) v_id;
             if (v.source == tf::loop::vertex_source::original)
               v_id = v.id;
-            else if (intersections[i_id].target.label == tf::topo_type::face) {
+            else if (intersections[i_id].target.label !=
+                     tf::topo_type::vertex) {
               continue;
             } else {
               v_id = polygons.faces()[intersections[i_id].object]
@@ -89,7 +90,8 @@ template <typename LabelType, typename Policy, typename Index, typename RealT,
 auto make_scalar_labels(
     const tf::polygons<Policy> &polygons,
     const tf::intersect::simple_intersections<Index, RealT, Dims> &si,
-    const tf::scalar_cut_faces<Index> &scf, const Range &scalars, tf::range<Iterator, N> cut_values) {
+    const tf::scalar_cut_faces<Index> &scf, const Range &scalars,
+    tf::range<Iterator, N> cut_values) {
   tf::cut::polygon_arrangement_labels<LabelType> lbls;
   lbls.n_components = cut_values.size() + 1;
   auto get_category = [&](auto x) {
@@ -114,8 +116,10 @@ template <typename LabelType, typename Policy, typename Index, typename RealT,
 auto make_polygon_arrangement_ids(
     const tf::polygons<Policy> &polygons,
     const tf::intersect::simple_intersections<Index, RealT, Dims> &si,
-    const tf::scalar_cut_faces<Index> &scf, const Range &scalars, tf::range<Iterator, N> cut_values) {
-  auto lbls = make_scalar_labels<LabelType>(polygons, si, scf, scalars, cut_values);
+    const tf::scalar_cut_faces<Index> &scf, const Range &scalars,
+    tf::range<Iterator, N> cut_values) {
+  auto lbls =
+      make_scalar_labels<LabelType>(polygons, si, scf, scalars, cut_values);
   return tf::cut::make_polygon_arrangement_ids<Index>(lbls);
 }
 } // namespace tf::cut

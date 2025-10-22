@@ -36,6 +36,34 @@ inline auto readSTL(std::string name) {
   return out;
 }
 
+inline auto to_polydata(const tf::polygons_buffer<int, float, 3, 3> &polys) {
+  auto cells = vtk_make_unique<vtkCellArray>();
+  cells->Initialize();
+  auto offsets = cells->GetOffsetsArray();
+  offsets->SetNumberOfComponents(1);
+  offsets->SetNumberOfTuples(polys.faces().size() + 1);
+  auto offsets_r =
+      tf::make_range(static_cast<vtkIdType *>(offsets->GetVoidPointer(0)),
+                     offsets->GetNumberOfValues());
+  tf::parallel_apply(tf::enumerate(offsets_r), [](auto pair) {
+    auto &&[id, offset] = pair;
+    offset = 3 * id;
+  });
+  auto ids = cells->GetConnectivityArray();
+  ids->SetNumberOfComponents(3);
+  ids->SetNumberOfTuples(polys.faces().size());
+  auto ids_r = tf::make_range(static_cast<vtkIdType *>(ids->GetVoidPointer(0)),
+                              offsets->GetNumberOfValues());
+  tf::parallel_copy(polys.faces_buffer().data_buffer(), ids_r);
+  auto points = vtk_make_unique<vtkPoints>();
+  points->SetNumberOfPoints(polys.points().size());
+  tf::parallel_copy(polys.points(), get_points(points.get()));
+  auto out = vtk_make_unique<vtkPolyData>();
+  out->SetPoints(points.get());
+  out->SetPolys(cells.get());
+  return out;
+}
+
 inline auto readOBJ(std::string name) {
   auto [raw_points, raw_triangle_faces] = tf::examples::read_mesh(name);
   auto points_r = tf::make_points<3>(raw_points);
