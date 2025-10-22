@@ -64,8 +64,8 @@ auto make_cut_face_component_labels(
 template <typename LabelType, typename Index>
 auto make_cut_face_component_labels(const tf::tagged_cut_faces<Index> &cf) {
   auto cl = make_cut_face_component_labels<LabelType>(
-      static_cast<
-          const tf::loop::cut_faces<Index, tf::loop::descriptor<Index>> &>(cf));
+      static_cast<const tf::loop::cut_faces<
+          Index, tf::loop::tagged_descriptor<Index>> &>(cf));
   auto ls0 = tf::take(cl.labels, cf.partition_id());
   auto ls1 = tf::drop(cl.labels, cf.partition_id());
   tf::buffer<LabelType> map;

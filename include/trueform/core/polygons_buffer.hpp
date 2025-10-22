@@ -172,4 +172,22 @@ private:
   tf::offset_block_buffer<Index, Index> _faces_buffer;
   tf::points_buffer<RealT, Dims> _points_buffer;
 };
+
+template <typename Index, typename RealT, std::size_t Dims>
+auto make_polygons_buffer(tf::offset_block_buffer<Index, Index> &&faces,
+                          tf::points_buffer<RealT, Dims> &&points) {
+  tf::polygons_buffer<Index, RealT, Dims, tf::dynamic_size> out;
+  out.faces_buffer() = std::move(faces);
+  out.points_buffer() = std::move(points);
+  return out;
+}
+
+template <typename Index, std::size_t N, typename RealT, std::size_t Dims>
+auto make_polygons_buffer(tf::blocked_buffer<Index, N> &&faces,
+                          tf::points_buffer<RealT, Dims> &&points) {
+  tf::polygons_buffer<Index, RealT, Dims, N> out;
+  out.faces_buffer() = std::move(faces);
+  out.points_buffer() = std::move(points);
+  return out;
+}
 } // namespace tf

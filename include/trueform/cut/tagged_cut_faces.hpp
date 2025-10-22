@@ -8,13 +8,13 @@
 #include "../core/views/take.hpp"
 #include "../intersect/types/tagged_intersections.hpp"
 #include "./loop/cut_faces.hpp"
-#include "./loop/descriptor.hpp"
+#include "./loop/tagged_descriptor.hpp"
 
 namespace tf {
 template <typename Index>
 class tagged_cut_faces
-    : public loop::cut_faces<Index, loop::descriptor<Index>> {
-  using base_t = loop::cut_faces<Index, loop::descriptor<Index>>;
+    : public loop::cut_faces<Index, loop::tagged_descriptor<Index>> {
+  using base_t = loop::cut_faces<Index, loop::tagged_descriptor<Index>>;
 
 public:
   template <typename Policy0, typename Policy1, typename RealT,
@@ -92,7 +92,7 @@ public:
   }
 
 private:
-  auto handle_id(loop::descriptor<Index> d, tf::loop::vertex<Index> v) {
+  auto handle_id(loop::tagged_descriptor<Index> d, tf::loop::vertex<Index> v) {
     if (v.source == loop::vertex_source::created)
       return std::make_pair(false, v.id);
     else {

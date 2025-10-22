@@ -5,13 +5,14 @@
  */
 #pragma once
 #include "../intersect/types/simple_intersections.hpp"
-#include "./loop/cut_faces.hpp"
+#include "./loop/cut_faces_base.hpp"
 #include "./loop/descriptor.hpp"
 
 namespace tf {
 template <typename Index>
-class cut_faces : public loop::cut_faces<Index, loop::descriptor<Index>> {
-  using base_t = loop::cut_faces<Index, loop::descriptor<Index>>;
+class scalar_cut_faces
+    : public loop::cut_faces_base<Index, loop::descriptor<Index>> {
+  using base_t = loop::cut_faces_base<Index, loop::descriptor<Index>>;
 
 public:
   template <typename Policy, typename RealT, std::size_t Dims>

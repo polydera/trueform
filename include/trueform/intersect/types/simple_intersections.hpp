@@ -30,13 +30,6 @@ public:
     return tf::make_offset_block_range(_intersections_offsets, _intersections);
   }
 
-  auto intersections_with_ids() const {
-    return tf::make_offset_block_range(
-        _intersections_offsets,
-        tf::make_range(_intersections) |
-            tf::zip_ids(tf::make_sequence_range(_intersections.size())));
-  }
-
   auto intersection_points() const { return tf::make_range(_points); }
 
   auto created_intersection_points() const {
@@ -48,7 +41,7 @@ public:
 
   auto get_flat_index(const intersect::simple_intersection<Index> &i) const
       -> Index {
-    return i - _intersections.begin();
+    return &i - _intersections.begin();
   }
 
 private:

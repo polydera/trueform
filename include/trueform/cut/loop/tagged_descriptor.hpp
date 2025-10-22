@@ -4,11 +4,14 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
+#include <utility>
 namespace tf::loop {
-template <typename Index> struct descriptor {
+template <typename Index> struct tagged_descriptor {
+  Index tag;
   Index object;
 
-  descriptor() = default;
-  descriptor(Index object) : object{object} {}
+  tagged_descriptor() = default;
+  tagged_descriptor(std::pair<Index, Index> p)
+      : tag{p.first}, object{p.second} {}
 };
 } // namespace tf::loop
