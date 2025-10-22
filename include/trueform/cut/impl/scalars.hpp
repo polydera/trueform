@@ -94,10 +94,15 @@ auto make_scalar_labels(
     tf::range<Iterator, N> cut_values) {
   tf::cut::polygon_arrangement_labels<LabelType> lbls;
   lbls.n_components = cut_values.size() + 1;
-  auto get_category = [&](auto x) {
-    return std::lower_bound(cut_values.begin(), cut_values.end(), scalars[x]) -
-           cut_values.begin();
-  };
+
+  tf::buffer<LabelType> categories;
+  categories.allocate(scalars.size());
+  tf::parallel_apply(tf::zip(scalars, categories), [&](auto pair) {
+    auto &&[scalar, category] = pair;
+    category = std::lower_bound(cut_values.begin(), cut_values.end(), scalar) -
+               cut_values.begin();
+  });
+  auto get_category = [&](auto x) { return categories[x]; };
   tbb::parallel_invoke(
       [&] {
         lbls.polygon_labels = make_surface_scalar_labels<LabelType>(

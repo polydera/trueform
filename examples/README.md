@@ -187,3 +187,11 @@ This example showcases how to compute intersection curves between two meshes (as
 * Using `tf::manifold_edge_link` and how to `tf::tag` it to a `tf::form` 
 * Using `points.as<double>()` to get a view into points where each point is cast to `tf::point<double,3>`
 * Demonstrates a practical application for CAD
+
+### [Isobands](./vtk/isobands.cpp)
+
+This example showcases how to compute isobands against a scalar field. Pressing `n` randomizes the plane against which the distance field is computed. Holding shift and scrolling moves the isocurves along the mesh.
+
+#### Features Showcased
+
+* Using `tf::make_isobands` to create isobands.

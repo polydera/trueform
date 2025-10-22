@@ -15,8 +15,8 @@
 #include "./triangulate_cut_faces.hpp"
 
 namespace tf::cut {
-template <typename Policy, typename Index, typename RealT, std::size_t Dims,
-          typename Range, typename Iterator, std::size_t N>
+template <typename LabelType, typename Policy, typename Index, typename RealT,
+          std::size_t Dims, typename Range, typename Iterator, std::size_t N>
 auto embedded_isocurves(
     const tf::polygons<Policy> &polygons,
     const tf::intersect::simple_intersections<Index, RealT, Dims> &sfi,
@@ -66,7 +66,27 @@ auto embedded_isocurves(
       tf::make_indirect_range(all_ids.polygons.data_buffer(), polygons.faces()),
       triangles);
 
-  return tf::make_polygons_buffer(std::move(faces), std::move(points_out));
+  tf::buffer<LabelType> labels;
+  labels.allocate(faces.size());
+  std::size_t polygon_size = all_ids.polygons.data_buffer().size();
+  auto cut_labels = tf::drop(labels, polygon_size);
+  auto original_labels = tf::take(labels, polygon_size);
+  tf::parallel_apply(
+      tf::enumerate(tf::make_offset_block_range(cf_offsets, cut_labels)),
+      [](auto pair) {
+        auto [id, r] = pair;
+        std::fill(r.begin(), r.end(), id);
+      },
+      tf::checked);
+  Index start = 0;
+  for (const auto &[id, r] : tf::enumerate(all_ids.polygons)) {
+    Index end = start + r.size();
+    tf::parallel_fill(tf::slice(original_labels, start, end), id);
+    start = end;
+  }
+  return std::make_pair(
+      tf::make_polygons_buffer(std::move(faces), std::move(points_out)),
+      std::move(labels));
 }
 
 } // namespace tf::cut

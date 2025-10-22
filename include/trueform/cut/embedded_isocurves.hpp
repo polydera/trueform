@@ -47,7 +47,7 @@ auto embedded_isocurves(const tf::polygons<Policy> &polygons,
   sfi.build_many(polygons, scalars, cut_vals);
   tf::scalar_cut_faces<Index> scf;
   scf.build(polygons, sfi);
-  auto res_polygons = cut::embedded_isocurves<Index>(
+  auto [res_polygons, labels] = cut::embedded_isocurves<Index>(
       polygons, sfi, scf, scalars, tf::make_range(cut_vals));
   auto ie = tf::make_mapped_range(scf.intersection_edges(), [](auto e) {
     return std::array<Index, 2>{e[0].id, e[1].id};
@@ -59,6 +59,7 @@ auto embedded_isocurves(const tf::polygons<Policy> &polygons,
   cb.paths_buffer() = std::move(paths);
   cb.points_buffer().allocate(sfi.intersection_points().size());
   tf::parallel_copy(sfi.intersection_points(), cb.points());
-  return std::make_pair(std::move(res_polygons), std::move(cb));
+  return std::make_tuple(std::move(res_polygons), std::move(labels),
+                         std::move(cb));
 }
 } // namespace tf

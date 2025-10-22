@@ -37,8 +37,8 @@ private:
       sum += time;
     auto time = sum / times.size();
     char buffer[64];
-    std::snprintf(buffer, sizeof(buffer),
-                  "Intersection curve time per scroll: %.1f ms", time);
+    std::snprintf(buffer, sizeof(buffer), "Isobands time per scroll: %.1f ms",
+                  time);
     text->SetInput(buffer);
   }
 
@@ -207,7 +207,7 @@ int main(int argc, char *argv[]) {
 
   // ---- Text: use normalized viewport coords so positions track resizes ----
   auto text0 = vtk_make_unique<vtkTextActor>();
-  text0->SetInput("Intersection curve time per scroll: 0 ms");
+  text0->SetInput("Isobands time per scroll: 0 ms");
   {
     auto *tp = text0->GetTextProperty();
     tp->SetFontSize(40);
@@ -253,6 +253,8 @@ int main(int argc, char *argv[]) {
   inter->initialize(poly.get(), poly1.get(), curve_poly.get(), text0.get());
   rendererR->SetActiveCamera(rendererL->GetActiveCamera());
 
+  rendererL->ResetCamera();
+  rendererR->ResetCamera();
   renderWindow->Render();
   interactor->Start();
   return 0;
