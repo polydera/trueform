@@ -1,0 +1,32 @@
+[
+    {
+        "triangles": "2 x 50k",
+        "vtk": 114.5,
+        "cgal": 31.5
+    },
+    {
+        "triangles": "2 x 125k",
+        "vtk": 166.7,
+        "cgal": 64.3
+    },
+    {
+        "triangles": "2 x 250k",
+        "vtk": 220.3,
+        "cgal": 91.5
+    },
+    {
+        "triangles": "2 x 500k",
+        "vtk": 376.3,
+        "cgal": 122.8
+    },
+    {
+        "triangles": "2 x 750k",
+        "vtk": 436.8,
+        "cgal": 157.2
+    },
+    {
+        "triangles": "2 x 1M",
+        "vtk": 518.1,
+        "cgal": 177.6
+    }
+]   
