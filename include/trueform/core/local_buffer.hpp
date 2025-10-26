@@ -5,6 +5,8 @@
  */
 #pragma once
 #include "./buffer.hpp"
+#include "./cache_aligned_slot.hpp"
+#include "./views/mapped_range.hpp"
 #include "tbb/task_arena.h"
 #include <vector>
 
@@ -59,7 +61,7 @@ public:
   auto total_size() const -> std::size_t {
     std::size_t total = 0;
     for (const auto &v : _buffers)
-      total += v.size();
+      total += v.value.size();
     return total;
   }
 
@@ -72,7 +74,7 @@ public:
     out.allocate(total_size());
     auto it = out.begin();
     for (const auto &v : _buffers)
-      it = std::copy(v.begin(), v.end(), it);
+      it = std::copy(v.value.begin(), v.value.end(), it);
   }
 
   auto to_buffer() const -> tf::buffer<T> {
@@ -84,7 +86,7 @@ public:
   template <typename Iterator>
   auto to_iterator(Iterator out) const -> Iterator {
     for (const auto &v : _buffers)
-      out = std::copy(v.begin(), v.end(), out);
+      out = std::copy(v.value.begin(), v.value.end(), out);
     return out;
   }
 
@@ -94,7 +96,7 @@ public:
   /// @brief Clearsall buffers
   void clear_all() {
     for (auto &v : _buffers)
-      v.clear();
+      v.value.clear();
   }
 
   /// @brief Reserve capacity in the local buffer.
@@ -102,7 +104,7 @@ public:
 
   void reserve_all(std::size_t n) {
     for (auto &b : _buffers)
-      b.reserve(n);
+      b.value.reserve(n);
   }
 
   /// @brief Resizes  the local buffer.
@@ -136,22 +138,23 @@ public:
 
   auto operator*() -> tf::buffer<T> & { return local(); }
 
-  auto buffers() const -> const std::vector<tf::buffer<T>> & {
-    return _buffers;
+  auto buffers() const {
+    return tf::make_mapped_range(
+        _buffers, [](const auto &x) -> const tf::buffer<T> & { return x.value; });
   }
 
 private:
   /// @brief Returns reference to the local buffer.
   auto local() -> tf::buffer<T> & {
-    return _buffers[tbb::this_task_arena::current_thread_index()];
+    return _buffers[tbb::this_task_arena::current_thread_index()].value;
   }
 
   /// @brief Returns const reference to the local buffer.
   auto local() const -> const tf::buffer<T> & {
-    return _buffers[tbb::this_task_arena::current_thread_index()];
+    return _buffers[tbb::this_task_arena::current_thread_index()].value;
   }
 
-  std::vector<tf::buffer<T>> _buffers;
+  std::vector<core::cache_aligned_slot<tf::buffer<T>>> _buffers;
 };
 
 } // namespace tf
