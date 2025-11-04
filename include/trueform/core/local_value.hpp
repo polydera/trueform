@@ -98,15 +98,23 @@ public:
   }
 
 private:
-  /// @brief Returns a reference to the current thread's local value.
-  auto local() -> T & {
-    return _values[tbb::this_task_arena::current_thread_index()].value;
+  auto get_id() const {
+    return tbb::this_task_arena::current_thread_index();
+    /*struct cache_t {*/
+    /*  decltype(tbb::this_task_arena::current_thread_index()) _id;*/
+    /*  const local_value<T> *_this;*/
+    /*};*/
+    /*static thread_local cache_t cache{*/
+    /*    tbb::this_task_arena::current_thread_index(), this};*/
+    /*if (cache._this != this)*/
+    /*  cache = {tbb::this_task_arena::current_thread_index(), this};*/
+    /*return cache._id;*/
   }
+  /// @brief Returns a reference to the current thread's local value.
+  auto local() -> T & { return _values[get_id()].value; }
 
   /// @brief Returns a const reference to the current thread's local value.
-  auto local() const -> const T & {
-    return _values[tbb::this_task_arena::current_thread_index()].value;
-  }
+  auto local() const -> const T & { return _values[get_id()].value; }
 
   std::vector<core::cache_aligned_slot<T>> _values;
 };

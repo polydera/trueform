@@ -4,10 +4,15 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include <cstddef> // std::size_t
+#include <cstddef>
+#include <utility>
 namespace tf::core {
 template <typename T> struct alignas(128) cache_aligned_slot {
   T value;
+
+  cache_aligned_slot() = default;
+  cache_aligned_slot(const T &t) : value{t} {}
+  cache_aligned_slot(T &&t) : value{std::move(t)} {}
 
   static constexpr std::size_t alignment = 128;
 

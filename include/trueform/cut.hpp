@@ -8,6 +8,8 @@
 #include "./cut/cut_faces.hpp"           // IWYU pragma: export
 #include "./cut/embedded_isocurves.hpp"  // IWYU pragma: export
 #include "./cut/loops.hpp"               // IWYU pragma: export
+#include "./cut/make_boolean.hpp"        // IWYU pragma: export
+#include "./cut/make_boolean_pair.hpp"   // IWYU pragma: export
 #include "./cut/make_isobands.hpp"       // IWYU pragma: export
 #include "./cut/planar_arrangements.hpp" // IWYU pragma: export
 #include "./cut/planar_overlay.hpp"      // IWYU pragma: export

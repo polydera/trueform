@@ -192,26 +192,21 @@ template <typename Policy0, typename Policy1, typename... Policies>
 auto concatenated(const tf::points<Policy0> &points0,
                   const tf::points<Policy1> &points1,
                   const tf::points<Policies> &...points) {
-  auto total_point_size = points0.points().size() + points1.points().size() +
-                          (0 + ... + points.points().size());
+  auto total_point_size =
+      points0.size() + points1.size() + (0 + ... + points.size());
   tf::points_buffer<tf::coordinate_type<Policy0, Policy1, Policies...>,
                     tf::coordinate_dims_v<Policy0>>
       out;
   out.allocate(total_point_size);
 
   std::size_t start_p = 0;
-  std::size_t start_f = 0;
 
   auto make_copy = [&](const auto &points) {
-    const std::size_t end_p =
-        start_p + static_cast<std::size_t>(points.points().size());
-    const std::size_t end_f =
-        start_f + static_cast<std::size_t>(points.edges().size());
+    const std::size_t end_p = start_p + static_cast<std::size_t>(points.size());
 
     tf::parallel_copy(points, tf::slice(out, start_p, end_p));
 
     start_p = end_p;
-    start_f = end_f;
   };
 
   std::apply([&](const auto &...points) { (make_copy(points), ...); },
@@ -223,27 +218,22 @@ template <typename Policy0, typename Policy1, typename... Policies>
 auto concatenated(const tf::vectors<Policy0> &vectors0,
                   const tf::vectors<Policy1> &vectors1,
                   const tf::vectors<Policies> &...vectors) {
-  auto total_vector_size = vectors0.vectors().size() +
-                           vectors1.vectors().size() +
-                           (0 + ... + vectors.vectors().size());
+  auto total_vector_size =
+      vectors0.size() + vectors1.size() + (0 + ... + vectors.size());
   tf::vectors_buffer<tf::coordinate_type<Policy0, Policy1, Policies...>,
                      tf::coordinate_dims_v<Policy0>>
       out;
   out.allocate(total_vector_size);
 
   std::size_t start_p = 0;
-  std::size_t start_f = 0;
 
   auto make_copy = [&](const auto &vectors) {
     const std::size_t end_p =
-        start_p + static_cast<std::size_t>(vectors.vectors().size());
-    const std::size_t end_f =
-        start_f + static_cast<std::size_t>(vectors.edges().size());
+        start_p + static_cast<std::size_t>(vectors.size());
 
     tf::parallel_copy(vectors, tf::slice(out, start_p, end_p));
 
     start_p = end_p;
-    start_f = end_f;
   };
 
   std::apply([&](const auto &...vectors) { (make_copy(vectors), ...); },
@@ -255,27 +245,22 @@ template <typename Policy0, typename Policy1, typename... Policies>
 auto concatenated(const tf::unit_vectors<Policy0> &unit_vectors0,
                   const tf::unit_vectors<Policy1> &unit_vectors1,
                   const tf::unit_vectors<Policies> &...unit_vectors) {
-  auto total_unit_vector_size = unit_vectors0.unit_vectors().size() +
-                                unit_vectors1.unit_vectors().size() +
-                                (0 + ... + unit_vectors.unit_vectors().size());
+  auto total_unit_vector_size = unit_vectors0.size() + unit_vectors1.size() +
+                                (0 + ... + unit_vectors.size());
   tf::unit_vectors_buffer<tf::coordinate_type<Policy0, Policy1, Policies...>,
                           tf::coordinate_dims_v<Policy0>>
       out;
   out.allocate(total_unit_vector_size);
 
   std::size_t start_p = 0;
-  std::size_t start_f = 0;
 
   auto make_copy = [&](const auto &unit_vectors) {
     const std::size_t end_p =
-        start_p + static_cast<std::size_t>(unit_vectors.unit_vectors().size());
-    const std::size_t end_f =
-        start_f + static_cast<std::size_t>(unit_vectors.edges().size());
+        start_p + static_cast<std::size_t>(unit_vectors.size());
 
     tf::parallel_copy(unit_vectors, tf::slice(out, start_p, end_p));
 
     start_p = end_p;
-    start_f = end_f;
   };
 
   std::apply(

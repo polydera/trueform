@@ -60,6 +60,7 @@
 #include "./core/metric_point.hpp"                // IWYU pragma: export
 #include "./core/metric_point_pair.hpp"           // IWYU pragma: export
 #include "./core/minimal_maximal_distance.hpp"    // IWYU pragma: export
+#include "./core/none.hpp"                        // IWYU pragma: export
 #include "./core/normal.hpp"                      // IWYU pragma: export
 #include "./core/normalize.hpp"                   // IWYU pragma: export
 #include "./core/normalized.hpp"                  // IWYU pragma: export

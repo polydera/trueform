@@ -48,7 +48,7 @@ auto make_cut_face_component_labels(
       _components.labels, [&](Index id, const auto &f) {
         const auto &loop = loops[id];
         const auto &conn = conns[id];
-        auto size = loops[id].size();
+        auto size = loop.size();
         auto prev = size - 1;
         for (decltype(size) i = 0; i < size; prev = i++) {
           auto v0 = loop[prev];

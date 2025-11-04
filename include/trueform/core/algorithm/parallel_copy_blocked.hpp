@@ -25,4 +25,19 @@ auto parallel_copy_blocked(const Range0 &input, Range1 &&output) {
         tf::checked);
 }
 
+template <typename Range0, typename Range1>
+auto parallel_copy_blocked_reverse(const Range0 &input, Range1 &&output) {
+  if (input.size() < 1000)
+    for (auto &&[in, out] : tf::zip(input, output))
+      std::reverse_copy(in.begin(), in.end(), out.begin());
+  else
+    tf::parallel_apply(
+        tf::zip(input, output),
+        [](auto &&pair) {
+          auto &&[in, out] = pair;
+          std::reverse_copy(in.begin(), in.end(), out.begin());
+        },
+        tf::checked);
+}
+
 } // namespace tf
