@@ -7,7 +7,7 @@ import {
   VisTooltip,
   VisAnnotations,
 } from "@unovis/vue";
-import tree_reconstruction from "../../../benchmarks/tree_reconstruction.json";
+import tree_reconstruction from "../../../benchmarks/tree_construction_cgal.json";
 
 const data = tree_reconstruction;
 
@@ -24,18 +24,18 @@ onMounted(() => {
   }, 600);
 });
 
-const x = (d: any) => d.points;
-const y = [(d: any) => d.trueform_ms, (d: any) => d.nanoflann_ms];
-const color = (_: any, i: number) => ["#00d5be", "#a82d12"][i];
+const x = (d: any) => d.triangles;
+const y = [(d: any) => d.trueform_ms, (d: any) => d.cgal_ms];
+const color = (_: any, i: number) => ["#00d5be", "#fdff4e"][i];
 
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
 
 const round = (n: number) => Math.round(n * 1e2) / 1e2;
 const template = (d: any) => `<div class="flex flex-col gap-0.5">
-    <div class="font-medium text-lg">${d.points} points</div>
+    <div class="font-medium text-lg">${d.triangles} points</div>
     <div><span class="text-primary font-bold">trueform:</span> ${round(d.trueform_ms)} ms</div>
-    <div><span class="text-[#a82d12]">nanoflann:</span> ${round(d.nanoflann_ms)} ms</div>
+    <div><span class="text-[#fdff4e]">CGAL:</span> ${round(d.cgal_ms)} ms</div>
   </div>`;
 
 const annotations = computed(() => [
@@ -51,7 +51,7 @@ const annotations = computed(() => [
     },
     subject: {
       x: "100%",
-      y: "85.5%",
+      y: "98.5%",
       connectorLineStrokeDasharray: "2 2",
       radius: 3,
     },
@@ -64,7 +64,7 @@ const annotations = computed(() => [
   <div class="w-full unovis flex flex-col gap-2.5 items-center justify-center">
     <h2 class="text-xl font-medium text-center">
       Tree Construction:<br />
-      Comparison of <code class="text-primary font-medium">tf::tree</code> vs nanoflann
+      Comparison of <code class="text-primary font-medium">trueform</code> vs CGAL
     </h2>
     <div class="flex gap-4 items-center justify-center">
       <div class="flex gap-1.5 items-center">
@@ -72,14 +72,15 @@ const annotations = computed(() => [
         <NuxtImg src="/tf.png" class="h-4 w-auto shrink-0" />
       </div>
       <div class="flex gap-1.5 items-center">
-        <div class="size-3 bg-[#a82d12] rounded"></div>
-        <img src="/img/nanoflann_logo.png" class="h-4 w-auto shrink-0" alt="nanoflann logo" />
+        <div class="size-3 bg-[#fdff4e] rounded"></div>
+        <img src="/img/cgal_logo.png" class="h-4 w-auto shrink-0" alt="nanoflann logo" />
       </div>
     </div>
     <VisXYContainer :data="dataS">
       <VisLine :x="x" :y="y" :color="color" :duration="1200" />
       <VisTooltip />
-      <VisAxis type="x" label="Number of Points" :tickFormat="(value: number) => numKM(value)" />
+      <VisAxis type="x" label="Number of Triangles"
+       :tickFormat="(value: number) => numKM(value)" />
       <VisAxis type="y" label="Time [ms]" />
       <VisCrosshair :template="template" :color="color" />
       <!-- @vue-expect-error -->
@@ -87,3 +88,5 @@ const annotations = computed(() => [
     </VisXYContainer>
   </div>
 </template>
+
+

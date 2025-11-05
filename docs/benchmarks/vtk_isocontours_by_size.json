@@ -1,8 +1,8 @@
 [
-{ "triangles": 50000, "speedup": 10.2 },
-{ "triangles": 125000, "speedup": 14.6 },
-{ "triangles": 250000, "speedup": 19.7 },
-{ "triangles": 500000, "speedup": 23.2 },
-{ "triangles": 750000, "speedup": 24.9 },
-{ "triangles": 1000000,"speedup": 27.1 }
+{ "triangles": "50k", "speedup": 10.2 },
+{ "triangles": "125k", "speedup": 14.6 },
+{ "triangles": "250k", "speedup": 19.7 },
+{ "triangles": "500k", "speedup": 23.2 },
+{ "triangles": "750k", "speedup": 24.9 },
+{ "triangles": "1M","speedup": 27.1 }
 ]

@@ -15,7 +15,7 @@ orientation: horizontal
 Real-time [geometric processing]{.text-primary} for C++.
 
 #description
-`trueform` is a header-only C++ library for fast geometric processing. Compose primitives, ranges, spatial trees, and transformations inline with a clean, policy-driven API — no heavy frameworks, no copies, just your data.
+`trueform` is a header-only C++ library for real-time geometric processing. Build spatial queries, mesh intersections, boolean operations, and topology analysis directly on your data with composable, zero-copy views — no heavy frameworks, no architectural changes, just semantic wrappers over your existing buffers.
 
 #links
   :::u-button
@@ -53,11 +53,22 @@ Why trueform
   ---
   color: neutral
   size: lg
-  to: /getting-started
+  to: /modules/core
   trailingIcon: i-lucide-arrow-right
   variant: subtle
   ---
   Explore the docs
+  :::
+
+  :::u-button
+  ---
+  color: neutral
+  size: lg
+  to: /benchmarks
+  trailingIcon: i-lucide-chart-line
+  variant: subtle
+  ---
+  See benchmarks
   :::
 
 #features
@@ -66,10 +77,10 @@ Why trueform
   icon: i-lucide-atom
   ---
   #title
-  Minimal, Expressive Primitives
+  Zero-Copy Views
 
   #description
-  Create semantically rich geometry from raw data: points, segments, polygons, AABBs, rays, and planes.
+  Work directly on your data layout with semantic geometric wrappers. Enrich primitives with `id`, `normal`, and `state` via composable `tag` and `zip` operations.
   :::
 
   :::u-page-feature
@@ -77,21 +88,10 @@ Why trueform
   icon: i-lucide-tree-pine
   ---
   #title
-  Forms and Spatial Trees
+  Spatial Acceleration
 
   #description
-  Wrap ranges with `tf::tree` and `tf::form` for fast k-NN, intersection, and ray queries without copying your data.
-  :::
-
-  :::u-page-feature
-  ---
-  icon: i-lucide-layout-grid
-  ---
-  #title
-  Composable Policies
-
-  #description
-  Enrich primitives and ranges with `id`, `normal`, and `state` via `tag` and `zip` operations that preserve semantics through transforms.
+  Build `tf::tree` for k-NN, neighbor search, ray casting, and broad-phase queries. Wrap with `tf::form` to add transformations without copying data.
   :::
 
   :::u-page-feature
@@ -102,113 +102,40 @@ Why trueform
   Topology & Intersections
 
   #description
-  Connectivity structures (face/vertex links, manifold edges) and exact intersections (planar arrangements, scalar slicing, mesh-mesh).
+  Connectivity structures, boundary detection, path finding. Mesh-mesh curves, self-intersections, scalar field isocontours with topological classification.
   :::
 
   :::u-page-feature
   ---
-  icon: i-lucide-cpu
+  icon: i-lucide-scissors
+  ---
+  #title
+  Cut & Boolean Operations
+
+  #description
+  Embed intersection curves as edges via face splitting. Boolean operations (union, intersection, difference) and planar arrangements for 2D subdivision.
+  :::
+
+  :::u-page-feature
+  ---
+  icon: i-lucide-database
+  ---
+  #title
+  Data Management
+
+  #description
+  Flat buffers with direct memory access. Reindexing and filtering with automatic referential integrity. Cleaning operations for duplicates and degenerates.
+  :::
+
+  :::u-page-feature
+  ---
+  icon: i-lucide-gauge
   ---
   #title
   Real-time Performance
 
   #description
-  Header-only, parallelized, and benchmarked against VTK, CGAL, and nanoflann for speed.
-  :::
-
-  :::u-page-feature
-  ---
-  icon: i-lucide-package
-  ---
-  #title
-  Header-only Integration
-
-  #description
-  Add via CMake FetchContent. No external scene graph or heavyweight setup required.
-  :::
-:::
-
-:::u-page-section{class="dark:bg-neutral-950"}
-#title
-Key Building Blocks
-
-#links
-  :::u-button
-  ---
-  color: neutral
-  size: lg
-  to: /getting-started/usage
-  trailingIcon: i-lucide-arrow-right
-  variant: subtle
-  ---
-  See examples
-  :::
-
-#features
-  :::u-page-feature
-  ---
-  icon: i-lucide-axis-3d
-  ---
-  #title
-  Primitives & Ranges
-
-  #description
-  `tf::point`, `tf::vector`, `tf::segment`, `tf::polygon` and their range counterparts with static-size propagation.
-  :::
-
-  :::u-page-feature
-  ---
-  icon: i-lucide-git-branch
-  ---
-  #title
-  Policy System
-
-  #description
-  Tag and zip metadata like IDs, normals, and composite states; preserved and transformed correctly.
-  :::
-
-  :::u-page-feature
-  ---
-  icon: i-lucide-trees
-  ---
-  #title
-  Spatial Trees & Forms
-
-  #description
-  Build `tf::tree`, wrap as `tf::form`, and run fast searches, kNN, and ray casts over static or transformed geometry.
-  :::
-
-  :::u-page-feature
-  ---
-  icon: i-lucide-shield
-  ---
-  #title
-  Robust Topology
-
-  #description
-  Face/vertex links, manifold edge link, planar embeddings, and planar graph regions for structural reasoning.
-  :::
-
-  :::u-page-feature
-  ---
-  icon: i-lucide-scan-line
-  ---
-  #title
-  Exact Intersections
-
-  #description
-  Planar arrangements, scalar-field slicing, and mesh-mesh intersection curves with edge/segment extraction.
-  :::
-
-  :::u-page-feature
-  ---
-  icon: i-lucide-plug
-  ---
-  #title
-  Header-only Integration
-
-  #description
-  C++17, Intel TBB for parallelism, and CMake FetchContent for frictionless setup.
+  Parallel algorithms built on Intel TBB with optimized memory layouts. Benchmarked against VTK, CGAL, nanoflann, and IGL.
   :::
 :::
 
@@ -216,16 +143,15 @@ Key Building Blocks
   :::u-page-c-t-a
   ---
   links:
-    - label: Get started
-      to: '/getting-started'
+    - label: Read the tutorial
+      to: '/modules/core'
       trailingIcon: i-lucide-arrow-right
-    - label: View on GitHub
-      to: 'https://github.com/xlabmedical/trueform'
-      target: _blank
+    - label: View benchmarks
+      to: '/benchmarks'
       variant: subtle
-      icon: i-simple-icons-github
+      trailingIcon: i-lucide-chart-line
   title: Ready to build real-time geometry?
-  description: Integrate trueform into your C++ codebase with a few lines. Compose primitives, trees, and queries inline.
+  description: Integrate trueform into your C++ codebase with CMake FetchContent. Process meshes, compute intersections, and perform spatial queries directly on your data.
   class: dark:bg-neutral-950
   ---
   :::

@@ -112,6 +112,16 @@ This example provides a direct comparison with `CGAL` for computing connected co
 
 * Using `tf::label_connected_components`
 
+
+### [CGAL: Mesh Booleans](./cgal/cgal-boolean.cpp)
+
+This example provides a direct comparison with `CGAL` for computing mesh booleans.
+
+#### Features Showcased
+
+* Using `tf::make_boolean`
+
+
 ### [VTK: Feature Edges](./vtk/feature_edges.cpp)
 
 This example provides direct performance benchmark for collecting boundary and non_manifold edges.
@@ -195,3 +205,11 @@ This example showcases how to compute isobands against a scalar field. Pressing 
 #### Features Showcased
 
 * Using `tf::make_isobands` to create isobands.
+
+### [Mesh Boolean](./vtk/boolean.cpp)
+
+This example showcases how to compute booleans of two moving meshes. Pressing `n` randomizes the meshes orientations. 
+
+#### Features Showcased
+
+* Using `tf::make_boolean` to compute boolean between two meshes and their intersection curves.
