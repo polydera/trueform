@@ -36,7 +36,8 @@ inline auto readSTL(std::string name) {
   return out;
 }
 
-inline auto to_polydata(const tf::polygons_buffer<int, float, 3, 3> &polys) {
+template <typename Index>
+auto to_polydata(const tf::polygons_buffer<Index, float, 3, 3> &polys) {
   auto cells = vtk_make_unique<vtkCellArray>();
   cells->Initialize();
   auto offsets = cells->GetOffsetsArray();

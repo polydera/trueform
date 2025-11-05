@@ -131,13 +131,25 @@ This example provides direct performance benchmark for collecting boundary and n
 * Using `tf::make_boundary_edges`
 * Using `tf::make_non_manifold_edges`
 
-### [VTK: Clean Mesh](./vtk/compare_clean.cpp.cpp)
+### [VTK: Clean Mesh](./vtk/compare_clean.cpp)
 
 This example provides direct performance benchmark for cleaning a mesh with a specified tolerance (our implementation additionally removes all uncontained points).
 
 #### Features Showcased
 
 * Using `tf::cleaned`
+
+### [VTK: Split into Components](./vtk/split_into_components.cpp)
+
+This example provides a demonstration of first concatenating a few copies of the mesh and than splitting it back into separate components.
+
+#### Features Showcased
+
+* Using `tf::face_membership`
+* Using `tf::face_link`
+* Using `tf::concatenated`
+* Using `tf::concatenated`
+* Using `tf::split_into_components`
 
 ### [VTK: Intersection Curve](./vtk/vtk_intersection_curve.cpp)
 

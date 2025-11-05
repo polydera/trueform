@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -22,10 +22,10 @@ namespace reindex {
 template <typename Index, typename Policy0, typename Policy1,
           typename... Policies, typename RealT, std::size_t Dims,
           std::size_t Ngon>
-auto concatenated_impl(const tf::polygons<Policy0> &polygons0,
+auto concatenated_impl(tf::polygons_buffer<Index, RealT, Dims, Ngon> &out,
+                       const tf::polygons<Policy0> &polygons0,
                        const tf::polygons<Policy1> &polygons1,
-                       const tf::polygons<Policies> &...polygons,
-                       tf::polygons_buffer<Index, RealT, Dims, Ngon> &out) {
+                       const tf::polygons<Policies> &...polygons) {
   Index start_p = 0;
   Index start_f = 0;
 
@@ -78,7 +78,7 @@ auto concatenated_same_gons(const tf::polygons<Policy0> &polygons0,
   out.faces_buffer().allocate(total_face_size);
   out.points_buffer().allocate(total_point_size);
 
-  concatenated_impl(polygons0, polygons1, polygons..., out);
+  concatenated_impl(out, polygons0, polygons1, polygons...);
   return out;
 }
 
@@ -115,7 +115,7 @@ auto concatenated_diff_gons(const tf::polygons<Policy0> &polygons0,
                            (0 + ... + polygons.points().size());
   out.faces_buffer().allocate(offsets.back());
   out.points_buffer().allocate(total_point_size);
-  concatenated_impl(polygons0, polygons1, polygons..., out);
+  concatenated_impl(out, polygons0, polygons1, polygons...);
   return out;
 }
 } // namespace reindex
