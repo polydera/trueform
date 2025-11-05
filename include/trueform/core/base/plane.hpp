@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -10,6 +11,7 @@
 namespace tf::core {
 template <std::size_t Dims, typename Policy> struct plane {
   using coordinate_type = tf::coordinate_type<Policy>;
+  using coordinate_dims = std::integral_constant<std::size_t, Dims>;
   using normal_type = tf::unit_vector_like<Dims, Policy>;
 
   plane() = default;

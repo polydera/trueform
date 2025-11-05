@@ -1,9 +1,11 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
+#include "../array_like.hpp"
 #include "../range.hpp"
 #include "../static_size.hpp"
 #include "./stride_iterator_api.hpp"
@@ -13,8 +15,11 @@ template <typename Iterator, std::size_t BlockSize> struct blocked_api_handle {
 public:
   using iterator_category =
       typename std::iterator_traits<Iterator>::iterator_category;
-  using reference = tf::range<Iterator, BlockSize>;
-  using value_type = reference;
+  using reference = array_like<BlockSize, tf::range<Iterator, BlockSize>>;
+  using value_type =
+      array_like<BlockSize,
+                 std::array<typename std::iterator_traits<Iterator>::value_type,
+                            BlockSize>>;
   using pointer = void;
   using difference_type =
       typename std::iterator_traits<Iterator>::difference_type;
@@ -25,7 +30,7 @@ public:
   auto base_iter() -> Iterator & { return iter; }
   constexpr auto iterator_stride() const -> std::size_t { return BlockSize; }
   auto dereference() const -> reference {
-    return tf::make_range<BlockSize>(iter);
+    return tf::make_array_like(tf::make_range<BlockSize>(iter));
   }
 
 private:

@@ -1,17 +1,18 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
 #include "../core/aabb_union.hpp"
-#include "../core/buffer.hpp"
 #include "../core/algorithm/parallel_apply.hpp"
 #include "../core/algorithm/parallel_iota.hpp"
 #include "../core/algorithm/partition_range_into_parts.hpp"
+#include "../core/buffer.hpp"
+#include "./max_nodes_in_tree.hpp"
 #include "./tree_config.hpp"
 #include "./tree_node.hpp"
-#include "./max_nodes_in_tree.hpp"
 #include <algorithm>
 namespace tf::spatial {
 template <typename Partitioner, typename Index, typename RealT, std::size_t N,
@@ -72,9 +73,9 @@ auto build_tree_nodes(buffer<tree_node<Index, RealT, N>> &nodes,
   }
   nodes.allocate(max_nodes_in_tree(Index(aabbs.size()), config.inner_size,
                                    config.leaf_size));
-  tf::parallel_apply(nodes, [](auto &x) { x.set_as_empty(); });
+  tf::parallel_apply(nodes, [](auto &x) { x.set_as_empty(); }, tf::checked);
   ids.allocate(aabbs.size());
   tf::parallel_iota(ids, 0);
   return build_tree_nodes<Partitioner>(nodes, aabbs, ids, 0, 0, config);
 }
-} // namespace tf::implementation
+} // namespace tf::spatial

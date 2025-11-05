@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -63,7 +64,7 @@ private:
       _signed_areas.push_back(sa);
     }
     for (auto [i, loop] : tf::enumerate(_pgr)) {
-      if (i == min_area_id)
+      if (Index(i) == min_area_id)
         continue;
       if (_signed_areas[i] > 0)
         _faces.push_back(i);

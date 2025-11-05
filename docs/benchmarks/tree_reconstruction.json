@@ -1,0 +1,38 @@
+[
+  {
+    "points": 27417,
+    "trueform_ms": 1.69,
+    "nanoflann_ms": 5.91,
+    "speedup": 3.5
+  },
+  {
+    "points": 64721,
+    "trueform_ms": 3.44,
+    "nanoflann_ms": 14.94,
+    "speedup": 4.3
+  },
+  {
+    "points": 126987,
+    "trueform_ms": 6.72,
+    "nanoflann_ms": 43.53,
+    "speedup": 6.5
+  },
+  {
+    "points": 252216,
+    "trueform_ms": 12.99,
+    "nanoflann_ms": 82.74,
+    "speedup": 6.4
+  },
+  {
+    "points": 377164,
+    "trueform_ms": 20.44,
+    "nanoflann_ms": 115.07,
+    "speedup": 5.6
+  },
+  {
+    "points": 502425,
+    "trueform_ms": 29.22,
+    "nanoflann_ms": 196.76,
+    "speedup": 6.7
+  }
+]

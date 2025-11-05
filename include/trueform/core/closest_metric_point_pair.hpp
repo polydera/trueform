@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -199,7 +200,7 @@ auto closest_metric_point_pair(const tf::polygon<Dims, Policy0> &poly_in,
     const auto &poly = tf::tag_plane(poly_in);
     auto d = tf::dot(poly.plane().normal, pt) + poly.plane().d;
     auto c_pt = pt - d * poly.plane().normal;
-    if (std::abs(d) < std::numeric_limits<decltype(d)>::epsilon() &&
+    if (std::abs(d) < tf::epsilon<decltype(d)> &&
         tf::contains_coplanar_point(poly, c_pt))
       return tf::make_metric_point_pair(d * d, c_pt, pt);
     std::size_t size = poly.size();
@@ -381,7 +382,7 @@ auto closest_metric_point_pair(const tf::polygon<Dims, Policy0> &poly_in0,
         min(best,
             core::closest_metric_point_pair_impl(
                 poly0, tf::make_segment_between_points(poly1[prev], poly1[i])));
-    if (best.metric < std::numeric_limits<decltype(best.metric)>::epsilon())
+    if (best.metric < tf::epsilon2<decltype(best.metric)>)
       return best;
   }
 
@@ -391,7 +392,7 @@ auto closest_metric_point_pair(const tf::polygon<Dims, Policy0> &poly_in0,
     best = min(best, core::closest_metric_point_pair_impl(
                          tf::make_segment_between_points(poly0[prev], poly0[i]),
                          poly1));
-    if (best.metric < std::numeric_limits<decltype(best.metric)>::epsilon())
+    if (best.metric < tf::epsilon2<decltype(best.metric)>)
       return best;
   }
 

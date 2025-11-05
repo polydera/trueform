@@ -1,11 +1,12 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
 
-#include <limits>
+#include "../../core/epsilon.hpp"
 
 namespace tf::spatial {
 
@@ -20,7 +21,7 @@ public:
     if (c_point.metric < metric()) {
       info = {c_element, c_point};
     }
-    return metric() < std::numeric_limits<real_t>::epsilon();
+    return metric() < tf::epsilon2<real_t>;
   }
 
   auto metric() { return info.metric(); }
@@ -28,4 +29,4 @@ public:
   TreeInfo info;
 };
 
-} // namespace tf::implementation
+} // namespace tf::spatial

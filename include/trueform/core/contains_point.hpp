@@ -1,15 +1,16 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
 #include "./contains_coplanar_point.hpp"
+#include "./epsilon.hpp"
 #include "./point_like.hpp"
 #include "./policy/plane.hpp"
 #include "./polygon.hpp"
 #include <cstddef>
-#include <limits>
 
 namespace tf {
 namespace core {
@@ -26,7 +27,7 @@ auto contains_point(const tf::polygon<2, Policy> &poly,
                     const point_like<2, T> &input_pt) -> containment {
   return core::contains_coplanar_point(
       poly, input_pt, tf::make_identity_projector(),
-      std::numeric_limits<tf::coordinate_type<Policy, T>>::epsilon());
+      tf::epsilon<tf::coordinate_type<Policy, T>>);
 }
 /// @ingroup geometry
 /// @brief Checks whether a point lies inside a 3D polygon by projecting to 2D.
@@ -42,12 +43,11 @@ auto contains_point(const tf::polygon<Dims, Policy> &poly_in,
                     const point_like<Dims, T> &input_pt) -> containment {
   const auto &poly = tf::tag_plane(poly_in);
   auto d = tf::dot(poly.plane().normal, input_pt) + poly.plane().d;
-  if (std::abs(d) > std::numeric_limits<decltype(d)>::epsilon())
+  if (std::abs(d) > tf::epsilon<decltype(d)>)
     return containment::outside;
   return core::contains_coplanar_point(
       poly, input_pt - d * poly.plane().normal,
-      tf::make_simple_projector(poly.plane().normal),
-      std::numeric_limits<decltype(d)>::epsilon());
+      tf::make_simple_projector(poly.plane().normal), tf::epsilon<decltype(d)>);
 }
 } // namespace core
 template <std::size_t Dims, typename Policy, typename T>

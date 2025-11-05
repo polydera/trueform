@@ -1,0 +1,58 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+@source "../../../content/**/*";
+
+@theme static {
+  --container-8xl: 90rem;
+  --font-sans: "Public Sans", sans-serif;
+}
+
+:root {
+  --ui-container: var(--container-8xl);
+}
+
+.unovis {
+  --vis-font-family: var(--default-font-family);
+
+  --vis-crosshair-line-stroke-color: var(--ui-primary);
+  --vis-crosshair-circle-stroke-color: var(--ui-bg);
+
+  --vis-axis-grid-color: var(--ui-border);
+  --vis-axis-tick-color: var(--ui-border);
+  --vis-axis-tick-label-color: var(--ui-text-highlighted);
+  --vis-axis-label-color: var(--ui-primary);
+  --vis-axis-label-font-size: var(--text-lg);
+
+  --vis-tooltip-background-color: var(--ui-bg);
+  --vis-tooltip-border-color: var(--ui-border);
+  --vis-tooltip-text-color: var(--ui-text-highlighted);
+
+  --vis-annotations-connector-stroke-color: var(--ui-primary);
+  --vis-annotations-subject-stroke-color: var(--ui-primary);
+}
+
+.slide-enter-active,
+.slide-leave-active {
+  transition: transform 0.7s cubic-bezier(0.83, 0, 0.17, 1);
+}
+
+.slide-enter-from {
+  transform: translateX(100%);
+}
+
+.slide-leave-to {
+  transform: translateX(-100%);
+}
+
+.slide-enter-to,
+.slide-leave-from {
+  transform: translateX(0);
+}
+
+.slide-leave-active {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}

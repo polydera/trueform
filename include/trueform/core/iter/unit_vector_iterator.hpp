@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -15,7 +16,9 @@ public:
   using iterator_category =
       typename std::iterator_traits<Iterator>::iterator_category;
   using element_t = typename std::iterator_traits<Iterator>::value_type;
-  using reference = tf::unit_vector_view<element_t, BlockSize>;
+  using element_view_t = std::remove_reference_t<
+      typename std::iterator_traits<Iterator>::reference>;
+  using reference = tf::unit_vector_view<element_view_t, BlockSize>;
   using value_type = tf::unit_vector<element_t, BlockSize>;
   using pointer = void;
   using difference_type =

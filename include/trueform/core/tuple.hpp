@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -31,6 +32,10 @@ template <typename... Ts> struct tuple : core::tuple_base<Ts...> {
   using base_t = core::tuple_base<Ts...>;
   using base_t::base_t;
   using base_t::operator=;
+  tuple(const tuple &) = default;
+  tuple(tuple &&) = default;
+  auto operator=(const tuple &) -> tuple & = default;
+  auto operator=(tuple &&) -> tuple & = default;
 };
 
 template <typename... Ts> auto make_tuple(Ts &&...ts) {

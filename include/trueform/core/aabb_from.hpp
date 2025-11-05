@@ -1,15 +1,20 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
 #include "./aabb.hpp"
 #include "./aabb_union.hpp"
+#include "./algorithm/reduce.hpp"
 #include "./coordinate_type.hpp"
 #include "./point_like.hpp"
+#include "./points.hpp"
 #include "./polygon.hpp"
+#include "./polygons.hpp"
 #include "./segment.hpp"
+#include "./segments.hpp"
 
 namespace tf {
 
@@ -75,6 +80,23 @@ auto aabb_from(const polygon<Dims, Policy> &poly) {
 template <std::size_t Dims, typename Policy>
 auto aabb_from(const segment<Dims, Policy> &s) {
   return aabb_union(aabb_from(s[0]), s[1]);
+}
+
+template <typename Policy> auto aabb_from(const tf::points<Policy> &points) {
+  auto out = tf::aabb_from(points.front());
+  return tf::reduce(
+      points, [](const auto &x, const auto &y) { return tf::aabb_union(x, y); },
+      out, tf::checked);
+}
+
+template <typename Policy>
+auto aabb_from(const tf::polygons<Policy> &polygons) {
+  return aabb_from(polygons.points());
+}
+
+template <typename Policy>
+auto aabb_from(const tf::segments<Policy> &segments) {
+  return aabb_from(segments.points());
 }
 
 } // namespace tf

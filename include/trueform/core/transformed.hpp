@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -97,6 +98,20 @@ auto transformed(const unit_vector_like<Dims, Policy> &_this,
                  const frame_like<Dims, U> &transform) {
   if constexpr (!linalg::is_identity<U>) {
     auto out = wrap_like(_this, transformed(unwrap(_this), transform));
+    tf::normalize(out);
+    return out;
+  } else
+    return _this;
+}
+
+template <std::size_t Dims, typename Policy, typename U>
+auto transformed_normal(const unit_vector_like<Dims, Policy> &_this,
+                        const frame_like<Dims, U> &frame) {
+  if constexpr (!linalg::is_identity<U>) {
+    auto inv_frame = tf::make_frame_like(
+        tf::linalg::make_transpose_view(frame.inverse_transformation()),
+        tf::linalg::make_transpose_view(frame.transformation()));
+    auto out = transformed(_this, inv_frame);
     tf::normalize(out);
     return out;
   } else

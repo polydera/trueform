@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -13,6 +14,14 @@ class manifold_edge_link : public blocked_buffer<manifold_edge_peer<Index>, N> {
   using base_t = blocked_buffer<manifold_edge_peer<Index>, N>;
 
 public:
+  manifold_edge_link() = default;
+
+  template <typename Policy>
+  manifold_edge_link(const tf::faces<Policy> &faces,
+                     const tf::face_membership<Index> &blink) {
+    build(faces, blink);
+  }
+
   template <typename Range>
   auto build(const Range &blocks, const tf::face_membership<Index> &blink)
       -> void {

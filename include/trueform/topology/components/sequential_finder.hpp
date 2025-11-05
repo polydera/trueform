@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -19,7 +20,7 @@ public:
     tf::parallel_fill(labels, -1);
     label_t label = 0;
     for (Index i = 0; i < Index(labels.size()); ++i) {
-      if (labels[i] != -1 || mask[i])
+      if (labels[i] != -1 || !mask[i])
         continue;
       _stack.push_back(i);
       while (_stack.size()) {
@@ -28,7 +29,10 @@ public:
         if (labels[next] != -1)
           continue;
         labels[next] = label;
-        applier(next, [&](Index id) { _stack.push_back(id); });
+        applier(next, [&](Index id) {
+          if (mask[id])
+            _stack.push_back(id);
+        });
       }
       label++;
     }

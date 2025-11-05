@@ -1,13 +1,14 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
 #include "../core/algorithm/block_reduce.hpp"
 #include "../core/polygons.hpp"
 #include "../core/views/enumerate.hpp"
-#include "./base/simple_intersections.hpp"
+#include "./types/simple_intersections.hpp"
 
 namespace tf {
 template <typename Index, typename RealT, std::size_t Dims>
@@ -73,37 +74,14 @@ private:
               auto t = (cut_value - scalar_field[id0]) /
                        (scalar_field[id1] - scalar_field[id0]);
               auto created_point = polygon[v0] + t * edge;
-              auto d0 = (polygon[v0] - created_point).length2();
-              auto d1 = (polygon[v1] - created_point).length2();
               Index pt_id = points.size();
-              if (d0 <= std::numeric_limits<decltype(d0)>::epsilon()) {
-                points.push_back(polygon[v0]);
-                edge_point_ids.push_back(
-                    {Index(id0), Index(id0), Index(pt_id)});
-                intersections.push_back(
-                    {Index(polygon_id),
-                     tf::intersect::intersection_target<Index>{
-                         v0, tf::topo_type::vertex},
-                     pt_id});
-              } else if (d1 <= std::numeric_limits<decltype(d1)>::epsilon()) {
-                points.push_back(polygon[v1]);
-                edge_point_ids.push_back(
-                    {Index(id1), Index(id1), Index(pt_id)});
-                intersections.push_back(
-                    {Index(polygon_id),
-                     tf::intersect::intersection_target<Index>{
-                         v1, tf::topo_type::vertex},
-                     pt_id});
-              } else {
-                points.push_back(created_point);
-                edge_point_ids.push_back(
-                    {Index(id0), Index(id1), Index(pt_id)});
-                intersections.push_back(
-                    {Index(polygon_id),
-                     tf::intersect::intersection_target<Index>{
-                         Index(prev), tf::topo_type::edge},
-                     pt_id});
-              }
+              points.push_back(created_point);
+              edge_point_ids.push_back({Index(id0), Index(id1), Index(pt_id)});
+              intersections.push_back(
+                  {Index(polygon_id),
+                   tf::intersect::intersection_target<Index>{
+                       Index(prev), tf::topo_type::edge},
+                   pt_id});
             }
           }
         },

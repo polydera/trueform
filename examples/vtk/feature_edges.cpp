@@ -73,6 +73,7 @@ int main(int argc, char *argv[]) {
   auto poly = read_mesh(argv[1]);
   int dummy = 0;
   std::cout << "number of polygons: " << poly->GetNumberOfPolys() << std::endl;
+  std::cout << "number of points: " << poly->GetNumberOfPoints() << std::endl;
   dummy += test_boundary(poly.get(), 10);
   dummy += test_non_manifold(poly.get(), 10);
   return dummy;

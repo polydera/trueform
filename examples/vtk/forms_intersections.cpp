@@ -59,7 +59,7 @@ public:
     frames[id].fill(actors[id]->GetUserMatrix()->GetData());
   }
 
-  auto compute_intersections() -> void {
+  auto compute_intersection_curves()  {
     auto form0 =
         tf::make_form(frames[0], trees[0],
                       tf::make_polygons(get_triangle_faces(polys[0]),
@@ -73,12 +73,7 @@ public:
                                         get_points(polys[1]).as<double>())) //
         | tf::tag(face_memberships[1])                                      //
         | tf::tag(manifold_edge_links[1]);
-    forms_intersections.build(form0, form1);
-  }
-
-  auto get_forms_intersections() const
-      -> const tf::forms_intersections<int, double, 3> & {
-    return forms_intersections;
+    return tf::make_intersection_curves(form0, form1);
   }
 
   auto get_actors() -> std::vector<vtkActor *> & { return actors; }
@@ -91,7 +86,6 @@ private:
   std::vector<tf::tree<int, float, 3>> trees;
   std::vector<tf::face_membership<int>> face_memberships;
   std::vector<tf::manifold_edge_link<int, 3>> manifold_edge_links;
-  tf::forms_intersections<int, double, 3> forms_intersections;
 };
 
 class cursor_interactor : public vtkInteractorStyleTrackballCamera {
@@ -128,11 +122,9 @@ private:
 
   auto compute_curves() {
     tf::tick();
-    bridge.compute_intersections();
-    auto edges = tf::make_intersection_edges(bridge.get_forms_intersections());
+    auto curves = bridge.compute_intersection_curves();
     add_time(tf::tock());
-    auto tmp_poly = segments_to_lines(tf::make_segments(
-        edges, bridge.get_forms_intersections().intersection_points()));
+    auto tmp_poly = curves_to_polydata(curves.curves());
     auto tubes = vtk_make_unique<vtkTubeFilter>();
     tubes->SetRadius(0.05);
     tubes->SetInputData(tmp_poly.get());

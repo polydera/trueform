@@ -1,9 +1,12 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
+#include "./cache_aligned_slot.hpp"
+#include "./views/mapped_range.hpp"
 #include "tbb/task_arena.h"
 #include <vector>
 
@@ -63,14 +66,14 @@ public:
     std::vector<T> out;
     out.reserve(total_size());
     for (const auto &v : _vectors)
-      out.insert(out.end(), v.begin(), v.end());
+      out.insert(out.end(), v.value.begin(), v.value.end());
     return out;
   }
 
   template <typename Iterator>
   auto to_iterator(Iterator out) const -> Iterator {
     for (const auto &v : _vectors)
-      out = std::copy(v.begin(), v.end(), out);
+      out = std::copy(v.value.begin(), v.value.end(), out);
     return out;
   }
 
@@ -80,7 +83,7 @@ public:
   /// @brief Clearsall vectors
   void clear_all() {
     for (auto &v : _vectors)
-      v.clear();
+      v.value.clear();
   }
 
   /// @brief Reserve capacity in the local vector.
@@ -115,29 +118,31 @@ public:
 
   auto operator*() -> std::vector<T> & { return local(); }
 
-  auto vectors() const -> const std::vector<std::vector<T>> & {
-    return _vectors;
+  auto vectors() const {
+    return tf::make_mapped_range(
+        _vectors,
+        [](const auto &x) -> const std::vector<T> & { return x.value; });
   }
 
 private:
   /// @brief Returns reference to the local vector.
   auto local() -> std::vector<T> & {
-    return _vectors[tbb::this_task_arena::current_thread_index()];
+    return _vectors[tbb::this_task_arena::current_thread_index()].value;
   }
 
   /// @brief Returns const reference to the local vector.
   auto local() const -> const std::vector<T> & {
-    return _vectors[tbb::this_task_arena::current_thread_index()];
+    return _vectors[tbb::this_task_arena::current_thread_index()].value;
   }
 
   auto total_size() const -> std::size_t {
     std::size_t total = 0;
     for (const auto &v : _vectors)
-      total += v.size();
+      total += v.value.size();
     return total;
   }
 
-  std::vector<std::vector<T>> _vectors;
+  std::vector<core::cache_aligned_slot<std::vector<T>>> _vectors;
 };
 
 } // namespace tf

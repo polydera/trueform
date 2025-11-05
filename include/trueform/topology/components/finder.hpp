@@ -1,17 +1,17 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
+#include "../../core/algorithm/make_equivalence_class_map.hpp"
 #include "../../core/algorithm/parallel_apply.hpp"
 #include "../../core/buffer.hpp"
-#include "../../core/hash_map.hpp"
 #include "../../core/hash_set.hpp"
+#include "../../core/local_buffer.hpp"
 #include "../../core/views/constant.hpp"
-#include "../../core/views/enumerate.hpp"
 #include "../../core/views/zip.hpp"
-#include "tbb/flow_graph.h"
 #include "tbb/task_group.h"
 #include <atomic>
 
@@ -25,11 +25,12 @@ public:
   auto run(Range0 &&labels, const Range1 &mask, const F &applier) -> label_t {
     clear();
     initialize(labels.size());
-    auto n_labels = run_propagation(mask, applier);
-    auto n_components = make_label_map(n_labels);
+    auto n_components = run_propagation(mask, applier);
     tf::parallel_apply(tf::zip(_work_labels, labels), [&](auto pair) {
       auto &&[wl, l] = pair;
-      l = _label_map[wl.load(std::memory_order_relaxed)];
+      auto wll = wl.load(std::memory_order_relaxed);
+      if (wll != -1)
+        l = _label_map[wll];
     });
     return n_components;
   }
@@ -42,17 +43,18 @@ public:
   auto clear() {
     _label_map.clear();
     _work_labels.clear();
-    _parent.clear();
-    _root_map.clear();
   }
 
 private:
-  template <typename F>
-  auto propagate_label(tf::buffer<Index> &stack,
+  template <typename Range, typename F>
+  auto propagate_label(const Range &mask, tf::buffer<Index> &stack,
                        tf::hash_set<label_t> &collisions, label_t label,
                        F applier) {
     Index count = 0;
-    auto pusher = [&stack](Index id) { stack.push_back(id); };
+    auto pusher = [&stack, &mask](Index id) {
+      if (mask[id])
+        stack.push_back(id);
+    };
     while (stack.size()) {
       Index current = stack.back();
       stack.pop_back();
@@ -72,120 +74,55 @@ private:
 
   template <typename Range, typename F>
   auto run_propagation(const Range &mask, const F &applier) -> label_t {
-    tf::buffer<Index> ids;
-    ids.reserve(mask.size());
-    for (auto [i, e] : tf::enumerate(mask)) {
-      if (e)
-        ids.push_back(i);
-    }
-    Index initial_size = ids.size();
+    std::atomic<label_t> current_label{0};
+    auto n_tasks =
+        std::max(Index(1), Index(tbb::this_task_arena::max_concurrency() - 1));
+    if (n_tasks != 1)
+      n_tasks *= 5;
+    auto size = Index(mask.size());
+    auto local_size = Index(std::ceil(float(size) / n_tasks));
+    std::atomic<Index> n_left{
+        Index(std::count(mask.begin(), mask.end(), true))};
 
-    tbb::task_group walk_tasks;
-    std::atomic<Index> n_processed{0};
+    tbb::task_group walkers;
+    tf::local_buffer<std::array<label_t, 2>> merge_labels;
 
-    tbb::flow::graph g;
-    tbb::flow::function_node<tf::hash_set<label_t>> collision_resolver(
-        g, tbb::flow::serial, [&](const tf::hash_set<label_t> &collisions) {
-          resolve_collisions(collisions);
-        });
+    auto make_task_f = [&](Index task_i) {
+      return [&, task_i] {
+        tf::buffer<Index> stack;
+        tf::hash_set<label_t> collisions;
+        stack.reserve(200);
+        for (Index i = local_size * task_i;
+             i < std::min(local_size * (task_i + 1), size); ++i) {
 
-    auto walker_f = [&](std::pair<Index, label_t> initial) {
-      tf::buffer<Index> stack;
-      stack.reserve(200);
-      stack.push_back(initial.first);
-      tf::hash_set<label_t> collisions;
-      auto processed =
-          propagate_label(stack, collisions, initial.second, applier);
-      if (processed) {
-        n_processed.fetch_add(processed, std::memory_order_relaxed);
-        collisions.insert(initial.second);
-        collision_resolver.try_put(std::move(collisions));
-      }
+          if (!mask[i] || _work_labels[i] != -1)
+            continue;
+          collisions.clear();
+          auto label = current_label++;
+          stack.push_back(i);
+          auto processed =
+              propagate_label(mask, stack, collisions, label, applier);
+          if (processed) {
+            if (!collisions.size())
+              merge_labels.push_back({label, label});
+            for (auto m_label : collisions)
+              merge_labels.push_back({label, m_label});
+            n_left.fetch_sub(processed);
+          }
+        }
+        if (!n_left.load()) {
+          walkers.cancel();
+          return;
+        }
+      };
     };
 
-    Index n_tasks = tbb::this_task_arena::max_concurrency() * 5;
-    label_t current_label = 0;
-    while (ids.size()) {
-      Index step = std::ceil(float(ids.size()) / n_tasks);
-      for (Index offset = 0; offset < Index(ids.size()); offset += step) {
-        walk_tasks.run([&, id = ids[offset], label = current_label++] {
-          walker_f(std::make_pair(id, label));
-        });
-      }
-      walk_tasks.wait();
-      if (n_processed.load(std::memory_order_relaxed) == initial_size)
-        break;
-      ids.erase(std::remove_if(ids.begin(), ids.end(),
-                               [&](const auto &x) -> bool {
-                                 return _work_labels[x].load(
-                                            std::memory_order_relaxed) !=
-                                        label_t{-1};
-                               }),
-                ids.end());
-    }
-    g.wait_for_all();
-    return current_label;
-  }
-
-  auto find_parent(label_t x) -> label_t {
-    label_t root = x;
-
-    // Find root
-    while (_parent.find(root) != _parent.end() && _parent[root] != root) {
-      root = _parent[root];
-    }
-
-    // Path compression
-    label_t current = x;
-    while (_parent.find(current) != _parent.end() && _parent[current] != root) {
-      label_t next = _parent[current];
-      _parent[current] = root;
-      current = next;
-    }
-
-    // If x was unseen, initialize its parent
-    if (_parent.find(x) == _parent.end()) {
-      _parent[x] = root;
-    }
-
-    return root;
-  }
-
-  auto resolve_collisions(const tf::hash_set<label_t> &collisions) {
-    auto unite = [&](label_t root_a, label_t b) {
-      label_t root_b = find_parent(b);
-      if (root_a != root_b)
-        _parent[root_b] = root_a;
-    };
-
-    if (collisions.empty())
-      return;
-
-    auto it = collisions.begin();
-    label_t first = *it;
-    label_t root_first = find_parent(first);
-
-    for (++it; it != collisions.end(); ++it) {
-      unite(root_first, *it);
-    }
-  }
-
-  auto make_label_map(label_t n_labels) -> label_t {
-    label_t _current_label = 0;
-    _label_map.allocate(n_labels);
-    _root_map.reserve(_parent.size());
-    for (const auto &[label, _] : _parent) {
-      // Repeated find with path compression
-      label_t root = find_parent(label);
-      auto iter = _root_map.find(root);
-      if (iter == _root_map.end()) {
-        _root_map[root] = _current_label;
-        _label_map[label] = _current_label;
-        ++_current_label;
-      } else
-        _label_map[label] = iter->second;
-    }
-    return _current_label;
+    for (Index i = 0; i < n_tasks; ++i)
+      walkers.run(make_task_f(i));
+    walkers.wait();
+    _label_map.allocate(current_label.load(std::memory_order_relaxed));
+    return tf::make_sparse_equivalence_class_map(merge_labels.to_buffer(),
+                                                 _label_map);
   }
 
   auto initialize(std::size_t size) {
@@ -195,8 +132,6 @@ private:
   }
 
   tf::buffer<std::atomic<label_t>> _work_labels;
-  tf::hash_map<label_t, label_t> _parent;
   tf::buffer<label_t> _label_map;
-  tf::hash_map<label_t, label_t> _root_map;
 };
 } // namespace tf::topology

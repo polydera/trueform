@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -22,6 +23,35 @@ public:
   blocked_buffer(const tf::buffer<T> &_data) : _data{_data} {}
   blocked_buffer(tf::buffer<T> &&_data) : _data{std::move(_data)} {}
 
+  template <typename Iterator>
+  auto push_back(const tf::range<Iterator, BlockSize> &r) {
+    for (std::size_t i = 0; i < BlockSize; ++i)
+      _data.push_back(r[i]);
+  }
+
+  auto push_back(const std::array<T, BlockSize> &r) {
+    for (std::size_t i = 0; i < BlockSize; ++i)
+      _data.push_back(r[i]);
+  }
+
+  template <typename... Ts>
+  auto emplace_back(Ts &&...ts)
+      -> std::enable_if_t<(sizeof...(Ts) == BlockSize), void> {
+    (_data.push_back(ts), ...);
+  }
+
+  auto erase(iterator from, iterator to) {
+    _data.erase(from.base_iter(), to.base_iter());
+  }
+
+  auto reserve(std::size_t n) { _data.reserve(n * BlockSize); }
+
+  auto allocate(std::size_t n) { _data.allocate(n * BlockSize); }
+
+  auto reallocate(std::size_t n) { _data.reallocate(n * BlockSize); }
+
+  auto clear() { _data.clear(); }
+
   auto begin() const -> const_iterator {
     return iter::make_blocked_iterator<BlockSize>(_data.begin());
   }
@@ -38,7 +68,7 @@ public:
     return iter::make_blocked_iterator<BlockSize>(_data.end());
   }
 
-  auto size() const -> size_type { return _data.size(); }
+  auto size() const -> size_type { return _data.size() / BlockSize; }
 
   auto empty() const -> bool { return size() == 0; }
 
@@ -58,8 +88,6 @@ public:
 
   auto data_buffer() const -> const tf::buffer<T> & { return _data; }
   auto data_buffer() -> tf::buffer<T> & { return _data; }
-
-  auto clear() { _data.clear(); }
 
 private:
   tf::buffer<T> _data;

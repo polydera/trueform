@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -14,6 +15,7 @@ template <std::size_t Dims, typename Policy0, typename Policy1> struct line {
   static_assert(std::is_same_v<tf::coordinate_type<Policy0>,
                                tf::coordinate_type<Policy1>>);
   using coordinate_type = tf::coordinate_type<Policy0>;
+  using coordinate_dims = std::integral_constant<std::size_t, Dims>;
 
   line() = default;
   line(const tf::point_like<Dims, Policy0> &origin,

@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -19,7 +20,7 @@ public:
     clear();
     build_connectivities(directed_edges, points.size());
     compute_angles(directed_edges, points);
-    order_link();
+    order_link(directed_edges);
     walk_regions(directed_edges);
   }
 
@@ -50,8 +51,8 @@ private:
     }
   }
 
-  auto order_link() {
-    for (auto &&[angle, link] : tf::zip(_angles, _dil)) {
+  template <typename Policy> auto order_link(const tf::edges<Policy> &edges) {
+    for (auto &&[edge0, angle, link] : tf::zip(edges, _angles, _dil)) {
       if (link.size() < 2)
         continue;
       auto angle0 = angle - M_PI;
@@ -59,11 +60,16 @@ private:
       _work_buffer.clear();
       _work_buffer.resize(link.size());
       for (auto &&[next, val] : tf::zip(link, _work_buffer)) {
-        auto angle1 = _angles[next];
-        angle1 += (angle1 <= 0) * 2 * M_PI;
-        auto angle = angle0 - angle1;
-        angle += (angle <= 0) * 2 * M_PI;
-        val = angle;
+        const auto &edge1 = edges[next];
+        if (edge0[0] == edge1[1]) {
+          val = 2 * M_PI;
+        } else {
+          auto angle1 = _angles[next];
+          angle1 += (angle1 <= 0) * 2 * M_PI;
+          auto angle = angle0 - angle1;
+          angle += (angle <= 0) * 2 * M_PI;
+          val = angle;
+        }
       }
       auto r_to_sort = tf::zip(_work_buffer, link);
       std::sort(r_to_sort.begin(), r_to_sort.end());
@@ -99,13 +105,6 @@ private:
     _visited.allocate(edges.size());
     std::fill(_visited.begin(), _visited.end(), false);
     Index n_edges_left = edges.size();
-    // if we start on branches, regions with area == 0
-    // might be their own regions
-    for (Index current = 0; n_edges_left && current < Index(_dil.size());
-         ++current) {
-      if (_dil[current].size() == 2)
-        n_edges_left -= make_walk(edges, current);
-    }
     for (Index current = 0; n_edges_left && current < Index(_dil.size());
          ++current) {
       n_edges_left -= make_walk(edges, current);

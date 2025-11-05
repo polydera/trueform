@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -11,6 +12,7 @@ template <std::size_t Dims, typename Policy> struct trans_ptr {
   using element_type = typename Policy::element_type;
   using value_type = typename Policy::value_type;
   using coordinate_type = typename Policy::coordinate_type;
+  using coordinate_dims = std::integral_constant<std::size_t, Dims>;
   constexpr static std::size_t n_rows = Policy::n_rows;
   constexpr static std::size_t n_columns = Policy::n_columns;
 
@@ -38,6 +40,7 @@ struct trans_ptr<Dims, const Policy> {
   using element_type = const typename Policy::element_type;
   using value_type = typename Policy::value_type;
   using coordinate_type = typename Policy::coordinate_type;
+  using coordinate_dims = std::integral_constant<std::size_t, Dims>;
   constexpr static std::size_t n_rows = Policy::n_rows;
   constexpr static std::size_t n_columns = Policy::n_columns;
 

@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -100,4 +101,13 @@ auto make_segments(Range0 &&_edges, Range1 &&_points) {
   return segments<std::decay_t<Range0>, std::decay_t<Range1>>{
       static_cast<Range0 &&>(_edges), static_cast<Range1 &&>(_points)};
 }
+
+template <typename Range0, typename Range1>
+auto has_edges_policy(const segments<Range0, Range1> *) -> std::true_type;
+auto has_edges_policy(const void *) -> std::false_type;
 } // namespace tf::core
+namespace tf {
+template <typename T>
+inline constexpr bool has_edges = decltype(has_edges_policy(
+    static_cast<const std::decay_t<T> *>(nullptr)))::value;
+}

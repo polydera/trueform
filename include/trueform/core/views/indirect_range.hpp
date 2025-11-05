@@ -1,10 +1,12 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
 
+#include "../array_like.hpp"
 #include "../iter/indirect_iterator.hpp"
 #include "../range.hpp"
 #include "../static_size.hpp"
@@ -44,8 +46,8 @@ public:
       return tf::make_range(Policy::begin().base_iter(),
                             Policy::end().base_iter());
     else
-      return tf::make_range<tf::static_size_v<Policy>>(
-          Policy::begin().base_iter());
+      return tf::make_array_like(tf::make_range<tf::static_size_v<Policy>>(
+          Policy::begin().base_iter()));
   }
 };
 
@@ -57,7 +59,11 @@ template <typename Range0, typename Range1>
 auto make_indirect_range_base(Range0 &&ids, Range1 &&data) {
   auto begin = tf::iter::make_indirect(ids.begin(), data.begin());
   auto end = tf::iter::make_indirect(ids.end(), data.end());
-  return tf::make_range<tf::static_size_v<Range0>>(begin, end);
+  if constexpr (tf::static_size_v<Range0> == tf::dynamic_size)
+    return tf::make_range<tf::static_size_v<Range0>>(begin, end);
+  else
+    return tf::make_array_like(
+        tf::make_range<tf::static_size_v<Range0>>(begin, end));
 }
 
 /// @brief Specialization of `tf::static_size` for `tf::indirect_range`.

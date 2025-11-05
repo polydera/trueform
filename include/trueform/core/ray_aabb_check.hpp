@@ -1,10 +1,12 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
 #include "./aabb_like.hpp"
+#include "./epsilon.hpp"
 #include "./intersect_status.hpp"
 #include "./ray_like.hpp"
 #include "./vector_like.hpp"
@@ -27,7 +29,7 @@ auto ray_aabb_check(const tf::ray_like<Dims, Policy0> &ray,
       std::swap(min_i, max_i);
     auto t0 = (min_i - ray.origin[i]) * ray_dir_inv[i];
     auto t1 = (max_i - ray.origin[i]) * ray_dir_inv[i] *
-              (1 + 2 * std::numeric_limits<RealT>::epsilon());
+              (1 + 2 * tf::epsilon2<RealT>);
     min_t = std::max(t0, min_t);
     max_t = std::min(t1, max_t);
   }

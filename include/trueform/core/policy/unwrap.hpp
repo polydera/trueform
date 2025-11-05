@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -26,6 +27,15 @@ template <typename T> auto unwrapped(T &&t) -> decltype(auto) {
       return static_cast<T &&>(t);
   else
     return unwrapped(unwrap_);
+}
+
+template <typename T, typename F> auto wrap_map(T &&t, const F& map) -> decltype(auto) {
+  auto &&unwrap_ = unwrap(static_cast<T &&>(t));
+  if constexpr (std::is_same_v<std::decay_t<T>,
+                               std::decay_t<decltype(unwrap_)>>)
+    return map(static_cast<T&&>(t));
+  else
+    return wrap_like(t, wrap_map(unwrap_, map));
 }
 
 namespace policy {

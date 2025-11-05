@@ -1,9 +1,12 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
+#include "./cache_aligned_slot.hpp"
+#include "./views/mapped_range.hpp"
 #include "tbb/task_arena.h" // For tbb::this_task_arena
 #include <vector>           // For std::vector
 
@@ -40,7 +43,8 @@ public:
   /// @brief Constructor with an initial value.
   /// Initializes each thread-local value with a copy of `initial_value`.
   explicit local_value(const T &initial_value)
-      : _values(tbb::this_task_arena::max_concurrency(), initial_value) {}
+      : _values(tbb::this_task_arena::max_concurrency(),
+                core::cache_aligned_slot<T>{initial_value}) {}
 
   local_value(const local_value &) = delete;
   local_value(local_value &&) = delete;
@@ -70,9 +74,9 @@ public:
   /// @return The final aggregated value.
   template <typename BinaryOp> auto aggregate(BinaryOp op) const -> T {
     // Start aggregation with the first thread's value.
-    T result = _values[0];
+    T result = _values[0].value;
     for (std::size_t i = 1; i < _values.size(); ++i) {
-      result = op(std::move(result), _values[i]);
+      result = op(std::move(result), _values[i].value);
     }
     return result;
   }
@@ -80,26 +84,40 @@ public:
   /// @brief Resets all thread-local values to a given value.
   void reset(const T &reset_value) {
     for (auto &v : _values) {
-      v = reset_value;
+      v.value = reset_value;
     }
   }
 
-  auto values() -> std::vector<T> & { return _values; }
+  auto values() {
+    return tf::make_mapped_range(_values,
+                                 [](auto &x) -> T & { return x.value; });
+  }
 
-  auto values() const -> const std::vector<T> & { return _values; }
+  auto values() const {
+    return tf::make_mapped_range(
+        _values, [](const auto &x) -> const T & { return x.value; });
+  }
 
 private:
-  /// @brief Returns a reference to the current thread's local value.
-  auto local() -> T & {
-    return _values[tbb::this_task_arena::current_thread_index()];
+  auto get_id() const {
+    return tbb::this_task_arena::current_thread_index();
+    /*struct cache_t {*/
+    /*  decltype(tbb::this_task_arena::current_thread_index()) _id;*/
+    /*  const local_value<T> *_this;*/
+    /*};*/
+    /*static thread_local cache_t cache{*/
+    /*    tbb::this_task_arena::current_thread_index(), this};*/
+    /*if (cache._this != this)*/
+    /*  cache = {tbb::this_task_arena::current_thread_index(), this};*/
+    /*return cache._id;*/
   }
+  /// @brief Returns a reference to the current thread's local value.
+  auto local() -> T & { return _values[get_id()].value; }
 
   /// @brief Returns a const reference to the current thread's local value.
-  auto local() const -> const T & {
-    return _values[tbb::this_task_arena::current_thread_index()];
-  }
+  auto local() const -> const T & { return _values[get_id()].value; }
 
-  std::vector<T> _values;
+  std::vector<core::cache_aligned_slot<T>> _values;
 };
 
 } // namespace tf

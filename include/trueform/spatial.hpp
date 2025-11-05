@@ -1,19 +1,18 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
 
 #include "./spatial/build_tree_nodes.hpp"      // IWYU pragma: export
 #include "./spatial/distance.hpp"              // IWYU pragma: export
-#include "./spatial/dyn_model.hpp"             // IWYU pragma: export
 #include "./spatial/form.hpp"                  // IWYU pragma: export
 #include "./spatial/gather_ids.hpp"            // IWYU pragma: export
 #include "./spatial/gather_self_ids.hpp"       // IWYU pragma: export
 #include "./spatial/intersects.hpp"            // IWYU pragma: export
 #include "./spatial/max_nodes_in_tree.hpp"     // IWYU pragma: export
-#include "./spatial/model.hpp"                 // IWYU pragma: export
 #include "./spatial/nearest_neighbor.hpp"      // IWYU pragma: export
 #include "./spatial/nearest_neighbor_pair.hpp" // IWYU pragma: export
 #include "./spatial/nearest_neighbors.hpp"     // IWYU pragma: export

@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -12,6 +13,7 @@
 #include "./algorithm/compute_offsets.hpp"
 #include "./algorithm/generate_offset_blocks.hpp"
 #include "./algorithm/generic_generate.hpp"
+#include "./algorithm/ids_to_index_map.hpp"
 #include "./algorithm/make_equivalence_class_index_map.hpp"
 #include "./algorithm/make_equivalence_class_map.hpp"
 #include "./algorithm/make_unique_index_map.hpp"
@@ -21,6 +23,7 @@
 #include "./algorithm/min.hpp"
 #include "./algorithm/parallel_apply.hpp"
 #include "./algorithm/parallel_copy.hpp"
+#include "./algorithm/parallel_copy_blocked.hpp"
 #include "./algorithm/parallel_copy_by_map_with_nones.hpp"
 #include "./algorithm/parallel_fill.hpp"
 #include "./algorithm/parallel_for.hpp"

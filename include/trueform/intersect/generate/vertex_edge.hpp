@@ -1,13 +1,14 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
 #include "../../core/buffer.hpp"
-#include "../intersection_id.hpp"
 #include "../polygon/vertex_edge.hpp"
-#include "../tagged_intersection.hpp"
+#include "../types/intersection_id.hpp"
+#include "../types/tagged_intersection.hpp"
 
 namespace tf::intersect::generate {
 

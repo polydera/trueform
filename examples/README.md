@@ -89,8 +89,8 @@ This example provides a direct comparison with `CGAL` for computing the intersec
 
 #### Features Showcased
 
-* Using `tf::forms_intersections` to compute intersections between two `tf::form`s.
-* Using `tf::make_intersection_edges` to extract intersection edges from `tf::forms_intersections`
+* Using `tf::intersections_between_polygons` to compute intersections between two `tf::form`s.
+* Using `tf::make_intersection_edges` to extract intersection edges from `tf::intersections_between_polygons`
 * Using `tf::face_membership` and how to `tf::tag` it to a `tf::form` 
 * Using `tf::manifold_edge_link` and how to `tf::tag` it to a `tf::form` 
 * Using `points.as<double>()` to get a view into points where each point is cast to `tf::point<double,3>`
@@ -104,6 +104,24 @@ This example provides a direct comparison with `CGAL` for computing [planar arra
 * Using `tf::planar_arrangments` to extract oriented faces and hole relations.
 * Using `tf::make_edges` and `tf::make_points` to impart semantic meaning onto ranges
 
+### [CGAL: Connected Components](./cgal/connected_components.cpp)
+
+This example provides a direct comparison with `CGAL` for computing connected components fo a mesh.
+
+#### Features Showcased
+
+* Using `tf::label_connected_components`
+
+
+### [CGAL: Mesh Booleans](./cgal/cgal-boolean.cpp)
+
+This example provides a direct comparison with `CGAL` for computing mesh booleans.
+
+#### Features Showcased
+
+* Using `tf::make_boolean`
+
+
 ### [VTK: Feature Edges](./vtk/feature_edges.cpp)
 
 This example provides direct performance benchmark for collecting boundary and non_manifold edges.
@@ -113,14 +131,22 @@ This example provides direct performance benchmark for collecting boundary and n
 * Using `tf::make_boundary_edges`
 * Using `tf::make_non_manifold_edges`
 
+### [VTK: Clean Mesh](./vtk/compare_clean.cpp.cpp)
+
+This example provides direct performance benchmark for cleaning a mesh with a specified tolerance (our implementation additionally removes all uncontained points).
+
+#### Features Showcased
+
+* Using `tf::cleaned`
+
 ### [VTK: Intersection Curve](./vtk/vtk_intersection_curve.cpp)
 
 This example provides a direct comparison with `VTK` for computing the intersection curve between two transforming meshes.
 
 #### Features Showcased
 
-* Using `tf::forms_intersections` to compute intersections between two `tf::form`s.
-* Using `tf::make_intersection_edges` to extract intersection edges from `tf::forms_intersections`
+* Using `tf::intersections_between_polygons` to compute intersections between two `tf::form`s.
+* Using `tf::make_intersection_edges` to extract intersection edges from `tf::intersections_between_polygons`
 * Using `tf::face_membership` and how to `tf::tag` it to a `tf::form` 
 * Using `tf::manifold_edge_link` and how to `tf::tag` it to a `tf::form` 
 * Using `points.as<double>()` to get a view into points where each point is cast to `tf::point<double,3>`
@@ -165,9 +191,25 @@ This example showcases how to compute intersection curves between two meshes (as
 
 #### Features Showcased
 
-* Using `tf::forms_intersections` to compute intersections between two `tf::form`s.
-* Using `tf::make_intersection_edges` to extract intersection edges from `tf::forms_intersections`
+* Using `tf::intersections_between_polygons` to compute intersections between two `tf::form`s.
+* Using `tf::make_intersection_edges` to extract intersection edges from `tf::intersections_between_polygons`
 * Using `tf::face_membership` and how to `tf::tag` it to a `tf::form` 
 * Using `tf::manifold_edge_link` and how to `tf::tag` it to a `tf::form` 
 * Using `points.as<double>()` to get a view into points where each point is cast to `tf::point<double,3>`
 * Demonstrates a practical application for CAD
+
+### [Isobands](./vtk/isobands.cpp)
+
+This example showcases how to compute isobands against a scalar field. Pressing `n` randomizes the plane against which the distance field is computed. Holding shift and scrolling moves the isocurves along the mesh.
+
+#### Features Showcased
+
+* Using `tf::make_isobands` to create isobands.
+
+### [Mesh Boolean](./vtk/boolean.cpp)
+
+This example showcases how to compute booleans of two moving meshes. Pressing `n` randomizes the meshes orientations. 
+
+#### Features Showcased
+
+* Using `tf::make_boolean` to compute boolean between two meshes and their intersection curves.

@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -11,6 +12,7 @@ namespace tf::linalg {
 template <typename RealT, std::size_t Dims> class safe_frame {
 public:
   using coordinate_type = RealT;
+  using coordinate_dims = std::integral_constant<std::size_t, Dims>;
 
   safe_frame(const tf::transformation<RealT, Dims> &_transformation)
       : _transformation{_transformation}, _is_dirty{true} {}

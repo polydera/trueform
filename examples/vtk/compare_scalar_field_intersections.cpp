@@ -4,6 +4,7 @@
 #include "vtkContourFilter.h"
 #include "vtkFloatArray.h"
 #include "vtkPointData.h"
+#include "vtkStripper.h"
 #include <filesystem>
 
 int dummy = 0;
@@ -41,10 +42,8 @@ auto run_test(vtkPolyData *poly, int n_contours, tf::plane<float, 3> plane) {
   dummy += stripper->GetOutput()->GetNumberOfLines();
   //
   tf::tick();
-  tf::scalar_field_intersections<int, float, 3> sfi;
-  sfi.build_many(polygons, scalars, cut_values);
-  auto paths = tf::make_intersection_paths(sfi, polygons, scalars, tf::make_range(cut_values));
-  auto curves = tf::make_curves(paths, sfi.intersection_points());
+  auto curves = tf::make_isocontours(polygons, tf::make_range(scalars),
+                                     tf::make_range(cut_values));
   float t_tf = tf::tock();
   dummy += curves.paths().size();
   //
@@ -68,7 +67,8 @@ auto run_test(vtkPolyData *poly, int n_contours, int n_iters) {
   t_vtk /= n_iters;
   t_tf /= n_iters;
 
-  std::cout << "\r--- Compute " << n_contours << " Contours ---       " << std::endl;
+  std::cout << "\r--- Compute " << n_contours << " Contours ---       "
+            << std::endl;
   std::cout << "       vtk: " << t_vtk << " ms" << std::endl;
   std::cout << "        tf: " << t_tf << " ms" << std::endl;
   std::cout << "  speed-up: " << (t_vtk / t_tf) << std::endl;

@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -19,6 +20,10 @@ struct zip_reference
   using base_t::operator=;
   zip_reference() = default;
   zip_reference(Iterators... iters) : base_t{*iters...} {}
+  zip_reference(const zip_reference &) = default;
+  zip_reference(zip_reference &&) = default;
+  auto operator=(const zip_reference &) -> zip_reference & = default;
+  auto operator=(zip_reference &&) -> zip_reference & = default;
 
   friend auto swap(zip_reference &zr0, zip_reference &zr1) -> void {
     using std::get;

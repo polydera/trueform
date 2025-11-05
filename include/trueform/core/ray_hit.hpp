@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -40,7 +41,7 @@ auto ray_hit(
     out.point = ray.origin + result.t * ray.direction;
     out.status = static_cast<tf::intersect_status>(tf::contains_coplanar_point(
         poly, out.point, tf::make_simple_projector(poly.normal()),
-        std::numeric_limits<RealT>::epsilon()));
+        tf::epsilon<RealT>));
   }
   return out;
 }
@@ -65,19 +66,18 @@ auto ray_hit(
     const tf::ray_config<tf::coordinate_type<Policy0, Policy1>> &config = {}) {
   using RealT = tf::coordinate_type<Policy0, Policy1>;
   auto ray1 = tf::make_ray_between_points(seg[0], seg[1]);
-  auto [non_parallel, t0, t1] = tf::core::line_line_check(ray, ray1);
-  intersect_status status = intersect_status::none;
+  auto [status, t0, t1] = tf::core::line_line_check_full(ray, ray1);
   tf::point<tf::coordinate_type<decltype(t0), decltype(t1)>, Dims> pt{};
-  if (non_parallel &&
-      t0 >= config.min_t - std::numeric_limits<RealT>::epsilon() &&
-      t0 <= config.max_t + std::numeric_limits<RealT>::epsilon() &&
-      t1 >= -std::numeric_limits<RealT>::epsilon() &&
-      t1 <= 1 + std::numeric_limits<RealT>::epsilon()) {
+  if (status == tf::intersect_status::non_parallel &&
+      t0 >= config.min_t - tf::epsilon<RealT> &&
+      t0 <= config.max_t + tf::epsilon<RealT> &&
+      t1 >= -tf::epsilon<RealT> &&
+      t1 <= 1 + tf::epsilon<RealT>) {
     auto pt0 = ray.origin + t0 * ray.direction;
     auto pt1 = ray1.origin + t1 * ray1.direction;
     auto d2 = (pt0 - pt1).length2();
     status = static_cast<intersect_status>(
-        d2 < std::numeric_limits<decltype(d2)>::epsilon());
+        d2 < tf::epsilon2<decltype(d2)>);
     auto pt_view = pt.as_vector_view();
     pt_view = (pt0.as_vector_view() + pt1.as_vector_view()) / 2;
   }
@@ -104,17 +104,16 @@ auto ray_hit(
     const tf::line_like<Dims, Policy1> &line,
     const tf::ray_config<tf::coordinate_type<Policy0, Policy1>> &config = {}) {
   using RealT = tf::coordinate_type<Policy0, Policy1>;
-  auto [non_parallel, t0, t1] = tf::core::line_line_check(ray, line);
-  intersect_status status = intersect_status::none;
+  auto [status, t0, t1] = tf::core::line_line_check_full(ray, line);
   tf::point<tf::coordinate_type<Policy0, Policy1>, Dims> pt{};
-  if (non_parallel &&
-      t0 >= config.min_t - std::numeric_limits<RealT>::epsilon() &&
-      t0 <= config.max_t + std::numeric_limits<RealT>::epsilon()) {
+  if (status == tf::intersect_status::non_parallel &&
+      t0 >= config.min_t - tf::epsilon<RealT> &&
+      t0 <= config.max_t + tf::epsilon<RealT>) {
     auto pt0 = ray.origin + t0 * ray.direction;
     auto pt1 = line.origin + t1 * line.direction;
     auto d2 = (pt0 - pt1).length2();
     status = static_cast<intersect_status>(
-        d2 < std::numeric_limits<decltype(d2)>::epsilon());
+        d2 < tf::epsilon2<decltype(d2)>);
     auto pt_view = pt.as_vector_view();
     pt_view = (pt0.as_vector_view() + pt1.as_vector_view()) / 2;
   }
@@ -140,18 +139,17 @@ auto ray_hit(
     const ray_like<Dims, Policy0> &ray, const tf::ray_like<Dims, Policy1> &ray1,
     const tf::ray_config<tf::coordinate_type<Policy0, Policy1>> &config = {}) {
   using RealT = tf::coordinate_type<Policy0, Policy1>;
-  auto [non_parallel, t0, t1] = tf::core::line_line_check(ray, ray1);
-  intersect_status status = intersect_status::none;
+  auto [status, t0, t1] = tf::core::line_line_check_full(ray, ray1);
   tf::point<tf::coordinate_type<Policy0, Policy1>, Dims> pt{};
-  if (non_parallel &&
-      t0 >= config.min_t - std::numeric_limits<RealT>::epsilon() &&
-      t0 <= config.max_t + std::numeric_limits<RealT>::epsilon() &&
-      t1 >= -std::numeric_limits<RealT>::epsilon()) {
+  if (status == tf::intersect_status::non_parallel &&
+      t0 >= config.min_t - tf::epsilon<RealT> &&
+      t0 <= config.max_t + tf::epsilon<RealT> &&
+      t1 >= -tf::epsilon<RealT>) {
     auto pt0 = ray.origin + t0 * ray.direction;
     auto pt1 = ray1.origin + t1 * ray1.direction;
     auto d2 = (pt0 - pt1).length2();
     status = static_cast<intersect_status>(
-        d2 < std::numeric_limits<decltype(d2)>::epsilon());
+        d2 < tf::epsilon2<decltype(d2)>);
     auto pt_view = pt.as_vector_view();
     pt_view = (pt0.as_vector_view() + pt1.as_vector_view()) / 2;
   }

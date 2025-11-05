@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -15,6 +16,12 @@ class face_membership : public offset_block_buffer<Index, Index> {
   using base_t = offset_block_buffer<Index, Index>;
 
 public:
+  face_membership() = default;
+
+  template <typename Policy> face_membership(const polygons<Policy> &polygons) {
+    build(polygons);
+  }
+
   template <typename Policy>
   auto build(const tf::faces<Policy> &faces, std::size_t n_unique_ids,
              std::size_t total_size) -> void {

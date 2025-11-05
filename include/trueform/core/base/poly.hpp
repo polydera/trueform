@@ -1,11 +1,13 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
 
 #include "../assignable_range.hpp"
+#include "../coordinate_dims.hpp"
 #include "../coordinate_type.hpp"
 #include "../static_size.hpp"
 #include "../views/indirect_range.hpp"
@@ -24,6 +26,7 @@ public:
   auto operator=(const poly &) -> poly & = default;
   auto operator=(poly &&) -> poly & = default;
   using coordinate_type = tf::coordinate_type<typename Policy::value_type>;
+  using coordinate_dims = tf::coordinate_dims<typename Policy::value_type>;
   using base_t::base_t;
   using base_t::operator=;
   using base_t::operator[];
@@ -48,6 +51,7 @@ public:
   auto operator=(const poly &) -> poly & = default;
   auto operator=(poly &&) -> poly & = default;
   using coordinate_type = tf::coordinate_type<typename Policy::value_type>;
+  using coordinate_dims = tf::coordinate_dims<typename Policy::value_type>;
   using base_t::base_t;
   using base_t::operator=;
   using base_t::operator[];

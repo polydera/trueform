@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -31,12 +32,15 @@ namespace tf {
 /// `input.size()` elements.
 template <typename Range0, typename Range1>
 auto parallel_copy(const Range0 &input, Range1 &&output) {
-  tbb::parallel_for(
-      tbb::blocked_range<std::size_t>(0, input.size()),
-      [&input, &output](const tbb::blocked_range<std::size_t> &range) {
-        std::copy(input.begin() + range.begin(), input.begin() + range.end(),
-                  output.begin() + range.begin());
-      });
+  if (input.size() < 1000)
+    std::copy(input.begin(), input.end(), output.begin());
+  else
+    tbb::parallel_for(
+        tbb::blocked_range<std::size_t>(0, input.size()),
+        [&input, &output](const tbb::blocked_range<std::size_t> &range) {
+          std::copy(input.begin() + range.begin(), input.begin() + range.end(),
+                    output.begin() + range.begin());
+        });
 }
 
 } // namespace tf

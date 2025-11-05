@@ -1,11 +1,13 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
 
 #include "../core/empty_aabb.hpp"
+#include "../core/views/zip.hpp"
 #include "./build_tree_nodes.hpp"
 #include "./partitioning.hpp"
 #include "./tree_config.hpp"
@@ -48,10 +50,13 @@ public:
   template <typename Partitioner, typename Range, typename FC>
   auto build(const Range &objects, const tf::tree_config<FC> &config) -> void {
     _aabbs.allocate(objects.size());
-    tf::parallel_apply(std::forward_as_tuple(objects, _aabbs),
-                       [&](const auto &object, auto &aabb) {
-                         aabb = config.make_aabb(object);
-                       });
+    tf::parallel_apply(
+        tf::zip(objects, _aabbs),
+        [&](auto pair) {
+          auto &&[object, aabb] = pair;
+          aabb = config.make_aabb(object);
+        },
+        tf::checked);
     tf::spatial::build_tree_nodes<Partitioner>(_nodes, _ids, _aabbs,
                                                config.node_config);
   }

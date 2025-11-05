@@ -1,10 +1,12 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
 #include "./base/segments.hpp"
+#include "./base/soup.hpp"
 #include "./edges.hpp"
 #include "./points.hpp"
 
@@ -60,7 +62,7 @@ auto make_segments(segments<Range> p) -> segments<Range> {
 
 template <typename Range> auto make_segments(Range &&r) {
   auto segs = tf::make_range(r);
-  return segments<decltype(segs)>{segs};
+  return segments<core::soup<decltype(segs)>>{core::soup<decltype(segs)>{segs}};
 }
 
 template <typename Policy> auto make_view(const tf::segments<Policy> &obj) {

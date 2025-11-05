@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -64,13 +65,16 @@ public:
               tf::make_mapped_range(edges, [](const auto &r) { return r[0]; })),
           as_em.data_buffer());
     case tf::edge_orientation::bidirectional:
-      tf::parallel_apply(tf::enumerate(as_em), [&](auto pair) {
-        auto &&[id, block] = pair;
-        for (auto &edge_id : block) {
-          const auto &edge = edges[edge_id];
-          edge_id = edge[edge[0] == id];
-        }
-      });
+      tf::parallel_apply(
+          tf::enumerate(as_em),
+          [&](auto pair) {
+            auto &&[id, block] = pair;
+            for (auto &edge_id : block) {
+              const auto &edge = edges[edge_id];
+              edge_id = edge[edge[0] == Index(id)];
+            }
+          },
+          tf::checked);
     }
   }
 

@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 
@@ -34,6 +35,8 @@ inline constexpr bool has_tree_policy = decltype(policy::has_tree(
 namespace policy {
 template <typename Index, typename RealT, std::size_t Dims, typename Base>
 struct tag_tree : Base {
+  using real_t = RealT;
+  using index_t = Index;
   using Base::operator=;
   tag_tree(tf::tree<Index, RealT, Dims> *_tree, const Base &base)
       : Base{base}, _tree{_tree} {}
@@ -132,6 +135,10 @@ namespace tf {
 namespace policy {
 template <typename Index, typename RealT, std::size_t Dims, typename Base>
 struct tag_const_tree : Base {
+
+  using real_t = RealT;
+  using index_t = Index;
+
   using Base::operator=;
   tag_const_tree(const tf::tree<Index, RealT, Dims> *_tree, const Base &base)
       : Base{base}, _tree{_tree} {}

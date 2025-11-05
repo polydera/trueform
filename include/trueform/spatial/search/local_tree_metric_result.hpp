@@ -1,11 +1,13 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
 
 #include "../../core/algorithm/assign_if.hpp"
+#include "../../core/epsilon.hpp"
 #include "../../core/local_value.hpp"
 #include <atomic>
 #include <limits>
@@ -42,7 +44,7 @@ public:
     if (tf::assign_if(_best, c_point.metric, std::less<>{})) {
       // assignment is thread_local
       *_info = {c_element, c_point};
-      return c_point.metric < std::numeric_limits<real_t>::epsilon();
+      return c_point.metric < tf::epsilon2<real_t>;
     }
     return false;
   }
@@ -63,4 +65,4 @@ public:
   std::atomic<real_t> _best;
 };
 
-} // namespace tf::implementation
+} // namespace tf::spatial

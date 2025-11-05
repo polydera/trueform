@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Distributed under the Boost Software License, Version 1.0.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -137,7 +138,7 @@ auto intersects(const aabb_like<N, Policy> &box, const point_like<N, T1> &point,
 template <std::size_t N, typename T0, typename T1>
 auto intersects(const point_like<N, T0> &v0, const point_like<N, T1> &v1,
                 tf::coordinate_type<T0, T1> epsilon) -> bool {
-  return (v0 - v1).length2() < epsilon * epsilon;
+  return (v0 - v1).length2() < epsilon;
 }
 /// @ingroup geometry
 /// @brief Check whether two geometric primitives intersect.
@@ -149,8 +150,7 @@ auto intersects(const point_like<N, T0> &v0, const point_like<N, T1> &v1,
 template <std::size_t N, typename T0, typename T1>
 auto intersects(const tf::point_like<N, T0> &v0,
                 const tf::point_like<N, T1> &v1) -> bool {
-  return (v0 - v1).length2() <
-         std::numeric_limits<tf::coordinate_type<T0, T1>>::epsilon();
+  return (v0 - v1).length2() < tf::epsilon2<tf::coordinate_type<T0, T1>>;
 }
 
 /// @ingroup geometry
@@ -166,7 +166,7 @@ auto intersects(const tf::line_like<Dims, Policy> &l,
   auto t = tf::closest_point_parametric(l, v1);
   auto pt = l.origin + t * l.direction;
   auto d2 = (pt - v1).length2();
-  return d2 < std::numeric_limits<decltype(d2)>::epsilon();
+  return d2 < tf::epsilon2<decltype(d2)>;
 }
 
 /// @ingroup geometry
@@ -195,7 +195,7 @@ auto intersects(const tf::ray_like<Dims, Policy> &r,
   auto t = tf::closest_point_parametric(r, v1);
   auto pt = r.origin + t * r.direction;
   auto d2 = (pt - v1).length2();
-  return d2 < std::numeric_limits<decltype(d2)>::epsilon();
+  return d2 < tf::epsilon2<decltype(d2)>;
 }
 
 /// @ingroup geometry
@@ -225,7 +225,7 @@ auto intersects(const tf::segment<Dims, T0> &s,
   auto l = tf::make_line_between_points(s[0], s[1]);
   auto pt = l.origin + t * l.direction;
   auto d2 = (pt - v1).length2();
-  return d2 < std::numeric_limits<decltype(d2)>::epsilon();
+  return d2 < tf::epsilon2<decltype(d2)>;
 }
 
 template <typename T0, typename T1>
@@ -265,7 +265,7 @@ auto intersects(const tf::line_like<Dims, Policy0> &l0,
   auto pt0 = l0.origin + t0 * l0.direction;
   auto pt1 = l1.origin + t1 * l1.direction;
   auto d2 = (pt0 - pt1).length2();
-  return d2 < std::numeric_limits<decltype(d2)>::epsilon();
+  return d2 < tf::epsilon2<decltype(d2)>;
 }
 
 /// @ingroup geometry
@@ -282,7 +282,7 @@ auto intersects(const tf::ray_like<Dims, Policy0> &r0,
   auto pt0 = r0.origin + t0 * r0.direction;
   auto pt1 = r1.origin + t1 * r1.direction;
   auto d2 = (pt0 - pt1).length2();
-  return d2 < std::numeric_limits<decltype(d2)>::epsilon();
+  return d2 < tf::epsilon2<decltype(d2)>;
 }
 
 /// @ingroup geometry
@@ -299,7 +299,7 @@ auto intersects(const tf::line_like<Dims, Policy0> &l0,
   auto pt0 = l0.origin + t0 * l0.direction;
   auto pt1 = r1.origin + t1 * r1.direction;
   auto d2 = (pt0 - pt1).length2();
-  return d2 < std::numeric_limits<decltype(d2)>::epsilon();
+  return d2 < tf::epsilon2<decltype(d2)>;
 }
 /// @ingroup geometry
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
@@ -324,7 +324,7 @@ auto intersects(const tf::ray_like<Dims, Policy> &r0,
   auto pt0 = r0.origin + t0 * r0.direction;
   auto pt1 = l1.origin + t1 * l1.direction;
   auto d2 = (pt0 - pt1).length2();
-  return d2 < std::numeric_limits<decltype(d2)>::epsilon();
+  return d2 < tf::epsilon2<decltype(d2)>;
 }
 
 /// @ingroup geometry
@@ -342,7 +342,7 @@ auto intersects(const tf::line_like<Dims, Policy> &l0,
   auto pt0 = l0.origin + t0 * l0.direction;
   auto pt1 = l1.origin + t1 * l1.direction;
   auto d2 = (pt0 - pt1).length2();
-  return d2 < std::numeric_limits<decltype(d2)>::epsilon();
+  return d2 < tf::epsilon2<decltype(d2)>;
 }
 
 /// @ingroup geometry
@@ -360,7 +360,7 @@ auto intersects(const tf::segment<Dims, T> &s0,
   auto pt0 = l0.origin + t0 * l0.direction;
   auto pt1 = l1.origin + t1 * l1.direction;
   auto d2 = (pt0 - pt1).length2();
-  return d2 < std::numeric_limits<decltype(d2)>::epsilon();
+  return d2 < tf::epsilon2<decltype(d2)>;
 }
 
 /// @ingroup geometry
@@ -378,7 +378,7 @@ auto intersects(const tf::segment<Dims, T> &s0,
   auto pt0 = l0.origin + t0 * l0.direction;
   auto pt1 = r1.origin + t1 * r1.direction;
   auto d2 = (pt0 - pt1).length2();
-  return d2 < std::numeric_limits<decltype(d2)>::epsilon();
+  return d2 < tf::epsilon2<decltype(d2)>;
 }
 
 /// @ingroup geometry
@@ -397,7 +397,7 @@ auto intersects(const tf::segment<Dims, T0> &s0,
   auto pt0 = l0.origin + t0 * l0.direction;
   auto pt1 = l1.origin + t1 * l1.direction;
   auto d2 = (pt0 - pt1).length2();
-  return d2 < std::numeric_limits<decltype(d2)>::epsilon();
+  return d2 < tf::epsilon2<decltype(d2)>;
 }
 
 template <typename T0, typename T1>
@@ -411,17 +411,24 @@ auto intersects(const tf::segment<2, T0> &s0, const tf::segment<2, T1> &s1)
   const auto &c = s1[0];
   const auto &d = s1[1];
 
-  // Use orientation tests
-  auto s1_ac = classify(a, tf::make_segment_between_points(c, d));
-  auto s1_bc = classify(b, tf::make_segment_between_points(c, d));
-  auto s0_cd = classify(c, tf::make_segment_between_points(a, b));
-  auto s0_dd = classify(d, tf::make_segment_between_points(a, b));
+  const auto cd = tf::make_segment_between_points(c, d);
+  const auto ab = tf::make_segment_between_points(a, b);
 
-  // Check for proper straddling (sign change)
-  const bool straddle1 = s1_ac != s1_bc && s1_ac != sidedness::on_boundary &&
-                         s1_bc != sidedness::on_boundary;
-  const bool straddle2 = s0_cd != s0_dd && s0_cd != sidedness::on_boundary &&
-                         s0_dd != sidedness::on_boundary;
+  const auto s_ac = classify(a, cd);
+  const auto s_bc = classify(b, cd);
+  const auto s_ca = classify(c, ab);
+  const auto s_da = classify(d, ab);
+
+  if (s_ac == sidedness::on_boundary || s_bc == sidedness::on_boundary ||
+      s_ca == sidedness::on_boundary || s_da == sidedness::on_boundary) {
+    return true;
+  }
+
+  const bool straddle1 = (s_ac != s_bc) && s_ac != sidedness::on_boundary &&
+                         s_bc != sidedness::on_boundary;
+
+  const bool straddle2 = (s_ca != s_da) && s_ca != sidedness::on_boundary &&
+                         s_da != sidedness::on_boundary;
 
   return straddle1 && straddle2;
 }
@@ -439,7 +446,7 @@ auto intersects(const tf::polygon<Dims, Policy0> &poly_in,
   const auto &poly = tf::tag_plane(poly_in);
   auto d = tf::dot(poly.plane().normal, pt) + poly.plane().d;
   auto c_pt = pt - d * poly.plane().normal;
-  return std::abs(d) < std::numeric_limits<decltype(d)>::epsilon() &&
+  return std::abs(d) < tf::epsilon<decltype(d)> &&
          tf::contains_coplanar_point(poly, c_pt);
 }
 
@@ -468,83 +475,103 @@ auto intersects(const tf::point_like<2, Policy0> &pt,
   return intersects(poly, pt);
 }
 
-/// @ingroup geometry
-/// @brief Check whether two geometric primitives intersect.
-///
-/// This overload of `intersects` checks for intersection between specific
-/// types.
-///
-/// @return `true` if the primitives intersect; otherwise `false`.
+namespace core {
+template <typename Policy0, std::size_t Dims, typename Policy>
+auto intersects_coplanar(const tf::polygon<Dims, Policy0> &poly_in,
+                         const tf::ray_like<Dims, Policy> &ray) -> bool {
+  if (tf::intersects(poly_in, ray.origin))
+    return true;
+  std::size_t size = poly_in.size();
+  auto prev = size - 1;
+  for (std::size_t i = 0; i < size; prev = i++)
+    if (tf::intersects(
+            tf::make_segment_between_points(poly_in[prev], poly_in[i]), ray))
+      return true;
+  return false;
+}
+} // namespace core
+
 template <typename Policy0, std::size_t Dims, typename Policy>
 auto intersects(const tf::polygon<Dims, Policy0> &poly_in,
                 const tf::ray_like<Dims, Policy> &ray) -> bool {
   const auto &poly = tf::tag_plane(poly_in);
-  return tf::ray_cast(ray, poly);
-  ;
+  auto result = tf::ray_cast(ray, poly);
+  if (result.status != tf::intersect_status::coplanar)
+    return result;
+  else
+    return core::intersects_coplanar(poly_in, ray);
 }
-/// @ingroup geometry
-/// @brief Check whether two geometric primitives intersect.
-///
-/// This overload of `intersects` checks for intersection between specific
-/// types.
-///
-/// @return `true` if the primitives intersect; otherwise `false`.
+
 template <std::size_t Dims, typename Policy, typename Policy0>
 auto intersects(const tf::ray_like<Dims, Policy> &ray,
                 const tf::polygon<Dims, Policy0> &poly) {
   return intersects(poly, ray);
 }
 
-/// @ingroup geometry
-/// @brief Check whether two geometric primitives intersect.
-///
-/// This overload of `intersects` checks for intersection between specific
-/// types.
-///
-/// @return `true` if the primitives intersect; otherwise `false`.
+template <typename Policy0, typename Policy>
+auto intersects(const tf::polygon<2, Policy0> &poly_in,
+                const tf::ray_like<2, Policy> &ray) -> bool {
+  return core::intersects_coplanar(poly_in, ray);
+}
+
+template <typename Policy0, typename Policy>
+auto intersects(const tf::ray_like<2, Policy> &ray,
+                const tf::polygon<2, Policy0> &poly_in) -> bool {
+  return intersects(poly_in, ray);
+}
+
+namespace core {
+template <typename Policy0, std::size_t Dims, typename Policy>
+auto intersects_coplanar(const tf::polygon<Dims, Policy0> &poly_in,
+                         const tf::line_like<Dims, Policy> &line) -> bool {
+  std::size_t size = poly_in.size();
+  auto prev = size - 1;
+  for (std::size_t i = 0; i < size; prev = i++)
+    if (tf::intersects(
+            tf::make_segment_between_points(poly_in[prev], poly_in[i]), line))
+      return true;
+  return false;
+}
+} // namespace core
 template <typename Policy0, std::size_t Dims, typename Policy>
 auto intersects(const tf::polygon<Dims, Policy0> &poly_in,
                 const tf::line_like<Dims, Policy> &line) -> bool {
   using RealT = tf::coordinate_type<Policy0, Policy>;
   const auto &poly = tf::tag_plane(poly_in);
-  return tf::ray_cast(tf::make_ray(line.origin, line.direction), poly,
-                      tf::make_ray_config(-std::numeric_limits<RealT>::max(),
-                                          std::numeric_limits<RealT>::max()));
-  ;
+  auto result =
+      tf::ray_cast(tf::make_ray(line.origin, line.direction), poly,
+                   tf::make_ray_config(-std::numeric_limits<RealT>::max(),
+                                       std::numeric_limits<RealT>::max()));
+  if (result.status != tf::intersect_status::coplanar)
+    return result;
+  else
+    return core::intersects_coplanar(poly_in, line);
 }
-/// @ingroup geometry
-/// @brief Check whether two geometric primitives intersect.
-///
-/// This overload of `intersects` checks for intersection between specific
-/// types.
-///
-/// @return `true` if the primitives intersect; otherwise `false`.
+
 template <std::size_t Dims, typename Policy, typename Policy0>
 auto intersects(const tf::line_like<Dims, Policy> &line,
                 const tf::polygon<Dims, Policy0> &poly) {
   return intersects(poly, line);
 }
-/// @ingroup geometry
-/// @brief Check whether two geometric primitives intersect.
-///
-/// This overload of `intersects` checks for intersection between specific
-/// types.
-///
-/// @return `true` if the primitives intersect; otherwise `false`.
-template <std::size_t Dims, typename Policy0, typename Policy1>
-auto intersects(const tf::polygon<Dims, Policy0> &poly_in,
-                const tf::segment<Dims, Policy1> &seg1) -> bool {
-  const auto &poly = tf::tag_plane(poly_in);
-  auto ray = tf::make_ray_between_points(seg1[0], seg1[1]);
-  using RealT = tf::coordinate_type<Policy0, Policy1>;
-  return tf::ray_cast(ray, poly, tf::make_ray_config(RealT(0), RealT(1)));
+
+template <typename Policy0, typename Policy>
+auto intersects(const tf::polygon<2, Policy0> &poly_in,
+                const tf::line_like<2, Policy> &line) -> bool {
+  return core::intersects_coplanar(poly_in, line);
 }
 
-template <typename Policy0, typename Policy1>
-auto intersects(const tf::polygon<2, Policy0> &poly_in,
-                const tf::segment<2, Policy1> &seg1) -> bool {
-  if (tf::contains_coplanar_point(poly_in, seg1[0]) ||
-      tf::contains_coplanar_point(poly_in, seg1[1]))
+template <typename Policy0, typename Policy>
+auto intersects(const tf::line_like<2, Policy> &line,
+                const tf::polygon<2, Policy0> &poly_in) -> bool {
+  return intersects(poly_in, line);
+}
+
+namespace core {
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects_coplanar(const tf::polygon<Dims, Policy0> &poly_in,
+                         const tf::segment<Dims, Policy1> &seg1) -> bool {
+  if (tf::contains_point(poly_in, seg1[0]) ||
+      tf::contains_point(poly_in, seg1[1]))
     return true;
   std::size_t size = poly_in.size();
   auto prev = size - 1;
@@ -553,6 +580,27 @@ auto intersects(const tf::polygon<2, Policy0> &poly_in,
             tf::make_segment_between_points(poly_in[prev], poly_in[i]), seg1))
       return true;
   return false;
+}
+} // namespace core
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::polygon<Dims, Policy0> &poly_in,
+                const tf::segment<Dims, Policy1> &seg1) -> bool {
+  const auto &poly = tf::tag_plane(poly_in);
+  auto ray = tf::make_ray_between_points(seg1[0], seg1[1]);
+  using RealT = tf::coordinate_type<Policy0, Policy1>;
+  auto result =
+      tf::ray_cast(ray, poly, tf::make_ray_config(RealT(0), RealT(1)));
+  if (result.status != tf::intersect_status::coplanar)
+    return result;
+  else
+    return tf::core::intersects_coplanar(poly_in, seg1);
+}
+
+template <typename Policy0, typename Policy1>
+auto intersects(const tf::polygon<2, Policy0> &poly_in,
+                const tf::segment<2, Policy1> &seg1) -> bool {
+  return tf::core::intersects_coplanar(poly_in, seg1);
 }
 /// @ingroup geometry
 /// @brief Check whether two geometric primitives intersect.
@@ -579,12 +627,42 @@ auto intersects(const tf::segment<2, Policy> &seg,
 /// This overload of `intersects` checks for intersection between specific
 /// types.
 ///
-/// @return `true` if the primitives intersect; otherwise `false`.
+/// @return `true` if the primitives intersect; otherwise `false`
+
+namespace core {
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects_coplanar(const tf::polygon<Dims, Policy0> &poly0,
+                         const tf::polygon<Dims, Policy1> &poly1) -> bool {
+
+  std::size_t size0 = poly0.size();
+  std::size_t prev0 = size0 - 1;
+  std::size_t size1 = poly1.size();
+  std::size_t prev1 = size1 - 1;
+  for (std::size_t i = 0; i < size0; prev0 = i++) {
+    auto seg0 = tf::make_segment_between_points(poly0[prev0], poly0[i]);
+    for (std::size_t j = 0; j < size1; prev1 = j++) {
+      auto seg1 = tf::make_segment_between_points(poly1[prev1], poly1[j]);
+      if (intersects(seg0, seg1))
+        return true;
+    }
+  }
+  return intersects(poly0, poly1[0]) || intersects(poly1, poly0[0]);
+}
+} // namespace core
+
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const tf::polygon<Dims, Policy0> &poly_in0,
                 const tf::polygon<Dims, Policy1> &poly_in1) -> bool {
 
   const auto &poly0 = tf::tag_plane(poly_in0);
+  const auto &poly1 = tf::tag_plane(poly_in1);
+  auto dot = std::abs(tf::dot(poly0.normal(), poly1.normal()));
+  if (1 - dot < tf::epsilon<decltype(dot)>) {
+    if (intersects(poly0.plane(), poly_in1[0]))
+      return core::intersects_coplanar(poly_in0, poly_in1);
+    else
+      return false;
+  }
 
   std::size_t size = poly0.size();
   std::size_t prev = size - 1;
@@ -593,7 +671,6 @@ auto intersects(const tf::polygon<Dims, Policy0> &poly_in0,
                                                           poly_in1[i])))
       return true;
   }
-  const auto &poly1 = tf::tag_plane(poly_in1);
 
   size = poly1.size();
   prev = size - 1;
@@ -608,22 +685,7 @@ auto intersects(const tf::polygon<Dims, Policy0> &poly_in0,
 template <typename Policy0, typename Policy1>
 auto intersects(const tf::polygon<2, Policy0> &poly0,
                 const tf::polygon<2, Policy1> &poly1) -> bool {
-
-  std::size_t size0 = poly0.size();
-  std::size_t prev0 = size0 - 1;
-  std::size_t size1 = poly1.size();
-  std::size_t prev1 = size1 - 1;
-  for (std::size_t i = 0; i < size0; prev0 = i++) {
-    auto seg0 = tf::make_segment_between_points(poly0[prev0], poly0[i]);
-    for (std::size_t j = 0; j < size1; prev1 = j++) {
-      auto seg1 = tf::make_segment_between_points(poly1[prev1], poly1[j]);
-      if (intersects(seg0, seg1))
-        return true;
-    }
-  }
-  // we came here, either no intersection, or
-  // one of the polygons is completely within the other
-  return intersects(poly0, poly1[0]) || intersects(poly1, poly0[0]);
+  return core::intersects_coplanar(poly0, poly1);
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>
@@ -631,7 +693,7 @@ auto intersects(const tf::plane_like<Dims, Policy0> &plane,
                 const tf::point_like<Dims, Policy1> &pt) -> bool {
   auto d = tf::dot(plane.normal, pt) + plane.d;
   ;
-  return std::abs(d) < std::numeric_limits<decltype(d)>::epsilon();
+  return std::abs(d) < tf::epsilon<decltype(d)>;
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>
@@ -696,8 +758,8 @@ auto intersects(const tf::aabb_like<Dims, Policy0> &bbox,
   }
   n_min += plane.d;
   n_max += plane.d;
-  return n_min <= std::numeric_limits<decltype(n_min)>::epsilon() &&
-         n_max >= -std::numeric_limits<decltype(n_max)>::epsilon();
+  return n_min <= tf::epsilon<decltype(n_min)> &&
+         n_max >= -tf::epsilon<decltype(n_max)>;
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>
