@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -26,7 +26,7 @@ public:
     clear();
     initialize(labels.size());
     auto n_components = run_propagation(mask, applier);
-    tf::parallel_apply(tf::zip(_work_labels, labels), [&](auto pair) {
+    tf::parallel_apply(tf::zip(work_labels_range(), labels), [&](auto pair) {
       auto &&[wl, l] = pair;
       auto wll = wl.load(std::memory_order_relaxed);
       if (wll != -1)
@@ -42,7 +42,8 @@ public:
 
   auto clear() {
     _label_map.clear();
-    _work_labels.clear();
+    _work_labels_ptr.reset();
+    _n_labels = 0;
   }
 
 private:
@@ -59,7 +60,7 @@ private:
       Index current = stack.back();
       stack.pop_back();
       label_t expected{-1};
-      if (!_work_labels[current].compare_exchange_strong(
+      if (!_work_labels_ptr[current].compare_exchange_strong(
               expected, label, std::memory_order_acq_rel,
               std::memory_order_relaxed)) {
         if (expected != label)
@@ -95,7 +96,7 @@ private:
         for (Index i = local_size * task_i;
              i < std::min(local_size * (task_i + 1), size); ++i) {
 
-          if (!mask[i] || _work_labels[i] != -1)
+          if (!mask[i] || _work_labels_ptr[i] != -1)
             continue;
           collisions.clear();
           auto label = current_label++;
@@ -125,13 +126,19 @@ private:
                                                  _label_map);
   }
 
+  auto work_labels_range() {
+    return tf::make_range(_work_labels_ptr.get(), _n_labels);
+  }
+
   auto initialize(std::size_t size) {
-    _work_labels.allocate(size);
-    tf::parallel_apply(_work_labels,
+    _n_labels = size;
+    _work_labels_ptr.reset(new std::atomic<label_t>[size]);
+    tf::parallel_apply(work_labels_range(),
                        [](auto &x) { x.store(-1, std::memory_order_relaxed); });
   }
 
-  tf::buffer<std::atomic<label_t>> _work_labels;
+  std::unique_ptr<std::atomic<label_t>[]> _work_labels_ptr;
+  std::size_t _n_labels;
   tf::buffer<label_t> _label_map;
 };
 } // namespace tf::topology
