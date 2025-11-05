@@ -63,6 +63,7 @@ public:
               form.faces(), intersection, form.face_membership(),
               form.manifold_edge_link(), buffer);
         });
+    collapse_points();
     finalize(n_ids);
   }
 
@@ -88,9 +89,8 @@ public:
 
 private:
   auto collapse_points() {
-    auto im =
-        tf::make_clean_index_map<Index>(tf::make_points(_intersection_points),
-                                        tf::epsilon<RealT>);
+    auto im = tf::make_clean_index_map<Index>(
+        tf::make_points(_intersection_points), tf::epsilon<RealT>);
     if (im.kept_ids().size() == _intersection_points.size())
       return;
     tf::buffer<tf::point<RealT, Dims>> points;

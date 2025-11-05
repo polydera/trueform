@@ -11,6 +11,7 @@
 #include "../../core/points.hpp"
 #include "../../core/transformed.hpp"
 #include "../../core/views/blocked_range.hpp"
+#include "../../intersect/types/intersection.hpp"
 #include "../../intersect/types/simple_intersection.hpp"
 #include "../../intersect/types/tagged_intersection.hpp"
 #include "./cut_face_by_intersections.hpp"
@@ -210,11 +211,10 @@ private:
               vertex_source::created});
   }
 
-  template <typename Range, typename Policy, typename F>
-  auto extract_edges(const Range &intersections,
-                     const tf::points<Policy> &intersection_points,
-                     tf::intersect::tagged_intersection<Index>,
-                     const F &get_flat_id) {
+  template <typename Range, typename Policy, typename T, typename F>
+  auto extract_edges_impl(const Range &intersections,
+                          const tf::points<Policy> &intersection_points, T,
+                          const F &get_flat_id) {
     auto it = intersections.begin();
     auto end = intersections.end();
     while (it != end) {
@@ -232,6 +232,24 @@ private:
     }
     make_edges_unique();
     make_all_edges_unique();
+  }
+
+  template <typename Range, typename Policy, typename F>
+  auto extract_edges(const Range &intersections,
+                     const tf::points<Policy> &intersection_points,
+                     tf::intersect::tagged_intersection<Index> ins,
+                     const F &get_flat_id) {
+    return extract_edges_impl(intersections, intersection_points, ins,
+                              get_flat_id);
+  }
+
+  template <typename Range, typename Policy, typename F>
+  auto extract_edges(const Range &intersections,
+                     const tf::points<Policy> &intersection_points,
+                     tf::intersect::intersection<Index> ins,
+                     const F &get_flat_id) {
+    return extract_edges_impl(intersections, intersection_points, ins,
+                              get_flat_id);
   }
 
   template <typename Iterator, typename Policy, typename F>

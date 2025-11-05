@@ -4,7 +4,7 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "../intersect/types/simple_intersections.hpp"
+#include "../intersect/intersections_within_polygons.hpp"
 #include "./loop/cut_faces.hpp"
 #include "./loop/descriptor.hpp"
 
@@ -17,7 +17,7 @@ public:
   template <typename Policy, typename RealT, std::size_t Dims>
   auto
   build(const tf::polygons<Policy> &_polygons,
-        const tf::intersect::simple_intersections<Index, RealT, Dims> &tgs) {
+        const tf::intersections_within_polygons<Index, RealT, Dims> &tgs) {
     clear();
     auto polygons = tf::wrap_map(_polygons, [](auto &&x) {
       return tf::core::make_polygons(x.faces(),

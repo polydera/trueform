@@ -20,7 +20,7 @@ auto make_boolean_pair(const tf::polygons<Policy0> _polygons0,
       std::common_type_t<typename Policy0::index_t, typename Policy1::index_t>;
   tf::intersections_between_polygons<Index, double, 3> ibp;
   ibp.build(tf::make_form(_polygons0), tf::make_form(_polygons1));
-  tf::tagged_cut_faces<int> tcf;
+  tf::tagged_cut_faces<Index> tcf;
   tcf.build(_polygons0, _polygons1, ibp);
   return tf::cut::make_boolean_pair<int>(_polygons0, _polygons1, ibp, tcf,
                                          tf::cut::make_boolean_op_spec(op));
@@ -34,7 +34,7 @@ auto make_boolean_pair(const tf::polygons<Policy0> _polygons0,
       std::common_type_t<typename Policy0::index_t, typename Policy1::index_t>;
   tf::intersections_between_polygons<Index, double, 3> ibp;
   ibp.build(tf::make_form(_polygons0), tf::make_form(_polygons1));
-  tf::tagged_cut_faces<int> tcf;
+  tf::tagged_cut_faces<Index> tcf;
   tcf.build(_polygons0, _polygons1, ibp);
   auto res = tf::cut::make_boolean_pair<int>(_polygons0, _polygons1, ibp, tcf,
                                              tf::cut::make_boolean_op_spec(op));
