@@ -343,11 +343,12 @@ int main(int argc, char *argv[]) {
   render_window->AddRenderer(renderer.get());
   render_window->Render();
 
-  renderer->SetViewport(0.0, 0.12, 1.0, 1.0); // top 80%
+  renderer->SetViewport(0.0, 0.12, 1.0, 1.0); // top 88%
   auto renderer_text = vtk_make_unique<vtkRenderer>();
-  renderer_text->SetViewport(0.0, 0.0, 1.0, 0.12); // bottom 20%
+  renderer_text->SetViewport(0.0, 0.0, 1.0, 0.12); // bottom 12%
   renderer_text->InteractiveOff();
 
+  // ---- text0 (left, normalized) ----
   auto text0 = vtk_make_unique<vtkTextActor>();
   text0->SetInput(
       ("Total polygons in scene : " + std::to_string(total_polygons)).c_str());
@@ -356,9 +357,11 @@ int main(int argc, char *argv[]) {
   textprop0->SetColor(1.0, 1.0, 1.0);
   textprop0->SetJustificationToLeft();
   textprop0->SetVerticalJustificationToCentered();
-  text0->SetDisplayPosition(40, 55);
+  text0->GetPositionCoordinate()->SetCoordinateSystemToNormalizedViewport();
+  text0->SetPosition(0.03, 0.30); // ~3% from left, 30% up in text strip
   renderer_text->AddActor2D(text0.get());
 
+  // ---- text1 (left, normalized) ----
   auto text1 = vtk_make_unique<vtkTextActor>();
   text1->SetInput("Picking time per frame  : 0 mcs");
   auto textprop1 = text1->GetTextProperty();
@@ -366,9 +369,11 @@ int main(int argc, char *argv[]) {
   textprop1->SetColor(1.0, 1.0, 1.0);
   textprop1->SetJustificationToLeft();
   textprop1->SetVerticalJustificationToCentered();
-  text1->SetDisplayPosition(40, 115);
+  text1->GetPositionCoordinate()->SetCoordinateSystemToNormalizedViewport();
+  text1->SetPosition(0.03, 0.60); // ~3% from left, mid-high
   renderer_text->AddActor2D(text1.get());
 
+  // ---- text2 (left, normalized) ----
   auto text2 = vtk_make_unique<vtkTextActor>();
   text2->SetInput("Collision time per frame: 0 mcs");
   auto textprop2 = text2->GetTextProperty();
@@ -376,9 +381,11 @@ int main(int argc, char *argv[]) {
   textprop2->SetColor(1.0, 1.0, 1.0);
   textprop2->SetJustificationToLeft();
   textprop2->SetVerticalJustificationToCentered();
-  text2->SetDisplayPosition(40, 175);
+  text2->GetPositionCoordinate()->SetCoordinateSystemToNormalizedViewport();
+  text2->SetPosition(0.03, 0.88); // ~3% from left, near top of text strip
   renderer_text->AddActor2D(text2.get());
 
+  // ---- text3 (right, normalized) ----
   auto text3 = vtk_make_unique<vtkTextActor>();
   text3->SetInput("Grab and drag a mesh to test.\n"
                   "Intersecting meshes are highlighted.\n"
@@ -386,15 +393,11 @@ int main(int argc, char *argv[]) {
   auto textprop3 = text3->GetTextProperty();
   textprop3->SetFontSize(40);
   textprop3->SetColor(1.0, 1.0, 1.0);
-  textprop3->SetJustificationToRight();
+  textprop3->SetJustificationToRight(); // anchor at right edge
   textprop3->SetVerticalJustificationToCentered();
   textprop3->SetLineSpacing(1.5);
-  text3->SetDisplayPosition(renderer->GetSize()[0] - 40, 120);
-  auto aligner = vtk_make_unique<RightAlignTextUpdater>(render_window.get(),
-                                                        text3.get(), 40, 120);
-
-  render_window->AddObserver(vtkCommand::WindowResizeEvent, aligner.get());
-
+  text3->GetPositionCoordinate()->SetCoordinateSystemToNormalizedViewport();
+  text3->SetPosition(0.97, 0.60); // ~3% from right, mid-high
   renderer_text->AddActor2D(text3.get());
 
   inter->set_text_actors(text1.get(), text2.get());

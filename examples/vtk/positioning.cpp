@@ -362,11 +362,10 @@ int main(int argc, char *argv[]) {
   textprop3->SetJustificationToRight();
   textprop3->SetVerticalJustificationToCentered();
   textprop3->SetLineSpacing(1.5);
-  text3->SetDisplayPosition(renderer->GetSize()[0] - 40, 120);
-  auto aligner = vtk_make_unique<RightAlignTextUpdater>(render_window.get(),
-                                                        text3.get(), 40, 120);
 
-  render_window->AddObserver(vtkCommand::WindowResizeEvent, aligner.get());
+  // Use normalized viewport coordinates instead of absolute pixels
+  text3->GetPositionCoordinate()->SetCoordinateSystemToNormalizedViewport();
+  text3->SetPosition(0.97, 0.60); // ~3% from right, 60% up within text strip
 
   renderer_text->AddActor2D(text3.get());
 
@@ -378,3 +377,4 @@ int main(int argc, char *argv[]) {
 
   return 0;
 }
+
