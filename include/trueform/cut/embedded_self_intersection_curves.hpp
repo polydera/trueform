@@ -12,7 +12,7 @@
 #include "./return_curves.hpp"
 namespace tf {
 template <typename Policy>
-auto embeddd_self_intersection_curves(const tf::polygons<Policy> _polygons) {
+auto embedded_self_intersection_curves(const tf::polygons<Policy> _polygons) {
   using Index = std::common_type_t<typename Policy::index_t>;
   tf::intersections_within_polygons<Index, double, 3> iwp;
   iwp.build(tf::make_form(_polygons));
@@ -24,8 +24,8 @@ auto embeddd_self_intersection_curves(const tf::polygons<Policy> _polygons) {
 }
 
 template <typename Policy>
-auto embeddd_self_intersection_curves(const tf::polygons<Policy> _polygons,
-                                      tf::return_curves_t) {
+auto embedded_self_intersection_curves(const tf::polygons<Policy> _polygons,
+                                       tf::return_curves_t) {
   using Index = std::common_type_t<typename Policy::index_t>;
   tf::intersections_within_polygons<Index, double, 3> iwp;
   iwp.build(tf::make_form(_polygons));
