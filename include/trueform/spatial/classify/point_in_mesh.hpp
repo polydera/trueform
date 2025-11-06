@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -21,10 +21,11 @@
 #include "../search/tree_search.hpp"
 
 namespace tf::spatial {
-template <typename Policy0, typename Policy1, typename LabelType>
+template <typename Policy0, typename Policy1, typename LabelType, typename F>
 auto classify_point(const tf::point_like<3, Policy0> &_point,
                     const tf::polygons<Policy1> &polygons,
-                    const tf::set_component_labels<LabelType> &scl) {
+                    const tf::set_component_labels<LabelType> &scl,
+                    const F &ignore_component) {
   auto frame = tf::frame_of(polygons);
   auto point = tf::transformed(_point, frame.inverse_transformation());
   const auto &tree = polygons.tree();
@@ -73,6 +74,8 @@ auto classify_point(const tf::point_like<3, Policy0> &_point,
         },
         [&](const auto &ids) {
           for (index_t poly_id : ids) {
+            if (ignore_component(scl.component_labels.labels[poly_id]))
+              continue;
             auto polygon = polygons[poly_id] | tf::tag_plane();
             auto res = tf::ray_hit(ray, polygon);
             if (!res)
@@ -107,6 +110,14 @@ auto classify_point(const tf::point_like<3, Policy0> &_point,
       return tf::containment::outside;
   }
   return tf::containment::outside;
+}
+
+template <typename Policy0, typename Policy1, typename LabelType>
+auto classify_point(const tf::point_like<3, Policy0> &_point,
+                    const tf::polygons<Policy1> &polygons,
+                    const tf::set_component_labels<LabelType> &scl) {
+  return classify_point(_point, polygons, scl,
+                        [](const auto &) { return false; });
 }
 
 template <typename Policy0, typename Policy1>

@@ -124,10 +124,12 @@ template <typename Policy0, typename Policy1, typename... Policies>
 auto concatenated(const tf::polygons<Policy0> &polygons0,
                   const tf::polygons<Policy1> &polygons1,
                   const tf::polygons<Policies> &...polygons) {
-  using index_t = std::common_type_t<decltype(polygons0.faces()[0][0]),
-                                     decltype(polygons1.faces()[0][0]),
-                                     decltype(polygons.faces()[0][0])...>;
+  using index_t =
+      std::common_type_t<std::decay_t<decltype(polygons0.faces()[0][0])>,
+                         std::decay_t<decltype(polygons1.faces()[0][0])>,
+                         std::decay_t<decltype(polygons.faces()[0][0])>...>;
   constexpr bool all_same_gons =
+      (tf::static_size_v<decltype(polygons0.faces()[0])> != tf::dynamic_size) &&
       (tf::static_size_v<decltype(polygons0.faces()[0])> ==
        tf::static_size_v<decltype(polygons1.faces()[0])>) &&
       (true && ... &&
@@ -141,11 +143,14 @@ auto concatenated(const tf::polygons<Policy0> &polygons0,
                                                         polygons...);
 }
 
-template <typename Index, typename Policy0, typename Policy1,
-          typename... Policies>
+template <typename Policy0, typename Policy1, typename... Policies>
 auto concatenated(const tf::segments<Policy0> &segments0,
                   const tf::segments<Policy1> &segments1,
                   const tf::segments<Policies> &...segments) {
+  using Index =
+      std::common_type_t<std::decay_t<decltype(segments0.edges()[0][0])>,
+                         std::decay_t<decltype(segments1.edges()[0][0])>,
+                         std::decay_t<decltype(segments.edges()[0][0])>...>;
   tf::segments_buffer<Index, tf::coordinate_type<Policy0, Policy1, Policies...>,
                       tf::coordinate_dims_v<Policy0>>
       out;
@@ -268,6 +273,240 @@ auto concatenated(const tf::unit_vectors<Policy0> &unit_vectors0,
       [&](const auto &...unit_vectors) { (make_copy(unit_vectors), ...); },
       std::forward_as_tuple(unit_vectors0, unit_vectors1, unit_vectors...));
   return out;
+}
+
+namespace reindex {
+template <typename Index, typename RealT, std::size_t Dims, std::size_t Ngon,
+          typename Range>
+auto concatenated_impl(tf::polygons_buffer<Index, RealT, Dims, Ngon> &out,
+                       const Range &r) {
+  Index start_p = 0;
+  Index start_f = 0;
+
+  auto make_copy = [&](const auto &polygons) {
+    const Index end_p = start_p + static_cast<Index>(polygons.points().size());
+    const Index end_f = start_f + static_cast<Index>(polygons.faces().size());
+
+    const Index point_offset = start_p;
+    tf::parallel_apply(
+        tf::zip(polygons.faces(),
+                tf::slice(out.faces_buffer(), start_f, end_f)),
+        [point_offset](auto pair) {
+          auto &&in_face = std::get<0>(pair);
+          auto &&out_face = std::get<1>(pair);
+          // write each vertex id with the point offset
+          for (auto &&zipped : tf::zip(in_face, out_face)) {
+            auto &&v_in = std::get<0>(zipped);
+            auto &&v_out = std::get<1>(zipped);
+            v_out = static_cast<Index>(v_in) + point_offset;
+          }
+        },
+        tf::checked);
+
+    tf::parallel_copy(polygons.points(),
+                      tf::slice(out.points_buffer(), start_p, end_p));
+
+    start_p = end_p;
+    start_f = end_f;
+  };
+
+  for (const auto &polygons : r)
+    make_copy(polygons);
+  return out;
+}
+
+template <typename Index, typename Range>
+auto concatenated_same_gons(const Range &r) {
+  tf::polygons_buffer<Index, tf::coordinate_type<typename Range::value_type>,
+                      tf::coordinate_dims_v<typename Range::value_type>,
+                      tf::static_size_v<decltype(r[0].faces()[0])>>
+      out;
+  Index total_face_size = 0;
+  Index total_point_size = 0;
+  for (const auto &polygons : r) {
+    total_face_size += polygons.size();
+    total_point_size += polygons.points().size();
+  }
+  out.faces_buffer().allocate(total_face_size);
+  out.points_buffer().allocate(total_point_size);
+
+  concatenated_impl(out, r);
+  return out;
+}
+
+template <typename Index, typename Range>
+auto concatenated_diff_gons(const Range &r) {
+  tf::polygons_buffer<Index, tf::coordinate_type<typename Range::value_type>,
+                      tf::coordinate_dims_v<typename Range::value_type>,
+                      tf::static_size_v<decltype(r[0].faces()[0])>>
+      out;
+  Index total_faces = 0;
+  Index total_point_size = 0;
+  for (const auto &polygons : r) {
+    total_faces += polygons.size();
+    total_point_size += polygons.points().size();
+  }
+
+  auto &offsets = out.faces_buffer().offsets_buffer();
+  offsets.allocate(total_faces + 1);
+  offsets[0] = 0;
+
+  Index start_f = 0;
+  auto fill_offsets = [&](const auto &polygons) {
+    Index end_f = start_f + polygons.faces().size();
+    auto r = tf::slice(tf::make_slide_range<2>(offsets), start_f, end_f);
+    for (auto &&[ofs, face] : tf::zip(r, polygons.faces()))
+      ofs[1] = face.size() + ofs[0];
+    start_f = end_f;
+  };
+
+  for (const auto &polygons : r)
+    fill_offsets(polygons);
+
+  out.faces_buffer().allocate(offsets.back());
+  out.points_buffer().allocate(total_point_size);
+  concatenated_impl(out, r);
+  return out;
+}
+
+template <typename Policy, typename Range>
+auto concatenated(const tf::polygons<Policy> &, const Range r) {
+  using index_t = std::decay_t<decltype(r[0].faces()[0][0])>;
+  constexpr bool all_same_gons =
+      tf::static_size_v<decltype(r[0].faces()[0])> != tf::dynamic_size;
+  if constexpr (all_same_gons)
+    return tf::reindex::concatenated_same_gons<index_t>(r);
+  else
+    return tf::reindex::concatenated_diff_gons<index_t>(r);
+}
+
+template <typename Policy, typename Range>
+auto concatenated(const tf::segments<Policy> &, const Range &r) {
+  using Index = std::decay_t<decltype(r[0].edges()[0][0])>;
+  tf::segments_buffer<Index, tf::coordinate_type<typename Range::value_type>,
+                      tf::coordinate_dims_v<typename Range::value_type>>
+      out;
+  Index total_edge_size = 0;
+  Index total_point_size = 0;
+  for (const auto &segments : r) {
+    total_edge_size += segments.size();
+    total_point_size += segments.points().size();
+  }
+  out.edges_buffer().allocate(total_edge_size);
+  out.points_buffer().allocate(total_point_size);
+
+  Index start_p = 0;
+  Index start_f = 0;
+
+  auto make_copy = [&](const auto &segments) {
+    const Index end_p = start_p + static_cast<Index>(segments.points().size());
+    const Index end_f = start_f + static_cast<Index>(segments.edges().size());
+
+    const Index point_offset = start_p;
+    tf::parallel_apply(
+        tf::zip(segments.edges(),
+                tf::slice(out.edges_buffer(), start_f, end_f)),
+        [point_offset](auto pair) {
+          auto &&in_edge = std::get<0>(pair);
+          auto &&out_edge = std::get<1>(pair);
+          out_edge[0] = in_edge[0] + point_offset;
+          out_edge[1] = in_edge[1] + point_offset;
+        },
+        tf::checked);
+
+    tf::parallel_copy(segments.points(),
+                      tf::slice(out.points_buffer(), start_p, end_p));
+
+    start_p = end_p;
+    start_f = end_f;
+  };
+
+  for (const auto &segments : r)
+    make_copy(segments);
+
+  return out;
+}
+
+template <typename Policy, typename Range>
+auto concatenated(const tf::points<Policy> &, const Range &r) {
+  auto total_point_size = 0;
+  for (const auto &points : r)
+    total_point_size += points.size();
+  tf::points_buffer<tf::coordinate_type<Policy>, tf::coordinate_dims_v<Policy>>
+      out;
+  out.allocate(total_point_size);
+
+  std::size_t start_p = 0;
+
+  auto make_copy = [&](const auto &points) {
+    const std::size_t end_p = start_p + static_cast<std::size_t>(points.size());
+
+    tf::parallel_copy(points, tf::slice(out, start_p, end_p));
+
+    start_p = end_p;
+  };
+
+  for (const auto &points : r)
+    make_copy(points);
+
+  return out;
+}
+
+template <typename Policy, typename Range>
+auto concatenated(const tf::vectors<Policy> &, const Range &r) {
+  auto total_vector_size = 0;
+  for (const auto &vectors : r)
+    total_vector_size += vectors.size();
+  tf::vectors_buffer<tf::coordinate_type<Policy>, tf::coordinate_dims_v<Policy>>
+      out;
+  out.allocate(total_vector_size);
+
+  std::size_t start_p = 0;
+
+  auto make_copy = [&](const auto &vectors) {
+    const std::size_t end_p =
+        start_p + static_cast<std::size_t>(vectors.size());
+
+    tf::parallel_copy(vectors, tf::slice(out, start_p, end_p));
+
+    start_p = end_p;
+  };
+
+  for (const auto &vectors : r)
+    make_copy(vectors);
+  return out;
+}
+template <typename Policy, typename Range>
+auto concatenated(const tf::unit_vectors<Policy> &, const Range &r) {
+  auto total_unit_vector_size = 0;
+  for (const auto &unit_vectors : r)
+    total_unit_vector_size += unit_vectors.size();
+  tf::unit_vectors_buffer<tf::coordinate_type<Policy>,
+                          tf::coordinate_dims_v<Policy>>
+      out;
+  out.allocate(total_unit_vector_size);
+
+  std::size_t start_p = 0;
+
+  auto make_copy = [&](const auto &unit_vectors) {
+    const std::size_t end_p =
+        start_p + static_cast<std::size_t>(unit_vectors.size());
+
+    tf::parallel_copy(unit_vectors, tf::slice(out, start_p, end_p));
+
+    start_p = end_p;
+  };
+
+  for (const auto &unit_vectors : r)
+    make_copy(unit_vectors);
+
+  return out;
+}
+} // namespace reindex
+
+template <typename Iterator, std::size_t N>
+auto concatenated(const tf::range<Iterator, N> &r) {
+  return reindex::concatenated(r[0], r);
 }
 
 } // namespace tf
