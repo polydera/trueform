@@ -1,19 +1,19 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "../../core/transformed.hpp"
-#include "../../core/frame_of.hpp"
+#include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/concatenated_blocked_ranges.hpp"
+#include "../../core/frame_of.hpp"
+#include "../../core/transformed.hpp"
 #include "../../core/views/block_indirect_range.hpp"
 #include "../../reindex/concatenated.hpp"
-#include "./triangulate_cut_faces.hpp"
-#include "./polygon_arrangement_ids.hpp"
-#include "../../core/algorithm/parallel_fill.hpp"
 #include "../loop/vertex_source.hpp"
+#include "./polygon_arrangement_ids.hpp"
+#include "./triangulate_cut_faces.hpp"
 
 namespace tf::cut {
 
@@ -23,7 +23,7 @@ auto make_boolean_common(const tf::polygons<Policy> _polygons,
                          const tf::points<Policy1> &intersection_points,
                          tf::cut::polygon_arrangement_ids<Index> &pai,
                          const Range0 &descriptors, const Range1 &mapped_loops,
-                         tf::strict_containment cclass) {
+                         std::size_t index, tf::direction direction) {
   auto make_polygons = [](const auto &form) {
     return tf::wrap_map(form, [](auto &&x) {
       return tf::core::make_polygons(
@@ -44,7 +44,8 @@ auto make_boolean_common(const tf::polygons<Policy> _polygons,
   original_ids.reserve(polygons.points().size());
   tf::buffer<Index> created_ids;
   created_ids.reserve(created_map.size());
-  for (const auto &loop : mapped_loops)
+  for (const auto &loop :
+       tf::make_indirect_range(pai.cut_faces[index], mapped_loops))
     for (auto v : loop) {
       if (v.source == tf::loop::vertex_source::created) {
         if (created_map[v.id] == -1) {
@@ -59,8 +60,8 @@ auto make_boolean_common(const tf::polygons<Policy> _polygons,
       }
     }
 
-  int index = cclass == tf::strict_containment::outside;
-  for (const auto &face : tf::make_indirect_range(pai.polygons[index], polygons.faces())) {
+  for (const auto &face :
+       tf::make_indirect_range(pai.polygons[index], polygons.faces())) {
     for (auto v : face)
       if (original_map[v] == -1) {
         original_map[v] = original_current++;
@@ -97,9 +98,6 @@ auto make_boolean_common(const tf::polygons<Policy> _polygons,
       pai.polygons[index],
       tf::make_block_indirect_range(polygons.faces(), original_map));
 
-  auto direction = cclass == tf::strict_containment::inside
-                       ? tf::direction::reverse
-                       : tf::direction::forward;
   auto faces = tf::core::concatenated_blocked_ranges_directed<Index>(
       std::make_pair(tf::make_range(mapped_faces), direction),
       std::make_pair(tf::make_range(triangles), direction));

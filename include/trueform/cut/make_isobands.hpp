@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -30,15 +30,6 @@ auto make_isobands(const tf::polygons<Policy> &polygons, const Range0 &scalars,
   scf.build(polygons, sfi);
   return cut::make_isobands<Index>(polygons, sfi, scf, scalars,
                                    tf::make_range(cut_vals), selected_bands);
-}
-
-template <typename Index, typename Policy, typename Range0, typename Iterator0,
-          std::size_t N0>
-auto make_isobands(const tf::polygons<Policy> &polygons, const Range0 &scalars,
-                   const tf::range<Iterator0, N0> &cut_values) {
-  return tf::make_isobands<Index>(
-      polygons, scalars, cut_values,
-      tf::make_sequence_range(cut_values.size() + (cut_values.size() != 0)));
 }
 
 template <typename Index, typename Policy, typename Range0, typename Iterator0,
@@ -71,16 +62,5 @@ auto make_isobands(const tf::polygons<Policy> &polygons, const Range0 &scalars,
   tf::parallel_copy(sfi.intersection_points(), cb.points());
   return std::make_tuple(std::move(res_polygons), std::move(labels),
                          std::move(cb));
-}
-
-template <typename Index, typename Policy, typename Range0, typename Iterator0,
-          std::size_t N0>
-auto make_isobands(const tf::polygons<Policy> &polygons, const Range0 &scalars,
-                   const tf::range<Iterator0, N0> &cut_values,
-                   tf::return_curves_t) {
-  return tf::make_isobands<Index>(
-      polygons, scalars, cut_values,
-      tf::make_sequence_range(cut_values.size() + (cut_values.size() != 0)),
-      tf::return_curves);
 }
 } // namespace tf

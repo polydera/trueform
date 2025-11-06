@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -36,27 +36,24 @@ auto make_isobands(
     polygon_size += r.size();
 
   tf::buffer<Index> created_map;
-  created_map.allocate(sfi.intersection_points().size() * cut_ids.size());
+  created_map.allocate(sfi.intersection_points().size());
   tf::parallel_fill(created_map, -1);
   tf::buffer<Index> original_map;
   original_map.allocate(polygons.points().size());
   tf::parallel_fill(original_map, -1);
   Index original_current = 0;
   Index created_current = 0;
-  auto blocked_map =
-      tf::make_blocked_range(created_map, sfi.intersection_points().size());
   tf::buffer<Index> created_ids;
   created_ids.reserve(sfi.intersection_points().size());
   tf::buffer<Index> original_ids;
   original_ids.reserve(polygons.points().size());
-  for (auto &&[map, loops] :
-       tf::zip(blocked_map,
-               tf::make_block_indirect_range(cut_ids, scf.mapped_loops()))) {
+  for (auto &&loops :
+       tf::make_block_indirect_range(cut_ids, scf.mapped_loops())) {
     for (auto loop : loops) {
       for (auto v : loop) {
         if (v.source == tf::loop::vertex_source::created) {
-          if (map[v.id] == -1) {
-            map[v.id] = created_current++;
+          if (created_map[v.id] == -1) {
+            created_map[v.id] = created_current++;
             created_ids.push_back(v.id);
           }
         } else {
@@ -77,9 +74,9 @@ auto make_isobands(
           original_ids.push_back(id);
         }
 
-  auto map_vertex_f = [&](const auto &map, auto v) {
+  auto map_vertex_f = [&](auto v) {
     if (v.source == tf::loop::vertex_source::created)
-      return map[v.id] + original_current;
+      return created_map[v.id] + original_current;
     else
       return original_map[v.id];
   };
@@ -106,16 +103,11 @@ auto make_isobands(
   tf::blocked_buffer<Index, 3> triangles;
 
   tf::generate_offset_blocks(
-      tf::zip(blocked_map, cut_ids), cf_offsets, triangles,
-      [&](auto pair, auto &data) {
-        const auto &[map, ids] = pair;
+      cut_ids, cf_offsets, triangles, [&](const auto &ids, auto &data) {
         tf::cut::triangulate_cut_faces(
             tf::make_indirect_range(
                 ids, tf::zip(scf.descriptors(), scf.mapped_loops())),
-            [&](auto d) { return make_projector(d, polygons); },
-            [&map = map, &map_vertex_f](auto v) {
-              return map_vertex_f(map, v);
-            },
+            [&](auto d) { return make_projector(d, polygons); }, map_vertex_f,
             data.data_buffer());
       });
 
@@ -147,17 +139,4 @@ auto make_isobands(
       tf::make_polygons_buffer(std::move(faces), std::move(points_out)),
       std::move(labels));
 }
-
-template <typename LabelType, typename Policy, typename Index, typename RealT,
-          std::size_t Dims, typename Range, typename Iterator, std::size_t N>
-auto make_isobands(
-    const tf::polygons<Policy> &polygons,
-    const tf::intersect::simple_intersections<Index, RealT, Dims> &sfi,
-    const tf::scalar_cut_faces<Index> &scf, const Range &scalars,
-    tf::range<Iterator, N> cut_values) {
-  return make_isobands<LabelType>(
-      polygons, sfi, scf, scalars, cut_values,
-      tf::make_sequence_range(cut_values.size() + (cut_values.size() != 0)));
-}
-
 } // namespace tf::cut

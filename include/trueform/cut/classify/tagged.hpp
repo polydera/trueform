@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -177,7 +177,7 @@ auto classify_missing_components(
 
 template <typename LabelType, typename Policy0, typename Policy1,
           typename Index, typename RealT, std::size_t Dims>
-auto make_classifications(
+auto make_classification_counts(
     const tf::polygons<Policy0> _polygons0,
     const tf::polygons<Policy1> &_polygons1,
     const tf::intersect::tagged_intersections<Index, RealT, Dims> &ibp,
@@ -245,7 +245,22 @@ auto make_classifications(
         }
       });
 
-  classify_missing_components(polygons0, polygons1, counts0, counts1, pal0, pal1, ibp, tcf);
+  classify_missing_components(polygons0, polygons1, counts0, counts1, pal0,
+                              pal1, ibp, tcf);
+
+  return std::make_tuple(std::move(pal0), std::move(pal1), std::move(counts0),
+                         std::move(counts1));
+}
+
+template <typename LabelType, typename Policy0, typename Policy1,
+          typename Index, typename RealT, std::size_t Dims>
+auto make_classifications(
+    const tf::polygons<Policy0> _polygons0,
+    const tf::polygons<Policy1> &_polygons1,
+    const tf::intersect::tagged_intersections<Index, RealT, Dims> &ibp,
+    const tf::tagged_cut_faces<Index> &tcf) {
+  auto [pal0, pal1, counts0, counts1] =
+      make_classification_counts<LabelType>(_polygons0, _polygons1, ibp, tcf);
 
   auto make_classes = [](const auto &counts, auto &pal) {
     pal.n_components = 2;
@@ -264,8 +279,9 @@ auto make_classifications(
                          [&] { remap(pal.cut_labels); });
   };
 
-  tbb::parallel_invoke([&, &pal0 = pal0] { make_classes(counts0, pal0); },
-                       [&, &pal1 = pal1] { make_classes(counts1, pal1); });
+  tbb::parallel_invoke(
+      [&, &pal0 = pal0, &counts0 = counts0] { make_classes(counts0, pal0); },
+      [&, &pal1 = pal1, &counts1 = counts1] { make_classes(counts1, pal1); });
   return std::make_pair(std::move(pal0), std::move(pal1));
 }
 

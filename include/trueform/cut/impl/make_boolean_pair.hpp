@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -40,19 +40,27 @@ auto make_boolean_pair(
       });
   using res_t = decltype(make_boolean_common(
       _polygons0, tf::make_points(ibp.intersection_points()), pai0,
-      tcf.descriptors0(), tcf.mapped_loops0(), classes[0]));
+      tcf.descriptors0(), tcf.mapped_loops0(), 0, tf::direction::forward));
   res_t left;
   res_t right;
+  auto direction_f = [](auto cclass) {
+    return cclass == tf::strict_containment::inside ? tf::direction::reverse
+                                                    : tf::direction::forward;
+  };
   tbb::parallel_invoke(
       [&] {
         left = make_boolean_common(
             _polygons0, tf::make_points(ibp.intersection_points()), pai0,
-            tcf.descriptors0(), tcf.mapped_loops0(), classes[0]);
+            tcf.descriptors0(), tcf.mapped_loops0(),
+            classes[0] == tf::strict_containment::outside,
+            direction_f(classes[0]));
       },
       [&] {
         right = make_boolean_common(
             _polygons1, tf::make_points(ibp.intersection_points()), pai1,
-            tcf.descriptors1(), tcf.mapped_loops1(), classes[1]);
+            tcf.descriptors1(), tcf.mapped_loops1(),
+            classes[1] == tf::strict_containment::outside,
+            direction_f(classes[1]));
       });
   return std::make_pair(std::move(left), std::move(right));
 }
