@@ -158,30 +158,27 @@ See [LICENSE.noncommercial](./LICENSE.noncommercial) and [license documentation]
 
 ## Contributing
 
-Contributors certify that their work may be distributed under both the PolyForm Noncommercial License and any commercial licenses XLAB offers. See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
+We welcome contributions! Browse [open issues](https://github.com/xlabmedical/trueform/issues) labeled by difficulty (`easy`, `medium`, `hard`) to find something that matches your experience level.
+
+**Get Started:**
+- 📖 Read the full contributing guide: [CONTRIBUTING.md](./CONTRIBUTING.md)
+- 🌐 View on the documentation site: [Contributing Guide](https://xlabmedical.github.io/trueform/about/contributing)
+
+By contributing, you certify that your work may be distributed under both the PolyForm Noncommercial License and any commercial licenses XLAB offers.
 
 ## Citation
 
-If you use trueform in your research, please cite:
+If you use trueform in your work, please cite:
 
 ```bibtex
-@article{sajovic2025tree,
-  title={tf::tree: A General-Purpose Spatial Hierarchy for Real-Time Geometry Queries},
-  author={Sajovic, {\v{Z}}iga and Knez, Dejan and Korez, Robert},
-  journal={IEEE TechRxiv},
+@software{trueform2025,
+  title={trueform: Real-Time Geometric Processing Library},
+  author={Sajovic, {\v{Z}}iga},
   year={2025},
-  doi={10.36227/techrxiv.174952959.92977743/v1}
-}
-
-@article{sajovic2025booleans,
-  title={Real-Time Mesh Booleans that Commute with Mesh Idealization},
-  author={Sajovic, {\v{Z}}iga and Knez, Dejan},
-  journal={IEEE TechRxiv},
-  year={2025},
-  doi={10.36227/techrxiv.174667714.42575478/v1}
+  url={https://github.com/xlabmedical/trueform},
+  note={C++ library for composable geometric processing with zero-copy semantics}
 }
 ```
-
 ---
 
 **Developed by [XLAB](https://xlab.si)**
