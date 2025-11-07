@@ -31,7 +31,7 @@ if(NOT TBB_FOUND)
   FetchContent_Declare(
     tbb
     GIT_REPOSITORY https://github.com/oneapi-src/oneTBB.git
-    GIT_TAG v2021.11.0)
+    GIT_TAG v2022.3.0)
   set(TBB_TEST
       OFF
       CACHE BOOL "Disable TBB tests" FORCE)
