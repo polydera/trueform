@@ -1,17 +1,17 @@
-SRC_DIR := src
-DIST_DIR := dist
-SRC := $(SRC_DIR)/native.cpp
-OUT_JS := $(DIST_DIR)/native.js
+SHELL := /bin/bash
 
-build:
-	mkdir -p $(DIST_DIR)
-	em++ $(SRC) -O3 \
-	    -I$(SRC_DIR) \
-		-s WASM=1 \
-		-s MODULARIZE=1 \
-		-s EXPORT_ES6=1 \
-		-s ENVIRONMENT=web \
-		-s ALLOW_MEMORY_GROWTH=1 \
-		-lembind \
-		--emit-tsd native.d.ts \
-		-o $(OUT_JS)
+BUILD_DIR ?= build
+EMSDK_ENV := source emsdk/emsdk_env.sh >/dev/null &&
+
+.PHONY: all configure build clean
+
+all: build
+
+configure:
+	$(EMSDK_ENV) emcmake cmake -S . -B $(BUILD_DIR)
+
+build: configure
+	$(EMSDK_ENV) cmake --build $(BUILD_DIR)
+
+clean:
+	rm -rf $(BUILD_DIR)

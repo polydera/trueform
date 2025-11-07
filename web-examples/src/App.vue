@@ -6,7 +6,7 @@ import WASM from './webAssembly/dist/native.js'
 
 const loadWasm = async () => {
   WASM().then(instance => {
-     console.log("Wasm loaded:", instance.add(1, 2))
+     console.log("Wasm loaded:", instance.p())
   })
   console.log("Wasm loaded:", WASM)
 }

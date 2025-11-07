@@ -34,3 +34,5 @@ coverage
 
 # Vitest
 __screenshots__/
+
+src/webAssembly/build/
