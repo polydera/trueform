@@ -12,6 +12,18 @@ cd src/webAssembly
 source emsdk/emsdk_env.sh
 ```
 
+### TypeScript support
+
+The build runs Emscripten with `--emit-tsd`, which shells out to the TypeScript
+compiler that lives next to `em++`. Configuring the bundled SDK installs
+TypeScript automatically. If you are using a global SDK (or a read-only one),
+ensure that `tsc` exists under `<emscripten root>/node_modules/.bin` by running:
+
+```sh
+cd <path-to-emscripten>
+npm install --no-save --package-lock false typescript@5.9.3
+```
+
 ## Build steps
 
 ```sh
