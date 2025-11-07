@@ -42,6 +42,21 @@ public:
 
     for (const auto &[frame, poly, actor, tree] : tf::zip(frames, polys, actors, trees)) {
       auto form = tf::make_form(frame, tree, poly->polygons());
+auto min = tree.aabb().min;
+auto max = tree.aabb().max;
+std::cout << "ray_hit  min: " << min[0] << ", " << min[1] << ", " << min[2] << std::endl;
+std::cout << "ray_hit  max: " << max[0] << ", " << max[1] << ", " << max[2] << std::endl;
+
+bool hit = tf::ray_hit( ray, tree.aabb());
+
+std::cout << "ray_hit  hit: " << hit << std::endl;
+for(int i=0; i<4; i++) {
+for(int j=0; j<4; j++) {
+std::cout << frame.transformation()(i,j) << ", ";
+}
+std::cout << std::endl;
+}
+std::cout << std::endl;
       auto res = tf::ray_cast(ray, form, config);
       if (res) {
         result = res;
@@ -54,7 +69,19 @@ public:
 
   auto update_frame(MeshObject *actor) -> void {
     auto id = map[actor];
-    frames[id].fill(actors[id]->matrix.data());
+/*
+// transpose array 16
+    tf::transformation<double, 3> frame;
+    frame.fill(actor->matrix.data());
+    tf::transformation<double, 3> frame2;
+for(int i=0; i<4; i++) {
+for(int j=0; j<4; j++) {
+    frame2(i,j) = frame(j, i);
+}
+}
+frames[id] = tf::make_frame(frame2);
+*/
+frames[id].fill(actors[id]->matrix.data());
   }
 
   auto compute_boolean() {
@@ -132,11 +159,13 @@ private:
   }
 
   auto move_selected(MeshObject *selected_actor) {
+std::cout << "move_selected" << std::endl;
     for (int i = 0; i < 3; ++i)
-      selected_actor->matrix[i + 3*4] += dx[i];
+      selected_actor->matrix[i*4 + 3] += dx[i];
     bridge.update_frame(selected_actor);
   }
 
+// TODO fix this
   auto randomize_rotations() {
     for (std::unique_ptr<MeshObject>& actor : bridge.get_actors()) {
       tf::vector<double, 3> at{actor->matrix[12], actor->matrix[13],
@@ -159,6 +188,7 @@ public:
   }
 
   auto OnLeftButtonDown() {
+std::cout << "OnLeftButtonDown" << std::endl;
     if (selected_actor) {
       selected_mode = true;
       return true;
@@ -169,6 +199,7 @@ public:
   }
 
   auto OnLeftButtonUp() {
+std::cout << "OnLeftButtonUp" << std::endl;
     if (selected_mode) {
       selected_mode = false;
       return true;
@@ -179,9 +210,11 @@ public:
   }
 
   auto OnMouseMove(std::array<float, 3> origin, std::array<float, 3> direction, std::array<float, 3> cameraPosition, std::array<float, 3> cameraFocalPoint) {
+    std::cout << "OnMouseMove" << std::endl;
     tf::ray<float, 3> ray{origin, direction};
     if (!selected_mode && !camera_mode) {
       auto [actor, point] = bridge.ray_hit(ray);
+        std::cout << "OnMouseMove 1 actor: " << actor << std::endl;
       if (actor) {
         make_moving_plane(point, cameraPosition, cameraFocalPoint);
         last_point = point;
@@ -192,10 +225,12 @@ public:
       auto next_point = tf::ray_hit(ray, moving_plane).point;
       dx = next_point - last_point;
       last_point = next_point;
+        std::cout << "OnMouseMove 1 actor: " << dx[0]<< ", " << dx[1]<< ", " << dx[2] << std::endl;
       move_selected(selected_actor);
       compute_curves();
       return true;
     } else if (camera_mode) {
+        std::cout << "OnMouseMove 2" << std::endl;
         return false;
     }
     return false;
@@ -275,7 +310,7 @@ int run_main(std::string path) {
   center_and_scale_p(poly);
   auto actor = std::make_unique<MeshObject>();
   actor->polyObject = std::move(poly);
-  set_at(actor->matrix, {15.f, 0.f, 0.f});
+  set_at(actor->matrix, {0 * 15.f, 0.f, 0.f});
   interactor->push_back(std::move(actor));
 
   center_and_scale_p(poly2);
@@ -284,7 +319,6 @@ int run_main(std::string path) {
   set_at(actor2->matrix, {1 * 15.f, 0.f, 0.f});
   interactor->push_back(std::move(actor2));
 
-// rendererL->AddActor(actor.get()); // TODO
 
 /*
   // Optional curve actor on left
@@ -321,6 +355,12 @@ EMSCRIPTEN_BINDINGS(boolean) {
   emscripten::function("GetCurveMesh", &GetCurveMesh, emscripten::allow_raw_pointers());
 }
 
+EMSCRIPTEN_BINDINGS(ArrayFloat3) {
+    emscripten::value_array<std::array<float, 3>>("ArrayFloat3")
+        .element(emscripten::index<0>())
+        .element(emscripten::index<1>())
+        .element(emscripten::index<2>());
+}
 EMSCRIPTEN_BINDINGS(ArrayDouble16) {
     emscripten::value_array<std::array<double, 16>>("ArrayDouble16")
         .element(emscripten::index<0>())
