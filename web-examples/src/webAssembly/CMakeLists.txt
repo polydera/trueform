@@ -55,7 +55,11 @@ set(DIST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dist)
 file(MAKE_DIRECTORY ${DIST_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${DIST_DIR})
 
-add_executable(native src/native.cpp)
+add_executable(native
+        src/native.cpp
+        src/boolean_web.cpp
+        src/utils/bridge_web.cpp
+)
 target_include_directories(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(native PRIVATE trueform)
 target_compile_options(native PRIVATE
@@ -77,6 +81,12 @@ target_link_options(native PRIVATE
   -sEXPORTED_RUNTIME_METHODS=FS,PATH
   -sALLOW_MEMORY_GROWTH=1
   -sUSE_PTHREADS=1
+  -sPTHREAD_POOL_SIZE='navigator.hardwareConcurrency*2+1'
+  -sALLOW_BLOCKING_ON_MAIN_THREAD=1
+  -sSTACK_SIZE=8MB
+  -sASSERTIONS=1
+  --emit-symbol-map
+  -sNO_DISABLE_EXCEPTION_CATCHING=1
   -sMALLOC=mimalloc
-  --emit-tsd ${DIST_DIR}/native.d.ts
+#  --emit-tsd ${DIST_DIR}/native.d.ts
 )

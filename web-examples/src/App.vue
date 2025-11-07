@@ -21,8 +21,17 @@ const loadThreejs = async () => {
   }
   let el = document.getElementById("threejsContainer");
   console.log("el: ", el)
-  if(el)
-    testObjThreejs = new TestClassThreejs(el);
+  if(el && wasmInstance) {
+    // Load data to wasm
+    const path = "zan0.stl"
+    const response = await fetch(path);
+    const aBuff = await response.arrayBuffer();
+    const intArr = new Int8Array(aBuff);
+    wasmInstance.FS.writeFile(path, intArr);
+    console.log("File written to wasm:", intArr)
+
+    testObjThreejs = new TestClassThreejs(wasmInstance, el);
+  }
 }
 
 onMounted(() => {
