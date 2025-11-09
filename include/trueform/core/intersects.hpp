@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -393,7 +393,7 @@ auto intersects(const tf::segment<Dims, T0> &s0,
                 const tf::segment<Dims, T1> &s1) {
   auto l0 = tf::make_line_between_points(s0[0], s0[1]);
   auto l1 = tf::make_line_between_points(s1[0], s1[1]);
-  auto [t0, t1] = tf::closest_point_parametric(l0, l1);
+  auto [t0, t1] = tf::closest_point_parametric(s0, s1);
   auto pt0 = l0.origin + t0 * l0.direction;
   auto pt1 = l1.origin + t1 * l1.direction;
   auto d2 = (pt0 - pt1).length2();
@@ -698,51 +698,73 @@ auto intersects(const tf::plane_like<Dims, Policy0> &plane,
 
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const tf::point_like<Dims, Policy0> &pt,
-                const tf::plane_like<Dims, Policy0> &plane) -> bool {
+                const tf::plane_like<Dims, Policy1> &plane) -> bool {
   return intersects(plane, pt);
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const tf::plane_like<Dims, Policy0> &plane,
                 const tf::ray_like<Dims, Policy1> &ray) -> bool {
-  return tf::ray_cast(ray, plane);
+  return core::does_intersect_any(tf::ray_cast(ray, plane));
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const tf::ray_like<Dims, Policy0> &ray,
-                const tf::plane_like<Dims, Policy0> &plane) -> bool {
-  return tf::ray_cast(ray, plane);
+                const tf::plane_like<Dims, Policy1> &plane) -> bool {
+  return core::does_intersect_any(tf::ray_cast(ray, plane));
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const tf::plane_like<Dims, Policy0> &plane,
                 const tf::line_like<Dims, Policy1> &line) -> bool {
-  return tf::ray_cast(
+  return core::does_intersect_any(tf::ray_cast(
       tf::make_ray_like(line.origin, line.direction), plane,
       tf::make_ray_config(
           std::numeric_limits<tf::coordinate_type<Policy0, Policy1>>::lowest(),
-          std::numeric_limits<tf::coordinate_type<Policy0, Policy1>>::max()));
+          std::numeric_limits<tf::coordinate_type<Policy0, Policy1>>::max())));
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const tf::line_like<Dims, Policy0> &line,
-                const tf::plane_like<Dims, Policy0> &plane) -> bool {
+                const tf::plane_like<Dims, Policy1> &plane) -> bool {
   return intersects(plane, line);
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const tf::plane_like<Dims, Policy0> &plane,
                 const tf::segment<Dims, Policy1> &seg) -> bool {
-  return tf::ray_cast(
+  return core::does_intersect_any(tf::ray_cast(
       tf::make_ray_like(seg[0], seg[1] - seg[0]), plane,
       tf::make_ray_config(tf::coordinate_type<Policy0, Policy1>(0),
-                          tf::coordinate_type<Policy0, Policy1>(1)));
+                          tf::coordinate_type<Policy0, Policy1>(1))));
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const tf::segment<Dims, Policy0> &seg,
-                const tf::plane_like<Dims, Policy0> &plane) -> bool {
+                const tf::plane_like<Dims, Policy1> &plane) -> bool {
   return intersects(plane, seg);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::plane_like<Dims, Policy0> &plane,
+                const tf::polygon<Dims, Policy1> &poly) -> bool {
+  std::size_t size = poly.size();
+  std::size_t prev = size - 1;
+  for (std::size_t i = 0; i < size; prev = i++) {
+    auto res = tf::ray_cast(
+        tf::make_ray_between_points(poly[prev], poly[i]), plane,
+        tf::ray_config<tf::coordinate_type<Policy0, Policy1>>{0, 1});
+    if (res.status == tf::intersect_status::intersection ||
+        res.status == tf::intersect_status::coplanar)
+      return true;
+  }
+  return false;
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::polygon<Dims, Policy0> &poly,
+                const tf::plane_like<Dims, Policy1> &plane) -> bool {
+  return intersects(plane, poly);
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>

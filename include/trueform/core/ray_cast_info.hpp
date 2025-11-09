@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -41,5 +41,14 @@ template <typename RealT>
 auto make_ray_cast_info(tf::intersect_status status, RealT t) {
   return ray_cast_info<RealT>{status, t};
 }
+
+namespace core {
+template <typename RealT>
+auto does_intersect_any(tf::ray_cast_info<RealT> info) {
+  return info.status == tf::intersect_status::intersection ||
+         info.status == tf::intersect_status::colinear ||
+         info.status == tf::intersect_status::coplanar;
+}
+} // namespace core
 
 } // namespace tf

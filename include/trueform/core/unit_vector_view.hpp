@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
+#include "./coordinate_type.hpp"
 #include "./unit_vector_like.hpp"
 #include "./unsafe.hpp"
-#include "./coordinate_type.hpp"
 #include "./vector_view.hpp"
 
 namespace tf {
@@ -40,14 +40,15 @@ using unit_vector_view = tf::unit_vector_like<Dims, core::vec_view<T, Dims>>;
 /// @return A `unit_vector_view` instance with length 1.
 template <std::size_t Dims, typename T>
 auto make_unit_vector_view(tf::vector_like<Dims, T> v) {
-  return unit_vector_view<tf::coordinate_type<T>, Dims>{
-      tf::make_vector_view<Dims>(v.data())};
+  return unit_vector_view<typename tf::vector_like<Dims, T>::element_type,
+                          Dims>{tf::make_vector_view<Dims>(v.data())};
 }
 
 template <std::size_t Dims, typename T>
 auto make_unit_vector_view(tf::unsafe_t, tf::vector_like<Dims, T> v) {
-  return unit_vector_view<tf::coordinate_type<T>, Dims>{
-      tf::unsafe, tf::make_vector_view<Dims>(v.data())};
+  return unit_vector_view<typename tf::vector_like<Dims, T>::element_type,
+                          Dims>{tf::unsafe,
+                                tf::make_vector_view<Dims>(v.data())};
 }
 
 template <std::size_t Dims, typename T>
