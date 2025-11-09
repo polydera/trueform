@@ -12,7 +12,7 @@ The library integrates directly at the call site: no boilerplate, no architectur
 
 - **Zero-copy views** - Work directly on your data layout with semantic geometric wrappers
 - **Composable policies** - Enrich primitives with metadata (id, normal, state) via `tf::tag` and `tf::zip`
-- **Spatial acceleration** - `tf::tree` for k-NN, neighbor search, ray casting, and broad-phase queries
+- **Spatial acceleration** - `tf::tree` for k-NN, neighbor search, ray casting, and spatial queries
 - **Topology** - Connectivity structures, path finding, planar embeddings
 - **Intersections** - Mesh-mesh curves, self-intersections, scalar field isocontours, planar arrangements
 - **Cut operations** - Embed curves as edges, boolean operations
