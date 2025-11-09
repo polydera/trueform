@@ -46,6 +46,7 @@ target_include_directories(
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_subdirectory(examples EXCLUDE_FROM_ALL)
+add_subdirectory(python)
 
 include(GNUInstallDirs)
 
