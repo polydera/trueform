@@ -12,33 +12,35 @@ Copyright (c) 2025 Žiga Sajovic, XLAB
 import sys
 import os
 import glob
-import importlib.util
-
-# Add parent directory to path so we can import trueform
-# This assumes the test runner is in build/python/tests/ and trueform is in build/python/trueform/
-test_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(test_dir)
-if parent_dir not in sys.path:
-    sys.path.insert(0, parent_dir)
+import subprocess
 
 
 def run_test_file(test_file):
-    """Run a single test file"""
+    """Run a single test file as a subprocess"""
     print(f"\n{'=' * 70}")
-    print(f"Running: {test_file}")
+    print(f"Running: {os.path.basename(test_file)}")
     print('=' * 70)
 
-    # Load and execute the test module
-    spec = importlib.util.spec_from_file_location("test_module", test_file)
-    module = importlib.util.module_from_spec(spec)
+    # Run the test file as a standalone Python script
+    result = subprocess.run(
+        [sys.executable, test_file],
+        capture_output=True,
+        text=True
+    )
 
-    try:
-        spec.loader.exec_module(module)
+    # Print stdout
+    if result.stdout:
+        print(result.stdout, end='')
+
+    # Print stderr
+    if result.stderr:
+        print(result.stderr, end='', file=sys.stderr)
+
+    # Check return code
+    if result.returncode == 0:
         return True
-    except Exception as e:
-        print(f"\n✗ Test failed with exception: {e}")
-        import traceback
-        traceback.print_exc()
+    else:
+        print(f"\n✗ Test failed with exit code: {result.returncode}")
         return False
 
 
@@ -48,7 +50,10 @@ def main():
 
     if len(sys.argv) > 1:
         # Run specific test file
-        test_files = [os.path.join(test_dir, sys.argv[1])]
+        test_file_arg = sys.argv[1]
+        if not os.path.isabs(test_file_arg):
+            test_file_arg = os.path.join(test_dir, test_file_arg)
+        test_files = [test_file_arg]
     else:
         # Run all test files
         test_files = glob.glob(os.path.join(test_dir, "test_*.py"))
@@ -61,12 +66,14 @@ def main():
 
     passed = 0
     failed = 0
+    failed_tests = []
 
     for test_file in sorted(test_files):
         if run_test_file(test_file):
             passed += 1
         else:
             failed += 1
+            failed_tests.append(os.path.basename(test_file))
 
     # Summary
     print("\n" + "=" * 70)
@@ -75,6 +82,11 @@ def main():
     print(f"Total:  {passed + failed}")
     print(f"Passed: {passed}")
     print(f"Failed: {failed}")
+
+    if failed > 0:
+        print("\nFailed tests:")
+        for test in failed_tests:
+            print(f"  - {test}")
 
     if failed == 0:
         print("\n✓ ALL TESTS PASSED!")

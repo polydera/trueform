@@ -95,7 +95,6 @@ def neighbor_search(
         if query.ndim == 1:
             # Infer dimensions from array shape
             dims = query.shape[0]
-            dtype = query.dtype
             query_type = Point
             query_data = query
         else:
@@ -105,7 +104,6 @@ def neighbor_search(
     else:
         query_type = type(query)
         query_data = query.data if hasattr(query, 'data') else query
-        dtype = query.dtype if hasattr(query, 'dtype') else None
         dims = query.dims if hasattr(query, 'dims') else None
 
     # Validate dimensions match
@@ -118,11 +116,15 @@ def neighbor_search(
             f"Both must have the same dimensionality (2D or 3D)."
         )
 
-    # Get variant suffix
-    if dtype is None:
-        raise TypeError(f"Cannot determine dtype for query type {query_type}")
-    dtype_str = 'float' if dtype == np.float32 else 'double'
-    suffix = f"{dtype_str}{dims}d"
+    # Get variant suffix - MUST use point cloud's dtype since wrapper is already typed
+    # The C++ functions expect all types (cloud wrapper, query array, radius) to match
+    cloud_dtype = point_cloud.points.dtype
+    dtype_str = 'float' if cloud_dtype == np.float32 else 'double'
+    suffix = f"{dtype_str}{cloud_dims}d"
+
+    # Convert query_data to match cloud dtype if necessary
+    if isinstance(query_data, np.ndarray) and query_data.dtype != cloud_dtype:
+        query_data = query_data.astype(cloud_dtype)
 
     # Choose dispatch table based on whether k is specified
     if k is None:
@@ -135,7 +137,8 @@ def neighbor_search(
             )
 
         func_name = _NEIGHBOR_SEARCH_DISPATCH[query_type].format(suffix)
-        return getattr(_trueform.spatial, func_name)(point_cloud, query_data, radius)
+        cpp_func = getattr(_trueform.spatial, func_name)
+        return cpp_func(point_cloud._wrapper, query_data, radius)
     else:
         # KNN query - k nearest neighbors
         if query_type not in _NEIGHBOR_SEARCH_KNN_DISPATCH:
@@ -149,7 +152,8 @@ def neighbor_search(
             raise ValueError(f"k must be a positive integer, got {k}")
 
         func_name = _NEIGHBOR_SEARCH_KNN_DISPATCH[query_type].format(suffix)
-        return getattr(_trueform.spatial, func_name)(point_cloud, query_data, k, radius)
+        cpp_func = getattr(_trueform.spatial, func_name)
+        return cpp_func(point_cloud._wrapper, query_data, k, radius)
 
 
 __all__ = ['neighbor_search']

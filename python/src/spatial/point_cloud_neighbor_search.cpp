@@ -29,7 +29,10 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
            std::optional<float> radius) {
           return neighbor_search<float, 2>(
               cloud, make_point_from_array<2, float>(query), radius);
-        });
+        },
+        nanobind::arg("cloud"),
+        nanobind::arg("query"),
+        nanobind::arg("radius").none() = nanobind::none());
 
   // Point queries - 2D double
   m.def("neighbor_search_point_double2d",
@@ -39,7 +42,10 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
            std::optional<double> radius) {
           return neighbor_search<double, 2>(
               cloud, make_point_from_array<2, double>(query), radius);
-        });
+        },
+        nanobind::arg("cloud"),
+        nanobind::arg("query"),
+        nanobind::arg("radius").none() = nanobind::none());
 
   // Point queries - 3D float
   m.def("neighbor_search_point_float3d",
@@ -49,7 +55,10 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
            std::optional<float> radius) {
           return neighbor_search<float, 3>(
               cloud, make_point_from_array<3, float>(query), radius);
-        });
+        },
+        nanobind::arg("cloud"),
+        nanobind::arg("query"),
+        nanobind::arg("radius").none() = nanobind::none());
 
   // Point queries - 3D double
   m.def("neighbor_search_point_double3d",
@@ -59,7 +68,10 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
            std::optional<double> radius) {
           return neighbor_search<double, 3>(
               cloud, make_point_from_array<3, double>(query), radius);
-        });
+        },
+        nanobind::arg("cloud"),
+        nanobind::arg("query"),
+        nanobind::arg("radius").none() = nanobind::none());
 
   // Segment queries - 2D float
   m.def(
@@ -70,7 +82,10 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          std::optional<float> radius) {
         return neighbor_search<float, 2>(
             cloud, make_segment_from_array<2, float>(query), radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Segment queries - 2D double
   m.def(
@@ -81,7 +96,10 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          std::optional<double> radius) {
         return neighbor_search<double, 2>(
             cloud, make_segment_from_array<2, double>(query), radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Segment queries - 3D float
   m.def(
@@ -92,7 +110,10 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          std::optional<float> radius) {
         return neighbor_search<float, 3>(
             cloud, make_segment_from_array<3, float>(query), radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Segment queries - 3D double
   m.def(
@@ -103,7 +124,10 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          std::optional<double> radius) {
         return neighbor_search<double, 3>(
             cloud, make_segment_from_array<3, double>(query), radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Polygon queries - 2D float
   m.def(
@@ -114,7 +138,10 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          std::optional<float> radius) {
         return neighbor_search<float, 2>(
             cloud, make_polygon_from_array<2, float>(query), radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Polygon queries - 2D double
   m.def("neighbor_search_polygon_double2d",
@@ -125,7 +152,10 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
            std::optional<double> radius) {
           return neighbor_search<double, 2>(
               cloud, make_polygon_from_array<2, double>(query), radius);
-        });
+        },
+        nanobind::arg("cloud"),
+        nanobind::arg("query"),
+        nanobind::arg("radius").none() = nanobind::none());
 
   // Polygon queries - 3D float
   m.def(
@@ -136,7 +166,10 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          std::optional<float> radius) {
         return neighbor_search<float, 3>(
             cloud, make_polygon_from_array<3, float>(query), radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Polygon queries - 3D double
   m.def("neighbor_search_polygon_double3d",
@@ -147,7 +180,10 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
            std::optional<double> radius) {
           return neighbor_search<double, 3>(
               cloud, make_polygon_from_array<3, double>(query), radius);
-        });
+        },
+        nanobind::arg("cloud"),
+        nanobind::arg("query"),
+        nanobind::arg("radius").none() = nanobind::none());
 
   // Ray queries - 2D float
   m.def(
@@ -158,7 +194,10 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          std::optional<float> radius) {
         return neighbor_search<float, 2>(
             cloud, make_ray_from_array<2, float>(query), radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Ray queries - 2D double
   m.def(
@@ -169,7 +208,10 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          std::optional<double> radius) {
         return neighbor_search<double, 2>(
             cloud, make_ray_from_array<2, double>(query), radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Ray queries - 3D float
   m.def(
@@ -180,7 +222,10 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          std::optional<float> radius) {
         return neighbor_search<float, 3>(
             cloud, make_ray_from_array<3, float>(query), radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Ray queries - 3D double
   m.def(
@@ -191,7 +236,10 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          std::optional<double> radius) {
         return neighbor_search<double, 3>(
             cloud, make_ray_from_array<3, double>(query), radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Line queries - 2D float
   m.def(
@@ -202,7 +250,10 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          std::optional<float> radius) {
         return neighbor_search<float, 2>(
             cloud, make_line_from_array<2, float>(query), radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Line queries - 2D double
   m.def(
@@ -213,7 +264,10 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          std::optional<double> radius) {
         return neighbor_search<double, 2>(
             cloud, make_line_from_array<2, double>(query), radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Line queries - 3D float
   m.def(
@@ -224,7 +278,10 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          std::optional<float> radius) {
         return neighbor_search<float, 3>(
             cloud, make_line_from_array<3, float>(query), radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Line queries - 3D double
   m.def(
@@ -235,7 +292,10 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          std::optional<double> radius) {
         return neighbor_search<double, 3>(
             cloud, make_line_from_array<3, double>(query), radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // ============================================================================
   // KNN neighbor search (k nearest neighbors)
@@ -249,7 +309,11 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
            int k, std::optional<float> radius) {
           return neighbor_search<float, 2>(
               cloud, make_point_from_array<2, float>(query), k, radius);
-        });
+        },
+        nanobind::arg("cloud"),
+        nanobind::arg("query"),
+        nanobind::arg("k"),
+        nanobind::arg("radius").none() = nanobind::none());
 
   // Point queries - 2D double
   m.def("neighbor_search_knn_point_double2d",
@@ -259,7 +323,11 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
            int k, std::optional<double> radius) {
           return neighbor_search<double, 2>(
               cloud, make_point_from_array<2, double>(query), k, radius);
-        });
+        },
+        nanobind::arg("cloud"),
+        nanobind::arg("query"),
+        nanobind::arg("k"),
+        nanobind::arg("radius").none() = nanobind::none());
 
   // Point queries - 3D float
   m.def("neighbor_search_knn_point_float3d",
@@ -269,7 +337,11 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
            int k, std::optional<float> radius) {
           return neighbor_search<float, 3>(
               cloud, make_point_from_array<3, float>(query), k, radius);
-        });
+        },
+        nanobind::arg("cloud"),
+        nanobind::arg("query"),
+        nanobind::arg("k"),
+        nanobind::arg("radius").none() = nanobind::none());
 
   // Point queries - 3D double
   m.def("neighbor_search_knn_point_double3d",
@@ -279,7 +351,11 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
            int k, std::optional<double> radius) {
           return neighbor_search<double, 3>(
               cloud, make_point_from_array<3, double>(query), k, radius);
-        });
+        },
+        nanobind::arg("cloud"),
+        nanobind::arg("query"),
+        nanobind::arg("k"),
+        nanobind::arg("radius").none() = nanobind::none());
 
   // Segment queries - 2D float
   m.def(
@@ -290,7 +366,11 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          int k, std::optional<float> radius) {
         return neighbor_search<float, 2>(
             cloud, make_segment_from_array<2, float>(query), k, radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("k"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Segment queries - 2D double
   m.def(
@@ -301,7 +381,11 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          int k, std::optional<double> radius) {
         return neighbor_search<double, 2>(
             cloud, make_segment_from_array<2, double>(query), k, radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("k"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Segment queries - 3D float
   m.def(
@@ -312,7 +396,11 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          int k, std::optional<float> radius) {
         return neighbor_search<float, 3>(
             cloud, make_segment_from_array<3, float>(query), k, radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("k"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Segment queries - 3D double
   m.def(
@@ -323,7 +411,11 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          int k, std::optional<double> radius) {
         return neighbor_search<double, 3>(
             cloud, make_segment_from_array<3, double>(query), k, radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("k"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Polygon queries - 2D float
   m.def(
@@ -334,7 +426,11 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          int k, std::optional<float> radius) {
         return neighbor_search<float, 2>(
             cloud, make_polygon_from_array<2, float>(query), k, radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("k"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Polygon queries - 2D double
   m.def("neighbor_search_knn_polygon_double2d",
@@ -345,7 +441,11 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
            int k, std::optional<double> radius) {
           return neighbor_search<double, 2>(
               cloud, make_polygon_from_array<2, double>(query), k, radius);
-        });
+        },
+        nanobind::arg("cloud"),
+        nanobind::arg("query"),
+        nanobind::arg("k"),
+        nanobind::arg("radius").none() = nanobind::none());
 
   // Polygon queries - 3D float
   m.def(
@@ -356,7 +456,11 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          int k, std::optional<float> radius) {
         return neighbor_search<float, 3>(
             cloud, make_polygon_from_array<3, float>(query), k, radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("k"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Polygon queries - 3D double
   m.def("neighbor_search_knn_polygon_double3d",
@@ -367,7 +471,11 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
            int k, std::optional<double> radius) {
           return neighbor_search<double, 3>(
               cloud, make_polygon_from_array<3, double>(query), k, radius);
-        });
+        },
+        nanobind::arg("cloud"),
+        nanobind::arg("query"),
+        nanobind::arg("k"),
+        nanobind::arg("radius").none() = nanobind::none());
 
   // Ray queries - 2D float
   m.def(
@@ -378,7 +486,11 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          int k, std::optional<float> radius) {
         return neighbor_search<float, 2>(
             cloud, make_ray_from_array<2, float>(query), k, radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("k"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Ray queries - 2D double
   m.def(
@@ -389,7 +501,11 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          int k, std::optional<double> radius) {
         return neighbor_search<double, 2>(
             cloud, make_ray_from_array<2, double>(query), k, radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("k"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Ray queries - 3D float
   m.def(
@@ -397,10 +513,14 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
       [](point_cloud_wrapper<float, 3> &cloud,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
              query,
-         int k, std::optional<double> radius) {
+         int k, std::optional<float> radius) {
         return neighbor_search<float, 3>(
             cloud, make_ray_from_array<3, float>(query), k, radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("k"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Ray queries - 3D double
   m.def(
@@ -411,7 +531,11 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          int k, std::optional<double> radius) {
         return neighbor_search<double, 3>(
             cloud, make_ray_from_array<3, double>(query), k, radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("k"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Line queries - 2D float
   m.def(
@@ -422,7 +546,11 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          int k, std::optional<float> radius) {
         return neighbor_search<float, 2>(
             cloud, make_line_from_array<2, float>(query), k, radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("k"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Line queries - 2D double
   m.def(
@@ -433,7 +561,11 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          int k, std::optional<double> radius) {
         return neighbor_search<double, 2>(
             cloud, make_line_from_array<2, double>(query), k, radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("k"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Line queries - 3D float
   m.def(
@@ -444,7 +576,11 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          int k, std::optional<float> radius) {
         return neighbor_search<float, 3>(
             cloud, make_line_from_array<3, float>(query), k, radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("k"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Line queries - 3D double
   m.def(
@@ -455,7 +591,11 @@ auto register_point_cloud_neighbor_search(nanobind::module_ &m) -> void {
          int k, std::optional<double> radius) {
         return neighbor_search<double, 3>(
             cloud, make_line_from_array<3, double>(query), k, radius);
-      });
+      },
+      nanobind::arg("cloud"),
+      nanobind::arg("query"),
+      nanobind::arg("k"),
+      nanobind::arg("radius").none() = nanobind::none());
 }
 
 } // namespace tf::py

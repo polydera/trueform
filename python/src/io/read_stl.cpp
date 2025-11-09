@@ -8,6 +8,7 @@
 #include "trueform/python/io/read_stl.hpp"
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
+#include <nanobind/stl/string.h>
 #include <trueform/trueform.hpp>
 
 namespace tf::py {

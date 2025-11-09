@@ -67,6 +67,16 @@ def ray_cast(ray: Any, target: Any) -> Optional[float]:
             f"Both objects must have the same dimensionality (2D or 3D)."
         )
 
+    # Validate dtypes match
+    if not hasattr(ray, 'dtype') or not hasattr(target, 'dtype'):
+        raise TypeError(f"Both ray and target must have 'dtype' attribute")
+
+    if ray.dtype != target.dtype:
+        raise TypeError(
+            f"Dtype mismatch: ray has {ray.dtype}, target has {target.dtype}. "
+            f"Both objects must have the same dtype (float32 or float64)."
+        )
+
     # Check if target type is supported
     target_type = type(target)
     if target_type not in _RAY_CAST_DISPATCH:
@@ -81,11 +91,8 @@ def ray_cast(ray: Any, target: Any) -> Optional[float]:
         raise ValueError("ray_cast with Plane is only supported in 3D")
 
     # Get variant suffix (e.g., "float3d" or "double2d")
-    if hasattr(ray, 'dtype') and hasattr(ray, 'dims'):
-        dtype_str = 'float' if ray.dtype == np.float32 else 'double'
-        suffix = f"{dtype_str}{ray.dims}d"
-    else:
-        raise TypeError(f"Cannot determine variant for ray type {type(ray)}")
+    dtype_str = 'float' if ray.dtype == np.float32 else 'double'
+    suffix = f"{dtype_str}{ray.dims}d"
 
     # Dispatch to appropriate C++ function
     func_name = _RAY_CAST_DISPATCH[target_type].format(suffix)

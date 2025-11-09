@@ -4,6 +4,12 @@ Test distance and distance2 functionality
 Copyright (c) 2025 Žiga Sajovic, XLAB
 """
 
+import sys
+import os
+
+# Add parent directory to path so we can import trueform
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import numpy as np
 import trueform as tf
 
@@ -198,9 +204,9 @@ def test_distance_point_polygon():
         dist = tf.distance(pt_inside, poly)
         dist2 = tf.distance2(pt_inside, poly)
         print(f"    Point inside: distance={dist}, distance2={dist2}")
-        # Distance to closest edge is 0.5
-        assert abs(dist - 0.5) < 1e-5, f"Distance should be 0.5 ({dtype_name})"
-        assert abs(dist2 - 0.25) < 1e-5, f"Distance2 should be 0.25 ({dtype_name})"
+        # Point inside polygon has distance 0
+        assert abs(dist) < 1e-5, f"Distance should be 0 ({dtype_name})"
+        assert abs(dist2) < 1e-5, f"Distance2 should be 0 ({dtype_name})"
 
         # Point outside polygon
         pt_outside = tf.Point(np.array([2.0, 2.0], dtype=dtype))
@@ -214,7 +220,7 @@ def test_distance_point_polygon():
         # Test swap
         dist_swap = tf.distance(poly, pt_inside)
         print(f"    Polygon to point (swapped): distance={dist_swap}")
-        assert abs(dist_swap - 0.5) < 1e-5, f"Swapped order should work ({dtype_name})"
+        assert abs(dist_swap) < 1e-5, f"Swapped order should work ({dtype_name})"
 
     print("✓ Point to Polygon tests passed")
 

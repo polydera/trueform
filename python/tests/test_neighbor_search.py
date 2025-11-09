@@ -4,6 +4,12 @@ Tests for neighbor_search spatial queries
 Copyright (c) 2025 Žiga Sajovic, XLAB
 """
 
+import sys
+import os
+
+# Add parent directory to path so we can import trueform
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import numpy as np
 import pytest
 import trueform as tf
@@ -11,17 +17,18 @@ import trueform as tf
 
 def test_neighbor_search_point_2d():
     """Test single nearest neighbor search with point query in 2D"""
-    # Create a simple 2D point cloud
+    # Create a simple 2D point cloud (float32)
     points = np.array([[0, 0], [1, 0], [0, 1], [1, 1]], dtype=np.float32)
     cloud = tf.PointCloud(points)
 
     # Query with a point close to [0, 0]
+    # [0.1, 0.1] becomes float64 from numpy, but dispatch will convert to match cloud
     query = tf.Point([0.1, 0.1])
     idx, dist2, closest_pt = tf.neighbor_search(cloud, query)
 
     assert idx == 0  # Should find point at [0, 0]
     assert np.isclose(dist2, 0.02)  # Distance squared: 0.1^2 + 0.1^2
-    assert np.allclose(closest_pt, [0.1, 0.1])  # Closest point on query (the point itself)
+    assert np.allclose(closest_pt, [0.0, 0.0])  # Closest point in cloud at index 0
 
 
 def test_neighbor_search_point_3d():
@@ -30,11 +37,24 @@ def test_neighbor_search_point_3d():
     cloud = tf.PointCloud(points)
 
     query = tf.Point([0.2, 0.2, 0.2])
-    idx, dist2, closest_pt = tf.neighbor_search(cloud, query)
 
+    # Test without radius
+    idx, dist2, closest_pt = tf.neighbor_search(cloud, query)
     assert idx == 0
     assert np.isclose(dist2, 0.12)  # 0.2^2 + 0.2^2 + 0.2^2
-    assert np.allclose(closest_pt, [0.2, 0.2, 0.2])
+    assert np.allclose(closest_pt, [0.0, 0.0, 0.0])  # Closest point in cloud at index 0
+
+    # Test with explicit radius=None
+    idx2, dist2_2, closest_pt2 = tf.neighbor_search(cloud, query, radius=None)
+    assert idx2 == 0
+    assert np.isclose(dist2_2, 0.12)
+    assert np.allclose(closest_pt2, [0.0, 0.0, 0.0])
+
+    # Test with radius
+    idx3, dist2_3, closest_pt3 = tf.neighbor_search(cloud, query, radius=10.0)
+    assert idx3 == 0
+    assert np.isclose(dist2_3, 0.12)
+    assert np.allclose(closest_pt3, [0.0, 0.0, 0.0])
 
 
 def test_neighbor_search_knn_point():
@@ -43,16 +63,33 @@ def test_neighbor_search_knn_point():
     cloud = tf.PointCloud(points)
 
     query = tf.Point([0.1, 0.1, 0.1])
-    results = tf.neighbor_search(cloud, query, k=3)
 
+    # Test WITHOUT radius (radius=None)
+    results = tf.neighbor_search(cloud, query, k=3)
     assert len(results) == 3
     # Results should be sorted by distance
     for i in range(len(results) - 1):
         assert results[i][1] <= results[i + 1][1]  # distance² is increasing
-
     # First result should be closest to origin
     assert results[0][0] == 0
     assert np.isclose(results[0][1], 0.03)  # 0.1^2 * 3
+    assert np.allclose(results[0][2], [0.0, 0.0, 0.0])  # Cloud point at index 0
+
+    # Verify each result returns the corresponding cloud point
+    for idx, dist2, closest_pt in results:
+        assert np.allclose(closest_pt, points[idx])
+
+    # Test WITH explicit radius=None
+    results2 = tf.neighbor_search(cloud, query, k=3, radius=None)
+    assert len(results2) == 3
+    for idx, dist2, closest_pt in results2:
+        assert np.allclose(closest_pt, points[idx])
+
+    # Test WITH a large radius
+    results3 = tf.neighbor_search(cloud, query, k=3, radius=10.0)
+    assert len(results3) == 3
+    for idx, dist2, closest_pt in results3:
+        assert np.allclose(closest_pt, points[idx])
 
 
 def test_neighbor_search_with_radius():
@@ -144,12 +181,15 @@ def test_neighbor_search_ray_3d():
     points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=np.float32)
     cloud = tf.PointCloud(points)
 
-    # Ray from origin along x-axis
+    # Ray from [0, 0.5, 0] along x-axis
+    # Float lists become float64 from numpy, Ray keeps float64
     query = tf.Ray(origin=[0, 0.5, 0], direction=[1, 0, 0])
     idx, dist2, closest_pt = tf.neighbor_search(cloud, query)
 
     # Some point should be found
     assert idx >= 0
+    # Verify we get back a cloud point
+    assert np.allclose(closest_pt, points[idx])
 
 
 def test_neighbor_search_line_3d():
@@ -157,12 +197,15 @@ def test_neighbor_search_line_3d():
     points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=np.float32)
     cloud = tf.PointCloud(points)
 
-    # Line through origin along x-axis
-    query = tf.Line(point=[0, 0.5, 0], direction=[1, 0, 0])
+    # Line through [0, 0.5, 0] along x-axis
+    # Float lists become float64 from numpy, Line keeps float64
+    query = tf.Line(origin=[0, 0.5, 0], direction=[1, 0, 0])
     idx, dist2, closest_pt = tf.neighbor_search(cloud, query)
 
     # Some point should be found
     assert idx >= 0
+    # Verify we get back a cloud point
+    assert np.allclose(closest_pt, points[idx])
 
 
 def test_neighbor_search_numpy_array():
@@ -183,11 +226,13 @@ def test_neighbor_search_double_precision():
     points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float64)
     cloud = tf.PointCloud(points)
 
-    query = tf.Point([0.1, 0.1, 0.1], dtype=np.float64)
+    # Create query with explicit float64 array - Point will keep float64
+    query = tf.Point(np.array([0.1, 0.1, 0.1], dtype=np.float64))
     idx, dist2, closest_pt = tf.neighbor_search(cloud, query)
 
     assert idx == 0
     assert isinstance(dist2, float)
+    assert np.allclose(closest_pt, [0.0, 0.0, 0.0])
 
 
 def test_neighbor_search_dimension_mismatch():
@@ -195,7 +240,8 @@ def test_neighbor_search_dimension_mismatch():
     points_3d = np.array([[0, 0, 0], [1, 0, 0]], dtype=np.float32)
     cloud_3d = tf.PointCloud(points_3d)
 
-    query_2d = tf.Point([0, 0], dtype=np.float32)
+    # Integer list [0, 0] will be converted to float32 by Point
+    query_2d = tf.Point([0, 0])
 
     with pytest.raises(ValueError, match="Dimension mismatch"):
         tf.neighbor_search(cloud_3d, query_2d)
@@ -238,3 +284,37 @@ def test_neighbor_search_knn_more_than_available():
 
     # Should return at most 2 results (all available points)
     assert len(results) <= 2
+
+
+if __name__ == "__main__":
+    print("Testing neighbor_search functionality\n")
+    print("=" * 60)
+
+    try:
+        test_neighbor_search_point_2d()
+        test_neighbor_search_point_3d()
+        test_neighbor_search_knn_point()
+        test_neighbor_search_with_radius()
+        test_neighbor_search_knn_with_radius()
+        test_neighbor_search_segment_2d()
+        test_neighbor_search_segment_3d()
+        test_neighbor_search_polygon_2d()
+        test_neighbor_search_polygon_3d()
+        test_neighbor_search_ray_3d()
+        test_neighbor_search_line_3d()
+        test_neighbor_search_numpy_array()
+        test_neighbor_search_double_precision()
+        test_neighbor_search_dimension_mismatch()
+        test_neighbor_search_invalid_k()
+        test_neighbor_search_knn_all_points()
+        test_neighbor_search_knn_more_than_available()
+
+        print("\n" + "=" * 60)
+        print("✓ ALL TESTS PASSED!")
+        print("=" * 60)
+
+    except Exception as e:
+        print(f"\n✗ TEST FAILED: {e}")
+        import traceback
+        traceback.print_exc()
+        exit(1)

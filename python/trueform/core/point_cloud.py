@@ -69,7 +69,8 @@ class PointCloud:
 
         # Check dtype
         if points.dtype not in [np.float32, np.float64]:
-            raise TypeError(f"Expected float32 or float64, got {points.dtype}")
+            # Try to convert to float32
+            points = points.astype(np.float32)
 
         # Check dimensionality
         dims = points.shape[1]
@@ -162,6 +163,7 @@ class PointCloud:
         """Get number of points in the cloud."""
         return self._wrapper.size()
 
+    @property
     def dims(self) -> int:
         """Get dimensionality of points."""
         return self._wrapper.dims()
@@ -195,4 +197,4 @@ class PointCloud:
     def __repr__(self) -> str:
         """String representation of the point cloud."""
         tree_status = "with tree" if self.has_tree() else "no tree"
-        return f"PointCloud({self.size()} points, {self.dims()}D, {tree_status})"
+        return f"PointCloud({self.size()} points, {self.dims}D, {tree_status})"
