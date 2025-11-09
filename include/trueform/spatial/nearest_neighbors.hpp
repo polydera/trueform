@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -42,27 +42,32 @@ template <typename RandomIt> class nearest_neighbors {
 
 public:
   nearest_neighbors(RandomIt out, std::size_t k, real_t radius)
-      : out(out), k(k), count(0), worst_metric{radius * radius} {}
+      : out(out), k(k), count(0), worst_metric{radius * radius},
+        limit_metric{worst_metric} {}
 
   nearest_neighbors(RandomIt out, std::size_t k)
       : out(out), k(k), count(0),
-        worst_metric{std::numeric_limits<real_t>::max()} {}
+        worst_metric{std::numeric_limits<real_t>::max()},
+        limit_metric{worst_metric} {}
 
   auto update(element_t element, const info_t &point) -> bool {
-    if (count < k) {
-      out[count++] = tree_metric_info_t{element, point};
-      std::inplace_merge(
-          out, out + count - 1, out + count,
-          [](const auto &a, const auto &b) { return a.metric() < b.metric(); });
-      worst_metric = out[count - 1].metric();
-    } else if (point.metric < worst_metric) {
-      auto it = std::upper_bound(out, out + k - 1, point.metric,
-                                 [](const auto &value, const auto &elem) {
-                                   return value < elem.metric();
-                                 });
-      std::move_backward(it, out + k - 1, out + k);
-      *it = tree_metric_info_t{element, point};
-      worst_metric = out[k - 1].metric();
+    if (point.metric < limit_metric) {
+      if (count < k) {
+        out[count++] = tree_metric_info_t{element, point};
+        std::inplace_merge(out, out + count - 1, out + count,
+                           [](const auto &a, const auto &b) {
+                             return a.metric() < b.metric();
+                           });
+        worst_metric = out[count - 1].metric();
+      } else if (point.metric < worst_metric) {
+        auto it = std::upper_bound(out, out + k - 1, point.metric,
+                                   [](const auto &value, const auto &elem) {
+                                     return value < elem.metric();
+                                   });
+        std::move_backward(it, out + k - 1, out + k);
+        *it = tree_metric_info_t{element, point};
+        worst_metric = out[k - 1].metric();
+      }
     }
     return count == k && metric() < tf::epsilon2<real_t>;
   }
@@ -109,6 +114,7 @@ private:
   std::size_t k;
   std::size_t count;
   real_t worst_metric;
+  real_t limit_metric;
 };
 
 /// @brief Construct a `tree_knn` container with automatic type deduction.

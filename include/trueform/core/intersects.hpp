@@ -320,7 +320,7 @@ template <std::size_t Dims, typename Policy, typename T>
 auto intersects(const tf::ray_like<Dims, Policy> &r0,
                 const tf::segment<Dims, T> &s1) {
   auto l1 = tf::make_line_between_points(s1[0], s1[1]);
-  auto [t0, t1] = tf::closest_point_parametric(r0, l1);
+  auto [t0, t1] = tf::closest_point_parametric(r0, s1);
   auto pt0 = r0.origin + t0 * r0.direction;
   auto pt1 = l1.origin + t1 * l1.direction;
   auto d2 = (pt0 - pt1).length2();
@@ -338,7 +338,7 @@ template <std::size_t Dims, typename Policy, typename T>
 auto intersects(const tf::line_like<Dims, Policy> &l0,
                 const tf::segment<Dims, T> &s1) {
   auto l1 = tf::make_line_between_points(s1[0], s1[1]);
-  auto [t0, t1] = tf::closest_point_parametric(l0, l1);
+  auto [t0, t1] = tf::closest_point_parametric(l0, s1);
   auto pt0 = l0.origin + t0 * l0.direction;
   auto pt1 = l1.origin + t1 * l1.direction;
   auto d2 = (pt0 - pt1).length2();
@@ -356,7 +356,7 @@ template <typename T, std::size_t Dims, typename Policy>
 auto intersects(const tf::segment<Dims, T> &s0,
                 const tf::line_like<Dims, Policy> &l1) {
   auto l0 = tf::make_line_between_points(s0[0], s0[1]);
-  auto [t0, t1] = tf::closest_point_parametric(l0, l1);
+  auto [t0, t1] = tf::closest_point_parametric(s0, l1);
   auto pt0 = l0.origin + t0 * l0.direction;
   auto pt1 = l1.origin + t1 * l1.direction;
   auto d2 = (pt0 - pt1).length2();
@@ -374,7 +374,7 @@ template <typename T, std::size_t Dims, typename Policy>
 auto intersects(const tf::segment<Dims, T> &s0,
                 const tf::ray_like<Dims, Policy> &r1) {
   auto l0 = tf::make_line_between_points(s0[0], s0[1]);
-  auto [t0, t1] = tf::closest_point_parametric(l0, r1);
+  auto [t0, t1] = tf::closest_point_parametric(s0, r1);
   auto pt0 = l0.origin + t0 * l0.direction;
   auto pt1 = r1.origin + t1 * r1.direction;
   auto d2 = (pt0 - pt1).length2();
