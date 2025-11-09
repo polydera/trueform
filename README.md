@@ -172,11 +172,12 @@ If you use trueform in your work, please cite:
 
 ```bibtex
 @software{trueform2025,
-  title={trueform: Real-Time Geometric Processing Library},
-  author={Sajovic, {\v{Z}}iga},
-  year={2025},
-  url={https://github.com/xlabmedical/trueform},
-  note={C++ library for composable geometric processing with zero-copy semantics}
+    title={trueform: Real-time Geometric Processing},
+    author={Sajovic, {\v{Z}}iga and {et al.}},
+    year={2025},
+    url={https://github.com/xlabmedical/trueform},
+    note={Header-only C++ library for real-time geometric processing built on composable range-based policies. Features spatial acceleration,
+    topology, intersections, boolean operations, and parallel algorithms.}
 }
 ```
 ---
