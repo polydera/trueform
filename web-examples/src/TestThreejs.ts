@@ -1,6 +1,7 @@
 import { MainModule } from './webAssembly/dist/native.js'
 import * as THREE from "three";
 import { createSceneWithCustomConfig, SceneBundle } from './utils/sceneUtils';
+import {createMesh, getMeshFromWasm} from "@/utils/utlis";
 
 
 export class TestClassThreejs {
@@ -9,7 +10,6 @@ export class TestClassThreejs {
     // First renderer (primary scene)
     private readonly renderer: THREE.WebGLRenderer;
     private readonly sceneBundle1: SceneBundle;
-    public material = new THREE.Material();
     private meshes = new Map<number, THREE.Mesh>()
 
     // Second renderer (secondary scene)
@@ -46,7 +46,6 @@ export class TestClassThreejs {
         //////////////////////////// Scene Setup Using Utility Functions //////////////////////////////////////
         // Create first scene with camera, controls, and lighting
         this.sceneBundle1 = createSceneWithCustomConfig(this.renderer, 1);
-        this.material = new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide, flatShading: true });
 
         // Create second scene if second renderer exists
         if (this.renderer2) {
@@ -142,17 +141,13 @@ export class TestClassThreejs {
         this.wasmInstance.FS.unlink(path);
 
         for(let i = 0; i < 2; i++) {
-            const geometry = new THREE.BufferGeometry();
-            const mesh = new THREE.Mesh(geometry, this.material);
-            mesh.matrixAutoUpdate = false;
+            const mesh = createMesh();
             this.meshes.set(i, mesh)
             this.sceneBundle1.scene.add(mesh);
         }
 
         if(this.sceneBundle2 && this.renderer2) {
-            const geometry = new THREE.BufferGeometry();
-            const mesh = new THREE.Mesh(geometry, this.material);
-            mesh.matrixAutoUpdate = false;
+            const mesh = createMesh();
             this.meshes2.set(0, mesh)
             this.sceneBundle2.scene.add(mesh);
         }
@@ -162,51 +157,16 @@ export class TestClassThreejs {
     private updateMeshes(){
         for(let i = 0; i < 2; i++) {
             const wO = this.wasmInstance.GetMeshOnIdx(i);
-            const pU = wO.polydataUpdated;
-            const mU = wO.matrixUpdated;
-            if(pU || mU) {
-                const mesh = this.meshes.get(i);
-                if (mesh) {
-                    if(pU) {
-                        const geometry = mesh.geometry;
-                        geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(wO.GetPoints()), 3));
-                        geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(wO.GetPolys()), 1));
-                    }
-                    if(mU) {
-                        const matrix = new Float32Array(wO.matrix);
-                        matrix[12] = 0;
-                        matrix[13] = 0;
-                        matrix[14] = 0;
-                        matrix[15] = 1;
-                        const threeMatrix = new THREE.Matrix4();
-                        threeMatrix.fromArray(matrix);
-                        threeMatrix.transpose();
-                        mesh.matrix = threeMatrix;
-                    }
-                }
-            }
+            const mesh = this.meshes.get(i);
+            if(!wO || !mesh) continue;
+            getMeshFromWasm(wO, mesh);
         }
 
         if (this.renderer2 && this.sceneBundle2) {
             const wO = this.wasmInstance.GetResultMesh();
-            const pU = wO.polydataUpdated;
-            const mU = wO.matrixUpdated;
-            if(pU || mU) {
-                const mesh = this.meshes2.get(0);
-                if (mesh) {
-                    if(pU) {
-                        const geometry = mesh.geometry;
-                        geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(wO.GetPoints()), 3));
-                        geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(wO.GetPolys()), 1));
-                    }
-                    if(mU) {
-                        const matrix = new Float32Array(wO.matrix);
-                        const threeMatrix = new THREE.Matrix4();
-                        threeMatrix.fromArray(matrix);
-                        threeMatrix.transpose();
-                        mesh.matrix = threeMatrix;
-                    }
-                }
+            const mesh = this.meshes2.get(0);
+            if(wO && mesh){
+                getMeshFromWasm(wO, mesh);
             }
         }
     }

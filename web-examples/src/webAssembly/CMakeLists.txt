@@ -88,5 +88,5 @@ target_link_options(native PRIVATE
   --emit-symbol-map
   -sNO_DISABLE_EXCEPTION_CATCHING=1
   -sMALLOC=mimalloc
-#  --emit-tsd ${DIST_DIR}/native.d.ts
+  --emit-tsd ${DIST_DIR}/native.d.ts
 )

@@ -72,6 +72,12 @@ export function createScene(
     directionalLight.target.position.set(0, 0, 0);
     directionalLight.castShadow = enableShadows;
 
+    // 2. Main directional light (acts as sun/key light)
+    const directionalLight2 = new THREE.DirectionalLight(directionalLightColor, directionalLightIntensity);
+    directionalLight2.position.set(-directionalLightPosition.x, -directionalLightPosition.y, -directionalLightPosition.z);
+    directionalLight2.target.position.set(0, 0, 0);
+    directionalLight2.castShadow = enableShadows;
+
     // Configure shadow properties for better quality
     if (enableShadows && directionalLight.shadow) {
         directionalLight.shadow.mapSize.width = 2048;
@@ -86,6 +92,8 @@ export function createScene(
 
     scene.add(directionalLight);
     scene.add(directionalLight.target);
+    scene.add(directionalLight2);
+    scene.add(directionalLight2.target);
 
     // 3. Fill light (softer, from opposite side to reduce harsh shadows)
     const fillLight = new THREE.DirectionalLight(directionalLightColor, 0.3);
