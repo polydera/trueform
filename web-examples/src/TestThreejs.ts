@@ -18,6 +18,8 @@ export class TestClassThreejs {
     private meshes2 = new Map<number, THREE.Mesh>()
     private keyPressed = false;
 
+    private renderer2Interactive = false;
+
     constructor(wasmInstance: MainModule, path: string, container: HTMLElement, container2?: HTMLElement) {
         this.wasmInstance = wasmInstance;
 
@@ -51,7 +53,7 @@ export class TestClassThreejs {
             this.sceneBundle2 = createSceneWithCustomConfig(this.renderer2, 2);
         }
 
-        requestAnimationFrame(this.animate);
+        this.animate();
 
         // Add resize event listener
         window.addEventListener('resize', () => {
@@ -117,10 +119,18 @@ export class TestClassThreejs {
         this.renderer.domElement.addEventListener('pointerdown', interceptEvent, true);
         this.renderer.domElement.addEventListener('pointermove', interceptEvent, true);
         this.renderer.domElement.addEventListener('pointerup', interceptEvent, true);
+
+        // Add event listeners to second renderer if it exists
+        if (this.renderer2 && this.renderer2Interactive) {
+            this.renderer2.domElement.addEventListener('pointerdown', interceptEvent, true);
+            this.renderer2.domElement.addEventListener('pointermove', interceptEvent, true);
+            this.renderer2.domElement.addEventListener('pointerup', interceptEvent, true);
+        }
         const interceptKeyDownEvent = (event: KeyboardEvent) => {
             if(this.keyPressed) return;
             this.keyPressed = true;
             this.wasmInstance.OnKeyPress(event.key)
+            this.updateMeshes()
         }
         const interceptKeyUpEvent = (event: KeyboardEvent) => {
             this.keyPressed = false;
@@ -128,11 +138,8 @@ export class TestClassThreejs {
         window.addEventListener('keydown', interceptKeyDownEvent);
         window.addEventListener('keyup', interceptKeyUpEvent);
 
-
-        console.log("TestThree JS 0");
         this.wasmInstance.run_main(path);
         this.wasmInstance.FS.unlink(path);
-        console.log("TestThree JS 1");
 
         for(let i = 0; i < 2; i++) {
             const geometry = new THREE.BufferGeometry();
@@ -153,14 +160,11 @@ export class TestClassThreejs {
     }
 
     private updateMeshes(){
-        let r1NeedsUpdate = false;
-        let r2NeedsUpdate = false;
         for(let i = 0; i < 2; i++) {
             const wO = this.wasmInstance.GetMeshOnIdx(i);
             const pU = wO.polydataUpdated;
             const mU = wO.matrixUpdated;
             if(pU || mU) {
-                r1NeedsUpdate = true;
                 const mesh = this.meshes.get(i);
                 if (mesh) {
                     if(pU) {
@@ -182,16 +186,12 @@ export class TestClassThreejs {
                 }
             }
         }
-        // TODO do I need this --> update is in animate loop
-        if(r1NeedsUpdate)
-            this.renderer.render(this.sceneBundle1.scene, this.sceneBundle1.camera);
 
         if (this.renderer2 && this.sceneBundle2) {
             const wO = this.wasmInstance.GetResultMesh();
             const pU = wO.polydataUpdated;
             const mU = wO.matrixUpdated;
             if(pU || mU) {
-                r2NeedsUpdate = true;
                 const mesh = this.meshes2.get(0);
                 if (mesh) {
                     if(pU) {
@@ -208,13 +208,11 @@ export class TestClassThreejs {
                     }
                 }
             }
-            // TODO do I need this --> update is in animate loop
-            if(r2NeedsUpdate)
-                this.renderer2.render(this.sceneBundle2.scene, this.sceneBundle2.camera);
         }
     }
 
     private animate = () => {
+        requestAnimationFrame(this.animate);
         this.sceneBundle1.controls.update();
         this.renderer.render(this.sceneBundle1.scene, this.sceneBundle1.camera);
         if (this.renderer2 && this.sceneBundle2) {
