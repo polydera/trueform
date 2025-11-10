@@ -36,16 +36,19 @@ class Polygon:
 
         # Validate shape
         if vertices.ndim != 2:
-            raise ValueError(f"Polygon vertices must be 2D array, got shape {vertices.shape}")
+            raise ValueError(
+                f"Polygon vertices must be 2D array, got shape {vertices.shape}")
 
         num_vertices = vertices.shape[0]
         if num_vertices < 3:
-            raise ValueError(f"Polygon must have at least 3 vertices, got {num_vertices}")
+            raise ValueError(
+                f"Polygon must have at least 3 vertices, got {num_vertices}")
 
         # Validate dimensionality
         dims = vertices.shape[1]
         if dims not in [2, 3]:
-            raise ValueError(f"Polygon must be 2D or 3D, got {dims} dimensions")
+            raise ValueError(
+                f"Polygon must be 2D or 3D, got {dims} dimensions")
 
         # Validate dtype
         if vertices.dtype not in [np.float32, np.float64]:

@@ -37,14 +37,14 @@ class PointCloud:
     >>> # 3D points with float32
     >>> points_3d = np.random.rand(1000, 3).astype(np.float32)
     >>> cloud_3d = tf.PointCloud(points_3d)
-    >>> cloud_3d.size()
+    >>> cloud_3d.size
     1000
-    >>> cloud_3d.dims()
+    >>> cloud_3d.dims
     3
     >>> # 2D points with float64
     >>> points_2d = np.random.rand(500, 2).astype(np.float64)
     >>> cloud_2d = tf.PointCloud(points_2d)
-    >>> cloud_2d.dims()
+    >>> cloud_2d.dims
     2
     """
 
@@ -106,6 +106,21 @@ class PointCloud:
         return self._points
 
     @property
+    def size(self) -> int:
+        """Get number of points in the cloud."""
+        return self._wrapper.size()
+
+    @property
+    def dims(self) -> int:
+        """Get dimensionality of points."""
+        return self._wrapper.dims()
+
+    @property
+    def dtype(self) -> np.dtype:
+        """Get data type of points (float32 or float64)."""
+        return self._points.dtype
+
+    @property
     def transformation(self):
         """
         Get the transformation matrix.
@@ -124,18 +139,19 @@ class PointCloud:
 
         Parameters
         ----------
-        mat : np.ndarray
-            Transformation matrix (3x3 for 2D points, 4x4 for 3D points)
+        mat : np.ndarray or None
+            Transformation matrix (3x3 for 2D points, 4x4 for 3D points).
+            Set to None to clear the transformation.
         """
         if mat is None:
             self._wrapper.clear_transformation()
             return
 
         # Validate matrix shape
-        expected_size = self.dims() + 1
+        expected_size = self.dims + 1
         if mat.shape != (expected_size, expected_size):
             raise ValueError(
-                f"Transformation must be {expected_size}x{expected_size} for {self.dims()}D points, "
+                f"Transformation must be {expected_size}x{expected_size} for {self.dims}D points, "
                 f"got shape {mat.shape}"
             )
 
@@ -151,59 +167,14 @@ class PointCloud:
 
         self._wrapper.set_transformation(mat)
 
-    def has_transformation(self) -> bool:
-        """Check if a transformation matrix is set."""
-        return self._wrapper.has_transformation()
-
-    def clear_transformation(self) -> None:
-        """Clear the transformation matrix."""
-        self._wrapper.clear_transformation()
-
-    def size(self) -> int:
-        """Get number of points in the cloud."""
-        return self._wrapper.size()
-
-    @property
-    def dims(self) -> int:
-        """Get dimensionality of points."""
-        return self._wrapper.dims()
-
-    def rebuild_tree(self) -> None:
+    def build_tree(self) -> None:
         """
-        Rebuild the spatial index tree.
+        Build the spatial index tree.
 
         Call this after modifying the points array to update the spatial index.
-        This will rebuild the tree even if one already exists.
         """
         self._wrapper.rebuild_tree()
 
-    def ensure_tree(self) -> None:
-        """
-        Build the spatial index tree if not already built.
-
-        The tree is built lazily - it's only created when needed for
-        spatial queries. This method can be called explicitly to build
-        the tree ahead of time.
-        """
-        self._wrapper.ensure_tree()
-
-    def clear_tree(self) -> None:
-        """
-        Clear the spatial index tree to free memory.
-
-        The tree will be automatically rebuilt if needed for future queries.
-        """
-        self._wrapper.clear_tree()
-
-    def has_tree(self) -> bool:
-        """Check if the spatial index tree is currently built."""
-        return self._wrapper.has_tree()
-
-    def __len__(self) -> int:
-        """Get number of points (for len(cloud) syntax)."""
-        return self.size()
-
     def __repr__(self) -> str:
         """String representation of the point cloud."""
-        tree_status = "with tree" if self.has_tree() else "no tree"
-        return f"PointCloud({self.size()} points, {self.dims}D, {tree_status})"
+        return f"PointCloud({self.size} points, {self.dims}D, dtype={self.dtype})"

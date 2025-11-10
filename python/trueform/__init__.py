@@ -8,7 +8,7 @@ https://github.com/xlabmedical/trueform
 """
 
 # Core data structures
-from .core import PointCloud, closest_metric_point_pair, closest_metric_point
+from .core import PointCloud, Mesh, closest_metric_point_pair, closest_metric_point
 
 # Top-level functions
 from .ray_cast import ray_cast
@@ -25,6 +25,7 @@ from .primitives import Point, Segment, Polygon, AABB, Ray, Line, Plane
 __all__ = [
     # Core
     'PointCloud',
+    'Mesh',
     'closest_metric_point_pair',
     'closest_metric_point',
     'ray_cast',

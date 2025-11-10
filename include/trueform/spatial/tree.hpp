@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -40,6 +40,8 @@ namespace tf {
 
 template <typename Index, typename RealT, std::size_t N> class tree {
 public:
+  using index_t = Index;
+  using real_t = RealT;
   tree() = default;
 
   template <typename Range, typename FC>

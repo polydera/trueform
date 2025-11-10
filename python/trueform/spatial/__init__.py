@@ -15,36 +15,40 @@ from ._point_cloud_neighbor_search import (
     _POINT_CLOUD_NEIGHBOR_SEARCH_DISPATCH,
     _POINT_CLOUD_NEIGHBOR_SEARCH_KNN_DISPATCH
 )
+from ._mesh_neighbor_search import (
+    _MESH_NEIGHBOR_SEARCH_DISPATCH,
+    _MESH_NEIGHBOR_SEARCH_KNN_DISPATCH
+)
 
-# Unified dispatch tables
-# Currently only point cloud dispatch, will merge with mesh dispatch later
-_NEIGHBOR_SEARCH_DISPATCH = {**_POINT_CLOUD_NEIGHBOR_SEARCH_DISPATCH}
-# When mesh module is added:
-# from .spatial._mesh_neighbor_search import _MESH_NEIGHBOR_SEARCH_DISPATCH
-# _NEIGHBOR_SEARCH_DISPATCH = {**_POINT_CLOUD_NEIGHBOR_SEARCH_DISPATCH, **_MESH_NEIGHBOR_SEARCH_DISPATCH}
-
-_NEIGHBOR_SEARCH_KNN_DISPATCH = {**_POINT_CLOUD_NEIGHBOR_SEARCH_KNN_DISPATCH}
-# When mesh module is added:
-# from .spatial._mesh_neighbor_search import _MESH_NEIGHBOR_SEARCH_KNN_DISPATCH
-# _NEIGHBOR_SEARCH_KNN_DISPATCH = {**_POINT_CLOUD_NEIGHBOR_SEARCH_KNN_DISPATCH, **_MESH_NEIGHBOR_SEARCH_KNN_DISPATCH}
+# Dispatch tables organized by object type
+_DISPATCH_BY_TYPE = {
+    'PointCloud': {
+        'single': _POINT_CLOUD_NEIGHBOR_SEARCH_DISPATCH,
+        'knn': _POINT_CLOUD_NEIGHBOR_SEARCH_KNN_DISPATCH
+    },
+    'Mesh': {
+        'single': _MESH_NEIGHBOR_SEARCH_DISPATCH,
+        'knn': _MESH_NEIGHBOR_SEARCH_KNN_DISPATCH
+    }
+}
 
 
 def neighbor_search(
-    point_cloud: Any,
+    spatial_object: Any,
     query: Any,
     radius: Optional[float] = None,
     k: Optional[int] = None
 ) -> Union[Tuple[int, float, np.ndarray], List[Tuple[int, float, np.ndarray]]]:
     """
-    Search for nearest neighbor(s) in a point cloud.
+    Search for nearest neighbor(s) in a spatial structure.
 
-    Performs spatial queries to find the closest point(s) in a point cloud to a given
+    Performs spatial queries to find the closest element(s) in a point cloud or mesh to a given
     geometric primitive (point, segment, polygon, ray, or line).
 
     Parameters
     ----------
-    point_cloud : PointCloud
-        The point cloud to search in
+    spatial_object : PointCloud or Mesh
+        The spatial structure to search in
     query : Point, Segment, Polygon, Ray, Line, or numpy array
         The geometric primitive to query with. Can be a wrapped primitive or a numpy array
         (which will be treated as a Point)
@@ -60,7 +64,7 @@ def neighbor_search(
     -------
     single_result : tuple[int, float, ndarray]
         When k is None: Returns (index, distance_squared, point) for the nearest neighbor,
-        where index is the point index in the cloud, distance_squared is the squared distance,
+        where index is the element index, distance_squared is the squared distance,
         and point is the coordinates of the closest point on the query primitive.
     multiple_results : list[tuple[int, float, ndarray]]
         When k is specified: Returns a list of up to k tuples (index, distance_squared, point)
@@ -84,9 +88,11 @@ def neighbor_search(
     >>> for idx, dist2, pt in results:
     ...     print(f"Index {idx}: distance²={dist2}, point={pt}")
     >>>
-    >>> # Query with a segment
+    >>> # Query a mesh with a segment
+    >>> faces = np.array([[0, 1, 2], [1, 2, 3]], dtype=np.int32)
+    >>> mesh = tf.Mesh(faces, points)
     >>> seg = tf.Segment([[0.5, 0.5, 0], [0.5, 0.5, 1]])
-    >>> idx, dist2, closest_pt = tf.neighbor_search(cloud, seg)
+    >>> idx, dist2, closest_pt = tf.neighbor_search(mesh, seg)
     """
 
     # Normalize query to a primitive type
@@ -107,42 +113,74 @@ def neighbor_search(
         dims = query.dims if hasattr(query, 'dims') else None
 
     # Validate dimensions match
-    cloud_dims = point_cloud.dims
+    obj_dims = spatial_object.dims
     if dims is None:
         raise TypeError(f"Cannot determine dimensions for query type {query_type}")
-    if cloud_dims != dims:
+    if obj_dims != dims:
         raise ValueError(
-            f"Dimension mismatch: point_cloud has {cloud_dims}D, query has {dims}D. "
+            f"Dimension mismatch: spatial_object has {obj_dims}D, query has {dims}D. "
             f"Both must have the same dimensionality (2D or 3D)."
         )
 
-    # Get variant suffix - MUST use point cloud's dtype since wrapper is already typed
-    # The C++ functions expect all types (cloud wrapper, query array, radius) to match
-    cloud_dtype = point_cloud.points.dtype
-    dtype_str = 'float' if cloud_dtype == np.float32 else 'double'
-    suffix = f"{dtype_str}{cloud_dims}d"
+    # Determine object type and compute appropriate suffix
+    obj_type = type(spatial_object).__name__
 
-    # Convert query_data to match cloud dtype if necessary
-    if isinstance(query_data, np.ndarray) and query_data.dtype != cloud_dtype:
-        query_data = query_data.astype(cloud_dtype)
+    if obj_type == 'PointCloud':
+        # PointCloud: suffix is "float2d" or "double3d"
+        obj_dtype = spatial_object.points.dtype
+        dtype_str = 'float' if obj_dtype == np.float32 else 'double'
+        suffix = f"{dtype_str}{obj_dims}d"
+
+    elif obj_type == 'Mesh':
+        # Mesh: suffix is "intfloat32d" or "int64double43d"
+        # Format: {index_type}{real_type}{ngon}{dims}d
+        faces_dtype = spatial_object.faces.dtype
+        points_dtype = spatial_object.points.dtype
+        ngon = spatial_object.ngon
+
+        index_str = 'int' if faces_dtype == np.int32 else 'int64'
+        real_str = 'float' if points_dtype == np.float32 else 'double'
+        suffix = f"{index_str}{real_str}{ngon}{obj_dims}d"
+        obj_dtype = points_dtype  # Use points dtype for query conversion
+
+    else:
+        raise TypeError(
+            f"neighbor_search not implemented for spatial object type: {obj_type}. "
+            f"Supported types: PointCloud, Mesh"
+        )
+
+    # Convert query_data to match object dtype if necessary
+    if isinstance(query_data, np.ndarray) and query_data.dtype != obj_dtype:
+        query_data = query_data.astype(obj_dtype)
+
+    # Get the appropriate dispatch table for this object type
+    if obj_type not in _DISPATCH_BY_TYPE:
+        raise TypeError(
+            f"neighbor_search not implemented for spatial object type: {obj_type}. "
+            f"Supported types: {', '.join(_DISPATCH_BY_TYPE.keys())}"
+        )
 
     # Choose dispatch table based on whether k is specified
     if k is None:
         # Non-KNN query - single nearest neighbor
-        if query_type not in _NEIGHBOR_SEARCH_DISPATCH:
-            supported = ", ".join(t.__name__ for t in _NEIGHBOR_SEARCH_DISPATCH.keys())
+        dispatch_table = _DISPATCH_BY_TYPE[obj_type]['single']
+
+        if query_type not in dispatch_table:
+            supported = ", ".join(t.__name__ for t in dispatch_table.keys())
             raise TypeError(
                 f"neighbor_search not implemented for query type: {query_type.__name__}. "
                 f"Supported types: {supported}"
             )
 
-        func_name = _NEIGHBOR_SEARCH_DISPATCH[query_type].format(suffix)
+        func_name = dispatch_table[query_type].format(suffix)
         cpp_func = getattr(_trueform.spatial, func_name)
-        return cpp_func(point_cloud._wrapper, query_data, radius)
+        return cpp_func(spatial_object._wrapper, query_data, radius)
     else:
         # KNN query - k nearest neighbors
-        if query_type not in _NEIGHBOR_SEARCH_KNN_DISPATCH:
-            supported = ", ".join(t.__name__ for t in _NEIGHBOR_SEARCH_KNN_DISPATCH.keys())
+        dispatch_table = _DISPATCH_BY_TYPE[obj_type]['knn']
+
+        if query_type not in dispatch_table:
+            supported = ", ".join(t.__name__ for t in dispatch_table.keys())
             raise TypeError(
                 f"neighbor_search (KNN) not implemented for query type: {query_type.__name__}. "
                 f"Supported types: {supported}"
@@ -151,9 +189,9 @@ def neighbor_search(
         if not isinstance(k, int) or k <= 0:
             raise ValueError(f"k must be a positive integer, got {k}")
 
-        func_name = _NEIGHBOR_SEARCH_KNN_DISPATCH[query_type].format(suffix)
+        func_name = dispatch_table[query_type].format(suffix)
         cpp_func = getattr(_trueform.spatial, func_name)
-        return cpp_func(point_cloud._wrapper, query_data, k, radius)
+        return cpp_func(spatial_object._wrapper, query_data, k, radius)
 
 
 __all__ = ['neighbor_search']

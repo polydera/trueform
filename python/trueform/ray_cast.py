@@ -8,53 +8,64 @@ https://github.com/xlabmedical/trueform
 """
 
 import numpy as np
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 from . import _trueform
 from .core._ray_cast import _RAY_CAST_DISPATCH as _CORE_DISPATCH
+from .spatial._ray_cast import _SPATIAL_RAY_CAST_DISPATCH
 from .primitives import Plane
 
 
-# Unified dispatch table
-# Merges core (primitives) and spatial (meshes, point clouds, etc.) dispatch tables
+# Core primitives dispatch table
 _RAY_CAST_DISPATCH = {**_CORE_DISPATCH}
-# When spatial module is added:
-# from .spatial._ray_cast import _RAY_CAST_DISPATCH as _SPATIAL_DISPATCH
-# _RAY_CAST_DISPATCH = {**_CORE_DISPATCH, **_SPATIAL_DISPATCH}
 
 
-def ray_cast(ray: Any, target: Any) -> Optional[float]:
+def ray_cast(ray: Any, target: Any):
     """
-    Cast a ray against a geometric object and return the parametric distance t if it hits.
+    Cast a ray against a geometric object and return intersection information.
 
-    Returns None if no intersection, or the parametric distance t where:
+    For core primitives (Segment, Polygon, Line, AABB, Plane):
+        Returns the parametric distance t if intersection occurs, None otherwise.
         hit_point = ray.origin + t * ray.direction
 
-    This function works with both core primitives (Point, Segment, Polygon, Line, AABB, Plane)
-    and spatial data structures (Mesh, PointCloud - when spatial module is available).
+    For spatial structures (PointCloud, Mesh):
+        Returns (element_index, t) if intersection occurs, None otherwise.
+        - element_index: index of the intersected element (point/face)
+        - t: parametric distance along the ray
 
     Parameters
     ----------
     ray : Ray
         The ray to cast
-    target : Segment, Polygon, Line, AABB, Plane, Mesh, PointCloud, etc.
+    target : Segment, Polygon, Line, AABB, Plane, Mesh, or PointCloud
         The geometric object to test against
 
     Returns
     -------
-    t : float or None
-        Parametric distance along the ray if intersection occurs, None otherwise
+    result : float, tuple[int, float], or None
+        - For core primitives: float (parametric distance t) or None
+        - For spatial structures: tuple (element_index, t) or None
 
     Examples
     --------
     >>> import trueform as tf
     >>> import numpy as np
-    >>> # Ray pointing down at a triangle in xy-plane
+    >>> # Ray casting against a polygon
     >>> ray = tf.Ray(origin=[0.5, 0.3, 2.0], direction=[0.0, 0.0, -1.0])
     >>> triangle = tf.Polygon([[0, 0, 0], [1, 0, 0], [0.5, 1, 0]])
     >>> t = tf.ray_cast(ray, triangle)
     >>> if t is not None:
     ...     hit_point = ray.origin + t * ray.direction
     ...     print(f"Hit at {hit_point}, t={t}")
+    >>>
+    >>> # Ray casting against a mesh
+    >>> faces = np.array([[0, 1, 2], [1, 2, 3]], dtype=np.int32)
+    >>> points = np.array([[0, 0, 0], [1, 0, 0], [0.5, 1, 0], [0.5, 0, 1]], dtype=np.float32)
+    >>> mesh = tf.Mesh(faces, points)
+    >>> ray = tf.Ray(origin=[0.3, 0.3, 2.0], direction=[0.0, 0.0, -1.0])
+    >>> result = tf.ray_cast(ray, mesh)
+    >>> if result is not None:
+    ...     face_idx, t = result
+    ...     print(f"Hit face {face_idx} at t={t}")
     """
 
     # Validate dimensions match
@@ -77,13 +88,38 @@ def ray_cast(ray: Any, target: Any) -> Optional[float]:
             f"Both objects must have the same dtype (float32 or float64)."
         )
 
-    # Check if target type is supported
     target_type = type(target)
+    target_type_name = target_type.__name__
+
+    # Handle spatial structures (PointCloud, Mesh)
+    if target_type_name in _SPATIAL_RAY_CAST_DISPATCH:
+        # Compute appropriate suffix based on object type
+        if target_type_name == 'PointCloud':
+            # PointCloud: suffix is "float2d" or "double3d"
+            dtype_str = 'float' if target.points.dtype == np.float32 else 'double'
+            suffix = f"{dtype_str}{target.dims}d"
+        else:  # Mesh
+            # Mesh: suffix is "intfloat32d" or "int64double43d"
+            faces_dtype = target.faces.dtype
+            points_dtype = target.points.dtype
+            ngon = target.ngon
+
+            index_str = 'int' if faces_dtype == np.int32 else 'int64'
+            real_str = 'float' if points_dtype == np.float32 else 'double'
+            suffix = f"{index_str}{real_str}{ngon}{target.dims}d"
+
+        # Get function name from dispatch table and call C++ function
+        func_name = _SPATIAL_RAY_CAST_DISPATCH[target_type_name].format(suffix)
+        cpp_func = getattr(_trueform.spatial, func_name)
+        return cpp_func(ray.data, target._wrapper)
+
+    # Handle core primitives (Segment, Polygon, Line, AABB, Plane)
     if target_type not in _RAY_CAST_DISPATCH:
-        supported = ", ".join(t.__name__ for t in _RAY_CAST_DISPATCH.keys())
+        supported_core = ", ".join(t.__name__ for t in _RAY_CAST_DISPATCH.keys())
+        supported_spatial = ", ".join(_SPATIAL_RAY_CAST_DISPATCH.keys())
         raise TypeError(
-            f"ray_cast not implemented for target type: {target_type.__name__}. "
-            f"Supported types: {supported}"
+            f"ray_cast not implemented for target type: {target_type_name}. "
+            f"Supported types: {supported_core}, {supported_spatial}"
         )
 
     # Special case: Plane is 3D only
@@ -94,6 +130,6 @@ def ray_cast(ray: Any, target: Any) -> Optional[float]:
     dtype_str = 'float' if ray.dtype == np.float32 else 'double'
     suffix = f"{dtype_str}{ray.dims}d"
 
-    # Dispatch to appropriate C++ function
+    # Dispatch to appropriate C++ function for core primitives
     func_name = _RAY_CAST_DISPATCH[target_type].format(suffix)
     return getattr(_trueform, func_name)(ray.data, target.data)

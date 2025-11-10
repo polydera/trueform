@@ -286,6 +286,195 @@ def test_neighbor_search_knn_more_than_available():
     assert len(results) <= 2
 
 
+def test_neighbor_search_with_transformation_2d():
+    """Test neighbor search with 2D transformation (last column is translation)"""
+    # Create point cloud at origin and along x-axis
+    # Original points: [0,0], [1,0], [0,1]
+    points = np.array([[0, 0], [1, 0], [0, 1]], dtype=np.float32)
+    cloud = tf.PointCloud(points)
+
+    # Create transformation: identity rotation with translation [5, 3]
+    # Format: [r11 r12 tx]
+    #         [r21 r22 ty]
+    #         [  0   0  1]
+    # After transformation, points are at: [5,3], [6,3], [5,4] (world coordinates)
+    transformation = np.array([
+        [1, 0, 5],
+        [0, 1, 3],
+        [0, 0, 1]
+    ], dtype=np.float32)
+
+    cloud.transformation = transformation
+
+    # Query point at [5.1, 3.1] in world coordinates - should be close to transformed origin [5, 3]
+    query = tf.Point([5.1, 3.1])
+    idx, dist2, closest_pt = tf.neighbor_search(cloud, query)
+
+    assert idx == 0  # Should find the origin point (index 0)
+    # Distance should be small (0.1^2 + 0.1^2 = 0.02)
+    assert np.isclose(dist2, 0.02, atol=1e-5)
+    # IMPORTANT: closest_pt is in world coordinates (transformed point), not original
+    assert np.allclose(closest_pt, [5.0, 3.0], atol=1e-5)
+
+
+def test_neighbor_search_with_transformation_3d():
+    """Test neighbor search with 3D transformation (last column is translation)"""
+    # Create point cloud at origin and along axes
+    # Original points: [0,0,0], [1,0,0], [0,1,0], [0,0,1]
+    points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=np.float32)
+    cloud = tf.PointCloud(points)
+
+    # Create transformation: identity rotation with translation [10, 5, 2]
+    # Format: [r11 r12 r13 tx]
+    #         [r21 r22 r23 ty]
+    #         [r31 r32 r33 tz]
+    #         [  0   0   0  1]
+    # After transformation, points are at: [10,5,2], [11,5,2], [10,6,2], [10,5,3] (world coordinates)
+    transformation = np.array([
+        [1, 0, 0, 10],
+        [0, 1, 0,  5],
+        [0, 0, 1,  2],
+        [0, 0, 0,  1]
+    ], dtype=np.float32)
+
+    cloud.transformation = transformation
+
+    # Query point at [10.2, 5.1, 2.1] in world coordinates - close to transformed origin [10, 5, 2]
+    query = tf.Point([10.2, 5.1, 2.1])
+    idx, dist2, closest_pt = tf.neighbor_search(cloud, query)
+
+    assert idx == 0  # Should find the origin point (index 0)
+    # Distance should be 0.2^2 + 0.1^2 + 0.1^2 = 0.06
+    assert np.isclose(dist2, 0.06, atol=1e-5)
+    # IMPORTANT: closest_pt is in world coordinates (transformed point)
+    assert np.allclose(closest_pt, [10.0, 5.0, 2.0], atol=1e-5)
+
+
+def test_neighbor_search_with_transformation_knn():
+    """Test KNN search with transformation"""
+    # Create point cloud
+    # Original points: [0,0,0], [1,0,0], [0,1,0], [0,0,1]
+    points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=np.float32)
+    cloud = tf.PointCloud(points)
+
+    # Apply translation [5, 5, 5]
+    # After transformation, points are at: [5,5,5], [6,5,5], [5,6,5], [5,5,6] (world coordinates)
+    transformation = np.array([
+        [1, 0, 0, 5],
+        [0, 1, 0, 5],
+        [0, 0, 1, 5],
+        [0, 0, 0, 1]
+    ], dtype=np.float32)
+
+    cloud.transformation = transformation
+
+    # Query at transformed origin in world coordinates
+    query = tf.Point([5.0, 5.0, 5.0])
+    results = tf.neighbor_search(cloud, query, k=3)
+
+    assert len(results) == 3
+    # First result should be the origin (index 0)
+    assert results[0][0] == 0
+    assert np.isclose(results[0][1], 0.0, atol=1e-5)  # Distance should be 0
+    # IMPORTANT: closest_pt is in world coordinates
+    assert np.allclose(results[0][2], [5.0, 5.0, 5.0], atol=1e-5)
+
+    # All results should be sorted by distance
+    for i in range(len(results) - 1):
+        assert results[i][1] <= results[i + 1][1]
+
+
+def test_neighbor_search_transformation_clear():
+    """Test clearing transformation"""
+    points = np.array([[0, 0, 0], [1, 0, 0]], dtype=np.float32)
+    cloud = tf.PointCloud(points)
+
+    # Set transformation
+    transformation = np.array([
+        [1, 0, 0, 10],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]
+    ], dtype=np.float32)
+
+    cloud.transformation = transformation
+
+    # Query should find point at transformed location [10, 0, 0]
+    query1 = tf.Point([10.1, 0, 0])
+    idx1, dist2_1, _ = tf.neighbor_search(cloud, query1)
+    assert idx1 == 0
+    assert np.isclose(dist2_1, 0.01, atol=1e-5)
+
+    # Clear transformation
+    cloud.transformation = None
+
+    # Now query at original location [0, 0, 0]
+    query2 = tf.Point([0.1, 0, 0])
+    idx2, dist2_2, _ = tf.neighbor_search(cloud, query2)
+    assert idx2 == 0
+    assert np.isclose(dist2_2, 0.01, atol=1e-5)
+
+
+def test_neighbor_search_with_rotation_transformation():
+    """Test neighbor search with rotation transformation"""
+    # Create point cloud along x-axis
+    # Original points: [1,0,0], [2,0,0]
+    points = np.array([[1, 0, 0], [2, 0, 0]], dtype=np.float32)
+    cloud = tf.PointCloud(points)
+
+    # Create 90-degree rotation around z-axis (x -> y)
+    # After rotation, [1,0,0] -> [0,1,0] and [2,0,0] -> [0,2,0] (world coordinates)
+    # Format: [r11 r12 r13 tx]
+    #         [r21 r22 r23 ty]
+    #         [r31 r32 r33 tz]
+    #         [  0   0   0  1]
+    transformation = np.array([
+        [ 0, -1, 0, 0],
+        [ 1,  0, 0, 0],
+        [ 0,  0, 1, 0],
+        [ 0,  0, 0, 1]
+    ], dtype=np.float32)
+
+    cloud.transformation = transformation
+
+    # Query point at [0, 1.1, 0] in world coordinates - close to rotated [1, 0, 0]
+    query = tf.Point([0, 1.1, 0])
+    idx, dist2, closest_pt = tf.neighbor_search(cloud, query)
+
+    assert idx == 0  # Should find first point
+    assert np.isclose(dist2, 0.01, atol=1e-4)  # Distance 0.1^2
+    # IMPORTANT: closest_pt is in world coordinates (rotated point)
+    assert np.allclose(closest_pt, [0.0, 1.0, 0.0], atol=1e-5)
+
+
+def test_neighbor_search_with_scale_transformation():
+    """Test neighbor search with scaling transformation"""
+    # Create point cloud
+    # Original points: [1,0,0], [2,0,0]
+    points = np.array([[1, 0, 0], [2, 0, 0]], dtype=np.float32)
+    cloud = tf.PointCloud(points)
+
+    # Create scaling transformation: scale by 2 in all directions
+    # After scaling: [1,0,0] -> [2,0,0] and [2,0,0] -> [4,0,0] (world coordinates)
+    transformation = np.array([
+        [2, 0, 0, 0],
+        [0, 2, 0, 0],
+        [0, 0, 2, 0],
+        [0, 0, 0, 1]
+    ], dtype=np.float32)
+
+    cloud.transformation = transformation
+
+    # Query point at [2.1, 0, 0] in world coordinates - close to scaled [1, 0, 0]
+    query = tf.Point([2.1, 0, 0])
+    idx, dist2, closest_pt = tf.neighbor_search(cloud, query)
+
+    assert idx == 0  # Should find first point
+    assert np.isclose(dist2, 0.01, atol=1e-5)  # Distance 0.1^2
+    # IMPORTANT: closest_pt is in world coordinates (scaled point)
+    assert np.allclose(closest_pt, [2.0, 0.0, 0.0], atol=1e-5)
+
+
 if __name__ == "__main__":
     print("Testing neighbor_search functionality\n")
     print("=" * 60)
@@ -308,6 +497,12 @@ if __name__ == "__main__":
         test_neighbor_search_invalid_k()
         test_neighbor_search_knn_all_points()
         test_neighbor_search_knn_more_than_available()
+        test_neighbor_search_with_transformation_2d()
+        test_neighbor_search_with_transformation_3d()
+        test_neighbor_search_with_transformation_knn()
+        test_neighbor_search_transformation_clear()
+        test_neighbor_search_with_rotation_transformation()
+        test_neighbor_search_with_scale_transformation()
 
         print("\n" + "=" * 60)
         print("✓ ALL TESTS PASSED!")

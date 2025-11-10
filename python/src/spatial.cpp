@@ -12,6 +12,9 @@ namespace tf::py {
 auto register_spatial_module(nanobind::module_ &m) -> void {
   auto spatial_module = m.def_submodule("spatial", "Spatial operations");
   register_point_cloud_neighbor_search(spatial_module);
+  register_mesh_neighbor_search(spatial_module);
+  register_point_cloud_ray_cast(spatial_module);
+  register_mesh_ray_cast(spatial_module);
 }
 
 } // namespace tf::py

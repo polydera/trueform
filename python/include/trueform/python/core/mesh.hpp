@@ -71,13 +71,13 @@ public:
     fm.build(polygons);
 
     // Get raw pointers and sizes before releasing
-    Index *offsets_ptr = fm.offsets_buffer().data_buffer().data();
-    std::size_t offsets_size = fm.offsets_buffer().data_buffer().size();
-    Index *data_ptr = fm.data_buffer().data();
+    Index *offsets_ptr = fm.offsets_buffer().begin();
+    std::size_t offsets_size = fm.offsets_buffer().size();
+    Index *data_ptr = fm.data_buffer().begin();
     std::size_t data_size = fm.data_buffer().size();
 
     // Release ownership and create capsules with deleters
-    fm.offsets_buffer().data_buffer().release();
+    fm.offsets_buffer().release();
     auto offsets_capsule = nanobind::capsule(offsets_ptr, [](void *p) noexcept {
       delete[] static_cast<Index *>(p);
     });
@@ -121,17 +121,21 @@ public:
     return _face_membership_array != nullptr;
   }
 
-  auto size() const -> std::size_t { return _points_array.shape(0); }
+  auto number_of_faces() const -> std::size_t { return _faces_array.shape(0); }
+
+  auto number_of_points() const -> std::size_t {
+    return _points_array.shape(0);
+  }
 
   auto dims() const -> std::size_t { return Dims; }
 
   // Access to internal structures (opaque to Python)
-  auto tree() -> tf::tree<int, RealT, Dims> & {
+  auto tree() -> tf::tree<Index, RealT, Dims> & {
     ensure_tree();
     return *_tree;
   }
 
-  auto tree() const -> const tf::tree<int, RealT, Dims> & {
+  auto tree() const -> const tf::tree<Index, RealT, Dims> & {
     if (!_tree)
       throw std::runtime_error("Tree not built");
     return *_tree;
@@ -178,10 +182,10 @@ public:
   auto clear_transformation() -> void { _transformation.reset(); }
 
 private:
-  nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>
-      _points_array;
   nanobind::ndarray<nanobind::numpy, Index, nanobind::shape<-1, Ngon>>
       _faces_array;
+  nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>
+      _points_array;
   std::optional<nanobind::ndarray<nanobind::numpy, RealT,
                                   nanobind::shape<Dims + 1, Dims + 1>>>
       _transformation;

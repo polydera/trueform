@@ -12,6 +12,12 @@ namespace tf::py {
 
 void register_point_cloud_neighbor_search(nanobind::module_ &m);
 
+void register_mesh_neighbor_search(nanobind::module_ &m);
+
+void register_point_cloud_ray_cast(nanobind::module_ &m);
+
+void register_mesh_ray_cast(nanobind::module_ &m);
+
 void register_spatial_module(nanobind::module_ &m);
 
 } // namespace tf::py

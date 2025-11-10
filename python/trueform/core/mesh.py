@@ -53,7 +53,7 @@ class Mesh:
     >>> faces = np.array([[0, 1, 2], [1, 2, 3]], dtype=np.int32)
     >>> points = np.random.rand(4, 3).astype(np.float32)
     >>> mesh = tf.Mesh(faces, points)
-    >>> mesh.size()
+    >>> mesh.number_of_points
     4
     >>> mesh.dims
     3
@@ -77,15 +77,19 @@ class Mesh:
         """
         # Validate faces
         if not isinstance(faces, np.ndarray):
-            raise TypeError(f"Expected numpy array for faces, got {type(faces)}")
+            raise TypeError(
+                f"Expected numpy array for faces, got {type(faces)}")
         if faces.ndim != 2:
-            raise ValueError(f"Expected 2D array for faces, got shape {faces.shape}")
+            raise ValueError(
+                f"Expected 2D array for faces, got shape {faces.shape}")
 
         # Validate points
         if not isinstance(points, np.ndarray):
-            raise TypeError(f"Expected numpy array for points, got {type(points)}")
+            raise TypeError(
+                f"Expected numpy array for points, got {type(points)}")
         if points.ndim != 2:
-            raise ValueError(f"Expected 2D array for points, got shape {points.shape}")
+            raise ValueError(
+                f"Expected 2D array for points, got shape {points.shape}")
 
         # Check face dtype
         if faces.dtype not in [np.int32, np.int64]:
@@ -154,6 +158,31 @@ class Mesh:
         return self._points
 
     @property
+    def number_of_points(self) -> int:
+        """Get number of points in the mesh."""
+        return len(self._points)
+
+    @property
+    def number_of_faces(self) -> int:
+        """Get number of faces in the mesh."""
+        return len(self._faces)
+
+    @property
+    def dims(self) -> int:
+        """Get dimensionality of points."""
+        return self._wrapper.dims()
+
+    @property
+    def ngon(self) -> int:
+        """Get number of vertices per face (3 for triangles, 4 for quads)."""
+        return self._faces.shape[1]
+
+    @property
+    def dtype(self) -> np.dtype:
+        """Get data type of points (float32 or float64)."""
+        return self._points.dtype
+
+    @property
     def transformation(self):
         """
         Get the transformation matrix.
@@ -172,8 +201,9 @@ class Mesh:
 
         Parameters
         ----------
-        mat : np.ndarray
-            Transformation matrix (3x3 for 2D points, 4x4 for 3D points)
+        mat : np.ndarray or None
+            Transformation matrix (3x3 for 2D points, 4x4 for 3D points).
+            Set to None to clear the transformation.
         """
         if mat is None:
             self._wrapper.clear_transformation()
@@ -199,95 +229,22 @@ class Mesh:
 
         self._wrapper.set_transformation(mat)
 
-    def has_transformation(self) -> bool:
-        """Check if a transformation matrix is set."""
-        return self._wrapper.has_transformation()
-
-    def clear_transformation(self) -> None:
-        """Clear the transformation matrix."""
-        self._wrapper.clear_transformation()
-
-    def size(self) -> int:
-        """Get number of points in the mesh."""
-        return self._wrapper.size()
-
-    @property
-    def dims(self) -> int:
-        """Get dimensionality of points."""
-        return self._wrapper.dims()
-
-    @property
-    def ngon(self) -> int:
-        """Get number of vertices per face (3 for triangles, 4 for quads)."""
-        return self._faces.shape[1]
-
-    def rebuild_tree(self) -> None:
+    def build_tree(self) -> None:
         """
-        Rebuild the spatial index tree.
+        Build the spatial index tree.
 
         Call this after modifying the points or faces arrays to update the spatial index.
-        This will rebuild the tree even if one already exists.
         """
         self._wrapper.rebuild_tree()
 
-    def ensure_tree(self) -> None:
+    def build_face_membership(self) -> None:
         """
-        Build the spatial index tree if not already built.
-
-        The tree is built lazily - it's only created when needed for
-        spatial queries. This method can be called explicitly to build
-        the tree ahead of time.
-        """
-        self._wrapper.ensure_tree()
-
-    def clear_tree(self) -> None:
-        """
-        Clear the spatial index tree to free memory.
-
-        The tree will be automatically rebuilt if needed for future queries.
-        """
-        self._wrapper.clear_tree()
-
-    def has_tree(self) -> bool:
-        """Check if the spatial index tree is currently built."""
-        return self._wrapper.has_tree()
-
-    def rebuild_face_membership(self) -> None:
-        """
-        Rebuild the face membership structure.
+        Build the face membership structure.
 
         Call this after modifying the faces array to update the face membership.
-        This will rebuild the structure even if one already exists.
         """
         self._wrapper.rebuild_face_membership()
 
-    def ensure_face_membership(self) -> None:
-        """
-        Build the face membership structure if not already built.
-
-        The face membership is built lazily - it's only created when needed.
-        This method can be called explicitly to build it ahead of time.
-        """
-        self._wrapper.ensure_face_membership()
-
-    def clear_face_membership(self) -> None:
-        """
-        Clear the face membership structure to free memory.
-
-        The structure will be automatically rebuilt if needed for future operations.
-        """
-        self._wrapper.clear_face_membership()
-
-    def has_face_membership(self) -> bool:
-        """Check if the face membership structure is currently built."""
-        return self._wrapper.has_face_membership()
-
-    def __len__(self) -> int:
-        """Get number of points (for len(mesh) syntax)."""
-        return self.size()
-
     def __repr__(self) -> str:
         """String representation of the mesh."""
-        tree_status = "with tree" if self.has_tree() else "no tree"
-        fm_status = "with face_membership" if self.has_face_membership() else "no face_membership"
-        return f"Mesh({self.size()} points, {len(self._faces)} faces, {self.ngon}-gon, {self.dims}D, {tree_status}, {fm_status})"
+        return f"Mesh({self.number_of_points} points, {self.number_of_faces} faces, {self.ngon}-gon, {self.dims}D, dtype={self.dtype})"
