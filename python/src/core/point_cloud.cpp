@@ -14,6 +14,7 @@ auto register_point_cloud(nanobind::module_ &m) -> void {
   nanobind::class_<point_cloud_wrapper<float, 2>>(m, "PointCloudWrapperFloat2D")
       .def(nanobind::init<
            nanobind::ndarray<nanobind::numpy, float, nanobind::shape<-1, 2>>>())
+      .def("rebuild_tree", &point_cloud_wrapper<float, 2>::rebuild_tree)
       .def("ensure_tree", &point_cloud_wrapper<float, 2>::ensure_tree)
       .def("clear_tree", &point_cloud_wrapper<float, 2>::clear_tree)
       .def("has_tree", &point_cloud_wrapper<float, 2>::has_tree)
@@ -32,6 +33,7 @@ auto register_point_cloud(nanobind::module_ &m) -> void {
   nanobind::class_<point_cloud_wrapper<float, 3>>(m, "PointCloudWrapperFloat3D")
       .def(nanobind::init<
            nanobind::ndarray<nanobind::numpy, float, nanobind::shape<-1, 3>>>())
+      .def("rebuild_tree", &point_cloud_wrapper<float, 3>::rebuild_tree)
       .def("ensure_tree", &point_cloud_wrapper<float, 3>::ensure_tree)
       .def("clear_tree", &point_cloud_wrapper<float, 3>::clear_tree)
       .def("has_tree", &point_cloud_wrapper<float, 3>::has_tree)
@@ -51,6 +53,7 @@ auto register_point_cloud(nanobind::module_ &m) -> void {
                                                    "PointCloudWrapperDouble2D")
       .def(nanobind::init<nanobind::ndarray<nanobind::numpy, double,
                                             nanobind::shape<-1, 2>>>())
+      .def("rebuild_tree", &point_cloud_wrapper<double, 2>::rebuild_tree)
       .def("ensure_tree", &point_cloud_wrapper<double, 2>::ensure_tree)
       .def("clear_tree", &point_cloud_wrapper<double, 2>::clear_tree)
       .def("has_tree", &point_cloud_wrapper<double, 2>::has_tree)
@@ -70,6 +73,7 @@ auto register_point_cloud(nanobind::module_ &m) -> void {
                                                    "PointCloudWrapperDouble3D")
       .def(nanobind::init<nanobind::ndarray<nanobind::numpy, double,
                                             nanobind::shape<-1, 3>>>())
+      .def("rebuild_tree", &point_cloud_wrapper<double, 3>::rebuild_tree)
       .def("ensure_tree", &point_cloud_wrapper<double, 3>::ensure_tree)
       .def("clear_tree", &point_cloud_wrapper<double, 3>::clear_tree)
       .def("has_tree", &point_cloud_wrapper<double, 3>::has_tree)

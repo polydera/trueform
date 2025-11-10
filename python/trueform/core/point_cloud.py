@@ -168,6 +168,15 @@ class PointCloud:
         """Get dimensionality of points."""
         return self._wrapper.dims()
 
+    def rebuild_tree(self) -> None:
+        """
+        Rebuild the spatial index tree.
+
+        Call this after modifying the points array to update the spatial index.
+        This will rebuild the tree even if one already exists.
+        """
+        self._wrapper.rebuild_tree()
+
     def ensure_tree(self) -> None:
         """
         Build the spatial index tree if not already built.

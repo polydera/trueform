@@ -37,11 +37,17 @@ public:
   }
 
   // Tree management
+  auto rebuild_tree() -> void {
+    if (!_tree) {
+      _tree = std::make_unique<tf::tree<int, RealT, Dims>>();
+    }
+    auto pts = make_primitive_range();
+    *_tree = tf::tree<int, RealT, Dims>(pts, tf::config_tree(4, 4));
+  }
+
   auto ensure_tree() -> void {
     if (!_tree) {
-      auto pts = make_primitive_range();
-      _tree = std::make_unique<tf::tree<int, RealT, Dims>>(
-          pts, tf::config_tree(4, 4));
+      rebuild_tree();
     }
   }
 
