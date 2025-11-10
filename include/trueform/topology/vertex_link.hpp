@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -13,7 +13,7 @@
 #include "../core/segments.hpp"
 #include "../core/views/enumerate.hpp"
 #include "./edge_membership.hpp"
-#include "./face_membership.hpp"
+#include "./face_membership_like.hpp"
 #include "./scoped_face_membership.hpp"
 #include "./structures/compute_vertex_link.hpp"
 
@@ -23,9 +23,9 @@ class vertex_link : public offset_block_buffer<Index, Index> {
   using base_t = offset_block_buffer<Index, Index>;
 
 public:
-  template <typename Policy>
-  auto build(const tf::polygons<Policy> &polygons,
-             const tf::face_membership<Index> &blink) -> void {
+  template <typename Policy0, typename Policy1>
+  auto build(const tf::polygons<Policy0> &polygons,
+             const tf::face_membership_like<Policy1> &blink) -> void {
     base_t::offsets_buffer().allocate(blink.size() + 1);
     // perfect mesh has valence 6
     base_t::data_buffer().reserve(blink.size() * 4);

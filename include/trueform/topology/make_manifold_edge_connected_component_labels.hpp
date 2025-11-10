@@ -8,6 +8,7 @@
 #include "./label_connected_components.hpp"
 #include "./make_applier.hpp"
 #include "./policy/manifold_edge_link.hpp"
+#include "./face_membership.hpp"
 
 namespace tf {
 template <typename Index, typename Policy>

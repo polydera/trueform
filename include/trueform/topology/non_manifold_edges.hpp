@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -15,9 +15,10 @@
 #include "./policy/face_membership.hpp"
 
 namespace tf {
-template <typename Policy, typename Index>
+template <typename Policy, typename Policy1>
 auto make_non_manifold_edges(const tf::faces<Policy> &faces,
-                             const tf::face_membership<Index> &fm) {
+                             const tf::face_membership_like<Policy1> &fm) {
+  using Index = std::decay_t<decltype(fm[0][0])>;
   tf::blocked_buffer<Index, 2> edges;
   tf::generic_generate(
       tf::enumerate(faces), edges.data_buffer(), tf::small_vector<Index, 10>{},

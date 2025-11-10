@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 
@@ -13,10 +13,9 @@
 namespace tf {
 namespace policy {
 
-template <typename Index, std::size_t N, typename Base>
-struct tag_manifold_edge_link;
-template <typename Index, std::size_t N, typename Base>
-auto has_manifold_edge_link(const tag_manifold_edge_link<Index, N, Base> *)
+template <typename Range, typename Base> struct tag_manifold_edge_link;
+template <typename Range, typename Base>
+auto has_manifold_edge_link(const tag_manifold_edge_link<Range, Base> *)
     -> std::true_type;
 
 auto has_manifold_edge_link(const void *) -> std::false_type;
@@ -28,27 +27,31 @@ inline constexpr bool has_manifold_edge_link_policy =
         static_cast<const std::decay_t<T> *>(nullptr)))::value;
 
 namespace policy {
-template <typename Index, std::size_t N, typename Base>
-struct tag_manifold_edge_link : Base {
+template <typename Range, typename Base> struct tag_manifold_edge_link : Base {
   using Base::operator=;
-  tag_manifold_edge_link(tf::manifold_edge_link<Index, N> *_manifold_edge_link,
-                         const Base &base)
-      : Base{base}, _manifold_edge_link{_manifold_edge_link} {}
 
-  tag_manifold_edge_link(tf::manifold_edge_link<Index, N> *_manifold_edge_link,
-                         Base &&base)
-      : Base{std::move(base)}, _manifold_edge_link{_manifold_edge_link} {}
+  tag_manifold_edge_link(
+      tf::manifold_edge_link_like<Range> _manifold_edge_link_range,
+      const Base &base)
+      : Base{base},
+        _manifold_edge_link_range{std::move(_manifold_edge_link_range)} {}
 
-  auto manifold_edge_link() const -> const tf::manifold_edge_link<Index, N> & {
-    return *_manifold_edge_link;
+  tag_manifold_edge_link(
+      tf::manifold_edge_link_like<Range> _manifold_edge_link_range, Base &&base)
+      : Base{std::move(base)},
+        _manifold_edge_link_range{std::move(_manifold_edge_link_range)} {}
+
+  auto manifold_edge_link() const
+      -> const tf::manifold_edge_link_like<Range> & {
+    return _manifold_edge_link_range;
   }
 
-  auto manifold_edge_link() -> tf::manifold_edge_link<Index, N> & {
-    return *_manifold_edge_link;
+  auto manifold_edge_link() -> tf::manifold_edge_link_like<Range> & {
+    return _manifold_edge_link_range;
   }
 
 private:
-  tf::manifold_edge_link<Index, N> *_manifold_edge_link;
+  tf::manifold_edge_link_like<Range> _manifold_edge_link_range;
 
   friend auto unwrap(const tag_manifold_edge_link &val) -> const Base & {
     return static_cast<const Base &>(val);
@@ -64,19 +67,20 @@ private:
 
   template <typename T>
   friend auto wrap_like(const tag_manifold_edge_link &val, T &&t) {
-    return tag_manifold_edge_link<Index, N, std::decay_t<T>>{
-        val._manifold_edge_link, static_cast<T &&>(t)};
+    return tag_manifold_edge_link<Range, std::decay_t<T>>{
+        val._manifold_edge_link_range, static_cast<T &&>(t)};
   }
 };
 } // namespace policy
 
-template <typename Index, std::size_t N, typename Base>
-struct static_size<policy::tag_manifold_edge_link<Index, N, Base>>
+template <typename Range, typename Base>
+struct static_size<policy::tag_manifold_edge_link<Range, Base>>
     : static_size<Base> {};
 
-template <typename Index, std::size_t N, typename Base>
+template <typename Range, typename Base>
 auto tag_manifold_edge_link(
-    tf::manifold_edge_link<Index, N> *_manifold_edge_link, Base &&base) {
+    tf::manifold_edge_link_like<Range> &&_manifold_edge_link_range,
+    Base &&base) {
   if constexpr (has_manifold_edge_link_policy<Base>)
     if constexpr (std::is_rvalue_reference_v<Base &&>)
       return static_cast<Base>(base);
@@ -85,50 +89,95 @@ auto tag_manifold_edge_link(
   else {
     auto &b_base = unwrap(base);
     return wrap_like(
-        base, policy::tag_manifold_edge_link<Index, N,
-                                             std::decay_t<decltype(b_base)>>{
-                  _manifold_edge_link, b_base});
+        base,
+        policy::tag_manifold_edge_link<Range, std::decay_t<decltype(b_base)>>{
+            std::move(_manifold_edge_link_range), b_base});
   }
 }
 
 template <typename Index, std::size_t N, typename Base>
 auto tag_manifold_edge_link(
     tf::manifold_edge_link<Index, N> &_manifold_edge_link, Base &&base) {
-  return tag_manifold_edge_link(&_manifold_edge_link,
-                                static_cast<Base &&>(base));
+  return tag_manifold_edge_link(
+      tf::make_manifold_edge_link_like(tf::make_range(_manifold_edge_link)),
+      static_cast<Base &&>(base));
 }
+
+template <typename Index, std::size_t N, typename Base>
+auto tag_manifold_edge_link(
+    const tf::manifold_edge_link<Index, N> &_manifold_edge_link, Base &&base) {
+  return tag_manifold_edge_link(
+      tf::make_manifold_edge_link_like(tf::make_range(_manifold_edge_link)),
+      static_cast<Base &&>(base));
+}
+
+template <typename Index, std::size_t N, typename Base>
+auto tag_manifold_edge_link(
+    tf::manifold_edge_link<Index, N> &&_manifold_edge_link,
+    Base &&base) = delete;
 
 namespace policy {
-template <typename Index, std::size_t N> struct tag_manifold_edge_link_op {
-  tf::manifold_edge_link<Index, N> *manifold_edge_link;
+template <typename Range> struct tag_manifold_edge_link_op {
+  Range manifold_edge_link_range;
 };
 
-template <typename U, typename Index, std::size_t N>
-auto operator|(U &&u, tag_manifold_edge_link_op<Index, N> t) {
-  return tf::tag_manifold_edge_link(t.manifold_edge_link, static_cast<U &&>(u));
+template <typename U, typename Range>
+auto operator|(U &&u, tag_manifold_edge_link_op<Range> t) {
+  return tf::tag_manifold_edge_link(
+      tf::make_manifold_edge_link_like(t.manifold_edge_link_range),
+      static_cast<U &&>(u));
 }
 } // namespace policy
+
+template <typename Range>
+auto tag_manifold_edge_link(Range &&_manifold_edge_link_range) {
+  return policy::tag_manifold_edge_link_op<Range>{
+      static_cast<Range &&>(_manifold_edge_link_range)};
+}
 
 template <typename Index, std::size_t N>
 auto tag_manifold_edge_link(
     tf::manifold_edge_link<Index, N> &_manifold_edge_link) {
-  return policy::tag_manifold_edge_link_op<Index, N>{&_manifold_edge_link};
+  return policy::tag_manifold_edge_link_op<decltype(tf::make_range(
+      _manifold_edge_link))>{tf::make_range(_manifold_edge_link)};
 }
 
 template <typename Index, std::size_t N>
-auto tag(tf::manifold_edge_link<Index, N> &_manifold_edge_link) {
-  return policy::tag_manifold_edge_link_op<Index, N>{&_manifold_edge_link};
+auto tag_manifold_edge_link(
+    const tf::manifold_edge_link<Index, N> &_manifold_edge_link) {
+  return policy::tag_manifold_edge_link_op<decltype(tf::make_range(
+      _manifold_edge_link))>{tf::make_range(_manifold_edge_link)};
 }
+
+template <typename Index, std::size_t N>
+auto tag_manifold_edge_link(
+    tf::manifold_edge_link<Index, N> &&_manifold_edge_link) = delete;
+
+template <typename Index, std::size_t N>
+auto tag(tf::manifold_edge_link<Index, N> &_manifold_edge_link) {
+  return policy::tag_manifold_edge_link_op<decltype(tf::make_range(
+      _manifold_edge_link))>{tf::make_range(_manifold_edge_link)};
+}
+
+template <typename Index, std::size_t N>
+auto tag(const tf::manifold_edge_link<Index, N> &_manifold_edge_link) {
+  return policy::tag_manifold_edge_link_op<decltype(tf::make_range(
+      _manifold_edge_link))>{tf::make_range(_manifold_edge_link)};
+}
+
+template <typename Index, std::size_t N>
+auto tag(tf::manifold_edge_link<Index, N> &&_manifold_edge_link) = delete;
 
 } // namespace tf
 namespace std {
-template <typename Index, std::size_t N, typename Base>
-struct tuple_size<tf::policy::tag_manifold_edge_link<Index, N, Base>>
+template <typename Range, typename Base>
+struct tuple_size<tf::policy::tag_manifold_edge_link<Range, Base>>
     : tuple_size<Base> {};
 
-template <std::size_t I, typename Index, std::size_t N, typename Base>
-struct tuple_element<I, tf::policy::tag_manifold_edge_link<Index, N, Base>> {
+template <std::size_t I, typename Range, typename Base>
+struct tuple_element<I, tf::policy::tag_manifold_edge_link<Range, Base>> {
   using type = typename std::iterator_traits<
       decltype(declval<Base>().begin())>::value_type;
 };
 } // namespace std
+

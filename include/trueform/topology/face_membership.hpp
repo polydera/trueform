@@ -1,19 +1,21 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
 #include "../core/faces.hpp"
 #include "../core/offset_block_buffer.hpp"
 #include "../core/polygons.hpp"
+#include "./face_membership_like.hpp"
 #include "./structures/compute_face_membership.hpp"
 
 namespace tf {
 template <typename Index>
-class face_membership : public offset_block_buffer<Index, Index> {
-  using base_t = offset_block_buffer<Index, Index>;
+class face_membership
+    : public face_membership_like<offset_block_buffer<Index, Index>> {
+  using base_t = face_membership_like<offset_block_buffer<Index, Index>>;
 
 public:
   face_membership() = default;

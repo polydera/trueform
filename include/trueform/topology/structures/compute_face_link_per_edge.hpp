@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -9,12 +9,12 @@
 #include "../../core/offset_block_buffer.hpp"
 #include "../../core/views/enumerate.hpp"
 #include "../face_edge_neighbors.hpp"
-#include "../face_membership.hpp"
+#include "../face_membership_like.hpp"
 
 namespace tf::topology {
-template <typename Range, typename Index>
+template <typename Range, typename Policy, typename Index>
 auto compute_face_link_per_edge(const Range &faces,
-                                const tf::face_membership<Index> &blink,
+                                const tf::face_membership_like<Policy> &blink,
                                 tf::buffer<Index> &offsets,
                                 tf::buffer<Index> &data) {
   if (!faces.size())
@@ -48,12 +48,14 @@ auto compute_face_link_per_edge(const Range &faces,
       Index size = face.size();
       for (Index next = 1; next < size; ++next) {
         offsets.push_back(ids.size());
-        tf::face_edge_neighbors(blink, faces, Index(face_id), Index(face[next - 1]),
-                                Index(face[next]), std::back_inserter(ids));
+        tf::face_edge_neighbors(blink, faces, Index(face_id),
+                                Index(face[next - 1]), Index(face[next]),
+                                std::back_inserter(ids));
       }
       offsets.push_back(ids.size());
-      tf::face_edge_neighbors(blink, faces, Index(face_id), Index(face[size - 1]),
-                              Index(face[0]), std::back_inserter(ids));
+      tf::face_edge_neighbors(blink, faces, Index(face_id),
+                              Index(face[size - 1]), Index(face[0]),
+                              std::back_inserter(ids));
     }
   };
   tf::blocked_reduce_sequenced_aggregate(
@@ -62,9 +64,9 @@ auto compute_face_link_per_edge(const Range &faces,
   offsets.push_back(data.size());
 }
 
-template <typename Range, typename Index>
+template <typename Range, typename Policy, typename Index>
 auto compute_face_link_per_edge(const Range &faces,
-                                const tf::face_membership<Index> &blink,
+                                const tf::face_membership_like<Policy> &blink,
                                 tf::offset_block_buffer<Index, Index> &buff) {
   compute_face_link_per_edge(faces, blink, buff.offsets_buffer(),
                              buff.data_buffer());

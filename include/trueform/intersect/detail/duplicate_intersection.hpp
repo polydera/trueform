@@ -1,25 +1,28 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
 #include "../../core/algorithm/circular_increment.hpp"
+#include "../../core/faces.hpp"
+#include "../../core/small_vector.hpp"
 #include "../../topology/edge_id_in_face.hpp"
 #include "../../topology/edge_membership.hpp"
-#include "../../topology/face_membership.hpp"
-#include "../../topology/manifold_edge_link.hpp"
+#include "../../topology/face_edge_neighbors.hpp"
+#include "../../topology/face_membership_like.hpp"
+#include "../../topology/manifold_edge_link_like.hpp"
 #include "../types/intersection.hpp"
 #include "../types/tagged_intersection.hpp"
 
 namespace tf::intersect {
-template <typename Policy, typename Index, std::size_t N>
+template <typename Policy, typename Index, typename Policy1, typename Policy2>
 auto duplicate_intersection(
     const tf::faces<Policy> &faces,
     tf::intersect::tagged_intersection<Index> intersection,
-    const tf::face_membership<Index> &fe,
-    const tf::manifold_edge_link<Index, N> &mel,
+    const tf::face_membership_like<Policy1> &fe,
+    const tf::manifold_edge_link_like<Policy2> &mel,
     tf::buffer<tf::intersect::tagged_intersection<Index>> &intersections) {
   auto make_push = [&](tf::intersect::tagged_intersection<Index> intersection) {
     intersections.push_back(intersection);
@@ -46,6 +49,7 @@ auto duplicate_intersection(
   } else if (intersection.target_other.label == tf::topo_type::edge) {
     // we only process the neighbors further down
     make_push(intersection);
+    auto N = faces[intersection.object_other].size();
     Index e0 = faces[intersection.object_other][intersection.target_other.id];
     Index e1 = faces[intersection.object_other][tf::circular_increment<Index>(
         intersection.target_other.id, Index(N))];
@@ -75,15 +79,15 @@ auto duplicate_intersection(
   }
 }
 
-template <typename Policy0, typename Policy1, typename Index, std::size_t N0,
-          std::size_t N1>
+template <typename Policy0, typename Policy1, typename Index, typename Policy2,
+          typename Policy3, typename Policy4, typename Policy5>
 auto duplicate_intersection(
     const tf::faces<Policy0> &faces0, const tf::faces<Policy1> &faces1,
     tf::intersect::tagged_intersection<Index> intersection,
-    const tf::face_membership<Index> &fe0,
-    const tf::manifold_edge_link<Index, N0> &mel0,
-    const tf::face_membership<Index> &fe1,
-    const tf::manifold_edge_link<Index, N1> &mel1,
+    const tf::face_membership_like<Policy2> &fe0,
+    const tf::manifold_edge_link_like<Policy3> &mel0,
+    const tf::face_membership_like<Policy4> &fe1,
+    const tf::manifold_edge_link_like<Policy5> &mel1,
     tf::buffer<tf::intersect::tagged_intersection<Index>> &intersections) {
 
   if (intersection.target.label == tf::topo_type::face) {
@@ -104,6 +108,7 @@ auto duplicate_intersection(
   } else if (intersection.target.label == tf::topo_type::edge) {
     // we only process the neighbors further down
     duplicate_intersection(faces1, intersection, fe1, mel1, intersections);
+    auto N0 = faces0[intersection.object].size();
     Index e0 = faces0[intersection.object][intersection.target.id];
     Index e1 = faces0[intersection.object][tf::circular_increment<Index>(
         intersection.target.id, Index(N0))];

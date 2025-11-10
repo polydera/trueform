@@ -1,19 +1,22 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
+#include "../core/algorithm/parallel_fill.hpp"
 #include "../core/buffer.hpp"
 #include "../core/faces.hpp"
 #include "./directed_edge_id_in_face.hpp"
 #include "./manifold_edge_link.hpp"
 namespace tf {
 
-template <typename Policy, typename Index, int N>
-void orient_faces_consistently(tf::faces<Policy> &faces,
-                               const tf::manifold_edge_link<Index, N> &link) {
+template <typename Policy, typename Policy1>
+void orient_faces_consistently(
+    tf::faces<Policy> &faces,
+    const tf::manifold_edge_link_like<Policy1> &link) {
+  using Index = std::decay_t<decltype(link[0][0].face_peer)>;
   tf::buffer<bool> visited;
   visited.allocate(faces.size());
   tf::parallel_fill(visited, false);
