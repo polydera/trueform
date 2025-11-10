@@ -33,22 +33,18 @@ export function createPoints(){
 export function getMeshFromWasm(wO: MeshObject, mesh: THREE.Mesh, pointsOnly?: boolean) {
     const pU = wO.polydataUpdated;
     if(pU) {
-        if(pU) {
-            const geometry = mesh.geometry;
-            geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(wO.GetPoints()), 3));
-            geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(wO.GetPolys()), 1));
-        }
+        const geometry = mesh.geometry;
+        geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(wO.GetPoints()), 3));
+        geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(wO.GetPolys()), 1));
     }
     getMatrixFromWasm(wO, mesh)
 }
 export function getLineFromWasm(wO: MeshObject, mesh: THREE.Points) {
     const pU = wO.polydataUpdated;
     if(pU) {
-        if(pU) {
-            const geometry = mesh.geometry;
-            geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(wO.GetCurvePoints()), 3));
-            // geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(wO.GetCurveIds()), 1));
-        }
+        const geometry = mesh.geometry;
+        geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(wO.GetCurvePoints()), 3));
+        // geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(wO.GetCurveIds()), 1));
     }
 }
 

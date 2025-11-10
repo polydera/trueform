@@ -42,12 +42,15 @@ public:
     }
 
     emscripten::val GetCurvePoints() {
+        polydataUpdated = false;
         return emscripten::val(emscripten::typed_memory_view(curvesObject.points_buffer().data_buffer().size(), curvesObject.points_buffer().data_buffer().begin()));
     }
     emscripten::val GetCurveIds() {
+        polydataUpdated = false;
         return emscripten::val(emscripten::typed_memory_view(curvesObject.paths_buffer().data_buffer().size(), curvesObject.paths_buffer().data_buffer().begin()));
     }
     emscripten::val GetCurveOffsets() {
+        polydataUpdated = false;
         return emscripten::val(emscripten::typed_memory_view(curvesObject.paths_buffer().offsets_buffer().size(), curvesObject.paths_buffer().offsets_buffer().begin()));
     }
 

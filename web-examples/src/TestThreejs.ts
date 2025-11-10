@@ -188,7 +188,7 @@ export class TestClassThreejs {
         }
 
         const cO = this.wasmInstance.GetCurveMesh()
-        if(cO) {
+        if(cO && cO.polydataUpdated) {
             const points = cO.GetCurvePoints();
             const ids = cO.GetCurveIds();
             const offsets = cO.GetCurveOffsets();
@@ -206,7 +206,6 @@ export class TestClassThreejs {
             if(wO && mesh){
                 getMeshFromWasm(wO, mesh);
             }
-
             // const m2 = this.meshes2.get(0)
             // if(m2 && this.sceneBundle2) fitCameraToObject(this.sceneBundle2.camera, m2, 1);
         }
