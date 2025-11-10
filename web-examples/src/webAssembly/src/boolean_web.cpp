@@ -42,21 +42,6 @@ public:
 
     for (const auto &[frame, poly, actor, tree] : tf::zip(frames, polys, actors, trees)) {
       auto form = tf::make_form(frame, tree, poly->polygons());
-auto min = tree.aabb().min;
-auto max = tree.aabb().max;
-std::cout << "ray_hit  min: " << min[0] << ", " << min[1] << ", " << min[2] << std::endl;
-std::cout << "ray_hit  max: " << max[0] << ", " << max[1] << ", " << max[2] << std::endl;
-
-bool hit = tf::ray_hit( ray, tree.aabb());
-
-std::cout << "ray_hit  hit: " << hit << std::endl;
-for(int i=0; i<4; i++) {
-for(int j=0; j<4; j++) {
-std::cout << frame.transformation()(i,j) << ", ";
-}
-std::cout << std::endl;
-}
-std::cout << std::endl;
       auto res = tf::ray_cast(ray, form, config);
       if (res) {
         result = res;
@@ -69,19 +54,7 @@ std::cout << std::endl;
 
   auto update_frame(MeshObject *actor) -> void {
     auto id = map[actor];
-/*
-// transpose array 16
-    tf::transformation<double, 3> frame;
-    frame.fill(actor->matrix.data());
-    tf::transformation<double, 3> frame2;
-for(int i=0; i<4; i++) {
-for(int j=0; j<4; j++) {
-    frame2(i,j) = frame(j, i);
-}
-}
-frames[id] = tf::make_frame(frame2);
-*/
-frames[id].fill(actors[id]->matrix.data());
+    frames[id].fill(actors[id]->matrix.data());
   }
 
   auto compute_boolean() {
@@ -159,17 +132,15 @@ private:
   }
 
   auto move_selected(MeshObject *selected_actor) {
-std::cout << "move_selected" << std::endl;
     for (int i = 0; i < 3; ++i)
       selected_actor->matrix[i*4 + 3] += dx[i];
     bridge.update_frame(selected_actor);
   }
 
-// TODO fix this
   auto randomize_rotations() {
     for (std::unique_ptr<MeshObject>& actor : bridge.get_actors()) {
-      tf::vector<double, 3> at{actor->matrix[12], actor->matrix[13],
-                               actor->matrix[14]};
+      tf::vector<double, 3> at{actor->matrix[3], actor->matrix[7],
+                               actor->matrix[11]};
       auto tr = tf::random_transformation(at);
       for (int i = 0; i < 3; ++i)
         for (int j = 0; j < 4; ++j)
@@ -188,7 +159,6 @@ public:
   }
 
   auto OnLeftButtonDown() {
-std::cout << "OnLeftButtonDown" << std::endl;
     if (selected_actor) {
       selected_mode = true;
       return true;
@@ -199,7 +169,6 @@ std::cout << "OnLeftButtonDown" << std::endl;
   }
 
   auto OnLeftButtonUp() {
-std::cout << "OnLeftButtonUp" << std::endl;
     if (selected_mode) {
       selected_mode = false;
       return true;
@@ -210,11 +179,9 @@ std::cout << "OnLeftButtonUp" << std::endl;
   }
 
   auto OnMouseMove(std::array<float, 3> origin, std::array<float, 3> direction, std::array<float, 3> cameraPosition, std::array<float, 3> cameraFocalPoint) {
-    std::cout << "OnMouseMove" << std::endl;
     tf::ray<float, 3> ray{origin, direction};
     if (!selected_mode && !camera_mode) {
       auto [actor, point] = bridge.ray_hit(ray);
-        std::cout << "OnMouseMove 1 actor: " << actor << std::endl;
       if (actor) {
         make_moving_plane(point, cameraPosition, cameraFocalPoint);
         last_point = point;
@@ -225,24 +192,23 @@ std::cout << "OnLeftButtonUp" << std::endl;
       auto next_point = tf::ray_hit(ray, moving_plane).point;
       dx = next_point - last_point;
       last_point = next_point;
-        std::cout << "OnMouseMove 1 actor: " << dx[0]<< ", " << dx[1]<< ", " << dx[2] << std::endl;
       move_selected(selected_actor);
       compute_curves();
       return true;
     } else if (camera_mode) {
-        std::cout << "OnMouseMove 2" << std::endl;
         return false;
     }
     return false;
   }
 
   auto OnKeyPress(std::string key) {
+    std::cout << "OnKeyPressed key: " << key << std::endl;
     if (key == "n") {
       randomize_rotations();
       compute_curves();
-return true;
+      return true;
     } else {
-return false;
+      return false;
     }
   }
 };
@@ -297,15 +263,11 @@ int run_main(std::string path) {
   auto poly = tf::read_stl<int>(path);
   std::cout << "run main 0: " << poly.size() << std::endl;
   auto poly2 = tf::read_stl<int>(path);
-  std::cout << "run main 1" << std::endl;
   if (!poly.size()) {
     std::cout << "Failed to read file" << std::endl;
     throw std::runtime_error("Failed to read file");
   }
-  std::cout << "run main 2" << std::endl;
-
   interactor = std::make_unique<cursor_interactor>();
-  std::cout << "run main 3" << std::endl;
 
   center_and_scale_p(poly);
   auto actor = std::make_unique<MeshObject>();

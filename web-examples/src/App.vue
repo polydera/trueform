@@ -7,6 +7,7 @@ import {onMounted, ref} from "vue";
 let wasmInstance: MainModule | null = null;
 
 const threejsContainer = ref();
+const threejsContainer2 = ref();
 let testObjThreejs: TestClassThreejs;
 
 const loadWasm = async () => {
@@ -20,7 +21,7 @@ const loadThreejs = async () => {
     await loadWasm();
   }
   let el = document.getElementById("threejsContainer");
-  console.log("el: ", el)
+  let el2 = document.getElementById("threejsContainer2");
   if(el && wasmInstance) {
     // Load data to wasm
     const path = "zan0.stl"
@@ -28,9 +29,8 @@ const loadThreejs = async () => {
     const aBuff = await response.arrayBuffer();
     const intArr = new Int8Array(aBuff);
     wasmInstance.FS.writeFile(path, intArr);
-    console.log("File written to wasm:", intArr)
 
-    testObjThreejs = new TestClassThreejs(wasmInstance, el);
+    testObjThreejs = new TestClassThreejs(wasmInstance, path, el, el2 ?? undefined);
   }
 }
 
@@ -40,7 +40,10 @@ onMounted(() => {
 </script>
 
 <template>
+  <div style="display: flex; flex-direction: row; width: 100%; height: 100%;">
     <div ref="threejsContainer" id="threejsContainer" style="height: 100%; width: 100%; margin: 0; padding: 0;"></div>
+    <div ref="threejsContainer2" id="threejsContainer2" style="height: 100%; width: 100%; margin: 0; padding: 0;"></div>
+  </div>
 </template>
 
 <style scoped></style>
