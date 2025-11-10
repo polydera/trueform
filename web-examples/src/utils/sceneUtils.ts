@@ -127,8 +127,8 @@ export function createSceneWithCustomConfig(
         // Scene 1 configuration
         {
             backgroundColor: 0x222222,
-            cameraPosition: { x: 1, y: 1, z: 2 },
-            cameraLookAt: { x: 0, y: 0, z: 0 },
+            cameraPosition: { x: 75, y: 75, z: 200 },
+            cameraLookAt: { x: 75, y: 75, z: 0 },
             ambientLightIntensity: 0.4,
             directionalLightIntensity: 0.8,
             enableShadows: true

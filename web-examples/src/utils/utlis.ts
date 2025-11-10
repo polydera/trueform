@@ -67,6 +67,13 @@ export interface CurveObj {
     points: Float32Array;
     paths: number[][];
 }
+
+export interface CurvePolyObjects {
+    curve_poly: THREE.Group;
+    tubes: THREE.Mesh;
+    points: THREE.Points;
+}
+
 /**
  * Convert flat buffers to the {points, paths} structure used by curvesToCurvePoly().
  *
@@ -104,6 +111,50 @@ export function buffersToCurves(points: Float32Array, idBuf: Int32Array, offBuf:
 
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
+/**
+ * Creates reusable curve poly objects that can be updated instead of recreated.
+ * This is more efficient for animated or frequently changing curves.
+ *
+ * @param {curvesToCurvePolyOpts} [opts] Configuration options
+ * @returns {CurvePolyObjects} Reusable objects for curve visualization
+ */
+export function createCurvePolyObjects(opts: curvesToCurvePolyOpts = {}): CurvePolyObjects {
+    const {
+        pointPixelSize = 1.0,
+        tubeColor = 0xff00ff,
+        pointColor = 0xff00ff
+    } = opts;
+
+    // Create point cloud object
+    const pointGeom = new THREE.BufferGeometry();
+    const pointMat = new THREE.PointsMaterial({
+        color: pointColor,
+        size: pointPixelSize,
+        sizeAttenuation: true,
+    });
+    const pointsObj = new THREE.Points(pointGeom, pointMat);
+    pointsObj.name = 'curve_points';
+
+    // Create tubes mesh object
+    const tubeGeom = new THREE.BufferGeometry();
+    const tubeMat = new THREE.MeshStandardMaterial({
+        color: tubeColor,
+        metalness: 0.0,
+        roughness: 1.0,
+        side: THREE.FrontSide,
+    });
+    const tubesMesh = new THREE.Mesh(tubeGeom, tubeMat);
+    tubesMesh.name = 'curve_tubes';
+
+    // Create container group
+    const curve_poly = new THREE.Group();
+    curve_poly.name = 'curve_poly';
+    curve_poly.add(tubesMesh);
+    // curve_poly.add(pointsObj);
+
+    return { curve_poly, tubes: tubesMesh, points: pointsObj };
+}
+
 
 export interface curvesToCurvePolyOpts {
     radius?: number;
@@ -112,114 +163,90 @@ export interface curvesToCurvePolyOpts {
     pointPixelSize?: number;
     tubeColor?: number;
     pointColor?: number;
+    pointsOnly?: boolean;
 }
+
 /**
  * Three.js equivalent of:
  *   - building vtkPolyData from {points, paths}
  *   - running vtkTubeFilter with SetRadius(0.05)
  *
- * Returns a Group named 'curve_poly' that contains:
- *   - tubes mesh (merged TubeGeometry)
- *   - points cloud (THREE.Points)
+ * Updates existing CurvePolyObjects with new curve data instead of creating new objects.
+ * This is more efficient for animated or frequently changing curves.
  *
  * @param {Object} curves
  * @param {Array|Float32Array} curves.points  // [[x,y,z], ...] or Float32Array length 3N
  * @param {Array<Array<number>>} curves.paths // [[i0,i1,i2,...], ...]
+ * @param {CurvePolyObjects} curveObjects Pre-created objects to update
  * @param {Object} [opts]
  * @param {number} [opts.radius=0.05]         // tube radius, world units (VTK: SetRadius)
  * @param {number} [opts.radialSegments=12]   // sides around the tube (VTK: NumberOfSides)
  * @param {number} [opts.tubularSegPerEdge=8] // longitudinal segments per path edge
- * @param {number} [opts.pointPixelSize=3.0]  // Points size in pixels
- * @param {number} [opts.tubeColor=0x4287f5]
- * @param {number} [opts.pointColor=0xffffff]
- * @returns {{curve_poly:THREE.Group, tubes:THREE.Mesh, points:THREE.Points}}
+ * @returns {CurvePolyObjects} The updated objects
  */
-export function curvesToCurvePoly(curves: CurveObj, opts: curvesToCurvePolyOpts = {}) {
-    const { radius = 0.05,
-        radialSegments = 20,
-        tubularSegPerEdge = 50,
-        pointPixelSize = 1.0,
-        tubeColor = 0xff00ff,
-        pointColor = 0xff00ff } = opts;
+export function curvesToCurvePoly(curves: CurveObj, curveObjects: CurvePolyObjects, opts: curvesToCurvePolyOpts = {}): CurvePolyObjects {
+    const { radius = 0.5,
+        radialSegments = 12,
+        tubularSegPerEdge = 8,
+        pointsOnly = false,
+    } = opts;
 
     const { points: srcPoints, paths } = curves;
     if (!srcPoints || !paths) throw new Error('curves must have {points, paths}');
 
-    // --- Build THREE.BufferGeometry for the point cloud (vtkPoints analogue)
-    const pointGeom = new THREE.BufferGeometry();
+    // Update existing point cloud geometry
+    const pointGeom = curveObjects.points.geometry;
     pointGeom.setAttribute('position', new THREE.BufferAttribute(srcPoints, 3));
+    pointGeom.attributes.position.needsUpdate = true;
 
-    const pointMat = new THREE.PointsMaterial({
-        color: pointColor,
-        size: pointPixelSize,
-        sizeAttenuation: true,
-    });
-    const pointsObj = new THREE.Points(pointGeom, pointMat);
-    pointsObj.name = 'curve_points';
-    //
-    // // --- Build tubes for each polyline path (vtkTubeFilter analogue)
-    // const tubeGeoms = [];
-    // const getV = (i: number) => new THREE.Vector3(
-    //     srcPoints[3 * i + 0],
-    //     srcPoints[3 * i + 1],
-    //     srcPoints[3 * i + 2]
-    // );
-    //
-    // for (const path of paths) {
-    //     if (!path || path.length < 2) continue;
-    //
-    //     // Build a polyline curve out of straight segments to preserve original vertices.
-    //     const cp = new THREE.CurvePath();
-    //     for (let i = 0; i < path.length - 1; i++) {
-    //         const a = getV(path[i]);
-    //         const b = getV(path[i + 1]);
-    //         // Skip degenerate edges
-    //         if (a.distanceToSquared(b) === 0) continue;
-    //         cp.add(new THREE.LineCurve3(a, b));
-    //     }
-    //
-    //     // If everything degenerated, skip.
-    //     if (cp.curves.length === 0) continue;
-    //
-    //     const tubularSegments = Math.max(1, cp.curves.length * tubularSegPerEdge);
-    //     const tubeGeom = new THREE.TubeGeometry(
-    //         cp,               // curve
-    //         tubularSegments,  // segments along the length
-    //         radius,           // radius (VTK: SetRadius)
-    //         radialSegments,   // segments around
-    //         /*closed*/ false  // keep open unless your path is cyclic
-    //     );
-    //     tubeGeoms.push(tubeGeom);
-    // }
-    //
-    // if (tubeGeoms.length === 0) {
-    //     // No valid tubes; still return points for parity with VTK pipeline.
-    //     const emptyMesh = new THREE.Mesh(new THREE.BufferGeometry());
-    //     emptyMesh.name = 'curve_tubes';
-    //     const group = new THREE.Group();
-    //     group.name = 'curve_poly';
-    //     group.add(pointsObj);
-    //     group.add(emptyMesh);
-    //     return { curve_poly: group, tubes: emptyMesh, points: pointsObj };
-    // }
-    //
-    // // Merge all tubes into one geometry to minimize draw calls (like one vtkPolyData)
-    // const mergedTubeGeom = mergeGeometries(tubeGeoms, /*useGroups*/ false);
-    // const tubeMat = new THREE.MeshStandardMaterial({
-    //     color: tubeColor,
-    //     metalness: 0.0,
-    //     roughness: 1.0,
-    //     side: THREE.FrontSide,
-    // });
-    const tubesMesh = new THREE.Mesh();
-    // const tubesMesh = new THREE.Mesh(mergedTubeGeom, tubeMat);
-    // tubesMesh.name = 'curve_tubes';
-    //
-    // // Final container analogous to your `curve_poly`
-    const curve_poly = new THREE.Group();
-    // curve_poly.name = 'curve_poly';
-    // curve_poly.add(tubesMesh);
-    // curve_poly.add(pointsObj);
+    if(pointsOnly) return curveObjects;
 
-    return { curve_poly, tubes: tubesMesh, points: pointsObj };
+    // --- Build tubes for each polyline path (vtkTubeFilter analogue)
+    const tubeGeoms = [];
+    const getV = (i: number) => new THREE.Vector3(
+        srcPoints[3 * i],
+        srcPoints[3 * i + 1],
+        srcPoints[3 * i + 2]
+    );
+
+    for (const path of paths) {
+        if (!path || path.length < 2) continue;
+
+        // Create a polyline curve using THREE.CatmullRomCurve3 for smooth tubes
+        const pathPoints = path.map(getV);
+
+        // Skip paths that don't have enough points or have degenerate geometry
+        if (pathPoints.length < 2) continue;
+
+        // Create curve from path points
+        const curve = new THREE.CatmullRomCurve3(pathPoints, false, 'centripetal');
+
+        const tubularSegments = Math.max(1, path.length * tubularSegPerEdge);
+        const tubeGeom = new THREE.TubeGeometry(
+            curve,            // curve
+            tubularSegments,  // segments along the length
+            radius,           // radius
+            radialSegments,   // segments around
+            /*closed*/ false  // keep open unless your path is cyclic
+        );
+        tubeGeoms.push(tubeGeom);
+    }
+
+    // Update existing tubes geometry
+    const tubesGeometry = curveObjects.tubes.geometry;
+
+    if (tubeGeoms.length === 0) {
+        // Clear tubes if no valid tubes
+        tubesGeometry.dispose();
+        curveObjects.tubes.geometry = new THREE.BufferGeometry();
+    } else {
+        // Merge all tubes into one geometry and update existing mesh
+        const mergedTubeGeom = mergeGeometries(tubeGeoms, /*useGroups*/ false);
+
+        // Dispose old geometry and assign new one
+        tubesGeometry.dispose();
+        curveObjects.tubes.geometry = mergedTubeGeom;
+    }
+
+    return curveObjects;
 }

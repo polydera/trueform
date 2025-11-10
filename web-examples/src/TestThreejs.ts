@@ -3,9 +3,9 @@ import * as THREE from "three";
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import {createSceneWithCustomConfig, fitCameraToObject, SceneBundle} from './utils/sceneUtils';
 import {
-    buffersToCurves,
+    buffersToCurves, createCurvePolyObjects,
     createLine,
-    createMesh, createPoints,
+    createMesh, createPoints, CurvePolyObjects,
     curvesToCurvePoly,
     getLineFromWasm,
     getMeshFromWasm
@@ -19,7 +19,7 @@ export class TestClassThreejs {
     private readonly renderer: THREE.WebGLRenderer;
     private readonly sceneBundle1: SceneBundle;
     private meshes = new Map<number, THREE.Mesh>()
-    private curveMesh: THREE.Points;
+    private curveMesh: CurvePolyObjects;
 
     // Second renderer (secondary scene)
     private readonly renderer2?: THREE.WebGLRenderer;
@@ -156,8 +156,16 @@ export class TestClassThreejs {
             this.meshes.set(i, mesh)
             this.sceneBundle1.scene.add(mesh);
         }
-        this.curveMesh = createPoints();
-        this.sceneBundle1.scene.add(this.curveMesh);
+
+        this.curveMesh = createCurvePolyObjects({
+            radius: 0.3,
+            radialSegments: 12,
+            tubeColor: 0x0000ff,
+            pointColor: 0xff00ff,
+            pointPixelSize: 2,
+        });
+        // this.sceneBundle1.scene.add(this.curveMesh.curve_poly);
+        this.sceneBundle1.scene.add(this.curveMesh.points);
 
         if(this.sceneBundle2 && this.renderer2) {
             const mesh = createMesh();
@@ -181,21 +189,15 @@ export class TestClassThreejs {
 
         const cO = this.wasmInstance.GetCurveMesh()
         if(cO) {
-            getLineFromWasm(cO, this.curveMesh);
-                // const points = cO.GetCurvePoints();
-                // const ids = cO.GetCurveIds();
-                // const offsets = cO.GetCurveOffsets();
-                // console.log("points", points, "ids", ids, "offsets", offsets)
-                //
-                //
-                // // If your ids are 1-based, pass {oneBased:true}
-                // const curves = buffersToCurves(points, ids, offsets);
-                // // Now build the tubes (equivalent to vtkTubeFilter with radius 0.05)
-                // const { curve_poly, tubes, points: pointsObj } = curvesToCurvePoly(curves);
-                //
-            // }
-            // Add to the scene
-            // this.sceneBundle1.scene.add(pointsObj);
+            const points = cO.GetCurvePoints();
+            const ids = cO.GetCurveIds();
+            const offsets = cO.GetCurveOffsets();
+            const curves = buffersToCurves(points, ids, offsets);
+            curvesToCurvePoly(curves, this.curveMesh, {
+                radius: 0.3,
+                radialSegments: 12,
+                pointsOnly: true,
+            });
         }
 
         if (this.renderer2 && this.sceneBundle2) {
