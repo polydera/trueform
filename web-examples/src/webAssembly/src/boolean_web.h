@@ -34,8 +34,6 @@ public:
     return tf::make_boolean(form0, form1, tf::boolean_op::left_difference,
                             tf::return_curves);
   }
-
-  auto get_actors() -> std::vector<std::unique_ptr<MeshObject>> & { return actors; }
 };
 
 class cursor_interactor : public cursor_interactor_interface {
