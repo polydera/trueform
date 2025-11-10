@@ -11,19 +11,35 @@ export function createMesh(){
 
 export function getMeshFromWasm(wO: MeshObject, mesh: THREE.Mesh) {
     const pU = wO.polydataUpdated;
-    const mU = wO.matrixUpdated;
-    if(pU || mU) {
+    if(pU) {
         if(pU) {
             const geometry = mesh.geometry;
             geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(wO.GetPoints()), 3));
             geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(wO.GetPolys()), 1));
         }
-        if(mU) {
-            const matrix = new Float32Array(wO.matrix);
-            const threeMatrix = new THREE.Matrix4();
-            threeMatrix.fromArray(matrix);
-            threeMatrix.transpose();
-            mesh.matrix = threeMatrix;
+    }
+    getMatrixFromWasm(wO, mesh)
+}
+
+export function getLineFromWasm(wO: MeshObject, line: THREE.Line) {
+    const pU = wO.polydataUpdated;
+    if(pU) {
+        if(pU) {
+            const geometry = line.geometry;
+            geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(wO.GetPoints()), 3));
+            geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(wO.GetPolys()), 1));
         }
+    }
+    getMatrixFromWasm(wO, line)
+}
+
+function getMatrixFromWasm(wO: MeshObject, dstGeometry: THREE.Mesh | THREE.Line) {
+    const mU = wO.matrixUpdated;
+    if(mU) {
+        const matrix = new Float32Array(wO.matrix);
+        const threeMatrix = new THREE.Matrix4();
+        threeMatrix.fromArray(matrix);
+        threeMatrix.transpose();
+        dstGeometry.matrix = threeMatrix;
     }
 }
