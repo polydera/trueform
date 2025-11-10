@@ -212,6 +212,10 @@ export class TestClassThreejs {
         }
     }
 
+    public getAverageBooleanTime(){
+        return this.wasmInstance.GetAverageTime();
+    }
+
     private animate = () => {
         requestAnimationFrame(this.animate);
         this.sceneBundle1.controls.update();

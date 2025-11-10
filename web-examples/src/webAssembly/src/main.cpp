@@ -35,9 +35,14 @@ auto GetCurveMesh() -> MeshObject * {
     return nullptr;
 }
 
+auto GetAverageTime() {
+    return interactor->mTime;
+}
+
 
 EMSCRIPTEN_BINDINGS(boolean) {
   emscripten::function("run_main", &run_main);
+  emscripten::function("GetAverageTime", &GetAverageTime);
   emscripten::function("OnLeftButtonUp", &OnLeftButtonUp);
   emscripten::function("OnLeftButtonDown", &OnLeftButtonDown);
   emscripten::function("OnMouseMove", &OnMouseMove);

@@ -18,50 +18,12 @@
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
 
-/*
-void print_frame(){
-std::cout << "frame: " << std::endl;
-  for(int i=0; i<4; i++) {
-    for(int j=0; j<4; j++) {
-      std::cout << frame.transformation()(i,j) << ", ";
-    }
-    std::cout << std::endl;
-  }
-  std::cout << std::endl;
-}
-*/
-
 class tf_bridge : public tf_bridge_interface {
 public:
     tf_bridge() = default;
     ~tf_bridge() override = default;
 public:
   auto compute_boolean() {
-    auto min = trees[0].aabb().min;
-    auto max = trees[0].aabb().max;
-    std::cout << "poly0  min: " << min[0] << ", " << min[1] << ", " << min[2] << std::endl;
-    std::cout << "poly0  max: " << max[0] << ", " << max[1] << ", " << max[2] << std::endl;
-    std::cout << "Frame 0: " << std::endl;
-    for(int i=0; i<4; i++) {
-      for(int j=0; j<4; j++) {
-        std::cout << frames[0].transformation()(i,j) << ", ";
-      }
-      std::cout << std::endl;
-    }
-    std::cout << std::endl;
-    auto min1 = trees[1].aabb().min;
-    auto max1 = trees[1].aabb().max;
-    std::cout << "poly1  min: " << min1[0] << ", " << min1[1] << ", " << min1[2] << std::endl;
-    std::cout << "poly1  max: " << max1[0] << ", " << max1[1] << ", " << max1[2] << std::endl;
-    std::cout << "Frame 1: " << std::endl;
-    for(int i=0; i<4; i++) {
-      for(int j=0; j<4; j++) {
-        std::cout << frames[1].transformation()(i,j) << ", ";
-      }
-      std::cout << std::endl;
-    }
-    std::cout << std::endl;
-
     auto form0 = tf::make_form(frames[0], trees[0], polys[0]->polygons()) //
                  | tf::tag(face_memberships[0])                         //
                  | tf::tag(manifold_edge_links[0]);
@@ -94,7 +56,6 @@ private:
       auto [res_mesh, labels, curves] = pB->compute_boolean();
       add_time(tf::tock());
       (void)labels;
-      std::cout << "result_mesh polys: " << res_mesh.size() << std::endl;
       result_mesh->setPolydata(std::move(res_mesh));
       curve_mesh->setCurvesObject(std::move(curves));
     }
@@ -170,16 +131,5 @@ int run_main(std::string path) {
   actor2->polyObject = std::move(poly2);
   utils::set_at(actor2->matrix, {1 * 15.f, 0.f, 0.f});
   interactor->push_back(std::move(actor2));
-/*
-  // Optional curve actor on left
-  auto curve_poly = vtk_make_unique<vtkPolyData>();
-  curve_poly->Initialize();
-  auto cmapper = vtk_make_unique<vtkOpenGLPolyDataMapper>();
-  auto cactor = vtk_make_unique<vtkOpenGLActor>();
-  cactor->SetMapper(cmapper.get());
-  cmapper->SetInputData(curve_poly.get());
-  cactor->GetProperty()->SetColor(1, 0.1, 0.1);
-  rendererL->AddActor(cactor.get());
-*/
   return 0;
 }

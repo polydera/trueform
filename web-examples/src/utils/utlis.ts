@@ -84,10 +84,18 @@ export interface CurvePolyObjects {
  */
 export function buffersToCurves(points: Float32Array, idBuf: Int32Array, offBuf: Int32Array) {
     // basic validation
-    if (points.length % 3 !== 0) throw new Error('points length must be multiple of 3');
-    if (offBuf.length < 2) throw new Error('offsets must have at least [0, ids.length]');
-    if (offBuf[0] !== 0 || offBuf[offBuf.length - 1] !== idBuf.length)
-        throw new Error('offsets must start at 0 and end at ids.length');
+    if (points.length % 3 !== 0) {
+        console.warn('points length must be multiple of 3');
+        return { points: new Float32Array(), paths: [] };
+    }
+    if (offBuf.length < 2) {
+        console.warn('offsets must have at least [0, ids.length]');
+        return { points: new Float32Array(), paths: [] };
+    }
+    if (offBuf[0] !== 0 || offBuf[offBuf.length - 1] !== idBuf.length){
+        console.warn('offsets must start at 0 and end at ids.length');
+        return { points: new Float32Array(), paths: [] };
+    }
 
     const nPaths = offBuf.length - 1;
     const paths = new Array(nPaths);
@@ -99,8 +107,7 @@ export function buffersToCurves(points: Float32Array, idBuf: Int32Array, offBuf:
 
         const path = new Array(len);
         for (let i = 0; i < len; i++) {
-            const idx = idBuf[start + i];
-            path[i] = idx;
+            path[i] = idBuf[start + i];
         }
         paths[p] = path;
     }

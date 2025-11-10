@@ -36,15 +36,27 @@ const loadThreejs = async () => {
   }
 }
 
+const avgTime = ref("0");
+const getAvgTime = () => {
+  if(testObjThreejs) {
+    avgTime.value = testObjThreejs.getAverageBooleanTime().toFixed(2);
+  }
+  return 0;
+}
+setInterval(getAvgTime, 1000);
+
 onMounted(() => {
   loadThreejs();
 })
 </script>
 
 <template>
-  <div style="display: flex; flex-direction: row; width: 100%; height: 100%;">
-    <div ref="threejsContainer" id="threejsContainer" style="height: 100%; width: 100%; margin: 0; padding: 0;"></div>
-    <div ref="threejsContainer2" id="threejsContainer2" style="height: 100%; width: 100%; margin: 0; padding: 0;"></div>
+  <div style="display: flex; flex-direction: column; width: 100%; height: 100%;">
+    <div style="display: flex; justify-content: center">Average Boolean time: {{avgTime}} ms</div>
+    <div style="display: flex; flex-direction: row; width: 100%; height: 100%;">
+      <div ref="threejsContainer" id="threejsContainer" style="height: 100%; width: 100%; margin: 0; padding: 0;"></div>
+      <div ref="threejsContainer2" id="threejsContainer2" style="height: 100%; width: 100%; margin: 0; padding: 0;"></div>
+    </div>
   </div>
 </template>
 

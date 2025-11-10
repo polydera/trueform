@@ -78,7 +78,6 @@ protected:
     std::unique_ptr<tf_bridge_interface> bridge;
     std::vector<float> times;
     int time_index = 0;
-    // vtkTextActor *text;
 
     tf::plane<float, 3> moving_plane;
     tf::point<float, 3> last_point;
@@ -102,7 +101,7 @@ protected:
         std::snprintf(buffer, sizeof(buffer), "Boolean time per frame: %.1f ms",
                       time);
         std::cout << buffer << std::endl;
-        //text->SetInput(buffer);
+        mTime = time;
     }
 
     auto make_moving_plane(tf::point<float, 3> origin, std::array<float, 3> cameraPosition, std::array<float, 3> cameraFocalPoint) {
@@ -116,6 +115,8 @@ protected:
         bridge->update_frame(selected_actor);
     }
 public:
+    float mTime = 0.f;
+
     auto get_actors() -> std::vector<std::unique_ptr<MeshObject>> & {
         return bridge->get_actors();
     }
