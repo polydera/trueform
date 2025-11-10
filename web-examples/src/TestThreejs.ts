@@ -16,10 +16,10 @@ export class TestClassThreejs {
     private readonly renderer2?: THREE.WebGLRenderer;
     private readonly sceneBundle2?: SceneBundle;
     private meshes2 = new Map<number, THREE.Mesh>()
+    private keyPressed = false;
 
     constructor(wasmInstance: MainModule, path: string, container: HTMLElement, container2?: HTMLElement) {
         this.wasmInstance = wasmInstance;
-        console.log("wasmInstance", this.wasmInstance);
 
         // Setup first renderer
         this.renderer = new THREE.WebGLRenderer();
@@ -51,14 +51,7 @@ export class TestClassThreejs {
             this.sceneBundle2 = createSceneWithCustomConfig(this.renderer2, 2);
         }
 
-        // Initial render setup
-        this.sceneBundle1.controls.update();
-        this.renderer.render(this.sceneBundle1.scene, this.sceneBundle1.camera);
-        if (this.renderer2 && this.sceneBundle2) {
-            this.sceneBundle2.controls.update();
-            this.renderer2.render(this.sceneBundle2.scene, this.sceneBundle2.camera);
-        }
-        this.animate(); // Start the animation loop
+        requestAnimationFrame(this.animate);
 
         // Add resize event listener
         window.addEventListener('resize', () => {
@@ -124,89 +117,104 @@ export class TestClassThreejs {
         this.renderer.domElement.addEventListener('pointerdown', interceptEvent, true);
         this.renderer.domElement.addEventListener('pointermove', interceptEvent, true);
         this.renderer.domElement.addEventListener('pointerup', interceptEvent, true);
+        const interceptKeyDownEvent = (event: KeyboardEvent) => {
+            if(this.keyPressed) return;
+            this.keyPressed = true;
+            this.wasmInstance.OnKeyPress(event.key)
+        }
+        const interceptKeyUpEvent = (event: KeyboardEvent) => {
+            this.keyPressed = false;
+        }
+        window.addEventListener('keydown', interceptKeyDownEvent);
+        window.addEventListener('keyup', interceptKeyUpEvent);
 
 
         console.log("TestThree JS 0");
         this.wasmInstance.run_main(path);
+        this.wasmInstance.FS.unlink(path);
         console.log("TestThree JS 1");
 
         for(let i = 0; i < 2; i++) {
-            const wO = this.wasmInstance.GetMeshOnIdx(i);
             const geometry = new THREE.BufferGeometry();
             const mesh = new THREE.Mesh(geometry, this.material);
+            mesh.matrixAutoUpdate = false;
             this.meshes.set(i, mesh)
-            geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(wO.GetPoints()), 3));
-            geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(wO.GetPolys()), 1));
-            const matrix = new Float32Array(wO.matrix);
-            const threeMatrix = new THREE.Matrix4();
-            threeMatrix.fromArray(matrix);
-            threeMatrix.transpose();
-            mesh.matrixAutoUpdate = false;
-            mesh.matrix = threeMatrix;
             this.sceneBundle1.scene.add(mesh);
-            this.renderer.render(this.sceneBundle1.scene, this.sceneBundle1.camera);
         }
-        this.wasmInstance.FS.unlink(path);
+
         if(this.sceneBundle2 && this.renderer2) {
-            const wO = this.wasmInstance.GetResultMesh();
             const geometry = new THREE.BufferGeometry();
             const mesh = new THREE.Mesh(geometry, this.material);
-            this.meshes2.set(0, mesh)
-            geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(wO.GetPoints()), 3));
-            geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(wO.GetPolys()), 1));
-            const matrix = new Float32Array(wO.matrix);
-            const threeMatrix = new THREE.Matrix4();
-            threeMatrix.fromArray(matrix);
-            threeMatrix.transpose();
             mesh.matrixAutoUpdate = false;
-            mesh.matrix = threeMatrix;
+            this.meshes2.set(0, mesh)
             this.sceneBundle2.scene.add(mesh);
-            this.renderer2.render(this.sceneBundle2.scene, this.sceneBundle2.camera);
         }
+        this.updateMeshes();
     }
 
     private updateMeshes(){
+        let r1NeedsUpdate = false;
+        let r2NeedsUpdate = false;
         for(let i = 0; i < 2; i++) {
             const wO = this.wasmInstance.GetMeshOnIdx(i);
-            console.log("wO", wO)
-            // Update mesh in first scene
-            const mesh = this.meshes.get(i);
-            if(mesh) {
-                const geometry = mesh.geometry;
-                geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(wO.GetPoints()), 3));
-                geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(wO.GetPolys()), 1));
-                const matrix = new Float32Array(wO.matrix);
-                matrix[12] = 0;
-                matrix[13] = 0;
-                matrix[14] = 0;
-                matrix[15] = 1;
-                const threeMatrix = new THREE.Matrix4();
-                threeMatrix.fromArray(matrix);
-                threeMatrix.transpose();
-                mesh.matrix = threeMatrix;
+            const pU = wO.polydataUpdated;
+            const mU = wO.matrixUpdated;
+            if(pU || mU) {
+                r1NeedsUpdate = true;
+                const mesh = this.meshes.get(i);
+                if (mesh) {
+                    if(pU) {
+                        const geometry = mesh.geometry;
+                        geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(wO.GetPoints()), 3));
+                        geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(wO.GetPolys()), 1));
+                    }
+                    if(mU) {
+                        const matrix = new Float32Array(wO.matrix);
+                        matrix[12] = 0;
+                        matrix[13] = 0;
+                        matrix[14] = 0;
+                        matrix[15] = 1;
+                        const threeMatrix = new THREE.Matrix4();
+                        threeMatrix.fromArray(matrix);
+                        threeMatrix.transpose();
+                        mesh.matrix = threeMatrix;
+                    }
+                }
             }
         }
-        this.renderer.render(this.sceneBundle1.scene, this.sceneBundle1.camera);
+        // TODO do I need this --> update is in animate loop
+        if(r1NeedsUpdate)
+            this.renderer.render(this.sceneBundle1.scene, this.sceneBundle1.camera);
 
         if (this.renderer2 && this.sceneBundle2) {
             const wO = this.wasmInstance.GetResultMesh();
-            const mesh = this.meshes2.get(0);
-            if(mesh) {
-                const geometry = mesh.geometry;
-                geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(wO.GetPoints()), 3));
-                geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(wO.GetPolys()), 1));
-                const matrix = new Float32Array(wO.matrix);
-                const threeMatrix = new THREE.Matrix4();
-                threeMatrix.fromArray(matrix);
-                threeMatrix.transpose();
-                mesh.matrix = threeMatrix;
-                this.renderer2.render(this.sceneBundle2.scene, this.sceneBundle2.camera);
+            const pU = wO.polydataUpdated;
+            const mU = wO.matrixUpdated;
+            if(pU || mU) {
+                r2NeedsUpdate = true;
+                const mesh = this.meshes2.get(0);
+                if (mesh) {
+                    if(pU) {
+                        const geometry = mesh.geometry;
+                        geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(wO.GetPoints()), 3));
+                        geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(wO.GetPolys()), 1));
+                    }
+                    if(mU) {
+                        const matrix = new Float32Array(wO.matrix);
+                        const threeMatrix = new THREE.Matrix4();
+                        threeMatrix.fromArray(matrix);
+                        threeMatrix.transpose();
+                        mesh.matrix = threeMatrix;
+                    }
+                }
             }
+            // TODO do I need this --> update is in animate loop
+            if(r2NeedsUpdate)
+                this.renderer2.render(this.sceneBundle2.scene, this.sceneBundle2.camera);
         }
     }
 
     private animate = () => {
-        requestAnimationFrame(this.animate);
         this.sceneBundle1.controls.update();
         this.renderer.render(this.sceneBundle1.scene, this.sceneBundle1.camera);
         if (this.renderer2 && this.sceneBundle2) {

@@ -55,6 +55,7 @@ public:
   auto update_frame(MeshObject *actor) -> void {
     auto id = map[actor];
     frames[id].fill(actors[id]->matrix.data());
+    actors[id]->matrixUpdated = true;
   }
 
   auto compute_boolean() {
@@ -122,8 +123,8 @@ private:
     add_time(tf::tock());
     (void)labels;
 
-    result_mesh->polyObject = std::move(res_mesh);
-    curve_mesh->curvesObject = std::move(curves);
+    result_mesh->setPolydata(std::move(res_mesh));
+    curve_mesh->setCurvesObject(std::move(curves));
   }
 
   auto make_moving_plane(tf::point<float, 3> origin, std::array<float, 3> cameraPosition, std::array<float, 3> cameraFocalPoint) {
@@ -292,15 +293,6 @@ int run_main(std::string path) {
   cmapper->SetInputData(curve_poly.get());
   cactor->GetProperty()->SetColor(1, 0.1, 0.1);
   rendererL->AddActor(cactor.get());
-
-  // Right viewport: result mesh
-  auto poly1 = vtk_make_unique<vtkPolyData>();
-  poly1->Initialize();
-  auto mapper1 = vtk_make_unique<vtkOpenGLPolyDataMapper>();
-  auto actor1 = vtk_make_unique<vtkOpenGLActor>();
-  actor1->SetMapper(mapper1.get());
-  mapper1->SetInputData(poly1.get());
-  rendererR->AddActor(actor1.get());
 */
   return 0;
 }
@@ -350,6 +342,8 @@ EMSCRIPTEN_BINDINGS(MeshObject) {
         .function("GetPoints", &MeshObject::GetPoints)
         .function("GetPolys", &MeshObject::GetPolys)
         .property("matrix", &MeshObject::matrix)
+        .property("matrixUpdated", &MeshObject::matrixUpdated)
+        .property("polydataUpdated", &MeshObject::polydataUpdated)
         // .function("GetLines", &PolyDataJSView::GetLinesEmscripten)
     ;
 }

@@ -16,12 +16,24 @@ public:
     };
     ~MeshObject() = default;
 
+    bool matrixUpdated = true;
+    bool polydataUpdated = true;
+
     tf::polygons_buffer<int, float, 3, 3> polyObject;
     tf::curves_buffer<int, float, 3> curvesObject;
     std::array<double, 16> matrix;
 
+    void setPolydata(tf::polygons_buffer<int, float, 3, 3> polydata){
+        polyObject = std::move(polydata);
+        polydataUpdated = true;
+    }
+    void setCurvesObject(tf::curves_buffer<int, float, 3> polydata){
+        curvesObject = std::move(polydata);
+        polydataUpdated = true;
+    }
 
     emscripten::val GetPoints() {
+        polydataUpdated = false;
         return emscripten::val(emscripten::typed_memory_view(polyObject.points_buffer().data_buffer().size(), polyObject.points_buffer().data_buffer().begin()));
     }
     emscripten::val GetPolys() {
@@ -29,6 +41,7 @@ public:
     }
 
     emscripten::val GetMatrix() {
+        matrixUpdated = false;
         return emscripten::val(emscripten::typed_memory_view(matrix.size(), matrix.data()));
 
     }
