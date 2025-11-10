@@ -1,3 +1,4 @@
+#pragma once
 #include "trueform/random.hpp"
 #include "trueform/trueform.hpp"
 

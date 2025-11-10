@@ -1,5 +1,6 @@
 import { MainModule } from './webAssembly/dist/native.js'
 import * as THREE from "three";
+import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { createSceneWithCustomConfig, SceneBundle } from './utils/sceneUtils';
 import {createMesh, getMeshFromWasm} from "@/utils/utlis";
 
@@ -17,6 +18,7 @@ export class TestClassThreejs {
     private readonly sceneBundle2?: SceneBundle;
     private meshes2 = new Map<number, THREE.Mesh>()
     private keyPressed = false;
+    private stats = new Stats();
 
     private renderer2Interactive = false;
 
@@ -31,6 +33,7 @@ export class TestClassThreejs {
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         container.innerHTML = "";
         container.appendChild(this.renderer.domElement);
+        container.appendChild( this.stats.dom );
 
         // Setup second renderer if container2 is provided
         if (container2) {
@@ -179,5 +182,6 @@ export class TestClassThreejs {
             this.sceneBundle2.controls.update();
             this.renderer2.render(this.sceneBundle2.scene, this.sceneBundle2.camera);
         }
+        this.stats.update();
     };
 }

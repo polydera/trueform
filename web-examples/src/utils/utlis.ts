@@ -9,6 +9,14 @@ export function createMesh(){
     return mesh;
 }
 
+export function createLine(){
+    const material = new THREE.MeshLambertMaterial({ color: 0x22ccff, side: THREE.DoubleSide, flatShading: true });
+    const geometry = new THREE.TubeGeometry();
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.matrixAutoUpdate = false;
+    return mesh;
+}
+
 export function getMeshFromWasm(wO: MeshObject, mesh: THREE.Mesh) {
     const pU = wO.polydataUpdated;
     if(pU) {

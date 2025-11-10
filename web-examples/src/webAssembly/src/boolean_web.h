@@ -1,3 +1,4 @@
+#pragma once
 #include "trueform/core/curves_buffer.hpp"
 #include "trueform/io/read_stl.hpp"
 #include "trueform/random.hpp"
@@ -5,7 +6,8 @@
 #include "trueform/spatial/form.hpp"
 #include "trueform/spatial/ray_cast.hpp"
 
-#include "utils/bridge_web.cpp"
+#include "main.h"
+#include "utils/bridge_web.h"
 
 #include <filesystem>
 #include <string>
@@ -203,7 +205,6 @@ public:
   }
 
   auto OnKeyPress(std::string key) {
-    std::cout << "OnKeyPressed key: " << key << std::endl;
     if (key == "n") {
       randomize_rotations();
       compute_curves();
@@ -231,35 +232,9 @@ auto center_and_scale_p(tf::polygons_buffer<int, float, 3, 3>& poly) -> void {
     pt -= center;
     pt *= 10 / r;
   });
-
-}
-
-std::unique_ptr<cursor_interactor> interactor{};
-
-auto OnLeftButtonUp() {
-    return interactor->OnLeftButtonUp();
-}
-auto OnLeftButtonDown() {
-    return interactor->OnLeftButtonDown();
-}
-auto OnMouseMove(std::array<float, 3> origin, std::array<float, 3> direction, std::array<float, 3> cameraPosition, std::array<float, 3> cameraFocalPoint) {
-    return interactor->OnMouseMove(origin, direction, cameraPosition, cameraFocalPoint);
-}
-auto OnKeyPress(std::string key) {
-    return interactor->OnKeyPress(key);
-}
-auto GetMeshOnIdx(int i) -> MeshObject * {
-    return interactor->get_actors()[i].get();
-}
-auto GetResultMesh() -> MeshObject * {
-    return interactor->result_mesh.get();
-}
-auto GetCurveMesh() -> MeshObject * {
-    return interactor->curve_mesh.get();
 }
 
 int run_main(std::string path) {
-
   std::cout << "Reading file: " << path << std::endl;
   auto poly = tf::read_stl<int>(path);
   std::cout << "run main 0: " << poly.size() << std::endl;
@@ -281,8 +256,6 @@ int run_main(std::string path) {
   actor2->polyObject = std::move(poly2);
   set_at(actor2->matrix, {1 * 15.f, 0.f, 0.f});
   interactor->push_back(std::move(actor2));
-
-
 /*
   // Optional curve actor on left
   auto curve_poly = vtk_make_unique<vtkPolyData>();
@@ -295,55 +268,4 @@ int run_main(std::string path) {
   rendererL->AddActor(cactor.get());
 */
   return 0;
-}
-
-
-EMSCRIPTEN_BINDINGS(boolean) {
-  emscripten::function("run_main", &run_main);
-  emscripten::function("OnLeftButtonUp", &OnLeftButtonUp);
-  emscripten::function("OnLeftButtonDown", &OnLeftButtonDown);
-  emscripten::function("OnMouseMove", &OnMouseMove);
-  emscripten::function("OnKeyPress", &OnKeyPress);
-  emscripten::function("GetMeshOnIdx", &GetMeshOnIdx, emscripten::allow_raw_pointers());
-  emscripten::function("GetResultMesh", &GetResultMesh, emscripten::allow_raw_pointers());
-  emscripten::function("GetCurveMesh", &GetCurveMesh, emscripten::allow_raw_pointers());
-}
-
-EMSCRIPTEN_BINDINGS(ArrayFloat3) {
-    emscripten::value_array<std::array<float, 3>>("ArrayFloat3")
-        .element(emscripten::index<0>())
-        .element(emscripten::index<1>())
-        .element(emscripten::index<2>());
-}
-EMSCRIPTEN_BINDINGS(ArrayDouble16) {
-    emscripten::value_array<std::array<double, 16>>("ArrayDouble16")
-        .element(emscripten::index<0>())
-        .element(emscripten::index<1>())
-        .element(emscripten::index<2>())
-        .element(emscripten::index<3>())
-        .element(emscripten::index<4>())
-        .element(emscripten::index<5>())
-        .element(emscripten::index<6>())
-        .element(emscripten::index<7>())
-        .element(emscripten::index<8>())
-        .element(emscripten::index<9>())
-        .element(emscripten::index<10>())
-        .element(emscripten::index<11>())
-        .element(emscripten::index<12>())
-        .element(emscripten::index<13>())
-        .element(emscripten::index<14>())
-        .element(emscripten::index<15>());
-}
-
-
-EMSCRIPTEN_BINDINGS(MeshObject) {
-    emscripten::class_<MeshObject>("MeshObject")
-        .smart_ptr<std::shared_ptr<MeshObject>>("MeshObject")
-        .function("GetPoints", &MeshObject::GetPoints)
-        .function("GetPolys", &MeshObject::GetPolys)
-        .property("matrix", &MeshObject::matrix)
-        .property("matrixUpdated", &MeshObject::matrixUpdated)
-        .property("polydataUpdated", &MeshObject::polydataUpdated)
-        // .function("GetLines", &PolyDataJSView::GetLinesEmscripten)
-    ;
 }

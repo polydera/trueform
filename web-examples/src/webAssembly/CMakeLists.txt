@@ -56,9 +56,7 @@ file(MAKE_DIRECTORY ${DIST_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${DIST_DIR})
 
 add_executable(native
-        src/native.cpp
-        src/boolean_web.cpp
-        src/utils/bridge_web.cpp
+    src/main.cpp
 )
 target_include_directories(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(native PRIVATE trueform)
