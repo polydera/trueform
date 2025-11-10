@@ -57,6 +57,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${DIST_DIR})
 
 add_executable(native
     src/main.cpp
+    src/utils/cursor_interactor_interface.cpp
 )
 target_include_directories(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(native PRIVATE trueform)

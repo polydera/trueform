@@ -55,5 +55,3 @@ public:
     // auto points_for_line = tf::make_indirect_range(line_ids, cb.points());
     // }
 };
-
-

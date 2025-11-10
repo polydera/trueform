@@ -4,6 +4,7 @@
 #include "main.h"
 #include "boolean_web.h"
 #include "utils/bridge_web.h"
+#include "utils/cursor_interactor_interface.h"
 
 
 auto OnLeftButtonUp() {
@@ -22,10 +23,16 @@ auto GetMeshOnIdx(int i) -> MeshObject * {
     return interactor->get_actors()[i].get();
 }
 auto GetResultMesh() -> MeshObject * {
-    return interactor->result_mesh.get();
+    if(auto pI = dynamic_cast<cursor_interactor*>(interactor.get())) {
+      return pI->result_mesh.get();
+    }
+    return nullptr;
 }
 auto GetCurveMesh() -> MeshObject * {
-    return interactor->curve_mesh.get();
+    if(auto pI = dynamic_cast<cursor_interactor*>(interactor.get())) {
+        return pI->curve_mesh.get();
+    }
+    return nullptr;
 }
 
 

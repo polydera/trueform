@@ -1,5 +1,4 @@
 #pragma once
+#include "utils/cursor_interactor_interface.h"
 
-class cursor_interactor;
-
-std::unique_ptr<cursor_interactor> interactor{};
+std::unique_ptr<cursor_interactor_interface> interactor{};
