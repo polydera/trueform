@@ -18,6 +18,18 @@
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
 
+/*
+void print_frame(){
+std::cout << "frame: " << std::endl;
+  for(int i=0; i<4; i++) {
+    for(int j=0; j<4; j++) {
+      std::cout << frame.transformation()(i,j) << ", ";
+    }
+    std::cout << std::endl;
+  }
+  std::cout << std::endl;
+}
+*/
 
 class tf_bridge : public tf_bridge_interface {
 public:
@@ -25,11 +37,36 @@ public:
     ~tf_bridge() override = default;
 public:
   auto compute_boolean() {
+    auto min = trees[0].aabb().min;
+    auto max = trees[0].aabb().max;
+    std::cout << "poly0  min: " << min[0] << ", " << min[1] << ", " << min[2] << std::endl;
+    std::cout << "poly0  max: " << max[0] << ", " << max[1] << ", " << max[2] << std::endl;
+    std::cout << "Frame 0: " << std::endl;
+    for(int i=0; i<4; i++) {
+      for(int j=0; j<4; j++) {
+        std::cout << frames[0].transformation()(i,j) << ", ";
+      }
+      std::cout << std::endl;
+    }
+    std::cout << std::endl;
+    auto min1 = trees[1].aabb().min;
+    auto max1 = trees[1].aabb().max;
+    std::cout << "poly1  min: " << min1[0] << ", " << min1[1] << ", " << min1[2] << std::endl;
+    std::cout << "poly1  max: " << max1[0] << ", " << max1[1] << ", " << max1[2] << std::endl;
+    std::cout << "Frame 1: " << std::endl;
+    for(int i=0; i<4; i++) {
+      for(int j=0; j<4; j++) {
+        std::cout << frames[1].transformation()(i,j) << ", ";
+      }
+      std::cout << std::endl;
+    }
+    std::cout << std::endl;
+
     auto form0 = tf::make_form(frames[0], trees[0], polys[0]->polygons()) //
                  | tf::tag(face_memberships[0])                         //
                  | tf::tag(manifold_edge_links[0]);
 
-    auto form1 = tf::make_form(frames[1], trees[1],polys[1]->polygons()) //
+    auto form1 = tf::make_form(frames[1], trees[1], polys[1]->polygons()) //
                  | tf::tag(face_memberships[1])                         //
                  | tf::tag(manifold_edge_links[1]);
     return tf::make_boolean(form0, form1, tf::boolean_op::left_difference,
@@ -57,6 +94,7 @@ private:
       auto [res_mesh, labels, curves] = pB->compute_boolean();
       add_time(tf::tock());
       (void)labels;
+      std::cout << "result_mesh polys: " << res_mesh.size() << std::endl;
       result_mesh->setPolydata(std::move(res_mesh));
       curve_mesh->setCurvesObject(std::move(curves));
     }
@@ -117,6 +155,7 @@ int run_main(std::string path) {
   if (!poly.size()) {
     std::cout << "Failed to read file" << std::endl;
     throw std::runtime_error("Failed to read file");
+
   }
   interactor = std::make_unique<cursor_interactor>();
 

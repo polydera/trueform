@@ -24,7 +24,9 @@ const loadThreejs = async () => {
   let el2 = document.getElementById("threejsContainer2");
   if(el && wasmInstance) {
     // Load data to wasm
-    const path = "zan0.stl"
+    // const path = "zan0.stl"
+    // const path = "dragon-250k.stl"
+    const path = "Stanford_Bunny.stl"
     const response = await fetch(path);
     const aBuff = await response.arrayBuffer();
     const intArr = new Int8Array(aBuff);

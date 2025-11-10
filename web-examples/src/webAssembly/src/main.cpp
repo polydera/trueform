@@ -79,9 +79,11 @@ EMSCRIPTEN_BINDINGS(MeshObject) {
         .smart_ptr<std::shared_ptr<MeshObject>>("MeshObject")
         .function("GetPoints", &MeshObject::GetPoints)
         .function("GetPolys", &MeshObject::GetPolys)
+        .function("GetCurvePoints", &MeshObject::GetCurvePoints)
+        .function("GetCurveIds", &MeshObject::GetCurveIds)
+        .function("GetCurveOffsets", &MeshObject::GetCurveOffsets)
         .property("matrix", &MeshObject::matrix)
         .property("matrixUpdated", &MeshObject::matrixUpdated)
         .property("polydataUpdated", &MeshObject::polydataUpdated)
-        // .function("GetLines", &PolyDataJSView::GetLinesEmscripten)
     ;
 }

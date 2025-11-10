@@ -1,8 +1,15 @@
 import { MainModule } from './webAssembly/dist/native.js'
 import * as THREE from "three";
 import Stats from 'three/examples/jsm/libs/stats.module.js';
-import { createSceneWithCustomConfig, SceneBundle } from './utils/sceneUtils';
-import {createMesh, getMeshFromWasm} from "@/utils/utlis";
+import {createSceneWithCustomConfig, fitCameraToObject, SceneBundle} from './utils/sceneUtils';
+import {
+    buffersToCurves,
+    createLine,
+    createMesh, createPoints,
+    curvesToCurvePoly,
+    getLineFromWasm,
+    getMeshFromWasm
+} from "@/utils/utlis";
 
 
 export class TestClassThreejs {
@@ -12,6 +19,7 @@ export class TestClassThreejs {
     private readonly renderer: THREE.WebGLRenderer;
     private readonly sceneBundle1: SceneBundle;
     private meshes = new Map<number, THREE.Mesh>()
+    private curveMesh: THREE.Points;
 
     // Second renderer (secondary scene)
     private readonly renderer2?: THREE.WebGLRenderer;
@@ -148,6 +156,8 @@ export class TestClassThreejs {
             this.meshes.set(i, mesh)
             this.sceneBundle1.scene.add(mesh);
         }
+        this.curveMesh = createPoints();
+        this.sceneBundle1.scene.add(this.curveMesh);
 
         if(this.sceneBundle2 && this.renderer2) {
             const mesh = createMesh();
@@ -155,6 +165,10 @@ export class TestClassThreejs {
             this.sceneBundle2.scene.add(mesh);
         }
         this.updateMeshes();
+        // const m = this.meshes.get(0)
+        // if(m) fitCameraToObject(this.sceneBundle1.camera, m, 1);
+        // const m2 = this.meshes2.get(0)
+        // if(m2 && this.sceneBundle2) fitCameraToObject(this.sceneBundle2.camera, m2, 1);
     }
 
     private updateMeshes(){
@@ -165,12 +179,34 @@ export class TestClassThreejs {
             getMeshFromWasm(wO, mesh);
         }
 
+        const cO = this.wasmInstance.GetCurveMesh()
+        if(cO) {
+            getLineFromWasm(cO, this.curveMesh);
+                // const points = cO.GetCurvePoints();
+                // const ids = cO.GetCurveIds();
+                // const offsets = cO.GetCurveOffsets();
+                // console.log("points", points, "ids", ids, "offsets", offsets)
+                //
+                //
+                // // If your ids are 1-based, pass {oneBased:true}
+                // const curves = buffersToCurves(points, ids, offsets);
+                // // Now build the tubes (equivalent to vtkTubeFilter with radius 0.05)
+                // const { curve_poly, tubes, points: pointsObj } = curvesToCurvePoly(curves);
+                //
+            // }
+            // Add to the scene
+            // this.sceneBundle1.scene.add(pointsObj);
+        }
+
         if (this.renderer2 && this.sceneBundle2) {
             const wO = this.wasmInstance.GetResultMesh();
             const mesh = this.meshes2.get(0);
             if(wO && mesh){
                 getMeshFromWasm(wO, mesh);
             }
+
+            // const m2 = this.meshes2.get(0)
+            // if(m2 && this.sceneBundle2) fitCameraToObject(this.sceneBundle2.camera, m2, 1);
         }
     }
 

@@ -127,8 +127,8 @@ export function createSceneWithCustomConfig(
         // Scene 1 configuration
         {
             backgroundColor: 0x222222,
-            cameraPosition: { x: 75, y: 75, z: 200 },
-            cameraLookAt: { x: 75, y: 75, z: 0 },
+            cameraPosition: { x: 1, y: 1, z: 2 },
+            cameraLookAt: { x: 0, y: 0, z: 0 },
             ambientLightIntensity: 0.4,
             directionalLightIntensity: 0.8,
             enableShadows: true
@@ -146,4 +146,37 @@ export function createSceneWithCustomConfig(
 
     const config = configs[sceneNumber - 1] || configs[0];
     return createScene(renderer, config);
+}
+
+
+export function fitCameraToObject(camera: THREE.PerspectiveCamera, object: THREE.Mesh, offset = 1.25, controls?: OrbitControls) {
+    // Compute the bounding box of the object (or entire scene)
+    const box = new THREE.Box3().setFromObject(object);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+
+    // Compute distance needed for the camera to fit the object
+    const maxSize = Math.max(size.x, size.y, size.z);
+    const fitHeightDistance = maxSize / (2 * Math.atan((Math.PI * camera.fov) / 360));
+    const fitWidthDistance = fitHeightDistance / camera.aspect;
+    const distance = offset * Math.max(fitHeightDistance, fitWidthDistance);
+
+    // Compute new camera position
+    const direction = new THREE.Vector3()
+        .subVectors(camera.position, center)
+        .normalize()
+        .multiplyScalar(distance);
+
+    camera.position.copy(direction.add(center));
+
+    // Update camera near/far planes
+    camera.near = distance / 100;
+    camera.far = distance * 100;
+    camera.updateProjectionMatrix();
+
+    // Optionally re-center controls (if using OrbitControls)
+    if (controls) {
+        controls.target.copy(center);
+        controls.update();
+    }
 }

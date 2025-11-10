@@ -41,6 +41,16 @@ public:
         return emscripten::val(emscripten::typed_memory_view(polyObject.faces_buffer().data_buffer().size(), polyObject.faces_buffer().data_buffer().begin()));
     }
 
+    emscripten::val GetCurvePoints() {
+        return emscripten::val(emscripten::typed_memory_view(curvesObject.points_buffer().data_buffer().size(), curvesObject.points_buffer().data_buffer().begin()));
+    }
+    emscripten::val GetCurveIds() {
+        return emscripten::val(emscripten::typed_memory_view(curvesObject.paths_buffer().data_buffer().size(), curvesObject.paths_buffer().data_buffer().begin()));
+    }
+    emscripten::val GetCurveOffsets() {
+        return emscripten::val(emscripten::typed_memory_view(curvesObject.paths_buffer().offsets_buffer().size(), curvesObject.paths_buffer().offsets_buffer().begin()));
+    }
+
     emscripten::val GetMatrix() {
         matrixUpdated = false;
         return emscripten::val(emscripten::typed_memory_view(matrix.size(), matrix.data()));
@@ -54,4 +64,7 @@ public:
     // for (auto line_ids: cb.paths_buffer()) {
     // auto points_for_line = tf::make_indirect_range(line_ids, cb.points());
     // }
+
+private:
+    std::vector<std::vector<int>> pathsObj;
 };
