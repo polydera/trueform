@@ -14,6 +14,9 @@ importers:
       fast-glob:
         specifier: ^3.3.2
         version: 3.3.3
+      stats-gl:
+        specifier: ^3.7.0
+        version: 3.7.0(three@0.181.1)
       three:
         specifier: ^0.181.1
         version: 0.181.1
@@ -818,6 +821,14 @@ packages:
   speakingurl@14.0.1:
     resolution: {integrity: sha512-1POYv7uv2gXoyGFpBCmpDVSNV74IfsWlDW216UPjbWufNf+bSU6GdbDsxdcxtfwb4xlI3yxzOTKClUosxARYrQ==}
     engines: {node: '>=0.10.0'}
+
+  stats-gl@3.7.0:
+    resolution: {integrity: sha512-GSHb8n6RDNGJ2zhXa98fzaeieNt8NECOWPL3Ui0b7SsgkadNGP1ALg3kKvbjGWyzylhlSphYyA4qwSEp/Raq0w==}
+    peerDependencies:
+      three: '*'
+    peerDependenciesMeta:
+      three:
+        optional: true
 
   superjson@2.2.5:
     resolution: {integrity: sha512-zWPTX96LVsA/eVYnqOM2+ofcdPqdS1dAF1LN4TS2/MWuUpfitd9ctTa87wt4xrYnZnkLtS69xpBdSxVBP5Rm6w==}
@@ -1684,6 +1695,10 @@ snapshots:
   source-map-js@1.2.1: {}
 
   speakingurl@14.0.1: {}
+
+  stats-gl@3.7.0(three@0.181.1):
+    optionalDependencies:
+      three: 0.181.1
 
   superjson@2.2.5:
     dependencies:

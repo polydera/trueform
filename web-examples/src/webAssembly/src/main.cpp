@@ -23,39 +23,39 @@ auto OnKeyPress(std::string key) {
     return interactor->OnKeyPress(key);
 }
 
-auto GetMeshOnIdx(int i) -> mesh_object * {
+auto get_mesh_on_idx(int i) -> mesh_object * {
     return interactor->get_actors()[i].get();
 }
 
-auto GetResultMesh() -> mesh_object * {
+auto get_result_mesh() -> mesh_object * {
     if(auto pI = dynamic_cast<cursor_interactor*>(interactor.get())) {
       return pI->result_mesh.get();
     }
     return nullptr;
 }
 
-auto GetCurveMesh() -> mesh_object * {
+auto get_curve_mesh() -> mesh_object * {
     if(auto pI = dynamic_cast<cursor_interactor*>(interactor.get())) {
         return pI->curve_mesh.get();
     }
     return nullptr;
 }
 
-auto GetAverageTime() {
+auto get_average_time() {
     return interactor->mTime;
 }
 
 
 EMSCRIPTEN_BINDINGS(boolean) {
   emscripten::function("run_main", &run_main);
-  emscripten::function("GetAverageTime", &GetAverageTime);
+  emscripten::function("get_average_time", &get_average_time);
   emscripten::function("OnLeftButtonUp", &OnLeftButtonUp);
   emscripten::function("OnLeftButtonDown", &OnLeftButtonDown);
   emscripten::function("OnMouseMove", &OnMouseMove);
   emscripten::function("OnKeyPress", &OnKeyPress);
-  emscripten::function("GetMeshOnIdx", &GetMeshOnIdx, emscripten::allow_raw_pointers());
-  emscripten::function("GetResultMesh", &GetResultMesh, emscripten::allow_raw_pointers());
-  emscripten::function("GetCurveMesh", &GetCurveMesh, emscripten::allow_raw_pointers());
+  emscripten::function("get_mesh_on_idx", &get_mesh_on_idx, emscripten::allow_raw_pointers());
+  emscripten::function("get_result_mesh", &get_result_mesh, emscripten::allow_raw_pointers());
+  emscripten::function("get_curve_mesh", &get_curve_mesh, emscripten::allow_raw_pointers());
 }
 
 EMSCRIPTEN_BINDINGS(ArrayFloat3) {

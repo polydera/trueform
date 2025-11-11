@@ -1,5 +1,28 @@
 import * as THREE from "three";
 import { mesh_object } from '../webAssembly/dist/native.js'
+import {LineMaterial} from "three/examples/jsm/lines/LineMaterial";
+import {LineSegments2} from "three/examples/jsm/lines/LineSegments2";
+import {LineSegmentsGeometry} from "three/examples/jsm/lines/LineSegmentsGeometry";
+
+export interface CurveObj {
+    points: Float32Array;
+    paths: number[][];
+}
+
+export interface CurveLineObjects {
+    lines: LineSegments2;
+}
+
+export interface curvesToCurvePolyOpts {
+    radius?: number;
+    radialSegments?: number;
+    tubularSegPerEdge?: number;
+    tubeColor?: number;
+    lineWidth?: number;
+    alwaysOnTop?: boolean; // Whether lines should always render on top of other objects
+    renderOrder?: number; // Custom render order for fine-grained control
+}
+
 
 export function createMesh(){
     const material = new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide, flatShading: true });
@@ -9,43 +32,14 @@ export function createMesh(){
     return mesh;
 }
 
-export function createLine(){
-    const material = new THREE.MeshLambertMaterial({ color: 0x22ccff, side: THREE.DoubleSide, flatShading: true });
-    const geometry = new THREE.TubeGeometry();
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.matrixAutoUpdate = false;
-    return mesh;
-}
-export function createPoints(){
-    const pointPixelSize = 1.0;
-    const pointColor = 0xff00ff;
-    const pointGeom = new THREE.BufferGeometry();
-    const pointMat = new THREE.PointsMaterial({
-        color: pointColor,
-        size: pointPixelSize,
-        sizeAttenuation: true,
-    });
-    const pointsObj = new THREE.Points(pointGeom, pointMat);
-    pointsObj.name = 'curve_points';
-    return pointsObj;
-}
-
 export function getMeshFromWasm(wO: mesh_object, mesh: THREE.Mesh, pointsOnly?: boolean) {
     const pU = wO.polydata_updated;
     if(pU) {
         const geometry = mesh.geometry;
-        geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(wO.GetPoints()), 3));
-        geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(wO.GetPolys()), 1));
+        geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(wO.get_points()), 3));
+        geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(wO.get_polys()), 1));
     }
     getMatrixFromWasm(wO, mesh)
-}
-export function getLineFromWasm(wO: mesh_object, mesh: THREE.Points) {
-    const pU = wO.polydata_updated;
-    if(pU) {
-        const geometry = mesh.geometry;
-        geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(wO.GetCurvePoints()), 3));
-        // geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(wO.GetCurveIds()), 1));
-    }
 }
 
 function getMatrixFromWasm(wO: mesh_object, dstGeometry: THREE.Mesh | THREE.Line) {
@@ -57,23 +51,6 @@ function getMatrixFromWasm(wO: mesh_object, dstGeometry: THREE.Mesh | THREE.Line
         threeMatrix.transpose();
         dstGeometry.matrix = threeMatrix;
     }
-}
-
-export interface CurveObj {
-    points: Float32Array;
-    paths: number[][];
-}
-
-export interface CurvePolyObjects {
-    curve_poly: THREE.Group;
-    tubes: THREE.Mesh;
-    points: THREE.Points;
-}
-
-export interface CurveLineObjects {
-    curve_lines: THREE.Group;
-    lines: LineSegments2;
-    // points: THREE.Points;
 }
 
 /**
@@ -116,11 +93,6 @@ export function buffersToCurves(points: Float32Array, idBuf: Int32Array, offBuf:
     return { points, paths };
 }
 
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import {LineMaterial} from "three/examples/jsm/lines/LineMaterial";
-import {LineSegments2} from "three/examples/jsm/lines/LineSegments2";
-import {LineSegmentsGeometry} from "three/examples/jsm/lines/LineSegmentsGeometry";
-
 /**
  * Creates reusable curve line objects that can be updated instead of recreated.
  * This is much more efficient than TubeGeometry for performance-critical applications.
@@ -130,270 +102,383 @@ import {LineSegmentsGeometry} from "three/examples/jsm/lines/LineSegmentsGeometr
  */
 export function createCurveLineObjects(opts: curvesToCurvePolyOpts = {}): CurveLineObjects {
     const {
-        pointPixelSize = 1.0,
         tubeColor = 0xff00ff,
-        pointColor = 0xff00ff,
-        lineWidth = 2.0
+        lineWidth = 2.0,
+        alwaysOnTop = false,
+        renderOrder = 1, // High render order by default
     } = opts;
-
-    // // Create point cloud object
-    // const pointGeom = new THREE.BufferGeometry();
-    // const pointMat = new THREE.PointsMaterial({
-    //     color: pointColor,
-    //     size: pointPixelSize,
-    //     sizeAttenuation: true,
-    // });
-    // const pointsObj = new THREE.Points(pointGeom, pointMat);
-    // pointsObj.name = 'curve_points';
 
     // Create line segments object
     const lineGeom = new LineSegmentsGeometry();
     const lineMat = new LineMaterial( {
         color: tubeColor,
-        linewidth: lineWidth, // in pixels when worldUnits is false
-        worldUnits: false, // Use pixel units for more predictable behavior
+        linewidth: lineWidth, // in worldUnit
+        worldUnits: true,
         vertexColors: false, // Disable vertex colors for now to avoid conflicts
-        alphaToCoverage: false, // Disable alpha to coverage for debugging
+        alphaToCoverage: true, // Disable alpha to coverage for debugging
         transparent: false, // Ensure lines are opaque
         opacity: 1.0,
-        depthTest: true,
-        depthWrite: true,
-        resolution: new THREE.Vector2(window.innerWidth, window.innerHeight), // Use actual screen resolution
+        depthTest: !alwaysOnTop,
+        depthWrite: !alwaysOnTop,
+
+        // --- depth bias to pull the line toward the camera ---
+        polygonOffset: true,
+        polygonOffsetFactor: -10,
+        polygonOffsetUnits:  -2
+
     } );
     const linesObj = new LineSegments2(lineGeom, lineMat);
     linesObj.name = 'curve_lines';
     linesObj.visible = true;
+    linesObj.renderOrder = renderOrder;
 
-    // Create container group
-    const curve_lines = new THREE.Group();
-    curve_lines.name = 'curve_lines';
-    curve_lines.add(linesObj);
-
-    return { curve_lines, lines: linesObj };
+    return { lines: linesObj };
 }
 
 /**
- * Updates existing CurveLineObjects with new curve data using LineSegments instead of TubeGeometry.
- * This is much faster than tube-based rendering and suitable for performance-critical applications.
- *
- * @param {Object} curves
- * @param {Array|Float32Array} curves.points  // [[x,y,z], ...] or Float32Array length 3N
- * @param {Array<Array<number>>} curves.paths // [[i0,i1,i2,...], ...]
- * @param {CurveLineObjects} curveObjects Pre-created objects to update
- * @param {Object} [opts]
- * @returns {CurveLineObjects} The updated objects
+ * Fast smoothing + line update for many paths each frame.
+ * - Smoothing: Chaikin (linear-time), 1–3 iterations recommended.
+ * - Reuses typed arrays & geometry attributes to minimize GC.
  */
-export function curvesToCurveLines(curves: CurveObj, curveObjects: CurveLineObjects, opts: curvesToCurvePolyOpts = {}): CurveLineObjects {
-    const { pointsOnly = false } = opts;
-
-    const { points: srcPoints, paths } = curves;
-    if (!srcPoints || !paths) throw new Error('curves must have {points, paths}');
-
-    // // Update existing point cloud geometry
-    // const pointGeom = curveObjects.points.geometry;
-    // pointGeom.setAttribute('position', new THREE.BufferAttribute(srcPoints, 3));
-    // pointGeom.attributes.position.needsUpdate = true;
-    //
-    // if (pointsOnly) return curveObjects;
-
-    // Build line segments for each polyline path
-    const linePositions = [];
-
-    const getV = (i: number) => [
-        srcPoints[3 * i],
-        srcPoints[3 * i + 1],
-        srcPoints[3 * i + 2]
-    ];
-
-    for (const path of paths) {
-        if (!path || path.length < 2) {
-            console.log(`Skipping path with length: ${path ? path.length : 'null'}`);
-            continue;
-        }
-
-        console.log(`Processing path with ${path.length} points`);
-
-        // Create line segments between consecutive points in the path
-        for (let i = 0; i < path.length - 1; i++) {
-            const p1 = getV(path[i]);
-            const p2 = getV(path[i + 1]);
-
-            // Add both points to create a line segment
-            linePositions.push(...p1, ...p2);
-        }
+export function curvesToCurveLinesFast(
+    curves: { points: Float32Array; paths: number[][] },
+    curveObjects: { lines: THREE.LineSegments },
+    opts?: {
+        chaikinIterations?: number;       // 0..3; default 2
+        closed?: boolean;                 // default false (open path)
     }
+) {
+    const t0 = performance.now();
 
-    console.log(`Total paths processed: ${paths.length}, total line positions: ${linePositions.length}`);
-    if (linePositions.length > 0) {
-        console.log(`First few positions: [${linePositions.slice(0, 12).join(', ')}]`);
-    }
+    const { points: src, paths } = curves;
+    if (!src || !paths) throw new Error('curves must have {points, paths}');
 
-    // Update existing line geometry
-    const lineGeom = curveObjects.lines.geometry as LineSegmentsGeometry;
+    const iterations = Math.max(0, Math.min(3, opts?.chaikinIterations ?? 2));
+    const closed     = !!opts?.closed;
 
-    if (linePositions.length === 0) {
-        // Clear lines if no valid lines
-        lineGeom.dispose();
-        curveObjects.lines.geometry = new LineSegmentsGeometry();
-        console.log('curvesToCurveLines: No line positions - geometry cleared');
-    } else {
-        // Create a new LineSegmentsGeometry instead of trying to reuse the old one
-        const newLineGeom = new LineSegmentsGeometry();
+    // ---------------------------------------------------------------------------
+    // 2) Workspace (reused between frames) lives on the lines object
+    // ---------------------------------------------------------------------------
+    type Work = {
+        start: Float32Array; end: Float32Array;     // segment ends (xyz xyz …)
+        ax: Float32Array; ay: Float32Array; az: Float32Array; // stage A coords
+        bx: Float32Array; by: Float32Array; bz: Float32Array; // stage B coords
+        segments: number;                            // how many segments written
+    };
+    const userData = curveObjects.lines.userData as any;
+    const work: Work = userData.__work || (userData.__work = {
+        start: new Float32Array(0),
+        end:   new Float32Array(0),
+        ax:    new Float32Array(0),
+        ay:    new Float32Array(0),
+        az:    new Float32Array(0),
+        bx:    new Float32Array(0),
+        by:    new Float32Array(0),
+        bz:    new Float32Array(0),
+        segments: 0
+    });
 
-        try {
-            // Method 1: Try using fromLineSegments (recommended approach)
-            const tempGeometry = new THREE.BufferGeometry();
-            const positionArray = new Float32Array(linePositions);
-            tempGeometry.setAttribute('position', new THREE.BufferAttribute(positionArray, 3));
+    // helpers to grow reusable buffers
+    const ensureLen = (arr: Float32Array, needed: number) =>
+        (arr.length >= needed) ? arr : new Float32Array(nextPow2(needed));
 
-            // Create a temporary LineSegments object
-            const tempLineSegments = new THREE.LineSegments(tempGeometry);
+    const ensureWorkForPoints = (neededPoints: number) => {
+        work.ax = ensureLen(work.ax, neededPoints);
+        work.ay = ensureLen(work.ay, neededPoints);
+        work.az = ensureLen(work.az, neededPoints);
+        work.bx = ensureLen(work.bx, neededPoints * 2); // worst case next iter
+        work.by = ensureLen(work.by, neededPoints * 2);
+        work.bz = ensureLen(work.bz, neededPoints * 2);
+    };
 
-            // Use fromLineSegments to properly convert
-            newLineGeom.fromLineSegments(tempLineSegments);
+    const ensureStartEndCapacity = (neededSegments: number) => {
+        work.start = ensureLen(work.start, neededSegments * 3);
+        work.end   = ensureLen(work.end,   neededSegments * 3);
+    };
 
-            // Clean up
-            tempGeometry.dispose();
+    const nextPow2 = (n: number) => 1 << Math.ceil(Math.log2(Math.max(1, n)));
 
-            console.log(`Using fromLineSegments method with ${linePositions.length/6} line segments`);
-            console.log(`Temp geometry had ${tempGeometry.attributes.position?.count || 0} position vertices`);
-        } catch (error) {
-            console.error('fromLineSegments failed:', error);
+    // ---------------------------------------------------------------------------
+    // 3) Build smoothed segments (Chaikin) directly into start/end arrays
+    // ---------------------------------------------------------------------------
+    work.segments = 0;
 
-            // Method 2: Create the geometry manually using setPositions
-            try {
-                const positionArray = new Float32Array(linePositions);
-                newLineGeom.setPositions(positionArray);
-                console.log(`Using setPositions method with ${linePositions.length/6} line segments`);
-            } catch (error2) {
-                console.error('setPositions also failed:', error2);
+    for (let p = 0; p < paths.length; p++) {
+        const idx = paths[p];
+        if (!idx || idx.length < 2) continue;
 
-                // Method 3: Last resort - setFromPoints with pairs
-                const pointsVector3 = [];
-                for (let i = 0; i < linePositions.length; i += 3) {
-                    pointsVector3.push(new THREE.Vector3(
-                        linePositions[i],
-                        linePositions[i + 1],
-                        linePositions[i + 2]
-                    ));
+        // Copy current path coordinates into ax/ay/az (stage A) with index validation
+        ensureWorkForPoints(idx.length);
+        let n = 0; // number of valid points we copied for this path
+
+        const vertCount = src.length / 3;
+        for (let i = 0; i < idx.length; i++) {
+            const vi = idx[i];
+            if (vi == null || vi < 0 || vi >= vertCount) continue; // skip invalid
+            const j = 3 * vi;
+            work.ax[n] = src[j];
+            work.ay[n] = src[j + 1];
+            work.az[n] = src[j + 2];
+            n++;
+        }
+        if (n < 2) continue; // nothing to draw for this path
+
+        // Apply Chaikin smoothing 'iterations' times
+        // Open and Closed variants
+        for (let it = 0; it < iterations; it++) {
+            if (!closed) {
+                // open curve: preserve endpoints
+                // new length: (n - 1) * 2 + 1
+                let k = 0;
+                work.bx[k] = work.ax[0]; work.by[k] = work.ay[0]; work.bz[k] = work.az[0]; k++;
+                for (let i = 0; i < n - 1; i++) {
+                    const x0 = work.ax[i],   y0 = work.ay[i],   z0 = work.az[i];
+                    const x1 = work.ax[i+1], y1 = work.ay[i+1], z1 = work.az[i+1];
+                    // Q and R points (0.25 / 0.75)
+                    work.bx[k]   = 0.75 * x0 + 0.25 * x1;
+                    work.by[k]   = 0.75 * y0 + 0.25 * y1;
+                    work.bz[k++] = 0.75 * z0 + 0.25 * z1;
+
+                    work.bx[k]   = 0.25 * x0 + 0.75 * x1;
+                    work.by[k]   = 0.25 * y0 + 0.75 * y1;
+                    work.bz[k++] = 0.25 * z0 + 0.75 * z1;
                 }
-                newLineGeom.setFromPoints(pointsVector3);
-                console.log(`Using setFromPoints fallback method with ${pointsVector3.length} points`);
+                work.bx[k] = work.ax[n-1]; work.by[k] = work.ay[n-1]; work.bz[k] = work.az[n-1]; k++;
+                // swap B->A
+                [work.ax, work.ay, work.az, work.bx, work.by, work.bz] =
+                    [work.bx, work.by, work.bz, work.ax, work.ay, work.az];
+                n = k;
+            } else {
+                // closed curve: wrap around; new length: n * 2
+                let k = 0;
+                for (let i = 0; i < n; i++) {
+                    const ni = (i + 1) % n;
+                    const x0 = work.ax[i],  y0 = work.ay[i],  z0 = work.az[i];
+                    const x1 = work.ax[ni], y1 = work.ay[ni], z1 = work.az[ni];
+
+                    work.bx[k]   = 0.75 * x0 + 0.25 * x1;
+                    work.by[k]   = 0.75 * y0 + 0.25 * y1;
+                    work.bz[k++] = 0.75 * z0 + 0.25 * z1;
+
+                    work.bx[k]   = 0.25 * x0 + 0.75 * x1;
+                    work.by[k]   = 0.25 * y0 + 0.75 * y1;
+                    work.bz[k++] = 0.25 * z0 + 0.75 * z1;
+                }
+                [work.ax, work.ay, work.az, work.bx, work.by, work.bz] =
+                    [work.bx, work.by, work.bz, work.ax, work.ay, work.az];
+                n = k;
             }
         }
 
-        // Validate the created geometry
-        if (!newLineGeom.attributes.instanceStart || newLineGeom.attributes.instanceStart.count === 0) {
-            console.warn('LineSegmentsGeometry creation failed - trying manual approach');
+        // Number of segments for this path
+        const segs = closed ? n : (n - 1);
+        ensureStartEndCapacity(work.segments + segs);
 
-            // Manual approach: Create instanceStart and instanceEnd attributes directly
-            const numSegments = linePositions.length / 6;
-            const instanceStart = new Float32Array(numSegments * 3);
-            const instanceEnd = new Float32Array(numSegments * 3);
-
-            for (let i = 0; i < numSegments; i++) {
-                const startIdx = i * 6;
-                // Start point
-                instanceStart[i * 3] = linePositions[startIdx];
-                instanceStart[i * 3 + 1] = linePositions[startIdx + 1];
-                instanceStart[i * 3 + 2] = linePositions[startIdx + 2];
-                // End point
-                instanceEnd[i * 3] = linePositions[startIdx + 3];
-                instanceEnd[i * 3 + 1] = linePositions[startIdx + 4];
-                instanceEnd[i * 3 + 2] = linePositions[startIdx + 5];
+        // Write segments into start/end buffers
+        let s = work.segments * 3;  // float index
+        if (!closed) {
+            for (let i = 0; i < n - 1; i++) {
+                const x0 = work.ax[i],   y0 = work.ay[i],   z0 = work.az[i];
+                const x1 = work.ax[i+1], y1 = work.ay[i+1], z1 = work.az[i+1];
+                work.start[s]   = x0; work.start[s+1] = y0; work.start[s+2] = z0;
+                work.end[s]     = x1; work.end[s+1]   = y1; work.end[s+2]   = z1;
+                s += 3;
             }
-
-            newLineGeom.setAttribute('instanceStart', new THREE.InstancedBufferAttribute(instanceStart, 3));
-            newLineGeom.setAttribute('instanceEnd', new THREE.InstancedBufferAttribute(instanceEnd, 3));
-
-            // Add dummy position attribute (required by LineSegments2)
-            newLineGeom.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 1, 0, 0], 3));
-
-            console.log(`Manual LineSegmentsGeometry created with ${numSegments} segments`);
+        } else {
+            for (let i = 0; i < n; i++) {
+                const ni = (i + 1) % n;
+                const x0 = work.ax[i],  y0 = work.ay[i],  z0 = work.az[i];
+                const x1 = work.ax[ni], y1 = work.ay[ni], z1 = work.az[ni];
+                work.start[s]   = x0; work.start[s+1] = y0; work.start[s+2] = z0;
+                work.end[s]     = x1; work.end[s+1]   = y1; work.end[s+2]   = z1;
+                s += 3;
+            }
         }
-
-        // Replace the old geometry with the new one
-        lineGeom.dispose();
-        curveObjects.lines.geometry = newLineGeom;
-
-        console.log(`curvesToCurveLines: Updated with ${linePositions.length/6} line segments (${paths.length} paths)`);
-
-        // Debug geometry information
-        const attributes = newLineGeom.attributes;
-        console.log('LineSegmentsGeometry attributes:', Object.keys(attributes));
-        console.log(`Expected line segments: ${linePositions.length/6}`);
-        console.log(`Input positions length: ${linePositions.length}`);
-
-        if (attributes.position) {
-            console.log(`Position attribute count: ${attributes.position.count}`);
-        }
-        if (attributes.instanceStart) {
-            console.log(`InstanceStart count: ${attributes.instanceStart.count}`);
-        }
-        if (attributes.instanceEnd) {
-            console.log(`InstanceEnd count: ${attributes.instanceEnd.count}`);
-        }
-        if (attributes.instanceColorStart) {
-            console.log(`InstanceColorStart count: ${attributes.instanceColorStart.count}`);
-        }
-        if (attributes.instanceColorEnd) {
-            console.log(`InstanceColorEnd count: ${attributes.instanceColorEnd.count}`);
-        }
-
-        // Check if geometry is actually valid for rendering
-        console.log(`Geometry drawRange: count=${newLineGeom.drawRange.count}, start=${newLineGeom.drawRange.start}`);
-
-        // Verify the LineSegments2 object itself
-        console.log(`LineSegments2 visible: ${curveObjects.lines.visible}`);
-        console.log(`LineSegments2 frustumCulled: ${curveObjects.lines.frustumCulled}`);
+        work.segments += segs;
     }
 
+    // --- 4) Upload to the existing LineSegmentsGeometry (no recreation) ---
+    const lineGeom = curveObjects.lines.geometry as LineSegmentsGeometry;
+    const needFloats = work.segments * 3;
+
+    let aStart = lineGeom.getAttribute('instanceStart') as THREE.InstancedBufferAttribute | undefined;
+    let aEnd = lineGeom.getAttribute('instanceEnd') as THREE.InstancedBufferAttribute | undefined;
+
+// create attributes once
+    if (!aStart || !aEnd) {
+        aStart = new THREE.InstancedBufferAttribute(work.start, 3).setUsage(THREE.DynamicDrawUsage);
+        aEnd = new THREE.InstancedBufferAttribute(work.end, 3).setUsage(THREE.DynamicDrawUsage);
+        lineGeom.setAttribute('instanceStart', aStart);
+        lineGeom.setAttribute('instanceEnd', aEnd);
+    }
+
+    // ensure attribute capacity >= needFloats
+    if (aStart.array.length < needFloats || aEnd.array.length < needFloats) {
+        // grow our reusable work buffers first
+        const newCap = nextPow2(needFloats);
+        if (work.start.length < newCap) work.start = new Float32Array(newCap);
+        if (work.end.length < newCap) work.end = new Float32Array(newCap);
+
+        // swap arrays on the attributes without recreating them (if supported)
+        if ((aStart as any).setArray) {
+            (aStart as any).setArray(work.start);
+            (aEnd as any).setArray(work.end);
+        } else {
+            // fallback for older three.js
+            lineGeom.setAttribute('instanceStart',
+                new THREE.InstancedBufferAttribute(work.start, 3).setUsage(THREE.DynamicDrawUsage));
+            lineGeom.setAttribute('instanceEnd',
+                new THREE.InstancedBufferAttribute(work.end, 3).setUsage(THREE.DynamicDrawUsage));
+            aStart = lineGeom.getAttribute('instanceStart') as THREE.InstancedBufferAttribute;
+            aEnd = lineGeom.getAttribute('instanceEnd') as THREE.InstancedBufferAttribute;
+        }
+    }
+
+// copy only the used range into the attribute arrays
+    (aStart.array as Float32Array).set(work.start.subarray(0, needFloats));
+    (aEnd.array as Float32Array).set(work.end.subarray(0, needFloats));
+    aStart.needsUpdate = true;
+    aEnd.needsUpdate = true;
+
+// draw only the number of segments we populated
+    (lineGeom as any).instanceCount = work.segments;
+
+// ---- Compute bounds over the USED range only (avoid NaNs in tail) ----
+    const used = needFloats; // floats (x,y,z) * number of verts
+    const aS = aStart.array as Float32Array;
+    const aE = aEnd.array as Float32Array;
+
+// min/max over start + end
+    let minX =  Infinity, minY =  Infinity, minZ =  Infinity;
+    let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+
+    for (let i = 0; i < used; i += 3) {
+        let x = aS[i], y = aS[i+1], z = aS[i+2];
+        if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) {
+            if (x < minX) minX = x; if (y < minY) minY = y; if (z < minZ) minZ = z;
+            if (x > maxX) maxX = x; if (y > maxY) maxY = y; if (z > maxZ) maxZ = z;
+        }
+        x = aE[i]; y = aE[i+1]; z = aE[i+2];
+        if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) {
+            if (x < minX) minX = x; if (y < minY) minY = y; if (z < minZ) minZ = z;
+            if (x > maxX) maxX = x; if (y > maxY) maxY = y; if (z > maxZ) maxZ = z;
+        }
+    }
+
+// If nothing finite (shouldn't happen), fall back to disabling culling for this frame
+    if (!Number.isFinite(minX)) {
+        curveObjects.lines.frustumCulled = false;
+    } else {
+        const box = new THREE.Box3(
+            new THREE.Vector3(minX, minY, minZ),
+            new THREE.Vector3(maxX, maxY, maxZ)
+        );
+        lineGeom.boundingBox = box;
+
+        // sphere: center = box center, radius = max distance of used verts to center
+        const center = box.getCenter(new THREE.Vector3());
+        let r2 = 0;
+        for (let i = 0; i < used; i += 3) {
+            let dx = aS[i] - center.x, dy = aS[i+1] - center.y, dz = aS[i+2] - center.z;
+            if (Number.isFinite(dx) && Number.isFinite(dy) && Number.isFinite(dz)) {
+                const d2 = dx*dx + dy*dy + dz*dz; if (d2 > r2) r2 = d2;
+            }
+            dx = aE[i] - center.x; dy = aE[i+1] - center.y; dz = aE[i+2] - center.z;
+            if (Number.isFinite(dx) && Number.isFinite(dy) && Number.isFinite(dz)) {
+                const d2 = dx*dx + dy*dy + dz*dz; if (d2 > r2) r2 = d2;
+            }
+        }
+        lineGeom.boundingSphere = new THREE.Sphere(center, Math.sqrt(r2));
+        curveObjects.lines.frustumCulled = true; // back on if you disabled it
+    }
+
+    // ---------------------------------------------------------------------------
+    // done
+    // ---------------------------------------------------------------------------
+    console.log(`curvesToCurveLines (fast): ${performance.now() - t0 | 0} ms, segments=${work.segments}`, lineGeom);
     return curveObjects;
 }
 
 /**
- * Updates the resolution of LineMaterial for proper rendering.
- * Call this whenever the renderer size changes.
+ * Smooths each curve path with a centripetal Catmull-Rom spline and
+ * rebuilds the LineSegmentsGeometry from the resampled points.
  *
- * @param curveObjects CurveLineObjects containing the LineMaterial to update
- * @param renderer The WebGL renderer to get the size from
+ * Tunables:
+ *  - samplesPerSegment: how many samples to add between original points
+ *  - tension: Catmull-Rom tension (0.0..1.0). 0.5 is a good default.
+ *  - closed: set true if your paths are closed loops
  */
-export function updateCurveLineResolution(curveObjects: CurveLineObjects, renderer: THREE.WebGLRenderer) {
-    const material = curveObjects.lines.material as LineMaterial;
-    const size = renderer.getSize(new THREE.Vector2());
+export function curvesToCurveLines(
+    curves: { points: Float32Array; paths: number[][] },
+    curveObjects: { lines: THREE.LineSegments },
+    opts?: { samplesPerSegment?: number; tension?: number; closed?: boolean }
+) {
+    const t0 = performance.now();
 
-    // Ensure we have valid dimensions
-    if (size.x > 0 && size.y > 0) {
-        material.resolution.copy(size);
-        console.log(`Updated LineMaterial resolution to: ${size.x} x ${size.y}`);
-    } else {
-        // Fallback to window size
-        material.resolution.set(window.innerWidth, window.innerHeight);
-        console.log(`Using fallback resolution: ${window.innerWidth} x ${window.innerHeight}`);
+    const { points: srcPoints, paths } = curves;
+    if (!srcPoints || !paths) throw new Error('curves must have {points, paths}');
+
+    const samplesPerSegment = opts?.samplesPerSegment ?? 6; // ↑ for smoother
+    const tension = opts?.tension ?? 0.5;                   // centripetal feel
+    const closedDefault = opts?.closed ?? true;
+
+    // helper to read a point by index from the flat Float32Array
+    const getV = (i: number) =>
+        new THREE.Vector3(srcPoints[3 * i], srcPoints[3 * i + 1], srcPoints[3 * i + 2]);
+
+    // --- build smoothed line segments ---
+    const linePositions: number[] = [];
+
+    for (const path of paths) {
+        if (!path || path.length < 2) continue;
+
+        // original points for this path
+        const pts: THREE.Vector3[] = path.map(getV);
+
+        // spline through them
+        const curve = new THREE.CatmullRomCurve3(
+            pts,
+            /*closed=*/closedDefault,
+            /*type=*/'centripetal',
+            /*tension=*/tension
+        );
+
+        // resample: original count + (N * (#segments))
+        const samples = Math.max(2, (path.length - 1) * samplesPerSegment + 1);
+        const smooth: THREE.Vector3[] = curve.getPoints(samples);
+
+        // emit segments between successive resampled points
+        for (let i = 0; i < smooth.length - 1; i++) {
+            const a = smooth[i], b = smooth[i + 1];
+            linePositions.push(a.x, a.y, a.z, b.x, b.y, b.z);
+        }
     }
-}
 
+    // --- swap in a fresh LineSegmentsGeometry ---
+    const oldGeom = curveObjects.lines.geometry as LineSegmentsGeometry;
+    const newGeom = new LineSegmentsGeometry();
+
+    if (linePositions.length > 0) {
+        // LineSegmentsGeometry accepts a flat array of xyz pairs
+        newGeom.setPositions(linePositions);
+    }
+
+    oldGeom.dispose();
+    curveObjects.lines.geometry = newGeom;
+
+    console.log("Time to build line segments: " + (performance.now() - t0) + "ms");
+    return curveObjects;
+}
 /**
  * Alternative implementation using basic THREE.LineSegments for compatibility.
  * Use this if LineSegments2 is not working properly.
  */
 export function createBasicCurveLineObjects(opts: curvesToCurvePolyOpts = {}): any {
     const {
-        pointPixelSize = 1.0,
         tubeColor = 0xff00ff,
-        pointColor = 0xff00ff,
         lineWidth = 2.0
     } = opts;
 
-    // Create point cloud object
-    const pointGeom = new THREE.BufferGeometry();
-    const pointMat = new THREE.PointsMaterial({
-        color: pointColor,
-        size: pointPixelSize,
-        sizeAttenuation: true,
-    });
-    const pointsObj = new THREE.Points(pointGeom, pointMat);
-    pointsObj.name = 'curve_points';
 
     // Create basic line segments object
     const lineGeom = new THREE.BufferGeometry();
@@ -405,29 +490,15 @@ export function createBasicCurveLineObjects(opts: curvesToCurvePolyOpts = {}): a
     linesObj.name = 'curve_lines';
     linesObj.visible = true;
 
-    // Create container group
-    const curve_lines = new THREE.Group();
-    curve_lines.name = 'curve_lines';
-    curve_lines.add(linesObj);
-
-    return { curve_lines, lines: linesObj, points: pointsObj };
+    return { lines: linesObj };
 }
 
 /**
  * Updates basic LineSegments geometry (for use with createBasicCurveLineObjects)
  */
-export function updateBasicCurveLines(curves: CurveObj, curveObjects: any, opts: curvesToCurvePolyOpts = {}): any {
-    const { pointsOnly = false } = opts;
-
+export function updateBasicCurveLines(curves: CurveObj, curveObjects: any): any {
     const { points: srcPoints, paths } = curves;
     if (!srcPoints || !paths) throw new Error('curves must have {points, paths}');
-
-    // Update existing point cloud geometry
-    const pointGeom = curveObjects.points.geometry;
-    pointGeom.setAttribute('position', new THREE.BufferAttribute(srcPoints, 3));
-    pointGeom.attributes.position.needsUpdate = true;
-
-    if (pointsOnly) return curveObjects;
 
     // Build line segments for each polyline path
     const linePositions = [];
@@ -468,15 +539,4 @@ export function updateBasicCurveLines(curves: CurveObj, curveObjects: any, opts:
     }
 
     return curveObjects;
-}
-
-export interface curvesToCurvePolyOpts {
-    radius?: number;
-    radialSegments?: number;
-    tubularSegPerEdge?: number;
-    pointPixelSize?: number;
-    tubeColor?: number;
-    pointColor?: number;
-    pointsOnly?: boolean;
-    lineWidth?: number;
 }
