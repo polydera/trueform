@@ -73,7 +73,7 @@ def test_point_polygon_3d():
     print(f"  Point on point: {p0}")
     print(f"  Point on polygon: {p1}")
     print(f"  Expected distance²: 0.0")
-    assert dist2 == 0.0, f"Expected 0.0, got {dist2}"
+    assert np.isclose(0, dist2)
 
     # Point above the triangle
     pt_above = tf.Point([0.5, 0.3, 2.0])

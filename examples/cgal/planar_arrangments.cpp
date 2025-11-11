@@ -156,6 +156,41 @@ int main() {
   for (int i = 0; i < int(base_loop.size()); prev = i++)
     edges.push_back({base_loop[prev], base_loop[i]});
 
+  auto tf_out = run_tl(edges, points);
+  std::cout << "---- tf::planar_arrangments ----" << std::endl;
+   std::map<tf::point<double, 2>, int> point_id_map;
+for (size_t i = 0; i < points.size(); ++i) {
+    point_id_map[points[i]] = static_cast<int>(i);
+  }
+ for (auto [face, holes] :
+       tf::zip(tf_out.faces(), tf::make_block_indirect_range(
+                                   tf_out.holes_for_faces(), tf_out.holes()))) {
+    std::cout << "face: ";
+    for (auto e : face)
+      std::cout << point_id_map[tf_out.points()[e]] << ", ";
+    std::cout << std::endl;
+    for (auto hole : holes) {
+      std::cout << "  hole: ";
+      for (auto e : hole)
+        std::cout << point_id_map[tf_out.points()[e]] << ", ";
+      std::cout << std::endl;
+    }
+  }
+
+  auto cgal_out = run_cgal(edges, points);
+  std::cout << "---- CGAL::Arrangement_2 ----" << std::endl;
+  for (auto [face, holes] : tf::zip(cgal_out.first, cgal_out.second)) {
+    std::cout << "face: ";
+    for (auto e : face)
+      std::cout << e << ", ";
+    std::cout << std::endl;
+    for (auto hole : holes) {
+      std::cout << "  hole: ";
+      for (auto e : hole)
+        std::cout << e << ", ";
+      std::cout << std::endl;
+    }
+  }
 
   std::cout << "---- Benchmarking ----" << std::endl;
   for (int duplicate_n : {10, 100, 250, 500, 1000, 2000})

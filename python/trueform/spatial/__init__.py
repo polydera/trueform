@@ -19,6 +19,10 @@ from ._mesh_neighbor_search import (
     _MESH_NEIGHBOR_SEARCH_DISPATCH,
     _MESH_NEIGHBOR_SEARCH_KNN_DISPATCH
 )
+from ._edge_mesh_neighbor_search import (
+    _EDGE_MESH_NEIGHBOR_SEARCH_DISPATCH,
+    _EDGE_MESH_NEIGHBOR_SEARCH_KNN_DISPATCH
+)
 
 # Dispatch tables organized by object type
 _DISPATCH_BY_TYPE = {
@@ -29,6 +33,10 @@ _DISPATCH_BY_TYPE = {
     'Mesh': {
         'single': _MESH_NEIGHBOR_SEARCH_DISPATCH,
         'knn': _MESH_NEIGHBOR_SEARCH_KNN_DISPATCH
+    },
+    'EdgeMesh': {
+        'single': _EDGE_MESH_NEIGHBOR_SEARCH_DISPATCH,
+        'knn': _EDGE_MESH_NEIGHBOR_SEARCH_KNN_DISPATCH
     }
 }
 
@@ -42,12 +50,12 @@ def neighbor_search(
     """
     Search for nearest neighbor(s) in a spatial structure.
 
-    Performs spatial queries to find the closest element(s) in a point cloud or mesh to a given
+    Performs spatial queries to find the closest element(s) in a point cloud, mesh, or edge mesh to a given
     geometric primitive (point, segment, polygon, ray, or line).
 
     Parameters
     ----------
-    spatial_object : PointCloud or Mesh
+    spatial_object : PointCloud, Mesh, or EdgeMesh
         The spatial structure to search in
     query : Point, Segment, Polygon, Ray, Line, or numpy array
         The geometric primitive to query with. Can be a wrapped primitive or a numpy array
@@ -143,10 +151,21 @@ def neighbor_search(
         suffix = f"{index_str}{real_str}{ngon}{obj_dims}d"
         obj_dtype = points_dtype  # Use points dtype for query conversion
 
+    elif obj_type == 'EdgeMesh':
+        # EdgeMesh: suffix is "intfloat2d" or "int64double3d"
+        # Format: {index_type}{real_type}{dims}d
+        edges_dtype = spatial_object.edges.dtype
+        points_dtype = spatial_object.points.dtype
+
+        index_str = 'int' if edges_dtype == np.int32 else 'int64'
+        real_str = 'float' if points_dtype == np.float32 else 'double'
+        suffix = f"{index_str}{real_str}{obj_dims}d"
+        obj_dtype = points_dtype  # Use points dtype for query conversion
+
     else:
         raise TypeError(
             f"neighbor_search not implemented for spatial object type: {obj_type}. "
-            f"Supported types: PointCloud, Mesh"
+            f"Supported types: PointCloud, Mesh, EdgeMesh"
         )
 
     # Convert query_data to match object dtype if necessary

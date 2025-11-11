@@ -12,8 +12,10 @@ https://github.com/xlabmedical/trueform
 # Template expects suffix:
 #   - PointCloud: "float2d" or "double3d"
 #   - Mesh: "intfloat32d" or "int64double43d"
+#   - EdgeMesh: "intfloat2d" or "int64double3d"
 
 _SPATIAL_RAY_CAST_DISPATCH = {
     'PointCloud': "ray_cast_point_cloud_{}",
-    'Mesh': "ray_cast_mesh_{}"
+    'Mesh': "ray_cast_mesh_{}",
+    'EdgeMesh': "ray_cast_edge_mesh_{}"
 }

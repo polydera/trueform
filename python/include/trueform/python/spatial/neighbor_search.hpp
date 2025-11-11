@@ -24,7 +24,9 @@ auto neighbor_search(FormWrapper &form_wrapper, const Primitive &query,
       nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<Dims>>;
   using result_t = std::tuple<int, RealT, ndarray_t>;
 
-  auto make_return = [](const auto &e) -> result_t {
+  auto make_return = [](const auto &e) -> std::optional<result_t> {
+    if (!e)
+      return std::nullopt;
     // Allocate numpy array
     RealT *data = new RealT[Dims];
     const auto &pt = e.info.point;
@@ -35,7 +37,7 @@ auto neighbor_search(FormWrapper &form_wrapper, const Primitive &query,
         data, [](void *p) noexcept { delete[] static_cast<RealT *>(p); });
 
     ndarray_t arr(data, {Dims}, capsule);
-    return {e.element, e.info.metric, arr};
+    return result_t{e.element, e.info.metric, arr};
   };
 
   form_wrapper.ensure_tree();

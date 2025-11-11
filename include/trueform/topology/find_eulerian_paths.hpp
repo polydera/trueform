@@ -1,19 +1,19 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
 #include "../core/edges.hpp"
 #include "../core/views/enumerate.hpp"
-#include "./edge_membership.hpp"
+#include "./edge_membership_like.hpp"
 #include "./vertex_link.hpp"
 
 namespace tf {
-template <typename Policy, typename Index>
+template <typename Policy, typename Policy1, typename Index>
 auto find_eulerian_paths(const tf::edges<Policy> &edges,
-                         const tf::edge_membership<Index> &link,
+                         const tf::edge_membership_like<Policy1> &link,
                          tf::buffer<Index> &path_offsets,
                          tf::buffer<Index> &edge_ids) {
 

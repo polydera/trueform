@@ -6,10 +6,11 @@
  */
 #pragma once
 #include "../../core/algorithm/circular_increment.hpp"
+#include "../../core/buffer.hpp"
 #include "../../core/faces.hpp"
 #include "../../core/small_vector.hpp"
 #include "../../topology/edge_id_in_face.hpp"
-#include "../../topology/edge_membership.hpp"
+#include "../../topology/edge_membership_like.hpp"
 #include "../../topology/face_edge_neighbors.hpp"
 #include "../../topology/face_membership_like.hpp"
 #include "../../topology/manifold_edge_link_like.hpp"
@@ -138,9 +139,10 @@ auto duplicate_intersection(
 }
 
 namespace detail {
-template <typename Index>
+template <typename Index, typename Policy>
 auto duplicate_intersection1(
-    intersect::intersection<Index> i, const tf::edge_membership<Index> &em,
+    intersect::intersection<Index> i,
+    const tf::edge_membership_like<Policy> &em,
     tf::buffer<intersect::intersection<Index>> &buffer) {
   auto push_f = [&](auto i) {
     buffer.push_back(i);
@@ -158,9 +160,10 @@ auto duplicate_intersection1(
   }
 }
 } // namespace detail
-template <typename Index>
+template <typename Index, typename Policy>
 auto duplicate_intersection(
-    intersect::intersection<Index> i, const tf::edge_membership<Index> &em,
+    intersect::intersection<Index> i,
+    const tf::edge_membership_like<Policy> &em,
     tf::buffer<intersect::intersection<Index>> &buffer) {
   if (i.target.label == tf::topo_type::edge) {
     detail::duplicate_intersection1(i, em, buffer);

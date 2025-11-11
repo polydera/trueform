@@ -294,4 +294,5 @@ def test_mesh_dimension_mismatch():
 
 if __name__ == "__main__":
     # Run tests with verbose output
-    pytest.main([__file__, "-v"])
+    import sys
+    sys.exit(pytest.main([__file__, "-v"]))

@@ -27,16 +27,16 @@ def ray_cast(ray: Any, target: Any):
         Returns the parametric distance t if intersection occurs, None otherwise.
         hit_point = ray.origin + t * ray.direction
 
-    For spatial structures (PointCloud, Mesh):
+    For spatial structures (PointCloud, Mesh, EdgeMesh):
         Returns (element_index, t) if intersection occurs, None otherwise.
-        - element_index: index of the intersected element (point/face)
+        - element_index: index of the intersected element (point/face/edge)
         - t: parametric distance along the ray
 
     Parameters
     ----------
     ray : Ray
         The ray to cast
-    target : Segment, Polygon, Line, AABB, Plane, Mesh, or PointCloud
+    target : Segment, Polygon, Line, AABB, Plane, Mesh, EdgeMesh, or PointCloud
         The geometric object to test against
 
     Returns
@@ -91,14 +91,14 @@ def ray_cast(ray: Any, target: Any):
     target_type = type(target)
     target_type_name = target_type.__name__
 
-    # Handle spatial structures (PointCloud, Mesh)
+    # Handle spatial structures (PointCloud, Mesh, EdgeMesh)
     if target_type_name in _SPATIAL_RAY_CAST_DISPATCH:
         # Compute appropriate suffix based on object type
         if target_type_name == 'PointCloud':
             # PointCloud: suffix is "float2d" or "double3d"
             dtype_str = 'float' if target.points.dtype == np.float32 else 'double'
             suffix = f"{dtype_str}{target.dims}d"
-        else:  # Mesh
+        elif target_type_name == 'Mesh':
             # Mesh: suffix is "intfloat32d" or "int64double43d"
             faces_dtype = target.faces.dtype
             points_dtype = target.points.dtype
@@ -107,6 +107,14 @@ def ray_cast(ray: Any, target: Any):
             index_str = 'int' if faces_dtype == np.int32 else 'int64'
             real_str = 'float' if points_dtype == np.float32 else 'double'
             suffix = f"{index_str}{real_str}{ngon}{target.dims}d"
+        else:  # EdgeMesh
+            # EdgeMesh: suffix is "intfloat2d" or "int64double3d"
+            edges_dtype = target.edges.dtype
+            points_dtype = target.points.dtype
+
+            index_str = 'int' if edges_dtype == np.int32 else 'int64'
+            real_str = 'float' if points_dtype == np.float32 else 'double'
+            suffix = f"{index_str}{real_str}{target.dims}d"
 
         # Get function name from dispatch table and call C++ function
         func_name = _SPATIAL_RAY_CAST_DISPATCH[target_type_name].format(suffix)
