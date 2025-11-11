@@ -3,10 +3,10 @@ import * as THREE from "three";
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import {createSceneWithCustomConfig, SceneBundle, createBidirectionalSyncedScenes} from './utils/sceneUtils';
 import {
-    buffersToCurves, createCurvePolyObjects,
-    createMesh, CurvePolyObjects,
-    curvesToCurvePoly,
-    getMeshFromWasm
+    buffersToCurves, createCurveLineObjects, createCurvePolyObjects,
+    createMesh, CurveLineObjects, CurvePolyObjects, curvesToCurveLines,
+    curvesToCurvePoly, curvesToCurvePolyOpts,
+    getMeshFromWasm, updateCurveLineResolution, createBasicCurveLineObjects, updateBasicCurveLines, createTestLines
 } from "@/utils/utlis";
 
 
@@ -17,7 +17,9 @@ export class TestClassThreejs {
     private readonly renderer: THREE.WebGLRenderer;
     private readonly sceneBundle1: SceneBundle;
     private meshes = new Map<number, THREE.Mesh>()
-    private curveMesh: CurvePolyObjects;
+    private curveMesh?: CurvePolyObjects;
+    private curveObjects: CurveLineObjects | any;
+    private useBasicLines = false; // Set to true to use basic LineSegments for debugging
 
     // Second renderer (secondary scene)
     private readonly renderer2?: THREE.WebGLRenderer;
@@ -32,7 +34,8 @@ export class TestClassThreejs {
         this.wasmInstance = wasmInstance;
 
         // Setup first renderer
-        this.renderer = new THREE.WebGLRenderer();
+        this.renderer = new THREE.WebGLRenderer({ antialias: true } );
+        this.renderer.setPixelRatio( window.devicePixelRatio );
         const rect = container.getBoundingClientRect();
         this.renderer.setSize(rect.width, rect.height);
         this.renderer.shadowMap.enabled = true;
@@ -43,7 +46,8 @@ export class TestClassThreejs {
 
         // Setup second renderer if container2 is provided
         if (container2) {
-            this.renderer2 = new THREE.WebGLRenderer();
+            this.renderer2 = new THREE.WebGLRenderer({ antialias: true } );
+            this.renderer2.setPixelRatio( window.devicePixelRatio );
             const rect2 = container2.getBoundingClientRect();
             this.renderer2.setSize(rect2.width, rect2.height);
             this.renderer2.shadowMap.enabled = true;
@@ -89,6 +93,10 @@ export class TestClassThreejs {
             this.renderer.setSize(rect.width, rect.height);
             this.sceneBundle1.camera.aspect = rect.width / rect.height;
             this.sceneBundle1.camera.updateProjectionMatrix();
+            // Update LineMaterial resolution when renderer size changes (only for LineSegments2)
+            if (!this.useBasicLines) {
+                updateCurveLineResolution(this.curveObjects, this.renderer);
+            }
             this.sceneBundle1.controls.update();
             this.renderer.render(this.sceneBundle1.scene, this.sceneBundle1.camera);
 
@@ -175,15 +183,25 @@ export class TestClassThreejs {
             this.sceneBundle1.scene.add(mesh);
         }
 
-        this.curveMesh = createCurvePolyObjects({
-            radius: 0.3,
-            radialSegments: 12,
-            tubeColor: 0x0000ff,
-            pointColor: 0xff00ff,
-            pointPixelSize: 2,
-        });
-        // this.sceneBundle1.scene.add(this.curveMesh.curve_poly);
-        this.sceneBundle1.scene.add(this.curveMesh.points);
+        const opts: curvesToCurvePolyOpts = {
+            tubeColor: 0x00ff88,    // Green lines
+            pointColor: 0xff0000,   // Red points
+            pointPixelSize: 3.0,
+            lineWidth: 10
+        };
+
+        if (this.useBasicLines) {
+            // Use basic LineSegments for compatibility
+            this.curveObjects = createBasicCurveLineObjects(opts);
+            console.log('Using basic LineSegments for curve rendering');
+        } else {
+            this.curveObjects = createCurveLineObjects(opts);
+            // Update resolution for LineMaterial
+            updateCurveLineResolution(this.curveObjects, this.renderer);
+            console.log('Using LineSegments2 for curve rendering');
+        }
+        this.sceneBundle1.scene.add(this.curveObjects.curve_lines);
+
 
         if(this.sceneBundle2 && this.renderer2) {
             const mesh = createMesh();
@@ -206,16 +224,16 @@ export class TestClassThreejs {
         }
 
         const cO = this.wasmInstance.GetCurveMesh()
-        if(cO && cO.polydataUpdated) {
+        if(cO && cO.polydata_updated) {
             const points = cO.GetCurvePoints();
             const ids = cO.GetCurveIds();
             const offsets = cO.GetCurveOffsets();
-            const curves = buffersToCurves(points, ids, offsets);
-            curvesToCurvePoly(curves, this.curveMesh, {
-                radius: 0.3,
-                radialSegments: 12,
-                pointsOnly: true,
-            });
+            const lines = buffersToCurves(points, ids, offsets);
+            if (this.useBasicLines) {
+                updateBasicCurveLines(lines, this.curveObjects, {pointsOnly: false});
+            } else {
+                curvesToCurveLines(lines, this.curveObjects, {pointsOnly: false});
+            }
         }
 
         if (this.renderer2 && this.sceneBundle2) {
@@ -232,7 +250,7 @@ export class TestClassThreejs {
     // TODO SetMode --> mode will switch the function in OnMouseMove
     // mode will also handle the layout and mesh views in JS
 
-    public getAverageBooleanTime(){
+    public getAverageTime(){
         return this.wasmInstance.GetAverageTime();
     }
 

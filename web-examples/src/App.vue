@@ -25,8 +25,8 @@ const loadThreejs = async () => {
   if(el && wasmInstance) {
     // Load data to wasm
     // const path = "zan0.stl"
-    // const path = "dragon-250k.stl"
-    const path = "Stanford_Bunny.stl"
+    const path = "dragon-250k.stl"
+    // const path = "Stanford_Bunny.stl"
     const response = await fetch(path);
     const aBuff = await response.arrayBuffer();
     const intArr = new Int8Array(aBuff);
@@ -39,7 +39,7 @@ const loadThreejs = async () => {
 const avgTime = ref("0");
 const getAvgTime = () => {
   if(testObjThreejs) {
-    avgTime.value = testObjThreejs.getAverageBooleanTime().toFixed(2);
+    avgTime.value = testObjThreejs.getAverageTime().toFixed(2);
   }
   return 0;
 }

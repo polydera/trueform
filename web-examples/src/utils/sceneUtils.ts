@@ -189,16 +189,16 @@ export function synchronizeOrbitControls(primaryControls: OrbitControls, seconda
     const syncCameras = () => {
         const primaryCamera = primaryControls.object as THREE.PerspectiveCamera;
         const secondaryCamera = secondaryControls.object as THREE.PerspectiveCamera;
-
+        
         // Copy position
         secondaryCamera.position.copy(primaryCamera.position);
-
+        
         // Copy rotation/orientation
         secondaryCamera.quaternion.copy(primaryCamera.quaternion);
-
+        
         // Copy target (look at point)
         secondaryControls.target.copy(primaryControls.target);
-
+        
         // Update matrices
         secondaryCamera.updateMatrixWorld();
         secondaryControls.update();
@@ -206,12 +206,12 @@ export function synchronizeOrbitControls(primaryControls: OrbitControls, seconda
 
     // Listen to primary controls changes and sync to secondary
     primaryControls.addEventListener('change', syncCameras);
-
+    
     // Also sync on start and end events for smooth interaction
     primaryControls.addEventListener('start', () => {
         syncCameras();
     });
-
+    
     primaryControls.addEventListener('end', () => {
         syncCameras();
     });
@@ -232,10 +232,10 @@ export function createSynchronizedScenes(
     // Create both scenes
     const sceneBundle1 = createScene(renderer1, config1);
     const sceneBundle2 = createScene(renderer2, config2);
-
+    
     // Synchronize the orbit controls (renderer1 is primary)
     synchronizeOrbitControls(sceneBundle1.controls, sceneBundle2.controls);
-
+    
     return { sceneBundle1, sceneBundle2 };
 }
 
@@ -252,49 +252,48 @@ export function createBidirectionalSyncedScenes(
     // Create both scenes
     const sceneBundle1 = createScene(renderer1, config1);
     const sceneBundle2 = createScene(renderer2, config2);
-
+    
     let isSyncing = false; // Prevent infinite loops
-
+    
     // Function to sync from source to target
     const syncControls = (sourceControls: OrbitControls, targetControls: OrbitControls) => {
         if (isSyncing) return;
         isSyncing = true;
-
+        
         const sourceCamera = sourceControls.object as THREE.PerspectiveCamera;
         const targetCamera = targetControls.object as THREE.PerspectiveCamera;
-
+        
         // Copy camera parameters
         targetCamera.position.copy(sourceCamera.position);
         targetCamera.quaternion.copy(sourceCamera.quaternion);
         targetControls.target.copy(sourceControls.target);
-
+        
         // Update matrices
         targetCamera.updateMatrixWorld();
         targetControls.update();
-
+        
         isSyncing = false;
     };
-
+    
     // Setup bidirectional sync
     const setupControlsSync = (controls1: OrbitControls, controls2: OrbitControls) => {
         const syncEvents = ['change', 'start', 'end'];
-
+        
         syncEvents.forEach(eventType => {
             controls1.addEventListener(eventType, () => {
                 syncControls(controls1, controls2);
             });
-
+            
             controls2.addEventListener(eventType, () => {
                 syncControls(controls2, controls1);
             });
         });
     };
-
+    
     setupControlsSync(sceneBundle1.controls, sceneBundle2.controls);
-
+    
     // Initial sync (use sceneBundle1 as initial source)
     syncControls(sceneBundle1.controls, sceneBundle2.controls);
-
+    
     return { sceneBundle1, sceneBundle2 };
 }
-

@@ -32,23 +32,23 @@ public:
         polydata_updated = true;
     }
 
-    auto GetPoints() -> emscripten::val {
+    auto get_points() -> emscripten::val {
         polydata_updated = false;
         return emscripten::val(emscripten::typed_memory_view(poly_object.points_buffer().data_buffer().size(), poly_object.points_buffer().data_buffer().begin()));
     }
-    auto GetPolys() -> emscripten::val {
+    auto get_polys() -> emscripten::val {
         return emscripten::val(emscripten::typed_memory_view(poly_object.faces_buffer().data_buffer().size(), poly_object.faces_buffer().data_buffer().begin()));
     }
 
-    auto GetCurvePoints() -> emscripten::val {
+    auto get_curve_points() -> emscripten::val {
         polydata_updated = false;
         return emscripten::val(emscripten::typed_memory_view(curves_object.points_buffer().data_buffer().size(), curves_object.points_buffer().data_buffer().begin()));
     }
-    auto GetCurveIds() -> emscripten::val {
+    auto get_curve_ids() -> emscripten::val {
         polydata_updated = false;
         return emscripten::val(emscripten::typed_memory_view(curves_object.paths_buffer().data_buffer().size(), curves_object.paths_buffer().data_buffer().begin()));
     }
-    auto GetCurveOffsets() -> emscripten::val {
+    auto get_curve_offsets() -> emscripten::val {
         polydata_updated = false;
         return emscripten::val(emscripten::typed_memory_view(curves_object.paths_buffer().offsets_buffer().size(), curves_object.paths_buffer().offsets_buffer().begin()));
     }

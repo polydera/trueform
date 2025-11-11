@@ -15,8 +15,8 @@ importers:
         specifier: ^3.3.2
         version: 3.3.3
       three:
-        specifier: 0.157.0
-        version: 0.157.0
+        specifier: ^0.181.1
+        version: 0.181.1
       vue:
         specifier: ^3.5.22
         version: 3.5.23
@@ -823,8 +823,8 @@ packages:
     resolution: {integrity: sha512-zWPTX96LVsA/eVYnqOM2+ofcdPqdS1dAF1LN4TS2/MWuUpfitd9ctTa87wt4xrYnZnkLtS69xpBdSxVBP5Rm6w==}
     engines: {node: '>=16'}
 
-  three@0.157.0:
-    resolution: {integrity: sha512-CeAwQrf4x3z0/e+MC4F+nXLW5t0gh3pw+L6CCBqpHvOq3bGYIgRYub7Pv0j/9wR+d++OiEglyZzWyuSYbwWGOA==}
+  three@0.181.1:
+    resolution: {integrity: sha512-bz9xZUQMw3pJbjKy7roiwXWgAp+oVUa+4k5o0oBAQ+IFJuru1xzvtk63h6k72XZanXS/SgoEhV6927Vgazyq2w==}
 
   tinyglobby@0.2.15:
     resolution: {integrity: sha512-j2Zq4NyQYG5XMST4cbs02Ak8iJUdxRM0XI5QyxXuZOzKOINmWurp3smXu3y5wDcJrptwpSjgXHzIQxR0omXljQ==}
@@ -1689,7 +1689,7 @@ snapshots:
     dependencies:
       copy-anything: 4.0.5
 
-  three@0.157.0: {}
+  three@0.181.1: {}
 
   tinyglobby@0.2.15:
     dependencies:
