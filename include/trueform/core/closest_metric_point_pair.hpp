@@ -260,27 +260,27 @@ auto closest_metric_point_pair(const tf::polygon<Dims, Policy0> &poly_in,
     auto c_pt = tf::closest_point_on_triangle(poly_in, pt);
     return tf::make_metric_point_pair((c_pt - pt).length2(), c_pt, pt);
   } else {
-    const auto &poly = tf::tag_plane(poly_in);
-    auto d = tf::dot(poly.plane().normal, pt) + poly.plane().d;
-    auto c_pt = pt - d * poly.plane().normal;
-    if (std::abs(d) < tf::epsilon<decltype(d)> &&
-        tf::contains_coplanar_point(poly, c_pt))
-      return tf::make_metric_point_pair(d * d, c_pt, pt);
-    std::size_t size = poly.size();
-    std::size_t prev = size - 1;
-    auto d2 = d * d;
-    for (std::size_t i = 0; i < size; prev = i++) {
-      auto line = tf::make_line_between_points(poly[prev], poly[i]);
-      auto t = tf::closest_point_parametric(line, pt);
-      t = std::clamp(t, decltype(t)(0), decltype(t)(1));
-      auto tmp_c_pt = line.origin + t * line.direction;
-      auto tmp_d2 = (tmp_c_pt - pt).length2();
-      if (tmp_d2 < d2) {
-        d2 = tmp_d2;
-        c_pt = tmp_c_pt;
+    if (poly_in.size() == 3) {
+      auto c_pt = tf::closest_point_on_triangle(poly_in, pt);
+      return tf::make_metric_point_pair((c_pt - pt).length2(), c_pt, pt);
+    } else {
+      const auto &poly = tf::tag_plane(poly_in);
+      auto d = tf::dot(poly.plane().normal, pt) + poly.plane().d;
+      auto c_pt = pt - d * poly.plane().normal;
+      auto res = tf::make_metric_point_pair(d * d, c_pt, pt);
+      if (std::abs(d) < tf::epsilon<decltype(d)> &&
+          tf::contains_coplanar_point(poly, c_pt))
+        return res;
+      res.metric = std::numeric_limits<decltype(d)>::max();
+      std::size_t size = poly.size();
+      std::size_t prev = size - 1;
+      for (std::size_t i = 0; i < size; prev = i++) {
+        res = min(
+            res, closest_metric_point_pair(
+                     tf::make_segment_between_points(poly[prev], poly[i]), pt));
       }
+      return res;
     }
-    return tf::make_metric_point_pair(d2, c_pt, pt);
   }
 }
 
@@ -294,25 +294,27 @@ auto closest_metric_point_pair(const tf::polygon<2, Policy0> &poly,
     auto c_pt = tf::closest_point_on_triangle(poly, pt);
     return tf::make_metric_point_pair((c_pt - pt).length2(), c_pt, pt);
   } else {
-    tf::coordinate_type<Policy0, Policy1> d2 =
-        std::numeric_limits<tf::coordinate_type<Policy0, Policy1>>::max();
-    tf::point<decltype(d2), 2> c_pt = pt;
-    if (tf::contains_coplanar_point(poly, pt))
-      return tf::make_metric_point_pair(decltype(d2)(0), c_pt, pt);
-    std::size_t size = poly.size();
-    std::size_t prev = size - 1;
-    for (std::size_t i = 0; i < size; prev = i++) {
-      auto line = tf::make_line_between_points(poly[prev], poly[i]);
-      auto t = tf::closest_point_parametric(line, pt);
-      t = std::clamp(t, decltype(t)(0), decltype(t)(1));
-      auto tmp_c_pt = line.origin + t * line.direction;
-      auto tmp_d2 = (tmp_c_pt - pt).length2();
-      if (tmp_d2 < d2) {
-        d2 = tmp_d2;
-        c_pt = tmp_c_pt;
+    if (poly.size() == 3) {
+
+      auto c_pt = tf::closest_point_on_triangle(poly, pt);
+      return tf::make_metric_point_pair((c_pt - pt).length2(), c_pt, pt);
+    } else {
+      tf::coordinate_type<Policy0, Policy1> d2 =
+          std::numeric_limits<tf::coordinate_type<Policy0, Policy1>>::max();
+      tf::point<decltype(d2), 2> c_pt = pt;
+      auto res = tf::make_metric_point_pair(decltype(d2)(0), c_pt, pt);
+      if (tf::contains_coplanar_point(poly, pt))
+        return res;
+      res.metric = d2;
+      std::size_t size = poly.size();
+      std::size_t prev = size - 1;
+      for (std::size_t i = 0; i < size; prev = i++) {
+        res = min(
+            res, closest_metric_point_pair(
+                     tf::make_segment_between_points(poly[prev], poly[i]), pt));
       }
+      return res;
     }
-    return tf::make_metric_point_pair(d2, c_pt, pt);
   }
 }
 
