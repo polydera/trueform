@@ -66,6 +66,9 @@ target_compile_options(native PRIVATE
   -pthread
   -sSHARED_MEMORY=1
   -sUSE_PTHREADS=1
+  -Wall
+  -Wextra
+  -Wpedantic
 )
 target_link_options(native PRIVATE
   -O3

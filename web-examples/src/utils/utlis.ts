@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { MeshObject } from '../webAssembly/dist/native.js'
+import { mesh_object } from '../webAssembly/dist/native.js'
 
 export function createMesh(){
     const material = new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide, flatShading: true });
@@ -30,8 +30,8 @@ export function createPoints(){
     return pointsObj;
 }
 
-export function getMeshFromWasm(wO: MeshObject, mesh: THREE.Mesh, pointsOnly?: boolean) {
-    const pU = wO.polydataUpdated;
+export function getMeshFromWasm(wO: mesh_object, mesh: THREE.Mesh, pointsOnly?: boolean) {
+    const pU = wO.polydata_updated;
     if(pU) {
         const geometry = mesh.geometry;
         geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(wO.GetPoints()), 3));
@@ -39,8 +39,8 @@ export function getMeshFromWasm(wO: MeshObject, mesh: THREE.Mesh, pointsOnly?: b
     }
     getMatrixFromWasm(wO, mesh)
 }
-export function getLineFromWasm(wO: MeshObject, mesh: THREE.Points) {
-    const pU = wO.polydataUpdated;
+export function getLineFromWasm(wO: mesh_object, mesh: THREE.Points) {
+    const pU = wO.polydata_updated;
     if(pU) {
         const geometry = mesh.geometry;
         geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(wO.GetCurvePoints()), 3));
@@ -48,8 +48,8 @@ export function getLineFromWasm(wO: MeshObject, mesh: THREE.Points) {
     }
 }
 
-function getMatrixFromWasm(wO: MeshObject, dstGeometry: THREE.Mesh | THREE.Line) {
-    const mU = wO.matrixUpdated;
+function getMatrixFromWasm(wO: mesh_object, dstGeometry: THREE.Mesh | THREE.Line) {
+    const mU = wO.matrix_updated;
     if(mU) {
         const matrix = new Float32Array(wO.matrix);
         const threeMatrix = new THREE.Matrix4();

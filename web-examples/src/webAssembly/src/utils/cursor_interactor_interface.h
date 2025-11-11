@@ -9,22 +9,17 @@
 // Forward declarations instead of including boolean_web.h
 class tf_bridge_interface{
 public:
-    tf_bridge_interface() = default;
-    virtual ~tf_bridge_interface() = default;
-
-
-public:
-  auto push_back(std::unique_ptr<MeshObject> mesh) -> void {
+  auto push_back(std::unique_ptr<mesh_object> mesh) -> void {
     map[mesh.get()] = actors.size();
-    polys.push_back(&mesh->polyObject);
+    polys.push_back(&mesh->poly_object);
     frames.emplace_back();
     frames.back().fill(mesh->matrix.data());
     trees.emplace_back();
-    trees.back().build(mesh->polyObject.polygons(), tf::config_tree(4, 4));
+    trees.back().build(mesh->poly_object.polygons(), tf::config_tree(4, 4));
     face_memberships.emplace_back();
-    face_memberships.back().build(mesh->polyObject.polygons());
+    face_memberships.back().build(mesh->poly_object.polygons());
     manifold_edge_links.emplace_back();
-    manifold_edge_links.back().build(mesh->polyObject.faces(),
+    manifold_edge_links.back().build(mesh->poly_object.faces(),
                                      face_memberships.back());
     actors.push_back(std::move(mesh));
   }
@@ -32,10 +27,10 @@ public:
   auto get_actors() const -> const auto & { return actors; }
 
   auto ray_hit(tf::ray<float, 3> ray)
-      -> std::pair<MeshObject *, tf::point<float, 3>> {
+      -> std::pair<mesh_object *, tf::point<float, 3>> {
     tf::tree_ray_info<int, tf::ray_cast_info<float>> result;
     tf::ray_config<float> config{};
-    MeshObject *picked = nullptr;
+    mesh_object *picked = nullptr;
 
     for (const auto &[frame, poly, actor, tree] : tf::zip(frames, polys, actors, trees)) {
       auto form = tf::make_form(frame, tree, poly->polygons());
@@ -49,18 +44,18 @@ public:
     return std::make_pair(picked, ray.origin + result.info.t * ray.direction);
   }
 
-  auto update_frame(MeshObject *actor) -> void {
+  auto update_frame(mesh_object *actor) -> void {
     auto id = map[actor];
     frames[id].fill(actors[id]->matrix.data());
-    actors[id]->matrixUpdated = true;
+    actors[id]->matrix_updated = true;
   }
 
-  auto get_actors() -> std::vector<std::unique_ptr<MeshObject>> & { return actors; }
+  auto get_actors() -> std::vector<std::unique_ptr<mesh_object>> & { return actors; }
 
 protected:
-  std::map<MeshObject *, int> map;
+  std::map<mesh_object *, int> map;
   std::vector<tf::polygons_buffer<int, float, 3, 3> *> polys;
-  std::vector<std::unique_ptr<MeshObject>> actors;
+  std::vector<std::unique_ptr<mesh_object>> actors;
   std::vector<tf::frame<double, 3>> frames;
   std::vector<tf::tree<int, float, 3>> trees;
   std::vector<tf::face_membership<int>> face_memberships;
@@ -69,9 +64,7 @@ protected:
 
 class cursor_interactor_interface {
 public:
-    cursor_interactor_interface() {
-        bridge = std::make_unique<tf_bridge_interface>();
-    };
+	cursor_interactor_interface(std::unique_ptr<tf_bridge_interface> bridge) : bridge(std::move(bridge)) {};
     virtual ~cursor_interactor_interface() = default;
 
 protected:
@@ -82,7 +75,7 @@ protected:
     tf::plane<float, 3> moving_plane;
     tf::point<float, 3> last_point;
     tf::vector<float, 3> dx;
-    MeshObject *selected_actor = nullptr;
+    mesh_object *selected_actor = nullptr;
     bool selected_mode = false;
     bool camera_mode = false;
 
@@ -109,7 +102,7 @@ protected:
         moving_plane = tf::make_plane(normal, origin);
     }
 
-    auto move_selected(MeshObject *selected_actor) {
+    auto move_selected(mesh_object *selected_actor) {
         for (int i = 0; i < 3; ++i)
             selected_actor->matrix[i*4 + 3] += dx[i];
         bridge->update_frame(selected_actor);
@@ -117,15 +110,15 @@ protected:
 public:
     float mTime = 0.f;
 
-    auto get_actors() -> std::vector<std::unique_ptr<MeshObject>> & {
+    auto get_actors() -> std::vector<std::unique_ptr<mesh_object>> & {
         return bridge->get_actors();
     }
 
-    auto push_back(std::unique_ptr<MeshObject> mesh) -> void {
+    auto push_back(std::unique_ptr<mesh_object> mesh) -> void {
         bridge->push_back(std::move(mesh));
     }
 
-    bool OnLeftButtonDown() {
+    auto OnLeftButtonDown() -> bool {
         if (selected_actor) {
             selected_mode = true;
             return true;
@@ -135,7 +128,7 @@ public:
         return false;
     }
 
-    bool OnLeftButtonUp() {
+    auto OnLeftButtonUp() -> bool {
         if (selected_mode) {
             selected_mode = false;
             return true;
@@ -145,7 +138,7 @@ public:
         return false;
     }
 
-    virtual bool OnMouseMove(std::array<float, 3> origin, std::array<float, 3> direction, std::array<float, 3> cameraPosition, std::array<float, 3> cameraFocalPoint) {
+    virtual auto OnMouseMove(std::array<float, 3> origin, std::array<float, 3> direction, std::array<float, 3> cameraPosition, std::array<float, 3> cameraFocalPoint) -> bool {
         tf::ray<float, 3> ray{origin, direction};
         if (!selected_mode && !camera_mode) {
             auto [actor, point] = bridge->ray_hit(ray);
@@ -167,7 +160,7 @@ public:
         return false;
     }
 
-    virtual bool OnKeyPress(std::string key) {
+    virtual auto OnKeyPress(std::string) -> bool {
         return false;
     }
 };

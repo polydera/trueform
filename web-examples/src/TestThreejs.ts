@@ -1,13 +1,11 @@
 import { MainModule } from './webAssembly/dist/native.js'
 import * as THREE from "three";
 import Stats from 'three/examples/jsm/libs/stats.module.js';
-import {createSceneWithCustomConfig, fitCameraToObject, SceneBundle} from './utils/sceneUtils';
+import {createSceneWithCustomConfig, SceneBundle, createBidirectionalSyncedScenes} from './utils/sceneUtils';
 import {
     buffersToCurves, createCurvePolyObjects,
-    createLine,
-    createMesh, createPoints, CurvePolyObjects,
+    createMesh, CurvePolyObjects,
     curvesToCurvePoly,
-    getLineFromWasm,
     getMeshFromWasm
 } from "@/utils/utlis";
 
@@ -55,12 +53,32 @@ export class TestClassThreejs {
         }
 
         //////////////////////////// Scene Setup Using Utility Functions //////////////////////////////////////
-        // Create first scene with camera, controls, and lighting
-        this.sceneBundle1 = createSceneWithCustomConfig(this.renderer, 1);
-
-        // Create second scene if second renderer exists
+        // Create synchronized scenes if we have both renderers
         if (this.renderer2) {
-            this.sceneBundle2 = createSceneWithCustomConfig(this.renderer2, 2);
+            const config1 = {
+                backgroundColor: 0x222222,
+                cameraPosition: { x: 25, y: 25, z: 25 },
+                cameraLookAt: { x: 0, y: 0, z: 0 },
+                ambientLightIntensity: 0.4,
+                directionalLightIntensity: 0.8,
+                enableShadows: true
+            };
+            const config2 = {
+                backgroundColor: 0x333333,
+                cameraPosition: { x: 25, y: 25, z: 25 },
+                cameraLookAt: { x: 0, y: 0, z: 0 },
+                ambientLightIntensity: 0.4,
+                directionalLightIntensity: 0.8,
+                enableShadows: true
+            };
+
+            // Use bidirectional synchronized scenes (interaction on either renderer affects both)
+            const { sceneBundle1, sceneBundle2 } = createBidirectionalSyncedScenes(this.renderer, this.renderer2, config1, config2);
+            this.sceneBundle1 = sceneBundle1;
+            this.sceneBundle2 = sceneBundle2;
+        } else {
+            // Create first scene with camera, controls, and lighting (single renderer mode)
+            this.sceneBundle1 = createSceneWithCustomConfig(this.renderer, 1);
         }
 
         this.animate();
@@ -142,7 +160,7 @@ export class TestClassThreejs {
             this.wasmInstance.OnKeyPress(event.key)
             this.updateMeshes()
         }
-        const interceptKeyUpEvent = (event: KeyboardEvent) => {
+        const interceptKeyUpEvent = (_event: KeyboardEvent) => {
             this.keyPressed = false;
         }
         window.addEventListener('keydown', interceptKeyDownEvent);
@@ -210,6 +228,9 @@ export class TestClassThreejs {
             // if(m2 && this.sceneBundle2) fitCameraToObject(this.sceneBundle2.camera, m2, 1);
         }
     }
+
+    // TODO SetMode --> mode will switch the function in OnMouseMove
+    // mode will also handle the layout and mesh views in JS
 
     public getAverageBooleanTime(){
         return this.wasmInstance.GetAverageTime();

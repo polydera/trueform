@@ -20,9 +20,6 @@
 
 class tf_bridge : public tf_bridge_interface {
 public:
-    tf_bridge() = default;
-    ~tf_bridge() override = default;
-public:
   auto compute_boolean() {
     auto form0 = tf::make_form(frames[0], trees[0], polys[0]->polygons()) //
                  | tf::tag(face_memberships[0])                         //
@@ -38,29 +35,26 @@ public:
 
 class cursor_interactor : public cursor_interactor_interface {
 public:
-  cursor_interactor() {
-    bridge = std::make_unique<tf_bridge>();
-  };
-  ~cursor_interactor() override = default;
+  cursor_interactor() : cursor_interactor_interface(std::make_unique<tf_bridge>()) {}
 
 public:
-  std::unique_ptr<MeshObject> result_mesh = std::make_unique<MeshObject>();
-  std::unique_ptr<MeshObject> curve_mesh = std::make_unique<MeshObject>();
+  std::unique_ptr<mesh_object> result_mesh = std::make_unique<mesh_object>();
+  std::unique_ptr<mesh_object> curve_mesh = std::make_unique<mesh_object>();
 
 private:
   auto compute_curves() {
     tf::tick();
-    if(auto pB = dynamic_cast<tf_bridge*>(bridge.get())) {
+    if(auto pB = static_cast<tf_bridge*>(bridge.get())) {
       auto [res_mesh, labels, curves] = pB->compute_boolean();
       add_time(tf::tock());
       (void)labels;
-      result_mesh->setPolydata(std::move(res_mesh));
-      curve_mesh->setCurvesObject(std::move(curves));
+      result_mesh->set_polydata(std::move(res_mesh));
+      curve_mesh->set_curves_object(std::move(curves));
     }
   }
 
   auto randomize_rotations() {
-    for (std::unique_ptr<MeshObject>& actor : bridge->get_actors()) {
+    for (std::unique_ptr<mesh_object>& actor : bridge->get_actors()) {
       tf::vector<double, 3> at{actor->matrix[3], actor->matrix[7],
                                actor->matrix[11]};
       auto tr = tf::random_transformation(at);
@@ -72,7 +66,7 @@ private:
   }
 
 public:
-  bool OnMouseMove(std::array<float, 3> origin, std::array<float, 3> direction, std::array<float, 3> cameraPosition, std::array<float, 3> cameraFocalPoint) override {
+  auto OnMouseMove(std::array<float, 3> origin, std::array<float, 3> direction, std::array<float, 3> cameraPosition, std::array<float, 3> cameraFocalPoint) -> bool override {
     tf::ray<float, 3> ray{origin, direction};
     if (!selected_mode && !camera_mode) {
       auto [actor, point] = bridge->ray_hit(ray);
@@ -95,7 +89,7 @@ public:
     return false;
   }
 
-  bool OnKeyPress(std::string key) override {
+  auto OnKeyPress(std::string key) -> bool override  {
     if (key == "n") {
       randomize_rotations();
       compute_curves();
@@ -119,14 +113,14 @@ int run_main(std::string path) {
   interactor = std::make_unique<cursor_interactor>();
 
   utils::center_and_scale_p(poly);
-  auto actor = std::make_unique<MeshObject>();
-  actor->polyObject = std::move(poly);
+  auto actor = std::make_unique<mesh_object>();
+  actor->poly_object = std::move(poly);
   utils::set_at(actor->matrix, {0 * 15.f, 0.f, 0.f});
   interactor->push_back(std::move(actor));
 
   utils::center_and_scale_p(poly2);
-  auto actor2 = std::make_unique<MeshObject>();
-  actor2->polyObject = std::move(poly2);
+  auto actor2 = std::make_unique<mesh_object>();
+  actor2->poly_object = std::move(poly2);
   utils::set_at(actor2->matrix, {1 * 15.f, 0.f, 0.f});
   interactor->push_back(std::move(actor2));
   return 0;

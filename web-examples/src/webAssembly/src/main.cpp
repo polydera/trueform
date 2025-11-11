@@ -10,25 +10,31 @@
 auto OnLeftButtonUp() {
     return interactor->OnLeftButtonUp();
 }
+
 auto OnLeftButtonDown() {
     return interactor->OnLeftButtonDown();
 }
+
 auto OnMouseMove(std::array<float, 3> origin, std::array<float, 3> direction, std::array<float, 3> cameraPosition, std::array<float, 3> cameraFocalPoint) {
     return interactor->OnMouseMove(origin, direction, cameraPosition, cameraFocalPoint);
 }
+
 auto OnKeyPress(std::string key) {
     return interactor->OnKeyPress(key);
 }
-auto GetMeshOnIdx(int i) -> MeshObject * {
+
+auto GetMeshOnIdx(int i) -> mesh_object * {
     return interactor->get_actors()[i].get();
 }
-auto GetResultMesh() -> MeshObject * {
+
+auto GetResultMesh() -> mesh_object * {
     if(auto pI = dynamic_cast<cursor_interactor*>(interactor.get())) {
       return pI->result_mesh.get();
     }
     return nullptr;
 }
-auto GetCurveMesh() -> MeshObject * {
+
+auto GetCurveMesh() -> mesh_object * {
     if(auto pI = dynamic_cast<cursor_interactor*>(interactor.get())) {
         return pI->curve_mesh.get();
     }
@@ -79,16 +85,16 @@ EMSCRIPTEN_BINDINGS(ArrayDouble16) {
 }
 
 
-EMSCRIPTEN_BINDINGS(MeshObject) {
-    emscripten::class_<MeshObject>("MeshObject")
-        .smart_ptr<std::shared_ptr<MeshObject>>("MeshObject")
-        .function("GetPoints", &MeshObject::GetPoints)
-        .function("GetPolys", &MeshObject::GetPolys)
-        .function("GetCurvePoints", &MeshObject::GetCurvePoints)
-        .function("GetCurveIds", &MeshObject::GetCurveIds)
-        .function("GetCurveOffsets", &MeshObject::GetCurveOffsets)
-        .property("matrix", &MeshObject::matrix)
-        .property("matrixUpdated", &MeshObject::matrixUpdated)
-        .property("polydataUpdated", &MeshObject::polydataUpdated)
+EMSCRIPTEN_BINDINGS(mesh_object) {
+    emscripten::class_<mesh_object>("mesh_object")
+        .smart_ptr<std::shared_ptr<mesh_object>>("mesh_object")
+        .function("GetPoints", &mesh_object::GetPoints)
+        .function("GetPolys", &mesh_object::GetPolys)
+        .function("GetCurvePoints", &mesh_object::GetCurvePoints)
+        .function("GetCurveIds", &mesh_object::GetCurveIds)
+        .function("GetCurveOffsets", &mesh_object::GetCurveOffsets)
+        .property("matrix", &mesh_object::matrix)
+        .property("matrix_updated", &mesh_object::matrix_updated)
+        .property("polydata_updated", &mesh_object::polydata_updated)
     ;
 }
