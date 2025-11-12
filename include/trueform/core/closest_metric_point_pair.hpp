@@ -295,7 +295,6 @@ auto closest_metric_point_pair(const tf::polygon<2, Policy0> &poly,
     return tf::make_metric_point_pair((c_pt - pt).length2(), c_pt, pt);
   } else {
     if (poly.size() == 3) {
-
       auto c_pt = tf::closest_point_on_triangle(poly, pt);
       return tf::make_metric_point_pair((c_pt - pt).length2(), c_pt, pt);
     } else {

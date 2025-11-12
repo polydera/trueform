@@ -746,25 +746,27 @@ auto intersects(const tf::segment<Dims, Policy0> &seg,
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>
-auto intersects(const tf::plane_like<Dims, Policy0> &plane,
-                const tf::polygon<Dims, Policy1> &poly) -> bool {
-  std::size_t size = poly.size();
-  std::size_t prev = size - 1;
-  for (std::size_t i = 0; i < size; prev = i++) {
-    auto res = tf::ray_cast(
-        tf::make_ray_between_points(poly[prev], poly[i]), plane,
-        tf::ray_config<tf::coordinate_type<Policy0, Policy1>>{0, 1});
-    if (res.status == tf::intersect_status::intersection ||
-        res.status == tf::intersect_status::coplanar)
+auto intersects(const tf::polygon<Dims, Policy0> &poly,
+                const tf::plane_like<Dims, Policy1> &plane) {
+  bool positive = false;
+  bool negative = false;
+  for (const auto &pt : poly) {
+    auto d = tf::dot(plane.normal, pt) + plane.d;
+    if (std::abs(d) < tf::epsilon<decltype(d)>)
+      return true;
+    bool test = d > 0;
+    positive |= test;
+    negative |= !test;
+    if (positive && negative)
       return true;
   }
   return false;
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>
-auto intersects(const tf::polygon<Dims, Policy0> &poly,
-                const tf::plane_like<Dims, Policy1> &plane) -> bool {
-  return intersects(plane, poly);
+auto intersects(const tf::plane_like<Dims, Policy0> &plane,
+                const tf::polygon<Dims, Policy1> &poly) -> bool {
+  return intersects(poly, plane);
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>
@@ -788,6 +790,66 @@ template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const tf::plane_like<Dims, Policy0> &plane,
                 const tf::aabb_like<Dims, Policy1> &bbox) {
   return intersects(bbox, plane);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::aabb_like<Dims, Policy0> &bbox,
+                const tf::polygon<Dims, Policy1> &poly) {
+  std::size_t size = poly.size();
+  std::size_t prev = size - 1;
+  for (std::size_t i = 0; i < size; prev = i++) {
+    if (intersects(bbox, tf::make_segment_between_points(poly[prev], poly[i])))
+      return true;
+  }
+  return false;
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::polygon<Dims, Policy0> &poly,
+                const tf::aabb_like<Dims, Policy1> &bbox) {
+  return intersects(bbox, poly);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::ray_like<Dims, Policy0> &ray,
+                const tf::aabb_like<Dims, Policy1> &bbox) -> bool {
+  return tf::ray_cast(ray, bbox);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::aabb_like<Dims, Policy0> &bbox,
+                const tf::ray_like<Dims, Policy1> &ray) {
+  return intersects(ray, bbox);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::line_like<Dims, Policy0> &line,
+                const tf::aabb_like<Dims, Policy1> &bbox) -> bool {
+  auto ray = tf::make_ray_like(line.origin, line.direction);
+  using real_t = tf::coordinate_type<Policy0, Policy1>;
+  return tf::ray_cast(ray, bbox,
+                      tf::make_ray_config(std::numeric_limits<real_t>::lowest(),
+                                          std::numeric_limits<real_t>::max()));
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::aabb_like<Dims, Policy0> &bbox,
+                const tf::line_like<Dims, Policy1> &line) {
+  return intersects(line, bbox);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::segment<Dims, Policy0> &seg,
+                const tf::aabb_like<Dims, Policy1> &bbox) -> bool {
+  auto ray = tf::make_ray_between_points(seg[0], seg[1]);
+  using real_t = tf::coordinate_type<Policy0, Policy1>;
+  return tf::ray_cast(ray, bbox, tf::make_ray_config(real_t(0), real_t(1)));
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::aabb_like<Dims, Policy0> &bbox,
+                const tf::segment<Dims, Policy1> &seg) {
+  return intersects(seg, bbox);
 }
 
 namespace core {

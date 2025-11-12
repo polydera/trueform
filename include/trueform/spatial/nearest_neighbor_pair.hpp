@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -9,7 +9,7 @@
 #include "./tree_metric_info_pair.hpp"
 
 namespace tf {
-template <typename Index, typename RealT, std::size_t Dims>
+template <typename Index0, typename Index1, typename RealT, std::size_t Dims>
 using nearest_neighbor_pair =
-    tree_metric_info_pair<Index, tf::metric_point_pair<RealT, Dims>>;
+    tree_metric_info_pair<Index0, Index1, tf::metric_point_pair<RealT, Dims>>;
 }

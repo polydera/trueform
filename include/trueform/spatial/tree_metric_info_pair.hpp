@@ -22,15 +22,14 @@ namespace tf {
 /// integer).
 /// @tparam RealT The scalar coordinate type (e.g., float or double).
 /// @tparam Dims The spatial dimension (typically 2 or 3).
-template <typename Index, typename InfoT> struct tree_metric_info_pair {
-  using index_t = Index;
-  using element_t = std::pair<Index, Index>;
+template <typename Index0, typename Index1, typename InfoT> struct tree_metric_info_pair {
+  using element_t = std::pair<Index0, Index1>;
   using info_t = InfoT;
   using real_t = decltype(std::declval<info_t>().metric);
   //
-  static constexpr Index no_id = -1;
+  static constexpr Index0 no_id = -1;
   /// @brief A pair of primitive ids
-  std::pair<Index, Index> elements{no_id, no_id};
+  element_t elements{no_id, no_id};
   /// @brief A @ref tf::closest_point_pair
   info_t info;
 
