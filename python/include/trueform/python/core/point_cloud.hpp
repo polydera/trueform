@@ -9,8 +9,13 @@
 #include <memory>
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
+#include <nanobind/stl/optional.h>
 #include <optional>
-#include <trueform/trueform.hpp>
+#include <trueform/core/points.hpp>
+#include <trueform/core/range.hpp>
+#include <trueform/core/transformation_view.hpp>
+#include <trueform/spatial/tree.hpp>
+#include <trueform/spatial/tree_config.hpp>
 
 namespace tf::py {
 

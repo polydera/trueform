@@ -14,6 +14,12 @@ auto register_spatial_module(nanobind::module_ &m) -> void {
   register_point_cloud_neighbor_search(spatial_module);
   register_mesh_neighbor_search(spatial_module);
   register_edge_mesh_neighbor_search(spatial_module);
+  register_point_cloud_neighbor_search_point_cloud(spatial_module);
+  register_edge_mesh_neighbor_search_edge_mesh(spatial_module);
+  register_edge_mesh_neighbor_search_point_cloud(spatial_module);
+  register_mesh_neighbor_search_point_cloud(spatial_module);
+  register_mesh_neighbor_search_edge_mesh(spatial_module);
+  register_mesh_neighbor_search_mesh(spatial_module);
   register_point_cloud_ray_cast(spatial_module);
   register_mesh_ray_cast(spatial_module);
   register_edge_mesh_ray_cast(spatial_module);

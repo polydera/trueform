@@ -10,9 +10,13 @@ import os
 # Add parent directory to path so we can import trueform
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import pytest
 import numpy as np
 import trueform as tf
 import tempfile
+
+# Parametrize index dtypes
+INDEX_DTYPES = [np.int32, np.int64]
 
 
 def create_simple_stl(filename):
@@ -124,27 +128,21 @@ endsolid cube
         f.write(stl_content)
 
 
-def test_read_stl_simple():
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_read_stl_simple(index_dtype):
     """Test reading a simple STL with one triangle"""
-    print("\n=== Test: Read Simple STL ===")
-
     with tempfile.TemporaryDirectory() as tmpdir:
         stl_file = os.path.join(tmpdir, "test.stl")
         create_simple_stl(stl_file)
 
-        faces, points = tf.read_stl(stl_file)
-
-        print(f"  Faces shape: {faces.shape}, dtype: {faces.dtype}")
-        print(f"  Points shape: {points.shape}, dtype: {points.dtype}")
-        print(f"  Faces:\n{faces}")
-        print(f"  Points:\n{points}")
+        faces, points = tf.read_stl(stl_file, index_dtype=index_dtype)
 
         # Check shapes
         assert faces.shape[1] == 3, "Faces should have 3 columns"
         assert points.shape[1] == 3, "Points should have 3 columns"
 
         # Check dtypes
-        assert faces.dtype == np.int32, "Faces should be int32"
+        assert faces.dtype == index_dtype, f"Faces should be {index_dtype}"
         assert points.dtype == np.float32, "Points should be float32"
 
         # Check that we have at least one face
@@ -157,23 +155,19 @@ def test_read_stl_simple():
         # Check that points are 3D
         assert points.shape[0] >= 3, "Should have at least 3 points"
 
-        print("✓ Simple STL test passed")
 
-
-def test_read_stl_cube():
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_read_stl_cube(index_dtype):
     """Test reading a cube STL"""
-    print("\n=== Test: Read Cube STL ===")
-
     with tempfile.TemporaryDirectory() as tmpdir:
         stl_file = os.path.join(tmpdir, "cube.stl")
         create_cube_stl(stl_file)
 
-        faces, points = tf.read_stl(stl_file)
+        faces, points = tf.read_stl(stl_file, index_dtype=index_dtype)
 
-        print(f"  Faces shape: {faces.shape}, dtype: {faces.dtype}")
-        print(f"  Points shape: {points.shape}, dtype: {points.dtype}")
-        print(f"  Number of faces: {faces.shape[0]}")
-        print(f"  Number of points: {points.shape[0]}")
+        # Check dtypes
+        assert faces.dtype == index_dtype, f"Faces should be {index_dtype}"
+        assert points.dtype == np.float32, "Points should be float32"
 
         # Cube has 12 triangles (2 per face, 6 faces)
         assert faces.shape[0] == 12, f"Cube should have 12 faces, got {faces.shape[0]}"
@@ -189,13 +183,10 @@ def test_read_stl_cube():
         assert np.all(points >= 0.0), "Points should be >= 0"
         assert np.all(points <= 1.0), "Points should be <= 1"
 
-        print("✓ Cube STL test passed")
 
-
-def test_read_stl_vertex_deduplication():
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_read_stl_vertex_deduplication(index_dtype):
     """Test that duplicate vertices are merged"""
-    print("\n=== Test: Vertex Deduplication ===")
-
     with tempfile.TemporaryDirectory() as tmpdir:
         stl_file = os.path.join(tmpdir, "test.stl")
         # Create STL with duplicate vertices
@@ -219,12 +210,11 @@ endsolid test
         with open(stl_file, 'w') as f:
             f.write(stl_content)
 
-        faces, points = tf.read_stl(stl_file)
+        faces, points = tf.read_stl(stl_file, index_dtype=index_dtype)
 
-        print(f"  Faces shape: {faces.shape}")
-        print(f"  Points shape: {points.shape}")
-        print(f"  Faces:\n{faces}")
-        print(f"  Points:\n{points}")
+        # Check dtypes
+        assert faces.dtype == index_dtype, f"Faces should be {index_dtype}"
+        assert points.dtype == np.float32, "Points should be float32"
 
         # Two triangles sharing vertices should result in 4 unique points
         # (0,0,0), (1,0,0), (0,1,0), (1,1,0)
@@ -241,18 +231,15 @@ endsolid test
 
         assert shared_vertices == 2, f"Faces should share 2 vertices, found {shared_vertices}"
 
-        print("✓ Vertex deduplication test passed")
 
-
-def test_read_stl_memory_ownership():
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_read_stl_memory_ownership(index_dtype):
     """Test that numpy arrays properly own their memory"""
-    print("\n=== Test: Memory Ownership ===")
-
     with tempfile.TemporaryDirectory() as tmpdir:
         stl_file = os.path.join(tmpdir, "test.stl")
         create_simple_stl(stl_file)
 
-        faces, points = tf.read_stl(stl_file)
+        faces, points = tf.read_stl(stl_file, index_dtype=index_dtype)
 
         # Check that arrays are writable
         # Note: OWNDATA may not be set with nanobind capsules, but memory is still managed
@@ -264,25 +251,7 @@ def test_read_stl_memory_ownership():
         points[0] = [999.0, 999.0, 999.0]
         assert not np.array_equal(points[0], original_point), "Should be able to modify points"
 
-        print("✓ Memory ownership test passed")
-
 
 if __name__ == "__main__":
-    print("Testing read_stl functionality\n")
-    print("=" * 60)
-
-    try:
-        test_read_stl_simple()
-        test_read_stl_cube()
-        test_read_stl_vertex_deduplication()
-        test_read_stl_memory_ownership()
-
-        print("\n" + "=" * 60)
-        print("✓ ALL TESTS PASSED!")
-        print("=" * 60)
-
-    except Exception as e:
-        print(f"\n✗ TEST FAILED: {e}")
-        import traceback
-        traceback.print_exc()
-        exit(1)
+    # Run tests with pytest
+    sys.exit(pytest.main([__file__, "-v"]))

@@ -8,7 +8,7 @@
 #include "trueform/python/core/closest_metric_point_pair.hpp"
 #include "trueform/python/core/make_primitives.hpp"
 #include <nanobind/ndarray.h>
-#include <trueform/trueform.hpp>
+#include <trueform/core/closest_metric_point_pair.hpp>
 
 namespace tf::py {
 

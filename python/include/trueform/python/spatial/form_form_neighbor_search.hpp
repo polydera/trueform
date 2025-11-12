@@ -9,13 +9,20 @@
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
 #include <nanobind/stl/optional.h>
-#include <trueform/trueform.hpp>
+#include <nanobind/stl/pair.h>
+#include <nanobind/stl/tuple.h>
+#include <trueform/core/coordinate_dims.hpp>
+#include <trueform/core/coordinate_type.hpp>
+#include <trueform/core/frame.hpp>
+#include <trueform/core/policy/frame.hpp>
+#include <trueform/spatial/form.hpp>
+#include <trueform/spatial/neighbor_search.hpp>
 
 namespace tf::py {
 template <typename FormWrapper0, typename FormWrapper1, typename RealT>
-auto form_intersects_form(FormWrapper0 &form_wrapper0,
-                          FormWrapper1 &form_wrapper1,
-                          std::optional<RealT> radius) {
+auto form_form_neighbor_search(FormWrapper0 &form_wrapper0,
+                               FormWrapper1 &form_wrapper1,
+                               std::optional<RealT> radius) {
 
   form_wrapper0.ensure_tree();
   form_wrapper1.ensure_tree();

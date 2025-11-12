@@ -16,6 +16,18 @@ void register_mesh_neighbor_search(nanobind::module_ &m);
 
 void register_edge_mesh_neighbor_search(nanobind::module_ &m);
 
+void register_point_cloud_neighbor_search_point_cloud(nanobind::module_ &m);
+
+void register_edge_mesh_neighbor_search_edge_mesh(nanobind::module_ &m);
+
+void register_edge_mesh_neighbor_search_point_cloud(nanobind::module_ &m);
+
+void register_mesh_neighbor_search_point_cloud(nanobind::module_ &m);
+
+void register_mesh_neighbor_search_edge_mesh(nanobind::module_ &m);
+
+void register_mesh_neighbor_search_mesh(nanobind::module_ &m);
+
 void register_point_cloud_ray_cast(nanobind::module_ &m);
 
 void register_mesh_ray_cast(nanobind::module_ &m);

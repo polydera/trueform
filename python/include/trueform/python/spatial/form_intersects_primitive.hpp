@@ -6,7 +6,9 @@
  */
 #pragma once
 
-#include <trueform/trueform.hpp>
+#include <trueform/core/frame.hpp>
+#include <trueform/spatial/form.hpp>
+#include <trueform/spatial/intersects.hpp>
 
 namespace tf::py {
 template <typename FormWrapper, typename Primitive>

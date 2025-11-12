@@ -11,7 +11,10 @@
 #include <nanobind/stl/optional.h>
 #include <nanobind/stl/vector.h>
 #include <optional>
-#include <trueform/trueform.hpp>
+#include <trueform/core/frame.hpp>
+#include <trueform/spatial/form.hpp>
+#include <trueform/spatial/nearest_neighbor.hpp>
+#include <trueform/spatial/neighbor_search.hpp>
 #include <vector>
 
 namespace tf::py {

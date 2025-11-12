@@ -8,7 +8,8 @@
 
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
-#include <trueform/trueform.hpp>
+#include <trueform/core/range.hpp>
+#include <trueform/core/views/offset_block_range.hpp>
 
 namespace tf::py {
 

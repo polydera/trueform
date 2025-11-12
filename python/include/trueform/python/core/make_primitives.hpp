@@ -7,7 +7,18 @@
 
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
-#include <trueform/trueform.hpp>
+#include <trueform/core/aabb.hpp>
+#include <trueform/core/line_like.hpp>
+#include <trueform/core/points.hpp>
+#include <trueform/core/plane.hpp>
+#include <trueform/core/point_view.hpp>
+#include <trueform/core/polygon.hpp>
+#include <trueform/core/range.hpp>
+#include <trueform/core/ray_like.hpp>
+#include <trueform/core/segment.hpp>
+#include <trueform/core/unit_vector_view.hpp>
+#include <trueform/core/unsafe.hpp>
+#include <trueform/core/vector_view.hpp>
 
 namespace tf::py {
 

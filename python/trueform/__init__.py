@@ -17,7 +17,7 @@ from .distance import distance, distance2
 from .spatial import neighbor_search
 
 # IO functions
-from .io import read_stl
+from .io import read_stl, write_stl
 
 # Primitives
 from .primitives import Point, Segment, Polygon, AABB, Ray, Line, Plane
@@ -36,6 +36,7 @@ __all__ = [
     'neighbor_search',
     # IO
     'read_stl',
+    'write_stl',
     # Primitives
     'Point', 'Segment', 'Polygon', 'AABB', 'Ray', 'Line', 'Plane',
 ]

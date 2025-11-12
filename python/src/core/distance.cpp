@@ -9,7 +9,7 @@
 #include "trueform/python/core/make_primitives.hpp"
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
-#include <trueform/trueform.hpp>
+#include <trueform/core/distance.hpp>
 
 namespace tf::py {
 

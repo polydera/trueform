@@ -11,7 +11,10 @@
 #include <nanobind/stl/optional.h>
 #include <nanobind/stl/vector.h>
 #include <optional>
-#include <trueform/trueform.hpp>
+#include <trueform/core/frame.hpp>
+#include <trueform/core/ray_like.hpp>
+#include <trueform/spatial/form.hpp>
+#include <trueform/spatial/ray_cast.hpp>
 
 namespace tf::py {
 
