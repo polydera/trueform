@@ -33,6 +33,14 @@ _INTERSECTS_DISPATCH = {
     (AABB, AABB): ("intersects_aabb_aabb_{}", False),
     (AABB, Plane): ("intersects_aabb_plane_{}", False),
     (Plane, AABB): ("intersects_aabb_plane_{}", True),
+    (Segment, AABB): ("intersects_segment_aabb_{}", False),
+    (AABB, Segment): ("intersects_segment_aabb_{}", True),
+    (Ray, AABB): ("intersects_ray_aabb_{}", False),
+    (AABB, Ray): ("intersects_ray_aabb_{}", True),
+    (Line, AABB): ("intersects_line_aabb_{}", False),
+    (AABB, Line): ("intersects_line_aabb_{}", True),
+    (Polygon, AABB): ("intersects_polygon_aabb_{}", False),
+    (AABB, Polygon): ("intersects_polygon_aabb_{}", True),
 
     # Line combinations
     (Line, Line): ("intersects_line_line_{}", False),

@@ -1,0 +1,90 @@
+/*
+ * Copyright (c) 2025 Žiga Sajovic, XLAB
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
+ * https://github.com/xlabmedical/trueform
+ */
+#include <nanobind/nanobind.h>
+#include <trueform/python/core/edge_mesh.hpp>
+#include <trueform/python/core/point_cloud.hpp>
+#include <trueform/python/spatial/form_intersects_form.hpp>
+
+namespace tf::py {
+
+auto register_edge_mesh_intersects_point_cloud(nanobind::module_ &m) -> void {
+
+  // ============================================================================
+  // EdgeMesh intersects PointCloud
+  // EdgeMesh: 2 index types
+  // PointCloud: no index type
+  // Real types: float, double (must match)
+  // Dims: 2D, 3D (must match)
+  // Total: 2 × 2 × 2 = 8 functions
+  // ============================================================================
+
+  // int32, float, 2D
+  m.def("intersects_edge_mesh_point_cloud_intfloat2d",
+        [](edge_mesh_wrapper<int, float, 2> &edge_mesh,
+           point_cloud_wrapper<float, 2> &cloud) {
+          return form_intersects_form(edge_mesh, cloud);
+        },
+        nanobind::arg("edge_mesh"), nanobind::arg("cloud"));
+
+  // int32, float, 3D
+  m.def("intersects_edge_mesh_point_cloud_intfloat3d",
+        [](edge_mesh_wrapper<int, float, 3> &edge_mesh,
+           point_cloud_wrapper<float, 3> &cloud) {
+          return form_intersects_form(edge_mesh, cloud);
+        },
+        nanobind::arg("edge_mesh"), nanobind::arg("cloud"));
+
+  // int32, double, 2D
+  m.def("intersects_edge_mesh_point_cloud_intdouble2d",
+        [](edge_mesh_wrapper<int, double, 2> &edge_mesh,
+           point_cloud_wrapper<double, 2> &cloud) {
+          return form_intersects_form(edge_mesh, cloud);
+        },
+        nanobind::arg("edge_mesh"), nanobind::arg("cloud"));
+
+  // int32, double, 3D
+  m.def("intersects_edge_mesh_point_cloud_intdouble3d",
+        [](edge_mesh_wrapper<int, double, 3> &edge_mesh,
+           point_cloud_wrapper<double, 3> &cloud) {
+          return form_intersects_form(edge_mesh, cloud);
+        },
+        nanobind::arg("edge_mesh"), nanobind::arg("cloud"));
+
+  // int64, float, 2D
+  m.def("intersects_edge_mesh_point_cloud_int64float2d",
+        [](edge_mesh_wrapper<int64_t, float, 2> &edge_mesh,
+           point_cloud_wrapper<float, 2> &cloud) {
+          return form_intersects_form(edge_mesh, cloud);
+        },
+        nanobind::arg("edge_mesh"), nanobind::arg("cloud"));
+
+  // int64, float, 3D
+  m.def("intersects_edge_mesh_point_cloud_int64float3d",
+        [](edge_mesh_wrapper<int64_t, float, 3> &edge_mesh,
+           point_cloud_wrapper<float, 3> &cloud) {
+          return form_intersects_form(edge_mesh, cloud);
+        },
+        nanobind::arg("edge_mesh"), nanobind::arg("cloud"));
+
+  // int64, double, 2D
+  m.def("intersects_edge_mesh_point_cloud_int64double2d",
+        [](edge_mesh_wrapper<int64_t, double, 2> &edge_mesh,
+           point_cloud_wrapper<double, 2> &cloud) {
+          return form_intersects_form(edge_mesh, cloud);
+        },
+        nanobind::arg("edge_mesh"), nanobind::arg("cloud"));
+
+  // int64, double, 3D
+  m.def("intersects_edge_mesh_point_cloud_int64double3d",
+        [](edge_mesh_wrapper<int64_t, double, 3> &edge_mesh,
+           point_cloud_wrapper<double, 3> &cloud) {
+          return form_intersects_form(edge_mesh, cloud);
+        },
+        nanobind::arg("edge_mesh"), nanobind::arg("cloud"));
+}
+
+} // namespace tf::py

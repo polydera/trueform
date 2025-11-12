@@ -22,6 +22,24 @@ void register_mesh_ray_cast(nanobind::module_ &m);
 
 void register_edge_mesh_ray_cast(nanobind::module_ &m);
 
+void register_mesh_intersects_primitive(nanobind::module_ &m);
+
+void register_edge_mesh_intersects_primitive(nanobind::module_ &m);
+
+void register_point_cloud_intersects_primitive(nanobind::module_ &m);
+
+void register_point_cloud_intersects_point_cloud(nanobind::module_ &m);
+
+void register_edge_mesh_intersects_edge_mesh(nanobind::module_ &m);
+
+void register_edge_mesh_intersects_point_cloud(nanobind::module_ &m);
+
+void register_mesh_intersects_point_cloud(nanobind::module_ &m);
+
+void register_mesh_intersects_edge_mesh(nanobind::module_ &m);
+
+void register_mesh_intersects_mesh(nanobind::module_ &m);
+
 void register_spatial_module(nanobind::module_ &m);
 
 } // namespace tf::py

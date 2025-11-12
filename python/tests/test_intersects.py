@@ -377,6 +377,94 @@ def test_intersects_dimension_mismatch():
 
     print("✓ Dimension mismatch validation tests passed")
 
+def test_segment_aabb_2d():
+    """Test segment-AABB intersection in 2D"""
+    # AABB from (0,0) to (1,1)
+    aabb = tf.AABB(min=[0.0, 0.0], max=[1.0, 1.0])
+
+    # Segment that crosses through AABB
+    seg_hit = tf.Segment([[0.5, -0.5], [0.5, 1.5]])
+    assert tf.intersects(seg_hit, aabb), "Segment should intersect AABB"
+    assert tf.intersects(aabb, seg_hit), "AABB should intersect segment (swapped)"
+
+    # Segment that misses AABB
+    seg_miss = tf.Segment([[2.0, 0.5], [3.0, 0.5]])
+    assert not tf.intersects(seg_miss, aabb), "Segment should not intersect AABB"
+    assert not tf.intersects(aabb, seg_miss), "AABB should not intersect segment (swapped)"
+
+    print("✓ Segment-AABB 2D tests passed")
+
+
+def test_ray_aabb_3d():
+    """Test ray-AABB intersection in 3D"""
+    # AABB from (0,0,0) to (1,1,1)
+    aabb = tf.AABB(min=[0.0, 0.0, 0.0], max=[1.0, 1.0, 1.0])
+
+    # Ray that hits AABB
+    ray_hit = tf.Ray(origin=[-1.0, 0.5, 0.5], direction=[1.0, 0.0, 0.0])
+    assert tf.intersects(ray_hit, aabb), "Ray should intersect AABB"
+    assert tf.intersects(aabb, ray_hit), "AABB should intersect ray (swapped)"
+
+    # Ray that misses AABB
+    ray_miss = tf.Ray(origin=[-1.0, 2.0, 0.5], direction=[1.0, 0.0, 0.0])
+    assert not tf.intersects(ray_miss, aabb), "Ray should not intersect AABB"
+    assert not tf.intersects(aabb, ray_miss), "AABB should not intersect ray (swapped)"
+
+    print("✓ Ray-AABB 3D tests passed")
+
+
+def test_line_aabb_2d():
+    """Test line-AABB intersection in 2D"""
+    # AABB from (0,0) to (1,1)
+    aabb = tf.AABB(min=[0.0, 0.0], max=[1.0, 1.0])
+
+    # Line that crosses through AABB
+    line_hit = tf.Line(origin=[0.5, -1.0], direction=[0.0, 1.0])
+    assert tf.intersects(line_hit, aabb), "Line should intersect AABB"
+    assert tf.intersects(aabb, line_hit), "AABB should intersect line (swapped)"
+
+    # Line that misses AABB
+    line_miss = tf.Line(origin=[2.0, 0.0], direction=[0.0, 1.0])
+    assert not tf.intersects(line_miss, aabb), "Line should not intersect AABB"
+    assert not tf.intersects(aabb, line_miss), "AABB should not intersect line (swapped)"
+
+    print("✓ Line-AABB 2D tests passed")
+
+
+def test_polygon_aabb_3d():
+    """Test polygon-AABB intersection in 3D"""
+    # AABB from (0,0,0) to (1,1,1)
+    aabb = tf.AABB(min=[0.0, 0.0, 0.0], max=[1.0, 1.0, 1.0])
+
+    # Triangle that crosses through AABB
+    poly_hit = tf.Polygon([[0.5, 0.5, -0.5], [0.5, 0.5, 1.5], [1.5, 0.5, 0.5]])
+    assert tf.intersects(poly_hit, aabb), "Polygon should intersect AABB"
+    assert tf.intersects(aabb, poly_hit), "AABB should intersect polygon (swapped)"
+
+    # Triangle that misses AABB
+    poly_miss = tf.Polygon([[2.0, 2.0, 2.0], [3.0, 2.0, 2.0], [2.5, 3.0, 2.0]])
+    assert not tf.intersects(poly_miss, aabb), "Polygon should not intersect AABB"
+    assert not tf.intersects(aabb, poly_miss), "AABB should not intersect polygon (swapped)"
+
+    print("✓ Polygon-AABB 3D tests passed")
+
+
+def test_mixed_dtypes():
+    """Test with both float32 and float64"""
+    # Test with float64
+    aabb_double = tf.AABB(min=np.array([0.0, 0.0], dtype=np.float64),
+                          max=np.array([1.0, 1.0], dtype=np.float64))
+    seg_double = tf.Segment(np.array([[0.5, -0.5], [0.5, 1.5]], dtype=np.float64))
+    assert tf.intersects(seg_double, aabb_double), "Should work with float64"
+
+    # Test with float32
+    aabb_float = tf.AABB(min=np.array([0.0, 0.0], dtype=np.float32),
+                         max=np.array([1.0, 1.0], dtype=np.float32))
+    seg_float = tf.Segment(np.array([[0.5, -0.5], [0.5, 1.5]], dtype=np.float32))
+    assert tf.intersects(seg_float, aabb_float), "Should work with float32"
+
+    print("✓ Mixed dtype tests passed")
+
 
 if __name__ == "__main__":
     print("Testing intersects functionality\n")
@@ -394,6 +482,11 @@ if __name__ == "__main__":
         test_intersects_line_line()
         test_intersects_plane_primitives()
         test_intersects_dimension_mismatch()
+        test_segment_aabb_2d()
+        test_ray_aabb_3d()
+        test_line_aabb_2d()
+        test_polygon_aabb_3d()
+        test_mixed_dtypes()
 
         print("\n" + "=" * 60)
         print("✓ ALL TESTS PASSED!")

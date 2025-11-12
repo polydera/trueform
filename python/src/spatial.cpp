@@ -17,6 +17,15 @@ auto register_spatial_module(nanobind::module_ &m) -> void {
   register_point_cloud_ray_cast(spatial_module);
   register_mesh_ray_cast(spatial_module);
   register_edge_mesh_ray_cast(spatial_module);
+  register_mesh_intersects_primitive(spatial_module);
+  register_edge_mesh_intersects_primitive(spatial_module);
+  register_point_cloud_intersects_primitive(spatial_module);
+  register_point_cloud_intersects_point_cloud(spatial_module);
+  register_edge_mesh_intersects_edge_mesh(spatial_module);
+  register_edge_mesh_intersects_point_cloud(spatial_module);
+  register_mesh_intersects_point_cloud(spatial_module);
+  register_mesh_intersects_edge_mesh(spatial_module);
+  register_mesh_intersects_mesh(spatial_module);
 }
 
 } // namespace tf::py

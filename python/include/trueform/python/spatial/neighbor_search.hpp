@@ -22,7 +22,8 @@ auto neighbor_search(FormWrapper &form_wrapper, const Primitive &query,
                      std::optional<RealT> radius) {
   using ndarray_t =
       nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<Dims>>;
-  using result_t = std::tuple<int, RealT, ndarray_t>;
+  using Index = typename std::decay_t<decltype(form_wrapper.tree())>::index_t;
+  using result_t = std::tuple<Index, RealT, ndarray_t>;
 
   auto make_return = [](const auto &e) -> std::optional<result_t> {
     if (!e)

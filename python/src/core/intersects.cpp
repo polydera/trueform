@@ -810,6 +810,166 @@ auto register_core_intersects(nanobind::module_ &m) -> void {
           auto plane = make_plane_from_array<3, double>(plane_data);
           return tf::intersects(poly, plane);
         });
+
+  // ==== Segment to AABB ====
+  m.def("intersects_segment_aabb_float2d",
+        [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
+               seg_data,
+           nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
+               aabb_data) {
+          auto seg = make_segment_from_array<2, float>(seg_data);
+          auto aabb = make_aabb_from_array<2, float>(aabb_data);
+          return tf::intersects(seg, aabb);
+        });
+
+  m.def("intersects_segment_aabb_float3d",
+        [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
+               seg_data,
+           nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
+               aabb_data) {
+          auto seg = make_segment_from_array<3, float>(seg_data);
+          auto aabb = make_aabb_from_array<3, float>(aabb_data);
+          return tf::intersects(seg, aabb);
+        });
+
+  m.def("intersects_segment_aabb_double2d",
+        [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
+               seg_data,
+           nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
+               aabb_data) {
+          auto seg = make_segment_from_array<2, double>(seg_data);
+          auto aabb = make_aabb_from_array<2, double>(aabb_data);
+          return tf::intersects(seg, aabb);
+        });
+
+  m.def("intersects_segment_aabb_double3d",
+        [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 3>>
+               seg_data,
+           nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 3>>
+               aabb_data) {
+          auto seg = make_segment_from_array<3, double>(seg_data);
+          auto aabb = make_aabb_from_array<3, double>(aabb_data);
+          return tf::intersects(seg, aabb);
+        });
+
+  // ==== Ray to AABB ====
+  m.def("intersects_ray_aabb_float2d",
+        [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
+               ray_data,
+           nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
+               aabb_data) {
+          auto ray = make_ray_from_array<2, float>(ray_data);
+          auto aabb = make_aabb_from_array<2, float>(aabb_data);
+          return tf::intersects(ray, aabb);
+        });
+
+  m.def("intersects_ray_aabb_float3d",
+        [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
+               ray_data,
+           nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
+               aabb_data) {
+          auto ray = make_ray_from_array<3, float>(ray_data);
+          auto aabb = make_aabb_from_array<3, float>(aabb_data);
+          return tf::intersects(ray, aabb);
+        });
+
+  m.def("intersects_ray_aabb_double2d",
+        [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
+               ray_data,
+           nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
+               aabb_data) {
+          auto ray = make_ray_from_array<2, double>(ray_data);
+          auto aabb = make_aabb_from_array<2, double>(aabb_data);
+          return tf::intersects(ray, aabb);
+        });
+
+  m.def("intersects_ray_aabb_double3d",
+        [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 3>>
+               ray_data,
+           nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 3>>
+               aabb_data) {
+          auto ray = make_ray_from_array<3, double>(ray_data);
+          auto aabb = make_aabb_from_array<3, double>(aabb_data);
+          return tf::intersects(ray, aabb);
+        });
+
+  // ==== Line to AABB ====
+  m.def("intersects_line_aabb_float2d",
+        [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
+               line_data,
+           nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
+               aabb_data) {
+          auto line = make_line_from_array<2, float>(line_data);
+          auto aabb = make_aabb_from_array<2, float>(aabb_data);
+          return tf::intersects(line, aabb);
+        });
+
+  m.def("intersects_line_aabb_float3d",
+        [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
+               line_data,
+           nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
+               aabb_data) {
+          auto line = make_line_from_array<3, float>(line_data);
+          auto aabb = make_aabb_from_array<3, float>(aabb_data);
+          return tf::intersects(line, aabb);
+        });
+
+  m.def("intersects_line_aabb_double2d",
+        [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
+               line_data,
+           nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
+               aabb_data) {
+          auto line = make_line_from_array<2, double>(line_data);
+          auto aabb = make_aabb_from_array<2, double>(aabb_data);
+          return tf::intersects(line, aabb);
+        });
+
+  m.def("intersects_line_aabb_double3d",
+        [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 3>>
+               line_data,
+           nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 3>>
+               aabb_data) {
+          auto line = make_line_from_array<3, double>(line_data);
+          auto aabb = make_aabb_from_array<3, double>(aabb_data);
+          return tf::intersects(line, aabb);
+        });
+
+  // ==== Polygon to AABB ====
+  m.def("intersects_polygon_aabb_float2d",
+        [](nanobind::ndarray<nanobind::numpy, const float> poly_data,
+           nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
+               aabb_data) {
+          auto poly = make_polygon_from_array<2, float>(poly_data);
+          auto aabb = make_aabb_from_array<2, float>(aabb_data);
+          return tf::intersects(poly, aabb);
+        });
+
+  m.def("intersects_polygon_aabb_float3d",
+        [](nanobind::ndarray<nanobind::numpy, const float> poly_data,
+           nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
+               aabb_data) {
+          auto poly = make_polygon_from_array<3, float>(poly_data);
+          auto aabb = make_aabb_from_array<3, float>(aabb_data);
+          return tf::intersects(poly, aabb);
+        });
+
+  m.def("intersects_polygon_aabb_double2d",
+        [](nanobind::ndarray<nanobind::numpy, const double> poly_data,
+           nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
+               aabb_data) {
+          auto poly = make_polygon_from_array<2, double>(poly_data);
+          auto aabb = make_aabb_from_array<2, double>(aabb_data);
+          return tf::intersects(poly, aabb);
+        });
+
+  m.def("intersects_polygon_aabb_double3d",
+        [](nanobind::ndarray<nanobind::numpy, const double> poly_data,
+           nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 3>>
+               aabb_data) {
+          auto poly = make_polygon_from_array<3, double>(poly_data);
+          auto aabb = make_aabb_from_array<3, double>(aabb_data);
+          return tf::intersects(poly, aabb);
+        });
 }
 
 } // namespace tf::py
