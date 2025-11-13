@@ -4,6 +4,7 @@
 #include "main.h"
 #include "boolean_web.h"
 #include "collision_web.h"
+#include "forms_intersections_web.h"
 #include "utils/bridge_web.h"
 #include "utils/cursor_interactor_interface.h"
 
@@ -43,6 +44,9 @@ auto get_curve_mesh() -> mesh_object * {
     if(auto pI = dynamic_cast<cursor_interactor*>(interactor.get())) {
         return pI->curve_mesh.get();
     }
+    if(auto pI = dynamic_cast<cursor_interactor_forms_intersections*>(interactor.get())) {
+      return pI->curve_mesh.get();
+    }
     return nullptr;
 }
 
@@ -75,6 +79,8 @@ EMSCRIPTEN_BINDINGS(boolean) {
   emscripten::function("get_curve_mesh", &get_curve_mesh, emscripten::allow_raw_pointers());
     // Collisions
   emscripten::function("run_main_collisions", &run_main_collisions);
+    // Forms Intersections
+  emscripten::function("run_main_forms_intersections", &run_main_forms_intersections);
 }
 
 EMSCRIPTEN_BINDINGS(VectorString) {

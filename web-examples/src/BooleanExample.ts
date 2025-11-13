@@ -1,7 +1,12 @@
 import { MainModule } from './webAssembly/dist/native.js'
 import * as THREE from "three";
 import Stats from 'stats-gl';
-import {createSceneWithCustomConfig, SceneBundle, createBidirectionalSyncedScenes} from './utils/sceneUtils';
+import {
+    createSceneWithCustomConfig,
+    SceneBundle,
+    createBidirectionalSyncedScenes,
+    fitCameraToAllMeshesFromZPlane
+} from './utils/sceneUtils';
 import {
     buffersToCurves, createCurveLineObjects,
     createMesh, CurveLineObjects, curvesToCurveLines, curvesToCurveLinesFast, curvesToCurvePolyOpts,
@@ -203,6 +208,7 @@ export class BooleanExample {
             this.sceneBundle2.scene.add(mesh);
         }
         this.updateMeshes();
+        fitCameraToAllMeshesFromZPlane(this.sceneBundle1, 1.5)
     }
 
     private updateMeshes(){
@@ -235,9 +241,6 @@ export class BooleanExample {
             }
         }
     }
-
-    // TODO SetMode --> mode will switch the function in OnMouseMove
-    // mode will also handle the layout and mesh views in JS
 
     public getAverageTime(){
         return this.wasmInstance.get_average_time();

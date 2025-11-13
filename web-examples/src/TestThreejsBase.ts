@@ -4,8 +4,13 @@ import Stats from 'stats-gl';
 import {createSceneWithCustomConfig, fitCameraToAllMeshesFromZPlane, SceneBundle} from './utils/sceneUtils';
 import { createMesh, getMeshFromWasm } from "@/utils/utlis";
 
-
-export abstract class TestClassThreejsBase {
+abstract class ITestClassThreejsBase {
+    abstract runMain(): void;
+    abstract getAverageTime(): number;
+    abstract getAveragePickTime(): number;
+    abstract updateMeshes(): void;
+}
+export abstract class TestClassThreejsBase implements ITestClassThreejsBase {
     protected readonly wasmInstance: MainModule;
     protected paths: string[];
 
@@ -15,7 +20,7 @@ export abstract class TestClassThreejsBase {
     protected meshes = new Map<number, THREE.Mesh>()
     protected stats = new Stats({horizontal: false, trackGPU: true});
 
-    constructor(wasmInstance: MainModule, paths: string[], container: HTMLElement) {
+    constructor(wasmInstance: MainModule, paths: string[], container: HTMLElement, skipUpdate?: boolean) {
         this.wasmInstance = wasmInstance;
         this.paths = paths;
 
@@ -102,11 +107,13 @@ export abstract class TestClassThreejsBase {
             this.sceneBundle1.scene.add(mesh);
         }
 
-        this.updateMeshes();
-        fitCameraToAllMeshesFromZPlane(this.sceneBundle1)
+        if(!skipUpdate) {
+            this.updateMeshes();
+            fitCameraToAllMeshesFromZPlane(this.sceneBundle1)
+        }
     }
 
-    private updateMeshes(){
+    public updateMeshes(){
         for(let i = 0; i < this.wasmInstance.get_number_of_meshes(); i++) {
             const wO = this.wasmInstance.get_mesh_on_idx(i);
             const mesh = this.meshes.get(i);
