@@ -1,7 +1,12 @@
 import { MainModule } from './webAssembly/dist/native.js'
 import * as THREE from "three";
 import Stats from 'stats-gl';
-import {createSceneWithCustomConfig, fitCameraToAllMeshesFromZPlane, SceneBundle} from './utils/sceneUtils';
+import {
+    createBidirectionalSyncedScenes,
+    createSceneWithCustomConfig,
+    fitCameraToAllMeshesFromZPlane,
+    SceneBundle
+} from './utils/sceneUtils';
 import { createMesh, getMeshFromWasm } from "@/utils/utlis";
 
 abstract class ITestClassThreejsBase {
@@ -20,7 +25,13 @@ export abstract class TestClassThreejsBase implements ITestClassThreejsBase {
     protected meshes = new Map<number, THREE.Mesh>()
     protected stats = new Stats({horizontal: false, trackGPU: true});
 
-    constructor(wasmInstance: MainModule, paths: string[], container: HTMLElement, skipUpdate?: boolean) {
+    protected readonly renderer2?: THREE.WebGLRenderer;
+    protected readonly sceneBundle2?: SceneBundle;
+    protected meshes2 = new Map<number, THREE.Mesh>()
+
+    protected renderer2Interactive = false;
+
+    constructor(wasmInstance: MainModule, paths: string[], container: HTMLElement, container2?: HTMLElement, skipUpdate?: boolean) {
         this.wasmInstance = wasmInstance;
         this.paths = paths;
 
@@ -39,8 +50,46 @@ export abstract class TestClassThreejsBase implements ITestClassThreejsBase {
         this.stats.dom.style.position = 'absolute';
         container.appendChild( this.stats.dom );
 
-        // Create first scene with camera, controls, and lighting (single renderer mode)
-        this.sceneBundle1 = createSceneWithCustomConfig(this.renderer, 1);
+        // Setup second renderer if container2 is provided
+        if (container2) {
+            this.renderer2 = new THREE.WebGLRenderer({ antialias: true } );
+            this.renderer2.setPixelRatio( window.devicePixelRatio );
+            const rect2 = container2.getBoundingClientRect();
+            this.renderer2.setSize(rect2.width, rect2.height);
+            this.renderer2.shadowMap.enabled = true;
+            this.renderer2.shadowMap.type = THREE.PCFSoftShadowMap;
+            container2.innerHTML = "";
+            container2.appendChild(this.renderer2.domElement);
+        }
+
+        //////////////////////////// Scene Setup Using Utility Functions //////////////////////////////////////
+        // Create synchronized scenes if we have both renderers
+        if (this.renderer2) {
+            const config1 = {
+                backgroundColor: 0x222222,
+                cameraPosition: { x: 0, y: 50, z: 0 },
+                cameraLookAt: { x: 0, y: 0, z: 0 },
+                ambientLightIntensity: 0.8,
+                directionalLightIntensity: 0.8,
+                enableShadows: true
+            };
+            const config2 = {
+                backgroundColor: 0x333333,
+                cameraPosition: { x: 0, y: 50, z: 25 },
+                cameraLookAt: { x: 0, y: 0, z: 0 },
+                ambientLightIntensity: 0.8,
+                directionalLightIntensity: 0.8,
+                enableShadows: true
+            };
+
+            // Use bidirectional synchronized scenes (interaction on either renderer affects both)
+            const { sceneBundle1, sceneBundle2 } = createBidirectionalSyncedScenes(this.renderer, this.renderer2, config1, config2);
+            this.sceneBundle1 = sceneBundle1;
+            this.sceneBundle2 = sceneBundle2;
+        } else {
+            // Create first scene with camera, controls, and lighting (single renderer mode)
+            this.sceneBundle1 = createSceneWithCustomConfig(this.renderer, 1);
+        }
 
         this.animate();
 
@@ -53,6 +102,15 @@ export abstract class TestClassThreejsBase implements ITestClassThreejsBase {
             this.sceneBundle1.controls.update();
             this.renderer.render(this.sceneBundle1.scene, this.sceneBundle1.camera);
 
+            // Handle second renderer resize
+            if (this.renderer2 && this.sceneBundle2 && container2) {
+                const rect2 = container2.getBoundingClientRect();
+                this.renderer2.setSize(rect2.width, rect2.height);
+                this.sceneBundle2.camera.aspect = rect2.width / rect2.height;
+                this.sceneBundle2.camera.updateProjectionMatrix();
+                this.sceneBundle2.controls.update();
+                this.renderer2.render(this.sceneBundle2.scene, this.sceneBundle2.camera);
+            }
         });
 
         const raycaster = new THREE.Raycaster();
@@ -99,9 +157,16 @@ export abstract class TestClassThreejsBase implements ITestClassThreejsBase {
         this.renderer.domElement.addEventListener('pointermove', interceptEvent, true);
         this.renderer.domElement.addEventListener('pointerup', interceptEvent, true);
 
+        // Add event listeners to second renderer if it exists
+        if (this.renderer2 && this.renderer2Interactive) {
+            this.renderer2.domElement.addEventListener('pointerdown', interceptEvent, true);
+            this.renderer2.domElement.addEventListener('pointermove', interceptEvent, true);
+            this.renderer2.domElement.addEventListener('pointerup', interceptEvent, true);
+        }
+
         this.runMain();
 
-        for(let i = 0; i < this.wasmInstance.get_number_of_meshes(); i++) {
+        for (let i = 0; i < this.wasmInstance.get_number_of_meshes(); i++) {
             const mesh = createMesh();
             this.meshes.set(i, mesh)
             this.sceneBundle1.scene.add(mesh);
@@ -136,6 +201,10 @@ export abstract class TestClassThreejsBase implements ITestClassThreejsBase {
         requestAnimationFrame(this.animate);
         this.sceneBundle1.controls.update();
         this.renderer.render(this.sceneBundle1.scene, this.sceneBundle1.camera);
+        if (this.renderer2 && this.sceneBundle2) {
+            this.sceneBundle2.controls.update();
+            this.renderer2.render(this.sceneBundle2.scene, this.sceneBundle2.camera);
+        }
         this.stats.update();
     };
 }

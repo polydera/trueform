@@ -13,7 +13,7 @@ export class FormsIntersectionsExample extends TestClassThreejsBase {
     private keyPressed = false;
 
     constructor(wasmInstance: MainModule, paths: string[], container: HTMLElement) {
-        super(wasmInstance, paths, container, true);
+        super(wasmInstance, paths, container, undefined, true);
 
         // Add keyboard event listeners
         const interceptKeyDownEvent = (event: KeyboardEvent) => {
@@ -52,6 +52,9 @@ export class FormsIntersectionsExample extends TestClassThreejsBase {
             v.push_back(this.paths[i]);
         }
         this.wasmInstance.run_main_forms_intersections(v);
+        for(let i = 0; i < this.paths.length; i++) {
+            this.wasmInstance.FS.unlink(this.paths[i]);
+        }
     }
 
     public updateMeshes() {

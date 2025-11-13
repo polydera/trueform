@@ -14,5 +14,8 @@ export class CollisionExample extends TestClassThreejsBase {
         }
         console.log("CollisionExample runMain v", v, v.size());
         this.wasmInstance.run_main_collisions(v);
+        for(let i = 0; i < this.paths.length; i++) {
+            this.wasmInstance.FS.unlink(this.paths[i]);
+        }
     };
 }
