@@ -5,7 +5,7 @@ import {createSceneWithCustomConfig, SceneBundle, createBidirectionalSyncedScene
 import {
     buffersToCurves, createCurveLineObjects,
     createMesh, CurveLineObjects, curvesToCurveLines, curvesToCurveLinesFast, curvesToCurvePolyOpts,
-    getMeshFromWasm, createBasicCurveLineObjects, updateBasicCurveLines
+    getMeshFromWasm, createBasicCurveLineObjects, updateBasicCurveLines, createPoints, getMatrixFromWasm
 } from "@/utils/utlis";
 
 
@@ -25,6 +25,7 @@ export class TestClassThreejs {
     private meshes2 = new Map<number, THREE.Mesh>()
     private keyPressed = false;
     private stats = new Stats({horizontal: false, trackGPU: true});
+    // private pointDebug = createPoints();
 
     private renderer2Interactive = false;
 
@@ -127,7 +128,7 @@ export class TestClassThreejs {
             this.sceneBundle1.camera.getWorldDirection(dir);
             const cameraFocalPoint = cameraPosition.clone().add(dir.multiplyScalar(100));
             let handled = false;
-            if (event.type === 'pointermove') {
+            if (event.type === 'pointermove' && (event.buttons === 0 || event.buttons === 1)) {
                 // console.log("pointermove ray", cameraPosition, cameraFocalPoint, ray.origin, ray.direction)
                 const v1 = ray.origin.clone()
                 const v2 = ray.direction.clone()
@@ -138,7 +139,7 @@ export class TestClassThreejs {
                     [v2.x, v2.y, v2.z],
                     [v3.x, v3.y, v3.z],
                     [v4.x, v4.y, v4.z]);
-            } else if (event.type === 'pointerdown') {
+            } else if (event.type === 'pointerdown' && event.buttons === 1) {
                 handled = this.wasmInstance.OnLeftButtonDown();
             } else if (event.type === 'pointerup') {
                 handled = this.wasmInstance.OnLeftButtonUp();
@@ -180,7 +181,7 @@ export class TestClassThreejs {
         }
 
         const opts: curvesToCurvePolyOpts = {
-            tubeColor: 0x00ff88,    // Green lines
+            tubeColor: 0xff2020,    // Red lines
             lineWidth: 0.2
         };
 
@@ -193,6 +194,9 @@ export class TestClassThreejs {
             console.log('Using LineSegments2 for curve rendering');
         }
         this.sceneBundle1.scene.add(this.curveObjects.lines);
+        //
+        // // this.sceneBundle1.scene.add(this.pointDebug);
+        // this.sceneBundle2?.scene.add(this.pointDebug);
 
 
         if(this.sceneBundle2 && this.renderer2) {
@@ -224,8 +228,8 @@ export class TestClassThreejs {
             if (this.useBasicLines) {
                 updateBasicCurveLines(lines, this.curveObjects);
             } else {
-                curvesToCurveLines(lines, this.curveObjects, {samplesPerSegment: 3, tension: 0.5});
-                // curvesToCurveLinesFast(lines, this.curveObjects, {closed: true});
+                // curvesToCurveLines(lines, this.curveObjects, {samplesPerSegment: 3, tension: 0.5});
+                curvesToCurveLinesFast(lines, this.curveObjects, {closed: false});
             }
         }
 

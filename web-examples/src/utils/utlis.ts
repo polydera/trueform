@@ -23,7 +23,20 @@ export interface curvesToCurvePolyOpts {
     renderOrder?: number; // Custom render order for fine-grained control
 }
 
-
+export function createPoints(){
+    const pointPixelSize = 1.0;
+    const pointColor = 0xff00ff;
+    const pointGeom = new THREE.BufferGeometry();
+    const pointMat = new THREE.PointsMaterial({
+        color: pointColor,
+        size: pointPixelSize,
+        sizeAttenuation: true,
+    });
+    const pointsObj = new THREE.Points(pointGeom, pointMat);
+    pointsObj.name = 'curve_points';
+    pointsObj.matrixAutoUpdate = false;
+    return pointsObj;
+}
 export function createMesh(){
     const material = new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide, flatShading: true });
     const geometry = new THREE.BufferGeometry();
@@ -42,7 +55,7 @@ export function getMeshFromWasm(wO: mesh_object, mesh: THREE.Mesh, pointsOnly?: 
     getMatrixFromWasm(wO, mesh)
 }
 
-function getMatrixFromWasm(wO: mesh_object, dstGeometry: THREE.Mesh | THREE.Line) {
+export function getMatrixFromWasm(wO: mesh_object, dstGeometry: THREE.Mesh | THREE.Line | THREE.Points) {
     const mU = wO.matrix_updated;
     if(mU) {
         const matrix = new Float32Array(wO.matrix);
@@ -124,7 +137,9 @@ export function createCurveLineObjects(opts: curvesToCurvePolyOpts = {}): CurveL
         // --- depth bias to pull the line toward the camera ---
         polygonOffset: true,
         polygonOffsetFactor: -10,
-        polygonOffsetUnits:  -2
+        polygonOffsetUnits:  -2,
+
+        side: THREE.DoubleSide
 
     } );
     const linesObj = new LineSegments2(lineGeom, lineMat);
@@ -134,268 +149,255 @@ export function createCurveLineObjects(opts: curvesToCurvePolyOpts = {}): CurveL
 
     return { lines: linesObj };
 }
-
 /**
- * Fast smoothing + line update for many paths each frame.
- * - Smoothing: Chaikin (linear-time), 1–3 iterations recommended.
- * - Reuses typed arrays & geometry attributes to minimize GC.
+ * Fast smoothing + update for MANY paths each frame.
+ * - paths: number[][] (each entry is a path of vertex indices)
+ * - Chaikin smoothing (0..3 iterations)
+ * - One allocation per frame, one setPositions() upload
  */
 export function curvesToCurveLinesFast(
     curves: { points: Float32Array; paths: number[][] },
-    curveObjects: { lines: THREE.LineSegments },
-    opts?: {
-        chaikinIterations?: number;       // 0..3; default 2
-        closed?: boolean;                 // default false (open path)
-    }
+    curveObjects: { lines: any }, // LineSegments2
+    opts?: { chaikinIterations?: number; closed?: boolean }
 ) {
     const t0 = performance.now();
 
     const { points: src, paths } = curves;
     if (!src || !paths) throw new Error('curves must have {points, paths}');
 
+    const segsPerPath:number[] = [];
     const iterations = Math.max(0, Math.min(3, opts?.chaikinIterations ?? 2));
-    const closed     = !!opts?.closed;
+    const closed = !!opts?.closed;
+    const lineGeom = curveObjects.lines.geometry as any; // LineSegmentsGeometry
+    const vertCount = src.length / 3;
 
-    // ---------------------------------------------------------------------------
-    // 2) Workspace (reused between frames) lives on the lines object
-    // ---------------------------------------------------------------------------
+    const EPS = 1e-12;
+    let skippedDegenerate = 0, skippedNaN = 0;
+    function pushSeg(x0:number,y0:number,z0:number,x1:number,y1:number,z1:number){
+        if (!Number.isFinite(x0) || !Number.isFinite(y0) || !Number.isFinite(z0) ||
+            !Number.isFinite(x1) || !Number.isFinite(y1) || !Number.isFinite(z1)) {
+            skippedNaN++; return false;
+        }
+        const dx = x1-x0, dy = y1-y0, dz = z1-z0;
+        if (dx*dx + dy*dy + dz*dz < EPS) { skippedDegenerate++; return false; }
+        work.flat[w++] = x0; work.flat[w++] = y0; work.flat[w++] = z0;
+        work.flat[w++] = x1; work.flat[w++] = y1; work.flat[w++] = z1;
+        return true;
+    }
+
+
+    // workspace stored on the mesh for reuse
     type Work = {
-        start: Float32Array; end: Float32Array;     // segment ends (xyz xyz …)
-        ax: Float32Array; ay: Float32Array; az: Float32Array; // stage A coords
-        bx: Float32Array; by: Float32Array; bz: Float32Array; // stage B coords
-        segments: number;                            // how many segments written
+        ax: Float32Array; ay: Float32Array; az: Float32Array; // stage A
+        bx: Float32Array; by: Float32Array; bz: Float32Array; // stage B
+        flat: Float32Array;                                    // [a,b,a,b,...]
     };
-    const userData = curveObjects.lines.userData as any;
-    const work: Work = userData.__work || (userData.__work = {
-        start: new Float32Array(0),
-        end:   new Float32Array(0),
-        ax:    new Float32Array(0),
-        ay:    new Float32Array(0),
-        az:    new Float32Array(0),
-        bx:    new Float32Array(0),
-        by:    new Float32Array(0),
-        bz:    new Float32Array(0),
-        segments: 0
+    const work: Work = (curveObjects.lines.userData.__work ??= {
+        ax:   new Float32Array(0),
+        ay:   new Float32Array(0),
+        az:   new Float32Array(0),
+        bx:   new Float32Array(0),
+        by:   new Float32Array(0),
+        bz:   new Float32Array(0),
+        flat: new Float32Array(0)
     });
 
-    // helpers to grow reusable buffers
+    const nextPow2 = (n: number) => 1 << Math.ceil(Math.log2(Math.max(1, n)));
     const ensureLen = (arr: Float32Array, needed: number) =>
         (arr.length >= needed) ? arr : new Float32Array(nextPow2(needed));
 
-    const ensureWorkForPoints = (neededPoints: number) => {
-        work.ax = ensureLen(work.ax, neededPoints);
-        work.ay = ensureLen(work.ay, neededPoints);
-        work.az = ensureLen(work.az, neededPoints);
-        work.bx = ensureLen(work.bx, neededPoints * 2); // worst case next iter
-        work.by = ensureLen(work.by, neededPoints * 2);
-        work.bz = ensureLen(work.bz, neededPoints * 2);
-    };
+    // ---- PASS 1: count total segments this frame (so we allocate once) --------
+    let totalSegments = 0;
+    for (let p = 0; p < paths.length; p++) {
+        const idx = paths[p];
+        if (!idx) continue;
 
-    const ensureStartEndCapacity = (neededSegments: number) => {
-        work.start = ensureLen(work.start, neededSegments * 3);
-        work.end   = ensureLen(work.end,   neededSegments * 3);
-    };
+        // count valid points in this path
+        let L = 0;
+        for (let i = 0; i < idx.length; i++) {
+            const vi = idx[i];
+            if (vi != null && vi >= 0 && vi < vertCount) L++;
+        }
+        if (L < 2) continue;
 
-    const nextPow2 = (n: number) => 1 << Math.ceil(Math.log2(Math.max(1, n)));
+        // points after k Chaikin iterations
+        // open:  (L - 1)*2^k + 1        -> segments = (L - 1)*2^k
+        // closed: L*2^k                  -> segments =  L*2^k
+        const pow2k = 1 << iterations;
+        totalSegments += closed ? (L * pow2k) : ((L - 1) * pow2k);
+    }
 
-    // ---------------------------------------------------------------------------
-    // 3) Build smoothed segments (Chaikin) directly into start/end arrays
-    // ---------------------------------------------------------------------------
-    work.segments = 0;
+    // ensure the big flat buffer fits ALL paths
+    const neededFloats = totalSegments * 6; // a.xyz + b.xyz per segment
+    if (work.flat.length < neededFloats) {
+        work.flat = new Float32Array(nextPow2(neededFloats));
+    }
+
+    // ---- PASS 2: build all segments into the flat buffer ----------------------
+    let w = 0; // write cursor in floats
 
     for (let p = 0; p < paths.length; p++) {
         const idx = paths[p];
-        if (!idx || idx.length < 2) continue;
+        if (!idx) continue;
 
-        // Copy current path coordinates into ax/ay/az (stage A) with index validation
-        ensureWorkForPoints(idx.length);
-        let n = 0; // number of valid points we copied for this path
+        // stage A: copy valid points of this path
+        // size A large enough for the raw path
+        work.ax = ensureLen(work.ax, idx.length);
+        work.ay = ensureLen(work.ay, idx.length);
+        work.az = ensureLen(work.az, idx.length);
 
-        const vertCount = src.length / 3;
+        let n = 0;
         for (let i = 0; i < idx.length; i++) {
             const vi = idx[i];
-            if (vi == null || vi < 0 || vi >= vertCount) continue; // skip invalid
+            if (vi == null || vi < 0 || vi >= vertCount) continue;
             const j = 3 * vi;
             work.ax[n] = src[j];
             work.ay[n] = src[j + 1];
             work.az[n] = src[j + 2];
             n++;
         }
-        if (n < 2) continue; // nothing to draw for this path
+        if (n < 2) continue;
 
-        // Apply Chaikin smoothing 'iterations' times
-        // Open and Closed variants
+        // Chaikin smoothing
         for (let it = 0; it < iterations; it++) {
+            const newN = closed ? (n * 2) : ((n - 1) * 2 + 1);
+            work.bx = ensureLen(work.bx, newN);
+            work.by = ensureLen(work.by, newN);
+            work.bz = ensureLen(work.bz, newN);
+
+            let k = 0;
             if (!closed) {
-                // open curve: preserve endpoints
-                // new length: (n - 1) * 2 + 1
-                let k = 0;
                 work.bx[k] = work.ax[0]; work.by[k] = work.ay[0]; work.bz[k] = work.az[0]; k++;
                 for (let i = 0; i < n - 1; i++) {
                     const x0 = work.ax[i],   y0 = work.ay[i],   z0 = work.az[i];
                     const x1 = work.ax[i+1], y1 = work.ay[i+1], z1 = work.az[i+1];
-                    // Q and R points (0.25 / 0.75)
                     work.bx[k]   = 0.75 * x0 + 0.25 * x1;
                     work.by[k]   = 0.75 * y0 + 0.25 * y1;
                     work.bz[k++] = 0.75 * z0 + 0.25 * z1;
-
                     work.bx[k]   = 0.25 * x0 + 0.75 * x1;
                     work.by[k]   = 0.25 * y0 + 0.75 * y1;
                     work.bz[k++] = 0.25 * z0 + 0.75 * z1;
                 }
                 work.bx[k] = work.ax[n-1]; work.by[k] = work.ay[n-1]; work.bz[k] = work.az[n-1]; k++;
-                // swap B->A
-                [work.ax, work.ay, work.az, work.bx, work.by, work.bz] =
-                    [work.bx, work.by, work.bz, work.ax, work.ay, work.az];
-                n = k;
             } else {
-                // closed curve: wrap around; new length: n * 2
-                let k = 0;
                 for (let i = 0; i < n; i++) {
                     const ni = (i + 1) % n;
                     const x0 = work.ax[i],  y0 = work.ay[i],  z0 = work.az[i];
                     const x1 = work.ax[ni], y1 = work.ay[ni], z1 = work.az[ni];
-
                     work.bx[k]   = 0.75 * x0 + 0.25 * x1;
                     work.by[k]   = 0.75 * y0 + 0.25 * y1;
                     work.bz[k++] = 0.75 * z0 + 0.25 * z1;
-
                     work.bx[k]   = 0.25 * x0 + 0.75 * x1;
                     work.by[k]   = 0.25 * y0 + 0.75 * y1;
                     work.bz[k++] = 0.25 * z0 + 0.75 * z1;
                 }
-                [work.ax, work.ay, work.az, work.bx, work.by, work.bz] =
-                    [work.bx, work.by, work.bz, work.ax, work.ay, work.az];
-                n = k;
             }
+
+            // swap B -> A
+            [work.ax, work.ay, work.az, work.bx, work.by, work.bz] =
+                [work.bx, work.by, work.bz, work.ax, work.ay, work.az];
+            n = k;
         }
 
-        // Number of segments for this path
-        const segs = closed ? n : (n - 1);
-        ensureStartEndCapacity(work.segments + segs);
-
-        // Write segments into start/end buffers
-        let s = work.segments * 3;  // float index
+        // Emit this path's segments into the global flat buffer
         if (!closed) {
             for (let i = 0; i < n - 1; i++) {
-                const x0 = work.ax[i],   y0 = work.ay[i],   z0 = work.az[i];
-                const x1 = work.ax[i+1], y1 = work.ay[i+1], z1 = work.az[i+1];
-                work.start[s]   = x0; work.start[s+1] = y0; work.start[s+2] = z0;
-                work.end[s]     = x1; work.end[s+1]   = y1; work.end[s+2]   = z1;
-                s += 3;
+                pushSeg(work.ax[i], work.ay[i], work.az[i], work.ax[i+1], work.ay[i+1], work.az[i+1]);
+                // work.flat[w++] = work.ax[i];
+                // work.flat[w++] = work.ay[i];
+                // work.flat[w++] = work.az[i];
+                // work.flat[w++] = work.ax[i+1];
+                // work.flat[w++] = work.ay[i+1];
+                // work.flat[w++] = work.az[i+1];
             }
         } else {
             for (let i = 0; i < n; i++) {
                 const ni = (i + 1) % n;
-                const x0 = work.ax[i],  y0 = work.ay[i],  z0 = work.az[i];
-                const x1 = work.ax[ni], y1 = work.ay[ni], z1 = work.az[ni];
-                work.start[s]   = x0; work.start[s+1] = y0; work.start[s+2] = z0;
-                work.end[s]     = x1; work.end[s+1]   = y1; work.end[s+2]   = z1;
-                s += 3;
+                pushSeg(work.ax[i], work.ay[i], work.az[i], work.ax[ni], work.ay[ni], work.az[ni]);
+                // work.flat[w++] = work.ax[i];
+                // work.flat[w++] = work.ay[i];
+                // work.flat[w++] = work.az[i];
+                // work.flat[w++] = work.ax[ni];
+                // work.flat[w++] = work.ay[ni];
+                // work.flat[w++] = work.az[ni];
             }
         }
-        work.segments += segs;
+
+        segsPerPath.push(n);
     }
 
-    // --- 4) Upload to the existing LineSegmentsGeometry (no recreation) ---
-    const lineGeom = curveObjects.lines.geometry as LineSegmentsGeometry;
-    const needFloats = work.segments * 3;
+    const usedFloats = w;
+    const usedSegments = usedFloats / 6;
 
-    let aStart = lineGeom.getAttribute('instanceStart') as THREE.InstancedBufferAttribute | undefined;
-    let aEnd = lineGeom.getAttribute('instanceEnd') as THREE.InstancedBufferAttribute | undefined;
-
-// create attributes once
-    if (!aStart || !aEnd) {
-        aStart = new THREE.InstancedBufferAttribute(work.start, 3).setUsage(THREE.DynamicDrawUsage);
-        aEnd = new THREE.InstancedBufferAttribute(work.end, 3).setUsage(THREE.DynamicDrawUsage);
-        lineGeom.setAttribute('instanceStart', aStart);
-        lineGeom.setAttribute('instanceEnd', aEnd);
-    }
-
-    // ensure attribute capacity >= needFloats
-    if (aStart.array.length < needFloats || aEnd.array.length < needFloats) {
-        // grow our reusable work buffers first
-        const newCap = nextPow2(needFloats);
-        if (work.start.length < newCap) work.start = new Float32Array(newCap);
-        if (work.end.length < newCap) work.end = new Float32Array(newCap);
-
-        // swap arrays on the attributes without recreating them (if supported)
-        if ((aStart as any).setArray) {
-            (aStart as any).setArray(work.start);
-            (aEnd as any).setArray(work.end);
-        } else {
-            // fallback for older three.js
-            lineGeom.setAttribute('instanceStart',
-                new THREE.InstancedBufferAttribute(work.start, 3).setUsage(THREE.DynamicDrawUsage));
-            lineGeom.setAttribute('instanceEnd',
-                new THREE.InstancedBufferAttribute(work.end, 3).setUsage(THREE.DynamicDrawUsage));
-            aStart = lineGeom.getAttribute('instanceStart') as THREE.InstancedBufferAttribute;
-            aEnd = lineGeom.getAttribute('instanceEnd') as THREE.InstancedBufferAttribute;
+    // Upload once; LineSegmentsGeometry will set instanceStart/End etc.
+    if (usedSegments > 0) {
+        lineGeom.setPositions(work.flat.subarray(0, usedFloats));
+        const segs = usedFloats / 6; // total segments you wrote
+        (lineGeom as any).instanceCount = segs;       // r152+
+        (lineGeom as any).maxInstancedCount = segs;   // r14x–r15x
+        const aS = lineGeom.getAttribute('instanceStart') as THREE.InstancedBufferAttribute;
+        const aE = lineGeom.getAttribute('instanceEnd')   as THREE.InstancedBufferAttribute;
+        function logInstance(i: number) {
+            const s = [aS.getX(i), aS.getY(i), aS.getZ(i)];
+            const e = [aE.getX(i), aE.getY(i), aE.getZ(i)];
+            console.log('inst', i, 'start', s, 'end', e, 'len',
+                Math.hypot(e[0]-s[0], e[1]-s[1], e[2]-s[2]));
         }
-    }
+        logInstance(0);
+        logInstance(Math.floor(aS.count/3));       // middle
+        logInstance(aS.count-1);                   // last
 
-// copy only the used range into the attribute arrays
-    (aStart.array as Float32Array).set(work.start.subarray(0, needFloats));
-    (aEnd.array as Float32Array).set(work.end.subarray(0, needFloats));
-    aStart.needsUpdate = true;
-    aEnd.needsUpdate = true;
+        // Bounds (over used range) — robust for all r14x–r16x
+        {
+            let minX =  Infinity, minY =  Infinity, minZ =  Infinity;
+            let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+            for (let i = 0; i < usedFloats; i += 3) {
+                const x = work.flat[i], y = work.flat[i+1], z = work.flat[i+2];
+                if (x < minX) minX = x; if (y < minY) minY = y; if (z < minZ) minZ = z;
+                if (x > maxX) maxX = x; if (y > maxY) maxY = y; if (z > maxZ) maxZ = z;
+            }
+            const box = new THREE.Box3(
+                new THREE.Vector3(minX, minY, minZ),
+                new THREE.Vector3(maxX, maxY, maxZ)
+            );
+            lineGeom.boundingBox = box;
 
-// draw only the number of segments we populated
-    (lineGeom as any).instanceCount = work.segments;
-
-// ---- Compute bounds over the USED range only (avoid NaNs in tail) ----
-    const used = needFloats; // floats (x,y,z) * number of verts
-    const aS = aStart.array as Float32Array;
-    const aE = aEnd.array as Float32Array;
-
-// min/max over start + end
-    let minX =  Infinity, minY =  Infinity, minZ =  Infinity;
-    let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
-
-    for (let i = 0; i < used; i += 3) {
-        let x = aS[i], y = aS[i+1], z = aS[i+2];
-        if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) {
-            if (x < minX) minX = x; if (y < minY) minY = y; if (z < minZ) minZ = z;
-            if (x > maxX) maxX = x; if (y > maxY) maxY = y; if (z > maxZ) maxZ = z;
+            const center = box.getCenter(new THREE.Vector3());
+            let r2 = 0;
+            for (let i = 0; i < usedFloats; i += 3) {
+                const dx = work.flat[i]   - center.x;
+                const dy = work.flat[i+1] - center.y;
+                const dz = work.flat[i+2] - center.z;
+                const d2 = dx*dx + dy*dy + dz*dz;
+                if (d2 > r2) r2 = d2;
+            }
+            lineGeom.boundingSphere = new THREE.Sphere(center, Math.sqrt(r2));
         }
-        x = aE[i]; y = aE[i+1]; z = aE[i+2];
-        if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) {
-            if (x < minX) minX = x; if (y < minY) minY = y; if (z < minZ) minZ = z;
-            if (x > maxX) maxX = x; if (y > maxY) maxY = y; if (z > maxZ) maxZ = z;
-        }
-    }
 
-// If nothing finite (shouldn't happen), fall back to disabling culling for this frame
-    if (!Number.isFinite(minX)) {
+        // (lineGeom as any).instanceCount = usedSegments; // harmless; setPositions also handles this
+        curveObjects.lines.visible = true;
         curveObjects.lines.frustumCulled = false;
     } else {
-        const box = new THREE.Box3(
-            new THREE.Vector3(minX, minY, minZ),
-            new THREE.Vector3(maxX, maxY, maxZ)
-        );
-        lineGeom.boundingBox = box;
-
-        // sphere: center = box center, radius = max distance of used verts to center
-        const center = box.getCenter(new THREE.Vector3());
-        let r2 = 0;
-        for (let i = 0; i < used; i += 3) {
-            let dx = aS[i] - center.x, dy = aS[i+1] - center.y, dz = aS[i+2] - center.z;
-            if (Number.isFinite(dx) && Number.isFinite(dy) && Number.isFinite(dz)) {
-                const d2 = dx*dx + dy*dy + dz*dz; if (d2 > r2) r2 = d2;
-            }
-            dx = aE[i] - center.x; dy = aE[i+1] - center.y; dz = aE[i+2] - center.z;
-            if (Number.isFinite(dx) && Number.isFinite(dy) && Number.isFinite(dz)) {
-                const d2 = dx*dx + dy*dy + dz*dz; if (d2 > r2) r2 = d2;
-            }
-        }
-        lineGeom.boundingSphere = new THREE.Sphere(center, Math.sqrt(r2));
-        curveObjects.lines.frustumCulled = true; // back on if you disabled it
+        lineGeom.setPositions(new Float32Array(0));
+        curveObjects.lines.visible = false;
     }
 
-    // ---------------------------------------------------------------------------
-    // done
-    // ---------------------------------------------------------------------------
-    console.log(`curvesToCurveLines (fast): ${performance.now() - t0 | 0} ms, segments=${work.segments}`, lineGeom);
+    console.log(`curvesToCurveLinesFast: ${((performance.now() - t0) | 0)} ms, paths=${paths.length}, segments=${usedSegments}`);
+    const aS = lineGeom.getAttribute('instanceStart');
+    const aE = lineGeom.getAttribute('instanceEnd');
+
+    console.log({
+        cpuSegments: usedFloats / 6,
+        gpu_instanceCount: (lineGeom as any).instanceCount,
+        gpu_maxInstancedCount: (lineGeom as any).maxInstancedCount,
+        attr_instanceStart_count: aS?.count,
+        attr_instanceEnd_count: aE?.count,
+        base_position_count: lineGeom.getAttribute('position')?.count, // should be 6
+    });
+    console.log('base_position_count', lineGeom.getAttribute('position')?.count);
+    console.table(segsPerPath.map((n,i)=>({path:i, segs:n})));
+    console.log('skipped degenerate:', skippedDegenerate, 'skipped NaN:', skippedNaN);
+
     return curveObjects;
 }
 
