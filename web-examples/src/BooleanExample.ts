@@ -15,8 +15,8 @@ export class BooleanExample extends TestClassThreejsBase {
 
     // private pointDebug = createPoints();
 
-    constructor(wasmInstance: MainModule, path: string, container: HTMLElement, container2: HTMLElement) {
-        super(wasmInstance, [path], container, container2, true);
+    constructor(wasmInstance: MainModule, path: string[], container: HTMLElement, container2: HTMLElement) {
+        super(wasmInstance, path, container, container2, true);
 
         const interceptKeyDownEvent = (event: KeyboardEvent) => {
             if (this.keyPressed) return;
@@ -56,13 +56,14 @@ export class BooleanExample extends TestClassThreejsBase {
     }
 
     public runMain() {
-        // const v = new this.wasmInstance.VectorString()
-        // for(let i = 0; i < this.paths.length; i++) {
-        //     v.push_back(this.paths[i]);
-        // }
-        // TODO change to std::vector<std::string>
-        this.wasmInstance.run_main(this.paths[0]);
-        this.wasmInstance.FS.unlink(this.paths[0]);
+        const v = new this.wasmInstance.VectorString()
+        for(let i = 0; i < this.paths.length; i++) {
+            v.push_back(this.paths[i]);
+        }
+        this.wasmInstance.run_main(v);
+        for(let i = 0; i < this.paths.length; i++) {
+            this.wasmInstance.FS.unlink(this.paths[i]);
+        }
     }
 
     public updateMeshes() {

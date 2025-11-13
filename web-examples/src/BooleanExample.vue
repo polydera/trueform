@@ -26,13 +26,19 @@ const loadThreejs = async () => {
     // Load data to wasm
     // const path = "zan0.stl"
     const path = "dragon-250k.stl"
-    // const path = "Stanford_Bunny.stl"
+    const path2 = "Stanford_Bunny.stl"
     const response = await fetch(path);
     const aBuff = await response.arrayBuffer();
     const intArr = new Int8Array(aBuff);
     wasmInstance.FS.writeFile(path, intArr);
+    const response2 = await fetch(path2);
+    const aBuff2 = await response2.arrayBuffer();
+    const intArr2 = new Int8Array(aBuff2);
+    wasmInstance.FS.writeFile(path2, intArr2);
 
-    exampleClass = new BooleanExample(wasmInstance, path, el, el2 ?? undefined);
+    if(el2) {
+      exampleClass = new BooleanExample(wasmInstance, [path, path2], el, el2);
+    }
   }
 }
 

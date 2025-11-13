@@ -110,15 +110,18 @@ public:
   }
 };
 
-int run_main(std::string path) {
+int run_main(std::vector<std::string>& paths) {
+  auto path = paths[0];
   std::cout << "Reading file: " << path << std::endl;
   auto poly = tf::read_stl<int>(path);
   std::cout << "run main 0: " << poly.size() << std::endl;
+  if(paths.size() == 2) {
+	path = paths[1];
+  }
   auto poly2 = tf::read_stl<int>(path);
   if (!poly.size()) {
     std::cout << "Failed to read file" << std::endl;
     throw std::runtime_error("Failed to read file");
-
   }
   interactor = std::make_unique<cursor_interactor>();
 
