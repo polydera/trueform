@@ -79,7 +79,7 @@ void tree_tree_proximity_parallel(
     // Leaf-leaf: do direct point-to-point checks
     for (auto c0 = data0[0]; c0 < data0[0] + data0[1]; ++c0) {
       for (auto c1 = data1[0]; c1 < data1[0] + data1[1]; ++c1) {
-        if (params.result.update(std::make_pair(c0, c1),
+        if (params.result.update(std::make_pair(ids0[c0], ids1[c1]),
                                  params.closest_pts(ids0[c0], ids1[c1])))
           return;
       }
@@ -149,47 +149,49 @@ auto tree_tree_proximity_pre_pass(
 
   push_f(0, 0, 0);
   tbb::task_group tg;
+  // so our thread will have a current index in the task_arena
+  tg.run([&] {
+    while (stack.size()) {
+      auto candidate = stack.back();
+      stack.pop_back();
+      if (params.result.reject_aabbs(candidate.min2))
+        continue;
+      if (candidate.depth > dispatch_depth) {
+        tg.run([id0 = candidate.id0, id1 = candidate.id1, &params] {
+          tree_tree_proximity_parallel(id0, id1, params);
+        });
+        continue;
+      }
+      int last_id = stack.size();
+      const auto &node0 = nodes0[candidate.id0];
+      const auto &node1 = nodes1[candidate.id1];
+      const auto &data0 = node0.get_data();
+      const auto &data1 = node1.get_data();
 
-  while (stack.size()) {
-    auto candidate = stack.back();
-    stack.pop_back();
-    if (params.result.reject_aabbs(candidate.min2))
-      continue;
-    if (candidate.depth > dispatch_depth) {
-      tg.run([id0 = candidate.id0, id1 = candidate.id1, &params] {
-        tree_tree_proximity_parallel(id0, id1, params);
-      });
-      continue;
-    }
-    int last_id = stack.size();
-    const auto &node0 = nodes0[candidate.id0];
-    const auto &node1 = nodes1[candidate.id1];
-    const auto &data0 = node0.get_data();
-    const auto &data1 = node1.get_data();
-
-    if (!node0.is_leaf() && !node1.is_leaf()) {
-      for (auto n_id0 = data0[0]; n_id0 < data0[0] + data0[1]; ++n_id0)
+      if (!node0.is_leaf() && !node1.is_leaf()) {
+        for (auto n_id0 = data0[0]; n_id0 < data0[0] + data0[1]; ++n_id0)
+          for (auto n_id1 = data1[0]; n_id1 < data1[0] + data1[1]; ++n_id1)
+            push_f(n_id0, n_id1, candidate.depth + 1);
+        dispatch(last_id);
+      } else if (!node0.is_leaf()) {
+        for (auto n_id0 = data0[0]; n_id0 < data0[0] + data0[1]; ++n_id0)
+          push_f(n_id0, candidate.id1, candidate.depth + 1);
+        dispatch(last_id);
+      } else if (!node1.is_leaf()) {
         for (auto n_id1 = data1[0]; n_id1 < data1[0] + data1[1]; ++n_id1)
-          push_f(n_id0, n_id1, candidate.depth + 1);
-      dispatch(last_id);
-    } else if (!node0.is_leaf()) {
-      for (auto n_id0 = data0[0]; n_id0 < data0[0] + data0[1]; ++n_id0)
-        push_f(n_id0, candidate.id1, candidate.depth + 1);
-      dispatch(last_id);
-    } else if (!node1.is_leaf()) {
-      for (auto n_id1 = data1[0]; n_id1 < data1[0] + data1[1]; ++n_id1)
-        push_f(candidate.id0, n_id1, candidate.depth + 1);
-      dispatch(last_id);
-    } else {
-      for (auto n_id0 = data0[0]; n_id0 < data0[0] + data0[1]; ++n_id0)
-        for (auto n_id1 = data1[0]; n_id1 < data1[0] + data1[1]; ++n_id1) {
-          if (params.result.update(
-                  std::make_pair(ids0[n_id0], ids1[n_id1]),
-                  params.closest_pts(ids0[n_id0], ids1[n_id1])))
-            return;
-        }
+          push_f(candidate.id0, n_id1, candidate.depth + 1);
+        dispatch(last_id);
+      } else {
+        for (auto n_id0 = data0[0]; n_id0 < data0[0] + data0[1]; ++n_id0)
+          for (auto n_id1 = data1[0]; n_id1 < data1[0] + data1[1]; ++n_id1) {
+            if (params.result.update(
+                    std::make_pair(ids0[n_id0], ids1[n_id1]),
+                    params.closest_pts(ids0[n_id0], ids1[n_id1])))
+              return;
+          }
+      }
     }
-  }
+  });
   tg.wait();
 }
 
