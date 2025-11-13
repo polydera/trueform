@@ -9,7 +9,7 @@ import {
 } from "@/utils/utlis";
 
 
-export class TestClassThreejs {
+export class BooleanExample {
     private readonly wasmInstance: MainModule;
 
     // First renderer (primary scene)
@@ -43,6 +43,8 @@ export class TestClassThreejs {
         container.innerHTML = "";
         container.appendChild(this.renderer.domElement);
         this.stats.init(this.renderer);
+        container.style.position = 'relative';
+        this.stats.dom.style.position = 'absolute';
         container.appendChild( this.stats.dom );
 
         // Setup second renderer if container2 is provided
@@ -114,7 +116,6 @@ export class TestClassThreejs {
         // Add event interception for pointer events
         const interceptEvent = (event: PointerEvent) => {
             // Get bounding rect and mouse position
-
             const rect = this.renderer.domElement.getBoundingClientRect();
             ndc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
             ndc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -194,9 +195,6 @@ export class TestClassThreejs {
             console.log('Using LineSegments2 for curve rendering');
         }
         this.sceneBundle1.scene.add(this.curveObjects.lines);
-        //
-        // // this.sceneBundle1.scene.add(this.pointDebug);
-        // this.sceneBundle2?.scene.add(this.pointDebug);
 
 
         if(this.sceneBundle2 && this.renderer2) {
@@ -205,10 +203,6 @@ export class TestClassThreejs {
             this.sceneBundle2.scene.add(mesh);
         }
         this.updateMeshes();
-        // const m = this.meshes.get(0)
-        // if(m) fitCameraToObject(this.sceneBundle1.camera, m, 1);
-        // const m2 = this.meshes2.get(0)
-        // if(m2 && this.sceneBundle2) fitCameraToObject(this.sceneBundle2.camera, m2, 1);
     }
 
     private updateMeshes(){
@@ -228,8 +222,8 @@ export class TestClassThreejs {
             if (this.useBasicLines) {
                 updateBasicCurveLines(lines, this.curveObjects);
             } else {
-                // curvesToCurveLines(lines, this.curveObjects, {samplesPerSegment: 3, tension: 0.5});
-                curvesToCurveLinesFast(lines, this.curveObjects, {closed: false});
+                curvesToCurveLines(lines, this.curveObjects, {samplesPerSegment: 3, tension: 0.5});
+                // curvesToCurveLinesFast(lines, this.curveObjects, {closed: false});
             }
         }
 
@@ -239,8 +233,6 @@ export class TestClassThreejs {
             if(wO && mesh){
                 getMeshFromWasm(wO, mesh);
             }
-            // const m2 = this.meshes2.get(0)
-            // if(m2 && this.sceneBundle2) fitCameraToObject(this.sceneBundle2.camera, m2, 1);
         }
     }
 
@@ -249,6 +241,10 @@ export class TestClassThreejs {
 
     public getAverageTime(){
         return this.wasmInstance.get_average_time();
+    }
+
+    public getAveragePickTime(){
+        return this.wasmInstance.get_average_pick_time();
     }
 
     private animate = () => {

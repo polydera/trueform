@@ -297,3 +297,57 @@ export function createBidirectionalSyncedScenes(
     
     return { sceneBundle1, sceneBundle2 };
 }
+/**
+ * Fits camera to view all meshes in the scene from the direction of z=0 plane
+ * and stores the camera position for later reset functionality
+ */
+export function fitCameraToAllMeshesFromZPlane(sceneBundle: SceneBundle, offset: number = 1.25): void {
+    const { scene, camera, controls } = sceneBundle;
+
+    // Find all meshes in the scene
+    const meshes: THREE.Mesh[] = [];
+    scene.traverse((child) => {
+        if (child.type === 'Mesh') {
+            meshes.push(child as THREE.Mesh);
+        }
+    });
+
+    if (meshes.length === 0) {
+        console.warn('No meshes found in scene');
+        return;
+    }
+
+    // Calculate bounding box of all meshes combined
+    const combinedBox = new THREE.Box3();
+    meshes.forEach(mesh => {
+        const meshBox = new THREE.Box3().setFromObject(mesh);
+        combinedBox.union(meshBox);
+    });
+
+    // Get the center and size of all meshes
+    const center = combinedBox.getCenter(new THREE.Vector3());
+    const size = combinedBox.getSize(new THREE.Vector3());
+
+    // Calculate the maximum dimension to determine camera distance
+    const maxDimension = Math.max(size.x, size.y, size.z);
+
+    // Calculate distance needed to fit all objects in view
+    const fov = camera.fov * (Math.PI / 180); // Convert to radians
+    const distance = (maxDimension * offset) / (2 * Math.tan(fov / 2));
+
+    // Position camera to look at the scene from z=0 direction
+    // This means the camera will be positioned along the positive Z axis
+    const cameraPosition = new THREE.Vector3(center.x, center.y, center.z + distance);
+
+    // Set camera position and orientation
+    camera.position.copy(cameraPosition);
+    camera.lookAt(center);
+
+    // Update controls target to the center of all meshes
+    controls.target.copy(center);
+    controls.update();
+    controls.saveState();
+
+    // Update camera projection matrix
+    camera.updateProjectionMatrix();
+}

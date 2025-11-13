@@ -22,6 +22,11 @@ public:
     tf::polygons_buffer<int, float, 3, 3> poly_object;
     tf::curves_buffer<int, float, 3> curves_object;
     std::array<double, 16> matrix;
+    std::array<double, 3> color = {1, 1, 1};
+
+    auto set_color(double r, double g, double b) -> void {
+		color = {r, g, b};
+	}
 
     auto set_polydata(tf::polygons_buffer<int, float, 3, 3> polydata) -> void {
         poly_object = std::move(polydata);
@@ -53,17 +58,8 @@ public:
         return emscripten::val(emscripten::typed_memory_view(curves_object.paths_buffer().offsets_buffer().size(), curves_object.paths_buffer().offsets_buffer().begin()));
     }
 
-    auto GetMatrix() -> emscripten::val {
+    auto get_matrix() -> emscripten::val {
         matrix_updated = false;
         return emscripten::val(emscripten::typed_memory_view(matrix.size(), matrix.data()));
-
     }
-    // CURVE LINES
-    // tf::curves_buffer<int, float, 3> cb;
-    // auto &ids = cb.paths_buffer().data_buffer(); // ids
-    // auto &offsets = cb.paths_buffer().offsets_buffer();// [0, a, b, c, ..., ids.size()]
-    // ids for curve[0] --- ids[offsets[0]]... ids[offsets[1]-1]
-    // for (auto line_ids: cb.paths_buffer()) {
-    // auto points_for_line = tf::make_indirect_range(line_ids, cb.points());
-    // }
 };

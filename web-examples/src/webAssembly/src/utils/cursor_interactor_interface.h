@@ -69,7 +69,6 @@ public:
 
 protected:
     std::unique_ptr<tf_bridge_interface> bridge;
-    std::vector<float> times;
     int time_index = 0;
 
     tf::plane<float, 3> moving_plane;
@@ -79,22 +78,19 @@ protected:
     bool selected_mode = false;
     bool camera_mode = false;
 
-    auto add_time(float t) {
-        if (times.size() < 100) {
-            times.push_back(t);
-        } else {
-            times[time_index] = t;
-        }
-        time_index = (time_index + 1) % 100;
-        float sum = 0;
-        for (auto time : times)
-            sum += time;
-        auto time = sum / times.size();
-        char buffer[64];
-        std::snprintf(buffer, sizeof(buffer), "Boolean time per frame: %.1f ms",
-                      time);
-        std::cout << buffer << std::endl;
-        mTime = time;
+    auto add_time(std::vector<float> &times, float t) {
+      if (times.size() < 100) {
+        times.push_back(t);
+      } else {
+        times[time_index] = t;
+      }
+      time_index = (time_index + 1) % 100;
+      float sum = 0;
+      for (auto time : times)
+        sum += time;
+      auto time = sum / times.size();
+      m_time = time;
+      return time;
     }
 
     auto make_moving_plane(tf::point<float, 3> origin, std::array<float, 3> cameraPosition, std::array<float, 3> cameraFocalPoint) {
@@ -108,7 +104,9 @@ protected:
         bridge->update_frame(selected_actor);
     }
 public:
-    float mTime = 0.f;
+    float m_time = 0.f;
+    float m_pick_time = 0.f;
+    std::size_t total_polygons = 0;
 
     auto get_actors() -> std::vector<std::unique_ptr<mesh_object>> & {
         return bridge->get_actors();
@@ -128,7 +126,7 @@ public:
         return false;
     }
 
-    auto OnLeftButtonUp() -> bool {
+    virtual auto OnLeftButtonUp() -> bool {
         if (selected_mode) {
             selected_mode = false;
             return true;

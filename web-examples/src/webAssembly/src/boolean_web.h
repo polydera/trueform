@@ -42,11 +42,21 @@ public:
   std::unique_ptr<mesh_object> curve_mesh = std::make_unique<mesh_object>();
 
 private:
+  std::vector<float> boolean_times;
+
+  auto add_boolean_time(float t) {
+    auto boolean_time = add_time(boolean_times, t);
+    char buffer[64];
+    std::snprintf(buffer, sizeof(buffer), "Boolean time per frame  : %.1f ms",
+                  boolean_time);
+    m_time = boolean_time;
+  }
+
   auto compute_curves() {
     tf::tick();
     if(auto pB = static_cast<tf_bridge*>(bridge.get())) {
       auto [res_mesh, labels, curves] = pB->compute_boolean();
-      add_time(tf::tock());
+      add_boolean_time(tf::tock());
       (void)labels;
       result_mesh->set_polydata(std::move(res_mesh));
       curve_mesh->set_curves_object(std::move(curves));

@@ -16,6 +16,7 @@
     "fast-glob": "^3.3.2",
     "stats-gl": "^3.7.0",
     "vue": "^3.5.22",
+    "vue-router": "^4.3.2",
     "three": "^0.181.1"
   },
   "devDependencies": {

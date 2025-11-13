@@ -3,6 +3,7 @@
 
 #include "main.h"
 #include "boolean_web.h"
+#include "collision_web.h"
 #include "utils/bridge_web.h"
 #include "utils/cursor_interactor_interface.h"
 
@@ -21,6 +22,10 @@ auto OnMouseMove(std::array<float, 3> origin, std::array<float, 3> direction, st
 
 auto OnKeyPress(std::string key) {
     return interactor->OnKeyPress(key);
+}
+
+auto get_number_of_meshes() -> int {
+    return interactor->get_actors().size();
 }
 
 auto get_mesh_on_idx(int i) -> mesh_object * {
@@ -42,24 +47,47 @@ auto get_curve_mesh() -> mesh_object * {
 }
 
 auto get_average_time() {
-    return interactor->mTime;
+    return interactor->m_time;
 }
 
+auto get_average_pick_time() {
+    return interactor->m_pick_time;
+}
+
+auto get_number_of_polygons() -> std::size_t {
+    return interactor->total_polygons;
+}
 
 EMSCRIPTEN_BINDINGS(boolean) {
-  emscripten::function("run_main", &run_main);
+  emscripten::function("get_number_of_meshes", &get_number_of_meshes);
+  emscripten::function("get_mesh_on_idx", &get_mesh_on_idx, emscripten::allow_raw_pointers());
   emscripten::function("get_average_time", &get_average_time);
+  emscripten::function("get_average_pick_time", &get_average_pick_time);
+  emscripten::function("get_number_of_polygons", &get_number_of_polygons);
+    // Interactor
   emscripten::function("OnLeftButtonUp", &OnLeftButtonUp);
   emscripten::function("OnLeftButtonDown", &OnLeftButtonDown);
   emscripten::function("OnMouseMove", &OnMouseMove);
   emscripten::function("OnKeyPress", &OnKeyPress);
-  emscripten::function("get_mesh_on_idx", &get_mesh_on_idx, emscripten::allow_raw_pointers());
+    // Boolean
+  emscripten::function("run_main", &run_main);
   emscripten::function("get_result_mesh", &get_result_mesh, emscripten::allow_raw_pointers());
   emscripten::function("get_curve_mesh", &get_curve_mesh, emscripten::allow_raw_pointers());
+    // Collisions
+  emscripten::function("run_main_collisions", &run_main_collisions);
 }
 
+EMSCRIPTEN_BINDINGS(VectorString) {
+    emscripten::register_vector<std::string>("VectorString");
+}
 EMSCRIPTEN_BINDINGS(ArrayFloat3) {
     emscripten::value_array<std::array<float, 3>>("ArrayFloat3")
+        .element(emscripten::index<0>())
+        .element(emscripten::index<1>())
+        .element(emscripten::index<2>());
+}
+EMSCRIPTEN_BINDINGS(ArrayDouble3) {
+    emscripten::value_array<std::array<double, 3>>("ArrayDouble3")
         .element(emscripten::index<0>())
         .element(emscripten::index<1>())
         .element(emscripten::index<2>());
@@ -94,6 +122,7 @@ EMSCRIPTEN_BINDINGS(mesh_object) {
         .function("get_curve_ids", &mesh_object::get_curve_ids)
         .function("get_curve_offsets", &mesh_object::get_curve_offsets)
         .property("matrix", &mesh_object::matrix)
+        .property("color", &mesh_object::color)
         .property("matrix_updated", &mesh_object::matrix_updated)
         .property("polydata_updated", &mesh_object::polydata_updated)
     ;

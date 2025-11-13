@@ -3,6 +3,7 @@ import { mesh_object } from '../webAssembly/dist/native.js'
 import {LineMaterial} from "three/examples/jsm/lines/LineMaterial";
 import {LineSegments2} from "three/examples/jsm/lines/LineSegments2";
 import {LineSegmentsGeometry} from "three/examples/jsm/lines/LineSegmentsGeometry";
+import {MeshLambertMaterial} from "three";
 
 export interface CurveObj {
     points: Float32Array;
@@ -45,19 +46,24 @@ export function createMesh(){
     return mesh;
 }
 
-export function getMeshFromWasm(wO: mesh_object, mesh: THREE.Mesh, pointsOnly?: boolean) {
+export function getMeshFromWasm(wO: mesh_object, mesh: THREE.Mesh) {
     const pU = wO.polydata_updated;
     if(pU) {
         const geometry = mesh.geometry;
         geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(wO.get_points()), 3));
         geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(wO.get_polys()), 1));
     }
+    const currC = (mesh.material as MeshLambertMaterial).color;
+    const newC = wO.color;
+    if(currC.r != newC[0] || currC.g != newC[1] || currC.b != newC[2]) {
+        (mesh.material as MeshLambertMaterial).color.set(newC[0], newC[1], newC[2]);
+    }
     getMatrixFromWasm(wO, mesh)
 }
 
 export function getMatrixFromWasm(wO: mesh_object, dstGeometry: THREE.Mesh | THREE.Line | THREE.Points) {
     const mU = wO.matrix_updated;
-    if(mU) {
+    if(mU || true) {
         const matrix = new Float32Array(wO.matrix);
         const threeMatrix = new THREE.Matrix4();
         threeMatrix.fromArray(matrix);
@@ -468,7 +474,7 @@ export function curvesToCurveLines(
     oldGeom.dispose();
     curveObjects.lines.geometry = newGeom;
 
-    console.log("Time to build line segments: " + (performance.now() - t0) + "ms");
+    // console.log("Time to build line segments: " + (performance.now() - t0) + "ms");
     return curveObjects;
 }
 /**
