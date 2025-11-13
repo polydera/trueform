@@ -133,7 +133,7 @@ private:
                      descriptors.begin() + next + 1, descriptors.end(),
                      [&](const auto &d) { return !(d.start < current); }) -
                  descriptors.begin();
-          if (next == n_crossings || descriptors[next].start >= current) {
+          if (next == n_crossings || descriptors[next].start >= end) {
             break;
           }
         }
