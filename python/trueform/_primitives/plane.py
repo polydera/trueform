@@ -13,21 +13,18 @@ from typing import Optional
 
 class Plane:
     """
-    An infinite plane in 2D or 3D space.
+    An infinite plane in 3D space.
 
-    In 2D: ax + by + c = 0
-    In 3D: ax + by + cz + d = 0
+    Equation: ax + by + cz + d = 0
 
     Parameters
     ----------
     coeffs : np.ndarray, optional
-        Plane coefficients:
-        - 2D: (a, b, c) for ax + by + c = 0, shape (3,)
-        - 3D: (a, b, c, d) for ax + by + cz + d = 0, shape (4,)
+        Plane coefficients (a, b, c, d) for ax + by + cz + d = 0, shape (4,)
     normal : np.ndarray, optional
-        Normal vector, shape (D,). Must provide with origin.
+        Normal vector, shape (3,). Must provide with origin.
     origin : np.ndarray, optional
-        Point on plane, shape (D,). Must provide with normal.
+        Point on plane, shape (3,). Must provide with normal.
 
     Examples
     --------
@@ -55,10 +52,10 @@ class Plane:
             if coeffs.ndim != 1:
                 raise ValueError(f"Plane coefficients must be 1D array, got shape {coeffs.shape}")
 
-            if coeffs.shape[0] not in [3, 4]:
-                raise ValueError(f"Plane coefficients must have 3 (2D) or 4 (3D) elements, got {coeffs.shape[0]}")
+            if coeffs.shape[0] != 4:
+                raise ValueError(f"Plane coefficients must have 4 elements (a, b, c, d), got {coeffs.shape[0]}")
 
-            dims = coeffs.shape[0] - 1  # 2D or 3D
+            dims = 3  # Plane is 3D only
 
             # Normalize the normal vector and scale offset accordingly
             normal = coeffs[:-1]
@@ -86,8 +83,8 @@ class Plane:
                 raise ValueError(f"Normal and origin must be 1D arrays, got shape {normal_arr.shape}")
 
             dims = normal_arr.shape[0]
-            if dims not in [2, 3]:
-                raise ValueError(f"Plane must be 2D or 3D, got {dims} dimensions")
+            if dims != 3:
+                raise ValueError(f"Plane must be 3D, got {dims} dimensions. Normal and origin must have shape (3,)")
 
             # Normalize the normal vector
             normal_norm = np.linalg.norm(normal_arr)
@@ -130,7 +127,7 @@ class Plane:
 
     @property
     def offset(self) -> float:
-        """Get offset coefficient (c in 2D, d in 3D)."""
+        """Get offset coefficient d."""
         return float(self._data[-1])
 
     @property
@@ -140,13 +137,93 @@ class Plane:
 
     @property
     def dims(self) -> int:
-        """Get dimensionality (2 or 3)."""
+        """Get dimensionality (always 3 for Plane)."""
         return self._dims
 
     @property
     def dtype(self) -> np.dtype:
         """Get data type (float32 or float64)."""
         return self._dtype
+
+    @classmethod
+    def from_point_normal(cls, origin, normal):
+        """
+        Create plane from a point and normal vector.
+
+        This is equivalent to Plane(normal=..., origin=...) but as a classmethod
+        for consistency with other primitives' from_* constructors.
+
+        Parameters
+        ----------
+        origin : array-like
+            Point on the plane, shape (3,)
+        normal : array-like
+            Normal vector to the plane, shape (3,)
+
+        Returns
+        -------
+        Plane
+            Plane passing through origin with given normal
+
+        Examples
+        --------
+        >>> plane = Plane.from_point_normal([0, 0, 5], [0, 0, 1])
+        >>> plane.normal
+        array([0., 0., 1.], dtype=float32)
+        >>> plane.offset
+        -5.0
+        """
+        return cls(normal=normal, origin=origin)
+
+    @classmethod
+    def from_points(cls, p1, p2, p3):
+        """
+        Create plane passing through three points.
+
+        The normal vector is computed as (p2 - p1) × (p3 - p1).
+
+        Parameters
+        ----------
+        p1 : array-like
+            First point on the plane, shape (3,)
+        p2 : array-like
+            Second point on the plane, shape (3,)
+        p3 : array-like
+            Third point on the plane, shape (3,)
+
+        Returns
+        -------
+        Plane
+            Plane passing through the three points
+
+        Raises
+        ------
+        ValueError
+            If points are collinear (don't define a unique plane)
+
+        Examples
+        --------
+        >>> plane = Plane.from_points([0, 0, 0], [1, 0, 0], [0, 1, 0])
+        >>> plane.normal
+        array([0., 0., 1.], dtype=float32)
+        """
+        p1 = np.asarray(p1)
+        p2 = np.asarray(p2)
+        p3 = np.asarray(p3)
+
+        if p1.shape[0] != 3 or p2.shape[0] != 3 or p3.shape[0] != 3:
+            raise ValueError(f"Plane.from_points requires 3D points, got shapes {p1.shape}, {p2.shape}, {p3.shape}")
+
+        # Compute normal via cross product
+        v1 = p2 - p1
+        v2 = p3 - p1
+        normal = np.cross(v1, v2)
+
+        # Check if points are collinear
+        if np.linalg.norm(normal) < 1e-10:
+            raise ValueError("Points are collinear and do not define a unique plane")
+
+        return cls(normal=normal, origin=p1)
 
     def __repr__(self) -> str:
         return f"Plane(coeffs={self._data.tolist()}, {self._dims}D, dtype={self._dtype})"

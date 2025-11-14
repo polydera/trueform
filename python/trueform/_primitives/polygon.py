@@ -89,7 +89,13 @@ class Polygon:
         return self._dtype
 
     def __repr__(self) -> str:
-        return f"Polygon({self.num_vertices} vertices, {self._dims}D, dtype={self._dtype})"
+        n_verts = self.num_vertices
+        if n_verts <= 5:
+            # Show actual vertices for small polygons
+            return f"Polygon({self._data.tolist()}, dtype={self._dtype})"
+        else:
+            # Show summary for large polygons
+            return f"Polygon({n_verts} vertices, {self._dims}D, dtype={self._dtype})"
 
     def __len__(self) -> int:
         """Get number of vertices (for len(polygon) syntax)."""

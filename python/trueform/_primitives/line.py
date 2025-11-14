@@ -15,7 +15,8 @@ class Line:
     """
     A line defined by origin and direction.
 
-    The direction vector is stored as-is without normalization.
+    ⚠️  **Important:** The direction vector is stored as-is, NOT normalized.
+        Use the `normalized_direction` property if you need a unit vector.
 
     Parameters
     ----------
@@ -117,6 +118,48 @@ class Line:
     def dtype(self) -> np.dtype:
         """Get data type (float32 or float64)."""
         return self._dtype
+
+    @property
+    def normalized_direction(self) -> np.ndarray:
+        """Get unit direction vector (normalized to length 1)."""
+        return self._data[1] / np.linalg.norm(self._data[1])
+
+    @property
+    def direction_norm(self) -> float:
+        """Get magnitude (length) of the direction vector."""
+        return float(np.linalg.norm(self._data[1]))
+
+    @classmethod
+    def from_points(cls, p1, p2):
+        """
+        Create line passing through two points.
+
+        The direction is computed as (p2 - p1).
+
+        Parameters
+        ----------
+        p1 : array-like
+            First point on the line, shape (D,) where D is 2 or 3
+        p2 : array-like
+            Second point on the line, shape (D,)
+
+        Returns
+        -------
+        Line
+            Line passing through p1 and p2
+
+        Examples
+        --------
+        >>> line = Line.from_points([0, 0], [1, 1])
+        >>> line.origin
+        array([0., 0.], dtype=float32)
+        >>> line.direction
+        array([1., 1.], dtype=float32)
+        """
+        p1 = np.asarray(p1)
+        p2 = np.asarray(p2)
+        direction = p2 - p1
+        return cls(origin=p1, direction=direction)
 
     def __repr__(self) -> str:
         return f"Line(origin={self.origin.tolist()}, direction={self.direction.tolist()}, dtype={self._dtype})"

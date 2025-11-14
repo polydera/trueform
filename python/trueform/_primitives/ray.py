@@ -15,7 +15,8 @@ class Ray:
     """
     A ray defined by origin and direction.
 
-    The direction vector is stored as-is without normalization.
+    ⚠️  **Important:** The direction vector is stored as-is, NOT normalized.
+        Use the `normalized_direction` property if you need a unit vector.
 
     Parameters
     ----------
@@ -117,6 +118,48 @@ class Ray:
     def dtype(self) -> np.dtype:
         """Get data type (float32 or float64)."""
         return self._dtype
+
+    @property
+    def normalized_direction(self) -> np.ndarray:
+        """Get unit direction vector (normalized to length 1)."""
+        return self._data[1] / np.linalg.norm(self._data[1])
+
+    @property
+    def direction_norm(self) -> float:
+        """Get magnitude (length) of the direction vector."""
+        return float(np.linalg.norm(self._data[1]))
+
+    @classmethod
+    def from_points(cls, start, through_point):
+        """
+        Create ray from start point through another point.
+
+        The direction is computed as (through_point - start).
+
+        Parameters
+        ----------
+        start : array-like
+            Ray origin point, shape (D,) where D is 2 or 3
+        through_point : array-like
+            Point the ray passes through, shape (D,)
+
+        Returns
+        -------
+        Ray
+            Ray starting at start and passing through through_point
+
+        Examples
+        --------
+        >>> ray = Ray.from_points([0, 0], [1, 1])
+        >>> ray.origin
+        array([0., 0.], dtype=float32)
+        >>> ray.direction
+        array([1., 1.], dtype=float32)
+        """
+        start = np.asarray(start)
+        through_point = np.asarray(through_point)
+        direction = through_point - start
+        return cls(origin=start, direction=direction)
 
     def __repr__(self) -> str:
         return f"Ray(origin={self.origin.tolist()}, direction={self.direction.tolist()}, dtype={self._dtype})"

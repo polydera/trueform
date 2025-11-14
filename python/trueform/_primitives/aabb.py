@@ -118,5 +118,83 @@ class AABB:
         """Get data type (float32 or float64)."""
         return self._dtype
 
+    @property
+    def center(self) -> np.ndarray:
+        """Get center point of the AABB."""
+        return (self._data[0] + self._data[1]) / 2
+
+    @property
+    def size(self) -> np.ndarray:
+        """Get size in each dimension."""
+        return self._data[1] - self._data[0]
+
+    @property
+    def volume(self) -> float:
+        """Get volume (area in 2D, volume in 3D)."""
+        return float(np.prod(self.size))
+
+    @classmethod
+    def from_center_size(cls, center, size):
+        """
+        Create AABB from center point and size.
+
+        Parameters
+        ----------
+        center : array-like
+            Center point, shape (D,) where D is 2 or 3
+        size : array-like
+            Size in each dimension, shape (D,)
+
+        Returns
+        -------
+        AABB
+            AABB centered at center with given size
+
+        Examples
+        --------
+        >>> box = AABB.from_center_size([5, 5], [2, 2])
+        >>> box.min
+        array([4., 4.], dtype=float32)
+        >>> box.max
+        array([6., 6.], dtype=float32)
+        """
+        center = np.asarray(center)
+        size = np.asarray(size)
+        half_size = size / 2
+        min_corner = center - half_size
+        max_corner = center + half_size
+        return cls(min=min_corner, max=max_corner)
+
+    @classmethod
+    def from_points(cls, points):
+        """
+        Create AABB that bounds the given points.
+
+        Parameters
+        ----------
+        points : array-like
+            Points array, shape (N, D) where D is 2 or 3
+
+        Returns
+        -------
+        AABB
+            Axis-aligned bounding box containing all points
+
+        Examples
+        --------
+        >>> points = [[0, 0], [1, 0], [1, 1], [0, 1]]
+        >>> box = AABB.from_points(points)
+        >>> box.min
+        array([0., 0.], dtype=float32)
+        >>> box.max
+        array([1., 1.], dtype=float32)
+        """
+        points = np.asarray(points)
+        if points.ndim != 2:
+            raise ValueError(f"Points must be an array with shape (N, D) where D is 2 or 3, got shape {points.shape}")
+        min_corner = points.min(axis=0)
+        max_corner = points.max(axis=0)
+        return cls(min=min_corner, max=max_corner)
+
     def __repr__(self) -> str:
         return f"AABB(min={self.min.tolist()}, max={self.max.tolist()}, dtype={self._dtype})"

@@ -75,5 +75,87 @@ class Point:
         """Get data type (float32 or float64)."""
         return self._dtype
 
+    @property
+    def x(self) -> float:
+        """Get x coordinate."""
+        return float(self._data[0])
+
+    @property
+    def y(self) -> float:
+        """Get y coordinate."""
+        return float(self._data[1])
+
+    @property
+    def z(self) -> float:
+        """
+        Get z coordinate.
+
+        For 2D points, returns 0.0.
+
+        Returns
+        -------
+        float
+            Z coordinate, or 0.0 if point is 2D
+        """
+        if self._dims < 3:
+            return 0.0
+        return float(self._data[2])
+
+    @classmethod
+    def from_xy(cls, x: float, y: float, dtype=np.float32):
+        """
+        Create a 2D point from x and y coordinates.
+
+        Parameters
+        ----------
+        x : float
+            X coordinate
+        y : float
+            Y coordinate
+        dtype : numpy dtype, optional
+            Data type for coordinates (float32 or float64). Default is float32.
+
+        Returns
+        -------
+        Point
+            2D point at (x, y)
+
+        Examples
+        --------
+        >>> pt = Point.from_xy(1.0, 2.0)
+        >>> pt.coords
+        array([1., 2.], dtype=float32)
+        """
+        return cls(np.array([x, y], dtype=dtype))
+
+    @classmethod
+    def from_xyz(cls, x: float, y: float, z: float, dtype=np.float32):
+        """
+        Create a 3D point from x, y, and z coordinates.
+
+        Parameters
+        ----------
+        x : float
+            X coordinate
+        y : float
+            Y coordinate
+        z : float
+            Z coordinate
+        dtype : numpy dtype, optional
+            Data type for coordinates (float32 or float64). Default is float32.
+
+        Returns
+        -------
+        Point
+            3D point at (x, y, z)
+
+        Examples
+        --------
+        >>> pt = Point.from_xyz(1.0, 2.0, 3.0)
+        >>> pt.coords
+        array([1., 2., 3.], dtype=float32)
+        """
+        return cls(np.array([x, y, z], dtype=dtype))
+
     def __repr__(self) -> str:
         return f"Point({self._data.tolist()}, dtype={self._dtype})"

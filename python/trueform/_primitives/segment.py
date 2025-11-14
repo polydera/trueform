@@ -89,5 +89,49 @@ class Segment:
         """Get data type (float32 or float64)."""
         return self._dtype
 
+    @property
+    def length(self) -> float:
+        """Get length of the segment."""
+        return float(np.linalg.norm(self._data[1] - self._data[0]))
+
+    @property
+    def vector(self) -> np.ndarray:
+        """Get direction vector from start to end."""
+        return self._data[1] - self._data[0]
+
+    @property
+    def midpoint(self) -> np.ndarray:
+        """Get midpoint of the segment."""
+        return (self._data[0] + self._data[1]) / 2
+
+    @classmethod
+    def from_points(cls, start, end):
+        """
+        Create segment from two points.
+
+        Parameters
+        ----------
+        start : array-like
+            Start point, shape (D,) where D is 2 or 3
+        end : array-like
+            End point, shape (D,) where D is 2 or 3
+
+        Returns
+        -------
+        Segment
+            Segment from start to end
+
+        Examples
+        --------
+        >>> seg = Segment.from_points([0, 0], [1, 1])
+        >>> seg.start
+        array([0., 0.], dtype=float32)
+        >>> seg.end
+        array([1., 1.], dtype=float32)
+        """
+        start = np.asarray(start)
+        end = np.asarray(end)
+        return cls(np.stack([start, end], axis=0))
+
     def __repr__(self) -> str:
         return f"Segment(start={self.start.tolist()}, end={self.end.tolist()}, dtype={self._dtype})"
