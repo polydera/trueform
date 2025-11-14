@@ -6,11 +6,17 @@
 #include "collision_web.h"
 #include "forms_intersections_web.h"
 #include "isobands_web.h"
+#include "positioning_web.h"
 #include "scalar_field_intersections_web.h"
 #include "utils/bridge_web.h"
 #include "utils/cursor_interactor_interface.h"
 
 
+auto OnLeftButtonUpCustom(std::array<double, 3> focal_point, emscripten::val lambda_set_focal) {
+    if (auto *pI = dynamic_cast<cursor_interactor_positioning *>(interactor.get()))
+        return pI->OnLeftButtonUpCustom(focal_point, lambda_set_focal);
+    return false;
+}
 auto OnLeftButtonUp() {
     return interactor->OnLeftButtonUp();
 }
@@ -66,6 +72,7 @@ EMSCRIPTEN_BINDINGS(boolean) {
   emscripten::function("get_average_pick_time", &get_average_pick_time);
   emscripten::function("get_number_of_polygons", &get_number_of_polygons);
     // Interactor
+  emscripten::function("OnLeftButtonUpCustom", &OnLeftButtonUpCustom);
   emscripten::function("OnLeftButtonUp", &OnLeftButtonUp);
   emscripten::function("OnLeftButtonDown", &OnLeftButtonDown);
   emscripten::function("OnMouseMove", &OnMouseMove);
@@ -73,6 +80,7 @@ EMSCRIPTEN_BINDINGS(boolean) {
   emscripten::function("OnKeyPress", &OnKeyPress);
     // Boolean
   emscripten::function("run_main", &run_main);
+  emscripten::function("run_main_positioning", &run_main_positioning);
   emscripten::function("get_result_mesh", &get_result_mesh, emscripten::allow_raw_pointers());
   emscripten::function("get_curve_mesh", &get_curve_mesh, emscripten::allow_raw_pointers());
     // Collisions
@@ -129,7 +137,7 @@ EMSCRIPTEN_BINDINGS(mesh_object) {
         .function("get_curve_points", &mesh_object::get_curve_points)
         .function("get_curve_ids", &mesh_object::get_curve_ids)
         .function("get_curve_offsets", &mesh_object::get_curve_offsets)
-        .property("matrix", &mesh_object::matrix)
+        .function("get_matrix", &mesh_object::get_matrix)
         .property("color", &mesh_object::color)
         .property("matrix_updated", &mesh_object::matrix_updated)
         .property("polydata_updated", &mesh_object::polydata_updated)
