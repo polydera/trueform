@@ -43,10 +43,6 @@ class cursor_interactor_collision : public cursor_interactor_interface {
 public:
   cursor_interactor_collision() : cursor_interactor_interface(std::make_unique<tf_bridge_collision>()) {}
 
-public:
-  std::unique_ptr<mesh_object> result_mesh = std::make_unique<mesh_object>();
-  std::unique_ptr<mesh_object> curve_mesh = std::make_unique<mesh_object>();
-
 private:
   std::vector<float> pick_times;
   std::vector<float> collide_times;

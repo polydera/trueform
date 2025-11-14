@@ -37,10 +37,6 @@ class cursor_interactor : public cursor_interactor_interface {
 public:
   cursor_interactor() : cursor_interactor_interface(std::make_unique<tf_bridge>()) {}
 
-public:
-  std::unique_ptr<mesh_object> result_mesh = std::make_unique<mesh_object>();
-  std::unique_ptr<mesh_object> curve_mesh = std::make_unique<mesh_object>();
-
 private:
   std::vector<float> boolean_times;
 

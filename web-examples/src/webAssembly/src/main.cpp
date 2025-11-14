@@ -5,6 +5,7 @@
 #include "boolean_web.h"
 #include "collision_web.h"
 #include "forms_intersections_web.h"
+#include "isobands_web.h"
 #include "utils/bridge_web.h"
 #include "utils/cursor_interactor_interface.h"
 
@@ -25,6 +26,10 @@ auto OnKeyPress(std::string key) {
     return interactor->OnKeyPress(key);
 }
 
+auto OnMouseWheel(int delta, bool shiftKey) {
+    return interactor->OnMouseWheel(delta, shiftKey);
+}
+
 auto get_number_of_meshes() -> int {
     return interactor->get_actors().size();
 }
@@ -34,20 +39,11 @@ auto get_mesh_on_idx(int i) -> mesh_object * {
 }
 
 auto get_result_mesh() -> mesh_object * {
-    if(auto pI = dynamic_cast<cursor_interactor*>(interactor.get())) {
-      return pI->result_mesh.get();
-    }
-    return nullptr;
+    return interactor->result_mesh.get();
 }
 
 auto get_curve_mesh() -> mesh_object * {
-    if(auto pI = dynamic_cast<cursor_interactor*>(interactor.get())) {
-        return pI->curve_mesh.get();
-    }
-    if(auto pI = dynamic_cast<cursor_interactor_forms_intersections*>(interactor.get())) {
-      return pI->curve_mesh.get();
-    }
-    return nullptr;
+    return interactor->curve_mesh.get();
 }
 
 auto get_average_time() {
@@ -72,6 +68,7 @@ EMSCRIPTEN_BINDINGS(boolean) {
   emscripten::function("OnLeftButtonUp", &OnLeftButtonUp);
   emscripten::function("OnLeftButtonDown", &OnLeftButtonDown);
   emscripten::function("OnMouseMove", &OnMouseMove);
+  emscripten::function("OnMouseWheel", &OnMouseWheel);
   emscripten::function("OnKeyPress", &OnKeyPress);
     // Boolean
   emscripten::function("run_main", &run_main);
@@ -81,6 +78,8 @@ EMSCRIPTEN_BINDINGS(boolean) {
   emscripten::function("run_main_collisions", &run_main_collisions);
     // Forms Intersections
   emscripten::function("run_main_forms_intersections", &run_main_forms_intersections);
+    // Isobands
+  emscripten::function("run_main_isobands", &run_main_isobands);
 }
 
 EMSCRIPTEN_BINDINGS(VectorString) {

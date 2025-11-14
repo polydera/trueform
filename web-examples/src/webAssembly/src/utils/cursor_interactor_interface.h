@@ -67,6 +67,9 @@ public:
 	cursor_interactor_interface(std::unique_ptr<tf_bridge_interface> bridge) : bridge(std::move(bridge)) {};
     virtual ~cursor_interactor_interface() = default;
 
+    std::unique_ptr<mesh_object> result_mesh = std::make_unique<mesh_object>();
+    std::unique_ptr<mesh_object> curve_mesh = std::make_unique<mesh_object>();
+
 protected:
     std::unique_ptr<tf_bridge_interface> bridge;
     int time_index = 0;
@@ -159,6 +162,10 @@ public:
     }
 
     virtual auto OnKeyPress(std::string) -> bool {
+        return false;
+    }
+
+    virtual auto OnMouseWheel(int, bool) -> bool {
         return false;
     }
 };

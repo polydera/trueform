@@ -38,9 +38,6 @@ class cursor_interactor_forms_intersections : public cursor_interactor_interface
 public:
   cursor_interactor_forms_intersections() : cursor_interactor_interface(std::make_unique<tf_bridge_forms_intersections>()) {}
 
-public:
-  std::unique_ptr<mesh_object> curve_mesh = std::make_unique<mesh_object>();
-
 private:
   std::vector<float> intersection_times;
 
