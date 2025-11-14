@@ -6,6 +6,7 @@
 #include "collision_web.h"
 #include "forms_intersections_web.h"
 #include "isobands_web.h"
+#include "scalar_field_intersections_web.h"
 #include "utils/bridge_web.h"
 #include "utils/cursor_interactor_interface.h"
 
@@ -80,6 +81,8 @@ EMSCRIPTEN_BINDINGS(boolean) {
   emscripten::function("run_main_forms_intersections", &run_main_forms_intersections);
     // Isobands
   emscripten::function("run_main_isobands", &run_main_isobands);
+    // Scalar field intersections
+  emscripten::function("run_main_scalar_field_intersections", &run_main_scalar_field_intersections);
 }
 
 EMSCRIPTEN_BINDINGS(VectorString) {
