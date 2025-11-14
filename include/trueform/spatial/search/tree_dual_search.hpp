@@ -6,6 +6,7 @@
  */
 #pragma once
 #include "../../core/range.hpp"
+#include "tbb/task_arena.h"
 #include "tbb/task_group.h"
 
 namespace tf::spatial {
@@ -92,7 +93,8 @@ auto tree_dual_search(const Range0 &nodes0, const Range1 &ids0,
     return false;
   tree_dual_search_params<Range0, Range1, Range2, Range3, F, F1, F2> params{
       nodes0, ids0, nodes1, ids1, boxes_apply, apply, abort};
-  tree_dual_search(0, 0, paralelism_depth, params);
+  tbb::task_arena ta;
+  ta.execute([&] { tree_dual_search(0, 0, paralelism_depth, params); });
   return params.found;
 }
 } // namespace tf::spatial

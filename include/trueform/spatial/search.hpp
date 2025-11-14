@@ -7,7 +7,6 @@
 #pragma once
 #include "./search/search_dispatch.hpp"
 
-#include <iostream>
 namespace tf {
 template <std::size_t N, typename Policy, typename F0, typename F1>
 auto search(const tf::form<N, Policy> &form, const F0 &check_aabb,
