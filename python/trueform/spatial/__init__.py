@@ -27,6 +27,7 @@ from ._edge_mesh_neighbor_search import (
     _EDGE_MESH_NEIGHBOR_SEARCH_KNN_DISPATCH
 )
 from ._form_form_neighbor_search import _FORM_FORM_NEIGHBOR_SEARCH_DISPATCH
+from .gather_ids import gather_intersecting_ids, gather_ids_within_distance
 
 # Dispatch tables organized by object type
 _DISPATCH_BY_TYPE = {
@@ -212,7 +213,14 @@ def neighbor_search(
         # Get function and call
         func_name = func_template.format(suffix)
         cpp_func = getattr(_trueform.spatial, func_name)
-        return cpp_func(form0_obj._wrapper, form1_obj._wrapper, radius)
+        result = cpp_func(form0_obj._wrapper, form1_obj._wrapper, radius)
+
+        # If forms were swapped, swap results back
+        if result is not None and (needs_swap or extra_swap):
+            (idx0, idx1), (dist, pt0, pt1) = result
+            result = ((idx1, idx0), (dist, pt1, pt0))
+
+        return result
 
     # Form-Primitive neighbor search (original implementation)
     # Normalize query to a primitive type
@@ -325,4 +333,4 @@ def neighbor_search(
         return cpp_func(spatial_object._wrapper, query_data, k, radius)
 
 
-__all__ = ['neighbor_search']
+__all__ = ['neighbor_search', 'gather_intersecting_ids', 'gather_ids_within_distance']

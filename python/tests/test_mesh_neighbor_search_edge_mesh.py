@@ -105,7 +105,7 @@ def test_mesh_neighbor_search_edge_mesh_3d_planar_mesh_and_line(real_dtype, ngon
 
     # Test symmetry
     result_sym = tf.neighbor_search(edge_mesh, mesh)
-    (_, _, (dist_sym, pt_edge_sym, pt_mesh_sym)) = result_sym
+    ((_, _), (dist_sym, pt_edge_sym, pt_mesh_sym)) = result_sym
     assert abs(dist_sym - 1.0) < 1e-6
     assert np.allclose(pt_edge_sym, pt_edge, atol=1e-5)
     assert np.allclose(pt_mesh_sym, pt_mesh, atol=1e-5)
@@ -129,7 +129,7 @@ def test_mesh_neighbor_search_edge_mesh_2d_radius_hit(real_dtype):
     result = tf.neighbor_search(mesh, edge_mesh, radius=1.0)
     assert result is not None
 
-    (_, _, (dist, _, _)) = result
+    ((_, _), (dist, _, _)) = result
     assert dist < 1.0
 
 
@@ -172,7 +172,7 @@ def test_mesh_neighbor_search_edge_mesh_with_transformation(real_dtype):
     result = tf.neighbor_search(mesh, edge_mesh)
     assert result is not None
 
-    (_, _, (dist, pt_mesh, pt_edge)) = result
+    ((_, _), (dist, pt_mesh, pt_edge)) = result
 
     # pt_mesh should be on the transformed mesh (y around 1.0)
     # pt_edge should be on the edge (y = 0)
@@ -212,7 +212,7 @@ def test_mesh_neighbor_search_edge_mesh_edge_above_mesh_corner(real_dtype):
     result = tf.neighbor_search(mesh, edge_mesh)
     assert result is not None
 
-    (_, edge_idx, (dist, pt_mesh, pt_edge)) = result
+    ((_, edge_idx), (dist, pt_mesh, pt_edge)) = result
 
     # Closest point on mesh should be (1, 2) - top edge of quad
     # Closest point on edge should be (1, 3) - bottom of edge

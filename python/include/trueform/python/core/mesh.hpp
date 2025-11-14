@@ -17,6 +17,7 @@
 #include <trueform/core/range.hpp>
 #include <trueform/core/transformation_view.hpp>
 #include <trueform/core/views/blocked_range.hpp>
+#include <trueform/python/util/make_numpy_array.hpp>
 #include <trueform/spatial/tree.hpp>
 #include <trueform/spatial/tree_config.hpp>
 #include <trueform/topology/face_membership.hpp>
@@ -84,24 +85,13 @@ public:
     Index *data_ptr = fm.data_buffer().begin();
     std::size_t data_size = fm.data_buffer().size();
 
-    // Release ownership and create capsules with deleters
+    // Release ownership
     fm.offsets_buffer().release();
-    auto offsets_capsule = nanobind::capsule(offsets_ptr, [](void *p) noexcept {
-      delete[] static_cast<Index *>(p);
-    });
-
     fm.data_buffer().release();
-    auto data_capsule = nanobind::capsule(
-        data_ptr, [](void *p) noexcept { delete[] static_cast<Index *>(p); });
 
-    // Create numpy arrays that own the memory via capsules
-    auto offsets_ndarray =
-        nanobind::ndarray<nanobind::numpy, Index, nanobind::shape<-1>>(
-            offsets_ptr, {offsets_size}, offsets_capsule);
-
-    auto data_ndarray =
-        nanobind::ndarray<nanobind::numpy, Index, nanobind::shape<-1>>(
-            data_ptr, {data_size}, data_capsule);
+    // Create numpy arrays with proper empty array handling
+    auto offsets_ndarray = make_numpy_array<nanobind::shape<-1>>(offsets_ptr, {offsets_size});
+    auto data_ndarray = make_numpy_array<nanobind::shape<-1>>(data_ptr, {data_size});
 
     // Pass the numpy arrays to the wrapper
     if (!_face_membership_array) {
@@ -201,8 +191,5 @@ private:
   std::unique_ptr<tf::py::offset_blocked_array_wrapper<Index, Index>>
       _face_membership_array;
 };
-
-// Forward declaration of registration function
-auto register_mesh(nanobind::module_ &m) -> void;
 
 } // namespace tf::py

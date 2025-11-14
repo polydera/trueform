@@ -98,7 +98,7 @@ def test_edge_mesh_neighbor_search_edge_mesh_3d_perpendicular_lines(index_dtype0
 
     # Test symmetry
     result_sym = tf.neighbor_search(mesh1, mesh0)
-    (_, _, (dist_sym, pt0_sym, pt1_sym)) = result_sym
+    ((_, _), (dist_sym, pt0_sym, pt1_sym)) = result_sym
     assert abs(dist_sym - 1.0) < 1e-6
     assert np.allclose(pt0_sym, pt1, atol=1e-5)
     assert np.allclose(pt1_sym, pt0, atol=1e-5)
@@ -120,7 +120,7 @@ def test_edge_mesh_neighbor_search_edge_mesh_2d_radius_hit(real_dtype):
     result = tf.neighbor_search(mesh0, mesh1, radius=1.0)
     assert result is not None
 
-    (_, _, (dist, _, _)) = result
+    ((_, _), (dist, _, _)) = result
     assert dist < 1.0
 
 
@@ -157,7 +157,7 @@ def test_edge_mesh_neighbor_search_edge_mesh_index_canonicalization(real_dtype):
     result = tf.neighbor_search(mesh0, mesh1)
     assert result is not None
 
-    (_, _, (dist, _, _)) = result
+    ((_, _), (dist, _, _)) = result
     assert abs(dist - 0.25) < 1e-5
 
 
@@ -181,7 +181,7 @@ def test_edge_mesh_neighbor_search_edge_mesh_with_transformation(real_dtype):
     result = tf.neighbor_search(mesh0, mesh1)
     assert result is not None
 
-    (_, _, (dist, pt0, pt1)) = result
+    ((_, _), (dist, pt0, pt1)) = result
 
     # Distance should be 1.0 (vertical offset)
     assert abs(dist - 1.0) < 1e-5

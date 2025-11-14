@@ -113,7 +113,4 @@ private:
   std::unique_ptr<tf::tree<int, RealT, Dims>> _tree;
 };
 
-// Forward declaration of registration function
-auto register_point_cloud(nanobind::module_ &m) -> void;
-
 } // namespace tf::py

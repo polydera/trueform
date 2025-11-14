@@ -6,14 +6,6 @@
  */
 
 #include "trueform/python/core.hpp"
-#include "trueform/python/core/closest_metric_point_pair.hpp"
-#include "trueform/python/core/distance.hpp"
-#include "trueform/python/core/edge_mesh.hpp"
-#include "trueform/python/core/intersects.hpp"
-#include "trueform/python/core/mesh.hpp"
-#include "trueform/python/core/offset_blocked_array.hpp"
-#include "trueform/python/core/point_cloud.hpp"
-#include "trueform/python/core/ray_cast.hpp"
 
 namespace tf::py {
 

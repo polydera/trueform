@@ -26,6 +26,15 @@ auto register_spatial_module(nanobind::module_ &m) -> void {
   register_mesh_intersects_primitive(spatial_module);
   register_edge_mesh_intersects_primitive(spatial_module);
   register_point_cloud_intersects_primitive(spatial_module);
+  register_mesh_gather_ids_primitive(spatial_module);
+  register_edge_mesh_gather_ids_primitive(spatial_module);
+  register_point_cloud_gather_ids_primitive(spatial_module);
+  register_point_cloud_gather_ids_point_cloud(spatial_module);
+  register_edge_mesh_gather_ids_edge_mesh(spatial_module);
+  register_edge_mesh_gather_ids_point_cloud(spatial_module);
+  register_mesh_gather_ids_edge_mesh(spatial_module);
+  register_mesh_gather_ids_point_cloud(spatial_module);
+  register_mesh_gather_ids_mesh(spatial_module);
   register_point_cloud_intersects_point_cloud(spatial_module);
   register_edge_mesh_intersects_edge_mesh(spatial_module);
   register_edge_mesh_intersects_point_cloud(spatial_module);
