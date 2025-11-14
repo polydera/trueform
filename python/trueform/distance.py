@@ -122,9 +122,9 @@ def _distance_impl(obj0: Any, obj1: Any, func_prefix: str) -> float:
         raise TypeError(f"Cannot extract data from type {type(obj)}")
 
     # Check if either argument is a form (Mesh, EdgeMesh, PointCloud)
-    from .core.mesh import Mesh
-    from .core.edge_mesh import EdgeMesh
-    from .core.point_cloud import PointCloud
+    from ._core.mesh import Mesh
+    from ._core.edge_mesh import EdgeMesh
+    from ._core.point_cloud import PointCloud
 
     is_form0 = isinstance(obj0, (Mesh, EdgeMesh, PointCloud))
     is_form1 = isinstance(obj1, (Mesh, EdgeMesh, PointCloud))
