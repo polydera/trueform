@@ -31,6 +31,10 @@ export abstract class TestClassThreejsBase implements ITestClassThreejsBase {
 
     protected renderer2Interactive = false;
 
+    private raycaster = new THREE.Raycaster();
+    private ndc = new THREE.Vector2();
+    private ray = new THREE.Ray();
+
     constructor(wasmInstance: MainModule, paths: string[], container: HTMLElement, container2?: HTMLElement, skipUpdate?: boolean) {
         this.wasmInstance = wasmInstance;
         this.paths = paths;
@@ -113,55 +117,25 @@ export abstract class TestClassThreejsBase implements ITestClassThreejsBase {
             }
         });
 
-        const raycaster = new THREE.Raycaster();
-        const ndc = new THREE.Vector2();
-        const ray = new THREE.Ray();
-        // Add event interception for pointer events
-        const interceptEvent = (event: PointerEvent) => {
-            // Get bounding rect and mouse position
-            const rect = this.renderer.domElement.getBoundingClientRect();
-            ndc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-            ndc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        const l1 = (event: PointerEvent) => {
+            this.onPointerDown(event);
+        }
+        const l2 = (event: PointerEvent) => {
+            this.onPointerMove(event);
+        }
+        const l3 = (event: PointerEvent) => {
+            this.onPointerUp(event);
+        }
 
-            // Build world ray
-            raycaster.setFromCamera(ndc, this.sceneBundle1.camera);
-            ray.copy(raycaster.ray);
-            // 2) reusable math objects
-            const cameraPosition = this.sceneBundle1.camera.position.clone();
-            const dir = new THREE.Vector3();
-            this.sceneBundle1.camera.getWorldDirection(dir);
-            const cameraFocalPoint = cameraPosition.clone().add(dir.multiplyScalar(100));
-            let handled = false;
-            if (event.type === 'pointermove' && (event.buttons === 0 || event.buttons === 1)) {
-                // console.log("pointermove ray", cameraPosition, cameraFocalPoint, ray.origin, ray.direction)
-                const v1 = ray.origin.clone()
-                const v2 = ray.direction.clone()
-                const v3 = cameraPosition
-                const v4 = cameraFocalPoint
-                handled = this.wasmInstance.OnMouseMove(
-                    [v1.x, v1.y, v1.z],
-                    [v2.x, v2.y, v2.z],
-                    [v3.x, v3.y, v3.z],
-                    [v4.x, v4.y, v4.z]);
-            } else if (event.type === 'pointerdown' && event.buttons === 1) {
-                handled = this.wasmInstance.OnLeftButtonDown();
-            } else if (event.type === 'pointerup') {
-                handled = this.wasmInstance.OnLeftButtonUp();
-            }
-            this.updateMeshes()
-            if (handled) {
-                event.stopPropagation();
-            }
-        };
-        this.renderer.domElement.addEventListener('pointerdown', interceptEvent, true);
-        this.renderer.domElement.addEventListener('pointermove', interceptEvent, true);
-        this.renderer.domElement.addEventListener('pointerup', interceptEvent, true);
+        this.renderer.domElement.addEventListener('pointerdown', l1, true);
+        this.renderer.domElement.addEventListener('pointermove', l2, true);
+        this.renderer.domElement.addEventListener('pointerup', l3, true);
 
         // Add event listeners to second renderer if it exists
         if (this.renderer2 && this.renderer2Interactive) {
-            this.renderer2.domElement.addEventListener('pointerdown', interceptEvent, true);
-            this.renderer2.domElement.addEventListener('pointermove', interceptEvent, true);
-            this.renderer2.domElement.addEventListener('pointerup', interceptEvent, true);
+            this.renderer2.domElement.addEventListener('pointerdown', l1, true);
+            this.renderer2.domElement.addEventListener('pointermove', l2, true);
+            this.renderer2.domElement.addEventListener('pointerup', l3, true);
         }
 
         this.runMain();
@@ -175,6 +149,54 @@ export abstract class TestClassThreejsBase implements ITestClassThreejsBase {
         if(!skipUpdate) {
             this.updateMeshes();
             fitCameraToAllMeshesFromZPlane(this.sceneBundle1)
+        }
+    }
+    public onPointerUp(event: PointerEvent) {
+        const handled = this.wasmInstance.OnLeftButtonUp();
+        this.updateMeshes()
+        if (handled) {
+            event.stopPropagation();
+        }
+    }
+    public onPointerDown(event: PointerEvent) {
+        let handled = false;
+        if(event.buttons === 1)
+           handled = this.wasmInstance.OnLeftButtonDown();
+        this.updateMeshes()
+        if (handled) {
+            event.stopPropagation();
+        }
+    }
+    public onPointerMove(event: PointerEvent) {
+        // Get bounding rect and mouse position
+        const rect = this.renderer.domElement.getBoundingClientRect();
+        this.ndc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        this.ndc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        // Build world ray
+        this.raycaster.setFromCamera(this.ndc, this.sceneBundle1.camera);
+        this.ray.copy(this.raycaster.ray);
+        // 2) reusable math objects
+        const cameraPosition = this.sceneBundle1.camera.position.clone();
+        const dir = new THREE.Vector3();
+        this.sceneBundle1.camera.getWorldDirection(dir);
+        const cameraFocalPoint = cameraPosition.clone().add(dir.multiplyScalar(100));
+        let handled = false;
+        if (event.buttons === 0 || event.buttons === 1) {
+            // console.log("pointermove ray", cameraPosition, cameraFocalPoint, ray.origin, ray.direction)
+            const v1 = this.ray.origin.clone()
+            const v2 = this.ray.direction.clone()
+            const v3 = cameraPosition
+            const v4 = cameraFocalPoint
+            handled = this.wasmInstance.OnMouseMove(
+                [v1.x, v1.y, v1.z],
+                [v2.x, v2.y, v2.z],
+                [v3.x, v3.y, v3.z],
+                [v4.x, v4.y, v4.z]);
+        }
+        this.updateMeshes()
+        if (handled) {
+            event.stopPropagation();
         }
     }
 
