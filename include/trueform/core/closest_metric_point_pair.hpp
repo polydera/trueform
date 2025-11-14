@@ -268,10 +268,13 @@ auto closest_metric_point_pair(const tf::polygon<Dims, Policy0> &poly_in,
       auto d = tf::dot(poly.plane().normal, pt) + poly.plane().d;
       auto c_pt = pt - d * poly.plane().normal;
       auto res = tf::make_metric_point_pair(d * d, c_pt, pt);
-      if (std::abs(d) < tf::epsilon<decltype(d)> &&
-          tf::contains_coplanar_point(poly, c_pt))
-        return res;
-      res.metric = std::numeric_limits<decltype(d)>::max();
+      if (tf::contains_coplanar_point(poly, c_pt)) {
+        if (std::abs(d) < tf::epsilon<decltype(d)>) {
+          res.metric = 0;
+          return res;
+        }
+      } else
+        res.metric = std::numeric_limits<decltype(d)>::max();
       std::size_t size = poly.size();
       std::size_t prev = size - 1;
       for (std::size_t i = 0; i < size; prev = i++) {
