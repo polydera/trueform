@@ -10,6 +10,7 @@
 #include <nanobind/ndarray.h>
 #include <string>
 #include <trueform/io/read_stl.hpp>
+#include <trueform/python/util/make_numpy_array.hpp>
 
 namespace tf::py {
 
@@ -30,20 +31,10 @@ auto read_stl_impl(const std::string &filename) {
   Index *faces_ptr = polys.faces_buffer().data_buffer().release();
   float *points_ptr = polys.points_buffer().data_buffer().release();
 
-  // Create capsules with deleters for memory management
-  auto faces_capsule = nanobind::capsule(
-      faces_ptr, [](void *p) noexcept { delete[] static_cast<Index *>(p); });
-
-  auto points_capsule = nanobind::capsule(
-      points_ptr, [](void *p) noexcept { delete[] static_cast<float *>(p); });
-
-  // Create numpy arrays from raw pointers
+  // Create numpy arrays with proper empty array handling
   // Shape: (num_faces, 3) for faces, (num_points, 3) for points
-  auto faces = nanobind::ndarray<nanobind::numpy, Index>(
-      faces_ptr, {static_cast<size_t>(num_faces), 3}, faces_capsule);
-
-  auto points = nanobind::ndarray<nanobind::numpy, float>(
-      points_ptr, {num_points, 3}, points_capsule);
+  auto faces = make_numpy_array<nanobind::shape<-1, 3>>(faces_ptr, {static_cast<size_t>(num_faces), 3});
+  auto points = make_numpy_array<nanobind::shape<-1, 3>>(points_ptr, {num_points, 3});
 
   // Return as tuple
   return nanobind::make_tuple(faces, points);

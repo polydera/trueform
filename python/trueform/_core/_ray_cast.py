@@ -7,7 +7,7 @@ Commercial licensing available via ziga.sajovic@xlab.si.
 https://github.com/xlabmedical/trueform
 """
 
-from ..primitives import Segment, Polygon, Line, AABB, Plane
+from .._primitives import Segment, Polygon, Line, AABB, Plane
 
 
 # Dispatch table for core ray_cast (ray to primitives)

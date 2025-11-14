@@ -10,7 +10,7 @@ https://github.com/xlabmedical/trueform
 import numpy as np
 from typing import Any, Tuple
 from .. import _trueform
-from ..primitives import Point, Segment, Polygon, Ray, Line, Plane
+from .._primitives import Point, Segment, Polygon, Ray, Line, Plane
 
 
 # Dispatch table for closest_metric_point_pair

@@ -8,19 +8,20 @@ https://github.com/xlabmedical/trueform
 """
 
 # Core data structures
-from .core import PointCloud, Mesh, EdgeMesh, closest_metric_point_pair, closest_metric_point
+from ._core import PointCloud, Mesh, EdgeMesh, closest_metric_point_pair, closest_metric_point
 
 # Top-level functions
 from .ray_cast import ray_cast
 from .intersects import intersects
 from .distance import distance, distance2
-from .spatial import neighbor_search
+from ._spatial import neighbor_search, gather_intersecting_ids, gather_ids_within_distance
+from ._core.transformed import transformed
 
 # IO functions
-from .io import read_stl, write_stl
+from ._io import read_stl, write_stl
 
 # Primitives
-from .primitives import Point, Segment, Polygon, AABB, Ray, Line, Plane
+from ._primitives import Point, Segment, Polygon, AABB, Ray, Line, Plane
 
 __all__ = [
     # Core
@@ -34,6 +35,9 @@ __all__ = [
     'distance',
     'distance2',
     'neighbor_search',
+    'gather_intersecting_ids',
+    'gather_ids_within_distance',
+    'transformed',
     # IO
     'read_stl',
     'write_stl',

@@ -7,9 +7,9 @@ Commercial licensing available via ziga.sajovic@xlab.si.
 https://github.com/xlabmedical/trueform
 """
 
-from ..core.mesh import Mesh
-from ..core.edge_mesh import EdgeMesh
-from ..core.point_cloud import PointCloud
+from .._core.mesh import Mesh
+from .._core.edge_mesh import EdgeMesh
+from .._core.point_cloud import PointCloud
 
 
 # Dispatch table for form-form neighbor_search

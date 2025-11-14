@@ -10,16 +10,13 @@ https://github.com/xlabmedical/trueform
 import numpy as np
 from typing import Any
 from . import _trueform
-from .core._distance import _DISTANCE_DISPATCH as _CORE_DISPATCH
-from .primitives import Plane
+from ._core._distance import _DISTANCE_DISPATCH as _CORE_DISPATCH
+from ._primitives import Plane
 
 
-# Unified dispatch table
-# Merges core (primitives) and spatial (meshes, point clouds, etc.) dispatch tables
-_DISTANCE_DISPATCH = {**_CORE_DISPATCH}
-# When spatial module is added:
-# from .spatial._distance import _DISTANCE_DISPATCH as _SPATIAL_DISPATCH
-# _DISTANCE_DISPATCH = {**_CORE_DISPATCH, **_SPATIAL_DISPATCH}
+# Dispatch table for primitives
+# Forms (Mesh, EdgeMesh, PointCloud) are handled separately via isinstance checks
+_DISTANCE_DISPATCH = _CORE_DISPATCH
 
 
 def distance(obj0: Any, obj1: Any) -> float:
@@ -124,6 +121,45 @@ def _distance_impl(obj0: Any, obj1: Any, func_prefix: str) -> float:
             return obj.data
         raise TypeError(f"Cannot extract data from type {type(obj)}")
 
+    # Check if either argument is a form (Mesh, EdgeMesh, PointCloud)
+    from .core.mesh import Mesh
+    from .core.edge_mesh import EdgeMesh
+    from .core.point_cloud import PointCloud
+
+    is_form0 = isinstance(obj0, (Mesh, EdgeMesh, PointCloud))
+    is_form1 = isinstance(obj1, (Mesh, EdgeMesh, PointCloud))
+
+    if is_form0 or is_form1:
+        # Use neighbor_search for any form involvement
+        from ._spatial import neighbor_search
+
+        # Validate dimensions match
+        dims0 = get_dims(obj0)
+        dims1 = get_dims(obj1)
+        if dims0 != dims1:
+            raise ValueError(
+                f"Dimension mismatch: obj0 has {dims0}D, obj1 has {dims1}D. "
+                f"Both objects must have the same dimensionality (2D or 3D)."
+            )
+
+        # Ensure form is first argument (neighbor_search expects this)
+        if is_form0:
+            result = neighbor_search(obj0, obj1, radius=None)
+        else:
+            result = neighbor_search(obj1, obj0, radius=None)
+
+        # Extract metric based on form combination
+        if is_form0 and is_form1:
+            # Form-form: ((idx0, idx1), (distance_squared, pt0, pt1))
+            metric = result[1][0]
+        else:
+            # Form-primitive: (index, distance_squared, point)
+            metric = result[1]
+
+        # Return based on function type
+        return np.sqrt(metric) if func_prefix == "distance" else metric
+
+    # Primitive-to-primitive case: use dispatch table and C++ function
     # Validate dimensions match
     dims0 = get_dims(obj0)
     dims1 = get_dims(obj1)

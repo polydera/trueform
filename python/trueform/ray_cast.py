@@ -10,9 +10,9 @@ https://github.com/xlabmedical/trueform
 import numpy as np
 from typing import Any, Optional, Tuple
 from . import _trueform
-from .core._ray_cast import _RAY_CAST_DISPATCH as _CORE_DISPATCH
-from .spatial._ray_cast import _SPATIAL_RAY_CAST_DISPATCH
-from .primitives import Plane
+from ._core._ray_cast import _RAY_CAST_DISPATCH as _CORE_DISPATCH
+from ._spatial._ray_cast import _SPATIAL_RAY_CAST_DISPATCH
+from ._primitives import Plane
 
 
 # Core primitives dispatch table

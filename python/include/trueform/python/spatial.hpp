@@ -40,6 +40,24 @@ void register_edge_mesh_intersects_primitive(nanobind::module_ &m);
 
 void register_point_cloud_intersects_primitive(nanobind::module_ &m);
 
+void register_mesh_gather_ids_primitive(nanobind::module_ &m);
+
+void register_edge_mesh_gather_ids_primitive(nanobind::module_ &m);
+
+void register_point_cloud_gather_ids_primitive(nanobind::module_ &m);
+
+void register_point_cloud_gather_ids_point_cloud(nanobind::module_ &m);
+
+void register_edge_mesh_gather_ids_edge_mesh(nanobind::module_ &m);
+
+void register_mesh_gather_ids_edge_mesh(nanobind::module_ &m);
+
+void register_mesh_gather_ids_mesh(nanobind::module_ &m);
+
+void register_edge_mesh_gather_ids_point_cloud(nanobind::module_ &m);
+
+void register_mesh_gather_ids_point_cloud(nanobind::module_ &m);
+
 void register_point_cloud_intersects_point_cloud(nanobind::module_ &m);
 
 void register_edge_mesh_intersects_edge_mesh(nanobind::module_ &m);

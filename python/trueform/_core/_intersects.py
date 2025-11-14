@@ -7,7 +7,7 @@ Commercial licensing available via ziga.sajovic@xlab.si.
 https://github.com/xlabmedical/trueform
 """
 
-from ..primitives import Point, Segment, Polygon, Line, AABB, Ray, Plane
+from .._primitives import Point, Segment, Polygon, Line, AABB, Ray, Plane
 
 
 # Dispatch table for core intersects

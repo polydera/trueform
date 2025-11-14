@@ -7,7 +7,7 @@ Commercial licensing available via ziga.sajovic@xlab.si.
 https://github.com/xlabmedical/trueform
 """
 
-from ..primitives import Point, Segment, Polygon, Ray, Line
+from .._primitives import Point, Segment, Polygon, Ray, Line
 
 # Dispatch table for single nearest neighbor search on meshes
 # Maps primitive type -> function_name_template

@@ -10,7 +10,7 @@ https://github.com/xlabmedical/trueform
 import numpy as np
 from typing import Tuple, Optional, Union
 from . import _trueform
-from .core.mesh import Mesh
+from ._core.mesh import Mesh
 
 
 def read_stl(filename: str, index_dtype: Union[type, np.dtype] = np.int32) -> Tuple[np.ndarray, np.ndarray]:

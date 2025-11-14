@@ -10,12 +10,12 @@ https://github.com/xlabmedical/trueform
 import numpy as np
 from typing import Any
 from . import _trueform
-from .core._intersects import _INTERSECTS_DISPATCH as _CORE_DISPATCH
-from .primitives import Plane
+from ._core._intersects import _INTERSECTS_DISPATCH as _CORE_DISPATCH
+from ._primitives import Plane
 
 
 # Import spatial dispatch table (kept separate from core)
-from .spatial._intersects import _INTERSECTS_DISPATCH as _SPATIAL_INTERSECTS_DISPATCH
+from ._spatial._intersects import _INTERSECTS_DISPATCH as _SPATIAL_INTERSECTS_DISPATCH
 
 
 def intersects(obj0: Any, obj1: Any) -> bool:
