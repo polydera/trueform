@@ -266,5 +266,41 @@ def test_iteration_over_curves():
     assert curve_count == len(paths)
 
 
+def test_tuple_input():
+    """Test that tuple input (faces, points) produces same results as Mesh"""
+    faces = np.array([[0, 1, 2], [0, 2, 3]], dtype=np.int32)
+    points = np.array([
+        [0.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 1.0, 0.0],
+        [0.0, 1.0, 1.0]
+    ], dtype=np.float32)
+
+    # Create scalar field
+    scalar_field = np.array([0.0, 0.5, 1.0, 1.5], dtype=np.float32)
+
+    # Test with Mesh object
+    mesh = tf.Mesh(faces, points)
+    paths_mesh, points_mesh = tf.isocontours(mesh, scalar_field, 0.75)
+
+    # Test with tuple input
+    paths_tuple, points_tuple = tf.isocontours((faces, points), scalar_field, 0.75)
+
+    # Results should be identical
+    assert len(paths_mesh) == len(paths_tuple), \
+        f"Path count mismatch: Mesh={len(paths_mesh)}, Tuple={len(paths_tuple)}"
+
+    assert points_mesh.shape == points_tuple.shape, \
+        f"Points shape mismatch: Mesh={points_mesh.shape}, Tuple={points_tuple.shape}"
+
+    assert np.allclose(points_mesh, points_tuple), \
+        "Points should be identical between Mesh and tuple input"
+
+    # Check that paths are the same
+    for i, (path_mesh, path_tuple) in enumerate(zip(paths_mesh, paths_tuple)):
+        assert np.array_equal(path_mesh, path_tuple), \
+            f"Path {i} differs between Mesh and tuple input"
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-v"]))

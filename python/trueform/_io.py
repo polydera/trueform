@@ -69,28 +69,27 @@ def read_stl(filename: str, index_dtype: Union[type, np.dtype] = np.int32) -> Tu
 
 
 def write_stl(
-    faces_or_mesh: Union[np.ndarray, Mesh],
-    points_or_filename: Union[np.ndarray, str, None] = None,
-    filename: Optional[str] = None,
+    data: Union[Tuple[np.ndarray, np.ndarray], Mesh],
+    filename: str,
     transformation: Optional[np.ndarray] = None
 ) -> bool:
     """
     Write a triangular mesh to an STL file.
 
-    Can be called with either raw arrays or a Mesh object:
-    - Raw arrays: write_stl(faces, points, filename, transformation=None)
-    - Mesh object: write_stl(mesh, filename, transformation=None)
+    Supports indexed geometry as tuples or Mesh objects:
+    - Tuple: write_stl((faces, points), filename, transformation=None)
+    - Mesh: write_stl(mesh, filename, transformation=None)
 
     Parameters
     ----------
-    faces_or_mesh : ndarray or Mesh
-        Either a faces array of shape (num_faces, 3) with dtype int32 or int64,
-        or a Mesh object.
-    points_or_filename : ndarray or str, optional
-        If faces_or_mesh is an array: points array of shape (num_points, 3) with dtype float32
-        If faces_or_mesh is a Mesh: filename string
-    filename : str, optional
-        Path to output STL file (only used when passing raw arrays).
+    data : tuple or Mesh
+        Input geometric data:
+        - Tuple (faces, points) where:
+          * faces: shape (N, 3) with dtype int32 or int64
+          * points: shape (M, 3) with dtype float32
+        - Mesh object (must be 3D triangular mesh)
+    filename : str
+        Path to output STL file.
         The .stl extension will be appended if not present.
     transformation : ndarray of shape (4, 4) with dtype float32, optional
         Homogeneous transformation matrix to apply before writing.
@@ -106,15 +105,15 @@ def write_stl(
     >>> import trueform as tf
     >>> import numpy as np
     >>>
-    >>> # Raw arrays (backward compatible)
+    >>> # Tuple input
     >>> faces = np.array([[0, 1, 2]], dtype=np.int32)
     >>> points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float32)
-    >>> tf.write_stl(faces, points, "triangle.stl")
+    >>> tf.write_stl((faces, points), "triangle.stl")
     >>>
-    >>> # Raw arrays with transformation
+    >>> # Tuple input with transformation
     >>> transform = np.eye(4, dtype=np.float32)
     >>> transform[2, 3] = 5.0  # Translate 5 units in Z
-    >>> tf.write_stl(faces, points, "triangle_translated.stl", transformation=transform)
+    >>> tf.write_stl((faces, points), "triangle_translated.stl", transformation=transform)
     >>>
     >>> # Mesh object
     >>> mesh = tf.Mesh(faces, points)
@@ -137,9 +136,9 @@ def write_stl(
     - When using a Mesh object, if the explicit transformation kwarg is provided,
       it overrides the mesh's transformation property
     """
-    # Detect if first argument is a Mesh object
-    if isinstance(faces_or_mesh, Mesh):
-        mesh = faces_or_mesh
+    # Handle Mesh object
+    if isinstance(data, Mesh):
+        mesh = data
 
         # Validate Mesh requirements for STL
         if mesh.dims != 3:
@@ -158,37 +157,23 @@ def write_stl(
         faces = mesh.faces
         points = mesh.points
 
-        # Determine filename (second argument when using Mesh)
-        if isinstance(points_or_filename, str):
-            actual_filename = points_or_filename
-        elif filename is not None:
-            actual_filename = filename
-        else:
-            raise ValueError(
-                "When passing a Mesh object, provide filename as second argument: "
-                "write_stl(mesh, 'file.stl')"
-            )
-
         # Use mesh transformation if no explicit override
         if transformation is None and mesh.transformation is not None:
             transformation = mesh.transformation
+
+    # Handle tuple input
+    elif isinstance(data, tuple):
+        if len(data) != 2:
+            raise ValueError(
+                f"Tuple input must have exactly 2 elements (faces, points), got {len(data)}"
+            )
+
+        faces, points = data
+
     else:
-        # Original array-based API
-        faces = faces_or_mesh
-        points = points_or_filename
-        actual_filename = filename
-
-        if points is None:
-            raise ValueError(
-                "When passing arrays, provide both faces and points: "
-                "write_stl(faces, points, 'file.stl')"
-            )
-
-        if actual_filename is None:
-            raise ValueError(
-                "When passing arrays, provide filename as third argument: "
-                "write_stl(faces, points, 'file.stl')"
-            )
+        raise TypeError(
+            f"Expected tuple or Mesh object, got {type(data).__name__}"
+        )
 
     # Validate faces shape and dtype
     if faces.ndim != 2 or faces.shape[1] != 3:
@@ -234,6 +219,6 @@ def write_stl(
 
     # Dispatch based on faces dtype
     if faces_dtype == np.int32:
-        return _trueform.io.write_stl_int32(faces, points, transformation, actual_filename)
+        return _trueform.io.write_stl_int32(faces, points, transformation, filename)
     else:  # int64
-        return _trueform.io.write_stl_int64(faces, points, transformation, actual_filename)
+        return _trueform.io.write_stl_int64(faces, points, transformation, filename)

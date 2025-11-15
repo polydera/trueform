@@ -102,7 +102,7 @@ def test_write_stl_simple_triangle(index_dtype):
         points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float32)
 
         # Write STL
-        success = tf.write_stl(faces, points, stl_file)
+        success = tf.write_stl((faces, points), stl_file)
         assert success, "write_stl should return True on success"
 
         # Verify file was created
@@ -132,7 +132,7 @@ def test_write_stl_round_trip(index_dtype):
         ], dtype=index_dtype)
 
         # Write STL
-        success = tf.write_stl(faces_orig, points_orig, stl_file)
+        success = tf.write_stl((faces_orig, points_orig), stl_file)
         assert success, "write_stl should succeed"
 
         # Read it back
@@ -166,7 +166,7 @@ def test_write_stl_with_transformation(index_dtype):
         transformation[2, 3] = 10.0  # z translation
 
         # Write with transformation
-        success = tf.write_stl(faces, points, stl_file, transformation=transformation)
+        success = tf.write_stl((faces, points), stl_file, transformation=transformation)
         assert success, "write_stl with transformation should succeed"
 
         # Read back
@@ -191,7 +191,7 @@ def test_write_stl_filename_extension():
         faces = np.array([[0, 1, 2]], dtype=np.int32)
         points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float32)
 
-        success = tf.write_stl(faces, points, filename_base)
+        success = tf.write_stl((faces, points), filename_base)
         assert success, "write_stl should succeed"
 
         # Check that file with .stl extension was created
@@ -211,7 +211,7 @@ def test_write_stl_invalid_faces_shape():
                          dtype=np.float32)
 
         with pytest.raises(ValueError, match="faces must have shape"):
-            tf.write_stl(faces, points, stl_file)
+            tf.write_stl((faces, points), stl_file)
 
 
 def test_write_stl_invalid_faces_dtype():
@@ -224,7 +224,7 @@ def test_write_stl_invalid_faces_dtype():
         points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float32)
 
         with pytest.raises(ValueError, match="faces dtype must be"):
-            tf.write_stl(faces, points, stl_file)
+            tf.write_stl((faces, points), stl_file)
 
 
 def test_write_stl_invalid_points_shape():
@@ -237,7 +237,7 @@ def test_write_stl_invalid_points_shape():
         points = np.array([[0, 0], [1, 0], [0, 1]], dtype=np.float32)
 
         with pytest.raises(ValueError, match="points must have shape"):
-            tf.write_stl(faces, points, stl_file)
+            tf.write_stl((faces, points), stl_file)
 
 
 def test_write_stl_invalid_points_dtype():
@@ -250,7 +250,7 @@ def test_write_stl_invalid_points_dtype():
         points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float64)
 
         with pytest.raises(ValueError, match="points dtype must be"):
-            tf.write_stl(faces, points, stl_file)
+            tf.write_stl((faces, points), stl_file)
 
 
 def test_write_stl_invalid_transformation_shape():
@@ -265,7 +265,7 @@ def test_write_stl_invalid_transformation_shape():
         transformation = np.eye(3, dtype=np.float32)
 
         with pytest.raises(ValueError, match="transformation must have shape"):
-            tf.write_stl(faces, points, stl_file, transformation=transformation)
+            tf.write_stl((faces, points), stl_file, transformation=transformation)
 
 
 def test_write_stl_invalid_transformation_dtype():
@@ -280,7 +280,7 @@ def test_write_stl_invalid_transformation_dtype():
         transformation = np.eye(4, dtype=np.float64)
 
         with pytest.raises(ValueError, match="transformation dtype must be"):
-            tf.write_stl(faces, points, stl_file, transformation=transformation)
+            tf.write_stl((faces, points), stl_file, transformation=transformation)
 
 
 def test_write_stl_non_contiguous_arrays():
@@ -298,7 +298,7 @@ def test_write_stl_non_contiguous_arrays():
         points = points_full[::1, :]
 
         # Should work even if arrays are not contiguous
-        success = tf.write_stl(faces, points, stl_file)
+        success = tf.write_stl((faces, points), stl_file)
         assert success, "write_stl should handle non-contiguous arrays"
 
         # Verify by reading back

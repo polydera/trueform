@@ -15,8 +15,9 @@ from .ray_cast import ray_cast
 from .intersects import intersects
 from .distance import distance, distance2
 from .distance_field import distance_field
-from .isocontours import isocontours
-from .isobands import isobands
+from ._intersect import isocontours
+from ._cut import isobands
+from ._clean import cleaned
 from ._spatial import neighbor_search, gather_intersecting_ids, gather_ids_within_distance
 from ._core.transformed import transformed
 
@@ -40,6 +41,7 @@ __all__ = [
     'distance_field',
     'isocontours',
     'isobands',
+    'cleaned',
     'neighbor_search',
     'gather_intersecting_ids',
     'gather_ids_within_distance',

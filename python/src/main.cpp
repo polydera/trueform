@@ -6,6 +6,7 @@
  */
 
 #include <nanobind/nanobind.h>
+#include "trueform/python/clean.hpp"
 #include "trueform/python/core.hpp"
 #include "trueform/python/intersect.hpp"
 #include "trueform/python/io.hpp"
@@ -21,6 +22,7 @@ NB_MODULE(_trueform, m) {
   nb::set_leak_warnings(false);
 
   // Register all modules
+  tf::py::register_clean(m);
   tf::py::register_core(m);
   tf::py::register_intersect(m);
   tf::py::register_io(m);

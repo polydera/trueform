@@ -13,9 +13,11 @@
 #include <trueform/core/blocked_buffer.hpp>
 #include <trueform/core/buffer.hpp>
 #include <trueform/core/curves_buffer.hpp>
+#include <trueform/core/index_map.hpp>
 #include <trueform/core/offset_block_buffer.hpp>
 #include <trueform/core/points_buffer.hpp>
 #include <trueform/core/polygons_buffer.hpp>
+#include <trueform/core/segments_buffer.hpp>
 #include <trueform/python/util/make_capsule.hpp>
 
 namespace tf::py {
@@ -60,6 +62,11 @@ template <typename T> auto make_numpy_array(tf::buffer<T> &&buffer) {
                                                {buffer.size()});
 }
 
+template <typename T> auto make_numpy_array(tf::index_map_buffer<T> &&im) {
+  return std::make_pair(make_numpy_array(std::move(im.f())),
+                        make_numpy_array(std::move(im.kept_ids())));
+}
+
 /**
  * Create a numpy array from tf::buffer by taking ownership
  * Extracts data pointer and releases ownership from the buffer
@@ -92,6 +99,13 @@ auto make_numpy_array(tf::points_buffer<RealT, Dims> &&points_buf) {
   auto num_points = points_buf.size();
   return make_numpy_array<nanobind::shape<-1, Dims>>(
       std::move(points_buf.data_buffer()), {num_points, Dims});
+}
+
+template <typename Index, typename RealT, std::size_t Dims>
+auto make_numpy_array(tf::segments_buffer<Index, RealT, Dims> &&edge_mesh) {
+  auto edges = make_numpy_array(std::move(edge_mesh.edges_buffer()));
+  auto points = make_numpy_array(std::move(edge_mesh.points_buffer()));
+  return std::make_pair(edges, points);
 }
 
 /**

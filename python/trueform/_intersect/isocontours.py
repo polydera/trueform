@@ -9,12 +9,12 @@ https://github.com/xlabmedical/trueform
 
 import numpy as np
 from typing import Union, Tuple
-from . import _trueform
-from ._core import Mesh, OffsetBlockedArray
+from .. import _trueform
+from .._core import Mesh, OffsetBlockedArray
 
 
 def isocontours(
-    mesh: Mesh,
+    data: Union[Tuple[np.ndarray, np.ndarray], Mesh],
     scalar_field: np.ndarray,
     threshold: Union[float, np.ndarray]
 ) -> Tuple[OffsetBlockedArray, np.ndarray]:
@@ -26,8 +26,12 @@ def isocontours(
 
     Parameters
     ----------
-    mesh : Mesh
-        The mesh on which to compute isocontours
+    data : tuple or Mesh
+        Input mesh data:
+        - Tuple (faces, points) where:
+          * faces: shape (N, 3) with dtype int32 or int64
+          * points: shape (M, 3) with dtype float32 or float64
+        - Mesh object (must be 3D triangular mesh)
     scalar_field : np.ndarray
         Scalar values at mesh vertices, shape (num_points,)
         Must have same dtype as mesh (float32 or float64)
@@ -54,9 +58,12 @@ def isocontours(
     >>> plane = tf.Plane(normal=[0.0, 0.0, 1.0], offset=0.0)
     >>> distances = tf.distance_field(mesh.points, plane)
     >>>
-    >>> # Extract single isocontour at z=0
+    >>> # Extract single isocontour at z=0 using Mesh
     >>> paths, points = tf.isocontours(mesh, distances, 0.0)
     >>> print(f"Found {len(paths)} curve(s)")
+    >>>
+    >>> # Extract using tuple input
+    >>> paths, points = tf.isocontours((faces, points), distances, 0.0)
     >>>
     >>> # Extract multiple isocontours
     >>> paths, points = tf.isocontours(mesh, distances, [0.0, 0.5, 1.0])
@@ -67,9 +74,20 @@ def isocontours(
     ...     # Process curve (e.g., plot, analyze, etc.)
     """
 
-    # Validate mesh
-    if not isinstance(mesh, Mesh):
-        raise TypeError(f"Expected Mesh, got {type(mesh)}")
+    # Normalize input to Mesh object
+    if isinstance(data, tuple):
+        if len(data) != 2:
+            raise ValueError(
+                f"Tuple input must have exactly 2 elements (faces, points), got {len(data)}"
+            )
+        faces, points = data
+        mesh = Mesh(faces, points)
+    elif isinstance(data, Mesh):
+        mesh = data
+    else:
+        raise TypeError(
+            f"Expected Mesh or (faces, points) tuple, got {type(data).__name__}"
+        )
 
     # Only support 3D meshes
     if mesh.dims != 3:
