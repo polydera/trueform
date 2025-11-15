@@ -9,12 +9,13 @@ https://github.com/xlabmedical/trueform
 
 # Core data structures
 from ._core import PointCloud, Mesh, EdgeMesh, closest_metric_point_pair, closest_metric_point
-
+from ._core import OffsetBlockedArray
 # Top-level functions
 from .ray_cast import ray_cast
 from .intersects import intersects
 from .distance import distance, distance2
 from .distance_field import distance_field
+from .isocontours import isocontours
 from ._spatial import neighbor_search, gather_intersecting_ids, gather_ids_within_distance
 from ._core.transformed import transformed
 
@@ -36,6 +37,7 @@ __all__ = [
     'distance',
     'distance2',
     'distance_field',
+    'isocontours',
     'neighbor_search',
     'gather_intersecting_ids',
     'gather_ids_within_distance',

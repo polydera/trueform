@@ -7,6 +7,7 @@
 
 #include <nanobind/nanobind.h>
 #include "trueform/python/core.hpp"
+#include "trueform/python/intersect.hpp"
 #include "trueform/python/io.hpp"
 #include "trueform/python/spatial.hpp"
 
@@ -21,6 +22,7 @@ NB_MODULE(_trueform, m) {
 
   // Register all modules
   tf::py::register_core(m);
+  tf::py::register_intersect(m);
   tf::py::register_io(m);
   tf::py::register_spatial_module(m);
 }

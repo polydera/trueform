@@ -10,8 +10,8 @@
 #include <nanobind/stl/tuple.h>
 #include <trueform/python/core/edge_mesh.hpp>
 #include <trueform/python/core/make_primitives.hpp>
-#include <tuple>
 #include <trueform/python/spatial/ray_cast.hpp>
+#include <tuple>
 
 namespace tf::py {
 
@@ -30,9 +30,10 @@ auto register_edge_mesh_ray_cast(nanobind::module_ &m) -> void {
       "ray_cast_edge_mesh_intfloat2d",
       [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
              ray_data,
-         edge_mesh_wrapper<int, float, 2> &edge_mesh) {
+         edge_mesh_wrapper<int, float, 2> &edge_mesh,
+         std::optional<std::pair<float, float>> config) {
         auto ray = make_ray_from_array<2, float>(ray_data);
-        auto result = ray_cast(ray, edge_mesh);
+        auto result = ray_cast(ray, edge_mesh, config);
         if (result) {
           return nanobind::cast(
               nanobind::make_tuple(result->first, result->second));
@@ -40,16 +41,18 @@ auto register_edge_mesh_ray_cast(nanobind::module_ &m) -> void {
           return nanobind::none();
         }
       },
-      nanobind::arg("ray"), nanobind::arg("edge_mesh"));
+      nanobind::arg("ray"), nanobind::arg("edge_mesh"),
+      nanobind::arg("config").none() = nanobind::none());
 
   // int32, float, 3D
   m.def(
       "ray_cast_edge_mesh_intfloat3d",
       [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
              ray_data,
-         edge_mesh_wrapper<int, float, 3> &edge_mesh) {
+         edge_mesh_wrapper<int, float, 3> &edge_mesh,
+         std::optional<std::pair<float, float>> config) {
         auto ray = make_ray_from_array<3, float>(ray_data);
-        auto result = ray_cast(ray, edge_mesh);
+        auto result = ray_cast(ray, edge_mesh, config);
         if (result) {
           return nanobind::cast(
               nanobind::make_tuple(result->first, result->second));
@@ -57,16 +60,18 @@ auto register_edge_mesh_ray_cast(nanobind::module_ &m) -> void {
           return nanobind::none();
         }
       },
-      nanobind::arg("ray"), nanobind::arg("edge_mesh"));
+      nanobind::arg("ray"), nanobind::arg("edge_mesh"),
+      nanobind::arg("config").none() = nanobind::none());
 
   // int32, double, 2D
   m.def(
       "ray_cast_edge_mesh_intdouble2d",
       [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
              ray_data,
-         edge_mesh_wrapper<int, double, 2> &edge_mesh) {
+         edge_mesh_wrapper<int, double, 2> &edge_mesh,
+         std::optional<std::pair<double, double>> config) {
         auto ray = make_ray_from_array<2, double>(ray_data);
-        auto result = ray_cast(ray, edge_mesh);
+        auto result = ray_cast(ray, edge_mesh, config);
         if (result) {
           return nanobind::cast(
               nanobind::make_tuple(result->first, result->second));
@@ -74,16 +79,18 @@ auto register_edge_mesh_ray_cast(nanobind::module_ &m) -> void {
           return nanobind::none();
         }
       },
-      nanobind::arg("ray"), nanobind::arg("edge_mesh"));
+      nanobind::arg("ray"), nanobind::arg("edge_mesh"),
+      nanobind::arg("config").none() = nanobind::none());
 
   // int32, double, 3D
   m.def(
       "ray_cast_edge_mesh_intdouble3d",
       [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 3>>
              ray_data,
-         edge_mesh_wrapper<int, double, 3> &edge_mesh) {
+         edge_mesh_wrapper<int, double, 3> &edge_mesh,
+         std::optional<std::pair<double, double>> config) {
         auto ray = make_ray_from_array<3, double>(ray_data);
-        auto result = ray_cast(ray, edge_mesh);
+        auto result = ray_cast(ray, edge_mesh, config);
         if (result) {
           return nanobind::cast(
               nanobind::make_tuple(result->first, result->second));
@@ -91,16 +98,18 @@ auto register_edge_mesh_ray_cast(nanobind::module_ &m) -> void {
           return nanobind::none();
         }
       },
-      nanobind::arg("ray"), nanobind::arg("edge_mesh"));
+      nanobind::arg("ray"), nanobind::arg("edge_mesh"),
+      nanobind::arg("config").none() = nanobind::none());
 
   // int64, float, 2D
   m.def(
       "ray_cast_edge_mesh_int64float2d",
       [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
              ray_data,
-         edge_mesh_wrapper<int64_t, float, 2> &edge_mesh) {
+         edge_mesh_wrapper<int64_t, float, 2> &edge_mesh,
+         std::optional<std::pair<float, float>> config) {
         auto ray = make_ray_from_array<2, float>(ray_data);
-        auto result = ray_cast(ray, edge_mesh);
+        auto result = ray_cast(ray, edge_mesh, config);
         if (result) {
           return nanobind::cast(
               nanobind::make_tuple(result->first, result->second));
@@ -108,16 +117,18 @@ auto register_edge_mesh_ray_cast(nanobind::module_ &m) -> void {
           return nanobind::none();
         }
       },
-      nanobind::arg("ray"), nanobind::arg("edge_mesh"));
+      nanobind::arg("ray"), nanobind::arg("edge_mesh"),
+      nanobind::arg("config").none() = nanobind::none());
 
   // int64, float, 3D
   m.def(
       "ray_cast_edge_mesh_int64float3d",
       [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
              ray_data,
-         edge_mesh_wrapper<int64_t, float, 3> &edge_mesh) {
+         edge_mesh_wrapper<int64_t, float, 3> &edge_mesh,
+         std::optional<std::pair<float, float>> config) {
         auto ray = make_ray_from_array<3, float>(ray_data);
-        auto result = ray_cast(ray, edge_mesh);
+        auto result = ray_cast(ray, edge_mesh, config);
         if (result) {
           return nanobind::cast(
               nanobind::make_tuple(result->first, result->second));
@@ -125,16 +136,18 @@ auto register_edge_mesh_ray_cast(nanobind::module_ &m) -> void {
           return nanobind::none();
         }
       },
-      nanobind::arg("ray"), nanobind::arg("edge_mesh"));
+      nanobind::arg("ray"), nanobind::arg("edge_mesh"),
+      nanobind::arg("config").none() = nanobind::none());
 
   // int64, double, 2D
   m.def(
       "ray_cast_edge_mesh_int64double2d",
       [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
              ray_data,
-         edge_mesh_wrapper<int64_t, double, 2> &edge_mesh) {
+         edge_mesh_wrapper<int64_t, double, 2> &edge_mesh,
+         std::optional<std::pair<double, double>> config) {
         auto ray = make_ray_from_array<2, double>(ray_data);
-        auto result = ray_cast(ray, edge_mesh);
+        auto result = ray_cast(ray, edge_mesh, config);
         if (result) {
           return nanobind::cast(
               nanobind::make_tuple(result->first, result->second));
@@ -142,16 +155,18 @@ auto register_edge_mesh_ray_cast(nanobind::module_ &m) -> void {
           return nanobind::none();
         }
       },
-      nanobind::arg("ray"), nanobind::arg("edge_mesh"));
+      nanobind::arg("ray"), nanobind::arg("edge_mesh"),
+      nanobind::arg("config").none() = nanobind::none());
 
   // int64, double, 3D
   m.def(
       "ray_cast_edge_mesh_int64double3d",
       [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 3>>
              ray_data,
-         edge_mesh_wrapper<int64_t, double, 3> &edge_mesh) {
+         edge_mesh_wrapper<int64_t, double, 3> &edge_mesh,
+         std::optional<std::pair<double, double>> config) {
         auto ray = make_ray_from_array<3, double>(ray_data);
-        auto result = ray_cast(ray, edge_mesh);
+        auto result = ray_cast(ray, edge_mesh, config);
         if (result) {
           return nanobind::cast(
               nanobind::make_tuple(result->first, result->second));
@@ -159,7 +174,8 @@ auto register_edge_mesh_ray_cast(nanobind::module_ &m) -> void {
           return nanobind::none();
         }
       },
-      nanobind::arg("ray"), nanobind::arg("edge_mesh"));
+      nanobind::arg("ray"), nanobind::arg("edge_mesh"),
+      nanobind::arg("config").none() = nanobind::none());
 }
 
 } // namespace tf::py
