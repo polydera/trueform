@@ -59,6 +59,12 @@ public:
     frames[id].fill(actors[id]->GetUserMatrix()->GetData());
   }
 
+  auto save_meshes() {
+    for(std::size_t i=0;i<polys.size(); ++ i) {
+      tf::write_stl(get_triangles(polys[i]) | tf::tag(frames[i]), "boolean_meshes_" + std::to_string(i));
+    }
+  }
+
   auto compute_boolean() {
     auto form0 = tf::make_form(frames[0], trees[0],
                                tf::make_polygons(get_triangle_faces(polys[0]),
@@ -245,6 +251,8 @@ public:
       randomize_rotations();
       compute_curves();
       this->Interactor->Render();
+    } else if(key == "s" ){
+        bridge.save_meshes();
     } else {
       vtkInteractorStyleTrackballCamera::OnKeyPress();
     }

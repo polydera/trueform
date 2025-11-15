@@ -65,6 +65,48 @@ auto to_polydata(const tf::polygons_buffer<Index, float, 3, 3> &polys) {
   return out;
 }
 
+template <typename Index>
+auto to_polydata(
+    const tf::polygons_buffer<Index, float, tf::dynamic_size, 3> &polys) {
+  auto cells = vtk_make_unique<vtkCellArray>();
+  cells->Initialize();
+
+  // Calculate offsets based on actual polygon sizes
+  auto offsets_array = cells->GetOffsetsArray();
+  offsets_array->SetNumberOfComponents(1);
+  offsets_array->SetNumberOfTuples(polys.faces().size() + 1);
+  auto offsets_ptr = static_cast<vtkIdType *>(offsets_array->GetVoidPointer(0));
+
+  // Compute prefix sum of polygon sizes
+  offsets_ptr[0] = 0;
+  for (std::size_t i = 0; i < polys.faces().size(); ++i) {
+    offsets_ptr[i + 1] =
+        offsets_ptr[i] + static_cast<vtkIdType>(polys.faces()[i].size());
+  }
+
+  vtkIdType total_indices = offsets_ptr[polys.faces().size()];
+
+  // Set up connectivity array
+  auto ids = cells->GetConnectivityArray();
+  ids->SetNumberOfComponents(1);
+  ids->SetNumberOfTuples(total_indices);
+
+  // Copy face indices - can use parallel_copy since faces buffer is contiguous
+  auto ids_range = tf::make_range(
+      static_cast<vtkIdType *>(ids->GetVoidPointer(0)), total_indices);
+  tf::parallel_copy(polys.faces_buffer().data_buffer(), ids_range);
+
+  // Copy points
+  auto points = vtk_make_unique<vtkPoints>();
+  points->SetNumberOfPoints(polys.points().size());
+  tf::parallel_copy(polys.points(), get_points(points.get()));
+
+  auto out = vtk_make_unique<vtkPolyData>();
+  out->SetPoints(points.get());
+  out->SetPolys(cells.get());
+  return out;
+}
+
 inline auto readOBJ(std::string name) {
   auto [raw_points, raw_triangle_faces] = tf::examples::read_mesh(name);
   auto points_r = tf::make_points<3>(raw_points);

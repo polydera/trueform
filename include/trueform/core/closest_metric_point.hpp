@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -269,6 +269,55 @@ template <std::size_t Dims, typename Policy0, typename Policy1>
 auto closest_metric_point(const tf::polygon<Dims, Policy0> &poly_in0,
                           const tf::polygon<Dims, Policy1> &poly_in1) {
   auto res = tf::closest_metric_point_pair(poly_in0, poly_in1);
+  return tf::make_metric_point(res.metric, res.first);
+}
+
+template <typename T, std::size_t Dims, typename Policy>
+auto closest_metric_point(const tf::plane_like<Dims, T> &p,
+                          const tf::point_like<Dims, Policy> &pt) {
+  auto res = closest_metric_point_pair(p, pt);
+  return tf::make_metric_point(res.metric, res.first);
+}
+
+template <typename T, std::size_t Dims, typename Policy>
+auto closest_metric_point(const tf::segment<Dims, T> &s0,
+                          const tf::plane_like<Dims, Policy> &p1) {
+  auto res = closest_metric_point_pair(s0, p1);
+  return tf::make_metric_point(res.metric, res.first);
+}
+
+template <typename T, std::size_t Dims, typename Policy>
+auto closest_metric_point(const tf::plane_like<Dims, T> &o0,
+                          const tf::segment<Dims, Policy> &o1) {
+  auto res = closest_metric_point_pair(o0, o1);
+  return tf::make_metric_point(res.metric, res.first);
+}
+
+template <typename T, std::size_t Dims, typename Policy>
+auto closest_metric_point(const tf::ray_like<Dims, T> &o0,
+                          const tf::plane_like<Dims, Policy> &p1) {
+  auto res = closest_metric_point_pair(o0, p1);
+  return tf::make_metric_point(res.metric, res.first);
+}
+
+template <typename T, std::size_t Dims, typename Policy>
+auto closest_metric_point(const tf::plane_like<Dims, T> &o0,
+                          const tf::ray_like<Dims, Policy> &o1) {
+  auto res = closest_metric_point_pair(o0, o1);
+  return tf::make_metric_point(res.metric, res.first);
+}
+
+template <typename T, std::size_t Dims, typename Policy>
+auto closest_metric_point(const tf::line_like<Dims, T> &o0,
+                          const tf::plane_like<Dims, Policy> &p1) {
+  auto res = closest_metric_point_pair(o0, p1);
+  return tf::make_metric_point(res.metric, res.first);
+}
+
+template <typename T, std::size_t Dims, typename Policy>
+auto closest_metric_point(const tf::plane_like<Dims, T> &o0,
+                          const tf::line_like<Dims, Policy> &o1) {
+  auto res = closest_metric_point_pair(o0, o1);
   return tf::make_metric_point(res.metric, res.first);
 }
 

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -9,7 +9,7 @@
 #include "../../core/intersects.hpp"
 #include "../../core/ray.hpp"
 #include "../../core/ray_hit.hpp"
-#include "../../topology/edge_membership.hpp"
+#include "../../topology/edge_membership_like.hpp"
 #include "../types/intersection.hpp"
 
 namespace tf::intersect::generate {
@@ -102,8 +102,8 @@ auto segment_segment(const F &is_representative,
 }
 } // namespace detail
 
-template <typename Index, typename Policy, typename RealT>
-auto segment_segment(const tf::edge_membership<Index> &em,
+template <typename Policy0, typename Policy, typename Index, typename RealT>
+auto segment_segment(const tf::edge_membership_like<Policy0> &em,
                      const tf::segment<2, Policy> &seg0,
                      const tf::segment<2, Policy> &seg1,
                      tf::buffer<intersect::intersection<Index>> &intersections,

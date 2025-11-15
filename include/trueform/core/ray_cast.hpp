@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -66,34 +66,6 @@ auto ray_cast(
             tf::epsilon<RealT>));
   }
   return result;
-}
-
-template <typename Policy0, typename Policy1>
-auto ray_cast(
-    const tf::ray_like<2, Policy0> &ray, const tf::polygon<2, Policy1> &poly,
-    const tf::ray_config<tf::coordinate_type<Policy0, Policy1>> &config = {}) {
-  using RealT = tf::coordinate_type<Policy0, Policy1>;
-
-  const std::size_t n = poly.size();
-  std::size_t prev = n - 1;
-  RealT closest_t = config.max_t + RealT(1);
-  bool hit = false;
-
-  for (std::size_t i = 0; i < n; prev = i++) {
-    auto seg = tf::make_segment_between_points(poly[prev], poly[i]);
-    auto info = tf::ray_cast(ray, seg, config);
-    if (info && info.t < closest_t) {
-      closest_t = info.t;
-      hit = true;
-    }
-  }
-  if (!hit && contains_coplanar_point(poly, ray(config.min_t))) {
-    hit = true;
-    closest_t = config.min_t;
-  }
-
-  return tf::make_ray_cast_info(static_cast<tf::intersect_status>(hit),
-                                closest_t);
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>
@@ -273,12 +245,40 @@ auto ray_cast(
     const ray_like<Dims, Policy0> &ray,
     const tf::aabb_like<Dims, Policy1> &aabb,
     const tf::ray_config<tf::coordinate_type<Policy0, Policy1>> &config = {}) {
-  tf::coordinate_type<Policy0, Policy1> t_min, t_max;
+  tf::coordinate_type<Policy0, Policy1> t_min{}, t_max{};
   tf::vector<tf::coordinate_type<Policy0, Policy1>, Dims> ray_inv_dir;
   for (std::size_t i = 0; i < Dims; ++i)
     ray_inv_dir[i] = tf::epsilon_inverse(ray.direction[i]);
   auto status = core::ray_aabb_check(ray, ray_inv_dir, aabb, t_min, t_max,
                                      config.min_t, config.max_t);
   return tf::make_ray_cast_info(status, t_min);
+}
+
+template <typename Policy0, typename Policy1>
+auto ray_cast(
+    const tf::ray_like<2, Policy0> &ray, const tf::polygon<2, Policy1> &poly,
+    const tf::ray_config<tf::coordinate_type<Policy0, Policy1>> &config = {}) {
+  using RealT = tf::coordinate_type<Policy0, Policy1>;
+
+  const std::size_t n = poly.size();
+  std::size_t prev = n - 1;
+  RealT closest_t = config.max_t + RealT(1);
+  bool hit = false;
+
+  for (std::size_t i = 0; i < n; prev = i++) {
+    auto seg = tf::make_segment_between_points(poly[prev], poly[i]);
+    auto info = tf::ray_cast(ray, seg, config);
+    if (info && info.t < closest_t) {
+      closest_t = info.t;
+      hit = true;
+    }
+  }
+  if (!hit && contains_coplanar_point(poly, ray(config.min_t))) {
+    hit = true;
+    closest_t = config.min_t;
+  }
+
+  return tf::make_ray_cast_info(static_cast<tf::intersect_status>(hit),
+                                closest_t);
 }
 } // namespace tf

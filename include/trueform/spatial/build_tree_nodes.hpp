@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -76,6 +76,7 @@ auto build_tree_nodes(buffer<tree_node<Index, RealT, N>> &nodes,
   tf::parallel_apply(nodes, [](auto &x) { x.set_as_empty(); }, tf::checked);
   ids.allocate(aabbs.size());
   tf::parallel_iota(ids, 0);
-  return build_tree_nodes<Partitioner>(nodes, aabbs, ids, 0, 0, config);
+  return build_tree_nodes<Partitioner>(nodes, aabbs, ids, Index(0), Index(0),
+                                       config);
 }
 } // namespace tf::spatial

@@ -53,6 +53,7 @@ elseif(BUILD_EXAMPLES_WEB AND EMSCRIPTEN)
   # Special case for web examples which require Emscripten as host compiler
   add_subdirectory(examples/web)
 endif()
+add_subdirectory(python)
 
 include(GNUInstallDirs)
 

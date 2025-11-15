@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -62,10 +62,10 @@ auto search(const tf::tree<Index, RealT, N> &tree, const F0 &check_aabb,
       });
 }
 
-template <typename Index, typename RealT, std::size_t N, typename F0,
-          typename F1, typename F2>
-auto search(const tf::tree<Index, RealT, N> &tree0,
-            const tf::tree<Index, RealT, N> &tree1, const F0 &check_aabbs,
+template <typename Index0, typename Index1, typename RealT, std::size_t N,
+          typename F0, typename F1, typename F2>
+auto search(const tf::tree<Index0, RealT, N> &tree0,
+            const tf::tree<Index1, RealT, N> &tree1, const F0 &check_aabbs,
             const F1 &primitive_apply, const F2 &abort,
             int paralelism_depth = 6) -> bool {
   return tf::spatial::tree_dual_search(
@@ -143,17 +143,18 @@ auto search(const tf::form<N, Policy0> &form0,
 /*    return true;*/
 /*}*/
 
-template <typename Index, typename Tree0, typename Tree1, typename F0,
-          typename F1>
+template <typename Tree0, typename Tree1, typename F0, typename F1>
 auto dual_search_dispatch(const Tree0 &tree0, const Tree1 &tree1,
                           const F0 &check_aabbs, const F1 &primitive_apply,
                           int paralelism_depth = 6) -> bool {
 
-  if constexpr (!std::is_same_v<decltype(primitive_apply(Index(0), Index(0))),
+  using Index0 = typename Tree0::index_t;
+  using Index1 = typename Tree1::index_t;
+  if constexpr (!std::is_same_v<decltype(primitive_apply(Index0(0), Index1(0))),
                                 void>) {
     std::atomic_bool flag{false};
     auto abort_f = [&flag] { return flag.load(); };
-    auto apply_f = [&flag, primitive_apply](Index id0, Index id1) -> bool {
+    auto apply_f = [&flag, primitive_apply](Index0 id0, Index1 id1) -> bool {
       if (primitive_apply(id0, id1)) {
         flag.store(true);
         return true;
@@ -163,7 +164,7 @@ auto dual_search_dispatch(const Tree0 &tree0, const Tree1 &tree1,
     return spatial::search(tree0, tree1, check_aabbs, apply_f, abort_f,
                            paralelism_depth);
   } else {
-    auto apply_f = [primitive_apply](Index id0, Index id1) -> bool {
+    auto apply_f = [primitive_apply](Index0 id0, Index1 id1) -> bool {
       primitive_apply(id0, id1);
       return false;
     };
@@ -175,18 +176,19 @@ auto dual_search_dispatch(const Tree0 &tree0, const Tree1 &tree1,
 // this is "duplicated", because in the form case we additionally
 // optimize in the leaves, where we only transform once per
 // outer loop, instead of always in the applier
-template <typename Index, typename Form0, typename Form1, typename F0,
-          typename F1>
+template <typename Form0, typename Form1, typename F0, typename F1>
 auto dual_form_search_dispatch(const Form0 &form0, const Form1 &form1,
                                const F0 &check_aabbs, const F1 &primitive_apply,
                                int paralelism_depth = 6) -> bool {
 
+  using Index0 = typename Form0::index_t;
+  using Index1 = typename Form1::index_t;
   if constexpr (!std::is_same_v<
                     decltype(primitive_apply(
-                        tf::tag_id(Index(0), tf::transformed(form0[Index(0)],
-                                                             form0.frame())),
-                        tf::tag_id(Index(0), tf::transformed(form1[Index(0)],
-                                                             form1.frame())))),
+                        tf::tag_id(Index0(0), tf::transformed(form0[Index0(0)],
+                                                              form0.frame())),
+                        tf::tag_id(Index1(0), tf::transformed(form1[Index1(0)],
+                                                              form1.frame())))),
                     void>) {
     std::atomic_bool flag{false};
     auto abort_f = [&flag] { return flag.load(); };

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -32,15 +32,14 @@ auto nearness_search(const tf::tree<Index, RealT, N> &tree,
   return result.info;
 }
 
-template <typename Index, typename RealT, std::size_t N, typename F0,
-          typename F1>
-auto nearness_search(const tf::tree<Index, RealT, N> &tree0,
-                     const tf::tree<Index, RealT, N> &tree1,
+template <typename Index0, typename Index1, typename RealT, std::size_t N,
+          typename F0, typename F1>
+auto nearness_search(const tf::tree<Index0, RealT, N> &tree0,
+                     const tf::tree<Index1, RealT, N> &tree1,
                      const F0 &aabb_metrics_f, const F1 &closest_points_f) {
 
-  using tree_metric_t =
-      tf::tree_metric_info_pair<Index,
-                                decltype(closest_points_f(Index(0), Index(0)))>;
+  using tree_metric_t = tf::tree_metric_info_pair<
+      Index0, Index1, decltype(closest_points_f(Index0(0), Index1(0)))>;
   tf::spatial::local_tree_metric_result<tree_metric_t> result{
       std::numeric_limits<RealT>::max()};
   tf::spatial::tree_tree_proximity(tree0, tree1, aabb_metrics_f,
@@ -60,15 +59,14 @@ auto nearness_search(const tf::tree<Index, RealT, N> &tree,
                               closest_point_f, result);
   return result.info;
 }
-template <typename Index, typename RealT, std::size_t N, typename F0,
-          typename F1>
-auto nearness_search(const tf::tree<Index, RealT, N> &tree0,
-                     const tf::tree<Index, RealT, N> &tree1,
+template <typename Index0, typename Index1, typename RealT, std::size_t N,
+          typename F0, typename F1>
+auto nearness_search(const tf::tree<Index0, RealT, N> &tree0,
+                     const tf::tree<Index1, RealT, N> &tree1,
                      const F0 &aabb_metrics_f, const F1 &closest_points_f,
                      RealT radius) {
-  using tree_metric_t =
-      tf::tree_metric_info_pair<Index,
-                                decltype(closest_points_f(Index(0), Index(0)))>;
+  using tree_metric_t = tf::tree_metric_info_pair<
+      Index0, Index1, decltype(closest_points_f(Index0(0), Index1(0)))>;
   tf::spatial::local_tree_metric_result<tree_metric_t> result{radius * radius};
   tf::spatial::tree_tree_proximity(tree0, tree1, aabb_metrics_f,
                                    closest_points_f, result);

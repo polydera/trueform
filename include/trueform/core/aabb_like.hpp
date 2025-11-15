@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -91,10 +91,9 @@ auto wrap_like(const aabb_like<V, Policy> &&, T &&t) {
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>
-auto make_aabb_like(const point_like<Dims, Policy0> &origin,
-                    const point_like<Dims, Policy1> &direction) {
-  return tf::aabb_like<Dims, tf::core::aabb<Dims, Policy0, Policy1>>{origin,
-                                                                     direction};
+auto make_aabb_like(const point_like<Dims, Policy0> &min,
+                    const point_like<Dims, Policy1> &max) {
+  return tf::aabb_like<Dims, tf::core::aabb<Dims, Policy0, Policy1>>{min, max};
 }
 
 } // namespace tf

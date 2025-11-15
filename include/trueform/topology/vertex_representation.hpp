@@ -1,52 +1,54 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
 
 #include "../core/faces.hpp"
 #include "../core/views/enumerate.hpp"
-#include "./face_membership.hpp"
+#include "../core/views/mapped_range.hpp"
+#include "./face_membership_like.hpp"
 
 namespace tf {
 namespace topology {
 
-template <typename Index> struct vertex_representation_inner_dref {
+template <typename Policy> struct vertex_representation_inner_dref {
 
   template <typename T> auto operator()(T &&v_id) const {
-    return (*_fe_ptr)[v_id].front() == face_id;
+    return std::size_t(_fe[v_id].front()) == face_id;
   }
-  Index face_id;
-  const tf::face_membership<Index> *_fe_ptr;
+  std::size_t face_id;
+  tf::face_membership_like<Policy> _fe;
 };
 
-template <typename Index> struct vertex_representation_dref {
-  const tf::face_membership<Index> *_fe_ptr;
-  //
-
+template <typename Policy> struct vertex_representation_dref {
+  tf::face_membership_like<Policy> _fe;
   //
   template <typename T> auto operator()(T &&pair) const {
     auto &&[face_id, face] = pair;
-    return tf::make_mapped_range(
-        face, vertex_representation_inner_dref<Index>{Index(face_id), _fe_ptr});
+    return tf::make_mapped_range(face, vertex_representation_inner_dref<Policy>{
+                                           std::size_t(face_id), _fe});
   }
 };
 } // namespace topology
 
-template <typename Index, typename Range>
-auto make_vertex_representation(Index face_id, const Range &face,
-                                const tf::face_membership<Index> &fe) {
+template <typename Range, typename Policy>
+auto make_vertex_representation(std::size_t face_id, const Range &face,
+                                const tf::face_membership_like<Policy> &fe) {
+  auto r = tf::make_range(fe);
   return tf::make_mapped_range(
-      face,
-      topology::vertex_representation_inner_dref<Index>{Index(face_id), &fe});
+      face, topology::vertex_representation_inner_dref<decltype(r)>{
+                face_id, tf::make_face_membership_like(std::move(r))});
 }
 
-template <typename Policy, typename Index>
-auto make_vertex_representation(const tf::faces<Policy> &faces,
-                                const tf::face_membership<Index> &fe) {
+template <typename Policy0, typename Policy1>
+auto make_vertex_representation(const tf::faces<Policy0> &faces,
+                                const tf::face_membership_like<Policy1> &fe) {
+  auto r = tf::make_range(fe);
   return tf::make_mapped_range(
-      tf::enumerate(faces), topology::vertex_representation_dref<Index>{&fe});
+      tf::enumerate(faces), topology::vertex_representation_dref<decltype(r)>{
+                                tf::make_face_membership_like(std::move(r))});
 }
 } // namespace tf
