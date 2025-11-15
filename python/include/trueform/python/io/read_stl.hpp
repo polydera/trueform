@@ -23,18 +23,9 @@ auto read_stl_impl(const std::string &filename) {
   // Read STL file using C++ function
   auto polys = tf::read_stl<Index>(filename);
 
-  // Get sizes
-  auto num_faces = polys.faces_buffer().size();
-  auto num_points = polys.points_buffer().size();
-
-  // Release ownership from C++ buffers
-  Index *faces_ptr = polys.faces_buffer().data_buffer().release();
-  float *points_ptr = polys.points_buffer().data_buffer().release();
-
-  // Create numpy arrays with proper empty array handling
-  // Shape: (num_faces, 3) for faces, (num_points, 3) for points
-  auto faces = make_numpy_array<nanobind::shape<-1, 3>>(faces_ptr, {static_cast<size_t>(num_faces), 3});
-  auto points = make_numpy_array<nanobind::shape<-1, 3>>(points_ptr, {num_points, 3});
+  // Use the new make_numpy_array overloads for clean extraction
+  auto faces = make_numpy_array(std::move(polys.faces_buffer()));
+  auto points = make_numpy_array(std::move(polys.points_buffer()));
 
   // Return as tuple
   return nanobind::make_tuple(faces, points);

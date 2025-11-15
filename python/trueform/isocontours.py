@@ -71,6 +71,10 @@ def isocontours(
     if not isinstance(mesh, Mesh):
         raise TypeError(f"Expected Mesh, got {type(mesh)}")
 
+    # Only support 3D meshes
+    if mesh.dims != 3:
+        raise ValueError(f"isocontours only supports 3D meshes, got {mesh.dims}D")
+
     # Validate scalar_field
     if not isinstance(scalar_field, np.ndarray):
         raise TypeError(

@@ -12,6 +12,7 @@ namespace tf::py {
 auto register_intersect(nanobind::module_ &m) -> void {
   // Register intersect components
   register_intersect_isocontours(m);
+  register_intersect_isobands(m);
 }
 
 } // namespace tf::py

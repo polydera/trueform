@@ -16,6 +16,7 @@ from .intersects import intersects
 from .distance import distance, distance2
 from .distance_field import distance_field
 from .isocontours import isocontours
+from .isobands import isobands
 from ._spatial import neighbor_search, gather_intersecting_ids, gather_ids_within_distance
 from ._core.transformed import transformed
 
@@ -38,6 +39,7 @@ __all__ = [
     'distance2',
     'distance_field',
     'isocontours',
+    'isobands',
     'neighbor_search',
     'gather_intersecting_ids',
     'gather_ids_within_distance',
