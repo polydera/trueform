@@ -135,8 +135,7 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, float, 4, 3>::clear_transformation);
 
   // int32, double, tri, 2D
-  nanobind::class_<mesh_wrapper<int, double, 3, 2>>(m,
-                                                    "MeshWrapperIntDouble32D")
+  nanobind::class_<mesh_wrapper<int, double, 3, 2>>(m, "MeshWrapperIntDouble32D")
       .def(nanobind::init<
            nanobind::ndarray<nanobind::numpy, int, nanobind::shape<-1, 3>>,
            nanobind::ndarray<nanobind::numpy, double,
@@ -168,8 +167,7 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, double, 3, 2>::clear_transformation);
 
   // int32, double, tri, 3D
-  nanobind::class_<mesh_wrapper<int, double, 3, 3>>(m,
-                                                    "MeshWrapperIntDouble33D")
+  nanobind::class_<mesh_wrapper<int, double, 3, 3>>(m, "MeshWrapperIntDouble33D")
       .def(nanobind::init<
            nanobind::ndarray<nanobind::numpy, int, nanobind::shape<-1, 3>>,
            nanobind::ndarray<nanobind::numpy, double,
@@ -201,8 +199,7 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, double, 3, 3>::clear_transformation);
 
   // int32, double, quad, 2D
-  nanobind::class_<mesh_wrapper<int, double, 4, 2>>(m,
-                                                    "MeshWrapperIntDouble42D")
+  nanobind::class_<mesh_wrapper<int, double, 4, 2>>(m, "MeshWrapperIntDouble42D")
       .def(nanobind::init<
            nanobind::ndarray<nanobind::numpy, int, nanobind::shape<-1, 4>>,
            nanobind::ndarray<nanobind::numpy, double,
@@ -234,8 +231,7 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, double, 4, 2>::clear_transformation);
 
   // int32, double, quad, 3D
-  nanobind::class_<mesh_wrapper<int, double, 4, 3>>(m,
-                                                    "MeshWrapperIntDouble43D")
+  nanobind::class_<mesh_wrapper<int, double, 4, 3>>(m, "MeshWrapperIntDouble43D")
       .def(nanobind::init<
            nanobind::ndarray<nanobind::numpy, int, nanobind::shape<-1, 4>>,
            nanobind::ndarray<nanobind::numpy, double,
@@ -267,8 +263,7 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, double, 4, 3>::clear_transformation);
 
   // int64, float, tri, 2D
-  nanobind::class_<mesh_wrapper<int64_t, float, 3, 2>>(
-      m, "MeshWrapperInt64Float32D")
+  nanobind::class_<mesh_wrapper<int64_t, float, 3, 2>>(m, "MeshWrapperInt64Float32D")
       .def(nanobind::init<
            nanobind::ndarray<nanobind::numpy, int64_t, nanobind::shape<-1, 3>>,
            nanobind::ndarray<nanobind::numpy, float, nanobind::shape<-1, 2>>>())
@@ -301,8 +296,7 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, float, 3, 2>::clear_transformation);
 
   // int64, float, tri, 3D
-  nanobind::class_<mesh_wrapper<int64_t, float, 3, 3>>(
-      m, "MeshWrapperInt64Float33D")
+  nanobind::class_<mesh_wrapper<int64_t, float, 3, 3>>(m, "MeshWrapperInt64Float33D")
       .def(nanobind::init<
            nanobind::ndarray<nanobind::numpy, int64_t, nanobind::shape<-1, 3>>,
            nanobind::ndarray<nanobind::numpy, float, nanobind::shape<-1, 3>>>())
@@ -335,8 +329,7 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, float, 3, 3>::clear_transformation);
 
   // int64, float, quad, 2D
-  nanobind::class_<mesh_wrapper<int64_t, float, 4, 2>>(
-      m, "MeshWrapperInt64Float42D")
+  nanobind::class_<mesh_wrapper<int64_t, float, 4, 2>>(m, "MeshWrapperInt64Float42D")
       .def(nanobind::init<
            nanobind::ndarray<nanobind::numpy, int64_t, nanobind::shape<-1, 4>>,
            nanobind::ndarray<nanobind::numpy, float, nanobind::shape<-1, 2>>>())
@@ -369,8 +362,7 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, float, 4, 2>::clear_transformation);
 
   // int64, float, quad, 3D
-  nanobind::class_<mesh_wrapper<int64_t, float, 4, 3>>(
-      m, "MeshWrapperInt64Float43D")
+  nanobind::class_<mesh_wrapper<int64_t, float, 4, 3>>(m, "MeshWrapperInt64Float43D")
       .def(nanobind::init<
            nanobind::ndarray<nanobind::numpy, int64_t, nanobind::shape<-1, 4>>,
            nanobind::ndarray<nanobind::numpy, float, nanobind::shape<-1, 3>>>())
@@ -403,8 +395,7 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, float, 4, 3>::clear_transformation);
 
   // int64, double, tri, 2D
-  nanobind::class_<mesh_wrapper<int64_t, double, 3, 2>>(
-      m, "MeshWrapperInt64Double32D")
+  nanobind::class_<mesh_wrapper<int64_t, double, 3, 2>>(m, "MeshWrapperInt64Double32D")
       .def(nanobind::init<
            nanobind::ndarray<nanobind::numpy, int64_t, nanobind::shape<-1, 3>>,
            nanobind::ndarray<nanobind::numpy, double,
@@ -438,8 +429,7 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, double, 3, 2>::clear_transformation);
 
   // int64, double, tri, 3D
-  nanobind::class_<mesh_wrapper<int64_t, double, 3, 3>>(
-      m, "MeshWrapperInt64Double33D")
+  nanobind::class_<mesh_wrapper<int64_t, double, 3, 3>>(m, "MeshWrapperInt64Double33D")
       .def(nanobind::init<
            nanobind::ndarray<nanobind::numpy, int64_t, nanobind::shape<-1, 3>>,
            nanobind::ndarray<nanobind::numpy, double,
@@ -473,8 +463,7 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, double, 3, 3>::clear_transformation);
 
   // int64, double, quad, 2D
-  nanobind::class_<mesh_wrapper<int64_t, double, 4, 2>>(
-      m, "MeshWrapperInt64Double42D")
+  nanobind::class_<mesh_wrapper<int64_t, double, 4, 2>>(m, "MeshWrapperInt64Double42D")
       .def(nanobind::init<
            nanobind::ndarray<nanobind::numpy, int64_t, nanobind::shape<-1, 4>>,
            nanobind::ndarray<nanobind::numpy, double,
@@ -508,8 +497,7 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, double, 4, 2>::clear_transformation);
 
   // int64, double, quad, 3D
-  nanobind::class_<mesh_wrapper<int64_t, double, 4, 3>>(
-      m, "MeshWrapperInt64Double43D")
+  nanobind::class_<mesh_wrapper<int64_t, double, 4, 3>>(m, "MeshWrapperInt64Double43D")
       .def(nanobind::init<
            nanobind::ndarray<nanobind::numpy, int64_t, nanobind::shape<-1, 4>>,
            nanobind::ndarray<nanobind::numpy, double,

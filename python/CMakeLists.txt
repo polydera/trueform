@@ -71,12 +71,16 @@ file(GLOB_RECURSE PYTHON_SOURCE_FILES
 file(GLOB_RECURSE PYTHON_TEST_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.py"
 )
+file(GLOB_RECURSE PYTHON_EXAMPLE_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/examples/**/*.py"
+)
 message(STATUS "Found ${CMAKE_CURRENT_LIST_DIR} Python source files")
 message(STATUS "Found ${CMAKE_CURRENT_LIST_DIR} Python test files")
+message(STATUS "Found ${CMAKE_CURRENT_LIST_DIR} Python example files")
 
 # Create a custom target that depends on all Python files
 add_custom_target(copy_python_files ALL
-    DEPENDS ${PYTHON_SOURCE_FILES} ${PYTHON_TEST_FILES}
+    DEPENDS ${PYTHON_SOURCE_FILES} ${PYTHON_TEST_FILES} ${PYTHON_EXAMPLE_FILES}
 )
 
 # Copy Python source files to build directory whenever they change
@@ -88,7 +92,10 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_CURRENT_SOURCE_DIR}/tests
         ${CMAKE_CURRENT_BINARY_DIR}/tests
-    COMMENT "Copying Python source and test files to build directory"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/examples
+        ${CMAKE_CURRENT_BINARY_DIR}/examples
+    COMMENT "Copying Python source, test, and example files to build directory"
     VERBATIM
 )
 

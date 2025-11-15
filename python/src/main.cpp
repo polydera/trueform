@@ -15,6 +15,10 @@ namespace nb = nanobind;
 NB_MODULE(_trueform, m) {
   m.doc() = "Python bindings for trueform geometric processing library";
 
+  // Suppress nanobind leak warnings - these are false positives from VTK's
+  // event loop holding references during Python shutdown
+  nb::set_leak_warnings(false);
+
   // Register all modules
   tf::py::register_core(m);
   tf::py::register_io(m);

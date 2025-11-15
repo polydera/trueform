@@ -7,7 +7,9 @@
 #include <nanobind/nanobind.h>
 #include <nanobind/stl/optional.h>
 #include <nanobind/stl/pair.h>
+#include <nanobind/stl/tuple.h>
 #include <trueform/python/core/make_primitives.hpp>
+#include <tuple>
 #include <trueform/python/core/point_cloud.hpp>
 #include <trueform/python/spatial/ray_cast.hpp>
 
@@ -24,9 +26,10 @@ auto register_point_cloud_ray_cast(nanobind::module_ &m) -> void {
       "ray_cast_point_cloud_float2d",
       [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
              ray_data,
-         point_cloud_wrapper<float, 2> &cloud) {
+         point_cloud_wrapper<float, 2> &cloud,
+         std::optional<std::tuple<float, float>> config) {
         auto ray = make_ray_from_array<2, float>(ray_data);
-        auto result = ray_cast(ray, cloud);
+        auto result = ray_cast(ray, cloud, config);
 
         if (result) {
           return nanobind::cast(
@@ -35,16 +38,18 @@ auto register_point_cloud_ray_cast(nanobind::module_ &m) -> void {
           return nanobind::none();
         }
       },
-      nanobind::arg("ray"), nanobind::arg("cloud"));
+      nanobind::arg("ray"), nanobind::arg("cloud"),
+      nanobind::arg("config").none() = nanobind::none());
 
   // 2D double
   m.def(
       "ray_cast_point_cloud_double2d",
       [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
              ray_data,
-         point_cloud_wrapper<double, 2> &cloud) {
+         point_cloud_wrapper<double, 2> &cloud,
+         std::optional<std::tuple<double, double>> config) {
         auto ray = make_ray_from_array<2, double>(ray_data);
-        auto result = ray_cast(ray, cloud);
+        auto result = ray_cast(ray, cloud, config);
         if (result) {
           return nanobind::cast(
               nanobind::make_tuple(result->first, result->second));
@@ -52,16 +57,18 @@ auto register_point_cloud_ray_cast(nanobind::module_ &m) -> void {
           return nanobind::none();
         }
       },
-      nanobind::arg("ray"), nanobind::arg("cloud"));
+      nanobind::arg("ray"), nanobind::arg("cloud"),
+      nanobind::arg("config").none() = nanobind::none());
 
   // 3D float
   m.def(
       "ray_cast_point_cloud_float3d",
       [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
              ray_data,
-         point_cloud_wrapper<float, 3> &cloud) {
+         point_cloud_wrapper<float, 3> &cloud,
+         std::optional<std::tuple<float, float>> config) {
         auto ray = make_ray_from_array<3, float>(ray_data);
-        auto result = ray_cast(ray, cloud);
+        auto result = ray_cast(ray, cloud, config);
         if (result) {
           return nanobind::cast(
               nanobind::make_tuple(result->first, result->second));
@@ -69,16 +76,18 @@ auto register_point_cloud_ray_cast(nanobind::module_ &m) -> void {
           return nanobind::object(nanobind::none());
         }
       },
-      nanobind::arg("ray"), nanobind::arg("cloud"));
+      nanobind::arg("ray"), nanobind::arg("cloud"),
+      nanobind::arg("config").none() = nanobind::none());
 
   // 3D double
   m.def(
       "ray_cast_point_cloud_double3d",
       [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 3>>
              ray_data,
-         point_cloud_wrapper<double, 3> &cloud) {
+         point_cloud_wrapper<double, 3> &cloud,
+         std::optional<std::tuple<double, double>> config) {
         auto ray = make_ray_from_array<3, double>(ray_data);
-        auto result = ray_cast(ray, cloud);
+        auto result = ray_cast(ray, cloud, config);
         if (result) {
           return nanobind::cast(
               nanobind::make_tuple(result->first, result->second));
@@ -86,7 +95,8 @@ auto register_point_cloud_ray_cast(nanobind::module_ &m) -> void {
           return nanobind::object(nanobind::none());
         }
       },
-      nanobind::arg("ray"), nanobind::arg("cloud"));
+      nanobind::arg("ray"), nanobind::arg("cloud"),
+      nanobind::arg("config").none() = nanobind::none());
 }
 
 } // namespace tf::py

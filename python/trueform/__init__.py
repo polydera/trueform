@@ -14,6 +14,7 @@ from ._core import PointCloud, Mesh, EdgeMesh, closest_metric_point_pair, closes
 from .ray_cast import ray_cast
 from .intersects import intersects
 from .distance import distance, distance2
+from .distance_field import distance_field
 from ._spatial import neighbor_search, gather_intersecting_ids, gather_ids_within_distance
 from ._core.transformed import transformed
 
@@ -34,6 +35,7 @@ __all__ = [
     'intersects',
     'distance',
     'distance2',
+    'distance_field',
     'neighbor_search',
     'gather_intersecting_ids',
     'gather_ids_within_distance',

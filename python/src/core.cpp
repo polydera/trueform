@@ -19,6 +19,7 @@ auto register_core(nanobind::module_ &m) -> void {
   register_core_ray_cast(m);
   register_core_intersects(m);
   register_core_distance(m);
+  register_core_distance_field(m);
 }
 
 } // namespace tf::py

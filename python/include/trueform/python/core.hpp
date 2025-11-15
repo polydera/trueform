@@ -27,6 +27,8 @@ auto register_core_intersects(nanobind::module_ &m) -> void;
 
 auto register_core_distance(nanobind::module_ &m) -> void;
 
+auto register_core_distance_field(nanobind::module_ &m) -> void;
+
 auto register_core(nanobind::module_ &m) -> void;
 
 } // namespace tf::py

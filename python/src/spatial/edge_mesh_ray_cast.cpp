@@ -7,8 +7,10 @@
 #include <nanobind/nanobind.h>
 #include <nanobind/stl/optional.h>
 #include <nanobind/stl/pair.h>
+#include <nanobind/stl/tuple.h>
 #include <trueform/python/core/edge_mesh.hpp>
 #include <trueform/python/core/make_primitives.hpp>
+#include <tuple>
 #include <trueform/python/spatial/ray_cast.hpp>
 
 namespace tf::py {

@@ -19,7 +19,7 @@ from ._primitives import Plane
 _RAY_CAST_DISPATCH = {**_CORE_DISPATCH}
 
 
-def ray_cast(ray: Any, target: Any):
+def ray_cast(ray: Any, target: Any, config: Optional[Tuple[float, float]] = None):
     """
     Cast a ray against a geometric object and return intersection information.
 
@@ -38,6 +38,12 @@ def ray_cast(ray: Any, target: Any):
         The ray to cast
     target : Segment, Polygon, Line, AABB, Plane, Mesh, EdgeMesh, or PointCloud
         The geometric object to test against
+    config : tuple[float, float] or None, optional
+        Ray configuration (min_t, max_t) to constrain the ray casting range.
+        - min_t: minimum parametric distance (default: 0.0)
+        - max_t: maximum parametric distance (default: infinity)
+        Both float('inf') and np.inf are supported for unbounded ranges.
+        If None, uses default configuration.
 
     Returns
     -------
@@ -57,15 +63,19 @@ def ray_cast(ray: Any, target: Any):
     ...     hit_point = ray.origin + t * ray.direction
     ...     print(f"Hit at {hit_point}, t={t}")
     >>>
-    >>> # Ray casting against a mesh
+    >>> # Ray casting against a mesh with custom range
     >>> faces = np.array([[0, 1, 2], [1, 2, 3]], dtype=np.int32)
     >>> points = np.array([[0, 0, 0], [1, 0, 0], [0.5, 1, 0], [0.5, 0, 1]], dtype=np.float32)
     >>> mesh = tf.Mesh(faces, points)
     >>> ray = tf.Ray(origin=[0.3, 0.3, 2.0], direction=[0.0, 0.0, -1.0])
-    >>> result = tf.ray_cast(ray, mesh)
+    >>> # Only check intersections between t=0.5 and t=10.0
+    >>> result = tf.ray_cast(ray, mesh, config=(0.5, 10.0))
     >>> if result is not None:
     ...     face_idx, t = result
     ...     print(f"Hit face {face_idx} at t={t}")
+    >>>\
+    >>> # Using np.inf for unbounded range (equivalent to default)
+    >>> result = tf.ray_cast(ray, mesh, config=(0.0, np.inf))
     """
 
     # Validate dimensions match
@@ -119,7 +129,7 @@ def ray_cast(ray: Any, target: Any):
         # Get function name from dispatch table and call C++ function
         func_name = _SPATIAL_RAY_CAST_DISPATCH[target_type_name].format(suffix)
         cpp_func = getattr(_trueform.spatial, func_name)
-        return cpp_func(ray.data, target._wrapper)
+        return cpp_func(ray.data, target._wrapper, config)
 
     # Handle core primitives (Segment, Polygon, Line, AABB, Plane)
     if target_type not in _RAY_CAST_DISPATCH:
@@ -140,4 +150,4 @@ def ray_cast(ray: Any, target: Any):
 
     # Dispatch to appropriate C++ function for core primitives
     func_name = _RAY_CAST_DISPATCH[target_type].format(suffix)
-    return getattr(_trueform, func_name)(ray.data, target.data)
+    return getattr(_trueform, func_name)(ray.data, target.data, config)
