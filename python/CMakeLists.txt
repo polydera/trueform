@@ -30,15 +30,27 @@ message(STATUS "Found ${CMAKE_CURRENT_LIST_DIR} binding headers")
 # Create single Python extension module
 message(STATUS "Creating _trueform Python extension module")
 
-nanobind_add_module(_trueform NOMINSIZE NB_STATIC ${BINDING_SOURCES}
-                    ${BINDING_HEADERS})
+nanobind_add_module(
+  _trueform
+  NOMINSIZE
+  NB_STATIC
+  ${BINDING_SOURCES}
+  ${BINDING_HEADERS}
+)
+
+target_include_directories(_trueform SYSTEM PRIVATE
+  ${nanobind_SOURCE_DIR}/include
+)
 
 # Link against trueform (available from parent)
 target_link_libraries(_trueform PRIVATE tf::trueform)
 
 # Include directories
-target_include_directories(_trueform
-                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(
+  _trueform
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
 
 # Platform-specific compiler flags
 if(MSVC)
@@ -59,10 +71,10 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     message(WARNING "Compiler does NOT support -march=native")
   endif()
 
-  # Override nanobind's -Os with -O3 for speed (nanobind defaults to size
-  # optimization)
-  target_compile_options(_trueform PRIVATE -O3)
 endif()
+
+
+target_compile_options(_trueform PRIVATE -ftime-trace)
 
 # Exclude from ALL target
 set_target_properties(_trueform PROPERTIES EXCLUDE_FROM_ALL TRUE)
@@ -70,38 +82,59 @@ set_target_properties(_trueform PROPERTIES EXCLUDE_FROM_ALL TRUE)
 # Set output directory for _trueform to be inside trueform package
 set_target_properties(
   _trueform
-  PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/trueform
-             RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/trueform)
+  PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY  ${CMAKE_CURRENT_BINARY_DIR}/trueform
+    RUNTIME_OUTPUT_DIRECTORY  ${CMAKE_CURRENT_BINARY_DIR}/trueform
+)
 
 # Glob all Python files to track them as dependencies
 file(GLOB_RECURSE PYTHON_SOURCE_FILES
-     "${CMAKE_CURRENT_SOURCE_DIR}/trueform/*.py")
-file(GLOB_RECURSE PYTHON_TEST_FILES "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.py")
+  "${CMAKE_CURRENT_SOURCE_DIR}/trueform/*.py")
+file(GLOB_RECURSE PYTHON_TEST_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.py")
 file(GLOB_RECURSE PYTHON_EXAMPLE_FILES
-     "${CMAKE_CURRENT_SOURCE_DIR}/examples/**/*.py")
+  "${CMAKE_CURRENT_SOURCE_DIR}/examples/**/*.py")
+# file(GLOB_RECURSE PYTHON_BENCHMARK_FILES
+#   "${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/*.py")
+
 message(STATUS "Found ${CMAKE_CURRENT_LIST_DIR} Python source files")
 message(STATUS "Found ${CMAKE_CURRENT_LIST_DIR} Python test files")
 message(STATUS "Found ${CMAKE_CURRENT_LIST_DIR} Python example files")
+# message(STATUS "Found ${CMAKE_CURRENT_LIST_DIR} Python benchmark files")
 
 # Create a custom target that depends on all Python files
 add_custom_target(
-  copy_python_files ALL DEPENDS ${PYTHON_SOURCE_FILES} ${PYTHON_TEST_FILES}
-                                ${PYTHON_EXAMPLE_FILES})
+  copy_python_files ALL
+  DEPENDS
+    ${PYTHON_SOURCE_FILES}
+    ${PYTHON_TEST_FILES}
+    ${PYTHON_EXAMPLE_FILES}
+    # ${PYTHON_BENCHMARK_FILES}
+)
 
 # Copy Python source files to build directory whenever they change
 add_custom_command(
   TARGET copy_python_files
   POST_BUILD
   COMMAND
-    ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/trueform
-    ${CMAKE_CURRENT_BINARY_DIR}/trueform
-  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/tests
-          ${CMAKE_CURRENT_BINARY_DIR}/tests
+    ${CMAKE_COMMAND} -E copy_directory
+      ${CMAKE_CURRENT_SOURCE_DIR}/trueform
+      ${CMAKE_CURRENT_BINARY_DIR}/trueform
   COMMAND
-    ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/examples
-    ${CMAKE_CURRENT_BINARY_DIR}/examples
-  COMMENT "Copying Python source, test, and example files to build directory"
-  VERBATIM)
+    ${CMAKE_COMMAND} -E copy_directory
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests
+      ${CMAKE_CURRENT_BINARY_DIR}/tests
+  COMMAND
+    ${CMAKE_COMMAND} -E copy_directory
+      ${CMAKE_CURRENT_SOURCE_DIR}/examples
+      ${CMAKE_CURRENT_BINARY_DIR}/examples
+  # COMMAND
+  #   ${CMAKE_COMMAND} -E copy_directory
+  #     ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks
+  #     ${CMAKE_CURRENT_BINARY_DIR}/benchmarks
+  COMMENT "Copying Python source, test, example, and benchmark files to build directory"
+  VERBATIM
+)
 
 # Make the python target depend on copying Python files
 add_dependencies(_trueform copy_python_files)
@@ -110,7 +143,8 @@ add_dependencies(_trueform copy_python_files)
 add_custom_target(python DEPENDS _trueform)
 message(
   STATUS
-    "Python bindings configured. Build with 'cmake --build . --target python'")
+    "Python bindings configured. Build with 'cmake --build . --target python'"
+)
 
 # Install the extension module and Python files
 install(TARGETS _trueform LIBRARY DESTINATION trueform)
@@ -118,4 +152,6 @@ install(
   DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/trueform
   DESTINATION .
   FILES_MATCHING
-  PATTERN "*.py")
+  PATTERN "*.py"
+)
+
