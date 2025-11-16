@@ -18,7 +18,7 @@ from .distance_field import distance_field
 from ._intersect import isocontours, intersection_curves
 from ._cut import isobands, boolean_union, boolean_intersection, boolean_difference
 from ._clean import cleaned
-from ._reindex import reindex_by_ids, reindex_by_mask
+from ._reindex import reindex_by_ids, reindex_by_mask, split_into_components
 from ._spatial import neighbor_search, gather_intersecting_ids, gather_ids_within_distance
 from ._core.transformed import transformed
 
@@ -50,6 +50,7 @@ __all__ = [
     'cleaned',
     'reindex_by_ids',
     'reindex_by_mask',
+    'split_into_components',
     'neighbor_search',
     'gather_intersecting_ids',
     'gather_ids_within_distance',

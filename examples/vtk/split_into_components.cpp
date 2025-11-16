@@ -42,7 +42,8 @@ int main(int argc, char *argv[]) {
       tf::label_connected_components<int>(labels, tf::make_applier(fl));
   std::cout << "n_components: " << n_components << std::endl;
 
-  auto comps = tf::split_into_components(polygons.polygons(), labels);
+  auto [comps, comp_labels] =
+      tf::split_into_components(polygons.polygons(), labels);
   std::cout << "v size: " << comps.size() << std::endl;
 
   // --- Create render pipeline once (so we can Start() after the loop) ---

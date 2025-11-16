@@ -25,16 +25,21 @@ auto split_into_components(const T &t, const Range &labels) {
       ids, std::back_inserter(offsets), Index(0),
       [&](auto i0, auto i1) { return labels[i0] == labels[i1]; });
   auto ids_r = tf::make_offset_block_range(offsets, ids);
+  using label_t = std::decay_t<decltype(labels[0])>;
   using res_t = decltype(tf::reindexed_by_ids<Index>(t, ids_r.front()));
   std::vector<res_t> out;
+  std::vector<label_t> l_out;
   out.resize(ids_r.size());
+  l_out.resize(ids_r.size());
   tbb::task_group tg;
-  for (auto &&[ids, res] : tf::zip(ids_r, out))
-    tg.run([&res = res, &t, ids = tf::make_range(ids)] {
-      res = tf::reindexed_by_ids<Index>(t, ids);
-    });
+  for (auto &&[ids, label, res] : tf::zip(ids_r, l_out, out))
+    tg.run(
+        [&res = res, &t, ids = tf::make_range(ids), &labels, &label = label] {
+          label = labels[ids[0]];
+          res = tf::reindexed_by_ids<Index>(t, ids);
+        });
   tg.wait();
-  return out;
+  return std::make_pair(out, std::move(l_out));
 }
 } // namespace reindex
 template <typename Policy, typename Range>
