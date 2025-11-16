@@ -10,7 +10,6 @@
 #include "vtkRenderer.h"
 #include "vtkTextActor.h"
 #include "vtkTextProperty.h"
-#include "vtkTubeFilter.h"
 
 class cursor_interactor : public vtkInteractorStyleTrackballCamera {
 private:
@@ -76,11 +75,7 @@ private:
     isobands_poly->ShallowCopy(to_polydata(std::move(polys)).get());
     isobands_poly->Modified();
     auto tmp_poly = curves_to_polydata(curves.curves());
-    auto tubes = vtk_make_unique<vtkTubeFilter>();
-    tubes->SetRadius(0.05);
-    tubes->SetInputData(tmp_poly.get());
-    tubes->Update();
-    curve_poly->ShallowCopy(tubes->GetOutput());
+    curve_poly->ShallowCopy(tmp_poly.get());
     curve_poly->Modified();
     this->Interactor->Render();
   }
@@ -175,6 +170,9 @@ int main(int argc, char *argv[]) {
   cactor->SetMapper(cmapper.get());
   cmapper->SetInputData(curve_poly.get());
   cactor->GetProperty()->SetColor(1, 0.1, 0.1);
+  // Render lines as tubes (GPU-accelerated, no geometry generation needed)
+  cactor->GetProperty()->SetRenderLinesAsTubes(true);
+  cactor->GetProperty()->SetLineWidth(8.0);
   rendererL->AddActor(cactor.get());
 
   // Right viewport: result mesh

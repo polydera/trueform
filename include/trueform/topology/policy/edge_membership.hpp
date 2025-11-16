@@ -161,6 +161,23 @@ auto tag(const tf::edge_membership<Index> &_edge_membership) {
 template <typename Index>
 auto tag(tf::edge_membership<Index> &&_edge_membership) = delete;
 
+template <typename Policy>
+auto tag(tf::edge_membership_like<Policy> &_edge_membership) {
+  return policy::tag_edge_membership_op<decltype(tf::make_range(
+      _edge_membership))>{tf::make_range(_edge_membership)};
+}
+
+template <typename Policy>
+auto tag(const tf::edge_membership_like<Policy> &_edge_membership) {
+  return policy::tag_edge_membership_op<decltype(tf::make_range(
+      _edge_membership))>{tf::make_range(_edge_membership)};
+}
+
+template <typename Policy>
+auto tag(tf::edge_membership_like<Policy> &&_edge_membership) {
+  return tag(_edge_membership);
+}
+
 } // namespace tf
 namespace std {
 template <typename Range, typename Base>
@@ -173,4 +190,3 @@ struct tuple_element<I, tf::policy::tag_edge_membership<Range, Base>> {
       decltype(declval<Base>().begin())>::value_type;
 };
 } // namespace std
-

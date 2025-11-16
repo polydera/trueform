@@ -21,6 +21,7 @@
 #include <trueform/spatial/tree.hpp>
 #include <trueform/spatial/tree_config.hpp>
 #include <trueform/topology/face_membership.hpp>
+#include <trueform/topology/manifold_edge_link.hpp>
 
 namespace tf::py {
 
@@ -79,27 +80,15 @@ public:
     tf::face_membership<Index> fm;
     fm.build(polygons);
 
-    // Get raw pointers and sizes before releasing
-    Index *offsets_ptr = fm.offsets_buffer().begin();
-    std::size_t offsets_size = fm.offsets_buffer().size();
-    Index *data_ptr = fm.data_buffer().begin();
-    std::size_t data_size = fm.data_buffer().size();
-
-    // Release ownership
-    fm.offsets_buffer().release();
-    fm.data_buffer().release();
-
-    // Create numpy arrays with proper empty array handling
-    auto offsets_ndarray = make_numpy_array<nanobind::shape<-1>>(offsets_ptr, {offsets_size});
-    auto data_ndarray = make_numpy_array<nanobind::shape<-1>>(data_ptr, {data_size});
+    auto [offsets, data] = make_numpy_array(std::move(fm));
 
     // Pass the numpy arrays to the wrapper
     if (!_face_membership_array) {
       _face_membership_array =
           std::make_unique<tf::py::offset_blocked_array_wrapper<Index, Index>>(
-              offsets_ndarray, data_ndarray);
+              offsets, data);
     } else {
-      _face_membership_array->set_arrays(offsets_ndarray, data_ndarray);
+      _face_membership_array->set_arrays(offsets, data);
     }
   }
 
@@ -109,14 +98,44 @@ public:
     }
   }
 
+  auto face_membership() const {
+    return tf::make_face_membership_like(_face_membership_array->make_range());
+  }
+
+  auto rebuild_manifold_edge_link() -> void {
+    if (!_manifold_edge_link)
+      _manifold_edge_link =
+          std::make_unique<tf::manifold_edge_link<Index, Ngon>>();
+    auto polygons = make_primitive_range();
+    _manifold_edge_link->build(polygons.faces(), face_membership());
+  }
+
+  auto ensure_manifold_edge_link() -> void {
+    ensure_face_membership();
+    if (!_manifold_edge_link) {
+      rebuild_manifold_edge_link();
+    }
+  }
+
+  auto manifold_edge_link() const {
+    return tf::make_manifold_edge_link_like(
+        tf::make_range(*_manifold_edge_link));
+  }
+
   auto clear_tree() -> void { _tree.reset(); }
 
   auto clear_face_membership() -> void { _face_membership_array.reset(); }
+
+  auto clear_manifold_edge_link() -> void { _manifold_edge_link.reset(); }
 
   auto has_tree() const -> bool { return _tree != nullptr; }
 
   auto has_face_membership() const -> bool {
     return _face_membership_array != nullptr;
+  }
+
+  auto has_manifold_edge_link() const -> bool {
+    return _manifold_edge_link != nullptr;
   }
 
   auto number_of_faces() const -> std::size_t { return _faces_array.shape(0); }
@@ -190,6 +209,7 @@ private:
   std::unique_ptr<tf::tree<Index, RealT, Dims>> _tree;
   std::unique_ptr<tf::py::offset_blocked_array_wrapper<Index, Index>>
       _face_membership_array;
+  std::unique_ptr<tf::manifold_edge_link<Index, Ngon>> _manifold_edge_link;
 };
 
 } // namespace tf::py

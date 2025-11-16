@@ -1,5 +1,5 @@
 """
-cleaned() function implementation
+reindex_by_mask() function implementation
 
 Copyright (c) 2025 Žiga Sajovic, XLAB
 Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
@@ -8,14 +8,14 @@ https://github.com/xlabmedical/trueform
 """
 
 import numpy as np
-from typing import Union, Tuple, Optional
+from typing import Union, Tuple
 from .. import _trueform
 from .._core import Mesh, EdgeMesh, PointCloud
 
 
-def cleaned(
-    data: Union[np.ndarray, Tuple[np.ndarray, np.ndarray], Mesh, EdgeMesh, PointCloud],
-    tolerance: Optional[float] = None,
+def reindex_by_mask(
+    data: Union[Tuple[np.ndarray, np.ndarray], Mesh, EdgeMesh, PointCloud],
+    mask: np.ndarray,
     return_index_map: bool = False
 ) -> Union[
     np.ndarray,  # just points
@@ -23,53 +23,49 @@ def cleaned(
     Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]],  # ((connectivity, points), face_map, point_map)
 ]:
     """
-    Remove duplicate vertices and degenerate elements from geometric data.
+    Filter geometric data using a boolean mask.
 
-    Supports points, segment soups, polygon soups, indexed geometry (as tuples),
-    meshes, edge meshes, and point clouds. Optionally merges vertices within a
-    tolerance distance using spatial trees.
+    Reindexes geometry to include only elements where the mask is True,
+    automatically filtering unused points and maintaining referential integrity.
 
     Parameters
     ----------
-    data : np.ndarray, tuple, Mesh, EdgeMesh, or PointCloud
+    data : tuple, Mesh, EdgeMesh, or PointCloud
         Input geometric data:
-        - Points: shape (N, Dims) where Dims = 2 or 3
-        - Segment soup: shape (N, 2, Dims) - each row is a segment with 2 vertices
-        - Polygon soup: shape (N, V, Dims) where V = 2, 3, or 4 - each row is a polygon
         - Indexed geometry: tuple (indices, points) where:
           * indices: shape (N, V) with dtype int32 or int64, V = 2, 3, or 4
           * points: shape (M, Dims) where Dims = 2 or 3
         - Mesh: tf.Mesh object (2D or 3D, NGon = 3 or 4)
         - EdgeMesh: tf.EdgeMesh object (2D or 3D)
         - PointCloud: tf.PointCloud object (2D or 3D)
-    tolerance : float, optional
-        Distance threshold for merging vertices (default: None = exact duplicates only).
-        When specified, a spatial tree is built for efficient proximity queries.
+    mask : np.ndarray
+        1D boolean array indicating which elements to keep, shape (N,) with dtype bool.
+        For indexed geometry/Mesh/EdgeMesh: mask over faces/edges.
+        For PointCloud: mask over points.
     return_index_map : bool, optional
         If True, return index maps for attribute reindexing (default: False).
-        Not supported for polygon/segment soups.
 
     Returns
     -------
     For points without index map:
         points : np.ndarray
-            Cleaned points with shape (M, Dims) where M <= N
+            Filtered points with shape (K, Dims) where K = mask.sum()
 
     For points with index map:
         (points, point_map) : tuple
-            - points: cleaned points (M, Dims)
+            - points: filtered points (K, Dims)
             - point_map: tuple (f, kept_ids) where:
-                * f: int64 array (N,) mapping old id to new id (f[i] == f.size means removed)
+                * f: int64 array (M,) mapping old id to new id
                 * kept_ids: int64 array of kept old ids
 
-    For meshes/indexed/soups without index map:
+    For meshes/indexed without index map:
         (connectivity, points) : tuple
-            - connectivity: cleaned faces/edges with shape (K, V)
-            - points: cleaned points with shape (M, Dims)
+            - connectivity: filtered faces/edges with shape (K, V)
+            - points: filtered points with shape (P, Dims)
 
     For meshes/indexed with index map:
         ((connectivity, points), face_map, point_map) : tuple
-            - (connectivity, points): cleaned geometry
+            - (connectivity, points): filtered geometry
             - face_map: tuple (f, kept_ids) for faces/edges, dtype matches input indices
             - point_map: tuple (f, kept_ids) for points, dtype matches input indices
 
@@ -78,42 +74,51 @@ def cleaned(
     >>> import trueform as tf
     >>> import numpy as np
     >>>
-    >>> # Clean points (exact duplicates)
-    >>> points = np.array([[0, 0, 0], [1, 0, 0], [0, 0, 0], [1, 1, 0]], dtype=np.float32)
-    >>> clean_points = tf.cleaned(points)
-    >>> print(clean_points.shape)  # (3, 3) - duplicate removed
+    >>> # Filter faces by area threshold
+    >>> faces = np.array([[0, 1, 2], [1, 3, 2], [2, 3, 4]], dtype=np.int32)
+    >>> points = np.array([[0, 0, 0], [1, 0, 0], [0.5, 1, 0], [1.5, 1, 0], [1, 2, 0]], dtype=np.float32)
     >>>
-    >>> # Clean points with tolerance and index map
-    >>> points = np.array([[0, 0, 0], [0.001, 0, 0], [1, 0, 0]], dtype=np.float32)
-    >>> clean_points, (f, kept_ids) = tf.cleaned(points, tolerance=0.01, return_index_map=True)
-    >>> # Use f to reindex attributes: new_attrs = old_attrs[kept_ids]
+    >>> # Create mask (e.g., based on some criterion)
+    >>> face_mask = np.array([True, False, True], dtype=bool)  # Keep first and third face
     >>>
-    >>> # Clean polygon soup
-    >>> soup = np.array([
-    ...     [[0, 0, 0], [1, 0, 0], [0.5, 1, 0]],
-    ...     [[1, 0, 0], [2, 0, 0], [1.5, 1, 0]]
-    ... ], dtype=np.float32)
-    >>> faces, points = tf.cleaned(soup)
-    >>> print(faces.shape, points.shape)  # (2, 3) (5, 3) - shared vertex deduplicated
+    >>> # Without index maps
+    >>> new_faces, new_points = tf.reindex_by_mask((faces, points), face_mask)
+    >>> print(new_faces.shape, new_points.shape)  # (2, 3) (4, 3) - unused point 3 removed
     >>>
-    >>> # Clean indexed geometry (tuple input)
-    >>> indices = np.array([[0, 1, 2], [1, 3, 2]], dtype=np.int32)
-    >>> points = np.array([[0, 0, 0], [1, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float32)
-    >>> cleaned_indices, cleaned_points = tf.cleaned((indices, points))
-    >>> print(cleaned_indices.shape, cleaned_points.shape)  # (2, 3) (3, 3)
-    >>>
-    >>> # Clean mesh with index maps for attribute reindexing
-    >>> mesh = tf.Mesh(faces, points)
-    >>> (clean_faces, clean_points), (f_faces, kept_faces), (f_points, kept_points) = tf.cleaned(
-    ...     mesh, return_index_map=True
+    >>> # With index maps for attribute reindexing
+    >>> (new_faces, new_points), (f_map, kept_faces), (p_map, kept_points) = tf.reindex_by_mask(
+    ...     (faces, points), face_mask, return_index_map=True
     ... )
     >>> # Reindex face attributes: new_face_attrs = old_face_attrs[kept_faces]
     >>> # Reindex point attributes: new_point_attrs = old_point_attrs[kept_points]
+    >>>
+    >>> # Filter points from point cloud
+    >>> point_cloud = tf.PointCloud(points)
+    >>> point_mask = np.array([True, False, True, False, True], dtype=bool)
+    >>> filtered_points = tf.reindex_by_mask(point_cloud, point_mask)
+    >>> print(filtered_points.shape)  # (3, 3)
     """
 
-    # Validate tolerance
-    if tolerance is not None and tolerance < 0.0:
-        raise ValueError(f"tolerance must be non-negative, got {tolerance}")
+    # Validate mask array
+    if not isinstance(mask, np.ndarray):
+        raise TypeError(
+            f"mask must be np.ndarray, got {type(mask).__name__}"
+        )
+
+    if mask.ndim != 1:
+        raise ValueError(
+            f"mask must be 1D array with shape (N,), got shape {mask.shape}"
+        )
+
+    if mask.dtype != np.bool_:
+        raise TypeError(
+            f"mask dtype must be bool, got {mask.dtype}. "
+            f"Convert with mask.astype(bool)"
+        )
+
+    # Ensure C-contiguous
+    if not mask.flags['C_CONTIGUOUS']:
+        mask = np.ascontiguousarray(mask)
 
     # ===== HANDLE TUPLE INPUT (INDEXED GEOMETRY) =====
     if isinstance(data, tuple):
@@ -174,6 +179,12 @@ def cleaned(
                 f"points must have 2 or 3 dimensions, got dims={dims}"
             )
 
+        # Validate mask size
+        if mask.shape[0] != indices.shape[0]:
+            raise ValueError(
+                f"mask size ({mask.shape[0]}) must match number of faces/edges ({indices.shape[0]})"
+            )
+
         # Ensure C-contiguous
         if not indices.flags['C_CONTIGUOUS']:
             indices = np.ascontiguousarray(indices)
@@ -185,12 +196,12 @@ def cleaned(
         real_str = 'float' if points.dtype == np.float32 else 'double'
         suffix = f"{V}{index_str}{real_str}{dims}d"
 
-        # Build function name - always call with_maps version
-        func_name = f"cleaned_indexed_with_maps_{suffix}"
+        # Build function name
+        func_name = f"reindexed_by_mask_indexed_{suffix}"
 
         # Call C++ function - always returns ((connectivity, points), face_map, point_map)
         cpp_func = getattr(_trueform, func_name)
-        result, face_map, point_map = cpp_func(indices, points, tolerance)
+        result, face_map, point_map = cpp_func(indices, points, mask)
 
         # Conditionally return maps based on user request
         if return_index_map:
@@ -212,27 +223,45 @@ def cleaned(
             points = data.points
             V = data.ngon
 
+            # Validate mask size
+            if mask.shape[0] != indices.shape[0]:
+                raise ValueError(
+                    f"mask size ({mask.shape[0]}) must match number of faces ({indices.shape[0]})"
+                )
+
         elif isinstance(data, EdgeMesh):
             # Extract arrays from EdgeMesh
             indices = data.edges
             points = data.points
             V = 2
 
+            # Validate mask size
+            if mask.shape[0] != indices.shape[0]:
+                raise ValueError(
+                    f"mask size ({mask.shape[0]}) must match number of edges ({indices.shape[0]})"
+                )
+
         else:  # PointCloud
             # PointCloud only has points, no indices
             points = data.points
             dims = data.dims
 
+            # Validate mask size
+            if mask.shape[0] != points.shape[0]:
+                raise ValueError(
+                    f"mask size ({mask.shape[0]}) must match number of points ({points.shape[0]})"
+                )
+
             # Build suffix: {real}{dims}d
             real_str = 'float' if points.dtype == np.float32 else 'double'
             suffix = f"{real_str}{dims}d"
 
-            # Build function name - always call with_maps version
-            func_name = f"cleaned_points_with_maps_{suffix}"
+            # Build function name
+            func_name = f"reindexed_by_mask_points_{suffix}"
 
             # Call C++ function - always returns (points, point_map)
             cpp_func = getattr(_trueform, func_name)
-            result, point_map = cpp_func(points, tolerance)
+            result, point_map = cpp_func(points, mask)
 
             # Conditionally return maps based on user request
             if return_index_map:
@@ -240,7 +269,7 @@ def cleaned(
             else:
                 return result
 
-        # For Mesh and EdgeMesh, use indexed cleaning
+        # For Mesh and EdgeMesh, use indexed reindexing
         dims = data.dims
 
         # Build suffix: {V}{index}{real}{dims}d
@@ -248,12 +277,12 @@ def cleaned(
         real_str = 'float' if points.dtype == np.float32 else 'double'
         suffix = f"{V}{index_str}{real_str}{dims}d"
 
-        # Build function name - always call with_maps version
-        func_name = f"cleaned_indexed_with_maps_{suffix}"
+        # Build function name
+        func_name = f"reindexed_by_mask_indexed_{suffix}"
 
         # Call C++ function - always returns ((connectivity, points), face_map, point_map)
         cpp_func = getattr(_trueform, func_name)
-        result, face_map, point_map = cpp_func(indices, points, tolerance)
+        result, face_map, point_map = cpp_func(indices, points, mask)
 
         # Conditionally return maps based on user request
         if return_index_map:
@@ -261,87 +290,8 @@ def cleaned(
         else:
             return result
 
-    # ===== HANDLE NUMPY ARRAYS =====
-    elif isinstance(data, np.ndarray):
-        # Validate dtype
-        if data.dtype not in (np.float32, np.float64):
-            raise TypeError(
-                f"Data dtype must be float32 or float64, got {data.dtype}. "
-                f"Convert with data.astype(np.float32) or data.astype(np.float64)"
-            )
-
-        # Validate ndim
-        if data.ndim not in (2, 3):
-            raise ValueError(
-                f"Expected 2D array (points) or 3D array (soup), got {data.ndim}D array with shape {data.shape}"
-            )
-
-        # Ensure C-contiguous
-        if not data.flags['C_CONTIGUOUS']:
-            data = np.ascontiguousarray(data)
-
-        # ===== POINTS: shape (N, Dims) =====
-        if data.ndim == 2:
-            N, dims = data.shape
-
-            # Validate dimensions
-            if dims not in (2, 3):
-                raise ValueError(
-                    f"Points must have 2 or 3 dimensions, got shape {data.shape}"
-                )
-
-            # Build suffix: {real}{dims}d
-            real_str = 'float' if data.dtype == np.float32 else 'double'
-            suffix = f"{real_str}{dims}d"
-
-            # Build function name - always call with_maps version
-            func_name = f"cleaned_points_with_maps_{suffix}"
-
-            # Call C++ function - always returns (points, point_map)
-            cpp_func = getattr(_trueform, func_name)
-            result, point_map = cpp_func(data, tolerance)
-
-            # Conditionally return maps based on user request
-            if return_index_map:
-                return (result, point_map)
-            else:
-                return result
-
-        # ===== SOUPS: shape (N, V, Dims) =====
-        else:  # data.ndim == 3
-            N, V, dims = data.shape
-
-            # Validate dimensions
-            if dims not in (2, 3):
-                raise ValueError(
-                    f"Soup vertices must have 2 or 3 dimensions, got shape {data.shape}"
-                )
-
-            # Validate element order
-            if V not in (2, 3, 4):
-                raise ValueError(
-                    f"Soup elements must have 2 (segments), 3 (triangles), or 4 (quads) vertices, got V={V}"
-                )
-
-            # Soups don't support index maps
-            if return_index_map:
-                raise ValueError(
-                    "return_index_map is not supported for polygon soups"
-                )
-
-            # Build suffix: {V}{real}{dims}d
-            real_str = 'float' if data.dtype == np.float32 else 'double'
-            suffix = f"{V}{real_str}{dims}d"
-
-            # Build function name
-            func_name = f"cleaned_soup_{suffix}"
-
-            # Call C++ function
-            cpp_func = getattr(_trueform, func_name)
-            return cpp_func(data, tolerance)
-
     else:
         raise TypeError(
-            f"Expected np.ndarray, tuple, or form object (Mesh, EdgeMesh, PointCloud), "
+            f"Expected tuple or form object (Mesh, EdgeMesh, PointCloud), "
             f"got {type(data).__name__}"
         )

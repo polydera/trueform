@@ -16,8 +16,9 @@ from .intersects import intersects
 from .distance import distance, distance2
 from .distance_field import distance_field
 from ._intersect import isocontours
-from ._cut import isobands
+from ._cut import isobands, intersection_curves
 from ._clean import cleaned
+from ._reindex import reindex_by_ids, reindex_by_mask
 from ._spatial import neighbor_search, gather_intersecting_ids, gather_ids_within_distance
 from ._core.transformed import transformed
 
@@ -32,6 +33,7 @@ __all__ = [
     'PointCloud',
     'Mesh',
     'EdgeMesh',
+    'OffsetBlockedArray',
     'closest_metric_point_pair',
     'closest_metric_point',
     'ray_cast',
@@ -41,7 +43,10 @@ __all__ = [
     'distance_field',
     'isocontours',
     'isobands',
+    'intersection_curves',
     'cleaned',
+    'reindex_by_ids',
+    'reindex_by_mask',
     'neighbor_search',
     'gather_intersecting_ids',
     'gather_ids_within_distance',

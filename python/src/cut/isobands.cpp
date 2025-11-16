@@ -5,11 +5,11 @@
  * https://github.com/xlabmedical/trueform
  */
 
-#include "trueform/python/intersect/isobands_impl.hpp"
+#include "trueform/python/cut/isobands_impl.hpp"
 
 namespace tf::py {
 
-auto register_intersect_isobands(nanobind::module_ &m) -> void {
+auto register_cut_isobands(nanobind::module_ &m) -> void {
   // Bindings for all mesh variants (8 total: 2 index × 2 real × 2 dims)
   // Each has 2 versions: without curves and with curves
 

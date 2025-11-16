@@ -5,14 +5,13 @@
  * https://github.com/xlabmedical/trueform
  */
 
-#include "trueform/python/intersect.hpp"
+#include "trueform/python/cut.hpp"
 
 namespace tf::py {
 
-auto register_intersect(nanobind::module_ &m) -> void {
-  // Register intersect components
-  register_intersect_isocontours(m);
-  register_intersect_intersection_curves(m);
+auto register_cut(nanobind::module_ &m) -> void {
+  // Register cut components
+  register_cut_isobands(m);
 }
 
 } // namespace tf::py

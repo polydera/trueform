@@ -10,10 +10,8 @@
 
 namespace tf::py {
 
-// Forward declarations for intersect module registration
-auto register_intersect_isocontours(nanobind::module_ &m) -> void;
-auto register_intersect_intersection_curves(nanobind::module_ &m) -> void;
-
-auto register_intersect(nanobind::module_ &m) -> void;
+// Forward declarations for reindex module registration
+auto register_reindex_by_ids(nanobind::module_ &m) -> void;
+auto register_reindex_by_mask(nanobind::module_ &m) -> void;
 
 } // namespace tf::py

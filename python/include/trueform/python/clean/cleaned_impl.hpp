@@ -21,21 +21,6 @@ template <typename Index, typename RealT, std::size_t Dims>
 auto cleaned_impl(
     nanobind::ndarray<nanobind::numpy, const RealT, nanobind::shape<-1, Dims>>
         points,
-    std::optional<RealT> tolerance) {
-  // Create points range from numpy array
-  std::size_t num_points = points.shape(0);
-  auto points_range =
-      tf::make_points<Dims>(tf::make_range(points.data(), num_points * Dims));
-  if (tolerance)
-    return make_numpy_array(tf::cleaned<Index>(points_range, *tolerance));
-  else
-    return make_numpy_array(tf::cleaned<Index>(points_range));
-}
-
-template <typename Index, typename RealT, std::size_t Dims>
-auto cleaned_impl(
-    nanobind::ndarray<nanobind::numpy, const RealT, nanobind::shape<-1, Dims>>
-        points,
     std::optional<RealT> tolerance, tf::return_index_map_t) {
   // Create points range from numpy array
   std::size_t num_points = points.shape(0);
@@ -65,32 +50,6 @@ auto cleaned_impl(nanobind::ndarray<nanobind::numpy, const RealT,
       return tf::make_segments(points_range);
     else
       return tf::make_polygons(points_range);
-  }();
-  if (tolerance)
-    return make_numpy_array(tf::cleaned<Index>(primitive_range, *tolerance));
-  else
-    return make_numpy_array(tf::cleaned<Index>(primitive_range));
-}
-
-template <typename Index, std::size_t V, typename RealT, std::size_t Dims>
-auto cleaned_impl(
-    nanobind::ndarray<nanobind::numpy, const Index, nanobind::shape<-1, V>>
-        indices,
-    nanobind::ndarray<nanobind::numpy, const RealT, nanobind::shape<-1, Dims>>
-        points,
-    std::optional<RealT> tolerance) {
-  // Create points range from numpy array
-  std::size_t num_points = points.shape(0);
-  auto points_range =
-      tf::make_points<Dims>(tf::make_range(points.data(), num_points * Dims));
-  std::size_t num_indices = indices.shape(0);
-  auto indices_range = tf::make_blocked_range<V>(
-      tf::make_range(indices.data(), num_indices * V));
-  auto primitive_range = [&] {
-    if constexpr (V == 2)
-      return tf::make_segments(indices_range, points_range);
-    else
-      return tf::make_polygons(indices_range, points_range);
   }();
   if (tolerance)
     return make_numpy_array(tf::cleaned<Index>(primitive_range, *tolerance));

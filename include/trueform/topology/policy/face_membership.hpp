@@ -161,6 +161,23 @@ auto tag(const tf::face_membership<Index> &_face_membership) {
 template <typename Index>
 auto tag(tf::face_membership<Index> &&_face_membership) = delete;
 
+template <typename Policy>
+auto tag(tf::face_membership_like<Policy> &_face_membership) {
+  return policy::tag_face_membership_op<decltype(tf::make_range(
+      _face_membership))>{tf::make_range(_face_membership)};
+}
+
+template <typename Policy>
+auto tag(const tf::face_membership_like<Policy> &_face_membership) {
+  return policy::tag_face_membership_op<decltype(tf::make_range(
+      _face_membership))>{tf::make_range(_face_membership)};
+}
+
+template <typename Policy>
+auto tag(tf::face_membership_like<Policy> &&_face_membership) {
+  return tag(_face_membership);
+}
+
 } // namespace tf
 namespace std {
 template <typename Range, typename Base>

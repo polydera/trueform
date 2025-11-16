@@ -53,6 +53,19 @@ else()
     target_compile_options(_trueform PRIVATE -Wall -Wextra)
 endif()
 
+# Release build optimizations
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+  include(CheckCXXCompilerFlag)
+
+  check_cxx_compiler_flag("-march=native" SUPPORTS_MARCH_NATIVE)
+  if(SUPPORTS_MARCH_NATIVE)
+    message(STATUS "Compiler supports -march=native for Python bindings")
+    target_compile_options(_trueform PRIVATE -march=native)
+  else()
+    message(WARNING "Compiler does NOT support -march=native")
+  endif()
+endif()
+
 # Exclude from ALL target
 set_target_properties(_trueform PROPERTIES
     EXCLUDE_FROM_ALL TRUE

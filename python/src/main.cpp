@@ -8,8 +8,10 @@
 #include <nanobind/nanobind.h>
 #include "trueform/python/clean.hpp"
 #include "trueform/python/core.hpp"
+#include "trueform/python/cut.hpp"
 #include "trueform/python/intersect.hpp"
 #include "trueform/python/io.hpp"
+#include "trueform/python/reindex.hpp"
 #include "trueform/python/spatial.hpp"
 
 namespace nb = nanobind;
@@ -24,7 +26,10 @@ NB_MODULE(_trueform, m) {
   // Register all modules
   tf::py::register_clean(m);
   tf::py::register_core(m);
+  tf::py::register_cut(m);
   tf::py::register_intersect(m);
   tf::py::register_io(m);
+  tf::py::register_reindex_by_ids(m);
+  tf::py::register_reindex_by_mask(m);
   tf::py::register_spatial_module(m);
 }

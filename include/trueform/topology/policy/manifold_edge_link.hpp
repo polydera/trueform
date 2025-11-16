@@ -168,6 +168,23 @@ auto tag(const tf::manifold_edge_link<Index, N> &_manifold_edge_link) {
 template <typename Index, std::size_t N>
 auto tag(tf::manifold_edge_link<Index, N> &&_manifold_edge_link) = delete;
 
+template <typename Policy>
+auto tag(tf::manifold_edge_link_like<Policy> &_manifold_edge_link) {
+  return policy::tag_manifold_edge_link_op<decltype(tf::make_range(
+      _manifold_edge_link))>{tf::make_range(_manifold_edge_link)};
+}
+
+template <typename Policy>
+auto tag(const tf::manifold_edge_link_like<Policy> &_manifold_edge_link) {
+  return policy::tag_manifold_edge_link_op<decltype(tf::make_range(
+      _manifold_edge_link))>{tf::make_range(_manifold_edge_link)};
+}
+
+template <typename Policy>
+auto tag(tf::manifold_edge_link_like<Policy> &&_manifold_edge_link) {
+  return tag(_manifold_edge_link);
+}
+
 } // namespace tf
 namespace std {
 template <typename Range, typename Base>
@@ -180,4 +197,3 @@ struct tuple_element<I, tf::policy::tag_manifold_edge_link<Range, Base>> {
       decltype(declval<Base>().begin())>::value_type;
 };
 } // namespace std
-
