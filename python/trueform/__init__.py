@@ -15,8 +15,8 @@ from .ray_cast import ray_cast
 from .intersects import intersects
 from .distance import distance, distance2
 from .distance_field import distance_field
-from ._intersect import isocontours
-from ._cut import isobands, intersection_curves, boolean_union, boolean_intersection, boolean_difference
+from ._intersect import isocontours, intersection_curves
+from ._cut import isobands, boolean_union, boolean_intersection, boolean_difference
 from ._clean import cleaned
 from ._reindex import reindex_by_ids, reindex_by_mask
 from ._spatial import neighbor_search, gather_intersecting_ids, gather_ids_within_distance

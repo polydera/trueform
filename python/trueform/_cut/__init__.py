@@ -8,12 +8,10 @@ https://github.com/xlabmedical/trueform
 """
 
 from .isobands import isobands
-from .intersection_curves import intersection_curves
 from .boolean import boolean_union, boolean_intersection, boolean_difference
 
 __all__ = [
     'isobands',
-    'intersection_curves',
     'boolean_union',
     'boolean_intersection',
     'boolean_difference',
