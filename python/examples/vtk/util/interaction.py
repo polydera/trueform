@@ -9,7 +9,7 @@ import trueform as tf
 
 # Standard colors for mesh visualization
 NORMAL_COLOR = (0.8, 0.8, 0.8)          # Light gray
-HIGHLIGHT_COLOR = (1.0, 0.9, 1.0)       # Pinkish-white
+HIGHLIGHT_COLOR = (0.85, 0.85, 0.9)     # Very subtle blue tint (was 1.0, 0.9, 1.0)
 
 
 class BaseInteractor(vtk.vtkInteractorStyleTrackballCamera):
@@ -39,7 +39,7 @@ class BaseInteractor(vtk.vtkInteractorStyleTrackballCamera):
         self.last_point = None
 
         # Mesh interaction (set via enable_mesh_interaction)
-        self._interactive_mesh = None
+        self._interactive_meshes = None
         self._mesh_normal_color = NORMAL_COLOR
         self._mesh_highlight_color = HIGHLIGHT_COLOR
 
@@ -104,22 +104,23 @@ class BaseInteractor(vtk.vtkInteractorStyleTrackballCamera):
         # Update trueform transformation
         self.update_mesh_transformation(mesh_data)
 
-    def enable_mesh_interaction(self, mesh_data, normal_color=None, highlight_color=None):
+    def enable_mesh_interaction(self, mesh_data_list, normal_color=None, highlight_color=None):
         """
-        Enable hover/selection/dragging for a single mesh
+        Enable hover/selection/dragging for one or more meshes
 
-        This is a convenience method that sets up the common pattern of:
+        This sets up the common pattern of:
         - Hovering over mesh highlights it
         - Click to start dragging
         - Release to stop dragging
+        - Automatically finds closest mesh when multiple meshes are provided
 
         Call this from your subclass __init__ to enable mesh interaction.
-        Then the mesh will automatically respond to mouse events.
+        Then override the hooks to respond to events.
 
         Parameters
         ----------
-        mesh_data : MeshData
-            The mesh to make interactive
+        mesh_data_list : MeshData or list of MeshData
+            The mesh(es) to make interactive. Can be a single MeshData or a list.
         normal_color : tuple, optional
             RGB color for normal state (default: NORMAL_COLOR)
         highlight_color : tuple, optional
@@ -127,18 +128,34 @@ class BaseInteractor(vtk.vtkInteractorStyleTrackballCamera):
 
         Example
         -------
+        >>> # Single mesh
         >>> class MyInteractor(BaseInteractor):
         ...     def __init__(self, mesh_data):
         ...         super().__init__()
-        ...         self.enable_mesh_interaction(mesh_data)
-        ...         # Now mesh will respond to mouse!
+        ...         self.enable_mesh_interaction([mesh_data])
+        ...
+        >>> # Multiple meshes
+        >>> class MyInteractor(BaseInteractor):
+        ...     def __init__(self, mesh_data_list):
+        ...         super().__init__()
+        ...         self.enable_mesh_interaction(mesh_data_list)
+        ...         # Now all meshes respond to mouse!
+        ...
+        ...     def on_mesh_dragged(self, mesh_data, delta):
+        ...         # Called when any mesh is dragged
+        ...         print(f"Dragged mesh by {delta}")
         """
-        self._interactive_mesh = mesh_data
+        # Accept single mesh or list
+        if not isinstance(mesh_data_list, list):
+            mesh_data_list = [mesh_data_list]
+
+        self._interactive_meshes = mesh_data_list
         self._mesh_normal_color = normal_color or NORMAL_COLOR
         self._mesh_highlight_color = highlight_color or HIGHLIGHT_COLOR
 
-        # Set initial color
-        mesh_data.actor.GetProperty().SetColor(*self._mesh_normal_color)
+        # Set initial colors
+        for mesh_data in mesh_data_list:
+            mesh_data.actor.GetProperty().SetColor(*self._mesh_normal_color)
 
         # Attach event observers
         self.AddObserver("MouseMoveEvent", self._handle_mesh_mouse_move)
@@ -152,23 +169,27 @@ class BaseInteractor(vtk.vtkInteractorStyleTrackballCamera):
         ray = get_camera_ray(renderer, x, y)
 
         if not self.selected_mode and not self.camera_mode:
-            # Hovering - check if over mesh
-            result = tf.ray_cast(ray, self._interactive_mesh.mesh)
-            if result is not None:
-                # Hit! Highlight and prepare for potential drag
-                self._interactive_mesh.actor.GetProperty().SetColor(*self._mesh_highlight_color)
-                self.selected_mesh_data = self._interactive_mesh
+            # Hovering - check which mesh we hit
+            hit_mesh_data, hit_point = self._ray_hit_multiple(ray, self._interactive_meshes)
 
-                _, t = result
-                hit_point = ray.origin + t * ray.direction
+            if hit_mesh_data is not None:
+                # Reset previously highlighted mesh if different
+                if self.selected_mesh_data != hit_mesh_data:
+                    self._reset_all_mesh_colors()
+
+                # Highlight hit mesh
+                hit_mesh_data.actor.GetProperty().SetColor(*self._mesh_highlight_color)
+                self.selected_mesh_data = hit_mesh_data
+
+                # Prepare for potential drag
                 self.make_moving_plane(hit_point, renderer)
                 self.last_point = hit_point
 
                 # Call hook for subclasses
-                self.on_mesh_hover(self._interactive_mesh, hit_point)
+                self.on_mesh_hover(hit_mesh_data, hit_point)
             else:
-                # Not hovering - reset
-                self._interactive_mesh.actor.GetProperty().SetColor(*self._mesh_normal_color)
+                # Not hovering - reset all
+                self._reset_all_mesh_colors()
                 self.selected_mesh_data = None
                 self.on_mesh_hover(None, None)
 
@@ -176,17 +197,17 @@ class BaseInteractor(vtk.vtkInteractorStyleTrackballCamera):
 
         elif self.selected_mode:
             # Dragging mesh
-            if self.moving_plane is not None:
+            if self.moving_plane is not None and self.selected_mesh_data is not None:
                 hit_result = tf.ray_cast(ray, self.moving_plane)
                 if hit_result is not None:
                     t = hit_result
                     next_point = ray.origin + t * ray.direction
                     dx = next_point - self.last_point
                     self.last_point = next_point
-                    self.move_mesh(self._interactive_mesh, dx)
+                    self.move_mesh(self.selected_mesh_data, dx)
 
                     # Call hook for subclasses
-                    self.on_mesh_dragged(self._interactive_mesh, dx)
+                    self.on_mesh_dragged(self.selected_mesh_data, dx)
 
                     self.GetInteractor().Render()
 
@@ -200,7 +221,7 @@ class BaseInteractor(vtk.vtkInteractorStyleTrackballCamera):
             # Start dragging
             self.selected_mode = True
             self.GetInteractor().GetRenderWindow().HideCursor()
-            self.on_mesh_selected(self._interactive_mesh)
+            self.on_mesh_selected(self.selected_mesh_data)
         else:
             # Start camera rotation
             self.camera_mode = True
@@ -212,12 +233,22 @@ class BaseInteractor(vtk.vtkInteractorStyleTrackballCamera):
             self.selected_mode = False
             self.GetInteractor().GetRenderWindow().ShowCursor()
 
-            # Reset to normal color
-            self._interactive_mesh.actor.GetProperty().SetColor(*self._mesh_normal_color)
-            self.selected_mesh_data = None
+            # Reset to normal colors
+            self._reset_all_mesh_colors()
+
+            # Re-highlight if still hovering over a mesh
+            x, y = self.GetInteractor().GetEventPosition()
+            renderer = self.GetInteractor().FindPokedRenderer(x, y)
+            ray = get_camera_ray(renderer, x, y)
+            hit_mesh_data, _ = self._ray_hit_multiple(ray, self._interactive_meshes)
+            if hit_mesh_data is not None:
+                hit_mesh_data.actor.GetProperty().SetColor(*self._mesh_highlight_color)
+                self.selected_mesh_data = hit_mesh_data
+            else:
+                self.selected_mesh_data = None
 
             # Call hook for subclasses
-            self.on_mesh_released(self._interactive_mesh)
+            self.on_mesh_released(self.selected_mesh_data if hit_mesh_data else None)
 
             self.GetInteractor().Render()
         elif self.camera_mode:
@@ -240,6 +271,38 @@ class BaseInteractor(vtk.vtkInteractorStyleTrackballCamera):
     def on_mesh_released(self, mesh_data):
         """Called when mesh is released (drag ends)"""
         pass
+
+    def _ray_hit_multiple(self, ray, mesh_data_list):
+        """
+        Cast ray against all meshes, return closest hit
+
+        Uses ray_config optimization: after each hit, update max_t to prune subsequent searches
+        """
+        closest_t = np.inf
+        hit_mesh_data = None
+        hit_point = None
+
+        # Initialize config with default range
+        config = (0.0, np.inf)
+
+        for mesh_data in mesh_data_list:
+            result = tf.ray_cast(ray, mesh_data.mesh, config)
+            if result is not None:
+                face_idx, t = result
+                if t < closest_t:
+                    closest_t = t
+                    hit_mesh_data = mesh_data
+                    hit_point = ray.origin + t * ray.direction
+                    # Update config to only check up to current closest hit
+                    config = (0.0, closest_t)
+
+        return hit_mesh_data, hit_point
+
+    def _reset_all_mesh_colors(self):
+        """Reset all interactive meshes to normal color"""
+        if self._interactive_meshes:
+            for mesh_data in self._interactive_meshes:
+                mesh_data.actor.GetProperty().SetColor(*self._mesh_normal_color)
 
 
 def get_camera_ray(renderer, x, y):

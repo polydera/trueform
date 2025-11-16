@@ -10,6 +10,7 @@ Provides common functionality for VTK-based examples including:
 
 from .geometry import (
     MeshData,
+    random_rotation_matrix,
     numpy_to_polydata,
     compute_centering_and_scaling_transform,
     curves_to_polydata,
@@ -39,6 +40,7 @@ from .scene import (
 __all__ = [
     # Geometry
     'MeshData',
+    'random_rotation_matrix',
     'numpy_to_polydata',
     'compute_centering_and_scaling_transform',
     'curves_to_polydata',

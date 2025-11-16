@@ -110,7 +110,7 @@ class IsocontourInteractor(BaseInteractor):
         # Update timing
         self.times.add(elapsed)
         avg_time = self.times.get_average()
-        self.text_actor.SetInput(f"Intersection curve time per scroll: {format_time_ms(avg_time)}")
+        self.text_actor.SetInput(f"Isocontours time: {format_time_ms(avg_time)}")
 
         # Convert curves to polydata (no tube filter needed!)
         if len(paths) > 0 and len(curve_points) > 0:
@@ -219,28 +219,28 @@ def main():
 
     # Create text actors for bottom strip
     text_time = create_text_actor(
-        "Intersection curve time per scroll: 0 ms",
-        font_size=40,
+        "Isocontours time: 0 ms",
+        font_size=38,
         position=(0.03, 0.30),
         justification='left'
     )
     renderer_text.AddViewProp(text_time)
 
     text_instructions = create_text_actor(
-        "Press n to randomize the plane.",
-        font_size=40,
-        position=(0.03, 0.65),
+        "Press N to randomize plane",
+        font_size=38,
+        position=(0.03, 0.70),
         justification='left'
     )
     renderer_text.AddViewProp(text_instructions)
 
     text_help = create_text_actor(
-        "Hold shift and scroll.\nIntersection curve with plane will move.\nPowered by trueform.",
-        font_size=40,
-        position=(0.97, 0.50),
+        "Hold Shift and scroll to move\n\nPowered by trueform",
+        font_size=38,
+        position=(0.97, 0.55),
         justification='right'
     )
-    text_help.GetTextProperty().SetLineSpacing(1.5)
+    text_help.GetTextProperty().SetLineSpacing(1.4)
     renderer_text.AddViewProp(text_help)
 
     # Setup render window and interactor

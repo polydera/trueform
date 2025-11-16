@@ -27,6 +27,14 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, float, 3, 2>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int, float, 3, 2>::has_face_membership)
+      .def("rebuild_manifold_edge_link",
+           &mesh_wrapper<int, float, 3, 2>::rebuild_manifold_edge_link)
+      .def("ensure_manifold_edge_link",
+           &mesh_wrapper<int, float, 3, 2>::ensure_manifold_edge_link)
+      .def("clear_manifold_edge_link",
+           &mesh_wrapper<int, float, 3, 2>::clear_manifold_edge_link)
+      .def("has_manifold_edge_link",
+           &mesh_wrapper<int, float, 3, 2>::has_manifold_edge_link)
       .def("number_of_points",
            &mesh_wrapper<int, float, 3, 2>::number_of_points)
       .def("number_of_faces", &mesh_wrapper<int, float, 3, 2>::number_of_faces)
@@ -58,6 +66,14 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, float, 3, 3>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int, float, 3, 3>::has_face_membership)
+      .def("rebuild_manifold_edge_link",
+           &mesh_wrapper<int, float, 3, 3>::rebuild_manifold_edge_link)
+      .def("ensure_manifold_edge_link",
+           &mesh_wrapper<int, float, 3, 3>::ensure_manifold_edge_link)
+      .def("clear_manifold_edge_link",
+           &mesh_wrapper<int, float, 3, 3>::clear_manifold_edge_link)
+      .def("has_manifold_edge_link",
+           &mesh_wrapper<int, float, 3, 3>::has_manifold_edge_link)
       .def("number_of_points",
            &mesh_wrapper<int, float, 3, 3>::number_of_points)
       .def("number_of_faces", &mesh_wrapper<int, float, 3, 3>::number_of_faces)
@@ -89,6 +105,14 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, float, 4, 2>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int, float, 4, 2>::has_face_membership)
+      .def("rebuild_manifold_edge_link",
+           &mesh_wrapper<int, float, 4, 2>::rebuild_manifold_edge_link)
+      .def("ensure_manifold_edge_link",
+           &mesh_wrapper<int, float, 4, 2>::ensure_manifold_edge_link)
+      .def("clear_manifold_edge_link",
+           &mesh_wrapper<int, float, 4, 2>::clear_manifold_edge_link)
+      .def("has_manifold_edge_link",
+           &mesh_wrapper<int, float, 4, 2>::has_manifold_edge_link)
       .def("number_of_points",
            &mesh_wrapper<int, float, 4, 2>::number_of_points)
       .def("number_of_faces", &mesh_wrapper<int, float, 4, 2>::number_of_faces)
@@ -120,6 +144,14 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, float, 4, 3>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int, float, 4, 3>::has_face_membership)
+      .def("rebuild_manifold_edge_link",
+           &mesh_wrapper<int, float, 4, 3>::rebuild_manifold_edge_link)
+      .def("ensure_manifold_edge_link",
+           &mesh_wrapper<int, float, 4, 3>::ensure_manifold_edge_link)
+      .def("clear_manifold_edge_link",
+           &mesh_wrapper<int, float, 4, 3>::clear_manifold_edge_link)
+      .def("has_manifold_edge_link",
+           &mesh_wrapper<int, float, 4, 3>::has_manifold_edge_link)
       .def("number_of_points",
            &mesh_wrapper<int, float, 4, 3>::number_of_points)
       .def("number_of_faces", &mesh_wrapper<int, float, 4, 3>::number_of_faces)
@@ -152,6 +184,14 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, double, 3, 2>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int, double, 3, 2>::has_face_membership)
+      .def("rebuild_manifold_edge_link",
+           &mesh_wrapper<int, double, 3, 2>::rebuild_manifold_edge_link)
+      .def("ensure_manifold_edge_link",
+           &mesh_wrapper<int, double, 3, 2>::ensure_manifold_edge_link)
+      .def("clear_manifold_edge_link",
+           &mesh_wrapper<int, double, 3, 2>::clear_manifold_edge_link)
+      .def("has_manifold_edge_link",
+           &mesh_wrapper<int, double, 3, 2>::has_manifold_edge_link)
       .def("number_of_points",
            &mesh_wrapper<int, double, 3, 2>::number_of_points)
       .def("number_of_faces", &mesh_wrapper<int, double, 3, 2>::number_of_faces)
@@ -184,6 +224,14 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, double, 3, 3>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int, double, 3, 3>::has_face_membership)
+      .def("rebuild_manifold_edge_link",
+           &mesh_wrapper<int, double, 3, 3>::rebuild_manifold_edge_link)
+      .def("ensure_manifold_edge_link",
+           &mesh_wrapper<int, double, 3, 3>::ensure_manifold_edge_link)
+      .def("clear_manifold_edge_link",
+           &mesh_wrapper<int, double, 3, 3>::clear_manifold_edge_link)
+      .def("has_manifold_edge_link",
+           &mesh_wrapper<int, double, 3, 3>::has_manifold_edge_link)
       .def("number_of_points",
            &mesh_wrapper<int, double, 3, 3>::number_of_points)
       .def("number_of_faces", &mesh_wrapper<int, double, 3, 3>::number_of_faces)
@@ -216,6 +264,14 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, double, 4, 2>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int, double, 4, 2>::has_face_membership)
+      .def("rebuild_manifold_edge_link",
+           &mesh_wrapper<int, double, 4, 2>::rebuild_manifold_edge_link)
+      .def("ensure_manifold_edge_link",
+           &mesh_wrapper<int, double, 4, 2>::ensure_manifold_edge_link)
+      .def("clear_manifold_edge_link",
+           &mesh_wrapper<int, double, 4, 2>::clear_manifold_edge_link)
+      .def("has_manifold_edge_link",
+           &mesh_wrapper<int, double, 4, 2>::has_manifold_edge_link)
       .def("number_of_points",
            &mesh_wrapper<int, double, 4, 2>::number_of_points)
       .def("number_of_faces", &mesh_wrapper<int, double, 4, 2>::number_of_faces)
@@ -248,6 +304,14 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, double, 4, 3>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int, double, 4, 3>::has_face_membership)
+      .def("rebuild_manifold_edge_link",
+           &mesh_wrapper<int, double, 4, 3>::rebuild_manifold_edge_link)
+      .def("ensure_manifold_edge_link",
+           &mesh_wrapper<int, double, 4, 3>::ensure_manifold_edge_link)
+      .def("clear_manifold_edge_link",
+           &mesh_wrapper<int, double, 4, 3>::clear_manifold_edge_link)
+      .def("has_manifold_edge_link",
+           &mesh_wrapper<int, double, 4, 3>::has_manifold_edge_link)
       .def("number_of_points",
            &mesh_wrapper<int, double, 4, 3>::number_of_points)
       .def("number_of_faces", &mesh_wrapper<int, double, 4, 3>::number_of_faces)
@@ -279,6 +343,14 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, float, 3, 2>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int64_t, float, 3, 2>::has_face_membership)
+      .def("rebuild_manifold_edge_link",
+           &mesh_wrapper<int64_t, float, 3, 2>::rebuild_manifold_edge_link)
+      .def("ensure_manifold_edge_link",
+           &mesh_wrapper<int64_t, float, 3, 2>::ensure_manifold_edge_link)
+      .def("clear_manifold_edge_link",
+           &mesh_wrapper<int64_t, float, 3, 2>::clear_manifold_edge_link)
+      .def("has_manifold_edge_link",
+           &mesh_wrapper<int64_t, float, 3, 2>::has_manifold_edge_link)
       .def("number_of_points",
            &mesh_wrapper<int64_t, float, 3, 2>::number_of_points)
       .def("number_of_faces",
@@ -312,6 +384,14 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, float, 3, 3>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int64_t, float, 3, 3>::has_face_membership)
+      .def("rebuild_manifold_edge_link",
+           &mesh_wrapper<int64_t, float, 3, 3>::rebuild_manifold_edge_link)
+      .def("ensure_manifold_edge_link",
+           &mesh_wrapper<int64_t, float, 3, 3>::ensure_manifold_edge_link)
+      .def("clear_manifold_edge_link",
+           &mesh_wrapper<int64_t, float, 3, 3>::clear_manifold_edge_link)
+      .def("has_manifold_edge_link",
+           &mesh_wrapper<int64_t, float, 3, 3>::has_manifold_edge_link)
       .def("number_of_points",
            &mesh_wrapper<int64_t, float, 3, 3>::number_of_points)
       .def("number_of_faces",
@@ -345,6 +425,14 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, float, 4, 2>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int64_t, float, 4, 2>::has_face_membership)
+      .def("rebuild_manifold_edge_link",
+           &mesh_wrapper<int64_t, float, 4, 2>::rebuild_manifold_edge_link)
+      .def("ensure_manifold_edge_link",
+           &mesh_wrapper<int64_t, float, 4, 2>::ensure_manifold_edge_link)
+      .def("clear_manifold_edge_link",
+           &mesh_wrapper<int64_t, float, 4, 2>::clear_manifold_edge_link)
+      .def("has_manifold_edge_link",
+           &mesh_wrapper<int64_t, float, 4, 2>::has_manifold_edge_link)
       .def("number_of_points",
            &mesh_wrapper<int64_t, float, 4, 2>::number_of_points)
       .def("number_of_faces",
@@ -378,6 +466,14 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, float, 4, 3>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int64_t, float, 4, 3>::has_face_membership)
+      .def("rebuild_manifold_edge_link",
+           &mesh_wrapper<int64_t, float, 4, 3>::rebuild_manifold_edge_link)
+      .def("ensure_manifold_edge_link",
+           &mesh_wrapper<int64_t, float, 4, 3>::ensure_manifold_edge_link)
+      .def("clear_manifold_edge_link",
+           &mesh_wrapper<int64_t, float, 4, 3>::clear_manifold_edge_link)
+      .def("has_manifold_edge_link",
+           &mesh_wrapper<int64_t, float, 4, 3>::has_manifold_edge_link)
       .def("number_of_points",
            &mesh_wrapper<int64_t, float, 4, 3>::number_of_points)
       .def("number_of_faces",
@@ -412,6 +508,14 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, double, 3, 2>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int64_t, double, 3, 2>::has_face_membership)
+      .def("rebuild_manifold_edge_link",
+           &mesh_wrapper<int64_t, double, 3, 2>::rebuild_manifold_edge_link)
+      .def("ensure_manifold_edge_link",
+           &mesh_wrapper<int64_t, double, 3, 2>::ensure_manifold_edge_link)
+      .def("clear_manifold_edge_link",
+           &mesh_wrapper<int64_t, double, 3, 2>::clear_manifold_edge_link)
+      .def("has_manifold_edge_link",
+           &mesh_wrapper<int64_t, double, 3, 2>::has_manifold_edge_link)
       .def("number_of_points",
            &mesh_wrapper<int64_t, double, 3, 2>::number_of_points)
       .def("number_of_faces",
@@ -446,6 +550,14 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, double, 3, 3>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int64_t, double, 3, 3>::has_face_membership)
+      .def("rebuild_manifold_edge_link",
+           &mesh_wrapper<int64_t, double, 3, 3>::rebuild_manifold_edge_link)
+      .def("ensure_manifold_edge_link",
+           &mesh_wrapper<int64_t, double, 3, 3>::ensure_manifold_edge_link)
+      .def("clear_manifold_edge_link",
+           &mesh_wrapper<int64_t, double, 3, 3>::clear_manifold_edge_link)
+      .def("has_manifold_edge_link",
+           &mesh_wrapper<int64_t, double, 3, 3>::has_manifold_edge_link)
       .def("number_of_points",
            &mesh_wrapper<int64_t, double, 3, 3>::number_of_points)
       .def("number_of_faces",
@@ -480,6 +592,14 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, double, 4, 2>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int64_t, double, 4, 2>::has_face_membership)
+      .def("rebuild_manifold_edge_link",
+           &mesh_wrapper<int64_t, double, 4, 2>::rebuild_manifold_edge_link)
+      .def("ensure_manifold_edge_link",
+           &mesh_wrapper<int64_t, double, 4, 2>::ensure_manifold_edge_link)
+      .def("clear_manifold_edge_link",
+           &mesh_wrapper<int64_t, double, 4, 2>::clear_manifold_edge_link)
+      .def("has_manifold_edge_link",
+           &mesh_wrapper<int64_t, double, 4, 2>::has_manifold_edge_link)
       .def("number_of_points",
            &mesh_wrapper<int64_t, double, 4, 2>::number_of_points)
       .def("number_of_faces",
@@ -514,6 +634,14 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, double, 4, 3>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int64_t, double, 4, 3>::has_face_membership)
+      .def("rebuild_manifold_edge_link",
+           &mesh_wrapper<int64_t, double, 4, 3>::rebuild_manifold_edge_link)
+      .def("ensure_manifold_edge_link",
+           &mesh_wrapper<int64_t, double, 4, 3>::ensure_manifold_edge_link)
+      .def("clear_manifold_edge_link",
+           &mesh_wrapper<int64_t, double, 4, 3>::clear_manifold_edge_link)
+      .def("has_manifold_edge_link",
+           &mesh_wrapper<int64_t, double, 4, 3>::has_manifold_edge_link)
       .def("number_of_points",
            &mesh_wrapper<int64_t, double, 4, 3>::number_of_points)
       .def("number_of_faces",

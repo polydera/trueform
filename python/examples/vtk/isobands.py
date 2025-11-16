@@ -118,7 +118,7 @@ class IsobandInteractor(BaseInteractor):
         # Update timing
         self.times.add(elapsed)
         avg_time = self.times.get_average()
-        self.text_actor.SetInput(f"Isobands time per scroll: {format_time_ms(avg_time)}")
+        self.text_actor.SetInput(f"Isobands time: {format_time_ms(avg_time)}")
 
         # Convert isobands mesh to polydata
         if len(band_faces) > 0 and len(band_points) > 0:
@@ -264,28 +264,28 @@ def main():
     # === TEXT STRIP ===
 
     text_time = create_text_actor(
-        "Isobands time per scroll: 0 ms",
-        font_size=40,
+        "Isobands time: 0 ms",
+        font_size=38,
         position=(0.03, 0.30),
         justification='left'
     )
     renderer_text.AddViewProp(text_time)
 
     text_instructions = create_text_actor(
-        "Press n to randomize the plane.",
-        font_size=40,
+        "Press N to randomize plane",
+        font_size=38,
         position=(0.03, 0.70),
         justification='left'
     )
     renderer_text.AddViewProp(text_instructions)
 
     text_help = create_text_actor(
-        "Hold shift and scroll.\nIntersection curve with plane will move.\nPowered by trueform.",
-        font_size=40,
-        position=(0.97, 0.60),
+        "Hold Shift and scroll to move\n\nPowered by trueform",
+        font_size=38,
+        position=(0.97, 0.55),
         justification='right'
     )
-    text_help.GetTextProperty().SetLineSpacing(1.5)
+    text_help.GetTextProperty().SetLineSpacing(1.4)
     renderer_text.AddViewProp(text_help)
 
     # === RENDER WINDOW AND INTERACTOR ===

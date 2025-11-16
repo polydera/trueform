@@ -29,7 +29,6 @@ from util import (
     MeshData,
     load_mesh,
     BaseInteractor,
-    get_camera_ray,
     NORMAL_COLOR,
     HIGHLIGHT_COLOR,
     RollingAverage,
@@ -42,64 +41,25 @@ from util import (
 COLLIDING_COLOR = (0.8, 1.0, 1.0)  # Cyan
 
 
-def ray_hit_multiple(ray, mesh_data_list):
-    """
-    Cast ray against all meshes, return closest hit
-
-    Uses ray_config optimization: after each hit, update max_t to prune subsequent searches
-    """
-    closest_t = np.inf
-    hit_mesh_data = None
-    hit_point = None
-
-    # Initialize config with default range
-    config = (0.0, np.inf)
-
-    for mesh_data in mesh_data_list:
-        result = tf.ray_cast(ray, mesh_data.mesh, config)
-        if result is not None:
-            face_idx, t = result
-            if t < closest_t:
-                closest_t = t
-                hit_mesh_data = mesh_data
-                hit_point = ray.origin + t * ray.direction
-                # Update config to only check up to current closest hit
-                config = (0.0, closest_t)
-
-    return hit_mesh_data, hit_point
-
-
 class MouseRaycastInteractor(BaseInteractor):
     """Interactive style with ray casting on mouse move and mesh dragging"""
 
-    def __init__(self, mesh_data_list, pick_text=None, collide_text=None):
+    def __init__(self, mesh_data_list, collide_text=None):
         super().__init__()
         self.mesh_data_list = mesh_data_list
 
         # Collision tracking
         self.colliding_mesh_set = set()  # Set of MeshData currently colliding
 
-        # Timing tracking (rolling averages over last 1000 frames)
-        self.pick_times = RollingAverage(maxlen=1000)
+        # Timing tracking
         self.collide_times = RollingAverage(maxlen=1000)
-        self.pick_text = pick_text
         self.collide_text = collide_text
 
-        self.AddObserver("MouseMoveEvent", self.on_mouse_move)
-        self.AddObserver("LeftButtonPressEvent", self.on_left_button_down)
-        self.AddObserver("LeftButtonReleaseEvent", self.on_left_button_up)
-
-    def reset_all_colors(self):
-        """Reset all meshes to normal color"""
-        for mesh_data in self.mesh_data_list:
-            mesh_data.actor.GetProperty().SetColor(*NORMAL_COLOR)
+        # Enable mesh interaction (handles all picking/dragging automatically!)
+        self.enable_mesh_interaction(mesh_data_list)
 
     def update_timing_text(self):
         """Update timing text actors with average times"""
-        if self.pick_text and len(self.pick_times) > 0:
-            avg_pick = self.pick_times.get_average()
-            self.pick_text.SetInput(f"Ray picking time: {format_time_us(avg_pick)}")
-
         if self.collide_text and len(self.collide_times) > 0:
             avg_collide = self.collide_times.get_average()
             self.collide_text.SetInput(f"Collision time: {format_time_us(avg_collide)}")
@@ -142,96 +102,19 @@ class MouseRaycastInteractor(BaseInteractor):
                 # Reset non-colliding meshes
                 mesh_data.actor.GetProperty().SetColor(*NORMAL_COLOR)
 
-    def on_left_button_down(self, obj, event):
-        """Handle left button press"""
-        if self.selected_mesh_data is not None:
-            # Enter drag mode
-            self.selected_mode = True
-            self.GetInteractor().GetRenderWindow().HideCursor()
-        else:
-            # Enter camera mode
-            self.camera_mode = True
-            vtk.vtkInteractorStyleTrackballCamera.OnLeftButtonDown(self)
+    # Override hooks from BaseInteractor
+    def on_mesh_selected(self, mesh_data):
+        """Called when mesh is selected - start collision detection"""
+        pass  # Nothing extra needed on selection
 
-    def on_left_button_up(self, obj, event):
-        """Handle left button release"""
-        if self.selected_mode:
-            self.selected_mode = False
-            self.GetInteractor().GetRenderWindow().ShowCursor()
+    def on_mesh_dragged(self, mesh_data, delta):
+        """Called when mesh is dragged - check collisions"""
+        self.check_collisions()
 
-            # Clear collision highlighting
-            self.colliding_mesh_set.clear()
-            self.reset_all_colors()
-
-            # Re-highlight if still hovering over a mesh
-            x, y = self.GetInteractor().GetEventPosition()
-            renderer = self.GetInteractor().FindPokedRenderer(x, y)
-            ray = get_camera_ray(renderer, x, y)
-            hit_mesh_data, _ = ray_hit_multiple(ray, self.mesh_data_list)
-            if hit_mesh_data is not None:
-                hit_mesh_data.actor.GetProperty().SetColor(*HIGHLIGHT_COLOR)
-                self.selected_mesh_data = hit_mesh_data
-            else:
-                self.selected_mesh_data = None
-
-            self.GetInteractor().Render()
-        elif self.camera_mode:
-            self.camera_mode = False
-            vtk.vtkInteractorStyleTrackballCamera.OnLeftButtonUp(self)
-
-    def on_mouse_move(self, obj, event):
-        """Handle mouse move"""
-        x, y = self.GetInteractor().GetEventPosition()
-        renderer = self.GetInteractor().FindPokedRenderer(x, y)
-        ray = get_camera_ray(renderer, x, y)
-
-        if not self.selected_mode and not self.camera_mode:
-            # Ray casting and highlighting (with timing)
-            start_time = time.perf_counter()
-            hit_mesh_data, hit_point = ray_hit_multiple(ray, self.mesh_data_list)
-            elapsed = time.perf_counter() - start_time
-            self.pick_times.add(elapsed)
-            self.update_timing_text()
-
-            if hit_mesh_data is not None:
-                # Reset previously highlighted mesh
-                if self.selected_mesh_data != hit_mesh_data:
-                    self.reset_all_colors()
-
-                # Highlight new mesh
-                hit_mesh_data.actor.GetProperty().SetColor(*HIGHLIGHT_COLOR)
-                self.selected_mesh_data = hit_mesh_data
-
-                # Create moving plane for potential drag
-                self.make_moving_plane(hit_point, renderer)
-                self.last_point = hit_point
-            else:
-                # Reset all to normal
-                self.reset_all_colors()
-                self.selected_mesh_data = None
-
-            self.GetInteractor().Render()
-
-        elif self.selected_mode:
-            # Dragging mesh
-            if self.moving_plane is not None and self.selected_mesh_data is not None:
-                # Project ray onto moving plane
-                hit_result = tf.ray_cast(ray, self.moving_plane)
-                if hit_result is not None:
-                    t = hit_result
-                    next_point = ray.origin + t * ray.direction
-                    dx = next_point - self.last_point
-                    self.last_point = next_point
-                    self.move_mesh(self.selected_mesh_data, dx)
-
-                    # Check for collisions and update colors
-                    self.check_collisions()
-
-                    self.GetInteractor().Render()
-
-        elif self.camera_mode:
-            # Camera rotation
-            vtk.vtkInteractorStyleTrackballCamera.OnMouseMove(self)
+    def on_mesh_released(self, mesh_data):
+        """Called when mesh is released - clear collision highlighting"""
+        self.colliding_mesh_set.clear()
+        # Colors already reset by base interactor
 
 
 def main():
@@ -272,29 +155,21 @@ def main():
         renderer.AddActor(mesh_data.actor)
 
     # Create text actors for bottom strip
-    pick_text = create_text_actor(
-        "Ray picking time: 0.0 μs",
-        font_size=40,
-        position=(0.03, 0.30),
-        justification='left'
-    )
-    renderer_text.AddViewProp(pick_text)
-
     collide_text = create_text_actor(
         "Collision time: 0.0 μs",
-        font_size=40,
-        position=(0.03, 0.70),
+        font_size=38,
+        position=(0.03, 0.30),
         justification='left'
     )
     renderer_text.AddViewProp(collide_text)
 
     text_help = create_text_actor(
-        "Hover to highlight.\nClick and drag to move meshes.\nColliding meshes turn cyan.",
-        font_size=40,
-        position=(0.97, 0.50),
+        "Hover to highlight\nClick and drag to move meshes\nColliding meshes turn cyan\n\nPowered by trueform",
+        font_size=38,
+        position=(0.97, 0.55),
         justification='right'
     )
-    text_help.GetTextProperty().SetLineSpacing(1.5)
+    text_help.GetTextProperty().SetLineSpacing(1.4)
     renderer_text.AddViewProp(text_help)
 
     # Setup render window
@@ -307,7 +182,7 @@ def main():
     interactor.SetRenderWindow(render_window)
 
     # Enable mouse ray casting and dragging
-    style = MouseRaycastInteractor(mesh_data_list, pick_text, collide_text)
+    style = MouseRaycastInteractor(mesh_data_list, collide_text)
     interactor.SetInteractorStyle(style)
 
     # Start

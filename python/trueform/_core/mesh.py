@@ -245,6 +245,15 @@ class Mesh:
         """
         self._wrapper.rebuild_face_membership()
 
+    def build_manifold_edge_link(self) -> None:
+        """
+        Build the manifold edge link structure.
+
+        Call this after modifying the faces array to update the manifold edge link.
+        Requires face membership to be built first (calls build_face_membership if needed).
+        """
+        self._wrapper.rebuild_manifold_edge_link()
+
     def __repr__(self) -> str:
         """String representation of the mesh."""
         return f"Mesh({self.number_of_points} points, {self.number_of_faces} faces, {self.ngon}-gon, {self.dims}D, dtype={self.dtype})"

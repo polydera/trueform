@@ -6,7 +6,6 @@ import vtk
 from vtk.util import numpy_support
 import numpy as np
 import trueform as tf
-from scipy.spatial.transform import Rotation
 
 
 class MeshData:
@@ -15,6 +14,41 @@ class MeshData:
         self.mesh = mesh        # tf.Mesh
         self.actor = actor      # vtkActor
         self.matrix = matrix    # vtkMatrix4x4
+
+
+def random_rotation_matrix(dtype=np.float32):
+    """
+    Generate a random 3x3 rotation matrix using uniform quaternion sampling
+
+    Uses uniform sampling on SO(3) via quaternion generation.
+    See: http://planning.cs.uiuc.edu/node198.html
+
+    Parameters
+    ----------
+    dtype : numpy dtype
+        Data type for the output matrix (default: np.float32)
+
+    Returns
+    -------
+    np.ndarray
+        3x3 rotation matrix
+    """
+    u = np.random.uniform(0, 1, 3)
+
+    # Generate quaternion
+    q0 = np.sqrt(1 - u[0]) * np.sin(2 * np.pi * u[1])
+    q1 = np.sqrt(1 - u[0]) * np.cos(2 * np.pi * u[1])
+    q2 = np.sqrt(u[0]) * np.sin(2 * np.pi * u[2])
+    q3 = np.sqrt(u[0]) * np.cos(2 * np.pi * u[2])
+
+    # Convert quaternion to rotation matrix
+    R = np.array([
+        [1 - 2*(q2**2 + q3**2), 2*(q1*q2 - q0*q3), 2*(q1*q3 + q0*q2)],
+        [2*(q1*q2 + q0*q3), 1 - 2*(q1**2 + q3**2), 2*(q2*q3 - q0*q1)],
+        [2*(q1*q3 - q0*q2), 2*(q2*q3 + q0*q1), 1 - 2*(q1**2 + q2**2)]
+    ], dtype=dtype)
+
+    return R
 
 
 def numpy_to_polydata(points: np.ndarray, triangles: np.ndarray) -> vtk.vtkPolyData:
@@ -198,9 +232,9 @@ def load_mesh(filename, position, target_radius=10.0, random_rotation=True):
 
     # Create rotation transform
     if random_rotation:
-        random_rotation_matrix = Rotation.random().as_matrix().astype(np.float32)
+        R = random_rotation_matrix(dtype=np.float32)
         rotation_transform = np.eye(4, dtype=np.float32)
-        rotation_transform[:3, :3] = random_rotation_matrix
+        rotation_transform[:3, :3] = R
     else:
         rotation_transform = np.eye(4, dtype=np.float32)
 
