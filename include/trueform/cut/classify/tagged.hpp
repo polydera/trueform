@@ -227,8 +227,9 @@ auto make_classification_counts(
                   curr,
                   std::forward_as_tuple(loop1, mapped_loop1, d1,
                                         local_r[1][label1]),
-                  ibp.flat_intersections(),
-                  polygons0, polygons1
+                  /*ibp.flat_intersections(),*/
+                  polygons0, polygons1,
+                  tf::make_points(ibp.intersection_points())
                   );
             }
           }
