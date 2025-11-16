@@ -40,22 +40,18 @@ auto boolean(mesh_wrapper<Index0, RealT, Ngon0, Dims> &form_wrapper0,
   };
   if (has0 && has1)
     return make_return(
-        form_wrapper0 |
-            tf::tag(tf::make_frame(form_wrapper0.transformation_view())),
-        form_wrapper1 |
-            tf::tag(tf::make_frame(form_wrapper1.transformation_view())));
+        form0 | tf::tag(tf::make_frame(form_wrapper0.transformation_view())),
+        form1 | tf::tag(tf::make_frame(form_wrapper1.transformation_view())));
   else if (has0 && !has1)
     return make_return(
-        form_wrapper0 |
-            tf::tag(tf::make_frame(form_wrapper0.transformation_view())),
-        form_wrapper1);
+        form0 | tf::tag(tf::make_frame(form_wrapper0.transformation_view())),
+        form1);
   else if (!has0 && has1)
     return make_return(
-        form_wrapper0,
-        form_wrapper1 |
-            tf::tag(tf::make_frame(form_wrapper1.transformation_view())));
+        form0,
+        form1 | tf::tag(tf::make_frame(form_wrapper1.transformation_view())));
   else
-    return make_return(form_wrapper0, form_wrapper1);
+    return make_return(form0, form1);
 }
 
 template <typename Index0, typename RealT, std::size_t Ngon0, std::size_t Dims,
@@ -96,21 +92,33 @@ auto boolean(mesh_wrapper<Index0, RealT, Ngon0, Dims> &form_wrapper0,
   };
   if (has0 && has1)
     return make_return(
-        form_wrapper0 |
-            tf::tag(tf::make_frame(form_wrapper0.transformation_view())),
-        form_wrapper1 |
-            tf::tag(tf::make_frame(form_wrapper1.transformation_view())));
+        form0 | tf::tag(tf::make_frame(form_wrapper0.transformation_view())),
+        form1 | tf::tag(tf::make_frame(form_wrapper1.transformation_view())));
   else if (has0 && !has1)
     return make_return(
-        form_wrapper0 |
-            tf::tag(tf::make_frame(form_wrapper0.transformation_view())),
-        form_wrapper1);
+        form0 | tf::tag(tf::make_frame(form_wrapper0.transformation_view())),
+        form1);
   else if (!has0 && has1)
     return make_return(
-        form_wrapper0,
-        form_wrapper1 |
-            tf::tag(tf::make_frame(form_wrapper1.transformation_view())));
+        form0,
+        form1 | tf::tag(tf::make_frame(form_wrapper1.transformation_view())));
   else
-    return make_return(form_wrapper0, form_wrapper1);
+    return make_return(form0, form1);
 }
+
+// Helper function to convert Python int to C++ boolean_op enum
+inline tf::boolean_op int_to_boolean_op(int op) {
+  switch (op) {
+  case 0:
+    return tf::boolean_op::merge; // union
+  case 1:
+    return tf::boolean_op::intersection;
+  case 2:
+    return tf::boolean_op::left_difference; // difference
+  default:
+    throw std::invalid_argument("Invalid boolean operation: must be 0 (union), "
+                                "1 (intersection), or 2 (difference)");
+  }
+}
+
 } // namespace tf::py

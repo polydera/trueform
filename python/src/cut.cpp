@@ -12,6 +12,7 @@ namespace tf::py {
 auto register_cut(nanobind::module_ &m) -> void {
   // Register cut components
   register_cut_isobands(m);
+  register_cut_boolean(m);
 }
 
 } // namespace tf::py
