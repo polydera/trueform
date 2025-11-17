@@ -37,10 +37,7 @@ private:
   std::vector<float> intersection_times;
   float distance = 0.0f;
 
-  auto add_intersection_time(float t) {
-    auto intersection_time = add_time(intersection_times, t);
-    m_time = intersection_time;
-  }
+  auto add_intersection_time(float t) -> void { m_time = add_time(intersection_times, t); }
 
 public:
   auto compute_curves() -> void {

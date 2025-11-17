@@ -18,19 +18,18 @@
 class tf_bridge : public tf_bridge_interface {
 public:
   auto compute_boolean() {
-    auto form0 = tf::make_form(frames[0], trees[0], polys[0]->polygons()) //
-                 | tf::tag(face_memberships[0])                          //
-                 | tf::tag(manifold_edge_links[0]);
-
-    auto form1 = tf::make_form(frames[1], trees[1], polys[1]->polygons()) //
-                 | tf::tag(face_memberships[1])                          //
-                 | tf::tag(manifold_edge_links[1]);
+    const auto form0 = tf::make_form(frames[0], trees[0], polys[0]->polygons())
+                       | tf::tag(face_memberships[0])
+                       | tf::tag(manifold_edge_links[0]);
+    const auto form1 = tf::make_form(frames[1], trees[1], polys[1]->polygons())
+                       | tf::tag(face_memberships[1])
+                       | tf::tag(manifold_edge_links[1]);
     return tf::make_boolean(form0, form1, tf::boolean_op::left_difference,
                             tf::return_curves);
   }
 };
 
-class cursor_interactor : public cursor_interactor_interface {
+class cursor_interactor final : public cursor_interactor_interface {
 public:
   cursor_interactor()
       : cursor_interactor_interface(std::make_unique<tf_bridge>()) {}
@@ -109,28 +108,32 @@ public:
   }
 };
 
-int run_main(std::vector<std::string> &paths) {
-  auto path = paths[0];
+inline auto load_centered_actor(const std::string &path) {
   auto poly = tf::read_stl<int>(path);
-  if (paths.size() == 2) {
-    path = paths[1];
-  }
-  auto poly2 = tf::read_stl<int>(path);
   if (!poly.size()) {
-    throw std::runtime_error("Failed to read file");
+    throw std::runtime_error("Failed to read file: " + path);
   }
-  interactor = std::make_unique<cursor_interactor>();
-
   utils::center_and_scale_p(poly);
   auto actor = std::make_unique<mesh_object>();
   actor->poly_object = std::move(poly);
-  utils::set_at(actor->matrix, {0 * 15.f, 0.f, 0.f});
-  interactor->push_back(std::move(actor));
+  return actor;
+}
 
-  utils::center_and_scale_p(poly2);
-  auto actor2 = std::make_unique<mesh_object>();
-  actor2->poly_object = std::move(poly2);
-  utils::set_at(actor2->matrix, {1 * 15.f, 0.f, 0.f});
-  interactor->push_back(std::move(actor2));
+int run_main(std::vector<std::string> &paths) {
+  if (paths.empty()) {
+    throw std::runtime_error(
+        "Boolean example expects at least one STL path argument.");
+  }
+
+  auto primary_actor = load_centered_actor(paths[0]);
+  auto secondary_actor =
+      load_centered_actor(paths.size() >= 2 ? paths[1] : paths[0]);
+
+  utils::set_at(primary_actor->matrix, {0.f, 0.f, 0.f});
+  utils::set_at(secondary_actor->matrix, {15.f, 0.f, 0.f});
+
+  interactor = std::make_unique<cursor_interactor>();
+  interactor->push_back(std::move(primary_actor));
+  interactor->push_back(std::move(secondary_actor));
   return 0;
 }

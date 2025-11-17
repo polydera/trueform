@@ -18,18 +18,23 @@
 
 class tf_bridge_collision : public tf_bridge_interface {
 public:
-  auto intersects_any(mesh_object *actor, std::set<mesh_object *> &colliding) {
-    std::size_t id = map[actor];
+  void intersects_any(mesh_object *actor, std::set<mesh_object *> &colliding) {
+    if (!actor) {
+      return;
+    }
+    const auto self_index = map[actor];
     auto form0 =
-        tf::make_form(frames[id], trees[id], polys[id]->polygons());
-    for (std::size_t i = 0; i < polys.size(); ++i) {
-      if (i == id)
+        tf::make_form(frames[self_index], trees[self_index],
+                      polys[self_index]->polygons());
+    for (int i = 0; i < static_cast<int>(polys.size()); ++i) {
+      if (i == self_index) {
         continue;
-      auto collision = tf::intersects(
+      }
+      const bool collision = tf::intersects(
           form0, tf::make_form(frames[i], trees[i], polys[i]->polygons()));
-      if (collision)
+      if (collision) {
         colliding.insert(actors[i].get());
-      else {
+      } else {
         colliding.erase(actors[i].get());
       }
     }
@@ -61,6 +66,9 @@ private:
   auto handle_collisions() {
     tf::tick();
     if (auto *pB = static_cast<tf_bridge_collision *>(bridge.get())) {
+      if (!selected_actor) {
+        return;
+      }
       pB->intersects_any(selected_actor, colliding);
       add_collide_time(tf::tock());
       for (auto &actor : pB->get_actors()) {
@@ -76,16 +84,20 @@ private:
   }
 
 public:
-  auto reset_active_color(mesh_object *selected_actor) -> void {
-    if (!selected_actor)
+  auto reset_active_color(mesh_object *actor)-> void {
+    if (!actor) {
       return;
-    selected_actor->set_color(
-        normal_mesh_color[0], normal_mesh_color[1], normal_mesh_color[2]);
+    }
+    actor->set_color(normal_mesh_color[0], normal_mesh_color[1],
+                     normal_mesh_color[2]);
   }
 
-  auto set_active_color(mesh_object *selected_actor) -> void {
-    selected_actor->set_color(
-        selected_mesh_color[0], selected_mesh_color[1], selected_mesh_color[2]);
+  void set_active_color(mesh_object *actor) {
+    if (!actor) {
+      return;
+    }
+    actor->set_color(selected_mesh_color[0], selected_mesh_color[1],
+                     selected_mesh_color[2]);
   }
 
   auto reset_colliding_colors() -> void {
@@ -98,9 +110,12 @@ public:
     }
   }
 
-  auto set_colliding_color(mesh_object *selected_actor) -> void {
-    selected_actor->set_color(
-        coliding_mesh_color[0], coliding_mesh_color[1], coliding_mesh_color[2]);
+  auto set_colliding_color(mesh_object *actor) -> void {
+    if (!actor) {
+      return;
+    }
+    actor->set_color(coliding_mesh_color[0], coliding_mesh_color[1],
+                     coliding_mesh_color[2]);
   }
 
 public:
@@ -151,6 +166,9 @@ public:
 };
 
 int run_main_collisions(std::vector<std::string> &paths) {
+  if (paths.empty()) {
+    throw std::runtime_error("Collisions demo expects STL input paths.");
+  }
   std::vector<std::unique_ptr<mesh_object>> polys;
   std::vector<tf::tree<int, float, 3>> trees;
 
@@ -167,6 +185,10 @@ int run_main_collisions(std::vector<std::string> &paths) {
     trees.emplace_back();
     trees.back().build(polys.back()->poly_object.polygons(),
                        tf::config_tree(4, 4));
+  }
+
+  if (polys.empty()) {
+    throw std::runtime_error("Failed to load any collision meshes.");
   }
 
   interactor = std::make_unique<cursor_interactor_collision>();

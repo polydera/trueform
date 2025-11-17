@@ -7,22 +7,19 @@
 class mesh_object {
 public:
   mesh_object() {
-    for (int i = 0; i < 16; ++i) {
-      if (i % 5 == 0) {
-        matrix[i] = 1;
-      } else {
-        matrix[i] = 0;
-      }
+    matrix.fill(0.0);
+    for (int i = 0; i < static_cast<int>(matrix.size()); i += 5) {
+      matrix[i] = 1.0;
     }
-  };
+  }
 
   bool matrix_updated = true;
   bool polydata_updated = true;
 
   tf::polygons_buffer<int, float, 3, 3> poly_object;
   tf::curves_buffer<int, float, 3> curves_object;
-  std::array<double, 16> matrix;
-  std::array<double, 3> color = {1, 1, 1};
+  std::array<double, 16> matrix{};
+  std::array<double, 3> color{1.0, 1.0, 1.0};
 
   auto set_color(double r, double g, double b) -> void {
     color = {r, g, b};

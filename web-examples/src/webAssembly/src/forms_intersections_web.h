@@ -55,8 +55,8 @@ private:
     }
   }
 
-  auto randomize_rotations() {
-    for (std::unique_ptr<mesh_object> &actor : bridge->get_actors()) {
+  auto randomize_rotations() -> void {
+    for (const auto &actor : bridge->get_actors()) {
       tf::vector<double, 3> at{actor->matrix[3], actor->matrix[7],
                                actor->matrix[11]};
       auto tr = tf::random_transformation(at);
@@ -109,7 +109,8 @@ public:
 
 int run_main_forms_intersections(std::vector<std::string> &paths) {
   if (paths.size() < 2) {
-    throw std::runtime_error("Error forms_intersections requires at least 2 files");
+    throw std::runtime_error(
+        "forms_intersections requires at least two STL inputs.");
   }
 
   std::vector<std::unique_ptr<mesh_object>> polys;
@@ -126,7 +127,8 @@ int run_main_forms_intersections(std::vector<std::string> &paths) {
   }
 
   if (polys.size() < 2) {
-    throw std::runtime_error("Error Need at least 2 valid meshes for intersection curves");
+    throw std::runtime_error(
+        "Need at least two valid meshes for intersection curves.");
   }
 
   interactor = std::make_unique<cursor_interactor_forms_intersections>();

@@ -36,13 +36,10 @@ private:
   float max_d = 1.0f;
   float distance = 0.0f;
 
-  auto add_isobands_time(float t) {
-    auto isobands_time = add_time(isobands_times, t);
-    m_time = isobands_time;
-  }
+  auto add_isobands_time(float t) -> void { m_time = add_time(isobands_times, t); }
 
 public:
-  auto compute_curves() {
+  auto compute_curves() -> void {
     int n = 10;
     const float s = (max_d - min_d) / static_cast<float>(n);
     const float a = (distance - min_d) / s;
@@ -71,7 +68,11 @@ public:
   }
 
   auto reset_plane() -> tf::buffer<float> {
-    auto points = bridge->get_actors()[0]->poly_object.points();
+    auto &actors = bridge->get_actors();
+    if (actors.empty()) {
+      throw std::runtime_error("Isobands bridge requires at least one mesh.");
+    }
+    auto points = actors[0]->poly_object.points();
     auto plane =
         tf::make_plane(tf::normalized(tf::random_vector<float, 3>()),
                        points[tf::random<int>(0, points.size() - 1)]);

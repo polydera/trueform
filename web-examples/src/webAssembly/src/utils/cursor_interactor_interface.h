@@ -6,9 +6,10 @@
 #include <vector>
 #include "utils/bridge_web.h"
 
-// Forward declarations instead of including boolean_web.h
 class tf_bridge_interface {
 public:
+  virtual ~tf_bridge_interface() = default;
+
   auto push_back(std::unique_ptr<mesh_object> mesh) -> void {
     map[mesh.get()] = actors.size();
     polys.push_back(&mesh->poly_object);
@@ -89,8 +90,8 @@ protected:
 
 class cursor_interactor_interface {
 public:
-  cursor_interactor_interface(std::unique_ptr<tf_bridge_interface> bridge)
-      : bridge(std::move(bridge)) {}
+  explicit cursor_interactor_interface(std::unique_ptr<tf_bridge_interface> in)
+      : bridge(std::move(in)) {}
   virtual ~cursor_interactor_interface() = default;
 
   std::unique_ptr<mesh_object> result_mesh = std::make_unique<mesh_object>();
@@ -158,8 +159,9 @@ public:
       std::optional<tf::face_membership<int>> face_membership = std::nullopt,
       std::optional<tf::manifold_edge_link<int, 3>> manifold_edges =
           std::nullopt) -> void {
-    bridge->push_back_with_objects(std::move(mesh), tree, face_membership,
-                                   manifold_edges);
+    bridge->push_back_with_objects(std::move(mesh), std::move(tree),
+                                   std::move(face_membership),
+                                   std::move(manifold_edges));
   }
 
   virtual auto OnLeftButtonDown() -> bool {
@@ -195,7 +197,8 @@ public:
       }
       selected_actor = actor;
       return true;
-    } else if (selected_mode) {
+    }
+    if (selected_mode) {
       auto next_point = tf::ray_hit(ray, moving_plane).point;
       dx = next_point - last_point;
       last_point = next_point;
