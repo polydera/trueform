@@ -1,0 +1,36 @@
+name: Build WASM
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Build WebAssembly assets
+        run: |
+          docker compose -f web-examples/src/webAssembly/extras/docker-compose.yml \
+            up --build --abort-on-container-exit --exit-code-from web-example
+
+      - name: Tear down docker compose
+        if: always()
+        run: |
+          docker compose -f web-examples/src/webAssembly/extras/docker-compose.yml down \
+            --volumes --remove-orphans
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-wasm-build
+          path: web-examples/src/webAssembly/build/dist
