@@ -20,9 +20,18 @@ Real-time [geometric processing]{.text-primary} for C++.
 #links
   :::u-button
   ---
-  to: /getting-started
+  to: /cpp/getting-started
   size: xl
-  trailing-icon: i-lucide-arrow-right
+  trailing-icon: i-vscode-icons:file-type-cpp
+  ---
+  Get started
+  :::
+
+  :::u-button
+  ---
+  to: /py/getting-started
+  size: xl
+  trailing-icon: i-vscode-icons:file-type-python
   ---
   Get started
   :::
