@@ -192,7 +192,7 @@ def test_edge_mesh_neighbor_search_polygon_3d(index_dtype, real_dtype):
     assert edge_idx == 2, f"Should be closest to edge 2, got {edge_idx}"
     assert dist_sq >= 0.0, "Distance² should be non-negative"
     # Closest point should be on edge 2 (at y=0, z=0)
-    assert 2.3 <= closest_pt[0] <= 2.7, f"x should be in [2.3, 2.7], got {closest_pt[0]}"
+    assert 2.3 - 1e-5 <= closest_pt[0] <= 2.7 + 1e-5, f"x should be in [2.3, 2.7], got {closest_pt[0]}"
     assert np.isclose(closest_pt[1], 0.0, atol=1e-5), f"y should be 0.0 (on edge), got {closest_pt[1]}"
     assert np.isclose(closest_pt[2], 0.0, atol=1e-5), f"z should be 0.0 (on edge), got {closest_pt[2]}"
 

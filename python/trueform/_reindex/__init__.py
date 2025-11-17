@@ -10,5 +10,6 @@ https://github.com/xlabmedical/trueform
 from .reindex_by_ids import reindex_by_ids
 from .reindex_by_mask import reindex_by_mask
 from .split_into_components import split_into_components
+from .concatenated import concatenated
 
-__all__ = ['reindex_by_ids', 'reindex_by_mask', 'split_into_components']
+__all__ = ['reindex_by_ids', 'reindex_by_mask', 'split_into_components', 'concatenated']
