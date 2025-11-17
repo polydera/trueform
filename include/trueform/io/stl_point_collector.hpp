@@ -31,7 +31,7 @@ public:
 private:
   // ---------- File helpers ----------
   static auto open_file_(const std::string_view &path) -> std::ifstream {
-    return std::ifstream(path.begin(), std::ios::binary);
+    return std::ifstream(std::string(path), std::ios::binary);
   }
 
   static auto file_size_(std::ifstream &f, std::uint64_t &sz) -> bool {

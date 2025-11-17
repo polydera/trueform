@@ -136,7 +136,7 @@ auto tree_tree_proximity_pre_pass(
       return;
     params.result.update_aabb_min(aabb_min);
     params.result.update_aabb_max(aabb_max);
-    stack.push_back({aabb_min, aabb_max, id0, id1, depth});
+    stack.push_back({static_cast<RealT>(aabb_min), static_cast<RealT>(aabb_max), id0, id1, depth});
   };
 
   auto dispatch = [&](int last_id) {

@@ -102,12 +102,12 @@ private:
       return;
     }
     const auto &descriptors = _spaths.crossing_path_descriptors();
-    std::array<Index, 2> left_over{base_loop.front(), base_loop.back()};
+    std::array<const Index, 2> left_over{base_loop.front(), base_loop.back()};
     // so that we can start with the "left_over", making
     // the algorithm easier
     auto get = [&](Index i) {
       if (i == -1)
-        return std::make_tuple(tf::make_range(left_over.cbegin(), 2), Index(0),
+        return std::make_tuple(tf::make_range(left_over.data(), 2), Index(0),
                                Index(base_loop.size() - 1));
       else
         return std::make_tuple(crossings[i], descriptors[i].start,
