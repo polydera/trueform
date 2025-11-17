@@ -76,9 +76,9 @@ def intersects(obj0: Any, obj1: Any) -> bool:
     type_pair = (type0, type1)
 
     # Import spatial form types
-    from ._core.mesh import Mesh
-    from ._core.edge_mesh import EdgeMesh
-    from ._core.point_cloud import PointCloud
+    from ._spatial.mesh import Mesh
+    from ._spatial.edge_mesh import EdgeMesh
+    from ._spatial.point_cloud import PointCloud
 
     # Check if this is a spatial (form-primitive) operation
     is_spatial = type0 in (Mesh, EdgeMesh, PointCloud) or type1 in (Mesh, EdgeMesh, PointCloud)

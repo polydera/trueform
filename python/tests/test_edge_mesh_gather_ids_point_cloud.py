@@ -77,8 +77,8 @@ def test_edge_mesh_gather_ids_point_cloud_2d_within_distance_hit(index_dtype, re
     points_cloud = np.array([[0.5, 0.2], [1.0, 0.3], [5, 5]], dtype=real_dtype)
     point_cloud = tf.PointCloud(points_cloud)
 
-    # With threshold=0.5, first two points should be found
-    result = tf.gather_ids_within_distance(edge_mesh, point_cloud, threshold=0.5)
+    # With distance=0.5, first two points should be found
+    result = tf.gather_ids_within_distance(edge_mesh, point_cloud, distance=0.5)
 
     assert result.shape[1] == 2
     assert result.shape[0] >= 2
@@ -101,7 +101,7 @@ def test_edge_mesh_gather_ids_point_cloud_2d_within_distance_miss(index_dtype, r
     points_cloud = np.array([[0, 10], [1, 10]], dtype=real_dtype)
     point_cloud = tf.PointCloud(points_cloud)
 
-    result = tf.gather_ids_within_distance(edge_mesh, point_cloud, threshold=1.0)
+    result = tf.gather_ids_within_distance(edge_mesh, point_cloud, distance=1.0)
 
     assert result.shape == (0, 2)
 
@@ -138,7 +138,7 @@ def test_edge_mesh_gather_ids_point_cloud_3d_within_distance(index_dtype, real_d
     points_cloud = np.array([[0.5, 0.2, 0], [1.5, 0.3, 0]], dtype=real_dtype)
     point_cloud = tf.PointCloud(points_cloud)
 
-    result = tf.gather_ids_within_distance(edge_mesh, point_cloud, threshold=0.5)
+    result = tf.gather_ids_within_distance(edge_mesh, point_cloud, distance=0.5)
 
     assert result.shape[1] == 2
     assert result.shape[0] >= 2
@@ -158,8 +158,8 @@ def test_edge_mesh_gather_ids_point_cloud_symmetry(real_dtype):
     points_cloud = np.array([[0.5, 0.1]], dtype=real_dtype)
     point_cloud = tf.PointCloud(points_cloud)
 
-    result_em_pc = tf.gather_ids_within_distance(edge_mesh, point_cloud, threshold=0.5)
-    result_pc_em = tf.gather_ids_within_distance(point_cloud, edge_mesh, threshold=0.5)
+    result_em_pc = tf.gather_ids_within_distance(edge_mesh, point_cloud, distance=0.5)
+    result_pc_em = tf.gather_ids_within_distance(point_cloud, edge_mesh, distance=0.5)
 
     # Both should have same number of matches
     assert result_em_pc.shape[0] == result_pc_em.shape[0]
@@ -203,7 +203,7 @@ def test_edge_mesh_gather_ids_point_cloud_with_transformation(index_dtype, real_
     assert result_after.shape[0] == 0
 
     # But within distance should find it
-    result_within = tf.gather_ids_within_distance(edge_mesh, point_cloud, threshold=15.0)
+    result_within = tf.gather_ids_within_distance(edge_mesh, point_cloud, distance=15.0)
     assert result_within.shape[0] > 0
 
 

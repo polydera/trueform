@@ -11,9 +11,9 @@ import numpy as np
 from typing import Any, Optional, Union, List, Tuple
 from .. import _trueform
 from .._primitives import Point, Segment, Polygon, Ray, Line
-from .._core.mesh import Mesh
-from .._core.edge_mesh import EdgeMesh
-from .._core.point_cloud import PointCloud
+from .mesh import Mesh
+from .edge_mesh import EdgeMesh
+from .point_cloud import PointCloud
 from ._point_cloud_neighbor_search import (
     _POINT_CLOUD_NEIGHBOR_SEARCH_DISPATCH,
     _POINT_CLOUD_NEIGHBOR_SEARCH_KNN_DISPATCH
@@ -333,4 +333,4 @@ def neighbor_search(
         return cpp_func(spatial_object._wrapper, query_data, k, radius)
 
 
-__all__ = ['neighbor_search', 'gather_intersecting_ids', 'gather_ids_within_distance']
+__all__ = ['Mesh', 'EdgeMesh', 'PointCloud', 'neighbor_search', 'gather_intersecting_ids', 'gather_ids_within_distance']

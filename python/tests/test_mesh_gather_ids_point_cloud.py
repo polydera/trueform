@@ -106,8 +106,8 @@ def test_mesh_gather_ids_point_cloud_2d_within_distance_hit(index_dtype, real_dt
     ], dtype=real_dtype)
     point_cloud = tf.PointCloud(points_cloud)
 
-    # With threshold=0.5, first two points should be found
-    result = tf.gather_ids_within_distance(mesh, point_cloud, threshold=0.5)
+    # With distance=0.5, first two points should be found
+    result = tf.gather_ids_within_distance(mesh, point_cloud, distance=0.5)
 
     assert result.shape[1] == 2
     assert result.shape[0] >= 2
@@ -127,7 +127,7 @@ def test_mesh_gather_ids_point_cloud_2d_within_distance_miss(index_dtype, real_d
     points_cloud = np.array([[10, 10], [20, 20]], dtype=real_dtype)
     point_cloud = tf.PointCloud(points_cloud)
 
-    result = tf.gather_ids_within_distance(mesh, point_cloud, threshold=1.0)
+    result = tf.gather_ids_within_distance(mesh, point_cloud, distance=1.0)
 
     assert result.shape == (0, 2)
 
@@ -168,7 +168,7 @@ def test_mesh_gather_ids_point_cloud_3d_within_distance(index_dtype, real_dtype,
     ], dtype=real_dtype)
     point_cloud = tf.PointCloud(points_cloud)
 
-    result = tf.gather_ids_within_distance(mesh, point_cloud, threshold=0.5)
+    result = tf.gather_ids_within_distance(mesh, point_cloud, distance=0.5)
 
     assert result.shape[1] == 2
     assert result.shape[0] >= 2

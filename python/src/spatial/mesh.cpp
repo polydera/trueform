@@ -5,7 +5,7 @@
  * https://github.com/xlabmedical/trueform
  */
 
-#include "trueform/python/core/mesh.hpp"
+#include "trueform/python/spatial/mesh.hpp"
 
 namespace tf::py {
 

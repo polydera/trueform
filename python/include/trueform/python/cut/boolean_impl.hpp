@@ -5,7 +5,7 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "../core/mesh.hpp"
+#include "../spatial/mesh.hpp"
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
 #include <nanobind/stl/pair.h>

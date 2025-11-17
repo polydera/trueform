@@ -5,7 +5,7 @@
  * https://github.com/xlabmedical/trueform
  */
 
-#include "trueform/python/core/edge_mesh.hpp"
+#include "trueform/python/spatial/edge_mesh.hpp"
 
 namespace tf::py {
 

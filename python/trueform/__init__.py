@@ -8,7 +8,8 @@ https://github.com/xlabmedical/trueform
 """
 
 # Core data structures
-from ._core import PointCloud, Mesh, EdgeMesh, closest_metric_point_pair, closest_metric_point
+from ._spatial import PointCloud, Mesh, EdgeMesh
+from ._core import closest_metric_point_pair, closest_metric_point
 from ._core import OffsetBlockedArray
 # Top-level functions
 from .ray_cast import ray_cast

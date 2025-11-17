@@ -9,7 +9,7 @@
 #include <nanobind/stl/pair.h>
 #include <nanobind/stl/tuple.h>
 #include <trueform/python/core/make_primitives.hpp>
-#include <trueform/python/core/mesh.hpp>
+#include <trueform/python/spatial/mesh.hpp>
 #include <trueform/python/spatial/ray_cast.hpp>
 #include <tuple>
 

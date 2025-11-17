@@ -5,7 +5,7 @@
  * https://github.com/xlabmedical/trueform
  */
 #include <nanobind/nanobind.h>
-#include <trueform/python/core/edge_mesh.hpp>
+#include <trueform/python/spatial/edge_mesh.hpp>
 #include <trueform/python/spatial/form_intersects_form.hpp>
 
 namespace tf::py {

@@ -10,7 +10,7 @@ https://github.com/xlabmedical/trueform
 import numpy as np
 from typing import Union, Tuple
 from .. import _trueform
-from .._core import Mesh, EdgeMesh, PointCloud
+from .._spatial import Mesh, EdgeMesh, PointCloud
 
 
 def reindex_by_ids(

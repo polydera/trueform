@@ -153,8 +153,8 @@ def test_mesh_gather_ids_mesh_2d_within_distance_hit(index_dtype0, index_dtype1,
     else:
         mesh1 = create_tiled_plane_2d_quads(index_dtype1, real_dtype, offset_x=2.5)
 
-    # With threshold=1.0, should find face pairs within distance
-    result = tf.gather_ids_within_distance(mesh0, mesh1, threshold=1.0)
+    # With distance=1.0, should find face pairs within distance
+    result = tf.gather_ids_within_distance(mesh0, mesh1, distance=1.0)
 
     assert result.shape[1] == 2
     assert result.shape[0] > 0
@@ -177,7 +177,7 @@ def test_mesh_gather_ids_mesh_2d_within_distance_miss(index_dtype0, index_dtype1
     else:
         mesh1 = create_tiled_plane_2d_quads(index_dtype1, real_dtype, offset_x=10.0)
 
-    result = tf.gather_ids_within_distance(mesh0, mesh1, threshold=1.0)
+    result = tf.gather_ids_within_distance(mesh0, mesh1, distance=1.0)
 
     assert result.shape == (0, 2)
 
@@ -251,7 +251,7 @@ def test_mesh_gather_ids_mesh_3d_within_distance(index_dtype0, index_dtype1, rea
     else:
         mesh1 = create_tiled_plane_3d_quads(index_dtype1, real_dtype, offset_z=0.5)
 
-    result = tf.gather_ids_within_distance(mesh0, mesh1, threshold=1.0)
+    result = tf.gather_ids_within_distance(mesh0, mesh1, distance=1.0)
 
     assert result.shape[1] == 2
     assert result.shape[0] > 0

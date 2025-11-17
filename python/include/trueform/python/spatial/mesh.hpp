@@ -6,7 +6,7 @@
  */
 #pragma once
 
-#include "./offset_blocked_array.hpp"
+#include "../core/offset_blocked_array.hpp"
 #include <memory>
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>

@@ -98,8 +98,8 @@ def test_edge_mesh_gather_ids_edge_mesh_2d_within_distance_hit(index_dtype0, ind
     edge_mesh0 = tf.EdgeMesh(edges0, points0)
     edge_mesh1 = tf.EdgeMesh(edges1, points1)
 
-    # With threshold=1.0, should find all edge pairs
-    result = tf.gather_ids_within_distance(edge_mesh0, edge_mesh1, threshold=1.0)
+    # With distance=1.0, should find all edge pairs
+    result = tf.gather_ids_within_distance(edge_mesh0, edge_mesh1, distance=1.0)
 
     assert result.shape[1] == 2
     assert result.shape[0] > 0
@@ -119,8 +119,8 @@ def test_edge_mesh_gather_ids_edge_mesh_2d_within_distance_miss(index_dtype0, in
     edge_mesh0 = tf.EdgeMesh(edges0, points0)
     edge_mesh1 = tf.EdgeMesh(edges1, points1)
 
-    # Distance is 10, threshold=1.0 should miss
-    result = tf.gather_ids_within_distance(edge_mesh0, edge_mesh1, threshold=1.0)
+    # Distance is 10, distance=1.0 should miss
+    result = tf.gather_ids_within_distance(edge_mesh0, edge_mesh1, distance=1.0)
 
     assert result.shape == (0, 2)
 
@@ -170,7 +170,7 @@ def test_edge_mesh_gather_ids_edge_mesh_3d_within_distance(index_dtype0, index_d
     edge_mesh0 = tf.EdgeMesh(edges0, points0)
     edge_mesh1 = tf.EdgeMesh(edges1, points1)
 
-    result = tf.gather_ids_within_distance(edge_mesh0, edge_mesh1, threshold=1.0)
+    result = tf.gather_ids_within_distance(edge_mesh0, edge_mesh1, distance=1.0)
 
     assert result.shape[1] == 2
     assert result.shape[0] > 0
@@ -192,8 +192,8 @@ def test_edge_mesh_gather_ids_edge_mesh_symmetry(real_dtype):
     edge_mesh0 = tf.EdgeMesh(edges0, points0)
     edge_mesh1 = tf.EdgeMesh(edges1, points1)
 
-    result01 = tf.gather_ids_within_distance(edge_mesh0, edge_mesh1, threshold=1.0)
-    result10 = tf.gather_ids_within_distance(edge_mesh1, edge_mesh0, threshold=1.0)
+    result01 = tf.gather_ids_within_distance(edge_mesh0, edge_mesh1, distance=1.0)
+    result10 = tf.gather_ids_within_distance(edge_mesh1, edge_mesh0, distance=1.0)
 
     # Both should have same number of matches
     assert result01.shape[0] == result10.shape[0]

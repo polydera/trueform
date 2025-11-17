@@ -12,7 +12,7 @@
 #include <nanobind/stl/tuple.h>
 #include <trueform/core/range.hpp>
 #include <trueform/cut/make_isobands.hpp>
-#include <trueform/python/core/mesh.hpp>
+#include <trueform/python/spatial/mesh.hpp>
 #include <trueform/python/core/offset_blocked_array.hpp>
 #include <trueform/python/intersect/isocontours.hpp>
 #include <trueform/python/util/make_numpy_array.hpp>

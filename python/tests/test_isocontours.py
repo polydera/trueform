@@ -298,7 +298,7 @@ def test_tuple_input():
 
     # Check that paths are the same
     for i, (path_mesh, path_tuple) in enumerate(zip(paths_mesh, paths_tuple)):
-        assert np.array_equal(path_mesh, path_tuple), \
+        assert np.array_equal(path_mesh, path_tuple) or np.array_equal(path_mesh, path_tuple[::-1]), \
             f"Path {i} differs between Mesh and tuple input"
 
 

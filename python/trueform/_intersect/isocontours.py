@@ -10,7 +10,8 @@ https://github.com/xlabmedical/trueform
 import numpy as np
 from typing import Union, Tuple
 from .. import _trueform
-from .._core import Mesh, OffsetBlockedArray
+from .._spatial import Mesh
+from .._core import OffsetBlockedArray
 
 
 def isocontours(

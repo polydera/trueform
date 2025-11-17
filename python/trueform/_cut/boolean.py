@@ -10,7 +10,8 @@ https://github.com/xlabmedical/trueform
 import numpy as np
 from typing import Tuple, Union
 from .. import _trueform
-from .._core import Mesh, OffsetBlockedArray
+from .._spatial import Mesh
+from .._core import OffsetBlockedArray
 
 
 # Operation type constants (map to C++ tf::boolean_op enum)

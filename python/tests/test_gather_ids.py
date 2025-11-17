@@ -90,12 +90,12 @@ def test_mesh_gather_ids_point_within_distance_2d(index_dtype, real_dtype):
 
     # Point close to mesh
     pt = tf.Point(np.array([0.5, -0.1], dtype=real_dtype))
-    ids = tf.gather_ids_within_distance(mesh, pt, threshold=0.2)
+    ids = tf.gather_ids_within_distance(mesh, pt, distance=0.2)
     assert len(ids) > 0, "Point should be within distance of some faces"
 
     # Point far from mesh
     pt = tf.Point(np.array([10.0, 10.0], dtype=real_dtype))
-    ids = tf.gather_ids_within_distance(mesh, pt, threshold=0.5)
+    ids = tf.gather_ids_within_distance(mesh, pt, distance=0.5)
     assert len(ids) == 0, "Far point should not be within distance"
 
 
@@ -233,13 +233,13 @@ def test_edge_mesh_gather_ids_point_within_distance_2d(index_dtype, real_dtype):
 
     # Point close to edge 0
     pt = tf.Point(np.array([0.5, 0.1], dtype=real_dtype))
-    ids = tf.gather_ids_within_distance(edge_mesh, pt, threshold=0.2)
+    ids = tf.gather_ids_within_distance(edge_mesh, pt, distance=0.2)
     assert len(ids) >= 1, "Point should be within distance of at least 1 edge"
     assert 0 in ids, "Should be close to edge 0"
 
     # Point far from all edges
     pt = tf.Point(np.array([10.0, 10.0], dtype=real_dtype))
-    ids = tf.gather_ids_within_distance(edge_mesh, pt, threshold=0.5)
+    ids = tf.gather_ids_within_distance(edge_mesh, pt, distance=0.5)
     assert len(ids) == 0, "Far point should not be within distance"
 
 
@@ -299,13 +299,13 @@ def test_point_cloud_gather_ids_point_within_distance_2d(real_dtype):
 
     # Point close to point 0
     pt = tf.Point(np.array([0.1, 0.1], dtype=real_dtype))
-    ids = tf.gather_ids_within_distance(pc, pt, threshold=0.2)
+    ids = tf.gather_ids_within_distance(pc, pt, distance=0.2)
     assert len(ids) >= 1, "Point should be within distance of at least 1 point"
     assert 0 in ids, "Should be close to point 0"
 
     # Point in center, close to all 4 points
     pt = tf.Point(np.array([0.5, 0.5], dtype=real_dtype))
-    ids = tf.gather_ids_within_distance(pc, pt, threshold=1.0)
+    ids = tf.gather_ids_within_distance(pc, pt, distance=1.0)
     assert len(ids) == 4, "Should be close to all 4 points"
 
 
@@ -316,7 +316,7 @@ def test_point_cloud_gather_ids_segment_within_distance_2d(real_dtype):
 
     # Segment close to point 0 and 1
     seg = tf.Segment(np.array([[0.0, 0.0], [1.0, 0.0]], dtype=real_dtype))
-    ids = tf.gather_ids_within_distance(pc, seg, threshold=0.1)
+    ids = tf.gather_ids_within_distance(pc, seg, distance=0.1)
     assert len(ids) >= 2, "Segment should be close to at least 2 points"
     assert 0 in ids and 1 in ids, "Should be close to points 0 and 1"
 
@@ -339,8 +339,8 @@ def test_gather_ids_missing_threshold():
     mesh = create_simple_mesh_2d(np.int32, np.float32)
     pt = tf.Point([0.5, 0.5])
 
-    with pytest.raises(ValueError, match="threshold is required"):
-        tf.gather_ids_within_distance(mesh, pt, threshold=None)
+    with pytest.raises(ValueError, match="distance is required"):
+        tf.gather_ids_within_distance(mesh, pt, distance=None)
 
 
 def test_gather_ids_invalid_form_type():

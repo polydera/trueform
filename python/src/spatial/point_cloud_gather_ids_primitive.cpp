@@ -13,7 +13,7 @@
 #include <trueform/core/intersects.hpp>
 #include <trueform/core/sphere.hpp>
 #include <trueform/python/core/make_primitives.hpp>
-#include <trueform/python/core/point_cloud.hpp>
+#include <trueform/python/spatial/point_cloud.hpp>
 #include <trueform/python/spatial/gather_ids.hpp>
 
 namespace tf::py {

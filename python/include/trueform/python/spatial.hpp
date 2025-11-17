@@ -10,6 +10,13 @@
 
 namespace tf::py {
 
+// Forward declarations for spatial form types
+void register_point_cloud(nanobind::module_ &m);
+
+void register_mesh(nanobind::module_ &m);
+
+void register_edge_mesh(nanobind::module_ &m);
+
 void register_point_cloud_neighbor_search(nanobind::module_ &m);
 
 void register_mesh_neighbor_search(nanobind::module_ &m);

@@ -11,9 +11,6 @@ namespace tf::py {
 
 auto register_core(nanobind::module_ &m) -> void {
   // Register core components
-  register_point_cloud(m);
-  register_mesh(m);
-  register_edge_mesh(m);
   register_offset_blocked_array(m);
   register_core_closest_metric_point_pair(m);
   register_core_ray_cast(m);

@@ -6,7 +6,7 @@
  */
 #include <nanobind/nanobind.h>
 #include <trueform/python/core/make_primitives.hpp>
-#include <trueform/python/core/mesh.hpp>
+#include <trueform/python/spatial/mesh.hpp>
 #include <trueform/python/spatial/form_intersects_primitive.hpp>
 
 namespace tf::py {

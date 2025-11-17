@@ -6,7 +6,7 @@
  */
 #include <nanobind/nanobind.h>
 #include <nanobind/stl/optional.h>
-#include <trueform/python/core/point_cloud.hpp>
+#include <trueform/python/spatial/point_cloud.hpp>
 #include <trueform/python/spatial/form_form_neighbor_search.hpp>
 
 namespace tf::py {

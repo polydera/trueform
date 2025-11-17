@@ -12,7 +12,7 @@
 #include <trueform/core/distance.hpp>
 #include <trueform/core/intersects.hpp>
 #include <trueform/core/sphere.hpp>
-#include <trueform/python/core/edge_mesh.hpp>
+#include <trueform/python/spatial/edge_mesh.hpp>
 #include <trueform/python/core/make_primitives.hpp>
 #include <trueform/python/spatial/gather_ids.hpp>
 

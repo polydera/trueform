@@ -14,7 +14,7 @@ from ._gather_ids import _GATHER_IDS_DISPATCH
 from ._form_form_gather_ids import _FORM_FORM_GATHER_IDS_DISPATCH
 
 
-def _gather_ids(form: Any, query: Any, predicate: str = "intersects", threshold: Optional[float] = None) -> np.ndarray:
+def _gather_ids(form: Any, query: Any, predicate: str = "intersects", distance: Optional[float] = None) -> np.ndarray:
     """
     Gather IDs of primitives in a spatial form that satisfy a predicate with respect to a query primitive.
 
@@ -30,10 +30,10 @@ def _gather_ids(form: Any, query: Any, predicate: str = "intersects", threshold:
     predicate : str, optional
         The spatial predicate to evaluate. Options:
         - "intersects": Return primitives that intersect the query
-        - "within_distance": Return primitives within threshold distance of query
+        - "within_distance": Return primitives within distance of query
         Default is "intersects"
-    threshold : float, optional
-        Distance threshold for "within_distance" predicate. Required when predicate="within_distance"
+    distance : float, optional
+        Distance for "within_distance" predicate. Required when predicate="within_distance"
 
     Returns
     -------
@@ -45,7 +45,7 @@ def _gather_ids(form: Any, query: Any, predicate: str = "intersects", threshold:
     TypeError
         If form or query types are not supported
     ValueError
-        If dimensionality doesn't match, or if threshold is missing for "within_distance"
+        If dimensionality doesn't match, or if distance is missing for "within_distance"
 
     Examples
     --------
@@ -64,7 +64,7 @@ def _gather_ids(form: Any, query: Any, predicate: str = "intersects", threshold:
     >>>
     >>> # Find faces within distance of a point
     >>> pt = tf.Point([2.0, 2.0])
-    >>> ids = tf.gather_ids(mesh, pt, predicate="within_distance", threshold=2.0)
+    >>> ids = tf.gather_ids(mesh, pt, predicate="within_distance", distance=2.0)
     >>> print(ids)  # e.g., [1]
     """
 
@@ -72,9 +72,9 @@ def _gather_ids(form: Any, query: Any, predicate: str = "intersects", threshold:
     if predicate not in ("intersects", "within_distance"):
         raise ValueError(f"Invalid predicate '{predicate}'. Must be 'intersects' or 'within_distance'")
 
-    # Validate threshold for within_distance
-    if predicate == "within_distance" and threshold is None:
-        raise ValueError("threshold is required when predicate='within_distance'")
+    # Validate distance for within_distance
+    if predicate == "within_distance" and distance is None:
+        raise ValueError("distance is required when predicate='within_distance'")
 
     # Validate dimensions match
     if not hasattr(form, 'dims') or not hasattr(query, 'dims'):
@@ -92,9 +92,9 @@ def _gather_ids(form: Any, query: Any, predicate: str = "intersects", threshold:
     type_pair = (form_type, query_type)
 
     # Import spatial form types
-    from .._core.mesh import Mesh
-    from .._core.edge_mesh import EdgeMesh
-    from .._core.point_cloud import PointCloud
+    from .mesh import Mesh
+    from .edge_mesh import EdgeMesh
+    from .point_cloud import PointCloud
 
     # Check if this is a valid operation
     if type_pair not in _GATHER_IDS_DISPATCH:
@@ -184,7 +184,7 @@ def _gather_ids(form: Any, query: Any, predicate: str = "intersects", threshold:
         # Get function and call
         func_name = func_template.format(suffix)
         cpp_func = getattr(_trueform.spatial, func_name)
-        result = cpp_func(form0_obj._wrapper, form1_obj._wrapper, predicate, threshold)
+        result = cpp_func(form0_obj._wrapper, form1_obj._wrapper, predicate, distance)
 
         # If forms were swapped, swap result columns back
         # Result is numpy array of shape (N, 2) with columns [id0, id1]
@@ -221,8 +221,8 @@ def _gather_ids(form: Any, query: Any, predicate: str = "intersects", threshold:
         func_name = func_template.format(suffix)
         cpp_func = getattr(_trueform.spatial, func_name)
 
-        # Call with predicate and threshold
-        return cpp_func(form_obj._wrapper, prim_obj.data, predicate, threshold)
+        # Call with predicate and distance
+        return cpp_func(form_obj._wrapper, prim_obj.data, predicate, distance)
 
 
 def gather_intersecting_ids(form: Any, query: Any) -> np.ndarray:
@@ -269,12 +269,12 @@ def gather_intersecting_ids(form: Any, query: Any) -> np.ndarray:
     >>> ids = tf.gather_intersecting_ids(mesh, pt)
     >>> print(ids)  # e.g., [0]
     """
-    return _gather_ids(form, query, predicate="intersects", threshold=None)
+    return _gather_ids(form, query, predicate="intersects", distance=None)
 
 
-def gather_ids_within_distance(form: Any, query: Any, threshold: float) -> np.ndarray:
+def gather_ids_within_distance(form: Any, query: Any, distance: float) -> np.ndarray:
     """
-    Gather IDs of primitives in a spatial form within a distance threshold of a query.
+    Gather IDs of primitives in a spatial form within a distance of a query.
 
     This function searches a spatial data structure (Mesh, EdgeMesh, PointCloud) and returns the indices
     of all primitives within the specified distance of the query primitive or form.
@@ -285,13 +285,13 @@ def gather_ids_within_distance(form: Any, query: Any, threshold: float) -> np.nd
         The spatial data structure to search
     query : Point, Segment, Polygon, Ray, Line, Mesh, EdgeMesh, or PointCloud
         The query primitive or form
-    threshold : float
-        Maximum distance threshold
+    distance : float
+        Maximum distance
 
     Returns
     -------
     numpy.ndarray
-        Array of primitive indices within threshold distance of the query.
+        Array of primitive indices within distance of the query.
         For form-form queries, returns shape (N, 2) with pairs of indices.
         For form-primitive queries, returns shape (N,) with single indices.
         Dtype matches the form's index type.
@@ -315,7 +315,7 @@ def gather_ids_within_distance(form: Any, query: Any, threshold: float) -> np.nd
     >>>
     >>> # Find faces within distance of a point
     >>> pt = tf.Point([2.0, 2.0])
-    >>> ids = tf.gather_ids_within_distance(mesh, pt, threshold=2.0)
+    >>> ids = tf.gather_ids_within_distance(mesh, pt, distance=2.0)
     >>> print(ids)  # e.g., [1]
     """
-    return _gather_ids(form, query, predicate="within_distance", threshold=threshold)
+    return _gather_ids(form, query, predicate="within_distance", distance=distance)

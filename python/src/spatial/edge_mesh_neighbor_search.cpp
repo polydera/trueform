@@ -9,7 +9,7 @@
 #include <nanobind/stl/optional.h>
 #include <nanobind/stl/tuple.h>
 #include <nanobind/stl/vector.h>
-#include <trueform/python/core/edge_mesh.hpp>
+#include <trueform/python/spatial/edge_mesh.hpp>
 #include <trueform/python/core/make_primitives.hpp>
 #include <trueform/python/spatial/neighbor_search.hpp>
 

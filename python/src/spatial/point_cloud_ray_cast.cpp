@@ -10,7 +10,7 @@
 #include <nanobind/stl/tuple.h>
 #include <trueform/python/core/make_primitives.hpp>
 #include <tuple>
-#include <trueform/python/core/point_cloud.hpp>
+#include <trueform/python/spatial/point_cloud.hpp>
 #include <trueform/python/spatial/ray_cast.hpp>
 
 namespace tf::py {

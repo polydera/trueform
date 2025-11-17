@@ -9,7 +9,7 @@ https://github.com/xlabmedical/trueform
 
 from typing import List, Tuple, Union
 import numpy as np
-from .._core import Mesh, EdgeMesh
+from .._spatial import Mesh, EdgeMesh
 
 
 def concatenated(

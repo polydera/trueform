@@ -26,7 +26,7 @@ def test_point_cloud_gather_ids_point_cloud_2d_within_distance_hit(dtype):
     """Test 2D PointCloud gather_ids with distance threshold - multiple hits"""
     # Cloud 0: points at (0, 0), (1, 0), (2, 0)
     # Cloud 1: points at (0.1, 0), (1.1, 0), (10, 10)
-    # With threshold=0.5: expect pairs (0,0), (1,1)
+    # With distance=0.5: expect pairs (0,0), (1,1)
 
     points0 = np.array([[0, 0], [1, 0], [2, 0]], dtype=dtype)
     points1 = np.array([[0.1, 0], [1.1, 0], [10, 10]], dtype=dtype)
@@ -34,7 +34,7 @@ def test_point_cloud_gather_ids_point_cloud_2d_within_distance_hit(dtype):
     cloud0 = tf.PointCloud(points0)
     cloud1 = tf.PointCloud(points1)
 
-    result = tf.gather_ids_within_distance(cloud0, cloud1, threshold=0.5)
+    result = tf.gather_ids_within_distance(cloud0, cloud1, distance=0.5)
 
     # Should return (N, 2) array
     assert result.shape[1] == 2
@@ -56,7 +56,7 @@ def test_point_cloud_gather_ids_point_cloud_2d_within_distance_miss(dtype):
     """Test 2D PointCloud gather_ids with distance threshold - no hits"""
     # Cloud 0: points at (0, 0), (1, 0), (2, 0)
     # Cloud 1: points at (10, 10), (20, 20)
-    # With threshold=1.0: expect no matches
+    # With distance=1.0: expect no matches
 
     points0 = np.array([[0, 0], [1, 0], [2, 0]], dtype=dtype)
     points1 = np.array([[10, 10], [20, 20]], dtype=dtype)
@@ -64,7 +64,7 @@ def test_point_cloud_gather_ids_point_cloud_2d_within_distance_miss(dtype):
     cloud0 = tf.PointCloud(points0)
     cloud1 = tf.PointCloud(points1)
 
-    result = tf.gather_ids_within_distance(cloud0, cloud1, threshold=1.0)
+    result = tf.gather_ids_within_distance(cloud0, cloud1, distance=1.0)
 
     # Should return empty (0, 2) array
     assert result.shape == (0, 2)
@@ -79,7 +79,7 @@ def test_point_cloud_gather_ids_point_cloud_3d_within_distance_hit(dtype):
     cloud0 = tf.PointCloud(points0)
     cloud1 = tf.PointCloud(points1)
 
-    result = tf.gather_ids_within_distance(cloud0, cloud1, threshold=0.5)
+    result = tf.gather_ids_within_distance(cloud0, cloud1, distance=0.5)
 
     assert result.shape[1] == 2
     assert result.shape[0] >= 2  # At least (0,0) and (1,1)
@@ -138,8 +138,8 @@ def test_point_cloud_gather_ids_point_cloud_symmetry(dtype):
     cloud0 = tf.PointCloud(points0)
     cloud1 = tf.PointCloud(points1)
 
-    result01 = tf.gather_ids_within_distance(cloud0, cloud1, threshold=0.5)
-    result10 = tf.gather_ids_within_distance(cloud1, cloud0, threshold=0.5)
+    result01 = tf.gather_ids_within_distance(cloud0, cloud1, distance=0.5)
+    result10 = tf.gather_ids_within_distance(cloud1, cloud0, distance=0.5)
 
     # Both should have same number of matches
     assert result01.shape[0] == result10.shape[0]
@@ -174,7 +174,7 @@ def test_point_cloud_gather_ids_point_cloud_with_transformation(dtype):
     assert result_after.shape[0] == 0
 
     # But with distance threshold, should still find matches
-    result_within = tf.gather_ids_within_distance(cloud0, cloud1, threshold=0.1)
+    result_within = tf.gather_ids_within_distance(cloud0, cloud1, distance=0.1)
     assert result_within.shape[0] == 3
 
 
@@ -190,7 +190,7 @@ def test_point_cloud_gather_ids_point_cloud_dimension_mismatch():
         tf.gather_intersecting_ids(cloud2d, cloud3d)
 
     with pytest.raises(ValueError, match="Dimension mismatch"):
-        tf.gather_ids_within_distance(cloud2d, cloud3d, threshold=1.0)
+        tf.gather_ids_within_distance(cloud2d, cloud3d, distance=1.0)
 
 
 @pytest.mark.parametrize("dtype", REAL_DTYPES)
@@ -225,7 +225,7 @@ def test_point_cloud_gather_ids_point_cloud_many_matches(dtype):
     cloud0 = tf.PointCloud(points0)
     cloud1 = tf.PointCloud(points1)
 
-    result = tf.gather_ids_within_distance(cloud0, cloud1, threshold=0.5)
+    result = tf.gather_ids_within_distance(cloud0, cloud1, distance=0.5)
 
     # All 121 points should have matches within threshold
     # (each point in cloud0 is 0.1*sqrt(2) ~ 0.141 away from corresponding point in cloud1)

@@ -7,9 +7,9 @@ Commercial licensing available via ziga.sajovic@xlab.si.
 https://github.com/xlabmedical/trueform
 """
 
-from .._core.mesh import Mesh
-from .._core.edge_mesh import EdgeMesh
-from .._core.point_cloud import PointCloud
+from .mesh import Mesh
+from .edge_mesh import EdgeMesh
+from .point_cloud import PointCloud
 from .._primitives import Point, Segment, Polygon, Line, Ray, Plane
 
 

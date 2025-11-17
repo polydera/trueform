@@ -7,10 +7,7 @@ Commercial licensing available via ziga.sajovic@xlab.si.
 https://github.com/xlabmedical/trueform
 """
 
-from .point_cloud import PointCloud
-from .mesh import Mesh
-from .edge_mesh import EdgeMesh
 from .closest_metric_point_pair import closest_metric_point_pair, closest_metric_point
 from .offset_blocked_array import OffsetBlockedArray
 
-__all__ = ['PointCloud', 'Mesh', 'EdgeMesh', 'closest_metric_point_pair', 'closest_metric_point', 'OffsetBlockedArray']
+__all__ = ['closest_metric_point_pair', 'closest_metric_point', 'OffsetBlockedArray']

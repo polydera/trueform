@@ -105,8 +105,8 @@ def test_mesh_gather_ids_edge_mesh_2d_within_distance_hit(index_dtype0, index_dt
     points = np.array([[0.5, -0.3], [0.5, -0.2]], dtype=real_dtype)
     edge_mesh = tf.EdgeMesh(edges, points)
 
-    # With threshold=0.5, should find edges near faces
-    result = tf.gather_ids_within_distance(mesh, edge_mesh, threshold=0.5)
+    # With distance=0.5, should find edges near faces
+    result = tf.gather_ids_within_distance(mesh, edge_mesh, distance=0.5)
 
     assert result.shape[1] == 2
     assert result.shape[0] > 0
@@ -125,7 +125,7 @@ def test_mesh_gather_ids_edge_mesh_2d_within_distance_miss(index_dtype0, index_d
     points = np.array([[10, 10], [20, 20]], dtype=real_dtype)
     edge_mesh = tf.EdgeMesh(edges, points)
 
-    result = tf.gather_ids_within_distance(mesh, edge_mesh, threshold=1.0)
+    result = tf.gather_ids_within_distance(mesh, edge_mesh, distance=1.0)
 
     assert result.shape == (0, 2)
 
@@ -184,7 +184,7 @@ def test_mesh_gather_ids_edge_mesh_3d_within_distance(index_dtype0, index_dtype1
     points = np.array([[0.5, 0.5, 0.3], [0.5, 0.8, 0.3]], dtype=real_dtype)
     edge_mesh = tf.EdgeMesh(edges, points)
 
-    result = tf.gather_ids_within_distance(mesh, edge_mesh, threshold=0.5)
+    result = tf.gather_ids_within_distance(mesh, edge_mesh, distance=0.5)
 
     assert result.shape[1] == 2
     assert result.shape[0] > 0

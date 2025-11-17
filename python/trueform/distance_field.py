@@ -73,7 +73,7 @@ def distance_field(points: Any, primitive: Any) -> np.ndarray:
     """
 
     # Extract points array from PointCloud if needed
-    from ._core.point_cloud import PointCloud
+    from ._spatial.point_cloud import PointCloud
     if isinstance(points, PointCloud):
         points_array = points.points
     else:

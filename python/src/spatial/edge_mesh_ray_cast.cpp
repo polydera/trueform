@@ -8,7 +8,7 @@
 #include <nanobind/stl/optional.h>
 #include <nanobind/stl/pair.h>
 #include <nanobind/stl/tuple.h>
-#include <trueform/python/core/edge_mesh.hpp>
+#include <trueform/python/spatial/edge_mesh.hpp>
 #include <trueform/python/core/make_primitives.hpp>
 #include <trueform/python/spatial/ray_cast.hpp>
 #include <tuple>

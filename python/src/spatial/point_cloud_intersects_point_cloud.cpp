@@ -5,7 +5,7 @@
  * https://github.com/xlabmedical/trueform
  */
 #include <nanobind/nanobind.h>
-#include <trueform/python/core/point_cloud.hpp>
+#include <trueform/python/spatial/point_cloud.hpp>
 #include <trueform/python/spatial/form_intersects_form.hpp>
 
 namespace tf::py {

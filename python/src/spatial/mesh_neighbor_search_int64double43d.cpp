@@ -10,7 +10,7 @@
 #include <nanobind/stl/tuple.h>
 #include <nanobind/stl/vector.h>
 #include <trueform/python/core/make_primitives.hpp>
-#include <trueform/python/core/mesh.hpp>
+#include <trueform/python/spatial/mesh.hpp>
 #include <trueform/python/spatial/neighbor_search.hpp>
 
 namespace tf::py {

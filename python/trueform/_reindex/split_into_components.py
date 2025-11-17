@@ -10,7 +10,7 @@ https://github.com/xlabmedical/trueform
 import numpy as np
 from typing import Union, Tuple, List
 from .. import _trueform
-from .._core import Mesh, EdgeMesh
+from .._spatial import Mesh, EdgeMesh
 
 
 def split_into_components(
