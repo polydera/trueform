@@ -161,6 +161,7 @@ public:
 
 int run_main_collisions(std::vector<std::string>& paths) {
   std::vector<std::unique_ptr<mesh_object>> polys;
+  std::vector<tf::tree<int, float, 3>> trees;
 
   for (int i = 0; i < static_cast<int>(paths.size()); ++i) {
     auto poly = tf::read_stl<int>(paths[i]);
@@ -172,6 +173,10 @@ int run_main_collisions(std::vector<std::string>& paths) {
     auto actor = std::make_unique<mesh_object>();
     actor->poly_object = std::move(poly);
     polys.push_back(std::move(actor));
+
+    trees.emplace_back();
+    trees.back().build(polys.back()->poly_object.polygons(),
+                       tf::config_tree(4, 4));
   }
 
   interactor = std::make_unique<cursor_interactor_collision>();
@@ -185,7 +190,7 @@ int run_main_collisions(std::vector<std::string>& paths) {
       actor->poly_object = polys[poly_index]->poly_object;
       utils::set_at(actor->matrix, {i * 15.f, j * 15.f, 0.f});
       total_polygons += actor->poly_object.size();
-      interactor->push_back(std::move(actor));
+      interactor->push_back_with_objects(std::move(actor), trees[poly_index]);
       auto a = interactor->get_actors().back().get();
       if(auto pI = dynamic_cast<cursor_interactor_collision*>(interactor.get()))
         pI->reset_active_color(a);

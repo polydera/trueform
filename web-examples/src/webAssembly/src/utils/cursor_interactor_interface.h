@@ -5,22 +5,37 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <optional>
 
 // Forward declarations instead of including boolean_web.h
 class tf_bridge_interface{
 public:
-  auto push_back(std::unique_ptr<mesh_object> mesh) -> void {
+    auto push_back(std::unique_ptr<mesh_object> mesh) -> void {
+        map[mesh.get()] = actors.size();
+        polys.push_back(&mesh->poly_object);
+        frames.emplace_back();
+        frames.back().fill(mesh->matrix.data());
+        trees.emplace_back();
+        trees.back().build(mesh->poly_object.polygons(), tf::config_tree(4, 4));
+        face_memberships.emplace_back();
+        face_memberships.back().build(mesh->poly_object.polygons());
+        manifold_edge_links.emplace_back();
+        manifold_edge_links.back().build(mesh->poly_object.faces(),
+                                         face_memberships.back());
+        actors.push_back(std::move(mesh));
+    }
+
+  auto push_back_with_objects(std::unique_ptr<mesh_object> mesh, std::optional<tf::tree<int, float, 3>> tree = std::nullopt, std::optional<tf::face_membership<int>> face_membership = std::nullopt, std::optional<tf::manifold_edge_link<int, 3>> manifold_edges = std::nullopt) -> void {
     map[mesh.get()] = actors.size();
     polys.push_back(&mesh->poly_object);
     frames.emplace_back();
     frames.back().fill(mesh->matrix.data());
-    trees.emplace_back();
-    trees.back().build(mesh->poly_object.polygons(), tf::config_tree(4, 4));
-    face_memberships.emplace_back();
-    face_memberships.back().build(mesh->poly_object.polygons());
-    manifold_edge_links.emplace_back();
-    manifold_edge_links.back().build(mesh->poly_object.faces(),
-                                     face_memberships.back());
+    if (tree)
+      trees.emplace_back(tree.value());
+    if (face_membership)
+        face_memberships.emplace_back(face_membership.value());
+    if (manifold_edges)
+        manifold_edge_links.emplace_back(manifold_edges.value());
     actors.push_back(std::move(mesh));
   }
 
@@ -119,7 +134,14 @@ public:
         bridge->push_back(std::move(mesh));
     }
 
-    auto OnLeftButtonDown() -> bool {
+    auto push_back_with_objects(std::unique_ptr<mesh_object> mesh,
+                   std::optional<tf::tree<int, float, 3>> tree = std::nullopt,
+                   std::optional<tf::face_membership<int>> face_membership = std::nullopt,
+                   std::optional<tf::manifold_edge_link<int, 3>> manifold_edges = std::nullopt) -> void {
+        bridge->push_back_with_objects(std::move(mesh), tree, face_membership, manifold_edges);
+    }
+
+    virtual auto OnLeftButtonDown() -> bool {
         if (selected_actor) {
             selected_mode = true;
             return true;

@@ -66,6 +66,12 @@ private:
   tf::point<double, 3> selected_mesh_color{1., 0.9, 1.};
   std::vector<float> positioning_times;
 
+  bool moving_mode = false;
+  tf::point<double, 3> m_pt1;
+  tf::point<double, 3> m_prev_pt;
+  tf::ray<float, 3> m_ray;
+  tf::ray<float, 3> m_focal_ray;
+
   auto add_position_time(float t) {
     auto avg = add_time(positioning_times, t);
     m_time = avg;
@@ -74,45 +80,47 @@ private:
   auto move_selected(mesh_object *actor, const tf::vector<float, 3> &delta) {
     if (!actor)
       return;
-    std::cout << "move_selected delta: " << delta[0] << ", " << delta[1] << ", "
-              << delta[2] << std::endl;
     for (int i = 0; i < 3; ++i)
       actor->matrix[i * 4 + 3] += delta[i];
     bridge->update_frame(actor);
   }
 
-  auto position_them(std::array<double, 3> focal_point, emscripten::val lambda_set_focal) -> void {
+  auto position_them(std::array<double, 3> focal_point, emscripten::val lambda_set_focal, float dt) -> float {
     if (auto *pB = static_cast<positioning_bridge *>(bridge.get())) {
-      if (pB->intersects_other(selected_actor)) {
-        return;
-      }
-      auto neighbors = pB->closest_metric_point_pair(selected_actor);
-      auto pt0 = neighbors.info.first;
-      auto pt1 = neighbors.info.second;
-      auto ray = tf::make_ray_between_points(pt0, pt1);
-
-      tf::point<double, 3> old_focal = {focal_point[0], focal_point[1], focal_point[2]};
-      tf::point<double, 3> new_focal = pt1;
-      auto focal_ray = tf::make_ray_between_points(old_focal, new_focal);
       auto eps = 0.01f;
-      float t = 0;
-      auto prev_pt = ray.origin;
-      tf::tick();
-      while (t < 1) {
-        t = std::min(1.f, 1.75f * tf::tock() / 1000);
+      if (dt == 0) {
+        if (pB->intersects_other(selected_actor)) {
+          return 1.0f;
+        }
+        auto neighbors = pB->closest_metric_point_pair(selected_actor);
+        auto pt0 = neighbors.info.first;
+        m_pt1 = neighbors.info.second;
+        m_ray = tf::make_ray_between_points(pt0, m_pt1);
+
+        tf::point<double, 3> old_focal = {focal_point[0], focal_point[1], focal_point[2]};
+        tf::point<double, 3> new_focal = m_pt1;
+        m_focal_ray = tf::make_ray_between_points(old_focal, new_focal);
+        m_prev_pt = m_ray.origin;
+        tf::tick();
+        return 0.0f + eps;
+      } else if (dt < 1) {
+        float t = std::min(1.f, 1.75f * tf::tock() / 1000);
         auto t_use = std::min(t, 1.f - eps);
         auto s_t = 3 * t_use * t_use - 2 * t_use * t_use * t_use;
-        auto pt = ray.origin + s_t * ray.direction;
+        auto pt = m_ray.origin + s_t * m_ray.direction;
         auto color = selected_mesh_color +
                      t_use * (normal_mesh_color - selected_mesh_color);
-        move_selected(selected_actor, pt - prev_pt);
-        auto focal = focal_ray(s_t);
+        move_selected(selected_actor, pt - m_prev_pt);
+        auto focal = m_focal_ray(s_t);
         selected_actor->set_color(color[0], color[1], color[2]);
         lambda_set_focal(focal[0],focal[1], focal[2]);
-        prev_pt = pt;
+        m_prev_pt = pt;
+        return t;
       }
-      lambda_set_focal(pt1[0], pt1[1], pt1[2]);
+      lambda_set_focal(m_pt1[0], m_pt1[1], m_pt1[2]);
+      return 1.0f;
     }
+    return 2.0f;
   }
 
   auto set_active_color(mesh_object *actor) -> void {
@@ -123,14 +131,34 @@ private:
   }
 
 public:
-  auto OnLeftButtonUpCustom(std::array<double, 3> focal_point, emscripten::val lambda_set_focal) -> bool {
-    if (selected_mode) {
+  bool get_value() {
+    return selected_mode;
+  }
+
+  auto OnLeftButtonUpCustom(std::array<double, 3> focal_point, emscripten::val lambda_set_focal, float dt) -> float {
+    if (get_value() || moving_mode) {
       selected_mode = false;
-      position_them(focal_point, lambda_set_focal);
-      reset_active_color(selected_actor);
-      return true;
+      moving_mode = true;
+      auto newT = position_them(focal_point, lambda_set_focal, dt);
+      if (newT == 1) {
+        reset_active_color(selected_actor);
+        moving_mode = false;
+      }
+      return newT;
     } else if (camera_mode) {
       camera_mode = false;
+    }
+    moving_mode = false;
+    return 2.0f;
+  }
+
+  auto OnLeftButtonDown() -> bool override {
+    if (moving_mode) return true;
+    if (selected_actor) {
+      selected_mode = true;
+      return true;
+    } else {
+      camera_mode = true;
     }
     return false;
   }
@@ -138,6 +166,7 @@ public:
   auto OnMouseMove(std::array<float, 3> origin, std::array<float, 3> direction,
                    std::array<float, 3> cameraPosition,
                    std::array<float, 3> cameraFocalPoint) -> bool override {
+    if (moving_mode) return true;
     tf::ray<float, 3> ray{origin, direction};
     if (!selected_mode && !camera_mode) {
       auto [actor, point] = bridge->ray_hit(ray);
@@ -160,26 +189,6 @@ public:
       cursor_interactor_interface::move_selected(selected_actor);
       return true;
     } else if (camera_mode) {
-      /*
-      int *currPos = this->Interactor->GetEventPosition();
-      int dx = currPos[0] - last_mouse_x;
-      int dy = currPos[1] - last_mouse_y;
-
-      last_mouse_x = currPos[0];
-      last_mouse_y = currPos[1];
-
-      auto *renderer =
-          this->Interactor->FindPokedRenderer(currPos[0], currPos[1]);
-      if (renderer) {
-        auto *cam = renderer->GetActiveCamera();
-        double SPEED = 5 / (cam->GetDistance());
-        cam->Azimuth(-dx * SPEED);   // yaw
-        cam->Elevation(-dy * SPEED); // pitch
-        cam->OrthogonalizeViewUp();  // keep “up” consistent
-        renderer->ResetCameraClippingRange();
-        this->Interactor->Render();
-      }
-      */
       return false;
     }
     return false;

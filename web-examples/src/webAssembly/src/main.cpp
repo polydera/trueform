@@ -12,10 +12,10 @@
 #include "utils/cursor_interactor_interface.h"
 
 
-auto OnLeftButtonUpCustom(std::array<double, 3> focal_point, emscripten::val lambda_set_focal) {
+auto OnLeftButtonUpCustom(std::array<double, 3> focal_point, emscripten::val lambda_set_focal, float dt) {
     if (auto *pI = dynamic_cast<cursor_interactor_positioning *>(interactor.get()))
-        return pI->OnLeftButtonUpCustom(focal_point, lambda_set_focal);
-    return false;
+        return pI->OnLeftButtonUpCustom(focal_point, lambda_set_focal, dt);
+    return 2.0f;
 }
 auto OnLeftButtonUp() {
     return interactor->OnLeftButtonUp();
