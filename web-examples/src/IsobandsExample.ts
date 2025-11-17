@@ -31,6 +31,10 @@ export class IsobandsExample extends TestClassThreejsBase {
 
 
         const interceptWheelEvent = (event: WheelEvent) => {
+            if (event.deltaX === 0) {
+                // Do nothing if deltaX is zero to avoid division by zero
+                return;
+            }
             const absDelta = event.deltaX / Math.abs(event.deltaX);
             wasmInstance.OnMouseWheel(absDelta, event.shiftKey);
             this.updateMeshes();
