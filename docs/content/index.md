@@ -62,7 +62,7 @@ Why trueform
   ---
   color: neutral
   size: lg
-  to: /modules/core
+  to: /cpp/modules/core
   trailingIcon: i-lucide-arrow-right
   variant: subtle
   ---
@@ -73,7 +73,7 @@ Why trueform
   ---
   color: neutral
   size: lg
-  to: /benchmarks
+  to: /cpp/benchmarks
   trailingIcon: i-lucide-chart-line
   variant: subtle
   ---
@@ -153,10 +153,10 @@ Why trueform
   ---
   links:
     - label: Read the tutorial
-      to: '/modules/core'
+      to: '/cpp/modules/core'
       trailingIcon: i-lucide-arrow-right
     - label: View benchmarks
-      to: '/benchmarks'
+      to: '/cpp/benchmarks'
       variant: subtle
       trailingIcon: i-lucide-chart-line
   title: Ready to build real-time geometry?
