@@ -1,20 +1,17 @@
 #pragma once
-
 #include <array>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
-
 #include "trueform/io/read_stl.hpp"
 #include "trueform/random.hpp"
 #include "trueform/spatial.hpp"
-
 #include "main.h"
-#include "utils/utils.h"
 #include "utils/bridge_web.h"
 #include "utils/cursor_interactor_interface.h"
+#include "utils/utils.h"
 
 class positioning_bridge : public tf_bridge_interface {
 private:
@@ -85,7 +82,8 @@ private:
     bridge->update_frame(actor);
   }
 
-  auto position_them(std::array<double, 3> focal_point, emscripten::val lambda_set_focal, float dt) -> float {
+  auto position_them(std::array<double, 3> focal_point,
+                     emscripten::val lambda_set_focal, float dt) -> float {
     if (auto *pB = static_cast<positioning_bridge *>(bridge.get())) {
       auto eps = 0.01f;
       if (dt == 0) {
@@ -97,7 +95,8 @@ private:
         m_pt1 = neighbors.info.second;
         m_ray = tf::make_ray_between_points(pt0, m_pt1);
 
-        tf::point<double, 3> old_focal = {focal_point[0], focal_point[1], focal_point[2]};
+        tf::point<double, 3> old_focal = {focal_point[0], focal_point[1],
+                                          focal_point[2]};
         tf::point<double, 3> new_focal = m_pt1;
         m_focal_ray = tf::make_ray_between_points(old_focal, new_focal);
         m_prev_pt = m_ray.origin;
@@ -113,7 +112,7 @@ private:
         move_selected(selected_actor, pt - m_prev_pt);
         auto focal = m_focal_ray(s_t);
         selected_actor->set_color(color[0], color[1], color[2]);
-        lambda_set_focal(focal[0],focal[1], focal[2]);
+        lambda_set_focal(focal[0], focal[1], focal[2]);
         m_prev_pt = pt;
         return t;
       }
@@ -131,20 +130,20 @@ private:
   }
 
 public:
-  bool get_value() {
-    return selected_mode;
-  }
+  auto get_value() -> bool { return selected_mode; }
 
-  auto OnLeftButtonUpCustom(std::array<double, 3> focal_point, emscripten::val lambda_set_focal, float dt) -> float {
+  auto OnLeftButtonUpCustom(std::array<double, 3> focal_point,
+                            emscripten::val lambda_set_focal, float dt)
+      -> float {
     if (get_value() || moving_mode) {
       selected_mode = false;
       moving_mode = true;
-      auto newT = position_them(focal_point, lambda_set_focal, dt);
-      if (newT == 1) {
+      auto new_t = position_them(focal_point, lambda_set_focal, dt);
+      if (new_t == 1) {
         reset_active_color(selected_actor);
         moving_mode = false;
       }
-      return newT;
+      return new_t;
     } else if (camera_mode) {
       camera_mode = false;
     }
@@ -153,7 +152,8 @@ public:
   }
 
   auto OnLeftButtonDown() -> bool override {
-    if (moving_mode) return true;
+    if (moving_mode)
+      return true;
     if (selected_actor) {
       selected_mode = true;
       return true;
@@ -163,20 +163,22 @@ public:
     return false;
   }
 
-  auto OnMouseMove(std::array<float, 3> origin, std::array<float, 3> direction,
-                   std::array<float, 3> cameraPosition,
-                   std::array<float, 3> cameraFocalPoint) -> bool override {
-    if (moving_mode) return true;
+  auto OnMouseMove(std::array<float, 3> origin,
+                   std::array<float, 3> direction,
+                   std::array<float, 3> camera_position,
+                   std::array<float, 3> camera_focal_point) -> bool override {
+    if (moving_mode)
+      return true;
     tf::ray<float, 3> ray{origin, direction};
     if (!selected_mode && !camera_mode) {
       auto [actor, point] = bridge->ray_hit(ray);
       if (actor) {
-        make_moving_plane(point, cameraPosition, cameraFocalPoint);
+        make_moving_plane(point, camera_position, camera_focal_point);
         if (selected_actor != actor) {
           reset_active_color(selected_actor);
           set_active_color(actor);
         }
-        this->last_point = point;
+        last_point = point;
       } else {
         reset_active_color(selected_actor);
       }
@@ -184,8 +186,8 @@ public:
       return true;
     } else if (selected_mode) {
       auto next_point = tf::ray_hit(ray, moving_plane).point;
-      dx = next_point - this->last_point;
-      this->last_point = next_point;
+      dx = next_point - last_point;
+      last_point = next_point;
       cursor_interactor_interface::move_selected(selected_actor);
       return true;
     } else if (camera_mode) {
@@ -204,10 +206,10 @@ int run_main_positioning(std::vector<std::string> &paths) {
   std::size_t total_polygons = 0;
 
   for (int i = 0; i < 2; ++i) {
-    auto path_index =
-        i < static_cast<int>(paths.size()) ? i : static_cast<int>(paths.size() - 1);
+    auto path_index = i < static_cast<int>(paths.size())
+                          ? i
+                          : static_cast<int>(paths.size() - 1);
     const auto &path = paths[path_index];
-    std::cout << "Reading file: " << path << std::endl;
     auto poly = tf::read_stl<int>(path);
     if (!poly.size()) {
       throw std::runtime_error("Failed to read file " + path);

@@ -2,20 +2,17 @@
 #include "trueform/core/curves_buffer.hpp"
 #include "trueform/io/read_stl.hpp"
 #include "trueform/random.hpp"
-#include "trueform/trueform.hpp"
 #include "trueform/spatial/form.hpp"
 #include "trueform/spatial/ray_cast.hpp"
-
+#include "trueform/trueform.hpp"
 #include "main.h"
-#include "utils/utils.h"
 #include "utils/bridge_web.h"
 #include "utils/cursor_interactor_interface.h"
-
+#include "utils/utils.h"
 #include <filesystem>
 #include <set>
 #include <string>
 #include <string_view>
-
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
 
@@ -41,7 +38,9 @@ public:
 
 class cursor_interactor_collision : public cursor_interactor_interface {
 public:
-  cursor_interactor_collision() : cursor_interactor_interface(std::make_unique<tf_bridge_collision>()) {}
+  cursor_interactor_collision()
+      : cursor_interactor_interface(
+            std::make_unique<tf_bridge_collision>()) {}
 
 private:
   std::vector<float> pick_times;
@@ -51,28 +50,17 @@ private:
   std::array<double, 3> selected_mesh_color{1, 0.9, 1};
   std::set<mesh_object *> colliding;
 
-
   auto add_pick_time(float t) {
-    auto pick_time = add_time(pick_times, t);
-    char buffer[64];
-    std::snprintf(buffer, sizeof(buffer), "Picking time per frame: %.1f mcs",
-                  pick_time * 1000);
-    std::cout << buffer << std::endl;
-    m_pick_time = pick_time;
+    m_pick_time = add_time(pick_times, t);
   }
 
   auto add_collide_time(float t) {
-    auto collide_time = add_time(collide_times, t);
-    char buffer[64];
-    std::snprintf(buffer, sizeof(buffer), "Collision time per frame: %.1f mcs",
-                  collide_time * 1000);
-    std::cout << buffer << std::endl;
-    m_time = collide_time;
+    m_time = add_time(collide_times, t);
   }
 
   auto handle_collisions() {
     tf::tick();
-    if(auto pB = static_cast<tf_bridge_collision*>(bridge.get())) {
+    if (auto *pB = static_cast<tf_bridge_collision *>(bridge.get())) {
       pB->intersects_any(selected_actor, colliding);
       add_collide_time(tf::tock());
       for (auto &actor : pB->get_actors()) {
@@ -102,7 +90,7 @@ public:
 
   auto reset_colliding_colors() -> void {
     colliding.clear();
-    if(auto pB = static_cast<tf_bridge_collision*>(bridge.get())) {
+    if (auto *pB = static_cast<tf_bridge_collision *>(bridge.get())) {
       for (auto &actor : pB->get_actors()) {
         if (actor.get() != selected_actor)
           reset_active_color(actor.get());
@@ -127,19 +115,22 @@ public:
     return false;
   }
 
-  auto OnMouseMove(std::array<float, 3> origin, std::array<float, 3> direction, std::array<float, 3> cameraPosition, std::array<float, 3> cameraFocalPoint) -> bool override {
+  auto OnMouseMove(std::array<float, 3> origin,
+                   std::array<float, 3> direction,
+                   std::array<float, 3> camera_position,
+                   std::array<float, 3> camera_focal_point) -> bool override {
     tf::ray<float, 3> ray{origin, direction};
     if (!selected_mode && !camera_mode) {
       tf::tick();
       auto [actor, point] = bridge->ray_hit(ray);
       add_pick_time(tf::tock());
       if (actor) {
-        make_moving_plane(point, cameraPosition, cameraFocalPoint);
+        make_moving_plane(point, camera_position, camera_focal_point);
         if (selected_actor != actor) {
           reset_active_color(selected_actor);
           set_active_color(actor);
         }
-        this->last_point = point;
+        last_point = point;
       } else {
         reset_active_color(selected_actor);
       }
@@ -147,25 +138,24 @@ public:
       return true;
     } else if (selected_mode) {
       auto next_point = tf::ray_hit(ray, moving_plane).point;
-      dx = next_point - this->last_point;
-      this->last_point = next_point;
+      dx = next_point - last_point;
+      last_point = next_point;
       move_selected(selected_actor);
       handle_collisions();
       return true;
     } else if (camera_mode) {
-        return false;
+      return false;
     }
     return false;
   }
 };
 
-int run_main_collisions(std::vector<std::string>& paths) {
+int run_main_collisions(std::vector<std::string> &paths) {
   std::vector<std::unique_ptr<mesh_object>> polys;
   std::vector<tf::tree<int, float, 3>> trees;
 
   for (int i = 0; i < static_cast<int>(paths.size()); ++i) {
     auto poly = tf::read_stl<int>(paths[i]);
-    std::cout << "run main 0: " << poly.size() << std::endl;
     if (!poly.size())
       continue;
     utils::center_and_scale_p(poly);
@@ -192,8 +182,10 @@ int run_main_collisions(std::vector<std::string>& paths) {
       total_polygons += actor->poly_object.size();
       interactor->push_back_with_objects(std::move(actor), trees[poly_index]);
       auto a = interactor->get_actors().back().get();
-      if(auto pI = dynamic_cast<cursor_interactor_collision*>(interactor.get()))
+      if (auto *pI =
+              dynamic_cast<cursor_interactor_collision *>(interactor.get())) {
         pI->reset_active_color(a);
+      }
       poly_index = (poly_index + 1) % polys.size();
     }
   }

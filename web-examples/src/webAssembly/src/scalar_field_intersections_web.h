@@ -1,19 +1,15 @@
 #pragma once
-
-#include <vector>
 #include <iostream>
 #include <stdexcept>
-
+#include <vector>
 #include "trueform/core/curves_buffer.hpp"
 #include "trueform/io/read_stl.hpp"
 #include "trueform/random.hpp"
 #include "trueform/trueform.hpp"
-
 #include "main.h"
-#include "utils/utils.h"
 #include "utils/bridge_web.h"
 #include "utils/cursor_interactor_interface.h"
-
+#include "utils/utils.h"
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
 
@@ -29,10 +25,12 @@ public:
   }
 };
 
-class cursor_interactor_scalar_field_intersections : public cursor_interactor_interface {
+class cursor_interactor_scalar_field_intersections
+    : public cursor_interactor_interface {
 public:
   cursor_interactor_scalar_field_intersections()
-      : cursor_interactor_interface(std::make_unique<scalar_field_intersections_bridge>()) {}
+      : cursor_interactor_interface(
+            std::make_unique<scalar_field_intersections_bridge>()) {}
 
 private:
   tf::buffer<float> scalars;
@@ -53,7 +51,8 @@ public:
     }
 
     tf::tick();
-    if (auto *pB = static_cast<scalar_field_intersections_bridge *>(bridge.get())) {
+    if (auto *pB =
+            static_cast<scalar_field_intersections_bridge *>(bridge.get())) {
       auto curves = pB->compute_isocontours(scalars, cutvalues);
       add_intersection_time(tf::tock());
       curve_mesh->set_curves_object(std::move(curves));
@@ -77,7 +76,8 @@ public:
   }
 
 public:
-  auto OnMouseMove(std::array<float, 3>, std::array<float, 3>, std::array<float, 3>, std::array<float, 3>) -> bool override {
+  auto OnMouseMove(std::array<float, 3>, std::array<float, 3>,
+                   std::array<float, 3>, std::array<float, 3>) -> bool override {
     return false;
   }
 
@@ -101,9 +101,7 @@ public:
 };
 
 int run_main_scalar_field_intersections(std::string path) {
-  std::cout << "Reading file: " << path << std::endl;
   auto poly = tf::read_stl<int>(path);
-  std::cout << "scalar_field_intersections: " << poly.size() << " polygons" << std::endl;
   if (!poly.size()) {
     throw std::runtime_error("Failed to read mesh for scalar field intersections");
   }
