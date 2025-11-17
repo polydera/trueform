@@ -55,18 +55,18 @@ onMounted(() => {
 
 <template>
   <div style="display: flex; flex-direction: column; width: 100%; height: 100%;">
-    <div style="display: flex; flex-direction: row; justify-content: space-evenly;">
+    <div style="display: flex; flex-direction: row; flex: 1 1 0;">
+      <div ref="threejsContainer" id="threejsContainer" style="height: 100%; width: 100%; margin: 0; padding: 0;"></div>
+    </div>
+    <div style="display: flex; flex-direction: row; justify-content: space-evenly; margin: 10px;">
       <div style="display: flex; flex-direction: column;">
         <span>Total polygons in scene: {{totalPolygons}}</span>
-        <span>Intersection curve time per scroll: {{avgTime}} mcs</span>
+        <span>Intersection curve time per scroll: {{avgTime}} ms</span>
         <span>Press n to randomize mesh orientation.</span>
       </div>
       <div style="display: flex; flex-direction: column;">
         <span style="white-space: pre-line; font-weight: bold">Grab and drag a mesh to test.<br>Intersection curves are shown.<br>Powered by trueform.</span>
       </div>
-    </div>
-    <div style="display: flex; flex-direction: row; flex: 1 1 0; margin-top: 20px;">
-      <div ref="threejsContainer" id="threejsContainer" style="height: 100%; width: 100%; margin: 0; padding: 0;"></div>
     </div>
   </div>
 </template>

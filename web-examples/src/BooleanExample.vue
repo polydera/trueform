@@ -58,19 +58,19 @@ onMounted(() => {
 
 <template>
 
-  <div style="display: flex; flex-direction: column; width: 100%; height: 100%;">
-    <div style="display: flex; flex-direction: row; justify-content: space-evenly;">
+  <div style="display: flex; flex-direction: column; width: 100%; height: 100%">
+    <div style="display: flex; flex-direction: row; flex: 1 1 0">
+      <div ref="threejsContainer" id="threejsContainer" style="height: 100%; width: 100%; margin: 0; padding: 0;"></div>
+      <div ref="threejsContainer2" id="threejsContainer2" style="height: 100%; width: 100%; margin: 0; padding: 0;"></div>
+    </div>
+    <div style="display: flex; flex-direction: row; justify-content: space-evenly; margin: 10px">
       <div style="display: flex; flex-direction: column;">
-        <span>Boolean time per frame: {{avgTime}} mcs</span>
+        <span>Boolean time per frame: {{avgTime}} ms</span>
         <span>Press n to randomize mesh orientation.</span>
       </div>
       <div style="display: flex; flex-direction: column;">
         <span style="white-space: pre-line; font-weight: bold">Grab a mesh and move it.<br>See the intersection curve and the difference mesh.<br>Powered by trueform.</span>
       </div>
-    </div>
-    <div style="display: flex; flex-direction: row; flex: 1 1 0; margin-top: 20px;">
-      <div ref="threejsContainer" id="threejsContainer" style="height: 100%; width: 100%; margin: 0; padding: 0;"></div>
-      <div ref="threejsContainer2" id="threejsContainer2" style="height: 100%; width: 100%; margin: 0; padding: 0;"></div>
     </div>
   </div>
 </template>

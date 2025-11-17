@@ -12,9 +12,9 @@ interface ExampleRoute extends RouteRecordSingleView {
 
 export const exampleRoutes: ExampleRoute[] = [
     { path: "/collision-example", component: CollisionExample, label: "Collision Example" },
-    { path: "/boolean-example", component: BooleanExample, label: "Boolean Example" },
     { path: "/positioning-example", component: PositioningExample, label: "Positioning Example" },
-    { path: "/forms-intersections-example", component: FormsIntersectionsExample, label: "Forms Intersections Example" },
-    { path: "/isobands-example", component: IsobandsExample, label: "Isobands Example" },
     { path: "/scalar-field-intersections", component: ScalarFieldIntersections, label: "Scalar Field Intersections" },
+    { path: "/isobands-example", component: IsobandsExample, label: "Isobands Example" },
+    { path: "/forms-intersections-example", component: FormsIntersectionsExample, label: "Forms Intersections Example" },
+    { path: "/boolean-example", component: BooleanExample, label: "Boolean Example" },
 ];
