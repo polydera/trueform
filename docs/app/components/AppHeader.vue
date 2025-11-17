@@ -2,8 +2,14 @@
 import type { ContentNavigationItem } from "@nuxt/content";
 
 const navigation = inject<Ref<ContentNavigationItem[]>>("navigation");
+const route = useRoute();
 
 const { header } = useAppConfig();
+
+const showLibPicker = computed(() => {
+  // Hide on root index page and error page
+  return route.path !== "/" && route.name !== "error";
+});
 </script>
 
 <template>
@@ -32,6 +38,8 @@ const { header } = useAppConfig();
     </template>
 
     <template #right>
+      <LibPicker v-if="showLibPicker" class="mr-3" />
+
       <UContentSearchButton v-if="header?.search" class="lg:hidden" />
 
       <UColorModeButton v-if="header?.colorMode" />

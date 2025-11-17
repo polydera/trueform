@@ -8,6 +8,8 @@ endif()
 
 
 option(ENABLE_ASAN "Enable Address Sanitizer" OFF)
+option(BUILD_EXAMPLES "Build examples." ON)
+option(BUILD_EXAMPLES_WEB "Build examples for web." OFF)
 
 if(ENABLE_ASAN)
   message("Enabling ASAN and DEBUG")
@@ -31,7 +33,7 @@ if(NOT TBB_FOUND)
   FetchContent_Declare(
     tbb
     GIT_REPOSITORY https://github.com/oneapi-src/oneTBB.git
-    GIT_TAG v2021.11.0)
+    GIT_TAG v2021.13.1)
   set(TBB_TEST
       OFF
       CACHE BOOL "Disable TBB tests" FORCE)
@@ -45,7 +47,12 @@ target_include_directories(
                      $<INSTALL_INTERFACE:include>)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-add_subdirectory(examples EXCLUDE_FROM_ALL)
+if(BUILD_EXAMPLES)
+  add_subdirectory(examples EXCLUDE_FROM_ALL)
+elseif(BUILD_EXAMPLES_WEB AND EMSCRIPTEN)
+  # Special case for web examples which require Emscripten as host compiler
+  add_subdirectory(examples/web)
+endif()
 add_subdirectory(python)
 
 include(GNUInstallDirs)

@@ -6,11 +6,10 @@ export default defineContentConfig({
       type: 'page',
       source: 'index.md'
     }),
-    docs: defineCollection({
+    docsCpp: defineCollection({
       type: 'page',
       source: {
-        include: '**',
-        exclude: ['index.md']
+        include: 'cpp/**',
       },
       schema: z.object({
         links: z.array(z.object({
@@ -20,6 +19,20 @@ export default defineContentConfig({
           target: z.string().optional()
         })).optional()
       })
-    })
+    }),
+    docsPy: defineCollection({
+      type: 'page',
+      source: {
+        include: 'py/**',
+      },
+      schema: z.object({
+        links: z.array(z.object({
+          label: z.string(),
+          icon: z.string(),
+          to: z.string(),
+          target: z.string().optional()
+        })).optional()
+      })
+    }),
   }
 })

@@ -2,12 +2,7 @@
 const { seo } = useAppConfig();
 const config = useRuntimeConfig();
 
-const { data: navigation } = await useAsyncData("navigation", () =>
-  queryCollectionNavigation("docs"),
-);
-const { data: files } = useLazyAsyncData("search", () => queryCollectionSearchSections("docs"), {
-  server: false,
-});
+const { navigation, files } = useLibraryCollection();
 
 useHead({
   meta: [{ name: "viewport", content: "width=device-width, initial-scale=1" }],

@@ -1,0 +1,75 @@
+import { MainModule } from './webAssembly/dist/native.js';
+import { fitCameraToAllMeshesFromZPlane } from './utils/sceneUtils';
+import {
+    buffersToCurves,
+    createBasicCurveLineObjects,
+    createCurveLineObjects,
+    curvesToCurveLines,
+    curvesToCurvePolyOpts,
+    updateBasicCurveLines
+} from "@/utils/utlis";
+import { TestClassThreejsBase } from "@/TestThreejsBase";
+
+export class ScalarFieldIntersectionsExample extends TestClassThreejsBase {
+    private curveObjects: any;
+    private useBasicLines = false;
+    private keyPressed = false;
+
+    constructor(wasmInstance: MainModule, paths: string[], container: HTMLElement) {
+        super(wasmInstance, paths, container, undefined, true);
+
+        const interceptKeyDownEvent = (event: KeyboardEvent) => {
+            if (this.keyPressed) return;
+            this.keyPressed = true;
+            this.wasmInstance.OnKeyPress(event.key);
+            this.updateMeshes();
+        };
+        const interceptKeyUpEvent = (_event: KeyboardEvent) => {
+            this.keyPressed = false;
+        };
+        window.addEventListener('keydown', interceptKeyDownEvent);
+        window.addEventListener('keyup', interceptKeyUpEvent);
+
+        const interceptWheelEvent = (event: WheelEvent) => {
+            if (!event.shiftKey) return;
+            const delta = event.deltaY !== 0 ? event.deltaY : event.deltaX;
+            if (delta === 0) return;
+            const normalizedDelta = delta / Math.abs(delta);
+            this.wasmInstance.OnMouseWheel(normalizedDelta, event.shiftKey);
+            this.updateMeshes();
+        };
+        window.addEventListener('wheel', interceptWheelEvent);
+
+        const opts: curvesToCurvePolyOpts = {
+            tubeColor: 0xffaa00,
+            lineWidth: 0.2
+        };
+        this.curveObjects = this.useBasicLines ? createBasicCurveLineObjects(opts) : createCurveLineObjects(opts);
+        this.sceneBundle1.scene.add(this.curveObjects.lines);
+
+        this.updateMeshes();
+        fitCameraToAllMeshesFromZPlane(this.sceneBundle1);
+    }
+
+    public runMain() {
+        this.wasmInstance.run_main_scalar_field_intersections(this.paths[0]);
+        this.wasmInstance.FS.unlink(this.paths[0]);
+    }
+
+    public updateMeshes() {
+        super.updateMeshes();
+
+        const cO = this.wasmInstance.get_curve_mesh();
+        if (cO && cO.polydata_updated) {
+            const points = cO.get_curve_points();
+            const ids = cO.get_curve_ids();
+            const offsets = cO.get_curve_offsets();
+            const lines = buffersToCurves(points, ids, offsets);
+            if (this.useBasicLines) {
+                updateBasicCurveLines(lines, this.curveObjects);
+            } else {
+                curvesToCurveLines(lines, this.curveObjects, { samplesPerSegment: 3, tension: 0.5 });
+            }
+        }
+    }
+}

@@ -7,21 +7,26 @@ definePageMeta({
 });
 
 const route = useRoute();
+const { collection } = useLibraryCollection();
 const { toc } = useAppConfig();
 const navigation = inject<Ref<ContentNavigationItem[]>>("navigation");
 
-const { data: page } = await useAsyncData(route.path, () =>
-  queryCollection("docs").path(route.path).first(),
+const { data: page } = await useAsyncData(
+  () => `${collection.value}-${route.path}`,
+  () => queryCollection(collection.value).path(route.path).first(),
 );
 if (!page.value) {
   throw createError({ statusCode: 404, statusMessage: "Page not found", fatal: true });
 }
 
-const { data: surround } = await useAsyncData(`${route.path}-surround`, () => {
-  return queryCollectionItemSurroundings("docs", route.path, {
-    fields: ["description"],
-  });
-});
+const { data: surround } = await useAsyncData(
+  () => `${collection.value}-${route.path}-surround`,
+  () => {
+    return queryCollectionItemSurroundings(collection.value, route.path, {
+      fields: ["description"],
+    });
+  },
+);
 
 const title = page.value.seo?.title || page.value.title;
 const description = page.value.seo?.description || page.value.description;

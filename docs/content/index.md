@@ -20,9 +20,18 @@ Real-time [geometric processing]{.text-primary} for C++.
 #links
   :::u-button
   ---
-  to: /getting-started
+  to: /cpp/getting-started
   size: xl
-  trailing-icon: i-lucide-arrow-right
+  trailing-icon: i-vscode-icons:file-type-cpp
+  ---
+  Get started
+  :::
+
+  :::u-button
+  ---
+  to: /py/getting-started
+  size: xl
+  trailing-icon: i-vscode-icons:file-type-python
   ---
   Get started
   :::
@@ -53,7 +62,7 @@ Why trueform
   ---
   color: neutral
   size: lg
-  to: /modules/core
+  to: /cpp/modules/core
   trailingIcon: i-lucide-arrow-right
   variant: subtle
   ---
@@ -64,7 +73,7 @@ Why trueform
   ---
   color: neutral
   size: lg
-  to: /benchmarks
+  to: /cpp/benchmarks
   trailingIcon: i-lucide-chart-line
   variant: subtle
   ---
@@ -144,10 +153,10 @@ Why trueform
   ---
   links:
     - label: Read the tutorial
-      to: '/modules/core'
+      to: '/cpp/modules/core'
       trailingIcon: i-lucide-arrow-right
     - label: View benchmarks
-      to: '/benchmarks'
+      to: '/cpp/benchmarks'
       variant: subtle
       trailingIcon: i-lucide-chart-line
   title: Ready to build real-time geometry?
