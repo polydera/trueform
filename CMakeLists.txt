@@ -9,7 +9,7 @@ endif()
 
 option(ENABLE_ASAN "Enable Address Sanitizer" OFF)
 option(BUILD_EXAMPLES "Build examples." ON)
-option(BUILD_EXAMPLES_WEB "Build examples for web." OFF)
+option(BUILD_PYTHON "Build Python bindings." ON)
 
 if(ENABLE_ASAN)
   message("Enabling ASAN and DEBUG")
@@ -49,11 +49,10 @@ target_include_directories(
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 if(BUILD_EXAMPLES)
   add_subdirectory(examples EXCLUDE_FROM_ALL)
-elseif(BUILD_EXAMPLES_WEB AND EMSCRIPTEN)
-  # Special case for web examples which require Emscripten as host compiler
-  add_subdirectory(examples/web)
 endif()
-add_subdirectory(python)
+if(BUILD_PYTHON)
+  add_subdirectory(python)
+endif()
 
 include(GNUInstallDirs)
 
