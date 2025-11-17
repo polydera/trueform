@@ -1,12 +1,12 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
 #include "../core/offset_block_buffer.hpp"
-#include "./face_membership.hpp"
+#include "./face_membership_like.hpp"
 #include "./structures/compute_face_link.hpp"
 
 namespace tf {
@@ -15,8 +15,8 @@ class face_link : public offset_block_buffer<Index, Index> {
   using base_t = offset_block_buffer<Index, Index>;
 
 public:
-  template <typename Range>
-  auto build(const Range &blocks, const tf::face_membership<Index> &blink)
+  template <typename Range, typename Policy>
+  auto build(const Range &blocks, const tf::face_membership_like<Policy> &blink)
       -> void {
     base_t::offsets_buffer().allocate(blocks.size() + 1);
     // assume a closed triangular mesh

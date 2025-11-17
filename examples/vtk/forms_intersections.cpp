@@ -12,7 +12,6 @@
 #include "vtkRenderer.h"
 #include "vtkTextActor.h"
 #include "vtkTextProperty.h"
-#include "vtkTubeFilter.h"
 #include <filesystem>
 #include <string>
 #include <string_view>
@@ -125,11 +124,7 @@ private:
     auto curves = bridge.compute_intersection_curves();
     add_time(tf::tock());
     auto tmp_poly = curves_to_polydata(curves.curves());
-    auto tubes = vtk_make_unique<vtkTubeFilter>();
-    tubes->SetRadius(0.05);
-    tubes->SetInputData(tmp_poly.get());
-    tubes->Update();
-    curve_poly->ShallowCopy(tubes->GetOutput());
+    curve_poly->ShallowCopy(tmp_poly.get());
     curve_poly->Modified();
   }
 
@@ -312,6 +307,9 @@ int main(int argc, char *argv[]) {
   cactor->SetMapper(cmapper.get());
   cmapper->SetInputData(curve_poly.get());
   cactor->GetProperty()->SetColor(1, 0.1, 0.1);
+  // Render lines as tubes (GPU-accelerated, no geometry generation needed)
+  cactor->GetProperty()->SetRenderLinesAsTubes(true);
+  cactor->GetProperty()->SetLineWidth(8.0);
   renderer->AddActor(cactor.get());
 
   renderer->SetBackground(27. / 255, 43. / 255, 52. / 255);

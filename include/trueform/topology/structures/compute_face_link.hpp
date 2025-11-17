@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -9,12 +9,12 @@
 #include "../../core/offset_block_buffer.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "../face_edge_neighbors.hpp"
-#include "../face_membership.hpp"
+#include "../face_membership_like.hpp"
 
 namespace tf::topology {
-template <typename Range, typename Index>
+template <typename Range, typename Policy, typename Index>
 auto compute_face_link(const Range &faces,
-                       const tf::face_membership<Index> &blink,
+                       const tf::face_membership_like<Policy> &blink,
                        tf::buffer<Index> &offsets, tf::buffer<Index> &data) {
 
   auto fill_f = [&](Index face_id, tf::buffer<Index> &ids) {
@@ -30,9 +30,9 @@ auto compute_face_link(const Range &faces,
                              data, fill_f);
 }
 
-template <typename Range, typename Index>
+template <typename Range, typename Policy, typename Index>
 auto compute_face_link(const Range &faces,
-                       const tf::face_membership<Index> &blink,
+                       const tf::face_membership_like<Policy> &blink,
                        tf::offset_block_buffer<Index, Index> &buff) {
   compute_face_link(faces, blink, buff.offsets_buffer(), buff.data_buffer());
 }

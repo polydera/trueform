@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -9,7 +9,7 @@
 #include "../core/faces.hpp"
 #include "../core/offset_block_buffer.hpp"
 #include "./boundary_edges.hpp"
-#include "./face_membership.hpp"
+#include "./face_membership_like.hpp"
 #include "./find_eulerian_paths.hpp"
 
 namespace tf {
@@ -27,9 +27,9 @@ auto make_boundary_paths(const tf::edges<Policy> &edges,
   return buffer;
 }
 
-template <typename Policy, typename Index>
+template <typename Policy, typename Policy1>
 auto make_boundary_paths(const tf::faces<Policy> &faces,
-                         const tf::face_membership<Index> &fm) {
+                         const tf::face_membership_like<Policy1> &fm) {
   auto edges = tf::make_boundary_edges(faces, fm);
   return tf::make_boundary_paths(tf::make_edges(edges), fm.size());
 }

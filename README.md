@@ -12,7 +12,7 @@ The library integrates directly at the call site: no boilerplate, no architectur
 
 - **Zero-copy views** - Work directly on your data layout with semantic geometric wrappers
 - **Composable policies** - Enrich primitives with metadata (id, normal, state) via `tf::tag` and `tf::zip`
-- **Spatial acceleration** - `tf::tree` for k-NN, neighbor search, ray casting, and broad-phase queries
+- **Spatial acceleration** - `tf::tree` for k-NN, neighbor search, ray casting, and spatial queries
 - **Topology** - Connectivity structures, path finding, planar embeddings
 - **Intersections** - Mesh-mesh curves, self-intersections, scalar field isocontours, planar arrangements
 - **Cut operations** - Embed curves as edges, boolean operations
@@ -158,30 +158,28 @@ See [LICENSE.noncommercial](./LICENSE.noncommercial) and [license documentation]
 
 ## Contributing
 
-Contributors certify that their work may be distributed under both the PolyForm Noncommercial License and any commercial licenses XLAB offers. See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
+We welcome contributions! Browse [open issues](https://github.com/xlabmedical/trueform/issues) labeled by difficulty (`easy`, `medium`, `hard`) to find something that matches your experience level.
+
+**Get Started:**
+- 📖 Read the full contributing guide: [CONTRIBUTING.md](./CONTRIBUTING.md)
+- 🌐 View on the documentation site: [Contributing Guide](https://xlabmedical.github.io/trueform/about/contributing)
+
+By contributing, you certify that your work may be distributed under both the PolyForm Noncommercial License and any commercial licenses XLAB offers.
 
 ## Citation
 
-If you use trueform in your research, please cite:
+If you use trueform in your work, please cite:
 
 ```bibtex
-@article{sajovic2025tree,
-  title={tf::tree: A General-Purpose Spatial Hierarchy for Real-Time Geometry Queries},
-  author={Sajovic, {\v{Z}}iga and Knez, Dejan and Korez, Robert},
-  journal={IEEE TechRxiv},
-  year={2025},
-  doi={10.36227/techrxiv.174952959.92977743/v1}
-}
-
-@article{sajovic2025booleans,
-  title={Real-Time Mesh Booleans that Commute with Mesh Idealization},
-  author={Sajovic, {\v{Z}}iga and Knez, Dejan},
-  journal={IEEE TechRxiv},
-  year={2025},
-  doi={10.36227/techrxiv.174667714.42575478/v1}
+@software{trueform2025,
+    title={trueform: Real-time Geometric Processing},
+    author={Sajovic, {\v{Z}}iga and {et al.}},
+    year={2025},
+    url={https://github.com/xlabmedical/trueform},
+    note={Header-only C++ library for real-time geometric processing built on composable range-based policies. Features spatial acceleration,
+    topology, intersections, boolean operations, and parallel algorithms.}
 }
 ```
-
 ---
 
 **Developed by [XLAB](https://xlab.si)**

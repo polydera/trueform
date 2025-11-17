@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -26,11 +26,11 @@ template <typename T, std::size_t Dims> struct trans_view {
   }
 
   auto operator()(std::size_t i, std::size_t j) const -> decltype(auto) {
-    return _trans_view[i * Dims + j];
+    return _trans_view[i * n_columns + j];
   }
 
   auto operator()(std::size_t i, std::size_t j) -> decltype(auto) {
-    return _trans_view[i * Dims + j];
+    return _trans_view[i * n_columns + j];
   }
 
 private:
@@ -57,11 +57,11 @@ template <typename T, std::size_t Dims> struct trans_view<const T, Dims> {
   constexpr auto columns() const -> std::size_t { return Dims + 1; }
 
   auto operator()(std::size_t i, std::size_t j) const -> decltype(auto) {
-    return _trans_view[i * Dims + j];
+    return _trans_view[i * n_columns + j];
   }
 
   auto operator()(std::size_t i, std::size_t j) -> decltype(auto) {
-    return _trans_view[i * Dims + j];
+    return _trans_view[i * n_columns + j];
   }
 
 private:

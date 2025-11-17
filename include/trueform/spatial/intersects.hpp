@@ -1,13 +1,12 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
 
 #include "../core/intersects.hpp"
-#include "./ray_cast.hpp"
 #include "./search.hpp"
 
 namespace tf {
@@ -23,7 +22,7 @@ auto intersects(const tf::form<Dims, Policy0> &form,
                 const tf::point_like<Dims, Policy1> &obj) -> bool {
   return tf::search(
       form, [&](const auto &aabb) { return intersects(aabb, obj); },
-      tf::intersects_f);
+      [&](const auto &other) { return tf::intersects(other, obj); });
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>
@@ -38,25 +37,33 @@ auto intersects(const tf::form<Dims, Policy0> &form,
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const tf::form<Dims, Policy0> &form,
                 const tf::segment<Dims, Policy1> &obj) -> bool {
-  auto ray = tf::make_ray_between_points(obj[0], obj[1]);
-  using real_t = tf::coordinate_type<decltype(ray.origin)>;
-  return tf::ray_cast(ray, form, tf::make_ray_config(real_t(0), real_t(1)));
+  return tf::search(
+      form, [&](const auto &aabb) { return intersects(aabb, obj); },
+      [&](const auto &other) { return tf::intersects(other, obj); });
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy>
 auto intersects(const tf::form<Dims, Policy0> &form,
                 const tf::ray_like<Dims, Policy> &obj) -> bool {
-  return tf::ray_cast(obj, form);
+  return tf::search(
+      form, [&](const auto &aabb) { return intersects(aabb, obj); },
+      [&](const auto &other) { return tf::intersects(other, obj); });
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy>
 auto intersects(const tf::form<Dims, Policy0> &form,
                 const tf::line_like<Dims, Policy> &obj) -> bool {
-  auto ray = tf::make_ray(obj.origin, obj.direction);
-  using real_t = tf::coordinate_type<Policy0, Policy>;
-  return tf::ray_cast(ray, form,
-                      tf::make_ray_config(-std::numeric_limits<real_t>::max(),
-                                          std::numeric_limits<real_t>::max()));
+  return tf::search(
+      form, [&](const auto &aabb) { return intersects(aabb, obj); },
+      [&](const auto &other) { return tf::intersects(other, obj); });
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy>
+auto intersects(const tf::form<Dims, Policy0> &form,
+                const tf::plane_like<Dims, Policy> &obj) -> bool {
+  return tf::search(
+      form, [&](const auto &aabb) { return intersects(aabb, obj); },
+      [&](const auto &other) { return tf::intersects(other, obj); });
 }
 
 } // namespace tf

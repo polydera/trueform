@@ -59,20 +59,29 @@ public:
     frames[id].fill(actors[id]->GetUserMatrix()->GetData());
   }
 
-  auto compute_boolean() {
-    auto form0 = tf::make_form(frames[0], trees[0],
-                               tf::make_polygons(get_triangle_faces(polys[0]),
-                                                 get_points(polys[0]))) //
-                 | tf::tag(face_memberships[0])                         //
-                 | tf::tag(manifold_edge_links[0]);
+  auto save_meshes() {
+    for (std::size_t i = 0; i < polys.size(); ++i) {
+      tf::write_stl(get_triangles(polys[i]) | tf::tag(frames[i]),
+                    "boolean_meshes_" + std::to_string(i));
+    }
+  }
 
-    auto form1 = tf::make_form(frames[1], trees[1],
-                               tf::make_polygons(get_triangle_faces(polys[1]),
-                                                 get_points(polys[1]))) //
-                 | tf::tag(face_memberships[1])                         //
-                 | tf::tag(manifold_edge_links[1]);
-    return tf::make_boolean(form0, form1, tf::boolean_op::left_difference,
-                            tf::return_curves);
+  auto compute_boolean() {
+    auto form0 =
+        tf::make_form(trees[0], tf::make_polygons(get_triangle_faces(polys[0]),
+                                                  get_points(polys[0]))) //
+        | tf::tag(manifold_edge_links[0])                                //
+        | tf::tag(face_memberships[0]);
+
+    auto form1 =
+        tf::make_form(trees[1], tf::make_polygons(get_triangle_faces(polys[1]),
+                                                  get_points(polys[1]))) //
+        | tf::tag(manifold_edge_links[1])                                //
+        | tf::tag(face_memberships[1]);
+    return tf::make_boolean(
+        form0 | tf::tag(tf::make_frame(frames[0].transformation())),
+        form1 | tf::tag(tf::make_frame(frames[1].transformation())),
+        tf::boolean_op::left_difference, tf::return_curves);
   }
 
   auto get_actors() -> std::vector<vtkActor *> & { return actors; }
@@ -81,7 +90,7 @@ private:
   std::map<vtkActor *, int> map;
   std::vector<vtkPolyData *> polys;
   std::vector<vtkActor *> actors;
-  std::vector<tf::frame<double, 3>> frames;
+  std::vector<tf::frame<float, 3>> frames;
   std::vector<tf::tree<int, float, 3>> trees;
   std::vector<tf::face_membership<int>> face_memberships;
   std::vector<tf::manifold_edge_link<int, 3>> manifold_edge_links;
@@ -245,6 +254,8 @@ public:
       randomize_rotations();
       compute_curves();
       this->Interactor->Render();
+    } else if (key == "s") {
+      bridge.save_meshes();
     } else {
       vtkInteractorStyleTrackballCamera::OnKeyPress();
     }

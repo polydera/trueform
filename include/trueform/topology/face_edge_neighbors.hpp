@@ -1,19 +1,21 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
+#include "../core/static_size.hpp"
 #include "./edge_id_in_face.hpp"
-#include "./face_membership.hpp"
+#include "./face_membership_like.hpp"
+
 namespace tf {
 namespace topology {
-template <typename Index, typename Range, typename F>
+template <typename Policy, typename Index, typename Range, typename F>
 auto face_edge_neighbors(std::integral_constant<std::size_t, 3>,
-                         const tf::face_membership<Index> &blink, const Range &,
-                         Index face_id, const Index &v0, const Index &v1,
-                         const F &apply) {
+                         const tf::face_membership_like<Policy> &blink,
+                         const Range &, Index face_id, const Index &v0,
+                         const Index &v1, const F &apply) {
 
   const auto &range0 = blink[v0];
   auto it0 = range0.begin();
@@ -34,9 +36,10 @@ auto face_edge_neighbors(std::integral_constant<std::size_t, 3>,
     }
   }
 }
-template <std::size_t N, typename Index, typename Range, typename F>
+template <std::size_t N, typename Policy, typename Index, typename Range,
+          typename F>
 auto face_edge_neighbors(std::integral_constant<std::size_t, N>,
-                         const tf::face_membership<Index> &blink,
+                         const tf::face_membership_like<Policy> &blink,
                          const Range &faces, Index face_id, const Index &v0,
                          const Index &v1, const F &apply) {
 
@@ -64,8 +67,8 @@ auto face_edge_neighbors(std::integral_constant<std::size_t, N>,
 }
 } // namespace topology
 
-template <typename Index, typename Range, typename F>
-auto face_edge_neighbors_apply(const tf::face_membership<Index> &blink,
+template <typename Index,typename Policy, typename Range, typename F>
+auto face_edge_neighbors_apply(const tf::face_membership_like<Policy> &blink,
                                const Range &faces, Index face_id,
                                const Index &v0, const Index &v1,
                                const F &apply) {
@@ -75,8 +78,8 @@ auto face_edge_neighbors_apply(const tf::face_membership<Index> &blink,
       blink, faces, face_id, v0, v1, apply);
 }
 
-template <typename Index, typename Range, typename Iterator>
-auto face_edge_neighbors(const tf::face_membership<Index> &blink,
+template <typename Index, typename Policy, typename Range, typename Iterator>
+auto face_edge_neighbors(const tf::face_membership_like<Policy> &blink,
                          const Range &faces, Index face_id, const Index &v0,
                          const Index &v1, Iterator out) {
   topology::face_edge_neighbors(
@@ -89,8 +92,8 @@ auto face_edge_neighbors(const tf::face_membership<Index> &blink,
   return out;
 }
 
-template <typename Index, typename Range, typename Iterator>
-auto face_edge_neighbors(const tf::face_membership<Index> &blink,
+template <typename Index, typename Policy, typename Range, typename Iterator>
+auto face_edge_neighbors(const tf::face_membership_like<Policy> &blink,
                          const Range &faces, Index face_id, const Index &v0,
                          const Index &v1, Iterator begin, Iterator end) {
   topology::face_edge_neighbors(

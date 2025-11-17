@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -21,6 +21,7 @@
 #include "./topology/face_membership.hpp"            // IWYU pragma: export
 #include "./topology/find_eulerian_paths.hpp"        // IWYU pragma: export
 #include "./topology/hole_patcher.hpp"               // IWYU pragma: export
+#include "./topology/is_closed.hpp"                  // IWYU pragma: export
 #include "./topology/label_connected_components.hpp" // IWYU pragma: export
 #include "./topology/make_applier.hpp"               // IWYU pragma: export
 #include "./topology/make_manifold_edge_connected_component_labels.hpp" // IWYU pragma: export

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -28,7 +28,8 @@ auto cleaned(const tf::polygons<Policy> &polygons,
   } else {
     auto [face_im, point_im] =
         tf::make_clean_index_map<Index>(polygons, tolerance);
-    return tf::reindexed(polygons, face_im, point_im);
+    return tf::reindexed(tf::make_polygons(polygons.faces(), polygons.points()),
+                         face_im, point_im);
   }
 }
 
@@ -46,7 +47,8 @@ auto cleaned(const tf::polygons<Policy> &polygons)
     return out;
   } else {
     auto [face_im, point_im] = tf::make_clean_index_map<Index>(polygons);
-    return tf::reindexed(polygons, face_im, point_im);
+    return tf::reindexed(tf::make_polygons(polygons.faces(), polygons.points()),
+                         face_im, point_im);
   }
 }
 
@@ -55,7 +57,9 @@ auto cleaned(const tf::core::polygons<Range0, Range1> &polygons,
              tf::coordinate_type<Range1> tolerance, tf::return_index_map_t) {
   auto [face_im, point_im] =
       tf::make_clean_index_map<Index>(polygons, tolerance);
-  auto out = tf::reindexed(polygons, face_im, point_im);
+  auto out =
+      tf::reindexed(tf::make_polygons(polygons.faces(), polygons.points()),
+                    face_im, point_im);
   return std::make_tuple(std::move(out), std::move(face_im),
                          std::move(point_im));
 }
@@ -64,7 +68,9 @@ template <typename Index, typename Range0, typename Range1>
 auto cleaned(const tf::core::polygons<Range0, Range1> &polygons,
              tf::return_index_map_t) {
   auto [face_im, point_im] = tf::make_clean_index_map<Index>(polygons);
-  auto out = tf::reindexed(polygons, face_im, point_im);
+  auto out =
+      tf::reindexed(tf::make_polygons(polygons.faces(), polygons.points()),
+                    face_im, point_im);
   return std::make_tuple(std::move(out), std::move(face_im),
                          std::move(point_im));
 }

@@ -11,13 +11,13 @@
 #include "../../core/offset_block_buffer.hpp"
 #include "../../core/views/indirect_range.hpp"
 #include "../../core/views/sequence_range.hpp"
-#include "../face_membership.hpp"
+#include "../face_membership_like.hpp"
 #include "../scoped_face_membership.hpp"
 
 namespace tf::topology {
-template <typename Range, typename Index>
+template <typename Range, typename Policy, typename Index>
 auto compute_vertex_link(const Range &input_blocks,
-                         const tf::face_membership<Index> &blink,
+                         const tf::face_membership_like<Policy> &blink,
                          tf::buffer<Index> &offsets, tf::buffer<Index> &data) {
   auto fill_f = [&input_blocks, &blink](Index id, tf::buffer<Index> &buff) {
     auto old_size = buff.size();
@@ -37,9 +37,9 @@ auto compute_vertex_link(const Range &input_blocks,
                              data, fill_f);
 }
 
-template <typename Range, typename Index>
+template <typename Range, typename Policy, typename Index>
 auto compute_vertex_link(const Range &input_blocks,
-                         const tf::face_membership<Index> &blink,
+                         const tf::face_membership_like<Policy> &blink,
                          tf::offset_block_buffer<Index, Index> &buff) {
   compute_vertex_link(input_blocks, blink, buff.offsets_buffer(),
                       buff.data_buffer());

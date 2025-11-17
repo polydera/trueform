@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -164,6 +164,33 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      tf::nearest_neighbors<RandomIter> &&knn) {
   return spatial::neighbor_search(form, tf::aabb_from(obj), tf::tag_plane(obj),
                                   knn);
+}
+
+template <typename Policy0, typename Policy1>
+auto neighbor_search(const tf::form<2, Policy0> &form,
+                     const tf::polygon<2, Policy1> &obj) {
+  return spatial::neighbor_search(form, tf::aabb_from(obj), obj);
+}
+
+template <typename Policy0, typename Policy1>
+auto neighbor_search(const tf::form<2, Policy0> &form,
+                     const tf::polygon<2, Policy1> &obj,
+                     typename Policy0::real_t radius) {
+  return spatial::neighbor_search(form, tf::aabb_from(obj), obj, radius);
+}
+
+template <typename Policy0, typename Policy1, typename RandomIter>
+auto neighbor_search(const tf::form<2, Policy0> &form,
+                     const tf::polygon<2, Policy1> &obj,
+                     tf::nearest_neighbors<RandomIter> &knn) {
+  return spatial::neighbor_search(form, tf::aabb_from(obj), obj, knn);
+}
+
+template <typename Policy0, typename Policy1, typename RandomIter>
+auto neighbor_search(const tf::form<2, Policy0> &form,
+                     const tf::polygon<2, Policy1> &obj,
+                     tf::nearest_neighbors<RandomIter> &&knn) {
+  return spatial::neighbor_search(form, tf::aabb_from(obj), obj, knn);
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>

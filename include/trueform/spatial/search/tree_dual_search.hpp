@@ -1,11 +1,12 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
 #include "../../core/range.hpp"
+#include "tbb/task_arena.h"
 #include "tbb/task_group.h"
 
 namespace tf::spatial {
@@ -25,7 +26,7 @@ struct tree_dual_search_params {
 template <typename Range0, typename Range1, typename Range2, typename Range3,
           typename F, typename F1, typename F2>
 auto tree_dual_search(
-    int id0, int id1, int depth,
+    std::size_t id0, std::size_t id1, int depth,
     const tree_dual_search_params<Range0, Range1, Range2, Range3, F, F1, F2>
         &params) {
   if (params.abort())
@@ -92,7 +93,8 @@ auto tree_dual_search(const Range0 &nodes0, const Range1 &ids0,
     return false;
   tree_dual_search_params<Range0, Range1, Range2, Range3, F, F1, F2> params{
       nodes0, ids0, nodes1, ids1, boxes_apply, apply, abort};
-  tree_dual_search(0, 0, paralelism_depth, params);
+  tbb::task_arena ta;
+  ta.execute([&] { tree_dual_search(0, 0, paralelism_depth, params); });
   return params.found;
 }
-} // namespace tf::implementation
+} // namespace tf::spatial

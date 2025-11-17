@@ -8,7 +8,7 @@
 #include <cmath>
 namespace tf::spatial {
 template <typename Index>
-auto max_nodes_in_tree(Index n_elements, Index inner_size, Index leaf_size) {
+auto max_nodes_in_tree(Index n_elements, int inner_size, int leaf_size) {
   n_elements = (n_elements + leaf_size - 1) / leaf_size;
   Index sum = 1;
   Index prod = 1;

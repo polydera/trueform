@@ -91,7 +91,7 @@ private:
     auto next_iter = std::find_if(_v_link[v_id].begin(), _v_link[v_id].end(),
                                   [](const auto &x) { return x != -1; });
     if (next_iter == _v_link[v_id].end())
-      return -1;
+      return Index(-1);
     auto next_id = *next_iter;
     *next_iter = -1;
     std::replace(_v_link[next_id].begin(), _v_link[next_id].end(), v_id,

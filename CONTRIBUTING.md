@@ -1,21 +1,90 @@
 # Contributing to trueform
 
-We welcome bug reports, feature requests, and patches from the community. To keep the project healthy and to support the dual-licensing model, please review the following before opening a pull request.
+We welcome contributions—bug fixes, new features, documentation, examples, and benchmarks.
+
+## Start with GitHub Issues
+
+Browse [open issues](https://github.com/xlabmedical/trueform/issues) labeled by difficulty:
+
+- **🟢 `difficulty: easy`** — Good first issues. Bug fixes, documentation, straightforward enhancements.
+- **🟡 `difficulty: medium`** — Features, refactors, complex bugs. Requires familiarity with the codebase.
+- **🔴 `difficulty: hard`** — Novel algorithms, architectural changes, deep geometric reasoning.
+
+Pick an issue, comment that you're working on it, and get started.
+
+**Interested in joining our team?** If you successfully tackle a hard-difficulty issue, we'd love to talk. Reach out to [ziga.sajovic@xlab.si](mailto:ziga.sajovic@xlab.si).
+
+## Building from Source
+
+```bash
+git clone https://github.com/xlabmedical/trueform.git
+cd trueform
+mkdir build && cd build
+cmake ..
+make -j8
+```
+
+Build examples:
+```bash
+make examples -j8
+```
+
+## Workflow
+
+1. **Fork the repo** and create a branch:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+2. **Make your changes.** See code guidelines below.
+
+3. **Commit with clear messages:**
+   ```bash
+   git commit -m "Add mesh arrangements dual function"
+   git commit -m "Fix intersection curve indexing bug"
+   ```
+
+4. **Push and open a pull request:**
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+
+   Reference the issue (e.g., "Fixes #42") and describe what you did.
+
+## Code Guidelines
+
+Trueform is built on composability and zero-copy semantics. When contributing:
+
+- **Build on existing algorithms.** Implement new functionality using already-written parallel algorithms. Don't reinvent parallelism—compose it.
+- **One function, one file.** Each user-facing function in `tf::` namespace gets its own file in the module directory.
+- **Small functions, delegated responsibilities.** Break complex operations into small, focused functions. Each should do one thing clearly.
+- **Naming:** `snake_case` for functions/variables, `PascalCase` for template arguments.
+- **Minimize comments.** Code should be self-explanatory. Comment only non-obvious algorithmic choices.
+
+## Documentation
+
+If you add a public API, update `docs/content/` with:
+- What the function does (brief, one sentence)
+- Example usage
+- Return value description if non-obvious
+
+Follow the existing structure in the modules documentation.
 
 ## Licensing
 
-By submitting a contribution you agree that:
+By contributing, you certify that:
 
-1. Your contribution is provided under the PolyForm Noncommercial License 1.0.0 so that the community can continue to use trueform for personal, educational, and other noncommercial work.
-2. XLAB may also offer your contribution under its commercial licensing program. This allows organizations that need commercial rights to obtain them directly from XLAB without additional paperwork from you.
+1. Your work is provided under the **PolyForm Noncommercial License 1.0.0** for noncommercial use.
+2. XLAB may offer your work under its **commercial license** without requiring additional paperwork from you.
 
-If your employer or client owns the rights to your work, make sure they are comfortable with this dual-licensing arrangement before contributing.
+If your employer owns your work, ensure they're comfortable with this arrangement.
 
-## Process
+## Questions?
 
-1. Discuss planned changes by opening an issue or starting a GitHub Discussion when the scope is substantial.
-2. Fork the repository (or create a topic branch) and implement your changes with clear commits.
-3. Ensure the code builds and tests pass locally. Include new tests where practical.
-4. Submit the pull request and reference the related issue or motivation. Describe the testing you performed.
+- **Technical questions:** [GitHub Discussions](https://github.com/xlabmedical/trueform/discussions)
+- **Bug reports:** [Open an issue](https://github.com/xlabmedical/trueform/issues)
+- **Commercial licensing or jobs:** [ziga.sajovic@xlab.si](mailto:ziga.sajovic@xlab.si)
 
-We review contributions as quickly as we can. Thank you for helping grow trueform!
+---
+
+Thank you for contributing to trueform.

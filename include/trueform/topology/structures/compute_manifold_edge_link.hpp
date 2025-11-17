@@ -1,29 +1,30 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
 #include "../../core/algorithm/parallel_for.hpp"
-#include "../../core/blocked_buffer.hpp"
 #include "../../core/small_vector.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "../face_edge_neighbors.hpp"
-#include "../face_membership.hpp"
+#include "../face_membership_like.hpp"
 #include "../manifold_edge_peer.hpp"
 
 namespace tf::topology {
-template <typename Range0, typename Index, std::size_t N>
-auto compute_manifold_edge_link(
-    const Range0 &faces, const tf::face_membership<Index> &blink,
-    tf::blocked_buffer<manifold_edge_peer<Index>, N> &peer_blocks) {
+template <typename Range0, typename Policy, typename Range1>
+auto compute_manifold_edge_link(const Range0 &faces,
+                                const tf::face_membership_like<Policy> &blink,
+                                Range1 &peer_blocks) {
+  using Index = std::decay_t<decltype(peer_blocks[0][0].face_peer)>;
   auto task_f = [&](auto begin, auto end) {
     tf::small_vector<Index, 6> inner_peers;
     while (begin != end) {
       Index face_id = *begin++;
       auto &&peers = peer_blocks[face_id];
       const auto &face = faces[face_id];
+      Index N = peers.size();
       Index current = N - 1;
       for (Index next = 0; next < Index(N); current = next++) {
         inner_peers.clear();

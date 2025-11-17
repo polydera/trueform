@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -17,6 +17,11 @@ public:
   using base_t::end;
   using base_t::size;
   using base_t::operator=;
+  array_like(const array_like &) = default;
+  array_like(array_like &&) = default;
+  auto operator=(const array_like &) -> array_like & = default;
+  auto operator=(array_like &&) -> array_like & = default;
+
   explicit array_like(const Policy &p) : base_t(p) {}
   explicit array_like(Policy &&p) noexcept(
       std::is_nothrow_move_constructible<Policy>::value)

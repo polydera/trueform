@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -17,6 +17,7 @@
 #include "../../core/views/zip.hpp"
 #include "../index_map/points.hpp"
 
+#include <iostream>
 namespace tf::clean {
 template <typename Index, typename RealT, std::size_t Dims>
 class segment_soup : public segments_buffer<Index, RealT, Dims> {
@@ -61,7 +62,7 @@ private:
     map.allocate(base_t::points().size());
     auto r = tf::zip(_contained_points, base_t::points());
     auto n_kept = tf::remove_if_and_make_map(
-                      r, [](auto &&pair) { return std::get<0>(pair); }, map) -
+                      r, [](auto &&pair) { return !std::get<0>(pair); }, map) -
                   r.begin();
     base_t::points_buffer().erase(base_t::points_buffer().begin() + n_kept,
                                   base_t::points_buffer().end());

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -19,8 +19,8 @@ template <std::size_t N, typename Policy0, typename Policy1, typename F0,
 auto search(const tf::form<N, Policy0> &form0,
             const tf::form<N, Policy1> &form1, const F0 &check_aabbs,
             const F1 &primitive_apply) -> bool {
-  return spatial::dual_form_search_dispatch<typename Policy0::index_t>(
-      form0, form1, check_aabbs, primitive_apply, 6);
+  return spatial::dual_form_search_dispatch(form0, form1, check_aabbs,
+                                            primitive_apply, 6);
 }
 
 /// @brief Perform a spatial query against a single tree structure.
@@ -88,7 +88,7 @@ template <typename Index, typename RealT, std::size_t N, typename F0,
 auto search(const tf::tree<Index, RealT, N> &tree0,
             const tf::tree<Index, RealT, N> &tree1, const F0 &check_aabbs,
             const F1 &primitive_apply, int paralelism_depth = 6) -> bool {
-  return spatial::dual_search_dispatch<Index>(
+  return spatial::dual_search_dispatch(
       tree0, tree1, check_aabbs, primitive_apply, paralelism_depth);
 }
 
@@ -134,7 +134,8 @@ auto search(const tf::tree<Index, RealT, N> &tree0,
 /*template <typename Index, typename RealT, std::size_t N, typename F0,*/
 /*          typename F1>*/
 /*auto search(const tf::tree<Index, RealT, N> &tree0,*/
-/*            const tf::mod_tree<Index, RealT, N> &tree1, const F0 &check_aabbs,*/
+/*            const tf::mod_tree<Index, RealT, N> &tree1, const F0
+ * &check_aabbs,*/
 /*            const F1 &primitive_apply, int paralelism_depth = 6) -> bool {*/
 /*  return implementation::dual_search_dispatch<Index>(*/
 /*      tree0, tree1, check_aabbs, primitive_apply, paralelism_depth);*/
@@ -158,7 +159,8 @@ auto search(const tf::tree<Index, RealT, N> &tree0,
 /*template <typename Index, typename RealT, std::size_t N, typename F0,*/
 /*          typename F1>*/
 /*auto search(const tf::mod_tree<Index, RealT, N> &tree0,*/
-/*            const tf::mod_tree<Index, RealT, N> &tree1, const F0 &check_aabbs,*/
+/*            const tf::mod_tree<Index, RealT, N> &tree1, const F0
+ * &check_aabbs,*/
 /*            const F1 &primitive_apply, int paralelism_depth = 6) -> bool {*/
 /*  return implementation::dual_search_dispatch<Index>(*/
 /*      tree0, tree1, check_aabbs, primitive_apply, paralelism_depth);*/
