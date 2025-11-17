@@ -3,13 +3,23 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 
 export interface SceneConfig {
     backgroundColor?: number;
+    enableFog?: boolean;
+    fogNear?: number;
+    fogFar?: number;
     cameraPosition?: { x: number; y: number; z: number };
     cameraLookAt?: { x: number; y: number; z: number };
     ambientLightColor?: number;
     ambientLightIntensity?: number;
+    hemisphereLightSkyColor?: number;
+    hemisphereLightGroundColor?: number;
+    hemisphereLightIntensity?: number;
     directionalLightColor?: number;
     directionalLightIntensity?: number;
     directionalLightPosition?: { x: number; y: number; z: number };
+    fillLightColor?: number;
+    fillLightIntensity?: number;
+    rimLightColor?: number;
+    rimLightIntensity?: number;
     enableShadows?: boolean;
 }
 
@@ -26,20 +36,36 @@ export function createScene(
 ): SceneBundle {
     // Default configuration
     const {
-        backgroundColor = 0x222222,
+        backgroundColor = 0x202020,
+        enableFog = true,
+        fogNear = 80,
+        fogFar = 450,
         cameraPosition = { x: 20, y: 20, z: 30 },
         cameraLookAt = { x: 0, y: 0, z: 0 },
         ambientLightColor = 0x404040,
         ambientLightIntensity = 0.4,
+        hemisphereLightSkyColor = 0xf2f5ff,
+        hemisphereLightGroundColor = 0x1a1614,
+        hemisphereLightIntensity = 0.6,
         directionalLightColor = 0xffffff,
-        directionalLightIntensity = 0.8,
-        directionalLightPosition = { x: 50, y: 100, z: 50 },
+        directionalLightIntensity = 0.9,
+        directionalLightPosition = { x: 60, y: 120, z: 80 },
+        fillLightColor = 0xfefaf3,
+        fillLightIntensity = 0.25,
+        rimLightColor = 0xdde6ff,
+        rimLightIntensity = 0.25,
         enableShadows = true
     } = config;
 
     // Create scene
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(backgroundColor);
+    const background = new THREE.Color(backgroundColor);
+    scene.background = background;
+    if (enableFog) {
+        scene.fog = new THREE.Fog(background.clone(), fogNear, fogFar);
+    } else {
+        scene.fog = null;
+    }
 
     // Create camera
     const camera = new THREE.PerspectiveCamera(
@@ -66,6 +92,14 @@ export function createScene(
     const ambientLight = new THREE.AmbientLight(ambientLightColor, ambientLightIntensity);
     scene.add(ambientLight);
 
+    const hemisphereLight = new THREE.HemisphereLight(
+        hemisphereLightSkyColor,
+        hemisphereLightGroundColor,
+        hemisphereLightIntensity
+    );
+    hemisphereLight.position.set(0, 200, 0);
+    scene.add(hemisphereLight);
+
     // 2. Main directional light (acts as sun/key light)
     const directionalLight = new THREE.DirectionalLight(directionalLightColor, directionalLightIntensity);
     directionalLight.position.set(directionalLightPosition.x, directionalLightPosition.y, directionalLightPosition.z);
@@ -80,14 +114,18 @@ export function createScene(
 
     // Configure shadow properties for better quality
     if (enableShadows && directionalLight.shadow) {
-        directionalLight.shadow.mapSize.width = 2048;
-        directionalLight.shadow.mapSize.height = 2048;
+        const shadowCam = directionalLight.shadow.camera as THREE.OrthographicCamera;
+        directionalLight.shadow.mapSize.width = 4096;
+        directionalLight.shadow.mapSize.height = 4096;
         directionalLight.shadow.camera.near = 0.5;
-        directionalLight.shadow.camera.far = 500;
-        directionalLight.shadow.camera.left = -100;
-        directionalLight.shadow.camera.right = 100;
-        directionalLight.shadow.camera.top = 100;
-        directionalLight.shadow.camera.bottom = -100;
+        directionalLight.shadow.camera.far = 900;
+        const range = 220;
+        shadowCam.left = -range;
+        shadowCam.right = range;
+        shadowCam.top = range;
+        shadowCam.bottom = -range;
+        directionalLight.shadow.bias = -0.0002;
+        directionalLight.shadow.normalBias = 0.01;
     }
 
     scene.add(directionalLight);
@@ -96,7 +134,7 @@ export function createScene(
     scene.add(directionalLight2.target);
 
     // 3. Fill light (softer, from opposite side to reduce harsh shadows)
-    const fillLight = new THREE.DirectionalLight(directionalLightColor, 0.3);
+    const fillLight = new THREE.DirectionalLight(fillLightColor, fillLightIntensity);
     fillLight.position.set(-30, 50, -30);
     fillLight.target.position.set(0, 0, 0);
     fillLight.castShadow = false;
@@ -104,7 +142,7 @@ export function createScene(
     scene.add(fillLight.target);
 
     // 4. Rim light (subtle backlight for better object definition)
-    const rimLight = new THREE.DirectionalLight(0x888888, 0.5);
+    const rimLight = new THREE.DirectionalLight(rimLightColor, rimLightIntensity);
     rimLight.position.set(-50, 20, -100);
     rimLight.target.position.set(0, 0, 0);
     rimLight.castShadow = false;

@@ -67,6 +67,7 @@ export class BooleanExample extends TestClassThreejsBase {
     }
 
     public updateMeshes() {
+        // const t0 = performance.now();
         super.updateMeshes();
 
         // Update curve mesh (intersection curves)
@@ -90,5 +91,7 @@ export class BooleanExample extends TestClassThreejsBase {
                 getMeshFromWasm(wO, mesh);
             }
         }
+        // const t1 = performance.now();
+        // console.log("updateMeshes took " + (t1 - t0) + "ms");
     }
 }

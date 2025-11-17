@@ -42,11 +42,15 @@ export abstract class TestClassThreejsBase implements ITestClassThreejsBase {
         // Setup first renderer
         this.renderer = new THREE.WebGLRenderer({ antialias: true } );
         this.renderer.setPixelRatio( window.devicePixelRatio );
+        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 1.0;
         this.renderer.setClearColor( 0x000000, 0.0 );
         const rect = container.getBoundingClientRect();
         this.renderer.setSize(rect.width, rect.height);
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.shadowMap.autoUpdate = true;
         container.innerHTML = "";
         container.appendChild(this.renderer.domElement);
         this.stats.init(this.renderer);
@@ -58,10 +62,14 @@ export abstract class TestClassThreejsBase implements ITestClassThreejsBase {
         if (container2) {
             this.renderer2 = new THREE.WebGLRenderer({ antialias: true } );
             this.renderer2.setPixelRatio( window.devicePixelRatio );
+            this.renderer2.outputColorSpace = THREE.SRGBColorSpace;
+            this.renderer2.toneMapping = THREE.ACESFilmicToneMapping;
+            this.renderer2.toneMappingExposure = 1.0;
             const rect2 = container2.getBoundingClientRect();
             this.renderer2.setSize(rect2.width, rect2.height);
             this.renderer2.shadowMap.enabled = true;
             this.renderer2.shadowMap.type = THREE.PCFSoftShadowMap;
+            this.renderer2.shadowMap.autoUpdate = true;
             container2.innerHTML = "";
             container2.appendChild(this.renderer2.domElement);
         }

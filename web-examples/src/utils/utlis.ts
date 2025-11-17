@@ -3,7 +3,6 @@ import { mesh_object } from '../webAssembly/dist/native.js'
 import {LineMaterial} from "three/examples/jsm/lines/LineMaterial";
 import {LineSegments2} from "three/examples/jsm/lines/LineSegments2";
 import {LineSegmentsGeometry} from "three/examples/jsm/lines/LineSegmentsGeometry";
-import {MeshLambertMaterial} from "three";
 
 export interface CurveObj {
     points: Float32Array;
@@ -39,7 +38,28 @@ export function createPoints(){
     return pointsObj;
 }
 export function createMesh(){
-    const material = new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide, flatShading: true });
+    // NICE SHINY
+    // const material = new THREE.MeshPhysicalMaterial({ color: 0xffffff, side: THREE.DoubleSide, flatShading: true, reflectivity: 0.2, metalness: 0.1, roughness: 0.4 });
+    // NICE flat
+    // const material = new THREE.MeshMatcapMaterial({ color: 0xffffff, side: THREE.DoubleSide, flatShading: true });
+    // TODO test and choose here: https://observablehq.com/@makio135/matcaps
+    const matcapTexture = new THREE.TextureLoader().load(
+        // "https://raw.githubusercontent.com/nidorx/matcaps/master/512/2D2D2F_C6C2C5_727176_94949B-512px.png"
+        // "https://raw.githubusercontent.com/nidorx/matcaps/master/512/7B7E82_343536_A0B1C8_44444C-512px.png"
+        // "https://raw.githubusercontent.com/nidorx/matcaps/master/512/7C584C_27140D_B3765C_3D2318-512px.png"
+        // "https://raw.githubusercontent.com/nidorx/matcaps/master/512/7F8896_3B3936_BBCFE9_4B4B4D-512px.png"
+        // "https://raw.githubusercontent.com/nidorx/matcaps/master/512/815C41_F6C99A_D39F77_BB9474-512px.png"
+        // "https://raw.githubusercontent.com/nidorx/matcaps/master/512/D0CCCB_524D50_928891_727581-512px.png"
+        // "https://raw.githubusercontent.com/nidorx/matcaps/master/512/AD9E81_F1E5CE_6B5C3E_5A492A-512px.png"
+        // "https://raw.githubusercontent.com/nidorx/matcaps/master/64/AD9E81_F1E5CE_6B5C3E_5A492A-64px.png"
+        // "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/AD9E81_F1E5CE_6B5C3E_5A492A.png"
+        // "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/B9CDD2_775339_958272_7F6A5E.png"
+        // "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/C9C7BE_55514B_888279_7B6E5F.png"
+        // "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/AE9D99_29303B_585F70_875C33.png"
+        "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/635D52_A9BCC0_B1AEA0_819598.png"
+    );
+    const material = new THREE.MeshMatcapMaterial({ matcap: matcapTexture, side: THREE.DoubleSide, flatShading: true });
+
     const geometry = new THREE.BufferGeometry();
     const mesh = new THREE.Mesh(geometry, material);
     mesh.matrixAutoUpdate = false;
@@ -50,21 +70,26 @@ export function getMeshFromWasm(wO: mesh_object, mesh: THREE.Mesh) {
     const pU = wO.polydata_updated;
     if(pU) {
         const geometry = mesh.geometry;
-        geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(wO.get_points()), 3));
+        const positions = new Float32Array(wO.get_points());
+        geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
         geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(wO.get_polys()), 1));
+        if (positions.length >= 3) {
+            geometry.computeBoundingSphere();
+            geometry.computeBoundingBox();
+        }
     }
-    const currC = (mesh.material as MeshLambertMaterial).color;
+    const currC = (mesh.material as THREE.MeshMatcapMaterial).color;
     const newC = wO.color;
-    if(currC.r != newC[0] || currC.g != newC[1] || currC.b != newC[2]) {
-        (mesh.material as MeshLambertMaterial).color.set(newC[0], newC[1], newC[2]);
+    if(currC.r !== newC[0] || currC.g !== newC[1] || currC.b !== newC[2]) {
+        currC.set(newC[0], newC[1], newC[2]);
     }
     getMatrixFromWasm(wO, mesh)
 }
 
 export function getMatrixFromWasm(wO: mesh_object, dstGeometry: THREE.Mesh | THREE.Line | THREE.Points) {
     const mU = wO.matrix_updated;
-    if(mU || true) {
-        const matrix = new Float32Array(wO.matrix);
+    if(mU) {
+        const matrix = new Float32Array(wO.get_matrix());
         const threeMatrix = new THREE.Matrix4();
         threeMatrix.fromArray(matrix);
         threeMatrix.transpose();
