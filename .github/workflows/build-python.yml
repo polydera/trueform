@@ -86,3 +86,20 @@ jobs:
           name: trueform-${{ matrix.os }}-py${{ matrix.python-version }}
           path: dist/*.whl
           retention-days: 7
+
+  publish-release:
+    needs: build-python
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Download built wheels
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/**/*.whl
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
