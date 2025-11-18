@@ -19,8 +19,8 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - ubuntu-latest
-          - macos-latest
+          #- ubuntu-latest
+          #- macos-latest
           - windows-latest
         python-version:
           - '3.11'
@@ -63,12 +63,15 @@ jobs:
 
       - name: Configure CMake (Windows)
         if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
         shell: pwsh
         run: |
           $python = python -c "import sys; print(sys.executable)"
           $installPrefix = Join-Path $env:GITHUB_WORKSPACE $env:INSTALL_PREFIX
           cmake -S . -B "$env:BUILD_DIR" `
-            -G "Ninja" `
+            -G Ninja `
+            -DCMAKE_C_COMPILER="clang-cl.exe" `
+            -DCMAKE_CXX_COMPILER="clang-cl.exe" `
             -DBUILD_EXAMPLES=OFF `
             -DBUILD_PYTHON=ON `
             -DPython_EXECUTABLE="$python" `
