@@ -73,9 +73,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
 
 endif()
 
-
-target_compile_options(_trueform PRIVATE -ftime-trace)
-
 # Exclude from ALL target
 set_target_properties(_trueform PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
