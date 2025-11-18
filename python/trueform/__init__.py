@@ -27,7 +27,7 @@ from ._intersect import isocontours, intersection_curves
 from ._cut import isobands, boolean_union, boolean_intersection, boolean_difference
 from ._clean import cleaned
 from ._reindex import reindex_by_ids, reindex_by_mask, split_into_components, concatenated
-from ._topology import label_connected_components, cell_membership, manifold_edge_link, face_link, vertex_link_edges, vertex_link_faces
+from ._topology import label_connected_components, cell_membership, manifold_edge_link, face_link, vertex_link_edges, vertex_link_faces, boundary_edges, boundary_paths, boundary_curves, non_manifold_edges
 from ._spatial import neighbor_search, gather_intersecting_ids, gather_ids_within_distance
 from ._core.transformed import transformed
 
@@ -67,6 +67,10 @@ __all__ = [
     'face_link',
     'vertex_link_edges',
     'vertex_link_faces',
+    'boundary_edges',
+    'boundary_paths',
+    'boundary_curves',
+    'non_manifold_edges',
     'neighbor_search',
     'gather_intersecting_ids',
     'gather_ids_within_distance',

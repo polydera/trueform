@@ -37,8 +37,12 @@ def manifold_edge_link(
     -------
     np.ndarray
         Manifold edge link array of shape (N, V) with same dtype as cells.
-        Entry [i, j] is the index of the face adjacent to face i across edge j,
-        or -1 if no adjacent face exists (boundary edge).
+        Entry [i, j] is the index of the face adjacent to face i across edge j.
+        Special values:
+        - >= 0: index of adjacent face
+        - -1: boundary edge (no adjacent face)
+        - -2: non-manifold edge (shared by more than 2 faces)
+        - -3: non-manifold representative
 
     Raises
     ------

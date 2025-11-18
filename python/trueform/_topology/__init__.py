@@ -12,6 +12,10 @@ from .cell_membership import cell_membership
 from .manifold_edge_link import manifold_edge_link
 from .face_link import face_link
 from .vertex_link import vertex_link_edges, vertex_link_faces
+from .boundary_edges import boundary_edges
+from .boundary_paths import boundary_paths
+from .boundary_curves import boundary_curves
+from .non_manifold_edges import non_manifold_edges
 
 __all__ = [
     'label_connected_components',
@@ -20,4 +24,8 @@ __all__ = [
     'face_link',
     'vertex_link_edges',
     'vertex_link_faces',
+    'boundary_edges',
+    'boundary_paths',
+    'boundary_curves',
+    'non_manifold_edges',
 ]

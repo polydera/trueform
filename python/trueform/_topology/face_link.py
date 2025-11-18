@@ -17,10 +17,9 @@ def face_link(
     cell_membership: OffsetBlockedArray
 ) -> OffsetBlockedArray:
     """
-    Compute face links for vertices in a mesh.
+    Compute face links for faces in a mesh.
 
-    For each vertex, finds all faces that share at least one edge with any face
-    containing that vertex (i.e., faces in the vertex's link).
+    For each face, finds all faces that share at least one edge with it.
 
     Parameters
     ----------
@@ -37,7 +36,7 @@ def face_link(
     -------
     OffsetBlockedArray
         Face link structure where block i contains the indices of all faces
-        in the link of vertex i.
+        connected to face i by an edge.
 
     Raises
     ------
@@ -116,7 +115,7 @@ def face_link(
     func_name = f"compute_face_link_{suffix}"
     cpp_func = getattr(_trueform.topology, func_name)
 
-    # Call C++ function - returns tuple of (offsets, data)
-    offsets, data = cpp_func(faces, cell_membership._wrapper)
+    # Call C++ function - returns offset_blocked_array_wrapper
+    wrapper = cpp_func(faces, cell_membership._wrapper)
 
-    return OffsetBlockedArray(offsets, data)
+    return OffsetBlockedArray(wrapper.offsets_array(), wrapper.data_array())

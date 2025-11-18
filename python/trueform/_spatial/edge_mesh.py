@@ -238,12 +238,14 @@ class EdgeMesh:
         """
         Get the edge membership structure.
 
+        For each vertex, contains all edges containing that vertex.
+
         Builds the structure if not already built.
 
         Returns
         -------
         OffsetBlockedArray
-            Edge membership mapping points to edges.
+            Edge membership mapping vertices to edges containing them.
         """
         wrapper = self._wrapper.edge_membership_array()
         return OffsetBlockedArray(wrapper.offsets_array(), wrapper.data_array())

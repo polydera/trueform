@@ -260,12 +260,14 @@ class Mesh:
         """
         Get the face membership structure.
 
+        For each vertex, contains all faces containing that vertex.
+
         Builds the structure if not already built.
 
         Returns
         -------
         OffsetBlockedArray
-            Face membership mapping points to faces.
+            Face membership mapping vertices to faces containing them.
         """
         wrapper = self._wrapper.face_membership_array()
         return OffsetBlockedArray(wrapper.offsets_array(), wrapper.data_array())
@@ -292,12 +294,20 @@ class Mesh:
         """
         Get the manifold edge link array.
 
+        For each face and edge, contains the index of the adjacent face sharing that edge.
+        Special values:
+        - >= 0: index of adjacent face
+        - -1: boundary edge (no adjacent face)
+        - -2: non-manifold edge (shared by more than 2 faces)
+        - -3: non-manifold representative
+
         Builds the structure if not already built (also builds face_membership if needed).
 
         Returns
         -------
         np.ndarray
             Manifold edge link array, shape (num_faces, ngon) with dtype matching faces.
+            Entry [i, j] is the face adjacent to face i across edge j.
         """
         return self._wrapper.manifold_edge_link_array()
 
@@ -344,15 +354,14 @@ class Mesh:
         """
         Get the face link structure.
 
-        For each vertex, contains all faces in the vertex's link (faces sharing
-        an edge with any face containing that vertex).
+        For each face, contains all faces connected to it by an edge.
 
         Builds the structure if not already built (also builds face_membership if needed).
 
         Returns
         -------
         OffsetBlockedArray
-            Face link mapping vertices to faces in their link.
+            Face link mapping faces to connected faces.
         """
         wrapper = self._wrapper.face_link_array()
         return OffsetBlockedArray(wrapper.offsets_array(), wrapper.data_array())

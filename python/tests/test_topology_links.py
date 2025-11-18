@@ -287,8 +287,8 @@ def test_face_link_larger_mesh(index_dtype, real_dtype):
     assert np.array_equal(mesh_fl.offsets, standalone_fl.offsets)
     assert np.array_equal(mesh_fl.data, standalone_fl.data)
 
-    # Verify structure makes sense
-    assert len(standalone_fl) == mesh.number_of_points
+    # Verify structure makes sense - face_link is indexed by faces
+    assert len(standalone_fl) == mesh.number_of_faces
 
 
 # ==============================================================================

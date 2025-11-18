@@ -99,10 +99,10 @@ def vertex_link_edges(
     func_name = f"compute_vertex_link_{suffix}"
     cpp_func = getattr(_trueform.topology, func_name)
 
-    # Call C++ function - returns tuple of (offsets, data)
-    offsets, data = cpp_func(edges, n_ids)
+    # Call C++ function - returns offset_blocked_array_wrapper
+    wrapper = cpp_func(edges, n_ids)
 
-    return OffsetBlockedArray(offsets, data)
+    return OffsetBlockedArray(wrapper.offsets_array(), wrapper.data_array())
 
 
 def vertex_link_faces(
@@ -209,7 +209,7 @@ def vertex_link_faces(
     func_name = f"compute_vertex_link_{suffix}"
     cpp_func = getattr(_trueform.topology, func_name)
 
-    # Call C++ function - returns tuple of (offsets, data)
-    offsets, data = cpp_func(faces, cell_membership._wrapper)
+    # Call C++ function - returns offset_blocked_array_wrapper
+    wrapper = cpp_func(faces, cell_membership._wrapper)
 
-    return OffsetBlockedArray(offsets, data)
+    return OffsetBlockedArray(wrapper.offsets_array(), wrapper.data_array())
