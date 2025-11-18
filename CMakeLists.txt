@@ -18,6 +18,11 @@ endif()
 
 project(trueform LANGUAGES CXX)
 
+if(MSVC)
+  # Enable exception support for MSVC
+    add_compile_options(/EHsc)
+endif()
+
 add_library(trueform INTERFACE)
 add_library(tf::trueform ALIAS trueform)
 
@@ -34,6 +39,18 @@ if(NOT TBB_FOUND)
     tbb
     GIT_REPOSITORY https://github.com/oneapi-src/oneTBB.git
     GIT_TAG v2021.13.1)
+  set(TBB_BUILD
+          ON
+          CACHE BOOL "Enable TBB" FORCE)
+  set(TBBMALLOC_BUILD
+          OFF
+          CACHE BOOL "Disable TBB malloc" FORCE)
+  set(TBBMALLOC_PROXY_BUILD
+          OFF
+          CACHE BOOL "Disable TBB proxy" FORCE)
+  set(TBB_INSTALL
+          ON
+          CACHE BOOL "Enable TBB install" FORCE)
   set(TBB_TEST
       OFF
       CACHE BOOL "Disable TBB tests" FORCE)
