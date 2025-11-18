@@ -4,7 +4,7 @@ message(STATUS "Configuring Python bindings for trueform")
 
 # Find Python
 find_package(
-  Python 3.8
+  Python
   COMPONENTS Interpreter Development.Module
   REQUIRED)
 message(STATUS "Found Python ${Python_VERSION}")

@@ -85,3 +85,13 @@ configure_package_config_file(
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/trueformConfig.cmake
               ${CMAKE_CURRENT_BINARY_DIR}/trueformConfigVersion.cmake
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/trueform)
+
+install(FILES ${CMAKE_CURRENT_LIST_DIR}/LICENSE
+              ${CMAKE_CURRENT_LIST_DIR}/LICENSE.noncommercial
+              ${CMAKE_CURRENT_LIST_DIR}/licenses/LICENSE.TBB
+        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/licenses)
+if(BUILD_PYTHON)
+  install(FILES ${CMAKE_CURRENT_LIST_DIR}/licenses/LICENSE.fast_float
+                ${CMAKE_CURRENT_LIST_DIR}/licenses/LICENSE.nanobind
+          DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/licenses)
+endif()

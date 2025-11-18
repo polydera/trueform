@@ -156,6 +156,13 @@ Trueform is distributed under a dual-license model:
 
 See [LICENSE.noncommercial](./LICENSE.noncommercial) and [license documentation](https://xlabmedical.github.io/trueform/about/license) for details. For commercial licensing, contact [ziga.sajovic@xlab.si](mailto:ziga.sajovic@xlab.si).
 
+### 3rd Party Licenses
+
+`trueform` uses several third-party libraries, each with its own license:
+- **Intel TBB** - Apache License 2.0
+- **fast_float** (in case of BUILD_PYTHON) - MIT License
+- **nanobind** (in case of BUILD_PYTHON) - BSD-3-Clause License
+
 ## Contributing
 
 We welcome contributions! Browse [open issues](https://github.com/xlabmedical/trueform/issues) labeled by difficulty (`easy`, `medium`, `hard`) to find something that matches your experience level.
