@@ -5,8 +5,8 @@ Builds the WebAssembly examples using Docker Compose. This is useful if you do n
 ## Bringing the service up
 
 ```bash
-# From the repo root
-docker compose -f misc/docker-compose.yml up --build
+# From the Dockerfile directory
+docker compose up --build
 ```
 
 The first run builds the image and compiles the library. Artifacts are copied to `web-examples/src/webAssembly/build/dist` folder.
