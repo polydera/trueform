@@ -31,6 +31,9 @@ jobs:
       BUILD_DIR: build/${{ matrix.os }}-py${{ matrix.python-version }}
       INSTALL_PREFIX: install/${{ matrix.os }}-py${{ matrix.python-version }}
     steps:
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+
       - name: Checkout
         uses: actions/checkout@v5
         with:
@@ -63,7 +66,6 @@ jobs:
 
       - name: Configure CMake (Windows)
         if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
         shell: pwsh
         run: |
           $python = python -c "import sys; print(sys.executable)"
