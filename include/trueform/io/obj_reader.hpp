@@ -9,6 +9,7 @@
 #include "../core/buffer.hpp"
 #include "../core/offset_block_buffer.hpp"
 #include "../core/points_buffer.hpp"
+#include "./fast_float.h"
 #include <charconv>
 #include <cstdint>
 #include <fstream>
@@ -303,19 +304,19 @@ private:
   static auto _parse_three_floats(const char *&p, const char *end, float &x,
                                   float &y, float &z) -> bool {
     p = _skip_ws(p, end);
-    auto res = std::from_chars(p, end, x);
+    auto res = fast_float::from_chars(p, end, x);
     if (res.ec != std::errc{})
       return false;
     p = res.ptr;
 
     p = _skip_ws(p, end);
-    res = std::from_chars(p, end, y);
+    res = fast_float::from_chars(p, end, y);
     if (res.ec != std::errc{})
       return false;
     p = res.ptr;
 
     p = _skip_ws(p, end);
-    res = std::from_chars(p, end, z);
+    res = fast_float::from_chars(p, end, z);
     if (res.ec != std::errc{})
       return false;
     p = res.ptr;
