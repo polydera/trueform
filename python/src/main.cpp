@@ -13,6 +13,7 @@
 #include "trueform/python/io.hpp"
 #include "trueform/python/reindex.hpp"
 #include "trueform/python/spatial.hpp"
+#include "trueform/python/topology.hpp"
 
 namespace nb = nanobind;
 
@@ -31,4 +32,5 @@ NB_MODULE(_trueform, m) {
   tf::py::register_io(m);
   tf::py::register_reindex(m);
   tf::py::register_spatial_module(m);
+  tf::py::register_topology(m);
 }

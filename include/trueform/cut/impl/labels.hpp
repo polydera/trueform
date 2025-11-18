@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -32,7 +32,7 @@ auto make_surface_component_labels(const tf::polygons<Policy> &polygons,
       _components.labels[i.object] = -1;
     }
   });
-  _components.n_components = tf::label_connected_components<Index>(
+  _components.n_components = tf::label_connected_components_masked(
       _components.labels, mask, tf::make_applier(polygons.manifold_edge_link()),
       expected_components);
   return _components;

@@ -20,11 +20,12 @@ from ._intersect import isocontours, intersection_curves
 from ._cut import isobands, boolean_union, boolean_intersection, boolean_difference
 from ._clean import cleaned
 from ._reindex import reindex_by_ids, reindex_by_mask, split_into_components, concatenated
+from ._topology import label_connected_components
 from ._spatial import neighbor_search, gather_intersecting_ids, gather_ids_within_distance
 from ._core.transformed import transformed
 
 # IO functions
-from ._io import read_stl, write_stl
+from ._io import read_stl, write_stl, read_obj, write_obj
 
 # Primitives
 from ._primitives import Point, Segment, Polygon, AABB, Ray, Line, Plane
@@ -53,6 +54,7 @@ __all__ = [
     'reindex_by_mask',
     'split_into_components',
     'concatenated',
+    'label_connected_components',
     'neighbor_search',
     'gather_intersecting_ids',
     'gather_ids_within_distance',
@@ -60,6 +62,8 @@ __all__ = [
     # IO
     'read_stl',
     'write_stl',
+    'read_obj',
+    'write_obj',
     # Primitives
     'Point', 'Segment', 'Polygon', 'AABB', 'Ray', 'Line', 'Plane',
 ]
