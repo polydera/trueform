@@ -9,9 +9,9 @@
 #include "../core/buffer.hpp"
 #include "../core/offset_block_buffer.hpp"
 #include "../core/points_buffer.hpp"
-#include "./fast_float.h"
 #include <charconv>
 #include <cstdint>
+#include <cstdlib>
 #include <fstream>
 
 namespace tf::io {
@@ -303,23 +303,26 @@ private:
   // ---------- Parse helpers ----------
   static auto _parse_three_floats(const char *&p, const char *end, float &x,
                                   float &y, float &z) -> bool {
-    p = _skip_ws(p, end);
-    auto res = fast_float::from_chars(p, end, x);
-    if (res.ec != std::errc{})
-      return false;
-    p = res.ptr;
+    (void)end; // strtof doesn't use end pointer
+    char *endp;
 
     p = _skip_ws(p, end);
-    res = fast_float::from_chars(p, end, y);
-    if (res.ec != std::errc{})
+    x = std::strtof(p, &endp);
+    if (endp == p)
       return false;
-    p = res.ptr;
+    p = endp;
 
     p = _skip_ws(p, end);
-    res = fast_float::from_chars(p, end, z);
-    if (res.ec != std::errc{})
+    y = std::strtof(p, &endp);
+    if (endp == p)
       return false;
-    p = res.ptr;
+    p = endp;
+
+    p = _skip_ws(p, end);
+    z = std::strtof(p, &endp);
+    if (endp == p)
+      return false;
+    p = endp;
 
     return true;
   }

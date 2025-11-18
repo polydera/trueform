@@ -7,7 +7,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 option(ENABLE_ASAN "Enable Address Sanitizer" OFF)
-option(BUILD_EXAMPLES "Build examples." ON)
+option(BUILD_EXAMPLES "Build examples." OFF)
 option(BUILD_PYTHON "Build Python bindings." ON)
 option(USE_SYSTEM_TBB "Use system-installed TBB if found." OFF)
 mark_as_advanced(USE_SYSTEM_TBB)
@@ -81,7 +81,6 @@ install(FILES ${CMAKE_CURRENT_LIST_DIR}/LICENSE
               ${CMAKE_CURRENT_LIST_DIR}/licenses/LICENSE.TBB
         DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/licenses)
 if(BUILD_PYTHON)
-  install(FILES ${CMAKE_CURRENT_LIST_DIR}/licenses/LICENSE.fast_float
-                ${CMAKE_CURRENT_LIST_DIR}/licenses/LICENSE.nanobind
+  install(FILES ${CMAKE_CURRENT_LIST_DIR}/licenses/LICENSE.nanobind
           DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/licenses)
 endif()

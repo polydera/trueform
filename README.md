@@ -115,7 +115,7 @@ auto [contour_mesh, contour_labels, isocontours] = tf::embedded_isocurves<int>(
 
 ---
 
-This is trueform from a bird's eye view. For comprehensive coverage of all features, patterns, and advanced usage, see the **[complete documentation](https://xlabmedical.github.io/trueform/modules/core)**.
+This is trueform from a bird's eye view. For comprehensive coverage of all features, patterns, and advanced usage, see the **[complete documentation](https://xlabmedical.github.io/trueform/cpp/modules/core)**.
 
 ## Installation
 
@@ -142,11 +142,11 @@ target_link_libraries(my_target PRIVATE tf::trueform)
 
 Comprehensive documentation is available at **[xlabmedical.github.io/trueform](https://xlabmedical.github.io/trueform)**
 
-- 📚 **[Getting Started](https://xlabmedical.github.io/trueform/getting-started)** - Quick start guide and installation
-- 📖 **[Modules](https://xlabmedical.github.io/trueform/modules/core)** - Complete API reference for all modules
-- 📊 **[Benchmarks](https://xlabmedical.github.io/trueform/benchmarks)** - Performance comparisons vs VTK, CGAL, nanoflann
-- 💡 **[Examples](https://xlabmedical.github.io/trueform/examples)** - Code examples and integration guides
-- 📄 **[Publications](https://xlabmedical.github.io/trueform/about/publications)** - Academic papers and research
+- 📚 **[Getting Started](https://xlabmedical.github.io/trueform/cpp/getting-started)** - Quick start guide and installation
+- 📖 **[Modules](https://xlabmedical.github.io/trueform/cpp/modules/core)** - Complete API reference for all modules
+- 📊 **[Benchmarks](https://xlabmedical.github.io/trueform/cpp/benchmarks)** - Performance comparisons vs VTK, CGAL, nanoflann
+- 💡 **[Examples](https://xlabmedical.github.io/trueform/cpp/examples)** - Code examples and integration guides
+- 📄 **[Publications](https://xlabmedical.github.io/trueform/cpp/about/publications)** - Academic papers and research
 
 ## License
 
@@ -154,14 +154,15 @@ Trueform is distributed under a dual-license model:
 - **Noncommercial use**: PolyForm Noncommercial License 1.0.0
 - **Commercial use**: Separate paid agreement with XLAB
 
-See [LICENSE.noncommercial](./LICENSE.noncommercial) and [license documentation](https://xlabmedical.github.io/trueform/about/license) for details. For commercial licensing, contact [ziga.sajovic@xlab.si](mailto:ziga.sajovic@xlab.si).
+See [LICENSE.noncommercial](./LICENSE.noncommercial) and [license documentation](https://xlabmedical.github.io/trueform/cpp/about/license) for details. For commercial licensing, contact [ziga.sajovic@xlab.si](mailto:ziga.sajovic@xlab.si).
 
 ### 3rd Party Licenses
 
-`trueform` uses several third-party libraries, each with its own license:
+**Core library:**
 - **Intel TBB** - Apache License 2.0
-- **fast_float** (in case of BUILD_PYTHON) - MIT License
-- **nanobind** (in case of BUILD_PYTHON) - BSD-3-Clause License
+
+**Python bindings:**
+- **nanobind** - BSD-3-Clause License
 
 ## Contributing
 
@@ -169,7 +170,7 @@ We welcome contributions! Browse [open issues](https://github.com/xlabmedical/tr
 
 **Get Started:**
 - 📖 Read the full contributing guide: [CONTRIBUTING.md](./CONTRIBUTING.md)
-- 🌐 View on the documentation site: [Contributing Guide](https://xlabmedical.github.io/trueform/about/contributing)
+- 🌐 View on the documentation site: [Contributing Guide](https://xlabmedical.github.io/trueform/cpp/about/contributing)
 
 By contributing, you certify that your work may be distributed under both the PolyForm Noncommercial License and any commercial licenses XLAB offers.
 

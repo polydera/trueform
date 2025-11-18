@@ -9,5 +9,6 @@ https://github.com/xlabmedical/trueform
 
 from .isocontours import isocontours
 from .intersection_curves import intersection_curves
+from .self_intersection_curves import self_intersection_curves
 
-__all__ = ['isocontours', 'intersection_curves']
+__all__ = ['isocontours', 'intersection_curves', 'self_intersection_curves']

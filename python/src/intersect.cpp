@@ -16,6 +16,7 @@ auto register_intersect(nanobind::module_ &m) -> void {
   // Register intersect components to submodule
   register_intersect_isocontours(intersect_module);
   register_intersect_intersection_curves(intersect_module);
+  register_intersect_self_intersection_curves(intersect_module);
 }
 
 } // namespace tf::py

@@ -89,6 +89,23 @@ set_target_properties(
     RUNTIME_OUTPUT_DIRECTORY  ${CMAKE_CURRENT_BINARY_DIR}/trueform
 )
 
+# Generate _version.py from project version
+# SKBUILD_PROJECT_VERSION is set by scikit-build-core from pyproject.toml
+if(DEFINED SKBUILD_PROJECT_VERSION)
+  set(TRUEFORM_VERSION ${SKBUILD_PROJECT_VERSION})
+else()
+  set(TRUEFORM_VERSION "0.0.0-dev")
+endif()
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/trueform/_version.py
+  "__version__ = \"${TRUEFORM_VERSION}\"\n"
+)
+
+# Also install the generated _version.py
+install(
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/trueform/_version.py
+  DESTINATION trueform
+)
+
 # Glob all Python files to track them as dependencies
 file(GLOB_RECURSE PYTHON_SOURCE_FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/trueform/*.py")

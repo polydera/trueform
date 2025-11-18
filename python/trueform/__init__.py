@@ -7,11 +7,9 @@ Commercial licensing available via ziga.sajovic@xlab.si.
 https://github.com/xlabmedical/trueform
 """
 
-from importlib import metadata as _metadata
-
 try:
-    __version__ = _metadata.version("trueform")
-except _metadata.PackageNotFoundError:
+    from ._version import __version__
+except ImportError:
     __version__ = "0.0.0"
 
 # Core data structures
@@ -23,8 +21,8 @@ from .ray_cast import ray_cast
 from .intersects import intersects
 from .distance import distance, distance2
 from .distance_field import distance_field
-from ._intersect import isocontours, intersection_curves
-from ._cut import isobands, boolean_union, boolean_intersection, boolean_difference
+from ._intersect import isocontours, intersection_curves, self_intersection_curves
+from ._cut import isobands, boolean_union, boolean_intersection, boolean_difference, embedded_self_intersection_curves
 from ._clean import cleaned
 from ._reindex import reindex_by_ids, reindex_by_mask, split_into_components, concatenated
 from ._topology import label_connected_components, cell_membership, manifold_edge_link, face_link, vertex_link_edges, vertex_link_faces, boundary_edges, boundary_paths, boundary_curves, non_manifold_edges
@@ -53,9 +51,11 @@ __all__ = [
     'isocontours',
     'isobands',
     'intersection_curves',
+    'self_intersection_curves',
     'boolean_union',
     'boolean_intersection',
     'boolean_difference',
+    'embedded_self_intersection_curves',
     'cleaned',
     'reindex_by_ids',
     'reindex_by_mask',
