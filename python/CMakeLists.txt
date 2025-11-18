@@ -1,6 +1,13 @@
 # Python bindings for trueform
-
 message(STATUS "Configuring Python bindings for trueform")
+include(CheckCXXCompilerFlag)
+
+
+check_cxx_compiler_flag("-Wno-deprecated-literal-operator" SUPPORTS_DEPRECATED_LITERAL_OPERATOR)
+if(SUPPORTS_DEPRECATED_LITERAL_OPERATOR)
+  message(STATUS "Suppressing nanobind deprecated literal operator warnings")
+  add_compile_options(-Wno-deprecated-literal-operator)
+endif ()
 
 # Find Python
 find_package(
@@ -61,8 +68,6 @@ endif()
 
 # Release build optimizations
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
-  include(CheckCXXCompilerFlag)
-
   check_cxx_compiler_flag("-march=native" SUPPORTS_MARCH_NATIVE)
   if(SUPPORTS_MARCH_NATIVE)
     message(STATUS "Compiler supports -march=native for Python bindings")
