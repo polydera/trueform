@@ -9,7 +9,7 @@ https://github.com/xlabmedical/trueform
 
 import numpy as np
 from typing import Union
-from .._trueform import (
+from .._trueform.spatial import (
     EdgeMeshWrapperIntFloat2D,
     EdgeMeshWrapperIntFloat3D,
     EdgeMeshWrapperIntDouble2D,

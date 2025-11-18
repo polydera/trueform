@@ -150,4 +150,4 @@ def ray_cast(ray: Any, target: Any, config: Optional[Tuple[float, float]] = None
 
     # Dispatch to appropriate C++ function for core primitives
     func_name = _RAY_CAST_DISPATCH[target_type].format(suffix)
-    return getattr(_trueform, func_name)(ray.data, target.data, config)
+    return getattr(_trueform.core, func_name)(ray.data, target.data, config)

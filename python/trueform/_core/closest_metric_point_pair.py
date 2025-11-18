@@ -191,7 +191,7 @@ def closest_metric_point_pair(obj0: Any, obj1: Any) -> Tuple[float, np.ndarray, 
 
     if needs_swap:
         # Swap arguments and results
-        dist2, pt1, pt0 = getattr(_trueform, func_name)(data1, data0)
+        dist2, pt1, pt0 = getattr(_trueform.core, func_name)(data1, data0)
         return dist2, pt0, pt1
     else:
-        return getattr(_trueform, func_name)(data0, data1)
+        return getattr(_trueform.core, func_name)(data0, data1)

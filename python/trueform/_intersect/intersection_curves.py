@@ -119,7 +119,7 @@ def intersection_curves(
 
     # 6. DISPATCH TO C++
     func_name = f"intersection_curves_mesh_mesh_{suffix}"
-    (paths_offsets, paths_data), points = getattr(_trueform, func_name)(
+    (paths_offsets, paths_data), points = getattr(_trueform.intersect, func_name)(
         mesh0._wrapper, mesh1._wrapper
     )
 

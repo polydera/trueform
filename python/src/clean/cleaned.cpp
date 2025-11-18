@@ -12,7 +12,7 @@
 
 namespace tf::py {
 
-auto register_clean(nanobind::module_ &m) -> void {
+auto register_clean_cleaned(nanobind::module_ &m) -> void {
   using namespace nanobind;
 
   // ==========================================================================

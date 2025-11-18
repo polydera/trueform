@@ -10,9 +10,12 @@
 namespace tf::py {
 
 auto register_cut(nanobind::module_ &m) -> void {
-  // Register cut components
-  register_cut_isobands(m);
-  register_cut_boolean(m);
+  // Create cut submodule
+  auto cut_module = m.def_submodule("cut", "Cut operations");
+
+  // Register cut components to submodule
+  register_cut_isobands(cut_module);
+  register_cut_boolean(cut_module);
 }
 
 } // namespace tf::py

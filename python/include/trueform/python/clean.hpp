@@ -10,7 +10,10 @@
 
 namespace tf::py {
 
-// Forward declaration for clean module registration
+// Unified clean module registration
 auto register_clean(nanobind::module_ &m) -> void;
+
+// Forward declarations for clean module registration (internal)
+auto register_clean_cleaned(nanobind::module_ &m) -> void;
 
 } // namespace tf::py

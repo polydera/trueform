@@ -10,14 +10,14 @@
 namespace tf::py {
 
 auto register_spatial_module(nanobind::module_ &m) -> void {
-  // Register spatial form wrapper classes on main module
-  // (Python imports these from _trueform, not _trueform.spatial)
-  register_point_cloud(m);
-  register_mesh(m);
-  register_edge_mesh(m);
-
-  // Register spatial operations on spatial submodule
+  // Create spatial submodule
   auto spatial_module = m.def_submodule("spatial", "Spatial operations");
+
+  // Register spatial form wrapper classes to submodule
+  register_point_cloud(spatial_module);
+  register_mesh(spatial_module);
+  register_edge_mesh(spatial_module);
+
   // Register spatial operations
   register_point_cloud_neighbor_search(spatial_module);
   register_mesh_neighbor_search(spatial_module);

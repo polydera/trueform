@@ -196,7 +196,7 @@ def split_into_components(
         func_name = f"split_into_components_{suffix}"
 
         # Call C++ function - returns (list_of_components, component_labels)
-        cpp_func = getattr(_trueform, func_name)
+        cpp_func = getattr(_trueform.reindex, func_name)
         components, comp_labels = cpp_func(indices, points, labels)
 
         return components, comp_labels
@@ -247,7 +247,7 @@ def split_into_components(
         func_name = f"split_into_components_{suffix}"
 
         # Call C++ function - returns (list_of_components, component_labels)
-        cpp_func = getattr(_trueform, func_name)
+        cpp_func = getattr(_trueform.reindex, func_name)
         components, comp_labels = cpp_func(indices, points, labels)
 
         return components, comp_labels

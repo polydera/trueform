@@ -231,7 +231,7 @@ def intersects(obj0: Any, obj1: Any) -> bool:
 
     # Get function and call
     func_name = func_template.format(suffix)
-    cpp_func = getattr(_trueform, func_name)
+    cpp_func = getattr(_trueform.core, func_name)
 
     if needs_swap:
         return cpp_func(obj1.data, obj0.data)

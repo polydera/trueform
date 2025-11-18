@@ -255,7 +255,7 @@ def _boolean_impl(mesh0, mesh1, op_int, return_curves):
     if return_curves:
         func_name = f"boolean_curves_mesh_mesh_{suffix}"
         (result_faces, result_points), labels, ((paths_offsets, paths_data), curve_points) = getattr(
-            _trueform, func_name
+            _trueform.cut, func_name
         )(mesh0._wrapper, mesh1._wrapper, op_int)
 
         # 8. HANDLE LABEL SWAPPING
@@ -269,7 +269,7 @@ def _boolean_impl(mesh0, mesh1, op_int, return_curves):
         return (result_faces, result_points), labels, (paths, curve_points)
     else:
         func_name = f"boolean_mesh_mesh_{suffix}"
-        (result_faces, result_points), labels = getattr(_trueform, func_name)(
+        (result_faces, result_points), labels = getattr(_trueform.cut, func_name)(
             mesh0._wrapper, mesh1._wrapper, op_int
         )
 

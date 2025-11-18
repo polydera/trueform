@@ -171,7 +171,7 @@ def isobands(
     if return_curves:
         func_name = f"make_isobands_curves_{suffix}"
         (result_faces, result_points), labels, ((paths_offsets, paths_data), curve_points) = getattr(
-            _trueform, func_name
+            _trueform.cut, func_name
         )(mesh._wrapper, scalar_field, cut_values_array, selected_bands_array)
 
         # Wrap paths in OffsetBlockedArray
@@ -180,7 +180,7 @@ def isobands(
         return (result_faces, result_points), labels, (paths, curve_points)
     else:
         func_name = f"make_isobands_{suffix}"
-        (result_faces, result_points), labels = getattr(_trueform, func_name)(
+        (result_faces, result_points), labels = getattr(_trueform.cut, func_name)(
             mesh._wrapper, scalar_field, cut_values_array, selected_bands_array
         )
 

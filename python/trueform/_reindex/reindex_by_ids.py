@@ -198,7 +198,7 @@ def reindex_by_ids(
         func_name = f"reindexed_by_ids_indexed_{suffix}"
 
         # Call C++ function - always returns ((connectivity, points), face_map, point_map)
-        cpp_func = getattr(_trueform, func_name)
+        cpp_func = getattr(_trueform.reindex, func_name)
         result, face_map, point_map = cpp_func(indices, points, ids)
 
         # Conditionally return maps based on user request
@@ -241,7 +241,7 @@ def reindex_by_ids(
             func_name = f"reindexed_by_ids_points_{suffix}"
 
             # Call C++ function - always returns (points, point_map)
-            cpp_func = getattr(_trueform, func_name)
+            cpp_func = getattr(_trueform.reindex, func_name)
             result, point_map = cpp_func(points, ids)
 
             # Conditionally return maps based on user request
@@ -268,7 +268,7 @@ def reindex_by_ids(
         func_name = f"reindexed_by_ids_indexed_{suffix}"
 
         # Call C++ function - always returns ((connectivity, points), face_map, point_map)
-        cpp_func = getattr(_trueform, func_name)
+        cpp_func = getattr(_trueform.reindex, func_name)
         result, face_map, point_map = cpp_func(indices, points, ids)
 
         # Conditionally return maps based on user request

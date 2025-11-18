@@ -142,13 +142,13 @@ def isocontours(
         # Single threshold - use scalar value
         func_name = f"make_isocontours_single_{suffix}"
         threshold_value = float(threshold_array[0])
-        (paths_offsets, paths_data), points = getattr(_trueform, func_name)(
+        (paths_offsets, paths_data), points = getattr(_trueform.intersect, func_name)(
             mesh._wrapper, scalar_field, threshold_value
         )
     else:
         # Multiple thresholds - use array
         func_name = f"make_isocontours_multi_{suffix}"
-        (paths_offsets, paths_data), points = getattr(_trueform, func_name)(
+        (paths_offsets, paths_data), points = getattr(_trueform.intersect, func_name)(
             mesh._wrapper, scalar_field, threshold_array
         )
 

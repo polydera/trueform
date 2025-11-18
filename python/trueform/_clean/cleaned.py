@@ -189,7 +189,7 @@ def cleaned(
         func_name = f"cleaned_indexed_with_maps_{suffix}"
 
         # Call C++ function - always returns ((connectivity, points), face_map, point_map)
-        cpp_func = getattr(_trueform, func_name)
+        cpp_func = getattr(_trueform.clean, func_name)
         result, face_map, point_map = cpp_func(indices, points, tolerance)
 
         # Conditionally return maps based on user request
@@ -231,7 +231,7 @@ def cleaned(
             func_name = f"cleaned_points_with_maps_{suffix}"
 
             # Call C++ function - always returns (points, point_map)
-            cpp_func = getattr(_trueform, func_name)
+            cpp_func = getattr(_trueform.clean, func_name)
             result, point_map = cpp_func(points, tolerance)
 
             # Conditionally return maps based on user request
@@ -252,7 +252,7 @@ def cleaned(
         func_name = f"cleaned_indexed_with_maps_{suffix}"
 
         # Call C++ function - always returns ((connectivity, points), face_map, point_map)
-        cpp_func = getattr(_trueform, func_name)
+        cpp_func = getattr(_trueform.clean, func_name)
         result, face_map, point_map = cpp_func(indices, points, tolerance)
 
         # Conditionally return maps based on user request
@@ -298,7 +298,7 @@ def cleaned(
             func_name = f"cleaned_points_with_maps_{suffix}"
 
             # Call C++ function - always returns (points, point_map)
-            cpp_func = getattr(_trueform, func_name)
+            cpp_func = getattr(_trueform.clean, func_name)
             result, point_map = cpp_func(data, tolerance)
 
             # Conditionally return maps based on user request
@@ -337,7 +337,7 @@ def cleaned(
             func_name = f"cleaned_soup_{suffix}"
 
             # Call C++ function
-            cpp_func = getattr(_trueform, func_name)
+            cpp_func = getattr(_trueform.clean, func_name)
             return cpp_func(data, tolerance)
 
     else:

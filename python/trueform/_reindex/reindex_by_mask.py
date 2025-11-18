@@ -200,7 +200,7 @@ def reindex_by_mask(
         func_name = f"reindexed_by_mask_indexed_{suffix}"
 
         # Call C++ function - always returns ((connectivity, points), face_map, point_map)
-        cpp_func = getattr(_trueform, func_name)
+        cpp_func = getattr(_trueform.reindex, func_name)
         result, face_map, point_map = cpp_func(indices, points, mask)
 
         # Conditionally return maps based on user request
@@ -260,7 +260,7 @@ def reindex_by_mask(
             func_name = f"reindexed_by_mask_points_{suffix}"
 
             # Call C++ function - always returns (points, point_map)
-            cpp_func = getattr(_trueform, func_name)
+            cpp_func = getattr(_trueform.reindex, func_name)
             result, point_map = cpp_func(points, mask)
 
             # Conditionally return maps based on user request
@@ -281,7 +281,7 @@ def reindex_by_mask(
         func_name = f"reindexed_by_mask_indexed_{suffix}"
 
         # Call C++ function - always returns ((connectivity, points), face_map, point_map)
-        cpp_func = getattr(_trueform, func_name)
+        cpp_func = getattr(_trueform.reindex, func_name)
         result, face_map, point_map = cpp_func(indices, points, mask)
 
         # Conditionally return maps based on user request

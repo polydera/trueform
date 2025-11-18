@@ -10,9 +10,12 @@
 
 namespace tf::py {
 
-// Forward declarations for reindex module registration
-auto register_reindex_by_ids(nanobind::module_ &m) -> void;
-auto register_reindex_by_mask(nanobind::module_ &m) -> void;
-auto register_split_into_components(nanobind::module_ &m) -> void;
+// Unified reindex module registration
+auto register_reindex(nanobind::module_ &m) -> void;
+
+// Forward declarations for reindex module registration (internal)
+auto register_reindex_reindex_by_ids(nanobind::module_ &m) -> void;
+auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void;
+auto register_reindex_split_into_components(nanobind::module_ &m) -> void;
 
 } // namespace tf::py

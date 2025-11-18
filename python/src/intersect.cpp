@@ -10,9 +10,12 @@
 namespace tf::py {
 
 auto register_intersect(nanobind::module_ &m) -> void {
-  // Register intersect components
-  register_intersect_isocontours(m);
-  register_intersect_intersection_curves(m);
+  // Create intersect submodule
+  auto intersect_module = m.def_submodule("intersect", "Intersection operations");
+
+  // Register intersect components to submodule
+  register_intersect_isocontours(intersect_module);
+  register_intersect_intersection_curves(intersect_module);
 }
 
 } // namespace tf::py

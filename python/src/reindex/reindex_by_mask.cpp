@@ -11,7 +11,7 @@
 
 namespace tf::py {
 
-auto register_reindex_by_mask(nanobind::module_ &m) -> void {
+auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
   using namespace nanobind;
 
   // ==========================================================================

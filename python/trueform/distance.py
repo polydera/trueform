@@ -200,6 +200,6 @@ def _distance_impl(obj0: Any, obj1: Any, func_prefix: str) -> float:
     data1 = get_data(obj1)
 
     if needs_swap:
-        return getattr(_trueform, func_name)(data1, data0)
+        return getattr(_trueform.core, func_name)(data1, data0)
     else:
-        return getattr(_trueform, func_name)(data0, data1)
+        return getattr(_trueform.core, func_name)(data0, data1)

@@ -83,10 +83,10 @@ class OffsetBlockedArray:
         # C++ wrapper validates offset constraints (first=0, last=len(data))
         # Select appropriate wrapper based on dtype
         if offsets.dtype == np.int32:
-            self._wrapper = _trueform.OffsetBlockedArrayWrapperIntInt(
+            self._wrapper = _trueform.core.OffsetBlockedArrayWrapperIntInt(
                 offsets, data)
         else:  # int64
-            self._wrapper = _trueform.OffsetBlockedArrayWrapperInt64Int64(
+            self._wrapper = _trueform.core.OffsetBlockedArrayWrapperInt64Int64(
                 offsets, data)
 
     def __len__(self) -> int:

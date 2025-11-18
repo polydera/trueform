@@ -10,13 +10,16 @@
 namespace tf::py {
 
 auto register_core(nanobind::module_ &m) -> void {
-  // Register core components
-  register_offset_blocked_array(m);
-  register_core_closest_metric_point_pair(m);
-  register_core_ray_cast(m);
-  register_core_intersects(m);
-  register_core_distance(m);
-  register_core_distance_field(m);
+  // Create core submodule
+  auto core_module = m.def_submodule("core", "Core operations");
+
+  // Register core components to submodule
+  register_offset_blocked_array(core_module);
+  register_core_closest_metric_point_pair(core_module);
+  register_core_ray_cast(core_module);
+  register_core_intersects(core_module);
+  register_core_distance(core_module);
+  register_core_distance_field(core_module);
 }
 
 } // namespace tf::py

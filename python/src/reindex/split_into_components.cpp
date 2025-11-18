@@ -11,7 +11,7 @@
 
 namespace tf::py {
 
-auto register_split_into_components(nanobind::module_ &m) -> void {
+auto register_reindex_split_into_components(nanobind::module_ &m) -> void {
   using namespace nanobind;
 
   // ==========================================================================

@@ -148,4 +148,4 @@ def distance_field(points: Any, primitive: Any) -> np.ndarray:
     func_template = _DISTANCE_FIELD_DISPATCH[primitive_type]
     func_name = func_template.format(suffix)
 
-    return getattr(_trueform, func_name)(points_array, primitive.data)
+    return getattr(_trueform.core, func_name)(points_array, primitive.data)

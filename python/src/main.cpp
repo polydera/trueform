@@ -29,8 +29,6 @@ NB_MODULE(_trueform, m) {
   tf::py::register_cut(m);
   tf::py::register_intersect(m);
   tf::py::register_io(m);
-  tf::py::register_reindex_by_ids(m);
-  tf::py::register_reindex_by_mask(m);
-  tf::py::register_split_into_components(m);
+  tf::py::register_reindex(m);
   tf::py::register_spatial_module(m);
 }
