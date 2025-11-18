@@ -4,15 +4,15 @@ on:
   push:
     branches:
       - main
-      - develop
+    tags:
+      - '*'
   pull_request:
     branches:
       - main
-      - develop
   workflow_dispatch:
 
 jobs:
-  build:
+  build-wasm:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -34,3 +34,4 @@ jobs:
         with:
           name: web-wasm-build
           path: web-examples/src/webAssembly/build/dist
+          retention-days: 7

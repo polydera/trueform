@@ -1,4 +1,4 @@
-import { MainModule } from './webAssembly/dist/native.js'
+import { MainModule } from './webAssembly/build/dist/native.js'
 import {TestClassThreejsBase} from "@/TestThreejsBase";
 
 export class CollisionExample extends TestClassThreejsBase {

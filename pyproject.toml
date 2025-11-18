@@ -1,0 +1,74 @@
+[build-system]
+requires = [
+  "scikit-build-core>=0.9.2",
+]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "trueform"
+version = "0.0.0"
+description = "Trueform - high-performance geometric processing primitives with nanobind-powered Python bindings."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { file = "LICENSE.noncommercial" }
+authors = [
+  { name = "Ziga Sajovic", email = "ziga.sajovic@xlab.si" },
+  { name = "XLAB" },
+]
+keywords = ["geometry", "nanobind", "computational-geometry", "meshes"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "License :: Other/Proprietary License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Scientific/Engineering :: Mathematics",
+  "Topic :: Scientific/Engineering :: Visualization",
+]
+dependencies = [
+  "numpy>=1.23",
+]
+
+[project.urls]
+Homepage = "https://github.com/xlabmedical/trueform"
+Documentation = "https://github.com/xlabmedical/trueform/tree/main/docs"
+Issues = "https://github.com/xlabmedical/trueform/issues"
+
+[tool.scikit-build]
+build-dir = "build/{wheel_tag}"
+cmake.build-type = "Release"
+cmake.args = [
+  "-DBUILD_PYTHON=ON",
+  "-DBUILD_EXAMPLES=OFF",
+]
+build.targets = ["python"]
+sdist.include = [
+  "CMakeLists.txt",
+  "COMMERCIAL.md",
+  "CONTRIBUTING.md",
+  "LICENSE",
+  "LICENSE.noncommercial",
+  "README.md",
+  "cmake",
+  "docs",
+  "examples",
+  "include",
+  "licenses",
+  "python",
+  "trueformConfig.cmake.in",
+]
+wheel.license-files = [
+  "LICENSE",
+  "LICENSE.noncommercial",
+  "licenses/*",
+]

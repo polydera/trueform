@@ -52,7 +52,7 @@ async function copyFiles(args) {
 
 const copyDeps = async () => {
     const copy1 = copyFiles({
-        src: normalizePath(path.resolve(__dirname, `./src/webAssembly/dist/*.wasm`)),
+        src: normalizePath(path.resolve(__dirname, `./src/webAssembly/build/dist/*.wasm`)),
         dest: normalizePath(path.resolve(__dirname, `./public`)),
         makeDirs: true,
     });

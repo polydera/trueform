@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -11,6 +11,7 @@
 #include "../core/polygons.hpp"
 #include "../core/transformed.hpp"
 #include "../core/views/enumerate.hpp"
+#include "./float_to_chars.hpp"
 #include <charconv>
 #include <fstream>
 #include <string>
@@ -66,18 +67,18 @@ auto write_obj(const tf::polygons<Policy> &polygons, std::string filename)
         char temp[128];
         std::size_t size = 2; // "v "
 
-        auto res = std::to_chars(temp, temp + 64,
-                                 static_cast<float>(transformed_pt[0]));
+        auto res = float_to_chars(temp, temp + 64,
+                                  static_cast<float>(transformed_pt[0]));
         size += res.ptr - temp;
         size += 1; // " "
 
-        res = std::to_chars(temp, temp + 64,
-                            static_cast<float>(transformed_pt[1]));
+        res = float_to_chars(temp, temp + 64,
+                             static_cast<float>(transformed_pt[1]));
         size += res.ptr - temp;
         size += 1; // " "
 
-        res = std::to_chars(temp, temp + 64,
-                            static_cast<float>(transformed_pt[2]));
+        res = float_to_chars(temp, temp + 64,
+                             static_cast<float>(transformed_pt[2]));
         size += res.ptr - temp;
         size += 1; // "\n"
 
@@ -99,8 +100,8 @@ auto write_obj(const tf::polygons<Policy> &polygons, std::string filename)
         for (const auto &vertex_idx : face) {
           size += 1; // " "
           // OBJ uses 1-based indices
-          auto res = std::to_chars(temp, temp + 32,
-                                   static_cast<int>(vertex_idx) + 1);
+          auto res =
+              std::to_chars(temp, temp + 32, static_cast<int>(vertex_idx) + 1);
           size += res.ptr - temp;
         }
         size += 1; // "\n"
@@ -143,18 +144,18 @@ auto write_obj(const tf::polygons<Policy> &polygons, std::string filename)
         *ptr++ = 'v';
         *ptr++ = ' ';
 
-        auto res = std::to_chars(ptr, ptr + 64,
-                                 static_cast<float>(transformed_pt[0]));
+        auto res = float_to_chars(ptr, ptr + 64,
+                                  static_cast<float>(transformed_pt[0]));
         ptr = res.ptr;
         *ptr++ = ' ';
 
-        res = std::to_chars(ptr, ptr + 64,
-                            static_cast<float>(transformed_pt[1]));
+        res = float_to_chars(ptr, ptr + 64,
+                             static_cast<float>(transformed_pt[1]));
         ptr = res.ptr;
         *ptr++ = ' ';
 
-        res = std::to_chars(ptr, ptr + 64,
-                            static_cast<float>(transformed_pt[2]));
+        res = float_to_chars(ptr, ptr + 64,
+                             static_cast<float>(transformed_pt[2]));
         ptr = res.ptr;
         *ptr++ = '\n';
       },

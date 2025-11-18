@@ -58,19 +58,20 @@ private:
     for (auto &&[edge0, angle, link] : tf::zip(edges, _angles, _dil)) {
       if (link.size() < 2)
         continue;
-      auto angle0 = angle - M_PI;
-      angle0 += (angle0 <= 0) * 2 * M_PI;
+      constexpr std::decay_t<decltype(angle)> pi = 3.14159265358979323846;
+      auto angle0 = angle - pi;
+      angle0 += (angle0 <= 0) * 2 * pi;
       _work_buffer.clear();
       _work_buffer.resize(link.size());
       for (auto &&[next, val] : tf::zip(link, _work_buffer)) {
         const auto &edge1 = edges[next];
         if (edge0[0] == edge1[1]) {
-          val = 2 * M_PI;
+          val = 2 * pi;
         } else {
           auto angle1 = _angles[next];
-          angle1 += (angle1 <= 0) * 2 * M_PI;
+          angle1 += (angle1 <= 0) * 2 * pi;
           auto angle = angle0 - angle1;
-          angle += (angle <= 0) * 2 * M_PI;
+          angle += (angle <= 0) * 2 * pi;
           val = angle;
         }
       }

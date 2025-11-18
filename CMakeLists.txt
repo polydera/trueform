@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.15)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE
@@ -6,10 +6,11 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
       CACHE STRING "Build type (default Release)" FORCE)
 endif()
 
-
 option(ENABLE_ASAN "Enable Address Sanitizer" OFF)
 option(BUILD_EXAMPLES "Build examples." ON)
 option(BUILD_PYTHON "Build Python bindings." ON)
+option(USE_SYSTEM_TBB "Use system-installed TBB if found." OFF)
+mark_as_advanced(USE_SYSTEM_TBB)
 
 if(ENABLE_ASAN)
   message("Enabling ASAN and DEBUG")
@@ -18,27 +19,16 @@ endif()
 
 project(trueform LANGUAGES CXX)
 
+if(MSVC)
+  # Enable exception support for MSVC
+    add_compile_options(/EHsc)
+endif()
+
 add_library(trueform INTERFACE)
 add_library(tf::trueform ALIAS trueform)
 
 target_compile_features(trueform INTERFACE cxx_std_17)
-
-include(FetchContent)
-
-find_package(TBB QUIET)
-
-if(NOT TBB_FOUND)
-  message(STATUS "TBB not found, using FetchContent to download and build it.")
-
-  FetchContent_Declare(
-    tbb
-    GIT_REPOSITORY https://github.com/oneapi-src/oneTBB.git
-    GIT_TAG v2021.13.1)
-  set(TBB_TEST
-      OFF
-      CACHE BOOL "Disable TBB tests" FORCE)
-  FetchContent_MakeAvailable(tbb)
-endif()
+include(cmake/GetTBB.cmake)
 
 # Link TBB to trueform target
 target_link_libraries(trueform INTERFACE TBB::tbb)
@@ -85,3 +75,13 @@ configure_package_config_file(
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/trueformConfig.cmake
               ${CMAKE_CURRENT_BINARY_DIR}/trueformConfigVersion.cmake
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/trueform)
+
+install(FILES ${CMAKE_CURRENT_LIST_DIR}/LICENSE
+              ${CMAKE_CURRENT_LIST_DIR}/LICENSE.noncommercial
+              ${CMAKE_CURRENT_LIST_DIR}/licenses/LICENSE.TBB
+        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/licenses)
+if(BUILD_PYTHON)
+  install(FILES ${CMAKE_CURRENT_LIST_DIR}/licenses/LICENSE.fast_float
+                ${CMAKE_CURRENT_LIST_DIR}/licenses/LICENSE.nanobind
+          DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/licenses)
+endif()

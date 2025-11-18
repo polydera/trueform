@@ -1,10 +1,17 @@
 # Python bindings for trueform
-
 message(STATUS "Configuring Python bindings for trueform")
+include(CheckCXXCompilerFlag)
+
+
+check_cxx_compiler_flag("-Wno-deprecated-literal-operator" SUPPORTS_DEPRECATED_LITERAL_OPERATOR)
+if(SUPPORTS_DEPRECATED_LITERAL_OPERATOR)
+  message(STATUS "Suppressing nanobind deprecated literal operator warnings")
+  add_compile_options(-Wno-deprecated-literal-operator)
+endif ()
 
 # Find Python
 find_package(
-  Python 3.8
+  Python
   COMPONENTS Interpreter Development.Module
   REQUIRED)
 message(STATUS "Found Python ${Python_VERSION}")
@@ -61,8 +68,6 @@ endif()
 
 # Release build optimizations
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
-  include(CheckCXXCompilerFlag)
-
   check_cxx_compiler_flag("-march=native" SUPPORTS_MARCH_NATIVE)
   if(SUPPORTS_MARCH_NATIVE)
     message(STATUS "Compiler supports -march=native for Python bindings")
@@ -72,9 +77,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
   endif()
 
 endif()
-
-
-target_compile_options(_trueform PRIVATE -ftime-trace)
 
 # Exclude from ALL target
 set_target_properties(_trueform PROPERTIES EXCLUDE_FROM_ALL TRUE)

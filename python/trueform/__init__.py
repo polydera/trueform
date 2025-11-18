@@ -7,6 +7,13 @@ Commercial licensing available via ziga.sajovic@xlab.si.
 https://github.com/xlabmedical/trueform
 """
 
+from importlib import metadata as _metadata
+
+try:
+    __version__ = _metadata.version("trueform")
+except _metadata.PackageNotFoundError:
+    __version__ = "0.0.0"
+
 # Core data structures
 from ._spatial import PointCloud, Mesh, EdgeMesh
 from ._core import closest_metric_point_pair, closest_metric_point
@@ -71,4 +78,5 @@ __all__ = [
     'write_obj',
     # Primitives
     'Point', 'Segment', 'Polygon', 'AABB', 'Ray', 'Line', 'Plane',
+    '__version__',
 ]

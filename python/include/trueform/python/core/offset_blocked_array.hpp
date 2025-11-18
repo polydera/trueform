@@ -8,6 +8,7 @@
 
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
+#include <string>
 #include <trueform/core/range.hpp>
 #include <trueform/core/views/offset_block_range.hpp>
 

@@ -5,6 +5,7 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
+#include <algorithm>
 #include <cstring>
 #include <memory>
 #include <type_traits>
