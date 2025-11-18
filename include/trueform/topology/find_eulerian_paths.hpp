@@ -5,10 +5,12 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
+#include "../core/buffer.hpp"
 #include "../core/edges.hpp"
 #include "../core/views/enumerate.hpp"
 #include "./edge_membership_like.hpp"
-#include "./vertex_link.hpp"
+#include "./vertex_link_like.hpp"
+#include <algorithm>
 
 namespace tf {
 template <typename Policy, typename Policy1, typename Index>
@@ -70,8 +72,8 @@ auto find_eulerian_paths(const tf::edges<Policy> &edges,
     path_offsets.push_back(new_size);
 }
 
-template <typename Index>
-auto find_eulerian_paths(const tf::vertex_link<Index> &link,
+template <typename Policy, typename Index>
+auto find_eulerian_paths(const tf::vertex_link_like<Policy> &link,
                          tf::buffer<Index> &path_offsets,
                          tf::buffer<Index> &vertex_ids) {
 

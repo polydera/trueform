@@ -27,6 +27,10 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, float, 3, 2>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int, float, 3, 2>::has_face_membership)
+      .def("face_membership_array",
+           &mesh_wrapper<int, float, 3, 2>::face_membership_array)
+      .def("set_face_membership",
+           &mesh_wrapper<int, float, 3, 2>::set_face_membership)
       .def("rebuild_manifold_edge_link",
            &mesh_wrapper<int, float, 3, 2>::rebuild_manifold_edge_link)
       .def("ensure_manifold_edge_link",
@@ -35,6 +39,34 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, float, 3, 2>::clear_manifold_edge_link)
       .def("has_manifold_edge_link",
            &mesh_wrapper<int, float, 3, 2>::has_manifold_edge_link)
+      .def("manifold_edge_link_array",
+           &mesh_wrapper<int, float, 3, 2>::manifold_edge_link_array)
+      .def("set_manifold_edge_link",
+           &mesh_wrapper<int, float, 3, 2>::set_manifold_edge_link)
+      .def("rebuild_face_link",
+           &mesh_wrapper<int, float, 3, 2>::rebuild_face_link)
+      .def("ensure_face_link",
+           &mesh_wrapper<int, float, 3, 2>::ensure_face_link)
+      .def("clear_face_link",
+           &mesh_wrapper<int, float, 3, 2>::clear_face_link)
+      .def("has_face_link",
+           &mesh_wrapper<int, float, 3, 2>::has_face_link)
+      .def("face_link_array",
+           &mesh_wrapper<int, float, 3, 2>::face_link_array)
+      .def("set_face_link",
+           &mesh_wrapper<int, float, 3, 2>::set_face_link)
+      .def("rebuild_vertex_link",
+           &mesh_wrapper<int, float, 3, 2>::rebuild_vertex_link)
+      .def("ensure_vertex_link",
+           &mesh_wrapper<int, float, 3, 2>::ensure_vertex_link)
+      .def("clear_vertex_link",
+           &mesh_wrapper<int, float, 3, 2>::clear_vertex_link)
+      .def("has_vertex_link",
+           &mesh_wrapper<int, float, 3, 2>::has_vertex_link)
+      .def("vertex_link_array",
+           &mesh_wrapper<int, float, 3, 2>::vertex_link_array)
+      .def("set_vertex_link",
+           &mesh_wrapper<int, float, 3, 2>::set_vertex_link)
       .def("number_of_points",
            &mesh_wrapper<int, float, 3, 2>::number_of_points)
       .def("number_of_faces", &mesh_wrapper<int, float, 3, 2>::number_of_faces)
@@ -66,6 +98,10 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, float, 3, 3>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int, float, 3, 3>::has_face_membership)
+      .def("face_membership_array",
+           &mesh_wrapper<int, float, 3, 3>::face_membership_array)
+      .def("set_face_membership",
+           &mesh_wrapper<int, float, 3, 3>::set_face_membership)
       .def("rebuild_manifold_edge_link",
            &mesh_wrapper<int, float, 3, 3>::rebuild_manifold_edge_link)
       .def("ensure_manifold_edge_link",
@@ -74,6 +110,34 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, float, 3, 3>::clear_manifold_edge_link)
       .def("has_manifold_edge_link",
            &mesh_wrapper<int, float, 3, 3>::has_manifold_edge_link)
+      .def("manifold_edge_link_array",
+           &mesh_wrapper<int, float, 3, 3>::manifold_edge_link_array)
+      .def("set_manifold_edge_link",
+           &mesh_wrapper<int, float, 3, 3>::set_manifold_edge_link)
+      .def("rebuild_face_link",
+           &mesh_wrapper<int, float, 3, 3>::rebuild_face_link)
+      .def("ensure_face_link",
+           &mesh_wrapper<int, float, 3, 3>::ensure_face_link)
+      .def("clear_face_link",
+           &mesh_wrapper<int, float, 3, 3>::clear_face_link)
+      .def("has_face_link",
+           &mesh_wrapper<int, float, 3, 3>::has_face_link)
+      .def("face_link_array",
+           &mesh_wrapper<int, float, 3, 3>::face_link_array)
+      .def("set_face_link",
+           &mesh_wrapper<int, float, 3, 3>::set_face_link)
+      .def("rebuild_vertex_link",
+           &mesh_wrapper<int, float, 3, 3>::rebuild_vertex_link)
+      .def("ensure_vertex_link",
+           &mesh_wrapper<int, float, 3, 3>::ensure_vertex_link)
+      .def("clear_vertex_link",
+           &mesh_wrapper<int, float, 3, 3>::clear_vertex_link)
+      .def("has_vertex_link",
+           &mesh_wrapper<int, float, 3, 3>::has_vertex_link)
+      .def("vertex_link_array",
+           &mesh_wrapper<int, float, 3, 3>::vertex_link_array)
+      .def("set_vertex_link",
+           &mesh_wrapper<int, float, 3, 3>::set_vertex_link)
       .def("number_of_points",
            &mesh_wrapper<int, float, 3, 3>::number_of_points)
       .def("number_of_faces", &mesh_wrapper<int, float, 3, 3>::number_of_faces)
@@ -105,6 +169,10 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, float, 4, 2>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int, float, 4, 2>::has_face_membership)
+      .def("face_membership_array",
+           &mesh_wrapper<int, float, 4, 2>::face_membership_array)
+      .def("set_face_membership",
+           &mesh_wrapper<int, float, 4, 2>::set_face_membership)
       .def("rebuild_manifold_edge_link",
            &mesh_wrapper<int, float, 4, 2>::rebuild_manifold_edge_link)
       .def("ensure_manifold_edge_link",
@@ -113,6 +181,34 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, float, 4, 2>::clear_manifold_edge_link)
       .def("has_manifold_edge_link",
            &mesh_wrapper<int, float, 4, 2>::has_manifold_edge_link)
+      .def("manifold_edge_link_array",
+           &mesh_wrapper<int, float, 4, 2>::manifold_edge_link_array)
+      .def("set_manifold_edge_link",
+           &mesh_wrapper<int, float, 4, 2>::set_manifold_edge_link)
+      .def("rebuild_face_link",
+           &mesh_wrapper<int, float, 4, 2>::rebuild_face_link)
+      .def("ensure_face_link",
+           &mesh_wrapper<int, float, 4, 2>::ensure_face_link)
+      .def("clear_face_link",
+           &mesh_wrapper<int, float, 4, 2>::clear_face_link)
+      .def("has_face_link",
+           &mesh_wrapper<int, float, 4, 2>::has_face_link)
+      .def("face_link_array",
+           &mesh_wrapper<int, float, 4, 2>::face_link_array)
+      .def("set_face_link",
+           &mesh_wrapper<int, float, 4, 2>::set_face_link)
+      .def("rebuild_vertex_link",
+           &mesh_wrapper<int, float, 4, 2>::rebuild_vertex_link)
+      .def("ensure_vertex_link",
+           &mesh_wrapper<int, float, 4, 2>::ensure_vertex_link)
+      .def("clear_vertex_link",
+           &mesh_wrapper<int, float, 4, 2>::clear_vertex_link)
+      .def("has_vertex_link",
+           &mesh_wrapper<int, float, 4, 2>::has_vertex_link)
+      .def("vertex_link_array",
+           &mesh_wrapper<int, float, 4, 2>::vertex_link_array)
+      .def("set_vertex_link",
+           &mesh_wrapper<int, float, 4, 2>::set_vertex_link)
       .def("number_of_points",
            &mesh_wrapper<int, float, 4, 2>::number_of_points)
       .def("number_of_faces", &mesh_wrapper<int, float, 4, 2>::number_of_faces)
@@ -144,6 +240,10 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, float, 4, 3>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int, float, 4, 3>::has_face_membership)
+      .def("face_membership_array",
+           &mesh_wrapper<int, float, 4, 3>::face_membership_array)
+      .def("set_face_membership",
+           &mesh_wrapper<int, float, 4, 3>::set_face_membership)
       .def("rebuild_manifold_edge_link",
            &mesh_wrapper<int, float, 4, 3>::rebuild_manifold_edge_link)
       .def("ensure_manifold_edge_link",
@@ -152,6 +252,34 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, float, 4, 3>::clear_manifold_edge_link)
       .def("has_manifold_edge_link",
            &mesh_wrapper<int, float, 4, 3>::has_manifold_edge_link)
+      .def("manifold_edge_link_array",
+           &mesh_wrapper<int, float, 4, 3>::manifold_edge_link_array)
+      .def("set_manifold_edge_link",
+           &mesh_wrapper<int, float, 4, 3>::set_manifold_edge_link)
+      .def("rebuild_face_link",
+           &mesh_wrapper<int, float, 4, 3>::rebuild_face_link)
+      .def("ensure_face_link",
+           &mesh_wrapper<int, float, 4, 3>::ensure_face_link)
+      .def("clear_face_link",
+           &mesh_wrapper<int, float, 4, 3>::clear_face_link)
+      .def("has_face_link",
+           &mesh_wrapper<int, float, 4, 3>::has_face_link)
+      .def("face_link_array",
+           &mesh_wrapper<int, float, 4, 3>::face_link_array)
+      .def("set_face_link",
+           &mesh_wrapper<int, float, 4, 3>::set_face_link)
+      .def("rebuild_vertex_link",
+           &mesh_wrapper<int, float, 4, 3>::rebuild_vertex_link)
+      .def("ensure_vertex_link",
+           &mesh_wrapper<int, float, 4, 3>::ensure_vertex_link)
+      .def("clear_vertex_link",
+           &mesh_wrapper<int, float, 4, 3>::clear_vertex_link)
+      .def("has_vertex_link",
+           &mesh_wrapper<int, float, 4, 3>::has_vertex_link)
+      .def("vertex_link_array",
+           &mesh_wrapper<int, float, 4, 3>::vertex_link_array)
+      .def("set_vertex_link",
+           &mesh_wrapper<int, float, 4, 3>::set_vertex_link)
       .def("number_of_points",
            &mesh_wrapper<int, float, 4, 3>::number_of_points)
       .def("number_of_faces", &mesh_wrapper<int, float, 4, 3>::number_of_faces)
@@ -184,6 +312,10 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, double, 3, 2>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int, double, 3, 2>::has_face_membership)
+      .def("face_membership_array",
+           &mesh_wrapper<int, double, 3, 2>::face_membership_array)
+      .def("set_face_membership",
+           &mesh_wrapper<int, double, 3, 2>::set_face_membership)
       .def("rebuild_manifold_edge_link",
            &mesh_wrapper<int, double, 3, 2>::rebuild_manifold_edge_link)
       .def("ensure_manifold_edge_link",
@@ -192,6 +324,34 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, double, 3, 2>::clear_manifold_edge_link)
       .def("has_manifold_edge_link",
            &mesh_wrapper<int, double, 3, 2>::has_manifold_edge_link)
+      .def("manifold_edge_link_array",
+           &mesh_wrapper<int, double, 3, 2>::manifold_edge_link_array)
+      .def("set_manifold_edge_link",
+           &mesh_wrapper<int, double, 3, 2>::set_manifold_edge_link)
+      .def("rebuild_face_link",
+           &mesh_wrapper<int, double, 3, 2>::rebuild_face_link)
+      .def("ensure_face_link",
+           &mesh_wrapper<int, double, 3, 2>::ensure_face_link)
+      .def("clear_face_link",
+           &mesh_wrapper<int, double, 3, 2>::clear_face_link)
+      .def("has_face_link",
+           &mesh_wrapper<int, double, 3, 2>::has_face_link)
+      .def("face_link_array",
+           &mesh_wrapper<int, double, 3, 2>::face_link_array)
+      .def("set_face_link",
+           &mesh_wrapper<int, double, 3, 2>::set_face_link)
+      .def("rebuild_vertex_link",
+           &mesh_wrapper<int, double, 3, 2>::rebuild_vertex_link)
+      .def("ensure_vertex_link",
+           &mesh_wrapper<int, double, 3, 2>::ensure_vertex_link)
+      .def("clear_vertex_link",
+           &mesh_wrapper<int, double, 3, 2>::clear_vertex_link)
+      .def("has_vertex_link",
+           &mesh_wrapper<int, double, 3, 2>::has_vertex_link)
+      .def("vertex_link_array",
+           &mesh_wrapper<int, double, 3, 2>::vertex_link_array)
+      .def("set_vertex_link",
+           &mesh_wrapper<int, double, 3, 2>::set_vertex_link)
       .def("number_of_points",
            &mesh_wrapper<int, double, 3, 2>::number_of_points)
       .def("number_of_faces", &mesh_wrapper<int, double, 3, 2>::number_of_faces)
@@ -224,6 +384,10 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, double, 3, 3>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int, double, 3, 3>::has_face_membership)
+      .def("face_membership_array",
+           &mesh_wrapper<int, double, 3, 3>::face_membership_array)
+      .def("set_face_membership",
+           &mesh_wrapper<int, double, 3, 3>::set_face_membership)
       .def("rebuild_manifold_edge_link",
            &mesh_wrapper<int, double, 3, 3>::rebuild_manifold_edge_link)
       .def("ensure_manifold_edge_link",
@@ -232,6 +396,34 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, double, 3, 3>::clear_manifold_edge_link)
       .def("has_manifold_edge_link",
            &mesh_wrapper<int, double, 3, 3>::has_manifold_edge_link)
+      .def("manifold_edge_link_array",
+           &mesh_wrapper<int, double, 3, 3>::manifold_edge_link_array)
+      .def("set_manifold_edge_link",
+           &mesh_wrapper<int, double, 3, 3>::set_manifold_edge_link)
+      .def("rebuild_face_link",
+           &mesh_wrapper<int, double, 3, 3>::rebuild_face_link)
+      .def("ensure_face_link",
+           &mesh_wrapper<int, double, 3, 3>::ensure_face_link)
+      .def("clear_face_link",
+           &mesh_wrapper<int, double, 3, 3>::clear_face_link)
+      .def("has_face_link",
+           &mesh_wrapper<int, double, 3, 3>::has_face_link)
+      .def("face_link_array",
+           &mesh_wrapper<int, double, 3, 3>::face_link_array)
+      .def("set_face_link",
+           &mesh_wrapper<int, double, 3, 3>::set_face_link)
+      .def("rebuild_vertex_link",
+           &mesh_wrapper<int, double, 3, 3>::rebuild_vertex_link)
+      .def("ensure_vertex_link",
+           &mesh_wrapper<int, double, 3, 3>::ensure_vertex_link)
+      .def("clear_vertex_link",
+           &mesh_wrapper<int, double, 3, 3>::clear_vertex_link)
+      .def("has_vertex_link",
+           &mesh_wrapper<int, double, 3, 3>::has_vertex_link)
+      .def("vertex_link_array",
+           &mesh_wrapper<int, double, 3, 3>::vertex_link_array)
+      .def("set_vertex_link",
+           &mesh_wrapper<int, double, 3, 3>::set_vertex_link)
       .def("number_of_points",
            &mesh_wrapper<int, double, 3, 3>::number_of_points)
       .def("number_of_faces", &mesh_wrapper<int, double, 3, 3>::number_of_faces)
@@ -264,6 +456,10 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, double, 4, 2>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int, double, 4, 2>::has_face_membership)
+      .def("face_membership_array",
+           &mesh_wrapper<int, double, 4, 2>::face_membership_array)
+      .def("set_face_membership",
+           &mesh_wrapper<int, double, 4, 2>::set_face_membership)
       .def("rebuild_manifold_edge_link",
            &mesh_wrapper<int, double, 4, 2>::rebuild_manifold_edge_link)
       .def("ensure_manifold_edge_link",
@@ -272,6 +468,34 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, double, 4, 2>::clear_manifold_edge_link)
       .def("has_manifold_edge_link",
            &mesh_wrapper<int, double, 4, 2>::has_manifold_edge_link)
+      .def("manifold_edge_link_array",
+           &mesh_wrapper<int, double, 4, 2>::manifold_edge_link_array)
+      .def("set_manifold_edge_link",
+           &mesh_wrapper<int, double, 4, 2>::set_manifold_edge_link)
+      .def("rebuild_face_link",
+           &mesh_wrapper<int, double, 4, 2>::rebuild_face_link)
+      .def("ensure_face_link",
+           &mesh_wrapper<int, double, 4, 2>::ensure_face_link)
+      .def("clear_face_link",
+           &mesh_wrapper<int, double, 4, 2>::clear_face_link)
+      .def("has_face_link",
+           &mesh_wrapper<int, double, 4, 2>::has_face_link)
+      .def("face_link_array",
+           &mesh_wrapper<int, double, 4, 2>::face_link_array)
+      .def("set_face_link",
+           &mesh_wrapper<int, double, 4, 2>::set_face_link)
+      .def("rebuild_vertex_link",
+           &mesh_wrapper<int, double, 4, 2>::rebuild_vertex_link)
+      .def("ensure_vertex_link",
+           &mesh_wrapper<int, double, 4, 2>::ensure_vertex_link)
+      .def("clear_vertex_link",
+           &mesh_wrapper<int, double, 4, 2>::clear_vertex_link)
+      .def("has_vertex_link",
+           &mesh_wrapper<int, double, 4, 2>::has_vertex_link)
+      .def("vertex_link_array",
+           &mesh_wrapper<int, double, 4, 2>::vertex_link_array)
+      .def("set_vertex_link",
+           &mesh_wrapper<int, double, 4, 2>::set_vertex_link)
       .def("number_of_points",
            &mesh_wrapper<int, double, 4, 2>::number_of_points)
       .def("number_of_faces", &mesh_wrapper<int, double, 4, 2>::number_of_faces)
@@ -304,6 +528,10 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, double, 4, 3>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int, double, 4, 3>::has_face_membership)
+      .def("face_membership_array",
+           &mesh_wrapper<int, double, 4, 3>::face_membership_array)
+      .def("set_face_membership",
+           &mesh_wrapper<int, double, 4, 3>::set_face_membership)
       .def("rebuild_manifold_edge_link",
            &mesh_wrapper<int, double, 4, 3>::rebuild_manifold_edge_link)
       .def("ensure_manifold_edge_link",
@@ -312,6 +540,34 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int, double, 4, 3>::clear_manifold_edge_link)
       .def("has_manifold_edge_link",
            &mesh_wrapper<int, double, 4, 3>::has_manifold_edge_link)
+      .def("manifold_edge_link_array",
+           &mesh_wrapper<int, double, 4, 3>::manifold_edge_link_array)
+      .def("set_manifold_edge_link",
+           &mesh_wrapper<int, double, 4, 3>::set_manifold_edge_link)
+      .def("rebuild_face_link",
+           &mesh_wrapper<int, double, 4, 3>::rebuild_face_link)
+      .def("ensure_face_link",
+           &mesh_wrapper<int, double, 4, 3>::ensure_face_link)
+      .def("clear_face_link",
+           &mesh_wrapper<int, double, 4, 3>::clear_face_link)
+      .def("has_face_link",
+           &mesh_wrapper<int, double, 4, 3>::has_face_link)
+      .def("face_link_array",
+           &mesh_wrapper<int, double, 4, 3>::face_link_array)
+      .def("set_face_link",
+           &mesh_wrapper<int, double, 4, 3>::set_face_link)
+      .def("rebuild_vertex_link",
+           &mesh_wrapper<int, double, 4, 3>::rebuild_vertex_link)
+      .def("ensure_vertex_link",
+           &mesh_wrapper<int, double, 4, 3>::ensure_vertex_link)
+      .def("clear_vertex_link",
+           &mesh_wrapper<int, double, 4, 3>::clear_vertex_link)
+      .def("has_vertex_link",
+           &mesh_wrapper<int, double, 4, 3>::has_vertex_link)
+      .def("vertex_link_array",
+           &mesh_wrapper<int, double, 4, 3>::vertex_link_array)
+      .def("set_vertex_link",
+           &mesh_wrapper<int, double, 4, 3>::set_vertex_link)
       .def("number_of_points",
            &mesh_wrapper<int, double, 4, 3>::number_of_points)
       .def("number_of_faces", &mesh_wrapper<int, double, 4, 3>::number_of_faces)
@@ -343,6 +599,10 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, float, 3, 2>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int64_t, float, 3, 2>::has_face_membership)
+      .def("face_membership_array",
+           &mesh_wrapper<int64_t, float, 3, 2>::face_membership_array)
+      .def("set_face_membership",
+           &mesh_wrapper<int64_t, float, 3, 2>::set_face_membership)
       .def("rebuild_manifold_edge_link",
            &mesh_wrapper<int64_t, float, 3, 2>::rebuild_manifold_edge_link)
       .def("ensure_manifold_edge_link",
@@ -351,6 +611,34 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, float, 3, 2>::clear_manifold_edge_link)
       .def("has_manifold_edge_link",
            &mesh_wrapper<int64_t, float, 3, 2>::has_manifold_edge_link)
+      .def("manifold_edge_link_array",
+           &mesh_wrapper<int64_t, float, 3, 2>::manifold_edge_link_array)
+      .def("set_manifold_edge_link",
+           &mesh_wrapper<int64_t, float, 3, 2>::set_manifold_edge_link)
+      .def("rebuild_face_link",
+           &mesh_wrapper<int64_t, float, 3, 2>::rebuild_face_link)
+      .def("ensure_face_link",
+           &mesh_wrapper<int64_t, float, 3, 2>::ensure_face_link)
+      .def("clear_face_link",
+           &mesh_wrapper<int64_t, float, 3, 2>::clear_face_link)
+      .def("has_face_link",
+           &mesh_wrapper<int64_t, float, 3, 2>::has_face_link)
+      .def("face_link_array",
+           &mesh_wrapper<int64_t, float, 3, 2>::face_link_array)
+      .def("set_face_link",
+           &mesh_wrapper<int64_t, float, 3, 2>::set_face_link)
+      .def("rebuild_vertex_link",
+           &mesh_wrapper<int64_t, float, 3, 2>::rebuild_vertex_link)
+      .def("ensure_vertex_link",
+           &mesh_wrapper<int64_t, float, 3, 2>::ensure_vertex_link)
+      .def("clear_vertex_link",
+           &mesh_wrapper<int64_t, float, 3, 2>::clear_vertex_link)
+      .def("has_vertex_link",
+           &mesh_wrapper<int64_t, float, 3, 2>::has_vertex_link)
+      .def("vertex_link_array",
+           &mesh_wrapper<int64_t, float, 3, 2>::vertex_link_array)
+      .def("set_vertex_link",
+           &mesh_wrapper<int64_t, float, 3, 2>::set_vertex_link)
       .def("number_of_points",
            &mesh_wrapper<int64_t, float, 3, 2>::number_of_points)
       .def("number_of_faces",
@@ -384,6 +672,10 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, float, 3, 3>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int64_t, float, 3, 3>::has_face_membership)
+      .def("face_membership_array",
+           &mesh_wrapper<int64_t, float, 3, 3>::face_membership_array)
+      .def("set_face_membership",
+           &mesh_wrapper<int64_t, float, 3, 3>::set_face_membership)
       .def("rebuild_manifold_edge_link",
            &mesh_wrapper<int64_t, float, 3, 3>::rebuild_manifold_edge_link)
       .def("ensure_manifold_edge_link",
@@ -392,6 +684,34 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, float, 3, 3>::clear_manifold_edge_link)
       .def("has_manifold_edge_link",
            &mesh_wrapper<int64_t, float, 3, 3>::has_manifold_edge_link)
+      .def("manifold_edge_link_array",
+           &mesh_wrapper<int64_t, float, 3, 3>::manifold_edge_link_array)
+      .def("set_manifold_edge_link",
+           &mesh_wrapper<int64_t, float, 3, 3>::set_manifold_edge_link)
+      .def("rebuild_face_link",
+           &mesh_wrapper<int64_t, float, 3, 3>::rebuild_face_link)
+      .def("ensure_face_link",
+           &mesh_wrapper<int64_t, float, 3, 3>::ensure_face_link)
+      .def("clear_face_link",
+           &mesh_wrapper<int64_t, float, 3, 3>::clear_face_link)
+      .def("has_face_link",
+           &mesh_wrapper<int64_t, float, 3, 3>::has_face_link)
+      .def("face_link_array",
+           &mesh_wrapper<int64_t, float, 3, 3>::face_link_array)
+      .def("set_face_link",
+           &mesh_wrapper<int64_t, float, 3, 3>::set_face_link)
+      .def("rebuild_vertex_link",
+           &mesh_wrapper<int64_t, float, 3, 3>::rebuild_vertex_link)
+      .def("ensure_vertex_link",
+           &mesh_wrapper<int64_t, float, 3, 3>::ensure_vertex_link)
+      .def("clear_vertex_link",
+           &mesh_wrapper<int64_t, float, 3, 3>::clear_vertex_link)
+      .def("has_vertex_link",
+           &mesh_wrapper<int64_t, float, 3, 3>::has_vertex_link)
+      .def("vertex_link_array",
+           &mesh_wrapper<int64_t, float, 3, 3>::vertex_link_array)
+      .def("set_vertex_link",
+           &mesh_wrapper<int64_t, float, 3, 3>::set_vertex_link)
       .def("number_of_points",
            &mesh_wrapper<int64_t, float, 3, 3>::number_of_points)
       .def("number_of_faces",
@@ -425,6 +745,10 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, float, 4, 2>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int64_t, float, 4, 2>::has_face_membership)
+      .def("face_membership_array",
+           &mesh_wrapper<int64_t, float, 4, 2>::face_membership_array)
+      .def("set_face_membership",
+           &mesh_wrapper<int64_t, float, 4, 2>::set_face_membership)
       .def("rebuild_manifold_edge_link",
            &mesh_wrapper<int64_t, float, 4, 2>::rebuild_manifold_edge_link)
       .def("ensure_manifold_edge_link",
@@ -433,6 +757,34 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, float, 4, 2>::clear_manifold_edge_link)
       .def("has_manifold_edge_link",
            &mesh_wrapper<int64_t, float, 4, 2>::has_manifold_edge_link)
+      .def("manifold_edge_link_array",
+           &mesh_wrapper<int64_t, float, 4, 2>::manifold_edge_link_array)
+      .def("set_manifold_edge_link",
+           &mesh_wrapper<int64_t, float, 4, 2>::set_manifold_edge_link)
+      .def("rebuild_face_link",
+           &mesh_wrapper<int64_t, float, 4, 2>::rebuild_face_link)
+      .def("ensure_face_link",
+           &mesh_wrapper<int64_t, float, 4, 2>::ensure_face_link)
+      .def("clear_face_link",
+           &mesh_wrapper<int64_t, float, 4, 2>::clear_face_link)
+      .def("has_face_link",
+           &mesh_wrapper<int64_t, float, 4, 2>::has_face_link)
+      .def("face_link_array",
+           &mesh_wrapper<int64_t, float, 4, 2>::face_link_array)
+      .def("set_face_link",
+           &mesh_wrapper<int64_t, float, 4, 2>::set_face_link)
+      .def("rebuild_vertex_link",
+           &mesh_wrapper<int64_t, float, 4, 2>::rebuild_vertex_link)
+      .def("ensure_vertex_link",
+           &mesh_wrapper<int64_t, float, 4, 2>::ensure_vertex_link)
+      .def("clear_vertex_link",
+           &mesh_wrapper<int64_t, float, 4, 2>::clear_vertex_link)
+      .def("has_vertex_link",
+           &mesh_wrapper<int64_t, float, 4, 2>::has_vertex_link)
+      .def("vertex_link_array",
+           &mesh_wrapper<int64_t, float, 4, 2>::vertex_link_array)
+      .def("set_vertex_link",
+           &mesh_wrapper<int64_t, float, 4, 2>::set_vertex_link)
       .def("number_of_points",
            &mesh_wrapper<int64_t, float, 4, 2>::number_of_points)
       .def("number_of_faces",
@@ -466,6 +818,10 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, float, 4, 3>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int64_t, float, 4, 3>::has_face_membership)
+      .def("face_membership_array",
+           &mesh_wrapper<int64_t, float, 4, 3>::face_membership_array)
+      .def("set_face_membership",
+           &mesh_wrapper<int64_t, float, 4, 3>::set_face_membership)
       .def("rebuild_manifold_edge_link",
            &mesh_wrapper<int64_t, float, 4, 3>::rebuild_manifold_edge_link)
       .def("ensure_manifold_edge_link",
@@ -474,6 +830,34 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, float, 4, 3>::clear_manifold_edge_link)
       .def("has_manifold_edge_link",
            &mesh_wrapper<int64_t, float, 4, 3>::has_manifold_edge_link)
+      .def("manifold_edge_link_array",
+           &mesh_wrapper<int64_t, float, 4, 3>::manifold_edge_link_array)
+      .def("set_manifold_edge_link",
+           &mesh_wrapper<int64_t, float, 4, 3>::set_manifold_edge_link)
+      .def("rebuild_face_link",
+           &mesh_wrapper<int64_t, float, 4, 3>::rebuild_face_link)
+      .def("ensure_face_link",
+           &mesh_wrapper<int64_t, float, 4, 3>::ensure_face_link)
+      .def("clear_face_link",
+           &mesh_wrapper<int64_t, float, 4, 3>::clear_face_link)
+      .def("has_face_link",
+           &mesh_wrapper<int64_t, float, 4, 3>::has_face_link)
+      .def("face_link_array",
+           &mesh_wrapper<int64_t, float, 4, 3>::face_link_array)
+      .def("set_face_link",
+           &mesh_wrapper<int64_t, float, 4, 3>::set_face_link)
+      .def("rebuild_vertex_link",
+           &mesh_wrapper<int64_t, float, 4, 3>::rebuild_vertex_link)
+      .def("ensure_vertex_link",
+           &mesh_wrapper<int64_t, float, 4, 3>::ensure_vertex_link)
+      .def("clear_vertex_link",
+           &mesh_wrapper<int64_t, float, 4, 3>::clear_vertex_link)
+      .def("has_vertex_link",
+           &mesh_wrapper<int64_t, float, 4, 3>::has_vertex_link)
+      .def("vertex_link_array",
+           &mesh_wrapper<int64_t, float, 4, 3>::vertex_link_array)
+      .def("set_vertex_link",
+           &mesh_wrapper<int64_t, float, 4, 3>::set_vertex_link)
       .def("number_of_points",
            &mesh_wrapper<int64_t, float, 4, 3>::number_of_points)
       .def("number_of_faces",
@@ -508,6 +892,10 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, double, 3, 2>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int64_t, double, 3, 2>::has_face_membership)
+      .def("face_membership_array",
+           &mesh_wrapper<int64_t, double, 3, 2>::face_membership_array)
+      .def("set_face_membership",
+           &mesh_wrapper<int64_t, double, 3, 2>::set_face_membership)
       .def("rebuild_manifold_edge_link",
            &mesh_wrapper<int64_t, double, 3, 2>::rebuild_manifold_edge_link)
       .def("ensure_manifold_edge_link",
@@ -516,6 +904,34 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, double, 3, 2>::clear_manifold_edge_link)
       .def("has_manifold_edge_link",
            &mesh_wrapper<int64_t, double, 3, 2>::has_manifold_edge_link)
+      .def("manifold_edge_link_array",
+           &mesh_wrapper<int64_t, double, 3, 2>::manifold_edge_link_array)
+      .def("set_manifold_edge_link",
+           &mesh_wrapper<int64_t, double, 3, 2>::set_manifold_edge_link)
+      .def("rebuild_face_link",
+           &mesh_wrapper<int64_t, double, 3, 2>::rebuild_face_link)
+      .def("ensure_face_link",
+           &mesh_wrapper<int64_t, double, 3, 2>::ensure_face_link)
+      .def("clear_face_link",
+           &mesh_wrapper<int64_t, double, 3, 2>::clear_face_link)
+      .def("has_face_link",
+           &mesh_wrapper<int64_t, double, 3, 2>::has_face_link)
+      .def("face_link_array",
+           &mesh_wrapper<int64_t, double, 3, 2>::face_link_array)
+      .def("set_face_link",
+           &mesh_wrapper<int64_t, double, 3, 2>::set_face_link)
+      .def("rebuild_vertex_link",
+           &mesh_wrapper<int64_t, double, 3, 2>::rebuild_vertex_link)
+      .def("ensure_vertex_link",
+           &mesh_wrapper<int64_t, double, 3, 2>::ensure_vertex_link)
+      .def("clear_vertex_link",
+           &mesh_wrapper<int64_t, double, 3, 2>::clear_vertex_link)
+      .def("has_vertex_link",
+           &mesh_wrapper<int64_t, double, 3, 2>::has_vertex_link)
+      .def("vertex_link_array",
+           &mesh_wrapper<int64_t, double, 3, 2>::vertex_link_array)
+      .def("set_vertex_link",
+           &mesh_wrapper<int64_t, double, 3, 2>::set_vertex_link)
       .def("number_of_points",
            &mesh_wrapper<int64_t, double, 3, 2>::number_of_points)
       .def("number_of_faces",
@@ -550,6 +966,10 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, double, 3, 3>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int64_t, double, 3, 3>::has_face_membership)
+      .def("face_membership_array",
+           &mesh_wrapper<int64_t, double, 3, 3>::face_membership_array)
+      .def("set_face_membership",
+           &mesh_wrapper<int64_t, double, 3, 3>::set_face_membership)
       .def("rebuild_manifold_edge_link",
            &mesh_wrapper<int64_t, double, 3, 3>::rebuild_manifold_edge_link)
       .def("ensure_manifold_edge_link",
@@ -558,6 +978,34 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, double, 3, 3>::clear_manifold_edge_link)
       .def("has_manifold_edge_link",
            &mesh_wrapper<int64_t, double, 3, 3>::has_manifold_edge_link)
+      .def("manifold_edge_link_array",
+           &mesh_wrapper<int64_t, double, 3, 3>::manifold_edge_link_array)
+      .def("set_manifold_edge_link",
+           &mesh_wrapper<int64_t, double, 3, 3>::set_manifold_edge_link)
+      .def("rebuild_face_link",
+           &mesh_wrapper<int64_t, double, 3, 3>::rebuild_face_link)
+      .def("ensure_face_link",
+           &mesh_wrapper<int64_t, double, 3, 3>::ensure_face_link)
+      .def("clear_face_link",
+           &mesh_wrapper<int64_t, double, 3, 3>::clear_face_link)
+      .def("has_face_link",
+           &mesh_wrapper<int64_t, double, 3, 3>::has_face_link)
+      .def("face_link_array",
+           &mesh_wrapper<int64_t, double, 3, 3>::face_link_array)
+      .def("set_face_link",
+           &mesh_wrapper<int64_t, double, 3, 3>::set_face_link)
+      .def("rebuild_vertex_link",
+           &mesh_wrapper<int64_t, double, 3, 3>::rebuild_vertex_link)
+      .def("ensure_vertex_link",
+           &mesh_wrapper<int64_t, double, 3, 3>::ensure_vertex_link)
+      .def("clear_vertex_link",
+           &mesh_wrapper<int64_t, double, 3, 3>::clear_vertex_link)
+      .def("has_vertex_link",
+           &mesh_wrapper<int64_t, double, 3, 3>::has_vertex_link)
+      .def("vertex_link_array",
+           &mesh_wrapper<int64_t, double, 3, 3>::vertex_link_array)
+      .def("set_vertex_link",
+           &mesh_wrapper<int64_t, double, 3, 3>::set_vertex_link)
       .def("number_of_points",
            &mesh_wrapper<int64_t, double, 3, 3>::number_of_points)
       .def("number_of_faces",
@@ -592,6 +1040,10 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, double, 4, 2>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int64_t, double, 4, 2>::has_face_membership)
+      .def("face_membership_array",
+           &mesh_wrapper<int64_t, double, 4, 2>::face_membership_array)
+      .def("set_face_membership",
+           &mesh_wrapper<int64_t, double, 4, 2>::set_face_membership)
       .def("rebuild_manifold_edge_link",
            &mesh_wrapper<int64_t, double, 4, 2>::rebuild_manifold_edge_link)
       .def("ensure_manifold_edge_link",
@@ -600,6 +1052,34 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, double, 4, 2>::clear_manifold_edge_link)
       .def("has_manifold_edge_link",
            &mesh_wrapper<int64_t, double, 4, 2>::has_manifold_edge_link)
+      .def("manifold_edge_link_array",
+           &mesh_wrapper<int64_t, double, 4, 2>::manifold_edge_link_array)
+      .def("set_manifold_edge_link",
+           &mesh_wrapper<int64_t, double, 4, 2>::set_manifold_edge_link)
+      .def("rebuild_face_link",
+           &mesh_wrapper<int64_t, double, 4, 2>::rebuild_face_link)
+      .def("ensure_face_link",
+           &mesh_wrapper<int64_t, double, 4, 2>::ensure_face_link)
+      .def("clear_face_link",
+           &mesh_wrapper<int64_t, double, 4, 2>::clear_face_link)
+      .def("has_face_link",
+           &mesh_wrapper<int64_t, double, 4, 2>::has_face_link)
+      .def("face_link_array",
+           &mesh_wrapper<int64_t, double, 4, 2>::face_link_array)
+      .def("set_face_link",
+           &mesh_wrapper<int64_t, double, 4, 2>::set_face_link)
+      .def("rebuild_vertex_link",
+           &mesh_wrapper<int64_t, double, 4, 2>::rebuild_vertex_link)
+      .def("ensure_vertex_link",
+           &mesh_wrapper<int64_t, double, 4, 2>::ensure_vertex_link)
+      .def("clear_vertex_link",
+           &mesh_wrapper<int64_t, double, 4, 2>::clear_vertex_link)
+      .def("has_vertex_link",
+           &mesh_wrapper<int64_t, double, 4, 2>::has_vertex_link)
+      .def("vertex_link_array",
+           &mesh_wrapper<int64_t, double, 4, 2>::vertex_link_array)
+      .def("set_vertex_link",
+           &mesh_wrapper<int64_t, double, 4, 2>::set_vertex_link)
       .def("number_of_points",
            &mesh_wrapper<int64_t, double, 4, 2>::number_of_points)
       .def("number_of_faces",
@@ -634,6 +1114,10 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, double, 4, 3>::clear_face_membership)
       .def("has_face_membership",
            &mesh_wrapper<int64_t, double, 4, 3>::has_face_membership)
+      .def("face_membership_array",
+           &mesh_wrapper<int64_t, double, 4, 3>::face_membership_array)
+      .def("set_face_membership",
+           &mesh_wrapper<int64_t, double, 4, 3>::set_face_membership)
       .def("rebuild_manifold_edge_link",
            &mesh_wrapper<int64_t, double, 4, 3>::rebuild_manifold_edge_link)
       .def("ensure_manifold_edge_link",
@@ -642,6 +1126,34 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, double, 4, 3>::clear_manifold_edge_link)
       .def("has_manifold_edge_link",
            &mesh_wrapper<int64_t, double, 4, 3>::has_manifold_edge_link)
+      .def("manifold_edge_link_array",
+           &mesh_wrapper<int64_t, double, 4, 3>::manifold_edge_link_array)
+      .def("set_manifold_edge_link",
+           &mesh_wrapper<int64_t, double, 4, 3>::set_manifold_edge_link)
+      .def("rebuild_face_link",
+           &mesh_wrapper<int64_t, double, 4, 3>::rebuild_face_link)
+      .def("ensure_face_link",
+           &mesh_wrapper<int64_t, double, 4, 3>::ensure_face_link)
+      .def("clear_face_link",
+           &mesh_wrapper<int64_t, double, 4, 3>::clear_face_link)
+      .def("has_face_link",
+           &mesh_wrapper<int64_t, double, 4, 3>::has_face_link)
+      .def("face_link_array",
+           &mesh_wrapper<int64_t, double, 4, 3>::face_link_array)
+      .def("set_face_link",
+           &mesh_wrapper<int64_t, double, 4, 3>::set_face_link)
+      .def("rebuild_vertex_link",
+           &mesh_wrapper<int64_t, double, 4, 3>::rebuild_vertex_link)
+      .def("ensure_vertex_link",
+           &mesh_wrapper<int64_t, double, 4, 3>::ensure_vertex_link)
+      .def("clear_vertex_link",
+           &mesh_wrapper<int64_t, double, 4, 3>::clear_vertex_link)
+      .def("has_vertex_link",
+           &mesh_wrapper<int64_t, double, 4, 3>::has_vertex_link)
+      .def("vertex_link_array",
+           &mesh_wrapper<int64_t, double, 4, 3>::vertex_link_array)
+      .def("set_vertex_link",
+           &mesh_wrapper<int64_t, double, 4, 3>::set_vertex_link)
       .def("number_of_points",
            &mesh_wrapper<int64_t, double, 4, 3>::number_of_points)
       .def("number_of_faces",

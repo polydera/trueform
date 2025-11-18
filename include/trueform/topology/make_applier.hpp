@@ -6,21 +6,23 @@
  */
 #pragma once
 
-#include "./face_link.hpp"
+#include "../core/range.hpp"
+#include "./face_link_like.hpp"
 #include "./manifold_edge_link_like.hpp"
-#include "./vertex_link.hpp"
+#include "./vertex_link_like.hpp"
 
 namespace tf {
-template <typename Index> auto make_applier(const tf::face_link<Index> &link) {
-  return [&link](Index id, const auto &f) {
-    for (Index n_id : link[id])
+template <typename Policy>
+auto make_applier(const tf::face_link_like<Policy> &link) {
+  return [link = tf::make_range(link)](auto id, const auto &f) {
+    for (auto n_id : link[id])
       f(n_id);
   };
 }
-template <typename Index>
-auto make_applier(const tf::vertex_link<Index> &link) {
-  return [&link](Index id, const auto &f) {
-    for (Index n_id : link[id])
+template <typename Policy>
+auto make_applier(const tf::vertex_link_like<Policy> &link) {
+  return [link = tf::make_range(link)](auto id, const auto &f) {
+    for (auto n_id : link[id])
       f(n_id);
   };
 }

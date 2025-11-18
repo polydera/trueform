@@ -16,22 +16,29 @@
 #include "./face_membership_like.hpp"
 #include "./scoped_face_membership.hpp"
 #include "./structures/compute_vertex_link.hpp"
+#include "./vertex_link_like.hpp"
 
 namespace tf {
 template <typename Index>
-class vertex_link : public offset_block_buffer<Index, Index> {
-  using base_t = offset_block_buffer<Index, Index>;
+class vertex_link : public vertex_link_like<offset_block_buffer<Index, Index>> {
+  using b_base_t = offset_block_buffer<Index, Index>;
+  using base_t = vertex_link_like<b_base_t>;
 
 public:
   template <typename Policy0, typename Policy1>
-  auto build(const tf::polygons<Policy0> &polygons,
+  auto build(const tf::faces<Policy0> &faces,
              const tf::face_membership_like<Policy1> &blink) -> void {
     base_t::offsets_buffer().allocate(blink.size() + 1);
     // perfect mesh has valence 6
     base_t::data_buffer().reserve(blink.size() * 4);
-    topology::compute_vertex_link(polygons.faces(), blink,
-                                  base_t::offsets_buffer(),
+    topology::compute_vertex_link(faces, blink, base_t::offsets_buffer(),
                                   base_t::data_buffer());
+  }
+
+  template <typename Policy0, typename Policy1>
+  auto build(const tf::polygons<Policy0> &polygons,
+             const tf::face_membership_like<Policy1> &blink) -> void {
+    return build(polygons.faces(), blink);
   }
 
   template <typename Policy, typename SubIndex>
@@ -49,7 +56,7 @@ public:
   auto build(const tf::edges<Policy> &edges, std::size_t n_unique_ids,
              tf::edge_orientation eo = tf::edge_orientation::bidirectional) {
     auto &as_em =
-        static_cast<edge_membership<Index> &>(static_cast<base_t &>(*this));
+        static_cast<edge_membership<Index> &>(static_cast<b_base_t &>(*this));
     as_em.build(edges, n_unique_ids, eo);
     switch (eo) {
     case tf::edge_orientation::forward:

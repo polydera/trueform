@@ -11,6 +11,7 @@
 #include "./boundary_edges.hpp"
 #include "./face_membership_like.hpp"
 #include "./find_eulerian_paths.hpp"
+#include "./vertex_link.hpp"
 
 namespace tf {
 

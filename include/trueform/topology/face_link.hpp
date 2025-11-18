@@ -6,13 +6,14 @@
  */
 #pragma once
 #include "../core/offset_block_buffer.hpp"
+#include "./face_link_like.hpp"
 #include "./face_membership_like.hpp"
 #include "./structures/compute_face_link.hpp"
 
 namespace tf {
 template <typename Index>
-class face_link : public offset_block_buffer<Index, Index> {
-  using base_t = offset_block_buffer<Index, Index>;
+class face_link : public face_link_like<offset_block_buffer<Index, Index>> {
+  using base_t = face_link_like<offset_block_buffer<Index, Index>>;
 
 public:
   template <typename Range, typename Policy>

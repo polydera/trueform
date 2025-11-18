@@ -9,6 +9,7 @@ https://github.com/xlabmedical/trueform
 
 import numpy as np
 from typing import Union
+from .._core import OffsetBlockedArray
 from .._trueform.spatial import (
     EdgeMeshWrapperIntFloat2D,
     EdgeMeshWrapperIntFloat3D,
@@ -231,6 +232,80 @@ class EdgeMesh:
         Call this after modifying the edges array to update the edge membership.
         """
         self._wrapper.rebuild_edge_membership()
+
+    @property
+    def edge_membership(self):
+        """
+        Get the edge membership structure.
+
+        Builds the structure if not already built.
+
+        Returns
+        -------
+        OffsetBlockedArray
+            Edge membership mapping points to edges.
+        """
+        wrapper = self._wrapper.edge_membership_array()
+        return OffsetBlockedArray(wrapper.offsets_array(), wrapper.data_array())
+
+    @edge_membership.setter
+    def edge_membership(self, value) -> None:
+        """
+        Set the edge membership structure.
+
+        Parameters
+        ----------
+        value : OffsetBlockedArray or None
+            Edge membership structure. Set to None to clear.
+        """
+        if value is None:
+            self._wrapper.clear_edge_membership()
+            return
+
+        # Pass the wrapper to C++
+        self._wrapper.set_edge_membership(value._wrapper)
+
+    def build_vertex_link(self) -> None:
+        """
+        Build the vertex link structure.
+
+        Call this after modifying the edges array to update the vertex link.
+        """
+        self._wrapper.rebuild_vertex_link()
+
+    @property
+    def vertex_link(self):
+        """
+        Get the vertex link structure.
+
+        For each vertex, contains all other vertices that share an edge with it.
+
+        Builds the structure if not already built.
+
+        Returns
+        -------
+        OffsetBlockedArray
+            Vertex link mapping vertices to connected vertices.
+        """
+        wrapper = self._wrapper.vertex_link_array()
+        return OffsetBlockedArray(wrapper.offsets_array(), wrapper.data_array())
+
+    @vertex_link.setter
+    def vertex_link(self, value) -> None:
+        """
+        Set the vertex link structure.
+
+        Parameters
+        ----------
+        value : OffsetBlockedArray or None
+            Vertex link structure. Set to None to clear.
+        """
+        if value is None:
+            self._wrapper.clear_vertex_link()
+            return
+
+        # Pass the wrapper to C++
+        self._wrapper.set_vertex_link(value._wrapper)
 
     def __repr__(self) -> str:
         """String representation of the edge mesh."""

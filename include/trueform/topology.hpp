@@ -7,6 +7,7 @@
 #pragma once
 
 #include "./topology/boundary_edges.hpp"             // IWYU pragma: export
+#include "./topology/vertex_link_like.hpp"             // IWYU pragma: export
 #include "./topology/boundary_paths.hpp"             // IWYU pragma: export
 #include "./topology/components/finder.hpp"          // IWYU pragma: export
 #include "./topology/connect_edges_to_paths.hpp"     // IWYU pragma: export

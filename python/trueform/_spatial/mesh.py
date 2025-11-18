@@ -9,6 +9,7 @@ https://github.com/xlabmedical/trueform
 
 import numpy as np
 from typing import Union
+from .._core import OffsetBlockedArray
 from .._trueform.spatial import (
     MeshWrapperIntFloat32D,
     MeshWrapperIntFloat33D,
@@ -253,6 +254,159 @@ class Mesh:
         Requires face membership to be built first (calls build_face_membership if needed).
         """
         self._wrapper.rebuild_manifold_edge_link()
+
+    @property
+    def face_membership(self):
+        """
+        Get the face membership structure.
+
+        Builds the structure if not already built.
+
+        Returns
+        -------
+        OffsetBlockedArray
+            Face membership mapping points to faces.
+        """
+        wrapper = self._wrapper.face_membership_array()
+        return OffsetBlockedArray(wrapper.offsets_array(), wrapper.data_array())
+
+    @face_membership.setter
+    def face_membership(self, value) -> None:
+        """
+        Set the face membership structure.
+
+        Parameters
+        ----------
+        value : OffsetBlockedArray or None
+            Face membership structure. Set to None to clear.
+        """
+        if value is None:
+            self._wrapper.clear_face_membership()
+            return
+
+        # Pass the wrapper to C++
+        self._wrapper.set_face_membership(value._wrapper)
+
+    @property
+    def manifold_edge_link(self):
+        """
+        Get the manifold edge link array.
+
+        Builds the structure if not already built (also builds face_membership if needed).
+
+        Returns
+        -------
+        np.ndarray
+            Manifold edge link array, shape (num_faces, ngon) with dtype matching faces.
+        """
+        return self._wrapper.manifold_edge_link_array()
+
+    @manifold_edge_link.setter
+    def manifold_edge_link(self, arr: np.ndarray) -> None:
+        """
+        Set the manifold edge link array.
+
+        Parameters
+        ----------
+        arr : np.ndarray or None
+            Manifold edge link array, shape (num_faces, ngon). Set to None to clear.
+        """
+        if arr is None:
+            self._wrapper.clear_manifold_edge_link()
+            return
+
+        # Ensure C-contiguous
+        if not arr.flags["C_CONTIGUOUS"]:
+            arr = np.ascontiguousarray(arr)
+
+        self._wrapper.set_manifold_edge_link(arr)
+
+    def build_face_link(self) -> None:
+        """
+        Build the face link structure.
+
+        Call this after modifying the faces array to update the face link.
+        Requires face membership to be built first (calls build_face_membership if needed).
+        """
+        self._wrapper.rebuild_face_link()
+
+    def build_vertex_link(self) -> None:
+        """
+        Build the vertex link structure.
+
+        Call this after modifying the faces array to update the vertex link.
+        Requires face membership to be built first (calls build_face_membership if needed).
+        """
+        self._wrapper.rebuild_vertex_link()
+
+    @property
+    def face_link(self):
+        """
+        Get the face link structure.
+
+        For each vertex, contains all faces in the vertex's link (faces sharing
+        an edge with any face containing that vertex).
+
+        Builds the structure if not already built (also builds face_membership if needed).
+
+        Returns
+        -------
+        OffsetBlockedArray
+            Face link mapping vertices to faces in their link.
+        """
+        wrapper = self._wrapper.face_link_array()
+        return OffsetBlockedArray(wrapper.offsets_array(), wrapper.data_array())
+
+    @face_link.setter
+    def face_link(self, value) -> None:
+        """
+        Set the face link structure.
+
+        Parameters
+        ----------
+        value : OffsetBlockedArray or None
+            Face link structure. Set to None to clear.
+        """
+        if value is None:
+            self._wrapper.clear_face_link()
+            return
+
+        # Pass the wrapper to C++
+        self._wrapper.set_face_link(value._wrapper)
+
+    @property
+    def vertex_link(self):
+        """
+        Get the vertex link structure.
+
+        For each vertex, contains all other vertices that share a face with it.
+
+        Builds the structure if not already built (also builds face_membership if needed).
+
+        Returns
+        -------
+        OffsetBlockedArray
+            Vertex link mapping vertices to connected vertices.
+        """
+        wrapper = self._wrapper.vertex_link_array()
+        return OffsetBlockedArray(wrapper.offsets_array(), wrapper.data_array())
+
+    @vertex_link.setter
+    def vertex_link(self, value) -> None:
+        """
+        Set the vertex link structure.
+
+        Parameters
+        ----------
+        value : OffsetBlockedArray or None
+            Vertex link structure. Set to None to clear.
+        """
+        if value is None:
+            self._wrapper.clear_vertex_link()
+            return
+
+        # Pass the wrapper to C++
+        self._wrapper.set_vertex_link(value._wrapper)
 
     def __repr__(self) -> str:
         """String representation of the mesh."""

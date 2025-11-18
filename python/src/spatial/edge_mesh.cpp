@@ -28,6 +28,22 @@ auto register_edge_mesh(nanobind::module_ &m) -> void {
            &edge_mesh_wrapper<int, float, 2>::clear_edge_membership)
       .def("has_edge_membership",
            &edge_mesh_wrapper<int, float, 2>::has_edge_membership)
+      .def("edge_membership_array",
+           &edge_mesh_wrapper<int, float, 2>::edge_membership_array)
+      .def("set_edge_membership",
+           &edge_mesh_wrapper<int, float, 2>::set_edge_membership)
+      .def("rebuild_vertex_link",
+           &edge_mesh_wrapper<int, float, 2>::rebuild_vertex_link)
+      .def("ensure_vertex_link",
+           &edge_mesh_wrapper<int, float, 2>::ensure_vertex_link)
+      .def("clear_vertex_link",
+           &edge_mesh_wrapper<int, float, 2>::clear_vertex_link)
+      .def("has_vertex_link",
+           &edge_mesh_wrapper<int, float, 2>::has_vertex_link)
+      .def("vertex_link_array",
+           &edge_mesh_wrapper<int, float, 2>::vertex_link_array)
+      .def("set_vertex_link",
+           &edge_mesh_wrapper<int, float, 2>::set_vertex_link)
       .def("number_of_points",
            &edge_mesh_wrapper<int, float, 2>::number_of_points)
       .def("number_of_edges",
@@ -61,6 +77,22 @@ auto register_edge_mesh(nanobind::module_ &m) -> void {
            &edge_mesh_wrapper<int, float, 3>::clear_edge_membership)
       .def("has_edge_membership",
            &edge_mesh_wrapper<int, float, 3>::has_edge_membership)
+      .def("edge_membership_array",
+           &edge_mesh_wrapper<int, float, 3>::edge_membership_array)
+      .def("set_edge_membership",
+           &edge_mesh_wrapper<int, float, 3>::set_edge_membership)
+      .def("rebuild_vertex_link",
+           &edge_mesh_wrapper<int, float, 3>::rebuild_vertex_link)
+      .def("ensure_vertex_link",
+           &edge_mesh_wrapper<int, float, 3>::ensure_vertex_link)
+      .def("clear_vertex_link",
+           &edge_mesh_wrapper<int, float, 3>::clear_vertex_link)
+      .def("has_vertex_link",
+           &edge_mesh_wrapper<int, float, 3>::has_vertex_link)
+      .def("vertex_link_array",
+           &edge_mesh_wrapper<int, float, 3>::vertex_link_array)
+      .def("set_vertex_link",
+           &edge_mesh_wrapper<int, float, 3>::set_vertex_link)
       .def("number_of_points",
            &edge_mesh_wrapper<int, float, 3>::number_of_points)
       .def("number_of_edges",
@@ -95,6 +127,22 @@ auto register_edge_mesh(nanobind::module_ &m) -> void {
            &edge_mesh_wrapper<int, double, 2>::clear_edge_membership)
       .def("has_edge_membership",
            &edge_mesh_wrapper<int, double, 2>::has_edge_membership)
+      .def("edge_membership_array",
+           &edge_mesh_wrapper<int, double, 2>::edge_membership_array)
+      .def("set_edge_membership",
+           &edge_mesh_wrapper<int, double, 2>::set_edge_membership)
+      .def("rebuild_vertex_link",
+           &edge_mesh_wrapper<int, double, 2>::rebuild_vertex_link)
+      .def("ensure_vertex_link",
+           &edge_mesh_wrapper<int, double, 2>::ensure_vertex_link)
+      .def("clear_vertex_link",
+           &edge_mesh_wrapper<int, double, 2>::clear_vertex_link)
+      .def("has_vertex_link",
+           &edge_mesh_wrapper<int, double, 2>::has_vertex_link)
+      .def("vertex_link_array",
+           &edge_mesh_wrapper<int, double, 2>::vertex_link_array)
+      .def("set_vertex_link",
+           &edge_mesh_wrapper<int, double, 2>::set_vertex_link)
       .def("number_of_points",
            &edge_mesh_wrapper<int, double, 2>::number_of_points)
       .def("number_of_edges",
@@ -130,6 +178,22 @@ auto register_edge_mesh(nanobind::module_ &m) -> void {
            &edge_mesh_wrapper<int, double, 3>::clear_edge_membership)
       .def("has_edge_membership",
            &edge_mesh_wrapper<int, double, 3>::has_edge_membership)
+      .def("edge_membership_array",
+           &edge_mesh_wrapper<int, double, 3>::edge_membership_array)
+      .def("set_edge_membership",
+           &edge_mesh_wrapper<int, double, 3>::set_edge_membership)
+      .def("rebuild_vertex_link",
+           &edge_mesh_wrapper<int, double, 3>::rebuild_vertex_link)
+      .def("ensure_vertex_link",
+           &edge_mesh_wrapper<int, double, 3>::ensure_vertex_link)
+      .def("clear_vertex_link",
+           &edge_mesh_wrapper<int, double, 3>::clear_vertex_link)
+      .def("has_vertex_link",
+           &edge_mesh_wrapper<int, double, 3>::has_vertex_link)
+      .def("vertex_link_array",
+           &edge_mesh_wrapper<int, double, 3>::vertex_link_array)
+      .def("set_vertex_link",
+           &edge_mesh_wrapper<int, double, 3>::set_vertex_link)
       .def("number_of_points",
            &edge_mesh_wrapper<int, double, 3>::number_of_points)
       .def("number_of_edges",
@@ -164,6 +228,22 @@ auto register_edge_mesh(nanobind::module_ &m) -> void {
            &edge_mesh_wrapper<int64_t, float, 2>::clear_edge_membership)
       .def("has_edge_membership",
            &edge_mesh_wrapper<int64_t, float, 2>::has_edge_membership)
+      .def("edge_membership_array",
+           &edge_mesh_wrapper<int64_t, float, 2>::edge_membership_array)
+      .def("set_edge_membership",
+           &edge_mesh_wrapper<int64_t, float, 2>::set_edge_membership)
+      .def("rebuild_vertex_link",
+           &edge_mesh_wrapper<int64_t, float, 2>::rebuild_vertex_link)
+      .def("ensure_vertex_link",
+           &edge_mesh_wrapper<int64_t, float, 2>::ensure_vertex_link)
+      .def("clear_vertex_link",
+           &edge_mesh_wrapper<int64_t, float, 2>::clear_vertex_link)
+      .def("has_vertex_link",
+           &edge_mesh_wrapper<int64_t, float, 2>::has_vertex_link)
+      .def("vertex_link_array",
+           &edge_mesh_wrapper<int64_t, float, 2>::vertex_link_array)
+      .def("set_vertex_link",
+           &edge_mesh_wrapper<int64_t, float, 2>::set_vertex_link)
       .def("number_of_points",
            &edge_mesh_wrapper<int64_t, float, 2>::number_of_points)
       .def("number_of_edges",
@@ -199,6 +279,22 @@ auto register_edge_mesh(nanobind::module_ &m) -> void {
            &edge_mesh_wrapper<int64_t, float, 3>::clear_edge_membership)
       .def("has_edge_membership",
            &edge_mesh_wrapper<int64_t, float, 3>::has_edge_membership)
+      .def("edge_membership_array",
+           &edge_mesh_wrapper<int64_t, float, 3>::edge_membership_array)
+      .def("set_edge_membership",
+           &edge_mesh_wrapper<int64_t, float, 3>::set_edge_membership)
+      .def("rebuild_vertex_link",
+           &edge_mesh_wrapper<int64_t, float, 3>::rebuild_vertex_link)
+      .def("ensure_vertex_link",
+           &edge_mesh_wrapper<int64_t, float, 3>::ensure_vertex_link)
+      .def("clear_vertex_link",
+           &edge_mesh_wrapper<int64_t, float, 3>::clear_vertex_link)
+      .def("has_vertex_link",
+           &edge_mesh_wrapper<int64_t, float, 3>::has_vertex_link)
+      .def("vertex_link_array",
+           &edge_mesh_wrapper<int64_t, float, 3>::vertex_link_array)
+      .def("set_vertex_link",
+           &edge_mesh_wrapper<int64_t, float, 3>::set_vertex_link)
       .def("number_of_points",
            &edge_mesh_wrapper<int64_t, float, 3>::number_of_points)
       .def("number_of_edges",
@@ -236,6 +332,22 @@ auto register_edge_mesh(nanobind::module_ &m) -> void {
            &edge_mesh_wrapper<int64_t, double, 2>::clear_edge_membership)
       .def("has_edge_membership",
            &edge_mesh_wrapper<int64_t, double, 2>::has_edge_membership)
+      .def("edge_membership_array",
+           &edge_mesh_wrapper<int64_t, double, 2>::edge_membership_array)
+      .def("set_edge_membership",
+           &edge_mesh_wrapper<int64_t, double, 2>::set_edge_membership)
+      .def("rebuild_vertex_link",
+           &edge_mesh_wrapper<int64_t, double, 2>::rebuild_vertex_link)
+      .def("ensure_vertex_link",
+           &edge_mesh_wrapper<int64_t, double, 2>::ensure_vertex_link)
+      .def("clear_vertex_link",
+           &edge_mesh_wrapper<int64_t, double, 2>::clear_vertex_link)
+      .def("has_vertex_link",
+           &edge_mesh_wrapper<int64_t, double, 2>::has_vertex_link)
+      .def("vertex_link_array",
+           &edge_mesh_wrapper<int64_t, double, 2>::vertex_link_array)
+      .def("set_vertex_link",
+           &edge_mesh_wrapper<int64_t, double, 2>::set_vertex_link)
       .def("number_of_points",
            &edge_mesh_wrapper<int64_t, double, 2>::number_of_points)
       .def("number_of_edges",
@@ -274,6 +386,22 @@ auto register_edge_mesh(nanobind::module_ &m) -> void {
            &edge_mesh_wrapper<int64_t, double, 3>::clear_edge_membership)
       .def("has_edge_membership",
            &edge_mesh_wrapper<int64_t, double, 3>::has_edge_membership)
+      .def("edge_membership_array",
+           &edge_mesh_wrapper<int64_t, double, 3>::edge_membership_array)
+      .def("set_edge_membership",
+           &edge_mesh_wrapper<int64_t, double, 3>::set_edge_membership)
+      .def("rebuild_vertex_link",
+           &edge_mesh_wrapper<int64_t, double, 3>::rebuild_vertex_link)
+      .def("ensure_vertex_link",
+           &edge_mesh_wrapper<int64_t, double, 3>::ensure_vertex_link)
+      .def("clear_vertex_link",
+           &edge_mesh_wrapper<int64_t, double, 3>::clear_vertex_link)
+      .def("has_vertex_link",
+           &edge_mesh_wrapper<int64_t, double, 3>::has_vertex_link)
+      .def("vertex_link_array",
+           &edge_mesh_wrapper<int64_t, double, 3>::vertex_link_array)
+      .def("set_vertex_link",
+           &edge_mesh_wrapper<int64_t, double, 3>::set_vertex_link)
       .def("number_of_points",
            &edge_mesh_wrapper<int64_t, double, 3>::number_of_points)
       .def("number_of_edges",

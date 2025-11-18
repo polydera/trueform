@@ -21,6 +21,7 @@
 #include <trueform/spatial/tree.hpp>
 #include <trueform/spatial/tree_config.hpp>
 #include <trueform/topology/edge_membership.hpp>
+#include <trueform/topology/vertex_link.hpp>
 
 namespace tf::py {
 
@@ -72,32 +73,66 @@ public:
     }
   }
 
+  auto rebuild_vertex_link() -> void {
+    auto segments = make_primitive_range();
+    tf::vertex_link<Index> fm;
+    fm.build(segments.edges(), Index(segments.points().size()));
+
+    auto [offsets, data] = make_numpy_array(std::move(fm));
+
+    // Pass the numpy arrays to the wrapper
+    if (!_vertex_link_array) {
+      _vertex_link_array =
+          std::make_unique<tf::py::offset_blocked_array_wrapper<Index, Index>>(
+              offsets, data);
+    } else {
+      _vertex_link_array->set_arrays(offsets, data);
+    }
+  }
+
+  auto ensure_vertex_link() -> void {
+    if (!_vertex_link_array) {
+      rebuild_vertex_link();
+    }
+  }
+
+  auto vertex_link() const {
+    return tf::make_vertex_link_like(_vertex_link_array->make_range());
+  }
+
+  auto clear_vertex_link() -> void { _vertex_link_array.reset(); }
+
+  auto has_vertex_link() const -> bool { return _vertex_link_array != nullptr; }
+
+  auto vertex_link_array()
+      -> const tf::py::offset_blocked_array_wrapper<Index, Index> & {
+    ensure_vertex_link();
+    return *_vertex_link_array;
+  }
+
+  auto set_vertex_link(tf::py::offset_blocked_array_wrapper<Index, Index> fm) {
+    if (!_vertex_link_array)
+      _vertex_link_array =
+          std::make_unique<tf::py::offset_blocked_array_wrapper<Index, Index>>(
+              fm.offsets_array(), fm.data_array());
+    else
+      _vertex_link_array->set_arrays(fm.offsets_array(), fm.data_array());
+  }
+
   auto rebuild_edge_membership() -> void {
     auto segments = make_primitive_range();
     tf::edge_membership<Index> fm;
     fm.build(segments);
 
-    // Get raw pointers and sizes before releasing
-    Index *offsets_ptr = fm.offsets_buffer().begin();
-    std::size_t offsets_size = fm.offsets_buffer().size();
-    Index *data_ptr = fm.data_buffer().begin();
-    std::size_t data_size = fm.data_buffer().size();
-
-    // Release ownership
-    fm.offsets_buffer().release();
-    fm.data_buffer().release();
-
-    // Create numpy arrays with proper empty array handling
-    auto offsets_ndarray = make_numpy_array<nanobind::shape<-1>>(offsets_ptr, {offsets_size});
-    auto data_ndarray = make_numpy_array<nanobind::shape<-1>>(data_ptr, {data_size});
+    auto [offsets, data] = make_numpy_array(std::move(fm));
 
     // Pass the numpy arrays to the wrapper
     if (!_edge_membership_array) {
       _edge_membership_array =
           std::make_unique<tf::py::offset_blocked_array_wrapper<Index, Index>>(
-              offsets_ndarray, data_ndarray);
+              offsets, data);
     } else {
-      _edge_membership_array->set_arrays(offsets_ndarray, data_ndarray);
+      _edge_membership_array->set_arrays(offsets, data);
     }
   }
 
@@ -137,10 +172,9 @@ public:
     return *_tree;
   }
 
-  auto edge_membership_array() const
+  auto edge_membership_array()
       -> const tf::py::offset_blocked_array_wrapper<Index, Index> & {
-    if (!_edge_membership_array)
-      throw std::runtime_error("edge membership not built");
+    ensure_edge_membership();
     return *_edge_membership_array;
   }
 
@@ -175,6 +209,16 @@ public:
     _transformation = transformation_array;
   }
 
+  auto
+  set_edge_membership(tf::py::offset_blocked_array_wrapper<Index, Index> fm) {
+    if (!_edge_membership_array)
+      _edge_membership_array =
+          std::make_unique<tf::py::offset_blocked_array_wrapper<Index, Index>>(
+              fm.offsets_array(), fm.data_array());
+    else
+      _edge_membership_array->set_arrays(fm.offsets_array(), fm.data_array());
+  }
+
   auto clear_transformation() -> void { _transformation.reset(); }
 
 private:
@@ -188,6 +232,8 @@ private:
   std::unique_ptr<tf::tree<Index, RealT, Dims>> _tree;
   std::unique_ptr<tf::py::offset_blocked_array_wrapper<Index, Index>>
       _edge_membership_array;
+  std::unique_ptr<tf::py::offset_blocked_array_wrapper<Index, Index>>
+      _vertex_link_array;
 };
 
 } // namespace tf::py

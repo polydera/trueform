@@ -9,11 +9,9 @@
 #include "../core/buffer.hpp"
 #include "../core/frame_of.hpp"
 #include "../core/polygons.hpp"
-#include "../core/static_size.hpp"
 #include "../core/transformed.hpp"
 #include "../core/views/enumerate.hpp"
 #include <charconv>
-#include <cstdint>
 #include <fstream>
 #include <string>
 

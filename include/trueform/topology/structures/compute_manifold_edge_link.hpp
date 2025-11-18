@@ -13,11 +13,10 @@
 #include "../manifold_edge_peer.hpp"
 
 namespace tf::topology {
-template <typename Range0, typename Policy, typename Range1>
+template <typename Index, typename Range0, typename Policy, typename Range1>
 auto compute_manifold_edge_link(const Range0 &faces,
                                 const tf::face_membership_like<Policy> &blink,
                                 Range1 &peer_blocks) {
-  using Index = std::decay_t<decltype(peer_blocks[0][0].face_peer)>;
   auto task_f = [&](auto begin, auto end) {
     tf::small_vector<Index, 6> inner_peers;
     while (begin != end) {
@@ -51,5 +50,12 @@ auto compute_manifold_edge_link(const Range0 &faces,
     }
   };
   tf::parallel_for(tf::make_sequence_range(faces.size()), task_f);
+}
+template <typename Range0, typename Policy, typename Range1>
+auto compute_manifold_edge_link(const Range0 &faces,
+                                const tf::face_membership_like<Policy> &blink,
+                                Range1 &peer_blocks) {
+  using Index = std::decay_t<decltype(peer_blocks[0][0].face_peer)>;
+  return compute_manifold_edge_link<Index>(faces, blink, peer_blocks);
 }
 } // namespace tf::topology
