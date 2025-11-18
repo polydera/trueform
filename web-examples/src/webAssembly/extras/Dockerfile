@@ -23,3 +23,5 @@ RUN mkdir build && cd build && \
     -G Ninja && \
     ninja && \
     ninja install
+
+RUN cd /emsdk/upstream/emscripten && npm install --no-save --package-lock false typescript
