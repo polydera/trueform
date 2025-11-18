@@ -1,4 +1,4 @@
-import { MainModule } from './webAssembly/dist/native.js'
+import { MainModule } from './webAssembly/build/dist/native.js'
 import { fitCameraToAllMeshesFromZPlane } from './utils/sceneUtils';
 import {
     buffersToCurves, createCurveLineObjects,

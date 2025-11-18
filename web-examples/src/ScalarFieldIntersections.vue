@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import WASM from './webAssembly/dist/native.js'
-import { MainModule } from './webAssembly/dist/native.js'
+import WASM from './webAssembly/build/dist/native.js'
+import { MainModule } from './webAssembly/build/dist/native.js'
 import { onMounted, ref } from "vue";
 import { ScalarFieldIntersectionsExample } from "@/ScalarFieldIntersections.js";
 

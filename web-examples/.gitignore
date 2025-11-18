@@ -36,3 +36,4 @@ coverage
 __screenshots__/
 
 src/webAssembly/build/
+native.wasm
