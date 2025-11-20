@@ -16,6 +16,8 @@ from .boundary_edges import boundary_edges
 from .boundary_paths import boundary_paths
 from .boundary_curves import boundary_curves
 from .non_manifold_edges import non_manifold_edges
+from .orient_faces_consistently import orient_faces_consistently
+from .connect_edges_to_paths import connect_edges_to_paths
 
 __all__ = [
     'label_connected_components',
@@ -28,4 +30,6 @@ __all__ = [
     'boundary_paths',
     'boundary_curves',
     'non_manifold_edges',
+    'orient_faces_consistently',
+    'connect_edges_to_paths',
 ]

@@ -1,0 +1,211 @@
+/*
+ * Copyright (c) 2025 Žiga Sajovic, XLAB
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
+ * https://github.com/xlabmedical/trueform
+ */
+#include <nanobind/nanobind.h>
+#include <nanobind/stl/optional.h>
+#include <nanobind/stl/string.h>
+#include <trueform/python/spatial/mesh.hpp>
+#include <trueform/python/spatial/form_form_gather_ids.hpp>
+
+namespace tf::py {
+
+auto register_mesh_gather_ids_mesh_float2d(nanobind::module_ &m) -> void {
+  // float, 2D variants (16 functions)
+
+  // int × int, 3×3, float, 2D
+  m.def("gather_ids_mesh_mesh_intint33float2d",
+        [](mesh_wrapper<int, float, 3, 2> &mesh0,
+           mesh_wrapper<int, float, 3, 2> &mesh1,
+           const std::string &predicate_type, std::optional<float> threshold) {
+          return form_form_gather_ids<float, 2>(mesh0, mesh1,
+                                                 predicate_type, threshold);
+        },
+        nanobind::arg("mesh0"), nanobind::arg("mesh1"),
+        nanobind::arg("predicate_type"),
+        nanobind::arg("threshold").none() = nanobind::none());
+
+  // int × int64, 3×3, float, 2D
+  m.def("gather_ids_mesh_mesh_intint6433float2d",
+        [](mesh_wrapper<int, float, 3, 2> &mesh0,
+           mesh_wrapper<int64_t, float, 3, 2> &mesh1,
+           const std::string &predicate_type, std::optional<float> threshold) {
+          return form_form_gather_ids<float, 2>(mesh0, mesh1,
+                                                 predicate_type, threshold);
+        },
+        nanobind::arg("mesh0"), nanobind::arg("mesh1"),
+        nanobind::arg("predicate_type"),
+        nanobind::arg("threshold").none() = nanobind::none());
+
+  // int64 × int64, 3×3, float, 2D
+  m.def("gather_ids_mesh_mesh_int64int6433float2d",
+        [](mesh_wrapper<int64_t, float, 3, 2> &mesh0,
+           mesh_wrapper<int64_t, float, 3, 2> &mesh1,
+           const std::string &predicate_type, std::optional<float> threshold) {
+          return form_form_gather_ids<float, 2>(mesh0, mesh1,
+                                                 predicate_type, threshold);
+        },
+        nanobind::arg("mesh0"), nanobind::arg("mesh1"),
+        nanobind::arg("predicate_type"),
+        nanobind::arg("threshold").none() = nanobind::none());
+
+  // int × int, 3×4, float, 2D
+  m.def("gather_ids_mesh_mesh_intint34float2d",
+        [](mesh_wrapper<int, float, 3, 2> &mesh0,
+           mesh_wrapper<int, float, 4, 2> &mesh1,
+           const std::string &predicate_type, std::optional<float> threshold) {
+          return form_form_gather_ids<float, 2>(mesh0, mesh1,
+                                                 predicate_type, threshold);
+        },
+        nanobind::arg("mesh0"), nanobind::arg("mesh1"),
+        nanobind::arg("predicate_type"),
+        nanobind::arg("threshold").none() = nanobind::none());
+
+  // int × int64, 3×4, float, 2D
+  m.def("gather_ids_mesh_mesh_intint6434float2d",
+        [](mesh_wrapper<int, float, 3, 2> &mesh0,
+           mesh_wrapper<int64_t, float, 4, 2> &mesh1,
+           const std::string &predicate_type, std::optional<float> threshold) {
+          return form_form_gather_ids<float, 2>(mesh0, mesh1,
+                                                 predicate_type, threshold);
+        },
+        nanobind::arg("mesh0"), nanobind::arg("mesh1"),
+        nanobind::arg("predicate_type"),
+        nanobind::arg("threshold").none() = nanobind::none());
+
+  // int64 × int64, 3×4, float, 2D
+  m.def("gather_ids_mesh_mesh_int64int6434float2d",
+        [](mesh_wrapper<int64_t, float, 3, 2> &mesh0,
+           mesh_wrapper<int64_t, float, 4, 2> &mesh1,
+           const std::string &predicate_type, std::optional<float> threshold) {
+          return form_form_gather_ids<float, 2>(mesh0, mesh1,
+                                                 predicate_type, threshold);
+        },
+        nanobind::arg("mesh0"), nanobind::arg("mesh1"),
+        nanobind::arg("predicate_type"),
+        nanobind::arg("threshold").none() = nanobind::none());
+
+  // int × int, 4×3, float, 2D
+  m.def("gather_ids_mesh_mesh_intint43float2d",
+        [](mesh_wrapper<int, float, 4, 2> &mesh0,
+           mesh_wrapper<int, float, 3, 2> &mesh1,
+           const std::string &predicate_type, std::optional<float> threshold) {
+          return form_form_gather_ids<float, 2>(mesh0, mesh1,
+                                                 predicate_type, threshold);
+        },
+        nanobind::arg("mesh0"), nanobind::arg("mesh1"),
+        nanobind::arg("predicate_type"),
+        nanobind::arg("threshold").none() = nanobind::none());
+
+  // int × int64, 4×3, float, 2D
+  m.def("gather_ids_mesh_mesh_intint6443float2d",
+        [](mesh_wrapper<int, float, 4, 2> &mesh0,
+           mesh_wrapper<int64_t, float, 3, 2> &mesh1,
+           const std::string &predicate_type, std::optional<float> threshold) {
+          return form_form_gather_ids<float, 2>(mesh0, mesh1,
+                                                 predicate_type, threshold);
+        },
+        nanobind::arg("mesh0"), nanobind::arg("mesh1"),
+        nanobind::arg("predicate_type"),
+        nanobind::arg("threshold").none() = nanobind::none());
+
+  // int64 × int64, 4×3, float, 2D
+  m.def("gather_ids_mesh_mesh_int64int6443float2d",
+        [](mesh_wrapper<int64_t, float, 4, 2> &mesh0,
+           mesh_wrapper<int64_t, float, 3, 2> &mesh1,
+           const std::string &predicate_type, std::optional<float> threshold) {
+          return form_form_gather_ids<float, 2>(mesh0, mesh1,
+                                                 predicate_type, threshold);
+        },
+        nanobind::arg("mesh0"), nanobind::arg("mesh1"),
+        nanobind::arg("predicate_type"),
+        nanobind::arg("threshold").none() = nanobind::none());
+
+  // int × int, 4×4, float, 2D
+  m.def("gather_ids_mesh_mesh_intint44float2d",
+        [](mesh_wrapper<int, float, 4, 2> &mesh0,
+           mesh_wrapper<int, float, 4, 2> &mesh1,
+           const std::string &predicate_type, std::optional<float> threshold) {
+          return form_form_gather_ids<float, 2>(mesh0, mesh1,
+                                                 predicate_type, threshold);
+        },
+        nanobind::arg("mesh0"), nanobind::arg("mesh1"),
+        nanobind::arg("predicate_type"),
+        nanobind::arg("threshold").none() = nanobind::none());
+
+  // int × int64, 4×4, float, 2D
+  m.def("gather_ids_mesh_mesh_intint6444float2d",
+        [](mesh_wrapper<int, float, 4, 2> &mesh0,
+           mesh_wrapper<int64_t, float, 4, 2> &mesh1,
+           const std::string &predicate_type, std::optional<float> threshold) {
+          return form_form_gather_ids<float, 2>(mesh0, mesh1,
+                                                 predicate_type, threshold);
+        },
+        nanobind::arg("mesh0"), nanobind::arg("mesh1"),
+        nanobind::arg("predicate_type"),
+        nanobind::arg("threshold").none() = nanobind::none());
+
+  // int64 × int64, 4×4, float, 2D
+  m.def("gather_ids_mesh_mesh_int64int6444float2d",
+        [](mesh_wrapper<int64_t, float, 4, 2> &mesh0,
+           mesh_wrapper<int64_t, float, 4, 2> &mesh1,
+           const std::string &predicate_type, std::optional<float> threshold) {
+          return form_form_gather_ids<float, 2>(mesh0, mesh1,
+                                                 predicate_type, threshold);
+        },
+        nanobind::arg("mesh0"), nanobind::arg("mesh1"),
+        nanobind::arg("predicate_type"),
+        nanobind::arg("threshold").none() = nanobind::none());
+
+  // int64 × int, 3×3, float, 2D
+  m.def("gather_ids_mesh_mesh_int64int33float2d",
+        [](mesh_wrapper<int64_t, float, 3, 2> &mesh0,
+           mesh_wrapper<int, float, 3, 2> &mesh1,
+           const std::string &predicate_type, std::optional<float> threshold) {
+          return form_form_gather_ids<float, 2>(mesh0, mesh1,
+                                                 predicate_type, threshold);
+        },
+        nanobind::arg("mesh0"), nanobind::arg("mesh1"),
+        nanobind::arg("predicate_type"),
+        nanobind::arg("threshold").none() = nanobind::none());
+
+  // int64 × int, 3×4, float, 2D
+  m.def("gather_ids_mesh_mesh_int64int34float2d",
+        [](mesh_wrapper<int64_t, float, 3, 2> &mesh0,
+           mesh_wrapper<int, float, 4, 2> &mesh1,
+           const std::string &predicate_type, std::optional<float> threshold) {
+          return form_form_gather_ids<float, 2>(mesh0, mesh1,
+                                                 predicate_type, threshold);
+        },
+        nanobind::arg("mesh0"), nanobind::arg("mesh1"),
+        nanobind::arg("predicate_type"),
+        nanobind::arg("threshold").none() = nanobind::none());
+
+  // int64 × int, 4×3, float, 2D
+  m.def("gather_ids_mesh_mesh_int64int43float2d",
+        [](mesh_wrapper<int64_t, float, 4, 2> &mesh0,
+           mesh_wrapper<int, float, 3, 2> &mesh1,
+           const std::string &predicate_type, std::optional<float> threshold) {
+          return form_form_gather_ids<float, 2>(mesh0, mesh1,
+                                                 predicate_type, threshold);
+        },
+        nanobind::arg("mesh0"), nanobind::arg("mesh1"),
+        nanobind::arg("predicate_type"),
+        nanobind::arg("threshold").none() = nanobind::none());
+
+  // int64 × int, 4×4, float, 2D
+  m.def("gather_ids_mesh_mesh_int64int44float2d",
+        [](mesh_wrapper<int64_t, float, 4, 2> &mesh0,
+           mesh_wrapper<int, float, 4, 2> &mesh1,
+           const std::string &predicate_type, std::optional<float> threshold) {
+          return form_form_gather_ids<float, 2>(mesh0, mesh1,
+                                                 predicate_type, threshold);
+        },
+        nanobind::arg("mesh0"), nanobind::arg("mesh1"),
+        nanobind::arg("predicate_type"),
+        nanobind::arg("threshold").none() = nanobind::none());
+}
+
+} // namespace tf::py

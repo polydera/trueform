@@ -22,5 +22,7 @@ auto register_topology_compute_vertex_link(nanobind::module_ &m) -> void;
 auto register_topology_boundary_edges(nanobind::module_ &m) -> void;
 auto register_topology_non_manifold_edges(nanobind::module_ &m) -> void;
 auto register_topology_boundary_paths(nanobind::module_ &m) -> void;
+auto register_topology_orient_faces_consistently(nanobind::module_ &m) -> void;
+auto register_topology_connect_edges_to_paths(nanobind::module_ &m) -> void;
 
 } // namespace tf::py

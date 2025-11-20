@@ -67,19 +67,19 @@ auto write_obj(const tf::polygons<Policy> &polygons, std::string filename)
         char temp[128];
         std::size_t size = 2; // "v "
 
-        auto res = float_to_chars(temp, temp + 64,
-                                  static_cast<float>(transformed_pt[0]));
-        size += res.ptr - temp;
+        char *end = io::float_to_chars(temp, temp + 64,
+                                        static_cast<float>(transformed_pt[0]));
+        size += end - temp;
         size += 1; // " "
 
-        res = float_to_chars(temp, temp + 64,
-                             static_cast<float>(transformed_pt[1]));
-        size += res.ptr - temp;
+        end = io::float_to_chars(temp, temp + 64,
+                                 static_cast<float>(transformed_pt[1]));
+        size += end - temp;
         size += 1; // " "
 
-        res = float_to_chars(temp, temp + 64,
-                             static_cast<float>(transformed_pt[2]));
-        size += res.ptr - temp;
+        end = io::float_to_chars(temp, temp + 64,
+                                 static_cast<float>(transformed_pt[2]));
+        size += end - temp;
         size += 1; // "\n"
 
         point_offsets[idx + 1] = size;
@@ -144,19 +144,16 @@ auto write_obj(const tf::polygons<Policy> &polygons, std::string filename)
         *ptr++ = 'v';
         *ptr++ = ' ';
 
-        auto res = float_to_chars(ptr, ptr + 64,
-                                  static_cast<float>(transformed_pt[0]));
-        ptr = res.ptr;
+        ptr = io::float_to_chars(ptr, ptr + 64,
+                                 static_cast<float>(transformed_pt[0]));
         *ptr++ = ' ';
 
-        res = float_to_chars(ptr, ptr + 64,
-                             static_cast<float>(transformed_pt[1]));
-        ptr = res.ptr;
+        ptr = io::float_to_chars(ptr, ptr + 64,
+                                 static_cast<float>(transformed_pt[1]));
         *ptr++ = ' ';
 
-        res = float_to_chars(ptr, ptr + 64,
-                             static_cast<float>(transformed_pt[2]));
-        ptr = res.ptr;
+        ptr = io::float_to_chars(ptr, ptr + 64,
+                                 static_cast<float>(transformed_pt[2]));
         *ptr++ = '\n';
       },
       tf::checked);
