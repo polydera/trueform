@@ -52,6 +52,7 @@
 #include "./core/interval.hpp"                    // IWYU pragma: export
 #include "./core/inverted.hpp"                    // IWYU pragma: export
 #include "./core/is_soup.hpp"                     // IWYU pragma: export
+#include "./core/largest_axis.hpp"                // IWYU pragma: export
 #include "./core/line.hpp"                        // IWYU pragma: export
 #include "./core/line_like.hpp"                   // IWYU pragma: export
 #include "./core/line_line_check.hpp"             // IWYU pragma: export

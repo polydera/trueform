@@ -10,10 +10,10 @@
 #include "../core/algorithm/parallel_iota.hpp"
 #include "../core/algorithm/partition_range_into_parts.hpp"
 #include "../core/buffer.hpp"
+#include "../core/largest_axis.hpp"
 #include "./max_nodes_in_tree.hpp"
 #include "./tree_config.hpp"
 #include "./tree_node.hpp"
-#include <algorithm>
 namespace tf::spatial {
 template <typename Partitioner, typename Index, typename RealT, std::size_t N,
           typename Range0, typename Range1>
@@ -35,11 +35,7 @@ auto build_tree_nodes(buffer<tree_node<Index, RealT, N>> &nodes,
     return;
   }
 
-  int max_axis = 0;
-  {
-    auto diag = nodes[node_id].aabb.diagonal();
-    max_axis = std::max_element(diag.begin(), diag.end()) - diag.begin();
-  }
+  int max_axis = tf::largest_axis(nodes[node_id].aabb.diagonal());
   nodes[node_id].axis = max_axis;
 
   Index n_children = tf::partition_range_into_parts(
