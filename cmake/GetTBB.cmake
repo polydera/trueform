@@ -4,7 +4,7 @@ macro(GET_TBB)
     endif()
 
     if (USE_SYSTEM_TBB)
-        find_pacakge(TBB REQUIRED)
+        find_package(TBB REQUIRED)
     else ()
         include(FetchContent)
         FetchContent_Declare(
