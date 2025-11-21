@@ -147,7 +147,7 @@ public:
     return it + n;
   }
 
-  auto operator-=(typename base_t::difference_type n) -> Derived {
+  auto operator-=(typename base_t::difference_type n) -> Derived & {
     iter::subtract(base_t::iter, n);
     return static_cast<Derived &>(*this);
   }
@@ -158,7 +158,8 @@ public:
     return out;
   }
 
-  friend auto operator-(const Derived &obj, const Derived &other) {
+  friend auto operator-(const Derived &obj, const Derived &other)
+      -> typename base_t::difference_type {
     return iter::difference(obj.iter, other.iter);
   }
 

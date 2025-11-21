@@ -87,19 +87,22 @@ auto decrement(std::pair<Iterator0, Iterator1> &it) {
 }
 
 template <typename Iterator>
-auto difference(const Iterator &it0, const Iterator &it1) {
+auto difference(const Iterator &it0, const Iterator &it1)
+    -> typename iterator_traits<Iterator>::difference_type {
   return it0 - it1;
 }
 
 template <typename... Iterators>
 auto difference(const std::tuple<Iterators...> &it0,
-                const std::tuple<Iterators...> &it1) {
+                const std::tuple<Iterators...> &it1)
+    -> typename iterator_traits<std::tuple<Iterators...>>::difference_type {
   return std::get<0>(it0) - std::get<0>(it1);
 }
 
 template <typename Iterator0, typename Iterator1>
 auto difference(const std::pair<Iterator0, Iterator1> &it0,
-                const std::pair<Iterator0, Iterator1> &it1) {
+                const std::pair<Iterator0, Iterator1> &it1)
+    -> typename iterator_traits<std::pair<Iterator0, Iterator1>>::difference_type {
   return it0.first - it1.first;
 }
 } // namespace tf::iter

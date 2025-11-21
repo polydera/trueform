@@ -100,7 +100,8 @@ public:
     return out;
   }
 
-  friend auto operator-(const Derived &obj, const Derived &other) {
+  friend auto operator-(const Derived &obj, const Derived &other)
+      -> typename base_t::difference_type {
     return (obj.base_iter() - other.base_iter()) / obj.iterator_stride();
   }
 
