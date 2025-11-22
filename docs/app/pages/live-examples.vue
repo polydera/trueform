@@ -33,10 +33,10 @@ const examples = [
 ];
 </script>
 <template>
-  <div class="flex flex-row min-h-screen">
-    <UDashboardSidebar>
+  <div class="flex flex-row h-[calc(100vh-var(--ui-header-height,0px))]">
+    <UDashboardSidebar class="h-full">
       <template #default>
-        <div class="flex flex-col gap-2 px-2 mt-(--ui-header-height)">
+        <div class="flex h-full flex-col gap-2.5 overflow-y-auto p-2">
           <UCard v-for="example in examples" :key="example.title" class="cursor-pointer" @click="navigateTo(`/live-examples/${example.to}`)">
             <template #header>
               <h3 class="text-lg font-bold">{{ example.title }}</h3>
@@ -46,6 +46,8 @@ const examples = [
         </div>
       </template>
     </UDashboardSidebar>
-    <NuxtPage />
+    <div class="flex-1 h-full overflow-hidden">
+      <NuxtPage class="h-full" />
+    </div>
   </div>
 </template>

@@ -55,10 +55,18 @@ const getAvgTime = () => {
   }
   return 0;
 };
-setInterval(getAvgTime, 1000);
+
+let avgTimer: ReturnType<typeof setInterval> | null = null;
 
 onMounted(() => {
   loadThreejs();
+  avgTimer = setInterval(getAvgTime, 1000);
+});
+
+onBeforeUnmount(() => {
+  if (avgTimer) {
+    clearInterval(avgTimer);
+  }
 });
 
 watch(isDark, (dark) => {
@@ -69,8 +77,8 @@ watch(isDark, (dark) => {
 </script>
 
 <template>
-  <div class="flex flex-col w-full mt-(--ui-header-height)">
-    <div class="flex flex-row flex-1 h-(calc(100vh - --ui-header-height)) relative">
+  <div class="flex flex-col w-full">
+    <div class="flex flex-row flex-1 live-example-stage relative">
       <div
         class="absolute left-3 top-3 z-10 max-w-md rounded-lg p-3 bg-neutral-100/10 shadow-lg backdrop-blur"
       >
