@@ -1,0 +1,59 @@
+/**
+ * Benchmark: Embedded isocurves with TrueForm
+ *
+ * Measures time to embed isocontours into a mesh (splitting faces along
+ * scalar field level sets) using TrueForm's embedded_isocurves.
+ *
+ * Copyright (c) 2025 Ziga Sajovic, XLAB
+ */
+
+#include <trueform/trueform.hpp>
+#include "test_meshes.hpp"
+#include "timing.hpp"
+#include <iostream>
+
+int main() {
+    std::cout << "polygons,n_cuts,time_ms\n";
+
+    constexpr int n_samples = 10;
+    constexpr int n_cuts_list[] = {1, 2, 4, 8, 16, 32, 64, 128};
+
+    for (const auto& path : benchmark::BENCHMARK_MESHES) {
+        auto mesh = tf::read_stl<int>(path);
+        auto polygons = mesh.polygons();
+
+        // Create scalar field: distance from origin
+        tf::buffer<float> scalar_field;
+        scalar_field.allocate(mesh.points().size());
+        float min_val = std::numeric_limits<float>::max();
+        float max_val = std::numeric_limits<float>::lowest();
+        for (std::size_t i = 0; i < mesh.points().size(); ++i) {
+            auto pt = mesh.points()[i];
+            float val = std::sqrt(pt[0]*pt[0] + pt[1]*pt[1] + pt[2]*pt[2]);
+            scalar_field[i] = val;
+            min_val = std::min(min_val, val);
+            max_val = std::max(max_val, val);
+        }
+
+        for (int n_cuts : n_cuts_list) {
+            // Generate evenly spaced cut values
+            std::vector<float> cut_values(n_cuts);
+            for (int i = 0; i < n_cuts; ++i) {
+                cut_values[i] = min_val + (max_val - min_val) * (i + 1) / (n_cuts + 1);
+            }
+
+            auto time = benchmark::min_time_of([&]() {
+                auto [result_mesh, labels] = tf::embedded_isocurves<int>(
+                    polygons,
+                    tf::make_range(scalar_field),
+                    tf::make_range(cut_values));
+                benchmark::do_not_optimize(result_mesh);
+                benchmark::do_not_optimize(labels);
+            }, n_samples);
+
+            std::cout << polygons.size() << "," << n_cuts << "," << time << "\n";
+        }
+    }
+
+    return 0;
+}

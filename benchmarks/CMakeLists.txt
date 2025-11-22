@@ -350,6 +350,7 @@ set(BENCHMARK_TARGETS
     cut-boolean-igl
     cut-embedded_self_intersection_curves-tf
     cut-embedded_self_intersection_curves-igl
+    cut-embedded_isocurves-tf
 )
 
 # Add VTK targets if available
@@ -359,6 +360,7 @@ if(HAVE_VTK)
         topology-boundary_paths-vtk
         intersect-mesh_mesh_curves-vtk
         intersect-isocontours-vtk
+        cut-embedded_isocurves-vtk
     )
 endif()
 
