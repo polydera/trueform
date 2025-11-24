@@ -15,7 +15,12 @@ export class ScalarFieldIntersectionsExample extends ThreejsBase {
   private useBasicLines = false;
   private keyPressed = false;
 
-  constructor(wasmInstance: MainModule, paths: string[], container: HTMLElement, isDarkMode = true) {
+  constructor(
+    wasmInstance: MainModule,
+    paths: string[],
+    container: HTMLElement,
+    isDarkMode = true,
+  ) {
     super(wasmInstance, paths, container, undefined, true, false, isDarkMode);
 
     const interceptKeyDownEvent = (event: KeyboardEvent) => {
@@ -39,12 +44,19 @@ export class ScalarFieldIntersectionsExample extends ThreejsBase {
       this.updateMeshes();
     };
     window.addEventListener("wheel", interceptWheelEvent);
+    this.addCleanup(() => {
+      window.removeEventListener("keydown", interceptKeyDownEvent);
+      window.removeEventListener("keyup", interceptKeyUpEvent);
+      window.removeEventListener("wheel", interceptWheelEvent);
+    });
 
     const opts: curvesToCurvePolyOpts = {
       tubeColor: 0xffaa00,
       lineWidth: 0.2,
     };
-    this.curveObjects = this.useBasicLines ? createBasicCurveLineObjects(opts) : createCurveLineObjects(opts);
+    this.curveObjects = this.useBasicLines
+      ? createBasicCurveLineObjects(opts)
+      : createCurveLineObjects(opts);
     this.sceneBundle1.scene.add(this.curveObjects.lines);
 
     this.updateMeshes();

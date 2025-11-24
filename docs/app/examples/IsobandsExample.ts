@@ -45,12 +45,19 @@ export class IsobandsExample extends ThreejsBase {
       this.updateMeshes();
     };
     window.addEventListener("wheel", interceptWheelEvent);
+    this.addCleanup(() => {
+      window.removeEventListener("keydown", interceptKeyDownEvent);
+      window.removeEventListener("keyup", interceptKeyUpEvent);
+      window.removeEventListener("wheel", interceptWheelEvent);
+    });
 
     const opts: curvesToCurvePolyOpts = {
       tubeColor: 0x2020ff,
       lineWidth: 0.2,
     };
-    this.curveObjects = this.useBasicLines ? createBasicCurveLineObjects(opts) : createCurveLineObjects(opts);
+    this.curveObjects = this.useBasicLines
+      ? createBasicCurveLineObjects(opts)
+      : createCurveLineObjects(opts);
     this.sceneBundle1.scene.add(this.curveObjects.lines);
 
     if (this.sceneBundle2 && this.renderer2) {

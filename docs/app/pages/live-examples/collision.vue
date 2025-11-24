@@ -1,61 +1,43 @@
 <script setup lang="ts">
-import type { MainModule } from "@/examples/native";
+import { useWasmModule } from "@/composables/useWasmModule";
 import { CollisionExample } from "@/examples/CollisionExample";
 
-let wasmInstance: MainModule | null = null;
-let wasmLoader: (() => Promise<MainModule>) | null = null;
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
+const { loadWasmModule, preloadMeshes } = useWasmModule();
 
-const threejsContainer = ref();
+const threejsContainer = ref<HTMLElement | null>(null);
 let exampleClass: CollisionExample | null = null;
-let CollisionExampleCtor: typeof import("@/examples/CollisionExample").CollisionExample | null = null;
 
 const totalPolygons = ref("0");
 const avgTime = ref("0");
 const avgPickTime = ref("0");
+const meshes = [
+  { url: "/stl/dragon-250k.stl", filename: "dragon-250k.stl" },
+  { url: "/stl/Stanford_Bunny.stl", filename: "Stanford_Bunny.stl" },
+];
 
-const loadWasm = async () => {
-  if (!wasmLoader) {
-    const wasmModule = await import("@/examples/native");
-    wasmLoader = wasmModule.default;
-  }
-
-  wasmInstance = await wasmLoader();
-  console.log("Wasm loaded:", wasmInstance);
-};
+let avgTimer: ReturnType<typeof setInterval> | null = null;
+let tearDownRequested = false;
 
 const loadThreejs = async () => {
-  if (wasmInstance === null) {
-    await loadWasm();
-  }
+  const wasmInstance = await loadWasmModule();
+  if (tearDownRequested) return;
 
-  if (!CollisionExampleCtor) {
-    const module = await import("@/examples/CollisionExample");
-    CollisionExampleCtor = module.CollisionExample;
-  }
+  const el = threejsContainer.value;
+  if (!el) return;
 
-  const el = document.getElementById("threejsContainer");
-  if (el && wasmInstance) {
-    const meshes = [
-      { url: "/stl/dragon-250k.stl", filename: "dragon-250k.stl" },
-      { url: "/stl/Stanford_Bunny.stl", filename: "Stanford_Bunny.stl" },
-    ];
+  await preloadMeshes(wasmInstance, meshes);
 
-    for (const mesh of meshes) {
-      const response = await fetch(mesh.url);
-      const buffer = await response.arrayBuffer();
-      wasmInstance.FS.writeFile(mesh.filename, new Int8Array(buffer));
-    }
+  if (tearDownRequested) return;
 
-    exampleClass = new CollisionExample(
-      wasmInstance,
-      meshes.map((m) => m.filename),
-      el,
-      isDark.value,
-    );
-    totalPolygons.value = wasmInstance.get_number_of_polygons().toString();
-  }
+  exampleClass = new CollisionExample(
+    wasmInstance,
+    meshes.map((m) => m.filename),
+    el,
+    isDark.value,
+  );
+  totalPolygons.value = wasmInstance.get_number_of_polygons().toString();
 };
 
 const getAvgTime = () => {
@@ -66,16 +48,19 @@ const getAvgTime = () => {
   return 0;
 };
 
-let avgTimer: ReturnType<typeof setInterval> | null = null;
-
 onMounted(() => {
   loadThreejs();
   avgTimer = setInterval(getAvgTime, 1000);
 });
 
 onBeforeUnmount(() => {
+  tearDownRequested = true;
   if (avgTimer) {
     clearInterval(avgTimer);
+  }
+  if (exampleClass) {
+    exampleClass.dispose();
+    exampleClass = null;
   }
 });
 

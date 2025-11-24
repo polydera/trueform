@@ -1,4 +1,6 @@
 <script setup lang="ts">
+const route = useRoute();
+
 const examples = [
   {
     title: "Boolean",
@@ -44,11 +46,13 @@ const examples = [
       <UCard
         v-for="example in examples"
         :key="example.title"
-        class="cursor-pointer flex-shrink-0"
+        class="flex-shrink-0"
         :ui="{
+          root: 'cursor-pointer',
           header: 'sm:p-2 sm:px-4',
           body: 'sm:p-4 sm:px-4',
         }"
+        :variant="route.path === `/live-examples/${example.to}` ? 'subtle' : 'outline'"
         @click="navigateTo(`/live-examples/${example.to}`)"
       >
         <template #header>

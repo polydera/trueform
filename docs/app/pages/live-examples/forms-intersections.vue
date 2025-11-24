@@ -1,47 +1,42 @@
 <script setup lang="ts">
-import WASM from "@/examples/native";
-import type { MainModule } from "@/examples/native";
+import { useWasmModule } from "@/composables/useWasmModule";
 import { FormsIntersectionsExample } from "@/examples/FormsIntersectionsExample";
 
-let wasmInstance: MainModule | null = null;
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
+const { loadWasmModule, preloadMeshes } = useWasmModule();
 
-const threejsContainer = ref();
-let exampleClass: FormsIntersectionsExample;
+const threejsContainer = ref<HTMLElement | null>(null);
+let exampleClass: FormsIntersectionsExample | null = null;
 
 const avgTime = ref("0");
 const totalPolygons = ref("0");
+const meshes = [
+  { url: "/stl/dragon-250k.stl", filename: "dragon-250k.stl" },
+  { url: "/stl/Stanford_Bunny.stl", filename: "Stanford_Bunny.stl" },
+];
 
-const loadWasm = async () => {
-  wasmInstance = await WASM();
-};
+let avgTimer: ReturnType<typeof setInterval> | null = null;
+let tearDownRequested = false;
 
 const loadThreejs = async () => {
-  if (wasmInstance === null) {
-    await loadWasm();
-  }
-  const el = document.getElementById("threejsContainer");
-  if (el && wasmInstance) {
-    const meshes = [
-      { url: "/stl/dragon-250k.stl", filename: "dragon-250k.stl" },
-      { url: "/stl/Stanford_Bunny.stl", filename: "Stanford_Bunny.stl" },
-    ];
+  const wasmInstance = await loadWasmModule();
+  if (tearDownRequested) return;
 
-    for (const mesh of meshes) {
-      const response = await fetch(mesh.url);
-      const buffer = await response.arrayBuffer();
-      wasmInstance.FS.writeFile(mesh.filename, new Int8Array(buffer));
-    }
+  const el = threejsContainer.value;
+  if (!el) return;
 
-    exampleClass = new FormsIntersectionsExample(
-      wasmInstance,
-      meshes.map((m) => m.filename),
-      el,
-      isDark.value,
-    );
-    totalPolygons.value = wasmInstance.get_number_of_polygons().toString();
-  }
+  await preloadMeshes(wasmInstance, meshes);
+
+  if (tearDownRequested) return;
+
+  exampleClass = new FormsIntersectionsExample(
+    wasmInstance,
+    meshes.map((m) => m.filename),
+    el,
+    isDark.value,
+  );
+  totalPolygons.value = wasmInstance.get_number_of_polygons().toString();
 };
 
 const getAvgTime = () => {
@@ -50,10 +45,21 @@ const getAvgTime = () => {
   }
   return 0;
 };
-setInterval(getAvgTime, 1000);
 
 onMounted(() => {
   loadThreejs();
+  avgTimer = setInterval(getAvgTime, 1000);
+});
+
+onBeforeUnmount(() => {
+  tearDownRequested = true;
+  if (avgTimer) {
+    clearInterval(avgTimer);
+  }
+  if (exampleClass) {
+    exampleClass.dispose();
+    exampleClass = null;
+  }
 });
 
 watch(isDark, (dark) => {

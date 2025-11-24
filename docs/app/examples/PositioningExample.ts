@@ -4,7 +4,12 @@ import { ThreejsBase } from "@/examples/ThreejsBase";
 import * as THREE from "three";
 
 export class PositioningExample extends ThreejsBase {
-  constructor(wasmInstance: MainModule, paths: string[], container: HTMLElement, isDarkMode = true) {
+  constructor(
+    wasmInstance: MainModule,
+    paths: string[],
+    container: HTMLElement,
+    isDarkMode = true,
+  ) {
     super(wasmInstance, paths, container, undefined, false, false, isDarkMode);
     fitCameraToAllMeshesFromZPlane(this.sceneBundle1, 1.5);
   }
@@ -34,6 +39,7 @@ export class PositioningExample extends ThreejsBase {
 
     let t = 0;
     const stepPositioning = () => {
+      if (this.isDisposed()) return;
       t = this.wasmInstance.OnLeftButtonUpCustom(
         [cameraFocalPoint.x, cameraFocalPoint.y, cameraFocalPoint.z],
         updateFocalPoint,

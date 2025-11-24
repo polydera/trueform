@@ -1,42 +1,15 @@
 <script setup lang="ts">
-import WASM from "@/examples/native";
-import type { MainModule } from "@/examples/native";
+import { useWasmModule } from "@/composables/useWasmModule";
 import { IsobandsExample } from "@/examples/IsobandsExample";
 
-let wasmInstance: MainModule | null = null;
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
+const { loadWasmModule, preloadMeshes } = useWasmModule();
 
-const threejsContainer = ref();
-const threejsContainer2 = ref();
-let exampleClass: IsobandsExample;
-
-const loadWasm = async () => {
-  wasmInstance = await WASM();
-};
-
-const loadThreejs = async () => {
-  if (wasmInstance === null) {
-    await loadWasm();
-  }
-  const el = document.getElementById("threejsContainer");
-  const el2 = document.getElementById("threejsContainer2");
-  if (el && el2 && wasmInstance) {
-    const meshes = [{ url: "/stl/dragon-250k.stl", filename: "dragon-250k.stl" }];
-    for (const mesh of meshes) {
-      const response = await fetch(mesh.url);
-      const buffer = await response.arrayBuffer();
-      wasmInstance.FS.writeFile(mesh.filename, new Int8Array(buffer));
-    }
-    exampleClass = new IsobandsExample(
-      wasmInstance,
-      meshes.map((m) => m.filename),
-      el,
-      el2,
-      isDark.value,
-    );
-  }
-};
+const threejsContainer = ref<HTMLElement | null>(null);
+const threejsContainer2 = ref<HTMLElement | null>(null);
+let exampleClass: IsobandsExample | null = null;
+const meshes = [{ url: "/stl/dragon-250k.stl", filename: "dragon-250k.stl" }];
 
 const avgTime = ref("0");
 const getAvgTime = () => {
@@ -47,6 +20,28 @@ const getAvgTime = () => {
 };
 
 let avgTimer: ReturnType<typeof setInterval> | null = null;
+let tearDownRequested = false;
+
+const loadThreejs = async () => {
+  const wasmInstance = await loadWasmModule();
+  if (tearDownRequested) return;
+
+  const el = threejsContainer.value;
+  const el2 = threejsContainer2.value;
+  if (!el || !el2) return;
+
+  await preloadMeshes(wasmInstance, meshes);
+
+  if (tearDownRequested) return;
+
+  exampleClass = new IsobandsExample(
+    wasmInstance,
+    meshes.map((m) => m.filename),
+    el,
+    el2,
+    isDark.value,
+  );
+};
 
 onMounted(() => {
   loadThreejs();
@@ -54,8 +49,13 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  tearDownRequested = true;
   if (avgTimer) {
     clearInterval(avgTimer);
+  }
+  if (exampleClass) {
+    exampleClass.dispose();
+    exampleClass = null;
   }
 });
 

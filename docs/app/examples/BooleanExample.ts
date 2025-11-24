@@ -40,6 +40,10 @@ export class BooleanExample extends ThreejsBase {
     };
     window.addEventListener("keydown", interceptKeyDownEvent);
     window.addEventListener("keyup", interceptKeyUpEvent);
+    this.addCleanup(() => {
+      window.removeEventListener("keydown", interceptKeyDownEvent);
+      window.removeEventListener("keyup", interceptKeyUpEvent);
+    });
 
     const opts: curvesToCurvePolyOpts = {
       tubeColor: 0xff2020, // Red lines

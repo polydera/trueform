@@ -1,47 +1,49 @@
 <script setup lang="ts">
-import WASM from "@/examples/native";
-import type { MainModule } from "@/examples/native";
+import { useWasmModule } from "@/composables/useWasmModule";
 import { PositioningExample } from "@/examples/PositioningExample";
 
-let wasmInstance: MainModule | null = null;
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
+const { loadWasmModule, preloadMeshes } = useWasmModule();
 
-const threejsContainer = ref();
-let exampleClass: PositioningExample;
+const threejsContainer = ref<HTMLElement | null>(null);
+let exampleClass: PositioningExample | null = null;
+const meshes = [
+  { url: "/stl/dragon-250k.stl", filename: "dragon-250k.stl" },
+  { url: "/stl/Stanford_Bunny.stl", filename: "Stanford_Bunny.stl" },
+];
 
-const loadWasm = async () => {
-  wasmInstance = await WASM();
-};
+let tearDownRequested = false;
 
 const loadThreejs = async () => {
-  if (wasmInstance === null) {
-    await loadWasm();
-  }
-  const el = document.getElementById("threejsContainer");
-  if (el && wasmInstance) {
-    const meshes = [
-      { url: "/stl/dragon-250k.stl", filename: "dragon-250k.stl" },
-      { url: "/stl/Stanford_Bunny.stl", filename: "Stanford_Bunny.stl" },
-    ];
+  const wasmInstance = await loadWasmModule();
+  if (tearDownRequested) return;
 
-    for (const mesh of meshes) {
-      const response = await fetch(mesh.url);
-      const buffer = await response.arrayBuffer();
-      wasmInstance.FS.writeFile(mesh.filename, new Int8Array(buffer));
-    }
+  const el = threejsContainer.value;
+  if (!el) return;
 
-    exampleClass = new PositioningExample(
-      wasmInstance,
-      meshes.map((m) => m.filename),
-      el,
-      isDark.value,
-    );
-  }
+  await preloadMeshes(wasmInstance, meshes);
+
+  if (tearDownRequested) return;
+
+  exampleClass = new PositioningExample(
+    wasmInstance,
+    meshes.map((m) => m.filename),
+    el,
+    isDark.value,
+  );
 };
 
 onMounted(() => {
   loadThreejs();
+});
+
+onBeforeUnmount(() => {
+  tearDownRequested = true;
+  if (exampleClass) {
+    exampleClass.dispose();
+    exampleClass = null;
+  }
 });
 
 watch(isDark, (dark) => {

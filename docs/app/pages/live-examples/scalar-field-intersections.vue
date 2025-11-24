@@ -1,40 +1,37 @@
 <script setup lang="ts">
-import WASM from "@/examples/native";
-import type { MainModule } from "@/examples/native";
+import { useWasmModule } from "@/composables/useWasmModule";
 import { ScalarFieldIntersectionsExample } from "@/examples/ScalarFieldIntersectionsExample";
 
-let wasmInstance: MainModule | null = null;
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
+const { loadWasmModule, preloadMeshes } = useWasmModule();
 
-const threejsContainer = ref();
-let exampleClass: ScalarFieldIntersectionsExample;
+const threejsContainer = ref<HTMLElement | null>(null);
+let exampleClass: ScalarFieldIntersectionsExample | null = null;
 
 const avgTime = ref("0");
+const meshes = [{ url: "/stl/dragon-250k.stl", filename: "dragon-250k.stl" }];
 
-const loadWasm = async () => {
-  wasmInstance = await WASM();
-};
+let avgTimer: ReturnType<typeof setInterval> | null = null;
+let tearDownRequested = false;
 
 const loadThreejs = async () => {
-  if (wasmInstance === null) {
-    await loadWasm();
-  }
-  const el = document.getElementById("threejsContainer");
-  if (el && wasmInstance) {
-    const meshes = [{ url: "/stl/dragon-250k.stl", filename: "dragon-250k.stl" }];
-    for (const mesh of meshes) {
-      const response = await fetch(mesh.url);
-      const buffer = await response.arrayBuffer();
-      wasmInstance.FS.writeFile(mesh.filename, new Int8Array(buffer));
-    }
-    exampleClass = new ScalarFieldIntersectionsExample(
-      wasmInstance,
-      meshes.map((m) => m.filename),
-      el,
-      isDark.value,
-    );
-  }
+  const wasmInstance = await loadWasmModule();
+  if (tearDownRequested) return;
+
+  const el = threejsContainer.value;
+  if (!el) return;
+
+  await preloadMeshes(wasmInstance, meshes);
+
+  if (tearDownRequested) return;
+
+  exampleClass = new ScalarFieldIntersectionsExample(
+    wasmInstance,
+    meshes.map((m) => m.filename),
+    el,
+    isDark.value,
+  );
 };
 
 const getAvgTime = () => {
@@ -44,16 +41,19 @@ const getAvgTime = () => {
   return 0;
 };
 
-let avgTimer: ReturnType<typeof setInterval> | null = null;
-
 onMounted(() => {
   loadThreejs();
   avgTimer = setInterval(getAvgTime, 1000);
 });
 
 onBeforeUnmount(() => {
+  tearDownRequested = true;
   if (avgTimer) {
     clearInterval(avgTimer);
+  }
+  if (exampleClass) {
+    exampleClass.dispose();
+    exampleClass = null;
   }
 });
 

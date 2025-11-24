@@ -27,6 +27,15 @@ export abstract class ThreejsBase implements IThreejsBase {
   protected stats = new Stats({ horizontal: false, trackGPU: true });
   private isDarkMode: boolean;
   private showStats: boolean;
+  private cleanupCallbacks: Array<() => void> = [];
+  private animationFrameId: number | null = null;
+  private disposed = false;
+  private resizeListener?: () => void;
+  private pointerDownListener?: (event: PointerEvent) => void;
+  private pointerMoveListener?: (event: PointerEvent) => void;
+  private pointerUpListener?: (event: PointerEvent) => void;
+  private container: HTMLElement;
+  private container2?: HTMLElement;
 
   protected readonly renderer2?: THREE.WebGLRenderer;
   protected readonly sceneBundle2?: SceneBundle;
@@ -47,6 +56,8 @@ export abstract class ThreejsBase implements IThreejsBase {
     showStats = true,
     isDarkMode = true,
   ) {
+    this.container = container;
+    this.container2 = container2;
     this.wasmInstance = wasmInstance;
     this.paths = paths;
     this.showStats = showStats;
@@ -124,10 +135,11 @@ export abstract class ThreejsBase implements IThreejsBase {
     }
 
     this.applyTheme(this.isDarkMode);
-    this.animate();
+    this.animationFrameId = requestAnimationFrame(this.animate);
 
     // Add resize event listener
-    window.addEventListener("resize", () => {
+    this.resizeListener = () => {
+      if (this.disposed) return;
       const rect = container.getBoundingClientRect();
       this.renderer.setSize(rect.width, rect.height);
       this.sceneBundle1.camera.aspect = rect.width / rect.height;
@@ -144,27 +156,63 @@ export abstract class ThreejsBase implements IThreejsBase {
         this.sceneBundle2.controls.update();
         this.renderer2.render(this.sceneBundle2.scene, this.sceneBundle2.camera);
       }
+    };
+    window.addEventListener("resize", this.resizeListener);
+    this.addCleanup(() => {
+      if (this.resizeListener) {
+        window.removeEventListener("resize", this.resizeListener);
+      }
     });
 
-    const l1 = (event: PointerEvent) => {
+    this.pointerDownListener = (event: PointerEvent) => {
       this.onPointerDown(event);
     };
-    const l2 = (event: PointerEvent) => {
+    this.pointerMoveListener = (event: PointerEvent) => {
       this.onPointerMove(event);
     };
-    const l3 = (event: PointerEvent) => {
+    this.pointerUpListener = (event: PointerEvent) => {
       this.onPointerUp(event);
     };
 
-    this.renderer.domElement.addEventListener("pointerdown", l1, true);
-    this.renderer.domElement.addEventListener("pointermove", l2, true);
-    this.renderer.domElement.addEventListener("pointerup", l3, true);
+    this.renderer.domElement.addEventListener("pointerdown", this.pointerDownListener, true);
+    this.renderer.domElement.addEventListener("pointermove", this.pointerMoveListener, true);
+    this.renderer.domElement.addEventListener("pointerup", this.pointerUpListener, true);
+    this.addCleanup(() => {
+      if (this.pointerDownListener) {
+        this.renderer.domElement.removeEventListener("pointerdown", this.pointerDownListener, true);
+      }
+      if (this.pointerMoveListener) {
+        this.renderer.domElement.removeEventListener("pointermove", this.pointerMoveListener, true);
+      }
+      if (this.pointerUpListener) {
+        this.renderer.domElement.removeEventListener("pointerup", this.pointerUpListener, true);
+      }
+    });
 
     // Add event listeners to second renderer if it exists
     if (this.renderer2 && this.renderer2Interactive) {
-      this.renderer2.domElement.addEventListener("pointerdown", l1, true);
-      this.renderer2.domElement.addEventListener("pointermove", l2, true);
-      this.renderer2.domElement.addEventListener("pointerup", l3, true);
+      this.renderer2.domElement.addEventListener("pointerdown", this.pointerDownListener, true);
+      this.renderer2.domElement.addEventListener("pointermove", this.pointerMoveListener, true);
+      this.renderer2.domElement.addEventListener("pointerup", this.pointerUpListener, true);
+      this.addCleanup(() => {
+        if (this.pointerDownListener) {
+          this.renderer2?.domElement.removeEventListener(
+            "pointerdown",
+            this.pointerDownListener,
+            true,
+          );
+        }
+        if (this.pointerMoveListener) {
+          this.renderer2?.domElement.removeEventListener(
+            "pointermove",
+            this.pointerMoveListener,
+            true,
+          );
+        }
+        if (this.pointerUpListener) {
+          this.renderer2?.domElement.removeEventListener("pointerup", this.pointerUpListener, true);
+        }
+      });
     }
 
     this.runMain();
@@ -230,6 +278,7 @@ export abstract class ThreejsBase implements IThreejsBase {
   }
 
   public updateMeshes() {
+    if (this.disposed) return;
     for (let i = 0; i < this.wasmInstance.get_number_of_meshes(); i++) {
       const wO = this.wasmInstance.get_mesh_on_idx(i);
       const mesh = this.meshes.get(i);
@@ -248,8 +297,50 @@ export abstract class ThreejsBase implements IThreejsBase {
 
   abstract runMain(): void;
 
+  public dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+    }
+    this.cleanupCallbacks.forEach((cb) => cb());
+    this.cleanupCallbacks = [];
+
+    this.sceneBundle1.controls.dispose();
+    this.disposeScene(this.sceneBundle1.scene);
+    this.renderer.dispose();
+    this.renderer.forceContextLoss();
+    this.renderer.domElement.remove();
+
+    if (this.sceneBundle2 && this.renderer2) {
+      this.sceneBundle2.controls.dispose();
+      this.disposeScene(this.sceneBundle2.scene);
+      this.renderer2.dispose();
+      this.renderer2.forceContextLoss();
+      this.renderer2.domElement.remove();
+    }
+
+    if (this.showStats && this.stats?.dom) {
+      this.stats.dom.remove();
+    }
+
+    this.container.innerHTML = "";
+    if (this.container2) {
+      this.container2.innerHTML = "";
+    }
+  }
+
+  public isDisposed() {
+    return this.disposed;
+  }
+
+  protected addCleanup(callback: () => void) {
+    this.cleanupCallbacks.push(callback);
+  }
+
   private animate = () => {
-    requestAnimationFrame(this.animate);
+    if (this.disposed) return;
+    this.animationFrameId = requestAnimationFrame(this.animate);
     this.sceneBundle1.controls.update();
     this.renderer.render(this.sceneBundle1.scene, this.sceneBundle1.camera);
     if (this.renderer2 && this.sceneBundle2) {
@@ -260,6 +351,20 @@ export abstract class ThreejsBase implements IThreejsBase {
       this.stats.update();
     }
   };
+
+  private disposeScene(scene: THREE.Scene) {
+    scene.traverse((object) => {
+      const mesh = object as THREE.Mesh;
+      if (mesh.geometry) {
+        mesh.geometry.dispose();
+      }
+      if (Array.isArray(mesh.material)) {
+        mesh.material.forEach((material) => material.dispose());
+      } else if (mesh.material) {
+        mesh.material.dispose();
+      }
+    });
+  }
 
   private setSceneBackground(bundle: SceneBundle, renderer: THREE.WebGLRenderer, color: number) {
     bundle.scene.background = new THREE.Color(color);
