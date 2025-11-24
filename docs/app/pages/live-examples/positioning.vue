@@ -53,7 +53,7 @@ watch(isDark, (dark) => {
 
 <template>
   <div class="flex flex-col w-full">
-    <div class="flex flex-row flex-1 live-example-stage relative">
+    <div class="flex flex-row flex-1 relative">
       <div class="absolute left-3 top-3 z-10 max-w-md rounded-lg p-3 bg-neutral-100/10 shadow-lg backdrop-blur">
         <p class="font-semibold text-lg mb-2">Positioning</p>
         <div class="flex flex-col gap-2 text-sm text-muted">

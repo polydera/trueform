@@ -65,14 +65,14 @@ watch(isDark, (dark) => {
 </script>
 
 <template>
-  <div class="flex flex-col w-full mt-(--ui-header-height)">
-    <div class="flex flex-row flex-1 live-example-stage relative">
+  <div class="flex flex-col w-full">
+    <div class="flex flex-row flex-1 relative">
       <div class="absolute left-3 top-3 z-10 max-w-md rounded-lg p-3 bg-neutral-100/10 shadow-lg backdrop-blur">
         <p class="font-semibold text-lg mb-2">Scalar Field Intersections</p>
         <div class="flex flex-col gap-2 text-sm text-muted">
-          <div class="flex gap-3 items-center">
-            <UIcon name="i-lucide-mouse-pointer-2" class="size-4 ml-1" />
-            <p>Hold shift and scroll to move the scalar field plane.</p>
+          <div class="flex gap-1 items-center text-muted">
+            <UKbd variant="subtle" value="shift"/><UKbd variant="subtle">Scroll</UKbd>
+            <p>Sweep the plane and isobands.</p>
           </div>
           <div class="flex gap-2 items-center">
             <UKbd variant="subtle">n</UKbd>

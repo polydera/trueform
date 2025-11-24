@@ -44,10 +44,10 @@ Real-time [geometric processing]{.text-primary} for C++.
   color: primary
   variant: solid
   size: xl
-  to: /live-examples
+  to: /live-examples/boolean
   class: animate-pulse
   ---
-  Try it
+  Try it live
   :::
 
 #default

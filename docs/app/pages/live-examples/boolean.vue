@@ -78,7 +78,7 @@ watch(isDark, (dark) => {
 
 <template>
   <div class="flex flex-col w-full">
-    <div class="flex flex-row flex-1 live-example-stage relative">
+    <div class="flex flex-row flex-1 relative">
       <div
         class="absolute left-3 top-3 z-10 max-w-md rounded-lg p-3 bg-neutral-100/10 shadow-lg backdrop-blur"
       >
@@ -91,6 +91,10 @@ watch(isDark, (dark) => {
           <div class="flex gap-2 items-center text-muted">
             <UKbd variant="subtle">n</UKbd>
             <p class="text-sm">Randomize mesh orientation</p>
+          </div>
+          <div class="flex gap-2 items-center text-muted">
+            <UIcon name="i-lucide-gauge" class="size-4 ml-1" />
+            <p class="text-sm">Last boolean: {{ avgTime }} ms</p>
           </div>
         </div>
       </div>
