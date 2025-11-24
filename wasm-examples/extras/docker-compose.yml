@@ -1,0 +1,12 @@
+services:
+  web-example:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    platform: linux/amd64
+    environment:
+      - ARTIFACTS_DIR=/workspace/wasm-examples/build/dist
+    working_dir: /workspace
+    volumes:
+      - ../../:/workspace
+    command: bash -lc ./wasm-examples/extras/build_web.sh

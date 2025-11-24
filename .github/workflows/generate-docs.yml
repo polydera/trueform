@@ -8,8 +8,33 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-wasm:
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Build WebAssembly assets
+        run: |
+          docker compose -f wasm-examples/extras/docker-compose.yml \
+            up --build --abort-on-container-exit --exit-code-from web-example
+
+      - name: Tear down docker compose
+        if: always()
+        run: |
+          docker compose -f wasm-examples/extras/docker-compose.yml down \
+            --volumes --remove-orphans
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasm-build
+          path: wasm-examples/build/dist
+          retention-days: 7
+
+  build-web:
+    runs-on: ubuntu-latest
+    needs: build-wasm
 
     steps:
       - name: Checkout
@@ -37,13 +62,13 @@ jobs:
         env:
           NUXT_APP_BASE_URL: "/trueform/"
 
-      - name: Upload artifact
+      - name: Upload pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: docs/.output/public
 
   deploy:
-    needs: build
+    needs: build-web
     runs-on: ubuntu-latest
     permissions:
       pages: write

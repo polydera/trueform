@@ -11,7 +11,7 @@ export default defineNuxtModule({
   setup(options, nuxt) {
     async function copyAll() {
       const wasmFile = {
-        from: "../web-examples/src/webAssembly/build/dist/native.wasm",
+        from: "../wasm-examples/build/dist/native.wasm",
         to: "public/native.wasm",
       };
 
@@ -25,13 +25,13 @@ export default defineNuxtModule({
       await copyFile(wasmFile.from, wasmFile.to);
 
       // Copy all files from build/dist except .wasm files
-      const distDir = "../web-examples/src/webAssembly/build/dist";
+      const distDir = "../wasm-examples/build/dist";
       const allFiles = await glob(`${distDir}/**/*`, {
         absolute: false,
         onlyFiles: true
       });
 
-      const filesToCopy = allFiles.filter(file => !file.endsWith('.wasm'));
+      const filesToCopy = allFiles;
 
       for (const file of filesToCopy) {
         const fileName = basename(file);
