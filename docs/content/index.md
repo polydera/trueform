@@ -22,6 +22,7 @@ Real-time [geometric processing]{.text-primary} for C++.
   ---
   to: /cpp/getting-started
   size: xl
+  variant: subtle
   trailing-icon: i-vscode-icons:file-type-cpp
   ---
   Get started
@@ -31,6 +32,7 @@ Real-time [geometric processing]{.text-primary} for C++.
   ---
   to: /py/getting-started
   size: xl
+  variant: subtle
   trailing-icon: i-vscode-icons:file-type-python
   ---
   Get started
@@ -38,14 +40,14 @@ Real-time [geometric processing]{.text-primary} for C++.
 
   :::u-button
   ---
-  icon: i-simple-icons-github
-  color: neutral
-  variant: outline
+  icon: i-lucide-play
+  color: primary
+  variant: solid
   size: xl
-  to: https://github.com/xlabmedical/trueform
-  target: _blank
+  to: /live-examples/boolean
+  class: animate-pulse
   ---
-  View on GitHub
+  Try it live
   :::
 
 #default

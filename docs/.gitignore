@@ -25,3 +25,6 @@ logs
 
 # VSC
 .history
+
+*.wasm
+**/native.*

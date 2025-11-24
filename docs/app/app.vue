@@ -4,6 +4,8 @@ const config = useRuntimeConfig();
 
 const { navigation, files } = useLibraryCollection();
 
+const route = useRoute();
+
 useHead({
   meta: [{ name: "viewport", content: "width=device-width, initial-scale=1" }],
   link: [{ rel: "icon", type: "image/png", href: `${config.app.baseURL}tf.png` }],
@@ -33,7 +35,7 @@ provide("navigation", navigation);
       </NuxtLayout>
     </UMain>
 
-    <AppFooter />
+    <AppFooter v-if="!route.path.startsWith('/live-examples')" />
 
     <ClientOnly>
       <LazyUContentSearch :files="files" :navigation="navigation" />

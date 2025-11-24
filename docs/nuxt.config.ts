@@ -6,6 +6,7 @@ export default defineNuxtConfig({
     "@nuxt/ui",
     "@nuxt/content",
     "nuxt-og-image",
+    "./modules/copy-files",
     // "nuxt-llms",
   ],
 
@@ -36,6 +37,15 @@ export default defineNuxtConfig({
       crawlLinks: true,
       autoSubfolderIndex: false,
     },
+    routeRules: {
+      "/**": {
+        headers: {
+          "Cross-Origin-Embedder-Policy": "require-corp",
+          "Cross-Origin-Opener-Policy": "same-origin",
+          "Cross-Origin-Resource-Policy": "cross-origin",
+        },
+      },
+    },
   },
 
   eslint: {
@@ -49,6 +59,16 @@ export default defineNuxtConfig({
 
   icon: {
     provider: "iconify",
+  },
+
+  vite: {
+    server: {
+      headers: {
+        "Cross-Origin-Embedder-Policy": "require-corp",
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Resource-Policy": "cross-origin",
+      },
+    },
   },
 
   // llms: {

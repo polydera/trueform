@@ -8,7 +8,7 @@ const { header } = useAppConfig();
 
 const showLibPicker = computed(() => {
   // Hide on root index page and error page
-  return route.path !== "/" && route.name !== "error";
+  return route.path !== "/" && route.name !== "error" && !route.path.startsWith("/live-examples");
 });
 </script>
 
