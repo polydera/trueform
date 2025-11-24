@@ -1,53 +1,78 @@
 # Spatial module benchmarks
 
 # TrueForm point cloud tree building
+add_library(spatial-point_cloud-build_tree-tf-impl OBJECT point_cloud-build_tree-tf-impl.cpp)
+target_link_libraries(spatial-point_cloud-build_tree-tf-impl benchmark_common)
+
 add_executable(spatial-point_cloud-build_tree-tf point_cloud-build_tree-tf.cpp)
-target_link_libraries(spatial-point_cloud-build_tree-tf benchmark_common)
+target_link_libraries(spatial-point_cloud-build_tree-tf spatial-point_cloud-build_tree-tf-impl)
 
 # nanoflann point cloud tree building
+add_library(spatial-point_cloud-build_tree-nanoflann-impl OBJECT point_cloud-build_tree-nanoflann-impl.cpp)
+target_link_libraries(spatial-point_cloud-build_tree-nanoflann-impl benchmark_common nanoflann::nanoflann)
+
 add_executable(spatial-point_cloud-build_tree-nanoflann point_cloud-build_tree-nanoflann.cpp)
-target_link_libraries(spatial-point_cloud-build_tree-nanoflann benchmark_common nanoflann::nanoflann)
+target_link_libraries(spatial-point_cloud-build_tree-nanoflann spatial-point_cloud-build_tree-nanoflann-impl)
 
 # TrueForm point cloud kNN queries
+add_library(spatial-point_cloud-knn-tf-impl OBJECT point_cloud-knn-tf-impl.cpp)
+target_link_libraries(spatial-point_cloud-knn-tf-impl benchmark_common)
+
 add_executable(spatial-point_cloud-knn-tf point_cloud-knn-tf.cpp)
-target_link_libraries(spatial-point_cloud-knn-tf benchmark_common)
+target_link_libraries(spatial-point_cloud-knn-tf spatial-point_cloud-knn-tf-impl)
 
 # nanoflann point cloud kNN queries
+add_library(spatial-point_cloud-knn-nanoflann-impl OBJECT point_cloud-knn-nanoflann-impl.cpp)
+target_link_libraries(spatial-point_cloud-knn-nanoflann-impl benchmark_common nanoflann::nanoflann)
+
 add_executable(spatial-point_cloud-knn-nanoflann point_cloud-knn-nanoflann.cpp)
-target_link_libraries(spatial-point_cloud-knn-nanoflann benchmark_common nanoflann::nanoflann)
+target_link_libraries(spatial-point_cloud-knn-nanoflann spatial-point_cloud-knn-nanoflann-impl)
 
 # TrueForm polygons tree building
+add_library(spatial-polygons-build_tree-tf-impl OBJECT polygons-build_tree-tf-impl.cpp)
+target_link_libraries(spatial-polygons-build_tree-tf-impl benchmark_common)
+
 add_executable(spatial-polygons-build_tree-tf polygons-build_tree-tf.cpp)
-target_link_libraries(spatial-polygons-build_tree-tf benchmark_common)
+target_link_libraries(spatial-polygons-build_tree-tf spatial-polygons-build_tree-tf-impl)
 
 # CGAL polygons tree building
+add_library(spatial-polygons-build_tree-cgal-impl OBJECT polygons-build_tree-cgal-impl.cpp)
+target_link_libraries(spatial-polygons-build_tree-cgal-impl benchmark_cgal_common)
+
 add_executable(spatial-polygons-build_tree-cgal polygons-build_tree-cgal.cpp)
-target_link_libraries(spatial-polygons-build_tree-cgal benchmark_cgal_common)
+target_link_libraries(spatial-polygons-build_tree-cgal spatial-polygons-build_tree-cgal-impl)
 
 # FCL polygons tree building
+add_library(spatial-polygons-build_tree-fcl-impl OBJECT polygons-build_tree-fcl-impl.cpp)
+target_link_libraries(spatial-polygons-build_tree-fcl-impl benchmark_fcl_common)
+
 add_executable(spatial-polygons-build_tree-fcl polygons-build_tree-fcl.cpp)
-target_link_libraries(spatial-polygons-build_tree-fcl benchmark_fcl_common)
+target_link_libraries(spatial-polygons-build_tree-fcl spatial-polygons-build_tree-fcl-impl)
 
 # TrueForm polygons closest point queries
+add_library(spatial-polygons-closest_point-tf-impl OBJECT polygons-closest_point-tf-impl.cpp)
+target_link_libraries(spatial-polygons-closest_point-tf-impl benchmark_common)
+
 add_executable(spatial-polygons-closest_point-tf polygons-closest_point-tf.cpp)
-target_link_libraries(spatial-polygons-closest_point-tf benchmark_common)
+target_link_libraries(spatial-polygons-closest_point-tf spatial-polygons-closest_point-tf-impl)
 
 # CGAL polygons closest point queries
+add_library(spatial-polygons-closest_point-cgal-impl OBJECT polygons-closest_point-cgal-impl.cpp)
+target_link_libraries(spatial-polygons-closest_point-cgal-impl benchmark_cgal_common)
+
 add_executable(spatial-polygons-closest_point-cgal polygons-closest_point-cgal.cpp)
-target_link_libraries(spatial-polygons-closest_point-cgal benchmark_cgal_common)
-
-# TrueForm polygons to point cloud closest point queries
-add_executable(spatial-polygons_to_point_cloud-closest_point-tf polygons_to_point_cloud-closest_point-tf.cpp)
-target_link_libraries(spatial-polygons_to_point_cloud-closest_point-tf benchmark_common)
-
-# CGAL polygons to point cloud closest point queries
-add_executable(spatial-polygons_to_point_cloud-closest_point-cgal polygons_to_point_cloud-closest_point-cgal.cpp)
-target_link_libraries(spatial-polygons_to_point_cloud-closest_point-cgal benchmark_cgal_common)
+target_link_libraries(spatial-polygons-closest_point-cgal spatial-polygons-closest_point-cgal-impl)
 
 # TrueForm polygons to polygons closest point queries
+add_library(spatial-polygons_to_polygons-closest_point-tf-impl OBJECT polygons_to_polygons-closest_point-tf-impl.cpp)
+target_link_libraries(spatial-polygons_to_polygons-closest_point-tf-impl benchmark_common)
+
 add_executable(spatial-polygons_to_polygons-closest_point-tf polygons_to_polygons-closest_point-tf.cpp)
-target_link_libraries(spatial-polygons_to_polygons-closest_point-tf benchmark_common)
+target_link_libraries(spatial-polygons_to_polygons-closest_point-tf spatial-polygons_to_polygons-closest_point-tf-impl)
 
 # FCL polygons to polygons closest point queries
+add_library(spatial-polygons_to_polygons-closest_point-fcl-impl OBJECT polygons_to_polygons-closest_point-fcl-impl.cpp)
+target_link_libraries(spatial-polygons_to_polygons-closest_point-fcl-impl benchmark_fcl_common)
+
 add_executable(spatial-polygons_to_polygons-closest_point-fcl polygons_to_polygons-closest_point-fcl.cpp)
-target_link_libraries(spatial-polygons_to_polygons-closest_point-fcl benchmark_fcl_common)
+target_link_libraries(spatial-polygons_to_polygons-closest_point-fcl spatial-polygons_to_polygons-closest_point-fcl-impl)

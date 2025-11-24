@@ -20,8 +20,8 @@ inline const std::vector<std::string> BENCHMARK_MESHES = {
     "benchmarks/data/dragon-125k.stl",
     "benchmarks/data/dragon-250k.stl",
     "benchmarks/data/dragon-500k.stl",
-    "benchmarks/data/dragon-750k.stl",
-    "benchmarks/data/dragon-1M.stl"
+    // "benchmarks/data/dragon-750k.stl",
+    // "benchmarks/data/dragon-1M.stl"
 };
 
-}  // namespace benchmark
+} // namespace benchmark

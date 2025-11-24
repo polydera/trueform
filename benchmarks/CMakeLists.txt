@@ -17,6 +17,13 @@ message(STATUS "Copying benchmark data to build directory")
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/data
      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
+# Copy Python consolidation script to build directory
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/consolidate_results.py
+    ${CMAKE_CURRENT_BINARY_DIR}/consolidate_results.py
+    COPYONLY
+)
+
 # ------------------------------------------------------------------------------
 # Fetch external libraries for comparison
 # ------------------------------------------------------------------------------
@@ -318,6 +325,72 @@ message(STATUS "  - cut")
 add_subdirectory(cut EXCLUDE_FROM_ALL)
 
 # ------------------------------------------------------------------------------
+# Unified benchmark runner
+# ------------------------------------------------------------------------------
+
+message(STATUS "Creating unified benchmark runner: run-benchmarks")
+
+# Collect all object library implementations
+set(ALL_BENCHMARK_IMPLS
+    # Cut module
+    cut-boolean-tf-impl
+    cut-boolean-cgal-impl
+    cut-boolean-igl-impl
+    cut-embedded_self_intersection_curves-tf-impl
+    cut-embedded_self_intersection_curves-igl-impl
+    cut-embedded_isocurves-tf-impl
+
+    # Topology module
+    topology-connected_components-cgal-impl
+    topology-connected_components-tf-impl
+    topology-connected_components-igl-impl
+    topology-boundary_paths-cgal-impl
+    topology-boundary_paths-tf-impl
+    topology-boundary_paths-igl-impl
+
+    # Intersect module
+    intersect-mesh_mesh_curves-tf-impl
+    intersect-mesh_mesh_curves-cgal-impl
+    intersect-isocontours-tf-impl
+    intersect-isocontours-igl-impl
+
+    # Spatial module
+    spatial-point_cloud-build_tree-tf-impl
+    spatial-point_cloud-build_tree-nanoflann-impl
+    spatial-point_cloud-knn-tf-impl
+    spatial-point_cloud-knn-nanoflann-impl
+    spatial-polygons-build_tree-tf-impl
+    spatial-polygons-build_tree-cgal-impl
+    spatial-polygons-build_tree-fcl-impl
+    spatial-polygons-closest_point-tf-impl
+    spatial-polygons-closest_point-cgal-impl
+    spatial-polygons_to_polygons-closest_point-tf-impl
+    spatial-polygons_to_polygons-closest_point-fcl-impl
+)
+
+# Add VTK implementations if available
+if(HAVE_VTK)
+    list(APPEND ALL_BENCHMARK_IMPLS
+        cut-embedded_isocurves-vtk-impl
+        topology-connected_components-vtk-impl
+        topology-boundary_paths-vtk-impl
+        intersect-mesh_mesh_curves-vtk-impl
+        intersect-isocontours-vtk-impl
+    )
+
+    # Define HAVE_VTK for run_benchmarks.cpp
+    set(VTK_COMPILE_DEFS "HAVE_VTK")
+endif()
+
+# Create the unified runner executable
+add_executable(run-benchmarks run_benchmarks.cpp)
+target_link_libraries(run-benchmarks ${ALL_BENCHMARK_IMPLS})
+
+if(HAVE_VTK)
+    target_compile_definitions(run-benchmarks PRIVATE ${VTK_COMPILE_DEFS})
+endif()
+
+# ------------------------------------------------------------------------------
 # Custom target to build all benchmarks
 # ------------------------------------------------------------------------------
 
@@ -331,8 +404,6 @@ set(BENCHMARK_TARGETS
     spatial-polygons-build_tree-fcl
     spatial-polygons-closest_point-tf
     spatial-polygons-closest_point-cgal
-    spatial-polygons_to_point_cloud-closest_point-tf
-    spatial-polygons_to_point_cloud-closest_point-cgal
     spatial-polygons_to_polygons-closest_point-tf
     spatial-polygons_to_polygons-closest_point-fcl
     topology-connected_components-cgal
@@ -351,6 +422,7 @@ set(BENCHMARK_TARGETS
     cut-embedded_self_intersection_curves-tf
     cut-embedded_self_intersection_curves-igl
     cut-embedded_isocurves-tf
+    run-benchmarks
 )
 
 # Add VTK targets if available
@@ -404,4 +476,3 @@ endif()
 message(STATUS "=== Benchmark configuration complete ===")
 message(STATUS "Build benchmarks with: make benchmarks")
 message(STATUS "Build specific benchmark: make spatial-point_cloud-build_tree-tf")
-

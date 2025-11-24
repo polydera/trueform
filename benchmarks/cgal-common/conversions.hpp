@@ -21,7 +21,7 @@ using Surface_mesh = CGAL::Surface_mesh<Point_3>;
 
 
 using Kernel_d = CGAL::Simple_cartesian<double>;
-using Point_3_d = Kernel::Point_3;
+using Point_3_d = Kernel_d::Point_3;
 using Surface_mesh_d = CGAL::Surface_mesh<Point_3_d>;
 
 /**
@@ -58,10 +58,10 @@ Surface_mesh_d to_cgal_mesh_d(const PolygonBuffer& r_polygons) {
     auto faces = r_polygons.faces();
 
     // Add vertices
-    std::vector<Surface_mesh::Vertex_index> vertices;
+    std::vector<Surface_mesh_d::Vertex_index> vertices;
     vertices.reserve(points.size());
     for (const auto& pt : points) {
-        vertices.push_back(mesh.add_vertex(Point_3(pt[0], pt[1], pt[2])));
+        vertices.push_back(mesh.add_vertex(Point_3_d(pt[0], pt[1], pt[2])));
     }
 
     // Add faces
