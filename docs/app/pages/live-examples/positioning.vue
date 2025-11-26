@@ -63,10 +63,6 @@ watch(isDark, (dark) => {
             <UIcon name="i-lucide-hand" class="size-4 ml-1" />
             <p>Drag a mesh away; release to see nearest neighbors snap back together.</p>
           </div>
-          <div class="flex gap-2 items-center">
-            <UKbd variant="subtle">n</UKbd>
-            <p>Randomize mesh orientation</p>
-          </div>
         </div>
       </div>
       <div ref="threejsContainer" id="threejsContainer" class="h-full w-full m-0 p-0"></div>
