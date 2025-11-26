@@ -49,7 +49,7 @@ public:
 
     tf::tick();
     if (auto *pB =
-            static_cast<scalar_field_intersections_bridge *>(bridge.get())) {
+            dynamic_cast<scalar_field_intersections_bridge *>(bridge.get())) {
       auto curves = pB->compute_isocontours(scalars, cutvalues);
       add_intersection_time(tf::tock());
       curve_mesh->set_curves_object(std::move(curves));

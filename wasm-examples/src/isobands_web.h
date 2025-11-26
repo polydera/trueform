@@ -58,7 +58,7 @@ public:
         selected_values.push_back(i);
     }
     tf::tick();
-    if (auto *pB = static_cast<isobands_bridge *>(bridge.get())) {
+    if (auto *pB = dynamic_cast<isobands_bridge *>(bridge.get())) {
       auto [polys, _, curves] =
           pB->compute_isobands(scalars, cutvalues, selected_values);
       add_isobands_time(tf::tock());

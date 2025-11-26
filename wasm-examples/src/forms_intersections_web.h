@@ -48,7 +48,7 @@ private:
   auto compute_curves() {
     tf::tick();
     if (auto *pB =
-            static_cast<tf_bridge_forms_intersections *>(bridge.get())) {
+            dynamic_cast<tf_bridge_forms_intersections *>(bridge.get())) {
       auto curves = pB->compute_intersection_curves();
       add_intersection_time(tf::tock());
       curve_mesh->set_curves_object(std::move(curves));
