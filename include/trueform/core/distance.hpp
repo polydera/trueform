@@ -1,12 +1,13 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
 
 #include "./aabb_like.hpp"
+#include "./base/local_rectangle_distance.hpp"
 #include "./closest_metric_point.hpp"
 #include "./coordinate_type.hpp"
 #include "./dot.hpp"
@@ -14,6 +15,7 @@
 #include "./plane_like.hpp"
 #include "./point_like.hpp"
 #include "./ray_like.hpp"
+#include "./rss_like.hpp"
 #include "./segment.hpp"
 #include "./sphere_like.hpp"
 #include "./sqrt.hpp"
@@ -566,6 +568,50 @@ auto distance2(const sphere_like<Dims, T0> &s, const segment<Dims, T1> &seg) {
 template <std::size_t Dims, typename T0, typename T1>
 auto distance2(const segment<Dims, T1> &seg, const sphere_like<Dims, T0> &s) {
   return distance2(seg, s);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance(const tf::rss_like<Dims, Policy0> &rss0,
+              const tf::rss_like<Dims, Policy1> &rss1) {
+  static_assert(Dims == 3, "rss_metrics is currently implemented for 3D only.");
+  using T = tf::coordinate_type<Policy0, Policy1>;
+
+  using std::max;
+
+  // Rotation matrix: Rab = A^T * B
+  std::array<std::array<T, 3>, 3> rot_ab;
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      rot_ab[i][j] = tf::dot(rss0.axes[i], rss1.axes[j]);
+    }
+  }
+
+  // Translation Tab = origin1 - origin0, expressed in frame A
+  auto diff = rss1.origin - rss0.origin;
+  std::array<T, 3> tr_ab;
+  for (int i = 0; i < 3; ++i) {
+    tr_ab[i] = tf::dot(diff, rss0.axes[i]);
+  }
+
+  // Rectangle side lengths
+  std::array<T, 2> a{rss0.length[0], rss0.length[1]};
+  std::array<T, 2> b{rss1.length[0], rss1.length[1]};
+
+  // Distance between the two oriented rectangles
+  auto rect_dist = tf::core::local_rectangle_distance(rot_ab, tr_ab, a, b);
+  T rss_dist = rect_dist - rss0.radius - rss1.radius;
+  if (rss_dist < T(0)) {
+    rss_dist = T(0);
+  }
+  return rss_dist;
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance2(const tf::rss_like<Dims, Policy0> &rss0,
+               const tf::rss_like<Dims, Policy1> &rss1) {
+  static_assert(Dims == 3, "rss_metrics is currently implemented for 3D only.");
+  auto out = distance(rss0, rss1);
+  return out * out;
 }
 
 namespace core {

@@ -1,22 +1,25 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
 #include "./aabb_like.hpp"
 #include "./base/aabb.hpp"
 #include "./base/line.hpp"
+#include "./base/obb_impl.hpp"
 #include "./base/plane.hpp"
 #include "./base/poly.hpp"
 #include "./base/ray.hpp"
+#include "./base/rss_impl.hpp"
 #include "./base/seg.hpp"
 #include "./frame_like.hpp"
 #include "./is_transformable.hpp"
 #include "./linalg/is_identity.hpp"
 #include "./linalg/transpose.hpp"
 #include "./line_like.hpp"
+#include "./obb_like.hpp"
 #include "./point_like.hpp"
 #include "./policy/id.hpp"
 #include "./policy/ids.hpp"
@@ -28,6 +31,7 @@
 #include "./policy/states.hpp"
 #include "./polygon.hpp"
 #include "./ray_like.hpp"
+#include "./rss_like.hpp"
 #include "./segment.hpp"
 #include "./transformation.hpp"
 #include "./tuple.hpp"
@@ -278,6 +282,43 @@ auto transformed(const tuple<Ts...> &_this,
       },
       _this);
 }
+
+template <std::size_t Dims, typename Policy, typename U>
+auto transformed(const rss_like<Dims, Policy> &_this,
+                 const transformation_like<Dims, U> &transform) {
+  if constexpr (!linalg::is_identity<U>)
+    return wrap_like(_this, transformed(unwrap(_this), transform));
+  else
+    return _this;
+}
+
+template <std::size_t Dims, typename Policy, typename U>
+auto transformed(const rss_like<Dims, Policy> &_this,
+                 const frame_like<Dims, U> &frame) {
+  if constexpr (!linalg::is_identity<U>)
+    return wrap_like(_this, transformed(unwrap(_this), frame));
+  else
+    return _this;
+}
+
+template <std::size_t Dims, typename Policy, typename U>
+auto transformed(const obb_like<Dims, Policy> &_this,
+                 const transformation_like<Dims, U> &transform) {
+  if constexpr (!linalg::is_identity<U>)
+    return wrap_like(_this, transformed(unwrap(_this), transform));
+  else
+    return _this;
+}
+
+template <std::size_t Dims, typename Policy, typename U>
+auto transformed(const obb_like<Dims, Policy> &_this,
+                 const frame_like<Dims, U> &frame) {
+  if constexpr (!linalg::is_identity<U>)
+    return wrap_like(_this, transformed(unwrap(_this), frame));
+  else
+    return _this;
+}
+
 } // namespace tf
 
 namespace tf::core {
@@ -483,6 +524,58 @@ auto transformed(const poly<V, Policy> &_this,
   for (std::size_t i = 0; i < V; ++i)
     out[i] = transformed(_this[i], transform);
   return core::make_poly(out);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1, typename U>
+auto transformed(const rss<Dims, Policy0, Policy1> &_this,
+                 const transformation_like<Dims, U> &transform) {
+  auto origin_out = transformed(_this.origin, transform);
+
+  std::array<decltype(transformed(_this.axes[0], transform)), Dims> axes_out;
+  for (std::size_t i = 0; i < Dims; ++i) {
+    axes_out[i] = transformed(_this.axes[i], transform);
+  }
+
+  return core::make_rss(origin_out, axes_out, _this.length, _this.radius);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1, typename U>
+auto transformed(const rss<Dims, Policy0, Policy1> &_this,
+                 const frame_like<Dims, U> &frame) {
+  auto origin_out = transformed(_this.origin, frame);
+
+  std::array<decltype(transformed(_this.axes[0], frame)), Dims> axes_out;
+  for (std::size_t i = 0; i < Dims; ++i) {
+    axes_out[i] = transformed(_this.axes[i], frame);
+  }
+
+  return core::make_rss(origin_out, axes_out, _this.length, _this.radius);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1, typename U>
+auto transformed(const obb<Dims, Policy0, Policy1> &_this,
+                 const transformation_like<Dims, U> &transform) {
+  auto origin_out = transformed(_this.origin, transform);
+
+  std::array<decltype(transformed(_this.axes[0], transform)), Dims> axes_out;
+  for (std::size_t i = 0; i < Dims; ++i) {
+    axes_out[i] = transformed(_this.axes[i], transform);
+  }
+
+  return core::make_obb(origin_out, axes_out, _this.extent);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1, typename U>
+auto transformed(const obb<Dims, Policy0, Policy1> &_this,
+                 const frame_like<Dims, U> &frame) {
+  auto origin_out = transformed(_this.origin, frame);
+
+  std::array<decltype(transformed(_this.axes[0], frame)), Dims> axes_out;
+  for (std::size_t i = 0; i < Dims; ++i) {
+    axes_out[i] = transformed(_this.axes[i], frame);
+  }
+
+  return core::make_obb(origin_out, axes_out, _this.extent);
 }
 
 } // namespace tf::core

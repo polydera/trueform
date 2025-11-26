@@ -8,6 +8,7 @@
 #include "./algorithm/min.hpp"
 #include "./closest_point_on_triangle.hpp"
 #include "./closest_point_parametric.hpp"
+#include "./closest_points_on_triangles.hpp"
 #include "./contains_coplanar_point.hpp"
 #include "./line_like.hpp"
 #include "./metric_point_pair.hpp"
@@ -524,9 +525,22 @@ auto closest_metric_point_pair_impl(const tf::polygon<Dims, Policy0> &poly0,
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto closest_metric_point_pair(const tf::polygon<Dims, Policy0> &poly_in0,
                                const tf::polygon<Dims, Policy1> &poly_in1) {
-  const auto &poly0 = tf::tag_plane(poly_in0);
-  const auto &poly1 = tf::tag_plane(poly_in1);
-  return core::closest_metric_point_pair_impl(poly0, poly1);
+  if constexpr (Dims == 3 && tf::static_size_v<Policy0> == 3 &&
+                tf::static_size_v<Policy1> == 3) {
+    return tf::core::closest_points_on_triangles(poly_in0, poly_in1);
+  } else if constexpr (Dims == 3) {
+    if (poly_in0.size() == 3 && poly_in1.size() == 3)
+      return tf::core::closest_points_on_triangles(poly_in0, poly_in1);
+    else {
+      const auto &poly0 = tf::tag_plane(poly_in0);
+      const auto &poly1 = tf::tag_plane(poly_in1);
+      return core::closest_metric_point_pair_impl(poly0, poly1);
+    }
+  } else {
+    const auto &poly0 = tf::tag_plane(poly_in0);
+    const auto &poly1 = tf::tag_plane(poly_in1);
+    return core::closest_metric_point_pair_impl(poly0, poly1);
+  }
 }
 
 template <typename Policy0, typename Policy1>
