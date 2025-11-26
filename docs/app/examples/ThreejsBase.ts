@@ -7,7 +7,7 @@ import {
   fitCameraToAllMeshesFromZPlane,
   type SceneBundle,
 } from "@/utils/sceneUtils";
-import { createMesh, getMeshFromWasm } from "@/utils/utils";
+import {createMesh, getMeshFromWasm, switchTextures} from "@/utils/utils";
 
 abstract class IThreejsBase {
   abstract runMain(): void;
@@ -25,7 +25,7 @@ export abstract class ThreejsBase implements IThreejsBase {
   protected readonly sceneBundle1: SceneBundle;
   protected meshes = new Map<number, THREE.Mesh>();
   protected stats = new Stats({ horizontal: false, trackGPU: true });
-  private isDarkMode: boolean;
+  protected isDarkMode: boolean;
   private showStats: boolean;
   private cleanupCallbacks: Array<() => void> = [];
   private animationFrameId: number | null = null;
@@ -220,7 +220,7 @@ export abstract class ThreejsBase implements IThreejsBase {
     this.runMain();
 
     for (let i = 0; i < this.wasmInstance.get_number_of_meshes(); i++) {
-      const mesh = createMesh();
+      const mesh = createMesh(this.isDarkMode);
       this.meshes.set(i, mesh);
       this.sceneBundle1.scene.add(mesh);
     }
@@ -390,5 +390,12 @@ export abstract class ThreejsBase implements IThreejsBase {
     if (this.renderer2 && this.sceneBundle2) {
       this.setSceneBackground(this.sceneBundle2, this.renderer2, secondaryBg);
     }
+    this.meshes.forEach((mesh) => {
+      switchTextures(mesh, this.isDarkMode);
+    })
+    this.meshes2.forEach((mesh) => {
+      switchTextures(mesh, this.isDarkMode);
+    })
+
   }
 }

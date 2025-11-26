@@ -69,7 +69,7 @@ export class IsobandsExample extends ThreejsBase {
     this.sceneBundle1.scene.add(this.curveObjects.lines);
 
     if (this.sceneBundle2 && this.renderer2) {
-      const mesh = createMesh();
+      const mesh = createMesh(this.isDarkMode);
       this.meshes2.set(0, mesh);
       this.sceneBundle2.scene.add(mesh);
     }
