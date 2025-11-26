@@ -237,13 +237,16 @@ export abstract class ThreejsBase implements IThreejsBase {
   }
   public onPointerDown(event: PointerEvent) {
     let handled = false;
+    if(event.pointerType == "touch"){
+      this.onPointerMove(event, true);
+    }
     if (event.buttons === 1) handled = this.wasmInstance.OnLeftButtonDown();
     this.updateMeshes();
     if (handled) {
       event.stopPropagation();
     }
   }
-  public onPointerMove(event: PointerEvent) {
+  public onPointerMove(event: PointerEvent, touchHover = false) {
     // Get bounding rect and mouse position
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.ndc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -272,7 +275,7 @@ export abstract class ThreejsBase implements IThreejsBase {
       );
     }
     this.updateMeshes();
-    if (handled) {
+    if (handled && !touchHover) {
       event.stopPropagation();
     }
   }
