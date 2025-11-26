@@ -13,6 +13,7 @@ export default defineAppConfig({
     prose: {
       codeIcon: {
         txt: "i-vscode-icons:file-type-cmake",
+        hpp: "i-material-icon-theme:hpp"
       },
     },
   },
