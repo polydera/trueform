@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -10,7 +10,9 @@
 #include "./point_like.hpp"
 #include "./points.hpp"
 #include "./polygon.hpp"
+#include "./polygons.hpp"
 #include "./segment.hpp"
+#include "./segments.hpp"
 
 namespace tf {
 template <std::size_t Dims, typename Policy>
@@ -46,7 +48,67 @@ template <typename Policy> auto centroid(const tf::points<Policy> &pts) {
     out_v[i] = 0;
   tf::point<tf::coordinate_type<Policy>, Dims> out;
   out.as_vector_view() =
-      tf::reduce(pts.as_vector_view(), std::plus<>{}, out_v) / pts.size();
+      tf::reduce(pts.as_vector_view(), std::plus<>{}, out_v, tf::checked) /
+      pts.size();
+  return out;
+}
+
+template <typename Policy> auto centroid(const tf::polygons<Policy> &polygons) {
+  constexpr auto Dims = tf::coordinate_dims_v<Policy>;
+  using T = tf::coordinate_type<Policy>;
+
+  // Map each polygon to (vertex_count, sum_of_vertices)
+  auto polygon_data = tf::make_mapped_range(polygons, [](const auto &poly) {
+    tf::vector<T, Dims> sum;
+    for (std::size_t i = 0; i < Dims; ++i)
+      sum[i] = 0;
+    for (const auto &pt : poly)
+      sum += pt.as_vector_view();
+    return std::pair{poly.size(), sum};
+  });
+
+  // Reduce to get (total_vertex_count, total_sum)
+  std::pair<std::size_t, tf::vector<T, Dims>> init;
+  init.first = 0;
+  for (std::size_t i = 0; i < Dims; ++i)
+    init.second[i] = 0;
+
+  auto result = tf::reduce(
+      polygon_data,
+      [](auto acc, const auto &data) {
+        acc.first += data.first;
+        acc.second += data.second;
+        return acc;
+      },
+      init, tf::checked);
+
+  // Compute centroid
+  tf::point<T, Dims> out;
+  out.as_vector_view() = result.second / result.first;
+
+  return out;
+}
+
+template <typename Policy> auto centroid(const tf::segments<Policy> &segments) {
+  constexpr auto Dims = tf::coordinate_dims_v<Policy>;
+  using T = tf::coordinate_type<Policy>;
+
+  auto segment_data = tf::make_mapped_range(segments, [](const auto &seg) {
+    tf::vector<T, Dims> sum = seg[0].as_vector_view() + seg[1].as_vector_view();
+    return sum;
+  });
+
+  // Reduce to get (total_vertex_count, total_sum)
+  tf::vector<T, Dims> init;
+  for (std::size_t i = 0; i < Dims; ++i)
+    init[i] = 0;
+
+  auto result = tf::reduce(segment_data, std::plus<>{}, init, tf::checked);
+
+  // Compute centroid
+  tf::point<T, Dims> out;
+  out.as_vector_view() = result / (segments.size() * 2);
+
   return out;
 }
 } // namespace tf

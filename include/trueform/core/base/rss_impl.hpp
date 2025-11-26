@@ -1,0 +1,56 @@
+/*
+ * Copyright (c) 2025 Žiga Sajovic, XLAB
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
+ * https://github.com/xlabmedical/trueform
+ */
+#pragma once
+#include "../coordinate_type.hpp"
+#include "../point_like.hpp"
+#include "../vector_like.hpp"
+#include <type_traits>
+
+namespace tf::core {
+template <std::size_t Dims, typename Policy0, typename Policy1> struct rss {
+  static_assert(std::is_same_v<tf::coordinate_type<Policy0>,
+                               tf::coordinate_type<Policy1>>);
+  using coordinate_type = tf::coordinate_type<Policy0>;
+  using coordinate_dims = std::integral_constant<std::size_t, Dims>;
+
+  rss() = default;
+  rss(const tf::point_like<Dims, Policy0> &origin,
+      const std::array<tf::vector_like<Dims, Policy1>, Dims> &axes,
+      const std::array<coordinate_type, 2> &length,
+      coordinate_type radius)
+      : origin{origin}, axes{axes}, length{length}, radius{radius} {}
+
+  template <typename Policy2, typename Policy3>
+  auto operator=(const rss<Dims, Policy2, Policy3> &other) -> std::enable_if_t<
+      std::is_assignable_v<tf::point_like<Dims, Policy0> &,
+                           tf::point_like<Dims, Policy2>> &&
+          std::is_assignable_v<
+              std::array<tf::vector_like<Dims, Policy1>, Dims> &,
+              std::array<tf::vector_like<Dims, Policy3>, Dims>>,
+      rss &> {
+    origin = other.origin;
+    axes = other.axes;
+    length = other.length;
+    radius = other.radius;
+    return *this;
+  }
+
+  tf::point_like<Dims, Policy0> origin;
+  std::array<tf::vector_like<Dims, Policy1>, Dims> axes;
+  std::array<coordinate_type, 2> length;
+  coordinate_type radius;
+};
+
+template <std::size_t N, typename T0, typename T1>
+auto make_rss(const point_like<N, T0> &origin,
+              const std::array<vector_like<N, T1>, N> &axes,
+              const std::array<tf::coordinate_type<T0>, 2> &length,
+              tf::coordinate_type<T0> radius)
+    -> rss<N, T0, T1> {
+  return rss<N, T0, T1>(origin, axes, length, radius);
+}
+} // namespace tf::core

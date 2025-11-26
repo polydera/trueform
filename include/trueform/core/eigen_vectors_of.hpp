@@ -1,0 +1,154 @@
+/*
+ * Copyright (c) 2025 Žiga Sajovic, XLAB
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
+ * https://github.com/xlabmedical/trueform
+ */
+#pragma once
+#include "./cross.hpp"
+#include "./dot.hpp"
+#include "./normalized.hpp"
+#include "./unit_vector.hpp"
+#include "./vector.hpp"
+
+namespace tf::core {
+namespace impl {
+template <typename T>
+auto extract_kernel_3x3(const std::array<std::array<T, 3>, 3> &mat,
+                        tf::vector<T, 3> &representative) {
+  using std::abs;
+
+  // Find non-zero column i0 (precompute abs values)
+  T abs_diag[3] = {abs(mat[0][0]), abs(mat[1][1]), abs(mat[2][2])};
+
+  std::size_t i0 = 0;
+  if (abs_diag[1] > abs_diag[0])
+    i0 = 1;
+  if (abs_diag[2] > abs_diag[i0])
+    i0 = 2;
+
+  representative[0] = mat[0][i0];
+  representative[1] = mat[1][i0];
+  representative[2] = mat[2][i0];
+
+  // Get the other two columns
+  std::size_t j1 = (i0 + 1) % 3;
+  std::size_t j2 = (i0 + 2) % 3;
+
+  tf::vector<T, 3> col1{mat[0][j1], mat[1][j1], mat[2][j1]};
+  tf::vector<T, 3> col2{mat[0][j2], mat[1][j2], mat[2][j2]};
+
+  // Compute cross products
+  auto c0 = tf::cross(representative, col1);
+  auto c1 = tf::cross(representative, col2);
+
+  T n0 = tf::dot(c0, c0);
+  T n1 = tf::dot(c1, c1);
+
+  return (n0 > n1) ? c0 / tf::sqrt(n0) : c1 / tf::sqrt(n1);
+}
+} // namespace impl
+
+template <typename T>
+auto eigen_vectors_of(const std::array<std::array<T, 3>, 3> &m,
+                      const std::array<T, 3> &eigenvalues) {
+  using std::abs;
+
+  std::array<tf::vector<T, 3>, 3> eigenvectors;
+
+  // Shift matrix to mean eigenvalue and scale to [-1:1]
+  T shift = (m[0][0] + m[1][1] + m[2][2]) / T(3);
+
+  std::array<std::array<T, 3>, 3> scaled_mat;
+
+  // Apply shift
+  for (std::size_t i = 0; i < 3; ++i) {
+    for (std::size_t j = 0; j < 3; ++j) {
+      scaled_mat[i][j] = m[i][j];
+    }
+  }
+  scaled_mat[0][0] -= shift;
+  scaled_mat[1][1] -= shift;
+  scaled_mat[2][2] -= shift;
+
+  // Find max absolute value for scaling
+  T scale = abs(scaled_mat[0][0]);
+  for (std::size_t i = 0; i < 3; ++i) {
+    for (std::size_t j = 0; j < 3; ++j) {
+      scale = std::max(scale, abs(scaled_mat[i][j]));
+    }
+  }
+
+  // Scale matrix and eigenvalues
+  T inv_scale = (scale > T(0)) ? (T(1) / scale) : T(1);
+  for (std::size_t i = 0; i < 3; ++i) {
+    for (std::size_t j = 0; j < 3; ++j) {
+      scaled_mat[i][j] *= inv_scale;
+    }
+  }
+
+  tf::vector<T, 3> scaled_eigenvalues{(eigenvalues[0] - shift) * inv_scale,
+                                      (eigenvalues[1] - shift) * inv_scale,
+                                      (eigenvalues[2] - shift) * inv_scale};
+
+  // Check if all eigenvalues are numerically the same
+  constexpr T epsilon = std::numeric_limits<T>::epsilon();
+  T eigen_range = scaled_eigenvalues[2] - scaled_eigenvalues[0];
+
+  if (eigen_range <= epsilon) {
+    // All three eigenvalues are numerically the same
+    eigenvectors[0] = tf::vector<T, 3>{T(1), T(0), T(0)};
+    eigenvectors[1] = tf::vector<T, 3>{T(0), T(1), T(0)};
+    eigenvectors[2] = tf::vector<T, 3>{T(0), T(0), T(1)};
+  } else {
+    // Compute eigenvector of most distinct eigenvalue
+    T d0 = scaled_eigenvalues[2] - scaled_eigenvalues[1];
+    T d1 = scaled_eigenvalues[1] - scaled_eigenvalues[0];
+    std::size_t k = 0, l = 2;
+    if (d0 > d1) {
+      std::swap(k, l);
+      d0 = d1;
+    }
+
+    // Compute eigenvector of index k
+    std::array<std::array<T, 3>, 3> tmp = scaled_mat;
+    T eval_k = scaled_eigenvalues[k];
+    tmp[0][0] -= eval_k;
+    tmp[1][1] -= eval_k;
+    tmp[2][2] -= eval_k;
+
+    tf::vector<T, 3> representative;
+    eigenvectors[k] = impl::extract_kernel_3x3(tmp, representative);
+    eigenvectors[l] = representative;
+
+    // Compute eigenvector of index l
+    T threshold = T(2) * epsilon * d1;
+    if (d0 <= threshold) {
+      // Two other eigenvalues are numerically the same
+      // Ortho-normalize the representative
+      T projection = tf::dot(eigenvectors[k], eigenvectors[l]);
+      eigenvectors[l] = eigenvectors[l] - projection * eigenvectors[k];
+      eigenvectors[l] = tf::normalized(eigenvectors[l]);
+    } else {
+      tmp = scaled_mat;
+      T eval_l = scaled_eigenvalues[l];
+      tmp[0][0] -= eval_l;
+      tmp[1][1] -= eval_l;
+      tmp[2][2] -= eval_l;
+
+      tf::vector<T, 3> dummy;
+      eigenvectors[l] = impl::extract_kernel_3x3(tmp, dummy);
+    }
+
+    // Compute last eigenvector from the other two
+    eigenvectors[1] =
+        tf::normalized(tf::cross(eigenvectors[2], eigenvectors[0]));
+  }
+
+  return std::array<tf::unit_vector<T, 3>, 3>{
+      tf::make_unit_vector(tf::unsafe, eigenvectors[0]),
+      tf::make_unit_vector(tf::unsafe, eigenvectors[1]),
+      tf::make_unit_vector(tf::unsafe, eigenvectors[2])};
+}
+
+} // namespace tf::core
