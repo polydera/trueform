@@ -39,12 +39,20 @@ export class IsobandsExample extends ThreejsBase {
     window.addEventListener("keyup", interceptKeyUpEvent);
 
     const interceptWheelEvent = (event: WheelEvent) => {
-      if (event.deltaX === 0) return;
-      const absDelta = event.deltaX / Math.abs(event.deltaX);
-      this.wasmInstance.OnMouseWheel(absDelta, event.shiftKey);
+      if (!event.shiftKey) return;
+      event.preventDefault();
+      const delta = event.deltaY !== 0 ? event.deltaY : event.deltaX;
+      if (delta === 0) return;
+      const normalizedDelta = delta / Math.abs(delta);
+      const handled = this.wasmInstance.OnMouseWheel(normalizedDelta, event.shiftKey);
       this.updateMeshes();
+      if(handled)
+        event.stopImmediatePropagation();
     };
-    window.addEventListener("wheel", interceptWheelEvent);
+    window.addEventListener("wheel", interceptWheelEvent, {
+      passive: false,
+      capture: true
+    });
     this.addCleanup(() => {
       window.removeEventListener("keydown", interceptKeyDownEvent);
       window.removeEventListener("keyup", interceptKeyUpEvent);
