@@ -29,7 +29,7 @@ export default defineNuxtConfig({
     },
   },
 
-  compatibilityDate: "2024-07-11",
+  compatibilityDate: "2024-09-19",
 
   nitro: {
     prerender: {
@@ -46,11 +46,11 @@ export default defineNuxtConfig({
         },
       },
     },
-    preset: "cloudflare_pages",
+    preset: "cloudflare_module",
     cloudflare: {
       deployConfig: true,
-      nodeCompat:true
-    }
+      nodeCompat: true,
+    },
   },
 
   eslint: {
