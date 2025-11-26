@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - docs-ui
   workflow_dispatch:
 
 jobs:
