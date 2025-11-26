@@ -65,10 +65,12 @@ jobs:
       - name: Generate docs
         working-directory: docs
         run: pnpm build --preset cloudflare_pages
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy docs/.output/public --project-name=trueform
+          command: pages deploy docs/dist --project-name=trueform

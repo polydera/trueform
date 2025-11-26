@@ -64,6 +64,8 @@ export default defineNuxtConfig({
 
   icon: {
     provider: "iconify",
+    collections: ["lucide", "simple-icons", "vscode-icons", "material-icon-theme"],
+    fetchTimeout: 5000,
   },
 
   vite: {
@@ -72,6 +74,18 @@ export default defineNuxtConfig({
         "Cross-Origin-Embedder-Policy": "require-corp",
         "Cross-Origin-Opener-Policy": "same-origin",
         "Cross-Origin-Resource-Policy": "cross-origin",
+      },
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            // Ensure native.js is always in its own chunk for dynamic imports
+            if (id.includes("/examples/native.js") || id.includes("\\examples\\native.js")) {
+              return "native";
+            }
+          },
+        },
       },
     },
   },
