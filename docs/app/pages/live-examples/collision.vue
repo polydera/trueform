@@ -17,7 +17,6 @@ const meshes = [
   { url: "/stl/Stanford_Bunny.stl", filename: "Stanford_Bunny.stl" },
 ];
 
-let avgTimer: ReturnType<typeof setInterval> | null = null;
 let tearDownRequested = false;
 
 const loadThreejs = async () => {
@@ -38,6 +37,7 @@ const loadThreejs = async () => {
     isDark.value,
   );
   totalPolygons.value = wasmInstance.get_number_of_polygons().toString();
+  exampleClass.refreshTimeValue = getAvgTime;
 };
 
 const getAvgTime = () => {
@@ -50,14 +50,10 @@ const getAvgTime = () => {
 
 onMounted(() => {
   loadThreejs();
-  avgTimer = setInterval(getAvgTime, 1000);
 });
 
 onBeforeUnmount(() => {
   tearDownRequested = true;
-  if (avgTimer) {
-    clearInterval(avgTimer);
-  }
   if (exampleClass) {
     exampleClass.dispose();
     exampleClass = null;

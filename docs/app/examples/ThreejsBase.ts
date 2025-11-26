@@ -47,6 +47,8 @@ export abstract class ThreejsBase implements IThreejsBase {
   private ndc = new THREE.Vector2();
   private ray = new THREE.Ray();
 
+  public refreshTimeValue?: () => number;
+
   constructor(
     wasmInstance: MainModule,
     paths: string[],
@@ -350,6 +352,8 @@ export abstract class ThreejsBase implements IThreejsBase {
       this.sceneBundle2.controls.update();
       this.renderer2.render(this.sceneBundle2.scene, this.sceneBundle2.camera);
     }
+    if(this.refreshTimeValue)
+      this.refreshTimeValue();
     if (this.showStats) {
       this.stats.update();
     }
