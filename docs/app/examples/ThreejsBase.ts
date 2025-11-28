@@ -41,6 +41,7 @@ export abstract class ThreejsBase implements IThreejsBase {
   protected readonly sceneBundle2?: SceneBundle;
   protected meshes2 = new Map<number, THREE.Mesh>();
 
+  protected syncSceneControls = false;
   protected renderer2Interactive = false;
 
   private raycaster = new THREE.Raycaster();
@@ -128,6 +129,7 @@ export abstract class ThreejsBase implements IThreejsBase {
         this.renderer2,
         config1,
         config2,
+        this.syncSceneControls
       );
       this.sceneBundle1 = sceneBundle1;
       this.sceneBundle2 = sceneBundle2;
@@ -143,6 +145,7 @@ export abstract class ThreejsBase implements IThreejsBase {
     this.resizeListener = () => {
       if (this.disposed) return;
       const rect = container.getBoundingClientRect();
+      console.log("Resizing renderer to", rect.width, rect.height, container);
       this.renderer.setSize(rect.width, rect.height);
       this.sceneBundle1.camera.aspect = rect.width / rect.height;
       this.sceneBundle1.camera.updateProjectionMatrix();
@@ -152,6 +155,7 @@ export abstract class ThreejsBase implements IThreejsBase {
       // Handle second renderer resize
       if (this.renderer2 && this.sceneBundle2 && container2) {
         const rect2 = container2.getBoundingClientRect();
+        console.log("Resizing renderer to", rect2.width, rect2.height, container2);
         this.renderer2.setSize(rect2.width, rect2.height);
         this.sceneBundle2.camera.aspect = rect2.width / rect2.height;
         this.sceneBundle2.camera.updateProjectionMatrix();

@@ -220,64 +220,6 @@ export function fitCameraToObject(camera: THREE.PerspectiveCamera, object: THREE
 }
 
 /**
- * Synchronizes two OrbitControls so they have the same camera parameters and interactions
- */
-export function synchronizeOrbitControls(primaryControls: OrbitControls, secondaryControls: OrbitControls) {
-    // Function to copy camera parameters from primary to secondary
-    const syncCameras = () => {
-        const primaryCamera = primaryControls.object as THREE.PerspectiveCamera;
-        const secondaryCamera = secondaryControls.object as THREE.PerspectiveCamera;
-        
-        // Copy position
-        secondaryCamera.position.copy(primaryCamera.position);
-        
-        // Copy rotation/orientation
-        secondaryCamera.quaternion.copy(primaryCamera.quaternion);
-        
-        // Copy target (look at point)
-        secondaryControls.target.copy(primaryControls.target);
-        
-        // Update matrices
-        secondaryCamera.updateMatrixWorld();
-        secondaryControls.update();
-    };
-
-    // Listen to primary controls changes and sync to secondary
-    primaryControls.addEventListener('change', syncCameras);
-    
-    // Also sync on start and end events for smooth interaction
-    primaryControls.addEventListener('start', () => {
-        syncCameras();
-    });
-    
-    primaryControls.addEventListener('end', () => {
-        syncCameras();
-    });
-
-    // Initial sync
-    syncCameras();
-}
-
-/**
- * Creates a synchronized scene pair where both renderers have synchronized orbit controls
- */
-export function createSynchronizedScenes(
-    renderer1: THREE.WebGLRenderer,
-    renderer2: THREE.WebGLRenderer,
-    config1: SceneConfig = {},
-    config2: SceneConfig = {}
-): { sceneBundle1: SceneBundle; sceneBundle2: SceneBundle } {
-    // Create both scenes
-    const sceneBundle1 = createScene(renderer1, config1);
-    const sceneBundle2 = createScene(renderer2, config2);
-    
-    // Synchronize the orbit controls (renderer1 is primary)
-    synchronizeOrbitControls(sceneBundle1.controls, sceneBundle2.controls);
-    
-    return { sceneBundle1, sceneBundle2 };
-}
-
-/**
  * Alternative approach: Create scene with shared camera parameters
  * This creates a bidirectional sync where interaction on either renderer affects both
  */
@@ -285,11 +227,15 @@ export function createBidirectionalSyncedScenes(
     renderer1: THREE.WebGLRenderer,
     renderer2: THREE.WebGLRenderer,
     config1: SceneConfig = {},
-    config2: SceneConfig = {}
+    config2: SceneConfig = {},
+    syncSceneControls: boolean = true
 ): { sceneBundle1: SceneBundle; sceneBundle2: SceneBundle } {
     // Create both scenes
     const sceneBundle1 = createScene(renderer1, config1);
     const sceneBundle2 = createScene(renderer2, config2);
+
+    if(!syncSceneControls)
+        return { sceneBundle1, sceneBundle2 };
     
     let isSyncing = false; // Prevent infinite loops
     
