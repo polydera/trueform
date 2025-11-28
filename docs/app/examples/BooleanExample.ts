@@ -1,5 +1,5 @@
 import type { MainModule } from "@/examples/native";
-import { fitCameraToAllMeshesFromZPlane } from "@/utils/sceneUtils";
+import {fitCameraToAllMeshesFromZPlane, syncOrbitControls} from "@/utils/sceneUtils";
 import {
   buffersToCurves,
   createCurveLineObjects,
@@ -67,7 +67,11 @@ export class BooleanExample extends ThreejsBase {
     }
 
     this.updateMeshes();
-    fitCameraToAllMeshesFromZPlane(this.sceneBundle1, 1.5);
+    fitCameraToAllMeshesFromZPlane(this.sceneBundle1, 1.8);
+    if(!this.syncSceneControls && this.sceneBundle2){
+      fitCameraToAllMeshesFromZPlane(this.sceneBundle2, 1.8);
+      syncOrbitControls(this.sceneBundle1.controls, this.sceneBundle2.controls);
+    }
   }
 
   public runMain() {

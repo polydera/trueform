@@ -5,7 +5,7 @@ import {
   createBidirectionalSyncedScenes,
   createSceneWithCustomConfig,
   fitCameraToAllMeshesFromZPlane,
-  type SceneBundle,
+  type SceneBundle, syncOrbitControls,
 } from "@/utils/sceneUtils";
 import {createMesh, getMeshFromWasm, switchTextures} from "@/utils/utils";
 
@@ -41,7 +41,7 @@ export abstract class ThreejsBase implements IThreejsBase {
   protected readonly sceneBundle2?: SceneBundle;
   protected meshes2 = new Map<number, THREE.Mesh>();
 
-  protected syncSceneControls = false;
+  protected syncSceneControls = true;
   protected renderer2Interactive = false;
 
   private raycaster = new THREE.Raycaster();
@@ -232,6 +232,10 @@ export abstract class ThreejsBase implements IThreejsBase {
     if (!skipUpdate) {
       this.updateMeshes();
       fitCameraToAllMeshesFromZPlane(this.sceneBundle1);
+      if(!this.syncSceneControls && this.sceneBundle2) {
+        fitCameraToAllMeshesFromZPlane(this.sceneBundle2);
+        syncOrbitControls(this.sceneBundle1.controls, this.sceneBundle2.controls);
+      }
     }
   }
   public onPointerUp(event: PointerEvent) {

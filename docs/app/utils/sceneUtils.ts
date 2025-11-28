@@ -220,8 +220,30 @@ export function fitCameraToObject(camera: THREE.PerspectiveCamera, object: THREE
 }
 
 /**
+ * Sync OrbitControls from source to target
+ */
+export function syncOrbitControls(sourceControls: OrbitControls, targetControls: OrbitControls){
+    const sourceCamera = sourceControls.object as THREE.PerspectiveCamera;
+    const targetCamera = targetControls.object as THREE.PerspectiveCamera;
+
+    // Copy camera parameters
+    targetCamera.position.copy(sourceCamera.position);
+    targetCamera.quaternion.copy(sourceCamera.quaternion);
+    targetControls.target.copy(sourceControls.target);
+
+    // Update matrices
+    targetCamera.updateMatrixWorld();
+    targetControls.update();
+}
+
+/**
  * Alternative approach: Create scene with shared camera parameters
  * This creates a bidirectional sync where interaction on either renderer affects both
+ * @param renderer1 First WebGLRenderer
+ * @param renderer2 Second WebGLRenderer
+ * @param config1 SceneConfig for first scene
+ * @param config2 SceneConfig for second scene
+ * @param syncSceneControls Whether to sync scene controls bidirectionally
  */
 export function createBidirectionalSyncedScenes(
     renderer1: THREE.WebGLRenderer,
@@ -234,30 +256,17 @@ export function createBidirectionalSyncedScenes(
     const sceneBundle1 = createScene(renderer1, config1);
     const sceneBundle2 = createScene(renderer2, config2);
 
-    if(!syncSceneControls)
+    if(!syncSceneControls){
         return { sceneBundle1, sceneBundle2 };
-    
+    }
+
     let isSyncing = false; // Prevent infinite loops
-    
-    // Function to sync from source to target
     const syncControls = (sourceControls: OrbitControls, targetControls: OrbitControls) => {
         if (isSyncing) return;
         isSyncing = true;
-        
-        const sourceCamera = sourceControls.object as THREE.PerspectiveCamera;
-        const targetCamera = targetControls.object as THREE.PerspectiveCamera;
-        
-        // Copy camera parameters
-        targetCamera.position.copy(sourceCamera.position);
-        targetCamera.quaternion.copy(sourceCamera.quaternion);
-        targetControls.target.copy(sourceControls.target);
-        
-        // Update matrices
-        targetCamera.updateMatrixWorld();
-        targetControls.update();
-        
+        syncOrbitControls(sourceControls, targetControls);
         isSyncing = false;
-    };
+    }
     
     // Setup bidirectional sync
     const setupControlsSync = (controls1: OrbitControls, controls2: OrbitControls) => {
