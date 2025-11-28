@@ -31,7 +31,6 @@ export abstract class ThreejsBase implements IThreejsBase {
   private cleanupCallbacks: Array<() => void> = [];
   private animationFrameId: number | null = null;
   private disposed = false;
-  private resizeListener?: () => void;
   private pointerDownListener?: (event: PointerEvent) => void;
   private pointerMoveListener?: (event: PointerEvent) => void;
   private pointerUpListener?: (event: PointerEvent) => void;
@@ -167,33 +166,40 @@ export abstract class ThreejsBase implements IThreejsBase {
     this.applyTheme(this.isDarkMode);
     this.animationFrameId = requestAnimationFrame(this.animate);
 
-    // Add resize event listener
-    this.resizeListener = () => {
+    // Setup ResizeObserver for container-specific resize handling
+    const resizeObserver = new ResizeObserver((entries) => {
       if (this.disposed) return;
-      const rect = container.getBoundingClientRect();
-      console.log("Resizing renderer to", rect.width, rect.height, container);
-      this.renderer.setSize(rect.width, rect.height);
-      this.sceneBundle1.camera.aspect = rect.width / rect.height;
-      this.sceneBundle1.camera.updateProjectionMatrix();
-      this.sceneBundle1.controls.update();
-      this.renderer.render(this.sceneBundle1.scene, this.sceneBundle1.camera);
 
-      // Handle second renderer resize
-      if (this.renderer2 && this.sceneBundle2 && container2) {
-        const rect2 = container2.getBoundingClientRect();
-        console.log("Resizing renderer to", rect2.width, rect2.height, container2);
-        this.renderer2.setSize(rect2.width, rect2.height);
-        this.sceneBundle2.camera.aspect = rect2.width / rect2.height;
-        this.sceneBundle2.camera.updateProjectionMatrix();
-        this.sceneBundle2.controls.update();
-        this.renderer2.render(this.sceneBundle2.scene, this.sceneBundle2.camera);
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+
+        if (entry.target === container) {
+          console.log("Resizing renderer to", width, height, container);
+          this.renderer.setSize(width, height);
+          this.sceneBundle1.camera.aspect = width / height;
+          this.sceneBundle1.camera.updateProjectionMatrix();
+          this.sceneBundle1.controls.update();
+          this.renderer.render(this.sceneBundle1.scene, this.sceneBundle1.camera);
+        }
+
+        if (entry.target === container2 && this.renderer2 && this.sceneBundle2) {
+          console.log("Resizing renderer2 to", width, height, container2);
+          this.renderer2.setSize(width, height);
+          this.sceneBundle2.camera.aspect = width / height;
+          this.sceneBundle2.camera.updateProjectionMatrix();
+          this.sceneBundle2.controls.update();
+          this.renderer2.render(this.sceneBundle2.scene, this.sceneBundle2.camera);
+        }
       }
-    };
-    window.addEventListener("resize", this.resizeListener);
+    });
+
+    resizeObserver.observe(container);
+    if (container2) {
+      resizeObserver.observe(container2);
+    }
+
     this.addCleanup(() => {
-      if (this.resizeListener) {
-        window.removeEventListener("resize", this.resizeListener);
-      }
+      resizeObserver.disconnect();
     });
 
     this.pointerDownListener = (event: PointerEvent) => {

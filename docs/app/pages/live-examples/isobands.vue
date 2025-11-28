@@ -63,8 +63,8 @@ watch(isDark, (dark) => {
 </script>
 
 <template>
-  <div class="flex flex-col w-full">
-    <div class="flex flex-row flex-1 relative">
+  <div class="flex flex-col w-full h-full">
+    <div class="flex flex-row flex-1 relative min-h-0">
       <div
         class="absolute left-3 top-3 z-10 max-w-md rounded-lg p-3 bg-neutral-100/10 shadow-lg backdrop-blur"
       >
@@ -88,8 +88,8 @@ watch(isDark, (dark) => {
           </div>
         </div>
       </div>
-      <div ref="threejsContainer" id="threejsContainer" class="h-full w-full m-0 p-0"></div>
-      <div ref="threejsContainer2" id="threejsContainer2" class="h-full w-full m-0 p-0"></div>
+      <div ref="threejsContainer" id="threejsContainer" class="h-full w-full flex-1 min-h-0 min-w-0"></div>
+      <div ref="threejsContainer2" id="threejsContainer2" class="h-full w-full flex-1 min-h-0 min-w-0"></div>
     </div>
   </div>
 </template>

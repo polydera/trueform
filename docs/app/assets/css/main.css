@@ -12,6 +12,16 @@
   --ui-container: var(--container-8xl);
 }
 
+/* Ensure full height cascade for flex layouts */
+html, body, #__nuxt {
+  height: 100%;
+}
+
+/* Ensure UApp and UMain have full height */
+.u-app, .u-main {
+  height: 100%;
+}
+
 .unovis {
   --vis-font-family: var(--default-font-family);
 
