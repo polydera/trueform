@@ -37,13 +37,19 @@ export class ScalarFieldIntersectionsExample extends ThreejsBase {
 
     const interceptWheelEvent = (event: WheelEvent) => {
       if (!event.shiftKey) return;
+      event.preventDefault();
       const delta = event.deltaY !== 0 ? event.deltaY : event.deltaX;
       if (delta === 0) return;
       const normalizedDelta = delta / Math.abs(delta);
-      this.wasmInstance.OnMouseWheel(normalizedDelta, event.shiftKey);
+      const handled = this.wasmInstance.OnMouseWheel(normalizedDelta, event.shiftKey);
       this.updateMeshes();
+      if(handled)
+        event.stopImmediatePropagation();
     };
-    window.addEventListener("wheel", interceptWheelEvent);
+    window.addEventListener("wheel", interceptWheelEvent, {
+      passive: false,
+      capture: true
+    });
     this.addCleanup(() => {
       window.removeEventListener("keydown", interceptKeyDownEvent);
       window.removeEventListener("keyup", interceptKeyUpEvent);

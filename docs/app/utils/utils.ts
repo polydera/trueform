@@ -37,27 +37,37 @@ export function createPoints() {
   pointsObj.matrixAutoUpdate = false;
   return pointsObj;
 }
-export function createMesh() {
-  // NICE SHINY
-  // const material = new THREE.MeshPhysicalMaterial({ color: 0xffffff, side: THREE.DoubleSide, flatShading: true, reflectivity: 0.2, metalness: 0.1, roughness: 0.4 });
-  // NICE flat
-  // const material = new THREE.MeshMatcapMaterial({ color: 0xffffff, side: THREE.DoubleSide, flatShading: true });
+
+export function switchTextures(mesh: THREE.Mesh, isDarkMode: boolean) {
+  if(!mesh.material || !(mesh.material instanceof THREE.MeshMatcapMaterial)) return;
+    const material = mesh.material as THREE.MeshMatcapMaterial;
+    if(!material.matcap) return;
+    material.matcap.dispose();
+    let path: string;
+    if(isDarkMode){
+      path = "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/635D52_A9BCC0_B1AEA0_819598.png";
+    } else {
+      path = "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/2D2D2F_C6C2C5_727176_94949B.png";
+    }
+    material.matcap = new THREE.TextureLoader().load(path);
+}
+export function createMesh(isDarkMode: boolean) {
   // TODO test and choose here: https://observablehq.com/@makio135/matcaps
-  const matcapTexture = new THREE.TextureLoader().load(
-    // "https://raw.githubusercontent.com/nidorx/matcaps/master/512/2D2D2F_C6C2C5_727176_94949B-512px.png"
-    // "https://raw.githubusercontent.com/nidorx/matcaps/master/512/7B7E82_343536_A0B1C8_44444C-512px.png"
-    // "https://raw.githubusercontent.com/nidorx/matcaps/master/512/7C584C_27140D_B3765C_3D2318-512px.png"
-    // "https://raw.githubusercontent.com/nidorx/matcaps/master/512/7F8896_3B3936_BBCFE9_4B4B4D-512px.png"
-    // "https://raw.githubusercontent.com/nidorx/matcaps/master/512/815C41_F6C99A_D39F77_BB9474-512px.png"
-    // "https://raw.githubusercontent.com/nidorx/matcaps/master/512/D0CCCB_524D50_928891_727581-512px.png"
-    // "https://raw.githubusercontent.com/nidorx/matcaps/master/512/AD9E81_F1E5CE_6B5C3E_5A492A-512px.png"
-    // "https://raw.githubusercontent.com/nidorx/matcaps/master/64/AD9E81_F1E5CE_6B5C3E_5A492A-64px.png"
-    // "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/AD9E81_F1E5CE_6B5C3E_5A492A.png"
-    // "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/B9CDD2_775339_958272_7F6A5E.png"
-    // "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/C9C7BE_55514B_888279_7B6E5F.png"
-    // "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/AE9D99_29303B_585F70_875C33.png"
-    "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/635D52_A9BCC0_B1AEA0_819598.png",
-  );
+  // "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/2D2D2F_C6C2C5_727176_94949B.png"
+  // "https://makio135.com/matcaps/1024/7877EE_D87FC5_75D9C7_1C78C0.png"
+  // "https://raw.githubusercontent.com/nidorx/matcaps/master/512/7C584C_27140D_B3765C_3D2318-512px.png"
+  // "https://makio135.com/matcaps/64/593E2C_E5D8A9_BC9F79_9F8A68-64px.png"
+  // "https://raw.githubusercontent.com/nidorx/matcaps/master/512/815C41_F6C99A_D39F77_BB9474-512px.png"
+  // "https://raw.githubusercontent.com/nidorx/matcaps/master/512/AD9E81_F1E5CE_6B5C3E_5A492A-512px.png"
+  // "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/AE9D99_29303B_585F70_875C33.png"
+  // "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/635D52_A9BCC0_B1AEA0_819598.png",
+  let path: string;
+  if(isDarkMode){
+    path = "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/635D52_A9BCC0_B1AEA0_819598.png";
+  } else {
+    path = "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/2D2D2F_C6C2C5_727176_94949B.png";
+  }
+  const matcapTexture = new THREE.TextureLoader().load(path);
   const material = new THREE.MeshMatcapMaterial({
     matcap: matcapTexture,
     side: THREE.DoubleSide,
@@ -165,10 +175,10 @@ export function createCurveLineObjects(opts: curvesToCurvePolyOpts = {}): CurveL
     color: tubeColor,
     linewidth: lineWidth, // in worldUnit
     worldUnits: true,
-    vertexColors: false, // Disable vertex colors for now to avoid conflicts
-    alphaToCoverage: true, // Disable alpha to coverage for debugging
-    transparent: false, // Ensure lines are opaque
-    opacity: 1.0,
+    vertexColors: false,
+    alphaToCoverage: true,
+    transparent: true,
+    opacity: 0.7,
     depthTest: !alwaysOnTop,
     depthWrite: !alwaysOnTop,
 

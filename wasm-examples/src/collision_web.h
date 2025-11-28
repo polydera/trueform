@@ -65,13 +65,13 @@ private:
 
   auto handle_collisions() {
     tf::tick();
-    if (auto *pB = static_cast<tf_bridge_collision *>(bridge.get())) {
+    if (auto *pB = dynamic_cast<tf_bridge_collision *>(bridge.get())) {
       if (!selected_actor) {
         return;
       }
       pB->intersects_any(selected_actor, colliding);
       add_collide_time(tf::tock());
-      for (auto &actor : pB->get_actors()) {
+      for (auto &actor : bridge->get_actors()) {
         if (actor.get() == selected_actor)
           continue;
         if (colliding.find(actor.get()) == colliding.end()) {
@@ -102,11 +102,9 @@ public:
 
   auto reset_colliding_colors() -> void {
     colliding.clear();
-    if (auto *pB = static_cast<tf_bridge_collision *>(bridge.get())) {
-      for (auto &actor : pB->get_actors()) {
-        if (actor.get() != selected_actor)
-          reset_active_color(actor.get());
-      }
+    for (auto &actor : bridge->get_actors()) {
+      if (actor.get() != selected_actor)
+        reset_active_color(actor.get());
     }
   }
 

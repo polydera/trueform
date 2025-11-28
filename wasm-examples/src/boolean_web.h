@@ -45,17 +45,6 @@ private:
     m_time = boolean_time;
   }
 
-  auto compute_curves() {
-    tf::tick();
-    if (auto *pB = static_cast<tf_bridge *>(bridge.get())) {
-      auto [res_mesh, labels, curves] = pB->compute_boolean();
-      add_boolean_time(tf::tock());
-      (void)labels;
-      result_mesh->set_polydata(std::move(res_mesh));
-      curve_mesh->set_curves_object(std::move(curves));
-    }
-  }
-
   auto randomize_rotations() {
     for (std::unique_ptr<mesh_object> &actor : bridge->get_actors()) {
       tf::vector<double, 3> at{actor->matrix[3], actor->matrix[7],
@@ -71,6 +60,17 @@ private:
   }
 
 public:
+  auto compute_curves() {
+    tf::tick();
+    if (auto *pB = dynamic_cast<tf_bridge *>(bridge.get())) {
+      auto [res_mesh, labels, curves] = pB->compute_boolean();
+      add_boolean_time(tf::tock());
+      (void)labels;
+      result_mesh->set_polydata(std::move(res_mesh));
+      curve_mesh->set_curves_object(std::move(curves));
+    }
+  }
+
   auto OnMouseMove(std::array<float, 3> origin,
                    std::array<float, 3> direction,
                    std::array<float, 3> camera_position,
@@ -135,5 +135,8 @@ int run_main(std::vector<std::string> &paths) {
   interactor = std::make_unique<cursor_interactor>();
   interactor->push_back(std::move(primary_actor));
   interactor->push_back(std::move(secondary_actor));
+  if (auto *pI = dynamic_cast<cursor_interactor *>(interactor.get())) {
+    pI->compute_curves();
+  }
   return 0;
 }
