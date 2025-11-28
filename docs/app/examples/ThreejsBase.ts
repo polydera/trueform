@@ -5,9 +5,10 @@ import {
   createBidirectionalSyncedScenes,
   createSceneWithCustomConfig,
   fitCameraToAllMeshesFromZPlane,
-  type SceneBundle,
+  type SceneBundle, syncOrbitControls,
 } from "@/utils/sceneUtils";
 import {createMesh, getMeshFromWasm, switchTextures} from "@/utils/utils";
+import {OrbitControls} from "three/examples/jsm/controls/OrbitControls";
 
 abstract class IThreejsBase {
   abstract runMain(): void;
@@ -30,7 +31,6 @@ export abstract class ThreejsBase implements IThreejsBase {
   private cleanupCallbacks: Array<() => void> = [];
   private animationFrameId: number | null = null;
   private disposed = false;
-  private resizeListener?: () => void;
   private pointerDownListener?: (event: PointerEvent) => void;
   private pointerMoveListener?: (event: PointerEvent) => void;
   private pointerUpListener?: (event: PointerEvent) => void;
@@ -41,6 +41,7 @@ export abstract class ThreejsBase implements IThreejsBase {
   protected readonly sceneBundle2?: SceneBundle;
   protected meshes2 = new Map<number, THREE.Mesh>();
 
+  protected syncSceneControls = true;
   protected renderer2Interactive = false;
 
   private raycaster = new THREE.Raycaster();
@@ -127,10 +128,36 @@ export abstract class ThreejsBase implements IThreejsBase {
         this.renderer,
         this.renderer2,
         config1,
-        config2,
+        config2
       );
       this.sceneBundle1 = sceneBundle1;
       this.sceneBundle2 = sceneBundle2;
+
+      if(this.syncSceneControls) {
+        let isSyncing = false; // Prevent infinite loops
+        const syncControls = (sourceControls: OrbitControls, targetControls: OrbitControls) => {
+          if (isSyncing) return;
+          isSyncing = true;
+          syncOrbitControls(sourceControls, targetControls);
+          isSyncing = false;
+        }
+        const setupControlsSync = (controls1: OrbitControls, controls2: OrbitControls) => {
+          const syncEvents = ['change', 'start', 'end'];
+
+          syncEvents.forEach(eventType => {
+            controls1.addEventListener(eventType, () => {
+              if(this.syncSceneControls)
+                syncControls(controls1, controls2);
+            });
+
+          });
+          controls2.addEventListener('start', () => {
+            this.syncSceneControls = false;
+          });
+        };
+        setupControlsSync(sceneBundle1.controls, sceneBundle2.controls);
+        syncControls(sceneBundle1.controls, sceneBundle2.controls);
+      }
     } else {
       // Create first scene with camera, controls, and lighting (single renderer mode)
       this.sceneBundle1 = createSceneWithCustomConfig(this.renderer, 1);
@@ -139,31 +166,40 @@ export abstract class ThreejsBase implements IThreejsBase {
     this.applyTheme(this.isDarkMode);
     this.animationFrameId = requestAnimationFrame(this.animate);
 
-    // Add resize event listener
-    this.resizeListener = () => {
+    // Setup ResizeObserver for container-specific resize handling
+    const resizeObserver = new ResizeObserver((entries) => {
       if (this.disposed) return;
-      const rect = container.getBoundingClientRect();
-      this.renderer.setSize(rect.width, rect.height);
-      this.sceneBundle1.camera.aspect = rect.width / rect.height;
-      this.sceneBundle1.camera.updateProjectionMatrix();
-      this.sceneBundle1.controls.update();
-      this.renderer.render(this.sceneBundle1.scene, this.sceneBundle1.camera);
 
-      // Handle second renderer resize
-      if (this.renderer2 && this.sceneBundle2 && container2) {
-        const rect2 = container2.getBoundingClientRect();
-        this.renderer2.setSize(rect2.width, rect2.height);
-        this.sceneBundle2.camera.aspect = rect2.width / rect2.height;
-        this.sceneBundle2.camera.updateProjectionMatrix();
-        this.sceneBundle2.controls.update();
-        this.renderer2.render(this.sceneBundle2.scene, this.sceneBundle2.camera);
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+
+        if (entry.target === container) {
+          console.log("Resizing renderer to", width, height, container);
+          this.renderer.setSize(width, height);
+          this.sceneBundle1.camera.aspect = width / height;
+          this.sceneBundle1.camera.updateProjectionMatrix();
+          this.sceneBundle1.controls.update();
+          this.renderer.render(this.sceneBundle1.scene, this.sceneBundle1.camera);
+        }
+
+        if (entry.target === container2 && this.renderer2 && this.sceneBundle2) {
+          console.log("Resizing renderer2 to", width, height, container2);
+          this.renderer2.setSize(width, height);
+          this.sceneBundle2.camera.aspect = width / height;
+          this.sceneBundle2.camera.updateProjectionMatrix();
+          this.sceneBundle2.controls.update();
+          this.renderer2.render(this.sceneBundle2.scene, this.sceneBundle2.camera);
+        }
       }
-    };
-    window.addEventListener("resize", this.resizeListener);
+    });
+
+    resizeObserver.observe(container);
+    if (container2) {
+      resizeObserver.observe(container2);
+    }
+
     this.addCleanup(() => {
-      if (this.resizeListener) {
-        window.removeEventListener("resize", this.resizeListener);
-      }
+      resizeObserver.disconnect();
     });
 
     this.pointerDownListener = (event: PointerEvent) => {
@@ -228,6 +264,10 @@ export abstract class ThreejsBase implements IThreejsBase {
     if (!skipUpdate) {
       this.updateMeshes();
       fitCameraToAllMeshesFromZPlane(this.sceneBundle1);
+      if(!this.syncSceneControls && this.sceneBundle2) {
+        fitCameraToAllMeshesFromZPlane(this.sceneBundle2);
+        syncOrbitControls(this.sceneBundle1.controls, this.sceneBundle2.controls);
+      }
     }
   }
   public onPointerUp(event: PointerEvent) {
