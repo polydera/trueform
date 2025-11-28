@@ -10,10 +10,9 @@
 #include "./covariance_of.hpp"
 #include "./dot.hpp"
 #include "./eigen_of.hpp"
-#include "./obb.hpp"
+#include "./obbrss.hpp"
 #include "./points.hpp"
 #include "./polygons.hpp"
-#include "./rss.hpp"
 #include "./segments.hpp"
 #include "./sqrt.hpp"
 
@@ -21,13 +20,12 @@ namespace tf {
 namespace core {
 
 template <typename Range, std::size_t Dims, typename Policy>
-auto obb_and_rss_from(const Range &polygons,
-                      const tf::polygon<Dims, Policy> &) {
+auto obbrss_from(const Range &polygons, const tf::polygon<Dims, Policy> &) {
   using std::max;
   using std::min;
   using T = tf::coordinate_type<Policy>;
 
-  static_assert(Dims == 3, "OBB/RSS computation only implemented for 3D");
+  static_assert(Dims == 3, "OBBRSS computation only implemented for 3D");
 
   // 1) Covariance + centroid (shared)
   auto [centroid, cov] = tf::covariance_of(tf::make_polygons(polygons));
@@ -36,13 +34,13 @@ auto obb_and_rss_from(const Range &polygons,
   auto [eigenvalues, eigenvectors] = tf::eigen_of(cov);
 
   // 3) Axes ordered by largest eigenvalue first (shared)
-  std::array<tf::vector<T, 3>, 3> axes;
+  // eigenvectors are already unit_vector, preserve the type
+  std::array<tf::unit_vector<T, 3>, 3> axes;
   for (int k = 0; k < 3; ++k) {
     axes[k] = eigenvectors[2 - k];
   }
 
-  // 4) Project all vertices to get min/max along each axis (for OBB, reuse z
-  // for RSS)
+  // 4) Project all vertices to get min/max along each axis
   struct proj_accum {
     T minx, maxx, miny, maxy, minz, maxz;
   };
@@ -81,21 +79,12 @@ auto obb_and_rss_from(const Range &polygons,
       },
       proj_init, tf::checked);
 
-  // 5) Build OBB from projection bounds
-  tf::obb<T, 3> obb;
-  obb.axes = axes;
-  obb.origin = centroid + axes[0] * proj_acc.minx + axes[1] * proj_acc.miny +
-               axes[2] * proj_acc.minz;
-  obb.extent[0] = max(T(0), proj_acc.maxx - proj_acc.minx);
-  obb.extent[1] = max(T(0), proj_acc.maxy - proj_acc.miny);
-  obb.extent[2] = max(T(0), proj_acc.maxz - proj_acc.minz);
-
-  // 6) Compute RSS radius and z-center from z bounds
+  // 5) Compute RSS radius and z-center from z bounds
   T r = T(0.5) * (proj_acc.maxz - proj_acc.minz);
   T radsqr = r * r;
   T cz = T(0.5) * (proj_acc.maxz + proj_acc.minz);
 
-  // 7) Compute shrunk x/y bounds for RSS
+  // 6) Compute shrunk x/y bounds for RSS
   struct rss_accum {
     T minx, maxx, miny, maxy;
   };
@@ -136,7 +125,7 @@ auto obb_and_rss_from(const Range &polygons,
       },
       rss_init, tf::checked);
 
-  // 8) RSS corner handling
+  // 7) RSS corner handling
   T rss_minx = rss_acc.minx;
   T rss_maxx = rss_acc.maxx;
   T rss_miny = rss_acc.miny;
@@ -153,26 +142,32 @@ auto obb_and_rss_from(const Range &polygons,
     }
   }
 
-  // 9) Build RSS
-  tf::rss<T, 3> rss;
-  rss.axes = axes;
-  rss.origin =
+  // 8) Build OBBRSS
+  tf::obbrss<T, 3> box;
+  box.axes = axes;
+  // OBB origin: corner of the OBB
+  box.obb_origin = centroid + axes[0] * proj_acc.minx +
+                   axes[1] * proj_acc.miny + axes[2] * proj_acc.minz;
+  // RSS origin: corner of the shrunk rectangle, z-centered
+  box.rss_origin =
       centroid + axes[0] * rss_minx + axes[1] * rss_miny + axes[2] * cz;
-  rss.length[0] = max(T(0), rss_maxx - rss_minx);
-  rss.length[1] = max(T(0), rss_maxy - rss_miny);
-  rss.radius = r;
+  box.extent[0] = max(T(0), proj_acc.maxx - proj_acc.minx);
+  box.extent[1] = max(T(0), proj_acc.maxy - proj_acc.miny);
+  box.extent[2] = max(T(0), proj_acc.maxz - proj_acc.minz);
+  box.length[0] = max(T(0), rss_maxx - rss_minx);
+  box.length[1] = max(T(0), rss_maxy - rss_miny);
+  box.radius = r;
 
-  return std::make_pair(obb, rss);
+  return box;
 }
 
 template <typename Range, std::size_t Dims, typename Policy>
-auto obb_and_rss_from(const Range &segments,
-                      const tf::segment<Dims, Policy> &) {
+auto obbrss_from(const Range &segments, const tf::segment<Dims, Policy> &) {
   using std::max;
   using std::min;
   using T = tf::coordinate_type<Policy>;
 
-  static_assert(Dims == 3, "OBB/RSS computation only implemented for 3D");
+  static_assert(Dims == 3, "OBBRSS computation only implemented for 3D");
 
   // 1) Covariance + centroid (shared)
   auto [centroid, cov] = tf::covariance_of(tf::make_segments(segments));
@@ -181,7 +176,8 @@ auto obb_and_rss_from(const Range &segments,
   auto [eigenvalues, eigenvectors] = tf::eigen_of(cov);
 
   // 3) Axes ordered by largest eigenvalue first (shared)
-  std::array<tf::vector<T, 3>, 3> axes;
+  // eigenvectors are already unit_vector, preserve the type
+  std::array<tf::unit_vector<T, 3>, 3> axes;
   for (int k = 0; k < 3; ++k) {
     axes[k] = eigenvectors[2 - k];
   }
@@ -225,21 +221,12 @@ auto obb_and_rss_from(const Range &segments,
       },
       proj_init, tf::checked);
 
-  // 5) Build OBB from projection bounds
-  tf::obb<T, 3> obb;
-  obb.axes = axes;
-  obb.origin = centroid + axes[0] * proj_acc.minx + axes[1] * proj_acc.miny +
-               axes[2] * proj_acc.minz;
-  obb.extent[0] = max(T(0), proj_acc.maxx - proj_acc.minx);
-  obb.extent[1] = max(T(0), proj_acc.maxy - proj_acc.miny);
-  obb.extent[2] = max(T(0), proj_acc.maxz - proj_acc.minz);
-
-  // 6) Compute RSS radius and z-center from z bounds
+  // 5) Compute RSS radius and z-center from z bounds
   T r = T(0.5) * (proj_acc.maxz - proj_acc.minz);
   T radsqr = r * r;
   T cz = T(0.5) * (proj_acc.maxz + proj_acc.minz);
 
-  // 7) Compute shrunk x/y bounds for RSS
+  // 6) Compute shrunk x/y bounds for RSS
   struct rss_accum {
     T minx, maxx, miny, maxy;
   };
@@ -280,7 +267,7 @@ auto obb_and_rss_from(const Range &segments,
       },
       rss_init, tf::checked);
 
-  // 8) RSS corner handling
+  // 7) RSS corner handling
   T rss_minx = rss_acc.minx;
   T rss_maxx = rss_acc.maxx;
   T rss_miny = rss_acc.miny;
@@ -297,26 +284,32 @@ auto obb_and_rss_from(const Range &segments,
     }
   }
 
-  // 9) Build RSS
-  tf::rss<T, 3> rss;
-  rss.axes = axes;
-  rss.origin =
+  // 8) Build OBBRSS
+  tf::obbrss<T, 3> box;
+  box.axes = axes;
+  // OBB origin: corner of the OBB
+  box.obb_origin = centroid + axes[0] * proj_acc.minx +
+                   axes[1] * proj_acc.miny + axes[2] * proj_acc.minz;
+  // RSS origin: corner of the shrunk rectangle, z-centered
+  box.rss_origin =
       centroid + axes[0] * rss_minx + axes[1] * rss_miny + axes[2] * cz;
-  rss.length[0] = max(T(0), rss_maxx - rss_minx);
-  rss.length[1] = max(T(0), rss_maxy - rss_miny);
-  rss.radius = r;
+  box.extent[0] = max(T(0), proj_acc.maxx - proj_acc.minx);
+  box.extent[1] = max(T(0), proj_acc.maxy - proj_acc.miny);
+  box.extent[2] = max(T(0), proj_acc.maxz - proj_acc.minz);
+  box.length[0] = max(T(0), rss_maxx - rss_minx);
+  box.length[1] = max(T(0), rss_maxy - rss_miny);
+  box.radius = r;
 
-  return std::make_pair(obb, rss);
+  return box;
 }
 
 template <typename Range, std::size_t Dims, typename Policy>
-auto obb_and_rss_from(const Range &points,
-                      const tf::point_like<Dims, Policy> &) {
+auto obbrss_from(const Range &points, const tf::point_like<Dims, Policy> &) {
   using std::max;
   using std::min;
   using T = tf::coordinate_type<Policy>;
 
-  static_assert(Dims == 3, "OBB/RSS computation only implemented for 3D");
+  static_assert(Dims == 3, "OBBRSS computation only implemented for 3D");
 
   // 1) Covariance + centroid (shared)
   auto [centroid, cov] = tf::covariance_of(tf::make_points(points));
@@ -325,7 +318,8 @@ auto obb_and_rss_from(const Range &points,
   auto [eigenvalues, eigenvectors] = tf::eigen_of(cov);
 
   // 3) Axes ordered by largest eigenvalue first (shared)
-  std::array<tf::vector<T, 3>, 3> axes;
+  // eigenvectors are already unit_vector, preserve the type
+  std::array<tf::unit_vector<T, 3>, 3> axes;
   for (int k = 0; k < 3; ++k) {
     axes[k] = eigenvectors[2 - k];
   }
@@ -357,21 +351,12 @@ auto obb_and_rss_from(const Range &points,
       },
       proj_init, tf::checked);
 
-  // 5) Build OBB from projection bounds
-  tf::obb<T, 3> obb;
-  obb.axes = axes;
-  obb.origin = centroid + axes[0] * proj_acc.minx + axes[1] * proj_acc.miny +
-               axes[2] * proj_acc.minz;
-  obb.extent[0] = max(T(0), proj_acc.maxx - proj_acc.minx);
-  obb.extent[1] = max(T(0), proj_acc.maxy - proj_acc.miny);
-  obb.extent[2] = max(T(0), proj_acc.maxz - proj_acc.minz);
-
-  // 6) Compute RSS radius and z-center from z bounds
+  // 5) Compute RSS radius and z-center from z bounds
   T r = T(0.5) * (proj_acc.maxz - proj_acc.minz);
   T radsqr = r * r;
   T cz = T(0.5) * (proj_acc.maxz + proj_acc.minz);
 
-  // 7) Compute shrunk x/y bounds for RSS
+  // 6) Compute shrunk x/y bounds for RSS
   struct rss_accum {
     T minx, maxx, miny, maxy;
   };
@@ -400,7 +385,7 @@ auto obb_and_rss_from(const Range &points,
       },
       rss_init, tf::checked);
 
-  // 8) RSS corner handling
+  // 7) RSS corner handling
   T rss_minx = rss_acc.minx;
   T rss_maxx = rss_acc.maxx;
   T rss_miny = rss_acc.miny;
@@ -415,34 +400,41 @@ auto obb_and_rss_from(const Range &points,
                          radsqr);
   }
 
-  // 9) Build RSS
-  tf::rss<T, 3> rss;
-  rss.axes = axes;
-  rss.origin =
+  // 8) Build OBBRSS
+  tf::obbrss<T, 3> box;
+  box.axes = axes;
+  // OBB origin: corner of the OBB
+  box.obb_origin = centroid + axes[0] * proj_acc.minx +
+                   axes[1] * proj_acc.miny + axes[2] * proj_acc.minz;
+  // RSS origin: corner of the shrunk rectangle, z-centered
+  box.rss_origin =
       centroid + axes[0] * rss_minx + axes[1] * rss_miny + axes[2] * cz;
-  rss.length[0] = max(T(0), rss_maxx - rss_minx);
-  rss.length[1] = max(T(0), rss_maxy - rss_miny);
-  rss.radius = r;
+  box.extent[0] = max(T(0), proj_acc.maxx - proj_acc.minx);
+  box.extent[1] = max(T(0), proj_acc.maxy - proj_acc.miny);
+  box.extent[2] = max(T(0), proj_acc.maxz - proj_acc.minz);
+  box.length[0] = max(T(0), rss_maxx - rss_minx);
+  box.length[1] = max(T(0), rss_maxy - rss_miny);
+  box.radius = r;
 
-  return std::make_pair(obb, rss);
+  return box;
 }
 
 } // namespace core
 
 // Convenience overloads in tf namespace
 template <typename Policy>
-auto obb_and_rss_from(const tf::polygons<Policy> &polys) {
-  return core::obb_and_rss_from(polys, polys[0]);
+auto obbrss_from(const tf::polygons<Policy> &polys) {
+  return core::obbrss_from(polys, polys[0]);
 }
 
 template <typename Policy>
-auto obb_and_rss_from(const tf::segments<Policy> &segs) {
-  return core::obb_and_rss_from(segs, segs[0]);
+auto obbrss_from(const tf::segments<Policy> &segs) {
+  return core::obbrss_from(segs, segs[0]);
 }
 
 template <typename Policy>
-auto obb_and_rss_from(const tf::points<Policy> &pts) {
-  return core::obb_and_rss_from(pts, pts[0]);
+auto obbrss_from(const tf::points<Policy> &pts) {
+  return core::obbrss_from(pts, pts[0]);
 }
 
 } // namespace tf

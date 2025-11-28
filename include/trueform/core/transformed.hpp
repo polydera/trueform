@@ -9,6 +9,7 @@
 #include "./base/aabb.hpp"
 #include "./base/line.hpp"
 #include "./base/obb_impl.hpp"
+#include "./base/obbrss_impl.hpp"
 #include "./base/plane.hpp"
 #include "./base/poly.hpp"
 #include "./base/ray.hpp"
@@ -20,6 +21,7 @@
 #include "./linalg/transpose.hpp"
 #include "./line_like.hpp"
 #include "./obb_like.hpp"
+#include "./obbrss_like.hpp"
 #include "./point_like.hpp"
 #include "./policy/id.hpp"
 #include "./policy/ids.hpp"
@@ -319,6 +321,24 @@ auto transformed(const obb_like<Dims, Policy> &_this,
     return _this;
 }
 
+template <std::size_t Dims, typename Policy, typename U>
+auto transformed(const obbrss_like<Dims, Policy> &_this,
+                 const frame_like<Dims, U> &frame) {
+  if constexpr (!linalg::is_identity<U>)
+    return wrap_like(_this, transformed(unwrap(_this), frame));
+  else
+    return _this;
+}
+
+template <std::size_t Dims, typename Policy, typename U>
+auto transformed(const obbrss_like<Dims, Policy> &_this,
+                 const transformation_like<Dims, U> &transform) {
+  if constexpr (!linalg::is_identity<U>)
+    return wrap_like(_this, transformed(unwrap(_this), transform));
+  else
+    return _this;
+}
+
 } // namespace tf
 
 namespace tf::core {
@@ -529,53 +549,209 @@ auto transformed(const poly<V, Policy> &_this,
 template <std::size_t Dims, typename Policy0, typename Policy1, typename U>
 auto transformed(const rss<Dims, Policy0, Policy1> &_this,
                  const transformation_like<Dims, U> &transform) {
+  using T = tf::coordinate_type<Policy0, Policy1>;
   auto origin_out = transformed(_this.origin, transform);
 
-  std::array<decltype(transformed(_this.axes[0], transform)), Dims> axes_out;
-  for (std::size_t i = 0; i < Dims; ++i) {
-    axes_out[i] = transformed(_this.axes[i], transform);
+  // Transform first axis as vector to get uniform scale factor
+  using vec_like_t = tf::vector_like<Dims, Policy1>;
+  auto first_scaled =
+      transformed(static_cast<const vec_like_t &>(_this.axes[0]), transform);
+  auto scale = first_scaled.length();
+  auto inv_scale = T(1) / (scale + (scale == T(0)));
+  first_scaled *= inv_scale;
+
+  std::array<decltype(tf::make_unit_vector(tf::unsafe, first_scaled)), Dims>
+      axes_out;
+  axes_out[0] = tf::make_unit_vector(tf::unsafe, first_scaled);
+
+  // Transform remaining axes (uniform scaling, reuse inv_scale)
+  for (std::size_t i = 1; i < Dims; ++i) {
+    auto scaled_axis =
+        transformed(static_cast<const vec_like_t &>(_this.axes[i]), transform);
+    scaled_axis *= inv_scale;
+    axes_out[i] = tf::make_unit_vector(tf::unsafe, scaled_axis);
   }
 
-  return core::make_rss(origin_out, axes_out, _this.length, _this.radius);
+  // Scale lengths and radius by uniform scale factor
+  std::array<T, Dims - 1> length_out;
+  for (std::size_t i = 0; i < Dims - 1; ++i) {
+    length_out[i] = _this.length[i] * scale;
+  }
+
+  return core::make_rss(origin_out, axes_out, length_out, _this.radius * scale);
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1, typename U>
 auto transformed(const rss<Dims, Policy0, Policy1> &_this,
                  const frame_like<Dims, U> &frame) {
+  using T = tf::coordinate_type<Policy0, Policy1>;
   auto origin_out = transformed(_this.origin, frame);
 
-  std::array<decltype(transformed(_this.axes[0], frame)), Dims> axes_out;
-  for (std::size_t i = 0; i < Dims; ++i) {
-    axes_out[i] = transformed(_this.axes[i], frame);
+  // Transform first axis as vector to get uniform scale factor
+  using vec_like_t = tf::vector_like<Dims, Policy1>;
+  auto first_scaled =
+      transformed(static_cast<const vec_like_t &>(_this.axes[0]), frame);
+  auto scale = first_scaled.length();
+  auto inv_scale = T(1) / (scale + (scale == T(0)));
+  first_scaled *= inv_scale;
+
+  std::array<decltype(tf::make_unit_vector(tf::unsafe, first_scaled)), Dims>
+      axes_out;
+  axes_out[0] = tf::make_unit_vector(tf::unsafe, first_scaled);
+
+  // Transform remaining axes (uniform scaling, reuse inv_scale)
+  for (std::size_t i = 1; i < Dims; ++i) {
+    auto scaled_axis =
+        transformed(static_cast<const vec_like_t &>(_this.axes[i]), frame);
+    scaled_axis *= inv_scale;
+    axes_out[i] = tf::make_unit_vector(tf::unsafe, scaled_axis);
   }
 
-  return core::make_rss(origin_out, axes_out, _this.length, _this.radius);
+  // Scale lengths and radius by uniform scale factor
+  std::array<T, Dims - 1> length_out;
+  for (std::size_t i = 0; i < Dims - 1; ++i) {
+    length_out[i] = _this.length[i] * scale;
+  }
+
+  return core::make_rss(origin_out, axes_out, length_out, _this.radius * scale);
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1, typename U>
 auto transformed(const obb<Dims, Policy0, Policy1> &_this,
                  const transformation_like<Dims, U> &transform) {
+  using T = tf::coordinate_type<Policy0, Policy1>;
   auto origin_out = transformed(_this.origin, transform);
 
-  std::array<decltype(transformed(_this.axes[0], transform)), Dims> axes_out;
+  // Transform axes as vectors to capture scaling
+  using vec_like_t = tf::vector_like<Dims, Policy1>;
+  auto first_scaled =
+      transformed(static_cast<const vec_like_t &>(_this.axes[0]), transform);
+  std::array<decltype(tf::make_unit_vector(tf::unsafe, first_scaled)), Dims>
+      axes_out;
+  std::array<T, Dims> extent_out;
+
   for (std::size_t i = 0; i < Dims; ++i) {
-    axes_out[i] = transformed(_this.axes[i], transform);
+    auto scaled_axis =
+        transformed(static_cast<const vec_like_t &>(_this.axes[i]), transform);
+    auto scale = scaled_axis.length();
+    scaled_axis /= scale + (scale == T(0));
+    axes_out[i] = tf::make_unit_vector(tf::unsafe, scaled_axis);
+    extent_out[i] = _this.extent[i] * scale;
   }
 
-  return core::make_obb(origin_out, axes_out, _this.extent);
+  return core::make_obb(origin_out, axes_out, extent_out);
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1, typename U>
 auto transformed(const obb<Dims, Policy0, Policy1> &_this,
                  const frame_like<Dims, U> &frame) {
+  using T = tf::coordinate_type<Policy0, Policy1>;
   auto origin_out = transformed(_this.origin, frame);
 
-  std::array<decltype(transformed(_this.axes[0], frame)), Dims> axes_out;
+  // Transform axes as vectors to capture scaling
+  using vec_like_t = tf::vector_like<Dims, Policy1>;
+  auto first_scaled =
+      transformed(static_cast<const vec_like_t &>(_this.axes[0]), frame);
+  std::array<decltype(tf::make_unit_vector(tf::unsafe, first_scaled)), Dims>
+      axes_out;
+  std::array<T, Dims> extent_out;
+
   for (std::size_t i = 0; i < Dims; ++i) {
-    axes_out[i] = transformed(_this.axes[i], frame);
+    auto scaled_axis =
+        transformed(static_cast<const vec_like_t &>(_this.axes[i]), frame);
+    auto scale = scaled_axis.length();
+    scaled_axis /= scale + (scale == T(0));
+    axes_out[i] = tf::make_unit_vector(tf::unsafe, scaled_axis);
+    extent_out[i] = _this.extent[i] * scale;
   }
 
-  return core::make_obb(origin_out, axes_out, _this.extent);
+  return core::make_obb(origin_out, axes_out, extent_out);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1, typename U>
+auto transformed(const obbrss<Dims, Policy0, Policy1> &_this,
+                 const transformation_like<Dims, U> &transform) {
+  using T = tf::coordinate_type<Policy0, Policy1>;
+  auto obb_origin_out = transformed(_this.obb_origin, transform);
+  auto rss_origin_out = transformed(_this.rss_origin, transform);
+
+  // Transform first axis as vector to get uniform scale factor
+  using vec_like_t = tf::vector_like<Dims, Policy1>;
+  auto first_scaled =
+      transformed(static_cast<const vec_like_t &>(_this.axes[0]), transform);
+  auto scale = first_scaled.length();
+  auto inv_scale = T(1) / (scale + (scale == T(0)));
+  first_scaled *= inv_scale;
+
+  std::array<decltype(tf::make_unit_vector(tf::unsafe, first_scaled)), Dims>
+      axes_out;
+  axes_out[0] = tf::make_unit_vector(tf::unsafe, first_scaled);
+
+  // Transform remaining axes (uniform scaling, reuse inv_scale)
+  for (std::size_t i = 1; i < Dims; ++i) {
+    auto scaled_axis =
+        transformed(static_cast<const vec_like_t &>(_this.axes[i]), transform);
+    scaled_axis *= inv_scale;
+    axes_out[i] = tf::make_unit_vector(tf::unsafe, scaled_axis);
+  }
+
+  // Scale extents by uniform scale factor
+  std::array<T, Dims> extent_out;
+  for (std::size_t i = 0; i < Dims; ++i) {
+    extent_out[i] = _this.extent[i] * scale;
+  }
+
+  // Scale lengths and radius by uniform scale factor
+  std::array<T, Dims - 1> length_out;
+  for (std::size_t i = 0; i < Dims - 1; ++i) {
+    length_out[i] = _this.length[i] * scale;
+  }
+
+  return core::make_obbrss(obb_origin_out, rss_origin_out, axes_out, extent_out,
+                           length_out, _this.radius * scale);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1, typename U>
+auto transformed(const obbrss<Dims, Policy0, Policy1> &_this,
+                 const frame_like<Dims, U> &frame) {
+  using T = tf::coordinate_type<Policy0, Policy1>;
+  auto obb_origin_out = transformed(_this.obb_origin, frame);
+  auto rss_origin_out = transformed(_this.rss_origin, frame);
+
+  // Transform first axis as vector to get uniform scale factor
+  using vec_like_t = tf::vector_like<Dims, Policy1>;
+  auto first_scaled =
+      transformed(static_cast<const vec_like_t &>(_this.axes[0]), frame);
+  auto scale = first_scaled.length();
+  auto inv_scale = T(1) / (scale + (scale == T(0)));
+  first_scaled *= inv_scale;
+
+  std::array<decltype(tf::make_unit_vector(tf::unsafe, first_scaled)), Dims>
+      axes_out;
+  axes_out[0] = tf::make_unit_vector(tf::unsafe, first_scaled);
+
+  // Transform remaining axes (uniform scaling, reuse inv_scale)
+  for (std::size_t i = 1; i < Dims; ++i) {
+    auto scaled_axis =
+        transformed(static_cast<const vec_like_t &>(_this.axes[i]), frame);
+    scaled_axis *= inv_scale;
+    axes_out[i] = tf::make_unit_vector(tf::unsafe, scaled_axis);
+  }
+
+  // Scale extents by uniform scale factor
+  std::array<T, Dims> extent_out;
+  for (std::size_t i = 0; i < Dims; ++i) {
+    extent_out[i] = _this.extent[i] * scale;
+  }
+
+  // Scale lengths and radius by uniform scale factor
+  std::array<T, Dims - 1> length_out;
+  for (std::size_t i = 0; i < Dims - 1; ++i) {
+    length_out[i] = _this.length[i] * scale;
+  }
+
+  return core::make_obbrss(obb_origin_out, rss_origin_out, axes_out, extent_out,
+                           length_out, _this.radius * scale);
 }
 
 } // namespace tf::core

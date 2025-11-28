@@ -12,6 +12,8 @@
 #include "./coordinate_type.hpp"
 #include "./dot.hpp"
 #include "./line_like.hpp"
+#include "./obb_like.hpp"
+#include "./obbrss_like.hpp"
 #include "./plane_like.hpp"
 #include "./point_like.hpp"
 #include "./ray_like.hpp"
@@ -612,6 +614,174 @@ auto distance2(const tf::rss_like<Dims, Policy0> &rss0,
   static_assert(Dims == 3, "rss_metrics is currently implemented for 3D only.");
   auto out = distance(rss0, rss1);
   return out * out;
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance(const tf::rss_like<Dims, Policy0> &rss,
+              const tf::point_like<Dims, Policy1> &pt) {
+  static_assert(Dims == 3, "distance(rss, point) is implemented for 3D only.");
+  using T = tf::coordinate_type<Policy0, Policy1>;
+
+  // Transform point to local coordinates
+  auto diff = pt - rss.origin;
+  std::array<T, 3> local_pt;
+  for (int i = 0; i < 3; ++i) {
+    local_pt[i] = tf::dot(diff, rss.axes[i]);
+  }
+
+  // Distance to rectangle in local coords
+  std::array<T, 2> length{rss.length[0], rss.length[1]};
+  auto rect_dist = tf::core::local_point_rectangle_distance(local_pt, length);
+
+  // Subtract radius
+  T rss_dist = rect_dist - rss.radius;
+  return std::max(rss_dist, T(0));
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance2(const tf::rss_like<Dims, Policy0> &rss,
+               const tf::point_like<Dims, Policy1> &pt) {
+  auto d = distance(rss, pt);
+  return d * d;
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance(const tf::point_like<Dims, Policy0> &pt,
+              const tf::rss_like<Dims, Policy1> &rss) {
+  return distance(rss, pt);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance2(const tf::point_like<Dims, Policy0> &pt,
+               const tf::rss_like<Dims, Policy1> &rss) {
+  return distance2(rss, pt);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance2(const tf::obb_like<Dims, Policy0> &obb,
+               const tf::point_like<Dims, Policy1> &pt) {
+  using T = tf::coordinate_type<Policy0, Policy1>;
+
+  // Transform point to local coordinates
+  auto diff = pt - obb.origin;
+  std::array<T, Dims> local_pt;
+  for (std::size_t i = 0; i < Dims; ++i) {
+    local_pt[i] = tf::dot(diff, obb.axes[i]);
+  }
+
+  // Distance to box in local coords
+  std::array<T, Dims> extent;
+  for (std::size_t i = 0; i < Dims; ++i) {
+    extent[i] = obb.extent[i];
+  }
+  return tf::core::local_point_box_distance2(local_pt, extent);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance(const tf::obb_like<Dims, Policy0> &obb,
+              const tf::point_like<Dims, Policy1> &pt) {
+  return tf::sqrt(distance2(obb, pt));
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance2(const tf::point_like<Dims, Policy0> &pt,
+               const tf::obb_like<Dims, Policy1> &obb) {
+  return distance2(obb, pt);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance(const tf::point_like<Dims, Policy0> &pt,
+              const tf::obb_like<Dims, Policy1> &obb) {
+  return distance(obb, pt);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance(const tf::obbrss_like<Dims, Policy0> &obbrss0,
+              const tf::obbrss_like<Dims, Policy1> &obbrss1) {
+  static_assert(Dims == 3,
+                "obbrss_metrics is currently implemented for 3D only.");
+  using T = tf::coordinate_type<Policy0, Policy1>;
+
+  using std::max;
+
+  // Rotation matrix: Rab = A^T * B
+  std::array<std::array<T, 3>, 3> rot_ab;
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      rot_ab[i][j] = tf::dot(obbrss0.axes[i], obbrss1.axes[j]);
+    }
+  }
+
+  // Translation Tab = rss_origin1 - rss_origin0, expressed in frame A
+  // Use rss_origin (not obb_origin) for the RSS rectangle distance
+  auto diff = obbrss1.rss_origin - obbrss0.rss_origin;
+  std::array<T, 3> tr_ab;
+  for (int i = 0; i < 3; ++i) {
+    tr_ab[i] = tf::dot(diff, obbrss0.axes[i]);
+  }
+
+  // Rectangle side lengths
+  std::array<T, 2> a{obbrss0.length[0], obbrss0.length[1]};
+  std::array<T, 2> b{obbrss1.length[0], obbrss1.length[1]};
+
+  // Distance between the two oriented rectangles
+  auto rect_dist = tf::core::local_rectangle_distance(rot_ab, tr_ab, a, b);
+  T obbrss_dist = rect_dist - obbrss0.radius - obbrss1.radius;
+  if (obbrss_dist < T(0)) {
+    obbrss_dist = T(0);
+  }
+  return obbrss_dist;
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance2(const tf::obbrss_like<Dims, Policy0> &obbrss0,
+               const tf::obbrss_like<Dims, Policy1> &obbrss1) {
+  static_assert(Dims == 3,
+                "obbrss_metrics is currently implemented for 3D only.");
+  auto out = distance(obbrss0, obbrss1);
+  return out * out;
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance(const tf::obbrss_like<Dims, Policy0> &obbrss,
+              const tf::point_like<Dims, Policy1> &pt) {
+  static_assert(Dims == 3,
+                "distance(obbrss, point) is implemented for 3D only.");
+  using T = tf::coordinate_type<Policy0, Policy1>;
+
+  // Transform point to local coordinates (using RSS origin)
+  auto diff = pt - obbrss.rss_origin;
+  std::array<T, 3> local_pt;
+  for (int i = 0; i < 3; ++i) {
+    local_pt[i] = tf::dot(diff, obbrss.axes[i]);
+  }
+
+  // Distance to rectangle in local coords
+  std::array<T, 2> length{obbrss.length[0], obbrss.length[1]};
+  auto rect_dist = tf::core::local_point_rectangle_distance(local_pt, length);
+
+  // Subtract radius
+  T obbrss_dist = rect_dist - obbrss.radius;
+  return std::max(obbrss_dist, T(0));
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance2(const tf::obbrss_like<Dims, Policy0> &obbrss,
+               const tf::point_like<Dims, Policy1> &pt) {
+  auto d = distance(obbrss, pt);
+  return d * d;
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance(const tf::point_like<Dims, Policy0> &pt,
+              const tf::obbrss_like<Dims, Policy1> &obbrss) {
+  return distance(obbrss, pt);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance2(const tf::point_like<Dims, Policy0> &pt,
+               const tf::obbrss_like<Dims, Policy1> &obbrss) {
+  return distance2(obbrss, pt);
 }
 
 namespace core {
