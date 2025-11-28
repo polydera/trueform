@@ -11,6 +11,8 @@
 #include "./closest_point_parametric.hpp"
 #include "./interval.hpp"
 #include "./line.hpp"
+#include "./obb_intersects_obb.hpp"
+#include "./obbrss_like.hpp"
 #include "./point_like.hpp"
 #include "./polygon.hpp"
 #include "./ray.hpp"
@@ -850,6 +852,122 @@ template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const tf::aabb_like<Dims, Policy0> &bbox,
                 const tf::segment<Dims, Policy1> &seg) {
   return intersects(seg, bbox);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::obb_like<Dims, Policy0> &obb0,
+                const tf::obb_like<Dims, Policy1> &obb1) -> bool {
+  return core::obb_intersects_obb(obb0, obb1);
+}
+
+/// @ingroup geometry
+/// @brief Check whether an OBB and AABB intersect.
+///
+/// Uses the Separating Axis Theorem (SAT) testing 2*Dims axes.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::obb_like<Dims, Policy0> &obb,
+                const tf::aabb_like<Dims, Policy1> &bbox) -> bool {
+  using T = tf::coordinate_type<Policy0, Policy1>;
+
+  for (std::size_t a = 0; a < Dims; ++a) {
+    // Test OBB axis[a]: project AABB onto it
+    {
+      T proj_min = 0, proj_max = 0;
+      for (std::size_t i = 0; i < Dims; ++i) {
+        T d_min = (bbox.min[i] - obb.origin[i]) * obb.axes[a][i];
+        T d_max = (bbox.max[i] - obb.origin[i]) * obb.axes[a][i];
+        proj_min += std::min(d_min, d_max);
+        proj_max += std::max(d_min, d_max);
+      }
+      if (proj_max < 0 || proj_min > obb.extent[a])
+        return false;
+    }
+
+    // Test AABB axis[a]: project OBB onto it
+    {
+      T proj_min = obb.origin[a], proj_max = obb.origin[a];
+      for (std::size_t i = 0; i < Dims; ++i) {
+        T d = obb.axes[i][a] * obb.extent[i];
+        proj_min += std::min(d, T{0});
+        proj_max += std::max(d, T{0});
+      }
+      if (proj_max + std::numeric_limits<T>::epsilon() < bbox.min[a] ||
+          proj_min - std::numeric_limits<T>::epsilon() > bbox.max[a])
+        return false;
+    }
+  }
+  return true;
+}
+
+/// @ingroup geometry
+/// @brief Check whether an AABB and OBB intersect.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::aabb_like<Dims, Policy0> &bbox,
+                const tf::obb_like<Dims, Policy1> &obb) -> bool {
+  return intersects(obb, bbox);
+}
+
+/// @ingroup geometry
+/// @brief Check whether two OBBRSSs intersect.
+///
+/// Uses the OBB parts for intersection testing (cheaper than RSS).
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::obbrss_like<Dims, Policy0> &a,
+                const tf::obbrss_like<Dims, Policy1> &b) -> bool {
+  return intersects(tf::make_obb_like(a.obb_origin, a.axes, a.extent),
+                    tf::make_obb_like(b.obb_origin, b.axes, b.extent));
+}
+
+/// @ingroup geometry
+/// @brief Check whether an OBBRSS and AABB intersect.
+///
+/// Uses the OBB part of OBBRSS for intersection testing.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::obbrss_like<Dims, Policy0> &obbrss,
+                const tf::aabb_like<Dims, Policy1> &bbox) -> bool {
+  return intersects(
+      tf::make_obb_like(obbrss.obb_origin, obbrss.axes, obbrss.extent), bbox);
+}
+
+/// @ingroup geometry
+/// @brief Check whether an AABB and OBBRSS intersect.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::aabb_like<Dims, Policy0> &bbox,
+                const tf::obbrss_like<Dims, Policy1> &obbrss) -> bool {
+  return intersects(obbrss, bbox);
+}
+
+/// @ingroup geometry
+/// @brief Check whether an OBBRSS and OBB intersect.
+///
+/// Uses the OBB part of OBBRSS for intersection testing.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::obbrss_like<Dims, Policy0> &obbrss,
+                const tf::obb_like<Dims, Policy1> &obb) -> bool {
+  return intersects(
+      tf::make_obb_like(obbrss.obb_origin, obbrss.axes, obbrss.extent), obb);
+}
+
+/// @ingroup geometry
+/// @brief Check whether an OBB and OBBRSS intersect.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::obb_like<Dims, Policy0> &obb,
+                const tf::obbrss_like<Dims, Policy1> &obbrss) -> bool {
+  return intersects(obbrss, obb);
 }
 
 namespace core {

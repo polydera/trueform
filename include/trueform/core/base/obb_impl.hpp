@@ -7,7 +7,7 @@
 #pragma once
 #include "../coordinate_type.hpp"
 #include "../point_like.hpp"
-#include "../vector_like.hpp"
+#include "../unit_vector_like.hpp"
 #include <type_traits>
 
 namespace tf::core {
@@ -19,7 +19,7 @@ template <std::size_t Dims, typename Policy0, typename Policy1> struct obb {
 
   obb() = default;
   obb(const tf::point_like<Dims, Policy0> &origin,
-      const std::array<tf::vector_like<Dims, Policy1>, Dims> &axes,
+      const std::array<tf::unit_vector_like<Dims, Policy1>, Dims> &axes,
       const std::array<coordinate_type, Dims> &extent)
       : origin{origin}, axes{axes}, extent{extent} {}
 
@@ -28,8 +28,8 @@ template <std::size_t Dims, typename Policy0, typename Policy1> struct obb {
       std::is_assignable_v<tf::point_like<Dims, Policy0> &,
                            tf::point_like<Dims, Policy2>> &&
           std::is_assignable_v<
-              std::array<tf::vector_like<Dims, Policy1>, Dims> &,
-              std::array<tf::vector_like<Dims, Policy3>, Dims>>,
+              std::array<tf::unit_vector_like<Dims, Policy1>, Dims> &,
+              std::array<tf::unit_vector_like<Dims, Policy3>, Dims>>,
       obb &> {
     origin = other.origin;
     axes = other.axes;
@@ -37,14 +37,19 @@ template <std::size_t Dims, typename Policy0, typename Policy1> struct obb {
     return *this;
   }
 
+  /// @brief Corner origin point.
   tf::point_like<Dims, Policy0> origin;
-  std::array<tf::vector_like<Dims, Policy1>, Dims> axes;
+
+  /// @brief Orthonormal unit axes.
+  std::array<tf::unit_vector_like<Dims, Policy1>, Dims> axes;
+
+  /// @brief Full extents along each axis.
   std::array<coordinate_type, Dims> extent;
 };
 
 template <std::size_t N, typename T0, typename T1>
 auto make_obb(const point_like<N, T0> &origin,
-              const std::array<vector_like<N, T1>, N> &axes,
+              const std::array<unit_vector_like<N, T1>, N> &axes,
               const std::array<tf::coordinate_type<T0>, N> &extent)
     -> obb<N, T0, T1> {
   return obb<N, T0, T1>(origin, axes, extent);

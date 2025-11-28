@@ -5,16 +5,20 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
+#include "./aabb_like.hpp"
 #include "./algorithm/reduce.hpp"
 #include "./base/rss_from_impl.hpp"
 #include "./covariance_of.hpp"
 #include "./dot.hpp"
 #include "./eigen_of.hpp"
+#include "./obb_like.hpp"
 #include "./points.hpp"
-#include "./sqrt.hpp"
 #include "./polygons.hpp"
 #include "./rss.hpp"
 #include "./segments.hpp"
+#include "./sqrt.hpp"
+#include "./unit_vector.hpp"
+#include "./vector.hpp"
 
 namespace tf {
 namespace core {
@@ -78,10 +82,9 @@ auto rss_from(const Range &polygons, const tf::polygon<Dims, Policy> &) {
     T minx, maxx, miny, maxy;
   };
 
-  rss_accum rss_init{std::numeric_limits<T>::max(),
-                     -std::numeric_limits<T>::max(),
-                     std::numeric_limits<T>::max(),
-                     -std::numeric_limits<T>::max()};
+  rss_accum rss_init{
+      std::numeric_limits<T>::max(), -std::numeric_limits<T>::max(),
+      std::numeric_limits<T>::max(), -std::numeric_limits<T>::max()};
 
   auto rss_acc = tf::reduce(
       tf::make_mapped_range(polygons,
@@ -95,8 +98,9 @@ auto rss_from(const Range &polygons, const tf::polygon<Dims, Policy> &) {
 
                                 T dz = pz - cz;
                                 T dz2 = dz * dz;
-                                T shrink =
-                                    (dz2 < radsqr) ? tf::sqrt(radsqr - dz2) : T(0);
+                                T shrink = (dz2 < radsqr)
+                                               ? tf::sqrt(radsqr - dz2)
+                                               : T(0);
 
                                 poly_rss.minx = min(poly_rss.minx, px + shrink);
                                 poly_rss.maxx = max(poly_rss.maxx, px - shrink);
@@ -199,10 +203,9 @@ auto rss_from(const Range &segments, const tf::segment<Dims, Policy> &) {
     T minx, maxx, miny, maxy;
   };
 
-  rss_accum rss_init{std::numeric_limits<T>::max(),
-                     -std::numeric_limits<T>::max(),
-                     std::numeric_limits<T>::max(),
-                     -std::numeric_limits<T>::max()};
+  rss_accum rss_init{
+      std::numeric_limits<T>::max(), -std::numeric_limits<T>::max(),
+      std::numeric_limits<T>::max(), -std::numeric_limits<T>::max()};
 
   auto rss_acc = tf::reduce(
       tf::make_mapped_range(segments,
@@ -216,8 +219,9 @@ auto rss_from(const Range &segments, const tf::segment<Dims, Policy> &) {
 
                                 T dz = pz - cz;
                                 T dz2 = dz * dz;
-                                T shrink =
-                                    (dz2 < radsqr) ? tf::sqrt(radsqr - dz2) : T(0);
+                                T shrink = (dz2 < radsqr)
+                                               ? tf::sqrt(radsqr - dz2)
+                                               : T(0);
 
                                 seg_rss.minx = min(seg_rss.minx, px + shrink);
                                 seg_rss.maxx = max(seg_rss.maxx, px - shrink);
@@ -312,10 +316,9 @@ auto rss_from(const Range &points, const tf::point_like<Dims, Policy> &) {
     T minx, maxx, miny, maxy;
   };
 
-  rss_accum rss_init{std::numeric_limits<T>::max(),
-                     -std::numeric_limits<T>::max(),
-                     std::numeric_limits<T>::max(),
-                     -std::numeric_limits<T>::max()};
+  rss_accum rss_init{
+      std::numeric_limits<T>::max(), -std::numeric_limits<T>::max(),
+      std::numeric_limits<T>::max(), -std::numeric_limits<T>::max()};
 
   auto rss_acc = tf::reduce(
       points,
@@ -364,19 +367,60 @@ auto rss_from(const Range &points, const tf::point_like<Dims, Policy> &) {
 } // namespace core
 
 // Convenience overloads in tf namespace
-template <typename Policy>
-auto rss_from(const tf::polygons<Policy> &polys) {
+template <typename Policy> auto rss_from(const tf::polygons<Policy> &polys) {
   return core::rss_from(polys, polys[0]);
 }
 
-template <typename Policy>
-auto rss_from(const tf::segments<Policy> &segs) {
+template <typename Policy> auto rss_from(const tf::segments<Policy> &segs) {
   return core::rss_from(segs, segs[0]);
 }
 
-template <typename Policy>
-auto rss_from(const tf::points<Policy> &pts) {
+template <typename Policy> auto rss_from(const tf::points<Policy> &pts) {
   return core::rss_from(pts, pts[0]);
+}
+
+/// @brief Convert an OBB to an RSS approximation.
+///
+/// Creates an RSS by placing the rectangle at the midplane of axes[2].
+/// The rectangle has dimensions extent[0] x extent[1], and radius =
+/// extent[2]/2. This tightly bounds the OBB (slightly larger due to spherical
+/// caps).
+template <std::size_t Dims, typename Policy>
+auto rss_from(const tf::obb_like<Dims, Policy> &obb) {
+  static_assert(Dims == 3, "rss_from(obb) is implemented for 3D only.");
+  using T = tf::coordinate_type<Policy>;
+
+  auto origin = obb.origin + obb.axes[2] * (obb.extent[2] * T(0.5));
+  return tf::make_rss_like(origin, obb.axes,
+                           std::array<T, 2>{obb.extent[0], obb.extent[1]},
+                           obb.extent[2] * T(0.5));
+}
+
+/// @brief Convert an AABB to an RSS approximation.
+///
+/// Creates an RSS with identity axes, rectangle at the z-midplane.
+/// The rectangle has dimensions (max-min) in x and y, radius = (max-min)/2 in
+/// z.
+template <std::size_t Dims, typename Policy>
+auto rss_from(const tf::aabb_like<Dims, Policy> &aabb) {
+  static_assert(Dims == 3, "rss_from(aabb) is implemented for 3D only.");
+  using T = tf::coordinate_type<Policy>;
+
+  std::array<tf::unit_vector<T, 3>, 3> axes{
+      tf::make_unit_vector(tf::unsafe,
+                           tf::make_vector(std::array<T, 3>{T(1), T(0), T(0)})),
+      tf::make_unit_vector(tf::unsafe,
+                           tf::make_vector(std::array<T, 3>{T(0), T(1), T(0)})),
+      tf::make_unit_vector(
+          tf::unsafe, tf::make_vector(std::array<T, 3>{T(0), T(0), T(1)}))};
+
+  tf::point<T, 3> origin{aabb.min[0], aabb.min[1],
+                         (aabb.min[2] + aabb.max[2]) * T(0.5)};
+
+  std::array<T, 2> length{aabb.max[0] - aabb.min[0], aabb.max[1] - aabb.min[1]};
+  T radius = (aabb.max[2] - aabb.min[2]) * T(0.5);
+
+  return tf::make_rss_like(origin, axes, length, radius);
 }
 
 } // namespace tf

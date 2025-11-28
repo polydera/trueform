@@ -9,6 +9,7 @@
 #include "./base/pt.hpp"
 #include "./base/vec.hpp"
 #include "./point.hpp"
+#include "./unit_vector.hpp"
 
 namespace tf {
 template <std::size_t Dims, typename Policy> struct obb_like : Policy {
@@ -49,9 +50,9 @@ template <std::size_t Dims, typename Policy> struct obb_like : Policy {
   operator tf::obb_like<Dims, tf::core::obb<Dims, tf::core::pt<RealT, Dims>,
                                             tf::core::vec<RealT, Dims>>>()
       const {
-    std::array<tf::core::vec<RealT, Dims>, Dims> converted_axes;
+    std::array<tf::unit_vector<RealT, Dims>, Dims> converted_axes;
     for (std::size_t i = 0; i < Dims; ++i)
-      converted_axes[i] = axes[i];
+      converted_axes[i] = tf::make_unit_vector(tf::unsafe, axes[i]);
     std::array<RealT, Dims> converted_extent;
     for (std::size_t i = 0; i < Dims; ++i)
       converted_extent[i] = static_cast<RealT>(extent[i]);
@@ -97,7 +98,7 @@ auto wrap_like(const obb_like<V, Policy> &&, T &&t) {
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto make_obb_like(
     const point_like<Dims, Policy0> &origin,
-    const std::array<vector_like<Dims, Policy1>, Dims> &axes,
+    const std::array<unit_vector_like<Dims, Policy1>, Dims> &axes,
     const std::array<tf::coordinate_type<Policy0>, Dims> &extent) {
   return tf::obb_like<Dims, tf::core::obb<Dims, Policy0, Policy1>>{origin, axes,
                                                                    extent};

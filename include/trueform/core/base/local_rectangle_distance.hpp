@@ -528,4 +528,43 @@ auto local_rectangle_distance(const std::array<std::array<T, 3>, 3> &r_ab,
   return tf::sqrt(local_rectangle_distance2(r_ab, t_ab, a, b));
 }
 
+/// @brief Squared distance from point in local coordinates to axis-aligned box
+/// [0, extent[0]] x [0, extent[1]] x ... x [0, extent[N-1]]
+template <typename T, std::size_t N>
+auto local_point_box_distance2(const std::array<T, N> &local_pt,
+                               const std::array<T, N> &extent) -> T {
+  T dist2 = T(0);
+  for (std::size_t i = 0; i < N; ++i) {
+    T d =
+        std::max(-local_pt[i], T(0)) + std::max(local_pt[i] - extent[i], T(0));
+    dist2 += d * d;
+  }
+  return dist2;
+}
+
+/// @brief Distance from point in local coordinates to axis-aligned box
+template <typename T, std::size_t N>
+auto local_point_box_distance(const std::array<T, N> &local_pt,
+                              const std::array<T, N> &extent) -> T {
+  return tf::sqrt(local_point_box_distance2(local_pt, extent));
+}
+
+/// @brief Squared distance from point in local coordinates to rectangle
+/// Rectangle [0, length[0]] x [0, length[1]] at z=0
+template <typename T>
+auto local_point_rectangle_distance2(const std::array<T, 3> &local_pt,
+                                     const std::array<T, 2> &length) -> T {
+  T dx = std::max(-local_pt[0], T(0)) + std::max(local_pt[0] - length[0], T(0));
+  T dy = std::max(-local_pt[1], T(0)) + std::max(local_pt[1] - length[1], T(0));
+  T dz = local_pt[2];
+  return dx * dx + dy * dy + dz * dz;
+}
+
+/// @brief Distance from point in local coordinates to rectangle
+template <typename T>
+auto local_point_rectangle_distance(const std::array<T, 3> &local_pt,
+                                    const std::array<T, 2> &length) -> T {
+  return tf::sqrt(local_point_rectangle_distance2(local_pt, length));
+}
+
 } // namespace tf::core

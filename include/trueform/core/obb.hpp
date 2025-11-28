@@ -34,12 +34,12 @@ using obb = tf::obb_like<
 /// @tparam T0 The point policy
 /// @tparam T1 The vector policy
 /// @param origin The local (0,0,0) corner of the bounding box.
-/// @param axes The orientation axes.
+/// @param axes The orientation unit axes.
 /// @param extent The full extents along each axis.
 /// @return An `obb<T, N>` instance.
 template <std::size_t N, typename T0, typename T1>
 auto make_obb(const point_like<N, T0> &origin,
-              const std::array<vector_like<N, T1>, N> &axes,
+              const std::array<unit_vector_like<N, T1>, N> &axes,
               const std::array<tf::coordinate_type<T0, T1>, N> &extent)
     -> obb<tf::coordinate_type<T0, T1>, N> {
   return obb<tf::coordinate_type<T0, T1>, N>(origin, axes, extent);

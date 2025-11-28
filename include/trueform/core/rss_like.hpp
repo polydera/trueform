@@ -9,6 +9,7 @@
 #include "./base/rss_impl.hpp"
 #include "./base/vec.hpp"
 #include "./point.hpp"
+#include "./unit_vector.hpp"
 
 namespace tf {
 template <std::size_t Dims, typename Policy> struct rss_like : Policy {
@@ -28,14 +29,14 @@ template <std::size_t Dims, typename Policy> struct rss_like : Policy {
   /// @brief Compute the center point of the RSS rectangle.
   ///
   /// The origin is the local (0,0,0) corner, so center is
-  /// origin + axes[0] * (length[0] * 0.5) + axes[1] * (length[1] * 0.5).
+  /// origin + sum(axes[i] * length[i] * 0.5) for i in [0, Dims-1).
   ///
   /// @return A `point<T, N>` representing the center of the rectangle.
   auto center() const -> point<coordinate_type, Dims> {
     auto out = origin;
     auto c = out.as_vector_view();
-    c = c + axes[0] * (length[0] * coordinate_type(0.5));
-    c = c + axes[1] * (length[1] * coordinate_type(0.5));
+    for (std::size_t i = 0; i < Dims - 1; ++i)
+      c = c + axes[i] * (length[i] * coordinate_type(0.5));
     return out;
   }
 
@@ -50,11 +51,11 @@ template <std::size_t Dims, typename Policy> struct rss_like : Policy {
   operator tf::rss_like<Dims, tf::core::rss<Dims, tf::core::pt<RealT, Dims>,
                                             tf::core::vec<RealT, Dims>>>()
       const {
-    std::array<tf::core::vec<RealT, Dims>, Dims> converted_axes;
+    std::array<tf::unit_vector<RealT, Dims>, Dims> converted_axes;
     for (std::size_t i = 0; i < Dims; ++i)
-      converted_axes[i] = axes[i];
-    std::array<RealT, 2> converted_length;
-    for (std::size_t i = 0; i < 2; ++i)
+      converted_axes[i] = tf::make_unit_vector(tf::unsafe, axes[i]);
+    std::array<RealT, Dims - 1> converted_length;
+    for (std::size_t i = 0; i < Dims - 1; ++i)
       converted_length[i] = static_cast<RealT>(length[i]);
     return {origin, converted_axes, converted_length,
             static_cast<RealT>(radius)};
@@ -98,8 +99,8 @@ auto wrap_like(const rss_like<V, Policy> &&, T &&t) {
 
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto make_rss_like(const point_like<Dims, Policy0> &origin,
-                   const std::array<vector_like<Dims, Policy1>, Dims> &axes,
-                   const std::array<tf::coordinate_type<Policy0>, 2> &length,
+                   const std::array<unit_vector_like<Dims, Policy1>, Dims> &axes,
+                   const std::array<tf::coordinate_type<Policy0>, Dims - 1> &length,
                    tf::coordinate_type<Policy0> radius) {
   return tf::rss_like<Dims, tf::core::rss<Dims, Policy0, Policy1>>{
       origin, axes, length, radius};
