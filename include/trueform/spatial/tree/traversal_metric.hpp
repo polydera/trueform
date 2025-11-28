@@ -9,8 +9,13 @@
 #include "../../core/aabb_like.hpp"
 #include "../../core/distance.hpp"
 #include "../../core/line_like.hpp"
+#include "../../core/obb_like.hpp"
+#include "../../core/obbrss_like.hpp"
 #include "../../core/point_like.hpp"
 #include "../../core/ray_like.hpp"
+#include "../../core/rss_from.hpp"
+#include "../../core/rss_like.hpp"
+#include "../../core/segment.hpp"
 
 namespace tf::spatial {
 
@@ -70,6 +75,246 @@ auto traversal_metric(const tf::aabb_like<Dims, Policy0> &aabb,
   auto d_center = tf::distance(ray, center);
   auto result = std::max(T(0), d_center - r);
   return result * result;
+}
+
+// ============================================================================
+// OBB row
+// ============================================================================
+
+/// @brief Compute traversal metric for single-tree queries.
+///
+/// Converts both OBB and AABB to RSS for distance bound.
+///
+/// @return Squared distance lower bound
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto traversal_metric(const tf::obb_like<Dims, Policy0> &obb,
+                      const tf::aabb_like<Dims, Policy1> &aabb) {
+  static_assert(Dims == 3,
+                "traversal_metric(obb, aabb) is implemented for 3D only.");
+
+  auto obb_rss = tf::rss_from(obb);
+  auto aabb_rss = tf::rss_from(aabb);
+
+  return tf::distance2(obb_rss, aabb_rss);
+}
+
+/// @brief Compute traversal metric for single-tree queries.
+///
+/// @return Squared distance (exact)
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto traversal_metric(const tf::obb_like<Dims, Policy0> &obb,
+                      const tf::point_like<Dims, Policy1> &pt) {
+  return tf::distance2(obb, pt);
+}
+
+/// @brief Compute traversal metric for single-tree queries.
+///
+/// Uses bounding capsule along longest axis for lower bound on distance to line.
+///
+/// @return Squared distance lower bound
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto traversal_metric(const tf::obb_like<Dims, Policy0> &obb,
+                      const tf::line_like<Dims, Policy1> &line) {
+  using T = tf::coordinate_type<Policy0, Policy1>;
+
+  // OBB center
+  auto center = obb.origin + obb.axes[0] * (obb.extent[0] * T(0.5)) +
+                obb.axes[1] * (obb.extent[1] * T(0.5)) +
+                obb.axes[2] * (obb.extent[2] * T(0.5));
+
+  // Segment along longest axis (axes[0]) through center
+  auto half_len = obb.extent[0] * T(0.5);
+  auto p0 = center - obb.axes[0] * half_len;
+  auto p1 = center + obb.axes[0] * half_len;
+  auto seg = tf::make_segment_between_points(p0, p1);
+
+  // Capsule radius: half-diagonal of cross-section (extent[1] x extent[2])
+  auto r = tf::sqrt(obb.extent[1] * obb.extent[1] +
+                    obb.extent[2] * obb.extent[2]) *
+           T(0.5);
+
+  auto d_seg = tf::distance(seg, line);
+  auto result = std::max(T(0), d_seg - r);
+  return result * result;
+}
+
+/// @brief Compute traversal metric for single-tree queries.
+///
+/// Uses bounding capsule along longest axis for lower bound on distance to ray.
+///
+/// @return Squared distance lower bound
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto traversal_metric(const tf::obb_like<Dims, Policy0> &obb,
+                      const tf::ray_like<Dims, Policy1> &ray) {
+  using T = tf::coordinate_type<Policy0, Policy1>;
+
+  // OBB center
+  auto center = obb.origin + obb.axes[0] * (obb.extent[0] * T(0.5)) +
+                obb.axes[1] * (obb.extent[1] * T(0.5)) +
+                obb.axes[2] * (obb.extent[2] * T(0.5));
+
+  // Segment along longest axis (axes[0]) through center
+  auto half_len = obb.extent[0] * T(0.5);
+  auto p0 = center - obb.axes[0] * half_len;
+  auto p1 = center + obb.axes[0] * half_len;
+  auto seg = tf::make_segment_between_points(p0, p1);
+
+  // Capsule radius: half-diagonal of cross-section (extent[1] x extent[2])
+  auto r = tf::sqrt(obb.extent[1] * obb.extent[1] +
+                    obb.extent[2] * obb.extent[2]) *
+           T(0.5);
+
+  auto d_seg = tf::distance(seg, ray);
+  auto result = std::max(T(0), d_seg - r);
+  return result * result;
+}
+
+// ============================================================================
+// RSS row
+// ============================================================================
+
+/// @brief Compute traversal metric for single-tree queries.
+///
+/// Converts AABB to RSS for distance bound.
+///
+/// @return Squared distance lower bound
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto traversal_metric(const tf::rss_like<Dims, Policy0> &rss,
+                      const tf::aabb_like<Dims, Policy1> &aabb) {
+  static_assert(Dims == 3,
+                "traversal_metric(rss, aabb) is implemented for 3D only.");
+
+  auto aabb_rss = tf::rss_from(aabb);
+  return tf::distance2(rss, aabb_rss);
+}
+
+/// @brief Compute traversal metric for single-tree queries.
+///
+/// @return Squared distance (exact)
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto traversal_metric(const tf::rss_like<Dims, Policy0> &rss,
+                      const tf::point_like<Dims, Policy1> &pt) {
+  return tf::distance2(rss, pt);
+}
+
+/// @brief Compute traversal metric for single-tree queries.
+///
+/// Uses bounding capsule along longer axis for lower bound on distance to line.
+///
+/// @return Squared distance lower bound
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto traversal_metric(const tf::rss_like<Dims, Policy0> &rss,
+                      const tf::line_like<Dims, Policy1> &line) {
+  static_assert(Dims == 3,
+                "traversal_metric(rss, line) is implemented for 3D only.");
+  using T = tf::coordinate_type<Policy0, Policy1>;
+
+  // RSS center
+  auto center = rss.origin + rss.axes[0] * (rss.length[0] * T(0.5)) +
+                rss.axes[1] * (rss.length[1] * T(0.5));
+
+  // Segment along longer axis through center
+  auto longer_idx = rss.length[0] >= rss.length[1] ? 0 : 1;
+  auto shorter_idx = 1 - longer_idx;
+  auto half_len = rss.length[longer_idx] * T(0.5);
+  auto p0 = center - rss.axes[longer_idx] * half_len;
+  auto p1 = center + rss.axes[longer_idx] * half_len;
+  auto seg = tf::make_segment_between_points(p0, p1);
+
+  // Capsule radius: half of shorter axis + rss radius
+  auto r = rss.length[shorter_idx] * T(0.5) + rss.radius;
+
+  auto d_seg = tf::distance(seg, line);
+  auto result = std::max(T(0), d_seg - r);
+  return result * result;
+}
+
+/// @brief Compute traversal metric for single-tree queries.
+///
+/// Uses bounding capsule along longer axis for lower bound on distance to ray.
+///
+/// @return Squared distance lower bound
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto traversal_metric(const tf::rss_like<Dims, Policy0> &rss,
+                      const tf::ray_like<Dims, Policy1> &ray) {
+  static_assert(Dims == 3,
+                "traversal_metric(rss, ray) is implemented for 3D only.");
+  using T = tf::coordinate_type<Policy0, Policy1>;
+
+  // RSS center
+  auto center = rss.origin + rss.axes[0] * (rss.length[0] * T(0.5)) +
+                rss.axes[1] * (rss.length[1] * T(0.5));
+
+  // Segment along longer axis through center
+  auto longer_idx = rss.length[0] >= rss.length[1] ? 0 : 1;
+  auto shorter_idx = 1 - longer_idx;
+  auto half_len = rss.length[longer_idx] * T(0.5);
+  auto p0 = center - rss.axes[longer_idx] * half_len;
+  auto p1 = center + rss.axes[longer_idx] * half_len;
+  auto seg = tf::make_segment_between_points(p0, p1);
+
+  // Capsule radius: half of shorter axis + rss radius
+  auto r = rss.length[shorter_idx] * T(0.5) + rss.radius;
+
+  auto d_seg = tf::distance(seg, ray);
+  auto result = std::max(T(0), d_seg - r);
+  return result * result;
+}
+
+// ============================================================================
+// OBBRSS row (forwards to RSS)
+// ============================================================================
+
+/// @brief Compute traversal metric for single-tree queries.
+///
+/// Forwards to RSS metric.
+///
+/// @return Squared distance lower bound
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto traversal_metric(const tf::obbrss_like<Dims, Policy0> &obbrss,
+                      const tf::aabb_like<Dims, Policy1> &aabb) {
+  auto rss = tf::make_rss_like(obbrss.rss_origin, obbrss.axes, obbrss.length,
+                               obbrss.radius);
+  return traversal_metric(rss, aabb);
+}
+
+/// @brief Compute traversal metric for single-tree queries.
+///
+/// Forwards to RSS metric.
+///
+/// @return Squared distance lower bound
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto traversal_metric(const tf::obbrss_like<Dims, Policy0> &obbrss,
+                      const tf::point_like<Dims, Policy1> &pt) {
+  auto rss = tf::make_rss_like(obbrss.rss_origin, obbrss.axes, obbrss.length,
+                               obbrss.radius);
+  return traversal_metric(rss, pt);
+}
+
+/// @brief Compute traversal metric for single-tree queries.
+///
+/// Forwards to RSS metric.
+///
+/// @return Squared distance lower bound
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto traversal_metric(const tf::obbrss_like<Dims, Policy0> &obbrss,
+                      const tf::line_like<Dims, Policy1> &line) {
+  auto rss = tf::make_rss_like(obbrss.rss_origin, obbrss.axes, obbrss.length,
+                               obbrss.radius);
+  return traversal_metric(rss, line);
+}
+
+/// @brief Compute traversal metric for single-tree queries.
+///
+/// Forwards to RSS metric.
+///
+/// @return Squared distance lower bound
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto traversal_metric(const tf::obbrss_like<Dims, Policy0> &obbrss,
+                      const tf::ray_like<Dims, Policy1> &ray) {
+  auto rss = tf::make_rss_like(obbrss.rss_origin, obbrss.axes, obbrss.length,
+                               obbrss.radius);
+  return traversal_metric(rss, ray);
 }
 
 } // namespace tf::spatial

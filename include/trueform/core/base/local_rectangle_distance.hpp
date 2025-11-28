@@ -49,10 +49,10 @@ auto is_in_voronoi_region(T a, T b, T anorm_dot_b, T anorm_dot_t, T a_dot_b,
   v = t * a_dot_b - b_dot_t;
 
   if (anorm_dot_b > T(0)) {
-    if (v > (u + T(1e-7)))
+    if (v > (u + tf::epsilon<T>))
       return true;
   } else {
-    if (v < (u - T(1e-7)))
+    if (v < (u - tf::epsilon<T>))
       return true;
   }
   return false;

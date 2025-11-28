@@ -18,6 +18,7 @@
 #include "./polygon.hpp"
 #include "./ray.hpp"
 #include "./ray_aabb_check.hpp"
+#include "./ray_obb_check.hpp"
 #include "./ray_cast_info.hpp"
 #include "./ray_config.hpp"
 #include "./segment.hpp"
@@ -251,6 +252,17 @@ auto ray_cast(
     ray_inv_dir[i] = tf::epsilon_inverse(ray.direction[i]);
   auto status = core::ray_aabb_check(ray, ray_inv_dir, aabb, t_min, t_max,
                                      config.min_t, config.max_t);
+  return tf::make_ray_cast_info(status, t_min);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto ray_cast(
+    const ray_like<Dims, Policy0> &ray,
+    const tf::obb_like<Dims, Policy1> &obb,
+    const tf::ray_config<tf::coordinate_type<Policy0, Policy1>> &config = {}) {
+  tf::coordinate_type<Policy0, Policy1> t_min{}, t_max{};
+  auto status =
+      core::ray_obb_check(ray, obb, t_min, t_max, config.min_t, config.max_t);
   return tf::make_ray_cast_info(status, t_min);
 }
 
