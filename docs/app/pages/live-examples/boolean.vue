@@ -78,6 +78,10 @@ watch(isDark, (dark) => {
             <p class="text-sm">Grab a mesh and move it to inspect intersection curve and difference mesh.</p>
           </div>
           <div class="flex gap-2 items-center text-muted">
+            <UKbd variant="subtle">r</UKbd>
+            <p class="text-sm">Resync camera controls</p>
+          </div>
+          <div class="flex gap-2 items-center text-muted">
             <UKbd variant="subtle">n</UKbd>
             <p class="text-sm">Randomize mesh orientation</p>
           </div>

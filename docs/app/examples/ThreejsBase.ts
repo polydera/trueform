@@ -8,6 +8,7 @@ import {
   type SceneBundle, syncOrbitControls,
 } from "@/utils/sceneUtils";
 import {createMesh, getMeshFromWasm, switchTextures} from "@/utils/utils";
+import {OrbitControls} from "three/examples/jsm/controls/OrbitControls";
 
 abstract class IThreejsBase {
   abstract runMain(): void;
@@ -128,11 +129,36 @@ export abstract class ThreejsBase implements IThreejsBase {
         this.renderer,
         this.renderer2,
         config1,
-        config2,
-        this.syncSceneControls
+        config2
       );
       this.sceneBundle1 = sceneBundle1;
       this.sceneBundle2 = sceneBundle2;
+
+      if(this.syncSceneControls) {
+        let isSyncing = false; // Prevent infinite loops
+        const syncControls = (sourceControls: OrbitControls, targetControls: OrbitControls) => {
+          if (isSyncing) return;
+          isSyncing = true;
+          syncOrbitControls(sourceControls, targetControls);
+          isSyncing = false;
+        }
+        const setupControlsSync = (controls1: OrbitControls, controls2: OrbitControls) => {
+          const syncEvents = ['change', 'start', 'end'];
+
+          syncEvents.forEach(eventType => {
+            controls1.addEventListener(eventType, () => {
+              if(this.syncSceneControls)
+                syncControls(controls1, controls2);
+            });
+
+          });
+          controls2.addEventListener('start', () => {
+            this.syncSceneControls = false;
+          });
+        };
+        setupControlsSync(sceneBundle1.controls, sceneBundle2.controls);
+        syncControls(sceneBundle1.controls, sceneBundle2.controls);
+      }
     } else {
       // Create first scene with camera, controls, and lighting (single renderer mode)
       this.sceneBundle1 = createSceneWithCustomConfig(this.renderer, 1);

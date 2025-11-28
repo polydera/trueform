@@ -74,6 +74,10 @@ watch(isDark, (dark) => {
             <UKbd variant="subtle" value="shift"/><UKbd variant="subtle">Scroll</UKbd>
             <p>Sweep the plane and isobands.</p>
           </div>
+          <div class="flex gap-2 items-center text-muted">
+            <UKbd variant="subtle">r</UKbd>
+            <p class="text-sm">Resync camera controls</p>
+          </div>
           <div class="flex gap-1.5 items-center text-muted">
             <UKbd variant="subtle">n</UKbd>
             <p>Randomize plane orientation</p>

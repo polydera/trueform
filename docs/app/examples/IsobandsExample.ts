@@ -29,6 +29,12 @@ export class IsobandsExample extends ThreejsBase {
     const interceptKeyDownEvent = (event: KeyboardEvent) => {
       if (this.keyPressed) return;
       this.keyPressed = true;
+      if(event.key === "r"){
+        this.syncSceneControls = true;
+        if(this.sceneBundle2)
+          syncOrbitControls(this.sceneBundle1.controls, this.sceneBundle2.controls);
+        return;
+      }
       this.wasmInstance.OnKeyPress(event.key);
       this.updateMeshes();
     };

@@ -250,7 +250,7 @@ export function createBidirectionalSyncedScenes(
     renderer2: THREE.WebGLRenderer,
     config1: SceneConfig = {},
     config2: SceneConfig = {},
-    syncSceneControls: boolean = true
+    syncSceneControls: boolean = false
 ): { sceneBundle1: SceneBundle; sceneBundle2: SceneBundle } {
     // Create both scenes
     const sceneBundle1 = createScene(renderer1, config1);
