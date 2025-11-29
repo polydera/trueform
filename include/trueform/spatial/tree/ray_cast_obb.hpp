@@ -18,7 +18,7 @@
 namespace tf::spatial {
 
 template <typename TreePolicy, typename RayPolicy, typename Result, typename F>
-auto ray_cast(const tree_like<TreePolicy> &tree,
+auto ray_cast(const tf::tree_like<TreePolicy> &tree,
               const tf::ray_like<TreePolicy::coordinate_dims::value, RayPolicy>
                   &ray,
               Result &result, const F &intersect_f,

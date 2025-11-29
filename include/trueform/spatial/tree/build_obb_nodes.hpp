@@ -11,7 +11,7 @@
 #include "../../core/buffer.hpp"
 #include "../../core/obb.hpp"
 #include "../../core/obb_from.hpp"
-#include "../tree_config.hpp"
+#include "./tree_config.hpp"
 #include "../max_nodes_in_tree.hpp"
 #include "./tree_node.hpp"
 namespace tf::spatial {
@@ -21,7 +21,7 @@ template <typename Partitioner, typename Index, typename RealT,
 auto build_tree_nodes(buffer<tree_node<Index, tf::obb<RealT, Dims>>> &nodes,
                      const Range0 &primitives, const Range1 &aabbs,
                      Range2 &ids, Index node_id, Index offset,
-                     const tree_node_config &config) {
+                     const tf::tree_config &config) {
   // create the bounding box
   nodes[node_id].bv = tf::core::obb_from(
       tf::make_indirect_range(ids, primitives), primitives[0]);
@@ -57,7 +57,7 @@ template <typename Partitioner, typename Index, typename RealT,
           std::size_t Dims, typename Range0, typename Range1>
 auto build_tree_nodes(buffer<tree_node<Index, tf::obb<RealT, Dims>>> &nodes,
                      buffer<Index> &ids, const Range0 &primitives,
-                     const Range1 &aabbs, tree_node_config config) {
+                     const Range1 &aabbs, tf::tree_config config) {
 
   nodes.clear();
   if (!primitives.size()) {
