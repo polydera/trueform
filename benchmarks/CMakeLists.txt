@@ -366,6 +366,8 @@ set(ALL_BENCHMARK_IMPLS
     spatial-polygons-closest_point-cgal-impl
     spatial-polygons_to_polygons-closest_point-tf-impl
     spatial-polygons_to_polygons-closest_point-fcl-impl
+    spatial-polygons_to_polygons-collision-tf-impl
+    spatial-polygons_to_polygons-collision-fcl-impl
 )
 
 # Add VTK implementations if available
@@ -406,6 +408,8 @@ set(BENCHMARK_TARGETS
     spatial-polygons-closest_point-cgal
     spatial-polygons_to_polygons-closest_point-tf
     spatial-polygons_to_polygons-closest_point-fcl
+    spatial-polygons_to_polygons-collision-tf
+    spatial-polygons_to_polygons-collision-fcl
     topology-connected_components-cgal
     topology-connected_components-tf
     topology-boundary_paths-cgal
