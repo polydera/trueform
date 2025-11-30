@@ -6,6 +6,7 @@
  */
 #pragma once
 
+#include "../../core/coordinate_type.hpp"
 #include "../../core/transformed.hpp"
 #include "../form.hpp"
 #include "../nearest_neighbors.hpp"
@@ -122,7 +123,7 @@ auto nearness_search(const tf::form<Dims, Policy0> &form, const F0 &bv_metric,
 template <std::size_t Dims, typename Policy0, typename F0, typename F1>
 auto nearness_search(const tf::form<Dims, Policy0> &form, const F0 &bv_metric,
                      const F1 &closest_point_f,
-                     typename Policy0::real_t radius) {
+                     tf::coordinate_type<Policy0> radius) {
   return nearness_search(
       form.tree(),
       [&](const auto &bv) {

@@ -169,8 +169,8 @@ auto dual_form_search_dispatch(const tf::form<Dims, Policy0> &form0,
                                const tf::form<Dims, Policy1> &form1,
                                const F0 &check_bvs, const F1 &primitive_apply,
                                int parallelism_depth = 6) -> bool {
-  using Index0 = typename Policy0::index_t;
-  using Index1 = typename Policy1::index_t;
+  using Index0 = typename Policy0::index_type;
+  using Index1 = typename Policy1::index_type;
 
   if constexpr (!std::is_same_v<
                     decltype(primitive_apply(

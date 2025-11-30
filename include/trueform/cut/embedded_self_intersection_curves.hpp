@@ -14,7 +14,7 @@
 namespace tf {
 template <typename Policy>
 auto embedded_self_intersection_curves(const tf::polygons<Policy> &_polygons) {
-  using Index = std::common_type_t<typename Policy::index_t>;
+  using Index = std::common_type_t<typename Policy::index_type>;
   tf::intersections_within_polygons<Index, double, 3> iwp;
   iwp.build(tf::make_form(_polygons));
   tf::cut_faces<Index> cf;
@@ -27,7 +27,7 @@ auto embedded_self_intersection_curves(const tf::polygons<Policy> &_polygons) {
 template <typename Policy>
 auto embedded_self_intersection_curves(const tf::polygons<Policy> &_polygons,
                                        tf::return_curves_t) {
-  using Index = std::common_type_t<typename Policy::index_t>;
+  using Index = std::common_type_t<typename Policy::index_type>;
   tf::intersections_within_polygons<Index, double, 3> iwp;
   iwp.build(tf::make_form(_polygons));
   tf::cut_faces<Index> cf;

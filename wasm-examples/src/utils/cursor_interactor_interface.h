@@ -27,7 +27,7 @@ public:
 
   auto push_back_with_objects(
       std::unique_ptr<mesh_object> mesh,
-      std::optional<tf::tree<int, float, 3>> tree = std::nullopt,
+      std::optional<tf::aabb_tree<int, float, 3>> tree = std::nullopt,
       std::optional<tf::face_membership<int>> face_membership = std::nullopt,
       std::optional<tf::manifold_edge_link<int, 3>> manifold_edges =
           std::nullopt) -> void {
@@ -83,7 +83,7 @@ protected:
   std::vector<tf::polygons_buffer<int, float, 3, 3> *> polys;
   std::vector<std::unique_ptr<mesh_object>> actors;
   std::vector<tf::frame<double, 3>> frames;
-  std::vector<tf::tree<int, float, 3>> trees;
+  std::vector<tf::aabb_tree<int, float, 3>> trees;
   std::vector<tf::face_membership<int>> face_memberships;
   std::vector<tf::manifold_edge_link<int, 3>> manifold_edge_links;
 };
@@ -155,7 +155,7 @@ public:
 
   auto push_back_with_objects(
       std::unique_ptr<mesh_object> mesh,
-      std::optional<tf::tree<int, float, 3>> tree = std::nullopt,
+      std::optional<tf::aabb_tree<int, float, 3>> tree = std::nullopt,
       std::optional<tf::face_membership<int>> face_membership = std::nullopt,
       std::optional<tf::manifold_edge_link<int, 3>> manifold_edges =
           std::nullopt) -> void {

@@ -19,7 +19,7 @@ auto gather_ids(const tf::form<Dims, Policy0> &form0,
     if constexpr (tf::has_id_policy<decltype(form[0])>)
       return form[0].id();
     else
-      return typename decltype(form)::index_t(0);
+      return typename decltype(form)::index_type(0);
   };
   using index_t0 = std::decay_t<decltype(get_index_t(form0))>;
   using index_t1 = std::decay_t<decltype(get_index_t(form1))>;

@@ -20,7 +20,7 @@
 class geometry_handle_t {
 public:
   auto push_back(vtkActor *actor, vtkPolyData *poly,
-                 tf::tree<int, float, 3> &tree) -> void {
+                 tf::aabb_tree<int, float, 3> &tree) -> void {
     map[actor] = actors.size();
     actors.push_back(actor);
     polys.push_back(poly);
@@ -76,7 +76,7 @@ private:
   std::vector<vtkPolyData *> polys;
   std::vector<vtkActor *> actors;
   std::vector<tf::frame<float, 3>> frames;
-  std::vector<tf::tree<int, float, 3> *> trees;
+  std::vector<tf::aabb_tree<int, float, 3> *> trees;
 };
 
 class cursor_interactor : public vtkInteractorStyleTrackballCamera {
@@ -207,7 +207,7 @@ public:
   }
 
   auto push_back(vtkActor *actor, vtkPolyData *poly,
-                 tf::tree<int, float, 3> &tree) -> void {
+                 tf::aabb_tree<int, float, 3> &tree) -> void {
     geometry_handle.push_back(actor, poly, tree);
   }
 
@@ -290,7 +290,7 @@ int main(int argc, char *argv[]) {
   }
 
   std::vector<decltype(read_mesh(argv[1]))> polys;
-  std::vector<tf::tree<int, float, 3>> trees;
+  std::vector<tf::aabb_tree<int, float, 3>> trees;
 
   for (int i = 1; i < argc; ++i) {
     std::filesystem::path path{argv[i]};

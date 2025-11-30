@@ -44,7 +44,7 @@ int main() {
 
   // --- 3. Build the acceleration structure ---
   // The tree is built once over the static geometry.
-  tf::tree<int, float, 3> mesh_tree(mesh_polygons, tf::config_tree(4, 4));
+  tf::aabb_tree<int, float, 3> mesh_tree(mesh_polygons, tf::config_tree(4, 4));
 
   // --- 4. Define a transformation ---
   // We'll create a frame that rotates the mesh 90 degrees around the Y-axis

@@ -51,7 +51,7 @@ int run_boolean_merge_benchmark(const std::string &file_name, int n_iters) {
                         tf::make_points<3>(raw_points).as<double>());
 
   // Build trueform acceleration & tags once
-  tf::tree<int, float, 3> tree_tf;
+  tf::aabb_tree<int, float, 3> tree_tf;
   tree_tf.build(polygons, tf::config_tree(4, 4));
 
   tf::face_membership<int> fe;

@@ -15,7 +15,7 @@ template <std::size_t Dims, typename Policy0, typename Policy1>
 auto make_intersection_curves(const tf::form<Dims, Policy0> &form0,
                               const tf::form<Dims, Policy1> &form1) {
   using Index =
-      std::common_type_t<typename Policy0::index_t, typename Policy1::index_t>;
+      std::common_type_t<typename Policy0::index_type, typename Policy1::index_type>;
   tf::intersections_between_polygons<Index, double,
                                      tf::coordinate_dims_v<Policy0>>
       ibp;

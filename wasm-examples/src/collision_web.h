@@ -168,7 +168,7 @@ int run_main_collisions(std::vector<std::string> &paths) {
     throw std::runtime_error("Collisions demo expects STL input paths.");
   }
   std::vector<std::unique_ptr<mesh_object>> polys;
-  std::vector<tf::tree<int, float, 3>> trees;
+  std::vector<tf::aabb_tree<int, float, 3>> trees;
 
   for (int i = 0; i < static_cast<int>(paths.size()); ++i) {
     auto poly = tf::read_stl<int>(paths[i]);

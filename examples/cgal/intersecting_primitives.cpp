@@ -66,7 +66,7 @@ int run_intersections(const std::string &file_name, int n_iters) {
   auto polygons = tf::make_polygons(tf::make_blocked_range<3>(raw_faces),
                                     tf::make_points<3>(raw_points));
   // Build trueform tree once
-  tf::tree<int, float, 3> tree_tf;
+  tf::aabb_tree<int, float, 3> tree_tf;
   tree_tf.build(polygons, tf::config_tree(4, 4));
 
   float time_cgal = 0.0f;
@@ -148,7 +148,7 @@ int run_build(const std::string &file_name, int n_iters) {
 
     // --- trueform Build ---
     tf::tick();
-    tf::tree<int, float, 3> tree_tf;
+    tf::aabb_tree<int, float, 3> tree_tf;
     tree_tf.build(polygons, tf::config_tree(4, 4));
     time_tf = std::min(time_tf, tf::tock());
     dummy_out += tree_tf.nodes().size();

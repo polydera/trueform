@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
       tf::make_transformation_from_translation(-pt1.as_vector_view()),
       tf::random_transformation(pt0.as_vector_view()));
 
-  tf::tree<int, float, 3> tree_tf;
+  tf::aabb_tree<int, float, 3> tree_tf;
   tree_tf.build(polygons, tf::config_tree(4, 4));
 
   tf::face_membership<int> fm;

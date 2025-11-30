@@ -25,7 +25,7 @@ int run_intersections(const std::string &file_name, int n_iters) {
       tf::make_polygons(tf::make_blocked_range<3>(raw_faces),
                         tf::make_points<3>(raw_points).as<double>());
   // Build trueform tree once
-  tf::tree<int, float, 3> tree_tf;
+  tf::aabb_tree<int, float, 3> tree_tf;
   tree_tf.build(polygons, tf::config_tree(4, 4));
   tf::face_membership<int> fe;
   fe.build(polygons);

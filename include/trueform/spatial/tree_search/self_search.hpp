@@ -50,7 +50,7 @@ template <std::size_t Dims, typename Policy, typename F0, typename F1,
 auto search_self(const tf::form<Dims, Policy> &form, const F0 &check_bvs,
                  const F1 &primitive_apply, const F2 &abort,
                  int parallelism_depth = 6) -> bool {
-  using Index = typename Policy::index_t;
+  using Index = typename Policy::index_type;
   auto bv_f = [&](const auto &bv0, const auto &bv1) -> bool {
     return check_bvs(tf::transformed(bv0, form.transformation()),
                      tf::transformed(bv1, form.transformation()));
@@ -116,7 +116,7 @@ template <std::size_t Dims, typename Policy, typename F0, typename F1>
 auto search_self_form_dispatch(const tf::form<Dims, Policy> &form,
                                const F0 &check_bvs, const F1 &primitive_apply,
                                int parallelism_depth = 6) -> bool {
-  using Index = typename Policy::index_t;
+  using Index = typename Policy::index_type;
 
   if constexpr (!std::is_same_v<
                     decltype(primitive_apply(

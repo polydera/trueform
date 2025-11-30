@@ -30,8 +30,7 @@ namespace policy {
 
 template <typename TreeViewPolicy, typename Base> struct tag_tree : Base {
   using tree_policy = TreeViewPolicy;
-  using index_t = typename TreeViewPolicy::index_type;
-  using real_t = typename TreeViewPolicy::coordinate_type;
+  using index_type = typename TreeViewPolicy::index_type;
 
   using Base::operator=;
 

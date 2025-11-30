@@ -64,7 +64,7 @@ int main() {
 
   // Build the acceleration structure and query form once.
   auto final_points_view = tf::make_points(points);
-  tf::tree<int, float, 3> point_tree(final_points_view, tf::config_tree(4, 4));
+  tf::aabb_tree<int, float, 3> point_tree(final_points_view, tf::config_tree(4, 4));
   auto form = tf::make_form(point_tree, final_points_view);
 
   // --- Approach 4.1: The High-Level Approach with `gather_self_ids` ---

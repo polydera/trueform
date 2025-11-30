@@ -13,7 +13,7 @@ template <typename Policy0, typename Policy1>
 auto make_mesh_arrangements(const tf::polygons<Policy0> _polygons0,
                             const tf::polygons<Policy1> &_polygons1) {
   using Index =
-      std::common_type_t<typename Policy0::index_t, typename Policy1::index_t>;
+      std::common_type_t<typename Policy0::index_type, typename Policy1::index_type>;
   tf::intersections_between_polygons<Index, double, 3> ibp;
   ibp.build(tf::make_form(_polygons0), tf::make_form(_polygons1));
   tf::tagged_cut_faces<Index> tcf;

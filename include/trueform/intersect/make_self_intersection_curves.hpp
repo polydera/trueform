@@ -13,7 +13,7 @@
 namespace tf {
 template <std::size_t Dims, typename Policy>
 auto make_self_intersection_curves(const tf::form<Dims, Policy> &form) {
-  using Index = typename Policy::index_t;
+  using Index = typename Policy::index_type;
   tf::intersections_within_polygons<Index, double,
                                     tf::coordinate_dims_v<Policy>>
       iwp;

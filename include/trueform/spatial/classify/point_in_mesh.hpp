@@ -31,7 +31,7 @@ auto classify_point(const tf::point_like<3, Policy0> &_point,
   const auto &tree = polygons.tree();
   if (!intersects(tree.bv(), point))
     return tf::containment::outside;
-  using index_t = typename Policy1::index_t;
+  using index_t = typename Policy1::index_type;
   using real_type = tf::coordinate_type<Policy0, Policy1>;
   struct node_t {
     index_t element;
@@ -126,7 +126,7 @@ auto classify_point(const tf::point_like<3, Policy0> &_point,
   const auto &tree = polygons.tree();
   if (!intersects(tree.bv(), point))
     return tf::containment::outside;
-  using index_t = typename Policy1::index_t;
+  using index_t = typename Policy1::index_type;
   using real_type = tf::coordinate_type<Policy0, Policy1>;
 
   tf::ray<real_type, 3> ray;

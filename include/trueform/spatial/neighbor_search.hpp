@@ -8,6 +8,7 @@
 
 #include "../core/aabb_from.hpp"
 #include "../core/closest_metric_point.hpp"
+#include "../core/coordinate_type.hpp"
 #include "../core/closest_metric_point_pair.hpp"
 #include "../core/line_like.hpp"
 #include "../core/polygon.hpp"
@@ -34,7 +35,7 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::point_like<Dims, Policy1> &obj,
-                     typename Policy0::real_t radius) {
+                     tf::coordinate_type<Policy0, Policy1> radius) {
   return tf::spatial::nearness_search(
       form,
       [&](const auto &bv) { return tf::spatial::traversal_metric(bv, obj); },
@@ -77,7 +78,7 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::segment<Dims, Policy1> &obj,
-                     typename Policy0::real_t radius) {
+                     tf::coordinate_type<Policy0, Policy1> radius) {
   auto obj_aabb = tf::aabb_from(obj);
   return tf::spatial::nearness_search(
       form,
@@ -121,7 +122,7 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::ray_like<Dims, Policy1> &obj,
-                     typename Policy0::real_t radius) {
+                     tf::coordinate_type<Policy0, Policy1> radius) {
   return tf::spatial::nearness_search(
       form,
       [&](const auto &bv) { return tf::spatial::traversal_metric(bv, obj); },
@@ -163,7 +164,7 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::line_like<Dims, Policy1> &obj,
-                     typename Policy0::real_t radius) {
+                     tf::coordinate_type<Policy0, Policy1> radius) {
   return tf::spatial::nearness_search(
       form,
       [&](const auto &bv) { return tf::spatial::traversal_metric(bv, obj); },
@@ -207,7 +208,7 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::polygon<Dims, Policy1> &obj,
-                     typename Policy0::real_t radius) {
+                     tf::coordinate_type<Policy0, Policy1> radius) {
   auto obj_aabb = tf::aabb_from(obj);
   auto plane_obj = tf::tag_plane(obj);
   return tf::spatial::nearness_search(
@@ -251,7 +252,7 @@ auto neighbor_search(const tf::form<2, Policy0> &form,
 template <typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<2, Policy0> &form,
                      const tf::polygon<2, Policy1> &obj,
-                     typename Policy0::real_t radius) {
+                     tf::coordinate_type<Policy0, Policy1> radius) {
   auto obj_aabb = tf::aabb_from(obj);
   return tf::spatial::nearness_search(
       form,
@@ -295,7 +296,7 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form0,
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form0,
                      const tf::form<Dims, Policy1> &form1,
-                     typename Policy0::real_t radius) {
+                     tf::coordinate_type<Policy0, Policy1> radius) {
   return tf::spatial::nearness_search(
       form0, form1,
       [](const auto &obj0, const auto &obj1) {

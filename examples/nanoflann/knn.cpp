@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
   index.buildIndex();
   tf::tock("Built nanoflann tree in ");
 
-  tf::tree<int, float, 3> tree;
+  tf::aabb_tree<int, float, 3> tree;
   tf::tick();
   tree.build(points, tf::config_tree(4, 4));
   tf::tock("Built trueform tree  in ");
