@@ -13,6 +13,6 @@
 int main() {
   return benchmark::run_polygons_to_polygons_closest_point_tf_benchmark(
       benchmark::BENCHMARK_MESHES,
-      100, // n_samples
+      1000, // n_samples
       std::cout);
 }

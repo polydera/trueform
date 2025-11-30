@@ -13,38 +13,62 @@ namespace benchmark {
 int run_polygons_closest_point_tf_benchmark(
     const std::vector<std::string> &mesh_paths, int n_samples,
     std::ostream &out) {
-  out << "polygons,time_ms\n";
+  out << "bv,polygons,time_ms\n";
 
   for (const auto &path : mesh_paths) {
     auto polygons = tf::read_stl<int>(path);
     auto points = polygons.points();
-
-    // Build tree
-    tf::aabb_tree<int, float, 3> tree;
-    tree.build(polygons.polygons(), tf::config_tree(4, 4));
-
-    // Calculate diagonal length for query generation
+    auto config = tf::config_tree(4, 4);
     auto l = tf::aabb_from(points).diagonal().length();
-
-    // Query point (updated in prepare)
     tf::point<float, 3> query_point;
-    auto form = tf::make_form(tree, polygons.polygons());
 
-    auto time = benchmark::mean_time_of(
+    tf::aabb_tree<int, float, 3> tree_aabb;
+    tree_aabb.build(polygons.polygons(), config);
+    auto form_aabb = tf::make_form(tree_aabb, polygons.polygons());
+
+    auto time_aabb = benchmark::mean_time_of(
         [&]() {
-          // Prepare: generate random query point
           auto idx = tf::random<int>(0, points.size() - 1);
-          auto point = points[idx];
-          query_point = point + tf::random_vector<float, 3>() * l;
+          query_point = points[idx] + tf::random_vector<float, 3>() * l;
         },
         [&]() {
-          // Benchmark: kNN query
-          auto cpt = tf::neighbor_search(form, query_point);
+          auto cpt = tf::neighbor_search(form_aabb, query_point);
           benchmark::do_not_optimize(cpt);
         },
         n_samples);
+    out << "AABB," << polygons.faces().size() << "," << time_aabb << "\n";
 
-    out << polygons.faces().size() << "," << time << "\n";
+    tf::obb_tree<int, float, 3> tree_obb;
+    tree_obb.build(polygons.polygons(), config);
+    auto form_obb = tf::make_form(tree_obb, polygons.polygons());
+
+    auto time_obb = benchmark::mean_time_of(
+        [&]() {
+          auto idx = tf::random<int>(0, points.size() - 1);
+          query_point = points[idx] + tf::random_vector<float, 3>() * l;
+        },
+        [&]() {
+          auto cpt = tf::neighbor_search(form_obb, query_point);
+          benchmark::do_not_optimize(cpt);
+        },
+        n_samples);
+    out << "OBB," << polygons.faces().size() << "," << time_obb << "\n";
+
+    tf::obbrss_tree<int, float, 3> tree_obbrss;
+    tree_obbrss.build(polygons.polygons(), config);
+    auto form_obbrss = tf::make_form(tree_obbrss, polygons.polygons());
+
+    auto time_obbrss = benchmark::mean_time_of(
+        [&]() {
+          auto idx = tf::random<int>(0, points.size() - 1);
+          query_point = points[idx] + tf::random_vector<float, 3>() * l;
+        },
+        [&]() {
+          auto cpt = tf::neighbor_search(form_obbrss, query_point);
+          benchmark::do_not_optimize(cpt);
+        },
+        n_samples);
+    out << "OBBRSS," << polygons.faces().size() << "," << time_obbrss << "\n";
   }
 
   return 0;

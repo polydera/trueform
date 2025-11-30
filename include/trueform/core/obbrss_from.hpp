@@ -335,18 +335,21 @@ auto obbrss_from(const Range &points, const tf::point_like<Dims, Policy> &) {
       std::numeric_limits<T>::max(), -std::numeric_limits<T>::max()};
 
   auto proj_acc = tf::reduce(
-      points,
-      [&](proj_accum acc, const auto &pt) {
-        auto diff = pt - centroid;
-        T px = tf::dot(diff, axes[0]);
-        T py = tf::dot(diff, axes[1]);
-        T pz = tf::dot(diff, axes[2]);
-        acc.minx = min(acc.minx, px);
-        acc.maxx = max(acc.maxx, px);
-        acc.miny = min(acc.miny, py);
-        acc.maxy = max(acc.maxy, py);
-        acc.minz = min(acc.minz, pz);
-        acc.maxz = max(acc.maxz, pz);
+      tf::make_mapped_range(points,
+                            [&](const auto &pt) {
+                              auto diff = pt - centroid;
+                              T px = tf::dot(diff, axes[0]);
+                              T py = tf::dot(diff, axes[1]);
+                              T pz = tf::dot(diff, axes[2]);
+                              return proj_accum{px, px, py, py, pz, pz};
+                            }),
+      [](proj_accum acc, const auto &element) {
+        acc.minx = std::min(acc.minx, element.minx);
+        acc.maxx = std::max(acc.maxx, element.maxx);
+        acc.miny = std::min(acc.miny, element.miny);
+        acc.maxy = std::max(acc.maxy, element.maxy);
+        acc.minz = std::min(acc.minz, element.minz);
+        acc.maxz = std::max(acc.maxz, element.maxz);
         return acc;
       },
       proj_init, tf::checked);
@@ -366,21 +369,26 @@ auto obbrss_from(const Range &points, const tf::point_like<Dims, Policy> &) {
       std::numeric_limits<T>::max(), -std::numeric_limits<T>::max()};
 
   auto rss_acc = tf::reduce(
-      points,
-      [&](rss_accum acc, const auto &pt) {
-        auto diff = pt - centroid;
-        T px = tf::dot(diff, axes[0]);
-        T py = tf::dot(diff, axes[1]);
-        T pz = tf::dot(diff, axes[2]);
+      tf::make_mapped_range(points,
+                            [&](const auto &pt) {
+                              auto diff = pt - centroid;
+                              T px = tf::dot(diff, axes[0]);
+                              T py = tf::dot(diff, axes[1]);
+                              T pz = tf::dot(diff, axes[2]);
 
-        T dz = pz - cz;
-        T dz2 = dz * dz;
-        T shrink = (dz2 < radsqr) ? tf::sqrt(radsqr - dz2) : T(0);
+                              T dz = pz - cz;
+                              T dz2 = dz * dz;
+                              T shrink =
+                                  (dz2 < radsqr) ? tf::sqrt(radsqr - dz2) : T(0);
 
-        acc.minx = min(acc.minx, px + shrink);
-        acc.maxx = max(acc.maxx, px - shrink);
-        acc.miny = min(acc.miny, py + shrink);
-        acc.maxy = max(acc.maxy, py - shrink);
+                              return rss_accum{px + shrink, px - shrink,
+                                               py + shrink, py - shrink};
+                            }),
+      [](rss_accum acc, const auto &element) {
+        acc.minx = std::min(acc.minx, element.minx);
+        acc.maxx = std::max(acc.maxx, element.maxx);
+        acc.miny = std::min(acc.miny, element.miny);
+        acc.maxy = std::max(acc.maxy, element.maxy);
         return acc;
       },
       rss_init, tf::checked);

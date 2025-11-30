@@ -31,7 +31,7 @@ namespace benchmark {
 int run_point_cloud_knn_nanoflann_benchmark(
     const std::vector<std::string> &mesh_paths, int n_samples,
     std::ostream &out) {
-  out << "points,k,time_ms\n";
+  out << "bv,points,k,time_ms\n";
 
   constexpr int max_k = 10;
 
@@ -43,24 +43,19 @@ int run_point_cloud_knn_nanoflann_benchmark(
     using KDTree = nanoflann::KDTreeSingleIndexAdaptor<
         nanoflann::L2_Simple_Adaptor<float, Adapter>, Adapter, 3>;
 
-    // Build tree
     Adapter adapter(points.data_buffer().begin(), points.size());
-    KDTree tree(3, adapter, {4}); // max leaf size = 10
+    KDTree tree(3, adapter, {4});
 
-    // Calculate diagonal length for query generation
     auto l = tf::aabb_from(polygons.points()).diagonal().length();
 
-    // Query point (updated in prepare)
     std::array<float, 3> query_point;
 
-    // Buffers for kNN results
     std::vector<size_t> indices(max_k);
     std::vector<float> distances(max_k);
 
     for (int k = 1; k <= max_k; ++k) {
       auto time = benchmark::mean_time_of(
           [&]() {
-            // Prepare: generate random query point
             auto idx = tf::random<int>(0, points.size() - 1);
             auto point = polygons.points()[idx];
             auto random_offset = tf::random_vector<float, 3>() * l;
@@ -69,16 +64,15 @@ int run_point_cloud_knn_nanoflann_benchmark(
             query_point[2] = point[2] + random_offset[2];
           },
           [&]() {
-            nanoflann::KNNResultSet<float> resultSet(k); // 1 = nearest neighbor
+            nanoflann::KNNResultSet<float> resultSet(k);
             resultSet.init(&indices[0], &distances[0]);
-            // Benchmark: kNN query
             tree.findNeighbors(resultSet, &query_point[0],
                                nanoflann::SearchParameters());
             benchmark::do_not_optimize(indices);
           },
           n_samples);
 
-      out << points.size() << "," << k << "," << time << "\n";
+      out << "KDTree," << points.size() << "," << k << "," << time << "\n";
     }
   }
 

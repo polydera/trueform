@@ -198,18 +198,21 @@ auto obb_from(const Range &points, const tf::point_like<Dims, Policy> &) {
                        -std::numeric_limits<T>::max()};
 
   auto proj_acc = tf::reduce(
-      points,
-      [&](proj_accum acc, const auto &pt) {
-        auto diff = pt - centroid;
-        T px = tf::dot(diff, box.axes[0]);
-        T py = tf::dot(diff, box.axes[1]);
-        T pz = tf::dot(diff, box.axes[2]);
-        acc.minx = min(acc.minx, px);
-        acc.maxx = max(acc.maxx, px);
-        acc.miny = min(acc.miny, py);
-        acc.maxy = max(acc.maxy, py);
-        acc.minz = min(acc.minz, pz);
-        acc.maxz = max(acc.maxz, pz);
+      tf::make_mapped_range(points,
+                            [&](const auto &pt) {
+                              auto diff = pt - centroid;
+                              T px = tf::dot(diff, box.axes[0]);
+                              T py = tf::dot(diff, box.axes[1]);
+                              T pz = tf::dot(diff, box.axes[2]);
+                              return proj_accum{px, px, py, py, pz, pz};
+                            }),
+      [](proj_accum acc, const auto &element) {
+        acc.minx = std::min(acc.minx, element.minx);
+        acc.maxx = std::max(acc.maxx, element.maxx);
+        acc.miny = std::min(acc.miny, element.miny);
+        acc.maxy = std::max(acc.maxy, element.maxy);
+        acc.minz = std::min(acc.minz, element.minz);
+        acc.maxz = std::max(acc.maxz, element.maxz);
         return acc;
       },
       proj_init, tf::checked);
