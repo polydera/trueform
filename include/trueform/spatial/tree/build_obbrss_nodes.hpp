@@ -11,17 +11,17 @@
 #include "../../core/buffer.hpp"
 #include "../../core/obbrss.hpp"
 #include "../../core/obbrss_from.hpp"
-#include "./tree_config.hpp"
-#include "../max_nodes_in_tree.hpp"
+#include "../tree_config.hpp"
+#include "./max_nodes_in_tree.hpp"
 #include "./tree_node.hpp"
 namespace tf::spatial {
 
 template <typename Partitioner, typename Index, typename RealT,
           std::size_t Dims, typename Range0, typename Range1, typename Range2>
 auto build_tree_nodes(buffer<tree_node<Index, tf::obbrss<RealT, Dims>>> &nodes,
-                        const Range0 &primitives, const Range1 &aabbs,
-                        Range2 &ids, Index node_id, Index offset,
-                        const tf::tree_config &config) {
+                      const Range0 &primitives, const Range1 &aabbs,
+                      Range2 &ids, Index node_id, Index offset,
+                      const tf::tree_config &config) {
   // create the bounding box
   nodes[node_id].bv = tf::core::obbrss_from(
       tf::make_indirect_range(ids, primitives), primitives[0]);
@@ -45,8 +45,8 @@ auto build_tree_nodes(buffer<tree_node<Index, tf::obbrss<RealT, Dims>>> &nodes,
       [&](auto &&range, Index this_node_id) {
         Index this_offset = range.begin() - ids.begin();
         build_tree_nodes<Partitioner>(nodes, primitives, aabbs, range,
-                                        this_node_id, offset + this_offset,
-                                        config);
+                                      this_node_id, offset + this_offset,
+                                      config);
       },
       config.inner_size * node_id + 1);
 
@@ -56,8 +56,8 @@ auto build_tree_nodes(buffer<tree_node<Index, tf::obbrss<RealT, Dims>>> &nodes,
 template <typename Partitioner, typename Index, typename RealT,
           std::size_t Dims, typename Range0, typename Range1>
 auto build_tree_nodes(buffer<tree_node<Index, tf::obbrss<RealT, Dims>>> &nodes,
-                        buffer<Index> &ids, const Range0 &primitives,
-                        const Range1 &aabbs, tf::tree_config config) {
+                      buffer<Index> &ids, const Range0 &primitives,
+                      const Range1 &aabbs, tf::tree_config config) {
 
   nodes.clear();
   if (!primitives.size()) {
@@ -69,7 +69,7 @@ auto build_tree_nodes(buffer<tree_node<Index, tf::obbrss<RealT, Dims>>> &nodes,
   tf::parallel_apply(nodes, [](auto &x) { x.set_as_empty(); }, tf::checked);
   ids.allocate(primitives.size());
   tf::parallel_iota(ids, 0);
-  return build_tree_nodes<Partitioner>(nodes, primitives, aabbs, ids,
-                                         Index(0), Index(0), config);
+  return build_tree_nodes<Partitioner>(nodes, primitives, aabbs, ids, Index(0),
+                                       Index(0), config);
 }
 } // namespace tf::spatial

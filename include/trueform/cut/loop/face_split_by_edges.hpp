@@ -8,6 +8,8 @@
 #include "../../core/faces.hpp"
 #include "../../core/views/blocked_range.hpp"
 #include "../../core/views/drop.hpp"
+#include "../../spatial/aabb_tree.hpp"
+#include "../../spatial/search.hpp"
 #include "../../topology/face_hole_relations.hpp"
 #include "../../topology/planar_graph_regions.hpp"
 #include "./splitting_paths.hpp"
@@ -342,7 +344,7 @@ private:
   tf::planar_graph_regions<Index, RealType> _pgr;
   tf::loop::splitting_paths<Index, RealType> _spaths;
   tf::face_hole_relations<Index, RealType> _fhr;
-  tf::tree<Index, RealType, 2> _tree;
+  tf::aabb_tree<Index, RealType, 2> _tree;
   tf::buffer<Index> _base_loops_vertices;
   tf::buffer<Index> _base_loops_offsets;
   tf::buffer<Index> _work_edges;

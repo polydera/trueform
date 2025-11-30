@@ -14,7 +14,7 @@
 #include "../tree/proximity.hpp"
 #include "../tree/dual_proximity.hpp"
 #include "../tree/traversal_metrics.hpp"
-#include "../tree/tree_like.hpp"
+#include "../tree_like.hpp"
 #include "../tree_metric_info.hpp"
 #include "../tree_metric_info_pair.hpp"
 

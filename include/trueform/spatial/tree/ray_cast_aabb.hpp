@@ -12,7 +12,7 @@
 #include "../../core/ray_like.hpp"
 #include "../../core/small_vector.hpp"
 #include "../../core/views/sequence_range.hpp"
-#include "./tree_like.hpp"
+#include "../tree_like.hpp"
 #include <cstdint>
 
 namespace tf::spatial {

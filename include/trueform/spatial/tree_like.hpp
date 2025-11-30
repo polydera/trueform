@@ -5,8 +5,8 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "./tree_buffers.hpp"
-#include "./tree_ranges.hpp"
+#include "./tree/tree_buffers.hpp"
+#include "./tree/tree_ranges.hpp"
 #include <utility>
 
 namespace tf {
@@ -27,6 +27,9 @@ template <typename Policy> struct tree_like : Policy {
   using typename Policy::coordinate_type;
   using typename Policy::index_type;
   using typename Policy::node_type;
+
+  /// @brief Get the root bounding volume of the tree.
+  auto bv() const -> const bv_type & { return nodes()[0].bv; }
 };
 
 template <typename Policy>

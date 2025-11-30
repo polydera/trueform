@@ -5,12 +5,14 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-
-#include "../core/empty_aabb.hpp"
-#include "../core/views/zip.hpp"
-#include "./build_tree_nodes.hpp"
+#include "../core/aabb_from.hpp"
+#include "../core/algorithm/parallel_transform.hpp"
 #include "./partitioning.hpp"
+#include "./tree/build_aabb_nodes.hpp"
+#include "./tree/build_obb_nodes.hpp"
+#include "./tree/build_obbrss_nodes.hpp"
 #include "./tree_config.hpp"
+#include "./tree_like.hpp"
 
 namespace tf {
 
@@ -30,115 +32,69 @@ namespace tf {
 /// tf::nearness_search —and accept user-defined callbacks for full control over
 /// traversal and primitive evaluation.
 ///
-/// For details on the underlying methodology and performance characteristics,
-/// refer to the accompanying technical paper.
-///
 /// @tparam Index The type used for primitive identifiers (typically an integer
 /// type).
-/// @tparam RealT The real-valued coordinate type (e.g., float or double).
-/// @tparam N The spatial dimension (typically 2 or 3).
+/// @tparam BV The bounding volume type (e.g., `tf::aabb<RealT, N>`,
+/// `tf::obb<RealT, N>`, or `tf::obbrss<RealT, N>`).
+template <typename Index, typename BV>
+class tree : public tree_like<spatial::tree_buffers<Index, BV>> {
+  using base_t = tree_like<spatial::tree_buffers<Index, BV>>;
 
-template <typename Index, typename RealT, std::size_t N> class tree {
 public:
-  using index_t = Index;
-  using real_t = RealT;
+  using base_t::ids;
+  using base_t::nodes;
+  using base_t::primitive_aabbs;
+
+  using typename base_t::aabb_type;
+  using typename base_t::bv_type;
+  using typename base_t::coordinate_dims;
+  using typename base_t::coordinate_type;
+  using typename base_t::index_type;
+  using typename base_t::node_type;
+
   tree() = default;
 
-  template <typename Range, typename FC>
-  tree(const Range &objects, const tf::tree_config<FC> &config) {
-    build(objects, config);
+  /// @brief Construct tree from primitives with given configuration.
+  ///
+  /// @param primitives A range of primitives to build the tree from.
+  /// @param config Configuration specifying inner and leaf node sizes.
+  template <typename Range> tree(const Range &primitives, tree_config config) {
+    build(primitives, config);
   }
-
-  template <typename Partitioner, typename Range, typename FC>
-  auto build(const Range &objects, const tf::tree_config<FC> &config) -> void {
-    _aabbs.allocate(objects.size());
-    tf::parallel_apply(
-        tf::zip(objects, _aabbs),
-        [&](auto pair) {
-          auto &&[object, aabb] = pair;
-          aabb = config.make_aabb(object);
-        },
-        tf::checked);
-    tf::spatial::build_tree_nodes<Partitioner>(_nodes, _ids, _aabbs,
-                                               config.node_config);
-  }
-
-  /// @brief Build the tree from a range of user-defined primitives.
-  ///
-  /// Constructs the tree by computing AABBs for the input range and recursively
-  /// partitioning them into a balanced hierarchy, using the parameters defined
-  /// in `config`.
-  ///
-  /// The input range must support indexed access, and `config` must define a
-  /// bounding box construction function (`make_aabb`) that maps each object to
-  /// an AABB.
-  ///
-  /// @tparam Range A random-access range of user-defined primitives.
-  /// @tparam FC A callable type used by `tree_config` for bounding box
-  /// generation.
-  ///
-  /// @param objects The range of primitives to insert into the tree.
-  /// @param config Configuration parameters including the `make_aabb` function,
-  ///               leaf size, and partitioning strategy. It is constructed via
-  ///               @ref tf::config_tree free function for convenience.
-  ///
-  /// @return void
-  template <typename Range, typename FC>
-  auto build(const Range &objects, const tf::tree_config<FC> &config) -> void {
-    return build<spatial::nth_element_t>(objects, config);
-  }
-
-  auto aabb() const {
-    if (_nodes.size())
-      return _nodes.front().aabb;
-    else
-      return tf::make_empty_aabb<RealT, N>();
-  }
-
-  /// @brief Access the axis-aligned bounding boxes (AABBs) of the input
-  /// primitives.
-  ///
-  /// Returns the buffer of primitive-level AABBs computed during tree
-  /// construction. These correspond one-to-one with the input range provided
-  /// during `build(...)`.
-  ///
-  /// @return A constant reference to the internal AABB buffer.
-  auto primitive_aabbs() const -> const tf::buffer<tf::aabb<RealT, N>> & {
-    return _aabbs;
-  }
-
-  /// @brief Access the internal nodes of the tree.
-  ///
-  /// Returns the buffer of tree nodes representing the hierarchy. Each node
-  /// stores its bounding box, child indices, and axis split information.
-  ///
-  /// @return A constant reference to the node buffer.
-  auto nodes() const -> const tf::buffer<tf::tree_node<Index, RealT, N>> & {
-    return _nodes;
-  }
-
-  /// @brief Access the leaf-level primitive ID buffer.
-  ///
-  /// Returns the buffer of primitive indices used during tree construction.
-  /// Leaf nodes index into this buffer to refer to associated primitives.
-  ///
-  /// @return A constant reference to the primitive ID buffer.
-  auto ids() const -> const tf::buffer<Index> & { return _ids; }
 
   /// @brief Clear all internal tree data.
-  ///
-  /// Empties the node, ID, and AABB buffers. This does not shrink capacity,
-  /// but invalidates the current tree structure. A new build must be performed
-  /// before queries can be issued again.
-  auto clear() {
-    _aabbs.clear();
-    _nodes.clear();
-    _ids.clear();
+  auto clear() -> void {
+    base_t::_primitive_aabbs.clear();
+    base_t::_nodes.clear();
+    base_t::_ids.clear();
   }
 
-private:
-  tf::buffer<tf::aabb<RealT, N>> _aabbs;
-  tf::buffer<tf::tree_node<Index, RealT, N>> _nodes;
-  tf::buffer<Index> _ids;
+  /// @brief Build tree using a specific partitioning strategy.
+  ///
+  /// @tparam Partitioner The partitioning algorithm to use.
+  /// @param primitives A range of primitives to build the tree from.
+  /// @param config Configuration specifying inner and leaf node sizes.
+  template <typename Partitioner, typename Range>
+  auto build(const Range &primitives, tree_config config) -> void {
+    base_t::_primitive_aabbs.allocate(primitives.size());
+    tf::parallel_transform(
+        primitives, base_t::_primitive_aabbs,
+        [](const auto &x) { return tf::aabb_from(x); }, tf::checked);
+    spatial::build_tree_nodes<Partitioner>(base_t::_nodes, base_t::_ids,
+                                           primitives, base_t::_primitive_aabbs,
+                                           config);
+  }
+
+  /// @brief Build tree from primitives using default partitioning.
+  ///
+  /// Uses nth_element partitioning strategy by default.
+  ///
+  /// @param primitives A range of primitives to build the tree from.
+  /// @param config Configuration specifying inner and leaf node sizes.
+  template <typename Range>
+  auto build(const Range &primitives, tree_config config) -> void {
+    build<spatial::nth_element_t>(primitives, config);
+  }
 };
+
 } // namespace tf

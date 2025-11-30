@@ -59,7 +59,7 @@ int run_polygons_to_polygons_closest_point_fcl_benchmark(
     auto l = tf::aabb_from(points).diagonal().length();
 
     // Build tree
-    tf::tree<int, float, 3> tree;
+    tf::aabb_tree<int, float, 3> tree;
     tree.build(polygons.polygons(), tf::config_tree(4, 4));
 
     auto form_polygons = tf::make_form(tree, polygons.polygons());

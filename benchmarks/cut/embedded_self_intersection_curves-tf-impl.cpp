@@ -46,7 +46,7 @@ int run_embedded_self_intersection_curves_tf_benchmark(
     fm.build(concatenated_mesh.polygons());
     tf::manifold_edge_link<int, 3> mel;
     mel.build(concatenated_mesh.polygons().faces(), fm);
-    tf::tree<int, float, 3> tree;
+    tf::aabb_tree<int, float, 3> tree;
     tree.build(concatenated_mesh.polygons(), tf::config_tree(4, 4));
 
     auto time_ms = benchmark::min_time_of(

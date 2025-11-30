@@ -25,12 +25,11 @@ namespace benchmark {
 int run_polygons_build_tree_cgal_benchmark(
     const std::vector<std::string> &mesh_paths, int n_samples,
     std::ostream &out) {
-  out << "polygons,time_ms\n";
+  out << "bv,polygons,time_ms\n";
 
   for (const auto &path : mesh_paths) {
     auto r_polygons = tf::read_stl<int>(path);
 
-    // Convert to CGAL mesh
     auto mesh = benchmark::cgal::to_cgal_mesh(r_polygons);
 
     auto time = benchmark::min_time_of(
@@ -41,7 +40,7 @@ int run_polygons_build_tree_cgal_benchmark(
         },
         n_samples);
 
-    out << r_polygons.faces().size() << "," << time << "\n";
+    out << "AABB," << r_polygons.faces().size() << "," << time << "\n";
   }
 
   return 0;

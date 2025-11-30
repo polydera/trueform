@@ -81,6 +81,59 @@ auto closest_metric_point_pair(const tf::plane_like<Dims, T> &o0,
   return res;
 }
 
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto closest_metric_point_pair(const tf::plane_like<Dims, Policy0> &p0,
+                               const tf::plane_like<Dims, Policy1> &p1) {
+  using T = tf::coordinate_type<Policy0, Policy1>;
+  auto dot_n = tf::dot(p0.normal, p1.normal);
+
+  if (std::abs(dot_n) < T(1) - tf::epsilon<T>) {
+    auto dir = tf::cross(p0.normal, p1.normal);
+    auto n0xn1 = dir.length2();
+    auto pt = (p1.d * dot_n - p0.d) / n0xn1 * tf::cross(dir, p1.normal) +
+              (p0.d * dot_n - p1.d) / n0xn1 * tf::cross(p0.normal, dir);
+    return tf::make_metric_point_pair(T(0), pt, pt);
+  }
+
+  T d_diff = p1.d - p0.d * dot_n;
+  if (std::abs(d_diff) < tf::epsilon<T>) {
+    tf::point<T, Dims> pt{};
+    return tf::make_metric_point_pair(T(0), pt, pt);
+  }
+
+  tf::point<T, Dims> pt0 = -p0.d * p0.normal;
+  tf::point<T, Dims> pt1 = pt0 - d_diff * p1.normal;
+  return tf::make_metric_point_pair(d_diff * d_diff, pt0, pt1);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto closest_metric_point_pair(const tf::polygon<Dims, Policy0> &poly,
+                               const tf::plane_like<Dims, Policy1> &plane) {
+  using T = tf::coordinate_type<Policy0, Policy1>;
+  auto best = tf::make_metric_point_pair(std::numeric_limits<T>::max(),
+                                         tf::point<T, Dims>{},
+                                         tf::point<T, Dims>{});
+  std::size_t size = poly.size();
+  std::size_t prev = size - 1;
+  for (std::size_t i = 0; i < size; prev = i++) {
+    auto seg = tf::make_segment_between_points(poly[prev], poly[i]);
+    auto tmp = tf::closest_metric_point_pair(seg, plane);
+    if (tmp.metric < best.metric)
+      best = tmp;
+    if (best.metric < tf::epsilon2<T>)
+      return best;
+  }
+  return best;
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto closest_metric_point_pair(const tf::plane_like<Dims, Policy0> &plane,
+                               const tf::polygon<Dims, Policy1> &poly) {
+  auto res = closest_metric_point_pair(poly, plane);
+  std::swap(res.first, res.second);
+  return res;
+}
+
 /// @ingroup geometry
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
 template <std::size_t Dims, typename T0, typename T1>

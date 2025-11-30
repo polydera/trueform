@@ -2,7 +2,7 @@
  * Point cloud kNN queries benchmark with TrueForm
  *
  * Measures time to perform k-nearest neighbor queries on point clouds
- * of varying sizes using TrueForm's tf::tree.
+ * of varying sizes using TrueForm's tf::aabb_tree.
  *
  * Copyright (c) 2025 Žiga Sajovic, XLAB
  */

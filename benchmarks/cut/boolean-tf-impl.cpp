@@ -23,7 +23,7 @@ int run_boolean_tf_benchmark(const std::vector<std::string> &mesh_paths,
     fm.build(polygons);
     tf::manifold_edge_link<int, 3> mel;
     mel.build(polygons.faces(), fm);
-    tf::tree<int, float, 3> tree(polygons, tf::config_tree(4, 4));
+    tf::aabb_tree<int, float, 3> tree(polygons, tf::config_tree(4, 4));
 
     auto form0 = tf::make_form(tree, polygons | tf::tag(mel) | tf::tag(fm));
 

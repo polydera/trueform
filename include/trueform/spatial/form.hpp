@@ -46,31 +46,42 @@ template <std::size_t Dims, typename Policy> struct form : public Policy {
   }
 };
 
-template <std::size_t Dims, typename FPolicy, typename Index, typename RealT,
+template <std::size_t Dims, typename FPolicy, typename TreePolicy,
           typename Policy>
 auto make_form(const tf::frame_like<Dims, FPolicy> &_frame,
-               const tf::tree<Index, RealT, Dims> &_tree, Policy &&policy) {
+               const tf::tree_like<TreePolicy> &_tree, Policy &&policy) {
+  static_assert(Dims == TreePolicy::coordinate_dims::value,
+                "Frame and tree dimension mismatch");
+  auto tree_view = tf::make_tree_view(_tree);
   auto base =
       tf::tag_frame(tf::make_frame_ptr(_frame),
-                    tf::tag_const_tree(&_tree, static_cast<Policy &&>(policy)));
+                    tf::tag_tree(std::move(tree_view),
+                                 static_cast<Policy &&>(policy)));
   return form<Dims, decltype(base)>{std::move(base)};
 }
 
-template <std::size_t Dims, typename FPolicy, typename Index, typename RealT,
+template <std::size_t Dims, typename FPolicy, typename TreePolicy,
           typename Policy>
 auto make_form(tf::frame_like<Dims, FPolicy> &&_frame,
-               const tf::tree<Index, RealT, Dims> &_tree, Policy &&policy) {
+               const tf::tree_like<TreePolicy> &_tree, Policy &&policy) {
+  static_assert(Dims == TreePolicy::coordinate_dims::value,
+                "Frame and tree dimension mismatch");
+  auto tree_view = tf::make_tree_view(_tree);
   auto base =
       tf::tag_frame(tf::make_frame_like(_frame.transformation(),
                                         _frame.inverse_transformation()),
-                    tf::tag_const_tree(&_tree, static_cast<Policy &&>(policy)));
+                    tf::tag_tree(std::move(tree_view),
+                                 static_cast<Policy &&>(policy)));
   return form<Dims, decltype(base)>{std::move(base)};
 }
 
-template <typename Index, typename RealT, std::size_t Dims, typename Policy>
-auto make_form(const tf::tree<Index, RealT, Dims> &_tree, Policy &&policy) {
-  auto base = tf::tag_identity_frame<RealT, Dims>(
-      tf::tag_const_tree(&_tree, static_cast<Policy &&>(policy)));
+template <typename TreePolicy, typename Policy>
+auto make_form(const tf::tree_like<TreePolicy> &_tree, Policy &&policy) {
+  constexpr std::size_t Dims = TreePolicy::coordinate_dims::value;
+  using real_t = typename TreePolicy::coordinate_type;
+  auto tree_view = tf::make_tree_view(_tree);
+  auto base = tf::tag_identity_frame<real_t, Dims>(
+      tf::tag_tree(std::move(tree_view), static_cast<Policy &&>(policy)));
   return form<Dims, decltype(base)>{std::move(base)};
 }
 

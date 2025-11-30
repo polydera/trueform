@@ -5,21 +5,48 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "./search/self_search_dispatch.hpp"
+#include "./tree_search/self_search.hpp"
+
 namespace tf {
 
-template <typename Index, typename RealT, std::size_t N, typename F0,
-          typename F1>
-auto search_self(const tf::tree<Index, RealT, N> &tree, const F0 &check_aabbs,
-                 const F1 &primitive_apply, int paralelism_depth = 6) -> bool {
-  return spatial::search_self_dispatch<Index>(
-      tree, check_aabbs, primitive_apply, paralelism_depth);
+/// @brief Perform a self-intersection search on a tree_like structure.
+///
+/// Finds all pairs of primitives within the same tree whose bounding volumes
+/// intersect.
+///
+/// @param tree The tree_like to search.
+/// @param check_bvs Predicate that decides whether to recurse into a pair of
+/// nodes.
+/// @param primitive_apply Function called for each pair of primitive IDs.
+/// **Must be thread-safe** if it accesses shared memory.
+/// @param parallelism_depth Depth at which to spawn parallel tasks.
+///
+/// @return bool
+template <typename TreePolicy, typename F0, typename F1>
+auto search_self(const tf::tree_like<TreePolicy> &tree, const F0 &check_bvs,
+                 const F1 &primitive_apply, int parallelism_depth = 6) -> bool {
+  return spatial::search_self_dispatch(tree, check_bvs, primitive_apply,
+                                       parallelism_depth);
 }
 
-template <std::size_t N, typename Policy, typename F0, typename F1>
-auto search_self(const tf::form<N, Policy> &form, const F0 &check_aabbs,
-                 const F1 &primitive_apply, int paralelism_depth = 6) -> bool {
-  return spatial::search_self_form_dispatch<typename Policy::index_t>(
-      form, check_aabbs, primitive_apply, paralelism_depth);
+/// @brief Perform a self-intersection search on a form.
+///
+/// Finds all pairs of primitives within the same form whose bounding volumes
+/// intersect.
+///
+/// @param form The form to search.
+/// @param check_bvs Predicate that decides whether to recurse into a pair of
+/// nodes.
+/// @param primitive_apply Function called for each pair of primitives.
+/// **Must be thread-safe** if it accesses shared memory.
+/// @param parallelism_depth Depth at which to spawn parallel tasks.
+///
+/// @return bool
+template <std::size_t Dims, typename Policy, typename F0, typename F1>
+auto search_self(const tf::form<Dims, Policy> &form, const F0 &check_bvs,
+                 const F1 &primitive_apply, int parallelism_depth = 6) -> bool {
+  return spatial::search_self_form_dispatch(form, check_bvs, primitive_apply,
+                                            parallelism_depth);
 }
+
 } // namespace tf

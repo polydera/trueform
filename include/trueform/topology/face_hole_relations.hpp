@@ -15,8 +15,8 @@
 #include "../core/polygons.hpp"
 #include "../core/views/enumerate.hpp"
 #include "../core/views/slide_range.hpp"
+#include "../spatial/aabb_tree.hpp"
 #include "../spatial/search.hpp"
-#include "../spatial/tree.hpp"
 
 namespace tf {
 template <typename Index, typename RealT>
@@ -113,7 +113,7 @@ private:
         _face_holes[--_face_holes_offset[face_id]] = hole_id;
   }
 
-  tf::tree<Index, RealT, 2> _tree;
+  tf::aabb_tree<Index, RealT, 2> _tree;
   tf::buffer<Index> _hole_in_face;
 };
 } // namespace tf

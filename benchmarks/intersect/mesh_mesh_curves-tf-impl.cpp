@@ -25,7 +25,7 @@ int run_mesh_mesh_curves_tf_benchmark(
     fm.build(polygons);
     tf::manifold_edge_link<int, 3> mel;
     mel.build(polygons.faces(), fm);
-    tf::tree<int, float, 3> tree(polygons, tf::config_tree(4, 4));
+    tf::aabb_tree<int, float, 3> tree(polygons, tf::config_tree(4, 4));
     auto form1 = tf::make_form(tree, polygons | tf::tag(mel) | tf::tag(fm));
 
     // Compute deterministic translation: 50% along largest axis

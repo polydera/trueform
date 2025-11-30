@@ -5,165 +5,81 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "./search/search_dispatch.hpp"
+#include "./tree_search/search.hpp"
 
 namespace tf {
-template <std::size_t N, typename Policy, typename F0, typename F1>
-auto search(const tf::form<N, Policy> &form, const F0 &check_aabb,
+
+/// @brief Perform a spatial query against a form.
+///
+/// Iterates through the form's tree and applies a user-provided callback to all
+/// primitive IDs whose bounding volumes intersect the query condition.
+///
+/// @param form The form to search.
+/// @param check_bv A predicate that determines whether a node's BV should
+/// be traversed.
+/// @param primitive_apply A function applied to each matching primitive.
+/// Return `true` to abort early.
+///
+/// @return bool
+template <std::size_t Dims, typename Policy, typename F0, typename F1>
+auto search(const tf::form<Dims, Policy> &form, const F0 &check_bv,
             const F1 &primitive_apply) -> bool {
-  return tf::spatial::search(form, check_aabb, primitive_apply);
+  return tf::spatial::search(form, check_bv, primitive_apply);
 }
 
-template <std::size_t N, typename Policy0, typename Policy1, typename F0,
+/// @brief Perform a parallel pairwise search between two forms.
+///
+/// @param form0 The first form.
+/// @param form1 The second form.
+/// @param check_bvs Predicate that decides whether to recurse into a pair of
+/// nodes.
+/// @param primitive_apply Function called for each pair of primitives in
+/// intersecting leaves. **Must be thread-safe** if it accesses shared memory.
+///
+/// @return bool
+template <std::size_t Dims, typename Policy0, typename Policy1, typename F0,
           typename F1>
-auto search(const tf::form<N, Policy0> &form0,
-            const tf::form<N, Policy1> &form1, const F0 &check_aabbs,
+auto search(const tf::form<Dims, Policy0> &form0,
+            const tf::form<Dims, Policy1> &form1, const F0 &check_bvs,
             const F1 &primitive_apply) -> bool {
-  return spatial::dual_form_search_dispatch(form0, form1, check_aabbs,
+  return spatial::dual_form_search_dispatch(form0, form1, check_bvs,
                                             primitive_apply, 6);
 }
 
-/// @brief Perform a spatial query against a single tree structure.
+/// @brief Perform a spatial query against a tree_like structure.
 ///
 /// Iterates through the tree and applies a user-provided callback to all
-/// primitive IDs whose AABBs intersect the query condition.
+/// primitive IDs whose bounding volumes intersect the query condition.
 ///
-/// @param tree The spatial tree to search.
-/// @param check_aabb A predicate that determines whether a node's AABB should
+/// @param tree The tree_like to search.
+/// @param check_bv A predicate that determines whether a node's BV should
 /// be traversed.
-///                   Signature: `bool(const tf::aabb<RealT, N>& aabb)`
 /// @param primitive_apply A function applied to each matching primitive ID.
 /// Return `true` to abort early.
-///                        Signature: `(Index id) -> bool`
 ///
 /// @return bool
-template <typename Index, typename RealT, std::size_t N, typename F0,
-          typename F1>
-auto search(const tf::tree<Index, RealT, N> &tree, const F0 &check_aabb,
+template <typename TreePolicy, typename F0, typename F1>
+auto search(const tf::tree_like<TreePolicy> &tree, const F0 &check_bv,
             const F1 &primitive_apply) -> bool {
-  return tf::spatial::search(tree, check_aabb, primitive_apply);
+  return tf::spatial::search(tree, check_bv, primitive_apply);
 }
 
-/// @brief Perform a spatial query against a single tree structure.
+/// @brief Perform a parallel pairwise search between two tree_like structures.
 ///
-/// Iterates through the tree and applies a user-provided callback to all
-/// primitive IDs whose AABBs intersect the query condition.
-///
-/// @param tree The spatial tree to search.
-/// @param check_aabb A predicate that determines whether a node's AABB should
-/// be traversed.
-///                   Signature: `bool(const tf::aabb<RealT, N>& aabb)`
-/// @param primitive_apply A function applied to each matching primitive ID.
-/// Return `true` to abort early.
-///                        Signature: `(Index id) -> bool`
-///
-/// @return bool
-/*template <typename Index, typename RealT, std::size_t N, typename F0,*/
-/*          typename F1>*/
-/*auto search(const tf::mod_tree<Index, RealT, N> &tree, const F0 &check_aabb,*/
-/*            const F1 &primitive_apply) -> bool {*/
-/*  if (!search(tree.main_tree(), check_aabb, primitive_apply))*/
-/*    return search(tree.delta_tree(), check_aabb, primitive_apply);*/
-/*  else*/
-/*    return true;*/
-/*}*/
-
-/// @brief Perform a parallel pairwise search between two spatial trees.
-///
-///
-/// @param tree0 The first spatial tree.
-/// @param tree1 The second spatial tree.
-/// @param check_aabbs Predicate that decides whether to recurse into a pair of
+/// @param tree0 The first tree.
+/// @param tree1 The second tree.
+/// @param check_bvs Predicate that decides whether to recurse into a pair of
 /// nodes.
-///                    Signature: `(const tf::aabb<RealT, N>& aabb0, const
-///                    tf::aabb<RealT, N>& aabb1) -> bool`
 /// @param primitive_apply Function called for each pair of primitive IDs in
-/// intersecting leaves.
-///                        Signature: `(Index id0, Index id1) -> bool`
-///                        **Must be thread-safe** if it accesses shared memory.
+/// intersecting leaves. **Must be thread-safe** if it accesses shared memory.
 ///
 /// @return bool
-template <typename Index, typename RealT, std::size_t N, typename F0,
-          typename F1>
-auto search(const tf::tree<Index, RealT, N> &tree0,
-            const tf::tree<Index, RealT, N> &tree1, const F0 &check_aabbs,
-            const F1 &primitive_apply, int paralelism_depth = 6) -> bool {
-  return spatial::dual_search_dispatch(
-      tree0, tree1, check_aabbs, primitive_apply, paralelism_depth);
+template <typename TreePolicy0, typename TreePolicy1, typename F0, typename F1>
+auto search(const tf::tree_like<TreePolicy0> &tree0,
+            const tf::tree_like<TreePolicy1> &tree1, const F0 &check_bvs,
+            const F1 &primitive_apply, int parallelism_depth = 6) -> bool {
+  return spatial::dual_search_dispatch(tree0, tree1, check_bvs, primitive_apply,
+                                       parallelism_depth);
 }
-
-/// @brief Perform a parallel pairwise search between two spatial trees.
-///
-///
-/// @param tree0 The first spatial tree.
-/// @param tree1 The second spatial tree.
-/// @param check_aabbs Predicate that decides whether to recurse into a pair of
-/// nodes.
-///                    Signature: `(const tf::aabb<RealT, N>& aabb0, const
-///                    tf::aabb<RealT, N>& aabb1) -> bool`
-/// @param primitive_apply Function called for each pair of primitive IDs in
-/// intersecting leaves.
-///                        Signature: `(Index id0, Index id1) -> bool`
-///                        **Must be thread-safe** if it accesses shared memory.
-///
-/// @return bool
-/*template <typename Index, typename RealT, std::size_t N, typename F0,*/
-/*          typename F1>*/
-/*auto search(const tf::mod_tree<Index, RealT, N> &tree0,*/
-/*            const tf::tree<Index, RealT, N> &tree1, const F0 &check_aabbs,*/
-/*            const F1 &primitive_apply, int paralelism_depth = 6) -> bool {*/
-/*  return implementation::dual_search_dispatch<Index>(*/
-/*      tree0, tree1, check_aabbs, primitive_apply, paralelism_depth);*/
-/*}*/
-
-/// @brief Perform a parallel pairwise search between two spatial trees.
-///
-///
-/// @param tree0 The first spatial tree.
-/// @param tree1 The second spatial tree.
-/// @param check_aabbs Predicate that decides whether to recurse into a pair of
-/// nodes.
-///                    Signature: `(const tf::aabb<RealT, N>& aabb0, const
-///                    tf::aabb<RealT, N>& aabb1) -> bool`
-/// @param primitive_apply Function called for each pair of primitive IDs in
-/// intersecting leaves.
-///                        Signature: `(Index id0, Index id1) -> bool`
-///                        **Must be thread-safe** if it accesses shared memory.
-///
-/// @return bool
-/*template <typename Index, typename RealT, std::size_t N, typename F0,*/
-/*          typename F1>*/
-/*auto search(const tf::tree<Index, RealT, N> &tree0,*/
-/*            const tf::mod_tree<Index, RealT, N> &tree1, const F0
- * &check_aabbs,*/
-/*            const F1 &primitive_apply, int paralelism_depth = 6) -> bool {*/
-/*  return implementation::dual_search_dispatch<Index>(*/
-/*      tree0, tree1, check_aabbs, primitive_apply, paralelism_depth);*/
-/*}*/
-
-/// @brief Perform a parallel pairwise search between two spatial trees.
-///
-///
-/// @param tree0 The first spatial tree.
-/// @param tree1 The second spatial tree.
-/// @param check_aabbs Predicate that decides whether to recurse into a pair of
-/// nodes.
-///                    Signature: `(const tf::aabb<RealT, N>& aabb0, const
-///                    tf::aabb<RealT, N>& aabb1) -> bool`
-/// @param primitive_apply Function called for each pair of primitive IDs in
-/// intersecting leaves.
-///                        Signature: `(Index id0, Index id1) -> bool`
-///                        **Must be thread-safe** if it accesses shared memory.
-///
-/// @return bool
-/*template <typename Index, typename RealT, std::size_t N, typename F0,*/
-/*          typename F1>*/
-/*auto search(const tf::mod_tree<Index, RealT, N> &tree0,*/
-/*            const tf::mod_tree<Index, RealT, N> &tree1, const F0
- * &check_aabbs,*/
-/*            const F1 &primitive_apply, int paralelism_depth = 6) -> bool {*/
-/*  return implementation::dual_search_dispatch<Index>(*/
-/*      tree0, tree1, check_aabbs, primitive_apply, paralelism_depth);*/
-/*}*/
 
 } // namespace tf

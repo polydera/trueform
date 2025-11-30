@@ -20,14 +20,14 @@ int run_polygons_to_polygons_closest_point_tf_benchmark(
     auto points = polygons.points();
 
     // Build tree
-    tf::tree<int, float, 3> tree;
+    tf::aabb_tree<int, float, 3> tree;
     tree.build(polygons.polygons(), tf::config_tree(4, 4));
 
     // Calculate diagonal length for query generation
     auto l = tf::aabb_from(points).diagonal().length();
 
     auto form_polygons = tf::make_form(tree, polygons.polygons());
-    tf::tree<int, float, 3> tree1;
+    tf::aabb_tree<int, float, 3> tree1;
     auto polygons1 = polygons;
 
     tf::frame<float, 3> frame;

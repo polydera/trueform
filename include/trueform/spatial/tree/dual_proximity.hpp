@@ -7,7 +7,7 @@
 #pragma once
 #include "../../core/small_vector.hpp"
 #include "./local_tree_metric_result.hpp"
-#include "./tree_like.hpp"
+#include "../tree_like.hpp"
 #include "tbb/task_group.h"
 #include <utility>
 

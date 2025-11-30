@@ -7,11 +7,15 @@
 #pragma once
 
 #include "./aabb_like.hpp"
+#include "./base/local_box_intersects.hpp"
+#include "./base/obb_intersects_primitive.hpp"
 #include "./classify.hpp"
 #include "./closest_point_parametric.hpp"
+#include "./dot.hpp"
 #include "./interval.hpp"
 #include "./line.hpp"
 #include "./obb_intersects_obb.hpp"
+#include "./obb_like.hpp"
 #include "./obbrss_like.hpp"
 #include "./point_like.hpp"
 #include "./polygon.hpp"
@@ -704,6 +708,30 @@ auto intersects(const tf::point_like<Dims, Policy0> &pt,
   return intersects(plane, pt);
 }
 
+/// @ingroup geometry
+/// @brief Check whether two planes intersect.
+///
+/// Two planes intersect if they are not parallel, or if they are coplanar.
+///
+/// @return `true` if the planes intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::plane_like<Dims, Policy0> &plane0,
+                const tf::plane_like<Dims, Policy1> &plane1) -> bool {
+  using T = tf::coordinate_type<Policy0, Policy1>;
+
+  auto dot_n = tf::dot(plane0.normal, plane1.normal);
+
+  // If not parallel (|dot| < 1), they intersect along a line
+  if (std::abs(dot_n) < T(1) - tf::epsilon<T>)
+    return true;
+
+  // Parallel - check if coplanar
+  // Point on plane0: p = -d0 * n0
+  // Check if on plane1: dot(n1, p) + d1 = -d0 * dot(n0,n1) + d1
+  T check = plane1.d - plane0.d * dot_n;
+  return std::abs(check) < tf::epsilon<T>;
+}
+
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const tf::plane_like<Dims, Policy0> &plane,
                 const tf::ray_like<Dims, Policy1> &ray) -> bool {
@@ -912,6 +940,140 @@ auto intersects(const tf::aabb_like<Dims, Policy0> &bbox,
 }
 
 /// @ingroup geometry
+/// @brief Check whether an OBB contains a point.
+///
+/// @return `true` if the point is inside the OBB; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::obb_like<Dims, Policy0> &obb,
+                const tf::point_like<Dims, Policy1> &pt) -> bool {
+  using T = tf::coordinate_type<Policy0, Policy1>;
+
+  // Transform point to local coordinates
+  auto diff = pt - obb.origin;
+  std::array<T, Dims> local_pt;
+  for (std::size_t i = 0; i < Dims; ++i) {
+    local_pt[i] = tf::dot(diff, obb.axes[i]);
+  }
+
+  // Check if inside box in local coords
+  std::array<T, Dims> extent;
+  for (std::size_t i = 0; i < Dims; ++i) {
+    extent[i] = obb.extent[i];
+  }
+  return tf::core::local_point_box_intersects(local_pt, extent);
+}
+
+/// @ingroup geometry
+/// @brief Check whether a point is inside an OBB.
+///
+/// @return `true` if the point is inside the OBB; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::point_like<Dims, Policy0> &pt,
+                const tf::obb_like<Dims, Policy1> &obb) -> bool {
+  return intersects(obb, pt);
+}
+
+/// @ingroup geometry
+/// @brief Check whether an OBB and ray intersect.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::obb_like<Dims, Policy0> &obb,
+                const tf::ray_like<Dims, Policy1> &ray) -> bool {
+  return core::obb_intersects_ray(obb, ray);
+}
+
+/// @ingroup geometry
+/// @brief Check whether a ray and OBB intersect.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::ray_like<Dims, Policy0> &ray,
+                const tf::obb_like<Dims, Policy1> &obb) -> bool {
+  return intersects(obb, ray);
+}
+
+/// @ingroup geometry
+/// @brief Check whether an OBB and line intersect.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::obb_like<Dims, Policy0> &obb,
+                const tf::line_like<Dims, Policy1> &line) -> bool {
+  return core::obb_intersects_line(obb, line);
+}
+
+/// @ingroup geometry
+/// @brief Check whether a line and OBB intersect.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::line_like<Dims, Policy0> &line,
+                const tf::obb_like<Dims, Policy1> &obb) -> bool {
+  return intersects(obb, line);
+}
+
+/// @ingroup geometry
+/// @brief Check whether an OBB and segment intersect.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::obb_like<Dims, Policy0> &obb,
+                const tf::segment<Dims, Policy1> &seg) -> bool {
+  return core::obb_intersects_segment(obb, seg);
+}
+
+/// @ingroup geometry
+/// @brief Check whether a segment and OBB intersect.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::segment<Dims, Policy0> &seg,
+                const tf::obb_like<Dims, Policy1> &obb) -> bool {
+  return intersects(obb, seg);
+}
+
+/// @ingroup geometry
+/// @brief Check whether an OBB and plane intersect.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::obb_like<Dims, Policy0> &obb,
+                const tf::plane_like<Dims, Policy1> &plane) -> bool {
+  return core::obb_intersects_plane(obb, plane);
+}
+
+/// @ingroup geometry
+/// @brief Check whether a plane and OBB intersect.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::plane_like<Dims, Policy0> &plane,
+                const tf::obb_like<Dims, Policy1> &obb) -> bool {
+  return intersects(obb, plane);
+}
+
+/// @ingroup geometry
+/// @brief Check whether an OBB and polygon intersect.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::obb_like<Dims, Policy0> &obb,
+                const tf::polygon<Dims, Policy1> &poly) -> bool {
+  return core::obb_intersects_polygon(obb, poly);
+}
+
+/// @ingroup geometry
+/// @brief Check whether a polygon and OBB intersect.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::polygon<Dims, Policy0> &poly,
+                const tf::obb_like<Dims, Policy1> &obb) -> bool {
+  return intersects(obb, poly);
+}
+
+/// @ingroup geometry
 /// @brief Check whether two OBBRSSs intersect.
 ///
 /// Uses the OBB parts for intersection testing (cheaper than RSS).
@@ -968,6 +1130,144 @@ template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const tf::obb_like<Dims, Policy0> &obb,
                 const tf::obbrss_like<Dims, Policy1> &obbrss) -> bool {
   return intersects(obbrss, obb);
+}
+
+/// @ingroup geometry
+/// @brief Check whether an OBBRSS contains a point.
+///
+/// Uses the OBB part of OBBRSS for intersection testing.
+///
+/// @return `true` if the point is inside the OBBRSS; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::obbrss_like<Dims, Policy0> &obbrss,
+                const tf::point_like<Dims, Policy1> &pt) -> bool {
+  return intersects(
+      tf::make_obb_like(obbrss.obb_origin, obbrss.axes, obbrss.extent), pt);
+}
+
+/// @ingroup geometry
+/// @brief Check whether a point is inside an OBBRSS.
+///
+/// @return `true` if the point is inside the OBBRSS; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::point_like<Dims, Policy0> &pt,
+                const tf::obbrss_like<Dims, Policy1> &obbrss) -> bool {
+  return intersects(obbrss, pt);
+}
+
+/// @ingroup geometry
+/// @brief Check whether an OBBRSS and ray intersect.
+///
+/// Uses the OBB part of OBBRSS for intersection testing.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::obbrss_like<Dims, Policy0> &obbrss,
+                const tf::ray_like<Dims, Policy1> &ray) -> bool {
+  return intersects(
+      tf::make_obb_like(obbrss.obb_origin, obbrss.axes, obbrss.extent), ray);
+}
+
+/// @ingroup geometry
+/// @brief Check whether a ray and OBBRSS intersect.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::ray_like<Dims, Policy0> &ray,
+                const tf::obbrss_like<Dims, Policy1> &obbrss) -> bool {
+  return intersects(obbrss, ray);
+}
+
+/// @ingroup geometry
+/// @brief Check whether an OBBRSS and line intersect.
+///
+/// Uses the OBB part of OBBRSS for intersection testing.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::obbrss_like<Dims, Policy0> &obbrss,
+                const tf::line_like<Dims, Policy1> &line) -> bool {
+  return intersects(
+      tf::make_obb_like(obbrss.obb_origin, obbrss.axes, obbrss.extent), line);
+}
+
+/// @ingroup geometry
+/// @brief Check whether a line and OBBRSS intersect.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::line_like<Dims, Policy0> &line,
+                const tf::obbrss_like<Dims, Policy1> &obbrss) -> bool {
+  return intersects(obbrss, line);
+}
+
+/// @ingroup geometry
+/// @brief Check whether an OBBRSS and segment intersect.
+///
+/// Uses the OBB part of OBBRSS for intersection testing.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::obbrss_like<Dims, Policy0> &obbrss,
+                const tf::segment<Dims, Policy1> &seg) -> bool {
+  return intersects(
+      tf::make_obb_like(obbrss.obb_origin, obbrss.axes, obbrss.extent), seg);
+}
+
+/// @ingroup geometry
+/// @brief Check whether a segment and OBBRSS intersect.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::segment<Dims, Policy0> &seg,
+                const tf::obbrss_like<Dims, Policy1> &obbrss) -> bool {
+  return intersects(obbrss, seg);
+}
+
+/// @ingroup geometry
+/// @brief Check whether an OBBRSS and plane intersect.
+///
+/// Uses the OBB part of OBBRSS for intersection testing.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::obbrss_like<Dims, Policy0> &obbrss,
+                const tf::plane_like<Dims, Policy1> &plane) -> bool {
+  return intersects(
+      tf::make_obb_like(obbrss.obb_origin, obbrss.axes, obbrss.extent), plane);
+}
+
+/// @ingroup geometry
+/// @brief Check whether a plane and OBBRSS intersect.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::plane_like<Dims, Policy0> &plane,
+                const tf::obbrss_like<Dims, Policy1> &obbrss) -> bool {
+  return intersects(obbrss, plane);
+}
+
+/// @ingroup geometry
+/// @brief Check whether an OBBRSS and polygon intersect.
+///
+/// Uses the OBB part of OBBRSS for intersection testing.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::obbrss_like<Dims, Policy0> &obbrss,
+                const tf::polygon<Dims, Policy1> &poly) -> bool {
+  return intersects(
+      tf::make_obb_like(obbrss.obb_origin, obbrss.axes, obbrss.extent), poly);
+}
+
+/// @ingroup geometry
+/// @brief Check whether a polygon and OBBRSS intersect.
+///
+/// @return `true` if the primitives intersect; otherwise `false`.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto intersects(const tf::polygon<Dims, Policy0> &poly,
+                const tf::obbrss_like<Dims, Policy1> &obbrss) -> bool {
+  return intersects(obbrss, poly);
 }
 
 namespace core {

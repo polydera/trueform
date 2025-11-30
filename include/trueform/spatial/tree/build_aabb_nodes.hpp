@@ -11,8 +11,8 @@
 #include "../../core/algorithm/partition_range_into_parts.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/largest_axis.hpp"
-#include "./tree_config.hpp"
-#include "../max_nodes_in_tree.hpp"
+#include "../tree_config.hpp"
+#include "./max_nodes_in_tree.hpp"
 #include "./tree_node.hpp"
 namespace tf::spatial {
 

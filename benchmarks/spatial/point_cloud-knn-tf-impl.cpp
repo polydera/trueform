@@ -21,7 +21,7 @@ int run_point_cloud_knn_tf_benchmark(const std::vector<std::string> &mesh_paths,
     auto points = polygons.points();
 
     // Build tree
-    tf::tree<int, float, 3> tree;
+    tf::aabb_tree<int, float, 3> tree;
     tree.build(points, tf::config_tree(4, 4));
 
     // Calculate diagonal length for query generation

@@ -7,7 +7,7 @@
 #pragma once
 #include "../../core/range.hpp"
 #include "../../core/small_vector.hpp"
-#include "./tree_like.hpp"
+#include "../tree_like.hpp"
 
 namespace tf::spatial::impl {
 

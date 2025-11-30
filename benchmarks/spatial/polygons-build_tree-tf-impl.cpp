@@ -13,21 +13,39 @@ namespace benchmark {
 int run_polygons_build_tree_tf_benchmark(
     const std::vector<std::string> &mesh_paths, int n_samples,
     std::ostream &out) {
-  out << "polygons,time_ms\n";
+  out << "bv,polygons,time_ms\n";
 
   for (const auto &path : mesh_paths) {
     auto r_polygons = tf::read_stl<int>(path);
     auto polygons = r_polygons.polygons();
+    auto config = tf::config_tree(4, 4);
 
-    auto time = benchmark::min_time_of(
+    auto time_aabb = benchmark::min_time_of(
         [&]() {
-          tf::tree<int, float, 3> tree;
-          tree.build(polygons, tf::config_tree(4, 4));
+          tf::aabb_tree<int, float, 3> tree;
+          tree.build(polygons, config);
           benchmark::do_not_optimize(tree);
         },
         n_samples);
+    out << "AABB," << polygons.size() << "," << time_aabb << "\n";
 
-    out << polygons.size() << "," << time << "\n";
+    auto time_obb = benchmark::min_time_of(
+        [&]() {
+          tf::obb_tree<int, float, 3> tree;
+          tree.build(polygons, config);
+          benchmark::do_not_optimize(tree);
+        },
+        n_samples);
+    out << "OBB," << polygons.size() << "," << time_obb << "\n";
+
+    auto time_obbrss = benchmark::min_time_of(
+        [&]() {
+          tf::obbrss_tree<int, float, 3> tree;
+          tree.build(polygons, config);
+          benchmark::do_not_optimize(tree);
+        },
+        n_samples);
+    out << "OBBRSS," << polygons.size() << "," << time_obbrss << "\n";
   }
 
   return 0;

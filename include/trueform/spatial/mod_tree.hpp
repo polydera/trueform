@@ -23,14 +23,13 @@ namespace tf {
  * (stored in the delta @ref tf::tree). The delta tree is rebuilt from scratch
  * on each update, while the main tree is pruned.
  *
- * @tparam Index    Index type used for object references
- * @tparam RealType Floating-point type used for coordinates
- * @tparam Dims     Dimensionality of the space (e.g., 2 or 3)
+ * @tparam Index Index type used for object references
+ * @tparam BV    Bounding volume type (e.g., tf::aabb, tf::obb, tf::obbrss)
  *
  * @see tf::tree
  * @see tf::index_map
  */
-template <typename Index, typename RealType, std::size_t Dims> class mod_tree {
+template <typename Index, typename BV> class mod_tree {
 public:
   /**
    * @brief Builds the main tree from a given range of objects using a specified
@@ -41,15 +40,14 @@ public:
    * @tparam Partitioner A strategy type used for partitioning during tree
    * construction
    * @tparam Range       A range of geometric objects
-   * @tparam FC          A callable or policy object passed to the tree config
    * @param objects      The input range of geometric objects
    * @param config       Tree configuration (see ref::tree_config)
    */
-  template <typename Partitioner, typename Range, typename FC>
-  auto build(const Range &objects, const tf::tree_config<FC> &config) -> void {
+  template <typename Partitioner, typename Range>
+  auto build(const Range &objects, tree_config config) -> void {
     _delta_ids.clear();
     _delta_tree.clear();
-    _main_tree.build(objects, make_aabb, config);
+    _main_tree.template build<Partitioner>(objects, config);
   }
 
   /**
@@ -58,12 +56,11 @@ public:
    * Convenience overload of @ref ::build with a default partitioner.
    *
    * @tparam Range A range of geometric objects
-   * @tparam FC    A callable or policy object passed to the tree config
    * @param objects The input range of geometric objects
    * @param config  Tree configuration (see ref::tree_config)
    */
-  template <typename Range, typename FC>
-  auto build(const Range &objects, const tf::tree_config<FC> &config) -> void {
+  template <typename Range>
+  auto build(const Range &objects, tree_config config) -> void {
     return build<spatial::nth_element_t>(objects, config);
   }
 
@@ -76,16 +73,15 @@ public:
    * @tparam Range0  A range of geometric objects
    * @tparam Range1  A range of object indices
    * @tparam F       A unary predicate defining which indices to keep
-   * @tparam FC      A callable or policy object passed to the tree config
    * @param objects  New or updated geometric objects
    * @param ids      Indices of the updated objects
    * @param keep_if  Predicate returning true for IDs that should remain in the
    * tree
    * @param config   Tree configuration (see ref::tree_config)
    */
-  template <typename Range0, typename Range1, typename F, typename FC>
+  template <typename Range0, typename Range1, typename F>
   auto update(const Range0 &objects, const Range1 &ids, const F &keep_if,
-              const tf::tree_config<FC> &config) {
+              tree_config config) {
     update_main_tree(keep_if);
     update_delta_tree(objects, ids, keep_if, config);
   }
@@ -101,17 +97,15 @@ public:
    * @tparam Range2    Underlying type for `index_map::kept_ids()` (kept/valid
    * IDs)
    * @tparam F         A predicate that determines which IDs to keep
-   * @tparam FC        A callable or policy object passed to the tree config
    * @param objects    New or updated geometric objects
    * @param index_map    Index reindex_map (see ref::index_map)
    * @param keep_if    Predicate for keeping existing IDs
    * @param config     Tree configuration (see ref::tree_config)
    */
-  template <typename Range, typename Range1, typename Range2, typename F,
-            typename FC>
+  template <typename Range, typename Range1, typename Range2, typename F>
   auto update_tree(const Range &objects,
                    const tf::index_map<Range1, Range2> &index_map,
-                   const F &keep_if, const tf::tree_config<FC> &config) {
+                   const F &keep_if, tree_config config) {
     update_main_tree(index_map.f(), keep_if);
     update_delta_tree(objects, index_map, keep_if, config);
   }
@@ -119,26 +113,22 @@ public:
   /**
    * @brief Returns a const reference to the main tree.
    */
-  auto main_tree() const -> const tree<Index, RealType, Dims> & {
-    return _main_tree;
-  }
+  auto main_tree() const -> const tree<Index, BV> & { return _main_tree; }
 
   /**
    * @brief Returns a mutable reference to the main tree.
    */
-  auto main_tree() -> tree<Index, RealType, Dims> & { return _main_tree; }
+  auto main_tree() -> tree<Index, BV> & { return _main_tree; }
 
   /**
    * @brief Returns a const reference to the delta tree.
    */
-  auto delta_tree() const -> const tree<Index, RealType, Dims> & {
-    return _delta_tree;
-  }
+  auto delta_tree() const -> const tree<Index, BV> & { return _delta_tree; }
 
   /**
    * @brief Returns a mutable reference to the delta tree.
    */
-  auto delta_tree() -> tree<Index, RealType, Dims> & { return _delta_tree; }
+  auto delta_tree() -> tree<Index, BV> & { return _delta_tree; }
 
   /**
    * @brief Clears all data from both the main and delta trees.
@@ -183,9 +173,9 @@ private:
     });
   }
 
-  template <typename Range0, typename Range1, typename F, typename FC>
+  template <typename Range0, typename Range1, typename F>
   auto update_delta_tree(const Range0 &objects, const Range1 &ids,
-                         const F &keep_if, const tf::tree_config<FC> &config) {
+                         const F &keep_if, tree_config config) {
     auto n_additional_objects = ids.size();
     _delta_ids.allocate(n_additional_objects + _delta_ids.size());
     // keep all old ids that are not in the
@@ -204,11 +194,10 @@ private:
                       _delta_tree.ids());
   }
 
-  template <typename Range, typename Range1, typename Range2, typename F,
-            typename FC>
+  template <typename Range, typename Range1, typename Range2, typename F>
   auto update_delta_tree(const Range &objects,
                          const tf::index_map<Range1, Range2> &index_map,
-                         const F &keep_if, const tf::tree_config<FC> &config) {
+                         const F &keep_if, tree_config config) {
     auto n_additional_objects = index_map.kept_ids().size();
     _delta_ids.allocate(n_additional_objects + _delta_ids.size());
     // keep all old ids that are not in the
@@ -228,8 +217,8 @@ private:
                       _delta_tree.ids());
   }
 
-  tree<Index, RealType, Dims> _main_tree;
-  tree<Index, RealType, Dims> _delta_tree;
+  tree<Index, BV> _main_tree;
+  tree<Index, BV> _delta_tree;
   tf::buffer<Index> _delta_ids;
 };
 } // namespace tf

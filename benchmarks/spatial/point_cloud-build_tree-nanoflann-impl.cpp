@@ -30,7 +30,7 @@ namespace benchmark {
 int run_point_cloud_build_tree_nanoflann_benchmark(
     const std::vector<std::string> &mesh_paths, int n_samples,
     std::ostream &out) {
-  out << "points,time_ms\n";
+  out << "bv,points,time_ms\n";
 
   for (const auto &path : mesh_paths) {
     auto polygons = tf::read_stl<int>(path);
@@ -43,12 +43,12 @@ int run_point_cloud_build_tree_nanoflann_benchmark(
     auto time = benchmark::min_time_of(
         [&]() {
           Adapter adapter(points.data_buffer().begin(), points.size());
-          KDTree tree(3, adapter, {4}); // max leaf size = 10
+          KDTree tree(3, adapter, {4});
           benchmark::do_not_optimize(tree);
         },
         n_samples);
 
-    out << points.size() << "," << time << "\n";
+    out << "KDTree," << points.size() << "," << time << "\n";
   }
 
   return 0;

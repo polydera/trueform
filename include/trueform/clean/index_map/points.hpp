@@ -10,6 +10,7 @@
 #include "../../core/distance.hpp"
 #include "../../core/index_map.hpp"
 #include "../../core/points.hpp"
+#include "../../spatial/aabb_tree.hpp"
 #include "../../spatial/gather_self_ids.hpp"
 #include "../../spatial/policy/tree.hpp"
 
@@ -41,7 +42,7 @@ auto make_clean_index_map(const tf::points<Policy> &points,
     tf::make_dense_equivalence_class_index_map(ids, points.size(), im);
   } else {
     constexpr std::size_t dims = tf::static_size_v<decltype(points[0])>;
-    tf::tree<Index, tf::coordinate_type<Policy>, dims> tree;
+    tf::aabb_tree<Index, tf::coordinate_type<Policy>, dims> tree;
     tree.build(points, tf::config_tree(4, 4));
     return make_clean_index_map(points | tf::tag(tree), tolerance, im);
   }

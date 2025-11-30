@@ -2,7 +2,7 @@
  * Point cloud tree building benchmark with TrueForm
  *
  * Measures time to build spatial acceleration structure (KD-tree)
- * on point clouds of varying sizes using TrueForm's tf::tree.
+ * on point clouds of varying sizes using TrueForm's tf::aabb_tree.
  *
  * Copyright (c) 2025 Žiga Sajovic, XLAB
  */

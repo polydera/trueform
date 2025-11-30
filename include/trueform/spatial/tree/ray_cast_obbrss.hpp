@@ -7,24 +7,23 @@
 #pragma once
 #include "../../core/dot.hpp"
 #include "../../core/intersect_status.hpp"
-#include "../../core/make_obb_like.hpp"
+#include "../../core/obb_like.hpp"
 #include "../../core/obbrss.hpp"
 #include "../../core/ray_like.hpp"
 #include "../../core/ray_obb_check.hpp"
 #include "../../core/small_vector.hpp"
 #include "../../core/views/sequence_range.hpp"
-#include "./tree_like.hpp"
-#include <cstdint>
+#include "../tree_like.hpp"
 
 namespace tf::spatial {
 
 template <typename TreePolicy, typename RayPolicy, typename Result, typename F>
-auto ray_cast(const tf::tree_like<TreePolicy> &tree,
-              const tf::ray_like<TreePolicy::coordinate_dims::value, RayPolicy>
-                  &ray,
-              Result &result, const F &intersect_f,
-              const tf::obbrss<typename TreePolicy::coordinate_type,
-                               TreePolicy::coordinate_dims::value> &) {
+auto ray_cast(
+    const tf::tree_like<TreePolicy> &tree,
+    const tf::ray_like<TreePolicy::coordinate_dims::value, RayPolicy> &ray,
+    Result &result, const F &intersect_f,
+    const tf::obbrss<typename TreePolicy::coordinate_type,
+                     TreePolicy::coordinate_dims::value> &) {
   using Index = typename TreePolicy::index_type;
   using real_t =
       tf::coordinate_type<typename TreePolicy::coordinate_type, RayPolicy>;

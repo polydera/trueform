@@ -18,7 +18,7 @@
 #include "../../core/transformed.hpp"
 #include "../../random/random_vector.hpp"
 #include "../../topology/set_component_labels.hpp"
-#include "../search/tree_search.hpp"
+#include "../search.hpp"
 
 namespace tf::spatial {
 template <typename Policy0, typename Policy1, typename LabelType, typename F>
@@ -29,7 +29,7 @@ auto classify_point(const tf::point_like<3, Policy0> &_point,
   auto frame = tf::frame_of(polygons);
   auto point = tf::transformed(_point, frame.inverse_transformation());
   const auto &tree = polygons.tree();
-  if (!intersects(tree.aabb(), point))
+  if (!intersects(tree.bv(), point))
     return tf::containment::outside;
   using index_t = typename Policy1::index_t;
   using real_type = tf::coordinate_type<Policy0, Policy1>;
@@ -63,8 +63,8 @@ auto classify_point(const tf::point_like<3, Policy0> &_point,
     ray.direction = tf::random_vector<real_type, 3>();
     for (int i = 0; i < 3; ++i)
       ray_inv_dir[i] = tf::epsilon_inverse(ray.direction[i]);
-    tf::spatial::tree_search(
-        tree.nodes(), tree.ids(),
+    tf::spatial::search(
+        tree,
         [&](const auto &aabb) {
           real_type t0, t1;
           return tf::core::ray_aabb_check(
@@ -72,21 +72,19 @@ auto classify_point(const tf::point_like<3, Policy0> &_point,
                      std::numeric_limits<real_type>::max()) ==
                  tf::intersect_status::intersection;
         },
-        [&](const auto &ids) {
-          for (index_t poly_id : ids) {
-            if (ignore_component(scl.component_labels.labels[poly_id]))
-              continue;
-            auto polygon = polygons[poly_id] | tf::tag_plane();
-            auto res = tf::ray_hit(ray, polygon);
-            if (!res)
-              return false;
-            if (is_on_edge(polygon, res.point)) {
-              failed = true;
-              return true;
-            } else if (scl.set_types[scl.component_labels.labels[poly_id]] ==
-                       tf::set_type::closed) {
-              buffer.push_back({poly_id, res.t, polygon.normal()});
-            }
+        [&](index_t poly_id) {
+          if (ignore_component(scl.component_labels.labels[poly_id]))
+            return false;
+          auto polygon = polygons[poly_id] | tf::tag_plane();
+          auto res = tf::ray_hit(ray, polygon);
+          if (!res)
+            return false;
+          if (is_on_edge(polygon, res.point)) {
+            failed = true;
+            return true;
+          } else if (scl.set_types[scl.component_labels.labels[poly_id]] ==
+                     tf::set_type::closed) {
+            buffer.push_back({poly_id, res.t, polygon.normal()});
           }
           return false;
         });
@@ -126,7 +124,7 @@ auto classify_point(const tf::point_like<3, Policy0> &_point,
   auto frame = tf::frame_of(polygons);
   auto point = tf::transformed(_point, frame.inverse_transformation());
   const auto &tree = polygons.tree();
-  if (!intersects(tree.aabb(), point))
+  if (!intersects(tree.bv(), point))
     return tf::containment::outside;
   using index_t = typename Policy1::index_t;
   using real_type = tf::coordinate_type<Policy0, Policy1>;
@@ -155,8 +153,8 @@ auto classify_point(const tf::point_like<3, Policy0> &_point,
     ray.direction = tf::random_vector<real_type, 3>();
     for (int i = 0; i < 3; ++i)
       ray_inv_dir[i] = tf::epsilon_inverse(ray.direction[i]);
-    tf::spatial::tree_search(
-        tree.nodes(), tree.ids(),
+    tf::spatial::search(
+        tree,
         [&](const auto &aabb) {
           real_type t0, t1;
           return tf::core::ray_aabb_check(
@@ -164,21 +162,19 @@ auto classify_point(const tf::point_like<3, Policy0> &_point,
                      std::numeric_limits<real_type>::max()) ==
                  tf::intersect_status::intersection;
         },
-        [&](const auto &ids) {
-          for (index_t poly_id : ids) {
-            auto polygon = polygons[poly_id] | tf::tag_plane();
-            auto res = tf::ray_hit(ray, polygon);
-            if (!res)
-              return false;
-            if (is_on_edge(polygon, res.point)) {
-              failed = true;
-              return true;
-            } else {
-              if (tf::dot(polygon.normal, ray.direction) < 0)
-                ++count;
-              else
-                --count;
-            }
+        [&](index_t poly_id) {
+          auto polygon = polygons[poly_id] | tf::tag_plane();
+          auto res = tf::ray_hit(ray, polygon);
+          if (!res)
+            return false;
+          if (is_on_edge(polygon, res.point)) {
+            failed = true;
+            return true;
+          } else {
+            if (tf::dot(polygon.normal, ray.direction) < 0)
+              ++count;
+            else
+              --count;
           }
           return false;
         });

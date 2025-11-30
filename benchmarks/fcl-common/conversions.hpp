@@ -16,8 +16,14 @@ namespace benchmark {
 namespace fcl {
 
 using Scalar          = double;
-using BV              = ::fcl::AABB<Scalar>;
+using BV_AABB         = ::fcl::AABB<Scalar>;
+using BV_OBB          = ::fcl::OBB<Scalar>;
+using BV_OBBRSS       = ::fcl::OBBRSS<Scalar>;
+using BV              = BV_AABB;
 using Model           = ::fcl::BVHModel<BV>;
+using Model_AABB      = ::fcl::BVHModel<BV_AABB>;
+using Model_OBB       = ::fcl::BVHModel<BV_OBB>;
+using Model_OBBRSS    = ::fcl::BVHModel<BV_OBBRSS>;
 using Vec3            = ::fcl::Vector3<Scalar>;
 using Transform3      = ::fcl::Transform3<Scalar>;
 using DistanceRequest = ::fcl::DistanceRequest<Scalar>;

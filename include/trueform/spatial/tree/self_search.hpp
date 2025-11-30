@@ -6,7 +6,7 @@
  */
 #pragma once
 #include "../../core/range.hpp"
-#include "./tree_like.hpp"
+#include "../tree_like.hpp"
 #include "tbb/task_group.h"
 
 namespace tf::spatial::impl {

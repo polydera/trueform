@@ -7,6 +7,7 @@
 #pragma once
 #include "../clean/soup/segments.hpp"
 #include "../core/is_soup.hpp"
+#include "../spatial/aabb_tree.hpp"
 #include "../topology/planar_embedding.hpp"
 #include "./planar_overlay.hpp"
 namespace tf {
@@ -56,7 +57,7 @@ public:
 
 private:
   tf::edge_membership<Index> _em;
-  tf::tree<Index, RealType, 2> _tree;
+  tf::aabb_tree<Index, RealType, 2> _tree;
   tf::intersections_within_segments<Index, RealType, 2> _si;
   tf::buffer<Index> _work_buffer;
 };

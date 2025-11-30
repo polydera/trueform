@@ -13,7 +13,7 @@
 #include "../core/local_buffer.hpp"
 #include "../core/views/offset_block_range.hpp"
 #include "../spatial/search_self.hpp"
-#include "../spatial/tree.hpp"
+#include "../spatial/tree_like.hpp"
 #include "../topology/policy/edge_membership.hpp"
 #include "./detail/compute_simplification_mask.hpp"
 #include "./detail/duplicate_intersection.hpp"
@@ -23,9 +23,11 @@ namespace tf {
 template <typename Index, typename RealT, std::size_t Dims>
 class intersections_within_segments {
 public:
-  template <typename Policy, typename RealT2>
+  template <typename Policy, typename TreePolicy>
   auto build(const tf::segments<Policy> &segments,
-             const tf::tree<Index, RealT2, Dims> &tree) {
+             const tf::tree_like<TreePolicy> &tree) {
+    static_assert(TreePolicy::coordinate_dims::value == Dims,
+                  "Tree dimension mismatch");
     static_assert(tf::has_edge_membership_policy<Policy>,
                   "Use: segments | tf::tag(edge_membership)");
     clear();
@@ -96,20 +98,20 @@ private:
         [](const auto &x0, const auto &x1) { return x0.object == x1.object; });
   }
 
-  template <typename Policy, typename RealT2>
+  template <typename Policy, typename TreePolicy>
   auto
   generate_initial_intersections(const tf::segments<Policy> &segments,
-                                 const tf::tree<Index, RealT2, Dims> &tree) {
+                                 const tf::tree_like<TreePolicy> &tree) {
     if (segments.size() < 1000)
       return generate_initial_intersections_seq(segments, tree);
     else
       return generate_initial_intersections_par(segments, tree);
   }
 
-  template <typename Policy, typename RealT2>
+  template <typename Policy, typename TreePolicy>
   auto generate_initial_intersections_seq(
       const tf::segments<Policy> &segments,
-      const tf::tree<Index, RealT2, Dims> &tree) {
+      const tf::tree_like<TreePolicy> &tree) {
     tf::buffer<intersect::intersection<Index>> _intersections;
     tf::buffer<tf::point<RealT, Dims>> _points;
     tf::search_self(
@@ -123,10 +125,10 @@ private:
     return std::make_pair(std::move(_intersections), std::move(_points));
   }
 
-  template <typename Policy, typename RealT2>
+  template <typename Policy, typename TreePolicy>
   auto generate_initial_intersections_par(
       const tf::segments<Policy> &segments,
-      const tf::tree<Index, RealT2, Dims> &tree) {
+      const tf::tree_like<TreePolicy> &tree) {
     tf::local_buffer<intersect::intersection<Index>> l_intersections;
     tf::local_buffer<tf::point<RealT, Dims>> l_points;
     tf::search_self(tree, tf::intersects_f, [&](Index id0, Index id1) {
