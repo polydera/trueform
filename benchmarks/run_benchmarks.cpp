@@ -60,6 +60,8 @@
 #include "spatial/polygons-closest_point-tf.hpp"
 #include "spatial/polygons_to_polygons-closest_point-fcl.hpp"
 #include "spatial/polygons_to_polygons-closest_point-tf.hpp"
+#include "spatial/polygons_to_polygons-collision-fcl.hpp"
+#include "spatial/polygons_to_polygons-collision-tf.hpp"
 
 #include "common/test_meshes.hpp"
 
@@ -207,6 +209,10 @@ int main(int argc, char *argv[]) {
        benchmark::run_polygons_to_polygons_closest_point_tf_benchmark, 10},
       {"spatial-polygons_to_polygons-closest_point-fcl",
        benchmark::run_polygons_to_polygons_closest_point_fcl_benchmark, 10},
+      {"spatial-polygons_to_polygons-collision-tf",
+       benchmark::run_polygons_to_polygons_collision_tf_benchmark, 10},
+      {"spatial-polygons_to_polygons-collision-fcl",
+       benchmark::run_polygons_to_polygons_collision_fcl_benchmark, 10},
   };
 
   // Simple CLI: run all benchmarks with default mesh paths and samples

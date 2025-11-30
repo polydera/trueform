@@ -26,8 +26,10 @@ using Model_OBB       = ::fcl::BVHModel<BV_OBB>;
 using Model_OBBRSS    = ::fcl::BVHModel<BV_OBBRSS>;
 using Vec3            = ::fcl::Vector3<Scalar>;
 using Transform3      = ::fcl::Transform3<Scalar>;
-using DistanceRequest = ::fcl::DistanceRequest<Scalar>;
-using DistanceResult  = ::fcl::DistanceResult<Scalar>;
+using DistanceRequest  = ::fcl::DistanceRequest<Scalar>;
+using DistanceResult   = ::fcl::DistanceResult<Scalar>;
+using CollisionRequest = ::fcl::CollisionRequest<Scalar>;
+using CollisionResult  = ::fcl::CollisionResult<Scalar>;
 
 /**
  * Convert TrueForm mesh to FCL vertex and triangle vectors.

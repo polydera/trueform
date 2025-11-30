@@ -7,6 +7,7 @@
 #pragma once
 #include "./cross.hpp"
 #include "./dot.hpp"
+#include "./epsilon.hpp"
 #include "./metric_point_pair.hpp"
 #include "./point.hpp"
 #include "./polygon.hpp"
@@ -102,7 +103,8 @@ auto closest_points_on_triangles(const tf::polygon<3, Policy0> &tri1,
 
   vec_t vec;
   point_t p, q;
-  point_t min_p, min_q;
+  point_t min_p = tri1[0];
+  point_t min_q = tri2[0];
   T min_dist2 = (tri1[0] - tri2[0]).length2() + T(1);
   int shown_disjoint = 0;
 
@@ -142,7 +144,7 @@ auto closest_points_on_triangles(const tf::polygon<3, Policy0> &tri1,
   vec_t s_normal = tf::cross(s_edges[0], s_edges[1]);
   T s_normal_len2 = tf::dot(s_normal, s_normal);
 
-  if (s_normal_len2 > T(1e-15)) {
+  if (s_normal_len2 > tf::epsilon2<T>) {
     vec_t t_proj;
     t_proj[0] = tf::dot(vec_t(tri1[0] - tri2[0]), s_normal);
     t_proj[1] = tf::dot(vec_t(tri1[0] - tri2[1]), s_normal);
@@ -182,7 +184,7 @@ auto closest_points_on_triangles(const tf::polygon<3, Policy0> &tri1,
   vec_t t_normal = tf::cross(t_edges[0], t_edges[1]);
   T t_normal_len2 = tf::dot(t_normal, t_normal);
 
-  if (t_normal_len2 > T(1e-15)) {
+  if (t_normal_len2 > tf::epsilon2<T>) {
     vec_t s_proj;
     s_proj[0] = tf::dot(vec_t(tri2[0] - tri1[0]), t_normal);
     s_proj[1] = tf::dot(vec_t(tri2[0] - tri1[1]), t_normal);

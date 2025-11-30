@@ -14,7 +14,7 @@
 #include <trueform/core/points.hpp>
 #include <trueform/core/range.hpp>
 #include <trueform/core/transformation_view.hpp>
-#include <trueform/spatial/tree.hpp>
+#include <trueform/spatial/aabb_tree.hpp>
 #include <trueform/spatial/tree_config.hpp>
 
 namespace tf::py {
@@ -44,10 +44,10 @@ public:
   // Tree management
   auto rebuild_tree() -> void {
     if (!_tree) {
-      _tree = std::make_unique<tf::tree<int, RealT, Dims>>();
+      _tree = std::make_unique<tf::aabb_tree<int, RealT, Dims>>();
     }
     auto pts = make_primitive_range();
-    *_tree = tf::tree<int, RealT, Dims>(pts, tf::config_tree(4, 4));
+    *_tree = tf::aabb_tree<int, RealT, Dims>(pts, tf::config_tree(4, 4));
   }
 
   auto ensure_tree() -> void {
@@ -65,12 +65,12 @@ public:
   auto dims() const -> std::size_t { return Dims; }
 
   // Access to internal structures (opaque to Python)
-  auto tree() -> tf::tree<int, RealT, Dims> & {
+  auto tree() -> tf::aabb_tree<int, RealT, Dims> & {
     ensure_tree();
     return *_tree;
   }
 
-  auto tree() const -> const tf::tree<int, RealT, Dims> & {
+  auto tree() const -> const tf::aabb_tree<int, RealT, Dims> & {
     if (!_tree)
       throw std::runtime_error("Tree not built");
     return *_tree;
@@ -110,7 +110,7 @@ private:
   std::optional<nanobind::ndarray<nanobind::numpy, RealT,
                                   nanobind::shape<Dims + 1, Dims + 1>>>
       _transformation;
-  std::unique_ptr<tf::tree<int, RealT, Dims>> _tree;
+  std::unique_ptr<tf::aabb_tree<int, RealT, Dims>> _tree;
 };
 
 } // namespace tf::py

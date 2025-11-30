@@ -30,8 +30,8 @@ auto form_form_gather_ids(FormWrapper0 &form_wrapper0,
                           FormWrapper1 &form_wrapper1,
                           const std::string &predicate_type,
                           std::optional<RealT> threshold) {
-  using Index0 = typename std::decay_t<decltype(form_wrapper0.tree())>::index_t;
-  using Index1 = typename std::decay_t<decltype(form_wrapper1.tree())>::index_t;
+  using Index0 = typename std::decay_t<decltype(form_wrapper0.tree())>::index_type;
+  using Index1 = typename std::decay_t<decltype(form_wrapper1.tree())>::index_type;
   using CommonIndex = std::common_type_t<Index0, Index1>;
 
   std::vector<std::pair<Index0, Index1>> buffer;

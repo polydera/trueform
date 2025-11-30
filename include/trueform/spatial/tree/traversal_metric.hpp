@@ -280,15 +280,14 @@ auto traversal_metric(const tf::obbrss_like<Dims, Policy0> &obbrss,
 
 /// @brief Compute traversal metric for single-tree queries.
 ///
-/// Forwards to RSS metric.
+/// Forwards to OBB metric (cheaper than RSS, no sqrt needed).
 ///
 /// @return Squared distance lower bound
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto traversal_metric(const tf::obbrss_like<Dims, Policy0> &obbrss,
                       const tf::point_like<Dims, Policy1> &pt) {
-  auto rss = tf::make_rss_like(obbrss.rss_origin, obbrss.axes, obbrss.length,
-                               obbrss.radius);
-  return traversal_metric(rss, pt);
+  auto obb = tf::make_obb_like(obbrss.obb_origin, obbrss.axes, obbrss.extent);
+  return traversal_metric(obb, pt);
 }
 
 /// @brief Compute traversal metric for single-tree queries.

@@ -91,7 +91,7 @@ private:
   std::vector<vtkPolyData *> polys;
   std::vector<vtkActor *> actors;
   std::vector<tf::frame<float, 3>> frames;
-  std::vector<tf::tree<int, float, 3>> trees;
+  std::vector<tf::aabb_tree<int, float, 3>> trees;
   std::vector<tf::face_membership<int>> face_memberships;
   std::vector<tf::manifold_edge_link<int, 3>> manifold_edge_links;
 };

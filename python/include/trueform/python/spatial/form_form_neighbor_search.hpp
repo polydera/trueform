@@ -34,8 +34,8 @@ auto form_form_neighbor_search(FormWrapper0 &form_wrapper0,
       tf::make_form(form_wrapper1.tree(), form_wrapper1.make_primitive_range());
 
   constexpr auto Dims = tf::coordinate_dims_v<decltype(form0)>;
-  using Index0 = tf::coordinate_type<decltype(form0)>;
-  using Index1 = tf::coordinate_type<decltype(form0)>;
+  using Index0 = typename std::decay_t<decltype(form0.tree())>::index_type;
+  using Index1 = typename std::decay_t<decltype(form1.tree())>::index_type;
 
   using ndarray_t =
       nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<Dims>>;

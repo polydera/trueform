@@ -20,7 +20,7 @@ template <typename RealT, std::size_t Dims, typename FormWrapper,
           typename F0, typename F1>
 auto gather_ids(FormWrapper &form_wrapper, const F0 &aabb_predicate,
                 const F1 &primitive_predicate) {
-  using Index = typename std::decay_t<decltype(form_wrapper.tree())>::index_t;
+  using Index = typename std::decay_t<decltype(form_wrapper.tree())>::index_type;
 
   tf::buffer<Index> buffer;
 

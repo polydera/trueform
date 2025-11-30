@@ -76,3 +76,17 @@ target_link_libraries(spatial-polygons_to_polygons-closest_point-fcl-impl benchm
 
 add_executable(spatial-polygons_to_polygons-closest_point-fcl polygons_to_polygons-closest_point-fcl.cpp)
 target_link_libraries(spatial-polygons_to_polygons-closest_point-fcl spatial-polygons_to_polygons-closest_point-fcl-impl)
+
+# TrueForm polygons to polygons collision queries
+add_library(spatial-polygons_to_polygons-collision-tf-impl OBJECT polygons_to_polygons-collision-tf-impl.cpp)
+target_link_libraries(spatial-polygons_to_polygons-collision-tf-impl benchmark_common)
+
+add_executable(spatial-polygons_to_polygons-collision-tf polygons_to_polygons-collision-tf.cpp)
+target_link_libraries(spatial-polygons_to_polygons-collision-tf spatial-polygons_to_polygons-collision-tf-impl)
+
+# FCL polygons to polygons collision queries
+add_library(spatial-polygons_to_polygons-collision-fcl-impl OBJECT polygons_to_polygons-collision-fcl-impl.cpp)
+target_link_libraries(spatial-polygons_to_polygons-collision-fcl-impl benchmark_fcl_common)
+
+add_executable(spatial-polygons_to_polygons-collision-fcl polygons_to_polygons-collision-fcl.cpp)
+target_link_libraries(spatial-polygons_to_polygons-collision-fcl spatial-polygons_to_polygons-collision-fcl-impl)

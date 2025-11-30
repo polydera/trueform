@@ -25,7 +25,7 @@ auto neighbor_search(FormWrapper &form_wrapper, const Primitive &query,
                      std::optional<RealT> radius) {
   using ndarray_t =
       nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<Dims>>;
-  using Index = typename std::decay_t<decltype(form_wrapper.tree())>::index_t;
+  using Index = typename std::decay_t<decltype(form_wrapper.tree())>::index_type;
   using result_t = std::tuple<Index, RealT, ndarray_t>;
 
   auto make_return = [](const auto &e) -> std::optional<result_t> {
@@ -65,7 +65,7 @@ template <typename RealT, std::size_t Dims, typename FormWrapper,
           typename Primitive>
 auto neighbor_search(FormWrapper &from_wrapper, const Primitive &query, int k,
                      std::optional<RealT> radius) {
-  using Index = typename std::decay_t<decltype(from_wrapper.tree())>::index_t;
+  using Index = typename std::decay_t<decltype(from_wrapper.tree())>::index_type;
   using ndarray_t =
       nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<Dims>>;
   using result_t = std::tuple<int, RealT, ndarray_t>;
