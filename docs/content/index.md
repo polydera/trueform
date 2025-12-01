@@ -1,7 +1,7 @@
 ---
 seo:
   title: trueform — Real-time geometric processing
-  description: A C++ header-only library for fast geometric queries, forms and topology built on composable range-based policies.
+  description: Geometry library for real-time spatial queries, mesh booleans, and topology. C++ header-only with Python bindings.
 ---
 
 ::u-page-hero{class="dark:bg-gradient-to-b from-neutral-900 to-neutral-950"}
@@ -12,10 +12,10 @@ orientation: horizontal
 :hero-background
 
 #title
-Real-time [geometric processing]{.text-primary} for C++.
+Real-time [geometric processing]{.text-primary}
 
 #description
-`trueform` is a header-only C++ library for real-time geometric processing. Build spatial queries, mesh intersections, boolean operations, and topology analysis directly on your data with composable, zero-copy views — no heavy frameworks, no architectural changes, just semantic wrappers over your existing buffers.
+Spatial queries, mesh booleans, isocontours, topology — at interactive speed on million-polygon meshes. Works directly on your data with zero-copy views. No conversions, no framework lock-in. C++ header-only; Python with NumPy in and out.
 
 #links
   :::u-button
@@ -91,7 +91,7 @@ Why trueform
   Zero-Copy Views
 
   #description
-  Work directly on your data layout with semantic geometric wrappers. Enrich primitives with `id`, `normal`, and `state` via composable `tag` and `zip` operations.
+  Wrap your existing data with geometric meaning. No copies, no conversions, no new types to learn. Your buffers, enriched with spatial semantics.
   :::
 
   :::u-page-feature
@@ -102,7 +102,7 @@ Why trueform
   Spatial Acceleration
 
   #description
-  Build `tf::tree` for k-NN, neighbor search, ray casting, and broad-phase queries. Wrap with `tf::form` to add transformations without copying data.
+  Fast spatial queries on point clouds, curves, and meshes. k-NN, closest points, ray casting, collision detection. Transform geometry without rebuilding acceleration structures.
   :::
 
   :::u-page-feature
@@ -113,7 +113,7 @@ Why trueform
   Topology & Intersections
 
   #description
-  Connectivity structures, boundary detection, path finding. Mesh-mesh curves, self-intersections, scalar field isocontours with topological classification.
+  Understand mesh structure—connectivity, boundaries, connected components. Find where meshes meet: intersection curves, self-intersections, isocontours.
   :::
 
   :::u-page-feature
@@ -124,7 +124,7 @@ Why trueform
   Cut & Boolean Operations
 
   #description
-  Embed intersection curves as edges via face splitting. Boolean operations (union, intersection, difference) and planar arrangements for 2D subdivision.
+  Combine and cut meshes with union, intersection, difference. Handles real-world geometry with non-manifold flaps and geometric noise.
   :::
 
   :::u-page-feature
@@ -135,7 +135,7 @@ Why trueform
   Data Management
 
   #description
-  Flat buffers with direct memory access. Reindexing and filtering with automatic referential integrity. Cleaning operations for duplicates and degenerates.
+  Keep data clean and organized. Remove duplicates and degenerates. Filter and reindex while maintaining referential integrity.
   :::
 
   :::u-page-feature
@@ -146,7 +146,7 @@ Why trueform
   Real-time Performance
 
   #description
-  Parallel algorithms built on Intel TBB with optimized memory layouts. Benchmarked against VTK, CGAL, nanoflann, and IGL.
+  Interactive speed on million-polygon meshes. Parallel algorithms benchmarked against VTK, CGAL, libigl, FCL, and nanoflann.
   :::
 :::
 
@@ -154,15 +154,15 @@ Why trueform
   :::u-page-c-t-a
   ---
   links:
-    - label: Read the tutorial
-      to: '/cpp/modules/core'
+    - label: C++ with CMake
+      to: '/cpp/getting-started/installation'
       trailingIcon: i-lucide-arrow-right
-    - label: View benchmarks
-      to: '/cpp/benchmarks'
+    - label: Python with pip
+      to: '/py/getting-started/installation'
       variant: subtle
-      trailingIcon: i-lucide-chart-line
+      trailingIcon: i-lucide-arrow-right
   title: Ready to build real-time geometry?
-  description: Integrate trueform into your C++ codebase with CMake FetchContent. Process meshes, compute intersections, and perform spatial queries directly on your data.
+  description: C++ via CMake FetchContent. Python via pip install.
   class: dark:bg-neutral-950
   ---
   :::
