@@ -1,8 +1,0 @@
-[
-{ "triangles": 50000, "trueform_ms": 2.0, "cgal_ms": 56.3, "speedup": 28.2 },
-{ "triangles": 125000, "trueform_ms": 6.0, "cgal_ms": 184.0, "speedup": 30.7 },
-{ "triangles": 250000, "trueform_ms": 12.0, "cgal_ms": 372.5, "speedup": 31.0 },
-{ "triangles": 500000, "trueform_ms": 31.0, "cgal_ms": 808.5, "speedup": 26.1 },
-{ "triangles": 750000, "trueform_ms": 42.0, "cgal_ms": 1242.7, "speedup": 29.6 },
-{ "triangles": 1000000,"trueform_ms": 61.0, "cgal_ms": 1702.5,"speedup": 27.9 }
-]

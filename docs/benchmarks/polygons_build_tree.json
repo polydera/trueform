@@ -1,0 +1,62 @@
+[
+  {
+    "polygons": 58298,
+    "tf_aabb": 1.07,
+    "tf_obb": 2.95,
+    "tf_obbrss": 3.71,
+    "cgal": 11.83,
+    "fcl_aabb": 20.36,
+    "fcl_obb": 59.0,
+    "fcl_obbrss": 92.71
+  },
+  {
+    "polygons": 141966,
+    "tf_aabb": 3.24,
+    "tf_obb": 6.12,
+    "tf_obbrss": 9.2,
+    "cgal": 31.12,
+    "fcl_aabb": 51.35,
+    "fcl_obb": 149.64,
+    "fcl_obbrss": 233.91
+  },
+  {
+    "polygons": 244026,
+    "tf_aabb": 4.92,
+    "tf_obb": 8.97,
+    "tf_obbrss": 13.04,
+    "cgal": 56.07,
+    "fcl_aabb": 91.27,
+    "fcl_obb": 261.01,
+    "fcl_obbrss": 415.35
+  },
+  {
+    "polygons": 480868,
+    "tf_aabb": 9.63,
+    "tf_obb": 19.35,
+    "tf_obbrss": 26.74,
+    "cgal": 117.06,
+    "fcl_aabb": 186.94,
+    "fcl_obb": 522.73,
+    "fcl_obbrss": 837.32
+  },
+  {
+    "polygons": 722980,
+    "tf_aabb": 13.56,
+    "tf_obb": 24.9,
+    "tf_obbrss": 35.93,
+    "cgal": 179.05,
+    "fcl_aabb": 282.06,
+    "fcl_obb": 789.44,
+    "fcl_obbrss": 1273.95
+  },
+  {
+    "polygons": 1025766,
+    "tf_aabb": 17.66,
+    "tf_obb": 36.86,
+    "tf_obbrss": 52.65,
+    "cgal": 259.74,
+    "fcl_aabb": 407.72,
+    "fcl_obb": 1123.96,
+    "fcl_obbrss": 1821.86
+  }
+]

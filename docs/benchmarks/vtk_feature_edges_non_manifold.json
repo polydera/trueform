@@ -1,8 +1,0 @@
-[
-{ "triangles": "50k", "speedup": 14.3 },
-{ "triangles": "125k", "speedup": 15.1 },
-{ "triangles": "250k", "speedup": 13.1 },
-{ "triangles": "500k", "speedup": 12.9 },
-{ "triangles": "750k", "speedup": 17.2 },
-{ "triangles": "1M","speedup": 20.5 }
-]

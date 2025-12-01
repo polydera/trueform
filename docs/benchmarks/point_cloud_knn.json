@@ -1,0 +1,482 @@
+[
+  {
+    "points": 29131,
+    "k": 1,
+    "tf_aabb": 0.00083,
+    "tf_obb": 0.00074,
+    "tf_obbrss": 0.00071,
+    "nanoflann": 0.00107
+  },
+  {
+    "points": 29131,
+    "k": 2,
+    "tf_aabb": 0.00094,
+    "tf_obb": 0.00071,
+    "tf_obbrss": 0.00073,
+    "nanoflann": 0.00126
+  },
+  {
+    "points": 29131,
+    "k": 3,
+    "tf_aabb": 0.00094,
+    "tf_obb": 0.00089,
+    "tf_obbrss": 0.0008,
+    "nanoflann": 0.00139
+  },
+  {
+    "points": 29131,
+    "k": 4,
+    "tf_aabb": 0.00097,
+    "tf_obb": 0.00083,
+    "tf_obbrss": 0.00086,
+    "nanoflann": 0.00151
+  },
+  {
+    "points": 29131,
+    "k": 5,
+    "tf_aabb": 0.00109,
+    "tf_obb": 0.0009,
+    "tf_obbrss": 0.00091,
+    "nanoflann": 0.00161
+  },
+  {
+    "points": 29131,
+    "k": 6,
+    "tf_aabb": 0.00116,
+    "tf_obb": 0.00098,
+    "tf_obbrss": 0.00093,
+    "nanoflann": 0.00181
+  },
+  {
+    "points": 29131,
+    "k": 7,
+    "tf_aabb": 0.00125,
+    "tf_obb": 0.00102,
+    "tf_obbrss": 0.00097,
+    "nanoflann": 0.00177
+  },
+  {
+    "points": 29131,
+    "k": 8,
+    "tf_aabb": 0.0013,
+    "tf_obb": 0.00104,
+    "tf_obbrss": 0.00104,
+    "nanoflann": 0.00187
+  },
+  {
+    "points": 29131,
+    "k": 9,
+    "tf_aabb": 0.00141,
+    "tf_obb": 0.00108,
+    "tf_obbrss": 0.00108,
+    "nanoflann": 0.00201
+  },
+  {
+    "points": 29131,
+    "k": 10,
+    "tf_aabb": 0.00141,
+    "tf_obb": 0.00116,
+    "tf_obbrss": 0.00113,
+    "nanoflann": 0.00208
+  },
+  {
+    "points": 70975,
+    "k": 1,
+    "tf_aabb": 0.00109,
+    "tf_obb": 0.00092,
+    "tf_obbrss": 0.00084,
+    "nanoflann": 0.00129
+  },
+  {
+    "points": 70975,
+    "k": 2,
+    "tf_aabb": 0.00113,
+    "tf_obb": 0.00094,
+    "tf_obbrss": 0.00092,
+    "nanoflann": 0.0014
+  },
+  {
+    "points": 70975,
+    "k": 3,
+    "tf_aabb": 0.00112,
+    "tf_obb": 0.00099,
+    "tf_obbrss": 0.00105,
+    "nanoflann": 0.00161
+  },
+  {
+    "points": 70975,
+    "k": 4,
+    "tf_aabb": 0.00122,
+    "tf_obb": 0.0011,
+    "tf_obbrss": 0.0011,
+    "nanoflann": 0.00167
+  },
+  {
+    "points": 70975,
+    "k": 5,
+    "tf_aabb": 0.00154,
+    "tf_obb": 0.00115,
+    "tf_obbrss": 0.00114,
+    "nanoflann": 0.00204
+  },
+  {
+    "points": 70975,
+    "k": 6,
+    "tf_aabb": 0.00136,
+    "tf_obb": 0.00128,
+    "tf_obbrss": 0.00122,
+    "nanoflann": 0.00201
+  },
+  {
+    "points": 70975,
+    "k": 7,
+    "tf_aabb": 0.00147,
+    "tf_obb": 0.00131,
+    "tf_obbrss": 0.00132,
+    "nanoflann": 0.00211
+  },
+  {
+    "points": 70975,
+    "k": 8,
+    "tf_aabb": 0.0016,
+    "tf_obb": 0.0014,
+    "tf_obbrss": 0.00141,
+    "nanoflann": 0.00229
+  },
+  {
+    "points": 70975,
+    "k": 9,
+    "tf_aabb": 0.00167,
+    "tf_obb": 0.00154,
+    "tf_obbrss": 0.00148,
+    "nanoflann": 0.00246
+  },
+  {
+    "points": 70975,
+    "k": 10,
+    "tf_aabb": 0.00182,
+    "tf_obb": 0.00155,
+    "tf_obbrss": 0.00158,
+    "nanoflann": 0.00255
+  },
+  {
+    "points": 122005,
+    "k": 1,
+    "tf_aabb": 0.00141,
+    "tf_obb": 0.00106,
+    "tf_obbrss": 0.0011,
+    "nanoflann": 0.00175
+  },
+  {
+    "points": 122005,
+    "k": 2,
+    "tf_aabb": 0.0014,
+    "tf_obb": 0.00113,
+    "tf_obbrss": 0.00111,
+    "nanoflann": 0.00194
+  },
+  {
+    "points": 122005,
+    "k": 3,
+    "tf_aabb": 0.00148,
+    "tf_obb": 0.00114,
+    "tf_obbrss": 0.00114,
+    "nanoflann": 0.0022
+  },
+  {
+    "points": 122005,
+    "k": 4,
+    "tf_aabb": 0.00161,
+    "tf_obb": 0.00116,
+    "tf_obbrss": 0.00117,
+    "nanoflann": 0.0021
+  },
+  {
+    "points": 122005,
+    "k": 5,
+    "tf_aabb": 0.00181,
+    "tf_obb": 0.00119,
+    "tf_obbrss": 0.00118,
+    "nanoflann": 0.0024
+  },
+  {
+    "points": 122005,
+    "k": 6,
+    "tf_aabb": 0.0018,
+    "tf_obb": 0.00128,
+    "tf_obbrss": 0.00127,
+    "nanoflann": 0.00253
+  },
+  {
+    "points": 122005,
+    "k": 7,
+    "tf_aabb": 0.00183,
+    "tf_obb": 0.00135,
+    "tf_obbrss": 0.00129,
+    "nanoflann": 0.00283
+  },
+  {
+    "points": 122005,
+    "k": 8,
+    "tf_aabb": 0.00191,
+    "tf_obb": 0.00132,
+    "tf_obbrss": 0.00136,
+    "nanoflann": 0.00291
+  },
+  {
+    "points": 122005,
+    "k": 9,
+    "tf_aabb": 0.00206,
+    "tf_obb": 0.00142,
+    "tf_obbrss": 0.00141,
+    "nanoflann": 0.0032
+  },
+  {
+    "points": 122005,
+    "k": 10,
+    "tf_aabb": 0.00218,
+    "tf_obb": 0.00145,
+    "tf_obbrss": 0.00144,
+    "nanoflann": 0.00329
+  },
+  {
+    "points": 240428,
+    "k": 1,
+    "tf_aabb": 0.00145,
+    "tf_obb": 0.00119,
+    "tf_obbrss": 0.0011,
+    "nanoflann": 0.00265
+  },
+  {
+    "points": 240428,
+    "k": 2,
+    "tf_aabb": 0.00142,
+    "tf_obb": 0.00118,
+    "tf_obbrss": 0.00116,
+    "nanoflann": 0.00285
+  },
+  {
+    "points": 240428,
+    "k": 3,
+    "tf_aabb": 0.00153,
+    "tf_obb": 0.00129,
+    "tf_obbrss": 0.00117,
+    "nanoflann": 0.00296
+  },
+  {
+    "points": 240428,
+    "k": 4,
+    "tf_aabb": 0.0016,
+    "tf_obb": 0.00137,
+    "tf_obbrss": 0.00129,
+    "nanoflann": 0.00312
+  },
+  {
+    "points": 240428,
+    "k": 5,
+    "tf_aabb": 0.00162,
+    "tf_obb": 0.00139,
+    "tf_obbrss": 0.00133,
+    "nanoflann": 0.00341
+  },
+  {
+    "points": 240428,
+    "k": 6,
+    "tf_aabb": 0.00179,
+    "tf_obb": 0.00149,
+    "tf_obbrss": 0.00148,
+    "nanoflann": 0.00341
+  },
+  {
+    "points": 240428,
+    "k": 7,
+    "tf_aabb": 0.00169,
+    "tf_obb": 0.00156,
+    "tf_obbrss": 0.00154,
+    "nanoflann": 0.00375
+  },
+  {
+    "points": 240428,
+    "k": 8,
+    "tf_aabb": 0.00187,
+    "tf_obb": 0.00165,
+    "tf_obbrss": 0.00162,
+    "nanoflann": 0.00365
+  },
+  {
+    "points": 240428,
+    "k": 9,
+    "tf_aabb": 0.002,
+    "tf_obb": 0.00179,
+    "tf_obbrss": 0.00172,
+    "nanoflann": 0.00394
+  },
+  {
+    "points": 240428,
+    "k": 10,
+    "tf_aabb": 0.00202,
+    "tf_obb": 0.00181,
+    "tf_obbrss": 0.00177,
+    "nanoflann": 0.00394
+  },
+  {
+    "points": 361486,
+    "k": 1,
+    "tf_aabb": 0.0018,
+    "tf_obb": 0.00135,
+    "tf_obbrss": 0.00115,
+    "nanoflann": 0.00283
+  },
+  {
+    "points": 361486,
+    "k": 2,
+    "tf_aabb": 0.00165,
+    "tf_obb": 0.00126,
+    "tf_obbrss": 0.00122,
+    "nanoflann": 0.00323
+  },
+  {
+    "points": 361486,
+    "k": 3,
+    "tf_aabb": 0.00179,
+    "tf_obb": 0.00127,
+    "tf_obbrss": 0.00121,
+    "nanoflann": 0.00332
+  },
+  {
+    "points": 361486,
+    "k": 4,
+    "tf_aabb": 0.00197,
+    "tf_obb": 0.00119,
+    "tf_obbrss": 0.00122,
+    "nanoflann": 0.00347
+  },
+  {
+    "points": 361486,
+    "k": 5,
+    "tf_aabb": 0.00215,
+    "tf_obb": 0.00122,
+    "tf_obbrss": 0.00126,
+    "nanoflann": 0.0037
+  },
+  {
+    "points": 361486,
+    "k": 6,
+    "tf_aabb": 0.00209,
+    "tf_obb": 0.00119,
+    "tf_obbrss": 0.00121,
+    "nanoflann": 0.00413
+  },
+  {
+    "points": 361486,
+    "k": 7,
+    "tf_aabb": 0.00217,
+    "tf_obb": 0.00127,
+    "tf_obbrss": 0.00134,
+    "nanoflann": 0.00436
+  },
+  {
+    "points": 361486,
+    "k": 8,
+    "tf_aabb": 0.00245,
+    "tf_obb": 0.00128,
+    "tf_obbrss": 0.00121,
+    "nanoflann": 0.00449
+  },
+  {
+    "points": 361486,
+    "k": 9,
+    "tf_aabb": 0.00245,
+    "tf_obb": 0.00132,
+    "tf_obbrss": 0.00131,
+    "nanoflann": 0.00503
+  },
+  {
+    "points": 361486,
+    "k": 10,
+    "tf_aabb": 0.00256,
+    "tf_obb": 0.00136,
+    "tf_obbrss": 0.00133,
+    "nanoflann": 0.00523
+  },
+  {
+    "points": 512872,
+    "k": 1,
+    "tf_aabb": 0.00193,
+    "tf_obb": 0.00131,
+    "tf_obbrss": 0.00136,
+    "nanoflann": 0.00376
+  },
+  {
+    "points": 512872,
+    "k": 2,
+    "tf_aabb": 0.00209,
+    "tf_obb": 0.00147,
+    "tf_obbrss": 0.00137,
+    "nanoflann": 0.00366
+  },
+  {
+    "points": 512872,
+    "k": 3,
+    "tf_aabb": 0.00216,
+    "tf_obb": 0.00142,
+    "tf_obbrss": 0.00139,
+    "nanoflann": 0.00379
+  },
+  {
+    "points": 512872,
+    "k": 4,
+    "tf_aabb": 0.00206,
+    "tf_obb": 0.00153,
+    "tf_obbrss": 0.00144,
+    "nanoflann": 0.00409
+  },
+  {
+    "points": 512872,
+    "k": 5,
+    "tf_aabb": 0.00223,
+    "tf_obb": 0.00154,
+    "tf_obbrss": 0.00146,
+    "nanoflann": 0.00401
+  },
+  {
+    "points": 512872,
+    "k": 6,
+    "tf_aabb": 0.0023,
+    "tf_obb": 0.00148,
+    "tf_obbrss": 0.00162,
+    "nanoflann": 0.00444
+  },
+  {
+    "points": 512872,
+    "k": 7,
+    "tf_aabb": 0.00253,
+    "tf_obb": 0.00163,
+    "tf_obbrss": 0.0016,
+    "nanoflann": 0.00436
+  },
+  {
+    "points": 512872,
+    "k": 8,
+    "tf_aabb": 0.00251,
+    "tf_obb": 0.0017,
+    "tf_obbrss": 0.00175,
+    "nanoflann": 0.00495
+  },
+  {
+    "points": 512872,
+    "k": 9,
+    "tf_aabb": 0.00254,
+    "tf_obb": 0.00172,
+    "tf_obbrss": 0.00171,
+    "nanoflann": 0.00495
+  },
+  {
+    "points": 512872,
+    "k": 10,
+    "tf_aabb": 0.0027,
+    "tf_obb": 0.00179,
+    "tf_obbrss": 0.00168,
+    "nanoflann": 0.00524
+  }
+]

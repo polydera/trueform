@@ -48,6 +48,8 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/jlblancoc/nanoflann.git
     GIT_TAG        v1.5.5
 )
+set(NANOFLANN_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(NANOFLANN_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(nanoflann)
 message(STATUS "    nanoflann: Ready")
 
@@ -58,25 +60,12 @@ if (TARGET nanoflann AND NOT TARGET nanoflann::nanoflann)
 endif()
 
 # ------------------------------------------------------------------------------
-# Boost - header-only, used by CGAL
+# Boost - use system Boost (install via: brew install boost)
 # ------------------------------------------------------------------------------
 
-message(STATUS "  - Boost v1.84.0 (C++ Libraries, header-only)")
-FetchContent_Declare(
-    boost
-    URL https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.gz
-)
-
-set(BOOST_INCLUDE_LIBRARIES headers)
-set(BOOST_ENABLE_CMAKE ON)
-
-FetchContent_MakeAvailable(boost)
-message(STATUS "    Boost: Ready (header-only)")
-
-# Hint CGAL's internal FindBoost to use this Boost, not system Boost
-set(BOOST_ROOT         "${boost_SOURCE_DIR}" CACHE PATH "" FORCE)
-set(Boost_INCLUDE_DIR  "${boost_SOURCE_DIR}" CACHE PATH "" FORCE)
-set(Boost_INCLUDE_DIRS "${boost_SOURCE_DIR}" CACHE PATH "" FORCE)
+message(STATUS "  - Boost (system, required by CGAL)")
+find_package(Boost REQUIRED)
+message(STATUS "    Boost: Found (version ${Boost_VERSION})")
 
 # ------------------------------------------------------------------------------
 # TBB - for CGAL parallelism
@@ -158,6 +147,14 @@ set(EIGEN3_INCLUDE_DIR "${eigen_SOURCE_DIR}" CACHE PATH "" FORCE)
 set(Eigen3_DIR "${eigen_BINARY_DIR}" CACHE PATH "" FORCE)
 set(CMAKE_PREFIX_PATH "${eigen_BINARY_DIR};${CMAKE_PREFIX_PATH}" CACHE PATH "" FORCE)
 
+# VTK expects Eigen3::Eigen3 - create IMPORTED target
+if(TARGET Eigen3::Eigen AND NOT TARGET Eigen3::Eigen3)
+    add_library(Eigen3::Eigen3 INTERFACE IMPORTED)
+    set_target_properties(Eigen3::Eigen3 PROPERTIES
+        INTERFACE_LINK_LIBRARIES Eigen3::Eigen
+    )
+endif()
+
 # ------------------------------------------------------------------------------
 # FCL - Flexible Collision Library (mesh-mesh distance baseline)
 # ------------------------------------------------------------------------------
@@ -206,10 +203,9 @@ FetchContent_Declare(
     GIT_TAG v2.5.0
 )
 
-# Force libigl to use our Eigen, CGAL, and Boost
+# Force libigl to use our Eigen and CGAL
 set(FETCHCONTENT_SOURCE_DIR_EIGEN ${eigen_SOURCE_DIR} CACHE PATH "" FORCE)
 set(FETCHCONTENT_SOURCE_DIR_CGAL ${cgal_SOURCE_DIR} CACHE PATH "" FORCE)
-set(FETCHCONTENT_SOURCE_DIR_BOOST ${boost_SOURCE_DIR} CACHE PATH "" FORCE)
 
 # Disable all optional dependencies - we only need core functionality
 set(LIBIGL_BUILD_TESTS OFF CACHE BOOL "" FORCE)

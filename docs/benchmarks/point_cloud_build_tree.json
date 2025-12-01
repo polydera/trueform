@@ -1,0 +1,44 @@
+[
+  {
+    "points": 29131,
+    "tf_aabb": 0.53,
+    "tf_obb": 1.6,
+    "tf_obbrss": 2.04,
+    "nanoflann": 2.87
+  },
+  {
+    "points": 70975,
+    "tf_aabb": 1.51,
+    "tf_obb": 3.78,
+    "tf_obbrss": 4.35,
+    "nanoflann": 8.08
+  },
+  {
+    "points": 122005,
+    "tf_aabb": 2.27,
+    "tf_obb": 5.43,
+    "tf_obbrss": 6.9,
+    "nanoflann": 13.93
+  },
+  {
+    "points": 240428,
+    "tf_aabb": 4.32,
+    "tf_obb": 9.87,
+    "tf_obbrss": 12.59,
+    "nanoflann": 29.05
+  },
+  {
+    "points": 361486,
+    "tf_aabb": 6.73,
+    "tf_obb": 15.98,
+    "tf_obbrss": 19.71,
+    "nanoflann": 45.36
+  },
+  {
+    "points": 512872,
+    "tf_aabb": 9.19,
+    "tf_obb": 20.39,
+    "tf_obbrss": 25.01,
+    "nanoflann": 64.35
+  }
+]

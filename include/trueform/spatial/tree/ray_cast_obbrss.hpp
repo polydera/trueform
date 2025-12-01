@@ -27,7 +27,6 @@ auto ray_cast(
   using Index = typename TreePolicy::index_type;
   using real_t =
       tf::coordinate_type<typename TreePolicy::coordinate_type, RayPolicy>;
-  constexpr std::size_t Dims = TreePolicy::coordinate_dims::value;
 
   const auto &nodes = tree.nodes();
   const auto &ids = tree.ids();

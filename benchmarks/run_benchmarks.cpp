@@ -135,31 +135,31 @@ int main(int argc, char *argv[]) {
   // Register all benchmarks
   std::vector<benchmark_info> benchmarks = {
       // Cut module (7 benchmarks)
-      {"cut-boolean-tf", benchmark::run_boolean_tf_benchmark, 10},
-      {"cut-boolean-cgal", benchmark::run_boolean_cgal_benchmark, 10},
-      {"cut-boolean-igl", benchmark::run_boolean_igl_benchmark, 10},
+      {"cut-boolean-tf", benchmark::run_boolean_tf_benchmark, 100},
+      {"cut-boolean-cgal", benchmark::run_boolean_cgal_benchmark, 1},
+      {"cut-boolean-igl", benchmark::run_boolean_igl_benchmark, 1},
       {"cut-embedded_self_intersection_curves-tf",
-       benchmark::run_embedded_self_intersection_curves_tf_benchmark, 10},
+       benchmark::run_embedded_self_intersection_curves_tf_benchmark, 100},
       {"cut-embedded_self_intersection_curves-igl",
-       benchmark::run_embedded_self_intersection_curves_igl_benchmark, 10},
+       benchmark::run_embedded_self_intersection_curves_igl_benchmark, 1},
       {"cut-embedded_isocurves-tf",
-       benchmark::run_embedded_isocurves_tf_benchmark, 10},
+       benchmark::run_embedded_isocurves_tf_benchmark, 100},
 #ifdef HAVE_VTK
       {"cut-embedded_isocurves-vtk",
-       benchmark::run_embedded_isocurves_vtk_benchmark, 10},
+       benchmark::run_embedded_isocurves_vtk_benchmark, 1},
 #endif
 
       // Topology module (8 benchmarks)
       {"topology-connected_components-cgal",
        benchmark::run_connected_components_cgal_benchmark, 10},
       {"topology-connected_components-tf",
-       benchmark::run_connected_components_tf_benchmark, 10},
+       benchmark::run_connected_components_tf_benchmark, 100},
       {"topology-connected_components-igl",
        benchmark::run_connected_components_igl_benchmark, 10},
       {"topology-boundary_paths-cgal",
        benchmark::run_boundary_paths_cgal_benchmark, 10},
       {"topology-boundary_paths-tf", benchmark::run_boundary_paths_tf_benchmark,
-       10},
+       100},
       {"topology-boundary_paths-igl",
        benchmark::run_boundary_paths_igl_benchmark, 10},
 #ifdef HAVE_VTK
@@ -171,20 +171,20 @@ int main(int argc, char *argv[]) {
 
       // Intersect module (6 benchmarks)
       {"intersect-mesh_mesh_curves-tf",
-       benchmark::run_mesh_mesh_curves_tf_benchmark, 10},
+       benchmark::run_mesh_mesh_curves_tf_benchmark, 100},
       {"intersect-mesh_mesh_curves-cgal",
-       benchmark::run_mesh_mesh_curves_cgal_benchmark, 10},
+       benchmark::run_mesh_mesh_curves_cgal_benchmark, 1},
       // too slow
 /*#ifdef HAVE_VTK*/
 /*      {"intersect-mesh_mesh_curves-vtk",*/
 /*       benchmark::run_mesh_mesh_curves_vtk_benchmark, 10},*/
 /*#endif*/
-      {"intersect-isocontours-tf", benchmark::run_isocontours_tf_benchmark, 10},
+      {"intersect-isocontours-tf", benchmark::run_isocontours_tf_benchmark, 100},
       {"intersect-isocontours-igl", benchmark::run_isocontours_igl_benchmark,
-       10},
+       1},
 #ifdef HAVE_VTK
       {"intersect-isocontours-vtk", benchmark::run_isocontours_vtk_benchmark,
-       10},
+       1},
 #endif
       // Spatial module (11 benchmarks)
       {"spatial-point_cloud-build_tree-tf",
@@ -192,27 +192,27 @@ int main(int argc, char *argv[]) {
       {"spatial-point_cloud-build_tree-nanoflann",
        benchmark::run_point_cloud_build_tree_nanoflann_benchmark, 10},
       {"spatial-point_cloud-knn-tf",
-       benchmark::run_point_cloud_knn_tf_benchmark, 10},
+       benchmark::run_point_cloud_knn_tf_benchmark, 1000},
       {"spatial-point_cloud-knn-nanoflann",
-       benchmark::run_point_cloud_knn_nanoflann_benchmark, 10},
+       benchmark::run_point_cloud_knn_nanoflann_benchmark, 1000},
       {"spatial-polygons-build_tree-tf",
        benchmark::run_polygons_build_tree_tf_benchmark, 10},
       {"spatial-polygons-build_tree-cgal",
        benchmark::run_polygons_build_tree_cgal_benchmark, 10},
       {"spatial-polygons-build_tree-fcl",
        benchmark::run_polygons_build_tree_fcl_benchmark, 10},
-      {"spatial-polygons-closest_point-tf",
-       benchmark::run_polygons_closest_point_tf_benchmark, 10},
-      {"spatial-polygons-closest_point-cgal",
-       benchmark::run_polygons_closest_point_cgal_benchmark, 10},
+      // {"spatial-polygons-closest_point-tf",
+      //  benchmark::run_polygons_closest_point_tf_benchmark, 10},
+      // {"spatial-polygons-closest_point-cgal",
+      //  benchmark::run_polygons_closest_point_cgal_benchmark, 10},
       {"spatial-polygons_to_polygons-closest_point-tf",
-       benchmark::run_polygons_to_polygons_closest_point_tf_benchmark, 10},
+       benchmark::run_polygons_to_polygons_closest_point_tf_benchmark, 1000},
       {"spatial-polygons_to_polygons-closest_point-fcl",
-       benchmark::run_polygons_to_polygons_closest_point_fcl_benchmark, 10},
+       benchmark::run_polygons_to_polygons_closest_point_fcl_benchmark, 1000},
       {"spatial-polygons_to_polygons-collision-tf",
-       benchmark::run_polygons_to_polygons_collision_tf_benchmark, 10},
+       benchmark::run_polygons_to_polygons_collision_tf_benchmark, 1000},
       {"spatial-polygons_to_polygons-collision-fcl",
-       benchmark::run_polygons_to_polygons_collision_fcl_benchmark, 10},
+       benchmark::run_polygons_to_polygons_collision_fcl_benchmark, 1000},
   };
 
   // Simple CLI: run all benchmarks with default mesh paths and samples

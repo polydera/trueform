@@ -1,8 +1,0 @@
-[
-{ "num_contours": 1, "speedup": 10.2, "triangles": 50000 },
-{ "num_contours": 10, "speedup": 14.8, "triangles": 50000 },
-{ "num_contours": 50, "speedup": 19.3, "triangles": 50000 },
-{ "num_contours": 100, "speedup": 23.6, "triangles": 50000 },
-{ "num_contours": 500, "speedup": 77.4, "triangles": 50000 },
-{ "num_contours": 1000, "speedup": 169.8, "triangles": 50000 }
-]
