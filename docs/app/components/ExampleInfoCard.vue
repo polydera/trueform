@@ -3,32 +3,50 @@ import { useMediaQuery } from "@vueuse/core";
 
 interface BadgeProps {
   icon?: string;
-  text: string;
+  label: string;
+  value: string;
 }
 
 const props = defineProps<{
-  title: string;
+  title?: string;
   badge?: BadgeProps;
+  placement?: "left" | "right";
+  customPosition?: string;
 }>();
 
-const isMobile = useMediaQuery("(max-width: 768px)");
+const isMobile = useMediaQuery("(max-width: 1024px)");
+const alignmentClass = computed(() =>
+  props.placement === "right" ? "items-end text-right" : "items-start text-left",
+);
+const containerWidthClass = computed(() =>
+  props.placement === "right"
+    ? "w-fit max-w-[calc(100vw-1.5rem)] lg:max-w-sm px-3 py-1.5"
+    : "max-w-[calc(100vw-1.5rem)] lg:min-w-md lg:max-w-lg p-3",
+);
+const positionClass = computed(() =>
+  props.customPosition
+    ? props.customPosition
+    : `${props.placement === "right" ? "right-3 md:right-4" : "left-3 md:left-4"} absolute top-3 md:top-4`,
+);
 </script>
 
 <template>
   <div
-    class="absolute left-3 top-3 z-10 max-w-[calc(100vw-1.5rem)] lg:min-w-md lg:max-w-lg rounded-lg p-3 bg-neutral-100/10 shadow-lg backdrop-blur flex flex-col gap-0.5 md:gap-2"
+    class="z-10 rounded-lg bg-neutral-100/10 shadow-lg backdrop-blur flex flex-col gap-0.5 md:gap-2"
+    :class="[alignmentClass, containerWidthClass, positionClass]"
   >
-    <div class="flex justify-between items-start gap-3">
-      <p class="font-semibold text-lg mb-2">{{ title }}</p>
+    <div v-if="title" class="flex justify-between items-start gap-3 w-full">
+      <p class="font-semibold text-lg mb-2" :class="props.placement === 'right' ? 'ml-auto' : ''">{{ title }}</p>
       <UBadge
         v-if="badge"
         variant="soft"
         color="primary"
         :icon="badge.icon"
         :size="isMobile ? 'sm' : 'lg'"
-        class="py-1.5 px-2 mt-0.5 lg:mt-0"
+        class="py-1.5 px-2 mt-0.5 lg:mt-0 inline-flex items-center transition-[width] duration-200 ease-in-out"
       >
-        <span class="font-bold">{{ badge.text }}</span>
+        <span>{{ badge.label }}</span>
+        <span class="font-bold badge-text whitespace-nowrap">{{ badge.value }}</span>
       </UBadge>
     </div>
 
@@ -38,3 +56,9 @@ const isMobile = useMediaQuery("(max-width: 768px)");
   </div>
 </template>
 
+<style scoped>
+.badge-text {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+</style>

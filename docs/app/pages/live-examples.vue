@@ -2,7 +2,8 @@
 import { useMediaQuery } from "@vueuse/core";
 
 const route = useRoute();
-const isMobile = useMediaQuery("(max-width: 768px)");
+const isMobile = useMediaQuery("(max-width: 1024px)");
+const isLandscape = useMediaQuery("(orientation: landscape)");
 
 const examples = [
   {
@@ -40,11 +41,14 @@ const examples = [
 const isSidebarOpen = ref(false);
 
 // Close sidebar when navigating on mobile
-watch(() => route.path, () => {
-  if (isSidebarOpen.value) {
-    isSidebarOpen.value = false;
-  }
-});
+watch(
+  () => route.path,
+  () => {
+    if (isSidebarOpen.value) {
+      isSidebarOpen.value = false;
+    }
+  },
+);
 </script>
 <template>
   <div class="relative flex flex-row h-[calc(100vh-var(--ui-header-height,0px))]">
@@ -56,7 +60,10 @@ watch(() => route.path, () => {
       color="neutral"
       variant="solid"
       size="xs"
-      class="fixed left-2 top-1/2 -translate-y-1/2 z-50 shadow-lg"
+      :class="[
+        'fixed left-2 z-50 shadow-lg',
+        isLandscape ? 'bottom-2' : 'top-1/2 -translate-y-1/2',
+      ]"
       :ui="{
         base: 'flex-col gap-1.5 py-2.5',
         label: '[writing-mode:vertical-rl] [text-orientation:mixed]',
@@ -77,19 +84,25 @@ watch(() => route.path, () => {
     >
       <template #body>
         <div class="flex flex-col h-full gap-2.5 overflow-y-auto">
-          <div class="flex items-center justify-between mb-2">
-            <h2 class="text-lg font-semibold text-primary ml-3">Live Examples</h2>
-            <UButton
-              icon="i-lucide-x"
-              color="neutral"
-              variant="ghost"
-              size="sm"
-              square
-              @click="isSidebarOpen = false"
-              aria-label="Close sidebar"
-            />
+          <div class="pt-2 px-3 flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <h2 class="text-2xl font-semibold text-primary">Live Examples</h2>
+              <UButton
+                icon="i-lucide-x"
+                color="neutral"
+                variant="ghost"
+                size="sm"
+                square
+                @click="isSidebarOpen = false"
+                aria-label="Close sidebar"
+              />
+            </div>
+            <p class="text-sm text-muted">
+              Interactive examples showcasing trueform's core features.
+            </p>
+            <ExampleSizePicker />
           </div>
-
+          <USeparator class="my-1.5" />
           <UCard
             v-for="example in examples"
             :key="example.title"
@@ -112,7 +125,15 @@ watch(() => route.path, () => {
     </USlideover>
 
     <!-- Desktop Sidebar -->
-    <div class="hidden md:flex w-xs flex-col h-full gap-2.5 overflow-y-auto p-2 border-r border-default">
+    <div
+      class="hidden lg:flex w-xs flex-col h-full gap-2.5 overflow-y-auto p-2 border-r border-default"
+    >
+      <div class="pt-2 px-3 flex flex-col gap-2">
+        <h2 class="text-2xl font-semibold text-primary">Live Examples</h2>
+        <p class="text-sm text-muted">Interactive examples showcasing trueform's core features.</p>
+        <ExampleSizePicker />
+      </div>
+      <USeparator class="my-1.5" />
       <UCard
         v-for="example in examples"
         :key="example.title"

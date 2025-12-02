@@ -1,53 +1,65 @@
 <script setup lang="ts">
 import { useWasmModule } from "@/composables/useWasmModule";
 import { PositioningExample } from "@/examples/PositioningExample";
+import { useExampleLoadingState } from "@/composables/useExampleLoadingState";
+import { useMeshSelection } from "@/composables/useMeshSelection";
 
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
-const { loadWasmModule, preloadMeshes } = useWasmModule();
+const { loadExampleWithAssets } = useWasmModule();
+const { isLoading, loadingMessage, loadingError, resetLoading, setLoadingMessage, failLoading, finishLoading } =
+  useExampleLoadingState();
+const { meshSize, buildMeshes, formatPolygonLabel } = useMeshSelection();
 
 const threejsContainer = ref<HTMLElement | null>(null);
 let exampleClass: PositioningExample | null = null;
-const meshes = [
-  { url: "/stl/dragon-250k.stl", filename: "dragon-250k.stl" },
-  { url: "/stl/Stanford_Bunny.stl", filename: "Stanford_Bunny.stl" },
-];
+const meshCount = 2;
+const meshes = computed(() => buildMeshes(meshCount));
+const polygonLabel = computed(() => formatPolygonLabel(meshCount));
 
 const actionButtons = [
   { icon: "i-lucide-rotate-3d", label: "Randomize", keyboardShortcut: "N", onClick: () => exampleClass?.randomize() },
 ];
 
 let tearDownRequested = false;
+let currentLoadId = 0;
 
-const loadThreejs = async () => {
-  const wasmInstance = await loadWasmModule();
-  if (tearDownRequested) return;
-
-  const el = threejsContainer.value;
-  if (!el) return;
-
-  await preloadMeshes(wasmInstance, meshes);
-
-  if (tearDownRequested) return;
-
-  exampleClass = new PositioningExample(
-    wasmInstance,
-    meshes.map((m) => m.filename),
-    el,
-    isDark.value,
-  );
-};
-
-onMounted(() => {
-  loadThreejs();
-});
-
-onBeforeUnmount(() => {
-  tearDownRequested = true;
+const disposeExample = () => {
   if (exampleClass) {
     exampleClass.dispose();
     exampleClass = null;
   }
+};
+
+const loadThreejs = async () => {
+  const loadId = ++currentLoadId;
+  disposeExample();
+  exampleClass = await loadExampleWithAssets({
+    meshes: meshes.value,
+    skipOverlayIfCached: true,
+    loading: { resetLoading, setLoadingMessage, failLoading, finishLoading },
+    isTornDown: () => tearDownRequested || loadId !== currentLoadId,
+    createScene: (wasmInstance, meshFilenames) => {
+      const el = threejsContainer.value;
+      if (!el) {
+        return null;
+      }
+
+      return new PositioningExample(
+        wasmInstance,
+        meshFilenames,
+        el,
+        isDark.value,
+      );
+    },
+  });
+};
+
+watch(meshSize, () => loadThreejs(), { immediate: true });
+
+onBeforeUnmount(() => {
+  tearDownRequested = true;
+  disposeExample();
 });
 
 watch(isDark, (dark) => {
@@ -69,8 +81,9 @@ watch(isDark, (dark) => {
       <div class="flex flex-col md:flex-row w-full">
         <div ref="threejsContainer" id="threejsContainer" class="h-full flex-1 min-h-0 w-[100vw] md:w-full"></div>
       </div>
+      <ExampleLoadingOverlay :loading="isLoading" :message="loadingMessage" :error="loadingError" @retry="loadThreejs" />
+      <ExamplePolygonsCard :mesh-count="meshCount" :mesh-label="polygonLabel" :loading="isLoading" />
       <ExampleActionButtons :buttons="actionButtons" />
     </div>
   </div>
 </template>
-

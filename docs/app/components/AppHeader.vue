@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import type { ContentNavigationItem } from "@nuxt/content";
+import { useMediaQuery } from "@vueuse/core";
+
+const isMobile = useMediaQuery("(max-width: 1024px)");
 
 const navigation = inject<Ref<ContentNavigationItem[]>>("navigation");
 const route = useRoute();
@@ -38,8 +41,6 @@ const showLibPicker = computed(() => {
     </template>
 
     <template #right>
-      <LibPicker v-if="showLibPicker" class="mr-3" />
-
       <UContentSearchButton v-if="header?.search" class="lg:hidden" />
 
       <UColorModeButton v-if="header?.colorMode" />
@@ -54,6 +55,7 @@ const showLibPicker = computed(() => {
     </template>
 
     <template #body>
+      <LibPicker v-if="showLibPicker && isMobile" class="mb-4" />
       <UContentNavigation highlight :navigation="navigation" />
     </template>
   </UHeader>

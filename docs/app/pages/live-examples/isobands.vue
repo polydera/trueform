@@ -1,16 +1,23 @@
 <script setup lang="ts">
 import { useWasmModule } from "@/composables/useWasmModule";
 import { IsobandsExample } from "@/examples/IsobandsExample";
+import { useExampleLoadingState } from "@/composables/useExampleLoadingState";
+import { useMeshSelection } from "@/composables/useMeshSelection";
 
 const { isTouchscreen } = useTouchscreen();
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
-const { loadWasmModule, preloadMeshes } = useWasmModule();
+const { loadExampleWithAssets } = useWasmModule();
+const { isLoading, loadingMessage, loadingError, resetLoading, setLoadingMessage, failLoading, finishLoading } =
+  useExampleLoadingState();
+const { meshSize, buildMeshes, formatPolygonLabel } = useMeshSelection();
 
 const threejsContainer = ref<HTMLElement | null>(null);
 const threejsContainer2 = ref<HTMLElement | null>(null);
 let exampleClass: IsobandsExample | null = null;
-const meshes = [{ url: "/stl/dragon-250k.stl", filename: "dragon-250k.stl" }];
+const meshCount = 1;
+const meshes = computed(() => buildMeshes(meshCount));
+const polygonLabel = computed(() => formatPolygonLabel(meshCount));
 
 const avgTime = ref("0");
 const getAvgTime = () => {
@@ -22,7 +29,8 @@ const getAvgTime = () => {
 
 const badge = computed(() => ({
   icon: "i-lucide-gauge",
-  text: `Last scroll: ${avgTime.value} ms`,
+  label: "Last scroll:",
+  value: `${avgTime.value} ms`,
 }));
 
 const actionButtons = [
@@ -31,39 +39,48 @@ const actionButtons = [
 ];
 
 let tearDownRequested = false;
+let currentLoadId = 0;
 
-const loadThreejs = async () => {
-  const wasmInstance = await loadWasmModule();
-  if (tearDownRequested) return;
-
-  const el = threejsContainer.value;
-  const el2 = threejsContainer2.value;
-  if (!el || !el2) return;
-
-  await preloadMeshes(wasmInstance, meshes);
-
-  if (tearDownRequested) return;
-
-  exampleClass = new IsobandsExample(
-    wasmInstance,
-    meshes.map((m) => m.filename),
-    el,
-    el2,
-    isDark.value,
-  );
-  exampleClass.refreshTimeValue = getAvgTime;
-};
-
-onMounted(() => {
-  loadThreejs();
-});
-
-onBeforeUnmount(() => {
-  tearDownRequested = true;
+const disposeExample = () => {
   if (exampleClass) {
     exampleClass.dispose();
     exampleClass = null;
   }
+};
+
+const loadThreejs = async () => {
+  const loadId = ++currentLoadId;
+  disposeExample();
+  exampleClass = await loadExampleWithAssets({
+    meshes: meshes.value,
+    skipOverlayIfCached: true,
+    loading: { resetLoading, setLoadingMessage, failLoading, finishLoading },
+    isTornDown: () => tearDownRequested || loadId !== currentLoadId,
+    createScene: (wasmInstance, meshFilenames) => {
+      const el = threejsContainer.value;
+      const el2 = threejsContainer2.value;
+      if (!el || !el2) {
+        return null;
+      }
+
+      const instance = new IsobandsExample(
+        wasmInstance,
+        meshFilenames,
+        el,
+        el2,
+        isDark.value,
+      );
+      instance.refreshTimeValue = getAvgTime;
+      return instance;
+    },
+  });
+};
+
+watch(meshSize, () => loadThreejs(), { immediate: true });
+
+onBeforeUnmount(() => {
+  tearDownRequested = true;
+  disposeExample();
 });
 
 watch(isDark, (dark) => {
@@ -76,7 +93,7 @@ watch(isDark, (dark) => {
 <template>
   <div class="flex flex-col w-full h-full">
     <div class="flex flex-row flex-1 relative min-h-0">
-      <ExampleInfoCard title="Slicing" :badge="badge">
+      <ExampleInfoCard title="Isobands" :badge="badge">
         <div v-if="isTouchscreen" class="flex gap-1 items-center text-muted">
           <UIcon name="i-lucide-tally-3" class="size-4 ml-1" />
           <p class="text-sm">Drag the plane with 3 fingers to sweep.</p>
@@ -91,6 +108,8 @@ watch(isDark, (dark) => {
         <div ref="threejsContainer" id="threejsContainer" class="h-full flex-1 min-h-0 w-[100vw] md:w-full"></div>
         <div ref="threejsContainer2" id="threejsContainer2" class="h-full flex-1 min-h-0 w-[100vw] md:w-full"></div>
       </div>
+      <ExampleLoadingOverlay :loading="isLoading" :message="loadingMessage" :error="loadingError" @retry="loadThreejs" />
+      <ExamplePolygonsCard :mesh-count="meshCount" :mesh-label="polygonLabel" :loading="isLoading" />
       <ExampleActionButtons :buttons="actionButtons" />
     </div>
   </div>
