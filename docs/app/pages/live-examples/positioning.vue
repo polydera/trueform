@@ -13,6 +13,10 @@ const meshes = [
   { url: "/stl/Stanford_Bunny.stl", filename: "Stanford_Bunny.stl" },
 ];
 
+const actionButtons = [
+  { icon: "i-lucide-rotate-3d", label: "Randomize", keyboardShortcut: "N", onClick: () => exampleClass?.randomize() },
+];
+
 let tearDownRequested = false;
 
 const loadThreejs = async () => {
@@ -65,6 +69,7 @@ watch(isDark, (dark) => {
       <div class="flex flex-col md:flex-row w-full">
         <div ref="threejsContainer" id="threejsContainer" class="h-full flex-1 min-h-0 w-[100vw] md:w-full"></div>
       </div>
+      <ExampleActionButtons :buttons="actionButtons" />
     </div>
   </div>
 </template>

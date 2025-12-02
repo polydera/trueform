@@ -129,6 +129,20 @@ private:
                      selected_mesh_color[2]);
   }
 
+  auto randomize_rotations() {
+      for (std::unique_ptr<mesh_object> &actor : bridge->get_actors()) {
+        tf::vector<double, 3> at{actor->matrix[3], actor->matrix[7],
+                                 actor->matrix[11]};
+        auto tr = tf::random_transformation(at);
+        for (int i = 0; i < 3; ++i) {
+          for (int j = 0; j < 4; ++j) {
+            actor->matrix[i * 4 + j] = tr(i, j);
+          }
+        }
+        bridge->update_frame(actor.get());
+      }
+    }
+
 public:
   auto get_value() -> bool { return selected_mode; }
 
@@ -194,6 +208,15 @@ public:
       return false;
     }
     return false;
+  }
+
+  auto OnKeyPress(std::string key) -> bool override {
+    if (key == "n") {
+      randomize_rotations();
+      return true;
+    } else {
+      return false;
+    }
   }
 };
 

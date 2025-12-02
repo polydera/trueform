@@ -4,6 +4,7 @@ import { ThreejsBase } from "@/examples/ThreejsBase";
 import * as THREE from "three";
 
 export class PositioningExample extends ThreejsBase {
+  private keyPressed = false;
   constructor(
     wasmInstance: MainModule,
     paths: string[],
@@ -11,7 +12,25 @@ export class PositioningExample extends ThreejsBase {
     isDarkMode = true,
   ) {
     super(wasmInstance, paths, container, undefined, false, false, isDarkMode);
+
+    const interceptKeyDownEvent = (event: KeyboardEvent) => {
+      if (this.keyPressed) return;
+      this.keyPressed = true;
+      this.wasmInstance.OnKeyPress(event.key);
+      this.updateMeshes();
+    };
+    const interceptKeyUpEvent = (_event: KeyboardEvent) => {
+      this.keyPressed = false;
+    };
+    window.addEventListener("keydown", interceptKeyDownEvent);
+    window.addEventListener("keyup", interceptKeyUpEvent);
+
     fitCameraToAllMeshesFromZPlane(this.sceneBundle1, 1.5);
+  }
+
+  public randomize() {
+    this.wasmInstance.OnKeyPress("n");
+    this.updateMeshes();
   }
 
   public override onPointerUp(event: PointerEvent) {
