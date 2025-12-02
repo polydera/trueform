@@ -55,15 +55,16 @@ export class IsobandsExample extends ThreejsBase {
       if(handled)
         event.stopImmediatePropagation();
     };
-    window.addEventListener("wheel", interceptWheelEvent, {
+    const wheelListenerOptions = {
       passive: false,
       capture: true
-    });
-    this.addCleanup(() => {
-      window.removeEventListener("keydown", interceptKeyDownEvent);
-      window.removeEventListener("keyup", interceptKeyUpEvent);
-      window.removeEventListener("wheel", interceptWheelEvent);
-    });
+    };
+    window.addEventListener("wheel", interceptWheelEvent, wheelListenerOptions);
+      this.addCleanup(() => {
+        window.removeEventListener("keydown", interceptKeyDownEvent);
+        window.removeEventListener("keyup", interceptKeyUpEvent);
+        window.removeEventListener("wheel", interceptWheelEvent, wheelListenerOptions);
+      });
 
     const opts: curvesToCurvePolyOpts = {
       tubeColor: 0x2020ff,
