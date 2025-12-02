@@ -48,6 +48,11 @@ const getAvgTime = () => {
   return 0;
 };
 
+const badge = computed(() => ({
+  icon: "i-lucide-gauge",
+  text: `Pick: ${avgPickTime.value} μs, Collision: ${avgTime.value} μs`,
+}));
+
 onMounted(() => {
   loadThreejs();
 });
@@ -70,21 +75,19 @@ watch(isDark, (dark) => {
 <template>
   <div class="flex flex-col w-full h-full">
     <div class="flex flex-row flex-1 relative min-h-0">
-      <div class="absolute left-3 top-3 z-10 max-w-md rounded-lg p-3 bg-neutral-100/10 shadow-lg backdrop-blur">
-        <p class="font-semibold text-lg mb-2">Collision</p>
-        <div class="flex flex-col gap-2 text-sm">
-          <div class="flex gap-3 items-center text-muted">
-            <UIcon name="i-lucide-move-3d" class="size-4 ml-1" />
-            <p>Drag a mesh. Contact detection runs live as you move.</p>
-          </div>
-          <div class="grid grid-cols-1 gap-1 text-muted">
-            <p>Total polygons: {{ totalPolygons }}</p>
-            <p>Pick: {{ avgPickTime }} us</p>
-            <p>Collision: {{ avgTime }} us</p>
-          </div>
+      <ExampleInfoCard title="Collision" :badge="badge">
+        <div class="flex gap-3 items-center text-muted">
+          <UIcon name="i-lucide-move-3d" class="size-4 ml-1" />
+          <p class="text-sm">Drag a mesh. Contact detection runs live as you move.</p>
         </div>
+        <div class="grid grid-cols-1 gap-1 text-muted">
+          <p class="text-sm">Total polygons: {{ totalPolygons }}</p>
+        </div>
+      </ExampleInfoCard>
+      <div class="flex flex-col md:flex-row w-full">
+        <div ref="threejsContainer" id="threejsContainer" class="h-full flex-1 min-h-0 w-[100vw] md:w-full"></div>
       </div>
-      <div ref="threejsContainer" id="threejsContainer" class="h-full w-full flex-1 min-h-0 min-w-0"></div>
     </div>
   </div>
 </template>
+

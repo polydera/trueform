@@ -44,6 +44,15 @@ const getAvgTime = () => {
   return 0;
 };
 
+const badge = computed(() => ({
+  icon: "i-lucide-gauge",
+  text: `Curve update: ${avgTime.value} ms`,
+}));
+
+const actionButtons = [
+  { icon: "i-lucide-rotate-3d", label: "Randomize", keyboardShortcut: "N", onClick: () => exampleClass?.randomize() },
+];
+
 onMounted(() => {
   loadThreejs();
 });
@@ -66,24 +75,19 @@ watch(isDark, (dark) => {
 <template>
   <div class="flex flex-col w-full h-full">
     <div class="flex flex-row flex-1 relative min-h-0">
-      <div class="absolute left-3 top-3 z-10 max-w-md rounded-lg p-3 bg-neutral-100/10 shadow-lg backdrop-blur">
-        <p class="font-semibold text-lg mb-2">Mesh Intersections</p>
-        <div class="flex flex-col gap-2 text-sm text-muted">
-          <div class="flex gap-3 items-center">
-            <UIcon name="i-lucide-git-merge" class="size-4 ml-1" />
-            <p>Drag a mesh. The intersection curves recompute instantly.</p>
-          </div>
-          <div class="flex gap-2 items-center">
-            <UKbd variant="subtle">n</UKbd>
-            <p>Randomize mesh orientation</p>
-          </div>
-          <div class="grid grid-cols-1 gap-1">
-            <p>Total polygons: {{ totalPolygons }}</p>
-            <p>Curve update: {{ avgTime }} ms</p>
-          </div>
+      <ExampleInfoCard title="Mesh Intersections" :badge="badge">
+        <div class="flex gap-3 items-center text-muted">
+          <UIcon name="i-lucide-git-merge" class="size-4 ml-1" />
+          <p class="text-sm">Drag a mesh. The intersection curves recompute instantly.</p>
         </div>
+        <div class="grid grid-cols-1 gap-1 text-muted">
+          <p class="text-sm">Total polygons: {{ totalPolygons }}</p>
+        </div>
+      </ExampleInfoCard>
+      <div class="flex flex-col md:flex-row w-full">
+        <div ref="threejsContainer" id="threejsContainer" class="h-full flex-1 min-h-0 w-[100vw] md:w-full"></div>
       </div>
-      <div ref="threejsContainer" id="threejsContainer" class="h-full w-full flex-1 min-h-0 min-w-0"></div>
+      <ExampleActionButtons :buttons="actionButtons" />
     </div>
   </div>
 </template>

@@ -174,7 +174,6 @@ export abstract class ThreejsBase implements IThreejsBase {
         const { width, height } = entry.contentRect;
 
         if (entry.target === container) {
-          console.log("Resizing renderer to", width, height, container);
           this.renderer.setSize(width, height);
           this.sceneBundle1.camera.aspect = width / height;
           this.sceneBundle1.camera.updateProjectionMatrix();
@@ -183,7 +182,6 @@ export abstract class ThreejsBase implements IThreejsBase {
         }
 
         if (entry.target === container2 && this.renderer2 && this.sceneBundle2) {
-          console.log("Resizing renderer2 to", width, height, container2);
           this.renderer2.setSize(width, height);
           this.sceneBundle2.camera.aspect = width / height;
           this.sceneBundle2.camera.updateProjectionMatrix();
