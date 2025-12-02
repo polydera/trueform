@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 export interface SceneConfig {
     backgroundColor?: number;
@@ -267,27 +267,27 @@ export function createBidirectionalSyncedScenes(
         syncOrbitControls(sourceControls, targetControls);
         isSyncing = false;
     }
-    
+
     // Setup bidirectional sync
     const setupControlsSync = (controls1: OrbitControls, controls2: OrbitControls) => {
         const syncEvents = ['change', 'start', 'end'];
-        
+
         syncEvents.forEach(eventType => {
             controls1.addEventListener(eventType, () => {
                 syncControls(controls1, controls2);
             });
-            
+
             controls2.addEventListener(eventType, () => {
                 syncControls(controls2, controls1);
             });
         });
     };
-    
+
     setupControlsSync(sceneBundle1.controls, sceneBundle2.controls);
-    
+
     // Initial sync (use sceneBundle1 as initial source)
     syncControls(sceneBundle1.controls, sceneBundle2.controls);
-    
+
     return { sceneBundle1, sceneBundle2 };
 }
 /**
