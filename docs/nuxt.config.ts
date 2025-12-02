@@ -31,6 +31,15 @@ export default defineNuxtConfig({
 
   compatibilityDate: "2024-09-23",
 
+  // OG Image configuration
+  site: {
+    // Update this with your production domain
+    // For Cloudflare Pages, this might be something like: https://trueform.pages.dev
+    // You can also use environment variables: process.env.NUXT_PUBLIC_SITE_URL
+    url: process.env.NUXT_PUBLIC_SITE_URL || "https://trueform.pages.dev",
+    name: "trueform",
+  },
+
   nitro: {
     prerender: {
       routes: ["/"],

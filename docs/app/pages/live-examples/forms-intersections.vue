@@ -3,6 +3,23 @@ import { useWasmModule } from "@/composables/useWasmModule";
 import { FormsIntersectionsExample } from "@/examples/FormsIntersectionsExample";
 import { useExampleLoadingState } from "@/composables/useExampleLoadingState";
 import { useMeshSelection } from "@/composables/useMeshSelection";
+import { getExampleMetadata } from "@/utils/liveExamples";
+
+const metadata = getExampleMetadata("forms-intersections");
+if (metadata) {
+  defineOgImage({
+    component: "OgImageDocs",
+    props: {
+      title: metadata.title,
+      description: metadata.description,
+      headline: "Live Example",
+    },
+  });
+  useSeoMeta({
+    title: metadata.title,
+    description: metadata.description,
+  });
+}
 
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");

@@ -3,6 +3,23 @@ import { useWasmModule } from "@/composables/useWasmModule";
 import { CollisionExample } from "@/examples/CollisionExample";
 import { useExampleLoadingState } from "@/composables/useExampleLoadingState";
 import { useMeshSelection } from "@/composables/useMeshSelection";
+import { getExampleMetadata } from "@/utils/liveExamples";
+
+const metadata = getExampleMetadata("collision");
+if (metadata) {
+  defineOgImage({
+    component: "OgImageDocs",
+    props: {
+      title: metadata.title,
+      description: metadata.description,
+      headline: "Live Example",
+    },
+  });
+  useSeoMeta({
+    title: metadata.title,
+    description: metadata.description,
+  });
+}
 
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");

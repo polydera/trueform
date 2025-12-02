@@ -3,6 +3,23 @@ import { useWasmModule } from "@/composables/useWasmModule";
 import { IsobandsExample } from "@/examples/IsobandsExample";
 import { useExampleLoadingState } from "@/composables/useExampleLoadingState";
 import { useMeshSelection } from "@/composables/useMeshSelection";
+import { getExampleMetadata } from "@/utils/liveExamples";
+
+const metadata = getExampleMetadata("isobands");
+if (metadata) {
+  defineOgImage({
+    component: "OgImageDocs",
+    props: {
+      title: metadata.title,
+      description: metadata.description,
+      headline: "Live Example",
+    },
+  });
+  useSeoMeta({
+    title: metadata.title,
+    description: metadata.description,
+  });
+}
 
 const { isTouchscreen } = useTouchscreen();
 const colorMode = useColorMode();
