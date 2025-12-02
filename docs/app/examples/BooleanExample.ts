@@ -1,5 +1,5 @@
 import type { MainModule } from "@/examples/native";
-import {fitCameraToAllMeshesFromZPlane, syncOrbitControls} from "@/utils/sceneUtils";
+import { fitCameraToAllMeshesFromZPlane, syncOrbitControls } from "@/utils/sceneUtils";
 import {
   buffersToCurves,
   createCurveLineObjects,
@@ -19,6 +19,17 @@ export class BooleanExample extends ThreejsBase {
   private keyPressed = false;
 
   // private pointDebug = createPoints();
+  public randomize() {
+    this.wasmInstance.OnKeyPress("n");
+    this.updateMeshes();
+  }
+
+  public resyncCamera() {
+    this.syncSceneControls = true;
+    if (this.sceneBundle2) {
+      syncOrbitControls(this.sceneBundle1.controls, this.sceneBundle2.controls);
+    }
+  }
 
   constructor(
     wasmInstance: MainModule,
@@ -32,10 +43,12 @@ export class BooleanExample extends ThreejsBase {
     const interceptKeyDownEvent = (event: KeyboardEvent) => {
       if (this.keyPressed) return;
       this.keyPressed = true;
-      if(event.key === "r"){
-        this.syncSceneControls = true;
-        if(this.sceneBundle2)
-          syncOrbitControls(this.sceneBundle1.controls, this.sceneBundle2.controls);
+      if (event.key === "r") {
+        this.resyncCamera();
+        return;
+      }
+      if (event.key === "n") {
+        this.randomize();
         return;
       }
       this.wasmInstance.OnKeyPress(event.key);
@@ -74,7 +87,7 @@ export class BooleanExample extends ThreejsBase {
 
     this.updateMeshes();
     fitCameraToAllMeshesFromZPlane(this.sceneBundle1, 1.8);
-    if(!this.syncSceneControls && this.sceneBundle2){
+    if (!this.syncSceneControls && this.sceneBundle2) {
       fitCameraToAllMeshesFromZPlane(this.sceneBundle2, 1.8);
       syncOrbitControls(this.sceneBundle1.controls, this.sceneBundle2.controls);
     }

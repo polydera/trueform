@@ -48,7 +48,7 @@ const badge = computed(() => ({
 }));
 
 const actionButtons = [
-  { icon: "i-lucide-rotate-3d", label: "Randomize", keyboardShortcut: "N" },
+  { icon: "i-lucide-rotate-3d", label: "Randomize", keyboardShortcut: "N", onClick: () => exampleClass?.randomize() },
 ];
 
 onMounted(() => {

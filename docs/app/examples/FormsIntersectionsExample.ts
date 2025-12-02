@@ -15,6 +15,10 @@ export class FormsIntersectionsExample extends ThreejsBase {
   private curveObjects: CurveLineObjects | any;
   private useBasicLines = false;
   private keyPressed = false;
+  public randomize() {
+    this.wasmInstance.OnKeyPress("n");
+    this.updateMeshes();
+  }
 
   constructor(
     wasmInstance: MainModule,
@@ -27,6 +31,10 @@ export class FormsIntersectionsExample extends ThreejsBase {
     const interceptKeyDownEvent = (event: KeyboardEvent) => {
       if (this.keyPressed) return;
       this.keyPressed = true;
+      if (event.key === "n") {
+        this.randomize();
+        return;
+      }
       this.wasmInstance.OnKeyPress(event.key);
       this.updateMeshes();
     };

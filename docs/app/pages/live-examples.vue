@@ -64,7 +64,7 @@ watch(() => route.path, () => {
       size="xs"
       class="fixed left-2 top-1/2 -translate-y-1/2 z-50 shadow-lg"
       :ui="{
-        base: 'flex-col gap-1.5',
+        base: 'flex-col gap-1.5 py-2.5',
         label: '[writing-mode:vertical-rl] [text-orientation:mixed]',
       }"
       label="More examples"

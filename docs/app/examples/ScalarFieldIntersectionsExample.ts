@@ -14,6 +14,10 @@ export class ScalarFieldIntersectionsExample extends ThreejsBase {
   private curveObjects: any;
   private useBasicLines = false;
   private keyPressed = false;
+  public randomize() {
+    this.wasmInstance.OnKeyPress("n");
+    this.updateMeshes();
+  }
 
   constructor(
     wasmInstance: MainModule,
@@ -26,6 +30,10 @@ export class ScalarFieldIntersectionsExample extends ThreejsBase {
     const interceptKeyDownEvent = (event: KeyboardEvent) => {
       if (this.keyPressed) return;
       this.keyPressed = true;
+      if (event.key === "n") {
+        this.randomize();
+        return;
+      }
       this.wasmInstance.OnKeyPress(event.key);
       this.updateMeshes();
     };

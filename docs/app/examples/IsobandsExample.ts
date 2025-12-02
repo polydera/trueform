@@ -16,6 +16,17 @@ export class IsobandsExample extends ThreejsBase {
   private curveObjects: any;
   private useBasicLines = false;
   private keyPressed = false;
+  public randomize() {
+    this.wasmInstance.OnKeyPress("n");
+    this.updateMeshes();
+  }
+
+  public resyncCamera() {
+    this.syncSceneControls = true;
+    if (this.sceneBundle2) {
+      syncOrbitControls(this.sceneBundle1.controls, this.sceneBundle2.controls);
+    }
+  }
 
   constructor(
     wasmInstance: MainModule,
@@ -30,9 +41,11 @@ export class IsobandsExample extends ThreejsBase {
       if (this.keyPressed) return;
       this.keyPressed = true;
       if(event.key === "r"){
-        this.syncSceneControls = true;
-        if(this.sceneBundle2)
-          syncOrbitControls(this.sceneBundle1.controls, this.sceneBundle2.controls);
+        this.resyncCamera();
+        return;
+      }
+      if(event.key === "n"){
+        this.randomize();
         return;
       }
       this.wasmInstance.OnKeyPress(event.key);

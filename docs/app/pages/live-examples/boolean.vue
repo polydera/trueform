@@ -28,8 +28,8 @@ const badge = computed(() => ({
 }));
 
 const actionButtons = [
-  { icon: "i-lucide-rotate-3d", label: "Randomize", keyboardShortcut: "N", onClick: () => {} },
-  { icon: "i-lucide-focus", label: "Resync camera", keyboardShortcut: "R", onClick: () => {} },
+  { icon: "i-lucide-rotate-3d", label: "Randomize", keyboardShortcut: "N", onClick: () => exampleClass?.randomize() },
+  { icon: "i-lucide-focus", label: "Resync camera", keyboardShortcut: "R", onClick: () => exampleClass?.resyncCamera() },
 ];
 
 let tearDownRequested = false;
