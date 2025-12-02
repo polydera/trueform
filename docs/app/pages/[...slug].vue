@@ -7,7 +7,7 @@ definePageMeta({
 });
 
 const route = useRoute();
-const { collection } = useLibraryCollection();
+const { collection, library } = useLibraryCollection();
 const { toc } = useAppConfig();
 const navigation = inject<Ref<ContentNavigationItem[]>>("navigation");
 
@@ -34,13 +34,11 @@ const description = page.value.seo?.description || page.value.description;
 const headline = computed(() => findPageHeadline(navigation?.value, page.value?.path));
 
 // Generate OG image using nuxt-og-image with headline
-defineOgImage({
-  component: "OgImageDocs",
-  props: {
-    title,
-    description,
-    headline: headline.value,
-  },
+defineOgImageComponent("Docs", {
+  title,
+  description,
+  headline: headline.value,
+  lib: library.value,
 });
 
 useSeoMeta({

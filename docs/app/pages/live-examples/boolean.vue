@@ -7,13 +7,10 @@ import { getExampleMetadata } from "@/utils/liveExamples";
 
 const metadata = getExampleMetadata("boolean");
 if (metadata) {
-  defineOgImage({
-    component: "OgImageDocs",
-    props: {
-      title: metadata.title,
-      description: metadata.description,
-      headline: "Live Example",
-    },
+  defineOgImageComponent("Docs", {
+    title: metadata.title,
+    description: metadata.description,
+    headline: "Live Example",
   });
   useSeoMeta({
     title: metadata.title,
