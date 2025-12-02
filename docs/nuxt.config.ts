@@ -86,16 +86,7 @@ export default defineNuxtConfig({
       },
     },
     build: {
-      rollupOptions: {
-        output: {
-          manualChunks(id) {
-            // Ensure native.js is always in its own chunk for dynamic imports
-            if (id.includes("/examples/native.js") || id.includes("\\examples\\native.js")) {
-              return "native";
-            }
-          },
-        },
-      },
+      sourcemap: false
     },
   },
 
