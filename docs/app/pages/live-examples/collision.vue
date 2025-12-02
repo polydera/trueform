@@ -40,8 +40,8 @@ let exampleClass: CollisionExample | null = null;
 
 const avgTime = ref("0");
 const avgPickTime = ref("0");
-const meshCount = 2;
-const meshes = computed(() => buildMeshes(meshCount));
+const meshCount = 25; // 5x5 grid as defined in collision_web.h
+const meshes = computed(() => buildMeshes(2)); // Only 2 unique meshes are loaded
 const polygonLabel = computed(() => formatPolygonLabel(meshCount));
 
 let tearDownRequested = false;

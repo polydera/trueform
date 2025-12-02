@@ -7,7 +7,7 @@ const props = defineProps<{
   loading?: boolean;
 }>();
 
-const formattedLabel = computed(() => (props.meshCount > 1 ? `${props.meshCount} x ${props.meshLabel}` : props.meshLabel));
+const formattedLabel = computed(() => props.meshLabel);
 const isMobile = useMediaQuery("(max-width: 1024px)");
 const customPosition = computed(() =>
   isMobile.value ? "absolute left-1/2 -translate-x-1/2 bottom-15 top-auto" : undefined,
