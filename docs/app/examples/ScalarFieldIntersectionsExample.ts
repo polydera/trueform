@@ -51,10 +51,65 @@ export class ScalarFieldIntersectionsExample extends ThreejsBase {
       capture: true
     };
     window.addEventListener("wheel", interceptWheelEvent, wheelListenerOptions);
+
+    let threeFingerActive = false;
+    let lastThreeFingerY = 0;
+    const touchScrollThresholdPx = 10;
+    const getAverageTouchY = (touches: TouchList) => {
+      let sum = 0;
+      for (let i = 0; i < touches.length; i++) {
+        sum += touches[i]!.clientY;
+      }
+      return sum / touches.length;
+    };
+
+    const interceptTouchStart = (event: TouchEvent) => {
+      if (event.touches.length === 3) {
+        threeFingerActive = true;
+        lastThreeFingerY = getAverageTouchY(event.touches);
+      }
+    };
+
+    const interceptTouchMove = (event: TouchEvent) => {
+      if (!threeFingerActive) return;
+      if (event.touches.length !== 3) {
+        threeFingerActive = false;
+        return;
+      }
+      event.preventDefault();
+      const currentY = getAverageTouchY(event.touches);
+      const deltaY = currentY - lastThreeFingerY;
+      if (Math.abs(deltaY) < touchScrollThresholdPx) return;
+      const normalizedDelta = deltaY / Math.abs(deltaY);
+      const handled = this.wasmInstance.OnMouseWheel(normalizedDelta, true);
+      this.updateMeshes();
+      if (handled) {
+        event.stopImmediatePropagation();
+      }
+      lastThreeFingerY = currentY;
+    };
+
+    const interceptTouchEnd = (_event: TouchEvent) => {
+      threeFingerActive = false;
+    };
+
+    const touchListenerOptions = {
+      passive: false,
+      capture: true,
+    };
+    window.addEventListener("touchstart", interceptTouchStart, touchListenerOptions);
+    window.addEventListener("touchmove", interceptTouchMove, touchListenerOptions);
+    window.addEventListener("touchend", interceptTouchEnd, touchListenerOptions);
+    window.addEventListener("touchcancel", interceptTouchEnd, touchListenerOptions);
+
     this.addCleanup(() => {
       window.removeEventListener("keydown", interceptKeyDownEvent);
       window.removeEventListener("keyup", interceptKeyUpEvent);
       window.removeEventListener("wheel", interceptWheelEvent, wheelListenerOptions);
+      window.removeEventListener("touchstart", interceptTouchStart, touchListenerOptions);
+      window.removeEventListener("touchmove", interceptTouchMove, touchListenerOptions);
+      window.removeEventListener("touchend", interceptTouchEnd, touchListenerOptions);
+      window.removeEventListener("touchcancel", interceptTouchEnd, touchListenerOptions);
     });
 
     const opts: curvesToCurvePolyOpts = {
