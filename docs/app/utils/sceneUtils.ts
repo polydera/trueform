@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { TrackballControls } from "three/addons/controls/TrackballControls.js";
 
 export interface SceneConfig {
     backgroundColor?: number;
@@ -26,7 +26,7 @@ export interface SceneConfig {
 export interface SceneBundle {
     scene: THREE.Scene;
     camera: THREE.PerspectiveCamera;
-    controls: OrbitControls;
+    controls: TrackballControls;
     directionalLight: THREE.DirectionalLight;
 }
 
@@ -80,12 +80,14 @@ export function createScene(
     camera.receiveShadow = true;
     scene.add(camera);
 
-    // Create orbit controls
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enabled = true;
-    controls.enablePan = true;
-    controls.enableZoom = true;
-    controls.enableRotate = true;
+    // Create trackball controls
+    const controls = new TrackballControls(camera, renderer.domElement);
+    controls.rotateSpeed = 2.0;
+    controls.zoomSpeed = 1.2;
+    controls.panSpeed = 0.8;
+    controls.noRotate = false;
+    controls.noZoom = false;
+    controls.noPan = false;
 
     // Setup lighting
     // 1. Ambient light for overall scene illumination
@@ -187,7 +189,7 @@ export function createSceneWithCustomConfig(
 }
 
 
-export function fitCameraToObject(camera: THREE.PerspectiveCamera, object: THREE.Mesh, offset = 1.25, controls?: OrbitControls) {
+export function fitCameraToObject(camera: THREE.PerspectiveCamera, object: THREE.Mesh, offset = 1.25, controls?: TrackballControls) {
     // Compute the bounding box of the object (or entire scene)
     const box = new THREE.Box3().setFromObject(object);
     const size = box.getSize(new THREE.Vector3());
@@ -212,7 +214,7 @@ export function fitCameraToObject(camera: THREE.PerspectiveCamera, object: THREE
     camera.far = distance * 100;
     camera.updateProjectionMatrix();
 
-    // Optionally re-center controls (if using OrbitControls)
+    // Optionally re-center controls
     if (controls) {
         controls.target.copy(center);
         controls.update();
@@ -220,15 +222,16 @@ export function fitCameraToObject(camera: THREE.PerspectiveCamera, object: THREE
 }
 
 /**
- * Sync OrbitControls from source to target
+ * Sync controls from source to target
  */
-export function syncOrbitControls(sourceControls: OrbitControls, targetControls: OrbitControls){
+export function syncOrbitControls(sourceControls: TrackballControls, targetControls: TrackballControls){
     const sourceCamera = sourceControls.object as THREE.PerspectiveCamera;
     const targetCamera = targetControls.object as THREE.PerspectiveCamera;
 
     // Copy camera parameters
     targetCamera.position.copy(sourceCamera.position);
     targetCamera.quaternion.copy(sourceCamera.quaternion);
+    targetCamera.up.copy(sourceCamera.up);
     targetControls.target.copy(sourceControls.target);
 
     // Update matrices
@@ -261,7 +264,7 @@ export function createBidirectionalSyncedScenes(
     }
 
     let isSyncing = false; // Prevent infinite loops
-    const syncControls = (sourceControls: OrbitControls, targetControls: OrbitControls) => {
+    const syncControls = (sourceControls: TrackballControls, targetControls: TrackballControls) => {
         if (isSyncing) return;
         isSyncing = true;
         syncOrbitControls(sourceControls, targetControls);
@@ -269,7 +272,7 @@ export function createBidirectionalSyncedScenes(
     }
 
     // Setup bidirectional sync
-    const setupControlsSync = (controls1: OrbitControls, controls2: OrbitControls) => {
+    const setupControlsSync = (controls1: TrackballControls, controls2: TrackballControls) => {
         const syncEvents = ['change', 'start', 'end'];
 
         syncEvents.forEach(eventType => {
@@ -339,7 +342,6 @@ export function fitCameraToAllMeshesFromZPlane(sceneBundle: SceneBundle, offset:
     // Update controls target to the center of all meshes
     controls.target.copy(center);
     controls.update();
-    controls.saveState();
 
     // Update camera projection matrix
     camera.updateProjectionMatrix();

@@ -8,7 +8,7 @@ import {
   type SceneBundle, syncOrbitControls,
 } from "@/utils/sceneUtils";
 import {createMesh, getMeshFromWasm, switchTextures} from "@/utils/utils";
-import {OrbitControls} from "three/examples/jsm/controls/OrbitControls";
+import {TrackballControls} from "three/examples/jsm/controls/TrackballControls";
 
 abstract class IThreejsBase {
   abstract runMain(): void;
@@ -135,13 +135,13 @@ export abstract class ThreejsBase implements IThreejsBase {
 
       if(this.syncSceneControls) {
         let isSyncing = false; // Prevent infinite loops
-        const syncControls = (sourceControls: OrbitControls, targetControls: OrbitControls) => {
+        const syncControls = (sourceControls: TrackballControls, targetControls: TrackballControls) => {
           if (isSyncing) return;
           isSyncing = true;
           syncOrbitControls(sourceControls, targetControls);
           isSyncing = false;
         }
-        const setupControlsSync = (controls1: OrbitControls, controls2: OrbitControls) => {
+        const setupControlsSync = (controls1: TrackballControls, controls2: TrackballControls) => {
           const syncEvents = ['change', 'start', 'end'];
 
           syncEvents.forEach(eventType => {
