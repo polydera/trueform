@@ -79,8 +79,8 @@ watch(isDark, (dark) => {
   <div class="flex flex-col w-full h-full">
     <div class="flex flex-row flex-1 relative min-h-0">
       <ExampleInfoCard title="Boolean" :badge="badge">
-        <div class="flex gap-3 items-center text-muted">
-          <UIcon name="i-lucide-info" class="size-4 ml-1" />
+        <div class="flex gap-2 items-center text-muted">
+          <UIcon name="i-lucide-hand" class="size-4 ml-1" />
           <p class="text-sm">Grab a mesh and move it to inspect intersection curve and difference mesh.</p>
         </div>
       </ExampleInfoCard>

@@ -69,18 +69,18 @@ watch(isDark, (dark) => {
   }
 });
 </script>
-
 <template>
   <div class="flex flex-col w-full h-full">
     <div class="flex flex-row flex-1 relative min-h-0">
       <ExampleInfoCard title="Scalar Field Intersections" :badge="badge">
         <div v-if="isTouchscreen" class="flex gap-1 items-center text-muted">
           <UIcon name="i-lucide-tally-3" class="size-4 ml-1" />
-          <p class="text-sm">Drag the plane with 3 fingers to sweep.</p>
+          <p class="text-sm">Drag the top plane with 3 fingers to sweep.</p>
         </div>
-        <div v-else class="flex gap-3 items-center text-muted">
-          <UIcon name="i-lucide-info" class="size-4 ml-1" />
-          <p class="text-sm">Sweep the plane and isobands.</p>
+        <div v-else class="flex gap-1 items-center text-muted">
+          <UKbd variant="soft" value="shift" />
+          <UKbd variant="soft" value="scroll" />
+          <p class="text-sm">to sweep the plane for scalar field intersections.</p>
         </div>
       </ExampleInfoCard>
       <div class="flex flex-col md:flex-row w-full">

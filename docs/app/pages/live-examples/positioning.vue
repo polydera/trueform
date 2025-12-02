@@ -57,7 +57,7 @@ watch(isDark, (dark) => {
   <div class="flex flex-col w-full h-full">
     <div class="flex flex-row flex-1 relative min-h-0">
       <ExampleInfoCard title="Positioning">
-        <div class="flex gap-3 items-center text-muted">
+        <div class="flex gap-2 items-center text-muted">
           <UIcon name="i-lucide-hand" class="size-4 ml-1" />
           <p class="text-sm">Drag a mesh away; release to see nearest neighbors snap back together.</p>
         </div>
