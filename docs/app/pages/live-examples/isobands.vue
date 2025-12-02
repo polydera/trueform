@@ -81,8 +81,9 @@ watch(isDark, (dark) => {
           <UIcon name="i-lucide-tally-3" class="size-4 ml-1" />
           <p class="text-sm">Drag the plane with 3 fingers to sweep.</p>
         </div>
-        <div v-else class="flex gap-3 items-center text-muted">
-          <UIcon name="i-lucide-info" class="size-4 ml-1" />
+        <div v-else class="flex gap-1 items-center text-muted">
+          <UKbd variant="soft" value="shift" />
+          <UKbd variant="soft" value="scroll" />
           <p class="text-sm">Scroll to move the plane. Cross-sections update live.</p>
         </div>
       </ExampleInfoCard>
