@@ -31,14 +31,13 @@ const { data: surround } = await useAsyncData(
 const title = page.value.seo?.title || page.value.title;
 const description = page.value.seo?.description || page.value.description;
 
-const headline = computed(() => findPageHeadline(navigation?.value, page.value?.path));
+const headline = computed(() => `${findPageHeadline(navigation?.value, page.value?.path)} | ${library.value === "cpp" ? "C++" : "PY"}`);
 
 // Generate OG image using nuxt-og-image with headline
 defineOgImageComponent("Docs", {
   title,
   description,
   headline: headline.value,
-  lib: library.value,
 });
 
 useSeoMeta({
