@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import type { ContentNavigationItem } from '@nuxt/content'
+import { useMediaQuery } from '@vueuse/core'
+
+const isMobile = useMediaQuery("(max-width: 768px)");
 
 const navigation = inject<Ref<ContentNavigationItem[]>>('navigation')
 </script>
@@ -9,6 +12,7 @@ const navigation = inject<Ref<ContentNavigationItem[]>>('navigation')
     <UPage>
       <template #left>
         <UPageAside>
+          <LibPicker v-if="!isMobile" class="mb-5" />
           <UContentNavigation
             highlight
             :navigation="navigation"

@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { useWasmModule } from "@/composables/useWasmModule";
 import { CollisionExample } from "@/examples/CollisionExample";
+import { useExampleLoadingState } from "@/composables/useExampleLoadingState";
 
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
-const { loadWasmModule, preloadMeshes } = useWasmModule();
+const { loadExampleWithAssets } = useWasmModule();
+const { isLoading, loadingMessage, loadingError, resetLoading, setLoadingMessage, failLoading, finishLoading } =
+  useExampleLoadingState();
 
 const threejsContainer = ref<HTMLElement | null>(null);
 let exampleClass: CollisionExample | null = null;
@@ -20,24 +23,28 @@ const meshes = [
 let tearDownRequested = false;
 
 const loadThreejs = async () => {
-  const wasmInstance = await loadWasmModule();
-  if (tearDownRequested) return;
+  exampleClass = await loadExampleWithAssets({
+    meshes,
+    skipOverlayIfCached: true,
+    loading: { resetLoading, setLoadingMessage, failLoading, finishLoading },
+    isTornDown: () => tearDownRequested,
+    createScene: (wasmInstance, meshFilenames) => {
+      const el = threejsContainer.value;
+      if (!el) {
+        return null;
+      }
 
-  const el = threejsContainer.value;
-  if (!el) return;
-
-  await preloadMeshes(wasmInstance, meshes);
-
-  if (tearDownRequested) return;
-
-  exampleClass = new CollisionExample(
-    wasmInstance,
-    meshes.map((m) => m.filename),
-    el,
-    isDark.value,
-  );
-  totalPolygons.value = wasmInstance.get_number_of_polygons().toString();
-  exampleClass.refreshTimeValue = getAvgTime;
+      const instance = new CollisionExample(
+        wasmInstance,
+        meshFilenames,
+        el,
+        isDark.value,
+      );
+      totalPolygons.value = wasmInstance.get_number_of_polygons().toString();
+      instance.refreshTimeValue = getAvgTime;
+      return instance;
+    },
+  });
 };
 
 const getAvgTime = () => {
@@ -50,7 +57,8 @@ const getAvgTime = () => {
 
 const badge = computed(() => ({
   icon: "i-lucide-gauge",
-  text: `Pick: ${avgPickTime.value} μs, Collision: ${avgTime.value} μs`,
+  label: "",
+  value: `Pick: ${avgPickTime.value} μs, Collision: ${avgTime.value} μs`,
 }));
 
 onMounted(() => {
@@ -87,7 +95,7 @@ watch(isDark, (dark) => {
       <div class="flex flex-col md:flex-row w-full">
         <div ref="threejsContainer" id="threejsContainer" class="h-full flex-1 min-h-0 w-[100vw] md:w-full"></div>
       </div>
+      <ExampleLoadingOverlay :loading="isLoading" :message="loadingMessage" :error="loadingError" @retry="loadThreejs" />
     </div>
   </div>
 </template>
-

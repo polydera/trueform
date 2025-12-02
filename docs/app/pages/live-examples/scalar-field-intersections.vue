@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { useWasmModule } from "@/composables/useWasmModule";
 import { ScalarFieldIntersectionsExample } from "@/examples/ScalarFieldIntersectionsExample";
+import { useExampleLoadingState } from "@/composables/useExampleLoadingState";
 
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
-const { loadWasmModule, preloadMeshes } = useWasmModule();
+const { loadExampleWithAssets } = useWasmModule();
+const { isLoading, loadingMessage, loadingError, resetLoading, setLoadingMessage, failLoading, finishLoading } =
+  useExampleLoadingState();
 
 const { isTouchscreen } = useTouchscreen();
 
@@ -17,23 +20,27 @@ const meshes = [{ url: "/stl/dragon-250k.stl", filename: "dragon-250k.stl" }];
 let tearDownRequested = false;
 
 const loadThreejs = async () => {
-  const wasmInstance = await loadWasmModule();
-  if (tearDownRequested) return;
+  exampleClass = await loadExampleWithAssets({
+    meshes,
+    skipOverlayIfCached: true,
+    loading: { resetLoading, setLoadingMessage, failLoading, finishLoading },
+    isTornDown: () => tearDownRequested,
+    createScene: (wasmInstance, meshFilenames) => {
+      const el = threejsContainer.value;
+      if (!el) {
+        return null;
+      }
 
-  const el = threejsContainer.value;
-  if (!el) return;
-
-  await preloadMeshes(wasmInstance, meshes);
-
-  if (tearDownRequested) return;
-
-  exampleClass = new ScalarFieldIntersectionsExample(
-    wasmInstance,
-    meshes.map((m) => m.filename),
-    el,
-    isDark.value,
-  );
-  exampleClass.refreshTimeValue = getAvgTime;
+      const instance = new ScalarFieldIntersectionsExample(
+        wasmInstance,
+        meshFilenames,
+        el,
+        isDark.value,
+      );
+      instance.refreshTimeValue = getAvgTime;
+      return instance;
+    },
+  });
 };
 const getAvgTime = () => {
   if (exampleClass) {
@@ -44,7 +51,8 @@ const getAvgTime = () => {
 
 const badge = computed(() => ({
   icon: "i-lucide-gauge",
-  text: `Last scroll: ${avgTime.value} ms`,
+  label: "Last scroll:",
+  value: `${avgTime.value} ms`,
 }));
 
 const actionButtons = [
@@ -72,7 +80,7 @@ watch(isDark, (dark) => {
 <template>
   <div class="flex flex-col w-full h-full">
     <div class="flex flex-row flex-1 relative min-h-0">
-      <ExampleInfoCard title="Contour Lines" :badge="badge">
+      <ExampleInfoCard title="Scalar Field Intersections" :badge="badge">
         <div v-if="isTouchscreen" class="flex gap-1 items-center text-muted">
           <UIcon name="i-lucide-tally-3" class="size-4 ml-1" />
           <p class="text-sm">Drag the top plane with 3 fingers to sweep.</p>
@@ -86,6 +94,7 @@ watch(isDark, (dark) => {
       <div class="flex flex-col md:flex-row w-full">
         <div ref="threejsContainer" id="threejsContainer" class="h-full flex-1 min-h-0 w-[100vw] md:w-full"></div>
       </div>
+      <ExampleLoadingOverlay :loading="isLoading" :message="loadingMessage" :error="loadingError" @retry="loadThreejs" />
       <ExampleActionButtons :buttons="actionButtons" />
     </div>
   </div>

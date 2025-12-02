@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { useWasmModule } from "@/composables/useWasmModule";
 import { PositioningExample } from "@/examples/PositioningExample";
+import { useExampleLoadingState } from "@/composables/useExampleLoadingState";
 
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
-const { loadWasmModule, preloadMeshes } = useWasmModule();
+const { loadExampleWithAssets } = useWasmModule();
+const { isLoading, loadingMessage, loadingError, resetLoading, setLoadingMessage, failLoading, finishLoading } =
+  useExampleLoadingState();
 
 const threejsContainer = ref<HTMLElement | null>(null);
 let exampleClass: PositioningExample | null = null;
@@ -20,22 +23,25 @@ const actionButtons = [
 let tearDownRequested = false;
 
 const loadThreejs = async () => {
-  const wasmInstance = await loadWasmModule();
-  if (tearDownRequested) return;
+  exampleClass = await loadExampleWithAssets({
+    meshes,
+    skipOverlayIfCached: true,
+    loading: { resetLoading, setLoadingMessage, failLoading, finishLoading },
+    isTornDown: () => tearDownRequested,
+    createScene: (wasmInstance, meshFilenames) => {
+      const el = threejsContainer.value;
+      if (!el) {
+        return null;
+      }
 
-  const el = threejsContainer.value;
-  if (!el) return;
-
-  await preloadMeshes(wasmInstance, meshes);
-
-  if (tearDownRequested) return;
-
-  exampleClass = new PositioningExample(
-    wasmInstance,
-    meshes.map((m) => m.filename),
-    el,
-    isDark.value,
-  );
+      return new PositioningExample(
+        wasmInstance,
+        meshFilenames,
+        el,
+        isDark.value,
+      );
+    },
+  });
 };
 
 onMounted(() => {
@@ -69,8 +75,8 @@ watch(isDark, (dark) => {
       <div class="flex flex-col md:flex-row w-full">
         <div ref="threejsContainer" id="threejsContainer" class="h-full flex-1 min-h-0 w-[100vw] md:w-full"></div>
       </div>
+      <ExampleLoadingOverlay :loading="isLoading" :message="loadingMessage" :error="loadingError" @retry="loadThreejs" />
       <ExampleActionButtons :buttons="actionButtons" />
     </div>
   </div>
 </template>
-

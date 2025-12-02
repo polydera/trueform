@@ -3,7 +3,8 @@ import { useMediaQuery } from "@vueuse/core";
 
 interface BadgeProps {
   icon?: string;
-  text: string;
+  label: string;
+  value: string;
 }
 
 const props = defineProps<{
@@ -26,9 +27,10 @@ const isMobile = useMediaQuery("(max-width: 768px)");
         color="primary"
         :icon="badge.icon"
         :size="isMobile ? 'sm' : 'lg'"
-        class="py-1.5 px-2 mt-0.5 lg:mt-0"
+        class="py-1.5 px-2 mt-0.5 lg:mt-0 inline-flex items-center transition-[width] duration-200 ease-in-out"
       >
-        <span class="font-bold">{{ badge.text }}</span>
+        <span>{{ badge.label }}</span>
+        <span class="font-bold badge-text whitespace-nowrap">{{ badge.value }}</span>
       </UBadge>
     </div>
 
@@ -38,3 +40,9 @@ const isMobile = useMediaQuery("(max-width: 768px)");
   </div>
 </template>
 
+<style scoped>
+.badge-text {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+</style>

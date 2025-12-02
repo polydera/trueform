@@ -8,6 +8,20 @@ const wasmState: { instance: MainModule | null; promise: Promise<MainModule> | n
 };
 
 const meshCache = new Map<string, Promise<Uint8Array>>();
+const meshReady = new Set<string>();
+
+type ExampleLoaderOptions<T> = {
+  meshes: MeshDescriptor[];
+  loading: {
+    resetLoading: () => void;
+    setLoadingMessage: (message: string) => void;
+    failLoading: (error: unknown) => void;
+    finishLoading: () => void;
+  };
+  skipOverlayIfCached?: boolean;
+  isTornDown: () => boolean;
+  createScene: (wasm: MainModule, meshFilenames: string[]) => T | null;
+};
 
 export function useWasmModule() {
   const loadWasmModule = async (): Promise<MainModule> => {
@@ -44,8 +58,58 @@ export function useWasmModule() {
       meshCache.set(mesh.url, meshPromise);
       const bytes = await meshPromise;
       wasm.FS.writeFile(mesh.filename, bytes);
+      meshReady.add(mesh.url);
     }
   };
 
-  return { loadWasmModule, preloadMeshes };
+  const loadExampleWithAssets = async <T>({
+    meshes,
+    loading,
+    skipOverlayIfCached = false,
+    isTornDown,
+    createScene,
+  }: ExampleLoaderOptions<T>): Promise<T | null> => {
+    const hasWarmCache = skipOverlayIfCached && wasmState.instance && meshes.every((mesh) => meshReady.has(mesh.url));
+
+    if (!hasWarmCache) {
+      loading.resetLoading();
+    } else {
+      loading.finishLoading();
+    }
+
+    try {
+      const wasmInstance = await loadWasmModule();
+      if (isTornDown()) {
+        loading.finishLoading();
+        return null;
+      }
+
+      if (!hasWarmCache) {
+        loading.setLoadingMessage("Fetching meshes...");
+      }
+      await preloadMeshes(wasmInstance, meshes);
+
+      if (isTornDown()) {
+        loading.finishLoading();
+        return null;
+      }
+
+      if (!hasWarmCache) {
+        loading.setLoadingMessage("Initializing renderer...");
+      }
+      const instance = createScene(
+        wasmInstance,
+        meshes.map((m) => m.filename),
+      );
+      loading.finishLoading();
+      return instance;
+    } catch (error) {
+      if (!isTornDown()) {
+        loading.failLoading(error);
+      }
+      return null;
+    }
+  };
+
+  return { loadWasmModule, preloadMeshes, loadExampleWithAssets };
 }
