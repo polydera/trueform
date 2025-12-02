@@ -567,4 +567,56 @@ auto local_point_rectangle_distance(const std::array<T, 3> &local_pt,
   return tf::sqrt(local_point_rectangle_distance2(local_pt, length));
 }
 
+/// @brief Squared distance from point in local coordinates to segment
+/// Segment [0, length] along x-axis at y=0 in 2D
+template <typename T>
+auto local_point_segment_distance2(const std::array<T, 2> &local_pt,
+                                   T length) -> T {
+  T dx = std::max(-local_pt[0], T(0)) + std::max(local_pt[0] - length, T(0));
+  T dy = local_pt[1];
+  return dx * dx + dy * dy;
+}
+
+/// @brief Distance from point in local coordinates to segment
+template <typename T>
+auto local_point_segment_distance(const std::array<T, 2> &local_pt,
+                                  T length) -> T {
+  return tf::sqrt(local_point_segment_distance2(local_pt, length));
+}
+
+/// @brief Squared distance between two segments in local coordinates (2D)
+/// Segment A: [0, a] along local x-axis
+/// Segment B: at translation t_ab, rotated by r_ab (2x2 rotation matrix)
+/// r_ab[i][j] = dot(axis_a[i], axis_b[j])
+template <typename T>
+auto local_segment_distance2(const std::array<std::array<T, 2>, 2> &r_ab,
+                             const std::array<T, 2> &t_ab,
+                             T a, T b) -> T {
+  // Segment A: from (0,0) to (a,0) in frame A
+  // Segment B: from t_ab to t_ab + b * r_ab[*][0] in frame A
+
+  // Direction of B in frame A: (r_ab[0][0], r_ab[1][0])
+  T a_dot_b = r_ab[0][0];  // dot(axis_a0, axis_b0)
+  T a_dot_t = t_ab[0];     // projection of translation onto axis_a0
+  T b_dot_t = -t_ab[0] * r_ab[0][0] - t_ab[1] * r_ab[1][0];  // t_ba[0] in B's frame
+
+  T t, u;
+  impl::segment_closest_params(t, u, a, b, a_dot_b, a_dot_t, b_dot_t);
+
+  // Closest points:
+  // On A: (t, 0)
+  // On B in frame A: (t_ab[0] + u * r_ab[0][0], t_ab[1] + u * r_ab[1][0])
+  T dx = t_ab[0] + u * r_ab[0][0] - t;
+  T dy = t_ab[1] + u * r_ab[1][0];
+  return dx * dx + dy * dy;
+}
+
+/// @brief Distance between two segments in local coordinates (2D)
+template <typename T>
+auto local_segment_distance(const std::array<std::array<T, 2>, 2> &r_ab,
+                            const std::array<T, 2> &t_ab,
+                            T a, T b) -> T {
+  return tf::sqrt(local_segment_distance2(r_ab, t_ab, a, b));
+}
+
 } // namespace tf::core

@@ -575,43 +575,46 @@ auto distance2(const segment<Dims, T1> &seg, const sphere_like<Dims, T0> &s) {
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto distance(const tf::rss_like<Dims, Policy0> &rss0,
               const tf::rss_like<Dims, Policy1> &rss1) {
-  static_assert(Dims == 3, "rss_metrics is currently implemented for 3D only.");
+  static_assert(Dims == 2 || Dims == 3,
+                "RSS distance is implemented for 2D and 3D only.");
   using T = tf::coordinate_type<Policy0, Policy1>;
 
-  using std::max;
-
   // Rotation matrix: Rab = A^T * B
-  std::array<std::array<T, 3>, 3> rot_ab;
-  for (int i = 0; i < 3; ++i) {
-    for (int j = 0; j < 3; ++j) {
+  std::array<std::array<T, Dims>, Dims> rot_ab;
+  for (std::size_t i = 0; i < Dims; ++i) {
+    for (std::size_t j = 0; j < Dims; ++j) {
       rot_ab[i][j] = tf::dot(rss0.axes[i], rss1.axes[j]);
     }
   }
 
   // Translation Tab = origin1 - origin0, expressed in frame A
   auto diff = rss1.origin - rss0.origin;
-  std::array<T, 3> tr_ab;
-  for (int i = 0; i < 3; ++i) {
+  std::array<T, Dims> tr_ab;
+  for (std::size_t i = 0; i < Dims; ++i) {
     tr_ab[i] = tf::dot(diff, rss0.axes[i]);
   }
 
-  // Rectangle side lengths
-  std::array<T, 2> a{rss0.length[0], rss0.length[1]};
-  std::array<T, 2> b{rss1.length[0], rss1.length[1]};
-
-  // Distance between the two oriented rectangles
-  auto rect_dist = tf::core::local_rectangle_distance(rot_ab, tr_ab, a, b);
-  T rss_dist = rect_dist - rss0.radius - rss1.radius;
-  if (rss_dist < T(0)) {
-    rss_dist = T(0);
+  T base_dist;
+  if constexpr (Dims == 2) {
+    // 2D: base shape is a segment (length[0])
+    base_dist = tf::core::local_segment_distance(rot_ab, tr_ab,
+                                                  rss0.length[0], rss1.length[0]);
+  } else {
+    // 3D: base shape is a rectangle (length[0] x length[1])
+    std::array<T, 2> a{rss0.length[0], rss0.length[1]};
+    std::array<T, 2> b{rss1.length[0], rss1.length[1]};
+    base_dist = tf::core::local_rectangle_distance(rot_ab, tr_ab, a, b);
   }
-  return rss_dist;
+
+  T rss_dist = base_dist - rss0.radius - rss1.radius;
+  return std::max(rss_dist, T(0));
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto distance2(const tf::rss_like<Dims, Policy0> &rss0,
                const tf::rss_like<Dims, Policy1> &rss1) {
-  static_assert(Dims == 3, "rss_metrics is currently implemented for 3D only.");
+  static_assert(Dims == 2 || Dims == 3,
+                "RSS distance is implemented for 2D and 3D only.");
   auto out = distance(rss0, rss1);
   return out * out;
 }
@@ -619,22 +622,30 @@ auto distance2(const tf::rss_like<Dims, Policy0> &rss0,
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto distance(const tf::rss_like<Dims, Policy0> &rss,
               const tf::point_like<Dims, Policy1> &pt) {
-  static_assert(Dims == 3, "distance(rss, point) is implemented for 3D only.");
+  static_assert(Dims == 2 || Dims == 3,
+                "distance(rss, point) is implemented for 2D and 3D only.");
   using T = tf::coordinate_type<Policy0, Policy1>;
 
   // Transform point to local coordinates
   auto diff = pt - rss.origin;
-  std::array<T, 3> local_pt;
-  for (int i = 0; i < 3; ++i) {
+  std::array<T, Dims> local_pt;
+  for (std::size_t i = 0; i < Dims; ++i) {
     local_pt[i] = tf::dot(diff, rss.axes[i]);
   }
 
-  // Distance to rectangle in local coords
-  std::array<T, 2> length{rss.length[0], rss.length[1]};
-  auto rect_dist = tf::core::local_point_rectangle_distance(local_pt, length);
+  // Distance to base shape in local coords
+  T base_dist;
+  if constexpr (Dims == 2) {
+    // 2D: base shape is a segment (length[0])
+    base_dist = tf::core::local_point_segment_distance(local_pt, rss.length[0]);
+  } else {
+    // 3D: base shape is a rectangle (length[0] x length[1])
+    std::array<T, 2> length{rss.length[0], rss.length[1]};
+    base_dist = tf::core::local_point_rectangle_distance(local_pt, length);
+  }
 
   // Subtract radius
-  T rss_dist = rect_dist - rss.radius;
+  T rss_dist = base_dist - rss.radius;
   return std::max(rss_dist, T(0));
 }
 

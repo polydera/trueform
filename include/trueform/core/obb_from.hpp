@@ -17,13 +17,38 @@
 namespace tf {
 namespace core {
 
+template <std::size_t Dims, typename T>
+struct proj_accum {
+  std::array<T, Dims> min_proj;
+  std::array<T, Dims> max_proj;
+};
+
+template <std::size_t Dims, typename T>
+auto make_proj_accum_init() {
+  proj_accum<Dims, T> init;
+  for (std::size_t i = 0; i < Dims; ++i) {
+    init.min_proj[i] = std::numeric_limits<T>::max();
+    init.max_proj[i] = -std::numeric_limits<T>::max();
+  }
+  return init;
+}
+
+template <std::size_t Dims, typename T>
+auto merge_proj_accum(proj_accum<Dims, T> acc, const proj_accum<Dims, T> &other) {
+  for (std::size_t i = 0; i < Dims; ++i) {
+    acc.min_proj[i] = std::min(acc.min_proj[i], other.min_proj[i]);
+    acc.max_proj[i] = std::max(acc.max_proj[i], other.max_proj[i]);
+  }
+  return acc;
+}
+
 template <typename Range, std::size_t Dims, typename Policy>
 auto obb_from(const Range &polygons, const tf::polygon<Dims, Policy> &) {
   using std::max;
   using std::min;
   using T = tf::coordinate_type<Policy>;
 
-  static_assert(Dims == 3, "OBB computation only implemented for 3D");
+  static_assert(Dims == 2 || Dims == 3, "OBB computation implemented for 2D and 3D");
 
   // 1) Covariance + centroid
   auto [centroid, cov] = tf::covariance_of(tf::make_polygons(polygons));
@@ -31,61 +56,39 @@ auto obb_from(const Range &polygons, const tf::polygon<Dims, Policy> &) {
   // 2) Eigen decomposition
   auto [eigenvalues, eigenvectors] = tf::eigen_of(cov);
 
-  tf::obb<T, 3> box;
+  tf::obb<T, Dims> box;
 
   // 3) Axes ordered by largest eigenvalue first
-  for (int k = 0; k < 3; ++k) {
-    const auto &ev = eigenvectors[2 - k];
-    box.axes[k] = ev;
+  for (std::size_t k = 0; k < Dims; ++k) {
+    box.axes[k] = eigenvectors[Dims - 1 - k];
   }
 
   // 4) Project all vertices to get min/max along each axis
-  struct proj_accum {
-    T minx, maxx, miny, maxy, minz, maxz;
-  };
-
-  proj_accum proj_init{std::numeric_limits<T>::max(),
-                       -std::numeric_limits<T>::max(),
-                       std::numeric_limits<T>::max(),
-                       -std::numeric_limits<T>::max(),
-                       std::numeric_limits<T>::max(),
-                       -std::numeric_limits<T>::max()};
+  auto proj_init = make_proj_accum_init<Dims, T>();
 
   auto proj_acc = tf::reduce(
       tf::make_mapped_range(polygons,
                             [&](const auto &poly) {
-                              proj_accum poly_acc = proj_init;
+                              auto poly_acc = proj_init;
                               for (const auto &pt : poly) {
                                 auto diff = pt - centroid;
-                                T px = tf::dot(diff, box.axes[0]);
-                                T py = tf::dot(diff, box.axes[1]);
-                                T pz = tf::dot(diff, box.axes[2]);
-                                poly_acc.minx = min(poly_acc.minx, px);
-                                poly_acc.maxx = max(poly_acc.maxx, px);
-                                poly_acc.miny = min(poly_acc.miny, py);
-                                poly_acc.maxy = max(poly_acc.maxy, py);
-                                poly_acc.minz = min(poly_acc.minz, pz);
-                                poly_acc.maxz = max(poly_acc.maxz, pz);
+                                for (std::size_t i = 0; i < Dims; ++i) {
+                                  T p = tf::dot(diff, box.axes[i]);
+                                  poly_acc.min_proj[i] = min(poly_acc.min_proj[i], p);
+                                  poly_acc.max_proj[i] = max(poly_acc.max_proj[i], p);
+                                }
                               }
                               return poly_acc;
                             }),
-      [](proj_accum acc, const auto &element) {
-        acc.minx = std::min(acc.minx, element.minx);
-        acc.maxx = std::max(acc.maxx, element.maxx);
-        acc.miny = std::min(acc.miny, element.miny);
-        acc.maxy = std::max(acc.maxy, element.maxy);
-        acc.minz = std::min(acc.minz, element.minz);
-        acc.maxz = std::max(acc.maxz, element.maxz);
-        return acc;
-      },
+      merge_proj_accum<Dims, T>,
       proj_init, tf::checked);
 
   // 5) Store as corner + full extents
-  box.origin = centroid + box.axes[0] * proj_acc.minx +
-               box.axes[1] * proj_acc.miny + box.axes[2] * proj_acc.minz;
-  box.extent[0] = max(T(0), proj_acc.maxx - proj_acc.minx);
-  box.extent[1] = max(T(0), proj_acc.maxy - proj_acc.miny);
-  box.extent[2] = max(T(0), proj_acc.maxz - proj_acc.minz);
+  box.origin = centroid;
+  for (std::size_t i = 0; i < Dims; ++i) {
+    box.origin = box.origin + box.axes[i] * proj_acc.min_proj[i];
+    box.extent[i] = max(T(0), proj_acc.max_proj[i] - proj_acc.min_proj[i]);
+  }
 
   return box;
 }
@@ -96,7 +99,7 @@ auto obb_from(const Range &segments, const tf::segment<Dims, Policy> &) {
   using std::min;
   using T = tf::coordinate_type<Policy>;
 
-  static_assert(Dims == 3, "OBB computation only implemented for 3D");
+  static_assert(Dims == 2 || Dims == 3, "OBB computation implemented for 2D and 3D");
 
   // 1) Covariance + centroid
   auto [centroid, cov] = tf::covariance_of(tf::make_segments(segments));
@@ -104,61 +107,39 @@ auto obb_from(const Range &segments, const tf::segment<Dims, Policy> &) {
   // 2) Eigen decomposition
   auto [eigenvalues, eigenvectors] = tf::eigen_of(cov);
 
-  tf::obb<T, 3> box;
+  tf::obb<T, Dims> box;
 
   // 3) Axes ordered by largest eigenvalue first
-  for (int k = 0; k < 3; ++k) {
-    const auto &ev = eigenvectors[2 - k];
-    box.axes[k] = ev;
+  for (std::size_t k = 0; k < Dims; ++k) {
+    box.axes[k] = eigenvectors[Dims - 1 - k];
   }
 
   // 4) Project all vertices to get min/max along each axis
-  struct proj_accum {
-    T minx, maxx, miny, maxy, minz, maxz;
-  };
-
-  proj_accum proj_init{std::numeric_limits<T>::max(),
-                       -std::numeric_limits<T>::max(),
-                       std::numeric_limits<T>::max(),
-                       -std::numeric_limits<T>::max(),
-                       std::numeric_limits<T>::max(),
-                       -std::numeric_limits<T>::max()};
+  auto proj_init = make_proj_accum_init<Dims, T>();
 
   auto proj_acc = tf::reduce(
       tf::make_mapped_range(segments,
                             [&](const auto &seg) {
-                              proj_accum seg_acc = proj_init;
+                              auto seg_acc = proj_init;
                               for (const auto &pt : seg) {
                                 auto diff = pt - centroid;
-                                T px = tf::dot(diff, box.axes[0]);
-                                T py = tf::dot(diff, box.axes[1]);
-                                T pz = tf::dot(diff, box.axes[2]);
-                                seg_acc.minx = min(seg_acc.minx, px);
-                                seg_acc.maxx = max(seg_acc.maxx, px);
-                                seg_acc.miny = min(seg_acc.miny, py);
-                                seg_acc.maxy = max(seg_acc.maxy, py);
-                                seg_acc.minz = min(seg_acc.minz, pz);
-                                seg_acc.maxz = max(seg_acc.maxz, pz);
+                                for (std::size_t i = 0; i < Dims; ++i) {
+                                  T p = tf::dot(diff, box.axes[i]);
+                                  seg_acc.min_proj[i] = min(seg_acc.min_proj[i], p);
+                                  seg_acc.max_proj[i] = max(seg_acc.max_proj[i], p);
+                                }
                               }
                               return seg_acc;
                             }),
-      [](proj_accum acc, const auto &element) {
-        acc.minx = std::min(acc.minx, element.minx);
-        acc.maxx = std::max(acc.maxx, element.maxx);
-        acc.miny = std::min(acc.miny, element.miny);
-        acc.maxy = std::max(acc.maxy, element.maxy);
-        acc.minz = std::min(acc.minz, element.minz);
-        acc.maxz = std::max(acc.maxz, element.maxz);
-        return acc;
-      },
+      merge_proj_accum<Dims, T>,
       proj_init, tf::checked);
 
   // 5) Store as corner + full extents
-  box.origin = centroid + box.axes[0] * proj_acc.minx +
-               box.axes[1] * proj_acc.miny + box.axes[2] * proj_acc.minz;
-  box.extent[0] = max(T(0), proj_acc.maxx - proj_acc.minx);
-  box.extent[1] = max(T(0), proj_acc.maxy - proj_acc.miny);
-  box.extent[2] = max(T(0), proj_acc.maxz - proj_acc.minz);
+  box.origin = centroid;
+  for (std::size_t i = 0; i < Dims; ++i) {
+    box.origin = box.origin + box.axes[i] * proj_acc.min_proj[i];
+    box.extent[i] = max(T(0), proj_acc.max_proj[i] - proj_acc.min_proj[i]);
+  }
 
   return box;
 }
@@ -169,7 +150,7 @@ auto obb_from(const Range &points, const tf::point_like<Dims, Policy> &) {
   using std::min;
   using T = tf::coordinate_type<Policy>;
 
-  static_assert(Dims == 3, "OBB computation only implemented for 3D");
+  static_assert(Dims == 2 || Dims == 3, "OBB computation implemented for 2D and 3D");
 
   // 1) Covariance + centroid
   auto [centroid, cov] = tf::covariance_of(tf::make_points(points));
@@ -177,52 +158,37 @@ auto obb_from(const Range &points, const tf::point_like<Dims, Policy> &) {
   // 2) Eigen decomposition
   auto [eigenvalues, eigenvectors] = tf::eigen_of(cov);
 
-  tf::obb<T, 3> box;
+  tf::obb<T, Dims> box;
 
   // 3) Axes ordered by largest eigenvalue first
-  for (int k = 0; k < 3; ++k) {
-    const auto &ev = eigenvectors[2 - k];
-    box.axes[k] = ev;
+  for (std::size_t k = 0; k < Dims; ++k) {
+    box.axes[k] = eigenvectors[Dims - 1 - k];
   }
 
   // 4) Project all points to get min/max along each axis
-  struct proj_accum {
-    T minx, maxx, miny, maxy, minz, maxz;
-  };
-
-  proj_accum proj_init{std::numeric_limits<T>::max(),
-                       -std::numeric_limits<T>::max(),
-                       std::numeric_limits<T>::max(),
-                       -std::numeric_limits<T>::max(),
-                       std::numeric_limits<T>::max(),
-                       -std::numeric_limits<T>::max()};
+  auto proj_init = make_proj_accum_init<Dims, T>();
 
   auto proj_acc = tf::reduce(
       tf::make_mapped_range(points,
                             [&](const auto &pt) {
                               auto diff = pt - centroid;
-                              T px = tf::dot(diff, box.axes[0]);
-                              T py = tf::dot(diff, box.axes[1]);
-                              T pz = tf::dot(diff, box.axes[2]);
-                              return proj_accum{px, px, py, py, pz, pz};
+                              proj_accum<Dims, T> pt_acc;
+                              for (std::size_t i = 0; i < Dims; ++i) {
+                                T p = tf::dot(diff, box.axes[i]);
+                                pt_acc.min_proj[i] = p;
+                                pt_acc.max_proj[i] = p;
+                              }
+                              return pt_acc;
                             }),
-      [](proj_accum acc, const auto &element) {
-        acc.minx = std::min(acc.minx, element.minx);
-        acc.maxx = std::max(acc.maxx, element.maxx);
-        acc.miny = std::min(acc.miny, element.miny);
-        acc.maxy = std::max(acc.maxy, element.maxy);
-        acc.minz = std::min(acc.minz, element.minz);
-        acc.maxz = std::max(acc.maxz, element.maxz);
-        return acc;
-      },
+      merge_proj_accum<Dims, T>,
       proj_init, tf::checked);
 
   // 5) Store as corner + full extents
-  box.origin = centroid + box.axes[0] * proj_acc.minx +
-               box.axes[1] * proj_acc.miny + box.axes[2] * proj_acc.minz;
-  box.extent[0] = max(T(0), proj_acc.maxx - proj_acc.minx);
-  box.extent[1] = max(T(0), proj_acc.maxy - proj_acc.miny);
-  box.extent[2] = max(T(0), proj_acc.maxz - proj_acc.minz);
+  box.origin = centroid;
+  for (std::size_t i = 0; i < Dims; ++i) {
+    box.origin = box.origin + box.axes[i] * proj_acc.min_proj[i];
+    box.extent[i] = max(T(0), proj_acc.max_proj[i] - proj_acc.min_proj[i]);
+  }
 
   return box;
 }

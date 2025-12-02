@@ -115,12 +115,15 @@ auto traversal_metric(const tf::obb_like<Dims, Policy0> &obb,
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto traversal_metric(const tf::obb_like<Dims, Policy0> &obb,
                       const tf::line_like<Dims, Policy1> &line) {
+  static_assert(Dims == 2 || Dims == 3,
+                "traversal_metric(obb, line) is implemented for 2D and 3D only.");
   using T = tf::coordinate_type<Policy0, Policy1>;
 
   // OBB center
-  auto center = obb.origin + obb.axes[0] * (obb.extent[0] * T(0.5)) +
-                obb.axes[1] * (obb.extent[1] * T(0.5)) +
-                obb.axes[2] * (obb.extent[2] * T(0.5));
+  auto center = obb.origin;
+  for (std::size_t i = 0; i < Dims; ++i) {
+    center = center + obb.axes[i] * (obb.extent[i] * T(0.5));
+  }
 
   // Segment along longest axis (axes[0]) through center
   auto half_len = obb.extent[0] * T(0.5);
@@ -128,10 +131,15 @@ auto traversal_metric(const tf::obb_like<Dims, Policy0> &obb,
   auto p1 = center + obb.axes[0] * half_len;
   auto seg = tf::make_segment_between_points(p0, p1);
 
-  // Capsule radius: half-diagonal of cross-section (extent[1] x extent[2])
-  auto r = tf::sqrt(obb.extent[1] * obb.extent[1] +
-                    obb.extent[2] * obb.extent[2]) *
-           T(0.5);
+  // Capsule radius: half-diagonal of cross-section
+  T r;
+  if constexpr (Dims == 2) {
+    r = obb.extent[1] * T(0.5);
+  } else {
+    r = tf::sqrt(obb.extent[1] * obb.extent[1] +
+                 obb.extent[2] * obb.extent[2]) *
+        T(0.5);
+  }
 
   auto d_seg = tf::distance(seg, line);
   auto result = std::max(T(0), d_seg - r);
@@ -146,12 +154,15 @@ auto traversal_metric(const tf::obb_like<Dims, Policy0> &obb,
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto traversal_metric(const tf::obb_like<Dims, Policy0> &obb,
                       const tf::ray_like<Dims, Policy1> &ray) {
+  static_assert(Dims == 2 || Dims == 3,
+                "traversal_metric(obb, ray) is implemented for 2D and 3D only.");
   using T = tf::coordinate_type<Policy0, Policy1>;
 
   // OBB center
-  auto center = obb.origin + obb.axes[0] * (obb.extent[0] * T(0.5)) +
-                obb.axes[1] * (obb.extent[1] * T(0.5)) +
-                obb.axes[2] * (obb.extent[2] * T(0.5));
+  auto center = obb.origin;
+  for (std::size_t i = 0; i < Dims; ++i) {
+    center = center + obb.axes[i] * (obb.extent[i] * T(0.5));
+  }
 
   // Segment along longest axis (axes[0]) through center
   auto half_len = obb.extent[0] * T(0.5);
@@ -159,10 +170,15 @@ auto traversal_metric(const tf::obb_like<Dims, Policy0> &obb,
   auto p1 = center + obb.axes[0] * half_len;
   auto seg = tf::make_segment_between_points(p0, p1);
 
-  // Capsule radius: half-diagonal of cross-section (extent[1] x extent[2])
-  auto r = tf::sqrt(obb.extent[1] * obb.extent[1] +
-                    obb.extent[2] * obb.extent[2]) *
-           T(0.5);
+  // Capsule radius: half-diagonal of cross-section
+  T r;
+  if constexpr (Dims == 2) {
+    r = obb.extent[1] * T(0.5);
+  } else {
+    r = tf::sqrt(obb.extent[1] * obb.extent[1] +
+                 obb.extent[2] * obb.extent[2]) *
+        T(0.5);
+  }
 
   auto d_seg = tf::distance(seg, ray);
   auto result = std::max(T(0), d_seg - r);
@@ -199,30 +215,32 @@ auto traversal_metric(const tf::rss_like<Dims, Policy0> &rss,
 
 /// @brief Compute traversal metric for single-tree queries.
 ///
-/// Uses bounding capsule along longer axis for lower bound on distance to line.
+/// Uses bounding capsule along principal axis for lower bound on distance to line.
 ///
 /// @return Squared distance lower bound
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto traversal_metric(const tf::rss_like<Dims, Policy0> &rss,
                       const tf::line_like<Dims, Policy1> &line) {
-  static_assert(Dims == 3,
-                "traversal_metric(rss, line) is implemented for 3D only.");
+  static_assert(Dims == 2 || Dims == 3,
+                "traversal_metric(rss, line) is implemented for 2D and 3D only.");
   using T = tf::coordinate_type<Policy0, Policy1>;
 
-  // RSS center
-  auto center = rss.origin + rss.axes[0] * (rss.length[0] * T(0.5)) +
-                rss.axes[1] * (rss.length[1] * T(0.5));
+  auto center = rss.center();
+  auto half_len = rss.length[0] * T(0.5);
 
-  // Segment along longer axis through center
-  auto longer_idx = rss.length[0] >= rss.length[1] ? 0 : 1;
-  auto shorter_idx = 1 - longer_idx;
-  auto half_len = rss.length[longer_idx] * T(0.5);
-  auto p0 = center - rss.axes[longer_idx] * half_len;
-  auto p1 = center + rss.axes[longer_idx] * half_len;
+  // Capsule radius: perpendicular half-extent + sweep radius
+  // 2D: no perpendicular length, just radius
+  // 3D: length[1]/2 + radius (axes ordered by size, so length[1] <= length[0])
+  T r;
+  if constexpr (Dims == 2) {
+    r = rss.radius;
+  } else {
+    r = rss.length[1] * T(0.5) + rss.radius;
+  }
+
+  auto p0 = center - rss.axes[0] * half_len;
+  auto p1 = center + rss.axes[0] * half_len;
   auto seg = tf::make_segment_between_points(p0, p1);
-
-  // Capsule radius: half of shorter axis + rss radius
-  auto r = rss.length[shorter_idx] * T(0.5) + rss.radius;
 
   auto d_seg = tf::distance(seg, line);
   auto result = std::max(T(0), d_seg - r);
@@ -231,30 +249,30 @@ auto traversal_metric(const tf::rss_like<Dims, Policy0> &rss,
 
 /// @brief Compute traversal metric for single-tree queries.
 ///
-/// Uses bounding capsule along longer axis for lower bound on distance to ray.
+/// Uses bounding capsule along principal axis for lower bound on distance to ray.
 ///
 /// @return Squared distance lower bound
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto traversal_metric(const tf::rss_like<Dims, Policy0> &rss,
                       const tf::ray_like<Dims, Policy1> &ray) {
-  static_assert(Dims == 3,
-                "traversal_metric(rss, ray) is implemented for 3D only.");
+  static_assert(Dims == 2 || Dims == 3,
+                "traversal_metric(rss, ray) is implemented for 2D and 3D only.");
   using T = tf::coordinate_type<Policy0, Policy1>;
 
-  // RSS center
-  auto center = rss.origin + rss.axes[0] * (rss.length[0] * T(0.5)) +
-                rss.axes[1] * (rss.length[1] * T(0.5));
+  auto center = rss.center();
+  auto half_len = rss.length[0] * T(0.5);
 
-  // Segment along longer axis through center
-  auto longer_idx = rss.length[0] >= rss.length[1] ? 0 : 1;
-  auto shorter_idx = 1 - longer_idx;
-  auto half_len = rss.length[longer_idx] * T(0.5);
-  auto p0 = center - rss.axes[longer_idx] * half_len;
-  auto p1 = center + rss.axes[longer_idx] * half_len;
+  // Capsule radius: perpendicular half-extent + sweep radius
+  T r;
+  if constexpr (Dims == 2) {
+    r = rss.radius;
+  } else {
+    r = rss.length[1] * T(0.5) + rss.radius;
+  }
+
+  auto p0 = center - rss.axes[0] * half_len;
+  auto p1 = center + rss.axes[0] * half_len;
   auto seg = tf::make_segment_between_points(p0, p1);
-
-  // Capsule radius: half of shorter axis + rss radius
-  auto r = rss.length[shorter_idx] * T(0.5) + rss.radius;
 
   auto d_seg = tf::distance(seg, ray);
   auto result = std::max(T(0), d_seg - r);
