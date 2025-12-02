@@ -56,16 +56,16 @@ watch(isDark, (dark) => {
 <template>
   <div class="flex flex-col w-full h-full">
     <div class="flex flex-row flex-1 relative min-h-0">
-      <div class="absolute left-3 top-3 z-10 max-w-md rounded-lg p-3 bg-neutral-100/10 shadow-lg backdrop-blur">
-        <p class="font-semibold text-lg mb-2">Positioning</p>
-        <div class="flex flex-col gap-2 text-sm text-muted">
-          <div class="flex gap-3 items-center">
-            <UIcon name="i-lucide-hand" class="size-4 ml-1" />
-            <p>Drag a mesh away; release to see nearest neighbors snap back together.</p>
-          </div>
+      <ExampleInfoCard title="Positioning">
+        <div class="flex gap-3 items-center text-muted">
+          <UIcon name="i-lucide-hand" class="size-4 ml-1" />
+          <p class="text-sm">Drag a mesh away; release to see nearest neighbors snap back together.</p>
         </div>
+      </ExampleInfoCard>
+      <div class="flex flex-col md:flex-row w-full">
+        <div ref="threejsContainer" id="threejsContainer" class="h-full flex-1 min-h-0 w-[100vw] md:w-full"></div>
       </div>
-      <div ref="threejsContainer" id="threejsContainer" class="h-full w-full flex-1 min-h-0 min-w-0"></div>
     </div>
   </div>
 </template>
+

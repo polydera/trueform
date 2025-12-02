@@ -22,6 +22,16 @@ const getAvgTime = () => {
   return 0;
 };
 
+const badge = computed(() => ({
+  icon: "i-lucide-gauge",
+  text: `Last boolean: ${avgTime.value} ms`,
+}));
+
+const actionButtons = [
+  { icon: "i-lucide-rotate-3d", label: "Randomize", keyboardShortcut: "N", onClick: () => {} },
+  { icon: "i-lucide-focus", label: "Resync camera", keyboardShortcut: "R", onClick: () => {} },
+];
+
 let tearDownRequested = false;
 
 const loadThreejs = async () => {
@@ -68,31 +78,17 @@ watch(isDark, (dark) => {
 <template>
   <div class="flex flex-col w-full h-full">
     <div class="flex flex-row flex-1 relative min-h-0">
-      <div
-        class="absolute left-3 top-3 z-10 max-w-md rounded-lg p-3 bg-neutral-100/10 shadow-lg backdrop-blur"
-      >
-        <p class="font-semibold text-lg mb-2">Boolean</p>
-        <div class="flex flex-col gap-2">
-          <div class="flex gap-3 items-center text-muted">
-            <UIcon name="i-lucide-info" class="size-4 ml-1" />
-            <p class="text-sm">Grab a mesh and move it to inspect intersection curve and difference mesh.</p>
-          </div>
-          <div class="flex gap-2 items-center text-muted">
-            <UKbd variant="subtle">r</UKbd>
-            <p class="text-sm">Resync camera controls</p>
-          </div>
-          <div class="flex gap-2 items-center text-muted">
-            <UKbd variant="subtle">n</UKbd>
-            <p class="text-sm">Randomize mesh orientation</p>
-          </div>
-          <div class="flex gap-2 items-center text-muted">
-            <UIcon name="i-lucide-gauge" class="size-4 ml-1" />
-            <p class="text-sm">Last boolean: {{ avgTime }} ms</p>
-          </div>
+      <ExampleInfoCard title="Boolean" :badge="badge">
+        <div class="flex gap-3 items-center text-muted">
+          <UIcon name="i-lucide-info" class="size-4 ml-1" />
+          <p class="text-sm">Grab a mesh and move it to inspect intersection curve and difference mesh.</p>
         </div>
+      </ExampleInfoCard>
+      <div class="flex flex-col md:flex-row w-full">
+        <div ref="threejsContainer" id="threejsContainer" class="h-full flex-1 min-h-0 w-[100vw] md:w-full"></div>
+        <div ref="threejsContainer2" id="threejsContainer2" class="h-full flex-1 min-h-0 w-[100vw] md:w-full"></div>
       </div>
-      <div ref="threejsContainer" id="threejsContainer" class="h-full w-full flex-1 min-h-0 min-w-0"></div>
-      <div ref="threejsContainer2" id="threejsContainer2" class="h-full w-full flex-1 min-h-0 min-w-0"></div>
+      <ExampleActionButtons :buttons="actionButtons" />
     </div>
   </div>
 </template>

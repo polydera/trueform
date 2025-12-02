@@ -16,6 +16,11 @@ export default defineAppConfig({
         hpp: "i-material-icon-theme:hpp"
       },
     },
+    button: {
+      slots: {
+        base: 'cursor-pointer',
+      },
+    }
   },
   seo: {
     siteName: "trueform",

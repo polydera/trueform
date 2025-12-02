@@ -6,6 +6,8 @@ const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
 const { loadWasmModule, preloadMeshes } = useWasmModule();
 
+const { isTouchscreen } = useTouchscreen();
+
 const threejsContainer = ref<HTMLElement | null>(null);
 let exampleClass: ScalarFieldIntersectionsExample | null = null;
 
@@ -40,6 +42,15 @@ const getAvgTime = () => {
   return 0;
 };
 
+const badge = computed(() => ({
+  icon: "i-lucide-gauge",
+  text: `Last scroll: ${avgTime.value} ms`,
+}));
+
+const actionButtons = [
+  { icon: "i-lucide-rotate-3d", label: "Randomize", keyboardShortcut: "N" },
+];
+
 onMounted(() => {
   loadThreejs();
 });
@@ -62,24 +73,20 @@ watch(isDark, (dark) => {
 <template>
   <div class="flex flex-col w-full h-full">
     <div class="flex flex-row flex-1 relative min-h-0">
-      <div class="absolute left-3 top-3 z-10 max-w-md rounded-lg p-3 bg-neutral-100/10 shadow-lg backdrop-blur">
-        <p class="font-semibold text-lg mb-2">Scalar Field Intersections</p>
-        <div class="flex flex-col gap-2 text-sm text-muted">
-          <div class="flex gap-1 items-center text-muted">
-            <UKbd variant="subtle" value="shift"/><UKbd variant="subtle">Scroll</UKbd>
-            <p>Sweep the plane and isobands.</p>
-          </div>
-          <div class="flex gap-2 items-center">
-            <UKbd variant="subtle">n</UKbd>
-            <p>Randomize plane orientation</p>
-          </div>
-          <div class="flex gap-2 items-center">
-            <UIcon name="i-lucide-gauge" class="size-4 ml-1" />
-            <p>Last scroll: {{ avgTime }} ms</p>
-          </div>
+      <ExampleInfoCard title="Scalar Field Intersections" :badge="badge">
+        <div v-if="isTouchscreen" class="flex gap-1 items-center text-muted">
+          <UIcon name="i-lucide-tally-3" class="size-4 ml-1" />
+          <p class="text-sm">Drag the plane with 3 fingers to sweep.</p>
         </div>
+        <div v-else class="flex gap-3 items-center text-muted">
+          <UIcon name="i-lucide-info" class="size-4 ml-1" />
+          <p class="text-sm">Sweep the plane and isobands.</p>
+        </div>
+      </ExampleInfoCard>
+      <div class="flex flex-col md:flex-row w-full">
+        <div ref="threejsContainer" id="threejsContainer" class="h-full flex-1 min-h-0 w-[100vw] md:w-full"></div>
       </div>
-      <div ref="threejsContainer" id="threejsContainer" class="h-full w-full flex-1 min-h-0 min-w-0"></div>
+      <ExampleActionButtons :buttons="actionButtons" />
     </div>
   </div>
 </template>
