@@ -75,7 +75,7 @@ watch(isDark, (dark) => {
         <div class="flex flex-col gap-2 text-sm">
           <div class="flex gap-3 items-center text-muted">
             <UIcon name="i-lucide-move-3d" class="size-4 ml-1" />
-            <p>Grab and drag a mesh to test. Intersections highlight in real time.</p>
+            <p>Drag a mesh. Contact detection runs live as you move.</p>
           </div>
           <div class="grid grid-cols-1 gap-1 text-muted">
             <p>Total polygons: {{ totalPolygons }}</p>

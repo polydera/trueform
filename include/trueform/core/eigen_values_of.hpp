@@ -50,4 +50,36 @@ auto eigen_values_of(const std::array<std::array<T, 3>, 3> &m) {
 
   return eigenvalues;
 }
+
+template <typename T>
+auto eigen_values_of(const std::array<std::array<T, 2>, 2> &m) {
+  using std::max;
+
+  // Assume symmetric matrix:
+  // [ a  b ]
+  // [ b  c ]
+  const T a = m[0][0];
+  const T b = m[0][1]; // assume m[0][1] == m[1][0]
+  const T c = m[1][1];
+
+  // Eigenvalues of 2x2 symmetric:
+  // λ = (trace ± sqrt(trace^2 - 4 det)) / 2
+  const T trace       = a + c;
+  const T half_trace  = trace / T(2);
+  const T det         = a * c - b * b;
+
+  T disc_sq = half_trace * half_trace - det;
+  disc_sq   = max(disc_sq, T(0)); // clamp for numerical safety
+
+  const T disc = tf::sqrt(disc_sq);
+
+  T lambda0 = half_trace - disc;
+  T lambda1 = half_trace + disc;
+
+  if (lambda0 > lambda1)
+    std::swap(lambda0, lambda1);
+
+  return std::array<T, 2>{lambda0, lambda1};
+}
+
 } // namespace tf::core

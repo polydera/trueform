@@ -11,7 +11,7 @@ const round = (n: number) => Math.round(n * 10) / 10;
 const triggers = {
   [GroupedBar.selectors.bar]: (d: any) => `<div class="flex flex-col gap-0.5">
     <div class="font-medium text-lg">${numKM(d.polygons)} polygons</div>
-    <div><span class="text-[#ff6b6b]">vs IGL:</span> ${round(d.igl / d.tf)}×</div>
+    <div><span class="text-[#ff6b6b]">vs libigl:</span> ${round(d.igl / d.tf)}×</div>
   </div>`,
 };
 </script>
@@ -23,7 +23,7 @@ const triggers = {
     <div class="flex gap-4 items-center justify-center flex-wrap">
       <div class="flex gap-1.5 items-center">
         <div class="size-3 bg-[#ff6b6b] rounded"></div>
-        <span class="text-sm">vs IGL</span>
+        <span class="text-sm">vs libigl</span>
       </div>
     </div>
     <VisXYContainer>

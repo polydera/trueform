@@ -16,4 +16,11 @@ auto eigen_of(const std::array<std::array<T, 3>, 3> &mat) {
   auto eigenvectors = core::eigen_vectors_of(mat, eigenvalues);
   return std::make_pair(eigenvalues, eigenvectors);
 }
+
+template <typename T>
+auto eigen_of(const std::array<std::array<T, 2>, 2> &mat) {
+  auto eigenvalues = core::eigen_values_of(mat);
+  auto eigenvectors = core::eigen_vectors_of(mat, eigenvalues);
+  return std::make_pair(eigenvalues, eigenvectors);
+}
 } // namespace tf

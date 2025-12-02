@@ -25,7 +25,7 @@ const template = (d: any) => `<div class="flex flex-col gap-0.5">
     <div class="font-medium text-lg">2 × ${numKM(d.polygons)} polygons</div>
     <div><span class="text-primary font-bold">TrueForm:</span> ${round(d.tf)} ms</div>
     <div><span class="text-[#fdff4e]">CGAL:</span> ${round(d.cgal)} ms</div>
-    <div><span class="text-[#ff6b6b]">IGL:</span> ${round(d.igl)} ms</div>
+    <div><span class="text-[#ff6b6b]">libigl:</span> ${round(d.igl)} ms</div>
   </div>`;
 
 const lastPoint = data[data.length - 1];
@@ -67,7 +67,7 @@ const annotations = computed(() => [
       </div>
       <div class="flex gap-1.5 items-center">
         <div class="size-3 bg-[#ff6b6b] rounded"></div>
-        <span class="text-sm">IGL</span>
+        <span class="text-sm">libigl</span>
       </div>
     </div>
     <VisXYContainer :data="data">

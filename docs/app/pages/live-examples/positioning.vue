@@ -61,7 +61,7 @@ watch(isDark, (dark) => {
         <div class="flex flex-col gap-2 text-sm text-muted">
           <div class="flex gap-3 items-center">
             <UIcon name="i-lucide-hand" class="size-4 ml-1" />
-            <p>Drag a mesh away; release to see nearest neighbors snap back together.</p>
+            <p>Drag a mesh and release. It snaps to the nearest point instantly.</p>
           </div>
         </div>
       </div>

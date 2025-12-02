@@ -27,7 +27,8 @@ const triggers = {
     <div class="flex gap-4 items-center justify-center flex-wrap">
       <div class="flex gap-1.5 items-center">
         <div class="size-3 bg-[#fdff4e] rounded"></div>
-        <span class="text-sm">vs CGAL</span>
+        <span class="text-sm">vs</span>
+        <img src="/img/cgal_logo.png" class="h-4 w-auto shrink-0" alt="CGAL" />
       </div>
       <div class="flex gap-1.5 items-center">
         <div class="size-3 bg-[#9b59b6] rounded"></div>

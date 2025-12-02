@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 
@@ -142,7 +142,7 @@ public:
   template <typename B>
   friend auto operator-=(vector_like &a, const vector_like<Dims, B> &b)
       -> std::enable_if_t<
-          std::is_assignable_v<reference &, typename B::element_type>,
+          std::is_assignable_v<reference, typename B::element_type>,
           vector_like &> {
     for (std::size_t i = 0; i < Dims; ++i)
       a[i] -= b[i];
@@ -151,9 +151,9 @@ public:
 
   /// @brief Multiplies vector `a` by scalar `s`.
   template <typename Scalar>
-  friend auto operator*=(vector_like &a, Scalar s)
-      -> std::enable_if_t<std::is_assignable_v<reference, decltype(a[0] * s)>,
-                          vector_like &> {
+  friend auto operator*=(vector_like &a, Scalar s) -> std::enable_if_t<
+      std::is_assignable_v<reference, std::common_type_t<Scalar, value_type>>,
+      vector_like &> {
     for (std::size_t i = 0; i < Dims; ++i)
       a[i] *= s;
     return a;
@@ -161,9 +161,9 @@ public:
 
   /// @brief Divides vector `a` by scalar `s`.
   template <typename Scalar>
-  friend auto operator/=(vector_like &a, Scalar s)
-      -> std::enable_if_t<std::is_assignable_v<reference, decltype(a[0] / s)>,
-                          vector_like &> {
+  friend auto operator/=(vector_like &a, Scalar s) -> std::enable_if_t<
+      std::is_assignable_v<reference, std::common_type_t<Scalar, value_type>>,
+      vector_like &> {
     for (std::size_t i = 0; i < Dims; ++i)
       a[i] /= s;
     return a;

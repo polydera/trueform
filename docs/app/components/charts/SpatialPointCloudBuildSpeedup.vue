@@ -23,7 +23,8 @@ const triggers = {
     <div class="flex gap-4 items-center justify-center flex-wrap">
       <div class="flex gap-1.5 items-center">
         <div class="size-3 bg-[#a82d12] rounded"></div>
-        <span class="text-sm">vs nanoflann</span>
+        <span class="text-sm">vs</span>
+        <NuxtImg src="/img/nanoflann_logo.png" class="h-4 w-auto shrink-0" />
       </div>
     </div>
     <VisXYContainer>

@@ -15,7 +15,7 @@ const triggers = {
   [GroupedBar.selectors.bar]: (d: any) => `<div class="flex flex-col gap-0.5">
     <div class="font-medium text-lg">2 × ${numKM(d.polygons)} polygons</div>
     <div><span class="text-[#fdff4e]">vs CGAL:</span> ${round(d.cgal / d.tf)}×</div>
-    <div><span class="text-[#ff6b6b]">vs IGL:</span> ${round(d.igl / d.tf)}×</div>
+    <div><span class="text-[#ff6b6b]">vs libigl:</span> ${round(d.igl / d.tf)}×</div>
   </div>`,
 };
 </script>
@@ -27,11 +27,12 @@ const triggers = {
     <div class="flex gap-4 items-center justify-center flex-wrap">
       <div class="flex gap-1.5 items-center">
         <div class="size-3 bg-[#fdff4e] rounded"></div>
-        <span class="text-sm">vs CGAL</span>
+        <span class="text-sm">vs</span>
+        <img src="/img/cgal_logo.png" class="h-4 w-auto shrink-0" alt="CGAL" />
       </div>
       <div class="flex gap-1.5 items-center">
         <div class="size-3 bg-[#ff6b6b] rounded"></div>
-        <span class="text-sm">vs IGL</span>
+        <span class="text-sm">vs libigl</span>
       </div>
     </div>
     <VisXYContainer>

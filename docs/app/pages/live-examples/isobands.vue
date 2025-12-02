@@ -68,11 +68,11 @@ watch(isDark, (dark) => {
       <div
         class="absolute left-3 top-3 z-10 max-w-md rounded-lg p-3 bg-neutral-100/10 shadow-lg backdrop-blur"
       >
-        <p class="font-semibold text-lg mb-2">Isobands</p>
+        <p class="font-semibold text-lg mb-2">Slicing</p>
         <div class="flex flex-col gap-2 text-sm">
           <div class="flex gap-1 items-center text-muted">
             <UKbd variant="subtle" value="shift"/><UKbd variant="subtle">Scroll</UKbd>
-            <p>Sweep the plane and isobands.</p>
+            <p>Scroll to move the plane. Cross-sections update live.</p>
           </div>
           <div class="flex gap-2 items-center text-muted">
             <UKbd variant="subtle">r</UKbd>

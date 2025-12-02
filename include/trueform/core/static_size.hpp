@@ -19,7 +19,7 @@ namespace tf {
 ///
 /// @see @ref tf::static_size
 /// @see @ref tf::static_size_v
-static constexpr std::size_t dynamic_size = -1;
+static constexpr std::size_t dynamic_size = static_cast<std::size_t>(-1);
 
 /// @ingroup utilities 
 /// @brief Compile-time trait that yields the static size of a type, if known.

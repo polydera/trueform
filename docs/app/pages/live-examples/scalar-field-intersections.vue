@@ -63,11 +63,11 @@ watch(isDark, (dark) => {
   <div class="flex flex-col w-full h-full">
     <div class="flex flex-row flex-1 relative min-h-0">
       <div class="absolute left-3 top-3 z-10 max-w-md rounded-lg p-3 bg-neutral-100/10 shadow-lg backdrop-blur">
-        <p class="font-semibold text-lg mb-2">Scalar Field Intersections</p>
+        <p class="font-semibold text-lg mb-2">Contour Lines</p>
         <div class="flex flex-col gap-2 text-sm text-muted">
           <div class="flex gap-1 items-center text-muted">
             <UKbd variant="subtle" value="shift"/><UKbd variant="subtle">Scroll</UKbd>
-            <p>Sweep the plane and isobands.</p>
+            <p>Scroll to move the plane. Contour lines update live.</p>
           </div>
           <div class="flex gap-2 items-center">
             <UKbd variant="subtle">n</UKbd>

@@ -75,7 +75,7 @@ watch(isDark, (dark) => {
         <div class="flex flex-col gap-2">
           <div class="flex gap-3 items-center text-muted">
             <UIcon name="i-lucide-info" class="size-4 ml-1" />
-            <p class="text-sm">Grab a mesh and move it to inspect intersection curve and difference mesh.</p>
+            <p class="text-sm">Drag a mesh. The boolean updates in real time.</p>
           </div>
           <div class="flex gap-2 items-center text-muted">
             <UKbd variant="subtle">r</UKbd>
