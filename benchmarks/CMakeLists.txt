@@ -472,7 +472,3 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
         message(WARNING "Compiler does NOT support -march=native")
     endif()
 endif()
-
-message(STATUS "=== Benchmark configuration complete ===")
-message(STATUS "Build benchmarks with: make benchmarks")
-message(STATUS "Build specific benchmark: make spatial-point_cloud-build_tree-tf")

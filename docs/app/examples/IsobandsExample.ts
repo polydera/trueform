@@ -2,19 +2,14 @@ import type { MainModule } from "@/examples/native";
 import {fitCameraToAllMeshesFromZPlane, syncOrbitControls} from "@/utils/sceneUtils";
 import {
   buffersToCurves,
-  createBasicCurveLineObjects,
-  createCurveLineObjects,
-  curvesToCurveLines,
-  type curvesToCurvePolyOpts,
   createMesh,
   getMeshFromWasm,
-  updateBasicCurveLines,
+  CurveRenderer,
 } from "@/utils/utils";
 import { ThreejsBase } from "@/examples/ThreejsBase";
 
 export class IsobandsExample extends ThreejsBase {
-  private curveObjects: any;
-  private useBasicLines = false;
+  private curveRenderer: CurveRenderer;
   private keyPressed = false;
   public randomize() {
     this.wasmInstance.OnKeyPress("n");
@@ -134,14 +129,12 @@ export class IsobandsExample extends ThreejsBase {
       window.removeEventListener("touchcancel", interceptTouchEnd, touchListenerOptions);
     });
 
-    const opts: curvesToCurvePolyOpts = {
-      tubeColor: 0x2020ff,
-      lineWidth: 0.2,
-    };
-    this.curveObjects = this.useBasicLines
-      ? createBasicCurveLineObjects(opts)
-      : createCurveLineObjects(opts);
-    this.sceneBundle1.scene.add(this.curveObjects.lines);
+    this.curveRenderer = new CurveRenderer({
+      color: 0x2020ff,
+      radius: 0.075,
+      maxSegments: 20000,
+    });
+    this.sceneBundle1.scene.add(this.curveRenderer.object);
 
     if (this.sceneBundle2 && this.renderer2) {
       const mesh = createMesh(this.isDarkMode);
@@ -165,12 +158,8 @@ export class IsobandsExample extends ThreejsBase {
       const points = cO.get_curve_points();
       const ids = cO.get_curve_ids();
       const offsets = cO.get_curve_offsets();
-      const lines = buffersToCurves(points, ids, offsets);
-      if (this.useBasicLines) {
-        updateBasicCurveLines(lines, this.curveObjects);
-      } else {
-        curvesToCurveLines(lines, this.curveObjects, { samplesPerSegment: 3, tension: 0.5 });
-      }
+      const curves = buffersToCurves(points, ids, offsets);
+      this.curveRenderer.update(curves);
     }
 
     if (this.renderer2 && this.sceneBundle2) {

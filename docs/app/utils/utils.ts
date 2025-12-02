@@ -4,6 +4,231 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
 
+// ============================================================================
+// CurveRenderer - Efficient instanced tube rendering (cylinders + spheres)
+// ============================================================================
+
+export interface CurveRendererOpts {
+  radius?: number;
+  color?: number;
+  maxSegments?: number;
+  cylinderRadialSegments?: number;
+  sphereWidthSegments?: number;
+  sphereHeightSegments?: number;
+}
+
+export class CurveRenderer {
+  public readonly object: THREE.Group;
+
+  private cylinderMesh: THREE.InstancedMesh;
+  private sphereMesh: THREE.InstancedMesh;
+  private cylinderBuffer: Float32Array;
+  private sphereBuffer: Float32Array;
+  private maxSegments: number;
+  private radius: number;
+
+  constructor(opts: CurveRendererOpts = {}) {
+    const {
+      radius = 0.12,
+      color = 0xff2020,
+      maxSegments = 20000,
+      cylinderRadialSegments = 6,
+      sphereWidthSegments = 8,
+      sphereHeightSegments = 6,
+    } = opts;
+
+    this.radius = radius;
+    this.maxSegments = maxSegments;
+    this.object = new THREE.Group();
+    this.object.name = "curve_renderer";
+
+    // Shared material
+    const material = new THREE.MeshStandardMaterial({
+      color,
+      roughness: 0.4,
+      metalness: 0.1,
+    });
+
+    // Cylinder: unit height along Y, will transform per-instance
+    const cylGeom = new THREE.CylinderGeometry(1, 1, 1, cylinderRadialSegments);
+    this.cylinderMesh = new THREE.InstancedMesh(cylGeom, material, maxSegments);
+    this.cylinderMesh.count = 0;
+    this.cylinderMesh.frustumCulled = false;
+    this.cylinderBuffer = this.cylinderMesh.instanceMatrix.array as Float32Array;
+
+    // Sphere: unit radius, will scale per-instance
+    const sphereGeom = new THREE.SphereGeometry(1, sphereWidthSegments, sphereHeightSegments);
+    this.sphereMesh = new THREE.InstancedMesh(sphereGeom, material.clone(), maxSegments);
+    this.sphereMesh.count = 0;
+    this.sphereMesh.frustumCulled = false;
+    this.sphereBuffer = this.sphereMesh.instanceMatrix.array as Float32Array;
+
+    this.object.add(this.cylinderMesh);
+    this.object.add(this.sphereMesh);
+  }
+
+  /**
+   * Update curve rendering. Call each frame when curves change.
+   */
+  update(curves: { points: Float32Array; paths: number[][] }): void {
+    const { points, paths } = curves;
+
+    if (!points || !paths || points.length === 0) {
+      this.cylinderMesh.count = 0;
+      this.sphereMesh.count = 0;
+      return;
+    }
+
+    const vertCount = points.length / 3;
+    const r = this.radius;
+
+    let cylIdx = 0;
+    let sphIdx = 0;
+
+    for (const path of paths) {
+      if (!path || path.length < 2) continue;
+
+      for (let i = 0; i < path.length; i++) {
+        const idx = path[i];
+        if (idx < 0 || idx >= vertCount) continue;
+
+        const x = points[idx * 3];
+        const y = points[idx * 3 + 1];
+        const z = points[idx * 3 + 2];
+
+        // Sphere at this vertex
+        if (sphIdx < this.maxSegments) {
+          this.writeSphereMatrix(sphIdx, x, y, z, r);
+          sphIdx++;
+        }
+
+        // Cylinder to next vertex
+        if (i < path.length - 1) {
+          const nextIdx = path[i + 1];
+          if (nextIdx < 0 || nextIdx >= vertCount) continue;
+
+          const nx = points[nextIdx * 3];
+          const ny = points[nextIdx * 3 + 1];
+          const nz = points[nextIdx * 3 + 2];
+
+          if (cylIdx < this.maxSegments) {
+            this.writeCylinderMatrix(cylIdx, x, y, z, nx, ny, nz, r);
+            cylIdx++;
+          }
+        }
+      }
+    }
+
+    this.cylinderMesh.count = cylIdx;
+    this.sphereMesh.count = sphIdx;
+    this.cylinderMesh.instanceMatrix.needsUpdate = true;
+    this.sphereMesh.instanceMatrix.needsUpdate = true;
+
+  }
+
+  /**
+   * Write sphere matrix directly to buffer (identity rotation, uniform scale, translation)
+   */
+  private writeSphereMatrix(idx: number, x: number, y: number, z: number, radius: number): void {
+    const o = idx * 16;
+    const buf = this.sphereBuffer;
+    // Column-major 4x4: scale on diagonal, translation in column 3
+    buf[o + 0] = radius; buf[o + 1] = 0; buf[o + 2] = 0; buf[o + 3] = 0;
+    buf[o + 4] = 0; buf[o + 5] = radius; buf[o + 6] = 0; buf[o + 7] = 0;
+    buf[o + 8] = 0; buf[o + 9] = 0; buf[o + 10] = radius; buf[o + 11] = 0;
+    buf[o + 12] = x; buf[o + 13] = y; buf[o + 14] = z; buf[o + 15] = 1;
+  }
+
+  /**
+   * Write cylinder matrix directly to buffer (rotation to align with segment, scale by length)
+   */
+  private writeCylinderMatrix(
+    idx: number,
+    x0: number, y0: number, z0: number,
+    x1: number, y1: number, z1: number,
+    radius: number
+  ): void {
+    const o = idx * 16;
+    const buf = this.cylinderBuffer;
+
+    // Direction and length
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    const dz = z1 - z0;
+    const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+    if (len < 1e-8) {
+      // Degenerate - write identity with zero scale
+      buf[o + 0] = 0; buf[o + 1] = 0; buf[o + 2] = 0; buf[o + 3] = 0;
+      buf[o + 4] = 0; buf[o + 5] = 0; buf[o + 6] = 0; buf[o + 7] = 0;
+      buf[o + 8] = 0; buf[o + 9] = 0; buf[o + 10] = 0; buf[o + 11] = 0;
+      buf[o + 12] = x0; buf[o + 13] = y0; buf[o + 14] = z0; buf[o + 15] = 1;
+      return;
+    }
+
+    // Normalized direction (this will be the Y axis of the cylinder)
+    const ax = dx / len;
+    const ay = dy / len;
+    const az = dz / len;
+
+    // Find perpendicular vectors for X and Z axes
+    // Pick a non-parallel reference vector
+    let rx: number, ry: number, rz: number;
+    if (Math.abs(ay) < 0.9) {
+      rx = 0; ry = 1; rz = 0;
+    } else {
+      rx = 1; ry = 0; rz = 0;
+    }
+
+    // X axis = cross(Y, ref), normalized
+    let bx = ay * rz - az * ry;
+    let by = az * rx - ax * rz;
+    let bz = ax * ry - ay * rx;
+    const bLen = Math.sqrt(bx * bx + by * by + bz * bz);
+    bx /= bLen; by /= bLen; bz /= bLen;
+
+    // Z axis = cross(X, Y)
+    const cx = by * az - bz * ay;
+    const cy = bz * ax - bx * az;
+    const cz = bx * ay - by * ax;
+
+    // Midpoint
+    const mx = (x0 + x1) * 0.5;
+    const my = (y0 + y1) * 0.5;
+    const mz = (z0 + z1) * 0.5;
+
+    // Column-major 4x4 with rotation and non-uniform scale
+    // Column 0: X axis * radius
+    buf[o + 0] = bx * radius;
+    buf[o + 1] = by * radius;
+    buf[o + 2] = bz * radius;
+    buf[o + 3] = 0;
+    // Column 1: Y axis * length (cylinder height)
+    buf[o + 4] = ax * len;
+    buf[o + 5] = ay * len;
+    buf[o + 6] = az * len;
+    buf[o + 7] = 0;
+    // Column 2: Z axis * radius
+    buf[o + 8] = cx * radius;
+    buf[o + 9] = cy * radius;
+    buf[o + 10] = cz * radius;
+    buf[o + 11] = 0;
+    // Column 3: translation (midpoint)
+    buf[o + 12] = mx;
+    buf[o + 13] = my;
+    buf[o + 14] = mz;
+    buf[o + 15] = 1;
+  }
+
+  dispose(): void {
+    this.cylinderMesh.geometry.dispose();
+    this.sphereMesh.geometry.dispose();
+    (this.cylinderMesh.material as THREE.Material).dispose();
+    (this.sphereMesh.material as THREE.Material).dispose();
+    this.object.clear();
+  }
+}
+
 export interface CurveObj {
   points: Float32Array;
   paths: number[][];

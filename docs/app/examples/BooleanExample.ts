@@ -2,20 +2,14 @@ import type { MainModule } from "@/examples/native";
 import { fitCameraToAllMeshesFromZPlane, syncOrbitControls } from "@/utils/sceneUtils";
 import {
   buffersToCurves,
-  createCurveLineObjects,
   createMesh,
-  type CurveLineObjects,
-  curvesToCurveLines,
-  type curvesToCurvePolyOpts,
   getMeshFromWasm,
-  createBasicCurveLineObjects,
-  updateBasicCurveLines,
+  CurveRenderer,
 } from "@/utils/utils";
 import { ThreejsBase } from "@/examples/ThreejsBase";
 
 export class BooleanExample extends ThreejsBase {
-  private curveObjects: CurveLineObjects | any;
-  private useBasicLines = false; // Set to true to use basic LineSegments for debugging
+  private curveRenderer: CurveRenderer;
   private keyPressed = false;
 
   // private pointDebug = createPoints();
@@ -64,20 +58,12 @@ export class BooleanExample extends ThreejsBase {
       window.removeEventListener("keyup", interceptKeyUpEvent);
     });
 
-    const opts: curvesToCurvePolyOpts = {
-      tubeColor: 0xff2020, // Red lines
-      lineWidth: 0.2,
-    };
-
-    if (this.useBasicLines) {
-      // Use basic LineSegments for compatibility
-      this.curveObjects = createBasicCurveLineObjects(opts);
-      console.log("Using basic LineSegments for curve rendering");
-    } else {
-      this.curveObjects = createCurveLineObjects(opts);
-      console.log("Using LineSegments2 for curve rendering");
-    }
-    this.sceneBundle1.scene.add(this.curveObjects.lines);
+    this.curveRenderer = new CurveRenderer({
+      color: 0xff2020,
+      radius: 0.075,
+      maxSegments: 20000,
+    });
+    this.sceneBundle1.scene.add(this.curveRenderer.object);
 
     if (this.sceneBundle2 && this.renderer2) {
       const mesh = createMesh(this.isDarkMode);
@@ -105,7 +91,6 @@ export class BooleanExample extends ThreejsBase {
   }
 
   public override updateMeshes() {
-    // const t0 = performance.now();
     super.updateMeshes();
 
     // Update curve mesh (intersection curves)
@@ -114,12 +99,8 @@ export class BooleanExample extends ThreejsBase {
       const points = cO.get_curve_points();
       const ids = cO.get_curve_ids();
       const offsets = cO.get_curve_offsets();
-      const lines = buffersToCurves(points, ids, offsets);
-      if (this.useBasicLines) {
-        updateBasicCurveLines(lines, this.curveObjects);
-      } else {
-        curvesToCurveLines(lines, this.curveObjects, { samplesPerSegment: 3, tension: 0.5 });
-      }
+      const curves = buffersToCurves(points, ids, offsets);
+      this.curveRenderer.update(curves);
     }
 
     if (this.renderer2 && this.sceneBundle2) {
