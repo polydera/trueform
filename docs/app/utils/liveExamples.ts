@@ -7,38 +7,33 @@ export interface ExampleMetadata {
 export const liveExamples: ExampleMetadata[] = [
   {
     title: "Boolean",
-    description:
-      "Visualizes real-time Boolean combinations between two `tf::forms` backed by `tf::tree` hierarchies.",
+    description: "Drag a mesh. The boolean updates in real time.",
     to: "boolean",
   },
   {
-    title: "Isobands",
-    description:
-      "Shows the iso-band slices reported by running `tf::search` over a form as a plane sweeps through the mesh hierarchy.",
+    title: "Slicing",
+    description: "Scroll to move the plane. Cross-sections update live.",
     to: "isobands",
   },
   {
-    title: "Positioning",
+    title: "Closest Points",
     description:
-      "`tf::neighbor_search` keeps pairs of metric points aligned so two forms maintain contact-quality positioning.",
+      "Drag a mesh and release. It snaps to the nearest point instantly.",
     to: "positioning",
   },
   {
-    title: "Scalar Field Intersections",
-    description:
-      "Highlights the intersection curves produced when `tf::search(form, primitive)` walks a scalar field plane through a form.",
+    title: "Contour Lines",
+    description: "Scroll to move the plane. Contour lines update live.",
     to: "scalar-field-intersections",
   },
   {
     title: "Collision",
-    description:
-      "Demonstrates pairwise `tf::search` across two forms for collision detection, exposing timing directly from the spatial hierarchy.",
+    description: "Drag a mesh. Contact detection runs live as you move.",
     to: "collision",
   },
   {
     title: "Mesh Intersections",
-    description:
-      "Displays intersection curves computed via `tf::search(form0, form1, ...)` and related form queries as meshes move.",
+    description: "Drag a mesh. The intersection curves recompute instantly.",
     to: "forms-intersections",
   },
 ]
