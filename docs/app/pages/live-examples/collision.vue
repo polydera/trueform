@@ -3,6 +3,20 @@ import { useWasmModule } from "@/composables/useWasmModule";
 import { CollisionExample } from "@/examples/CollisionExample";
 import { useExampleLoadingState } from "@/composables/useExampleLoadingState";
 import { useMeshSelection } from "@/composables/useMeshSelection";
+import { getExampleMetadata } from "@/utils/liveExamples";
+
+const metadata = getExampleMetadata("collision");
+if (metadata) {
+  defineOgImageComponent("Docs", {
+    title: metadata.title,
+    description: metadata.description,
+    headline: "Live Example",
+  });
+  useSeoMeta({
+    title: metadata.title,
+    description: metadata.description,
+  });
+}
 
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
@@ -23,8 +37,8 @@ let exampleClass: CollisionExample | null = null;
 
 const avgTime = ref("0");
 const avgPickTime = ref("0");
-const meshCount = 2;
-const meshes = computed(() => buildMeshes(meshCount));
+const meshCount = 25; // 5x5 grid as defined in collision_web.h
+const meshes = computed(() => buildMeshes(2)); // Only 2 unique meshes are loaded
 const polygonLabel = computed(() => formatPolygonLabel(meshCount));
 
 let tearDownRequested = false;

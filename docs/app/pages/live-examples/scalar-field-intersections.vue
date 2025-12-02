@@ -3,6 +3,20 @@ import { useWasmModule } from "@/composables/useWasmModule";
 import { ScalarFieldIntersectionsExample } from "@/examples/ScalarFieldIntersectionsExample";
 import { useExampleLoadingState } from "@/composables/useExampleLoadingState";
 import { useMeshSelection } from "@/composables/useMeshSelection";
+import { getExampleMetadata } from "@/utils/liveExamples";
+
+const metadata = getExampleMetadata("scalar-field-intersections");
+if (metadata) {
+  defineOgImageComponent("Docs", {
+    title: metadata.title,
+    description: metadata.description,
+    headline: "Live Example",
+  });
+  useSeoMeta({
+    title: metadata.title,
+    description: metadata.description,
+  });
+}
 
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");

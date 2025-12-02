@@ -7,7 +7,7 @@ definePageMeta({
 });
 
 const route = useRoute();
-const { collection } = useLibraryCollection();
+const { collection, library } = useLibraryCollection();
 const { toc } = useAppConfig();
 const navigation = inject<Ref<ContentNavigationItem[]>>("navigation");
 
@@ -31,14 +31,22 @@ const { data: surround } = await useAsyncData(
 const title = page.value.seo?.title || page.value.title;
 const description = page.value.seo?.description || page.value.description;
 
+const headline = computed(() => findPageHeadline(navigation?.value, page.value?.path));
+
+// Generate OG image using nuxt-og-image with headline
+defineOgImageComponent("Docs", {
+  title,
+  description,
+  headline: headline.value,
+  lib: library.value,
+});
+
 useSeoMeta({
   title,
   ogTitle: title,
   description,
   ogDescription: description,
 });
-
-const headline = computed(() => findPageHeadline(navigation?.value, page.value?.path));
 
 // defineComponent("Docs", {
 //   headline: headline.value,

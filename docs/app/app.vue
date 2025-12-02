@@ -17,7 +17,7 @@ useHead({
 useSeoMeta({
   titleTemplate: `%s - ${seo?.siteName}`,
   ogSiteName: seo?.siteName,
-  // twitterCard: "summary_large_image",
+  twitterCard: "summary_large_image",
 });
 
 provide("navigation", navigation);

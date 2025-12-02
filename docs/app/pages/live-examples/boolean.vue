@@ -3,6 +3,20 @@ import { useWasmModule } from "@/composables/useWasmModule";
 import { BooleanExample } from "@/examples/BooleanExample";
 import { useExampleLoadingState } from "@/composables/useExampleLoadingState";
 import { useMeshSelection } from "@/composables/useMeshSelection";
+import { getExampleMetadata } from "@/utils/liveExamples";
+
+const metadata = getExampleMetadata("boolean");
+if (metadata) {
+  defineOgImageComponent("Docs", {
+    title: metadata.title,
+    description: metadata.description,
+    headline: "Live Example",
+  });
+  useSeoMeta({
+    title: metadata.title,
+    description: metadata.description,
+  });
+}
 
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
@@ -104,7 +118,7 @@ watch(isDark, (dark) => {
       </div>
       <ExampleLoadingOverlay :loading="isLoading" :message="loadingMessage" :error="loadingError" @retry="loadThreejs" />
       <ExamplePolygonsCard :mesh-count="meshCount" :mesh-label="polygonLabel" :loading="isLoading" />
-      <ExampleActionButtons :buttons="actionButtons" />
+      <ExampleActionButtons :buttons="actionButtons" :loading="isLoading" />
     </div>
   </div>
 </template>

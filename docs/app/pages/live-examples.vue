@@ -1,42 +1,23 @@
 <script setup lang="ts">
 import { useMediaQuery } from "@vueuse/core";
+import { liveExamples } from "@/utils/liveExamples";
 
 const route = useRoute();
 const isMobile = useMediaQuery("(max-width: 1024px)");
 const isLandscape = useMediaQuery("(orientation: landscape)");
 
-const examples = [
-  {
-    title: "Boolean",
-    description: "Drag a mesh. The boolean updates in real time.",
-    to: "boolean",
-  },
-  {
-    title: "Slicing",
-    description: "Scroll to move the plane. Cross-sections update live.",
-    to: "isobands",
-  },
-  {
-    title: "Closest Points",
-    description: "Drag a mesh and release. It snaps to the nearest point instantly.",
-    to: "positioning",
-  },
-  {
-    title: "Contour Lines",
-    description: "Scroll to move the plane. Contour lines update live.",
-    to: "scalar-field-intersections",
-  },
-  {
-    title: "Collision",
-    description: "Drag a mesh. Contact detection runs live as you move.",
-    to: "collision",
-  },
-  {
-    title: "Mesh Intersections",
-    description: "Drag a mesh. The intersection curves recompute instantly.",
-    to: "forms-intersections",
-  },
-];
+// Generate OG image for live examples page
+defineOgImageComponent("Docs", {
+  title: "Live Examples",
+  description: "Interactive examples showcasing trueform's core features.",
+});
+
+useSeoMeta({
+  title: "Live Examples",
+  description: "Interactive examples showcasing trueform's core features.",
+});
+
+const examples = liveExamples;
 
 const isSidebarOpen = ref(false);
 
