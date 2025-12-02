@@ -2,30 +2,40 @@
 import { useWasmModule } from "@/composables/useWasmModule";
 import { FormsIntersectionsExample } from "@/examples/FormsIntersectionsExample";
 import { useExampleLoadingState } from "@/composables/useExampleLoadingState";
+import { useMeshSelection } from "@/composables/useMeshSelection";
 
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
 const { loadExampleWithAssets } = useWasmModule();
 const { isLoading, loadingMessage, loadingError, resetLoading, setLoadingMessage, failLoading, finishLoading } =
   useExampleLoadingState();
+const { meshSize, buildMeshes, formatPolygonLabel } = useMeshSelection();
 
 const threejsContainer = ref<HTMLElement | null>(null);
 let exampleClass: FormsIntersectionsExample | null = null;
 
 const avgTime = ref("0");
-const totalPolygons = ref("0");
-const meshes = [
-  { url: "/stl/dragon-250k.stl", filename: "dragon-250k.stl" },
-  { url: "/stl/Stanford_Bunny.stl", filename: "Stanford_Bunny.stl" },
-];
+const meshCount = 2;
+const meshes = computed(() => buildMeshes(meshCount));
+const polygonLabel = computed(() => formatPolygonLabel(meshCount));
 
 let tearDownRequested = false;
+let currentLoadId = 0;
+const disposeExample = () => {
+  if (exampleClass) {
+    exampleClass.dispose();
+    exampleClass = null;
+  }
+};
+
 const loadThreejs = async () => {
+  const loadId = ++currentLoadId;
+  disposeExample();
   exampleClass = await loadExampleWithAssets({
-    meshes,
+    meshes: meshes.value,
     skipOverlayIfCached: true,
     loading: { resetLoading, setLoadingMessage, failLoading, finishLoading },
-    isTornDown: () => tearDownRequested,
+    isTornDown: () => tearDownRequested || loadId !== currentLoadId,
     createScene: (wasmInstance, meshFilenames) => {
       const el = threejsContainer.value;
       if (!el) {
@@ -38,7 +48,6 @@ const loadThreejs = async () => {
         el,
         isDark.value,
       );
-      totalPolygons.value = wasmInstance.get_number_of_polygons().toString();
       instance.refreshTimeValue = getAvgTime;
       return instance;
     },
@@ -61,16 +70,11 @@ const actionButtons = [
   { icon: "i-lucide-rotate-3d", label: "Randomize", keyboardShortcut: "N", onClick: () => exampleClass?.randomize() },
 ];
 
-onMounted(() => {
-  loadThreejs();
-});
+watch(meshSize, () => loadThreejs(), { immediate: true });
 
 onBeforeUnmount(() => {
   tearDownRequested = true;
-  if (exampleClass) {
-    exampleClass.dispose();
-    exampleClass = null;
-  }
+  disposeExample();
 });
 
 watch(isDark, (dark) => {
@@ -88,14 +92,12 @@ watch(isDark, (dark) => {
           <UIcon name="i-lucide-hand" class="size-4 ml-1" />
           <p class="text-sm">Drag a mesh. The intersection curves recompute instantly.</p>
         </div>
-        <div class="grid grid-cols-1 gap-1 text-muted">
-          <p class="text-sm">Total polygons: {{ totalPolygons }}</p>
-        </div>
       </ExampleInfoCard>
       <div class="flex flex-col md:flex-row w-full">
         <div ref="threejsContainer" id="threejsContainer" class="h-full flex-1 min-h-0 w-[100vw] md:w-full"></div>
       </div>
       <ExampleLoadingOverlay :loading="isLoading" :message="loadingMessage" :error="loadingError" @retry="loadThreejs" />
+      <ExamplePolygonsCard :mesh-count="meshCount" :mesh-label="polygonLabel" :loading="isLoading" />
       <ExampleActionButtons :buttons="actionButtons" />
     </div>
   </div>

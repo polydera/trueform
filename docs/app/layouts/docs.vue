@@ -2,7 +2,7 @@
 import type { ContentNavigationItem } from '@nuxt/content'
 import { useMediaQuery } from '@vueuse/core'
 
-const isMobile = useMediaQuery("(max-width: 768px)");
+const isMobile = useMediaQuery("(max-width: 1024px)");
 
 const navigation = inject<Ref<ContentNavigationItem[]>>('navigation')
 </script>
