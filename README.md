@@ -1,25 +1,20 @@
 # trueform
 
-**Real-time geometric processing built on composable range-based policies**
+`trueform` is a C++ library for real-time geometric processing. Spatial queries, mesh booleans, isocontours, topology — at interactive speed on million-polygon meshes. Robust on real-world inputs: non-manifold flaps, inconsistent geometry, the artifacts that pipelines accumulate. Algorithms with formal guarantees. Header-only; works directly on your data with zero-copy views.
 
-`trueform` is a C++ library for real-time geometric processing, built on the principles of composable views and inline policy injection. It operates directly on your *plain-old-data*, by providing semantic views that wrap it with geometric meaning.
+**[▶ Try it live](https://trueform.dev/live-examples/boolean)** — Booleans, collision, isobands in your browser.
 
-From individual primitives to structured ranges, from metadata injection to spatial and topological processing — every operation happens directly on your data; enriched with semantics, without architectural changes.
+## Research Foundation
 
-The library integrates directly at the call site: no boilerplate, no architectural rewrites, no heavyweight setup. It acts as a lightweight, expressive layer over your existing data. Like C++ ranges or lambdas, it lets you build rich, semantic geometry inline, without sacrificing performance or control.
+Real-world geometry pipelines accumulate artifacts. Mesh operations and format conversions introduce non-manifold flaps and inconsistent geometry. By the time geometry reaches your algorithm, it's rarely ideal.
 
-## Key Features
+The insight behind trueform: each mesh entering a pipeline is *intended* to be well-defined, and deviates only due to corruptions accumulated through the processing pipeline. These artifacts are additive: non-manifold flaps and inconsistencies accumulate on the surface, but the underlying mesh remains recoverable.
 
-- **Zero-copy views** - Work directly on your data layout with semantic geometric wrappers
-- **Composable policies** - Enrich primitives with metadata (id, normal, state) via `tf::tag` and `tf::zip`
-- **Spatial acceleration** - `tf::tree` for k-NN, neighbor search, ray casting, and spatial queries
-- **Topology** - Connectivity structures, path finding, planar embeddings
-- **Intersections** - Mesh-mesh curves, self-intersections, scalar field isocontours, planar arrangements
-- **Cut operations** - Embed curves as edges, boolean operations
-- **Data management** - Efficient cleaning, reindexing, flat buffers
-- **Parallel algorithms** - Built on Intel TBB with optimized memory layouts
+This perspective shapes the algorithms. Intersections collapse to canonical form, ensuring topological consistency. By modeling artifacts as independent noise—locally across polygon regions, globally across manifold edge connected components—the algorithms correctly classify the underlying structures. This achieves commutative correctness: operations on non-ideal meshes produce results recoverable through idealization, so you can chain operations and defer cleanup to the end.
 
-## From Raw Data to Real-Time Geometry
+→ [Read the papers](https://trueform.dev/cpp/about/publications)
+
+## Quick Tour
 
 Here's how trueform enables complex geometric workflows with minimal code—wrapping your existing data, performing queries, and computing results in real time:
 
@@ -115,7 +110,7 @@ auto [contour_mesh, contour_labels, isocontours] = tf::embedded_isocurves<int>(
 
 ---
 
-This is trueform from a bird's eye view. For comprehensive coverage of all features, patterns, and advanced usage, see the **[complete documentation](https://xlabmedical.github.io/trueform/cpp/modules/core)**.
+This is trueform from a bird's eye view. For comprehensive coverage of all features, patterns, and advanced usage, explore the **[module documentation](https://trueform.dev/cpp/modules/core)**.
 
 ## Installation
 
@@ -140,13 +135,13 @@ target_link_libraries(my_target PRIVATE tf::trueform)
 
 ## Documentation
 
-Comprehensive documentation is available at **[xlabmedical.github.io/trueform](https://xlabmedical.github.io/trueform)**
+Comprehensive documentation is available at **[trueform.dev](https://trueform.dev)**
 
-- 📚 **[Getting Started](https://xlabmedical.github.io/trueform/cpp/getting-started)** - Quick start guide and installation
-- 📖 **[Modules](https://xlabmedical.github.io/trueform/cpp/modules/core)** - Complete API reference for all modules
-- 📊 **[Benchmarks](https://xlabmedical.github.io/trueform/cpp/benchmarks)** - Performance comparisons vs VTK, CGAL, nanoflann
-- 💡 **[Examples](https://xlabmedical.github.io/trueform/cpp/examples)** - Code examples and integration guides
-- 📄 **[Publications](https://xlabmedical.github.io/trueform/cpp/about/publications)** - Academic papers and research
+- 📚 **[Getting Started](https://trueform.dev/cpp/getting-started)** - Requirements and installation via CMake FetchContent
+- 📖 **[Tutorial](https://trueform.dev/cpp/modules/core)** - Primitives, trees, topology, booleans — step by step
+- 📊 **[Benchmarks](https://trueform.dev/cpp/benchmarks)** - Benchmarked against VTK, CGAL, libigl, FCL, and nanoflann
+- 💡 **[Examples](https://trueform.dev/cpp/examples)** - Core features, performance comparisons, and framework integration
+- 📄 **[Publications](https://trueform.dev/cpp/about/publications)** - Research behind trueform's spatial hierarchy and mesh booleans
 
 ## License
 
@@ -154,7 +149,7 @@ Trueform is distributed under a dual-license model:
 - **Noncommercial use**: PolyForm Noncommercial License 1.0.0
 - **Commercial use**: Separate paid agreement with XLAB
 
-See [LICENSE.noncommercial](./LICENSE.noncommercial) and [license documentation](https://xlabmedical.github.io/trueform/cpp/about/license) for details. For commercial licensing, contact [ziga.sajovic@xlab.si](mailto:ziga.sajovic@xlab.si).
+See [LICENSE.noncommercial](./LICENSE.noncommercial) and [license documentation](https://trueform.dev/cpp/about/license) for details. For commercial licensing, contact [ziga.sajovic@xlab.si](mailto:ziga.sajovic@xlab.si).
 
 ### 3rd Party Licenses
 
@@ -170,7 +165,7 @@ We welcome contributions! Browse [open issues](https://github.com/xlabmedical/tr
 
 **Get Started:**
 - 📖 Read the full contributing guide: [CONTRIBUTING.md](./CONTRIBUTING.md)
-- 🌐 View on the documentation site: [Contributing Guide](https://xlabmedical.github.io/trueform/cpp/about/contributing)
+- 🌐 View on the documentation site: [Contributing Guide](https://trueform.dev/cpp/about/contributing)
 
 By contributing, you certify that your work may be distributed under both the PolyForm Noncommercial License and any commercial licenses XLAB offers.
 

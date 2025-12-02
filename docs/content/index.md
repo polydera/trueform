@@ -15,7 +15,7 @@ orientation: horizontal
 Real-time [geometric processing]{.text-primary}
 
 #description
-Spatial queries, mesh booleans, isocontours, topology — at interactive speed on million-polygon meshes. Works directly on your data with zero-copy views. No conversions, no framework lock-in. C++ header-only; Python with NumPy in and out.
+Spatial queries, mesh booleans, isocontours, topology — at interactive speed on million-polygon meshes. Robust on real-world inputs: non-manifold flaps, inconsistent geometry, the artifacts that pipelines accumulate. Algorithms with formal guarantees. C++ header-only; Python with NumPy in and out.
 
 #links
   :::u-button
@@ -75,6 +75,17 @@ Why trueform
   ---
   color: neutral
   size: lg
+  to: /cpp/about/publications
+  trailingIcon: i-lucide-book-open
+  variant: subtle
+  ---
+  Read the research
+  :::
+
+  :::u-button
+  ---
+  color: neutral
+  size: lg
   to: /cpp/benchmarks
   trailingIcon: i-lucide-chart-line
   variant: subtle
@@ -83,6 +94,28 @@ Why trueform
   :::
 
 #features
+  :::u-page-feature
+  ---
+  icon: i-lucide-shield-check
+  ---
+  #title
+  Robust by Design
+
+  #description
+  Production-tested on meshes with non-manifold flaps, inconsistent geometry, and accumulated pipeline artifacts. Algorithms with formal correctness guarantees.
+  :::
+
+  :::u-page-feature
+  ---
+  icon: i-lucide-gauge
+  ---
+  #title
+  Real-time Performance
+
+  #description
+  Interactive speed on million-polygon meshes. Parallel algorithms benchmarked against VTK, CGAL, libigl, FCL, and nanoflann.
+  :::
+
   :::u-page-feature
   ---
   icon: i-lucide-atom
@@ -124,29 +157,7 @@ Why trueform
   Cut & Boolean Operations
 
   #description
-  Combine and cut meshes with union, intersection, difference. Handles real-world geometry with non-manifold flaps and geometric noise.
-  :::
-
-  :::u-page-feature
-  ---
-  icon: i-lucide-database
-  ---
-  #title
-  Data Management
-
-  #description
-  Keep data clean and organized. Remove duplicates and degenerates. Filter and reindex while maintaining referential integrity.
-  :::
-
-  :::u-page-feature
-  ---
-  icon: i-lucide-gauge
-  ---
-  #title
-  Real-time Performance
-
-  #description
-  Interactive speed on million-polygon meshes. Parallel algorithms benchmarked against VTK, CGAL, libigl, FCL, and nanoflann.
+  Combine and cut meshes with union, intersection, difference. Commutative correctness: defer mesh cleanup to the final step without corrupting results.
   :::
 :::
 

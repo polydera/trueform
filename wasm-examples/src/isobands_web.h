@@ -92,7 +92,12 @@ public:
 
   auto OnMouseWheel(int delta, bool shiftKey) -> bool override {
     if (shiftKey) {
-      distance += delta * 0.05;
+      distance += delta * 0.05f;
+      // Wrap for infinite scrolling
+      const float range = max_d - min_d;
+      float offset = std::fmod(distance - min_d, range);
+      if (offset < 0) offset += range;
+      distance = min_d + offset;
       compute_curves();
       return true;
     }

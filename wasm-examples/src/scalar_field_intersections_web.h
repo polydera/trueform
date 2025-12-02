@@ -35,6 +35,8 @@ public:
 private:
   tf::buffer<float> scalars;
   std::vector<float> intersection_times;
+  float min_d = 0.0f;
+  float max_d = 1.0f;
   float distance = 0.0f;
 
   auto add_intersection_time(float t) -> void { m_time = add_time(intersection_times, t); }
@@ -70,6 +72,8 @@ public:
     scalars.allocate(points.size());
     tf::parallel_transform(points, scalars, tf::distance_f(plane));
     distance = 0.0f;
+    min_d = *std::min_element(scalars.begin(), scalars.end());
+    max_d = *std::max_element(scalars.begin(), scalars.end());
   }
 
 public:
@@ -81,6 +85,11 @@ public:
   auto OnMouseWheel(int delta, bool shiftKey) -> bool override {
     if (shiftKey) {
       distance += static_cast<float>(delta) * 0.05f;
+      // Wrap for infinite scrolling
+      const float range = max_d - min_d;
+      float offset = std::fmod(distance - min_d, range);
+      if (offset < 0) offset += range;
+      distance = min_d + offset;
       compute_curves();
       return true;
     }
