@@ -7,18 +7,23 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 option(ENABLE_ASAN "Enable Address Sanitizer" OFF)
-option(BUILD_BENCHMARKS "Build benchmarks." OFF)
 
-# Configure build options based on benchmark mode
-if(BUILD_BENCHMARKS)
-  set(BUILD_EXAMPLES OFF CACHE BOOL "Build examples." FORCE)
-  set(BUILD_PYTHON OFF CACHE BOOL "Build Python bindings." FORCE)
-  set(USE_SYSTEM_TBB ON CACHE BOOL "Use system-installed TBB." FORCE)
-else()
-  option(BUILD_EXAMPLES "Build examples." OFF)
-  option(BUILD_PYTHON "Build Python bindings." ON)
-  option(USE_SYSTEM_TBB "Use system-installed TBB if found." OFF)
-  mark_as_advanced(USE_SYSTEM_TBB)
+# Build options (all OFF by default)
+option(BUILD_EXAMPLES "Build examples." OFF)
+option(BUILD_PYTHON "Build Python bindings." OFF)
+option(BUILD_BENCHMARKS "Build benchmarks." OFF)
+option(USE_SYSTEM_TBB "Use system-installed TBB." ON)
+mark_as_advanced(USE_SYSTEM_TBB)
+
+# Python and Examples are mutually exclusive (Python needs static TBB, Examples need system TBB for VTK)
+if(BUILD_EXAMPLES AND BUILD_PYTHON)
+  message(FATAL_ERROR "BUILD_EXAMPLES and BUILD_PYTHON are mutually exclusive. "
+    "Python bindings require static TBB, while VTK examples require system TBB.")
+endif()
+
+# Python requires static TBB
+if(BUILD_PYTHON AND USE_SYSTEM_TBB)
+  set(USE_SYSTEM_TBB OFF CACHE BOOL "Use system-installed TBB." FORCE)
 endif()
 
 if(ENABLE_ASAN)
