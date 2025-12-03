@@ -62,24 +62,13 @@ Why trueform
 #links
   :::u-button
   ---
-  color: neutral
+  icon: i-lucide-play
+  color: primary
+  variant: solid
   size: lg
-  to: /cpp/modules/core
-  trailingIcon: i-lucide-arrow-right
-  variant: subtle
+  to: /live-examples/boolean
   ---
-  Explore the docs
-  :::
-
-  :::u-button
-  ---
-  color: neutral
-  size: lg
-  to: /cpp/about/publications
-  trailingIcon: i-lucide-book-open
-  variant: subtle
-  ---
-  Read the research
+  Try it live
   :::
 
   :::u-button
@@ -172,7 +161,7 @@ Why trueform
       to: '/py/getting-started/installation'
       variant: subtle
       trailingIcon: i-lucide-arrow-right
-  title: Ready to build real-time geometry?
+  title: Ready to build?
   description: C++ via CMake FetchContent. Python via pip install.
   class: dark:bg-neutral-950
   ---
