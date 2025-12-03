@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import { useMediaQuery } from "@vueuse/core";
-
-interface BadgeProps {
-  icon?: string;
-  label: string;
-  value: string;
-}
+import type { BadgeProps } from "../types";
 
 const props = defineProps<{
   title?: string;
@@ -43,10 +38,10 @@ const positionClass = computed(() =>
         color="primary"
         :icon="badge.icon"
         :size="isMobile ? 'sm' : 'lg'"
-        class="py-1.5 px-2 mt-0.5 lg:mt-0 inline-flex items-center transition-[width] duration-200 ease-in-out"
+        class="py-1.5 px-2 mt-0.5 lg:mt-0 inline-flex items-center gap-2 transition-[width] duration-200 ease-in-out"
       >
-        <span>{{ badge.label }}</span>
         <span class="font-bold badge-text whitespace-nowrap">{{ badge.value }}</span>
+        <template v-if="badge.polygons"><span>@</span><span class="badge-text whitespace-nowrap">{{ badge.polygons }}</span><UIcon name="i-lucide-triangle" /></template>
       </UBadge>
     </div>
 

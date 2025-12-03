@@ -5,7 +5,7 @@ import { useExampleLoadingState } from "@/composables/useExampleLoadingState";
 import { useMeshSelection } from "@/composables/useMeshSelection";
 import { getExampleMetadata } from "@/utils/liveExamples";
 
-const metadata = getExampleMetadata("scalar-field-intersections");
+const metadata = getExampleMetadata("contour-lines");
 if (metadata) {
   defineOgImageComponent("Docs", {
     title: metadata.title,
@@ -81,6 +81,7 @@ const badge = computed(() => ({
   icon: "i-lucide-gauge",
   label: "Last scroll:",
   value: `${avgTime.value} ms`,
+  polygons: polygonLabel.value,
 }));
 
 const actionButtons = [
@@ -101,25 +102,29 @@ watch(isDark, (dark) => {
 });
 </script>
 <template>
-  <div class="flex flex-col w-full h-full">
-    <div class="flex flex-row flex-1 relative min-h-0">
-      <ExampleInfoCard title="Scalar Field Intersections" :badge="badge">
-        <div v-if="isTouchscreen" class="flex gap-1 items-center text-muted">
-          <UIcon name="i-lucide-tally-3" class="size-4 ml-1" />
-          <p class="text-sm">Drag the top plane with 3 fingers to sweep.</p>
-        </div>
-        <div v-else class="flex gap-1 items-center text-muted">
-          <UKbd variant="soft" value="shift" />
-          <UKbd variant="soft" value="scroll" />
-          <p class="text-sm">Scroll to move the plane. Contour lines update live.</p>
-        </div>
-      </ExampleInfoCard>
-      <div class="flex flex-col md:flex-row w-full">
-        <div ref="threejsContainer" id="threejsContainer" class="h-full flex-1 min-h-0 w-[100vw] md:w-full"></div>
+  <ExampleLayout
+    :title="metadata?.title"
+    :badge="badge"
+    :polygon-label="polygonLabel"
+    :loading="isLoading"
+    :loading-message="loadingMessage"
+    :loading-error="loadingError"
+    :action-buttons="actionButtons"
+    @retry="loadThreejs"
+  >
+    <template #info>
+      <div v-if="isTouchscreen" class="flex gap-1 items-center text-muted">
+        <UIcon name="i-lucide-tally-3" class="size-4 ml-1" />
+        <p class="text-sm">Drag the top plane with 3 fingers to sweep.</p>
       </div>
-      <ExampleLoadingOverlay :loading="isLoading" :message="loadingMessage" :error="loadingError" @retry="loadThreejs" />
-      <ExamplePolygonsCard :mesh-count="meshCount" :mesh-label="polygonLabel" :loading="isLoading" />
-      <ExampleActionButtons :buttons="actionButtons" />
-    </div>
-  </div>
+      <div v-else class="flex gap-1 items-center text-muted">
+        <UKbd variant="soft" value="shift" />
+        <UKbd variant="soft" value="scroll" />
+        <p class="text-sm">Scroll to move the plane. Contour lines update live.</p>
+      </div>
+    </template>
+    <template #containers>
+      <div ref="threejsContainer" id="threejsContainer" class="h-full flex-1 min-h-0 w-screen md:w-full"></div>
+    </template>
+  </ExampleLayout>
 </template>

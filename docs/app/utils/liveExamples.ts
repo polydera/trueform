@@ -13,18 +13,18 @@ export const liveExamples: ExampleMetadata[] = [
   {
     title: "Slicing",
     description: "Scroll to move the plane. Cross-sections update live.",
-    to: "isobands",
+    to: "slicing",
   },
   {
     title: "Closest Points",
     description:
       "Drag a mesh and release. It snaps to the nearest point instantly.",
-    to: "positioning",
+    to: "closest-points",
   },
   {
     title: "Contour Lines",
     description: "Scroll to move the plane. Contour lines update live.",
-    to: "scalar-field-intersections",
+    to: "contour-lines",
   },
   {
     title: "Collision",
@@ -34,7 +34,7 @@ export const liveExamples: ExampleMetadata[] = [
   {
     title: "Mesh Intersections",
     description: "Drag a mesh. The intersection curves recompute instantly.",
-    to: "forms-intersections",
+    to: "mesh-intersections",
   },
 ]
 
