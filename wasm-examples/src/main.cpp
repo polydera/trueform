@@ -23,12 +23,20 @@ auto &require_interactor() {
   return *interactor;
 }
 
-auto *require_mesh_at(std::size_t index) {
-  auto &actors = require_interactor().get_actors();
-  if (index >= actors.size()) {
-    throw std::out_of_range("Actor index out of range");
+auto &require_mesh_data_at(std::size_t index) {
+  auto &mesh_store = require_interactor().get_mesh_data_store();
+  if (index >= mesh_store.size()) {
+    throw std::out_of_range("Mesh data index out of range");
   }
-  return actors[index].get();
+  return mesh_store[index];
+}
+
+auto &require_instance_at(std::size_t index) {
+  auto &instances = require_interactor().get_instances();
+  if (index >= instances.size()) {
+    throw std::out_of_range("Instance index out of range");
+  }
+  return instances[index];
 }
 
 } // namespace
@@ -38,8 +46,7 @@ auto OnLeftButtonUpCustom(std::array<double, 3> focal_point,
   auto &active = require_interactor();
   if (auto *positioning =
           dynamic_cast<cursor_interactor_positioning *>(&active)) {
-    return positioning->OnLeftButtonUpCustom(focal_point, lambda_set_focal,
-                                            dt);
+    return positioning->OnLeftButtonUpCustom(focal_point, lambda_set_focal, dt);
   }
   return 2.0f;
 }
@@ -48,8 +55,7 @@ auto OnLeftButtonUp() { return require_interactor().OnLeftButtonUp(); }
 
 auto OnLeftButtonDown() { return require_interactor().OnLeftButtonDown(); }
 
-auto OnMouseMove(std::array<float, 3> origin,
-                 std::array<float, 3> direction,
+auto OnMouseMove(std::array<float, 3> origin, std::array<float, 3> direction,
                  std::array<float, 3> camera_position,
                  std::array<float, 3> camera_focal_point) {
   return require_interactor().OnMouseMove(origin, direction, camera_position,
@@ -64,24 +70,31 @@ auto OnMouseWheel(int delta, bool shift_key) {
   return require_interactor().OnMouseWheel(delta, shift_key);
 }
 
-auto get_number_of_meshes() -> std::size_t {
-  return require_interactor().get_actors().size();
+auto get_number_of_mesh_data() -> std::size_t {
+  return require_interactor().get_mesh_data_store().size();
 }
 
-auto get_mesh_on_idx(int i) -> mesh_object * {
+auto get_number_of_instances() -> std::size_t {
+  return require_interactor().get_instances().size();
+}
+
+auto get_mesh_data_on_idx(int i) -> mesh_data * {
   if (i < 0) {
-    throw std::out_of_range("Negative actor index");
+    throw std::out_of_range("Negative mesh data index");
   }
-  return require_mesh_at(static_cast<std::size_t>(i));
+  return &require_mesh_data_at(static_cast<std::size_t>(i));
 }
 
-auto get_result_mesh() -> mesh_object * {
-  return require_interactor().result_mesh.get();
+auto get_instance_on_idx(int i) -> instance * {
+  if (i < 0) {
+    throw std::out_of_range("Negative instance index");
+  }
+  return &require_instance_at(static_cast<std::size_t>(i));
 }
 
-auto get_curve_mesh() -> mesh_object * {
-  return require_interactor().curve_mesh.get();
-}
+auto get_result_mesh() -> result_mesh * { return &require_interactor().result; }
+
+auto get_curve_mesh() -> result_mesh * { return &require_interactor().curves; }
 
 auto get_average_time() { return require_interactor().m_time; }
 
@@ -92,8 +105,11 @@ auto get_number_of_polygons() -> std::size_t {
 }
 
 EMSCRIPTEN_BINDINGS(boolean) {
-  emscripten::function("get_number_of_meshes", &get_number_of_meshes);
-  emscripten::function("get_mesh_on_idx", &get_mesh_on_idx,
+  emscripten::function("get_number_of_mesh_data", &get_number_of_mesh_data);
+  emscripten::function("get_number_of_instances", &get_number_of_instances);
+  emscripten::function("get_mesh_data_on_idx", &get_mesh_data_on_idx,
+                       emscripten::allow_raw_pointers());
+  emscripten::function("get_instance_on_idx", &get_instance_on_idx,
                        emscripten::allow_raw_pointers());
   emscripten::function("get_average_time", &get_average_time);
   emscripten::function("get_average_pick_time", &get_average_pick_time);
@@ -162,16 +178,28 @@ EMSCRIPTEN_BINDINGS(ArrayDouble16) {
       .element(emscripten::index<15>());
 }
 
-EMSCRIPTEN_BINDINGS(mesh_object) {
-  emscripten::class_<mesh_object>("mesh_object")
-      .smart_ptr<std::shared_ptr<mesh_object>>("mesh_object")
-      .function("get_points", &mesh_object::get_points)
-      .function("get_polys", &mesh_object::get_polys)
-      .function("get_curve_points", &mesh_object::get_curve_points)
-      .function("get_curve_ids", &mesh_object::get_curve_ids)
-      .function("get_curve_offsets", &mesh_object::get_curve_offsets)
-      .function("get_matrix", &mesh_object::get_matrix)
-      .property("color", &mesh_object::color)
-      .property("matrix_updated", &mesh_object::matrix_updated)
-      .property("polydata_updated", &mesh_object::polydata_updated);
+EMSCRIPTEN_BINDINGS(mesh_data) {
+  emscripten::class_<mesh_data>("mesh_data")
+      .function("get_points", &mesh_data::get_points)
+      .function("get_faces", &mesh_data::get_faces);
+}
+
+EMSCRIPTEN_BINDINGS(instance) {
+  emscripten::class_<instance>("instance")
+      .function("get_matrix", &instance::get_matrix)
+      .function("set_color", &instance::set_color)
+      .function("update_frame", &instance::update_frame)
+      .property("mesh_data_id", &instance::mesh_data_id)
+      .property("color", &instance::color)
+      .property("matrix_updated", &instance::matrix_updated);
+}
+
+EMSCRIPTEN_BINDINGS(result_mesh) {
+  emscripten::class_<result_mesh>("result_mesh")
+      .function("get_points", &result_mesh::get_points)
+      .function("get_faces", &result_mesh::get_faces)
+      .function("get_curve_points", &result_mesh::get_curve_points)
+      .function("get_curve_ids", &result_mesh::get_curve_ids)
+      .function("get_curve_offsets", &result_mesh::get_curve_offsets)
+      .property("updated", &result_mesh::updated);
 }

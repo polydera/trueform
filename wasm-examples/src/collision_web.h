@@ -18,24 +18,25 @@
 
 class tf_bridge_collision : public tf_bridge_interface {
 public:
-  void intersects_any(mesh_object *actor, std::set<mesh_object *> &colliding) {
-    if (!actor) {
-      return;
-    }
-    const auto self_index = map[actor];
-    auto form0 =
-        tf::make_form(frames[self_index], trees[self_index],
-                      polys[self_index]->polygons());
-    for (int i = 0; i < static_cast<int>(polys.size()); ++i) {
-      if (i == self_index) {
+  auto intersects_any(std::size_t selected_id, std::set<std::size_t> &colliding)
+      -> void {
+    auto &selected_inst = instances[selected_id];
+    auto &selected_data = mesh_data_store[selected_inst.mesh_data_id];
+    auto form0 = tf::make_form(selected_inst.frame, selected_data.tree,
+                               selected_data.polygons.polygons());
+
+    for (std::size_t i = 0; i < instances.size(); ++i) {
+      if (i == selected_id) {
         continue;
       }
+      auto &inst = instances[i];
+      auto &data = mesh_data_store[inst.mesh_data_id];
       const bool collision = tf::intersects(
-          form0, tf::make_form(frames[i], trees[i], polys[i]->polygons()));
+          form0, tf::make_form(inst.frame, data.tree, data.polygons.polygons()));
       if (collision) {
-        colliding.insert(actors[i].get());
+        colliding.insert(i);
       } else {
-        colliding.erase(actors[i].get());
+        colliding.erase(i);
       }
     }
   }
@@ -53,67 +54,62 @@ private:
   std::array<double, 3> normal_mesh_color{0.8, 0.8, 0.8};
   std::array<double, 3> coliding_mesh_color{0.8, 1, 1};
   std::array<double, 3> selected_mesh_color{1, 0.9, 1};
-  std::set<mesh_object *> colliding;
+  std::set<std::size_t> colliding;
 
-  auto add_pick_time(float t) {
-    m_pick_time = add_time(pick_times, t);
-  }
+  auto add_pick_time(float t) { m_pick_time = add_time(pick_times, t); }
 
-  auto add_collide_time(float t) {
-    m_time = add_time(collide_times, t);
-  }
+  auto add_collide_time(float t) { m_time = add_time(collide_times, t); }
 
-  auto handle_collisions() {
+  auto handle_collisions() -> void {
     tf::tick();
-    if (auto *pB = dynamic_cast<tf_bridge_collision *>(bridge.get())) {
-      if (!selected_actor) {
+    if (auto *collision_bridge =
+            dynamic_cast<tf_bridge_collision *>(bridge.get())) {
+      if (!selected_instance) {
         return;
       }
-      pB->intersects_any(selected_actor, colliding);
+      collision_bridge->intersects_any(*selected_instance, colliding);
       add_collide_time(tf::tock());
-      for (auto &actor : bridge->get_actors()) {
-        if (actor.get() == selected_actor)
+      auto &instances = bridge->get_instances();
+      for (std::size_t i = 0; i < instances.size(); ++i) {
+        if (i == *selected_instance) {
           continue;
-        if (colliding.find(actor.get()) == colliding.end()) {
-          reset_active_color(actor.get());
+        }
+        if (colliding.find(i) == colliding.end()) {
+          reset_active_color(i);
         } else {
-          set_colliding_color(actor.get());
+          set_colliding_color(i);
         }
       }
     }
   }
 
 public:
-  auto reset_active_color(mesh_object *actor)-> void {
-    if (!actor) {
-      return;
-    }
-    actor->set_color(normal_mesh_color[0], normal_mesh_color[1],
-                     normal_mesh_color[2]);
+  auto reset_active_color(std::size_t instance_id) -> void {
+    bridge->get_instance(instance_id)
+        .set_color(normal_mesh_color[0], normal_mesh_color[1],
+                   normal_mesh_color[2]);
   }
 
-  void set_active_color(mesh_object *actor) {
-    if (!actor) {
-      return;
-    }
-    actor->set_color(selected_mesh_color[0], selected_mesh_color[1],
-                     selected_mesh_color[2]);
+  auto set_active_color(std::size_t instance_id) -> void {
+    bridge->get_instance(instance_id)
+        .set_color(selected_mesh_color[0], selected_mesh_color[1],
+                   selected_mesh_color[2]);
   }
 
   auto reset_colliding_colors() -> void {
     colliding.clear();
-    for (auto &actor : bridge->get_actors()) {
-      if (actor.get() != selected_actor)
-        reset_active_color(actor.get());
+    auto &instances = bridge->get_instances();
+    for (std::size_t i = 0; i < instances.size(); ++i) {
+      if (!selected_instance || i != *selected_instance) {
+        reset_active_color(i);
+      }
     }
   }
 
-  auto set_colliding_color(mesh_object *actor) -> void {
-    if (!actor) {
-      return;
-    }
-    actor->set_color(coliding_mesh_color[0], coliding_mesh_color[1],
-                     coliding_mesh_color[2]);
+  auto set_colliding_color(std::size_t instance_id) -> void {
+    bridge->get_instance(instance_id)
+        .set_color(coliding_mesh_color[0], coliding_mesh_color[1],
+                   coliding_mesh_color[2]);
   }
 
 public:
@@ -128,32 +124,33 @@ public:
     return false;
   }
 
-  auto OnMouseMove(std::array<float, 3> origin,
-                   std::array<float, 3> direction,
+  auto OnMouseMove(std::array<float, 3> origin, std::array<float, 3> direction,
                    std::array<float, 3> camera_position,
                    std::array<float, 3> camera_focal_point) -> bool override {
     tf::ray<float, 3> ray{origin, direction};
     if (!selected_mode && !camera_mode) {
       tf::tick();
-      auto [actor, point] = bridge->ray_hit(ray);
+      auto [instance_id, point] = bridge->ray_hit(ray);
       add_pick_time(tf::tock());
-      if (actor) {
+      if (instance_id) {
         make_moving_plane(point, camera_position, camera_focal_point);
-        if (selected_actor != actor) {
-          reset_active_color(selected_actor);
-          set_active_color(actor);
+        if (selected_instance != instance_id) {
+          if (selected_instance) {
+            reset_active_color(*selected_instance);
+          }
+          set_active_color(*instance_id);
         }
         last_point = point;
-      } else {
-        reset_active_color(selected_actor);
+      } else if (selected_instance) {
+        reset_active_color(*selected_instance);
       }
-      selected_actor = actor;
+      selected_instance = instance_id;
       return true;
-    } else if (selected_mode) {
+    } else if (selected_mode && selected_instance) {
       auto next_point = tf::ray_hit(ray, moving_plane).point;
       dx = next_point - last_point;
       last_point = next_point;
-      move_selected(selected_actor);
+      move_selected(*selected_instance);
       handle_collisions();
       return true;
     } else if (camera_mode) {
@@ -167,48 +164,35 @@ int run_main_collisions(std::vector<std::string> &paths) {
   if (paths.empty()) {
     throw std::runtime_error("Collisions demo expects STL input paths.");
   }
-  std::vector<std::unique_ptr<mesh_object>> polys;
-  std::vector<tf::aabb_tree<int, float, 3>> trees;
-
-  for (int i = 0; i < static_cast<int>(paths.size()); ++i) {
-    auto poly = tf::read_stl<int>(paths[i]);
-    if (!poly.size())
-      continue;
-    utils::center_and_scale_p(poly);
-
-    auto actor = std::make_unique<mesh_object>();
-    actor->poly_object = std::move(poly);
-    polys.push_back(std::move(actor));
-
-    trees.emplace_back();
-    trees.back().build(polys.back()->poly_object.polygons(),
-                       tf::config_tree(4, 4));
-  }
-
-  if (polys.empty()) {
-    throw std::runtime_error("Failed to load any collision meshes.");
-  }
 
   interactor = std::make_unique<cursor_interactor_collision>();
 
+  // Load single mesh data (use first path only)
+  auto poly = tf::read_stl<int>(paths[0]);
+  if (!poly.size()) {
+    throw std::runtime_error("Failed to load collision mesh.");
+  }
+  utils::center_and_scale_p(poly);
+  auto mesh_id = interactor->add_mesh_data(std::move(poly), false);
+
+  // Create 5x5 grid of instances, all sharing the same mesh_data
   int n_actors_in_dim = 5;
-  std::size_t poly_index = 0;
-  std::size_t total_polygons = 0;
+  std::size_t polygons_per_mesh =
+      interactor->get_mesh_data_store()[mesh_id].polygons.size();
+
   for (int i = 0; i < n_actors_in_dim; ++i) {
     for (int j = 0; j < n_actors_in_dim; ++j) {
-      auto actor = std::make_unique<mesh_object>();
-      actor->poly_object = polys[poly_index]->poly_object;
-      utils::set_at(actor->matrix, {i * 15.f, j * 15.f, 0.f});
-      total_polygons += actor->poly_object.size();
-      interactor->push_back_with_objects(std::move(actor), trees[poly_index]);
-      auto a = interactor->get_actors().back().get();
-      if (auto *pI =
+      auto instance_id = interactor->add_instance(mesh_id);
+      auto &inst = interactor->get_instances()[instance_id];
+      utils::set_at(inst.matrix, {i * 15.f, j * 15.f, 0.f});
+      inst.update_frame();
+
+      if (auto *collision_interactor =
               dynamic_cast<cursor_interactor_collision *>(interactor.get())) {
-        pI->reset_active_color(a);
+        collision_interactor->reset_active_color(instance_id);
       }
-      poly_index = (poly_index + 1) % polys.size();
     }
   }
-  interactor->total_polygons = total_polygons;
+  interactor->total_polygons = polygons_per_mesh * n_actors_in_dim * n_actors_in_dim;
   return 0;
 }

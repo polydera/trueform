@@ -77,7 +77,7 @@ export class FormsIntersectionsExample extends ThreejsBase {
     super.updateMeshes();
 
     const cO = this.wasmInstance.get_curve_mesh();
-    if (cO && cO.polydata_updated) {
+    if (cO && cO.updated) {
       const points = cO.get_curve_points();
       const ids = cO.get_curve_ids();
       const offsets = cO.get_curve_offsets();

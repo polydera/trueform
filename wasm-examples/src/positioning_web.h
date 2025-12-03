@@ -16,32 +16,42 @@
 class positioning_bridge : public tf_bridge_interface {
 private:
   auto other_index(std::size_t id0) const -> std::size_t {
-    if (actors.size() < 2) {
+    if (instances.size() < 2) {
       return id0;
     }
-    return (id0 + 1) % actors.size();
+    return (id0 + 1) % instances.size();
   }
 
 public:
-  auto closest_metric_point_pair(mesh_object *actor0) {
-    if (!actor0 || actors.size() < 2) {
+  auto closest_metric_point_pair(std::size_t instance_id0) {
+    if (instances.size() < 2) {
       throw std::runtime_error("Need at least two meshes for positioning.");
     }
-    std::size_t id0 = map[actor0];
-    std::size_t id1 = other_index(id0);
-    auto form0 = tf::make_form(frames[id0], trees[id0], polys[id0]->polygons());
-    auto form1 = tf::make_form(frames[id1], trees[id1], polys[id1]->polygons());
+    std::size_t id1 = other_index(instance_id0);
+
+    auto &inst0 = instances[instance_id0];
+    auto &inst1 = instances[id1];
+    auto &data0 = mesh_data_store[inst0.mesh_data_id];
+    auto &data1 = mesh_data_store[inst1.mesh_data_id];
+
+    auto form0 = tf::make_form(inst0.frame, data0.tree, data0.polygons.polygons());
+    auto form1 = tf::make_form(inst1.frame, data1.tree, data1.polygons.polygons());
     return tf::neighbor_search(form0, form1);
   }
 
-  auto intersects_other(mesh_object *actor0) {
-    if (!actor0 || actors.size() < 2) {
+  auto intersects_other(std::size_t instance_id0) -> bool {
+    if (instances.size() < 2) {
       return false;
     }
-    std::size_t id0 = map[actor0];
-    std::size_t id1 = other_index(id0);
-    auto form0 = tf::make_form(frames[id0], trees[id0], polys[id0]->polygons());
-    auto form1 = tf::make_form(frames[id1], trees[id1], polys[id1]->polygons());
+    std::size_t id1 = other_index(instance_id0);
+
+    auto &inst0 = instances[instance_id0];
+    auto &inst1 = instances[id1];
+    auto &data0 = mesh_data_store[inst0.mesh_data_id];
+    auto &data1 = mesh_data_store[inst1.mesh_data_id];
+
+    auto form0 = tf::make_form(inst0.frame, data0.tree, data0.polygons.polygons());
+    auto form1 = tf::make_form(inst1.frame, data1.tree, data1.polygons.polygons());
     return tf::intersects(form0, form1);
   }
 };
@@ -51,11 +61,10 @@ public:
   cursor_interactor_positioning()
       : cursor_interactor_interface(std::make_unique<positioning_bridge>()) {}
 
-  auto reset_active_color(mesh_object *actor) -> void {
-    if (!actor)
-      return;
-    actor->set_color(normal_mesh_color[0], normal_mesh_color[1],
-                     normal_mesh_color[2]);
+  auto reset_active_color(std::size_t instance_id) -> void {
+    bridge->get_instance(instance_id)
+        .set_color(normal_mesh_color[0], normal_mesh_color[1],
+                   normal_mesh_color[2]);
   }
 
 private:
@@ -69,28 +78,32 @@ private:
   tf::ray<float, 3> m_ray;
   tf::ray<float, 3> m_focal_ray;
 
-  auto add_position_time(float t) {
+  auto add_position_time(float t) -> void {
     auto avg = add_time(positioning_times, t);
     m_time = avg;
   }
 
-  auto move_selected(mesh_object *actor, const tf::vector<float, 3> &delta) {
-    if (!actor)
-      return;
-    for (int i = 0; i < 3; ++i)
-      actor->matrix[i * 4 + 3] += delta[i];
-    bridge->update_frame(actor);
+  auto move_instance(std::size_t instance_id, const tf::vector<float, 3> &delta)
+      -> void {
+    auto &inst = bridge->get_instance(instance_id);
+    for (int i = 0; i < 3; ++i) {
+      inst.matrix[i * 4 + 3] += delta[i];
+    }
+    bridge->update_frame(instance_id);
   }
 
   auto position_them(std::array<double, 3> focal_point,
                      emscripten::val lambda_set_focal, float dt) -> float {
-    if (auto *pB = static_cast<positioning_bridge *>(bridge.get())) {
+    if (auto *pos_bridge = static_cast<positioning_bridge *>(bridge.get())) {
+      if (!selected_instance) {
+        return 2.0f;
+      }
       auto eps = 0.01f;
       if (dt == 0) {
-        if (pB->intersects_other(selected_actor)) {
+        if (pos_bridge->intersects_other(*selected_instance)) {
           return 1.0f;
         }
-        auto neighbors = pB->closest_metric_point_pair(selected_actor);
+        auto neighbors = pos_bridge->closest_metric_point_pair(*selected_instance);
         auto pt0 = neighbors.info.first;
         m_pt1 = neighbors.info.second;
         m_ray = tf::make_ray_between_points(pt0, m_pt1);
@@ -107,11 +120,12 @@ private:
         auto t_use = std::min(t, 1.f - eps);
         auto s_t = 3 * t_use * t_use - 2 * t_use * t_use * t_use;
         auto pt = m_ray.origin + s_t * m_ray.direction;
-        auto color = selected_mesh_color +
-                     t_use * (normal_mesh_color - selected_mesh_color);
-        move_selected(selected_actor, pt - m_prev_pt);
+        auto color =
+            selected_mesh_color + t_use * (normal_mesh_color - selected_mesh_color);
+        move_instance(*selected_instance, pt - m_prev_pt);
         auto focal = m_focal_ray(s_t);
-        selected_actor->set_color(color[0], color[1], color[2]);
+        bridge->get_instance(*selected_instance)
+            .set_color(color[0], color[1], color[2]);
         lambda_set_focal(focal[0], focal[1], focal[2]);
         m_prev_pt = pt;
         return t;
@@ -122,26 +136,24 @@ private:
     return 2.0f;
   }
 
-  auto set_active_color(mesh_object *actor) -> void {
-    if (!actor)
-      return;
-    actor->set_color(selected_mesh_color[0], selected_mesh_color[1],
-                     selected_mesh_color[2]);
+  auto set_active_color(std::size_t instance_id) -> void {
+    bridge->get_instance(instance_id)
+        .set_color(selected_mesh_color[0], selected_mesh_color[1],
+                   selected_mesh_color[2]);
   }
 
-  auto randomize_rotations() {
-      for (std::unique_ptr<mesh_object> &actor : bridge->get_actors()) {
-        tf::vector<double, 3> at{actor->matrix[3], actor->matrix[7],
-                                 actor->matrix[11]};
-        auto tr = tf::random_transformation(at);
-        for (int i = 0; i < 3; ++i) {
-          for (int j = 0; j < 4; ++j) {
-            actor->matrix[i * 4 + j] = tr(i, j);
-          }
+  auto randomize_rotations() -> void {
+    for (auto &inst : bridge->get_instances()) {
+      tf::vector<double, 3> at{inst.matrix[3], inst.matrix[7], inst.matrix[11]};
+      auto tr = tf::random_transformation(at);
+      for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 4; ++j) {
+          inst.matrix[i * 4 + j] = tr(i, j);
         }
-        bridge->update_frame(actor.get());
       }
+      inst.update_frame();
     }
+  }
 
 public:
   auto get_value() -> bool { return selected_mode; }
@@ -153,8 +165,8 @@ public:
       selected_mode = false;
       moving_mode = true;
       auto new_t = position_them(focal_point, lambda_set_focal, dt);
-      if (new_t == 1) {
-        reset_active_color(selected_actor);
+      if (new_t == 1 && selected_instance) {
+        reset_active_color(*selected_instance);
         moving_mode = false;
       }
       return new_t;
@@ -166,9 +178,10 @@ public:
   }
 
   auto OnLeftButtonDown() -> bool override {
-    if (moving_mode)
+    if (moving_mode) {
       return true;
-    if (selected_actor) {
+    }
+    if (selected_instance) {
       selected_mode = true;
       return true;
     } else {
@@ -177,32 +190,34 @@ public:
     return false;
   }
 
-  auto OnMouseMove(std::array<float, 3> origin,
-                   std::array<float, 3> direction,
+  auto OnMouseMove(std::array<float, 3> origin, std::array<float, 3> direction,
                    std::array<float, 3> camera_position,
                    std::array<float, 3> camera_focal_point) -> bool override {
-    if (moving_mode)
+    if (moving_mode) {
       return true;
+    }
     tf::ray<float, 3> ray{origin, direction};
     if (!selected_mode && !camera_mode) {
-      auto [actor, point] = bridge->ray_hit(ray);
-      if (actor) {
+      auto [instance_id, point] = bridge->ray_hit(ray);
+      if (instance_id) {
         make_moving_plane(point, camera_position, camera_focal_point);
-        if (selected_actor != actor) {
-          reset_active_color(selected_actor);
-          set_active_color(actor);
+        if (selected_instance != instance_id) {
+          if (selected_instance) {
+            reset_active_color(*selected_instance);
+          }
+          set_active_color(*instance_id);
         }
         last_point = point;
-      } else {
-        reset_active_color(selected_actor);
+      } else if (selected_instance) {
+        reset_active_color(*selected_instance);
       }
-      selected_actor = actor;
+      selected_instance = instance_id;
       return true;
-    } else if (selected_mode) {
+    } else if (selected_mode && selected_instance) {
       auto next_point = tf::ray_hit(ray, moving_plane).point;
       dx = next_point - last_point;
       last_point = next_point;
-      cursor_interactor_interface::move_selected(selected_actor);
+      cursor_interactor_interface::move_selected(*selected_instance);
       return true;
     } else if (camera_mode) {
       return false;
@@ -238,14 +253,17 @@ int run_main_positioning(std::vector<std::string> &paths) {
       throw std::runtime_error("Failed to read file " + path);
     }
     utils::center_and_scale_p(poly);
-    auto actor = std::make_unique<mesh_object>();
-    actor->poly_object = std::move(poly);
-    utils::set_at(actor->matrix, {i * 15.f, (i + 2) * 15.f, 0.f});
-    total_polygons += actor->poly_object.size();
-    interactor->push_back(std::move(actor));
-    if (auto *pI =
+    total_polygons += poly.size();
+
+    auto mesh_id = interactor->add_mesh_data(std::move(poly), false);
+    auto instance_id = interactor->add_instance(mesh_id);
+    auto &inst = interactor->get_instances()[instance_id];
+    utils::set_at(inst.matrix, {i * 15.f, (i + 2) * 15.f, 0.f});
+    inst.update_frame();
+
+    if (auto *pos_interactor =
             dynamic_cast<cursor_interactor_positioning *>(interactor.get())) {
-      pI->reset_active_color(interactor->get_actors().back().get());
+      pos_interactor->reset_active_color(instance_id);
     }
   }
 

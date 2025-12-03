@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { mesh_object } from "@/examples/native";
+import type { mesh_data, instance, result_mesh } from "@/examples/native";
 import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
@@ -305,33 +305,71 @@ export function createMesh(isDarkMode: boolean) {
   return mesh;
 }
 
-export function getMeshFromWasm(wO: mesh_object, mesh: THREE.Mesh) {
-  const pU = wO.polydata_updated;
-  if (pU) {
+/**
+ * Initialize mesh geometry from mesh_data (called once per unique mesh)
+ */
+export function initMeshGeometry(data: mesh_data, mesh: THREE.Mesh) {
+  const geometry = mesh.geometry;
+  const positions = new Float32Array(data.get_points());
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(data.get_faces()), 1));
+  if (positions.length >= 3) {
+    geometry.computeBoundingSphere();
+    geometry.computeBoundingBox();
+  }
+}
+
+/**
+ * Update mesh transform and color from instance (called per frame)
+ */
+export function updateMeshFromInstance(inst: instance, mesh: THREE.Mesh) {
+  // Update color
+  const currC = (mesh.material as THREE.MeshMatcapMaterial).color;
+  const newC = inst.color;
+  if (currC.r !== newC[0] || currC.g !== newC[1] || currC.b !== newC[2]) {
+    currC.set(newC[0], newC[1], newC[2]);
+  }
+  // Update matrix
+  if (inst.matrix_updated) {
+    const matrix = new Float32Array(inst.get_matrix());
+    const threeMatrix = new THREE.Matrix4();
+    threeMatrix.fromArray(matrix);
+    threeMatrix.transpose();
+    mesh.matrix = threeMatrix;
+  }
+}
+
+/**
+ * Update result mesh geometry (for boolean results, isobands, etc.)
+ */
+export function updateResultMesh(result: result_mesh, mesh: THREE.Mesh) {
+  if (result.updated) {
     const geometry = mesh.geometry;
-    const positions = new Float32Array(wO.get_points());
+    const positions = new Float32Array(result.get_points());
     geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(wO.get_polys()), 1));
+    geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(result.get_faces()), 1));
     if (positions.length >= 3) {
       geometry.computeBoundingSphere();
       geometry.computeBoundingBox();
     }
   }
-  const currC = (mesh.material as THREE.MeshMatcapMaterial).color;
-  const newC = wO.color;
-  if (currC.r !== newC[0] || currC.g !== newC[1] || currC.b !== newC[2]) {
-    currC.set(newC[0], newC[1], newC[2]);
+}
+
+// Legacy compatibility - combines mesh_data and instance for migration
+export function getMeshFromWasm(data: mesh_data, inst: instance, mesh: THREE.Mesh, needsGeometryInit: boolean) {
+  if (needsGeometryInit) {
+    initMeshGeometry(data, mesh);
   }
-  getMatrixFromWasm(wO, mesh);
+  updateMeshFromInstance(inst, mesh);
 }
 
 export function getMatrixFromWasm(
-  wO: mesh_object,
+  inst: instance,
   dstGeometry: THREE.Mesh | THREE.Line | THREE.Points,
 ) {
-  const mU = wO.matrix_updated;
+  const mU = inst.matrix_updated;
   if (mU) {
-    const matrix = new Float32Array(wO.get_matrix());
+    const matrix = new Float32Array(inst.get_matrix());
     const threeMatrix = new THREE.Matrix4();
     threeMatrix.fromArray(matrix);
     threeMatrix.transpose();

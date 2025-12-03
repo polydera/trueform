@@ -10,82 +10,95 @@ class tf_bridge_interface {
 public:
   virtual ~tf_bridge_interface() = default;
 
-  auto push_back(std::unique_ptr<mesh_object> mesh) -> void {
-    map[mesh.get()] = actors.size();
-    polys.push_back(&mesh->poly_object);
-    frames.emplace_back();
-    frames.back().fill(mesh->matrix.data());
-    trees.emplace_back();
-    trees.back().build(mesh->poly_object.polygons(), tf::config_tree(4, 4));
-    face_memberships.emplace_back();
-    face_memberships.back().build(mesh->poly_object.polygons());
-    manifold_edge_links.emplace_back();
-    manifold_edge_links.back().build(mesh->poly_object.faces(),
-                                     face_memberships.back());
-    actors.push_back(std::move(mesh));
+  // Add new mesh data and return its index
+  auto add_mesh_data(tf::polygons_buffer<int, float, 3, 3> polygons,
+                     bool build_topology = true) -> std::size_t {
+    mesh_data_store.emplace_back();
+    auto &data = mesh_data_store.back();
+    data.polygons = std::move(polygons);
+    data.tree.build(data.polygons.polygons(), tf::config_tree(4, 4));
+    if (build_topology) {
+      data.face_membership.emplace();
+      data.face_membership->build(data.polygons.polygons());
+      data.manifold_edge_link.emplace();
+      data.manifold_edge_link->build(data.polygons.faces(),
+                                     *data.face_membership);
+    }
+    return mesh_data_store.size() - 1;
   }
 
-  auto push_back_with_objects(
-      std::unique_ptr<mesh_object> mesh,
-      std::optional<tf::aabb_tree<int, float, 3>> tree = std::nullopt,
-      std::optional<tf::face_membership<int>> face_membership = std::nullopt,
-      std::optional<tf::manifold_edge_link<int, 3>> manifold_edges =
-          std::nullopt) -> void {
-    map[mesh.get()] = actors.size();
-    polys.push_back(&mesh->poly_object);
-    frames.emplace_back();
-    frames.back().fill(mesh->matrix.data());
-    if (tree) {
-      trees.emplace_back(tree.value());
-    }
-    if (face_membership) {
-      face_memberships.emplace_back(face_membership.value());
-    }
-    if (manifold_edges) {
-      manifold_edge_links.emplace_back(manifold_edges.value());
-    }
-    actors.push_back(std::move(mesh));
+  // Create instance from mesh data
+  auto add_instance(std::size_t mesh_data_id) -> std::size_t {
+    instances.emplace_back();
+    instances.back().mesh_data_id = mesh_data_id;
+    return instances.size() - 1;
   }
 
-  auto get_actors() const -> const auto & { return actors; }
+  // Create instance with custom color
+  auto add_instance(std::size_t mesh_data_id, double r, double g, double b)
+      -> std::size_t {
+    auto id = add_instance(mesh_data_id);
+    instances[id].set_color(r, g, b);
+    return id;
+  }
+
+  auto get_mesh_data_store() -> std::vector<mesh_data> & {
+    return mesh_data_store;
+  }
+
+  auto get_mesh_data_store() const -> const std::vector<mesh_data> & {
+    return mesh_data_store;
+  }
+
+  auto get_instances() -> std::vector<instance> & { return instances; }
+
+  auto get_instances() const -> const std::vector<instance> & {
+    return instances;
+  }
+
+  auto get_mesh_data(std::size_t id) -> mesh_data & {
+    return mesh_data_store[id];
+  }
+
+  auto get_mesh_data(std::size_t id) const -> const mesh_data & {
+    return mesh_data_store[id];
+  }
+
+  auto get_instance(std::size_t id) -> instance & { return instances[id]; }
+
+  auto get_instance(std::size_t id) const -> const instance & {
+    return instances[id];
+  }
 
   auto ray_hit(tf::ray<float, 3> ray)
-      -> std::pair<mesh_object *, tf::point<float, 3>> {
+      -> std::pair<std::optional<std::size_t>, tf::point<float, 3>> {
     tf::tree_ray_info<int, tf::ray_cast_info<float>> result;
     tf::ray_config<float> config{};
-    mesh_object *picked = nullptr;
+    std::optional<std::size_t> picked_instance;
 
-    for (const auto &[frame, poly, actor, tree] :
-         tf::zip(frames, polys, actors, trees)) {
-      auto form = tf::make_form(frame, tree, poly->polygons());
+    for (std::size_t i = 0; i < instances.size(); ++i) {
+      auto &inst = instances[i];
+      auto &data = mesh_data_store[inst.mesh_data_id];
+      auto form =
+          tf::make_form(inst.frame, data.tree, data.polygons.polygons());
       auto res = tf::ray_cast(ray, form, config);
       if (res) {
         result = res;
         config.max_t = result.info.t;
-        picked = actor.get();
+        picked_instance = i;
       }
     }
-    return std::make_pair(picked, ray.origin + result.info.t * ray.direction);
+    return std::make_pair(picked_instance,
+                          ray.origin + result.info.t * ray.direction);
   }
 
-  auto update_frame(mesh_object *actor) -> void {
-    auto id = map[actor];
-    frames[id].fill(actors[id]->matrix.data());
-    actors[id]->matrix_updated = true;
-  }
-
-  auto get_actors() -> std::vector<std::unique_ptr<mesh_object>> & {
-    return actors;
+  auto update_frame(std::size_t instance_id) -> void {
+    instances[instance_id].update_frame();
   }
 
 protected:
-  std::map<mesh_object *, int> map;
-  std::vector<tf::polygons_buffer<int, float, 3, 3> *> polys;
-  std::vector<std::unique_ptr<mesh_object>> actors;
-  std::vector<tf::frame<double, 3>> frames;
-  std::vector<tf::aabb_tree<int, float, 3>> trees;
-  std::vector<tf::face_membership<int>> face_memberships;
-  std::vector<tf::manifold_edge_link<int, 3>> manifold_edge_links;
+  std::vector<mesh_data> mesh_data_store;
+  std::vector<instance> instances;
 };
 
 class cursor_interactor_interface {
@@ -94,8 +107,8 @@ public:
       : bridge(std::move(in)) {}
   virtual ~cursor_interactor_interface() = default;
 
-  std::unique_ptr<mesh_object> result_mesh = std::make_unique<mesh_object>();
-  std::unique_ptr<mesh_object> curve_mesh = std::make_unique<mesh_object>();
+  result_mesh result;
+  result_mesh curves;
 
 protected:
   std::unique_ptr<tf_bridge_interface> bridge;
@@ -104,7 +117,7 @@ protected:
   tf::plane<float, 3> moving_plane;
   tf::point<float, 3> last_point;
   tf::vector<float, 3> dx;
-  mesh_object *selected_actor = nullptr;
+  std::optional<std::size_t> selected_instance;
   bool selected_mode = false;
   bool camera_mode = false;
 
@@ -133,11 +146,12 @@ protected:
     moving_plane = tf::make_plane(normal, origin);
   }
 
-  auto move_selected(mesh_object *actor) -> void {
+  auto move_selected(std::size_t instance_id) -> void {
+    auto &inst = bridge->get_instance(instance_id);
     for (int i = 0; i < 3; ++i) {
-      actor->matrix[i * 4 + 3] += dx[i];
+      inst.matrix[i * 4 + 3] += dx[i];
     }
-    bridge->update_frame(actor);
+    bridge->update_frame(instance_id);
   }
 
 public:
@@ -145,27 +159,30 @@ public:
   float m_pick_time = 0.f;
   std::size_t total_polygons = 0;
 
-  auto get_actors() -> std::vector<std::unique_ptr<mesh_object>> & {
-    return bridge->get_actors();
+  auto get_mesh_data_store() -> std::vector<mesh_data> & {
+    return bridge->get_mesh_data_store();
   }
 
-  auto push_back(std::unique_ptr<mesh_object> mesh) -> void {
-    bridge->push_back(std::move(mesh));
+  auto get_instances() -> std::vector<instance> & {
+    return bridge->get_instances();
   }
 
-  auto push_back_with_objects(
-      std::unique_ptr<mesh_object> mesh,
-      std::optional<tf::aabb_tree<int, float, 3>> tree = std::nullopt,
-      std::optional<tf::face_membership<int>> face_membership = std::nullopt,
-      std::optional<tf::manifold_edge_link<int, 3>> manifold_edges =
-          std::nullopt) -> void {
-    bridge->push_back_with_objects(std::move(mesh), std::move(tree),
-                                   std::move(face_membership),
-                                   std::move(manifold_edges));
+  auto add_mesh_data(tf::polygons_buffer<int, float, 3, 3> polygons,
+                     bool build_topology = true) -> std::size_t {
+    return bridge->add_mesh_data(std::move(polygons), build_topology);
+  }
+
+  auto add_instance(std::size_t mesh_data_id) -> std::size_t {
+    return bridge->add_instance(mesh_data_id);
+  }
+
+  auto add_instance(std::size_t mesh_data_id, double r, double g, double b)
+      -> std::size_t {
+    return bridge->add_instance(mesh_data_id, r, g, b);
   }
 
   virtual auto OnLeftButtonDown() -> bool {
-    if (selected_actor) {
+    if (selected_instance) {
       selected_mode = true;
       return true;
     }
@@ -190,19 +207,19 @@ public:
                            std::array<float, 3> camera_focal_point) -> bool {
     tf::ray<float, 3> ray{origin, direction};
     if (!selected_mode && !camera_mode) {
-      auto [actor, point] = bridge->ray_hit(ray);
-      if (actor) {
+      auto [instance_id, point] = bridge->ray_hit(ray);
+      if (instance_id) {
         make_moving_plane(point, camera_position, camera_focal_point);
         last_point = point;
       }
-      selected_actor = actor;
+      selected_instance = instance_id;
       return true;
     }
-    if (selected_mode) {
+    if (selected_mode && selected_instance) {
       auto next_point = tf::ray_hit(ray, moving_plane).point;
       dx = next_point - last_point;
       last_point = next_point;
-      move_selected(selected_actor);
+      move_selected(*selected_instance);
       return true;
     }
     return false;

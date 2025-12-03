@@ -7,7 +7,7 @@ import {
   fitCameraToAllMeshesFromZPlane,
   type SceneBundle, syncOrbitControls,
 } from "@/utils/sceneUtils";
-import {createMesh, getMeshFromWasm, switchTextures} from "@/utils/utils";
+import {createMesh, initMeshGeometry, updateMeshFromInstance, switchTextures} from "@/utils/utils";
 import {TrackballControls} from "three/examples/jsm/controls/TrackballControls";
 
 abstract class IThreejsBase {
@@ -25,6 +25,7 @@ export abstract class ThreejsBase implements IThreejsBase {
   protected readonly renderer: THREE.WebGLRenderer;
   protected readonly sceneBundle1: SceneBundle;
   protected meshes = new Map<number, THREE.Mesh>();
+  protected geometries = new Map<number, THREE.BufferGeometry>(); // Shared geometry per mesh_data_id
   protected stats = new Stats({ horizontal: false, trackGPU: true });
   protected isDarkMode: boolean;
   private showStats: boolean;
@@ -253,7 +254,8 @@ export abstract class ThreejsBase implements IThreejsBase {
 
     this.runMain();
 
-    for (let i = 0; i < this.wasmInstance.get_number_of_meshes(); i++) {
+    // Create meshes for each instance
+    for (let i = 0; i < this.wasmInstance.get_number_of_instances(); i++) {
       const mesh = createMesh(this.isDarkMode);
       this.meshes.set(i, mesh);
       this.sceneBundle1.scene.add(mesh);
@@ -322,11 +324,30 @@ export abstract class ThreejsBase implements IThreejsBase {
 
   public updateMeshes() {
     if (this.disposed) return;
-    for (let i = 0; i < this.wasmInstance.get_number_of_meshes(); i++) {
-      const wO = this.wasmInstance.get_mesh_on_idx(i);
+    for (let i = 0; i < this.wasmInstance.get_number_of_instances(); i++) {
+      const inst = this.wasmInstance.get_instance_on_idx(i);
       const mesh = this.meshes.get(i);
-      if (!wO || !mesh) continue;
-      getMeshFromWasm(wO, mesh);
+      if (!inst || !mesh) continue;
+
+      // Get or create shared geometry for this mesh_data_id
+      const meshDataId = inst.mesh_data_id;
+      if (!this.geometries.has(meshDataId)) {
+        const meshData = this.wasmInstance.get_mesh_data_on_idx(meshDataId);
+        if (meshData) {
+          const geometry = new THREE.BufferGeometry();
+          initMeshGeometry(meshData, { geometry } as THREE.Mesh);
+          this.geometries.set(meshDataId, geometry);
+        }
+      }
+
+      // Assign shared geometry to this mesh
+      const sharedGeometry = this.geometries.get(meshDataId);
+      if (sharedGeometry && mesh.geometry !== sharedGeometry) {
+        mesh.geometry = sharedGeometry;
+      }
+
+      // Update transform and color from instance
+      updateMeshFromInstance(inst, mesh);
     }
   }
 

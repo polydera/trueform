@@ -17,10 +17,13 @@ class scalar_field_intersections_bridge : public tf_bridge_interface {
 public:
   auto compute_isocontours(const tf::buffer<float> &scalars,
                            const std::vector<float> &cutvalues) {
-    if (polys.empty()) {
-      throw std::runtime_error("No meshes available for scalar field intersections");
+    if (mesh_data_store.empty()) {
+      throw std::runtime_error(
+          "No meshes available for scalar field intersections");
     }
-    return tf::make_isocontours(polys[0]->polygons(), tf::make_range(scalars),
+    auto &data = mesh_data_store[0];
+    return tf::make_isocontours(data.polygons.polygons(),
+                                tf::make_range(scalars),
                                 tf::make_range(cutvalues));
   }
 };
@@ -39,7 +42,9 @@ private:
   float max_d = 1.0f;
   float distance = 0.0f;
 
-  auto add_intersection_time(float t) -> void { m_time = add_time(intersection_times, t); }
+  auto add_intersection_time(float t) -> void {
+    m_time = add_time(intersection_times, t);
+  }
 
 public:
   auto compute_curves() -> void {
@@ -50,20 +55,20 @@ public:
     }
 
     tf::tick();
-    if (auto *pB =
+    if (auto *scalar_bridge =
             dynamic_cast<scalar_field_intersections_bridge *>(bridge.get())) {
-      auto curves = pB->compute_isocontours(scalars, cutvalues);
+      auto curves_result = scalar_bridge->compute_isocontours(scalars, cutvalues);
       add_intersection_time(tf::tock());
-      curve_mesh->set_curves_object(std::move(curves));
+      curves.set_curves(std::move(curves_result));
     }
   }
 
   auto reset_plane() -> void {
-    auto &actors = bridge->get_actors();
-    if (actors.empty()) {
+    auto &mesh_store = bridge->get_mesh_data_store();
+    if (mesh_store.empty()) {
       return;
     }
-    auto points = actors[0]->poly_object.points();
+    auto points = mesh_store[0].polygons.points();
     if (!points.size()) {
       return;
     }
@@ -88,7 +93,9 @@ public:
       // Wrap for infinite scrolling
       const float range = max_d - min_d;
       float offset = std::fmod(distance - min_d, range);
-      if (offset < 0) offset += range;
+      if (offset < 0) {
+        offset += range;
+      }
       distance = min_d + offset;
       compute_curves();
       return true;
@@ -115,14 +122,14 @@ int run_main_scalar_field_intersections(std::string path) {
   interactor = std::make_unique<cursor_interactor_scalar_field_intersections>();
 
   utils::center_and_scale_p(poly);
-  auto actor = std::make_unique<mesh_object>();
-  actor->poly_object = std::move(poly);
-  interactor->push_back(std::move(actor));
+  auto mesh_id = interactor->add_mesh_data(std::move(poly), false);
+  interactor->add_instance(mesh_id);
 
-  if (auto *pI =
-          dynamic_cast<cursor_interactor_scalar_field_intersections *>(interactor.get())) {
-    pI->reset_plane();
-    pI->compute_curves();
+  if (auto *scalar_interactor =
+          dynamic_cast<cursor_interactor_scalar_field_intersections *>(
+              interactor.get())) {
+    scalar_interactor->reset_plane();
+    scalar_interactor->compute_curves();
   }
   return 0;
 }

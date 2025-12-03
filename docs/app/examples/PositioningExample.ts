@@ -42,11 +42,11 @@ export class PositioningExample extends ThreejsBase {
     const updateFocalPoint = (x: number, y: number, z: number) => {
       this.sceneBundle1.controls.target.set(x, y, z);
       this.sceneBundle1.controls.update();
-      for (let i = 0; i < this.wasmInstance.get_number_of_meshes(); i++) {
-        const wO = this.wasmInstance.get_mesh_on_idx(i);
+      for (let i = 0; i < this.wasmInstance.get_number_of_instances(); i++) {
+        const inst = this.wasmInstance.get_instance_on_idx(i);
         const mesh = this.meshes.get(i);
-        if (!wO || !mesh) continue;
-        const matrix = new Float32Array(wO.get_matrix());
+        if (!inst || !mesh) continue;
+        const matrix = new Float32Array(inst.get_matrix());
         const threeMatrix = new THREE.Matrix4();
         threeMatrix.fromArray(matrix);
         threeMatrix.transpose();

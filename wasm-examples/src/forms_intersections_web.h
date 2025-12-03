@@ -18,15 +18,19 @@
 class tf_bridge_forms_intersections : public tf_bridge_interface {
 public:
   auto compute_intersection_curves() {
-    auto form0 =
-        tf::make_form(frames[0], trees[0], polys[0]->polygons()) //
-        | tf::tag(face_memberships[0])                          //
-        | tf::tag(manifold_edge_links[0]);
+    auto &inst0 = instances[0];
+    auto &inst1 = instances[1];
+    auto &data0 = mesh_data_store[inst0.mesh_data_id];
+    auto &data1 = mesh_data_store[inst1.mesh_data_id];
 
-    auto form1 =
-        tf::make_form(frames[1], trees[1], polys[1]->polygons()) //
-        | tf::tag(face_memberships[1])                          //
-        | tf::tag(manifold_edge_links[1]);
+    auto form0 = tf::make_form(inst0.frame, data0.tree, data0.polygons.polygons()) |
+                 tf::tag(*data0.face_membership) |
+                 tf::tag(*data0.manifold_edge_link);
+
+    auto form1 = tf::make_form(inst1.frame, data1.tree, data1.polygons.polygons()) |
+                 tf::tag(*data1.face_membership) |
+                 tf::tag(*data1.manifold_edge_link);
+
     return tf::make_intersection_curves(form0, form1);
   }
 };
@@ -41,53 +45,51 @@ public:
 private:
   std::vector<float> intersection_times;
 
-  auto add_intersection_time(float t) {
+  auto add_intersection_time(float t) -> void {
     m_time = add_time(intersection_times, t);
   }
 
-  auto compute_curves() {
+  auto compute_curves() -> void {
     tf::tick();
-    if (auto *pB =
+    if (auto *intersect_bridge =
             dynamic_cast<tf_bridge_forms_intersections *>(bridge.get())) {
-      auto curves = pB->compute_intersection_curves();
+      auto curves_result = intersect_bridge->compute_intersection_curves();
       add_intersection_time(tf::tock());
-      curve_mesh->set_curves_object(std::move(curves));
+      curves.set_curves(std::move(curves_result));
     }
   }
 
   auto randomize_rotations() -> void {
-    for (const auto &actor : bridge->get_actors()) {
-      tf::vector<double, 3> at{actor->matrix[3], actor->matrix[7],
-                               actor->matrix[11]};
+    for (auto &inst : bridge->get_instances()) {
+      tf::vector<double, 3> at{inst.matrix[3], inst.matrix[7], inst.matrix[11]};
       auto tr = tf::random_transformation(at);
       for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 4; ++j) {
-          actor->matrix[i * 4 + j] = tr(i, j);
+          inst.matrix[i * 4 + j] = tr(i, j);
         }
       }
-      bridge->update_frame(actor.get());
+      inst.update_frame();
     }
   }
 
 public:
-  auto OnMouseMove(std::array<float, 3> origin,
-                   std::array<float, 3> direction,
+  auto OnMouseMove(std::array<float, 3> origin, std::array<float, 3> direction,
                    std::array<float, 3> camera_position,
                    std::array<float, 3> camera_focal_point) -> bool override {
     tf::ray<float, 3> ray{origin, direction};
     if (!selected_mode && !camera_mode) {
-      auto [actor, point] = bridge->ray_hit(ray);
-      if (actor) {
+      auto [instance_id, point] = bridge->ray_hit(ray);
+      if (instance_id) {
         make_moving_plane(point, camera_position, camera_focal_point);
         last_point = point;
       }
-      selected_actor = actor;
+      selected_instance = instance_id;
       return true;
-    } else if (selected_mode) {
+    } else if (selected_mode && selected_instance) {
       auto next_point = tf::ray_hit(ray, moving_plane).point;
       dx = next_point - last_point;
       last_point = next_point;
-      move_selected(selected_actor);
+      move_selected(*selected_instance);
       compute_curves();
       return true;
     } else if (camera_mode) {
@@ -113,33 +115,34 @@ int run_main_forms_intersections(std::vector<std::string> &paths) {
         "forms_intersections requires at least two STL inputs.");
   }
 
-  std::vector<std::unique_ptr<mesh_object>> polys;
+  interactor = std::make_unique<cursor_interactor_forms_intersections>();
 
+  // Load mesh data
+  std::vector<std::size_t> mesh_data_ids;
   for (int i = 0; i < 2 && i < static_cast<int>(paths.size()); ++i) {
     auto poly = tf::read_stl<int>(paths[i]);
-    if (!poly.size())
+    if (!poly.size()) {
       continue;
+    }
     utils::center_and_scale_p(poly);
-
-    auto actor = std::make_unique<mesh_object>();
-    actor->poly_object = std::move(poly);
-    polys.push_back(std::move(actor));
+    auto mesh_id = interactor->add_mesh_data(std::move(poly), true);
+    mesh_data_ids.push_back(mesh_id);
   }
 
-  if (polys.size() < 2) {
+  if (mesh_data_ids.size() < 2) {
     throw std::runtime_error(
         "Need at least two valid meshes for intersection curves.");
   }
 
-  interactor = std::make_unique<cursor_interactor_forms_intersections>();
-
+  // Create instances
   std::size_t total_polygons = 0;
   for (int i = 0; i < 2; ++i) {
-    auto actor = std::make_unique<mesh_object>();
-    actor->poly_object = polys[i]->poly_object;
-    utils::set_at(actor->matrix, {i * 15.f, 0.f, 0.f});
-    total_polygons += actor->poly_object.size();
-    interactor->push_back(std::move(actor));
+    auto mesh_id = mesh_data_ids[i];
+    auto instance_id = interactor->add_instance(mesh_id);
+    auto &inst = interactor->get_instances()[instance_id];
+    utils::set_at(inst.matrix, {i * 15.f, 0.f, 0.f});
+    inst.update_frame();
+    total_polygons += interactor->get_mesh_data_store()[mesh_id].polygons.size();
   }
   interactor->total_polygons = total_polygons;
   return 0;

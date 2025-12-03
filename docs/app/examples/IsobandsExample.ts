@@ -3,7 +3,7 @@ import {fitCameraToAllMeshesFromZPlane, syncOrbitControls} from "@/utils/sceneUt
 import {
   buffersToCurves,
   createMesh,
-  getMeshFromWasm,
+  updateResultMesh,
   CurveRenderer,
 } from "@/utils/utils";
 import { ThreejsBase } from "@/examples/ThreejsBase";
@@ -172,7 +172,7 @@ export class IsobandsExample extends ThreejsBase {
     super.updateMeshes();
 
     const cO = this.wasmInstance.get_curve_mesh();
-    if (cO && cO.polydata_updated) {
+    if (cO && cO.updated) {
       const points = cO.get_curve_points();
       const ids = cO.get_curve_ids();
       const offsets = cO.get_curve_offsets();
@@ -181,10 +181,10 @@ export class IsobandsExample extends ThreejsBase {
     }
 
     if (this.renderer2 && this.sceneBundle2) {
-      const wO = this.wasmInstance.get_result_mesh();
+      const resultMesh = this.wasmInstance.get_result_mesh();
       const mesh = this.meshes2.get(0);
-      if (wO && mesh) {
-        getMeshFromWasm(wO, mesh);
+      if (resultMesh && mesh) {
+        updateResultMesh(resultMesh, mesh);
       }
     }
   }
