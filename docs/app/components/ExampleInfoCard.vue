@@ -40,8 +40,8 @@ const positionClass = computed(() =>
         :size="isMobile ? 'sm' : 'lg'"
         class="py-1.5 px-2 mt-0.5 lg:mt-0 inline-flex items-center gap-2 transition-[width] duration-200 ease-in-out"
       >
-        <span class="font-bold badge-text whitespace-nowrap">{{ badge.value }}</span>
-        <template v-if="badge.polygons"><span>@</span><span class="badge-text whitespace-nowrap">{{ badge.polygons }}</span><UIcon name="i-lucide-triangle" /></template>
+        <span v-if="badge.value" class="font-bold badge-text whitespace-nowrap">{{ badge.value }}</span>
+        <template v-if="badge.polygons"><span v-if="badge.value">@</span><span class="badge-text whitespace-nowrap">{{ badge.polygons }}</span><UIcon name="i-lucide-triangle" /></template>
       </UBadge>
     </div>
 
