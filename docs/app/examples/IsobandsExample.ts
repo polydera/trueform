@@ -71,6 +71,14 @@ export class IsobandsExample extends ThreejsBase {
 
     let threeFingerActive = false;
     let lastThreeFingerY = 0;
+    const setThreeFingerMode = (active: boolean) => {
+      threeFingerActive = active;
+      const controlsEnabled = !active;
+      this.sceneBundle1.controls.enabled = controlsEnabled;
+      if (this.sceneBundle2) {
+        this.sceneBundle2.controls.enabled = controlsEnabled;
+      }
+    };
     const touchScrollThresholdPx = 10;
     const getAverageTouchY = (touches: TouchList) => {
       let sum = 0;
@@ -82,7 +90,10 @@ export class IsobandsExample extends ThreejsBase {
 
     const interceptTouchStart = (event: TouchEvent) => {
       if (event.touches.length === 3) {
-        threeFingerActive = true;
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        setThreeFingerMode(true);
         lastThreeFingerY = getAverageTouchY(event.touches);
       }
     };
@@ -90,10 +101,12 @@ export class IsobandsExample extends ThreejsBase {
     const interceptTouchMove = (event: TouchEvent) => {
       if (!threeFingerActive) return;
       if (event.touches.length !== 3) {
-        threeFingerActive = false;
+        setThreeFingerMode(false);
         return;
       }
       event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
       const currentY = getAverageTouchY(event.touches);
       const deltaY = currentY - lastThreeFingerY;
       if (Math.abs(deltaY) < touchScrollThresholdPx) return;
@@ -106,8 +119,13 @@ export class IsobandsExample extends ThreejsBase {
       lastThreeFingerY = currentY;
     };
 
-    const interceptTouchEnd = (_event: TouchEvent) => {
-      threeFingerActive = false;
+    const interceptTouchEnd = (event: TouchEvent) => {
+      setThreeFingerMode(false);
+      if (event.touches.length === 3) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+      }
     };
 
     const touchListenerOptions = {
@@ -144,7 +162,7 @@ export class IsobandsExample extends ThreejsBase {
 
     this.updateMeshes();
     fitCameraToAllMeshesFromZPlane(this.sceneBundle1, 1.5);
-    if(!this.syncSceneControls && this.sceneBundle2){
+    if(this.sceneBundle2){
       fitCameraToAllMeshesFromZPlane(this.sceneBundle2, 1.5);
       syncOrbitControls(this.sceneBundle1.controls, this.sceneBundle2.controls);
     }
