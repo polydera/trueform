@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { TrackballControls } from "three/addons/controls/TrackballControls.js";
+import { ArcballControls } from "three/addons/controls/ArcballControls.js";
 
 export interface SceneConfig {
     backgroundColor?: number;
@@ -26,7 +26,7 @@ export interface SceneConfig {
 export interface SceneBundle {
     scene: THREE.Scene;
     camera: THREE.PerspectiveCamera;
-    controls: TrackballControls;
+    controls: ArcballControls;
     directionalLight: THREE.DirectionalLight;
 }
 
@@ -81,13 +81,10 @@ export function createScene(
     scene.add(camera);
 
     // Create trackball controls
-    const controls = new TrackballControls(camera, renderer.domElement);
-    controls.rotateSpeed = 2.0;
-    controls.zoomSpeed = 1.2;
-    controls.panSpeed = 0.8;
-    controls.noRotate = false;
-    controls.noZoom = false;
-    controls.noPan = false;
+    const controls = new ArcballControls(camera, renderer.domElement, scene);
+    controls.rotateSpeed = 1.2;
+    controls.enableGizmos = true;
+    controls.setGizmosVisible(false);
 
     // Setup lighting
     // 1. Ambient light for overall scene illumination
@@ -189,7 +186,7 @@ export function createSceneWithCustomConfig(
 }
 
 
-export function fitCameraToObject(camera: THREE.PerspectiveCamera, object: THREE.Mesh, offset = 1.25, controls?: TrackballControls) {
+export function fitCameraToObject(camera: THREE.PerspectiveCamera, object: THREE.Mesh, offset = 1.25, controls?: ArcballControls) {
     // Compute the bounding box of the object (or entire scene)
     const box = new THREE.Box3().setFromObject(object);
     const size = box.getSize(new THREE.Vector3());
@@ -224,19 +221,35 @@ export function fitCameraToObject(camera: THREE.PerspectiveCamera, object: THREE
 /**
  * Sync controls from source to target
  */
-export function syncOrbitControls(sourceControls: TrackballControls, targetControls: TrackballControls){
-    const sourceCamera = sourceControls.object as THREE.PerspectiveCamera;
-    const targetCamera = targetControls.object as THREE.PerspectiveCamera;
+export function syncOrbitControls(
+    sourceControls: ArcballControls,
+    targetControls: ArcballControls
+){
+      const sourceCamera = sourceControls.object as THREE.PerspectiveCamera;
+      sourceCamera.updateMatrix();
+      // _gizmos is private in the class, but cloning its matrix is required to sync pan offsets
+      (sourceControls as any)._gizmos?.updateMatrix();
 
-    // Copy camera parameters
-    targetCamera.position.copy(sourceCamera.position);
-    targetCamera.quaternion.copy(sourceCamera.quaternion);
-    targetCamera.up.copy(sourceCamera.up);
-    targetControls.target.copy(sourceControls.target);
+      const cameraMatrix = sourceCamera.matrix.clone().elements.slice();
+      const gizmoMatrix = ((sourceControls as any)._gizmos?.matrix as THREE.Matrix4 | undefined)?.clone().elements.slice();
 
-    // Update matrices
-    targetCamera.updateMatrixWorld();
-    targetControls.update();
+      const arcballState = {
+          arcballState: {
+              cameraFar: sourceCamera.far,
+              cameraNear: sourceCamera.near,
+              cameraUp: sourceCamera.up.clone(),
+              cameraZoom: sourceCamera.zoom,
+              cameraMatrix: { elements: cameraMatrix },
+              gizmoMatrix: { elements: gizmoMatrix ?? new THREE.Matrix4().identity().elements.slice() },
+              target: sourceControls.target.toArray(),
+          } as any,
+      };
+
+      if (sourceCamera.isPerspectiveCamera) {
+          arcballState.arcballState.cameraFov = sourceCamera.fov;
+      }
+
+      targetControls.setStateFromJSON(JSON.stringify(arcballState));
 }
 
 /**
@@ -264,7 +277,7 @@ export function createBidirectionalSyncedScenes(
     }
 
     let isSyncing = false; // Prevent infinite loops
-    const syncControls = (sourceControls: TrackballControls, targetControls: TrackballControls) => {
+    const syncControls = (sourceControls: ArcballControls, targetControls: ArcballControls) => {
         if (isSyncing) return;
         isSyncing = true;
         syncOrbitControls(sourceControls, targetControls);
@@ -272,7 +285,7 @@ export function createBidirectionalSyncedScenes(
     }
 
     // Setup bidirectional sync
-    const setupControlsSync = (controls1: TrackballControls, controls2: TrackballControls) => {
+    const setupControlsSync = (controls1: ArcballControls, controls2: ArcballControls) => {
         const syncEvents = ['change', 'start', 'end'];
 
         syncEvents.forEach(eventType => {

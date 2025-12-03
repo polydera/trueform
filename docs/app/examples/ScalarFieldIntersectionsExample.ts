@@ -62,6 +62,14 @@ export class ScalarFieldIntersectionsExample extends ThreejsBase {
 
     let threeFingerActive = false;
     let lastThreeFingerY = 0;
+    const setThreeFingerMode = (active: boolean) => {
+      threeFingerActive = active;
+      const controlsEnabled = !active;
+      this.sceneBundle1.controls.enabled = controlsEnabled;
+      if (this.sceneBundle2) {
+        this.sceneBundle2.controls.enabled = controlsEnabled;
+      }
+    };
     const touchScrollThresholdPx = 10;
     const getAverageTouchY = (touches: TouchList) => {
       let sum = 0;
@@ -73,7 +81,10 @@ export class ScalarFieldIntersectionsExample extends ThreejsBase {
 
     const interceptTouchStart = (event: TouchEvent) => {
       if (event.touches.length === 3) {
-        threeFingerActive = true;
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        setThreeFingerMode(true);
         lastThreeFingerY = getAverageTouchY(event.touches);
       }
     };
@@ -81,10 +92,12 @@ export class ScalarFieldIntersectionsExample extends ThreejsBase {
     const interceptTouchMove = (event: TouchEvent) => {
       if (!threeFingerActive) return;
       if (event.touches.length !== 3) {
-        threeFingerActive = false;
+        setThreeFingerMode(false);
         return;
       }
       event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
       const currentY = getAverageTouchY(event.touches);
       const deltaY = currentY - lastThreeFingerY;
       if (Math.abs(deltaY) < touchScrollThresholdPx) return;
@@ -97,8 +110,13 @@ export class ScalarFieldIntersectionsExample extends ThreejsBase {
       lastThreeFingerY = currentY;
     };
 
-    const interceptTouchEnd = (_event: TouchEvent) => {
-      threeFingerActive = false;
+    const interceptTouchEnd = (event: TouchEvent) => {
+      setThreeFingerMode(false);
+      if (event.touches.length === 3) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+      }
     };
 
     const touchListenerOptions = {
