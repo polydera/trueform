@@ -1,8 +1,9 @@
 import * as THREE from "three";
-import type { mesh_data, instance, result_mesh } from "@/examples/native";
-import { LineMaterial } from "three/addons/lines/LineMaterial.js";
-import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
-import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
+import {SRGBColorSpace} from "three";
+import type {instance, mesh_data, result_mesh} from "@/examples/native";
+import {LineMaterial} from "three/addons/lines/LineMaterial.js";
+import {LineSegments2} from "three/addons/lines/LineSegments2.js";
+import {LineSegmentsGeometry} from "three/addons/lines/LineSegmentsGeometry.js";
 
 // ============================================================================
 // CurveRenderer - Efficient instanced tube rendering (cylinders + spheres)
@@ -347,7 +348,7 @@ export function updateMeshFromInstance(inst: instance, mesh: THREE.Mesh) {
   const currC = (mesh.material as THREE.MeshMatcapMaterial).color;
   const newC = inst.color;
   if (currC.r !== newC[0] || currC.g !== newC[1] || currC.b !== newC[2]) {
-    currC.set(newC[0], newC[1], newC[2]);
+    currC.setRGB(newC[0], newC[1], newC[2], SRGBColorSpace);
   }
   // Update matrix
   if (inst.matrix_updated) {

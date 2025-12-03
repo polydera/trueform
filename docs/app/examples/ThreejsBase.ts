@@ -9,6 +9,7 @@ import {
 } from "@/utils/sceneUtils";
 import {createMesh, initMeshGeometry, updateMeshFromInstance, switchTextures, createInstancedMaterial} from "@/utils/utils";
 import {TrackballControls} from "three/examples/jsm/controls/TrackballControls";
+import {SRGBColorSpace} from "three";
 
 abstract class IThreejsBase {
   abstract runMain(): void;
@@ -425,7 +426,7 @@ export abstract class ThreejsBase implements IThreejsBase {
 
       // Update color
       const newC = inst.color;
-      tempColor.setRGB(newC[0], newC[1], newC[2]);
+      tempColor.setRGB(newC[0], newC[1], newC[2], SRGBColorSpace);
       instancedMesh.setColorAt(indexInBatch, tempColor);
       needsColorUpdate.add(meshDataId);
     }
