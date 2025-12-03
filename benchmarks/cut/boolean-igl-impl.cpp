@@ -6,6 +6,7 @@
 
 #include "boolean-igl.hpp"
 #include "conversions.hpp"
+#include "rotation.hpp"
 #include "timing.hpp"
 #include <trueform/trueform.hpp>
 
@@ -25,27 +26,35 @@ int run_boolean_igl_benchmark(const std::vector<std::string> &mesh_paths,
     auto V1 = benchmark::igl::to_igl_vertices(r_polygons.points());
     auto F1 = benchmark::igl::to_igl_faces(r_polygons.faces());
 
-    // Compute deterministic translation: 50% along largest axis
+    // Rotation around centroid, using smallest axis
     auto aabb = tf::aabb_from(r_polygons.polygons());
-    int axis = tf::largest_axis(aabb.diagonal());
-    float offset = aabb.diagonal()[axis] * 0.5f;
+    auto pivot = tf::centroid(r_polygons.polygons());
+    auto diag = aabb.diagonal();
+    auto inv_diag =
+        tf::vector<float, 3>{1.0f / diag[0], 1.0f / diag[1], 1.0f / diag[2]};
+    int rot_axis = tf::largest_axis(inv_diag);
 
-    auto translation = tf::vector<float, 3>(0.0f, 0.0f, 0.0f);
-    translation[axis] = offset;
-    auto transform = tf::make_transformation_from_translation(translation);
-
-    // Transform TrueForm mesh once, then convert to libigl
+    // Pre-allocate transformed mesh buffer
     tf::polygons_buffer<int, float, 3, 3> transformed;
     transformed.faces_buffer() = r_polygons.faces_buffer();
     transformed.points_buffer().allocate(points.size());
-    tf::parallel_transform(points, transformed.points(), [&](auto pt) {
-      return tf::transformed(pt, transform);
-    });
 
-    auto V2 = benchmark::igl::to_igl_vertices(transformed.points());
-    auto F2 = benchmark::igl::to_igl_faces(transformed.faces());
+    Eigen::MatrixXd V2;
+    Eigen::MatrixXi F2;
+    int iter = 0;
 
-    auto time_ms = benchmark::min_time_of(
+    auto time_ms = benchmark::mean_time_of(
+        [&]() {
+          auto angle =
+              tf::deg<float>{360.0f * (iter + 0.51f) / float(n_samples)};
+          auto rotation = benchmark::make_rotation(angle, rot_axis, pivot);
+          tf::parallel_transform(points, transformed.points(), [&](auto pt) {
+            return tf::transformed(pt, rotation);
+          });
+          V2 = benchmark::igl::to_igl_vertices(transformed.points());
+          F2 = benchmark::igl::to_igl_faces(transformed.faces());
+          ++iter;
+        },
         [&]() {
           Eigen::MatrixXd VC;
           Eigen::MatrixXi FC;

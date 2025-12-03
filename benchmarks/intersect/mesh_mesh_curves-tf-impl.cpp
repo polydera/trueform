@@ -5,6 +5,7 @@
  */
 
 #include "mesh_mesh_curves-tf.hpp"
+#include "rotation.hpp"
 #include "timing.hpp"
 #include <trueform/trueform.hpp>
 
@@ -28,19 +29,26 @@ int run_mesh_mesh_curves_tf_benchmark(
     tf::aabb_tree<int, float, 3> tree(polygons, tf::config_tree(4, 4));
     auto form1 = tf::make_form(tree, polygons | tf::tag(mel) | tf::tag(fm));
 
-    // Compute deterministic translation: 50% along largest axis
+    // Rotation around centroid, using smallest axis
     auto aabb = tf::aabb_from(polygons);
-    int axis = tf::largest_axis(aabb.diagonal());
-    float offset = aabb.diagonal()[axis] * 0.5f;
+    auto pivot = tf::centroid(polygons);
+    auto diag = aabb.diagonal();
+    auto inv_diag =
+        tf::vector<float, 3>{1.0f / diag[0], 1.0f / diag[1], 1.0f / diag[2]};
+    int rot_axis = tf::largest_axis(inv_diag);
 
-    auto translation = tf::vector<float, 3>(0.0f, 0.0f, 0.0f);
-    translation[axis] = offset;
-    auto transform = tf::make_transformation_from_translation(translation);
-    auto frame = tf::make_frame(transform);
+    tf::frame<float, 3> frame;
+    int iter = 0;
 
-    auto time_ms = benchmark::min_time_of(
+    auto time_ms = benchmark::mean_time_of(
         [&]() {
-          // Compute intersection curves with transformed mesh
+          auto angle =
+              tf::deg<float>{360.0f * (iter + 0.5f) / float(n_samples)};
+          frame = tf::make_frame(
+              benchmark::make_rotation(angle, rot_axis, pivot));
+          ++iter;
+        },
+        [&]() {
           auto form2 =
               tf::make_form(frame, tree, polygons | tf::tag(mel) | tf::tag(fm));
           auto curves = tf::make_intersection_curves(form1, form2);

@@ -11,6 +11,7 @@
 #include "../../core/epsilon_inverse.hpp"
 #include "../../core/frame_of.hpp"
 #include "../../core/intersects.hpp"
+#include "../../core/ray_bv_check.hpp"
 #include "../../core/polygons.hpp"
 #include "../../core/ray.hpp"
 #include "../../core/ray_hit.hpp"
@@ -18,7 +19,7 @@
 #include "../../core/transformed.hpp"
 #include "../../random/random_vector.hpp"
 #include "../../topology/set_component_labels.hpp"
-#include "../search.hpp"
+#include "../tree_search/search.hpp"
 
 namespace tf::spatial {
 template <typename Policy0, typename Policy1, typename LabelType, typename F>
@@ -65,10 +66,10 @@ auto classify_point(const tf::point_like<3, Policy0> &_point,
       ray_inv_dir[i] = tf::epsilon_inverse(ray.direction[i]);
     tf::spatial::search(
         tree,
-        [&](const auto &aabb) {
+        [&](const auto &bv) {
           real_type t0, t1;
-          return tf::core::ray_aabb_check(
-                     ray, ray_inv_dir, aabb, t0, t1, real_type(0),
+          return tf::core::ray_bv_check(
+                     ray, ray_inv_dir, bv, t0, t1, real_type(0),
                      std::numeric_limits<real_type>::max()) ==
                  tf::intersect_status::intersection;
         },
@@ -155,10 +156,10 @@ auto classify_point(const tf::point_like<3, Policy0> &_point,
       ray_inv_dir[i] = tf::epsilon_inverse(ray.direction[i]);
     tf::spatial::search(
         tree,
-        [&](const auto &aabb) {
+        [&](const auto &bv) {
           real_type t0, t1;
-          return tf::core::ray_aabb_check(
-                     ray, ray_inv_dir, aabb, t0, t1, real_type(0),
+          return tf::core::ray_bv_check(
+                     ray, ray_inv_dir, bv, t0, t1, real_type(0),
                      std::numeric_limits<real_type>::max()) ==
                  tf::intersect_status::intersection;
         },

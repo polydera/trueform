@@ -12,8 +12,10 @@
 #include "./core/aabb_metrics.hpp"              // IWYU pragma: export
 #include "./core/aabb_union.hpp"                // IWYU pragma: export
 #include "./core/algorithm.hpp"                 // IWYU pragma: export
+#include "./core/angle.hpp"                     // IWYU pragma: export
 #include "./core/area.hpp"                      // IWYU pragma: export
 #include "./core/array_hash.hpp"                // IWYU pragma: export
+#include "./core/axis.hpp"                      // IWYU pragma: export
 #include "./core/basis.hpp"                     // IWYU pragma: export
 #include "./core/blocked_buffer.hpp"            // IWYU pragma: export
 #include "./core/buffer.hpp"                    // IWYU pragma: export
@@ -26,6 +28,7 @@
 #include "./core/closest_point_parametric.hpp"  // IWYU pragma: export
 #include "./core/concatenated_blocked_range_collections.hpp" // IWYU pragma: export
 #include "./core/concatenated_blocked_ranges.hpp" // IWYU pragma: export
+#include "./core/constants.hpp"                   // IWYU pragma: export
 #include "./core/containment.hpp"                 // IWYU pragma: export
 #include "./core/contains_coplanar_point.hpp"     // IWYU pragma: export
 #include "./core/contains_point.hpp"              // IWYU pragma: export
@@ -59,6 +62,7 @@
 #include "./core/local_buffer.hpp"                // IWYU pragma: export
 #include "./core/local_value.hpp"                 // IWYU pragma: export
 #include "./core/local_vector.hpp"                // IWYU pragma: export
+#include "./core/make_rotation.hpp"               // IWYU pragma: export
 #include "./core/metric_point.hpp"                // IWYU pragma: export
 #include "./core/metric_point_pair.hpp"           // IWYU pragma: export
 #include "./core/minimal_maximal_distance.hpp"    // IWYU pragma: export

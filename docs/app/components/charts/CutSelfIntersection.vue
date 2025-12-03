@@ -18,7 +18,7 @@ const color = (_: any, i: number) => ["#00d5be", "#ff6b6b"][i];
 
 const round = (n: number) => Math.round(n * 1e2) / 1e2;
 const template = (d: any) => `<div class="flex flex-col gap-0.5">
-    <div class="font-medium text-lg">${numKM(d.polygons)} polygons</div>
+    <div class="font-medium text-lg">2 × ${numKM(d.polygons)} polygons</div>
     <div><span class="text-primary font-bold">TrueForm:</span> ${round(d.tf)} ms</div>
     <div><span class="text-[#ff6b6b]">libigl:</span> ${round(d.igl)} ms</div>
   </div>`;
@@ -64,7 +64,7 @@ const annotations = computed(() => [
     <VisXYContainer :data="data">
       <VisLine :x="x" :y="y" :color="color" :duration="1200" />
       <VisTooltip />
-      <VisAxis type="x" label="Number of Polygons" :tickFormat="(value: number) => numKM(value)" />
+      <VisAxis type="x" label="Number of Polygons" :tickFormat="(value: number) => `2×${numKM(value)}`" />
       <VisAxis type="y" label="Time [ms]" />
       <VisCrosshair :template="template" :color="color" />
       <!-- @vue-expect-error -->

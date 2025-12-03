@@ -64,7 +64,7 @@ const annotations = computed(() => [
     <VisXYContainer :data="data">
       <VisLine :x="x" :y="y" :color="color" :duration="1200" />
       <VisTooltip />
-      <VisAxis type="x" label="Number of Polygons (per mesh)" :tickFormat="(value: number) => numKM(value)" />
+      <VisAxis type="x" label="Number of Polygons" :tickFormat="(value: number) => `2×${numKM(value)}`" />
       <VisAxis type="y" label="Time [ms]" />
       <VisCrosshair :template="template" :color="color" />
       <!-- @vue-expect-error -->

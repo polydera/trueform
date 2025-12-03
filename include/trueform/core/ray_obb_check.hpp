@@ -25,13 +25,13 @@ auto ray_obb_check(const tf::ray_like<Dims, Policy0> &ray,
     auto local_origin_i = tf::dot(diff, obb.axes[i]);
     auto local_dir_i = tf::dot(ray.direction, obb.axes[i]);
     auto local_inv_dir_i = tf::epsilon_inverse(local_dir_i);
-    auto min_i = RealT(0);
-    auto max_i = obb.extent[i];
+    RealT min_i = RealT(0);
+    RealT max_i = obb.extent[i];
     if (local_inv_dir_i < 0)
       std::swap(min_i, max_i);
-    auto t0 = (min_i - local_origin_i) * local_inv_dir_i;
-    auto t1 = (max_i - local_origin_i) * local_inv_dir_i *
-              (1 + 2 * std::numeric_limits<RealT>::epsilon());
+    RealT t0 = (min_i - local_origin_i) * local_inv_dir_i;
+    RealT t1 = (max_i - local_origin_i) * local_inv_dir_i *
+               (1 + 2 * std::numeric_limits<RealT>::epsilon());
     min_t = safe_max(t0, min_t);
     max_t = safe_min(t1, max_t);
   }

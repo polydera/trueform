@@ -10,7 +10,7 @@ const color = (_: any, i: number) => ["#ff6b6b"][i];
 const round = (n: number) => Math.round(n * 10) / 10;
 const triggers = {
   [GroupedBar.selectors.bar]: (d: any) => `<div class="flex flex-col gap-0.5">
-    <div class="font-medium text-lg">${numKM(d.polygons)} polygons</div>
+    <div class="font-medium text-lg">2 × ${numKM(d.polygons)} polygons</div>
     <div><span class="text-[#ff6b6b]">vs libigl:</span> ${round(d.igl / d.tf)}×</div>
   </div>`,
 };
@@ -32,7 +32,7 @@ const triggers = {
       <VisAxis
         type="x"
         label="Number of Polygons"
-        :tickFormat="(value: number) => numKM(data[value]?.polygons) || ''"
+        :tickFormat="(value: number) => data[value]?.polygons ? `2×${numKM(data[value].polygons)}` : ''"
         :numTicks="data?.length || 0"
       />
       <VisAxis type="y" label="Speedup Factor" />

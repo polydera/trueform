@@ -40,8 +40,8 @@ const triggers = {
       <VisTooltip :triggers="triggers" />
       <VisAxis
         type="x"
-        label="Number of Polygons (per mesh)"
-        :tickFormat="(value: number) => numKM(data[value]?.polygons) || ''"
+        label="Number of Polygons"
+        :tickFormat="(value: number) => data[value]?.polygons ? `2×${numKM(data[value].polygons)}` : ''"
         :numTicks="data?.length || 0"
       />
       <VisAxis type="y" label="Speedup Factor" />
