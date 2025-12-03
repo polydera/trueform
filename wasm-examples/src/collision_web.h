@@ -52,8 +52,8 @@ private:
   std::vector<float> pick_times;
   std::vector<float> collide_times;
   std::array<double, 3> normal_mesh_color{0.8, 0.8, 0.8};
-  std::array<double, 3> coliding_mesh_color{0.8, 1, 1};
-  std::array<double, 3> selected_mesh_color{1, 0.9, 1};
+  std::array<double, 3> coliding_mesh_color{0.7, 1, 1};
+  std::array<double, 3> selected_mesh_color{1, 0.8, 1};
   std::set<std::size_t> colliding;
 
   auto add_pick_time(float t) { m_pick_time = add_time(pick_times, t); }

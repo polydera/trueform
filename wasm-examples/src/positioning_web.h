@@ -69,7 +69,7 @@ public:
 
 private:
   tf::point<double, 3> normal_mesh_color{0.8, 0.8, 0.8};
-  tf::point<double, 3> selected_mesh_color{1., 0.9, 1.};
+  tf::point<double, 3> selected_mesh_color{1., 0.8, 1.};
   std::vector<float> positioning_times;
 
   bool moving_mode = false;

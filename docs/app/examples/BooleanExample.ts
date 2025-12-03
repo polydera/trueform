@@ -73,7 +73,7 @@ export class BooleanExample extends ThreejsBase {
 
     this.updateMeshes();
     fitCameraToAllMeshesFromZPlane(this.sceneBundle1, 1.8);
-    if (!this.syncSceneControls && this.sceneBundle2) {
+    if (this.sceneBundle2) {
       fitCameraToAllMeshesFromZPlane(this.sceneBundle2, 1.8);
       syncOrbitControls(this.sceneBundle1.controls, this.sceneBundle2.controls);
     }
