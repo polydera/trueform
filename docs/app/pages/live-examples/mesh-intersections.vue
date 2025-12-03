@@ -5,7 +5,7 @@ import { useExampleLoadingState } from "@/composables/useExampleLoadingState";
 import { useMeshSelection } from "@/composables/useMeshSelection";
 import { getExampleMetadata } from "@/utils/liveExamples";
 
-const metadata = getExampleMetadata("forms-intersections");
+const metadata = getExampleMetadata("mesh-intersections");
 if (metadata) {
   defineOgImageComponent("Docs", {
     title: metadata.title,
@@ -78,6 +78,7 @@ const badge = computed(() => ({
   icon: "i-lucide-gauge",
   label: "Curve update:",
   value: `${avgTime.value} ms`,
+  polygons: polygonLabel.value,
 }));
 
 const actionButtons = [
@@ -99,20 +100,24 @@ watch(isDark, (dark) => {
 </script>
 
 <template>
-  <div class="flex flex-col w-full h-full">
-    <div class="flex flex-row flex-1 relative min-h-0">
-      <ExampleInfoCard title="Mesh Intersections" :badge="badge">
-        <div class="flex gap-2 items-center text-muted">
-          <UIcon name="i-lucide-hand" class="size-4 ml-1" />
-          <p class="text-sm">Drag a mesh. The intersection curves recompute instantly.</p>
-        </div>
-      </ExampleInfoCard>
-      <div class="flex flex-col md:flex-row w-full">
-        <div ref="threejsContainer" id="threejsContainer" class="h-full flex-1 min-h-0 w-[100vw] md:w-full"></div>
+  <ExampleLayout
+    :title="metadata?.title"
+    :badge="badge"
+    :polygon-label="polygonLabel"
+    :loading="isLoading"
+    :loading-message="loadingMessage"
+    :loading-error="loadingError"
+    :action-buttons="actionButtons"
+    @retry="loadThreejs"
+  >
+    <template #info>
+      <div class="flex gap-2 items-center text-muted">
+        <UIcon name="i-lucide-hand" class="size-4 ml-1" />
+        <p class="text-sm">Drag a mesh. The intersection curves recompute instantly.</p>
       </div>
-      <ExampleLoadingOverlay :loading="isLoading" :message="loadingMessage" :error="loadingError" @retry="loadThreejs" />
-      <ExamplePolygonsCard :mesh-count="meshCount" :mesh-label="polygonLabel" :loading="isLoading" />
-      <ExampleActionButtons :buttons="actionButtons" />
-    </div>
-  </div>
+    </template>
+    <template #containers>
+      <div ref="threejsContainer" id="threejsContainer" class="h-full flex-1 min-h-0 w-screen md:w-full"></div>
+    </template>
+  </ExampleLayout>
 </template>

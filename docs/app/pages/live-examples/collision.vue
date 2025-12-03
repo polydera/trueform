@@ -82,8 +82,8 @@ const getAvgTime = () => {
 
 const badge = computed(() => ({
   icon: "i-lucide-gauge",
-  label: "",
-  value: `Pick: ${avgPickTime.value} μs, Collision: ${avgTime.value} μs`,
+  value: `${avgTime.value} μs`,
+  polygons: polygonLabel.value,
 }));
 
 watch(meshSize, () => loadThreejs(), { immediate: true });
@@ -101,32 +101,27 @@ watch(isDark, (dark) => {
 </script>
 
 <template>
-  <div class="flex flex-col w-full h-full">
-    <div class="flex flex-row flex-1 relative min-h-0">
-      <ExampleInfoCard title="Collision" :badge="badge">
-        <div class="flex gap-2 items-center text-muted">
-          <UIcon name="i-lucide-hand" class="size-4 ml-1" />
-          <p class="text-sm">Drag a mesh. Contact detection runs live as you move.</p>
-        </div>
-      </ExampleInfoCard>
-      <div class="flex flex-col md:flex-row w-full">
-        <div
-          ref="threejsContainer"
-          id="threejsContainer"
-          class="h-full flex-1 min-h-0 w-[100vw] md:w-full"
-        ></div>
+  <ExampleLayout
+    :title="metadata?.title"
+    :badge="badge"
+    :polygon-label="polygonLabel"
+    :loading="isLoading"
+    :loading-message="loadingMessage"
+    :loading-error="loadingError"
+    @retry="loadThreejs"
+  >
+    <template #info>
+      <div class="flex gap-2 items-center text-muted">
+        <UIcon name="i-lucide-hand" class="size-4 ml-1" />
+        <p class="text-sm">Drag a mesh. Contact detection runs live as you move.</p>
       </div>
-      <ExampleLoadingOverlay
-        :loading="isLoading"
-        :message="loadingMessage"
-        :error="loadingError"
-        @retry="loadThreejs"
-      />
-      <ExamplePolygonsCard
-        :mesh-count="meshCount"
-        :mesh-label="polygonLabel"
-        :loading="isLoading"
-      />
-    </div>
-  </div>
+    </template>
+    <template #containers>
+      <div
+        ref="threejsContainer"
+        id="threejsContainer"
+        class="h-full flex-1 min-h-0 w-screen md:w-full"
+      ></div>
+    </template>
+  </ExampleLayout>
 </template>
