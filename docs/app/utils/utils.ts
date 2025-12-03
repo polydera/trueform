@@ -276,6 +276,26 @@ export function switchTextures(mesh: THREE.Mesh, isDarkMode: boolean) {
     }
     material.matcap = new THREE.TextureLoader().load(path);
 }
+/**
+ * Create a matcap material for instanced meshes.
+ * Returns a material suitable for THREE.InstancedMesh with per-instance colors.
+ */
+export function createInstancedMaterial(isDarkMode: boolean) {
+  let path: string;
+  if (isDarkMode) {
+    path = "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/635D52_A9BCC0_B1AEA0_819598.png";
+  } else {
+    path = "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/2D2D2F_C6C2C5_727176_94949B.png";
+  }
+  const matcapTexture = new THREE.TextureLoader().load(path);
+  const material = new THREE.MeshMatcapMaterial({
+    matcap: matcapTexture,
+    side: THREE.DoubleSide,
+    flatShading: true,
+  });
+  return material;
+}
+
 export function createMesh(isDarkMode: boolean) {
   // TODO test and choose here: https://observablehq.com/@makio135/matcaps
   // "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/2D2D2F_C6C2C5_727176_94949B.png"

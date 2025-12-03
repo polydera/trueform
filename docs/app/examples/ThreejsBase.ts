@@ -7,7 +7,7 @@ import {
   fitCameraToAllMeshesFromZPlane,
   type SceneBundle, syncOrbitControls,
 } from "@/utils/sceneUtils";
-import {createMesh, initMeshGeometry, updateMeshFromInstance, switchTextures} from "@/utils/utils";
+import {createMesh, initMeshGeometry, updateMeshFromInstance, switchTextures, createInstancedMaterial} from "@/utils/utils";
 import {TrackballControls} from "three/examples/jsm/controls/TrackballControls";
 
 abstract class IThreejsBase {
@@ -24,8 +24,12 @@ export abstract class ThreejsBase implements IThreejsBase {
   // First renderer (primary scene)
   protected readonly renderer: THREE.WebGLRenderer;
   protected readonly sceneBundle1: SceneBundle;
-  protected meshes = new Map<number, THREE.Mesh>();
+  protected meshes = new Map<number, THREE.Mesh>(); // Legacy: individual meshes (unused with instancing)
   protected geometries = new Map<number, THREE.BufferGeometry>(); // Shared geometry per mesh_data_id
+  // GPU Instancing: one InstancedMesh per unique mesh_data_id
+  protected instancedMeshes = new Map<number, THREE.InstancedMesh>();
+  // Maps instance_id -> { meshDataId, indexInBatch } for updating matrices/colors
+  protected instanceIndices = new Map<number, { meshDataId: number; indexInBatch: number }>();
   protected stats = new Stats({ horizontal: false, trackGPU: true });
   protected isDarkMode: boolean;
   private showStats: boolean;
@@ -254,12 +258,8 @@ export abstract class ThreejsBase implements IThreejsBase {
 
     this.runMain();
 
-    // Create meshes for each instance
-    for (let i = 0; i < this.wasmInstance.get_number_of_instances(); i++) {
-      const mesh = createMesh(this.isDarkMode);
-      this.meshes.set(i, mesh);
-      this.sceneBundle1.scene.add(mesh);
-    }
+    // Build InstancedMesh objects grouped by mesh_data_id
+    this.buildInstancedMeshes();
 
     if (!skipUpdate) {
       this.updateMeshes();
@@ -322,15 +322,38 @@ export abstract class ThreejsBase implements IThreejsBase {
     }
   }
 
-  public updateMeshes() {
-    if (this.disposed) return;
-    for (let i = 0; i < this.wasmInstance.get_number_of_instances(); i++) {
-      const inst = this.wasmInstance.get_instance_on_idx(i);
-      const mesh = this.meshes.get(i);
-      if (!inst || !mesh) continue;
+  /**
+   * Build InstancedMesh objects grouped by mesh_data_id.
+   * Called once after runMain() when instances are created.
+   */
+  protected buildInstancedMeshes() {
+    // Clear existing instanced meshes
+    this.instancedMeshes.forEach((mesh) => {
+      this.sceneBundle1.scene.remove(mesh);
+      mesh.geometry.dispose();
+      (mesh.material as THREE.Material).dispose();
+    });
+    this.instancedMeshes.clear();
+    this.instanceIndices.clear();
+    this.geometries.clear();
 
-      // Get or create shared geometry for this mesh_data_id
+    const numInstances = this.wasmInstance.get_number_of_instances();
+    if (numInstances === 0) return;
+
+    // Count instances per mesh_data_id
+    const countPerMeshData = new Map<number, number>();
+    for (let i = 0; i < numInstances; i++) {
+      const inst = this.wasmInstance.get_instance_on_idx(i);
+      if (!inst) continue;
       const meshDataId = inst.mesh_data_id;
+      countPerMeshData.set(meshDataId, (countPerMeshData.get(meshDataId) ?? 0) + 1);
+    }
+
+    // Create InstancedMesh for each mesh_data_id
+    const indexCounters = new Map<number, number>(); // tracks next index for each mesh_data_id
+
+    for (const [meshDataId, count] of countPerMeshData) {
+      // Get or create geometry
       if (!this.geometries.has(meshDataId)) {
         const meshData = this.wasmInstance.get_mesh_data_on_idx(meshDataId);
         if (meshData) {
@@ -340,14 +363,81 @@ export abstract class ThreejsBase implements IThreejsBase {
         }
       }
 
-      // Assign shared geometry to this mesh
-      const sharedGeometry = this.geometries.get(meshDataId);
-      if (sharedGeometry && mesh.geometry !== sharedGeometry) {
-        mesh.geometry = sharedGeometry;
+      const geometry = this.geometries.get(meshDataId);
+      if (!geometry) continue;
+
+      // Create material and InstancedMesh
+      const material = createInstancedMaterial(this.isDarkMode);
+      const instancedMesh = new THREE.InstancedMesh(geometry, material, count);
+      instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+
+      // Initialize instance colors (required for per-instance coloring)
+      const colors = new Float32Array(count * 3);
+      for (let j = 0; j < count * 3; j++) {
+        colors[j] = 1.0; // Default white
+      }
+      instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(colors, 3);
+      instancedMesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
+
+      this.instancedMeshes.set(meshDataId, instancedMesh);
+      this.sceneBundle1.scene.add(instancedMesh);
+      indexCounters.set(meshDataId, 0);
+    }
+
+    // Build instanceIndices map
+    for (let i = 0; i < numInstances; i++) {
+      const inst = this.wasmInstance.get_instance_on_idx(i);
+      if (!inst) continue;
+      const meshDataId = inst.mesh_data_id;
+      const indexInBatch = indexCounters.get(meshDataId) ?? 0;
+      this.instanceIndices.set(i, { meshDataId, indexInBatch });
+      indexCounters.set(meshDataId, indexInBatch + 1);
+    }
+  }
+
+  public updateMeshes() {
+    if (this.disposed) return;
+
+    // Track which InstancedMesh needs update
+    const needsMatrixUpdate = new Set<number>();
+    const needsColorUpdate = new Set<number>();
+
+    const tempMatrix = new THREE.Matrix4();
+    const tempColor = new THREE.Color();
+
+    for (let i = 0; i < this.wasmInstance.get_number_of_instances(); i++) {
+      const inst = this.wasmInstance.get_instance_on_idx(i);
+      const indices = this.instanceIndices.get(i);
+      if (!inst || !indices) continue;
+
+      const { meshDataId, indexInBatch } = indices;
+      const instancedMesh = this.instancedMeshes.get(meshDataId);
+      if (!instancedMesh) continue;
+
+      // Update matrix
+      if (inst.matrix_updated) {
+        const matrix = new Float32Array(inst.get_matrix());
+        tempMatrix.fromArray(matrix);
+        tempMatrix.transpose();
+        instancedMesh.setMatrixAt(indexInBatch, tempMatrix);
+        needsMatrixUpdate.add(meshDataId);
       }
 
-      // Update transform and color from instance
-      updateMeshFromInstance(inst, mesh);
+      // Update color
+      const newC = inst.color;
+      tempColor.setRGB(newC[0], newC[1], newC[2]);
+      instancedMesh.setColorAt(indexInBatch, tempColor);
+      needsColorUpdate.add(meshDataId);
+    }
+
+    // Mark instance buffers as needing update
+    for (const meshDataId of needsMatrixUpdate) {
+      const mesh = this.instancedMeshes.get(meshDataId);
+      if (mesh) mesh.instanceMatrix.needsUpdate = true;
+    }
+    for (const meshDataId of needsColorUpdate) {
+      const mesh = this.instancedMeshes.get(meshDataId);
+      if (mesh?.instanceColor) mesh.instanceColor.needsUpdate = true;
     }
   }
 
@@ -369,6 +459,15 @@ export abstract class ThreejsBase implements IThreejsBase {
     }
     this.cleanupCallbacks.forEach((cb) => cb());
     this.cleanupCallbacks = [];
+
+    // Dispose instanced meshes
+    this.instancedMeshes.forEach((mesh) => {
+      mesh.geometry.dispose();
+      (mesh.material as THREE.Material).dispose();
+    });
+    this.instancedMeshes.clear();
+    this.instanceIndices.clear();
+    this.geometries.clear();
 
     this.sceneBundle1.controls.dispose();
     this.disposeScene(this.sceneBundle1.scene);
@@ -449,12 +548,29 @@ export abstract class ThreejsBase implements IThreejsBase {
     if (this.renderer2 && this.sceneBundle2) {
       this.setSceneBackground(this.sceneBundle2, this.renderer2, secondaryBg);
     }
+
+    // Update instanced mesh materials
+    let path: string;
+    if (isDark) {
+      path = "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/635D52_A9BCC0_B1AEA0_819598.png";
+    } else {
+      path = "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/2D2D2F_C6C2C5_727176_94949B.png";
+    }
+    const newTexture = new THREE.TextureLoader().load(path);
+    this.instancedMeshes.forEach((instancedMesh) => {
+      const material = instancedMesh.material as THREE.MeshMatcapMaterial;
+      if (material.matcap) {
+        material.matcap.dispose();
+      }
+      material.matcap = newTexture;
+    });
+
+    // Legacy mesh support (for subclasses that may still use individual meshes)
     this.meshes.forEach((mesh) => {
       switchTextures(mesh, this.isDarkMode);
-    })
+    });
     this.meshes2.forEach((mesh) => {
       switchTextures(mesh, this.isDarkMode);
-    })
-
+    });
   }
 }

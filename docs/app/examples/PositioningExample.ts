@@ -42,16 +42,32 @@ export class PositioningExample extends ThreejsBase {
     const updateFocalPoint = (x: number, y: number, z: number) => {
       this.sceneBundle1.controls.target.set(x, y, z);
       this.sceneBundle1.controls.update();
+
+      // Update instanced mesh matrices
+      const tempMatrix = new THREE.Matrix4();
+      const needsUpdate = new Set<number>();
+
       for (let i = 0; i < this.wasmInstance.get_number_of_instances(); i++) {
         const inst = this.wasmInstance.get_instance_on_idx(i);
-        const mesh = this.meshes.get(i);
-        if (!inst || !mesh) continue;
+        const indices = this.instanceIndices.get(i);
+        if (!inst || !indices) continue;
+
+        const { meshDataId, indexInBatch } = indices;
+        const instancedMesh = this.instancedMeshes.get(meshDataId);
+        if (!instancedMesh) continue;
+
         const matrix = new Float32Array(inst.get_matrix());
-        const threeMatrix = new THREE.Matrix4();
-        threeMatrix.fromArray(matrix);
-        threeMatrix.transpose();
-        mesh.matrix = threeMatrix;
+        tempMatrix.fromArray(matrix);
+        tempMatrix.transpose();
+        instancedMesh.setMatrixAt(indexInBatch, tempMatrix);
+        needsUpdate.add(meshDataId);
       }
+
+      for (const meshDataId of needsUpdate) {
+        const mesh = this.instancedMeshes.get(meshDataId);
+        if (mesh) mesh.instanceMatrix.needsUpdate = true;
+      }
+
       this.sceneBundle1.scene.updateMatrixWorld(true);
       this.renderer.render(this.sceneBundle1.scene, this.sceneBundle1.camera);
     };
