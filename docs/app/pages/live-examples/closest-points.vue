@@ -32,8 +32,6 @@ const meshes = computed(() => buildMeshes(meshCount));
 const polygonLabel = computed(() => formatPolygonLabel(meshCount));
 
 const badge = computed(() => ({
-  icon: "i-lucide-triangle",
-  value: "Snap ready",
   polygons: polygonLabel.value,
 }));
 

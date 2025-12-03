@@ -1,5 +1,5 @@
 export interface BadgeProps {
   icon?: string;
-  value: string;
+  value?: string;
   polygons?: string;
 }
