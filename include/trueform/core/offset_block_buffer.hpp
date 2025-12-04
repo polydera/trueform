@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -12,11 +12,10 @@ namespace tf {
 template <typename Index, typename T> class offset_block_buffer {
 public:
   using iterator = decltype(views::make_offset_block_begin(
-      std::declval<tf::buffer<Index> &>(),
-      std::declval<tf::buffer<Index> &>()));
+      std::declval<tf::buffer<Index> &>(), std::declval<tf::buffer<T> &>()));
   using const_iterator = decltype(views::make_offset_block_begin(
       std::declval<const tf::buffer<Index> &>(),
-      std::declval<const tf::buffer<Index> &>()));
+      std::declval<const tf::buffer<T> &>()));
   using value_type = typename std::iterator_traits<iterator>::value_type;
   using reference = typename std::iterator_traits<iterator>::reference;
   using const_reference =
@@ -33,8 +32,7 @@ public:
     _offsets.push_back(_data.size());
   }
 
-  template <typename U>
-  auto push_back(const std::initializer_list<U> &r) {
+  template <typename U> auto push_back(const std::initializer_list<U> &r) {
     if (!_offsets.size())
       _offsets.push_back(0);
     auto old_size = _data.size();
