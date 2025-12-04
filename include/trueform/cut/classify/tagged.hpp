@@ -21,6 +21,7 @@
 #include "tbb/parallel_invoke.h"
 #include "tbb/parallel_sort.h"
 
+#include <iostream>
 namespace tf::cut {
 template <typename Policy, typename Range0, typename Range1, typename LabelType>
 auto compute_joint_components(
@@ -133,7 +134,7 @@ auto classify_missing_components(
     auto get_loop_point = [&](auto v) {
       tf::point<tf::coordinate_type<Policy1>, tf::coordinate_dims_v<Policy1>>
           pt;
-      if (v.source == tf::loop::vertex_source::created)
+      if (v.source == tf::loop::vertex_source::original)
         pt = tf::transformed(polygons.points()[v.id], frame);
       else
         pt = ibp.intersection_points()[v.id];

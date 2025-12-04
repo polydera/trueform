@@ -49,6 +49,21 @@ public:
       return tf::make_array_like(tf::make_range<tf::static_size_v<Policy>>(
           Policy::begin().base_iter()));
   }
+
+  friend auto unwrap(const indirect_range &val) -> const Policy & {
+    return static_cast<const Policy &>(val);
+  }
+  friend auto unwrap(indirect_range &val) -> Policy & {
+    return static_cast<Policy &>(val);
+  }
+  friend auto unwrap(indirect_range &&val) -> Policy && {
+    return static_cast<Policy &&>(val);
+  }
+
+  template <typename U>
+  friend auto wrap_like(const indirect_range &, U &&u) {
+    return indirect_range<std::decay_t<U>>{static_cast<U &&>(u)};
+  }
 };
 
 template <typename Policy> auto make_indirect_range(Policy &&policy) {
@@ -58,7 +73,7 @@ template <typename Policy> auto make_indirect_range(Policy &&policy) {
 template <typename Range0, typename Range1>
 auto make_indirect_range_base(Range0 &&ids, Range1 &&data) {
   auto begin = tf::iter::make_indirect(ids.begin(), data.begin());
-  auto end = tf::iter::make_indirect(ids.end(), data.end());
+  auto end = tf::iter::make_indirect(ids.end(), data.begin());
   if constexpr (tf::static_size_v<Range0> == tf::dynamic_size)
     return tf::make_range<tf::static_size_v<Range0>>(begin, end);
   else
