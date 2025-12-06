@@ -5,19 +5,17 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include <trueform/vtk/core/make_lines.hpp>
 #include <trueform/vtk/core/make_points.hpp>
-#include <vtkPolyData.h>
+#include <vtkType.h>
 
 namespace tf::vtk {
 
-/// @brief Segments view type (edge pairs).
-using segments_t = decltype(tf::make_segments(
-    std::declval<lines_t<2>>(), std::declval<points_t>()));
+/// @brief Edges view type (tf::edges wrapping blocked_buffer<vtkIdType, 2>).
+using edges_t =
+    decltype(tf::make_edges(std::declval<const tf::blocked_buffer<vtkIdType, 2>>()));
 
-/// @brief Creates a segments view from vtkPolyData lines (zero-copy).
-/// @param poly VTK poly data object, may be nullptr.
-/// @return A tf::segments view over the underlying lines data.
-auto make_segments(vtkPolyData *poly) -> segments_t;
+/// @brief Segments view type (edges + points).
+using segments_t =
+    decltype(tf::make_segments(std::declval<edges_t>(), std::declval<points_t>()));
 
 } // namespace tf::vtk

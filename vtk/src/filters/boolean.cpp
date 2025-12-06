@@ -11,7 +11,6 @@
 #include <vtkInformationVector.h>
 #include <vtkObjectFactory.h>
 #include <vtkPolyData.h>
-#include <vtkSignedCharArray.h>
 
 namespace tf::vtk {
 
@@ -100,20 +99,19 @@ auto boolean::RequestData(vtkInformation *, vtkInformationVector **input,
 
   if (_return_curves) {
     vtkSmartPointer<polydata> mesh;
-    vtkSmartPointer<vtkSignedCharArray> labels;
     vtkSmartPointer<polydata> curves;
 
     if (_matrix0 && _matrix1) {
-      std::tie(mesh, labels, curves) = make_boolean(
+      std::tie(mesh, curves) = make_boolean(
           {in0, _matrix0}, {in1, _matrix1}, _operation, tf::return_curves);
     } else if (_matrix0) {
-      std::tie(mesh, labels, curves) =
+      std::tie(mesh, curves) =
           make_boolean({in0, _matrix0}, in1, _operation, tf::return_curves);
     } else if (_matrix1) {
-      std::tie(mesh, labels, curves) =
+      std::tie(mesh, curves) =
           make_boolean(in0, {in1, _matrix1}, _operation, tf::return_curves);
     } else {
-      std::tie(mesh, labels, curves) =
+      std::tie(mesh, curves) =
           make_boolean(in0, in1, _operation, tf::return_curves);
     }
 
@@ -126,17 +124,15 @@ auto boolean::RequestData(vtkInformation *, vtkInformationVector **input,
     out_curves->ShallowCopy(curves);
   } else {
     vtkSmartPointer<polydata> mesh;
-    vtkSmartPointer<vtkSignedCharArray> labels;
 
     if (_matrix0 && _matrix1) {
-      std::tie(mesh, labels) =
-          make_boolean({in0, _matrix0}, {in1, _matrix1}, _operation);
+      mesh = make_boolean({in0, _matrix0}, {in1, _matrix1}, _operation);
     } else if (_matrix0) {
-      std::tie(mesh, labels) = make_boolean({in0, _matrix0}, in1, _operation);
+      mesh = make_boolean({in0, _matrix0}, in1, _operation);
     } else if (_matrix1) {
-      std::tie(mesh, labels) = make_boolean(in0, {in1, _matrix1}, _operation);
+      mesh = make_boolean(in0, {in1, _matrix1}, _operation);
     } else {
-      std::tie(mesh, labels) = make_boolean(in0, in1, _operation);
+      mesh = make_boolean(in0, in1, _operation);
     }
 
     if (!mesh) {

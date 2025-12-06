@@ -55,16 +55,24 @@ void polydata::ShallowCopy(vtkDataObject *src) {
 
 auto polydata::points() -> points_t { return make_points(GetPoints()); }
 
-auto polydata::polys() -> dynamic_polys_t { return make_polys(GetPolys()); }
+auto polydata::polys() -> polys_t { return make_polys(GetPolys()); }
 
 auto polydata::paths() -> paths_t { return make_paths(GetLines()); }
 
-auto polydata::polygons() -> dynamic_polygons_t {
+auto polydata::polygons() -> polygons_t {
   return tf::make_polygons(polys(), points());
 }
 
 auto polydata::curves() -> curves_t {
   return tf::make_curves(paths(), points());
+}
+
+auto polydata::edges() -> edges_t {
+  return tf::make_edges(edges_buffer());
+}
+
+auto polydata::segments() -> segments_t {
+  return tf::make_segments(edges(), points());
 }
 
 auto polydata::point_normals() -> normals_t {

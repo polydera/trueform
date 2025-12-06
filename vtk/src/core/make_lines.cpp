@@ -8,7 +8,7 @@
 
 namespace tf::vtk {
 
-auto make_lines(vtkCellArray *cells) -> dynamic_lines_t {
+auto make_lines(vtkCellArray *cells) -> lines_t {
   if (!cells) {
     return tf::make_offset_block_range(
         tf::make_range(static_cast<vtkIdType *>(nullptr), 0),
@@ -25,6 +25,6 @@ auto make_lines(vtkCellArray *cells) -> dynamic_lines_t {
       tf::make_range(data_ptr, n_connectivity));
 }
 
-template auto make_lines<2>(vtkCellArray *cells) -> lines_t<2>;
+template auto make_lines<2>(vtkCellArray *cells) -> lines_sized_t<2>;
 
 } // namespace tf::vtk

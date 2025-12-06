@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial
- * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #include <trueform/core.hpp>
@@ -15,26 +15,9 @@ namespace tf::vtk {
 
 namespace {
 
-using nn_t = tf::nearest_neighbor<vtkIdType, float, 3>;
-
-template <typename Temp>
-auto make_results(Temp &temp)
-    -> tf::offset_block_vector<std::size_t, neighbor_result> {
-  tf::offset_block_vector<std::size_t, neighbor_result> results;
-  results.offsets_buffer() = std::move(temp.offsets_buffer());
-  results.data_vector().resize(temp.data_vector().size());
-  tf::parallel_apply(tf::zip(results.data_vector(), temp.data_vector()),
-                     [](auto pair) {
-                       auto &&[result, neighbor] = pair;
-                       auto &&[primitive_id, metric_point] = neighbor;
-                       auto &&[metric, closest_pt] = metric_point;
-                       result = {primitive_id, tf::sqrt(metric), closest_pt};
-                     });
-  return results;
-}
-
 // Cascade: polygons -> segments -> points
-template <typename F> auto with_form(polydata *input, F &&f) {
+template <typename F>
+auto with_form(polydata *input, F &&f) {
   if (input->GetNumberOfPolys() > 0) {
     auto form = tf::make_form(input->poly_tree(), input->polygons());
     f(form);
@@ -81,10 +64,10 @@ auto neighbor_search_k_batch(polydata *input, vtkPoints *points, std::size_t k)
 
 auto neighbor_search_k_batch(polydata *input, points_t points, std::size_t k)
     -> tf::offset_block_vector<std::size_t, neighbor_result> {
-  tf::offset_block_vector<std::size_t, nn_t> temp;
+  tf::offset_block_vector<std::size_t, neighbor_result> results;
 
   with_form(input, [&](const auto &form) {
-    tf::generate_offset_blocks(points, temp, [&](auto pt, auto &out) {
+    tf::generate_offset_blocks(points, results, [&](auto pt, auto &out) {
       auto old_size = out.size();
       out.resize(old_size + k);
       auto knn = tf::make_nearest_neighbors(out.begin() + old_size, k);
@@ -93,7 +76,7 @@ auto neighbor_search_k_batch(polydata *input, points_t points, std::size_t k)
     });
   });
 
-  return make_results(temp);
+  return results;
 }
 
 auto neighbor_search_k_batch(std::pair<polydata *, vtkMatrix4x4 *> input,
@@ -106,10 +89,10 @@ auto neighbor_search_k_batch(std::pair<polydata *, vtkMatrix4x4 *> input,
                              points_t points, std::size_t k)
     -> tf::offset_block_vector<std::size_t, neighbor_result> {
   auto [mesh, matrix] = input;
-  tf::offset_block_vector<std::size_t, nn_t> temp;
+  tf::offset_block_vector<std::size_t, neighbor_result> results;
 
   with_form(mesh, matrix, [&](const auto &form) {
-    tf::generate_offset_blocks(points, temp, [&](auto pt, auto &out) {
+    tf::generate_offset_blocks(points, results, [&](auto pt, auto &out) {
       auto old_size = out.size();
       out.resize(old_size + k);
       auto knn = tf::make_nearest_neighbors(out.begin() + old_size, k);
@@ -118,7 +101,7 @@ auto neighbor_search_k_batch(std::pair<polydata *, vtkMatrix4x4 *> input,
     });
   });
 
-  return make_results(temp);
+  return results;
 }
 
 // ============================================================================
@@ -134,10 +117,10 @@ auto neighbor_search_k_batch(polydata *input, vtkPoints *points, std::size_t k,
 auto neighbor_search_k_batch(polydata *input, points_t points, std::size_t k,
                              float radius)
     -> tf::offset_block_vector<std::size_t, neighbor_result> {
-  tf::offset_block_vector<std::size_t, nn_t> temp;
+  tf::offset_block_vector<std::size_t, neighbor_result> results;
 
   with_form(input, [&](const auto &form) {
-    tf::generate_offset_blocks(points, temp, [&](auto pt, auto &out) {
+    tf::generate_offset_blocks(points, results, [&](auto pt, auto &out) {
       auto old_size = out.size();
       out.resize(old_size + k);
       auto knn = tf::make_nearest_neighbors(out.begin() + old_size, k, radius);
@@ -146,7 +129,7 @@ auto neighbor_search_k_batch(polydata *input, points_t points, std::size_t k,
     });
   });
 
-  return make_results(temp);
+  return results;
 }
 
 auto neighbor_search_k_batch(std::pair<polydata *, vtkMatrix4x4 *> input,
@@ -159,10 +142,10 @@ auto neighbor_search_k_batch(std::pair<polydata *, vtkMatrix4x4 *> input,
                              points_t points, std::size_t k, float radius)
     -> tf::offset_block_vector<std::size_t, neighbor_result> {
   auto [mesh, matrix] = input;
-  tf::offset_block_vector<std::size_t, nn_t> temp;
+  tf::offset_block_vector<std::size_t, neighbor_result> results;
 
   with_form(mesh, matrix, [&](const auto &form) {
-    tf::generate_offset_blocks(points, temp, [&](auto pt, auto &out) {
+    tf::generate_offset_blocks(points, results, [&](auto pt, auto &out) {
       auto old_size = out.size();
       out.resize(old_size + k);
       auto knn = tf::make_nearest_neighbors(out.begin() + old_size, k, radius);
@@ -171,7 +154,7 @@ auto neighbor_search_k_batch(std::pair<polydata *, vtkMatrix4x4 *> input,
     });
   });
 
-  return make_results(temp);
+  return results;
 }
 
 } // namespace tf::vtk

@@ -11,9 +11,9 @@ namespace tf::vtk {
 using namespace impl;
 
 auto make_boolean(polydata *input0, polydata *input1, tf::boolean_op op)
-    -> std::pair<vtkSmartPointer<polydata>, vtkSmartPointer<vtkSignedCharArray>> {
+    -> vtkSmartPointer<polydata> {
   if (!input0 || !input1) {
-    return {nullptr, nullptr};
+    return nullptr;
   }
 
   return dispatch(input0, input1, [op](auto &&base0, auto &&base1) {
@@ -23,10 +23,9 @@ auto make_boolean(polydata *input0, polydata *input1, tf::boolean_op op)
 
 auto make_boolean(polydata *input0, polydata *input1, tf::boolean_op op,
                   tf::return_curves_t)
-    -> std::tuple<vtkSmartPointer<polydata>, vtkSmartPointer<vtkSignedCharArray>,
-                  vtkSmartPointer<polydata>> {
+    -> std::pair<vtkSmartPointer<polydata>, vtkSmartPointer<polydata>> {
   if (!input0 || !input1) {
-    return {nullptr, nullptr, nullptr};
+    return {nullptr, nullptr};
   }
 
   return dispatch(input0, input1, [op](auto &&base0, auto &&base1) {

@@ -28,16 +28,16 @@ struct polys_type<tf::dynamic_size> {
 } // namespace core
 
 template <std::size_t V>
-using polys_t = typename core::polys_type<V>::type;
+using polys_sized_t = typename core::polys_type<V>::type;
 
-using dynamic_polys_t = polys_t<tf::dynamic_size>;
+using polys_t = polys_sized_t<tf::dynamic_size>;
 
-/// @brief Creates a static polys view from vtkCellArray (zero-copy).
+/// @brief Creates a sized polys view from vtkCellArray (zero-copy).
 /// @tparam V Vertex count per polygon (e.g., 3 for triangles).
 /// @param cells VTK cell array, may be nullptr.
 /// @return A tf::blocked_range<V> view over the connectivity data.
 template <std::size_t V>
-auto make_polys(vtkCellArray *cells) -> polys_t<V> {
+auto make_polys(vtkCellArray *cells) -> polys_sized_t<V> {
   if (!cells) {
     return tf::make_blocked_range<V>(
         tf::make_range(static_cast<vtkIdType *>(nullptr), 0));
@@ -48,16 +48,16 @@ auto make_polys(vtkCellArray *cells) -> polys_t<V> {
       tf::make_range(ptr, V * cells->GetNumberOfCells()));
 }
 
-/// @brief Creates a dynamic polys view from vtkCellArray (zero-copy).
+/// @brief Creates a polys view from vtkCellArray (zero-copy).
 /// @param cells VTK cell array, may be nullptr.
 /// @return A tf::offset_block_range view over the connectivity data.
-auto make_polys(vtkCellArray *cells) -> dynamic_polys_t;
+auto make_polys(vtkCellArray *cells) -> polys_t;
 
 template <>
-inline auto make_polys<tf::dynamic_size>(vtkCellArray *cells) -> dynamic_polys_t {
+inline auto make_polys<tf::dynamic_size>(vtkCellArray *cells) -> polys_t {
   return make_polys(cells);
 }
 
-extern template auto make_polys<3>(vtkCellArray *cells) -> polys_t<3>;
+extern template auto make_polys<3>(vtkCellArray *cells) -> polys_sized_t<3>;
 
 } // namespace tf::vtk

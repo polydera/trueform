@@ -8,7 +8,7 @@
 
 namespace tf::vtk {
 
-auto make_polys(vtkCellArray *cells) -> dynamic_polys_t {
+auto make_polys(vtkCellArray *cells) -> polys_t {
   if (!cells) {
     return tf::make_offset_block_range(
         tf::make_range(static_cast<vtkIdType *>(nullptr), 0),
@@ -25,6 +25,6 @@ auto make_polys(vtkCellArray *cells) -> dynamic_polys_t {
       tf::make_range(data_ptr, n_connectivity));
 }
 
-template auto make_polys<3>(vtkCellArray *cells) -> polys_t<3>;
+template auto make_polys<3>(vtkCellArray *cells) -> polys_sized_t<3>;
 
 } // namespace tf::vtk

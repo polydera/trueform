@@ -8,11 +8,11 @@
 
 namespace tf::vtk {
 
-auto make_polygons(vtkPolyData *poly) -> dynamic_polygons_t {
+auto make_polygons(vtkPolyData *poly) -> polygons_t {
   return tf::make_polygons(make_polys(poly ? poly->GetPolys() : nullptr),
                            make_points(poly));
 }
 
-template auto make_polygons<3>(vtkPolyData *poly) -> polygons_t<3>;
+template auto make_polygons<3>(vtkPolyData *poly) -> polygons_sized_t<3>;
 
 } // namespace tf::vtk

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial
- * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -22,7 +22,7 @@ namespace tf::vtk {
 /// @param input The polydata mesh.
 /// @param point The query point.
 /// @param k Maximum number of neighbors to find.
-/// @return Vector of neighbor results sorted by distance (may contain fewer than k).
+/// @return Vector of neighbor results sorted by metric (squared distance). May contain fewer than k.
 auto neighbor_search_k(polydata *input, tf::point<float, 3> point, std::size_t k)
     -> std::vector<neighbor_result>;
 
@@ -30,7 +30,7 @@ auto neighbor_search_k(polydata *input, tf::point<float, 3> point, std::size_t k
 /// @param input The polydata mesh with transform.
 /// @param point The query point.
 /// @param k Maximum number of neighbors to find.
-/// @return Vector of neighbor results sorted by distance (may contain fewer than k).
+/// @return Vector of neighbor results sorted by metric (squared distance). May contain fewer than k.
 auto neighbor_search_k(std::pair<polydata *, vtkMatrix4x4 *> input,
                        tf::point<float, 3> point, std::size_t k)
     -> std::vector<neighbor_result>;
@@ -44,7 +44,7 @@ auto neighbor_search_k(std::pair<polydata *, vtkMatrix4x4 *> input,
 /// @param point The query point.
 /// @param k Maximum number of neighbors to find.
 /// @param radius Maximum search radius.
-/// @return Vector of neighbor results sorted by distance (may contain fewer than k).
+/// @return Vector of neighbor results sorted by metric (squared distance). May contain fewer than k.
 auto neighbor_search_k(polydata *input, tf::point<float, 3> point, std::size_t k,
                        float radius) -> std::vector<neighbor_result>;
 
@@ -53,7 +53,7 @@ auto neighbor_search_k(polydata *input, tf::point<float, 3> point, std::size_t k
 /// @param point The query point.
 /// @param k Maximum number of neighbors to find.
 /// @param radius Maximum search radius.
-/// @return Vector of neighbor results sorted by distance (may contain fewer than k).
+/// @return Vector of neighbor results sorted by metric (squared distance). May contain fewer than k.
 auto neighbor_search_k(std::pair<polydata *, vtkMatrix4x4 *> input,
                        tf::point<float, 3> point, std::size_t k, float radius)
     -> std::vector<neighbor_result>;

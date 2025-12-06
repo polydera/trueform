@@ -21,6 +21,7 @@
 #include <trueform/vtk/core/make_polys.hpp>
 #include <trueform/vtk/core/make_segments.hpp>
 #include <trueform/vtk/core/make_vtk_cells.hpp>
+#include <trueform/vtk/core/make_frame.hpp>
 #include <trueform/vtk/core/make_vtk_matrix.hpp>
 #include <trueform/vtk/core/make_vtk_normals.hpp>
 #include <trueform/vtk/core/make_vtk_points.hpp>

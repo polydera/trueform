@@ -35,8 +35,8 @@ set(TRUEFORM_VTK_SOURCES
   src/core/make_points.cpp
   src/core/make_polygons.cpp
   src/core/make_polys.cpp
-  src/core/make_segments.cpp
   src/core/make_vtk_cells.cpp
+  src/core/make_frame.cpp
   src/core/make_vtk_matrix.cpp
   src/core/make_vtk_normals.cpp
   src/core/make_vtk_points.cpp

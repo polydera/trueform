@@ -19,7 +19,7 @@ auto compute_cell_normals(vtkPolyData *input) -> void {
     return;
   }
 
-  auto polygons = make_polygons<3>(input);
+  auto polygons = make_polygons(input);
   auto normals = tf::compute_normals(polygons);
   auto vtk_normals = make_vtk_normals(std::move(normals));
   vtk_normals->SetName("Normals");

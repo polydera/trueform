@@ -17,6 +17,7 @@
 #include <trueform/vtk/core/make_points.hpp>
 #include <trueform/vtk/core/make_polygons.hpp>
 #include <trueform/vtk/core/make_polys.hpp>
+#include <trueform/vtk/core/make_segments.hpp>
 #include <memory>
 #include <vtkObjectFactory.h>
 #include <vtkPolyData.h>
@@ -55,17 +56,23 @@ public:
   /// @brief Get points view.
   auto points() -> points_t;
 
-  /// @brief Get dynamic polygons view.
-  auto polys() -> dynamic_polys_t;
+  /// @brief Get polys view.
+  auto polys() -> polys_t;
 
   /// @brief Get paths/lines view.
   auto paths() -> paths_t;
 
   /// @brief Get polygons (faces + points).
-  auto polygons() -> dynamic_polygons_t;
+  auto polygons() -> polygons_t;
 
   /// @brief Get curves (paths + points).
   auto curves() -> curves_t;
+
+  /// @brief Get edges view (from lines). Built lazily on first access.
+  auto edges() -> edges_t;
+
+  /// @brief Get segments view (edges + points). Built lazily on first access.
+  auto segments() -> segments_t;
 
   /// @brief Get point normals view.
   /// @return A tf::unit_vectors view over point normals, or empty if none.

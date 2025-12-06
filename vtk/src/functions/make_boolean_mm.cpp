@@ -13,9 +13,9 @@ using namespace impl;
 auto make_boolean(std::pair<polydata *, vtkMatrix4x4 *> input0,
                   std::pair<polydata *, vtkMatrix4x4 *> input1,
                   tf::boolean_op op)
-    -> std::pair<vtkSmartPointer<polydata>, vtkSmartPointer<vtkSignedCharArray>> {
+    -> vtkSmartPointer<polydata> {
   if (!input0.first || !input1.first || !input0.second || !input1.second) {
-    return {nullptr, nullptr};
+    return nullptr;
   }
 
   return dispatch(
@@ -30,10 +30,9 @@ auto make_boolean(std::pair<polydata *, vtkMatrix4x4 *> input0,
 auto make_boolean(std::pair<polydata *, vtkMatrix4x4 *> input0,
                   std::pair<polydata *, vtkMatrix4x4 *> input1,
                   tf::boolean_op op, tf::return_curves_t)
-    -> std::tuple<vtkSmartPointer<polydata>, vtkSmartPointer<vtkSignedCharArray>,
-                  vtkSmartPointer<polydata>> {
+    -> std::pair<vtkSmartPointer<polydata>, vtkSmartPointer<polydata>> {
   if (!input0.first || !input1.first || !input0.second || !input1.second) {
-    return {nullptr, nullptr, nullptr};
+    return {nullptr, nullptr};
   }
 
   return dispatch(

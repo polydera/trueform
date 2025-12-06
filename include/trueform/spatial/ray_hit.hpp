@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -15,12 +15,16 @@ auto ray_hit(
     const ray_like<Dims, Policy0> &ray, const tf::form<Dims, Policy1> &form,
     tf::ray_config<tf::coordinate_type<Policy0, Policy1>> config = {}) {
   auto result = ray_cast(ray, form, config);
-
-  tf::ray_hit_info<tf::coordinate_type<Policy0, Policy1>, Dims> out;
-  out.status = result.status;
-  out.t = result.t;
+  using tree_policy = typename Policy1::tree_policy;
+  using Index = typename tree_policy::index_type;
+  tf::tree_ray_info<
+      Index, tf::ray_hit_info<tf::coordinate_type<Policy0, Policy1>, Dims>>
+      out;
+  out.element = result.element;
+  out.info.status = result.info.status;
+  out.info.t = result.info.t;
   if (result) {
-    out.point = ray.origin + result.t * ray.direction;
+    out.info.point = ray.origin + result.info.t * ray.direction;
   }
   return out;
 }

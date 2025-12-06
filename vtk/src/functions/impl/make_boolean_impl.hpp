@@ -28,23 +28,22 @@ inline auto make_base(polydata *in) {
 
 template <typename F0, typename F1>
 auto compute_boolean(F0 &&form0, F1 &&form1, tf::boolean_op op)
-    -> std::pair<vtkSmartPointer<polydata>, vtkSmartPointer<vtkSignedCharArray>> {
+    -> vtkSmartPointer<polydata> {
   auto [mesh, labels] = tf::make_boolean(form0, form1, op);
 
   auto out = vtkSmartPointer<polydata>::New();
   out->ShallowCopy(make_vtk_polydata(std::move(mesh)));
 
   auto label_array = make_vtk_array(std::move(labels));
-  label_array->SetName("labels");
+  label_array->SetName("Labels");
   out->GetCellData()->SetScalars(label_array);
 
-  return {out, label_array};
+  return out;
 }
 
 template <typename F0, typename F1>
 auto compute_boolean_with_curves(F0 &&form0, F1 &&form1, tf::boolean_op op)
-    -> std::tuple<vtkSmartPointer<polydata>, vtkSmartPointer<vtkSignedCharArray>,
-                  vtkSmartPointer<polydata>> {
+    -> std::pair<vtkSmartPointer<polydata>, vtkSmartPointer<polydata>> {
   auto [mesh, labels, curves] =
       tf::make_boolean(form0, form1, op, tf::return_curves);
 
@@ -52,13 +51,13 @@ auto compute_boolean_with_curves(F0 &&form0, F1 &&form1, tf::boolean_op op)
   out->ShallowCopy(make_vtk_polydata(std::move(mesh)));
 
   auto label_array = make_vtk_array(std::move(labels));
-  label_array->SetName("labels");
+  label_array->SetName("Labels");
   out->GetCellData()->SetScalars(label_array);
 
   auto out_curves = vtkSmartPointer<polydata>::New();
   out_curves->ShallowCopy(make_vtk_polydata(std::move(curves)));
 
-  return {out, label_array, out_curves};
+  return {out, out_curves};
 }
 
 template <typename Runner>

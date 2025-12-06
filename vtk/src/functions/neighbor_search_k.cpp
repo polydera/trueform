@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial
- * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #include <trueform/spatial/nearest_neighbor.hpp>
@@ -17,15 +17,15 @@ template <typename Knn>
 auto make_results(Knn &knn) -> std::vector<neighbor_result> {
   std::vector<neighbor_result> results;
   results.reserve(knn.size());
-  for (auto &&[primitive_id, metric_point] : knn) {
-    auto &&[metric, closest_pt] = metric_point;
-    results.push_back({primitive_id, tf::sqrt(metric), closest_pt});
+  for (const auto &neighbor : knn) {
+    results.push_back(neighbor);
   }
   return results;
 }
 
 // Cascade: polygons -> segments -> points
-template <typename F> auto with_form(polydata *input, F &&f) {
+template <typename F>
+auto with_form(polydata *input, F &&f) {
   if (input->GetNumberOfPolys() > 0) {
     auto form = tf::make_form(input->poly_tree(), input->polygons());
     return f(form);
@@ -68,10 +68,11 @@ auto with_form(polydata *input, vtkMatrix4x4 *matrix, F &&f) {
 auto neighbor_search_k(polydata *input, tf::point<float, 3> point,
                        std::size_t k) -> std::vector<neighbor_result> {
   return with_form(input, [&](const auto &form) {
-    std::vector<tf::nearest_neighbor<vtkIdType, float, 3>> buffer(k);
+    std::vector<neighbor_result> buffer(k);
     auto knn = tf::make_nearest_neighbors(buffer.begin(), k);
     tf::neighbor_search(form, point, knn);
-    return make_results(knn);
+    buffer.resize(knn.size());
+    return buffer;
   });
 }
 
@@ -80,10 +81,11 @@ auto neighbor_search_k(std::pair<polydata *, vtkMatrix4x4 *> input,
     -> std::vector<neighbor_result> {
   auto [mesh, matrix] = input;
   return with_form(mesh, matrix, [&](const auto &form) {
-    std::vector<tf::nearest_neighbor<vtkIdType, float, 3>> buffer(k);
+    std::vector<neighbor_result> buffer(k);
     auto knn = tf::make_nearest_neighbors(buffer.begin(), k);
     tf::neighbor_search(form, point, knn);
-    return make_results(knn);
+    buffer.resize(knn.size());
+    return buffer;
   });
 }
 
@@ -95,10 +97,11 @@ auto neighbor_search_k(polydata *input, tf::point<float, 3> point,
                        std::size_t k, float radius)
     -> std::vector<neighbor_result> {
   return with_form(input, [&](const auto &form) {
-    std::vector<tf::nearest_neighbor<vtkIdType, float, 3>> buffer(k);
+    std::vector<neighbor_result> buffer(k);
     auto knn = tf::make_nearest_neighbors(buffer.begin(), k, radius);
     tf::neighbor_search(form, point, knn);
-    return make_results(knn);
+    buffer.resize(knn.size());
+    return buffer;
   });
 }
 
@@ -107,10 +110,11 @@ auto neighbor_search_k(std::pair<polydata *, vtkMatrix4x4 *> input,
     -> std::vector<neighbor_result> {
   auto [mesh, matrix] = input;
   return with_form(mesh, matrix, [&](const auto &form) {
-    std::vector<tf::nearest_neighbor<vtkIdType, float, 3>> buffer(k);
+    std::vector<neighbor_result> buffer(k);
     auto knn = tf::make_nearest_neighbors(buffer.begin(), k, radius);
     tf::neighbor_search(form, point, knn);
-    return make_results(knn);
+    buffer.resize(knn.size());
+    return buffer;
   });
 }
 

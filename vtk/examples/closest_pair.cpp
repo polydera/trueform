@@ -106,14 +106,14 @@ int main() {
             tf::vtk::neighbor_search(std::make_pair(poly, matrices[0].Get()),
                                      std::make_pair(poly, matrices[1].Get()));
 
-        line_source->SetPoint1(result.point0[0], result.point0[1],
-                               result.point0[2]);
-        line_source->SetPoint2(result.point1[0], result.point1[1],
-                               result.point1[2]);
+        line_source->SetPoint1(result.info.first[0], result.info.first[1],
+                               result.info.first[2]);
+        line_source->SetPoint2(result.info.second[0], result.info.second[1],
+                               result.info.second[2]);
         line_source->Modified();
 
         // Interpolate color: green (close) -> red (far)
-        float t = std::min(result.distance / max_distance, 1.0f);
+        float t = std::min(std::sqrt(result.info.metric) / max_distance, 1.0f);
         line_actor->GetProperty()->SetColor(t, 1.0 - t, 0.3);
 
         window->Render();

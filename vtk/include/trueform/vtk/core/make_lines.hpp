@@ -10,22 +10,22 @@
 
 namespace tf::vtk {
 
-/// @brief Static lines view type (fixed vertex count V).
+/// @brief Sized lines view type (fixed vertex count V).
 template <std::size_t V>
-using lines_t = decltype(tf::make_blocked_range<V>(
+using lines_sized_t = decltype(tf::make_blocked_range<V>(
     tf::make_range(static_cast<vtkIdType *>(nullptr), std::size_t{0})));
 
-/// @brief Dynamic lines view type (variable vertex count).
-using dynamic_lines_t = decltype(tf::make_offset_block_range(
+/// @brief Lines view type (variable vertex count).
+using lines_t = decltype(tf::make_offset_block_range(
     tf::make_range(static_cast<vtkIdType *>(nullptr), std::size_t{0}),
     tf::make_range(static_cast<vtkIdType *>(nullptr), std::size_t{0})));
 
-/// @brief Creates a static lines view from vtkCellArray (zero-copy).
+/// @brief Creates a sized lines view from vtkCellArray (zero-copy).
 /// @tparam V Vertex count per line (e.g., 2 for segments).
 /// @param cells VTK cell array, may be nullptr.
 /// @return A tf::blocked_range<V> view over the connectivity data.
 template <std::size_t V>
-auto make_lines(vtkCellArray *cells) -> lines_t<V> {
+auto make_lines(vtkCellArray *cells) -> lines_sized_t<V> {
   if (!cells) {
     return tf::make_blocked_range<V>(
         tf::make_range(static_cast<vtkIdType *>(nullptr), 0));
@@ -36,11 +36,11 @@ auto make_lines(vtkCellArray *cells) -> lines_t<V> {
       tf::make_range(ptr, V * cells->GetNumberOfCells()));
 }
 
-/// @brief Creates a dynamic lines view from vtkCellArray (zero-copy).
+/// @brief Creates a lines view from vtkCellArray (zero-copy).
 /// @param cells VTK cell array, may be nullptr.
 /// @return A tf::offset_block_range view over the connectivity data.
-auto make_lines(vtkCellArray *cells) -> dynamic_lines_t;
+auto make_lines(vtkCellArray *cells) -> lines_t;
 
-extern template auto make_lines<2>(vtkCellArray *cells) -> lines_t<2>;
+extern template auto make_lines<2>(vtkCellArray *cells) -> lines_sized_t<2>;
 
 } // namespace tf::vtk
