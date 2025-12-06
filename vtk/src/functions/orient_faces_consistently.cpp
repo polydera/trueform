@@ -1,0 +1,25 @@
+/*
+ * Copyright (c) 2025 Žiga Sajovic, XLAB
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
+ * https://github.com/xlabmedical/trueform
+ */
+#include <trueform/topology.hpp>
+#include <trueform/vtk/core/polydata.hpp>
+#include <trueform/vtk/functions/orient_faces_consistently.hpp>
+
+namespace tf::vtk {
+
+auto orient_faces_consistently(polydata *input) -> void {
+  if (!input) {
+    return;
+  }
+
+  auto polygons = input->polygons() |
+                  tf::tag(input->manifold_edge_link());
+
+  tf::orient_faces_consistently(polygons);
+  input->GetPolys()->Modified();
+}
+
+} // namespace tf::vtk

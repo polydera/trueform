@@ -1,0 +1,18 @@
+/*
+ * Copyright (c) 2025 Žiga Sajovic, XLAB
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
+ * https://github.com/xlabmedical/trueform
+ */
+#include <trueform/vtk/core/make_points.hpp>
+#include <trueform/vtk/functions/obb_from.hpp>
+#include <vtkPolyData.h>
+
+namespace tf::vtk {
+
+auto obb_from(vtkPolyData *input) -> tf::obb<float, 3> {
+  auto points = make_points(input);
+  return tf::obb_from(points);
+}
+
+} // namespace tf::vtk

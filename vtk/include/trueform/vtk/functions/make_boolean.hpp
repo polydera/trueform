@@ -1,0 +1,78 @@
+/*
+ * Copyright (c) 2025 Žiga Sajovic, XLAB
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
+ * https://github.com/xlabmedical/trueform
+ */
+#pragma once
+#include <trueform/cut/boolean_op.hpp>
+#include <trueform/cut/return_curves.hpp>
+#include <trueform/vtk/core/polydata.hpp>
+#include <tuple>
+#include <utility>
+#include <vtkMatrix4x4.h>
+#include <vtkSmartPointer.h>
+
+class vtkSignedCharArray;
+
+namespace tf::vtk {
+
+/// @brief Compute boolean operation between two meshes.
+///
+/// @param input0 First input mesh (must be tf::vtk::polydata).
+/// @param input1 Second input mesh (must be tf::vtk::polydata).
+/// @param op Boolean operation to perform.
+/// @return Pair of (result polydata with labels cell data, labels array).
+auto make_boolean(polydata *input0, polydata *input1, tf::boolean_op op)
+    -> std::pair<vtkSmartPointer<polydata>, vtkSmartPointer<vtkSignedCharArray>>;
+
+/// @brief Compute boolean operation with transform on first mesh.
+auto make_boolean(std::pair<polydata *, vtkMatrix4x4 *> input0,
+                  polydata *input1, tf::boolean_op op)
+    -> std::pair<vtkSmartPointer<polydata>, vtkSmartPointer<vtkSignedCharArray>>;
+
+/// @brief Compute boolean operation with transform on second mesh.
+auto make_boolean(polydata *input0,
+                  std::pair<polydata *, vtkMatrix4x4 *> input1,
+                  tf::boolean_op op)
+    -> std::pair<vtkSmartPointer<polydata>, vtkSmartPointer<vtkSignedCharArray>>;
+
+/// @brief Compute boolean operation with transforms on both meshes.
+auto make_boolean(std::pair<polydata *, vtkMatrix4x4 *> input0,
+                  std::pair<polydata *, vtkMatrix4x4 *> input1,
+                  tf::boolean_op op)
+    -> std::pair<vtkSmartPointer<polydata>, vtkSmartPointer<vtkSignedCharArray>>;
+
+/// @brief Compute boolean operation with intersection curves.
+///
+/// @param input0 First input mesh (must be tf::vtk::polydata).
+/// @param input1 Second input mesh (must be tf::vtk::polydata).
+/// @param op Boolean operation to perform.
+/// @param tag Pass tf::return_curves to get intersection curves.
+/// @return Tuple of (result polydata with labels, labels array, curves polydata).
+auto make_boolean(polydata *input0, polydata *input1, tf::boolean_op op,
+                  tf::return_curves_t)
+    -> std::tuple<vtkSmartPointer<polydata>, vtkSmartPointer<vtkSignedCharArray>,
+                  vtkSmartPointer<polydata>>;
+
+/// @brief Compute boolean operation with transform on first mesh and curves.
+auto make_boolean(std::pair<polydata *, vtkMatrix4x4 *> input0,
+                  polydata *input1, tf::boolean_op op, tf::return_curves_t)
+    -> std::tuple<vtkSmartPointer<polydata>, vtkSmartPointer<vtkSignedCharArray>,
+                  vtkSmartPointer<polydata>>;
+
+/// @brief Compute boolean operation with transform on second mesh and curves.
+auto make_boolean(polydata *input0,
+                  std::pair<polydata *, vtkMatrix4x4 *> input1,
+                  tf::boolean_op op, tf::return_curves_t)
+    -> std::tuple<vtkSmartPointer<polydata>, vtkSmartPointer<vtkSignedCharArray>,
+                  vtkSmartPointer<polydata>>;
+
+/// @brief Compute boolean operation with transforms on both meshes and curves.
+auto make_boolean(std::pair<polydata *, vtkMatrix4x4 *> input0,
+                  std::pair<polydata *, vtkMatrix4x4 *> input1,
+                  tf::boolean_op op, tf::return_curves_t)
+    -> std::tuple<vtkSmartPointer<polydata>, vtkSmartPointer<vtkSignedCharArray>,
+                  vtkSmartPointer<polydata>>;
+
+} // namespace tf::vtk

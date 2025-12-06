@@ -1,0 +1,42 @@
+/*
+ * Copyright (c) 2025 Žiga Sajovic, XLAB
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
+ * https://github.com/xlabmedical/trueform
+ */
+#pragma once
+#include <trueform/vtk/core/make_points.hpp>
+#include <trueform/vtk/core/make_polys.hpp>
+#include <vtkPolyData.h>
+
+namespace tf::vtk {
+
+template <std::size_t V>
+using polygons_t = decltype(tf::make_polygons(
+    std::declval<polys_t<V>>(), std::declval<points_t>()));
+
+using dynamic_polygons_t = polygons_t<tf::dynamic_size>;
+
+/// @brief Creates a static polygons view from vtkPolyData (zero-copy).
+/// @tparam V Vertex count per polygon (e.g., 3 for triangles).
+/// @param poly VTK poly data object, may be nullptr.
+/// @return A tf::polygons view over the underlying data.
+template <std::size_t V>
+auto make_polygons(vtkPolyData *poly) -> polygons_t<V> {
+  return tf::make_polygons(make_polys<V>(poly ? poly->GetPolys() : nullptr),
+                           make_points(poly));
+}
+
+/// @brief Creates a dynamic polygons view from vtkPolyData (zero-copy).
+/// @param poly VTK poly data object, may be nullptr.
+/// @return A tf::polygons view over the underlying data.
+auto make_polygons(vtkPolyData *poly) -> dynamic_polygons_t;
+
+template <>
+inline auto make_polygons<tf::dynamic_size>(vtkPolyData *poly) -> dynamic_polygons_t {
+  return make_polygons(poly);
+}
+
+extern template auto make_polygons<3>(vtkPolyData *poly) -> polygons_t<3>;
+
+} // namespace tf::vtk

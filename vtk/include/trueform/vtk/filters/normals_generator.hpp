@@ -1,0 +1,61 @@
+/*
+ * Copyright (c) 2025 Žiga Sajovic, XLAB
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
+ * https://github.com/xlabmedical/trueform
+ */
+#pragma once
+#include <vtkPolyDataAlgorithm.h>
+
+namespace tf::vtk {
+
+/// @brief Computes normals and optionally orients faces consistently.
+///
+/// This filter computes cell normals and optionally point normals.
+/// It can also orient faces for consistent winding before computing normals.
+///
+/// Operations are performed in order:
+/// 1. Orient faces consistently (if enabled)
+/// 2. Compute cell normals (always)
+/// 3. Compute point normals (if enabled)
+///
+/// By default, both orient_faces and compute_point_normals are enabled.
+///
+/// @code
+/// vtkNew<tf::vtk::normals_generator> filter;
+/// filter->SetInputConnection(reader->GetOutputPort());
+/// filter->set_orient_faces(true);
+/// filter->set_compute_point_normals(true);
+/// filter->Update();
+/// @endcode
+class normals_generator : public vtkPolyDataAlgorithm {
+public:
+  static auto New() -> normals_generator *;
+  vtkTypeMacro(normals_generator, vtkPolyDataAlgorithm);
+
+  /// @brief Enable/disable consistent face orientation.
+  /// Default: true
+  auto set_orient_faces(bool value) -> void;
+  auto orient_faces() const -> bool;
+
+  /// @brief Enable/disable point normal computation.
+  /// Default: true
+  auto set_compute_point_normals(bool value) -> void;
+  auto compute_point_normals() const -> bool;
+
+protected:
+  normals_generator();
+  ~normals_generator() override = default;
+
+  auto RequestData(vtkInformation *, vtkInformationVector **,
+                   vtkInformationVector *) -> int override;
+
+private:
+  bool _orient_faces = true;
+  bool _compute_point_normals = true;
+
+  normals_generator(const normals_generator &) = delete;
+  auto operator=(const normals_generator &) -> void = delete;
+};
+
+} // namespace tf::vtk

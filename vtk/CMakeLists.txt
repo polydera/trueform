@@ -1,0 +1,108 @@
+cmake_minimum_required(VERSION 3.16)
+project(trueform_vtk LANGUAGES CXX)
+
+find_package(Freetype QUIET)
+find_package(VTK REQUIRED COMPONENTS
+  CommonCore
+  CommonDataModel
+  CommonTransforms
+)
+
+set(TRUEFORM_VTK_SOURCES
+  src/filters/adapter.cpp
+  src/filters/boolean.cpp
+  src/filters/boundary_paths.cpp
+  src/filters/connected_components.cpp
+  src/filters/intersection_curves.cpp
+  src/filters/isocontours.cpp
+  src/filters/isobands.cpp
+  src/filters/line_cleaner.cpp
+  src/filters/non_simple_edges.cpp
+  src/filters/normals_generator.cpp
+  src/filters/obj_reader.cpp
+  src/filters/polygon_cleaner.cpp
+  src/filters/stl_reader.cpp
+  src/core/make_byte_blocks.cpp
+  src/core/make_range.cpp
+  src/core/make_blocked_range.cpp
+  src/core/make_vtk_array.cpp
+  src/core/make_vtk_array_reindexed.cpp
+  src/core/make_vtk_data_set_attributes_reindexed.cpp
+  src/core/make_curves.cpp
+  src/core/make_lines.cpp
+  src/core/make_normals.cpp
+  src/core/make_paths.cpp
+  src/core/make_points.cpp
+  src/core/make_polygons.cpp
+  src/core/make_polys.cpp
+  src/core/make_segments.cpp
+  src/core/make_vtk_cells.cpp
+  src/core/make_vtk_matrix.cpp
+  src/core/make_vtk_normals.cpp
+  src/core/make_vtk_points.cpp
+  src/core/make_vtk_transform.cpp
+  src/core/make_vtk_polydata.cpp
+  src/core/make_world_ray.cpp
+  src/core/polydata.cpp
+  src/functions/aabb_from.cpp
+  src/functions/cleaned_lines.cpp
+  src/functions/cleaned_polygons.cpp
+  src/functions/cleaned_points.cpp
+  src/functions/compute_cell_normals.cpp
+  src/functions/compute_point_normals.cpp
+  src/functions/make_boolean.cpp
+  src/functions/make_boundary_edges.cpp
+  src/functions/make_boundary_paths.cpp
+  src/functions/make_connected_components.cpp
+  src/functions/make_intersection_curves.cpp
+  src/functions/make_isobands.cpp
+  src/functions/make_isocontours.cpp
+  src/functions/make_non_manifold_edges.cpp
+  src/functions/make_non_simple_edges.cpp
+  src/functions/neighbor_search.cpp
+  src/functions/intersects.cpp
+  src/functions/obb_from.cpp
+  src/functions/orient_faces_consistently.cpp
+  src/functions/pick.cpp
+  src/functions/ray_cast.cpp
+  src/functions/ray_hit.cpp
+  src/functions/read_obj.cpp
+  src/functions/read_stl.cpp
+  src/functions/split_into_components.cpp
+  src/functions/write_obj.cpp
+  src/functions/write_stl.cpp
+)
+
+add_library(trueform_vtk ${TRUEFORM_VTK_SOURCES})
+add_library(tf::vtk ALIAS trueform_vtk)
+
+target_compile_features(trueform_vtk PUBLIC cxx_std_17)
+
+target_include_directories(trueform_vtk PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(trueform_vtk PUBLIC
+  tf::trueform
+  ${VTK_LIBRARIES}
+)
+
+vtk_module_autoinit(
+  TARGETS trueform_vtk
+  MODULES ${VTK_LIBRARIES}
+)
+
+target_compile_options(trueform_vtk PRIVATE -Wall -Wextra -Wpedantic -Wno-extra-semi)
+
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+  include(CheckCXXCompilerFlag)
+  check_cxx_compiler_flag("-march=native" SUPPORTS_MARCH_NATIVE)
+  if(SUPPORTS_MARCH_NATIVE)
+    target_compile_options(trueform_vtk PRIVATE -march=native)
+  endif()
+endif()
+
+if(BUILD_VTK_EXAMPLES)
+  add_subdirectory(examples)
+endif()

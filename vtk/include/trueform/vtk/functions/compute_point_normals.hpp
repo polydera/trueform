@@ -1,0 +1,18 @@
+/*
+ * Copyright (c) 2025 Žiga Sajovic, XLAB
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
+ * https://github.com/xlabmedical/trueform
+ */
+#pragma once
+
+namespace tf::vtk {
+
+class polydata;
+
+/// @brief Compute point normals and set them on the polydata.
+/// @param input The polydata (must contain 3D polygons).
+/// @note If cell normals are not present, they will be computed first.
+auto compute_point_normals(polydata *input) -> void;
+
+} // namespace tf::vtk
