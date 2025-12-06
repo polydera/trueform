@@ -5,11 +5,16 @@ import {
   createBidirectionalSyncedScenes,
   createSceneWithCustomConfig,
   fitCameraToAllMeshesFromZPlane,
-  type SceneBundle, syncOrbitControls,
+  type SceneBundle,
+  syncOrbitControls,
 } from "@/utils/sceneUtils";
-import {createMesh, initMeshGeometry, updateMeshFromInstance, switchTextures, createInstancedMaterial} from "@/utils/utils";
-import {TrackballControls} from "three/examples/jsm/controls/TrackballControls";
-import {SRGBColorSpace} from "three";
+import {
+  initMeshGeometry,
+  switchTextures,
+  createInstancedMaterial,
+} from "@/utils/utils";
+import { ArcballControls } from 'three/addons/controls/ArcballControls.js';
+import { SRGBColorSpace } from "three";
 
 abstract class IThreejsBase {
   abstract runMain(): void;
@@ -134,30 +139,31 @@ export abstract class ThreejsBase implements IThreejsBase {
         this.renderer,
         this.renderer2,
         config1,
-        config2
+        config2,
       );
       this.sceneBundle1 = sceneBundle1;
       this.sceneBundle2 = sceneBundle2;
 
-      if(this.syncSceneControls) {
+      if (this.syncSceneControls) {
         let isSyncing = false; // Prevent infinite loops
-        const syncControls = (sourceControls: TrackballControls, targetControls: TrackballControls) => {
+        const syncControls = (
+          sourceControls: ArcballControls,
+          targetControls: ArcballControls,
+        ) => {
           if (isSyncing) return;
           isSyncing = true;
           syncOrbitControls(sourceControls, targetControls);
           isSyncing = false;
-        }
-        const setupControlsSync = (controls1: TrackballControls, controls2: TrackballControls) => {
-          const syncEvents = ['change', 'start', 'end'];
+        };
+        const setupControlsSync = (controls1: ArcballControls, controls2: ArcballControls) => {
+          const syncEvents = ["change", "start", "end"];
 
-          syncEvents.forEach(eventType => {
+          syncEvents.forEach((eventType) => {
             controls1.addEventListener(eventType, () => {
-              if(this.syncSceneControls)
-                syncControls(controls1, controls2);
+              if (this.syncSceneControls) syncControls(controls1, controls2);
             });
-
           });
-          controls2.addEventListener('start', () => {
+          controls2.addEventListener("start", () => {
             this.syncSceneControls = false;
           });
         };
@@ -265,7 +271,7 @@ export abstract class ThreejsBase implements IThreejsBase {
     if (!skipUpdate) {
       this.updateMeshes();
       fitCameraToAllMeshesFromZPlane(this.sceneBundle1);
-      if(!this.syncSceneControls && this.sceneBundle2) {
+      if (!this.syncSceneControls && this.sceneBundle2) {
         fitCameraToAllMeshesFromZPlane(this.sceneBundle2);
         syncOrbitControls(this.sceneBundle1.controls, this.sceneBundle2.controls);
       }
@@ -280,7 +286,7 @@ export abstract class ThreejsBase implements IThreejsBase {
   }
   public onPointerDown(event: PointerEvent) {
     let handled = false;
-    if(event.pointerType == "touch"){
+    if (event.pointerType == "touch") {
       this.onPointerMove(event, true);
     }
     if (event.buttons === 1) handled = this.wasmInstance.OnLeftButtonDown();
@@ -473,15 +479,11 @@ export abstract class ThreejsBase implements IThreejsBase {
     this.sceneBundle1.controls.dispose();
     this.disposeScene(this.sceneBundle1.scene);
     this.renderer.dispose();
-    this.renderer.forceContextLoss();
-    this.renderer.domElement.remove();
 
     if (this.sceneBundle2 && this.renderer2) {
       this.sceneBundle2.controls.dispose();
       this.disposeScene(this.sceneBundle2.scene);
       this.renderer2.dispose();
-      this.renderer2.forceContextLoss();
-      this.renderer2.domElement.remove();
     }
 
     if (this.showStats && this.stats?.dom) {
@@ -511,8 +513,7 @@ export abstract class ThreejsBase implements IThreejsBase {
       this.sceneBundle2.controls.update();
       this.renderer2.render(this.sceneBundle2.scene, this.sceneBundle2.camera);
     }
-    if(this.refreshTimeValue)
-      this.refreshTimeValue();
+    if (this.refreshTimeValue) this.refreshTimeValue();
     if (this.showStats) {
       this.stats.update();
     }
@@ -553,9 +554,11 @@ export abstract class ThreejsBase implements IThreejsBase {
     // Update instanced mesh materials
     let path: string;
     if (isDark) {
-      path = "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/635D52_A9BCC0_B1AEA0_819598.png";
+      path =
+        "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/635D52_A9BCC0_B1AEA0_819598.png";
     } else {
-      path = "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/2D2D2F_C6C2C5_727176_94949B.png";
+      path =
+        "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/2D2D2F_C6C2C5_727176_94949B.png";
     }
     const newTexture = new THREE.TextureLoader().load(path);
     this.instancedMeshes.forEach((instancedMesh) => {

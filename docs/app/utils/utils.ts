@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import {SRGBColorSpace} from "three";
-import type {instance, mesh_data, result_mesh} from "@/examples/native";
-import {LineMaterial} from "three/addons/lines/LineMaterial.js";
-import {LineSegments2} from "three/addons/lines/LineSegments2.js";
-import {LineSegmentsGeometry} from "three/addons/lines/LineSegmentsGeometry.js";
+import { SRGBColorSpace } from "three";
+import type { instance, mesh_data, result_mesh } from "@/examples/native";
+import { LineMaterial } from "three/addons/lines/LineMaterial.js";
+import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
+import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
 
 // ============================================================================
 // CurveRenderer - Efficient instanced tube rendering (cylinders + spheres)
@@ -124,7 +124,6 @@ export class CurveRenderer {
     this.sphereMesh.count = sphIdx;
     this.cylinderMesh.instanceMatrix.needsUpdate = true;
     this.sphereMesh.instanceMatrix.needsUpdate = true;
-
   }
 
   /**
@@ -134,10 +133,22 @@ export class CurveRenderer {
     const o = idx * 16;
     const buf = this.sphereBuffer;
     // Column-major 4x4: scale on diagonal, translation in column 3
-    buf[o + 0] = radius; buf[o + 1] = 0; buf[o + 2] = 0; buf[o + 3] = 0;
-    buf[o + 4] = 0; buf[o + 5] = radius; buf[o + 6] = 0; buf[o + 7] = 0;
-    buf[o + 8] = 0; buf[o + 9] = 0; buf[o + 10] = radius; buf[o + 11] = 0;
-    buf[o + 12] = x; buf[o + 13] = y; buf[o + 14] = z; buf[o + 15] = 1;
+    buf[o + 0] = radius;
+    buf[o + 1] = 0;
+    buf[o + 2] = 0;
+    buf[o + 3] = 0;
+    buf[o + 4] = 0;
+    buf[o + 5] = radius;
+    buf[o + 6] = 0;
+    buf[o + 7] = 0;
+    buf[o + 8] = 0;
+    buf[o + 9] = 0;
+    buf[o + 10] = radius;
+    buf[o + 11] = 0;
+    buf[o + 12] = x;
+    buf[o + 13] = y;
+    buf[o + 14] = z;
+    buf[o + 15] = 1;
   }
 
   /**
@@ -145,9 +156,13 @@ export class CurveRenderer {
    */
   private writeCylinderMatrix(
     idx: number,
-    x0: number, y0: number, z0: number,
-    x1: number, y1: number, z1: number,
-    radius: number
+    x0: number,
+    y0: number,
+    z0: number,
+    x1: number,
+    y1: number,
+    z1: number,
+    radius: number,
   ): void {
     const o = idx * 16;
     const buf = this.cylinderBuffer;
@@ -160,10 +175,22 @@ export class CurveRenderer {
 
     if (len < 1e-8) {
       // Degenerate - write identity with zero scale
-      buf[o + 0] = 0; buf[o + 1] = 0; buf[o + 2] = 0; buf[o + 3] = 0;
-      buf[o + 4] = 0; buf[o + 5] = 0; buf[o + 6] = 0; buf[o + 7] = 0;
-      buf[o + 8] = 0; buf[o + 9] = 0; buf[o + 10] = 0; buf[o + 11] = 0;
-      buf[o + 12] = x0; buf[o + 13] = y0; buf[o + 14] = z0; buf[o + 15] = 1;
+      buf[o + 0] = 0;
+      buf[o + 1] = 0;
+      buf[o + 2] = 0;
+      buf[o + 3] = 0;
+      buf[o + 4] = 0;
+      buf[o + 5] = 0;
+      buf[o + 6] = 0;
+      buf[o + 7] = 0;
+      buf[o + 8] = 0;
+      buf[o + 9] = 0;
+      buf[o + 10] = 0;
+      buf[o + 11] = 0;
+      buf[o + 12] = x0;
+      buf[o + 13] = y0;
+      buf[o + 14] = z0;
+      buf[o + 15] = 1;
       return;
     }
 
@@ -176,9 +203,13 @@ export class CurveRenderer {
     // Pick a non-parallel reference vector
     let rx: number, ry: number, rz: number;
     if (Math.abs(ay) < 0.9) {
-      rx = 0; ry = 1; rz = 0;
+      rx = 0;
+      ry = 1;
+      rz = 0;
     } else {
-      rx = 1; ry = 0; rz = 0;
+      rx = 1;
+      ry = 0;
+      rz = 0;
     }
 
     // X axis = cross(Y, ref), normalized
@@ -186,7 +217,9 @@ export class CurveRenderer {
     let by = az * rx - ax * rz;
     let bz = ax * ry - ay * rx;
     const bLen = Math.sqrt(bx * bx + by * by + bz * bz);
-    bx /= bLen; by /= bLen; bz /= bLen;
+    bx /= bLen;
+    by /= bLen;
+    bz /= bLen;
 
     // Z axis = cross(X, Y)
     const cx = by * az - bz * ay;
@@ -265,17 +298,19 @@ export function createPoints() {
 }
 
 export function switchTextures(mesh: THREE.Mesh, isDarkMode: boolean) {
-  if(!mesh.material || !(mesh.material instanceof THREE.MeshMatcapMaterial)) return;
-    const material = mesh.material as THREE.MeshMatcapMaterial;
-    if(!material.matcap) return;
-    material.matcap.dispose();
-    let path: string;
-    if(isDarkMode){
-      path = "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/635D52_A9BCC0_B1AEA0_819598.png";
-    } else {
-      path = "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/2D2D2F_C6C2C5_727176_94949B.png";
-    }
-    material.matcap = new THREE.TextureLoader().load(path);
+  if (!mesh.material || !(mesh.material instanceof THREE.MeshMatcapMaterial)) return;
+  const material = mesh.material as THREE.MeshMatcapMaterial;
+  if (!material.matcap) return;
+  material.matcap.dispose();
+  let path: string;
+  if (isDarkMode) {
+    path =
+      "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/635D52_A9BCC0_B1AEA0_819598.png";
+  } else {
+    path =
+      "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/2D2D2F_C6C2C5_727176_94949B.png";
+  }
+  material.matcap = new THREE.TextureLoader().load(path);
 }
 /**
  * Create a matcap material for instanced meshes.
@@ -284,9 +319,11 @@ export function switchTextures(mesh: THREE.Mesh, isDarkMode: boolean) {
 export function createInstancedMaterial(isDarkMode: boolean) {
   let path: string;
   if (isDarkMode) {
-    path = "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/635D52_A9BCC0_B1AEA0_819598.png";
+    path =
+      "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/635D52_A9BCC0_B1AEA0_819598.png";
   } else {
-    path = "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/2D2D2F_C6C2C5_727176_94949B.png";
+    path =
+      "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/2D2D2F_C6C2C5_727176_94949B.png";
   }
   const matcapTexture = new THREE.TextureLoader().load(path);
   const material = new THREE.MeshMatcapMaterial({
@@ -308,10 +345,12 @@ export function createMesh(isDarkMode: boolean) {
   // "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/AE9D99_29303B_585F70_875C33.png"
   // "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/635D52_A9BCC0_B1AEA0_819598.png",
   let path: string;
-  if(isDarkMode){
-    path = "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/635D52_A9BCC0_B1AEA0_819598.png";
+  if (isDarkMode) {
+    path =
+      "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/635D52_A9BCC0_B1AEA0_819598.png";
   } else {
-    path = "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/2D2D2F_C6C2C5_727176_94949B.png";
+    path =
+      "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/2D2D2F_C6C2C5_727176_94949B.png";
   }
   const matcapTexture = new THREE.TextureLoader().load(path);
   const material = new THREE.MeshMatcapMaterial({
@@ -377,7 +416,12 @@ export function updateResultMesh(result: result_mesh, mesh: THREE.Mesh) {
 }
 
 // Legacy compatibility - combines mesh_data and instance for migration
-export function getMeshFromWasm(data: mesh_data, inst: instance, mesh: THREE.Mesh, needsGeometryInit: boolean) {
+export function getMeshFromWasm(
+  data: mesh_data,
+  inst: instance,
+  mesh: THREE.Mesh,
+  needsGeometryInit: boolean,
+) {
   if (needsGeometryInit) {
     initMeshGeometry(data, mesh);
   }
