@@ -31,8 +31,7 @@ namespace tf::vtk {
 /// (AABB trees, face membership, manifold edge link) that are automatically
 /// invalidated when the underlying data changes.
 ///
-/// Always uses dynamic-size polygons internally. For triangle meshes, use
-/// set_as_triangles(true) to enable optimized triangle accessors.
+/// Always uses dynamic-size polygons internally.
 ///
 /// Use SafeDownCast to detect trueform-enhanced polydata in VTK pipelines:
 /// @code
@@ -53,31 +52,17 @@ public:
   /// If source is polydata, also shares cached structures.
   void ShallowCopy(vtkDataObject *src) override;
 
-  /// @brief Mark data as pure triangles for optimized access.
-  /// @param value True if all polygons are triangles.
-  auto set_as_triangles(bool value) -> void;
-
-  /// @brief Check if data is marked as triangles.
-  auto is_triangles() const -> bool;
-
   /// @brief Get points view.
   auto points() -> points_t;
 
   /// @brief Get dynamic polygons view.
   auto polys() -> dynamic_polys_t;
 
-  /// @brief Get triangle polygons view (only valid if is_triangles() is true).
-  auto triangles() -> polys_t<3>;
-
   /// @brief Get paths/lines view.
   auto paths() -> paths_t;
 
   /// @brief Get polygons (faces + points).
   auto polygons() -> dynamic_polygons_t;
-
-  /// @brief Get triangle polygons (faces + points). Only valid if
-  /// is_triangles().
-  auto triangle_polygons() -> polygons_t<3>;
 
   /// @brief Get curves (paths + points).
   auto curves() -> curves_t;
@@ -128,8 +113,6 @@ private:
   auto build_edges_buffer() -> void;
   auto build_segment_tree() -> void;
   auto build_point_tree() -> void;
-
-  bool _is_triangles = false;
 
   vtkMTimeType _poly_tree_mtime = 0;
   vtkMTimeType _fm_mtime = 0;

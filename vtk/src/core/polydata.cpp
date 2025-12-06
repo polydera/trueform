@@ -34,7 +34,6 @@ void polydata::ShallowCopy(vtkDataObject *src) {
   vtkPolyData::ShallowCopy(src);
 
   if (auto *other = polydata::SafeDownCast(src)) {
-    _is_triangles = other->_is_triangles;
     _poly_tree_mtime = other->_poly_tree_mtime;
     _fm_mtime = other->_fm_mtime;
     _mel_mtime = other->_mel_mtime;
@@ -54,24 +53,14 @@ void polydata::ShallowCopy(vtkDataObject *src) {
   }
 }
 
-auto polydata::set_as_triangles(bool value) -> void { _is_triangles = value; }
-
-auto polydata::is_triangles() const -> bool { return _is_triangles; }
-
 auto polydata::points() -> points_t { return make_points(GetPoints()); }
 
 auto polydata::polys() -> dynamic_polys_t { return make_polys(GetPolys()); }
-
-auto polydata::triangles() -> polys_t<3> { return make_polys<3>(GetPolys()); }
 
 auto polydata::paths() -> paths_t { return make_paths(GetLines()); }
 
 auto polydata::polygons() -> dynamic_polygons_t {
   return tf::make_polygons(polys(), points());
-}
-
-auto polydata::triangle_polygons() -> polygons_t<3> {
-  return tf::make_polygons(triangles(), points());
 }
 
 auto polydata::curves() -> curves_t {

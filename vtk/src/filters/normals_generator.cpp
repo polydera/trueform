@@ -53,7 +53,6 @@ auto normals_generator::RequestData(vtkInformation *, vtkInformationVector **inp
   }
 
   output->ShallowCopy(input);
-  output->set_as_triangles(true);
 
   if (_orient_faces) {
     orient_faces_consistently(output);

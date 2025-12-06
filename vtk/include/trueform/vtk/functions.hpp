@@ -37,3 +37,4 @@
 #include <trueform/vtk/functions/split_into_components.hpp>
 #include <trueform/vtk/functions/write_obj.hpp>
 #include <trueform/vtk/functions/write_stl.hpp>
+#include <trueform/vtk/functions/resolved_self_intersections.hpp>

@@ -19,13 +19,6 @@ adapter::adapter() : _polydata(vtkSmartPointer<polydata>::New()) {
   SetNumberOfOutputPorts(1);
 }
 
-auto adapter::set_as_triangles(bool v) -> void {
-  _as_triangles = v;
-  _polydata->set_as_triangles(v);
-}
-
-auto adapter::as_triangles() const -> bool { return _as_triangles; }
-
 auto adapter::FillInputPortInformation(int port, vtkInformation *info) -> int {
   if (port == 0) {
     info->Set(vtkAlgorithm::INPUT_REQUIRED_DATA_TYPE(), "vtkPolyData");
@@ -49,7 +42,6 @@ auto adapter::RequestData(vtkInformation *, vtkInformationVector **input,
     _input_ptr = in;
   }
 
-  _polydata->set_as_triangles(_as_triangles);
   SetOutput(_polydata);
   return 1;
 }

@@ -12,18 +12,30 @@ option(ENABLE_ASAN "Enable Address Sanitizer" OFF)
 option(BUILD_EXAMPLES "Build examples." OFF)
 option(BUILD_PYTHON "Build Python bindings." OFF)
 option(BUILD_BENCHMARKS "Build benchmarks." OFF)
+option(BUILD_VTK "Build VTK integration library." OFF)
+option(BUILD_VTK_EXAMPLES "Build VTK examples." OFF)
 option(USE_SYSTEM_TBB "Use system-installed TBB." ON)
 mark_as_advanced(USE_SYSTEM_TBB)
 
-# Python and Examples are mutually exclusive (Python needs static TBB, Examples need system TBB for VTK)
-if(BUILD_EXAMPLES AND BUILD_PYTHON)
-  message(FATAL_ERROR "BUILD_EXAMPLES and BUILD_PYTHON are mutually exclusive. "
-    "Python bindings require static TBB, while VTK examples require system TBB.")
+# Python and Examples/VTK are mutually exclusive (Python needs static TBB, Examples/VTK need system TBB)
+if((BUILD_EXAMPLES OR BUILD_VTK OR BUILD_VTK_EXAMPLES) AND BUILD_PYTHON)
+  message(FATAL_ERROR "BUILD_EXAMPLES/BUILD_VTK/BUILD_VTK_EXAMPLES and BUILD_PYTHON are mutually exclusive. "
+    "Python bindings require static TBB, while VTK requires system TBB.")
+endif()
+
+# VTK examples require VTK library
+if(BUILD_VTK_EXAMPLES AND NOT BUILD_VTK)
+  set(BUILD_VTK ON CACHE BOOL "Build VTK integration library." FORCE)
 endif()
 
 # Python requires static TBB
 if(BUILD_PYTHON AND USE_SYSTEM_TBB)
   set(USE_SYSTEM_TBB OFF CACHE BOOL "Use system-installed TBB." FORCE)
+endif()
+
+# VTK requires system TBB
+if(BUILD_VTK AND NOT USE_SYSTEM_TBB)
+  set(USE_SYSTEM_TBB ON CACHE BOOL "Use system-installed TBB." FORCE)
 endif()
 
 if(ENABLE_ASAN)
@@ -59,6 +71,9 @@ if(BUILD_PYTHON)
 endif()
 if(BUILD_BENCHMARKS)
   add_subdirectory(benchmarks)
+endif()
+if(BUILD_VTK)
+  add_subdirectory(vtk)
 endif()
 
 include(GNUInstallDirs)

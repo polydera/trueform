@@ -20,14 +20,7 @@ inline auto make_frame(vtkMatrix4x4 *matrix) -> tf::frame<double, 3> {
   return frame;
 }
 
-inline auto make_base_tri(polydata *in) {
-  return tf::make_form(in->poly_tree(),
-                       in->triangle_polygons() |
-                           tf::tag(in->face_membership()) |
-                           tf::tag(in->manifold_edge_link()));
-}
-
-inline auto make_base_dyn(polydata *in) {
+inline auto make_base(polydata *in) {
   return tf::make_form(in->poly_tree(),
                        in->polygons() | tf::tag(in->face_membership()) |
                            tf::tag(in->manifold_edge_link()));
@@ -70,15 +63,7 @@ auto compute_boolean_with_curves(F0 &&form0, F1 &&form1, tf::boolean_op op)
 
 template <typename Runner>
 auto dispatch(polydata *in0, polydata *in1, Runner &&runner) {
-  if (in0->is_triangles() && in1->is_triangles()) {
-    return runner(make_base_tri(in0), make_base_tri(in1));
-  } else if (in0->is_triangles()) {
-    return runner(make_base_tri(in0), make_base_dyn(in1));
-  } else if (in1->is_triangles()) {
-    return runner(make_base_dyn(in0), make_base_tri(in1));
-  } else {
-    return runner(make_base_dyn(in0), make_base_dyn(in1));
-  }
+  return runner(make_base(in0), make_base(in1));
 }
 
 } // namespace tf::vtk::impl

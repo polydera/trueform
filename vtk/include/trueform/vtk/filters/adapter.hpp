@@ -23,10 +23,6 @@ public:
   static auto New() -> adapter *;
   vtkTypeMacro(adapter, vtkPolyDataAlgorithm);
 
-  /// @brief Mark output as pure triangles for optimized access.
-  auto set_as_triangles(bool v) -> void;
-  auto as_triangles() const -> bool;
-
   /// @brief Get the cached polydata with acceleration structures.
   auto cached_polydata() -> polydata * { return _polydata.Get(); }
 
@@ -41,7 +37,6 @@ protected:
 private:
   vtkSmartPointer<polydata> _polydata;
   vtkPolyData *_input_ptr = nullptr;
-  bool _as_triangles = false;
 
   adapter(const adapter &) = delete;
   auto operator=(const adapter &) -> void = delete;

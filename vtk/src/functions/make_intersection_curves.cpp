@@ -18,14 +18,7 @@ auto make_frame(vtkMatrix4x4 *matrix) -> tf::frame<double, 3> {
   return frame;
 }
 
-auto make_base_tri(polydata *in) {
-  return tf::make_form(in->poly_tree(),
-                       in->triangle_polygons() |
-                           tf::tag(in->face_membership()) |
-                           tf::tag(in->manifold_edge_link()));
-}
-
-auto make_base_dyn(polydata *in) {
+auto make_base(polydata *in) {
   return tf::make_form(in->poly_tree(),
                        in->polygons() | tf::tag(in->face_membership()) |
                            tf::tag(in->manifold_edge_link()));
@@ -71,15 +64,7 @@ auto run_with_both_transforms(Base0 &&base0, Base1 &&base1,
 template <typename Runner>
 auto dispatch(polydata *in0, polydata *in1, Runner &&runner)
     -> vtkSmartPointer<polydata> {
-  if (in0->is_triangles() && in1->is_triangles()) {
-    return runner(make_base_tri(in0), make_base_tri(in1));
-  } else if (in0->is_triangles()) {
-    return runner(make_base_tri(in0), make_base_dyn(in1));
-  } else if (in1->is_triangles()) {
-    return runner(make_base_dyn(in0), make_base_tri(in1));
-  } else {
-    return runner(make_base_dyn(in0), make_base_dyn(in1));
-  }
+  return runner(make_base(in0), make_base(in1));
 }
 
 } // namespace

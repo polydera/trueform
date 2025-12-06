@@ -5,7 +5,6 @@ find_package(Freetype QUIET)
 find_package(VTK REQUIRED COMPONENTS
   CommonCore
   CommonDataModel
-  CommonTransforms
 )
 
 set(TRUEFORM_VTK_SOURCES
@@ -21,6 +20,7 @@ set(TRUEFORM_VTK_SOURCES
   src/filters/normals_generator.cpp
   src/filters/obj_reader.cpp
   src/filters/polygon_cleaner.cpp
+  src/filters/self_intersection_resolver.cpp
   src/filters/stl_reader.cpp
   src/core/make_byte_blocks.cpp
   src/core/make_range.cpp
@@ -77,6 +77,7 @@ set(TRUEFORM_VTK_SOURCES
   src/functions/split_into_components.cpp
   src/functions/write_obj.cpp
   src/functions/write_stl.cpp
+  src/functions/resolved_self_intersections.cpp
 )
 
 add_library(trueform_vtk ${TRUEFORM_VTK_SOURCES})
@@ -99,7 +100,7 @@ vtk_module_autoinit(
   MODULES ${VTK_LIBRARIES}
 )
 
-target_compile_options(trueform_vtk PRIVATE -Wall -Wextra -Wpedantic -Wno-extra-semi -ftime-trace)
+target_compile_options(trueform_vtk PRIVATE -Wall -Wextra -Wpedantic -Wno-extra-semi)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
   include(CheckCXXCompilerFlag)
