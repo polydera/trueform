@@ -7,14 +7,17 @@
 #pragma once
 
 #include "../../core/coordinate_type.hpp"
+#include "../../core/make_buffer_for_transformed.hpp"
+#include "../../core/make_local_buffer_for_transformed.hpp"
+#include "../../core/policy/buffer.hpp"
 #include "../../core/transformed.hpp"
 #include "../form.hpp"
 #include "../nearest_neighbors.hpp"
-#include "../tree/local_tree_metric_result.hpp"
-#include "../tree/tree_metric_result.hpp"
-#include "../tree/proximity.hpp"
 #include "../tree/dual_proximity.hpp"
+#include "../tree/local_tree_metric_result.hpp"
+#include "../tree/proximity.hpp"
 #include "../tree/traversal_metrics.hpp"
+#include "../tree/tree_metric_result.hpp"
 #include "../tree_like.hpp"
 #include "../tree_metric_info.hpp"
 #include "../tree_metric_info_pair.hpp"
@@ -110,13 +113,15 @@ auto nearness_search(const tf::tree_like<TreePolicy0> &tree0,
 template <std::size_t Dims, typename Policy0, typename F0, typename F1>
 auto nearness_search(const tf::form<Dims, Policy0> &form, const F0 &bv_metric,
                      const F1 &closest_point_f) {
+  auto buff = tf::core::make_buffer_for_transformed(form[0], form.frame());
   return nearness_search(
       form.tree(),
       [&](const auto &bv) {
         return bv_metric(tf::transformed(bv, form.frame()));
       },
       [&](auto id) {
-        return closest_point_f(tf::transformed(form[id], form.frame()));
+        return closest_point_f(
+            tf::transformed(form[id] | tf::tag(buff), form.frame()));
       });
 }
 
@@ -124,13 +129,15 @@ template <std::size_t Dims, typename Policy0, typename F0, typename F1>
 auto nearness_search(const tf::form<Dims, Policy0> &form, const F0 &bv_metric,
                      const F1 &closest_point_f,
                      tf::coordinate_type<Policy0> radius) {
+  auto buff = tf::core::make_buffer_for_transformed(form[0], form.frame());
   return nearness_search(
       form.tree(),
       [&](const auto &bv) {
         return bv_metric(tf::transformed(bv, form.frame()));
       },
       [&](auto id) {
-        return closest_point_f(tf::transformed(form[id], form.frame()));
+        return closest_point_f(
+            tf::transformed(form[id] | tf::tag(buff), form.frame()));
       },
       radius);
 }
@@ -141,13 +148,15 @@ auto nearness_search(const tf::form<Dims, Policy0> &form, const F0 &bv_metric,
                      const F1 &closest_point_f,
                      tf::nearest_neighbors<RandomIt> &knn)
     -> tf::nearest_neighbors<RandomIt> & {
+  auto buff = tf::core::make_buffer_for_transformed(form[0], form.frame());
   nearness_search(
       form.tree(),
       [&](const auto &bv) {
         return bv_metric(tf::transformed(bv, form.frame()));
       },
       [&](auto id) {
-        return closest_point_f(tf::transformed(form[id], form.frame()));
+        return closest_point_f(
+            tf::transformed(form[id] | tf::tag(buff), form.frame()));
       },
       knn);
   return knn;
@@ -170,6 +179,10 @@ template <std::size_t Dims, typename Policy0, typename Policy1, typename F>
 auto nearness_search(const tf::form<Dims, Policy0> &form0,
                      const tf::form<Dims, Policy1> &form1,
                      const F &closest_point_f) {
+  auto buff0 =
+      tf::core::make_local_buffer_for_transformed(form0[0], form0.frame());
+  auto buff1 =
+      tf::core::make_local_buffer_for_transformed(form1[0], form1.frame());
   return nearness_search(
       form0.tree(), form1.tree(),
       [&](const auto &bv0, const auto &bv1) {
@@ -177,8 +190,9 @@ auto nearness_search(const tf::form<Dims, Policy0> &form0,
                                  tf::transformed(bv1, form1.frame()));
       },
       [&](auto id0, auto id1) {
-        return closest_point_f(tf::transformed(form0[id0], form0.frame()),
-                               tf::transformed(form1[id1], form1.frame()));
+        return closest_point_f(
+            tf::transformed(form0[id0] | tf::tag(buff0), form0.frame()),
+            tf::transformed(form1[id1] | tf::tag(buff1), form1.frame()));
       });
 }
 
@@ -187,6 +201,10 @@ auto nearness_search(const tf::form<Dims, Policy0> &form0,
                      const tf::form<Dims, Policy1> &form1,
                      const F &closest_point_f,
                      tf::coordinate_type<Policy0, Policy1> radius) {
+  auto buff0 =
+      tf::core::make_local_buffer_for_transformed(form0[0], form0.frame());
+  auto buff1 =
+      tf::core::make_local_buffer_for_transformed(form1[0], form1.frame());
   return nearness_search(
       form0.tree(), form1.tree(),
       [&](const auto &bv0, const auto &bv1) {
@@ -194,8 +212,9 @@ auto nearness_search(const tf::form<Dims, Policy0> &form0,
                                  tf::transformed(bv1, form1.frame()));
       },
       [&](auto id0, auto id1) {
-        return closest_point_f(tf::transformed(form0[id0], form0.frame()),
-                               tf::transformed(form1[id1], form1.frame()));
+        return closest_point_f(
+            tf::transformed(form0[id0] | tf::tag(buff0), form0.frame()),
+            tf::transformed(form1[id1] | tf::tag(buff1), form1.frame()));
       },
       radius);
 }

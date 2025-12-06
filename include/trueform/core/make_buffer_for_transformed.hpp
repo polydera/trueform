@@ -6,9 +6,12 @@
  */
 #pragma once
 #include "./buffer.hpp"
+#include "./frame_like.hpp"
+#include "./linalg/is_identity.hpp"
 #include "./none.hpp"
 #include "./polygon.hpp"
 #include "./static_size.hpp"
+#include "./transformation_like.hpp"
 #include "./transformed.hpp"
 
 namespace tf::core {
@@ -19,12 +22,29 @@ auto make_buffer_for_transformed(const T &, const Transform &) {
   return tf::none;
 }
 
-/// Specialization for polygon: returns buffer for dynamic, none for static
-template <std::size_t Dims, typename Policy, typename Transform>
+/// Specialization for polygon with transformation_like
+template <std::size_t Dims, typename Policy, typename U>
 auto make_buffer_for_transformed(const tf::polygon<Dims, Policy> &poly,
-                                 const Transform &transform) {
-  if constexpr (tf::static_size_v<tf::polygon<Dims, Policy>> ==
-                tf::dynamic_size) {
+                                 const transformation_like<Dims, U> &transform) {
+  if constexpr (tf::linalg::is_identity<U>) {
+    return tf::none;
+  } else if constexpr (tf::static_size_v<tf::polygon<Dims, Policy>> ==
+                       tf::dynamic_size) {
+    using point_t = std::decay_t<decltype(tf::transformed(poly[0], transform))>;
+    return tf::buffer<point_t>{};
+  } else {
+    return tf::none;
+  }
+}
+
+/// Specialization for polygon with frame_like
+template <std::size_t Dims, typename Policy, typename U>
+auto make_buffer_for_transformed(const tf::polygon<Dims, Policy> &poly,
+                                 const frame_like<Dims, U> &transform) {
+  if constexpr (tf::linalg::is_identity<U>) {
+    return tf::none;
+  } else if constexpr (tf::static_size_v<tf::polygon<Dims, Policy>> ==
+                       tf::dynamic_size) {
     using point_t = std::decay_t<decltype(tf::transformed(poly[0], transform))>;
     return tf::buffer<point_t>{};
   } else {
