@@ -80,7 +80,7 @@ auto concatenated_blocked_range_collections(const Range0 &r0, const Range1 &r1,
       using SubRange = std::decay_t<decltype(sub)>;
       using Elem =
           std::decay_t<decltype(*std::begin(std::declval<SubRange &>()))>;
-      constexpr int Ksub = tf::static_size_v<Elem>;
+      constexpr std::size_t Ksub = tf::static_size_v<Elem>;
 
       const Index end_i = start_i + static_cast<Index>(sub.size());
 

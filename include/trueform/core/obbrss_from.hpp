@@ -9,7 +9,7 @@
 #include "./base/rss_from_impl.hpp"
 #include "./covariance_of.hpp"
 #include "./dot.hpp"
-#include "./eigen_of.hpp"
+#include "./eigen_of_symmetric.hpp"
 #include "./obbrss.hpp"
 #include "./points.hpp"
 #include "./polygons.hpp"
@@ -32,7 +32,7 @@ auto obbrss_from(const Range &polygons, const tf::polygon<Dims, Policy> &) {
   auto [centroid, cov] = tf::covariance_of(tf::make_polygons(polygons));
 
   // 2) Eigen decomposition (shared)
-  auto [eigenvalues, eigenvectors] = tf::eigen_of(cov);
+  auto [eigenvalues, eigenvectors] = tf::eigen_of_symmetric(cov);
 
   tf::obbrss<T, Dims> box;
 
@@ -51,7 +51,7 @@ auto obbrss_from(const Range &polygons, const tf::polygon<Dims, Policy> &) {
 
   auto radius_acc = tf::reduce(
       tf::make_mapped_range(polygons,
-                            [&](const auto &poly) {
+                            [&, &centroid=centroid](const auto &poly) {
                               radius_accum poly_acc = radius_init;
                               for (const auto &pt : poly) {
                                 auto diff = pt - centroid;
@@ -93,7 +93,7 @@ auto obbrss_from(const Range &polygons, const tf::polygon<Dims, Policy> &) {
     auto combined_acc = tf::reduce(
         tf::make_mapped_range(
             polygons,
-            [&](const auto &poly) {
+            [&, &centroid = centroid](const auto &poly) {
               proj_accum_2d poly_proj = proj_init;
               rss_accum_2d poly_rss = rss_init;
               for (const auto &pt : poly) {
@@ -151,7 +151,7 @@ auto obbrss_from(const Range &polygons, const tf::polygon<Dims, Policy> &) {
 
     auto proj_acc = tf::reduce(
         tf::make_mapped_range(polygons,
-                              [&](const auto &poly) {
+                              [&, &centroid = centroid](const auto &poly) {
                                 proj_accum_3d poly_acc = proj_init;
                                 for (const auto &pt : poly) {
                                   auto diff = pt - centroid;
@@ -188,7 +188,7 @@ auto obbrss_from(const Range &polygons, const tf::polygon<Dims, Policy> &) {
 
     auto rss_acc = tf::reduce(
         tf::make_mapped_range(polygons,
-                              [&](const auto &poly) {
+                              [&, &centroid = centroid](const auto &poly) {
                                 rss_accum_3d poly_rss = rss_init;
                                 for (const auto &pt : poly) {
                                   auto diff = pt - centroid;
@@ -265,7 +265,7 @@ auto obbrss_from(const Range &segments, const tf::segment<Dims, Policy> &) {
   auto [centroid, cov] = tf::covariance_of(tf::make_segments(segments));
 
   // 2) Eigen decomposition (shared)
-  auto [eigenvalues, eigenvectors] = tf::eigen_of(cov);
+  auto [eigenvalues, eigenvectors] = tf::eigen_of_symmetric(cov);
 
   tf::obbrss<T, Dims> box;
 
@@ -284,7 +284,7 @@ auto obbrss_from(const Range &segments, const tf::segment<Dims, Policy> &) {
 
   auto radius_acc = tf::reduce(
       tf::make_mapped_range(segments,
-                            [&](const auto &seg) {
+                            [&, &centroid = centroid](const auto &seg) {
                               radius_accum seg_acc = radius_init;
                               for (const auto &pt : seg) {
                                 auto diff = pt - centroid;
@@ -326,7 +326,7 @@ auto obbrss_from(const Range &segments, const tf::segment<Dims, Policy> &) {
     auto combined_acc = tf::reduce(
         tf::make_mapped_range(
             segments,
-            [&](const auto &seg) {
+            [&, &centroid = centroid](const auto &seg) {
               proj_accum_2d seg_proj = proj_init;
               rss_accum_2d seg_rss = rss_init;
               for (const auto &pt : seg) {
@@ -384,7 +384,7 @@ auto obbrss_from(const Range &segments, const tf::segment<Dims, Policy> &) {
 
     auto proj_acc = tf::reduce(
         tf::make_mapped_range(segments,
-                              [&](const auto &seg) {
+                              [&, &centroid = centroid](const auto &seg) {
                                 proj_accum_3d seg_acc = proj_init;
                                 for (const auto &pt : seg) {
                                   auto diff = pt - centroid;
@@ -421,7 +421,7 @@ auto obbrss_from(const Range &segments, const tf::segment<Dims, Policy> &) {
 
     auto rss_acc = tf::reduce(
         tf::make_mapped_range(segments,
-                              [&](const auto &seg) {
+                              [&, &centroid = centroid](const auto &seg) {
                                 rss_accum_3d seg_rss = rss_init;
                                 for (const auto &pt : seg) {
                                   auto diff = pt - centroid;
@@ -498,7 +498,7 @@ auto obbrss_from(const Range &points, const tf::point_like<Dims, Policy> &) {
   auto [centroid, cov] = tf::covariance_of(tf::make_points(points));
 
   // 2) Eigen decomposition (shared)
-  auto [eigenvalues, eigenvectors] = tf::eigen_of(cov);
+  auto [eigenvalues, eigenvectors] = tf::eigen_of_symmetric(cov);
 
   tf::obbrss<T, Dims> box;
 
@@ -517,7 +517,7 @@ auto obbrss_from(const Range &points, const tf::point_like<Dims, Policy> &) {
 
   auto radius_acc = tf::reduce(
       tf::make_mapped_range(points,
-                            [&](const auto &pt) {
+                            [&, &centroid = centroid](const auto &pt) {
                               auto diff = pt - centroid;
                               T pr = tf::dot(diff, box.axes[Dims - 1]);
                               return radius_accum{pr, pr};
@@ -554,7 +554,7 @@ auto obbrss_from(const Range &points, const tf::point_like<Dims, Policy> &) {
     auto combined_acc = tf::reduce(
         tf::make_mapped_range(
             points,
-            [&](const auto &pt) {
+            [&, &centroid = centroid](const auto &pt) {
               auto diff = pt - centroid;
               T px = tf::dot(diff, box.axes[0]);
               T py = tf::dot(diff, box.axes[1]);
@@ -602,7 +602,7 @@ auto obbrss_from(const Range &points, const tf::point_like<Dims, Policy> &) {
 
     auto proj_acc = tf::reduce(
         tf::make_mapped_range(points,
-                              [&](const auto &pt) {
+                              [&, &centroid = centroid](const auto &pt) {
                                 auto diff = pt - centroid;
                                 T px = tf::dot(diff, box.axes[0]);
                                 T py = tf::dot(diff, box.axes[1]);
@@ -630,7 +630,7 @@ auto obbrss_from(const Range &points, const tf::point_like<Dims, Policy> &) {
 
     auto rss_acc = tf::reduce(
         tf::make_mapped_range(points,
-                              [&](const auto &pt) {
+                              [&, &centroid = centroid](const auto &pt) {
                                 auto diff = pt - centroid;
                                 T px = tf::dot(diff, box.axes[0]);
                                 T py = tf::dot(diff, box.axes[1]);

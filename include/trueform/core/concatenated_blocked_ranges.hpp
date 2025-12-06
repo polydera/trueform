@@ -168,6 +168,7 @@ auto concatenated_blocked_ranges_directed(
     // Allocate payload and copy
     out.data_buffer().allocate(offsets.back());
     run_copy(out);
+
     return out;
   }
 }

@@ -23,6 +23,7 @@
 #include "./obb_like.hpp"
 #include "./obbrss_like.hpp"
 #include "./point_like.hpp"
+#include "./policy/buffer.hpp"
 #include "./policy/id.hpp"
 #include "./policy/ids.hpp"
 #include "./policy/indices.hpp"
@@ -979,5 +980,43 @@ auto transformed(const tag_plane<Dims, Policy, Base> &_this,
                  const frame_like<Dims, U> &frame) {
   return tf::tag_plane(transformed(_this.plane(), frame),
                        transformed(unwrap(_this), frame));
+}
+
+template <typename T, std::size_t V, typename Policy, std::size_t Dims,
+          typename U>
+auto transformed(const tag_buffer<T, core::poly<V, Policy>> &_this,
+                 const transformation_like<Dims, U> &transform) {
+  if constexpr (V != tf::dynamic_size) {
+    return wrap_like(_this, transformed(unwrap(_this), transform));
+  } else {
+    using transformed_t = decltype(transformed(_this[0], transform));
+    static_assert(std::is_assignable_v<T &, transformed_t>,
+                  "Buffer element type T must be assignable from the "
+                  "transformed point type");
+    auto &buf = _this.buffer();
+    buf.allocate(_this.size());
+    for (std::size_t i = 0; i < _this.size(); ++i)
+      buf[i] = transformed(_this[i], transform);
+    return core::make_poly<tf::dynamic_size>(tf::make_range(buf));
+  }
+}
+
+template <typename T, std::size_t V, typename Policy, std::size_t Dims,
+          typename U>
+auto transformed(const tag_buffer<T, core::poly<V, Policy>> &_this,
+                 const frame_like<Dims, U> &frame) {
+  if constexpr (V != tf::dynamic_size) {
+    return wrap_like(_this, transformed(unwrap(_this), frame));
+  } else {
+    using transformed_t = decltype(transformed(_this[0], frame));
+    static_assert(std::is_assignable_v<T &, transformed_t>,
+                  "Buffer element type T must be assignable from the "
+                  "transformed point type");
+    auto &buf = _this.buffer();
+    buf.allocate(_this.size());
+    for (std::size_t i = 0; i < _this.size(); ++i)
+      buf[i] = transformed(_this[i], frame);
+    return core::make_poly<tf::dynamic_size>(tf::make_range(buf));
+  }
 }
 } // namespace tf::policy

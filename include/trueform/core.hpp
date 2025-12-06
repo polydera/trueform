@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -37,6 +37,7 @@
 #include "./core/cross.hpp"                       // IWYU pragma: export
 #include "./core/curve.hpp"                       // IWYU pragma: export
 #include "./core/curves.hpp"                      // IWYU pragma: export
+#include "./core/curves_buffer.hpp"               // IWYU pragma: export
 #include "./core/distance.hpp"                    // IWYU pragma: export
 #include "./core/dot.hpp"                         // IWYU pragma: export
 #include "./core/edges.hpp"                       // IWYU pragma: export
@@ -70,6 +71,10 @@
 #include "./core/normal.hpp"                      // IWYU pragma: export
 #include "./core/normalize.hpp"                   // IWYU pragma: export
 #include "./core/normalized.hpp"                  // IWYU pragma: export
+#include "./core/obb.hpp"                         // IWYU pragma: export
+#include "./core/obb_from.hpp"                    // IWYU pragma: export
+#include "./core/obbrss.hpp"                      // IWYU pragma: export
+#include "./core/obbrss_from.hpp"                 // IWYU pragma: export
 #include "./core/offset_block_buffer.hpp"         // IWYU pragma: export
 #include "./core/parallelogram_area.hpp"          // IWYU pragma: export
 #include "./core/paths.hpp"                       // IWYU pragma: export
@@ -83,6 +88,7 @@
 #include "./core/policy.hpp"                      // IWYU pragma: export
 #include "./core/polygon.hpp"                     // IWYU pragma: export
 #include "./core/polygons.hpp"                    // IWYU pragma: export
+#include "./core/polygons_buffer.hpp"             // IWYU pragma: export
 #include "./core/projector.hpp"                   // IWYU pragma: export
 #include "./core/range.hpp"                       // IWYU pragma: export
 #include "./core/ray.hpp"                         // IWYU pragma: export
@@ -93,6 +99,8 @@
 #include "./core/ray_hit.hpp"                     // IWYU pragma: export
 #include "./core/ray_hit_info.hpp"                // IWYU pragma: export
 #include "./core/ray_like.hpp"                    // IWYU pragma: export
+#include "./core/rss.hpp"                         // IWYU pragma: export
+#include "./core/rss_from.hpp"                    // IWYU pragma: export
 #include "./core/segment.hpp"                     // IWYU pragma: export
 #include "./core/segments.hpp"                    // IWYU pragma: export
 #include "./core/segments_buffer.hpp"             // IWYU pragma: export

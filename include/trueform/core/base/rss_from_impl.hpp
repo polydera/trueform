@@ -5,7 +5,6 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "../dot.hpp"
 #include "../sqrt.hpp"
 #include <algorithm>
 

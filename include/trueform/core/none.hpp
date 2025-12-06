@@ -5,6 +5,7 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
+
 namespace tf {
 struct none_t {};
 inline constexpr none_t none;
