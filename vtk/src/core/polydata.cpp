@@ -38,7 +38,6 @@ void polydata::ShallowCopy(vtkDataObject *src) {
     _poly_tree_mtime = other->_poly_tree_mtime;
     _fm_mtime = other->_fm_mtime;
     _mel_mtime = other->_mel_mtime;
-    _tri_mel_mtime = other->_tri_mel_mtime;
     _fl_mtime = other->_fl_mtime;
     _vl_mtime = other->_vl_mtime;
     _edges_buffer_mtime = other->_edges_buffer_mtime;
@@ -47,7 +46,6 @@ void polydata::ShallowCopy(vtkDataObject *src) {
     _poly_tree = other->_poly_tree;
     _fm = other->_fm;
     _mel = other->_mel;
-    _tri_mel = other->_tri_mel;
     _fl = other->_fl;
     _vl = other->_vl;
     _edges_buffer = other->_edges_buffer;
@@ -102,12 +100,6 @@ auto polydata::manifold_edge_link()
     -> const tf::manifold_edge_link<vtkIdType, tf::dynamic_size> & {
   build_manifold_edge_link();
   return *_mel;
-}
-
-auto polydata::triangle_manifold_edge_link()
-    -> const tf::manifold_edge_link<vtkIdType, 3> & {
-  build_triangle_manifold_edge_link();
-  return *_tri_mel;
 }
 
 auto polydata::face_link() -> const tf::face_link<vtkIdType> & {
@@ -165,16 +157,6 @@ auto polydata::build_manifold_edge_link() -> void {
           tf::manifold_edge_link<vtkIdType, tf::dynamic_size>>();
     _mel->build(polys(), face_membership());
     _mel_mtime = mtime;
-  }
-}
-
-auto polydata::build_triangle_manifold_edge_link() -> void {
-  auto mtime = GetPolys()->GetMTime();
-  if (!_tri_mel || _tri_mel_mtime < mtime) {
-    if (!_tri_mel)
-      _tri_mel = std::make_unique<tf::manifold_edge_link<vtkIdType, 3>>();
-    _tri_mel->build(triangles(), face_membership());
-    _tri_mel_mtime = mtime;
   }
 }
 

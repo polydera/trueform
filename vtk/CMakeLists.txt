@@ -50,7 +50,10 @@ set(TRUEFORM_VTK_SOURCES
   src/functions/cleaned_points.cpp
   src/functions/compute_cell_normals.cpp
   src/functions/compute_point_normals.cpp
-  src/functions/make_boolean.cpp
+  src/functions/make_boolean_pp.cpp
+  src/functions/make_boolean_mp.cpp
+  src/functions/make_boolean_pm.cpp
+  src/functions/make_boolean_mm.cpp
   src/functions/make_boundary_edges.cpp
   src/functions/make_boundary_paths.cpp
   src/functions/make_connected_components.cpp
@@ -60,6 +63,9 @@ set(TRUEFORM_VTK_SOURCES
   src/functions/make_non_manifold_edges.cpp
   src/functions/make_non_simple_edges.cpp
   src/functions/neighbor_search.cpp
+  src/functions/neighbor_search_batch.cpp
+  src/functions/neighbor_search_k.cpp
+  src/functions/neighbor_search_k_batch.cpp
   src/functions/intersects.cpp
   src/functions/obb_from.cpp
   src/functions/orient_faces_consistently.cpp
@@ -93,7 +99,7 @@ vtk_module_autoinit(
   MODULES ${VTK_LIBRARIES}
 )
 
-target_compile_options(trueform_vtk PRIVATE -Wall -Wextra -Wpedantic -Wno-extra-semi)
+target_compile_options(trueform_vtk PRIVATE -Wall -Wextra -Wpedantic -Wno-extra-semi -ftime-trace)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
   include(CheckCXXCompilerFlag)

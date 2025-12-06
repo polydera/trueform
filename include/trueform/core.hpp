@@ -12,6 +12,7 @@
 #include "./core/aabb_metrics.hpp"              // IWYU pragma: export
 #include "./core/aabb_union.hpp"                // IWYU pragma: export
 #include "./core/algorithm.hpp"                 // IWYU pragma: export
+#include "./core/allocate.hpp"                  // IWYU pragma: export
 #include "./core/angle.hpp"                     // IWYU pragma: export
 #include "./core/area.hpp"                      // IWYU pragma: export
 #include "./core/array_hash.hpp"                // IWYU pragma: export
@@ -76,6 +77,7 @@
 #include "./core/obbrss.hpp"                      // IWYU pragma: export
 #include "./core/obbrss_from.hpp"                 // IWYU pragma: export
 #include "./core/offset_block_buffer.hpp"         // IWYU pragma: export
+#include "./core/offset_block_vector.hpp"         // IWYU pragma: export
 #include "./core/parallelogram_area.hpp"          // IWYU pragma: export
 #include "./core/paths.hpp"                       // IWYU pragma: export
 #include "./core/plane.hpp"                       // IWYU pragma: export
@@ -99,6 +101,7 @@
 #include "./core/ray_hit.hpp"                     // IWYU pragma: export
 #include "./core/ray_hit_info.hpp"                // IWYU pragma: export
 #include "./core/ray_like.hpp"                    // IWYU pragma: export
+#include "./core/reallocate.hpp"                  // IWYU pragma: export
 #include "./core/rss.hpp"                         // IWYU pragma: export
 #include "./core/rss_from.hpp"                    // IWYU pragma: export
 #include "./core/segment.hpp"                     // IWYU pragma: export

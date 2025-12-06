@@ -15,6 +15,9 @@
 #include <trueform/vtk/functions/distance.hpp>
 #include <trueform/vtk/functions/intersects.hpp>
 #include <trueform/vtk/functions/neighbor_search.hpp>
+#include <trueform/vtk/functions/neighbor_search_batch.hpp>
+#include <trueform/vtk/functions/neighbor_search_k.hpp>
+#include <trueform/vtk/functions/neighbor_search_k_batch.hpp>
 #include <trueform/vtk/functions/make_boolean.hpp>
 #include <trueform/vtk/functions/make_boundary_edges.hpp>
 #include <trueform/vtk/functions/make_boundary_paths.hpp>

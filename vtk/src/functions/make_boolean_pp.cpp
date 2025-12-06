@@ -1,0 +1,37 @@
+/*
+ * Copyright (c) 2025 Žiga Sajovic, XLAB
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
+ * https://github.com/xlabmedical/trueform
+ */
+#include "./impl/make_boolean_impl.hpp"
+
+namespace tf::vtk {
+
+using namespace impl;
+
+auto make_boolean(polydata *input0, polydata *input1, tf::boolean_op op)
+    -> std::pair<vtkSmartPointer<polydata>, vtkSmartPointer<vtkSignedCharArray>> {
+  if (!input0 || !input1) {
+    return {nullptr, nullptr};
+  }
+
+  return dispatch(input0, input1, [op](auto &&base0, auto &&base1) {
+    return compute_boolean(base0, base1, op);
+  });
+}
+
+auto make_boolean(polydata *input0, polydata *input1, tf::boolean_op op,
+                  tf::return_curves_t)
+    -> std::tuple<vtkSmartPointer<polydata>, vtkSmartPointer<vtkSignedCharArray>,
+                  vtkSmartPointer<polydata>> {
+  if (!input0 || !input1) {
+    return {nullptr, nullptr, nullptr};
+  }
+
+  return dispatch(input0, input1, [op](auto &&base0, auto &&base1) {
+    return compute_boolean_with_curves(base0, base1, op);
+  });
+}
+
+} // namespace tf::vtk

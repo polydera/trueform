@@ -14,7 +14,7 @@ auto read_stl(const std::string &file_name) -> vtkSmartPointer<polydata> {
   auto polys = tf::read_stl<vtkIdType>(file_name);
   auto result = vtkSmartPointer<polydata>::New();
   result->ShallowCopy(make_vtk_polydata(std::move(polys)));
-  result->set_as_triangles(true);
+  // result->set_as_triangles(true);
   return result;
 }
 

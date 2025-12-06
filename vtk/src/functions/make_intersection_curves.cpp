@@ -22,7 +22,7 @@ auto make_base_tri(polydata *in) {
   return tf::make_form(in->poly_tree(),
                        in->triangle_polygons() |
                            tf::tag(in->face_membership()) |
-                           tf::tag(in->triangle_manifold_edge_link()));
+                           tf::tag(in->manifold_edge_link()));
 }
 
 auto make_base_dyn(polydata *in) {

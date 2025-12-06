@@ -7,6 +7,8 @@
 #pragma once
 #include "../blocked_buffer.hpp"
 #include "../offset_block_buffer.hpp"
+#include "../offset_block_vector.hpp"
+#include "../reallocate.hpp"
 #include "./block_reduce_sequenced_aggregate.hpp"
 namespace tf {
 namespace core {
@@ -38,7 +40,7 @@ auto generate_offset_blocks(
         auto &[l_sizes, l_data] = local_result;
         auto &[offsets, data] = result;
         auto old_data_size = data.size();
-        data.reallocate(old_data_size + l_data.size());
+        tf::core::reallocate(data, old_data_size + l_data.size());
         std::copy(l_data.begin(), l_data.end(), data.begin() + old_data_size);
         for (auto offset : l_sizes) {
           offsets[current_i] = offsets[current_i - 1] + offset;
@@ -75,6 +77,24 @@ auto generate_offset_blocks(
     const F &fill_block_f,
     std::size_t n_tasks = std::thread::hardware_concurrency() * 5) {
   generate_offset_blocks(input_data, buff.offsets_buffer(), buff.data_buffer(),
+                         fill_block_f, n_tasks);
+}
+
+template <typename Range, typename Index, typename T, typename F>
+auto generate_offset_blocks(
+    const Range &input_data, tf::buffer<Index> &offsets, std::vector<T> &data,
+    const F &fill_block_f,
+    std::size_t n_tasks = std::thread::hardware_concurrency() * 5) {
+  return core::generate_offset_blocks(input_data, offsets, data, fill_block_f,
+                                      n_tasks);
+}
+
+template <typename Range, typename Index, typename T, typename F>
+auto generate_offset_blocks(
+    const Range &input_data, tf::offset_block_vector<Index, T> &buff,
+    const F &fill_block_f,
+    std::size_t n_tasks = std::thread::hardware_concurrency() * 5) {
+  generate_offset_blocks(input_data, buff.offsets_buffer(), buff.data_vector(),
                          fill_block_f, n_tasks);
 }
 } // namespace tf

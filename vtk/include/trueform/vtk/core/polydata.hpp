@@ -100,10 +100,6 @@ public:
   auto manifold_edge_link()
       -> const tf::manifold_edge_link<vtkIdType, tf::dynamic_size> &;
 
-  /// @brief Get manifold edge link for triangles. Only valid if is_triangles().
-  auto triangle_manifold_edge_link()
-      -> const tf::manifold_edge_link<vtkIdType, 3> &;
-
   /// @brief Get face link structure. Built lazily on first access.
   auto face_link() -> const tf::face_link<vtkIdType> &;
 
@@ -127,7 +123,6 @@ private:
   auto build_poly_tree() -> void;
   auto build_face_membership() -> void;
   auto build_manifold_edge_link() -> void;
-  auto build_triangle_manifold_edge_link() -> void;
   auto build_face_link() -> void;
   auto build_vertex_link() -> void;
   auto build_edges_buffer() -> void;
@@ -139,7 +134,6 @@ private:
   vtkMTimeType _poly_tree_mtime = 0;
   vtkMTimeType _fm_mtime = 0;
   vtkMTimeType _mel_mtime = 0;
-  vtkMTimeType _tri_mel_mtime = 0;
   vtkMTimeType _fl_mtime = 0;
   vtkMTimeType _vl_mtime = 0;
   vtkMTimeType _edges_buffer_mtime = 0;
@@ -149,7 +143,6 @@ private:
   std::shared_ptr<tf::aabb_tree<vtkIdType, float, 3>> _poly_tree;
   std::shared_ptr<tf::face_membership<vtkIdType>> _fm;
   std::shared_ptr<tf::manifold_edge_link<vtkIdType, tf::dynamic_size>> _mel;
-  std::shared_ptr<tf::manifold_edge_link<vtkIdType, 3>> _tri_mel;
   std::shared_ptr<tf::face_link<vtkIdType>> _fl;
   std::shared_ptr<tf::vertex_link<vtkIdType>> _vl;
   std::shared_ptr<tf::blocked_buffer<vtkIdType, 2>> _edges_buffer;
