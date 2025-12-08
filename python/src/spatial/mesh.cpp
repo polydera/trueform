@@ -72,14 +72,18 @@ auto register_mesh(nanobind::module_ &m) -> void {
       .def("number_of_faces", &mesh_wrapper<int, float, 3, 2>::number_of_faces)
       .def("dims", &mesh_wrapper<int, float, 3, 2>::dims)
       .def("faces_array", &mesh_wrapper<int, float, 3, 2>::faces_array)
+      .def("set_faces_array", &mesh_wrapper<int, float, 3, 2>::set_faces_array)
       .def("points_array", &mesh_wrapper<int, float, 3, 2>::points_array)
+      .def("set_points_array", &mesh_wrapper<int, float, 3, 2>::set_points_array)
       .def("has_transformation",
            &mesh_wrapper<int, float, 3, 2>::has_transformation)
       .def("transformation", &mesh_wrapper<int, float, 3, 2>::transformation)
       .def("set_transformation",
            &mesh_wrapper<int, float, 3, 2>::set_transformation)
       .def("clear_transformation",
-           &mesh_wrapper<int, float, 3, 2>::clear_transformation);
+           &mesh_wrapper<int, float, 3, 2>::clear_transformation)
+      .def("mark_modified", &mesh_wrapper<int, float, 3, 2>::mark_modified)
+      .def("shared_view", &mesh_wrapper<int, float, 3, 2>::shared_view);
 
   // int32, float, tri, 3D
   nanobind::class_<mesh_wrapper<int, float, 3, 3>>(m, "MeshWrapperIntFloat33D")
@@ -143,14 +147,18 @@ auto register_mesh(nanobind::module_ &m) -> void {
       .def("number_of_faces", &mesh_wrapper<int, float, 3, 3>::number_of_faces)
       .def("dims", &mesh_wrapper<int, float, 3, 3>::dims)
       .def("faces_array", &mesh_wrapper<int, float, 3, 3>::faces_array)
+      .def("set_faces_array", &mesh_wrapper<int, float, 3, 3>::set_faces_array)
       .def("points_array", &mesh_wrapper<int, float, 3, 3>::points_array)
+      .def("set_points_array", &mesh_wrapper<int, float, 3, 3>::set_points_array)
       .def("has_transformation",
            &mesh_wrapper<int, float, 3, 3>::has_transformation)
       .def("transformation", &mesh_wrapper<int, float, 3, 3>::transformation)
       .def("set_transformation",
            &mesh_wrapper<int, float, 3, 3>::set_transformation)
       .def("clear_transformation",
-           &mesh_wrapper<int, float, 3, 3>::clear_transformation);
+           &mesh_wrapper<int, float, 3, 3>::clear_transformation)
+      .def("mark_modified", &mesh_wrapper<int, float, 3, 3>::mark_modified)
+      .def("shared_view", &mesh_wrapper<int, float, 3, 3>::shared_view);
 
   // int32, float, quad, 2D
   nanobind::class_<mesh_wrapper<int, float, 4, 2>>(m, "MeshWrapperIntFloat42D")
@@ -214,14 +222,18 @@ auto register_mesh(nanobind::module_ &m) -> void {
       .def("number_of_faces", &mesh_wrapper<int, float, 4, 2>::number_of_faces)
       .def("dims", &mesh_wrapper<int, float, 4, 2>::dims)
       .def("faces_array", &mesh_wrapper<int, float, 4, 2>::faces_array)
+      .def("set_faces_array", &mesh_wrapper<int, float, 4, 2>::set_faces_array)
       .def("points_array", &mesh_wrapper<int, float, 4, 2>::points_array)
+      .def("set_points_array", &mesh_wrapper<int, float, 4, 2>::set_points_array)
       .def("has_transformation",
            &mesh_wrapper<int, float, 4, 2>::has_transformation)
       .def("transformation", &mesh_wrapper<int, float, 4, 2>::transformation)
       .def("set_transformation",
            &mesh_wrapper<int, float, 4, 2>::set_transformation)
       .def("clear_transformation",
-           &mesh_wrapper<int, float, 4, 2>::clear_transformation);
+           &mesh_wrapper<int, float, 4, 2>::clear_transformation)
+      .def("mark_modified", &mesh_wrapper<int, float, 4, 2>::mark_modified)
+      .def("shared_view", &mesh_wrapper<int, float, 4, 2>::shared_view);
 
   // int32, float, quad, 3D
   nanobind::class_<mesh_wrapper<int, float, 4, 3>>(m, "MeshWrapperIntFloat43D")
@@ -285,14 +297,18 @@ auto register_mesh(nanobind::module_ &m) -> void {
       .def("number_of_faces", &mesh_wrapper<int, float, 4, 3>::number_of_faces)
       .def("dims", &mesh_wrapper<int, float, 4, 3>::dims)
       .def("faces_array", &mesh_wrapper<int, float, 4, 3>::faces_array)
+      .def("set_faces_array", &mesh_wrapper<int, float, 4, 3>::set_faces_array)
       .def("points_array", &mesh_wrapper<int, float, 4, 3>::points_array)
+      .def("set_points_array", &mesh_wrapper<int, float, 4, 3>::set_points_array)
       .def("has_transformation",
            &mesh_wrapper<int, float, 4, 3>::has_transformation)
       .def("transformation", &mesh_wrapper<int, float, 4, 3>::transformation)
       .def("set_transformation",
            &mesh_wrapper<int, float, 4, 3>::set_transformation)
       .def("clear_transformation",
-           &mesh_wrapper<int, float, 4, 3>::clear_transformation);
+           &mesh_wrapper<int, float, 4, 3>::clear_transformation)
+      .def("mark_modified", &mesh_wrapper<int, float, 4, 3>::mark_modified)
+      .def("shared_view", &mesh_wrapper<int, float, 4, 3>::shared_view);
 
   // int32, double, tri, 2D
   nanobind::class_<mesh_wrapper<int, double, 3, 2>>(m, "MeshWrapperIntDouble32D")
@@ -357,14 +373,18 @@ auto register_mesh(nanobind::module_ &m) -> void {
       .def("number_of_faces", &mesh_wrapper<int, double, 3, 2>::number_of_faces)
       .def("dims", &mesh_wrapper<int, double, 3, 2>::dims)
       .def("faces_array", &mesh_wrapper<int, double, 3, 2>::faces_array)
+      .def("set_faces_array", &mesh_wrapper<int, double, 3, 2>::set_faces_array)
       .def("points_array", &mesh_wrapper<int, double, 3, 2>::points_array)
+      .def("set_points_array", &mesh_wrapper<int, double, 3, 2>::set_points_array)
       .def("has_transformation",
            &mesh_wrapper<int, double, 3, 2>::has_transformation)
       .def("transformation", &mesh_wrapper<int, double, 3, 2>::transformation)
       .def("set_transformation",
            &mesh_wrapper<int, double, 3, 2>::set_transformation)
       .def("clear_transformation",
-           &mesh_wrapper<int, double, 3, 2>::clear_transformation);
+           &mesh_wrapper<int, double, 3, 2>::clear_transformation)
+      .def("mark_modified", &mesh_wrapper<int, double, 3, 2>::mark_modified)
+      .def("shared_view", &mesh_wrapper<int, double, 3, 2>::shared_view);
 
   // int32, double, tri, 3D
   nanobind::class_<mesh_wrapper<int, double, 3, 3>>(m, "MeshWrapperIntDouble33D")
@@ -429,14 +449,18 @@ auto register_mesh(nanobind::module_ &m) -> void {
       .def("number_of_faces", &mesh_wrapper<int, double, 3, 3>::number_of_faces)
       .def("dims", &mesh_wrapper<int, double, 3, 3>::dims)
       .def("faces_array", &mesh_wrapper<int, double, 3, 3>::faces_array)
+      .def("set_faces_array", &mesh_wrapper<int, double, 3, 3>::set_faces_array)
       .def("points_array", &mesh_wrapper<int, double, 3, 3>::points_array)
+      .def("set_points_array", &mesh_wrapper<int, double, 3, 3>::set_points_array)
       .def("has_transformation",
            &mesh_wrapper<int, double, 3, 3>::has_transformation)
       .def("transformation", &mesh_wrapper<int, double, 3, 3>::transformation)
       .def("set_transformation",
            &mesh_wrapper<int, double, 3, 3>::set_transformation)
       .def("clear_transformation",
-           &mesh_wrapper<int, double, 3, 3>::clear_transformation);
+           &mesh_wrapper<int, double, 3, 3>::clear_transformation)
+      .def("mark_modified", &mesh_wrapper<int, double, 3, 3>::mark_modified)
+      .def("shared_view", &mesh_wrapper<int, double, 3, 3>::shared_view);
 
   // int32, double, quad, 2D
   nanobind::class_<mesh_wrapper<int, double, 4, 2>>(m, "MeshWrapperIntDouble42D")
@@ -501,14 +525,18 @@ auto register_mesh(nanobind::module_ &m) -> void {
       .def("number_of_faces", &mesh_wrapper<int, double, 4, 2>::number_of_faces)
       .def("dims", &mesh_wrapper<int, double, 4, 2>::dims)
       .def("faces_array", &mesh_wrapper<int, double, 4, 2>::faces_array)
+      .def("set_faces_array", &mesh_wrapper<int, double, 4, 2>::set_faces_array)
       .def("points_array", &mesh_wrapper<int, double, 4, 2>::points_array)
+      .def("set_points_array", &mesh_wrapper<int, double, 4, 2>::set_points_array)
       .def("has_transformation",
            &mesh_wrapper<int, double, 4, 2>::has_transformation)
       .def("transformation", &mesh_wrapper<int, double, 4, 2>::transformation)
       .def("set_transformation",
            &mesh_wrapper<int, double, 4, 2>::set_transformation)
       .def("clear_transformation",
-           &mesh_wrapper<int, double, 4, 2>::clear_transformation);
+           &mesh_wrapper<int, double, 4, 2>::clear_transformation)
+      .def("mark_modified", &mesh_wrapper<int, double, 4, 2>::mark_modified)
+      .def("shared_view", &mesh_wrapper<int, double, 4, 2>::shared_view);
 
   // int32, double, quad, 3D
   nanobind::class_<mesh_wrapper<int, double, 4, 3>>(m, "MeshWrapperIntDouble43D")
@@ -573,14 +601,18 @@ auto register_mesh(nanobind::module_ &m) -> void {
       .def("number_of_faces", &mesh_wrapper<int, double, 4, 3>::number_of_faces)
       .def("dims", &mesh_wrapper<int, double, 4, 3>::dims)
       .def("faces_array", &mesh_wrapper<int, double, 4, 3>::faces_array)
+      .def("set_faces_array", &mesh_wrapper<int, double, 4, 3>::set_faces_array)
       .def("points_array", &mesh_wrapper<int, double, 4, 3>::points_array)
+      .def("set_points_array", &mesh_wrapper<int, double, 4, 3>::set_points_array)
       .def("has_transformation",
            &mesh_wrapper<int, double, 4, 3>::has_transformation)
       .def("transformation", &mesh_wrapper<int, double, 4, 3>::transformation)
       .def("set_transformation",
            &mesh_wrapper<int, double, 4, 3>::set_transformation)
       .def("clear_transformation",
-           &mesh_wrapper<int, double, 4, 3>::clear_transformation);
+           &mesh_wrapper<int, double, 4, 3>::clear_transformation)
+      .def("mark_modified", &mesh_wrapper<int, double, 4, 3>::mark_modified)
+      .def("shared_view", &mesh_wrapper<int, double, 4, 3>::shared_view);
 
   // int64, float, tri, 2D
   nanobind::class_<mesh_wrapper<int64_t, float, 3, 2>>(m, "MeshWrapperInt64Float32D")
@@ -645,7 +677,9 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, float, 3, 2>::number_of_faces)
       .def("dims", &mesh_wrapper<int64_t, float, 3, 2>::dims)
       .def("faces_array", &mesh_wrapper<int64_t, float, 3, 2>::faces_array)
+      .def("set_faces_array", &mesh_wrapper<int64_t, float, 3, 2>::set_faces_array)
       .def("points_array", &mesh_wrapper<int64_t, float, 3, 2>::points_array)
+      .def("set_points_array", &mesh_wrapper<int64_t, float, 3, 2>::set_points_array)
       .def("has_transformation",
            &mesh_wrapper<int64_t, float, 3, 2>::has_transformation)
       .def("transformation",
@@ -653,7 +687,9 @@ auto register_mesh(nanobind::module_ &m) -> void {
       .def("set_transformation",
            &mesh_wrapper<int64_t, float, 3, 2>::set_transformation)
       .def("clear_transformation",
-           &mesh_wrapper<int64_t, float, 3, 2>::clear_transformation);
+           &mesh_wrapper<int64_t, float, 3, 2>::clear_transformation)
+      .def("mark_modified", &mesh_wrapper<int64_t, float, 3, 2>::mark_modified)
+      .def("shared_view", &mesh_wrapper<int64_t, float, 3, 2>::shared_view);
 
   // int64, float, tri, 3D
   nanobind::class_<mesh_wrapper<int64_t, float, 3, 3>>(m, "MeshWrapperInt64Float33D")
@@ -718,7 +754,9 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, float, 3, 3>::number_of_faces)
       .def("dims", &mesh_wrapper<int64_t, float, 3, 3>::dims)
       .def("faces_array", &mesh_wrapper<int64_t, float, 3, 3>::faces_array)
+      .def("set_faces_array", &mesh_wrapper<int64_t, float, 3, 3>::set_faces_array)
       .def("points_array", &mesh_wrapper<int64_t, float, 3, 3>::points_array)
+      .def("set_points_array", &mesh_wrapper<int64_t, float, 3, 3>::set_points_array)
       .def("has_transformation",
            &mesh_wrapper<int64_t, float, 3, 3>::has_transformation)
       .def("transformation",
@@ -726,7 +764,9 @@ auto register_mesh(nanobind::module_ &m) -> void {
       .def("set_transformation",
            &mesh_wrapper<int64_t, float, 3, 3>::set_transformation)
       .def("clear_transformation",
-           &mesh_wrapper<int64_t, float, 3, 3>::clear_transformation);
+           &mesh_wrapper<int64_t, float, 3, 3>::clear_transformation)
+      .def("mark_modified", &mesh_wrapper<int64_t, float, 3, 3>::mark_modified)
+      .def("shared_view", &mesh_wrapper<int64_t, float, 3, 3>::shared_view);
 
   // int64, float, quad, 2D
   nanobind::class_<mesh_wrapper<int64_t, float, 4, 2>>(m, "MeshWrapperInt64Float42D")
@@ -791,7 +831,9 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, float, 4, 2>::number_of_faces)
       .def("dims", &mesh_wrapper<int64_t, float, 4, 2>::dims)
       .def("faces_array", &mesh_wrapper<int64_t, float, 4, 2>::faces_array)
+      .def("set_faces_array", &mesh_wrapper<int64_t, float, 4, 2>::set_faces_array)
       .def("points_array", &mesh_wrapper<int64_t, float, 4, 2>::points_array)
+      .def("set_points_array", &mesh_wrapper<int64_t, float, 4, 2>::set_points_array)
       .def("has_transformation",
            &mesh_wrapper<int64_t, float, 4, 2>::has_transformation)
       .def("transformation",
@@ -799,7 +841,9 @@ auto register_mesh(nanobind::module_ &m) -> void {
       .def("set_transformation",
            &mesh_wrapper<int64_t, float, 4, 2>::set_transformation)
       .def("clear_transformation",
-           &mesh_wrapper<int64_t, float, 4, 2>::clear_transformation);
+           &mesh_wrapper<int64_t, float, 4, 2>::clear_transformation)
+      .def("mark_modified", &mesh_wrapper<int64_t, float, 4, 2>::mark_modified)
+      .def("shared_view", &mesh_wrapper<int64_t, float, 4, 2>::shared_view);
 
   // int64, float, quad, 3D
   nanobind::class_<mesh_wrapper<int64_t, float, 4, 3>>(m, "MeshWrapperInt64Float43D")
@@ -864,7 +908,9 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, float, 4, 3>::number_of_faces)
       .def("dims", &mesh_wrapper<int64_t, float, 4, 3>::dims)
       .def("faces_array", &mesh_wrapper<int64_t, float, 4, 3>::faces_array)
+      .def("set_faces_array", &mesh_wrapper<int64_t, float, 4, 3>::set_faces_array)
       .def("points_array", &mesh_wrapper<int64_t, float, 4, 3>::points_array)
+      .def("set_points_array", &mesh_wrapper<int64_t, float, 4, 3>::set_points_array)
       .def("has_transformation",
            &mesh_wrapper<int64_t, float, 4, 3>::has_transformation)
       .def("transformation",
@@ -872,7 +918,9 @@ auto register_mesh(nanobind::module_ &m) -> void {
       .def("set_transformation",
            &mesh_wrapper<int64_t, float, 4, 3>::set_transformation)
       .def("clear_transformation",
-           &mesh_wrapper<int64_t, float, 4, 3>::clear_transformation);
+           &mesh_wrapper<int64_t, float, 4, 3>::clear_transformation)
+      .def("mark_modified", &mesh_wrapper<int64_t, float, 4, 3>::mark_modified)
+      .def("shared_view", &mesh_wrapper<int64_t, float, 4, 3>::shared_view);
 
   // int64, double, tri, 2D
   nanobind::class_<mesh_wrapper<int64_t, double, 3, 2>>(m, "MeshWrapperInt64Double32D")
@@ -938,7 +986,9 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, double, 3, 2>::number_of_faces)
       .def("dims", &mesh_wrapper<int64_t, double, 3, 2>::dims)
       .def("faces_array", &mesh_wrapper<int64_t, double, 3, 2>::faces_array)
+      .def("set_faces_array", &mesh_wrapper<int64_t, double, 3, 2>::set_faces_array)
       .def("points_array", &mesh_wrapper<int64_t, double, 3, 2>::points_array)
+      .def("set_points_array", &mesh_wrapper<int64_t, double, 3, 2>::set_points_array)
       .def("has_transformation",
            &mesh_wrapper<int64_t, double, 3, 2>::has_transformation)
       .def("transformation",
@@ -946,7 +996,9 @@ auto register_mesh(nanobind::module_ &m) -> void {
       .def("set_transformation",
            &mesh_wrapper<int64_t, double, 3, 2>::set_transformation)
       .def("clear_transformation",
-           &mesh_wrapper<int64_t, double, 3, 2>::clear_transformation);
+           &mesh_wrapper<int64_t, double, 3, 2>::clear_transformation)
+      .def("mark_modified", &mesh_wrapper<int64_t, double, 3, 2>::mark_modified)
+      .def("shared_view", &mesh_wrapper<int64_t, double, 3, 2>::shared_view);
 
   // int64, double, tri, 3D
   nanobind::class_<mesh_wrapper<int64_t, double, 3, 3>>(m, "MeshWrapperInt64Double33D")
@@ -1012,7 +1064,9 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, double, 3, 3>::number_of_faces)
       .def("dims", &mesh_wrapper<int64_t, double, 3, 3>::dims)
       .def("faces_array", &mesh_wrapper<int64_t, double, 3, 3>::faces_array)
+      .def("set_faces_array", &mesh_wrapper<int64_t, double, 3, 3>::set_faces_array)
       .def("points_array", &mesh_wrapper<int64_t, double, 3, 3>::points_array)
+      .def("set_points_array", &mesh_wrapper<int64_t, double, 3, 3>::set_points_array)
       .def("has_transformation",
            &mesh_wrapper<int64_t, double, 3, 3>::has_transformation)
       .def("transformation",
@@ -1020,7 +1074,9 @@ auto register_mesh(nanobind::module_ &m) -> void {
       .def("set_transformation",
            &mesh_wrapper<int64_t, double, 3, 3>::set_transformation)
       .def("clear_transformation",
-           &mesh_wrapper<int64_t, double, 3, 3>::clear_transformation);
+           &mesh_wrapper<int64_t, double, 3, 3>::clear_transformation)
+      .def("mark_modified", &mesh_wrapper<int64_t, double, 3, 3>::mark_modified)
+      .def("shared_view", &mesh_wrapper<int64_t, double, 3, 3>::shared_view);
 
   // int64, double, quad, 2D
   nanobind::class_<mesh_wrapper<int64_t, double, 4, 2>>(m, "MeshWrapperInt64Double42D")
@@ -1086,7 +1142,9 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, double, 4, 2>::number_of_faces)
       .def("dims", &mesh_wrapper<int64_t, double, 4, 2>::dims)
       .def("faces_array", &mesh_wrapper<int64_t, double, 4, 2>::faces_array)
+      .def("set_faces_array", &mesh_wrapper<int64_t, double, 4, 2>::set_faces_array)
       .def("points_array", &mesh_wrapper<int64_t, double, 4, 2>::points_array)
+      .def("set_points_array", &mesh_wrapper<int64_t, double, 4, 2>::set_points_array)
       .def("has_transformation",
            &mesh_wrapper<int64_t, double, 4, 2>::has_transformation)
       .def("transformation",
@@ -1094,7 +1152,9 @@ auto register_mesh(nanobind::module_ &m) -> void {
       .def("set_transformation",
            &mesh_wrapper<int64_t, double, 4, 2>::set_transformation)
       .def("clear_transformation",
-           &mesh_wrapper<int64_t, double, 4, 2>::clear_transformation);
+           &mesh_wrapper<int64_t, double, 4, 2>::clear_transformation)
+      .def("mark_modified", &mesh_wrapper<int64_t, double, 4, 2>::mark_modified)
+      .def("shared_view", &mesh_wrapper<int64_t, double, 4, 2>::shared_view);
 
   // int64, double, quad, 3D
   nanobind::class_<mesh_wrapper<int64_t, double, 4, 3>>(m, "MeshWrapperInt64Double43D")
@@ -1160,7 +1220,9 @@ auto register_mesh(nanobind::module_ &m) -> void {
            &mesh_wrapper<int64_t, double, 4, 3>::number_of_faces)
       .def("dims", &mesh_wrapper<int64_t, double, 4, 3>::dims)
       .def("faces_array", &mesh_wrapper<int64_t, double, 4, 3>::faces_array)
+      .def("set_faces_array", &mesh_wrapper<int64_t, double, 4, 3>::set_faces_array)
       .def("points_array", &mesh_wrapper<int64_t, double, 4, 3>::points_array)
+      .def("set_points_array", &mesh_wrapper<int64_t, double, 4, 3>::set_points_array)
       .def("has_transformation",
            &mesh_wrapper<int64_t, double, 4, 3>::has_transformation)
       .def("transformation",
@@ -1168,10 +1230,30 @@ auto register_mesh(nanobind::module_ &m) -> void {
       .def("set_transformation",
            &mesh_wrapper<int64_t, double, 4, 3>::set_transformation)
       .def("clear_transformation",
-           &mesh_wrapper<int64_t, double, 4, 3>::clear_transformation);
+           &mesh_wrapper<int64_t, double, 4, 3>::clear_transformation)
+      .def("mark_modified", &mesh_wrapper<int64_t, double, 4, 3>::mark_modified)
+      .def("shared_view", &mesh_wrapper<int64_t, double, 4, 3>::shared_view);
 }
 
-// Explicit template instantiations
+// Explicit template instantiations for mesh_data_wrapper
+template class mesh_data_wrapper<int, float, 3, 2>;
+template class mesh_data_wrapper<int, float, 3, 3>;
+template class mesh_data_wrapper<int, float, 4, 2>;
+template class mesh_data_wrapper<int, float, 4, 3>;
+template class mesh_data_wrapper<int, double, 3, 2>;
+template class mesh_data_wrapper<int, double, 3, 3>;
+template class mesh_data_wrapper<int, double, 4, 2>;
+template class mesh_data_wrapper<int, double, 4, 3>;
+template class mesh_data_wrapper<int64_t, float, 3, 2>;
+template class mesh_data_wrapper<int64_t, float, 3, 3>;
+template class mesh_data_wrapper<int64_t, float, 4, 2>;
+template class mesh_data_wrapper<int64_t, float, 4, 3>;
+template class mesh_data_wrapper<int64_t, double, 3, 2>;
+template class mesh_data_wrapper<int64_t, double, 3, 3>;
+template class mesh_data_wrapper<int64_t, double, 4, 2>;
+template class mesh_data_wrapper<int64_t, double, 4, 3>;
+
+// Explicit template instantiations for mesh_wrapper
 template class mesh_wrapper<int, float, 3, 2>;
 template class mesh_wrapper<int, float, 3, 3>;
 template class mesh_wrapper<int, float, 4, 2>;

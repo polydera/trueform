@@ -17,17 +17,20 @@ auto register_point_cloud(nanobind::module_ &m) -> void {
       .def("rebuild_tree", &point_cloud_wrapper<float, 2>::rebuild_tree)
       .def("ensure_tree", &point_cloud_wrapper<float, 2>::ensure_tree)
       .def("clear_tree", &point_cloud_wrapper<float, 2>::clear_tree)
+      .def("mark_modified", &point_cloud_wrapper<float, 2>::mark_modified)
       .def("has_tree", &point_cloud_wrapper<float, 2>::has_tree)
       .def("size", &point_cloud_wrapper<float, 2>::size)
       .def("dims", &point_cloud_wrapper<float, 2>::dims)
       .def("points_array", &point_cloud_wrapper<float, 2>::points_array)
+      .def("set_points_array", &point_cloud_wrapper<float, 2>::set_points_array)
       .def("has_transformation",
            &point_cloud_wrapper<float, 2>::has_transformation)
       .def("transformation", &point_cloud_wrapper<float, 2>::transformation)
       .def("set_transformation",
            &point_cloud_wrapper<float, 2>::set_transformation)
       .def("clear_transformation",
-           &point_cloud_wrapper<float, 2>::clear_transformation);
+           &point_cloud_wrapper<float, 2>::clear_transformation)
+      .def("shared_view", &point_cloud_wrapper<float, 2>::shared_view);
 
   // Register PointCloud for float, 3D
   nanobind::class_<point_cloud_wrapper<float, 3>>(m, "PointCloudWrapperFloat3D")
@@ -36,17 +39,20 @@ auto register_point_cloud(nanobind::module_ &m) -> void {
       .def("rebuild_tree", &point_cloud_wrapper<float, 3>::rebuild_tree)
       .def("ensure_tree", &point_cloud_wrapper<float, 3>::ensure_tree)
       .def("clear_tree", &point_cloud_wrapper<float, 3>::clear_tree)
+      .def("mark_modified", &point_cloud_wrapper<float, 3>::mark_modified)
       .def("has_tree", &point_cloud_wrapper<float, 3>::has_tree)
       .def("size", &point_cloud_wrapper<float, 3>::size)
       .def("dims", &point_cloud_wrapper<float, 3>::dims)
       .def("points_array", &point_cloud_wrapper<float, 3>::points_array)
+      .def("set_points_array", &point_cloud_wrapper<float, 3>::set_points_array)
       .def("has_transformation",
            &point_cloud_wrapper<float, 3>::has_transformation)
       .def("transformation", &point_cloud_wrapper<float, 3>::transformation)
       .def("set_transformation",
            &point_cloud_wrapper<float, 3>::set_transformation)
       .def("clear_transformation",
-           &point_cloud_wrapper<float, 3>::clear_transformation);
+           &point_cloud_wrapper<float, 3>::clear_transformation)
+      .def("shared_view", &point_cloud_wrapper<float, 3>::shared_view);
 
   // Register PointCloud for double, 2D
   nanobind::class_<point_cloud_wrapper<double, 2>>(m,
@@ -56,17 +62,20 @@ auto register_point_cloud(nanobind::module_ &m) -> void {
       .def("rebuild_tree", &point_cloud_wrapper<double, 2>::rebuild_tree)
       .def("ensure_tree", &point_cloud_wrapper<double, 2>::ensure_tree)
       .def("clear_tree", &point_cloud_wrapper<double, 2>::clear_tree)
+      .def("mark_modified", &point_cloud_wrapper<double, 2>::mark_modified)
       .def("has_tree", &point_cloud_wrapper<double, 2>::has_tree)
       .def("size", &point_cloud_wrapper<double, 2>::size)
       .def("dims", &point_cloud_wrapper<double, 2>::dims)
       .def("points_array", &point_cloud_wrapper<double, 2>::points_array)
+      .def("set_points_array", &point_cloud_wrapper<double, 2>::set_points_array)
       .def("has_transformation",
            &point_cloud_wrapper<double, 2>::has_transformation)
       .def("transformation", &point_cloud_wrapper<double, 2>::transformation)
       .def("set_transformation",
            &point_cloud_wrapper<double, 2>::set_transformation)
       .def("clear_transformation",
-           &point_cloud_wrapper<double, 2>::clear_transformation);
+           &point_cloud_wrapper<double, 2>::clear_transformation)
+      .def("shared_view", &point_cloud_wrapper<double, 2>::shared_view);
 
   // Register PointCloud for double, 3D
   nanobind::class_<point_cloud_wrapper<double, 3>>(m,
@@ -76,20 +85,29 @@ auto register_point_cloud(nanobind::module_ &m) -> void {
       .def("rebuild_tree", &point_cloud_wrapper<double, 3>::rebuild_tree)
       .def("ensure_tree", &point_cloud_wrapper<double, 3>::ensure_tree)
       .def("clear_tree", &point_cloud_wrapper<double, 3>::clear_tree)
+      .def("mark_modified", &point_cloud_wrapper<double, 3>::mark_modified)
       .def("has_tree", &point_cloud_wrapper<double, 3>::has_tree)
       .def("size", &point_cloud_wrapper<double, 3>::size)
       .def("dims", &point_cloud_wrapper<double, 3>::dims)
       .def("points_array", &point_cloud_wrapper<double, 3>::points_array)
+      .def("set_points_array", &point_cloud_wrapper<double, 3>::set_points_array)
       .def("has_transformation",
            &point_cloud_wrapper<double, 3>::has_transformation)
       .def("transformation", &point_cloud_wrapper<double, 3>::transformation)
       .def("set_transformation",
            &point_cloud_wrapper<double, 3>::set_transformation)
       .def("clear_transformation",
-           &point_cloud_wrapper<double, 3>::clear_transformation);
+           &point_cloud_wrapper<double, 3>::clear_transformation)
+      .def("shared_view", &point_cloud_wrapper<double, 3>::shared_view);
 }
 
-// Explicit template instantiations
+// Explicit template instantiations for point_cloud_data_wrapper
+template class point_cloud_data_wrapper<float, 2>;
+template class point_cloud_data_wrapper<float, 3>;
+template class point_cloud_data_wrapper<double, 2>;
+template class point_cloud_data_wrapper<double, 3>;
+
+// Explicit template instantiations for point_cloud_wrapper
 template class point_cloud_wrapper<float, 2>;
 template class point_cloud_wrapper<float, 3>;
 template class point_cloud_wrapper<double, 2>;

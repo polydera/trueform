@@ -30,7 +30,7 @@ auto register_topology_label_connected_components(nanobind::module_ &m)
         return label_connected_components_impl<int>(
             conn, expected_number_of_components);
       },
-      arg("conn"), arg("expected_number_of_components").none() = none());
+      arg("conn"), arg("expected_number_of_components").none() = nanobind::none());
 
   // int64 OffsetBlockedArray
   m.def(
@@ -40,7 +40,7 @@ auto register_topology_label_connected_components(nanobind::module_ &m)
         return label_connected_components_impl<int64_t>(
             conn, expected_number_of_components);
       },
-      arg("conn"), arg("expected_number_of_components").none() = none());
+      arg("conn"), arg("expected_number_of_components").none() = nanobind::none());
 
   // ==========================================================================
   // LABEL_CONNECTED_COMPONENTS - ndarray versions (fixed-width connectivity)
@@ -56,7 +56,7 @@ auto register_topology_label_connected_components(nanobind::module_ &m)
         return label_connected_components_impl<int, 2>(
             conn, expected_number_of_components);
       },
-      arg("conn"), arg("expected_number_of_components").none() = none());
+      arg("conn"), arg("expected_number_of_components").none() = nanobind::none());
 
   // int64 ndarray
   m.def(
@@ -66,7 +66,7 @@ auto register_topology_label_connected_components(nanobind::module_ &m)
         return label_connected_components_impl<int64_t, 2>(
             conn, expected_number_of_components);
       },
-      arg("conn"), arg("expected_number_of_components").none() = none());
+      arg("conn"), arg("expected_number_of_components").none() = nanobind::none());
 }
 
 } // namespace tf::py

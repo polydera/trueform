@@ -145,10 +145,60 @@ class EdgeMesh:
         """Get the underlying edges array."""
         return self._edges
 
+    @edges.setter
+    def edges(self, value: np.ndarray) -> None:
+        """
+        Set the underlying edges array.
+
+        Automatically marks the edge mesh as modified.
+
+        Parameters
+        ----------
+        value : np.ndarray
+            New edges array. Must have same dtype and shape[1]==2.
+        """
+        if value.dtype != self._edges.dtype:
+            raise TypeError(
+                f"Edges dtype ({value.dtype}) must match original dtype ({self._edges.dtype})"
+            )
+        if value.shape[1] != 2:
+            raise ValueError(
+                f"Edges must have 2 vertices per edge, got {value.shape[1]}"
+            )
+        if not value.flags['C_CONTIGUOUS']:
+            value = np.ascontiguousarray(value)
+        self._edges = value
+        self._wrapper.set_edges_array(value)
+
     @property
     def points(self) -> np.ndarray:
         """Get the underlying points array."""
         return self._points
+
+    @points.setter
+    def points(self, value: np.ndarray) -> None:
+        """
+        Set the underlying points array.
+
+        Automatically marks the edge mesh as modified.
+
+        Parameters
+        ----------
+        value : np.ndarray
+            New points array. Must have same dtype and dimensionality as original.
+        """
+        if value.dtype != self._points.dtype:
+            raise TypeError(
+                f"Points dtype ({value.dtype}) must match original dtype ({self._points.dtype})"
+            )
+        if value.shape[1] != self._points.shape[1]:
+            raise ValueError(
+                f"Points dimensionality ({value.shape[1]}) must match original ({self._points.shape[1]})"
+            )
+        if not value.flags['C_CONTIGUOUS']:
+            value = np.ascontiguousarray(value)
+        self._points = value
+        self._wrapper.set_points_array(value)
 
     @property
     def number_of_points(self) -> int:
@@ -308,6 +358,34 @@ class EdgeMesh:
 
         # Pass the wrapper to C++
         self._wrapper.set_vertex_link(value._wrapper)
+
+    def shared_view(self) -> "EdgeMesh":
+        """
+        Create a new EdgeMesh instance sharing the same underlying data.
+
+        The new edge mesh shares the same edges, points, and cached structures (tree,
+        edge_membership, vertex_link) but has its own transformation.
+        This is useful when you need multiple edge mesh instances with different
+        transformations but the same geometry.
+
+        Returns
+        -------
+        EdgeMesh
+            New edge mesh instance sharing the same data, without transformation.
+
+        Examples
+        --------
+        >>> edge_mesh = tf.EdgeMesh(edges, points)
+        >>> edge_mesh.transformation = transform_A
+        >>> edge_mesh2 = edge_mesh.shared_view()
+        >>> edge_mesh2.transformation = transform_B
+        >>> # edge_mesh and edge_mesh2 share the same data but have different transforms
+        """
+        new_edge_mesh = object.__new__(EdgeMesh)
+        new_edge_mesh._edges = self._edges
+        new_edge_mesh._points = self._points
+        new_edge_mesh._wrapper = self._wrapper.shared_view()
+        return new_edge_mesh
 
     def __repr__(self) -> str:
         """String representation of the edge mesh."""

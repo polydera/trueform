@@ -6,81 +6,72 @@
  */
 #pragma once
 
+#include "point_cloud_data.hpp"
 #include <memory>
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
 #include <nanobind/stl/optional.h>
 #include <optional>
-#include <trueform/core/points.hpp>
-#include <trueform/core/range.hpp>
 #include <trueform/core/transformation_view.hpp>
-#include <trueform/spatial/aabb_tree.hpp>
-#include <trueform/spatial/tree_config.hpp>
 
 namespace tf::py {
 
-template <typename RealT, std::size_t Dims> class point_cloud_wrapper {
+template <typename RealT, std::size_t Dims>
+class point_cloud_wrapper {
 public:
-  point_cloud_wrapper() = default;
+  using data_type = point_cloud_data_wrapper<RealT, Dims>;
+
+  point_cloud_wrapper() : _data{std::make_shared<data_type>()} {}
 
   point_cloud_wrapper(
       nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>
           points_array)
-      : _points_array{points_array} {}
+      : _data{std::make_shared<data_type>(points_array)} {}
 
-  // Create view into Python-owned array
-  auto make_primitive_range() {
-    RealT *data = static_cast<RealT *>(_points_array.data());
-    std::size_t count = _points_array.shape(0) * Dims;
-    return tf::make_points<Dims>(tf::make_range(data, count));
+  // Constructor from shared data
+  point_cloud_wrapper(std::shared_ptr<data_type> data) : _data{std::move(data)} {}
+
+  // Create a new wrapper sharing the same data (no transformation)
+  auto shared_view() const -> point_cloud_wrapper {
+    return point_cloud_wrapper{_data};
   }
 
-  auto make_primitive_range() const {
-    const RealT *data = static_cast<const RealT *>(_points_array.data());
-    std::size_t count = _points_array.shape(0) * Dims;
-    return tf::make_points<Dims>(tf::make_range(data, count));
-  }
+  // Access to shared data
+  auto data() -> std::shared_ptr<data_type> & { return _data; }
+  auto data() const -> const std::shared_ptr<data_type> & { return _data; }
 
-  // Tree management
-  auto rebuild_tree() -> void {
-    if (!_tree) {
-      _tree = std::make_unique<tf::aabb_tree<int, RealT, Dims>>();
-    }
-    auto pts = make_primitive_range();
-    *_tree = tf::aabb_tree<int, RealT, Dims>(pts, tf::config_tree(4, 4));
-  }
+  // Forward primitive range creation to data
+  auto make_primitive_range() { return _data->make_primitive_range(); }
+  auto make_primitive_range() const { return _data->make_primitive_range(); }
 
-  auto ensure_tree() -> void {
-    if (!_tree) {
-      rebuild_tree();
-    }
-  }
-
-  auto clear_tree() -> void { _tree.reset(); }
-
-  auto has_tree() const -> bool { return _tree != nullptr; }
-
-  auto size() const -> std::size_t { return _points_array.shape(0); }
-
-  auto dims() const -> std::size_t { return Dims; }
-
-  // Access to internal structures (opaque to Python)
-  auto tree() -> tf::aabb_tree<int, RealT, Dims> & {
-    ensure_tree();
-    return *_tree;
-  }
-
+  // Forward tree management to data
+  auto rebuild_tree() -> void { _data->rebuild_tree(); }
+  auto ensure_tree() -> void { _data->ensure_tree(); }
+  auto clear_tree() -> void { _data->clear_tree(); }
+  auto has_tree() const -> bool { return _data->has_tree(); }
+  auto tree() -> tf::aabb_tree<int, RealT, Dims> & { return _data->tree(); }
   auto tree() const -> const tf::aabb_tree<int, RealT, Dims> & {
-    if (!_tree)
-      throw std::runtime_error("Tree not built");
-    return *_tree;
+    return _data->tree();
   }
+
+  // Forward modified flag to data
+  auto mark_modified() -> void { _data->mark_modified(); }
+
+  // Forward array accessors to data
+  auto size() const -> std::size_t { return _data->size(); }
+  auto dims() const -> std::size_t { return _data->dims(); }
 
   auto points_array() const
       -> nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>> {
-    return _points_array;
+    return _data->points_array();
+  }
+  auto set_points_array(
+      nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>
+          points_array) -> void {
+    _data->set_points_array(points_array);
   }
 
+  // Transformation is local to this wrapper (not shared)
   auto has_transformation() const -> bool {
     return _transformation.has_value();
   }
@@ -105,12 +96,10 @@ public:
   auto clear_transformation() -> void { _transformation.reset(); }
 
 private:
-  nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>
-      _points_array;
+  std::shared_ptr<data_type> _data;
   std::optional<nanobind::ndarray<nanobind::numpy, RealT,
                                   nanobind::shape<Dims + 1, Dims + 1>>>
       _transformation;
-  std::unique_ptr<tf::aabb_tree<int, RealT, Dims>> _tree;
 };
 
 } // namespace tf::py

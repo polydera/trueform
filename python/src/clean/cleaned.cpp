@@ -27,7 +27,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int64_t, float, 2>(points, tolerance,
                                                tf::return_index_map);
       },
-      arg("points"), arg("tolerance").none() = none());
+      arg("points"), arg("tolerance").none() = nanobind::none());
 
   // 2D Points - float64
   m.def(
@@ -37,7 +37,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int64_t, double, 2>(points, tolerance,
                                                 tf::return_index_map);
       },
-      arg("points"), arg("tolerance").none() = none());
+      arg("points"), arg("tolerance").none() = nanobind::none());
 
   // 3D Points - float32
   m.def(
@@ -47,7 +47,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int64_t, float, 3>(points, tolerance,
                                                tf::return_index_map);
       },
-      arg("points"), arg("tolerance").none() = none());
+      arg("points"), arg("tolerance").none() = nanobind::none());
 
   // 3D Points - float64
   m.def(
@@ -57,7 +57,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int64_t, double, 3>(points, tolerance,
                                                 tf::return_index_map);
       },
-      arg("points"), arg("tolerance").none() = none());
+      arg("points"), arg("tolerance").none() = nanobind::none());
 
   // ==========================================================================
   // SOUP CLEANING (12 bindings - soups never return maps)
@@ -70,7 +70,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
          std::optional<float> tolerance) {
         return cleaned_impl<int, float, 2, 2>(soup, tolerance);
       },
-      arg("soup"), arg("tolerance").none() = none());
+      arg("soup"), arg("tolerance").none() = nanobind::none());
 
   // V=2 (Segments), Dims=2, float64
   m.def(
@@ -79,7 +79,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
          std::optional<double> tolerance) {
         return cleaned_impl<int, double, 2, 2>(soup, tolerance);
       },
-      arg("soup"), arg("tolerance").none() = none());
+      arg("soup"), arg("tolerance").none() = nanobind::none());
 
   // V=2 (Segments), Dims=3, float32
   m.def(
@@ -88,7 +88,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
          std::optional<float> tolerance) {
         return cleaned_impl<int, float, 2, 3>(soup, tolerance);
       },
-      arg("soup"), arg("tolerance").none() = none());
+      arg("soup"), arg("tolerance").none() = nanobind::none());
 
   // V=2 (Segments), Dims=3, float64
   m.def(
@@ -97,7 +97,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
          std::optional<double> tolerance) {
         return cleaned_impl<int, double, 2, 3>(soup, tolerance);
       },
-      arg("soup"), arg("tolerance").none() = none());
+      arg("soup"), arg("tolerance").none() = nanobind::none());
 
   // V=3 (Triangles), Dims=2, float32
   m.def(
@@ -106,7 +106,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
          std::optional<float> tolerance) {
         return cleaned_impl<int, float, 3, 2>(soup, tolerance);
       },
-      arg("soup"), arg("tolerance").none() = none());
+      arg("soup"), arg("tolerance").none() = nanobind::none());
 
   // V=3 (Triangles), Dims=2, float64
   m.def(
@@ -115,7 +115,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
          std::optional<double> tolerance) {
         return cleaned_impl<int, double, 3, 2>(soup, tolerance);
       },
-      arg("soup"), arg("tolerance").none() = none());
+      arg("soup"), arg("tolerance").none() = nanobind::none());
 
   // V=3 (Triangles), Dims=3, float32
   m.def(
@@ -124,7 +124,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
          std::optional<float> tolerance) {
         return cleaned_impl<int, float, 3, 3>(soup, tolerance);
       },
-      arg("soup"), arg("tolerance").none() = none());
+      arg("soup"), arg("tolerance").none() = nanobind::none());
 
   // V=3 (Triangles), Dims=3, float64
   m.def(
@@ -133,7 +133,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
          std::optional<double> tolerance) {
         return cleaned_impl<int, double, 3, 3>(soup, tolerance);
       },
-      arg("soup"), arg("tolerance").none() = none());
+      arg("soup"), arg("tolerance").none() = nanobind::none());
 
   // V=4 (Quads), Dims=2, float32
   m.def(
@@ -142,7 +142,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
          std::optional<float> tolerance) {
         return cleaned_impl<int, float, 4, 2>(soup, tolerance);
       },
-      arg("soup"), arg("tolerance").none() = none());
+      arg("soup"), arg("tolerance").none() = nanobind::none());
 
   // V=4 (Quads), Dims=2, float64
   m.def(
@@ -151,7 +151,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
          std::optional<double> tolerance) {
         return cleaned_impl<int, double, 4, 2>(soup, tolerance);
       },
-      arg("soup"), arg("tolerance").none() = none());
+      arg("soup"), arg("tolerance").none() = nanobind::none());
 
   // V=4 (Quads), Dims=3, float32
   m.def(
@@ -160,7 +160,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
          std::optional<float> tolerance) {
         return cleaned_impl<int, float, 4, 3>(soup, tolerance);
       },
-      arg("soup"), arg("tolerance").none() = none());
+      arg("soup"), arg("tolerance").none() = nanobind::none());
 
   // V=4 (Quads), Dims=3, float64
   m.def(
@@ -169,7 +169,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
          std::optional<double> tolerance) {
         return cleaned_impl<int, double, 4, 3>(soup, tolerance);
       },
-      arg("soup"), arg("tolerance").none() = none());
+      arg("soup"), arg("tolerance").none() = nanobind::none());
 
   // ==========================================================================
   // INDEXED GEOMETRY CLEANING (24 bindings - always with maps)
@@ -184,7 +184,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int, 2, float, 2>(indices, points, tolerance,
                                               tf::return_index_map);
       },
-      arg("indices"), arg("points"), arg("tolerance").none() = none());
+      arg("indices"), arg("points"), arg("tolerance").none() = nanobind::none());
 
   // V=2 (Edges), Dims=2, int32, float64
   m.def(
@@ -195,7 +195,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int, 2, double, 2>(indices, points, tolerance,
                                                tf::return_index_map);
       },
-      arg("indices"), arg("points"), arg("tolerance").none() = none());
+      arg("indices"), arg("points"), arg("tolerance").none() = nanobind::none());
 
   // V=2 (Edges), Dims=2, int64, float32
   m.def(
@@ -206,7 +206,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int64_t, 2, float, 2>(indices, points, tolerance,
                                                    tf::return_index_map);
       },
-      arg("indices"), arg("points"), arg("tolerance").none() = none());
+      arg("indices"), arg("points"), arg("tolerance").none() = nanobind::none());
 
   // V=2 (Edges), Dims=2, int64, float64
   m.def(
@@ -217,7 +217,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int64_t, 2, double, 2>(indices, points, tolerance,
                                                     tf::return_index_map);
       },
-      arg("indices"), arg("points"), arg("tolerance").none() = none());
+      arg("indices"), arg("points"), arg("tolerance").none() = nanobind::none());
 
   // V=2 (Edges), Dims=3, int32, float32
   m.def(
@@ -228,7 +228,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int, 2, float, 3>(indices, points, tolerance,
                                               tf::return_index_map);
       },
-      arg("indices"), arg("points"), arg("tolerance").none() = none());
+      arg("indices"), arg("points"), arg("tolerance").none() = nanobind::none());
 
   // V=2 (Edges), Dims=3, int32, float64
   m.def(
@@ -239,7 +239,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int, 2, double, 3>(indices, points, tolerance,
                                                tf::return_index_map);
       },
-      arg("indices"), arg("points"), arg("tolerance").none() = none());
+      arg("indices"), arg("points"), arg("tolerance").none() = nanobind::none());
 
   // V=2 (Edges), Dims=3, int64, float32
   m.def(
@@ -250,7 +250,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int64_t, 2, float, 3>(indices, points, tolerance,
                                                    tf::return_index_map);
       },
-      arg("indices"), arg("points"), arg("tolerance").none() = none());
+      arg("indices"), arg("points"), arg("tolerance").none() = nanobind::none());
 
   // V=2 (Edges), Dims=3, int64, float64
   m.def(
@@ -261,7 +261,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int64_t, 2, double, 3>(indices, points, tolerance,
                                                     tf::return_index_map);
       },
-      arg("indices"), arg("points"), arg("tolerance").none() = none());
+      arg("indices"), arg("points"), arg("tolerance").none() = nanobind::none());
 
   // V=3 (Triangles), Dims=2, int32, float32
   m.def(
@@ -272,7 +272,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int, 3, float, 2>(indices, points, tolerance,
                                               tf::return_index_map);
       },
-      arg("indices"), arg("points"), arg("tolerance").none() = none());
+      arg("indices"), arg("points"), arg("tolerance").none() = nanobind::none());
 
   // V=3 (Triangles), Dims=2, int32, float64
   m.def(
@@ -283,7 +283,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int, 3, double, 2>(indices, points, tolerance,
                                                tf::return_index_map);
       },
-      arg("indices"), arg("points"), arg("tolerance").none() = none());
+      arg("indices"), arg("points"), arg("tolerance").none() = nanobind::none());
 
   // V=3 (Triangles), Dims=2, int64, float32
   m.def(
@@ -294,7 +294,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int64_t, 3, float, 2>(indices, points, tolerance,
                                                    tf::return_index_map);
       },
-      arg("indices"), arg("points"), arg("tolerance").none() = none());
+      arg("indices"), arg("points"), arg("tolerance").none() = nanobind::none());
 
   // V=3 (Triangles), Dims=2, int64, float64
   m.def(
@@ -305,7 +305,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int64_t, 3, double, 2>(indices, points, tolerance,
                                                     tf::return_index_map);
       },
-      arg("indices"), arg("points"), arg("tolerance").none() = none());
+      arg("indices"), arg("points"), arg("tolerance").none() = nanobind::none());
 
   // V=3 (Triangles), Dims=3, int32, float32
   m.def(
@@ -316,7 +316,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int, 3, float, 3>(indices, points, tolerance,
                                               tf::return_index_map);
       },
-      arg("indices"), arg("points"), arg("tolerance").none() = none());
+      arg("indices"), arg("points"), arg("tolerance").none() = nanobind::none());
 
   // V=3 (Triangles), Dims=3, int32, float64
   m.def(
@@ -327,7 +327,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int, 3, double, 3>(indices, points, tolerance,
                                                tf::return_index_map);
       },
-      arg("indices"), arg("points"), arg("tolerance").none() = none());
+      arg("indices"), arg("points"), arg("tolerance").none() = nanobind::none());
 
   // V=3 (Triangles), Dims=3, int64, float32
   m.def(
@@ -338,7 +338,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int64_t, 3, float, 3>(indices, points, tolerance,
                                                    tf::return_index_map);
       },
-      arg("indices"), arg("points"), arg("tolerance").none() = none());
+      arg("indices"), arg("points"), arg("tolerance").none() = nanobind::none());
 
   // V=3 (Triangles), Dims=3, int64, float64
   m.def(
@@ -349,7 +349,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int64_t, 3, double, 3>(indices, points, tolerance,
                                                     tf::return_index_map);
       },
-      arg("indices"), arg("points"), arg("tolerance").none() = none());
+      arg("indices"), arg("points"), arg("tolerance").none() = nanobind::none());
 
   // V=4 (Quads), Dims=2, int32, float32
   m.def(
@@ -360,7 +360,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int, 4, float, 2>(indices, points, tolerance,
                                               tf::return_index_map);
       },
-      arg("indices"), arg("points"), arg("tolerance").none() = none());
+      arg("indices"), arg("points"), arg("tolerance").none() = nanobind::none());
 
   // V=4 (Quads), Dims=2, int32, float64
   m.def(
@@ -371,7 +371,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int, 4, double, 2>(indices, points, tolerance,
                                                tf::return_index_map);
       },
-      arg("indices"), arg("points"), arg("tolerance").none() = none());
+      arg("indices"), arg("points"), arg("tolerance").none() = nanobind::none());
 
   // V=4 (Quads), Dims=2, int64, float32
   m.def(
@@ -382,7 +382,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int64_t, 4, float, 2>(indices, points, tolerance,
                                                    tf::return_index_map);
       },
-      arg("indices"), arg("points"), arg("tolerance").none() = none());
+      arg("indices"), arg("points"), arg("tolerance").none() = nanobind::none());
 
   // V=4 (Quads), Dims=2, int64, float64
   m.def(
@@ -393,7 +393,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int64_t, 4, double, 2>(indices, points, tolerance,
                                                     tf::return_index_map);
       },
-      arg("indices"), arg("points"), arg("tolerance").none() = none());
+      arg("indices"), arg("points"), arg("tolerance").none() = nanobind::none());
 
   // V=4 (Quads), Dims=3, int32, float32
   m.def(
@@ -404,7 +404,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int, 4, float, 3>(indices, points, tolerance,
                                               tf::return_index_map);
       },
-      arg("indices"), arg("points"), arg("tolerance").none() = none());
+      arg("indices"), arg("points"), arg("tolerance").none() = nanobind::none());
 
   // V=4 (Quads), Dims=3, int32, float64
   m.def(
@@ -415,7 +415,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int, 4, double, 3>(indices, points, tolerance,
                                                tf::return_index_map);
       },
-      arg("indices"), arg("points"), arg("tolerance").none() = none());
+      arg("indices"), arg("points"), arg("tolerance").none() = nanobind::none());
 
   // V=4 (Quads), Dims=3, int64, float32
   m.def(
@@ -426,7 +426,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int64_t, 4, float, 3>(indices, points, tolerance,
                                                    tf::return_index_map);
       },
-      arg("indices"), arg("points"), arg("tolerance").none() = none());
+      arg("indices"), arg("points"), arg("tolerance").none() = nanobind::none());
 
   // V=4 (Quads), Dims=3, int64, float64
   m.def(
@@ -437,7 +437,7 @@ auto register_clean_cleaned(nanobind::module_ &m) -> void {
         return cleaned_impl<int64_t, 4, double, 3>(indices, points, tolerance,
                                                     tf::return_index_map);
       },
-      arg("indices"), arg("points"), arg("tolerance").none() = none());
+      arg("indices"), arg("points"), arg("tolerance").none() = nanobind::none());
 }
 
 } // namespace tf::py

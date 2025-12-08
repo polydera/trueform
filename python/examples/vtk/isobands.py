@@ -90,22 +90,24 @@ class IsobandInteractor(BaseInteractor):
         import time as time_module
 
         # Compute adaptive threshold levels (same algorithm as isobands.cpp)
-        N = 10  # Number of levels
+        N = 10  # Number of bands
 
         # Compute spacing based on scalar field range
-        s = (self.max_d - self.min_d) / float(N)
+        spacing = (self.max_d - self.min_d) / float(N)
 
-        # Find which segment k the current distance falls into
-        a = (self.distance - self.min_d) / s
-        k = int(np.floor(a))
-        k = np.clip(k, 0, N - 1)
+        # Use fmod to wrap offset within spacing (infinite scrolling)
+        wrapped_offset = self.distance % spacing
+        if wrapped_offset < 0:
+            wrapped_offset += spacing
 
-        # Create N levels centered around current distance
-        # This ensures cutvalues[k] == distance exactly
-        cutvalues = np.array([self.distance + (i - k) * s for i in range(N)], dtype=self.mesh.dtype)
+        # Generate evenly spaced cut values offset by wrapped_offset
+        cutvalues = np.array(
+            [self.min_d + wrapped_offset + i * spacing for i in range(N + 1)],
+            dtype=self.mesh.dtype
+        )
 
-        # Pick every other band with same parity as k (matches C++ logic)
-        parity = k & 1  # Get least significant bit
+        # Select every other band (alternating pattern)
+        parity = int(self.distance / spacing) & 1
         selected_bands = np.array([i for i in range(N) if (i & 1) == parity], dtype=np.int32)
 
         # Extract isobands with curves and timing

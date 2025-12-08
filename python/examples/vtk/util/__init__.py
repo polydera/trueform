@@ -16,6 +16,7 @@ from .geometry import (
     curves_to_polydata,
     create_tube_filter,
     load_mesh,
+    load_mesh_shared,
 )
 
 from .interaction import (
@@ -46,6 +47,7 @@ __all__ = [
     'curves_to_polydata',
     'create_tube_filter',
     'load_mesh',
+    'load_mesh_shared',
     # Interaction
     'BaseInteractor',
     'get_camera_ray',

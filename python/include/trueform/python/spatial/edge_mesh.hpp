@@ -6,188 +6,120 @@
  */
 #pragma once
 
-#include "../core/offset_blocked_array.hpp"
+#include "edge_mesh_data.hpp"
 #include <memory>
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
 #include <nanobind/stl/optional.h>
 #include <optional>
-#include <trueform/core/points.hpp>
-#include <trueform/core/range.hpp>
-#include <trueform/core/segments.hpp>
 #include <trueform/core/transformation_view.hpp>
-#include <trueform/core/views/blocked_range.hpp>
-#include <trueform/python/util/make_numpy_array.hpp>
-#include <trueform/spatial/aabb_tree.hpp>
-#include <trueform/spatial/tree_config.hpp>
-#include <trueform/topology/edge_membership.hpp>
-#include <trueform/topology/vertex_link.hpp>
 
 namespace tf::py {
 
 template <typename Index, typename RealT, std::size_t Dims>
 class edge_mesh_wrapper {
 public:
-  edge_mesh_wrapper() = default;
+  using data_type = edge_mesh_data_wrapper<Index, RealT, Dims>;
+
+  edge_mesh_wrapper() : _data{std::make_shared<data_type>()} {}
 
   edge_mesh_wrapper(
       nanobind::ndarray<nanobind::numpy, Index, nanobind::shape<-1, 2>>
           edges_array,
       nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>
           points_array)
-      : _edges_array{edges_array}, _points_array{points_array} {}
+      : _data{std::make_shared<data_type>(edges_array, points_array)} {}
 
-  // Create view into Python-owned array
-  auto make_primitive_range() {
-    RealT *data_pts = static_cast<RealT *>(_points_array.data());
-    std::size_t count_pts = _points_array.shape(0) * Dims;
-    auto pts = tf::make_points<Dims>(tf::make_range(data_pts, count_pts));
-    Index *data_fcs = static_cast<Index *>(_edges_array.data());
-    std::size_t count_fcs = _edges_array.shape(0) * 2;
-    auto edges = tf::make_blocked_range<2>(tf::make_range(data_fcs, count_fcs));
-    return tf::make_segments(edges, pts);
+  // Constructor from shared data
+  edge_mesh_wrapper(std::shared_ptr<data_type> data) : _data{std::move(data)} {}
+
+  // Create a new wrapper sharing the same data (no transformation)
+  auto shared_view() const -> edge_mesh_wrapper {
+    return edge_mesh_wrapper{_data};
   }
 
-  auto make_primitive_range() const {
-    const RealT *data_pts = static_cast<const RealT *>(_points_array.data());
-    std::size_t count_pts = _points_array.shape(0) * Dims;
-    auto pts = tf::make_points<Dims>(tf::make_range(data_pts, count_pts));
-    const Index *data_fcs = static_cast<const Index *>(_edges_array.data());
-    std::size_t count_fcs = _edges_array.shape(0) * 2;
-    auto edges = tf::make_blocked_range<2>(tf::make_range(data_fcs, count_fcs));
-    return tf::make_segments(edges, pts);
+  // Access to shared data
+  auto data() -> std::shared_ptr<data_type> & { return _data; }
+  auto data() const -> const std::shared_ptr<data_type> & { return _data; }
+
+  // Forward primitive range creation to data
+  auto make_primitive_range() { return _data->make_primitive_range(); }
+  auto make_primitive_range() const { return _data->make_primitive_range(); }
+
+  // Forward tree management to data
+  auto rebuild_tree() -> void { _data->rebuild_tree(); }
+  auto ensure_tree() -> void { _data->ensure_tree(); }
+  auto clear_tree() -> void { _data->clear_tree(); }
+  auto has_tree() const -> bool { return _data->has_tree(); }
+  auto tree() -> tf::aabb_tree<Index, RealT, Dims> & { return _data->tree(); }
+  auto tree() const -> const tf::aabb_tree<Index, RealT, Dims> & {
+    return _data->tree();
   }
 
-  // Tree management
-  auto rebuild_tree() -> void {
-    if (!_tree) {
-      _tree = std::make_unique<tf::aabb_tree<Index, RealT, Dims>>();
-    }
-    auto polys = make_primitive_range();
-    *_tree = tf::aabb_tree<Index, RealT, Dims>(polys, tf::config_tree(4, 4));
-  }
-
-  auto ensure_tree() -> void {
-    if (!_tree) {
-      rebuild_tree();
-    }
-  }
-
-  auto rebuild_vertex_link() -> void {
-    auto segments = make_primitive_range();
-    tf::vertex_link<Index> fm;
-    fm.build(segments.edges(), Index(segments.points().size()));
-
-    auto [offsets, data] = make_numpy_array(std::move(fm));
-
-    // Pass the numpy arrays to the wrapper
-    if (!_vertex_link_array) {
-      _vertex_link_array =
-          std::make_unique<tf::py::offset_blocked_array_wrapper<Index, Index>>(
-              offsets, data);
-    } else {
-      _vertex_link_array->set_arrays(offsets, data);
-    }
-  }
-
-  auto ensure_vertex_link() -> void {
-    if (!_vertex_link_array) {
-      rebuild_vertex_link();
-    }
-  }
-
-  auto vertex_link() const {
-    return tf::make_vertex_link_like(_vertex_link_array->make_range());
-  }
-
-  auto clear_vertex_link() -> void { _vertex_link_array.reset(); }
-
-  auto has_vertex_link() const -> bool { return _vertex_link_array != nullptr; }
-
+  // Forward vertex link to data
+  auto rebuild_vertex_link() -> void { _data->rebuild_vertex_link(); }
+  auto ensure_vertex_link() -> void { _data->ensure_vertex_link(); }
+  auto vertex_link() const { return _data->vertex_link(); }
+  auto clear_vertex_link() -> void { _data->clear_vertex_link(); }
+  auto has_vertex_link() const -> bool { return _data->has_vertex_link(); }
   auto vertex_link_array()
       -> const tf::py::offset_blocked_array_wrapper<Index, Index> & {
-    ensure_vertex_link();
-    return *_vertex_link_array;
+    return _data->vertex_link_array();
   }
-
   auto set_vertex_link(tf::py::offset_blocked_array_wrapper<Index, Index> fm) {
-    if (!_vertex_link_array)
-      _vertex_link_array =
-          std::make_unique<tf::py::offset_blocked_array_wrapper<Index, Index>>(
-              fm.offsets_array(), fm.data_array());
-    else
-      _vertex_link_array->set_arrays(fm.offsets_array(), fm.data_array());
+    _data->set_vertex_link(std::move(fm));
   }
 
-  auto rebuild_edge_membership() -> void {
-    auto segments = make_primitive_range();
-    tf::edge_membership<Index> fm;
-    fm.build(segments);
-
-    auto [offsets, data] = make_numpy_array(std::move(fm));
-
-    // Pass the numpy arrays to the wrapper
-    if (!_edge_membership_array) {
-      _edge_membership_array =
-          std::make_unique<tf::py::offset_blocked_array_wrapper<Index, Index>>(
-              offsets, data);
-    } else {
-      _edge_membership_array->set_arrays(offsets, data);
-    }
-  }
-
-  auto ensure_edge_membership() -> void {
-    if (!_edge_membership_array) {
-      rebuild_edge_membership();
-    }
-  }
-
-  auto clear_tree() -> void { _tree.reset(); }
-
-  auto clear_edge_membership() -> void { _edge_membership_array.reset(); }
-
-  auto has_tree() const -> bool { return _tree != nullptr; }
-
+  // Forward edge membership to data
+  auto rebuild_edge_membership() -> void { _data->rebuild_edge_membership(); }
+  auto ensure_edge_membership() -> void { _data->ensure_edge_membership(); }
+  auto edge_membership() const { return _data->edge_membership(); }
+  auto clear_edge_membership() -> void { _data->clear_edge_membership(); }
   auto has_edge_membership() const -> bool {
-    return _edge_membership_array != nullptr;
+    return _data->has_edge_membership();
   }
-
-  auto number_of_edges() const -> std::size_t { return _edges_array.shape(0); }
-
-  auto number_of_points() const -> std::size_t {
-    return _points_array.shape(0);
-  }
-
-  auto dims() const -> std::size_t { return Dims; }
-
-  // Access to internal structures (opaque to Python)
-  auto tree() -> tf::aabb_tree<Index, RealT, Dims> & {
-    ensure_tree();
-    return *_tree;
-  }
-
-  auto tree() const -> const tf::aabb_tree<Index, RealT, Dims> & {
-    if (!_tree)
-      throw std::runtime_error("Tree not built");
-    return *_tree;
-  }
-
   auto edge_membership_array()
       -> const tf::py::offset_blocked_array_wrapper<Index, Index> & {
-    ensure_edge_membership();
-    return *_edge_membership_array;
+    return _data->edge_membership_array();
   }
+  auto
+  set_edge_membership(tf::py::offset_blocked_array_wrapper<Index, Index> fm) {
+    _data->set_edge_membership(std::move(fm));
+  }
+
+  // Forward modified flag to data
+  auto mark_modified() -> void { _data->mark_modified(); }
+
+  // Forward array accessors to data
+  auto number_of_edges() const -> std::size_t {
+    return _data->number_of_edges();
+  }
+  auto number_of_points() const -> std::size_t {
+    return _data->number_of_points();
+  }
+  auto dims() const -> std::size_t { return _data->dims(); }
 
   auto points_array() const
       -> nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>> {
-    return _points_array;
+    return _data->points_array();
+  }
+  auto set_points_array(
+      nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>
+          points_array) -> void {
+    _data->set_points_array(points_array);
   }
 
   auto edges_array() const
       -> nanobind::ndarray<nanobind::numpy, Index, nanobind::shape<-1, 2>> {
-    return _edges_array;
+    return _data->edges_array();
+  }
+  auto set_edges_array(
+      nanobind::ndarray<nanobind::numpy, Index, nanobind::shape<-1, 2>>
+          edges_array) -> void {
+    _data->set_edges_array(edges_array);
   }
 
+  // Transformation is local to this wrapper (not shared)
   auto has_transformation() const -> bool {
     return _transformation.has_value();
   }
@@ -209,31 +141,13 @@ public:
     _transformation = transformation_array;
   }
 
-  auto
-  set_edge_membership(tf::py::offset_blocked_array_wrapper<Index, Index> fm) {
-    if (!_edge_membership_array)
-      _edge_membership_array =
-          std::make_unique<tf::py::offset_blocked_array_wrapper<Index, Index>>(
-              fm.offsets_array(), fm.data_array());
-    else
-      _edge_membership_array->set_arrays(fm.offsets_array(), fm.data_array());
-  }
-
   auto clear_transformation() -> void { _transformation.reset(); }
 
 private:
-  nanobind::ndarray<nanobind::numpy, Index, nanobind::shape<-1, 2>>
-      _edges_array;
-  nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>
-      _points_array;
+  std::shared_ptr<data_type> _data;
   std::optional<nanobind::ndarray<nanobind::numpy, RealT,
                                   nanobind::shape<Dims + 1, Dims + 1>>>
       _transformation;
-  std::unique_ptr<tf::aabb_tree<Index, RealT, Dims>> _tree;
-  std::unique_ptr<tf::py::offset_blocked_array_wrapper<Index, Index>>
-      _edge_membership_array;
-  std::unique_ptr<tf::py::offset_blocked_array_wrapper<Index, Index>>
-      _vertex_link_array;
 };
 
 } // namespace tf::py

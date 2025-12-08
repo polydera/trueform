@@ -153,10 +153,60 @@ class Mesh:
         """Get the underlying faces array."""
         return self._faces
 
+    @faces.setter
+    def faces(self, value: np.ndarray) -> None:
+        """
+        Set the underlying faces array.
+
+        Automatically marks the mesh as modified.
+
+        Parameters
+        ----------
+        value : np.ndarray
+            New faces array. Must have same dtype and ngon as original.
+        """
+        if value.dtype != self._faces.dtype:
+            raise TypeError(
+                f"Faces dtype ({value.dtype}) must match original dtype ({self._faces.dtype})"
+            )
+        if value.shape[1] != self._faces.shape[1]:
+            raise ValueError(
+                f"Faces ngon ({value.shape[1]}) must match original ({self._faces.shape[1]})"
+            )
+        if not value.flags['C_CONTIGUOUS']:
+            value = np.ascontiguousarray(value)
+        self._faces = value
+        self._wrapper.set_faces_array(value)
+
     @property
     def points(self) -> np.ndarray:
         """Get the underlying points array."""
         return self._points
+
+    @points.setter
+    def points(self, value: np.ndarray) -> None:
+        """
+        Set the underlying points array.
+
+        Automatically marks the mesh as modified.
+
+        Parameters
+        ----------
+        value : np.ndarray
+            New points array. Must have same dtype and dimensionality as original.
+        """
+        if value.dtype != self._points.dtype:
+            raise TypeError(
+                f"Points dtype ({value.dtype}) must match original dtype ({self._points.dtype})"
+            )
+        if value.shape[1] != self._points.shape[1]:
+            raise ValueError(
+                f"Points dimensionality ({value.shape[1]}) must match original ({self._points.shape[1]})"
+            )
+        if not value.flags['C_CONTIGUOUS']:
+            value = np.ascontiguousarray(value)
+        self._points = value
+        self._wrapper.set_points_array(value)
 
     @property
     def number_of_points(self) -> int:
@@ -416,6 +466,34 @@ class Mesh:
 
         # Pass the wrapper to C++
         self._wrapper.set_vertex_link(value._wrapper)
+
+    def shared_view(self) -> "Mesh":
+        """
+        Create a new Mesh instance sharing the same underlying data.
+
+        The new mesh shares the same faces, points, and cached structures (tree,
+        face_membership, manifold_edge_link, etc.) but has its own transformation.
+        This is useful when you need multiple mesh instances with different
+        transformations but the same geometry.
+
+        Returns
+        -------
+        Mesh
+            New mesh instance sharing the same data, without transformation.
+
+        Examples
+        --------
+        >>> mesh = tf.Mesh(faces, points)
+        >>> mesh.transformation = transform_A
+        >>> mesh2 = mesh.shared_view()
+        >>> mesh2.transformation = transform_B
+        >>> # mesh and mesh2 share the same data but have different transforms
+        """
+        new_mesh = object.__new__(Mesh)
+        new_mesh._faces = self._faces
+        new_mesh._points = self._points
+        new_mesh._wrapper = self._wrapper.shared_view()
+        return new_mesh
 
     def __repr__(self) -> str:
         """String representation of the mesh."""

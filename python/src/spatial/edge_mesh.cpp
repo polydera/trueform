@@ -50,14 +50,18 @@ auto register_edge_mesh(nanobind::module_ &m) -> void {
            &edge_mesh_wrapper<int, float, 2>::number_of_edges)
       .def("dims", &edge_mesh_wrapper<int, float, 2>::dims)
       .def("edges_array", &edge_mesh_wrapper<int, float, 2>::edges_array)
+      .def("set_edges_array", &edge_mesh_wrapper<int, float, 2>::set_edges_array)
       .def("points_array", &edge_mesh_wrapper<int, float, 2>::points_array)
+      .def("set_points_array", &edge_mesh_wrapper<int, float, 2>::set_points_array)
       .def("has_transformation",
            &edge_mesh_wrapper<int, float, 2>::has_transformation)
       .def("transformation", &edge_mesh_wrapper<int, float, 2>::transformation)
       .def("set_transformation",
            &edge_mesh_wrapper<int, float, 2>::set_transformation)
       .def("clear_transformation",
-           &edge_mesh_wrapper<int, float, 2>::clear_transformation);
+           &edge_mesh_wrapper<int, float, 2>::clear_transformation)
+      .def("mark_modified", &edge_mesh_wrapper<int, float, 2>::mark_modified)
+      .def("shared_view", &edge_mesh_wrapper<int, float, 2>::shared_view);
 
   // int32, float, 3D
   nanobind::class_<edge_mesh_wrapper<int, float, 3>>(m,
@@ -99,14 +103,18 @@ auto register_edge_mesh(nanobind::module_ &m) -> void {
            &edge_mesh_wrapper<int, float, 3>::number_of_edges)
       .def("dims", &edge_mesh_wrapper<int, float, 3>::dims)
       .def("edges_array", &edge_mesh_wrapper<int, float, 3>::edges_array)
+      .def("set_edges_array", &edge_mesh_wrapper<int, float, 3>::set_edges_array)
       .def("points_array", &edge_mesh_wrapper<int, float, 3>::points_array)
+      .def("set_points_array", &edge_mesh_wrapper<int, float, 3>::set_points_array)
       .def("has_transformation",
            &edge_mesh_wrapper<int, float, 3>::has_transformation)
       .def("transformation", &edge_mesh_wrapper<int, float, 3>::transformation)
       .def("set_transformation",
            &edge_mesh_wrapper<int, float, 3>::set_transformation)
       .def("clear_transformation",
-           &edge_mesh_wrapper<int, float, 3>::clear_transformation);
+           &edge_mesh_wrapper<int, float, 3>::clear_transformation)
+      .def("mark_modified", &edge_mesh_wrapper<int, float, 3>::mark_modified)
+      .def("shared_view", &edge_mesh_wrapper<int, float, 3>::shared_view);
 
   // int32, double, 2D
   nanobind::class_<edge_mesh_wrapper<int, double, 2>>(
@@ -149,7 +157,9 @@ auto register_edge_mesh(nanobind::module_ &m) -> void {
            &edge_mesh_wrapper<int, double, 2>::number_of_edges)
       .def("dims", &edge_mesh_wrapper<int, double, 2>::dims)
       .def("edges_array", &edge_mesh_wrapper<int, double, 2>::edges_array)
+      .def("set_edges_array", &edge_mesh_wrapper<int, double, 2>::set_edges_array)
       .def("points_array", &edge_mesh_wrapper<int, double, 2>::points_array)
+      .def("set_points_array", &edge_mesh_wrapper<int, double, 2>::set_points_array)
       .def("has_transformation",
            &edge_mesh_wrapper<int, double, 2>::has_transformation)
       .def("transformation",
@@ -157,7 +167,9 @@ auto register_edge_mesh(nanobind::module_ &m) -> void {
       .def("set_transformation",
            &edge_mesh_wrapper<int, double, 2>::set_transformation)
       .def("clear_transformation",
-           &edge_mesh_wrapper<int, double, 2>::clear_transformation);
+           &edge_mesh_wrapper<int, double, 2>::clear_transformation)
+      .def("mark_modified", &edge_mesh_wrapper<int, double, 2>::mark_modified)
+      .def("shared_view", &edge_mesh_wrapper<int, double, 2>::shared_view);
 
   // int32, double, 3D
   nanobind::class_<edge_mesh_wrapper<int, double, 3>>(
@@ -200,7 +212,9 @@ auto register_edge_mesh(nanobind::module_ &m) -> void {
            &edge_mesh_wrapper<int, double, 3>::number_of_edges)
       .def("dims", &edge_mesh_wrapper<int, double, 3>::dims)
       .def("edges_array", &edge_mesh_wrapper<int, double, 3>::edges_array)
+      .def("set_edges_array", &edge_mesh_wrapper<int, double, 3>::set_edges_array)
       .def("points_array", &edge_mesh_wrapper<int, double, 3>::points_array)
+      .def("set_points_array", &edge_mesh_wrapper<int, double, 3>::set_points_array)
       .def("has_transformation",
            &edge_mesh_wrapper<int, double, 3>::has_transformation)
       .def("transformation",
@@ -208,7 +222,9 @@ auto register_edge_mesh(nanobind::module_ &m) -> void {
       .def("set_transformation",
            &edge_mesh_wrapper<int, double, 3>::set_transformation)
       .def("clear_transformation",
-           &edge_mesh_wrapper<int, double, 3>::clear_transformation);
+           &edge_mesh_wrapper<int, double, 3>::clear_transformation)
+      .def("mark_modified", &edge_mesh_wrapper<int, double, 3>::mark_modified)
+      .def("shared_view", &edge_mesh_wrapper<int, double, 3>::shared_view);
 
   // int64, float, 2D
   nanobind::class_<edge_mesh_wrapper<int64_t, float, 2>>(
@@ -250,8 +266,10 @@ auto register_edge_mesh(nanobind::module_ &m) -> void {
            &edge_mesh_wrapper<int64_t, float, 2>::number_of_edges)
       .def("dims", &edge_mesh_wrapper<int64_t, float, 2>::dims)
       .def("edges_array", &edge_mesh_wrapper<int64_t, float, 2>::edges_array)
+      .def("set_edges_array", &edge_mesh_wrapper<int64_t, float, 2>::set_edges_array)
       .def("points_array",
            &edge_mesh_wrapper<int64_t, float, 2>::points_array)
+      .def("set_points_array", &edge_mesh_wrapper<int64_t, float, 2>::set_points_array)
       .def("has_transformation",
            &edge_mesh_wrapper<int64_t, float, 2>::has_transformation)
       .def("transformation",
@@ -259,7 +277,9 @@ auto register_edge_mesh(nanobind::module_ &m) -> void {
       .def("set_transformation",
            &edge_mesh_wrapper<int64_t, float, 2>::set_transformation)
       .def("clear_transformation",
-           &edge_mesh_wrapper<int64_t, float, 2>::clear_transformation);
+           &edge_mesh_wrapper<int64_t, float, 2>::clear_transformation)
+      .def("mark_modified", &edge_mesh_wrapper<int64_t, float, 2>::mark_modified)
+      .def("shared_view", &edge_mesh_wrapper<int64_t, float, 2>::shared_view);
 
   // int64, float, 3D
   nanobind::class_<edge_mesh_wrapper<int64_t, float, 3>>(
@@ -301,8 +321,10 @@ auto register_edge_mesh(nanobind::module_ &m) -> void {
            &edge_mesh_wrapper<int64_t, float, 3>::number_of_edges)
       .def("dims", &edge_mesh_wrapper<int64_t, float, 3>::dims)
       .def("edges_array", &edge_mesh_wrapper<int64_t, float, 3>::edges_array)
+      .def("set_edges_array", &edge_mesh_wrapper<int64_t, float, 3>::set_edges_array)
       .def("points_array",
            &edge_mesh_wrapper<int64_t, float, 3>::points_array)
+      .def("set_points_array", &edge_mesh_wrapper<int64_t, float, 3>::set_points_array)
       .def("has_transformation",
            &edge_mesh_wrapper<int64_t, float, 3>::has_transformation)
       .def("transformation",
@@ -310,7 +332,9 @@ auto register_edge_mesh(nanobind::module_ &m) -> void {
       .def("set_transformation",
            &edge_mesh_wrapper<int64_t, float, 3>::set_transformation)
       .def("clear_transformation",
-           &edge_mesh_wrapper<int64_t, float, 3>::clear_transformation);
+           &edge_mesh_wrapper<int64_t, float, 3>::clear_transformation)
+      .def("mark_modified", &edge_mesh_wrapper<int64_t, float, 3>::mark_modified)
+      .def("shared_view", &edge_mesh_wrapper<int64_t, float, 3>::shared_view);
 
   // int64, double, 2D
   nanobind::class_<edge_mesh_wrapper<int64_t, double, 2>>(
@@ -355,8 +379,10 @@ auto register_edge_mesh(nanobind::module_ &m) -> void {
       .def("dims", &edge_mesh_wrapper<int64_t, double, 2>::dims)
       .def("edges_array",
            &edge_mesh_wrapper<int64_t, double, 2>::edges_array)
+      .def("set_edges_array", &edge_mesh_wrapper<int64_t, double, 2>::set_edges_array)
       .def("points_array",
            &edge_mesh_wrapper<int64_t, double, 2>::points_array)
+      .def("set_points_array", &edge_mesh_wrapper<int64_t, double, 2>::set_points_array)
       .def("has_transformation",
            &edge_mesh_wrapper<int64_t, double, 2>::has_transformation)
       .def("transformation",
@@ -364,7 +390,9 @@ auto register_edge_mesh(nanobind::module_ &m) -> void {
       .def("set_transformation",
            &edge_mesh_wrapper<int64_t, double, 2>::set_transformation)
       .def("clear_transformation",
-           &edge_mesh_wrapper<int64_t, double, 2>::clear_transformation);
+           &edge_mesh_wrapper<int64_t, double, 2>::clear_transformation)
+      .def("mark_modified", &edge_mesh_wrapper<int64_t, double, 2>::mark_modified)
+      .def("shared_view", &edge_mesh_wrapper<int64_t, double, 2>::shared_view);
 
   // int64, double, 3D
   nanobind::class_<edge_mesh_wrapper<int64_t, double, 3>>(
@@ -409,8 +437,10 @@ auto register_edge_mesh(nanobind::module_ &m) -> void {
       .def("dims", &edge_mesh_wrapper<int64_t, double, 3>::dims)
       .def("edges_array",
            &edge_mesh_wrapper<int64_t, double, 3>::edges_array)
+      .def("set_edges_array", &edge_mesh_wrapper<int64_t, double, 3>::set_edges_array)
       .def("points_array",
            &edge_mesh_wrapper<int64_t, double, 3>::points_array)
+      .def("set_points_array", &edge_mesh_wrapper<int64_t, double, 3>::set_points_array)
       .def("has_transformation",
            &edge_mesh_wrapper<int64_t, double, 3>::has_transformation)
       .def("transformation",
@@ -418,8 +448,20 @@ auto register_edge_mesh(nanobind::module_ &m) -> void {
       .def("set_transformation",
            &edge_mesh_wrapper<int64_t, double, 3>::set_transformation)
       .def("clear_transformation",
-           &edge_mesh_wrapper<int64_t, double, 3>::clear_transformation);
+           &edge_mesh_wrapper<int64_t, double, 3>::clear_transformation)
+      .def("mark_modified", &edge_mesh_wrapper<int64_t, double, 3>::mark_modified)
+      .def("shared_view", &edge_mesh_wrapper<int64_t, double, 3>::shared_view);
 }
+
+// Explicit template instantiations for edge_mesh_data_wrapper
+template class edge_mesh_data_wrapper<int, float, 2>;
+template class edge_mesh_data_wrapper<int, float, 3>;
+template class edge_mesh_data_wrapper<int, double, 2>;
+template class edge_mesh_data_wrapper<int, double, 3>;
+template class edge_mesh_data_wrapper<int64_t, float, 2>;
+template class edge_mesh_data_wrapper<int64_t, float, 3>;
+template class edge_mesh_data_wrapper<int64_t, double, 2>;
+template class edge_mesh_data_wrapper<int64_t, double, 3>;
 
 // Explicit template instantiations
 template class edge_mesh_wrapper<int, float, 2>;

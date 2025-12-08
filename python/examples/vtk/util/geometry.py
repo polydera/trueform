@@ -266,3 +266,71 @@ def load_mesh(filename, position, target_radius=10.0, random_rotation=True):
     actor.SetUserMatrix(matrix)
 
     return MeshData(mesh, actor, matrix)
+
+
+def load_mesh_shared(source_mesh_data, position, random_rotation=True):
+    """
+    Create a shared view of an existing mesh with a different transformation.
+
+    Uses shared_view() to share geometry and cached structures (tree, face_membership,
+    manifold_edge_link) with the source mesh, avoiding duplicate memory and computation.
+
+    Parameters
+    ----------
+    source_mesh_data : MeshData
+        Source mesh data to share geometry from
+    position : tuple
+        (x, y, z) position in world coordinates
+    random_rotation : bool
+        Whether to apply random rotation
+
+    Returns
+    -------
+    MeshData
+        Container with shared mesh view, new actor, and matrix
+    """
+    # Create shared view - shares geometry and structures
+    shared_mesh = source_mesh_data.mesh.shared_view()
+
+    # Get points from original mesh for visualization
+    points = source_mesh_data.mesh.points
+    faces = source_mesh_data.mesh.faces
+
+    # Compute centering and scaling transform (same as original)
+    center_scale_transform = compute_centering_and_scaling_transform(points, target_radius=10.0)
+
+    # Create rotation transform
+    if random_rotation:
+        R = random_rotation_matrix(dtype=np.float32)
+        rotation_transform = np.eye(4, dtype=np.float32)
+        rotation_transform[:3, :3] = R
+    else:
+        rotation_transform = np.eye(4, dtype=np.float32)
+
+    # Create position transform (translation)
+    position_transform = np.eye(4, dtype=np.float32)
+    position_transform[0, 3] = position[0]
+    position_transform[1, 3] = position[1]
+    position_transform[2, 3] = position[2]
+
+    # Combine: first center/scale, then rotate, then position
+    combined_transform = position_transform @ rotation_transform @ center_scale_transform
+
+    # Set transformation on the shared view
+    shared_mesh.transformation = combined_transform
+
+    # Create VTK visualization (uses original points)
+    polydata = numpy_to_polydata(points, faces)
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputData(polydata)
+    actor = vtk.vtkActor()
+    actor.SetMapper(mapper)
+
+    # Set VTK transformation matrix
+    matrix = vtk.vtkMatrix4x4()
+    for i in range(4):
+        for j in range(4):
+            matrix.SetElement(i, j, combined_transform[i, j])
+    actor.SetUserMatrix(matrix)
+
+    return MeshData(shared_mesh, actor, matrix)

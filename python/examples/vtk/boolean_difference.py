@@ -32,6 +32,7 @@ from util import (
     BaseInteractor,
     RollingAverage,
     load_mesh,
+    load_mesh_shared,
     numpy_to_polydata,
     curves_to_polydata,
     random_rotation_matrix,
@@ -187,23 +188,29 @@ def main():
     # Parse command line arguments
     if len(sys.argv) < 2:
         print("Usage: python boolean_difference.py mesh1.stl [mesh2.stl]")
-        print("\nIf only one mesh is provided, it will be used for both inputs")
+        print("\nIf only one mesh is provided, it will be used for both inputs (using shared_view)")
         sys.exit(1)
 
     mesh_file1 = sys.argv[1]
-    mesh_file2 = sys.argv[2] if len(sys.argv) > 2 else sys.argv[1]
+    mesh_file2 = sys.argv[2] if len(sys.argv) > 2 else None
 
-    # Load meshes with random rotations at specified positions
+    # Load first mesh
     mesh_data0 = load_mesh(mesh_file1, (0.0, 0.0, 0.0), target_radius=10.0, random_rotation=True)
-    mesh_data1 = load_mesh(mesh_file2, (15.0, 0.0, 0.0), target_radius=10.0, random_rotation=True)
 
-    # Build required structures
+    # Build structures once on the first mesh
     mesh_data0.mesh.build_tree()
     mesh_data0.mesh.build_face_membership()
     mesh_data0.mesh.build_manifold_edge_link()
-    mesh_data1.mesh.build_tree()
-    mesh_data1.mesh.build_face_membership()
-    mesh_data1.mesh.build_manifold_edge_link()
+
+    if mesh_file2 is None:
+        # Same file - use shared_view to share geometry and structures
+        mesh_data1 = load_mesh_shared(mesh_data0, (15.0, 0.0, 0.0), random_rotation=True)
+    else:
+        # Different files - load separately
+        mesh_data1 = load_mesh(mesh_file2, (15.0, 0.0, 0.0), target_radius=10.0, random_rotation=True)
+        mesh_data1.mesh.build_tree()
+        mesh_data1.mesh.build_face_membership()
+        mesh_data1.mesh.build_manifold_edge_link()
 
     # Create renderers (left + right viewports, plus text strip at bottom)
     renderer_left = vtk.vtkRenderer()

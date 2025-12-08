@@ -105,6 +105,31 @@ class PointCloud:
         """Get the underlying points array."""
         return self._points
 
+    @points.setter
+    def points(self, value: np.ndarray) -> None:
+        """
+        Set the underlying points array.
+
+        Automatically marks the point cloud as modified.
+
+        Parameters
+        ----------
+        value : np.ndarray
+            New points array. Must have same dtype and dimensionality as original.
+        """
+        if value.dtype != self._points.dtype:
+            raise TypeError(
+                f"Points dtype ({value.dtype}) must match original dtype ({self._points.dtype})"
+            )
+        if value.shape[1] != self._points.shape[1]:
+            raise ValueError(
+                f"Points dimensionality ({value.shape[1]}) must match original ({self._points.shape[1]})"
+            )
+        if not value.flags['C_CONTIGUOUS']:
+            value = np.ascontiguousarray(value)
+        self._points = value
+        self._wrapper.set_points_array(value)
+
     @property
     def size(self) -> int:
         """Get number of points in the cloud."""
@@ -174,6 +199,32 @@ class PointCloud:
         Call this after modifying the points array to update the spatial index.
         """
         self._wrapper.rebuild_tree()
+
+    def shared_view(self) -> "PointCloud":
+        """
+        Create a new PointCloud instance sharing the same underlying data.
+
+        The new point cloud shares the same points and cached tree but has its own
+        transformation. This is useful when you need multiple point cloud instances
+        with different transformations but the same geometry.
+
+        Returns
+        -------
+        PointCloud
+            New point cloud instance sharing the same data, without transformation.
+
+        Examples
+        --------
+        >>> cloud = tf.PointCloud(points)
+        >>> cloud.transformation = transform_A
+        >>> cloud2 = cloud.shared_view()
+        >>> cloud2.transformation = transform_B
+        >>> # cloud and cloud2 share the same data but have different transforms
+        """
+        new_cloud = object.__new__(PointCloud)
+        new_cloud._points = self._points
+        new_cloud._wrapper = self._wrapper.shared_view()
+        return new_cloud
 
     def __repr__(self) -> str:
         """String representation of the point cloud."""

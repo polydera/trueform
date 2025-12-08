@@ -28,6 +28,7 @@ import time
 from util import (
     MeshData,
     load_mesh,
+    load_mesh_shared,
     BaseInteractor,
     NORMAL_COLOR,
     HIGHLIGHT_COLOR,
@@ -125,7 +126,14 @@ def main():
 
     mesh_files = sys.argv[1:]
 
-    # Create 5×5 grid of meshes
+    # Load each unique mesh file once and build structures
+    source_meshes = {}
+    for filename in mesh_files:
+        mesh_data = load_mesh(filename, (0.0, 0.0, 0.0), target_radius=10.0, random_rotation=False)
+        mesh_data.mesh.build_tree()
+        source_meshes[filename] = mesh_data
+
+    # Create 5×5 grid of meshes using shared_view
     grid_size = 5
     spacing = 15.0  # Distance between meshes
     mesh_data_list = []
@@ -140,8 +148,10 @@ def main():
 
             # Cycle through available mesh files
             filename = mesh_files[mesh_index % len(mesh_files)]
-            mesh = load_mesh(filename, (x, y, z), target_radius=10.0, random_rotation=True)
-            mesh.mesh.build_tree()
+            source = source_meshes[filename]
+
+            # Use shared_view to share geometry and tree
+            mesh = load_mesh_shared(source, (x, y, z), random_rotation=True)
             mesh.actor.GetProperty().SetColor(*NORMAL_COLOR)
             mesh_data_list.append(mesh)
 
