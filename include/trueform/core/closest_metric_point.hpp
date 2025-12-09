@@ -321,4 +321,32 @@ auto closest_metric_point(const tf::plane_like<Dims, T> &o0,
   return tf::make_metric_point(res.metric, res.first);
 }
 
+template <typename T, std::size_t Dims, typename Policy>
+auto closest_metric_point(const tf::point_like<Dims, T> &pt,
+                          const tf::plane_like<Dims, Policy> &p) {
+  auto res = closest_metric_point_pair(pt, p);
+  return tf::make_metric_point(res.metric, res.first);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto closest_metric_point(const tf::plane_like<Dims, Policy0> &p0,
+                          const tf::plane_like<Dims, Policy1> &p1) {
+  auto res = closest_metric_point_pair(p0, p1);
+  return tf::make_metric_point(res.metric, res.first);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto closest_metric_point(const tf::polygon<Dims, Policy0> &poly,
+                          const tf::plane_like<Dims, Policy1> &plane) {
+  auto res = closest_metric_point_pair(poly, plane);
+  return tf::make_metric_point(res.metric, res.first);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto closest_metric_point(const tf::plane_like<Dims, Policy0> &plane,
+                          const tf::polygon<Dims, Policy1> &poly) {
+  auto res = closest_metric_point_pair(plane, poly);
+  return tf::make_metric_point(res.metric, res.first);
+}
+
 } // namespace tf

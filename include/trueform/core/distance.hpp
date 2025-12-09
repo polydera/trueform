@@ -194,6 +194,222 @@ auto distance2(const point_like<N, T0> &pt, const plane_like<N, T1> &p) {
   return distance2(p, pt);
 }
 
+// Segment to Plane
+template <std::size_t Dims, typename T0, typename T1>
+auto distance2(const segment<Dims, T0> &s, const plane_like<Dims, T1> &p) {
+  return closest_metric_point(s, p).metric;
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance(const segment<Dims, T0> &s, const plane_like<Dims, T1> &p) {
+  return tf::sqrt(distance2(s, p));
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance2(const plane_like<Dims, T0> &p, const segment<Dims, T1> &s) {
+  return distance2(s, p);
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance(const plane_like<Dims, T0> &p, const segment<Dims, T1> &s) {
+  return distance(s, p);
+}
+
+// Ray to Plane
+template <std::size_t Dims, typename T0, typename T1>
+auto distance2(const ray_like<Dims, T0> &r, const plane_like<Dims, T1> &p) {
+  return closest_metric_point(r, p).metric;
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance(const ray_like<Dims, T0> &r, const plane_like<Dims, T1> &p) {
+  return tf::sqrt(distance2(r, p));
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance2(const plane_like<Dims, T0> &p, const ray_like<Dims, T1> &r) {
+  return distance2(r, p);
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance(const plane_like<Dims, T0> &p, const ray_like<Dims, T1> &r) {
+  return distance(r, p);
+}
+
+// Line to Plane
+template <std::size_t Dims, typename T0, typename T1>
+auto distance2(const line_like<Dims, T0> &l, const plane_like<Dims, T1> &p) {
+  return closest_metric_point(l, p).metric;
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance(const line_like<Dims, T0> &l, const plane_like<Dims, T1> &p) {
+  return tf::sqrt(distance2(l, p));
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance2(const plane_like<Dims, T0> &p, const line_like<Dims, T1> &l) {
+  return distance2(l, p);
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance(const plane_like<Dims, T0> &p, const line_like<Dims, T1> &l) {
+  return distance(l, p);
+}
+
+// Polygon to Plane
+template <std::size_t Dims, typename T0, typename T1>
+auto distance2(const polygon<Dims, T0> &poly, const plane_like<Dims, T1> &p) {
+  return closest_metric_point(poly, p).metric;
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance(const polygon<Dims, T0> &poly, const plane_like<Dims, T1> &p) {
+  return tf::sqrt(distance2(poly, p));
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance2(const plane_like<Dims, T0> &p, const polygon<Dims, T1> &poly) {
+  return distance2(poly, p);
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance(const plane_like<Dims, T0> &p, const polygon<Dims, T1> &poly) {
+  return distance(poly, p);
+}
+
+// Plane to Plane
+template <std::size_t Dims, typename T0, typename T1>
+auto distance2(const plane_like<Dims, T0> &p0, const plane_like<Dims, T1> &p1) {
+  return closest_metric_point(p0, p1).metric;
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance(const plane_like<Dims, T0> &p0, const plane_like<Dims, T1> &p1) {
+  return tf::sqrt(distance2(p0, p1));
+}
+
+// AABB to Plane
+template <std::size_t Dims, typename T0, typename T1>
+auto distance(const aabb_like<Dims, T0> &aabb, const plane_like<Dims, T1> &p) {
+  using T = tf::coordinate_type<T0, T1>;
+  auto center = aabb.center();
+  auto half_extent = (aabb.max - aabb.min) * T(0.5);
+
+  // Distance from center to plane
+  auto d_center = tf::dot(p.normal, center) + p.d;
+
+  // Projected radius: sum of half-extents projected onto plane normal
+  T r = T(0);
+  for (std::size_t i = 0; i < Dims; ++i) {
+    r += half_extent[i] * std::abs(p.normal[i]);
+  }
+
+  return std::max(T(0), std::abs(d_center) - r);
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance2(const aabb_like<Dims, T0> &aabb, const plane_like<Dims, T1> &p) {
+  auto d = distance(aabb, p);
+  return d * d;
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance(const plane_like<Dims, T0> &p, const aabb_like<Dims, T1> &aabb) {
+  return distance(aabb, p);
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance2(const plane_like<Dims, T0> &p, const aabb_like<Dims, T1> &aabb) {
+  return distance2(aabb, p);
+}
+
+// OBB to Plane
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance(const tf::obb_like<Dims, Policy0> &obb,
+              const tf::plane_like<Dims, Policy1> &p) {
+  using T = tf::coordinate_type<Policy0, Policy1>;
+
+  auto center = obb.origin;
+  for (std::size_t i = 0; i < Dims; ++i) {
+    center = center + obb.axes[i] * (obb.extent[i] * T(0.5));
+  }
+
+  auto d_center = tf::dot(p.normal, center) + p.d;
+
+  T r = T(0);
+  for (std::size_t i = 0; i < Dims; ++i) {
+    auto proj = tf::dot(p.normal, obb.axes[i]);
+    r += std::abs(proj) * (obb.extent[i] * T(0.5));
+  }
+
+  return std::max(T(0), std::abs(d_center) - r);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance2(const tf::obb_like<Dims, Policy0> &obb,
+               const tf::plane_like<Dims, Policy1> &p) {
+  auto d = distance(obb, p);
+  return d * d;
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance(const tf::plane_like<Dims, Policy0> &p,
+              const tf::obb_like<Dims, Policy1> &obb) {
+  return distance(obb, p);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance2(const tf::plane_like<Dims, Policy0> &p,
+               const tf::obb_like<Dims, Policy1> &obb) {
+  return distance2(obb, p);
+}
+
+// RSS to Plane
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance(const tf::rss_like<Dims, Policy0> &rss,
+              const tf::plane_like<Dims, Policy1> &p) {
+  using T = tf::coordinate_type<Policy0, Policy1>;
+
+  static_assert(Dims >= 2, "rss must have at least a 1D rectangle");
+
+  auto center = rss.origin;
+  for (std::size_t i = 0; i < Dims - 1; ++i) {
+    center = center + rss.axes[i] * (rss.length[i] * T(0.5));
+  }
+
+  auto d_center = tf::dot(p.normal, center) + p.d;
+
+  T rect_r = T(0);
+  for (std::size_t i = 0; i < Dims - 1; ++i) {
+    auto proj = tf::dot(p.normal, rss.axes[i]);
+    rect_r += std::abs(proj) * (rss.length[i] * T(0.5));
+  }
+
+  T r_total = rect_r + rss.radius;
+
+  return std::max(T(0), std::abs(d_center) - r_total);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance2(const tf::rss_like<Dims, Policy0> &rss,
+               const tf::plane_like<Dims, Policy1> &p) {
+  auto d = distance(rss, p);
+  return d * d;
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance(const tf::plane_like<Dims, Policy0> &p,
+              const tf::rss_like<Dims, Policy1> &rss) {
+  return distance(rss, p);
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance2(const tf::plane_like<Dims, Policy0> &p,
+               const tf::rss_like<Dims, Policy1> &rss) {
+  return distance2(rss, p);
+}
+
 template <std::size_t Dims, typename Policy, typename T1>
 auto distance2(const tf::line_like<Dims, Policy> &l,
                const tf::point_like<Dims, T1> &v1) {

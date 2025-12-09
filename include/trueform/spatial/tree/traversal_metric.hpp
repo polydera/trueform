@@ -11,6 +11,7 @@
 #include "../../core/line_like.hpp"
 #include "../../core/obb_like.hpp"
 #include "../../core/obbrss_like.hpp"
+#include "../../core/plane_like.hpp"
 #include "../../core/point_like.hpp"
 #include "../../core/ray_like.hpp"
 #include "../../core/rss_from.hpp"
@@ -75,6 +76,15 @@ auto traversal_metric(const tf::aabb_like<Dims, Policy0> &aabb,
   auto d_center = tf::distance(ray, center);
   auto result = std::max(T(0), d_center - r);
   return result * result;
+}
+
+/// @brief Compute traversal metric for single-tree queries.
+///
+/// @return Squared distance (exact)
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto traversal_metric(const tf::aabb_like<Dims, Policy0> &aabb,
+                      const tf::plane_like<Dims, Policy1> &plane) {
+  return tf::distance2(aabb, plane);
 }
 
 // ============================================================================
@@ -185,6 +195,15 @@ auto traversal_metric(const tf::obb_like<Dims, Policy0> &obb,
   return result * result;
 }
 
+/// @brief Compute traversal metric for single-tree queries.
+///
+/// @return Squared distance (exact)
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto traversal_metric(const tf::obb_like<Dims, Policy0> &obb,
+                      const tf::plane_like<Dims, Policy1> &plane) {
+  return tf::distance2(obb, plane);
+}
+
 // ============================================================================
 // RSS row
 // ============================================================================
@@ -279,6 +298,15 @@ auto traversal_metric(const tf::rss_like<Dims, Policy0> &rss,
   return result * result;
 }
 
+/// @brief Compute traversal metric for single-tree queries.
+///
+/// @return Squared distance (exact)
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto traversal_metric(const tf::rss_like<Dims, Policy0> &rss,
+                      const tf::plane_like<Dims, Policy1> &plane) {
+  return tf::distance2(rss, plane);
+}
+
 // ============================================================================
 // OBBRSS row (forwards to RSS)
 // ============================================================================
@@ -332,6 +360,19 @@ auto traversal_metric(const tf::obbrss_like<Dims, Policy0> &obbrss,
   auto rss = tf::make_rss_like(obbrss.rss_origin, obbrss.axes, obbrss.length,
                                obbrss.radius);
   return traversal_metric(rss, ray);
+}
+
+/// @brief Compute traversal metric for single-tree queries.
+///
+/// Forwards to RSS metric.
+///
+/// @return Squared distance (exact)
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto traversal_metric(const tf::obbrss_like<Dims, Policy0> &obbrss,
+                      const tf::plane_like<Dims, Policy1> &plane) {
+  auto rss = tf::make_rss_like(obbrss.rss_origin, obbrss.axes, obbrss.length,
+                               obbrss.radius);
+  return traversal_metric(rss, plane);
 }
 
 } // namespace tf::spatial

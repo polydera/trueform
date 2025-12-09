@@ -90,8 +90,9 @@ auto closest_metric_point_pair(const tf::plane_like<Dims, Policy0> &p0,
   if (std::abs(dot_n) < T(1) - tf::epsilon<T>) {
     auto dir = tf::cross(p0.normal, p1.normal);
     auto n0xn1 = dir.length2();
-    auto pt = (p1.d * dot_n - p0.d) / n0xn1 * tf::cross(dir, p1.normal) +
-              (p0.d * dot_n - p1.d) / n0xn1 * tf::cross(p0.normal, dir);
+    auto pt = tf::make_point(
+        (p1.d * dot_n - p0.d) / n0xn1 * tf::cross(dir, p1.normal) +
+        (p0.d * dot_n - p1.d) / n0xn1 * tf::cross(p0.normal, dir));
     return tf::make_metric_point_pair(T(0), pt, pt);
   }
 
@@ -101,7 +102,7 @@ auto closest_metric_point_pair(const tf::plane_like<Dims, Policy0> &p0,
     return tf::make_metric_point_pair(T(0), pt, pt);
   }
 
-  tf::point<T, Dims> pt0 = -p0.d * p0.normal;
+  tf::point<T, Dims> pt0 = tf::make_point(-p0.d * p0.normal);
   tf::point<T, Dims> pt1 = pt0 - d_diff * p1.normal;
   return tf::make_metric_point_pair(d_diff * d_diff, pt0, pt1);
 }
@@ -110,9 +111,9 @@ template <std::size_t Dims, typename Policy0, typename Policy1>
 auto closest_metric_point_pair(const tf::polygon<Dims, Policy0> &poly,
                                const tf::plane_like<Dims, Policy1> &plane) {
   using T = tf::coordinate_type<Policy0, Policy1>;
-  auto best = tf::make_metric_point_pair(std::numeric_limits<T>::max(),
-                                         tf::point<T, Dims>{},
-                                         tf::point<T, Dims>{});
+  auto best =
+      tf::make_metric_point_pair(std::numeric_limits<T>::max(),
+                                 tf::point<T, Dims>{}, tf::point<T, Dims>{});
   std::size_t size = poly.size();
   std::size_t prev = size - 1;
   for (std::size_t i = 0; i < size; prev = i++) {

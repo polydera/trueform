@@ -130,6 +130,30 @@ auto distance(const tf::polygon<Dims, Policy0> &obj,
 }
 
 template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance2(const tf::form<Dims, Policy0> &form,
+               const tf::plane_like<Dims, Policy1> &obj) {
+  return neighbor_search(form, obj).metric();
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance2(const tf::plane_like<Dims, Policy0> &obj,
+               const tf::form<Dims, Policy0> &form) {
+  return neighbor_search(form, obj).metric();
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance(const tf::form<Dims, Policy0> &form,
+              const tf::plane_like<Dims, Policy1> &obj) {
+  return tf::sqrt(distance2(form, obj));
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance(const tf::plane_like<Dims, Policy0> &obj,
+              const tf::form<Dims, Policy0> &form) {
+  return tf::sqrt(distance2(form, obj));
+}
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
 auto distance2(const tf::form<Dims, Policy0> &form0,
                const tf::form<Dims, Policy1> &form1) {
   return neighbor_search(form0, form1).metric();
