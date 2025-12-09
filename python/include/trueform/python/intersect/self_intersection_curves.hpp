@@ -18,8 +18,6 @@ namespace tf::py {
 template <typename Index0, typename RealT, std::size_t Ngon0, std::size_t Dims>
 auto self_intersection_curves(
     mesh_wrapper<Index0, RealT, Ngon0, Dims> &form_wrapper) {
-  form_wrapper.ensure_tree();
-  form_wrapper.ensure_manifold_edge_link();
   auto form0 = tf::make_form(form_wrapper.tree(),
                              form_wrapper.make_primitive_range() |
                                  tf::tag(form_wrapper.manifold_edge_link()) |

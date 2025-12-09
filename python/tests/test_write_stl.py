@@ -392,17 +392,19 @@ def test_write_stl_mesh_transformation_override():
         assert_meshes_equal(expected_faces, expected_points, faces_read, points_read)
 
 
-def test_write_stl_mesh_quad_error():
-    """Test that quad mesh raises error"""
+def test_write_stl_mesh_dynamic_error():
+    """Test that dynamic mesh raises error"""
     with tempfile.TemporaryDirectory() as tmpdir:
-        stl_file = os.path.join(tmpdir, "quad.stl")
+        stl_file = os.path.join(tmpdir, "dynamic.stl")
 
-        # Create a quad mesh
-        faces = np.array([[0, 1, 2, 3]], dtype=np.int32)
-        points = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], dtype=np.float32)
+        # Create a dynamic mesh
+        offsets = np.array([0, 3, 7], dtype=np.int32)
+        data = np.array([0, 1, 2, 0, 2, 3, 4], dtype=np.int32)
+        faces = tf.OffsetBlockedArray(offsets, data)
+        points = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0.5, 0.5, 0]], dtype=np.float32)
         mesh = tf.Mesh(faces, points)
 
-        # Should raise error for quad mesh
+        # Should raise error for dynamic mesh
         with pytest.raises(ValueError, match="STL format only supports triangular meshes"):
             tf.write_stl(mesh, stl_file)
 

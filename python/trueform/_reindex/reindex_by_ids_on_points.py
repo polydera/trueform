@@ -10,11 +10,12 @@ https://github.com/xlabmedical/trueform
 import numpy as np
 from typing import Union, Tuple
 from .._spatial import Mesh, EdgeMesh
+from .._core import OffsetBlockedArray
 from .reindex_by_mask_on_points import reindex_by_mask_on_points
 
 
 def reindex_by_ids_on_points(
-    data: Union[Tuple[np.ndarray, np.ndarray], Mesh, EdgeMesh],
+    data: Union[Tuple[Union[np.ndarray, OffsetBlockedArray], np.ndarray], Mesh, EdgeMesh],
     point_ids: np.ndarray,
     return_index_map: bool = False
 ) -> Union[
@@ -32,9 +33,10 @@ def reindex_by_ids_on_points(
     data : tuple, Mesh, or EdgeMesh
         Input geometric data:
         - Indexed geometry: tuple (indices, points) where:
-          * indices: shape (N, V) with dtype int32 or int64, V = 2, 3, or 4
+          * indices: shape (N, V) with dtype int32 or int64, V = 2 or 3,
+            OR OffsetBlockedArray for variable-sized polygons
           * points: shape (M, Dims) where Dims = 2 or 3
-        - Mesh: tf.Mesh object (2D or 3D, NGon = 3 or 4)
+        - Mesh: tf.Mesh object (2D or 3D, triangles or dynamic)
         - EdgeMesh: tf.EdgeMesh object (2D or 3D)
     point_ids : np.ndarray
         1D array of point IDs to keep, shape (K,) with dtype int32 or int64.

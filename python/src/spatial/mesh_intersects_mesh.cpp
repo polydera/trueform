@@ -15,7 +15,7 @@ auto register_mesh_intersects_mesh(nanobind::module_ &m) -> void {
   // ============================================================================
   // Mesh intersects Mesh
   // Index types: int32, int64 (can differ)
-  // Ngons: 3 (triangle), 4 (quad) (can differ)
+  // Ngons: 3 (triangle), dynamic (can differ)
   // Real types: float, double (must match)
   // Dims: 2D, 3D (must match)
   // Total: 2 × 2 × 2 × 2 × 2 × 2 = 64 functions
@@ -31,21 +31,21 @@ auto register_mesh_intersects_mesh(nanobind::module_ &m) -> void {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_intint34float2d",
+  m.def("intersects_mesh_mesh_intint3dynfloat2d",
         [](mesh_wrapper<int, float, 3, 2> &mesh0,
-           mesh_wrapper<int, float, 4, 2> &mesh1) {
+           mesh_wrapper<int, float, dynamic_size, 2> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_intint43float2d",
-        [](mesh_wrapper<int, float, 4, 2> &mesh0,
+  m.def("intersects_mesh_mesh_intintdyn3float2d",
+        [](mesh_wrapper<int, float, dynamic_size, 2> &mesh0,
            mesh_wrapper<int, float, 3, 2> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_intint44float2d",
-        [](mesh_wrapper<int, float, 4, 2> &mesh0,
-           mesh_wrapper<int, float, 4, 2> &mesh1) {
+  m.def("intersects_mesh_mesh_intintdyndynfloat2d",
+        [](mesh_wrapper<int, float, dynamic_size, 2> &mesh0,
+           mesh_wrapper<int, float, dynamic_size, 2> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
@@ -56,21 +56,21 @@ auto register_mesh_intersects_mesh(nanobind::module_ &m) -> void {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_intint6434float2d",
+  m.def("intersects_mesh_mesh_intint643dynfloat2d",
         [](mesh_wrapper<int, float, 3, 2> &mesh0,
-           mesh_wrapper<int64_t, float, 4, 2> &mesh1) {
+           mesh_wrapper<int64_t, float, dynamic_size, 2> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_intint6443float2d",
-        [](mesh_wrapper<int, float, 4, 2> &mesh0,
+  m.def("intersects_mesh_mesh_intint64dyn3float2d",
+        [](mesh_wrapper<int, float, dynamic_size, 2> &mesh0,
            mesh_wrapper<int64_t, float, 3, 2> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_intint6444float2d",
-        [](mesh_wrapper<int, float, 4, 2> &mesh0,
-           mesh_wrapper<int64_t, float, 4, 2> &mesh1) {
+  m.def("intersects_mesh_mesh_intint64dyndynfloat2d",
+        [](mesh_wrapper<int, float, dynamic_size, 2> &mesh0,
+           mesh_wrapper<int64_t, float, dynamic_size, 2> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
@@ -81,21 +81,21 @@ auto register_mesh_intersects_mesh(nanobind::module_ &m) -> void {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_int64int6434float2d",
+  m.def("intersects_mesh_mesh_int64int643dynfloat2d",
         [](mesh_wrapper<int64_t, float, 3, 2> &mesh0,
-           mesh_wrapper<int64_t, float, 4, 2> &mesh1) {
+           mesh_wrapper<int64_t, float, dynamic_size, 2> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_int64int6443float2d",
-        [](mesh_wrapper<int64_t, float, 4, 2> &mesh0,
+  m.def("intersects_mesh_mesh_int64int64dyn3float2d",
+        [](mesh_wrapper<int64_t, float, dynamic_size, 2> &mesh0,
            mesh_wrapper<int64_t, float, 3, 2> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_int64int6444float2d",
-        [](mesh_wrapper<int64_t, float, 4, 2> &mesh0,
-           mesh_wrapper<int64_t, float, 4, 2> &mesh1) {
+  m.def("intersects_mesh_mesh_int64int64dyndynfloat2d",
+        [](mesh_wrapper<int64_t, float, dynamic_size, 2> &mesh0,
+           mesh_wrapper<int64_t, float, dynamic_size, 2> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
@@ -108,21 +108,21 @@ auto register_mesh_intersects_mesh(nanobind::module_ &m) -> void {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_intint34float3d",
+  m.def("intersects_mesh_mesh_intint3dynfloat3d",
         [](mesh_wrapper<int, float, 3, 3> &mesh0,
-           mesh_wrapper<int, float, 4, 3> &mesh1) {
+           mesh_wrapper<int, float, dynamic_size, 3> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_intint43float3d",
-        [](mesh_wrapper<int, float, 4, 3> &mesh0,
+  m.def("intersects_mesh_mesh_intintdyn3float3d",
+        [](mesh_wrapper<int, float, dynamic_size, 3> &mesh0,
            mesh_wrapper<int, float, 3, 3> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_intint44float3d",
-        [](mesh_wrapper<int, float, 4, 3> &mesh0,
-           mesh_wrapper<int, float, 4, 3> &mesh1) {
+  m.def("intersects_mesh_mesh_intintdyndynfloat3d",
+        [](mesh_wrapper<int, float, dynamic_size, 3> &mesh0,
+           mesh_wrapper<int, float, dynamic_size, 3> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
@@ -133,21 +133,21 @@ auto register_mesh_intersects_mesh(nanobind::module_ &m) -> void {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_intint6434float3d",
+  m.def("intersects_mesh_mesh_intint643dynfloat3d",
         [](mesh_wrapper<int, float, 3, 3> &mesh0,
-           mesh_wrapper<int64_t, float, 4, 3> &mesh1) {
+           mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_intint6443float3d",
-        [](mesh_wrapper<int, float, 4, 3> &mesh0,
+  m.def("intersects_mesh_mesh_intint64dyn3float3d",
+        [](mesh_wrapper<int, float, dynamic_size, 3> &mesh0,
            mesh_wrapper<int64_t, float, 3, 3> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_intint6444float3d",
-        [](mesh_wrapper<int, float, 4, 3> &mesh0,
-           mesh_wrapper<int64_t, float, 4, 3> &mesh1) {
+  m.def("intersects_mesh_mesh_intint64dyndynfloat3d",
+        [](mesh_wrapper<int, float, dynamic_size, 3> &mesh0,
+           mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
@@ -158,21 +158,21 @@ auto register_mesh_intersects_mesh(nanobind::module_ &m) -> void {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_int64int6434float3d",
+  m.def("intersects_mesh_mesh_int64int643dynfloat3d",
         [](mesh_wrapper<int64_t, float, 3, 3> &mesh0,
-           mesh_wrapper<int64_t, float, 4, 3> &mesh1) {
+           mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_int64int6443float3d",
-        [](mesh_wrapper<int64_t, float, 4, 3> &mesh0,
+  m.def("intersects_mesh_mesh_int64int64dyn3float3d",
+        [](mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh0,
            mesh_wrapper<int64_t, float, 3, 3> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_int64int6444float3d",
-        [](mesh_wrapper<int64_t, float, 4, 3> &mesh0,
-           mesh_wrapper<int64_t, float, 4, 3> &mesh1) {
+  m.def("intersects_mesh_mesh_int64int64dyndynfloat3d",
+        [](mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh0,
+           mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
@@ -185,21 +185,21 @@ auto register_mesh_intersects_mesh(nanobind::module_ &m) -> void {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_intint34double2d",
+  m.def("intersects_mesh_mesh_intint3dyndouble2d",
         [](mesh_wrapper<int, double, 3, 2> &mesh0,
-           mesh_wrapper<int, double, 4, 2> &mesh1) {
+           mesh_wrapper<int, double, dynamic_size, 2> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_intint43double2d",
-        [](mesh_wrapper<int, double, 4, 2> &mesh0,
+  m.def("intersects_mesh_mesh_intintdyn3double2d",
+        [](mesh_wrapper<int, double, dynamic_size, 2> &mesh0,
            mesh_wrapper<int, double, 3, 2> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_intint44double2d",
-        [](mesh_wrapper<int, double, 4, 2> &mesh0,
-           mesh_wrapper<int, double, 4, 2> &mesh1) {
+  m.def("intersects_mesh_mesh_intintdyndyndouble2d",
+        [](mesh_wrapper<int, double, dynamic_size, 2> &mesh0,
+           mesh_wrapper<int, double, dynamic_size, 2> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
@@ -210,21 +210,21 @@ auto register_mesh_intersects_mesh(nanobind::module_ &m) -> void {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_intint6434double2d",
+  m.def("intersects_mesh_mesh_intint643dyndouble2d",
         [](mesh_wrapper<int, double, 3, 2> &mesh0,
-           mesh_wrapper<int64_t, double, 4, 2> &mesh1) {
+           mesh_wrapper<int64_t, double, dynamic_size, 2> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_intint6443double2d",
-        [](mesh_wrapper<int, double, 4, 2> &mesh0,
+  m.def("intersects_mesh_mesh_intint64dyn3double2d",
+        [](mesh_wrapper<int, double, dynamic_size, 2> &mesh0,
            mesh_wrapper<int64_t, double, 3, 2> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_intint6444double2d",
-        [](mesh_wrapper<int, double, 4, 2> &mesh0,
-           mesh_wrapper<int64_t, double, 4, 2> &mesh1) {
+  m.def("intersects_mesh_mesh_intint64dyndyndouble2d",
+        [](mesh_wrapper<int, double, dynamic_size, 2> &mesh0,
+           mesh_wrapper<int64_t, double, dynamic_size, 2> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
@@ -235,21 +235,21 @@ auto register_mesh_intersects_mesh(nanobind::module_ &m) -> void {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_int64int6434double2d",
+  m.def("intersects_mesh_mesh_int64int643dyndouble2d",
         [](mesh_wrapper<int64_t, double, 3, 2> &mesh0,
-           mesh_wrapper<int64_t, double, 4, 2> &mesh1) {
+           mesh_wrapper<int64_t, double, dynamic_size, 2> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_int64int6443double2d",
-        [](mesh_wrapper<int64_t, double, 4, 2> &mesh0,
+  m.def("intersects_mesh_mesh_int64int64dyn3double2d",
+        [](mesh_wrapper<int64_t, double, dynamic_size, 2> &mesh0,
            mesh_wrapper<int64_t, double, 3, 2> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_int64int6444double2d",
-        [](mesh_wrapper<int64_t, double, 4, 2> &mesh0,
-           mesh_wrapper<int64_t, double, 4, 2> &mesh1) {
+  m.def("intersects_mesh_mesh_int64int64dyndyndouble2d",
+        [](mesh_wrapper<int64_t, double, dynamic_size, 2> &mesh0,
+           mesh_wrapper<int64_t, double, dynamic_size, 2> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
@@ -262,21 +262,21 @@ auto register_mesh_intersects_mesh(nanobind::module_ &m) -> void {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_intint34double3d",
+  m.def("intersects_mesh_mesh_intint3dyndouble3d",
         [](mesh_wrapper<int, double, 3, 3> &mesh0,
-           mesh_wrapper<int, double, 4, 3> &mesh1) {
+           mesh_wrapper<int, double, dynamic_size, 3> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_intint43double3d",
-        [](mesh_wrapper<int, double, 4, 3> &mesh0,
+  m.def("intersects_mesh_mesh_intintdyn3double3d",
+        [](mesh_wrapper<int, double, dynamic_size, 3> &mesh0,
            mesh_wrapper<int, double, 3, 3> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_intint44double3d",
-        [](mesh_wrapper<int, double, 4, 3> &mesh0,
-           mesh_wrapper<int, double, 4, 3> &mesh1) {
+  m.def("intersects_mesh_mesh_intintdyndyndouble3d",
+        [](mesh_wrapper<int, double, dynamic_size, 3> &mesh0,
+           mesh_wrapper<int, double, dynamic_size, 3> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
@@ -287,21 +287,21 @@ auto register_mesh_intersects_mesh(nanobind::module_ &m) -> void {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_intint6434double3d",
+  m.def("intersects_mesh_mesh_intint643dyndouble3d",
         [](mesh_wrapper<int, double, 3, 3> &mesh0,
-           mesh_wrapper<int64_t, double, 4, 3> &mesh1) {
+           mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_intint6443double3d",
-        [](mesh_wrapper<int, double, 4, 3> &mesh0,
+  m.def("intersects_mesh_mesh_intint64dyn3double3d",
+        [](mesh_wrapper<int, double, dynamic_size, 3> &mesh0,
            mesh_wrapper<int64_t, double, 3, 3> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_intint6444double3d",
-        [](mesh_wrapper<int, double, 4, 3> &mesh0,
-           mesh_wrapper<int64_t, double, 4, 3> &mesh1) {
+  m.def("intersects_mesh_mesh_intint64dyndyndouble3d",
+        [](mesh_wrapper<int, double, dynamic_size, 3> &mesh0,
+           mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
@@ -312,21 +312,21 @@ auto register_mesh_intersects_mesh(nanobind::module_ &m) -> void {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_int64int6434double3d",
+  m.def("intersects_mesh_mesh_int64int643dyndouble3d",
         [](mesh_wrapper<int64_t, double, 3, 3> &mesh0,
-           mesh_wrapper<int64_t, double, 4, 3> &mesh1) {
+           mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_int64int6443double3d",
-        [](mesh_wrapper<int64_t, double, 4, 3> &mesh0,
+  m.def("intersects_mesh_mesh_int64int64dyn3double3d",
+        [](mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh0,
            mesh_wrapper<int64_t, double, 3, 3> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 
-  m.def("intersects_mesh_mesh_int64int6444double3d",
-        [](mesh_wrapper<int64_t, double, 4, 3> &mesh0,
-           mesh_wrapper<int64_t, double, 4, 3> &mesh1) {
+  m.def("intersects_mesh_mesh_int64int64dyndyndouble3d",
+        [](mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh0,
+           mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh1) {
           return form_intersects_form(mesh0, mesh1);
         });
 }

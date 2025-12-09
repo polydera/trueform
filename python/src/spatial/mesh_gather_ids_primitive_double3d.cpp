@@ -200,12 +200,12 @@ auto register_mesh_gather_ids_primitive_double3d(nanobind::module_ &m) -> void {
         nb::arg("threshold").none() = nb::none());
 
   // ============================================================================
-  // gather_ids - int, double, ngon=4, 3D
+  // gather_ids - int, double, dynamic, 3D
   // ============================================================================
 
-  // Point - intdouble43d
-  m.def("gather_ids_point_intdouble43d",
-        [](mesh_wrapper<int, double, 4, 3> &mesh,
+  // Point - intdoubledyn3d
+  m.def("gather_ids_point_intdoubledyn3d",
+        [](mesh_wrapper<int, double, tf::dynamic_size, 3> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<3>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
           auto query = make_point_from_array<3, double>(query_array);
@@ -238,9 +238,9 @@ auto register_mesh_gather_ids_primitive_double3d(nanobind::module_ &m) -> void {
         nb::arg("mesh"), nb::arg("query"), nb::arg("predicate_type"),
         nb::arg("threshold").none() = nb::none());
 
-  // Segment - intdouble43d
-  m.def("gather_ids_segment_intdouble43d",
-        [](mesh_wrapper<int, double, 4, 3> &mesh,
+  // Segment - intdoubledyn3d
+  m.def("gather_ids_segment_intdoubledyn3d",
+        [](mesh_wrapper<int, double, tf::dynamic_size, 3> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<2, 3>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
           auto query = make_segment_from_array<3, double>(query_array);
@@ -273,9 +273,9 @@ auto register_mesh_gather_ids_primitive_double3d(nanobind::module_ &m) -> void {
         nb::arg("mesh"), nb::arg("query"), nb::arg("predicate_type"),
         nb::arg("threshold").none() = nb::none());
 
-  // Polygon - intdouble43d
-  m.def("gather_ids_polygon_intdouble43d",
-        [](mesh_wrapper<int, double, 4, 3> &mesh,
+  // Polygon - intdoubledyn3d
+  m.def("gather_ids_polygon_intdoubledyn3d",
+        [](mesh_wrapper<int, double, tf::dynamic_size, 3> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<-1, 3>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
           auto query = make_polygon_from_array<3, double>(query_array);
@@ -308,9 +308,9 @@ auto register_mesh_gather_ids_primitive_double3d(nanobind::module_ &m) -> void {
         nb::arg("mesh"), nb::arg("query"), nb::arg("predicate_type"),
         nb::arg("threshold").none() = nb::none());
 
-  // Ray - intdouble43d
-  m.def("gather_ids_ray_intdouble43d",
-        [](mesh_wrapper<int, double, 4, 3> &mesh,
+  // Ray - intdoubledyn3d
+  m.def("gather_ids_ray_intdoubledyn3d",
+        [](mesh_wrapper<int, double, tf::dynamic_size, 3> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<2, 3>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
           auto query = make_ray_from_array<3, double>(query_array);
@@ -342,9 +342,9 @@ auto register_mesh_gather_ids_primitive_double3d(nanobind::module_ &m) -> void {
         nb::arg("mesh"), nb::arg("query"), nb::arg("predicate_type"),
         nb::arg("threshold").none() = nb::none());
 
-  // Line - intdouble43d
-  m.def("gather_ids_line_intdouble43d",
-        [](mesh_wrapper<int, double, 4, 3> &mesh,
+  // Line - intdoubledyn3d
+  m.def("gather_ids_line_intdoubledyn3d",
+        [](mesh_wrapper<int, double, tf::dynamic_size, 3> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<2, 3>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
           auto query = make_line_from_array<3, double>(query_array);
@@ -554,12 +554,12 @@ auto register_mesh_gather_ids_primitive_double3d(nanobind::module_ &m) -> void {
         nb::arg("threshold").none() = nb::none());
 
   // ============================================================================
-  // gather_ids - int64, double, ngon=4, 3D
+  // gather_ids - int64, double, dynamic, 3D
   // ============================================================================
 
-  // Point - int64double43d
-  m.def("gather_ids_point_int64double43d",
-        [](mesh_wrapper<int64_t, double, 4, 3> &mesh,
+  // Point - int64doubledyn3d
+  m.def("gather_ids_point_int64doubledyn3d",
+        [](mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<3>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
           auto query = make_point_from_array<3, double>(query_array);
@@ -592,9 +592,9 @@ auto register_mesh_gather_ids_primitive_double3d(nanobind::module_ &m) -> void {
         nb::arg("mesh"), nb::arg("query"), nb::arg("predicate_type"),
         nb::arg("threshold").none() = nb::none());
 
-  // Segment - int64double43d
-  m.def("gather_ids_segment_int64double43d",
-        [](mesh_wrapper<int64_t, double, 4, 3> &mesh,
+  // Segment - int64doubledyn3d
+  m.def("gather_ids_segment_int64doubledyn3d",
+        [](mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<2, 3>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
           auto query = make_segment_from_array<3, double>(query_array);
@@ -627,9 +627,9 @@ auto register_mesh_gather_ids_primitive_double3d(nanobind::module_ &m) -> void {
         nb::arg("mesh"), nb::arg("query"), nb::arg("predicate_type"),
         nb::arg("threshold").none() = nb::none());
 
-  // Polygon - int64double43d
-  m.def("gather_ids_polygon_int64double43d",
-        [](mesh_wrapper<int64_t, double, 4, 3> &mesh,
+  // Polygon - int64doubledyn3d
+  m.def("gather_ids_polygon_int64doubledyn3d",
+        [](mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<-1, 3>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
           auto query = make_polygon_from_array<3, double>(query_array);
@@ -662,9 +662,9 @@ auto register_mesh_gather_ids_primitive_double3d(nanobind::module_ &m) -> void {
         nb::arg("mesh"), nb::arg("query"), nb::arg("predicate_type"),
         nb::arg("threshold").none() = nb::none());
 
-  // Ray - int64double43d
-  m.def("gather_ids_ray_int64double43d",
-        [](mesh_wrapper<int64_t, double, 4, 3> &mesh,
+  // Ray - int64doubledyn3d
+  m.def("gather_ids_ray_int64doubledyn3d",
+        [](mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<2, 3>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
           auto query = make_ray_from_array<3, double>(query_array);
@@ -696,9 +696,9 @@ auto register_mesh_gather_ids_primitive_double3d(nanobind::module_ &m) -> void {
         nb::arg("mesh"), nb::arg("query"), nb::arg("predicate_type"),
         nb::arg("threshold").none() = nb::none());
 
-  // Line - int64double43d
-  m.def("gather_ids_line_int64double43d",
-        [](mesh_wrapper<int64_t, double, 4, 3> &mesh,
+  // Line - int64doubledyn3d
+  m.def("gather_ids_line_int64doubledyn3d",
+        [](mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<2, 3>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
           auto query = make_line_from_array<3, double>(query_array);

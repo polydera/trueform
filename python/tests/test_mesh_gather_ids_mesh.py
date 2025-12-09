@@ -17,69 +17,60 @@ import numpy as np
 import trueform as tf
 
 
-# Type combinations for Mesh: 2 index types × 2 real types × 2 ngons × 2 dims = 16
+# Type combinations for Mesh: 2 index types × 2 real types × 2 mesh_types × 2 dims
 INDEX_DTYPES = [np.int32, np.int64]
 REAL_DTYPES = [np.float32, np.float64]
-NGONS = [3, 4]
+MESH_TYPES = ['triangle', 'dynamic']  # triangle (ngon=3) and dynamic
 
 
-def create_tiled_plane_2d_triangles(index_dtype, real_dtype, offset_x=0.0):
+def create_tiled_plane_2d(index_dtype, real_dtype, mesh_type, offset_x=0.0):
     """
-    Create a simple 2x1 tiled plane in 2D with triangles
+    Create a simple 2x1 tiled plane in 2D (triangles or dynamic)
     offset_x shifts the mesh horizontally
     """
-    faces = np.array([
-        [0, 1, 4],
-        [0, 4, 3],
-        [1, 2, 5],
-        [1, 5, 4]
-    ], dtype=index_dtype)
+    # Same geometry for both - 4 triangles covering 2x1 area
     points = np.array([
         [0 + offset_x, 0], [1 + offset_x, 0], [2 + offset_x, 0],
         [0 + offset_x, 1], [1 + offset_x, 1], [2 + offset_x, 1]
     ], dtype=real_dtype)
-    return tf.Mesh(faces, points)
+
+    if mesh_type == 'triangle':
+        faces = np.array([
+            [0, 1, 4],
+            [0, 4, 3],
+            [1, 2, 5],
+            [1, 5, 4]
+        ], dtype=index_dtype)
+        return tf.Mesh(faces, points)
+    else:
+        # Dynamic mesh - same triangles wrapped in OffsetBlockedArray
+        offsets = np.array([0, 3, 6, 9, 12], dtype=index_dtype)
+        data = np.array([0, 1, 4, 0, 4, 3, 1, 2, 5, 1, 5, 4], dtype=index_dtype)
+        faces = tf.OffsetBlockedArray(offsets, data)
+        return tf.Mesh(faces, points)
 
 
-def create_tiled_plane_3d_triangles(index_dtype, real_dtype, offset_z=0.0):
-    """Create a simple 2x1 tiled plane in 3D (z=offset_z) with triangles"""
-    faces = np.array([
-        [0, 1, 4],
-        [0, 4, 3],
-        [1, 2, 5],
-        [1, 5, 4]
-    ], dtype=index_dtype)
+def create_tiled_plane_3d(index_dtype, real_dtype, mesh_type, offset_z=0.0):
+    """Create a simple 2x1 tiled plane in 3D (z=offset_z), triangles or dynamic"""
     points = np.array([
         [0, 0, offset_z], [1, 0, offset_z], [2, 0, offset_z],
         [0, 1, offset_z], [1, 1, offset_z], [2, 1, offset_z]
     ], dtype=real_dtype)
-    return tf.Mesh(faces, points)
 
-
-def create_tiled_plane_2d_quads(index_dtype, real_dtype, offset_x=0.0):
-    """Create a simple 2x1 tiled plane in 2D with quads"""
-    faces = np.array([
-        [0, 1, 4, 3],
-        [1, 2, 5, 4]
-    ], dtype=index_dtype)
-    points = np.array([
-        [0 + offset_x, 0], [1 + offset_x, 0], [2 + offset_x, 0],
-        [0 + offset_x, 1], [1 + offset_x, 1], [2 + offset_x, 1]
-    ], dtype=real_dtype)
-    return tf.Mesh(faces, points)
-
-
-def create_tiled_plane_3d_quads(index_dtype, real_dtype, offset_z=0.0):
-    """Create a simple 2x1 tiled plane in 3D (z=offset_z) with quads"""
-    faces = np.array([
-        [0, 1, 4, 3],
-        [1, 2, 5, 4]
-    ], dtype=index_dtype)
-    points = np.array([
-        [0, 0, offset_z], [1, 0, offset_z], [2, 0, offset_z],
-        [0, 1, offset_z], [1, 1, offset_z], [2, 1, offset_z]
-    ], dtype=real_dtype)
-    return tf.Mesh(faces, points)
+    if mesh_type == 'triangle':
+        faces = np.array([
+            [0, 1, 4],
+            [0, 4, 3],
+            [1, 2, 5],
+            [1, 5, 4]
+        ], dtype=index_dtype)
+        return tf.Mesh(faces, points)
+    else:
+        # Dynamic mesh - same triangles wrapped in OffsetBlockedArray
+        offsets = np.array([0, 3, 6, 9, 12], dtype=index_dtype)
+        data = np.array([0, 1, 4, 0, 4, 3, 1, 2, 5, 1, 5, 4], dtype=index_dtype)
+        faces = tf.OffsetBlockedArray(offsets, data)
+        return tf.Mesh(faces, points)
 
 
 # ==============================================================================
@@ -89,20 +80,13 @@ def create_tiled_plane_3d_quads(index_dtype, real_dtype, offset_z=0.0):
 @pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
 @pytest.mark.parametrize("index_dtype1", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon0", NGONS)
-@pytest.mark.parametrize("ngon1", NGONS)
-def test_mesh_gather_ids_mesh_2d_intersects_hit(index_dtype0, index_dtype1, real_dtype, ngon0, ngon1):
+@pytest.mark.parametrize("mesh_type0", MESH_TYPES)
+@pytest.mark.parametrize("mesh_type1", MESH_TYPES)
+def test_mesh_gather_ids_mesh_2d_intersects_hit(index_dtype0, index_dtype1, real_dtype, mesh_type0, mesh_type1):
     """Test overlapping meshes - find intersecting face pairs"""
-    if ngon0 == 3:
-        mesh0 = create_tiled_plane_2d_triangles(index_dtype0, real_dtype, offset_x=0.0)
-    else:
-        mesh0 = create_tiled_plane_2d_quads(index_dtype0, real_dtype, offset_x=0.0)
-
-    if ngon1 == 3:
-        # Overlapping mesh at x=1 (overlaps with first mesh)
-        mesh1 = create_tiled_plane_2d_triangles(index_dtype1, real_dtype, offset_x=1.0)
-    else:
-        mesh1 = create_tiled_plane_2d_quads(index_dtype1, real_dtype, offset_x=1.0)
+    mesh0 = create_tiled_plane_2d(index_dtype0, real_dtype, mesh_type0, offset_x=0.0)
+    # Overlapping mesh at x=1 (overlaps with first mesh)
+    mesh1 = create_tiled_plane_2d(index_dtype1, real_dtype, mesh_type1, offset_x=1.0)
 
     result = tf.gather_intersecting_ids(mesh0, mesh1)
 
@@ -114,20 +98,13 @@ def test_mesh_gather_ids_mesh_2d_intersects_hit(index_dtype0, index_dtype1, real
 @pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
 @pytest.mark.parametrize("index_dtype1", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon0", NGONS)
-@pytest.mark.parametrize("ngon1", NGONS)
-def test_mesh_gather_ids_mesh_2d_intersects_miss(index_dtype0, index_dtype1, real_dtype, ngon0, ngon1):
+@pytest.mark.parametrize("mesh_type0", MESH_TYPES)
+@pytest.mark.parametrize("mesh_type1", MESH_TYPES)
+def test_mesh_gather_ids_mesh_2d_intersects_miss(index_dtype0, index_dtype1, real_dtype, mesh_type0, mesh_type1):
     """Test non-overlapping meshes - no intersections"""
-    if ngon0 == 3:
-        mesh0 = create_tiled_plane_2d_triangles(index_dtype0, real_dtype, offset_x=0.0)
-    else:
-        mesh0 = create_tiled_plane_2d_quads(index_dtype0, real_dtype, offset_x=0.0)
-
-    if ngon1 == 3:
-        # Non-overlapping mesh at x=5 (far from first mesh)
-        mesh1 = create_tiled_plane_2d_triangles(index_dtype1, real_dtype, offset_x=5.0)
-    else:
-        mesh1 = create_tiled_plane_2d_quads(index_dtype1, real_dtype, offset_x=5.0)
+    mesh0 = create_tiled_plane_2d(index_dtype0, real_dtype, mesh_type0, offset_x=0.0)
+    # Non-overlapping mesh at x=5 (far from first mesh)
+    mesh1 = create_tiled_plane_2d(index_dtype1, real_dtype, mesh_type1, offset_x=5.0)
 
     result = tf.gather_intersecting_ids(mesh0, mesh1)
 
@@ -138,20 +115,13 @@ def test_mesh_gather_ids_mesh_2d_intersects_miss(index_dtype0, index_dtype1, rea
 @pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
 @pytest.mark.parametrize("index_dtype1", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon0", NGONS)
-@pytest.mark.parametrize("ngon1", NGONS)
-def test_mesh_gather_ids_mesh_2d_within_distance_hit(index_dtype0, index_dtype1, real_dtype, ngon0, ngon1):
+@pytest.mark.parametrize("mesh_type0", MESH_TYPES)
+@pytest.mark.parametrize("mesh_type1", MESH_TYPES)
+def test_mesh_gather_ids_mesh_2d_within_distance_hit(index_dtype0, index_dtype1, real_dtype, mesh_type0, mesh_type1):
     """Test meshes within distance threshold"""
-    if ngon0 == 3:
-        mesh0 = create_tiled_plane_2d_triangles(index_dtype0, real_dtype, offset_x=0.0)
-    else:
-        mesh0 = create_tiled_plane_2d_quads(index_dtype0, real_dtype, offset_x=0.0)
-
-    if ngon1 == 3:
-        # Mesh slightly separated at x=2.5 (0.5 units from first mesh edge at x=2)
-        mesh1 = create_tiled_plane_2d_triangles(index_dtype1, real_dtype, offset_x=2.5)
-    else:
-        mesh1 = create_tiled_plane_2d_quads(index_dtype1, real_dtype, offset_x=2.5)
+    mesh0 = create_tiled_plane_2d(index_dtype0, real_dtype, mesh_type0, offset_x=0.0)
+    # Mesh slightly separated at x=2.5 (0.5 units from first mesh edge at x=2)
+    mesh1 = create_tiled_plane_2d(index_dtype1, real_dtype, mesh_type1, offset_x=2.5)
 
     # With distance=1.0, should find face pairs within distance
     result = tf.gather_ids_within_distance(mesh0, mesh1, distance=1.0)
@@ -163,19 +133,12 @@ def test_mesh_gather_ids_mesh_2d_within_distance_hit(index_dtype0, index_dtype1,
 @pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
 @pytest.mark.parametrize("index_dtype1", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon0", NGONS)
-@pytest.mark.parametrize("ngon1", NGONS)
-def test_mesh_gather_ids_mesh_2d_within_distance_miss(index_dtype0, index_dtype1, real_dtype, ngon0, ngon1):
+@pytest.mark.parametrize("mesh_type0", MESH_TYPES)
+@pytest.mark.parametrize("mesh_type1", MESH_TYPES)
+def test_mesh_gather_ids_mesh_2d_within_distance_miss(index_dtype0, index_dtype1, real_dtype, mesh_type0, mesh_type1):
     """Test meshes outside distance threshold"""
-    if ngon0 == 3:
-        mesh0 = create_tiled_plane_2d_triangles(index_dtype0, real_dtype, offset_x=0.0)
-    else:
-        mesh0 = create_tiled_plane_2d_quads(index_dtype0, real_dtype, offset_x=0.0)
-
-    if ngon1 == 3:
-        mesh1 = create_tiled_plane_2d_triangles(index_dtype1, real_dtype, offset_x=10.0)
-    else:
-        mesh1 = create_tiled_plane_2d_quads(index_dtype1, real_dtype, offset_x=10.0)
+    mesh0 = create_tiled_plane_2d(index_dtype0, real_dtype, mesh_type0, offset_x=0.0)
+    mesh1 = create_tiled_plane_2d(index_dtype1, real_dtype, mesh_type1, offset_x=10.0)
 
     result = tf.gather_ids_within_distance(mesh0, mesh1, distance=1.0)
 
@@ -189,20 +152,13 @@ def test_mesh_gather_ids_mesh_2d_within_distance_miss(index_dtype0, index_dtype1
 @pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
 @pytest.mark.parametrize("index_dtype1", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon0", NGONS)
-@pytest.mark.parametrize("ngon1", NGONS)
-def test_mesh_gather_ids_mesh_3d_intersects_hit(index_dtype0, index_dtype1, real_dtype, ngon0, ngon1):
+@pytest.mark.parametrize("mesh_type0", MESH_TYPES)
+@pytest.mark.parametrize("mesh_type1", MESH_TYPES)
+def test_mesh_gather_ids_mesh_3d_intersects_hit(index_dtype0, index_dtype1, real_dtype, mesh_type0, mesh_type1):
     """Test overlapping meshes intersect (3D)"""
-    if ngon0 == 3:
-        mesh0 = create_tiled_plane_3d_triangles(index_dtype0, real_dtype, offset_z=0.0)
-    else:
-        mesh0 = create_tiled_plane_3d_quads(index_dtype0, real_dtype, offset_z=0.0)
-
-    if ngon1 == 3:
-        # Overlapping mesh at same z=0 plane
-        mesh1 = create_tiled_plane_3d_triangles(index_dtype1, real_dtype, offset_z=0.0)
-    else:
-        mesh1 = create_tiled_plane_3d_quads(index_dtype1, real_dtype, offset_z=0.0)
+    mesh0 = create_tiled_plane_3d(index_dtype0, real_dtype, mesh_type0, offset_z=0.0)
+    # Overlapping mesh at same z=0 plane
+    mesh1 = create_tiled_plane_3d(index_dtype1, real_dtype, mesh_type1, offset_z=0.0)
 
     result = tf.gather_intersecting_ids(mesh0, mesh1)
 
@@ -213,20 +169,13 @@ def test_mesh_gather_ids_mesh_3d_intersects_hit(index_dtype0, index_dtype1, real
 @pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
 @pytest.mark.parametrize("index_dtype1", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon0", NGONS)
-@pytest.mark.parametrize("ngon1", NGONS)
-def test_mesh_gather_ids_mesh_3d_intersects_miss(index_dtype0, index_dtype1, real_dtype, ngon0, ngon1):
+@pytest.mark.parametrize("mesh_type0", MESH_TYPES)
+@pytest.mark.parametrize("mesh_type1", MESH_TYPES)
+def test_mesh_gather_ids_mesh_3d_intersects_miss(index_dtype0, index_dtype1, real_dtype, mesh_type0, mesh_type1):
     """Test non-overlapping meshes don't intersect (3D)"""
-    if ngon0 == 3:
-        mesh0 = create_tiled_plane_3d_triangles(index_dtype0, real_dtype, offset_z=0.0)
-    else:
-        mesh0 = create_tiled_plane_3d_quads(index_dtype0, real_dtype, offset_z=0.0)
-
-    if ngon1 == 3:
-        # Non-overlapping mesh at z=5 (far from first mesh)
-        mesh1 = create_tiled_plane_3d_triangles(index_dtype1, real_dtype, offset_z=5.0)
-    else:
-        mesh1 = create_tiled_plane_3d_quads(index_dtype1, real_dtype, offset_z=5.0)
+    mesh0 = create_tiled_plane_3d(index_dtype0, real_dtype, mesh_type0, offset_z=0.0)
+    # Non-overlapping mesh at z=5 (far from first mesh)
+    mesh1 = create_tiled_plane_3d(index_dtype1, real_dtype, mesh_type1, offset_z=5.0)
 
     result = tf.gather_intersecting_ids(mesh0, mesh1)
 
@@ -236,20 +185,13 @@ def test_mesh_gather_ids_mesh_3d_intersects_miss(index_dtype0, index_dtype1, rea
 @pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
 @pytest.mark.parametrize("index_dtype1", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon0", NGONS)
-@pytest.mark.parametrize("ngon1", NGONS)
-def test_mesh_gather_ids_mesh_3d_within_distance(index_dtype0, index_dtype1, real_dtype, ngon0, ngon1):
+@pytest.mark.parametrize("mesh_type0", MESH_TYPES)
+@pytest.mark.parametrize("mesh_type1", MESH_TYPES)
+def test_mesh_gather_ids_mesh_3d_within_distance(index_dtype0, index_dtype1, real_dtype, mesh_type0, mesh_type1):
     """Test 3D meshes within distance threshold"""
-    if ngon0 == 3:
-        mesh0 = create_tiled_plane_3d_triangles(index_dtype0, real_dtype, offset_z=0.0)
-    else:
-        mesh0 = create_tiled_plane_3d_quads(index_dtype0, real_dtype, offset_z=0.0)
-
-    if ngon1 == 3:
-        # Mesh 0.5 units above
-        mesh1 = create_tiled_plane_3d_triangles(index_dtype1, real_dtype, offset_z=0.5)
-    else:
-        mesh1 = create_tiled_plane_3d_quads(index_dtype1, real_dtype, offset_z=0.5)
+    mesh0 = create_tiled_plane_3d(index_dtype0, real_dtype, mesh_type0, offset_z=0.0)
+    # Mesh 0.5 units above
+    mesh1 = create_tiled_plane_3d(index_dtype1, real_dtype, mesh_type1, offset_z=0.5)
 
     result = tf.gather_ids_within_distance(mesh0, mesh1, distance=1.0)
 
@@ -264,8 +206,8 @@ def test_mesh_gather_ids_mesh_3d_within_distance(index_dtype0, index_dtype1, rea
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
 def test_mesh_gather_ids_mesh_symmetry(real_dtype):
     """Test that swapping arguments swaps column order in results"""
-    mesh0 = create_tiled_plane_2d_triangles(np.int32, real_dtype, offset_x=0.0)
-    mesh1 = create_tiled_plane_2d_triangles(np.int32, real_dtype, offset_x=1.0)
+    mesh0 = create_tiled_plane_2d(np.int32, real_dtype, 'triangle', offset_x=0.0)
+    mesh1 = create_tiled_plane_2d(np.int32, real_dtype, 'triangle', offset_x=1.0)
 
     result01 = tf.gather_intersecting_ids(mesh0, mesh1)
     result10 = tf.gather_intersecting_ids(mesh1, mesh0)
@@ -287,19 +229,12 @@ def test_mesh_gather_ids_mesh_symmetry(real_dtype):
 @pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
 @pytest.mark.parametrize("index_dtype1", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon0", NGONS)
-@pytest.mark.parametrize("ngon1", NGONS)
-def test_mesh_gather_ids_mesh_with_transformation_2d(index_dtype0, index_dtype1, real_dtype, ngon0, ngon1):
+@pytest.mark.parametrize("mesh_type0", MESH_TYPES)
+@pytest.mark.parametrize("mesh_type1", MESH_TYPES)
+def test_mesh_gather_ids_mesh_with_transformation_2d(index_dtype0, index_dtype1, real_dtype, mesh_type0, mesh_type1):
     """Test gather_ids with transformation (transform both meshes)"""
-    if ngon0 == 3:
-        mesh0 = create_tiled_plane_2d_triangles(index_dtype0, real_dtype, offset_x=0.0)
-    else:
-        mesh0 = create_tiled_plane_2d_quads(index_dtype0, real_dtype, offset_x=0.0)
-
-    if ngon1 == 3:
-        mesh1 = create_tiled_plane_2d_triangles(index_dtype1, real_dtype, offset_x=1.0)
-    else:
-        mesh1 = create_tiled_plane_2d_quads(index_dtype1, real_dtype, offset_x=1.0)
+    mesh0 = create_tiled_plane_2d(index_dtype0, real_dtype, mesh_type0, offset_x=0.0)
+    mesh1 = create_tiled_plane_2d(index_dtype1, real_dtype, mesh_type1, offset_x=1.0)
 
     # Verify intersection before transformation
     result_before = tf.gather_intersecting_ids(mesh0, mesh1)
@@ -323,8 +258,8 @@ def test_mesh_gather_ids_mesh_with_transformation_2d(index_dtype0, index_dtype1,
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
 def test_mesh_gather_ids_mesh_different_transformations_2d(real_dtype):
     """Test that different transformations can move meshes apart"""
-    mesh0 = create_tiled_plane_2d_triangles(np.int32, real_dtype, offset_x=0.0)
-    mesh1 = create_tiled_plane_2d_triangles(np.int32, real_dtype, offset_x=1.0)
+    mesh0 = create_tiled_plane_2d(np.int32, real_dtype, 'triangle', offset_x=0.0)
+    mesh1 = create_tiled_plane_2d(np.int32, real_dtype, 'triangle', offset_x=1.0)
 
     # Verify intersection before transformation
     result_before = tf.gather_intersecting_ids(mesh0, mesh1)
@@ -352,8 +287,8 @@ def test_mesh_gather_ids_mesh_different_transformations_2d(real_dtype):
 
 def test_mesh_gather_ids_mesh_dimension_mismatch():
     """Test that dimension mismatch raises error"""
-    mesh_2d = create_tiled_plane_2d_triangles(np.int32, np.float32)
-    mesh_3d = create_tiled_plane_3d_triangles(np.int32, np.float32)
+    mesh_2d = create_tiled_plane_2d(np.int32, np.float32, 'triangle')
+    mesh_3d = create_tiled_plane_3d(np.int32, np.float32, 'triangle')
 
     with pytest.raises(ValueError, match="Dimension mismatch"):
         tf.gather_intersecting_ids(mesh_2d, mesh_3d)
@@ -362,7 +297,7 @@ def test_mesh_gather_ids_mesh_dimension_mismatch():
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
 def test_mesh_gather_ids_mesh_self_query(real_dtype):
     """Test mesh querying itself"""
-    mesh = create_tiled_plane_2d_triangles(np.int32, real_dtype)
+    mesh = create_tiled_plane_2d(np.int32, real_dtype, 'triangle')
 
     result = tf.gather_intersecting_ids(mesh, mesh)
 
@@ -373,33 +308,19 @@ def test_mesh_gather_ids_mesh_self_query(real_dtype):
 
 
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon0", NGONS)
-@pytest.mark.parametrize("ngon1", NGONS)
-def test_mesh_gather_ids_mesh_return_dtype(real_dtype, ngon0, ngon1):
+@pytest.mark.parametrize("mesh_type0", MESH_TYPES)
+@pytest.mark.parametrize("mesh_type1", MESH_TYPES)
+def test_mesh_gather_ids_mesh_return_dtype(real_dtype, mesh_type0, mesh_type1):
     """Test that return dtype matches mesh index dtype"""
-    if ngon0 == 3:
-        mesh0_int32 = create_tiled_plane_2d_triangles(np.int32, real_dtype)
-    else:
-        mesh0_int32 = create_tiled_plane_2d_quads(np.int32, real_dtype)
-
-    if ngon1 == 3:
-        mesh1_int32 = create_tiled_plane_2d_triangles(np.int32, real_dtype, offset_x=1.0)
-    else:
-        mesh1_int32 = create_tiled_plane_2d_quads(np.int32, real_dtype, offset_x=1.0)
+    mesh0_int32 = create_tiled_plane_2d(np.int32, real_dtype, mesh_type0)
+    mesh1_int32 = create_tiled_plane_2d(np.int32, real_dtype, mesh_type1, offset_x=1.0)
 
     result = tf.gather_intersecting_ids(mesh0_int32, mesh1_int32)
     assert result.dtype == np.int32
 
     # Test with int64
-    if ngon0 == 3:
-        mesh0_int64 = create_tiled_plane_2d_triangles(np.int64, real_dtype)
-    else:
-        mesh0_int64 = create_tiled_plane_2d_quads(np.int64, real_dtype)
-
-    if ngon1 == 3:
-        mesh1_int64 = create_tiled_plane_2d_triangles(np.int64, real_dtype, offset_x=1.0)
-    else:
-        mesh1_int64 = create_tiled_plane_2d_quads(np.int64, real_dtype, offset_x=1.0)
+    mesh0_int64 = create_tiled_plane_2d(np.int64, real_dtype, mesh_type0)
+    mesh1_int64 = create_tiled_plane_2d(np.int64, real_dtype, mesh_type1, offset_x=1.0)
 
     result_64 = tf.gather_intersecting_ids(mesh0_int64, mesh1_int64)
     assert result_64.dtype == np.int64
@@ -409,10 +330,10 @@ def test_mesh_gather_ids_mesh_return_dtype(real_dtype, ngon0, ngon1):
 def test_mesh_gather_ids_mesh_partial_overlap(real_dtype):
     """Test meshes with partial overlap - specific face pairs"""
     # mesh0: 4 faces covering x=[0,2], y=[0,1]
-    mesh0 = create_tiled_plane_2d_triangles(np.int32, real_dtype, offset_x=0.0)
+    mesh0 = create_tiled_plane_2d(np.int32, real_dtype, 'triangle', offset_x=0.0)
 
     # mesh1: 4 faces covering x=[1,3], y=[0,1] (overlaps right half of mesh0)
-    mesh1 = create_tiled_plane_2d_triangles(np.int32, real_dtype, offset_x=1.0)
+    mesh1 = create_tiled_plane_2d(np.int32, real_dtype, 'triangle', offset_x=1.0)
 
     result = tf.gather_intersecting_ids(mesh0, mesh1)
 

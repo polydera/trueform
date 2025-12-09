@@ -14,7 +14,6 @@ namespace tf::py {
 template <typename FormWrapper, typename Primitive>
 auto form_intersects_primitive(FormWrapper &form_wrapper,
                                const Primitive &primitive) {
-  form_wrapper.ensure_tree();
   if (form_wrapper.has_transformation()) {
     return tf::intersects(
         tf::make_form(tf::make_frame(form_wrapper.transformation_view()),

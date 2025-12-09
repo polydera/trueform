@@ -146,8 +146,9 @@ def main():
     mesh_file2 = sys.argv[2] if len(sys.argv) > 2 else sys.argv[1]
 
     # Load meshes with random rotations at specified positions
-    mesh_data0 = load_mesh(mesh_file1, (0.0, 0.0, 0.0), target_radius=10.0, random_rotation=True)
-    mesh_data1 = load_mesh(mesh_file2, (15.0, 0.0, 0.0), target_radius=10.0, random_rotation=True)
+    # Use dynamic=True to test OffsetBlockedArray
+    mesh_data0 = load_mesh(mesh_file1, (0.0, 0.0, 0.0), target_radius=10.0, random_rotation=True, dynamic=True)
+    mesh_data1 = load_mesh(mesh_file2, (15.0, 0.0, 0.0), target_radius=10.0, random_rotation=True, dynamic=True)
 
     # Build trees for ray casting
     mesh_data0.mesh.build_tree()

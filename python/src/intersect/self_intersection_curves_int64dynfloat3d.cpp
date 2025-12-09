@@ -9,10 +9,10 @@
 
 namespace tf::py {
 
-auto register_self_intersection_curves_int644float3d(nanobind::module_ &m) -> void {
-  // int64, quads, float32, 3D
-  m.def("self_intersection_curves_mesh_int644float3d",
-        [](mesh_wrapper<int64_t, float, 4, 3> &mesh) {
+auto register_self_intersection_curves_int64dynfloat3d(nanobind::module_ &m) -> void {
+  // int64, dynamic, float32, 3D
+  m.def("self_intersection_curves_mesh_int64dynfloat3d",
+        [](mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh) {
           return self_intersection_curves(mesh);
         },
         nanobind::arg("mesh"));

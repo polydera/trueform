@@ -51,6 +51,9 @@ _CLOSEST_PAIR_DISPATCH = {
     (Plane, Ray): ("closest_metric_point_pair_plane_ray_{}", False),
     (Line, Plane): ("closest_metric_point_pair_line_plane_{}", False),
     (Plane, Line): ("closest_metric_point_pair_plane_line_{}", False),
+    (Polygon, Plane): ("closest_metric_point_pair_polygon_plane_{}", False),
+    (Plane, Polygon): ("closest_metric_point_pair_plane_polygon_{}", False),
+    (Plane, Plane): ("closest_metric_point_pair_plane_plane_{}", False),
 }
 
 

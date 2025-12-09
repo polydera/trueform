@@ -4,7 +4,7 @@ Tests for mesh ray_cast functionality
 Uses pytest parametrization to efficiently test all type combinations:
 - Index types: int32, int64
 - Real types: float32, float64
-- Ngon: 3 (triangles), 4 (quads)
+- Mesh types: triangles, dynamic (variable-size)
 - Dims: 2D, 3D
 
 Copyright (c) 2025 Žiga Sajovic, XLAB
@@ -23,6 +23,7 @@ import trueform as tf
 # Type combinations to test
 INDEX_DTYPES = [np.int32, np.int64]
 REAL_DTYPES = [np.float32, np.float64]
+MESH_TYPES = ['triangle', 'dynamic']  # triangles and dynamic (variable-size)
 
 
 def create_2d_triangle_mesh(index_dtype, real_dtype):
@@ -41,18 +42,22 @@ def create_3d_triangle_mesh(index_dtype, real_dtype):
     return tf.Mesh(faces, points)
 
 
-def create_2d_quad_mesh(index_dtype, real_dtype):
-    """Create a simple 2D quad mesh"""
-    # Single quad: vertices at [0,0], [1,0], [1,1], [0,1]
-    faces = np.array([[0, 1, 2, 3]], dtype=index_dtype)
+def create_2d_dynamic_mesh(index_dtype, real_dtype):
+    """Create a simple 2D dynamic mesh with variable-size polygons"""
+    # Single quad as dynamic: vertices at [0,0], [1,0], [1,1], [0,1]
+    offsets = np.array([0, 4], dtype=index_dtype)
+    data = np.array([0, 1, 2, 3], dtype=index_dtype)
+    faces = tf.OffsetBlockedArray(offsets, data)
     points = np.array([[0, 0], [1, 0], [1, 1], [0, 1]], dtype=real_dtype)
     return tf.Mesh(faces, points)
 
 
-def create_3d_quad_mesh(index_dtype, real_dtype):
-    """Create a simple 3D quad mesh"""
-    # Single quad in xy-plane at z=0
-    faces = np.array([[0, 1, 2, 3]], dtype=index_dtype)
+def create_3d_dynamic_mesh(index_dtype, real_dtype):
+    """Create a simple 3D dynamic mesh with variable-size polygons"""
+    # Single quad in xy-plane at z=0 as dynamic
+    offsets = np.array([0, 4], dtype=index_dtype)
+    data = np.array([0, 1, 2, 3], dtype=index_dtype)
+    faces = tf.OffsetBlockedArray(offsets, data)
     points = np.array(
         [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], dtype=real_dtype
     )
@@ -61,19 +66,20 @@ def create_3d_quad_mesh(index_dtype, real_dtype):
 
 # Test fixtures for mesh creation
 MESH_CREATORS = {
-    (2, 3): create_2d_triangle_mesh,
-    (3, 3): create_3d_triangle_mesh,
-    (2, 4): create_2d_quad_mesh,
-    (3, 4): create_3d_quad_mesh,
+    (2, 'triangle'): create_2d_triangle_mesh,
+    (3, 'triangle'): create_3d_triangle_mesh,
+    (2, 'dynamic'): create_2d_dynamic_mesh,
+    (3, 'dynamic'): create_3d_dynamic_mesh,
 }
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("dims,ngon", [(2, 3), (3, 3), (2, 4), (3, 4)])
-def test_mesh_ray_cast_hit(index_dtype, real_dtype, dims, ngon):
+@pytest.mark.parametrize("dims", [2, 3])
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_mesh_ray_cast_hit(index_dtype, real_dtype, dims, mesh_type):
     """Test ray casting that should hit the mesh"""
-    mesh_creator = MESH_CREATORS[(dims, ngon)]
+    mesh_creator = MESH_CREATORS[(dims, mesh_type)]
     mesh = mesh_creator(index_dtype, real_dtype)
 
     if dims == 2:
@@ -105,10 +111,11 @@ def test_mesh_ray_cast_hit(index_dtype, real_dtype, dims, ngon):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("dims,ngon", [(2, 3), (3, 3), (2, 4), (3, 4)])
-def test_mesh_ray_cast_miss(index_dtype, real_dtype, dims, ngon):
+@pytest.mark.parametrize("dims", [2, 3])
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_mesh_ray_cast_miss(index_dtype, real_dtype, dims, mesh_type):
     """Test ray casting that should miss the mesh"""
-    mesh_creator = MESH_CREATORS[(dims, ngon)]
+    mesh_creator = MESH_CREATORS[(dims, mesh_type)]
     mesh = mesh_creator(index_dtype, real_dtype)
 
     if dims == 2:
@@ -132,10 +139,11 @@ def test_mesh_ray_cast_miss(index_dtype, real_dtype, dims, ngon):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("dims,ngon", [(2, 3), (3, 3), (2, 4), (3, 4)])
-def test_mesh_ray_cast_pointing_away(index_dtype, real_dtype, dims, ngon):
+@pytest.mark.parametrize("dims", [2, 3])
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_mesh_ray_cast_pointing_away(index_dtype, real_dtype, dims, mesh_type):
     """Test ray pointing away from mesh"""
-    mesh_creator = MESH_CREATORS[(dims, ngon)]
+    mesh_creator = MESH_CREATORS[(dims, mesh_type)]
     mesh = mesh_creator(index_dtype, real_dtype)
 
     if dims == 2:

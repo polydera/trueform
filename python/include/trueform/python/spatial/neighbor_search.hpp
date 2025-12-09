@@ -44,8 +44,6 @@ auto neighbor_search(FormWrapper &form_wrapper, const Primitive &query,
     return result_t{e.element, e.info.metric, arr};
   };
 
-  form_wrapper.ensure_tree();
-
   RealT r = std::numeric_limits<RealT>::max();
   if (radius)
     r = *radius;

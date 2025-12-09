@@ -113,9 +113,11 @@ def intersection_curves(
     index0_str = 'int' if mesh0.faces.dtype == np.int32 else 'int64'
     index1_str = 'int' if mesh1.faces.dtype == np.int32 else 'int64'
     real_str = 'float' if mesh0.dtype == np.float32 else 'double'
+    ngon0_str = 'dyn' if mesh0.is_dynamic else str(mesh0.ngon)
+    ngon1_str = 'dyn' if mesh1.is_dynamic else str(mesh1.ngon)
 
     # Format: {index0}{index1}{ngon0}{ngon1}{real}3d
-    suffix = f"{index0_str}{index1_str}{mesh0.ngon}{mesh1.ngon}{real_str}3d"
+    suffix = f"{index0_str}{index1_str}{ngon0_str}{ngon1_str}{real_str}3d"
 
     # 6. DISPATCH TO C++
     func_name = f"intersection_curves_mesh_mesh_{suffix}"

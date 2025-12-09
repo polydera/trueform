@@ -21,7 +21,7 @@ auto register_mesh_ray_cast(nanobind::module_ &m) -> void {
   // Ray cast on meshes - all type combinations
   // Index types: int, int64
   // Real types: float, double
-  // Ngon: 3 (triangles), 4 (quads)
+  // Ngon: 3 (triangles), dynamic (variable-size)
   // Dims: 2D, 3D
   // Total: 16 combinations
   // ============================================================================
@@ -64,12 +64,12 @@ auto register_mesh_ray_cast(nanobind::module_ &m) -> void {
       nanobind::arg("ray"), nanobind::arg("mesh"),
       nanobind::arg("config").none() = nanobind::none());
 
-  // int32, float, quad, 2D
+  // int32, float, dynamic, 2D
   m.def(
-      "ray_cast_mesh_intfloat42d",
+      "ray_cast_mesh_intfloatdyn2d",
       [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
              ray_data,
-         mesh_wrapper<int, float, 4, 2> &mesh,
+         mesh_wrapper<int, float, dynamic_size, 2> &mesh,
          std::optional<std::tuple<float, float>> config) {
         auto ray = make_ray_from_array<2, float>(ray_data);
         auto result = ray_cast(ray, mesh, config);
@@ -83,12 +83,12 @@ auto register_mesh_ray_cast(nanobind::module_ &m) -> void {
       nanobind::arg("ray"), nanobind::arg("mesh"),
       nanobind::arg("config").none() = nanobind::none());
 
-  // int32, float, quad, 3D
+  // int32, float, dynamic, 3D
   m.def(
-      "ray_cast_mesh_intfloat43d",
+      "ray_cast_mesh_intfloatdyn3d",
       [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
              ray_data,
-         mesh_wrapper<int, float, 4, 3> &mesh,
+         mesh_wrapper<int, float, dynamic_size, 3> &mesh,
          std::optional<std::tuple<float, float>> config) {
         auto ray = make_ray_from_array<3, float>(ray_data);
         auto result = ray_cast(ray, mesh, config);
@@ -140,12 +140,12 @@ auto register_mesh_ray_cast(nanobind::module_ &m) -> void {
       nanobind::arg("ray"), nanobind::arg("mesh"),
       nanobind::arg("config").none() = nanobind::none());
 
-  // int32, double, quad, 2D
+  // int32, double, dynamic, 2D
   m.def(
-      "ray_cast_mesh_intdouble42d",
+      "ray_cast_mesh_intdoubledyn2d",
       [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
              ray_data,
-         mesh_wrapper<int, double, 4, 2> &mesh,
+         mesh_wrapper<int, double, dynamic_size, 2> &mesh,
          std::optional<std::tuple<double, double>> config) {
         auto ray = make_ray_from_array<2, double>(ray_data);
         auto result = ray_cast(ray, mesh, config);
@@ -159,12 +159,12 @@ auto register_mesh_ray_cast(nanobind::module_ &m) -> void {
       nanobind::arg("ray"), nanobind::arg("mesh"),
       nanobind::arg("config").none() = nanobind::none());
 
-  // int32, double, quad, 3D
+  // int32, double, dynamic, 3D
   m.def(
-      "ray_cast_mesh_intdouble43d",
+      "ray_cast_mesh_intdoubledyn3d",
       [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 3>>
              ray_data,
-         mesh_wrapper<int, double, 4, 3> &mesh,
+         mesh_wrapper<int, double, dynamic_size, 3> &mesh,
          std::optional<std::tuple<double, double>> config) {
         auto ray = make_ray_from_array<3, double>(ray_data);
         auto result = ray_cast(ray, mesh, config);
@@ -216,12 +216,12 @@ auto register_mesh_ray_cast(nanobind::module_ &m) -> void {
       nanobind::arg("ray"), nanobind::arg("mesh"),
       nanobind::arg("config").none() = nanobind::none());
 
-  // int64, float, quad, 2D
+  // int64, float, dynamic, 2D
   m.def(
-      "ray_cast_mesh_int64float42d",
+      "ray_cast_mesh_int64floatdyn2d",
       [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
              ray_data,
-         mesh_wrapper<int64_t, float, 4, 2> &mesh,
+         mesh_wrapper<int64_t, float, dynamic_size, 2> &mesh,
          std::optional<std::tuple<float, float>> config) {
         auto ray = make_ray_from_array<2, float>(ray_data);
         auto result = ray_cast(ray, mesh, config);
@@ -235,12 +235,12 @@ auto register_mesh_ray_cast(nanobind::module_ &m) -> void {
       nanobind::arg("ray"), nanobind::arg("mesh"),
       nanobind::arg("config").none() = nanobind::none());
 
-  // int64, float, quad, 3D
+  // int64, float, dynamic, 3D
   m.def(
-      "ray_cast_mesh_int64float43d",
+      "ray_cast_mesh_int64floatdyn3d",
       [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
              ray_data,
-         mesh_wrapper<int64_t, float, 4, 3> &mesh,
+         mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh,
          std::optional<std::tuple<float, float>> config) {
         auto ray = make_ray_from_array<3, float>(ray_data);
         auto result = ray_cast(ray, mesh, config);
@@ -292,12 +292,12 @@ auto register_mesh_ray_cast(nanobind::module_ &m) -> void {
       nanobind::arg("ray"), nanobind::arg("mesh"),
       nanobind::arg("config").none() = nanobind::none());
 
-  // int64, double, quad, 2D
+  // int64, double, dynamic, 2D
   m.def(
-      "ray_cast_mesh_int64double42d",
+      "ray_cast_mesh_int64doubledyn2d",
       [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
              ray_data,
-         mesh_wrapper<int64_t, double, 4, 2> &mesh,
+         mesh_wrapper<int64_t, double, dynamic_size, 2> &mesh,
          std::optional<std::tuple<double, double>> config) {
         auto ray = make_ray_from_array<2, double>(ray_data);
         auto result = ray_cast(ray, mesh, config);
@@ -311,12 +311,12 @@ auto register_mesh_ray_cast(nanobind::module_ &m) -> void {
       nanobind::arg("ray"), nanobind::arg("mesh"),
       nanobind::arg("config").none() = nanobind::none());
 
-  // int64, double, quad, 3D
+  // int64, double, dynamic, 3D
   m.def(
-      "ray_cast_mesh_int64double43d",
+      "ray_cast_mesh_int64doubledyn3d",
       [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 3>>
              ray_data,
-         mesh_wrapper<int64_t, double, 4, 3> &mesh,
+         mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh,
          std::optional<std::tuple<double, double>> config) {
         auto ray = make_ray_from_array<3, double>(ray_data);
         auto result = ray_cast(ray, mesh, config);

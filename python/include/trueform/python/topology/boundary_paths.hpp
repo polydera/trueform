@@ -22,4 +22,14 @@ auto boundary_paths(
   auto [offsets, data] = make_numpy_array(tf::make_boundary_paths(faces, fml));
   return offset_blocked_array_wrapper<Index, Index>{offsets, data};
 }
+
+template <typename Index>
+auto boundary_paths_dynamic(
+    const offset_blocked_array_wrapper<Index, Index> &cells,
+    const offset_blocked_array_wrapper<Index, Index> &fm) {
+  auto faces = tf::make_faces(cells.make_range());
+  auto fml = tf::make_face_membership_like(fm.make_range());
+  auto [offsets, data] = make_numpy_array(tf::make_boundary_paths(faces, fml));
+  return offset_blocked_array_wrapper<Index, Index>{offsets, data};
+}
 } // namespace tf::py

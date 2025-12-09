@@ -36,9 +36,6 @@ auto form_form_gather_ids(FormWrapper0 &form_wrapper0,
 
   std::vector<std::pair<Index0, Index1>> buffer;
 
-  form_wrapper0.ensure_tree();
-  form_wrapper1.ensure_tree();
-
   bool has0 = form_wrapper0.has_transformation();
   bool has1 = form_wrapper1.has_transformation();
 

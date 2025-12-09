@@ -39,43 +39,25 @@ public:
     return tf::make_points<Dims>(tf::make_range(data, count));
   }
 
-  // Tree management
-  auto rebuild_tree() -> void {
-    if (!_tree) {
-      _tree = std::make_unique<tf::aabb_tree<int, RealT, Dims>>();
-    }
-    auto pts = make_primitive_range();
-    *_tree = tf::aabb_tree<int, RealT, Dims>(pts, tf::config_tree(4, 4));
-    _tree_modified = false;
-  }
-
-  auto ensure_tree() -> void {
+  // Build methods (idempotent - only build if needed)
+  auto build_tree() -> void {
     if (!_tree || _tree_modified) {
-      rebuild_tree();
-      _tree_modified = false;
+      do_build_tree();
     }
   }
 
-  auto mark_modified() -> void { _tree_modified = true; }
-
-  auto clear_tree() -> void { _tree.reset(); }
-
+  // Has check
   auto has_tree() const -> bool { return _tree != nullptr; }
 
-  auto size() const -> std::size_t { return _points_array.shape(0); }
-
-  auto dims() const -> std::size_t { return Dims; }
-
+  // Getter (auto-build if needed) - NO CONST VERSION
   auto tree() -> tf::aabb_tree<int, RealT, Dims> & {
-    ensure_tree();
+    build_tree();
     return *_tree;
   }
 
-  auto tree() const -> const tf::aabb_tree<int, RealT, Dims> & {
-    if (!_tree)
-      throw std::runtime_error("Tree not built");
-    return *_tree;
-  }
+  // Data array accessors
+  auto size() const -> std::size_t { return _points_array.shape(0); }
+  auto dims() const -> std::size_t { return Dims; }
 
   auto points_array() const
       -> nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>> {
@@ -89,7 +71,18 @@ public:
     mark_modified();
   }
 
+  auto mark_modified() -> void { _tree_modified = true; }
+
 private:
+  auto do_build_tree() -> void {
+    if (!_tree) {
+      _tree = std::make_unique<tf::aabb_tree<int, RealT, Dims>>();
+    }
+    auto pts = make_primitive_range();
+    *_tree = tf::aabb_tree<int, RealT, Dims>(pts, tf::config_tree(4, 4));
+    _tree_modified = false;
+  }
+
   nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>
       _points_array;
   std::unique_ptr<tf::aabb_tree<int, RealT, Dims>> _tree;

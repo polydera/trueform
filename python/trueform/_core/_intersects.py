@@ -73,4 +73,6 @@ _INTERSECTS_DISPATCH = {
     (Polygon, Polygon): ("intersects_polygon_polygon_{}", False),
     (Polygon, Plane): ("intersects_polygon_plane_{}", False),
     (Plane, Polygon): ("intersects_polygon_plane_{}", True),
+    # Plane combinations
+    (Plane, Plane): ("intersects_plane_plane_{}", False),
 }

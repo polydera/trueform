@@ -44,7 +44,7 @@ auto label_connected_components_impl(
                                                expected_number_of_components);
 }
 
-template <typename Index, std::size_t V>
+template <typename Index>
 auto label_connected_components_impl(
     nanobind::ndarray<nanobind::numpy, const Index, nanobind::shape<-1, -1>>
         conn,

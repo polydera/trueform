@@ -10,11 +10,12 @@ https://github.com/xlabmedical/trueform
 import numpy as np
 from typing import Union, Tuple
 from .._spatial import Mesh, EdgeMesh
+from .._core import OffsetBlockedArray
 from .reindex_by_mask import reindex_by_mask
 
 
 def reindex_by_mask_on_points(
-    data: Union[Tuple[np.ndarray, np.ndarray], Mesh, EdgeMesh],
+    data: Union[Tuple[Union[np.ndarray, OffsetBlockedArray], np.ndarray], Mesh, EdgeMesh],
     point_mask: np.ndarray,
     return_index_map: bool = False
 ) -> Union[
@@ -32,9 +33,10 @@ def reindex_by_mask_on_points(
     data : tuple, Mesh, or EdgeMesh
         Input geometric data:
         - Indexed geometry: tuple (indices, points) where:
-          * indices: shape (N, V) with dtype int32 or int64, V = 2, 3, or 4
+          * indices: shape (N, V) with dtype int32 or int64, V = 2 or 3,
+            OR OffsetBlockedArray for variable-sized polygons
           * points: shape (M, Dims) where Dims = 2 or 3
-        - Mesh: tf.Mesh object (2D or 3D, NGon = 3 or 4)
+        - Mesh: tf.Mesh object (2D or 3D, triangles or dynamic)
         - EdgeMesh: tf.EdgeMesh object (2D or 3D)
     point_mask : np.ndarray
         1D boolean array over points, shape (M,) with dtype bool.
@@ -129,6 +131,13 @@ def reindex_by_mask_on_points(
         )
 
     # Create face/edge mask: keep only where ALL vertices are True
-    face_mask = point_mask[indices].all(axis=1)
+    if isinstance(indices, OffsetBlockedArray):
+        # Dynamic mesh: use reduceat for vectorized per-face reduction
+        # minimum.reduceat gives True only if ALL vertices in each face pass
+        vertex_passes = point_mask[indices.data]
+        face_mask = np.minimum.reduceat(vertex_passes, indices.offsets[:-1])
+    else:
+        # Fixed-size mesh: vectorized operation
+        face_mask = point_mask[indices].all(axis=1)
 
     return reindex_by_mask(data, face_mask, return_index_map)

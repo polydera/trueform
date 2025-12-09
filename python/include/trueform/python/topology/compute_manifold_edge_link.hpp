@@ -8,6 +8,7 @@
 
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
+#include <trueform/core/algorithm/parallel_copy.hpp>
 #include <trueform/core/views/blocked_range.hpp>
 #include <trueform/python/core/offset_blocked_array.hpp>
 #include <trueform/python/util/make_numpy_array.hpp>
@@ -31,5 +32,30 @@ auto compute_manifold_edge_link(
   buff.allocate(faces.size());
   tf::topology::compute_manifold_edge_link<Index>(faces, fm, buff);
   return make_numpy_array(std::move(buff));
+}
+
+template <typename Index>
+auto compute_manifold_edge_link_dynamic(
+    const offset_blocked_array_wrapper<Index, Index> &faces_array,
+    const offset_blocked_array_wrapper<Index, Index> &face_membership) {
+
+  auto faces = faces_array.make_range();
+  auto fm = tf::make_face_membership_like(face_membership.make_range());
+
+  tf::offset_block_buffer<Index, Index> buff;
+  buff.offsets_buffer().allocate(faces_array.offsets_array().size());
+  buff.data_buffer().allocate(faces_array.data_array().size());
+
+  // Copy offsets from faces
+  const Index *faces_offsets =
+      static_cast<const Index *>(faces_array.offsets_array().data());
+  tf::parallel_copy(
+      tf::make_range(faces_offsets, faces_array.offsets_array().size()),
+      buff.offsets_buffer());
+
+  // Compute manifold edge link into the buffer
+  tf::topology::compute_manifold_edge_link<Index>(faces, fm, buff);
+  auto [offsets, data] = make_numpy_array(std::move(buff));
+  return offset_blocked_array_wrapper<Index, Index>{offsets, data};
 }
 } // namespace tf::py

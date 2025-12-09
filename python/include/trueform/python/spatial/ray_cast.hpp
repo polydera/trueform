@@ -27,9 +27,6 @@ auto ray_cast(tf::ray_like<Dims, Policy> ray, FormWrapper &form_wrapper,
               std::optional<std::tuple<tf::coordinate_type<Policy>,
                                        tf::coordinate_type<Policy>>>
                   opt_config = std::nullopt) {
-
-  form_wrapper.ensure_tree();
-
   // Create ray_config from optional tuple
   auto config = make_ray_config_from_optional(opt_config);
 

@@ -36,6 +36,9 @@ from util import (
     create_renderer_with_text_strip,
 )
 
+# Set to True to test dynamic mesh (OffsetBlockedArray)
+USE_DYNAMIC_MESH = True
+
 
 class IsocontourInteractor(BaseInteractor):
     """Interactor for isocontour visualization with scrolling and randomization"""
@@ -82,25 +85,26 @@ class IsocontourInteractor(BaseInteractor):
         # Cache min/max for adaptive level spacing
         self.min_d = float(np.min(self.scalars))
         self.max_d = float(np.max(self.scalars))
+        self.spacing = (self.max_d - self.min_d) / 10.0  # N = 10 levels
 
     def compute_curves(self):
         """Extract isocontours and update visualization"""
         import time as time_module
 
-        # Compute adaptive threshold levels (same algorithm as isobands.cpp)
+        # Compute adaptive threshold levels
         N = 10  # Number of levels
 
-        # Compute spacing based on scalar field range
-        s = (self.max_d - self.min_d) / float(N)
+        # Use fmod to wrap offset within spacing (infinite scrolling)
+        wrapped_offset = self.distance % self.spacing
+        if wrapped_offset < 0:
+            wrapped_offset += self.spacing
 
-        # Find which segment k the current distance falls into
-        a = (self.distance - self.min_d) / s
-        k = int(np.floor(a))
-        k = np.clip(k, 0, N - 1)
-
-        # Create N levels centered around current distance
-        # This ensures cutvalues[k] == distance exactly
-        thresholds = np.array([self.distance + (i - k) * s for i in range(N)], dtype=np.float32)
+        # Generate evenly spaced thresholds offset by wrapped_offset
+        # Extend below and above the range so wrapping is seamless
+        thresholds = np.array(
+            [self.min_d + wrapped_offset + i * self.spacing for i in range(-1, N + 2)],
+            dtype=self.mesh.dtype
+        )
 
         # Extract isocontours with timing
         start_time = time_module.perf_counter()
@@ -141,7 +145,7 @@ class IsocontourInteractor(BaseInteractor):
         """Handle mouse wheel forward"""
         if self.GetInteractor().GetShiftKey():
             # Move isocontours forward
-            self.distance += 0.05
+            self.distance += self.spacing * 0.1
             self.compute_curves()
         else:
             # Pass to base class for zoom
@@ -151,7 +155,7 @@ class IsocontourInteractor(BaseInteractor):
         """Handle mouse wheel backward"""
         if self.GetInteractor().GetShiftKey():
             # Move isocontours backward
-            self.distance -= 0.05
+            self.distance -= self.spacing * 0.1
             self.compute_curves()
         else:
             # Pass to base class for zoom
@@ -168,6 +172,10 @@ def main():
 
     # Load mesh
     faces, points = tf.read_stl(mesh_file)
+
+    # Optionally convert to dynamic mesh
+    if USE_DYNAMIC_MESH:
+        faces = tf.as_offset_blocked(faces)
 
     # Center and scale mesh
     transform = compute_centering_and_scaling_transform(points, target_radius=10.0)

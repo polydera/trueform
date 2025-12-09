@@ -168,16 +168,24 @@ def _gather_ids(form: Any, query: Any, predicate: str = "intersects", distance: 
             index0_str = 'int' if form0_obj.edges.dtype == np.int32 else 'int64'
             suffix = f"{index0_str}{real_str}{dims_str}"
         elif form0_type is Mesh and form1_type is PointCloud:
-            index0_str = 'int' if form0_obj.faces.dtype == np.int32 else 'int64'
-            suffix = f"{index0_str}{real_str}{form0_obj.ngon}{dims_str}"
+            faces0 = form0_obj.faces
+            index0_str = 'int' if (faces0.dtype if hasattr(faces0, 'dtype') else faces0.data.dtype) == np.int32 else 'int64'
+            ngon0_str = 'dyn' if form0_obj.is_dynamic else str(form0_obj.ngon)
+            suffix = f"{index0_str}{real_str}{ngon0_str}{dims_str}"
         elif form0_type is Mesh and form1_type is EdgeMesh:
-            index0_str = 'int' if form0_obj.faces.dtype == np.int32 else 'int64'
+            faces0 = form0_obj.faces
+            index0_str = 'int' if (faces0.dtype if hasattr(faces0, 'dtype') else faces0.data.dtype) == np.int32 else 'int64'
             index1_str = 'int' if form1_obj.edges.dtype == np.int32 else 'int64'
-            suffix = f"{index0_str}{index1_str}{form0_obj.ngon}{real_str}{dims_str}"
+            ngon0_str = 'dyn' if form0_obj.is_dynamic else str(form0_obj.ngon)
+            suffix = f"{index0_str}{index1_str}{ngon0_str}{real_str}{dims_str}"
         elif form0_type is Mesh and form1_type is Mesh:
-            index0_str = 'int' if form0_obj.faces.dtype == np.int32 else 'int64'
-            index1_str = 'int' if form1_obj.faces.dtype == np.int32 else 'int64'
-            suffix = f"{index0_str}{index1_str}{form0_obj.ngon}{form1_obj.ngon}{real_str}{dims_str}"
+            faces0 = form0_obj.faces
+            faces1 = form1_obj.faces
+            index0_str = 'int' if (faces0.dtype if hasattr(faces0, 'dtype') else faces0.data.dtype) == np.int32 else 'int64'
+            index1_str = 'int' if (faces1.dtype if hasattr(faces1, 'dtype') else faces1.data.dtype) == np.int32 else 'int64'
+            ngon0_str = 'dyn' if form0_obj.is_dynamic else str(form0_obj.ngon)
+            ngon1_str = 'dyn' if form1_obj.is_dynamic else str(form1_obj.ngon)
+            suffix = f"{index0_str}{index1_str}{ngon0_str}{ngon1_str}{real_str}{dims_str}"
         else:
             raise TypeError(f"Unexpected form-form combination: {form0_type}, {form1_type}")
 
@@ -203,11 +211,13 @@ def _gather_ids(form: Any, query: Any, predicate: str = "intersects", distance: 
             dtype_str = 'float' if form_obj.points.dtype == np.float32 else 'double'
             suffix = f"{dtype_str}{form_obj.dims}d"
         elif form_type is Mesh:
-            faces_dtype = form_obj.faces.dtype
+            faces = form_obj.faces
+            faces_dtype = faces.dtype if hasattr(faces, 'dtype') else faces.data.dtype
             points_dtype = form_obj.points.dtype
             index_str = 'int' if faces_dtype == np.int32 else 'int64'
             real_str = 'float' if points_dtype == np.float32 else 'double'
-            suffix = f"{index_str}{real_str}{form_obj.ngon}{form_obj.dims}d"
+            ngon_str = 'dyn' if form_obj.is_dynamic else str(form_obj.ngon)
+            suffix = f"{index_str}{real_str}{ngon_str}{form_obj.dims}d"
         elif form_type is EdgeMesh:
             edges_dtype = form_obj.edges.dtype
             points_dtype = form_obj.points.dtype

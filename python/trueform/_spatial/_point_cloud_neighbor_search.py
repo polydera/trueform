@@ -7,7 +7,7 @@ Commercial licensing available via ziga.sajovic@xlab.si.
 https://github.com/xlabmedical/trueform
 """
 
-from .._primitives import Point, Segment, Polygon, Ray, Line
+from .._primitives import Point, Segment, Polygon, Ray, Line, Plane
 
 # Dispatch table for single nearest neighbor search on point clouds
 # Maps primitive type -> function_name_template
@@ -17,6 +17,7 @@ _POINT_CLOUD_NEIGHBOR_SEARCH_DISPATCH = {
     Polygon: "neighbor_search_polygon_{}",
     Ray: "neighbor_search_ray_{}",
     Line: "neighbor_search_line_{}",
+    Plane: "neighbor_search_plane_{}",
 }
 
 # Dispatch table for KNN search on point clouds
@@ -26,4 +27,5 @@ _POINT_CLOUD_NEIGHBOR_SEARCH_KNN_DISPATCH = {
     Polygon: "neighbor_search_knn_polygon_{}",
     Ray: "neighbor_search_knn_ray_{}",
     Line: "neighbor_search_knn_line_{}",
+    Plane: "neighbor_search_knn_plane_{}",
 }

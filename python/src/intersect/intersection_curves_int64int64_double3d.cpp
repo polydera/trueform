@@ -17,21 +17,21 @@ auto register_intersection_curves_int64int64_double3d(nanobind::module_ &m) -> v
           return intersection_curves(mesh0, mesh1);
         });
 
-  m.def("intersection_curves_mesh_mesh_int64int6434double3d",
+  m.def("intersection_curves_mesh_mesh_int64int643dyndouble3d",
         [](mesh_wrapper<int64_t, double, 3, 3> &mesh0,
-           mesh_wrapper<int64_t, double, 4, 3> &mesh1) {
+           mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh1) {
           return intersection_curves(mesh0, mesh1);
         });
 
-  m.def("intersection_curves_mesh_mesh_int64int6443double3d",
-        [](mesh_wrapper<int64_t, double, 4, 3> &mesh0,
+  m.def("intersection_curves_mesh_mesh_int64int64dyn3double3d",
+        [](mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh0,
            mesh_wrapper<int64_t, double, 3, 3> &mesh1) {
           return intersection_curves(mesh0, mesh1);
         });
 
-  m.def("intersection_curves_mesh_mesh_int64int6444double3d",
-        [](mesh_wrapper<int64_t, double, 4, 3> &mesh0,
-           mesh_wrapper<int64_t, double, 4, 3> &mesh1) {
+  m.def("intersection_curves_mesh_mesh_int64int64dyndyndouble3d",
+        [](mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh0,
+           mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh1) {
           return intersection_curves(mesh0, mesh1);
         });
 }

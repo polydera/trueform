@@ -56,4 +56,15 @@ _DISTANCE_DISPATCH = {
 
     # Polygon combinations
     (Polygon, Polygon): ("{}_polygon_polygon_{}", False),
+
+    # Plane combinations (3D only)
+    (Segment, Plane): ("{}_segment_plane_{}", False),
+    (Plane, Segment): ("{}_segment_plane_{}", True),
+    (Ray, Plane): ("{}_ray_plane_{}", False),
+    (Plane, Ray): ("{}_ray_plane_{}", True),
+    (Line, Plane): ("{}_line_plane_{}", False),
+    (Plane, Line): ("{}_line_plane_{}", True),
+    (Polygon, Plane): ("{}_polygon_plane_{}", False),
+    (Plane, Polygon): ("{}_polygon_plane_{}", True),
+    (Plane, Plane): ("{}_plane_plane_{}", False),
 }

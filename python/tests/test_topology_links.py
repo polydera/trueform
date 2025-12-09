@@ -36,19 +36,18 @@ def create_triangle_mesh(index_dtype, real_dtype):
     return faces, points
 
 
-def create_quad_mesh(index_dtype, real_dtype):
-    """Create a simple quad mesh (2 quads sharing an edge)."""
-    faces = np.array([
-        [0, 1, 2, 3],
-        [1, 4, 5, 2]
-    ], dtype=index_dtype)
+def create_dynamic_mesh(index_dtype, real_dtype):
+    """Create a dynamic mesh with mixed polygon sizes (triangle + quad)."""
+    # One triangle and one quad sharing an edge
+    offsets = np.array([0, 3, 7], dtype=index_dtype)  # tri: 3 verts, quad: 4 verts
+    data = np.array([0, 1, 2, 1, 3, 4, 2], dtype=index_dtype)  # tri[0,1,2], quad[1,3,4,2]
+    faces = tf.OffsetBlockedArray(offsets, data)
     points = np.array([
         [0.0, 0.0, 0.0],
         [1.0, 0.0, 0.0],
-        [1.0, 1.0, 0.0],
-        [0.0, 1.0, 0.0],
+        [0.5, 1.0, 0.0],
         [2.0, 0.0, 0.0],
-        [2.0, 1.0, 0.0]
+        [1.5, 1.0, 0.0]
     ], dtype=real_dtype)
     return faces, points
 
@@ -116,22 +115,21 @@ def test_manifold_edge_link_mesh_triangles(index_dtype, real_dtype):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_manifold_edge_link_mesh_quads(index_dtype, real_dtype):
-    """Test manifold_edge_link matches Mesh.manifold_edge_link for quads."""
-    faces, points = create_quad_mesh(index_dtype, real_dtype)
-    mesh = tf.Mesh(faces, points)
+def test_manifold_edge_link_dynamic(index_dtype, real_dtype):
+    """Test manifold_edge_link with dynamic (variable polygon) mesh."""
+    faces, points = create_dynamic_mesh(index_dtype, real_dtype)
+    n_points = len(points)
 
-    # Get from mesh property
-    mesh_mel = mesh.manifold_edge_link
-
-    # Get cell_membership first
-    fm = tf.cell_membership(faces, mesh.number_of_points)
+    # Get cell_membership first (for dynamic faces)
+    fm = tf.cell_membership(faces, n_points)
 
     # Get manifold_edge_link from standalone function
-    standalone_mel = tf.manifold_edge_link(faces, fm)
+    mel = tf.manifold_edge_link(faces, fm)
 
-    # Compare
-    assert np.array_equal(mesh_mel, standalone_mel)
+    # Should return OffsetBlockedArray for dynamic input
+    assert isinstance(mel, tf.OffsetBlockedArray)
+    assert len(mel) == len(faces)  # Same number of blocks as faces
+    assert mel.dtype == index_dtype
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -229,23 +227,21 @@ def test_face_link_mesh_triangles(index_dtype, real_dtype):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_face_link_mesh_quads(index_dtype, real_dtype):
-    """Test face_link matches Mesh.face_link for quads."""
-    faces, points = create_quad_mesh(index_dtype, real_dtype)
-    mesh = tf.Mesh(faces, points)
+def test_face_link_dynamic(index_dtype, real_dtype):
+    """Test face_link with dynamic (variable polygon) mesh."""
+    faces, points = create_dynamic_mesh(index_dtype, real_dtype)
+    n_points = len(points)
 
-    # Get from mesh property
-    mesh_fl = mesh.face_link
-
-    # Get cell_membership first
-    fm = tf.cell_membership(faces, mesh.number_of_points)
+    # Get cell_membership first (for dynamic faces)
+    fm = tf.cell_membership(faces, n_points)
 
     # Get face_link from standalone function
-    standalone_fl = tf.face_link(faces, fm)
+    fl = tf.face_link(faces, fm)
 
-    # Compare
-    assert np.array_equal(mesh_fl.offsets, standalone_fl.offsets)
-    assert np.array_equal(mesh_fl.data, standalone_fl.data)
+    # Should return OffsetBlockedArray
+    assert isinstance(fl, tf.OffsetBlockedArray)
+    assert len(fl) == len(faces)  # Same number of blocks as faces
+    assert fl.dtype == index_dtype
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -320,23 +316,21 @@ def test_vertex_link_mesh_triangles(index_dtype, real_dtype):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_vertex_link_mesh_quads(index_dtype, real_dtype):
-    """Test vertex_link_faces matches Mesh.vertex_link for quads."""
-    faces, points = create_quad_mesh(index_dtype, real_dtype)
-    mesh = tf.Mesh(faces, points)
+def test_vertex_link_dynamic(index_dtype, real_dtype):
+    """Test vertex_link_faces with dynamic (variable polygon) mesh."""
+    faces, points = create_dynamic_mesh(index_dtype, real_dtype)
+    n_points = len(points)
 
-    # Get from mesh property
-    mesh_vl = mesh.vertex_link
-
-    # Get cell_membership first
-    fm = tf.cell_membership(faces, mesh.number_of_points)
+    # Get cell_membership first (for dynamic faces)
+    fm = tf.cell_membership(faces, n_points)
 
     # Get vertex_link from standalone function
-    standalone_vl = tf.vertex_link_faces(faces, fm)
+    vl = tf.vertex_link_faces(faces, fm)
 
-    # Compare
-    assert np.array_equal(mesh_vl.offsets, standalone_vl.offsets)
-    assert np.array_equal(mesh_vl.data, standalone_vl.data)
+    # Should return OffsetBlockedArray
+    assert isinstance(vl, tf.OffsetBlockedArray)
+    assert len(vl) == n_points  # One entry per vertex
+    assert vl.dtype == index_dtype
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -492,33 +486,36 @@ def test_all_topology_mesh_triangles(index_dtype, real_dtype):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_all_topology_mesh_quads(index_dtype, real_dtype):
-    """Test all topology structures together for quad mesh."""
-    faces, points = create_quad_mesh(index_dtype, real_dtype)
-    mesh = tf.Mesh(faces, points)
-
-    # Get all from mesh properties
-    mesh_fm = mesh.face_membership
-    mesh_mel = mesh.manifold_edge_link
-    mesh_fl = mesh.face_link
-    mesh_vl = mesh.vertex_link
+def test_all_topology_dynamic(index_dtype, real_dtype):
+    """Test all topology structures together for dynamic mesh."""
+    faces, points = create_dynamic_mesh(index_dtype, real_dtype)
+    n_points = len(points)
 
     # Get cell_membership for standalone functions
-    standalone_fm = tf.cell_membership(faces, mesh.number_of_points)
+    fm = tf.cell_membership(faces, n_points)
 
     # Get all from standalone functions
-    standalone_mel = tf.manifold_edge_link(faces, standalone_fm)
-    standalone_fl = tf.face_link(faces, standalone_fm)
-    standalone_vl = tf.vertex_link_faces(faces, standalone_fm)
+    mel = tf.manifold_edge_link(faces, fm)
+    fl = tf.face_link(faces, fm)
+    vl = tf.vertex_link_faces(faces, fm)
 
-    # Compare all
-    assert np.array_equal(mesh_fm.offsets, standalone_fm.offsets)
-    assert np.array_equal(mesh_fm.data, standalone_fm.data)
-    assert np.array_equal(mesh_mel, standalone_mel)
-    assert np.array_equal(mesh_fl.offsets, standalone_fl.offsets)
-    assert np.array_equal(mesh_fl.data, standalone_fl.data)
-    assert np.array_equal(mesh_vl.offsets, standalone_vl.offsets)
-    assert np.array_equal(mesh_vl.data, standalone_vl.data)
+    # Verify all return OffsetBlockedArray
+    assert isinstance(fm, tf.OffsetBlockedArray)
+    assert isinstance(mel, tf.OffsetBlockedArray)
+    assert isinstance(fl, tf.OffsetBlockedArray)
+    assert isinstance(vl, tf.OffsetBlockedArray)
+
+    # Verify correct dtypes
+    assert fm.dtype == index_dtype
+    assert mel.dtype == index_dtype
+    assert fl.dtype == index_dtype
+    assert vl.dtype == index_dtype
+
+    # Verify correct sizes
+    assert len(fm) == n_points  # One entry per vertex
+    assert len(mel) == len(faces)  # One entry per face
+    assert len(fl) == len(faces)  # One entry per face
+    assert len(vl) == n_points  # One entry per vertex
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -616,7 +613,7 @@ def test_manifold_edge_link_invalid_ngon():
     edges = np.array([[0, 1], [1, 2]], dtype=np.int32)
     fm = tf.cell_membership(edges, 3)
 
-    with pytest.raises(ValueError, match="cells must have 3 or 4 vertices"):
+    with pytest.raises(ValueError, match="cells must have 3 vertices per face"):
         tf.manifold_edge_link(edges, fm)
 
 
@@ -651,7 +648,7 @@ def test_face_link_invalid_ngon():
     edges = np.array([[0, 1], [1, 2]], dtype=np.int32)
     fm = tf.cell_membership(edges, 3)
 
-    with pytest.raises(ValueError, match="faces must have 3 or 4 vertices"):
+    with pytest.raises(ValueError, match="faces must have 3 vertices per face"):
         tf.face_link(edges, fm)
 
 
@@ -686,7 +683,7 @@ def test_vertex_link_faces_invalid_ngon():
     edges = np.array([[0, 1], [1, 2]], dtype=np.int32)
     fm = tf.cell_membership(edges, 3)
 
-    with pytest.raises(ValueError, match="faces must have 3 or 4 vertices"):
+    with pytest.raises(ValueError, match="faces must have 3 vertices per face"):
         tf.vertex_link_faces(edges, fm)
 
 

@@ -25,7 +25,8 @@ def boundary_curves(mesh: Mesh) -> Tuple[OffsetBlockedArray, np.ndarray]:
     Parameters
     ----------
     mesh : Mesh
-        The mesh to extract boundary curves from.
+        The mesh to extract boundary curves from. Supports triangular
+        meshes (ngon=3) and dynamic meshes with variable polygon sizes.
 
     Returns
     -------

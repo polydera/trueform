@@ -25,9 +25,9 @@ namespace tf::py {
 /// @param scalars Scalar field values at mesh vertices
 /// @param threshold Single threshold value
 /// @return Tuple of (paths_offsets, paths_data, points)
-template <typename Index, typename RealT, std::size_t Dims>
+template <typename Index, typename RealT, std::size_t Ngon, std::size_t Dims>
 auto make_isocontours_single_impl(
-    mesh_wrapper<Index, RealT, 3, Dims> &mesh,
+    mesh_wrapper<Index, RealT, Ngon, Dims> &mesh,
     nanobind::ndarray<nanobind::numpy, const RealT, nanobind::shape<-1>>
         scalars,
     RealT threshold) -> nanobind::tuple {
@@ -56,9 +56,9 @@ auto make_isocontours_single_impl(
 /// @param scalars Scalar field values at mesh vertices
 /// @param thresholds Array of threshold values
 /// @return Tuple of (paths_offsets, paths_data, points)
-template <typename Index, typename RealT, std::size_t Dims>
+template <typename Index, typename RealT, std::size_t Ngon, std::size_t Dims>
 auto make_isocontours_multi_impl(
-    mesh_wrapper<Index, RealT, 3, Dims> &mesh,
+    mesh_wrapper<Index, RealT, Ngon, Dims> &mesh,
     nanobind::ndarray<nanobind::numpy, const RealT, nanobind::shape<-1>>
         scalars,
     nanobind::ndarray<nanobind::numpy, const RealT, nanobind::shape<-1>>

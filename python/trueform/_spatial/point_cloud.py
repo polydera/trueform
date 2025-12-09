@@ -198,7 +198,7 @@ class PointCloud:
 
         Call this after modifying the points array to update the spatial index.
         """
-        self._wrapper.rebuild_tree()
+        self._wrapper.build_tree()
 
     def shared_view(self) -> "PointCloud":
         """

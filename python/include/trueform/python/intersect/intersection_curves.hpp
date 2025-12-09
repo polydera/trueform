@@ -20,10 +20,6 @@ template <typename Index0, typename RealT, std::size_t Ngon0, std::size_t Dims,
 auto intersection_curves(
     mesh_wrapper<Index0, RealT, Ngon0, Dims> &form_wrapper0,
     mesh_wrapper<Index1, RealT, Ngon1, Dims> &form_wrapper1) {
-  form_wrapper0.ensure_tree();
-  form_wrapper0.ensure_manifold_edge_link();
-  form_wrapper1.ensure_tree();
-  form_wrapper1.ensure_manifold_edge_link();
   bool has0 = form_wrapper0.has_transformation();
   bool has1 = form_wrapper1.has_transformation();
   auto form0 = tf::make_form(form_wrapper0.tree(),

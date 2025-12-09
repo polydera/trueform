@@ -20,7 +20,32 @@ import trueform as tf
 # Type combinations
 INDEX_DTYPES = [np.int32, np.int64]
 REAL_DTYPES = [np.float32, np.float64]
-NGONS = [3, 4]
+# ngon: 3 for triangles, 'dyn' for dynamic
+NGONS = [3, 'dyn']
+
+
+def create_square_mesh_2d(points, index_dtype, ngon):
+    """Create a square mesh from 4 points (2D)"""
+    if ngon == 3:
+        faces = np.array([[0, 1, 2], [0, 2, 3]], dtype=index_dtype)
+        return tf.Mesh(faces, points)
+    else:  # dynamic - create as one quad
+        offsets = np.array([0, 4], dtype=index_dtype)
+        data = np.array([0, 1, 2, 3], dtype=index_dtype)
+        faces = tf.OffsetBlockedArray(offsets, data)
+        return tf.Mesh(faces, points)
+
+
+def create_square_mesh_3d(points, index_dtype, ngon):
+    """Create a square mesh from 4 points (3D)"""
+    if ngon == 3:
+        faces = np.array([[0, 1, 2], [0, 2, 3]], dtype=index_dtype)
+        return tf.Mesh(faces, points)
+    else:  # dynamic - create as one quad
+        offsets = np.array([0, 4], dtype=index_dtype)
+        data = np.array([0, 1, 2, 3], dtype=index_dtype)
+        faces = tf.OffsetBlockedArray(offsets, data)
+        return tf.Mesh(faces, points)
 
 
 @pytest.mark.parametrize("mesh0_index_dtype", INDEX_DTYPES)
@@ -31,23 +56,12 @@ NGONS = [3, 4]
 def test_mesh_neighbor_search_mesh_2d_parallel_meshes(mesh0_index_dtype, mesh1_index_dtype, real_dtype, ngon0, ngon1):
     """Test 2D: two parallel meshes with known gap"""
     # Mesh 0: square at y=[0,1]
-    if ngon0 == 3:
-        points0 = np.array([[0, 0], [1, 0], [1, 1], [0, 1]], dtype=real_dtype)
-        faces0 = np.array([[0, 1, 2], [0, 2, 3]], dtype=mesh0_index_dtype)
-    else:
-        points0 = np.array([[0, 0], [1, 0], [1, 1], [0, 1]], dtype=real_dtype)
-        faces0 = np.array([[0, 1, 2, 3]], dtype=mesh0_index_dtype)
+    points0 = np.array([[0, 0], [1, 0], [1, 1], [0, 1]], dtype=real_dtype)
+    mesh0 = create_square_mesh_2d(points0, mesh0_index_dtype, ngon0)
 
     # Mesh 1: square at y=[2,3] (gap of 1.0)
-    if ngon1 == 3:
-        points1 = np.array([[0, 2], [1, 2], [1, 3], [0, 3]], dtype=real_dtype)
-        faces1 = np.array([[0, 1, 2], [0, 2, 3]], dtype=mesh1_index_dtype)
-    else:
-        points1 = np.array([[0, 2], [1, 2], [1, 3], [0, 3]], dtype=real_dtype)
-        faces1 = np.array([[0, 1, 2, 3]], dtype=mesh1_index_dtype)
-
-    mesh0 = tf.Mesh(faces0, points0)
-    mesh1 = tf.Mesh(faces1, points1)
+    points1 = np.array([[0, 2], [1, 2], [1, 3], [0, 3]], dtype=real_dtype)
+    mesh1 = create_square_mesh_2d(points1, mesh1_index_dtype, ngon1)
 
     result = tf.neighbor_search(mesh0, mesh1)
     assert result is not None
@@ -79,23 +93,12 @@ def test_mesh_neighbor_search_mesh_2d_parallel_meshes(mesh0_index_dtype, mesh1_i
 def test_mesh_neighbor_search_mesh_3d_parallel_planes(real_dtype, ngon0, ngon1):
     """Test 3D: two parallel planar meshes at known z-separation"""
     # Mesh 0: square in xy-plane at z=0
-    if ngon0 == 3:
-        points0 = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], dtype=real_dtype)
-        faces0 = np.array([[0, 1, 2], [0, 2, 3]], dtype=np.int32)
-    else:
-        points0 = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], dtype=real_dtype)
-        faces0 = np.array([[0, 1, 2, 3]], dtype=np.int32)
+    points0 = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], dtype=real_dtype)
+    mesh0 = create_square_mesh_3d(points0, np.int32, ngon0)
 
     # Mesh 1: square in xy-plane at z=2
-    if ngon1 == 3:
-        points1 = np.array([[0, 0, 2], [1, 0, 2], [1, 1, 2], [0, 1, 2]], dtype=real_dtype)
-        faces1 = np.array([[0, 1, 2], [0, 2, 3]], dtype=np.int32)
-    else:
-        points1 = np.array([[0, 0, 2], [1, 0, 2], [1, 1, 2], [0, 1, 2]], dtype=real_dtype)
-        faces1 = np.array([[0, 1, 2, 3]], dtype=np.int32)
-
-    mesh0 = tf.Mesh(faces0, points0)
-    mesh1 = tf.Mesh(faces1, points1)
+    points1 = np.array([[0, 0, 2], [1, 0, 2], [1, 1, 2], [0, 1, 2]], dtype=real_dtype)
+    mesh1 = create_square_mesh_3d(points1, np.int32, ngon1)
 
     result = tf.neighbor_search(mesh0, mesh1)
     assert result is not None
@@ -207,15 +210,19 @@ def test_mesh_neighbor_search_mesh_dimension_mismatch():
 
 
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_mesh_neighbor_search_mesh_offset_squares(real_dtype):
-    """Test two offset squares with unambiguous closest point"""
-    # Quad mesh 0: unit square at origin
+def test_mesh_neighbor_search_mesh_offset_squares_dynamic(real_dtype):
+    """Test two offset dynamic squares with unambiguous closest point"""
+    # Dynamic mesh 0: unit square at origin (as quad)
     points0 = np.array([[0, 0], [1, 0], [1, 1], [0, 1]], dtype=real_dtype)
-    faces0 = np.array([[0, 1, 2, 3]], dtype=np.int32)
+    offsets0 = np.array([0, 4], dtype=np.int32)
+    data0 = np.array([0, 1, 2, 3], dtype=np.int32)
+    faces0 = tf.OffsetBlockedArray(offsets0, data0)
 
-    # Quad mesh 1: unit square offset by (2, 0)
+    # Dynamic mesh 1: unit square offset by (2, 0) (as quad)
     points1 = np.array([[2, 0], [3, 0], [3, 1], [2, 1]], dtype=real_dtype)
-    faces1 = np.array([[0, 1, 2, 3]], dtype=np.int32)
+    offsets1 = np.array([0, 4], dtype=np.int32)
+    data1 = np.array([0, 1, 2, 3], dtype=np.int32)
+    faces1 = tf.OffsetBlockedArray(offsets1, data1)
 
     mesh0 = tf.Mesh(faces0, points0)
     mesh1 = tf.Mesh(faces1, points1)
@@ -260,15 +267,19 @@ def test_mesh_neighbor_search_mesh_all_index_combinations(mesh0_index_dtype, mes
 
 
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_mesh_neighbor_search_mesh_3d_perpendicular(real_dtype):
-    """Test 3D: two perpendicular planar meshes"""
-    # Mesh 0: square in xy-plane at z=0
+def test_mesh_neighbor_search_mesh_3d_perpendicular_dynamic(real_dtype):
+    """Test 3D: two perpendicular planar dynamic meshes"""
+    # Mesh 0: square in xy-plane at z=0 (as quad)
     points0 = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], dtype=real_dtype)
-    faces0 = np.array([[0, 1, 2, 3]], dtype=np.int32)
+    offsets0 = np.array([0, 4], dtype=np.int32)
+    data0 = np.array([0, 1, 2, 3], dtype=np.int32)
+    faces0 = tf.OffsetBlockedArray(offsets0, data0)
 
-    # Mesh 1: square in xz-plane at y=2
+    # Mesh 1: square in xz-plane at y=2 (as quad)
     points1 = np.array([[0, 2, 0], [1, 2, 0], [1, 2, 1], [0, 2, 1]], dtype=real_dtype)
-    faces1 = np.array([[0, 1, 2, 3]], dtype=np.int32)
+    offsets1 = np.array([0, 4], dtype=np.int32)
+    data1 = np.array([0, 1, 2, 3], dtype=np.int32)
+    faces1 = tf.OffsetBlockedArray(offsets1, data1)
 
     mesh0 = tf.Mesh(faces0, points0)
     mesh1 = tf.Mesh(faces1, points1)
@@ -286,6 +297,30 @@ def test_mesh_neighbor_search_mesh_3d_perpendicular(real_dtype):
     # pt1 should have y=2, z=0
     assert abs(pt1[1] - 2.0) < 1e-4
     assert abs(pt1[2]) < 1e-4
+
+
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_mesh_neighbor_search_mesh_mixed_tri_dynamic(real_dtype):
+    """Test triangle mesh vs dynamic mesh"""
+    # Triangle mesh 0
+    points0 = np.array([[0, 0], [1, 0], [1, 1], [0, 1]], dtype=real_dtype)
+    faces0 = np.array([[0, 1, 2], [0, 2, 3]], dtype=np.int32)
+    mesh0 = tf.Mesh(faces0, points0)
+
+    # Dynamic mesh 1 (quad) offset by (2, 0)
+    points1 = np.array([[2, 0], [3, 0], [3, 1], [2, 1]], dtype=real_dtype)
+    offsets1 = np.array([0, 4], dtype=np.int32)
+    data1 = np.array([0, 1, 2, 3], dtype=np.int32)
+    faces1 = tf.OffsetBlockedArray(offsets1, data1)
+    mesh1 = tf.Mesh(faces1, points1)
+
+    result = tf.neighbor_search(mesh0, mesh1)
+    assert result is not None
+
+    ((_, _), (dist, pt0, pt1)) = result
+
+    # Distance should be 1.0 (gap between x=1 and x=2), returns squared
+    assert abs(dist - 1.0) < 1e-5
 
 
 if __name__ == "__main__":

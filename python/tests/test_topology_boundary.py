@@ -1,5 +1,5 @@
 """
-Test boundary_edges, boundary_paths, boundary_curves, and non_manifold_edges
+Test boundary_edges, boundary_paths, boundary_curves
 
 Copyright (c) 2025 Ziga Sajovic, XLAB
 """
@@ -181,37 +181,29 @@ def create_mesh_with_hole(index_dtype, real_dtype):
     return faces, points
 
 
-def create_non_manifold_mesh(index_dtype, real_dtype):
-    """
-    Create a mesh with a non-manifold edge.
-
-    Three triangles sharing the same edge (0, 1).
-    """
-    faces = np.array([
-        [0, 1, 2],
-        [0, 1, 3],
-        [0, 1, 4]
-    ], dtype=index_dtype)
+def create_dynamic_mesh_open(index_dtype, real_dtype):
+    """Create an open dynamic mesh (single triangle as dynamic)."""
+    offsets = np.array([0, 3], dtype=index_dtype)
+    data = np.array([0, 1, 2], dtype=index_dtype)
+    faces = tf.OffsetBlockedArray(offsets, data)
     points = np.array([
         [0.0, 0.0, 0.0],
         [1.0, 0.0, 0.0],
-        [0.5, 1.0, 0.0],
-        [0.5, -1.0, 0.0],
-        [0.5, 0.0, 1.0]
+        [0.5, 1.0, 0.0]
     ], dtype=real_dtype)
     return faces, points
 
 
-def create_quad_mesh_open(index_dtype, real_dtype):
-    """Create an open quad mesh (single quad)."""
-    faces = np.array([
-        [0, 1, 2, 3]
-    ], dtype=index_dtype)
+def create_dynamic_two_triangles(index_dtype, real_dtype):
+    """Create two triangles as dynamic mesh."""
+    offsets = np.array([0, 3, 6], dtype=index_dtype)
+    data = np.array([0, 1, 2, 1, 3, 2], dtype=index_dtype)
+    faces = tf.OffsetBlockedArray(offsets, data)
     points = np.array([
         [0.0, 0.0, 0.0],
         [1.0, 0.0, 0.0],
-        [1.0, 1.0, 0.0],
-        [0.0, 1.0, 0.0]
+        [0.5, 1.0, 0.0],
+        [1.5, 1.0, 0.0]
     ], dtype=real_dtype)
     return faces, points
 
@@ -275,18 +267,36 @@ def test_boundary_edges_closed_mesh(index_dtype, real_dtype):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_boundary_edges_quad(index_dtype, real_dtype):
-    """Test boundary_edges for a quad mesh."""
-    faces, points = create_quad_mesh_open(index_dtype, real_dtype)
+def test_boundary_edges_dynamic(index_dtype, real_dtype):
+    """Test boundary_edges for a dynamic mesh."""
+    faces, points = create_dynamic_mesh_open(index_dtype, real_dtype)
     mesh = tf.Mesh(faces, points)
 
     edges = tf.boundary_edges(mesh)
 
-    # 4 boundary edges for a single quad
+    # 3 boundary edges for a single triangle
+    assert edges.shape == (3, 2)
+    assert edges.dtype == index_dtype
+
+    expected = {(0, 1), (1, 2), (0, 2)}
+    result = canonicalize_edges(edges)
+    assert result == expected
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_boundary_edges_dynamic_two_triangles(index_dtype, real_dtype):
+    """Test boundary_edges for dynamic mesh with two triangles."""
+    faces, points = create_dynamic_two_triangles(index_dtype, real_dtype)
+    mesh = tf.Mesh(faces, points)
+
+    edges = tf.boundary_edges(mesh)
+
+    # 4 boundary edges (shared edge is not boundary)
     assert edges.shape == (4, 2)
     assert edges.dtype == index_dtype
 
-    expected = {(0, 1), (1, 2), (2, 3), (0, 3)}
+    expected = {(0, 1), (0, 2), (1, 3), (2, 3)}
     result = canonicalize_edges(edges)
     assert result == expected
 
@@ -352,9 +362,27 @@ def test_boundary_paths_closed_mesh(index_dtype, real_dtype):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_boundary_paths_quad(index_dtype, real_dtype):
-    """Test boundary_paths for a quad mesh."""
-    faces, points = create_quad_mesh_open(index_dtype, real_dtype)
+def test_boundary_paths_dynamic(index_dtype, real_dtype):
+    """Test boundary_paths for a dynamic mesh."""
+    faces, points = create_dynamic_mesh_open(index_dtype, real_dtype)
+    mesh = tf.Mesh(faces, points)
+
+    paths = tf.boundary_paths(mesh)
+
+    # Single boundary loop with 4 vertices (closed: first == last)
+    assert len(paths) == 1
+    assert len(paths[0]) == 4
+    assert paths[0][0] == paths[0][-1], "Closed path should have first == last"
+
+    path_set = set(paths[0])
+    assert path_set == {0, 1, 2}
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_boundary_paths_dynamic_two_triangles(index_dtype, real_dtype):
+    """Test boundary_paths for dynamic mesh with two triangles."""
+    faces, points = create_dynamic_two_triangles(index_dtype, real_dtype)
     mesh = tf.Mesh(faces, points)
 
     paths = tf.boundary_paths(mesh)
@@ -432,54 +460,27 @@ def test_boundary_curves_point_values(index_dtype, real_dtype):
     assert original_set == curve_set
 
 
-# ==============================================================================
-# non_manifold_edges Tests
-# ==============================================================================
-
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_non_manifold_edges_manifold_mesh(index_dtype, real_dtype):
-    """Test non_manifold_edges for a manifold mesh."""
-    faces, points = create_two_triangles_mesh(index_dtype, real_dtype)
+def test_boundary_curves_dynamic(index_dtype, real_dtype):
+    """Test boundary_curves for a dynamic mesh."""
+    faces, points = create_dynamic_mesh_open(index_dtype, real_dtype)
     mesh = tf.Mesh(faces, points)
 
-    nm_edges = tf.non_manifold_edges(mesh)
+    curves, curve_points = tf.boundary_curves(mesh)
 
-    # No non-manifold edges
-    assert nm_edges.shape == (0, 2)
-    assert nm_edges.dtype == index_dtype
+    # Check return types
+    assert isinstance(curves, tf.OffsetBlockedArray)
+    assert isinstance(curve_points, np.ndarray)
 
+    # Single curve with 4 vertices (closed: first == last)
+    assert len(curves) == 1
+    assert len(curves[0]) == 4
+    assert curves[0][0] == curves[0][-1], "Closed curve should have first == last"
 
-@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
-@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_non_manifold_edges_with_non_manifold(index_dtype, real_dtype):
-    """Test non_manifold_edges for a mesh with non-manifold edges."""
-    faces, points = create_non_manifold_mesh(index_dtype, real_dtype)
-    mesh = tf.Mesh(faces, points)
-
-    nm_edges = tf.non_manifold_edges(mesh)
-
-    # One non-manifold edge (0, 1) shared by 3 faces
-    assert nm_edges.shape == (1, 2)
-    assert nm_edges.dtype == index_dtype
-
-    # Check it's edge (0, 1)
-    expected = {(0, 1)}
-    result = canonicalize_edges(nm_edges)
-    assert result == expected
-
-
-@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
-@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_non_manifold_edges_closed_mesh(index_dtype, real_dtype):
-    """Test non_manifold_edges for a closed manifold mesh."""
-    faces, points = create_closed_tetrahedron(index_dtype, real_dtype)
-    mesh = tf.Mesh(faces, points)
-
-    nm_edges = tf.non_manifold_edges(mesh)
-
-    # No non-manifold edges
-    assert nm_edges.shape == (0, 2)
+    # Curve points should have 3 unique points
+    assert curve_points.shape == (3, 3)
+    assert curve_points.dtype == real_dtype
 
 
 # ==============================================================================
@@ -512,12 +513,6 @@ def test_boundary_curves_invalid_input():
     """Test boundary_curves with invalid input."""
     with pytest.raises(TypeError, match="mesh must be Mesh"):
         tf.boundary_curves("not a mesh")
-
-
-def test_non_manifold_edges_invalid_input():
-    """Test non_manifold_edges with invalid input."""
-    with pytest.raises(TypeError, match="mesh must be Mesh"):
-        tf.non_manifold_edges("not a mesh")
 
 
 # ==============================================================================
@@ -557,16 +552,6 @@ def test_boundary_curves_return_dtypes(index_dtype, real_dtype):
     curves, curve_points = tf.boundary_curves(mesh)
     assert curves.data.dtype == index_dtype
     assert curve_points.dtype == real_dtype
-
-
-@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
-def test_non_manifold_edges_return_dtype(index_dtype):
-    """Test that non_manifold_edges preserves index dtype."""
-    faces, points = create_non_manifold_mesh(index_dtype, np.float32)
-    mesh = tf.Mesh(faces, points)
-
-    nm_edges = tf.non_manifold_edges(mesh)
-    assert nm_edges.dtype == index_dtype
 
 
 # ==============================================================================

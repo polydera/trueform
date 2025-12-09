@@ -7,7 +7,7 @@ Commercial licensing available via ziga.sajovic@xlab.si.
 https://github.com/xlabmedical/trueform
 """
 
-from .._primitives import Point, Segment, Polygon, Ray, Line
+from .._primitives import Point, Segment, Polygon, Ray, Line, Plane
 
 # Dispatch table for single nearest neighbor search on meshes
 # Maps primitive type -> function_name_template
@@ -18,6 +18,7 @@ _MESH_NEIGHBOR_SEARCH_DISPATCH = {
     Polygon: "neighbor_search_mesh_polygon_{}",
     Ray: "neighbor_search_mesh_ray_{}",
     Line: "neighbor_search_mesh_line_{}",
+    Plane: "neighbor_search_mesh_plane_{}",
 }
 
 # Dispatch table for KNN search on meshes
@@ -27,4 +28,5 @@ _MESH_NEIGHBOR_SEARCH_KNN_DISPATCH = {
     Polygon: "neighbor_search_mesh_knn_polygon_{}",
     Ray: "neighbor_search_mesh_knn_ray_{}",
     Line: "neighbor_search_mesh_knn_line_{}",
+    Plane: "neighbor_search_mesh_knn_plane_{}",
 }

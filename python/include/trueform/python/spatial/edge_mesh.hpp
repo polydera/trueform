@@ -46,51 +46,45 @@ public:
   auto make_primitive_range() { return _data->make_primitive_range(); }
   auto make_primitive_range() const { return _data->make_primitive_range(); }
 
-  // Forward tree management to data
-  auto rebuild_tree() -> void { _data->rebuild_tree(); }
-  auto ensure_tree() -> void { _data->ensure_tree(); }
-  auto clear_tree() -> void { _data->clear_tree(); }
-  auto has_tree() const -> bool { return _data->has_tree(); }
+  // Build methods (idempotent - only build if needed)
+  auto build_tree() -> void { _data->build_tree(); }
+  auto build_vertex_link() -> void { _data->build_vertex_link(); }
+  auto build_edge_membership() -> void { _data->build_edge_membership(); }
+
+  // Getters (auto-build if needed)
   auto tree() -> tf::aabb_tree<Index, RealT, Dims> & { return _data->tree(); }
-  auto tree() const -> const tf::aabb_tree<Index, RealT, Dims> & {
-    return _data->tree();
+  auto vertex_link() { return _data->vertex_link(); }
+  auto edge_membership() { return _data->edge_membership(); }
+
+  // Has checks
+  auto has_tree() const -> bool { return _data->has_tree(); }
+  auto has_vertex_link() const -> bool { return _data->has_vertex_link(); }
+  auto has_edge_membership() const -> bool {
+    return _data->has_edge_membership();
   }
 
-  // Forward vertex link to data
-  auto rebuild_vertex_link() -> void { _data->rebuild_vertex_link(); }
-  auto ensure_vertex_link() -> void { _data->ensure_vertex_link(); }
-  auto vertex_link() const { return _data->vertex_link(); }
-  auto clear_vertex_link() -> void { _data->clear_vertex_link(); }
-  auto has_vertex_link() const -> bool { return _data->has_vertex_link(); }
+  // Array accessors
   auto vertex_link_array()
       -> const tf::py::offset_blocked_array_wrapper<Index, Index> & {
     return _data->vertex_link_array();
   }
-  auto set_vertex_link(tf::py::offset_blocked_array_wrapper<Index, Index> fm) {
-    _data->set_vertex_link(std::move(fm));
-  }
 
-  // Forward edge membership to data
-  auto rebuild_edge_membership() -> void { _data->rebuild_edge_membership(); }
-  auto ensure_edge_membership() -> void { _data->ensure_edge_membership(); }
-  auto edge_membership() const { return _data->edge_membership(); }
-  auto clear_edge_membership() -> void { _data->clear_edge_membership(); }
-  auto has_edge_membership() const -> bool {
-    return _data->has_edge_membership();
-  }
   auto edge_membership_array()
       -> const tf::py::offset_blocked_array_wrapper<Index, Index> & {
     return _data->edge_membership_array();
   }
+
+  // Setters for pre-computed structures
+  auto set_vertex_link(tf::py::offset_blocked_array_wrapper<Index, Index> fm) {
+    _data->set_vertex_link(std::move(fm));
+  }
+
   auto
   set_edge_membership(tf::py::offset_blocked_array_wrapper<Index, Index> fm) {
     _data->set_edge_membership(std::move(fm));
   }
 
-  // Forward modified flag to data
-  auto mark_modified() -> void { _data->mark_modified(); }
-
-  // Forward array accessors to data
+  // Data array accessors
   auto number_of_edges() const -> std::size_t {
     return _data->number_of_edges();
   }
@@ -118,6 +112,8 @@ public:
           edges_array) -> void {
     _data->set_edges_array(edges_array);
   }
+
+  auto mark_modified() -> void { _data->mark_modified(); }
 
   // Transformation is local to this wrapper (not shared)
   auto has_transformation() const -> bool {

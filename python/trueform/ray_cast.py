@@ -109,14 +109,11 @@ def ray_cast(ray: Any, target: Any, config: Optional[Tuple[float, float]] = None
             dtype_str = 'float' if target.points.dtype == np.float32 else 'double'
             suffix = f"{dtype_str}{target.dims}d"
         elif target_type_name == 'Mesh':
-            # Mesh: suffix is "intfloat32d" or "int64double43d"
-            faces_dtype = target.faces.dtype
-            points_dtype = target.points.dtype
-            ngon = target.ngon
-
-            index_str = 'int' if faces_dtype == np.int32 else 'int64'
-            real_str = 'float' if points_dtype == np.float32 else 'double'
-            suffix = f"{index_str}{real_str}{ngon}{target.dims}d"
+            # Mesh: suffix is "intfloat32d" or "int64doubledyn3d"
+            index_str = 'int' if target.faces.dtype == np.int32 else 'int64'
+            real_str = 'float' if target.points.dtype == np.float32 else 'double'
+            ngon_str = 'dyn' if target.is_dynamic else str(target.ngon)
+            suffix = f"{index_str}{real_str}{ngon_str}{target.dims}d"
         else:  # EdgeMesh
             # EdgeMesh: suffix is "intfloat2d" or "int64double3d"
             edges_dtype = target.edges.dtype

@@ -11,11 +11,12 @@ import numpy as np
 from typing import Union, Tuple
 from .. import _trueform
 from .._spatial import Mesh
+from .._core import OffsetBlockedArray
 
 
 def orient_faces_consistently(
     data: Union[Tuple[np.ndarray, np.ndarray], Mesh]
-) -> np.ndarray:
+) -> Union[np.ndarray, OffsetBlockedArray]:
     """
     Orient all faces consistently using face areas as weights.
 
@@ -28,14 +29,15 @@ def orient_faces_consistently(
     data : tuple or Mesh
         Input geometric data:
         - Tuple (faces, points) where:
-          * faces: shape (N, V) with dtype int32 or int64, V = 3 or 4
+          * faces: shape (N, 3) with dtype int32 or int64, or OffsetBlockedArray for dynamic
           * points: shape (M, Dims) where Dims = 2 or 3
-        - Mesh: tf.Mesh object (2D or 3D, triangles or quads)
+        - Mesh: tf.Mesh object (2D or 3D, triangular or dynamic)
 
     Returns
     -------
-    np.ndarray
+    np.ndarray or OffsetBlockedArray
         Reoriented faces array with same shape and dtype as input.
+        Returns OffsetBlockedArray for dynamic meshes.
         Points are not returned as they remain unchanged.
 
     Examples
@@ -79,16 +81,21 @@ def orient_faces_consistently(
             f"Expected tuple (faces, points) or Mesh, got {type(data).__name__}"
         )
 
-    # Validate ngon
-    ngon = mesh.ngon
-    if ngon not in (3, 4):
+    # Validate ngon - only triangles (3) or dynamic allowed
+    if not mesh.is_dynamic and mesh.ngon != 3:
         raise ValueError(
-            f"mesh must have triangular or quad faces, got {ngon} vertices per face. "
-            f"orient_faces_consistently only supports triangles and quads."
+            f"mesh must have triangular faces or be dynamic, got {mesh.ngon} vertices per face. "
+            f"orient_faces_consistently only supports triangles and dynamic meshes."
         )
 
     # Create new mesh with copied faces
-    faces_copy = mesh.faces.copy()
+    if mesh.is_dynamic:
+        faces_copy = OffsetBlockedArray(
+            mesh.faces.offsets.copy(),
+            mesh.faces.data.copy()
+        )
+    else:
+        faces_copy = mesh.faces.copy()
     new_mesh = Mesh(faces_copy, mesh.points)
 
     # Copy manifold_edge_link if available
@@ -99,7 +106,8 @@ def orient_faces_consistently(
     dims = new_mesh.dims
     index_str = 'int' if new_mesh.faces.dtype == np.int32 else 'int64'
     real_str = 'float' if new_mesh.points.dtype == np.float32 else 'double'
-    suffix = f"{index_str}{real_str}{ngon}{dims}d"
+    ngon_str = 'dyn' if new_mesh.is_dynamic else '3'
+    suffix = f"{index_str}{real_str}{ngon_str}{dims}d"
 
     # Call C++
     func_name = f"orient_faces_consistently_{suffix}"

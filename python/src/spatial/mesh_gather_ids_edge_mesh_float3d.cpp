@@ -52,9 +52,9 @@ auto register_mesh_gather_ids_edge_mesh_float3d(nanobind::module_ &m) -> void {
         nanobind::arg("predicate_type"),
         nanobind::arg("threshold").none() = nanobind::none());
 
-  // int × int, ngon=4, float, 3D
-  m.def("gather_ids_mesh_edge_mesh_intint4float3d",
-        [](mesh_wrapper<int, float, 4, 3> &mesh,
+  // int × int, dynamic, float, 3D
+  m.def("gather_ids_mesh_edge_mesh_intintdynfloat3d",
+        [](mesh_wrapper<int, float, tf::dynamic_size, 3> &mesh,
            edge_mesh_wrapper<int, float, 3> &edge_mesh,
            const std::string &predicate_type, std::optional<float> threshold) {
           return form_form_gather_ids<float, 3>(mesh, edge_mesh,
@@ -64,9 +64,9 @@ auto register_mesh_gather_ids_edge_mesh_float3d(nanobind::module_ &m) -> void {
         nanobind::arg("predicate_type"),
         nanobind::arg("threshold").none() = nanobind::none());
 
-  // int × int64, ngon=4, float, 3D
-  m.def("gather_ids_mesh_edge_mesh_intint644float3d",
-        [](mesh_wrapper<int, float, 4, 3> &mesh,
+  // int × int64, dynamic, float, 3D
+  m.def("gather_ids_mesh_edge_mesh_intint64dynfloat3d",
+        [](mesh_wrapper<int, float, tf::dynamic_size, 3> &mesh,
            edge_mesh_wrapper<int64_t, float, 3> &edge_mesh,
            const std::string &predicate_type, std::optional<float> threshold) {
           return form_form_gather_ids<float, 3>(mesh, edge_mesh,
@@ -76,9 +76,9 @@ auto register_mesh_gather_ids_edge_mesh_float3d(nanobind::module_ &m) -> void {
         nanobind::arg("predicate_type"),
         nanobind::arg("threshold").none() = nanobind::none());
 
-  // int64 × int64, ngon=4, float, 3D
-  m.def("gather_ids_mesh_edge_mesh_int64int644float3d",
-        [](mesh_wrapper<int64_t, float, 4, 3> &mesh,
+  // int64 × int64, dynamic, float, 3D
+  m.def("gather_ids_mesh_edge_mesh_int64int64dynfloat3d",
+        [](mesh_wrapper<int64_t, float, tf::dynamic_size, 3> &mesh,
            edge_mesh_wrapper<int64_t, float, 3> &edge_mesh,
            const std::string &predicate_type, std::optional<float> threshold) {
           return form_form_gather_ids<float, 3>(mesh, edge_mesh,
@@ -100,9 +100,9 @@ auto register_mesh_gather_ids_edge_mesh_float3d(nanobind::module_ &m) -> void {
         nanobind::arg("predicate_type"),
         nanobind::arg("threshold").none() = nanobind::none());
 
-  // int64 × int, ngon=4, float, 3D
-  m.def("gather_ids_mesh_edge_mesh_int64int4float3d",
-        [](mesh_wrapper<int64_t, float, 4, 3> &mesh,
+  // int64 × int, dynamic, float, 3D
+  m.def("gather_ids_mesh_edge_mesh_int64intdynfloat3d",
+        [](mesh_wrapper<int64_t, float, tf::dynamic_size, 3> &mesh,
            edge_mesh_wrapper<int, float, 3> &edge_mesh,
            const std::string &predicate_type, std::optional<float> threshold) {
           return form_form_gather_ids<float, 3>(mesh, edge_mesh,

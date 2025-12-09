@@ -127,9 +127,10 @@ def main():
     mesh_files = sys.argv[1:]
 
     # Load each unique mesh file once and build structures
+    # Use dynamic=True to test OffsetBlockedArray
     source_meshes = {}
     for filename in mesh_files:
-        mesh_data = load_mesh(filename, (0.0, 0.0, 0.0), target_radius=10.0, random_rotation=False)
+        mesh_data = load_mesh(filename, (0.0, 0.0, 0.0), target_radius=10.0, random_rotation=False, dynamic=True)
         mesh_data.mesh.build_tree()
         source_meshes[filename] = mesh_data
 

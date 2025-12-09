@@ -15,8 +15,6 @@ namespace tf::py {
 template <typename FormWrapper0, typename FormWrapper1>
 auto form_intersects_form(FormWrapper0 &form_wrapper0,
                           FormWrapper1 &form_wrapper1) {
-  form_wrapper0.ensure_tree();
-  form_wrapper1.ensure_tree();
   bool has0 = form_wrapper0.has_transformation();
   bool has1 = form_wrapper1.has_transformation();
   auto form0 =

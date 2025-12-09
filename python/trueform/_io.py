@@ -147,10 +147,11 @@ def write_stl(
                 f"Only 3D meshes can be written to STL."
             )
 
-        if mesh.ngon != 3:
+        if mesh.is_dynamic or mesh.ngon != 3:
             raise ValueError(
-                f"STL format only supports triangular meshes, but mesh has {mesh.ngon}-gon faces. "
-                f"Convert quad mesh to triangles first."
+                f"STL format only supports triangular meshes, but mesh has "
+                f"{'dynamic' if mesh.is_dynamic else f'{mesh.ngon}-gon'} faces. "
+                f"Convert to triangles first."
             )
 
         # Extract data from mesh
@@ -360,9 +361,10 @@ def write_obj(
                 f"OBJ format only supports 3D meshes, but mesh has {mesh.dims}D points."
             )
 
-        if mesh.ngon not in (3, 4):
+        if mesh.is_dynamic or mesh.ngon not in (3, 4):
             raise ValueError(
-                f"OBJ format only supports triangular or quad meshes, but mesh has {mesh.ngon}-gon faces."
+                f"OBJ format only supports triangular or quad meshes, but mesh has "
+                f"{'dynamic' if mesh.is_dynamic else f'{mesh.ngon}-gon'} faces."
             )
 
         # Extract data from mesh

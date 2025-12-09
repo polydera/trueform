@@ -25,18 +25,20 @@ def embedded_self_intersection_curves(
     Splits faces along self-intersection curves so that the intersections
     become edges in the resulting mesh. This is useful for mesh repair
     workflows where self-intersections need to be resolved.
+    Supports both triangle meshes and dynamic (variable polygon size) meshes.
 
     Parameters
     ----------
     mesh : Mesh
-        3D mesh with potential self-intersections
+        3D mesh with potential self-intersections (triangle or dynamic)
     return_curves : bool, default False
         If True, also return the self-intersection curves
 
     Returns
     -------
-    result_faces : np.ndarray
-        Face indices of the result mesh, shape (N, 3) or (N, 4)
+    result_faces : np.ndarray or OffsetBlockedArray
+        Face indices of the result mesh. Returns np.ndarray with shape (N, 3)
+        if input is triangle mesh, otherwise OffsetBlockedArray.
     result_points : np.ndarray
         Point coordinates of the result mesh, shape (M, 3)
     paths : OffsetBlockedArray, optional
@@ -95,18 +97,19 @@ def embedded_self_intersection_curves(
             f"embedded_self_intersection_curves only supports 3D meshes, got mesh with {mesh.dims}D"
         )
 
-    # 3. VALIDATE TRIANGLES ONLY
-    if mesh.ngon != 3:
+    # 3. VALIDATE TRIANGLES OR DYNAMIC
+    if mesh.ngon != 3 and not mesh.is_dynamic:
         raise ValueError(
-            f"embedded_self_intersection_curves only supports triangle meshes (ngon=3), got ngon={mesh.ngon}"
+            f"embedded_self_intersection_curves only supports triangle or dynamic meshes, got ngon={mesh.ngon}"
         )
 
     # 4. BUILD SUFFIX FOR C++ FUNCTION
     index_str = 'int' if mesh.faces.dtype == np.int32 else 'int64'
+    ngon_str = 'dyn' if mesh.is_dynamic else '3'
     real_str = 'float' if mesh.dtype == np.float32 else 'double'
 
     # Format: {index}{ngon}{real}3d
-    suffix = f"{index_str}{mesh.ngon}{real_str}3d"
+    suffix = f"{index_str}{ngon_str}{real_str}3d"
 
     # 5. DISPATCH TO C++
     if return_curves:
@@ -114,6 +117,10 @@ def embedded_self_intersection_curves(
         (result_faces, result_points), ((paths_offsets, paths_data), curve_points) = getattr(
             _trueform.cut, func_name
         )(mesh._wrapper)
+
+        # Wrap result faces in OffsetBlockedArray if dynamic
+        if mesh.is_dynamic:
+            result_faces = OffsetBlockedArray(result_faces[0], result_faces[1])
 
         # Wrap paths in OffsetBlockedArray
         paths = OffsetBlockedArray(paths_offsets, paths_data)
@@ -124,5 +131,9 @@ def embedded_self_intersection_curves(
         result_faces, result_points = getattr(_trueform.cut, func_name)(
             mesh._wrapper
         )
+
+        # Wrap result faces in OffsetBlockedArray if dynamic
+        if mesh.is_dynamic:
+            result_faces = OffsetBlockedArray(result_faces[0], result_faces[1])
 
         return result_faces, result_points

@@ -13,23 +13,23 @@ namespace tf::py {
 // files
 auto register_mesh_neighbor_search_intfloat32d(nanobind::module_ &m) -> void;
 auto register_mesh_neighbor_search_intfloat33d(nanobind::module_ &m) -> void;
-auto register_mesh_neighbor_search_intfloat42d(nanobind::module_ &m) -> void;
-auto register_mesh_neighbor_search_intfloat43d(nanobind::module_ &m) -> void;
+auto register_mesh_neighbor_search_intfloatdyn2d(nanobind::module_ &m) -> void;
+auto register_mesh_neighbor_search_intfloatdyn3d(nanobind::module_ &m) -> void;
 auto register_mesh_neighbor_search_intdouble32d(nanobind::module_ &m) -> void;
 auto register_mesh_neighbor_search_intdouble33d(nanobind::module_ &m) -> void;
-auto register_mesh_neighbor_search_intdouble42d(nanobind::module_ &m) -> void;
-auto register_mesh_neighbor_search_intdouble43d(nanobind::module_ &m) -> void;
+auto register_mesh_neighbor_search_intdoubledyn2d(nanobind::module_ &m) -> void;
+auto register_mesh_neighbor_search_intdoubledyn3d(nanobind::module_ &m) -> void;
 auto register_mesh_neighbor_search_int64float32d(nanobind::module_ &m) -> void;
 auto register_mesh_neighbor_search_int64float33d(nanobind::module_ &m) -> void;
-auto register_mesh_neighbor_search_int64float42d(nanobind::module_ &m) -> void;
-auto register_mesh_neighbor_search_int64float43d(nanobind::module_ &m) -> void;
+auto register_mesh_neighbor_search_int64floatdyn2d(nanobind::module_ &m) -> void;
+auto register_mesh_neighbor_search_int64floatdyn3d(nanobind::module_ &m) -> void;
 auto register_mesh_neighbor_search_int64double32d(nanobind::module_ &m)
     -> void;
 auto register_mesh_neighbor_search_int64double33d(nanobind::module_ &m)
     -> void;
-auto register_mesh_neighbor_search_int64double42d(nanobind::module_ &m)
+auto register_mesh_neighbor_search_int64doubledyn2d(nanobind::module_ &m)
     -> void;
-auto register_mesh_neighbor_search_int64double43d(nanobind::module_ &m)
+auto register_mesh_neighbor_search_int64doubledyn3d(nanobind::module_ &m)
     -> void;
 
 auto register_mesh_neighbor_search(nanobind::module_ &m) -> void {
@@ -37,20 +37,20 @@ auto register_mesh_neighbor_search(nanobind::module_ &m) -> void {
   // Split across multiple files for parallel compilation
   register_mesh_neighbor_search_intfloat32d(m);
   register_mesh_neighbor_search_intfloat33d(m);
-  register_mesh_neighbor_search_intfloat42d(m);
-  register_mesh_neighbor_search_intfloat43d(m);
+  register_mesh_neighbor_search_intfloatdyn2d(m);
+  register_mesh_neighbor_search_intfloatdyn3d(m);
   register_mesh_neighbor_search_intdouble32d(m);
   register_mesh_neighbor_search_intdouble33d(m);
-  register_mesh_neighbor_search_intdouble42d(m);
-  register_mesh_neighbor_search_intdouble43d(m);
+  register_mesh_neighbor_search_intdoubledyn2d(m);
+  register_mesh_neighbor_search_intdoubledyn3d(m);
   register_mesh_neighbor_search_int64float32d(m);
   register_mesh_neighbor_search_int64float33d(m);
-  register_mesh_neighbor_search_int64float42d(m);
-  register_mesh_neighbor_search_int64float43d(m);
+  register_mesh_neighbor_search_int64floatdyn2d(m);
+  register_mesh_neighbor_search_int64floatdyn3d(m);
   register_mesh_neighbor_search_int64double32d(m);
   register_mesh_neighbor_search_int64double33d(m);
-  register_mesh_neighbor_search_int64double42d(m);
-  register_mesh_neighbor_search_int64double43d(m);
+  register_mesh_neighbor_search_int64doubledyn2d(m);
+  register_mesh_neighbor_search_int64doubledyn3d(m);
 }
 
 } // namespace tf::py

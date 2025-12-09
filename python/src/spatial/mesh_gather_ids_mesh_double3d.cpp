@@ -51,10 +51,10 @@ auto register_mesh_gather_ids_mesh_double3d(nanobind::module_ &m) -> void {
         nanobind::arg("predicate_type"),
         nanobind::arg("threshold").none() = nanobind::none());
 
-  // int × int, 3×4, double, 3D
-  m.def("gather_ids_mesh_mesh_intint34double3d",
+  // int × int, 3×dyn, double, 3D
+  m.def("gather_ids_mesh_mesh_intint3dyndouble3d",
         [](mesh_wrapper<int, double, 3, 3> &mesh0,
-           mesh_wrapper<int, double, 4, 3> &mesh1,
+           mesh_wrapper<int, double, tf::dynamic_size, 3> &mesh1,
            const std::string &predicate_type, std::optional<double> threshold) {
           return form_form_gather_ids<double, 3>(mesh0, mesh1,
                                                  predicate_type, threshold);
@@ -63,10 +63,10 @@ auto register_mesh_gather_ids_mesh_double3d(nanobind::module_ &m) -> void {
         nanobind::arg("predicate_type"),
         nanobind::arg("threshold").none() = nanobind::none());
 
-  // int × int64, 3×4, double, 3D
-  m.def("gather_ids_mesh_mesh_intint6434double3d",
+  // int × int64, 3×dyn, double, 3D
+  m.def("gather_ids_mesh_mesh_intint643dyndouble3d",
         [](mesh_wrapper<int, double, 3, 3> &mesh0,
-           mesh_wrapper<int64_t, double, 4, 3> &mesh1,
+           mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh1,
            const std::string &predicate_type, std::optional<double> threshold) {
           return form_form_gather_ids<double, 3>(mesh0, mesh1,
                                                  predicate_type, threshold);
@@ -75,10 +75,10 @@ auto register_mesh_gather_ids_mesh_double3d(nanobind::module_ &m) -> void {
         nanobind::arg("predicate_type"),
         nanobind::arg("threshold").none() = nanobind::none());
 
-  // int64 × int64, 3×4, double, 3D
-  m.def("gather_ids_mesh_mesh_int64int6434double3d",
+  // int64 × int64, 3×dyn, double, 3D
+  m.def("gather_ids_mesh_mesh_int64int643dyndouble3d",
         [](mesh_wrapper<int64_t, double, 3, 3> &mesh0,
-           mesh_wrapper<int64_t, double, 4, 3> &mesh1,
+           mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh1,
            const std::string &predicate_type, std::optional<double> threshold) {
           return form_form_gather_ids<double, 3>(mesh0, mesh1,
                                                  predicate_type, threshold);
@@ -87,9 +87,9 @@ auto register_mesh_gather_ids_mesh_double3d(nanobind::module_ &m) -> void {
         nanobind::arg("predicate_type"),
         nanobind::arg("threshold").none() = nanobind::none());
 
-  // int × int, 4×3, double, 3D
-  m.def("gather_ids_mesh_mesh_intint43double3d",
-        [](mesh_wrapper<int, double, 4, 3> &mesh0,
+  // int × int, dyn×3, double, 3D
+  m.def("gather_ids_mesh_mesh_intintdyn3double3d",
+        [](mesh_wrapper<int, double, tf::dynamic_size, 3> &mesh0,
            mesh_wrapper<int, double, 3, 3> &mesh1,
            const std::string &predicate_type, std::optional<double> threshold) {
           return form_form_gather_ids<double, 3>(mesh0, mesh1,
@@ -99,9 +99,9 @@ auto register_mesh_gather_ids_mesh_double3d(nanobind::module_ &m) -> void {
         nanobind::arg("predicate_type"),
         nanobind::arg("threshold").none() = nanobind::none());
 
-  // int × int64, 4×3, double, 3D
-  m.def("gather_ids_mesh_mesh_intint6443double3d",
-        [](mesh_wrapper<int, double, 4, 3> &mesh0,
+  // int × int64, dyn×3, double, 3D
+  m.def("gather_ids_mesh_mesh_intint64dyn3double3d",
+        [](mesh_wrapper<int, double, tf::dynamic_size, 3> &mesh0,
            mesh_wrapper<int64_t, double, 3, 3> &mesh1,
            const std::string &predicate_type, std::optional<double> threshold) {
           return form_form_gather_ids<double, 3>(mesh0, mesh1,
@@ -111,9 +111,9 @@ auto register_mesh_gather_ids_mesh_double3d(nanobind::module_ &m) -> void {
         nanobind::arg("predicate_type"),
         nanobind::arg("threshold").none() = nanobind::none());
 
-  // int64 × int64, 4×3, double, 3D
-  m.def("gather_ids_mesh_mesh_int64int6443double3d",
-        [](mesh_wrapper<int64_t, double, 4, 3> &mesh0,
+  // int64 × int64, dyn×3, double, 3D
+  m.def("gather_ids_mesh_mesh_int64int64dyn3double3d",
+        [](mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh0,
            mesh_wrapper<int64_t, double, 3, 3> &mesh1,
            const std::string &predicate_type, std::optional<double> threshold) {
           return form_form_gather_ids<double, 3>(mesh0, mesh1,
@@ -123,10 +123,10 @@ auto register_mesh_gather_ids_mesh_double3d(nanobind::module_ &m) -> void {
         nanobind::arg("predicate_type"),
         nanobind::arg("threshold").none() = nanobind::none());
 
-  // int × int, 4×4, double, 3D
-  m.def("gather_ids_mesh_mesh_intint44double3d",
-        [](mesh_wrapper<int, double, 4, 3> &mesh0,
-           mesh_wrapper<int, double, 4, 3> &mesh1,
+  // int × int, dyn×dyn, double, 3D
+  m.def("gather_ids_mesh_mesh_intintdyndyndouble3d",
+        [](mesh_wrapper<int, double, tf::dynamic_size, 3> &mesh0,
+           mesh_wrapper<int, double, tf::dynamic_size, 3> &mesh1,
            const std::string &predicate_type, std::optional<double> threshold) {
           return form_form_gather_ids<double, 3>(mesh0, mesh1,
                                                  predicate_type, threshold);
@@ -135,10 +135,10 @@ auto register_mesh_gather_ids_mesh_double3d(nanobind::module_ &m) -> void {
         nanobind::arg("predicate_type"),
         nanobind::arg("threshold").none() = nanobind::none());
 
-  // int × int64, 4×4, double, 3D
-  m.def("gather_ids_mesh_mesh_intint6444double3d",
-        [](mesh_wrapper<int, double, 4, 3> &mesh0,
-           mesh_wrapper<int64_t, double, 4, 3> &mesh1,
+  // int × int64, dyn×dyn, double, 3D
+  m.def("gather_ids_mesh_mesh_intint64dyndyndouble3d",
+        [](mesh_wrapper<int, double, tf::dynamic_size, 3> &mesh0,
+           mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh1,
            const std::string &predicate_type, std::optional<double> threshold) {
           return form_form_gather_ids<double, 3>(mesh0, mesh1,
                                                  predicate_type, threshold);
@@ -147,10 +147,10 @@ auto register_mesh_gather_ids_mesh_double3d(nanobind::module_ &m) -> void {
         nanobind::arg("predicate_type"),
         nanobind::arg("threshold").none() = nanobind::none());
 
-  // int64 × int64, 4×4, double, 3D
-  m.def("gather_ids_mesh_mesh_int64int6444double3d",
-        [](mesh_wrapper<int64_t, double, 4, 3> &mesh0,
-           mesh_wrapper<int64_t, double, 4, 3> &mesh1,
+  // int64 × int64, dyn×dyn, double, 3D
+  m.def("gather_ids_mesh_mesh_int64int64dyndyndouble3d",
+        [](mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh0,
+           mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh1,
            const std::string &predicate_type, std::optional<double> threshold) {
           return form_form_gather_ids<double, 3>(mesh0, mesh1,
                                                  predicate_type, threshold);
@@ -171,10 +171,10 @@ auto register_mesh_gather_ids_mesh_double3d(nanobind::module_ &m) -> void {
         nanobind::arg("predicate_type"),
         nanobind::arg("threshold").none() = nanobind::none());
 
-  // int64 × int, 3×4, double, 3D
-  m.def("gather_ids_mesh_mesh_int64int34double3d",
+  // int64 × int, 3×dyn, double, 3D
+  m.def("gather_ids_mesh_mesh_int64int3dyndouble3d",
         [](mesh_wrapper<int64_t, double, 3, 3> &mesh0,
-           mesh_wrapper<int, double, 4, 3> &mesh1,
+           mesh_wrapper<int, double, tf::dynamic_size, 3> &mesh1,
            const std::string &predicate_type, std::optional<double> threshold) {
           return form_form_gather_ids<double, 3>(mesh0, mesh1,
                                                  predicate_type, threshold);
@@ -183,9 +183,9 @@ auto register_mesh_gather_ids_mesh_double3d(nanobind::module_ &m) -> void {
         nanobind::arg("predicate_type"),
         nanobind::arg("threshold").none() = nanobind::none());
 
-  // int64 × int, 4×3, double, 3D
-  m.def("gather_ids_mesh_mesh_int64int43double3d",
-        [](mesh_wrapper<int64_t, double, 4, 3> &mesh0,
+  // int64 × int, dyn×3, double, 3D
+  m.def("gather_ids_mesh_mesh_int64intdyn3double3d",
+        [](mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh0,
            mesh_wrapper<int, double, 3, 3> &mesh1,
            const std::string &predicate_type, std::optional<double> threshold) {
           return form_form_gather_ids<double, 3>(mesh0, mesh1,
@@ -195,10 +195,10 @@ auto register_mesh_gather_ids_mesh_double3d(nanobind::module_ &m) -> void {
         nanobind::arg("predicate_type"),
         nanobind::arg("threshold").none() = nanobind::none());
 
-  // int64 × int, 4×4, double, 3D
-  m.def("gather_ids_mesh_mesh_int64int44double3d",
-        [](mesh_wrapper<int64_t, double, 4, 3> &mesh0,
-           mesh_wrapper<int, double, 4, 3> &mesh1,
+  // int64 × int, dyn×dyn, double, 3D
+  m.def("gather_ids_mesh_mesh_int64intdyndyndouble3d",
+        [](mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh0,
+           mesh_wrapper<int, double, tf::dynamic_size, 3> &mesh1,
            const std::string &predicate_type, std::optional<double> threshold) {
           return form_form_gather_ids<double, 3>(mesh0, mesh1,
                                                  predicate_type, threshold);

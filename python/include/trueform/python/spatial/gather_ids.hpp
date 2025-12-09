@@ -24,8 +24,6 @@ auto gather_ids(FormWrapper &form_wrapper, const F0 &aabb_predicate,
 
   tf::buffer<Index> buffer;
 
-  form_wrapper.ensure_tree();
-
   if (form_wrapper.has_transformation()) {
     tf::gather_ids(
         tf::make_form(tf::make_frame(form_wrapper.transformation_view()),

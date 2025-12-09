@@ -49,9 +49,9 @@ auto register_mesh_neighbor_search_edge_mesh_float3d(nanobind::module_ &m) -> vo
         nanobind::arg("edge_mesh"),
         nanobind::arg("radius").none() = nanobind::none());
 
-  // int32 mesh, int32 edge_mesh, quad, float, 3D
-  m.def("neighbor_search_mesh_edge_mesh_intintfloat43d",
-        [](mesh_wrapper<int, float, 4, 3> &mesh,
+  // int32 mesh, int32 edge_mesh, dynamic, float, 3D
+  m.def("neighbor_search_mesh_edge_mesh_intintfloatdyn3d",
+        [](mesh_wrapper<int, float, tf::dynamic_size, 3> &mesh,
            edge_mesh_wrapper<int, float, 3> &edge_mesh,
            std::optional<float> radius) {
           return form_form_neighbor_search(mesh, edge_mesh, radius);
@@ -60,9 +60,9 @@ auto register_mesh_neighbor_search_edge_mesh_float3d(nanobind::module_ &m) -> vo
         nanobind::arg("edge_mesh"),
         nanobind::arg("radius").none() = nanobind::none());
 
-  // int32 mesh, int64 edge_mesh, quad, float, 3D
-  m.def("neighbor_search_mesh_edge_mesh_intint64float43d",
-        [](mesh_wrapper<int, float, 4, 3> &mesh,
+  // int32 mesh, int64 edge_mesh, dynamic, float, 3D
+  m.def("neighbor_search_mesh_edge_mesh_intint64floatdyn3d",
+        [](mesh_wrapper<int, float, tf::dynamic_size, 3> &mesh,
            edge_mesh_wrapper<int64_t, float, 3> &edge_mesh,
            std::optional<float> radius) {
           return form_form_neighbor_search(mesh, edge_mesh, radius);
@@ -71,9 +71,9 @@ auto register_mesh_neighbor_search_edge_mesh_float3d(nanobind::module_ &m) -> vo
         nanobind::arg("edge_mesh"),
         nanobind::arg("radius").none() = nanobind::none());
 
-  // int64 mesh, int64 edge_mesh, quad, float, 3D
-  m.def("neighbor_search_mesh_edge_mesh_int64int64float43d",
-        [](mesh_wrapper<int64_t, float, 4, 3> &mesh,
+  // int64 mesh, int64 edge_mesh, dynamic, float, 3D
+  m.def("neighbor_search_mesh_edge_mesh_int64int64floatdyn3d",
+        [](mesh_wrapper<int64_t, float, tf::dynamic_size, 3> &mesh,
            edge_mesh_wrapper<int64_t, float, 3> &edge_mesh,
            std::optional<float> radius) {
           return form_form_neighbor_search(mesh, edge_mesh, radius);
@@ -93,9 +93,9 @@ auto register_mesh_neighbor_search_edge_mesh_float3d(nanobind::module_ &m) -> vo
         nanobind::arg("edge_mesh"),
         nanobind::arg("radius").none() = nanobind::none());
 
-  // int64 mesh, int32 edge_mesh, quad, float, 3D
-  m.def("neighbor_search_mesh_edge_mesh_int64intfloat43d",
-        [](mesh_wrapper<int64_t, float, 4, 3> &mesh,
+  // int64 mesh, int32 edge_mesh, dynamic, float, 3D
+  m.def("neighbor_search_mesh_edge_mesh_int64intfloatdyn3d",
+        [](mesh_wrapper<int64_t, float, tf::dynamic_size, 3> &mesh,
            edge_mesh_wrapper<int, float, 3> &edge_mesh,
            std::optional<float> radius) {
           return form_form_neighbor_search(mesh, edge_mesh, radius);

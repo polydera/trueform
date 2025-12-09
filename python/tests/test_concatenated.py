@@ -73,23 +73,41 @@ class TestConcatenatedMesh:
         # Verify points
         assert len(result_points) == 9
 
-    def test_concatenate_quad_meshes(self):
-        """Test concatenating quad meshes."""
-        mesh1 = tf.Mesh(
-            np.array([[0, 1, 2, 3]], dtype=np.int32),
-            np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], dtype=np.float32)
-        )
-        mesh2 = tf.Mesh(
-            np.array([[0, 1, 2, 3]], dtype=np.int32),
-            np.array([[2, 0, 0], [3, 0, 0], [3, 1, 0], [2, 1, 0]], dtype=np.float32)
-        )
+    def test_concatenate_dynamic_meshes(self):
+        """Test concatenating dynamic meshes (variable-sized polygons)."""
+        # First dynamic mesh: one triangle and one quad
+        offsets1 = np.array([0, 3, 7], dtype=np.int32)
+        data1 = np.array([0, 1, 2, 0, 2, 3, 4], dtype=np.int32)
+        faces1 = tf.OffsetBlockedArray(offsets1, data1)
+        points1 = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0.5, 0.5, 0]], dtype=np.float32)
+        mesh1 = tf.Mesh(faces1, points1)
 
+        # Second dynamic mesh: two triangles
+        offsets2 = np.array([0, 3, 6], dtype=np.int32)
+        data2 = np.array([0, 1, 2, 1, 2, 3], dtype=np.int32)
+        faces2 = tf.OffsetBlockedArray(offsets2, data2)
+        points2 = np.array([[10, 0, 0], [11, 0, 0], [10, 1, 0], [11, 1, 0]], dtype=np.float32)
+        mesh2 = tf.Mesh(faces2, points2)
+
+        # Concatenate
         result_faces, result_points = tf.concatenated([mesh1, mesh2])
 
-        # Verify faces
-        expected_faces = np.array([[0, 1, 2, 3], [4, 5, 6, 7]], dtype=np.int32)
-        np.testing.assert_array_equal(result_faces, expected_faces)
-        assert len(result_points) == 8
+        # Verify result type
+        assert isinstance(result_faces, tf.OffsetBlockedArray)
+
+        # Verify number of faces
+        assert len(result_faces) == 4  # 2 from mesh1 + 2 from mesh2
+
+        # Verify points concatenated
+        assert len(result_points) == 9  # 5 from mesh1 + 4 from mesh2
+
+        # Verify face indices are correctly offset
+        # mesh1 faces: [0,1,2], [0,2,3,4] -> no offset
+        # mesh2 faces: [0,1,2], [1,2,3] -> offset by 5 -> [5,6,7], [6,7,8]
+        np.testing.assert_array_equal(result_faces[0], [0, 1, 2])
+        np.testing.assert_array_equal(result_faces[1], [0, 2, 3, 4])
+        np.testing.assert_array_equal(result_faces[2], [5, 6, 7])
+        np.testing.assert_array_equal(result_faces[3], [6, 7, 8])
 
     def test_concatenate_2d_meshes(self):
         """Test concatenating 2D triangle meshes."""
@@ -175,6 +193,39 @@ class TestConcatenatedTuples:
         np.testing.assert_array_equal(result_indices, expected_indices)
         assert len(result_points) == 6
 
+    def test_concatenate_dynamic_tuples(self):
+        """Test concatenating tuples with OffsetBlockedArray indices."""
+        # First tuple: one triangle, one quad
+        offsets1 = np.array([0, 3, 7], dtype=np.int32)
+        data1_arr = np.array([0, 1, 2, 0, 2, 3, 4], dtype=np.int32)
+        indices1 = tf.OffsetBlockedArray(offsets1, data1_arr)
+        points1 = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0.5, 0.5, 0]], dtype=np.float32)
+        data1 = (indices1, points1)
+
+        # Second tuple: two triangles (same dtype as first)
+        offsets2 = np.array([0, 3, 6], dtype=np.int32)
+        data2_arr = np.array([0, 1, 2, 1, 2, 3], dtype=np.int32)
+        indices2 = tf.OffsetBlockedArray(offsets2, data2_arr)
+        points2 = np.array([[10, 0, 0], [11, 0, 0], [10, 1, 0], [11, 1, 0]], dtype=np.float32)
+        data2 = (indices2, points2)
+
+        result_indices, result_points = tf.concatenated([data1, data2])
+
+        # Verify result is OffsetBlockedArray
+        assert isinstance(result_indices, tf.OffsetBlockedArray)
+
+        # Verify face count
+        assert len(result_indices) == 4
+
+        # Verify point count
+        assert len(result_points) == 9
+
+        # Verify face indices are correctly offset
+        np.testing.assert_array_equal(result_indices[0], [0, 1, 2])
+        np.testing.assert_array_equal(result_indices[1], [0, 2, 3, 4])
+        np.testing.assert_array_equal(result_indices[2], [5, 6, 7])
+        np.testing.assert_array_equal(result_indices[3], [6, 7, 8])
+
 
 class TestConcatenatedMixedDtypes:
     """Tests for concatenating with mixed dtypes (numpy auto-conversion)."""
@@ -226,19 +277,56 @@ class TestConcatenatedValidation:
         with pytest.raises(ValueError, match="Cannot concatenate empty list"):
             tf.concatenated([])
 
-    def test_mismatched_V(self):
-        """Test that mismatched V raises ValueError."""
+    def test_mixed_fixed_and_dynamic(self):
+        """Test mixing fixed-size and dynamic meshes produces dynamic output."""
+        # Fixed-size mesh (triangles)
         mesh1 = tf.Mesh(
-            np.array([[0, 1, 2]], dtype=np.int32),  # Triangles (V=3)
+            np.array([[0, 1, 2]], dtype=np.int32),
             np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float32)
         )
+        # Dynamic mesh
+        offsets = np.array([0, 3, 7], dtype=np.int32)
+        data = np.array([0, 1, 2, 0, 2, 3, 4], dtype=np.int32)
+        faces = tf.OffsetBlockedArray(offsets, data)
+        mesh2 = tf.Mesh(faces, np.array([[5, 5, 5], [6, 5, 5], [5, 6, 5], [6, 6, 5], [5.5, 5.5, 5]], dtype=np.float32))
+
+        result_faces, result_points = tf.concatenated([mesh1, mesh2])
+
+        # Result should be dynamic
+        assert isinstance(result_faces, tf.OffsetBlockedArray)
+        assert len(result_faces) == 3  # 1 tri from mesh1 + 2 faces from mesh2
+        assert len(result_points) == 8  # 3 + 5
+
+        # Check indices are correctly offset
+        np.testing.assert_array_equal(result_faces[0], [0, 1, 2])  # mesh1 tri
+        np.testing.assert_array_equal(result_faces[1], [3, 4, 5])  # mesh2 tri (offset by 3)
+        np.testing.assert_array_equal(result_faces[2], [3, 5, 6, 7])  # mesh2 quad (offset by 3)
+
+    def test_mixed_ngon(self):
+        """Test mixing triangles and dynamic (quad) produces dynamic output."""
+        # Triangle mesh
+        mesh1 = tf.Mesh(
+            np.array([[0, 1, 2]], dtype=np.int32),
+            np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float32)
+        )
+        # Quad mesh using OffsetBlockedArray (dynamic)
+        quad_offsets = np.array([0, 4], dtype=np.int32)
+        quad_data = np.array([0, 1, 2, 3], dtype=np.int32)
         mesh2 = tf.Mesh(
-            np.array([[0, 1, 2, 3]], dtype=np.int32),  # Quads (V=4)
-            np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], dtype=np.float32)
+            tf.OffsetBlockedArray(quad_offsets, quad_data),
+            np.array([[5, 5, 5], [6, 5, 5], [6, 6, 5], [5, 6, 5]], dtype=np.float32)
         )
 
-        with pytest.raises(ValueError, match="All indices must have same V"):
-            tf.concatenated([mesh1, mesh2])
+        result_faces, result_points = tf.concatenated([mesh1, mesh2])
+
+        # Result should be dynamic (mixed ngon)
+        assert isinstance(result_faces, tf.OffsetBlockedArray)
+        assert len(result_faces) == 2  # 1 tri + 1 quad
+        assert len(result_points) == 7  # 3 + 4
+
+        # Check indices
+        np.testing.assert_array_equal(result_faces[0], [0, 1, 2])  # tri
+        np.testing.assert_array_equal(result_faces[1], [3, 4, 5, 6])  # quad (offset by 3)
 
     def test_mismatched_dims(self):
         """Test that mismatched dims raises ValueError."""

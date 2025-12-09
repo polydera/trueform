@@ -16,11 +16,20 @@ import trueform as tf
 INDEX_DTYPES = [np.int32, np.int64]
 REAL_DTYPES = [np.float32, np.float64]
 DIMS = [2, 3]
+MESH_TYPES = ['triangle', 'dynamic']
 
 
 # ==============================================================================
 # Helper functions
 # ==============================================================================
+
+def make_dynamic_faces(faces_array):
+    """Convert triangle faces array to OffsetBlockedArray for dynamic mesh."""
+    index_dtype = faces_array.dtype
+    offsets = np.arange(0, len(faces_array) * 3 + 1, 3, dtype=index_dtype)
+    data = faces_array.ravel()
+    return tf.OffsetBlockedArray(offsets, data)
+
 
 def faces_are_consistent(faces, points):
     """
@@ -244,62 +253,6 @@ def create_two_separate_triangles(index_dtype, real_dtype, dims):
     return faces, points
 
 
-def create_quad_mesh_consistent(index_dtype, real_dtype, dims):
-    """Create two quads with consistent orientation."""
-    faces = np.array([
-        [0, 1, 2, 3],
-        [1, 4, 5, 2]
-    ], dtype=index_dtype)
-
-    if dims == 2:
-        points = np.array([
-            [0.0, 0.0],
-            [1.0, 0.0],
-            [1.0, 1.0],
-            [0.0, 1.0],
-            [2.0, 0.0],
-            [2.0, 1.0]
-        ], dtype=real_dtype)
-    else:
-        points = np.array([
-            [0.0, 0.0, 0.0],
-            [1.0, 0.0, 0.0],
-            [1.0, 1.0, 0.0],
-            [0.0, 1.0, 0.0],
-            [2.0, 0.0, 0.0],
-            [2.0, 1.0, 0.0]
-        ], dtype=real_dtype)
-
-    return faces, points
-
-
-def create_quad_mesh_inconsistent(index_dtype, real_dtype, dims):
-    """Create two quads with inconsistent orientation."""
-    faces = np.array([
-        [0, 1, 2, 3],
-        [1, 2, 5, 4]  # Flipped - edge (1,2) in same direction
-    ], dtype=index_dtype)
-
-    if dims == 2:
-        points = np.array([
-            [0.0, 0.0],
-            [1.0, 0.0],
-            [1.0, 1.0],
-            [0.0, 1.0],
-            [2.0, 0.0],
-            [2.0, 1.0]
-        ], dtype=real_dtype)
-    else:
-        points = np.array([
-            [0.0, 0.0, 0.0],
-            [1.0, 0.0, 0.0],
-            [1.0, 1.0, 0.0],
-            [0.0, 1.0, 0.0],
-            [2.0, 0.0, 0.0],
-            [2.0, 1.0, 0.0]
-        ], dtype=real_dtype)
-
-    return faces, points
 
 
 # ==============================================================================
@@ -400,29 +353,37 @@ def test_separate_components(index_dtype, real_dtype, dims):
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
 @pytest.mark.parametrize("dims", DIMS)
-def test_quad_mesh_consistent(index_dtype, real_dtype, dims):
-    """Test quad mesh already consistent."""
-    faces, points = create_quad_mesh_consistent(index_dtype, real_dtype, dims)
+def test_dynamic_mesh_consistent(index_dtype, real_dtype, dims):
+    """Test dynamic mesh already consistent."""
+    faces_array, points = create_two_triangles_consistent(index_dtype, real_dtype, dims)
+    faces = make_dynamic_faces(faces_array)
+    mesh = tf.Mesh(faces, points)
 
-    result = tf.orient_faces_consistently((faces, points))
+    result = tf.orient_faces_consistently(mesh)
 
-    assert result.shape == faces.shape
-    assert result.dtype == index_dtype
-    assert faces_are_consistent(result, points)
+    # Result should be OffsetBlockedArray
+    assert isinstance(result, tf.OffsetBlockedArray)
+    # Convert to array for consistency check
+    result_array = np.array([result.data[result.offsets[i]:result.offsets[i+1]] for i in range(len(result))])
+    assert faces_are_consistent(result_array, points)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
 @pytest.mark.parametrize("dims", DIMS)
-def test_quad_mesh_inconsistent(index_dtype, real_dtype, dims):
-    """Test quad mesh with inconsistent orientation."""
-    faces, points = create_quad_mesh_inconsistent(index_dtype, real_dtype, dims)
+def test_dynamic_mesh_inconsistent(index_dtype, real_dtype, dims):
+    """Test dynamic mesh with inconsistent orientation."""
+    faces_array, points = create_two_triangles_inconsistent(index_dtype, real_dtype, dims)
+    faces = make_dynamic_faces(faces_array)
+    mesh = tf.Mesh(faces, points)
 
-    result = tf.orient_faces_consistently((faces, points))
+    result = tf.orient_faces_consistently(mesh)
 
-    assert result.shape == faces.shape
-    assert result.dtype == index_dtype
-    assert faces_are_consistent(result, points)
+    # Result should be OffsetBlockedArray
+    assert isinstance(result, tf.OffsetBlockedArray)
+    # Convert to array for consistency check
+    result_array = np.array([result.data[result.offsets[i]:result.offsets[i+1]] for i in range(len(result))])
+    assert faces_are_consistent(result_array, points)
 
 
 # ==============================================================================
@@ -492,9 +453,10 @@ def test_invalid_tuple_length():
 
 
 def test_invalid_ngon():
-    """Test with invalid ngon (not 3 or 4)."""
-    faces = np.array([[0, 1, 2, 3, 4]], dtype=np.int32)
-    points = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0.5, 0.5, 0]], dtype=np.float32)
+    """Test with invalid ngon (not 3 and not dynamic)."""
+    # Mesh with 4 vertices per face should fail since we don't support quads anymore
+    faces = np.array([[0, 1, 2, 3]], dtype=np.int32)
+    points = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], dtype=np.float32)
 
     with pytest.raises((ValueError, TypeError)):  # Mesh constructor or orient check
         tf.orient_faces_consistently((faces, points))

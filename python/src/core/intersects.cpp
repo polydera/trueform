@@ -970,6 +970,27 @@ auto register_core_intersects(nanobind::module_ &m) -> void {
           auto aabb = make_aabb_from_array<3, double>(aabb_data);
           return tf::intersects(poly, aabb);
         });
+
+  // ==== Plane to Plane (3D only) ====
+  m.def("intersects_plane_plane_float3d",
+        [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
+               plane0_data,
+           nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
+               plane1_data) {
+          auto plane0 = make_plane_from_array<3, float>(plane0_data);
+          auto plane1 = make_plane_from_array<3, float>(plane1_data);
+          return tf::intersects(plane0, plane1);
+        });
+
+  m.def("intersects_plane_plane_double3d",
+        [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<4>>
+               plane0_data,
+           nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<4>>
+               plane1_data) {
+          auto plane0 = make_plane_from_array<3, double>(plane0_data);
+          auto plane1 = make_plane_from_array<3, double>(plane1_data);
+          return tf::intersects(plane0, plane1);
+        });
 }
 
 } // namespace tf::py

@@ -15,11 +15,11 @@
 
 namespace tf::py {
 
-auto register_mesh_neighbor_search_int64double43d(nanobind::module_ &m) -> void {
+auto register_mesh_neighbor_search_int64doubledyn3d(nanobind::module_ &m) -> void {
 
   // Point queries
-  m.def("neighbor_search_mesh_point_int64double43d",
-        [](mesh_wrapper<int64_t, double, 4, 3> &mesh,
+  m.def("neighbor_search_mesh_point_int64doubledyn3d",
+        [](mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<3>>
                query,
            std::optional<double> radius) {
@@ -32,8 +32,8 @@ auto register_mesh_neighbor_search_int64double43d(nanobind::module_ &m) -> void 
 
   // Segment queries
   m.def(
-      "neighbor_search_mesh_segment_int64double43d",
-      [](mesh_wrapper<int64_t, double, 4, 3> &mesh,
+      "neighbor_search_mesh_segment_int64doubledyn3d",
+      [](mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 3>>
              query,
          std::optional<double> radius) {
@@ -45,23 +45,23 @@ auto register_mesh_neighbor_search_int64double43d(nanobind::module_ &m) -> void 
       nanobind::arg("radius").none() = nanobind::none());
 
   // Polygon queries
-  m.def("neighbor_search_mesh_polygon_int64double43d",
-        [](mesh_wrapper<int64_t, double, 4, 3> &mesh,
-           nanobind::ndarray<nanobind::numpy, const double,
-                             nanobind::shape<-1, 3>>
-               query,
-           std::optional<double> radius) {
-          return neighbor_search<double, 3>(
-              mesh, make_polygon_from_array<3, double>(query), radius);
-        },
-        nanobind::arg("mesh"),
-        nanobind::arg("query"),
-        nanobind::arg("radius").none() = nanobind::none());
+  m.def(
+      "neighbor_search_mesh_polygon_int64doubledyn3d",
+      [](mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh,
+         nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<-1, 3>>
+             query,
+         std::optional<double> radius) {
+        return neighbor_search<double, 3>(
+            mesh, make_polygon_from_array<3, double>(query), radius);
+      },
+      nanobind::arg("mesh"),
+      nanobind::arg("query"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Ray queries
   m.def(
-      "neighbor_search_mesh_ray_int64double43d",
-      [](mesh_wrapper<int64_t, double, 4, 3> &mesh,
+      "neighbor_search_mesh_ray_int64doubledyn3d",
+      [](mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 3>>
              query,
          std::optional<double> radius) {
@@ -74,8 +74,8 @@ auto register_mesh_neighbor_search_int64double43d(nanobind::module_ &m) -> void 
 
   // Line queries
   m.def(
-      "neighbor_search_mesh_line_int64double43d",
-      [](mesh_wrapper<int64_t, double, 4, 3> &mesh,
+      "neighbor_search_mesh_line_int64doubledyn3d",
+      [](mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 3>>
              query,
          std::optional<double> radius) {
@@ -86,9 +86,22 @@ auto register_mesh_neighbor_search_int64double43d(nanobind::module_ &m) -> void 
       nanobind::arg("query"),
       nanobind::arg("radius").none() = nanobind::none());
 
+  // Plane queries
+  m.def(
+      "neighbor_search_mesh_plane_int64doubledyn3d",
+      [](mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh,
+         nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<4>>
+             query,
+         std::optional<double> radius) {
+        return neighbor_search<double, 3>(
+            mesh, make_plane_from_array<3, double>(query), radius);
+      },
+      nanobind::arg("mesh"),
+      nanobind::arg("query"),
+      nanobind::arg("radius").none() = nanobind::none());
 
-  m.def("neighbor_search_mesh_knn_point_int64double43d",
-        [](mesh_wrapper<int64_t, double, 4, 3> &mesh,
+  m.def("neighbor_search_mesh_knn_point_int64doubledyn3d",
+        [](mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<3>>
                query,
            int k, std::optional<double> radius) {
@@ -101,8 +114,8 @@ auto register_mesh_neighbor_search_int64double43d(nanobind::module_ &m) -> void 
         nanobind::arg("radius").none() = nanobind::none());
 
   m.def(
-      "neighbor_search_mesh_knn_segment_int64double43d",
-      [](mesh_wrapper<int64_t, double, 4, 3> &mesh,
+      "neighbor_search_mesh_knn_segment_int64doubledyn3d",
+      [](mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 3>>
              query,
          int k, std::optional<double> radius) {
@@ -115,10 +128,9 @@ auto register_mesh_neighbor_search_int64double43d(nanobind::module_ &m) -> void 
       nanobind::arg("radius").none() = nanobind::none());
 
   m.def(
-      "neighbor_search_mesh_knn_polygon_int64double43d",
-      [](mesh_wrapper<int64_t, double, 4, 3> &mesh,
-         nanobind::ndarray<nanobind::numpy, const double,
-                           nanobind::shape<-1, 3>>
+      "neighbor_search_mesh_knn_polygon_int64doubledyn3d",
+      [](mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh,
+         nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<-1, 3>>
              query,
          int k, std::optional<double> radius) {
         return neighbor_search<double, 3>(
@@ -130,8 +142,8 @@ auto register_mesh_neighbor_search_int64double43d(nanobind::module_ &m) -> void 
       nanobind::arg("radius").none() = nanobind::none());
 
   m.def(
-      "neighbor_search_mesh_knn_ray_int64double43d",
-      [](mesh_wrapper<int64_t, double, 4, 3> &mesh,
+      "neighbor_search_mesh_knn_ray_int64doubledyn3d",
+      [](mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 3>>
              query,
          int k, std::optional<double> radius) {
@@ -144,13 +156,27 @@ auto register_mesh_neighbor_search_int64double43d(nanobind::module_ &m) -> void 
       nanobind::arg("radius").none() = nanobind::none());
 
   m.def(
-      "neighbor_search_mesh_knn_line_int64double43d",
-      [](mesh_wrapper<int64_t, double, 4, 3> &mesh,
+      "neighbor_search_mesh_knn_line_int64doubledyn3d",
+      [](mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 3>>
              query,
          int k, std::optional<double> radius) {
         return neighbor_search<double, 3>(
             mesh, make_line_from_array<3, double>(query), k, radius);
+      },
+      nanobind::arg("mesh"),
+      nanobind::arg("query"),
+      nanobind::arg("k"),
+      nanobind::arg("radius").none() = nanobind::none());
+
+  m.def(
+      "neighbor_search_mesh_knn_plane_int64doubledyn3d",
+      [](mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh,
+         nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<4>>
+             query,
+         int k, std::optional<double> radius) {
+        return neighbor_search<double, 3>(
+            mesh, make_plane_from_array<3, double>(query), k, radius);
       },
       nanobind::arg("mesh"),
       nanobind::arg("query"),

@@ -30,12 +30,12 @@ auto register_topology_boundary_paths(nanobind::module_ &m) -> void {
       },
       arg("cells"), arg("face_membership"));
 
-  // int32, ngon=4 (quads)
+  // int32, dynamic
   m.def(
-      "boundary_paths_int_4",
-      [](ndarray<numpy, int, shape<-1, 4>> cells,
+      "boundary_paths_int_dyn",
+      [](const offset_blocked_array_wrapper<int, int> &cells,
          const offset_blocked_array_wrapper<int, int> &fm) {
-        return boundary_paths<int, 4>(cells, fm);
+        return boundary_paths_dynamic<int>(cells, fm);
       },
       arg("cells"), arg("face_membership"));
 
@@ -48,12 +48,12 @@ auto register_topology_boundary_paths(nanobind::module_ &m) -> void {
       },
       arg("cells"), arg("face_membership"));
 
-  // int64, ngon=4 (quads)
+  // int64, dynamic
   m.def(
-      "boundary_paths_int64_4",
-      [](ndarray<numpy, int64_t, shape<-1, 4>> cells,
+      "boundary_paths_int64_dyn",
+      [](const offset_blocked_array_wrapper<int64_t, int64_t> &cells,
          const offset_blocked_array_wrapper<int64_t, int64_t> &fm) {
-        return boundary_paths<int64_t, 4>(cells, fm);
+        return boundary_paths_dynamic<int64_t>(cells, fm);
       },
       arg("cells"), arg("face_membership"));
 }

@@ -37,6 +37,9 @@ from util import (
     create_text_actor,
 )
 
+# Set to True to test dynamic mesh (OffsetBlockedArray)
+USE_DYNAMIC_MESH = True
+
 
 class IsobandInteractor(BaseInteractor):
     """Interactor for isoband visualization with scrolling and randomization"""
@@ -56,6 +59,7 @@ class IsobandInteractor(BaseInteractor):
         self.distance = 0.0  # Offset for isoband levels
         self.min_d = 0.0     # Min scalar value
         self.max_d = 0.0     # Max scalar value
+        self.spacing = 0.1   # Will be computed in reset_plane
 
         # Timing
         self.times = RollingAverage(maxlen=100)
@@ -84,6 +88,7 @@ class IsobandInteractor(BaseInteractor):
         # Cache min/max for adaptive level spacing
         self.min_d = float(np.min(self.scalars))
         self.max_d = float(np.max(self.scalars))
+        self.spacing = (self.max_d - self.min_d) / 10.0  # N = 10 bands
 
     def compute_bands(self):
         """Extract isobands with curves and update visualization"""
@@ -92,23 +97,22 @@ class IsobandInteractor(BaseInteractor):
         # Compute adaptive threshold levels (same algorithm as isobands.cpp)
         N = 10  # Number of bands
 
-        # Compute spacing based on scalar field range
-        spacing = (self.max_d - self.min_d) / float(N)
-
         # Use fmod to wrap offset within spacing (infinite scrolling)
-        wrapped_offset = self.distance % spacing
+        wrapped_offset = self.distance % self.spacing
         if wrapped_offset < 0:
-            wrapped_offset += spacing
+            wrapped_offset += self.spacing
 
         # Generate evenly spaced cut values offset by wrapped_offset
+        # Extend below and above the range so wrapping is seamless
         cutvalues = np.array(
-            [self.min_d + wrapped_offset + i * spacing for i in range(N + 1)],
+            [self.min_d + wrapped_offset + i * self.spacing for i in range(-1, N + 2)],
             dtype=self.mesh.dtype
         )
 
         # Select every other band (alternating pattern)
-        parity = int(self.distance / spacing) & 1
-        selected_bands = np.array([i for i in range(N) if (i & 1) == parity], dtype=np.int32)
+        # Now we have N+2 bands (indices 0 to N+1)
+        parity = int(np.floor(self.distance / self.spacing)) & 1
+        selected_bands = np.array([i for i in range(N + 2) if (i & 1) == parity], dtype=np.int32)
 
         # Extract isobands with curves and timing
         start_time = time_module.perf_counter()
@@ -160,8 +164,8 @@ class IsobandInteractor(BaseInteractor):
     def on_mouse_wheel_forward(self, obj, event):
         """Handle mouse wheel forward"""
         if self.GetInteractor().GetShiftKey():
-            # Move isobands forward
-            self.distance += 0.05
+            # Move isobands forward (same as C++: spacing * 0.1)
+            self.distance += self.spacing * 0.1
             self.compute_bands()
         else:
             # Pass to base class for zoom
@@ -170,8 +174,8 @@ class IsobandInteractor(BaseInteractor):
     def on_mouse_wheel_backward(self, obj, event):
         """Handle mouse wheel backward"""
         if self.GetInteractor().GetShiftKey():
-            # Move isobands backward
-            self.distance -= 0.05
+            # Move isobands backward (same as C++: spacing * 0.1)
+            self.distance -= self.spacing * 0.1
             self.compute_bands()
         else:
             # Pass to base class for zoom
@@ -188,6 +192,10 @@ def main():
 
     # Load mesh
     faces, points = tf.read_stl(mesh_file)
+
+    # Optionally convert to dynamic mesh
+    if USE_DYNAMIC_MESH:
+        faces = tf.as_offset_blocked(faces)
 
     # Center and scale mesh
     transform = compute_centering_and_scaling_transform(points, target_radius=10.0)

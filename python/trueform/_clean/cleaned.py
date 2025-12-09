@@ -11,6 +11,7 @@ import numpy as np
 from typing import Union, Tuple, Optional
 from .. import _trueform
 from .._spatial import Mesh, EdgeMesh, PointCloud
+from .._core import OffsetBlockedArray
 
 
 def cleaned(
@@ -25,9 +26,9 @@ def cleaned(
     """
     Remove duplicate vertices and degenerate elements from geometric data.
 
-    Supports points, segment soups, polygon soups, indexed geometry (as tuples),
-    meshes, edge meshes, and point clouds. Optionally merges vertices within a
-    tolerance distance using spatial trees.
+    Supports points, segment soups, triangle soups, indexed geometry (as tuples),
+    meshes (including dynamic), edge meshes, and point clouds. Optionally merges
+    vertices within a tolerance distance using spatial trees.
 
     Parameters
     ----------
@@ -35,11 +36,12 @@ def cleaned(
         Input geometric data:
         - Points: shape (N, Dims) where Dims = 2 or 3
         - Segment soup: shape (N, 2, Dims) - each row is a segment with 2 vertices
-        - Polygon soup: shape (N, V, Dims) where V = 2, 3, or 4 - each row is a polygon
+        - Triangle soup: shape (N, 3, Dims) - each row is a triangle with 3 vertices
         - Indexed geometry: tuple (indices, points) where:
-          * indices: shape (N, V) with dtype int32 or int64, V = 2, 3, or 4
+          * indices: shape (N, V) with dtype int32 or int64, V = 2 or 3
+            OR OffsetBlockedArray for variable-sized polygons
           * points: shape (M, Dims) where Dims = 2 or 3
-        - Mesh: tf.Mesh object (2D or 3D, NGon = 3 or 4)
+        - Mesh: tf.Mesh object (2D or 3D, triangles or dynamic)
         - EdgeMesh: tf.EdgeMesh object (2D or 3D)
         - PointCloud: tf.PointCloud object (2D or 3D)
     tolerance : float, optional
@@ -124,23 +126,6 @@ def cleaned(
 
         indices, points = data
 
-        # Validate indices
-        if not isinstance(indices, np.ndarray):
-            raise TypeError(
-                f"indices must be np.ndarray, got {type(indices).__name__}"
-            )
-
-        if indices.ndim != 2:
-            raise ValueError(
-                f"indices must be 2D array with shape (N, V), got shape {indices.shape}"
-            )
-
-        if indices.dtype not in (np.int32, np.int64):
-            raise TypeError(
-                f"indices dtype must be int32 or int64, got {indices.dtype}. "
-                f"Convert with indices.astype(np.int32) or indices.astype(np.int64)"
-            )
-
         # Validate points
         if not isinstance(points, np.ndarray):
             raise TypeError(
@@ -158,15 +143,7 @@ def cleaned(
                 f"Convert with points.astype(np.float32) or points.astype(np.float64)"
             )
 
-        # Extract shape information
-        V = indices.shape[1]
         dims = points.shape[1]
-
-        # Validate V
-        if V not in (2, 3, 4):
-            raise ValueError(
-                f"indices must have 2 (edges), 3 (triangles), or 4 (quads) columns, got V={V}"
-            )
 
         # Validate dims
         if dims not in (2, 3):
@@ -174,29 +151,89 @@ def cleaned(
                 f"points must have 2 or 3 dimensions, got dims={dims}"
             )
 
-        # Ensure C-contiguous
-        if not indices.flags['C_CONTIGUOUS']:
-            indices = np.ascontiguousarray(indices)
+        # Ensure C-contiguous for points
         if not points.flags['C_CONTIGUOUS']:
             points = np.ascontiguousarray(points)
 
-        # Build suffix: {V}{index}{real}{dims}d
-        index_str = 'int' if indices.dtype == np.int32 else 'int64'
-        real_str = 'float' if points.dtype == np.float32 else 'double'
-        suffix = f"{V}{index_str}{real_str}{dims}d"
+        # Handle dynamic (OffsetBlockedArray) indices
+        if isinstance(indices, OffsetBlockedArray):
+            if indices.dtype not in (np.int32, np.int64):
+                raise TypeError(
+                    f"indices dtype must be int32 or int64, got {indices.dtype}"
+                )
 
-        # Build function name - always call with_maps version
-        func_name = f"cleaned_indexed_with_maps_{suffix}"
+            # Build suffix: dyn{index}{real}{dims}d
+            index_str = 'int' if indices.dtype == np.int32 else 'int64'
+            real_str = 'float' if points.dtype == np.float32 else 'double'
+            suffix = f"dyn{index_str}{real_str}{dims}d"
 
-        # Call C++ function - always returns ((connectivity, points), face_map, point_map)
-        cpp_func = getattr(_trueform.clean, func_name)
-        result, face_map, point_map = cpp_func(indices, points, tolerance)
+            # Build function name
+            func_name = f"cleaned_indexed_with_maps_{suffix}"
 
-        # Conditionally return maps based on user request
-        if return_index_map:
-            return (result, face_map, point_map)
+            # Call C++ function
+            # Returns: ((offsets, data), points), face_map, point_map
+            cpp_func = getattr(_trueform.clean, func_name)
+            ((offsets, data), result_points), face_map, point_map = cpp_func(
+                indices._wrapper, points, tolerance
+            )
+
+            # Convert to OffsetBlockedArray
+            result = (OffsetBlockedArray(offsets, data), result_points)
+
+            if return_index_map:
+                return (result, face_map, point_map)
+            else:
+                return result
+
+        # Handle fixed-size (ndarray) indices
+        elif isinstance(indices, np.ndarray):
+            if indices.ndim != 2:
+                raise ValueError(
+                    f"indices must be 2D array with shape (N, V), got shape {indices.shape}"
+                )
+
+            if indices.dtype not in (np.int32, np.int64):
+                raise TypeError(
+                    f"indices dtype must be int32 or int64, got {indices.dtype}. "
+                    f"Convert with indices.astype(np.int32) or indices.astype(np.int64)"
+                )
+
+            # Extract shape information
+            V = indices.shape[1]
+
+            # Validate V (only triangles and edges for fixed-size)
+            if V not in (2, 3):
+                raise ValueError(
+                    f"Fixed-size indices must have 2 (edges) or 3 (triangles) columns, got V={V}. "
+                    f"For variable-sized polygons, use OffsetBlockedArray."
+                )
+
+            # Ensure C-contiguous
+            if not indices.flags['C_CONTIGUOUS']:
+                indices = np.ascontiguousarray(indices)
+
+            # Build suffix: {V}{index}{real}{dims}d
+            index_str = 'int' if indices.dtype == np.int32 else 'int64'
+            real_str = 'float' if points.dtype == np.float32 else 'double'
+            suffix = f"{V}{index_str}{real_str}{dims}d"
+
+            # Build function name - always call with_maps version
+            func_name = f"cleaned_indexed_with_maps_{suffix}"
+
+            # Call C++ function - always returns ((connectivity, points), face_map, point_map)
+            cpp_func = getattr(_trueform.clean, func_name)
+            result, face_map, point_map = cpp_func(indices, points, tolerance)
+
+            # Conditionally return maps based on user request
+            if return_index_map:
+                return (result, face_map, point_map)
+            else:
+                return result
+
         else:
-            return result
+            raise TypeError(
+                f"indices must be np.ndarray or OffsetBlockedArray, got {type(indices).__name__}"
+            )
 
     # ===== HANDLE FORM OBJECTS (Mesh, EdgeMesh, PointCloud) =====
     elif isinstance(data, (Mesh, EdgeMesh, PointCloud)):
@@ -210,12 +247,14 @@ def cleaned(
             # Extract arrays from Mesh
             indices = data.faces
             points = data.points
-            V = data.ngon
+            is_dynamic = data.is_dynamic
+            V = None if is_dynamic else data.ngon
 
         elif isinstance(data, EdgeMesh):
             # Extract arrays from EdgeMesh
             indices = data.edges
             points = data.points
+            is_dynamic = False
             V = 2
 
         else:  # PointCloud
@@ -242,18 +281,29 @@ def cleaned(
 
         # For Mesh and EdgeMesh, use indexed cleaning
         dims = data.dims
-
-        # Build suffix: {V}{index}{real}{dims}d
         index_str = 'int' if indices.dtype == np.int32 else 'int64'
         real_str = 'float' if points.dtype == np.float32 else 'double'
-        suffix = f"{V}{index_str}{real_str}{dims}d"
 
-        # Build function name - always call with_maps version
-        func_name = f"cleaned_indexed_with_maps_{suffix}"
+        if is_dynamic:
+            # Dynamic mesh - indices is OffsetBlockedArray
+            suffix = f"dyn{index_str}{real_str}{dims}d"
+            func_name = f"cleaned_indexed_with_maps_{suffix}"
 
-        # Call C++ function - always returns ((connectivity, points), face_map, point_map)
-        cpp_func = getattr(_trueform.clean, func_name)
-        result, face_map, point_map = cpp_func(indices, points, tolerance)
+            cpp_func = getattr(_trueform.clean, func_name)
+            # Returns: ((offsets, data), points), face_map, point_map
+            ((offsets, data), result_points), face_map, point_map = cpp_func(
+                indices._wrapper, points, tolerance
+            )
+
+            # Convert to OffsetBlockedArray
+            result = (OffsetBlockedArray(offsets, data), result_points)
+        else:
+            # Fixed-size mesh/edge mesh
+            suffix = f"{V}{index_str}{real_str}{dims}d"
+            func_name = f"cleaned_indexed_with_maps_{suffix}"
+
+            cpp_func = getattr(_trueform.clean, func_name)
+            result, face_map, point_map = cpp_func(indices, points, tolerance)
 
         # Conditionally return maps based on user request
         if return_index_map:
@@ -317,10 +367,10 @@ def cleaned(
                     f"Soup vertices must have 2 or 3 dimensions, got shape {data.shape}"
                 )
 
-            # Validate element order
-            if V not in (2, 3, 4):
+            # Validate element order (only segments and triangles for soups)
+            if V not in (2, 3):
                 raise ValueError(
-                    f"Soup elements must have 2 (segments), 3 (triangles), or 4 (quads) vertices, got V={V}"
+                    f"Soup elements must have 2 (segments) or 3 (triangles) vertices, got V={V}"
                 )
 
             # Soups don't support index maps

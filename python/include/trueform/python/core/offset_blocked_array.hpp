@@ -51,7 +51,18 @@ public:
     _data_array = std::move(data_array);
   }
 
-  // Create view into Python-owned arrays
+  // Create view into Python-owned arrays (mutable)
+  auto make_range() {
+    IndexT *offsets_data = static_cast<IndexT *>(_offsets_array.data());
+    ValueT *data_data = static_cast<ValueT *>(_data_array.data());
+
+    auto offsets_range = tf::make_range(offsets_data, _offsets_array.size());
+    auto data_range = tf::make_range(data_data, _data_array.size());
+
+    return tf::make_offset_block_range(offsets_range, data_range);
+  }
+
+  // Create view into Python-owned arrays (const)
   auto make_range() const {
     const IndexT *offsets_data =
         static_cast<const IndexT *>(_offsets_array.data());

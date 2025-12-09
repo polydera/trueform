@@ -108,6 +108,12 @@ auto make_numpy_array(tf::segments_buffer<Index, RealT, Dims> &&edge_mesh) {
   return std::make_pair(edges, points);
 }
 
+template <typename T, typename U>
+auto make_numpy_array(tf::offset_block_buffer<T, U> &&ob_buff) {
+  return std::make_pair(make_numpy_array(std::move(ob_buff.offsets_buffer())),
+                        make_numpy_array(std::move(ob_buff.data_buffer())));
+}
+
 /**
  * Extract (faces, points) pair from tf::polygons_buffer by taking ownership
  * Returns std::pair of numpy arrays for faces and points
@@ -118,13 +124,6 @@ auto make_numpy_array(tf::polygons_buffer<Index, RealT, NGon, Dims> &&mesh) {
   auto points = make_numpy_array(std::move(mesh.points_buffer()));
   return std::make_pair(faces, points);
 }
-
-template <typename T, typename U>
-auto make_numpy_array(tf::offset_block_buffer<T, U> &&ob_buff) {
-  return std::make_pair(make_numpy_array(std::move(ob_buff.offsets_buffer())),
-                        make_numpy_array(std::move(ob_buff.data_buffer())));
-}
-
 template <typename Index, typename RealT, std::size_t Dims>
 auto make_numpy_array(tf::curves_buffer<Index, RealT, Dims> &&curves_buff) {
   return std::make_pair(

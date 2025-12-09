@@ -11,6 +11,7 @@ import numpy as np
 from typing import Union, Tuple, List
 from .. import _trueform
 from .._spatial import Mesh, EdgeMesh
+from .._core import OffsetBlockedArray
 
 
 def split_into_components(
@@ -20,18 +21,19 @@ def split_into_components(
     """
     Split geometry into separate components based on labels.
 
-    Groups primitives (triangles or quads) by their label values and creates
-    separate geometries for each unique label. Primitives with the same label
-    are grouped together, and unused points are automatically filtered.
+    Groups primitives (triangles or variable-sized polygons) by their label values
+    and creates separate geometries for each unique label. Primitives with the same
+    label are grouped together, and unused points are automatically filtered.
 
     Parameters
     ----------
     data : tuple, Mesh, or EdgeMesh
         Input geometric data:
         - Indexed geometry: tuple (indices, points) where:
-          * indices: shape (N, V) with dtype int32 or int64, V = 2, 3, or 4
+          * indices: shape (N, V) with dtype int32 or int64, V = 2 or 3
+            OR OffsetBlockedArray for variable-sized polygons
           * points: shape (M, Dims) where Dims = 2 or 3
-        - Mesh: tf.Mesh object (2D or 3D, NGon = 3 or 4)
+        - Mesh: tf.Mesh object (2D or 3D, triangles or dynamic)
         - EdgeMesh: tf.EdgeMesh object (2D or 3D)
     labels : np.ndarray
         1D array of labels, one per primitive, shape (N,) with dtype int32.
@@ -58,10 +60,11 @@ def split_into_components(
 
     Notes
     -----
-    - Supports edges (V=2), triangles (V=3), and quads (V=4)
+    - Supports edges (V=2), triangles (V=3), and dynamic (variable-sized polygons)
     - PointCloud is NOT supported (no indexed geometry)
     - Components are ordered by label value (sorted)
     - Each component is a standalone geometry with reindexed vertices
+    - For dynamic input, components will contain OffsetBlockedArray faces
 
     Examples
     --------
@@ -125,23 +128,6 @@ def split_into_components(
 
         indices, points = data
 
-        # Validate indices
-        if not isinstance(indices, np.ndarray):
-            raise TypeError(
-                f"indices must be np.ndarray, got {type(indices).__name__}"
-            )
-
-        if indices.ndim != 2:
-            raise ValueError(
-                f"indices must be 2D array with shape (N, V), got shape {indices.shape}"
-            )
-
-        if indices.dtype not in (np.int32, np.int64):
-            raise TypeError(
-                f"indices dtype must be int32 or int64, got {indices.dtype}. "
-                f"Convert with indices.astype(np.int32) or indices.astype(np.int64)"
-            )
-
         # Validate points
         if not isinstance(points, np.ndarray):
             raise TypeError(
@@ -159,15 +145,7 @@ def split_into_components(
                 f"Convert with points.astype(np.float32) or points.astype(np.float64)"
             )
 
-        # Extract shape information
-        V = indices.shape[1]
         dims = points.shape[1]
-
-        # Validate V
-        if V not in (2, 3, 4):
-            raise ValueError(
-                f"split_into_components supports edges (V=2), triangles (V=3), or quads (V=4), got V={V}"
-            )
 
         # Validate dims
         if dims not in (2, 3):
@@ -175,31 +153,93 @@ def split_into_components(
                 f"points must have 2 or 3 dimensions, got dims={dims}"
             )
 
-        # Validate size match
-        if indices.shape[0] != labels.shape[0]:
-            raise ValueError(
-                f"Number of labels ({labels.shape[0]}) must match number of primitives ({indices.shape[0]})"
-            )
-
-        # Ensure C-contiguous
-        if not indices.flags['C_CONTIGUOUS']:
-            indices = np.ascontiguousarray(indices)
+        # Ensure C-contiguous for points
         if not points.flags['C_CONTIGUOUS']:
             points = np.ascontiguousarray(points)
 
-        # Build suffix: {V}{index}{real}{dims}d
-        index_str = 'int' if indices.dtype == np.int32 else 'int64'
-        real_str = 'float' if points.dtype == np.float32 else 'double'
-        suffix = f"{V}{index_str}{real_str}{dims}d"
+        # Handle dynamic (OffsetBlockedArray) indices
+        if isinstance(indices, OffsetBlockedArray):
+            if indices.dtype not in (np.int32, np.int64):
+                raise TypeError(
+                    f"indices dtype must be int32 or int64, got {indices.dtype}"
+                )
 
-        # Build function name
-        func_name = f"split_into_components_{suffix}"
+            # Validate size match
+            if len(indices) != labels.shape[0]:
+                raise ValueError(
+                    f"Number of labels ({labels.shape[0]}) must match number of primitives ({len(indices)})"
+                )
 
-        # Call C++ function - returns (list_of_components, component_labels)
-        cpp_func = getattr(_trueform.reindex, func_name)
-        components, comp_labels = cpp_func(indices, points, labels)
+            # Build suffix: dyn{index}{real}{dims}d
+            index_str = 'int' if indices.dtype == np.int32 else 'int64'
+            real_str = 'float' if points.dtype == np.float32 else 'double'
+            suffix = f"dyn{index_str}{real_str}{dims}d"
 
-        return components, comp_labels
+            # Build function name
+            func_name = f"split_into_components_{suffix}"
+
+            # Call C++ function
+            cpp_func = getattr(_trueform.reindex, func_name)
+            components, comp_labels = cpp_func(indices._wrapper, points, labels)
+
+            # Wrap component faces in OffsetBlockedArray
+            wrapped_components = []
+            for (offsets, data_arr), comp_points in components:
+                wrapped_components.append((OffsetBlockedArray(offsets, data_arr), comp_points))
+
+            return wrapped_components, comp_labels
+
+        # Handle fixed-size (ndarray) indices
+        elif isinstance(indices, np.ndarray):
+            if indices.ndim != 2:
+                raise ValueError(
+                    f"indices must be 2D array with shape (N, V), got shape {indices.shape}"
+                )
+
+            if indices.dtype not in (np.int32, np.int64):
+                raise TypeError(
+                    f"indices dtype must be int32 or int64, got {indices.dtype}. "
+                    f"Convert with indices.astype(np.int32) or indices.astype(np.int64)"
+                )
+
+            # Extract shape information
+            V = indices.shape[1]
+
+            # Validate V (only edges and triangles for fixed-size)
+            if V not in (2, 3):
+                raise ValueError(
+                    f"Fixed-size indices must have 2 (edges) or 3 (triangles) columns, got V={V}. "
+                    f"For variable-sized polygons, use OffsetBlockedArray."
+                )
+
+            # Validate size match
+            if indices.shape[0] != labels.shape[0]:
+                raise ValueError(
+                    f"Number of labels ({labels.shape[0]}) must match number of primitives ({indices.shape[0]})"
+                )
+
+            # Ensure C-contiguous
+            if not indices.flags['C_CONTIGUOUS']:
+                indices = np.ascontiguousarray(indices)
+
+            # Build suffix: {V}{index}{real}{dims}d
+            index_str = 'int' if indices.dtype == np.int32 else 'int64'
+            real_str = 'float' if points.dtype == np.float32 else 'double'
+            suffix = f"{V}{index_str}{real_str}{dims}d"
+
+            # Build function name
+            func_name = f"split_into_components_{suffix}"
+
+            # Call C++ function - returns (list_of_components, component_labels)
+            cpp_func = getattr(_trueform.reindex, func_name)
+            components, comp_labels = cpp_func(indices, points, labels)
+
+            return components, comp_labels
+
+        else:
+            raise TypeError(
+                f"indices must be np.ndarray or OffsetBlockedArray, got {type(indices).__name__}"
+            )
 
     # ===== HANDLE FORM OBJECTS (Mesh, EdgeMesh) =====
     elif isinstance(data, (Mesh, EdgeMesh)):
@@ -213,44 +253,55 @@ def split_into_components(
             # Extract arrays from Mesh
             indices = data.faces
             points = data.points
-            V = data.ngon
+            is_dynamic = data.is_dynamic
+            V = None if is_dynamic else data.ngon
 
-            # Validate V (only triangles and quads for Mesh)
-            if V not in (3, 4):
+            # Validate size match
+            if data.number_of_faces != labels.shape[0]:
                 raise ValueError(
-                    f"split_into_components only supports triangular (NGon=3) or quad (NGon=4) meshes, got NGon={V}"
+                    f"Number of labels ({labels.shape[0]}) must match number of faces ({data.number_of_faces})"
                 )
-
-            element_name = "faces"
 
         else:  # EdgeMesh
             # Extract arrays from EdgeMesh
             indices = data.edges
             points = data.points
+            is_dynamic = False
             V = 2
-            element_name = "edges"
+
+            # Validate size match
+            if indices.shape[0] != labels.shape[0]:
+                raise ValueError(
+                    f"Number of labels ({labels.shape[0]}) must match number of edges ({indices.shape[0]})"
+                )
 
         dims = data.dims
-
-        # Validate size match
-        if indices.shape[0] != labels.shape[0]:
-            raise ValueError(
-                f"Number of labels ({labels.shape[0]}) must match number of {element_name} ({indices.shape[0]})"
-            )
-
-        # Build suffix: {V}{index}{real}{dims}d
         index_str = 'int' if indices.dtype == np.int32 else 'int64'
         real_str = 'float' if points.dtype == np.float32 else 'double'
-        suffix = f"{V}{index_str}{real_str}{dims}d"
 
-        # Build function name
-        func_name = f"split_into_components_{suffix}"
+        if is_dynamic:
+            # Dynamic mesh - indices is OffsetBlockedArray
+            suffix = f"dyn{index_str}{real_str}{dims}d"
+            func_name = f"split_into_components_{suffix}"
 
-        # Call C++ function - returns (list_of_components, component_labels)
-        cpp_func = getattr(_trueform.reindex, func_name)
-        components, comp_labels = cpp_func(indices, points, labels)
+            cpp_func = getattr(_trueform.reindex, func_name)
+            components, comp_labels = cpp_func(indices._wrapper, points, labels)
 
-        return components, comp_labels
+            # Wrap component faces in OffsetBlockedArray
+            wrapped_components = []
+            for (offsets, data_arr), comp_points in components:
+                wrapped_components.append((OffsetBlockedArray(offsets, data_arr), comp_points))
+
+            return wrapped_components, comp_labels
+        else:
+            # Fixed-size mesh/edge mesh
+            suffix = f"{V}{index_str}{real_str}{dims}d"
+            func_name = f"split_into_components_{suffix}"
+
+            cpp_func = getattr(_trueform.reindex, func_name)
+            components, comp_labels = cpp_func(indices, points, labels)
+
+            return components, comp_labels
 
     else:
         raise TypeError(

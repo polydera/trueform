@@ -16,7 +16,7 @@ auto register_mesh_neighbor_search_point_cloud(nanobind::module_ &m) -> void {
 
   // ============================================================================
   // Mesh neighbor_search PointCloud
-  // Mesh: 2 index types × 2 ngons
+  // Mesh: 2 index types × 2 ngons (triangle, dynamic)
   // PointCloud: no index type
   // Real types: float, double (must match)
   // Dims: 2D, 3D (must match)
@@ -34,9 +34,9 @@ auto register_mesh_neighbor_search_point_cloud(nanobind::module_ &m) -> void {
         nanobind::arg("cloud"),
         nanobind::arg("radius").none() = nanobind::none());
 
-  // int32, float, quad, 2D
-  m.def("neighbor_search_mesh_point_cloud_intfloat42d",
-        [](mesh_wrapper<int, float, 4, 2> &mesh,
+  // int32, float, dynamic, 2D
+  m.def("neighbor_search_mesh_point_cloud_intfloatdyn2d",
+        [](mesh_wrapper<int, float, tf::dynamic_size, 2> &mesh,
            point_cloud_wrapper<float, 2> &cloud,
            std::optional<float> radius) {
           return form_form_neighbor_search(mesh, cloud, radius);
@@ -56,9 +56,9 @@ auto register_mesh_neighbor_search_point_cloud(nanobind::module_ &m) -> void {
         nanobind::arg("cloud"),
         nanobind::arg("radius").none() = nanobind::none());
 
-  // int32, float, quad, 3D
-  m.def("neighbor_search_mesh_point_cloud_intfloat43d",
-        [](mesh_wrapper<int, float, 4, 3> &mesh,
+  // int32, float, dynamic, 3D
+  m.def("neighbor_search_mesh_point_cloud_intfloatdyn3d",
+        [](mesh_wrapper<int, float, tf::dynamic_size, 3> &mesh,
            point_cloud_wrapper<float, 3> &cloud,
            std::optional<float> radius) {
           return form_form_neighbor_search(mesh, cloud, radius);
@@ -78,9 +78,9 @@ auto register_mesh_neighbor_search_point_cloud(nanobind::module_ &m) -> void {
         nanobind::arg("cloud"),
         nanobind::arg("radius").none() = nanobind::none());
 
-  // int32, double, quad, 2D
-  m.def("neighbor_search_mesh_point_cloud_intdouble42d",
-        [](mesh_wrapper<int, double, 4, 2> &mesh,
+  // int32, double, dynamic, 2D
+  m.def("neighbor_search_mesh_point_cloud_intdoubledyn2d",
+        [](mesh_wrapper<int, double, tf::dynamic_size, 2> &mesh,
            point_cloud_wrapper<double, 2> &cloud,
            std::optional<double> radius) {
           return form_form_neighbor_search(mesh, cloud, radius);
@@ -100,9 +100,9 @@ auto register_mesh_neighbor_search_point_cloud(nanobind::module_ &m) -> void {
         nanobind::arg("cloud"),
         nanobind::arg("radius").none() = nanobind::none());
 
-  // int32, double, quad, 3D
-  m.def("neighbor_search_mesh_point_cloud_intdouble43d",
-        [](mesh_wrapper<int, double, 4, 3> &mesh,
+  // int32, double, dynamic, 3D
+  m.def("neighbor_search_mesh_point_cloud_intdoubledyn3d",
+        [](mesh_wrapper<int, double, tf::dynamic_size, 3> &mesh,
            point_cloud_wrapper<double, 3> &cloud,
            std::optional<double> radius) {
           return form_form_neighbor_search(mesh, cloud, radius);
@@ -122,9 +122,9 @@ auto register_mesh_neighbor_search_point_cloud(nanobind::module_ &m) -> void {
         nanobind::arg("cloud"),
         nanobind::arg("radius").none() = nanobind::none());
 
-  // int64, float, quad, 2D
-  m.def("neighbor_search_mesh_point_cloud_int64float42d",
-        [](mesh_wrapper<int64_t, float, 4, 2> &mesh,
+  // int64, float, dynamic, 2D
+  m.def("neighbor_search_mesh_point_cloud_int64floatdyn2d",
+        [](mesh_wrapper<int64_t, float, tf::dynamic_size, 2> &mesh,
            point_cloud_wrapper<float, 2> &cloud,
            std::optional<float> radius) {
           return form_form_neighbor_search(mesh, cloud, radius);
@@ -144,9 +144,9 @@ auto register_mesh_neighbor_search_point_cloud(nanobind::module_ &m) -> void {
         nanobind::arg("cloud"),
         nanobind::arg("radius").none() = nanobind::none());
 
-  // int64, float, quad, 3D
-  m.def("neighbor_search_mesh_point_cloud_int64float43d",
-        [](mesh_wrapper<int64_t, float, 4, 3> &mesh,
+  // int64, float, dynamic, 3D
+  m.def("neighbor_search_mesh_point_cloud_int64floatdyn3d",
+        [](mesh_wrapper<int64_t, float, tf::dynamic_size, 3> &mesh,
            point_cloud_wrapper<float, 3> &cloud,
            std::optional<float> radius) {
           return form_form_neighbor_search(mesh, cloud, radius);
@@ -166,9 +166,9 @@ auto register_mesh_neighbor_search_point_cloud(nanobind::module_ &m) -> void {
         nanobind::arg("cloud"),
         nanobind::arg("radius").none() = nanobind::none());
 
-  // int64, double, quad, 2D
-  m.def("neighbor_search_mesh_point_cloud_int64double42d",
-        [](mesh_wrapper<int64_t, double, 4, 2> &mesh,
+  // int64, double, dynamic, 2D
+  m.def("neighbor_search_mesh_point_cloud_int64doubledyn2d",
+        [](mesh_wrapper<int64_t, double, tf::dynamic_size, 2> &mesh,
            point_cloud_wrapper<double, 2> &cloud,
            std::optional<double> radius) {
           return form_form_neighbor_search(mesh, cloud, radius);
@@ -188,9 +188,9 @@ auto register_mesh_neighbor_search_point_cloud(nanobind::module_ &m) -> void {
         nanobind::arg("cloud"),
         nanobind::arg("radius").none() = nanobind::none());
 
-  // int64, double, quad, 3D
-  m.def("neighbor_search_mesh_point_cloud_int64double43d",
-        [](mesh_wrapper<int64_t, double, 4, 3> &mesh,
+  // int64, double, dynamic, 3D
+  m.def("neighbor_search_mesh_point_cloud_int64doubledyn3d",
+        [](mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh,
            point_cloud_wrapper<double, 3> &cloud,
            std::optional<double> radius) {
           return form_form_neighbor_search(mesh, cloud, radius);

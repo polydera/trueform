@@ -18,7 +18,7 @@ import trueform as tf
 # Type combinations
 INDEX_DTYPES = [np.int32, np.int64]
 REAL_DTYPES = [np.float32, np.float64]
-NGONS = [3, 4]  # triangles and quads
+MESH_TYPES = ['triangle', 'dynamic']  # triangles and dynamic (variable-size)
 DIMS = [2, 3]
 
 
@@ -52,12 +52,12 @@ def create_tiled_plane_3d_triangles(index_dtype, real_dtype, offset_z=0.0):
     return tf.Mesh(faces, points)
 
 
-def create_tiled_plane_2d_quads(index_dtype, real_dtype, offset_x=0.0):
-    """Create a simple 2x1 tiled plane in 2D with quads"""
-    faces = np.array([
-        [0, 1, 4, 3],
-        [1, 2, 5, 4]
-    ], dtype=index_dtype)
+def create_tiled_plane_2d_dynamic(index_dtype, real_dtype, offset_x=0.0):
+    """Create a simple 2x1 tiled plane in 2D with dynamic (variable-size) polygons."""
+    # Mixed polygon faces: one quad and two triangles
+    offsets = np.array([0, 4, 7, 10], dtype=index_dtype)
+    data = np.array([0, 1, 4, 3, 1, 2, 5, 1, 5, 4], dtype=index_dtype)
+    faces = tf.OffsetBlockedArray(offsets, data)
     points = np.array([
         [0 + offset_x, 0], [1 + offset_x, 0], [2 + offset_x, 0],
         [0 + offset_x, 1], [1 + offset_x, 1], [2 + offset_x, 1]
@@ -65,12 +65,12 @@ def create_tiled_plane_2d_quads(index_dtype, real_dtype, offset_x=0.0):
     return tf.Mesh(faces, points)
 
 
-def create_tiled_plane_3d_quads(index_dtype, real_dtype, offset_z=0.0):
-    """Create a simple 2x1 tiled plane in 3D (z=offset_z) with quads"""
-    faces = np.array([
-        [0, 1, 4, 3],
-        [1, 2, 5, 4]
-    ], dtype=index_dtype)
+def create_tiled_plane_3d_dynamic(index_dtype, real_dtype, offset_z=0.0):
+    """Create a simple 2x1 tiled plane in 3D (z=offset_z) with dynamic (variable-size) polygons."""
+    # Mixed polygon faces: one quad and two triangles
+    offsets = np.array([0, 4, 7, 10], dtype=index_dtype)
+    data = np.array([0, 1, 4, 3, 1, 2, 5, 1, 5, 4], dtype=index_dtype)
+    faces = tf.OffsetBlockedArray(offsets, data)
     points = np.array([
         [0, 0, offset_z], [1, 0, offset_z], [2, 0, offset_z],
         [0, 1, offset_z], [1, 1, offset_z], [2, 1, offset_z]
@@ -99,13 +99,13 @@ def create_straight_polyline_3d(index_dtype, real_dtype, offset_z=0.0):
 @pytest.mark.parametrize("mesh_index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("edge_index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon", NGONS)
-def test_mesh_intersects_edge_mesh_2d_hit(mesh_index_dtype, edge_index_dtype, real_dtype, ngon):
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_mesh_intersects_edge_mesh_2d_hit(mesh_index_dtype, edge_index_dtype, real_dtype, mesh_type):
     """Test mesh and edge mesh that overlap intersect"""
-    if ngon == 3:
+    if mesh_type == 'triangle':
         mesh = create_tiled_plane_2d_triangles(mesh_index_dtype, real_dtype, offset_x=0.0)
     else:
-        mesh = create_tiled_plane_2d_quads(mesh_index_dtype, real_dtype, offset_x=0.0)
+        mesh = create_tiled_plane_2d_dynamic(mesh_index_dtype, real_dtype, offset_x=0.0)
 
     # EdgeMesh overlapping with mesh (at y=0, x from 0.5 to 3.5)
     edge_mesh = create_straight_polyline_2d(edge_index_dtype, real_dtype, offset_x=0.5)
@@ -117,13 +117,13 @@ def test_mesh_intersects_edge_mesh_2d_hit(mesh_index_dtype, edge_index_dtype, re
 @pytest.mark.parametrize("mesh_index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("edge_index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon", NGONS)
-def test_mesh_intersects_edge_mesh_2d_miss(mesh_index_dtype, edge_index_dtype, real_dtype, ngon):
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_mesh_intersects_edge_mesh_2d_miss(mesh_index_dtype, edge_index_dtype, real_dtype, mesh_type):
     """Test non-overlapping mesh and edge mesh don't intersect"""
-    if ngon == 3:
+    if mesh_type == 'triangle':
         mesh = create_tiled_plane_2d_triangles(mesh_index_dtype, real_dtype, offset_x=0.0)
     else:
-        mesh = create_tiled_plane_2d_quads(mesh_index_dtype, real_dtype, offset_x=0.0)
+        mesh = create_tiled_plane_2d_dynamic(mesh_index_dtype, real_dtype, offset_x=0.0)
 
     # EdgeMesh far from mesh (at x from 5 to 8)
     edge_mesh = create_straight_polyline_2d(edge_index_dtype, real_dtype, offset_x=5.0)
@@ -139,13 +139,13 @@ def test_mesh_intersects_edge_mesh_2d_miss(mesh_index_dtype, edge_index_dtype, r
 @pytest.mark.parametrize("mesh_index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("edge_index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon", NGONS)
-def test_mesh_intersects_edge_mesh_3d_hit(mesh_index_dtype, edge_index_dtype, real_dtype, ngon):
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_mesh_intersects_edge_mesh_3d_hit(mesh_index_dtype, edge_index_dtype, real_dtype, mesh_type):
     """Test mesh and edge mesh that overlap intersect (3D)"""
-    if ngon == 3:
+    if mesh_type == 'triangle':
         mesh = create_tiled_plane_3d_triangles(mesh_index_dtype, real_dtype, offset_z=0.0)
     else:
-        mesh = create_tiled_plane_3d_quads(mesh_index_dtype, real_dtype, offset_z=0.0)
+        mesh = create_tiled_plane_3d_dynamic(mesh_index_dtype, real_dtype, offset_z=0.0)
 
     # EdgeMesh at same z=0 plane (overlaps with mesh)
     edge_mesh = create_straight_polyline_3d(edge_index_dtype, real_dtype, offset_z=0.0)
@@ -157,13 +157,13 @@ def test_mesh_intersects_edge_mesh_3d_hit(mesh_index_dtype, edge_index_dtype, re
 @pytest.mark.parametrize("mesh_index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("edge_index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon", NGONS)
-def test_mesh_intersects_edge_mesh_3d_miss(mesh_index_dtype, edge_index_dtype, real_dtype, ngon):
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_mesh_intersects_edge_mesh_3d_miss(mesh_index_dtype, edge_index_dtype, real_dtype, mesh_type):
     """Test non-overlapping mesh and edge mesh don't intersect (3D)"""
-    if ngon == 3:
+    if mesh_type == 'triangle':
         mesh = create_tiled_plane_3d_triangles(mesh_index_dtype, real_dtype, offset_z=0.0)
     else:
-        mesh = create_tiled_plane_3d_quads(mesh_index_dtype, real_dtype, offset_z=0.0)
+        mesh = create_tiled_plane_3d_dynamic(mesh_index_dtype, real_dtype, offset_z=0.0)
 
     # EdgeMesh far from mesh (at z=5)
     edge_mesh = create_straight_polyline_3d(edge_index_dtype, real_dtype, offset_z=5.0)
@@ -179,13 +179,13 @@ def test_mesh_intersects_edge_mesh_3d_miss(mesh_index_dtype, edge_index_dtype, r
 @pytest.mark.parametrize("mesh_index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("edge_index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon", NGONS)
-def test_mesh_intersects_edge_mesh_with_transformation_2d(mesh_index_dtype, edge_index_dtype, real_dtype, ngon):
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_mesh_intersects_edge_mesh_with_transformation_2d(mesh_index_dtype, edge_index_dtype, real_dtype, mesh_type):
     """Test intersects with transformation (transform both mesh and edge mesh)"""
-    if ngon == 3:
+    if mesh_type == 'triangle':
         mesh = create_tiled_plane_2d_triangles(mesh_index_dtype, real_dtype, offset_x=0.0)
     else:
-        mesh = create_tiled_plane_2d_quads(mesh_index_dtype, real_dtype, offset_x=0.0)
+        mesh = create_tiled_plane_2d_dynamic(mesh_index_dtype, real_dtype, offset_x=0.0)
 
     edge_mesh = create_straight_polyline_2d(edge_index_dtype, real_dtype, offset_x=0.5)
 
@@ -210,13 +210,13 @@ def test_mesh_intersects_edge_mesh_with_transformation_2d(mesh_index_dtype, edge
 @pytest.mark.parametrize("mesh_index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("edge_index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon", NGONS)
-def test_mesh_intersects_edge_mesh_with_transformation_3d(mesh_index_dtype, edge_index_dtype, real_dtype, ngon):
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_mesh_intersects_edge_mesh_with_transformation_3d(mesh_index_dtype, edge_index_dtype, real_dtype, mesh_type):
     """Test intersects with transformation (3D)"""
-    if ngon == 3:
+    if mesh_type == 'triangle':
         mesh = create_tiled_plane_3d_triangles(mesh_index_dtype, real_dtype, offset_z=0.0)
     else:
-        mesh = create_tiled_plane_3d_quads(mesh_index_dtype, real_dtype, offset_z=0.0)
+        mesh = create_tiled_plane_3d_dynamic(mesh_index_dtype, real_dtype, offset_z=0.0)
 
     edge_mesh = create_straight_polyline_3d(edge_index_dtype, real_dtype, offset_z=0.0)
 
@@ -303,13 +303,13 @@ def test_mesh_intersects_edge_mesh_real_type_mismatch():
 # ==============================================================================
 
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon", NGONS)
-def test_mesh_intersects_edge_mesh_edge_on_face(real_dtype, ngon):
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_mesh_intersects_edge_mesh_edge_on_face(real_dtype, mesh_type):
     """Test edge mesh lying on mesh face"""
-    if ngon == 3:
+    if mesh_type == 'triangle':
         mesh = create_tiled_plane_2d_triangles(np.int32, real_dtype, offset_x=0.0)
     else:
-        mesh = create_tiled_plane_2d_quads(np.int32, real_dtype, offset_x=0.0)
+        mesh = create_tiled_plane_2d_dynamic(np.int32, real_dtype, offset_x=0.0)
 
     # EdgeMesh at y=0 (on the bottom edge of the mesh)
     edge_mesh = create_straight_polyline_2d(np.int32, real_dtype, offset_x=0.5)

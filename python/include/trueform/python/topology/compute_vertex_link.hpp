@@ -49,4 +49,18 @@ auto compute_vertex_link(
   auto [offsets, data] = make_numpy_array(std::move(fl));
   return offset_blocked_array_wrapper<Index, Index>{offsets, data};
 }
+
+template <typename Index>
+auto compute_vertex_link_dynamic(
+    const offset_blocked_array_wrapper<Index, Index> &faces_array,
+    const offset_blocked_array_wrapper<Index, Index> &face_membership) {
+
+  auto faces = tf::make_faces(faces_array.make_range());
+  auto fm = tf::make_face_membership_like(face_membership.make_range());
+
+  tf::vertex_link<Index> fl;
+  fl.build(faces, fm);
+  auto [offsets, data] = make_numpy_array(std::move(fl));
+  return offset_blocked_array_wrapper<Index, Index>{offsets, data};
+}
 } // namespace tf::py

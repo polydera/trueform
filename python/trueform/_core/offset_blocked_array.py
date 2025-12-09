@@ -133,3 +133,55 @@ class OffsetBlockedArray:
     def data(self) -> np.ndarray:
         """Get the data array"""
         return self._data
+
+    @property
+    def dtype(self) -> np.dtype:
+        """Get the dtype of the data array"""
+        return self._data.dtype
+
+    @classmethod
+    def from_uniform(cls, array: np.ndarray) -> "OffsetBlockedArray":
+        """
+        Create an OffsetBlockedArray from a uniform 2D array.
+
+        Parameters
+        ----------
+        array : np.ndarray
+            2D array of shape (N, V) where N is number of blocks and V is
+            vertices per block. Must have dtype int32 or int64.
+
+        Returns
+        -------
+        OffsetBlockedArray
+            OffsetBlockedArray with uniform block sizes.
+
+        Examples
+        --------
+        >>> import trueform as tf
+        >>> import numpy as np
+        >>> quads = np.array([[0, 1, 2, 3], [4, 5, 6, 7]], dtype=np.int32)
+        >>> oba = tf.OffsetBlockedArray.from_uniform(quads)
+        >>> len(oba)  # 2 blocks
+        2
+        """
+        if not isinstance(array, np.ndarray):
+            raise TypeError(f"Expected np.ndarray, got {type(array).__name__}")
+
+        if array.ndim != 2:
+            raise ValueError(
+                f"Expected 2D array, got {array.ndim}D with shape {array.shape}"
+            )
+
+        if array.dtype not in (np.int32, np.int64):
+            raise TypeError(
+                f"dtype must be int32 or int64, got {array.dtype}. "
+                f"Convert with array.astype(np.int32)"
+            )
+
+        n_blocks, block_size = array.shape
+        offsets = np.arange(
+            0, (n_blocks + 1) * block_size, block_size, dtype=array.dtype
+        )
+        data = np.ascontiguousarray(array).ravel()
+
+        return cls(offsets, data)

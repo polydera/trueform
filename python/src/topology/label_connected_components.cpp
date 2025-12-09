@@ -53,7 +53,7 @@ auto register_topology_label_connected_components(nanobind::module_ &m)
       "label_connected_components_ndarray_int",
       [](ndarray<numpy, const int, shape<-1, -1>> conn,
          std::optional<int> expected_number_of_components) {
-        return label_connected_components_impl<int, 2>(
+        return label_connected_components_impl<int>(
             conn, expected_number_of_components);
       },
       arg("conn"), arg("expected_number_of_components").none() = nanobind::none());
@@ -63,7 +63,7 @@ auto register_topology_label_connected_components(nanobind::module_ &m)
       "label_connected_components_ndarray_int64",
       [](ndarray<numpy, const int64_t, shape<-1, -1>> conn,
          std::optional<int64_t> expected_number_of_components) {
-        return label_connected_components_impl<int64_t, 2>(
+        return label_connected_components_impl<int64_t>(
             conn, expected_number_of_components);
       },
       arg("conn"), arg("expected_number_of_components").none() = nanobind::none());

@@ -18,7 +18,7 @@ import tempfile
 # Parametrize index dtypes, point dtypes, and ngons
 INDEX_DTYPES = [np.int32, np.int64]
 POINT_DTYPES = [np.float32, np.float64]
-NGONS = [3, 4]
+NGONS = [3]
 
 
 def canonicalize_mesh(faces, points, ngon):
@@ -411,6 +411,23 @@ def test_write_obj_mesh_2d_error():
 
         # Should raise error for 2D mesh
         with pytest.raises(ValueError, match="OBJ format only supports 3D meshes"):
+            tf.write_obj(mesh, obj_file)
+
+
+def test_write_obj_mesh_dynamic_error():
+    """Test that dynamic mesh raises error"""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        obj_file = os.path.join(tmpdir, "dynamic.obj")
+
+        # Create a dynamic mesh
+        offsets = np.array([0, 3, 7], dtype=np.int32)
+        data = np.array([0, 1, 2, 0, 2, 3, 4], dtype=np.int32)
+        faces = tf.OffsetBlockedArray(offsets, data)
+        points = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0.5, 0.5, 0]], dtype=np.float32)
+        mesh = tf.Mesh(faces, points)
+
+        # Should raise error for dynamic mesh
+        with pytest.raises(ValueError, match="dynamic"):
             tf.write_obj(mesh, obj_file)
 
 

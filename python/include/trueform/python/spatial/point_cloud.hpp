@@ -44,20 +44,16 @@ public:
   auto make_primitive_range() { return _data->make_primitive_range(); }
   auto make_primitive_range() const { return _data->make_primitive_range(); }
 
-  // Forward tree management to data
-  auto rebuild_tree() -> void { _data->rebuild_tree(); }
-  auto ensure_tree() -> void { _data->ensure_tree(); }
-  auto clear_tree() -> void { _data->clear_tree(); }
-  auto has_tree() const -> bool { return _data->has_tree(); }
+  // Build methods (idempotent - only build if needed)
+  auto build_tree() -> void { _data->build_tree(); }
+
+  // Getter (auto-build if needed)
   auto tree() -> tf::aabb_tree<int, RealT, Dims> & { return _data->tree(); }
-  auto tree() const -> const tf::aabb_tree<int, RealT, Dims> & {
-    return _data->tree();
-  }
 
-  // Forward modified flag to data
-  auto mark_modified() -> void { _data->mark_modified(); }
+  // Has check
+  auto has_tree() const -> bool { return _data->has_tree(); }
 
-  // Forward array accessors to data
+  // Data array accessors
   auto size() const -> std::size_t { return _data->size(); }
   auto dims() const -> std::size_t { return _data->dims(); }
 
@@ -70,6 +66,8 @@ public:
           points_array) -> void {
     _data->set_points_array(points_array);
   }
+
+  auto mark_modified() -> void { _data->mark_modified(); }
 
   // Transformation is local to this wrapper (not shared)
   auto has_transformation() const -> bool {

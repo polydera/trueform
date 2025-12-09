@@ -37,4 +37,14 @@ auto compute_cell_membership(
   auto [offsets, data] = make_numpy_array(std::move(membership));
   return offset_blocked_array_wrapper<Index, Index>{offsets, data};
 }
+
+template <typename Index>
+auto compute_cell_membership_dynamic(
+    const offset_blocked_array_wrapper<Index, Index> &cells, Index n_ids) {
+  tf::face_membership<Index> fm;
+  fm.build(tf::make_faces(cells.make_range()), n_ids,
+           Index(cells.data_array().size()));
+  auto [offsets, data] = make_numpy_array(std::move(fm));
+  return offset_blocked_array_wrapper<Index, Index>{offsets, data};
+}
 } // namespace tf::py

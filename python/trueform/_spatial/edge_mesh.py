@@ -273,7 +273,7 @@ class EdgeMesh:
 
         Call this after modifying the points or edges arrays to update the spatial index.
         """
-        self._wrapper.rebuild_tree()
+        self._wrapper.build_tree()
 
     def build_edge_membership(self) -> None:
         """
@@ -281,7 +281,7 @@ class EdgeMesh:
 
         Call this after modifying the edges array to update the edge membership.
         """
-        self._wrapper.rebuild_edge_membership()
+        self._wrapper.build_edge_membership()
 
     @property
     def edge_membership(self):
@@ -301,20 +301,15 @@ class EdgeMesh:
         return OffsetBlockedArray(wrapper.offsets_array(), wrapper.data_array())
 
     @edge_membership.setter
-    def edge_membership(self, value) -> None:
+    def edge_membership(self, value: "OffsetBlockedArray") -> None:
         """
         Set the edge membership structure.
 
         Parameters
         ----------
-        value : OffsetBlockedArray or None
-            Edge membership structure. Set to None to clear.
+        value : OffsetBlockedArray
+            Edge membership structure.
         """
-        if value is None:
-            self._wrapper.clear_edge_membership()
-            return
-
-        # Pass the wrapper to C++
         self._wrapper.set_edge_membership(value._wrapper)
 
     def build_vertex_link(self) -> None:
@@ -323,7 +318,7 @@ class EdgeMesh:
 
         Call this after modifying the edges array to update the vertex link.
         """
-        self._wrapper.rebuild_vertex_link()
+        self._wrapper.build_vertex_link()
 
     @property
     def vertex_link(self):
@@ -343,20 +338,15 @@ class EdgeMesh:
         return OffsetBlockedArray(wrapper.offsets_array(), wrapper.data_array())
 
     @vertex_link.setter
-    def vertex_link(self, value) -> None:
+    def vertex_link(self, value: "OffsetBlockedArray") -> None:
         """
         Set the vertex link structure.
 
         Parameters
         ----------
-        value : OffsetBlockedArray or None
-            Vertex link structure. Set to None to clear.
+        value : OffsetBlockedArray
+            Vertex link structure.
         """
-        if value is None:
-            self._wrapper.clear_vertex_link()
-            return
-
-        # Pass the wrapper to C++
         self._wrapper.set_vertex_link(value._wrapper)
 
     def shared_view(self) -> "EdgeMesh":

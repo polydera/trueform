@@ -16,7 +16,7 @@ import trueform as tf
 INDEX_DTYPES = [np.int32, np.int64]
 REAL_DTYPES = [np.float32, np.float64]
 DIMS = [2, 3]
-NGONS = [3, 4]
+NGONS = [3]  # Only triangles for fixed-size, dynamic for variable-sized
 
 # ==============================================================================
 # Test data generators
@@ -34,20 +34,13 @@ def create_test_mesh_with_labels(dims, ngon, index_dtype, real_dtype):
             [3.0, 0.0],  # 5
         ], dtype=real_dtype)
 
-        if ngon == 3:
-            faces = np.array([
-                [0, 1, 2],  # Component 0
-                [1, 3, 2],  # Component 0
-                [3, 4, 5],  # Component 1
-                [3, 5, 4],  # Component 1
-            ], dtype=index_dtype)
-            labels = np.array([0, 0, 1, 1], dtype=np.int32)  # Labels always int32
-        else:  # ngon == 4
-            faces = np.array([
-                [0, 1, 2, 0],  # Component 0
-                [3, 4, 5, 3],  # Component 1
-            ], dtype=index_dtype)
-            labels = np.array([0, 1], dtype=np.int32)  # Labels always int32
+        faces = np.array([
+            [0, 1, 2],  # Component 0
+            [1, 3, 2],  # Component 0
+            [3, 4, 5],  # Component 1
+            [3, 5, 4],  # Component 1
+        ], dtype=index_dtype)
+        labels = np.array([0, 0, 1, 1], dtype=np.int32)  # Labels always int32
     else:  # dims == 3
         points = np.array([
             [0.0, 0.0, 0.0],  # 0
@@ -58,20 +51,43 @@ def create_test_mesh_with_labels(dims, ngon, index_dtype, real_dtype):
             [3.0, 0.0, 0.0],  # 5
         ], dtype=real_dtype)
 
-        if ngon == 3:
-            faces = np.array([
-                [0, 1, 2],  # Component 0
-                [1, 3, 2],  # Component 0
-                [3, 4, 5],  # Component 1
-                [3, 5, 4],  # Component 1
-            ], dtype=index_dtype)
-            labels = np.array([0, 0, 1, 1], dtype=np.int32)  # Labels always int32
-        else:  # ngon == 4
-            faces = np.array([
-                [0, 1, 2, 0],  # Component 0
-                [3, 4, 5, 3],  # Component 1
-            ], dtype=index_dtype)
-            labels = np.array([0, 1], dtype=np.int32)  # Labels always int32
+        faces = np.array([
+            [0, 1, 2],  # Component 0
+            [1, 3, 2],  # Component 0
+            [3, 4, 5],  # Component 1
+            [3, 5, 4],  # Component 1
+        ], dtype=index_dtype)
+        labels = np.array([0, 0, 1, 1], dtype=np.int32)  # Labels always int32
+
+    return faces, points, labels
+
+
+def create_dynamic_mesh_with_labels(dims, index_dtype, real_dtype):
+    """Create a dynamic (variable-sized polygon) mesh with labels for splitting tests."""
+    if dims == 2:
+        points = np.array([
+            [0.0, 0.0],  # 0
+            [1.0, 0.0],  # 1
+            [0.5, 1.0],  # 2
+            [2.0, 0.0],  # 3
+            [2.5, 1.0],  # 4
+            [3.0, 0.0],  # 5
+        ], dtype=real_dtype)
+    else:  # dims == 3
+        points = np.array([
+            [0.0, 0.0, 0.0],  # 0
+            [1.0, 0.0, 0.0],  # 1
+            [0.5, 1.0, 0.0],  # 2
+            [2.0, 0.0, 0.0],  # 3
+            [2.5, 1.0, 0.0],  # 4
+            [3.0, 0.0, 0.0],  # 5
+        ], dtype=real_dtype)
+
+    # Four faces: triangle, triangle, triangle, triangle (same as fixed test)
+    offsets = np.array([0, 3, 6, 9, 12], dtype=index_dtype)
+    data = np.array([0, 1, 2, 1, 3, 2, 3, 4, 5, 3, 5, 4], dtype=index_dtype)
+    faces = tf.OffsetBlockedArray(offsets, data)
+    labels = np.array([0, 0, 1, 1], dtype=np.int32)
 
     return faces, points, labels
 
@@ -198,11 +214,8 @@ def test_split_into_components_mesh_all_unique(dims, ngon, index_dtype, real_dty
 def test_split_into_components_mesh_unsorted_labels(dims, ngon, index_dtype, real_dtype):
     """Test that components are sorted by label value."""
     faces, points, _ = create_test_mesh_with_labels(dims, ngon, index_dtype, real_dtype)
-    # Unsorted labels: [2, 0, 1, ...]
-    if ngon == 3:
-        labels = np.array([2, 0, 1, 1], dtype=np.int32)
-    else:
-        labels = np.array([2, 1], dtype=np.int32)
+    # Unsorted labels: [2, 0, 1, 1]
+    labels = np.array([2, 0, 1, 1], dtype=np.int32)
 
     mesh = tf.Mesh(faces, points)
     components, comp_labels = tf.split_into_components(mesh, labels)
@@ -270,7 +283,7 @@ def test_split_into_components_edgemesh_single_component(dims, index_dtype, real
 # ==============================================================================
 
 @pytest.mark.parametrize("dims", DIMS)
-@pytest.mark.parametrize("V", [2, 3, 4])
+@pytest.mark.parametrize("V", [2, 3])
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
 def test_split_into_components_tuple_input_basic(dims, V, index_dtype, real_dtype):
@@ -299,7 +312,7 @@ def test_split_into_components_tuple_input_basic(dims, V, index_dtype, real_dtyp
 
 
 @pytest.mark.parametrize("dims", DIMS)
-@pytest.mark.parametrize("V", [2, 3, 4])
+@pytest.mark.parametrize("V", [2, 3])
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
 def test_split_into_components_tuple_dtype_preservation(dims, V, index_dtype, real_dtype):
@@ -314,6 +327,124 @@ def test_split_into_components_tuple_dtype_preservation(dims, V, index_dtype, re
     # Check dtype preservation
     for comp_indices, comp_points in components:
         assert comp_indices.dtype == index_dtype
+        assert comp_points.dtype == real_dtype
+
+    # Component labels are always int32
+    assert comp_labels.dtype == np.int32
+
+
+# ==============================================================================
+# Dynamic Mesh Tests - split_into_components
+# ==============================================================================
+
+@pytest.mark.parametrize("dims", DIMS)
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_split_into_components_dynamic_mesh_basic(dims, index_dtype, real_dtype):
+    """Test splitting dynamic mesh into components."""
+    faces, points, labels = create_dynamic_mesh_with_labels(dims, index_dtype, real_dtype)
+    mesh = tf.Mesh(faces, points)
+
+    components, comp_labels = tf.split_into_components(mesh, labels)
+
+    # Should have 2 components
+    assert len(components) == 2
+    assert len(comp_labels) == 2
+
+    # Check component labels (always int32)
+    assert comp_labels.dtype == np.int32
+    assert np.array_equal(comp_labels, np.array([0, 1], dtype=np.int32))
+
+    # Check each component
+    for i, (comp_faces, comp_points) in enumerate(components):
+        assert isinstance(comp_faces, tf.OffsetBlockedArray)
+        assert comp_faces.dtype == index_dtype
+        assert comp_points.dtype == real_dtype
+        assert comp_points.shape[1] == dims
+
+
+@pytest.mark.parametrize("dims", DIMS)
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_split_into_components_dynamic_mesh_single_component(dims, index_dtype, real_dtype):
+    """Test splitting dynamic mesh with all same labels (single component)."""
+    faces, points, labels = create_dynamic_mesh_with_labels(dims, index_dtype, real_dtype)
+    # All same label
+    labels_single = np.zeros(len(faces), dtype=np.int32)
+    mesh = tf.Mesh(faces, points)
+
+    components, comp_labels = tf.split_into_components(mesh, labels_single)
+
+    # Should have 1 component
+    assert len(components) == 1
+    assert len(comp_labels) == 1
+    assert comp_labels[0] == 0
+
+    comp_faces, comp_points = components[0]
+    assert isinstance(comp_faces, tf.OffsetBlockedArray)
+    assert len(comp_faces) == len(faces)
+
+
+@pytest.mark.parametrize("dims", DIMS)
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_split_into_components_dynamic_mesh_all_unique(dims, index_dtype, real_dtype):
+    """Test splitting dynamic mesh where each face is its own component."""
+    faces, points, _ = create_dynamic_mesh_with_labels(dims, index_dtype, real_dtype)
+    # Unique label per face
+    labels_unique = np.arange(len(faces), dtype=np.int32)
+    mesh = tf.Mesh(faces, points)
+
+    components, comp_labels = tf.split_into_components(mesh, labels_unique)
+
+    # Should have one component per face
+    assert len(components) == len(faces)
+    assert len(comp_labels) == len(faces)
+
+    for i, (comp_faces, comp_points) in enumerate(components):
+        assert isinstance(comp_faces, tf.OffsetBlockedArray)
+        # Each component should have exactly 1 face
+        assert len(comp_faces) == 1
+
+
+# ==============================================================================
+# Dynamic Tuple Input Tests - split_into_components
+# ==============================================================================
+
+@pytest.mark.parametrize("dims", DIMS)
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_split_into_components_dynamic_tuple_basic(dims, index_dtype, real_dtype):
+    """Test splitting with dynamic tuple input (OffsetBlockedArray)."""
+    faces, points, labels = create_dynamic_mesh_with_labels(dims, index_dtype, real_dtype)
+
+    components, comp_labels = tf.split_into_components((faces, points), labels)
+
+    # Should have 2 components
+    assert len(components) == 2
+    assert len(comp_labels) == 2
+
+    # Check each component
+    for comp_faces, comp_points in components:
+        assert isinstance(comp_faces, tf.OffsetBlockedArray)
+        assert comp_faces.dtype == index_dtype
+        assert comp_points.dtype == real_dtype
+        assert comp_points.shape[1] == dims
+
+
+@pytest.mark.parametrize("dims", DIMS)
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_split_into_components_dynamic_tuple_dtype_preservation(dims, index_dtype, real_dtype):
+    """Test that dtypes are preserved in split components with dynamic input."""
+    faces, points, labels = create_dynamic_mesh_with_labels(dims, index_dtype, real_dtype)
+
+    components, comp_labels = tf.split_into_components((faces, points), labels)
+
+    # Check dtype preservation
+    for comp_faces, comp_points in components:
+        assert isinstance(comp_faces, tf.OffsetBlockedArray)
+        assert comp_faces.dtype == index_dtype
         assert comp_points.dtype == real_dtype
 
     # Component labels are always int32
@@ -395,8 +526,18 @@ def test_split_into_components_invalid_V():
     points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0], [0.5, 0.5, 1]], dtype=np.float32)
     labels = np.array([0], dtype=np.int32)
 
-    with pytest.raises(ValueError, match="supports edges .* triangles .* or quads"):
+    with pytest.raises(ValueError, match="Fixed-size indices must have 2.*or 3.*columns"):
         tf.split_into_components((indices, points), labels)
+
+
+def test_split_into_components_v4_not_supported():
+    """Test that V=4 (quads) raises ValueError - use OffsetBlockedArray instead."""
+    quads = np.array([[0, 1, 2, 3]], dtype=np.int32)
+    points = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], dtype=np.float32)
+    labels = np.array([0], dtype=np.int32)
+
+    with pytest.raises(ValueError, match="Fixed-size indices must have 2.*or 3.*columns"):
+        tf.split_into_components((quads, points), labels)
 
 
 def test_split_into_components_invalid_dims():
@@ -426,7 +567,7 @@ def test_split_into_components_mesh_invalid_ngon():
     points = np.array([[0, 0, 0], [1, 0, 0]], dtype=np.float32)
     labels = np.array([0], dtype=np.int32)
 
-    # Mesh only supports NGon=3 or 4
+    # Mesh only supports NGon=3 (triangles) for fixed-size or dynamic for variable-sized
     with pytest.raises(ValueError):
         # This will fail when constructing the Mesh
         mesh = tf.Mesh(edges, points)
@@ -462,16 +603,10 @@ def test_split_into_components_point_reindexing(dims, ngon):
             [3.0, 0.0, 0.0],  # 6 - used by component 1
         ], dtype=np.float32)
 
-    if ngon == 3:
-        faces = np.array([
-            [0, 1, 2],  # Component 0 (uses points 0,1,2)
-            [4, 5, 6],  # Component 1 (uses points 4,5,6)
-        ], dtype=np.int32)
-    else:
-        faces = np.array([
-            [0, 1, 2, 0],  # Component 0
-            [4, 5, 6, 4],  # Component 1
-        ], dtype=np.int32)
+    faces = np.array([
+        [0, 1, 2],  # Component 0 (uses points 0,1,2)
+        [4, 5, 6],  # Component 1 (uses points 4,5,6)
+    ], dtype=np.int32)
 
     labels = np.array([0, 1], dtype=np.int32)
     mesh = tf.Mesh(faces, points)

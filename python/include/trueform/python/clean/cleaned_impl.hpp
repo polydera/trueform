@@ -13,6 +13,7 @@
 #include <trueform/clean.hpp>
 #include <trueform/core/points.hpp>
 #include <trueform/core/range.hpp>
+#include <trueform/python/core/offset_blocked_array.hpp>
 #include <trueform/python/util/make_numpy_array.hpp>
 
 namespace tf::py {
@@ -77,6 +78,31 @@ auto cleaned_impl(
     else
       return tf::make_polygons(indices_range, points_range);
   }();
+  auto [res, i_map, p_map] = [&] {
+    if (tolerance)
+      return tf::cleaned<Index>(primitive_range, *tolerance,
+                                tf::return_index_map);
+    else
+      return tf::cleaned<Index>(primitive_range, tf::return_index_map);
+  }();
+  return nanobind::make_tuple(make_numpy_array(std::move(res)),
+                              make_numpy_array(std::move(i_map)),
+                              make_numpy_array(std::move(p_map)));
+}
+
+// Dynamic indexed geometry cleaning (variable-sized polygons)
+template <typename Index, typename RealT, std::size_t Dims>
+auto cleaned_impl_dynamic(
+    const offset_blocked_array_wrapper<Index, Index> &indices,
+    nanobind::ndarray<nanobind::numpy, const RealT, nanobind::shape<-1, Dims>>
+        points,
+    std::optional<RealT> tolerance, tf::return_index_map_t) {
+  // Create points range from numpy array
+  std::size_t num_points = points.shape(0);
+  auto points_range =
+      tf::make_points<Dims>(tf::make_range(points.data(), num_points * Dims));
+  auto indices_range = indices.make_range();
+  auto primitive_range = tf::make_polygons(indices_range, points_range);
   auto [res, i_map, p_map] = [&] {
     if (tolerance)
       return tf::cleaned<Index>(primitive_range, *tolerance,

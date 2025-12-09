@@ -27,24 +27,26 @@ def boolean_union(
 ) -> Union[Tuple[Tuple[np.ndarray, np.ndarray], np.ndarray],
            Tuple[Tuple[np.ndarray, np.ndarray], np.ndarray, Tuple[OffsetBlockedArray, np.ndarray]]]:
     """
-    Compute boolean union of two 3D triangle meshes (A ∪ B).
+    Compute boolean union of two 3D meshes (A ∪ B).
 
     Combines both meshes into a single mesh representing their union.
+    Supports both triangle meshes and dynamic (variable polygon size) meshes.
 
     Parameters
     ----------
     mesh0 : Mesh
-        First 3D triangle mesh with topology
+        First 3D mesh with topology (triangle or dynamic)
     mesh1 : Mesh
-        Second 3D triangle mesh with topology
+        Second 3D mesh with topology (triangle or dynamic)
         Must have same real dtype (float32 or float64) as mesh0
     return_curves : bool, default False
         If True, also return the intersection curves between the meshes
 
     Returns
     -------
-    result_faces : np.ndarray
-        Face indices of the union mesh, shape (N, 3)
+    result_faces : np.ndarray or OffsetBlockedArray
+        Face indices of the union mesh. Returns np.ndarray with shape (N, 3)
+        if both inputs are triangle meshes, otherwise OffsetBlockedArray.
     result_points : np.ndarray
         Point coordinates of the union mesh, shape (M, 3)
     labels : np.ndarray
@@ -83,24 +85,26 @@ def boolean_intersection(
 ) -> Union[Tuple[Tuple[np.ndarray, np.ndarray], np.ndarray],
            Tuple[Tuple[np.ndarray, np.ndarray], np.ndarray, Tuple[OffsetBlockedArray, np.ndarray]]]:
     """
-    Compute boolean intersection of two 3D triangle meshes (A ∩ B).
+    Compute boolean intersection of two 3D meshes (A ∩ B).
 
     Returns the mesh representing the volume common to both inputs.
+    Supports both triangle meshes and dynamic (variable polygon size) meshes.
 
     Parameters
     ----------
     mesh0 : Mesh
-        First 3D triangle mesh with topology
+        First 3D mesh with topology (triangle or dynamic)
     mesh1 : Mesh
-        Second 3D triangle mesh with topology
+        Second 3D mesh with topology (triangle or dynamic)
         Must have same real dtype (float32 or float64) as mesh0
     return_curves : bool, default False
         If True, also return the intersection curves between the meshes
 
     Returns
     -------
-    result_faces : np.ndarray
-        Face indices of the intersection mesh, shape (N, 3)
+    result_faces : np.ndarray or OffsetBlockedArray
+        Face indices of the intersection mesh. Returns np.ndarray with shape (N, 3)
+        if both inputs are triangle meshes, otherwise OffsetBlockedArray.
     result_points : np.ndarray
         Point coordinates of the intersection mesh, shape (M, 3)
     labels : np.ndarray
@@ -134,9 +138,10 @@ def boolean_difference(
 ) -> Union[Tuple[Tuple[np.ndarray, np.ndarray], np.ndarray],
            Tuple[Tuple[np.ndarray, np.ndarray], np.ndarray, Tuple[OffsetBlockedArray, np.ndarray]]]:
     """
-    Compute boolean difference of two 3D triangle meshes (A - B).
+    Compute boolean difference of two 3D meshes (A - B).
 
     Returns the mesh representing the volume in mesh0 that is not in mesh1.
+    Supports both triangle meshes and dynamic (variable polygon size) meshes.
 
     Note: For the reverse operation (B - A), swap the arguments:
     `boolean_difference(mesh1, mesh0)`.
@@ -144,17 +149,18 @@ def boolean_difference(
     Parameters
     ----------
     mesh0 : Mesh
-        First 3D triangle mesh with topology (the mesh to subtract from)
+        First 3D mesh with topology (triangle or dynamic, the mesh to subtract from)
     mesh1 : Mesh
-        Second 3D triangle mesh with topology (the mesh to subtract)
+        Second 3D mesh with topology (triangle or dynamic, the mesh to subtract)
         Must have same real dtype (float32 or float64) as mesh0
     return_curves : bool, default False
         If True, also return the intersection curves between the meshes
 
     Returns
     -------
-    result_faces : np.ndarray
-        Face indices of the difference mesh, shape (N, 3)
+    result_faces : np.ndarray or OffsetBlockedArray
+        Face indices of the difference mesh. Returns np.ndarray with shape (N, 3)
+        if both inputs are triangle meshes, otherwise OffsetBlockedArray.
     result_points : np.ndarray
         Point coordinates of the difference mesh, shape (M, 3)
     labels : np.ndarray
@@ -214,14 +220,14 @@ def _boolean_impl(mesh0, mesh1, op_int, return_curves):
             f"Boolean operations only support 3D meshes, got mesh1 with {mesh1.dims}D"
         )
 
-    # 3. VALIDATE BOTH ARE TRIANGLES
-    if mesh0.ngon != 3:
+    # 3. VALIDATE BOTH ARE TRIANGLES OR DYNAMIC
+    if mesh0.ngon != 3 and not mesh0.is_dynamic:
         raise ValueError(
-            f"Boolean operations only support triangle meshes, got mesh0 with {mesh0.ngon}-gons"
+            f"Boolean operations only support triangle or dynamic meshes, got mesh0 with {mesh0.ngon}-gons"
         )
-    if mesh1.ngon != 3:
+    if mesh1.ngon != 3 and not mesh1.is_dynamic:
         raise ValueError(
-            f"Boolean operations only support triangle meshes, got mesh1 with {mesh1.ngon}-gons"
+            f"Boolean operations only support triangle or dynamic meshes, got mesh1 with {mesh1.ngon}-gons"
         )
 
     # 4. VALIDATE REAL DTYPES MATCH
@@ -246,10 +252,15 @@ def _boolean_impl(mesh0, mesh1, op_int, return_curves):
     # 6. BUILD SUFFIX FOR C++ FUNCTION
     index0_str = 'int' if mesh0.faces.dtype == np.int32 else 'int64'
     index1_str = 'int' if mesh1.faces.dtype == np.int32 else 'int64'
+    ngon0_str = 'dyn' if mesh0.is_dynamic else '3'
+    ngon1_str = 'dyn' if mesh1.is_dynamic else '3'
     real_str = 'float' if mesh0.dtype == np.float32 else 'double'
 
-    # Format: {index0}{index1}33{real}3d (triangles only, 3D only)
-    suffix = f"{index0_str}{index1_str}33{real_str}3d"
+    # Format: {index0}{index1}{ngon0}{ngon1}{real}3d
+    suffix = f"{index0_str}{index1_str}{ngon0_str}{ngon1_str}{real_str}3d"
+
+    # Determine if result will be dynamic (if either input is dynamic)
+    result_is_dynamic = mesh0.is_dynamic or mesh1.is_dynamic
 
     # 7. DISPATCH TO C++
     if return_curves:
@@ -262,6 +273,10 @@ def _boolean_impl(mesh0, mesh1, op_int, return_curves):
         # CRITICAL: If we swapped meshes, flip labels (0↔1)
         if swapped:
             labels = 1 - labels
+
+        # Wrap result faces in OffsetBlockedArray if dynamic
+        if result_is_dynamic:
+            result_faces = OffsetBlockedArray(result_faces[0], result_faces[1])
 
         # Wrap paths in OffsetBlockedArray
         paths = OffsetBlockedArray(paths_offsets, paths_data)
@@ -277,5 +292,9 @@ def _boolean_impl(mesh0, mesh1, op_int, return_curves):
         # CRITICAL: If we swapped meshes, flip labels (0↔1)
         if swapped:
             labels = 1 - labels
+
+        # Wrap result faces in OffsetBlockedArray if dynamic
+        if result_is_dynamic:
+            result_faces = OffsetBlockedArray(result_faces[0], result_faces[1])
 
         return (result_faces, result_points), labels

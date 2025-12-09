@@ -194,8 +194,8 @@ def main():
     mesh_file1 = sys.argv[1]
     mesh_file2 = sys.argv[2] if len(sys.argv) > 2 else None
 
-    # Load first mesh
-    mesh_data0 = load_mesh(mesh_file1, (0.0, 0.0, 0.0), target_radius=10.0, random_rotation=True)
+    # Load first mesh (use dynamic=True to test OffsetBlockedArray)
+    mesh_data0 = load_mesh(mesh_file1, (0.0, 0.0, 0.0), target_radius=10.0, random_rotation=True, dynamic=True)
 
     # Build structures once on the first mesh
     mesh_data0.mesh.build_tree()
@@ -207,7 +207,7 @@ def main():
         mesh_data1 = load_mesh_shared(mesh_data0, (15.0, 0.0, 0.0), random_rotation=True)
     else:
         # Different files - load separately
-        mesh_data1 = load_mesh(mesh_file2, (15.0, 0.0, 0.0), target_radius=10.0, random_rotation=True)
+        mesh_data1 = load_mesh(mesh_file2, (15.0, 0.0, 0.0), target_radius=10.0, random_rotation=True, dynamic=True)
         mesh_data1.mesh.build_tree()
         mesh_data1.mesh.build_face_membership()
         mesh_data1.mesh.build_manifold_edge_link()

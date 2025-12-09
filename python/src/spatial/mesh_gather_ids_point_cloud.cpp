@@ -48,9 +48,9 @@ auto register_mesh_gather_ids_point_cloud(nanobind::module_ &m) -> void {
         nanobind::arg("predicate_type"),
         nanobind::arg("threshold").none() = nanobind::none());
 
-  // int, float, 4, 2D
-  m.def("gather_ids_mesh_point_cloud_intfloat42d",
-        [](mesh_wrapper<int, float, 4, 2> &mesh,
+  // int, float, dynamic, 2D
+  m.def("gather_ids_mesh_point_cloud_intfloatdyn2d",
+        [](mesh_wrapper<int, float, tf::dynamic_size, 2> &mesh,
            point_cloud_wrapper<float, 2> &cloud,
            const std::string &predicate_type, std::optional<float> threshold) {
           return form_form_gather_ids<float, 2>(mesh, cloud,
@@ -60,9 +60,9 @@ auto register_mesh_gather_ids_point_cloud(nanobind::module_ &m) -> void {
         nanobind::arg("predicate_type"),
         nanobind::arg("threshold").none() = nanobind::none());
 
-  // int, float, 4, 3D
-  m.def("gather_ids_mesh_point_cloud_intfloat43d",
-        [](mesh_wrapper<int, float, 4, 3> &mesh,
+  // int, float, dynamic, 3D
+  m.def("gather_ids_mesh_point_cloud_intfloatdyn3d",
+        [](mesh_wrapper<int, float, tf::dynamic_size, 3> &mesh,
            point_cloud_wrapper<float, 3> &cloud,
            const std::string &predicate_type, std::optional<float> threshold) {
           return form_form_gather_ids<float, 3>(mesh, cloud,
@@ -96,9 +96,9 @@ auto register_mesh_gather_ids_point_cloud(nanobind::module_ &m) -> void {
         nanobind::arg("predicate_type"),
         nanobind::arg("threshold").none() = nanobind::none());
 
-  // int, double, 4, 2D
-  m.def("gather_ids_mesh_point_cloud_intdouble42d",
-        [](mesh_wrapper<int, double, 4, 2> &mesh,
+  // int, double, dynamic, 2D
+  m.def("gather_ids_mesh_point_cloud_intdoubledyn2d",
+        [](mesh_wrapper<int, double, tf::dynamic_size, 2> &mesh,
            point_cloud_wrapper<double, 2> &cloud,
            const std::string &predicate_type, std::optional<double> threshold) {
           return form_form_gather_ids<double, 2>(mesh, cloud,
@@ -108,9 +108,9 @@ auto register_mesh_gather_ids_point_cloud(nanobind::module_ &m) -> void {
         nanobind::arg("predicate_type"),
         nanobind::arg("threshold").none() = nanobind::none());
 
-  // int, double, 4, 3D
-  m.def("gather_ids_mesh_point_cloud_intdouble43d",
-        [](mesh_wrapper<int, double, 4, 3> &mesh,
+  // int, double, dynamic, 3D
+  m.def("gather_ids_mesh_point_cloud_intdoubledyn3d",
+        [](mesh_wrapper<int, double, tf::dynamic_size, 3> &mesh,
            point_cloud_wrapper<double, 3> &cloud,
            const std::string &predicate_type, std::optional<double> threshold) {
           return form_form_gather_ids<double, 3>(mesh, cloud,
@@ -144,9 +144,9 @@ auto register_mesh_gather_ids_point_cloud(nanobind::module_ &m) -> void {
         nanobind::arg("predicate_type"),
         nanobind::arg("threshold").none() = nanobind::none());
 
-  // int64, float, 4, 2D
-  m.def("gather_ids_mesh_point_cloud_int64float42d",
-        [](mesh_wrapper<int64_t, float, 4, 2> &mesh,
+  // int64, float, dynamic, 2D
+  m.def("gather_ids_mesh_point_cloud_int64floatdyn2d",
+        [](mesh_wrapper<int64_t, float, tf::dynamic_size, 2> &mesh,
            point_cloud_wrapper<float, 2> &cloud,
            const std::string &predicate_type, std::optional<float> threshold) {
           return form_form_gather_ids<float, 2>(mesh, cloud,
@@ -156,9 +156,9 @@ auto register_mesh_gather_ids_point_cloud(nanobind::module_ &m) -> void {
         nanobind::arg("predicate_type"),
         nanobind::arg("threshold").none() = nanobind::none());
 
-  // int64, float, 4, 3D
-  m.def("gather_ids_mesh_point_cloud_int64float43d",
-        [](mesh_wrapper<int64_t, float, 4, 3> &mesh,
+  // int64, float, dynamic, 3D
+  m.def("gather_ids_mesh_point_cloud_int64floatdyn3d",
+        [](mesh_wrapper<int64_t, float, tf::dynamic_size, 3> &mesh,
            point_cloud_wrapper<float, 3> &cloud,
            const std::string &predicate_type, std::optional<float> threshold) {
           return form_form_gather_ids<float, 3>(mesh, cloud,
@@ -192,9 +192,9 @@ auto register_mesh_gather_ids_point_cloud(nanobind::module_ &m) -> void {
         nanobind::arg("predicate_type"),
         nanobind::arg("threshold").none() = nanobind::none());
 
-  // int64, double, 4, 2D
-  m.def("gather_ids_mesh_point_cloud_int64double42d",
-        [](mesh_wrapper<int64_t, double, 4, 2> &mesh,
+  // int64, double, dynamic, 2D
+  m.def("gather_ids_mesh_point_cloud_int64doubledyn2d",
+        [](mesh_wrapper<int64_t, double, tf::dynamic_size, 2> &mesh,
            point_cloud_wrapper<double, 2> &cloud,
            const std::string &predicate_type, std::optional<double> threshold) {
           return form_form_gather_ids<double, 2>(mesh, cloud,
@@ -204,9 +204,9 @@ auto register_mesh_gather_ids_point_cloud(nanobind::module_ &m) -> void {
         nanobind::arg("predicate_type"),
         nanobind::arg("threshold").none() = nanobind::none());
 
-  // int64, double, 4, 3D
-  m.def("gather_ids_mesh_point_cloud_int64double43d",
-        [](mesh_wrapper<int64_t, double, 4, 3> &mesh,
+  // int64, double, dynamic, 3D
+  m.def("gather_ids_mesh_point_cloud_int64doubledyn3d",
+        [](mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh,
            point_cloud_wrapper<double, 3> &cloud,
            const std::string &predicate_type, std::optional<double> threshold) {
           return form_form_gather_ids<double, 3>(mesh, cloud,

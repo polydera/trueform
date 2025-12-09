@@ -26,9 +26,9 @@ auto register_mesh_neighbor_search_mesh_double2d(nanobind::module_ &m) -> void {
         nanobind::arg("mesh1"),
         nanobind::arg("radius").none() = nanobind::none());
 
-  m.def("neighbor_search_mesh_mesh_intint34double2d",
+  m.def("neighbor_search_mesh_mesh_intint3dyndouble2d",
         [](mesh_wrapper<int, double, 3, 2> &mesh0,
-           mesh_wrapper<int, double, 4, 2> &mesh1,
+           mesh_wrapper<int, double, tf::dynamic_size, 2> &mesh1,
            std::optional<double> radius) {
           return form_form_neighbor_search(mesh0, mesh1, radius);
         },
@@ -36,8 +36,8 @@ auto register_mesh_neighbor_search_mesh_double2d(nanobind::module_ &m) -> void {
         nanobind::arg("mesh1"),
         nanobind::arg("radius").none() = nanobind::none());
 
-  m.def("neighbor_search_mesh_mesh_intint43double2d",
-        [](mesh_wrapper<int, double, 4, 2> &mesh0,
+  m.def("neighbor_search_mesh_mesh_intintdyn3double2d",
+        [](mesh_wrapper<int, double, tf::dynamic_size, 2> &mesh0,
            mesh_wrapper<int, double, 3, 2> &mesh1,
            std::optional<double> radius) {
           return form_form_neighbor_search(mesh0, mesh1, radius);
@@ -46,9 +46,9 @@ auto register_mesh_neighbor_search_mesh_double2d(nanobind::module_ &m) -> void {
         nanobind::arg("mesh1"),
         nanobind::arg("radius").none() = nanobind::none());
 
-  m.def("neighbor_search_mesh_mesh_intint44double2d",
-        [](mesh_wrapper<int, double, 4, 2> &mesh0,
-           mesh_wrapper<int, double, 4, 2> &mesh1,
+  m.def("neighbor_search_mesh_mesh_intintdyndyndouble2d",
+        [](mesh_wrapper<int, double, tf::dynamic_size, 2> &mesh0,
+           mesh_wrapper<int, double, tf::dynamic_size, 2> &mesh1,
            std::optional<double> radius) {
           return form_form_neighbor_search(mesh0, mesh1, radius);
         },
@@ -67,9 +67,9 @@ auto register_mesh_neighbor_search_mesh_double2d(nanobind::module_ &m) -> void {
         nanobind::arg("mesh1"),
         nanobind::arg("radius").none() = nanobind::none());
 
-  m.def("neighbor_search_mesh_mesh_intint6434double2d",
+  m.def("neighbor_search_mesh_mesh_intint643dyndouble2d",
         [](mesh_wrapper<int, double, 3, 2> &mesh0,
-           mesh_wrapper<int64_t, double, 4, 2> &mesh1,
+           mesh_wrapper<int64_t, double, tf::dynamic_size, 2> &mesh1,
            std::optional<double> radius) {
           return form_form_neighbor_search(mesh0, mesh1, radius);
         },
@@ -77,8 +77,8 @@ auto register_mesh_neighbor_search_mesh_double2d(nanobind::module_ &m) -> void {
         nanobind::arg("mesh1"),
         nanobind::arg("radius").none() = nanobind::none());
 
-  m.def("neighbor_search_mesh_mesh_intint6443double2d",
-        [](mesh_wrapper<int, double, 4, 2> &mesh0,
+  m.def("neighbor_search_mesh_mesh_intint64dyn3double2d",
+        [](mesh_wrapper<int, double, tf::dynamic_size, 2> &mesh0,
            mesh_wrapper<int64_t, double, 3, 2> &mesh1,
            std::optional<double> radius) {
           return form_form_neighbor_search(mesh0, mesh1, radius);
@@ -87,9 +87,9 @@ auto register_mesh_neighbor_search_mesh_double2d(nanobind::module_ &m) -> void {
         nanobind::arg("mesh1"),
         nanobind::arg("radius").none() = nanobind::none());
 
-  m.def("neighbor_search_mesh_mesh_intint6444double2d",
-        [](mesh_wrapper<int, double, 4, 2> &mesh0,
-           mesh_wrapper<int64_t, double, 4, 2> &mesh1,
+  m.def("neighbor_search_mesh_mesh_intint64dyndyndouble2d",
+        [](mesh_wrapper<int, double, tf::dynamic_size, 2> &mesh0,
+           mesh_wrapper<int64_t, double, tf::dynamic_size, 2> &mesh1,
            std::optional<double> radius) {
           return form_form_neighbor_search(mesh0, mesh1, radius);
         },
@@ -108,9 +108,9 @@ auto register_mesh_neighbor_search_mesh_double2d(nanobind::module_ &m) -> void {
         nanobind::arg("mesh1"),
         nanobind::arg("radius").none() = nanobind::none());
 
-  m.def("neighbor_search_mesh_mesh_int64int6434double2d",
+  m.def("neighbor_search_mesh_mesh_int64int643dyndouble2d",
         [](mesh_wrapper<int64_t, double, 3, 2> &mesh0,
-           mesh_wrapper<int64_t, double, 4, 2> &mesh1,
+           mesh_wrapper<int64_t, double, tf::dynamic_size, 2> &mesh1,
            std::optional<double> radius) {
           return form_form_neighbor_search(mesh0, mesh1, radius);
         },
@@ -118,8 +118,8 @@ auto register_mesh_neighbor_search_mesh_double2d(nanobind::module_ &m) -> void {
         nanobind::arg("mesh1"),
         nanobind::arg("radius").none() = nanobind::none());
 
-  m.def("neighbor_search_mesh_mesh_int64int6443double2d",
-        [](mesh_wrapper<int64_t, double, 4, 2> &mesh0,
+  m.def("neighbor_search_mesh_mesh_int64int64dyn3double2d",
+        [](mesh_wrapper<int64_t, double, tf::dynamic_size, 2> &mesh0,
            mesh_wrapper<int64_t, double, 3, 2> &mesh1,
            std::optional<double> radius) {
           return form_form_neighbor_search(mesh0, mesh1, radius);
@@ -128,15 +128,17 @@ auto register_mesh_neighbor_search_mesh_double2d(nanobind::module_ &m) -> void {
         nanobind::arg("mesh1"),
         nanobind::arg("radius").none() = nanobind::none());
 
-  m.def("neighbor_search_mesh_mesh_int64int6444double2d",
-        [](mesh_wrapper<int64_t, double, 4, 2> &mesh0,
-           mesh_wrapper<int64_t, double, 4, 2> &mesh1,
+  m.def("neighbor_search_mesh_mesh_int64int64dyndyndouble2d",
+        [](mesh_wrapper<int64_t, double, tf::dynamic_size, 2> &mesh0,
+           mesh_wrapper<int64_t, double, tf::dynamic_size, 2> &mesh1,
            std::optional<double> radius) {
           return form_form_neighbor_search(mesh0, mesh1, radius);
         },
         nanobind::arg("mesh0"),
         nanobind::arg("mesh1"),
         nanobind::arg("radius").none() = nanobind::none());
+
+  // Note: int64 × int32 is handled by Python canonical ordering
 }
 
 } // namespace tf::py

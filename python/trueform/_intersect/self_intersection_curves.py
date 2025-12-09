@@ -77,9 +77,10 @@ def self_intersection_curves(
     # 3. BUILD SUFFIX FOR C++ FUNCTION
     index_str = 'int' if mesh.faces.dtype == np.int32 else 'int64'
     real_str = 'float' if mesh.dtype == np.float32 else 'double'
+    ngon_str = 'dyn' if mesh.is_dynamic else str(mesh.ngon)
 
     # Format: {index}{ngon}{real}3d
-    suffix = f"{index_str}{mesh.ngon}{real_str}3d"
+    suffix = f"{index_str}{ngon_str}{real_str}3d"
 
     # 4. DISPATCH TO C++
     func_name = f"self_intersection_curves_mesh_{suffix}"

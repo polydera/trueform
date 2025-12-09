@@ -18,16 +18,17 @@ import pytest
 import trueform as tf
 
 
-# Type combinations for boolean operations (triangles only, 3D only)
+# Type combinations for boolean operations (3D only)
 INDEX_DTYPES = [np.int32, np.int64]
 REAL_DTYPES = [np.float32, np.float64]
+MESH_TYPES = ['triangle', 'dynamic']
 
 
 # ==============================================================================
 # Helper functions for creating test meshes
 # ==============================================================================
 
-def create_cube(index_dtype, real_dtype, center, size=1.0):
+def create_cube(index_dtype, real_dtype, center, size=1.0, mesh_type='triangle'):
     """Create a cube mesh with specified center and size"""
     half = size / 2.0
     cx, cy, cz = center
@@ -45,7 +46,7 @@ def create_cube(index_dtype, real_dtype, center, size=1.0):
     ], dtype=real_dtype)
 
     # 12 triangles (2 per face)
-    faces = np.array([
+    faces_data = np.array([
         # Bottom (z-)
         [0, 1, 2], [0, 2, 3],
         # Top (z+)
@@ -60,6 +61,14 @@ def create_cube(index_dtype, real_dtype, center, size=1.0):
         [1, 6, 2], [1, 5, 6],
     ], dtype=index_dtype)
 
+    if mesh_type == 'dynamic':
+        # Use OffsetBlockedArray for dynamic mesh
+        offsets = np.arange(0, len(faces_data) * 3 + 1, 3, dtype=index_dtype)
+        data = faces_data.ravel()
+        faces = tf.OffsetBlockedArray(offsets, data)
+    else:
+        faces = faces_data
+
     return tf.Mesh(faces, points)
 
 
@@ -70,11 +79,13 @@ def create_cube(index_dtype, real_dtype, center, size=1.0):
 @pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
 @pytest.mark.parametrize("index_dtype1", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_boolean_union_basic(index_dtype0, index_dtype1, real_dtype):
+@pytest.mark.parametrize("mesh_type0", MESH_TYPES)
+@pytest.mark.parametrize("mesh_type1", MESH_TYPES)
+def test_boolean_union_basic(index_dtype0, index_dtype1, real_dtype, mesh_type0, mesh_type1):
     """Test basic union of two cubes"""
     # Create two overlapping cubes
-    mesh0 = create_cube(index_dtype0, real_dtype, center=(0, 0, 0), size=1.0)
-    mesh1 = create_cube(index_dtype1, real_dtype, center=(0.5, 0, 0), size=1.0)
+    mesh0 = create_cube(index_dtype0, real_dtype, center=(0, 0, 0), size=1.0, mesh_type=mesh_type0)
+    mesh1 = create_cube(index_dtype1, real_dtype, center=(0.5, 0, 0), size=1.0, mesh_type=mesh_type1)
 
     # Build required structures
     mesh0.build_tree()
@@ -88,36 +99,45 @@ def test_boolean_union_basic(index_dtype0, index_dtype1, real_dtype):
     (result_faces, result_points), labels = tf.boolean_union(mesh0, mesh1)
 
     # Validate output
-    assert isinstance(result_faces, np.ndarray)
     assert isinstance(result_points, np.ndarray)
     assert isinstance(labels, np.ndarray)
 
-    # Faces should be triangles
-    assert result_faces.ndim == 2
-    assert result_faces.shape[1] == 3
+    # Result faces type depends on input mesh types
+    result_is_dynamic = mesh_type0 == 'dynamic' or mesh_type1 == 'dynamic'
+    if result_is_dynamic:
+        assert isinstance(result_faces, tf.OffsetBlockedArray)
+        num_faces = len(result_faces)
+    else:
+        assert isinstance(result_faces, np.ndarray)
+        # Faces should be triangles
+        assert result_faces.ndim == 2
+        assert result_faces.shape[1] == 3
+        num_faces = result_faces.shape[0]
 
     # Points should be 3D
     assert result_points.ndim == 2
     assert result_points.shape[1] == 3
 
     # Labels should match number of faces
-    assert labels.shape == (result_faces.shape[0],)
+    assert labels.shape == (num_faces,)
 
     # Labels should only contain 0 or 1
     assert np.all((labels == 0) | (labels == 1))
 
     # Union should have some faces (non-empty)
-    assert len(result_faces) > 0
+    assert num_faces > 0
 
 
 @pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
 @pytest.mark.parametrize("index_dtype1", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_boolean_intersection_basic(index_dtype0, index_dtype1, real_dtype):
+@pytest.mark.parametrize("mesh_type0", MESH_TYPES)
+@pytest.mark.parametrize("mesh_type1", MESH_TYPES)
+def test_boolean_intersection_basic(index_dtype0, index_dtype1, real_dtype, mesh_type0, mesh_type1):
     """Test basic intersection of two cubes"""
     # Create two overlapping cubes
-    mesh0 = create_cube(index_dtype0, real_dtype, center=(0, 0, 0), size=1.0)
-    mesh1 = create_cube(index_dtype1, real_dtype, center=(0.5, 0, 0), size=1.0)
+    mesh0 = create_cube(index_dtype0, real_dtype, center=(0, 0, 0), size=1.0, mesh_type=mesh_type0)
+    mesh1 = create_cube(index_dtype1, real_dtype, center=(0.5, 0, 0), size=1.0, mesh_type=mesh_type1)
 
     # Build required structures
     mesh0.build_tree()
@@ -131,36 +151,45 @@ def test_boolean_intersection_basic(index_dtype0, index_dtype1, real_dtype):
     (result_faces, result_points), labels = tf.boolean_intersection(mesh0, mesh1)
 
     # Validate output
-    assert isinstance(result_faces, np.ndarray)
     assert isinstance(result_points, np.ndarray)
     assert isinstance(labels, np.ndarray)
 
-    # Faces should be triangles
-    assert result_faces.ndim == 2
-    assert result_faces.shape[1] == 3
+    # Result faces type depends on input mesh types
+    result_is_dynamic = mesh_type0 == 'dynamic' or mesh_type1 == 'dynamic'
+    if result_is_dynamic:
+        assert isinstance(result_faces, tf.OffsetBlockedArray)
+        num_faces = len(result_faces)
+    else:
+        assert isinstance(result_faces, np.ndarray)
+        # Faces should be triangles
+        assert result_faces.ndim == 2
+        assert result_faces.shape[1] == 3
+        num_faces = result_faces.shape[0]
 
     # Points should be 3D
     assert result_points.ndim == 2
     assert result_points.shape[1] == 3
 
     # Labels should match number of faces
-    assert labels.shape == (result_faces.shape[0],)
+    assert labels.shape == (num_faces,)
 
     # Labels should only contain 0 or 1
     assert np.all((labels == 0) | (labels == 1))
 
     # Intersection should have some faces (non-empty for overlapping cubes)
-    assert len(result_faces) > 0
+    assert num_faces > 0
 
 
 @pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
 @pytest.mark.parametrize("index_dtype1", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_boolean_difference_basic(index_dtype0, index_dtype1, real_dtype):
+@pytest.mark.parametrize("mesh_type0", MESH_TYPES)
+@pytest.mark.parametrize("mesh_type1", MESH_TYPES)
+def test_boolean_difference_basic(index_dtype0, index_dtype1, real_dtype, mesh_type0, mesh_type1):
     """Test basic difference of two cubes"""
     # Create two overlapping cubes
-    mesh0 = create_cube(index_dtype0, real_dtype, center=(0, 0, 0), size=1.0)
-    mesh1 = create_cube(index_dtype1, real_dtype, center=(0.5, 0, 0), size=1.0)
+    mesh0 = create_cube(index_dtype0, real_dtype, center=(0, 0, 0), size=1.0, mesh_type=mesh_type0)
+    mesh1 = create_cube(index_dtype1, real_dtype, center=(0.5, 0, 0), size=1.0, mesh_type=mesh_type1)
 
     # Build required structures
     mesh0.build_tree()
@@ -174,36 +203,45 @@ def test_boolean_difference_basic(index_dtype0, index_dtype1, real_dtype):
     (result_faces, result_points), labels = tf.boolean_difference(mesh0, mesh1)
 
     # Validate output
-    assert isinstance(result_faces, np.ndarray)
     assert isinstance(result_points, np.ndarray)
     assert isinstance(labels, np.ndarray)
 
-    # Faces should be triangles
-    assert result_faces.ndim == 2
-    assert result_faces.shape[1] == 3
+    # Result faces type depends on input mesh types
+    result_is_dynamic = mesh_type0 == 'dynamic' or mesh_type1 == 'dynamic'
+    if result_is_dynamic:
+        assert isinstance(result_faces, tf.OffsetBlockedArray)
+        num_faces = len(result_faces)
+    else:
+        assert isinstance(result_faces, np.ndarray)
+        # Faces should be triangles
+        assert result_faces.ndim == 2
+        assert result_faces.shape[1] == 3
+        num_faces = result_faces.shape[0]
 
     # Points should be 3D
     assert result_points.ndim == 2
     assert result_points.shape[1] == 3
 
     # Labels should match number of faces
-    assert labels.shape == (result_faces.shape[0],)
+    assert labels.shape == (num_faces,)
 
     # Labels should only contain 0 or 1
     assert np.all((labels == 0) | (labels == 1))
 
     # Difference should have some faces (non-empty)
-    assert len(result_faces) > 0
+    assert num_faces > 0
 
 
 @pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
 @pytest.mark.parametrize("index_dtype1", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_boolean_with_curves(index_dtype0, index_dtype1, real_dtype):
+@pytest.mark.parametrize("mesh_type0", MESH_TYPES)
+@pytest.mark.parametrize("mesh_type1", MESH_TYPES)
+def test_boolean_with_curves(index_dtype0, index_dtype1, real_dtype, mesh_type0, mesh_type1):
     """Test boolean operations with return_curves=True"""
     # Create two overlapping cubes
-    mesh0 = create_cube(index_dtype0, real_dtype, center=(0, 0, 0), size=1.0)
-    mesh1 = create_cube(index_dtype1, real_dtype, center=(0.5, 0, 0), size=1.0)
+    mesh0 = create_cube(index_dtype0, real_dtype, center=(0, 0, 0), size=1.0, mesh_type=mesh_type0)
+    mesh1 = create_cube(index_dtype1, real_dtype, center=(0.5, 0, 0), size=1.0, mesh_type=mesh_type1)
 
     # Build required structures
     mesh0.build_tree()
@@ -219,9 +257,15 @@ def test_boolean_with_curves(index_dtype0, index_dtype1, real_dtype):
     )
 
     # Validate mesh output
-    assert isinstance(result_faces, np.ndarray)
     assert isinstance(result_points, np.ndarray)
     assert isinstance(labels, np.ndarray)
+
+    # Result faces type depends on input mesh types
+    result_is_dynamic = mesh_type0 == 'dynamic' or mesh_type1 == 'dynamic'
+    if result_is_dynamic:
+        assert isinstance(result_faces, tf.OffsetBlockedArray)
+    else:
+        assert isinstance(result_faces, np.ndarray)
 
     # Validate curves output
     assert isinstance(paths, tf.OffsetBlockedArray)
@@ -306,8 +350,8 @@ def test_rejects_2d_meshes():
         tf.boolean_union(mesh_3d, mesh_2d)
 
 
-def test_rejects_quad_meshes():
-    """Test that boolean operations reject quad meshes"""
+def test_rejects_non_triangle_fixed_meshes():
+    """Test that boolean operations reject non-triangle fixed-size meshes"""
     # Create triangle mesh
     tri_faces = np.array([[0, 1, 2]], dtype=np.int32)
     tri_points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float32)
@@ -316,17 +360,14 @@ def test_rejects_quad_meshes():
     tri_mesh.build_face_membership()
     tri_mesh.build_manifold_edge_link()
 
-    # Create quad mesh
+    # Creating a quad mesh (faces with 4 vertices) should fail at Mesh creation
+    # since only triangles (ngon=3) and dynamic meshes are supported
     quad_faces = np.array([[0, 1, 2, 3]], dtype=np.int32)
     quad_points = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], dtype=np.float32)
-    quad_mesh = tf.Mesh(quad_faces, quad_points)
 
-    # Should reject quad meshes
-    with pytest.raises(ValueError, match="only support triangle meshes"):
-        tf.boolean_union(quad_mesh, tri_mesh)
-
-    with pytest.raises(ValueError, match="only support triangle meshes"):
-        tf.boolean_union(tri_mesh, quad_mesh)
+    # Quad mesh creation should fail
+    with pytest.raises((ValueError, TypeError)):
+        tf.Mesh(quad_faces, quad_points)
 
 
 def test_rejects_mismatched_dtypes():

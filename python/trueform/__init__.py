@@ -15,7 +15,7 @@ except ImportError:
 # Core data structures
 from ._spatial import PointCloud, Mesh, EdgeMesh
 from ._core import closest_metric_point_pair, closest_metric_point
-from ._core import OffsetBlockedArray
+from ._core import OffsetBlockedArray, as_offset_blocked
 # Top-level functions
 from .ray_cast import ray_cast
 from .intersects import intersects
@@ -41,6 +41,7 @@ __all__ = [
     'Mesh',
     'EdgeMesh',
     'OffsetBlockedArray',
+    'as_offset_blocked',
     'closest_metric_point_pair',
     'closest_metric_point',
     'ray_cast',

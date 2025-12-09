@@ -15,11 +15,11 @@
 
 namespace tf::py {
 
-auto register_mesh_neighbor_search_intdouble42d(nanobind::module_ &m) -> void {
+auto register_mesh_neighbor_search_int64doubledyn2d(nanobind::module_ &m) -> void {
 
   // Point queries
-  m.def("neighbor_search_mesh_point_intdouble42d",
-        [](mesh_wrapper<int, double, 4, 2> &mesh,
+  m.def("neighbor_search_mesh_point_int64doubledyn2d",
+        [](mesh_wrapper<int64_t, double, tf::dynamic_size, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2>>
                query,
            std::optional<double> radius) {
@@ -32,8 +32,8 @@ auto register_mesh_neighbor_search_intdouble42d(nanobind::module_ &m) -> void {
 
   // Segment queries
   m.def(
-      "neighbor_search_mesh_segment_intdouble42d",
-      [](mesh_wrapper<int, double, 4, 2> &mesh,
+      "neighbor_search_mesh_segment_int64doubledyn2d",
+      [](mesh_wrapper<int64_t, double, tf::dynamic_size, 2> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
              query,
          std::optional<double> radius) {
@@ -45,23 +45,23 @@ auto register_mesh_neighbor_search_intdouble42d(nanobind::module_ &m) -> void {
       nanobind::arg("radius").none() = nanobind::none());
 
   // Polygon queries
-  m.def("neighbor_search_mesh_polygon_intdouble42d",
-        [](mesh_wrapper<int, double, 4, 2> &mesh,
-           nanobind::ndarray<nanobind::numpy, const double,
-                             nanobind::shape<-1, 2>>
-               query,
-           std::optional<double> radius) {
-          return neighbor_search<double, 2>(
-              mesh, make_polygon_from_array<2, double>(query), radius);
-        },
-        nanobind::arg("mesh"),
-        nanobind::arg("query"),
-        nanobind::arg("radius").none() = nanobind::none());
+  m.def(
+      "neighbor_search_mesh_polygon_int64doubledyn2d",
+      [](mesh_wrapper<int64_t, double, tf::dynamic_size, 2> &mesh,
+         nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<-1, 2>>
+             query,
+         std::optional<double> radius) {
+        return neighbor_search<double, 2>(
+            mesh, make_polygon_from_array<2, double>(query), radius);
+      },
+      nanobind::arg("mesh"),
+      nanobind::arg("query"),
+      nanobind::arg("radius").none() = nanobind::none());
 
   // Ray queries
   m.def(
-      "neighbor_search_mesh_ray_intdouble42d",
-      [](mesh_wrapper<int, double, 4, 2> &mesh,
+      "neighbor_search_mesh_ray_int64doubledyn2d",
+      [](mesh_wrapper<int64_t, double, tf::dynamic_size, 2> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
              query,
          std::optional<double> radius) {
@@ -74,8 +74,8 @@ auto register_mesh_neighbor_search_intdouble42d(nanobind::module_ &m) -> void {
 
   // Line queries
   m.def(
-      "neighbor_search_mesh_line_intdouble42d",
-      [](mesh_wrapper<int, double, 4, 2> &mesh,
+      "neighbor_search_mesh_line_int64doubledyn2d",
+      [](mesh_wrapper<int64_t, double, tf::dynamic_size, 2> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
              query,
          std::optional<double> radius) {
@@ -87,8 +87,8 @@ auto register_mesh_neighbor_search_intdouble42d(nanobind::module_ &m) -> void {
       nanobind::arg("radius").none() = nanobind::none());
 
 
-  m.def("neighbor_search_mesh_knn_point_intdouble42d",
-        [](mesh_wrapper<int, double, 4, 2> &mesh,
+  m.def("neighbor_search_mesh_knn_point_int64doubledyn2d",
+        [](mesh_wrapper<int64_t, double, tf::dynamic_size, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2>>
                query,
            int k, std::optional<double> radius) {
@@ -101,8 +101,8 @@ auto register_mesh_neighbor_search_intdouble42d(nanobind::module_ &m) -> void {
         nanobind::arg("radius").none() = nanobind::none());
 
   m.def(
-      "neighbor_search_mesh_knn_segment_intdouble42d",
-      [](mesh_wrapper<int, double, 4, 2> &mesh,
+      "neighbor_search_mesh_knn_segment_int64doubledyn2d",
+      [](mesh_wrapper<int64_t, double, tf::dynamic_size, 2> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
              query,
          int k, std::optional<double> radius) {
@@ -115,10 +115,9 @@ auto register_mesh_neighbor_search_intdouble42d(nanobind::module_ &m) -> void {
       nanobind::arg("radius").none() = nanobind::none());
 
   m.def(
-      "neighbor_search_mesh_knn_polygon_intdouble42d",
-      [](mesh_wrapper<int, double, 4, 2> &mesh,
-         nanobind::ndarray<nanobind::numpy, const double,
-                           nanobind::shape<-1, 2>>
+      "neighbor_search_mesh_knn_polygon_int64doubledyn2d",
+      [](mesh_wrapper<int64_t, double, tf::dynamic_size, 2> &mesh,
+         nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<-1, 2>>
              query,
          int k, std::optional<double> radius) {
         return neighbor_search<double, 2>(
@@ -130,8 +129,8 @@ auto register_mesh_neighbor_search_intdouble42d(nanobind::module_ &m) -> void {
       nanobind::arg("radius").none() = nanobind::none());
 
   m.def(
-      "neighbor_search_mesh_knn_ray_intdouble42d",
-      [](mesh_wrapper<int, double, 4, 2> &mesh,
+      "neighbor_search_mesh_knn_ray_int64doubledyn2d",
+      [](mesh_wrapper<int64_t, double, tf::dynamic_size, 2> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
              query,
          int k, std::optional<double> radius) {
@@ -144,8 +143,8 @@ auto register_mesh_neighbor_search_intdouble42d(nanobind::module_ &m) -> void {
       nanobind::arg("radius").none() = nanobind::none());
 
   m.def(
-      "neighbor_search_mesh_knn_line_intdouble42d",
-      [](mesh_wrapper<int, double, 4, 2> &mesh,
+      "neighbor_search_mesh_knn_line_int64doubledyn2d",
+      [](mesh_wrapper<int64_t, double, tf::dynamic_size, 2> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
              query,
          int k, std::optional<double> radius) {

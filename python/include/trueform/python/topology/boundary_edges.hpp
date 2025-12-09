@@ -21,4 +21,13 @@ auto boundary_edges(
   auto fml = tf::make_face_membership_like(fm.make_range());
   return make_numpy_array(tf::make_boundary_edges(faces, fml));
 }
+
+template <typename Index>
+auto boundary_edges_dynamic(
+    const offset_blocked_array_wrapper<Index, Index> &cells,
+    const offset_blocked_array_wrapper<Index, Index> &fm) {
+  auto faces = tf::make_faces(cells.make_range());
+  auto fml = tf::make_face_membership_like(fm.make_range());
+  return make_numpy_array(tf::make_boundary_edges(faces, fml));
+}
 } // namespace tf::py

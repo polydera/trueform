@@ -21,7 +21,7 @@ import trueform as tf
 # Type combinations for intersection_curves (3D only)
 INDEX_DTYPES = [np.int32, np.int64]
 REAL_DTYPES = [np.float32, np.float64]
-NGONS = [3, 4]  # triangles and quads
+MESH_TYPES = ['triangle', 'dynamic']  # triangles and dynamic (variable-size)
 
 
 # ==============================================================================
@@ -43,12 +43,12 @@ def create_horizontal_plane_triangles(index_dtype, real_dtype, z=0.0):
     return tf.Mesh(faces, points)
 
 
-def create_horizontal_plane_quads(index_dtype, real_dtype, z=0.0):
-    """Create a horizontal plane (z=constant) with quads"""
-    faces = np.array([
-        [0, 1, 4, 3],
-        [1, 2, 5, 4]
-    ], dtype=index_dtype)
+def create_horizontal_plane_dynamic(index_dtype, real_dtype, z=0.0):
+    """Create a horizontal plane (z=constant) with dynamic (variable-size) polygons"""
+    # Mixed: one quad and two triangles
+    offsets = np.array([0, 4, 7, 10], dtype=index_dtype)
+    data = np.array([0, 1, 4, 3, 1, 2, 5, 1, 5, 4], dtype=index_dtype)
+    faces = tf.OffsetBlockedArray(offsets, data)
     points = np.array([
         [0, 0, z], [1, 0, z], [2, 0, z],
         [0, 1, z], [1, 1, z], [2, 1, z]
@@ -71,12 +71,12 @@ def create_vertical_plane_triangles(index_dtype, real_dtype, x=0.5):
     return tf.Mesh(faces, points)
 
 
-def create_vertical_plane_quads(index_dtype, real_dtype, x=0.5):
-    """Create a vertical plane (x=constant) with quads"""
-    faces = np.array([
-        [0, 1, 4, 3],
-        [1, 2, 5, 4]
-    ], dtype=index_dtype)
+def create_vertical_plane_dynamic(index_dtype, real_dtype, x=0.5):
+    """Create a vertical plane (x=constant) with dynamic (variable-size) polygons"""
+    # Mixed: one quad and two triangles
+    offsets = np.array([0, 4, 7, 10], dtype=index_dtype)
+    data = np.array([0, 1, 4, 3, 1, 2, 5, 1, 5, 4], dtype=index_dtype)
+    faces = tf.OffsetBlockedArray(offsets, data)
     points = np.array([
         [x, 0, 0], [x, 1, 0], [x, 2, 0],
         [x, 0, 1], [x, 1, 1], [x, 2, 1]
@@ -91,21 +91,21 @@ def create_vertical_plane_quads(index_dtype, real_dtype, x=0.5):
 @pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
 @pytest.mark.parametrize("index_dtype1", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon0", NGONS)
-@pytest.mark.parametrize("ngon1", NGONS)
-def test_intersection_curves_basic(index_dtype0, index_dtype1, real_dtype, ngon0, ngon1):
+@pytest.mark.parametrize("mesh_type0", MESH_TYPES)
+@pytest.mark.parametrize("mesh_type1", MESH_TYPES)
+def test_intersection_curves_basic(index_dtype0, index_dtype1, real_dtype, mesh_type0, mesh_type1):
     """Test basic intersection between two perpendicular planes"""
     # Create horizontal plane at z=0.5
-    if ngon0 == 3:
+    if mesh_type0 == 'triangle':
         mesh0 = create_horizontal_plane_triangles(index_dtype0, real_dtype, z=0.5)
     else:
-        mesh0 = create_horizontal_plane_quads(index_dtype0, real_dtype, z=0.5)
+        mesh0 = create_horizontal_plane_dynamic(index_dtype0, real_dtype, z=0.5)
 
     # Create vertical plane at x=0.5
-    if ngon1 == 3:
+    if mesh_type1 == 'triangle':
         mesh1 = create_vertical_plane_triangles(index_dtype1, real_dtype, x=0.5)
     else:
-        mesh1 = create_vertical_plane_quads(index_dtype1, real_dtype, x=0.5)
+        mesh1 = create_vertical_plane_dynamic(index_dtype1, real_dtype, x=0.5)
 
     # Compute intersection curves
     paths, points = tf.intersection_curves(mesh0, mesh1)

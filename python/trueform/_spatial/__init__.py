@@ -168,8 +168,10 @@ def neighbor_search(
                     form0_obj, form1_obj = form1_obj, form0_obj
                     extra_swap = True
             elif form0_type is Mesh:
-                index0_dtype = form0_obj.faces.dtype
-                index1_dtype = form1_obj.faces.dtype
+                faces0 = form0_obj.faces
+                faces1 = form1_obj.faces
+                index0_dtype = faces0.dtype if hasattr(faces0, 'dtype') else faces0.data.dtype
+                index1_dtype = faces1.dtype if hasattr(faces1, 'dtype') else faces1.data.dtype
                 # Swap if form0 is int64 and form1 is int32
                 if index0_dtype == np.int64 and index1_dtype == np.int32:
                     form0_obj, form1_obj = form1_obj, form0_obj
@@ -197,16 +199,24 @@ def neighbor_search(
             index0_str = 'int' if form0_obj.edges.dtype == np.int32 else 'int64'
             suffix = f"{index0_str}{real_str}{dims_str}"
         elif form0_type is Mesh and form1_type is PointCloud:
-            index0_str = 'int' if form0_obj.faces.dtype == np.int32 else 'int64'
-            suffix = f"{index0_str}{real_str}{form0_obj.ngon}{dims_str}"
+            faces0 = form0_obj.faces
+            index0_str = 'int' if (faces0.dtype if hasattr(faces0, 'dtype') else faces0.data.dtype) == np.int32 else 'int64'
+            ngon0_str = 'dyn' if form0_obj.is_dynamic else str(form0_obj.ngon)
+            suffix = f"{index0_str}{real_str}{ngon0_str}{dims_str}"
         elif form0_type is Mesh and form1_type is EdgeMesh:
-            index0_str = 'int' if form0_obj.faces.dtype == np.int32 else 'int64'
+            faces0 = form0_obj.faces
+            index0_str = 'int' if (faces0.dtype if hasattr(faces0, 'dtype') else faces0.data.dtype) == np.int32 else 'int64'
             index1_str = 'int' if form1_obj.edges.dtype == np.int32 else 'int64'
-            suffix = f"{index0_str}{index1_str}{real_str}{form0_obj.ngon}{dims_str}"
+            ngon0_str = 'dyn' if form0_obj.is_dynamic else str(form0_obj.ngon)
+            suffix = f"{index0_str}{index1_str}{real_str}{ngon0_str}{dims_str}"
         elif form0_type is Mesh and form1_type is Mesh:
-            index0_str = 'int' if form0_obj.faces.dtype == np.int32 else 'int64'
-            index1_str = 'int' if form1_obj.faces.dtype == np.int32 else 'int64'
-            suffix = f"{index0_str}{index1_str}{form0_obj.ngon}{form1_obj.ngon}{real_str}{dims_str}"
+            faces0 = form0_obj.faces
+            faces1 = form1_obj.faces
+            index0_str = 'int' if (faces0.dtype if hasattr(faces0, 'dtype') else faces0.data.dtype) == np.int32 else 'int64'
+            index1_str = 'int' if (faces1.dtype if hasattr(faces1, 'dtype') else faces1.data.dtype) == np.int32 else 'int64'
+            ngon0_str = 'dyn' if form0_obj.is_dynamic else str(form0_obj.ngon)
+            ngon1_str = 'dyn' if form1_obj.is_dynamic else str(form1_obj.ngon)
+            suffix = f"{index0_str}{index1_str}{ngon0_str}{ngon1_str}{real_str}{dims_str}"
         else:
             raise TypeError(f"Unexpected form-form combination: {form0_type}, {form1_type}")
 
@@ -260,15 +270,16 @@ def neighbor_search(
         suffix = f"{dtype_str}{obj_dims}d"
 
     elif obj_type == 'Mesh':
-        # Mesh: suffix is "intfloat32d" or "int64double43d"
+        # Mesh: suffix is "intfloat32d" or "int64doubledyn3d"
         # Format: {index_type}{real_type}{ngon}{dims}d
-        faces_dtype = spatial_object.faces.dtype
+        # ngon is 3 for triangles, "dyn" for dynamic
+        faces = spatial_object.faces
+        faces_dtype = faces.dtype if hasattr(faces, 'dtype') else faces.data.dtype
         points_dtype = spatial_object.points.dtype
-        ngon = spatial_object.ngon
-
         index_str = 'int' if faces_dtype == np.int32 else 'int64'
         real_str = 'float' if points_dtype == np.float32 else 'double'
-        suffix = f"{index_str}{real_str}{ngon}{obj_dims}d"
+        ngon_str = 'dyn' if spatial_object.is_dynamic else str(spatial_object.ngon)
+        suffix = f"{index_str}{real_str}{ngon_str}{obj_dims}d"
         obj_dtype = points_dtype  # Use points dtype for query conversion
 
     elif obj_type == 'EdgeMesh':

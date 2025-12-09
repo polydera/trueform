@@ -20,7 +20,32 @@ import trueform as tf
 # Type combinations
 INDEX_DTYPES = [np.int32, np.int64]
 REAL_DTYPES = [np.float32, np.float64]
-NGONS = [3, 4]
+# ngon: 3 for triangles, 'dyn' for dynamic
+NGONS = [3, 'dyn']
+
+
+def create_square_mesh_2d(points, index_dtype, ngon):
+    """Create a square mesh from 4 points (2D)"""
+    if ngon == 3:
+        faces = np.array([[0, 1, 2], [0, 2, 3]], dtype=index_dtype)
+        return tf.Mesh(faces, points)
+    else:  # dynamic - create as one quad
+        offsets = np.array([0, 4], dtype=index_dtype)
+        data = np.array([0, 1, 2, 3], dtype=index_dtype)
+        faces = tf.OffsetBlockedArray(offsets, data)
+        return tf.Mesh(faces, points)
+
+
+def create_square_mesh_3d(points, index_dtype, ngon):
+    """Create a square mesh from 4 points (3D)"""
+    if ngon == 3:
+        faces = np.array([[0, 1, 2], [0, 2, 3]], dtype=index_dtype)
+        return tf.Mesh(faces, points)
+    else:  # dynamic - create as one quad
+        offsets = np.array([0, 4], dtype=index_dtype)
+        data = np.array([0, 1, 2, 3], dtype=index_dtype)
+        faces = tf.OffsetBlockedArray(offsets, data)
+        return tf.Mesh(faces, points)
 
 
 @pytest.mark.parametrize("mesh_index_dtype", INDEX_DTYPES)
@@ -29,20 +54,13 @@ NGONS = [3, 4]
 @pytest.mark.parametrize("ngon", NGONS)
 def test_mesh_neighbor_search_edge_mesh_2d_planar_mesh_and_line(mesh_index_dtype, edge_index_dtype, real_dtype, ngon):
     """Test 2D: planar mesh and a line"""
-    if ngon == 3:
-        # Triangle mesh: two triangles forming a square
-        points = np.array([[0, 0], [1, 0], [1, 1], [0, 1]], dtype=real_dtype)
-        faces = np.array([[0, 1, 2], [0, 2, 3]], dtype=mesh_index_dtype)
-    else:
-        # Quad mesh: single quad
-        points = np.array([[0, 0], [1, 0], [1, 1], [0, 1]], dtype=real_dtype)
-        faces = np.array([[0, 1, 2, 3]], dtype=mesh_index_dtype)
+    points = np.array([[0, 0], [1, 0], [1, 1], [0, 1]], dtype=real_dtype)
+    mesh = create_square_mesh_2d(points, mesh_index_dtype, ngon)
 
     # EdgeMesh: horizontal line from (0.5, 1.5) to (0.5, 2.5)
     edge_points = np.array([[0.5, 1.5], [0.5, 2.5]], dtype=real_dtype)
     edges = np.array([[0, 1]], dtype=edge_index_dtype)
 
-    mesh = tf.Mesh(faces, points)
     edge_mesh = tf.EdgeMesh(edges, edge_points)
 
     result = tf.neighbor_search(mesh, edge_mesh)
@@ -74,17 +92,12 @@ def test_mesh_neighbor_search_edge_mesh_3d_planar_mesh_and_line(real_dtype, ngon
     # Closest points: (0.5, 0.5, 0) on mesh, (0.5, 0.5, 1) on line
     # Distance = 1.0
 
-    if ngon == 3:
-        points = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], dtype=real_dtype)
-        faces = np.array([[0, 1, 2], [0, 2, 3]], dtype=np.int32)
-    else:
-        points = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], dtype=real_dtype)
-        faces = np.array([[0, 1, 2, 3]], dtype=np.int32)
+    points = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], dtype=real_dtype)
+    mesh = create_square_mesh_3d(points, np.int32, ngon)
 
     edge_points = np.array([[0.5, 0.5, 1], [0.5, 0.5, 2]], dtype=real_dtype)
     edges = np.array([[0, 1]], dtype=np.int32)
 
-    mesh = tf.Mesh(faces, points)
     edge_mesh = tf.EdgeMesh(edges, edge_points)
 
     result = tf.neighbor_search(mesh, edge_mesh)
@@ -198,9 +211,11 @@ def test_mesh_neighbor_search_edge_mesh_dimension_mismatch():
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
 def test_mesh_neighbor_search_edge_mesh_edge_above_mesh_corner(real_dtype):
     """Test edge positioned directly above a mesh corner - unambiguous result"""
-    # Quad mesh
+    # Dynamic mesh (quad)
     points = np.array([[0, 0], [2, 0], [2, 2], [0, 2]], dtype=real_dtype)
-    faces = np.array([[0, 1, 2, 3]], dtype=np.int32)
+    offsets = np.array([0, 4], dtype=np.int32)
+    data = np.array([0, 1, 2, 3], dtype=np.int32)
+    faces = tf.OffsetBlockedArray(offsets, data)
 
     # Edge from (1, 3) to (1, 4) - above the mesh
     edge_points = np.array([[1, 3], [1, 4]], dtype=real_dtype)

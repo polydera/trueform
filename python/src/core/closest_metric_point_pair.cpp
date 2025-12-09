@@ -1007,6 +1007,71 @@ auto register_core_closest_metric_point_pair(nanobind::module_ &m) -> void {
         return metric_point_pair_to_tuple<double, 3>(
             tf::closest_metric_point_pair(plane, line));
       });
+
+  // ==== Polygon to Plane (3D only) ====
+  m.def("closest_metric_point_pair_polygon_plane_float3d",
+        [](nanobind::ndarray<nanobind::numpy, const float> poly_data,
+           nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
+               plane_data) {
+          auto poly = make_polygon_from_array<3, float>(poly_data);
+          auto plane = make_plane_from_array<3, float>(plane_data);
+          return metric_point_pair_to_tuple<float, 3>(
+              tf::closest_metric_point_pair(poly, plane));
+        });
+
+  m.def("closest_metric_point_pair_polygon_plane_double3d",
+        [](nanobind::ndarray<nanobind::numpy, const double> poly_data,
+           nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<4>>
+               plane_data) {
+          auto poly = make_polygon_from_array<3, double>(poly_data);
+          auto plane = make_plane_from_array<3, double>(plane_data);
+          return metric_point_pair_to_tuple<double, 3>(
+              tf::closest_metric_point_pair(poly, plane));
+        });
+
+  // ==== Plane to Polygon (3D only) ====
+  m.def("closest_metric_point_pair_plane_polygon_float3d",
+        [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
+               plane_data,
+           nanobind::ndarray<nanobind::numpy, const float> poly_data) {
+          auto plane = make_plane_from_array<3, float>(plane_data);
+          auto poly = make_polygon_from_array<3, float>(poly_data);
+          return metric_point_pair_to_tuple<float, 3>(
+              tf::closest_metric_point_pair(plane, poly));
+        });
+
+  m.def("closest_metric_point_pair_plane_polygon_double3d",
+        [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<4>>
+               plane_data,
+           nanobind::ndarray<nanobind::numpy, const double> poly_data) {
+          auto plane = make_plane_from_array<3, double>(plane_data);
+          auto poly = make_polygon_from_array<3, double>(poly_data);
+          return metric_point_pair_to_tuple<double, 3>(
+              tf::closest_metric_point_pair(plane, poly));
+        });
+
+  // ==== Plane to Plane (3D only) ====
+  m.def("closest_metric_point_pair_plane_plane_float3d",
+        [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
+               plane0_data,
+           nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
+               plane1_data) {
+          auto plane0 = make_plane_from_array<3, float>(plane0_data);
+          auto plane1 = make_plane_from_array<3, float>(plane1_data);
+          return metric_point_pair_to_tuple<float, 3>(
+              tf::closest_metric_point_pair(plane0, plane1));
+        });
+
+  m.def("closest_metric_point_pair_plane_plane_double3d",
+        [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<4>>
+               plane0_data,
+           nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<4>>
+               plane1_data) {
+          auto plane0 = make_plane_from_array<3, double>(plane0_data);
+          auto plane1 = make_plane_from_array<3, double>(plane1_data);
+          return metric_point_pair_to_tuple<double, 3>(
+              tf::closest_metric_point_pair(plane0, plane1));
+        });
 }
 
 } // namespace tf::py

@@ -388,6 +388,116 @@ auto register_core_distance_float3d(nanobind::module_ &m) -> void {
           return tf::distance2(poly0, poly1);
         });
 
+  // ==== Segment to Plane (3D only) ====
+
+  m.def("distance_segment_plane_float3d",
+        [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
+               seg_data,
+           nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
+               plane_data) {
+          auto seg = make_segment_from_array<3, float>(seg_data);
+          auto plane = make_plane_from_array<3, float>(plane_data);
+          return tf::distance(seg, plane);
+        });
+
+  m.def("distance2_segment_plane_float3d",
+        [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
+               seg_data,
+           nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
+               plane_data) {
+          auto seg = make_segment_from_array<3, float>(seg_data);
+          auto plane = make_plane_from_array<3, float>(plane_data);
+          return tf::distance2(seg, plane);
+        });
+
+  // ==== Ray to Plane (3D only) ====
+
+  m.def("distance_ray_plane_float3d",
+        [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
+               ray_data,
+           nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
+               plane_data) {
+          auto ray = make_ray_from_array<3, float>(ray_data);
+          auto plane = make_plane_from_array<3, float>(plane_data);
+          return tf::distance(ray, plane);
+        });
+
+  m.def("distance2_ray_plane_float3d",
+        [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
+               ray_data,
+           nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
+               plane_data) {
+          auto ray = make_ray_from_array<3, float>(ray_data);
+          auto plane = make_plane_from_array<3, float>(plane_data);
+          return tf::distance2(ray, plane);
+        });
+
+  // ==== Line to Plane (3D only) ====
+
+  m.def("distance_line_plane_float3d",
+        [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
+               line_data,
+           nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
+               plane_data) {
+          auto line = make_line_from_array<3, float>(line_data);
+          auto plane = make_plane_from_array<3, float>(plane_data);
+          return tf::distance(line, plane);
+        });
+
+  m.def("distance2_line_plane_float3d",
+        [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
+               line_data,
+           nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
+               plane_data) {
+          auto line = make_line_from_array<3, float>(line_data);
+          auto plane = make_plane_from_array<3, float>(plane_data);
+          return tf::distance2(line, plane);
+        });
+
+  // ==== Polygon to Plane (3D only) ====
+
+  m.def("distance_polygon_plane_float3d",
+        [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<-1, 3>>
+               poly_data,
+           nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
+               plane_data) {
+          auto poly = make_polygon_from_array<3, float>(poly_data);
+          auto plane = make_plane_from_array<3, float>(plane_data);
+          return tf::distance(poly, plane);
+        });
+
+  m.def("distance2_polygon_plane_float3d",
+        [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<-1, 3>>
+               poly_data,
+           nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
+               plane_data) {
+          auto poly = make_polygon_from_array<3, float>(poly_data);
+          auto plane = make_plane_from_array<3, float>(plane_data);
+          return tf::distance2(poly, plane);
+        });
+
+  // ==== Plane to Plane (3D only) ====
+
+  m.def("distance_plane_plane_float3d",
+        [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
+               plane0_data,
+           nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
+               plane1_data) {
+          auto plane0 = make_plane_from_array<3, float>(plane0_data);
+          auto plane1 = make_plane_from_array<3, float>(plane1_data);
+          return tf::distance(plane0, plane1);
+        });
+
+  m.def("distance2_plane_plane_float3d",
+        [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
+               plane0_data,
+           nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
+               plane1_data) {
+          auto plane0 = make_plane_from_array<3, float>(plane0_data);
+          auto plane1 = make_plane_from_array<3, float>(plane1_data);
+          return tf::distance2(plane0, plane1);
+        });
+
 }
 
 } // namespace tf::py

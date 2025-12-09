@@ -230,89 +230,93 @@ auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
       },
       arg("indices"), arg("points"), arg("mask"));
 
-  // V=4 (Quads), Dims=2, int32, float32
+  // Dynamic, Dims=2, int32, float32
   m.def(
-      "reindexed_by_mask_indexed_4intfloat2d",
-      [](ndarray<numpy, const int, shape<-1, 4>> indices,
+      "reindexed_by_mask_indexed_dynintfloat2d",
+      [](const offset_blocked_array_wrapper<int, int> &indices,
          ndarray<numpy, const float, shape<-1, 2>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {
-        return reindexed_by_mask_impl<int, 4, float, 2>(indices, points, mask);
-      },
-      arg("indices"), arg("points"), arg("mask"));
-
-  // V=4 (Quads), Dims=2, int32, float64
-  m.def(
-      "reindexed_by_mask_indexed_4intdouble2d",
-      [](ndarray<numpy, const int, shape<-1, 4>> indices,
-         ndarray<numpy, const double, shape<-1, 2>> points,
-         ndarray<numpy, const bool, shape<-1>> mask) {
-        return reindexed_by_mask_impl<int, 4, double, 2>(indices, points,
-                                                          mask);
-      },
-      arg("indices"), arg("points"), arg("mask"));
-
-  // V=4 (Quads), Dims=2, int64, float32
-  m.def(
-      "reindexed_by_mask_indexed_4int64float2d",
-      [](ndarray<numpy, const int64_t, shape<-1, 4>> indices,
-         ndarray<numpy, const float, shape<-1, 2>> points,
-         ndarray<numpy, const bool, shape<-1>> mask) {
-        return reindexed_by_mask_impl<int64_t, 4, float, 2>(indices, points,
-                                                             mask);
-      },
-      arg("indices"), arg("points"), arg("mask"));
-
-  // V=4 (Quads), Dims=2, int64, float64
-  m.def(
-      "reindexed_by_mask_indexed_4int64double2d",
-      [](ndarray<numpy, const int64_t, shape<-1, 4>> indices,
-         ndarray<numpy, const double, shape<-1, 2>> points,
-         ndarray<numpy, const bool, shape<-1>> mask) {
-        return reindexed_by_mask_impl<int64_t, 4, double, 2>(indices, points,
+        return reindexed_by_mask_impl_dynamic<int, float, 2>(indices, points,
                                                               mask);
       },
       arg("indices"), arg("points"), arg("mask"));
 
-  // V=4 (Quads), Dims=3, int32, float32
+  // Dynamic, Dims=2, int32, float64
   m.def(
-      "reindexed_by_mask_indexed_4intfloat3d",
-      [](ndarray<numpy, const int, shape<-1, 4>> indices,
+      "reindexed_by_mask_indexed_dynintdouble2d",
+      [](const offset_blocked_array_wrapper<int, int> &indices,
+         ndarray<numpy, const double, shape<-1, 2>> points,
+         ndarray<numpy, const bool, shape<-1>> mask) {
+        return reindexed_by_mask_impl_dynamic<int, double, 2>(indices, points,
+                                                               mask);
+      },
+      arg("indices"), arg("points"), arg("mask"));
+
+  // Dynamic, Dims=2, int64, float32
+  m.def(
+      "reindexed_by_mask_indexed_dynint64float2d",
+      [](const offset_blocked_array_wrapper<int64_t, int64_t> &indices,
+         ndarray<numpy, const float, shape<-1, 2>> points,
+         ndarray<numpy, const bool, shape<-1>> mask) {
+        return reindexed_by_mask_impl_dynamic<int64_t, float, 2>(indices, points,
+                                                                  mask);
+      },
+      arg("indices"), arg("points"), arg("mask"));
+
+  // Dynamic, Dims=2, int64, float64
+  m.def(
+      "reindexed_by_mask_indexed_dynint64double2d",
+      [](const offset_blocked_array_wrapper<int64_t, int64_t> &indices,
+         ndarray<numpy, const double, shape<-1, 2>> points,
+         ndarray<numpy, const bool, shape<-1>> mask) {
+        return reindexed_by_mask_impl_dynamic<int64_t, double, 2>(indices,
+                                                                   points,
+                                                                   mask);
+      },
+      arg("indices"), arg("points"), arg("mask"));
+
+  // Dynamic, Dims=3, int32, float32
+  m.def(
+      "reindexed_by_mask_indexed_dynintfloat3d",
+      [](const offset_blocked_array_wrapper<int, int> &indices,
          ndarray<numpy, const float, shape<-1, 3>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {
-        return reindexed_by_mask_impl<int, 4, float, 3>(indices, points, mask);
-      },
-      arg("indices"), arg("points"), arg("mask"));
-
-  // V=4 (Quads), Dims=3, int32, float64
-  m.def(
-      "reindexed_by_mask_indexed_4intdouble3d",
-      [](ndarray<numpy, const int, shape<-1, 4>> indices,
-         ndarray<numpy, const double, shape<-1, 3>> points,
-         ndarray<numpy, const bool, shape<-1>> mask) {
-        return reindexed_by_mask_impl<int, 4, double, 3>(indices, points,
-                                                          mask);
-      },
-      arg("indices"), arg("points"), arg("mask"));
-
-  // V=4 (Quads), Dims=3, int64, float32
-  m.def(
-      "reindexed_by_mask_indexed_4int64float3d",
-      [](ndarray<numpy, const int64_t, shape<-1, 4>> indices,
-         ndarray<numpy, const float, shape<-1, 3>> points,
-         ndarray<numpy, const bool, shape<-1>> mask) {
-        return reindexed_by_mask_impl<int64_t, 4, float, 3>(indices, points,
-                                                             mask);
-      },
-      arg("indices"), arg("points"), arg("mask"));
-
-  // V=4 (Quads), Dims=3, int64, float64
-  m.def(
-      "reindexed_by_mask_indexed_4int64double3d",
-      [](ndarray<numpy, const int64_t, shape<-1, 4>> indices,
-         ndarray<numpy, const double, shape<-1, 3>> points,
-         ndarray<numpy, const bool, shape<-1>> mask) {
-        return reindexed_by_mask_impl<int64_t, 4, double, 3>(indices, points,
+        return reindexed_by_mask_impl_dynamic<int, float, 3>(indices, points,
                                                               mask);
+      },
+      arg("indices"), arg("points"), arg("mask"));
+
+  // Dynamic, Dims=3, int32, float64
+  m.def(
+      "reindexed_by_mask_indexed_dynintdouble3d",
+      [](const offset_blocked_array_wrapper<int, int> &indices,
+         ndarray<numpy, const double, shape<-1, 3>> points,
+         ndarray<numpy, const bool, shape<-1>> mask) {
+        return reindexed_by_mask_impl_dynamic<int, double, 3>(indices, points,
+                                                               mask);
+      },
+      arg("indices"), arg("points"), arg("mask"));
+
+  // Dynamic, Dims=3, int64, float32
+  m.def(
+      "reindexed_by_mask_indexed_dynint64float3d",
+      [](const offset_blocked_array_wrapper<int64_t, int64_t> &indices,
+         ndarray<numpy, const float, shape<-1, 3>> points,
+         ndarray<numpy, const bool, shape<-1>> mask) {
+        return reindexed_by_mask_impl_dynamic<int64_t, float, 3>(indices, points,
+                                                                  mask);
+      },
+      arg("indices"), arg("points"), arg("mask"));
+
+  // Dynamic, Dims=3, int64, float64
+  m.def(
+      "reindexed_by_mask_indexed_dynint64double3d",
+      [](const offset_blocked_array_wrapper<int64_t, int64_t> &indices,
+         ndarray<numpy, const double, shape<-1, 3>> points,
+         ndarray<numpy, const bool, shape<-1>> mask) {
+        return reindexed_by_mask_impl_dynamic<int64_t, double, 3>(indices,
+                                                                   points,
+                                                                   mask);
       },
       arg("indices"), arg("points"), arg("mask"));
 }

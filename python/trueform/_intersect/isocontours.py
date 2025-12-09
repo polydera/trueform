@@ -30,9 +30,9 @@ def isocontours(
     data : tuple or Mesh
         Input mesh data:
         - Tuple (faces, points) where:
-          * faces: shape (N, 3) with dtype int32 or int64
+          * faces: shape (N, 3) with dtype int32 or int64, or OffsetBlockedArray for dynamic
           * points: shape (M, 3) with dtype float32 or float64
-        - Mesh object (must be 3D triangular mesh)
+        - Mesh object (must be 3D triangular or dynamic mesh)
     scalar_field : np.ndarray
         Scalar values at mesh vertices, shape (num_points,)
         Must have same dtype as mesh (float32 or float64)
@@ -135,7 +135,8 @@ def isocontours(
     # Get variant suffix
     index_str = 'int' if mesh.faces.dtype == np.int32 else 'int64'
     real_str = 'float' if mesh.dtype == np.float32 else 'double'
-    suffix = f"{index_str}{real_str}{mesh.ngon}{mesh.dims}d"
+    ngon_str = 'dyn' if mesh.is_dynamic else str(mesh.ngon)
+    suffix = f"{index_str}{real_str}{ngon_str}{mesh.dims}d"
 
     # Dispatch to C++ based on threshold count
     if threshold_array.size == 1:

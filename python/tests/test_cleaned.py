@@ -16,8 +16,8 @@ import trueform as tf
 INDEX_DTYPES = [np.int32, np.int64]
 REAL_DTYPES = [np.float32, np.float64]
 DIMS = [2, 3]
-NGONS = [3, 4]
-SOUP_VERTICES = [2, 3, 4]  # segments, triangles, quads
+NGONS = [3]  # Only triangles for fixed-size (dynamic for variable-sized)
+SOUP_VERTICES = [2, 3]  # segments, triangles (no quads for soups)
 
 # ==============================================================================
 # Canonicalization helpers
@@ -238,16 +238,10 @@ def create_mesh_with_duplicates(dims, ngon, index_dtype, real_dtype):
             [1.5, 0.5],
         ], dtype=real_dtype)
 
-        if ngon == 3:
-            faces = np.array([
-                [0, 1, 2],
-                [3, 1, 4],  # uses duplicate point 3
-            ], dtype=index_dtype)
-        else:  # ngon == 4
-            faces = np.array([
-                [0, 1, 4, 2],
-                [3, 1, 2, 4],  # uses duplicate point 3
-            ], dtype=index_dtype)
+        faces = np.array([
+            [0, 1, 2],
+            [3, 1, 4],  # uses duplicate point 3
+        ], dtype=index_dtype)
     else:  # dims == 3
         points = np.array([
             [0.0, 0.0, 0.0],
@@ -257,16 +251,39 @@ def create_mesh_with_duplicates(dims, ngon, index_dtype, real_dtype):
             [1.5, 0.5, 0.5],
         ], dtype=real_dtype)
 
-        if ngon == 3:
-            faces = np.array([
-                [0, 1, 2],
-                [3, 1, 4],  # uses duplicate point 3
-            ], dtype=index_dtype)
-        else:  # ngon == 4
-            faces = np.array([
-                [0, 1, 4, 2],
-                [3, 1, 2, 4],  # uses duplicate point 3
-            ], dtype=index_dtype)
+        faces = np.array([
+            [0, 1, 2],
+            [3, 1, 4],  # uses duplicate point 3
+        ], dtype=index_dtype)
+
+    return faces, points
+
+
+def create_dynamic_mesh_with_duplicates(dims, index_dtype, real_dtype):
+    """Create dynamic mesh with duplicate vertices and mixed polygon sizes."""
+    if dims == 2:
+        points = np.array([
+            [0.0, 0.0],
+            [1.0, 0.0],
+            [0.5, 1.0],
+            [0.0, 0.0],  # duplicate of 0
+            [2.0, 0.0],
+            [1.5, 1.0],
+        ], dtype=real_dtype)
+    else:  # dims == 3
+        points = np.array([
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.5, 1.0, 0.0],
+            [0.0, 0.0, 0.0],  # duplicate of 0
+            [2.0, 0.0, 0.0],
+            [1.5, 1.0, 0.0],
+        ], dtype=real_dtype)
+
+    # Create dynamic faces: triangle + quad
+    offsets = np.array([0, 3, 7], dtype=index_dtype)
+    data = np.array([0, 1, 2, 3, 1, 4, 5], dtype=index_dtype)  # tri uses dup point 3
+    faces = tf.OffsetBlockedArray(offsets, data)
 
     return faces, points
 
@@ -314,7 +331,7 @@ def create_polygon_soup_with_duplicates(dims, V, dtype):
                 [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
                 [[1.0, 0.0, 0.0], [1.0, 1.0, 0.0]],  # shares vertex [1, 0, 0]
             ], dtype=dtype)
-    elif V == 3:  # Triangles
+    else:  # V == 3, Triangles
         if dims == 2:
             soup = np.array([
                 [[0.0, 0.0], [1.0, 0.0], [0.5, 1.0]],
@@ -324,17 +341,6 @@ def create_polygon_soup_with_duplicates(dims, V, dtype):
             soup = np.array([
                 [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.5, 1.0, 0.0]],
                 [[1.0, 0.0, 0.0], [2.0, 0.0, 0.0], [1.5, 1.0, 0.0]],  # shares vertex
-            ], dtype=dtype)
-    else:  # V == 4, Quads
-        if dims == 2:
-            soup = np.array([
-                [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
-                [[1.0, 0.0], [2.0, 0.0], [2.0, 1.0], [1.0, 1.0]],  # shares edge
-            ], dtype=dtype)
-        else:  # dims == 3
-            soup = np.array([
-                [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [0.0, 1.0, 0.0]],
-                [[1.0, 0.0, 0.0], [2.0, 0.0, 0.0], [2.0, 1.0, 0.0], [1.0, 1.0, 0.0]],
             ], dtype=dtype)
 
     return soup
@@ -592,7 +598,7 @@ def test_cleaned_mesh_with_index_map(dims, ngon, index_dtype, real_dtype):
 # ==============================================================================
 
 @pytest.mark.parametrize("dims", DIMS)
-@pytest.mark.parametrize("V", [2, 3, 4])  # edges, triangles, quads
+@pytest.mark.parametrize("V", [2, 3])  # edges, triangles (dynamic for variable-sized)
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
 def test_cleaned_tuple_input_exact_duplicates(dims, V, index_dtype, real_dtype):
@@ -630,7 +636,7 @@ def test_cleaned_tuple_input_exact_duplicates(dims, V, index_dtype, real_dtype):
 
 
 @pytest.mark.parametrize("dims", DIMS)
-@pytest.mark.parametrize("V", [2, 3, 4])
+@pytest.mark.parametrize("V", [2, 3])  # edges, triangles
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
 def test_cleaned_tuple_input_with_index_map(dims, V, index_dtype, real_dtype):
@@ -703,6 +709,63 @@ def test_cleaned_tuple_input_with_tolerance(dims, index_dtype, real_dtype):
     # All indices should be valid
     assert np.all(cleaned_indices >= 0)
     assert np.all(cleaned_indices < len(cleaned_points))
+
+
+# ==============================================================================
+# Dynamic Tuple Input Tests (Variable-sized Polygons)
+# ==============================================================================
+
+@pytest.mark.parametrize("dims", DIMS)
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_cleaned_dynamic_tuple_input(dims, index_dtype, real_dtype):
+    """Test cleaning dynamic (variable-sized) indexed geometry."""
+    faces, points = create_dynamic_mesh_with_duplicates(dims, index_dtype, real_dtype)
+
+    # Clean using tuple input with OffsetBlockedArray faces
+    (cleaned_faces, cleaned_points) = tf.cleaned((faces, points))
+
+    # Should return OffsetBlockedArray for faces
+    assert isinstance(cleaned_faces, tf.OffsetBlockedArray), \
+        f"Dynamic cleaned faces should be OffsetBlockedArray, got {type(cleaned_faces)}"
+
+    # Verify output types
+    assert cleaned_faces.dtype == index_dtype
+    assert cleaned_points.dtype == real_dtype
+    assert cleaned_points.shape[1] == dims
+
+    # Should have 5 unique points (removed 1 duplicate)
+    assert cleaned_points.shape[0] == 5
+
+    # Should have 2 faces
+    assert len(cleaned_faces) == 2
+
+    # All indices should be valid
+    assert np.all(cleaned_faces.data >= 0)
+    assert np.all(cleaned_faces.data < len(cleaned_points))
+
+
+@pytest.mark.parametrize("dims", DIMS)
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_cleaned_dynamic_tuple_input_with_index_map(dims, index_dtype, real_dtype):
+    """Test dynamic tuple input cleaning with index maps."""
+    faces, points = create_dynamic_mesh_with_duplicates(dims, index_dtype, real_dtype)
+    original_face_count = len(faces)
+    original_point_count = len(points)
+
+    # Clean with index maps
+    (cleaned_faces, cleaned_points), (f_faces, kept_face_ids), (f_points, kept_point_ids) = \
+        tf.cleaned((faces, points), return_index_map=True)
+
+    # Validate face map
+    validate_index_map(f_faces, kept_face_ids, original_face_count)
+
+    # Validate point map
+    validate_index_map(f_points, kept_point_ids, original_point_count)
+
+    # Should have 5 unique points
+    assert len(kept_point_ids) == 5
 
 
 # ==============================================================================
@@ -798,10 +861,19 @@ def test_cleaned_invalid_point_dims():
 
 def test_cleaned_invalid_soup_V():
     """Test error for invalid soup element vertices."""
-    soup = np.array([[[0, 0], [1, 0], [0.5, 1], [1, 1], [0.5, 0.5]]], dtype=np.float32)  # V=5
+    soup = np.array([[[0, 0], [1, 0], [0.5, 1], [1, 1]]], dtype=np.float32)  # V=4 (not supported)
 
-    with pytest.raises(ValueError, match="Soup elements must have 2.*or 4.*vertices"):
+    with pytest.raises(ValueError, match="Soup elements must have 2.*or 3.*vertices"):
         tf.cleaned(soup)
+
+
+def test_cleaned_invalid_tuple_V():
+    """Test error for invalid V in tuple input (V=4 not supported for fixed-size)."""
+    indices = np.array([[0, 1, 2, 3]], dtype=np.int32)  # V=4
+    points = np.array([[0, 0], [1, 0], [1, 1], [0, 1]], dtype=np.float32)
+
+    with pytest.raises(ValueError, match="Fixed-size indices must have 2.*or 3.*columns"):
+        tf.cleaned((indices, points))
 
 
 def test_cleaned_invalid_type():

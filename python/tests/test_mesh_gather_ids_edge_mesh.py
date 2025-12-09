@@ -20,33 +20,39 @@ import trueform as tf
 # Type combinations
 INDEX_DTYPES = [np.int32, np.int64]
 REAL_DTYPES = [np.float32, np.float64]
-NGONS = [3, 4]
+MESH_TYPES = ['triangle', 'dynamic']  # triangle (ngon=3) and dynamic
 
 
-def create_simple_mesh_2d(index_dtype, real_dtype, ngon):
-    """Create a simple 2D mesh (triangles or quads)"""
-    if ngon == 3:
-        # Two triangles forming a square from (0,0) to (1,1)
-        faces = np.array([[0, 1, 2], [0, 2, 3]], dtype=index_dtype)
-    else:
-        # Single quad from (0,0) to (1,1)
-        faces = np.array([[0, 1, 2, 3]], dtype=index_dtype)
-
+def create_simple_mesh_2d(index_dtype, real_dtype, mesh_type):
+    """Create a simple 2D mesh (triangles or dynamic)"""
+    # Same geometry for both - two triangles forming a square
     points = np.array([[0, 0], [1, 0], [1, 1], [0, 1]], dtype=real_dtype)
-    return tf.Mesh(faces, points)
 
-
-def create_simple_mesh_3d(index_dtype, real_dtype, ngon):
-    """Create a simple 3D mesh (triangles or quads in xy-plane)"""
-    if ngon == 3:
-        # Two triangles forming a square in xy-plane
+    if mesh_type == 'triangle':
         faces = np.array([[0, 1, 2], [0, 2, 3]], dtype=index_dtype)
+        return tf.Mesh(faces, points)
     else:
-        # Single quad in xy-plane
-        faces = np.array([[0, 1, 2, 3]], dtype=index_dtype)
+        # Dynamic mesh - same triangles wrapped in OffsetBlockedArray
+        offsets = np.array([0, 3, 6], dtype=index_dtype)
+        data = np.array([0, 1, 2, 0, 2, 3], dtype=index_dtype)
+        faces = tf.OffsetBlockedArray(offsets, data)
+        return tf.Mesh(faces, points)
 
+
+def create_simple_mesh_3d(index_dtype, real_dtype, mesh_type):
+    """Create a simple 3D mesh (triangles or dynamic in xy-plane)"""
+    # Same geometry for both - two triangles forming a square in xy-plane
     points = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], dtype=real_dtype)
-    return tf.Mesh(faces, points)
+
+    if mesh_type == 'triangle':
+        faces = np.array([[0, 1, 2], [0, 2, 3]], dtype=index_dtype)
+        return tf.Mesh(faces, points)
+    else:
+        # Dynamic mesh - same triangles wrapped in OffsetBlockedArray
+        offsets = np.array([0, 3, 6], dtype=index_dtype)
+        data = np.array([0, 1, 2, 0, 2, 3], dtype=index_dtype)
+        faces = tf.OffsetBlockedArray(offsets, data)
+        return tf.Mesh(faces, points)
 
 
 # ==============================================================================
@@ -56,10 +62,10 @@ def create_simple_mesh_3d(index_dtype, real_dtype, ngon):
 @pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
 @pytest.mark.parametrize("index_dtype1", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon", NGONS)
-def test_mesh_gather_ids_edge_mesh_2d_intersects_hit(index_dtype0, index_dtype1, real_dtype, ngon):
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_mesh_gather_ids_edge_mesh_2d_intersects_hit(index_dtype0, index_dtype1, real_dtype, mesh_type):
     """Test faces that intersect edges"""
-    mesh = create_simple_mesh_2d(index_dtype0, real_dtype, ngon)
+    mesh = create_simple_mesh_2d(index_dtype0, real_dtype, mesh_type)
 
     # Edge crossing through the mesh
     edges = np.array([[0, 1]], dtype=index_dtype1)
@@ -76,10 +82,10 @@ def test_mesh_gather_ids_edge_mesh_2d_intersects_hit(index_dtype0, index_dtype1,
 @pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
 @pytest.mark.parametrize("index_dtype1", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon", NGONS)
-def test_mesh_gather_ids_edge_mesh_2d_intersects_miss(index_dtype0, index_dtype1, real_dtype, ngon):
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_mesh_gather_ids_edge_mesh_2d_intersects_miss(index_dtype0, index_dtype1, real_dtype, mesh_type):
     """Test mesh and edge mesh that don't intersect"""
-    mesh = create_simple_mesh_2d(index_dtype0, real_dtype, ngon)
+    mesh = create_simple_mesh_2d(index_dtype0, real_dtype, mesh_type)
 
     # Edge far from mesh
     edges = np.array([[0, 1]], dtype=index_dtype1)
@@ -95,10 +101,10 @@ def test_mesh_gather_ids_edge_mesh_2d_intersects_miss(index_dtype0, index_dtype1
 @pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
 @pytest.mark.parametrize("index_dtype1", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon", NGONS)
-def test_mesh_gather_ids_edge_mesh_2d_within_distance_hit(index_dtype0, index_dtype1, real_dtype, ngon):
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_mesh_gather_ids_edge_mesh_2d_within_distance_hit(index_dtype0, index_dtype1, real_dtype, mesh_type):
     """Test edges within distance of faces"""
-    mesh = create_simple_mesh_2d(index_dtype0, real_dtype, ngon)
+    mesh = create_simple_mesh_2d(index_dtype0, real_dtype, mesh_type)
 
     # Edge parallel to and near the mesh
     edges = np.array([[0, 1]], dtype=index_dtype1)
@@ -115,10 +121,10 @@ def test_mesh_gather_ids_edge_mesh_2d_within_distance_hit(index_dtype0, index_dt
 @pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
 @pytest.mark.parametrize("index_dtype1", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon", NGONS)
-def test_mesh_gather_ids_edge_mesh_2d_within_distance_miss(index_dtype0, index_dtype1, real_dtype, ngon):
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_mesh_gather_ids_edge_mesh_2d_within_distance_miss(index_dtype0, index_dtype1, real_dtype, mesh_type):
     """Test edges outside distance threshold"""
-    mesh = create_simple_mesh_2d(index_dtype0, real_dtype, ngon)
+    mesh = create_simple_mesh_2d(index_dtype0, real_dtype, mesh_type)
 
     # Edge far from mesh
     edges = np.array([[0, 1]], dtype=index_dtype1)
@@ -137,10 +143,10 @@ def test_mesh_gather_ids_edge_mesh_2d_within_distance_miss(index_dtype0, index_d
 @pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
 @pytest.mark.parametrize("index_dtype1", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon", NGONS)
-def test_mesh_gather_ids_edge_mesh_3d_intersects_hit(index_dtype0, index_dtype1, real_dtype, ngon):
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_mesh_gather_ids_edge_mesh_3d_intersects_hit(index_dtype0, index_dtype1, real_dtype, mesh_type):
     """Test 3D faces intersecting edges"""
-    mesh = create_simple_mesh_3d(index_dtype0, real_dtype, ngon)
+    mesh = create_simple_mesh_3d(index_dtype0, real_dtype, mesh_type)
 
     # Edge perpendicular to mesh, crossing through it
     edges = np.array([[0, 1]], dtype=index_dtype1)
@@ -156,10 +162,10 @@ def test_mesh_gather_ids_edge_mesh_3d_intersects_hit(index_dtype0, index_dtype1,
 @pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
 @pytest.mark.parametrize("index_dtype1", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon", NGONS)
-def test_mesh_gather_ids_edge_mesh_3d_intersects_miss(index_dtype0, index_dtype1, real_dtype, ngon):
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_mesh_gather_ids_edge_mesh_3d_intersects_miss(index_dtype0, index_dtype1, real_dtype, mesh_type):
     """Test 3D mesh and edge mesh that don't intersect"""
-    mesh = create_simple_mesh_3d(index_dtype0, real_dtype, ngon)
+    mesh = create_simple_mesh_3d(index_dtype0, real_dtype, mesh_type)
 
     # Edge parallel to mesh but above it
     edges = np.array([[0, 1]], dtype=index_dtype1)
@@ -174,10 +180,10 @@ def test_mesh_gather_ids_edge_mesh_3d_intersects_miss(index_dtype0, index_dtype1
 @pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
 @pytest.mark.parametrize("index_dtype1", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon", NGONS)
-def test_mesh_gather_ids_edge_mesh_3d_within_distance(index_dtype0, index_dtype1, real_dtype, ngon):
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_mesh_gather_ids_edge_mesh_3d_within_distance(index_dtype0, index_dtype1, real_dtype, mesh_type):
     """Test 3D edges within distance of faces"""
-    mesh = create_simple_mesh_3d(index_dtype0, real_dtype, ngon)
+    mesh = create_simple_mesh_3d(index_dtype0, real_dtype, mesh_type)
 
     # Edge parallel to mesh, slightly above
     edges = np.array([[0, 1]], dtype=index_dtype1)
@@ -197,7 +203,7 @@ def test_mesh_gather_ids_edge_mesh_3d_within_distance(index_dtype0, index_dtype1
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
 def test_mesh_gather_ids_edge_mesh_symmetry(real_dtype):
     """Test that swapping arguments swaps column order"""
-    mesh = create_simple_mesh_2d(np.int32, real_dtype, ngon=3)
+    mesh = create_simple_mesh_2d(np.int32, real_dtype, 'triangle')
 
     edges = np.array([[0, 1]], dtype=np.int32)
     points = np.array([[0.5, -0.5], [0.5, 1.5]], dtype=real_dtype)
@@ -223,10 +229,10 @@ def test_mesh_gather_ids_edge_mesh_symmetry(real_dtype):
 @pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
 @pytest.mark.parametrize("index_dtype1", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon", NGONS)
-def test_mesh_gather_ids_edge_mesh_with_transformation(index_dtype0, index_dtype1, real_dtype, ngon):
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_mesh_gather_ids_edge_mesh_with_transformation(index_dtype0, index_dtype1, real_dtype, mesh_type):
     """Test gather_ids with transformation"""
-    mesh = create_simple_mesh_2d(index_dtype0, real_dtype, ngon)
+    mesh = create_simple_mesh_2d(index_dtype0, real_dtype, mesh_type)
 
     edges = np.array([[0, 1]], dtype=index_dtype1)
     points = np.array([[0.5, -0.5], [0.5, 1.5]], dtype=real_dtype)
@@ -255,7 +261,7 @@ def test_mesh_gather_ids_edge_mesh_with_transformation(index_dtype0, index_dtype
 
 def test_mesh_gather_ids_edge_mesh_dimension_mismatch():
     """Test that dimension mismatch raises error"""
-    mesh_2d = create_simple_mesh_2d(np.int32, np.float32, ngon=3)
+    mesh_2d = create_simple_mesh_2d(np.int32, np.float32, 'triangle')
 
     edges_3d = np.array([[0, 1]], dtype=np.int32)
     points_3d = np.array([[0, 0, 0], [1, 0, 0]], dtype=np.float32)
@@ -298,10 +304,10 @@ def test_mesh_gather_ids_edge_mesh_multiple_faces_edges(real_dtype):
 
 
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon", NGONS)
-def test_mesh_gather_ids_edge_mesh_return_dtype(real_dtype, ngon):
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_mesh_gather_ids_edge_mesh_return_dtype(real_dtype, mesh_type):
     """Test that return dtype matches mesh index dtype"""
-    mesh_int32 = create_simple_mesh_2d(np.int32, real_dtype, ngon)
+    mesh_int32 = create_simple_mesh_2d(np.int32, real_dtype, mesh_type)
 
     edges = np.array([[0, 1]], dtype=np.int32)
     points = np.array([[0.5, -0.5], [0.5, 1.5]], dtype=real_dtype)
@@ -311,7 +317,7 @@ def test_mesh_gather_ids_edge_mesh_return_dtype(real_dtype, ngon):
     assert result.dtype == np.int32
 
     # Test with int64
-    mesh_int64 = create_simple_mesh_2d(np.int64, real_dtype, ngon)
+    mesh_int64 = create_simple_mesh_2d(np.int64, real_dtype, mesh_type)
     result_64 = tf.gather_intersecting_ids(mesh_int64, edge_mesh)
     assert result_64.dtype == np.int64
 
@@ -319,7 +325,7 @@ def test_mesh_gather_ids_edge_mesh_return_dtype(real_dtype, ngon):
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
 def test_mesh_gather_ids_edge_mesh_edge_on_boundary(real_dtype):
     """Test edge lying on face boundary"""
-    mesh = create_simple_mesh_2d(np.int32, real_dtype, ngon=3)
+    mesh = create_simple_mesh_2d(np.int32, real_dtype, 'triangle')
 
     # Edge along the bottom edge of the mesh
     edges = np.array([[0, 1]], dtype=np.int32)

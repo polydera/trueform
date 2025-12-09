@@ -37,11 +37,11 @@ auto register_topology_compute_cell_membership(nanobind::module_ &m) -> void {
       },
       arg("cells"), arg("n_ids"));
 
-  // int32, ngon=4 (quads)
+  // int32, dynamic
   m.def(
-      "compute_cell_membership_int_4",
-      [](ndarray<numpy, int, shape<-1, 4>> cells, int n_ids) {
-        return compute_cell_membership<int, 4>(cells, n_ids);
+      "compute_cell_membership_int_dyn",
+      [](const offset_blocked_array_wrapper<int, int> &cells, int n_ids) {
+        return compute_cell_membership_dynamic<int>(cells, n_ids);
       },
       arg("cells"), arg("n_ids"));
 
@@ -61,11 +61,12 @@ auto register_topology_compute_cell_membership(nanobind::module_ &m) -> void {
       },
       arg("cells"), arg("n_ids"));
 
-  // int64, ngon=4 (quads)
+  // int64, dynamic
   m.def(
-      "compute_cell_membership_int64_4",
-      [](ndarray<numpy, int64_t, shape<-1, 4>> cells, int64_t n_ids) {
-        return compute_cell_membership<int64_t, 4>(cells, n_ids);
+      "compute_cell_membership_int64_dyn",
+      [](const offset_blocked_array_wrapper<int64_t, int64_t> &cells,
+         int64_t n_ids) {
+        return compute_cell_membership_dynamic<int64_t>(cells, n_ids);
       },
       arg("cells"), arg("n_ids"));
 }

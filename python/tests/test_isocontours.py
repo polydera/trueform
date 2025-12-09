@@ -15,6 +15,24 @@ import numpy as np
 import trueform as tf
 
 
+# Type combinations for isocontours
+INDEX_DTYPES = [np.int32, np.int64]
+REAL_DTYPES = [np.float32, np.float64]
+MESH_TYPES = ['triangle', 'dynamic']
+
+
+def create_mesh_data(faces_array, points_array, mesh_type):
+    """Helper to create mesh with triangle or dynamic faces"""
+    if mesh_type == 'dynamic':
+        index_dtype = faces_array.dtype
+        offsets = np.arange(0, len(faces_array) * 3 + 1, 3, dtype=index_dtype)
+        data = faces_array.ravel()
+        faces = tf.OffsetBlockedArray(offsets, data)
+    else:
+        faces = faces_array
+    return tf.Mesh(faces, points_array)
+
+
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
 def test_single_threshold(dtype):
     """Test isocontours with single threshold value"""
@@ -217,13 +235,14 @@ def test_invalid_scalar_field_shape():
     assert "Expected 1D array" in str(excinfo.value)
 
 
-@pytest.mark.parametrize("index_dtype", [np.int32, np.int64])
-@pytest.mark.parametrize("real_dtype", [np.float32, np.float64])
-def test_different_dtypes(index_dtype, real_dtype):
-    """Test isocontours with different mesh dtypes"""
-    faces = np.array([[0, 1, 2]], dtype=index_dtype)
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_different_dtypes(index_dtype, real_dtype, mesh_type):
+    """Test isocontours with different mesh dtypes and mesh types"""
+    faces_array = np.array([[0, 1, 2]], dtype=index_dtype)
     points = np.array([[0, 0, 0], [1, 0, 0], [0.5, 1, 0]], dtype=real_dtype)
-    mesh = tf.Mesh(faces, points)
+    mesh = create_mesh_data(faces_array, points, mesh_type)
 
     scalar_field = np.array([0.0, 1.0, 0.5], dtype=real_dtype)
 
@@ -300,6 +319,69 @@ def test_tuple_input():
     for i, (path_mesh, path_tuple) in enumerate(zip(paths_mesh, paths_tuple)):
         assert np.array_equal(path_mesh, path_tuple) or np.array_equal(path_mesh, path_tuple[::-1]), \
             f"Path {i} differs between Mesh and tuple input"
+
+
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_dynamic_mesh_isocontours(mesh_type):
+    """Test isocontours with dynamic mesh"""
+    faces_array = np.array([
+        [0, 1, 2], [0, 2, 3], [0, 3, 4], [0, 4, 1],
+        [5, 2, 1], [5, 3, 2], [5, 4, 3], [5, 1, 4]
+    ], dtype=np.int32)
+    points = np.array([
+        [0.0, 0.0, -1.0],  # Bottom center
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [-1.0, 0.0, 0.0],
+        [0.0, -1.0, 0.0],
+        [0.0, 0.0, 1.0]   # Top center
+    ], dtype=np.float32)
+    mesh = create_mesh_data(faces_array, points, mesh_type)
+
+    # Create scalar field using distance to horizontal plane
+    plane = tf.Plane(np.array([0, 0, 1, 0], dtype=np.float32))
+    distances = tf.distance_field(mesh.points, plane)
+
+    # Extract isocontour at z=0
+    paths, curve_points = tf.isocontours(mesh, distances, 0.0)
+
+    # Verify we got valid output
+    assert isinstance(paths, tf.OffsetBlockedArray)
+    assert isinstance(curve_points, np.ndarray)
+    assert curve_points.dtype == np.float32
+
+    # If there are curves, verify they're near the plane
+    if len(paths) > 0 and len(curve_points) > 0:
+        for path_ids in paths:
+            if len(path_ids) > 0:
+                pts = curve_points[path_ids]
+                # Points should be near z=0 (allowing some tolerance)
+                assert np.all(np.abs(pts[:, 2]) < 0.1), "Isocontour points should be near z=0"
+
+
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_dynamic_multiple_thresholds(mesh_type):
+    """Test isocontours with multiple thresholds on dynamic mesh"""
+    faces_array = np.array([[0, 1, 2], [0, 2, 3]], dtype=np.int32)
+    points = np.array([
+        [0.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 1.0, 0.0],
+        [0.0, 1.0, 0.0]
+    ], dtype=np.float32)
+    mesh = create_mesh_data(faces_array, points, mesh_type)
+
+    # Create scalar field
+    plane = tf.Plane(np.array([0, 0, 1, 0], dtype=np.float32))
+    scalar_field = tf.distance_field(mesh.points, plane)
+
+    # Extract multiple isocontours
+    thresholds = np.array([0.0, 0.5, 1.0], dtype=np.float32)
+    paths, points_out = tf.isocontours(mesh, scalar_field, thresholds)
+
+    # Verify return types
+    assert isinstance(paths, tf.OffsetBlockedArray), "paths should be OffsetBlockedArray"
+    assert isinstance(points_out, np.ndarray), "points should be numpy array"
 
 
 if __name__ == "__main__":

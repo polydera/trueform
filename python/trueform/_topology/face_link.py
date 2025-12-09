@@ -8,12 +8,13 @@ https://github.com/xlabmedical/trueform
 """
 
 import numpy as np
+from typing import Union
 from .. import _trueform
 from .._core import OffsetBlockedArray
 
 
 def face_link(
-    faces: np.ndarray,
+    faces: Union[np.ndarray, OffsetBlockedArray],
     cell_membership: OffsetBlockedArray
 ) -> OffsetBlockedArray:
     """
@@ -23,10 +24,11 @@ def face_link(
 
     Parameters
     ----------
-    faces : np.ndarray
-        Face connectivity array of shape (N, V) where N is number of faces and
-        V is vertices per face (3 for triangles, 4 for quads).
-        Must have dtype int32 or int64.
+    faces : np.ndarray or OffsetBlockedArray
+        Face connectivity:
+        - np.ndarray with shape (N, V) where N is number of faces and V is
+          vertices per face (3 for triangles). Must have dtype int32 or int64.
+        - OffsetBlockedArray for dynamic meshes with variable polygon sizes.
 
     cell_membership : OffsetBlockedArray
         Cell membership structure mapping vertices to faces. Can be computed
@@ -41,10 +43,9 @@ def face_link(
     Raises
     ------
     TypeError
-        If faces is not np.ndarray, has wrong dtype, or cell_membership is not
-        OffsetBlockedArray
+        If faces has wrong type/dtype, or cell_membership is not OffsetBlockedArray
     ValueError
-        If faces has wrong shape or V is not 3 or 4
+        If faces has wrong shape or V is not 3 (for numpy arrays)
 
     Examples
     --------
@@ -63,10 +64,28 @@ def face_link(
     >>> fl = tf.face_link(faces, membership)
     """
 
-    # ===== VALIDATE faces =====
+    # ===== VALIDATE cell_membership =====
+    if not isinstance(cell_membership, OffsetBlockedArray):
+        raise TypeError(
+            f"cell_membership must be OffsetBlockedArray, "
+            f"got {type(cell_membership).__name__}"
+        )
+
+    # ===== Handle OffsetBlockedArray (dynamic) =====
+    if isinstance(faces, OffsetBlockedArray):
+        dtype_str = 'int' if faces.dtype == np.int32 else 'int64'
+        suffix = f"{dtype_str}_dyn"
+
+        func_name = f"compute_face_link_{suffix}"
+        cpp_func = getattr(_trueform.topology, func_name)
+
+        wrapper = cpp_func(faces._wrapper, cell_membership._wrapper)
+        return OffsetBlockedArray(wrapper.offsets_array(), wrapper.data_array())
+
+    # ===== VALIDATE numpy array faces =====
     if not isinstance(faces, np.ndarray):
         raise TypeError(
-            f"faces must be np.ndarray, got {type(faces).__name__}"
+            f"faces must be np.ndarray or OffsetBlockedArray, got {type(faces).__name__}"
         )
 
     if faces.ndim != 2:
@@ -82,19 +101,12 @@ def face_link(
             f"Convert with faces.astype(np.int32) or faces.astype(np.int64)"
         )
 
-    # Validate ngon (V) - only triangles and quads
+    # Validate ngon (V) - only triangles for numpy arrays
     ngon = faces.shape[1]
-    if ngon not in (3, 4):
+    if ngon != 3:
         raise ValueError(
-            f"faces must have 3 or 4 vertices per face, got {ngon}. "
-            f"Face link is only defined for triangles and quads."
-        )
-
-    # ===== VALIDATE cell_membership =====
-    if not isinstance(cell_membership, OffsetBlockedArray):
-        raise TypeError(
-            f"cell_membership must be OffsetBlockedArray, "
-            f"got {type(cell_membership).__name__}"
+            f"faces must have 3 vertices per face, got {ngon}. "
+            f"For variable-size polygons, use OffsetBlockedArray."
         )
 
     # Check dtype matches

@@ -22,7 +22,8 @@ def non_manifold_edges(mesh: Mesh) -> np.ndarray:
     Parameters
     ----------
     mesh : Mesh
-        The mesh to check for non-manifold edges.
+        The mesh to check for non-manifold edges. Supports triangular
+        meshes (ngon=3) and dynamic meshes with variable polygon sizes.
 
     Returns
     -------
@@ -65,12 +66,11 @@ def non_manifold_edges(mesh: Mesh) -> np.ndarray:
             f"mesh must be Mesh, got {type(mesh).__name__}"
         )
 
-    # Validate ngon - only triangles and quads
-    ngon = mesh.ngon
-    if ngon not in (3, 4):
+    # Validate ngon - only triangles or dynamic
+    if not mesh.is_dynamic and mesh.ngon != 3:
         raise ValueError(
-            f"mesh must have triangular or quad faces, got {ngon} vertices per face. "
-            f"Non-manifold detection is only defined for triangles and quads."
+            f"mesh must have triangular faces or be dynamic, got {mesh.ngon} vertices per face. "
+            f"non_manifold_edges only supports triangles and dynamic meshes."
         )
 
     # Get faces and face_membership from mesh
@@ -79,10 +79,15 @@ def non_manifold_edges(mesh: Mesh) -> np.ndarray:
 
     # Build suffix and dispatch
     dtype_str = 'int' if faces.dtype == np.int32 else 'int64'
-    suffix = f"{dtype_str}_{ngon}"
+    ngon_str = 'dyn' if mesh.is_dynamic else '3'
+    suffix = f"{dtype_str}_{ngon_str}"
 
     func_name = f"non_manifold_edges_{suffix}"
     cpp_func = getattr(_trueform.topology, func_name)
 
     # Call C++ function - returns ndarray
-    return cpp_func(faces, fm)
+    # For dynamic, pass the wrapper directly; for fixed ngon, pass numpy array
+    if mesh.is_dynamic:
+        return cpp_func(mesh._wrapper.faces_array(), fm)
+    else:
+        return cpp_func(faces, fm)

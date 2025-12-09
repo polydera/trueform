@@ -21,7 +21,7 @@ import trueform as tf
 # Type combinations for self-intersection operations (3D only)
 INDEX_DTYPES = [np.int32, np.int64]
 REAL_DTYPES = [np.float32, np.float64]
-NGONS = [3, 4]  # triangles and quads
+MESH_TYPES = ['triangle', 'dynamic']  # triangles and dynamic (variable-size)
 
 
 # ==============================================================================
@@ -45,11 +45,11 @@ def create_tetrahedron_triangles(index_dtype, real_dtype):
     return tf.Mesh(faces, points)
 
 
-def create_single_quad(index_dtype, real_dtype):
-    """Create a single quad (no self-intersections)"""
-    faces = np.array([
-        [0, 1, 2, 3]
-    ], dtype=index_dtype)
+def create_single_dynamic(index_dtype, real_dtype):
+    """Create a single dynamic polygon (no self-intersections)"""
+    offsets = np.array([0, 4], dtype=index_dtype)
+    data = np.array([0, 1, 2, 3], dtype=index_dtype)
+    faces = tf.OffsetBlockedArray(offsets, data)
     points = np.array([
         [0.0, 0.0, 0.0],
         [1.0, 0.0, 0.0],
@@ -78,12 +78,11 @@ def create_self_intersecting_triangles(index_dtype, real_dtype):
     return tf.Mesh(faces, points)
 
 
-def create_self_intersecting_quads(index_dtype, real_dtype):
-    """Create two quads that cross through each other (has self-intersection)"""
-    faces = np.array([
-        [0, 1, 2, 3],  # Quad in XY plane
-        [4, 5, 6, 7],  # Quad that passes through the first
-    ], dtype=index_dtype)
+def create_self_intersecting_dynamic(index_dtype, real_dtype):
+    """Create two dynamic polygons that cross through each other (has self-intersection)"""
+    offsets = np.array([0, 4, 8], dtype=index_dtype)
+    data = np.array([0, 1, 2, 3, 4, 5, 6, 7], dtype=index_dtype)
+    faces = tf.OffsetBlockedArray(offsets, data)
     points = np.array([
         # First quad in XY plane
         [0.0, 0.0, 0.0],
@@ -99,20 +98,20 @@ def create_self_intersecting_quads(index_dtype, real_dtype):
     return tf.Mesh(faces, points)
 
 
-def create_non_self_intersecting_mesh(index_dtype, real_dtype, ngon):
+def create_non_self_intersecting_mesh(index_dtype, real_dtype, mesh_type):
     """Create a mesh with no self-intersections"""
-    if ngon == 3:
+    if mesh_type == 'triangle':
         return create_tetrahedron_triangles(index_dtype, real_dtype)
     else:
-        return create_single_quad(index_dtype, real_dtype)
+        return create_single_dynamic(index_dtype, real_dtype)
 
 
-def create_self_intersecting_mesh(index_dtype, real_dtype, ngon):
+def create_self_intersecting_mesh(index_dtype, real_dtype, mesh_type):
     """Create a mesh with self-intersections"""
-    if ngon == 3:
+    if mesh_type == 'triangle':
         return create_self_intersecting_triangles(index_dtype, real_dtype)
     else:
-        return create_self_intersecting_quads(index_dtype, real_dtype)
+        return create_self_intersecting_dynamic(index_dtype, real_dtype)
 
 
 # ==============================================================================
@@ -121,10 +120,10 @@ def create_self_intersecting_mesh(index_dtype, real_dtype, ngon):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon", NGONS)
-def test_self_intersection_curves_no_intersection(index_dtype, real_dtype, ngon):
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_self_intersection_curves_no_intersection(index_dtype, real_dtype, mesh_type):
     """Test self_intersection_curves for mesh with no self-intersections"""
-    mesh = create_non_self_intersecting_mesh(index_dtype, real_dtype, ngon)
+    mesh = create_non_self_intersecting_mesh(index_dtype, real_dtype, mesh_type)
 
     paths, points = tf.self_intersection_curves(mesh)
 
@@ -139,10 +138,10 @@ def test_self_intersection_curves_no_intersection(index_dtype, real_dtype, ngon)
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("ngon", NGONS)
-def test_self_intersection_curves_with_intersection(index_dtype, real_dtype, ngon):
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_self_intersection_curves_with_intersection(index_dtype, real_dtype, mesh_type):
     """Test self_intersection_curves for mesh with self-intersections"""
-    mesh = create_self_intersecting_mesh(index_dtype, real_dtype, ngon)
+    mesh = create_self_intersecting_mesh(index_dtype, real_dtype, mesh_type)
 
     paths, points = tf.self_intersection_curves(mesh)
 
@@ -353,207 +352,6 @@ def test_self_intersection_matches_intersection_curves(index_dtype, real_dtype):
             rtol=1e-5, atol=1e-7,
             err_msg=f"Curve {i} points don't match"
         )
-
-
-# ==============================================================================
-# embedded_self_intersection_curves basic functionality tests
-# ==============================================================================
-
-@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
-@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_embedded_no_intersection(index_dtype, real_dtype):
-    """Test embedded_self_intersection_curves for mesh with no self-intersections"""
-    mesh = create_tetrahedron_triangles(index_dtype, real_dtype)
-
-    result_faces, result_points = tf.embedded_self_intersection_curves(mesh)
-
-    # Verify return types
-    assert isinstance(result_faces, np.ndarray), "result_faces should be numpy array"
-    assert isinstance(result_points, np.ndarray), "result_points should be numpy array"
-
-    # Verify dtypes preserved
-    assert result_faces.dtype == index_dtype, f"result_faces dtype should be {index_dtype}"
-    assert result_points.dtype == real_dtype, f"result_points dtype should be {real_dtype}"
-
-    # Verify shapes
-    assert result_faces.ndim == 2
-    assert result_faces.shape[1] == 3, "Should be triangles"
-    assert result_points.ndim == 2
-    assert result_points.shape[1] == 3
-
-    # Result should have same number of faces (no splitting needed)
-    assert len(result_faces) == len(mesh.faces), "Should have same number of faces"
-
-
-@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
-@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_embedded_with_intersection(index_dtype, real_dtype):
-    """Test embedded_self_intersection_curves for mesh with self-intersections"""
-    mesh = create_self_intersecting_triangles(index_dtype, real_dtype)
-
-    result_faces, result_points = tf.embedded_self_intersection_curves(mesh)
-
-    # Verify return types
-    assert isinstance(result_faces, np.ndarray), "result_faces should be numpy array"
-    assert isinstance(result_points, np.ndarray), "result_points should be numpy array"
-
-    # Verify dtypes preserved
-    assert result_faces.dtype == index_dtype, f"result_faces dtype should be {index_dtype}"
-    assert result_points.dtype == real_dtype, f"result_points dtype should be {real_dtype}"
-
-    # Verify shapes
-    assert result_faces.ndim == 2
-    assert result_points.ndim == 2
-    assert result_points.shape[1] == 3
-
-    # Result should have more or equal faces (faces were split along curves)
-    assert len(result_faces) >= len(mesh.faces), "Should have at least as many faces"
-
-    # Result should have more or equal points (intersection points added)
-    assert len(result_points) >= len(mesh.points), "Should have at least as many points"
-
-
-@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
-@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_embedded_with_curves(index_dtype, real_dtype):
-    """Test embedded_self_intersection_curves with return_curves=True"""
-    mesh = create_self_intersecting_triangles(index_dtype, real_dtype)
-
-    (result_faces, result_points), (paths, curve_points) = tf.embedded_self_intersection_curves(
-        mesh, return_curves=True
-    )
-
-    # Verify mesh return types
-    assert isinstance(result_faces, np.ndarray), "result_faces should be numpy array"
-    assert isinstance(result_points, np.ndarray), "result_points should be numpy array"
-
-    # Verify dtypes preserved
-    assert result_faces.dtype == index_dtype
-    assert result_points.dtype == real_dtype
-
-    # Verify curves return types
-    assert isinstance(paths, tf.OffsetBlockedArray), "paths should be OffsetBlockedArray"
-    assert isinstance(curve_points, np.ndarray), "curve_points should be numpy array"
-
-    # Should find curves
-    assert len(paths) >= 1, "Should find at least one self-intersection curve"
-    assert len(curve_points) >= 2, "Should have at least 2 curve points"
-
-    # Verify curve points shape and dtype
-    assert curve_points.ndim == 2
-    assert curve_points.shape[1] == 3
-    assert curve_points.dtype == real_dtype
-
-    # Verify path indices are valid
-    for path_ids in paths:
-        assert np.all(path_ids >= 0), "Path indices should be non-negative"
-        assert np.all(path_ids < len(curve_points)), f"Path indices should be < {len(curve_points)}"
-
-
-@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_embedded_curves_iteration(real_dtype):
-    """Test iterating over curves when return_curves=True"""
-    mesh = create_self_intersecting_triangles(np.int32, real_dtype)
-
-    (result_faces, result_points), (paths, curve_points) = tf.embedded_self_intersection_curves(
-        mesh, return_curves=True
-    )
-
-    # Iterate over paths
-    curve_count = 0
-    for path_ids in paths:
-        curve_count += 1
-        # Get points for this curve
-        pts = curve_points[path_ids]
-        # Should be a valid numpy array
-        assert isinstance(pts, np.ndarray)
-        assert pts.ndim == 2
-        assert pts.shape[1] == 3
-        assert pts.dtype == real_dtype
-
-    # Should have iterated over all curves
-    assert curve_count == len(paths)
-
-
-@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_embedded_valid_indices(real_dtype):
-    """Test that all path indices are valid when return_curves=True"""
-    mesh = create_self_intersecting_triangles(np.int32, real_dtype)
-
-    (result_faces, result_points), (paths, curve_points) = tf.embedded_self_intersection_curves(
-        mesh, return_curves=True
-    )
-
-    num_points = len(curve_points)
-
-    for i, path_ids in enumerate(paths):
-        # All indices should be non-negative
-        assert np.all(path_ids >= 0), \
-            f"Path {i} contains negative indices: {path_ids[path_ids < 0]}"
-
-        # All indices should be less than number of points
-        assert np.all(path_ids < num_points), \
-            f"Path {i} contains out-of-bounds indices (>= {num_points})"
-
-
-@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
-@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_embedded_no_intersection_with_curves(index_dtype, real_dtype):
-    """Test embedded_self_intersection_curves with return_curves=True on mesh without self-intersections"""
-    mesh = create_tetrahedron_triangles(index_dtype, real_dtype)
-
-    (result_faces, result_points), (paths, curve_points) = tf.embedded_self_intersection_curves(
-        mesh, return_curves=True
-    )
-
-    # Verify return types
-    assert isinstance(result_faces, np.ndarray)
-    assert isinstance(result_points, np.ndarray)
-    assert isinstance(paths, tf.OffsetBlockedArray)
-    assert isinstance(curve_points, np.ndarray)
-
-    # No curves expected
-    assert len(paths) == 0, "Should find no self-intersection curves"
-
-    # Result should have same number of faces
-    assert len(result_faces) == len(mesh.faces)
-
-
-# ==============================================================================
-# embedded_self_intersection_curves error handling tests
-# ==============================================================================
-
-def test_embedded_not_3d():
-    """Test error when mesh is not 3D"""
-    faces = np.array([[0, 1, 2]], dtype=np.int32)
-    points = np.array([[0, 0], [1, 0], [0.5, 1]], dtype=np.float32)
-    mesh_2d = tf.Mesh(faces, points)
-
-    with pytest.raises(ValueError, match="3D"):
-        tf.embedded_self_intersection_curves(mesh_2d)
-
-
-def test_embedded_invalid_type():
-    """Test error when input is not a Mesh object"""
-    with pytest.raises(TypeError, match="must be a Mesh"):
-        tf.embedded_self_intersection_curves("not a mesh")
-
-
-def test_embedded_tuple_rejected():
-    """Test that tuple input is rejected (topology required)"""
-    faces = np.array([[0, 1, 2]], dtype=np.int32)
-    points = np.array([[0, 0, 0], [1, 0, 0], [0.5, 1, 0]], dtype=np.float32)
-
-    with pytest.raises(TypeError, match="must be a Mesh"):
-        tf.embedded_self_intersection_curves((faces, points))
-
-
-def test_embedded_rejects_quads():
-    """Test that embedded_self_intersection_curves rejects quad meshes"""
-    mesh = create_single_quad(np.int32, np.float32)
-
-    with pytest.raises(ValueError, match="triangle meshes"):
-        tf.embedded_self_intersection_curves(mesh)
 
 
 # ==============================================================================

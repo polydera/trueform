@@ -51,7 +51,7 @@ def random_rotation_matrix(dtype=np.float32):
     return R
 
 
-def numpy_to_polydata(points: np.ndarray, triangles: np.ndarray) -> vtk.vtkPolyData:
+def numpy_to_polydata(points: np.ndarray, faces) -> vtk.vtkPolyData:
     """
     Convert numpy arrays to VTK PolyData (VTK 9+ format)
 
@@ -59,8 +59,8 @@ def numpy_to_polydata(points: np.ndarray, triangles: np.ndarray) -> vtk.vtkPolyD
     ----------
     points : np.ndarray
         (m, 3) float array of point coordinates
-    triangles : np.ndarray
-        (n, 3) int array of vertex indices (0-based)
+    faces : np.ndarray or tf.OffsetBlockedArray
+        (n, 3) int array of vertex indices (0-based), or OffsetBlockedArray for dynamic meshes
 
     Returns
     -------
@@ -77,14 +77,17 @@ def numpy_to_polydata(points: np.ndarray, triangles: np.ndarray) -> vtk.vtkPolyD
         )
     )
 
-    # CellArray (triangles via offsets + connectivity)
-    n_tris = triangles.shape[0]
-
-    # Flat connectivity: [i0, i1, i2, j0, j1, j2, ...]
-    connectivity = triangles.astype(np.int64).ravel()
-
-    # Offsets: start index of each cell in connectivity, plus final total
-    offsets = np.arange(0, 3 * n_tris + 1, 3, dtype=np.int64)
+    # CellArray - handle both numpy arrays and OffsetBlockedArray
+    if isinstance(faces, tf.OffsetBlockedArray):
+        # Dynamic mesh - use offsets and data directly
+        connectivity = faces.data.astype(np.int64).ravel()
+        offsets = faces.offsets.astype(np.int64).ravel()
+    else:
+        # Fixed-size faces (numpy array)
+        n_faces = faces.shape[0]
+        connectivity = faces.astype(np.int64).ravel()
+        face_size = faces.shape[1]
+        offsets = np.arange(0, face_size * n_faces + 1, face_size, dtype=np.int64)
 
     vtk_conn = numpy_support.numpy_to_vtkIdTypeArray(connectivity, deep=True)
     vtk_offs = numpy_support.numpy_to_vtkIdTypeArray(offsets, deep=True)
@@ -204,7 +207,7 @@ def create_tube_filter(radius: float = 0.05, number_of_sides: int = 20) -> vtk.v
     return tubes
 
 
-def load_mesh(filename, position, target_radius=10.0, random_rotation=True):
+def load_mesh(filename, position, target_radius=10.0, random_rotation=True, dynamic=False):
     """
     Load mesh from file, center, scale, position, and optionally apply random rotation
 
@@ -218,6 +221,8 @@ def load_mesh(filename, position, target_radius=10.0, random_rotation=True):
         Target bounding sphere radius for scaling
     random_rotation : bool
         Whether to apply random rotation
+    dynamic : bool
+        If True, use OffsetBlockedArray for faces (dynamic mesh)
 
     Returns
     -------
@@ -226,6 +231,10 @@ def load_mesh(filename, position, target_radius=10.0, random_rotation=True):
     """
     # Read STL with trueform
     faces, points = tf.read_stl(filename)
+
+    # Optionally convert to dynamic mesh
+    if dynamic:
+        faces = tf.as_offset_blocked(faces)
 
     # Compute centering and scaling transform
     center_scale_transform = compute_centering_and_scaling_transform(points, target_radius=target_radius)

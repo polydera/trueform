@@ -25,6 +25,22 @@ auto register_embedded_self_intersection_curves_int3float3d(nanobind::module_ &m
           return embedded_self_intersection_curves(mesh, tf::return_curves);
         },
         nanobind::arg("mesh"));
+
+  // int32, dynamic, float32, 3D
+
+  // Without curves
+  m.def("embedded_self_intersection_curves_mesh_intdynfloat3d",
+        [](mesh_wrapper<int, float, dynamic_size, 3> &mesh) {
+          return embedded_self_intersection_curves(mesh);
+        },
+        nanobind::arg("mesh"));
+
+  // With curves
+  m.def("embedded_self_intersection_curves_curves_mesh_intdynfloat3d",
+        [](mesh_wrapper<int, float, dynamic_size, 3> &mesh) {
+          return embedded_self_intersection_curves(mesh, tf::return_curves);
+        },
+        nanobind::arg("mesh"));
 }
 
 } // namespace tf::py

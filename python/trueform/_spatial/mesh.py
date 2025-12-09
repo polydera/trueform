@@ -8,26 +8,56 @@ https://github.com/xlabmedical/trueform
 """
 
 import numpy as np
-from typing import Union
+from typing import Optional
 from .._core import OffsetBlockedArray
 from .._trueform.spatial import (
+    # Fixed-size meshes (triangles): int32
     MeshWrapperIntFloat32D,
     MeshWrapperIntFloat33D,
-    MeshWrapperIntFloat42D,
-    MeshWrapperIntFloat43D,
     MeshWrapperIntDouble32D,
     MeshWrapperIntDouble33D,
-    MeshWrapperIntDouble42D,
-    MeshWrapperIntDouble43D,
+    # Fixed-size meshes (triangles): int64
     MeshWrapperInt64Float32D,
     MeshWrapperInt64Float33D,
-    MeshWrapperInt64Float42D,
-    MeshWrapperInt64Float43D,
     MeshWrapperInt64Double32D,
     MeshWrapperInt64Double33D,
-    MeshWrapperInt64Double42D,
-    MeshWrapperInt64Double43D,
+    # Dynamic-size meshes: int32
+    MeshWrapperIntFloatDynamic2D,
+    MeshWrapperIntFloatDynamic3D,
+    MeshWrapperIntDoubleDynamic2D,
+    MeshWrapperIntDoubleDynamic3D,
+    # Dynamic-size meshes: int64
+    MeshWrapperInt64FloatDynamic2D,
+    MeshWrapperInt64FloatDynamic3D,
+    MeshWrapperInt64DoubleDynamic2D,
+    MeshWrapperInt64DoubleDynamic3D,
 )
+
+
+# Lookup tables for wrapper classes
+# Only triangles (ngon=3) supported for fixed-size meshes
+# Use OffsetBlockedArray for variable-sized polygons (dynamic)
+_FIXED_SIZE_WRAPPERS = {
+    ("Int", "Float", 3, 2): MeshWrapperIntFloat32D,
+    ("Int", "Float", 3, 3): MeshWrapperIntFloat33D,
+    ("Int", "Double", 3, 2): MeshWrapperIntDouble32D,
+    ("Int", "Double", 3, 3): MeshWrapperIntDouble33D,
+    ("Int64", "Float", 3, 2): MeshWrapperInt64Float32D,
+    ("Int64", "Float", 3, 3): MeshWrapperInt64Float33D,
+    ("Int64", "Double", 3, 2): MeshWrapperInt64Double32D,
+    ("Int64", "Double", 3, 3): MeshWrapperInt64Double33D,
+}
+
+_DYNAMIC_SIZE_WRAPPERS = {
+    ("Int", "Float", 2): MeshWrapperIntFloatDynamic2D,
+    ("Int", "Float", 3): MeshWrapperIntFloatDynamic3D,
+    ("Int", "Double", 2): MeshWrapperIntDoubleDynamic2D,
+    ("Int", "Double", 3): MeshWrapperIntDoubleDynamic3D,
+    ("Int64", "Float", 2): MeshWrapperInt64FloatDynamic2D,
+    ("Int64", "Float", 3): MeshWrapperInt64FloatDynamic3D,
+    ("Int64", "Double", 2): MeshWrapperInt64DoubleDynamic2D,
+    ("Int64", "Double", 3): MeshWrapperInt64DoubleDynamic3D,
+}
 
 
 class Mesh:
@@ -39,9 +69,11 @@ class Mesh:
 
     Parameters
     ----------
-    faces : np.ndarray
-        Array of shape (N, M) where N is number of faces and M is 3 (triangles) or 4 (quads).
+    faces : np.ndarray or OffsetBlockedArray
+        For triangle meshes: Array of shape (N, 3) where N is number of faces.
         Supports int32 and int64 dtypes.
+        For dynamic-size faces (n-gons): OffsetBlockedArray containing variable-
+        sized polygons.
     points : np.ndarray
         Array of shape (P, D) where P is number of points and D is dimensionality (2 or 3).
         Supports float32 and float64 dtypes.
@@ -58,32 +90,34 @@ class Mesh:
     4
     >>> mesh.dims
     3
+
+    >>> # Dynamic-size mesh (n-gons)
+    >>> offsets = np.array([0, 3, 7, 10], dtype=np.int32)  # 3, 4, 3 vertices
+    >>> data = np.array([0, 1, 2, 0, 1, 2, 3, 0, 2, 3], dtype=np.int32)
+    >>> faces = tf.OffsetBlockedArray(offsets, data)
+    >>> mesh = tf.Mesh(faces, points)
     """
 
     def __init__(
-        self, faces: np.ndarray, points: np.ndarray, transformation: np.ndarray = None
+        self,
+        faces: "np.ndarray | OffsetBlockedArray",
+        points: np.ndarray,
+        transformation: np.ndarray = None
     ):
         """
         Create a mesh from face and point NumPy arrays.
 
         Parameters
         ----------
-        faces : np.ndarray
-            Array of shape (N, M) where M is 3 or 4, with dtype int32 or int64
+        faces : np.ndarray or OffsetBlockedArray
+            For triangles: Array of shape (N, 3) with dtype int32 or int64
+            For dynamic-size: OffsetBlockedArray with variable-sized polygons
         points : np.ndarray
             Array of shape (P, D) where D is 2 or 3, with dtype float32 or float64
         transformation : np.ndarray, optional
             Transformation matrix (3x3 for 2D, 4x4 for 3D). If provided, applies
             transformation to points during spatial queries.
         """
-        # Validate faces
-        if not isinstance(faces, np.ndarray):
-            raise TypeError(
-                f"Expected numpy array for faces, got {type(faces)}")
-        if faces.ndim != 2:
-            raise ValueError(
-                f"Expected 2D array for faces, got shape {faces.shape}")
-
         # Validate points
         if not isinstance(points, np.ndarray):
             raise TypeError(
@@ -92,24 +126,10 @@ class Mesh:
             raise ValueError(
                 f"Expected 2D array for points, got shape {points.shape}")
 
-        # Check face dtype
-        if faces.dtype not in [np.int32, np.int64]:
-            raise TypeError(
-                f"Face indices must be int32 or int64, got {faces.dtype}. "
-                f"Convert with faces.astype(np.int32) or faces.astype(np.int64)"
-            )
-
         # Check point dtype
         if points.dtype not in [np.float32, np.float64]:
             # Try to convert to float32
             points = points.astype(np.float32)
-
-        # Check Ngon (triangles or quads)
-        ngon = faces.shape[1]
-        if ngon not in [3, 4]:
-            raise ValueError(
-                f"Faces must have 3 (triangles) or 4 (quads) vertices, got {ngon}"
-            )
 
         # Check dimensionality
         dims = points.shape[1]
@@ -119,64 +139,136 @@ class Mesh:
             )
 
         # Ensure C-contiguous layout for zero-copy views
-        if not faces.flags["C_CONTIGUOUS"]:
-            faces = np.ascontiguousarray(faces)
         if not points.flags["C_CONTIGUOUS"]:
             points = np.ascontiguousarray(points)
 
-        # Store arrays (Python owns this data)
-        self._faces = faces
+        # Store points (Python owns this data)
         self._points = points
 
-        # Deduce wrapper type from dtypes and shapes
-        index_type = "Int" if faces.dtype == np.int32 else "Int64"
+        # Determine index and real types
         real_type = "Float" if points.dtype == np.float32 else "Double"
-        wrapper_name = f"MeshWrapper{index_type}{real_type}{ngon}{dims}D"
 
-        # Look up the wrapper class
-        wrapper_class = globals().get(wrapper_name)
-        if wrapper_class is None:
-            raise ValueError(
-                f"Unsupported combination: faces dtype={faces.dtype}, "
-                f"points dtype={points.dtype}, ngon={ngon}, dims={dims}"
+        # Check if dynamic-size (OffsetBlockedArray) or fixed-size (ndarray)
+        if isinstance(faces, OffsetBlockedArray):
+            # Dynamic-size mesh
+            self._is_dynamic = True
+            self._faces = faces
+
+            # Determine index type from OffsetBlockedArray
+            index_dtype = faces.data.dtype
+            if index_dtype not in [np.int32, np.int64]:
+                raise TypeError(
+                    f"Face indices must be int32 or int64, got {index_dtype}"
+                )
+            index_type = "Int" if index_dtype == np.int32 else "Int64"
+
+            # Look up dynamic wrapper
+            key = (index_type, real_type, dims)
+            wrapper_class = _DYNAMIC_SIZE_WRAPPERS.get(key)
+            if wrapper_class is None:
+                raise ValueError(
+                    f"Unsupported combination: faces dtype={index_dtype}, "
+                    f"points dtype={points.dtype}, dims={dims}"
+                )
+
+            # Create wrapper with OffsetBlockedArray's internal wrapper
+            self._wrapper = wrapper_class(faces._wrapper, points)
+
+        elif isinstance(faces, np.ndarray):
+            # Fixed-size mesh
+            self._is_dynamic = False
+
+            if faces.ndim != 2:
+                raise ValueError(
+                    f"Expected 2D array for faces, got shape {faces.shape}")
+
+            # Check face dtype
+            if faces.dtype not in [np.int32, np.int64]:
+                raise TypeError(
+                    f"Face indices must be int32 or int64, got {faces.dtype}. "
+                    f"Convert with faces.astype(np.int32) or faces.astype(np.int64)"
+                )
+
+            # Check Ngon (only triangles supported for fixed-size)
+            ngon = faces.shape[1]
+            if ngon != 3:
+                raise ValueError(
+                    f"Fixed-size faces must have 3 vertices (triangles), got {ngon}. "
+                    f"For variable-sized polygons, use OffsetBlockedArray."
+                )
+
+            # Ensure C-contiguous layout
+            if not faces.flags["C_CONTIGUOUS"]:
+                faces = np.ascontiguousarray(faces)
+
+            # Store faces
+            self._faces = faces
+
+            # Determine index type
+            index_type = "Int" if faces.dtype == np.int32 else "Int64"
+
+            # Look up fixed-size wrapper
+            key = (index_type, real_type, ngon, dims)
+            wrapper_class = _FIXED_SIZE_WRAPPERS.get(key)
+            if wrapper_class is None:
+                raise ValueError(
+                    f"Unsupported combination: faces dtype={faces.dtype}, "
+                    f"points dtype={points.dtype}, ngon={ngon}, dims={dims}"
+                )
+
+            # Create wrapper
+            self._wrapper = wrapper_class(faces, points)
+
+        else:
+            raise TypeError(
+                f"Expected numpy array or OffsetBlockedArray for faces, got {type(faces)}"
             )
-
-        # Create wrapper
-        self._wrapper = wrapper_class(faces, points)
 
         # Set transformation if provided
         if transformation is not None:
             self.transformation = transformation
 
     @property
-    def faces(self) -> np.ndarray:
-        """Get the underlying faces array."""
+    def faces(self) -> "np.ndarray | OffsetBlockedArray":
+        """Get the underlying faces array or OffsetBlockedArray."""
         return self._faces
 
     @faces.setter
-    def faces(self, value: np.ndarray) -> None:
+    def faces(self, value: "np.ndarray | OffsetBlockedArray") -> None:
         """
-        Set the underlying faces array.
+        Set the underlying faces.
 
         Automatically marks the mesh as modified.
 
         Parameters
         ----------
-        value : np.ndarray
-            New faces array. Must have same dtype and ngon as original.
+        value : np.ndarray or OffsetBlockedArray
+            New faces. Must match original type (fixed vs dynamic).
         """
-        if value.dtype != self._faces.dtype:
-            raise TypeError(
-                f"Faces dtype ({value.dtype}) must match original dtype ({self._faces.dtype})"
-            )
-        if value.shape[1] != self._faces.shape[1]:
-            raise ValueError(
-                f"Faces ngon ({value.shape[1]}) must match original ({self._faces.shape[1]})"
-            )
-        if not value.flags['C_CONTIGUOUS']:
-            value = np.ascontiguousarray(value)
-        self._faces = value
-        self._wrapper.set_faces_array(value)
+        if self._is_dynamic:
+            if not isinstance(value, OffsetBlockedArray):
+                raise TypeError(
+                    f"Faces must be OffsetBlockedArray for dynamic mesh, got {type(value)}"
+                )
+            self._faces = value
+            self._wrapper.set_faces_array(value._wrapper)
+        else:
+            if not isinstance(value, np.ndarray):
+                raise TypeError(
+                    f"Faces must be numpy array for fixed-size mesh, got {type(value)}"
+                )
+            if value.dtype != self._faces.dtype:
+                raise TypeError(
+                    f"Faces dtype ({value.dtype}) must match original dtype ({self._faces.dtype})"
+                )
+            if value.shape[1] != self._faces.shape[1]:
+                raise ValueError(
+                    f"Faces ngon ({value.shape[1]}) must match original ({self._faces.shape[1]})"
+                )
+            if not value.flags['C_CONTIGUOUS']:
+                value = np.ascontiguousarray(value)
+            self._faces = value
+            self._wrapper.set_faces_array(value)
 
     @property
     def points(self) -> np.ndarray:
@@ -216,7 +308,7 @@ class Mesh:
     @property
     def number_of_faces(self) -> int:
         """Get number of faces in the mesh."""
-        return len(self._faces)
+        return self._wrapper.number_of_faces()
 
     @property
     def dims(self) -> int:
@@ -224,9 +316,20 @@ class Mesh:
         return self._wrapper.dims()
 
     @property
-    def ngon(self) -> int:
-        """Get number of vertices per face (3 for triangles, 4 for quads)."""
+    def ngon(self) -> Optional[int]:
+        """
+        Get number of vertices per face.
+
+        Returns 3 for triangle meshes, None for dynamic-size meshes.
+        """
+        if self._is_dynamic:
+            return None
         return self._faces.shape[1]
+
+    @property
+    def is_dynamic(self) -> bool:
+        """Return True if mesh has variable-sized faces."""
+        return self._is_dynamic
 
     @property
     def dtype(self) -> np.dtype:
@@ -284,26 +387,44 @@ class Mesh:
         """
         Build the spatial index tree.
 
-        Call this after modifying the points or faces arrays to update the spatial index.
+        Builds the tree if not already built or if data has been modified.
         """
-        self._wrapper.rebuild_tree()
+        self._wrapper.build_tree()
 
     def build_face_membership(self) -> None:
         """
         Build the face membership structure.
 
-        Call this after modifying the faces array to update the face membership.
+        Builds the structure if not already built or if data has been modified.
         """
-        self._wrapper.rebuild_face_membership()
+        self._wrapper.build_face_membership()
 
     def build_manifold_edge_link(self) -> None:
         """
         Build the manifold edge link structure.
 
-        Call this after modifying the faces array to update the manifold edge link.
-        Requires face membership to be built first (calls build_face_membership if needed).
+        Builds the structure if not already built or if data has been modified.
+        Also builds face_membership if needed.
         """
-        self._wrapper.rebuild_manifold_edge_link()
+        self._wrapper.build_manifold_edge_link()
+
+    def build_face_link(self) -> None:
+        """
+        Build the face link structure.
+
+        Builds the structure if not already built or if data has been modified.
+        Also builds face_membership if needed.
+        """
+        self._wrapper.build_face_link()
+
+    def build_vertex_link(self) -> None:
+        """
+        Build the vertex link structure.
+
+        Builds the structure if not already built or if data has been modified.
+        Also builds face_membership if needed.
+        """
+        self._wrapper.build_vertex_link()
 
     @property
     def face_membership(self):
@@ -323,24 +444,19 @@ class Mesh:
         return OffsetBlockedArray(wrapper.offsets_array(), wrapper.data_array())
 
     @face_membership.setter
-    def face_membership(self, value) -> None:
+    def face_membership(self, value: OffsetBlockedArray) -> None:
         """
         Set the face membership structure.
 
         Parameters
         ----------
-        value : OffsetBlockedArray or None
-            Face membership structure. Set to None to clear.
+        value : OffsetBlockedArray
+            Face membership structure.
         """
-        if value is None:
-            self._wrapper.clear_face_membership()
-            return
-
-        # Pass the wrapper to C++
         self._wrapper.set_face_membership(value._wrapper)
 
     @property
-    def manifold_edge_link(self):
+    def manifold_edge_link(self) -> "np.ndarray | OffsetBlockedArray":
         """
         Get the manifold edge link array.
 
@@ -355,49 +471,41 @@ class Mesh:
 
         Returns
         -------
-        np.ndarray
-            Manifold edge link array, shape (num_faces, ngon) with dtype matching faces.
+        np.ndarray or OffsetBlockedArray
+            For fixed-size: array of shape (num_faces, ngon) with dtype matching faces.
+            For dynamic-size: OffsetBlockedArray.
             Entry [i, j] is the face adjacent to face i across edge j.
         """
-        return self._wrapper.manifold_edge_link_array()
+        if self._is_dynamic:
+            wrapper = self._wrapper.manifold_edge_link_array()
+            return OffsetBlockedArray(wrapper.offsets_array(), wrapper.data_array())
+        else:
+            return self._wrapper.manifold_edge_link_array()
 
     @manifold_edge_link.setter
-    def manifold_edge_link(self, arr: np.ndarray) -> None:
+    def manifold_edge_link(self, value: "np.ndarray | OffsetBlockedArray") -> None:
         """
         Set the manifold edge link array.
 
         Parameters
         ----------
-        arr : np.ndarray or None
-            Manifold edge link array, shape (num_faces, ngon). Set to None to clear.
+        value : np.ndarray or OffsetBlockedArray
+            Manifold edge link. Type must match mesh type (fixed vs dynamic).
         """
-        if arr is None:
-            self._wrapper.clear_manifold_edge_link()
-            return
-
-        # Ensure C-contiguous
-        if not arr.flags["C_CONTIGUOUS"]:
-            arr = np.ascontiguousarray(arr)
-
-        self._wrapper.set_manifold_edge_link(arr)
-
-    def build_face_link(self) -> None:
-        """
-        Build the face link structure.
-
-        Call this after modifying the faces array to update the face link.
-        Requires face membership to be built first (calls build_face_membership if needed).
-        """
-        self._wrapper.rebuild_face_link()
-
-    def build_vertex_link(self) -> None:
-        """
-        Build the vertex link structure.
-
-        Call this after modifying the faces array to update the vertex link.
-        Requires face membership to be built first (calls build_face_membership if needed).
-        """
-        self._wrapper.rebuild_vertex_link()
+        if self._is_dynamic:
+            if not isinstance(value, OffsetBlockedArray):
+                raise TypeError(
+                    f"manifold_edge_link must be OffsetBlockedArray for dynamic mesh"
+                )
+            self._wrapper.set_manifold_edge_link(value._wrapper)
+        else:
+            if not isinstance(value, np.ndarray):
+                raise TypeError(
+                    f"manifold_edge_link must be numpy array for fixed-size mesh"
+                )
+            if not value.flags["C_CONTIGUOUS"]:
+                value = np.ascontiguousarray(value)
+            self._wrapper.set_manifold_edge_link(value)
 
     @property
     def face_link(self):
@@ -417,20 +525,15 @@ class Mesh:
         return OffsetBlockedArray(wrapper.offsets_array(), wrapper.data_array())
 
     @face_link.setter
-    def face_link(self, value) -> None:
+    def face_link(self, value: OffsetBlockedArray) -> None:
         """
         Set the face link structure.
 
         Parameters
         ----------
-        value : OffsetBlockedArray or None
-            Face link structure. Set to None to clear.
+        value : OffsetBlockedArray
+            Face link structure.
         """
-        if value is None:
-            self._wrapper.clear_face_link()
-            return
-
-        # Pass the wrapper to C++
         self._wrapper.set_face_link(value._wrapper)
 
     @property
@@ -451,20 +554,15 @@ class Mesh:
         return OffsetBlockedArray(wrapper.offsets_array(), wrapper.data_array())
 
     @vertex_link.setter
-    def vertex_link(self, value) -> None:
+    def vertex_link(self, value: OffsetBlockedArray) -> None:
         """
         Set the vertex link structure.
 
         Parameters
         ----------
-        value : OffsetBlockedArray or None
-            Vertex link structure. Set to None to clear.
+        value : OffsetBlockedArray
+            Vertex link structure.
         """
-        if value is None:
-            self._wrapper.clear_vertex_link()
-            return
-
-        # Pass the wrapper to C++
         self._wrapper.set_vertex_link(value._wrapper)
 
     def shared_view(self) -> "Mesh":
@@ -492,9 +590,13 @@ class Mesh:
         new_mesh = object.__new__(Mesh)
         new_mesh._faces = self._faces
         new_mesh._points = self._points
+        new_mesh._is_dynamic = self._is_dynamic
         new_mesh._wrapper = self._wrapper.shared_view()
         return new_mesh
 
     def __repr__(self) -> str:
         """String representation of the mesh."""
-        return f"Mesh({self.number_of_points} points, {self.number_of_faces} faces, {self.ngon}-gon, {self.dims}D, dtype={self.dtype})"
+        if self._is_dynamic:
+            return f"Mesh({self.number_of_points} points, {self.number_of_faces} faces, dynamic, {self.dims}D, dtype={self.dtype})"
+        else:
+            return f"Mesh({self.number_of_points} points, {self.number_of_faces} faces, {self.ngon}-gon, {self.dims}D, dtype={self.dtype})"

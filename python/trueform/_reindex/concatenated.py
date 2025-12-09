@@ -10,11 +10,12 @@ https://github.com/xlabmedical/trueform
 from typing import List, Tuple, Union
 import numpy as np
 from .._spatial import Mesh, EdgeMesh
+from .._core import OffsetBlockedArray
 
 
 def concatenated(
     data: Union[List[Tuple[np.ndarray, np.ndarray]], List[Mesh], List[EdgeMesh]]
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> Union[Tuple[np.ndarray, np.ndarray], Tuple[OffsetBlockedArray, np.ndarray]]:
     """
     Concatenate multiple meshes or edge meshes into a single geometry.
 
@@ -25,27 +26,30 @@ def concatenated(
     ----------
     data : List[Tuple[np.ndarray, np.ndarray]] | List[Mesh] | List[EdgeMesh]
         List of geometries to concatenate. Can be:
-        - List of (indices, points) tuples
-        - List of Mesh objects
+        - List of (indices, points) tuples (indices can be ndarray or OffsetBlockedArray)
+        - List of Mesh objects (including dynamic meshes)
         - List of EdgeMesh objects
 
-        All geometries must have:
-        - Same V (vertices per primitive): all triangles, all quads, or all edges
-        - Same dims (point dimensions): all 2D or all 3D
-
+        All geometries must have same dims (point dimensions): all 2D or all 3D.
         Dtypes can be mixed - numpy will handle type promotion automatically.
+
+        Mixing is allowed:
+        - Fixed-size with different V (e.g., triangles + quads) → dynamic output
+        - Fixed-size with dynamic → dynamic output
 
     Returns
     -------
-    Tuple[np.ndarray, np.ndarray]
+    Tuple[np.ndarray, np.ndarray] or Tuple[OffsetBlockedArray, np.ndarray]
         (concatenated_indices, concatenated_points)
-        - concatenated_indices: Combined indices with offsets applied
+        - concatenated_indices: Combined indices with offsets applied.
+          Returns OffsetBlockedArray if any input is dynamic or if V values differ.
+          Returns np.ndarray only if all inputs are fixed-size with same V.
         - concatenated_points: Combined point coordinates
 
     Raises
     ------
     ValueError
-        If input list is empty, or if V or dims don't match across all inputs
+        If input list is empty, or if dims don't match
     TypeError
         If input types are mixed (e.g., Mesh and EdgeMesh together)
 
@@ -97,33 +101,67 @@ def concatenated(
             raise TypeError("All items must be (indices, points) tuples when first item is tuple")
         data_list = data
 
-    # Validate all have same V (vertices per primitive)
+    # Validate dims and analyze index types
     first_indices, first_points = data_list[0]
-    V = first_indices.shape[1]
     dims = first_points.shape[1]
 
     for i, (indices, points) in enumerate(data_list[1:], start=1):
-        if indices.shape[1] != V:
-            raise ValueError(
-                f"All indices must have same V (vertices per primitive). "
-                f"First item has V={V}, but item {i} has V={indices.shape[1]}"
-            )
         if points.shape[1] != dims:
             raise ValueError(
                 f"All points must have same dims. "
                 f"First item has dims={dims}, but item {i} has dims={points.shape[1]}"
             )
 
-    # Calculate cumulative offsets for point indices
-    offsets = [0]
-    for indices, points in data_list[:-1]:
-        offsets.append(offsets[-1] + len(points))
+    # Determine if we need dynamic output:
+    # - Any item is already dynamic (OffsetBlockedArray)
+    # - Fixed-size items have different V values (mixed ngon)
+    has_dynamic = any(isinstance(idx, OffsetBlockedArray) for idx, _ in data_list)
+    fixed_items = [(idx, pts) for idx, pts in data_list if not isinstance(idx, OffsetBlockedArray)]
 
-    # Offset and concatenate indices
-    offset_indices = [indices + offset for (indices, points), offset in zip(data_list, offsets)]
-    concatenated_indices = np.concatenate(offset_indices, axis=0)
+    if fixed_items:
+        v_values = set(idx.shape[1] for idx, _ in fixed_items)
+        mixed_ngon = len(v_values) > 1
+    else:
+        mixed_ngon = False
+
+    use_dynamic = has_dynamic or mixed_ngon
+
+    # Calculate cumulative point offsets using numpy for efficiency
+    point_counts = np.array([len(points) for _, points in data_list])
+    point_offsets = np.concatenate([[0], np.cumsum(point_counts[:-1])])
 
     # Concatenate points
     concatenated_points = np.concatenate([points for _, points in data_list], axis=0)
 
-    return concatenated_indices, concatenated_points
+    if use_dynamic:
+        # Dynamic output: convert all to OffsetBlockedArray format
+        all_data = []
+        all_block_sizes = []
+
+        for (indices, _), pt_offset in zip(data_list, point_offsets):
+            if isinstance(indices, OffsetBlockedArray):
+                # Already dynamic
+                all_data.append(indices.data + pt_offset)
+                all_block_sizes.append(np.diff(indices.offsets))
+            else:
+                # Fixed-size ndarray - flatten and convert
+                all_data.append(indices.ravel() + pt_offset)
+                V = indices.shape[1]
+                all_block_sizes.append(np.full(len(indices), V, dtype=np.intp))
+
+        # Concatenate data and build offsets
+        concatenated_data = np.concatenate(all_data)
+        block_sizes = np.concatenate(all_block_sizes)
+        concatenated_offsets = np.concatenate([[0], np.cumsum(block_sizes)])
+
+        # Match dtype to input
+        out_dtype = first_indices.dtype if isinstance(first_indices, OffsetBlockedArray) else first_indices.dtype
+        concatenated_offsets = concatenated_offsets.astype(out_dtype)
+        concatenated_data = concatenated_data.astype(out_dtype)
+
+        return OffsetBlockedArray(concatenated_offsets, concatenated_data), concatenated_points
+    else:
+        # Fixed-size case: all same V, simple concatenation
+        offset_indices = [indices + offset for (indices, _), offset in zip(data_list, point_offsets)]
+        concatenated_indices = np.concatenate(offset_indices, axis=0)
+        return concatenated_indices, concatenated_points

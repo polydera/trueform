@@ -30,12 +30,12 @@ auto register_topology_compute_manifold_edge_link(nanobind::module_ &m) -> void 
       },
       arg("faces"), arg("face_membership"));
 
-  // int32, ngon=4 (quads)
+  // int32, dynamic
   m.def(
-      "compute_manifold_edge_link_int_4",
-      [](ndarray<numpy, int, shape<-1, 4>> faces,
+      "compute_manifold_edge_link_int_dyn",
+      [](const offset_blocked_array_wrapper<int, int> &faces,
          const offset_blocked_array_wrapper<int, int> &face_membership) {
-        return compute_manifold_edge_link<int, 4>(faces, face_membership);
+        return compute_manifold_edge_link_dynamic<int>(faces, face_membership);
       },
       arg("faces"), arg("face_membership"));
 
@@ -48,12 +48,12 @@ auto register_topology_compute_manifold_edge_link(nanobind::module_ &m) -> void 
       },
       arg("faces"), arg("face_membership"));
 
-  // int64, ngon=4 (quads)
+  // int64, dynamic
   m.def(
-      "compute_manifold_edge_link_int64_4",
-      [](ndarray<numpy, int64_t, shape<-1, 4>> faces,
+      "compute_manifold_edge_link_int64_dyn",
+      [](const offset_blocked_array_wrapper<int64_t, int64_t> &faces,
          const offset_blocked_array_wrapper<int64_t, int64_t> &face_membership) {
-        return compute_manifold_edge_link<int64_t, 4>(faces, face_membership);
+        return compute_manifold_edge_link_dynamic<int64_t>(faces, face_membership);
       },
       arg("faces"), arg("face_membership"));
 }

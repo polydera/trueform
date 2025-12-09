@@ -164,6 +164,20 @@ auto register_edge_mesh_neighbor_search(nanobind::module_ &m) -> void {
       nanobind::arg("query"),
       nanobind::arg("radius").none() = nanobind::none());
 
+  // Plane queries
+  m.def(
+      "neighbor_search_edge_mesh_plane_intfloat3d",
+      [](edge_mesh_wrapper<int, float, 3> &edge_mesh,
+         nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
+             query,
+         std::optional<float> radius) {
+        return neighbor_search<float, 3>(
+            edge_mesh, make_plane_from_array<3, float>(query), radius);
+      },
+      nanobind::arg("edge_mesh"),
+      nanobind::arg("query"),
+      nanobind::arg("radius").none() = nanobind::none());
+
   // ============================================================================
   // EdgeMeshWrapperIntDouble2D (int, double, 2D)
   // ============================================================================
@@ -305,6 +319,20 @@ auto register_edge_mesh_neighbor_search(nanobind::module_ &m) -> void {
          std::optional<double> radius) {
         return neighbor_search<double, 3>(
             edge_mesh, make_line_from_array<3, double>(query), radius);
+      },
+      nanobind::arg("edge_mesh"),
+      nanobind::arg("query"),
+      nanobind::arg("radius").none() = nanobind::none());
+
+  // Plane queries
+  m.def(
+      "neighbor_search_edge_mesh_plane_intdouble3d",
+      [](edge_mesh_wrapper<int, double, 3> &edge_mesh,
+         nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<4>>
+             query,
+         std::optional<double> radius) {
+        return neighbor_search<double, 3>(
+            edge_mesh, make_plane_from_array<3, double>(query), radius);
       },
       nanobind::arg("edge_mesh"),
       nanobind::arg("query"),
@@ -456,6 +484,20 @@ auto register_edge_mesh_neighbor_search(nanobind::module_ &m) -> void {
       nanobind::arg("query"),
       nanobind::arg("radius").none() = nanobind::none());
 
+  // Plane queries
+  m.def(
+      "neighbor_search_edge_mesh_plane_int64float3d",
+      [](edge_mesh_wrapper<int64_t, float, 3> &edge_mesh,
+         nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
+             query,
+         std::optional<float> radius) {
+        return neighbor_search<float, 3>(
+            edge_mesh, make_plane_from_array<3, float>(query), radius);
+      },
+      nanobind::arg("edge_mesh"),
+      nanobind::arg("query"),
+      nanobind::arg("radius").none() = nanobind::none());
+
   // ============================================================================
   // EdgeMeshWrapperInt64Double2D (int64, double, 2D)
   // ============================================================================
@@ -597,6 +639,20 @@ auto register_edge_mesh_neighbor_search(nanobind::module_ &m) -> void {
          std::optional<double> radius) {
         return neighbor_search<double, 3>(
             edge_mesh, make_line_from_array<3, double>(query), radius);
+      },
+      nanobind::arg("edge_mesh"),
+      nanobind::arg("query"),
+      nanobind::arg("radius").none() = nanobind::none());
+
+  // Plane queries
+  m.def(
+      "neighbor_search_edge_mesh_plane_int64double3d",
+      [](edge_mesh_wrapper<int64_t, double, 3> &edge_mesh,
+         nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<4>>
+             query,
+         std::optional<double> radius) {
+        return neighbor_search<double, 3>(
+            edge_mesh, make_plane_from_array<3, double>(query), radius);
       },
       nanobind::arg("edge_mesh"),
       nanobind::arg("query"),
