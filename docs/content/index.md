@@ -67,6 +67,7 @@ Why trueform
   variant: solid
   size: lg
   to: /live-examples/boolean
+  class: animate-pulse
   ---
   Try it live
   :::
@@ -148,6 +149,32 @@ Why trueform
   #description
   Combine and cut meshes with union, intersection, difference. Commutative correctness: defer mesh cleanup to the final step without corrupting results.
   :::
+:::
+
+:::u-page-section{class="dark:bg-neutral-950"}
+#title
+Integrations
+
+#default
+::card-group
+  :::card
+  ---
+  icon: i-lucide-layers
+  title: VTK
+  to: /cpp/vtk
+  ---
+  Bring trueform performance to VTK applications. Filters and functions that integrate with VTK pipelines.
+  :::
+
+  :::card
+  ---
+  icon: i-vscode-icons:file-type-python
+  title: Python
+  to: /py/getting-started
+  ---
+  Real-time geometric processing in your Python workflow. NumPy in, NumPy out.
+  :::
+::
 :::
 
 :::u-page-section{class="dark:bg-gradient-to-b from-neutral-950 to-neutral-900"}

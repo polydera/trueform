@@ -74,15 +74,15 @@ const loadThreejs = async () => {
 
 const getAvgTime = () => {
   if (exampleClass) {
-    avgTime.value = (exampleClass.getAverageTime() * 1000).toFixed(2);
-    avgPickTime.value = (exampleClass.getAveragePickTime() * 1000).toFixed(2);
+    avgTime.value = exampleClass.getAverageTime().toFixed(2);
+    avgPickTime.value = exampleClass.getAveragePickTime().toFixed(2);
   }
   return 0;
 };
 
 const badge = computed(() => ({
   icon: "i-lucide-gauge",
-  value: `${avgTime.value} μs`,
+  value: `${avgTime.value} ms`,
   polygons: polygonLabel.value,
 }));
 
