@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 
@@ -147,6 +147,16 @@ public:
     return a;
   }
 
+  template <typename B>
+  friend auto operator+=(point_like &&a, const vector_like<Dims, B> &b)
+      -> std::enable_if_t<
+          std::is_assignable_v<reference, typename B::element_type>,
+          point_like &&> {
+    for (std::size_t i = 0; i < Dims; ++i)
+      a[i] += b[i];
+    return static_cast<point_like &&>(a);
+  }
+
   /// @brief Subtracts vector `b` from `a` element-wise.
   template <typename B>
   friend auto operator-=(point_like &a, const vector_like<Dims, B> &b)
@@ -156,6 +166,17 @@ public:
     for (std::size_t i = 0; i < Dims; ++i)
       a[i] -= b[i];
     return a;
+  }
+
+  /// @brief Subtracts vector `b` from `a` element-wise.
+  template <typename B>
+  friend auto operator-=(point_like &&a, const vector_like<Dims, B> &b)
+      -> std::enable_if_t<
+          std::is_assignable_v<reference &, typename B::element_type>,
+          point_like &&> {
+    for (std::size_t i = 0; i < Dims; ++i)
+      a[i] -= b[i];
+    return static_cast<point_like &&>(a);
   }
 
   /// @brief Element-wise addition of vectors `a` and `b`.

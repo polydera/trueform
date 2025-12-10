@@ -22,4 +22,9 @@ template <std::size_t I> struct axis_t {
 
 template <std::size_t I> inline constexpr axis_t<I> axis{};
 
+template <typename T, std::size_t Dims, std::size_t I>
+auto make_unit_vector(tf::axis_t<I> a) -> tf::unit_vector<T, Dims> {
+  return a;
+}
+
 } // namespace tf

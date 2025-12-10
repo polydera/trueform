@@ -113,7 +113,7 @@ auto concatenated_diff_gons(const tf::polygons<Policy0> &polygons0,
   Index total_point_size = polygons0.points().size() +
                            polygons1.points().size() +
                            (0 + ... + polygons.points().size());
-  out.faces_buffer().allocate(offsets.back());
+  out.faces_buffer().data_buffer().allocate(offsets.back());
   out.points_buffer().allocate(total_point_size);
   concatenated_impl(out, polygons0, polygons1, polygons...);
   return out;
