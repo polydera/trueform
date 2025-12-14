@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -226,6 +226,12 @@ public:
 
   /// @brief Returns a const reference to the last element.
   auto back() const -> const T & { return *(_end - 1); }
+
+  /// @brief Returns a const iterator to the beginning of the buffer.
+  auto data() const -> const T * { return _data.get(); }
+
+  /// @brief Returns a iterator to the beginning of the buffer.
+  auto data() -> T * { return _data.get(); }
 
 private:
   auto append_at_end(std::size_t n, std::size_t new_capacity) {

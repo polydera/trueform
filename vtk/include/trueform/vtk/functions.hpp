@@ -7,6 +7,7 @@
 #pragma once
 
 #include <trueform/vtk/functions/aabb_from.hpp>
+#include <trueform/vtk/functions/chamfer_error.hpp>
 #include <trueform/vtk/functions/cleaned_lines.hpp>
 #include <trueform/vtk/functions/cleaned_polygons.hpp>
 #include <trueform/vtk/functions/cleaned_points.hpp>
@@ -14,6 +15,9 @@
 #include <trueform/vtk/functions/compute_point_normals.hpp>
 #include <trueform/vtk/functions/distance.hpp>
 #include <trueform/vtk/functions/ensure_positive_orientation.hpp>
+#include <trueform/vtk/functions/fit_knn_alignment.hpp>
+#include <trueform/vtk/functions/fit_obb_alignment.hpp>
+#include <trueform/vtk/functions/fit_rigid_alignment.hpp>
 #include <trueform/vtk/functions/intersects.hpp>
 #include <trueform/vtk/functions/make_boolean.hpp>
 #include <trueform/vtk/functions/make_boundary_edges.hpp>

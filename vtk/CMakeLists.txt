@@ -46,12 +46,16 @@ set(TRUEFORM_VTK_SOURCES
   src/core/make_world_ray.cpp
   src/core/polydata.cpp
   src/functions/aabb_from.cpp
+  src/functions/chamfer_error.cpp
   src/functions/cleaned_lines.cpp
   src/functions/cleaned_polygons.cpp
   src/functions/cleaned_points.cpp
   src/functions/compute_cell_normals.cpp
   src/functions/compute_point_normals.cpp
   src/functions/ensure_positive_orientation.cpp
+  src/functions/fit_knn_alignment.cpp
+  src/functions/fit_obb_alignment.cpp
+  src/functions/fit_rigid_alignment.cpp
   src/functions/make_boolean_pp.cpp
   src/functions/make_boolean_mp.cpp
   src/functions/make_boolean_pm.cpp
@@ -113,14 +117,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     target_compile_options(trueform_vtk PRIVATE -march=native)
   endif()
 endif()
-
-target_compile_options(trueform_vtk PRIVATE
-        -Rpass=loop-vectorize
-        -Rpass-missed=loop-vectorize
-        -Rpass-analysis=loop-vectorize
-        -fsave-optimization-record
-)
- 
 
 if(BUILD_VTK_EXAMPLES)
   add_subdirectory(examples)
