@@ -35,6 +35,7 @@
 #include "./topology/planar_embedding.hpp"          // IWYU pragma: export
 #include "./topology/planar_graph_regions.hpp"      // IWYU pragma: export
 #include "./topology/policy.hpp"                    // IWYU pragma: export
+#include "./topology/reverse_winding.hpp"           // IWYU pragma: export
 #include "./topology/scoped_face_membership.hpp"    // IWYU pragma: export
 #include "./topology/scoped_id.hpp"                 // IWYU pragma: export
 #include "./topology/set_component_labels.hpp"      // IWYU pragma: export

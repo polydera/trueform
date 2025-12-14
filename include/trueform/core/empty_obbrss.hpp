@@ -1,0 +1,29 @@
+/*
+ * Copyright (c) 2025 Žiga Sajovic, XLAB
+ * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+ * Commercial licensing available via ziga.sajovic@xlab.si.
+ * https://github.com/xlabmedical/trueform
+ */
+#pragma once
+
+#include "./obbrss.hpp"
+#include "./unit_vector.hpp"
+
+namespace tf {
+
+template <typename T, std::size_t Dims> auto make_empty_obbrss() {
+  tf::obbrss<T, Dims> out{};
+  for (std::size_t i = 0; i < Dims; ++i) {
+    std::array<T, Dims> axis{};
+    axis[i] = T(1);
+    out.axes[i] = tf::make_unit_vector(tf::unsafe, tf::make_vector(axis));
+    out.extent[i] = T(0);
+  }
+  for (std::size_t i = 0; i < Dims - 1; ++i) {
+    out.length[i] = T(0);
+  }
+  out.radius = T(0);
+  return out;
+}
+
+} // namespace tf

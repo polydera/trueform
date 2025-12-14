@@ -2,61 +2,61 @@
   {
     "polygons": 58298,
     "tf_aabb": 1.07,
-    "tf_obb": 2.95,
-    "tf_obbrss": 3.71,
-    "cgal": 11.83,
-    "fcl_aabb": 20.36,
-    "fcl_obb": 59.0,
-    "fcl_obbrss": 92.71
+    "tf_obb": 2.53,
+    "tf_obbrss": 3.77,
+    "cgal": 10.66,
+    "fcl_aabb": 15.76,
+    "fcl_obb": 56.21,
+    "fcl_obbrss": 83.39
   },
   {
     "polygons": 141966,
-    "tf_aabb": 3.24,
-    "tf_obb": 6.12,
-    "tf_obbrss": 9.2,
-    "cgal": 31.12,
-    "fcl_aabb": 51.35,
-    "fcl_obb": 149.64,
-    "fcl_obbrss": 233.91
+    "tf_aabb": 2.65,
+    "tf_obb": 5.62,
+    "tf_obbrss": 8.29,
+    "cgal": 27.52,
+    "fcl_aabb": 40.39,
+    "fcl_obb": 142.99,
+    "fcl_obbrss": 211.44
   },
   {
     "polygons": 244026,
-    "tf_aabb": 4.92,
-    "tf_obb": 8.97,
-    "tf_obbrss": 13.04,
-    "cgal": 56.07,
-    "fcl_aabb": 91.27,
-    "fcl_obb": 261.01,
-    "fcl_obbrss": 415.35
+    "tf_aabb": 4.5,
+    "tf_obb": 8.71,
+    "tf_obbrss": 12.69,
+    "cgal": 50.03,
+    "fcl_aabb": 72.25,
+    "fcl_obb": 250.55,
+    "fcl_obbrss": 369.48
   },
   {
     "polygons": 480868,
-    "tf_aabb": 9.63,
-    "tf_obb": 19.35,
-    "tf_obbrss": 26.74,
-    "cgal": 117.06,
-    "fcl_aabb": 186.94,
-    "fcl_obb": 522.73,
-    "fcl_obbrss": 837.32
+    "tf_aabb": 8.89,
+    "tf_obb": 18.69,
+    "tf_obbrss": 32.17,
+    "cgal": 104.72,
+    "fcl_aabb": 151.06,
+    "fcl_obb": 507.38,
+    "fcl_obbrss": 747.02
   },
   {
     "polygons": 722980,
-    "tf_aabb": 13.56,
-    "tf_obb": 24.9,
-    "tf_obbrss": 35.93,
-    "cgal": 179.05,
-    "fcl_aabb": 282.06,
-    "fcl_obb": 789.44,
-    "fcl_obbrss": 1273.95
+    "tf_aabb": 12.53,
+    "tf_obb": 24.68,
+    "tf_obbrss": 41.47,
+    "cgal": 164.31,
+    "fcl_aabb": 233.3,
+    "fcl_obb": 775.08,
+    "fcl_obbrss": 1125.62
   },
   {
     "polygons": 1025766,
-    "tf_aabb": 17.66,
-    "tf_obb": 36.86,
-    "tf_obbrss": 52.65,
-    "cgal": 259.74,
-    "fcl_aabb": 407.72,
-    "fcl_obb": 1123.96,
-    "fcl_obbrss": 1821.86
+    "tf_aabb": 16.28,
+    "tf_obb": 37.33,
+    "tf_obbrss": 59.26,
+    "cgal": 238.27,
+    "fcl_aabb": 335.91,
+    "fcl_obb": 1105.58,
+    "fcl_obbrss": 1619.25
   }
 ]

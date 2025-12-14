@@ -1,13 +1,14 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
 #include "../../core/concatenated_blocked_ranges.hpp"
 #include "../../core/views/block_indirect_range.hpp"
 #include "../../reindex/concatenated.hpp"
+#include "../arrangement_class.hpp"
 #include "../classify/tagged.hpp"
 #include "./ids_common.hpp"
 #include "./triangulate_cut_faces.hpp"
@@ -20,7 +21,7 @@ auto make_boolean(
     const tf::polygons<Policy1> &_polygons1,
     const tf::intersect::tagged_intersections<Index, RealT, Dims> &ibp,
     const tf::tagged_cut_faces<Index> &tcf,
-    std::array<tf::strict_containment, 2> classes) {
+    std::array<tf::arrangement_class, 2> classes) {
   auto make_polygons = [](const auto &form) {
     return tf::wrap_map(form, [](auto &&x) {
       return tf::core::make_polygons(x.faces(),
@@ -29,8 +30,8 @@ auto make_boolean(
   };
   auto polygons0 = make_polygons(_polygons0);
   auto polygons1 = make_polygons(_polygons1);
-  auto [pal0, pal1] =
-      tf::cut::make_classifications<LabelType>(polygons0, polygons1, ibp, tcf);
+  auto [pal0, pal1] = tf::cut::make_classifications<LabelType>(
+      polygons0, polygons1, ibp, tcf, classes);
   tf::cut::polygon_arrangement_ids<Index> pai0;
   tf::cut::polygon_arrangement_ids<Index> pai1;
   tbb::parallel_invoke(
@@ -76,8 +77,8 @@ auto make_boolean(
         }
       }
   };
-  int index0 = classes[0] == tf::strict_containment::outside;
-  int index1 = classes[1] == tf::strict_containment::outside;
+  int index0 = 1; // always use include bucket
+  int index1 = 1;
   process_map_on_loops(
       tf::make_indirect_range(pai0.cut_faces[index0], tcf.mapped_loops0()),
       original_map0, original_current0, original_ids0);
@@ -165,12 +166,7 @@ auto make_boolean(
             return x + original_current0;
           })));
 
-  auto direction0 = classes[0] == tf::strict_containment::inside
-                        ? tf::direction::reverse
-                        : tf::direction::forward;
-  auto direction1 = classes[1] == tf::strict_containment::inside
-                        ? tf::direction::reverse
-                        : tf::direction::forward;
+  auto [direction0, direction1] = tf::make_directions(classes[0], classes[1]);
   auto faces = tf::core::concatenated_blocked_ranges_directed<Index>(
       std::make_pair(tf::make_range(mapped_faces0), direction0),
       std::make_pair(tf::make_range(triangles0), direction0),

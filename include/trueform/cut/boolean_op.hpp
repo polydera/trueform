@@ -5,7 +5,7 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "../core/containment.hpp"
+#include "./arrangement_class.hpp"
 #include <array>
 
 namespace tf {
@@ -18,17 +18,21 @@ enum class boolean_op {
 
 namespace cut {
 inline constexpr auto make_boolean_op_spec(boolean_op op)
-    -> std::array<tf::strict_containment, 2> {
+    -> std::array<tf::arrangement_class, 2> {
   switch (op) {
   case boolean_op::merge:
-    return {tf::strict_containment::outside, tf::strict_containment::outside};
+    return {tf::arrangement_class::outside | tf::arrangement_class::aligned_boundary,
+            tf::arrangement_class::outside};
   case boolean_op::intersection:
-    return {tf::strict_containment::inside, tf::strict_containment::inside};
+    return {tf::arrangement_class::inside | tf::arrangement_class::aligned_boundary,
+            tf::arrangement_class::inside};
   case boolean_op::left_difference:
-    return {tf::strict_containment::outside, tf::strict_containment::inside};
+    return {tf::arrangement_class::outside | tf::arrangement_class::opposing_boundary,
+            tf::arrangement_class::inside};
   case boolean_op::right_difference:
   default:
-    return {tf::strict_containment::inside, tf::strict_containment::outside};
+    return {tf::arrangement_class::inside,
+            tf::arrangement_class::outside | tf::arrangement_class::opposing_boundary};
   }
 }
 } // namespace cut

@@ -1,44 +1,44 @@
 [
   {
     "points": 29131,
-    "tf_aabb": 0.53,
-    "tf_obb": 1.6,
+    "tf_aabb": 0.5,
+    "tf_obb": 1.57,
     "tf_obbrss": 2.04,
-    "nanoflann": 2.87
+    "nanoflann": 2.54
   },
   {
     "points": 70975,
-    "tf_aabb": 1.51,
-    "tf_obb": 3.78,
-    "tf_obbrss": 4.35,
-    "nanoflann": 8.08
+    "tf_aabb": 1.05,
+    "tf_obb": 3.08,
+    "tf_obbrss": 4.01,
+    "nanoflann": 7.16
   },
   {
     "points": 122005,
-    "tf_aabb": 2.27,
-    "tf_obb": 5.43,
-    "tf_obbrss": 6.9,
-    "nanoflann": 13.93
+    "tf_aabb": 2.03,
+    "tf_obb": 5.1,
+    "tf_obbrss": 6.47,
+    "nanoflann": 13.02
   },
   {
     "points": 240428,
-    "tf_aabb": 4.32,
-    "tf_obb": 9.87,
-    "tf_obbrss": 12.59,
-    "nanoflann": 29.05
+    "tf_aabb": 3.89,
+    "tf_obb": 8.95,
+    "tf_obbrss": 10.83,
+    "nanoflann": 27.4
   },
   {
     "points": 361486,
-    "tf_aabb": 6.73,
-    "tf_obb": 15.98,
-    "tf_obbrss": 19.71,
-    "nanoflann": 45.36
+    "tf_aabb": 6.31,
+    "tf_obb": 15.24,
+    "tf_obbrss": 23.11,
+    "nanoflann": 42.96
   },
   {
     "points": 512872,
-    "tf_aabb": 9.19,
-    "tf_obb": 20.39,
-    "tf_obbrss": 25.01,
-    "nanoflann": 64.35
+    "tf_aabb": 8.64,
+    "tf_obb": 19.65,
+    "tf_obbrss": 28.32,
+    "nanoflann": 60.53
   }
 ]

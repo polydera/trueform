@@ -169,6 +169,15 @@ public:
     return a;
   }
 
+  template <typename Scalar>
+  friend auto operator/=(vector_like &&a, Scalar s) -> std::enable_if_t<
+      std::is_assignable_v<reference, std::common_type_t<Scalar, value_type>>,
+      vector_like &&> {
+    for (std::size_t i = 0; i < Dims; ++i)
+      a[i] /= s;
+    return static_cast<vector_like &&>(a);
+  }
+
   /// @brief Element-wise addition of vectors `a` and `b`.
   template <typename B>
   friend auto operator+(const vector_like &a, const vector_like<Dims, B> &b)

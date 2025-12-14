@@ -9,8 +9,10 @@
 #include "./algorithm/reduce.hpp"
 #include "./base/rss_from_impl.hpp"
 #include "./covariance_of.hpp"
+#include "./dispatch.hpp"
 #include "./dot.hpp"
 #include "./eigen_of_symmetric.hpp"
+#include "./empty_rss.hpp"
 #include "./obb_like.hpp"
 #include "./points.hpp"
 #include "./polygons.hpp"
@@ -24,7 +26,7 @@ namespace tf {
 namespace core {
 
 template <typename Range, std::size_t Dims, typename Policy>
-auto rss_from(const Range &polygons, const tf::polygon<Dims, Policy> &) {
+auto rss_from(const Range &polygons, dispatch_t<tf::polygon<Dims, Policy>>) {
   using std::max;
   using std::min;
   using T = tf::coordinate_type<Policy>;
@@ -185,7 +187,7 @@ auto rss_from(const Range &polygons, const tf::polygon<Dims, Policy> &) {
 }
 
 template <typename Range, std::size_t Dims, typename Policy>
-auto rss_from(const Range &segments, const tf::segment<Dims, Policy> &) {
+auto rss_from(const Range &segments, dispatch_t<tf::segment<Dims, Policy>>) {
   using std::max;
   using std::min;
   using T = tf::coordinate_type<Policy>;
@@ -346,7 +348,7 @@ auto rss_from(const Range &segments, const tf::segment<Dims, Policy> &) {
 }
 
 template <typename Range, std::size_t Dims, typename Policy>
-auto rss_from(const Range &points, const tf::point_like<Dims, Policy> &) {
+auto rss_from(const Range &points, dispatch_t<tf::point_like<Dims, Policy>>) {
   using std::max;
   using std::min;
   using T = tf::coordinate_type<Policy>;
@@ -492,15 +494,24 @@ auto rss_from(const Range &points, const tf::point_like<Dims, Policy> &) {
 
 // Convenience overloads in tf namespace
 template <typename Policy> auto rss_from(const tf::polygons<Policy> &polys) {
-  return core::rss_from(polys, polys[0]);
+  if (!polys.size())
+    return tf::make_empty_rss<tf::coordinate_type<Policy>,
+                              tf::coordinate_dims_v<Policy>>();
+  return core::rss_from(polys, core::dispatch_element(polys));
 }
 
 template <typename Policy> auto rss_from(const tf::segments<Policy> &segs) {
-  return core::rss_from(segs, segs[0]);
+  if (!segs.size())
+    return tf::make_empty_rss<tf::coordinate_type<Policy>,
+                              tf::coordinate_dims_v<Policy>>();
+  return core::rss_from(segs, core::dispatch_element(segs));
 }
 
 template <typename Policy> auto rss_from(const tf::points<Policy> &pts) {
-  return core::rss_from(pts, pts[0]);
+  if (!pts.size())
+    return tf::make_empty_rss<tf::coordinate_type<Policy>,
+                              tf::coordinate_dims_v<Policy>>();
+  return core::rss_from(pts, core::dispatch_element(pts));
 }
 
 /// @brief Convert an OBB to an RSS approximation.

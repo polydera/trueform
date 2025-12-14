@@ -35,7 +35,9 @@
 #include "./core/contains_point.hpp"              // IWYU pragma: export
 #include "./core/contiguous_index_hash_map.hpp"   // IWYU pragma: export
 #include "./core/coordinate_type.hpp"             // IWYU pragma: export
+#include "./core/covariance_of.hpp"               // IWYU pragma: export
 #include "./core/cross.hpp"                       // IWYU pragma: export
+#include "./core/cross_covariance_of.hpp"         // IWYU pragma: export
 #include "./core/curve.hpp"                       // IWYU pragma: export
 #include "./core/curves.hpp"                      // IWYU pragma: export
 #include "./core/curves_buffer.hpp"               // IWYU pragma: export
@@ -108,11 +110,13 @@
 #include "./core/segments.hpp"                    // IWYU pragma: export
 #include "./core/segments_buffer.hpp"             // IWYU pragma: export
 #include "./core/sidedness.hpp"                   // IWYU pragma: export
+#include "./core/signed_volume.hpp"               // IWYU pragma: export
 #include "./core/small_vector.hpp"                // IWYU pragma: export
 #include "./core/sphere.hpp"                      // IWYU pragma: export
 #include "./core/sphere_like.hpp"                 // IWYU pragma: export
 #include "./core/sqrt.hpp"                        // IWYU pragma: export
 #include "./core/static_size.hpp"                 // IWYU pragma: export
+#include "./core/svd_of_symmetric.hpp"            // IWYU pragma: export
 #include "./core/tick_tock.hpp"                   // IWYU pragma: export
 #include "./core/transformation.hpp"              // IWYU pragma: export
 #include "./core/transformation_like.hpp"         // IWYU pragma: export

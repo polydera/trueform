@@ -13,7 +13,10 @@
 #include "../../topology/edge_id_in_face.hpp"
 #include "../../topology/topo_type.hpp"
 #include "../loop/vertex_source.hpp"
+#include "../impl/polygon_arrangement_labels.hpp"
 #include <cstddef>
+
+#include <iostream>
 
 namespace tf::cut {
 template <typename Tup0, typename Tup1, typename Policy0, typename Policy1,
@@ -94,5 +97,94 @@ auto classify_on_shared_edge(const Tup0 &tup0, std::size_t edge_id,
     f(mapped_loop1, d1, counts1, d0, counts0, other_edge_id, polygons1,
       polygons0);
 }
+
+template <typename Tup0, typename Policy0, typename Policy1, typename Policy2,
+          typename Range, typename Zipped, typename LabelType, typename Index,
+          typename LocalR>
+auto classify_on_original_shared_edge(
+    const Tup0 &tup0, std::size_t edge_id, const Range &neighbors,
+    const Zipped &zipped, const tf::polygons<Policy0> &polygons0,
+    const tf::polygons<Policy1> &polygons1,
+    const tf::cut::polygon_arrangement_labels<LabelType> &pal1,
+    Index partition_id, LocalR &local_r,
+    const tf::points<Policy2> &intersection_points) {
+
+  auto &&[loop0, mapped_loop0, d0] = tup0;
+  auto next_edge_id =
+      tf::circular_increment(edge_id, std::size_t{loop0.size()});
+
+  // Edge direction vector
+  auto u = intersection_points[mapped_loop0[next_edge_id].id] -
+           intersection_points[mapped_loop0[edge_id].id];
+
+  auto frame0 = tf::frame_of(polygons0);
+  auto frame1 = tf::frame_of(polygons1);
+
+  const auto &poly0 = polygons0[d0.object];
+  auto plane0 = tf::transformed(tf::make_plane(poly0), frame0);
+
+  using RealT = tf::coordinate_type<Policy2>;
+
+  // Lambda: classify other-mesh faces using wedge (plane0 + wedge_plane)
+  auto classify_with_wedge = [&, &d0 = d0](const auto &wedge_plane) {
+    for (auto other_id : neighbors) {
+      const auto &[loop_other, mapped_other, d_other] = zipped[other_id];
+      if (d_other.tag == d0.tag)
+        continue; // skip same mesh
+
+      const auto &poly_other = polygons1[d_other.object];
+      auto plane_other = tf::transformed(tf::make_plane(poly_other), frame1);
+
+      // Vector in other_plane perpendicular to edge, pointing "into" the face
+      auto v_other = tf::cross(plane_other.normal, u);
+
+      // Test direction against wedge planes
+      auto d0_dot = tf::dot(plane0.normal, v_other);
+      auto dw_dot = tf::dot(wedge_plane.normal, v_other);
+
+      constexpr auto eps = tf::epsilon<RealT>;
+
+      int classification;
+      if (std::abs(d0_dot) < eps || std::abs(dw_dot) < eps) {
+        // Boundary case: check if normals are aligned or opposing
+        auto normal_dot = tf::dot(plane0.normal, plane_other.normal);
+        if (normal_dot > 0)
+          classification = 2; // aligned boundary
+        else
+          classification = 3; // opposing boundary
+      } else if (d0_dot < 0 && dw_dot < 0) {
+        classification = 0; // inside
+      } else {
+        classification = 1; // outside
+      }
+
+      auto label_other = pal1.cut_labels[other_id - partition_id];
+      local_r[d_other.tag][label_other][classification]++;
+    }
+  };
+
+  // Find wedge partner: same mesh, opposite edge direction
+  for (auto n_id : neighbors) {
+    const auto &[loop1, mapped_loop1, d1] = zipped[n_id];
+    if (d1.tag != d0.tag)
+      continue;
+
+    auto other_edge_id =
+        tf::edge_id_in_face(loop0[edge_id], loop0[next_edge_id], loop1);
+    if (other_edge_id == loop1.size())
+      continue;
+
+    bool same_direction = loop0[edge_id] == loop1[other_edge_id];
+    if (same_direction)
+      continue; // need opposite direction
+
+    // Found wedge partner
+    const auto &poly1 = polygons0[d1.object];
+    auto wedge_plane = tf::transformed(tf::make_plane(poly1), frame0);
+
+    classify_with_wedge(wedge_plane);
+  }
+}
+
 
 } // namespace tf::cut

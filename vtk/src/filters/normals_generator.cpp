@@ -8,6 +8,7 @@
 #include <trueform/vtk/core/polydata.hpp>
 #include <trueform/vtk/functions/compute_cell_normals.hpp>
 #include <trueform/vtk/functions/compute_point_normals.hpp>
+#include <trueform/vtk/functions/ensure_positive_orientation.hpp>
 #include <trueform/vtk/functions/orient_faces_consistently.hpp>
 #include <vtkInformation.h>
 #include <vtkInformationVector.h>
@@ -31,6 +32,17 @@ auto normals_generator::set_orient_faces(bool value) -> void {
 
 auto normals_generator::orient_faces() const -> bool { return _orient_faces; }
 
+auto normals_generator::set_positive_orientation(bool value) -> void {
+  if (_positive_orientation != value) {
+    _positive_orientation = value;
+    Modified();
+  }
+}
+
+auto normals_generator::positive_orientation() const -> bool {
+  return _positive_orientation;
+}
+
 auto normals_generator::set_compute_point_normals(bool value) -> void {
   if (_compute_point_normals != value) {
     _compute_point_normals = value;
@@ -42,7 +54,8 @@ auto normals_generator::compute_point_normals() const -> bool {
   return _compute_point_normals;
 }
 
-auto normals_generator::RequestData(vtkInformation *, vtkInformationVector **input_vec,
+auto normals_generator::RequestData(vtkInformation *,
+                                    vtkInformationVector **input_vec,
                                     vtkInformationVector *output_vec) -> int {
   auto *output = polydata::GetData(output_vec, 0);
   auto *input = vtkPolyData::GetData(input_vec[0], 0);
@@ -54,7 +67,9 @@ auto normals_generator::RequestData(vtkInformation *, vtkInformationVector **inp
 
   output->ShallowCopy(input);
 
-  if (_orient_faces) {
+  if (_positive_orientation) {
+    ensure_positive_orientation(output);
+  } else if (_orient_faces) {
     orient_faces_consistently(output);
   }
 

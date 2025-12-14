@@ -8,6 +8,7 @@
 #include "../core/views/drop.hpp"
 #include "../core/views/take.hpp"
 #include "../intersect/types/tagged_intersections.hpp"
+#include "../topology/topo_type.hpp"
 #include "./loop/cut_faces.hpp"
 #include "./loop/tagged_descriptor.hpp"
 
@@ -90,6 +91,40 @@ public:
 
   auto mapped_loops1() const {
     return tf::drop(base_t::mapped_loops(), _partition_id);
+  }
+
+  /// Check if a created edge lies on an original edge of the polygon
+  template <typename RealT, std::size_t Dims, typename Policy>
+  auto is_created_edge_original(
+      loop::vertex<Index> v0,
+      loop::vertex<Index> v1,
+      const tf::intersect::tagged_intersections<Index, RealT, Dims> &tgs,
+      const tf::polygons<Policy> &polygons) const -> bool {
+
+    // Both must be created vertices
+    if (v0.source != tf::loop::vertex_source::created ||
+        v1.source != tf::loop::vertex_source::created)
+      return false;
+
+    const auto &ins0 = tgs.flat_intersections()[v0.intersection_index];
+    const auto &ins1 = tgs.flat_intersections()[v1.intersection_index];
+
+    // Must be same tag and same object (same polygon)
+    if (ins0.tag != ins1.tag || ins0.object != ins1.object)
+      return false;
+
+    // Both must be at vertices
+    if (ins0.target.label != tf::topo_type::vertex ||
+        ins1.target.label != tf::topo_type::vertex)
+      return false;
+
+    // Check if local indices are adjacent in polygon
+    Index idx0 = ins0.target.id;
+    Index idx1 = ins1.target.id;
+    Index polygon_size = polygons.faces()[ins0.object].size();
+
+    Index diff = (idx1 > idx0) ? (idx1 - idx0) : (idx0 - idx1);
+    return diff == 1 || diff == polygon_size - 1;
   }
 
 private:

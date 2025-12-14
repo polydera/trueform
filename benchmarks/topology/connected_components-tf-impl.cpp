@@ -24,7 +24,7 @@ int run_connected_components_tf_benchmark(
         [&]() {
           // no precompute of topology
           auto [labels, n_components] =
-              tf::make_manifold_edge_connected_component_labels<int>(polygons);
+              tf::make_manifold_edge_connected_component_labels(polygons);
           benchmark::do_not_optimize(labels);
         },
         n_samples);

@@ -340,6 +340,31 @@ auto transformed(const obbrss_like<Dims, Policy> &_this,
     return _this;
 }
 
+template <typename T, std::size_t Dims, typename U>
+auto transformed(const std::array<std::array<T, Dims>, Dims> &_this,
+                 const transformation_like<Dims, U> &transform) {
+  if constexpr (linalg::is_identity<U>)
+    return _this;
+  else {
+    std::array<std::array<T, Dims>, Dims> out;
+    for (std::size_t i = 0; i < Dims; ++i) {
+      for (std::size_t j = 0; j < Dims; ++j) {
+        out[i][j] = 0;
+        for (std::size_t k = 0; k < Dims; ++k) {
+          out[i][j] += transform(i, k) * _this(k, j);
+        }
+      }
+    }
+    return out;
+  }
+}
+
+template <typename T, std::size_t Dims, typename U>
+auto transformed(const std::array<std::array<T, Dims>, Dims> &_this,
+                 const frame_like<Dims, U> &transform) {
+  return transformed(_this, transform.transformation());
+}
+
 } // namespace tf
 
 namespace tf::core {

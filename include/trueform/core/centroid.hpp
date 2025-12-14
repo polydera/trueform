@@ -53,6 +53,14 @@ template <typename Policy> auto centroid(const tf::points<Policy> &pts) {
   return out;
 }
 
+template <typename Policy> auto centroid(const tf::vectors<Policy> &vcs) {
+  constexpr auto Dims = tf::static_size_v<typename Policy::value_type>;
+  tf::vector<tf::coordinate_type<Policy>, Dims> out_v;
+  for (std::size_t i = 0; i < Dims; ++i)
+    out_v[i] = 0;
+  return tf::reduce(vcs, std::plus<>{}, out_v, tf::checked) / vcs.size();
+}
+
 template <typename Policy> auto centroid(const tf::polygons<Policy> &polygons) {
   constexpr auto Dims = tf::coordinate_dims_v<Policy>;
   using T = tf::coordinate_type<Policy>;

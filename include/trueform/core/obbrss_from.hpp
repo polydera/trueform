@@ -8,8 +8,10 @@
 #include "./algorithm/reduce.hpp"
 #include "./base/rss_from_impl.hpp"
 #include "./covariance_of.hpp"
+#include "./dispatch.hpp"
 #include "./dot.hpp"
 #include "./eigen_of_symmetric.hpp"
+#include "./empty_obbrss.hpp"
 #include "./obbrss.hpp"
 #include "./points.hpp"
 #include "./polygons.hpp"
@@ -20,7 +22,7 @@ namespace tf {
 namespace core {
 
 template <typename Range, std::size_t Dims, typename Policy>
-auto obbrss_from(const Range &polygons, const tf::polygon<Dims, Policy> &) {
+auto obbrss_from(const Range &polygons, dispatch_t<tf::polygon<Dims, Policy>>) {
   using std::max;
   using std::min;
   using T = tf::coordinate_type<Policy>;
@@ -253,7 +255,7 @@ auto obbrss_from(const Range &polygons, const tf::polygon<Dims, Policy> &) {
 }
 
 template <typename Range, std::size_t Dims, typename Policy>
-auto obbrss_from(const Range &segments, const tf::segment<Dims, Policy> &) {
+auto obbrss_from(const Range &segments, dispatch_t<tf::segment<Dims, Policy>>) {
   using std::max;
   using std::min;
   using T = tf::coordinate_type<Policy>;
@@ -486,7 +488,7 @@ auto obbrss_from(const Range &segments, const tf::segment<Dims, Policy> &) {
 }
 
 template <typename Range, std::size_t Dims, typename Policy>
-auto obbrss_from(const Range &points, const tf::point_like<Dims, Policy> &) {
+auto obbrss_from(const Range &points, dispatch_t<tf::point_like<Dims, Policy>>) {
   using std::max;
   using std::min;
   using T = tf::coordinate_type<Policy>;
@@ -690,17 +692,26 @@ auto obbrss_from(const Range &points, const tf::point_like<Dims, Policy> &) {
 // Convenience overloads in tf namespace
 template <typename Policy>
 auto obbrss_from(const tf::polygons<Policy> &polys) {
-  return core::obbrss_from(polys, polys[0]);
+  if (!polys.size())
+    return tf::make_empty_obbrss<tf::coordinate_type<Policy>,
+                                 tf::coordinate_dims_v<Policy>>();
+  return core::obbrss_from(polys, core::dispatch_element(polys));
 }
 
 template <typename Policy>
 auto obbrss_from(const tf::segments<Policy> &segs) {
-  return core::obbrss_from(segs, segs[0]);
+  if (!segs.size())
+    return tf::make_empty_obbrss<tf::coordinate_type<Policy>,
+                                 tf::coordinate_dims_v<Policy>>();
+  return core::obbrss_from(segs, core::dispatch_element(segs));
 }
 
 template <typename Policy>
 auto obbrss_from(const tf::points<Policy> &pts) {
-  return core::obbrss_from(pts, pts[0]);
+  if (!pts.size())
+    return tf::make_empty_obbrss<tf::coordinate_type<Policy>,
+                                 tf::coordinate_dims_v<Policy>>();
+  return core::obbrss_from(pts, core::dispatch_element(pts));
 }
 
 } // namespace tf

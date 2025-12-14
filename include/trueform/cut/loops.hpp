@@ -8,7 +8,6 @@
 
 #include "./loop/cut_face_by_intersections.hpp" // IWYU pragma: export
 #include "./loop/cut_faces.hpp"                 // IWYU pragma: export
-#include "./loop/ear_cutter.hpp"                // IWYU pragma: export
 #include "./loop/face_split_by_edges.hpp"       // IWYU pragma: export
 #include "./loop/loop_extractor.hpp"            // IWYU pragma: export
 #include "./loop/loop_splitter.hpp"             // IWYU pragma: export

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -9,6 +9,7 @@
 #include "./aabb_union.hpp"
 #include "./algorithm/reduce.hpp"
 #include "./coordinate_type.hpp"
+#include "./empty_aabb.hpp"
 #include "./point_like.hpp"
 #include "./points.hpp"
 #include "./polygon.hpp"
@@ -83,6 +84,9 @@ auto aabb_from(const segment<Dims, Policy> &s) {
 }
 
 template <typename Policy> auto aabb_from(const tf::points<Policy> &points) {
+  if (!points.size())
+    return tf::make_empty_aabb<tf::coordinate_type<Policy>,
+                               tf::coordinate_dims_v<Policy>>();
   auto out = tf::aabb_from(points.front());
   return tf::reduce(
       points, [](const auto &x, const auto &y) { return tf::aabb_union(x, y); },

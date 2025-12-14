@@ -1,83 +1,41 @@
-file(GLOB example_sources CONFIGURE_DEPENDS *.cpp)
+cmake_minimum_required(VERSION 3.15)
 
-set(EXAMPLE_EXECUTABLES "")
-set(EXAMPLE_TARGETS "")
+project(trueform_examples LANGUAGES CXX)
 
-foreach(src ${example_sources})
-  get_filename_component(name ${src} NAME_WE)
-  set(alias_target "example-${name}")
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-  add_executable(${name} ${src})
-  target_link_libraries(${name} PRIVATE tf::trueform)
-  target_compile_options(${name} PRIVATE -Wall -Wextra -Wpedantic)
-
-  add_custom_target(${alias_target} DEPENDS ${name})
-  list(APPEND EXAMPLE_TARGETS ${alias_target})
-  list(APPEND EXAMPLE_EXECUTABLES ${name})
-endforeach()
-
-# Optionally try to find VTK and store result for subdir
-find_package(VTK QUIET)
-set(TRUEFORM_HAS_VTK ${VTK_FOUND})
-if(VTK_FOUND)
-  message(STATUS "VTK found (version ${VTK_VERSION}), adding VTK examples.")
-  add_subdirectory(vtk)
-
-  list(APPEND EXAMPLE_EXECUTABLES ${VTK_EXAMPLE_EXECUTABLES})
-  list(APPEND EXAMPLE_TARGETS ${VTK_EXAMPLE_TARGETS})
-else()
-  message(STATUS "VTK not found — skipping VTK examples.")
+# Find trueform if not already available
+if(NOT TARGET tf::trueform)
+  find_package(trueform REQUIRED)
 endif()
 
-add_subdirectory(nanoflann)
-list(APPEND EXAMPLE_EXECUTABLES ${NANOFLANN_EXAMPLE_EXECUTABLES})
-list(APPEND EXAMPLE_TARGETS ${NANOFLANN_EXAMPLE_TARGETS})
+# Object library with reusable example utilities (cylinder, etc.)
+add_library(example_utils OBJECT
+  src/cylinder.cpp
+)
+target_link_libraries(example_utils PUBLIC tf::trueform)
+target_include_directories(example_utils PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_compile_options(example_utils PRIVATE
+  $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Wpedantic>
+  $<$<CXX_COMPILER_ID:MSVC>:/W4>
+)
 
-find_package(CGAL QUIET)
-set(TRUEFORM_HAS_CGAL ${CGAL_FOUND})
-if(CGAL_FOUND)
-  message(STATUS "GCAL found (version ${CGAL_VERSION}), adding CGAL examples.")
-  add_subdirectory(cgal)
+# Mesh assembly example
+add_executable(mesh_assembly src/mesh_assembly.cpp)
+target_link_libraries(mesh_assembly PRIVATE tf::trueform example_utils)
+target_include_directories(mesh_assembly PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_compile_options(mesh_assembly PRIVATE
+  $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Wpedantic>
+  $<$<CXX_COMPILER_ID:MSVC>:/W4>
+)
 
-  list(APPEND EXAMPLE_EXECUTABLES ${CGAL_EXAMPLE_EXECUTABLES})
-  list(APPEND EXAMPLE_TARGETS ${CGAL_EXAMPLE_TARGETS})
-else()
-  message(STATUS "CGAL not found — skipping CGAL examples.")
-endif()
+# Alignment example
+add_executable(alignment src/alignment.cpp)
+target_link_libraries(alignment PRIVATE tf::trueform)
+target_compile_options(alignment PRIVATE
+  $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Wpedantic>
+  $<$<CXX_COMPILER_ID:MSVC>:/W4>
+)
 
-if(ENABLE_ASAN)
-  foreach(target ${EXAMPLE_EXECUTABLES})
-    target_compile_options(${target} PRIVATE -fsanitize=address
-                                             -fno-omit-frame-pointer)
-    target_link_options(${target} PRIVATE -fsanitize=address)
-  endforeach()
-endif()
-
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
-  include(CheckCXXCompilerFlag)
-
-  check_cxx_compiler_flag("-march=native" SUPPORTS_MARCH_NATIVE)
-  if(SUPPORTS_MARCH_NATIVE)
-    message(STATUS "Compiler supports -march=native")
-  else()
-    message(WARNING "Compiler does NOT support -march=native")
-  endif()
-
-  foreach(target ${EXAMPLE_EXECUTABLES})
-    if(SUPPORTS_MARCH_NATIVE)
-      target_compile_options(${target} PRIVATE -march=native)
-    endif()
-  endforeach()
-endif()
-
-# Group target to build all
-add_custom_target(examples DEPENDS ${EXAMPLE_EXECUTABLES})
-
-# Copy compile_commands.json only after 'make examples'
-add_custom_command(
-  TARGET examples
-  POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/compile_commands.json
-          ${CMAKE_SOURCE_DIR}/compile_commands.json
-  COMMENT
-    "Copying compile_commands.json to project root after building examples")
+# Collect all example targets
+add_custom_target(examples DEPENDS mesh_assembly alignment)

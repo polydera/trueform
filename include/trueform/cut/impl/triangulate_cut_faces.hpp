@@ -8,7 +8,7 @@
 #include "../../core/algorithm/generic_generate.hpp"
 #include "../../core/point.hpp"
 #include "../../core/small_vector.hpp"
-#include "../loop/ear_cutter.hpp"
+#include "../../geometry/impl/ear_cutter.hpp"
 
 namespace tf::cut {
 template <typename Range, typename F0, typename F1, typename Index>
@@ -18,7 +18,7 @@ auto triangulate_cut_faces(const Range &zipped_cut_faces,
   tf::generic_generate(
       zipped_cut_faces, out,
       std::make_pair(tf::small_vector<tf::point<double, 2>, 10>{},
-                     tf::earcutter<Index>{}),
+                     tf::geom::earcutter<Index>{}),
       [&make_projector, &id_map](const auto &pair, auto &buffer, auto &state) {
         auto [descriptor, loop] = pair;
         auto &[pts, earcut] = state;

@@ -9,22 +9,24 @@
 
 namespace tf::vtk {
 
-/// @brief Computes normals and optionally orients faces consistently.
+/// @brief Computes normals and optionally orients faces.
 ///
 /// This filter computes cell normals and optionally point normals.
 /// It can also orient faces for consistent winding before computing normals.
 ///
 /// Operations are performed in order:
-/// 1. Orient faces consistently (if enabled)
+/// 1. Orient faces (if enabled): positive orientation or just consistent
 /// 2. Compute cell normals (always)
 /// 3. Compute point normals (if enabled)
 ///
-/// By default, both orient_faces and compute_point_normals are enabled.
+/// By default, orient_faces and compute_point_normals are enabled,
+/// positive_orientation is disabled.
 ///
 /// @code
 /// vtkNew<tf::vtk::normals_generator> filter;
 /// filter->SetInputConnection(reader->GetOutputPort());
 /// filter->set_orient_faces(true);
+/// filter->set_positive_orientation(true);  // outward-facing normals
 /// filter->set_compute_point_normals(true);
 /// filter->Update();
 /// @endcode
@@ -37,6 +39,12 @@ public:
   /// Default: true
   auto set_orient_faces(bool value) -> void;
   auto orient_faces() const -> bool;
+
+  /// @brief Enable/disable positive orientation (outward-facing normals).
+  /// When enabled, ensures signed volume is positive after consistent
+  /// orientation. Implies orient_faces. Default: false
+  auto set_positive_orientation(bool value) -> void;
+  auto positive_orientation() const -> bool;
 
   /// @brief Enable/disable point normal computation.
   /// Default: true
@@ -52,6 +60,7 @@ protected:
 
 private:
   bool _orient_faces = true;
+  bool _positive_orientation = false;
   bool _compute_point_normals = true;
 
   normals_generator(const normals_generator &) = delete;

@@ -5,12 +5,11 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
-#include "../../core/make_buffer_for_transformed.hpp"
-#include "../../core/make_local_buffer_for_transformed.hpp"
 #include "../../core/policy/buffer.hpp"
 #include "../../core/policy/id.hpp"
 #include "../../core/transformed.hpp"
 #include "../form.hpp"
+#include "../make_buffer_for_form.hpp"
 #include "../tree/dual_search.hpp"
 #include "../tree/search.hpp"
 #include <atomic>
@@ -46,7 +45,7 @@ auto search(const tf::tree_like<TreePolicy> &tree, const F0 &check_bv,
 template <std::size_t Dims, typename Policy, typename F0, typename F1>
 auto search(const tf::form<Dims, Policy> &form, const F0 &check_bv,
             const F1 &primitive_apply) -> bool {
-  auto buff = tf::core::make_buffer_for_transformed(form[0], form.frame());
+  auto buff = make_buffer_for_form(form);
   return tf::spatial::impl::search(
       form.tree(),
       [&check_bv, &form](const auto &bv) {
@@ -113,10 +112,8 @@ auto search(const tf::form<Dims, Policy0> &form0,
     return check_bvs(tf::transformed(bv0, form0.frame()),
                      tf::transformed(bv1, form1.frame()));
   };
-  auto buff0 =
-      tf::core::make_local_buffer_for_transformed(form0[0], form0.frame());
-  auto buff1 =
-      tf::core::make_local_buffer_for_transformed(form1[0], form1.frame());
+  auto buff0 = make_local_buffer_for_form(form0);
+  auto buff1 = make_local_buffer_for_form(form1);
   return tf::spatial::impl::dual_search(
       form0.tree(), form1.tree(), bv_f,
       [primitive_apply, &form0, &form1, &bv_f, &buff0, &buff1](const auto &r0,

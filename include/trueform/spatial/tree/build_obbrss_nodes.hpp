@@ -9,6 +9,7 @@
 #include "../../core/algorithm/parallel_iota.hpp"
 #include "../../core/algorithm/partition_range_into_parts.hpp"
 #include "../../core/buffer.hpp"
+#include "../../core/dispatch.hpp"
 #include "../../core/obbrss.hpp"
 #include "../../core/obbrss_from.hpp"
 #include "../tree_config.hpp"
@@ -24,7 +25,7 @@ auto build_tree_nodes(buffer<tree_node<Index, tf::obbrss<RealT, Dims>>> &nodes,
                       const tf::tree_config &config) {
   // create the bounding box
   nodes[node_id].bv = tf::core::obbrss_from(
-      tf::make_indirect_range(ids, primitives), primitives[0]);
+      tf::make_indirect_range(ids, primitives), tf::core::dispatch_element(primitives));
   Index n_ids = ids.size();
   if (n_ids <= config.leaf_size) {
     nodes[node_id].set_data(offset, ids.size());

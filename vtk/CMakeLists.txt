@@ -22,6 +22,7 @@ set(TRUEFORM_VTK_SOURCES
   src/filters/polygon_cleaner.cpp
   src/filters/self_intersection_resolver.cpp
   src/filters/stl_reader.cpp
+  src/filters/triangulator.cpp
   src/core/make_byte_blocks.cpp
   src/core/make_range.cpp
   src/core/make_blocked_range.cpp
@@ -50,6 +51,7 @@ set(TRUEFORM_VTK_SOURCES
   src/functions/cleaned_points.cpp
   src/functions/compute_cell_normals.cpp
   src/functions/compute_point_normals.cpp
+  src/functions/ensure_positive_orientation.cpp
   src/functions/make_boolean_pp.cpp
   src/functions/make_boolean_mp.cpp
   src/functions/make_boolean_pm.cpp
@@ -74,10 +76,12 @@ set(TRUEFORM_VTK_SOURCES
   src/functions/ray_hit.cpp
   src/functions/read_obj.cpp
   src/functions/read_stl.cpp
+  src/functions/resolved_self_intersections.cpp
+  src/functions/signed_volume.cpp
   src/functions/split_into_components.cpp
+  src/functions/triangulated.cpp
   src/functions/write_obj.cpp
   src/functions/write_stl.cpp
-  src/functions/resolved_self_intersections.cpp
 )
 
 add_library(trueform_vtk ${TRUEFORM_VTK_SOURCES})
@@ -109,6 +113,14 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     target_compile_options(trueform_vtk PRIVATE -march=native)
   endif()
 endif()
+
+target_compile_options(trueform_vtk PRIVATE
+        -Rpass=loop-vectorize
+        -Rpass-missed=loop-vectorize
+        -Rpass-analysis=loop-vectorize
+        -fsave-optimization-record
+)
+ 
 
 if(BUILD_VTK_EXAMPLES)
   add_subdirectory(examples)

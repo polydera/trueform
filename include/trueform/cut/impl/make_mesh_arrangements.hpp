@@ -5,6 +5,7 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
+#include "../arrangement_class.hpp"
 #include "../classify/tagged.hpp"
 #include "./ids_common.hpp"
 #include "./make_boolean_common.hpp"
@@ -45,34 +46,48 @@ auto make_mesh_arrangements(
   std::vector<res_t> out;
   out.resize(pai0.polygons.size() + pai1.polygons.size());
 
-  tf::buffer<tf::strict_containment> containments;
+  tf::buffer<tf::arrangement_class> containments;
   containments.allocate(out.size());
   tf::buffer<std::int8_t> labels;
   labels.allocate(out.size());
 
+  auto classify_from_counts = [](const auto &count) -> tf::arrangement_class {
+    int max_id = std::max_element(count.begin(), count.end()) - count.begin();
+    switch (max_id) {
+    case 0:
+      return tf::arrangement_class::inside;
+    case 1:
+      return tf::arrangement_class::outside;
+    case 2:
+      return tf::arrangement_class::aligned_boundary;
+    case 3:
+      return tf::arrangement_class::opposing_boundary;
+    default:
+      return tf::arrangement_class::none;
+    }
+  };
+
   tbb::task_group tg;
 
   for (std::size_t i = 0; i < std::size_t(pai0.polygons.size()); ++i) {
-    tg.run([&, &counts0 = counts0, i] {
+    tg.run([&, &counts0 = counts0, i,
+            &classify_from_counts = classify_from_counts] {
       out[i] = make_boolean_common(
           _polygons0, tf::make_points(ibp.intersection_points()), pai0,
           tcf.descriptors0(), tcf.mapped_loops0(), i, tf::direction::forward);
-      containments[i] = counts0[i][0] < counts0[i][1]
-                            ? tf::strict_containment::outside
-                            : tf::strict_containment::inside;
+      containments[i] = classify_from_counts(counts0[i]);
       labels[i] = 0;
     });
   }
 
   for (std::size_t i = 0; i < std::size_t(pai1.polygons.size()); ++i) {
     tg.run([&, &counts1 = counts1, i,
+            &classify_from_counts = classify_from_counts,
             offs = std::size_t(pai0.polygons.size())] {
       out[i + offs] = make_boolean_common(
           _polygons1, tf::make_points(ibp.intersection_points()), pai1,
           tcf.descriptors1(), tcf.mapped_loops1(), i, tf::direction::forward);
-      containments[i + offs] = counts1[i][0] < counts1[i][1]
-                                   ? tf::strict_containment::outside
-                                   : tf::strict_containment::inside;
+      containments[i + offs] = classify_from_counts(counts1[i]);
       labels[i + offs] = 1;
     });
   }

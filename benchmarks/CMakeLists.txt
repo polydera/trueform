@@ -76,6 +76,47 @@ find_package(TBB REQUIRED)
 message(STATUS "    TBB: found, version: ${TBB_VERSION}")
 
 # ------------------------------------------------------------------------------
+# OpenMP - for libigl parallelism (special handling for macOS)
+# ------------------------------------------------------------------------------
+
+message(STATUS "  - OpenMP (for libigl parallel algorithms)")
+find_package(OpenMP QUIET)
+
+if(NOT OpenMP_CXX_FOUND AND APPLE)
+    # Homebrew libomp doesn't provide cmake config, need manual setup
+    execute_process(
+        COMMAND brew --prefix libomp
+        OUTPUT_VARIABLE LIBOMP_PREFIX
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+
+    if(LIBOMP_PREFIX)
+        message(STATUS "    OpenMP: Found Homebrew libomp at ${LIBOMP_PREFIX}")
+        set(OpenMP_CXX_FLAGS "-Xpreprocessor -fopenmp -I${LIBOMP_PREFIX}/include" CACHE STRING "" FORCE)
+        set(OpenMP_CXX_LIB_NAMES "omp" CACHE STRING "" FORCE)
+        set(OpenMP_omp_LIBRARY "${LIBOMP_PREFIX}/lib/libomp.dylib" CACHE STRING "" FORCE)
+
+        find_package(OpenMP REQUIRED)
+
+        # Ensure include path is on the imported target
+        if(TARGET OpenMP::OpenMP_CXX)
+            set_target_properties(OpenMP::OpenMP_CXX PROPERTIES
+                INTERFACE_INCLUDE_DIRECTORIES "${LIBOMP_PREFIX}/include"
+            )
+        endif()
+    else()
+        message(WARNING "    OpenMP: Not found. Install with: brew install libomp")
+    endif()
+endif()
+
+if(OpenMP_CXX_FOUND)
+    message(STATUS "    OpenMP: Ready (version ${OpenMP_CXX_VERSION})")
+else()
+    message(STATUS "    OpenMP: Not found (libigl will run single-threaded)")
+endif()
+
+# ------------------------------------------------------------------------------
 # CGAL - Computational Geometry Algorithms Library
 # ------------------------------------------------------------------------------
 
@@ -442,13 +483,21 @@ add_custom_target(benchmarks)
 add_dependencies(benchmarks ${BENCHMARK_TARGETS})
 
 # ------------------------------------------------------------------------------
-# Link OpenMP into all benchmark targets (for libigl parallelism)
+# Link OpenMP into libigl benchmark targets only
 # ------------------------------------------------------------------------------
 
 if(OpenMP_CXX_FOUND)
-    foreach(target ${BENCHMARK_TARGETS})
+    set(IGL_BENCHMARK_TARGETS
+        topology-connected_components-igl
+        topology-boundary_paths-igl
+        intersect-isocontours-igl
+        cut-boolean-igl
+        cut-embedded_self_intersection_curves-igl
+        run-benchmarks
+    )
+    foreach(target ${IGL_BENCHMARK_TARGETS})
         if (TARGET ${target})
-            target_link_libraries(${target} PRIVATE OpenMP::OpenMP_CXX)
+            target_link_libraries(${target} OpenMP::OpenMP_CXX)
         endif()
     endforeach()
 endif()

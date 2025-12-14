@@ -11,6 +11,8 @@
 #include "./polygons.hpp"
 #include "./segment.hpp"
 #include "./segments.hpp"
+#include "./unit_vectors.hpp"
+#include "./vectors.hpp"
 
 namespace tf {
 namespace core {
@@ -47,6 +49,47 @@ auto covariance_of(const Range &points, const tf::point_like<Dims, Policy> &) {
       cov, tf::checked);
 
   auto n = points.size();
+  for (std::size_t i = 0; i < Dims; ++i)
+    for (std::size_t j = 0; j < Dims; ++j)
+      cov[i][j] /= n * (n != 0);
+
+  return std::make_pair(centroid, cov);
+}
+
+template <typename Range, std::size_t Dims, typename Policy>
+auto covariance_of(const Range &vectors,
+                   const tf::vector_like<Dims, Policy> &) {
+  using T = tf::coordinate_type<Policy>;
+  auto centroid = tf::centroid(tf::make_vectors(vectors));
+  std::array<std::array<T, Dims>, Dims> cov;
+  for (std::size_t i = 0; i < Dims; ++i)
+    for (std::size_t j = 0; j < Dims; ++j)
+      cov[i][j] = T(0);
+
+  cov = tf::reduce(
+      vectors,
+      [&centroid](auto acc, const auto &element) {
+        using ElementType = std::decay_t<decltype(element)>;
+        using AccType = std::decay_t<decltype(acc)>;
+
+        if constexpr (std::is_same_v<ElementType, AccType>) {
+          // Merging two partial covariance matrices
+          for (std::size_t i = 0; i < Dims; ++i)
+            for (std::size_t j = 0; j < Dims; ++j)
+              acc[i][j] += element[i][j];
+        } else {
+          // Adding a point's contribution
+          tf::vector<T, Dims> diff = element - centroid;
+          for (std::size_t i = 0; i < Dims; ++i)
+            for (std::size_t j = 0; j < Dims; ++j)
+              acc[i][j] += diff[i] * diff[j];
+        }
+
+        return acc;
+      },
+      cov, tf::checked);
+
+  auto n = vectors.size();
   for (std::size_t i = 0; i < Dims; ++i)
     for (std::size_t j = 0; j < Dims; ++j)
       cov[i][j] /= n * (n != 0);
@@ -151,9 +194,17 @@ auto covariance_of(const Range &segments, const tf::segment<Dims, Policy> &) {
 }
 } // namespace core
 
-template <typename Policy>
-auto covariance_of(const tf::points<Policy> &pts) {
+template <typename Policy> auto covariance_of(const tf::points<Policy> &pts) {
   return core::covariance_of(pts, pts[0]);
+}
+
+template <typename Policy> auto covariance_of(const tf::vectors<Policy> &vcs) {
+  return core::covariance_of(vcs, vcs[0]);
+}
+
+template <typename Policy>
+auto covariance_of(const tf::unit_vectors<Policy> &vcs) {
+  return core::covariance_of(tf::make_range(vcs), vcs[0]);
 }
 
 template <typename Policy>
