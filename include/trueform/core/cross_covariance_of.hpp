@@ -63,6 +63,11 @@ auto cross_covariance_of(const tf::points<Policy0> &X,
       },
       H, tf::checked);
 
+  auto n = X.size();
+  for (std::size_t i = 0; i < Dims; ++i)
+    for (std::size_t j = 0; j < Dims; ++j)
+      H[i][j] /= n + (n == 0);
+
   return std::make_tuple(cx, cy, H);
 }
 

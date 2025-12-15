@@ -51,7 +51,7 @@ auto covariance_of(const Range &points, const tf::point_like<Dims, Policy> &) {
   auto n = points.size();
   for (std::size_t i = 0; i < Dims; ++i)
     for (std::size_t j = 0; j < Dims; ++j)
-      cov[i][j] /= n * (n != 0);
+      cov[i][j] /= n + (n == 0);
 
   return std::make_pair(centroid, cov);
 }
@@ -92,7 +92,7 @@ auto covariance_of(const Range &vectors,
   auto n = vectors.size();
   for (std::size_t i = 0; i < Dims; ++i)
     for (std::size_t j = 0; j < Dims; ++j)
-      cov[i][j] /= n * (n != 0);
+      cov[i][j] /= n + (n == 0);
 
   return std::make_pair(centroid, cov);
 }
