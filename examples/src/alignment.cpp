@@ -10,7 +10,8 @@
 #endif
 
 int main(int argc, char *argv[]) {
-  const std::string data_dir = std::string(TRUEFORM_DATA_DIR) + "/benchmarks/data/";
+  const std::string data_dir =
+      std::string(TRUEFORM_DATA_DIR) + "/benchmarks/data/";
 
   // Default to the dragon mesh
   std::string mesh_path = data_dir + "dragon-500k.stl";
@@ -88,11 +89,14 @@ int main(int argc, char *argv[]) {
   auto target_with_tree = mesh.points() | tf::tag(target_tree);
 
   // Lambda to create strided sample indices
-  auto make_ids = [](std::size_t size, std::size_t offset, std::size_t stride, std::size_t count) {
-    return tf::take(tf::make_mapped_range(
-        tf::make_sequence_range(size), [size, offset, stride](auto id) {
-          return (offset + id * stride) % size;
-        }), count);
+  auto make_ids = [](std::size_t size, std::size_t offset, std::size_t stride,
+                     std::size_t count) {
+    return tf::take(tf::make_mapped_range(tf::make_sequence_range(size),
+                                          [size, offset, stride](auto id) {
+                                            return (offset + id * stride) %
+                                                   size;
+                                          }),
+                    count);
   };
 
   // =========================================================================
@@ -226,13 +230,12 @@ int main(int argc, char *argv[]) {
   constexpr std::size_t n_samples = 1000;
   constexpr std::size_t k = 5;
   constexpr float alpha = 0.3f;     // EMA smoothing factor
-  constexpr float rel_tol = 0.001f;  // stop when < 0.1% relative improvement
+  constexpr float rel_tol = 0.001f; // stop when < 0.1% relative improvement
 
-  std::size_t subsample_stride = std::max(std::size_t(1), source2.size() / n_samples);
+  std::size_t subsample_stride =
+      std::max(std::size_t(1), source2.size() / n_samples);
   std::cout << "Subsampling: ~" << n_samples << " / " << source2.size()
             << " points per iteration" << std::endl;
-
-  tf::points_buffer<float, 3> correspondences;
 
   float ema = 0.0f;
   float ema_prev = 0.0f;
@@ -242,19 +245,22 @@ int main(int argc, char *argv[]) {
   for (; iter < max_iters; ++iter) {
     std::size_t offset = tf::random(std::size_t(0), subsample_stride - 1);
     auto ids = make_ids(source2.size(), offset, subsample_stride, n_samples);
-    auto subsample = tf::make_points(tf::make_indirect_range(ids, source2.points()));
+    auto subsample =
+        tf::make_points(tf::make_indirect_range(ids, source2.points()));
 
     auto subsample_with_frame = subsample | tf::tag(tf::make_frame(T_accum));
 
-    auto T_iter = tf::fit_knn_alignment(subsample_with_frame, target_with_tree,
-                                        correspondences, k);
+    auto T_iter =
+        tf::fit_knn_alignment(subsample_with_frame, target_with_tree, k);
 
     T_accum = tf::transformed(T_accum, T_iter);
 
     // Evaluate Chamfer error on a different subset
     std::size_t eval_offset = tf::random(std::size_t(0), subsample_stride - 1);
-    auto eval_ids = make_ids(source2.size(), eval_offset, subsample_stride, n_samples);
-    auto eval_sample = tf::make_points(tf::make_indirect_range(eval_ids, source2.points()));
+    auto eval_ids =
+        make_ids(source2.size(), eval_offset, subsample_stride, n_samples);
+    auto eval_sample =
+        tf::make_points(tf::make_indirect_range(eval_ids, source2.points()));
     float chamfer = tf::chamfer_error(
         eval_sample | tf::tag(tf::make_frame(T_accum)), target_with_tree);
 
@@ -265,7 +271,8 @@ int main(int argc, char *argv[]) {
     std::cout << "  iter " << iter << ": Chamfer = " << chamfer
               << " (EMA = " << ema << ")" << std::endl;
 
-    if (iter > 0 && rel_change < rel_tol) break;
+    if (iter > 0 && rel_change < rel_tol)
+      break;
   }
   std::cout << "Converged after " << (iter + 1) << " iterations" << std::endl;
 
@@ -365,8 +372,8 @@ int main(int argc, char *argv[]) {
   std::cout << "\nICP refinement:" << std::endl;
   auto T_accum_low = T_obb_low_tree;
 
-  std::size_t subsample_stride_low = std::max(std::size_t(1), source_low.size() / n_samples);
-  tf::points_buffer<float, 3> correspondences_low;
+  std::size_t subsample_stride_low =
+      std::max(std::size_t(1), source_low.size() / n_samples);
 
   float ema_low = 0.0f;
   float ema_low_prev = 0.0f;
@@ -374,35 +381,43 @@ int main(int argc, char *argv[]) {
   std::size_t iter_low = 0;
   for (; iter_low < max_iters; ++iter_low) {
     std::size_t offset = tf::random(std::size_t(0), subsample_stride_low - 1);
-    auto ids = make_ids(source_low.size(), offset, subsample_stride_low, n_samples);
+    auto ids =
+        make_ids(source_low.size(), offset, subsample_stride_low, n_samples);
     auto subsample_low =
         tf::make_points(tf::make_indirect_range(ids, source_low.points()));
 
     auto subsample_low_with_frame =
         subsample_low | tf::tag(tf::make_frame(T_accum_low));
 
-    auto T_iter = tf::fit_knn_alignment(
-        subsample_low_with_frame, target_with_tree, correspondences_low, k);
+    auto T_iter =
+        tf::fit_knn_alignment(subsample_low_with_frame, target_with_tree, k);
 
     T_accum_low = tf::transformed(T_accum_low, T_iter);
 
     // Evaluate Chamfer error on a different subset
-    std::size_t eval_offset = tf::random(std::size_t(0), subsample_stride_low - 1);
-    auto eval_ids = make_ids(source_low.size(), eval_offset, subsample_stride_low, n_samples);
-    auto eval_sample = tf::make_points(tf::make_indirect_range(eval_ids, source_low.points()));
+    std::size_t eval_offset =
+        tf::random(std::size_t(0), subsample_stride_low - 1);
+    auto eval_ids = make_ids(source_low.size(), eval_offset,
+                             subsample_stride_low, n_samples);
+    auto eval_sample =
+        tf::make_points(tf::make_indirect_range(eval_ids, source_low.points()));
     float chamfer = tf::chamfer_error(
         eval_sample | tf::tag(tf::make_frame(T_accum_low)), target_with_tree);
 
     ema_low_prev = ema_low;
-    ema_low = (iter_low == 0) ? chamfer : alpha * chamfer + (1.0f - alpha) * ema_low;
-    float rel_change = (iter_low == 0) ? 1.0f : (ema_low_prev - ema_low) / ema_low;
+    ema_low =
+        (iter_low == 0) ? chamfer : alpha * chamfer + (1.0f - alpha) * ema_low;
+    float rel_change =
+        (iter_low == 0) ? 1.0f : (ema_low_prev - ema_low) / ema_low;
 
     std::cout << "  iter " << iter_low << ": Chamfer = " << chamfer
               << " (EMA = " << ema_low << ")" << std::endl;
 
-    if (iter_low > 0 && rel_change < rel_tol) break;
+    if (iter_low > 0 && rel_change < rel_tol)
+      break;
   }
-  std::cout << "Converged after " << (iter_low + 1) << " iterations" << std::endl;
+  std::cout << "Converged after " << (iter_low + 1) << " iterations"
+            << std::endl;
 
   float chamfer_final = tf::chamfer_error(
       source_low.points() | tf::tag(tf::make_frame(T_accum_low)),
