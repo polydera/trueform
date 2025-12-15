@@ -18,6 +18,7 @@
 #include <trueform/core/points_buffer.hpp>
 #include <trueform/core/polygons_buffer.hpp>
 #include <trueform/core/segments_buffer.hpp>
+#include <trueform/core/transformation_like.hpp>
 #include <trueform/python/util/make_capsule.hpp>
 
 namespace tf::py {
@@ -129,6 +130,29 @@ auto make_numpy_array(tf::curves_buffer<Index, RealT, Dims> &&curves_buff) {
   return std::make_pair(
       make_numpy_array(std::move(curves_buff.paths_buffer())),
       make_numpy_array(std::move(curves_buff.points_buffer())));
+}
+
+/**
+ * Create a numpy array from tf::transformation_like by copying
+ * Extracts (Dims + 1, Dims + 1) shaped array (e.g., 4x4 for 3D)
+ * The last row is filled with [0, 0, ..., 1]
+ */
+template <std::size_t Dims, typename Policy>
+auto make_numpy_array(const tf::transformation_like<Dims, Policy> &trans) {
+  using T = typename Policy::coordinate_type;
+  constexpr std::size_t N = Dims + 1;
+  T *data = new T[N * N];
+  for (std::size_t i = 0; i < Dims; ++i)
+    for (std::size_t j = 0; j < N; ++j)
+      data[i * N + j] = trans(i, j);
+  // Last row: [0, 0, ..., 1]
+  for (std::size_t j = 0; j < Dims; ++j)
+    data[Dims * N + j] = T(0);
+  data[Dims * N + Dims] = T(1);
+
+  auto capsule = make_capsule<T>(data);
+  return nanobind::ndarray<nanobind::numpy, T, nanobind::shape<N, N>>(
+      data, {N, N}, capsule);
 }
 
 } // namespace tf::py

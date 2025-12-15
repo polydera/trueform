@@ -1,0 +1,21 @@
+/*
+ * Copyright (c) 2025 Žiga Sajovic, XLAB
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
+ * https://github.com/xlabmedical/trueform
+ */
+#include <nanobind/nanobind.h>
+#include <trueform/python/geometry.hpp>
+
+namespace tf::py {
+
+auto register_geometry_module(nanobind::module_ &m) -> void {
+  auto geometry_module = m.def_submodule("geometry", "Geometry operations");
+
+  register_fit_rigid_alignment(geometry_module);
+  register_fit_obb_alignment(geometry_module);
+  register_fit_knn_alignment(geometry_module);
+  register_chamfer_error(geometry_module);
+}
+
+} // namespace tf::py
