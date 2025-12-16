@@ -122,12 +122,12 @@ protected:
   bool camera_mode = false;
 
   auto add_time(std::vector<float> &times, float t) {
-    if (times.size() < 100) {
+    if (times.size() < 10) {
       times.push_back(t);
     } else {
       times[time_index] = t;
     }
-    time_index = (time_index + 1) % 100;
+    time_index = (time_index + 1) % 10;
     float sum = 0;
     for (auto time : times) {
       sum += time;
