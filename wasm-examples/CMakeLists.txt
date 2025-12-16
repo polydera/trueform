@@ -29,6 +29,7 @@ target_include_directories(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(native PRIVATE trueform)
 target_compile_options(native PRIVATE
   -O3
+  -flto
   -msimd128
   -pthread
   -sSHARED_MEMORY=1
