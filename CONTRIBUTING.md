@@ -12,7 +12,7 @@ Browse [open issues](https://github.com/xlabmedical/trueform/issues) labeled by 
 
 Pick an issue, comment that you're working on it, and get started.
 
-**Interested in joining our team?** If you successfully tackle a hard-difficulty issue, we'd love to talk. Reach out to [ziga.sajovic@xlab.si](mailto:ziga.sajovic@xlab.si).
+**Interested in joining our team?** If you successfully tackle a hard-difficulty issue, we'd love to talk. Reach out to [info@polydera.com](mailto:info@polydera.com).
 
 ## Building from Source
 
@@ -83,7 +83,7 @@ If your employer owns your work, ensure they're comfortable with this arrangemen
 
 - **Technical questions:** [GitHub Discussions](https://github.com/xlabmedical/trueform/discussions)
 - **Bug reports:** [Open an issue](https://github.com/xlabmedical/trueform/issues)
-- **Commercial licensing or jobs:** [ziga.sajovic@xlab.si](mailto:ziga.sajovic@xlab.si)
+- **Commercial licensing or jobs:** [info@polydera.com](mailto:info@polydera.com)
 
 ---
 

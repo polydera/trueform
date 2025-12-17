@@ -167,7 +167,7 @@ Trueform is distributed under a dual-license model:
 - **Noncommercial use**: PolyForm Noncommercial License 1.0.0
 - **Commercial use**: Separate paid agreement with XLAB
 
-See [LICENSE.noncommercial](./LICENSE.noncommercial) and [license documentation](https://trueform.dev/cpp/about/license) for details. For commercial licensing, contact [ziga.sajovic@xlab.si](mailto:ziga.sajovic@xlab.si).
+See [LICENSE.noncommercial](./LICENSE.noncommercial) and [license documentation](https://trueform.dev/cpp/about/license) for details. For commercial licensing, contact [info@polydera.com](mailto:info@polydera.com).
 
 ### 3rd Party Licenses
 
