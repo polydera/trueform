@@ -35,6 +35,11 @@ std::vector<int> indices = {0, 1, 2};
 
 auto points = tf::make_points<3>(raw_points);
 auto triangles = tf::make_polygons(tf::make_blocked_range<3>(indices), points);
+// or maybe faces are variable
+std::vector<int> offsets = {0, 1};
+auto d_polygons = tf::make_polygons(tf::make_offset_block_range(offsets, indices), points);
+// or maybe the indices are a curve
+auto segments = tf::make_segments(tf::make_slide_range<2>(indices), points);
 ```
 
 **Primitive queries** work directly on geometry:
