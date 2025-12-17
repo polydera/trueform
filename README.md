@@ -35,6 +35,11 @@ std::vector<int> indices = {0, 1, 2};
 
 auto points = tf::make_points<3>(raw_points);
 auto triangles = tf::make_polygons(tf::make_blocked_range<3>(indices), points);
+// or maybe faces are variable
+std::vector<int> offsets = {0, 1};
+auto d_polygons = tf::make_polygons(tf::make_offset_block_range(offsets, indices), points);
+// or maybe the indices are a curve
+auto segments = tf::make_segments(tf::make_slide_range<2>(indices), points);
 ```
 
 **Primitive queries** work directly on geometry:
@@ -162,7 +167,7 @@ Trueform is distributed under a dual-license model:
 - **Noncommercial use**: PolyForm Noncommercial License 1.0.0
 - **Commercial use**: Separate paid agreement with XLAB
 
-See [LICENSE.noncommercial](./LICENSE.noncommercial) and [license documentation](https://trueform.dev/cpp/about/license) for details. For commercial licensing, contact [ziga.sajovic@xlab.si](mailto:ziga.sajovic@xlab.si).
+See [LICENSE.noncommercial](./LICENSE.noncommercial) and [license documentation](https://trueform.dev/cpp/about/license) for details. For commercial licensing, contact [info@polydera.com](mailto:info@polydera.com).
 
 ### 3rd Party Licenses
 

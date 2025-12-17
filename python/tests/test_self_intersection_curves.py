@@ -3,7 +3,7 @@ Tests for self_intersection_curves and embedded_self_intersection_curves
 
 Copyright (c) 2025 Ziga Sajovic, XLAB
 Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
-Commercial licensing available via ziga.sajovic@xlab.si.
+Commercial licensing available via info@polydera.com.
 https://github.com/xlabmedical/trueform
 """
 

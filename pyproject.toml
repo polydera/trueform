@@ -12,7 +12,7 @@ readme = "README.md"
 requires-python = ">=3.8"
 license = { file = "LICENSE.noncommercial" }
 authors = [
-  { name = "Ziga Sajovic", email = "ziga.sajovic@xlab.si" },
+  { name = "Ziga Sajovic", email = "info@polydera.com" },
   { name = "XLAB" },
 ]
 keywords = ["geometry", "nanobind", "computational-geometry", "meshes"]

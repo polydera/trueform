@@ -10,7 +10,7 @@ trueform is available for evaluation, personal, and educational work under the P
 Pricing is tailored to your organization (team size, deployment model, and support requirements).
 
 ## How to Get Started
-1. Email `ziga.sajovic@xlab.si` with details about your intended use (company, project context, deployment timeline).
+1. Email `info@polydera.com` with details about your intended use (company, project context, deployment timeline).
 2. We will follow up with suggested licensing tiers, pricing, and next steps.
 
 We are happy to collaborate on pilots, OEM partnerships, or academic research with industry partners—reach out so we can find the right fit.
