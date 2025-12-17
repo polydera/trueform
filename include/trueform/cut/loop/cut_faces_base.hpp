@@ -10,6 +10,8 @@
 #include "../../core/blocked_buffer.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/hash_set.hpp"
+#include "../../core/plane.hpp"
+#include "../../core/transformed.hpp"
 #include "./loop_extractor.hpp"
 #include "./vertex.hpp"
 
@@ -75,14 +77,39 @@ protected:
       for (const auto &intersections : r) {
         /*if(intersections.front().object != 500559)*/
         /*  continue;*/
-        apply_to_polygons(intersections.front(), [&](const auto &polygons) {
+        apply_to_polygons(intersections.front(),
+                          [&](const auto &polygons, const auto &polygons_other) {
           auto &[object_keys, loop_vertices, loop_offsets, intersection_edges,
                  extractor] = tup;
+          auto object = intersections.front().object;
+          auto frame = tf::frame_of(polygons);
+          auto frame_other = tf::frame_of(polygons_other);
+          auto plane =
+              tf::transformed(tf::make_plane(polygons[object]), frame);
+
+          auto describe_other = [&](auto object_other) {
+            auto plane_other = tf::transformed(
+                tf::make_plane(polygons_other[object_other]), frame_other);
+
+            auto cross = tf::cross(plane.normal, plane_other.normal);
+            auto cross_len_sq = tf::dot(cross, cross);
+            using RealT = std::decay_t<decltype(cross_len_sq)>;
+            constexpr auto eps = tf::epsilon<RealT>;
+
+            if (cross_len_sq > eps * eps)
+              return std::make_pair(false, std::size_t(0));
+
+            auto n_dot = tf::dot(plane.normal, plane_other.normal);
+            if (std::abs(plane.d - plane_other.d * n_dot) > eps)
+              return std::make_pair(false, std::size_t(0));
+
+            return std::make_pair(true, polygons_other.faces()[object_other].size());
+          };
+
           Index n_loops = extractor.build(
-              polygons.faces()[intersections.front().object],
-              intersection_points,
-              polygons.points() | tf::tag(tf::frame_of(polygons)),
-              intersections, get_flat_id, loop_offsets, loop_vertices);
+              polygons.faces()[object], intersection_points,
+              polygons.points() | tf::tag(frame), intersections, get_flat_id,
+              describe_other, loop_offsets, loop_vertices);
           ObjectKey key{intersections.front().object_key()};
           for (const auto &edge : extractor.intersection_edges()) {
             intersection_edges.emplace_back(edge[0], edge[1]);

@@ -16,8 +16,6 @@
 #include "../impl/polygon_arrangement_labels.hpp"
 #include <cstddef>
 
-#include <iostream>
-
 namespace tf::cut {
 template <typename Tup0, typename Tup1, typename Policy0, typename Policy1,
           typename Policy2>
@@ -101,7 +99,7 @@ auto classify_on_shared_edge(const Tup0 &tup0, std::size_t edge_id,
 template <typename Tup0, typename Policy0, typename Policy1, typename Policy2,
           typename Range, typename Zipped, typename LabelType, typename Index,
           typename LocalR>
-auto classify_on_original_shared_edge(
+auto classify_by_wedge_on_shared_edge(
     const Tup0 &tup0, std::size_t edge_id, const Range &neighbors,
     const Zipped &zipped, const tf::polygons<Policy0> &polygons0,
     const tf::polygons<Policy1> &polygons1,
@@ -126,7 +124,7 @@ auto classify_on_original_shared_edge(
   using RealT = tf::coordinate_type<Policy2>;
 
   // Lambda: classify other-mesh faces using wedge (plane0 + wedge_plane)
-  auto classify_with_wedge = [&, &d0 = d0](const auto &wedge_plane) {
+  auto classify_with_wedge = [&, &d0 = d0, &loop0 = loop0](const auto &wedge_plane) {
     for (auto other_id : neighbors) {
       const auto &[loop_other, mapped_other, d_other] = zipped[other_id];
       if (d_other.tag == d0.tag)
@@ -135,23 +133,52 @@ auto classify_on_original_shared_edge(
       const auto &poly_other = polygons1[d_other.object];
       auto plane_other = tf::transformed(tf::make_plane(poly_other), frame1);
 
-      // Vector in other_plane perpendicular to edge, pointing "into" the face
-      auto v_other = tf::cross(plane_other.normal, u);
+      // Find edge in loop_other and get direction from its perspective
+      auto other_edge_id =
+          tf::edge_id_in_face(loop0[edge_id], loop0[next_edge_id], loop_other);
+      if (other_edge_id == loop_other.size())
+        continue;
+      auto other_next_edge_id =
+          tf::circular_increment(other_edge_id, std::size_t{loop_other.size()});
+      auto u_other = intersection_points[mapped_other[other_next_edge_id].id] -
+                     intersection_points[mapped_other[other_edge_id].id];
 
-      // Test direction against wedge planes
+      // Vector in other_plane perpendicular to edge, pointing "into" the face
+      auto v_other = tf::cross(plane_other.normal, u_other);
+
+      // Compute vA and vB: vectors in planes A and B, perpendicular to edge, pointing into faces
+      // A has edge direction u, B has edge direction -u
+      auto vA = tf::cross(plane0.normal, u);
+      auto vB = tf::cross(wedge_plane.normal, -u);
+
+      // Check coplanarity with A and B
       auto d0_dot = tf::dot(plane0.normal, v_other);
       auto dw_dot = tf::dot(wedge_plane.normal, v_other);
 
       constexpr auto eps = tf::epsilon<RealT>;
 
+      // Check if C is on A's or B's half-plane:
+      // - Coplanar with the plane (d_dot ≈ 0)
+      // - AND v_other points same direction as vA/vB
+      bool coplanar_A = std::abs(d0_dot) < eps;
+      bool coplanar_B = std::abs(dw_dot) < eps;
+      bool on_A = coplanar_A && tf::dot(vA, v_other) > 0;
+      bool on_B = coplanar_B && tf::dot(vB, v_other) > 0;
+
+      // Edge direction in C compared to A's edge direction
+      bool same_as_A = (loop_other[other_edge_id] == loop0[edge_id]);
+
       int classification;
-      if (std::abs(d0_dot) < eps || std::abs(dw_dot) < eps) {
-        // Boundary case: check if normals are aligned or opposing
-        auto normal_dot = tf::dot(plane0.normal, plane_other.normal);
-        if (normal_dot > 0)
-          classification = 2; // aligned boundary
-        else
-          classification = 3; // opposing boundary
+      if (on_A) {
+        // C is on A's half-plane
+        // same_as_A → aligned, opposite → opposing
+        classification = same_as_A ? 2 : 3;
+      } else if (on_B) {
+        // C is on B's half-plane
+        // B has opposite edge direction to A, so:
+        // same_as_A means opposite_to_B → opposing
+        // opposite_to_A means same_as_B → aligned
+        classification = same_as_A ? 3 : 2;
       } else if (d0_dot < 0 && dw_dot < 0) {
         classification = 0; // inside
       } else {

@@ -38,9 +38,9 @@ public:
     _map_offset = tgs.intersection_points().size();
     auto apply_f = [&](auto intersection, const auto &f) {
       if (intersection.tag == 0)
-        f(polygons0);
+        f(polygons0, polygons1);
       else
-        f(polygons1);
+        f(polygons1, polygons0);
     };
     auto handle_id_f = [this](auto d, auto v) { return this->handle_id(d, v); };
 

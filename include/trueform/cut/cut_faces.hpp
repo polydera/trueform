@@ -31,7 +31,7 @@ public:
 
     base_t::build(
         tgs.intersections(), tf::make_points(tgs.intersection_points()),
-        [&](const auto &, auto &&f) { f(polygons); }, handle_id_f,
+        [&](const auto &, auto &&f) { f(polygons, polygons); }, handle_id_f,
         [&tgs](const auto &x) { return tgs.get_flat_index(x); });
   }
 

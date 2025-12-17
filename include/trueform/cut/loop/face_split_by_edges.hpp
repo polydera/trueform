@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via ziga.sajovic@xlab.si.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via ziga.sajovic@xlab.si.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -14,7 +14,6 @@
 #include "../../topology/planar_graph_regions.hpp"
 #include "./splitting_paths.hpp"
 
-/*#include <iostream>*/
 namespace tf::loop {
 template <typename Index, typename RealType> class face_split_by_edges {
 public:
@@ -27,35 +26,6 @@ public:
     assign_categories();
     _fhr.build(tf::make_faces(faces()), face_areas(), tf::make_faces(holes()),
                points);
-
-    /*std::cout << "faces" << std::endl;*/
-    /*for (auto f : faces()) {*/
-    /*  for (auto e : f)*/
-    /*    std::cout << e << ", ";*/
-    /*  std::cout << std::endl;*/
-    /*}*/
-    /*std::cout << "holes" << std::endl;*/
-    /*for (auto f : holes()) {*/
-    /*  for (auto e : f)*/
-    /*    std::cout << e << ", ";*/
-    /*  std::cout << std::endl;*/
-    /*}*/
-    /*std::cout << faces().size() << " == " << holes().size() << " == " <<
-     * holes_for_faces().size() << std::endl;*/
-    /*std::cout << "holes for faces" << std::endl;*/
-    /*for (auto [v, f] : tf::zip(holes_for_faces(), faces())) {*/
-    /*  std::cout << "face" << std::endl;*/
-    /*  for (auto e : f)*/
-    /*    std::cout << e << ", ";*/
-    /*  std::cout << std::endl;*/
-    /*  for (auto h : tf::make_indirect_range(v, holes())) {*/
-    /*    std::cout << "  hole" << std::endl;*/
-    /*    std::cout << "  ";*/
-    /*    for (auto e : h)*/
-    /*      std::cout << e << ", ";*/
-    /*    std::cout << std::endl;*/
-    /*  }*/
-    /*}*/
   }
 
   auto faces() const { return tf::make_indirect_range(_faces, all_loops()); }
@@ -303,9 +273,13 @@ private:
   auto process_loop_paths(const tf::points<Policy> &points) {
     for (const auto &_loop : _spaths.loop_paths()) {
       auto loop = tf::make_range(_loop.begin(), _loop.size() - 1);
-      _signed_areas.push_back(tf::signed_area(tf::make_polygon(loop, points)));
+      auto sa = tf::signed_area(tf::make_polygon(loop, points));
+      // Emit hole (original direction, negative area)
+      _signed_areas.push_back(sa);
       _offsets.push_back(_vertices.size());
       std::copy(loop.begin(), loop.end(), std::back_inserter(_vertices));
+      // Emit face (reversed direction, positive area)
+      _signed_areas.push_back(-sa);
       _offsets.push_back(_vertices.size());
       std::reverse_copy(loop.begin(), loop.end(),
                         std::back_inserter(_vertices));

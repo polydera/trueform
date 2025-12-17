@@ -215,7 +215,7 @@ auto make_classification_counts(
               [&, &loop0 = loop0, &mapped_loop0 = mapped_loop0,
                &d0 = d0](const auto &polys_self, const auto &polys_other,
                          const auto &pal_other, Index partition_other,
-                         const auto &conn, auto label_self, int tag) {
+                         const auto &conn) {
                 auto size = loop0.size();
                 auto curr = size - 1;
                 for (decltype(size) next = 0; next < size; curr = next++) {
@@ -225,43 +225,21 @@ auto make_classification_counts(
                   if (!tcf.is_intersection_edge(v0, v1))
                     continue;
 
-                  if (tcf.is_created_edge_original(v0, v1, ibp, polys_self)) {
-                    tf::cut::classify_on_original_shared_edge(
-                        std::forward_as_tuple(loop0, mapped_loop0, d0), curr,
-                        conn[curr], zipped, polys_self, polys_other, pal_other,
-                        partition_other, local_r,
-                        tf::make_points(ibp.intersection_points()));
-                  } else if (tag == 0) {
-                    for (auto n_id : conn[curr]) {
-                      const auto &[loop1, mapped_loop1, d1] = zipped[n_id];
-                      if (d0.tag == d1.tag)
-                        continue;
-                      auto label_other =
-                          pal_other.cut_labels[n_id - partition_other];
-                      tf::cut::classify_on_shared_edge(
-                          std::forward_as_tuple(loop0, mapped_loop0, d0,
-                                                local_r[0][label_self]),
-                          curr,
-                          std::forward_as_tuple(loop1, mapped_loop1, d1,
-                                                local_r[1][label_other]),
-                          polys_self, polys_other,
-                          tf::make_points(ibp.intersection_points()));
-                    }
-                  }
+                  tf::cut::classify_by_wedge_on_shared_edge(
+                      std::forward_as_tuple(loop0, mapped_loop0, d0), curr,
+                      conn[curr], zipped, polys_self, polys_other, pal_other,
+                      partition_other, local_r,
+                      tf::make_points(ibp.intersection_points()));
                 }
               };
 
           if (d0.tag == 0) {
             const auto &conn = tcf.connectivity_per_face_edge0()[face_id];
-            auto label_self = pal0.cut_labels[face_id];
-            process_face(polygons0, polygons1, pal1, tcf.partition_id(), conn,
-                         label_self, 0);
+            process_face(polygons0, polygons1, pal1, tcf.partition_id(), conn);
           } else {
             const auto &conn =
                 tcf.connectivity_per_face_edge1()[face_id - tcf.partition_id()];
-            auto label_self = pal1.cut_labels[face_id - tcf.partition_id()];
-            process_face(polygons1, polygons0, pal0, Index{0}, conn, label_self,
-                         1);
+            process_face(polygons1, polygons0, pal0, Index{0}, conn);
           }
         }
       },

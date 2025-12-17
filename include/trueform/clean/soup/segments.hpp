@@ -17,7 +17,6 @@
 #include "../../core/views/zip.hpp"
 #include "../index_map/points.hpp"
 
-#include <iostream>
 namespace tf::clean {
 template <typename Index, typename RealT, std::size_t Dims>
 class segment_soup : public segments_buffer<Index, RealT, Dims> {
