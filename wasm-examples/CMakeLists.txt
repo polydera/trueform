@@ -29,6 +29,7 @@ target_include_directories(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(native PRIVATE trueform)
 target_compile_options(native PRIVATE
   -O3
+  -flto
   -msimd128
   -pthread
   -sSHARED_MEMORY=1
@@ -36,10 +37,12 @@ target_compile_options(native PRIVATE
   -Wall
   -Wextra
   -Wpedantic
+  -fwasm-exceptions
 )
 target_link_options(native PRIVATE
   -O3
   -pthread
+  -fwasm-exceptions
   -lembind
   -sWASM=1
   -sSHARED_MEMORY=1
@@ -55,7 +58,6 @@ target_link_options(native PRIVATE
   -sSTACK_SIZE=8MB
   -sASSERTIONS=1
   --emit-symbol-map
-  -sNO_DISABLE_EXCEPTION_CATCHING=1
   -sMALLOC=mimalloc
   --emit-tsd ${DIST_DIR}/native.d.ts
 )

@@ -11,6 +11,7 @@ WORKDIR /deps/tbb
 RUN git clone --depth 1 --branch v${TBB_VERSION} https://github.com/oneapi-src/oneTBB.git .
 RUN mkdir build && cd build && \
     emcmake cmake ..  \
+    -DCMAKE_CXX_FLAGS="-fwasm-exceptions" \
     -DBUILD_SHARED_LIBS=OFF  \
     -DTBB_TEST=OFF  \
     -DTBB_ENABLE_IPO=OFF \
