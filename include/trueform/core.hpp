@@ -1,8 +1,12 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (www.trueform.polydera.com)
+ *
  * Licensed for noncommercial use under the PolyForm Noncommercial
- * License 1.0.0. Commercial licensing available via info@polydera.com.
- * https://github.com/xlabmedical/trueform
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
  */
 #pragma once
 
@@ -116,6 +120,7 @@
 #include "./core/sphere_like.hpp"                 // IWYU pragma: export
 #include "./core/sqrt.hpp"                        // IWYU pragma: export
 #include "./core/static_size.hpp"                 // IWYU pragma: export
+#include "./core/stitch_index_maps.hpp"           // IWYU pragma: export
 #include "./core/svd_of_symmetric.hpp"            // IWYU pragma: export
 #include "./core/tick_tock.hpp"                   // IWYU pragma: export
 #include "./core/transformation.hpp"              // IWYU pragma: export

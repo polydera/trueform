@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via info@polydera.com.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via info@polydera.com.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -25,6 +25,20 @@ auto ids_to_index_map(const Range &ids, tf::index_map_buffer<Index> &mapping,
 
   tf::parallel_copy(tf::make_sequence_range(mapping.kept_ids().size()),
                     tf::make_indirect_range(mapping.kept_ids(), mapping.f()));
+}
+
+template <typename Index, typename Range>
+auto ids_to_index_map(const Range &ids, tf::index_map_buffer<Index> &mapping,
+                      Index total_elements, Index offset, Index empty_tag) {
+  mapping.f().allocate(total_elements);
+  tf::parallel_fill(mapping.f(), empty_tag);
+
+  mapping.kept_ids().allocate(ids.size());
+  tf::parallel_copy(ids, mapping.kept_ids());
+
+  tf::parallel_copy(
+      tf::make_sequence_range(offset, Index(mapping.kept_ids().size() + offset)),
+      tf::make_indirect_range(mapping.kept_ids(), mapping.f()));
 }
 
 template <typename Index, typename Range>

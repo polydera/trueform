@@ -44,7 +44,7 @@ private:
 };
 
 template <typename Range0, typename Range1>
-auto make_mapping(Range0 &&_f, Range1 &&_kept_ids) {
+auto make_index_map(Range0 &&_f, Range1 &&_kept_ids) {
   return index_map<std::decay_t<Range0>, std::decay_t<Range1>>{
       static_cast<Range0 &&>(_f), static_cast<Range1 &&>(_kept_ids)};
 }

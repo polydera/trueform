@@ -5,6 +5,7 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
+#include "../core/constants.hpp"
 #include "../core/points.hpp"
 #include "../core/small_vector.hpp"
 #include "./directed_edge_link.hpp"
@@ -58,7 +59,7 @@ private:
     for (auto &&[edge0, angle, link] : tf::zip(edges, _angles, _dil)) {
       if (link.size() < 2)
         continue;
-      constexpr std::decay_t<decltype(angle)> pi = 3.14159265358979323846;
+      constexpr auto pi = tf::pi<std::decay_t<decltype(angle)>>;
       auto angle0 = angle - pi;
       angle0 += (angle0 <= 0) * 2 * pi;
       _work_buffer.clear();

@@ -40,6 +40,8 @@
 #include "./topology/scoped_id.hpp"                 // IWYU pragma: export
 #include "./topology/set_component_labels.hpp"      // IWYU pragma: export
 #include "./topology/set_type.hpp"                  // IWYU pragma: export
+#include "./topology/stitched_face_membership.hpp"  // IWYU pragma: export
+#include "./topology/stitched_manifold_edge_link.hpp" // IWYU pragma: export
 #include "./topology/vertex_id_in_face.hpp"         // IWYU pragma: export
 #include "./topology/vertex_link.hpp"               // IWYU pragma: export
 #include "./topology/vertex_link_like.hpp"          // IWYU pragma: export
