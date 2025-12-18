@@ -1,4 +1,4 @@
-name: Build Python packages
+name: Build and Publish Wheels
 
 on:
   push:
@@ -12,94 +12,112 @@ on:
         type: string
 
 jobs:
-  build-python:
-    name: ${{ matrix.os }} Py${{ matrix.python-version }}
+  build-wheels:
+    name: ${{ matrix.os }} - ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
-          - windows-latest
-        python-version:
-          - '3.11'
-          #- '3.12'
-          #- '3.13'
-          #- '3.14'
-    steps:
-      - uses: ilammy/msvc-dev-cmd@v1
-        if: runner.os == 'Windows'
+        os: [trueform-win, trueform-linux, macos-latest]
+        python-version: ["3.11", "3.12", "3.13"]
 
-      - name: Checkout
-        uses: actions/checkout@v5
+    steps:
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      # ------------------------------------------------------
+      # Windows compiler environment
+      # ------------------------------------------------------
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+
+      - name: Set Windows compiler env
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          echo "CC=clang-cl.exe" >> $GITHUB_ENV
+          echo "CXX=clang-cl.exe" >> $GITHUB_ENV
+          echo "CMAKE_C_COMPILER=clang-cl.exe" >> $GITHUB_ENV
+          echo "CMAKE_CXX_COMPILER=clang-cl.exe" >> $GITHUB_ENV
+          echo "CMAKE_GENERATOR=Ninja" >> $GITHUB_ENV
+
+      # ------------------------------------------------------
+      # Linux compiler environment
+      # ------------------------------------------------------
+      - name: Set Linux compiler env
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
+          echo "CMAKE_C_COMPILER=clang" >> $GITHUB_ENV
+          echo "CMAKE_CXX_COMPILER=clang++" >> $GITHUB_ENV
+
+      # ------------------------------------------------------
+      # Install cibuildwheel
+      # ------------------------------------------------------
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install build dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install build ninja cmake
+      - name: Install cibuildwheel
+        run: pip install cibuildwheel==3.3.0
 
-      - name: Build wheel (macOS)
-        if: runner.os == 'macOS'
-        shell: bash
-        env:
-          MACOSX_DEPLOYMENT_TARGET: '11.0'
-          CMAKE_OSX_ARCHITECTURES: arm64
-        run: |
-          python -m build --wheel
-
-      - name: Build wheel (Linux)
-        if: runner.os == 'Linux'
-        env:
-          CMAKE_GENERATOR: Ninja
-          CC: clang
-          CXX: clang++
-          CMAKE_C_COMPILER: clang
-          CMAKE_CXX_COMPILER: clang++
+      # ------------------------------------------------------
+      # Build wheels
+      # ------------------------------------------------------
+      - name: Build wheels
         shell: bash
         run: |
-          python -m build --wheel
+          # Dynamically create the build identifier from the matrix
+          # "3.11" -> "311", "3.12" -> "312"
+          # Result: CIBW_BUILD="cp311-*"
+          VER_NO_DOT=$(echo "${{ matrix.python-version }}" | tr -d '.')
+          export CIBW_BUILD="cp${VER_NO_DOT}-*"
+          
+          echo "Building for target: $CIBW_BUILD"
+          
+          # Run cibuildwheel (Platform is auto-detected by cibw)
+          cibuildwheel --output-dir wheelhouse
 
-      - name: Build wheel (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        env:
-          CMAKE_GENERATOR: Ninja
-          CC: clang-cl.exe
-          CXX: clang-cl.exe
-          CMAKE_C_COMPILER: clang-cl.exe
-          CMAKE_CXX_COMPILER: clang-cl.exe
-        run: |
-          python -m build --wheel
-
+      # ------------------------------------------------------
+      # Upload wheels for publish job
+      # ------------------------------------------------------
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: trueform-${{ matrix.os }}-py${{ matrix.python-version }}
-          path: dist/*.whl
-          retention-days: 7
+          # Must include python version in name to prevent overwrites in parallel matrix jobs
+          name: trueform-wheels-${{ matrix.os }}-${{ matrix.python-version }}
+          path: wheelhouse/*.whl
 
-  publish-release:
-    needs: build-python
+  # ----------------------------------------------------------
+  # PUBLISH WHEELS (GitHub Release + PyPI)
+  # ----------------------------------------------------------
+  publish:
+    needs: build-wheels
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+
     steps:
-      - name: Download built wheels
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
+          pattern: trueform-wheels-*
+          merge-multiple: true
           path: dist
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           files: dist/**/*.whl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        if: false # Enable when ready
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
