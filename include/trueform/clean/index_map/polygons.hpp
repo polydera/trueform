@@ -9,6 +9,7 @@
 #include "../../core/algorithm/update_by_mask.hpp"
 #include "../../core/base/polygons.hpp"
 #include "../../core/index_map.hpp"
+#include "../../core/none.hpp"
 #include "../../core/small_vector.hpp"
 #include "./points.hpp"
 
@@ -74,20 +75,30 @@ auto make_clean_index_map(
   clean::make_clean_index_map(polygons, face_map, point_map);
 }
 
-template <typename Index, typename Range0, typename Range1>
+template <typename Index = tf::none_t, typename Range0, typename Range1>
 auto make_clean_index_map(const tf::core::polygons<Range0, Range1> &polygons) {
-  tf::index_map_buffer<Index> face_map;
-  tf::index_map_buffer<Index> point_map;
-  make_clean_index_map(polygons, face_map, point_map);
-  return std::make_pair(std::move(face_map), std::move(point_map));
+  if constexpr (std::is_same_v<Index, tf::none_t>) {
+    using ActualIndex = std::decay_t<decltype(polygons.faces()[0][0])>;
+    return make_clean_index_map<ActualIndex>(polygons);
+  } else {
+    tf::index_map_buffer<Index> face_map;
+    tf::index_map_buffer<Index> point_map;
+    make_clean_index_map(polygons, face_map, point_map);
+    return std::make_pair(std::move(face_map), std::move(point_map));
+  }
 }
 
-template <typename Index, typename Range0, typename Range1>
+template <typename Index = tf::none_t, typename Range0, typename Range1>
 auto make_clean_index_map(const tf::core::polygons<Range0, Range1> &polygons,
                           tf::coordinate_type<Range1> tolerance) {
-  tf::index_map_buffer<Index> face_map;
-  tf::index_map_buffer<Index> point_map;
-  make_clean_index_map(polygons, tolerance, face_map, point_map);
-  return std::make_pair(std::move(face_map), std::move(point_map));
+  if constexpr (std::is_same_v<Index, tf::none_t>) {
+    using ActualIndex = std::decay_t<decltype(polygons.faces()[0][0])>;
+    return make_clean_index_map<ActualIndex>(polygons, tolerance);
+  } else {
+    tf::index_map_buffer<Index> face_map;
+    tf::index_map_buffer<Index> point_map;
+    make_clean_index_map(polygons, tolerance, face_map, point_map);
+    return std::make_pair(std::move(face_map), std::move(point_map));
+  }
 }
 } // namespace tf

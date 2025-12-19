@@ -10,6 +10,7 @@
 #include "../../core/algorithm/update_by_mask.hpp"
 #include "../../core/base/segments.hpp"
 #include "../../core/index_map.hpp"
+#include "../../core/none.hpp"
 #include "./points.hpp"
 
 namespace tf {
@@ -83,20 +84,30 @@ auto make_clean_index_map(
   clean::make_clean_index_map(segments, edge_map, point_map);
 }
 
-template <typename Index, typename Range0, typename Range1>
+template <typename Index = tf::none_t, typename Range0, typename Range1>
 auto make_clean_index_map(const tf::core::segments<Range0, Range1> &segments) {
-  tf::index_map_buffer<Index> edge_map;
-  tf::index_map_buffer<Index> point_map;
-  make_clean_index_map(segments, edge_map, point_map);
-  return std::make_pair(std::move(edge_map), std::move(point_map));
+  if constexpr (std::is_same_v<Index, tf::none_t>) {
+    using ActualIndex = std::decay_t<decltype(segments.edges()[0][0])>;
+    return make_clean_index_map<ActualIndex>(segments);
+  } else {
+    tf::index_map_buffer<Index> edge_map;
+    tf::index_map_buffer<Index> point_map;
+    make_clean_index_map(segments, edge_map, point_map);
+    return std::make_pair(std::move(edge_map), std::move(point_map));
+  }
 }
 
-template <typename Index, typename Range0, typename Range1>
+template <typename Index = tf::none_t, typename Range0, typename Range1>
 auto make_clean_index_map(const tf::core::segments<Range0, Range1> &segments,
                           tf::coordinate_type<Range1> tolerance) {
-  tf::index_map_buffer<Index> edge_map;
-  tf::index_map_buffer<Index> point_map;
-  make_clean_index_map(segments, tolerance, edge_map, point_map);
-  return std::make_pair(std::move(edge_map), std::move(point_map));
+  if constexpr (std::is_same_v<Index, tf::none_t>) {
+    using ActualIndex = std::decay_t<decltype(segments.edges()[0][0])>;
+    return make_clean_index_map<ActualIndex>(segments, tolerance);
+  } else {
+    tf::index_map_buffer<Index> edge_map;
+    tf::index_map_buffer<Index> point_map;
+    make_clean_index_map(segments, tolerance, edge_map, point_map);
+    return std::make_pair(std::move(edge_map), std::move(point_map));
+  }
 }
 } // namespace tf

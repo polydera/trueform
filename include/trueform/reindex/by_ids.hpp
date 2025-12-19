@@ -8,6 +8,7 @@
 
 #include "../core/algorithm/ids_to_index_map.hpp"
 #include "../core/algorithm/mask_to_index_map.hpp"
+#include "../core/none.hpp"
 #include "./points.hpp"
 #include "./polygons.hpp"
 #include "./range.hpp"
@@ -17,64 +18,96 @@
 #include "./vectors.hpp"
 
 namespace tf {
-template <typename Index, typename Policy, typename Range>
+
+// =============================================================================
+// polygons - deduces from faces()[0][0]
+// =============================================================================
+
+template <typename Index = tf::none_t, typename Policy, typename Range>
 auto reindexed_by_ids(const tf::polygons<Policy> &polygons, const Range &ids,
                       tf::return_index_map_t) {
-  auto face_im = tf::ids_to_index_map<Index>(ids, polygons.faces().size());
-  tf::buffer<bool> point_mask;
-  point_mask.allocate(polygons.points().size());
-  tf::parallel_fill(point_mask, false);
-  // benign race: multiple threads may write `true` to the same byte.
-  // safe because writes are idempotent and there’s a barrier at loop end.
-  tf::parallel_apply(
-      tf::make_indirect_range(face_im.kept_ids(), polygons.faces()),
-      [&](auto &&face) {
-        for (auto &e : face)
-          point_mask[e] = true;
-      },
-      tf::checked);
-  auto point_im = tf::mask_to_index_map<Index>(point_mask);
-  auto out = tf::reindexed(polygons, face_im, point_im);
-  return std::make_tuple(std::move(out), std::move(face_im),
-                         std::move(point_im));
+  if constexpr (std::is_same_v<Index, tf::none_t>) {
+    using ActualIndex = std::decay_t<decltype(polygons.faces()[0][0])>;
+    return reindexed_by_ids<ActualIndex>(polygons, ids, tf::return_index_map);
+  } else {
+    auto face_im = tf::ids_to_index_map<Index>(ids, polygons.faces().size());
+    tf::buffer<bool> point_mask;
+    point_mask.allocate(polygons.points().size());
+    tf::parallel_fill(point_mask, false);
+    // benign race: multiple threads may write `true` to the same byte.
+    // safe because writes are idempotent and there's a barrier at loop end.
+    tf::parallel_apply(
+        tf::make_indirect_range(face_im.kept_ids(), polygons.faces()),
+        [&](auto &&face) {
+          for (auto &e : face)
+            point_mask[e] = true;
+        },
+        tf::checked);
+    auto point_im = tf::mask_to_index_map<Index>(point_mask);
+    auto out = tf::reindexed(polygons, face_im, point_im);
+    return std::make_tuple(std::move(out), std::move(face_im),
+                           std::move(point_im));
+  }
 }
 
-template <typename Index, typename Policy, typename Range>
+template <typename Index = tf::none_t, typename Policy, typename Range>
 auto reindexed_by_ids(const tf::polygons<Policy> &polygons, const Range &ids) {
-  return std::get<0>(
-      reindexed_by_ids<Index>(polygons, ids, tf::return_index_map));
+  if constexpr (std::is_same_v<Index, tf::none_t>) {
+    using ActualIndex = std::decay_t<decltype(polygons.faces()[0][0])>;
+    return reindexed_by_ids<ActualIndex>(polygons, ids);
+  } else {
+    return std::get<0>(
+        reindexed_by_ids<Index>(polygons, ids, tf::return_index_map));
+  }
 }
 
-template <typename Index, typename Policy, typename Range>
+// =============================================================================
+// segments - deduces from edges()[0][0]
+// =============================================================================
+
+template <typename Index = tf::none_t, typename Policy, typename Range>
 auto reindexed_by_ids(const tf::segments<Policy> &segments, const Range &ids,
                       tf::return_index_map_t) {
-  auto edge_im = tf::ids_to_index_map<Index>(ids, segments.edges().size());
-  tf::buffer<bool> point_mask;
-  point_mask.allocate(segments.points().size());
-  tf::parallel_fill(point_mask, false);
-  // benign race: multiple threads may write `true` to the same byte.
-  // safe because writes are idempotent and there’s a barrier at loop end.
-  tf::parallel_apply(
-      tf::make_indirect_range(edge_im.kept_ids(), segments.edges()),
-      [&](auto &&edge) {
-        for (auto &e : edge)
-          point_mask[e] = true;
-      },
-      tf::checked);
-  auto point_im = tf::mask_to_index_map<Index>(point_mask);
-  auto out = tf::reindexed(segments, edge_im, point_im);
-  return std::make_tuple(std::move(out), std::move(edge_im),
-                         std::move(point_im));
+  if constexpr (std::is_same_v<Index, tf::none_t>) {
+    using ActualIndex = std::decay_t<decltype(segments.edges()[0][0])>;
+    return reindexed_by_ids<ActualIndex>(segments, ids, tf::return_index_map);
+  } else {
+    auto edge_im = tf::ids_to_index_map<Index>(ids, segments.edges().size());
+    tf::buffer<bool> point_mask;
+    point_mask.allocate(segments.points().size());
+    tf::parallel_fill(point_mask, false);
+    // benign race: multiple threads may write `true` to the same byte.
+    // safe because writes are idempotent and there's a barrier at loop end.
+    tf::parallel_apply(
+        tf::make_indirect_range(edge_im.kept_ids(), segments.edges()),
+        [&](auto &&edge) {
+          for (auto &e : edge)
+            point_mask[e] = true;
+        },
+        tf::checked);
+    auto point_im = tf::mask_to_index_map<Index>(point_mask);
+    auto out = tf::reindexed(segments, edge_im, point_im);
+    return std::make_tuple(std::move(out), std::move(edge_im),
+                           std::move(point_im));
+  }
 }
 
-
-template <typename Index, typename Policy, typename Range>
+template <typename Index = tf::none_t, typename Policy, typename Range>
 auto reindexed_by_ids(const tf::segments<Policy> &segments, const Range &ids) {
-  return std::get<0>(
-      reindexed_by_ids<Index>(segments, ids, tf::return_index_map));
+  if constexpr (std::is_same_v<Index, tf::none_t>) {
+    using ActualIndex = std::decay_t<decltype(segments.edges()[0][0])>;
+    return reindexed_by_ids<ActualIndex>(segments, ids);
+  } else {
+    return std::get<0>(
+        reindexed_by_ids<Index>(segments, ids, tf::return_index_map));
+  }
 }
 
-template <typename Index, typename Policy, typename Range>
+// =============================================================================
+// points - defaults to int
+// =============================================================================
+
+template <typename Index = int, typename Policy, typename Range>
 auto reindexed_by_ids(const tf::points<Policy> &points, const Range &ids,
                       tf::return_index_map_t) {
   auto im = tf::ids_to_index_map<Index>(ids, points.size());
@@ -82,13 +115,17 @@ auto reindexed_by_ids(const tf::points<Policy> &points, const Range &ids,
   return std::make_pair(std::move(out), std::move(im));
 }
 
-template <typename Index, typename Policy, typename Range>
+template <typename Index = int, typename Policy, typename Range>
 auto reindexed_by_ids(const tf::points<Policy> &points, const Range &ids) {
   return std::get<0>(
       reindexed_by_ids<Index>(points, ids, tf::return_index_map));
 }
 
-template <typename Index, typename Policy, typename Range>
+// =============================================================================
+// vectors - defaults to int
+// =============================================================================
+
+template <typename Index = int, typename Policy, typename Range>
 auto reindexed_by_ids(const tf::vectors<Policy> &vectors, const Range &ids,
                       tf::return_index_map_t) {
   auto im = tf::ids_to_index_map<Index>(ids, vectors.size());
@@ -96,13 +133,17 @@ auto reindexed_by_ids(const tf::vectors<Policy> &vectors, const Range &ids,
   return std::make_pair(std::move(out), std::move(im));
 }
 
-template <typename Index, typename Policy, typename Range>
+template <typename Index = int, typename Policy, typename Range>
 auto reindexed_by_ids(const tf::vectors<Policy> &vectors, const Range &ids) {
   return std::get<0>(
       reindexed_by_ids<Index>(vectors, ids, tf::return_index_map));
 }
 
-template <typename Index, typename Policy, typename Range>
+// =============================================================================
+// unit_vectors - defaults to int
+// =============================================================================
+
+template <typename Index = int, typename Policy, typename Range>
 auto reindexed_by_ids(const tf::unit_vectors<Policy> &unit_vectors,
                       const Range &ids, tf::return_index_map_t) {
   auto im = tf::ids_to_index_map<Index>(ids, unit_vectors.size());
@@ -110,15 +151,18 @@ auto reindexed_by_ids(const tf::unit_vectors<Policy> &unit_vectors,
   return std::make_pair(std::move(out), std::move(im));
 }
 
-template <typename Index, typename Policy, typename Range>
+template <typename Index = int, typename Policy, typename Range>
 auto reindexed_by_ids(const tf::unit_vectors<Policy> &unit_vectors,
                       const Range &ids) {
   return std::get<0>(
       reindexed_by_ids<Index>(unit_vectors, ids, tf::return_index_map));
 }
 
+// =============================================================================
+// range - defaults to int
+// =============================================================================
 
-template <typename Index, typename Iter, std::size_t N, typename Range>
+template <typename Index = int, typename Iter, std::size_t N, typename Range>
 auto reindexed_by_ids(const tf::range<Iter, N> &r, const Range &ids,
                       tf::return_index_map_t) {
   auto im = tf::ids_to_index_map<Index>(ids, r.size());
@@ -126,8 +170,9 @@ auto reindexed_by_ids(const tf::range<Iter, N> &r, const Range &ids,
   return std::make_pair(std::move(out), std::move(im));
 }
 
-template <typename Index, typename Iter, std::size_t N, typename Range>
+template <typename Index = int, typename Iter, std::size_t N, typename Range>
 auto reindexed_by_ids(const tf::range<Iter, N> &r, const Range &ids) {
   return std::get<0>(tf::reindexed_by_ids<Index>(r, ids, tf::return_index_map));
 }
+
 } // namespace tf

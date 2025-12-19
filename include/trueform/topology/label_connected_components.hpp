@@ -11,7 +11,7 @@
 #include "./connected_component_labels.hpp"
 
 namespace tf {
-template <typename Index, typename Range0, typename Range1, typename F>
+template <typename Index = int, typename Range0, typename Range1, typename F>
 auto label_connected_components_masked(Range0 &&labels, const Range1 &mask,
                                 const F &applier,
                                 Index expected_number_of_components = 2) {
@@ -25,7 +25,7 @@ auto label_connected_components_masked(Range0 &&labels, const Range1 &mask,
   }
 }
 
-template <typename Index, typename LabelType, typename Range1, typename F>
+template <typename Index = int, typename LabelType, typename Range1, typename F>
 auto label_connected_components_masked(tf::connected_component_labels<LabelType> &cl,
                                 const Range1 &mask, const F &applier,
                                 Index expected_number_of_components = 2) {
@@ -33,7 +33,7 @@ auto label_connected_components_masked(tf::connected_component_labels<LabelType>
       cl.labels, mask, applier, expected_number_of_components);
 }
 
-template <typename Index, typename Range, typename F>
+template <typename Index = int, typename Range, typename F>
 auto label_connected_components(Range &&labels, const F &applier,
                                 Index expected_number_of_components = 2) {
   return label_connected_components_masked(
@@ -41,7 +41,7 @@ auto label_connected_components(Range &&labels, const F &applier,
       expected_number_of_components);
 }
 
-template <typename Index, typename LabelType, typename F>
+template <typename Index = int, typename LabelType, typename F>
 auto label_connected_components(tf::connected_component_labels<LabelType> &cl,
                                 const F &applier,
                                 Index expected_number_of_components = 2) {

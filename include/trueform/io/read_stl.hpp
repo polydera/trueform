@@ -10,7 +10,7 @@
 #include "./stl_point_collector.hpp"
 
 namespace tf {
-template <typename Index>
+template <typename Index = int>
 auto read_stl(std::string_view file_path)
     -> tf::polygons_buffer<Index, float, 3, 3> {
   tf::buffer<float> buffer;

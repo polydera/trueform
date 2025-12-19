@@ -48,7 +48,7 @@ auto make_clean_index_map(const tf::points<Policy> &points,
   }
 }
 
-template <typename Index, typename Policy>
+template <typename Index = int, typename Policy>
 auto make_clean_index_map(const tf::points<Policy> &points,
                           tf::coordinate_type<Policy> tolerance) {
   tf::index_map_buffer<Index> point_map;
@@ -56,7 +56,7 @@ auto make_clean_index_map(const tf::points<Policy> &points,
   return point_map;
 }
 
-template <typename Index, typename Policy>
+template <typename Index = int, typename Policy>
 auto make_clean_index_map(const tf::points<Policy> &points) {
   tf::index_map_buffer<Index> point_map;
   make_clean_index_map(points, point_map);

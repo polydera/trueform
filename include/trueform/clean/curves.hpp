@@ -6,6 +6,7 @@
  */
 #pragma once
 #include "../core/curves_buffer.hpp"
+#include "../core/none.hpp"
 #include "../core/segments.hpp"
 #include "../core/views/slide_range.hpp"
 #include "../reindex/return_index_map.hpp"
@@ -48,83 +49,102 @@ auto extract_edges_from_curves(const tf::curves<Policy> &curves) {
 
 } // namespace clean::detail
 
-template <typename Index, typename Range0, typename Range1>
-auto cleaned(const tf::core::curves<Range0, Range1> &curves,
-             tf::coordinate_type<Range1> tolerance, tf::return_index_map_t) {
-  auto edges_buf = clean::detail::extract_edges_from_curves<Index>(
-      tf::make_curves(curves.paths(), curves.points()));
-  if (edges_buf.size() == 0) {
-    tf::curves_buffer<Index, tf::coordinate_type<Range1>,
-                      tf::coordinate_dims_v<Range1>>
+template <typename Index = tf::none_t, typename Policy>
+auto cleaned(const tf::curves<Policy> &curves,
+             tf::coordinate_type<Policy> tolerance, tf::return_index_map_t) {
+  if constexpr (std::is_same_v<Index, tf::none_t>) {
+    using ActualIndex = std::decay_t<decltype(curves.paths()[0][0])>;
+    return cleaned<ActualIndex>(curves, tolerance, tf::return_index_map);
+  } else {
+    auto edges_buf = clean::detail::extract_edges_from_curves<Index>(curves);
+    if (edges_buf.size() == 0) {
+      tf::curves_buffer<Index, tf::coordinate_type<Policy>,
+                        tf::coordinate_dims_v<Policy>>
+          out;
+      tf::index_map_buffer<Index> point_im;
+      return std::make_tuple(std::move(out), std::move(point_im));
+    }
+
+    // Build segments from edges and points
+    auto segments =
+        tf::make_segments(tf::make_edges(edges_buf), curves.points());
+
+    // Clean the segments
+    auto [edge_im, point_im] =
+        tf::make_clean_index_map<Index>(segments, tolerance);
+    auto cleaned_segments = tf::reindexed(segments, edge_im, point_im);
+
+    // Reconnect edges to paths
+    auto paths = tf::connect_edges_to_paths(cleaned_segments.edges());
+
+    // Build output curves_buffer
+    tf::curves_buffer<Index, tf::coordinate_type<Policy>,
+                      tf::coordinate_dims_v<Policy>>
         out;
-    tf::index_map_buffer<Index> point_im;
+    out.paths_buffer() = std::move(paths);
+    out.points_buffer() = std::move(cleaned_segments.points_buffer());
+
     return std::make_tuple(std::move(out), std::move(point_im));
   }
-
-  // Build segments from edges and points
-  auto segments = tf::make_segments(tf::make_edges(edges_buf), curves.points());
-
-  // Clean the segments
-  auto [edge_im, point_im] =
-      tf::make_clean_index_map<Index>(segments, tolerance);
-  auto cleaned_segments = tf::reindexed(segments, edge_im, point_im);
-
-  // Reconnect edges to paths
-  auto paths = tf::connect_edges_to_paths(cleaned_segments.edges());
-
-  // Build output curves_buffer
-  tf::curves_buffer<Index, tf::coordinate_type<Range1>,
-                    tf::coordinate_dims_v<Range1>>
-      out;
-  out.paths_buffer() = std::move(paths);
-  out.points_buffer() = std::move(cleaned_segments.points_buffer());
-
-  return std::make_tuple(std::move(out), std::move(point_im));
 }
 
-template <typename Index, typename Range0, typename Range1>
-auto cleaned(const tf::core::curves<Range0, Range1> &curves,
-             tf::return_index_map_t) {
-  auto edges_buf = clean::detail::extract_edges_from_curves<Index>(
-      tf::make_curves(curves.paths(), curves.points()));
-  if (edges_buf.size() == 0) {
-    tf::curves_buffer<Index, tf::coordinate_type<Range1>,
-                      tf::coordinate_dims_v<Range1>>
+template <typename Index = tf::none_t, typename Policy>
+auto cleaned(const tf::curves<Policy> &curves, tf::return_index_map_t) {
+  if constexpr (std::is_same_v<Index, tf::none_t>) {
+    using ActualIndex = std::decay_t<decltype(curves.paths()[0][0])>;
+    return cleaned<ActualIndex>(curves, tf::return_index_map);
+  } else {
+    auto edges_buf = clean::detail::extract_edges_from_curves<Index>(curves);
+    if (edges_buf.size() == 0) {
+      tf::curves_buffer<Index, tf::coordinate_type<Policy>,
+                        tf::coordinate_dims_v<Policy>>
+          out;
+      tf::index_map_buffer<Index> point_im;
+      return std::make_tuple(std::move(out), std::move(point_im));
+    }
+
+    // Build segments from edges and points
+    auto segments =
+        tf::make_segments(tf::make_edges(edges_buf), curves.points());
+
+    // Clean the segments (no tolerance = exact deduplication)
+    auto [edge_im, point_im] = tf::make_clean_index_map<Index>(segments);
+    auto cleaned_segments = tf::reindexed(segments, edge_im, point_im);
+
+    // Reconnect edges to paths
+    auto paths = tf::connect_edges_to_paths(cleaned_segments.edges());
+
+    // Build output curves_buffer
+    tf::curves_buffer<Index, tf::coordinate_type<Policy>,
+                      tf::coordinate_dims_v<Policy>>
         out;
-    tf::index_map_buffer<Index> point_im;
+    out.paths_buffer() = std::move(paths);
+    out.points_buffer() = std::move(cleaned_segments.points_buffer());
+
     return std::make_tuple(std::move(out), std::move(point_im));
   }
-
-  // Build segments from edges and points
-  auto segments = tf::make_segments(tf::make_edges(edges_buf), curves.points());
-
-  // Clean the segments (no tolerance = exact deduplication)
-  auto [edge_im, point_im] = tf::make_clean_index_map<Index>(segments);
-  auto cleaned_segments = tf::reindexed(segments, edge_im, point_im);
-
-  // Reconnect edges to paths
-  auto paths = tf::connect_edges_to_paths(cleaned_segments.edges());
-
-  // Build output curves_buffer
-  tf::curves_buffer<Index, tf::coordinate_type<Range1>,
-                    tf::coordinate_dims_v<Range1>>
-      out;
-  out.paths_buffer() = std::move(paths);
-  out.points_buffer() = std::move(cleaned_segments.points_buffer());
-
-  return std::make_tuple(std::move(out), std::move(point_im));
 }
 
-template <typename Index, typename Policy>
+template <typename Index = tf::none_t, typename Policy>
 auto cleaned(const tf::curves<Policy> &curves,
              tf::coordinate_type<Policy> tolerance) {
-  return std::get<0>(
-      cleaned<Index>(curves, tolerance, tf::return_index_map));
+  if constexpr (std::is_same_v<Index, tf::none_t>) {
+    using ActualIndex = std::decay_t<decltype(curves.paths()[0][0])>;
+    return cleaned<ActualIndex>(curves, tolerance);
+  } else {
+    return std::get<0>(
+        cleaned<Index>(curves, tolerance, tf::return_index_map));
+  }
 }
 
-template <typename Index, typename Policy>
+template <typename Index = tf::none_t, typename Policy>
 auto cleaned(const tf::curves<Policy> &curves) {
-  return std::get<0>(cleaned<Index>(curves, tf::return_index_map));
+  if constexpr (std::is_same_v<Index, tf::none_t>) {
+    using ActualIndex = std::decay_t<decltype(curves.paths()[0][0])>;
+    return cleaned<ActualIndex>(curves);
+  } else {
+    return std::get<0>(cleaned<Index>(curves, tf::return_index_map));
+  }
 }
 
 } // namespace tf
