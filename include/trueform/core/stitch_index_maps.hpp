@@ -6,6 +6,7 @@
  */
 #pragma once
 #include "./index_map.hpp"
+#include "./direction.hpp"
 
 namespace tf {
 template <typename Index> struct stitch_index_maps {
@@ -19,5 +20,7 @@ template <typename Index> struct stitch_index_maps {
   Index polygons0_offset;
   tf::index_map_buffer<Index> polygons1;
   Index polygons1_offset;
+  tf::direction direction0;
+  tf::direction direction1;
 };
 } // namespace tf

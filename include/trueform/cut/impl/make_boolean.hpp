@@ -8,11 +8,11 @@
 #include "../../core/algorithm/ids_to_index_map.hpp"
 #include "../../core/concatenated_blocked_ranges.hpp"
 #include "../../core/index_map.hpp"
+#include "../../core/stitch_index_maps.hpp"
 #include "../../core/views/block_indirect_range.hpp"
 #include "../../reindex/concatenated.hpp"
 #include "../../reindex/return_index_map.hpp"
 #include "../arrangement_class.hpp"
-#include "../../core/stitch_index_maps.hpp"
 #include "../classify/tagged.hpp"
 #include "./ids_common.hpp"
 #include "./triangulate_cut_faces.hpp"
@@ -229,7 +229,7 @@ auto make_boolean(
             Index(original_current0), std::move(created_im),
             Index(original_current0 + original_current1),
             std::move(polygons_im0), Index(0), std::move(polygons_im1),
-            Index(mapped_faces0.size())});
+            Index(mapped_faces0.size()), direction0, direction1});
   } else {
     return std::make_pair(
         tf::make_polygons_buffer(std::move(faces), std::move(points)),

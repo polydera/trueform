@@ -82,6 +82,16 @@ auto stitched_manifold_edge_link(
     return dirty_point_mask[v0] || dirty_point_mask[v1];
   };
 
+  const bool mesh0_flipped = im.direction0 == tf::direction::reverse;
+  const bool mesh1_flipped = im.direction1 == tf::direction::reverse;
+
+  // When a face is reversed, edge indices are remapped.
+  // For [v0,v1,...,v_{n-1}] → [v_{n-1},...,v1,v0]:
+  // orig_edge = (n-2-i) for i<n-1, else n-1
+  auto flipped_edge_index = [](Index i, Index n) -> Index {
+    return (i < n - 1) ? (n - 2 - i) : (n - 1);
+  };
+
   // Copy & remap clean faces from mesh0
   tf::parallel_apply(
       im.polygons0.kept_ids(),
@@ -95,7 +105,9 @@ auto stitched_manifold_edge_link(
 
         Index current = n_edges - 1;
         for (Index next = 0; next < n_edges; current = next++) {
-          Index orig_peer = orig_peers[current].face_peer;
+          Index orig_edge =
+              mesh0_flipped ? flipped_edge_index(current, n_edges) : current;
+          Index orig_peer = orig_peers[orig_edge].face_peer;
 
           if (is_dirty_edge(face[current], face[next]) ||
               orig_peer == tf::manifold_edge_peer<Index>::non_manifold ||
@@ -129,7 +141,9 @@ auto stitched_manifold_edge_link(
 
         Index current = n_edges - 1;
         for (Index next = 0; next < n_edges; current = next++) {
-          Index orig_peer = orig_peers[current].face_peer;
+          Index orig_edge =
+              mesh1_flipped ? flipped_edge_index(current, n_edges) : current;
+          Index orig_peer = orig_peers[orig_edge].face_peer;
 
           if (is_dirty_edge(face[current], face[next]) ||
               orig_peer == tf::manifold_edge_peer<Index>::non_manifold ||
