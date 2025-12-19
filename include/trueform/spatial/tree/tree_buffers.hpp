@@ -29,6 +29,13 @@ template <typename Index, typename BV> struct tree_buffers {
   auto ids() const { return tf::make_range(_ids); }
   auto ids() { return tf::make_range(_ids); }
 
+  auto primitive_aabbs_buffer() -> tf::buffer<aabb_type> & { return _primitive_aabbs; }
+  auto primitive_aabbs_buffer() const -> const tf::buffer<aabb_type> & { return _primitive_aabbs; }
+  auto nodes_buffer() -> tf::buffer<node_type> & { return _nodes; }
+  auto nodes_buffer() const -> const tf::buffer<node_type> & { return _nodes; }
+  auto ids_buffer() -> tf::buffer<Index> & { return _ids; }
+  auto ids_buffer() const -> const tf::buffer<Index> & { return _ids; }
+
 protected:
   tf::buffer<aabb_type> _primitive_aabbs;
   tf::buffer<node_type> _nodes;

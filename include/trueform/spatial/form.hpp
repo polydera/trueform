@@ -10,6 +10,7 @@
 #include "../core/frame_like.hpp"
 #include "../core/frame_ptr.hpp"
 #include "../core/policy/frame.hpp"
+#include "./mod_tree_like.hpp"
 #include "./policy/tree.hpp"
 
 namespace tf {
@@ -95,6 +96,49 @@ template <std::size_t Dims, typename Policy> auto make_form(Policy &&policy) {
 template <typename Policy> auto make_form(Policy &&policy) {
   return make_form<tf::coordinate_dims_v<Policy>>(
       static_cast<Policy &&>(policy));
+}
+
+// =============================================================================
+// mod_tree_like overloads
+// =============================================================================
+
+template <std::size_t Dims, typename FPolicy, typename ModTreePolicy,
+          typename Policy>
+auto make_form(const tf::frame_like<Dims, FPolicy> &_frame,
+               const tf::mod_tree_like<ModTreePolicy> &_tree, Policy &&policy) {
+  static_assert(Dims == ModTreePolicy::coordinate_dims::value,
+                "Frame and tree dimension mismatch");
+  auto tree_view = tf::make_tree_view(_tree);
+  auto base =
+      tf::tag_frame(tf::make_frame_ptr(_frame),
+                    tf::tag_mod_tree(std::move(tree_view),
+                                     static_cast<Policy &&>(policy)));
+  return form<Dims, decltype(base)>{std::move(base)};
+}
+
+template <std::size_t Dims, typename FPolicy, typename ModTreePolicy,
+          typename Policy>
+auto make_form(tf::frame_like<Dims, FPolicy> &&_frame,
+               const tf::mod_tree_like<ModTreePolicy> &_tree, Policy &&policy) {
+  static_assert(Dims == ModTreePolicy::coordinate_dims::value,
+                "Frame and tree dimension mismatch");
+  auto tree_view = tf::make_tree_view(_tree);
+  auto base =
+      tf::tag_frame(tf::make_frame_like(_frame.transformation(),
+                                        _frame.inverse_transformation()),
+                    tf::tag_mod_tree(std::move(tree_view),
+                                     static_cast<Policy &&>(policy)));
+  return form<Dims, decltype(base)>{std::move(base)};
+}
+
+template <typename ModTreePolicy, typename Policy>
+auto make_form(const tf::mod_tree_like<ModTreePolicy> &_tree, Policy &&policy) {
+  constexpr std::size_t Dims = ModTreePolicy::coordinate_dims::value;
+  using real_t = typename ModTreePolicy::coordinate_type;
+  auto tree_view = tf::make_tree_view(_tree);
+  auto base = tf::tag_identity_frame<real_t, Dims>(
+      tf::tag_mod_tree(std::move(tree_view), static_cast<Policy &&>(policy)));
+  return form<Dims, decltype(base)>{std::move(base)};
 }
 
 } // namespace tf

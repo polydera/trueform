@@ -19,6 +19,7 @@
 #include "../../core/transformed.hpp"
 #include "../../random/random_vector.hpp"
 #include "../../topology/set_component_labels.hpp"
+#include "../tree_search/intersects_bv.hpp"
 #include "../tree_search/search.hpp"
 
 namespace tf::spatial {
@@ -30,7 +31,7 @@ auto classify_point(const tf::point_like<3, Policy0> &_point,
   auto frame = tf::frame_of(polygons);
   auto point = tf::transformed(_point, frame.inverse_transformation());
   const auto &tree = polygons.tree();
-  if (!intersects(tree.bv(), point))
+  if (!tf::spatial::intersects_bv(tree, point))
     return tf::containment::outside;
   using index_t = typename Policy1::index_type;
   using real_type = tf::coordinate_type<Policy0, Policy1>;
@@ -125,7 +126,7 @@ auto classify_point(const tf::point_like<3, Policy0> &_point,
   auto frame = tf::frame_of(polygons);
   auto point = tf::transformed(_point, frame.inverse_transformation());
   const auto &tree = polygons.tree();
-  if (!intersects(tree.bv(), point))
+  if (!tf::spatial::intersects_bv(tree, point))
     return tf::containment::outside;
   using index_t = typename Policy1::index_type;
   using real_type = tf::coordinate_type<Policy0, Policy1>;

@@ -12,6 +12,7 @@
 #include "../../core/ray_like.hpp"
 #include "../../core/small_vector.hpp"
 #include "../../core/views/sequence_range.hpp"
+#include "../mod_tree_like.hpp"
 #include "../tree_like.hpp"
 #include <cstdint>
 
@@ -68,11 +69,29 @@ auto ray_cast(const tf::tree_like<TreePolicy> &tree,
           std::copy(nexts.begin(), nexts.end(), std::back_inserter(stack));
         }
       } else {
-        for (const auto &id : tf::make_range(ids.begin() + data[0], data[1]))
-          max_t = result.update(id, intersect_f(ray, id));
+        const auto &primitive_aabbs = tree.primitive_aabbs();
+        for (const auto &id : tf::make_range(ids.begin() + data[0], data[1])) {
+          if (core::ray_aabb_check(ray, ray_inv_dir, primitive_aabbs[id], t_min,
+                                   t_max, min_t,
+                                   max_t) == tf::intersect_status::intersection)
+            max_t = result.update(id, intersect_f(ray, id));
+        }
       }
     }
   }
+}
+
+// mod_tree_like overload - ray cast against main tree, then delta tree
+template <typename ModTreePolicy, typename RayPolicy, typename Result,
+          typename F>
+auto ray_cast(const tf::mod_tree_like<ModTreePolicy> &tree,
+              const tf::ray_like<ModTreePolicy::coordinate_dims::value, RayPolicy>
+                  &ray,
+              Result &result, const F &intersect_f,
+              const tf::aabb<typename ModTreePolicy::coordinate_type,
+                             ModTreePolicy::coordinate_dims::value> &tag) {
+  ray_cast(tree.main_tree(), ray, result, intersect_f, tag);
+  ray_cast(tree.delta_tree(), ray, result, intersect_f, tag);
 }
 
 } // namespace tf::spatial

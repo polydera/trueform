@@ -7,6 +7,10 @@
 #pragma once
 #include "./angle.hpp"
 #include "./axis.hpp"
+#include "./cross.hpp"
+#include "./dot.hpp"
+#include "./epsilon.hpp"
+#include "./normalized.hpp"
 #include "./point_like.hpp"
 #include "./transformation.hpp"
 #include "./unit_vector_like.hpp"
@@ -205,6 +209,69 @@ template <typename T, typename PointPolicy>
 auto make_rotation(deg<T> angle, const point_like<2, PointPolicy>& pivot)
     -> transformation<T, 2> {
   return make_rotation(rad<T>{angle}, pivot);
+}
+
+/// @brief Creates a 2D rotation that aligns one unit vector to another.
+///
+/// Returns a transformation that rotates the `from` direction to the `to`
+/// direction.
+///
+/// @tparam Policy0 The policy type of the first unit vector.
+/// @tparam Policy1 The policy type of the second unit vector.
+/// @param from The source direction (unit vector).
+/// @param to The target direction (unit vector).
+/// @return A rotation transformation aligning `from` to `to`.
+template <typename Policy0, typename Policy1>
+auto make_rotation_aligning(const unit_vector_like<2, Policy0>& from,
+                            const unit_vector_like<2, Policy1>& to)
+    -> transformation<tf::coordinate_type<Policy0, Policy1>, 2> {
+  using T = tf::coordinate_type<Policy0, Policy1>;
+
+  // 2D cross product gives signed scalar
+  T cross = from[0] * to[1] - from[1] * to[0];
+  T dot = from[0] * to[0] + from[1] * to[1];
+  auto angle = rad<T>{std::atan2(cross, dot)};
+  return make_rotation(angle);
+}
+
+/// @brief Creates a 3D rotation that aligns one unit vector to another.
+///
+/// Returns a transformation that rotates the `from` direction to the `to`
+/// direction. Handles the edge cases of parallel and anti-parallel vectors.
+///
+/// @tparam Policy0 The policy type of the first unit vector.
+/// @tparam Policy1 The policy type of the second unit vector.
+/// @param from The source direction (unit vector).
+/// @param to The target direction (unit vector).
+/// @return A rotation transformation aligning `from` to `to`.
+template <typename Policy0, typename Policy1>
+auto make_rotation_aligning(const unit_vector_like<3, Policy0>& from,
+                            const unit_vector_like<3, Policy1>& to)
+    -> transformation<tf::coordinate_type<Policy0, Policy1>, 3> {
+  using T = tf::coordinate_type<Policy0, Policy1>;
+
+  T d = tf::dot(from, to);
+
+  // Parallel vectors (same direction) - return identity
+  if (d > T{1} - tf::epsilon<T>) {
+    return make_identity_transformation<T, 3>();
+  }
+
+  // Anti-parallel vectors - rotate 180° around any perpendicular axis
+  if (d < T{-1} + tf::epsilon<T>) {
+    // Find a perpendicular axis by crossing with a non-parallel basis vector
+    auto axis_candidate = tf::cross(from, make_unit_vector<T, 3>(tf::axis<0>));
+    if (axis_candidate.length() < tf::epsilon<T>) {
+      axis_candidate = tf::cross(from, make_unit_vector<T, 3>(tf::axis<1>));
+    }
+    auto axis = tf::normalized(axis_candidate);
+    return make_rotation(rad<T>{pi<T>}, axis);
+  }
+
+  // General case: rotate around cross product axis
+  auto axis = tf::normalized(tf::cross(from, to));
+  auto angle = rad<T>{std::acos(d)};
+  return make_rotation(angle, axis);
 }
 
 } // namespace tf

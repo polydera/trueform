@@ -13,6 +13,7 @@
 #include "../../core/ray_obb_check.hpp"
 #include "../../core/small_vector.hpp"
 #include "../../core/views/sequence_range.hpp"
+#include "../mod_tree_like.hpp"
 #include "../tree_like.hpp"
 
 namespace tf::spatial {
@@ -67,6 +68,19 @@ auto ray_cast(
       }
     }
   }
+}
+
+// mod_tree_like overload
+template <typename ModTreePolicy, typename RayPolicy, typename Result,
+          typename F>
+auto ray_cast(const tf::mod_tree_like<ModTreePolicy> &tree,
+              const tf::ray_like<ModTreePolicy::coordinate_dims::value, RayPolicy>
+                  &ray,
+              Result &result, const F &intersect_f,
+              const tf::obbrss<typename ModTreePolicy::coordinate_type,
+                               ModTreePolicy::coordinate_dims::value> &tag) {
+  ray_cast(tree.main_tree(), ray, result, intersect_f, tag);
+  ray_cast(tree.delta_tree(), ray, result, intersect_f, tag);
 }
 
 } // namespace tf::spatial

@@ -7,6 +7,7 @@
 #pragma once
 #include "../../core/range.hpp"
 #include "../../core/small_vector.hpp"
+#include "../mod_tree_like.hpp"
 #include "../tree_like.hpp"
 
 namespace tf::spatial::impl {
@@ -18,6 +19,7 @@ auto search(const tf::tree_like<TreePolicy> &tree, const F0 &bv_check,
 
   const auto &nodes = tree.nodes();
   const auto &ids = tree.ids();
+  const auto &primitive_aabbs = tree.primitive_aabbs();
   if (!nodes.size())
     return false;
 
@@ -29,7 +31,8 @@ auto search(const tf::tree_like<TreePolicy> &tree, const F0 &bv_check,
     const auto &node = nodes[current_i];
     const auto &data = node.get_data();
     if (node.is_leaf()) {
-      if (leaf_apply(tf::make_range(ids.begin() + data[0], data[1])))
+      if (leaf_apply(tf::make_range(ids.begin() + data[0], data[1]),
+                     primitive_aabbs))
         return true;
       continue;
     }
@@ -43,6 +46,18 @@ auto search(const tf::tree_like<TreePolicy> &tree, const F0 &bv_check,
       ++next_id;
     }
   }
+  return false;
+}
+
+// mod_tree_like overload - search main tree, then delta tree
+template <typename ModTreePolicy, typename F0, typename F1>
+auto search(const tf::mod_tree_like<ModTreePolicy> &tree, const F0 &bv_check,
+            const F1 &leaf_apply) {
+  if (tf::spatial::impl::search(tree.main_tree(), bv_check, leaf_apply))
+    return true;
+  if (tree.delta_tree().ids().size() &&
+      tf::spatial::impl::search(tree.delta_tree(), bv_check, leaf_apply))
+    return true;
   return false;
 }
 
