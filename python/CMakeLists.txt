@@ -3,6 +3,8 @@
 # ==============================================================================
 message(STATUS "trueform: Configuring Python bindings")
 
+option(TF_BUILD_PYTHON_BLENDER_INTEGRATION "Build Python trueform.blender bindings." ON)
+
 include(CheckCXXCompilerFlag)
 
 # 1. Compiler Tweaks
@@ -124,6 +126,7 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/trueform/_version.py"
 # ------------------------------------------------------------------------------
 # Glob pure Python files
 file(GLOB_RECURSE PYTHON_SOURCE_FILES    "${CMAKE_CURRENT_SOURCE_DIR}/trueform/*.py")
+file(GLOB_RECURSE PYTHON_BLENDER_SOURCE_FILES    "${CMAKE_CURRENT_SOURCE_DIR}/blender/*.py")
 file(GLOB_RECURSE PYTHON_TEST_FILES      "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.py")
 file(GLOB_RECURSE PYTHON_EXAMPLE_FILES   "${CMAKE_CURRENT_SOURCE_DIR}/examples/**/*.py")
 # file(GLOB_RECURSE PYTHON_BENCHMARK_FILES "${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/*.py")
@@ -134,6 +137,7 @@ add_custom_target(copy_python_files ALL
         ${PYTHON_SOURCE_FILES}
         ${PYTHON_TEST_FILES}
         ${PYTHON_EXAMPLE_FILES}
+        ${PYTHON_BLENDER_SOURCE_FILES}
 )
 
 add_custom_command(
@@ -150,6 +154,16 @@ add_custom_command(
         COMMENT "Syncing Python sources, tests, and examples to build directory"
         VERBATIM
 )
+if(TF_BUILD_PYTHON_BLENDER_INTEGRATION)
+  add_custom_command(
+          TARGET copy_python_files POST_BUILD
+          COMMAND ${CMAKE_COMMAND} -E copy_directory
+          "${CMAKE_CURRENT_SOURCE_DIR}/blender"
+          "${CMAKE_CURRENT_BINARY_DIR}/trueform/blender"
+          COMMENT "Syncing Blender integration Python sources to build directory"
+          VERBATIM
+  )
+endif()
 
 # Ensure the binary extension waits for the python file copy
 add_dependencies(_trueform copy_python_files)
