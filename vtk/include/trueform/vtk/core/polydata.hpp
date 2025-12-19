@@ -107,6 +107,30 @@ public:
   /// @brief Get AABB tree for points. Built lazily on first access.
   auto point_tree() -> const tf::aabb_tree<vtkIdType, float, 3> &;
 
+  /// @brief Mark poly_tree as modified (prevents rebuild on next access).
+  auto modified_poly_tree() -> void;
+
+  /// @brief Mark face_membership as modified (prevents rebuild on next access).
+  auto modified_face_membership() -> void;
+
+  /// @brief Mark manifold_edge_link as modified (prevents rebuild on next access).
+  auto modified_manifold_edge_link() -> void;
+
+  /// @brief Mark face_link as modified (prevents rebuild on next access).
+  auto modified_face_link() -> void;
+
+  /// @brief Mark vertex_link as modified (prevents rebuild on next access).
+  auto modified_vertex_link() -> void;
+
+  /// @brief Mark edges_buffer as modified (prevents rebuild on next access).
+  auto modified_edges_buffer() -> void;
+
+  /// @brief Mark segment_tree as modified (prevents rebuild on next access).
+  auto modified_segment_tree() -> void;
+
+  /// @brief Mark point_tree as modified (prevents rebuild on next access).
+  auto modified_point_tree() -> void;
+
 protected:
   polydata();
   ~polydata() override = default;

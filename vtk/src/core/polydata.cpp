@@ -124,6 +124,38 @@ auto polydata::point_tree() -> const tf::aabb_tree<vtkIdType, float, 3> & {
   return *_point_tree;
 }
 
+auto polydata::modified_poly_tree() -> void {
+  _poly_tree_mtime = std::max(GetPoints()->GetMTime(), GetPolys()->GetMTime());
+}
+
+auto polydata::modified_face_membership() -> void {
+  _fm_mtime = GetPolys()->GetMTime();
+}
+
+auto polydata::modified_manifold_edge_link() -> void {
+  _mel_mtime = GetPolys()->GetMTime();
+}
+
+auto polydata::modified_face_link() -> void {
+  _fl_mtime = GetPolys()->GetMTime();
+}
+
+auto polydata::modified_vertex_link() -> void {
+  _vl_mtime = GetPolys()->GetMTime();
+}
+
+auto polydata::modified_edges_buffer() -> void {
+  _edges_buffer_mtime = GetLines()->GetMTime();
+}
+
+auto polydata::modified_segment_tree() -> void {
+  _segment_tree_mtime = std::max(GetPoints()->GetMTime(), GetLines()->GetMTime());
+}
+
+auto polydata::modified_point_tree() -> void {
+  _point_tree_mtime = GetPoints()->GetMTime();
+}
+
 auto polydata::build_poly_tree() -> void {
   auto points_mtime = GetPoints()->GetMTime();
   auto polys_mtime = GetPolys()->GetMTime();
