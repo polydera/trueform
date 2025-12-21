@@ -50,6 +50,16 @@ void polydata::ShallowCopy(vtkDataObject *src) {
     _edges_buffer = other->_edges_buffer;
     _segment_tree = other->_segment_tree;
     _point_tree = other->_point_tree;
+  } else {
+    // Reset mtimes to force rebuild on next access
+    _poly_tree_mtime = 0;
+    _fm_mtime = 0;
+    _mel_mtime = 0;
+    _fl_mtime = 0;
+    _vl_mtime = 0;
+    _edges_buffer_mtime = 0;
+    _segment_tree_mtime = 0;
+    _point_tree_mtime = 0;
   }
 }
 
