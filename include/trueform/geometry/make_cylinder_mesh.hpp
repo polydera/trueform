@@ -17,14 +17,14 @@ namespace tf {
 /// The cylinder extends from z = -height/2 to z = +height/2.
 /// All faces are triangles with outward-facing normals (CCW winding).
 ///
-/// @tparam Index The index type for vertices and faces.
+/// @tparam Index The index type for vertices and faces (default: int).
 /// @tparam RealType The floating-point type for coordinates.
-/// @param segments Number of subdivisions around the circumference.
 /// @param radius The radius of the cylinder.
 /// @param height The height of the cylinder.
+/// @param segments Number of subdivisions around the circumference.
 /// @return A polygons_buffer containing the cylinder mesh.
-template <typename Index, typename RealType>
-auto make_cylinder_mesh(Index segments, RealType radius, RealType height)
+template <typename Index = int, typename RealType>
+auto make_cylinder_mesh(RealType radius, RealType height, Index segments)
     -> tf::polygons_buffer<Index, RealType, 3, 3> {
   tf::polygons_buffer<Index, RealType, 3, 3> mesh;
 

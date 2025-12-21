@@ -11,8 +11,19 @@
 #include "../core/views/sequence_range.hpp"
 
 namespace tf {
-template <typename Index, typename RealType>
-auto make_sphere_mesh(Index stacks, Index segments, RealType radius)
+
+/// @brief Creates a UV sphere mesh centered at origin.
+///
+/// All faces have outward-facing normals (CCW winding).
+///
+/// @tparam Index The index type for vertices and faces (default: int).
+/// @tparam RealType The floating-point type for coordinates.
+/// @param radius The radius of the sphere.
+/// @param stacks Number of horizontal subdivisions (latitude).
+/// @param segments Number of vertical subdivisions (longitude).
+/// @return A polygons_buffer containing the sphere mesh.
+template <typename Index = int, typename RealType>
+auto make_sphere_mesh(RealType radius, Index stacks, Index segments)
     -> tf::polygons_buffer<Index, RealType, 3, 3> {
   tf::polygons_buffer<Index, RealType, 3, 3> mesh;
 

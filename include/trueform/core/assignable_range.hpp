@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via info@polydera.com.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via info@polydera.com.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -55,6 +55,17 @@ template <std::size_t Size, typename Policy> struct assignable_range : Policy {
       -> std::enable_if_t<std::is_assignable_v<decltype(Policy::operator[](0)),
                                                decltype(other[0])>,
                           assignable_range &> {
+    for (std::size_t i = 0; i < Policy::size(); ++i)
+      Policy::operator[](i) = other[i];
+    return *this;
+  }
+
+  template <typename T>
+  auto operator=(const std::array<T, Size> &other) -> std::enable_if_t<
+      (Size != tf::dynamic_size) &&
+          std::is_assignable_v<decltype(Policy::operator[](0)),
+                               decltype(other[0])>,
+      assignable_range &> {
     for (std::size_t i = 0; i < Policy::size(); ++i)
       Policy::operator[](i) = other[i];
     return *this;
