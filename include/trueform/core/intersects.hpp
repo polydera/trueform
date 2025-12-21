@@ -28,8 +28,8 @@ namespace tf {
 template <typename T0, typename T1>
 auto intersects(const interval<T0> &r0, const interval<T1> &r1) -> bool {
   using RealT = std::common_type_t<T0, T1>;
-  return !(r1.max + std::numeric_limits<RealT>::epsilon() < r0.min ||
-           r0.max + std::numeric_limits<RealT>::epsilon() < r1.min);
+  return !(r1.max + tf::epsilon<RealT> < r0.min ||
+           r0.max + tf::epsilon<RealT> < r1.min);
 }
 
 /// @ingroup geometry
