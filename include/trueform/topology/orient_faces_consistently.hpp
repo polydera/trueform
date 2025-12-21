@@ -105,7 +105,7 @@ template <typename Policy, typename Policy1>
 void orient_faces_consistently(
     tf::faces<Policy> &&faces,
     const tf::manifold_edge_link_like<Policy1> &link) {
-  return topology::orient_faces_consistently(faces, link);
+  return tf::orient_faces_consistently(faces, link);
 }
 
 template <typename Policy>
