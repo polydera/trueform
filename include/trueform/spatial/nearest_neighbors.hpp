@@ -58,7 +58,8 @@ public:
                            [](const auto &a, const auto &b) {
                              return a.metric() < b.metric();
                            });
-        worst_metric = out[count - 1].metric();
+        if (count == k)
+          worst_metric = out[k - 1].metric();
       } else if (point.metric < worst_metric) {
         auto it = std::upper_bound(out, out + k - 1, point.metric,
                                    [](const auto &value, const auto &elem) {
