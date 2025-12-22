@@ -26,6 +26,13 @@ auto clear_tree_buffers(tree_buffers<Index, BV> &buffers) -> void {
   buffers.ids_buffer().clear();
 }
 
+// Clear tree_buffers_core (nodes + ids only)
+template <typename Index, typename BV>
+auto clear_tree_buffers_core(tree_buffers_core<Index, BV> &buffers) -> void {
+  buffers.nodes_buffer().clear();
+  buffers.ids_buffer().clear();
+}
+
 template <typename Partitioner, typename Index, typename BV, typename Range>
 auto build_tree_buffers(tree_buffers<Index, BV> &buffers,
                         const Range &primitives, tree_config config,
@@ -39,6 +46,17 @@ auto build_tree_buffers(tree_buffers<Index, BV> &buffers,
   build_tree_nodes<Partitioner>(buffers.nodes_buffer(), buffers.ids_buffer(),
                                 primitives, buffers.primitive_aabbs_buffer(),
                                 config, use_ids);
+}
+
+// Build tree nodes for tree_buffers_core using external aabbs
+template <typename Partitioner, typename Index, typename BV, typename Range,
+          typename AabbRange>
+auto build_tree_nodes_with_aabbs(tree_buffers_core<Index, BV> &buffers,
+                                 const Range &primitives,
+                                 const AabbRange &aabbs, tree_config config,
+                                 bool use_ids = false) -> void {
+  build_tree_nodes<Partitioner>(buffers.nodes_buffer(), buffers.ids_buffer(),
+                                primitives, aabbs, config, use_ids);
 }
 
 } // namespace tf::spatial
@@ -95,9 +113,15 @@ public:
   template <typename Partitioner, typename Range>
   auto build(const Range &objects, tree_config config) -> void {
     delta_ids_buffer().clear();
-    spatial::clear_tree_buffers(delta_tree_buffer());
-    spatial::build_tree_buffers<Partitioner>(main_tree_buffer(), objects,
-                                             config);
+    spatial::clear_tree_buffers_core(delta_tree_buffer());
+    // Allocate shared primitive_aabbs and compute AABBs
+    base_t::primitive_aabbs_buffer().allocate(objects.size());
+    tf::parallel_transform(
+        objects, base_t::primitive_aabbs_buffer(),
+        [](const auto &x) { return tf::aabb_from(x); }, tf::checked);
+    // Build main tree nodes using the shared aabbs
+    spatial::build_tree_nodes_with_aabbs<Partitioner>(
+        main_tree_buffer(), objects, base_t::primitive_aabbs_buffer(), config);
   }
 
   /**
@@ -177,8 +201,9 @@ public:
    * @brief Clears all data from both the main and delta trees.
    */
   auto clear() -> void {
-    spatial::clear_tree_buffers(main_tree_buffer());
-    spatial::clear_tree_buffers(delta_tree_buffer());
+    base_t::primitive_aabbs_buffer().clear();
+    spatial::clear_tree_buffers_core(main_tree_buffer());
+    spatial::clear_tree_buffers_core(delta_tree_buffer());
     delta_ids_buffer().clear();
   }
 
@@ -187,10 +212,10 @@ private:
   auto update_main_tree(const Objects &objects, const Range &id_map,
                         const F &keep_if) {
     auto &&ids = main_tree_buffer().ids();
-    // Allocate new primitive_aabbs buffer and recompute from objects
-    main_tree_buffer().primitive_aabbs_buffer().allocate(objects.size());
+    // Allocate shared primitive_aabbs buffer and recompute from objects
+    base_t::primitive_aabbs_buffer().allocate(objects.size());
     tf::parallel_transform(
-        objects, main_tree_buffer().primitive_aabbs(),
+        objects, base_t::primitive_aabbs_buffer(),
         [](const auto &x) { return tf::aabb_from(x); }, tf::checked);
 
     // Remap IDs and partition
@@ -235,22 +260,16 @@ private:
     write_to = std::copy(ids.begin(), ids.end(), write_to);
     // this will only bump down the end pointer
     delta_ids_buffer().allocate(write_to - delta_ids_buffer().begin());
-    spatial::build_tree_buffers<spatial::nth_element_t>(
-        delta_tree_buffer(),
-        tf::make_indirect_range(delta_ids_buffer(), objects), config);
-    // ids and primitive_aabbs in the tree are indexed locally
-    // [0, ..., _delta_ids.size()] so we remap them to global ids
-    auto &delta = delta_tree_buffer();
-    auto &&new_delta_ids = delta.ids();
-    delta.primitive_aabbs_buffer().allocate(objects.size());
-    tf::parallel_transform(
-        tf::make_indirect_range(new_delta_ids, objects),
-        delta.primitive_aabbs(), [](const auto &x) { return tf::aabb_from(x); },
-        tf::checked);
 
-    tf::parallel_copy(
-        tf::make_indirect_range(new_delta_ids, delta_ids_buffer()),
-        new_delta_ids);
+    // Pre-populate tree ids with global ids so tree can use shared aabbs
+    delta_tree_buffer().ids_buffer().allocate(delta_ids_buffer().size());
+    tf::parallel_copy(delta_ids_buffer(), delta_tree_buffer().ids_buffer());
+
+    // Build delta tree using the shared primitive_aabbs and pre-set global ids
+    spatial::build_tree_nodes_with_aabbs<spatial::nth_element_t>(
+        delta_tree_buffer(),
+        tf::make_indirect_range(delta_ids_buffer(), objects),
+        base_t::primitive_aabbs_buffer(), config, /*use_ids=*/true);
   }
 
   template <typename Range, typename Range1, typename Range2, typename F>
@@ -270,21 +289,17 @@ private:
                          index_map.kept_ids().end(), write_to);
     // this will only bump down the end pointer
     delta_ids_buffer().allocate(write_to - delta_ids_buffer().begin());
-    spatial::build_tree_buffers<spatial::nth_element_t>(
+
+    // Pre-populate tree ids with global ids so tree can use shared aabbs
+    delta_tree_buffer().ids_buffer().allocate(delta_ids_buffer().size());
+    tf::parallel_copy(delta_ids_buffer(), delta_tree_buffer().ids_buffer());
+
+    // Build delta tree using the shared primitive_aabbs and pre-set global ids
+    // (aabbs were already recomputed by update_main_tree)
+    spatial::build_tree_nodes_with_aabbs<spatial::nth_element_t>(
         delta_tree_buffer(),
-        tf::make_indirect_range(delta_ids_buffer(), objects), config);
-    // ids and primitive_aabbs in the tree are indexed locally
-    // [0, ..., _delta_ids.size()] so we remap them to global ids
-    auto &delta = delta_tree_buffer();
-    auto &&new_delta_ids = delta.ids();
-    tf::buffer<BV> local_aabbs = std::move(delta.primitive_aabbs_buffer());
-    delta.primitive_aabbs_buffer().allocate(objects.size());
-    tf::parallel_copy(
-        tf::make_indirect_range(new_delta_ids, delta_ids_buffer()),
-        new_delta_ids);
-    tf::parallel_copy(
-        local_aabbs,
-        tf::make_indirect_range(delta_ids_buffer(), delta.primitive_aabbs()));
+        tf::make_indirect_range(delta_ids_buffer(), objects),
+        base_t::primitive_aabbs_buffer(), config, /*use_ids=*/true);
   }
 };
 } // namespace tf

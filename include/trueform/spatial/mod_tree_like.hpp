@@ -68,9 +68,13 @@ template <typename Policy>
 auto make_tree_view(const mod_tree_like<Policy> &t) {
   using index_type = typename Policy::index_type;
   using bv_type = typename Policy::bv_type;
-  // main_tree() and delta_tree() already return tree_like views
+  // Create core ranges (nodes + ids only) and pass shared primitive_aabbs
+  auto main = t.main_tree();
+  auto delta = t.delta_tree();
   return mod_tree_like<spatial::mod_tree_ranges<index_type, bv_type>>{
-      tf::make_tree_view(t.main_tree()), tf::make_tree_view(t.delta_tree()),
+      spatial::tree_ranges_core<index_type, bv_type>{main.nodes(), main.ids()},
+      spatial::tree_ranges_core<index_type, bv_type>{delta.nodes(), delta.ids()},
+      t.primitive_aabbs(),
       t.delta_ids()};
 }
 
