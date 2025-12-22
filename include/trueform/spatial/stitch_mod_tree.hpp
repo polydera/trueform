@@ -25,7 +25,6 @@ auto stitch_mod_tree(const Primitives &result_primitives,
                      tf::mod_tree<Index, BV> &mod_tree0, tf::none_t,
                      const tf::stitch_index_maps<Index> &im,
                      tf::tree_config config) -> void {
-  const Index kept1 = im.polygons1.kept_ids().size();
   const Index n_new =
       Index(result_primitives.size()) - im.polygons1_offset;
 

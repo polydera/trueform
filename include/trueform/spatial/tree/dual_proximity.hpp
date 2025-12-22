@@ -7,6 +7,7 @@
 #pragma once
 #include "../../core/small_vector.hpp"
 #include "./local_tree_metric_result.hpp"
+#include "../mod_tree_like.hpp"
 #include "../tree_like.hpp"
 #include "tbb/task_group.h"
 #include <utility>
@@ -206,6 +207,82 @@ auto dual_proximity(const tf::tree_like<TreePolicy0> &tree0,
                         T>
       params{tree0, tree1, bv_dists_f, closest_pts, result};
   dual_proximity_pre_pass(params, dispatch_depth);
+}
+
+// mod_tree_like vs tree_like
+template <typename ModTreePolicy, typename TreePolicy, typename F0, typename F1,
+          typename T>
+auto dual_proximity(const tf::mod_tree_like<ModTreePolicy> &mod_tree,
+                    const tf::tree_like<TreePolicy> &tree,
+                    const F0 &bv_metrics_f, const F1 &closest_points_f,
+                    tf::spatial::local_tree_metric_result<T> &result,
+                    int dispatch_depth = 4) {
+  tbb::task_group tg;
+  tg.run([&] {
+    dual_proximity(mod_tree.main_tree(), tree, bv_metrics_f, closest_points_f,
+                   result, dispatch_depth);
+  });
+  if (mod_tree.delta_tree().ids().size())
+    tg.run([&] {
+      dual_proximity(mod_tree.delta_tree(), tree, bv_metrics_f, closest_points_f,
+                     result, dispatch_depth);
+    });
+  tg.wait();
+}
+
+// tree_like vs mod_tree_like
+template <typename TreePolicy, typename ModTreePolicy, typename F0, typename F1,
+          typename T>
+auto dual_proximity(const tf::tree_like<TreePolicy> &tree,
+                    const tf::mod_tree_like<ModTreePolicy> &mod_tree,
+                    const F0 &bv_metrics_f, const F1 &closest_points_f,
+                    tf::spatial::local_tree_metric_result<T> &result,
+                    int dispatch_depth = 4) {
+  tbb::task_group tg;
+  tg.run([&] {
+    dual_proximity(tree, mod_tree.main_tree(), bv_metrics_f, closest_points_f,
+                   result, dispatch_depth);
+  });
+  if (mod_tree.delta_tree().ids().size())
+    tg.run([&] {
+      dual_proximity(tree, mod_tree.delta_tree(), bv_metrics_f, closest_points_f,
+                     result, dispatch_depth);
+    });
+  tg.wait();
+}
+
+// mod_tree_like vs mod_tree_like (4-way parallel)
+template <typename ModTreePolicy0, typename ModTreePolicy1, typename F0,
+          typename F1, typename T>
+auto dual_proximity(const tf::mod_tree_like<ModTreePolicy0> &mod_tree0,
+                    const tf::mod_tree_like<ModTreePolicy1> &mod_tree1,
+                    const F0 &bv_metrics_f, const F1 &closest_points_f,
+                    tf::spatial::local_tree_metric_result<T> &result,
+                    int dispatch_depth = 4) {
+  bool has_delta0 = mod_tree0.delta_tree().ids().size();
+  bool has_delta1 = mod_tree1.delta_tree().ids().size();
+
+  tbb::task_group tg;
+  tg.run([&] {
+    dual_proximity(mod_tree0.main_tree(), mod_tree1.main_tree(), bv_metrics_f,
+                   closest_points_f, result, dispatch_depth);
+  });
+  if (has_delta1)
+    tg.run([&] {
+      dual_proximity(mod_tree0.main_tree(), mod_tree1.delta_tree(), bv_metrics_f,
+                     closest_points_f, result, dispatch_depth);
+    });
+  if (has_delta0)
+    tg.run([&] {
+      dual_proximity(mod_tree0.delta_tree(), mod_tree1.main_tree(), bv_metrics_f,
+                     closest_points_f, result, dispatch_depth);
+    });
+  if (has_delta0 && has_delta1)
+    tg.run([&] {
+      dual_proximity(mod_tree0.delta_tree(), mod_tree1.delta_tree(),
+                     bv_metrics_f, closest_points_f, result, dispatch_depth);
+    });
+  tg.wait();
 }
 
 } // namespace tf::spatial::impl
