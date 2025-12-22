@@ -35,7 +35,18 @@ auto stitched_face_membership(const tf::faces<FacesPolicy> &result_faces,
   auto dirty_mask =
       tf::make_mapped_range(tf::make_sequence_range(result_faces.size()),
                             [&](Index i) { return i >= dirty_start; });
-  Index total_dirty_size = dirty_ids.size() * 3;
+  Index total_dirty_size = [&] {
+    if constexpr (tf::static_size_v<decltype(result_faces[0])> !=
+                  tf::dynamic_size)
+      return Index(dirty_ids.size()) *
+             Index(tf::static_size_v<decltype(result_faces[0])>);
+    else
+      return tf::reduce(
+          tf::make_mapped_range(
+              tf::make_indirect_range(dirty_ids, result_faces),
+              [](const auto &f) -> Index { return f.size(); }),
+          std::plus<>(), Index(0), tf::checked);
+  }();
 
   tf::face_membership<Index> dirty_fm;
   dirty_fm.build(
