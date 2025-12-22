@@ -20,15 +20,17 @@ if build_as_plugin:
     LIB_PATH = os.path.join(os.path.dirname(__file__), "libs")
 else:
     LIB_PATH = os.environ.get("TF_LIB_PATH", None)
+AUTO_RELOAD = os.environ.get("TF_AUTO_RELOAD", "0") == "1"
 def get_tf_libs():
     if LIB_PATH is not None and LIB_PATH not in sys.path:
         sys.path.insert(0, LIB_PATH)
     try:
         import trueform as tf
         import trueform.blender as tfb
-        # Ensure we are using the latest version of the lib if you're developing it
-        importlib.reload(tf)
-        importlib.reload(tfb)
+        if AUTO_RELOAD:
+            # Ensure we are using the latest version of the lib if you're developing it
+            importlib.reload(tf)
+            importlib.reload(tfb)
         return tf, tfb
     except ImportError:
         return None, None
@@ -41,9 +43,12 @@ def ensure_trueform_registered(tfb) -> None:
 _PREVIEW_CURVES_NAME = None
 _PREVIEW_MATERIAL_NAME = "Trueform_Preview_Orange"
 _TF_LIBS_CACHE = None
+_CACHE_HANDLERS_REGISTERED = False
 
 def _get_tf_libs_cached():
     global _TF_LIBS_CACHE
+    if AUTO_RELOAD:
+        return get_tf_libs()
     if _TF_LIBS_CACHE is None:
         if LIB_PATH is not None and LIB_PATH not in sys.path:
             sys.path.insert(0, LIB_PATH)
@@ -87,9 +92,14 @@ def _style_preview_curves(curves_obj):
         if node_tree is not None:
             principled = node_tree.nodes.get("Principled BSDF")
             if principled is not None:
-                principled.inputs["Base Color"].default_value = (1.0, 0.55, 0.1, 1.0)
-                principled.inputs["Emission"].default_value = (1.0, 0.35, 0.05, 1.0)
-                principled.inputs["Emission Strength"].default_value = 0.6
+                if "Base Color" in principled.inputs:
+                    principled.inputs["Base Color"].default_value = (1.0, 0.55, 0.1, 1.0)
+                if "Emission" in principled.inputs:
+                    principled.inputs["Emission"].default_value = (1.0, 0.35, 0.05, 1.0)
+                if "Emission Color" in principled.inputs:
+                    principled.inputs["Emission Color"].default_value = (1.0, 0.35, 0.05, 1.0)
+                if "Emission Strength" in principled.inputs:
+                    principled.inputs["Emission Strength"].default_value = 0.6
         material.diffuse_color = (1.0, 0.55, 0.1, 1.0)
     if curves_obj.data.materials:
         curves_obj.data.materials[0] = material
@@ -186,6 +196,7 @@ def _on_preview_toggle(self, context):
 def _on_preview_inputs_changed(self, context):
     if context is None:
         return
+    _prefetch_cache(self)
     if not self.interactive_preview:
         return
     _update_preview(context)
@@ -202,6 +213,39 @@ def _move_object_to_collection(obj, collection):
         existing.objects.unlink(obj)
     if collection not in obj.users_collection:
         collection.objects.link(obj)
+
+def _apply_cache_settings(props):
+    tf, tfb = _get_tf_libs_cached()
+    if not tf or not tfb:
+        return None
+    if not hasattr(tfb, "meshes"):
+        return None
+    if not hasattr(tfb.meshes, "set_cache_enabled"):
+        return None
+    tfb.meshes.set_cache_enabled(props.cache_enabled)
+    tfb.meshes.set_verbose(props.cache_verbose)
+    return tfb
+
+def _prefetch_cache(props):
+    global _CACHE_HANDLERS_REGISTERED
+    tfb = _apply_cache_settings(props)
+    if tfb is None or not props.cache_enabled:
+        return
+    if not _CACHE_HANDLERS_REGISTERED and hasattr(tfb.meshes, "register"):
+        tfb.meshes.register()
+        _CACHE_HANDLERS_REGISTERED = True
+    if not hasattr(tfb.meshes, "prefetch"):
+        return
+    if props.target_a:
+        tfb.meshes.prefetch(props.target_a)
+    if props.target_b:
+        tfb.meshes.prefetch(props.target_b)
+
+def _on_cache_toggle(self, context):
+    _prefetch_cache(self)
+
+def _on_cache_verbose_toggle(self, context):
+    _apply_cache_settings(self)
 
 # --- PROPERTY GROUP ---
 class TrueformProperties(bpy.types.PropertyGroup):
@@ -236,6 +280,18 @@ class TrueformProperties(bpy.types.PropertyGroup):
         default=False,
         update=_on_preview_toggle
     )
+    cache_enabled: bpy.props.BoolProperty(
+        name="Enable Mesh Cache",
+        description="Precompute boolean structures when selecting inputs",
+        default=False,
+        update=_on_cache_toggle
+    )
+    cache_verbose: bpy.props.BoolProperty(
+        name="Cache Verbose",
+        description="Log cache hits and rebuilds to the console",
+        default=False,
+        update=_on_cache_verbose_toggle
+    )
     hide_inputs: bpy.props.BoolProperty(
         name="Hide Inputs on Apply",
         description="Hide input meshes after creating the boolean result",
@@ -263,6 +319,13 @@ class MESH_OT_trueform_boolean(bpy.types.Operator):
         if not tf or not tfb:
             self.report({'ERROR'}, f"Trueform library not found at {LIB_PATH}")
             return {'CANCELLED'}
+
+        if hasattr(tfb, "meshes") and hasattr(tfb.meshes, "set_cache_enabled"):
+            tfb.meshes.set_cache_enabled(props.cache_enabled)
+            tfb.meshes.set_verbose(props.cache_verbose)
+            if props.cache_enabled:
+                tfb.meshes.prefetch(obj_a)
+                tfb.meshes.prefetch(obj_b)
 
         start_time = time.time()
 
@@ -380,6 +443,8 @@ class VIEW3D_PT_trueform_panel(bpy.types.Panel):
         box.prop(props, "target_a")
         box.prop(props, "target_b")
         box.prop(props, "operation")
+        box.prop(props, "cache_enabled")
+        box.prop(props, "cache_verbose")
         box.prop(props, "interactive_preview")
         box.prop(props, "hide_inputs")
 
@@ -403,9 +468,11 @@ def register():
     bpy.types.Scene.trueform_tools = bpy.props.PointerProperty(type=TrueformProperties)
 
 def unregister():
+    global _CACHE_HANDLERS_REGISTERED
     if _on_depsgraph_update in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.remove(_on_depsgraph_update)
     _remove_preview_curves()
+    _CACHE_HANDLERS_REGISTERED = False
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
     del bpy.types.Scene.trueform_tools

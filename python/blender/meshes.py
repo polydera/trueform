@@ -19,6 +19,59 @@ import trueform as tf
 
 # Session-local cache: mesh.as_pointer() -> tf.Mesh
 _cache: dict[int, tf.Mesh] = {}
+_CACHE_ENABLED = False
+_VERBOSE = False
+
+
+def _log(message: str) -> None:
+    if _VERBOSE:
+        print(f"[TrueformMeshCache] {message}")
+
+
+def set_cache_enabled(enabled: bool) -> None:
+    """
+    Enable or disable the mesh cache.
+
+    @param enabled True to enable caching, False to disable it.
+    """
+    global _CACHE_ENABLED
+    if _CACHE_ENABLED == enabled:
+        return
+    _CACHE_ENABLED = enabled
+    if not _CACHE_ENABLED:
+        _cache.clear()
+        _log("cache disabled: cleared entries")
+    else:
+        _log("cache enabled")
+
+
+def set_verbose(enabled: bool) -> None:
+    """
+    Enable or disable verbose cache logging.
+
+    @param enabled True to enable verbose logging.
+    """
+    global _VERBOSE
+    _VERBOSE = enabled
+
+
+def prefetch(obj: bpy.types.Object) -> None:
+    """
+    Build and cache mesh structures for the given object if caching is enabled.
+
+    @param obj Blender object of type 'MESH'.
+    """
+    if not _CACHE_ENABLED:
+        _log("prefetch skipped (cache disabled)")
+        return
+    if obj.type != 'MESH':
+        raise TypeError(f"Object '{obj.name}' is not a mesh")
+    key = obj.data.as_pointer()
+    if key in _cache:
+        _log(f"prefetch cache hit: {obj.name}")
+        return
+    _log(f"prefetch cache miss: {obj.name}")
+    _cache[key] = _build(obj.data)
 
 
 def _extract_geometry(mesh: bpy.types.Mesh) -> tuple[np.ndarray, np.ndarray]:
@@ -98,27 +151,35 @@ def get(obj: bpy.types.Object) -> tf.Mesh:
     if obj.type != 'MESH':
         raise TypeError(f"Object '{obj.name}' is not a mesh")
 
-    key = obj.data.as_pointer()
-    if key not in _cache:
-        _cache[key] = _build(obj.data)
+    if _CACHE_ENABLED:
+        key = obj.data.as_pointer()
+        if key not in _cache:
+            _log(f"cache miss: {obj.name}")
+            _cache[key] = _build(obj.data)
+        else:
+            _log(f"cache hit: {obj.name}")
+        mesh = _cache[key].shared_view()
+    else:
+        _log(f"cache disabled: building transient mesh for {obj.name}")
+        mesh = _build(obj.data)
 
-    # Create a shared view with this object's world transform
-    mesh = _cache[key].shared_view()
+    # Apply this object's world transform
     mesh.transformation = np.array(obj.matrix_world, dtype=np.float32)
     return mesh
 
 
 @persistent
 def _on_load(_):
-    """Build cache for all meshes when a file is loaded."""
+    """Clear cache when a file is loaded."""
     _cache.clear()
-    for mesh in bpy.data.meshes:
-        _cache[mesh.as_pointer()] = _build(mesh)
+    _log("cache cleared on load")
 
 
 @persistent
 def _on_depsgraph_update(scene, depsgraph):
     """Rebuild structures when mesh geometry changes, remove deleted meshes."""
+    if not _CACHE_ENABLED:
+        return
     # Remove deleted meshes from cache
     current_mesh_pointers = {mesh.as_pointer() for mesh in bpy.data.meshes}
     stale_keys = _cache.keys() - current_mesh_pointers
@@ -141,9 +202,10 @@ def _on_depsgraph_update(scene, depsgraph):
 
         key = mesh.as_pointer()
         if key in _cache:
+            _log(f"update cache: {mesh.name}")
             _update(_cache[key], mesh)
         else:
-            _cache[key] = _build(mesh)
+            _log(f"skip update (not cached): {mesh.name}")
 
 
 def register():
@@ -153,7 +215,7 @@ def register():
     if _on_depsgraph_update not in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.append(_on_depsgraph_update)
 
-    # Build cache for current file
+    # Clear cache for current file
     _on_load(None)
 
 
