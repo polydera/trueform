@@ -15,7 +15,11 @@ import importlib
 import os
 
 # --- CONFIGURATION ---
-LIB_PATH = os.environ.get("TF_LIB_PATH", None)
+build_as_plugin = False
+if build_as_plugin:
+    LIB_PATH = os.path.join(os.path.dirname(__file__), "libs")
+else:
+    LIB_PATH = os.environ.get("TF_LIB_PATH", None)
 def get_tf_libs():
     if LIB_PATH is not None and LIB_PATH not in sys.path:
         sys.path.insert(0, LIB_PATH)
@@ -34,19 +38,186 @@ def ensure_trueform_registered(tfb) -> None:
     if not hasattr(bpy.types, "TRUEFORM_OT_interactive_boolean"):
         tfb.register()
 
+_PREVIEW_CURVES_NAME = None
+_PREVIEW_MATERIAL_NAME = "Trueform_Preview_Orange"
+_TF_LIBS_CACHE = None
+
+def _get_tf_libs_cached():
+    global _TF_LIBS_CACHE
+    if _TF_LIBS_CACHE is None:
+        if LIB_PATH is not None and LIB_PATH not in sys.path:
+            sys.path.insert(0, LIB_PATH)
+        try:
+            import trueform as tf
+            import trueform.blender as tfb
+        except ImportError:
+            return None, None
+        _TF_LIBS_CACHE = (tf, tfb)
+    return _TF_LIBS_CACHE
+
+def _get_preview_curves_obj():
+    if _PREVIEW_CURVES_NAME:
+        return bpy.data.objects.get(_PREVIEW_CURVES_NAME)
+    return None
+
+def _remove_preview_curves():
+    global _PREVIEW_CURVES_NAME
+    curves_obj = _get_preview_curves_obj()
+    if curves_obj is not None:
+        bpy.data.objects.remove(curves_obj, do_unlink=True)
+    _PREVIEW_CURVES_NAME = None
+
+def _tag_view3d_redraw(context):
+    if context is None or context.screen is None:
+        return
+    for area in context.screen.areas:
+        if area.type == 'VIEW_3D':
+            area.tag_redraw()
+
+def _style_preview_curves(curves_obj):
+    curves_obj.data.bevel_depth = 0.02
+    curves_obj.data.bevel_resolution = 3
+    curves_obj.data.use_fill_caps = True
+    curves_obj.color = (1.0, 0.55, 0.1, 1.0)
+    material = bpy.data.materials.get(_PREVIEW_MATERIAL_NAME)
+    if material is None:
+        material = bpy.data.materials.new(name=_PREVIEW_MATERIAL_NAME)
+        material.use_nodes = True
+        node_tree = material.node_tree
+        if node_tree is not None:
+            principled = node_tree.nodes.get("Principled BSDF")
+            if principled is not None:
+                principled.inputs["Base Color"].default_value = (1.0, 0.55, 0.1, 1.0)
+                principled.inputs["Emission"].default_value = (1.0, 0.35, 0.05, 1.0)
+                principled.inputs["Emission Strength"].default_value = 0.6
+        material.diffuse_color = (1.0, 0.55, 0.1, 1.0)
+    if curves_obj.data.materials:
+        curves_obj.data.materials[0] = material
+    else:
+        curves_obj.data.materials.append(material)
+    curves_obj.active_material = material
+
+def _update_preview_curves(tfb, paths, points):
+    global _PREVIEW_CURVES_NAME
+    curves_obj = _get_preview_curves_obj()
+    if len(paths) > 0:
+        if curves_obj is None:
+            curves_obj = tfb.convert.make_curves_object(paths, points, "TFB_Preview_Curves")
+            _PREVIEW_CURVES_NAME = curves_obj.name
+        else:
+            old_curve = curves_obj.data
+            new_curve = tfb.convert.make_curves(paths, points, "TFB_Preview_Curves")
+            curves_obj.data = new_curve
+            bpy.data.curves.remove(old_curve)
+        _style_preview_curves(curves_obj)
+    else:
+        if curves_obj is not None:
+            bpy.data.objects.remove(curves_obj, do_unlink=True)
+        _PREVIEW_CURVES_NAME = None
+
+def _update_preview(context):
+    if context is None or context.scene is None:
+        return
+    if not hasattr(context.scene, "trueform_tools"):
+        return
+    props = context.scene.trueform_tools
+    if not props.interactive_preview:
+        return
+    tf, tfb = _get_tf_libs_cached()
+    if not tf or not tfb:
+        return
+    ensure_trueform_registered(tfb)
+    obj_a = props.target_a
+    obj_b = props.target_b
+    if not obj_a or not obj_b or obj_a == obj_b:
+        _remove_preview_curves()
+        return
+    try:
+        mesh_a = tfb.meshes.get(obj_a)
+        mesh_b = tfb.meshes.get(obj_b)
+        paths, points = tf.intersection_curves(mesh_a, mesh_b)
+    except Exception as exc:
+        print(f"[Trueform] Preview update failed: {exc}")
+        return
+    _update_preview_curves(tfb, paths, points)
+    _tag_view3d_redraw(context)
+
+def _preview_needs_update(depsgraph, obj_a, obj_b):
+    for update in depsgraph.updates:
+        id_ = update.id
+        original = getattr(id_, "original", id_)
+        if not getattr(update, "is_updated_transform", False) and not getattr(update, "is_updated_geometry", False):
+            continue
+        if original in {obj_a, obj_b, obj_a.data, obj_b.data}:
+            return True
+    return False
+
+def _on_depsgraph_update(scene, depsgraph):
+    if scene is None or not hasattr(scene, "trueform_tools"):
+        return
+    props = scene.trueform_tools
+    if not props.interactive_preview:
+        return
+    obj_a = props.target_a
+    obj_b = props.target_b
+    if not obj_a or not obj_b or obj_a == obj_b:
+        _remove_preview_curves()
+        return
+    if not _preview_needs_update(depsgraph, obj_a, obj_b):
+        return
+    _update_preview(bpy.context)
+
+def _on_preview_toggle(self, context):
+    if context is None:
+        return
+    if self.interactive_preview:
+        tf, tfb = _get_tf_libs_cached()
+        if not tf or not tfb:
+            return
+        ensure_trueform_registered(tfb)
+        if _on_depsgraph_update not in bpy.app.handlers.depsgraph_update_post:
+            bpy.app.handlers.depsgraph_update_post.append(_on_depsgraph_update)
+        _update_preview(context)
+    else:
+        if _on_depsgraph_update in bpy.app.handlers.depsgraph_update_post:
+            bpy.app.handlers.depsgraph_update_post.remove(_on_depsgraph_update)
+        _remove_preview_curves()
+
+def _on_preview_inputs_changed(self, context):
+    if context is None:
+        return
+    if not self.interactive_preview:
+        return
+    _update_preview(context)
+
+def _create_result_collection(context, name):
+    collection = bpy.data.collections.new(name)
+    context.scene.collection.children.link(collection)
+    return collection
+
+def _move_object_to_collection(obj, collection):
+    if obj is None or collection is None:
+        return
+    for existing in list(obj.users_collection):
+        existing.objects.unlink(obj)
+    if collection not in obj.users_collection:
+        collection.objects.link(obj)
+
 # --- PROPERTY GROUP ---
 class TrueformProperties(bpy.types.PropertyGroup):
     target_a: bpy.props.PointerProperty(
         name="Mesh A",
         description="First mesh for boolean",
         type=bpy.types.Object,
-        poll=lambda self, obj: obj.type == 'MESH'
+        poll=lambda self, obj: obj.type == 'MESH',
+        update=_on_preview_inputs_changed
     )
     target_b: bpy.props.PointerProperty(
         name="Mesh B",
         description="Second mesh for boolean",
         type=bpy.types.Object,
-        poll=lambda self, obj: obj.type == 'MESH'
+        poll=lambda self, obj: obj.type == 'MESH',
+        update=_on_preview_inputs_changed
     )
     operation: bpy.props.EnumProperty(
         name="Operation",
@@ -56,7 +227,19 @@ class TrueformProperties(bpy.types.PropertyGroup):
             ('UNION', "Union", "A + B"),
             ('INTERSECTION', "Intersection", "A & B"),
         ],
-        default='INTERSECTION'
+        default='INTERSECTION',
+        update=_on_preview_inputs_changed
+    )
+    interactive_preview: bpy.props.BoolProperty(
+        name="Interactive Preview",
+        description="Show live intersection curves while adjusting inputs",
+        default=False,
+        update=_on_preview_toggle
+    )
+    hide_inputs: bpy.props.BoolProperty(
+        name="Hide Inputs on Apply",
+        description="Hide input meshes after creating the boolean result",
+        default=False
     )
 
 # --- OPERATOR ---
@@ -84,20 +267,49 @@ class MESH_OT_trueform_boolean(bpy.types.Operator):
         start_time = time.time()
 
         try:
+            result_name = f"TFB_{obj_a.name}_{obj_b.name}"
+            curves_obj = None
+
             # Execute boolean
-            if props.operation == 'DIFFERENCE':
-                result_obj = tfb.functions.boolean_difference(obj_a, obj_b)
-            elif props.operation == 'UNION':
-                result_obj = tfb.functions.boolean_union(obj_a, obj_b)
+            if props.interactive_preview:
+                _remove_preview_curves()
+                if props.operation == 'DIFFERENCE':
+                    result_obj, curves_obj = tfb.functions.boolean_difference(
+                        obj_a, obj_b, name=result_name, return_curves=True
+                    )
+                elif props.operation == 'UNION':
+                    result_obj, curves_obj = tfb.functions.boolean_union(
+                        obj_a, obj_b, name=result_name, return_curves=True
+                    )
+                else:
+                    result_obj, curves_obj = tfb.functions.boolean_intersection(
+                        obj_a, obj_b, name=result_name, return_curves=True
+                    )
+                collection_name = f"{result_name}_Boolean"
+                collection = _create_result_collection(context, collection_name)
+                _move_object_to_collection(result_obj, collection)
+                _move_object_to_collection(curves_obj, collection)
             else:
-                result_obj = tfb.functions.boolean_intersection(obj_a, obj_b)
+                if props.operation == 'DIFFERENCE':
+                    result_obj = tfb.functions.boolean_difference(obj_a, obj_b, name=result_name)
+                elif props.operation == 'UNION':
+                    result_obj = tfb.functions.boolean_union(obj_a, obj_b, name=result_name)
+                else:
+                    result_obj = tfb.functions.boolean_intersection(obj_a, obj_b, name=result_name)
 
             # Name and organize
-            result_obj.name = f"TFB_{obj_a.name}_{obj_b.name}"
+            result_obj.name = result_name
+            if curves_obj is not None:
+                curves_obj.name = f"{result_name}_Curves"
 
-            # Optional: Hide inputs to show the result clearly
-            obj_a.hide_viewport = True
-            obj_b.hide_viewport = True
+            if props.hide_inputs:
+                obj_a.hide_set(True)
+                obj_b.hide_set(True)
+
+            if props.interactive_preview:
+                if _on_depsgraph_update not in bpy.app.handlers.depsgraph_update_post:
+                    bpy.app.handlers.depsgraph_update_post.append(_on_depsgraph_update)
+                _update_preview(context)
 
             self.report({'INFO'}, f"Computed in {time.time() - start_time:.4f}s")
             return {'FINISHED'}
@@ -168,16 +380,14 @@ class VIEW3D_PT_trueform_panel(bpy.types.Panel):
         box.prop(props, "target_a")
         box.prop(props, "target_b")
         box.prop(props, "operation")
+        box.prop(props, "interactive_preview")
+        box.prop(props, "hide_inputs")
 
         layout.separator()
 
         row = layout.row(align=True)
         row.scale_y = 1.4
         row.operator("mesh.trueform_boolean", text="Apply Boolean", icon='MOD_BOOLEAN')
-        layout.separator()
-        row = layout.row(align=True)
-        row.scale_y = 1.4
-        row.operator("mesh.trueform_interactive_boolean", text="Interactive Preview", icon='MOD_BOOLEAN')
 
 # --- REGISTRATION ---
 classes = (
@@ -193,6 +403,9 @@ def register():
     bpy.types.Scene.trueform_tools = bpy.props.PointerProperty(type=TrueformProperties)
 
 def unregister():
+    if _on_depsgraph_update in bpy.app.handlers.depsgraph_update_post:
+        bpy.app.handlers.depsgraph_update_post.remove(_on_depsgraph_update)
+    _remove_preview_curves()
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
     del bpy.types.Scene.trueform_tools

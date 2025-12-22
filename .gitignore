@@ -2,6 +2,7 @@
 build/
 build-*/
 cmake-build-*/
+wheelhouse/
 
 # IDE
 .idea/
@@ -19,3 +20,16 @@ Thumbs.db
 *.a
 *.so
 *.dylib
+*.dll
+*.pyd
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Misc
+*.log
+*.tmp
+*.bak
+*.zip
