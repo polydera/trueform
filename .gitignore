@@ -1,0 +1,17 @@
+wheelhouse/**
+cmake-build-*
+/**/*.pyd
+/**/*.so
+/**/*.dll
+/**/*.dylib
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+.DS_Store
+*.zip
