@@ -203,3 +203,9 @@ if(TF_BUILD_PYTHON)
           DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/licenses
   )
 endif()
+
+# Tests
+option(TF_BUILD_TESTS "Build test targets." OFF)
+if(TF_BUILD_TESTS)
+  add_subdirectory(tests)
+endif()
