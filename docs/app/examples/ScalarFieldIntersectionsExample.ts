@@ -26,6 +26,7 @@ export class ScalarFieldIntersectionsExample extends ThreejsBase {
     isDarkMode = true,
   ) {
     super(wasmInstance, paths, container, undefined, true, false, isDarkMode);
+    this.sceneBundle1.controls.enableZoom = false;
 
     const interceptKeyDownEvent = (event: KeyboardEvent) => {
       if (this.keyPressed) return;
@@ -43,13 +44,20 @@ export class ScalarFieldIntersectionsExample extends ThreejsBase {
     window.addEventListener("keydown", interceptKeyDownEvent);
     window.addEventListener("keyup", interceptKeyUpEvent);
 
+    const isEventFromCanvas = (eventTarget: EventTarget | null) => {
+      if (!eventTarget) return false;
+      const target = eventTarget as Node;
+      const container = this.renderer.domElement.parentElement;
+      return !!container && container.contains(target);
+    };
+
     const interceptWheelEvent = (event: WheelEvent) => {
-      if (!event.shiftKey) return;
-      event.preventDefault();
+      if (!isEventFromCanvas(event.target)) return;
       const delta = event.deltaY !== 0 ? event.deltaY : event.deltaX;
       if (delta === 0) return;
+      event.preventDefault();
       const normalizedDelta = delta / Math.abs(delta);
-      const handled = this.wasmInstance.OnMouseWheel(normalizedDelta, event.shiftKey);
+      const handled = this.wasmInstance.OnMouseWheel(normalizedDelta, true);
       this.updateMeshes();
       if(handled)
         event.stopImmediatePropagation();
@@ -60,10 +68,10 @@ export class ScalarFieldIntersectionsExample extends ThreejsBase {
     };
     window.addEventListener("wheel", interceptWheelEvent, wheelListenerOptions);
 
-    let threeFingerActive = false;
-    let lastThreeFingerY = 0;
-    const setThreeFingerMode = (active: boolean) => {
-      threeFingerActive = active;
+    let touchScrollActive = false;
+    let lastTouchY = 0;
+    const setTouchScrollMode = (active: boolean) => {
+      touchScrollActive = active;
       const controlsEnabled = !active;
       this.sceneBundle1.controls.enabled = controlsEnabled;
       if (this.sceneBundle2) {
@@ -80,26 +88,26 @@ export class ScalarFieldIntersectionsExample extends ThreejsBase {
     };
 
     const interceptTouchStart = (event: TouchEvent) => {
-      if (event.touches.length === 3) {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
-        setThreeFingerMode(true);
-        lastThreeFingerY = getAverageTouchY(event.touches);
-      }
+      if (event.touches.length !== 1) return;
+      if (!isEventFromCanvas(event.target)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      setTouchScrollMode(true);
+      lastTouchY = getAverageTouchY(event.touches);
     };
 
     const interceptTouchMove = (event: TouchEvent) => {
-      if (!threeFingerActive) return;
-      if (event.touches.length !== 3) {
-        setThreeFingerMode(false);
+      if (!touchScrollActive) return;
+      if (event.touches.length !== 1) {
+        setTouchScrollMode(false);
         return;
       }
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
       const currentY = getAverageTouchY(event.touches);
-      const deltaY = currentY - lastThreeFingerY;
+      const deltaY = currentY - lastTouchY;
       if (Math.abs(deltaY) < touchScrollThresholdPx) return;
       const normalizedDelta = deltaY / Math.abs(deltaY);
       const handled = this.wasmInstance.OnMouseWheel(normalizedDelta, true);
@@ -107,12 +115,12 @@ export class ScalarFieldIntersectionsExample extends ThreejsBase {
       if (handled) {
         event.stopImmediatePropagation();
       }
-      lastThreeFingerY = currentY;
+      lastTouchY = currentY;
     };
 
     const interceptTouchEnd = (event: TouchEvent) => {
-      setThreeFingerMode(false);
-      if (event.touches.length === 3) {
+      if (touchScrollActive) {
+        setTouchScrollMode(false);
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
