@@ -15,7 +15,11 @@ import importlib
 import os
 
 # --- CONFIGURATION ---
-LIB_PATH = os.environ.get("TF_LIB_PATH", None)
+build_as_plugin = False
+if build_as_plugin:
+    LIB_PATH = os.path.join(os.path.dirname(__file__), "libs")
+else:
+    LIB_PATH = os.environ.get("TF_LIB_PATH", None)
 def get_tf_libs():
     if LIB_PATH is not None and LIB_PATH not in sys.path:
         sys.path.insert(0, LIB_PATH)
@@ -58,6 +62,11 @@ class TrueformProperties(bpy.types.PropertyGroup):
         ],
         default='INTERSECTION'
     )
+    hide_inputs: bpy.props.BoolProperty(
+        name="Hide Inputs on Apply",
+        description="Hide input meshes after creating the boolean result",
+        default=False
+    )
 
 # --- OPERATOR ---
 class MESH_OT_trueform_boolean(bpy.types.Operator):
@@ -95,9 +104,9 @@ class MESH_OT_trueform_boolean(bpy.types.Operator):
             # Name and organize
             result_obj.name = f"TFB_{obj_a.name}_{obj_b.name}"
 
-            # Optional: Hide inputs to show the result clearly
-            obj_a.hide_viewport = True
-            obj_b.hide_viewport = True
+            if props.hide_inputs:
+                obj_a.hide_set(True)
+                obj_b.hide_set(True)
 
             self.report({'INFO'}, f"Computed in {time.time() - start_time:.4f}s")
             return {'FINISHED'}
@@ -168,6 +177,7 @@ class VIEW3D_PT_trueform_panel(bpy.types.Panel):
         box.prop(props, "target_a")
         box.prop(props, "target_b")
         box.prop(props, "operation")
+        box.prop(props, "hide_inputs")
 
         layout.separator()
 
