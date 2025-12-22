@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via info@polydera.com.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via info@polydera.com.
  * https://github.com/xlabmedical/trueform
  */
 
@@ -244,8 +244,18 @@ template <std::size_t Dims, typename T> auto tag(frame_like<Dims, T> frame) {
   return policy::tag_frame_op<Dims, T>{std::move(frame)};
 }
 
+template <std::size_t Dims, typename T>
+auto tag(transformation_like<Dims, T> transformation) {
+  return policy::tag_frame_op<Dims, T>{tf::make_frame(transformation)};
+}
+
 template <typename RealT, std::size_t Dims>
 auto tag(identity_frame<RealT, Dims>) {
+  return tag_identity_frame<RealT, Dims>();
+}
+
+template <typename RealT, std::size_t Dims>
+auto tag(identity_transformation<RealT, Dims>) {
   return tag_identity_frame<RealT, Dims>();
 }
 
