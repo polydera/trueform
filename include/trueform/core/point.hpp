@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via info@polydera.com.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via info@polydera.com.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -74,6 +74,26 @@ auto make_point(const tf::vector_like<N, T> &v)
   for (std::size_t i = 0; i < N; ++i)
     out[i] = v[i];
   return out;
+}
+
+/// @ingroup geometry
+/// @brief Construct a point from individual coordinate values.
+///
+/// Creates a @ref tf::point by deducing type and dimensionality from
+/// the provided arguments. Requires at least 2 coordinates.
+///
+/// @tparam T The coordinate type (deduced from first two arguments).
+/// @tparam Ts Additional coordinate types.
+/// @param t0 The first coordinate value.
+/// @param t1 The second coordinate value.
+/// @param ts Additional coordinate values.
+/// @return A `tf::point<common_type, N>` where N = 2 + sizeof...(ts).
+template <typename T, typename... Ts>
+auto make_point(const T &t0, const T &t1, const Ts &...ts)
+    -> tf::point<std::common_type_t<T, Ts...>, (2 + sizeof...(Ts))> {
+  using type = std::common_type_t<T, Ts...>;
+  return {static_cast<type>(t0), static_cast<type>(t1),
+          static_cast<type>(ts)...};
 }
 
 } // namespace tf

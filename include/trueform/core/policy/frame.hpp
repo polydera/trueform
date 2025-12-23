@@ -246,7 +246,7 @@ template <std::size_t Dims, typename T> auto tag(frame_like<Dims, T> frame) {
 
 template <std::size_t Dims, typename T>
 auto tag(transformation_like<Dims, T> transformation) {
-  return policy::tag_frame_op<Dims, T>{tf::make_frame(transformation)};
+  return tf::tag(tf::make_frame(transformation));
 }
 
 template <typename RealT, std::size_t Dims>

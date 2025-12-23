@@ -5,9 +5,10 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
+#include "./coordinate_type.hpp"
 #include "./unit_vector_like.hpp"
 #include "./unsafe.hpp"
-#include "./coordinate_type.hpp"
+#include "./vector.hpp"
 
 namespace tf {
 
@@ -60,6 +61,53 @@ auto make_unit_vector(const tf::unit_vector_like<Dims, T> &v) {
 template <std::size_t Dims, typename T>
 auto make_unit_vector(tf::unsafe_t, const tf::vector_like<Dims, T> &v) {
   return unit_vector<tf::coordinate_type<T>, Dims>{tf::unsafe, v};
+}
+
+/// @ingroup geometry
+/// @brief Construct a unit vector from individual coordinate values (normalized).
+///
+/// Creates a @ref tf::unit_vector by deducing type and dimensionality from
+/// the provided arguments. The resulting vector is normalized to unit length.
+/// Requires at least 2 coordinates.
+///
+/// @tparam T The coordinate type (deduced from first two arguments).
+/// @tparam Ts Additional coordinate types.
+/// @param t0 The first coordinate value.
+/// @param t1 The second coordinate value.
+/// @param ts Additional coordinate values.
+/// @return A normalized `tf::unit_vector<common_type, N>` where N = 2 + sizeof...(ts).
+template <typename T, typename... Ts>
+auto make_unit_vector(const T &t0, const T &t1, const Ts &...ts)
+    -> tf::unit_vector<std::common_type_t<T, Ts...>, (2 + sizeof...(Ts))> {
+  using type = std::common_type_t<T, Ts...>;
+  constexpr std::size_t Dims = 2 + sizeof...(Ts);
+  return unit_vector<type, Dims>{
+      tf::vector<type, Dims>{static_cast<type>(t0), static_cast<type>(t1),
+                             static_cast<type>(ts)...}};
+}
+
+/// @ingroup geometry
+/// @brief Construct a unit vector from individual coordinate values (unsafe).
+///
+/// Creates a @ref tf::unit_vector by deducing type and dimensionality from
+/// the provided arguments. No normalization is performed - the input must
+/// already have unit length. Requires at least 2 coordinates.
+///
+/// @tparam T The coordinate type (deduced from first two arguments).
+/// @tparam Ts Additional coordinate types.
+/// @param t0 The first coordinate value.
+/// @param t1 The second coordinate value.
+/// @param ts Additional coordinate values.
+/// @return A `tf::unit_vector<common_type, N>` where N = 2 + sizeof...(ts).
+template <typename T, typename... Ts>
+auto make_unit_vector(tf::unsafe_t, const T &t0, const T &t1, const Ts &...ts)
+    -> tf::unit_vector<std::common_type_t<T, Ts...>, (2 + sizeof...(Ts))> {
+  using type = std::common_type_t<T, Ts...>;
+  constexpr std::size_t Dims = 2 + sizeof...(Ts);
+  return unit_vector<type, Dims>{
+      tf::unsafe,
+      tf::vector<type, Dims>{static_cast<type>(t0), static_cast<type>(t1),
+                             static_cast<type>(ts)...}};
 }
 
 } // namespace tf

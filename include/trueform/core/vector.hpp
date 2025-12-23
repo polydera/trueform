@@ -64,4 +64,24 @@ auto make_vector(const T *ptr) -> vector<T, N> {
   return vector<T, N>(ptr);
 }
 
+/// @ingroup geometry
+/// @brief Construct a vector from individual coordinate values.
+///
+/// Creates a @ref tf::vector by deducing type and dimensionality from
+/// the provided arguments. Requires at least 2 coordinates.
+///
+/// @tparam T The coordinate type (deduced from first two arguments).
+/// @tparam Ts Additional coordinate types.
+/// @param t0 The first coordinate value.
+/// @param t1 The second coordinate value.
+/// @param ts Additional coordinate values.
+/// @return A `tf::vector<common_type, N>` where N = 2 + sizeof...(ts).
+template <typename T, typename... Ts>
+auto make_vector(const T &t0, const T &t1, const Ts &...ts)
+    -> tf::vector<std::common_type_t<T, Ts...>, (2 + sizeof...(Ts))> {
+  using type = std::common_type_t<T, Ts...>;
+  return {static_cast<type>(t0), static_cast<type>(t1),
+          static_cast<type>(ts)...};
+}
+
 } // namespace tf

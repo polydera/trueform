@@ -24,7 +24,7 @@ int main() {
   // Clean the tube - merges coincident vertices within epsilon tolerance.
   // This creates shared vertices, establishing topological connectivity.
   tf::polygons_buffer<int, float, 3, 4> tube_cleaned =
-      tf::cleaned<int>(tube.polygons(), tf::epsilon<float>);
+      tf::cleaned(tube.polygons(), tf::epsilon<float>);
 
   std::cout << "\n=== Tube (cleaned) ===" << std::endl;
   std::cout << "Points: " << tube_cleaned.points().size() << std::endl;
@@ -70,7 +70,7 @@ int main() {
   // - Tube boundary edges merge with disk perimeter edges (sealing the caps)
   // - Disk triangles share center and perimeter vertices
   tf::polygons_buffer<int, float, 3, tf::dynamic_size> cylinder =
-      tf::cleaned<int>(combined.polygons(), tf::epsilon<float>);
+      tf::cleaned(combined.polygons(), tf::epsilon<float>);
 
   std::cout << "\n=== Cylinder (cleaned) ===" << std::endl;
   std::cout << "Points: " << cylinder.points().size() << std::endl;
@@ -106,7 +106,7 @@ int main() {
   // Create a cone to place on top of the cylinder.
   // Clean the disk first - make_disk creates isolated triangles (each with its
   // own vertices), cleaning merges coincident vertices into shared ones.
-  auto cone_cap = tf::cleaned<int>(disk_top.polygons(), tf::epsilon<float>);
+  auto cone_cap = tf::cleaned(disk_top.polygons(), tf::epsilon<float>);
 
   // Copy for the cone sheet, then modify to create the sloped surface
   auto cone_sheet = cone_cap;
@@ -124,7 +124,7 @@ int main() {
   // Combine flat cap + cone sheet. After cleaning, perimeter vertices merge
   // while centers stay separate (flat center at z=2, apex at z=3).
   // Result: watertight cone (0 boundaries, 0 non-manifold)
-  tf::polygons_buffer<int, float, 3, 3> cone = tf::cleaned<int>(
+  tf::polygons_buffer<int, float, 3, 3> cone = tf::cleaned(
       tf::concatenated(cone_cap.polygons(), cone_sheet.polygons()).polygons(),
       tf::epsilon<float>);
   tf::ensure_positive_orientation(cone.polygons());
@@ -135,7 +135,7 @@ int main() {
   // The cylinder's top cap and cone's bottom cap share the same ring of
   // vertices. After cleaning, each edge on that ring belongs to 4 faces
   // (2 from cylinder cap, 2 from cone cap) - these are non-manifold edges!
-  tf::polygons_buffer<int, float, 3, 3> merged = tf::cleaned<int>(
+  tf::polygons_buffer<int, float, 3, 3> merged = tf::cleaned(
       tf::concatenated(triangulated_cylinder.polygons(), cone.polygons())
           .polygons(),
       tf::epsilon<float>);
@@ -163,9 +163,9 @@ int main() {
   // Rotate 90° around X-axis, centered at the cylinder's centroid.
   auto horizontal_cylinder =
       triangulated_cylinder.polygons() |
-      tf::tag(tf::make_frame(
+      tf::tag(
           tf::make_rotation(tf::deg(90.f), tf::axis<0>,
-                            tf::centroid(triangulated_cylinder.polygons()))));
+                            tf::centroid(triangulated_cylinder.polygons())));
 
   // Boolean intersection of vertical pencil and horizontal cylinder.
   // The result is the classic Steinmetz solid - the region inside both shapes.
@@ -194,7 +194,7 @@ int main() {
                                      min_d + 3 * step, min_d + 4 * step};
   std::array<int, 3> selected_bands = {0, 2, 4}; // first, middle, last
 
-  auto [slices, band_labels] = tf::make_isobands<int>(
+  auto [slices, band_labels] = tf::make_isobands(
       bicylinder.polygons(), scalars, tf::make_range(cut_values),
       tf::make_range(selected_bands));
 
