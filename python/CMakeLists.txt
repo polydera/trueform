@@ -174,6 +174,31 @@ add_dependencies(_trueform copy_python_files)
 add_custom_target(python DEPENDS _trueform)
 message(STATUS "Python bindings configured. Build with 'cmake --build . --target python'")
 
+# 11. Blender Bundle Target
+# ------------------------------------------------------------------------------
+set(TF_BLENDER_BUNDLE_DIR "${CMAKE_CURRENT_BINARY_DIR}/trueform_boolean")
+set(TF_BLENDER_BUNDLE_ZIP "${CMAKE_CURRENT_BINARY_DIR}/trueform_boolean.zip")
+set(TF_BLENDER_PLUGIN_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/examples/blender-boolean/__init__.py")
+
+add_custom_target(build_blender_plugin DEPENDS _trueform copy_python_files)
+add_custom_command(
+        TARGET build_blender_plugin POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "${TF_BLENDER_BUNDLE_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${TF_BLENDER_BUNDLE_DIR}/libs"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${TF_BLENDER_PLUGIN_SCRIPT}"
+        "${TF_BLENDER_BUNDLE_DIR}/__init__.py"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_BINARY_DIR}/trueform"
+        "${TF_BLENDER_BUNDLE_DIR}/libs/trueform"
+        COMMAND ${CMAKE_COMMAND} -E tar cf
+        "${TF_BLENDER_BUNDLE_ZIP}"
+        --format=zip
+        "${TF_BLENDER_BUNDLE_DIR}"
+        COMMENT "Creating Blender bundle at ${TF_BLENDER_BUNDLE_ZIP}"
+        VERBATIM
+)
+
 # 12. Installation
 # ------------------------------------------------------------------------------
 # Install the compiled extension
