@@ -32,12 +32,12 @@ inline constexpr bool has_id_policy = decltype(has_id(
     policy::type{}, static_cast<const std::decay_t<T> *>(nullptr)))::value;
 namespace policy {
 /**
- * @ingroup injectors
- * @brief Type injector that tags id to a class.
+ * @ingroup core_policies
+ * @brief Type injector that tags an ID to a class.
  *
- * It provides accessors for the id.
+ * Provides `.id()` accessors for the injected identifier.
  *
- * @tparam Range The id range
+ * @tparam Index The ID type.
  * @tparam Base The type being augmented.
  */
 template <typename Index, typename Base> struct tag_id : Base {
@@ -97,10 +97,11 @@ private:
 template <typename Range, typename Base>
 struct static_size<policy::tag_id<Range, Base>> : static_size<Base> {};
 
-/**
- * @ingroup injectors
- * @brief Constructs an `tag_id` by injecting id into a base
- */
+/// @ingroup core_policies
+/// @brief Inject an ID into a primitive.
+///
+/// Returns a wrapper with `.id()` accessor while preserving all
+/// original functionality through inheritance.
 template <typename Index, typename Base> auto tag_id(Index &&id, Base &&base) {
   if constexpr (has_id_policy<Base>)
     if constexpr (std::is_rvalue_reference_v<Base &&>)
@@ -179,10 +180,8 @@ private:
 template <typename Range, typename Base>
 struct static_size<policy::tag_id_iter<Range, Base>> : static_size<Base> {};
 
-/**
- * @ingroup injectors
- * @brief Constructs an `tag_id` by injecting i:d into a base
- */
+/// @ingroup core_policies
+/// @brief Inject an iterator-backed ID into a primitive.
 template <typename Iterator, typename Base>
 auto tag_id_iter(Iterator &&id, Base &&base) {
   if constexpr (has_id_policy<Base>)

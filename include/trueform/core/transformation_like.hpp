@@ -13,6 +13,15 @@
 #include <utility>
 namespace tf {
 
+/// @ingroup core_primitives
+/// @brief Base template for affine transformation matrix types.
+///
+/// Provides the common interface for transformations, including point and
+/// vector transformation methods. The matrix is stored in row-major order
+/// with dimensions `Dims x (Dims+1)` for affine transformations.
+///
+/// @tparam Dims The dimensionality.
+/// @tparam Policy The storage policy.
 template <std::size_t Dims, typename Policy>
 struct transformation_like : Policy {
   transformation_like() = default;
@@ -128,6 +137,11 @@ public:
   auto transform_vector(const Point0 &, Point1 &) const {}
 };
 
+/// @ingroup core_primitives
+/// @brief An identity transformation that leaves points and vectors unchanged.
+///
+/// @tparam T The scalar type.
+/// @tparam Dims The dimensionality.
 template <typename T, std::size_t Dims>
 using identity_transformation =
     transformation_like<Dims, linalg::identity<T, Dims>>;

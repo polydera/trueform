@@ -49,6 +49,13 @@ template <typename T> struct pt_as_dref {
 };
 } // namespace core
 
+/// @ingroup core_ranges
+/// @brief A range of points.
+///
+/// Wraps a range policy and provides point-specific operations like
+/// `as_vector_view()` and type conversion via `as<T>()`.
+///
+/// @tparam Policy The underlying range policy.
 template <typename Policy> struct points : Policy {
   points(const Policy &r) : Policy{r} {}
   points(Policy &&r) : Policy{std::move(r)} {}
@@ -101,7 +108,7 @@ auto wrap_like(points<Policy> &&, T &&t) {
   return points<std::decay_t<T>>{static_cast<T &&>(t)};
 }
 
-/// @ingroup ranges
+/// @ingroup core_ranges
 /// @brief Creates a range of points from a flat scalar sequence.
 ///
 /// This utility interprets a flat range of scalars as a sequence of
@@ -140,11 +147,15 @@ template <std::size_t Dims, typename Range> auto make_points(Range &&r) {
   return tf::points<decltype(pts)>{pts};
 }
 
+/// @ingroup core_ranges
+/// @brief Create a points range from a generic range of point primitives.
 template <typename Range> auto make_points(Range &&r) {
   auto pts = tf::make_range(r);
   return tf::points<decltype(pts)>{pts};
 }
 
+/// @ingroup core_ranges
+/// @brief Identity overload for already-wrapped point ranges.
 template <typename Range> auto make_points(points<Range> r) -> points<Range> {
   return r;
 }

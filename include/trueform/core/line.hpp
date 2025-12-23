@@ -11,10 +11,25 @@
 
 namespace tf {
 
+/// @ingroup core_primitives
+/// @brief An infinite line in N-dimensional space.
+///
+/// A line is defined by an origin point and a direction vector. It extends
+/// infinitely in both directions along the direction vector. Supports
+/// parametric evaluation: `line(t)` returns `origin + t * direction`.
+///
+/// Factory functions include:
+/// - @ref tf::make_line() - from origin and direction (always owning)
+/// - @ref tf::make_line_between_points() - from two points
+/// - @ref tf::make_line_like() - creates view when inputs are views
+///
+/// @tparam T The scalar type (e.g., float, double).
+/// @tparam Dims The dimensionality (e.g., 2, 3).
 template <typename T, std::size_t Dims>
 using line = tf::line_like<
     Dims, tf::core::line<Dims, tf::core::pt<T, Dims>, tf::core::vec<T, Dims>>>;
-/// @ingroup geometry
+
+/// @ingroup core_primitives
 /// @brief Constructs a line from an origin and a direction vector.
 ///
 /// The direction vector defines the orientation of the line, which extends
@@ -33,7 +48,7 @@ auto make_line(const tf::point_like<Dims, T0> &origin,
   return line<tf::coordinate_type<T0, T1>, Dims>{origin, direction};
 }
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Constructs a line from two points.
 ///
 /// The direction of the line is computed as `end - origin`. The line passes

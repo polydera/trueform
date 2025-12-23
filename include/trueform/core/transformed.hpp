@@ -44,6 +44,21 @@
 #include "./zip_range.hpp"
 
 namespace tf {
+
+/// @ingroup core_primitives
+/// @brief Apply a transformation to a geometric primitive.
+///
+/// Returns a new primitive with the transformation applied. Supports points,
+/// vectors, unit vectors, lines, rays, planes, segments, polygons, AABBs,
+/// OBBs, RSS, transformations, and frames. Identity transformations are
+/// optimized to return the input unchanged.
+///
+/// @tparam Dims The dimensionality.
+/// @tparam Policy The primitive's storage policy.
+/// @tparam U The transformation's storage policy.
+/// @param _this The primitive to transform.
+/// @param transform The transformation to apply.
+/// @return The transformed primitive.
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const point_like<Dims, Policy> &_this,
                  const transformation_like<Dims, U> &transform) {
@@ -53,6 +68,9 @@ auto transformed(const point_like<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @brief Apply a frame transformation to a geometric primitive.
+/// @overload
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const point_like<Dims, Policy> &_this,
                  const frame_like<Dims, U> &transform) {
@@ -62,6 +80,8 @@ auto transformed(const point_like<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const vector_like<Dims, Policy> &_this,
                  const transformation_like<Dims, U> &transform) {
@@ -71,6 +91,8 @@ auto transformed(const vector_like<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const vector_like<Dims, Policy> &_this,
                  const frame_like<Dims, U> &transform) {
@@ -80,6 +102,8 @@ auto transformed(const vector_like<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const plane_like<Dims, Policy> &_this,
                  const frame_like<Dims, U> &transform) {
@@ -89,6 +113,8 @@ auto transformed(const plane_like<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const unit_vector_like<Dims, Policy> &_this,
                  const transformation_like<Dims, U> &transform) {
@@ -100,6 +126,8 @@ auto transformed(const unit_vector_like<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const unit_vector_like<Dims, Policy> &_this,
                  const frame_like<Dims, U> &transform) {
@@ -111,6 +139,19 @@ auto transformed(const unit_vector_like<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @brief Transform a normal vector correctly using the inverse transpose.
+///
+/// Normal vectors require special handling under non-uniform scaling.
+/// This function uses the inverse-transpose of the transformation matrix
+/// to correctly transform normals.
+///
+/// @tparam Dims The dimensionality.
+/// @tparam Policy The normal's storage policy.
+/// @tparam U The frame's storage policy.
+/// @param _this The unit normal to transform.
+/// @param frame The frame transformation to apply.
+/// @return The correctly transformed unit normal.
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed_normal(const unit_vector_like<Dims, Policy> &_this,
                         const frame_like<Dims, U> &frame) {
@@ -125,6 +166,8 @@ auto transformed_normal(const unit_vector_like<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const ray_like<Dims, Policy> &_this,
                  const transformation_like<Dims, U> &transform) {
@@ -134,6 +177,8 @@ auto transformed(const ray_like<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const ray_like<Dims, Policy> &_this,
                  const frame_like<Dims, U> &transform) {
@@ -143,6 +188,8 @@ auto transformed(const ray_like<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const line_like<Dims, Policy> &_this,
                  const transformation_like<Dims, U> &transform) {
@@ -152,6 +199,8 @@ auto transformed(const line_like<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const line_like<Dims, Policy> &_this,
                  const frame_like<Dims, U> &transform) {
@@ -161,6 +210,8 @@ auto transformed(const line_like<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const aabb_like<Dims, Policy> &_this,
                  const transformation_like<Dims, U> &transform) {
@@ -170,6 +221,8 @@ auto transformed(const aabb_like<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const aabb_like<Dims, Policy> &_this,
                  const frame_like<Dims, U> &transform) {
@@ -179,6 +232,8 @@ auto transformed(const aabb_like<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const segment<Dims, Policy> &_this,
                  const transformation_like<Dims, U> &transform) {
@@ -188,6 +243,8 @@ auto transformed(const segment<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const segment<Dims, Policy> &_this,
                  const frame_like<Dims, U> &transform) {
@@ -197,6 +254,8 @@ auto transformed(const segment<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const polygon<Dims, Policy> &_this,
                  const transformation_like<Dims, U> &transform) {
@@ -206,6 +265,8 @@ auto transformed(const polygon<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const polygon<Dims, Policy> &_this,
                  const frame_like<Dims, U> &transform) {
@@ -215,6 +276,8 @@ auto transformed(const polygon<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const transformation_like<Dims, Policy> &_this,
                  const transformation_like<Dims, U> &transform) {
@@ -240,6 +303,8 @@ auto transformed(const transformation_like<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const frame_like<Dims, Policy> &_this,
                  const frame_like<Dims, U> &frame) {
@@ -252,6 +317,8 @@ auto transformed(const frame_like<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <typename... Ts, std::size_t Dims, typename U>
 auto transformed(const tuple<Ts...> &_this,
                  const transformation_like<Dims, U> &transform) {
@@ -269,6 +336,8 @@ auto transformed(const tuple<Ts...> &_this,
       _this);
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <typename... Ts, std::size_t Dims, typename U>
 auto transformed(const tuple<Ts...> &_this,
                  const frame_like<Dims, U> &transform) {
@@ -286,6 +355,8 @@ auto transformed(const tuple<Ts...> &_this,
       _this);
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const rss_like<Dims, Policy> &_this,
                  const transformation_like<Dims, U> &transform) {
@@ -295,6 +366,8 @@ auto transformed(const rss_like<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const rss_like<Dims, Policy> &_this,
                  const frame_like<Dims, U> &frame) {
@@ -304,6 +377,8 @@ auto transformed(const rss_like<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const obb_like<Dims, Policy> &_this,
                  const transformation_like<Dims, U> &transform) {
@@ -313,6 +388,8 @@ auto transformed(const obb_like<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const obb_like<Dims, Policy> &_this,
                  const frame_like<Dims, U> &frame) {
@@ -322,6 +399,8 @@ auto transformed(const obb_like<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const obbrss_like<Dims, Policy> &_this,
                  const frame_like<Dims, U> &frame) {
@@ -331,6 +410,8 @@ auto transformed(const obbrss_like<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const obbrss_like<Dims, Policy> &_this,
                  const transformation_like<Dims, U> &transform) {
@@ -340,6 +421,8 @@ auto transformed(const obbrss_like<Dims, Policy> &_this,
     return _this;
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <typename T, std::size_t Dims, typename U>
 auto transformed(const std::array<std::array<T, Dims>, Dims> &_this,
                  const transformation_like<Dims, U> &transform) {
@@ -359,6 +442,8 @@ auto transformed(const std::array<std::array<T, Dims>, Dims> &_this,
   }
 }
 
+/// @ingroup core_primitives
+/// @overload
 template <typename T, std::size_t Dims, typename U>
 auto transformed(const std::array<std::array<T, Dims>, Dims> &_this,
                  const frame_like<Dims, U> &transform) {

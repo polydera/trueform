@@ -15,6 +15,16 @@ template <typename T> struct constant_policy {
   template <typename U> auto operator()(U &&) const { return value; }
 };
 } // namespace views
+/// @ingroup core_ranges
+/// @brief Creates a range that yields the same constant value `size` times.
+///
+/// Returns a view where every element is the same value. Useful for
+/// broadcasting a single value across operations that expect a range.
+///
+/// @tparam T The type of the constant value.
+/// @param value The constant value to repeat.
+/// @param size The number of times to repeat the value.
+/// @return A view yielding `value` for `size` iterations.
 template <typename T> auto make_constant_range(T &&value, std::size_t size) {
   return tf::make_mapped_range(
       tf::make_sequence_range(size),

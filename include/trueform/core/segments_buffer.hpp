@@ -13,6 +13,16 @@
 #include "./segments.hpp"
 namespace tf {
 
+/// @ingroup core_buffers
+/// @brief An owning buffer of line segments.
+///
+/// Stores edge indices and point coordinates separately. Use `segments()`
+/// to obtain a @ref tf::segments range, `edges()` for the edge indices,
+/// or `points()` for the point data.
+///
+/// @tparam Index The index type for edge connectivity.
+/// @tparam RealT The coordinate scalar type.
+/// @tparam Dims The number of dimensions.
 template <typename Index, typename RealT, std::size_t Dims>
 class segments_buffer {
 public:

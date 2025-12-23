@@ -12,6 +12,12 @@
 
 namespace tf {
 
+/// @ingroup core_ranges
+/// @brief A range of polygons.
+///
+/// Wraps a range policy providing access to polygon primitives.
+///
+/// @tparam Policy The underlying range policy.
 template <typename Policy> struct polygons : Policy {
   polygons(const Policy &r) : Policy{r} {}
   polygons(Policy &&r) : Policy{std::move(r)} {}
@@ -47,6 +53,14 @@ auto wrap_like(polygons<Policy> &&, T &&t) {
   return polygons<std::decay_t<T>>{static_cast<T &&>(t)};
 }
 
+/// @ingroup core_ranges
+/// @brief Create a range of polygons from faces and points.
+///
+/// @tparam Range0 The face index range type.
+/// @tparam Range1 The point range type.
+/// @param faces A range of face index arrays.
+/// @param points A range of points.
+/// @return A @ref tf::polygons range.
 template <typename Range0, typename Range1>
 auto make_polygons(Range0 &&faces, Range1 &&points) {
   auto r0 = tf::make_faces(faces);
@@ -55,11 +69,18 @@ auto make_polygons(Range0 &&faces, Range1 &&points) {
       core::polygons<decltype(r0), decltype(r1)>{r0, r1}};
 }
 
+/// @ingroup core_ranges
+/// @brief Identity overload for already-wrapped polygon ranges.
 template <typename Range>
 auto make_polygons(polygons<Range> p) -> polygons<Range> {
   return p;
 }
 
+/// @ingroup core_ranges
+/// @brief Create a polygon soup from a generic range.
+///
+/// Wraps a range of polygon primitives into a @ref tf::polygons range
+/// using the soup adapter.
 template <typename Range> auto make_polygons(Range &&r) {
   auto polys = tf::make_range(r);
   return polygons<core::soup<decltype(polys)>>{

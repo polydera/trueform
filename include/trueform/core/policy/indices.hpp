@@ -76,10 +76,10 @@ template <typename T>
 inline constexpr bool has_indices_policy = decltype(has_indices(
     policy::type{}, static_cast<const std::decay_t<T> *>(nullptr)))::value;
 
-/**
- * @ingroup injectors
- * @brief Constructs an `tag_ids` by injecting ids into a base
- */
+/// @ingroup core_policies
+/// @brief Inject index metadata into a range.
+///
+/// Adds `.indices()` accessor for indirect access patterns.
 template <typename Range, typename Base>
 auto tag_indices(Range &&indices, Base &&base) {
   if constexpr (has_indices_policy<Base>)

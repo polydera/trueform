@@ -12,7 +12,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Expand an AABB to include another AABB, in-place.
 ///
 /// Updates `aabb0` to include the bounds of `aabb1`. Modifies `aabb0` directly.
@@ -32,7 +32,7 @@ auto aabb_union_inplace(aabb_like<N, T0> &aabb0, const aabb_like<N, T1> &aabb1)
   return aabb0;
 }
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Compute the union of two AABBs.
 ///
 /// Returns a new AABB that bounds both `aabb0` and `aabb1`.
@@ -50,7 +50,7 @@ auto aabb_union(const aabb_like<N, T0> &aabb0, const aabb_like<N, T1> &aabb1) {
   return out;
 }
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Expand an AABB to include a point, in-place.
 ///
 /// Updates `aabb0` to include the given point `pt`.
@@ -71,7 +71,7 @@ auto aabb_union_inplace(aabb_like<N, T0> &aabb0, const point_like<N, T1> &pt)
   return aabb0;
 }
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Compute the union of an AABB and a point.
 ///
 /// Returns a new AABB that includes both the input bounding box and the given

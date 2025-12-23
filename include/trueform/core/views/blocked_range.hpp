@@ -11,25 +11,18 @@
 
 namespace tf {
 
-/// @ingroup ranges
-/// @brief Creates a view over a range where elements are grouped into
-/// consecutive blocks.
+/// @ingroup core_ranges
+/// @brief Create a view grouping elements into consecutive blocks.
 ///
-/// This is useful when interpreting flat buffers as structured collections,
-/// such as interpreting a buffer of indices where every 3 consecutive elements
-/// form a triangle.
+/// Interprets flat buffers as structured collections (e.g., every 3 elements
+/// form a triangle). The resulting range yields blocks as subranges.
 ///
-/// The resulting range is a non-owning view that yields blocks of size
-/// `block_size`, each presented as a subrange. For example, a buffer `[0, 1, 2,
-/// 3, 4, 5]` with `block_size = 3` yields two blocks: `[0, 1, 2]` and `[3, 4,
-/// 5]`.
-///
-/// @tparam Range The type of the input range (must support random access).
+/// @tparam Range The input range type (must support random access).
 /// @param r The input range to be grouped.
-/// @param block_size The number of elements in each group.
-/// @return A view over the range with elements grouped into fixed-size blocks.
+/// @param block_size The number of elements per block.
+/// @return A view with elements grouped into fixed-size blocks.
 ///
-/// @note This overload accepts a dynamic block size specified at runtime.
+/// @note This overload uses a runtime-specified block size.
 template <typename Range>
 auto make_blocked_range(Range &&r, std::size_t block_size) {
   auto begin = tf::iter::make_blocked_iterator(r.begin(), block_size);
@@ -37,26 +30,17 @@ auto make_blocked_range(Range &&r, std::size_t block_size) {
   return tf::make_range(std::move(begin), std::move(end));
 }
 
-/// @ingroup ranges
-/// @brief Creates a view over a range where elements are grouped into
-/// consecutive blocks, with compile-time block size.
+/// @ingroup core_ranges
+/// @brief Create a view grouping elements with compile-time block size.
 ///
-/// This overload provides a static block size via the template parameter
-/// `BlockSize`, which can enable additional optimizations and compile-time
-/// checks.
+/// Uses a static block size enabling optimizations and @ref tf::static_size
+/// propagation. Each block has `BlockSize` elements accessible via
+/// structured bindings.
 ///
-/// The resulting range is a non-owning view that yields blocks of size
-/// `BlockSize`, each presented as a subrange. For example, a buffer `[0, 1, 2,
-/// 3, 4, 5]` with `BlockSize = 3` yields two blocks: `[0, 1, 2]` and `[3, 4,
-/// 5]`.
-///
-/// @tparam BlockSize The number of elements per block (known at compile time).
-/// @tparam Range The type of the input range.
+/// @tparam BlockSize The elements per block (compile-time constant).
+/// @tparam Range The input range type.
 /// @param r The input range to be grouped.
-/// @return A view over the input range with elements grouped into blocks of
-/// size `BlockSize`.
-///
-/// @note This version propagates static size metadata where possible.
+/// @return A view with @ref tf::static_size set to `BlockSize`.
 template <std::size_t BlockSize, typename Range>
 auto make_blocked_range(Range &&r) {
   auto begin = tf::iter::make_blocked_iterator<BlockSize>(r.begin());

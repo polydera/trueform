@@ -10,7 +10,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Fixed-size N-dimensional vector with element-wise arithmetic and
 /// comparisons.
 ///
@@ -34,7 +34,7 @@ namespace tf {
 template <typename T, std::size_t N>
 using vector = tf::vector_like<N, core::vec<T, N>>;
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Construct a vector from a `std::array`.
 ///
 /// Creates a @ref tf::vector<T, N> by copying values from the given array.
@@ -48,7 +48,7 @@ auto make_vector(std::array<T, N> arr) -> vector<T, N> {
   return vector<T, N>(arr);
 }
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Construct a vector from a raw pointer.
 ///
 /// Creates a @ref tf::vector<T, N> by copying `N` elements from the given
@@ -64,7 +64,7 @@ auto make_vector(const T *ptr) -> vector<T, N> {
   return vector<T, N>(ptr);
 }
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Construct a vector from individual coordinate values.
 ///
 /// Creates a @ref tf::vector by deducing type and dimensionality from

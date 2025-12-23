@@ -53,6 +53,21 @@ auto generate_offset_blocks(
 }
 } // namespace core
 
+/// @ingroup core_algorithms
+/// @brief Generate offset-block data structure in parallel.
+///
+/// Efficiently creates variable-length output for each input element.
+/// The offsets array marks block boundaries, data contains all values.
+///
+/// @tparam Range The input range type.
+/// @tparam Index The offset index type.
+/// @tparam T The data element type.
+/// @tparam F Generator: `void(const element&, buffer<T>&)`.
+/// @param input_data The input range.
+/// @param offsets Output offsets buffer (size = input_data.size() + 1).
+/// @param data Output data buffer.
+/// @param fill_block_f Function that fills data for each input element.
+/// @param n_tasks Number of parallel tasks.
 template <typename Range, typename Index, typename T, typename F>
 auto generate_offset_blocks(
     const Range &input_data, tf::buffer<Index> &offsets, tf::buffer<T> &data,
@@ -62,6 +77,8 @@ auto generate_offset_blocks(
                                       n_tasks);
 }
 
+/// @ingroup core_algorithms
+/// @brief Generate offset-blocks into a blocked buffer.
 template <typename Range, typename Index, typename T, std::size_t N, typename F>
 auto generate_offset_blocks(
     const Range &input_data, tf::buffer<Index> &offsets,
@@ -71,6 +88,8 @@ auto generate_offset_blocks(
                                       n_tasks);
 }
 
+/// @ingroup core_algorithms
+/// @brief Generate directly into an offset_block_buffer.
 template <typename Range, typename Index, typename T, typename F>
 auto generate_offset_blocks(
     const Range &input_data, tf::offset_block_buffer<Index, T> &buff,

@@ -11,7 +11,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Lightweight non-owning view of a fixed-size N-dimensional point.
 ///
 /// `tf::point_view<T, N>` provides the same interface as @ref tf::point,
@@ -36,7 +36,7 @@ namespace tf {
 template <typename T, std::size_t N>
 using point_view = tf::point_like<N, tf::core::pt_view<T, N>>;
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Construct a constant point view from a raw pointer.
 ///
 /// Creates a `tf::point_view<const T, N>` that wraps a contiguous block
@@ -51,7 +51,7 @@ auto make_point_view(const T *ptr) -> point_view<const T, N> {
   return point_view<const T, N>(ptr);
 }
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Construct a mutable point view from a raw pointer.
 ///
 /// Creates a `tf::point_view<T, N>` that wraps a contiguous block

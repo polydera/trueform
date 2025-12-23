@@ -12,7 +12,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief A fixed-size unit vector wrapper type.
 ///
 /// `unit_vector<T, N>` represents a vector of dimension `N` with a fixed length
@@ -27,7 +27,7 @@ namespace tf {
 template <typename T, std::size_t Dims>
 using unit_vector = tf::unit_vector_like<Dims, core::vec<T, Dims>>;
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Safely construct a unit vector by normalizing the input.
 ///
 /// This function creates a `unit_vector<T, Dims>` from any vector-like input
@@ -42,12 +42,13 @@ auto make_unit_vector(const tf::vector_like<Dims, T> &v) {
   return unit_vector<tf::coordinate_type<T>, Dims>{v};
 }
 
+/// @overload
 template <std::size_t Dims, typename T>
 auto make_unit_vector(const tf::unit_vector_like<Dims, T> &v) {
   return unit_vector<tf::coordinate_type<T>, Dims>{v};
 }
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Construct a unit vector from an already-normalized input.
 ///
 /// This function creates a `unit_vector<T, Dims>` assuming the input is already
@@ -63,7 +64,7 @@ auto make_unit_vector(tf::unsafe_t, const tf::vector_like<Dims, T> &v) {
   return unit_vector<tf::coordinate_type<T>, Dims>{tf::unsafe, v};
 }
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Construct a unit vector from individual coordinate values (normalized).
 ///
 /// Creates a @ref tf::unit_vector by deducing type and dimensionality from
@@ -86,7 +87,7 @@ auto make_unit_vector(const T &t0, const T &t1, const Ts &...ts)
                              static_cast<type>(ts)...}};
 }
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Construct a unit vector from individual coordinate values (unsafe).
 ///
 /// Creates a @ref tf::unit_vector by deducing type and dimensionality from

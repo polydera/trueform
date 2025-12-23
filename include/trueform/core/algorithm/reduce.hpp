@@ -10,6 +10,21 @@
 #include "./block_reduce.hpp"
 
 namespace tf {
+
+/// @ingroup core_algorithms
+/// @brief Simplified parallel reduction using a single binary operator.
+///
+/// Reduces a range to a single value using the provided binary operator.
+/// This is a simplified wrapper around @ref tf::blocked_reduce that uses
+/// the same operator for both the block-level reduction and aggregation.
+///
+/// @tparam Range The input range type.
+/// @tparam F A binary operator: `Val(Val, element_type)`.
+/// @tparam Val The accumulator type.
+/// @param r The input range to reduce.
+/// @param f Binary operator for combining elements.
+/// @param initial The initial accumulator value.
+/// @return The reduced result.
 template <typename Range, typename F, typename Val>
 auto reduce(const Range &r, const F &f, Val initial) {
   tf::blocked_reduce(
@@ -22,6 +37,11 @@ auto reduce(const Range &r, const F &f, Val initial) {
   return initial;
 }
 
+/// @ingroup core_algorithms
+/// @brief Simplified parallel reduction with checked execution.
+///
+/// Falls back to sequential execution for ranges smaller than 1000 elements.
+/// This is useful for debugging and verification.
 template <typename Range, typename F, typename Val>
 auto reduce(const Range &r, const F &f, Val initial, tf::checked_t) {
   if (r.size() < 1000) {

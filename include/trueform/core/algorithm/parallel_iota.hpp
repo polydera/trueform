@@ -9,8 +9,8 @@
 #include <numeric>
 
 namespace tf {
-/// @ingroup algorithms
-/// @brief Fills a range with sequentially increasing values in parallel.
+/// @ingroup core_algorithms
+/// @brief Fill a range with sequentially increasing values in parallel.
 ///
 /// This function is a parallel equivalent of `std::iota`, using @ref
 /// parallel_for internally to divide the range into blocks and fill them

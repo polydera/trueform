@@ -14,7 +14,7 @@
 
 namespace tf {
 namespace core {
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Checks whether a point lies inside a 2D polygon.
 /// @tparam V Number of vertices in the polygon.
 /// @tparam Policy Polygon storage policy.
@@ -29,7 +29,7 @@ auto contains_point(const tf::polygon<2, Policy> &poly,
       poly, input_pt, tf::make_identity_projector(),
       tf::epsilon<tf::coordinate_type<Policy, T>>);
 }
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Checks whether a point lies inside a 3D polygon by projecting to 2D.
 /// @tparam V Number of vertices in the polygon.
 /// @tparam Policy Polygon storage policy.

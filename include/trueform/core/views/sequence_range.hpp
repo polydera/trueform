@@ -9,7 +9,7 @@
 #include "../range.hpp"
 namespace tf {
 
-/// @ingroup ranges
+/// @ingroup core_ranges
 /// @brief Creates a view over a half-open sequence of integral values [start,
 /// end).
 ///
@@ -30,7 +30,7 @@ template <typename T> auto make_sequence_range(T start, T end) {
   return tf::make_range(std::move(begin_it), std::move(end_it));
 }
 
-/// @ingroup ranges
+/// @ingroup core_ranges
 /// @brief Creates a view over a half-open sequence of integral values [0, end).
 ///
 /// This overload starts from zero and ends at the given value.

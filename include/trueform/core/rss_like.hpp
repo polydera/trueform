@@ -12,6 +12,16 @@
 #include "./unit_vector.hpp"
 
 namespace tf {
+
+/// @ingroup core_primitives
+/// @brief Base template for rectangle swept sphere types.
+///
+/// Provides the common interface for RSS bounding volumes, defined by an
+/// origin, orthonormal axes, rectangle lengths, and a sphere radius.
+/// An RSS is the Minkowski sum of a rectangle and a sphere.
+///
+/// @tparam Dims The dimensionality.
+/// @tparam Policy The storage policy.
 template <std::size_t Dims, typename Policy> struct rss_like : Policy {
   rss_like() = default;
   rss_like(const Policy &policy) : Policy{policy} {}
@@ -97,6 +107,19 @@ auto wrap_like(const rss_like<V, Policy> &&, T &&t) {
   return rss_like<V, std::decay_t<T>>{static_cast<T &&>(t)};
 }
 
+/// @ingroup core_primitives
+/// @brief Create an RSS view from point and vector views.
+///
+/// Returns a view when inputs are views, preserving zero-copy semantics.
+///
+/// @tparam Dims The dimensionality.
+/// @tparam Policy0 The origin point policy.
+/// @tparam Policy1 The axes unit vector policy.
+/// @param origin The corner point of the inner rectangle.
+/// @param axes The orthonormal axes (Dims-1 span the rectangle, last is normal).
+/// @param length The lengths along the first Dims-1 axes.
+/// @param radius The sphere radius for the Minkowski sum.
+/// @return A @ref tf::rss_like instance.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto make_rss_like(const point_like<Dims, Policy0> &origin,
                    const std::array<unit_vector_like<Dims, Policy1>, Dims> &axes,

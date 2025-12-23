@@ -10,6 +10,20 @@
 #include "./block_reduce.hpp"
 
 namespace tf {
+
+/// @ingroup core_algorithms
+/// @brief Generate variable-length output from each input element in parallel.
+///
+/// Processes each element of the input range and allows the generator
+/// to push variable amounts of data to the output buffer. Thread-local
+/// buffers are used internally and merged after parallel processing.
+///
+/// @tparam Range The input range type.
+/// @tparam T The output buffer element type.
+/// @tparam F Generator function: `void(const element&, tf::buffer<T>&)`.
+/// @param r The input range.
+/// @param buffer The output buffer (appended to).
+/// @param generator Function that processes an element and pushes results.
 template <typename Range, typename T, typename F>
 auto generic_generate(const Range &r, tf::buffer<T> &buffer,
                       const F &generator) {
@@ -28,6 +42,11 @@ auto generic_generate(const Range &r, tf::buffer<T> &buffer,
       });
 }
 
+/// @ingroup core_algorithms
+/// @brief Generate with thread-local state for each block.
+///
+/// Provides a thread-local state object to each worker, useful for
+/// avoiding repeated allocations of temporary work buffers.
 template <typename Range, typename T, typename State, typename F>
 auto generic_generate(const Range &r, tf::buffer<T> &buffer, State local_state,
                       const F &generator) {
@@ -48,6 +67,8 @@ auto generic_generate(const Range &r, tf::buffer<T> &buffer, State local_state,
       });
 }
 
+/// @ingroup core_algorithms
+/// @brief Generate into multiple output buffers simultaneously.
 template <typename Range, typename... Ts, typename F>
 auto generic_generate(const Range &r, std::tuple<tf::buffer<Ts> &...> buffers,
                       const F &generator) {
@@ -76,6 +97,8 @@ auto generic_generate(const Range &r, std::tuple<tf::buffer<Ts> &...> buffers,
       });
 }
 
+/// @ingroup core_algorithms
+/// @brief Generate into multiple buffers with thread-local state.
 template <typename Range, typename... Ts, typename State, typename F>
 auto generic_generate(const Range &r, std::tuple<tf::buffer<Ts> &...> buffers,
                       State local_state, const F &generator) {

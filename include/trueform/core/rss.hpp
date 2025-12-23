@@ -12,7 +12,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Rectangle Swept Sphere in N-dimensional space.
 ///
 /// Represents a rectangle (defined by origin, two axes, and their lengths)
@@ -24,7 +24,7 @@ template <typename T, std::size_t Dims>
 using rss = tf::rss_like<
     Dims, tf::core::rss<Dims, tf::core::pt<T, Dims>, tf::core::vec<T, Dims>>>;
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Construct an RSS from origin, axes, length, and radius.
 ///
 /// A convenience function equivalent to directly calling the `rss<T, N>`

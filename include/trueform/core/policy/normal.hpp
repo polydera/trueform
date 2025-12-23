@@ -86,21 +86,18 @@ template <std::size_t Dims, typename Policy, typename Base>
 struct static_size<policy::tag_normal<Dims, Policy, Base>> : static_size<Base> {
 };
 
-/**
- * @ingroup injectors
- * @brief Constructs an `tag_normal` by injecting a normal into a base
- * type.
- *
- * This helper function provides a convenient way to inject a unit normal into
- * an object, returning a composed type with added `.normal()` accessors.
- *
- * @tparam T    Underlying scalar type of the normal vector.
- * @tparam Dims Dimensionality of the normal vector.
- * @tparam Base Type of the base object (will be decayed).
- * @param normal The normal vector to inject.
- * @param base   The base object to augment.
- * @return A composed object with normal support.
- */
+/// @ingroup core_policies
+/// @brief Inject a unit normal into a primitive.
+///
+/// Returns a wrapper with `.normal()` accessor while preserving all
+/// original functionality through inheritance.
+///
+/// @tparam Dims Dimensionality of the normal vector.
+/// @tparam T    Underlying scalar type of the normal vector.
+/// @tparam Base Type of the base object (will be decayed).
+/// @param normal The unit normal vector to inject.
+/// @param base   The base object to augment.
+/// @return A composed object with `.normal()` accessor.
 template <std::size_t Dims, typename T, typename Base>
 auto tag_normal(const unit_vector_like<Dims, T> &normal, Base &&base) {
   if constexpr (has_normal_policy<Base>)

@@ -12,6 +12,12 @@
 
 namespace tf {
 
+/// @ingroup core_ranges
+/// @brief A range of line segments.
+///
+/// Wraps a range policy providing access to segment primitives.
+///
+/// @tparam Policy The underlying range policy.
 template <typename Policy> struct segments : Policy {
   segments(const Policy &r) : Policy{r} {}
   segments(Policy &&r) : Policy{std::move(r)} {}
@@ -47,6 +53,14 @@ auto wrap_like(segments<Policy> &&, T &&t) {
   return segments<std::decay_t<T>>{static_cast<T &&>(t)};
 }
 
+/// @ingroup core_ranges
+/// @brief Create a range of segments from edges and points.
+///
+/// @tparam Range0 The edge index range type.
+/// @tparam Range1 The point range type.
+/// @param edges A range of edge index pairs.
+/// @param points A range of points.
+/// @return A @ref tf::segments range.
 template <typename Range0, typename Range1>
 auto make_segments(Range0 &&edges, Range1 &&points) {
   auto r0 = tf::make_edges(edges);
@@ -55,11 +69,18 @@ auto make_segments(Range0 &&edges, Range1 &&points) {
       core::segments<decltype(r0), decltype(r1)>{r0, r1}};
 }
 
+/// @ingroup core_ranges
+/// @brief Identity overload for already-wrapped segment ranges.
 template <typename Range>
 auto make_segments(segments<Range> p) -> segments<Range> {
   return p;
 }
 
+/// @ingroup core_ranges
+/// @brief Create a segment soup from a generic range.
+///
+/// Wraps a range of segment primitives into a @ref tf::segments range
+/// using the soup adapter.
 template <typename Range> auto make_segments(Range &&r) {
   auto segs = tf::make_range(r);
   return segments<core::soup<decltype(segs)>>{core::soup<decltype(segs)>{segs}};

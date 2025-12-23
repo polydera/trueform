@@ -11,7 +11,7 @@
 #include "./transformation_like.hpp"
 
 namespace tf {
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Computes the inverse of @tf::transformation
 template <std::size_t Dims, typename Policy>
 auto inverted(const transformation_like<Dims, Policy> &transform) {

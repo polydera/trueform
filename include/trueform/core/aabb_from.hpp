@@ -19,7 +19,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Construct an AABB from an aabb
 ///
 /// The resulting AABB has identical `min` and `max` bounds equal to the input.
@@ -33,7 +33,7 @@ auto aabb_from(const aabb_like<N, T> &box) -> aabb<coordinate_type<T>, N> {
   return box;
 }
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Construct an AABB from a single point.
 ///
 /// The resulting AABB has identical `min` and `max` bounds equal to the input
@@ -48,7 +48,7 @@ auto aabb_from(const point_like<N, T> &pt) -> aabb<tf::coordinate_type<T>, N> {
   return aabb<tf::coordinate_type<T>, N>{pt, pt};
 }
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Constructs an axis-aligned bounding box (AABB) from a polygon.
 ///
 /// This overload computes the @ref tf::aabb that tightly encloses all points in
@@ -68,7 +68,7 @@ auto aabb_from(const polygon<Dims, Policy> &poly) {
   return out;
 }
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Constructs an axis-aligned bounding box (AABB) from a segment.
 ///
 /// This overload computes the @ref tf::aabb that tightly encloses the two

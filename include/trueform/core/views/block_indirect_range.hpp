@@ -18,7 +18,7 @@ template <typename Range> struct block_indirect_policy {
 };
 } // namespace implementation
 
-/// @ingroup ranges
+/// @ingroup core_ranges
 /// @brief Creates a range of indirect views into a data range based on block-wise indexing.
 ///
 /// This utility takes a range of blocks, where each block is itself a range of indices into

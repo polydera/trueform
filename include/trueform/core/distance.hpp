@@ -24,7 +24,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the squared Euclidean distance between two vectors.
 /// @tparam N The dimensionality.
 /// @tparam T0 The vector policy
@@ -38,7 +38,7 @@ auto distance2(const vector_like<N, T0> &a, const vector_like<N, T1> &b)
   return (a - b).length2();
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the Euclidean distance between two vectors.
 /// @tparam N The dimensionality.
 /// @tparam T0 The vector policy
@@ -52,7 +52,7 @@ auto distance(const vector_like<N, T0> &a, const vector_like<N, T1> &b)
   return tf::sqrt(distance2(a, b));
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the squared Euclidean distance between two points.
 /// @tparam N The dimensionality.
 /// @tparam T0 The point policy
@@ -66,7 +66,7 @@ auto distance2(const point_like<N, T0> &a, const point_like<N, T1> &b)
   return (a - b).length2();
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the squared Euclidean distance between two points.
 /// @tparam N The dimensionality.
 /// @tparam T0 The point policy
@@ -80,7 +80,7 @@ auto distance(const point_like<N, T0> &a, const point_like<N, T1> &b)
   return tf::sqrt(distance2(a, b));
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the squared distance between two AABBs.
 /// The result is 0 if they overlap.
 /// @tparam T The scalar type.
@@ -102,7 +102,7 @@ auto distance2(const aabb_like<N, T0> &a, const aabb_like<N, T1> &b) {
   return dist2;
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the distance between two AABBs.
 /// @tparam T The scalar type.
 /// @tparam N The dimensionality.
@@ -114,7 +114,7 @@ auto distance(const aabb_like<N, T0> &a, const aabb_like<N, T1> &b) {
   return tf::sqrt(distance2(a, b));
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the squared distance from a point to an AABB.
 /// @tparam N The dimensionality.
 /// @tparam T The aabb value type
@@ -138,7 +138,7 @@ auto distance2(const aabb_like<N, T0> &_bbox, const point_like<N, T1> &_point) {
   return dist2;
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the squared distance from a point to an AABB (reverse
 /// argument order).
 template <std::size_t N, typename T0, typename T1>
@@ -146,14 +146,14 @@ auto distance2(const point_like<N, T0> &_point, const aabb_like<N, T1> &_bbox) {
   return distance2(_bbox, _point);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the distance from a point to an AABB.
 template <std::size_t N, typename T0, typename T1>
 auto distance(const aabb_like<N, T0> &_bbox, const point_like<N, T1> &_point) {
   return tf::sqrt(distance2(_bbox, _point));
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the distance from a point to an AABB (reverse argument
 /// order).
 template <std::size_t N, typename T0, typename T1>
@@ -161,34 +161,45 @@ auto distance(const point_like<N, T0> &_point, const aabb_like<N, T1> &_bbox) {
   return tf::sqrt(distance2(_bbox, _point));
 }
 
-/// @ingroup geometry
-/// @brief Computes the distance from a point to an AABB (reverse argument
-/// order).
+/// @ingroup core_queries
+/// @brief Computes the signed distance from a point to a plane.
+///
+/// Returns positive distance if the point is on the side of the plane
+/// indicated by the normal, negative otherwise.
+///
+/// @tparam N The dimensionality.
+/// @tparam T0 The plane policy type.
+/// @tparam T1 The point policy type.
+/// @param p The plane.
+/// @param pt The point.
+/// @return Signed distance from point to plane.
 template <std::size_t N, typename T0, typename T1>
 auto distance(const plane_like<N, T0> &p, const point_like<N, T1> &pt) {
   return tf::dot(p.normal, pt) + p.d;
 }
 
-/// @ingroup geometry
-/// @brief Computes the distance from a point to an AABB (reverse argument
-/// order).
+/// @copydoc distance(const plane_like<N,T0>&,const point_like<N,T1>&)
 template <std::size_t N, typename T0, typename T1>
 auto distance(const point_like<N, T0> &pt, const plane_like<N, T1> &p) {
   return distance(p, pt);
 }
 
-/// @ingroup geometry
-/// @brief Computes the distance from a point to an AABB (reverse argument
-/// order).
+/// @ingroup core_queries
+/// @brief Computes the squared distance from a point to a plane.
+///
+/// @tparam N The dimensionality.
+/// @tparam T0 The plane policy type.
+/// @tparam T1 The point policy type.
+/// @param p The plane.
+/// @param pt The point.
+/// @return Squared distance from point to plane.
 template <std::size_t N, typename T0, typename T1>
 auto distance2(const plane_like<N, T0> &p, const point_like<N, T1> &pt) {
   auto d = distance(p, pt);
   return d * d;
 }
 
-/// @ingroup geometry
-/// @brief Computes the distance from a point to an AABB (reverse argument
-/// order).
+/// @copydoc distance2(const plane_like<N,T0>&,const point_like<N,T1>&)
 template <std::size_t N, typename T0, typename T1>
 auto distance2(const point_like<N, T0> &pt, const plane_like<N, T1> &p) {
   return distance2(p, pt);

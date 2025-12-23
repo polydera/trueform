@@ -12,7 +12,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief A fixed-size unit vector wrapper type.
 ///
 /// `unit_vector_view<T, N>` represents a vector of dimension `N` with a fixed
@@ -28,7 +28,7 @@ namespace tf {
 template <typename T, std::size_t Dims>
 using unit_vector_view = tf::unit_vector_like<Dims, core::vec_view<T, Dims>>;
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Safely construct a unit vector by normalizing the input.
 ///
 /// This function creates a `unit_vector_view<T, Dims>` from any vector-like

@@ -15,7 +15,7 @@
 
 namespace tf {
 
-// @ingroup core
+/// @ingroup core_primitives
 /// @brief A general-purpose vector interface for fixed-size spatial vectors.
 ///
 /// @tparam Dims The number of dimensions (e.g. 2, 3, 4).

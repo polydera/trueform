@@ -12,6 +12,18 @@
 
 namespace tf {
 
+/// @ingroup core_algorithms
+/// @brief Transform elements from input to output in parallel.
+///
+/// Applies a transformation function to each element of the input range
+/// and stores the result in the output range.
+///
+/// @tparam Range0 The input range type.
+/// @tparam Range1 The output range type (must be pre-allocated).
+/// @tparam F A unary function: `output_element(input_element)`.
+/// @param input The source range.
+/// @param output The destination range (must have same size as input).
+/// @param transform The transformation function.
 template <typename Range0, typename Range1, typename F>
 auto parallel_transform(const Range0 &input, Range1 &&output,
                         const F &transform) {
@@ -24,6 +36,10 @@ auto parallel_transform(const Range0 &input, Range1 &&output,
                     });
 }
 
+/// @ingroup core_algorithms
+/// @brief Transform elements with checked execution.
+///
+/// Falls back to sequential execution for ranges smaller than 1000 elements.
 template <typename Range0, typename Range1, typename F>
 auto parallel_transform(const Range0 &input, Range1 &&output,
                         const F &transform, tf::checked_t) {

@@ -10,7 +10,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the squared maximal distance between two corners of two
 /// AABBs.
 ///
@@ -36,7 +36,7 @@ auto minimal_maximal_distance2(const aabb_like<Dims, Policy0> &a,
   return std::max((a.min - b.min).length2(), (a.max - b.max).length2());
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the maximal distance between two corners of two AABBs.
 ///
 /// This function returns the square root of the result of

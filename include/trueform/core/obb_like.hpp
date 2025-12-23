@@ -12,6 +12,16 @@
 #include "./unit_vector.hpp"
 
 namespace tf {
+
+/// @ingroup core_primitives
+/// @brief Base template for oriented bounding box types.
+///
+/// Provides the common interface for OBBs, defined by an origin point,
+/// orthonormal axes, and extents along each axis. Includes a method for
+/// computing the center.
+///
+/// @tparam Dims The dimensionality.
+/// @tparam Policy The storage policy.
 template <std::size_t Dims, typename Policy> struct obb_like : Policy {
   obb_like() = default;
   obb_like(const Policy &policy) : Policy{policy} {}
@@ -95,6 +105,18 @@ auto wrap_like(const obb_like<V, Policy> &&, T &&t) {
   return obb_like<V, std::decay_t<T>>{static_cast<T &&>(t)};
 }
 
+/// @ingroup core_primitives
+/// @brief Create an OBB view from point and vector views.
+///
+/// Returns a view when inputs are views, preserving zero-copy semantics.
+///
+/// @tparam Dims The dimensionality.
+/// @tparam Policy0 The origin point policy.
+/// @tparam Policy1 The axes unit vector policy.
+/// @param origin The corner point of the OBB.
+/// @param axes The orthonormal axes of the OBB.
+/// @param extent The extents along each axis.
+/// @return A @ref tf::obb_like instance.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto make_obb_like(
     const point_like<Dims, Policy0> &origin,

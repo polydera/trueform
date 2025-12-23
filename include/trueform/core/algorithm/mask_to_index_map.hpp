@@ -4,7 +4,7 @@
 #include "./mask_to_map.hpp"
 namespace tf {
 
-/// @ingroup algorithms
+/// @ingroup core_algorithms
 /// @brief Constructs a bidirectional mapping from a boolean mask.
 ///
 /// This function populates an existing @ref tf::mapping_val<Index> with a
@@ -34,7 +34,7 @@ auto mask_to_index_map(const Range &mask,
                             Index(mask.size()));
 }
 
-/// @ingroup algorithms
+/// @ingroup core_algorithms
 /// @brief Constructs a new @ref tf::mapping_val<Index> from a boolean mask.
 ///
 /// This is a convenience overload that returns a fully constructed

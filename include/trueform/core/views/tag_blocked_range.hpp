@@ -17,7 +17,7 @@ struct tag_blocked_policy {
   }
 };
 } // namespace views
-/// @ingroup ranges
+/// @ingroup core_ranges
 /// @brief Creates a view over a range where elements are grouped into
 /// consecutive blocks, and a tag preceeding them, with compile-time block size.
 ///
@@ -41,7 +41,7 @@ auto make_tag_blocked_range(Range &&range) {
   return tf::make_mapped_range(tf::make_blocked_range<BlockSize + 1>(range),
                                views::tag_blocked_policy{});
 }
-/// @ingroup ranges
+/// @ingroup core_ranges
 /// @brief Creates a view over a range where elements are grouped into
 /// consecutive blocks, and a tag preceeding them.
 ///

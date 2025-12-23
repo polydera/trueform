@@ -23,7 +23,7 @@ template <> struct slide_policy<tf::dynamic_size> {
 };
 } // namespace views
 
-/// @ingroup ranges
+/// @ingroup core_ranges
 /// @brief Creates a sliding window view over a range with dynamic window size.
 ///
 /// This utility allows iteration over overlapping subranges ("windows") of a
@@ -63,8 +63,11 @@ auto make_slide_range(Range &&range, std::size_t window_size) {
   return tf::make_range(std::move(begin), std::move(end));
 }
 
-/// @ingroup ranges
+/// @ingroup core_ranges
 /// @brief Creates a sliding window view over a range with static window size.
+///
+/// Uses @ref tf::static_size to propagate the window size to the yielded
+/// subranges, enabling structured bindings.
 ///
 /// This overload is a compile-time optimized version of @ref make_slide_range,
 /// where the window size is known at compile time. It enables more efficient

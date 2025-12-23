@@ -8,7 +8,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Enumeration of possible outcomes for intersection queries.
 ///
 /// Used to indicate the status of intersection tests between geometric

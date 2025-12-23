@@ -33,12 +33,12 @@ inline constexpr bool has_state_policy = decltype(has_state(
     policy::type{}, static_cast<const std::decay_t<T> *>(nullptr)))::value;
 namespace policy {
 /**
- * @ingroup injectors
+ * @ingroup core_policies
  * @brief Type injector that tags state to a class.
  *
- * It provides accessors for the state.
+ * Provides `.state()` accessors for arbitrary user-defined state.
  *
- * @tparam Range The state range
+ * @tparam State The state type.
  * @tparam Base The type being augmented.
  */
 template <typename State, typename Base> struct tag_state : Base {

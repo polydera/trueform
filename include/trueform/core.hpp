@@ -10,6 +10,45 @@
  */
 #pragma once
 
+/** @defgroup core Core Module
+ *  Core geometric primitives, ranges, queries, and algorithms.
+ */
+
+/** @defgroup core_primitives Primitives
+ *  @ingroup core
+ *  Points, vectors, lines, rays, planes, segments, polygons, and bounding volumes.
+ */
+
+/** @defgroup core_queries Queries
+ *  @ingroup core
+ *  Distance, intersection, classification, and ray casting operations.
+ */
+
+/** @defgroup core_ranges Ranges
+ *  @ingroup core
+ *  Primitive ranges and view adaptors for working with collections.
+ */
+
+/** @defgroup core_properties Properties
+ *  @ingroup core
+ *  Geometric properties: area, volume, normals, centroids, covariance.
+ */
+
+/** @defgroup core_buffers Buffers
+ *  @ingroup core
+ *  Data structures and owning buffers for geometric data.
+ */
+
+/** @defgroup core_policies Policies
+ *  @ingroup core
+ *  Policy decorators for adding metadata to primitives and ranges.
+ */
+
+/** @defgroup core_algorithms Algorithms
+ *  @ingroup core
+ *  Parallel algorithms for geometric computation.
+ */
+
 #include "./core/aabb.hpp"                      // IWYU pragma: export
 #include "./core/aabb_from.hpp"                 // IWYU pragma: export
 #include "./core/aabb_like.hpp"                 // IWYU pragma: export

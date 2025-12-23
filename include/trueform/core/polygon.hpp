@@ -9,27 +9,16 @@
 #include "./base/poly.hpp"
 #include "./static_size.hpp"
 namespace tf {
-/**
- * @ingroup geometry
- * @brief Base class for the polygon
- *
- * ### Policy
- *
- * Policy defines the implementation of the
- * polygon. It must define:
- *
- * * `Policy::operator[]`: returns a point
- * * `Policy::begin()`: returns an iterator
- *   to the begining of the point range
- * * `Policy::end()`: returns an iterator
- *   to the ending of the point range
- * * `Policy::size()`: returns the number
- *   of points
- *
- * @tparam V Number of vertices, can be tf::dynamic_size
- * @tparam Policy The policy that defines the
- * implementation of the polygon
- */
+/// @ingroup core_primitives
+/// @brief A polygon defined by a sequence of vertices.
+///
+/// A polygon represents a closed shape defined by its vertices. The number
+/// of vertices can be fixed at compile time or dynamic (`tf::dynamic_size`).
+///
+/// Use `tf::make_polygon()` for construction from points or indices+points.
+///
+/// @tparam Dims The dimensionality of the space (e.g., 2, 3).
+/// @tparam Policy The policy that defines the storage implementation.
 template <std::size_t Dims, typename Policy> class polygon : public Policy {
 private:
   using base_t = Policy;
@@ -97,6 +86,15 @@ auto get(tf::polygon<Dims, Policy> &&t) -> decltype(auto) {
 template <std::size_t Dims, typename Policy>
 struct static_size<tf::polygon<Dims, Policy>> : static_size<Policy> {};
 
+/// @ingroup core_primitives
+/// @brief Constructs a fixed-size polygon by indirectly indexing into points.
+///
+/// @tparam V The number of vertices (compile-time constant).
+/// @tparam Range0 A range type for indices.
+/// @tparam Range1 A range type for points.
+/// @param ids Indices referencing elements in the points range.
+/// @param points The source points.
+/// @return A polygon with V vertices.
 template <std::size_t V, typename Range0, typename Range1>
 auto make_polygon(Range0 &&ids, Range1 &&points) {
   auto policy = tf::core::make_poly<V>(static_cast<Range0 &&>(ids),
@@ -105,12 +103,29 @@ auto make_polygon(Range0 &&ids, Range1 &&points) {
       std::move(policy));
 }
 
+/// @ingroup core_primitives
+/// @brief Constructs a fixed-size polygon from a point range.
+///
+/// @tparam V The number of vertices (compile-time constant).
+/// @tparam Range A range type for points.
+/// @param points The points defining the polygon.
+/// @return A polygon with V vertices.
 template <std::size_t V, typename Range> auto make_polygon(Range &&points) {
   auto policy = tf::core::make_poly<V>(static_cast<Range &&>(points));
   return tf::polygon<tf::static_size_v<decltype(points[0])>, decltype(policy)>(
       std::move(policy));
 }
 
+/// @ingroup core_primitives
+/// @brief Constructs a polygon by indirectly indexing into points.
+///
+/// The number of vertices is deduced from @ref tf::static_size of the ids range.
+///
+/// @tparam Range0 A range type for indices.
+/// @tparam Range1 A range type for points.
+/// @param ids Indices referencing elements in the points range.
+/// @param points The source points.
+/// @return A polygon.
 template <typename Range0, typename Range1>
 auto make_polygon(Range0 &&ids, Range1 &&points) {
   auto policy = tf::core::make_poly(static_cast<Range0 &&>(ids),
@@ -119,6 +134,14 @@ auto make_polygon(Range0 &&ids, Range1 &&points) {
       std::move(policy));
 }
 
+/// @ingroup core_primitives
+/// @brief Constructs a polygon from a point range.
+///
+/// The number of vertices is deduced from @ref tf::static_size of the range.
+///
+/// @tparam Range A range type for points.
+/// @param points The points defining the polygon.
+/// @return A polygon.
 template <typename Range> auto make_polygon(Range &&points) {
   auto policy = tf::core::make_poly(static_cast<Range &&>(points));
   return tf::polygon<tf::static_size_v<decltype(points[0])>, decltype(policy)>(

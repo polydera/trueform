@@ -11,24 +11,17 @@
 #include "./point.hpp"
 #include "./static_size.hpp"
 namespace tf {
-/**
- * @ingroup geometry
- * @brief The line_segment class wrapper
- *
- * ### Policy
- *
- * Policy defines the implementation of the
- * line_segment. It must define:
- *
- * * `Policy::operator[]`: returns a point
- * * `Policy::begin()`: returns an iterator
- *   to the begining of the point range
- * * `Policy::end()`: returns an iterator
- *   to the ending of the point range
- *
- * @tparam Policy The policy that defines the
- * implementation of the line_segment
- */
+/// @ingroup core_primitives
+/// @brief A line segment connecting two points.
+///
+/// A segment represents a finite portion of a line between two endpoints.
+/// It provides iteration and element access to its two points via `operator[]`.
+///
+/// Use `tf::make_segment()` or `tf::make_segment_between_points()` for
+/// construction.
+///
+/// @tparam Dims The dimensionality (e.g., 2, 3).
+/// @tparam Policy The policy that defines the storage implementation.
 
 template <std::size_t Dims, typename Policy> class segment : public Policy {
 private:
@@ -105,7 +98,7 @@ template <std::size_t Dims, typename Policy>
 struct static_size<tf::segment<Dims, Policy>>
     : std::integral_constant<std::size_t, 2> {};
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Constructs a segment by indirectly indexing into a point range.
 ///
 /// This overload creates a @ref tf::segment by using a range of indices (`ids`)
@@ -131,7 +124,7 @@ auto make_segment(Range0 &&ids, Range1 &&points) {
       std::move(policy));
 }
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Constructs a segment directly from a point range.
 ///
 /// This overload creates a @ref tf::segment by directly forwarding a range of
@@ -147,8 +140,17 @@ template <typename Range> auto make_segment(Range &&points) {
       std::move(policy));
 }
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Constructs a segment between two points.
+///
+/// Creates a segment connecting the two given points.
+///
+/// @tparam Dims The dimensionality.
+/// @tparam T0 Policy type for the first point.
+/// @tparam T1 Policy type for the second point.
+/// @param pt0 The first endpoint.
+/// @param pt1 The second endpoint.
+/// @return A segment connecting pt0 and pt1.
 template <std::size_t Dims, typename T0, typename T1>
 auto make_segment_between_points(const tf::point_like<Dims, T0> &pt0,
                                  const tf::point_like<Dims, T1> &pt1) {

@@ -14,6 +14,16 @@
 #include "./views/mapped_range.hpp"
 
 namespace tf {
+
+/// @ingroup core_properties
+/// @brief Compute the signed area of a 2D polygon.
+///
+/// Uses the shoelace formula. The sign indicates winding order:
+/// positive for counter-clockwise, negative for clockwise.
+///
+/// @tparam Policy The polygon's storage policy.
+/// @param _poly A 2D polygon.
+/// @return The signed area.
 template <typename Policy>
 auto signed_area(const tf::polygon<2, Policy> &_poly) {
   auto size = _poly.size();
@@ -28,15 +38,26 @@ auto signed_area(const tf::polygon<2, Policy> &_poly) {
   return area / 2;
 }
 
+/// @ingroup core_properties
+/// @brief Compute the area of a 2D polygon.
+///
+/// Returns the absolute value of the signed area.
 template <typename Policy> auto area(const tf::polygon<2, Policy> &_poly) {
   return std::abs(tf::signed_area(_poly));
 }
 
+/// @ingroup core_properties
+/// @brief Compute the squared area of a 2D polygon.
 template <typename Policy> auto area2(const tf::polygon<2, Policy> &_poly) {
   auto sa = tf::signed_area(_poly);
   return sa * sa;
 }
 
+/// @ingroup core_properties
+/// @brief Compute the squared area of an N-dimensional polygon.
+///
+/// Uses Newell's method to compute the normal vector and derives
+/// the squared area from its squared length.
 template <std::size_t N, typename Policy>
 auto area2(const tf::polygon<N, Policy> &_poly) {
   using scalar_t = tf::coordinate_type<Policy>;
@@ -60,17 +81,23 @@ auto area2(const tf::polygon<N, Policy> &_poly) {
   return normal.length2() / 4;
 }
 
+/// @ingroup core_properties
+/// @brief Compute the area of an N-dimensional polygon.
 template <std::size_t N, typename Policy>
 auto area(const tf::polygon<N, Policy> &_poly) {
   return tf::sqrt(tf::area2(_poly));
 }
 
+/// @ingroup core_properties
+/// @brief Compute the total area of a range of polygons.
 template <typename Policy> auto area(const tf::polygons<Policy> &polys) {
   return tf::reduce(tf::make_mapped_range(
                         polys, [](const auto &poly) { return tf::area(poly); }),
                     std::plus<>{}, tf::coordinate_type<Policy>(0));
 }
 
+/// @ingroup core_properties
+/// @brief Compute the squared total area of a range of polygons.
 template <typename Policy> auto area2(const tf::polygons<Policy> &polys) {
   auto area = tf::area(polys);
   return area * area;

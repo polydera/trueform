@@ -41,10 +41,18 @@ struct coordinate_dims_deducer<
 };
 } // namespace core
 
-// Alias
+/// @ingroup core_ranges
+/// @brief Deduce the dimensionality from a primitive or range.
+///
+/// Recursively extracts the number of dimensions (e.g., 2 or 3) from
+/// any trueform primitive or range.
+///
+/// @tparam T The type to extract dimensionality from.
 template <typename T>
 using coordinate_dims = typename core::coordinate_dims_deducer<std::decay_t<T>>::type;
 
+/// @ingroup core_ranges
+/// @brief Convenience variable template for @ref tf::coordinate_dims.
 template <typename T>
 inline constexpr std::size_t coordinate_dims_v = coordinate_dims<T>::value;
 

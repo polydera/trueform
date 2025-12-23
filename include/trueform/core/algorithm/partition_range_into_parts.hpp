@@ -3,7 +3,7 @@
 #include "tbb/parallel_invoke.h"
 
 namespace tf {
-/// @ingroup algorithms
+/// @ingroup core_algorithms
 /// @brief Recursively partitions a range into a given number of parts and
 /// applies a user function to each part.
 ///

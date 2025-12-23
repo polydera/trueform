@@ -9,7 +9,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Normalizes a vector view in place.
 ///
 /// Divides the vector by its Euclidean length, with protection against division

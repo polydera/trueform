@@ -12,7 +12,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Oriented bounding box in N-dimensional space.
 ///
 /// Represents an oriented rectangular region defined by its origin (local
@@ -24,7 +24,7 @@ template <typename T, std::size_t Dims>
 using obb = tf::obb_like<
     Dims, tf::core::obb<Dims, tf::core::pt<T, Dims>, tf::core::vec<T, Dims>>>;
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Construct an OBB from origin, axes, and extent.
 ///
 /// A convenience function equivalent to directly calling the `obb<T, N>`

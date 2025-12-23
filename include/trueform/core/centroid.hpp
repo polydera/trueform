@@ -15,11 +15,21 @@
 #include "./segments.hpp"
 
 namespace tf {
+
+/// @ingroup core_properties
+/// @brief Compute the centroid of a point (identity).
+///
+/// Returns a copy of the input point. Provided for generic code
+/// that computes centroids of arbitrary primitives.
 template <std::size_t Dims, typename Policy>
 auto centroid(const tf::point_like<Dims, Policy> &point) {
   return tf::point<tf::coordinate_type<Policy>, Dims>{point};
 }
 
+/// @ingroup core_properties
+/// @brief Compute the centroid of a polygon.
+///
+/// Returns the arithmetic mean of all vertices.
 template <std::size_t Dims, typename Policy>
 auto centroid(const tf::polygon<Dims, Policy> &poly) {
   tf::point<tf::coordinate_type<Policy>, Dims> out;
@@ -32,6 +42,8 @@ auto centroid(const tf::polygon<Dims, Policy> &poly) {
   return out;
 }
 
+/// @ingroup core_properties
+/// @brief Compute the centroid (midpoint) of a segment.
 template <std::size_t Dims, typename Policy>
 auto centroid(const tf::segment<Dims, Policy> &seg) {
   tf::point<tf::coordinate_type<Policy>, Dims> out = seg[0];
@@ -41,6 +53,10 @@ auto centroid(const tf::segment<Dims, Policy> &seg) {
   return out;
 }
 
+/// @ingroup core_properties
+/// @brief Compute the centroid of a range of points.
+///
+/// Returns the arithmetic mean of all points in the range.
 template <typename Policy> auto centroid(const tf::points<Policy> &pts) {
   constexpr auto Dims = tf::static_size_v<typename Policy::value_type>;
   tf::vector<tf::coordinate_type<Policy>, Dims> out_v;
@@ -53,6 +69,8 @@ template <typename Policy> auto centroid(const tf::points<Policy> &pts) {
   return out;
 }
 
+/// @ingroup core_properties
+/// @brief Compute the mean of a range of vectors.
 template <typename Policy> auto centroid(const tf::vectors<Policy> &vcs) {
   constexpr auto Dims = tf::static_size_v<typename Policy::value_type>;
   tf::vector<tf::coordinate_type<Policy>, Dims> out_v;
@@ -61,6 +79,11 @@ template <typename Policy> auto centroid(const tf::vectors<Policy> &vcs) {
   return tf::reduce(vcs, std::plus<>{}, out_v, tf::checked) / vcs.size();
 }
 
+/// @ingroup core_properties
+/// @brief Compute the centroid of all vertices across a range of polygons.
+///
+/// Computes the weighted average where each vertex contributes equally,
+/// regardless of which polygon it belongs to.
 template <typename Policy> auto centroid(const tf::polygons<Policy> &polygons) {
   constexpr auto Dims = tf::coordinate_dims_v<Policy>;
   using T = tf::coordinate_type<Policy>;
@@ -97,6 +120,8 @@ template <typename Policy> auto centroid(const tf::polygons<Policy> &polygons) {
   return out;
 }
 
+/// @ingroup core_properties
+/// @brief Compute the centroid of all endpoints across a range of segments.
 template <typename Policy> auto centroid(const tf::segments<Policy> &segments) {
   constexpr auto Dims = tf::coordinate_dims_v<Policy>;
   using T = tf::coordinate_type<Policy>;

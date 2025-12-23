@@ -12,7 +12,7 @@
 
 namespace tf {
 
-/// @ingroup utilities
+/// @ingroup core_algorithms
 /// @brief A thread-local vector container for use within a TBB task arena.
 ///
 /// `local_vector` provides a vector-like interface where each thread in the

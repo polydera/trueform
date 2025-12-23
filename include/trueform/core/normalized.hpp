@@ -10,7 +10,7 @@
 #include "./vector_like.hpp"
 
 namespace tf {
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Return a normalized copy of a vector view.
 ///
 /// Creates a copy of the input @ref tf::vector_view, normalizes it using @ref

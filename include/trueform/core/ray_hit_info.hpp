@@ -10,7 +10,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Detailed result of a ray casting query including the intersection
 /// point.
 ///
@@ -40,7 +40,7 @@ template <typename RealT, std::size_t Dims> struct ray_hit_info {
   operator bool() const { return status == tf::intersect_status::intersection; }
 };
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Helper to construct a @ref tf::ray_hit_info result.
 ///
 /// @tparam RealT The scalar type used for the parametric distance and

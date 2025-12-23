@@ -9,6 +9,11 @@
 #include <algorithm>
 
 namespace tf {
+
+/// @ingroup core_algorithms
+/// @brief Replace all occurrences of a value in parallel.
+///
+/// Falls back to sequential replace for ranges smaller than 1000 elements.
 template <typename Range, typename T>
 auto parallel_replace(Range &&r, const T &val, const T &new_val) -> void {
   if (r.size() < 1000)
