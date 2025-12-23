@@ -26,6 +26,21 @@
 #include "./types/tagged_intersections.hpp"
 
 namespace tf {
+
+/// @ingroup intersect_data
+/// @brief Low-level intersection data between two polygon meshes.
+///
+/// Computes and stores all intersection points between two meshes,
+/// along with topological information about where intersections occur.
+/// Use @ref tf::make_intersection_curves for high-level curve extraction.
+///
+/// Use @ref tf::make_form to create forms with the required tree policy
+/// (@ref tf::tree or @ref tf::mod_tree) and topology policies
+/// (@ref tf::face_membership and @ref tf::manifold_edge_link).
+///
+/// @tparam Index The index type.
+/// @tparam RealType The coordinate type.
+/// @tparam Dims The number of dimensions.
 template <typename Index, typename RealType, std::size_t Dims>
 class intersections_between_polygons
     : public intersect::tagged_intersections<Index, RealType, Dims> {

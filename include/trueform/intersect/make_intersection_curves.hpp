@@ -11,6 +11,23 @@
 #include "./make_intersection_edges.hpp"
 
 namespace tf {
+
+/// @ingroup intersect_curves
+/// @brief Extract intersection curves where two meshes intersect.
+///
+/// Computes the geometric intersection between two polygon meshes and
+/// returns the result as connected curves. Use @ref tf::make_form to create
+/// forms with the required tree policy (@ref tf::tree or @ref tf::mod_tree)
+/// and topology policies (@ref tf::face_membership and @ref tf::manifold_edge_link).
+///
+/// @tparam Dims The number of dimensions.
+/// @tparam Policy0 The policy type for the first mesh form.
+/// @tparam Policy1 The policy type for the second mesh form.
+/// @param form0 The first mesh @ref tf::form.
+/// @param form1 The second mesh @ref tf::form.
+/// @return A @ref tf::curves_buffer containing connected intersection curves.
+///
+/// @see tf::intersections_between_polygons for low-level access.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto make_intersection_curves(const tf::form<Dims, Policy0> &form0,
                               const tf::form<Dims, Policy1> &form1) {

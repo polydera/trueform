@@ -11,6 +11,22 @@
 #include "./make_intersection_edges.hpp"
 
 namespace tf {
+
+/// @ingroup intersect_curves
+/// @brief Extract curves where a mesh intersects itself.
+///
+/// Finds all locations where a mesh's faces intersect each other
+/// (excluding adjacent faces) and returns the result as connected curves.
+/// Use @ref tf::make_form to create forms with the required tree policy
+/// (@ref tf::tree or @ref tf::mod_tree) and topology policies
+/// (@ref tf::face_membership and @ref tf::manifold_edge_link).
+///
+/// @tparam Dims The number of dimensions.
+/// @tparam Policy The policy type for the mesh form.
+/// @param form The mesh @ref tf::form.
+/// @return A @ref tf::curves_buffer containing connected self-intersection curves.
+///
+/// @see tf::intersections_within_polygons for low-level access.
 template <std::size_t Dims, typename Policy>
 auto make_self_intersection_curves(const tf::form<Dims, Policy> &form) {
   using Index = typename Policy::index_type;

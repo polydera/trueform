@@ -26,6 +26,21 @@
 #include "./types/intersection.hpp"
 
 namespace tf {
+
+/// @ingroup intersect_data
+/// @brief Low-level self-intersection data within a polygon mesh.
+///
+/// Computes and stores all points where a mesh intersects itself
+/// (excluding adjacent faces). Use @ref tf::make_self_intersection_curves
+/// for high-level curve extraction.
+///
+/// Use @ref tf::make_form to create forms with the required tree policy
+/// (@ref tf::tree or @ref tf::mod_tree) and topology policies
+/// (@ref tf::face_membership and @ref tf::manifold_edge_link).
+///
+/// @tparam Index The index type.
+/// @tparam RealT The coordinate type.
+/// @tparam Dims The number of dimensions.
 template <typename Index, typename RealT, std::size_t Dims>
 class intersections_within_polygons {
 public:

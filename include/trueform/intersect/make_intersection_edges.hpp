@@ -14,6 +14,18 @@
 #include "./types/tagged_intersections.hpp"
 
 namespace tf {
+
+/// @ingroup intersect_types
+/// @brief Convert scalar field intersection data to edge connectivity.
+///
+/// Extracts edge pairs from scalar field intersection data for curve construction.
+/// Used internally by @ref tf::make_isocontours.
+///
+/// @tparam Index The index type.
+/// @tparam RealT The coordinate type.
+/// @tparam Dims The number of dimensions.
+/// @param intersections The @ref tf::scalar_field_intersections data.
+/// @return A @ref tf::blocked_buffer of edge pairs.
 template <typename Index, typename RealT, std::size_t Dims>
 auto make_intersection_edges(
     const tf::intersect::simple_intersections<Index, RealT, Dims>
@@ -105,12 +117,35 @@ auto make_intersection_edges(const Intersections &intersections) {
 
 } // namespace intersect
 
+/// @ingroup intersect_types
+/// @brief Convert mesh intersection data to edge connectivity.
+///
+/// Extracts edge pairs from mesh intersection data for curve construction.
+/// Used internally by @ref tf::make_intersection_curves.
+///
+/// @tparam Index The index type.
+/// @tparam RealT The coordinate type.
+/// @tparam Dims The number of dimensions.
+/// @param intersections The @ref tf::intersections_between_polygons data.
+/// @return A @ref tf::blocked_buffer of edge pairs.
 template <typename Index, typename RealT, std::size_t Dims>
 auto make_intersection_edges(
     const tf::intersect::tagged_intersections<Index, RealT, Dims>
         &intersections) {
   return intersect::make_intersection_edges<Index, RealT>(intersections);
 }
+
+/// @ingroup intersect_types
+/// @brief Convert self-intersection data to edge connectivity.
+///
+/// Extracts edge pairs from self-intersection data for curve construction.
+/// Used internally by @ref tf::make_self_intersection_curves.
+///
+/// @tparam Index The index type.
+/// @tparam RealT The coordinate type.
+/// @tparam Dims The number of dimensions.
+/// @param intersections The @ref tf::intersections_within_polygons data.
+/// @return A @ref tf::blocked_buffer of edge pairs.
 template <typename Index, typename RealT, std::size_t Dims>
 auto make_intersection_edges(
     const tf::intersections_within_polygons<Index, RealT, Dims>
