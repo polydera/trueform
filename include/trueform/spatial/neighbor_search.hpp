@@ -23,6 +23,15 @@ namespace tf {
 // Point overloads
 // ============================================================================
 
+/// @ingroup spatial_queries
+/// @brief Find the nearest neighbor to a point in a form.
+///
+/// Traverses the spatial tree to find the primitive closest to the query point.
+///
+/// @param form The spatial form to query.
+/// @param obj The query point.
+/// @return A @ref tf::tree_metric_info containing the nearest primitive ID,
+///         squared distance, and closest point on the primitive.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::point_like<Dims, Policy1> &obj) {
@@ -34,6 +43,13 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
       });
 }
 
+/// @ingroup spatial_queries
+/// @brief Find the nearest neighbor within a radius.
+///
+/// @param form The spatial form to query.
+/// @param obj The query point.
+/// @param radius Maximum search radius (squared distance).
+/// @return Result containing the nearest primitive, or invalid if none within radius.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::point_like<Dims, Policy1> &obj,
@@ -47,6 +63,13 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
       radius);
 }
 
+/// @ingroup spatial_queries
+/// @brief Find k nearest neighbors to a point.
+///
+/// @param form The spatial form to query.
+/// @param obj The query point.
+/// @param knn A @ref tf::nearest_neighbors buffer to store results.
+/// @return The updated knn buffer containing the k nearest primitives.
 template <std::size_t Dims, typename Policy0, typename Policy1,
           typename RandomIt>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
@@ -61,6 +84,7 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
       knn);
 }
 
+/// @overload
 template <std::size_t Dims, typename Policy0, typename Policy1,
           typename RandomIt>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
@@ -73,6 +97,8 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
 // Segment overloads (use aabb_from for BV metric)
 // ============================================================================
 
+/// @ingroup spatial_queries
+/// @brief Find the nearest neighbor to a segment.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::segment<Dims, Policy1> &obj) {
@@ -87,6 +113,7 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
       });
 }
 
+/// @overload
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::segment<Dims, Policy1> &obj,
@@ -103,6 +130,7 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
       radius);
 }
 
+/// @overload
 template <std::size_t Dims, typename Policy0, typename Policy1,
           typename RandomIt>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
@@ -120,6 +148,7 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
       knn);
 }
 
+/// @overload
 template <std::size_t Dims, typename Policy0, typename Policy1,
           typename RandomIt>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
@@ -132,6 +161,8 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
 // Ray overloads
 // ============================================================================
 
+/// @ingroup spatial_queries
+/// @brief Find the nearest neighbor to a ray.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::ray_like<Dims, Policy1> &obj) {
@@ -182,6 +213,8 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
 // Line overloads
 // ============================================================================
 
+/// @ingroup spatial_queries
+/// @brief Find the nearest neighbor to a line.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::line_like<Dims, Policy1> &obj) {
@@ -232,6 +265,8 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
 // Plane overloads
 // ============================================================================
 
+/// @ingroup spatial_queries
+/// @brief Find the nearest neighbor to a plane.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::plane_like<Dims, Policy1> &obj) {
@@ -282,6 +317,8 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
 // Polygon overloads (3D uses tag_plane, 2D uses obj directly)
 // ============================================================================
 
+/// @ingroup spatial_queries
+/// @brief Find the nearest neighbor to a polygon.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::polygon<Dims, Policy1> &obj) {
@@ -398,6 +435,15 @@ auto neighbor_search(const tf::form<2, Policy0> &form,
 // Form-to-form overloads (dual tree)
 // ============================================================================
 
+/// @ingroup spatial_queries
+/// @brief Find the nearest pair of primitives between two forms.
+///
+/// Uses dual-tree traversal to efficiently find the closest pair.
+///
+/// @param form0 The first form.
+/// @param form1 The second form.
+/// @return A @ref tf::tree_metric_info_pair containing IDs from both forms,
+///         squared distance, and closest points on each primitive.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form0,
                      const tf::form<Dims, Policy1> &form1) {
@@ -407,6 +453,7 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form0,
       });
 }
 
+/// @overload
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form0,
                      const tf::form<Dims, Policy1> &form1,

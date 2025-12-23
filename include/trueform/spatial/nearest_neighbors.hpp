@@ -12,6 +12,7 @@
 
 namespace tf {
 
+/// @ingroup spatial_results
 /// @brief Helper structure for k-nearest-neighbor (k-NN) queries in spatial
 /// trees.
 ///
@@ -118,6 +119,7 @@ private:
   real_t limit_metric;
 };
 
+/// @ingroup spatial_results
 /// @brief Construct a `tree_knn` container with automatic type deduction.
 ///
 /// @param iterator The output iterator pointing to a user-provided buffer.
@@ -128,6 +130,7 @@ auto make_nearest_neighbors(RandomIt iterator, std::size_t k) {
   return nearest_neighbors<RandomIt>{iterator, k};
 }
 
+/// @ingroup spatial_results
 /// @brief Construct a radius-limited `tree_knn` container with automatic type
 /// deduction.
 ///

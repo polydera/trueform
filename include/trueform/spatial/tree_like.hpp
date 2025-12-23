@@ -11,6 +11,14 @@
 
 namespace tf {
 
+/// @ingroup spatial_structures
+/// @brief CRTP base class for static spatial trees.
+///
+/// `tree_like` provides the common interface for all spatial tree types,
+/// exposing access to nodes, primitive IDs, and bounding volumes. Concrete
+/// trees like @ref tf::tree inherit from this class.
+///
+/// @tparam Policy The underlying storage policy providing nodes, ids, and aabbs.
 template <typename Policy> struct tree_like : Policy {
   tree_like() = default;
   tree_like(const Policy &policy) : Policy{policy} {}
@@ -62,11 +70,25 @@ auto wrap_like(tree_like<Policy> &&, T &&t) {
   return tree_like<std::decay_t<T>>{static_cast<T &&>(t)};
 }
 
+/// @ingroup spatial_structures
+/// @brief Wrap a range as a tree_like.
+///
+/// @tparam Range The range type to wrap.
+/// @param r The range to wrap.
+/// @return A tree_like wrapping the range.
 template <typename Range> auto make_tree_like(Range &&r) {
   return tree_like<std::decay_t<Range>>{static_cast<Range &&>(r)};
 }
 
-// Factory for creating views
+/// @ingroup spatial_structures
+/// @brief Create a lightweight view of a tree.
+///
+/// The returned view references the original tree's data without copying.
+/// The original tree must outlive the view.
+///
+/// @tparam Policy The tree's policy type.
+/// @param t The tree to create a view of.
+/// @return A tree_like view referencing the original data.
 template <typename Policy>
 auto make_tree_view(const tree_like<Policy> &t) {
   using index_type = typename Policy::index_type;

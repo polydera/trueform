@@ -6,6 +6,30 @@
  */
 #pragma once
 
+/** @defgroup spatial Spatial Module
+ *  Trees, forms, search, neighbor queries, and ray casting.
+ */
+
+/** @defgroup spatial_structures Spatial Structures
+ *  @ingroup spatial
+ *  Trees and forms for organizing primitives into spatial hierarchies.
+ */
+
+/** @defgroup spatial_queries Spatial Queries
+ *  @ingroup spatial
+ *  Distance, intersection, neighbor search, ray casting, and custom search operations.
+ */
+
+/** @defgroup spatial_results Result Types
+ *  @ingroup spatial
+ *  Result structures for spatial queries.
+ */
+
+/** @defgroup spatial_configuration Configuration
+ *  @ingroup spatial
+ *  Tree configuration and partitioning strategies.
+ */
+
 #include "./spatial/aabb_tree.hpp"             // IWYU pragma: export
 #include "./spatial/distance.hpp"              // IWYU pragma: export
 #include "./spatial/form.hpp"                  // IWYU pragma: export

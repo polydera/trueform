@@ -10,6 +10,17 @@
 
 namespace tf {
 
+/// @ingroup spatial_queries
+/// @brief Cast a ray and get the hit point.
+///
+/// Like @ref tf::ray_cast but also computes the actual hit point on the
+/// primitive surface.
+///
+/// @param ray The ray to cast.
+/// @param form The spatial form to query.
+/// @param config Optional ray configuration (min/max t values).
+/// @return A @ref tf::tree_ray_info containing the hit primitive ID,
+///         intersection parameter t, and the hit point coordinates.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto ray_hit(
     const ray_like<Dims, Policy0> &ray, const tf::form<Dims, Policy1> &form,

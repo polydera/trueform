@@ -9,6 +9,7 @@
 
 namespace tf {
 
+/// @ingroup spatial_queries
 /// @brief Perform a spatial query against a form.
 ///
 /// Iterates through the form's tree and applies a user-provided callback to all
@@ -27,6 +28,7 @@ auto search(const tf::form<Dims, Policy> &form, const F0 &check_bv,
   return tf::spatial::search(form, check_bv, primitive_apply);
 }
 
+/// @ingroup spatial_queries
 /// @brief Perform a parallel pairwise search between two forms.
 ///
 /// @param form0 The first form.
@@ -46,6 +48,7 @@ auto search(const tf::form<Dims, Policy0> &form0,
                                             primitive_apply, 6);
 }
 
+/// @ingroup spatial_queries
 /// @brief Perform a spatial query against a tree_like structure.
 ///
 /// Iterates through the tree and applies a user-provided callback to all
@@ -64,6 +67,7 @@ auto search(const tf::tree_like<TreePolicy> &tree, const F0 &check_bv,
   return tf::spatial::search(tree, check_bv, primitive_apply);
 }
 
+/// @ingroup spatial_queries
 /// @brief Perform a parallel pairwise search between two tree_like structures.
 ///
 /// @param tree0 The first tree.

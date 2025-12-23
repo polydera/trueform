@@ -11,6 +11,15 @@
 
 namespace tf {
 
+/// @ingroup spatial_structures
+/// @brief CRTP base class for dynamic spatial trees.
+///
+/// `mod_tree_like` provides the common interface for modifiable spatial trees
+/// that support incremental updates. It exposes access to both the main tree
+/// and the delta tree, which holds recently added or modified primitives.
+///
+/// @tparam Policy The underlying storage policy providing main and delta trees.
+/// @see tf::mod_tree
 template <typename Policy> struct mod_tree_like : Policy {
   mod_tree_like() = default;
   mod_tree_like(const Policy &policy) : Policy{policy} {}
@@ -59,11 +68,25 @@ auto wrap_like(mod_tree_like<Policy> &&, T &&t) {
   return mod_tree_like<std::decay_t<T>>{static_cast<T &&>(t)};
 }
 
+/// @ingroup spatial_structures
+/// @brief Wrap a range as a mod_tree_like.
+///
+/// @tparam Range The range type to wrap.
+/// @param r The range to wrap.
+/// @return A mod_tree_like wrapping the range.
 template <typename Range> auto make_mod_tree_like(Range &&r) {
   return mod_tree_like<std::decay_t<Range>>{static_cast<Range &&>(r)};
 }
 
-// Factory for creating views
+/// @ingroup spatial_structures
+/// @brief Create a lightweight view of a mod_tree.
+///
+/// The returned view references the original tree's data without copying.
+/// The original tree must outlive the view.
+///
+/// @tparam Policy The mod_tree's policy type.
+/// @param t The mod_tree to create a view of.
+/// @return A mod_tree_like view referencing the original data.
 template <typename Policy>
 auto make_tree_view(const mod_tree_like<Policy> &t) {
   using index_type = typename Policy::index_type;
