@@ -6,6 +6,30 @@
  */
 #pragma once
 
+/** @defgroup geometry Geometry Module
+ *  Mesh generation, normal computation, processing, and registration.
+ */
+
+/** @defgroup geometry_meshing Mesh Generation
+ *  @ingroup geometry
+ *  Generate primitive meshes (sphere, cylinder, box, plane).
+ */
+
+/** @defgroup geometry_normals Normal Computation
+ *  @ingroup geometry
+ *  Compute face normals and vertex normals.
+ */
+
+/** @defgroup geometry_processing Mesh Processing
+ *  @ingroup geometry
+ *  Triangulation, smoothing, and orientation operations.
+ */
+
+/** @defgroup geometry_registration Point Cloud Registration
+ *  @ingroup geometry
+ *  Alignment and error metrics for point clouds.
+ */
+
 #include "./geometry/chamfer_error.hpp"               // IWYU pragma: export
 #include "./geometry/compute_normals.hpp"             // IWYU pragma: export
 #include "./geometry/compute_point_normals.hpp"       // IWYU pragma: export

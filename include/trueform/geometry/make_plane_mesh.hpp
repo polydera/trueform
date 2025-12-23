@@ -11,6 +11,7 @@
 
 namespace tf {
 
+/// @ingroup geometry_meshing
 /// @brief Creates a flat rectangular plane mesh in the XY plane, centered at origin.
 ///
 /// The plane lies at z = 0 with normal pointing +z (CCW winding).
@@ -77,6 +78,7 @@ auto make_plane_mesh(RealType width, RealType height, Index width_ticks,
   return mesh;
 }
 
+/// @ingroup geometry_meshing
 /// @brief Creates a flat rectangular plane mesh in the XY plane, centered at origin.
 ///
 /// The plane lies at z = 0 with normal pointing +z (CCW winding).

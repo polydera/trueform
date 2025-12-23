@@ -12,6 +12,7 @@
 
 namespace tf {
 
+/// @ingroup geometry_meshing
 /// @brief Creates a cylinder mesh centered at origin along the z-axis.
 ///
 /// The cylinder extends from z = -height/2 to z = +height/2.

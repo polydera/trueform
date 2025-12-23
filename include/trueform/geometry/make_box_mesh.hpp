@@ -10,6 +10,7 @@
 
 namespace tf {
 
+/// @ingroup geometry_meshing
 /// @brief Creates an axis-aligned box mesh centered at origin.
 ///
 /// All faces have outward-facing normals (CCW winding).
@@ -68,6 +69,7 @@ auto make_box_mesh(RealType width, RealType height, RealType depth)
   return mesh;
 }
 
+/// @ingroup geometry_meshing
 /// @brief Creates a subdivided axis-aligned box mesh centered at origin.
 ///
 /// All faces have outward-facing normals (CCW winding).

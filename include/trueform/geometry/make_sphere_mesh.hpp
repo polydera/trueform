@@ -12,6 +12,7 @@
 
 namespace tf {
 
+/// @ingroup geometry_meshing
 /// @brief Creates a UV sphere mesh centered at origin.
 ///
 /// All faces have outward-facing normals (CCW winding).

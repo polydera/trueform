@@ -17,6 +17,7 @@
 
 namespace tf {
 
+/// @ingroup geometry_normals
 /// @brief Compute point normals for polygons by averaging adjacent face
 /// normals.
 /// @tparam Policy The policy type of the polygons.

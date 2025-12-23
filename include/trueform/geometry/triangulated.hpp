@@ -12,6 +12,7 @@
 
 namespace tf {
 
+/// @ingroup geometry_processing
 /// @brief Triangulate all polygons and return a triangle mesh buffer.
 /// @tparam Policy The policy type of the polygons.
 /// @param polygons The input polygons.
@@ -32,6 +33,12 @@ auto triangulated(const tf::polygons<Policy> &polygons) {
   return out;
 }
 
+/// @ingroup geometry_processing
+/// @brief Triangulate a single polygon and return a triangle mesh buffer.
+/// @tparam Dims The number of dimensions.
+/// @tparam Policy The policy type of the polygon.
+/// @param polygon The input polygon.
+/// @return A polygons_buffer containing triangulated mesh (3 indices per face).
 template <std::size_t Dims, typename Policy>
 auto triangulated(const tf::polygon<Dims, Policy> &polygon) {
   auto make_polygon_f = [&polygon](const auto &pts) {

@@ -11,6 +11,16 @@
 #include "../topology/reverse_winding.hpp"
 
 namespace tf {
+
+/// @ingroup geometry_processing
+/// @brief Ensures mesh faces are oriented with outward-pointing normals.
+///
+/// For closed meshes, orients all faces consistently and ensures the signed
+/// volume is positive (normals point outward).
+///
+/// @tparam Policy The policy type of the polygons.
+/// @param polygons The mesh to orient (modified in place).
+/// @param is_consistent If true, skips the orient_faces_consistently step.
 template <typename Policy>
 auto ensure_positive_orientation(tf::polygons<Policy> &polygons,
                                  bool is_consistent = false) -> void {
@@ -21,6 +31,7 @@ auto ensure_positive_orientation(tf::polygons<Policy> &polygons,
     tf::reverse_winding(polygons.faces());
 }
 
+/// @overload
 template <typename Policy>
 auto ensure_positive_orientation(tf::polygons<Policy> &&polygons,
                                  bool is_consistent = false) -> void {

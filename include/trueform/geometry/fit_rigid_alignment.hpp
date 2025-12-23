@@ -19,7 +19,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup geometry_registration
 /// @brief Fit a rigid transformation (rotation + translation) between two
 /// corresponding point sets.
 ///

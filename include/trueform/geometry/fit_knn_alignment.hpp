@@ -22,7 +22,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup geometry_registration
 /// @brief Fit a rigid transformation using k-nearest neighbor correspondences.
 ///
 /// For each point in X, finds the k nearest neighbors in Y and computes a

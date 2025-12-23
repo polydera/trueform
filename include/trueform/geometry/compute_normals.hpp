@@ -12,6 +12,7 @@
 
 namespace tf {
 
+/// @ingroup geometry_normals
 /// @brief Compute cell normals for polygons.
 /// @tparam Policy The policy type of the polygons.
 /// @param polygons The input polygons (must be 3D).

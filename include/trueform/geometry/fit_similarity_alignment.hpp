@@ -19,7 +19,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup geometry_registration
 /// @brief Fit a similarity transformation (rotation + uniform scale +
 /// translation) between two corresponding point sets.
 ///
