@@ -16,10 +16,18 @@
 
 namespace tf {
 
+/// @ingroup topology_analysis
 /// @brief Computes both boundary and non-manifold edges in a single pass.
+///
+/// More efficient than calling @ref tf::make_boundary_edges() and
+/// @ref tf::make_non_manifold_edges() separately, as it only traverses
+/// the mesh once.
+///
+/// @tparam Policy The faces policy type.
+/// @tparam Policy1 The face membership policy type.
 /// @param faces The faces of the mesh.
 /// @param fm The face membership structure.
-/// @return A pair of (boundary_edges, non_manifold_edges) as blocked_buffer<Index, 2>.
+/// @return A pair of (boundary_edges, non_manifold_edges) as @ref tf::blocked_buffer.
 template <typename Policy, typename Policy1>
 auto make_non_simple_edges(const tf::faces<Policy> &faces,
                            const tf::face_membership_like<Policy1> &fm) {
@@ -60,9 +68,15 @@ auto make_non_simple_edges(const tf::faces<Policy> &faces,
   return std::make_pair(std::move(boundary_edges), std::move(non_manifold_edges));
 }
 
+/// @ingroup topology_analysis
 /// @brief Computes both boundary and non-manifold edges in a single pass.
+///
+/// Convenience overload that builds face membership internally if not
+/// provided via policy.
+///
+/// @tparam Policy The polygons policy type.
 /// @param polygons The polygons of the mesh.
-/// @return A pair of (boundary_edges, non_manifold_edges) as blocked_buffer<Index, 2>.
+/// @return A pair of (boundary_edges, non_manifold_edges) as @ref tf::blocked_buffer.
 template <typename Policy>
 auto make_non_simple_edges(const tf::polygons<Policy> &polygons) {
   if constexpr (tf::has_face_membership_policy<Policy>) {

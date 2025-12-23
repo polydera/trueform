@@ -34,6 +34,20 @@ template <typename Policy> struct vertex_representation_dref {
 };
 } // namespace topology
 
+/// @ingroup topology_types
+/// @brief Creates a range indicating which vertices in a face are representatives.
+///
+/// For each vertex in the specified face, returns true if this face "owns"
+/// the vertex (is the first face in the vertex's face membership list),
+/// false otherwise. This is useful for avoiding duplicate processing of
+/// shared vertices.
+///
+/// @tparam Range The face range type.
+/// @tparam Policy The face membership policy type.
+/// @param face_id The face to query.
+/// @param face The vertex indices of the face.
+/// @param fe The face membership structure.
+/// @return A range of booleans indicating representative status per vertex.
 template <typename Range, typename Policy>
 auto make_vertex_representation(std::size_t face_id, const Range &face,
                                 const tf::face_membership_like<Policy> &fe) {
@@ -43,6 +57,17 @@ auto make_vertex_representation(std::size_t face_id, const Range &face,
                 face_id, tf::make_face_membership_like(std::move(r))});
 }
 
+/// @ingroup topology_types
+/// @brief Creates a nested range of vertex representation flags for all faces.
+///
+/// For each face and each vertex within it, indicates whether this face
+/// is the representative owner of that vertex.
+///
+/// @tparam Policy0 The faces policy type.
+/// @tparam Policy1 The face membership policy type.
+/// @param faces The mesh faces.
+/// @param fe The face membership structure.
+/// @return A nested range of booleans per face, per vertex.
 template <typename Policy0, typename Policy1>
 auto make_vertex_representation(const tf::faces<Policy0> &faces,
                                 const tf::face_membership_like<Policy1> &fe) {

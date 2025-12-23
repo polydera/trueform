@@ -20,6 +20,12 @@ auto has_face_link(const tag_face_link<Range, Base> *) -> std::true_type;
 auto has_face_link(const void *) -> std::false_type;
 } // namespace policy
 
+/// @ingroup topology_policies
+/// @brief Checks if a type has face link policy attached.
+///
+/// True if the type was wrapped with @ref tf::tag_face_link().
+///
+/// @tparam T The type to check.
 template <typename T>
 inline constexpr bool has_face_link_policy = decltype(policy::has_face_link(
     static_cast<const std::decay_t<T> *>(nullptr)))::value;
@@ -65,6 +71,18 @@ private:
 template <typename Range, typename Base>
 struct static_size<policy::tag_face_link<Range, Base>> : static_size<Base> {};
 
+/// @ingroup topology_policies
+/// @brief Attaches face link data to a base type.
+///
+/// Creates a wrapper that carries face link information alongside
+/// the original data. The result provides a `.face_link()` accessor.
+/// Use with pipe syntax: `data | tf::tag_face_link(fl)`.
+///
+/// @tparam Range The face link range type.
+/// @tparam Base The base type to wrap.
+/// @param _face_link_range The face link data.
+/// @param base The base value to wrap.
+/// @return A wrapped type with face link accessible via `.face_link()`.
 template <typename Range, typename Base>
 auto tag_face_link(tf::face_link_like<Range> &&_face_link_range, Base &&base) {
   if constexpr (has_face_link_policy<Base>)
@@ -80,12 +98,14 @@ auto tag_face_link(tf::face_link_like<Range> &&_face_link_range, Base &&base) {
   }
 }
 
+/// @overload
 template <typename Index, typename Base>
 auto tag_face_link(tf::face_link<Index> &_face_link, Base &&base) {
   return tag_face_link(tf::make_face_link_like(tf::make_range(_face_link)),
                        static_cast<Base &&>(base));
 }
 
+/// @overload
 template <typename Index, typename Base>
 auto tag_face_link(const tf::face_link<Index> &_face_link, Base &&base) {
   return tag_face_link(tf::make_face_link_like(tf::make_range(_face_link)),
@@ -107,16 +127,27 @@ auto operator|(U &&u, tag_face_link_op<Range> t) {
 }
 } // namespace policy
 
+/// @ingroup topology_policies
+/// @brief Creates a pipe-able face link tag operator.
+///
+/// Returns an object that can be used with pipe syntax to attach
+/// face link to a range: `data | tf::tag_face_link(fl)`.
+///
+/// @tparam Range The face link range type.
+/// @param _face_link_range The face link data.
+/// @return A tag operator for use with pipe syntax.
 template <typename Range> auto tag_face_link(Range &&_face_link_range) {
   return policy::tag_face_link_op<Range>{
       static_cast<Range &&>(_face_link_range)};
 }
 
+/// @overload
 template <typename Index> auto tag_face_link(tf::face_link<Index> &_face_link) {
   return policy::tag_face_link_op<decltype(tf::make_range(_face_link))>{
       tf::make_range(_face_link)};
 }
 
+/// @overload
 template <typename Index>
 auto tag_face_link(const tf::face_link<Index> &_face_link) {
   return policy::tag_face_link_op<decltype(tf::make_range(_face_link))>{
@@ -126,11 +157,21 @@ auto tag_face_link(const tf::face_link<Index> &_face_link) {
 template <typename Index>
 auto tag_face_link(tf::face_link<Index> &&_face_link) = delete;
 
+/// @ingroup topology_policies
+/// @brief Creates a pipe-able tag operator for face link.
+///
+/// Generic overload of @ref tf::tag() that auto-detects the topology type.
+/// Equivalent to `tf::tag_face_link(_face_link)`.
+///
+/// @tparam Index The index type.
+/// @param _face_link The face link structure.
+/// @return A tag operator for use with pipe syntax.
 template <typename Index> auto tag(tf::face_link<Index> &_face_link) {
   return policy::tag_face_link_op<decltype(tf::make_range(_face_link))>{
       tf::make_range(_face_link)};
 }
 
+/// @overload
 template <typename Index> auto tag(const tf::face_link<Index> &_face_link) {
   return policy::tag_face_link_op<decltype(tf::make_range(_face_link))>{
       tf::make_range(_face_link)};
@@ -138,17 +179,20 @@ template <typename Index> auto tag(const tf::face_link<Index> &_face_link) {
 
 template <typename Index> auto tag(tf::face_link<Index> &&_face_link) = delete;
 
+/// @overload
 template <typename Policy> auto tag(tf::face_link_like<Policy> &_face_link) {
   return policy::tag_face_link_op<decltype(tf::make_range(_face_link))>{
       tf::make_range(_face_link)};
 }
 
+/// @overload
 template <typename Policy>
 auto tag(const tf::face_link_like<Policy> &_face_link) {
   return policy::tag_face_link_op<decltype(tf::make_range(_face_link))>{
       tf::make_range(_face_link)};
 }
 
+/// @overload
 template <typename Policy> auto tag(tf::face_link_like<Policy> &&_face_link) {
   return tag(_face_link);
 }

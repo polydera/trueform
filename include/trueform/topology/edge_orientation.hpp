@@ -7,9 +7,15 @@
 #pragma once
 
 namespace tf {
+
+/// @ingroup topology_types
+/// @brief Specifies how edges are oriented in connectivity structures.
+///
+/// Controls whether edge membership structures store edges in their
+/// natural direction, reversed, or both directions.
 enum class edge_orientation : signed char {
-  forward = 0,
-  reverse = 1,
-  bidirectional = 3
+  forward = 0,       ///< Store edges in their natural direction (v0 → v1).
+  reverse = 1,       ///< Store edges in reverse direction (v1 → v0).
+  bidirectional = 3  ///< Store edges in both directions.
 };
 }

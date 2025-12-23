@@ -11,6 +11,18 @@
 #include "./policy/face_link.hpp"
 
 namespace tf {
+
+/// @ingroup topology_components
+/// @brief Label edge-connected face components.
+///
+/// Two faces are in the same component if they share any vertex.
+/// This labels each face with its component index.
+///
+/// Builds face link internally if not provided via policy.
+///
+/// @tparam Policy The polygons policy type.
+/// @param polygons The polygons range.
+/// @return A @ref tf::connected_component_labels with per-face labels.
 template <typename Policy>
 auto make_edge_connected_component_labels(const tf::polygons<Policy> &polygons) {
   using Index = std::decay_t<decltype(polygons.faces()[0][0])>;

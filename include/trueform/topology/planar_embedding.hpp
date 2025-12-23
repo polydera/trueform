@@ -12,8 +12,24 @@
 #include "./planar_graph_regions.hpp"
 
 namespace tf {
+
+/// @ingroup topology_planar
+/// @brief Computes a planar embedding from directed edges.
+///
+/// A planar embedding represents a planar graph as a collection of faces
+/// and holes. Faces are CCW-oriented regions with positive area, holes
+/// are CW-oriented regions with negative area. The embedding also computes
+/// parent-child relationships between faces and holes.
+///
+/// @tparam Index The integer type for indices.
+/// @tparam RealT The real type for coordinates (default: double).
 template <typename Index, typename RealT> class planar_embedding {
 public:
+  /// @brief Build the planar embedding from directed edges and points.
+  /// @tparam Policy0 The edges policy type.
+  /// @tparam Policy1 The points policy type.
+  /// @param directed_edges The directed edges of the planar graph.
+  /// @param points The vertex positions.
   template <typename Policy0, typename Policy1>
   auto build(const tf::edges<Policy0> &directed_edges,
              const tf::points<Policy1> &points) {
@@ -24,23 +40,30 @@ public:
                points);
   }
 
+  /// @brief Get the faces (positive area regions).
   auto faces() const { return tf::make_indirect_range(_faces, _pgr); }
 
+  /// @brief Get the signed areas of faces.
   auto face_areas() const {
     return tf::make_indirect_range(_faces, _signed_areas);
   }
 
+  /// @brief Get the holes (negative area regions).
   auto holes() const { return tf::make_indirect_range(_holes, _pgr); }
 
+  /// @brief Get the signed areas of holes.
   auto hole_areas() const {
     return tf::make_indirect_range(_holes, _signed_areas);
   }
 
+  /// @brief Get which holes belong to which faces.
+  /// @return An offset-block range where each block contains hole indices for that face.
   auto holes_for_faces() const {
     return tf::make_offset_block_range(_fhr.offsets_buffer(),
                                        _fhr.data_buffer());
   }
 
+  /// @brief Clear all internal state.
   auto clear() {
     _pgr.clear();
     _fhr.clear();

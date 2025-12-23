@@ -7,5 +7,17 @@
 #pragma once
 
 namespace tf {
-enum class topo_type : char { none = 0, vertex = 1, edge = 2, face = 4 };
+
+/// @ingroup topology_types
+/// @brief Identifies the type of topological element.
+///
+/// Used to distinguish between different mesh elements (vertices, edges, faces)
+/// in generic topology algorithms. Values are powers of 2 to allow combining
+/// as flags.
+enum class topo_type : char {
+  none = 0,    ///< No element type.
+  vertex = 1,  ///< A vertex (0-dimensional).
+  edge = 2,    ///< An edge (1-dimensional).
+  face = 4     ///< A face (2-dimensional).
+};
 }

@@ -18,8 +18,25 @@
 #include <algorithm>
 
 namespace tf {
+
+/// @ingroup topology_planar
+/// @brief Patches holes into a face to create a single contour.
+///
+/// Given an outer loop (face boundary) and inner loops (holes), creates
+/// a single polygon by connecting holes to the outer boundary. Uses a
+/// greedy algorithm that connects each hole's leftmost vertex to the
+/// nearest visible vertex on the face.
+///
+/// @tparam Index The integer type for indices.
 template <typename Index> class hole_patcher {
 public:
+  /// @brief Build a patched face from outer loop and holes.
+  /// @tparam Range0 The loop range type.
+  /// @tparam Policy0 The holes policy type.
+  /// @tparam Policy1 The points policy type.
+  /// @param loop The outer loop (face boundary).
+  /// @param holes The inner loops (holes).
+  /// @param points The vertex positions.
   template <typename Range0, typename Policy0, typename Policy1>
   auto build(const Range0 &loop, const tf::faces<Policy0> &holes,
              const tf::points<Policy1> &points) {
@@ -38,8 +55,11 @@ public:
     fill_buffer();
   }
 
+  /// @brief Get the resulting patched face.
+  /// @return A range of vertex indices forming the patched face.
   auto face() const { return tf::make_range(_work_buffer); }
 
+  /// @brief Clear all internal state.
   auto clear() {
     _nodes.clear();
     _face_heap.clear();

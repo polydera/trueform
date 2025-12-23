@@ -11,6 +11,19 @@
 #include "./policy/manifold_edge_link.hpp"
 
 namespace tf {
+
+/// @ingroup topology_components
+/// @brief Label manifold-edge-connected face components.
+///
+/// Two faces are in the same component if they share a manifold edge
+/// (an edge shared by exactly two faces). Non-manifold and boundary
+/// edges do not connect components.
+///
+/// Builds manifold edge link internally if not provided via policy.
+///
+/// @tparam Policy The polygons policy type.
+/// @param polygons The polygons range.
+/// @return A @ref tf::connected_component_labels with per-face labels.
 template <typename Policy>
 auto make_manifold_edge_connected_component_labels(
     const tf::polygons<Policy> &polygons) {

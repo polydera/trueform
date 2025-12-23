@@ -11,11 +11,27 @@
 #include "./structures/compute_face_link.hpp"
 
 namespace tf {
+
+/// @ingroup topology_connectivity
+/// @brief Stores face adjacency through shared edges.
+///
+/// For each face, stores the indices of neighboring faces that share an edge.
+/// This is used for mesh traversal, connected component detection, and
+/// operations that need to walk across face boundaries.
+///
+/// Requires @ref tf::face_membership to be built first.
+///
+/// @tparam Index The integer type for face indices.
 template <typename Index>
 class face_link : public face_link_like<offset_block_buffer<Index, Index>> {
   using base_t = face_link_like<offset_block_buffer<Index, Index>>;
 
 public:
+  /// @brief Build face adjacency from face blocks and face membership.
+  /// @tparam Range The face blocks range type.
+  /// @tparam Policy The face membership policy type.
+  /// @param blocks The face blocks (typically from @ref tf::manifold_edge_link).
+  /// @param blink The face membership structure.
   template <typename Range, typename Policy>
   auto build(const Range &blocks, const tf::face_membership_like<Policy> &blink)
       -> void {

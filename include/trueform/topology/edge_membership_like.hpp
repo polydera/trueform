@@ -8,6 +8,18 @@
 #include <utility>
 
 namespace tf {
+
+/// @ingroup topology_connectivity
+/// @brief CRTP base for edge membership structures.
+///
+/// Provides the interface for structures that map vertices to the edges
+/// incident on them. The underlying `Policy` typically stores per-vertex
+/// lists of edge indices.
+///
+/// Use @ref tf::edge_membership for an owning container, or
+/// @ref tf::make_edge_membership_like() to wrap an existing range.
+///
+/// @tparam Policy The underlying storage policy (e.g., @ref tf::offset_block_buffer).
 template <typename Policy> struct edge_membership_like : Policy {
   edge_membership_like() = default;
   edge_membership_like(const Policy &policy) : Policy{policy} {}
@@ -44,6 +56,12 @@ auto wrap_like(edge_membership_like<Policy> &&, T &&t) {
   return edge_membership_like<std::decay_t<T>>{static_cast<T &&>(t)};
 }
 
+/// @ingroup topology_connectivity
+/// @brief Wrap a range as an edge membership view.
+///
+/// @tparam Range The underlying range type.
+/// @param r The range to wrap.
+/// @return A @ref tf::edge_membership_like view over the range.
 template <typename Range> auto make_edge_membership_like(Range &&r) {
   return tf::edge_membership_like<std::decay_t<Range>>{
       static_cast<Range &&>(r)};

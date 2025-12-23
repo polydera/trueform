@@ -12,6 +12,16 @@
 #include "./vertex_link_like.hpp"
 
 namespace tf {
+
+/// @ingroup topology_components
+/// @brief Create an applier from a face link structure.
+///
+/// Returns a function that iterates over face neighbors, suitable for
+/// use with @ref tf::label_connected_components().
+///
+/// @tparam Policy The face link policy type.
+/// @param link The face link structure.
+/// @return An applier function.
 template <typename Policy>
 auto make_applier(const tf::face_link_like<Policy> &link) {
   return [link = tf::make_range(link)](auto id, const auto &f) {
@@ -19,6 +29,15 @@ auto make_applier(const tf::face_link_like<Policy> &link) {
       f(n_id);
   };
 }
+/// @ingroup topology_components
+/// @brief Create an applier from a vertex link structure.
+///
+/// Returns a function that iterates over vertex neighbors, suitable for
+/// use with @ref tf::label_connected_components().
+///
+/// @tparam Policy The vertex link policy type.
+/// @param link The vertex link structure.
+/// @return An applier function.
 template <typename Policy>
 auto make_applier(const tf::vertex_link_like<Policy> &link) {
   return [link = tf::make_range(link)](auto id, const auto &f) {
@@ -27,6 +46,16 @@ auto make_applier(const tf::vertex_link_like<Policy> &link) {
   };
 }
 
+/// @ingroup topology_components
+/// @brief Create an applier from a manifold edge link structure.
+///
+/// Returns a function that iterates over simple (manifold) edge neighbors,
+/// suitable for use with @ref tf::label_connected_components().
+/// Non-manifold and boundary edges are skipped.
+///
+/// @tparam Policy The manifold edge link policy type.
+/// @param link The manifold edge link structure.
+/// @return An applier function.
 template <typename Policy>
 auto make_applier(const tf::manifold_edge_link_like<Policy> &link) {
   return [link = tf::make_range(link)](auto id, const auto &f) {

@@ -8,6 +8,18 @@
 #include <utility>
 
 namespace tf {
+
+/// @ingroup topology_connectivity
+/// @brief CRTP base for manifold edge link structures.
+///
+/// Provides the interface for structures that store edge connectivity
+/// in manifold meshes. For each directed edge, stores the peer face
+/// that shares that edge (if any).
+///
+/// Use @ref tf::manifold_edge_link for an owning container, or
+/// @ref tf::make_manifold_edge_link_like() to wrap an existing range.
+///
+/// @tparam Policy The underlying storage policy (e.g., @ref tf::blocked_buffer).
 template <typename Policy> struct manifold_edge_link_like : Policy {
   manifold_edge_link_like() = default;
   manifold_edge_link_like(const Policy &policy) : Policy{policy} {}
@@ -44,6 +56,12 @@ auto wrap_like(manifold_edge_link_like<Policy> &&, T &&t) {
   return manifold_edge_link_like<std::decay_t<T>>{static_cast<T &&>(t)};
 }
 
+/// @ingroup topology_connectivity
+/// @brief Wrap a range as a manifold edge link view.
+///
+/// @tparam Range The underlying range type.
+/// @param r The range to wrap.
+/// @return A @ref tf::manifold_edge_link_like view over the range.
 template <typename Range> auto make_manifold_edge_link_like(Range &&r) {
   return tf::manifold_edge_link_like<std::decay_t<Range>>{
       static_cast<Range &&>(r)};

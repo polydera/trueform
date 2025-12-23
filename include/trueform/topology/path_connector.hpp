@@ -15,23 +15,43 @@
 #include <algorithm>
 
 namespace tf {
+
+/// @ingroup topology_paths
+/// @brief Connects edges into continuous vertex paths.
+///
+/// This class handles the mechanics of connecting edges into paths.
+/// It deduplicates edges, builds connectivity, and traces paths from
+/// endpoints. Handles both open paths (starting from degree-1 vertices)
+/// and closed loops.
+///
+/// @tparam T The vertex identifier type.
+/// @tparam Index The index type.
+/// @tparam Hash Hash function for vertex identifiers.
 template <typename T, typename Index, typename Hash = std::hash<T>>
 class path_connector {
 public:
+  /// @brief Build paths from edges.
+  /// @tparam Policy The edges policy type.
+  /// @param edges The edges to connect into paths.
   template <typename Policy> auto build(const tf::edges<Policy> &edges) {
     build_edges(edges);
     build_connectivity();
     fill_paths();
   }
 
+  /// @brief Get the resulting paths (const).
+  /// @return Reference to the paths buffer.
   auto paths_buffer() const -> const tf::offset_block_buffer<Index, Index> & {
     return _paths_buffer;
   }
 
+  /// @brief Get the resulting paths.
+  /// @return Reference to the paths buffer.
   auto paths_buffer() -> tf::offset_block_buffer<Index, Index> & {
     return _paths_buffer;
   }
 
+  /// @brief Clear all internal state for reuse.
   auto clear() {
     _ihm.f().clear();
     _ihm.kept_ids().clear();

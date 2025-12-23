@@ -11,6 +11,18 @@
 #include "./policy/vertex_link.hpp"
 
 namespace tf {
+
+/// @ingroup topology_components
+/// @brief Label vertex-connected components.
+///
+/// Two vertices are in the same component if they share an edge.
+/// This labels each vertex with its component index.
+///
+/// Builds vertex link internally if not provided via policy.
+///
+/// @tparam Policy The polygons policy type.
+/// @param polygons The polygons range.
+/// @return A @ref tf::connected_component_labels with per-vertex labels.
 template <typename Policy>
 auto make_vertex_connected_component_labels(
     const tf::polygons<Policy> &polygons) {

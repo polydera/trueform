@@ -4,6 +4,15 @@
  * Commercial licensing available via info@polydera.com.
  * https://github.com/xlabmedical/trueform
  */
+
+/// @file
+/// @ingroup spatial_policies
+/// @brief Policy tag helpers for spatial tree structures.
+///
+/// Provides functions to attach spatial tree metadata to range types using
+/// a policy-based composition pattern. Use `tf::tag()` or specific `tf::tag_tree()`
+/// and `tf::tag_mod_tree()` functions to attach tree data.
+
 #pragma once
 
 #include "./policy/tree.hpp"

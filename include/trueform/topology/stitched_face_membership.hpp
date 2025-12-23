@@ -19,7 +19,23 @@
 
 namespace tf {
 
-/// Stitch face_membership from two source meshes using stitch index maps.
+/// @ingroup topology_connectivity
+/// @brief Stitch face membership from two source meshes using stitch index maps.
+///
+/// Combines face membership structures from two meshes being stitched together.
+/// Uses the stitch index maps to remap vertex and face indices, and recomputes
+/// connectivity for faces affected by the stitching operation.
+///
+/// @tparam Index The integer type for indices.
+/// @tparam FacesPolicy The result faces policy type.
+/// @tparam FMPolicy0 The first face membership policy type.
+/// @tparam FMPolicy1 The second face membership policy type.
+/// @param result_faces The faces of the stitched result mesh.
+/// @param n_result_points The number of points in the result mesh.
+/// @param fm0 Face membership from the first source mesh.
+/// @param fm1 Face membership from the second source mesh.
+/// @param im The stitch index maps for remapping.
+/// @return A new face membership structure for the stitched mesh.
 template <typename Index, typename FacesPolicy, typename FMPolicy0,
           typename FMPolicy1>
 auto stitched_face_membership(const tf::faces<FacesPolicy> &result_faces,

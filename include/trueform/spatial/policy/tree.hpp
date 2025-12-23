@@ -28,6 +28,12 @@ auto has_tree(const tag_mod_tree<ModTreeViewPolicy, Base> *) -> std::true_type;
 auto has_tree(const void *) -> std::false_type;
 } // namespace policy
 
+/// @ingroup spatial_policies
+/// @brief Checks if a type has tree policy attached.
+///
+/// True if the type was wrapped with @ref tf::tag_tree() or @ref tf::tag_mod_tree().
+///
+/// @tparam T The type to check.
 template <typename T>
 inline constexpr bool has_tree_policy = decltype(policy::has_tree(
     static_cast<const std::decay_t<T> *>(nullptr)))::value;
@@ -79,7 +85,18 @@ template <typename TreeViewPolicy, typename Base>
 struct static_size<policy::tag_tree<TreeViewPolicy, Base>> : static_size<Base> {
 };
 
-// tag_tree from tree_like (view)
+/// @ingroup spatial_policies
+/// @brief Attaches tree data to a base type.
+///
+/// Creates a wrapper that carries tree information alongside the original data.
+/// The result provides a `.tree()` accessor. Use with pipe syntax:
+/// `data | tf::tag_tree(tree)`.
+///
+/// @tparam TreeViewPolicy The tree view policy type.
+/// @tparam Base The base type to wrap.
+/// @param _tree_view The tree view data.
+/// @param base The base value to wrap.
+/// @return A wrapped type with tree accessible via `.tree()`.
 template <typename TreeViewPolicy, typename Base>
 auto tag_tree(tf::tree_like<TreeViewPolicy> &&_tree_view, Base &&base) {
   if constexpr (has_tree_policy<Base>)
@@ -95,12 +112,13 @@ auto tag_tree(tf::tree_like<TreeViewPolicy> &&_tree_view, Base &&base) {
   }
 }
 
-// tag_tree from owning tree (creates view)
+/// @overload
 template <typename Index, typename BV, typename Base>
 auto tag_tree(tf::tree<Index, BV> &_tree, Base &&base) {
   return tag_tree(tf::make_tree_view(_tree), static_cast<Base &&>(base));
 }
 
+/// @overload
 template <typename Index, typename BV, typename Base>
 auto tag_tree(const tf::tree<Index, BV> &_tree, Base &&base) {
   return tag_tree(tf::make_tree_view(_tree), static_cast<Base &&>(base));
@@ -120,16 +138,27 @@ auto operator|(U &&u, tag_tree_op<TreeViewPolicy> t) {
 }
 } // namespace policy
 
+/// @ingroup spatial_policies
+/// @brief Creates a pipe-able tree tag operator.
+///
+/// Returns an object that can be used with pipe syntax to attach
+/// tree to a range: `data | tf::tag_tree(tree)`.
+///
+/// @tparam TreeViewPolicy The tree view policy type.
+/// @param _tree_view The tree view data.
+/// @return A tag operator for use with pipe syntax.
 template <typename TreeViewPolicy>
 auto tag_tree(tf::tree_like<TreeViewPolicy> &&_tree_view) {
   return policy::tag_tree_op<TreeViewPolicy>{std::move(_tree_view)};
 }
 
+/// @overload
 template <typename Index, typename BV> auto tag_tree(tf::tree<Index, BV> &_tree) {
   return policy::tag_tree_op<spatial::tree_ranges<Index, BV>>{
       tf::make_tree_view(_tree)};
 }
 
+/// @overload
 template <typename Index, typename BV>
 auto tag_tree(const tf::tree<Index, BV> &_tree) {
   return policy::tag_tree_op<spatial::tree_ranges<Index, BV>>{
@@ -139,10 +168,21 @@ auto tag_tree(const tf::tree<Index, BV> &_tree) {
 template <typename Index, typename BV>
 auto tag_tree(tf::tree<Index, BV> &&_tree) = delete;
 
+/// @ingroup spatial_policies
+/// @brief Creates a pipe-able tag operator for tree.
+///
+/// Generic overload of @ref tf::tag() that auto-detects the spatial type.
+/// Equivalent to `tf::tag_tree(_tree)`.
+///
+/// @tparam Index The index type.
+/// @tparam BV The bounding volume type.
+/// @param _tree The tree structure.
+/// @return A tag operator for use with pipe syntax.
 template <typename Index, typename BV> auto tag(tf::tree<Index, BV> &_tree) {
   return tag_tree(_tree);
 }
 
+/// @overload
 template <typename Index, typename BV>
 auto tag(const tf::tree<Index, BV> &_tree) {
   return tag_tree(_tree);
@@ -151,6 +191,7 @@ auto tag(const tf::tree<Index, BV> &_tree) {
 template <typename Index, typename BV>
 auto tag(tf::tree<Index, BV> &&_tree) = delete;
 
+/// @overload
 template <typename TreeViewPolicy>
 auto tag(tf::tree_like<TreeViewPolicy> &_tree_view) {
   using index_type = typename TreeViewPolicy::index_type;
@@ -159,6 +200,7 @@ auto tag(tf::tree_like<TreeViewPolicy> &_tree_view) {
       tf::make_tree_view(_tree_view)};
 }
 
+/// @overload
 template <typename TreeViewPolicy>
 auto tag(const tf::tree_like<TreeViewPolicy> &_tree_view) {
   using index_type = typename TreeViewPolicy::index_type;
@@ -167,6 +209,7 @@ auto tag(const tf::tree_like<TreeViewPolicy> &_tree_view) {
       tf::make_tree_view(_tree_view)};
 }
 
+/// @overload
 template <typename TreeViewPolicy>
 auto tag(tf::tree_like<TreeViewPolicy> &&_tree_view) {
   return tag(_tree_view);
@@ -223,7 +266,18 @@ template <typename ModTreeViewPolicy, typename Base>
 struct static_size<policy::tag_mod_tree<ModTreeViewPolicy, Base>> : static_size<Base> {
 };
 
-// tag_mod_tree from mod_tree_like (view)
+/// @ingroup spatial_policies
+/// @brief Attaches mod_tree data to a base type.
+///
+/// Creates a wrapper that carries modifiable tree information alongside the
+/// original data. The result provides a `.tree()` accessor. Use with pipe syntax:
+/// `data | tf::tag_mod_tree(tree)`.
+///
+/// @tparam ModTreeViewPolicy The mod tree view policy type.
+/// @tparam Base The base type to wrap.
+/// @param _tree_view The mod tree view data.
+/// @param base The base value to wrap.
+/// @return A wrapped type with mod_tree accessible via `.tree()`.
 template <typename ModTreeViewPolicy, typename Base>
 auto tag_mod_tree(tf::mod_tree_like<ModTreeViewPolicy> &&_tree_view, Base &&base) {
   if constexpr (has_tree_policy<Base>)
@@ -239,12 +293,13 @@ auto tag_mod_tree(tf::mod_tree_like<ModTreeViewPolicy> &&_tree_view, Base &&base
   }
 }
 
-// tag_mod_tree from owning mod_tree (creates view)
+/// @overload
 template <typename Index, typename BV, typename Base>
 auto tag_mod_tree(tf::mod_tree<Index, BV> &_tree, Base &&base) {
   return tag_mod_tree(tf::make_tree_view(_tree), static_cast<Base &&>(base));
 }
 
+/// @overload
 template <typename Index, typename BV, typename Base>
 auto tag_mod_tree(const tf::mod_tree<Index, BV> &_tree, Base &&base) {
   return tag_mod_tree(tf::make_tree_view(_tree), static_cast<Base &&>(base));
@@ -264,16 +319,27 @@ auto operator|(U &&u, tag_mod_tree_op<ModTreeViewPolicy> t) {
 }
 } // namespace policy
 
+/// @ingroup spatial_policies
+/// @brief Creates a pipe-able mod_tree tag operator.
+///
+/// Returns an object that can be used with pipe syntax to attach
+/// mod_tree to a range: `data | tf::tag_mod_tree(tree)`.
+///
+/// @tparam ModTreeViewPolicy The mod tree view policy type.
+/// @param _tree_view The mod tree view data.
+/// @return A tag operator for use with pipe syntax.
 template <typename ModTreeViewPolicy>
 auto tag_mod_tree(tf::mod_tree_like<ModTreeViewPolicy> &&_tree_view) {
   return policy::tag_mod_tree_op<ModTreeViewPolicy>{std::move(_tree_view)};
 }
 
+/// @overload
 template <typename Index, typename BV> auto tag_mod_tree(tf::mod_tree<Index, BV> &_tree) {
   return policy::tag_mod_tree_op<spatial::mod_tree_ranges<Index, BV>>{
       tf::make_tree_view(_tree)};
 }
 
+/// @overload
 template <typename Index, typename BV>
 auto tag_mod_tree(const tf::mod_tree<Index, BV> &_tree) {
   return policy::tag_mod_tree_op<spatial::mod_tree_ranges<Index, BV>>{
@@ -283,10 +349,21 @@ auto tag_mod_tree(const tf::mod_tree<Index, BV> &_tree) {
 template <typename Index, typename BV>
 auto tag_mod_tree(tf::mod_tree<Index, BV> &&_tree) = delete;
 
+/// @ingroup spatial_policies
+/// @brief Creates a pipe-able tag operator for mod_tree.
+///
+/// Generic overload of @ref tf::tag() that auto-detects the spatial type.
+/// Equivalent to `tf::tag_mod_tree(_tree)`.
+///
+/// @tparam Index The index type.
+/// @tparam BV The bounding volume type.
+/// @param _tree The mod_tree structure.
+/// @return A tag operator for use with pipe syntax.
 template <typename Index, typename BV> auto tag(tf::mod_tree<Index, BV> &_tree) {
   return tag_mod_tree(_tree);
 }
 
+/// @overload
 template <typename Index, typename BV>
 auto tag(const tf::mod_tree<Index, BV> &_tree) {
   return tag_mod_tree(_tree);
@@ -295,6 +372,7 @@ auto tag(const tf::mod_tree<Index, BV> &_tree) {
 template <typename Index, typename BV>
 auto tag(tf::mod_tree<Index, BV> &&_tree) = delete;
 
+/// @overload
 template <typename ModTreeViewPolicy>
 auto tag(tf::mod_tree_like<ModTreeViewPolicy> &_tree_view) {
   using index_type = typename ModTreeViewPolicy::index_type;
@@ -303,6 +381,7 @@ auto tag(tf::mod_tree_like<ModTreeViewPolicy> &_tree_view) {
       tf::make_tree_view(_tree_view)};
 }
 
+/// @overload
 template <typename ModTreeViewPolicy>
 auto tag(const tf::mod_tree_like<ModTreeViewPolicy> &_tree_view) {
   using index_type = typename ModTreeViewPolicy::index_type;
@@ -311,6 +390,7 @@ auto tag(const tf::mod_tree_like<ModTreeViewPolicy> &_tree_view) {
       tf::make_tree_view(_tree_view)};
 }
 
+/// @overload
 template <typename ModTreeViewPolicy>
 auto tag(tf::mod_tree_like<ModTreeViewPolicy> &&_tree_view) {
   return tag(_tree_view);

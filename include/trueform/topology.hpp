@@ -6,6 +6,45 @@
  */
 #pragma once
 
+/** @defgroup topology Topology Module
+ *  Mesh connectivity, analysis, and planar graph processing.
+ */
+
+/** @defgroup topology_connectivity Connectivity Structures
+ *  @ingroup topology
+ *  Face membership, vertex links, face links, and edge membership data structures.
+ */
+
+/** @defgroup topology_analysis Mesh Analysis
+ *  @ingroup topology
+ *  Boundary detection, non-manifold edges, face orientation, and winding operations.
+ */
+
+/** @defgroup topology_components Connected Components
+ *  @ingroup topology
+ *  Component labeling and connected component queries.
+ */
+
+/** @defgroup topology_paths Path Finding
+ *  @ingroup topology
+ *  Edge-to-path connection and Eulerian path finding.
+ */
+
+/** @defgroup topology_planar Planar Graph Processing
+ *  @ingroup topology
+ *  Planar embeddings, region extraction, and hole patching.
+ */
+
+/** @defgroup topology_types Supporting Types
+ *  @ingroup topology
+ *  Edge representations, connectivity types, and ID helpers.
+ */
+
+/** @defgroup topology_policies Policy Tags
+ *  @ingroup topology
+ *  Policy-based composition for attaching topology data to ranges.
+ */
+
 #include "./topology/boundary_edges.hpp"             // IWYU pragma: export
 #include "./topology/boundary_paths.hpp"             // IWYU pragma: export
 #include "./topology/components/finder.hpp"          // IWYU pragma: export

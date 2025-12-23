@@ -26,7 +26,25 @@
 
 namespace tf {
 
-/// Stitch manifold_edge_link from two source meshes using stitch index maps.
+/// @ingroup topology_connectivity
+/// @brief Stitch manifold edge link from two source meshes using stitch index maps.
+///
+/// Combines manifold edge link structures from two meshes being stitched together.
+/// Uses the stitch index maps to remap face indices, and recomputes edge
+/// connectivity for edges affected by the stitching operation ("dirty" edges
+/// that touch vertices near the stitch boundary).
+///
+/// @tparam Index The integer type for indices.
+/// @tparam FacesPolicy The result faces policy type.
+/// @tparam MELPolicy0 The first manifold edge link policy type.
+/// @tparam MELPolicy1 The second manifold edge link policy type.
+/// @tparam FMPolicy The stitched face membership policy type.
+/// @param result_faces The faces of the stitched result mesh.
+/// @param mel0 Manifold edge link from the first source mesh.
+/// @param mel1 Manifold edge link from the second source mesh.
+/// @param fm_stitched The stitched face membership structure.
+/// @param im The stitch index maps for remapping.
+/// @return A new manifold edge link structure for the stitched mesh.
 template <typename Index, typename FacesPolicy, typename MELPolicy0,
           typename MELPolicy1, typename FMPolicy>
 auto stitched_manifold_edge_link(

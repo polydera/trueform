@@ -30,6 +30,11 @@
  *  Tree configuration and partitioning strategies.
  */
 
+/** @defgroup spatial_policies Policy Tags
+ *  @ingroup spatial
+ *  Policy-based composition for attaching spatial trees to ranges.
+ */
+
 #include "./spatial/aabb_tree.hpp"             // IWYU pragma: export
 #include "./spatial/distance.hpp"              // IWYU pragma: export
 #include "./spatial/form.hpp"                  // IWYU pragma: export

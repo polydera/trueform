@@ -67,6 +67,22 @@ auto face_edge_neighbors(std::integral_constant<std::size_t, N>,
 }
 } // namespace topology
 
+/// @ingroup topology_connectivity
+/// @brief Applies a function to each face sharing an edge.
+///
+/// For a given edge (v0, v1) in a face, finds all other faces that share
+/// this edge and applies the given function to their face IDs.
+///
+/// @tparam Index The integer type for indices.
+/// @tparam Policy The face membership policy type.
+/// @tparam Range The faces range type.
+/// @tparam F The function type to apply.
+/// @param blink The face membership structure.
+/// @param faces The mesh faces.
+/// @param face_id The face containing the edge.
+/// @param v0 One endpoint of the edge.
+/// @param v1 The other endpoint of the edge.
+/// @param apply Function called with each neighbor face ID. Return true to stop.
 template <typename Index,typename Policy, typename Range, typename F>
 auto face_edge_neighbors_apply(const tf::face_membership_like<Policy> &blink,
                                const Range &faces, Index face_id,
@@ -78,6 +94,23 @@ auto face_edge_neighbors_apply(const tf::face_membership_like<Policy> &blink,
       blink, faces, face_id, v0, v1, apply);
 }
 
+/// @ingroup topology_connectivity
+/// @brief Outputs all faces sharing an edge to an iterator.
+///
+/// For a given edge (v0, v1) in a face, outputs all other face IDs that
+/// share this edge.
+///
+/// @tparam Index The integer type for indices.
+/// @tparam Policy The face membership policy type.
+/// @tparam Range The faces range type.
+/// @tparam Iterator The output iterator type.
+/// @param blink The face membership structure.
+/// @param faces The mesh faces.
+/// @param face_id The face containing the edge.
+/// @param v0 One endpoint of the edge.
+/// @param v1 The other endpoint of the edge.
+/// @param out The output iterator.
+/// @return The advanced output iterator.
 template <typename Index, typename Policy, typename Range, typename Iterator>
 auto face_edge_neighbors(const tf::face_membership_like<Policy> &blink,
                          const Range &faces, Index face_id, const Index &v0,
@@ -92,6 +125,24 @@ auto face_edge_neighbors(const tf::face_membership_like<Policy> &blink,
   return out;
 }
 
+/// @ingroup topology_connectivity
+/// @brief Outputs faces sharing an edge to a bounded range.
+///
+/// For a given edge (v0, v1) in a face, outputs other face IDs that share
+/// this edge, stopping when the output range is full.
+///
+/// @tparam Index The integer type for indices.
+/// @tparam Policy The face membership policy type.
+/// @tparam Range The faces range type.
+/// @tparam Iterator The output iterator type.
+/// @param blink The face membership structure.
+/// @param faces The mesh faces.
+/// @param face_id The face containing the edge.
+/// @param v0 One endpoint of the edge.
+/// @param v1 The other endpoint of the edge.
+/// @param begin Start of output range.
+/// @param end End of output range.
+/// @return Iterator past the last written element.
 template <typename Index, typename Policy, typename Range, typename Iterator>
 auto face_edge_neighbors(const tf::face_membership_like<Policy> &blink,
                          const Range &faces, Index face_id, const Index &v0,

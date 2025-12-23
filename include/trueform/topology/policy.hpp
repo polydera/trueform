@@ -5,6 +5,14 @@
  * https://github.com/xlabmedical/trueform
  */
 
+/// @file
+/// @ingroup topology_policies
+/// @brief Policy tag helpers for topology connectivity structures.
+///
+/// Provides functions to attach topology metadata (face membership, vertex link,
+/// edge membership, etc.) to range types using a policy-based composition pattern.
+/// Use `tf::tag()` or specific `tf::tag_*()` functions to attach topology data.
+
 #pragma once
 
 #include "./policy/edge_membership.hpp"    // IWYU pragma: export
