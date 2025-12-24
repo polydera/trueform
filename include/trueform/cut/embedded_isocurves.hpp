@@ -14,6 +14,24 @@
 #include "./scalar_cut_faces.hpp"
 
 namespace tf {
+
+/// @ingroup cut_isocurves
+/// @brief Embed scalar field isocurves into mesh topology.
+///
+/// Creates a new mesh where isocurve contour lines become edges.
+/// Faces are split along the curves and labeled by isoband region.
+/// Labels indicate which region between consecutive cut values each face
+/// belongs to (0 for below first cut, 1 for between first and second, etc.).
+///
+/// @tparam Index The index type (auto-deduced if not specified).
+/// @tparam Policy The policy type of the polygons.
+/// @param polygons The input @ref tf::polygons.
+/// @param scalars The scalar field values (one per vertex).
+/// @param cut_values The threshold values to embed.
+/// @return Tuple of (@ref tf::polygons_buffer, labels buffer).
+///
+/// @see tf::make_isobands for extracting specific bands only.
+/// @see tf::make_isocontours for curve extraction without mesh cutting.
 template <typename Index = tf::none_t, typename Policy, typename Range0,
           typename Iterator0, std::size_t N0>
 auto embedded_isocurves(const tf::polygons<Policy> &polygons,
@@ -39,6 +57,15 @@ auto embedded_isocurves(const tf::polygons<Policy> &polygons,
   }
 }
 
+/// @ingroup cut_isocurves
+/// @brief Embed scalar field isocurves into mesh topology with curve output.
+/// @overload
+///
+/// @param polygons The input @ref tf::polygons.
+/// @param scalars The scalar field values (one per vertex).
+/// @param cut_values The threshold values to embed.
+/// @param tag Pass @ref tf::return_curves to get curves.
+/// @return Tuple of (@ref tf::polygons_buffer, labels buffer, @ref tf::curves_buffer).
 template <typename Index = tf::none_t, typename Policy, typename Range0,
           typename Iterator0, std::size_t N0>
 auto embedded_isocurves(const tf::polygons<Policy> &polygons,

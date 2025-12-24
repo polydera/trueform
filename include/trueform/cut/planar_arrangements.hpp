@@ -10,7 +10,19 @@
 #include "../spatial/aabb_tree.hpp"
 #include "../topology/planar_embedding.hpp"
 #include "./planar_overlay.hpp"
+
 namespace tf {
+
+/// @ingroup cut_planar
+/// @brief Compute 2D planar arrangements from line segments.
+///
+/// Subdivides the plane according to a set of line segments,
+/// creating faces with optional holes. Access results via inherited
+/// methods from @ref tf::planar_embedding (faces, holes) and
+/// @ref tf::planar_overlay (edges, points).
+///
+/// @tparam Index The index type.
+/// @tparam RealType The coordinate type.
 template <typename Index, typename RealType>
 class planar_arrangements : public tf::planar_embedding<Index, RealType>,
                             public tf::planar_overlay<Index, RealType, 2> {

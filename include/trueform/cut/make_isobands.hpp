@@ -14,6 +14,23 @@
 #include "./scalar_cut_faces.hpp"
 
 namespace tf {
+
+/// @ingroup cut_isocurves
+/// @brief Extract specific isobands from a scalar field.
+///
+/// Like @ref tf::embedded_isocurves but returns only the selected
+/// bands between specified cut values. Useful for extracting regions
+/// within specific value ranges.
+///
+/// @tparam Index The index type (auto-deduced if not specified).
+/// @tparam Policy The policy type of the polygons.
+/// @param polygons The input @ref tf::polygons.
+/// @param scalars The scalar field values (one per vertex).
+/// @param cut_values The threshold values defining band boundaries.
+/// @param selected_bands Indices of bands to extract.
+/// @return Tuple of (@ref tf::polygons_buffer, labels buffer).
+///
+/// @see tf::embedded_isocurves for embedding all bands.
 template <typename Index = tf::none_t, typename Policy, typename Range0,
           typename Iterator0, std::size_t N0, typename Iterator1,
           std::size_t N1>
@@ -41,6 +58,16 @@ auto make_isobands(const tf::polygons<Policy> &polygons, const Range0 &scalars,
   }
 }
 
+/// @ingroup cut_isocurves
+/// @brief Extract specific isobands from a scalar field with curve output.
+/// @overload
+///
+/// @param polygons The input @ref tf::polygons.
+/// @param scalars The scalar field values (one per vertex).
+/// @param cut_values The threshold values defining band boundaries.
+/// @param selected_bands Indices of bands to extract.
+/// @param tag Pass @ref tf::return_curves to get curves.
+/// @return Tuple of (@ref tf::polygons_buffer, labels buffer, @ref tf::curves_buffer).
 template <typename Index = tf::none_t, typename Policy, typename Range0,
           typename Iterator0, std::size_t N0, typename Iterator1,
           std::size_t N1>

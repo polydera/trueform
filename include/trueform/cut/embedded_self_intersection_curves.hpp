@@ -11,7 +11,23 @@
 #include "./cut_faces.hpp"
 #include "./impl/embedded_self_intersection_curves.hpp"
 #include "./return_curves.hpp"
+
 namespace tf {
+
+/// @ingroup cut_boolean
+/// @brief Embed self-intersection curves into mesh topology.
+///
+/// Finds where a mesh intersects itself and splits faces along
+/// those curves. Accepts plain @ref tf::polygons or forms with
+/// precomputed tree policy (@ref tf::tree or @ref tf::mod_tree)
+/// and topology policies (@ref tf::face_membership and
+/// @ref tf::manifold_edge_link).
+///
+/// @tparam Policy The policy type of the mesh.
+/// @param _polygons The input @ref tf::polygons (or tagged form).
+/// @return A @ref tf::polygons_buffer with embedded intersection edges.
+///
+/// @see tf::make_self_intersection_curves for curve extraction only.
 template <typename Policy>
 auto embedded_self_intersection_curves(const tf::polygons<Policy> &_polygons) {
   if constexpr (!tf::has_tree_policy<Policy> &&
@@ -60,6 +76,13 @@ auto embedded_self_intersection_curves(const tf::polygons<Policy> &_polygons) {
   }
 }
 
+/// @ingroup cut_boolean
+/// @brief Embed self-intersection curves into mesh topology with curve output.
+/// @overload
+///
+/// @param _polygons The input @ref tf::polygons (or tagged form).
+/// @param tag Pass @ref tf::return_curves to get curves.
+/// @return Tuple of (@ref tf::polygons_buffer, @ref tf::curves_buffer).
 template <typename Policy>
 auto embedded_self_intersection_curves(const tf::polygons<Policy> &_polygons,
                                        tf::return_curves_t) {

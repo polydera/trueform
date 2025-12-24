@@ -6,6 +6,35 @@
  */
 #pragma once
 
+/** @defgroup cut Cut Module
+ *  Mesh booleans, isocurve embedding, and planar arrangements.
+ */
+
+/** @defgroup cut_isocurves Isocurve Embedding
+ *  @ingroup cut
+ *  Embedding scalar field isocurves and isobands into mesh topology.
+ */
+
+/** @defgroup cut_boolean Boolean Operations
+ *  @ingroup cut
+ *  Mesh boolean operations and arrangements.
+ */
+
+/** @defgroup cut_planar Planar Arrangements
+ *  @ingroup cut
+ *  2D segment arrangements and overlays.
+ */
+
+/** @defgroup cut_types Cut Types
+ *  @ingroup cut
+ *  Supporting types for cut operations.
+ */
+
+/** @defgroup cut_data Cut Data
+ *  @ingroup cut
+ *  Low-level face cutting infrastructure.
+ */
+
 #include "./cut/arrangement_class.hpp"                 // IWYU pragma: export
 #include "./cut/cut_faces.hpp"                         // IWYU pragma: export
 #include "./cut/embedded_isocurves.hpp"                // IWYU pragma: export

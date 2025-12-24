@@ -16,6 +16,22 @@
 
 namespace tf {
 
+/// @ingroup cut_boolean
+/// @brief Perform boolean operations returning both result halves.
+///
+/// Like @ref tf::make_boolean but returns both operands' results
+/// as separate meshes with open boundaries at the intersection curve.
+/// Concatenating and cleaning them produces the same watertight mesh
+/// as @ref tf::make_boolean.
+///
+/// @tparam Policy0 The policy type of the first mesh.
+/// @tparam Policy1 The policy type of the second mesh.
+/// @param _polygons0 The first mesh @ref tf::polygons (or tagged form).
+/// @param _polygons1 The second mesh @ref tf::polygons (or tagged form).
+/// @param op The @ref tf::boolean_op to perform.
+/// @return Tuple of (left @ref tf::polygons_buffer, right @ref tf::polygons_buffer).
+///
+/// @see tf::make_boolean for combined boolean results.
 template <typename Policy0, typename Policy1>
 auto make_boolean_pair(const tf::polygons<Policy0> &_polygons0,
                        const tf::polygons<Policy1> &_polygons1,
@@ -33,6 +49,15 @@ auto make_boolean_pair(const tf::polygons<Policy0> &_polygons0,
       });
 }
 
+/// @ingroup cut_boolean
+/// @brief Perform boolean operations returning both halves with curve output.
+/// @overload
+///
+/// @param _polygons0 The first mesh @ref tf::polygons (or tagged form).
+/// @param _polygons1 The second mesh @ref tf::polygons (or tagged form).
+/// @param op The @ref tf::boolean_op to perform.
+/// @param tag Pass @ref tf::return_curves to get intersection curves.
+/// @return Tuple of (left @ref tf::polygons_buffer, right @ref tf::polygons_buffer, @ref tf::curves_buffer).
 template <typename Policy0, typename Policy1>
 auto make_boolean_pair(const tf::polygons<Policy0> &_polygons0,
                        const tf::polygons<Policy1> &_polygons1,

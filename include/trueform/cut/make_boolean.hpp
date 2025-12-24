@@ -16,6 +16,23 @@
 
 namespace tf {
 
+/// @ingroup cut_boolean
+/// @brief Perform boolean operations on two meshes.
+///
+/// Computes union, intersection, or difference of two polygon meshes.
+/// Accepts plain @ref tf::polygons or forms with precomputed tree policy
+/// (@ref tf::tree or @ref tf::mod_tree) and topology policies
+/// (@ref tf::face_membership and @ref tf::manifold_edge_link).
+///
+/// @tparam Policy0 The policy type of the first mesh.
+/// @tparam Policy1 The policy type of the second mesh.
+/// @param _polygons0 The first mesh @ref tf::polygons (or tagged form).
+/// @param _polygons1 The second mesh @ref tf::polygons (or tagged form).
+/// @param op The @ref tf::boolean_op to perform (merge, intersection, left_difference, right_difference).
+/// @return Tuple of (@ref tf::polygons_buffer, labels buffer).
+///
+/// @see tf::make_boolean_pair for separate left/right results.
+/// @see tf::make_mesh_arrangements for full region decomposition.
 template <typename Policy0, typename Policy1>
 auto make_boolean(const tf::polygons<Policy0> &_polygons0,
                   const tf::polygons<Policy1> &_polygons1, tf::boolean_op op) {
@@ -33,6 +50,15 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
       });
 }
 
+/// @ingroup cut_boolean
+/// @brief Perform boolean operations with face origin mapping.
+/// @overload
+///
+/// @param _polygons0 The first mesh @ref tf::polygons (or tagged form).
+/// @param _polygons1 The second mesh @ref tf::polygons (or tagged form).
+/// @param op The @ref tf::boolean_op to perform.
+/// @param tag Pass @ref tf::return_index_map to get face origin indices.
+/// @return Tuple of (@ref tf::polygons_buffer, labels buffer, index map).
 template <typename Policy0, typename Policy1>
 auto make_boolean(const tf::polygons<Policy0> &_polygons0,
                   const tf::polygons<Policy1> &_polygons1, tf::boolean_op op,
@@ -52,6 +78,15 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
       });
 }
 
+/// @ingroup cut_boolean
+/// @brief Perform boolean operations with curve output.
+/// @overload
+///
+/// @param _polygons0 The first mesh @ref tf::polygons (or tagged form).
+/// @param _polygons1 The second mesh @ref tf::polygons (or tagged form).
+/// @param op The @ref tf::boolean_op to perform.
+/// @param tag Pass @ref tf::return_curves to get intersection curves.
+/// @return Tuple of (@ref tf::polygons_buffer, labels buffer, @ref tf::curves_buffer).
 template <typename Policy0, typename Policy1>
 auto make_boolean(const tf::polygons<Policy0> &_polygons0,
                   const tf::polygons<Policy1> &_polygons1, tf::boolean_op op,
@@ -84,6 +119,16 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
       });
 }
 
+/// @ingroup cut_boolean
+/// @brief Perform boolean operations with curves and face origin mapping.
+/// @overload
+///
+/// @param _polygons0 The first mesh @ref tf::polygons (or tagged form).
+/// @param _polygons1 The second mesh @ref tf::polygons (or tagged form).
+/// @param op The @ref tf::boolean_op to perform.
+/// @param tag0 Pass @ref tf::return_curves to get intersection curves.
+/// @param tag1 Pass @ref tf::return_index_map to get face origin indices.
+/// @return Tuple of (@ref tf::polygons_buffer, labels, @ref tf::curves_buffer, index map).
 template <typename Policy0, typename Policy1>
 auto make_boolean(const tf::polygons<Policy0> &_polygons0,
                   const tf::polygons<Policy1> &_polygons1, tf::boolean_op op,

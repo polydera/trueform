@@ -13,6 +13,15 @@
 #include "./loop/tagged_descriptor.hpp"
 
 namespace tf {
+
+/// @ingroup cut_data
+/// @brief Low-level two-mesh face cutting for boolean operations.
+///
+/// Splits faces from two meshes along their intersection curves.
+/// Used internally by @ref tf::make_boolean, @ref tf::make_boolean_pair,
+/// and @ref tf::make_mesh_arrangements.
+///
+/// @tparam Index The index type.
 template <typename Index>
 class tagged_cut_faces
     : public loop::cut_faces<Index, loop::tagged_descriptor<Index>> {
