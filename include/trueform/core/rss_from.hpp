@@ -492,7 +492,15 @@ auto rss_from(const Range &points, dispatch_t<tf::point_like<Dims, Policy>>) {
 
 } // namespace core
 
-// Convenience overloads in tf namespace
+/// @ingroup core_primitives
+/// @brief Create RSS bounding volume from polygons.
+///
+/// Computes a tight-fitting rectangle swept sphere using
+/// covariance-based principal component analysis.
+///
+/// @tparam Policy The polygons' policy type.
+/// @param polys The polygon mesh.
+/// @return An @ref tf::rss bounding volume.
 template <typename Policy> auto rss_from(const tf::polygons<Policy> &polys) {
   if (!polys.size())
     return tf::make_empty_rss<tf::coordinate_type<Policy>,
@@ -500,6 +508,9 @@ template <typename Policy> auto rss_from(const tf::polygons<Policy> &polys) {
   return core::rss_from(polys, core::dispatch_element(polys));
 }
 
+/// @ingroup core_primitives
+/// @brief Create RSS bounding volume from segments.
+/// @overload
 template <typename Policy> auto rss_from(const tf::segments<Policy> &segs) {
   if (!segs.size())
     return tf::make_empty_rss<tf::coordinate_type<Policy>,
@@ -507,6 +518,9 @@ template <typename Policy> auto rss_from(const tf::segments<Policy> &segs) {
   return core::rss_from(segs, core::dispatch_element(segs));
 }
 
+/// @ingroup core_primitives
+/// @brief Create RSS bounding volume from points.
+/// @overload
 template <typename Policy> auto rss_from(const tf::points<Policy> &pts) {
   if (!pts.size())
     return tf::make_empty_rss<tf::coordinate_type<Policy>,
@@ -514,6 +528,7 @@ template <typename Policy> auto rss_from(const tf::points<Policy> &pts) {
   return core::rss_from(pts, core::dispatch_element(pts));
 }
 
+/// @ingroup core_primitives
 /// @brief Convert an OBB to an RSS approximation.
 ///
 /// In 3D: Creates an RSS by placing the rectangle at the midplane of axes[2].
@@ -543,6 +558,7 @@ auto rss_from(const tf::obb_like<Dims, Policy> &obb) {
   }
 }
 
+/// @ingroup core_primitives
 /// @brief Convert an AABB to an RSS approximation.
 ///
 /// In 3D: Creates an RSS with identity axes, rectangle at the z-midplane.

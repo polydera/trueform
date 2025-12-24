@@ -15,6 +15,22 @@
 #include "./views/slide_range.hpp"
 
 namespace tf {
+
+/// @ingroup core_ranges
+/// @brief Concatenate multiple blocked ranges into a single buffer.
+///
+/// Copies blocks from all input ranges into one output buffer.
+/// If all ranges have the same static block size, returns a blocked_buffer.
+/// Otherwise returns an offset_block_buffer for variable-length blocks.
+///
+/// @tparam Index The index type.
+/// @tparam Range0 The first range type.
+/// @tparam Range1 The second range type.
+/// @tparam Ranges Additional range types.
+/// @param r0 The first input range.
+/// @param r1 The second input range.
+/// @param rs Additional input ranges.
+/// @return A blocked_buffer or offset_block_buffer containing all blocks.
 template <typename Index, typename Range0, typename Range1, typename... Ranges>
 auto concatenated_blocked_ranges(const Range0 &r0, const Range1 &r1,
                                  const Ranges &...rs) {

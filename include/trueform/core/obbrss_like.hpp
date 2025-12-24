@@ -13,6 +13,7 @@
 
 namespace tf {
 
+/// @ingroup core_primitives
 /// @brief Wrapper for combined OBB and RSS bounding volume.
 ///
 /// Provides a unified interface for accessing both OBB and RSS properties
@@ -123,6 +124,19 @@ auto wrap_like(const obbrss_like<V, Policy> &&, T &&t) {
   return obbrss_like<V, std::decay_t<T>>{static_cast<T &&>(t)};
 }
 
+/// @ingroup core_primitives
+/// @brief Create an OBB-RSS hybrid bounding volume.
+///
+/// @tparam Dims The coordinate dimensions.
+/// @tparam Policy0 The point policy type.
+/// @tparam Policy1 The unit vector policy type.
+/// @param obb_origin The OBB corner point.
+/// @param rss_origin The RSS rectangle corner point.
+/// @param axes The orthonormal basis axes.
+/// @param extent The OBB half-extents along each axis.
+/// @param length The RSS rectangle lengths.
+/// @param radius The RSS capsule radius.
+/// @return An @ref tf::obbrss_like bounding volume.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto make_obbrss_like(
     const point_like<Dims, Policy0> &obb_origin,

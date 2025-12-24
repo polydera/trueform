@@ -11,6 +11,14 @@
 
 namespace tf {
 
+/// @ingroup core_primitives
+/// @brief Create an empty OBB-RSS hybrid bounding volume.
+///
+/// Returns an OBBRSS with zero extents, lengths, and radius.
+///
+/// @tparam T The scalar type.
+/// @tparam Dims The coordinate dimensions.
+/// @return An empty @ref tf::obbrss.
 template <typename T, std::size_t Dims> auto make_empty_obbrss() {
   tf::obbrss<T, Dims> out{};
   for (std::size_t i = 0; i < Dims; ++i) {

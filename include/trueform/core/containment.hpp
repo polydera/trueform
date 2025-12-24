@@ -7,7 +7,18 @@
 #pragma once
 
 namespace tf {
+
+/// @ingroup core
+/// @brief Containment relationship between point and polygon.
+///
+/// Returned by @ref tf::classify when testing whether a point lies
+/// inside, outside, or on the boundary of a polygon.
 enum class containment { inside = 0, outside = 1, on_boundary = 2 };
 
-enum class strict_containment { inside = 0, outside = 1};
-}
+/// @ingroup core
+/// @brief Strict containment without boundary case.
+///
+/// Used when boundary cases are handled separately or not relevant.
+enum class strict_containment { inside = 0, outside = 1 };
+
+} // namespace tf

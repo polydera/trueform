@@ -9,6 +9,19 @@
 #include "./rss_like.hpp"
 
 namespace tf {
+
+/// @ingroup core_queries
+/// @brief Compute distance metrics between two RSS bounding volumes.
+///
+/// Returns the squared minimum distance and squared maximum distance
+/// between the two RSS volumes. Useful for BVH traversal decisions.
+///
+/// @tparam Dims The coordinate dimensions.
+/// @tparam Policy0 The first RSS policy type.
+/// @tparam Policy1 The second RSS policy type.
+/// @param rss0 The first RSS bounding volume.
+/// @param rss1 The second RSS bounding volume.
+/// @return A pair of (min distance squared, max distance squared).
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto rss_metrics(const tf::rss_like<Dims, Policy0> &rss0,
                  const tf::rss_like<Dims, Policy1> &rss1) {

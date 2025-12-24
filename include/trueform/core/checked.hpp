@@ -7,7 +7,16 @@
 #pragma once
 
 namespace tf {
+
+/// @ingroup core
+/// @brief Tag type for checked parallel execution.
+///
+/// Pass to parallel algorithms to enable additional verification
+/// or synchronization guarantees.
 struct checked_t {};
 
+/// @ingroup core
+/// @brief Tag instance for checked execution.
 static constexpr checked_t checked;
+
 } // namespace tf

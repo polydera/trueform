@@ -13,6 +13,16 @@
 #include "./vector.hpp"
 
 namespace tf {
+
+/// @ingroup core_properties
+/// @brief Construct orthonormal basis from a plane.
+///
+/// Returns two unit vectors tangent to the plane, orthogonal to
+/// the normal and to each other.
+///
+/// @tparam Policy The policy type of the plane.
+/// @param plane The input @ref tf::plane_like.
+/// @return Array of two @ref tf::unit_vector tangent to the plane.
 template <typename Policy> auto make_basis(const plane_like<3, Policy> &plane) {
   const auto &normal = plane.normal;
   tf::vector<tf::coordinate_type<Policy>, 3> t0;
@@ -29,6 +39,17 @@ template <typename Policy> auto make_basis(const plane_like<3, Policy> &plane) {
   return std::array<tf::unit_vector<tf::coordinate_type<Policy>, 3>, 2>{t0, t1};
 }
 
+/// @ingroup core_properties
+/// @brief Construct orthonormal basis from three points.
+///
+/// Creates basis vectors from p0→p1 (normalized) and the
+/// component of p0→p2 orthogonal to the first.
+///
+/// @tparam Dims The coordinate dimensions.
+/// @param p0 First point (origin).
+/// @param p1 Second point (defines first basis vector direction).
+/// @param p2 Third point (defines plane for second basis vector).
+/// @return Array of two @ref tf::unit_vector.
 template <std::size_t Dims, typename Policy0, typename Policy1,
           typename Policy2>
 auto make_basis(const tf::point_like<Dims, Policy0> &p0,

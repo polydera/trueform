@@ -114,6 +114,18 @@ auto tag_plane_impl(const plane_like<Dims, T> &plane, Base &&base) {
   }
 }
 } // namespace policy
+/// @ingroup core_policies
+/// @brief Tag a primitive with a plane.
+///
+/// Injects plane data (normal + offset) into a primitive.
+/// If primitive already has a plane, returns unchanged.
+///
+/// @tparam Dims The coordinate dimensions.
+/// @tparam T The plane policy type.
+/// @tparam Base The primitive type.
+/// @param plane The plane to inject.
+/// @param base The primitive to tag.
+/// @return The tagged primitive.
 template <std::size_t Dims, typename T, typename Base>
 auto tag_plane(const plane_like<Dims, T> &plane, Base &&base) {
   if constexpr (has_plane_policy<Base>)
@@ -137,13 +149,26 @@ auto operator|(U &&u, tag_plane_op<Dims, T> t) {
 }
 } // namespace policy
 
+/// @ingroup core_policies
+/// @brief Create plane tag operator for pipe syntax.
+/// @overload
 template <std::size_t Dims, typename T>
 auto tag_plane(plane_like<Dims, T> plane) {
   return policy::tag_plane_op<Dims, T>{std::move(plane)};
 }
 
-template <std::size_t V, typename Policy>
-auto tag_plane(const polygon<V, Policy> &poly) -> decltype(auto) {
+/// @ingroup core_policies
+/// @brief Compute and tag plane from polygon vertices.
+///
+/// If polygon has plane, returns as-is. If has normal, computes
+/// offset from first vertex. Otherwise computes from first 3 vertices.
+///
+/// @tparam Dims The coordinate dimensions.
+/// @tparam Policy The polygon's policy type.
+/// @param poly The polygon to tag.
+/// @return The polygon with plane data.
+template <std::size_t Dims, typename Policy>
+auto tag_plane(const polygon<Dims, Policy> &poly) -> decltype(auto) {
   if constexpr (has_plane_policy<Policy>) {
     return poly;
   } else if constexpr (has_normal_policy<Policy>) {
@@ -155,8 +180,11 @@ auto tag_plane(const polygon<V, Policy> &poly) -> decltype(auto) {
   }
 }
 
-template <std::size_t V, typename Policy>
-auto tag_plane(polygon<V, Policy> &poly) -> decltype(auto) {
+/// @ingroup core_policies
+/// @brief Compute and tag plane from polygon (mutable version).
+/// @overload
+template <std::size_t Dims, typename Policy>
+auto tag_plane(polygon<Dims, Policy> &poly) -> decltype(auto) {
   if constexpr (has_plane_policy<Policy>) {
     return poly;
   } else if constexpr (has_normal_policy<Policy>) {
@@ -168,9 +196,18 @@ auto tag_plane(polygon<V, Policy> &poly) -> decltype(auto) {
   }
 }
 
-template <std::size_t V, typename Policy>
-auto make_plane(const polygon<V, Policy> &poly)
-    -> tf::plane<tf::coordinate_type<Policy>, V> {
+/// @ingroup core_primitives
+/// @brief Create a plane from polygon vertices.
+///
+/// Extracts or computes the plane containing the polygon.
+///
+/// @tparam Dims The coordinate dimensions.
+/// @tparam Policy The polygon's policy type.
+/// @param poly The polygon.
+/// @return The plane containing the polygon.
+template <std::size_t Dims, typename Policy>
+auto make_plane(const polygon<Dims, Policy> &poly)
+    -> tf::plane<tf::coordinate_type<Policy>, Dims> {
   if constexpr (has_plane_policy<Policy>) {
     return poly.plane();
   } else if constexpr (has_normal_policy<Policy>) {
@@ -187,6 +224,12 @@ template <typename U> auto operator|(U &&u, tag_plane_self_op) {
   return tf::tag_plane(static_cast<U &&>(u));
 }
 } // namespace policy
+/// @ingroup core_policies
+/// @brief Create self-tagging plane operator for pipe syntax.
+///
+/// Used as `polygon | tag_plane()` to compute and tag plane.
+///
+/// @return Tag operator for use with pipe (|).
 inline auto tag_plane() { return policy::tag_plane_self_op{}; }
 } // namespace tf
 namespace std {

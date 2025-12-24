@@ -80,6 +80,17 @@ template <std::size_t Dims, typename RealT, typename Base>
 struct static_size<policy::tag_id_frame<Dims, RealT, Base>>
     : static_size<Base> {};
 
+/// @ingroup core_policies
+/// @brief Tag a primitive with an identity frame.
+///
+/// If the primitive already has a frame, returns it unchanged.
+/// Otherwise wraps it with an identity (no-op) transformation.
+///
+/// @tparam T The scalar type.
+/// @tparam Dims The coordinate dimensions.
+/// @tparam Base The primitive type.
+/// @param base The primitive to tag.
+/// @return The tagged primitive.
 template <typename T, std::size_t Dims, typename Base>
 auto tag_identity_frame(Base &&base) {
   if constexpr (has_frame_policy<Base>)
@@ -104,6 +115,12 @@ auto operator|(U &&u, tag_id_frame_op<Dims, T>) {
 }
 } // namespace policy
 
+/// @ingroup core_policies
+/// @brief Create identity frame tag operator for pipe syntax.
+///
+/// @tparam T The scalar type.
+/// @tparam Dims The coordinate dimensions.
+/// @return Tag operator for use with pipe (|).
 template <typename T, std::size_t Dims> auto tag_identity_frame() {
   return policy::tag_id_frame_op<Dims, T>{};
 }
@@ -212,6 +229,18 @@ auto tag_frame_impl(const frame_like<Dims, Policy> &frame, Base &&base) {
 }
 } // namespace policy
 
+/// @ingroup core_policies
+/// @brief Tag a primitive with a coordinate frame.
+///
+/// Injects frame data for coordinate transformations.
+/// If primitive already has a non-trivial frame, returns unchanged.
+///
+/// @tparam Dims The coordinate dimensions.
+/// @tparam T The frame policy type.
+/// @tparam Base The primitive type.
+/// @param frame The frame to inject.
+/// @param base The primitive to tag.
+/// @return The tagged primitive.
 template <std::size_t Dims, typename T, typename Base>
 auto tag_frame(const frame_like<Dims, T> &frame, Base &&base) {
   if constexpr (has_non_trivial_frame_policy<Base>)
@@ -235,25 +264,44 @@ auto operator|(U &&u, tag_frame_op<Dims, T> t) {
 }
 } // namespace policy
 
+/// @ingroup core_policies
+/// @brief Create frame tag operator for pipe syntax.
+/// @overload
 template <std::size_t Dims, typename T>
 auto tag_frame(frame_like<Dims, T> frame) {
   return policy::tag_frame_op<Dims, T>{std::move(frame)};
 }
 
+/// @ingroup core_policies
+/// @brief Tag with a frame (convenience wrapper).
+///
+/// @tparam Dims The coordinate dimensions.
+/// @tparam T The frame policy type.
+/// @param frame The frame to tag with.
+/// @return Tag operator for pipe syntax.
 template <std::size_t Dims, typename T> auto tag(frame_like<Dims, T> frame) {
   return policy::tag_frame_op<Dims, T>{std::move(frame)};
 }
 
+/// @ingroup core_policies
+/// @brief Tag with a transformation (wraps in frame).
+/// @overload
 template <std::size_t Dims, typename T>
 auto tag(transformation_like<Dims, T> transformation) {
   return tf::tag(tf::make_frame(transformation));
 }
 
+/// @ingroup core_policies
+/// @brief Tag with identity frame.
+/// @overload
 template <typename RealT, std::size_t Dims>
 auto tag(identity_frame<RealT, Dims>) {
   return tag_identity_frame<RealT, Dims>();
 }
 
+/// @ingroup core_policies
+/// @brief Tag with identity transformation.
+/// @overload
 template <typename RealT, std::size_t Dims>
 auto tag(identity_transformation<RealT, Dims>) {
   return tag_identity_frame<RealT, Dims>();

@@ -131,13 +131,26 @@ auto operator|(U &&u, tag_normal_op<Dims, T> t) {
 }
 } // namespace policy
 
+/// @ingroup core_policies
+/// @brief Create normal tag operator for pipe syntax.
+/// @overload
 template <std::size_t Dims, typename T>
 auto tag_normal(unit_vector_like<Dims, T> normal) {
   return policy::tag_normal_op<Dims, T>{std::move(normal)};
 }
 
-template <std::size_t V, typename Policy>
-auto tag_normal(const polygon<V, Policy> &poly) -> decltype(auto) {
+/// @ingroup core_policies
+/// @brief Compute and tag normal from polygon vertices.
+///
+/// If polygon already has a normal, returns as-is.
+/// Otherwise computes normal from first three vertices.
+///
+/// @tparam Dims The coordinate dimensions.
+/// @tparam Policy The polygon's policy type.
+/// @param poly The polygon to tag.
+/// @return The polygon with normal data.
+template <std::size_t Dims, typename Policy>
+auto tag_normal(const polygon<Dims, Policy> &poly) -> decltype(auto) {
   if constexpr (has_normal_policy<Policy>) {
     return poly;
   } else {
@@ -145,8 +158,11 @@ auto tag_normal(const polygon<V, Policy> &poly) -> decltype(auto) {
   }
 }
 
-template <std::size_t V, typename Policy>
-auto tag_normal(polygon<V, Policy> &poly) -> decltype(auto) {
+/// @ingroup core_policies
+/// @brief Compute and tag normal from polygon (mutable version).
+/// @overload
+template <std::size_t Dims, typename Policy>
+auto tag_normal(polygon<Dims, Policy> &poly) -> decltype(auto) {
   if constexpr (has_normal_policy<Policy>) {
     return poly;
   } else {
@@ -154,6 +170,16 @@ auto tag_normal(polygon<V, Policy> &poly) -> decltype(auto) {
   }
 }
 
+/// @ingroup core_properties
+/// @brief Extract or compute normal from polygon.
+///
+/// Returns the tagged normal if present, otherwise computes
+/// from first three vertices.
+///
+/// @tparam Dims The coordinate dimensions.
+/// @tparam Policy The polygon's policy type.
+/// @param p The polygon.
+/// @return The unit normal vector.
 template <std::size_t Dims, typename Policy>
 auto make_normal(const polygon<Dims, Policy> &p)
     -> tf::unit_vector<tf::coordinate_type<Policy>, Dims> {
@@ -170,6 +196,12 @@ template <typename U> auto operator|(U &&u, tag_normal_self_op) {
 return tf::tag_normal(static_cast<U &&>(u));
 }
 } // namespace policy
+/// @ingroup core_policies
+/// @brief Create self-tagging normal operator for pipe syntax.
+///
+/// Used as `polygon | tag_normal()` to compute and tag normal.
+///
+/// @return Tag operator for use with pipe (|).
 inline auto tag_normal() { return policy::tag_normal_self_op{}; }
 
 } // namespace tf

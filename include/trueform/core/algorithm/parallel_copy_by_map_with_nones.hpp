@@ -9,6 +9,21 @@
 #include "./parallel_apply.hpp"
 
 namespace tf {
+
+/// @ingroup core_algorithms
+/// @brief Parallel scatter copy using index map with none values.
+///
+/// Copies elements from src to dst at indices specified by map,
+/// skipping elements where map equals none.
+///
+/// @tparam Range0 The source range type.
+/// @tparam Range1 The destination range type.
+/// @tparam Range2 The map range type.
+/// @tparam Index The index type.
+/// @param src Source elements.
+/// @param dst Destination range.
+/// @param map Index map (src[i] -> dst[map[i]]).
+/// @param none Value indicating elements to skip.
 template <typename Range0, typename Range1, typename Range2, typename Index>
 auto parallel_copy_by_map_with_nones(const Range0 &src, Range1 &&dst,
                                      const Range2 &map, Index none) {
@@ -19,6 +34,9 @@ auto parallel_copy_by_map_with_nones(const Range0 &src, Range1 &&dst,
   });
 }
 
+/// @ingroup core_algorithms
+/// @brief Parallel scatter copy with default none value (map.size()).
+/// @overload
 template <typename Range0, typename Range1, typename Range2>
 auto parallel_copy_by_map_with_nones(const Range0 &src, Range1 &&dst,
                                      const Range2 &map) {

@@ -12,6 +12,16 @@
 #include "./parallel_iota.hpp"
 #include "tbb/parallel_sort.h"
 namespace tf {
+
+/// @ingroup core_algorithms
+/// @brief Reorder index map to preserve original element order.
+///
+/// Sorts kept_ids by their original indices so the output
+/// maintains stable ordering relative to the input.
+///
+/// @tparam Index The index type.
+/// @param src Index map to stabilize (modified in-place).
+/// @param none_tag Value indicating unmapped elements.
 template <typename Index>
 auto make_index_map_stable(tf::index_map_buffer<Index> &src, Index none_tag) {
   // [b, c, a] -> [a, b, c]

@@ -11,6 +11,18 @@
 
 namespace tf {
 
+/// @ingroup core_algorithms
+/// @brief Build equivalence class index map (dense).
+///
+/// Creates an index map where equivalent elements map to the same ID.
+/// The representative of each class is the smallest ID in that class.
+///
+/// @tparam PairRange Range of (a, b) pairs.
+/// @tparam Index The index type.
+/// @param identified_pairs Pairs of equivalent element IDs.
+/// @param n_ids Total number of element IDs.
+/// @param im Output index map buffer.
+/// @return The number of equivalence classes.
 template <typename PairRange, typename Index>
 auto make_dense_equivalence_class_index_map(const PairRange &identified_pairs,
                                             std::size_t n_ids,
@@ -72,6 +84,9 @@ auto make_dense_equivalence_class_index_map(const PairRange &identified_pairs,
   return current_id;
 }
 
+/// @ingroup core_algorithms
+/// @brief Build and return equivalence class index map (dense).
+/// @overload
 template <typename Index, typename PairRange>
 auto make_dense_equivalence_class_index_map(const PairRange &identified_pairs,
                                             std::size_t n_ids) {
@@ -80,6 +95,17 @@ auto make_dense_equivalence_class_index_map(const PairRange &identified_pairs,
   return im;
 }
 
+/// @ingroup core_algorithms
+/// @brief Build equivalence class index map (sparse).
+///
+/// Only elements in pairs are mapped; others remain unmapped.
+///
+/// @tparam PairRange Range of (a, b) pairs.
+/// @tparam Index The index type.
+/// @param identified_pairs Pairs of equivalent element IDs.
+/// @param n_ids Total number of element IDs.
+/// @param im Output index map buffer.
+/// @return The number of equivalence classes.
 template <typename PairRange, typename Index>
 auto make_sparse_equivalence_class_index_map(const PairRange &identified_pairs,
                                              std::size_t n_ids,
@@ -138,6 +164,9 @@ auto make_sparse_equivalence_class_index_map(const PairRange &identified_pairs,
   return current_id;
 }
 
+/// @ingroup core_algorithms
+/// @brief Build and return equivalence class index map (sparse).
+/// @overload
 template <typename Index, typename PairRange>
 auto make_sparse_equivalence_class_index_map(const PairRange &identified_pairs,
                                              std::size_t n_ids) {

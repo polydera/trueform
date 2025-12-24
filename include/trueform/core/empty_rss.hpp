@@ -11,6 +11,14 @@
 
 namespace tf {
 
+/// @ingroup core_primitives
+/// @brief Create an empty rectangle swept sphere.
+///
+/// Returns an RSS with zero lengths and radius.
+///
+/// @tparam T The scalar type.
+/// @tparam Dims The coordinate dimensions.
+/// @return An empty @ref tf::rss.
 template <typename T, std::size_t Dims> auto make_empty_rss() {
   tf::rss<T, Dims> out{};
   for (std::size_t i = 0; i < Dims; ++i) {

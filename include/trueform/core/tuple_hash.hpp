@@ -10,6 +10,13 @@
 #include <functional>
 #include <tuple>
 namespace tf {
+
+/// @ingroup core
+/// @brief Hash functor for tuple-like types.
+///
+/// Combines element hashes using join_hashes.
+///
+/// @tparam Ts The tuple element types.
 template <typename... Ts> class tuple_hash {
 public:
   template <typename T> auto operator()(const T &tuple_like) const {

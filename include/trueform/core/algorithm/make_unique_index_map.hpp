@@ -11,6 +11,21 @@
 #include "tbb/parallel_sort.h"
 
 namespace tf {
+
+/// @ingroup core_algorithms
+/// @brief Create index map for unique elements.
+///
+/// Builds a mapping where duplicate elements map to the same ID.
+/// Uses parallel sort for efficiency on large data.
+///
+/// @tparam Range The input data range type.
+/// @tparam Index The index type.
+/// @tparam CompareEq Equality comparison predicate.
+/// @tparam CompareLess Less-than comparison predicate.
+/// @param data Input data to deduplicate.
+/// @param im Output index map buffer.
+/// @param eq_f Equality predicate.
+/// @param less_f Ordering predicate.
 template <typename Range, typename Index, typename CompareEq,
           typename CompareLess>
 auto make_unique_index_map(const Range &data, tf::index_map_buffer<Index> &im,
@@ -43,6 +58,21 @@ auto make_unique_index_map(const Range &data, tf::index_map_buffer<Index> &im,
                       im.kept_ids().end());
 }
 
+/// @ingroup core_algorithms
+/// @brief Create index map and compact data to unique elements.
+///
+/// Similar to make_unique_index_map but also removes duplicates
+/// from the input data range in-place.
+///
+/// @tparam Range The input data range type.
+/// @tparam Index The index type.
+/// @tparam CompareEq Equality comparison predicate.
+/// @tparam CompareLess Less-than comparison predicate.
+/// @param data Input data to deduplicate (modified in-place).
+/// @param im Output index map buffer.
+/// @param eq_f Equality predicate.
+/// @param less_f Ordering predicate.
+/// @return Iterator to the new end of unique data.
 template <typename Range, typename Index, typename CompareEq,
           typename CompareLess>
 auto make_unique_and_index_map(Range &data, tf::index_map_buffer<Index> &im,
@@ -85,11 +115,17 @@ auto make_unique_and_index_map(Range &data, tf::index_map_buffer<Index> &im,
   return write_to_data;
 }
 
+/// @ingroup core_algorithms
+/// @brief Create index map for unique elements with default comparators.
+/// @overload
 template <typename Range, typename Index>
 auto make_unique_index_map(const Range &data, tf::index_map_buffer<Index> &im) {
   return make_unique_index_map(data, im, std::equal_to{}, std::less<>{});
 }
 
+/// @ingroup core_algorithms
+/// @brief Create index map and compact data with default comparators.
+/// @overload
 template <typename Range, typename Index>
 auto make_unique_and_index_map(Range &data, tf::index_map_buffer<Index> &im) {
   return make_unique_and_index_map(data, im, std::equal_to{}, std::less<>{});

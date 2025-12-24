@@ -9,6 +9,24 @@
 #include "tbb/flow_graph.h"
 #include <thread>
 namespace tf {
+
+/// @ingroup core_algorithms
+/// @brief Parallel reduction with ordered aggregation.
+///
+/// Performs parallel work on blocks but aggregates results in order.
+/// Useful when aggregation must be deterministic.
+///
+/// @tparam Range The input range type.
+/// @tparam Result The result type.
+/// @tparam LocalResult The per-block result type.
+/// @tparam F0 Block task function type.
+/// @tparam F1 Aggregation function type.
+/// @param data Input data range.
+/// @param result Output result (modified in-place).
+/// @param local_result Initial value for per-block results.
+/// @param task Function to process each block.
+/// @param aggregate Function to combine results in order.
+/// @param n_blocks Number of parallel blocks.
 template <typename Range, typename Result, typename LocalResult, typename F0,
           typename F1>
 auto blocked_reduce_sequenced_aggregate(
@@ -74,6 +92,9 @@ auto blocked_reduce_sequenced_aggregate(
   g.wait_for_all();
 }
 
+/// @ingroup core_algorithms
+/// @brief Parallel reduction with ordered aggregation (inferred local result).
+/// @overload
 template <typename Range, typename Result, typename F0, typename F1>
 auto blocked_reduce_sequenced_aggregate(
     const Range &data, Result &&result, F0 task, F1 aggregate,

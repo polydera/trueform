@@ -10,6 +10,17 @@
 
 namespace tf {
 
+/// @ingroup core_algorithms
+/// @brief Build equivalence class map from identified pairs (dense).
+///
+/// Uses union-find to group elements by equivalence pairs.
+/// All elements get mapped, even if not in any pair.
+///
+/// @tparam PairRange Range of (a, b) pairs.
+/// @tparam MapRange Output map range type.
+/// @param identified_pairs Pairs of equivalent element IDs.
+/// @param map Output map from element ID to class ID.
+/// @return The number of equivalence classes.
 template <typename PairRange, typename MapRange>
 auto make_dense_equivalence_class_map(const PairRange &identified_pairs,
                                       MapRange &map) {
@@ -64,6 +75,17 @@ auto make_dense_equivalence_class_map(const PairRange &identified_pairs,
   return current_id;
 }
 
+/// @ingroup core_algorithms
+/// @brief Build equivalence class map from identified pairs (sparse).
+///
+/// Only elements appearing in pairs get mapped.
+/// Elements not in any pair remain unmapped (none tag).
+///
+/// @tparam PairRange Range of (a, b) pairs.
+/// @tparam MapRange Output map range type.
+/// @param identified_pairs Pairs of equivalent element IDs.
+/// @param map Output map from element ID to class ID.
+/// @return The number of equivalence classes.
 template <typename PairRange, typename MapRange>
 auto make_sparse_equivalence_class_map(const PairRange &identified_pairs,
                                        MapRange &map) {

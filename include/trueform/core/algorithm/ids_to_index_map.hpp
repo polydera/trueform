@@ -14,6 +14,16 @@
 
 namespace tf {
 
+/// @ingroup core_algorithms
+/// @brief Create an index map from a list of IDs.
+///
+/// Builds a mapping from original IDs to compact sequential indices.
+///
+/// @tparam Index The index type.
+/// @tparam Range The ID range type.
+/// @param ids The list of kept IDs.
+/// @param mapping Output index map buffer.
+/// @param total_elements Total number of elements.
 template <typename Index, typename Range>
 auto ids_to_index_map(const Range &ids, tf::index_map_buffer<Index> &mapping,
                       Index total_elements) {
@@ -27,6 +37,9 @@ auto ids_to_index_map(const Range &ids, tf::index_map_buffer<Index> &mapping,
                     tf::make_indirect_range(mapping.kept_ids(), mapping.f()));
 }
 
+/// @ingroup core_algorithms
+/// @brief Create an index map with custom offset and empty tag.
+/// @overload
 template <typename Index, typename Range>
 auto ids_to_index_map(const Range &ids, tf::index_map_buffer<Index> &mapping,
                       Index total_elements, Index offset, Index empty_tag) {
@@ -41,6 +54,9 @@ auto ids_to_index_map(const Range &ids, tf::index_map_buffer<Index> &mapping,
       tf::make_indirect_range(mapping.kept_ids(), mapping.f()));
 }
 
+/// @ingroup core_algorithms
+/// @brief Create and return an index map from IDs.
+/// @overload
 template <typename Index, typename Range>
 auto ids_to_index_map(const Range &ids, Index total_elements) {
   tf::index_map_buffer<Index> mapping;

@@ -7,6 +7,16 @@
 #pragma once
 
 namespace tf {
+
+/// @ingroup core
+/// @brief Tag type indicating absence of a value.
+///
+/// Used as a default template parameter to trigger type deduction
+/// or indicate "no value provided".
 struct none_t {};
+
+/// @ingroup core
+/// @brief Tag instance for absence of value.
 inline constexpr none_t none;
+
 } // namespace tf

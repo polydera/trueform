@@ -6,5 +6,11 @@
  */
 #pragma once
 namespace tf {
+
+/// @ingroup core
+/// @brief Iteration direction for algorithms.
+///
+/// Used to specify forward or reverse traversal in range-based algorithms.
 enum class direction { forward, reverse };
-}
+
+} // namespace tf

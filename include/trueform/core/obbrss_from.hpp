@@ -689,7 +689,15 @@ auto obbrss_from(const Range &points, dispatch_t<tf::point_like<Dims, Policy>>) 
 
 } // namespace core
 
-// Convenience overloads in tf namespace
+/// @ingroup core_primitives
+/// @brief Create OBBRSS bounding volume from polygons.
+///
+/// Computes a tight-fitting OBB-RSS hybrid bounding volume using
+/// covariance-based principal component analysis.
+///
+/// @tparam Policy The polygons' policy type.
+/// @param polys The polygon mesh.
+/// @return An @ref tf::obbrss bounding volume.
 template <typename Policy>
 auto obbrss_from(const tf::polygons<Policy> &polys) {
   if (!polys.size())
@@ -698,6 +706,9 @@ auto obbrss_from(const tf::polygons<Policy> &polys) {
   return core::obbrss_from(polys, core::dispatch_element(polys));
 }
 
+/// @ingroup core_primitives
+/// @brief Create OBBRSS bounding volume from segments.
+/// @overload
 template <typename Policy>
 auto obbrss_from(const tf::segments<Policy> &segs) {
   if (!segs.size())
@@ -706,6 +717,9 @@ auto obbrss_from(const tf::segments<Policy> &segs) {
   return core::obbrss_from(segs, core::dispatch_element(segs));
 }
 
+/// @ingroup core_primitives
+/// @brief Create OBBRSS bounding volume from points.
+/// @overload
 template <typename Policy>
 auto obbrss_from(const tf::points<Policy> &pts) {
   if (!pts.size())

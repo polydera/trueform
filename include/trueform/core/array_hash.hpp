@@ -9,6 +9,14 @@
 #include <functional>
 #include <tuple>
 namespace tf {
+
+/// @ingroup core
+/// @brief Hash functor for std::array.
+///
+/// Combines element hashes using join_hashes.
+///
+/// @tparam T The array element type.
+/// @tparam Size The array size.
 template <typename T, std::size_t Size> class array_hash {
 public:
   auto operator()(const std::array<T, Size> &array) const {

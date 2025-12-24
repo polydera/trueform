@@ -15,6 +15,15 @@
 
 namespace tf {
 
+/// @ingroup core_algorithms
+/// @brief Compute SVD of a 3x3 symmetric matrix.
+///
+/// For symmetric matrices, SVD is derived from eigendecomposition:
+/// singular values are absolute eigenvalues, sorted descending.
+///
+/// @tparam T The scalar type.
+/// @param mat The symmetric 3x3 matrix.
+/// @return A tuple of (singular values, left singular vectors U, right singular vectors V).
 template <typename T>
 auto svd_of_symmetric(const std::array<std::array<T, 3>, 3> &mat) {
   using std::abs;
@@ -65,6 +74,9 @@ auto svd_of_symmetric(const std::array<std::array<T, 3>, 3> &mat) {
   return std::make_tuple(s_sorted, U_sorted, V_sorted);
 }
 
+/// @ingroup core_algorithms
+/// @brief Compute SVD of a 2x2 symmetric matrix.
+/// @overload
 template <typename T>
 auto svd_of_symmetric(const std::array<std::array<T, 2>, 2> &mat) {
   using std::abs;

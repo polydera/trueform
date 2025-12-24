@@ -10,6 +10,7 @@
 
 namespace tf {
 
+/// @cond INTERNAL
 namespace core {
 
 inline float fast_sqrt(float x) {
@@ -33,7 +34,17 @@ inline double fast_sqrt(double x) {
 }
 
 } // namespace core
+/// @endcond
 
+/// @ingroup core_algorithms
+/// @brief Compute square root with SIMD optimization.
+///
+/// Uses platform-specific SIMD intrinsics (SSE/NEON) when available
+/// for float/double types, falls back to std::sqrt otherwise.
+///
+/// @tparam T The numeric type.
+/// @param x The value to compute square root of.
+/// @return The square root of x.
 template <typename T> auto sqrt(T x) {
   if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double>) {
     return core::fast_sqrt(x);

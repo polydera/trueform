@@ -33,7 +33,23 @@ template <> struct epsilon2<double> {
   }
 };
 } // namespace core
+
+/// @ingroup core
+/// @brief Geometric tolerance for floating-point comparisons.
+///
+/// Square root of machine epsilon, suitable for distance and
+/// geometric comparisons where errors accumulate.
+///
+/// @tparam T The floating-point type (float or double).
 template <typename T> inline constexpr T epsilon = core::epsilon<T>::make();
 
+/// @ingroup core
+/// @brief Machine epsilon for floating-point types.
+///
+/// Standard machine epsilon (1 ULP at 1.0). Use for precise
+/// numerical comparisons.
+///
+/// @tparam T The floating-point type (float or double).
 template <typename T> inline constexpr T epsilon2 = core::epsilon2<T>::make();
+
 } // namespace tf

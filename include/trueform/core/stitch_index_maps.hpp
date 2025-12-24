@@ -9,6 +9,15 @@
 #include "./direction.hpp"
 
 namespace tf {
+
+/// @ingroup core_algorithms
+/// @brief Index maps for stitching two polygon meshes.
+///
+/// Contains mappings for points and polygons from both input meshes,
+/// plus any newly created points during stitching. Tracks the
+/// iteration direction used for each mesh's boundary.
+///
+/// @tparam Index The index type.
 template <typename Index> struct stitch_index_maps {
   tf::index_map_buffer<Index> points0;
   Index points0_offset;

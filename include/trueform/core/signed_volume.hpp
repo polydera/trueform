@@ -13,6 +13,17 @@
 #include "./transformed.hpp"
 
 namespace tf {
+
+/// @ingroup core_queries
+/// @brief Compute signed volume of a closed 3D polygon mesh.
+///
+/// Uses the divergence theorem to compute the volume enclosed by a
+/// closed mesh. Positive volume indicates outward-facing normals
+/// (right-hand rule), negative indicates inward-facing normals.
+///
+/// @tparam Policy The polygon mesh policy type.
+/// @param polygons The closed polygon mesh.
+/// @return The signed volume (positive for outward normals).
 template <typename Policy>
 auto signed_volume(const tf::polygons<Policy> &polygons) {
   constexpr auto Dims = tf::coordinate_dims_v<Policy>;

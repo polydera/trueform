@@ -9,6 +9,8 @@
 #include <utility>
 
 namespace tf {
+
+/// @cond INTERNAL
 namespace detail {
 template <typename F, typename Tuple, std::size_t... Is>
 auto apply(F &&f, std::index_sequence<Is...>, Tuple &&tuple) -> decltype(auto) {
@@ -17,7 +19,18 @@ auto apply(F &&f, std::index_sequence<Is...>, Tuple &&tuple) -> decltype(auto) {
 }
 
 } // namespace detail
+/// @endcond
 
+/// @ingroup core_algorithms
+/// @brief Apply a function to tuple elements as arguments.
+///
+/// Unpacks a tuple and calls the function with its elements as arguments.
+///
+/// @tparam F The callable type.
+/// @tparam Tuple The tuple type.
+/// @param f The function to invoke.
+/// @param tuple The tuple to unpack.
+/// @return The result of calling f with tuple elements.
 template <typename F, typename Tuple>
 auto apply(F &&f, Tuple &&tuple) -> decltype(auto) {
   constexpr std::size_t N = std::tuple_size_v<Tuple>;

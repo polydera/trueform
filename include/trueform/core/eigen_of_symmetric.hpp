@@ -10,6 +10,15 @@
 
 namespace tf {
 
+/// @ingroup core_algorithms
+/// @brief Compute eigenvalues and eigenvectors of a 3x3 symmetric matrix.
+///
+/// Uses analytical closed-form solution for efficiency.
+/// Eigenvalues are returned in ascending order.
+///
+/// @tparam T The scalar type.
+/// @param mat The symmetric 3x3 matrix.
+/// @return A pair of (eigenvalues array, eigenvectors array).
 template <typename T>
 auto eigen_of_symmetric(const std::array<std::array<T, 3>, 3> &mat) {
   auto eigenvalues = core::eigen_values_of(mat);
@@ -17,6 +26,9 @@ auto eigen_of_symmetric(const std::array<std::array<T, 3>, 3> &mat) {
   return std::make_pair(eigenvalues, eigenvectors);
 }
 
+/// @ingroup core_algorithms
+/// @brief Compute eigenvalues and eigenvectors of a 2x2 symmetric matrix.
+/// @overload
 template <typename T>
 auto eigen_of_symmetric(const std::array<std::array<T, 2>, 2> &mat) {
   auto eigenvalues = core::eigen_values_of(mat);

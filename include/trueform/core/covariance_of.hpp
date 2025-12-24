@@ -194,24 +194,45 @@ auto covariance_of(const Range &segments, const tf::segment<Dims, Policy> &) {
 }
 } // namespace core
 
+/// @ingroup core_properties
+/// @brief Compute covariance matrix of a point set.
+///
+/// Returns the centroid and covariance matrix of the point cloud.
+/// Used for PCA-based algorithms like OBB computation.
+///
+/// @tparam Policy The points policy type.
+/// @param pts The point set.
+/// @return A pair of (centroid, covariance matrix).
 template <typename Policy> auto covariance_of(const tf::points<Policy> &pts) {
   return core::covariance_of(pts, pts[0]);
 }
 
+/// @ingroup core_properties
+/// @brief Compute covariance matrix of a vector set.
+/// @overload
 template <typename Policy> auto covariance_of(const tf::vectors<Policy> &vcs) {
   return core::covariance_of(vcs, vcs[0]);
 }
 
+/// @ingroup core_properties
+/// @brief Compute covariance matrix of a unit vector set.
+/// @overload
 template <typename Policy>
 auto covariance_of(const tf::unit_vectors<Policy> &vcs) {
   return core::covariance_of(tf::make_range(vcs), vcs[0]);
 }
 
+/// @ingroup core_properties
+/// @brief Compute covariance matrix of segment endpoints.
+/// @overload
 template <typename Policy>
 auto covariance_of(const tf::segments<Policy> &segs) {
   return core::covariance_of(segs, segs[0]);
 }
 
+/// @ingroup core_properties
+/// @brief Compute covariance matrix of polygon vertices.
+/// @overload
 template <typename Policy>
 auto covariance_of(const tf::polygons<Policy> &polys) {
   return core::covariance_of(polys, polys[0]);

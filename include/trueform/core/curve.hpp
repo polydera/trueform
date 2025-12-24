@@ -8,7 +8,17 @@
 
 #include "./base/curve.hpp"
 #include "./static_size.hpp"
+
 namespace tf {
+
+/// @ingroup core_primitives
+/// @brief A single curve as a sequence of points.
+///
+/// Wraps a policy providing indexed access to curve points.
+/// Supports structured bindings when the curve has static size.
+///
+/// @tparam Dims The coordinate dimensions.
+/// @tparam Policy The underlying curve policy.
 template <std::size_t Dims, typename Policy> class curve : public Policy {
 private:
   using base_t = Policy;
@@ -76,6 +86,15 @@ auto get(tf::curve<Dims, Policy> &&t) -> decltype(auto) {
 template <std::size_t Dims, typename Policy>
 struct static_size<tf::curve<Dims, Policy>> : static_size<Policy> {};
 
+/// @ingroup core_primitives
+/// @brief Create a curve from point indices and points.
+///
+/// @tparam V The static size (number of points in curve).
+/// @tparam Range0 The index range type.
+/// @tparam Range1 The points range type.
+/// @param ids Point indices defining the curve path.
+/// @param points The point data.
+/// @return A @ref tf::curve.
 template <std::size_t V, typename Range0, typename Range1>
 auto make_curve(Range0 &&ids, Range1 &&points) {
   auto policy = tf::core::make_curve<V>(static_cast<Range0 &&>(ids),
@@ -84,12 +103,18 @@ auto make_curve(Range0 &&ids, Range1 &&points) {
       std::move(policy));
 }
 
+/// @ingroup core_primitives
+/// @brief Create a curve from a sequence of points.
+/// @overload
 template <std::size_t V, typename Range> auto make_curve(Range &&points) {
   auto policy = tf::core::make_curve<V>(static_cast<Range &&>(points));
   return tf::curve<tf::static_size_v<decltype(points[0])>, decltype(policy)>(
       std::move(policy));
 }
 
+/// @ingroup core_primitives
+/// @brief Create a curve with dynamic size.
+/// @overload
 template <typename Range0, typename Range1>
 auto make_curve(Range0 &&ids, Range1 &&points) {
   auto policy = tf::core::make_curve(static_cast<Range0 &&>(ids),
@@ -98,6 +123,9 @@ auto make_curve(Range0 &&ids, Range1 &&points) {
       std::move(policy));
 }
 
+/// @ingroup core_primitives
+/// @brief Create a curve with dynamic size from points.
+/// @overload
 template <typename Range> auto make_curve(Range &&points) {
   auto policy = tf::core::make_curve(static_cast<Range &&>(points));
   return tf::curve<tf::static_size_v<decltype(points[0])>, decltype(policy)>(
