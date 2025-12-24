@@ -13,6 +13,21 @@
 #include "./soup/segments.hpp"
 
 namespace tf {
+
+/// @ingroup clean
+/// @brief Remove duplicate/degenerate segments with tolerance.
+///
+/// Cleans @ref tf::segments by removing duplicate edges, zero-length edges,
+/// and points not referenced by any edge. Index type is auto-deduced from
+/// segments unless specified. For soups, returns indexed geometry.
+///
+/// @tparam Index The index type (auto-deduced if not specified).
+/// @tparam Policy The policy type of the segments.
+/// @param segments The input @ref tf::segments.
+/// @param tolerance Points within this distance are considered duplicates.
+/// @return A @ref tf::segments_buffer with cleaned geometry.
+///
+/// @see tf::make_clean_index_map for low-level index map generation.
 template <typename Index = tf::none_t, typename Policy>
 auto cleaned(const tf::segments<Policy> &segments,
              tf::coordinate_type<Policy> tolerance) {
@@ -34,6 +49,9 @@ auto cleaned(const tf::segments<Policy> &segments,
   }
 }
 
+/// @ingroup clean
+/// @brief Remove exact duplicate/degenerate segments.
+/// @overload
 template <typename Index = tf::none_t, typename Policy>
 auto cleaned(const tf::segments<Policy> &segments) {
   if constexpr (std::is_same_v<Index, tf::none_t> && tf::is_soup<Policy>) {
@@ -53,6 +71,11 @@ auto cleaned(const tf::segments<Policy> &segments) {
   }
 }
 
+/// @ingroup clean
+/// @brief Remove duplicate/degenerate segments with tolerance and return index maps.
+/// @overload
+///
+/// @return Tuple of (@ref tf::segments_buffer, edge @ref tf::index_map_buffer, point @ref tf::index_map_buffer).
 template <typename Index = tf::none_t, typename Policy>
 auto cleaned(const tf::segments<Policy> &segments,
              tf::coordinate_type<Policy> tolerance, tf::return_index_map_t) {
@@ -69,6 +92,9 @@ auto cleaned(const tf::segments<Policy> &segments,
                          std::move(point_im));
 }
 
+/// @ingroup clean
+/// @brief Remove exact duplicate/degenerate segments and return index maps.
+/// @overload
 template <typename Index = tf::none_t, typename Policy>
 auto cleaned(const tf::segments<Policy> &segments, tf::return_index_map_t) {
   static_assert(!tf::is_soup<Policy>, "Soups cannot return index maps.");

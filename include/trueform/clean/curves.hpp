@@ -49,6 +49,21 @@ auto extract_edges_from_curves(const tf::curves<Policy> &curves) {
 
 } // namespace clean::detail
 
+/// @ingroup clean
+/// @brief Remove duplicates from curves with tolerance and return index map.
+///
+/// Cleans @ref tf::curves by merging duplicate points within tolerance,
+/// removing degenerate edges, and reconnecting into continuous paths.
+/// Only returns point index map (edge topology changes during reconnection).
+///
+/// @tparam Index The index type (auto-deduced if not specified).
+/// @tparam Policy The policy type of the curves.
+/// @param curves The input @ref tf::curves.
+/// @param tolerance Points within this distance are considered duplicates.
+/// @param tag Pass @ref tf::return_index_map to get the mapping.
+/// @return Tuple of (@ref tf::curves_buffer, point @ref tf::index_map_buffer).
+///
+/// @see tf::reindexed for applying the map to associated data.
 template <typename Index = tf::none_t, typename Policy>
 auto cleaned(const tf::curves<Policy> &curves,
              tf::coordinate_type<Policy> tolerance, tf::return_index_map_t) {
@@ -88,6 +103,9 @@ auto cleaned(const tf::curves<Policy> &curves,
   }
 }
 
+/// @ingroup clean
+/// @brief Remove exact duplicates from curves and return index map.
+/// @overload
 template <typename Index = tf::none_t, typename Policy>
 auto cleaned(const tf::curves<Policy> &curves, tf::return_index_map_t) {
   if constexpr (std::is_same_v<Index, tf::none_t>) {
@@ -125,6 +143,9 @@ auto cleaned(const tf::curves<Policy> &curves, tf::return_index_map_t) {
   }
 }
 
+/// @ingroup clean
+/// @brief Remove duplicates from curves within tolerance.
+/// @overload
 template <typename Index = tf::none_t, typename Policy>
 auto cleaned(const tf::curves<Policy> &curves,
              tf::coordinate_type<Policy> tolerance) {
@@ -137,6 +158,9 @@ auto cleaned(const tf::curves<Policy> &curves,
   }
 }
 
+/// @ingroup clean
+/// @brief Remove exact duplicates from curves.
+/// @overload
 template <typename Index = tf::none_t, typename Policy>
 auto cleaned(const tf::curves<Policy> &curves) {
   if constexpr (std::is_same_v<Index, tf::none_t>) {

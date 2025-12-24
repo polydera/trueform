@@ -13,6 +13,22 @@
 #include "./soup/polygons.hpp"
 
 namespace tf {
+
+/// @ingroup clean
+/// @brief Remove duplicate/degenerate polygons with tolerance.
+///
+/// Cleans @ref tf::polygons by removing duplicate vertices within tolerance,
+/// degenerate faces (less than 3 unique vertices), and unreferenced points.
+/// Index type is auto-deduced unless specified. For soups, returns indexed
+/// geometry with shared vertices.
+///
+/// @tparam Index The index type (auto-deduced if not specified).
+/// @tparam Policy The policy type of the polygons.
+/// @param polygons The input @ref tf::polygons.
+/// @param tolerance Points within this distance are considered duplicates.
+/// @return A @ref tf::polygons_buffer with cleaned geometry.
+///
+/// @see tf::make_clean_index_map for low-level index map generation.
 template <typename Index = tf::none_t, typename Policy>
 auto cleaned(const tf::polygons<Policy> &polygons,
              tf::coordinate_type<Policy> tolerance) {
@@ -36,6 +52,9 @@ auto cleaned(const tf::polygons<Policy> &polygons,
   }
 }
 
+/// @ingroup clean
+/// @brief Remove exact duplicate/degenerate polygons.
+/// @overload
 template <typename Index = tf::none_t, typename Policy>
 auto cleaned(const tf::polygons<Policy> &polygons) {
   if constexpr (std::is_same_v<Index, tf::none_t> && tf::is_soup<Policy>) {
@@ -57,6 +76,11 @@ auto cleaned(const tf::polygons<Policy> &polygons) {
   }
 }
 
+/// @ingroup clean
+/// @brief Remove duplicate/degenerate polygons with tolerance and return index maps.
+/// @overload
+///
+/// @return Tuple of (@ref tf::polygons_buffer, face @ref tf::index_map_buffer, point @ref tf::index_map_buffer).
 template <typename Index = tf::none_t, typename Policy>
 auto cleaned(const tf::polygons<Policy> &polygons,
              tf::coordinate_type<Policy> tolerance, tf::return_index_map_t) {
@@ -73,6 +97,9 @@ auto cleaned(const tf::polygons<Policy> &polygons,
                          std::move(point_im));
 }
 
+/// @ingroup clean
+/// @brief Remove exact duplicate/degenerate polygons and return index maps.
+/// @overload
 template <typename Index = tf::none_t, typename Policy>
 auto cleaned(const tf::polygons<Policy> &polygons, tf::return_index_map_t) {
   static_assert(!tf::is_soup<Policy>, "Soups cannot return index maps.");

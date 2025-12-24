@@ -6,6 +6,10 @@
  */
 #pragma once
 
+/** @defgroup clean Clean Module
+ *  Remove duplicates, degenerates, and unreferenced elements.
+ */
+
 #include "./clean/curves.hpp"    // IWYU pragma: export
 #include "./clean/index_map.hpp" // IWYU pragma: export
 #include "./clean/points.hpp"    // IWYU pragma: export

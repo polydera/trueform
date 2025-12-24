@@ -14,7 +14,9 @@
 #include "./points.hpp"
 
 namespace tf {
+
 namespace clean {
+/// @cond INTERNAL
 template <typename Range0, typename Range1, typename Index>
 auto make_clean_index_map(const tf::core::segments<Range0, Range1> &segments,
                           tf::index_map_buffer<Index> &edge_map,
@@ -60,8 +62,21 @@ auto make_clean_index_map(const tf::core::segments<Range0, Range1> &segments,
       tf::checked);
   tf::update_by_mask(point_map, contained_points);
 }
+/// @endcond
 } // namespace clean
 
+/// @ingroup clean
+/// @brief Generate index maps for segment cleaning (output parameters).
+///
+/// Creates index maps for both edges and points.
+/// Use @ref tf::reindexed to apply the maps to associated data.
+///
+/// @tparam Range0 The edge range type.
+/// @tparam Range1 The point range type.
+/// @tparam Index The index type.
+/// @param segments The input @ref tf::segments.
+/// @param edge_map Output edge @ref tf::index_map_buffer to populate.
+/// @param point_map Output point @ref tf::index_map_buffer to populate.
 template <typename Range0, typename Range1, typename Index>
 auto make_clean_index_map(const tf::core::segments<Range0, Range1> &segments,
                           tf::index_map_buffer<Index> &edge_map,
@@ -72,6 +87,9 @@ auto make_clean_index_map(const tf::core::segments<Range0, Range1> &segments,
   clean::make_clean_index_map(segments, edge_map, point_map);
 }
 
+/// @ingroup clean
+/// @brief Generate index maps for segment cleaning with tolerance (output parameters).
+/// @overload
 template <typename Range0, typename Range1, typename Index>
 auto make_clean_index_map(
     const tf::core::segments<Range0, Range1> &segments,
@@ -84,6 +102,17 @@ auto make_clean_index_map(
   clean::make_clean_index_map(segments, edge_map, point_map);
 }
 
+/// @ingroup clean
+/// @brief Generate index maps for exact segment deduplication.
+///
+/// Creates index maps for both edges and points.
+/// Use @ref tf::reindexed to apply the maps to associated data.
+///
+/// @tparam Index The index type (auto-deduced if not specified).
+/// @tparam Range0 The edge range type.
+/// @tparam Range1 The point range type.
+/// @param segments The input @ref tf::segments.
+/// @return Tuple of (edge @ref tf::index_map_buffer, point @ref tf::index_map_buffer).
 template <typename Index = tf::none_t, typename Range0, typename Range1>
 auto make_clean_index_map(const tf::core::segments<Range0, Range1> &segments) {
   if constexpr (std::is_same_v<Index, tf::none_t>) {
@@ -97,6 +126,9 @@ auto make_clean_index_map(const tf::core::segments<Range0, Range1> &segments) {
   }
 }
 
+/// @ingroup clean
+/// @brief Generate index maps for segment cleaning with tolerance.
+/// @overload
 template <typename Index = tf::none_t, typename Range0, typename Range1>
 auto make_clean_index_map(const tf::core::segments<Range0, Range1> &segments,
                           tf::coordinate_type<Range1> tolerance) {
