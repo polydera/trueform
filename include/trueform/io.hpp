@@ -6,6 +6,10 @@
  */
 #pragma once
 
+/** @defgroup io IO Module
+ *  File I/O operations for reading and writing mesh data.
+ */
+
 #include "./io/read_obj.hpp"  // IWYU pragma: export
 #include "./io/read_stl.hpp"  // IWYU pragma: export
 #include "./io/write_obj.hpp" // IWYU pragma: export

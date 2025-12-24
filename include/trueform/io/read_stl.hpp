@@ -10,6 +10,16 @@
 #include "./stl_point_collector.hpp"
 
 namespace tf {
+
+/// @ingroup io
+/// @brief Read STL file into triangular polygons.
+///
+/// Reads binary or ASCII STL format automatically.
+/// Deduplicates vertices during loading via @ref tf::clean::polygon_soup.
+///
+/// @tparam Index The index type (defaults to int).
+/// @param file_path Path to the STL file.
+/// @return A @ref tf::polygons_buffer containing 3D triangular mesh with float coordinates.
 template <typename Index = int>
 auto read_stl(std::string_view file_path)
     -> tf::polygons_buffer<Index, float, 3, 3> {

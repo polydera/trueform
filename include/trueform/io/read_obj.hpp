@@ -9,7 +9,17 @@
 #include "./obj_reader.hpp"
 
 namespace tf {
-// Read OBJ file with dynamic Ngon (supports mixed polygon sizes)
+
+/// @ingroup io
+/// @brief Read OBJ file with dynamic polygon sizes.
+///
+/// Reads ASCII OBJ format with mixed polygon sizes.
+/// Converts 1-based OBJ indices to 0-based.
+/// Only reads vertex positions (ignores normals and texture coordinates).
+///
+/// @tparam Index The index type (defaults to int).
+/// @param file_path Path to the OBJ file.
+/// @return A @ref tf::polygons_buffer with dynamic face size, or empty on error.
 template <typename Index = int>
 auto read_obj(std::string_view file_path)
     -> tf::polygons_buffer<Index, float, 3, tf::dynamic_size> {
@@ -21,7 +31,16 @@ auto read_obj(std::string_view file_path)
   return out;
 }
 
-// Read OBJ file with fixed Ngon (e.g., triangles only, quads only)
+/// @ingroup io
+/// @brief Read OBJ file with fixed polygon size.
+///
+/// Reads ASCII OBJ format expecting uniform polygon size.
+/// Converts 1-based OBJ indices to 0-based.
+///
+/// @tparam Index The index type (defaults to int).
+/// @tparam Ngon The expected polygon size (e.g., 3 for triangles, 4 for quads).
+/// @param file_path Path to the OBJ file.
+/// @return A @ref tf::polygons_buffer with fixed face size, or empty on error.
 template <typename Index = int, std::size_t Ngon>
 auto read_obj(std::string_view file_path)
     -> tf::polygons_buffer<Index, float, 3, Ngon> {
@@ -33,6 +52,9 @@ auto read_obj(std::string_view file_path)
   return out;
 }
 
+/// @ingroup io
+/// @brief Read OBJ file with fixed polygon size (int index).
+/// @overload
 template <std::size_t Ngon> auto read_obj(std::string_view file_path) {
   return read_obj<int, Ngon>(file_path);
 }

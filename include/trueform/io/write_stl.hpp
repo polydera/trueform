@@ -20,20 +20,20 @@
 
 namespace tf {
 
-/// @brief Write polygons to binary STL file
-/// @tparam Policy The policy type of the polygons
-/// @param polygons The polygons to write (must be 3D triangles)
-/// @param filename Output filename (.stl will be appended if not present)
-/// @return true if write succeeded, false otherwise
+/// @ingroup io
+/// @brief Write polygons to binary STL file.
 ///
-/// The function writes binary STL format. If the polygons have a normals
-/// policy, the normals are written; otherwise zero normals are written.
-/// If the polygons have a transformation via frame policy, the transformation
-/// is applied to both vertices and normals before writing. To write
-/// untransformed geometry, use: `write_stl(polygons | tf::plain(), filename)`
+/// Writes binary STL format. If the polygons have normals,
+/// they are written; otherwise zero normals are used.
+/// When the polygons are tagged with a frame, points and normals
+/// are transformed before writing.
 ///
-/// Performance: For files < 500MB, the entire file is buffered in memory and
-/// filled in parallel. For larger files, a streaming approach is used.
+/// @note Files < 500MB use parallel buffered writing; larger files use streaming.
+///
+/// @tparam Policy The policy type of the polygons.
+/// @param polygons The @ref tf::polygons to write (must be 3D triangles).
+/// @param filename Output filename (.stl appended if missing).
+/// @return true if write succeeded, false otherwise.
 template <typename Policy>
 auto write_stl(const tf::polygons<Policy> &polygons, std::string filename)
     -> bool {

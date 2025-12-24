@@ -18,14 +18,19 @@
 
 namespace tf {
 
-/// @brief Write polygons to OBJ file
-/// @tparam Policy The policy type of the polygons
-/// @param polygons The polygons to write (must be 3D)
-/// @param filename Output filename (.obj will be appended if not present)
-/// @return true if write succeeded, false otherwise
+/// @ingroup io
+/// @brief Write polygons to ASCII OBJ file.
 ///
-/// Performance: Uses parallel writing with offset buffers for optimal speed.
-/// First computes line sizes in parallel, then writes in parallel.
+/// Writes OBJ format with 1-based indices.
+/// When the polygons are tagged with a frame, points are transformed
+/// before writing.
+///
+/// @note Uses parallel writing with offset buffers for optimal speed.
+///
+/// @tparam Policy The policy type of the polygons.
+/// @param polygons The @ref tf::polygons to write (must be 3D).
+/// @param filename Output filename (.obj appended if missing).
+/// @return true if write succeeded, false otherwise.
 template <typename Policy>
 auto write_obj(const tf::polygons<Policy> &polygons, std::string filename)
     -> bool {
