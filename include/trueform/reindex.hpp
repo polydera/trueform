@@ -6,6 +6,10 @@
  */
 #pragma once
 
+/** @defgroup reindex Reindex Module
+ *  Apply index maps and filter/combine geometry.
+ */
+
 #include "./reindex/by_ids.hpp"                // IWYU pragma: export
 #include "./reindex/by_ids_on_points.hpp"      // IWYU pragma: export
 #include "./reindex/by_mask.hpp"               // IWYU pragma: export

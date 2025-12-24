@@ -20,6 +20,7 @@
 #include "../core/views/zip.hpp"
 namespace tf {
 
+/// @cond INTERNAL
 namespace reindex {
 
 namespace impl {
@@ -139,7 +140,22 @@ auto concatenated_diff_gons(const tf::polygons<Policy0> &polygons0,
   return out;
 }
 } // namespace reindex
+/// @endcond
 
+/// @ingroup reindex
+/// @brief Concatenate multiple polygon collections.
+///
+/// Merges polygons into a single @ref tf::polygons_buffer with
+/// adjusted face indices. Applies frame transformations if present.
+/// Preserves static face size if all inputs match, otherwise uses dynamic.
+///
+/// @tparam Policy0 Policy of first polygons.
+/// @tparam Policy1 Policy of second polygons.
+/// @tparam Policies Policies of additional polygons.
+/// @param polygons0 First @ref tf::polygons.
+/// @param polygons1 Second @ref tf::polygons.
+/// @param polygons Additional @ref tf::polygons (variadic).
+/// @return A @ref tf::polygons_buffer containing all geometry.
 template <typename Policy0, typename Policy1, typename... Policies>
 auto concatenated(const tf::polygons<Policy0> &polygons0,
                   const tf::polygons<Policy1> &polygons1,
@@ -163,6 +179,19 @@ auto concatenated(const tf::polygons<Policy0> &polygons0,
                                                         polygons...);
 }
 
+/// @ingroup reindex
+/// @brief Concatenate multiple segment collections.
+///
+/// Merges segments into a single @ref tf::segments_buffer with
+/// adjusted edge indices. Applies frame transformations if present.
+///
+/// @tparam Policy0 Policy of first segments.
+/// @tparam Policy1 Policy of second segments.
+/// @tparam Policies Policies of additional segments.
+/// @param segments0 First @ref tf::segments.
+/// @param segments1 Second @ref tf::segments.
+/// @param segments Additional @ref tf::segments (variadic).
+/// @return A @ref tf::segments_buffer containing all geometry.
 template <typename Policy0, typename Policy1, typename... Policies>
 auto concatenated(const tf::segments<Policy0> &segments0,
                   const tf::segments<Policy1> &segments1,
@@ -215,6 +244,19 @@ auto concatenated(const tf::segments<Policy0> &segments0,
   return out;
 }
 
+/// @ingroup reindex
+/// @brief Concatenate multiple point collections.
+///
+/// Merges points into a single @ref tf::points_buffer.
+/// Applies frame transformations if present.
+///
+/// @tparam Policy0 Policy of first points.
+/// @tparam Policy1 Policy of second points.
+/// @tparam Policies Policies of additional points.
+/// @param points0 First @ref tf::points.
+/// @param points1 Second @ref tf::points.
+/// @param points Additional @ref tf::points (variadic).
+/// @return A @ref tf::points_buffer containing all points.
 template <typename Policy0, typename Policy1, typename... Policies>
 auto concatenated(const tf::points<Policy0> &points0,
                   const tf::points<Policy1> &points1,
@@ -242,6 +284,19 @@ auto concatenated(const tf::points<Policy0> &points0,
   return out;
 }
 
+/// @ingroup reindex
+/// @brief Concatenate multiple vector collections.
+///
+/// Merges vectors into a single @ref tf::vectors_buffer.
+/// Applies frame transformations if present.
+///
+/// @tparam Policy0 Policy of first vectors.
+/// @tparam Policy1 Policy of second vectors.
+/// @tparam Policies Policies of additional vectors.
+/// @param vectors0 First @ref tf::vectors.
+/// @param vectors1 Second @ref tf::vectors.
+/// @param vectors Additional @ref tf::vectors (variadic).
+/// @return A @ref tf::vectors_buffer containing all vectors.
 template <typename Policy0, typename Policy1, typename... Policies>
 auto concatenated(const tf::vectors<Policy0> &vectors0,
                   const tf::vectors<Policy1> &vectors1,
@@ -270,6 +325,19 @@ auto concatenated(const tf::vectors<Policy0> &vectors0,
   return out;
 }
 
+/// @ingroup reindex
+/// @brief Concatenate multiple unit vector collections.
+///
+/// Merges unit vectors into a single @ref tf::unit_vectors_buffer.
+/// Applies frame transformations if present.
+///
+/// @tparam Policy0 Policy of first unit vectors.
+/// @tparam Policy1 Policy of second unit vectors.
+/// @tparam Policies Policies of additional unit vectors.
+/// @param unit_vectors0 First @ref tf::unit_vectors.
+/// @param unit_vectors1 Second @ref tf::unit_vectors.
+/// @param unit_vectors Additional @ref tf::unit_vectors (variadic).
+/// @return A @ref tf::unit_vectors_buffer containing all unit vectors.
 template <typename Policy0, typename Policy1, typename... Policies>
 auto concatenated(const tf::unit_vectors<Policy0> &unit_vectors0,
                   const tf::unit_vectors<Policy1> &unit_vectors1,
@@ -299,6 +367,7 @@ auto concatenated(const tf::unit_vectors<Policy0> &unit_vectors0,
   return out;
 }
 
+/// @cond INTERNAL
 namespace reindex {
 template <typename Index, typename RealT, std::size_t Dims, std::size_t Ngon,
           typename Range>
@@ -532,7 +601,18 @@ auto concatenated(const tf::unit_vectors<Policy> &, const Range &r) {
   return out;
 }
 } // namespace reindex
+/// @endcond
 
+/// @ingroup reindex
+/// @brief Concatenate a range of geometry collections.
+///
+/// Merges all geometry in the range into a single buffer.
+/// Dispatches to the appropriate type-specific concatenation.
+///
+/// @tparam Iterator Range iterator type.
+/// @tparam N Static size hint.
+/// @param r Range of geometry collections (polygons, segments, points, vectors, or unit_vectors).
+/// @return A buffer containing all concatenated geometry.
 template <typename Iterator, std::size_t N>
 auto concatenated(const tf::range<Iterator, N> &r) {
   return reindex::concatenated(r[0], r);

@@ -12,6 +12,8 @@
 #include "tbb/task_group.h"
 
 namespace tf {
+
+/// @cond INTERNAL
 namespace reindex {
 template <typename Index, typename T, typename Range>
 auto split_into_components(const T &t, const Range &labels) {
@@ -42,6 +44,19 @@ auto split_into_components(const T &t, const Range &labels) {
   return std::make_pair(out, std::move(l_out));
 }
 } // namespace reindex
+/// @endcond
+
+/// @ingroup reindex
+/// @brief Split polygons into labeled components.
+///
+/// Groups faces by label and returns separate geometry for each.
+/// Uses @ref tf::reindexed_by_ids internally.
+///
+/// @tparam Policy The policy type of the polygons.
+/// @tparam Range The label range type.
+/// @param polygons The input @ref tf::polygons.
+/// @param labels Per-face labels (same size as faces()).
+/// @return Pair of (vector of @ref tf::polygons_buffer, vector of labels).
 template <typename Policy, typename Range>
 auto split_into_components(const tf::polygons<Policy> &polygons,
                            const Range &labels) {
@@ -49,6 +64,17 @@ auto split_into_components(const tf::polygons<Policy> &polygons,
   return reindex::split_into_components<Index>(polygons, labels);
 }
 
+/// @ingroup reindex
+/// @brief Split segments into labeled components.
+///
+/// Groups edges by label and returns separate geometry for each.
+/// Uses @ref tf::reindexed_by_ids internally.
+///
+/// @tparam Policy The policy type of the segments.
+/// @tparam Range The label range type.
+/// @param segments The input @ref tf::segments.
+/// @param labels Per-edge labels (same size as edges()).
+/// @return Pair of (vector of @ref tf::segments_buffer, vector of labels).
 template <typename Policy, typename Range>
 auto split_into_components(const tf::segments<Policy> &segments,
                            const Range &labels) {

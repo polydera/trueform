@@ -20,6 +20,19 @@ namespace tf {
 // polygons - deduces from faces()[0][0]
 // =============================================================================
 
+/// @ingroup reindex
+/// @brief Filter polygons by point IDs and return index maps.
+///
+/// Keeps only faces whose all vertices are in the point ID list.
+/// Derives face mask from point selection.
+///
+/// @tparam Index The index type (auto-deduced from geometry if not specified).
+/// @tparam Policy The policy type of the polygons.
+/// @tparam Range ID range type.
+/// @param polygons The input @ref tf::polygons.
+/// @param ids Range of point indices to keep.
+/// @param tag Pass @ref tf::return_index_map to get the mappings.
+/// @return Tuple of (@ref tf::polygons_buffer, face @ref tf::index_map_buffer, point @ref tf::index_map_buffer).
 template <typename Index = tf::none_t, typename Policy, typename Range>
 auto reindexed_by_ids_on_points(const tf::polygons<Policy> &polygons,
                                 const Range &ids, tf::return_index_map_t) {
@@ -57,6 +70,9 @@ auto reindexed_by_ids_on_points(const tf::polygons<Policy> &polygons,
   }
 }
 
+/// @ingroup reindex
+/// @brief Filter polygons by point IDs.
+/// @overload
 template <typename Index = tf::none_t, typename Policy, typename Range>
 auto reindexed_by_ids_on_points(const tf::polygons<Policy> &polygons,
                                 const Range &ids) {
@@ -73,6 +89,19 @@ auto reindexed_by_ids_on_points(const tf::polygons<Policy> &polygons,
 // segments - deduces from edges()[0][0]
 // =============================================================================
 
+/// @ingroup reindex
+/// @brief Filter segments by point IDs and return index maps.
+///
+/// Keeps only edges whose all vertices are in the point ID list.
+/// Derives edge mask from point selection.
+///
+/// @tparam Index The index type (auto-deduced from geometry if not specified).
+/// @tparam Policy The policy type of the segments.
+/// @tparam Range ID range type.
+/// @param segments The input @ref tf::segments.
+/// @param ids Range of point indices to keep.
+/// @param tag Pass @ref tf::return_index_map to get the mappings.
+/// @return Tuple of (@ref tf::segments_buffer, edge @ref tf::index_map_buffer, point @ref tf::index_map_buffer).
 template <typename Index = tf::none_t, typename Policy, typename Range>
 auto reindexed_by_ids_on_points(const tf::segments<Policy> &segments,
                                 const Range &ids, tf::return_index_map_t) {
@@ -110,6 +139,9 @@ auto reindexed_by_ids_on_points(const tf::segments<Policy> &segments,
   }
 }
 
+/// @ingroup reindex
+/// @brief Filter segments by point IDs.
+/// @overload
 template <typename Index = tf::none_t, typename Policy, typename Range>
 auto reindexed_by_ids_on_points(const tf::segments<Policy> &segments,
                                 const Range &ids) {

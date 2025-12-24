@@ -13,6 +13,23 @@
 #include "../core/views/block_indirect_range.hpp"
 #include "../core/views/indirect_range.hpp"
 namespace tf {
+
+/// @ingroup reindex
+/// @brief Apply index maps to segments (output parameter).
+///
+/// Applies edge and point index maps to reindex segments.
+/// Edge vertex indices are remapped according to point_im.
+///
+/// @tparam Policy The policy type of the input segments.
+/// @tparam Range0 Edge index map kept IDs range type.
+/// @tparam Range1 Edge index map function range type.
+/// @tparam Range2 Point index map kept IDs range type.
+/// @tparam Range3 Point index map function range type.
+/// @tparam Policy1 Output segments policy type.
+/// @param segments The input @ref tf::segments.
+/// @param edge_im Edge @ref tf::index_map to apply.
+/// @param point_im Point @ref tf::index_map to apply.
+/// @param out Output @ref tf::segments to populate.
 template <typename Policy, typename Range0, typename Range1, typename Range2,
           typename Range3, typename Policy1>
 auto reindexed(const tf::segments<Policy> &segments,
@@ -29,6 +46,9 @@ auto reindexed(const tf::segments<Policy> &segments,
       out.points());
 }
 
+/// @ingroup reindex
+/// @brief Apply index maps to segments (segments_buffer output parameter).
+/// @overload
 template <typename Policy, typename Range0, typename Range1, typename Range2,
           typename Range3, typename Index, typename RealT, std::size_t Dims>
 auto reindexed(const tf::segments<Policy> &segments,
@@ -41,6 +61,18 @@ auto reindexed(const tf::segments<Policy> &segments,
   reindexed(segments, edge_im, point_im, out_s);
 }
 
+/// @ingroup reindex
+/// @brief Apply index maps to segments.
+///
+/// @tparam Policy The policy type of the segments.
+/// @tparam Range0 Edge index map kept IDs range type.
+/// @tparam Range1 Edge index map function range type.
+/// @tparam Range2 Point index map kept IDs range type.
+/// @tparam Range3 Point index map function range type.
+/// @param segments The input @ref tf::segments.
+/// @param edge_im Edge @ref tf::index_map to apply.
+/// @param point_im Point @ref tf::index_map to apply.
+/// @return A @ref tf::segments_buffer with reindexed geometry.
 template <typename Policy, typename Range0, typename Range1, typename Range2,
           typename Range3>
 auto reindexed(const tf::segments<Policy> &segments,

@@ -19,6 +19,19 @@ namespace tf {
 // polygons - deduces from faces()[0][0]
 // =============================================================================
 
+/// @ingroup reindex
+/// @brief Filter polygons by point mask and return index maps.
+///
+/// Keeps only faces whose all vertices pass the point mask.
+/// Derives face mask from point selection.
+///
+/// @tparam Index The index type (auto-deduced from geometry if not specified).
+/// @tparam Policy The policy type of the polygons.
+/// @tparam Range Mask range type.
+/// @param polygons The input @ref tf::polygons.
+/// @param point_mask Boolean range for points.
+/// @param tag Pass @ref tf::return_index_map to get the mappings.
+/// @return Tuple of (@ref tf::polygons_buffer, face @ref tf::index_map_buffer, point @ref tf::index_map_buffer).
 template <typename Index = tf::none_t, typename Policy, typename Range>
 auto reindexed_by_mask_on_points(const tf::polygons<Policy> &polygons,
                                  const Range &point_mask,
@@ -52,6 +65,9 @@ auto reindexed_by_mask_on_points(const tf::polygons<Policy> &polygons,
   }
 }
 
+/// @ingroup reindex
+/// @brief Filter polygons by point mask.
+/// @overload
 template <typename Index = tf::none_t, typename Policy, typename Range>
 auto reindexed_by_mask_on_points(const tf::polygons<Policy> &polygons,
                                  const Range &point_mask) {
@@ -68,6 +84,19 @@ auto reindexed_by_mask_on_points(const tf::polygons<Policy> &polygons,
 // segments - deduces from edges()[0][0]
 // =============================================================================
 
+/// @ingroup reindex
+/// @brief Filter segments by point mask and return index maps.
+///
+/// Keeps only edges whose all vertices pass the point mask.
+/// Derives edge mask from point selection.
+///
+/// @tparam Index The index type (auto-deduced from geometry if not specified).
+/// @tparam Policy The policy type of the segments.
+/// @tparam Range Mask range type.
+/// @param segments The input @ref tf::segments.
+/// @param point_mask Boolean range for points.
+/// @param tag Pass @ref tf::return_index_map to get the mappings.
+/// @return Tuple of (@ref tf::segments_buffer, edge @ref tf::index_map_buffer, point @ref tf::index_map_buffer).
 template <typename Index = tf::none_t, typename Policy, typename Range>
 auto reindexed_by_mask_on_points(const tf::segments<Policy> &segments,
                                  const Range &point_mask,
@@ -102,6 +131,9 @@ auto reindexed_by_mask_on_points(const tf::segments<Policy> &segments,
   }
 }
 
+/// @ingroup reindex
+/// @brief Filter segments by point mask.
+/// @overload
 template <typename Index = tf::none_t, typename Policy, typename Range>
 auto reindexed_by_mask_on_points(const tf::segments<Policy> &segments,
                                  const Range &point_mask) {
