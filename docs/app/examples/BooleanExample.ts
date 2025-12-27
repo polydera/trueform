@@ -58,6 +58,28 @@ export class BooleanExample extends ThreejsBase {
       window.removeEventListener("keyup", interceptKeyUpEvent);
     });
 
+    // Ctrl+scroll to change sphere radius
+    const interceptWheelEvent = (event: WheelEvent) => {
+      if (!event.ctrlKey) return;
+      event.preventDefault();
+      const delta = event.deltaY !== 0 ? event.deltaY : event.deltaX;
+      if (delta === 0) return;
+      const normalizedDelta = delta / Math.abs(delta);
+      const handled = this.wasmInstance.OnMouseWheel(-normalizedDelta, true);
+      this.updateMeshes();
+      if (handled) {
+        event.stopImmediatePropagation();
+      }
+    };
+    const wheelListenerOptions = {
+      passive: false,
+      capture: true,
+    };
+    window.addEventListener("wheel", interceptWheelEvent, wheelListenerOptions);
+    this.addCleanup(() => {
+      window.removeEventListener("wheel", interceptWheelEvent, wheelListenerOptions);
+    });
+
     this.curveRenderer = new CurveRenderer({
       color: 0xff2020,
       radius: 0.075,

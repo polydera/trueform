@@ -1,5 +1,6 @@
 #pragma once
 #include "trueform/core/curves_buffer.hpp"
+#include "trueform/geometry/make_sphere_mesh.hpp"
 #include "trueform/io/read_stl.hpp"
 #include "trueform/random.hpp"
 #include "trueform/spatial/form.hpp"
@@ -40,8 +41,23 @@ public:
   cursor_interactor_boolean()
       : cursor_interactor_interface(std::make_unique<tf_bridge_boolean>()) {}
 
+  auto set_sphere_instance_id(std::size_t id) -> void {
+    sphere_instance_id = id;
+  }
+
 private:
   std::vector<float> boolean_times;
+  std::size_t sphere_instance_id = 0;
+  float sphere_scale = 2.0f;
+
+  auto update_sphere_scale() -> void {
+    auto &inst = bridge->get_instance(sphere_instance_id);
+    // Matrix is row-major 4x4: scale is on diagonal [0], [5], [10]
+    inst.matrix[0] = sphere_scale;
+    inst.matrix[5] = sphere_scale;
+    inst.matrix[10] = sphere_scale;
+    inst.update_frame();
+  }
 
   auto add_boolean_time(float t) -> void {
     auto boolean_time = add_time(boolean_times, t);
@@ -108,6 +124,19 @@ public:
       return false;
     }
   }
+
+  auto OnMouseWheel(int delta, bool ctrl_key) -> bool override {
+    if (ctrl_key) {
+      // Linear scaling: add/subtract fixed step
+      constexpr float step = 0.05f;
+      sphere_scale += delta > 0 ? step : -step;
+      sphere_scale = std::clamp(sphere_scale, 0.1f, 5.0f);  // Max = half of dragon scale (10)
+      update_sphere_scale();
+      compute_curves();
+      return true;
+    }
+    return false;
+  }
 };
 
 inline auto load_centered_mesh_data(cursor_interactor_interface *interactor,
@@ -128,25 +157,37 @@ int run_main(std::vector<std::string> &paths) {
 
   interactor = std::make_unique<cursor_interactor_boolean>();
 
-  // Load mesh data
+  // Load dragon mesh
   auto mesh_id0 = load_centered_mesh_data(interactor.get(), paths[0]);
-  auto mesh_id1 = load_centered_mesh_data(
-      interactor.get(), paths.size() >= 2 ? paths[1] : paths[0]);
 
-  // Create instances
+  // Create sphere mesh (radius=1, stacks=32, segments=32)
+  auto sphere = tf::make_sphere_mesh(1.0f, 32, 32);
+  auto mesh_id1 = interactor->add_mesh_data(std::move(sphere), true);
+
+  // Create instances (sphere with subtle blue tint)
   auto inst_id0 = interactor->add_instance(mesh_id0);
-  auto inst_id1 = interactor->add_instance(mesh_id1);
+  auto inst_id1 = interactor->add_instance(mesh_id1, 0.7, 0.85, 1.0);
 
   auto &inst0 = interactor->get_instances()[inst_id0];
   auto &inst1 = interactor->get_instances()[inst_id1];
 
-  utils::set_at(inst0.matrix, {0.f, 0.f, 0.f});
-  utils::set_at(inst1.matrix, {15.f, 0.f, 0.f});
+  // Get dragon OBB and position sphere above it
+  auto &dragon_data = interactor->get_mesh_data_store()[mesh_id0];
+  auto obb = tf::obb_from(tf::make_polygon(dragon_data.polygons.points()));
+  auto sphere_pos = obb.center() + obb.axes[1] * 4.0f;
+
+  // Set dragon to identity matrix (no random rotation)
+  inst0.matrix = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
   inst0.update_frame();
+
+  // Set sphere position above dragon (with initial scale of 2)
+  inst1.matrix = {2, 0, 0, sphere_pos[0], 0, 2, 0, sphere_pos[1],
+                  0, 0, 2, sphere_pos[2], 0, 0, 0, 1};
   inst1.update_frame();
 
   if (auto *boolean_interactor =
           dynamic_cast<cursor_interactor_boolean *>(interactor.get())) {
+    boolean_interactor->set_sphere_instance_id(inst_id1);
     boolean_interactor->compute_curves();
   }
   return 0;

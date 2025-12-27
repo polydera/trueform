@@ -32,6 +32,7 @@ CPMAddPackage(
         "TBB_BUILD ON"
         "TBB_INSTALL ON"
         "TBB_TEST OFF"                          # Disable tests for faster integration
+        "TBB_STRICT OFF"                        # Disable -Werror (needed for Emscripten)
         "TBBMALLOC_BUILD OFF"                   # Disable custom allocator
         "TBBMALLOC_PROXY_BUILD OFF"
         "TBBBIND_BUILD OFF"

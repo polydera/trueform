@@ -1,17 +1,23 @@
 FROM emscripten/emsdk:4.0.15 AS web-builder
 
-# Build dependencies
-RUN apt-get update && apt-get install -y ninja-build git cmake && rm -rf /var/lib/apt/lists/*
+# Build dependencies (install ninja and git, get CMake 3.27+ separately)
+RUN apt-get update && apt-get install -y ninja-build git wget && rm -rf /var/lib/apt/lists/*
+
+# Install CMake 3.27 (required by trueform)
+ARG CMAKE_VERSION=3.27.9
+RUN wget -qO- https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz \
+    | tar -xz -C /usr/local --strip-components=1
 
 # Install TBB library as a system-wide library
-ARG TBB_VERSION=2021.13.1
+ARG TBB_VERSION=2022.3.0
 ENV TBB_VERSION=${TBB_VERSION}
 
 WORKDIR /deps/tbb
 RUN git clone --depth 1 --branch v${TBB_VERSION} https://github.com/oneapi-src/oneTBB.git .
 RUN mkdir build && cd build && \
     emcmake cmake ..  \
-    -DCMAKE_CXX_FLAGS="-fwasm-exceptions" \
+    -DCMAKE_CXX_FLAGS="-fwasm-exceptions -Wno-unused-command-line-argument" \
+    -DTBB_STRICT=OFF \
     -DBUILD_SHARED_LIBS=OFF  \
     -DTBB_TEST=OFF  \
     -DTBB_ENABLE_IPO=OFF \
