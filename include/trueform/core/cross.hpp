@@ -10,7 +10,7 @@
 #include "./vector_like.hpp"
 
 namespace tf {
-/// @ingroup geometry
+/// @ingroup core_properties
 /// @brief Computes the cross product of two 3D vectors.
 ///
 /// The cross product is defined only in 3D space. It produces a new vector

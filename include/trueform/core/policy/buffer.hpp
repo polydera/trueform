@@ -66,6 +66,17 @@ private:
 template <typename T, typename Base>
 struct static_size<policy::tag_buffer<T, Base>> : static_size<Base> {};
 
+/// @ingroup core_policies
+/// @brief Tag a polygon with a scratch buffer.
+///
+/// Injects a buffer for algorithms that need temporary workspace.
+///
+/// @tparam T The buffer element type.
+/// @tparam Dims The coordinate dimensions.
+/// @tparam Policy The polygon's policy type.
+/// @param buf The buffer to inject.
+/// @param poly The polygon to tag.
+/// @return The tagged polygon.
 template <typename T, std::size_t Dims, typename Policy>
 auto tag_buffer(tf::buffer<T> &buf, const polygon<Dims, Policy> &poly) {
   return wrap_map(poly, [&buf](const auto &core_p) {
@@ -74,6 +85,9 @@ auto tag_buffer(tf::buffer<T> &buf, const polygon<Dims, Policy> &poly) {
   });
 }
 
+/// @ingroup core_policies
+/// @brief Tag a polygon with a local buffer.
+/// @overload
 template <typename T, std::size_t Dims, typename Policy>
 auto tag_buffer(tf::local_buffer<T> &buf, const polygon<Dims, Policy> &poly) {
   return tag_buffer(*buf, poly);
@@ -95,10 +109,19 @@ template <typename U, typename T> auto operator|(U &&u, tag_buffer_op<T> op) {
 }
 } // namespace policy
 
+/// @ingroup core_policies
+/// @brief Create buffer tag operator for pipe syntax.
+///
+/// @tparam T The buffer element type.
+/// @param buf The buffer to tag with.
+/// @return Tag operator for use with pipe (|).
 template <typename T> auto tag(tf::buffer<T> &buf) {
   return policy::tag_buffer_op<T>{&buf};
 }
 
+/// @ingroup core_policies
+/// @brief Create local buffer tag operator for pipe syntax.
+/// @overload
 template <typename T> auto tag(tf::local_buffer<T> &buf) {
   return policy::tag_buffer_op<T>{&*buf};
 }

@@ -28,7 +28,7 @@ const { meshSize, buildMeshes, formatPolygonLabel } = useMeshSelection();
 const threejsContainer = ref<HTMLElement | null>(null);
 const threejsContainer2 = ref<HTMLElement | null>(null);
 let exampleClass: BooleanExample | null = null;
-const meshCount = 2;
+const meshCount = 1;
 const meshes = computed(() => buildMeshes(meshCount));
 const polygonLabel = computed(() => formatPolygonLabel(meshCount));
 
@@ -120,6 +120,10 @@ watch(isDark, (dark) => {
       <div class="flex gap-2 items-center text-muted">
         <UIcon name="i-lucide-hand" class="size-4 ml-1" />
         <p class="text-sm">Drag a mesh. The boolean updates in real time.</p>
+      </div>
+      <div class="flex gap-2 items-center text-muted">
+        <UIcon name="i-lucide-circle" class="size-4 ml-1" />
+        <p class="text-sm">Ctrl + scroll to change sphere size.</p>
       </div>
     </template>
     <template #containers>

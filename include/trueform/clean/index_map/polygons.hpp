@@ -9,11 +9,14 @@
 #include "../../core/algorithm/update_by_mask.hpp"
 #include "../../core/base/polygons.hpp"
 #include "../../core/index_map.hpp"
+#include "../../core/none.hpp"
 #include "../../core/small_vector.hpp"
 #include "./points.hpp"
 
 namespace tf {
+
 namespace clean {
+/// @cond INTERNAL
 template <typename Range0, typename Range1, typename Index>
 auto make_clean_index_map(const tf::core::polygons<Range0, Range1> &polygons,
                           tf::index_map_buffer<Index> &face_map,
@@ -50,8 +53,21 @@ auto make_clean_index_map(const tf::core::polygons<Range0, Range1> &polygons,
       tf::checked);
   tf::update_by_mask(point_map, contained_points);
 }
+/// @endcond
 } // namespace clean
 
+/// @ingroup clean
+/// @brief Generate index maps for polygon cleaning (output parameters).
+///
+/// Creates index maps for both faces and points.
+/// Use @ref tf::reindexed to apply the maps to associated data.
+///
+/// @tparam Range0 The face range type.
+/// @tparam Range1 The point range type.
+/// @tparam Index The index type.
+/// @param polygons The input @ref tf::polygons.
+/// @param face_map Output face @ref tf::index_map_buffer to populate.
+/// @param point_map Output point @ref tf::index_map_buffer to populate.
 template <typename Range0, typename Range1, typename Index>
 auto make_clean_index_map(const tf::core::polygons<Range0, Range1> &polygons,
                           tf::index_map_buffer<Index> &face_map,
@@ -62,6 +78,9 @@ auto make_clean_index_map(const tf::core::polygons<Range0, Range1> &polygons,
   clean::make_clean_index_map(polygons, face_map, point_map);
 }
 
+/// @ingroup clean
+/// @brief Generate index maps for polygon cleaning with tolerance (output parameters).
+/// @overload
 template <typename Range0, typename Range1, typename Index>
 auto make_clean_index_map(
     const tf::core::polygons<Range0, Range1> &polygons,
@@ -74,20 +93,44 @@ auto make_clean_index_map(
   clean::make_clean_index_map(polygons, face_map, point_map);
 }
 
-template <typename Index, typename Range0, typename Range1>
+/// @ingroup clean
+/// @brief Generate index maps for exact polygon deduplication.
+///
+/// Creates index maps for both faces and points.
+/// Use @ref tf::reindexed to apply the maps to associated data.
+///
+/// @tparam Index The index type (auto-deduced if not specified).
+/// @tparam Range0 The face range type.
+/// @tparam Range1 The point range type.
+/// @param polygons The input @ref tf::polygons.
+/// @return Tuple of (face @ref tf::index_map_buffer, point @ref tf::index_map_buffer).
+template <typename Index = tf::none_t, typename Range0, typename Range1>
 auto make_clean_index_map(const tf::core::polygons<Range0, Range1> &polygons) {
-  tf::index_map_buffer<Index> face_map;
-  tf::index_map_buffer<Index> point_map;
-  make_clean_index_map(polygons, face_map, point_map);
-  return std::make_pair(std::move(face_map), std::move(point_map));
+  if constexpr (std::is_same_v<Index, tf::none_t>) {
+    using ActualIndex = std::decay_t<decltype(polygons.faces()[0][0])>;
+    return make_clean_index_map<ActualIndex>(polygons);
+  } else {
+    tf::index_map_buffer<Index> face_map;
+    tf::index_map_buffer<Index> point_map;
+    make_clean_index_map(polygons, face_map, point_map);
+    return std::make_pair(std::move(face_map), std::move(point_map));
+  }
 }
 
-template <typename Index, typename Range0, typename Range1>
+/// @ingroup clean
+/// @brief Generate index maps for polygon cleaning with tolerance.
+/// @overload
+template <typename Index = tf::none_t, typename Range0, typename Range1>
 auto make_clean_index_map(const tf::core::polygons<Range0, Range1> &polygons,
                           tf::coordinate_type<Range1> tolerance) {
-  tf::index_map_buffer<Index> face_map;
-  tf::index_map_buffer<Index> point_map;
-  make_clean_index_map(polygons, tolerance, face_map, point_map);
-  return std::make_pair(std::move(face_map), std::move(point_map));
+  if constexpr (std::is_same_v<Index, tf::none_t>) {
+    using ActualIndex = std::decay_t<decltype(polygons.faces()[0][0])>;
+    return make_clean_index_map<ActualIndex>(polygons, tolerance);
+  } else {
+    tf::index_map_buffer<Index> face_map;
+    tf::index_map_buffer<Index> point_map;
+    make_clean_index_map(polygons, tolerance, face_map, point_map);
+    return std::make_pair(std::move(face_map), std::move(point_map));
+  }
 }
 } // namespace tf

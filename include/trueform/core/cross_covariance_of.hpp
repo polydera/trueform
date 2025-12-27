@@ -13,7 +13,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup core_properties
 /// @brief Compute the cross-covariance matrix between two point sets.
 ///
 /// Computes H = Σ (x_i - centroid_x) ⊗ (y_i - centroid_y)^T

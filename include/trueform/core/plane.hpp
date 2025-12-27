@@ -14,11 +14,23 @@
 
 namespace tf {
 
+/// @ingroup core_primitives
+/// @brief An infinite plane in N-dimensional space.
+///
+/// A plane is defined by a unit normal vector and a signed distance `d` from
+/// the origin. Points on the plane satisfy: `dot(normal, point) + d = 0`.
+///
+/// Factory functions include:
+/// - @ref tf::make_plane() - from normal+offset, normal+point, or three points
+/// - @ref tf::make_plane_like() - creates view when inputs are views
+///
+/// @tparam T The scalar type (e.g., float, double).
+/// @tparam Dims The dimensionality (e.g., 3).
 template <typename T, std::size_t Dims>
 using plane =
     tf::plane_like<Dims, tf::core::plane<Dims, tf::core::vec<T, Dims>>>;
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Constructs a plane from a normal and offset.
 ///
 /// Assumes the given normal is already normalized. This is a low-level overload
@@ -35,7 +47,7 @@ auto make_plane(const unit_vector_like<N, T> &normal,
   return plane<tf::coordinate_type<T>, N>{normal, d};
 }
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Constructs a plane from a normal vector and a point on the plane.
 ///
 /// Computes the plane offset from the point and the unit normal vector:
@@ -54,7 +66,7 @@ auto make_plane(const unit_vector_like<N, T0> &normal,
   return plane<decltype(val), N>{normal, val};
 }
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Constructs a plane from three points.
 ///
 /// Computes the normal vector via the cross product (or generalization in N-D),

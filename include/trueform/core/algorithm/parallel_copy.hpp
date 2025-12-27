@@ -11,8 +11,8 @@
 
 namespace tf {
 
-/// @ingroup algorithms
-/// @brief Performs a parallel copy from an input range to an output range.
+/// @ingroup core_algorithms
+/// @brief Copy elements from input to output in parallel.
 ///
 /// This function copies elements from `input` to `output` in parallel using
 /// Intel TBB. The operation is divided into blocks and dispatched across

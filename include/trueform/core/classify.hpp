@@ -16,6 +16,19 @@
 #include "./sidedness.hpp"
 #include "./wedge.hpp"
 namespace tf {
+
+/// @ingroup core_queries
+/// @brief Classify a point's position relative to a plane.
+///
+/// Determines whether the point lies on the positive side, negative side,
+/// or on the boundary of the plane.
+///
+/// @tparam Dims The dimensionality.
+/// @tparam Policy0 The point policy.
+/// @tparam Policy1 The plane policy.
+/// @param pt The point to classify.
+/// @param pl The plane to test against.
+/// @return A @ref tf::sidedness value indicating the point's position.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto classify(const point_like<Dims, Policy0> &pt,
               const plane_like<Dims, Policy1> &pl) -> sidedness {
@@ -26,6 +39,17 @@ auto classify(const point_like<Dims, Policy0> &pt,
   return static_cast<tf::sidedness>(d < 0);
 }
 
+/// @ingroup core_queries
+/// @brief Classify a 2D point's position relative to a segment.
+///
+/// Determines whether the point lies on the left (positive), right (negative),
+/// or on the segment itself (boundary).
+///
+/// @tparam Policy0 The point policy.
+/// @tparam Policy1 The segment policy.
+/// @param point The point to classify.
+/// @param seg The segment to test against.
+/// @return A @ref tf::sidedness value indicating the point's position.
 template <typename Policy0, typename Policy1>
 auto classify(const tf::point_like<2, Policy0> &point,
               const tf::segment<2, Policy1> &seg) -> tf::sidedness {
@@ -50,6 +74,17 @@ auto classify(const tf::point_like<2, Policy0> &point,
   return tf::sidedness::on_negative_side;
 }
 
+/// @ingroup core_queries
+/// @brief Classify a 2D point's position relative to a line.
+///
+/// Determines whether the point lies on the left (positive), right (negative),
+/// or on the line itself (boundary).
+///
+/// @tparam Policy0 The point policy.
+/// @tparam Policy1 The line policy.
+/// @param point The point to classify.
+/// @param line The line to test against.
+/// @return A @ref tf::sidedness value indicating the point's position.
 template <typename Policy0, typename Policy1>
 auto classify(const tf::point_like<2, Policy0> &point,
               const tf::line_like<2, Policy1> &line) -> tf::sidedness {
@@ -68,6 +103,17 @@ auto classify(const tf::point_like<2, Policy0> &point,
   return tf::sidedness::on_boundary;
 }
 
+/// @ingroup core_queries
+/// @brief Classify a 2D point's position relative to a ray.
+///
+/// Determines whether the point lies on the left (positive), right (negative),
+/// or on the ray itself (boundary).
+///
+/// @tparam Policy0 The point policy.
+/// @tparam Policy1 The ray policy.
+/// @param point The point to classify.
+/// @param ray The ray to test against.
+/// @return A @ref tf::sidedness value indicating the point's position.
 template <typename Policy0, typename Policy1>
 auto classify(const tf::point_like<2, Policy0> &point,
               const tf::ray_like<2, Policy1> &ray) -> tf::sidedness {
@@ -90,6 +136,16 @@ auto classify(const tf::point_like<2, Policy0> &point,
   return tf::sidedness::on_negative_side;
 }
 
+/// @ingroup core_queries
+/// @brief Classify a 2D point's position relative to a wedge.
+///
+/// Determines whether the point lies inside or outside the wedge.
+///
+/// @tparam Policy0 The point policy.
+/// @tparam Policy1 The wedge policy.
+/// @param pt The point to classify.
+/// @param w The wedge to test against.
+/// @return A @ref tf::strict_containment value.
 template <typename Policy0, typename Policy1>
 auto classify(const tf::point_like<2, Policy0> &pt, const tf::wedge<Policy1> &w)
     -> strict_containment {
@@ -116,6 +172,18 @@ auto classify(const tf::point_like<2, Policy0> &pt, const tf::wedge<Policy1> &w)
   return static_cast<strict_containment>(!inside);
 }
 
+/// @ingroup core_queries
+/// @brief Classify a point's position relative to a polygon.
+///
+/// Determines whether the point lies inside, outside, or on the boundary
+/// of the polygon.
+///
+/// @tparam Dims The dimensionality.
+/// @tparam Policy0 The point policy.
+/// @tparam Policy1 The polygon policy.
+/// @param pt The point to classify.
+/// @param poly The polygon to test against.
+/// @return A @ref tf::containment value.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto classify(const point_like<Dims, Policy0> &pt,
               const polygon<Dims, Policy1> &poly) -> containment {

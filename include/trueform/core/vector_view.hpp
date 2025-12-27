@@ -11,7 +11,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Lightweight non-owning view of a fixed-size N-dimensional vector.
 ///
 /// `tf::vector_view<T, N>` provides the same interface as @ref tf::vector,
@@ -36,7 +36,7 @@ namespace tf {
 template <typename T, std::size_t N>
 using vector_view = tf::vector_like<N, core::vec_view<T, N>>;
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Construct a constant vector view from a raw pointer.
 ///
 /// Creates a `tf::vector_view<const T, N>` that wraps a contiguous block
@@ -51,7 +51,7 @@ auto make_vector_view(const T *ptr) -> vector_view<const T, N> {
   return vector_view<const T, N>(ptr);
 }
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Construct a mutable vector view from a raw pointer.
 ///
 /// Creates a `tf::vector_view<T, N>` that wraps a contiguous block

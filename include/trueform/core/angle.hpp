@@ -13,6 +13,14 @@ namespace tf {
 template <typename T>
 struct rad;
 
+/// @ingroup core_primitives
+/// @brief Angle in degrees with type-safe arithmetic.
+///
+/// Provides a strongly-typed angle representation in degrees.
+/// Implicitly converts to @ref tf::rad. Supports arithmetic
+/// operations and comparisons.
+///
+/// @tparam T The underlying numeric type.
 template <typename T>
 struct deg {
   using value_type = T;
@@ -41,6 +49,14 @@ struct deg {
   friend constexpr bool operator>=(deg a, deg b) { return a.value >= b.value; }
 };
 
+/// @ingroup core_primitives
+/// @brief Angle in radians with type-safe arithmetic.
+///
+/// Provides a strongly-typed angle representation in radians.
+/// Implicitly converts to @ref tf::deg. Supports arithmetic
+/// operations and comparisons.
+///
+/// @tparam T The underlying numeric type.
 template <typename T>
 struct rad {
   using value_type = T;
@@ -80,22 +96,45 @@ constexpr rad<T>::operator deg<T>() const {
   return deg<T>{value * T{180} / pi<T>};
 }
 
-// Trigonometric functions accepting angle types
+/// @ingroup core_primitives
+/// @brief Compute sine of an angle in radians.
+/// @tparam T The numeric type.
+/// @param angle The angle in radians.
+/// @return The sine value.
 template <typename T>
 auto sin(rad<T> angle) -> T { return std::sin(angle.value); }
 
+/// @ingroup core_primitives
+/// @brief Compute sine of an angle in degrees.
+/// @overload
 template <typename T>
 auto sin(deg<T> angle) -> T { return std::sin(rad<T>{angle}.value); }
 
+/// @ingroup core_primitives
+/// @brief Compute cosine of an angle in radians.
+/// @tparam T The numeric type.
+/// @param angle The angle in radians.
+/// @return The cosine value.
 template <typename T>
 auto cos(rad<T> angle) -> T { return std::cos(angle.value); }
 
+/// @ingroup core_primitives
+/// @brief Compute cosine of an angle in degrees.
+/// @overload
 template <typename T>
 auto cos(deg<T> angle) -> T { return std::cos(rad<T>{angle}.value); }
 
+/// @ingroup core_primitives
+/// @brief Compute tangent of an angle in radians.
+/// @tparam T The numeric type.
+/// @param angle The angle in radians.
+/// @return The tangent value.
 template <typename T>
 auto tan(rad<T> angle) -> T { return std::tan(angle.value); }
 
+/// @ingroup core_primitives
+/// @brief Compute tangent of an angle in degrees.
+/// @overload
 template <typename T>
 auto tan(deg<T> angle) -> T { return std::tan(rad<T>{angle}.value); }
 

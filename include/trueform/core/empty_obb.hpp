@@ -11,6 +11,14 @@
 
 namespace tf {
 
+/// @ingroup core_primitives
+/// @brief Create an empty oriented bounding box.
+///
+/// Returns an OBB with zero extents and axis-aligned orientation.
+///
+/// @tparam T The scalar type.
+/// @tparam Dims The coordinate dimensions.
+/// @return An empty @ref tf::obb.
 template <typename T, std::size_t Dims> auto make_empty_obb() {
   tf::obb<T, Dims> out{};
   for (std::size_t i = 0; i < Dims; ++i) {

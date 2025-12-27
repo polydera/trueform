@@ -20,6 +20,16 @@
 #include "./generate/segment_segment.hpp"
 
 namespace tf {
+
+/// @ingroup intersect_data
+/// @brief Low-level intersection data within a 2D segment collection.
+///
+/// Computes and stores all intersection points between @ref tf::segments.
+/// The segments must have @ref tf::edge_membership policy attached.
+///
+/// @tparam Index The index type.
+/// @tparam RealT The coordinate type.
+/// @tparam Dims The number of dimensions.
 template <typename Index, typename RealT, std::size_t Dims>
 class intersections_within_segments {
 public:

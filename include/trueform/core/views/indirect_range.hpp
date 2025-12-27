@@ -14,7 +14,7 @@
 namespace tf {
 namespace views {
 
-/// @ingroup ranges
+/// @ingroup core_ranges
 /// @brief A view that indirectly accesses elements of a data range using an
 /// index range.
 ///
@@ -89,7 +89,7 @@ auto make_indirect_range_base(Range0 &&ids, Range1 &&data) {
 template <typename Policy>
 struct static_size<views::indirect_range<Policy>> : static_size<Policy> {};
 
-/// @ingroup ranges
+/// @ingroup core_ranges
 /// @brief Creates an `indirect_range` that views `data` using indices from
 /// `ids`.
 ///
@@ -101,7 +101,7 @@ struct static_size<views::indirect_range<Policy>> : static_size<Policy> {};
 ///
 /// @note The resulting range is a view — it does not copy or own the underlying
 /// data.
-/// @note The static size is propagated using `@ref tf::static_size`.
+/// @note The static size is propagated using @ref tf::static_size.
 template <typename Range0, typename Range1>
 auto make_indirect_range(Range0 &&ids, Range1 &&data) {
   return views::make_indirect_range(views::make_indirect_range_base(

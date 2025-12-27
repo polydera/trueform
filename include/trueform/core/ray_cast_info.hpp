@@ -8,7 +8,7 @@
 #include "./intersect_status.hpp"
 
 namespace tf {
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Lightweight result of a ray casting query.
 ///
 /// Contains only the intersection status and the parametric hit distance `t`,
@@ -30,7 +30,7 @@ template <typename RealT> struct ray_cast_info {
   operator bool() const { return status == tf::intersect_status::intersection; }
 };
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Helper to construct a `ray_cast_info` result.
 ///
 /// @tparam RealT The scalar type used for the parametric distance.

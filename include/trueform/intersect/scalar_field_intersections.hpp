@@ -11,6 +11,17 @@
 #include "./types/simple_intersections.hpp"
 
 namespace tf {
+
+/// @ingroup intersect_data
+/// @brief Low-level scalar field intersection data.
+///
+/// Computes and stores points where a scalar field defined over mesh vertices
+/// crosses threshold values. Use @ref tf::make_isocontours for high-level
+/// curve extraction.
+///
+/// @tparam Index The index type.
+/// @tparam RealT The coordinate type.
+/// @tparam Dims The number of dimensions.
 template <typename Index, typename RealT, std::size_t Dims>
 class scalar_field_intersections
     : public intersect::simple_intersections<Index, RealT, Dims> {

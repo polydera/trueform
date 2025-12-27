@@ -60,13 +60,13 @@ private:
 };
 
 /**
- * @ingroup injectors
- * @brief Type injector that tags states to a class.
+ * @ingroup core_policies
+ * @brief Zip states with a range for per-element state access.
  *
- * It provides accessors for the states.
+ * Zips a states range with a base range so each element has a `.state()` accessor.
  *
- * @tparam Range The id range
- * @tparam Base The type being augmented.
+ * @tparam Range The states range type.
+ * @tparam Base The range being augmented.
  */
 template <typename Range, typename Base>
 struct zip_states : zipped<Range, policy::state_ptr_tagger, Base> {
@@ -131,10 +131,10 @@ template <typename T>
 inline constexpr bool has_states_policy = decltype(has_states(
     policy::type{}, static_cast<const std::decay_t<T> *>(nullptr)))::value;
 
-/**
- * @ingroup injectors
- * @brief Constructs an `tag_states` by injecting states into a base
- */
+/// @ingroup core_policies
+/// @brief Inject a range of states into a range.
+///
+/// Adds `.states()` accessor to access the states range.
 namespace policy {
 template <typename Range, typename Base>
 auto tag_states_impl(Range &&states, Base &&base) {

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
- * Commercial licensing available via info@polydera.com.
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0. Commercial licensing available via info@polydera.com.
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
@@ -9,8 +9,18 @@
 #include "./obj_reader.hpp"
 
 namespace tf {
-// Read OBJ file with dynamic Ngon (supports mixed polygon sizes)
-template <typename Index>
+
+/// @ingroup io
+/// @brief Read OBJ file with dynamic polygon sizes.
+///
+/// Reads ASCII OBJ format with mixed polygon sizes.
+/// Converts 1-based OBJ indices to 0-based.
+/// Only reads vertex positions (ignores normals and texture coordinates).
+///
+/// @tparam Index The index type (defaults to int).
+/// @param file_path Path to the OBJ file.
+/// @return A @ref tf::polygons_buffer with dynamic face size, or empty on error.
+template <typename Index = int>
 auto read_obj(std::string_view file_path)
     -> tf::polygons_buffer<Index, float, 3, tf::dynamic_size> {
   tf::polygons_buffer<Index, float, 3, tf::dynamic_size> out;
@@ -21,8 +31,17 @@ auto read_obj(std::string_view file_path)
   return out;
 }
 
-// Read OBJ file with fixed Ngon (e.g., triangles only, quads only)
-template <typename Index, std::size_t Ngon>
+/// @ingroup io
+/// @brief Read OBJ file with fixed polygon size.
+///
+/// Reads ASCII OBJ format expecting uniform polygon size.
+/// Converts 1-based OBJ indices to 0-based.
+///
+/// @tparam Index The index type (defaults to int).
+/// @tparam Ngon The expected polygon size (e.g., 3 for triangles, 4 for quads).
+/// @param file_path Path to the OBJ file.
+/// @return A @ref tf::polygons_buffer with fixed face size, or empty on error.
+template <typename Index = int, std::size_t Ngon>
 auto read_obj(std::string_view file_path)
     -> tf::polygons_buffer<Index, float, 3, Ngon> {
   tf::polygons_buffer<Index, float, 3, Ngon> out;
@@ -31,5 +50,12 @@ auto read_obj(std::string_view file_path)
     return {}; // Return empty on error
   }
   return out;
+}
+
+/// @ingroup io
+/// @brief Read OBJ file with fixed polygon size (int index).
+/// @overload
+template <std::size_t Ngon> auto read_obj(std::string_view file_path) {
+  return read_obj<int, Ngon>(file_path);
 }
 } // namespace tf

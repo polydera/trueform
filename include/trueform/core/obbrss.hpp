@@ -12,7 +12,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Combined OBB and RSS bounding volume in N-dimensional space.
 ///
 /// Represents an oriented bounding box combined with a rectangle swept sphere.
@@ -26,7 +26,7 @@ using obbrss = tf::obbrss_like<
     Dims,
     tf::core::obbrss<Dims, tf::core::pt<T, Dims>, tf::core::vec<T, Dims>>>;
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Construct an OBBRSS from origins, axes, extent, length, and radius.
 ///
 /// A convenience function equivalent to directly calling the `obbrss<T, N>`

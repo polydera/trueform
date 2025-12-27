@@ -58,18 +58,21 @@ template <typename Partitioner, typename Index, typename RealT,
           std::size_t Dims, typename Range0, typename Range1>
 auto build_tree_nodes(buffer<tree_node<Index, tf::obb<RealT, Dims>>> &nodes,
                       buffer<Index> &ids, const Range0 &primitives,
-                      const Range1 &aabbs, tf::tree_config config) {
+                      const Range1 &aabbs, tf::tree_config config,
+                      bool use_ids = false) {
 
   nodes.clear();
   if (!primitives.size()) {
     ids.clear();
     return;
   }
-  nodes.allocate(max_nodes_in_tree(Index(primitives.size()), config.inner_size,
-                                   config.leaf_size));
+  Index n_ids = use_ids ? Index(ids.size()) : Index(primitives.size());
+  nodes.allocate(max_nodes_in_tree(n_ids, config.inner_size, config.leaf_size));
   tf::parallel_apply(nodes, [](auto &x) { x.set_as_empty(); }, tf::checked);
-  ids.allocate(primitives.size());
-  tf::parallel_iota(ids, 0);
+  if (!use_ids) {
+    ids.allocate(primitives.size());
+    tf::parallel_iota(ids, 0);
+  }
   return build_tree_nodes<Partitioner>(nodes, primitives, aabbs, ids, Index(0),
                                        Index(0), config);
 }

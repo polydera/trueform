@@ -15,7 +15,7 @@
 
 namespace tf {
 
-/// @ingroup core
+/// @ingroup core_primitives
 /// @brief A general-purpose point interface for fixed-size spatial points.
 ///
 /// @tparam Dims The number of dimensions (e.g. 2, 3, 4).

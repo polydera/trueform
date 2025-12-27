@@ -21,6 +21,12 @@ auto has_manifold_edge_link(const tag_manifold_edge_link<Range, Base> *)
 auto has_manifold_edge_link(const void *) -> std::false_type;
 } // namespace policy
 
+/// @ingroup topology_policies
+/// @brief Checks if a type has manifold edge link policy attached.
+///
+/// True if the type was wrapped with @ref tf::tag_manifold_edge_link().
+///
+/// @tparam T The type to check.
 template <typename T>
 inline constexpr bool has_manifold_edge_link_policy =
     decltype(policy::has_manifold_edge_link(
@@ -77,6 +83,18 @@ template <typename Range, typename Base>
 struct static_size<policy::tag_manifold_edge_link<Range, Base>>
     : static_size<Base> {};
 
+/// @ingroup topology_policies
+/// @brief Attaches manifold edge link data to a base type.
+///
+/// Creates a wrapper that carries manifold edge link information alongside
+/// the original data. The result provides a `.manifold_edge_link()` accessor.
+/// Use with pipe syntax: `data | tf::tag_manifold_edge_link(mel)`.
+///
+/// @tparam Range The manifold edge link range type.
+/// @tparam Base The base type to wrap.
+/// @param _manifold_edge_link_range The manifold edge link data.
+/// @param base The base value to wrap.
+/// @return A wrapped type with manifold edge link accessible via `.manifold_edge_link()`.
 template <typename Range, typename Base>
 auto tag_manifold_edge_link(
     tf::manifold_edge_link_like<Range> &&_manifold_edge_link_range,
@@ -95,6 +113,7 @@ auto tag_manifold_edge_link(
   }
 }
 
+/// @overload
 template <typename Index, std::size_t N, typename Base>
 auto tag_manifold_edge_link(
     tf::manifold_edge_link<Index, N> &_manifold_edge_link, Base &&base) {
@@ -103,6 +122,7 @@ auto tag_manifold_edge_link(
       static_cast<Base &&>(base));
 }
 
+/// @overload
 template <typename Index, std::size_t N, typename Base>
 auto tag_manifold_edge_link(
     const tf::manifold_edge_link<Index, N> &_manifold_edge_link, Base &&base) {
@@ -129,12 +149,22 @@ auto operator|(U &&u, tag_manifold_edge_link_op<Range> t) {
 }
 } // namespace policy
 
+/// @ingroup topology_policies
+/// @brief Creates a pipe-able manifold edge link tag operator.
+///
+/// Returns an object that can be used with pipe syntax to attach
+/// manifold edge link to a range: `data | tf::tag_manifold_edge_link(mel)`.
+///
+/// @tparam Range The manifold edge link range type.
+/// @param _manifold_edge_link_range The manifold edge link data.
+/// @return A tag operator for use with pipe syntax.
 template <typename Range>
 auto tag_manifold_edge_link(Range &&_manifold_edge_link_range) {
   return policy::tag_manifold_edge_link_op<Range>{
       static_cast<Range &&>(_manifold_edge_link_range)};
 }
 
+/// @overload
 template <typename Index, std::size_t N>
 auto tag_manifold_edge_link(
     tf::manifold_edge_link<Index, N> &_manifold_edge_link) {
@@ -142,6 +172,7 @@ auto tag_manifold_edge_link(
       _manifold_edge_link))>{tf::make_range(_manifold_edge_link)};
 }
 
+/// @overload
 template <typename Index, std::size_t N>
 auto tag_manifold_edge_link(
     const tf::manifold_edge_link<Index, N> &_manifold_edge_link) {
@@ -153,12 +184,23 @@ template <typename Index, std::size_t N>
 auto tag_manifold_edge_link(
     tf::manifold_edge_link<Index, N> &&_manifold_edge_link) = delete;
 
+/// @ingroup topology_policies
+/// @brief Creates a pipe-able tag operator for manifold edge link.
+///
+/// Generic overload of @ref tf::tag() that auto-detects the topology type.
+/// Equivalent to `tf::tag_manifold_edge_link(_manifold_edge_link)`.
+///
+/// @tparam Index The index type.
+/// @tparam N The static face size.
+/// @param _manifold_edge_link The manifold edge link structure.
+/// @return A tag operator for use with pipe syntax.
 template <typename Index, std::size_t N>
 auto tag(tf::manifold_edge_link<Index, N> &_manifold_edge_link) {
   return policy::tag_manifold_edge_link_op<decltype(tf::make_range(
       _manifold_edge_link))>{tf::make_range(_manifold_edge_link)};
 }
 
+/// @overload
 template <typename Index, std::size_t N>
 auto tag(const tf::manifold_edge_link<Index, N> &_manifold_edge_link) {
   return policy::tag_manifold_edge_link_op<decltype(tf::make_range(
@@ -168,18 +210,21 @@ auto tag(const tf::manifold_edge_link<Index, N> &_manifold_edge_link) {
 template <typename Index, std::size_t N>
 auto tag(tf::manifold_edge_link<Index, N> &&_manifold_edge_link) = delete;
 
+/// @overload
 template <typename Policy>
 auto tag(tf::manifold_edge_link_like<Policy> &_manifold_edge_link) {
   return policy::tag_manifold_edge_link_op<decltype(tf::make_range(
       _manifold_edge_link))>{tf::make_range(_manifold_edge_link)};
 }
 
+/// @overload
 template <typename Policy>
 auto tag(const tf::manifold_edge_link_like<Policy> &_manifold_edge_link) {
   return policy::tag_manifold_edge_link_op<decltype(tf::make_range(
       _manifold_edge_link))>{tf::make_range(_manifold_edge_link)};
 }
 
+/// @overload
 template <typename Policy>
 auto tag(tf::manifold_edge_link_like<Policy> &&_manifold_edge_link) {
   return tag(_manifold_edge_link);

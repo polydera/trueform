@@ -11,6 +11,15 @@
 #include <utility>
 
 namespace tf {
+
+/// @ingroup core_primitives
+/// @brief Base template for sphere types.
+///
+/// Provides the common interface for spheres, defined by a center point
+/// `origin` and a radius `r`.
+///
+/// @tparam Dims The dimensionality.
+/// @tparam Policy The storage policy.
 template <std::size_t Dims, typename Policy> struct sphere_like : Policy {
   sphere_like() = default;
   sphere_like(const Policy &policy) : Policy{policy} {}
@@ -63,6 +72,16 @@ auto wrap_like(const sphere_like<V, Policy> &&, T &&t) {
   return sphere_like<V, std::decay_t<T>>{static_cast<T &&>(t)};
 }
 
+/// @ingroup core_primitives
+/// @brief Create a sphere view from a point view and radius.
+///
+/// Returns a view when inputs are views, preserving zero-copy semantics.
+///
+/// @tparam Dims The dimensionality.
+/// @tparam Policy The center point policy.
+/// @param origin The center of the sphere.
+/// @param r The radius of the sphere.
+/// @return A @ref tf::sphere_like instance.
 template <std::size_t Dims, typename Policy>
 auto make_sphere_like(const point_like<Dims, Policy> &origin,
                       tf::coordinate_type<Policy> r) {

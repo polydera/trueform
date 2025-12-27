@@ -13,7 +13,7 @@
 
 namespace tf {
 
-/// @ingroup utilities
+/// @ingroup core_buffers
 /// @brief A thread-local buffer container for use within a TBB task arena.
 ///
 /// `local_buffer` provides a buffer-like interface where each thread in the

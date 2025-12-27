@@ -12,6 +12,7 @@
 
 namespace tf {
 
+/// @ingroup spatial_results
 /// @brief Helper structure for k-nearest-neighbor (k-NN) queries in spatial
 /// trees.
 ///
@@ -58,7 +59,8 @@ public:
                            [](const auto &a, const auto &b) {
                              return a.metric() < b.metric();
                            });
-        worst_metric = out[count - 1].metric();
+        if (count == k)
+          worst_metric = out[k - 1].metric();
       } else if (point.metric < worst_metric) {
         auto it = std::upper_bound(out, out + k - 1, point.metric,
                                    [](const auto &value, const auto &elem) {
@@ -117,6 +119,7 @@ private:
   real_t limit_metric;
 };
 
+/// @ingroup spatial_results
 /// @brief Construct a `tree_knn` container with automatic type deduction.
 ///
 /// @param iterator The output iterator pointing to a user-provided buffer.
@@ -127,6 +130,7 @@ auto make_nearest_neighbors(RandomIt iterator, std::size_t k) {
   return nearest_neighbors<RandomIt>{iterator, k};
 }
 
+/// @ingroup spatial_results
 /// @brief Construct a radius-limited `tree_knn` container with automatic type
 /// deduction.
 ///

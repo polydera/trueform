@@ -9,7 +9,7 @@
 
 namespace tf {
 
-/// @ingroup algorithms
+/// @ingroup core_algorithms
 /// @brief Convert a boolean mask into an index mapping with explicit none-tag.
 ///
 /// Given a boolean `mask` and a pre-allocated `map` of the same size,
@@ -44,7 +44,7 @@ auto mask_to_map(const Range0 &mask, Range1 &&map, const Index &none_tag) {
   return current_id;
 }
 
-/// @ingroup algorithms
+/// @ingroup core_algorithms
 /// @brief Convert a boolean mask into an index mapping using default none-tag.
 ///
 /// This overload infers the `none_tag` value as the size of the `map`,

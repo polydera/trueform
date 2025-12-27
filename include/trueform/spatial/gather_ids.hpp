@@ -10,6 +10,22 @@
 #include "./search.hpp"
 
 namespace tf {
+
+/// @ingroup spatial_queries
+/// @brief Gather pairs of primitive IDs from two forms that satisfy predicates.
+///
+/// Performs a dual-tree search and collects pairs of IDs where both the
+/// bounding volume predicate and primitive predicate are satisfied.
+///
+/// @note Pair search runs in parallel. Use @ref tf::local_value or
+/// @ref tf::local_vector for thread-safe aggregation in custom predicates.
+///
+/// @param form0 The first form.
+/// @param form1 The second form.
+/// @param aabbs_predicate Predicate for bounding volume pairs.
+/// @param primitives_predicate Predicate for primitive pairs.
+/// @param out Output iterator to write pairs of IDs.
+/// @return Iterator past the last written element.
 template <std::size_t Dims, typename Policy0, typename Policy1, typename F0,
           typename F1, typename Iterator>
 auto gather_ids(const tf::form<Dims, Policy0> &form0,
@@ -39,6 +55,8 @@ auto gather_ids(const tf::form<Dims, Policy0> &form0,
   return out;
 }
 
+/// @ingroup spatial_queries
+/// @brief Gather pairs of primitive IDs using a single predicate for both tests.
 template <std::size_t Dims, typename Policy0, typename Policy1, typename F,
           typename Iterator>
 auto gather_ids(const tf::form<Dims, Policy0> &form0,
@@ -47,6 +65,14 @@ auto gather_ids(const tf::form<Dims, Policy0> &form0,
   return gather_ids(form0, form1, predicate, predicate, out);
 }
 
+/// @ingroup spatial_queries
+/// @brief Gather primitive IDs from a form that satisfy predicates.
+///
+/// @param form The form to query.
+/// @param aabb_predicate Predicate for bounding volumes.
+/// @param primitive_predicate Predicate for primitives.
+/// @param out Output iterator to write IDs.
+/// @return Iterator past the last written element.
 template <std::size_t Dims, typename Policy, typename F0, typename F1,
           typename Iterator>
 auto gather_ids(const tf::form<Dims, Policy> &form, const F0 &aabb_predicate,
@@ -58,6 +84,8 @@ auto gather_ids(const tf::form<Dims, Policy> &form, const F0 &aabb_predicate,
   return out;
 }
 
+/// @ingroup spatial_queries
+/// @brief Gather primitive IDs using a single predicate for both tests.
 template <std::size_t Dims, typename Policy, typename F, typename Iterator>
 auto gather_ids(const tf::form<Dims, Policy> &form, const F &predicate,
                 Iterator out) -> Iterator {

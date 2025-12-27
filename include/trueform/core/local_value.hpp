@@ -12,7 +12,7 @@
 
 namespace tf {
 
-/// @ingroup utilities
+/// @ingroup core_algorithms
 /// @brief A thread-local value container for use within a TBB task arena.
 ///
 /// `local_value` provides a value-like interface where each thread in the

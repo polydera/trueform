@@ -135,14 +135,14 @@ auto closest_metric_point_pair(const tf::plane_like<Dims, Policy0> &plane,
   return res;
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
 template <std::size_t Dims, typename T0, typename T1>
 auto closest_metric_point_pair(const tf::point_like<Dims, T0> &v0,
                                const tf::point_like<Dims, T1> &v1) {
   return tf::make_metric_point_pair((v0 - v1).length2(), v0, v1);
 }
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
 template <std::size_t Dims, typename Policy, typename T1>
 auto closest_metric_point_pair(const tf::line_like<Dims, Policy> &l,
@@ -152,7 +152,7 @@ auto closest_metric_point_pair(const tf::line_like<Dims, Policy> &l,
   return tf::make_metric_point_pair((pt - v1).length2(), pt, v1);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
 template <std::size_t Dims, typename T1, typename Policy1>
 auto closest_metric_point_pair(const tf::point_like<Dims, T1> &v0,
@@ -162,7 +162,7 @@ auto closest_metric_point_pair(const tf::point_like<Dims, T1> &v0,
   return tf::make_metric_point_pair((pt - v0).length2(), v0, pt);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
 template <std::size_t Dims, typename Policy, typename T1>
 auto closest_metric_point_pair(const tf::ray_like<Dims, Policy> &r,
@@ -172,7 +172,7 @@ auto closest_metric_point_pair(const tf::ray_like<Dims, Policy> &r,
   return tf::make_metric_point_pair((pt - v1).length2(), pt, v1);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
 template <std::size_t Dims, typename T1, typename Policy>
 auto closest_metric_point_pair(const tf::point_like<Dims, T1> &v0,
@@ -182,7 +182,7 @@ auto closest_metric_point_pair(const tf::point_like<Dims, T1> &v0,
   return tf::make_metric_point_pair((pt - v0).length2(), v0, pt);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
 template <std::size_t Dims, typename T0, typename T1>
 auto closest_metric_point_pair(const tf::segment<Dims, T0> &s,
@@ -193,7 +193,7 @@ auto closest_metric_point_pair(const tf::segment<Dims, T0> &s,
   return tf::make_metric_point_pair((pt - v1).length2(), pt, v1);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
 template <std::size_t Dims, typename T0, typename T1>
 auto closest_metric_point_pair(const tf::point_like<Dims, T0> &v0,
@@ -204,7 +204,7 @@ auto closest_metric_point_pair(const tf::point_like<Dims, T0> &v0,
   return tf::make_metric_point_pair((pt - v0).length2(), v0, pt);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto closest_metric_point_pair(const tf::line_like<Dims, Policy0> &l0,
@@ -215,7 +215,7 @@ auto closest_metric_point_pair(const tf::line_like<Dims, Policy0> &l0,
   return tf::make_metric_point_pair((pt0 - pt1).length2(), pt0, pt1);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto closest_metric_point_pair(const tf::ray_like<Dims, Policy0> &r0,
@@ -226,7 +226,7 @@ auto closest_metric_point_pair(const tf::ray_like<Dims, Policy0> &r0,
   return tf::make_metric_point_pair((pt0 - pt1).length2(), pt0, pt1);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto closest_metric_point_pair(const tf::line_like<Dims, Policy0> &l0,
@@ -236,7 +236,7 @@ auto closest_metric_point_pair(const tf::line_like<Dims, Policy0> &l0,
   auto pt1 = r1.origin + t1 * r1.direction;
   return tf::make_metric_point_pair((pt0 - pt1).length2(), pt0, pt1);
 }
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto closest_metric_point_pair(const tf::ray_like<Dims, Policy0> &r0,
@@ -247,7 +247,7 @@ auto closest_metric_point_pair(const tf::ray_like<Dims, Policy0> &r0,
   return tf::make_metric_point_pair((pt0 - pt1).length2(), pt0, pt1);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
 template <std::size_t Dims, typename Policy, typename T>
 auto closest_metric_point_pair(const tf::ray_like<Dims, Policy> &r0,
@@ -259,7 +259,7 @@ auto closest_metric_point_pair(const tf::ray_like<Dims, Policy> &r0,
   return tf::make_metric_point_pair((pt0 - pt1).length2(), pt0, pt1);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
 template <std::size_t Dims, typename Policy, typename T>
 auto closest_metric_point_pair(const tf::line_like<Dims, Policy> &l0,
@@ -271,7 +271,7 @@ auto closest_metric_point_pair(const tf::line_like<Dims, Policy> &l0,
   return tf::make_metric_point_pair((pt0 - pt1).length2(), pt0, pt1);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
 template <typename T, std::size_t Dims, typename Policy>
 auto closest_metric_point_pair(const tf::segment<Dims, T> &s0,
@@ -283,7 +283,7 @@ auto closest_metric_point_pair(const tf::segment<Dims, T> &s0,
   return tf::make_metric_point_pair((pt0 - pt1).length2(), pt0, pt1);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
 template <typename T, std::size_t Dims, typename Policy>
 auto closest_metric_point_pair(const tf::segment<Dims, T> &s0,
@@ -306,7 +306,7 @@ auto closest_metric_point_pair(const tf::segment<Dims, T0> &s0,
   return tf::make_metric_point_pair((pt0 - pt1).length2(), pt0, pt1);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
 template <typename Policy0, std::size_t Dims, typename Policy1>
 auto closest_metric_point_pair(const tf::polygon<Dims, Policy0> &poly_in,
@@ -342,7 +342,7 @@ auto closest_metric_point_pair(const tf::polygon<Dims, Policy0> &poly_in,
   }
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
 
 template <typename Policy0, typename Policy1>
@@ -409,7 +409,7 @@ auto closest_metric_point_pair_impl(const tf::polygon<Dims, Policy0> &poly,
 }
 } // namespace core
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
 template <std::size_t Dims, typename Policy0, typename Policy>
 auto closest_metric_point_pair(const tf::polygon<Dims, Policy0> &poly_in,
@@ -454,7 +454,7 @@ auto closest_metric_point_pair_impl(const tf::polygon<Dims, Policy0> &poly,
 }
 } // namespace core
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
 template <std::size_t Dims, typename Policy0, typename Policy>
 auto closest_metric_point_pair(const tf::polygon<Dims, Policy0> &poly_in,
@@ -469,7 +469,7 @@ auto closest_metric_point_pair(const tf::polygon<2, Policy0> &poly_in,
   return core::closest_metric_point_pair_impl(poly_in, ray);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
 template <std::size_t Dims, typename Policy, typename Policy0>
 auto closest_metric_point_pair(const tf::ray_like<Dims, Policy> &ray,
@@ -511,7 +511,7 @@ auto closest_metric_point_pair_impl(const tf::segment<Dims, Policy> &seg,
 
 } // namespace core
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto closest_metric_point_pair(const tf::polygon<Dims, Policy0> &poly_in,
@@ -532,7 +532,7 @@ auto closest_metric_point_pair(const tf::polygon<2, Policy0> &poly_in,
   return min(best, closest_metric_point_pair(poly_in, seg1[1]));
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
 template <typename Policy, std::size_t Dims, typename Policy0>
 auto closest_metric_point_pair(const tf::segment<Dims, Policy> &seg,
@@ -574,7 +574,7 @@ auto closest_metric_point_pair_impl(const tf::polygon<Dims, Policy0> &poly0,
 }
 } // namespace core
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the closest @ref tf::metric_point_pair between the objects.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto closest_metric_point_pair(const tf::polygon<Dims, Policy0> &poly_in0,

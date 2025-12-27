@@ -12,6 +12,22 @@
 
 namespace tf {
 
+/// @ingroup cut_boolean
+/// @brief Decompose two meshes into classified regions.
+///
+/// Returns all subdivided regions created by mesh intersection,
+/// each classified by origin and spatial relationship (inside/outside).
+/// This is the complete decomposition from which any boolean operation
+/// can be reconstructed.
+///
+/// @tparam Policy0 The policy type of the first mesh.
+/// @tparam Policy1 The policy type of the second mesh.
+/// @param _polygons0 The first mesh @ref tf::polygons (or tagged form).
+/// @param _polygons1 The second mesh @ref tf::polygons (or tagged form).
+/// @return Tuple of (vector of @ref tf::polygons_buffer, labels, @ref tf::arrangement_class).
+///
+/// @see tf::make_boolean for combined boolean results.
+/// @see tf::arrangement_class for classification values.
 template <typename Policy0, typename Policy1>
 auto make_mesh_arrangements(const tf::polygons<Policy0> &_polygons0,
                             const tf::polygons<Policy1> &_polygons1) {

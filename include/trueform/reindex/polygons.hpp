@@ -14,6 +14,23 @@
 #include "../core/views/block_indirect_range.hpp"
 #include "../core/views/indirect_range.hpp"
 namespace tf {
+
+/// @ingroup reindex
+/// @brief Apply index maps to polygons (output parameter).
+///
+/// Applies face and point index maps to reindex polygons.
+/// Face vertex indices are remapped according to point_im.
+///
+/// @tparam Policy The policy type of the input polygons.
+/// @tparam Range0 Face index map kept IDs range type.
+/// @tparam Range1 Face index map function range type.
+/// @tparam Range2 Point index map kept IDs range type.
+/// @tparam Range3 Point index map function range type.
+/// @tparam Policy1 Output polygons policy type.
+/// @param polygons The input @ref tf::polygons.
+/// @param face_im Face @ref tf::index_map to apply.
+/// @param point_im Point @ref tf::index_map to apply.
+/// @param out Output @ref tf::polygons to populate.
 template <typename Policy, typename Range0, typename Range1, typename Range2,
           typename Range3, typename Policy1>
 auto reindexed(const tf::polygons<Policy> &polygons,
@@ -30,6 +47,9 @@ auto reindexed(const tf::polygons<Policy> &polygons,
       out.points());
 }
 
+/// @ingroup reindex
+/// @brief Apply index maps to polygons (static polygons_buffer output parameter).
+/// @overload
 template <typename Policy, typename Range0, typename Range1, typename Range2,
           typename Range3, typename Index, typename RealT, std::size_t Dims,
           std::size_t Ngons>
@@ -43,6 +63,9 @@ auto reindexed(const tf::polygons<Policy> &polygons,
   reindexed(polygons, face_im, point_im, out_s);
 }
 
+/// @ingroup reindex
+/// @brief Apply index maps to polygons (dynamic polygons_buffer output parameter).
+/// @overload
 template <typename Policy, typename Range0, typename Range1, typename Range2,
           typename Range3, typename Index, typename RealT, std::size_t Dims>
 auto reindexed(const tf::polygons<Policy> &polygons,
@@ -63,6 +86,18 @@ auto reindexed(const tf::polygons<Policy> &polygons,
   reindexed(polygons, face_im, point_im, out_s);
 }
 
+/// @ingroup reindex
+/// @brief Apply index maps to polygons.
+///
+/// @tparam Policy The policy type of the polygons.
+/// @tparam Range0 Face index map kept IDs range type.
+/// @tparam Range1 Face index map function range type.
+/// @tparam Range2 Point index map kept IDs range type.
+/// @tparam Range3 Point index map function range type.
+/// @param polygons The input @ref tf::polygons.
+/// @param face_im Face @ref tf::index_map to apply.
+/// @param point_im Point @ref tf::index_map to apply.
+/// @return A @ref tf::polygons_buffer with reindexed geometry.
 template <typename Policy, typename Range0, typename Range1, typename Range2,
           typename Range3>
 auto reindexed(const tf::polygons<Policy> &polygons,

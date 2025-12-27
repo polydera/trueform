@@ -5,9 +5,13 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
+#include "../../core/algorithm/ids_to_index_map.hpp"
 #include "../../core/concatenated_blocked_ranges.hpp"
+#include "../../core/index_map.hpp"
+#include "../../core/stitch_index_maps.hpp"
 #include "../../core/views/block_indirect_range.hpp"
 #include "../../reindex/concatenated.hpp"
+#include "../../reindex/return_index_map.hpp"
 #include "../arrangement_class.hpp"
 #include "../classify/tagged.hpp"
 #include "./ids_common.hpp"
@@ -15,13 +19,14 @@
 
 namespace tf::cut {
 template <typename LabelType, typename Policy0, typename Policy1,
-          typename Index, typename RealT, std::size_t Dims>
+          typename Index, typename RealT, std::size_t Dims, bool MakeMaps>
 auto make_boolean(
     const tf::polygons<Policy0> _polygons0,
     const tf::polygons<Policy1> &_polygons1,
     const tf::intersect::tagged_intersections<Index, RealT, Dims> &ibp,
     const tf::tagged_cut_faces<Index> &tcf,
-    std::array<tf::arrangement_class, 2> classes) {
+    std::array<tf::arrangement_class, 2> classes,
+    std::integral_constant<bool, MakeMaps>) {
   auto make_polygons = [](const auto &form) {
     return tf::wrap_map(form, [](auto &&x) {
       return tf::core::make_polygons(x.faces(),
@@ -169,8 +174,8 @@ auto make_boolean(
   auto [direction0, direction1] = tf::make_directions(classes[0], classes[1]);
   auto faces = tf::core::concatenated_blocked_ranges_directed<Index>(
       std::make_pair(tf::make_range(mapped_faces0), direction0),
-      std::make_pair(tf::make_range(triangles0), direction0),
       std::make_pair(tf::make_range(mapped_faces1), direction1),
+      std::make_pair(tf::make_range(triangles0), direction0),
       std::make_pair(tf::make_range(triangles1), direction1));
   auto make_mapped_points = [](const auto &ids, const auto &polygons) {
     auto frame = tf::frame_of(polygons);
@@ -187,12 +192,72 @@ auto make_boolean(
           .template as<tf::coordinate_type<Policy0, Policy1>>());
   tf::buffer<std::int8_t> labels;
   labels.allocate(faces.size());
-  tf::parallel_fill(tf::take(labels, mapped_faces0.size() + triangles0.size()),
-                    0);
-  tf::parallel_fill(tf::drop(labels, mapped_faces0.size() + triangles0.size()),
-                    1);
-  return std::make_pair(
-      tf::make_polygons_buffer(std::move(faces), std::move(points)),
-      std::move(labels));
+  tf::parallel_fill(tf::take(labels, mapped_faces0.size()), 0);
+  tf::parallel_fill(
+      tf::take(tf::drop(labels, mapped_faces0.size()), mapped_faces1.size()),
+      1);
+  tf::parallel_fill(
+      tf::take(tf::drop(labels, mapped_faces0.size() + mapped_faces1.size()),
+               triangles0.size()),
+      0);
+  tf::parallel_fill(
+      tf::take(tf::drop(labels, mapped_faces0.size() + mapped_faces1.size() +
+                                    triangles0.size()),
+               triangles1.size()),
+      1);
+  if constexpr (MakeMaps) {
+    tf::index_map_buffer<Index> original_im0;
+    original_im0.f() = std::move(original_map0);
+    original_im0.kept_ids() = std::move(original_ids0);
+    tf::index_map_buffer<Index> original_im1;
+    original_im1.f() = std::move(original_map1);
+    original_im1.kept_ids() = std::move(original_ids1);
+    tf::index_map_buffer<Index> created_im;
+    created_im.f() = std::move(created_map);
+    created_im.kept_ids() = std::move(created_ids);
+    tf::index_map_buffer<Index> polygons_im0;
+    tf::index_map_buffer<Index> polygons_im1;
+    tf::ids_to_index_map(pai0.polygons[1], polygons_im0,
+                         Index(_polygons0.size()), Index(0), Index(-1));
+    tf::ids_to_index_map(pai1.polygons[1], polygons_im1,
+                         Index(_polygons1.size()), Index(0), Index(-1));
+    return std::make_tuple(
+        tf::make_polygons_buffer(std::move(faces), std::move(points)),
+        std::move(labels),
+        tf::stitch_index_maps<Index>{
+            std::move(original_im0), Index(0), std::move(original_im1),
+            Index(original_current0), std::move(created_im),
+            Index(original_current0 + original_current1),
+            std::move(polygons_im0), Index(0), std::move(polygons_im1),
+            Index(mapped_faces0.size()), direction0, direction1});
+  } else {
+    return std::make_pair(
+        tf::make_polygons_buffer(std::move(faces), std::move(points)),
+        std::move(labels));
+  }
+}
+
+template <typename LabelType, typename Policy0, typename Policy1,
+          typename Index, typename RealT, std::size_t Dims>
+auto make_boolean(
+    const tf::polygons<Policy0> _polygons0,
+    const tf::polygons<Policy1> &_polygons1,
+    const tf::intersect::tagged_intersections<Index, RealT, Dims> &ibp,
+    const tf::tagged_cut_faces<Index> &tcf,
+    std::array<tf::arrangement_class, 2> classes) {
+  return make_boolean<LabelType>(_polygons0, _polygons1, ibp, tcf, classes,
+                                 std::false_type{});
+}
+
+template <typename LabelType, typename Policy0, typename Policy1,
+          typename Index, typename RealT, std::size_t Dims>
+auto make_boolean(
+    const tf::polygons<Policy0> _polygons0,
+    const tf::polygons<Policy1> &_polygons1,
+    const tf::intersect::tagged_intersections<Index, RealT, Dims> &ibp,
+    const tf::tagged_cut_faces<Index> &tcf,
+    std::array<tf::arrangement_class, 2> classes, tf::return_index_map_t) {
+  return make_boolean<LabelType>(_polygons0, _polygons1, ibp, tcf, classes,
+                                 std::true_type{});
 }
 } // namespace tf::cut

@@ -7,7 +7,7 @@
 #pragma once
 #include <cmath>
 namespace tf {
-/// @ingroup algorithms
+/// @ingroup core_algorithms
 /// @brief Computes a safe inverse of a floating-point value, guarding against division by values near zero.
 ///
 /// If the absolute value of the input `t` is smaller than the specified `epsilon`, the function
@@ -29,7 +29,7 @@ template <typename T> auto epsilon_inverse(const T &t, T epsilon) {
     return static_cast<T>(1) / t;
   }
 }
-/// @ingroup algorithms
+/// @ingroup core_algorithms
 /// @brief Computes a safe inverse of a floating-point value using the machine epsilon for the type.
 ///
 /// Equivalent to calling `epsilon_inverse(t, std::numeric_limits<T>::epsilon())`.

@@ -13,7 +13,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief A fixed-size unit vector wrapper type.
 ///
 /// `unit_vector_like<N, T>` represents a vector of dimension `N` with a fixed

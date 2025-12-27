@@ -50,7 +50,7 @@ auto make_obb_rotations_3d(const tf::obb<T, 3> &obb)
 } // namespace geometry
 
 
-/// @ingroup geometry
+/// @ingroup geometry_registration
 /// @brief Compute a rigid alignment from X to Y using oriented bounding boxes
 /// (OBBs).
 ///

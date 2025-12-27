@@ -16,6 +16,16 @@
 
 namespace tf {
 
+/// @ingroup spatial_queries
+/// @brief Cast a ray against a form and find the first intersection.
+///
+/// Traverses the spatial tree to find the first primitive hit by the ray.
+///
+/// @param ray The ray to cast.
+/// @param form The spatial form to query.
+/// @param config Optional ray configuration (min/max t values).
+/// @return A @ref tf::tree_ray_info containing the hit primitive ID and
+///         intersection parameter t, or invalid if no hit.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto ray_cast(
     const ray_like<Dims, Policy0> &ray, const tf::form<Dims, Policy1> &form,

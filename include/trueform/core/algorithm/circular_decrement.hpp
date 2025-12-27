@@ -8,7 +8,7 @@
 #pragma once
 
 namespace tf {
-/// @ingroup algorithms
+/// @ingroup core_algorithms
 /// @brief Circularly decrements an index within a fixed range.
 ///
 /// Given an index `val` in the range `[0, end)`, returns `val - 1` if `val >

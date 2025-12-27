@@ -1,118 +1,211 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.27)
 
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-  set(CMAKE_BUILD_TYPE
-      Release
-      CACHE STRING "Build type (default Release)" FORCE)
+# CMP0148: Use the new behavior for finding Python interpreters and libraries
+cmake_policy(SET CMP0148 NEW)
+
+# ==============================================================================
+# Platform configuration
+# ==============================================================================
+if(APPLE AND NOT DEFINED ENV{MACOSX_DEPLOYMENT_TARGET})
+  set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0")
+  message(STATUS
+          "MACOSX_DEPLOYMENT_TARGET not set in environment. "
+          "Defaulting CMAKE_OSX_DEPLOYMENT_TARGET to ${CMAKE_OSX_DEPLOYMENT_TARGET}"
+  )
 endif()
 
-option(ENABLE_ASAN "Enable Address Sanitizer" OFF)
+# ==============================================================================
+# Project Configuration
+# ==============================================================================
+project(trueform VERSION 0.0.0 LANGUAGES CXX)
 
-# Build options (all OFF by default)
-option(BUILD_EXAMPLES "Build examples." OFF)
-option(BUILD_PYTHON "Build Python bindings." OFF)
-option(BUILD_BENCHMARKS "Build benchmarks." OFF)
-option(BUILD_VTK "Build VTK integration library." OFF)
-option(BUILD_VTK_EXAMPLES "Build VTK examples." OFF)
-option(USE_SYSTEM_TBB "Use system-installed TBB." ON)
-mark_as_advanced(USE_SYSTEM_TBB)
+message(STATUS "CMAKE_OSX_DEPLOYMENT_TARGET = ${CMAKE_OSX_DEPLOYMENT_TARGET}")
 
-# Python and Examples/VTK are mutually exclusive (Python needs static TBB, Examples/VTK need system TBB)
-if((BUILD_EXAMPLES OR BUILD_VTK OR BUILD_VTK_EXAMPLES) AND BUILD_PYTHON)
-  message(FATAL_ERROR "BUILD_EXAMPLES/BUILD_VTK/BUILD_VTK_EXAMPLES and BUILD_PYTHON are mutually exclusive. "
-    "Python bindings require static TBB, while VTK requires system TBB.")
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# ==============================================================================
+# Options & Variables
+# ==============================================================================
+include(CMakeDependentOption)
+
+# 1. Build features
+option(TF_BUILD_PYTHON            "Build Python bindings." OFF)
+option(TF_BUILD_BENCHMARKS        "Build benchmarks." OFF)
+option(TF_BUILD_EXAMPLES          "Build examples." OFF)
+option(TF_BUILD_VTK_INTEGRATION   "Build trueform VTK integration." OFF)
+option(TF_ENABLE_ASAN             "Enable Address Sanitizer" OFF)
+option(TF_USE_SYSTEM_LIBS         "Use system installed libraries where possible." ON)
+option(TF_ENABLE_IPO              "Enable Interprocedural Optimization (LTO)." OFF)
+
+# 2. Dependent options
+## TF_USE_STATIC_TBB: Link TBB statically when building Python bindings to avoid
+## potential runtime issues with locating shared TBB libraries.
+cmake_dependent_option(
+        TF_USE_STATIC_TBB
+        "Link TBB statically."
+        ON
+        "TF_BUILD_PYTHON"
+        OFF
+)
+
+## TF_BUILD_VTK_EXAMPLES: Build VTK examples only if VTK integration and examples are enabled.
+cmake_dependent_option(
+        TF_BUILD_VTK_EXAMPLES
+        "Build VTK examples."
+        OFF
+        "TF_BUILD_VTK_INTEGRATION;TF_BUILD_EXAMPLES"
+        OFF
+)
+
+
+# Dependency Versions (Cache variables allow user overrides)
+set(TF_TBB_VERSION "2022.3.0" CACHE STRING
+        "Version of TBB to use when TF_USE_SYSTEM_TBB is OFF.")
+
+set(TF_NANOBIND_VERSION "2.0.0" CACHE STRING
+        "Version of nanobind to fetch when TF_USE_SYSTEM_NANOBIND is OFF.")
+
+# Check for incompatible options
+if(TF_USE_SYSTEM_LIBS AND TF_USE_STATIC_TBB)
+  message(WARNING "TF_USE_SYSTEM_LIBS is ON while TF_USE_STATIC_TBB is also ON.
+    These options are probably incompatible since system TBB is built as shared by default.
+    Things may not work as expected."
+  )
+endif()
+if(TF_BUILD_PYTHON AND NOT TF_USE_STATIC_TBB)
+  message(WARNING "TF_BUILD_PYTHON is ON and TF_USE_STATIC_TBB is OFF.
+    This may lead to issues with locating the TBB shared library at runtime
+    or version conflicts with other Python packages."
+  )
 endif()
 
-# VTK examples require VTK library
-if(BUILD_VTK_EXAMPLES AND NOT BUILD_VTK)
-  set(BUILD_VTK ON CACHE BOOL "Build VTK integration library." FORCE)
+# ==============================================================================
+# Compiler Flags
+# ==============================================================================
+if(MSVC AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  add_compile_options(/EHsc) # Enable standard C++ exceptions for clang-cl
 endif()
 
-# Python requires static TBB
-if(BUILD_PYTHON AND USE_SYSTEM_TBB)
-  set(USE_SYSTEM_TBB OFF CACHE BOOL "Use system-installed TBB." FORCE)
+if(TF_ENABLE_ASAN)
+  message(STATUS "trueform: Address Sanitizer enabled.")
+  add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+  add_link_options(-fsanitize=address)
 endif()
 
-# VTK requires system TBB
-if(BUILD_VTK AND NOT USE_SYSTEM_TBB)
-  set(USE_SYSTEM_TBB ON CACHE BOOL "Use system-installed TBB." FORCE)
+if(TF_ENABLE_IPO)
+  message(STATUS "trueform: Interprocedural Optimization (LTO) enabled.")
+  include(CheckIPOSupported)
+  check_ipo_supported(RESULT ipo_supported)
+  if(ipo_supported)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
+  else()
+    message(WARNING "IPO/LTO is not supported by the current compiler. Disbling TF_ENABLE_IPO.")
+    set(TF_ENABLE_IPO OFF)
+  endif()
 endif()
 
-if(ENABLE_ASAN)
-  message("Enabling ASAN and DEBUG")
-  set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
-endif()
-
-project(trueform LANGUAGES CXX)
-
-if(MSVC)
-  # Enable exception support for MSVC
-    add_compile_options(/EHsc)
-endif()
-
+# ==============================================================================
+# Target Definition (Interface Library)
+# ==============================================================================
 add_library(trueform INTERFACE)
 add_library(tf::trueform ALIAS trueform)
 
-target_compile_features(trueform INTERFACE cxx_std_17)
-include(cmake/GetTBB.cmake)
+# Fetch/Locate dependencies (See cmake/ThirdParty.cmake)
+include(cmake/ThirdParty.cmake)
 
-# Link TBB to trueform target
+# Linkage & Includes
 target_link_libraries(trueform INTERFACE TBB::tbb)
-target_include_directories(
-  trueform INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-                     $<INSTALL_INTERFACE:include>)
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-if(BUILD_EXAMPLES)
+target_include_directories(trueform INTERFACE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+
+# ==============================================================================
+# Subdirectories
+# ==============================================================================
+if(TF_BUILD_EXAMPLES)
   add_subdirectory(examples EXCLUDE_FROM_ALL)
 endif()
-if(BUILD_PYTHON)
+
+if(TF_BUILD_PYTHON)
   add_subdirectory(python)
 endif()
-if(BUILD_BENCHMARKS)
+
+if(TF_BUILD_BENCHMARKS)
   add_subdirectory(benchmarks)
 endif()
-if(BUILD_VTK)
+if(TF_BUILD_VTK)
   add_subdirectory(vtk)
 endif()
 
+# ==============================================================================
+# Installation & Packaging
+# ==============================================================================
 include(GNUInstallDirs)
-
-install(
-  TARGETS trueform
-  EXPORT trueformTargets
-  INCLUDES
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-
-install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-
-install(
-  EXPORT trueformTargets
-  FILE trueformTargets.cmake
-  NAMESPACE tf::
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/trueform)
-
 include(CMakePackageConfigHelpers)
 
+# 1. Install the library target and export the set
+install(
+        TARGETS trueform
+        EXPORT trueformTargets
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+# 2. Install Headers
+install(
+        DIRECTORY include/
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+# 3. Register the export set (creates trueformTargets.cmake)
+install(
+        EXPORT trueformTargets
+        FILE trueformTargets.cmake
+        NAMESPACE tf::
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/trueform
+)
+
+# 4. Generate and Install Package Config Files
 write_basic_package_version_file(
-  ${CMAKE_CURRENT_BINARY_DIR}/trueformConfigVersion.cmake
-  VERSION 0.0.0
-  COMPATIBILITY SameMajorVersion)
+        ${CMAKE_CURRENT_BINARY_DIR}/trueformConfigVersion.cmake
+        VERSION ${PROJECT_VERSION}
+        COMPATIBILITY SameMajorVersion
+)
 
 configure_package_config_file(
-  ${CMAKE_CURRENT_SOURCE_DIR}/trueformConfig.cmake.in
-  ${CMAKE_CURRENT_BINARY_DIR}/trueformConfig.cmake
-  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/trueform)
+        ${CMAKE_CURRENT_SOURCE_DIR}/trueformConfig.cmake.in
+        ${CMAKE_CURRENT_BINARY_DIR}/trueformConfig.cmake
+        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/trueform
+)
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/trueformConfig.cmake
-              ${CMAKE_CURRENT_BINARY_DIR}/trueformConfigVersion.cmake
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/trueform)
+install(
+        FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/trueformConfig.cmake
+        ${CMAKE_CURRENT_BINARY_DIR}/trueformConfigVersion.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/trueform
+)
 
-install(FILES ${CMAKE_CURRENT_LIST_DIR}/LICENSE
-              ${CMAKE_CURRENT_LIST_DIR}/LICENSE.noncommercial
-              ${CMAKE_CURRENT_LIST_DIR}/licenses/LICENSE.TBB
-        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/licenses)
-if(BUILD_PYTHON)
-  install(FILES ${CMAKE_CURRENT_LIST_DIR}/licenses/LICENSE.nanobind
-          DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/licenses)
+# 5. Install Licenses
+install(
+        FILES
+        ${CMAKE_CURRENT_LIST_DIR}/LICENSE
+        ${CMAKE_CURRENT_LIST_DIR}/LICENSE.noncommercial
+        ${CMAKE_CURRENT_LIST_DIR}/licenses/LICENSE.TBB
+        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/licenses
+)
+
+if(TF_BUILD_PYTHON)
+  install(
+          FILES ${CMAKE_CURRENT_LIST_DIR}/licenses/LICENSE.nanobind
+          DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/licenses
+  )
+endif()
+
+# Tests
+option(TF_BUILD_TESTS "Build test targets." OFF)
+if(TF_BUILD_TESTS)
+  add_subdirectory(tests)
 endif()

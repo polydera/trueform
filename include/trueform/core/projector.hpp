@@ -15,7 +15,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief A wrapper around a callable object used to project a point into a
 /// lower-dimensional space.
 ///
@@ -34,7 +34,7 @@ template <typename Policy> struct projector : Policy {
 
 namespace core {
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Creates a `projector` from a given callable object.
 ///
 /// Convenience factory for wrapping a lambda or functor into a `projector`.
@@ -47,7 +47,7 @@ template <typename F> auto make_projector(F &&f) {
 }
 } // namespace core
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Creates an identity projector that returns the input unchanged.
 ///
 /// Useful when no projection is needed but an interface expects a projector.
@@ -57,7 +57,7 @@ inline auto make_identity_projector() {
   return core::make_projector([](const auto &x) -> const auto & { return x; });
 }
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Creates a simple 2D projection from a 3D normal vector.
 ///
 /// This function chooses the two coordinate axes most orthogonal to the normal,

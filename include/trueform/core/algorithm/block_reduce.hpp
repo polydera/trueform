@@ -9,6 +9,28 @@
 #include "tbb/flow_graph.h"
 #include <thread>
 namespace tf {
+
+/// @ingroup core_algorithms
+/// @brief Parallel blocked reduction with custom local and global aggregation.
+///
+/// Divides the input range into blocks, processes each block in parallel
+/// using the `task` function to accumulate into a local result, then
+/// aggregates all local results into the global result using `aggregate`.
+///
+/// The aggregation happens sequentially to ensure thread-safe access
+/// to the global result.
+///
+/// @tparam Range The input range type.
+/// @tparam Result The global result type.
+/// @tparam LocalResult The thread-local result type.
+/// @tparam F0 Block processing function: `void(block_range, LocalResult&)`.
+/// @tparam F1 Aggregation function: `void(const LocalResult&, Result&)`.
+/// @param data The input range to reduce.
+/// @param result The global result (accumulated into).
+/// @param local_result Template for thread-local storage.
+/// @param task Function to process each block.
+/// @param aggregate Function to merge local into global result.
+/// @param n_blocks Number of blocks (default: 5x hardware concurrency).
 template <typename Range, typename Result, typename LocalResult, typename F0,
           typename F1>
 auto blocked_reduce(const Range &data, Result &&result,
@@ -67,6 +89,11 @@ auto blocked_reduce(const Range &data, Result &&result,
   g.wait_for_all();
 }
 
+/// @ingroup core_algorithms
+/// @brief Parallel blocked reduction using the result as the local template.
+///
+/// Convenience overload that uses a copy of the result as the local
+/// accumulator template.
 template <typename Range, typename Result, typename F0, typename F1>
 auto blocked_reduce(const Range &data, Result &&result, F0 task, F1 aggregate,
                     std::size_t n_blocks = std::thread::hardware_concurrency() *

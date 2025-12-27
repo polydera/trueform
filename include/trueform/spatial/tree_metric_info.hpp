@@ -9,7 +9,8 @@
 #include <utility>
 namespace tf {
 
-/// @brief Result of a nearest-point query between two spatial trees.
+/// @ingroup spatial_results
+/// @brief Result of a nearest-neighbor query on a single spatial tree.
 ///
 /// Represents the closest pair of primitives found between two trees, along
 /// with their closest points and the associated distance metric. This structure

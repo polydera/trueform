@@ -8,6 +8,11 @@
 #include "./parallel_for.hpp"
 
 namespace tf {
+
+/// @ingroup core_algorithms
+/// @brief Fill a range with a value in parallel.
+///
+/// Falls back to sequential fill for ranges smaller than 1000 elements.
 template <typename Range, typename T>
 auto parallel_fill(Range &&r, const T &val) -> void {
   if (r.size() < 1000)

@@ -14,6 +14,14 @@
 #include "./loop/vertex.hpp"
 
 namespace tf {
+
+/// @ingroup cut_data
+/// @brief Low-level scalar field face cutting.
+///
+/// Splits faces along scalar field isocurves.
+/// Used internally by @ref tf::embedded_isocurves and @ref tf::make_isobands.
+///
+/// @tparam Index The index type.
 template <typename Index> class scalar_cut_faces {
 public:
   auto mapped_loops() const {

@@ -10,6 +10,20 @@
 
 namespace tf {
 
+/// @ingroup core_queries
+/// @brief Cast a ray and return hit information including the intersection point.
+///
+/// Returns a @ref tf::ray_hit_info containing the intersection status, the
+/// parameter `t`, and the actual hit point (if any). This is a convenience
+/// wrapper around @ref tf::ray_cast that also computes the hit point.
+///
+/// @tparam Dims The dimensionality.
+/// @tparam Policy0 The ray's storage policy.
+/// @tparam Policy1 The target's storage policy.
+/// @param ray The ray to cast.
+/// @param plane The plane to test against.
+/// @param config Optional ray configuration (min/max t values).
+/// @return A @ref tf::ray_hit_info with intersection status, t parameter, and hit point.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto ray_hit(
     const ray_like<Dims, Policy0> &ray,
@@ -25,6 +39,8 @@ auto ray_hit(
   return out;
 }
 
+/// @ingroup core_queries
+/// @overload
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto ray_hit(
     const ray_like<Dims, Policy0> &ray,
@@ -46,6 +62,8 @@ auto ray_hit(
   return out;
 }
 
+/// @ingroup core_queries
+/// @overload
 template <typename Policy0, typename Policy1>
 auto ray_hit(
     const ray_like<2, Policy0> &ray, const tf::polygon<2, Policy1> &poly,
@@ -60,6 +78,8 @@ auto ray_hit(
   return out;
 }
 
+/// @ingroup core_queries
+/// @overload
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto ray_hit(
     const ray_like<Dims, Policy0> &ray, const tf::segment<Dims, Policy1> &seg,
@@ -84,6 +104,8 @@ auto ray_hit(
   return tf::make_ray_hit_info(status, t0, pt);
 }
 
+/// @ingroup core_queries
+/// @overload
 template <typename Policy0, typename Policy1>
 auto ray_hit(
     const ray_like<2, Policy0> &ray, const tf::segment<2, Policy1> &seg,
@@ -98,6 +120,8 @@ auto ray_hit(
   return out;
 }
 
+/// @ingroup core_queries
+/// @overload
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto ray_hit(
     const ray_like<Dims, Policy0> &ray,
@@ -120,6 +144,8 @@ auto ray_hit(
   return tf::make_ray_hit_info(status, t0, pt);
 }
 
+/// @ingroup core_queries
+/// @overload
 template <typename Policy0, typename Policy1>
 auto ray_hit(
     const ray_like<2, Policy0> &ray, const tf::line_like<2, Policy1> &line,
@@ -134,6 +160,8 @@ auto ray_hit(
   return out;
 }
 
+/// @ingroup core_queries
+/// @overload
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto ray_hit(
     const ray_like<Dims, Policy0> &ray, const tf::ray_like<Dims, Policy1> &ray1,
@@ -156,6 +184,8 @@ auto ray_hit(
   return tf::make_ray_hit_info(status, t0, pt);
 }
 
+/// @ingroup core_queries
+/// @overload
 template <typename Policy0, typename Policy1>
 auto ray_hit(
     const ray_like<2, Policy0> &ray, const tf::ray_like<2, Policy1> &ray1,
@@ -170,6 +200,8 @@ auto ray_hit(
   return out;
 }
 
+/// @ingroup core_queries
+/// @overload
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto ray_hit(
     const ray_like<Dims, Policy0> &ray,
@@ -185,6 +217,8 @@ auto ray_hit(
   return out;
 }
 
+/// @ingroup core_queries
+/// @overload
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto ray_hit(
     const ray_like<Dims, Policy0> &ray,
@@ -200,6 +234,8 @@ auto ray_hit(
   return out;
 }
 
+/// @ingroup core_queries
+/// @overload
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto ray_hit(
     const ray_like<Dims, Policy0> &ray,

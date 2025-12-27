@@ -200,7 +200,15 @@ auto obb_from(const Range &points, dispatch_t<tf::point_like<Dims, Policy>>) {
 
 } // namespace core
 
-// Convenience overloads in tf namespace
+/// @ingroup core_primitives
+/// @brief Create OBB bounding volume from polygons.
+///
+/// Computes a tight-fitting oriented bounding box using
+/// covariance-based principal component analysis.
+///
+/// @tparam Policy The polygons' policy type.
+/// @param polys The polygon mesh.
+/// @return An @ref tf::obb bounding volume.
 template <typename Policy>
 auto obb_from(const tf::polygons<Policy> &polys) {
   if (!polys.size())
@@ -209,6 +217,9 @@ auto obb_from(const tf::polygons<Policy> &polys) {
   return core::obb_from(polys, core::dispatch_element(polys));
 }
 
+/// @ingroup core_primitives
+/// @brief Create OBB bounding volume from segments.
+/// @overload
 template <typename Policy>
 auto obb_from(const tf::segments<Policy> &segs) {
   if (!segs.size())
@@ -217,6 +228,9 @@ auto obb_from(const tf::segments<Policy> &segs) {
   return core::obb_from(segs, core::dispatch_element(segs));
 }
 
+/// @ingroup core_primitives
+/// @brief Create OBB bounding volume from points.
+/// @overload
 template <typename Policy>
 auto obb_from(const tf::points<Policy> &pts) {
   if (!pts.size())

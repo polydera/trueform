@@ -11,7 +11,7 @@
 #include "../static_size.hpp"
 
 namespace tf {
-/// @ingroup ranges
+/// @ingroup core_ranges
 /// @brief Creates a mapped view over an input range by applying a
 /// transformation function.
 ///

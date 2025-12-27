@@ -13,6 +13,21 @@
 #include <algorithm>
 
 namespace tf {
+
+/// @ingroup topology_paths
+/// @brief Find Eulerian paths through a graph of edges.
+///
+/// Decomposes a graph into a minimal set of edge-disjoint paths that
+/// together cover all edges. Uses Hierholzer's algorithm. The result
+/// is a collection of paths expressed as edge indices.
+///
+/// @tparam Policy The edges policy type.
+/// @tparam Policy1 The edge membership policy type.
+/// @tparam Index The index type.
+/// @param edges The edges of the graph.
+/// @param link Edge membership (edges incident on each vertex).
+/// @param path_offsets Output: offsets into edge_ids for each path.
+/// @param edge_ids Output: edge indices forming the paths.
 template <typename Policy, typename Policy1, typename Index>
 auto find_eulerian_paths(const tf::edges<Policy> &edges,
                          const tf::edge_membership_like<Policy1> &link,
@@ -72,6 +87,17 @@ auto find_eulerian_paths(const tf::edges<Policy> &edges,
     path_offsets.push_back(new_size);
 }
 
+/// @ingroup topology_paths
+/// @brief Find Eulerian paths through a graph defined by vertex links.
+///
+/// Decomposes a directed graph into a minimal set of edge-disjoint paths.
+/// The result is a collection of paths expressed as vertex indices.
+///
+/// @tparam Policy The vertex link policy type.
+/// @tparam Index The index type.
+/// @param link The vertex link structure (neighbors of each vertex).
+/// @param path_offsets Output: offsets into vertex_ids for each path.
+/// @param vertex_ids Output: vertex indices forming the paths.
 template <typename Policy, typename Index>
 auto find_eulerian_paths(const tf::vertex_link_like<Policy> &link,
                          tf::buffer<Index> &path_offsets,

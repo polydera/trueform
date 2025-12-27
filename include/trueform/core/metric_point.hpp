@@ -11,7 +11,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief A point and a metric
 ///
 /// Represents a candidate closest point, including both the metric (e.g.,
@@ -26,7 +26,7 @@ template <typename RealT, std::size_t Dims> struct metric_point {
   tf::point<RealT, Dims> point;
 };
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Construct a `metric_point` object from a metric and a spatial
 /// position.
 ///

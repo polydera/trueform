@@ -8,6 +8,14 @@
 #include <algorithm>
 
 namespace tf {
+
+/// @ingroup core_algorithms
+/// @brief Return the smaller of two values.
+///
+/// @tparam T The value type.
+/// @param t0 First value.
+/// @param t1 Second value.
+/// @return Reference to the smaller value.
 template <typename T> auto min(const T &t0, const T &t1) -> const T & {
   using std::min;
   return min(t0, t1);

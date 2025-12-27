@@ -10,6 +10,21 @@
 #include "./search_self.hpp"
 
 namespace tf {
+
+/// @ingroup spatial_queries
+/// @brief Gather pairs of primitive IDs within a form that satisfy predicates.
+///
+/// Performs a self-intersection search and collects pairs of IDs where both
+/// the bounding volume predicate and primitive predicate are satisfied.
+///
+/// @note Self-search runs in parallel. Use @ref tf::local_value or
+/// @ref tf::local_vector for thread-safe aggregation in custom predicates.
+///
+/// @param form The form to query.
+/// @param aabbs_predicate Predicate for bounding volume pairs.
+/// @param primitives_predicate Predicate for primitive pairs.
+/// @param out Output iterator to write pairs of IDs.
+/// @return Iterator past the last written element.
 template <std::size_t Dims, typename Policy, typename F0, typename F1,
           typename Iterator>
 auto gather_self_ids(const tf::form<Dims, Policy> &form,
@@ -38,6 +53,8 @@ auto gather_self_ids(const tf::form<Dims, Policy> &form,
   return l_ids.to_iterator(out);
 }
 
+/// @ingroup spatial_queries
+/// @brief Gather self-intersecting pairs using a single predicate for both tests.
 template <std::size_t Dims, typename Policy, typename F, typename Iterator>
 auto gather_self_ids(const tf::form<Dims, Policy> &form, const F &predicate,
                      Iterator out) -> Iterator {

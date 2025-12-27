@@ -9,6 +9,7 @@
 
 namespace tf {
 
+/// @ingroup spatial_queries
 /// @brief Perform a self-intersection search on a tree_like structure.
 ///
 /// Finds all pairs of primitives within the same tree whose bounding volumes
@@ -29,6 +30,7 @@ auto search_self(const tf::tree_like<TreePolicy> &tree, const F0 &check_bvs,
                                        parallelism_depth);
 }
 
+/// @ingroup spatial_queries
 /// @brief Perform a self-intersection search on a form.
 ///
 /// Finds all pairs of primitives within the same form whose bounding volumes

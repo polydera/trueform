@@ -18,7 +18,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup geometry_registration
 /// @brief Compute one-way Chamfer error from A to B (mean nearest-neighbor distance).
 ///
 /// For each point in A, finds the nearest point in B and accumulates the distance.

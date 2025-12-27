@@ -7,7 +7,7 @@
 #pragma once
 #include "./parallel_apply.hpp"
 namespace tf {
-/// @ingroup algorithms
+/// @ingroup core_algorithms
 /// @brief Inverts a mapping with support for missing (none-tagged) entries.
 ///
 /// This function inverts a given mapping by producing a reverse lookup table in

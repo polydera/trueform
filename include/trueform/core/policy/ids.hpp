@@ -56,13 +56,13 @@ private:
 };
 
 /**
- * @ingroup injectors
- * @brief Type injector that tags ids to a class.
+ * @ingroup core_policies
+ * @brief Zip IDs with a range for per-element ID access.
  *
- * It provides accessors for the ids.
+ * Zips an ID range with a base range so each element has an `.id()` accessor.
  *
- * @tparam Range The id range
- * @tparam Base The type being augmented.
+ * @tparam Range The ID range type.
+ * @tparam Base The range being augmented.
  */
 template <typename Range, typename Base>
 struct zip_ids : zipped<Range, policy::id_iter_tagger, Base> {
@@ -135,10 +135,10 @@ template <typename T>
 inline constexpr bool has_ids_zip = decltype(has_ids_zip_impl(
     policy::type{}, static_cast<const std::decay_t<T> *>(nullptr)))::value;
 
-/**
- * @ingroup injectors
- * @brief Constructs an `tag_ids` by injecting ids into a base
- */
+/// @ingroup core_policies
+/// @brief Inject a range of IDs into a range.
+///
+/// Adds `.ids()` accessor to access the ID range.
 template <typename Range, typename Base>
 auto tag_ids(Range &&ids, Base &&base) {
   if constexpr (has_ids_tag<Base>)

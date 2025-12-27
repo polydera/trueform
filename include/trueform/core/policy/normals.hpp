@@ -58,13 +58,13 @@ private:
 };
 
 /**
- * @ingroup injectors
- * @brief Type injector that tags normals to a class.
+ * @ingroup core_policies
+ * @brief Zip normals with a range for per-element normal access.
  *
- * It provnormales accessors for the normals.
+ * Zips a normals range with a base range so each element has a `.normal()` accessor.
  *
- * @tparam Range The normal range
- * @tparam Base The type being augmented.
+ * @tparam Range The normals range type.
+ * @tparam Base The range being augmented.
  */
 template <typename Range, typename Base>
 struct zip_normals : zipped<Range, policy::normal_tagger, Base> {
@@ -130,10 +130,10 @@ template <typename T>
 inline constexpr bool has_normals_policy = decltype(has_normals(
     policy::type{}, static_cast<const std::decay_t<T> *>(nullptr)))::value;
 
-/**
- * @ingroup injectors
- * @brief Constructs an `tag_normals` by injecting normals into a base
- */
+/// @ingroup core_policies
+/// @brief Inject a range of normals into a range.
+///
+/// Adds `.normals()` accessor to access the normals range.
 template <typename Range, typename Base>
 auto tag_normals(Range &&normals, Base &&base) {
   if constexpr (has_normals_policy<Base>)

@@ -11,6 +11,13 @@
 
 namespace tf {
 
+/// @ingroup core_ranges
+/// @brief A collection of curves sharing point data.
+///
+/// Wraps paths (connectivity) and points to provide curve iteration.
+/// Each element is a view over the underlying data.
+///
+/// @tparam Policy The underlying curves policy.
 template <typename Policy> struct curves : Policy {
   curves(const Policy &r) : Policy{r} {}
   curves(Policy &&r) : Policy{std::move(r)} {}
@@ -43,6 +50,14 @@ auto wrap_like(curves<Policy> &&, T &&t) {
   return curves<std::decay_t<T>>{static_cast<T &&>(t)};
 }
 
+/// @ingroup core_ranges
+/// @brief Create curves from paths and points.
+///
+/// @tparam Range0 The paths range type (e.g., offset block range).
+/// @tparam Range1 The points range type.
+/// @param paths The path connectivity data.
+/// @param points The point data.
+/// @return A @ref tf::curves.
 template <typename Range0, typename Range1>
 auto make_curves(Range0 &&paths, Range1 &&points) {
   auto r0 = tf::make_paths(paths);
@@ -55,6 +70,9 @@ template <typename Range> auto make_curves(curves<Range> p) -> curves<Range> {
   return p;
 }
 
+/// @ingroup core_ranges
+/// @brief Create curves from a range of curve objects.
+/// @overload
 template <typename Range> auto make_curves(Range &&r) {
   auto segs = tf::make_range(r);
   return curves<decltype(segs)>{segs};

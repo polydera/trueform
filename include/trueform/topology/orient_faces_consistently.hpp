@@ -20,6 +20,20 @@
 
 namespace tf {
 namespace topology {
+
+/// @ingroup topology_analysis
+/// @brief Orient faces consistently using weighted voting.
+///
+/// Traverses the mesh by connected components and ensures all faces within
+/// each component have consistent winding. Uses weights (typically face area)
+/// to decide which orientation to keep when a region needs to be flipped.
+///
+/// @tparam Policy The faces policy type.
+/// @tparam Policy1 The manifold edge link policy type.
+/// @tparam Range The weights range type.
+/// @param faces The faces range (modified in place).
+/// @param link The manifold edge link structure.
+/// @param weights Per-face weights for voting (e.g., face areas).
 template <typename Policy, typename Policy1, typename Range>
 void orient_faces_consistently(tf::faces<Policy> &faces,
                                const tf::manifold_edge_link_like<Policy1> &link,
@@ -93,6 +107,12 @@ void orient_faces_consistently(tf::faces<Policy> &faces,
 }
 } // namespace topology
 
+/// @ingroup topology_analysis
+/// @brief Orient faces consistently with uniform weights.
+/// @tparam Policy The faces policy type.
+/// @tparam Policy1 The manifold edge link policy type.
+/// @param faces The faces range (modified in place).
+/// @param link The manifold edge link structure.
 template <typename Policy, typename Policy1>
 void orient_faces_consistently(
     tf::faces<Policy> &faces,
@@ -101,13 +121,23 @@ void orient_faces_consistently(
       faces, link, tf::make_constant_range(1, faces.size()));
 }
 
+/// @ingroup topology_analysis
+/// @overload
 template <typename Policy, typename Policy1>
 void orient_faces_consistently(
     tf::faces<Policy> &&faces,
     const tf::manifold_edge_link_like<Policy1> &link) {
-  return topology::orient_faces_consistently(faces, link);
+  return tf::orient_faces_consistently(faces, link);
 }
 
+/// @ingroup topology_analysis
+/// @brief Orient faces consistently in a polygons range.
+///
+/// Uses face area as weights for voting. Builds manifold edge link internally
+/// if not provided via policy.
+///
+/// @tparam Policy The polygons policy type.
+/// @param polygons The polygons range (modified in place).
 template <typename Policy>
 void orient_faces_consistently(tf::polygons<Policy> &polygons) {
   auto weights = tf::make_mapped_range(
@@ -127,6 +157,8 @@ void orient_faces_consistently(tf::polygons<Policy> &polygons) {
   }
 }
 
+/// @ingroup topology_analysis
+/// @overload
 template <typename Policy>
 void orient_faces_consistently(tf::polygons<Policy> &&polygons) {
   return orient_faces_consistently(polygons);

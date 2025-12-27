@@ -12,6 +12,17 @@
 #include "./points.hpp"
 #include "./points_buffer.hpp"
 namespace tf {
+
+/// @ingroup core_buffers
+/// @brief An owning buffer of polyline curves.
+///
+/// Stores path indices and point coordinates separately using offset-based
+/// storage for variable-length curves. Use `curves()` to obtain a
+/// @ref tf::curves range.
+///
+/// @tparam Index The index type for path connectivity.
+/// @tparam RealT The coordinate scalar type.
+/// @tparam Dims The number of dimensions.
 template <typename Index, typename RealT, std::size_t Dims>
 class curves_buffer {
   using iterator = decltype(core::make_curve_range_iter(

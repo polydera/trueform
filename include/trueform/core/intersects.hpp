@@ -28,11 +28,11 @@ namespace tf {
 template <typename T0, typename T1>
 auto intersects(const interval<T0> &r0, const interval<T1> &r1) -> bool {
   using RealT = std::common_type_t<T0, T1>;
-  return !(r1.max + std::numeric_limits<RealT>::epsilon() < r0.min ||
-           r0.max + std::numeric_limits<RealT>::epsilon() < r1.min);
+  return !(r1.max + tf::epsilon<RealT> < r0.min ||
+           r0.max + tf::epsilon<RealT> < r1.min);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect.
 ///
 /// This overload of `intersects` checks for intersection between
@@ -51,7 +51,7 @@ auto intersects(const aabb_like<Dims, Policy0> &a,
   return true;
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect within epsilon.
 ///
 /// This overload of `intersects` checks for intersection between specific
@@ -70,7 +70,7 @@ auto intersects(const aabb_like<Dims, Policy0> &a,
   return true;
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect.
 ///
 /// This overload of `intersects` checks for intersection between specific
@@ -90,7 +90,7 @@ auto intersects(const point_like<N, T0> &point, const aabb_like<N, T1> &box)
   return true;
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect within epsilon.
 ///
 /// This overload of `intersects` checks for intersection between specific
@@ -104,7 +104,7 @@ auto intersects(const aabb_like<N, Policy> &box, const point_like<N, T1> &point)
   return intersects(point, box);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect within epsilon.
 ///
 /// This overload of `intersects` checks for intersection between specific
@@ -122,7 +122,7 @@ auto intersects(const point_like<N, T0> &point, const aabb_like<N, T1> &box,
   return true;
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect within epsilon.
 ///
 /// This overload of `intersects` checks for intersection between specific
@@ -134,7 +134,7 @@ auto intersects(const aabb_like<N, Policy> &box, const point_like<N, T1> &point,
                 tf::coordinate_type<Policy, T1> epsilon) -> bool {
   return intersects(point, box, epsilon);
 }
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect within epsilon.
 ///
 /// This overload of `intersects` checks for intersection between specific
@@ -146,7 +146,7 @@ auto intersects(const point_like<N, T0> &v0, const point_like<N, T1> &v1,
                 tf::coordinate_type<T0, T1> epsilon) -> bool {
   return (v0 - v1).length2() < epsilon;
 }
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect.
 ///
 /// This overload of `intersects` checks for intersection between specific
@@ -159,7 +159,7 @@ auto intersects(const tf::point_like<N, T0> &v0,
   return (v0 - v1).length2() < tf::epsilon2<tf::coordinate_type<T0, T1>>;
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect.
 ///
 /// This overload of `intersects` checks for intersection between specific
@@ -175,7 +175,7 @@ auto intersects(const tf::line_like<Dims, Policy> &l,
   return d2 < tf::epsilon2<decltype(d2)>;
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect.
 ///
 /// This overload of `intersects` checks for intersection between specific
@@ -188,7 +188,7 @@ auto intersects(const tf::point_like<Dims, T1> &v0,
   return intersects(l, v0);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect.
 ///
 /// This overload of `intersects` checks for intersection between specific
@@ -204,7 +204,7 @@ auto intersects(const tf::ray_like<Dims, Policy> &r,
   return d2 < tf::epsilon2<decltype(d2)>;
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect.
 ///
 /// This overload of `intersects` checks for intersection between specific
@@ -217,7 +217,7 @@ auto intersects(const tf::point_like<Dims, T1> &v0,
   return intersects(r, v0);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect.
 ///
 /// This overload of `intersects` checks for intersection between specific
@@ -239,7 +239,7 @@ auto intersects(const tf::segment<2, T0> &s, const tf::point_like<2, T1> &v1) {
   return tf::classify(v1, s) == tf::sidedness::on_boundary;
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect.
 ///
 /// This overload of `intersects` checks for intersection between specific
@@ -257,7 +257,7 @@ auto intersects(const tf::point_like<2, T0> &v0, const tf::segment<2, T1> &s) {
   return intersects(s, v0);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect.
 ///
 /// This overload of `intersects` checks for intersection between specific
@@ -274,7 +274,7 @@ auto intersects(const tf::line_like<Dims, Policy0> &l0,
   return d2 < tf::epsilon2<decltype(d2)>;
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect.
 ///
 /// This overload of `intersects` checks for intersection between specific
@@ -291,7 +291,7 @@ auto intersects(const tf::ray_like<Dims, Policy0> &r0,
   return d2 < tf::epsilon2<decltype(d2)>;
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect.
 ///
 /// This overload of `intersects` checks for intersection between specific
@@ -307,15 +307,16 @@ auto intersects(const tf::line_like<Dims, Policy0> &l0,
   auto d2 = (pt0 - pt1).length2();
   return d2 < tf::epsilon2<decltype(d2)>;
 }
-/// @ingroup geometry
-/// @brief Computes the closest @ref tf::metric_point_pair between the objects.
+/// @ingroup core_queries
+/// @brief Check whether a ray and line intersect.
+/// @overload
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const tf::ray_like<Dims, Policy0> &r0,
                 const tf::line_like<Dims, Policy1> &l1) {
   return intersects(l1, r0);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect.
 ///
 /// This overload of `intersects` checks for intersection between specific
@@ -333,7 +334,7 @@ auto intersects(const tf::ray_like<Dims, Policy> &r0,
   return d2 < tf::epsilon2<decltype(d2)>;
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect.
 ///
 /// This overload of `intersects` checks for intersection between specific
@@ -351,7 +352,7 @@ auto intersects(const tf::line_like<Dims, Policy> &l0,
   return d2 < tf::epsilon2<decltype(d2)>;
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect.
 ///
 /// This overload of `intersects` checks for intersection between specific
@@ -369,7 +370,7 @@ auto intersects(const tf::segment<Dims, T> &s0,
   return d2 < tf::epsilon2<decltype(d2)>;
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect.
 ///
 /// This overload of `intersects` checks for intersection between specific
@@ -387,7 +388,7 @@ auto intersects(const tf::segment<Dims, T> &s0,
   return d2 < tf::epsilon2<decltype(d2)>;
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect.
 ///
 /// This overload of `intersects` checks for intersection between specific
@@ -439,7 +440,7 @@ auto intersects(const tf::segment<2, T0> &s0, const tf::segment<2, T1> &s1)
   return straddle1 && straddle2;
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect.
 ///
 /// This overload of `intersects` checks for intersection between specific
@@ -462,7 +463,7 @@ auto intersects(const tf::polygon<2, Policy0> &poly_in,
   return tf::contains_coplanar_point(poly_in, pt);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect.
 ///
 /// This overload of `intersects` checks for intersection between specific
@@ -608,7 +609,7 @@ auto intersects(const tf::polygon<2, Policy0> &poly_in,
                 const tf::segment<2, Policy1> &seg1) -> bool {
   return tf::core::intersects_coplanar(poly_in, seg1);
 }
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect.
 ///
 /// This overload of `intersects` checks for intersection between specific
@@ -627,7 +628,7 @@ auto intersects(const tf::segment<2, Policy> &seg,
   return intersects(poly, seg);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two geometric primitives intersect.
 ///
 /// This overload of `intersects` checks for intersection between specific
@@ -708,7 +709,7 @@ auto intersects(const tf::point_like<Dims, Policy0> &pt,
   return intersects(plane, pt);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two planes intersect.
 ///
 /// Two planes intersect if they are not parallel, or if they are coplanar.
@@ -888,7 +889,7 @@ auto intersects(const tf::obb_like<Dims, Policy0> &obb0,
   return core::obb_intersects_obb(obb0, obb1);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether an OBB and AABB intersect.
 ///
 /// Uses the Separating Axis Theorem (SAT) testing 2*Dims axes.
@@ -929,7 +930,7 @@ auto intersects(const tf::obb_like<Dims, Policy0> &obb,
   return true;
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether an AABB and OBB intersect.
 ///
 /// @return `true` if the primitives intersect; otherwise `false`.
@@ -939,7 +940,7 @@ auto intersects(const tf::aabb_like<Dims, Policy0> &bbox,
   return intersects(obb, bbox);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether an OBB contains a point.
 ///
 /// @return `true` if the point is inside the OBB; otherwise `false`.
@@ -963,7 +964,7 @@ auto intersects(const tf::obb_like<Dims, Policy0> &obb,
   return tf::core::local_point_box_intersects(local_pt, extent);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether a point is inside an OBB.
 ///
 /// @return `true` if the point is inside the OBB; otherwise `false`.
@@ -973,7 +974,7 @@ auto intersects(const tf::point_like<Dims, Policy0> &pt,
   return intersects(obb, pt);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether an OBB and ray intersect.
 ///
 /// @return `true` if the primitives intersect; otherwise `false`.
@@ -983,7 +984,7 @@ auto intersects(const tf::obb_like<Dims, Policy0> &obb,
   return core::obb_intersects_ray(obb, ray);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether a ray and OBB intersect.
 ///
 /// @return `true` if the primitives intersect; otherwise `false`.
@@ -993,7 +994,7 @@ auto intersects(const tf::ray_like<Dims, Policy0> &ray,
   return intersects(obb, ray);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether an OBB and line intersect.
 ///
 /// @return `true` if the primitives intersect; otherwise `false`.
@@ -1003,7 +1004,7 @@ auto intersects(const tf::obb_like<Dims, Policy0> &obb,
   return core::obb_intersects_line(obb, line);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether a line and OBB intersect.
 ///
 /// @return `true` if the primitives intersect; otherwise `false`.
@@ -1013,7 +1014,7 @@ auto intersects(const tf::line_like<Dims, Policy0> &line,
   return intersects(obb, line);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether an OBB and segment intersect.
 ///
 /// @return `true` if the primitives intersect; otherwise `false`.
@@ -1023,7 +1024,7 @@ auto intersects(const tf::obb_like<Dims, Policy0> &obb,
   return core::obb_intersects_segment(obb, seg);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether a segment and OBB intersect.
 ///
 /// @return `true` if the primitives intersect; otherwise `false`.
@@ -1033,7 +1034,7 @@ auto intersects(const tf::segment<Dims, Policy0> &seg,
   return intersects(obb, seg);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether an OBB and plane intersect.
 ///
 /// @return `true` if the primitives intersect; otherwise `false`.
@@ -1043,7 +1044,7 @@ auto intersects(const tf::obb_like<Dims, Policy0> &obb,
   return core::obb_intersects_plane(obb, plane);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether a plane and OBB intersect.
 ///
 /// @return `true` if the primitives intersect; otherwise `false`.
@@ -1053,7 +1054,7 @@ auto intersects(const tf::plane_like<Dims, Policy0> &plane,
   return intersects(obb, plane);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether an OBB and polygon intersect.
 ///
 /// @return `true` if the primitives intersect; otherwise `false`.
@@ -1063,7 +1064,7 @@ auto intersects(const tf::obb_like<Dims, Policy0> &obb,
   return core::obb_intersects_polygon(obb, poly);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether a polygon and OBB intersect.
 ///
 /// @return `true` if the primitives intersect; otherwise `false`.
@@ -1073,7 +1074,7 @@ auto intersects(const tf::polygon<Dims, Policy0> &poly,
   return intersects(obb, poly);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether two OBBRSSs intersect.
 ///
 /// Uses the OBB parts for intersection testing (cheaper than RSS).
@@ -1086,7 +1087,7 @@ auto intersects(const tf::obbrss_like<Dims, Policy0> &a,
                     tf::make_obb_like(b.obb_origin, b.axes, b.extent));
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether an OBBRSS and AABB intersect.
 ///
 /// Uses the OBB part of OBBRSS for intersection testing.
@@ -1099,7 +1100,7 @@ auto intersects(const tf::obbrss_like<Dims, Policy0> &obbrss,
       tf::make_obb_like(obbrss.obb_origin, obbrss.axes, obbrss.extent), bbox);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether an AABB and OBBRSS intersect.
 ///
 /// @return `true` if the primitives intersect; otherwise `false`.
@@ -1109,7 +1110,7 @@ auto intersects(const tf::aabb_like<Dims, Policy0> &bbox,
   return intersects(obbrss, bbox);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether an OBBRSS and OBB intersect.
 ///
 /// Uses the OBB part of OBBRSS for intersection testing.
@@ -1122,7 +1123,7 @@ auto intersects(const tf::obbrss_like<Dims, Policy0> &obbrss,
       tf::make_obb_like(obbrss.obb_origin, obbrss.axes, obbrss.extent), obb);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether an OBB and OBBRSS intersect.
 ///
 /// @return `true` if the primitives intersect; otherwise `false`.
@@ -1132,7 +1133,7 @@ auto intersects(const tf::obb_like<Dims, Policy0> &obb,
   return intersects(obbrss, obb);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether an OBBRSS contains a point.
 ///
 /// Uses the OBB part of OBBRSS for intersection testing.
@@ -1145,7 +1146,7 @@ auto intersects(const tf::obbrss_like<Dims, Policy0> &obbrss,
       tf::make_obb_like(obbrss.obb_origin, obbrss.axes, obbrss.extent), pt);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether a point is inside an OBBRSS.
 ///
 /// @return `true` if the point is inside the OBBRSS; otherwise `false`.
@@ -1155,7 +1156,7 @@ auto intersects(const tf::point_like<Dims, Policy0> &pt,
   return intersects(obbrss, pt);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether an OBBRSS and ray intersect.
 ///
 /// Uses the OBB part of OBBRSS for intersection testing.
@@ -1168,7 +1169,7 @@ auto intersects(const tf::obbrss_like<Dims, Policy0> &obbrss,
       tf::make_obb_like(obbrss.obb_origin, obbrss.axes, obbrss.extent), ray);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether a ray and OBBRSS intersect.
 ///
 /// @return `true` if the primitives intersect; otherwise `false`.
@@ -1178,7 +1179,7 @@ auto intersects(const tf::ray_like<Dims, Policy0> &ray,
   return intersects(obbrss, ray);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether an OBBRSS and line intersect.
 ///
 /// Uses the OBB part of OBBRSS for intersection testing.
@@ -1191,7 +1192,7 @@ auto intersects(const tf::obbrss_like<Dims, Policy0> &obbrss,
       tf::make_obb_like(obbrss.obb_origin, obbrss.axes, obbrss.extent), line);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether a line and OBBRSS intersect.
 ///
 /// @return `true` if the primitives intersect; otherwise `false`.
@@ -1201,7 +1202,7 @@ auto intersects(const tf::line_like<Dims, Policy0> &line,
   return intersects(obbrss, line);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether an OBBRSS and segment intersect.
 ///
 /// Uses the OBB part of OBBRSS for intersection testing.
@@ -1214,7 +1215,7 @@ auto intersects(const tf::obbrss_like<Dims, Policy0> &obbrss,
       tf::make_obb_like(obbrss.obb_origin, obbrss.axes, obbrss.extent), seg);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether a segment and OBBRSS intersect.
 ///
 /// @return `true` if the primitives intersect; otherwise `false`.
@@ -1224,7 +1225,7 @@ auto intersects(const tf::segment<Dims, Policy0> &seg,
   return intersects(obbrss, seg);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether an OBBRSS and plane intersect.
 ///
 /// Uses the OBB part of OBBRSS for intersection testing.
@@ -1237,7 +1238,7 @@ auto intersects(const tf::obbrss_like<Dims, Policy0> &obbrss,
       tf::make_obb_like(obbrss.obb_origin, obbrss.axes, obbrss.extent), plane);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether a plane and OBBRSS intersect.
 ///
 /// @return `true` if the primitives intersect; otherwise `false`.
@@ -1247,7 +1248,7 @@ auto intersects(const tf::plane_like<Dims, Policy0> &plane,
   return intersects(obbrss, plane);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether an OBBRSS and polygon intersect.
 ///
 /// Uses the OBB part of OBBRSS for intersection testing.
@@ -1260,7 +1261,7 @@ auto intersects(const tf::obbrss_like<Dims, Policy0> &obbrss,
       tf::make_obb_like(obbrss.obb_origin, obbrss.axes, obbrss.extent), poly);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Check whether a polygon and OBBRSS intersect.
 ///
 /// @return `true` if the primitives intersect; otherwise `false`.

@@ -8,7 +8,7 @@
 
 namespace tf {
 
-/// @ingroup spatial_structures
+/// @ingroup spatial_configuration
 /// @brief Configuration object for controlling tree construction.
 ///
 /// `tree_config` defines the parameters used during tree construction,
@@ -21,7 +21,7 @@ struct tree_config {
   int leaf_size;
 };
 
-/// @ingroup spatial_structures
+/// @ingroup spatial_configuration
 /// @brief Create a tree configuration with specified node sizes.
 ///
 /// Returns a `tree_config` object that defines how the tree will be built.

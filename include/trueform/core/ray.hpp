@@ -11,11 +11,25 @@
 
 namespace tf {
 
+/// @ingroup core_primitives
+/// @brief A ray originating from a point and extending infinitely in one
+/// direction.
+///
+/// A ray has an origin point and a direction vector. Unlike a line, it only
+/// extends in the positive direction from the origin. Supports parametric
+/// evaluation: `ray(t)` returns `origin + t * direction`.
+///
+/// Factory functions include:
+/// - @ref tf::make_ray() - from origin and direction (always owning)
+/// - @ref tf::make_ray_between_points() - from two points
+///
+/// @tparam T The scalar type (e.g., float, double).
+/// @tparam Dims The dimensionality (e.g., 2, 3).
 template <typename T, std::size_t Dims>
 using ray = tf::ray_like<
     Dims, tf::core::ray<Dims, tf::core::pt<T, Dims>, tf::core::vec<T, Dims>>>;
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Constructs a ray from an origin and a direction vector.
 ///
 /// The direction does not need to be normalized. The resulting ray's
@@ -33,7 +47,7 @@ auto make_ray(const tf::point_like<Dims, T0> &origin,
   return ray<tf::coordinate_type<T0, T1>, Dims>{origin, direction};
 }
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Constructs a ray from two points, with the direction pointing from
 /// origin to end.
 ///

@@ -19,7 +19,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup geometry_registration
 /// @brief Fit a rigid transformation (rotation + translation) between two
 /// corresponding point sets.
 ///
@@ -77,8 +77,10 @@ auto fit_rigid_alignment(const tf::points<Policy0> &X_,
       out(i, j) = T(0);
 
   std::array<T, Dims> inv_sigma{};
+  // Use relative threshold based on largest singular value for scale invariance
+  const T threshold = sigma_sq[0] * tf::epsilon2<T>;
   for (std::size_t col = 0; col < Dims; ++col) {
-    inv_sigma[col] = (sigma_sq[col] > tf::epsilon2<T>)
+    inv_sigma[col] = (sigma_sq[col] > threshold)
                          ? T(1) / tf::sqrt(sigma_sq[col])
                          : T(0);
   }

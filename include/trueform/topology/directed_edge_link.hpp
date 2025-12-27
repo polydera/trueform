@@ -11,11 +11,25 @@
 #include "./edge_membership_like.hpp"
 
 namespace tf {
+
+/// @ingroup topology_connectivity
+/// @brief Stores outgoing edges from each edge's endpoint.
+///
+/// For each directed edge, stores the indices of edges that start where
+/// this edge ends. This enables efficient traversal along edge chains
+/// and is useful for path finding algorithms.
+///
+/// @tparam Index The integer type for edge indices.
 template <typename Index>
 class directed_edge_link : public offset_block_buffer<Index, Index> {
   using base_t = offset_block_buffer<Index, Index>;
 
 public:
+  /// @brief Build directed edge links from edges and edge membership.
+  /// @tparam Policy The edges policy type.
+  /// @tparam Policy1 The edge membership policy type.
+  /// @param edges The edges range.
+  /// @param em The edge membership structure (with forward orientation).
   template <typename Policy, typename Policy1>
   auto build(const tf::edges<Policy> &edges,
              const tf::edge_membership_like<Policy1> &em) {

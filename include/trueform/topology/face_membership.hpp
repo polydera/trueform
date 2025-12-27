@@ -14,6 +14,19 @@
 #include "./structures/compute_face_membership.hpp"
 
 namespace tf {
+
+/// @ingroup topology_connectivity
+/// @brief Maps each vertex to the faces that contain it.
+///
+/// This is the fundamental connectivity structure for mesh topology operations.
+/// For each vertex index, it stores the list of face indices that reference
+/// that vertex. This enables efficient traversal of a vertex's incident faces.
+///
+/// Build methods:
+/// - From a @ref tf::polygons range (deduces sizes automatically)
+/// - From @ref tf::faces with explicit counts
+///
+/// @tparam Index The integer type for vertex and face indices.
 template <typename Index>
 class face_membership
     : public face_membership_like<offset_block_buffer<Index, Index>> {
@@ -22,10 +35,18 @@ class face_membership
 public:
   face_membership() = default;
 
+  /// @brief Construct and build from a polygons range.
+  /// @tparam Policy The polygons policy type.
+  /// @param polygons The polygons range to build from.
   template <typename Policy> face_membership(const polygons<Policy> &polygons) {
     build(polygons);
   }
 
+  /// @brief Build from faces with explicit size parameters.
+  /// @tparam Policy The faces policy type.
+  /// @param faces The faces range.
+  /// @param n_unique_ids The number of unique vertex ids.
+  /// @param total_size The total number of vertex references across all faces.
   template <typename Policy>
   auto build(const tf::faces<Policy> &faces, std::size_t n_unique_ids,
              std::size_t total_size) -> void {
@@ -35,6 +56,13 @@ public:
                                       base_t::data_buffer());
   }
 
+  /// @brief Build from a polygons range.
+  ///
+  /// Automatically deduces the number of vertices and total size from the
+  /// polygons. Supports both fixed-size and variable-size polygons.
+  ///
+  /// @tparam Policy The polygons policy type.
+  /// @param polygons The polygons range to build from.
   template <typename Policy>
   auto build(const polygons<Policy> &polygons) -> void {
     auto n_unique_ids = polygons.points().size();

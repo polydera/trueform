@@ -9,6 +9,16 @@
 #include "./iter/point_iterator.hpp"
 #include "./points.hpp"
 namespace tf {
+
+/// @ingroup core_buffers
+/// @brief An owning buffer of points.
+///
+/// Stores points as interleaved coordinates and provides iteration
+/// as @ref tf::point_view elements. Use `points()` to obtain a
+/// @ref tf::points range.
+///
+/// @tparam T The coordinate scalar type.
+/// @tparam Dims The number of dimensions per point.
 template <typename T, std::size_t Dims> class points_buffer {
 public:
   using iterator = tf::iter::point_iterator<T *, Dims>;

@@ -57,6 +57,7 @@ auto triangulated_faces_nd(const tf::polygons<Policy> &polygons) {
 
 } // namespace impl
 
+/// @ingroup geometry_processing
 /// @brief Triangulate all polygons and return triangle indices.
 /// @tparam Policy The policy type of the polygons.
 /// @param polygons The input polygons.

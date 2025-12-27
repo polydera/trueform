@@ -12,7 +12,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the closest point on a triangle to a given point.
 ///
 /// @tparam Range A range type representing the triangle's vertices (typically 3

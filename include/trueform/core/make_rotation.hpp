@@ -7,12 +7,24 @@
 #pragma once
 #include "./angle.hpp"
 #include "./axis.hpp"
+#include "./cross.hpp"
+#include "./dot.hpp"
+#include "./epsilon.hpp"
+#include "./normalized.hpp"
 #include "./point_like.hpp"
 #include "./transformation.hpp"
 #include "./unit_vector_like.hpp"
 
 namespace tf {
 
+/// @ingroup core_primitives
+/// @brief Create 3D rotation around arbitrary axis.
+///
+/// @tparam T The scalar type.
+/// @tparam Policy The axis unit vector's policy type.
+/// @param angle The rotation angle.
+/// @param axis The unit vector defining the rotation axis.
+/// @return A 3D @ref tf::transformation.
 template <typename T, typename Policy>
 auto make_rotation(rad<T> angle, const unit_vector_like<3, Policy>& axis)
     -> transformation<T, 3> {
@@ -27,12 +39,21 @@ auto make_rotation(rad<T> angle, const unit_vector_like<3, Policy>& axis)
   };
 }
 
+/// @overload
 template <typename T, typename Policy>
 auto make_rotation(deg<T> angle, const unit_vector_like<3, Policy>& axis)
     -> transformation<T, 3> {
   return make_rotation(rad<T>{angle}, axis);
 }
 
+/// @ingroup core_primitives
+/// @brief Create 3D rotation around X axis.
+///
+/// Optimized version for rotation around the X principal axis.
+///
+/// @tparam T The scalar type.
+/// @param angle The rotation angle.
+/// @return A 3D @ref tf::transformation.
 template <typename T>
 auto make_rotation(rad<T> angle, axis_t<0>) -> transformation<T, 3> {
   T c = tf::cos(angle);
@@ -44,11 +65,15 @@ auto make_rotation(rad<T> angle, axis_t<0>) -> transformation<T, 3> {
   };
 }
 
+/// @overload
 template <typename T>
 auto make_rotation(deg<T> angle, axis_t<0>) -> transformation<T, 3> {
   return make_rotation(rad<T>{angle}, axis_t<0>{});
 }
 
+/// @ingroup core_primitives
+/// @brief Create 3D rotation around Y axis.
+/// @overload
 template <typename T>
 auto make_rotation(rad<T> angle, axis_t<1>) -> transformation<T, 3> {
   T c = tf::cos(angle);
@@ -60,11 +85,15 @@ auto make_rotation(rad<T> angle, axis_t<1>) -> transformation<T, 3> {
   };
 }
 
+/// @overload
 template <typename T>
 auto make_rotation(deg<T> angle, axis_t<1>) -> transformation<T, 3> {
   return make_rotation(rad<T>{angle}, axis_t<1>{});
 }
 
+/// @ingroup core_primitives
+/// @brief Create 3D rotation around Z axis.
+/// @overload
 template <typename T>
 auto make_rotation(rad<T> angle, axis_t<2>) -> transformation<T, 3> {
   T c = tf::cos(angle);
@@ -76,11 +105,18 @@ auto make_rotation(rad<T> angle, axis_t<2>) -> transformation<T, 3> {
   };
 }
 
+/// @overload
 template <typename T>
 auto make_rotation(deg<T> angle, axis_t<2>) -> transformation<T, 3> {
   return make_rotation(rad<T>{angle}, axis_t<2>{});
 }
 
+/// @ingroup core_primitives
+/// @brief Create 2D rotation.
+///
+/// @tparam T The scalar type.
+/// @param angle The rotation angle.
+/// @return A 2D @ref tf::transformation.
 template <typename T>
 auto make_rotation(rad<T> angle) -> transformation<T, 2> {
   T c = tf::cos(angle);
@@ -91,11 +127,22 @@ auto make_rotation(rad<T> angle) -> transformation<T, 2> {
   };
 }
 
+/// @overload
 template <typename T>
 auto make_rotation(deg<T> angle) -> transformation<T, 2> {
   return make_rotation(rad<T>{angle});
 }
 
+/// @ingroup core_primitives
+/// @brief Create 3D rotation around axis through pivot point.
+///
+/// @tparam T The scalar type.
+/// @tparam AxisPolicy The axis unit vector's policy type.
+/// @tparam PointPolicy The pivot point's policy type.
+/// @param angle The rotation angle.
+/// @param axis The unit vector defining the rotation axis.
+/// @param pivot The point the axis passes through.
+/// @return A 3D @ref tf::transformation.
 template <typename T, typename AxisPolicy, typename PointPolicy>
 auto make_rotation(rad<T> angle, const unit_vector_like<3, AxisPolicy>& axis,
                    const point_like<3, PointPolicy>& pivot)
@@ -115,6 +162,7 @@ auto make_rotation(rad<T> angle, const unit_vector_like<3, AxisPolicy>& axis,
   };
 }
 
+/// @overload
 template <typename T, typename AxisPolicy, typename PointPolicy>
 auto make_rotation(deg<T> angle, const unit_vector_like<3, AxisPolicy>& axis,
                    const point_like<3, PointPolicy>& pivot)
@@ -122,6 +170,9 @@ auto make_rotation(deg<T> angle, const unit_vector_like<3, AxisPolicy>& axis,
   return make_rotation(rad<T>{angle}, axis, pivot);
 }
 
+/// @ingroup core_primitives
+/// @brief Create 3D rotation around X axis through pivot point.
+/// @overload
 template <typename T, typename PointPolicy>
 auto make_rotation(rad<T> angle, axis_t<0>,
                    const point_like<3, PointPolicy>& pivot)
@@ -137,6 +188,7 @@ auto make_rotation(rad<T> angle, axis_t<0>,
   };
 }
 
+/// @overload
 template <typename T, typename PointPolicy>
 auto make_rotation(deg<T> angle, axis_t<0>,
                    const point_like<3, PointPolicy>& pivot)
@@ -144,6 +196,9 @@ auto make_rotation(deg<T> angle, axis_t<0>,
   return make_rotation(rad<T>{angle}, axis_t<0>{}, pivot);
 }
 
+/// @ingroup core_primitives
+/// @brief Create 3D rotation around Y axis through pivot point.
+/// @overload
 template <typename T, typename PointPolicy>
 auto make_rotation(rad<T> angle, axis_t<1>,
                    const point_like<3, PointPolicy>& pivot)
@@ -159,6 +214,7 @@ auto make_rotation(rad<T> angle, axis_t<1>,
   };
 }
 
+/// @overload
 template <typename T, typename PointPolicy>
 auto make_rotation(deg<T> angle, axis_t<1>,
                    const point_like<3, PointPolicy>& pivot)
@@ -166,6 +222,9 @@ auto make_rotation(deg<T> angle, axis_t<1>,
   return make_rotation(rad<T>{angle}, axis_t<1>{}, pivot);
 }
 
+/// @ingroup core_primitives
+/// @brief Create 3D rotation around Z axis through pivot point.
+/// @overload
 template <typename T, typename PointPolicy>
 auto make_rotation(rad<T> angle, axis_t<2>,
                    const point_like<3, PointPolicy>& pivot)
@@ -181,6 +240,7 @@ auto make_rotation(rad<T> angle, axis_t<2>,
   };
 }
 
+/// @overload
 template <typename T, typename PointPolicy>
 auto make_rotation(deg<T> angle, axis_t<2>,
                    const point_like<3, PointPolicy>& pivot)
@@ -188,6 +248,14 @@ auto make_rotation(deg<T> angle, axis_t<2>,
   return make_rotation(rad<T>{angle}, axis_t<2>{}, pivot);
 }
 
+/// @ingroup core_primitives
+/// @brief Create 2D rotation around pivot point.
+///
+/// @tparam T The scalar type.
+/// @tparam PointPolicy The pivot point's policy type.
+/// @param angle The rotation angle.
+/// @param pivot The center of rotation.
+/// @return A 2D @ref tf::transformation.
 template <typename T, typename PointPolicy>
 auto make_rotation(rad<T> angle, const point_like<2, PointPolicy>& pivot)
     -> transformation<T, 2> {
@@ -201,10 +269,76 @@ auto make_rotation(rad<T> angle, const point_like<2, PointPolicy>& pivot)
   };
 }
 
+/// @overload
 template <typename T, typename PointPolicy>
 auto make_rotation(deg<T> angle, const point_like<2, PointPolicy>& pivot)
     -> transformation<T, 2> {
   return make_rotation(rad<T>{angle}, pivot);
+}
+
+/// @ingroup core_primitives
+/// @brief Create 2D rotation aligning one direction to another.
+///
+/// Returns a transformation that rotates the `from` direction to the `to`
+/// direction.
+///
+/// @tparam Policy0 The policy type of the first unit vector.
+/// @tparam Policy1 The policy type of the second unit vector.
+/// @param from The source direction (unit vector).
+/// @param to The target direction (unit vector).
+/// @return A rotation transformation aligning `from` to `to`.
+template <typename Policy0, typename Policy1>
+auto make_rotation_aligning(const unit_vector_like<2, Policy0>& from,
+                            const unit_vector_like<2, Policy1>& to)
+    -> transformation<tf::coordinate_type<Policy0, Policy1>, 2> {
+  using T = tf::coordinate_type<Policy0, Policy1>;
+
+  // 2D cross product gives signed scalar
+  T cross = from[0] * to[1] - from[1] * to[0];
+  T dot = from[0] * to[0] + from[1] * to[1];
+  auto angle = rad<T>{std::atan2(cross, dot)};
+  return make_rotation(angle);
+}
+
+/// @ingroup core_primitives
+/// @brief Create 3D rotation aligning one direction to another.
+///
+/// Returns a transformation that rotates the `from` direction to the `to`
+/// direction. Handles the edge cases of parallel and anti-parallel vectors.
+///
+/// @tparam Policy0 The policy type of the first unit vector.
+/// @tparam Policy1 The policy type of the second unit vector.
+/// @param from The source direction (unit vector).
+/// @param to The target direction (unit vector).
+/// @return A rotation transformation aligning `from` to `to`.
+template <typename Policy0, typename Policy1>
+auto make_rotation_aligning(const unit_vector_like<3, Policy0>& from,
+                            const unit_vector_like<3, Policy1>& to)
+    -> transformation<tf::coordinate_type<Policy0, Policy1>, 3> {
+  using T = tf::coordinate_type<Policy0, Policy1>;
+
+  T d = tf::dot(from, to);
+
+  // Parallel vectors (same direction) - return identity
+  if (d > T{1} - tf::epsilon<T>) {
+    return make_identity_transformation<T, 3>();
+  }
+
+  // Anti-parallel vectors - rotate 180° around any perpendicular axis
+  if (d < T{-1} + tf::epsilon<T>) {
+    // Find a perpendicular axis by crossing with a non-parallel basis vector
+    auto axis_candidate = tf::cross(from, make_unit_vector<T, 3>(tf::axis<0>));
+    if (axis_candidate.length() < tf::epsilon<T>) {
+      axis_candidate = tf::cross(from, make_unit_vector<T, 3>(tf::axis<1>));
+    }
+    auto axis = tf::normalized(axis_candidate);
+    return make_rotation(rad<T>{pi<T>}, axis);
+  }
+
+  // General case: rotate around cross product axis
+  auto axis = tf::normalized(tf::cross(from, to));
+  auto angle = rad<T>{std::acos(d)};
+  return make_rotation(angle, axis);
 }
 
 } // namespace tf

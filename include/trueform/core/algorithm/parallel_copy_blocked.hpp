@@ -11,6 +11,16 @@
 
 namespace tf {
 
+/// @ingroup core_algorithms
+/// @brief Parallel copy of blocked ranges.
+///
+/// Copies each block from input to corresponding output block.
+/// Falls back to sequential for small inputs (<1000 blocks).
+///
+/// @tparam Range0 The input blocked range type.
+/// @tparam Range1 The output blocked range type.
+/// @param input Source blocked range.
+/// @param output Destination blocked range.
 template <typename Range0, typename Range1>
 auto parallel_copy_blocked(const Range0 &input, Range1 &&output) {
   if (input.size() < 1000)
@@ -26,6 +36,15 @@ auto parallel_copy_blocked(const Range0 &input, Range1 &&output) {
         tf::checked);
 }
 
+/// @ingroup core_algorithms
+/// @brief Parallel copy of blocked ranges with reversal.
+///
+/// Copies each block in reverse order from input to output.
+///
+/// @tparam Range0 The input blocked range type.
+/// @tparam Range1 The output blocked range type.
+/// @param input Source blocked range.
+/// @param output Destination blocked range.
 template <typename Range0, typename Range1>
 auto parallel_copy_blocked_reverse(const Range0 &input, Range1 &&output) {
   if (input.size() < 1000)

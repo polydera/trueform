@@ -8,6 +8,17 @@
 #include "./path_connector.hpp"
 
 namespace tf {
+
+/// @ingroup topology_paths
+/// @brief Connect edges into continuous vertex paths.
+///
+/// Takes a collection of edges and connects them into continuous paths.
+/// Each path is a sequence of vertices where consecutive vertices are
+/// connected by an edge. Handles both open paths and closed loops.
+///
+/// @tparam Policy The edges policy type.
+/// @param edges The edges to connect.
+/// @return An @ref tf::offset_block_buffer where each block is a path of vertex indices.
 template <typename Policy>
 auto connect_edges_to_paths(const tf::edges<Policy> &edges) {
   using Index = std::decay_t<decltype(edges[0][0])>;

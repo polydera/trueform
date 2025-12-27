@@ -10,7 +10,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Result of a nearest-point query between two primitives or trees.
 ///
 /// Represents the closest pair of points—one from each object or tree—along
@@ -29,7 +29,7 @@ template <typename RealT, std::size_t Dims> struct metric_point_pair {
   point<RealT, Dims> second;
 };
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Construct a `closest_point_pair` from a distance and two spatial
 /// points.
 ///

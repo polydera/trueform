@@ -7,6 +7,17 @@
 #pragma once
 
 namespace tf {
+
+/// @ingroup topology_types
+/// @brief Finds the index of a vertex within a face.
+///
+/// Searches for vertex v in the face's vertex list.
+///
+/// @tparam Index The integer type for indices.
+/// @tparam Range The face range type.
+/// @param v The vertex to search for.
+/// @param face The face to search in.
+/// @return The vertex index (0 to size-1) if found, or size if not found.
 template <typename Index, typename Range>
 auto vertex_id_in_face(const Index &v, const Range &face) {
   Index size = face.size();

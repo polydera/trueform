@@ -12,7 +12,7 @@
 #include <utility>
 
 namespace tf {
-/// @ingroup utilities
+/// @ingroup core_buffers
 /// @brief A minimal, trivially-constructible alternative to `std::vector` for
 /// POD types.
 ///

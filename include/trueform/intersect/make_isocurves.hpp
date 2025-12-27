@@ -12,6 +12,20 @@
 #include "./scalar_field_intersections.hpp"
 
 namespace tf {
+
+/// @ingroup intersect_curves
+/// @brief Extract isocontour curves where a scalar field crosses a threshold.
+///
+/// Computes the isosurface intersection where a scalar field defined over
+/// mesh vertices crosses the specified threshold value.
+///
+/// @tparam Policy The policy type of the polygons.
+/// @param polygons The input @ref tf::polygons.
+/// @param scalars The scalar field values (one per vertex).
+/// @param cut_value The threshold value.
+/// @return A @ref tf::curves_buffer containing connected isocontour curves.
+///
+/// @see tf::scalar_field_intersections for low-level access.
 template <typename Policy, typename Iterator0, std::size_t N0>
 auto make_isocontours(const tf::polygons<Policy> &polygons,
                       const tf::range<Iterator0, N0> &scalars,
@@ -32,6 +46,14 @@ auto make_isocontours(const tf::polygons<Policy> &polygons,
   return cb;
 }
 
+/// @ingroup intersect_curves
+/// @brief Extract isocontour curves at multiple threshold values.
+/// @overload
+///
+/// @param polygons The input @ref tf::polygons.
+/// @param scalars The scalar field values (one per vertex).
+/// @param cut_values Multiple threshold values.
+/// @return A @ref tf::curves_buffer containing all isocontour curves.
 template <typename Policy, typename Iterator0, std::size_t N0,
           typename Iterator1, std::size_t N1>
 auto make_isocontours(const tf::polygons<Policy> &polygons,

@@ -9,8 +9,19 @@
 #include "../core/segments_buffer.hpp"
 #include "../core/views/slide_range.hpp"
 #include "../intersect/intersections_within_segments.hpp"
+
 namespace tf {
 
+/// @ingroup cut_planar
+/// @brief Compute segment overlay with intersection processing.
+///
+/// Builds an overlay of @ref tf::segments, splitting at intersection points.
+/// The result contains the subdivided segments with all intersections
+/// resolved. Inherits from @ref tf::segments_buffer for edge/point access.
+///
+/// @tparam Index The index type.
+/// @tparam RealT The coordinate type.
+/// @tparam Dims The number of dimensions.
 template <typename Index, typename RealT, std::size_t Dims>
 class planar_overlay : public segments_buffer<Index, RealT, Dims> {
   using base_t = segments_buffer<Index, RealT, Dims>;

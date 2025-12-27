@@ -11,7 +11,7 @@
 
 namespace tf {
 
-/// @ingroup ranges
+/// @ingroup core_ranges
 /// @brief A lightweight view over a fixed-size range of elements
 /// preceded by a tag element.
 ///
@@ -79,7 +79,7 @@ struct tuple_element<I, tf::tagged_range<Iterator, tf::dynamic_size>>;
 
 namespace tf {
 /**
- * @ingroup ranges
+ * @ingroup core_ranges
  * @brief Constructs a `tagged_range` view by skipping the tag element.
  *
  * This function takes a range where the first element (at `begin()`) is

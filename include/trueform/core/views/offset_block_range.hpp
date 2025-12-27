@@ -34,7 +34,7 @@ auto make_offset_block_end(Range0 &&offsets, Range1 &&data) {
 }
 } // namespace views
 
-/// @ingroup ranges
+/// @ingroup core_ranges
 /// @brief Creates a range view over a sequence of blocks defined by offsets.
 ///
 /// This utility allows you to iterate over subranges ("blocks") of a data

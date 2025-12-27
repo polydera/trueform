@@ -9,6 +9,16 @@
 #include "./views/offset_block_range.hpp"
 
 namespace tf {
+
+/// @ingroup core_buffers
+/// @brief A buffer of variable-sized blocks using offset-based storage.
+///
+/// Stores data contiguously with a separate offset array indicating
+/// where each block begins. Iteration yields @ref tf::range views
+/// over each variable-length block.
+///
+/// @tparam Index The offset index type.
+/// @tparam T The data element type.
 template <typename Index, typename T> class offset_block_buffer {
 public:
   using iterator = decltype(views::make_offset_block_begin(

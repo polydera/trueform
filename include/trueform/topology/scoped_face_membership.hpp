@@ -11,12 +11,28 @@
 #include "./structures/compute_face_membership.hpp"
 
 namespace tf {
+
+/// @ingroup topology_connectivity
+/// @brief Face membership with scoped IDs for position-in-face tracking.
+///
+/// Like @ref tf::face_membership, but stores @ref tf::scoped_id pairs
+/// that include both the face index and the vertex's position within
+/// that face. This is useful when you need to know not just which faces
+/// contain a vertex, but also where in each face the vertex appears.
+///
+/// @tparam Index The integer type for face indices.
+/// @tparam SubIndex The integer type for position within face.
 template <typename Index, typename SubIndex = Index>
 class scoped_face_membership
     : public offset_block_buffer<Index, tf::scoped_id<Index, SubIndex>> {
   using base_t = offset_block_buffer<Index, tf::scoped_id<Index, SubIndex>>;
 
 public:
+  /// @brief Build from blocks with explicit size parameters.
+  /// @tparam Range The blocks range type.
+  /// @param blocks The blocks range.
+  /// @param n_unique_ids The number of unique vertex ids.
+  /// @param total_size The total number of vertex references.
   template <typename Range>
   auto build(const Range &blocks, std::size_t n_unique_ids,
              std::size_t total_size) -> void {
@@ -29,6 +45,12 @@ public:
         });
   }
 
+  /// @brief Build from a fixed-size polygons range.
+  ///
+  /// Only works with fixed-size polygons (compile-time known size).
+  ///
+  /// @tparam Policy The polygons policy type.
+  /// @param polygons The polygons range to build from.
   template <typename Policy>
   auto build(const polygons<Policy> &polygons) -> void {
     auto n_unique_ids = polygons.points().size();

@@ -9,6 +9,15 @@
 #include "./iter/blocked_iterator.hpp"
 
 namespace tf {
+
+/// @ingroup core_buffers
+/// @brief A buffer of fixed-size blocks.
+///
+/// Stores elements in contiguous blocks of `BlockSize` elements each.
+/// Iteration yields @ref tf::range views over each block.
+///
+/// @tparam T The scalar element type.
+/// @tparam BlockSize Number of elements per block.
 template <typename T, std::size_t BlockSize> class blocked_buffer {
 public:
   using iterator = iter::blocked_iterator<T *, BlockSize>;

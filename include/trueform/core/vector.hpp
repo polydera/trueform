@@ -10,7 +10,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Fixed-size N-dimensional vector with element-wise arithmetic and
 /// comparisons.
 ///
@@ -34,7 +34,7 @@ namespace tf {
 template <typename T, std::size_t N>
 using vector = tf::vector_like<N, core::vec<T, N>>;
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Construct a vector from a `std::array`.
 ///
 /// Creates a @ref tf::vector<T, N> by copying values from the given array.
@@ -48,7 +48,7 @@ auto make_vector(std::array<T, N> arr) -> vector<T, N> {
   return vector<T, N>(arr);
 }
 
-/// @ingroup geometry
+/// @ingroup core_primitives
 /// @brief Construct a vector from a raw pointer.
 ///
 /// Creates a @ref tf::vector<T, N> by copying `N` elements from the given
@@ -62,6 +62,26 @@ auto make_vector(std::array<T, N> arr) -> vector<T, N> {
 template <std::size_t N, typename T>
 auto make_vector(const T *ptr) -> vector<T, N> {
   return vector<T, N>(ptr);
+}
+
+/// @ingroup core_primitives
+/// @brief Construct a vector from individual coordinate values.
+///
+/// Creates a @ref tf::vector by deducing type and dimensionality from
+/// the provided arguments. Requires at least 2 coordinates.
+///
+/// @tparam T The coordinate type (deduced from first two arguments).
+/// @tparam Ts Additional coordinate types.
+/// @param t0 The first coordinate value.
+/// @param t1 The second coordinate value.
+/// @param ts Additional coordinate values.
+/// @return A `tf::vector<common_type, N>` where N = 2 + sizeof...(ts).
+template <typename T, typename... Ts>
+auto make_vector(const T &t0, const T &t1, const Ts &...ts)
+    -> tf::vector<std::common_type_t<T, Ts...>, (2 + sizeof...(Ts))> {
+  using type = std::common_type_t<T, Ts...>;
+  return {static_cast<type>(t0), static_cast<type>(t1),
+          static_cast<type>(ts)...};
 }
 
 } // namespace tf

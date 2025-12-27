@@ -86,21 +86,18 @@ template <std::size_t Dims, typename Policy, typename Base>
 struct static_size<policy::tag_normal<Dims, Policy, Base>> : static_size<Base> {
 };
 
-/**
- * @ingroup injectors
- * @brief Constructs an `tag_normal` by injecting a normal into a base
- * type.
- *
- * This helper function provides a convenient way to inject a unit normal into
- * an object, returning a composed type with added `.normal()` accessors.
- *
- * @tparam T    Underlying scalar type of the normal vector.
- * @tparam Dims Dimensionality of the normal vector.
- * @tparam Base Type of the base object (will be decayed).
- * @param normal The normal vector to inject.
- * @param base   The base object to augment.
- * @return A composed object with normal support.
- */
+/// @ingroup core_policies
+/// @brief Inject a unit normal into a primitive.
+///
+/// Returns a wrapper with `.normal()` accessor while preserving all
+/// original functionality through inheritance.
+///
+/// @tparam Dims Dimensionality of the normal vector.
+/// @tparam T    Underlying scalar type of the normal vector.
+/// @tparam Base Type of the base object (will be decayed).
+/// @param normal The unit normal vector to inject.
+/// @param base   The base object to augment.
+/// @return A composed object with `.normal()` accessor.
 template <std::size_t Dims, typename T, typename Base>
 auto tag_normal(const unit_vector_like<Dims, T> &normal, Base &&base) {
   if constexpr (has_normal_policy<Base>)
@@ -134,13 +131,26 @@ auto operator|(U &&u, tag_normal_op<Dims, T> t) {
 }
 } // namespace policy
 
+/// @ingroup core_policies
+/// @brief Create normal tag operator for pipe syntax.
+/// @overload
 template <std::size_t Dims, typename T>
 auto tag_normal(unit_vector_like<Dims, T> normal) {
   return policy::tag_normal_op<Dims, T>{std::move(normal)};
 }
 
-template <std::size_t V, typename Policy>
-auto tag_normal(const polygon<V, Policy> &poly) -> decltype(auto) {
+/// @ingroup core_policies
+/// @brief Compute and tag normal from polygon vertices.
+///
+/// If polygon already has a normal, returns as-is.
+/// Otherwise computes normal from first three vertices.
+///
+/// @tparam Dims The coordinate dimensions.
+/// @tparam Policy The polygon's policy type.
+/// @param poly The polygon to tag.
+/// @return The polygon with normal data.
+template <std::size_t Dims, typename Policy>
+auto tag_normal(const polygon<Dims, Policy> &poly) -> decltype(auto) {
   if constexpr (has_normal_policy<Policy>) {
     return poly;
   } else {
@@ -148,8 +158,11 @@ auto tag_normal(const polygon<V, Policy> &poly) -> decltype(auto) {
   }
 }
 
-template <std::size_t V, typename Policy>
-auto tag_normal(polygon<V, Policy> &poly) -> decltype(auto) {
+/// @ingroup core_policies
+/// @brief Compute and tag normal from polygon (mutable version).
+/// @overload
+template <std::size_t Dims, typename Policy>
+auto tag_normal(polygon<Dims, Policy> &poly) -> decltype(auto) {
   if constexpr (has_normal_policy<Policy>) {
     return poly;
   } else {
@@ -157,6 +170,16 @@ auto tag_normal(polygon<V, Policy> &poly) -> decltype(auto) {
   }
 }
 
+/// @ingroup core_properties
+/// @brief Extract or compute normal from polygon.
+///
+/// Returns the tagged normal if present, otherwise computes
+/// from first three vertices.
+///
+/// @tparam Dims The coordinate dimensions.
+/// @tparam Policy The polygon's policy type.
+/// @param p The polygon.
+/// @return The unit normal vector.
 template <std::size_t Dims, typename Policy>
 auto make_normal(const polygon<Dims, Policy> &p)
     -> tf::unit_vector<tf::coordinate_type<Policy>, Dims> {
@@ -173,6 +196,12 @@ template <typename U> auto operator|(U &&u, tag_normal_self_op) {
 return tf::tag_normal(static_cast<U &&>(u));
 }
 } // namespace policy
+/// @ingroup core_policies
+/// @brief Create self-tagging normal operator for pipe syntax.
+///
+/// Used as `polygon | tag_normal()` to compute and tag normal.
+///
+/// @return Tag operator for use with pipe (|).
 inline auto tag_normal() { return policy::tag_normal_self_op{}; }
 
 } // namespace tf

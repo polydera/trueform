@@ -9,6 +9,8 @@
 #include <type_traits>
 
 namespace tf {
+
+/// @cond INTERNAL
 namespace core {
 template <typename... Ts> struct tuple : std::tuple<Ts...> {
   using std::tuple<Ts...>::tuple;
@@ -27,7 +29,15 @@ template <typename... Ts>
 using tuple_base = std::conditional_t<(... && std::is_assignable_v<Ts &, Ts>),
                                       tuple<Ts...>, const_tuple<Ts...>>;
 } // namespace core
+/// @endcond
 
+/// @ingroup core
+/// @brief Tuple type with proper assignment semantics.
+///
+/// Unlike std::tuple, tf::tuple handles assignment correctly
+/// for types that may not be assignable.
+///
+/// @tparam Ts The element types.
 template <typename... Ts> struct tuple : core::tuple_base<Ts...> {
   using base_t = core::tuple_base<Ts...>;
   using base_t::base_t;
@@ -38,10 +48,22 @@ template <typename... Ts> struct tuple : core::tuple_base<Ts...> {
   auto operator=(tuple &&) -> tuple & = default;
 };
 
+/// @ingroup core
+/// @brief Create a tuple from arguments.
+///
+/// @tparam Ts The argument types.
+/// @param ts The values to store.
+/// @return A @ref tf::tuple containing the values.
 template <typename... Ts> auto make_tuple(Ts &&...ts) {
   return tf::tuple<std::decay_t<Ts>...>{static_cast<Ts &&>(ts)...};
 }
 
+/// @ingroup core
+/// @brief Forward lvalue references as tuple, decay rvalues.
+///
+/// @tparam Ts The argument types.
+/// @param ts The values to forward.
+/// @return A tuple of references or copied values.
 template <typename... Ts> auto forward_lref_as_tuple(Ts &&...ts) {
   return tf::tuple<std::conditional_t<std::is_rvalue_reference_v<Ts>,
                                       std::decay_t<Ts>, Ts>...>{

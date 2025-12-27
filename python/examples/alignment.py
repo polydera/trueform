@@ -60,7 +60,7 @@ def compute_chamfer_symmetric(cloud0: tf.PointCloud, cloud1: tf.PointCloud) -> f
 
 def main():
     # Default data directory
-    data_dir = os.path.join(os.path.dirname(__file__), '../../benchmarks/data/')
+    data_dir = os.path.join(os.path.dirname(__file__), '../../../benchmarks/data/')
 
     # Parse command line arguments
     if len(sys.argv) >= 3:

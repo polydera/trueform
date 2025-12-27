@@ -5,6 +5,7 @@
  * https://github.com/xlabmedical/trueform
  */
 #pragma once
+#include "../core/constants.hpp"
 #include "../core/points.hpp"
 #include "../core/small_vector.hpp"
 #include "./directed_edge_link.hpp"
@@ -12,11 +13,26 @@
 #include "./edge_orientation.hpp"
 
 namespace tf {
+
+/// @ingroup topology_planar
+/// @brief Extracts closed regions from a planar graph.
+///
+/// Given directed edges and vertex positions, walks the graph to find
+/// all minimal closed loops (regions). Uses angle-based ordering to
+/// determine the next edge at each vertex.
+///
+/// @tparam Index The integer type for indices.
+/// @tparam RealT The real type for angle computation (default: double).
 template <typename Index, typename RealT = double>
 class planar_graph_regions : public tf::offset_block_buffer<Index, Index> {
   using base_t = tf::offset_block_buffer<Index, Index>;
 
 public:
+  /// @brief Build regions from directed edges and points.
+  /// @tparam Policy0 The edges policy type.
+  /// @tparam Policy1 The points policy type.
+  /// @param directed_edges The directed edges.
+  /// @param points The vertex positions.
   template <typename Policy0, typename Policy1>
   auto build(const tf::edges<Policy0> &directed_edges,
              const tf::points<Policy1> &points) {
@@ -27,6 +43,7 @@ public:
     walk_regions(directed_edges);
   }
 
+  /// @brief Clear all internal state.
   auto clear() {
     base_t::clear();
     _em.clear();
@@ -58,7 +75,7 @@ private:
     for (auto &&[edge0, angle, link] : tf::zip(edges, _angles, _dil)) {
       if (link.size() < 2)
         continue;
-      constexpr std::decay_t<decltype(angle)> pi = 3.14159265358979323846;
+      constexpr auto pi = tf::pi<std::decay_t<decltype(angle)>>;
       auto angle0 = angle - pi;
       angle0 += (angle0 <= 0) * 2 * pi;
       _work_buffer.clear();

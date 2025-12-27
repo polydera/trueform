@@ -19,7 +19,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup geometry_processing
 /// @brief Apply Laplacian smoothing to a point set.
 ///
 /// Iteratively moves each vertex towards the centroid of its neighbors.

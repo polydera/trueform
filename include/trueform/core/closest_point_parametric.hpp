@@ -16,7 +16,7 @@
 
 namespace tf {
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the parametric location on a ray closest to a plane.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto closest_point_parametric(const tf::ray_like<Dims, Policy0> &ray,
@@ -34,7 +34,7 @@ auto closest_point_parametric(const tf::ray_like<Dims, Policy0> &ray,
   return t;
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the parametric location on a line closest to a plane.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto closest_point_parametric(const tf::line_like<Dims, Policy0> &line,
@@ -51,7 +51,7 @@ auto closest_point_parametric(const tf::line_like<Dims, Policy0> &line,
   return t;
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the parametric location on a ray closest to a plane.
 template <std::size_t Dims, typename Policy, typename Policy1>
 auto closest_point_parametric(const tf::segment<Dims, Policy> &segment,
@@ -61,7 +61,7 @@ auto closest_point_parametric(const tf::segment<Dims, Policy> &segment,
   return std::clamp(t, decltype(t)(0), decltype(t)(1));
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the parametric location on a segment closest to a point.
 template <std::size_t Dims, typename Policy, typename T>
 auto closest_point_parametric(const tf::ray_like<Dims, Policy> &ray,
@@ -71,7 +71,7 @@ auto closest_point_parametric(const tf::ray_like<Dims, Policy> &ray,
   return std::max(decltype(t)(0), t);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the parametric location on a line closest to a point.
 template <std::size_t Dims, typename Policy, typename T>
 auto closest_point_parametric(const tf::line_like<Dims, Policy> &line,
@@ -81,7 +81,7 @@ auto closest_point_parametric(const tf::line_like<Dims, Policy> &line,
   return t;
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the parametric location on a segment closest to a point.
 template <std::size_t Dims, typename Policy0, typename T>
 auto closest_point_parametric(const tf::segment<Dims, Policy0> &segment,
@@ -92,7 +92,7 @@ auto closest_point_parametric(const tf::segment<Dims, Policy0> &segment,
   return std::clamp(t, decltype(t)(0), decltype(t)(1));
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the parametric locations of closest points on a ray, and a
 /// ray.
 
@@ -210,7 +210,7 @@ auto closest_point_parametric(const tf::ray_like<Dims, Policy0> &ray0,
   }
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the parametric locations of closest points on a ray, and a
 /// line.
 
@@ -287,7 +287,7 @@ auto closest_point_parametric(const tf::ray_like<Dims, Policy0> &ray,
   }
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the parametric locations of closest points on a line, and a
 /// ray.
 template <std::size_t Dims, typename Policy0, typename Policy1>
@@ -298,7 +298,7 @@ auto closest_point_parametric(const tf::line_like<Dims, Policy0> &line,
   return out;
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the parametric locations of closest points on a ray, and a
 /// segment.
 template <std::size_t Dims, typename Policy, typename T>
@@ -408,7 +408,7 @@ auto closest_point_parametric(const tf::ray_like<Dims, Policy> &ray,
   }
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the parametric locations of closest points on a segment, and
 /// a ray.
 template <std::size_t Dims, typename Policy0, typename Policy1>
@@ -419,7 +419,7 @@ auto closest_point_parametric(const tf::segment<Dims, Policy0> &segment0,
   return out;
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the parametric locations of closest points on a line, and a
 /// segment.
 template <std::size_t Dims, typename Policy, typename Policy0>
@@ -505,7 +505,7 @@ auto closest_point_parametric(const tf::line_like<Dims, Policy> &line,
   }
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the parametric locations of closest points on a segment, and
 /// a line.
 template <std::size_t Dims, typename Policy0, typename Policy>
@@ -515,7 +515,7 @@ auto closest_point_parametric(const tf::segment<Dims, Policy0> &segment,
   return std::make_pair(result.second, result.first);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the parametric locations of closest points on a line, and a
 /// line.
 template <std::size_t Dims, typename Policy0, typename Policy1>
@@ -578,7 +578,7 @@ auto closest_point_parametric(const tf::line_like<Dims, Policy0> &line0,
   }
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Computes the parametric locations of closest points on a segment, and
 /// a segment.
 template <std::size_t Dims, typename Policy0, typename Policy1>

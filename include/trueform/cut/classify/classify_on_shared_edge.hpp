@@ -111,9 +111,9 @@ auto classify_by_wedge_on_shared_edge(
   auto next_edge_id =
       tf::circular_increment(edge_id, std::size_t{loop0.size()});
 
-  // Edge direction vector
-  auto u = intersection_points[mapped_loop0[next_edge_id].id] -
-           intersection_points[mapped_loop0[edge_id].id];
+  // Edge direction vector (normalized)
+  auto u = tf::normalized(intersection_points[mapped_loop0[next_edge_id].id] -
+                          intersection_points[mapped_loop0[edge_id].id]);
 
   auto frame0 = tf::frame_of(polygons0);
   auto frame1 = tf::frame_of(polygons1);
@@ -140,8 +140,8 @@ auto classify_by_wedge_on_shared_edge(
         continue;
       auto other_next_edge_id =
           tf::circular_increment(other_edge_id, std::size_t{loop_other.size()});
-      auto u_other = intersection_points[mapped_other[other_next_edge_id].id] -
-                     intersection_points[mapped_other[other_edge_id].id];
+      auto u_other = tf::normalized(intersection_points[mapped_other[other_next_edge_id].id] -
+                                    intersection_points[mapped_other[other_edge_id].id]);
 
       // Vector in other_plane perpendicular to edge, pointing "into" the face
       auto v_other = tf::cross(plane_other.normal, u_other);

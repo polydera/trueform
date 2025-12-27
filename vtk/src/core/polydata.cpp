@@ -50,6 +50,16 @@ void polydata::ShallowCopy(vtkDataObject *src) {
     _edges_buffer = other->_edges_buffer;
     _segment_tree = other->_segment_tree;
     _point_tree = other->_point_tree;
+  } else {
+    // Reset mtimes to force rebuild on next access
+    _poly_tree_mtime = 0;
+    _fm_mtime = 0;
+    _mel_mtime = 0;
+    _fl_mtime = 0;
+    _vl_mtime = 0;
+    _edges_buffer_mtime = 0;
+    _segment_tree_mtime = 0;
+    _point_tree_mtime = 0;
   }
 }
 
@@ -122,6 +132,38 @@ auto polydata::segment_tree() -> const tf::aabb_tree<vtkIdType, float, 3> & {
 auto polydata::point_tree() -> const tf::aabb_tree<vtkIdType, float, 3> & {
   build_point_tree();
   return *_point_tree;
+}
+
+auto polydata::modified_poly_tree() -> void {
+  _poly_tree_mtime = std::max(GetPoints()->GetMTime(), GetPolys()->GetMTime());
+}
+
+auto polydata::modified_face_membership() -> void {
+  _fm_mtime = GetPolys()->GetMTime();
+}
+
+auto polydata::modified_manifold_edge_link() -> void {
+  _mel_mtime = GetPolys()->GetMTime();
+}
+
+auto polydata::modified_face_link() -> void {
+  _fl_mtime = GetPolys()->GetMTime();
+}
+
+auto polydata::modified_vertex_link() -> void {
+  _vl_mtime = GetPolys()->GetMTime();
+}
+
+auto polydata::modified_edges_buffer() -> void {
+  _edges_buffer_mtime = GetLines()->GetMTime();
+}
+
+auto polydata::modified_segment_tree() -> void {
+  _segment_tree_mtime = std::max(GetPoints()->GetMTime(), GetLines()->GetMTime());
+}
+
+auto polydata::modified_point_tree() -> void {
+  _point_tree_mtime = GetPoints()->GetMTime();
 }
 
 auto polydata::build_poly_tree() -> void {

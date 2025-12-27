@@ -8,6 +8,13 @@
 #include "../topology/topo_type.hpp"
 
 namespace tf {
+
+/// @ingroup intersect_types
+/// @brief Enumeration of intersection topological types.
+///
+/// Describes how two geometric primitives intersect (vertex-vertex,
+/// vertex-edge, edge-edge, etc.). See @ref tf::topo_type for the
+/// primitive types used.
 enum class intersection_type : char {
   vertex_vertex = 0,
   vertex_edge = 1,
@@ -20,6 +27,11 @@ enum class intersection_type : char {
   none = 8
 };
 
+/// @ingroup intersect_types
+/// @brief Create an intersection type from two topological types.
+/// @param t0 The first @ref tf::topo_type.
+/// @param t1 The second @ref tf::topo_type.
+/// @return The corresponding @ref tf::intersection_type.
 constexpr auto make_intersection_type(tf::topo_type t0, tf::topo_type t1)
     -> intersection_type {
   switch (static_cast<char>(t0) | (static_cast<char>(t1) << 3)) {

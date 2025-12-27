@@ -14,6 +14,19 @@
 #include "./polygons.hpp"
 namespace tf {
 
+/// @ingroup core_buffers
+/// @brief An owning buffer of polygons with fixed vertex count.
+///
+/// Stores face indices and point coordinates separately. The `Ngon`
+/// parameter specifies the fixed number of vertices per polygon.
+/// Use `polygons()` to obtain a @ref tf::polygons range.
+///
+/// For variable-sized polygons, use the @ref tf::dynamic_size specialization.
+///
+/// @tparam Index The index type for face connectivity.
+/// @tparam RealT The coordinate scalar type.
+/// @tparam Dims The number of dimensions.
+/// @tparam Ngon The number of vertices per polygon (or @ref tf::dynamic_size).
 template <typename Index, typename RealT, std::size_t Dims, std::size_t Ngon>
 class polygons_buffer {
 public:
@@ -94,6 +107,10 @@ private:
   tf::points_buffer<RealT, Dims> _points_buffer;
 };
 
+/// @ingroup core_buffers
+/// @brief Specialization for polygons with variable vertex count.
+///
+/// Uses offset-based storage for variable-sized polygons.
 template <typename Index, typename RealT, std::size_t Dims>
 class polygons_buffer<Index, RealT, Dims, tf::dynamic_size> {
   using iterator = decltype(core::make_polygon_range_iter(
@@ -174,6 +191,8 @@ private:
   tf::points_buffer<RealT, Dims> _points_buffer;
 };
 
+/// @ingroup core_buffers
+/// @brief Create a polygons buffer from variable-sized faces and points.
 template <typename Index, typename RealT, std::size_t Dims>
 auto make_polygons_buffer(tf::offset_block_buffer<Index, Index> &&faces,
                           tf::points_buffer<RealT, Dims> &&points) {
@@ -183,6 +202,8 @@ auto make_polygons_buffer(tf::offset_block_buffer<Index, Index> &&faces,
   return out;
 }
 
+/// @ingroup core_buffers
+/// @brief Create a polygons buffer from fixed-size faces and points.
 template <typename Index, std::size_t N, typename RealT, std::size_t Dims>
 auto make_polygons_buffer(tf::blocked_buffer<Index, N> &&faces,
                           tf::points_buffer<RealT, Dims> &&points) {

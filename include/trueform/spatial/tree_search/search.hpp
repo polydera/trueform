@@ -24,9 +24,33 @@ template <typename TreePolicy, typename F0, typename F1>
 auto search(const tf::tree_like<TreePolicy> &tree, const F0 &check_bv,
             const F1 &primitive_apply) -> bool {
   return tf::spatial::impl::search(
-      tree, check_bv, [primitive_apply, &tree, &check_bv](const auto &r) {
+      tree, check_bv,
+      [primitive_apply, &check_bv](const auto &r, const auto &primitive_aabbs) {
         for (const auto &id : r)
-          if (check_bv(tree.primitive_aabbs()[id])) {
+          if (check_bv(primitive_aabbs[id])) {
+            if constexpr (std::is_same_v<decltype(primitive_apply(id)), void>) {
+              primitive_apply(id);
+            } else {
+              if (primitive_apply(id))
+                return true;
+            }
+          }
+        return false;
+      });
+}
+
+// ============================================================================
+// Single mod_tree_like search
+// ============================================================================
+
+template <typename ModTreePolicy, typename F0, typename F1>
+auto search(const tf::mod_tree_like<ModTreePolicy> &tree, const F0 &check_bv,
+            const F1 &primitive_apply) -> bool {
+  return tf::spatial::impl::search(
+      tree, check_bv,
+      [primitive_apply, &check_bv](const auto &r, const auto &primitive_aabbs) {
+        for (const auto &id : r)
+          if (check_bv(primitive_aabbs[id])) {
             if constexpr (std::is_same_v<decltype(primitive_apply(id)), void>) {
               primitive_apply(id);
             } else {
@@ -51,10 +75,10 @@ auto search(const tf::form<Dims, Policy> &form, const F0 &check_bv,
       [&check_bv, &form](const auto &bv) {
         return check_bv(tf::transformed(bv, form.frame()));
       },
-      [primitive_apply, &form, &check_bv, &buff](const auto &r) {
+      [primitive_apply, &form, &check_bv, &buff](const auto &r,
+                                                  const auto &primitive_aabbs) {
         for (const auto &id : r)
-          if (check_bv(tf::transformed(form.tree().primitive_aabbs()[id],
-                                       form.frame()))) {
+          if (check_bv(tf::transformed(primitive_aabbs[id], form.frame()))) {
             if constexpr (std::is_same_v<decltype(primitive_apply(tf::tag_id(
                                              id, tf::transformed(
                                                      form[id] | tf::tag(buff),
@@ -85,12 +109,11 @@ auto search(const tf::tree_like<TreePolicy0> &tree0,
             int parallelism_depth = 6) -> bool {
   return tf::spatial::impl::dual_search(
       tree0, tree1, check_bvs,
-      [primitive_apply, &tree0, &tree1, &check_bvs](const auto &r0,
-                                                    const auto &r1) {
+      [primitive_apply, &check_bvs](const auto &r0, const auto &r1,
+                                    const auto &aabbs0, const auto &aabbs1) {
         for (const auto &id0 : r0)
           for (const auto &id1 : r1)
-            if (check_bvs(tree0.primitive_aabbs()[id0],
-                          tree1.primitive_aabbs()[id1]) &&
+            if (check_bvs(aabbs0[id0], aabbs1[id1]) &&
                 primitive_apply(id0, id1))
               return true;
         return false;
@@ -116,14 +139,14 @@ auto search(const tf::form<Dims, Policy0> &form0,
   auto buff1 = make_local_buffer_for_form(form1);
   return tf::spatial::impl::dual_search(
       form0.tree(), form1.tree(), bv_f,
-      [primitive_apply, &form0, &form1, &bv_f, &buff0, &buff1](const auto &r0,
-                                                               const auto &r1) {
+      [primitive_apply, &form0, &form1, &bv_f, &buff0,
+       &buff1](const auto &r0, const auto &r1, const auto &aabbs0,
+               const auto &aabbs1) {
         for (const auto &id0 : r0) {
           auto obj0 = tf::tag_id(
               id0, tf::transformed(form0[id0] | tf::tag(buff0), form0.frame()));
           for (const auto &id1 : r1)
-            if (bv_f(form0.tree().primitive_aabbs()[id0],
-                     form1.tree().primitive_aabbs()[id1]) &&
+            if (bv_f(aabbs0[id0], aabbs1[id1]) &&
                 primitive_apply(
                     obj0,
                     tf::tag_id(id1, tf::transformed(form1[id1] | tf::tag(buff1),

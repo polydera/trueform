@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
   std::cout << "Loading mesh: " << mesh_path << std::endl;
 
   // Read the mesh
-  auto mesh = tf::read_stl<int>(mesh_path.c_str());
+  auto mesh = tf::read_stl(mesh_path.c_str());
   if (mesh.polygons().size() == 0) {
     std::cerr << "Failed to load mesh or mesh is empty" << std::endl;
     return 1;
@@ -135,20 +135,20 @@ int main(int argc, char *argv[]) {
   std::cout << "\nRigid alignment:" << std::endl;
   auto T_rigid1 = tf::fit_rigid_alignment(source1.points(), mesh.points());
   float rigid1_rms = compute_rms_error(
-      mesh.points(), source1.points() | tf::tag(tf::make_frame(T_rigid1)));
+      mesh.points(), source1.points() | tf::tag(T_rigid1));
   std::cout << "  RMS error: " << rigid1_rms << std::endl;
 
   std::cout << "\nOBB alignment (no tree):" << std::endl;
   auto T_obb1_no_tree = tf::fit_obb_alignment(source1.points(), mesh.points());
   float obb1_no_tree_rms = compute_rms_error(
       mesh.points(),
-      source1.points() | tf::tag(tf::make_frame(T_obb1_no_tree)));
+      source1.points() | tf::tag(T_obb1_no_tree));
   std::cout << "  RMS error: " << obb1_no_tree_rms << std::endl;
 
   std::cout << "\nOBB alignment (with tree):" << std::endl;
   auto T_obb1_tree = tf::fit_obb_alignment(source1.points(), target_with_tree);
   float obb1_tree_rms = compute_rms_error(
-      mesh.points(), source1.points() | tf::tag(tf::make_frame(T_obb1_tree)));
+      mesh.points(), source1.points() | tf::tag(T_obb1_tree));
   std::cout << "  RMS error: " << obb1_tree_rms << std::endl;
 
   std::cout << "\n--- Summary (Part 1) ---" << std::endl;
@@ -187,20 +187,20 @@ int main(int argc, char *argv[]) {
             << std::endl;
   auto T_rigid2 = tf::fit_rigid_alignment(source2.points(), mesh.points());
   float rigid2_rms = compute_rms_error(
-      target_shuffled, source2.points() | tf::tag(tf::make_frame(T_rigid2)));
+      target_shuffled, source2.points() | tf::tag(T_rigid2));
   std::cout << "  RMS error: " << rigid2_rms << std::endl;
 
   std::cout << "\nOBB alignment (no tree - ambiguous):" << std::endl;
   auto T_obb2_no_tree = tf::fit_obb_alignment(source2.points(), mesh.points());
   float obb2_no_tree_rms = compute_rms_error(
       target_shuffled,
-      source2.points() | tf::tag(tf::make_frame(T_obb2_no_tree)));
+      source2.points() | tf::tag(T_obb2_no_tree));
   std::cout << "  RMS error: " << obb2_no_tree_rms << std::endl;
 
   std::cout << "\nOBB alignment (with tree - disambiguated):" << std::endl;
   auto T_obb2_tree = tf::fit_obb_alignment(source2.points(), target_with_tree);
   float obb2_tree_rms = compute_rms_error(
-      target_shuffled, source2.points() | tf::tag(tf::make_frame(T_obb2_tree)));
+      target_shuffled, source2.points() | tf::tag(T_obb2_tree));
   std::cout << "  RMS error: " << obb2_tree_rms << std::endl;
 
   std::cout << "\n--- Summary (Part 2) ---" << std::endl;
@@ -248,7 +248,7 @@ int main(int argc, char *argv[]) {
     auto subsample =
         tf::make_points(tf::make_indirect_range(ids, source2.points()));
 
-    auto subsample_with_frame = subsample | tf::tag(tf::make_frame(T_accum));
+    auto subsample_with_frame = subsample | tf::tag(T_accum);
 
     auto T_iter =
         tf::fit_knn_alignment(subsample_with_frame, target_with_tree, k);
@@ -262,7 +262,7 @@ int main(int argc, char *argv[]) {
     auto eval_sample =
         tf::make_points(tf::make_indirect_range(eval_ids, source2.points()));
     float chamfer = tf::chamfer_error(
-        eval_sample | tf::tag(tf::make_frame(T_accum)), target_with_tree);
+        eval_sample | tf::tag(T_accum), target_with_tree);
 
     ema_prev = ema;
     ema = (iter == 0) ? chamfer : alpha * chamfer + (1.0f - alpha) * ema;
@@ -277,7 +277,7 @@ int main(int argc, char *argv[]) {
   std::cout << "Converged after " << (iter + 1) << " iterations" << std::endl;
 
   float final_error = compute_rms_error(
-      target_shuffled, source2.points() | tf::tag(tf::make_frame(T_accum)));
+      target_shuffled, source2.points() | tf::tag(T_accum));
   std::cout << "\nFinal RMS error: " << final_error << std::endl;
   std::cout << "Ground truth RMS: " << smooth_rms << std::endl;
 
@@ -292,7 +292,7 @@ int main(int argc, char *argv[]) {
   std::string low_res_path = data_dir + "dragon-50k.stl";
   std::cout << "\nLoading low-res mesh: " << low_res_path << std::endl;
 
-  auto mesh_low = tf::read_stl<int>(low_res_path.c_str());
+  auto mesh_low = tf::read_stl(low_res_path.c_str());
   if (mesh_low.polygons().size() == 0) {
     std::cerr << "Failed to load low-res mesh, skipping Part 4" << std::endl;
     return 0;
@@ -355,7 +355,7 @@ int main(int argc, char *argv[]) {
   auto T_obb_low_no_tree =
       tf::fit_obb_alignment(source_low.points(), mesh.points());
   float chamfer_obb_no_tree = tf::chamfer_error(
-      source_low.points() | tf::tag(tf::make_frame(T_obb_low_no_tree)),
+      source_low.points() | tf::tag(T_obb_low_no_tree),
       target_with_tree);
   std::cout << "  Chamfer (Low→High): " << chamfer_obb_no_tree << std::endl;
 
@@ -364,7 +364,7 @@ int main(int argc, char *argv[]) {
   auto T_obb_low_tree =
       tf::fit_obb_alignment(source_low.points(), target_with_tree);
   float chamfer_obb_tree = tf::chamfer_error(
-      source_low.points() | tf::tag(tf::make_frame(T_obb_low_tree)),
+      source_low.points() | tf::tag(T_obb_low_tree),
       target_with_tree);
   std::cout << "  Chamfer (Low→High): " << chamfer_obb_tree << std::endl;
 
@@ -387,7 +387,7 @@ int main(int argc, char *argv[]) {
         tf::make_points(tf::make_indirect_range(ids, source_low.points()));
 
     auto subsample_low_with_frame =
-        subsample_low | tf::tag(tf::make_frame(T_accum_low));
+        subsample_low | tf::tag(T_accum_low);
 
     auto T_iter =
         tf::fit_knn_alignment(subsample_low_with_frame, target_with_tree, k);
@@ -402,7 +402,7 @@ int main(int argc, char *argv[]) {
     auto eval_sample =
         tf::make_points(tf::make_indirect_range(eval_ids, source_low.points()));
     float chamfer = tf::chamfer_error(
-        eval_sample | tf::tag(tf::make_frame(T_accum_low)), target_with_tree);
+        eval_sample | tf::tag(T_accum_low), target_with_tree);
 
     ema_low_prev = ema_low;
     ema_low =
@@ -420,7 +420,7 @@ int main(int argc, char *argv[]) {
             << std::endl;
 
   float chamfer_final = tf::chamfer_error(
-      source_low.points() | tf::tag(tf::make_frame(T_accum_low)),
+      source_low.points() | tf::tag(T_accum_low),
       target_with_tree);
   std::cout << "\n--- Summary (Part 4) ---" << std::endl;
   std::cout << "  Baseline:        " << chamfer_baseline_fwd

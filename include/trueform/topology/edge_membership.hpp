@@ -13,12 +13,28 @@
 #include "./structures/compute_face_membership.hpp"
 
 namespace tf {
+
+/// @ingroup topology_connectivity
+/// @brief Maps each vertex to the edges incident on it.
+///
+/// For each vertex index, stores the list of edge indices that include
+/// that vertex. Supports different edge orientations:
+/// - `forward`: Only count edges where this vertex is the first endpoint
+/// - `reverse`: Only count edges where this vertex is the second endpoint
+/// - `bidirectional`: Count edges where this vertex is either endpoint
+///
+/// @tparam Index The integer type for vertex and edge indices.
 template <typename Index>
 class edge_membership
     : public edge_membership_like<offset_block_buffer<Index, Index>> {
   using base_t = edge_membership_like<offset_block_buffer<Index, Index>>;
 
 public:
+  /// @brief Build from edges with specified orientation.
+  /// @tparam Policy The edges policy type.
+  /// @param edges The edges range.
+  /// @param n_unique_ids The number of unique vertex ids.
+  /// @param eo The edge orientation mode (default: bidirectional).
   template <typename Policy>
   auto build(const tf::edges<Policy> &edges, std::size_t n_unique_ids,
              tf::edge_orientation eo = tf::edge_orientation::bidirectional)
@@ -37,6 +53,10 @@ public:
     }
   }
 
+  /// @brief Build from segments with specified orientation.
+  /// @tparam Policy The segments policy type.
+  /// @param segments The segments range.
+  /// @param eo The edge orientation mode (default: bidirectional).
   template <typename Policy>
   auto build(const segments<Policy> &segments,
              tf::edge_orientation eo = tf::edge_orientation::bidirectional)

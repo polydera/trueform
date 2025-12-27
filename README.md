@@ -2,7 +2,7 @@
 
 `trueform` is a C++ library for real-time geometric processing. Spatial queries, mesh booleans, isocontours, topology — at interactive speed on million-polygon meshes. Robust on real-world inputs: non-manifold flaps, inconsistent geometry, the artifacts that pipelines accumulate. Algorithms with formal guarantees. Header-only; works directly on your data with zero-copy views.
 
-**[▶ Try it live](https://trueform.dev/live-examples/boolean)** — Booleans, collision, isobands in your browser.
+**[▶ Try it live](https://trueform.polydera.com/live-examples/boolean)** — Booleans, collision, isobands in your browser.
 
 ## Research Foundation
 
@@ -20,7 +20,7 @@ This perspective shapes the algorithms:
 
 The result is **commutative correctness**: operations on non-ideal meshes behave as if applied to the intended geometry. Chain operations freely and defer cleanup to the end.
 
-→ [Read the papers](https://trueform.dev/cpp/about/publications)
+→ [Read the papers](https://trueform.polydera.com/cpp/about/publications)
 
 ## Quick Tour
 
@@ -128,7 +128,7 @@ auto [contour_mesh, contour_labels, isocontours] = tf::embedded_isocurves<int>(
 
 ---
 
-This is trueform from a bird's eye view. For comprehensive coverage of all features, patterns, and advanced usage, explore the **[module documentation](https://trueform.dev/cpp/modules/core)**.
+This is trueform from a bird's eye view. For comprehensive coverage of all features, patterns, and advanced usage, explore the **[module documentation](https://trueform.polydera.com/cpp/modules/core)**.
 
 ## Installation
 
@@ -153,13 +153,13 @@ target_link_libraries(my_target PRIVATE tf::trueform)
 
 ## Documentation
 
-Comprehensive documentation is available at **[trueform.dev](https://trueform.dev)**
+Comprehensive documentation is available at **[trueform.polydera.com](https://trueform.polydera.com)**
 
-- 📚 **[Getting Started](https://trueform.dev/cpp/getting-started)** - Requirements and installation via CMake FetchContent
-- 📖 **[Tutorial](https://trueform.dev/cpp/modules/core)** - Primitives, trees, topology, booleans — step by step
-- 📊 **[Benchmarks](https://trueform.dev/cpp/benchmarks)** - Benchmarked against VTK, CGAL, libigl, FCL, and nanoflann
-- 💡 **[Examples](https://trueform.dev/cpp/examples)** - Core features, performance comparisons, and framework integration
-- 📄 **[Publications](https://trueform.dev/cpp/about/publications)** - Research behind trueform's spatial hierarchy and mesh booleans
+- 📚 **[Getting Started](https://trueform.polydera.com/cpp/getting-started)** - Requirements and installation via CMake FetchContent
+- 📖 **[Tutorial](https://trueform.polydera.com/cpp/modules/core)** - Primitives, trees, topology, booleans — step by step
+- 📊 **[Benchmarks](https://trueform.polydera.com/cpp/benchmarks)** - Benchmarked against VTK, CGAL, libigl, FCL, and nanoflann
+- 💡 **[Examples](https://trueform.polydera.com/cpp/examples)** - Core features, performance comparisons, and framework integration
+- 📄 **[Publications](https://trueform.polydera.com/cpp/about/publications)** - Research behind trueform's spatial hierarchy and mesh booleans
 
 ## License
 
@@ -167,7 +167,7 @@ Trueform is distributed under a dual-license model:
 - **Noncommercial use**: PolyForm Noncommercial License 1.0.0
 - **Commercial use**: Separate paid agreement with XLAB
 
-See [LICENSE.noncommercial](./LICENSE.noncommercial) and [license documentation](https://trueform.dev/cpp/about/license) for details. For commercial licensing, contact [info@polydera.com](mailto:info@polydera.com).
+See [LICENSE.noncommercial](./LICENSE.noncommercial) and [license documentation](https://trueform.polydera.com/cpp/about/license) for details. For commercial licensing, contact [info@polydera.com](mailto:info@polydera.com).
 
 ### 3rd Party Licenses
 
@@ -183,7 +183,7 @@ We welcome contributions! Browse [open issues](https://github.com/xlabmedical/tr
 
 **Get Started:**
 - 📖 Read the full contributing guide: [CONTRIBUTING.md](./CONTRIBUTING.md)
-- 🌐 View on the documentation site: [Contributing Guide](https://trueform.dev/cpp/about/contributing)
+- 🌐 View on the documentation site: [Contributing Guide](https://trueform.polydera.com/cpp/about/contributing)
 
 By contributing, you certify that your work may be distributed under both the PolyForm Noncommercial License and any commercial licenses XLAB offers.
 

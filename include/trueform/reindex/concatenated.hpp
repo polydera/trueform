@@ -7,10 +7,12 @@
 #pragma once
 #include "../core/algorithm/parallel_apply.hpp"
 #include "../core/algorithm/parallel_copy.hpp"
+#include "../core/frame_of.hpp"
 #include "../core/polygons.hpp"
 #include "../core/polygons_buffer.hpp"
 #include "../core/segments.hpp"
 #include "../core/segments_buffer.hpp"
+#include "../core/transformed.hpp"
 #include "../core/unit_vectors_buffer.hpp"
 #include "../core/vectors_buffer.hpp"
 #include "../core/views/slice.hpp"
@@ -18,7 +20,25 @@
 #include "../core/views/zip.hpp"
 namespace tf {
 
+/// @cond INTERNAL
 namespace reindex {
+
+namespace impl {
+template <typename R0, typename R1, typename T>
+auto copy_with_transformation(const R0 &source, R1 &&destincation,
+                              const T &transformation) {
+  if constexpr (tf::linalg::is_identity<T>)
+    tf::parallel_copy(source, destincation);
+  else {
+    tf::parallel_apply(tf::zip(source, destincation),
+                       [&transformation](auto &&pair) {
+                         auto &&[src, dst] = pair;
+                         dst = tf::transformed(src, transformation);
+                       });
+  }
+}
+} // namespace impl
+
 template <typename Index, typename Policy0, typename Policy1,
           typename... Policies, typename RealT, std::size_t Dims,
           std::size_t Ngon>
@@ -49,8 +69,9 @@ auto concatenated_impl(tf::polygons_buffer<Index, RealT, Dims, Ngon> &out,
         },
         tf::checked);
 
-    tf::parallel_copy(polygons.points(),
-                      tf::slice(out.points_buffer(), start_p, end_p));
+    impl::copy_with_transformation(polygons.points(),
+                                    tf::slice(out.points_buffer(), start_p, end_p),
+                                    tf::frame_of(polygons));
 
     start_p = end_p;
     start_f = end_f;
@@ -119,7 +140,22 @@ auto concatenated_diff_gons(const tf::polygons<Policy0> &polygons0,
   return out;
 }
 } // namespace reindex
+/// @endcond
 
+/// @ingroup reindex
+/// @brief Concatenate multiple polygon collections.
+///
+/// Merges polygons into a single @ref tf::polygons_buffer with
+/// adjusted face indices. Applies frame transformations if present.
+/// Preserves static face size if all inputs match, otherwise uses dynamic.
+///
+/// @tparam Policy0 Policy of first polygons.
+/// @tparam Policy1 Policy of second polygons.
+/// @tparam Policies Policies of additional polygons.
+/// @param polygons0 First @ref tf::polygons.
+/// @param polygons1 Second @ref tf::polygons.
+/// @param polygons Additional @ref tf::polygons (variadic).
+/// @return A @ref tf::polygons_buffer containing all geometry.
 template <typename Policy0, typename Policy1, typename... Policies>
 auto concatenated(const tf::polygons<Policy0> &polygons0,
                   const tf::polygons<Policy1> &polygons1,
@@ -143,6 +179,19 @@ auto concatenated(const tf::polygons<Policy0> &polygons0,
                                                         polygons...);
 }
 
+/// @ingroup reindex
+/// @brief Concatenate multiple segment collections.
+///
+/// Merges segments into a single @ref tf::segments_buffer with
+/// adjusted edge indices. Applies frame transformations if present.
+///
+/// @tparam Policy0 Policy of first segments.
+/// @tparam Policy1 Policy of second segments.
+/// @tparam Policies Policies of additional segments.
+/// @param segments0 First @ref tf::segments.
+/// @param segments1 Second @ref tf::segments.
+/// @param segments Additional @ref tf::segments (variadic).
+/// @return A @ref tf::segments_buffer containing all geometry.
 template <typename Policy0, typename Policy1, typename... Policies>
 auto concatenated(const tf::segments<Policy0> &segments0,
                   const tf::segments<Policy1> &segments1,
@@ -181,8 +230,9 @@ auto concatenated(const tf::segments<Policy0> &segments0,
         },
         tf::checked);
 
-    tf::parallel_copy(segments.points(),
-                      tf::slice(out.points_buffer(), start_p, end_p));
+    reindex::impl::copy_with_transformation(segments.points(),
+                                    tf::slice(out.points_buffer(), start_p, end_p),
+                                    tf::frame_of(segments));
 
     start_p = end_p;
     start_f = end_f;
@@ -194,6 +244,19 @@ auto concatenated(const tf::segments<Policy0> &segments0,
   return out;
 }
 
+/// @ingroup reindex
+/// @brief Concatenate multiple point collections.
+///
+/// Merges points into a single @ref tf::points_buffer.
+/// Applies frame transformations if present.
+///
+/// @tparam Policy0 Policy of first points.
+/// @tparam Policy1 Policy of second points.
+/// @tparam Policies Policies of additional points.
+/// @param points0 First @ref tf::points.
+/// @param points1 Second @ref tf::points.
+/// @param points Additional @ref tf::points (variadic).
+/// @return A @ref tf::points_buffer containing all points.
 template <typename Policy0, typename Policy1, typename... Policies>
 auto concatenated(const tf::points<Policy0> &points0,
                   const tf::points<Policy1> &points1,
@@ -210,7 +273,8 @@ auto concatenated(const tf::points<Policy0> &points0,
   auto make_copy = [&](const auto &points) {
     const std::size_t end_p = start_p + static_cast<std::size_t>(points.size());
 
-    tf::parallel_copy(points, tf::slice(out, start_p, end_p));
+    reindex::impl::copy_with_transformation(points, tf::slice(out, start_p, end_p),
+                                            tf::frame_of(points));
 
     start_p = end_p;
   };
@@ -220,6 +284,19 @@ auto concatenated(const tf::points<Policy0> &points0,
   return out;
 }
 
+/// @ingroup reindex
+/// @brief Concatenate multiple vector collections.
+///
+/// Merges vectors into a single @ref tf::vectors_buffer.
+/// Applies frame transformations if present.
+///
+/// @tparam Policy0 Policy of first vectors.
+/// @tparam Policy1 Policy of second vectors.
+/// @tparam Policies Policies of additional vectors.
+/// @param vectors0 First @ref tf::vectors.
+/// @param vectors1 Second @ref tf::vectors.
+/// @param vectors Additional @ref tf::vectors (variadic).
+/// @return A @ref tf::vectors_buffer containing all vectors.
 template <typename Policy0, typename Policy1, typename... Policies>
 auto concatenated(const tf::vectors<Policy0> &vectors0,
                   const tf::vectors<Policy1> &vectors1,
@@ -237,7 +314,8 @@ auto concatenated(const tf::vectors<Policy0> &vectors0,
     const std::size_t end_p =
         start_p + static_cast<std::size_t>(vectors.size());
 
-    tf::parallel_copy(vectors, tf::slice(out, start_p, end_p));
+    reindex::impl::copy_with_transformation(vectors, tf::slice(out, start_p, end_p),
+                                            tf::frame_of(vectors));
 
     start_p = end_p;
   };
@@ -247,6 +325,19 @@ auto concatenated(const tf::vectors<Policy0> &vectors0,
   return out;
 }
 
+/// @ingroup reindex
+/// @brief Concatenate multiple unit vector collections.
+///
+/// Merges unit vectors into a single @ref tf::unit_vectors_buffer.
+/// Applies frame transformations if present.
+///
+/// @tparam Policy0 Policy of first unit vectors.
+/// @tparam Policy1 Policy of second unit vectors.
+/// @tparam Policies Policies of additional unit vectors.
+/// @param unit_vectors0 First @ref tf::unit_vectors.
+/// @param unit_vectors1 Second @ref tf::unit_vectors.
+/// @param unit_vectors Additional @ref tf::unit_vectors (variadic).
+/// @return A @ref tf::unit_vectors_buffer containing all unit vectors.
 template <typename Policy0, typename Policy1, typename... Policies>
 auto concatenated(const tf::unit_vectors<Policy0> &unit_vectors0,
                   const tf::unit_vectors<Policy1> &unit_vectors1,
@@ -264,7 +355,8 @@ auto concatenated(const tf::unit_vectors<Policy0> &unit_vectors0,
     const std::size_t end_p =
         start_p + static_cast<std::size_t>(unit_vectors.size());
 
-    tf::parallel_copy(unit_vectors, tf::slice(out, start_p, end_p));
+    reindex::impl::copy_with_transformation(unit_vectors, tf::slice(out, start_p, end_p),
+                                            tf::frame_of(unit_vectors));
 
     start_p = end_p;
   };
@@ -275,6 +367,7 @@ auto concatenated(const tf::unit_vectors<Policy0> &unit_vectors0,
   return out;
 }
 
+/// @cond INTERNAL
 namespace reindex {
 template <typename Index, typename RealT, std::size_t Dims, std::size_t Ngon,
           typename Range>
@@ -303,8 +396,9 @@ auto concatenated_impl(tf::polygons_buffer<Index, RealT, Dims, Ngon> &out,
         },
         tf::checked);
 
-    tf::parallel_copy(polygons.points(),
-                      tf::slice(out.points_buffer(), start_p, end_p));
+    impl::copy_with_transformation(polygons.points(),
+                                    tf::slice(out.points_buffer(), start_p, end_p),
+                                    tf::frame_of(polygons));
 
     start_p = end_p;
     start_f = end_f;
@@ -414,8 +508,9 @@ auto concatenated(const tf::segments<Policy> &, const Range &r) {
         },
         tf::checked);
 
-    tf::parallel_copy(segments.points(),
-                      tf::slice(out.points_buffer(), start_p, end_p));
+    impl::copy_with_transformation(segments.points(),
+                                    tf::slice(out.points_buffer(), start_p, end_p),
+                                    tf::frame_of(segments));
 
     start_p = end_p;
     start_f = end_f;
@@ -441,7 +536,8 @@ auto concatenated(const tf::points<Policy> &, const Range &r) {
   auto make_copy = [&](const auto &points) {
     const std::size_t end_p = start_p + static_cast<std::size_t>(points.size());
 
-    tf::parallel_copy(points, tf::slice(out, start_p, end_p));
+    impl::copy_with_transformation(points, tf::slice(out, start_p, end_p),
+                                   tf::frame_of(points));
 
     start_p = end_p;
   };
@@ -467,7 +563,8 @@ auto concatenated(const tf::vectors<Policy> &, const Range &r) {
     const std::size_t end_p =
         start_p + static_cast<std::size_t>(vectors.size());
 
-    tf::parallel_copy(vectors, tf::slice(out, start_p, end_p));
+    impl::copy_with_transformation(vectors, tf::slice(out, start_p, end_p),
+                                   tf::frame_of(vectors));
 
     start_p = end_p;
   };
@@ -492,7 +589,8 @@ auto concatenated(const tf::unit_vectors<Policy> &, const Range &r) {
     const std::size_t end_p =
         start_p + static_cast<std::size_t>(unit_vectors.size());
 
-    tf::parallel_copy(unit_vectors, tf::slice(out, start_p, end_p));
+    impl::copy_with_transformation(unit_vectors, tf::slice(out, start_p, end_p),
+                                   tf::frame_of(unit_vectors));
 
     start_p = end_p;
   };
@@ -503,7 +601,18 @@ auto concatenated(const tf::unit_vectors<Policy> &, const Range &r) {
   return out;
 }
 } // namespace reindex
+/// @endcond
 
+/// @ingroup reindex
+/// @brief Concatenate a range of geometry collections.
+///
+/// Merges all geometry in the range into a single buffer.
+/// Dispatches to the appropriate type-specific concatenation.
+///
+/// @tparam Iterator Range iterator type.
+/// @tparam N Static size hint.
+/// @param r Range of geometry collections (polygons, segments, points, vectors, or unit_vectors).
+/// @return A buffer containing all concatenated geometry.
 template <typename Iterator, std::size_t N>
 auto concatenated(const tf::range<Iterator, N> &r) {
   return reindex::concatenated(r[0], r);

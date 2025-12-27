@@ -11,7 +11,7 @@
 #include "./vector_like.hpp"
 
 namespace tf {
-/// @ingroup geometry
+/// @ingroup core_properties
 /// @brief Compute the dot product of two N-dimensional vectors.
 ///
 /// Returns the standard inner product (a · b) between two vectors
@@ -33,12 +33,16 @@ auto dot(const vector_like<N, T0> &a, const vector_like<N, T1> &b)
   return sum;
 }
 
+/// @ingroup core_properties
+/// @brief Compute the dot product treating a point as a position vector.
 template <std::size_t N, typename T0, typename T1>
 auto dot(const point_like<N, T0> &a, const vector_like<N, T1> &b)
     -> tf::coordinate_type<T0, T1> {
   return dot(a.as_vector_view(), b);
 }
 
+/// @ingroup core_properties
+/// @brief Compute the dot product treating a point as a position vector.
 template <std::size_t N, typename T0, typename T1>
 auto dot(const vector_like<N, T0> &a, const point_like<N, T1> &b)
     -> tf::coordinate_type<T0, T1> {

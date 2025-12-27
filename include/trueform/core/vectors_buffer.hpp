@@ -9,6 +9,16 @@
 #include "./iter/vector_iterator.hpp"
 #include "./vectors.hpp"
 namespace tf {
+
+/// @ingroup core_buffers
+/// @brief An owning buffer of vectors.
+///
+/// Stores vectors as interleaved coordinates and provides iteration
+/// as @ref tf::vector_view elements. Use `vectors()` to obtain a
+/// @ref tf::vectors range.
+///
+/// @tparam T The coordinate scalar type.
+/// @tparam Dims The number of dimensions per vector.
 template <typename T, std::size_t Dims> class vectors_buffer {
 public:
   using iterator = tf::iter::vector_iterator<T *, Dims>;

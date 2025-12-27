@@ -30,6 +30,13 @@ template <typename T> struct vec_as_dref {
 };
 } // namespace core
 
+/// @ingroup core_ranges
+/// @brief A range of vectors.
+///
+/// Wraps a range policy and provides vector-specific operations like
+/// type conversion via `as<T>()`.
+///
+/// @tparam Policy The underlying range policy.
 template <typename Policy> struct vectors : Policy {
   vectors(const Policy &r) : Policy{r} {}
   vectors(Policy &&r) : Policy{std::move(r)} {}
@@ -74,7 +81,7 @@ auto wrap_like(vectors<Policy> &&, T &&t) {
   return vectors<std::decay_t<T>>{static_cast<T &&>(t)};
 }
 
-/// @ingroup ranges
+/// @ingroup core_ranges
 /// @brief Creates a range of vectors from a flat scalar sequence.
 ///
 /// This utility interprets a flat range of scalars as a sequence of
@@ -113,11 +120,15 @@ template <std::size_t Dims, typename Range> auto make_vectors(Range &&r) {
   return tf::vectors<decltype(pts)>{pts};
 }
 
+/// @ingroup core_ranges
+/// @brief Create a vectors range from a generic range of vector primitives.
 template <typename Range> auto make_vectors(Range &&r) {
   auto vec = tf::make_range(r);
   return tf::vectors<decltype(vec)>{std::move(vec)};
 }
 
+/// @ingroup core_ranges
+/// @brief Identity overload for already-wrapped vector ranges.
 template <typename Range>
 auto make_vectors(vectors<Range> r) -> vectors<Range> {
   return r;

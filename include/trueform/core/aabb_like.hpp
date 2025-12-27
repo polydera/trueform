@@ -10,6 +10,15 @@
 #include "./vector.hpp"
 
 namespace tf {
+
+/// @ingroup core_primitives
+/// @brief Base template for axis-aligned bounding box types.
+///
+/// Provides the common interface for AABBs, defined by two corner points
+/// `min` and `max`. Includes methods for computing the center and diagonal.
+///
+/// @tparam Dims The dimensionality.
+/// @tparam Policy The storage policy.
 template <std::size_t Dims, typename Policy> struct aabb_like : Policy {
   aabb_like() = default;
   aabb_like(const Policy &policy) : Policy{policy} {}
@@ -90,6 +99,17 @@ auto wrap_like(const aabb_like<V, Policy> &&, T &&t) {
   return aabb_like<V, std::decay_t<T>>{static_cast<T &&>(t)};
 }
 
+/// @ingroup core_primitives
+/// @brief Create an AABB view from point views.
+///
+/// Returns a view when inputs are views, preserving zero-copy semantics.
+///
+/// @tparam Dims The dimensionality.
+/// @tparam Policy0 The min point policy.
+/// @tparam Policy1 The max point policy.
+/// @param min The minimum corner point.
+/// @param max The maximum corner point.
+/// @return A @ref tf::aabb_like instance.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto make_aabb_like(const point_like<Dims, Policy0> &min,
                     const point_like<Dims, Policy1> &max) {

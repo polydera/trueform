@@ -6,6 +6,8 @@
  */
 #pragma once
 namespace tf {
+
+/// @ingroup spatial_results
 /// @brief Stores intersection metadata for ray queries in spatial trees.
 ///
 /// This structure is used to represent the result of a ray query against a spatial tree.

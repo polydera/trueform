@@ -13,6 +13,19 @@
 #include "../core/points_buffer.hpp"
 #include "../core/views/indirect_range.hpp"
 namespace tf {
+
+/// @ingroup reindex
+/// @brief Apply index map to points (output parameter).
+///
+/// Gathers points at positions specified by im.kept_ids().
+///
+/// @tparam Policy The policy type of the input points.
+/// @tparam Range0 Index map kept IDs range type.
+/// @tparam Range1 Index map function range type.
+/// @tparam Policy1 Output points policy type.
+/// @param points The input @ref tf::points.
+/// @param im The @ref tf::index_map to apply.
+/// @param out Output @ref tf::points to populate.
 template <typename Policy, typename Range0, typename Range1, typename Policy1>
 auto reindexed(const tf::points<Policy> &points,
                const tf::index_map<Range0, Range1> &im,
@@ -20,6 +33,9 @@ auto reindexed(const tf::points<Policy> &points,
   tf::parallel_copy(tf::make_indirect_range(im.kept_ids(), points), out);
 }
 
+/// @ingroup reindex
+/// @brief Apply index map to points (points_buffer output parameter).
+/// @overload
 template <typename Policy, typename Range0, typename Range1, typename RealT,
           std::size_t Dims>
 auto reindexed(const tf::points<Policy> &points,
@@ -30,6 +46,15 @@ auto reindexed(const tf::points<Policy> &points,
   reindexed(points, im, out_p);
 }
 
+/// @ingroup reindex
+/// @brief Apply index map to points.
+///
+/// @tparam Policy The policy type of the points.
+/// @tparam Range0 Index map kept IDs range type.
+/// @tparam Range1 Index map function range type.
+/// @param points The input @ref tf::points.
+/// @param im The @ref tf::index_map to apply.
+/// @return A @ref tf::points_buffer with reindexed points.
 template <typename Policy, typename Range0, typename Range1>
 auto reindexed(const tf::points<Policy> &points,
                const tf::index_map<Range0, Range1> &im) {

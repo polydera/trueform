@@ -10,6 +10,14 @@
 #include "./loop/descriptor.hpp"
 
 namespace tf {
+
+/// @ingroup cut_data
+/// @brief Low-level face cutting from self-intersection data.
+///
+/// Splits polygon faces along self-intersection curves.
+/// Used internally by @ref tf::embedded_self_intersection_curves.
+///
+/// @tparam Index The index type.
 template <typename Index>
 class cut_faces : public loop::cut_faces<Index, loop::descriptor<Index>> {
   using base_t = loop::cut_faces<Index, loop::descriptor<Index>>;

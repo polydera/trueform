@@ -8,6 +8,22 @@
 #include <type_traits>
 
 namespace tf {
+
+/// @ingroup core_algorithms
+/// @brief Remove elements and create mapping to new indices.
+///
+/// Removes elements matching predicate while building a map from
+/// old indices to new compact indices.
+///
+/// @tparam Range0 The data range type.
+/// @tparam F Predicate type (returns true for elements to remove).
+/// @tparam Range1 The map range type.
+/// @tparam Index The index type.
+/// @param data Data to filter (modified in-place).
+/// @param predicate Returns true for elements to remove.
+/// @param map Output map from old to new indices.
+/// @param none_tag Value for removed element mappings.
+/// @return Iterator to new end of data.
 template <typename Range0, typename F, typename Range1, typename Index>
 auto remove_if_and_make_map(Range0 &data, const F &predicate, Range1 &map,
                             Index none_tag) {
@@ -26,6 +42,9 @@ auto remove_if_and_make_map(Range0 &data, const F &predicate, Range1 &map,
   return write_to;
 }
 
+/// @ingroup core_algorithms
+/// @brief Remove elements with default none tag (data.size()).
+/// @overload
 template <typename Range0, typename F, typename Range1>
 auto remove_if_and_make_map(Range0 &data, const F &predicate, Range1 &map) {
   using Index = std::decay_t<decltype(map[0])>;

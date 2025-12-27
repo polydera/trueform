@@ -15,6 +15,22 @@
 
 namespace tf {
 
+/// @ingroup core_ranges
+/// @brief Concatenate collections of blocked ranges into a single buffer.
+///
+/// Flattens multiple collections of sub-ranges into one output buffer.
+/// Each collection contains sub-ranges that are themselves blocked ranges.
+/// Optimizes for same-arity blocks using blocked_buffer, otherwise uses
+/// offset_block_buffer.
+///
+/// @tparam Index The index type.
+/// @tparam Range0 The first collection type.
+/// @tparam Range1 The second collection type.
+/// @tparam Ranges Additional collection types.
+/// @param r0 The first collection of sub-ranges.
+/// @param r1 The second collection of sub-ranges.
+/// @param rs Additional collections.
+/// @return A blocked_buffer or offset_block_buffer containing all blocks.
 template <typename Index, typename Range0, typename Range1, typename... Ranges>
 auto concatenated_blocked_range_collections(const Range0 &r0, const Range1 &r1,
                                             const Ranges &...rs) {

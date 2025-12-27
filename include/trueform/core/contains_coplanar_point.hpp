@@ -17,7 +17,7 @@
 namespace tf {
 namespace core {
 /**
- * @ingroup geometry
+ * @ingroup core_queries
  * @brief Checks whether a point lies inside a polygon or on its edge (projected
  * to 2D).
  *
@@ -82,7 +82,7 @@ auto contains_coplanar_point(const tf::polygon<Dims, Policy> &poly,
 /*  return core::contains_coplanar_point(poly, input_pt, projector) !=*/
 /*         containment::outside;*/
 /*}*/
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Overload for 2D input points without projection
 /// @copydoc contains_coplanar_point
 
@@ -93,7 +93,7 @@ auto contains_coplanar_point(const tf::polygon<Dims, Policy> &poly,
 /*                                     tf::make_identity_projector());*/
 /*}*/
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Overload for N-dimensional input points using automatic projection
 /// @copydoc contains_coplanar_point
 
@@ -105,7 +105,7 @@ auto contains_coplanar_point(const tf::polygon<Dims, Policy> &poly,
 /*}*/
 namespace core {
 /**
- * @ingroup geometry
+ * @ingroup core_queries
  * @brief Checks whether a point lies inside or on a polygon with tolerance.
  *
  * Uses an epsilon to account for numerical precision when determining
@@ -182,7 +182,7 @@ auto contains_coplanar_point(const tf::polygon<Dims, Policy> &poly,
   return core::contains_coplanar_point(poly, input_pt, projector, epsilon) !=
          containment::outside;
 }
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Overload with epsilon and no projector (2D input)
 /// @copydoc contains_coplanar_point
 
@@ -194,7 +194,7 @@ auto contains_coplanar_point(const tf::polygon<2, Policy> &poly,
       tf::epsilon<tf::coordinate_type<T, Policy>>);
 }
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Overload with epsilon and auto projection
 /// @copydoc contains_coplanar_point
 

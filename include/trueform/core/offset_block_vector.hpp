@@ -10,6 +10,15 @@
 #include <vector>
 
 namespace tf {
+
+/// @ingroup core_buffers
+/// @brief Growable vector of variable-length blocks.
+///
+/// Stores blocks with variable sizes using offset-based indexing.
+/// Supports push_back of ranges and provides random access to blocks.
+///
+/// @tparam Index The offset index type.
+/// @tparam T The element type.
 template <typename Index, typename T> class offset_block_vector {
 public:
   using iterator = decltype(views::make_offset_block_begin(

@@ -6,10 +6,9 @@
  */
 #pragma once
 #include "../../core/range.hpp"
+#include "../mod_tree_like.hpp"
 #include "../tree_like.hpp"
-#include "tbb/task_arena.h"
 #include "tbb/task_group.h"
-
 namespace tf::spatial::impl {
 
 template <typename Tree0, typename Tree1, typename F, typename F1, typename F2>
@@ -41,7 +40,9 @@ auto dual_search(
 
   if (node0.is_leaf() && node1.is_leaf()) {
     if (params.apply(tf::make_range(ids0.begin() + data0[0], data0[1]),
-                     tf::make_range(ids1.begin() + data1[0], data1[1]))) {
+                     tf::make_range(ids1.begin() + data1[0], data1[1]),
+                     params.tree0.primitive_aabbs(),
+                     params.tree1.primitive_aabbs())) {
       params.found = true;
       return;
     }
@@ -96,9 +97,91 @@ auto dual_search(const tf::tree_like<TreePolicy0> &tree0,
     return false;
   dual_search_params<tf::tree_like<TreePolicy0>, tf::tree_like<TreePolicy1>, F, F1, F2>
       params{tree0, tree1, bvs_apply, apply, abort};
-  tbb::task_arena ta;
-  ta.execute([&] { dual_search(0, 0, parallelism_depth, params); });
+  // Use task_group to ensure calling thread joins the default arena on wait().
+  // This guarantees a valid current_thread_index() for local_vector/local_buffer,
+  // without creating a separate arena that would have different thread indices.
+  tbb::task_group tg;
+  tg.run([&] { dual_search(0, 0, parallelism_depth, params); });
+  tg.wait();
   return params.found;
+}
+
+// mod_tree_like vs tree_like
+template <typename ModTreePolicy, typename TreePolicy, typename F, typename F1,
+          typename F2>
+auto dual_search(const tf::mod_tree_like<ModTreePolicy> &mod_tree,
+                 const tf::tree_like<TreePolicy> &tree, const F &bvs_apply,
+                 const F1 &apply, const F2 &abort,
+                 int parallelism_depth = 6) -> bool {
+  bool found0 = false, found1 = false;
+  tbb::task_group tg;
+  tg.run([&] {
+    found0 = dual_search(mod_tree.main_tree(), tree, bvs_apply, apply, abort,
+                         parallelism_depth);
+  });
+  if (mod_tree.delta_tree().ids().size())
+    tg.run([&] {
+      found1 = dual_search(mod_tree.delta_tree(), tree, bvs_apply, apply, abort,
+                           parallelism_depth);
+    });
+  tg.wait();
+  return found0 || found1;
+}
+
+// tree_like vs mod_tree_like
+template <typename TreePolicy, typename ModTreePolicy, typename F, typename F1,
+          typename F2>
+auto dual_search(const tf::tree_like<TreePolicy> &tree,
+                 const tf::mod_tree_like<ModTreePolicy> &mod_tree,
+                 const F &bvs_apply, const F1 &apply, const F2 &abort,
+                 int parallelism_depth = 6) -> bool {
+  bool found0 = false, found1 = false;
+  tbb::task_group tg;
+  tg.run([&] {
+    found0 = dual_search(tree, mod_tree.main_tree(), bvs_apply, apply, abort,
+                         parallelism_depth);
+  });
+  if (mod_tree.delta_tree().ids().size())
+    tg.run([&] {
+      found1 = dual_search(tree, mod_tree.delta_tree(), bvs_apply, apply, abort,
+                           parallelism_depth);
+    });
+  tg.wait();
+  return found0 || found1;
+}
+
+// mod_tree_like vs mod_tree_like
+template <typename ModTreePolicy0, typename ModTreePolicy1, typename F,
+          typename F1, typename F2>
+auto dual_search(const tf::mod_tree_like<ModTreePolicy0> &mod_tree0,
+                 const tf::mod_tree_like<ModTreePolicy1> &mod_tree1,
+                 const F &bvs_apply, const F1 &apply, const F2 &abort,
+                 int parallelism_depth = 6) -> bool {
+  bool found0 = false, found1 = false, found2 = false, found3 = false;
+  bool has_delta0 = mod_tree0.delta_tree().ids().size();
+  bool has_delta1 = mod_tree1.delta_tree().ids().size();
+  tbb::task_group tg;
+  tg.run([&] {
+    found0 = dual_search(mod_tree0.main_tree(), mod_tree1.main_tree(), bvs_apply,
+                         apply, abort, parallelism_depth);
+  });
+  if (has_delta1)
+    tg.run([&] {
+      found1 = dual_search(mod_tree0.main_tree(), mod_tree1.delta_tree(),
+                           bvs_apply, apply, abort, parallelism_depth);
+    });
+  if (has_delta0)
+    tg.run([&] {
+      found2 = dual_search(mod_tree0.delta_tree(), mod_tree1.main_tree(),
+                           bvs_apply, apply, abort, parallelism_depth);
+    });
+  if (has_delta0 && has_delta1)
+    tg.run([&] {
+      found3 = dual_search(mod_tree0.delta_tree(), mod_tree1.delta_tree(),
+                           bvs_apply, apply, abort, parallelism_depth);
+    });
+  tg.wait();
+  return found0 || found1 || found2 || found3;
 }
 
 } // namespace tf::spatial::impl

@@ -12,6 +12,37 @@
 
 namespace tf::spatial {
 
+// Core tree buffers without primitive_aabbs (for use in mod_tree sub-trees)
+template <typename Index, typename BV> struct tree_buffers_core {
+  using index_type = Index;
+  using bv_type = BV;
+  using coordinate_type = typename BV::coordinate_type;
+  using coordinate_dims = typename BV::coordinate_dims;
+  using aabb_type = tf::aabb<coordinate_type, coordinate_dims::value>;
+  using node_type = tree_node<Index, BV>;
+
+  tree_buffers_core() = default;
+
+  auto nodes() const { return tf::make_range(_nodes); }
+  auto nodes() { return tf::make_range(_nodes); }
+  auto ids() const { return tf::make_range(_ids); }
+  auto ids() { return tf::make_range(_ids); }
+
+  auto nodes_buffer() -> tf::buffer<node_type> & { return _nodes; }
+  auto nodes_buffer() const -> const tf::buffer<node_type> & { return _nodes; }
+  auto ids_buffer() -> tf::buffer<Index> & { return _ids; }
+  auto ids_buffer() const -> const tf::buffer<Index> & { return _ids; }
+
+  auto clear() {
+    _nodes.clear();
+    _ids.clear();
+  }
+
+protected:
+  tf::buffer<node_type> _nodes;
+  tf::buffer<Index> _ids;
+};
+
 template <typename Index, typename BV> struct tree_buffers {
   using index_type = Index;
   using bv_type = BV;
@@ -28,6 +59,13 @@ template <typename Index, typename BV> struct tree_buffers {
   auto nodes() { return tf::make_range(_nodes); }
   auto ids() const { return tf::make_range(_ids); }
   auto ids() { return tf::make_range(_ids); }
+
+  auto primitive_aabbs_buffer() -> tf::buffer<aabb_type> & { return _primitive_aabbs; }
+  auto primitive_aabbs_buffer() const -> const tf::buffer<aabb_type> & { return _primitive_aabbs; }
+  auto nodes_buffer() -> tf::buffer<node_type> & { return _nodes; }
+  auto nodes_buffer() const -> const tf::buffer<node_type> & { return _nodes; }
+  auto ids_buffer() -> tf::buffer<Index> & { return _ids; }
+  auto ids_buffer() const -> const tf::buffer<Index> & { return _ids; }
 
 protected:
   tf::buffer<aabb_type> _primitive_aabbs;

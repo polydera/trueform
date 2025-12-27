@@ -22,8 +22,8 @@ auto parallel_apply(Iterator first, Iterator last, Func &&f) -> void {
         }
       });
 }
-/// @ingroup algorithms
-/// @brief Applies a function to each element of a range in parallel.
+/// @ingroup core_algorithms
+/// @brief Apply a function to each element of a range in parallel.
 ///
 /// This function applies the given functor `f` to each element of the input
 /// range `r`, using parallel execution. Internally, it leverages @ref
@@ -45,6 +45,10 @@ auto parallel_apply(Range &&r, Func &&f) -> void {
   return parallel_apply(r.begin(), r.end(), static_cast<Func &&>(f));
 }
 
+/// @ingroup core_algorithms
+/// @brief Apply a function to each element with checked execution.
+///
+/// Falls back to sequential execution for ranges smaller than 1000 elements.
 template <typename Range, typename Func>
 auto parallel_apply(Range &&r, Func &&f, tf::checked_t) -> void {
   if (r.size() < 1000) {

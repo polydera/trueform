@@ -32,7 +32,22 @@ template <> struct two_pi_v<double> {
 
 } // namespace core
 
+/// @ingroup core
+/// @brief Pi constant for floating-point types.
+///
+/// Provides the mathematical constant pi with full precision
+/// for float and double types.
+///
+/// @tparam T The floating-point type (float or double).
 template <typename T> inline constexpr T pi = core::pi_v<T>::make();
+
+/// @ingroup core
+/// @brief Two-pi constant for floating-point types.
+///
+/// Provides 2*pi with full precision for float and double types.
+/// Useful for angle wrapping and full-circle calculations.
+///
+/// @tparam T The floating-point type (float or double).
 template <typename T> inline constexpr T two_pi = core::two_pi_v<T>::make();
 
 } // namespace tf

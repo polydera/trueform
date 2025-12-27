@@ -50,7 +50,15 @@ struct coordinate_type_deducer<
 };
 } // namespace core
 
-// Alias
+/// @ingroup core_ranges
+/// @brief Deduce the scalar coordinate type from primitives or ranges.
+///
+/// Recursively extracts the underlying scalar type (e.g., `float`, `double`)
+/// from any trueform primitive or range. When given multiple types, returns
+/// their common type.
+///
+/// @tparam T The first type to extract coordinate type from.
+/// @tparam Ts Additional types (common type is computed).
 template <typename T, typename... Ts>
 using coordinate_type = std::common_type_t<
     typename core::coordinate_type_deducer<std::decay_t<T>>::type,

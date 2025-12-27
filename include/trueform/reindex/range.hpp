@@ -10,6 +10,22 @@
 #include "../core/index_map.hpp"
 #include "../core/views/indirect_range.hpp"
 namespace tf {
+
+/// @ingroup reindex
+/// @brief Apply index map to a generic range (output parameter).
+///
+/// Gathers elements from range_in at positions specified by im.kept_ids()
+/// and writes them to range_out.
+///
+/// @tparam Iter0 Input iterator type.
+/// @tparam N0 Static size hint.
+/// @tparam Range0 Index map kept IDs range type.
+/// @tparam Range1 Index map function range type.
+/// @tparam Iter1 Output iterator type.
+/// @tparam N1 Output static size hint.
+/// @param range_in The input @ref tf::range.
+/// @param im The @ref tf::index_map to apply.
+/// @param range_out Output range to populate.
 template <typename Iter0, std::size_t N0, typename Range0, typename Range1,
           typename Iter1, std::size_t N1>
 auto reindexed(const tf::range<Iter0, N0> &range_in,
@@ -19,6 +35,9 @@ auto reindexed(const tf::range<Iter0, N0> &range_in,
                     range_out);
 }
 
+/// @ingroup reindex
+/// @brief Apply index map to a range (std::vector output parameter).
+/// @overload
 template <typename Iter0, std::size_t N0, typename Range0, typename Range1,
           typename T>
 auto reindexed(const tf::range<Iter0, N0> &range_in,
@@ -28,6 +47,9 @@ auto reindexed(const tf::range<Iter0, N0> &range_in,
   reindexed(range_in, im, r);
 }
 
+/// @ingroup reindex
+/// @brief Apply index map to a range (tf::buffer output parameter).
+/// @overload
 template <typename Iter0, std::size_t N0, typename Range0, typename Range1,
           typename T>
 auto reindexed(const tf::range<Iter0, N0> &range_in,
@@ -37,6 +59,18 @@ auto reindexed(const tf::range<Iter0, N0> &range_in,
   reindexed(range_in, im, r);
 }
 
+/// @ingroup reindex
+/// @brief Apply index map to a range.
+///
+/// Returns a @ref tf::buffer or std::vector depending on element type.
+///
+/// @tparam Iter0 Input iterator type.
+/// @tparam N0 Static size hint.
+/// @tparam Range0 Index map kept IDs range type.
+/// @tparam Range1 Index map function range type.
+/// @param range_in The input @ref tf::range.
+/// @param im The @ref tf::index_map to apply.
+/// @return Reindexed buffer or vector.
 template <typename Iter0, std::size_t N0, typename Range0, typename Range1>
 auto reindexed(const tf::range<Iter0, N0> &range_in,
                const tf::index_map<Range0, Range1> &im) {

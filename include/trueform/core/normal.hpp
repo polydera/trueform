@@ -10,7 +10,7 @@
 #include "./unit_vector.hpp"
 
 namespace tf {
-/// @ingroup geometry
+/// @ingroup core_properties
 /// @brief Computes a unit normal vector from three points in 3D.
 ///
 /// The resulting normal vector is computed using the cross product of the

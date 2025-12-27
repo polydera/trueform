@@ -10,6 +10,13 @@
 
 namespace tf {
 
+/// @ingroup core_primitives
+/// @brief 2D wedge defined by an origin and two arm endpoints.
+///
+/// Represents a triangular region in 2D space. Inherits from
+/// std::array for structured bindings support: `auto [origin, arm0, arm1] = wedge;`
+///
+/// @tparam Policy The policy type for the points.
 template <typename Policy>
 class wedge : public std::array<point_like<2, Policy>, 3> {
   using base_type = std::array<point_like<2, Policy>, 3>;
@@ -24,6 +31,14 @@ public:
       : base_type{origin, arm0, arm1} {}
 };
 
+/// @ingroup core_primitives
+/// @brief Create a 2D wedge from origin and two arm endpoints.
+///
+/// @tparam Policy The policy type of the points.
+/// @param origin The wedge origin point.
+/// @param arm0 First arm endpoint.
+/// @param arm1 Second arm endpoint.
+/// @return A @ref tf::wedge.
 template <typename Policy>
 auto make_wedge(const point_like<2, Policy> &origin,
                 const point_like<2, Policy> &arm0,

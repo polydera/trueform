@@ -12,9 +12,13 @@
 
 namespace tf {
 
-/// @brief Find the axis with the largest absolute value in a vector_like
-/// @param v The vector to examine
-/// @return Index of the axis with largest |value|
+/// @ingroup core_queries
+/// @brief Find the axis with the largest absolute component.
+///
+/// @tparam N The coordinate dimensions.
+/// @tparam Policy The vector's policy type.
+/// @param v The vector to examine.
+/// @return Index of the axis with largest absolute value.
 template <std::size_t N, typename Policy>
 auto largest_axis(const tf::vector_like<N, Policy>& v) {
   std::size_t max_axis = 0;
@@ -29,9 +33,9 @@ auto largest_axis(const tf::vector_like<N, Policy>& v) {
   return max_axis;
 }
 
-/// @brief Find the axis with the largest absolute value in a point_like
-/// @param p The point to examine
-/// @return Index of the axis with largest |value|
+/// @ingroup core_queries
+/// @brief Find the axis with the largest absolute coordinate.
+/// @overload
 template <std::size_t N, typename Policy>
 auto largest_axis(const tf::point_like<N, Policy>& p) {
   std::size_t max_axis = 0;

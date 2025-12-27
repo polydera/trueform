@@ -75,7 +75,7 @@ auto wrap_like(unit_vectors<Policy> &&, T &&t) {
   return unit_vectors<std::decay_t<T>>{static_cast<T &&>(t)};
 }
 
-/// @ingroup ranges
+/// @ingroup core_ranges
 /// @brief Creates a range of unit_vectors from a flat scalar sequence.
 ///
 /// This utility interprets a flat range of scalars as a sequence of

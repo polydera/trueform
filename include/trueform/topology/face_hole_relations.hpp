@@ -19,11 +19,30 @@
 #include "../spatial/search.hpp"
 
 namespace tf {
+
+/// @ingroup topology_planar
+/// @brief Computes parent-child relationships between faces and holes.
+///
+/// For each hole, determines which face contains it (the smallest face
+/// that contains a point from the hole). Uses an AABB tree for efficient
+/// spatial queries.
+///
+/// @tparam Index The integer type for indices.
+/// @tparam RealT The real type for coordinates.
 template <typename Index, typename RealT>
 class face_hole_relations : public tf::offset_block_buffer<Index, Index> {
   using base_t = tf::offset_block_buffer<Index, Index>;
 
 public:
+  /// @brief Build face-hole relationships.
+  /// @tparam Policy0 The faces policy type.
+  /// @tparam Range The face areas range type.
+  /// @tparam Policy1 The holes policy type.
+  /// @tparam Policy2 The points policy type.
+  /// @param faces The face polygons.
+  /// @param face_areas The areas of each face (for picking smallest containing face).
+  /// @param holes The hole polygons.
+  /// @param points The vertex positions.
   template <typename Policy0, typename Range, typename Policy1,
             typename Policy2>
   auto build(const tf::faces<Policy0> &faces, const Range &face_areas,
@@ -36,6 +55,7 @@ public:
     build_hole_structures(faces, face_areas, holes, points);
   }
 
+  /// @brief Clear all internal state.
   auto clear() {
     base_t::clear();
     _tree.clear();

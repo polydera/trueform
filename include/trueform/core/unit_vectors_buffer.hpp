@@ -9,6 +9,16 @@
 #include "./iter/unit_vector_iterator.hpp"
 #include "./unit_vectors.hpp"
 namespace tf {
+
+/// @ingroup core_buffers
+/// @brief An owning buffer of unit vectors.
+///
+/// Stores unit vectors as interleaved coordinates and provides iteration
+/// as @ref tf::unit_vector_view elements. Use `unit_vectors()` to obtain a
+/// @ref tf::unit_vectors range.
+///
+/// @tparam T The coordinate scalar type.
+/// @tparam Dims The number of dimensions per unit vector.
 template <typename T, std::size_t Dims> class unit_vectors_buffer {
 public:
   using iterator = tf::iter::unit_vector_iterator<T *, Dims>;

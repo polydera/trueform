@@ -7,7 +7,7 @@
 #pragma once
 #include <limits>
 namespace tf {
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Configuration for ray casting operations.
 ///
 /// Defines the parametric bounds `[min_t, max_t]` along a ray
@@ -22,7 +22,7 @@ template <typename RealT> struct ray_config {
   RealT max_t = std::numeric_limits<RealT>::max();
 };
 
-/// @ingroup geometry
+/// @ingroup core_queries
 /// @brief Creates a configured `ray_cast_config` object with the given bounds.
 ///
 /// This is a convenience helper to construct a `ray_cast_config`
