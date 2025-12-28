@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (www.trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (www.trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 #include "../arrangement_class.hpp"
 #include "../classify/tagged.hpp"
@@ -52,14 +52,14 @@ auto make_boolean_pair(
   res_t right;
   auto [direction0, direction1] = tf::make_directions(classes[0], classes[1]);
   tbb::parallel_invoke(
-      [&] {
+      [&, &direction0 = direction0] {
         left = make_boolean_common(
             _polygons0, tf::make_points(ibp.intersection_points()), pai0,
             tcf.descriptors0(), tcf.mapped_loops0(),
             1, // always use include bucket
             direction0);
       },
-      [&] {
+      [&, &direction1 = direction1] {
         right = make_boolean_common(
             _polygons1, tf::make_points(ibp.intersection_points()), pai1,
             tcf.descriptors1(), tcf.mapped_loops1(),

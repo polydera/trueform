@@ -74,9 +74,9 @@ auto make_plane_mesh(RealType width, RealType height, Index width_ticks,
 
           Index face_base = (j * width_ticks + i) * 2;
           // Triangle 1: v0 -> v1 -> v3
-          faces[face_base] = {v0, v1, v3};
+          faces[face_base] = std::array<Index, 3>{v0, v1, v3};
           // Triangle 2: v0 -> v3 -> v2
-          faces[face_base + 1] = {v0, v3, v2};
+          faces[face_base + 1] = std::array<Index, 3>{v0, v3, v2};
         }
       },
       tf::checked);
