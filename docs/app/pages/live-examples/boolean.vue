@@ -18,6 +18,7 @@ if (metadata) {
   });
 }
 
+const { isTouchscreen } = useTouchscreen();
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
 const { loadExampleWithAssets } = useWasmModule();
@@ -121,7 +122,7 @@ watch(isDark, (dark) => {
         <UIcon name="i-lucide-hand" class="size-4 ml-1" />
         <p class="text-sm">Drag a mesh. The boolean updates in real time.</p>
       </div>
-      <div class="flex gap-2 items-center text-muted">
+      <div v-if="!isTouchscreen" class="flex gap-2 items-center text-muted">
         <UIcon name="i-lucide-circle" class="size-4 ml-1" />
         <p class="text-sm">Ctrl + scroll to change sphere size.</p>
       </div>
