@@ -1,9 +1,15 @@
 /*
- * Copyright (c) 2025 Žiga Sajovic, XLAB
- * Licensed for noncommercial use under the PolyForm Noncommercial
- * License 1.0.0. Commercial licensing available via info@polydera.com.
- * https://github.com/xlabmedical/trueform
- */
+* Copyright (c) 2025 XLAB
+* All rights reserved.
+*
+* This file is part of trueform (www.trueform.polydera.com)
+*
+* Licensed for noncommercial use under the PolyForm Noncommercial
+* License 1.0.0.
+* Commercial licensing available via info@polydera.com.
+*
+* Author: Žiga Sajovic
+*/
 #pragma once
 #include "../core/algorithm/parallel_apply.hpp"
 #include "../core/polygons_buffer.hpp"
@@ -68,9 +74,9 @@ auto make_plane_mesh(RealType width, RealType height, Index width_ticks,
 
           Index face_base = (j * width_ticks + i) * 2;
           // Triangle 1: v0 -> v1 -> v3
-          faces[face_base] = {v0, v1, v3};
+          faces[face_base] = std::array<Index, 3>{v0, v1, v3};
           // Triangle 2: v0 -> v3 -> v2
-          faces[face_base + 1] = {v0, v3, v2};
+          faces[face_base + 1] = std::array<Index, 3>{v0, v3, v2};
         }
       },
       tf::checked);
