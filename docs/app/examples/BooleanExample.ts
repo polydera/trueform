@@ -1,5 +1,5 @@
 import type { MainModule } from "@/examples/native";
-import { fitCameraToAllMeshesFromZPlane, syncOrbitControls } from "@/utils/sceneUtils";
+import { syncOrbitControls, fitCameraToAllMeshesFromZPlane } from "@/utils/sceneUtils";
 import {
   buffersToCurves,
   createMesh,
@@ -7,6 +7,7 @@ import {
   CurveRenderer,
 } from "@/utils/utils";
 import { ThreejsBase } from "@/examples/ThreejsBase";
+import * as THREE from "three";
 
 export class BooleanExample extends ThreejsBase {
   private curveRenderer: CurveRenderer;
@@ -33,6 +34,20 @@ export class BooleanExample extends ThreejsBase {
     isDarkMode = true,
   ) {
     super(wasmInstance, path, container, container2, true, false, isDarkMode);
+
+    // Enable smooth shading for the sphere (meshDataId = 1)
+    const sphereGeometry = this.geometries.get(1);
+    const sphereInstancedMesh = this.instancedMeshes.get(1);
+    if (sphereGeometry && sphereInstancedMesh) {
+      sphereGeometry.computeVertexNormals();
+      const oldMaterial = sphereInstancedMesh.material as THREE.MeshMatcapMaterial;
+      const smoothMaterial = new THREE.MeshMatcapMaterial({
+        matcap: oldMaterial.matcap,
+        side: THREE.DoubleSide,
+        flatShading: false,
+      });
+      sphereInstancedMesh.material = smoothMaterial;
+    }
 
     const interceptKeyDownEvent = (event: KeyboardEvent) => {
       if (this.keyPressed) return;
@@ -95,6 +110,22 @@ export class BooleanExample extends ThreejsBase {
 
     this.updateMeshes();
     fitCameraToAllMeshesFromZPlane(this.sceneBundle1, 1.8);
+
+    // Adjust camera angle slightly right and up for better dragon view
+    const camera = this.sceneBundle1.camera;
+    const target = this.sceneBundle1.controls.target;
+    const offset = camera.position.clone().sub(target);
+    const distance = offset.length();
+    const angleH = 0.15; // horizontal angle, positive = right
+    const angleV = 0.1; // vertical angle, positive = up
+    camera.position.set(
+      target.x + distance * Math.sin(angleH),
+      target.y + distance * Math.sin(angleV),
+      target.z + distance * Math.cos(angleH) * Math.cos(angleV)
+    );
+    camera.lookAt(target);
+    this.sceneBundle1.controls.update();
+
     if (this.sceneBundle2) {
       fitCameraToAllMeshesFromZPlane(this.sceneBundle2, 1.8);
       syncOrbitControls(this.sceneBundle1.controls, this.sceneBundle2.controls);
