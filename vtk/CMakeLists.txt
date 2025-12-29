@@ -118,6 +118,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
   endif()
 endif()
 
-if(BUILD_VTK_EXAMPLES)
+if(TF_BUILD_VTK_EXAMPLES)
   add_subdirectory(examples)
 endif()

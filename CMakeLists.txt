@@ -137,7 +137,7 @@ endif()
 if(TF_BUILD_BENCHMARKS)
   add_subdirectory(benchmarks)
 endif()
-if(TF_BUILD_VTK)
+if(TF_BUILD_VTK_INTEGRATION)
   add_subdirectory(vtk)
 endif()
 
