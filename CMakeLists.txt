@@ -50,12 +50,12 @@ cmake_dependent_option(
         OFF
 )
 
-## TF_BUILD_VTK_EXAMPLES: Build VTK examples only if VTK integration and examples are enabled.
+## TF_BUILD_VTK_EXAMPLES: Build VTK examples only if VTK integration is enabled.
 cmake_dependent_option(
         TF_BUILD_VTK_EXAMPLES
         "Build VTK examples."
         OFF
-        "TF_BUILD_VTK_INTEGRATION;TF_BUILD_EXAMPLES"
+        "TF_BUILD_VTK_INTEGRATION"
         OFF
 )
 
@@ -137,7 +137,7 @@ endif()
 if(TF_BUILD_BENCHMARKS)
   add_subdirectory(benchmarks)
 endif()
-if(TF_BUILD_VTK)
+if(TF_BUILD_VTK_INTEGRATION)
   add_subdirectory(vtk)
 endif()
 
