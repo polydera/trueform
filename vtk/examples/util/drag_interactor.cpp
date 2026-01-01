@@ -49,9 +49,9 @@ auto drag_interactor::OnLeftButtonDown() -> void {
   auto hit = pick(ray, actors);
 
   if (hit) {
-    _dragging_actor = hit->actor;
+    _dragging_actor = hit.actor;
     _dragging_renderer = renderer;
-    _last_point = hit->position;
+    _last_point = hit.position;
 
     // Create drag plane perpendicular to camera
     auto *camera = renderer->GetActiveCamera();
