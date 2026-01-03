@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (www.trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (www.trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 #include "../../core/algorithm/mask_to_index_map.hpp"
 #include "../../core/algorithm/update_by_mask.hpp"
@@ -17,6 +17,9 @@
 #include "../../core/index_map.hpp"
 #include "../../core/none.hpp"
 #include "../../core/small_vector.hpp"
+#include "../../core/views/block_indirect_range.hpp"
+#include "../../topology/compute_unique_faces_mask.hpp"
+#include "../../topology/face_membership.hpp"
 #include "./points.hpp"
 
 namespace tf {
@@ -58,6 +61,15 @@ auto make_clean_index_map(const tf::core::polygons<Range0, Range1> &polygons,
       },
       tf::checked);
   tf::update_by_mask(point_map, contained_points);
+
+  auto remapped_faces = tf::make_faces(tf::make_indirect_range(
+      face_map.kept_ids(),
+      tf::make_block_indirect_range(polygons.faces(), point_map.f())));
+  kept_polygons.allocate(remapped_faces.size());
+  tf::face_membership<Index> fm;
+  fm.build(remapped_faces, point_map.kept_ids().size());
+  tf::compute_unique_faces_mask(remapped_faces, fm, kept_polygons);
+  tf::update_by_mask(face_map, kept_polygons);
 }
 /// @endcond
 } // namespace clean
@@ -85,7 +97,8 @@ auto make_clean_index_map(const tf::core::polygons<Range0, Range1> &polygons,
 }
 
 /// @ingroup clean
-/// @brief Generate index maps for polygon cleaning with tolerance (output parameters).
+/// @brief Generate index maps for polygon cleaning with tolerance (output
+/// parameters).
 /// @overload
 template <typename Range0, typename Range1, typename Index>
 auto make_clean_index_map(
@@ -109,7 +122,8 @@ auto make_clean_index_map(
 /// @tparam Range0 The face range type.
 /// @tparam Range1 The point range type.
 /// @param polygons The input @ref tf::polygons.
-/// @return Tuple of (face @ref tf::index_map_buffer, point @ref tf::index_map_buffer).
+/// @return Tuple of (face @ref tf::index_map_buffer, point @ref
+/// tf::index_map_buffer).
 template <typename Index = tf::none_t, typename Range0, typename Range1>
 auto make_clean_index_map(const tf::core::polygons<Range0, Range1> &polygons) {
   if constexpr (std::is_same_v<Index, tf::none_t>) {

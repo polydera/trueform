@@ -21,6 +21,8 @@
 #include "../../core/polygons_buffer.hpp"
 #include "../../core/views/blocked_range.hpp"
 #include "../../core/views/zip.hpp"
+#include "../../topology/compute_unique_faces_mask.hpp"
+#include "../../topology/face_membership.hpp"
 #include "../index_map/points.hpp"
 
 namespace tf::clean {
@@ -42,6 +44,19 @@ public:
     make_initial_points(std::move(polygons), tolerance);
     make_faces();
     remove_uncontained_points();
+  }
+
+  template <typename Policy>
+  auto build_and_deduplicate_faces(const tf::polygons<Policy> &polygons,
+                                   RealT tolerance = 0) {
+    build(polygons, tolerance);
+    remove_duplicate_faces();
+  }
+
+  auto build_and_deduplicate_faces(tf::buffer<RealT> &&polygons,
+                                   RealT tolerance = 0) {
+    build(std::move(polygons), tolerance);
+    remove_duplicate_faces();
   }
 
   auto clear() {
@@ -140,6 +155,21 @@ private:
             e = map[e];
         },
         tf::checked);
+  }
+
+  auto remove_duplicate_faces() {
+    if (base_t::faces().size() < 2)
+      return;
+    tf::face_membership<Index> fm;
+    fm.build(base_t::polygons());
+    _mask.allocate(base_t::faces().size());
+    tf::compute_unique_faces_mask(base_t::faces(), fm, _mask);
+    auto zipped = tf::zip(base_t::faces_buffer(), _mask);
+    auto new_end = std::remove_if(zipped.begin(), zipped.end(),
+                                  [](auto &&pair) { return !get<1>(pair); });
+    auto n_kept = new_end - zipped.begin();
+    base_t::faces_buffer().erase(base_t::faces_buffer().begin() + n_kept,
+                                 base_t::faces_buffer().end());
   }
 
   tf::index_map_buffer<Index> _im;

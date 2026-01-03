@@ -51,10 +51,13 @@
  *  Policy-based composition for attaching topology data to ranges.
  */
 
+#include "./topology/are_faces_equal.hpp"            // IWYU pragma: export
+#include "./topology/are_oriented_faces_equal.hpp"   // IWYU pragma: export
 #include "./topology/boundary_edges.hpp"             // IWYU pragma: export
 #include "./topology/boundary_paths.hpp"             // IWYU pragma: export
 #include "./topology/components/finder.hpp"          // IWYU pragma: export
 #include "./topology/connect_edges_to_paths.hpp"     // IWYU pragma: export
+#include "./topology/compute_unique_faces_mask.hpp"  // IWYU pragma: export
 #include "./topology/connected_component_labels.hpp" // IWYU pragma: export
 #include "./topology/connectivity_type.hpp"          // IWYU pragma: export
 #include "./topology/directed_edge_id_in_face.hpp"   // IWYU pragma: export

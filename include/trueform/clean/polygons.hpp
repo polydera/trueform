@@ -48,7 +48,7 @@ auto cleaned(const tf::polygons<Policy> &polygons,
                             tf::coordinate_dims_v<Policy>,
                             tf::static_size_v<decltype(polygons[0])>>
         out;
-    out.build(polygons, tolerance);
+    out.build_and_deduplicate_faces(polygons, tolerance);
     return out;
   } else {
     auto [face_im, point_im] =
@@ -73,7 +73,7 @@ auto cleaned(const tf::polygons<Policy> &polygons) {
                             tf::coordinate_dims_v<Policy>,
                             tf::static_size_v<decltype(polygons[0])>>
         out;
-    out.build(polygons);
+    out.build_and_deduplicate_faces(polygons);
     return out;
   } else {
     auto [face_im, point_im] = tf::make_clean_index_map<Index>(polygons);

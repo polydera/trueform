@@ -62,6 +62,29 @@ public:
                                       base_t::data_buffer());
   }
 
+  /// @brief Build from faces with automatic total size computation.
+  ///
+  /// Computes the total size from the faces range. For fixed-size polygons,
+  /// this is n_gons * faces.size(). For variable-size, it sums face sizes.
+  ///
+  /// @tparam Policy The faces policy type.
+  /// @param faces The faces range.
+  /// @param n_unique_ids The number of unique vertex ids.
+  template <typename Policy>
+  auto build(const tf::faces<Policy> &faces, std::size_t n_unique_ids) -> void {
+    constexpr auto n_gons = tf::static_size_v<decltype(faces[0])>;
+    if constexpr (n_gons != tf::dynamic_size) {
+      build(faces, n_unique_ids, n_gons * faces.size());
+    } else {
+      auto sizes = tf::make_mapped_range(
+          faces, [](const auto &face) { return face.size(); });
+      auto total_size = tf::reduce(
+          sizes, [](auto a, auto b) { return a + b; }, std::size_t{0},
+          tf::checked);
+      build(faces, n_unique_ids, total_size);
+    }
+  }
+
   /// @brief Build from a polygons range.
   ///
   /// Automatically deduces the number of vertices and total size from the
@@ -71,18 +94,7 @@ public:
   /// @param polygons The polygons range to build from.
   template <typename Policy>
   auto build(const polygons<Policy> &polygons) -> void {
-    auto n_unique_ids = polygons.points().size();
-    constexpr auto n_gons = tf::static_size_v<decltype(polygons[0])>;
-    if constexpr (n_gons != tf::dynamic_size) {
-      build(polygons.faces(), n_unique_ids, n_gons * polygons.size());
-    } else {
-      auto sizes = tf::make_mapped_range(
-          polygons.faces(), [](const auto &face) { return face.size(); });
-      auto total_size = tf::reduce(
-          sizes, [](auto a, auto b) { return a + b; }, std::size_t{0},
-          tf::checked);
-      build(polygons.faces(), n_unique_ids, total_size);
-    }
+    return build(polygons.faces(), polygons.points().size());
   }
 };
 
