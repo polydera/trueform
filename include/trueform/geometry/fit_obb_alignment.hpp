@@ -169,7 +169,9 @@ auto fit_obb_alignment(const tf::points<Policy0> &X_,
     }();
 
     // Build candidate transforms
-    constexpr std::size_t N = Dims == 2 ? 2 : 4;
+    using N_t = std::integral_constant<std::size_t,
+        tf::coordinate_dims_v<Policy0> == 2 ? 2 : 4>;
+    constexpr std::size_t N = N_t::value;
     std::array<tf::transformation<T, Dims>, N> candidates;
     for (std::size_t i = 0; i < N; ++i)
       candidates[i] = tf::transformed(T_base, rotations[i]);
@@ -181,8 +183,8 @@ auto fit_obb_alignment(const tf::points<Policy0> &X_,
             sample,
             [&](const auto &pt) {
               auto pt_world = tf::transformed(pt, tf::frame_of(X_));
-              std::array<T, N> errs;
-              for (std::size_t i = 0; i < N; ++i) {
+              std::array<T, N_t::value> errs;
+              for (std::size_t i = 0; i < N_t::value; ++i) {
                 auto query_pt = tf::transformed(pt_world, candidates[i]);
                 auto [id, cpt] =
                     tf::neighbor_search(tf::make_form(Y_), query_pt);
