@@ -39,7 +39,8 @@ int main() {
   std::cout << "Diagonal: " << diagonal << std::endl;
 
   // Pick a query point well outside the AABB
-  tf::point<float, 3> query_point = center + tf::random_vector<float, 3>() * diagonal*2;
+  tf::point<float, 3> query_point =
+      center + tf::random_vector<float, 3>() * diagonal * 2;
 
   std::cout << "\nQuery point: [" << query_point[0] << ", " << query_point[1]
             << ", " << query_point[2] << "]" << std::endl;
@@ -61,9 +62,10 @@ int main() {
   for (const auto &neighbor : knn) {
     float dist2 = neighbor.metric();
     tree_results.push_back({dist2, neighbor.element});
-    std::cout << "  id=" << neighbor.element << ", dist2=" << dist2 << ", point=["
-              << neighbor.info.point[0] << ", " << neighbor.info.point[1]
-              << ", " << neighbor.info.point[2] << "]" << std::endl;
+    std::cout << "  id=" << neighbor.element << ", dist2=" << dist2
+              << ", point=[" << neighbor.info.point[0] << ", "
+              << neighbor.info.point[1] << ", " << neighbor.info.point[2] << "]"
+              << std::endl;
   }
 
   // Brute-force k-NN

@@ -15,7 +15,7 @@
 
 namespace tf::iter {
 template <typename DereferncePolicy, bool = true>
-struct dereference_policy_base : private DereferncePolicy {
+struct dereference_policy_base : protected DereferncePolicy { // MSVC workaround
   dereference_policy_base() = default;
   dereference_policy_base(const DereferncePolicy &d) : DereferncePolicy{d} {}
   dereference_policy_base(DereferncePolicy &&d)
