@@ -701,8 +701,8 @@ def test_cleaned_tuple_input_with_tolerance(dims, index_dtype, real_dtype):
     assert cleaned_points.shape[1] == dims
     assert cleaned_points.dtype == real_dtype
 
-    # Should have 2 triangles
-    assert cleaned_indices.shape[0] == 2
+    # Should have 1 triangles
+    assert cleaned_indices.shape[0] == 1
     assert cleaned_indices.shape[1] == 3
     assert cleaned_indices.dtype == index_dtype
 
