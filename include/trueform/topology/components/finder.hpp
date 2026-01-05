@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (www.trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (www.trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 #include "../../core/algorithm/make_equivalence_class_map.hpp"
 #include "../../core/algorithm/parallel_apply.hpp"
@@ -88,8 +88,9 @@ private:
       n_tasks *= 5;
     auto size = Index(mask.size());
     auto local_size = Index(std::ceil(float(size) / n_tasks));
-    std::atomic<Index> n_left{
-        Index(std::count(mask.begin(), mask.end(), true))};
+    std::atomic<Index> n_left{Index(
+        std::count(mask.begin(), mask.end(),
+                   static_cast<std::decay_t<decltype(*mask.begin())>>(true)))};
 
     tbb::task_group walkers;
     tf::local_buffer<std::array<label_t, 2>> merge_labels;
