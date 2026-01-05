@@ -104,7 +104,7 @@ auto closest_metric_point_pair(const tf::plane_like<Dims, Policy0> &p0,
 
   T d_diff = p1.d - p0.d * dot_n;
   if (std::abs(d_diff) < tf::epsilon<T>) {
-    tf::point<T, Dims> pt{};
+    tf::point<T, Dims> pt = tf::make_point(-p0.d * p0.normal);
     return tf::make_metric_point_pair(T(0), pt, pt);
   }
 
