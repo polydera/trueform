@@ -1,5 +1,5 @@
 import type { MainModule } from "@/examples/native";
-import { syncOrbitControls, fitCameraToAllMeshesFromZPlane } from "@/utils/sceneUtils";
+import { syncOrbitControls, type SceneBundle } from "@/utils/sceneUtils";
 import {
   buffersToCurves,
   createMesh,
@@ -8,6 +8,7 @@ import {
 } from "@/utils/utils";
 import { ThreejsBase } from "@/examples/ThreejsBase";
 import * as THREE from "three";
+import { ArcballControls } from "three/addons/controls/ArcballControls.js";
 
 export class BooleanExample extends ThreejsBase {
   private curveRenderer: CurveRenderer;
@@ -26,6 +27,84 @@ export class BooleanExample extends ThreejsBase {
     }
   }
 
+  private switchToOrthographicCamera(sceneBundle: SceneBundle, container: HTMLElement) {
+    const rect = container.getBoundingClientRect();
+    const aspect = rect.width / rect.height;
+    const frustumSize = 50;
+
+    const orthoCamera = new THREE.OrthographicCamera(
+      -frustumSize * aspect / 2,
+      frustumSize * aspect / 2,
+      frustumSize / 2,
+      -frustumSize / 2,
+      0.1,
+      1000
+    );
+
+    // Copy position and orientation from perspective camera
+    orthoCamera.position.copy(sceneBundle.camera.position);
+    orthoCamera.quaternion.copy(sceneBundle.camera.quaternion);
+
+    // Remove old camera and add new one
+    sceneBundle.scene.remove(sceneBundle.camera);
+    sceneBundle.scene.add(orthoCamera);
+
+    // Dispose old controls and create new ones with ortho camera
+    const oldTarget = sceneBundle.controls.target.clone();
+    sceneBundle.controls.dispose();
+    const newControls = new ArcballControls(orthoCamera, container.querySelector('canvas')!, sceneBundle.scene);
+    newControls.rotateSpeed = 1.2;
+    newControls.setGizmosVisible(false);
+    newControls.target.copy(oldTarget);
+    newControls.update();
+
+    // Update bundle references (cast to any to bypass readonly)
+    (sceneBundle as any).camera = orthoCamera;
+    (sceneBundle as any).controls = newControls;
+  }
+
+  private fitOrthoCameraToMeshes(sceneBundle: SceneBundle, offset: number = 1.25) {
+    const { scene, controls } = sceneBundle;
+    const camera = sceneBundle.camera as unknown as THREE.OrthographicCamera;
+
+    // Find all meshes in the scene
+    const meshes: THREE.Mesh[] = [];
+    scene.traverse((child) => {
+      if (child.type === 'Mesh' || child.type === 'InstancedMesh') {
+        meshes.push(child as THREE.Mesh);
+      }
+    });
+
+    if (meshes.length === 0) return;
+
+    // Calculate bounding box of all meshes
+    const combinedBox = new THREE.Box3();
+    meshes.forEach(mesh => {
+      const meshBox = new THREE.Box3().setFromObject(mesh);
+      combinedBox.union(meshBox);
+    });
+
+    const center = combinedBox.getCenter(new THREE.Vector3());
+    const size = combinedBox.getSize(new THREE.Vector3());
+    const maxDimension = Math.max(size.x, size.y, size.z) * offset;
+
+    // Update orthographic frustum to fit the scene
+    const aspect = (camera.right - camera.left) / (camera.top - camera.bottom);
+    camera.left = -maxDimension * aspect / 2;
+    camera.right = maxDimension * aspect / 2;
+    camera.top = maxDimension / 2;
+    camera.bottom = -maxDimension / 2;
+
+    // Position camera along Z axis looking at center
+    const distance = maxDimension * 2;
+    camera.position.set(center.x, center.y, center.z + distance);
+    camera.lookAt(center);
+    camera.updateProjectionMatrix();
+
+    controls.target.copy(center);
+    controls.update();
+  }
+
   constructor(
     wasmInstance: MainModule,
     path: string[],
@@ -34,6 +113,12 @@ export class BooleanExample extends ThreejsBase {
     isDarkMode = true,
   ) {
     super(wasmInstance, path, container, container2, true, false, isDarkMode);
+
+    // Switch to orthographic camera for scene 1
+    this.switchToOrthographicCamera(this.sceneBundle1, container);
+    if (this.sceneBundle2) {
+      this.switchToOrthographicCamera(this.sceneBundle2, container2);
+    }
 
     // Enable smooth shading for the sphere (meshDataId = 1)
     const sphereGeometry = this.geometries.get(1);
@@ -109,7 +194,7 @@ export class BooleanExample extends ThreejsBase {
     }
 
     this.updateMeshes();
-    fitCameraToAllMeshesFromZPlane(this.sceneBundle1, 1.8);
+    this.fitOrthoCameraToMeshes(this.sceneBundle1, 1.8);
 
     // Adjust camera angle slightly right and up for better dragon view
     const camera = this.sceneBundle1.camera;
@@ -127,7 +212,7 @@ export class BooleanExample extends ThreejsBase {
     this.sceneBundle1.controls.update();
 
     if (this.sceneBundle2) {
-      fitCameraToAllMeshesFromZPlane(this.sceneBundle2, 1.8);
+      this.fitOrthoCameraToMeshes(this.sceneBundle2, 1.8);
       syncOrbitControls(this.sceneBundle1.controls, this.sceneBundle2.controls);
     }
   }

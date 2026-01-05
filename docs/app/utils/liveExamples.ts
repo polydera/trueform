@@ -22,19 +22,9 @@ export const liveExamples: ExampleMetadata[] = [
     to: "closest-points",
   },
   {
-    title: "Contour Lines",
-    description: "Scroll to move the plane. Contour lines update live.",
-    to: "contour-lines",
-  },
-  {
     title: "Collision",
     description: "Drag a mesh. Contact detection runs live as you move.",
     to: "collision",
-  },
-  {
-    title: "Mesh Intersections",
-    description: "Drag a mesh. The intersection curves recompute instantly.",
-    to: "mesh-intersections",
   },
 ]
 
