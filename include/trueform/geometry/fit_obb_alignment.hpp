@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (www.trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (www.trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 
 #include "../core/algorithm/reduce.hpp"
@@ -55,7 +55,6 @@ auto make_obb_rotations_3d(const tf::obb<T, 3> &obb)
 } // namespace impl
 } // namespace geometry
 
-
 /// @ingroup geometry_registration
 /// @brief Compute a rigid alignment from X to Y using oriented bounding boxes
 /// (OBBs).
@@ -77,7 +76,8 @@ auto make_obb_rotations_3d(const tf::obb<T, 3> &obb)
 ///
 /// @param X Source point set.
 /// @param Y Target point set (with optional tree policy for disambiguation).
-/// @param sample_size Number of points to sample for disambiguation (default: 100).
+/// @param sample_size Number of points to sample for disambiguation (default:
+/// 100).
 /// @return Rigid transform mapping X -> Y.
 template <typename Policy0, typename Policy1>
 auto fit_obb_alignment(const tf::points<Policy0> &X_,
@@ -112,7 +112,7 @@ auto fit_obb_alignment(const tf::points<Policy0> &X_,
 
   // Ensure both frames are right-handed (det = +1)
   auto det_of = [](const auto &M) -> T {
-    if constexpr (Dims == 2) {
+    if constexpr (tf::coordinate_dims_v<Policy0> == 2) {
       return M[0][0] * M[1][1] - M[0][1] * M[1][0];
     } else {
       return M[0][0] * (M[1][1] * M[2][2] - M[1][2] * M[2][1]) -
@@ -161,7 +161,7 @@ auto fit_obb_alignment(const tf::points<Policy0> &X_,
     auto sample = tf::make_indirect_range(indices, X_);
 
     auto rotations = [&]() {
-      if constexpr (Dims == 2) {
+      if constexpr (tf::coordinate_dims_v<Policy0> == 2) {
         return geometry::impl::make_obb_rotations_2d(obb1);
       } else {
         return geometry::impl::make_obb_rotations_3d(obb1);
@@ -177,20 +177,19 @@ auto fit_obb_alignment(const tf::points<Policy0> &X_,
     // Accumulate chamfer error for all candidates in one pass
     std::array<T, N> init{};
     auto errors = tf::reduce(
-        tf::make_mapped_range(sample,
-                              [&](const auto &pt) {
-                                auto pt_world =
-                                    tf::transformed(pt, tf::frame_of(X_));
-                                std::array<T, N> errs;
-                                for (std::size_t i = 0; i < N; ++i) {
-                                  auto query_pt =
-                                      tf::transformed(pt_world, candidates[i]);
-                                  auto [id, cpt] = tf::neighbor_search(
-                                      tf::make_form(Y_), query_pt);
-                                  errs[i] = cpt.metric;
-                                }
-                                return errs;
-                              }),
+        tf::make_mapped_range(
+            sample,
+            [&](const auto &pt) {
+              auto pt_world = tf::transformed(pt, tf::frame_of(X_));
+              std::array<T, N> errs;
+              for (std::size_t i = 0; i < N; ++i) {
+                auto query_pt = tf::transformed(pt_world, candidates[i]);
+                auto [id, cpt] =
+                    tf::neighbor_search(tf::make_form(Y_), query_pt);
+                errs[i] = cpt.metric;
+              }
+              return errs;
+            }),
         [](auto acc, const auto &e) {
           for (std::size_t i = 0; i < acc.size(); ++i)
             acc[i] += e[i];
