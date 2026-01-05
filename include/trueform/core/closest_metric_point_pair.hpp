@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (www.trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (www.trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 #include "./algorithm/min.hpp"
 #include "./closest_point_on_triangle.hpp"
@@ -312,48 +312,10 @@ auto closest_metric_point_pair(const tf::segment<Dims, T0> &s0,
   return tf::make_metric_point_pair((pt0 - pt1).length2(), pt0, pt1);
 }
 
-/// @ingroup core_queries
-/// @brief Computes the closest @ref tf::metric_point_pair between the objects.
-template <typename Policy0, std::size_t Dims, typename Policy1>
-auto closest_metric_point_pair(const tf::polygon<Dims, Policy0> &poly_in,
-                               const tf::point_like<Dims, Policy1> &pt) {
-  if constexpr (tf::static_size_v<Policy0> == 3) {
-    auto c_pt = tf::closest_point_on_triangle(poly_in, pt);
-    return tf::make_metric_point_pair((c_pt - pt).length2(), c_pt, pt);
-  } else {
-    if (poly_in.size() == 3) {
-      auto c_pt = tf::closest_point_on_triangle(poly_in, pt);
-      return tf::make_metric_point_pair((c_pt - pt).length2(), c_pt, pt);
-    } else {
-      const auto &poly = tf::tag_plane(poly_in);
-      auto d = tf::dot(poly.plane().normal, pt) + poly.plane().d;
-      auto c_pt = pt - d * poly.plane().normal;
-      auto res = tf::make_metric_point_pair(d * d, c_pt, pt);
-      if (tf::contains_coplanar_point(poly, c_pt)) {
-        if (std::abs(d) < tf::epsilon<decltype(d)>) {
-          res.metric = 0;
-          return res;
-        }
-      } else
-        res.metric = std::numeric_limits<decltype(d)>::max();
-      std::size_t size = poly.size();
-      std::size_t prev = size - 1;
-      for (std::size_t i = 0; i < size; prev = i++) {
-        res = min(
-            res, closest_metric_point_pair(
-                     tf::make_segment_between_points(poly[prev], poly[i]), pt));
-      }
-      return res;
-    }
-  }
-}
-
-/// @ingroup core_queries
-/// @brief Computes the closest @ref tf::metric_point_pair between the objects.
-
+namespace core {
 template <typename Policy0, typename Policy1>
-auto closest_metric_point_pair(const tf::polygon<2, Policy0> &poly,
-                               const tf::point_like<2, Policy1> &pt) {
+auto closest_metric_point_pair2d(const tf::polygon<2, Policy0> &poly,
+                                 const tf::point_like<2, Policy1> &pt) {
   if constexpr (tf::static_size_v<Policy0> == 3) {
     auto c_pt = tf::closest_point_on_triangle(poly, pt);
     return tf::make_metric_point_pair((c_pt - pt).length2(), c_pt, pt);
@@ -377,6 +339,48 @@ auto closest_metric_point_pair(const tf::polygon<2, Policy0> &poly,
                      tf::make_segment_between_points(poly[prev], poly[i]), pt));
       }
       return res;
+    }
+  }
+}
+} // namespace core
+
+/// @ingroup core_queries
+/// @brief Computes the closest @ref tf::metric_point_pair between the objects.
+template <typename Policy0, std::size_t Dims, typename Policy1>
+auto closest_metric_point_pair(const tf::polygon<Dims, Policy0> &poly_in,
+                               const tf::point_like<Dims, Policy1> &pt) {
+  if constexpr (Dims == 2) {
+    return core::closest_metric_point_pair2d(poly_in, pt);
+  } else {
+    if constexpr (tf::static_size_v<Policy0> == 3) {
+      auto c_pt = tf::closest_point_on_triangle(poly_in, pt);
+      return tf::make_metric_point_pair((c_pt - pt).length2(), c_pt, pt);
+    } else {
+      if (poly_in.size() == 3) {
+        auto c_pt = tf::closest_point_on_triangle(poly_in, pt);
+        return tf::make_metric_point_pair((c_pt - pt).length2(), c_pt, pt);
+      } else {
+        const auto &poly = tf::tag_plane(poly_in);
+        auto d = tf::dot(poly.plane().normal, pt) + poly.plane().d;
+        auto c_pt = pt - d * poly.plane().normal;
+        auto res = tf::make_metric_point_pair(d * d, c_pt, pt);
+        if (tf::contains_coplanar_point(poly, c_pt)) {
+          if (std::abs(d) < tf::epsilon<decltype(d)>) {
+            res.metric = 0;
+            return res;
+          }
+        } else
+          res.metric = std::numeric_limits<decltype(d)>::max();
+        std::size_t size = poly.size();
+        std::size_t prev = size - 1;
+        for (std::size_t i = 0; i < size; prev = i++) {
+          res =
+              min(res, closest_metric_point_pair(
+                           tf::make_segment_between_points(poly[prev], poly[i]),
+                           pt));
+        }
+        return res;
+      }
     }
   }
 }
@@ -420,14 +424,12 @@ auto closest_metric_point_pair_impl(const tf::polygon<Dims, Policy0> &poly,
 template <std::size_t Dims, typename Policy0, typename Policy>
 auto closest_metric_point_pair(const tf::polygon<Dims, Policy0> &poly_in,
                                const tf::line_like<Dims, Policy> &line) {
-  const auto &poly = tf::tag_plane(poly_in);
-  return core::closest_metric_point_pair_impl(poly, line);
-}
-
-template <typename Policy0, typename Policy>
-auto closest_metric_point_pair(const tf::polygon<2, Policy0> &poly_in,
-                               const tf::line_like<2, Policy> &line) {
-  return core::closest_metric_point_pair_impl(poly_in, line);
+  if constexpr (Dims == 2) {
+    return core::closest_metric_point_pair_impl(poly_in, line);
+  } else {
+    const auto &poly = tf::tag_plane(poly_in);
+    return core::closest_metric_point_pair_impl(poly, line);
+  }
 }
 
 template <std::size_t Dims, typename Policy, typename Policy0>
@@ -465,14 +467,12 @@ auto closest_metric_point_pair_impl(const tf::polygon<Dims, Policy0> &poly,
 template <std::size_t Dims, typename Policy0, typename Policy>
 auto closest_metric_point_pair(const tf::polygon<Dims, Policy0> &poly_in,
                                const tf::ray_like<Dims, Policy> &ray) {
-  const auto &poly = tf::tag_plane(poly_in);
-  return core::closest_metric_point_pair_impl(poly, ray);
-}
-
-template <typename Policy0, typename Policy>
-auto closest_metric_point_pair(const tf::polygon<2, Policy0> &poly_in,
-                               const tf::ray_like<2, Policy> &ray) {
-  return core::closest_metric_point_pair_impl(poly_in, ray);
+  if constexpr (Dims == 2) {
+    return core::closest_metric_point_pair_impl(poly_in, ray);
+  } else {
+    const auto &poly = tf::tag_plane(poly_in);
+    return core::closest_metric_point_pair_impl(poly, ray);
+  }
 }
 
 /// @ingroup core_queries
@@ -515,6 +515,15 @@ auto closest_metric_point_pair_impl(const tf::segment<Dims, Policy> &seg,
   return res;
 }
 
+template <typename Policy0, typename Policy1>
+auto closest_metric_point_pair2d(const tf::polygon<2, Policy0> &poly_in,
+                                 const tf::segment<2, Policy1> &seg1) {
+  auto best = core::closest_metric_point_pair_impl(poly_in, seg1);
+  if (best.metric == 0)
+    return best;
+  return min(best, closest_metric_point_pair(poly_in, seg1[1]));
+}
+
 } // namespace core
 
 /// @ingroup core_queries
@@ -522,20 +531,15 @@ auto closest_metric_point_pair_impl(const tf::segment<Dims, Policy> &seg,
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto closest_metric_point_pair(const tf::polygon<Dims, Policy0> &poly_in,
                                const tf::segment<Dims, Policy1> &seg1) {
-  const auto &poly = tf::tag_plane(poly_in);
-  auto best = core::closest_metric_point_pair_impl(poly, seg1);
-  if (best.metric == 0)
-    return best;
-  return min(best, closest_metric_point_pair(poly, seg1[1]));
-}
-
-template <typename Policy0, typename Policy1>
-auto closest_metric_point_pair(const tf::polygon<2, Policy0> &poly_in,
-                               const tf::segment<2, Policy1> &seg1) {
-  auto best = core::closest_metric_point_pair_impl(poly_in, seg1);
-  if (best.metric == 0)
-    return best;
-  return min(best, closest_metric_point_pair(poly_in, seg1[1]));
+  if constexpr (Dims == 2) {
+    return core::closest_metric_point_pair2d(poly_in, seg1);
+  } else {
+    const auto &poly = tf::tag_plane(poly_in);
+    auto best = core::closest_metric_point_pair_impl(poly, seg1);
+    if (best.metric == 0)
+      return best;
+    return min(best, closest_metric_point_pair(poly, seg1[1]));
+  }
 }
 
 /// @ingroup core_queries
@@ -585,28 +589,25 @@ auto closest_metric_point_pair_impl(const tf::polygon<Dims, Policy0> &poly0,
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto closest_metric_point_pair(const tf::polygon<Dims, Policy0> &poly_in0,
                                const tf::polygon<Dims, Policy1> &poly_in1) {
-  if constexpr (Dims == 3 && tf::static_size_v<Policy0> == 3 &&
-                tf::static_size_v<Policy1> == 3) {
-    return tf::core::closest_points_on_triangles(poly_in0, poly_in1);
-  } else if constexpr (Dims == 3) {
-    if (poly_in0.size() == 3 && poly_in1.size() == 3)
+  if constexpr (Dims == 2) {
+    return core::closest_metric_point_pair_impl(poly_in0, poly_in1);
+  } else {
+    if constexpr (Dims == 3 && tf::static_size_v<Policy0> == 3 &&
+                  tf::static_size_v<Policy1> == 3) {
       return tf::core::closest_points_on_triangles(poly_in0, poly_in1);
-    else {
+    } else if constexpr (Dims == 3) {
+      if (poly_in0.size() == 3 && poly_in1.size() == 3)
+        return tf::core::closest_points_on_triangles(poly_in0, poly_in1);
+      else {
+        const auto &poly0 = tf::tag_plane(poly_in0);
+        const auto &poly1 = tf::tag_plane(poly_in1);
+        return core::closest_metric_point_pair_impl(poly0, poly1);
+      }
+    } else {
       const auto &poly0 = tf::tag_plane(poly_in0);
       const auto &poly1 = tf::tag_plane(poly_in1);
       return core::closest_metric_point_pair_impl(poly0, poly1);
     }
-  } else {
-    const auto &poly0 = tf::tag_plane(poly_in0);
-    const auto &poly1 = tf::tag_plane(poly_in1);
-    return core::closest_metric_point_pair_impl(poly0, poly1);
   }
 }
-
-template <typename Policy0, typename Policy1>
-auto closest_metric_point_pair(const tf::polygon<2, Policy0> &poly0,
-                               const tf::polygon<2, Policy1> &poly1) {
-  return core::closest_metric_point_pair_impl(poly0, poly1);
-}
-
 } // namespace tf
