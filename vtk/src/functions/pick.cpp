@@ -20,11 +20,10 @@ namespace tf::vtk {
 namespace {
 
 template <typename Actors>
-auto pick_impl(tf::ray<float, 3> ray, Actors &actors)
-    -> std::optional<pick_result> {
+auto pick_impl(tf::ray<float, 3> ray, Actors &actors) -> pick_result {
   tf::tree_ray_info<vtkIdType, tf::ray_cast_info<float>> best_hit;
   tf::ray_config<float> config{};
-  vtkActor *picked_actor = nullptr;
+  pick_result result;
 
   for (auto &actor_ref : actors) {
     vtkActor *actor = nullptr;
@@ -61,42 +60,39 @@ auto pick_impl(tf::ray<float, 3> ray, Actors &actors)
     if (hit) {
       best_hit = hit;
       config.max_t = hit.info.t;
-      picked_actor = actor;
+      result.actor = actor;
     }
   }
 
-  if (!picked_actor)
-    return std::nullopt;
-
-  pick_result result;
-  result.actor = picked_actor;
-  result.cell_id = best_hit.element;
-  result.position = ray.origin + best_hit.info.t * ray.direction;
-  result.t = best_hit.info.t;
+  if (result) {
+    result.cell_id = best_hit.element;
+    result.position = ray.origin + best_hit.info.t * ray.direction;
+    result.t = best_hit.info.t;
+  }
   return result;
 }
 
 } // namespace
 
 auto pick(tf::ray<float, 3> ray, std::vector<vtkActor *> &actors)
-    -> std::optional<pick_result> {
+    -> pick_result {
   return pick_impl(ray, actors);
 }
 
 auto pick(tf::ray<float, 3> ray,
           tf::range<vtkActor **, tf::dynamic_size> actors)
-    -> std::optional<pick_result> {
+    -> pick_result {
   return pick_impl(ray, actors);
 }
 
 auto pick(tf::ray<float, 3> ray, std::vector<vtkSmartPointer<vtkActor>> &actors)
-    -> std::optional<pick_result> {
+    -> pick_result {
   return pick_impl(ray, actors);
 }
 
 auto pick(tf::ray<float, 3> ray,
           tf::range<vtkSmartPointer<vtkActor> *, tf::dynamic_size> actors)
-    -> std::optional<pick_result> {
+    -> pick_result {
   return pick_impl(ray, actors);
 }
 

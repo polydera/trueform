@@ -11,7 +11,6 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include <optional>
 #include <trueform/core.hpp>
 #include <trueform/vtk/core/polydata.hpp>
 #include <vector>
@@ -26,36 +25,39 @@ struct pick_result {
   vtkIdType cell_id = -1;
   tf::point<float, 3> position;
   float t = 0;
+
+  /// @brief Returns `true` if a valid pick was recorded.
+  operator bool() const { return actor != nullptr; }
 };
 
 /// @brief Pick the closest actor along a ray.
 /// @param ray The ray in world coordinates.
 /// @param actors Vector of actors to test against.
-/// @return Pick result if hit, nullopt otherwise.
+/// @return Pick result with actor and hit info. Convertible to bool.
 auto pick(tf::ray<float, 3> ray, std::vector<vtkActor *> &actors)
-    -> std::optional<pick_result>;
+    -> pick_result;
 
 /// @brief Pick the closest actor along a ray.
 /// @param ray The ray in world coordinates.
 /// @param actors Range of actor pointers to test against.
-/// @return Pick result if hit, nullopt otherwise.
+/// @return Pick result with actor and hit info. Convertible to bool.
 auto pick(tf::ray<float, 3> ray,
           tf::range<vtkActor **, tf::dynamic_size> actors)
-    -> std::optional<pick_result>;
+    -> pick_result;
 
 /// @brief Pick the closest actor along a ray.
 /// @param ray The ray in world coordinates.
 /// @param actors Vector of smart pointer actors to test against.
-/// @return Pick result if hit, nullopt otherwise.
+/// @return Pick result with actor and hit info. Convertible to bool.
 auto pick(tf::ray<float, 3> ray, std::vector<vtkSmartPointer<vtkActor>> &actors)
-    -> std::optional<pick_result>;
+    -> pick_result;
 
 /// @brief Pick the closest actor along a ray.
 /// @param ray The ray in world coordinates.
 /// @param actors Range of smart pointer actors to test against.
-/// @return Pick result if hit, nullopt otherwise.
+/// @return Pick result with actor and hit info. Convertible to bool.
 auto pick(tf::ray<float, 3> ray,
           tf::range<vtkSmartPointer<vtkActor> *, tf::dynamic_size> actors)
-    -> std::optional<pick_result>;
+    -> pick_result;
 
 } // namespace tf::vtk

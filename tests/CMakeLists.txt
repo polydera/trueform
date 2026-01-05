@@ -25,9 +25,17 @@ target_compile_options(point_cloud_knn PRIVATE
   $<$<CXX_COMPILER_ID:MSVC>:/W4>
 )
 
+add_executable(test_duplicate_faces test_duplicate_faces.cpp)
+target_link_libraries(test_duplicate_faces PRIVATE tf::trueform)
+target_compile_options(test_duplicate_faces PRIVATE
+  $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Wpedantic>
+  $<$<CXX_COMPILER_ID:MSVC>:/W4>
+)
+
 add_custom_target(trueform_tests
   DEPENDS
     boolean_topology_test
     mod_tree_test
     point_cloud_knn
+    test_duplicate_faces
 )

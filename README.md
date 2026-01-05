@@ -128,7 +128,7 @@ auto [contour_mesh, contour_labels, isocontours] = tf::embedded_isocurves<int>(
 
 ---
 
-This is trueform from a bird's eye view. For comprehensive coverage of all features, patterns, and advanced usage, explore the **[module documentation](https://trueform.polydera.com/cpp/modules/core)**.
+This is trueform from a bird's eye view. For comprehensive coverage of all features, patterns, and advanced usage, explore the **[module documentation](https://trueform.polydera.com/cpp/modules)**.
 
 ## Installation
 
@@ -156,7 +156,7 @@ target_link_libraries(my_target PRIVATE tf::trueform)
 Comprehensive documentation is available at **[trueform.polydera.com](https://trueform.polydera.com)**
 
 - 📚 **[Getting Started](https://trueform.polydera.com/cpp/getting-started)** - Requirements and installation via CMake FetchContent
-- 📖 **[Tutorial](https://trueform.polydera.com/cpp/modules/core)** - Primitives, trees, topology, booleans — step by step
+- 📖 **[Modules](https://trueform.polydera.com/cpp/modules)** - Primitives, trees, topology, booleans — step by step
 - 📊 **[Benchmarks](https://trueform.polydera.com/cpp/benchmarks)** - Benchmarked against VTK, CGAL, libigl, FCL, and nanoflann
 - 💡 **[Examples](https://trueform.polydera.com/cpp/examples)** - Core features, performance comparisons, and framework integration
 - 📄 **[Publications](https://trueform.polydera.com/cpp/about/publications)** - Research behind trueform's spatial hierarchy and mesh booleans

@@ -17,7 +17,7 @@ namespace tf::vtk {
 
 class polydata;
 
-/// @brief Cleans polygons by removing duplicate points and degenerate faces.
+/// @brief Cleans polygons by removing duplicate points and faces, and degenerate faces.
 /// Returns a new polydata with all point and cell data arrays remapped.
 /// @param input The polydata to clean.
 /// @param tolerance Distance tolerance for merging points (0 = exact duplicates only).

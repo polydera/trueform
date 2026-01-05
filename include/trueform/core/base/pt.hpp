@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (www.trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (www.trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 
 #pragma once
 
@@ -99,7 +99,8 @@ template <typename T, std::size_t Dims> struct pt {
                 (sizeof...(Ts) == Dims) &&
                     (... && std::is_convertible_v<std::decay_t<Ts>, T>),
                 void>>
-  pt(Ts &&...ts) : _data{static_cast<Ts &&>(ts)...} {}
+  pt(Ts &&...ts)
+      : _data{static_cast<coordinate_type>(static_cast<Ts &&>(ts))...} {}
 
   template <typename U,
             typename V = std::enable_if_t<std::is_assignable_v<T &, U>, void>>
