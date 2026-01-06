@@ -18,12 +18,18 @@ if (metadata) {
   });
 }
 
-const { isTouchscreen } = useTouchscreen();
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
 const { loadExampleWithAssets } = useWasmModule();
-const { isLoading, loadingMessage, loadingError, resetLoading, setLoadingMessage, failLoading, finishLoading } =
-  useExampleLoadingState();
+const {
+  isLoading,
+  loadingMessage,
+  loadingError,
+  resetLoading,
+  setLoadingMessage,
+  failLoading,
+  finishLoading,
+} = useExampleLoadingState();
 const { meshSize, buildMeshes, formatPolygonLabel } = useMeshSelection();
 
 const threejsContainer = ref<HTMLElement | null>(null);
@@ -32,6 +38,13 @@ let exampleClass: BooleanExample | null = null;
 const meshCount = 1;
 const meshes = computed(() => buildMeshes(meshCount));
 const polygonLabel = computed(() => formatPolygonLabel(meshCount));
+const sphereSizeSteps = ref(0);
+const sphereSizeBounds = {
+  min: -24,
+  max: 50,
+  step: 1,
+};
+const isSyncingSphereSize = ref(false);
 
 const avgTime = ref("0");
 const getAvgTime = () => {
@@ -49,7 +62,12 @@ const badge = computed(() => ({
 }));
 
 const actionButtons = [
-  { icon: "i-lucide-focus", label: "Resync camera", keyboardShortcut: "R", onClick: () => exampleClass?.resyncCamera() },
+  {
+    icon: "i-lucide-focus",
+    label: "Resync camera",
+    keyboardShortcut: "R",
+    onClick: () => exampleClass?.resyncCamera(),
+  },
 ];
 
 let tearDownRequested = false;
@@ -65,6 +83,7 @@ const disposeExample = () => {
 const loadThreejs = async () => {
   const loadId = ++currentLoadId;
   disposeExample();
+  sphereSizeSteps.value = 0;
   exampleClass = await loadExampleWithAssets({
     meshes: meshes.value,
     skipOverlayIfCached: true,
@@ -77,20 +96,34 @@ const loadThreejs = async () => {
         return null;
       }
 
-      const instance = new BooleanExample(
-        wasmInstance,
-        meshFilenames,
-        el,
-        el2,
-        isDark.value,
-      );
+      const instance = new BooleanExample(wasmInstance, meshFilenames, el, el2, isDark.value);
       instance.refreshTimeValue = getAvgTime;
+      instance.onSphereSizeDelta = (delta) => {
+        const nextValue = Math.min(
+          sphereSizeBounds.max,
+          Math.max(sphereSizeBounds.min, sphereSizeSteps.value + delta),
+        );
+        if (nextValue === sphereSizeSteps.value) return;
+        isSyncingSphereSize.value = true;
+        sphereSizeSteps.value = nextValue;
+      };
       return instance;
     },
   });
 };
 
 watch(meshSize, () => loadThreejs(), { immediate: true });
+watch(sphereSizeSteps, (value, oldValue) => {
+  if (!exampleClass) return;
+  if (isSyncingSphereSize.value) {
+    isSyncingSphereSize.value = false;
+    return;
+  }
+  const delta = value - oldValue;
+  if (delta !== 0) {
+    exampleClass.adjustSphereSize(delta);
+  }
+});
 
 onBeforeUnmount(() => {
   tearDownRequested = true;
@@ -121,14 +154,29 @@ watch(isDark, (dark) => {
         <UIcon name="i-lucide-hand" class="size-4 ml-1" />
         <p class="text-sm">Drag a mesh. The boolean updates in real time.</p>
       </div>
-      <div v-if="!isTouchscreen" class="flex gap-2 items-center text-muted">
-        <UIcon name="i-lucide-circle" class="size-4 ml-1" />
-        <p class="text-sm">Ctrl + scroll to change sphere size.</p>
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center justify-between gap-3 text-sm text-muted w-full">
+          <div class="min-w-24">Sphere size</div>
+          <USlider
+            v-model="sphereSizeSteps"
+            :min="sphereSizeBounds.min"
+            :max="sphereSizeBounds.max"
+            :step="sphereSizeBounds.step"
+          />
+        </div>
       </div>
     </template>
     <template #containers>
-      <div ref="threejsContainer" id="threejsContainer" class="h-full flex-1 min-h-0 w-screen md:w-full"></div>
-      <div ref="threejsContainer2" id="threejsContainer2" class="h-full flex-1 min-h-0 w-screen md:w-full"></div>
+      <div
+        ref="threejsContainer"
+        id="threejsContainer"
+        class="h-full flex-1 min-h-0 w-screen md:w-full"
+      ></div>
+      <div
+        ref="threejsContainer2"
+        id="threejsContainer2"
+        class="h-full flex-1 min-h-0 w-screen md:w-full"
+      ></div>
     </template>
   </ExampleLayout>
 </template>

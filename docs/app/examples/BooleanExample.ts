@@ -13,6 +13,7 @@ import { ArcballControls } from "three/addons/controls/ArcballControls.js";
 export class BooleanExample extends ThreejsBase {
   private curveRenderer: CurveRenderer;
   private keyPressed = false;
+  public onSphereSizeDelta?: (deltaSteps: number) => void;
 
   // private pointDebug = createPoints();
   public randomize() {
@@ -25,6 +26,18 @@ export class BooleanExample extends ThreejsBase {
     if (this.sceneBundle2) {
       syncOrbitControls(this.sceneBundle1.controls, this.sceneBundle2.controls);
     }
+  }
+
+  public adjustSphereSize(deltaSteps: number) {
+    const steps = Math.trunc(deltaSteps);
+    if (steps === 0) return false;
+    const direction = Math.sign(steps);
+    let handled = false;
+    for (let i = 0; i < Math.abs(steps); i++) {
+      handled = this.wasmInstance.OnMouseWheel(direction, true) || handled;
+    }
+    this.updateMeshes();
+    return handled;
   }
 
   private switchToOrthographicCamera(sceneBundle: SceneBundle, container: HTMLElement) {
@@ -165,9 +178,9 @@ export class BooleanExample extends ThreejsBase {
       const delta = event.deltaY !== 0 ? event.deltaY : event.deltaX;
       if (delta === 0) return;
       const normalizedDelta = delta / Math.abs(delta);
-      const handled = this.wasmInstance.OnMouseWheel(-normalizedDelta, true);
-      this.updateMeshes();
+      const handled = this.adjustSphereSize(-normalizedDelta);
       if (handled) {
+        this.onSphereSizeDelta?.(-normalizedDelta);
         event.stopImmediatePropagation();
       }
     };
