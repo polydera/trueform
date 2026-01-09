@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (www.trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (www.trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 #include "../blocked_buffer.hpp"
 #include "../offset_block_buffer.hpp"
@@ -28,26 +28,25 @@ auto generate_offset_blocks(
   offsets.allocate(input_data.size() + 1);
   offsets[0] = 0;
   std::size_t current_i = 1;
-  auto task_f = [fill_block_f](auto &&range,
+  auto task_f = [&_fill_block_f = fill_block_f](auto &&range,
                                std::pair<tf::buffer<Index>, Buffer> &pair) {
+    auto fill_block_f = _fill_block_f;
     auto &[sizes, data] = pair;
     sizes.allocate(range.size());
-    data.reserve(data.size() * 5);
+    tf::core::reserve(data, tf::core::size(data) * 5);
     auto it = sizes.begin();
     for (const auto &element : range) {
-      auto old_size = data.size();
+      auto old_size = tf::core::size(data);
       fill_block_f(element, data);
-      *it++ = data.size() - old_size;
+      *it++ = tf::core::size(data) - old_size;
     }
   };
   auto aggregate_f =
       [&](const std::pair<tf::buffer<Index>, Buffer> &local_result,
-                   std::tuple<tf::buffer<Index> &, Buffer &> &result) {
+          std::tuple<tf::buffer<Index> &, Buffer &> &result) {
         auto &[l_sizes, l_data] = local_result;
         auto &[offsets, data] = result;
-        auto old_data_size = data.size();
-        tf::core::reallocate(data, old_data_size + l_data.size());
-        std::copy(l_data.begin(), l_data.end(), data.begin() + old_data_size);
+        tf::core::append(l_data, data);
         for (auto offset : l_sizes) {
           offsets[current_i] = offsets[current_i - 1] + offset;
           current_i++;
@@ -78,6 +77,17 @@ template <typename Range, typename Index, typename T, typename F>
 auto generate_offset_blocks(
     const Range &input_data, tf::buffer<Index> &offsets, tf::buffer<T> &data,
     const F &fill_block_f,
+    std::size_t n_tasks = std::thread::hardware_concurrency() * 5) {
+  return core::generate_offset_blocks(input_data, offsets, data, fill_block_f,
+                                      n_tasks);
+}
+
+/// @ingroup core_algorithms
+/// @brief Generate offset-blocks into a blocked buffer.
+template <typename Range, typename Index, typename... Ts, typename F>
+auto generate_offset_blocks(
+    const Range &input_data, tf::buffer<Index> &offsets,
+    std::tuple<tf::buffer<Ts>...> &data, const F &fill_block_f,
     std::size_t n_tasks = std::thread::hardware_concurrency() * 5) {
   return core::generate_offset_blocks(input_data, offsets, data, fill_block_f,
                                       n_tasks);
