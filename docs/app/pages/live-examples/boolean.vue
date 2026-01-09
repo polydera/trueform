@@ -156,7 +156,10 @@ watch(isDark, (dark) => {
       </div>
       <div class="flex flex-col gap-2">
         <div class="flex items-center justify-between gap-3 text-sm text-muted w-full">
-          <div class="min-w-24">Sphere size</div>
+          <div class="min-w-30 flex items-center gap-2">
+            <UIcon name="i-lucide-scaling" class="size-4 ml-1" />
+            Sphere size
+          </div>
           <USlider
             v-model="sphereSizeSteps"
             :min="sphereSizeBounds.min"

@@ -33,10 +33,7 @@ export default defineNuxtConfig({
 
   // OG Image configuration
   site: {
-    // Update this with your production domain
-    // For Cloudflare Pages, this might be something like: https://trueform.pages.dev
-    // You can also use environment variables: process.env.NUXT_PUBLIC_SITE_URL
-    url: process.env.NUXT_PUBLIC_SITE_URL || "https://trueform.pages.dev",
+    url: process.env.NUXT_PUBLIC_SITE_URL || "https://trueform.polydera.com",
     name: "trueform",
   },
 
@@ -86,7 +83,7 @@ export default defineNuxtConfig({
       },
     },
     build: {
-      sourcemap: false
+      sourcemap: false,
     },
   },
 
