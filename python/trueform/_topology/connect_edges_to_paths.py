@@ -10,6 +10,7 @@ https://github.com/xlabmedical/trueform
 import numpy as np
 from .. import _trueform
 from .._core import OffsetBlockedArray
+from .._dispatch import dtype_str
 
 
 def connect_edges_to_paths(edges: np.ndarray) -> OffsetBlockedArray:
@@ -97,8 +98,7 @@ def connect_edges_to_paths(edges: np.ndarray) -> OffsetBlockedArray:
         return OffsetBlockedArray(empty_offsets, empty_data)
 
     # Build suffix and dispatch
-    dtype_str = 'int' if edges.dtype == np.int32 else 'int64'
-    func_name = f"connect_edges_to_paths_{dtype_str}"
+    func_name = f"connect_edges_to_paths_{dtype_str(edges.dtype)}"
     cpp_func = getattr(_trueform.topology, func_name)
 
     # Call C++ function - returns tuple (offsets, data)

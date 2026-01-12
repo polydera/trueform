@@ -41,8 +41,14 @@ auto reallocate(small_vector<T, N> &v, std::size_t n) {
   v.resize(n);
 }
 
-template <typename T>
-auto append(const buffer<T> &input, buffer<T> &output) {
+template <typename T> auto append(const buffer<T> &input, buffer<T> &output) {
+  auto old_data_size = output.size();
+  reallocate(output, old_data_size + input.size());
+  std::copy(input.begin(), input.end(), output.begin() + old_data_size);
+}
+
+template <typename T, std::size_t N>
+auto append(const blocked_buffer<T, N> &input, blocked_buffer<T, N> &output) {
   auto old_data_size = output.size();
   reallocate(output, old_data_size + input.size());
   std::copy(input.begin(), input.end(), output.begin() + old_data_size);
@@ -73,31 +79,45 @@ auto append(const std::tuple<Buffers0...> &input,
       input, output);
 }
 
-template <typename T>
-auto reserve(buffer<T> &buff, std::size_t n) { buff.reserve(n); }
+template <typename T> auto reserve(buffer<T> &buff, std::size_t n) {
+  buff.reserve(n);
+}
 
-template <typename T>
-auto reserve(std::vector<T> &buff, std::size_t n) { buff.reserve(n); }
+template <typename T, std::size_t N>
+auto reserve(blocked_buffer<T, N> &buff, std::size_t n) {
+  buff.reserve(n);
+}
+
+template <typename T> auto reserve(std::vector<T> &buff, std::size_t n) {
+  buff.reserve(n);
+}
 
 template <typename T, unsigned N>
-auto reserve(small_vector<T, N> &buff, std::size_t n) { buff.reserve(n); }
+auto reserve(small_vector<T, N> &buff, std::size_t n) {
+  buff.reserve(n);
+}
 
 template <typename... Buffers>
 auto reserve(std::tuple<Buffers...> &buff, std::size_t n) {
   tf::apply([&](auto &&...elem) { (elem.reserve(n), ...); }, buff);
 }
 
-template <typename T>
-auto size(const buffer<T> &buff) { return buff.size(); }
+template <typename T> auto size(const buffer<T> &buff) { return buff.size(); }
 
-template <typename T>
-auto size(const std::vector<T> &buff) { return buff.size(); }
+template <typename T, std::size_t N>
+auto size(const blocked_buffer<T, N> &buff) {
+  return buff.size();
+}
 
-template <typename T, unsigned N>
-auto size(const small_vector<T, N> &buff) { return buff.size(); }
+template <typename T> auto size(const std::vector<T> &buff) {
+  return buff.size();
+}
 
-template <typename... Buffers>
-auto size(const std::tuple<Buffers...> &buff) {
+template <typename T, unsigned N> auto size(const small_vector<T, N> &buff) {
+  return buff.size();
+}
+
+template <typename... Buffers> auto size(const std::tuple<Buffers...> &buff) {
   using std::get;
   return get<0>(buff).size();
 }

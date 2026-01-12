@@ -12,6 +12,7 @@ from typing import Tuple, Union
 from .. import _trueform
 from .._spatial import Mesh
 from .._core import OffsetBlockedArray
+from .._dispatch import isocontour_suffix
 
 
 def embedded_self_intersection_curves(
@@ -104,12 +105,8 @@ def embedded_self_intersection_curves(
         )
 
     # 4. BUILD SUFFIX FOR C++ FUNCTION
-    index_str = 'int' if mesh.faces.dtype == np.int32 else 'int64'
-    ngon_str = 'dyn' if mesh.is_dynamic else '3'
-    real_str = 'float' if mesh.dtype == np.float32 else 'double'
-
-    # Format: {index}{ngon}{real}3d
-    suffix = f"{index_str}{ngon_str}{real_str}3d"
+    ngon = 'dyn' if mesh.is_dynamic else '3'
+    suffix = isocontour_suffix(mesh.faces.dtype, mesh.dtype, ngon, 3)
 
     # 5. DISPATCH TO C++
     if return_curves:

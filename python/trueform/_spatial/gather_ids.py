@@ -10,8 +10,15 @@ https://github.com/xlabmedical/trueform
 import numpy as np
 from typing import Any, Optional
 from .. import _trueform
-from ._gather_ids import _GATHER_IDS_DISPATCH
-from ._form_form_gather_ids import _FORM_FORM_GATHER_IDS_DISPATCH
+
+# Dispatch infrastructure
+from .._dispatch import (
+    extract_form_meta,
+    form_primitive_suffix,
+    form_form_suffix,
+    canonicalize_index_order,
+)
+from ._dispatch import GATHER_IDS_FORM_PRIM, GATHER_IDS_FORM_FORM
 
 
 def _gather_ids(form: Any, query: Any, predicate: str = "intersects", distance: Optional[float] = None) -> np.ndarray:
@@ -96,143 +103,81 @@ def _gather_ids(form: Any, query: Any, predicate: str = "intersects", distance: 
     from .edge_mesh import EdgeMesh
     from .point_cloud import PointCloud
 
-    # Check if this is a valid operation
-    if type_pair not in _GATHER_IDS_DISPATCH:
-        supported_forms = {Mesh, EdgeMesh, PointCloud}
-        from .._primitives import Point, Segment, Polygon, Ray, Line
-        supported_primitives = {Point, Segment, Polygon, Ray, Line}
-
-        if form_type not in supported_forms:
-            raise TypeError(
-                f"gather_ids requires form to be Mesh, EdgeMesh, or PointCloud, got {form_type.__name__}"
-            )
-        if query_type not in supported_primitives and query_type not in supported_forms:
-            raise TypeError(
-                f"gather_ids requires query to be Point, Segment, Polygon, Ray, Line, Mesh, EdgeMesh, or PointCloud, got {query_type.__name__}"
-            )
-
-        raise TypeError(
-            f"gather_ids not implemented for combination: {form_type.__name__}, {query_type.__name__}"
-        )
-
-    func_template, needs_swap = _GATHER_IDS_DISPATCH[type_pair]
-
     # Check if this is Form-Form or Form-Primitive operation
     both_forms = (form_type in {Mesh, EdgeMesh, PointCloud} and
                   query_type in {Mesh, EdgeMesh, PointCloud})
 
     if both_forms:
-        # Form-Form operation - use dedicated dispatch table
-        func_template, needs_swap = _FORM_FORM_GATHER_IDS_DISPATCH[type_pair]
-
-        # Determine the canonical order
-        form0_obj = form if not needs_swap else query
-        form1_obj = query if not needs_swap else form
-        form0_type = type(form0_obj)
-        form1_type = type(form1_obj)
-
-        # Canonicalize index type ordering for same-type forms
-        # C++ only implements: int×int, int×int64, int64×int64
-        # If we have int64×int, swap to int×int64
-        extra_swap = False
-        if form0_type == form1_type:
-            if form0_type is EdgeMesh:
-                index0_dtype = form0_obj.edges.dtype
-                index1_dtype = form1_obj.edges.dtype
-                # Swap if form0 is int64 and form1 is int32
-                if index0_dtype == np.int64 and index1_dtype == np.int32:
-                    form0_obj, form1_obj = form1_obj, form0_obj
-                    extra_swap = True
-            elif form0_type is Mesh:
-                index0_dtype = form0_obj.faces.dtype
-                index1_dtype = form1_obj.faces.dtype
-                # Swap if form0 is int64 and form1 is int32
-                if index0_dtype == np.int64 and index1_dtype == np.int32:
-                    form0_obj, form1_obj = form1_obj, form0_obj
-                    extra_swap = True
-
-        # Get real type (must match)
-        real_str = 'float' if form0_obj.points.dtype == np.float32 else 'double'
-
-        # Dims (must match)
-        dims_str = f"{form0_obj.dims}d"
-
-        # Build suffix based on form types
-        if form0_type is PointCloud and form1_type is PointCloud:
-            suffix = f"{real_str}{dims_str}"
-        elif form0_type is EdgeMesh and form1_type is EdgeMesh:
-            index0_str = 'int' if form0_obj.edges.dtype == np.int32 else 'int64'
-            index1_str = 'int' if form1_obj.edges.dtype == np.int32 else 'int64'
-            suffix = f"{index0_str}{index1_str}{real_str}{dims_str}"
-        elif form0_type is EdgeMesh and form1_type is PointCloud:
-            index0_str = 'int' if form0_obj.edges.dtype == np.int32 else 'int64'
-            suffix = f"{index0_str}{real_str}{dims_str}"
-        elif form0_type is Mesh and form1_type is PointCloud:
-            faces0 = form0_obj.faces
-            index0_str = 'int' if (faces0.dtype if hasattr(faces0, 'dtype') else faces0.data.dtype) == np.int32 else 'int64'
-            ngon0_str = 'dyn' if form0_obj.is_dynamic else str(form0_obj.ngon)
-            suffix = f"{index0_str}{real_str}{ngon0_str}{dims_str}"
-        elif form0_type is Mesh and form1_type is EdgeMesh:
-            faces0 = form0_obj.faces
-            index0_str = 'int' if (faces0.dtype if hasattr(faces0, 'dtype') else faces0.data.dtype) == np.int32 else 'int64'
-            index1_str = 'int' if form1_obj.edges.dtype == np.int32 else 'int64'
-            ngon0_str = 'dyn' if form0_obj.is_dynamic else str(form0_obj.ngon)
-            suffix = f"{index0_str}{index1_str}{ngon0_str}{real_str}{dims_str}"
-        elif form0_type is Mesh and form1_type is Mesh:
-            faces0 = form0_obj.faces
-            faces1 = form1_obj.faces
-            index0_str = 'int' if (faces0.dtype if hasattr(faces0, 'dtype') else faces0.data.dtype) == np.int32 else 'int64'
-            index1_str = 'int' if (faces1.dtype if hasattr(faces1, 'dtype') else faces1.data.dtype) == np.int32 else 'int64'
-            ngon0_str = 'dyn' if form0_obj.is_dynamic else str(form0_obj.ngon)
-            ngon1_str = 'dyn' if form1_obj.is_dynamic else str(form1_obj.ngon)
-            suffix = f"{index0_str}{index1_str}{ngon0_str}{ngon1_str}{real_str}{dims_str}"
-        else:
-            raise TypeError(f"Unexpected form-form combination: {form0_type}, {form1_type}")
-
-        # Get function and call
-        func_name = func_template.format(suffix)
-        cpp_func = getattr(_trueform.spatial, func_name)
-        result = cpp_func(form0_obj._wrapper, form1_obj._wrapper, predicate, distance)
-
-        # If forms were swapped, swap result columns back
-        # Result is numpy array of shape (N, 2) with columns [id0, id1]
-        if result is not None and result.shape[0] > 0 and (needs_swap or extra_swap):
-            result = result[:, [1, 0]]
-
-        return result
+        return _form_form_gather_ids(form, query, type_pair, predicate, distance)
     else:
-        # Form-Primitive operation
-        form_obj = form if not needs_swap else query
-        prim_obj = query if not needs_swap else form
+        return _form_prim_gather_ids(form, query, type_pair, predicate, distance)
 
-        # Compute suffix based on form type
-        form_type = type(form_obj)
-        if form_type is PointCloud:
-            dtype_str = 'float' if form_obj.points.dtype == np.float32 else 'double'
-            suffix = f"{dtype_str}{form_obj.dims}d"
-        elif form_type is Mesh:
-            faces = form_obj.faces
-            faces_dtype = faces.dtype if hasattr(faces, 'dtype') else faces.data.dtype
-            points_dtype = form_obj.points.dtype
-            index_str = 'int' if faces_dtype == np.int32 else 'int64'
-            real_str = 'float' if points_dtype == np.float32 else 'double'
-            ngon_str = 'dyn' if form_obj.is_dynamic else str(form_obj.ngon)
-            suffix = f"{index_str}{real_str}{ngon_str}{form_obj.dims}d"
-        elif form_type is EdgeMesh:
-            edges_dtype = form_obj.edges.dtype
-            points_dtype = form_obj.points.dtype
-            index_str = 'int' if edges_dtype == np.int32 else 'int64'
-            real_str = 'float' if points_dtype == np.float32 else 'double'
-            suffix = f"{index_str}{real_str}{form_obj.dims}d"
-        else:
-            raise TypeError(f"Unexpected form type: {form_type}")
 
-        # Get function and call
-        func_name = func_template.format(suffix)
-        cpp_func = getattr(_trueform.spatial, func_name)
+def _form_prim_gather_ids(form, query, type_pair, predicate, distance):
+    """Form x primitive gather_ids."""
+    from .mesh import Mesh
+    from .edge_mesh import EdgeMesh
+    from .point_cloud import PointCloud
 
-        # Call with predicate and distance
-        return cpp_func(form_obj._wrapper, prim_obj.data, predicate, distance)
+    if type_pair not in GATHER_IDS_FORM_PRIM:
+        supported = {t.__name__ for pair in GATHER_IDS_FORM_PRIM.keys() for t in pair}
+        raise TypeError(
+            f"gather_ids not implemented for types: {type_pair[0].__name__}, {type_pair[1].__name__}. "
+            f"Supported types: {', '.join(sorted(supported))}"
+        )
+
+    func_template, needs_swap = GATHER_IDS_FORM_PRIM[type_pair]
+
+    # Determine form and primitive based on swap
+    form_obj = query if needs_swap else form
+    prim_obj = form if needs_swap else query
+
+    # Build suffix using dispatch utility
+    meta = extract_form_meta(form_obj)
+    suffix = form_primitive_suffix(meta)
+    func_name = func_template.format(suffix)
+    cpp_func = getattr(_trueform.spatial, func_name)
+
+    return cpp_func(form_obj._wrapper, prim_obj.data, predicate, distance)
+
+
+def _form_form_gather_ids(form, query, type_pair, predicate, distance):
+    """Form x form gather_ids."""
+    from .mesh import Mesh
+    from .edge_mesh import EdgeMesh
+    from .point_cloud import PointCloud
+
+    if type_pair not in GATHER_IDS_FORM_FORM:
+        supported = {t.__name__ for pair in GATHER_IDS_FORM_FORM.keys() for t in pair}
+        raise TypeError(
+            f"gather_ids not implemented for types: {type_pair[0].__name__}, {type_pair[1].__name__}. "
+            f"Supported form-form types: {', '.join(sorted(supported))}"
+        )
+
+    func_template, needs_swap = GATHER_IDS_FORM_FORM[type_pair]
+
+    # Apply dispatch table swap
+    form0_obj = query if needs_swap else form
+    form1_obj = form if needs_swap else query
+
+    # Apply index canonicalization (int32 before int64 for same types)
+    form0_obj, form1_obj, extra_swap = canonicalize_index_order(form0_obj, form1_obj)
+
+    # Build suffix using dispatch utility
+    meta0 = extract_form_meta(form0_obj)
+    meta1 = extract_form_meta(form1_obj)
+    suffix = form_form_suffix(meta0, meta1, type(form0_obj), type(form1_obj))
+
+    func_name = func_template.format(suffix)
+    cpp_func = getattr(_trueform.spatial, func_name)
+    result = cpp_func(form0_obj._wrapper, form1_obj._wrapper, predicate, distance)
+
+    # If forms were swapped, swap result columns back
+    # Result is numpy array of shape (N, 2) with columns [id0, id1]
+    if result is not None and result.shape[0] > 0 and (needs_swap or extra_swap):
+        result = result[:, [1, 0]]
+
+    return result
 
 
 def gather_intersecting_ids(form: Any, query: Any) -> np.ndarray:

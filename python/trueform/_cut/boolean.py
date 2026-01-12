@@ -12,6 +12,7 @@ from typing import Tuple, Union
 from .. import _trueform
 from .._spatial import Mesh
 from .._core import OffsetBlockedArray
+from .._dispatch import extract_form_meta, boolean_suffix, canonicalize_index_order
 
 
 # Operation type constants (map to C++ tf::boolean_op enum)
@@ -240,24 +241,12 @@ def _boolean_impl(mesh0, mesh1, op_int, return_curves):
     # 5. HANDLE INDEX TYPE SYMMETRY
     # C++ only implements: int×int, int×int64, int64×int64
     # If we have int64×int, swap to int×int64
-    index0_dtype = mesh0.faces.dtype
-    index1_dtype = mesh1.faces.dtype
-
-    swapped = False
-    if index0_dtype == np.int64 and index1_dtype == np.int32:
-        # Swap meshes to match C++ implementation
-        mesh0, mesh1 = mesh1, mesh0
-        swapped = True
+    mesh0, mesh1, swapped = canonicalize_index_order(mesh0, mesh1)
 
     # 6. BUILD SUFFIX FOR C++ FUNCTION
-    index0_str = 'int' if mesh0.faces.dtype == np.int32 else 'int64'
-    index1_str = 'int' if mesh1.faces.dtype == np.int32 else 'int64'
-    ngon0_str = 'dyn' if mesh0.is_dynamic else '3'
-    ngon1_str = 'dyn' if mesh1.is_dynamic else '3'
-    real_str = 'float' if mesh0.dtype == np.float32 else 'double'
-
-    # Format: {index0}{index1}{ngon0}{ngon1}{real}3d
-    suffix = f"{index0_str}{index1_str}{ngon0_str}{ngon1_str}{real_str}3d"
+    meta0 = extract_form_meta(mesh0)
+    meta1 = extract_form_meta(mesh1)
+    suffix = boolean_suffix(meta0, meta1)
 
     # Determine if result will be dynamic (if either input is dynamic)
     result_is_dynamic = mesh0.is_dynamic or mesh1.is_dynamic

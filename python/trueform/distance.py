@@ -10,13 +10,11 @@ https://github.com/xlabmedical/trueform
 import numpy as np
 from typing import Any
 from . import _trueform
-from ._core._distance import _DISTANCE_DISPATCH as _CORE_DISPATCH
 from ._primitives import Plane
 
-
-# Dispatch table for primitives
-# Forms (Mesh, EdgeMesh, PointCloud) are handled separately via isinstance checks
-_DISTANCE_DISPATCH = _CORE_DISPATCH
+# Dispatch infrastructure
+from ._dispatch import primitive_suffix
+from ._core._dispatch import DISTANCE as CORE_DISTANCE
 
 
 def distance(obj0: Any, obj1: Any) -> float:
@@ -101,105 +99,75 @@ def _distance_impl(obj0: Any, obj1: Any, func_prefix: str) -> float:
     func_prefix : str
         Either "distance" or "distance2"
     """
+    # Validate dimensions match
+    if not hasattr(obj0, 'dims') or not hasattr(obj1, 'dims'):
+        raise TypeError("Both objects must have 'dims' attribute")
 
-    # Helper to get dimensionality
-    def get_dims(obj):
-        if hasattr(obj, 'dims'):
-            return obj.dims
-        raise TypeError(f"Cannot determine dimensions for type {type(obj)}")
-
-    # Helper to get variant suffix
-    def get_suffix(obj):
-        if hasattr(obj, 'dtype') and hasattr(obj, 'dims'):
-            dtype_str = 'float' if obj.dtype == np.float32 else 'double'
-            return f"{dtype_str}{obj.dims}d"
-        raise TypeError(f"Cannot determine variant for type {type(obj)}")
-
-    # Helper to extract data from object
-    def get_data(obj):
-        if hasattr(obj, 'data'):
-            return obj.data
-        raise TypeError(f"Cannot extract data from type {type(obj)}")
+    if obj0.dims != obj1.dims:
+        raise ValueError(
+            f"Dimension mismatch: obj0 has {obj0.dims}D, obj1 has {obj1.dims}D. "
+            f"Both objects must have the same dimensionality (2D or 3D)."
+        )
 
     # Check if either argument is a form (Mesh, EdgeMesh, PointCloud)
-    from ._spatial.mesh import Mesh
-    from ._spatial.edge_mesh import EdgeMesh
-    from ._spatial.point_cloud import PointCloud
+    from ._spatial import Mesh, EdgeMesh, PointCloud
 
     is_form0 = isinstance(obj0, (Mesh, EdgeMesh, PointCloud))
     is_form1 = isinstance(obj1, (Mesh, EdgeMesh, PointCloud))
 
     if is_form0 or is_form1:
-        # Use neighbor_search for any form involvement
-        from ._spatial import neighbor_search
+        return _spatial_distance(obj0, obj1, is_form0, is_form1, func_prefix)
+    else:
+        return _core_distance(obj0, obj1, func_prefix)
 
-        # Validate dimensions match
-        dims0 = get_dims(obj0)
-        dims1 = get_dims(obj1)
-        if dims0 != dims1:
-            raise ValueError(
-                f"Dimension mismatch: obj0 has {dims0}D, obj1 has {dims1}D. "
-                f"Both objects must have the same dimensionality (2D or 3D)."
-            )
 
-        # Ensure form is first argument (neighbor_search expects this)
-        if is_form0:
-            result = neighbor_search(obj0, obj1, radius=None)
-        else:
-            result = neighbor_search(obj1, obj0, radius=None)
-
-        # Extract metric based on form combination
-        if is_form0 and is_form1:
-            # Form-form: ((idx0, idx1), (distance_squared, pt0, pt1))
-            metric = result[1][0]
-        else:
-            # Form-primitive: (index, distance_squared, point)
-            metric = result[1]
-
-        # Return based on function type
-        return np.sqrt(metric) if func_prefix == "distance" else metric
-
-    # Primitive-to-primitive case: use dispatch table and C++ function
-    # Validate dimensions match
-    dims0 = get_dims(obj0)
-    dims1 = get_dims(obj1)
-    if dims0 != dims1:
-        raise ValueError(
-            f"Dimension mismatch: obj0 has {dims0}D, obj1 has {dims1}D. "
-            f"Both objects must have the same dimensionality (2D or 3D)."
-        )
-
-    # Normalize types for dispatch
+def _core_distance(obj0, obj1, func_prefix: str) -> float:
+    """Primitive x primitive distance."""
     type0 = type(obj0)
     type1 = type(obj1)
-
-    # Look up dispatch info
     type_pair = (type0, type1)
-    if type_pair not in _DISTANCE_DISPATCH:
-        supported = set()
-        for t0, t1 in _DISTANCE_DISPATCH.keys():
-            supported.add(t0.__name__)
-            supported.add(t1.__name__)
+
+    if type_pair not in CORE_DISTANCE:
+        supported = {t.__name__ for pair in CORE_DISTANCE.keys() for t in pair}
         raise TypeError(
             f"{func_prefix} not implemented for types: {type0.__name__}, {type1.__name__}. "
             f"Supported types: {', '.join(sorted(supported))}"
         )
 
-    func_template, needs_swap = _DISTANCE_DISPATCH[type_pair]
+    func_template, needs_swap = CORE_DISTANCE[type_pair]
 
     # Special case: Plane is 3D only
-    if (type0 is Plane or type1 is Plane) and dims0 != 3:
+    if (type0 is Plane or type1 is Plane) and obj0.dims != 3:
         raise ValueError(f"{func_prefix} with Plane is only supported in 3D")
 
-    # Get suffix and function name
-    suffix = get_suffix(obj0 if not needs_swap else obj1)
+    # Build suffix using dispatch utility
+    suffix = primitive_suffix(obj0.dtype, obj0.dims)
     func_name = func_template.format(func_prefix, suffix)
+    cpp_func = getattr(_trueform.core, func_name)
 
-    # Get data and call C++ function
-    data0 = get_data(obj0)
-    data1 = get_data(obj1)
-
+    # Handle symmetry
     if needs_swap:
-        return getattr(_trueform.core, func_name)(data1, data0)
+        return cpp_func(obj1.data, obj0.data)
+    return cpp_func(obj0.data, obj1.data)
+
+
+def _spatial_distance(obj0, obj1, is_form0: bool, is_form1: bool, func_prefix: str) -> float:
+    """Form x primitive or form x form distance via neighbor_search."""
+    from ._spatial import neighbor_search
+
+    # Ensure form is first argument (neighbor_search expects this)
+    if is_form0:
+        result = neighbor_search(obj0, obj1, radius=None)
     else:
-        return getattr(_trueform.core, func_name)(data0, data1)
+        result = neighbor_search(obj1, obj0, radius=None)
+
+    # Extract metric based on form combination
+    if is_form0 and is_form1:
+        # Form-form: ((idx0, idx1), (distance_squared, pt0, pt1))
+        metric = result[1][0]
+    else:
+        # Form-primitive: (index, distance_squared, point)
+        metric = result[1]
+
+    # Return based on function type
+    return np.sqrt(metric) if func_prefix == "distance" else metric

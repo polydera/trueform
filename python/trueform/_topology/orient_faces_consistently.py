@@ -12,6 +12,7 @@ from typing import Union, Tuple
 from .. import _trueform
 from .._spatial import Mesh
 from .._core import OffsetBlockedArray
+from .._dispatch import isocontour_suffix
 
 
 def orient_faces_consistently(
@@ -103,11 +104,8 @@ def orient_faces_consistently(
         new_mesh.manifold_edge_link = mesh.manifold_edge_link
 
     # Build dispatch suffix
-    dims = new_mesh.dims
-    index_str = 'int' if new_mesh.faces.dtype == np.int32 else 'int64'
-    real_str = 'float' if new_mesh.points.dtype == np.float32 else 'double'
-    ngon_str = 'dyn' if new_mesh.is_dynamic else '3'
-    suffix = f"{index_str}{real_str}{ngon_str}{dims}d"
+    ngon = 'dyn' if new_mesh.is_dynamic else '3'
+    suffix = isocontour_suffix(new_mesh.faces.dtype, new_mesh.points.dtype, ngon, new_mesh.dims)
 
     # Call C++
     func_name = f"orient_faces_consistently_{suffix}"

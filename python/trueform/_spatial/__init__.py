@@ -11,39 +11,25 @@ import numpy as np
 from typing import Any, Optional, Union, List, Tuple
 from .. import _trueform
 from .._primitives import Point, Segment, Polygon, Ray, Line
+
+# Dispatch infrastructure
+from .._dispatch import (
+    extract_form_meta,
+    form_primitive_suffix,
+    form_form_suffix,
+    canonicalize_index_order,
+)
+from ._dispatch import (
+    NEIGHBOR_SEARCH,
+    NEIGHBOR_SEARCH_KNN,
+    NEIGHBOR_SEARCH_FORM_FORM,
+)
+
+# Spatial forms
 from .mesh import Mesh
 from .edge_mesh import EdgeMesh
 from .point_cloud import PointCloud
-from ._point_cloud_neighbor_search import (
-    _POINT_CLOUD_NEIGHBOR_SEARCH_DISPATCH,
-    _POINT_CLOUD_NEIGHBOR_SEARCH_KNN_DISPATCH
-)
-from ._mesh_neighbor_search import (
-    _MESH_NEIGHBOR_SEARCH_DISPATCH,
-    _MESH_NEIGHBOR_SEARCH_KNN_DISPATCH
-)
-from ._edge_mesh_neighbor_search import (
-    _EDGE_MESH_NEIGHBOR_SEARCH_DISPATCH,
-    _EDGE_MESH_NEIGHBOR_SEARCH_KNN_DISPATCH
-)
-from ._form_form_neighbor_search import _FORM_FORM_NEIGHBOR_SEARCH_DISPATCH
 from .gather_ids import gather_intersecting_ids, gather_ids_within_distance
-
-# Dispatch tables organized by object type
-_DISPATCH_BY_TYPE = {
-    'PointCloud': {
-        'single': _POINT_CLOUD_NEIGHBOR_SEARCH_DISPATCH,
-        'knn': _POINT_CLOUD_NEIGHBOR_SEARCH_KNN_DISPATCH
-    },
-    'Mesh': {
-        'single': _MESH_NEIGHBOR_SEARCH_DISPATCH,
-        'knn': _MESH_NEIGHBOR_SEARCH_KNN_DISPATCH
-    },
-    'EdgeMesh': {
-        'single': _EDGE_MESH_NEIGHBOR_SEARCH_DISPATCH,
-        'knn': _EDGE_MESH_NEIGHBOR_SEARCH_KNN_DISPATCH
-    }
-}
 
 
 def neighbor_search(
@@ -123,124 +109,72 @@ def neighbor_search(
     is_form_form = query_type in (Mesh, EdgeMesh, PointCloud)
 
     if is_form_form:
-        # Form-Form neighbor search
-        if k is not None:
-            raise ValueError("KNN (k parameter) is not supported for form-form neighbor_search")
+        return _form_form_neighbor_search(spatial_object, query, radius, k)
+    else:
+        return _form_prim_neighbor_search(spatial_object, query, radius, k)
 
-        # Validate dimensions match
-        if spatial_object.dims != query.dims:
-            raise ValueError(
-                f"Dimension mismatch: first form has {spatial_object.dims}D, "
-                f"second form has {query.dims}D. Both must have the same dimensionality (2D or 3D)."
-            )
 
-        # Get type pair
-        type_pair = (type(spatial_object), query_type)
+def _form_form_neighbor_search(form0, form1, radius, k):
+    """Form x form neighbor search using centralized dispatch."""
 
-        if type_pair not in _FORM_FORM_NEIGHBOR_SEARCH_DISPATCH:
-            supported = set()
-            for t0, t1 in _FORM_FORM_NEIGHBOR_SEARCH_DISPATCH.keys():
-                supported.add(t0.__name__)
-                supported.add(t1.__name__)
-            raise TypeError(
-                f"form-form neighbor_search not implemented for types: {type(spatial_object).__name__}, {query_type.__name__}. "
-                f"Supported types: {', '.join(sorted(supported))}"
-            )
+    if k is not None:
+        raise ValueError("KNN (k parameter) is not supported for form-form neighbor_search")
 
-        func_template, needs_swap = _FORM_FORM_NEIGHBOR_SEARCH_DISPATCH[type_pair]
+    # Validate dimensions match
+    if form0.dims != form1.dims:
+        raise ValueError(
+            f"Dimension mismatch: first form has {form0.dims}D, "
+            f"second form has {form1.dims}D. Both must have the same dimensionality (2D or 3D)."
+        )
 
-        # Determine the canonical order
-        form0_obj = spatial_object if not needs_swap else query
-        form1_obj = query if not needs_swap else spatial_object
-        form0_type = type(form0_obj)
-        form1_type = type(form1_obj)
+    # Get type pair
+    form0_type = type(form0)
+    form1_type = type(form1)
+    type_pair = (form0_type, form1_type)
 
-        # Canonicalize index type ordering for same-type forms
-        # C++ only implements: int×int, int×int64, int64×int64
-        # If we have int64×int, swap to int×int64
-        extra_swap = False
-        if form0_type == form1_type:
-            if form0_type is EdgeMesh:
-                index0_dtype = form0_obj.edges.dtype
-                index1_dtype = form1_obj.edges.dtype
-                # Swap if form0 is int64 and form1 is int32
-                if index0_dtype == np.int64 and index1_dtype == np.int32:
-                    form0_obj, form1_obj = form1_obj, form0_obj
-                    extra_swap = True
-            elif form0_type is Mesh:
-                faces0 = form0_obj.faces
-                faces1 = form1_obj.faces
-                index0_dtype = faces0.dtype if hasattr(faces0, 'dtype') else faces0.data.dtype
-                index1_dtype = faces1.dtype if hasattr(faces1, 'dtype') else faces1.data.dtype
-                # Swap if form0 is int64 and form1 is int32
-                if index0_dtype == np.int64 and index1_dtype == np.int32:
-                    form0_obj, form1_obj = form1_obj, form0_obj
-                    extra_swap = True
+    if type_pair not in NEIGHBOR_SEARCH_FORM_FORM:
+        supported = {t.__name__ for pair in NEIGHBOR_SEARCH_FORM_FORM.keys() for t in pair}
+        raise TypeError(
+            f"form-form neighbor_search not implemented for types: {form0_type.__name__}, {form1_type.__name__}. "
+            f"Supported types: {', '.join(sorted(supported))}"
+        )
 
-        # Get real type (must match)
-        if form0_type is PointCloud:
-            real_str = 'float' if form0_obj.points.dtype == np.float32 else 'double'
-        elif form0_type is Mesh:
-            real_str = 'float' if form0_obj.points.dtype == np.float32 else 'double'
-        else:  # EdgeMesh
-            real_str = 'float' if form0_obj.points.dtype == np.float32 else 'double'
+    func_template, needs_swap = NEIGHBOR_SEARCH_FORM_FORM[type_pair]
 
-        # Dims (must match)
-        dims_str = f"{form0_obj.dims}d"
+    # Apply dispatch table swap
+    form0_obj = form1 if needs_swap else form0
+    form1_obj = form0 if needs_swap else form1
 
-        # Build suffix based on form types
-        if form0_type is PointCloud and form1_type is PointCloud:
-            suffix = f"{real_str}{dims_str}"
-        elif form0_type is EdgeMesh and form1_type is EdgeMesh:
-            index0_str = 'int' if form0_obj.edges.dtype == np.int32 else 'int64'
-            index1_str = 'int' if form1_obj.edges.dtype == np.int32 else 'int64'
-            suffix = f"{index0_str}{index1_str}{real_str}{dims_str}"
-        elif form0_type is EdgeMesh and form1_type is PointCloud:
-            index0_str = 'int' if form0_obj.edges.dtype == np.int32 else 'int64'
-            suffix = f"{index0_str}{real_str}{dims_str}"
-        elif form0_type is Mesh and form1_type is PointCloud:
-            faces0 = form0_obj.faces
-            index0_str = 'int' if (faces0.dtype if hasattr(faces0, 'dtype') else faces0.data.dtype) == np.int32 else 'int64'
-            ngon0_str = 'dyn' if form0_obj.is_dynamic else str(form0_obj.ngon)
-            suffix = f"{index0_str}{real_str}{ngon0_str}{dims_str}"
-        elif form0_type is Mesh and form1_type is EdgeMesh:
-            faces0 = form0_obj.faces
-            index0_str = 'int' if (faces0.dtype if hasattr(faces0, 'dtype') else faces0.data.dtype) == np.int32 else 'int64'
-            index1_str = 'int' if form1_obj.edges.dtype == np.int32 else 'int64'
-            ngon0_str = 'dyn' if form0_obj.is_dynamic else str(form0_obj.ngon)
-            suffix = f"{index0_str}{index1_str}{real_str}{ngon0_str}{dims_str}"
-        elif form0_type is Mesh and form1_type is Mesh:
-            faces0 = form0_obj.faces
-            faces1 = form1_obj.faces
-            index0_str = 'int' if (faces0.dtype if hasattr(faces0, 'dtype') else faces0.data.dtype) == np.int32 else 'int64'
-            index1_str = 'int' if (faces1.dtype if hasattr(faces1, 'dtype') else faces1.data.dtype) == np.int32 else 'int64'
-            ngon0_str = 'dyn' if form0_obj.is_dynamic else str(form0_obj.ngon)
-            ngon1_str = 'dyn' if form1_obj.is_dynamic else str(form1_obj.ngon)
-            suffix = f"{index0_str}{index1_str}{ngon0_str}{ngon1_str}{real_str}{dims_str}"
-        else:
-            raise TypeError(f"Unexpected form-form combination: {form0_type}, {form1_type}")
+    # Apply index canonicalization (int32 before int64 for same types)
+    form0_obj, form1_obj, extra_swap = canonicalize_index_order(form0_obj, form1_obj)
 
-        # Get function and call
-        func_name = func_template.format(suffix)
-        cpp_func = getattr(_trueform.spatial, func_name)
-        result = cpp_func(form0_obj._wrapper, form1_obj._wrapper, radius)
+    # Build suffix using dispatch utility
+    meta0 = extract_form_meta(form0_obj)
+    meta1 = extract_form_meta(form1_obj)
+    suffix = form_form_suffix(meta0, meta1, type(form0_obj), type(form1_obj))
 
-        # If forms were swapped, swap results back
-        if result is not None and (needs_swap or extra_swap):
-            (idx0, idx1), (dist, pt0, pt1) = result
-            result = ((idx1, idx0), (dist, pt1, pt0))
+    func_name = func_template.format(suffix)
+    cpp_func = getattr(_trueform.spatial, func_name)
+    result = cpp_func(form0_obj._wrapper, form1_obj._wrapper, radius)
 
-        return result
+    # If forms were swapped, swap results back
+    if result is not None and (needs_swap or extra_swap):
+        (idx0, idx1), (dist, pt0, pt1) = result
+        result = ((idx1, idx0), (dist, pt1, pt0))
 
-    # Form-Primitive neighbor search (original implementation)
+    return result
+
+
+def _form_prim_neighbor_search(spatial_object, query, radius, k):
+    """Form x primitive neighbor search using centralized dispatch."""
+
     # Normalize query to a primitive type
     if isinstance(query, np.ndarray):
         # Treat numpy arrays as points
         if query.ndim == 1:
-            # Infer dimensions from array shape
-            dims = query.shape[0]
             query_type = Point
             query_data = query
+            dims = query.shape[0]
         else:
             raise TypeError(
                 f"numpy array queries must be 1D point arrays, got shape {query.shape}"
@@ -260,60 +194,28 @@ def neighbor_search(
             f"Both must have the same dimensionality (2D or 3D)."
         )
 
-    # Determine object type and compute appropriate suffix
-    obj_type = type(spatial_object).__name__
+    # Get form type and dispatch table
+    form_type = type(spatial_object)
 
-    if obj_type == 'PointCloud':
-        # PointCloud: suffix is "float2d" or "double3d"
-        obj_dtype = spatial_object.points.dtype
-        dtype_str = 'float' if obj_dtype == np.float32 else 'double'
-        suffix = f"{dtype_str}{obj_dims}d"
-
-    elif obj_type == 'Mesh':
-        # Mesh: suffix is "intfloat32d" or "int64doubledyn3d"
-        # Format: {index_type}{real_type}{ngon}{dims}d
-        # ngon is 3 for triangles, "dyn" for dynamic
-        faces = spatial_object.faces
-        faces_dtype = faces.dtype if hasattr(faces, 'dtype') else faces.data.dtype
-        points_dtype = spatial_object.points.dtype
-        index_str = 'int' if faces_dtype == np.int32 else 'int64'
-        real_str = 'float' if points_dtype == np.float32 else 'double'
-        ngon_str = 'dyn' if spatial_object.is_dynamic else str(spatial_object.ngon)
-        suffix = f"{index_str}{real_str}{ngon_str}{obj_dims}d"
-        obj_dtype = points_dtype  # Use points dtype for query conversion
-
-    elif obj_type == 'EdgeMesh':
-        # EdgeMesh: suffix is "intfloat2d" or "int64double3d"
-        # Format: {index_type}{real_type}{dims}d
-        edges_dtype = spatial_object.edges.dtype
-        points_dtype = spatial_object.points.dtype
-
-        index_str = 'int' if edges_dtype == np.int32 else 'int64'
-        real_str = 'float' if points_dtype == np.float32 else 'double'
-        suffix = f"{index_str}{real_str}{obj_dims}d"
-        obj_dtype = points_dtype  # Use points dtype for query conversion
-
-    else:
+    if form_type not in NEIGHBOR_SEARCH:
         raise TypeError(
-            f"neighbor_search not implemented for spatial object type: {obj_type}. "
-            f"Supported types: PointCloud, Mesh, EdgeMesh"
+            f"neighbor_search not implemented for spatial object type: {form_type.__name__}. "
+            f"Supported types: {', '.join(t.__name__ for t in NEIGHBOR_SEARCH.keys())}"
         )
+
+    # Build suffix using centralized dispatch
+    meta = extract_form_meta(spatial_object)
+    suffix = form_primitive_suffix(meta)
 
     # Convert query_data to match object dtype if necessary
+    obj_dtype = spatial_object.points.dtype
     if isinstance(query_data, np.ndarray) and query_data.dtype != obj_dtype:
         query_data = query_data.astype(obj_dtype)
-
-    # Get the appropriate dispatch table for this object type
-    if obj_type not in _DISPATCH_BY_TYPE:
-        raise TypeError(
-            f"neighbor_search not implemented for spatial object type: {obj_type}. "
-            f"Supported types: {', '.join(_DISPATCH_BY_TYPE.keys())}"
-        )
 
     # Choose dispatch table based on whether k is specified
     if k is None:
         # Non-KNN query - single nearest neighbor
-        dispatch_table = _DISPATCH_BY_TYPE[obj_type]['single']
+        dispatch_table = NEIGHBOR_SEARCH[form_type]
 
         if query_type not in dispatch_table:
             supported = ", ".join(t.__name__ for t in dispatch_table.keys())
@@ -327,7 +229,7 @@ def neighbor_search(
         return cpp_func(spatial_object._wrapper, query_data, radius)
     else:
         # KNN query - k nearest neighbors
-        dispatch_table = _DISPATCH_BY_TYPE[obj_type]['knn']
+        dispatch_table = NEIGHBOR_SEARCH_KNN[form_type]
 
         if query_type not in dispatch_table:
             supported = ", ".join(t.__name__ for t in dispatch_table.keys())

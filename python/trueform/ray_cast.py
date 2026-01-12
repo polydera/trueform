@@ -7,16 +7,14 @@ Commercial licensing available via info@polydera.com.
 https://github.com/xlabmedical/trueform
 """
 
-import numpy as np
 from typing import Any, Optional, Tuple
 from . import _trueform
-from ._core._ray_cast import _RAY_CAST_DISPATCH as _CORE_DISPATCH
-from ._spatial._ray_cast import _SPATIAL_RAY_CAST_DISPATCH
 from ._primitives import Plane
 
-
-# Core primitives dispatch table
-_RAY_CAST_DISPATCH = {**_CORE_DISPATCH}
+# Dispatch infrastructure
+from ._dispatch import extract_form_meta, primitive_suffix, form_primitive_suffix
+from ._core._dispatch import RAY_CAST as CORE_RAY_CAST
+from ._spatial._dispatch import RAY_CAST as SPATIAL_RAY_CAST
 
 
 def ray_cast(ray: Any, target: Any, config: Optional[Tuple[float, float]] = None):
@@ -99,52 +97,45 @@ def ray_cast(ray: Any, target: Any, config: Optional[Tuple[float, float]] = None
         )
 
     target_type = type(target)
-    target_type_name = target_type.__name__
 
-    # Handle spatial structures (PointCloud, Mesh, EdgeMesh)
-    if target_type_name in _SPATIAL_RAY_CAST_DISPATCH:
-        # Compute appropriate suffix based on object type
-        if target_type_name == 'PointCloud':
-            # PointCloud: suffix is "float2d" or "double3d"
-            dtype_str = 'float' if target.points.dtype == np.float32 else 'double'
-            suffix = f"{dtype_str}{target.dims}d"
-        elif target_type_name == 'Mesh':
-            # Mesh: suffix is "intfloat32d" or "int64doubledyn3d"
-            index_str = 'int' if target.faces.dtype == np.int32 else 'int64'
-            real_str = 'float' if target.points.dtype == np.float32 else 'double'
-            ngon_str = 'dyn' if target.is_dynamic else str(target.ngon)
-            suffix = f"{index_str}{real_str}{ngon_str}{target.dims}d"
-        else:  # EdgeMesh
-            # EdgeMesh: suffix is "intfloat2d" or "int64double3d"
-            edges_dtype = target.edges.dtype
-            points_dtype = target.points.dtype
+    # Check if target is a spatial form
+    from ._spatial import Mesh, EdgeMesh, PointCloud
 
-            index_str = 'int' if edges_dtype == np.int32 else 'int64'
-            real_str = 'float' if points_dtype == np.float32 else 'double'
-            suffix = f"{index_str}{real_str}{target.dims}d"
-
-        # Get function name from dispatch table and call C++ function
-        func_name = _SPATIAL_RAY_CAST_DISPATCH[target_type_name].format(suffix)
-        cpp_func = getattr(_trueform.spatial, func_name)
-        return cpp_func(ray.data, target._wrapper, config)
-
-    # Handle core primitives (Segment, Polygon, Line, AABB, Plane)
-    if target_type not in _RAY_CAST_DISPATCH:
-        supported_core = ", ".join(t.__name__ for t in _RAY_CAST_DISPATCH.keys())
-        supported_spatial = ", ".join(_SPATIAL_RAY_CAST_DISPATCH.keys())
+    if target_type in SPATIAL_RAY_CAST:
+        return _spatial_ray_cast(ray, target, target_type, config)
+    elif target_type in CORE_RAY_CAST:
+        return _core_ray_cast(ray, target, target_type, config)
+    else:
+        supported_core = ", ".join(t.__name__ for t in CORE_RAY_CAST.keys())
+        supported_spatial = ", ".join(t.__name__ for t in SPATIAL_RAY_CAST.keys())
         raise TypeError(
-            f"ray_cast not implemented for target type: {target_type_name}. "
+            f"ray_cast not implemented for target type: {target_type.__name__}. "
             f"Supported types: {supported_core}, {supported_spatial}"
         )
 
+
+def _core_ray_cast(ray, target, target_type, config):
+    """Ray cast against core primitives."""
     # Special case: Plane is 3D only
     if target_type is Plane and ray.dims != 3:
         raise ValueError("ray_cast with Plane is only supported in 3D")
 
-    # Get variant suffix (e.g., "float3d" or "double2d")
-    dtype_str = 'float' if ray.dtype == np.float32 else 'double'
-    suffix = f"{dtype_str}{ray.dims}d"
+    # Build suffix using dispatch utility
+    suffix = primitive_suffix(ray.dtype, ray.dims)
+    func_template = CORE_RAY_CAST[target_type]
+    func_name = func_template.format(suffix)
+    cpp_func = getattr(_trueform.core, func_name)
 
-    # Dispatch to appropriate C++ function for core primitives
-    func_name = _RAY_CAST_DISPATCH[target_type].format(suffix)
-    return getattr(_trueform.core, func_name)(ray.data, target.data, config)
+    return cpp_func(ray.data, target.data, config)
+
+
+def _spatial_ray_cast(ray, target, target_type, config):
+    """Ray cast against spatial forms."""
+    # Build suffix using dispatch utility
+    meta = extract_form_meta(target)
+    suffix = form_primitive_suffix(meta)
+    func_template = SPATIAL_RAY_CAST[target_type]
+    func_name = func_template.format(suffix)
+    cpp_func = getattr(_trueform.spatial, func_name)
+
+    return cpp_func(ray.data, target._wrapper, config)

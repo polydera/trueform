@@ -1,21 +1,25 @@
 """
 Unified intersects API
 
-Copyright (c) 2025 Žiga Sajovic, XLAB
+Copyright (c) 2025 Ziga Sajovic, XLAB
 Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
 Commercial licensing available via info@polydera.com.
 https://github.com/xlabmedical/trueform
 """
-
-import numpy as np
 from typing import Any
 from . import _trueform
-from ._core._intersects import _INTERSECTS_DISPATCH as _CORE_DISPATCH
 from ._primitives import Plane
 
-
-# Import spatial dispatch table (kept separate from core)
-from ._spatial._intersects import _INTERSECTS_DISPATCH as _SPATIAL_INTERSECTS_DISPATCH
+# Dispatch infrastructure
+from ._dispatch import (
+    extract_form_meta,
+    primitive_suffix,
+    form_primitive_suffix,
+    form_form_suffix,
+    canonicalize_index_order,
+)
+from ._core._dispatch import INTERSECTS as CORE_INTERSECTS
+from ._spatial._dispatch import INTERSECTS_FORM_PRIM, INTERSECTS_FORM_FORM
 
 
 def intersects(obj0: Any, obj1: Any) -> bool:
@@ -59,10 +63,9 @@ def intersects(obj0: Any, obj1: Any) -> bool:
     >>> tf.intersects(mesh, pt)
     True
     """
-
     # Validate dimensions match
     if not hasattr(obj0, 'dims') or not hasattr(obj1, 'dims'):
-        raise TypeError(f"Both objects must have 'dims' attribute")
+        raise TypeError("Both objects must have 'dims' attribute")
 
     if obj0.dims != obj1.dims:
         raise ValueError(
@@ -76,176 +79,108 @@ def intersects(obj0: Any, obj1: Any) -> bool:
     type_pair = (type0, type1)
 
     # Import spatial form types
-    from ._spatial.mesh import Mesh
-    from ._spatial.edge_mesh import EdgeMesh
-    from ._spatial.point_cloud import PointCloud
+    from ._spatial import Mesh, EdgeMesh, PointCloud
 
-    # Check if this is a spatial (form-primitive) operation
+    # Check if this is a spatial operation
     is_spatial = type0 in (Mesh, EdgeMesh, PointCloud) or type1 in (Mesh, EdgeMesh, PointCloud)
 
     if is_spatial:
-        # Handle spatial structures (Mesh, EdgeMesh, PointCloud)
-        if type_pair not in _SPATIAL_INTERSECTS_DISPATCH:
-            supported_spatial = set()
-            for t0, t1 in _SPATIAL_INTERSECTS_DISPATCH.keys():
-                supported_spatial.add(t0.__name__)
-                supported_spatial.add(t1.__name__)
-            raise TypeError(
-                f"intersects not implemented for types: {type0.__name__}, {type1.__name__}. "
-                f"Supported spatial types: {', '.join(sorted(supported_spatial))}"
-            )
+        return _spatial_intersects(obj0, obj1, type0, type1, type_pair)
+    else:
+        return _core_intersects(obj0, obj1, type0, type1, type_pair)
 
-        func_template, needs_swap = _SPATIAL_INTERSECTS_DISPATCH[type_pair]
 
-        # Check if this is form-form or form-primitive
-        both_forms = (type0 in (Mesh, EdgeMesh, PointCloud) and
-                      type1 in (Mesh, EdgeMesh, PointCloud))
-
-        if both_forms:
-            # Form-Form intersection
-            form0_obj = obj0 if not needs_swap else obj1
-            form1_obj = obj1 if not needs_swap else obj0
-
-            # Compute suffix based on both forms
-            # For form-form, suffix encodes both forms' properties
-            form0_type = type(form0_obj)
-            form1_type = type(form1_obj)
-
-            # Canonicalize index type ordering for same-type forms
-            # C++ only implements: int×int, int×int64, int64×int64
-            # If we have int64×int, swap to int×int64
-            extra_swap = False
-            if form0_type == form1_type:
-                if form0_type is EdgeMesh:
-                    index0_dtype = form0_obj.edges.dtype
-                    index1_dtype = form1_obj.edges.dtype
-                    # Swap if form0 is int64 and form1 is int32
-                    if index0_dtype == np.int64 and index1_dtype == np.int32:
-                        form0_obj, form1_obj = form1_obj, form0_obj
-                        extra_swap = True
-                elif form0_type is Mesh:
-                    faces0 = form0_obj.faces
-                    faces1 = form1_obj.faces
-                    index0_dtype = faces0.dtype if hasattr(faces0, 'dtype') else faces0.data.dtype
-                    index1_dtype = faces1.dtype if hasattr(faces1, 'dtype') else faces1.data.dtype
-                    # Swap if form0 is int64 and form1 is int32
-                    if index0_dtype == np.int64 and index1_dtype == np.int32:
-                        form0_obj, form1_obj = form1_obj, form0_obj
-                        extra_swap = True
-
-            # Get real type (must match)
-            if form0_type is PointCloud:
-                real_str = 'float' if form0_obj.points.dtype == np.float32 else 'double'
-            elif form0_type is Mesh:
-                real_str = 'float' if form0_obj.points.dtype == np.float32 else 'double'
-            else:  # EdgeMesh
-                real_str = 'float' if form0_obj.points.dtype == np.float32 else 'double'
-
-            # Dims (must match)
-            dims_str = f"{form0_obj.dims}d"
-
-            # Build suffix based on form types
-            if form0_type is PointCloud and form1_type is PointCloud:
-                suffix = f"{real_str}{dims_str}"
-            elif form0_type is EdgeMesh and form1_type is EdgeMesh:
-                index0_str = 'int' if form0_obj.edges.dtype == np.int32 else 'int64'
-                index1_str = 'int' if form1_obj.edges.dtype == np.int32 else 'int64'
-                suffix = f"{index0_str}{index1_str}{real_str}{dims_str}"
-            elif form0_type is EdgeMesh and form1_type is PointCloud:
-                index0_str = 'int' if form0_obj.edges.dtype == np.int32 else 'int64'
-                suffix = f"{index0_str}{real_str}{dims_str}"
-            elif form0_type is Mesh and form1_type is PointCloud:
-                faces0 = form0_obj.faces
-                index0_str = 'int' if (faces0.dtype if hasattr(faces0, 'dtype') else faces0.data.dtype) == np.int32 else 'int64'
-                ngon0_str = 'dyn' if form0_obj.is_dynamic else str(form0_obj.ngon)
-                suffix = f"{index0_str}{real_str}{ngon0_str}{dims_str}"
-            elif form0_type is Mesh and form1_type is EdgeMesh:
-                faces0 = form0_obj.faces
-                index0_str = 'int' if (faces0.dtype if hasattr(faces0, 'dtype') else faces0.data.dtype) == np.int32 else 'int64'
-                index1_str = 'int' if form1_obj.edges.dtype == np.int32 else 'int64'
-                ngon0_str = 'dyn' if form0_obj.is_dynamic else str(form0_obj.ngon)
-                suffix = f"{index0_str}{index1_str}{real_str}{ngon0_str}{dims_str}"
-            elif form0_type is Mesh and form1_type is Mesh:
-                faces0 = form0_obj.faces
-                faces1 = form1_obj.faces
-                index0_str = 'int' if (faces0.dtype if hasattr(faces0, 'dtype') else faces0.data.dtype) == np.int32 else 'int64'
-                index1_str = 'int' if (faces1.dtype if hasattr(faces1, 'dtype') else faces1.data.dtype) == np.int32 else 'int64'
-                ngon0_str = 'dyn' if form0_obj.is_dynamic else str(form0_obj.ngon)
-                ngon1_str = 'dyn' if form1_obj.is_dynamic else str(form1_obj.ngon)
-                suffix = f"{index0_str}{index1_str}{ngon0_str}{ngon1_str}{real_str}{dims_str}"
-            else:
-                raise TypeError(f"Unexpected form-form combination: {form0_type}, {form1_type}")
-
-            # Get function and call
-            func_name = func_template.format(suffix)
-            cpp_func = getattr(_trueform.spatial, func_name)
-
-            if needs_swap:
-                return cpp_func(form0_obj._wrapper, form1_obj._wrapper)
-            else:
-                return cpp_func(form0_obj._wrapper, form1_obj._wrapper)
-        else:
-            # Form-Primitive intersection
-            form_obj = obj0 if not needs_swap else obj1
-            prim_obj = obj1 if not needs_swap else obj0
-
-            # Compute suffix based on form type
-            form_type = type(form_obj)
-            if form_type is PointCloud:
-                dtype_str = 'float' if form_obj.points.dtype == np.float32 else 'double'
-                suffix = f"{dtype_str}{form_obj.dims}d"
-            elif form_type is Mesh:
-                faces = form_obj.faces
-                faces_dtype = faces.dtype if hasattr(faces, 'dtype') else faces.data.dtype
-                points_dtype = form_obj.points.dtype
-                index_str = 'int' if faces_dtype == np.int32 else 'int64'
-                real_str = 'float' if points_dtype == np.float32 else 'double'
-                ngon_str = 'dyn' if form_obj.is_dynamic else str(form_obj.ngon)
-                suffix = f"{index_str}{real_str}{ngon_str}{form_obj.dims}d"
-            elif form_type is EdgeMesh:
-                edges_dtype = form_obj.edges.dtype
-                points_dtype = form_obj.points.dtype
-                index_str = 'int' if edges_dtype == np.int32 else 'int64'
-                real_str = 'float' if points_dtype == np.float32 else 'double'
-                suffix = f"{index_str}{real_str}{form_obj.dims}d"
-            else:
-                raise TypeError(f"Unexpected form type: {form_type}")
-
-            # Get function and call
-            func_name = func_template.format(suffix)
-            cpp_func = getattr(_trueform.spatial, func_name)
-
-            if needs_swap:
-                return cpp_func(form_obj._wrapper, prim_obj.data)
-            else:
-                return cpp_func(form_obj._wrapper, prim_obj.data)
-
-    # Handle core primitives (primitive-primitive)
-    if type_pair not in _CORE_DISPATCH:
-        supported_core = set()
-        for t0, t1 in _CORE_DISPATCH.keys():
-            supported_core.add(t0.__name__)
-            supported_core.add(t1.__name__)
+def _core_intersects(obj0, obj1, type0, type1, type_pair):
+    """Primitive x primitive intersects."""
+    if type_pair not in CORE_INTERSECTS:
+        supported = {t.__name__ for pair in CORE_INTERSECTS.keys() for t in pair}
         raise TypeError(
             f"intersects not implemented for types: {type0.__name__}, {type1.__name__}. "
-            f"Supported core types: {', '.join(sorted(supported_core))}"
+            f"Supported core types: {', '.join(sorted(supported))}"
         )
 
-    func_template, needs_swap = _CORE_DISPATCH[type_pair]
+    func_template, needs_swap = CORE_INTERSECTS[type_pair]
 
     # Special case: Plane is 3D only
     if (type0 is Plane or type1 is Plane) and obj0.dims != 3:
         raise ValueError("intersects with Plane is only supported in 3D")
 
-    # Compute suffix (both primitives have same dtype)
-    dtype_str = 'float' if obj0.dtype == np.float32 else 'double'
-    suffix = f"{dtype_str}{obj0.dims}d"
-
-    # Get function and call
+    # Build suffix using dispatch utility
+    suffix = primitive_suffix(obj0.dtype, obj0.dims)
     func_name = func_template.format(suffix)
     cpp_func = getattr(_trueform.core, func_name)
 
+    # Handle symmetry
     if needs_swap:
         return cpp_func(obj1.data, obj0.data)
+    return cpp_func(obj0.data, obj1.data)
+
+
+def _spatial_intersects(obj0, obj1, type0, type1, type_pair):
+    """Form x primitive or form x form intersects."""
+    from ._spatial import Mesh, EdgeMesh, PointCloud
+
+    both_forms = (type0 in (Mesh, EdgeMesh, PointCloud) and
+                  type1 in (Mesh, EdgeMesh, PointCloud))
+
+    if both_forms:
+        return _form_form_intersects(obj0, obj1, type0, type1, type_pair)
     else:
-        return cpp_func(obj0.data, obj1.data)
+        return _form_prim_intersects(obj0, obj1, type0, type1, type_pair)
+
+
+def _form_prim_intersects(obj0, obj1, type0, type1, type_pair):
+    """Form x primitive intersects."""
+    from ._spatial import Mesh, EdgeMesh, PointCloud
+
+    if type_pair not in INTERSECTS_FORM_PRIM:
+        supported = {t.__name__ for pair in INTERSECTS_FORM_PRIM.keys() for t in pair}
+        raise TypeError(
+            f"intersects not implemented for types: {type0.__name__}, {type1.__name__}. "
+            f"Supported spatial types: {', '.join(sorted(supported))}"
+        )
+
+    func_template, needs_swap = INTERSECTS_FORM_PRIM[type_pair]
+
+    # Determine form and primitive based on swap
+    form_obj = obj1 if needs_swap else obj0
+    prim_obj = obj0 if needs_swap else obj1
+
+    # Build suffix using dispatch utility
+    meta = extract_form_meta(form_obj)
+    suffix = form_primitive_suffix(meta)
+    func_name = func_template.format(suffix)
+    cpp_func = getattr(_trueform.spatial, func_name)
+
+    return cpp_func(form_obj._wrapper, prim_obj.data)
+
+
+def _form_form_intersects(obj0, obj1, type0, type1, type_pair):
+    """Form x form intersects."""
+    from ._spatial import Mesh, EdgeMesh, PointCloud
+
+    if type_pair not in INTERSECTS_FORM_FORM:
+        supported = {t.__name__ for pair in INTERSECTS_FORM_FORM.keys() for t in pair}
+        raise TypeError(
+            f"intersects not implemented for types: {type0.__name__}, {type1.__name__}. "
+            f"Supported form-form types: {', '.join(sorted(supported))}"
+        )
+
+    func_template, needs_swap = INTERSECTS_FORM_FORM[type_pair]
+
+    # Apply dispatch table swap
+    form0_obj = obj1 if needs_swap else obj0
+    form1_obj = obj0 if needs_swap else obj1
+
+    # Apply index canonicalization (int32 before int64 for same types)
+    form0_obj, form1_obj, _ = canonicalize_index_order(form0_obj, form1_obj)
+
+    # Build suffix using dispatch utility
+    meta0 = extract_form_meta(form0_obj)
+    meta1 = extract_form_meta(form1_obj)
+    suffix = form_form_suffix(meta0, meta1, type(form0_obj), type(form1_obj))
+
+    func_name = func_template.format(suffix)
+    cpp_func = getattr(_trueform.spatial, func_name)
+
+    return cpp_func(form0_obj._wrapper, form1_obj._wrapper)

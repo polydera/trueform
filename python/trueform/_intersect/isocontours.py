@@ -12,6 +12,7 @@ from typing import Union, Tuple
 from .. import _trueform
 from .._spatial import Mesh
 from .._core import OffsetBlockedArray
+from .._dispatch import isocontour_suffix
 
 
 def isocontours(
@@ -133,10 +134,8 @@ def isocontours(
         threshold_array = np.ascontiguousarray(threshold_array)
 
     # Get variant suffix
-    index_str = 'int' if mesh.faces.dtype == np.int32 else 'int64'
-    real_str = 'float' if mesh.dtype == np.float32 else 'double'
-    ngon_str = 'dyn' if mesh.is_dynamic else str(mesh.ngon)
-    suffix = f"{index_str}{real_str}{ngon_str}{mesh.dims}d"
+    ngon = 'dyn' if mesh.is_dynamic else str(mesh.ngon)
+    suffix = isocontour_suffix(mesh.faces.dtype, mesh.dtype, ngon, mesh.dims)
 
     # Dispatch to C++ based on threshold count
     if threshold_array.size == 1:

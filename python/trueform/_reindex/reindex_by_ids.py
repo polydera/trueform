@@ -8,10 +8,13 @@ https://github.com/xlabmedical/trueform
 """
 
 import numpy as np
-from typing import Union, Tuple
+from typing import Union, Tuple, Any, Dict
 from .. import _trueform
 from .._spatial import Mesh, EdgeMesh, PointCloud
 from .._core import OffsetBlockedArray
+
+# Dispatch infrastructure
+from .._dispatch import indexed_geometry_suffix, reindex_points_suffix
 
 
 def reindex_by_ids(
@@ -98,17 +101,26 @@ def reindex_by_ids(
     >>> selected_points = tf.reindex_by_ids(point_cloud, point_ids)
     >>> print(selected_points.shape)  # (3, 3)
     """
-
     # Validate IDs array
+    ids = _validate_ids(ids)
+
+    # Normalize input to (kind, arrays, meta)
+    kind, arrays, meta = _extract_reindex_input(data, ids)
+
+    # Dispatch to appropriate handler
+    if kind == 'points':
+        return _reindex_points(arrays, meta, return_index_map)
+    else:  # kind == 'indexed'
+        return _reindex_indexed(arrays, meta, return_index_map)
+
+
+def _validate_ids(ids: np.ndarray) -> np.ndarray:
+    """Validate and normalize the ids array."""
     if not isinstance(ids, np.ndarray):
-        raise TypeError(
-            f"ids must be np.ndarray, got {type(ids).__name__}"
-        )
+        raise TypeError(f"ids must be np.ndarray, got {type(ids).__name__}")
 
     if ids.ndim != 1:
-        raise ValueError(
-            f"ids must be 1D array with shape (N,), got shape {ids.shape}"
-        )
+        raise ValueError(f"ids must be 1D array with shape (N,), got shape {ids.shape}")
 
     if ids.dtype not in (np.int32, np.int64):
         raise TypeError(
@@ -116,225 +128,189 @@ def reindex_by_ids(
             f"Convert with ids.astype(np.int32) or ids.astype(np.int64)"
         )
 
-    # Ensure C-contiguous
     if not ids.flags['C_CONTIGUOUS']:
         ids = np.ascontiguousarray(ids)
 
-    # ===== HANDLE TUPLE INPUT (INDEXED GEOMETRY) =====
+    return ids
+
+
+def _extract_reindex_input(data: Any, ids: np.ndarray) -> Tuple[str, tuple, Dict]:
+    """
+    Normalize any input type to (kind, arrays, meta).
+
+    Returns
+    -------
+    kind : str
+        One of 'points', 'indexed'
+    arrays : tuple
+        Arrays needed for the operation
+    meta : dict
+        Metadata for suffix building and processing
+    """
+    # Handle tuple input (indices, points)
     if isinstance(data, tuple):
-        if len(data) != 2:
-            raise ValueError(
-                f"Tuple input must have exactly 2 elements (indices, points), got {len(data)}"
-            )
+        return _extract_tuple_input(data, ids)
 
-        indices, points = data
+    # Handle form objects
+    if isinstance(data, PointCloud):
+        points = data.points
+        return ('points', (points, ids), {
+            'index_dtype': ids.dtype,
+            'real_dtype': points.dtype,
+            'dims': data.dims,
+        })
 
-        # Validate points
-        if not isinstance(points, np.ndarray):
-            raise TypeError(
-                f"points must be np.ndarray, got {type(points).__name__}"
-            )
+    if isinstance(data, (Mesh, EdgeMesh)):
+        return _extract_mesh_input(data, ids)
 
-        if points.ndim != 2:
-            raise ValueError(
-                f"points must be 2D array with shape (M, Dims), got shape {points.shape}"
-            )
+    raise TypeError(
+        f"Expected tuple or form object (Mesh, EdgeMesh, PointCloud), "
+        f"got {type(data).__name__}"
+    )
 
-        if points.dtype not in (np.float32, np.float64):
-            raise TypeError(
-                f"points dtype must be float32 or float64, got {points.dtype}. "
-                f"Convert with points.astype(np.float32) or points.astype(np.float64)"
-            )
 
-        dims = points.shape[1]
+def _extract_tuple_input(data: tuple, ids: np.ndarray) -> Tuple[str, tuple, Dict]:
+    """Extract and validate (indices, points) tuple input."""
+    if len(data) != 2:
+        raise ValueError(
+            f"Tuple input must have exactly 2 elements (indices, points), got {len(data)}"
+        )
 
-        # Validate dims
-        if dims not in (2, 3):
-            raise ValueError(
-                f"points must have 2 or 3 dimensions, got dims={dims}"
-            )
+    indices, points = data
 
-        # Ensure C-contiguous for points
-        if not points.flags['C_CONTIGUOUS']:
-            points = np.ascontiguousarray(points)
+    # Validate points
+    if not isinstance(points, np.ndarray):
+        raise TypeError(f"points must be np.ndarray, got {type(points).__name__}")
+    if points.ndim != 2:
+        raise ValueError(f"points must be 2D array with shape (M, Dims), got shape {points.shape}")
+    if points.dtype not in (np.float32, np.float64):
+        raise TypeError(
+            f"points dtype must be float32 or float64, got {points.dtype}. "
+            f"Convert with points.astype(np.float32) or points.astype(np.float64)"
+        )
 
-        # Handle dynamic (OffsetBlockedArray) indices
-        if isinstance(indices, OffsetBlockedArray):
-            if indices.dtype not in (np.int32, np.int64):
-                raise TypeError(
-                    f"indices dtype must be int32 or int64, got {indices.dtype}"
-                )
+    dims = points.shape[1]
+    if dims not in (2, 3):
+        raise ValueError(f"points must have 2 or 3 dimensions, got dims={dims}")
 
-            # Ensure indices dtype matches ids dtype
-            if indices.dtype != ids.dtype:
-                raise TypeError(
-                    f"indices dtype ({indices.dtype}) must match ids dtype ({ids.dtype})"
-                )
+    # Ensure C-contiguous
+    if not points.flags['C_CONTIGUOUS']:
+        points = np.ascontiguousarray(points)
 
-            # Build suffix: dyn{index}{real}{dims}d
-            index_str = 'int' if indices.dtype == np.int32 else 'int64'
-            real_str = 'float' if points.dtype == np.float32 else 'double'
-            suffix = f"dyn{index_str}{real_str}{dims}d"
-
-            # Build function name
-            func_name = f"reindexed_by_ids_indexed_{suffix}"
-
-            # Call C++ function
-            # Returns: ((offsets, data), points), face_map, point_map
-            cpp_func = getattr(_trueform.reindex, func_name)
-            ((offsets, data_arr), result_points), face_map, point_map = cpp_func(
-                indices._wrapper, points, ids
-            )
-
-            # Convert to OffsetBlockedArray
-            result = (OffsetBlockedArray(offsets, data_arr), result_points)
-
-            if return_index_map:
-                return (result, face_map, point_map)
-            else:
-                return result
-
-        # Handle fixed-size (ndarray) indices
-        elif isinstance(indices, np.ndarray):
-            if indices.ndim != 2:
-                raise ValueError(
-                    f"indices must be 2D array with shape (N, V), got shape {indices.shape}"
-                )
-
-            if indices.dtype not in (np.int32, np.int64):
-                raise TypeError(
-                    f"indices dtype must be int32 or int64, got {indices.dtype}. "
-                    f"Convert with indices.astype(np.int32) or indices.astype(np.int64)"
-                )
-
-            # Extract shape information
-            V = indices.shape[1]
-
-            # Validate V (only triangles and edges for fixed-size)
-            if V not in (2, 3):
-                raise ValueError(
-                    f"Fixed-size indices must have 2 (edges) or 3 (triangles) columns, got V={V}. "
-                    f"For variable-sized polygons, use OffsetBlockedArray."
-                )
-
-            # Ensure indices dtype matches ids dtype
-            if indices.dtype != ids.dtype:
-                raise TypeError(
-                    f"indices dtype ({indices.dtype}) must match ids dtype ({ids.dtype})"
-                )
-
-            # Ensure C-contiguous
-            if not indices.flags['C_CONTIGUOUS']:
-                indices = np.ascontiguousarray(indices)
-
-            # Build suffix: {V}{index}{real}{dims}d
-            index_str = 'int' if indices.dtype == np.int32 else 'int64'
-            real_str = 'float' if points.dtype == np.float32 else 'double'
-            suffix = f"{V}{index_str}{real_str}{dims}d"
-
-            # Build function name
-            func_name = f"reindexed_by_ids_indexed_{suffix}"
-
-            # Call C++ function - always returns ((connectivity, points), face_map, point_map)
-            cpp_func = getattr(_trueform.reindex, func_name)
-            result, face_map, point_map = cpp_func(indices, points, ids)
-
-            # Conditionally return maps based on user request
-            if return_index_map:
-                return (result, face_map, point_map)
-            else:
-                return result
-
-        else:
-            raise TypeError(
-                f"indices must be np.ndarray or OffsetBlockedArray, got {type(indices).__name__}"
-            )
-
-    # ===== HANDLE FORM OBJECTS (Mesh, EdgeMesh, PointCloud) =====
-    elif isinstance(data, (Mesh, EdgeMesh, PointCloud)):
-        # Validate dims (all support 2D and 3D)
-        if data.dims not in (2, 3):
-            raise ValueError(
-                f"{type(data).__name__} dims must be 2 or 3, got {data.dims}D"
-            )
-
-        if isinstance(data, Mesh):
-            # Extract arrays from Mesh
-            indices = data.faces
-            points = data.points
-            is_dynamic = data.is_dynamic
-            V = None if is_dynamic else data.ngon
-
-        elif isinstance(data, EdgeMesh):
-            # Extract arrays from EdgeMesh
-            indices = data.edges
-            points = data.points
-            is_dynamic = False
-            V = 2
-
-        else:  # PointCloud
-            # PointCloud only has points, no indices
-            points = data.points
-            dims = data.dims
-
-            # Build suffix: {index}{real}{dims}d
-            index_str = 'int' if ids.dtype == np.int32 else 'int64'
-            real_str = 'float' if points.dtype == np.float32 else 'double'
-            suffix = f"{index_str}{real_str}{dims}d"
-
-            # Build function name
-            func_name = f"reindexed_by_ids_points_{suffix}"
-
-            # Call C++ function - always returns (points, point_map)
-            cpp_func = getattr(_trueform.reindex, func_name)
-            result, point_map = cpp_func(points, ids)
-
-            # Conditionally return maps based on user request
-            if return_index_map:
-                return (result, point_map)
-            else:
-                return result
-
-        # For Mesh and EdgeMesh, use indexed reindexing
-        dims = data.dims
-        index_str = 'int' if indices.dtype == np.int32 else 'int64'
-        real_str = 'float' if points.dtype == np.float32 else 'double'
-
-        # Ensure indices dtype matches ids dtype
+    # Handle dynamic (OffsetBlockedArray) indices
+    if isinstance(indices, OffsetBlockedArray):
+        if indices.dtype not in (np.int32, np.int64):
+            raise TypeError(f"indices dtype must be int32 or int64, got {indices.dtype}")
         if indices.dtype != ids.dtype:
             raise TypeError(
-                f"{type(data).__name__} indices dtype ({indices.dtype}) must match ids dtype ({ids.dtype})"
+                f"indices dtype ({indices.dtype}) must match ids dtype ({ids.dtype})"
+            )
+        return ('indexed', (indices, points, ids), {
+            'V': 'dyn',
+            'index_dtype': indices.dtype,
+            'real_dtype': points.dtype,
+            'dims': dims,
+            'is_dynamic': True,
+        })
+
+    # Handle fixed-size (ndarray) indices
+    if isinstance(indices, np.ndarray):
+        if indices.ndim != 2:
+            raise ValueError(f"indices must be 2D array with shape (N, V), got shape {indices.shape}")
+        if indices.dtype not in (np.int32, np.int64):
+            raise TypeError(
+                f"indices dtype must be int32 or int64, got {indices.dtype}. "
+                f"Convert with indices.astype(np.int32) or indices.astype(np.int64)"
             )
 
-        if is_dynamic:
-            # Dynamic mesh - indices is OffsetBlockedArray
-            suffix = f"dyn{index_str}{real_str}{dims}d"
-            func_name = f"reindexed_by_ids_indexed_{suffix}"
-
-            cpp_func = getattr(_trueform.reindex, func_name)
-            # Returns: ((offsets, data), points), face_map, point_map
-            ((offsets, data_arr), result_points), face_map, point_map = cpp_func(
-                indices._wrapper, points, ids
+        V = indices.shape[1]
+        if V not in (2, 3):
+            raise ValueError(
+                f"Fixed-size indices must have 2 (edges) or 3 (triangles) columns, got V={V}. "
+                f"For variable-sized polygons, use OffsetBlockedArray."
             )
 
-            # Convert to OffsetBlockedArray
-            result = (OffsetBlockedArray(offsets, data_arr), result_points)
-        else:
-            # Fixed-size mesh/edge mesh
-            suffix = f"{V}{index_str}{real_str}{dims}d"
-            func_name = f"reindexed_by_ids_indexed_{suffix}"
+        if indices.dtype != ids.dtype:
+            raise TypeError(
+                f"indices dtype ({indices.dtype}) must match ids dtype ({ids.dtype})"
+            )
 
-            cpp_func = getattr(_trueform.reindex, func_name)
-            result, face_map, point_map = cpp_func(indices, points, ids)
+        if not indices.flags['C_CONTIGUOUS']:
+            indices = np.ascontiguousarray(indices)
 
-        # Conditionally return maps based on user request
-        if return_index_map:
-            return (result, face_map, point_map)
-        else:
-            return result
+        return ('indexed', (indices, points, ids), {
+            'V': str(V),
+            'index_dtype': indices.dtype,
+            'real_dtype': points.dtype,
+            'dims': dims,
+            'is_dynamic': False,
+        })
 
-    else:
+    raise TypeError(f"indices must be np.ndarray or OffsetBlockedArray, got {type(indices).__name__}")
+
+
+def _extract_mesh_input(data: Union[Mesh, EdgeMesh], ids: np.ndarray) -> Tuple[str, tuple, Dict]:
+    """Extract and validate Mesh/EdgeMesh input."""
+    if data.dims not in (2, 3):
+        raise ValueError(f"{type(data).__name__} dims must be 2 or 3, got {data.dims}D")
+
+    if isinstance(data, Mesh):
+        indices = data.faces
+        points = data.points
+        is_dynamic = data.is_dynamic
+        V = 'dyn' if is_dynamic else str(data.ngon)
+    else:  # EdgeMesh
+        indices = data.edges
+        points = data.points
+        is_dynamic = False
+        V = '2'
+
+    # Verify dtype match
+    if indices.dtype != ids.dtype:
         raise TypeError(
-            f"Expected tuple or form object (Mesh, EdgeMesh, PointCloud), "
-            f"got {type(data).__name__}"
+            f"{type(data).__name__} indices dtype ({indices.dtype}) must match ids dtype ({ids.dtype})"
         )
+
+    return ('indexed', (indices, points, ids), {
+        'V': V,
+        'index_dtype': indices.dtype,
+        'real_dtype': points.dtype,
+        'dims': data.dims,
+        'is_dynamic': is_dynamic,
+    })
+
+
+def _reindex_points(arrays: tuple, meta: Dict, return_index_map: bool):
+    """Reindex points (PointCloud case)."""
+    points, ids = arrays
+    suffix = reindex_points_suffix(meta['index_dtype'], meta['real_dtype'], meta['dims'])
+    func_name = f"reindexed_by_ids_points_{suffix}"
+
+    cpp_func = getattr(_trueform.reindex, func_name)
+    result, point_map = cpp_func(points, ids)
+
+    if return_index_map:
+        return (result, point_map)
+    return result
+
+
+def _reindex_indexed(arrays: tuple, meta: Dict, return_index_map: bool):
+    """Reindex indexed geometry (Mesh, EdgeMesh, or tuple)."""
+    indices, points, ids = arrays
+    suffix = indexed_geometry_suffix(meta['V'], meta['index_dtype'], meta['real_dtype'], meta['dims'])
+    func_name = f"reindexed_by_ids_indexed_{suffix}"
+
+    cpp_func = getattr(_trueform.reindex, func_name)
+
+    if meta['is_dynamic']:
+        # Dynamic mesh - indices is OffsetBlockedArray
+        ((offsets, data_arr), result_points), face_map, point_map = cpp_func(
+            indices._wrapper, points, ids
+        )
+        result = (OffsetBlockedArray(offsets, data_arr), result_points)
+    else:
+        result, face_map, point_map = cpp_func(indices, points, ids)
+
+    if return_index_map:
+        return (result, face_map, point_map)
+    return result

@@ -11,6 +11,7 @@ import numpy as np
 from typing import Union
 from .. import _trueform
 from .._core import OffsetBlockedArray
+from .._dispatch import topology_mesh_suffix
 
 
 def face_link(
@@ -73,9 +74,7 @@ def face_link(
 
     # ===== Handle OffsetBlockedArray (dynamic) =====
     if isinstance(faces, OffsetBlockedArray):
-        dtype_str = 'int' if faces.dtype == np.int32 else 'int64'
-        suffix = f"{dtype_str}_dyn"
-
+        suffix = topology_mesh_suffix(faces.dtype, 'dyn')
         func_name = f"compute_face_link_{suffix}"
         cpp_func = getattr(_trueform.topology, func_name)
 
@@ -121,9 +120,7 @@ def face_link(
         faces = np.ascontiguousarray(faces)
 
     # ===== BUILD SUFFIX AND DISPATCH =====
-    dtype_str = 'int' if faces.dtype == np.int32 else 'int64'
-    suffix = f"{dtype_str}_{ngon}"
-
+    suffix = topology_mesh_suffix(faces.dtype, str(ngon))
     func_name = f"compute_face_link_{suffix}"
     cpp_func = getattr(_trueform.topology, func_name)
 

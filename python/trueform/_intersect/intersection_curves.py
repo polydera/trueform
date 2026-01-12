@@ -12,6 +12,7 @@ from typing import Tuple
 from .. import _trueform
 from .._spatial import Mesh
 from .._core import OffsetBlockedArray
+from .._dispatch import extract_form_meta, boolean_suffix, canonicalize_index_order
 
 
 def intersection_curves(
@@ -102,22 +103,12 @@ def intersection_curves(
     # 4. HANDLE INDEX TYPE SYMMETRY
     # C++ only implements: int×int, int×int64, int64×int64
     # If we have int64×int, swap to int×int64
-    index0_dtype = mesh0.faces.dtype
-    index1_dtype = mesh1.faces.dtype
-
-    if index0_dtype == np.int64 and index1_dtype == np.int32:
-        # Swap meshes to match C++ implementation
-        mesh0, mesh1 = mesh1, mesh0
+    mesh0, mesh1, _ = canonicalize_index_order(mesh0, mesh1)
 
     # 5. BUILD SUFFIX FOR C++ FUNCTION
-    index0_str = 'int' if mesh0.faces.dtype == np.int32 else 'int64'
-    index1_str = 'int' if mesh1.faces.dtype == np.int32 else 'int64'
-    real_str = 'float' if mesh0.dtype == np.float32 else 'double'
-    ngon0_str = 'dyn' if mesh0.is_dynamic else str(mesh0.ngon)
-    ngon1_str = 'dyn' if mesh1.is_dynamic else str(mesh1.ngon)
-
-    # Format: {index0}{index1}{ngon0}{ngon1}{real}3d
-    suffix = f"{index0_str}{index1_str}{ngon0_str}{ngon1_str}{real_str}3d"
+    meta0 = extract_form_meta(mesh0)
+    meta1 = extract_form_meta(mesh1)
+    suffix = boolean_suffix(meta0, meta1)
 
     # 6. DISPATCH TO C++
     func_name = f"intersection_curves_mesh_mesh_{suffix}"

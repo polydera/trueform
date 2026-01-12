@@ -11,6 +11,7 @@ import numpy as np
 from typing import Union
 from .. import _trueform
 from .._core import OffsetBlockedArray
+from .._dispatch import topology_mesh_suffix
 
 
 def manifold_edge_link(
@@ -82,9 +83,7 @@ def manifold_edge_link(
 
     # ===== Handle OffsetBlockedArray (dynamic) =====
     if isinstance(cells, OffsetBlockedArray):
-        dtype_str = 'int' if cells.dtype == np.int32 else 'int64'
-        suffix = f"{dtype_str}_dyn"
-
+        suffix = topology_mesh_suffix(cells.dtype, 'dyn')
         func_name = f"compute_manifold_edge_link_{suffix}"
         cpp_func = getattr(_trueform.topology, func_name)
 
@@ -130,9 +129,7 @@ def manifold_edge_link(
         cells = np.ascontiguousarray(cells)
 
     # ===== BUILD SUFFIX AND DISPATCH =====
-    dtype_str = 'int' if cells.dtype == np.int32 else 'int64'
-    suffix = f"{dtype_str}_{ngon}"
-
+    suffix = topology_mesh_suffix(cells.dtype, str(ngon))
     func_name = f"compute_manifold_edge_link_{suffix}"
     cpp_func = getattr(_trueform.topology, func_name)
 
