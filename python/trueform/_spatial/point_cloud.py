@@ -15,6 +15,7 @@ from .._trueform.spatial import (
     PointCloudWrapperDouble2D,
     PointCloudWrapperDouble3D,
 )
+from ._validation import validate_points, validate_points_update, validate_transformation
 
 
 class PointCloud:
@@ -60,28 +61,8 @@ class PointCloud:
             Transformation matrix (3x3 for 2D, 4x4 for 3D). If provided, applies
             transformation to points during spatial queries.
         """
-        # Validate input
-        if not isinstance(points, np.ndarray):
-            raise TypeError(f"Expected numpy array, got {type(points)}")
-
-        if points.ndim != 2:
-            raise ValueError(f"Expected 2D array, got shape {points.shape}")
-
-        # Check dtype
-        if points.dtype not in [np.float32, np.float64]:
-            # Try to convert to float32
-            points = points.astype(np.float32)
-
-        # Check dimensionality
-        dims = points.shape[1]
-        if dims not in [2, 3]:
-            raise ValueError(f"Expected 2D or 3D points, got {dims} dimensions")
-
-        # Ensure C-contiguous layout for zero-copy views
-        if not points.flags['C_CONTIGUOUS']:
-            points = np.ascontiguousarray(points)
-
-        # Store the points array (Python owns this data)
+        # Validate and normalize points
+        points, dims = validate_points(points)
         self._points = points
 
         # Pick the right wrapper based on dtype and dims
@@ -117,16 +98,7 @@ class PointCloud:
         value : np.ndarray
             New points array. Must have same dtype and dimensionality as original.
         """
-        if value.dtype != self._points.dtype:
-            raise TypeError(
-                f"Points dtype ({value.dtype}) must match original dtype ({self._points.dtype})"
-            )
-        if value.shape[1] != self._points.shape[1]:
-            raise ValueError(
-                f"Points dimensionality ({value.shape[1]}) must match original ({self._points.shape[1]})"
-            )
-        if not value.flags['C_CONTIGUOUS']:
-            value = np.ascontiguousarray(value)
+        value = validate_points_update(value, self._points.dtype, self._points.shape[1])
         self._points = value
         self._wrapper.set_points_array(value)
 
@@ -172,24 +144,7 @@ class PointCloud:
             self._wrapper.clear_transformation()
             return
 
-        # Validate matrix shape
-        expected_size = self.dims + 1
-        if mat.shape != (expected_size, expected_size):
-            raise ValueError(
-                f"Transformation must be {expected_size}x{expected_size} for {self.dims}D points, "
-                f"got shape {mat.shape}"
-            )
-
-        # Validate dtype matches points
-        if mat.dtype != self._points.dtype:
-            raise TypeError(
-                f"Transformation dtype ({mat.dtype}) must match points dtype ({self._points.dtype})"
-            )
-
-        # Ensure C-contiguous
-        if not mat.flags['C_CONTIGUOUS']:
-            mat = np.ascontiguousarray(mat)
-
+        mat = validate_transformation(mat, self.dims, self._points.dtype)
         self._wrapper.set_transformation(mat)
 
     def build_tree(self) -> None:

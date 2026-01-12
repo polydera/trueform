@@ -32,8 +32,8 @@ auto register_mesh_gather_ids_primitive_double2d(nanobind::module_ &m) -> void {
   // gather_ids - int, double, ngon=3, 2D
   // ============================================================================
 
-  // Point - intdouble32d
-  m.def("gather_ids_point_intdouble32d",
+  // Point - int3double2d
+  m.def("gather_ids_point_int3double2d",
         [](mesh_wrapper<int, double, 3, 2> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<2>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -67,8 +67,8 @@ auto register_mesh_gather_ids_primitive_double2d(nanobind::module_ &m) -> void {
         nb::arg("mesh"), nb::arg("query"), nb::arg("predicate_type"),
         nb::arg("threshold").none() = nb::none());
 
-  // Segment - intdouble32d
-  m.def("gather_ids_segment_intdouble32d",
+  // Segment - int3double2d
+  m.def("gather_ids_segment_int3double2d",
         [](mesh_wrapper<int, double, 3, 2> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<2, 2>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -102,8 +102,8 @@ auto register_mesh_gather_ids_primitive_double2d(nanobind::module_ &m) -> void {
         nb::arg("mesh"), nb::arg("query"), nb::arg("predicate_type"),
         nb::arg("threshold").none() = nb::none());
 
-  // Polygon - intdouble32d
-  m.def("gather_ids_polygon_intdouble32d",
+  // Polygon - int3double2d
+  m.def("gather_ids_polygon_int3double2d",
         [](mesh_wrapper<int, double, 3, 2> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<-1, 2>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -137,8 +137,8 @@ auto register_mesh_gather_ids_primitive_double2d(nanobind::module_ &m) -> void {
         nb::arg("mesh"), nb::arg("query"), nb::arg("predicate_type"),
         nb::arg("threshold").none() = nb::none());
 
-  // Ray - intdouble32d
-  m.def("gather_ids_ray_intdouble32d",
+  // Ray - int3double2d
+  m.def("gather_ids_ray_int3double2d",
         [](mesh_wrapper<int, double, 3, 2> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<2, 2>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -171,8 +171,8 @@ auto register_mesh_gather_ids_primitive_double2d(nanobind::module_ &m) -> void {
         nb::arg("mesh"), nb::arg("query"), nb::arg("predicate_type"),
         nb::arg("threshold").none() = nb::none());
 
-  // Line - intdouble32d
-  m.def("gather_ids_line_intdouble32d",
+  // Line - int3double2d
+  m.def("gather_ids_line_int3double2d",
         [](mesh_wrapper<int, double, 3, 2> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<2, 2>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -209,8 +209,8 @@ auto register_mesh_gather_ids_primitive_double2d(nanobind::module_ &m) -> void {
   // gather_ids - int, double, dynamic, 2D
   // ============================================================================
 
-  // Point - intdoubledyn2d
-  m.def("gather_ids_point_intdoubledyn2d",
+  // Point - intdyndouble2d
+  m.def("gather_ids_point_intdyndouble2d",
         [](mesh_wrapper<int, double, tf::dynamic_size, 2> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<2>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -244,8 +244,8 @@ auto register_mesh_gather_ids_primitive_double2d(nanobind::module_ &m) -> void {
         nb::arg("mesh"), nb::arg("query"), nb::arg("predicate_type"),
         nb::arg("threshold").none() = nb::none());
 
-  // Segment - intdoubledyn2d
-  m.def("gather_ids_segment_intdoubledyn2d",
+  // Segment - intdyndouble2d
+  m.def("gather_ids_segment_intdyndouble2d",
         [](mesh_wrapper<int, double, tf::dynamic_size, 2> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<2, 2>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -279,8 +279,8 @@ auto register_mesh_gather_ids_primitive_double2d(nanobind::module_ &m) -> void {
         nb::arg("mesh"), nb::arg("query"), nb::arg("predicate_type"),
         nb::arg("threshold").none() = nb::none());
 
-  // Polygon - intdoubledyn2d
-  m.def("gather_ids_polygon_intdoubledyn2d",
+  // Polygon - intdyndouble2d
+  m.def("gather_ids_polygon_intdyndouble2d",
         [](mesh_wrapper<int, double, tf::dynamic_size, 2> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<-1, 2>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -314,8 +314,8 @@ auto register_mesh_gather_ids_primitive_double2d(nanobind::module_ &m) -> void {
         nb::arg("mesh"), nb::arg("query"), nb::arg("predicate_type"),
         nb::arg("threshold").none() = nb::none());
 
-  // Ray - intdoubledyn2d
-  m.def("gather_ids_ray_intdoubledyn2d",
+  // Ray - intdyndouble2d
+  m.def("gather_ids_ray_intdyndouble2d",
         [](mesh_wrapper<int, double, tf::dynamic_size, 2> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<2, 2>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -348,8 +348,8 @@ auto register_mesh_gather_ids_primitive_double2d(nanobind::module_ &m) -> void {
         nb::arg("mesh"), nb::arg("query"), nb::arg("predicate_type"),
         nb::arg("threshold").none() = nb::none());
 
-  // Line - intdoubledyn2d
-  m.def("gather_ids_line_intdoubledyn2d",
+  // Line - intdyndouble2d
+  m.def("gather_ids_line_intdyndouble2d",
         [](mesh_wrapper<int, double, tf::dynamic_size, 2> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<2, 2>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -386,8 +386,8 @@ auto register_mesh_gather_ids_primitive_double2d(nanobind::module_ &m) -> void {
   // gather_ids - int64, double, ngon=3, 2D
   // ============================================================================
 
-  // Point - int64double32d
-  m.def("gather_ids_point_int64double32d",
+  // Point - int643double2d
+  m.def("gather_ids_point_int643double2d",
         [](mesh_wrapper<int64_t, double, 3, 2> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<2>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -421,8 +421,8 @@ auto register_mesh_gather_ids_primitive_double2d(nanobind::module_ &m) -> void {
         nb::arg("mesh"), nb::arg("query"), nb::arg("predicate_type"),
         nb::arg("threshold").none() = nb::none());
 
-  // Segment - int64double32d
-  m.def("gather_ids_segment_int64double32d",
+  // Segment - int643double2d
+  m.def("gather_ids_segment_int643double2d",
         [](mesh_wrapper<int64_t, double, 3, 2> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<2, 2>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -456,8 +456,8 @@ auto register_mesh_gather_ids_primitive_double2d(nanobind::module_ &m) -> void {
         nb::arg("mesh"), nb::arg("query"), nb::arg("predicate_type"),
         nb::arg("threshold").none() = nb::none());
 
-  // Polygon - int64double32d
-  m.def("gather_ids_polygon_int64double32d",
+  // Polygon - int643double2d
+  m.def("gather_ids_polygon_int643double2d",
         [](mesh_wrapper<int64_t, double, 3, 2> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<-1, 2>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -491,8 +491,8 @@ auto register_mesh_gather_ids_primitive_double2d(nanobind::module_ &m) -> void {
         nb::arg("mesh"), nb::arg("query"), nb::arg("predicate_type"),
         nb::arg("threshold").none() = nb::none());
 
-  // Ray - int64double32d
-  m.def("gather_ids_ray_int64double32d",
+  // Ray - int643double2d
+  m.def("gather_ids_ray_int643double2d",
         [](mesh_wrapper<int64_t, double, 3, 2> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<2, 2>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -525,8 +525,8 @@ auto register_mesh_gather_ids_primitive_double2d(nanobind::module_ &m) -> void {
         nb::arg("mesh"), nb::arg("query"), nb::arg("predicate_type"),
         nb::arg("threshold").none() = nb::none());
 
-  // Line - int64double32d
-  m.def("gather_ids_line_int64double32d",
+  // Line - int643double2d
+  m.def("gather_ids_line_int643double2d",
         [](mesh_wrapper<int64_t, double, 3, 2> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<2, 2>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -563,8 +563,8 @@ auto register_mesh_gather_ids_primitive_double2d(nanobind::module_ &m) -> void {
   // gather_ids - int64, double, dynamic, 2D
   // ============================================================================
 
-  // Point - int64doubledyn2d
-  m.def("gather_ids_point_int64doubledyn2d",
+  // Point - int64dyndouble2d
+  m.def("gather_ids_point_int64dyndouble2d",
         [](mesh_wrapper<int64_t, double, tf::dynamic_size, 2> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<2>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -598,8 +598,8 @@ auto register_mesh_gather_ids_primitive_double2d(nanobind::module_ &m) -> void {
         nb::arg("mesh"), nb::arg("query"), nb::arg("predicate_type"),
         nb::arg("threshold").none() = nb::none());
 
-  // Segment - int64doubledyn2d
-  m.def("gather_ids_segment_int64doubledyn2d",
+  // Segment - int64dyndouble2d
+  m.def("gather_ids_segment_int64dyndouble2d",
         [](mesh_wrapper<int64_t, double, tf::dynamic_size, 2> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<2, 2>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -633,8 +633,8 @@ auto register_mesh_gather_ids_primitive_double2d(nanobind::module_ &m) -> void {
         nb::arg("mesh"), nb::arg("query"), nb::arg("predicate_type"),
         nb::arg("threshold").none() = nb::none());
 
-  // Polygon - int64doubledyn2d
-  m.def("gather_ids_polygon_int64doubledyn2d",
+  // Polygon - int64dyndouble2d
+  m.def("gather_ids_polygon_int64dyndouble2d",
         [](mesh_wrapper<int64_t, double, tf::dynamic_size, 2> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<-1, 2>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -668,8 +668,8 @@ auto register_mesh_gather_ids_primitive_double2d(nanobind::module_ &m) -> void {
         nb::arg("mesh"), nb::arg("query"), nb::arg("predicate_type"),
         nb::arg("threshold").none() = nb::none());
 
-  // Ray - int64doubledyn2d
-  m.def("gather_ids_ray_int64doubledyn2d",
+  // Ray - int64dyndouble2d
+  m.def("gather_ids_ray_int64dyndouble2d",
         [](mesh_wrapper<int64_t, double, tf::dynamic_size, 2> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<2, 2>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -702,8 +702,8 @@ auto register_mesh_gather_ids_primitive_double2d(nanobind::module_ &m) -> void {
         nb::arg("mesh"), nb::arg("query"), nb::arg("predicate_type"),
         nb::arg("threshold").none() = nb::none());
 
-  // Line - int64doubledyn2d
-  m.def("gather_ids_line_int64doubledyn2d",
+  // Line - int64dyndouble2d
+  m.def("gather_ids_line_int64dyndouble2d",
         [](mesh_wrapper<int64_t, double, tf::dynamic_size, 2> &mesh,
            nb::ndarray<nb::numpy, const double, nb::shape<2, 2>> query_array,
            const std::string &predicate_type, std::optional<double> threshold) {

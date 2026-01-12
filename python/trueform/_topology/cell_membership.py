@@ -11,7 +11,7 @@ import numpy as np
 from typing import Union
 from .. import _trueform
 from .._core import OffsetBlockedArray
-from .._dispatch import topology_mesh_suffix
+from .._dispatch import topology_suffix
 
 
 def cell_membership(
@@ -70,7 +70,7 @@ def cell_membership(
 
     # ===== Handle OffsetBlockedArray (dynamic) =====
     if isinstance(cells, OffsetBlockedArray):
-        suffix = topology_mesh_suffix(cells.dtype, 'dyn')
+        suffix = topology_suffix(cells.dtype, 'dyn')
         func_name = f"compute_cell_membership_{suffix}"
         cpp_func = getattr(_trueform.topology, func_name)
 
@@ -111,7 +111,7 @@ def cell_membership(
         cells = np.ascontiguousarray(cells)
 
     # ===== BUILD SUFFIX AND DISPATCH =====
-    suffix = topology_mesh_suffix(cells.dtype, str(ngon))
+    suffix = topology_suffix(cells.dtype, str(ngon))
     func_name = f"compute_cell_membership_{suffix}"
     cpp_func = getattr(_trueform.topology, func_name)
 

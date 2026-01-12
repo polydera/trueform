@@ -11,6 +11,7 @@ import numpy as np
 from typing import Any, Tuple
 from .. import _trueform
 from .._primitives import Point, Segment, Polygon, Ray, Line, Plane
+from .._dispatch import InputMeta, build_suffix
 
 
 # Dispatch table for closest_metric_point_pair
@@ -136,15 +137,13 @@ def closest_metric_point_pair(obj0: Any, obj1: Any) -> Tuple[float, np.ndarray, 
     # Helper to get variant suffix
     def get_suffix(obj):
         if hasattr(obj, 'dtype') and hasattr(obj, 'dims'):
-            dtype_str = 'float' if obj.dtype == np.float32 else 'double'
-            return f"{dtype_str}{obj.dims}d"
+            meta = InputMeta(None, obj.dtype, None, obj.dims)
+            return build_suffix(meta)
         elif isinstance(obj, np.ndarray):
-            dtype_str = 'float' if obj.dtype == np.float32 else 'double'
             # For raw arrays, infer dims from shape
-            if obj.ndim == 1:
-                return f"{dtype_str}{obj.shape[0]}d"
-            elif obj.ndim == 2:
-                return f"{dtype_str}{obj.shape[1]}d"
+            dims = obj.shape[0] if obj.ndim == 1 else obj.shape[1]
+            meta = InputMeta(None, obj.dtype, None, dims)
+            return build_suffix(meta)
         raise TypeError(f"Cannot determine variant for type {type(obj)}")
 
     # Helper to extract data from object (handles Point wrappers and numpy arrays)

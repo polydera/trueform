@@ -14,7 +14,7 @@ from .._spatial import Mesh, EdgeMesh, PointCloud
 from .._core import OffsetBlockedArray
 
 # Dispatch infrastructure
-from .._dispatch import indexed_geometry_suffix, reindex_points_suffix
+from .._dispatch import InputMeta, build_suffix
 
 
 def reindex_by_ids(
@@ -283,7 +283,8 @@ def _extract_mesh_input(data: Union[Mesh, EdgeMesh], ids: np.ndarray) -> Tuple[s
 def _reindex_points(arrays: tuple, meta: Dict, return_index_map: bool):
     """Reindex points (PointCloud case)."""
     points, ids = arrays
-    suffix = reindex_points_suffix(meta['index_dtype'], meta['real_dtype'], meta['dims'])
+    # Points with ids: {index}{real}{dims}d (no ngon)
+    suffix = build_suffix(InputMeta(meta['index_dtype'], meta['real_dtype'], None, meta['dims']))
     func_name = f"reindexed_by_ids_points_{suffix}"
 
     cpp_func = getattr(_trueform.reindex, func_name)
@@ -297,7 +298,7 @@ def _reindex_points(arrays: tuple, meta: Dict, return_index_map: bool):
 def _reindex_indexed(arrays: tuple, meta: Dict, return_index_map: bool):
     """Reindex indexed geometry (Mesh, EdgeMesh, or tuple)."""
     indices, points, ids = arrays
-    suffix = indexed_geometry_suffix(meta['V'], meta['index_dtype'], meta['real_dtype'], meta['dims'])
+    suffix = build_suffix(InputMeta(meta['index_dtype'], meta['real_dtype'], meta['V'], meta['dims']))
     func_name = f"reindexed_by_ids_indexed_{suffix}"
 
     cpp_func = getattr(_trueform.reindex, func_name)

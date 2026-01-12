@@ -10,6 +10,13 @@ https://github.com/xlabmedical/trueform
 import numpy as np
 from typing import Union
 from .._core import OffsetBlockedArray
+from ._validation import (
+    validate_points,
+    validate_points_update,
+    validate_index_array,
+    validate_index_update,
+    validate_transformation,
+)
 from .._trueform.spatial import (
     EdgeMeshWrapperIntFloat2D,
     EdgeMeshWrapperIntFloat3D,
@@ -20,6 +27,19 @@ from .._trueform.spatial import (
     EdgeMeshWrapperInt64Double2D,
     EdgeMeshWrapperInt64Double3D,
 )
+
+
+# Wrapper lookup: (index_type, real_type, dims) -> wrapper_class
+_EDGE_MESH_WRAPPERS = {
+    ("Int", "Float", 2): EdgeMeshWrapperIntFloat2D,
+    ("Int", "Float", 3): EdgeMeshWrapperIntFloat3D,
+    ("Int", "Double", 2): EdgeMeshWrapperIntDouble2D,
+    ("Int", "Double", 3): EdgeMeshWrapperIntDouble3D,
+    ("Int64", "Float", 2): EdgeMeshWrapperInt64Float2D,
+    ("Int64", "Float", 3): EdgeMeshWrapperInt64Float3D,
+    ("Int64", "Double", 2): EdgeMeshWrapperInt64Double2D,
+    ("Int64", "Double", 3): EdgeMeshWrapperInt64Double3D,
+}
 
 
 class EdgeMesh:
@@ -71,50 +91,9 @@ class EdgeMesh:
             Transformation matrix (3x3 for 2D, 4x4 for 3D). If provided, applies
             transformation to points during spatial queries.
         """
-        # Validate edges
-        if not isinstance(edges, np.ndarray):
-            raise TypeError(
-                f"Expected numpy array for edges, got {type(edges)}")
-        if edges.ndim != 2:
-            raise ValueError(
-                f"Expected 2D array for edges, got shape {edges.shape}")
-        if edges.shape[1] != 2:
-            raise ValueError(
-                f"Edges must have 2 vertices per edge, got {edges.shape[1]}"
-            )
-
-        # Validate points
-        if not isinstance(points, np.ndarray):
-            raise TypeError(
-                f"Expected numpy array for points, got {type(points)}")
-        if points.ndim != 2:
-            raise ValueError(
-                f"Expected 2D array for points, got shape {points.shape}")
-
-        # Check edge dtype
-        if edges.dtype not in [np.int32, np.int64]:
-            raise TypeError(
-                f"Edge indices must be int32 or int64, got {edges.dtype}. "
-                f"Convert with edges.astype(np.int32) or edges.astype(np.int64)"
-            )
-
-        # Check point dtype
-        if points.dtype not in [np.float32, np.float64]:
-            # Try to convert to float32
-            points = points.astype(np.float32)
-
-        # Check dimensionality
-        dims = points.shape[1]
-        if dims not in [2, 3]:
-            raise ValueError(
-                f"Points must be 2D or 3D, got {dims} dimensions"
-            )
-
-        # Ensure C-contiguous layout for zero-copy views
-        if not edges.flags["C_CONTIGUOUS"]:
-            edges = np.ascontiguousarray(edges)
-        if not points.flags["C_CONTIGUOUS"]:
-            points = np.ascontiguousarray(points)
+        # Validate and normalize inputs
+        edges = validate_index_array(edges, expected_cols=2, name="edges")
+        points, dims = validate_points(points)
 
         # Store arrays (Python owns this data)
         self._edges = edges
@@ -123,10 +102,10 @@ class EdgeMesh:
         # Deduce wrapper type from dtypes and dims
         index_type = "Int" if edges.dtype == np.int32 else "Int64"
         real_type = "Float" if points.dtype == np.float32 else "Double"
-        wrapper_name = f"EdgeMeshWrapper{index_type}{real_type}{dims}D"
+        key = (index_type, real_type, dims)
 
         # Look up the wrapper class
-        wrapper_class = globals().get(wrapper_name)
+        wrapper_class = _EDGE_MESH_WRAPPERS.get(key)
         if wrapper_class is None:
             raise ValueError(
                 f"Unsupported combination: edges dtype={edges.dtype}, "
@@ -157,16 +136,7 @@ class EdgeMesh:
         value : np.ndarray
             New edges array. Must have same dtype and shape[1]==2.
         """
-        if value.dtype != self._edges.dtype:
-            raise TypeError(
-                f"Edges dtype ({value.dtype}) must match original dtype ({self._edges.dtype})"
-            )
-        if value.shape[1] != 2:
-            raise ValueError(
-                f"Edges must have 2 vertices per edge, got {value.shape[1]}"
-            )
-        if not value.flags['C_CONTIGUOUS']:
-            value = np.ascontiguousarray(value)
+        value = validate_index_update(value, self._edges.dtype, expected_cols=2, name="Edges")
         self._edges = value
         self._wrapper.set_edges_array(value)
 
@@ -187,16 +157,7 @@ class EdgeMesh:
         value : np.ndarray
             New points array. Must have same dtype and dimensionality as original.
         """
-        if value.dtype != self._points.dtype:
-            raise TypeError(
-                f"Points dtype ({value.dtype}) must match original dtype ({self._points.dtype})"
-            )
-        if value.shape[1] != self._points.shape[1]:
-            raise ValueError(
-                f"Points dimensionality ({value.shape[1]}) must match original ({self._points.shape[1]})"
-            )
-        if not value.flags['C_CONTIGUOUS']:
-            value = np.ascontiguousarray(value)
+        value = validate_points_update(value, self._points.dtype, self._points.shape[1])
         self._points = value
         self._wrapper.set_points_array(value)
 
@@ -247,24 +208,7 @@ class EdgeMesh:
             self._wrapper.clear_transformation()
             return
 
-        # Validate matrix shape
-        expected_size = self.dims + 1
-        if mat.shape != (expected_size, expected_size):
-            raise ValueError(
-                f"Transformation must be {expected_size}x{expected_size} for {self.dims}D points, "
-                f"got shape {mat.shape}"
-            )
-
-        # Validate dtype matches points
-        if mat.dtype != self._points.dtype:
-            raise TypeError(
-                f"Transformation dtype ({mat.dtype}) must match points dtype ({self._points.dtype})"
-            )
-
-        # Ensure C-contiguous
-        if not mat.flags["C_CONTIGUOUS"]:
-            mat = np.ascontiguousarray(mat)
-
+        mat = validate_transformation(mat, self.dims, self._points.dtype)
         self._wrapper.set_transformation(mat)
 
     def build_tree(self) -> None:

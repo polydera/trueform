@@ -12,7 +12,7 @@ from typing import Union, Tuple
 from .. import _trueform
 from .._spatial import Mesh
 from .._core import OffsetBlockedArray
-from .._dispatch import isocontour_suffix
+from .._dispatch import InputMeta, build_suffix
 
 
 def isocontours(
@@ -135,7 +135,8 @@ def isocontours(
 
     # Get variant suffix
     ngon = 'dyn' if mesh.is_dynamic else str(mesh.ngon)
-    suffix = isocontour_suffix(mesh.faces.dtype, mesh.dtype, ngon, mesh.dims)
+    meta = InputMeta(mesh.faces.dtype, mesh.dtype, ngon, mesh.dims)
+    suffix = build_suffix(meta)
 
     # Dispatch to C++ based on threshold count
     if threshold_array.size == 1:

@@ -21,10 +21,10 @@
 
 namespace tf::py {
 
-auto register_mesh_neighbor_search_intfloat32d(nanobind::module_ &m) -> void {
+auto register_mesh_neighbor_search_int3float2d(nanobind::module_ &m) -> void {
 
   // Point queries
-  m.def("neighbor_search_mesh_point_intfloat32d",
+  m.def("neighbor_search_mesh_point_int3float2d",
         [](mesh_wrapper<int, float, 3, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2>>
                query,
@@ -38,7 +38,7 @@ auto register_mesh_neighbor_search_intfloat32d(nanobind::module_ &m) -> void {
 
   // Segment queries
   m.def(
-      "neighbor_search_mesh_segment_intfloat32d",
+      "neighbor_search_mesh_segment_int3float2d",
       [](mesh_wrapper<int, float, 3, 2> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
              query,
@@ -52,7 +52,7 @@ auto register_mesh_neighbor_search_intfloat32d(nanobind::module_ &m) -> void {
 
   // Polygon queries
   m.def(
-      "neighbor_search_mesh_polygon_intfloat32d",
+      "neighbor_search_mesh_polygon_int3float2d",
       [](mesh_wrapper<int, float, 3, 2> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<-1, 2>>
              query,
@@ -66,7 +66,7 @@ auto register_mesh_neighbor_search_intfloat32d(nanobind::module_ &m) -> void {
 
   // Ray queries
   m.def(
-      "neighbor_search_mesh_ray_intfloat32d",
+      "neighbor_search_mesh_ray_int3float2d",
       [](mesh_wrapper<int, float, 3, 2> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
              query,
@@ -80,7 +80,7 @@ auto register_mesh_neighbor_search_intfloat32d(nanobind::module_ &m) -> void {
 
   // Line queries
   m.def(
-      "neighbor_search_mesh_line_intfloat32d",
+      "neighbor_search_mesh_line_int3float2d",
       [](mesh_wrapper<int, float, 3, 2> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
              query,
@@ -93,7 +93,7 @@ auto register_mesh_neighbor_search_intfloat32d(nanobind::module_ &m) -> void {
       nanobind::arg("radius").none() = nanobind::none());
 
 
-  m.def("neighbor_search_mesh_knn_point_intfloat32d",
+  m.def("neighbor_search_mesh_knn_point_int3float2d",
         [](mesh_wrapper<int, float, 3, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2>>
                query,
@@ -107,7 +107,7 @@ auto register_mesh_neighbor_search_intfloat32d(nanobind::module_ &m) -> void {
         nanobind::arg("radius").none() = nanobind::none());
 
   m.def(
-      "neighbor_search_mesh_knn_segment_intfloat32d",
+      "neighbor_search_mesh_knn_segment_int3float2d",
       [](mesh_wrapper<int, float, 3, 2> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
              query,
@@ -121,7 +121,7 @@ auto register_mesh_neighbor_search_intfloat32d(nanobind::module_ &m) -> void {
       nanobind::arg("radius").none() = nanobind::none());
 
   m.def(
-      "neighbor_search_mesh_knn_polygon_intfloat32d",
+      "neighbor_search_mesh_knn_polygon_int3float2d",
       [](mesh_wrapper<int, float, 3, 2> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<-1, 2>>
              query,
@@ -135,7 +135,7 @@ auto register_mesh_neighbor_search_intfloat32d(nanobind::module_ &m) -> void {
       nanobind::arg("radius").none() = nanobind::none());
 
   m.def(
-      "neighbor_search_mesh_knn_ray_intfloat32d",
+      "neighbor_search_mesh_knn_ray_int3float2d",
       [](mesh_wrapper<int, float, 3, 2> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
              query,
@@ -149,7 +149,7 @@ auto register_mesh_neighbor_search_intfloat32d(nanobind::module_ &m) -> void {
       nanobind::arg("radius").none() = nanobind::none());
 
   m.def(
-      "neighbor_search_mesh_knn_line_intfloat32d",
+      "neighbor_search_mesh_knn_line_int3float2d",
       [](mesh_wrapper<int, float, 3, 2> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
              query,

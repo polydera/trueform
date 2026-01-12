@@ -23,7 +23,7 @@ auto register_mesh_gather_ids_edge_mesh_float2d(nanobind::module_ &m) -> void {
   // float, 2D variants (8 functions)
 
   // int × int, ngon=3, float, 2D
-  m.def("gather_ids_mesh_edge_mesh_intintfloat32d",
+  m.def("gather_ids_mesh_edge_mesh_intint3float2d",
         [](mesh_wrapper<int, float, 3, 2> &mesh,
            edge_mesh_wrapper<int, float, 2> &edge_mesh,
            const std::string &predicate_type, std::optional<float> threshold) {
@@ -35,7 +35,7 @@ auto register_mesh_gather_ids_edge_mesh_float2d(nanobind::module_ &m) -> void {
         nanobind::arg("threshold").none() = nanobind::none());
 
   // int × int64, ngon=3, float, 2D
-  m.def("gather_ids_mesh_edge_mesh_intint64float32d",
+  m.def("gather_ids_mesh_edge_mesh_intint643float2d",
         [](mesh_wrapper<int, float, 3, 2> &mesh,
            edge_mesh_wrapper<int64_t, float, 2> &edge_mesh,
            const std::string &predicate_type, std::optional<float> threshold) {
@@ -47,7 +47,7 @@ auto register_mesh_gather_ids_edge_mesh_float2d(nanobind::module_ &m) -> void {
         nanobind::arg("threshold").none() = nanobind::none());
 
   // int64 × int64, ngon=3, float, 2D
-  m.def("gather_ids_mesh_edge_mesh_int64int64float32d",
+  m.def("gather_ids_mesh_edge_mesh_int64int643float2d",
         [](mesh_wrapper<int64_t, float, 3, 2> &mesh,
            edge_mesh_wrapper<int64_t, float, 2> &edge_mesh,
            const std::string &predicate_type, std::optional<float> threshold) {
@@ -59,7 +59,7 @@ auto register_mesh_gather_ids_edge_mesh_float2d(nanobind::module_ &m) -> void {
         nanobind::arg("threshold").none() = nanobind::none());
 
   // int × int, dynamic, float, 2D
-  m.def("gather_ids_mesh_edge_mesh_intintfloatdyn2d",
+  m.def("gather_ids_mesh_edge_mesh_intintdynfloat2d",
         [](mesh_wrapper<int, float, tf::dynamic_size, 2> &mesh,
            edge_mesh_wrapper<int, float, 2> &edge_mesh,
            const std::string &predicate_type, std::optional<float> threshold) {
@@ -71,7 +71,7 @@ auto register_mesh_gather_ids_edge_mesh_float2d(nanobind::module_ &m) -> void {
         nanobind::arg("threshold").none() = nanobind::none());
 
   // int × int64, dynamic, float, 2D
-  m.def("gather_ids_mesh_edge_mesh_intint64floatdyn2d",
+  m.def("gather_ids_mesh_edge_mesh_intint64dynfloat2d",
         [](mesh_wrapper<int, float, tf::dynamic_size, 2> &mesh,
            edge_mesh_wrapper<int64_t, float, 2> &edge_mesh,
            const std::string &predicate_type, std::optional<float> threshold) {
@@ -83,7 +83,7 @@ auto register_mesh_gather_ids_edge_mesh_float2d(nanobind::module_ &m) -> void {
         nanobind::arg("threshold").none() = nanobind::none());
 
   // int64 × int64, dynamic, float, 2D
-  m.def("gather_ids_mesh_edge_mesh_int64int64floatdyn2d",
+  m.def("gather_ids_mesh_edge_mesh_int64int64dynfloat2d",
         [](mesh_wrapper<int64_t, float, tf::dynamic_size, 2> &mesh,
            edge_mesh_wrapper<int64_t, float, 2> &edge_mesh,
            const std::string &predicate_type, std::optional<float> threshold) {
@@ -95,7 +95,7 @@ auto register_mesh_gather_ids_edge_mesh_float2d(nanobind::module_ &m) -> void {
         nanobind::arg("threshold").none() = nanobind::none());
 
   // int64 × int, ngon=3, float, 2D
-  m.def("gather_ids_mesh_edge_mesh_int64intfloat32d",
+  m.def("gather_ids_mesh_edge_mesh_int64int3float2d",
         [](mesh_wrapper<int64_t, float, 3, 2> &mesh,
            edge_mesh_wrapper<int, float, 2> &edge_mesh,
            const std::string &predicate_type, std::optional<float> threshold) {
@@ -107,7 +107,7 @@ auto register_mesh_gather_ids_edge_mesh_float2d(nanobind::module_ &m) -> void {
         nanobind::arg("threshold").none() = nanobind::none());
 
   // int64 × int, dynamic, float, 2D
-  m.def("gather_ids_mesh_edge_mesh_int64intfloatdyn2d",
+  m.def("gather_ids_mesh_edge_mesh_int64intdynfloat2d",
         [](mesh_wrapper<int64_t, float, tf::dynamic_size, 2> &mesh,
            edge_mesh_wrapper<int, float, 2> &edge_mesh,
            const std::string &predicate_type, std::optional<float> threshold) {

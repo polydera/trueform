@@ -13,9 +13,9 @@ from .. import _trueform
 
 # Dispatch infrastructure
 from .._dispatch import (
-    extract_form_meta,
-    form_primitive_suffix,
-    form_form_suffix,
+    extract_meta,
+    build_suffix,
+    build_suffix_pair,
     canonicalize_index_order,
 )
 from ._dispatch import GATHER_IDS_FORM_PRIM, GATHER_IDS_FORM_FORM
@@ -133,8 +133,8 @@ def _form_prim_gather_ids(form, query, type_pair, predicate, distance):
     prim_obj = form if needs_swap else query
 
     # Build suffix using dispatch utility
-    meta = extract_form_meta(form_obj)
-    suffix = form_primitive_suffix(meta)
+    meta = extract_meta(form_obj)
+    suffix = build_suffix(meta)
     func_name = func_template.format(suffix)
     cpp_func = getattr(_trueform.spatial, func_name)
 
@@ -164,9 +164,9 @@ def _form_form_gather_ids(form, query, type_pair, predicate, distance):
     form0_obj, form1_obj, extra_swap = canonicalize_index_order(form0_obj, form1_obj)
 
     # Build suffix using dispatch utility
-    meta0 = extract_form_meta(form0_obj)
-    meta1 = extract_form_meta(form1_obj)
-    suffix = form_form_suffix(meta0, meta1, type(form0_obj), type(form1_obj))
+    meta0 = extract_meta(form0_obj)
+    meta1 = extract_meta(form1_obj)
+    suffix = build_suffix_pair(meta0, meta1)
 
     func_name = func_template.format(suffix)
     cpp_func = getattr(_trueform.spatial, func_name)

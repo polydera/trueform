@@ -14,7 +14,7 @@ from .._spatial import Mesh, EdgeMesh
 from .._core import OffsetBlockedArray
 
 # Dispatch infrastructure
-from .._dispatch import indexed_geometry_suffix
+from .._dispatch import InputMeta, build_suffix
 
 
 def split_into_components(
@@ -273,7 +273,7 @@ def _extract_mesh_input(data: Union[Mesh, EdgeMesh], labels: np.ndarray) -> Tupl
 def _split_indexed(arrays: tuple, meta: Dict) -> Tuple[List[Tuple[np.ndarray, np.ndarray]], np.ndarray]:
     """Split indexed geometry into components."""
     indices, points, labels = arrays
-    suffix = indexed_geometry_suffix(meta['V'], meta['index_dtype'], meta['real_dtype'], meta['dims'])
+    suffix = build_suffix(InputMeta(meta['index_dtype'], meta['real_dtype'], meta['V'], meta['dims']))
     func_name = f"split_into_components_{suffix}"
 
     cpp_func = getattr(_trueform.reindex, func_name)

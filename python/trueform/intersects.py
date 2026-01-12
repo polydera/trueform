@@ -12,10 +12,10 @@ from ._primitives import Plane
 
 # Dispatch infrastructure
 from ._dispatch import (
-    extract_form_meta,
-    primitive_suffix,
-    form_primitive_suffix,
-    form_form_suffix,
+    InputMeta,
+    extract_meta,
+    build_suffix,
+    build_suffix_pair,
     canonicalize_index_order,
 )
 from ._core._dispatch import INTERSECTS as CORE_INTERSECTS
@@ -105,8 +105,9 @@ def _core_intersects(obj0, obj1, type0, type1, type_pair):
     if (type0 is Plane or type1 is Plane) and obj0.dims != 3:
         raise ValueError("intersects with Plane is only supported in 3D")
 
-    # Build suffix using dispatch utility
-    suffix = primitive_suffix(obj0.dtype, obj0.dims)
+    # Build suffix: primitives have no index/ngon
+    meta = InputMeta(None, obj0.dtype, None, obj0.dims)
+    suffix = build_suffix(meta)
     func_name = func_template.format(suffix)
     cpp_func = getattr(_trueform.core, func_name)
 
@@ -146,9 +147,9 @@ def _form_prim_intersects(obj0, obj1, type0, type1, type_pair):
     form_obj = obj1 if needs_swap else obj0
     prim_obj = obj0 if needs_swap else obj1
 
-    # Build suffix using dispatch utility
-    meta = extract_form_meta(form_obj)
-    suffix = form_primitive_suffix(meta)
+    # Build suffix using extract_meta + build_suffix
+    meta = extract_meta(form_obj)
+    suffix = build_suffix(meta)
     func_name = func_template.format(suffix)
     cpp_func = getattr(_trueform.spatial, func_name)
 
@@ -175,10 +176,10 @@ def _form_form_intersects(obj0, obj1, type0, type1, type_pair):
     # Apply index canonicalization (int32 before int64 for same types)
     form0_obj, form1_obj, _ = canonicalize_index_order(form0_obj, form1_obj)
 
-    # Build suffix using dispatch utility
-    meta0 = extract_form_meta(form0_obj)
-    meta1 = extract_form_meta(form1_obj)
-    suffix = form_form_suffix(meta0, meta1, type(form0_obj), type(form1_obj))
+    # Build suffix using extract_meta + build_suffix_pair
+    meta0 = extract_meta(form0_obj)
+    meta1 = extract_meta(form1_obj)
+    suffix = build_suffix_pair(meta0, meta1)
 
     func_name = func_template.format(suffix)
     cpp_func = getattr(_trueform.spatial, func_name)

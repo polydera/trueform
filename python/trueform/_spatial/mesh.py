@@ -10,6 +10,12 @@ https://github.com/xlabmedical/trueform
 import numpy as np
 from typing import Optional
 from .._core import OffsetBlockedArray
+from ._validation import (
+    validate_points,
+    validate_points_update,
+    validate_transformation,
+    ensure_contiguous,
+)
 from .._trueform.spatial import (
     # Fixed-size meshes (triangles): int32
     MeshWrapperIntFloat32D,
@@ -118,31 +124,8 @@ class Mesh:
             Transformation matrix (3x3 for 2D, 4x4 for 3D). If provided, applies
             transformation to points during spatial queries.
         """
-        # Validate points
-        if not isinstance(points, np.ndarray):
-            raise TypeError(
-                f"Expected numpy array for points, got {type(points)}")
-        if points.ndim != 2:
-            raise ValueError(
-                f"Expected 2D array for points, got shape {points.shape}")
-
-        # Check point dtype
-        if points.dtype not in [np.float32, np.float64]:
-            # Try to convert to float32
-            points = points.astype(np.float32)
-
-        # Check dimensionality
-        dims = points.shape[1]
-        if dims not in [2, 3]:
-            raise ValueError(
-                f"Points must be 2D or 3D, got {dims} dimensions"
-            )
-
-        # Ensure C-contiguous layout for zero-copy views
-        if not points.flags["C_CONTIGUOUS"]:
-            points = np.ascontiguousarray(points)
-
-        # Store points (Python owns this data)
+        # Validate and normalize points
+        points, dims = validate_points(points)
         self._points = points
 
         # Determine index and real types
@@ -197,12 +180,8 @@ class Mesh:
                     f"For variable-sized polygons, use OffsetBlockedArray."
                 )
 
-            # Ensure C-contiguous layout
-            if not faces.flags["C_CONTIGUOUS"]:
-                faces = np.ascontiguousarray(faces)
-
-            # Store faces
-            self._faces = faces
+            # Ensure C-contiguous and store
+            self._faces = ensure_contiguous(faces)
 
             # Determine index type
             index_type = "Int" if faces.dtype == np.int32 else "Int64"
@@ -265,10 +244,8 @@ class Mesh:
                 raise ValueError(
                     f"Faces ngon ({value.shape[1]}) must match original ({self._faces.shape[1]})"
                 )
-            if not value.flags['C_CONTIGUOUS']:
-                value = np.ascontiguousarray(value)
-            self._faces = value
-            self._wrapper.set_faces_array(value)
+            self._faces = ensure_contiguous(value)
+            self._wrapper.set_faces_array(self._faces)
 
     @property
     def points(self) -> np.ndarray:
@@ -287,16 +264,7 @@ class Mesh:
         value : np.ndarray
             New points array. Must have same dtype and dimensionality as original.
         """
-        if value.dtype != self._points.dtype:
-            raise TypeError(
-                f"Points dtype ({value.dtype}) must match original dtype ({self._points.dtype})"
-            )
-        if value.shape[1] != self._points.shape[1]:
-            raise ValueError(
-                f"Points dimensionality ({value.shape[1]}) must match original ({self._points.shape[1]})"
-            )
-        if not value.flags['C_CONTIGUOUS']:
-            value = np.ascontiguousarray(value)
+        value = validate_points_update(value, self._points.dtype, self._points.shape[1])
         self._points = value
         self._wrapper.set_points_array(value)
 
@@ -363,24 +331,7 @@ class Mesh:
             self._wrapper.clear_transformation()
             return
 
-        # Validate matrix shape
-        expected_size = self.dims + 1
-        if mat.shape != (expected_size, expected_size):
-            raise ValueError(
-                f"Transformation must be {expected_size}x{expected_size} for {self.dims}D points, "
-                f"got shape {mat.shape}"
-            )
-
-        # Validate dtype matches points
-        if mat.dtype != self._points.dtype:
-            raise TypeError(
-                f"Transformation dtype ({mat.dtype}) must match points dtype ({self._points.dtype})"
-            )
-
-        # Ensure C-contiguous
-        if not mat.flags["C_CONTIGUOUS"]:
-            mat = np.ascontiguousarray(mat)
-
+        mat = validate_transformation(mat, self.dims, self._points.dtype)
         self._wrapper.set_transformation(mat)
 
     def build_tree(self) -> None:

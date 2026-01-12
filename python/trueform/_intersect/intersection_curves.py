@@ -12,7 +12,7 @@ from typing import Tuple
 from .. import _trueform
 from .._spatial import Mesh
 from .._core import OffsetBlockedArray
-from .._dispatch import extract_form_meta, boolean_suffix, canonicalize_index_order
+from .._dispatch import extract_meta, build_suffix_pair, canonicalize_index_order
 
 
 def intersection_curves(
@@ -106,9 +106,9 @@ def intersection_curves(
     mesh0, mesh1, _ = canonicalize_index_order(mesh0, mesh1)
 
     # 5. BUILD SUFFIX FOR C++ FUNCTION
-    meta0 = extract_form_meta(mesh0)
-    meta1 = extract_form_meta(mesh1)
-    suffix = boolean_suffix(meta0, meta1)
+    meta0 = extract_meta(mesh0)
+    meta1 = extract_meta(mesh1)
+    suffix = build_suffix_pair(meta0, meta1)
 
     # 6. DISPATCH TO C++
     func_name = f"intersection_curves_mesh_mesh_{suffix}"

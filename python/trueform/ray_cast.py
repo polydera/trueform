@@ -12,7 +12,7 @@ from . import _trueform
 from ._primitives import Plane
 
 # Dispatch infrastructure
-from ._dispatch import extract_form_meta, primitive_suffix, form_primitive_suffix
+from ._dispatch import InputMeta, extract_meta, build_suffix
 from ._core._dispatch import RAY_CAST as CORE_RAY_CAST
 from ._spatial._dispatch import RAY_CAST as SPATIAL_RAY_CAST
 
@@ -120,8 +120,9 @@ def _core_ray_cast(ray, target, target_type, config):
     if target_type is Plane and ray.dims != 3:
         raise ValueError("ray_cast with Plane is only supported in 3D")
 
-    # Build suffix using dispatch utility
-    suffix = primitive_suffix(ray.dtype, ray.dims)
+    # Build suffix: primitives have no index/ngon, just real+dims
+    meta = InputMeta(None, ray.dtype, None, ray.dims)
+    suffix = build_suffix(meta)
     func_template = CORE_RAY_CAST[target_type]
     func_name = func_template.format(suffix)
     cpp_func = getattr(_trueform.core, func_name)
@@ -131,9 +132,9 @@ def _core_ray_cast(ray, target, target_type, config):
 
 def _spatial_ray_cast(ray, target, target_type, config):
     """Ray cast against spatial forms."""
-    # Build suffix using dispatch utility
-    meta = extract_form_meta(target)
-    suffix = form_primitive_suffix(meta)
+    # Build suffix using extract_meta + build_suffix
+    meta = extract_meta(target)
+    suffix = build_suffix(meta)
     func_template = SPATIAL_RAY_CAST[target_type]
     func_name = func_template.format(suffix)
     cpp_func = getattr(_trueform.spatial, func_name)

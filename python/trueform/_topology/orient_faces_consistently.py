@@ -12,7 +12,7 @@ from typing import Union, Tuple
 from .. import _trueform
 from .._spatial import Mesh
 from .._core import OffsetBlockedArray
-from .._dispatch import isocontour_suffix
+from .._dispatch import InputMeta, build_suffix
 
 
 def orient_faces_consistently(
@@ -105,7 +105,8 @@ def orient_faces_consistently(
 
     # Build dispatch suffix
     ngon = 'dyn' if new_mesh.is_dynamic else '3'
-    suffix = isocontour_suffix(new_mesh.faces.dtype, new_mesh.points.dtype, ngon, new_mesh.dims)
+    meta = InputMeta(new_mesh.faces.dtype, new_mesh.points.dtype, ngon, new_mesh.dims)
+    suffix = build_suffix(meta)
 
     # Call C++
     func_name = f"orient_faces_consistently_{suffix}"

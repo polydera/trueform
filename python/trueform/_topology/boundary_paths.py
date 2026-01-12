@@ -11,7 +11,7 @@ import numpy as np
 from .. import _trueform
 from .._core import OffsetBlockedArray
 from .._spatial import Mesh
-from .._dispatch import topology_mesh_suffix
+from .._dispatch import topology_suffix
 
 
 def boundary_paths(mesh: Mesh) -> OffsetBlockedArray:
@@ -78,7 +78,7 @@ def boundary_paths(mesh: Mesh) -> OffsetBlockedArray:
 
     # Build suffix and dispatch
     ngon = 'dyn' if mesh.is_dynamic else '3'
-    suffix = topology_mesh_suffix(faces.dtype, ngon)
+    suffix = topology_suffix(faces.dtype, ngon)
 
     func_name = f"boundary_paths_{suffix}"
     cpp_func = getattr(_trueform.topology, func_name)

@@ -23,7 +23,7 @@ auto register_mesh_gather_ids_edge_mesh_double3d(nanobind::module_ &m) -> void {
   // double, 3D variants (8 functions)
 
   // int × int, ngon=3, double, 3D
-  m.def("gather_ids_mesh_edge_mesh_intintdouble33d",
+  m.def("gather_ids_mesh_edge_mesh_intint3double3d",
         [](mesh_wrapper<int, double, 3, 3> &mesh,
            edge_mesh_wrapper<int, double, 3> &edge_mesh,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -35,7 +35,7 @@ auto register_mesh_gather_ids_edge_mesh_double3d(nanobind::module_ &m) -> void {
         nanobind::arg("threshold").none() = nanobind::none());
 
   // int × int64, ngon=3, double, 3D
-  m.def("gather_ids_mesh_edge_mesh_intint64double33d",
+  m.def("gather_ids_mesh_edge_mesh_intint643double3d",
         [](mesh_wrapper<int, double, 3, 3> &mesh,
            edge_mesh_wrapper<int64_t, double, 3> &edge_mesh,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -47,7 +47,7 @@ auto register_mesh_gather_ids_edge_mesh_double3d(nanobind::module_ &m) -> void {
         nanobind::arg("threshold").none() = nanobind::none());
 
   // int64 × int64, ngon=3, double, 3D
-  m.def("gather_ids_mesh_edge_mesh_int64int64double33d",
+  m.def("gather_ids_mesh_edge_mesh_int64int643double3d",
         [](mesh_wrapper<int64_t, double, 3, 3> &mesh,
            edge_mesh_wrapper<int64_t, double, 3> &edge_mesh,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -59,7 +59,7 @@ auto register_mesh_gather_ids_edge_mesh_double3d(nanobind::module_ &m) -> void {
         nanobind::arg("threshold").none() = nanobind::none());
 
   // int × int, dynamic, double, 3D
-  m.def("gather_ids_mesh_edge_mesh_intintdoubledyn3d",
+  m.def("gather_ids_mesh_edge_mesh_intintdyndouble3d",
         [](mesh_wrapper<int, double, tf::dynamic_size, 3> &mesh,
            edge_mesh_wrapper<int, double, 3> &edge_mesh,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -71,7 +71,7 @@ auto register_mesh_gather_ids_edge_mesh_double3d(nanobind::module_ &m) -> void {
         nanobind::arg("threshold").none() = nanobind::none());
 
   // int × int64, dynamic, double, 3D
-  m.def("gather_ids_mesh_edge_mesh_intint64doubledyn3d",
+  m.def("gather_ids_mesh_edge_mesh_intint64dyndouble3d",
         [](mesh_wrapper<int, double, tf::dynamic_size, 3> &mesh,
            edge_mesh_wrapper<int64_t, double, 3> &edge_mesh,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -83,7 +83,7 @@ auto register_mesh_gather_ids_edge_mesh_double3d(nanobind::module_ &m) -> void {
         nanobind::arg("threshold").none() = nanobind::none());
 
   // int64 × int64, dynamic, double, 3D
-  m.def("gather_ids_mesh_edge_mesh_int64int64doubledyn3d",
+  m.def("gather_ids_mesh_edge_mesh_int64int64dyndouble3d",
         [](mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh,
            edge_mesh_wrapper<int64_t, double, 3> &edge_mesh,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -95,7 +95,7 @@ auto register_mesh_gather_ids_edge_mesh_double3d(nanobind::module_ &m) -> void {
         nanobind::arg("threshold").none() = nanobind::none());
 
   // int64 × int, ngon=3, double, 3D
-  m.def("gather_ids_mesh_edge_mesh_int64intdouble33d",
+  m.def("gather_ids_mesh_edge_mesh_int64int3double3d",
         [](mesh_wrapper<int64_t, double, 3, 3> &mesh,
            edge_mesh_wrapper<int, double, 3> &edge_mesh,
            const std::string &predicate_type, std::optional<double> threshold) {
@@ -107,7 +107,7 @@ auto register_mesh_gather_ids_edge_mesh_double3d(nanobind::module_ &m) -> void {
         nanobind::arg("threshold").none() = nanobind::none());
 
   // int64 × int, dynamic, double, 3D
-  m.def("gather_ids_mesh_edge_mesh_int64intdoubledyn3d",
+  m.def("gather_ids_mesh_edge_mesh_int64intdyndouble3d",
         [](mesh_wrapper<int64_t, double, tf::dynamic_size, 3> &mesh,
            edge_mesh_wrapper<int, double, 3> &edge_mesh,
            const std::string &predicate_type, std::optional<double> threshold) {

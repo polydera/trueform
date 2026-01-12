@@ -13,7 +13,7 @@ from . import _trueform
 from ._primitives import Plane
 
 # Dispatch infrastructure
-from ._dispatch import primitive_suffix
+from ._dispatch import InputMeta, build_suffix
 from ._core._dispatch import DISTANCE as CORE_DISTANCE
 
 
@@ -140,8 +140,9 @@ def _core_distance(obj0, obj1, func_prefix: str) -> float:
     if (type0 is Plane or type1 is Plane) and obj0.dims != 3:
         raise ValueError(f"{func_prefix} with Plane is only supported in 3D")
 
-    # Build suffix using dispatch utility
-    suffix = primitive_suffix(obj0.dtype, obj0.dims)
+    # Build suffix: primitives have no index/ngon
+    meta = InputMeta(None, obj0.dtype, None, obj0.dims)
+    suffix = build_suffix(meta)
     func_name = func_template.format(func_prefix, suffix)
     cpp_func = getattr(_trueform.core, func_name)
 

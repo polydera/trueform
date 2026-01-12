@@ -9,35 +9,7 @@ https://github.com/xlabmedical/trueform
 
 from .closest_metric_point_pair import closest_metric_point_pair, closest_metric_point
 from .offset_blocked_array import OffsetBlockedArray
-import numpy as np
-
-
-def as_offset_blocked(array: np.ndarray) -> OffsetBlockedArray:
-    """
-    Convert a uniform 2D array to OffsetBlockedArray.
-
-    Convenience function equivalent to OffsetBlockedArray.from_uniform(array).
-
-    Parameters
-    ----------
-    array : np.ndarray
-        2D array of shape (N, V) where N is number of blocks and V is
-        vertices per block. Must have dtype int32 or int64.
-
-    Returns
-    -------
-    OffsetBlockedArray
-        OffsetBlockedArray with uniform block sizes.
-
-    Examples
-    --------
-    >>> import trueform as tf
-    >>> import numpy as np
-    >>> quads = np.array([[0, 1, 2, 3], [4, 5, 6, 7]], dtype=np.int32)
-    >>> faces = tf.as_offset_blocked(quads)
-    >>> mesh = tf.Mesh(faces, points)
-    """
-    return OffsetBlockedArray.from_uniform(array)
+from .as_offset_blocked import as_offset_blocked
 
 
 __all__ = [

@@ -66,7 +66,7 @@ auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
 
   // V=2 (Edges), Dims=2, int32, float32
   m.def(
-      "reindexed_by_mask_indexed_2intfloat2d",
+      "reindexed_by_mask_indexed_int2float2d",
       [](ndarray<numpy, const int, shape<-1, 2>> indices,
          ndarray<numpy, const float, shape<-1, 2>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {
@@ -76,7 +76,7 @@ auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
 
   // V=2 (Edges), Dims=2, int32, float64
   m.def(
-      "reindexed_by_mask_indexed_2intdouble2d",
+      "reindexed_by_mask_indexed_int2double2d",
       [](ndarray<numpy, const int, shape<-1, 2>> indices,
          ndarray<numpy, const double, shape<-1, 2>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {
@@ -87,7 +87,7 @@ auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
 
   // V=2 (Edges), Dims=2, int64, float32
   m.def(
-      "reindexed_by_mask_indexed_2int64float2d",
+      "reindexed_by_mask_indexed_int642float2d",
       [](ndarray<numpy, const int64_t, shape<-1, 2>> indices,
          ndarray<numpy, const float, shape<-1, 2>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {
@@ -98,7 +98,7 @@ auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
 
   // V=2 (Edges), Dims=2, int64, float64
   m.def(
-      "reindexed_by_mask_indexed_2int64double2d",
+      "reindexed_by_mask_indexed_int642double2d",
       [](ndarray<numpy, const int64_t, shape<-1, 2>> indices,
          ndarray<numpy, const double, shape<-1, 2>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {
@@ -109,7 +109,7 @@ auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
 
   // V=2 (Edges), Dims=3, int32, float32
   m.def(
-      "reindexed_by_mask_indexed_2intfloat3d",
+      "reindexed_by_mask_indexed_int2float3d",
       [](ndarray<numpy, const int, shape<-1, 2>> indices,
          ndarray<numpy, const float, shape<-1, 3>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {
@@ -119,7 +119,7 @@ auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
 
   // V=2 (Edges), Dims=3, int32, float64
   m.def(
-      "reindexed_by_mask_indexed_2intdouble3d",
+      "reindexed_by_mask_indexed_int2double3d",
       [](ndarray<numpy, const int, shape<-1, 2>> indices,
          ndarray<numpy, const double, shape<-1, 3>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {
@@ -130,7 +130,7 @@ auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
 
   // V=2 (Edges), Dims=3, int64, float32
   m.def(
-      "reindexed_by_mask_indexed_2int64float3d",
+      "reindexed_by_mask_indexed_int642float3d",
       [](ndarray<numpy, const int64_t, shape<-1, 2>> indices,
          ndarray<numpy, const float, shape<-1, 3>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {
@@ -141,7 +141,7 @@ auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
 
   // V=2 (Edges), Dims=3, int64, float64
   m.def(
-      "reindexed_by_mask_indexed_2int64double3d",
+      "reindexed_by_mask_indexed_int642double3d",
       [](ndarray<numpy, const int64_t, shape<-1, 2>> indices,
          ndarray<numpy, const double, shape<-1, 3>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {
@@ -152,7 +152,7 @@ auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
 
   // V=3 (Triangles), Dims=2, int32, float32
   m.def(
-      "reindexed_by_mask_indexed_3intfloat2d",
+      "reindexed_by_mask_indexed_int3float2d",
       [](ndarray<numpy, const int, shape<-1, 3>> indices,
          ndarray<numpy, const float, shape<-1, 2>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {
@@ -162,7 +162,7 @@ auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
 
   // V=3 (Triangles), Dims=2, int32, float64
   m.def(
-      "reindexed_by_mask_indexed_3intdouble2d",
+      "reindexed_by_mask_indexed_int3double2d",
       [](ndarray<numpy, const int, shape<-1, 3>> indices,
          ndarray<numpy, const double, shape<-1, 2>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {
@@ -173,7 +173,7 @@ auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
 
   // V=3 (Triangles), Dims=2, int64, float32
   m.def(
-      "reindexed_by_mask_indexed_3int64float2d",
+      "reindexed_by_mask_indexed_int643float2d",
       [](ndarray<numpy, const int64_t, shape<-1, 3>> indices,
          ndarray<numpy, const float, shape<-1, 2>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {
@@ -184,7 +184,7 @@ auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
 
   // V=3 (Triangles), Dims=2, int64, float64
   m.def(
-      "reindexed_by_mask_indexed_3int64double2d",
+      "reindexed_by_mask_indexed_int643double2d",
       [](ndarray<numpy, const int64_t, shape<-1, 3>> indices,
          ndarray<numpy, const double, shape<-1, 2>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {
@@ -195,7 +195,7 @@ auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
 
   // V=3 (Triangles), Dims=3, int32, float32
   m.def(
-      "reindexed_by_mask_indexed_3intfloat3d",
+      "reindexed_by_mask_indexed_int3float3d",
       [](ndarray<numpy, const int, shape<-1, 3>> indices,
          ndarray<numpy, const float, shape<-1, 3>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {
@@ -205,7 +205,7 @@ auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
 
   // V=3 (Triangles), Dims=3, int32, float64
   m.def(
-      "reindexed_by_mask_indexed_3intdouble3d",
+      "reindexed_by_mask_indexed_int3double3d",
       [](ndarray<numpy, const int, shape<-1, 3>> indices,
          ndarray<numpy, const double, shape<-1, 3>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {
@@ -216,7 +216,7 @@ auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
 
   // V=3 (Triangles), Dims=3, int64, float32
   m.def(
-      "reindexed_by_mask_indexed_3int64float3d",
+      "reindexed_by_mask_indexed_int643float3d",
       [](ndarray<numpy, const int64_t, shape<-1, 3>> indices,
          ndarray<numpy, const float, shape<-1, 3>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {
@@ -227,7 +227,7 @@ auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
 
   // V=3 (Triangles), Dims=3, int64, float64
   m.def(
-      "reindexed_by_mask_indexed_3int64double3d",
+      "reindexed_by_mask_indexed_int643double3d",
       [](ndarray<numpy, const int64_t, shape<-1, 3>> indices,
          ndarray<numpy, const double, shape<-1, 3>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {
@@ -238,7 +238,7 @@ auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
 
   // Dynamic, Dims=2, int32, float32
   m.def(
-      "reindexed_by_mask_indexed_dynintfloat2d",
+      "reindexed_by_mask_indexed_intdynfloat2d",
       [](const offset_blocked_array_wrapper<int, int> &indices,
          ndarray<numpy, const float, shape<-1, 2>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {
@@ -249,7 +249,7 @@ auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
 
   // Dynamic, Dims=2, int32, float64
   m.def(
-      "reindexed_by_mask_indexed_dynintdouble2d",
+      "reindexed_by_mask_indexed_intdyndouble2d",
       [](const offset_blocked_array_wrapper<int, int> &indices,
          ndarray<numpy, const double, shape<-1, 2>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {
@@ -260,7 +260,7 @@ auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
 
   // Dynamic, Dims=2, int64, float32
   m.def(
-      "reindexed_by_mask_indexed_dynint64float2d",
+      "reindexed_by_mask_indexed_int64dynfloat2d",
       [](const offset_blocked_array_wrapper<int64_t, int64_t> &indices,
          ndarray<numpy, const float, shape<-1, 2>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {
@@ -271,7 +271,7 @@ auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
 
   // Dynamic, Dims=2, int64, float64
   m.def(
-      "reindexed_by_mask_indexed_dynint64double2d",
+      "reindexed_by_mask_indexed_int64dyndouble2d",
       [](const offset_blocked_array_wrapper<int64_t, int64_t> &indices,
          ndarray<numpy, const double, shape<-1, 2>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {
@@ -283,7 +283,7 @@ auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
 
   // Dynamic, Dims=3, int32, float32
   m.def(
-      "reindexed_by_mask_indexed_dynintfloat3d",
+      "reindexed_by_mask_indexed_intdynfloat3d",
       [](const offset_blocked_array_wrapper<int, int> &indices,
          ndarray<numpy, const float, shape<-1, 3>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {
@@ -294,7 +294,7 @@ auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
 
   // Dynamic, Dims=3, int32, float64
   m.def(
-      "reindexed_by_mask_indexed_dynintdouble3d",
+      "reindexed_by_mask_indexed_intdyndouble3d",
       [](const offset_blocked_array_wrapper<int, int> &indices,
          ndarray<numpy, const double, shape<-1, 3>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {
@@ -305,7 +305,7 @@ auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
 
   // Dynamic, Dims=3, int64, float32
   m.def(
-      "reindexed_by_mask_indexed_dynint64float3d",
+      "reindexed_by_mask_indexed_int64dynfloat3d",
       [](const offset_blocked_array_wrapper<int64_t, int64_t> &indices,
          ndarray<numpy, const float, shape<-1, 3>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {
@@ -316,7 +316,7 @@ auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void {
 
   // Dynamic, Dims=3, int64, float64
   m.def(
-      "reindexed_by_mask_indexed_dynint64double3d",
+      "reindexed_by_mask_indexed_int64dyndouble3d",
       [](const offset_blocked_array_wrapper<int64_t, int64_t> &indices,
          ndarray<numpy, const double, shape<-1, 3>> points,
          ndarray<numpy, const bool, shape<-1>> mask) {

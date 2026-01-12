@@ -12,7 +12,7 @@ from typing import Tuple, Union
 from .. import _trueform
 from .._spatial import Mesh
 from .._core import OffsetBlockedArray
-from .._dispatch import isocontour_suffix
+from .._dispatch import InputMeta, build_suffix
 
 
 def embedded_self_intersection_curves(
@@ -106,7 +106,8 @@ def embedded_self_intersection_curves(
 
     # 4. BUILD SUFFIX FOR C++ FUNCTION
     ngon = 'dyn' if mesh.is_dynamic else '3'
-    suffix = isocontour_suffix(mesh.faces.dtype, mesh.dtype, ngon, 3)
+    meta = InputMeta(mesh.faces.dtype, mesh.dtype, ngon, 3)
+    suffix = build_suffix(meta)
 
     # 5. DISPATCH TO C++
     if return_curves:

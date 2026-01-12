@@ -14,7 +14,7 @@ from .._spatial import Mesh, EdgeMesh, PointCloud
 from .._core import OffsetBlockedArray
 
 # Dispatch infrastructure
-from .._dispatch import indexed_geometry_suffix, points_suffix
+from .._dispatch import InputMeta, build_suffix
 
 
 def reindex_by_mask(
@@ -292,7 +292,8 @@ def _extract_mesh_input(data: Union[Mesh, EdgeMesh], mask: np.ndarray) -> Tuple[
 def _reindex_points(arrays: tuple, meta: Dict, return_index_map: bool):
     """Reindex points (PointCloud case)."""
     points, mask = arrays
-    suffix = points_suffix(meta['real_dtype'], meta['dims'])
+    # Points only: {real}{dims}d (no index, no ngon)
+    suffix = build_suffix(InputMeta(None, meta['real_dtype'], None, meta['dims']))
     func_name = f"reindexed_by_mask_points_{suffix}"
 
     cpp_func = getattr(_trueform.reindex, func_name)
@@ -306,7 +307,7 @@ def _reindex_points(arrays: tuple, meta: Dict, return_index_map: bool):
 def _reindex_indexed(arrays: tuple, meta: Dict, return_index_map: bool):
     """Reindex indexed geometry (Mesh, EdgeMesh, or tuple)."""
     indices, points, mask = arrays
-    suffix = indexed_geometry_suffix(meta['V'], meta['index_dtype'], meta['real_dtype'], meta['dims'])
+    suffix = build_suffix(InputMeta(meta['index_dtype'], meta['real_dtype'], meta['V'], meta['dims']))
     func_name = f"reindexed_by_mask_indexed_{suffix}"
 
     cpp_func = getattr(_trueform.reindex, func_name)

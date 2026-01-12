@@ -14,7 +14,7 @@ from .._spatial import Mesh, EdgeMesh, PointCloud
 from .._core import OffsetBlockedArray
 
 # Dispatch infrastructure
-from .._dispatch import indexed_geometry_suffix, points_suffix, soup_suffix
+from .._dispatch import InputMeta, build_suffix
 
 
 def cleaned(
@@ -310,7 +310,7 @@ def _extract_array_input(data: np.ndarray) -> Tuple[str, tuple, Dict]:
 def _clean_points(arrays: tuple, meta: Dict, tolerance: Optional[float], return_index_map: bool):
     """Clean points array."""
     points = arrays[0]
-    suffix = points_suffix(meta['real_dtype'], meta['dims'])
+    suffix = build_suffix(InputMeta(None, meta['real_dtype'], None, meta['dims']))
     func_name = f"cleaned_points_with_maps_{suffix}"
 
     cpp_func = getattr(_trueform.clean, func_name)
@@ -324,7 +324,7 @@ def _clean_points(arrays: tuple, meta: Dict, tolerance: Optional[float], return_
 def _clean_indexed(arrays: tuple, meta: Dict, tolerance: Optional[float], return_index_map: bool):
     """Clean indexed geometry (Mesh, EdgeMesh, or tuple)."""
     indices, points = arrays
-    suffix = indexed_geometry_suffix(meta['V'], meta['index_dtype'], meta['real_dtype'], meta['dims'])
+    suffix = build_suffix(InputMeta(meta['index_dtype'], meta['real_dtype'], meta['V'], meta['dims']))
     func_name = f"cleaned_indexed_with_maps_{suffix}"
 
     cpp_func = getattr(_trueform.clean, func_name)
@@ -346,7 +346,8 @@ def _clean_indexed(arrays: tuple, meta: Dict, tolerance: Optional[float], return
 def _clean_soup(arrays: tuple, meta: Dict, tolerance: Optional[float]):
     """Clean polygon/segment soup."""
     soup = arrays[0]
-    suffix = soup_suffix(meta['V'], meta['real_dtype'], meta['dims'])
+    # Soups have no index_dtype, just ngon (V as string), real, dims
+    suffix = build_suffix(InputMeta(None, meta['real_dtype'], str(meta['V']), meta['dims']))
     func_name = f"cleaned_soup_{suffix}"
 
     cpp_func = getattr(_trueform.clean, func_name)

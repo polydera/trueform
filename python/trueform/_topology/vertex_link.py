@@ -11,7 +11,7 @@ import numpy as np
 from typing import Union
 from .. import _trueform
 from .._core import OffsetBlockedArray
-from .._dispatch import topology_mesh_suffix
+from .._dispatch import topology_suffix
 
 
 def vertex_link_edges(
@@ -95,7 +95,7 @@ def vertex_link_edges(
         edges = np.ascontiguousarray(edges)
 
     # ===== BUILD SUFFIX AND DISPATCH =====
-    suffix = topology_mesh_suffix(edges.dtype, '2')
+    suffix = topology_suffix(edges.dtype, '2')
     func_name = f"compute_vertex_link_{suffix}"
     cpp_func = getattr(_trueform.topology, func_name)
 
@@ -166,7 +166,7 @@ def vertex_link_faces(
 
     # ===== Handle OffsetBlockedArray (dynamic) =====
     if isinstance(faces, OffsetBlockedArray):
-        suffix = topology_mesh_suffix(faces.dtype, 'dyn')
+        suffix = topology_suffix(faces.dtype, 'dyn')
         func_name = f"compute_vertex_link_{suffix}"
         cpp_func = getattr(_trueform.topology, func_name)
 
@@ -212,7 +212,7 @@ def vertex_link_faces(
         faces = np.ascontiguousarray(faces)
 
     # ===== BUILD SUFFIX AND DISPATCH =====
-    suffix = topology_mesh_suffix(faces.dtype, str(ngon))
+    suffix = topology_suffix(faces.dtype, str(ngon))
     func_name = f"compute_vertex_link_{suffix}"
     cpp_func = getattr(_trueform.topology, func_name)
 
