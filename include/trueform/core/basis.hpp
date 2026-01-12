@@ -21,16 +21,15 @@
 namespace tf {
 
 /// @ingroup core_properties
-/// @brief Construct orthonormal basis from a plane.
+/// @brief Construct orthonormal basis from a normal vector.
 ///
-/// Returns two unit vectors tangent to the plane, orthogonal to
-/// the normal and to each other.
+/// Returns two unit vectors orthogonal to the normal and to each other.
 ///
-/// @tparam Policy The policy type of the plane.
-/// @param plane The input @ref tf::plane_like.
-/// @return Array of two @ref tf::unit_vector tangent to the plane.
-template <typename Policy> auto make_basis(const plane_like<3, Policy> &plane) {
-  const auto &normal = plane.normal;
+/// @tparam Policy The policy type of the normal.
+/// @param normal The input unit normal vector.
+/// @return Array of two @ref tf::unit_vector orthogonal to the normal.
+template <typename Policy>
+auto make_basis_from_normal(const unit_vector_like<3, Policy> &normal) {
   tf::vector<tf::coordinate_type<Policy>, 3> t0;
   if (std::abs(normal[0]) < std::abs(normal[1])) {
     t0[0] = 0;
@@ -43,6 +42,19 @@ template <typename Policy> auto make_basis(const plane_like<3, Policy> &plane) {
   }
   auto t1 = tf::cross(normal, t0);
   return std::array<tf::unit_vector<tf::coordinate_type<Policy>, 3>, 2>{t0, t1};
+}
+
+/// @ingroup core_properties
+/// @brief Construct orthonormal basis from a plane.
+///
+/// Returns two unit vectors tangent to the plane, orthogonal to
+/// the normal and to each other.
+///
+/// @tparam Policy The policy type of the plane.
+/// @param plane The input @ref tf::plane_like.
+/// @return Array of two @ref tf::unit_vector tangent to the plane.
+template <typename Policy> auto make_basis(const plane_like<3, Policy> &plane) {
+  return make_basis_from_normal(plane.normal);
 }
 
 /// @ingroup core_properties

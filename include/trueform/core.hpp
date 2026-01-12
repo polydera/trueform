@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (www.trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (www.trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 
 /** @defgroup core Core Module
@@ -18,7 +18,8 @@
 
 /** @defgroup core_primitives Primitives
  *  @ingroup core
- *  Points, vectors, lines, rays, planes, segments, polygons, and bounding volumes.
+ *  Points, vectors, lines, rays, planes, segments, polygons, and bounding
+ * volumes.
  */
 
 /** @defgroup core_queries Queries
@@ -112,6 +113,7 @@
 #include "./core/local_value.hpp"                 // IWYU pragma: export
 #include "./core/local_vector.hpp"                // IWYU pragma: export
 #include "./core/make_rotation.hpp"               // IWYU pragma: export
+#include "./core/mean_edge_length.hpp"            // IWYU pragma: export
 #include "./core/metric_point.hpp"                // IWYU pragma: export
 #include "./core/metric_point_pair.hpp"           // IWYU pragma: export
 #include "./core/minimal_maximal_distance.hpp"    // IWYU pragma: export

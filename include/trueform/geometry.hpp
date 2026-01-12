@@ -39,6 +39,8 @@
 #include "./geometry/chamfer_error.hpp"               // IWYU pragma: export
 #include "./geometry/compute_normals.hpp"             // IWYU pragma: export
 #include "./geometry/compute_point_normals.hpp"       // IWYU pragma: export
+#include "./geometry/compute_principal_curvatures.hpp" // IWYU pragma: export
+#include "./geometry/compute_shape_index.hpp"         // IWYU pragma: export
 #include "./geometry/ensure_positive_orientation.hpp" // IWYU pragma: export
 #include "./geometry/fit_knn_alignment.hpp"           // IWYU pragma: export
 #include "./geometry/fit_obb_alignment.hpp"           // IWYU pragma: export
