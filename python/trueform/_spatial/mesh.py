@@ -516,6 +516,128 @@ class Mesh:
         """
         self._wrapper.set_vertex_link(value._wrapper)
 
+    def build_normals(self) -> None:
+        """
+        Build the face normals.
+
+        Builds the normals if not already built or if data has been modified.
+
+        Raises
+        ------
+        ValueError
+            If mesh is 2D (normals only supported for 3D meshes).
+        """
+        if self.dims != 3:
+            raise ValueError("Normals only supported for 3D meshes")
+        self._wrapper.build_normals()
+
+    def build_point_normals(self) -> None:
+        """
+        Build the point (vertex) normals.
+
+        Builds the normals if not already built or if data has been modified.
+        Also builds face_membership and normals if needed.
+
+        Raises
+        ------
+        ValueError
+            If mesh is 2D (normals only supported for 3D meshes).
+        """
+        if self.dims != 3:
+            raise ValueError("Point normals only supported for 3D meshes")
+        self._wrapper.build_point_normals()
+
+    @property
+    def normals(self) -> np.ndarray:
+        """
+        Get the face normals.
+
+        Returns unit normal vectors for each face. Computed by cross product
+        of edge vectors.
+
+        Builds the normals if not already built.
+
+        Returns
+        -------
+        np.ndarray
+            Array of shape (num_faces, 3) with unit normal vectors.
+
+        Raises
+        ------
+        ValueError
+            If mesh is 2D (normals only supported for 3D meshes).
+        """
+        if self.dims != 3:
+            raise ValueError("Normals only supported for 3D meshes")
+        return self._wrapper.normals_array()
+
+    @normals.setter
+    def normals(self, value: np.ndarray) -> None:
+        """
+        Set the face normals.
+
+        Parameters
+        ----------
+        value : np.ndarray
+            Array of shape (num_faces, 3) with unit normal vectors.
+
+        Raises
+        ------
+        ValueError
+            If mesh is 2D (normals only supported for 3D meshes).
+        """
+        if self.dims != 3:
+            raise ValueError("Normals only supported for 3D meshes")
+        if not value.flags["C_CONTIGUOUS"]:
+            value = np.ascontiguousarray(value)
+        self._wrapper.set_normals(value)
+
+    @property
+    def point_normals(self) -> np.ndarray:
+        """
+        Get the point (vertex) normals.
+
+        Returns unit normal vectors for each vertex, computed by averaging
+        the normals of adjacent faces.
+
+        Builds the normals if not already built (also builds face_membership
+        and face normals if needed).
+
+        Returns
+        -------
+        np.ndarray
+            Array of shape (num_points, 3) with unit normal vectors.
+
+        Raises
+        ------
+        ValueError
+            If mesh is 2D (normals only supported for 3D meshes).
+        """
+        if self.dims != 3:
+            raise ValueError("Point normals only supported for 3D meshes")
+        return self._wrapper.point_normals_array()
+
+    @point_normals.setter
+    def point_normals(self, value: np.ndarray) -> None:
+        """
+        Set the point (vertex) normals.
+
+        Parameters
+        ----------
+        value : np.ndarray
+            Array of shape (num_points, 3) with unit normal vectors.
+
+        Raises
+        ------
+        ValueError
+            If mesh is 2D (normals only supported for 3D meshes).
+        """
+        if self.dims != 3:
+            raise ValueError("Point normals only supported for 3D meshes")
+        if not value.flags["C_CONTIGUOUS"]:
+            value = np.ascontiguousarray(value)
+        self._wrapper.set_point_normals(value)
+
     def shared_view(self) -> "Mesh":
         """
         Create a new Mesh instance sharing the same underlying data.

@@ -11,10 +11,12 @@ from .fit_rigid_alignment import fit_rigid_alignment
 from .fit_obb_alignment import fit_obb_alignment
 from .fit_knn_alignment import fit_knn_alignment
 from .chamfer_error import chamfer_error
+from .triangulated import triangulated
 
 __all__ = [
     "fit_rigid_alignment",
     "fit_obb_alignment",
     "fit_knn_alignment",
     "chamfer_error",
+    "triangulated",
 ]

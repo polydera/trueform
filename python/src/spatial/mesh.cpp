@@ -78,7 +78,23 @@ namespace tf::py {
            &mesh_wrapper<Index, RealT, Ngon, Dims>::clear_transformation)      \
       .def("mark_modified",                                                    \
            &mesh_wrapper<Index, RealT, Ngon, Dims>::mark_modified)             \
-      .def("shared_view", &mesh_wrapper<Index, RealT, Ngon, Dims>::shared_view)
+      .def("shared_view", &mesh_wrapper<Index, RealT, Ngon, Dims>::shared_view) \
+      .def("build_normals",                                                    \
+           &mesh_wrapper<Index, RealT, Ngon, Dims>::build_normals)             \
+      .def("has_normals",                                                      \
+           &mesh_wrapper<Index, RealT, Ngon, Dims>::has_normals)               \
+      .def("normals_array",                                                    \
+           &mesh_wrapper<Index, RealT, Ngon, Dims>::normals_array)             \
+      .def("set_normals",                                                      \
+           &mesh_wrapper<Index, RealT, Ngon, Dims>::set_normals)               \
+      .def("build_point_normals",                                              \
+           &mesh_wrapper<Index, RealT, Ngon, Dims>::build_point_normals)       \
+      .def("has_point_normals",                                                \
+           &mesh_wrapper<Index, RealT, Ngon, Dims>::has_point_normals)         \
+      .def("point_normals_array",                                              \
+           &mesh_wrapper<Index, RealT, Ngon, Dims>::point_normals_array)       \
+      .def("set_point_normals",                                                \
+           &mesh_wrapper<Index, RealT, Ngon, Dims>::set_point_normals)
 
 // Macro to define bindings for dynamic-size mesh wrapper
 #define REGISTER_MESH_WRAPPER_DYNAMIC(Index, RealT, Dims, Name)                \
@@ -147,7 +163,23 @@ namespace tf::py {
       .def("mark_modified",                                                    \
            &mesh_wrapper<Index, RealT, tf::dynamic_size, Dims>::mark_modified) \
       .def("shared_view",                                                      \
-           &mesh_wrapper<Index, RealT, tf::dynamic_size, Dims>::shared_view)
+           &mesh_wrapper<Index, RealT, tf::dynamic_size, Dims>::shared_view)   \
+      .def("build_normals",                                                    \
+           &mesh_wrapper<Index, RealT, tf::dynamic_size, Dims>::build_normals) \
+      .def("has_normals",                                                      \
+           &mesh_wrapper<Index, RealT, tf::dynamic_size, Dims>::has_normals)   \
+      .def("normals_array",                                                    \
+           &mesh_wrapper<Index, RealT, tf::dynamic_size, Dims>::normals_array) \
+      .def("set_normals",                                                      \
+           &mesh_wrapper<Index, RealT, tf::dynamic_size, Dims>::set_normals)   \
+      .def("build_point_normals",                                              \
+           &mesh_wrapper<Index, RealT, tf::dynamic_size, Dims>::build_point_normals) \
+      .def("has_point_normals",                                                \
+           &mesh_wrapper<Index, RealT, tf::dynamic_size, Dims>::has_point_normals) \
+      .def("point_normals_array",                                              \
+           &mesh_wrapper<Index, RealT, tf::dynamic_size, Dims>::point_normals_array) \
+      .def("set_point_normals",                                                \
+           &mesh_wrapper<Index, RealT, tf::dynamic_size, Dims>::set_point_normals)
 
 auto register_mesh(nanobind::module_ &m) -> void {
   // Fixed-size meshes: int32

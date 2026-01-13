@@ -56,6 +56,8 @@ public:
   auto build_face_link() -> void { _data->build_face_link(); }
   auto build_vertex_link() -> void { _data->build_vertex_link(); }
   auto build_manifold_edge_link() -> void { _data->build_manifold_edge_link(); }
+  auto build_normals() -> void { _data->build_normals(); }
+  auto build_point_normals() -> void { _data->build_point_normals(); }
 
   // Getters (auto-build if needed)
   auto tree() -> tf::aabb_tree<Index, RealT, Dims> & { return _data->tree(); }
@@ -63,6 +65,8 @@ public:
   auto face_link() { return _data->face_link(); }
   auto vertex_link() { return _data->vertex_link(); }
   auto manifold_edge_link() { return _data->manifold_edge_link(); }
+  auto normals() { return _data->normals(); }
+  auto point_normals() { return _data->point_normals(); }
 
   // Has checks
   auto has_tree() const -> bool { return _data->has_tree(); }
@@ -74,6 +78,8 @@ public:
   auto has_manifold_edge_link() const -> bool {
     return _data->has_manifold_edge_link();
   }
+  auto has_normals() const -> bool { return _data->has_normals(); }
+  auto has_point_normals() const -> bool { return _data->has_point_normals(); }
 
   // Array accessors
   auto face_membership_array()
@@ -96,6 +102,16 @@ public:
     return _data->manifold_edge_link_array();
   }
 
+  auto normals_array()
+      -> const nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>> & {
+    return _data->normals_array();
+  }
+
+  auto point_normals_array()
+      -> const nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>> & {
+    return _data->point_normals_array();
+  }
+
   // Setters for pre-computed structures
   auto set_face_membership(
       tf::py::offset_blocked_array_wrapper<Index, Index> fm) {
@@ -114,6 +130,18 @@ public:
       nanobind::ndarray<nanobind::numpy, Index, nanobind::shape<-1, Ngon>>
           mel) {
     _data->set_manifold_edge_link(mel);
+  }
+
+  auto set_normals(
+      nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>
+          normals) {
+    _data->set_normals(normals);
+  }
+
+  auto set_point_normals(
+      nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>
+          point_normals) {
+    _data->set_point_normals(point_normals);
   }
 
   // Data array accessors
@@ -213,6 +241,8 @@ public:
   auto build_face_link() -> void { _data->build_face_link(); }
   auto build_vertex_link() -> void { _data->build_vertex_link(); }
   auto build_manifold_edge_link() -> void { _data->build_manifold_edge_link(); }
+  auto build_normals() -> void { _data->build_normals(); }
+  auto build_point_normals() -> void { _data->build_point_normals(); }
 
   // Getters (auto-build if needed)
   auto tree() -> tf::aabb_tree<Index, RealT, Dims> & { return _data->tree(); }
@@ -220,6 +250,8 @@ public:
   auto face_link() { return _data->face_link(); }
   auto vertex_link() { return _data->vertex_link(); }
   auto manifold_edge_link() { return _data->manifold_edge_link(); }
+  auto normals() { return _data->normals(); }
+  auto point_normals() { return _data->point_normals(); }
 
   // Has checks
   auto has_tree() const -> bool { return _data->has_tree(); }
@@ -231,6 +263,8 @@ public:
   auto has_manifold_edge_link() const -> bool {
     return _data->has_manifold_edge_link();
   }
+  auto has_normals() const -> bool { return _data->has_normals(); }
+  auto has_point_normals() const -> bool { return _data->has_point_normals(); }
 
   // Array accessors (all use offset_blocked_array_wrapper for dynamic size)
   auto face_membership_array()
@@ -253,6 +287,16 @@ public:
     return _data->manifold_edge_link_array();
   }
 
+  auto normals_array()
+      -> const nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>> & {
+    return _data->normals_array();
+  }
+
+  auto point_normals_array()
+      -> const nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>> & {
+    return _data->point_normals_array();
+  }
+
   // Setters for pre-computed structures
   auto set_face_membership(
       tf::py::offset_blocked_array_wrapper<Index, Index> fm) {
@@ -270,6 +314,18 @@ public:
   auto set_manifold_edge_link(
       tf::py::offset_blocked_array_wrapper<Index, Index> mel) {
     _data->set_manifold_edge_link(std::move(mel));
+  }
+
+  auto set_normals(
+      nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>
+          normals) {
+    _data->set_normals(normals);
+  }
+
+  auto set_point_normals(
+      nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>
+          point_normals) {
+    _data->set_point_normals(point_normals);
   }
 
   // Data array accessors
