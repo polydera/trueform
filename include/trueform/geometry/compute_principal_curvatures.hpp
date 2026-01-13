@@ -17,8 +17,10 @@
 #include "../core/buffer.hpp"
 #include "../core/coordinate_type.hpp"
 #include "../core/linalg/least_squares.hpp"
+#include "../core/none.hpp"
 #include "../core/points.hpp"
 #include "../core/sqrt.hpp"
+#include "../core/unit_vector.hpp"
 #include "../core/unit_vector_like.hpp"
 #include "../core/views/sequence_range.hpp"
 #include "../topology/face_membership.hpp"
@@ -45,11 +47,30 @@ template <typename T, typename Index> struct curvature_work_state {
 };
 
 /// @ingroup geometry
+/// @brief Result of principal curvature computation (values only).
+template <typename T> struct curvature_values {
+  T k0;
+  T k1;
+};
+
+/// @ingroup geometry
+/// @brief Result of principal curvature computation (values + directions).
+template <typename T> struct curvature_full {
+  T k0;
+  T k1;
+  tf::unit_vector<T, 3> d0;
+  tf::unit_vector<T, 3> d1;
+};
+
+/// @ingroup geometry
 /// @brief Compute principal curvatures at a vertex from its neighborhood.
 ///
 /// Fits a quadric z = ax² + bxy + cy² to the neighborhood projected onto
 /// the tangent plane, then computes shape operator eigenvalues.
+/// When WithDirections is true, also computes eigenvectors (principal
+/// directions).
 ///
+/// @tparam WithDirections If true, compute principal directions as well.
 /// @tparam PointsPolicy The points policy type.
 /// @tparam NormalPolicy The unit vector policy type.
 /// @tparam NeighborRange Range of neighbor vertex indices.
@@ -58,9 +79,10 @@ template <typename T, typename Index> struct curvature_work_state {
 /// @param vid The vertex index to compute curvatures for.
 /// @param normal The unit normal at vid.
 /// @param neighbors Range of neighbor vertex indices.
-/// @return Array of {k1, k2} principal curvatures, or {0, 0} if < 5 neighbors.
-template <typename PointsPolicy, typename Index, typename NormalPolicy,
-          typename NeighborRange>
+/// @return curvature_values{k0, k1} or curvature_full{k0, k1, d0, d1} depending
+/// on WithDirections.
+template <bool WithDirections, typename PointsPolicy, typename Index,
+          typename NormalPolicy, typename NeighborRange>
 auto compute_principal_curvatures(
     curvature_work_state<tf::coordinate_type<PointsPolicy>, Index> &state,
     const tf::points<PointsPolicy> &points, std::size_t vid,
@@ -71,8 +93,15 @@ auto compute_principal_curvatures(
   const std::size_t n = neighbors.size();
 
   // Need at least 5 neighbors for robust 3-parameter fit
-  if (n < 5)
-    return std::array<T, 2>{T(0), T(0)};
+  if (n < 5) {
+    if constexpr (WithDirections) {
+      return curvature_full<T>{T(0), T(0),
+                               tf::make_unit_vector(tf::unsafe, 1, 0, 0),
+                               tf::make_unit_vector(tf::unsafe, 0, 1, 0)};
+    } else {
+      return curvature_values<T>{T(0), T(0)};
+    }
+  }
 
   // Build local coordinate frame
   auto [t0, t1] = tf::make_basis_from_normal(normal);
@@ -115,6 +144,7 @@ auto compute_principal_curvatures(
   T c = coeffs[2];
 
   // Shape operator eigenvalues (principal curvatures)
+  // Shape operator S = [[2a, b], [b, 2c]]
   T trace = T(2) * (a + c);
   T det = T(4) * a * c - b_coef * b_coef;
   T disc = trace * trace - T(4) * det;
@@ -122,26 +152,48 @@ auto compute_principal_curvatures(
     disc = T(0);
   T sqrt_disc = tf::sqrt(disc);
 
-  return std::array<T, 2>{(trace + sqrt_disc) / T(2),
-                          (trace - sqrt_disc) / T(2)};
-}
-} // namespace tf::geometry
-namespace tf {
+  T k0 = (trace + sqrt_disc) / T(2);
+  T k1 = (trace - sqrt_disc) / T(2);
 
-/// @ingroup geometry
-/// @brief Compute principal curvatures for all vertices.
-///
-/// Uses inline k-ring traversal with parallel_for_each for efficiency.
-/// Neighborhoods are computed on-the-fly using k-ring BFS.
-///
-/// @tparam PolygonsPolicy The polygons policy type.
-/// @tparam OutputRange Output range for curvature pairs.
-/// @param polygons The input polygons.
-/// @param output Output range of std::array<T, 2> for {k1, k2} per vertex.
-/// @param k Number of rings for neighborhood (default 2).
-template <typename PolygonsPolicy, typename OutputRange>
+  if constexpr (WithDirections) {
+    // Compute eigenvectors of shape operator S = [[2a, b], [b, 2c]]
+    // For eigenvalue k, solve (S - kI)v = 0
+    // Row 1: (2a - k)v0 + b*v1 = 0  =>  v = (b, k - 2a) or (-b, 2a - k)
+    // We use v = (b, k - 2a) and normalize
+
+    tf::vector<T, 3> d0_world, d1_world;
+
+    T denom0 = b_coef * b_coef + (k0 - T(2) * a) * (k0 - T(2) * a);
+    if (denom0 > T(1e-12)) {
+      T inv_len = T(1) / tf::sqrt(denom0);
+      T local_d0_x = b_coef * inv_len;
+      T local_d0_y = (k0 - T(2) * a) * inv_len;
+      // Transform to world space: d0 = local_d0_x * t0 + local_d0_y * t1
+      d0_world = tf::make_vector(local_d0_x * t0[0] + local_d0_y * t1[0],
+                                 local_d0_x * t0[1] + local_d0_y * t1[1],
+                                 local_d0_x * t0[2] + local_d0_y * t1[2]);
+    } else {
+      // Degenerate case (isotropic curvature) - use t0 as d0
+      d0_world = tf::make_vector(t0[0], t0[1], t0[2]);
+    }
+
+    // d1 is perpendicular to d0 in tangent plane: d1 = normal × d0
+    d1_world =
+        tf::make_vector(normal[1] * d0_world[2] - normal[2] * d0_world[1],
+                        normal[2] * d0_world[0] - normal[0] * d0_world[2],
+                        normal[0] * d0_world[1] - normal[1] * d0_world[0]);
+
+    return curvature_full<T>{k0, k1, d0_world, d1_world};
+  } else {
+    return curvature_values<T>{k0, k1};
+  }
+}
+
+template <typename PolygonsPolicy, typename Range0, typename Range1,
+          typename Range2, typename Range3>
 void compute_principal_curvatures(const tf::polygons<PolygonsPolicy> &polygons,
-                                  OutputRange &&output, std::size_t k = 2) {
+                                  Range0 &&ks0, Range1 &&ks1, Range2 &&dirs0,
+                                  Range3 &&dirs1, std::size_t k) {
   using Index = std::decay_t<decltype(polygons.faces()[0][0])>;
   if constexpr (!tf::has_vertex_link_policy<PolygonsPolicy>) {
     if constexpr (!tf::has_face_membership_policy<PolygonsPolicy>) {
@@ -149,17 +201,19 @@ void compute_principal_curvatures(const tf::polygons<PolygonsPolicy> &polygons,
       fm.build(polygons);
       tf::vertex_link<Index> vlink;
       vlink.build(polygons.faces(), fm);
-      return compute_principal_curvatures(
-          polygons | tf::tag(fm) | tf::tag(vlink), output, k);
+      return geometry::compute_principal_curvatures(
+          polygons | tf::tag(fm) | tf::tag(vlink), ks0, ks1, dirs0, dirs1, k);
     } else {
       tf::vertex_link<Index> vlink;
       vlink.build(polygons.faces(), polygons.face_membership());
-      return compute_principal_curvatures(polygons | tf::tag(vlink), output, k);
+      return geometry::compute_principal_curvatures(polygons | tf::tag(vlink),
+                                                    ks0, ks1, dirs0, dirs1, k);
     }
   } else {
     const auto &points = polygons.points();
 
-    auto compute = [&output, &polygons, &points, k](const auto &normals) {
+    auto compute = [&ks0, &ks1, &dirs0, &dirs1, &polygons, &points,
+                    k](const auto &normals) {
       using T = tf::coordinate_type<PolygonsPolicy>;
       const auto n_vertices = points.size();
       const auto &vlink = polygons.vertex_link();
@@ -179,9 +233,18 @@ void compute_principal_curvatures(const tf::polygons<PolygonsPolicy> &polygons,
               state.curvature.neighbor_ids.push_back(n);
             });
 
-            output[vid] = geometry::compute_principal_curvatures(
+            constexpr bool with_directions =
+                !std::is_same_v<std::decay_t<Range2>, tf::none_t>;
+
+            auto res = geometry::compute_principal_curvatures<with_directions>(
                 state.curvature, points, vid, normals[vid],
                 state.curvature.neighbor_ids);
+            ks0[vid] = res.k0;
+            ks1[vid] = res.k1;
+            if constexpr (with_directions) {
+              dirs0[vid] = res.d0;
+              dirs1[vid] = res.d1;
+            }
           },
           State{});
     };
@@ -192,6 +255,36 @@ void compute_principal_curvatures(const tf::polygons<PolygonsPolicy> &polygons,
       compute(polygons.points().normals());
     }
   }
+}
+} // namespace tf::geometry
+namespace tf {
+
+/// @ingroup geometry
+/// @brief Compute principal curvatures for all vertices.
+///
+/// Uses inline k-ring traversal with parallel_for_each for efficiency.
+/// Neighborhoods are computed on-the-fly using k-ring BFS.
+///
+/// @tparam PolygonsPolicy The polygons policy type.
+/// @tparam OutputRange Output range for curvature pairs.
+/// @param polygons The input polygons.
+/// @param output Output range of std::array<T, 2> for {k1, k2} per vertex.
+/// @param k Number of rings for neighborhood (default 2).
+template <typename PolygonsPolicy, typename Range0, typename Range1>
+void compute_principal_curvatures(const tf::polygons<PolygonsPolicy> &polygons,
+                                  Range0 &&ks0, Range1 &&ks1,
+                                  std::size_t k = 2) {
+  return geometry::compute_principal_curvatures(polygons, ks0, ks1, tf::none,
+                                                tf::none, k);
+}
+
+template <typename PolygonsPolicy, typename Range0, typename Range1,
+          typename Range2, typename Range3>
+void compute_principal_curvatures(const tf::polygons<PolygonsPolicy> &polygons,
+                                  Range0 &&ks0, Range1 &&ks1, Range2 &&dirs0,
+                                  Range3 &&dirs1, std::size_t k = 2) {
+  return geometry::compute_principal_curvatures(polygons, ks0, ks1, dirs0,
+                                                dirs1, k);
 }
 
 } // namespace tf

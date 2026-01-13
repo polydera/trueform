@@ -75,7 +75,7 @@ void compute_shape_index(const tf::polygons<PolygonsPolicy> &polygons,
               state.curvature.neighbor_ids.push_back(n);
             });
 
-            auto [k1, k2] = geometry::compute_principal_curvatures(
+            auto [k1, k2] = geometry::compute_principal_curvatures<false>(
                 state.curvature, points, vid, normals[vid],
                 state.curvature.neighbor_ids);
 
