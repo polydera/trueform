@@ -39,7 +39,7 @@ auto apply(F &&f, std::index_sequence<Is...>, Tuple &&tuple) -> decltype(auto) {
 /// @return The result of calling f with tuple elements.
 template <typename F, typename Tuple>
 auto apply(F &&f, Tuple &&tuple) -> decltype(auto) {
-  constexpr std::size_t N = std::tuple_size_v<Tuple>;
+  constexpr std::size_t N = std::tuple_size_v<std::decay_t<Tuple>>;
   return detail::apply(static_cast<F &&>(f), std::make_index_sequence<N>{},
                        static_cast<Tuple &&>(tuple));
 }

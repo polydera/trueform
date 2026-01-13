@@ -721,6 +721,196 @@ def test_vertex_link_edges_invalid_ngon():
 
 
 # ==============================================================================
+# cell_membership Tests - Dedicated Unit Tests
+# ==============================================================================
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_cell_membership_triangle_mesh_basic(index_dtype, real_dtype):
+    """Test cell_membership returns correct structure for triangle mesh."""
+    faces, points = create_triangle_mesh(index_dtype, real_dtype)
+    n_points = len(points)
+
+    fm = tf.cell_membership(faces, n_points)
+
+    # Should return OffsetBlockedArray
+    assert isinstance(fm, tf.OffsetBlockedArray)
+    # Should have one entry per vertex
+    assert len(fm) == n_points
+    # Should preserve dtype
+    assert fm.dtype == index_dtype
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_cell_membership_triangle_mesh_correctness(index_dtype, real_dtype):
+    """Test cell_membership returns correct face IDs for each vertex."""
+    # faces: [0,1,2], [1,3,2]
+    faces, points = create_triangle_mesh(index_dtype, real_dtype)
+    n_points = len(points)
+
+    fm = tf.cell_membership(faces, n_points)
+
+    # Vertex 0: only in face 0
+    assert len(fm[0]) == 1
+    assert 0 in fm[0]
+
+    # Vertex 1: in faces 0 and 1
+    assert len(fm[1]) == 2
+    assert set(fm[1]) == {0, 1}
+
+    # Vertex 2: in faces 0 and 1
+    assert len(fm[2]) == 2
+    assert set(fm[2]) == {0, 1}
+
+    # Vertex 3: only in face 1
+    assert len(fm[3]) == 1
+    assert 1 in fm[3]
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_cell_membership_dynamic_mesh(index_dtype, real_dtype):
+    """Test cell_membership with dynamic (variable polygon) mesh."""
+    faces, points = create_dynamic_mesh(index_dtype, real_dtype)
+    n_points = len(points)
+
+    fm = tf.cell_membership(faces, n_points)
+
+    # Should return OffsetBlockedArray
+    assert isinstance(fm, tf.OffsetBlockedArray)
+    # Should have one entry per vertex
+    assert len(fm) == n_points
+    # Should preserve dtype
+    assert fm.dtype == index_dtype
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_cell_membership_edge_mesh(index_dtype, real_dtype):
+    """Test cell_membership with edge mesh (2 vertices per edge)."""
+    edges, points = create_edge_mesh(index_dtype, real_dtype)
+    n_points = len(points)
+
+    fm = tf.cell_membership(edges, n_points)
+
+    # Should return OffsetBlockedArray
+    assert isinstance(fm, tf.OffsetBlockedArray)
+    # Should have one entry per vertex
+    assert len(fm) == n_points
+    # Should preserve dtype
+    assert fm.dtype == index_dtype
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_cell_membership_edge_mesh_correctness(index_dtype, real_dtype):
+    """Test cell_membership returns correct edge IDs for each vertex."""
+    # edges: [0,1], [1,2], [2,3]
+    edges, points = create_edge_mesh(index_dtype, real_dtype)
+    n_points = len(points)
+
+    fm = tf.cell_membership(edges, n_points)
+
+    # Vertex 0: only in edge 0
+    assert len(fm[0]) == 1
+    assert 0 in fm[0]
+
+    # Vertex 1: in edges 0 and 1
+    assert len(fm[1]) == 2
+    assert set(fm[1]) == {0, 1}
+
+    # Vertex 2: in edges 1 and 2
+    assert len(fm[2]) == 2
+    assert set(fm[2]) == {1, 2}
+
+    # Vertex 3: only in edge 2
+    assert len(fm[3]) == 1
+    assert 2 in fm[3]
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_cell_membership_larger_mesh(index_dtype):
+    """Test cell_membership with larger triangle mesh."""
+    faces, points = create_larger_triangle_mesh(index_dtype, np.float32)
+    n_points = len(points)
+
+    fm = tf.cell_membership(faces, n_points)
+
+    # Should return OffsetBlockedArray
+    assert isinstance(fm, tf.OffsetBlockedArray)
+    # Should have one entry per vertex
+    assert len(fm) == n_points
+
+    # Verify each face ID is valid
+    for vertex_idx in range(n_points):
+        for face_id in fm[vertex_idx]:
+            assert 0 <= face_id < len(faces), f"Invalid face_id {face_id} for vertex {vertex_idx}"
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_cell_membership_matches_mesh_property(index_dtype):
+    """Test cell_membership standalone matches Mesh.face_membership property."""
+    faces, points = create_triangle_mesh(index_dtype, np.float32)
+    mesh = tf.Mesh(faces, points)
+
+    # Get from mesh property
+    mesh_fm = mesh.face_membership
+
+    # Get from standalone function
+    standalone_fm = tf.cell_membership(faces, mesh.number_of_points)
+
+    # Compare
+    assert np.array_equal(mesh_fm.offsets, standalone_fm.offsets)
+    assert np.array_equal(mesh_fm.data, standalone_fm.data)
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_cell_membership_matches_edge_mesh_property(index_dtype):
+    """Test cell_membership standalone matches EdgeMesh.edge_membership property."""
+    edges, points = create_edge_mesh(index_dtype, np.float32)
+    edge_mesh = tf.EdgeMesh(edges, points)
+
+    # Get from edge mesh property
+    mesh_em = edge_mesh.edge_membership
+
+    # Get from standalone function
+    standalone_em = tf.cell_membership(edges, edge_mesh.number_of_points)
+
+    # Compare
+    assert np.array_equal(mesh_em.offsets, standalone_em.offsets)
+    assert np.array_equal(mesh_em.data, standalone_em.data)
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_cell_membership_return_type(index_dtype):
+    """Test cell_membership returns OffsetBlockedArray with correct dtype."""
+    faces = np.array([[0, 1, 2], [1, 2, 3]], dtype=index_dtype)
+
+    result = tf.cell_membership(faces, 4)
+
+    assert isinstance(result, tf.OffsetBlockedArray)
+    assert result.offsets.dtype == index_dtype
+    assert result.data.dtype == index_dtype
+
+
+def test_cell_membership_invalid_dtype():
+    """Test cell_membership rejects invalid dtype."""
+    faces = np.array([[0, 1, 2]], dtype=np.float32)
+
+    with pytest.raises(TypeError, match="dtype must be int32 or int64"):
+        tf.cell_membership(faces, 3)
+
+
+def test_cell_membership_invalid_shape():
+    """Test cell_membership rejects 1D array."""
+    faces = np.array([0, 1, 2], dtype=np.int32)
+
+    with pytest.raises(ValueError, match="must be 2D"):
+        tf.cell_membership(faces, 3)
+
+
+# ==============================================================================
 # Main runner
 # ==============================================================================
 

@@ -41,13 +41,14 @@ template <typename Index, typename Range0, typename Range1, typename... Ranges>
 auto concatenated_blocked_ranges(const Range0 &r0, const Range1 &r1,
                                  const Ranges &...rs) {
   // same fixed arity across ALL ranges and not dynamic?
-  constexpr bool all_same_static_size =
-      (tf::static_size_v<decltype(r0[0])> != tf::dynamic_size) &&
-      (tf::static_size_v<decltype(r0[0])> ==
-       tf::static_size_v<decltype(r1[0])>) &&
-      (true && ... &&
-       (tf::static_size_v<decltype(r0[0])> ==
-        tf::static_size_v<decltype(rs[0])>));
+  using all_same_static_size_t = std::integral_constant<
+      bool, (tf::static_size_v<decltype(r0[0])> != tf::dynamic_size) &&
+                (tf::static_size_v<decltype(r0[0])> ==
+                 tf::static_size_v<decltype(r1[0])>) &&
+                (true && ... &&
+                 (tf::static_size_v<decltype(r0[0])> ==
+                  tf::static_size_v<decltype(rs[0])>))>;
+  constexpr bool all_same_static_size = all_same_static_size_t::value;
 
   const Index total_blocks =
       static_cast<Index>(r0.size() + r1.size() + (0 + ... + rs.size()));
@@ -59,7 +60,7 @@ auto concatenated_blocked_ranges(const Range0 &r0, const Range1 &r1,
         [&](const auto &...all) {
           auto copy_one = [&](const auto &r) {
             const Index end_i = static_cast<Index>(start_i + r.size());
-            if constexpr (all_same_static_size) {
+            if constexpr (all_same_static_size_t::value) {
               tf::parallel_copy(r, tf::slice(out, start_i, end_i));
             } else {
               tf::parallel_copy_blocked(r, tf::slice(out, start_i, end_i));
@@ -115,13 +116,14 @@ auto concatenated_blocked_ranges_directed(
     std::pair<tf::range<Iterator1, N1>, tf::direction> r1,
     std::pair<tf::range<Iterators, Ns>, tf::direction>... rs) {
   // same fixed arity across ALL ranges and not dynamic?
-  constexpr bool all_same_static_size =
-      (tf::static_size_v<decltype(r0.first[0])> != tf::dynamic_size) &&
-      (tf::static_size_v<decltype(r0.first[0])> ==
-       tf::static_size_v<decltype(r1.first[0])>) &&
-      (true && ... &&
-       (tf::static_size_v<decltype(r0.first[0])> ==
-        tf::static_size_v<decltype(rs.first[0])>));
+  using all_same_static_size_t = std::integral_constant<
+      bool, (tf::static_size_v<decltype(r0.first[0])> != tf::dynamic_size) &&
+                (tf::static_size_v<decltype(r0.first[0])> ==
+                 tf::static_size_v<decltype(r1.first[0])>) &&
+                (true && ... &&
+                 (tf::static_size_v<decltype(r0.first[0])> ==
+                  tf::static_size_v<decltype(rs.first[0])>))>;
+  constexpr bool all_same_static_size = all_same_static_size_t::value;
 
   const Index total_blocks = static_cast<Index>(
       r0.first.size() + r1.first.size() + (0 + ... + rs.first.size()));
@@ -136,7 +138,7 @@ auto concatenated_blocked_ranges_directed(
             const auto dir = p.second;
 
             const Index end_i = static_cast<Index>(start_i + rng.size());
-            if constexpr (all_same_static_size) {
+            if constexpr (all_same_static_size_t::value) {
               if (dir == tf::direction::forward) {
                 tf::parallel_copy(rng, tf::slice(out, start_i, end_i));
               } else {

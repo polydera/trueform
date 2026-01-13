@@ -36,7 +36,8 @@ auto form_form_neighbor_search(FormWrapper0 &form_wrapper0,
   auto form1 =
       tf::make_form(form_wrapper1.tree(), form_wrapper1.make_primitive_range());
 
-  constexpr auto Dims = tf::coordinate_dims_v<decltype(form0)>;
+  using Dims_t = std::integral_constant<std::size_t, tf::coordinate_dims_v<decltype(form0)>>;
+  constexpr auto Dims = Dims_t::value;
   using Index0 = typename std::decay_t<decltype(form0.tree())>::index_type;
   using Index1 = typename std::decay_t<decltype(form1.tree())>::index_type;
 
@@ -50,14 +51,14 @@ auto form_form_neighbor_search(FormWrapper0 &form_wrapper0,
       return std::nullopt;
     auto make_point = [](const auto &pt) {
       // Allocate numpy array
-      RealT *data = new RealT[Dims];
+      RealT *data = new RealT[Dims_t::value];
       std::copy(pt.begin(), pt.end(), data);
 
       // Create ndarray with ownership via capsule
       auto capsule = nanobind::capsule(
           data, [](void *p) noexcept { delete[] static_cast<RealT *>(p); });
 
-      ndarray_t arr(data, {Dims}, capsule);
+      ndarray_t arr(data, {Dims_t::value}, capsule);
       return arr;
     };
     return result_t{

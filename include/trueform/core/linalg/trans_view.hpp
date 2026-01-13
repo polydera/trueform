@@ -24,7 +24,7 @@ template <typename T, std::size_t Dims> struct trans_view {
   trans_view() = default;
   trans_view(T *_trans_view) : _trans_view{_trans_view} {}
   trans_view(const trans_view &) = default;
-  trans_view(trans_view &) = default;
+  trans_view(trans_view &&) = default;
 
   auto operator=(const trans_view &other) -> trans_view & {
     for (std::size_t i = 0; i < Dims * (Dims + 1); ++i)
@@ -54,7 +54,7 @@ template <typename T, std::size_t Dims> struct trans_view<const T, Dims> {
   trans_view() = default;
   trans_view(const T *_trans_view) : _trans_view{_trans_view} {}
   trans_view(const trans_view &) = default;
-  trans_view(trans_view &) = default;
+  trans_view(trans_view &&) = default;
 
   auto operator=(const trans_view &other) -> trans_view & = delete;
 

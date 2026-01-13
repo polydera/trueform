@@ -34,7 +34,7 @@ auto register_mesh_ray_cast(nanobind::module_ &m) -> void {
 
   // int32, float, triangle, 2D
   m.def(
-      "ray_cast_mesh_intfloat32d",
+      "ray_cast_mesh_int3float2d",
       [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
              ray_data,
          mesh_wrapper<int, float, 3, 2> &mesh,
@@ -53,7 +53,7 @@ auto register_mesh_ray_cast(nanobind::module_ &m) -> void {
 
   // int32, float, triangle, 3D
   m.def(
-      "ray_cast_mesh_intfloat33d",
+      "ray_cast_mesh_int3float3d",
       [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
              ray_data,
          mesh_wrapper<int, float, 3, 3> &mesh,
@@ -72,7 +72,7 @@ auto register_mesh_ray_cast(nanobind::module_ &m) -> void {
 
   // int32, float, dynamic, 2D
   m.def(
-      "ray_cast_mesh_intfloatdyn2d",
+      "ray_cast_mesh_intdynfloat2d",
       [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
              ray_data,
          mesh_wrapper<int, float, dynamic_size, 2> &mesh,
@@ -91,7 +91,7 @@ auto register_mesh_ray_cast(nanobind::module_ &m) -> void {
 
   // int32, float, dynamic, 3D
   m.def(
-      "ray_cast_mesh_intfloatdyn3d",
+      "ray_cast_mesh_intdynfloat3d",
       [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
              ray_data,
          mesh_wrapper<int, float, dynamic_size, 3> &mesh,
@@ -110,7 +110,7 @@ auto register_mesh_ray_cast(nanobind::module_ &m) -> void {
 
   // int32, double, triangle, 2D
   m.def(
-      "ray_cast_mesh_intdouble32d",
+      "ray_cast_mesh_int3double2d",
       [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
              ray_data,
          mesh_wrapper<int, double, 3, 2> &mesh,
@@ -129,7 +129,7 @@ auto register_mesh_ray_cast(nanobind::module_ &m) -> void {
 
   // int32, double, triangle, 3D
   m.def(
-      "ray_cast_mesh_intdouble33d",
+      "ray_cast_mesh_int3double3d",
       [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 3>>
              ray_data,
          mesh_wrapper<int, double, 3, 3> &mesh,
@@ -148,7 +148,7 @@ auto register_mesh_ray_cast(nanobind::module_ &m) -> void {
 
   // int32, double, dynamic, 2D
   m.def(
-      "ray_cast_mesh_intdoubledyn2d",
+      "ray_cast_mesh_intdyndouble2d",
       [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
              ray_data,
          mesh_wrapper<int, double, dynamic_size, 2> &mesh,
@@ -167,7 +167,7 @@ auto register_mesh_ray_cast(nanobind::module_ &m) -> void {
 
   // int32, double, dynamic, 3D
   m.def(
-      "ray_cast_mesh_intdoubledyn3d",
+      "ray_cast_mesh_intdyndouble3d",
       [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 3>>
              ray_data,
          mesh_wrapper<int, double, dynamic_size, 3> &mesh,
@@ -186,7 +186,7 @@ auto register_mesh_ray_cast(nanobind::module_ &m) -> void {
 
   // int64, float, triangle, 2D
   m.def(
-      "ray_cast_mesh_int64float32d",
+      "ray_cast_mesh_int643float2d",
       [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
              ray_data,
          mesh_wrapper<int64_t, float, 3, 2> &mesh,
@@ -205,7 +205,7 @@ auto register_mesh_ray_cast(nanobind::module_ &m) -> void {
 
   // int64, float, triangle, 3D
   m.def(
-      "ray_cast_mesh_int64float33d",
+      "ray_cast_mesh_int643float3d",
       [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
              ray_data,
          mesh_wrapper<int64_t, float, 3, 3> &mesh,
@@ -224,7 +224,7 @@ auto register_mesh_ray_cast(nanobind::module_ &m) -> void {
 
   // int64, float, dynamic, 2D
   m.def(
-      "ray_cast_mesh_int64floatdyn2d",
+      "ray_cast_mesh_int64dynfloat2d",
       [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
              ray_data,
          mesh_wrapper<int64_t, float, dynamic_size, 2> &mesh,
@@ -243,7 +243,7 @@ auto register_mesh_ray_cast(nanobind::module_ &m) -> void {
 
   // int64, float, dynamic, 3D
   m.def(
-      "ray_cast_mesh_int64floatdyn3d",
+      "ray_cast_mesh_int64dynfloat3d",
       [](nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
              ray_data,
          mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh,
@@ -262,7 +262,7 @@ auto register_mesh_ray_cast(nanobind::module_ &m) -> void {
 
   // int64, double, triangle, 2D
   m.def(
-      "ray_cast_mesh_int64double32d",
+      "ray_cast_mesh_int643double2d",
       [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
              ray_data,
          mesh_wrapper<int64_t, double, 3, 2> &mesh,
@@ -281,7 +281,7 @@ auto register_mesh_ray_cast(nanobind::module_ &m) -> void {
 
   // int64, double, triangle, 3D
   m.def(
-      "ray_cast_mesh_int64double33d",
+      "ray_cast_mesh_int643double3d",
       [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 3>>
              ray_data,
          mesh_wrapper<int64_t, double, 3, 3> &mesh,
@@ -300,7 +300,7 @@ auto register_mesh_ray_cast(nanobind::module_ &m) -> void {
 
   // int64, double, dynamic, 2D
   m.def(
-      "ray_cast_mesh_int64doubledyn2d",
+      "ray_cast_mesh_int64dyndouble2d",
       [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
              ray_data,
          mesh_wrapper<int64_t, double, dynamic_size, 2> &mesh,
@@ -319,7 +319,7 @@ auto register_mesh_ray_cast(nanobind::module_ &m) -> void {
 
   // int64, double, dynamic, 3D
   m.def(
-      "ray_cast_mesh_int64doubledyn3d",
+      "ray_cast_mesh_int64dyndouble3d",
       [](nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 3>>
              ray_data,
          mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh,

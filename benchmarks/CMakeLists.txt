@@ -361,6 +361,12 @@ add_subdirectory(intersect EXCLUDE_FROM_ALL)
 message(STATUS "  - cut")
 add_subdirectory(cut EXCLUDE_FROM_ALL)
 
+message(STATUS "  - geometry")
+add_subdirectory(geometry EXCLUDE_FROM_ALL)
+
+message(STATUS "  - io")
+add_subdirectory(io EXCLUDE_FROM_ALL)
+
 # ------------------------------------------------------------------------------
 # Unified benchmark runner
 # ------------------------------------------------------------------------------
@@ -405,6 +411,16 @@ set(ALL_BENCHMARK_IMPLS
     spatial-polygons_to_polygons-closest_point-fcl-impl
     spatial-polygons_to_polygons-collision-tf-impl
     spatial-polygons_to_polygons-collision-fcl-impl
+
+    # Geometry module
+    geometry-principal_curvatures-tf-impl
+    geometry-principal_curvatures-igl-impl
+    geometry-point_normals-tf-impl
+    geometry-point_normals-igl-impl
+
+    # IO module
+    io-read_stl-tf-impl
+    io-read_stl-igl-impl
 )
 
 # Add VTK implementations if available
@@ -415,6 +431,8 @@ if(HAVE_VTK)
         topology-boundary_paths-vtk-impl
         intersect-mesh_mesh_curves-vtk-impl
         intersect-isocontours-vtk-impl
+        geometry-point_normals-vtk-impl
+        io-read_stl-vtk-impl
     )
 
     # Define HAVE_VTK for run_benchmarks.cpp
@@ -463,6 +481,12 @@ set(BENCHMARK_TARGETS
     cut-embedded_self_intersection_curves-tf
     cut-embedded_self_intersection_curves-igl
     cut-embedded_isocurves-tf
+    geometry-principal_curvatures-tf
+    geometry-principal_curvatures-igl
+    geometry-point_normals-tf
+    geometry-point_normals-igl
+    io-read_stl-tf
+    io-read_stl-igl
     run-benchmarks
 )
 
@@ -474,6 +498,8 @@ if(HAVE_VTK)
         intersect-mesh_mesh_curves-vtk
         intersect-isocontours-vtk
         cut-embedded_isocurves-vtk
+        geometry-point_normals-vtk
+        io-read_stl-vtk
     )
 endif()
 
@@ -493,6 +519,9 @@ if(OpenMP_CXX_FOUND)
         intersect-isocontours-igl
         cut-boolean-igl
         cut-embedded_self_intersection_curves-igl
+        geometry-principal_curvatures-igl
+        geometry-point_normals-igl
+        io-read_stl-igl
         run-benchmarks
     )
     foreach(target ${IGL_BENCHMARK_TARGETS})

@@ -21,28 +21,28 @@ auto register_orient_faces_consistently_float3d(nanobind::module_ &m) -> void {
   // ==== float, 3D ====
 
   // int32, ngon=3
-  m.def("orient_faces_consistently_intfloat33d",
+  m.def("orient_faces_consistently_int3float3d",
         [](mesh_wrapper<int, float, 3, 3> &mesh) {
           return orient_faces_consistently(mesh);
         },
         nanobind::arg("mesh"));
 
   // int32, dynamic
-  m.def("orient_faces_consistently_intfloatdyn3d",
+  m.def("orient_faces_consistently_intdynfloat3d",
         [](mesh_wrapper<int, float, dynamic_size, 3> &mesh) {
           return orient_faces_consistently(mesh);
         },
         nanobind::arg("mesh"));
 
   // int64, ngon=3
-  m.def("orient_faces_consistently_int64float33d",
+  m.def("orient_faces_consistently_int643float3d",
         [](mesh_wrapper<int64_t, float, 3, 3> &mesh) {
           return orient_faces_consistently(mesh);
         },
         nanobind::arg("mesh"));
 
   // int64, dynamic
-  m.def("orient_faces_consistently_int64floatdyn3d",
+  m.def("orient_faces_consistently_int64dynfloat3d",
         [](mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh) {
           return orient_faces_consistently(mesh);
         },

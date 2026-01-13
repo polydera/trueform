@@ -11,6 +11,7 @@ import numpy as np
 from typing import Any
 from . import _trueform
 from ._primitives import Plane, Segment, Polygon, Line, AABB
+from ._dispatch import extract_meta, build_suffix
 
 
 # Dispatch table for primitives
@@ -141,8 +142,7 @@ def distance_field(points: Any, primitive: Any) -> np.ndarray:
         raise ValueError("distance_field with Plane is only supported in 3D")
 
     # Get variant suffix (e.g., "float3d" or "double2d")
-    dtype_str = 'float' if points_array.dtype == np.float32 else 'double'
-    suffix = f"{dtype_str}{dims}d"
+    suffix = build_suffix(extract_meta(points_array))
 
     # Dispatch to appropriate C++ function
     func_template = _DISTANCE_FIELD_DISPATCH[primitive_type]

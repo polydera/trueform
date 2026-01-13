@@ -12,6 +12,7 @@ from typing import Union, Tuple, Optional
 from .. import _trueform
 from .._spatial import Mesh
 from .._core import OffsetBlockedArray
+from .._dispatch import InputMeta, build_suffix
 
 
 def isobands(
@@ -164,10 +165,9 @@ def isobands(
         selected_bands_array = np.ascontiguousarray(selected_bands_array)
 
     # Get variant suffix
-    index_str = 'int' if mesh.faces.dtype == np.int32 else 'int64'
-    real_str = 'float' if mesh.dtype == np.float32 else 'double'
-    ngon_str = 'dyn' if mesh.is_dynamic else str(mesh.ngon)
-    suffix = f"{index_str}{real_str}{ngon_str}{mesh.dims}d"
+    ngon = 'dyn' if mesh.is_dynamic else str(mesh.ngon)
+    meta = InputMeta(mesh.faces.dtype, mesh.dtype, ngon, mesh.dims)
+    suffix = build_suffix(meta)
 
     # Dispatch to C++ based on return_curves
     if return_curves:

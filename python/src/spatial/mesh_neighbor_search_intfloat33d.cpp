@@ -21,10 +21,10 @@
 
 namespace tf::py {
 
-auto register_mesh_neighbor_search_intfloat33d(nanobind::module_ &m) -> void {
+auto register_mesh_neighbor_search_int3float3d(nanobind::module_ &m) -> void {
 
   // Point queries
-  m.def("neighbor_search_mesh_point_intfloat33d",
+  m.def("neighbor_search_mesh_point_int3float3d",
         [](mesh_wrapper<int, float, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<3>>
                query,
@@ -38,7 +38,7 @@ auto register_mesh_neighbor_search_intfloat33d(nanobind::module_ &m) -> void {
 
   // Segment queries
   m.def(
-      "neighbor_search_mesh_segment_intfloat33d",
+      "neighbor_search_mesh_segment_int3float3d",
       [](mesh_wrapper<int, float, 3, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
              query,
@@ -52,7 +52,7 @@ auto register_mesh_neighbor_search_intfloat33d(nanobind::module_ &m) -> void {
 
   // Polygon queries
   m.def(
-      "neighbor_search_mesh_polygon_intfloat33d",
+      "neighbor_search_mesh_polygon_int3float3d",
       [](mesh_wrapper<int, float, 3, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<-1, 3>>
              query,
@@ -66,7 +66,7 @@ auto register_mesh_neighbor_search_intfloat33d(nanobind::module_ &m) -> void {
 
   // Ray queries
   m.def(
-      "neighbor_search_mesh_ray_intfloat33d",
+      "neighbor_search_mesh_ray_int3float3d",
       [](mesh_wrapper<int, float, 3, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
              query,
@@ -80,7 +80,7 @@ auto register_mesh_neighbor_search_intfloat33d(nanobind::module_ &m) -> void {
 
   // Line queries
   m.def(
-      "neighbor_search_mesh_line_intfloat33d",
+      "neighbor_search_mesh_line_int3float3d",
       [](mesh_wrapper<int, float, 3, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
              query,
@@ -94,7 +94,7 @@ auto register_mesh_neighbor_search_intfloat33d(nanobind::module_ &m) -> void {
 
   // Plane queries
   m.def(
-      "neighbor_search_mesh_plane_intfloat33d",
+      "neighbor_search_mesh_plane_int3float3d",
       [](mesh_wrapper<int, float, 3, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
              query,
@@ -106,7 +106,7 @@ auto register_mesh_neighbor_search_intfloat33d(nanobind::module_ &m) -> void {
       nanobind::arg("query"),
       nanobind::arg("radius").none() = nanobind::none());
 
-  m.def("neighbor_search_mesh_knn_point_intfloat33d",
+  m.def("neighbor_search_mesh_knn_point_int3float3d",
         [](mesh_wrapper<int, float, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<3>>
                query,
@@ -120,7 +120,7 @@ auto register_mesh_neighbor_search_intfloat33d(nanobind::module_ &m) -> void {
         nanobind::arg("radius").none() = nanobind::none());
 
   m.def(
-      "neighbor_search_mesh_knn_segment_intfloat33d",
+      "neighbor_search_mesh_knn_segment_int3float3d",
       [](mesh_wrapper<int, float, 3, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
              query,
@@ -134,7 +134,7 @@ auto register_mesh_neighbor_search_intfloat33d(nanobind::module_ &m) -> void {
       nanobind::arg("radius").none() = nanobind::none());
 
   m.def(
-      "neighbor_search_mesh_knn_polygon_intfloat33d",
+      "neighbor_search_mesh_knn_polygon_int3float3d",
       [](mesh_wrapper<int, float, 3, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<-1, 3>>
              query,
@@ -148,7 +148,7 @@ auto register_mesh_neighbor_search_intfloat33d(nanobind::module_ &m) -> void {
       nanobind::arg("radius").none() = nanobind::none());
 
   m.def(
-      "neighbor_search_mesh_knn_ray_intfloat33d",
+      "neighbor_search_mesh_knn_ray_int3float3d",
       [](mesh_wrapper<int, float, 3, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
              query,
@@ -162,7 +162,7 @@ auto register_mesh_neighbor_search_intfloat33d(nanobind::module_ &m) -> void {
       nanobind::arg("radius").none() = nanobind::none());
 
   m.def(
-      "neighbor_search_mesh_knn_line_intfloat33d",
+      "neighbor_search_mesh_knn_line_int3float3d",
       [](mesh_wrapper<int, float, 3, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
              query,
@@ -176,7 +176,7 @@ auto register_mesh_neighbor_search_intfloat33d(nanobind::module_ &m) -> void {
       nanobind::arg("radius").none() = nanobind::none());
 
   m.def(
-      "neighbor_search_mesh_knn_plane_intfloat33d",
+      "neighbor_search_mesh_knn_plane_int3float3d",
       [](mesh_wrapper<int, float, 3, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
              query,

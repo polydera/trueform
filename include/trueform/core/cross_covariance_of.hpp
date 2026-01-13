@@ -49,6 +49,7 @@ auto cross_covariance_of(const tf::points<Policy0> &X,
   H = tf::reduce(
       tf::zip(X, Y),
       [&cx, &cy](auto acc, const auto &element) {
+        constexpr std::size_t Dims = tf::coordinate_dims_v<Policy0>;
         using ElementType = std::decay_t<decltype(element)>;
         using AccType = std::decay_t<decltype(acc)>;
 

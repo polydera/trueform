@@ -22,7 +22,7 @@ auto register_intersect_isocontours(nanobind::module_ &m) -> void {
 
   // int32, float, triangles, 3D
   m.def(
-      "make_isocontours_single_intfloat33d",
+      "make_isocontours_single_int3float3d",
       [](mesh_wrapper<int, float, 3, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<-1>>
              scalars,
@@ -34,7 +34,7 @@ auto register_intersect_isocontours(nanobind::module_ &m) -> void {
       nanobind::arg("threshold"));
 
   m.def(
-      "make_isocontours_multi_intfloat33d",
+      "make_isocontours_multi_int3float3d",
       [](mesh_wrapper<int, float, 3, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<-1>>
              scalars,
@@ -48,7 +48,7 @@ auto register_intersect_isocontours(nanobind::module_ &m) -> void {
 
   // int32, float, dynamic, 3D
   m.def(
-      "make_isocontours_single_intfloatdyn3d",
+      "make_isocontours_single_intdynfloat3d",
       [](mesh_wrapper<int, float, dynamic_size, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<-1>>
              scalars,
@@ -60,7 +60,7 @@ auto register_intersect_isocontours(nanobind::module_ &m) -> void {
       nanobind::arg("threshold"));
 
   m.def(
-      "make_isocontours_multi_intfloatdyn3d",
+      "make_isocontours_multi_intdynfloat3d",
       [](mesh_wrapper<int, float, dynamic_size, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<-1>>
              scalars,
@@ -74,7 +74,7 @@ auto register_intersect_isocontours(nanobind::module_ &m) -> void {
 
   // int32, double, triangles, 3D
   m.def(
-      "make_isocontours_single_intdouble33d",
+      "make_isocontours_single_int3double3d",
       [](mesh_wrapper<int, double, 3, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<-1>>
              scalars,
@@ -86,7 +86,7 @@ auto register_intersect_isocontours(nanobind::module_ &m) -> void {
       nanobind::arg("threshold"));
 
   m.def(
-      "make_isocontours_multi_intdouble33d",
+      "make_isocontours_multi_int3double3d",
       [](mesh_wrapper<int, double, 3, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<-1>>
              scalars,
@@ -100,7 +100,7 @@ auto register_intersect_isocontours(nanobind::module_ &m) -> void {
 
   // int32, double, dynamic, 3D
   m.def(
-      "make_isocontours_single_intdoubledyn3d",
+      "make_isocontours_single_intdyndouble3d",
       [](mesh_wrapper<int, double, dynamic_size, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<-1>>
              scalars,
@@ -112,7 +112,7 @@ auto register_intersect_isocontours(nanobind::module_ &m) -> void {
       nanobind::arg("threshold"));
 
   m.def(
-      "make_isocontours_multi_intdoubledyn3d",
+      "make_isocontours_multi_intdyndouble3d",
       [](mesh_wrapper<int, double, dynamic_size, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<-1>>
              scalars,
@@ -126,7 +126,7 @@ auto register_intersect_isocontours(nanobind::module_ &m) -> void {
 
   // int64, float, triangles, 3D
   m.def(
-      "make_isocontours_single_int64float33d",
+      "make_isocontours_single_int643float3d",
       [](mesh_wrapper<int64_t, float, 3, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<-1>>
              scalars,
@@ -138,7 +138,7 @@ auto register_intersect_isocontours(nanobind::module_ &m) -> void {
       nanobind::arg("threshold"));
 
   m.def(
-      "make_isocontours_multi_int64float33d",
+      "make_isocontours_multi_int643float3d",
       [](mesh_wrapper<int64_t, float, 3, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<-1>>
              scalars,
@@ -152,7 +152,7 @@ auto register_intersect_isocontours(nanobind::module_ &m) -> void {
 
   // int64, float, dynamic, 3D
   m.def(
-      "make_isocontours_single_int64floatdyn3d",
+      "make_isocontours_single_int64dynfloat3d",
       [](mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<-1>>
              scalars,
@@ -164,7 +164,7 @@ auto register_intersect_isocontours(nanobind::module_ &m) -> void {
       nanobind::arg("threshold"));
 
   m.def(
-      "make_isocontours_multi_int64floatdyn3d",
+      "make_isocontours_multi_int64dynfloat3d",
       [](mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<-1>>
              scalars,
@@ -178,7 +178,7 @@ auto register_intersect_isocontours(nanobind::module_ &m) -> void {
 
   // int64, double, triangles, 3D
   m.def(
-      "make_isocontours_single_int64double33d",
+      "make_isocontours_single_int643double3d",
       [](mesh_wrapper<int64_t, double, 3, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<-1>>
              scalars,
@@ -190,7 +190,7 @@ auto register_intersect_isocontours(nanobind::module_ &m) -> void {
       nanobind::arg("threshold"));
 
   m.def(
-      "make_isocontours_multi_int64double33d",
+      "make_isocontours_multi_int643double3d",
       [](mesh_wrapper<int64_t, double, 3, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<-1>>
              scalars,
@@ -204,7 +204,7 @@ auto register_intersect_isocontours(nanobind::module_ &m) -> void {
 
   // int64, double, dynamic, 3D
   m.def(
-      "make_isocontours_single_int64doubledyn3d",
+      "make_isocontours_single_int64dyndouble3d",
       [](mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<-1>>
              scalars,
@@ -216,7 +216,7 @@ auto register_intersect_isocontours(nanobind::module_ &m) -> void {
       nanobind::arg("threshold"));
 
   m.def(
-      "make_isocontours_multi_int64doubledyn3d",
+      "make_isocontours_multi_int64dyndouble3d",
       [](mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<-1>>
              scalars,

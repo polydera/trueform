@@ -10,6 +10,7 @@ https://github.com/xlabmedical/trueform
 import numpy as np
 from .. import _trueform
 from .._spatial import Mesh
+from .._dispatch import topology_suffix
 
 
 def boundary_edges(mesh: Mesh) -> np.ndarray:
@@ -70,10 +71,8 @@ def boundary_edges(mesh: Mesh) -> np.ndarray:
     fm = mesh._wrapper.face_membership_array()
 
     # Build suffix and dispatch
-    dtype_str = 'int' if faces.dtype == np.int32 else 'int64'
-    ngon_str = 'dyn' if mesh.is_dynamic else '3'
-    suffix = f"{dtype_str}_{ngon_str}"
-
+    ngon = 'dyn' if mesh.is_dynamic else '3'
+    suffix = topology_suffix(faces.dtype, ngon)
     func_name = f"boundary_edges_{suffix}"
     cpp_func = getattr(_trueform.topology, func_name)
 

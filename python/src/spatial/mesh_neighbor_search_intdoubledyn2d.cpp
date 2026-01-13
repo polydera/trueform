@@ -21,10 +21,10 @@
 
 namespace tf::py {
 
-auto register_mesh_neighbor_search_intdoubledyn2d(nanobind::module_ &m) -> void {
+auto register_mesh_neighbor_search_intdyndouble2d(nanobind::module_ &m) -> void {
 
   // Point queries
-  m.def("neighbor_search_mesh_point_intdoubledyn2d",
+  m.def("neighbor_search_mesh_point_intdyndouble2d",
         [](mesh_wrapper<int, double, tf::dynamic_size, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2>>
                query,
@@ -38,7 +38,7 @@ auto register_mesh_neighbor_search_intdoubledyn2d(nanobind::module_ &m) -> void 
 
   // Segment queries
   m.def(
-      "neighbor_search_mesh_segment_intdoubledyn2d",
+      "neighbor_search_mesh_segment_intdyndouble2d",
       [](mesh_wrapper<int, double, tf::dynamic_size, 2> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
              query,
@@ -52,7 +52,7 @@ auto register_mesh_neighbor_search_intdoubledyn2d(nanobind::module_ &m) -> void 
 
   // Polygon queries
   m.def(
-      "neighbor_search_mesh_polygon_intdoubledyn2d",
+      "neighbor_search_mesh_polygon_intdyndouble2d",
       [](mesh_wrapper<int, double, tf::dynamic_size, 2> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<-1, 2>>
              query,
@@ -66,7 +66,7 @@ auto register_mesh_neighbor_search_intdoubledyn2d(nanobind::module_ &m) -> void 
 
   // Ray queries
   m.def(
-      "neighbor_search_mesh_ray_intdoubledyn2d",
+      "neighbor_search_mesh_ray_intdyndouble2d",
       [](mesh_wrapper<int, double, tf::dynamic_size, 2> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
              query,
@@ -80,7 +80,7 @@ auto register_mesh_neighbor_search_intdoubledyn2d(nanobind::module_ &m) -> void 
 
   // Line queries
   m.def(
-      "neighbor_search_mesh_line_intdoubledyn2d",
+      "neighbor_search_mesh_line_intdyndouble2d",
       [](mesh_wrapper<int, double, tf::dynamic_size, 2> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
              query,
@@ -93,7 +93,7 @@ auto register_mesh_neighbor_search_intdoubledyn2d(nanobind::module_ &m) -> void 
       nanobind::arg("radius").none() = nanobind::none());
 
 
-  m.def("neighbor_search_mesh_knn_point_intdoubledyn2d",
+  m.def("neighbor_search_mesh_knn_point_intdyndouble2d",
         [](mesh_wrapper<int, double, tf::dynamic_size, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2>>
                query,
@@ -107,7 +107,7 @@ auto register_mesh_neighbor_search_intdoubledyn2d(nanobind::module_ &m) -> void 
         nanobind::arg("radius").none() = nanobind::none());
 
   m.def(
-      "neighbor_search_mesh_knn_segment_intdoubledyn2d",
+      "neighbor_search_mesh_knn_segment_intdyndouble2d",
       [](mesh_wrapper<int, double, tf::dynamic_size, 2> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
              query,
@@ -121,7 +121,7 @@ auto register_mesh_neighbor_search_intdoubledyn2d(nanobind::module_ &m) -> void 
       nanobind::arg("radius").none() = nanobind::none());
 
   m.def(
-      "neighbor_search_mesh_knn_polygon_intdoubledyn2d",
+      "neighbor_search_mesh_knn_polygon_intdyndouble2d",
       [](mesh_wrapper<int, double, tf::dynamic_size, 2> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<-1, 2>>
              query,
@@ -135,7 +135,7 @@ auto register_mesh_neighbor_search_intdoubledyn2d(nanobind::module_ &m) -> void 
       nanobind::arg("radius").none() = nanobind::none());
 
   m.def(
-      "neighbor_search_mesh_knn_ray_intdoubledyn2d",
+      "neighbor_search_mesh_knn_ray_intdyndouble2d",
       [](mesh_wrapper<int, double, tf::dynamic_size, 2> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
              query,
@@ -149,7 +149,7 @@ auto register_mesh_neighbor_search_intdoubledyn2d(nanobind::module_ &m) -> void 
       nanobind::arg("radius").none() = nanobind::none());
 
   m.def(
-      "neighbor_search_mesh_knn_line_intdoubledyn2d",
+      "neighbor_search_mesh_knn_line_intdyndouble2d",
       [](mesh_wrapper<int, double, tf::dynamic_size, 2> &mesh,
          nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2, 2>>
              query,

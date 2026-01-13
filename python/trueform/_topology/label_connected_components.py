@@ -11,6 +11,7 @@ import numpy as np
 from typing import Union, Tuple, Optional
 from .. import _trueform
 from .._core import OffsetBlockedArray
+from .._dispatch import connectivity_suffix
 
 
 def label_connected_components(
@@ -140,12 +141,8 @@ def label_connected_components(
                 f"got {connectivity.data.dtype}"
             )
 
-        # Build suffix
-        dtype = connectivity.offsets.dtype
-        dtype_str = 'int' if dtype == np.int32 else 'int64'
-        suffix = f"offset_blocked_{dtype_str}"
-
-        # Build function name and dispatch
+        # Build suffix and dispatch
+        suffix = connectivity_suffix('offset_blocked', connectivity.offsets.dtype)
         func_name = f"label_connected_components_{suffix}"
         cpp_func = getattr(_trueform.topology, func_name)
         num_components, labels = cpp_func(
@@ -175,11 +172,8 @@ def label_connected_components(
         if not connectivity.flags['C_CONTIGUOUS']:
             connectivity = np.ascontiguousarray(connectivity)
 
-        # Build suffix
-        dtype_str = 'int' if connectivity.dtype == np.int32 else 'int64'
-        suffix = f"ndarray_{dtype_str}"
-
-        # Build function name and dispatch
+        # Build suffix and dispatch
+        suffix = connectivity_suffix('ndarray', connectivity.dtype)
         func_name = f"label_connected_components_{suffix}"
         cpp_func = getattr(_trueform.topology, func_name)
         num_components, labels = cpp_func(

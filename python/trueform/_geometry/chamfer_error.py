@@ -11,6 +11,7 @@ import numpy as np
 from typing import TYPE_CHECKING
 
 from .. import _trueform
+from .._dispatch import extract_meta, build_suffix
 
 if TYPE_CHECKING:
     from .._spatial.point_cloud import PointCloud
@@ -62,7 +63,6 @@ def chamfer_error(cloud0: "PointCloud", cloud1: "PointCloud") -> float:
             f"Dtype mismatch: cloud0 has {cloud0.dtype}, cloud1 has {cloud1.dtype}"
         )
 
-    dtype_str = "float" if cloud0.dtype == np.float32 else "double"
-    func_name = f"chamfer_error_{dtype_str}{cloud0.dims}d"
+    func_name = f"chamfer_error_{build_suffix(extract_meta(cloud0))}"
     cpp_func = getattr(_trueform.geometry, func_name)
     return cpp_func(cloud0._wrapper, cloud1._wrapper)

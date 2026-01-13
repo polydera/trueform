@@ -21,7 +21,7 @@ namespace tf::py {
 auto register_io_write_obj(nanobind::module_ &m) -> void {
   // int32, float32, triangles
   m.def(
-      "write_obj_intfloat33d",
+      "write_obj_int3float3d",
       [](nanobind::ndarray<nanobind::numpy, int, nanobind::shape<-1, 3>>
              faces_array,
          nanobind::ndarray<nanobind::numpy, float, nanobind::shape<-1, 3>>
@@ -41,7 +41,7 @@ auto register_io_write_obj(nanobind::module_ &m) -> void {
 
   // int32, float32, quads
   m.def(
-      "write_obj_intfloat43d",
+      "write_obj_int4float3d",
       [](nanobind::ndarray<nanobind::numpy, int, nanobind::shape<-1, 4>>
              faces_array,
          nanobind::ndarray<nanobind::numpy, float, nanobind::shape<-1, 3>>
@@ -61,7 +61,7 @@ auto register_io_write_obj(nanobind::module_ &m) -> void {
 
   // int64, float32, triangles
   m.def(
-      "write_obj_int64float33d",
+      "write_obj_int643float3d",
       [](nanobind::ndarray<nanobind::numpy, int64_t, nanobind::shape<-1, 3>>
              faces_array,
          nanobind::ndarray<nanobind::numpy, float, nanobind::shape<-1, 3>>
@@ -81,7 +81,7 @@ auto register_io_write_obj(nanobind::module_ &m) -> void {
 
   // int64, float32, quads
   m.def(
-      "write_obj_int64float43d",
+      "write_obj_int644float3d",
       [](nanobind::ndarray<nanobind::numpy, int64_t, nanobind::shape<-1, 4>>
              faces_array,
          nanobind::ndarray<nanobind::numpy, float, nanobind::shape<-1, 3>>
@@ -101,7 +101,7 @@ auto register_io_write_obj(nanobind::module_ &m) -> void {
 
   // int32, double, triangles
   m.def(
-      "write_obj_intdouble33d",
+      "write_obj_int3double3d",
       [](nanobind::ndarray<nanobind::numpy, int, nanobind::shape<-1, 3>>
              faces_array,
          nanobind::ndarray<nanobind::numpy, double, nanobind::shape<-1, 3>>
@@ -121,7 +121,7 @@ auto register_io_write_obj(nanobind::module_ &m) -> void {
 
   // int32, double, quads
   m.def(
-      "write_obj_intdouble43d",
+      "write_obj_int4double3d",
       [](nanobind::ndarray<nanobind::numpy, int, nanobind::shape<-1, 4>>
              faces_array,
          nanobind::ndarray<nanobind::numpy, double, nanobind::shape<-1, 3>>
@@ -141,7 +141,7 @@ auto register_io_write_obj(nanobind::module_ &m) -> void {
 
   // int64, double, triangles
   m.def(
-      "write_obj_int64double33d",
+      "write_obj_int643double3d",
       [](nanobind::ndarray<nanobind::numpy, int64_t, nanobind::shape<-1, 3>>
              faces_array,
          nanobind::ndarray<nanobind::numpy, double, nanobind::shape<-1, 3>>
@@ -161,7 +161,7 @@ auto register_io_write_obj(nanobind::module_ &m) -> void {
 
   // int64, double, quads
   m.def(
-      "write_obj_int64double43d",
+      "write_obj_int644double3d",
       [](nanobind::ndarray<nanobind::numpy, int64_t, nanobind::shape<-1, 4>>
              faces_array,
          nanobind::ndarray<nanobind::numpy, double, nanobind::shape<-1, 3>>

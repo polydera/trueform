@@ -11,6 +11,7 @@ import numpy as np
 from typing import TYPE_CHECKING
 
 from .. import _trueform
+from .._dispatch import extract_meta, build_suffix
 
 if TYPE_CHECKING:
     from .._spatial.point_cloud import PointCloud
@@ -69,7 +70,6 @@ def fit_obb_alignment(
             f"Dtype mismatch: cloud0 has {cloud0.dtype}, cloud1 has {cloud1.dtype}"
         )
 
-    dtype_str = "float" if cloud0.dtype == np.float32 else "double"
-    func_name = f"fit_obb_alignment_{dtype_str}{cloud0.dims}d"
+    func_name = f"fit_obb_alignment_{build_suffix(extract_meta(cloud0))}"
     cpp_func = getattr(_trueform.geometry, func_name)
     return cpp_func(cloud0._wrapper, cloud1._wrapper, sample_size)

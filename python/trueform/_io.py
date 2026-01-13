@@ -11,6 +11,7 @@ import numpy as np
 from typing import Tuple, Optional, Union
 from . import _trueform
 from ._spatial.mesh import Mesh
+from ._dispatch import InputMeta, build_suffix
 
 
 def read_stl(filename: str, index_dtype: Union[type, np.dtype] = np.int32) -> Tuple[np.ndarray, np.ndarray]:
@@ -395,7 +396,7 @@ def write_obj(
             f"faces must have shape (N, 3) or (N, 4), got shape {faces.shape}"
         )
 
-    ngon = faces.shape[1]
+    ngon = str(faces.shape[1])
     faces_dtype = faces.dtype
     if faces_dtype not in (np.int32, np.int64):
         raise ValueError(
@@ -434,8 +435,7 @@ def write_obj(
         points = np.ascontiguousarray(points)
 
     # Build suffix and dispatch
-    index_str = 'int' if faces_dtype == np.int32 else 'int64'
-    real_str = 'float' if points_dtype == np.float32 else 'double'
-    suffix = f"{index_str}{real_str}{ngon}3d"
+    meta = InputMeta(faces_dtype, points_dtype, ngon, 3)
+    suffix = build_suffix(meta)
     func = getattr(_trueform.io, f"write_obj_{suffix}")
     return func(faces, points, transformation, filename)

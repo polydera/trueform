@@ -31,7 +31,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
   // ============================================================================
 
   // int32, float, triangle, 2D
-  m.def("intersects_mesh_point_intfloat32d",
+  m.def("intersects_mesh_point_int3float2d",
         [](mesh_wrapper<int, float, 3, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2>>
                pt_data) {
@@ -40,7 +40,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("point"));
 
-  m.def("intersects_mesh_segment_intfloat32d",
+  m.def("intersects_mesh_segment_int3float2d",
         [](mesh_wrapper<int, float, 3, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
                seg_data) {
@@ -49,7 +49,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("segment"));
 
-  m.def("intersects_mesh_polygon_intfloat32d",
+  m.def("intersects_mesh_polygon_int3float2d",
         [](mesh_wrapper<int, float, 3, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const float> poly_data) {
           auto poly = make_polygon_from_array<2, float>(poly_data);
@@ -57,7 +57,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("polygon"));
 
-  m.def("intersects_mesh_ray_intfloat32d",
+  m.def("intersects_mesh_ray_int3float2d",
         [](mesh_wrapper<int, float, 3, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
                ray_data) {
@@ -66,7 +66,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("ray"));
 
-  m.def("intersects_mesh_line_intfloat32d",
+  m.def("intersects_mesh_line_int3float2d",
         [](mesh_wrapper<int, float, 3, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
                line_data) {
@@ -76,7 +76,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("line"));
 
   // int32, float, triangle, 3D
-  m.def("intersects_mesh_point_intfloat33d",
+  m.def("intersects_mesh_point_int3float3d",
         [](mesh_wrapper<int, float, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<3>>
                pt_data) {
@@ -85,7 +85,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("point"));
 
-  m.def("intersects_mesh_segment_intfloat33d",
+  m.def("intersects_mesh_segment_int3float3d",
         [](mesh_wrapper<int, float, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
                seg_data) {
@@ -94,7 +94,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("segment"));
 
-  m.def("intersects_mesh_polygon_intfloat33d",
+  m.def("intersects_mesh_polygon_int3float3d",
         [](mesh_wrapper<int, float, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float> poly_data) {
           auto poly = make_polygon_from_array<3, float>(poly_data);
@@ -102,7 +102,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("polygon"));
 
-  m.def("intersects_mesh_ray_intfloat33d",
+  m.def("intersects_mesh_ray_int3float3d",
         [](mesh_wrapper<int, float, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
                ray_data) {
@@ -111,7 +111,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("ray"));
 
-  m.def("intersects_mesh_line_intfloat33d",
+  m.def("intersects_mesh_line_int3float3d",
         [](mesh_wrapper<int, float, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
                line_data) {
@@ -121,7 +121,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("line"));
 
   // int32, float, dynamic, 2D
-  m.def("intersects_mesh_point_intfloatdyn2d",
+  m.def("intersects_mesh_point_intdynfloat2d",
         [](mesh_wrapper<int, float, dynamic_size, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2>>
                pt_data) {
@@ -130,7 +130,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("point"));
 
-  m.def("intersects_mesh_segment_intfloatdyn2d",
+  m.def("intersects_mesh_segment_intdynfloat2d",
         [](mesh_wrapper<int, float, dynamic_size, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
                seg_data) {
@@ -139,7 +139,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("segment"));
 
-  m.def("intersects_mesh_polygon_intfloatdyn2d",
+  m.def("intersects_mesh_polygon_intdynfloat2d",
         [](mesh_wrapper<int, float, dynamic_size, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const float> poly_data) {
           auto poly = make_polygon_from_array<2, float>(poly_data);
@@ -147,7 +147,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("polygon"));
 
-  m.def("intersects_mesh_ray_intfloatdyn2d",
+  m.def("intersects_mesh_ray_intdynfloat2d",
         [](mesh_wrapper<int, float, dynamic_size, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
                ray_data) {
@@ -156,7 +156,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("ray"));
 
-  m.def("intersects_mesh_line_intfloatdyn2d",
+  m.def("intersects_mesh_line_intdynfloat2d",
         [](mesh_wrapper<int, float, dynamic_size, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
                line_data) {
@@ -166,7 +166,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("line"));
 
   // int32, float, dynamic, 3D
-  m.def("intersects_mesh_point_intfloatdyn3d",
+  m.def("intersects_mesh_point_intdynfloat3d",
         [](mesh_wrapper<int, float, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<3>>
                pt_data) {
@@ -175,7 +175,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("point"));
 
-  m.def("intersects_mesh_segment_intfloatdyn3d",
+  m.def("intersects_mesh_segment_intdynfloat3d",
         [](mesh_wrapper<int, float, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
                seg_data) {
@@ -184,7 +184,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("segment"));
 
-  m.def("intersects_mesh_polygon_intfloatdyn3d",
+  m.def("intersects_mesh_polygon_intdynfloat3d",
         [](mesh_wrapper<int, float, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float> poly_data) {
           auto poly = make_polygon_from_array<3, float>(poly_data);
@@ -192,7 +192,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("polygon"));
 
-  m.def("intersects_mesh_ray_intfloatdyn3d",
+  m.def("intersects_mesh_ray_intdynfloat3d",
         [](mesh_wrapper<int, float, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
                ray_data) {
@@ -201,7 +201,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("ray"));
 
-  m.def("intersects_mesh_line_intfloatdyn3d",
+  m.def("intersects_mesh_line_intdynfloat3d",
         [](mesh_wrapper<int, float, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
                line_data) {
@@ -211,7 +211,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("line"));
 
   // int32, double, triangle, 2D
-  m.def("intersects_mesh_point_intdouble32d",
+  m.def("intersects_mesh_point_int3double2d",
         [](mesh_wrapper<int, double, 3, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2>>
                pt_data) {
@@ -220,7 +220,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("point"));
 
-  m.def("intersects_mesh_segment_intdouble32d",
+  m.def("intersects_mesh_segment_int3double2d",
         [](mesh_wrapper<int, double, 3, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const double,
                              nanobind::shape<2, 2>>
@@ -230,7 +230,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("segment"));
 
-  m.def("intersects_mesh_polygon_intdouble32d",
+  m.def("intersects_mesh_polygon_int3double2d",
         [](mesh_wrapper<int, double, 3, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const double> poly_data) {
           auto poly = make_polygon_from_array<2, double>(poly_data);
@@ -238,7 +238,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("polygon"));
 
-  m.def("intersects_mesh_ray_intdouble32d",
+  m.def("intersects_mesh_ray_int3double2d",
         [](mesh_wrapper<int, double, 3, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const double,
                              nanobind::shape<2, 2>>
@@ -248,7 +248,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("ray"));
 
-  m.def("intersects_mesh_line_intdouble32d",
+  m.def("intersects_mesh_line_int3double2d",
         [](mesh_wrapper<int, double, 3, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const double,
                              nanobind::shape<2, 2>>
@@ -259,7 +259,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("line"));
 
   // int32, double, triangle, 3D
-  m.def("intersects_mesh_point_intdouble33d",
+  m.def("intersects_mesh_point_int3double3d",
         [](mesh_wrapper<int, double, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<3>>
                pt_data) {
@@ -268,7 +268,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("point"));
 
-  m.def("intersects_mesh_segment_intdouble33d",
+  m.def("intersects_mesh_segment_int3double3d",
         [](mesh_wrapper<int, double, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double,
                              nanobind::shape<2, 3>>
@@ -278,7 +278,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("segment"));
 
-  m.def("intersects_mesh_polygon_intdouble33d",
+  m.def("intersects_mesh_polygon_int3double3d",
         [](mesh_wrapper<int, double, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double> poly_data) {
           auto poly = make_polygon_from_array<3, double>(poly_data);
@@ -286,7 +286,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("polygon"));
 
-  m.def("intersects_mesh_ray_intdouble33d",
+  m.def("intersects_mesh_ray_int3double3d",
         [](mesh_wrapper<int, double, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double,
                              nanobind::shape<2, 3>>
@@ -296,7 +296,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("ray"));
 
-  m.def("intersects_mesh_line_intdouble33d",
+  m.def("intersects_mesh_line_int3double3d",
         [](mesh_wrapper<int, double, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double,
                              nanobind::shape<2, 3>>
@@ -307,7 +307,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("line"));
 
   // int32, double, dynamic, 2D
-  m.def("intersects_mesh_point_intdoubledyn2d",
+  m.def("intersects_mesh_point_intdyndouble2d",
         [](mesh_wrapper<int, double, dynamic_size, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2>>
                pt_data) {
@@ -316,7 +316,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("point"));
 
-  m.def("intersects_mesh_segment_intdoubledyn2d",
+  m.def("intersects_mesh_segment_intdyndouble2d",
         [](mesh_wrapper<int, double, dynamic_size, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const double,
                              nanobind::shape<2, 2>>
@@ -326,7 +326,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("segment"));
 
-  m.def("intersects_mesh_polygon_intdoubledyn2d",
+  m.def("intersects_mesh_polygon_intdyndouble2d",
         [](mesh_wrapper<int, double, dynamic_size, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const double> poly_data) {
           auto poly = make_polygon_from_array<2, double>(poly_data);
@@ -334,7 +334,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("polygon"));
 
-  m.def("intersects_mesh_ray_intdoubledyn2d",
+  m.def("intersects_mesh_ray_intdyndouble2d",
         [](mesh_wrapper<int, double, dynamic_size, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const double,
                              nanobind::shape<2, 2>>
@@ -344,7 +344,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("ray"));
 
-  m.def("intersects_mesh_line_intdoubledyn2d",
+  m.def("intersects_mesh_line_intdyndouble2d",
         [](mesh_wrapper<int, double, dynamic_size, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const double,
                              nanobind::shape<2, 2>>
@@ -355,7 +355,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("line"));
 
   // int32, double, dynamic, 3D
-  m.def("intersects_mesh_point_intdoubledyn3d",
+  m.def("intersects_mesh_point_intdyndouble3d",
         [](mesh_wrapper<int, double, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<3>>
                pt_data) {
@@ -364,7 +364,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("point"));
 
-  m.def("intersects_mesh_segment_intdoubledyn3d",
+  m.def("intersects_mesh_segment_intdyndouble3d",
         [](mesh_wrapper<int, double, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double,
                              nanobind::shape<2, 3>>
@@ -374,7 +374,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("segment"));
 
-  m.def("intersects_mesh_polygon_intdoubledyn3d",
+  m.def("intersects_mesh_polygon_intdyndouble3d",
         [](mesh_wrapper<int, double, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double> poly_data) {
           auto poly = make_polygon_from_array<3, double>(poly_data);
@@ -382,7 +382,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("polygon"));
 
-  m.def("intersects_mesh_ray_intdoubledyn3d",
+  m.def("intersects_mesh_ray_intdyndouble3d",
         [](mesh_wrapper<int, double, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double,
                              nanobind::shape<2, 3>>
@@ -392,7 +392,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("ray"));
 
-  m.def("intersects_mesh_line_intdoubledyn3d",
+  m.def("intersects_mesh_line_intdyndouble3d",
         [](mesh_wrapper<int, double, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double,
                              nanobind::shape<2, 3>>
@@ -403,7 +403,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("line"));
 
   // int64, float, triangle, 2D
-  m.def("intersects_mesh_point_int64float32d",
+  m.def("intersects_mesh_point_int643float2d",
         [](mesh_wrapper<int64_t, float, 3, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2>>
                pt_data) {
@@ -412,7 +412,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("point"));
 
-  m.def("intersects_mesh_segment_int64float32d",
+  m.def("intersects_mesh_segment_int643float2d",
         [](mesh_wrapper<int64_t, float, 3, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
                seg_data) {
@@ -421,7 +421,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("segment"));
 
-  m.def("intersects_mesh_polygon_int64float32d",
+  m.def("intersects_mesh_polygon_int643float2d",
         [](mesh_wrapper<int64_t, float, 3, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const float> poly_data) {
           auto poly = make_polygon_from_array<2, float>(poly_data);
@@ -429,7 +429,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("polygon"));
 
-  m.def("intersects_mesh_ray_int64float32d",
+  m.def("intersects_mesh_ray_int643float2d",
         [](mesh_wrapper<int64_t, float, 3, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
                ray_data) {
@@ -438,7 +438,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("ray"));
 
-  m.def("intersects_mesh_line_int64float32d",
+  m.def("intersects_mesh_line_int643float2d",
         [](mesh_wrapper<int64_t, float, 3, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
                line_data) {
@@ -448,7 +448,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("line"));
 
   // int64, float, triangle, 3D
-  m.def("intersects_mesh_point_int64float33d",
+  m.def("intersects_mesh_point_int643float3d",
         [](mesh_wrapper<int64_t, float, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<3>>
                pt_data) {
@@ -457,7 +457,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("point"));
 
-  m.def("intersects_mesh_segment_int64float33d",
+  m.def("intersects_mesh_segment_int643float3d",
         [](mesh_wrapper<int64_t, float, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
                seg_data) {
@@ -466,7 +466,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("segment"));
 
-  m.def("intersects_mesh_polygon_int64float33d",
+  m.def("intersects_mesh_polygon_int643float3d",
         [](mesh_wrapper<int64_t, float, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float> poly_data) {
           auto poly = make_polygon_from_array<3, float>(poly_data);
@@ -474,7 +474,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("polygon"));
 
-  m.def("intersects_mesh_ray_int64float33d",
+  m.def("intersects_mesh_ray_int643float3d",
         [](mesh_wrapper<int64_t, float, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
                ray_data) {
@@ -483,7 +483,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("ray"));
 
-  m.def("intersects_mesh_line_int64float33d",
+  m.def("intersects_mesh_line_int643float3d",
         [](mesh_wrapper<int64_t, float, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
                line_data) {
@@ -493,7 +493,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("line"));
 
   // int64, float, dynamic, 2D
-  m.def("intersects_mesh_point_int64floatdyn2d",
+  m.def("intersects_mesh_point_int64dynfloat2d",
         [](mesh_wrapper<int64_t, float, dynamic_size, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2>>
                pt_data) {
@@ -502,7 +502,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("point"));
 
-  m.def("intersects_mesh_segment_int64floatdyn2d",
+  m.def("intersects_mesh_segment_int64dynfloat2d",
         [](mesh_wrapper<int64_t, float, dynamic_size, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
                seg_data) {
@@ -511,7 +511,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("segment"));
 
-  m.def("intersects_mesh_polygon_int64floatdyn2d",
+  m.def("intersects_mesh_polygon_int64dynfloat2d",
         [](mesh_wrapper<int64_t, float, dynamic_size, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const float> poly_data) {
           auto poly = make_polygon_from_array<2, float>(poly_data);
@@ -519,7 +519,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("polygon"));
 
-  m.def("intersects_mesh_ray_int64floatdyn2d",
+  m.def("intersects_mesh_ray_int64dynfloat2d",
         [](mesh_wrapper<int64_t, float, dynamic_size, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
                ray_data) {
@@ -528,7 +528,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("ray"));
 
-  m.def("intersects_mesh_line_int64floatdyn2d",
+  m.def("intersects_mesh_line_int64dynfloat2d",
         [](mesh_wrapper<int64_t, float, dynamic_size, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 2>>
                line_data) {
@@ -538,7 +538,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("line"));
 
   // int64, float, dynamic, 3D
-  m.def("intersects_mesh_point_int64floatdyn3d",
+  m.def("intersects_mesh_point_int64dynfloat3d",
         [](mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<3>>
                pt_data) {
@@ -547,7 +547,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("point"));
 
-  m.def("intersects_mesh_segment_int64floatdyn3d",
+  m.def("intersects_mesh_segment_int64dynfloat3d",
         [](mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
                seg_data) {
@@ -556,7 +556,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("segment"));
 
-  m.def("intersects_mesh_polygon_int64floatdyn3d",
+  m.def("intersects_mesh_polygon_int64dynfloat3d",
         [](mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float> poly_data) {
           auto poly = make_polygon_from_array<3, float>(poly_data);
@@ -564,7 +564,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("polygon"));
 
-  m.def("intersects_mesh_ray_int64floatdyn3d",
+  m.def("intersects_mesh_ray_int64dynfloat3d",
         [](mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
                ray_data) {
@@ -573,7 +573,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("ray"));
 
-  m.def("intersects_mesh_line_int64floatdyn3d",
+  m.def("intersects_mesh_line_int64dynfloat3d",
         [](mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<2, 3>>
                line_data) {
@@ -583,7 +583,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("line"));
 
   // int64, double, triangle, 2D
-  m.def("intersects_mesh_point_int64double32d",
+  m.def("intersects_mesh_point_int643double2d",
         [](mesh_wrapper<int64_t, double, 3, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2>>
                pt_data) {
@@ -592,7 +592,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("point"));
 
-  m.def("intersects_mesh_segment_int64double32d",
+  m.def("intersects_mesh_segment_int643double2d",
         [](mesh_wrapper<int64_t, double, 3, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const double,
                              nanobind::shape<2, 2>>
@@ -602,7 +602,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("segment"));
 
-  m.def("intersects_mesh_polygon_int64double32d",
+  m.def("intersects_mesh_polygon_int643double2d",
         [](mesh_wrapper<int64_t, double, 3, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const double> poly_data) {
           auto poly = make_polygon_from_array<2, double>(poly_data);
@@ -610,7 +610,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("polygon"));
 
-  m.def("intersects_mesh_ray_int64double32d",
+  m.def("intersects_mesh_ray_int643double2d",
         [](mesh_wrapper<int64_t, double, 3, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const double,
                              nanobind::shape<2, 2>>
@@ -620,7 +620,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("ray"));
 
-  m.def("intersects_mesh_line_int64double32d",
+  m.def("intersects_mesh_line_int643double2d",
         [](mesh_wrapper<int64_t, double, 3, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const double,
                              nanobind::shape<2, 2>>
@@ -631,7 +631,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("line"));
 
   // int64, double, triangle, 3D
-  m.def("intersects_mesh_point_int64double33d",
+  m.def("intersects_mesh_point_int643double3d",
         [](mesh_wrapper<int64_t, double, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<3>>
                pt_data) {
@@ -640,7 +640,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("point"));
 
-  m.def("intersects_mesh_segment_int64double33d",
+  m.def("intersects_mesh_segment_int643double3d",
         [](mesh_wrapper<int64_t, double, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double,
                              nanobind::shape<2, 3>>
@@ -650,7 +650,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("segment"));
 
-  m.def("intersects_mesh_polygon_int64double33d",
+  m.def("intersects_mesh_polygon_int643double3d",
         [](mesh_wrapper<int64_t, double, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double> poly_data) {
           auto poly = make_polygon_from_array<3, double>(poly_data);
@@ -658,7 +658,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("polygon"));
 
-  m.def("intersects_mesh_ray_int64double33d",
+  m.def("intersects_mesh_ray_int643double3d",
         [](mesh_wrapper<int64_t, double, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double,
                              nanobind::shape<2, 3>>
@@ -668,7 +668,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("ray"));
 
-  m.def("intersects_mesh_line_int64double33d",
+  m.def("intersects_mesh_line_int643double3d",
         [](mesh_wrapper<int64_t, double, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double,
                              nanobind::shape<2, 3>>
@@ -679,7 +679,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("line"));
 
   // int64, double, dynamic, 2D
-  m.def("intersects_mesh_point_int64doubledyn2d",
+  m.def("intersects_mesh_point_int64dyndouble2d",
         [](mesh_wrapper<int64_t, double, dynamic_size, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<2>>
                pt_data) {
@@ -688,7 +688,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("point"));
 
-  m.def("intersects_mesh_segment_int64doubledyn2d",
+  m.def("intersects_mesh_segment_int64dyndouble2d",
         [](mesh_wrapper<int64_t, double, dynamic_size, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const double,
                              nanobind::shape<2, 2>>
@@ -698,7 +698,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("segment"));
 
-  m.def("intersects_mesh_polygon_int64doubledyn2d",
+  m.def("intersects_mesh_polygon_int64dyndouble2d",
         [](mesh_wrapper<int64_t, double, dynamic_size, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const double> poly_data) {
           auto poly = make_polygon_from_array<2, double>(poly_data);
@@ -706,7 +706,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("polygon"));
 
-  m.def("intersects_mesh_ray_int64doubledyn2d",
+  m.def("intersects_mesh_ray_int64dyndouble2d",
         [](mesh_wrapper<int64_t, double, dynamic_size, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const double,
                              nanobind::shape<2, 2>>
@@ -716,7 +716,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("ray"));
 
-  m.def("intersects_mesh_line_int64doubledyn2d",
+  m.def("intersects_mesh_line_int64dyndouble2d",
         [](mesh_wrapper<int64_t, double, dynamic_size, 2> &mesh,
            nanobind::ndarray<nanobind::numpy, const double,
                              nanobind::shape<2, 2>>
@@ -727,7 +727,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("line"));
 
   // int64, double, dynamic, 3D
-  m.def("intersects_mesh_point_int64doubledyn3d",
+  m.def("intersects_mesh_point_int64dyndouble3d",
         [](mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<3>>
                pt_data) {
@@ -736,7 +736,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("point"));
 
-  m.def("intersects_mesh_segment_int64doubledyn3d",
+  m.def("intersects_mesh_segment_int64dyndouble3d",
         [](mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double,
                              nanobind::shape<2, 3>>
@@ -746,7 +746,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("segment"));
 
-  m.def("intersects_mesh_polygon_int64doubledyn3d",
+  m.def("intersects_mesh_polygon_int64dyndouble3d",
         [](mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double> poly_data) {
           auto poly = make_polygon_from_array<3, double>(poly_data);
@@ -754,7 +754,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("polygon"));
 
-  m.def("intersects_mesh_ray_int64doubledyn3d",
+  m.def("intersects_mesh_ray_int64dyndouble3d",
         [](mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double,
                              nanobind::shape<2, 3>>
@@ -764,7 +764,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         },
         nanobind::arg("mesh"), nanobind::arg("ray"));
 
-  m.def("intersects_mesh_line_int64doubledyn3d",
+  m.def("intersects_mesh_line_int64dyndouble3d",
         [](mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double,
                              nanobind::shape<2, 3>>
@@ -776,7 +776,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
 
   // ==== Plane (3D only) ====
   // int32, float, triangle, 3D
-  m.def("intersects_mesh_plane_intfloat33d",
+  m.def("intersects_mesh_plane_int3float3d",
         [](mesh_wrapper<int, float, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
                plane_data) {
@@ -786,7 +786,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("plane"));
 
   // int32, float, dynamic, 3D
-  m.def("intersects_mesh_plane_intfloatdyn3d",
+  m.def("intersects_mesh_plane_intdynfloat3d",
         [](mesh_wrapper<int, float, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
                plane_data) {
@@ -796,7 +796,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("plane"));
 
   // int32, double, triangle, 3D
-  m.def("intersects_mesh_plane_intdouble33d",
+  m.def("intersects_mesh_plane_int3double3d",
         [](mesh_wrapper<int, double, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<4>>
                plane_data) {
@@ -806,7 +806,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("plane"));
 
   // int32, double, dynamic, 3D
-  m.def("intersects_mesh_plane_intdoubledyn3d",
+  m.def("intersects_mesh_plane_intdyndouble3d",
         [](mesh_wrapper<int, double, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<4>>
                plane_data) {
@@ -816,7 +816,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("plane"));
 
   // int64, float, triangle, 3D
-  m.def("intersects_mesh_plane_int64float33d",
+  m.def("intersects_mesh_plane_int643float3d",
         [](mesh_wrapper<int64_t, float, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
                plane_data) {
@@ -826,7 +826,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("plane"));
 
   // int64, float, dynamic, 3D
-  m.def("intersects_mesh_plane_int64floatdyn3d",
+  m.def("intersects_mesh_plane_int64dynfloat3d",
         [](mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<4>>
                plane_data) {
@@ -836,7 +836,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("plane"));
 
   // int64, double, triangle, 3D
-  m.def("intersects_mesh_plane_int64double33d",
+  m.def("intersects_mesh_plane_int643double3d",
         [](mesh_wrapper<int64_t, double, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<4>>
                plane_data) {
@@ -846,7 +846,7 @@ auto register_mesh_intersects_primitive(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("plane"));
 
   // int64, double, dynamic, 3D
-  m.def("intersects_mesh_plane_int64doubledyn3d",
+  m.def("intersects_mesh_plane_int64dyndouble3d",
         [](mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<4>>
                plane_data) {

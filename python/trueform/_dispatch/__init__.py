@@ -1,0 +1,23 @@
+"""
+Dispatch utilities for C++ function lookup.
+
+Copyright (c) 2025 Ziga Sajovic, XLAB
+Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+Commercial licensing available via info@polydera.com.
+https://github.com/xlabmedical/trueform
+"""
+
+from .meta import InputMeta, extract_meta
+from .suffix import dtype_str, build_suffix, build_suffix_pair, topology_suffix, connectivity_suffix
+from .canonicalize import canonicalize_index_order
+
+__all__ = [
+    'InputMeta',
+    'extract_meta',
+    'dtype_str',
+    'build_suffix',
+    'build_suffix_pair',
+    'topology_suffix',
+    'connectivity_suffix',
+    'canonicalize_index_order',
+]

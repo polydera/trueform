@@ -20,7 +20,7 @@ auto register_cut_isobands(nanobind::module_ &m) -> void {
   // Each has 2 versions: without curves and with curves
 
   // ===== int32, float32, triangles, 3D =====
-  m.def("make_isobands_intfloat33d",
+  m.def("make_isobands_int3float3d",
         [](mesh_wrapper<int, float, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<-1>>
                scalars,
@@ -34,7 +34,7 @@ auto register_cut_isobands(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("scalars"),
         nanobind::arg("cut_values"), nanobind::arg("selected_bands"));
 
-  m.def("make_isobands_curves_intfloat33d",
+  m.def("make_isobands_curves_int3float3d",
         [](mesh_wrapper<int, float, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<-1>>
                scalars,
@@ -49,7 +49,7 @@ auto register_cut_isobands(nanobind::module_ &m) -> void {
         nanobind::arg("cut_values"), nanobind::arg("selected_bands"));
 
   // ===== int32, float32, dynamic, 3D =====
-  m.def("make_isobands_intfloatdyn3d",
+  m.def("make_isobands_intdynfloat3d",
         [](mesh_wrapper<int, float, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<-1>>
                scalars,
@@ -63,7 +63,7 @@ auto register_cut_isobands(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("scalars"),
         nanobind::arg("cut_values"), nanobind::arg("selected_bands"));
 
-  m.def("make_isobands_curves_intfloatdyn3d",
+  m.def("make_isobands_curves_intdynfloat3d",
         [](mesh_wrapper<int, float, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<-1>>
                scalars,
@@ -78,7 +78,7 @@ auto register_cut_isobands(nanobind::module_ &m) -> void {
         nanobind::arg("cut_values"), nanobind::arg("selected_bands"));
 
   // ===== int32, float64, triangles, 3D =====
-  m.def("make_isobands_intdouble33d",
+  m.def("make_isobands_int3double3d",
         [](mesh_wrapper<int, double, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<-1>>
                scalars,
@@ -92,7 +92,7 @@ auto register_cut_isobands(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("scalars"),
         nanobind::arg("cut_values"), nanobind::arg("selected_bands"));
 
-  m.def("make_isobands_curves_intdouble33d",
+  m.def("make_isobands_curves_int3double3d",
         [](mesh_wrapper<int, double, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<-1>>
                scalars,
@@ -107,7 +107,7 @@ auto register_cut_isobands(nanobind::module_ &m) -> void {
         nanobind::arg("cut_values"), nanobind::arg("selected_bands"));
 
   // ===== int32, float64, dynamic, 3D =====
-  m.def("make_isobands_intdoubledyn3d",
+  m.def("make_isobands_intdyndouble3d",
         [](mesh_wrapper<int, double, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<-1>>
                scalars,
@@ -121,7 +121,7 @@ auto register_cut_isobands(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("scalars"),
         nanobind::arg("cut_values"), nanobind::arg("selected_bands"));
 
-  m.def("make_isobands_curves_intdoubledyn3d",
+  m.def("make_isobands_curves_intdyndouble3d",
         [](mesh_wrapper<int, double, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<-1>>
                scalars,
@@ -136,7 +136,7 @@ auto register_cut_isobands(nanobind::module_ &m) -> void {
         nanobind::arg("cut_values"), nanobind::arg("selected_bands"));
 
   // ===== int64, float32, triangles, 3D =====
-  m.def("make_isobands_int64float33d",
+  m.def("make_isobands_int643float3d",
         [](mesh_wrapper<int64_t, float, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<-1>>
                scalars,
@@ -150,7 +150,7 @@ auto register_cut_isobands(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("scalars"),
         nanobind::arg("cut_values"), nanobind::arg("selected_bands"));
 
-  m.def("make_isobands_curves_int64float33d",
+  m.def("make_isobands_curves_int643float3d",
         [](mesh_wrapper<int64_t, float, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<-1>>
                scalars,
@@ -165,7 +165,7 @@ auto register_cut_isobands(nanobind::module_ &m) -> void {
         nanobind::arg("cut_values"), nanobind::arg("selected_bands"));
 
   // ===== int64, float32, dynamic, 3D =====
-  m.def("make_isobands_int64floatdyn3d",
+  m.def("make_isobands_int64dynfloat3d",
         [](mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<-1>>
                scalars,
@@ -179,7 +179,7 @@ auto register_cut_isobands(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("scalars"),
         nanobind::arg("cut_values"), nanobind::arg("selected_bands"));
 
-  m.def("make_isobands_curves_int64floatdyn3d",
+  m.def("make_isobands_curves_int64dynfloat3d",
         [](mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const float, nanobind::shape<-1>>
                scalars,
@@ -194,7 +194,7 @@ auto register_cut_isobands(nanobind::module_ &m) -> void {
         nanobind::arg("cut_values"), nanobind::arg("selected_bands"));
 
   // ===== int64, float64, triangles, 3D =====
-  m.def("make_isobands_int64double33d",
+  m.def("make_isobands_int643double3d",
         [](mesh_wrapper<int64_t, double, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<-1>>
                scalars,
@@ -208,7 +208,7 @@ auto register_cut_isobands(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("scalars"),
         nanobind::arg("cut_values"), nanobind::arg("selected_bands"));
 
-  m.def("make_isobands_curves_int64double33d",
+  m.def("make_isobands_curves_int643double3d",
         [](mesh_wrapper<int64_t, double, 3, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<-1>>
                scalars,
@@ -223,7 +223,7 @@ auto register_cut_isobands(nanobind::module_ &m) -> void {
         nanobind::arg("cut_values"), nanobind::arg("selected_bands"));
 
   // ===== int64, float64, dynamic, 3D =====
-  m.def("make_isobands_int64doubledyn3d",
+  m.def("make_isobands_int64dyndouble3d",
         [](mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<-1>>
                scalars,
@@ -237,7 +237,7 @@ auto register_cut_isobands(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("scalars"),
         nanobind::arg("cut_values"), nanobind::arg("selected_bands"));
 
-  m.def("make_isobands_curves_int64doubledyn3d",
+  m.def("make_isobands_curves_int64dyndouble3d",
         [](mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh,
            nanobind::ndarray<nanobind::numpy, const double, nanobind::shape<-1>>
                scalars,
@@ -251,7 +251,7 @@ auto register_cut_isobands(nanobind::module_ &m) -> void {
         nanobind::arg("mesh"), nanobind::arg("scalars"),
         nanobind::arg("cut_values"), nanobind::arg("selected_bands"));
 
-  // TODO: Add 2D variants if needed (intfloat32d, etc.)
+  // TODO: Add 2D variants if needed (int3float2d, etc.)
 }
 
 } // namespace tf::py
