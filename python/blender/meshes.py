@@ -15,6 +15,7 @@ import numpy as np
 from bpy.app.handlers import persistent
 
 import trueform as tf
+from . import convert
 
 
 # Session-local cache: mesh.as_pointer() -> tf.Mesh
@@ -45,6 +46,15 @@ def set_cache_enabled(enabled: bool) -> None:
         _log("cache enabled")
 
 
+def is_cache_enabled() -> bool:
+    """
+    Check if the mesh cache is currently enabled.
+
+    @return True if caching is enabled.
+    """
+    return _CACHE_ENABLED
+
+
 def set_verbose(enabled: bool) -> None:
     """
     Enable or disable verbose cache logging.
@@ -71,50 +81,14 @@ def prefetch(obj: bpy.types.Object) -> None:
         _log(f"prefetch cache hit: {obj.name}")
         return
     _log(f"prefetch cache miss: {obj.name}")
-    _cache[key] = _build(obj.data)
-
-
-def _extract_geometry(mesh: bpy.types.Mesh) -> tuple[np.ndarray, np.ndarray]:
-    """
-    Extract vertices and triangulated faces from a Blender mesh.
-
-    Returns
-    -------
-    points : np.ndarray
-        (N, 3) float32 array of vertex positions
-    faces : np.ndarray
-        (M, 3) int32 array of triangle indices
-    """
-    mesh.calc_loop_triangles()
-
-    points = np.empty((len(mesh.vertices), 3), dtype=np.float32)
-    mesh.vertices.foreach_get("co", points.ravel())
-
-    faces = np.empty((len(mesh.loop_triangles), 3), dtype=np.int32)
-    mesh.loop_triangles.foreach_get("vertices", faces.ravel())
-
-    return points, faces
-
-
-def _build(mesh: bpy.types.Mesh) -> tf.Mesh:
-    """
-    Build a tf.Mesh from a Blender mesh with all structures needed for boolean.
-    """
-    points, faces = _extract_geometry(mesh)
-
-    m = tf.Mesh(faces, points)
-    m.build_tree()
-    m.build_face_membership()
-    m.build_manifold_edge_link()
-
-    return m
+    _cache[key] = convert.from_blender(obj.data)
 
 
 def _update(tf_mesh: tf.Mesh, mesh: bpy.types.Mesh) -> None:
     """
     Update an existing tf.Mesh with new geometry and rebuild structures.
     """
-    points, faces = _extract_geometry(mesh)
+    points, faces = convert.extract_geometry(mesh)
 
     tf_mesh.points = points
     tf_mesh.faces = faces
@@ -132,6 +106,9 @@ def get(obj: bpy.types.Object) -> tf.Mesh:
     world transformation applied. Multiple objects sharing the same
     mesh data will share geometry and cached structures but have
     independent transformations.
+
+    If the cache is disabled (default for script usage), a new
+    transient tf.Mesh is built.
 
     Parameters
     ----------
@@ -155,13 +132,13 @@ def get(obj: bpy.types.Object) -> tf.Mesh:
         key = obj.data.as_pointer()
         if key not in _cache:
             _log(f"cache miss: {obj.name}")
-            _cache[key] = _build(obj.data)
+            _cache[key] = convert.from_blender(obj.data)
         else:
             _log(f"cache hit: {obj.name}")
         mesh = _cache[key].shared_view()
     else:
         _log(f"cache disabled: building transient mesh for {obj.name}")
-        mesh = _build(obj.data)
+        mesh = convert.from_blender(obj.data)
 
     # Apply this object's world transform
     mesh.transformation = np.array(obj.matrix_world, dtype=np.float32)
@@ -209,6 +186,7 @@ def _on_depsgraph_update(scene, depsgraph):
 
 
 def register():
+    """Register handlers."""
     if _on_load not in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.append(_on_load)
 
@@ -220,10 +198,9 @@ def register():
 
 
 def unregister():
+    """Unregister handlers."""
     if _on_load in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.remove(_on_load)
 
     if _on_depsgraph_update in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.remove(_on_depsgraph_update)
-
-    _cache.clear()

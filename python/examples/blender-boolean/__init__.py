@@ -1,3 +1,12 @@
+"""
+Trueform boolean Blender add-on.
+
+Caching is enabled for this add-on to support interactive preview. When writing
+standalone Blender Python scripts, convert Blender objects with
+`trueform.blender.convert.from_blender`, run operations on the resulting `tf.Mesh`,
+and convert back using `trueform.blender.convert.to_blender`.
+"""
+
 bl_info = {
     "name": "Trueform Boolean Tool",
     "author": "Z. Sajovic, M. Zukovec",
@@ -12,19 +21,90 @@ import bpy
 import time
 import os
 import sys
+import shutil
+from typing import Optional
 
 # --- LIBRARY PATH SETUP ---
-LIB_PATH = os.path.join(os.path.dirname(__file__), "libs")
+ADDON_DIR = os.path.dirname(__file__)
+LIB_PATH = os.path.join(ADDON_DIR, "libs")
+
+
+def _find_trueform_src() -> Optional[str]:
+    candidates = (
+        os.path.join(ADDON_DIR, "trueform"),
+        os.path.join(LIB_PATH, "trueform"),
+    )
+    for path in candidates:
+        if os.path.isdir(path):
+            return path
+    return None
+
 
 def manage_path(add=True):
-    if add:
-        if LIB_PATH not in sys.path:
-            sys.path.insert(0, LIB_PATH)
-    else:
-        if LIB_PATH in sys.path:
-            sys.path.remove(LIB_PATH)
+    src = _find_trueform_src()
+    base_paths = []
+    if src:
+        base_paths.append(os.path.dirname(src))
+
+    for base in base_paths:
+        if add:
+            if base not in sys.path:
+                sys.path.insert(0, base)
+        else:
+            if base in sys.path:
+                sys.path.remove(base)
+
+
+def _get_modules_dir() -> Optional[str]:
+    return bpy.utils.user_resource("SCRIPTS", path="modules")
+
+
+def _install_trueform_global() -> bool:
+    src = _find_trueform_src()
+    if not src:
+        print("[Trueform] Global install failed: bundled trueform package not found.")
+        return False
+
+    modules_dir = _get_modules_dir()
+    if not modules_dir:
+        print("[Trueform] Global install failed: modules directory not available.")
+        return False
+
+    try:
+        os.makedirs(modules_dir, exist_ok=True)
+        dest = os.path.join(modules_dir, "trueform")
+        if os.path.exists(dest):
+            shutil.rmtree(dest)
+        shutil.copytree(src, dest)
+        print(f"[Trueform] Installed trueform module to {dest}")
+        return True
+    except Exception as exc:
+        print(f"[Trueform] Global install failed: {exc}")
+        return False
+
+
+def _on_install_preference(prefs) -> None:
+    if prefs.install_trueform_module:
+        if not _install_trueform_global():
+            print("[Trueform] Global package install not present.")
+
+
+class TrueformAddonPreferences(bpy.types.AddonPreferences):
+    bl_idname = __name__
+
+    install_trueform_module: bpy.props.BoolProperty(
+        name="Install Trueform module for scripts",
+        description="Copy the bundled trueform package into Blender's scripts/modules",
+        default=False,
+        update=lambda self, context: _on_install_preference(self),
+    )
+
+    def draw(self, context):
+        layout = self.layout
+        layout.prop(self, "install_trueform_module")
 
 # --- INITIALIZATION ---
+
 def get_tf_libs():
     manage_path(add=True)
     try:
@@ -107,7 +187,7 @@ def _update_preview(context):
 
         if paths:
             if not existing:
-                curves_obj = tfb.convert.make_curves_object(paths, points, "TFB_Preview_Curves")
+                curves_obj = tfb.convert.to_blender_curves(paths, points, "TFB_Preview_Curves")
                 _PREVIEW_CURVES_NAME = curves_obj.name
             else:
                 old_data = existing.data
@@ -175,6 +255,9 @@ class MESH_OT_trueform_boolean(bpy.types.Operator):
             if props.hide_inputs:
                 props.target_a.hide_set(True)
                 props.target_b.hide_set(True)
+            _remove_preview_curves()
+            props.target_a = None
+            props.target_b = None
             return {'FINISHED'}
         except Exception as e:
             self.report({'ERROR'}, str(e))
@@ -202,7 +285,8 @@ class VIEW3D_PT_trueform_panel(bpy.types.Panel):
                 body.prop(props, "hide_inputs")
 
 # --- REGISTRATION ---
-classes = (TrueformProperties, MESH_OT_trueform_boolean, VIEW3D_PT_trueform_panel)
+classes = (TrueformAddonPreferences, TrueformProperties, MESH_OT_trueform_boolean, VIEW3D_PT_trueform_panel)
+
 
 def register():
     manage_path(add=True)
@@ -210,10 +294,25 @@ def register():
         bpy.utils.register_class(cls)
     bpy.types.Scene.trueform_tools = bpy.props.PointerProperty(type=TrueformProperties)
 
+    addon = bpy.context.preferences.addons.get(__name__)
+    if addon and addon.preferences.install_trueform_module:
+        if not _install_trueform_global():
+            print("[Trueform] Global package install not present.")
+
+    _tf, tfb = get_tf_libs()
+    if tfb:
+        tfb.meshes.set_cache_enabled(True)
+
     if _on_depsgraph_update not in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.append(_on_depsgraph_update)
 
+
 def unregister():
+    _tf, tfb = get_tf_libs()
+    if tfb:
+        tfb.meshes.set_cache_enabled(False)
+
+
     if _on_depsgraph_update in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.remove(_on_depsgraph_update)
     _remove_preview_curves()

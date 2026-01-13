@@ -4,8 +4,8 @@ Conversion utilities for Blender.
 Create Blender meshes and objects from trueform data.
 
 Naming follows trueform conventions:
-- make_polygons / make_mesh_object: for mesh data (faces + points)
-- make_curves / make_curves_object: for curve data (paths + points)
+- from_blender / to_blender: for mesh data (faces + points)
+- make_curves / to_blender_curves: for curve data (paths + points)
 
 Copyright (c) 2025 Žiga Sajovic, XLAB
 Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
@@ -15,8 +15,83 @@ https://github.com/xlabmedical/trueform
 
 import bpy
 import numpy as np
+from typing import Union
 
+import trueform as tf
 from trueform import OffsetBlockedArray
+
+
+def extract_geometry(mesh: bpy.types.Mesh) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Extract vertices and triangulated faces from a Blender mesh.
+
+    Returns
+    -------
+    points : np.ndarray
+        (N, 3) float32 array of vertex positions
+    faces : np.ndarray
+        (M, 3) int32 array of triangle indices
+    """
+    mesh.calc_loop_triangles()
+
+    points = np.empty((len(mesh.vertices), 3), dtype=np.float32)
+    mesh.vertices.foreach_get("co", points.ravel())
+
+    faces = np.empty((len(mesh.loop_triangles), 3), dtype=np.int32)
+    mesh.loop_triangles.foreach_get("vertices", faces.ravel())
+
+    return points, faces
+
+
+def _apply_transform(points: np.ndarray, matrix: np.ndarray) -> np.ndarray:
+    if matrix is None:
+        return points
+    ones = np.ones((len(points), 1), dtype=points.dtype)
+    homogeneous = np.concatenate((points, ones), axis=1)
+    transformed = (matrix @ homogeneous.T).T
+    return transformed[:, :3].astype(points.dtype, copy=False)
+
+
+def from_blender(data: Union[bpy.types.Mesh, bpy.types.Object]) -> tf.Mesh:
+    """
+    Convert a Blender mesh or object to a trueform Mesh.
+
+    Automatically builds spatial tree, face membership and manifold edge links
+    required for most operations (e.g. boolean). If the input is an object,
+    its world transform is baked into the resulting points.
+
+    Parameters
+    ----------
+    data : bpy.types.Mesh or bpy.types.Object
+        The Blender mesh data block or object to convert.
+
+    Returns
+    -------
+    tf.Mesh
+        The trueform Mesh representation.
+    """
+    matrix = None
+    if isinstance(data, bpy.types.Object):
+        if data.type != 'MESH':
+            raise TypeError(f"Object '{data.name}' is not a mesh")
+        mesh_data = data.data
+        matrix = np.array(data.matrix_world, dtype=np.float32)
+    else:
+        mesh_data = data
+
+    points, faces = extract_geometry(mesh_data)
+
+    if matrix is not None:
+        points = _apply_transform(points, matrix)
+
+    mesh = tf.Mesh(faces, points)
+
+    # Build production-ready structures
+    mesh.build_tree()
+    mesh.build_face_membership()
+    mesh.build_manifold_edge_link()
+
+    return mesh
 
 
 def make_polygons(faces: np.ndarray, points: np.ndarray, name: str = "Mesh") -> bpy.types.Mesh:
@@ -48,29 +123,27 @@ def make_polygons(faces: np.ndarray, points: np.ndarray, name: str = "Mesh") -> 
     return mesh
 
 
-def make_mesh_object(faces: np.ndarray, points: np.ndarray, name: str = "Mesh") -> bpy.types.Object:
+def to_blender(mesh: tf.Mesh, name: str = "Mesh") -> bpy.types.Object:
     """
-    Create a Blender mesh object from numpy arrays.
-
-    The object is added to the current scene's active collection.
+    Create a Blender mesh object from a trueform Mesh.
 
     Parameters
     ----------
-    faces : np.ndarray
-        (M, 3) int array of triangle indices
-    points : np.ndarray
-        (N, 3) float array of vertex positions
+    mesh : tf.Mesh
+        The trueform mesh to convert.
     name : str
-        Name for the object and mesh data block
+        Name for the object and mesh data block.
 
     Returns
     -------
     bpy.types.Object
-        The created Blender object
+        The created Blender object.
     """
-    mesh = make_polygons(faces, points, name)
+    points = np.array(mesh.points, copy=True)
+    faces = np.array(mesh.faces, copy=False)
 
-    obj = bpy.data.objects.new(name, mesh)
+    mesh_data = make_polygons(faces, points, name)
+    obj = bpy.data.objects.new(name, mesh_data)
     bpy.context.collection.objects.link(obj)
 
     return obj
@@ -115,7 +188,7 @@ def make_curves(paths: OffsetBlockedArray, points: np.ndarray, name: str = "Curv
     return curve
 
 
-def make_curves_object(paths: OffsetBlockedArray, points: np.ndarray, name: str = "Curves") -> bpy.types.Object:
+def to_blender_curves(paths: OffsetBlockedArray, points: np.ndarray, name: str = "Curves") -> bpy.types.Object:
     """
     Create a Blender curve object from paths and points.
 
