@@ -26,6 +26,8 @@ void register_chamfer_error(nanobind::module_ &m);
 
 void register_triangulated(nanobind::module_ &m);
 
+void register_principal_curvatures(nanobind::module_ &m);
+
 void register_geometry_module(nanobind::module_ &m);
 
 } // namespace tf::py

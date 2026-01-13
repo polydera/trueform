@@ -23,6 +23,7 @@ auto register_geometry_module(nanobind::module_ &m) -> void {
   register_fit_knn_alignment(geometry_module);
   register_chamfer_error(geometry_module);
   register_triangulated(geometry_module);
+  register_principal_curvatures(geometry_module);
 }
 
 } // namespace tf::py

@@ -10,6 +10,7 @@ https://github.com/xlabmedical/trueform
 from .meta import InputMeta, extract_meta
 from .suffix import dtype_str, build_suffix, build_suffix_pair, topology_suffix, connectivity_suffix
 from .canonicalize import canonicalize_index_order
+from .ensure_mesh import ensure_mesh
 
 __all__ = [
     'InputMeta',
@@ -20,4 +21,5 @@ __all__ = [
     'topology_suffix',
     'connectivity_suffix',
     'canonicalize_index_order',
+    'ensure_mesh',
 ]
