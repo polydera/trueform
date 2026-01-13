@@ -12,6 +12,7 @@ set(TRUEFORM_VTK_SOURCES
   src/filters/boolean.cpp
   src/filters/boundary_paths.cpp
   src/filters/connected_components.cpp
+  src/filters/curvatures_generator.cpp
   src/filters/intersection_curves.cpp
   src/filters/isocontours.cpp
   src/filters/isobands.cpp
@@ -52,6 +53,7 @@ set(TRUEFORM_VTK_SOURCES
   src/functions/cleaned_points.cpp
   src/functions/compute_cell_normals.cpp
   src/functions/compute_point_normals.cpp
+  src/functions/compute_principal_curvatures.cpp
   src/functions/ensure_positive_orientation.cpp
   src/functions/fit_knn_alignment.cpp
   src/functions/fit_obb_alignment.cpp
