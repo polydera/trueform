@@ -222,7 +222,7 @@ If you use trueform in your work, please cite:
     author={Sajovic, {\v{Z}}iga and {et al.}},
     year={2025},
     url={https://github.com/xlabmedical/trueform},
-    note={Header-only C++ library for real-time geometric processing built on composable range-based policies. Features spatial acceleration,
+    note={Header-only C++ library for real-time geometric processing. Easy to use, robust on real-world meshes. Features spatial acceleration,
     topology, intersections, boolean operations, and parallel algorithms.}
 }
 ```

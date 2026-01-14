@@ -1,6 +1,6 @@
 # Tutorial
 
-**Real-time geometric processing built on composable range-based policies**
+**Real-time geometric processing. Easy to use, robust on real-world meshes.**
 
 `trueform` is a C++ library for real-time geometric processing, built on the principles of composable views and inline policy injection. It operates directly on your *plain-old-data*, by providing semantic views that wrap it with geometric meaning.
 
