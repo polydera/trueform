@@ -22,10 +22,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # os: [trueform-win, trueform-linux, macos-latest]
-        # python-version: ["3.11", "3.12", "3.13"]
-        os: [ macos-latest ]
-        python-version: [ "3.11" ]
+        os: [trueform-win, trueform-linux, macos-latest]
+        python-version: ["3.11", "3.12", "3.13"]
 
     steps:
       - uses: actions/checkout@v4
@@ -132,7 +130,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
-          files: dist/**/*.whl
+          files: |
+            dist/**/*.whl
+            dist/**/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
