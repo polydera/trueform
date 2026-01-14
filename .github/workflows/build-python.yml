@@ -1,5 +1,9 @@
 name: Build and Publish Wheels
 
+env:
+  BLENDER_VERSION: "5.0"
+  BLENDER_PYTHON_VERSION: "3.11"
+
 on:
   push:
     tags:
@@ -83,6 +87,19 @@ jobs:
           cibuildwheel --output-dir wheelhouse
 
       # ------------------------------------------------------
+      # Package Blender plugin (Python 3.11 / Blender 5.0)
+      # ------------------------------------------------------
+      - name: Package Blender plugin
+        if: matrix.python-version == env.BLENDER_PYTHON_VERSION
+        shell: bash
+        run: |
+          python -m pip install --force-reinstall wheelhouse/trueform-*.whl
+          BLENDER_PY_NO_DOT=$(echo "${{ env.BLENDER_PYTHON_VERSION }}" | tr -d '.')
+          python python/tools/package_blender_plugin.py \
+            --plugin-init python/examples/bpy-plugin/__init__.py \
+            --output wheelhouse/trueform-bpy-plugin-${{ runner.os }}-py${BLENDER_PY_NO_DOT}.zip
+
+      # ------------------------------------------------------
       # Upload wheels for publish job
       # ------------------------------------------------------
       - name: Upload artifacts
@@ -90,7 +107,9 @@ jobs:
         with:
           # Must include python version in name to prevent overwrites in parallel matrix jobs
           name: trueform-wheels-${{ matrix.os }}-${{ matrix.python-version }}
-          path: wheelhouse/*.whl
+          path: |
+            wheelhouse/*.whl
+            wheelhouse/*.zip
 
   # ----------------------------------------------------------
   # PUBLISH WHEELS (GitHub Release + PyPI)
