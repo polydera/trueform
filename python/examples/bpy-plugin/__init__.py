@@ -18,10 +18,8 @@ bl_info = {
 }
 
 import bpy
-import time
 import os
 import sys
-import shutil
 from typing import Optional
 
 # --- LIBRARY PATH SETUP ---
@@ -57,51 +55,6 @@ def manage_path(add=True):
 
 def _get_modules_dir() -> Optional[str]:
     return bpy.utils.user_resource("SCRIPTS", path="modules")
-
-
-def _install_trueform_global() -> bool:
-    src = _find_trueform_src()
-    if not src:
-        print("[Trueform] Global install failed: bundled trueform package not found.")
-        return False
-
-    modules_dir = _get_modules_dir()
-    if not modules_dir:
-        print("[Trueform] Global install failed: modules directory not available.")
-        return False
-
-    try:
-        os.makedirs(modules_dir, exist_ok=True)
-        dest = os.path.join(modules_dir, "trueform")
-        if os.path.exists(dest):
-            shutil.rmtree(dest)
-        shutil.copytree(src, dest)
-        print(f"[Trueform] Installed trueform module to {dest}")
-        return True
-    except Exception as exc:
-        print(f"[Trueform] Global install failed: {exc}")
-        return False
-
-
-def _on_install_preference(prefs) -> None:
-    if prefs.install_trueform_module:
-        if not _install_trueform_global():
-            print("[Trueform] Global package install not present.")
-
-
-class TrueformAddonPreferences(bpy.types.AddonPreferences):
-    bl_idname = __name__
-
-    install_trueform_module: bpy.props.BoolProperty(
-        name="Install Trueform module for scripts",
-        description="Copy the bundled trueform package into Blender's scripts/modules",
-        default=False,
-        update=lambda self, context: _on_install_preference(self),
-    )
-
-    def draw(self, context):
-        layout = self.layout
-        layout.prop(self, "install_trueform_module")
 
 # --- INITIALIZATION ---
 
@@ -285,7 +238,7 @@ class VIEW3D_PT_trueform_panel(bpy.types.Panel):
                 body.prop(props, "hide_inputs")
 
 # --- REGISTRATION ---
-classes = (TrueformAddonPreferences, TrueformProperties, MESH_OT_trueform_boolean, VIEW3D_PT_trueform_panel)
+classes = (TrueformProperties, MESH_OT_trueform_boolean, VIEW3D_PT_trueform_panel)
 
 
 def register():
@@ -293,11 +246,6 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
     bpy.types.Scene.trueform_tools = bpy.props.PointerProperty(type=TrueformProperties)
-
-    addon = bpy.context.preferences.addons.get(__name__)
-    if addon and addon.preferences.install_trueform_module:
-        if not _install_trueform_global():
-            print("[Trueform] Global package install not present.")
 
     _tf, tfb = get_tf_libs()
     if tfb:
