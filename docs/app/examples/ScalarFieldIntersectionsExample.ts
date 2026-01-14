@@ -147,7 +147,7 @@ export class ScalarFieldIntersectionsExample extends ThreejsBase {
     });
 
     const opts: curvesToCurvePolyOpts = {
-      tubeColor: 0xffaa00,
+      tubeColor: 0x00d5be,
       lineWidth: 0.2,
     };
     this.curveObjects = this.useBasicLines
