@@ -12,6 +12,8 @@ from .cell_membership import cell_membership
 from .manifold_edge_link import manifold_edge_link
 from .face_link import face_link
 from .vertex_link import vertex_link_edges, vertex_link_faces
+from .k_rings import k_rings
+from .neighborhoods import neighborhoods
 from .boundary_edges import boundary_edges
 from .boundary_paths import boundary_paths
 from .boundary_curves import boundary_curves
@@ -26,6 +28,8 @@ __all__ = [
     'face_link',
     'vertex_link_edges',
     'vertex_link_faces',
+    'k_rings',
+    'neighborhoods',
     'boundary_edges',
     'boundary_paths',
     'boundary_curves',

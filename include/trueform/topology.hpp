@@ -74,10 +74,14 @@
 #include "./topology/label_connected_components.hpp" // IWYU pragma: export
 #include "./topology/make_applier.hpp"               // IWYU pragma: export
 #include "./topology/make_edge_connected_component_labels.hpp" // IWYU pragma: export
-#include "./topology/make_manifold_edge_connected_component_labels.hpp" // IWYU pragma: export
-#include "./topology/make_vertex_connected_component_labels.hpp" // IWYU pragma: export
+#include "./topology/make_face_link.hpp"            // IWYU pragma: export
+#include "./topology/make_face_membership.hpp"      // IWYU pragma: export
 #include "./topology/make_k_ring.hpp"               // IWYU pragma: export
+#include "./topology/make_manifold_edge_connected_component_labels.hpp" // IWYU pragma: export
+#include "./topology/make_manifold_edge_link.hpp"   // IWYU pragma: export
 #include "./topology/make_neighborhoods.hpp"        // IWYU pragma: export
+#include "./topology/make_vertex_connected_component_labels.hpp" // IWYU pragma: export
+#include "./topology/make_vertex_link.hpp"          // IWYU pragma: export
 #include "./topology/manifold_edge_link.hpp"        // IWYU pragma: export
 #include "./topology/manifold_edge_peer.hpp"        // IWYU pragma: export
 #include "./topology/non_manifold_edges.hpp"        // IWYU pragma: export

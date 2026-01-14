@@ -15,7 +15,7 @@ from .._core import OffsetBlockedArray
 from .._dispatch import ensure_mesh, extract_meta, build_suffix
 
 
-def compute_principal_curvatures(
+def principal_curvatures(
     data: Union[Mesh, Tuple[np.ndarray, np.ndarray], Tuple[OffsetBlockedArray, np.ndarray]],
     k: int = 2,
     directions: bool = False
@@ -65,13 +65,13 @@ def compute_principal_curvatures(
     >>>
     >>> # From Mesh
     >>> mesh = tf.Mesh(faces, points)
-    >>> k0, k1 = tf.compute_principal_curvatures(mesh)
+    >>> k0, k1 = tf.principal_curvatures(mesh)
     >>>
     >>> # With directions
-    >>> k0, k1, d0, d1 = tf.compute_principal_curvatures(mesh, directions=True)
+    >>> k0, k1, d0, d1 = tf.principal_curvatures(mesh, directions=True)
     >>>
     >>> # From tuple with custom k-ring
-    >>> k0, k1 = tf.compute_principal_curvatures((faces, points), k=3)
+    >>> k0, k1 = tf.principal_curvatures((faces, points), k=3)
     """
     mesh = ensure_mesh(data, dims=3)
     meta = extract_meta(mesh)

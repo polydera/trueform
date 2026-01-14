@@ -30,6 +30,8 @@ auto register_topology(nanobind::module_ &m) -> void {
   register_topology_boundary_paths(topology_module);
   register_topology_orient_faces_consistently(topology_module);
   register_topology_connect_edges_to_paths(topology_module);
+  register_topology_make_k_ring(topology_module);
+  register_topology_make_neighborhoods(topology_module);
 }
 
 } // namespace tf::py

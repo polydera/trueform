@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 
 #include "../core/algorithm/generate_offset_blocks.hpp"
@@ -28,8 +28,7 @@ namespace tf::topology {
 /// Use for inline k-ring iteration without allocating intermediate buffers.
 ///
 /// @tparam Index The vertex index type.
-template <typename Index>
-struct k_ring_applier {
+template <typename Index> struct k_ring_applier {
   tf::hash_set<Index> visited;
   tf::buffer<Index> queue;
 
@@ -58,7 +57,7 @@ struct k_ring_applier {
       Index vid = queue[front++];
 
       for (auto neighbor : vlink[vid]) {
-        if (visited.count(neighbor))
+        if (neighbor < 0 || visited.count(neighbor))
           continue;
 
         visited.insert(neighbor);

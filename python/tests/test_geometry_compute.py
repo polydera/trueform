@@ -153,17 +153,17 @@ def create_sphere_mesh(index_dtype, real_dtype, subdivisions=2):
 
 
 # ==============================================================================
-# compute_normals Tests
+# normals Tests
 # ==============================================================================
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_normals_from_mesh(index_dtype, real_dtype):
-    """Test compute_normals with Mesh input."""
+def test_normals_from_mesh(index_dtype, real_dtype):
+    """Test normals with Mesh input."""
     faces, points = create_triangle_mesh_3d(index_dtype, real_dtype)
     mesh = tf.Mesh(faces, points)
 
-    normals = tf.compute_normals(mesh)
+    normals = tf.normals(mesh)
 
     assert normals.shape == (len(faces), 3)
     assert normals.dtype == real_dtype
@@ -171,11 +171,11 @@ def test_compute_normals_from_mesh(index_dtype, real_dtype):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_normals_from_tuple(index_dtype, real_dtype):
-    """Test compute_normals with (faces, points) tuple input."""
+def test_normals_from_tuple(index_dtype, real_dtype):
+    """Test normals with (faces, points) tuple input."""
     faces, points = create_triangle_mesh_3d(index_dtype, real_dtype)
 
-    normals = tf.compute_normals((faces, points))
+    normals = tf.normals((faces, points))
 
     assert normals.shape == (len(faces), 3)
     assert normals.dtype == real_dtype
@@ -183,11 +183,11 @@ def test_compute_normals_from_tuple(index_dtype, real_dtype):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_normals_unit_vectors(index_dtype, real_dtype):
+def test_normals_unit_vectors(index_dtype, real_dtype):
     """Test that computed normals are unit vectors."""
     faces, points = create_triangle_mesh_3d(index_dtype, real_dtype)
 
-    normals = tf.compute_normals((faces, points))
+    normals = tf.normals((faces, points))
 
     lengths = np.linalg.norm(normals, axis=1)
     np.testing.assert_allclose(lengths, 1.0, atol=1e-6)
@@ -195,11 +195,11 @@ def test_compute_normals_unit_vectors(index_dtype, real_dtype):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_normals_dynamic_mesh(index_dtype, real_dtype):
-    """Test compute_normals with dynamic mesh."""
+def test_normals_dynamic_mesh(index_dtype, real_dtype):
+    """Test normals with dynamic mesh."""
     faces, points = create_dynamic_mesh_3d(index_dtype, real_dtype)
 
-    normals = tf.compute_normals((faces, points))
+    normals = tf.normals((faces, points))
 
     assert normals.shape == (len(faces), 3)
     assert normals.dtype == real_dtype
@@ -207,26 +207,26 @@ def test_compute_normals_dynamic_mesh(index_dtype, real_dtype):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_normals_2d_raises(index_dtype, real_dtype):
-    """Test that compute_normals raises for 2D mesh."""
+def test_normals_2d_raises(index_dtype, real_dtype):
+    """Test that normals raises for 2D mesh."""
     faces, points = create_triangle_mesh_2d(index_dtype, real_dtype)
 
     with pytest.raises(ValueError, match="3D"):
-        tf.compute_normals((faces, points))
+        tf.normals((faces, points))
 
 
 # ==============================================================================
-# compute_point_normals Tests
+# point_normals Tests
 # ==============================================================================
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_point_normals_from_mesh(index_dtype, real_dtype):
-    """Test compute_point_normals with Mesh input."""
+def test_point_normals_from_mesh(index_dtype, real_dtype):
+    """Test point_normals with Mesh input."""
     faces, points = create_triangle_mesh_3d(index_dtype, real_dtype)
     mesh = tf.Mesh(faces, points)
 
-    point_normals = tf.compute_point_normals(mesh)
+    point_normals = tf.point_normals(mesh)
 
     assert point_normals.shape == (len(points), 3)
     assert point_normals.dtype == real_dtype
@@ -234,11 +234,11 @@ def test_compute_point_normals_from_mesh(index_dtype, real_dtype):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_point_normals_from_tuple(index_dtype, real_dtype):
-    """Test compute_point_normals with (faces, points) tuple input."""
+def test_point_normals_from_tuple(index_dtype, real_dtype):
+    """Test point_normals with (faces, points) tuple input."""
     faces, points = create_triangle_mesh_3d(index_dtype, real_dtype)
 
-    point_normals = tf.compute_point_normals((faces, points))
+    point_normals = tf.point_normals((faces, points))
 
     assert point_normals.shape == (len(points), 3)
     assert point_normals.dtype == real_dtype
@@ -246,11 +246,11 @@ def test_compute_point_normals_from_tuple(index_dtype, real_dtype):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_point_normals_unit_vectors(index_dtype, real_dtype):
+def test_point_normals_unit_vectors(index_dtype, real_dtype):
     """Test that computed point normals are unit vectors."""
     faces, points = create_triangle_mesh_3d(index_dtype, real_dtype)
 
-    point_normals = tf.compute_point_normals((faces, points))
+    point_normals = tf.point_normals((faces, points))
 
     lengths = np.linalg.norm(point_normals, axis=1)
     np.testing.assert_allclose(lengths, 1.0, atol=1e-6)
@@ -258,11 +258,11 @@ def test_compute_point_normals_unit_vectors(index_dtype, real_dtype):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_point_normals_dynamic_mesh(index_dtype, real_dtype):
-    """Test compute_point_normals with dynamic mesh."""
+def test_point_normals_dynamic_mesh(index_dtype, real_dtype):
+    """Test point_normals with dynamic mesh."""
     faces, points = create_dynamic_mesh_3d(index_dtype, real_dtype)
 
-    point_normals = tf.compute_point_normals((faces, points))
+    point_normals = tf.point_normals((faces, points))
 
     assert point_normals.shape == (len(points), 3)
     assert point_normals.dtype == real_dtype
@@ -270,26 +270,26 @@ def test_compute_point_normals_dynamic_mesh(index_dtype, real_dtype):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_point_normals_2d_raises(index_dtype, real_dtype):
-    """Test that compute_point_normals raises for 2D mesh."""
+def test_point_normals_2d_raises(index_dtype, real_dtype):
+    """Test that point_normals raises for 2D mesh."""
     faces, points = create_triangle_mesh_2d(index_dtype, real_dtype)
 
     with pytest.raises(ValueError, match="3D"):
-        tf.compute_point_normals((faces, points))
+        tf.point_normals((faces, points))
 
 
 # ==============================================================================
-# compute_principal_curvatures Tests
+# principal_curvatures Tests
 # ==============================================================================
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_principal_curvatures_from_mesh(index_dtype, real_dtype):
-    """Test compute_principal_curvatures with Mesh input."""
+def test_principal_curvatures_from_mesh(index_dtype, real_dtype):
+    """Test principal_curvatures with Mesh input."""
     faces, points = create_triangle_mesh_3d(index_dtype, real_dtype)
     mesh = tf.Mesh(faces, points)
 
-    result = tf.compute_principal_curvatures(mesh)
+    result = tf.principal_curvatures(mesh)
 
     assert len(result) == 2
     k0, k1 = result
@@ -301,11 +301,11 @@ def test_compute_principal_curvatures_from_mesh(index_dtype, real_dtype):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_principal_curvatures_from_tuple(index_dtype, real_dtype):
-    """Test compute_principal_curvatures with (faces, points) tuple input."""
+def test_principal_curvatures_from_tuple(index_dtype, real_dtype):
+    """Test principal_curvatures with (faces, points) tuple input."""
     faces, points = create_triangle_mesh_3d(index_dtype, real_dtype)
 
-    k0, k1 = tf.compute_principal_curvatures((faces, points))
+    k0, k1 = tf.principal_curvatures((faces, points))
 
     assert k0.shape == (len(points),)
     assert k1.shape == (len(points),)
@@ -313,11 +313,11 @@ def test_compute_principal_curvatures_from_tuple(index_dtype, real_dtype):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_principal_curvatures_with_directions(index_dtype, real_dtype):
-    """Test compute_principal_curvatures with directions=True."""
+def test_principal_curvatures_with_directions(index_dtype, real_dtype):
+    """Test principal_curvatures with directions=True."""
     faces, points = create_triangle_mesh_3d(index_dtype, real_dtype)
 
-    result = tf.compute_principal_curvatures((faces, points), directions=True)
+    result = tf.principal_curvatures((faces, points), directions=True)
 
     assert len(result) == 4
     k0, k1, d0, d1 = result
@@ -329,11 +329,11 @@ def test_compute_principal_curvatures_with_directions(index_dtype, real_dtype):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_principal_curvatures_directions_unit_vectors(index_dtype, real_dtype):
+def test_principal_curvatures_directions_unit_vectors(index_dtype, real_dtype):
     """Test that principal directions are unit vectors."""
     faces, points = create_cube_mesh(index_dtype, real_dtype)
 
-    k0, k1, d0, d1 = tf.compute_principal_curvatures((faces, points), directions=True)
+    k0, k1, d0, d1 = tf.principal_curvatures((faces, points), directions=True)
 
     # Check that directions are unit vectors
     lengths_d0 = np.linalg.norm(d0, axis=1)
@@ -344,14 +344,14 @@ def test_compute_principal_curvatures_directions_unit_vectors(index_dtype, real_
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_principal_curvatures_k_parameter(index_dtype, real_dtype):
-    """Test compute_principal_curvatures with different k values."""
+def test_principal_curvatures_k_parameter(index_dtype, real_dtype):
+    """Test principal_curvatures with different k values."""
     faces, points = create_cube_mesh(index_dtype, real_dtype)
 
     # Test with different k-ring sizes
-    k0_k1, k1_k1 = tf.compute_principal_curvatures((faces, points), k=1)
-    k0_k2, k1_k2 = tf.compute_principal_curvatures((faces, points), k=2)
-    k0_k3, k1_k3 = tf.compute_principal_curvatures((faces, points), k=3)
+    k0_k1, k1_k1 = tf.principal_curvatures((faces, points), k=1)
+    k0_k2, k1_k2 = tf.principal_curvatures((faces, points), k=2)
+    k0_k3, k1_k3 = tf.principal_curvatures((faces, points), k=3)
 
     # All should have correct shape
     assert k0_k1.shape == (len(points),)
@@ -361,11 +361,11 @@ def test_compute_principal_curvatures_k_parameter(index_dtype, real_dtype):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_principal_curvatures_planar(index_dtype, real_dtype):
+def test_principal_curvatures_planar(index_dtype, real_dtype):
     """Test that planar mesh has zero curvature."""
     faces, points = create_triangle_mesh_3d(index_dtype, real_dtype)
 
-    k0, k1 = tf.compute_principal_curvatures((faces, points))
+    k0, k1 = tf.principal_curvatures((faces, points))
 
     # Planar mesh should have approximately zero curvature
     np.testing.assert_allclose(k0, 0.0, atol=1e-5)
@@ -373,11 +373,11 @@ def test_compute_principal_curvatures_planar(index_dtype, real_dtype):
 
 
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_principal_curvatures_sphere(real_dtype):
+def test_principal_curvatures_sphere(real_dtype):
     """Test that sphere has constant curvature equal to 1/radius."""
     faces, points = create_sphere_mesh(np.int32, real_dtype, subdivisions=2)
 
-    k0, k1 = tf.compute_principal_curvatures((faces, points), k=2)
+    k0, k1 = tf.principal_curvatures((faces, points), k=2)
 
     # For unit sphere, curvatures should be approximately 1.0
     # (Allow larger tolerance due to discrete approximation)
@@ -389,11 +389,11 @@ def test_compute_principal_curvatures_sphere(real_dtype):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_principal_curvatures_dynamic_mesh(index_dtype, real_dtype):
-    """Test compute_principal_curvatures with dynamic mesh."""
+def test_principal_curvatures_dynamic_mesh(index_dtype, real_dtype):
+    """Test principal_curvatures with dynamic mesh."""
     faces, points = create_dynamic_mesh_3d(index_dtype, real_dtype)
 
-    k0, k1 = tf.compute_principal_curvatures((faces, points))
+    k0, k1 = tf.principal_curvatures((faces, points))
 
     assert k0.shape == (len(points),)
     assert k1.shape == (len(points),)
@@ -401,58 +401,58 @@ def test_compute_principal_curvatures_dynamic_mesh(index_dtype, real_dtype):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_principal_curvatures_2d_raises(index_dtype, real_dtype):
-    """Test that compute_principal_curvatures raises for 2D mesh."""
+def test_principal_curvatures_2d_raises(index_dtype, real_dtype):
+    """Test that principal_curvatures raises for 2D mesh."""
     faces, points = create_triangle_mesh_2d(index_dtype, real_dtype)
 
     with pytest.raises(ValueError, match="3D"):
-        tf.compute_principal_curvatures((faces, points))
+        tf.principal_curvatures((faces, points))
 
 
 # ==============================================================================
-# compute_shape_index Tests
+# shape_index Tests
 # ==============================================================================
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_shape_index_from_mesh(index_dtype, real_dtype):
-    """Test compute_shape_index with Mesh input."""
+def test_shape_index_from_mesh(index_dtype, real_dtype):
+    """Test shape_index with Mesh input."""
     faces, points = create_triangle_mesh_3d(index_dtype, real_dtype)
     mesh = tf.Mesh(faces, points)
 
-    si = tf.compute_shape_index(mesh)
+    si = tf.shape_index(mesh)
 
     assert si.shape == (len(points),)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_shape_index_from_tuple(index_dtype, real_dtype):
-    """Test compute_shape_index with (faces, points) tuple input."""
+def test_shape_index_from_tuple(index_dtype, real_dtype):
+    """Test shape_index with (faces, points) tuple input."""
     faces, points = create_triangle_mesh_3d(index_dtype, real_dtype)
 
-    si = tf.compute_shape_index((faces, points))
+    si = tf.shape_index((faces, points))
 
     assert si.shape == (len(points),)
 
 
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_shape_index_range(real_dtype):
+def test_shape_index_range(real_dtype):
     """Test that shape index is in range [-1, 1]."""
     faces, points = create_sphere_mesh(np.int32, real_dtype, subdivisions=2)
 
-    si = tf.compute_shape_index((faces, points))
+    si = tf.shape_index((faces, points))
 
     assert np.all(si >= -1.0 - 1e-2)
     assert np.all(si <= 1.0 + 1e-2)
 
 
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_shape_index_sphere_convex(real_dtype):
+def test_shape_index_sphere_convex(real_dtype):
     """Test that convex sphere has positive shape index."""
     faces, points = create_sphere_mesh(np.int32, real_dtype, subdivisions=2)
 
-    si = tf.compute_shape_index((faces, points))
+    si = tf.shape_index((faces, points))
 
     # Sphere should have mostly positive shape index (convex)
     mean_si = np.mean(si)
@@ -461,13 +461,13 @@ def test_compute_shape_index_sphere_convex(real_dtype):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_shape_index_k_parameter(index_dtype, real_dtype):
-    """Test compute_shape_index with different k values."""
+def test_shape_index_k_parameter(index_dtype, real_dtype):
+    """Test shape_index with different k values."""
     faces, points = create_cube_mesh(index_dtype, real_dtype)
 
-    si_k1 = tf.compute_shape_index((faces, points), k=1)
-    si_k2 = tf.compute_shape_index((faces, points), k=2)
-    si_k3 = tf.compute_shape_index((faces, points), k=3)
+    si_k1 = tf.shape_index((faces, points), k=1)
+    si_k2 = tf.shape_index((faces, points), k=2)
+    si_k3 = tf.shape_index((faces, points), k=3)
 
     # All should have correct shape
     assert si_k1.shape == (len(points),)
@@ -477,23 +477,23 @@ def test_compute_shape_index_k_parameter(index_dtype, real_dtype):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_shape_index_dynamic_mesh(index_dtype, real_dtype):
-    """Test compute_shape_index with dynamic mesh."""
+def test_shape_index_dynamic_mesh(index_dtype, real_dtype):
+    """Test shape_index with dynamic mesh."""
     faces, points = create_dynamic_mesh_3d(index_dtype, real_dtype)
 
-    si = tf.compute_shape_index((faces, points))
+    si = tf.shape_index((faces, points))
 
     assert si.shape == (len(points),)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_shape_index_2d_raises(index_dtype, real_dtype):
-    """Test that compute_shape_index raises for 2D mesh."""
+def test_shape_index_2d_raises(index_dtype, real_dtype):
+    """Test that shape_index raises for 2D mesh."""
     faces, points = create_triangle_mesh_2d(index_dtype, real_dtype)
 
     with pytest.raises(ValueError, match="3D"):
-        tf.compute_shape_index((faces, points))
+        tf.shape_index((faces, points))
 
 
 # ==============================================================================
@@ -502,12 +502,12 @@ def test_compute_shape_index_2d_raises(index_dtype, real_dtype):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_normals_matches_mesh_property(index_dtype, real_dtype):
-    """Test that compute_normals matches mesh.normals property."""
+def test_normals_matches_mesh_property(index_dtype, real_dtype):
+    """Test that normals matches mesh.normals property."""
     faces, points = create_triangle_mesh_3d(index_dtype, real_dtype)
     mesh = tf.Mesh(faces, points)
 
-    normals_func = tf.compute_normals(mesh)
+    normals_func = tf.normals(mesh)
     normals_prop = mesh.normals
 
     np.testing.assert_allclose(normals_func, normals_prop)
@@ -515,12 +515,12 @@ def test_compute_normals_matches_mesh_property(index_dtype, real_dtype):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_compute_point_normals_matches_mesh_property(index_dtype, real_dtype):
-    """Test that compute_point_normals matches mesh.point_normals property."""
+def test_point_normals_matches_mesh_property(index_dtype, real_dtype):
+    """Test that point_normals matches mesh.point_normals property."""
     faces, points = create_triangle_mesh_3d(index_dtype, real_dtype)
     mesh = tf.Mesh(faces, points)
 
-    pn_func = tf.compute_point_normals(mesh)
+    pn_func = tf.point_normals(mesh)
     pn_prop = mesh.point_normals
 
     np.testing.assert_allclose(pn_func, pn_prop)

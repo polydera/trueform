@@ -1,5 +1,5 @@
 """
-Face normals computation
+Shape index computation
 
 Copyright (c) 2025 Žiga Sajovic, XLAB
 Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
@@ -11,14 +11,22 @@ from typing import Union, Tuple
 import numpy as np
 from .._spatial import Mesh
 from .._core import OffsetBlockedArray
-from .._dispatch import ensure_mesh
+from .principal_curvatures import principal_curvatures
 
 
-def compute_normals(
-    data: Union[Mesh, Tuple[np.ndarray, np.ndarray], Tuple[OffsetBlockedArray, np.ndarray]]
+def shape_index(
+    data: Union[Mesh, Tuple[np.ndarray, np.ndarray], Tuple[OffsetBlockedArray, np.ndarray]],
+    k: int = 2
 ) -> np.ndarray:
     """
-    Compute face normals for a mesh.
+    Compute shape index at each vertex.
+
+    Shape index maps principal curvatures to a normalized scale [-1, 1]:
+      - -1: spherical cup (concave)
+      - -0.5: cylindrical cup
+      -  0: saddle point
+      -  0.5: cylindrical cap
+      -  1: spherical cap (convex)
 
     Parameters
     ----------
@@ -26,11 +34,13 @@ def compute_normals(
         - Mesh: Mesh object
         - (faces, points): Tuple with face indices and point coordinates
         - (OffsetBlockedArray, points): Dynamic polygon mesh
+    k : int, default 2
+        k-ring neighborhood size for curvature estimation.
 
     Returns
     -------
-    normals : np.ndarray of shape (num_faces, 3)
-        Unit face normals
+    shape_index : np.ndarray of shape (num_points,)
+        Shape index at each vertex, range [-1, 1].
 
     Raises
     ------
@@ -49,10 +59,12 @@ def compute_normals(
     >>>
     >>> # From Mesh
     >>> mesh = tf.Mesh(faces, points)
-    >>> n = tf.compute_normals(mesh)
+    >>> si = tf.shape_index(mesh)
     >>>
-    >>> # From tuple
-    >>> n = tf.compute_normals((faces, points))
+    >>> # From tuple with custom k-ring
+    >>> si = tf.shape_index((faces, points), k=3)
     """
-    mesh = ensure_mesh(data, dims=3)
-    return mesh.normals
+    k0, k1 = principal_curvatures(data, k=k, directions=False)
+
+    # S = (2/π) * arctan((k1 + k0) / (k1 - k0))
+    return (2.0 / np.pi) * np.arctan2(k1 + k0, k1 - k0)

@@ -100,4 +100,23 @@ void compute_shape_index(const tf::polygons<PolygonsPolicy> &polygons,
   }
 }
 
+/// @ingroup geometry
+/// @brief Compute shape index for all vertices, returning the result buffer.
+///
+/// Convenience wrapper that allocates the output buffer internally.
+///
+/// @tparam PolygonsPolicy The polygons policy type.
+/// @param polygons The input polygons.
+/// @param k Number of rings for neighborhood (default 2).
+/// @return Buffer of shape index values, one per vertex.
+template <typename PolygonsPolicy>
+auto make_shape_index(const tf::polygons<PolygonsPolicy> &polygons,
+                      std::size_t k = 2) {
+  using T = tf::coordinate_type<PolygonsPolicy>;
+  tf::buffer<T> output;
+  output.allocate(polygons.points().size());
+  compute_shape_index(polygons, output, k);
+  return output;
+}
+
 } // namespace tf
