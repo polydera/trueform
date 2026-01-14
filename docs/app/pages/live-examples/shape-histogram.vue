@@ -43,6 +43,7 @@ const meshes = computed(() => buildMeshes(meshCount));
 const polygonLabel = computed(() => formatPolygonLabel(meshCount));
 
 const histogramBins = ref<number[]>(Array.from({ length: SHAPE_HISTOGRAM_NUM_BINS }, () => 0));
+const hasHistogramData = computed(() => histogramBins.value.some((value) => value > 0));
 const histogramData = computed(() =>
   histogramBins.value.map((value, index) => ({
     value,
@@ -158,14 +159,16 @@ watch(isDark, (dark) => {
     @retry="loadThreejs"
   >
     <template #info>
-      <div v-if="isTouchscreen" class="flex gap-1 items-center text-muted">
-        <UIcon name="i-lucide-hand" class="size-4 ml-1" />
-        <p class="text-sm">Touch and drag over the mesh to see local shape index histogram.</p>
-      </div>
-      <div v-else class="flex gap-1 items-center text-muted">
-        <UIcon name="i-lucide-mouse-pointer" class="size-4 ml-1" />
-        <p class="text-sm">Hover over the mesh to see local shape index histogram.</p>
-      </div>
+      <ClientOnly>
+        <div v-if="isTouchscreen" class="flex gap-1 items-center text-muted">
+          <UIcon name="i-lucide-hand" class="size-4 ml-1" />
+          <p class="text-sm">Touch and drag over the mesh to see local shape index histogram.</p>
+        </div>
+        <div v-else class="flex gap-1 items-center text-muted">
+          <UIcon name="i-lucide-mouse-pointer" class="size-4 ml-1" />
+          <p class="text-sm">Hover over the mesh to see local shape index histogram.</p>
+        </div>
+      </ClientOnly>
       <div class="flex gap-2 items-center text-muted mt-2">
         <UIcon name="i-lucide-circle" class="size-4 ml-1" />
         <span class="text-sm w-16">Radius:</span>
@@ -183,29 +186,57 @@ watch(isDark, (dark) => {
             Shape Index
           </div>
           <div class="h-[18vh] w-full sm:h-[20vh] sm:w-[20vw]">
-            <ClientOnly>
-              <VisXYContainer
-                class="h-full w-full"
-                :margin="histogramMargin"
-                :xDomain="histogramDomain"
+            <Transition
+              mode="out-in"
+              enter-active-class="transition duration-200 ease-out"
+              enter-from-class="opacity-0 translate-y-1"
+              enter-to-class="opacity-100 translate-y-0"
+              leave-active-class="transition duration-150 ease-in"
+              leave-from-class="opacity-100 translate-y-0"
+              leave-to-class="opacity-0 translate-y-1"
+            >
+              <div
+                v-if="!hasHistogramData"
+                key="empty"
+                class="h-full w-full flex flex-col items-center justify-center gap-2 text-center text-sm sm:text-base text-muted px-3"
               >
-                <VisGroupedBar
-                  :data="histogramData"
-                  :x="histogramX"
-                  :y="histogramY"
-                  :color="histogramColor"
-                  :duration="50"
-                />
-                <VisAxis
-                  type="x"
-                  :tickValues="histogramTickValues"
-                  :tickFormat="histogramTickFormat"
-                  :gridLine="false"
-                  :tickLine="false"
-                  :tickPadding="1"
-                />
-              </VisXYContainer>
-            </ClientOnly>
+                <ClientOnly>
+                  <UIcon
+                    :name="isTouchscreen ? 'i-lucide-hand' : 'i-lucide-mouse-pointer'"
+                    class="size-6 md:size-8 text-primary opacity-80 animate-pulse"
+                  />
+                  <span v-if="isTouchscreen">
+                    Touch and drag on the mesh to see the shape index histogram.
+                  </span>
+                  <span v-else>Hover over the mesh to see the shape index histogram.</span>
+                </ClientOnly>
+              </div>
+              <div v-else key="chart" class="h-full w-full">
+                <ClientOnly>
+                  <VisXYContainer
+                    class="h-full w-full"
+                    :margin="histogramMargin"
+                    :xDomain="histogramDomain"
+                  >
+                    <VisGroupedBar
+                      :data="histogramData"
+                      :x="histogramX"
+                      :y="histogramY"
+                      :color="histogramColor"
+                      :duration="50"
+                    />
+                    <VisAxis
+                      type="x"
+                      :tickValues="histogramTickValues"
+                      :tickFormat="histogramTickFormat"
+                      :gridLine="false"
+                      :tickLine="false"
+                      :tickPadding="1"
+                    />
+                  </VisXYContainer>
+                </ClientOnly>
+              </div>
+            </Transition>
           </div>
         </div>
       </div>
