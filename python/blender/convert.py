@@ -94,7 +94,8 @@ def from_blender(data: Union[bpy.types.Mesh, bpy.types.Object]) -> tf.Mesh:
     return mesh
 
 
-def make_polygons(faces: np.ndarray, points: np.ndarray, name: str = "Mesh") -> bpy.types.Mesh:
+def make_polygons(faces: np.ndarray, points: np.ndarray, name: str = "Mesh",
+                  flat_shading: bool = True) -> bpy.types.Mesh:
     """
     Create a Blender mesh data block from numpy arrays.
 
@@ -106,6 +107,8 @@ def make_polygons(faces: np.ndarray, points: np.ndarray, name: str = "Mesh") -> 
         (N, 3) float array of vertex positions
     name : str
         Name for the mesh data block
+    flat_shading : bool
+        Whether to set faces to flat shading (default True)
 
     Returns
     -------
@@ -114,16 +117,38 @@ def make_polygons(faces: np.ndarray, points: np.ndarray, name: str = "Mesh") -> 
     """
     mesh = bpy.data.meshes.new(name)
 
-    vertices = points.tolist()
-    triangles = faces.tolist()
+    points = np.asarray(points, dtype=np.float32, order="C")
+    tri_faces = np.asarray(faces, dtype=np.int32, order="C")
 
-    mesh.from_pydata(vertices, [], triangles)
-    mesh.update()
+    n_verts = points.shape[0]
+    n_tris = tri_faces.shape[0]
+
+    # Initialize geometry
+    mesh.vertices.add(n_verts)
+    mesh.loops.add(n_tris * 3)
+    mesh.polygons.add(n_tris)
+
+    # Fast transfer
+    mesh.vertices.foreach_set("co", points.ravel())
+    mesh.loops.foreach_set("vertex_index", tri_faces.ravel())
+
+    loop_start = np.arange(0, n_tris * 3, 3, dtype=np.int32)
+    loop_total = np.full(n_tris, 3, dtype=np.int32)
+    mesh.polygons.foreach_set("loop_start", loop_start)
+    mesh.polygons.foreach_set("loop_total", loop_total)
+
+    if flat_shading:
+        # Explicitly set all polygons to Flat Shading (use_smooth = False)
+        # This matches the default behavior of from_pydata
+        mesh.polygons.foreach_set("use_smooth", np.zeros(n_tris, dtype=bool))
+    else:
+        mesh.polygons.foreach_set("use_smooth", np.ones(n_tris, dtype=bool))
+    mesh.update(calc_edges=True)
 
     return mesh
 
 
-def to_blender(mesh: tf.Mesh, name: str = "Mesh") -> bpy.types.Object:
+def to_blender(mesh: tf.Mesh, name: str = "Mesh", flat_shading: bool = True) -> bpy.types.Object:
     """
     Create a Blender mesh object from a trueform Mesh.
 
@@ -133,6 +158,8 @@ def to_blender(mesh: tf.Mesh, name: str = "Mesh") -> bpy.types.Object:
         The trueform mesh to convert.
     name : str
         Name for the object and mesh data block.
+    flat_shading : bool
+        Whether to set faces to flat shading (default True)
 
     Returns
     -------
@@ -142,7 +169,7 @@ def to_blender(mesh: tf.Mesh, name: str = "Mesh") -> bpy.types.Object:
     points = np.array(mesh.points, copy=True)
     faces = np.array(mesh.faces, copy=False)
 
-    mesh_data = make_polygons(faces, points, name)
+    mesh_data = make_polygons(faces, points, name, flat_shading)
     obj = bpy.data.objects.new(name, mesh_data)
     bpy.context.collection.objects.link(obj)
 
