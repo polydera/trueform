@@ -18,6 +18,7 @@ if (metadata) {
   });
 }
 
+const { isTouchscreen } = useTouchscreen();
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
 const { loadExampleWithAssets } = useWasmModule();
@@ -107,7 +108,11 @@ watch(isDark, (dark) => {
     @retry="loadThreejs"
   >
     <template #info>
-      <div class="flex gap-1 items-center text-muted">
+      <div v-if="isTouchscreen" class="flex gap-1 items-center text-muted">
+        <UIcon name="i-lucide-hand" class="size-4 ml-1" />
+        <p class="text-sm">Touch and drag over the mesh to see local shape index histogram.</p>
+      </div>
+      <div v-else class="flex gap-1 items-center text-muted">
         <UIcon name="i-lucide-mouse-pointer" class="size-4 ml-1" />
         <p class="text-sm">Hover over the mesh to see local shape index histogram.</p>
       </div>

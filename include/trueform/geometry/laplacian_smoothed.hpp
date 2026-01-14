@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (www.trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (www.trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 
 #include "../core/algorithm/parallel_apply.hpp"
@@ -17,6 +17,7 @@
 #include "../core/coordinate_type.hpp"
 #include "../core/points_buffer.hpp"
 #include "../core/vector.hpp"
+#include "../core/views/block_indirect_range.hpp"
 #include "../core/views/zip.hpp"
 #include "../topology/policy/vertex_link.hpp"
 
@@ -24,6 +25,26 @@
 #include <cstddef>
 
 namespace tf {
+
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto laplacian_smoothed(const tf::point_like<Dims, Policy0> &pt,
+                        const tf::points<Policy1> &neighbors,
+                        tf::coordinate_type<Policy1> lambda = 0.5) {
+  static_assert(Dims == tf::coordinate_dims_v<Policy1>,
+                "Dimensions must match");
+  tf::point<tf::coordinate_type<Policy0>, Dims> out;
+  if (neighbors.size() == 0) {
+    out = pt;
+    return out;
+  }
+  tf::vector<tf::coordinate_type<Policy0>, Dims> centroid{};
+  for (auto pt : neighbors)
+    centroid += pt.as_vector_view();
+  centroid /= tf::coordinate_type<Policy0>(neighbors.size());
+  out.as_vector_view() =
+      pt.as_vector_view() + (centroid - pt.as_vector_view()) * lambda;
+  return out;
+}
 
 /// @ingroup geometry_processing
 /// @brief Apply Laplacian smoothing to a point set.
@@ -55,20 +76,13 @@ auto laplacian_smoothed(const tf::points<Policy> &pts, std::size_t iterations,
 
   for (std::size_t iter = 0; iter < iterations; ++iter) {
     tf::parallel_apply(
-        tf::zip(current.points(), next.points(), vlink),
+        tf::zip(current.points(), next.points(),
+                tf::make_block_indirect_range(vlink, current.points())),
         [&](auto tup) {
           auto [curr, out, neighbors] = tup;
-          if (neighbors.size() == 0) {
-            out = curr;
-            return;
-          }
-          tf::vector<T, Dims> centroid{};
-          for (auto n : neighbors)
-            centroid += current.points()[n].as_vector_view();
-          centroid /= T(neighbors.size());
-          out.as_vector_view() =
-              curr.as_vector_view() + (centroid - curr.as_vector_view()) * lambda;
-        });
+          out = laplacian_smoothed(curr, tf::make_points(neighbors), lambda);
+        },
+        tf::checked);
     std::swap(current, next);
   }
 
