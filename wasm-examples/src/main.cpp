@@ -7,6 +7,7 @@
 #include "main.h"
 #include "positioning_web.h"
 #include "scalar_field_intersections_web.h"
+#include "shape_histogram_web.h"
 #include "utils/bridge_web.h"
 #include "utils/cursor_interactor_interface.h"
 
@@ -104,6 +105,30 @@ auto get_number_of_polygons() -> std::size_t {
   return require_interactor().total_polygons;
 }
 
+// Shape histogram helpers
+auto get_shape_histogram_interactor() -> cursor_interactor_shape_histogram * {
+  return dynamic_cast<cursor_interactor_shape_histogram *>(&require_interactor());
+}
+
+auto shape_histogram_colors_updated() -> bool {
+  auto *sh = get_shape_histogram_interactor();
+  return sh ? sh->colors_updated() : false;
+}
+
+auto shape_histogram_get_vertex_colors() -> emscripten::val {
+  auto *sh = get_shape_histogram_interactor();
+  if (!sh)
+    return emscripten::val::undefined();
+  return sh->get_vertex_colors();
+}
+
+auto shape_histogram_get_histogram_bins() -> emscripten::val {
+  auto *sh = get_shape_histogram_interactor();
+  if (!sh)
+    return emscripten::val::undefined();
+  return sh->get_histogram_bins();
+}
+
 EMSCRIPTEN_BINDINGS(boolean) {
   emscripten::function("get_number_of_mesh_data", &get_number_of_mesh_data);
   emscripten::function("get_number_of_instances", &get_number_of_instances);
@@ -138,6 +163,14 @@ EMSCRIPTEN_BINDINGS(boolean) {
   // Scalar field intersections
   emscripten::function("run_main_scalar_field_intersections",
                        &run_main_scalar_field_intersections);
+  // Shape histogram
+  emscripten::function("run_main_shape_histogram", &run_main_shape_histogram);
+  emscripten::function("shape_histogram_colors_updated",
+                       &shape_histogram_colors_updated);
+  emscripten::function("shape_histogram_get_vertex_colors",
+                       &shape_histogram_get_vertex_colors);
+  emscripten::function("shape_histogram_get_histogram_bins",
+                       &shape_histogram_get_histogram_bins);
 }
 
 EMSCRIPTEN_BINDINGS(VectorString) {
