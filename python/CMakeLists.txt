@@ -126,7 +126,7 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/trueform/_version.py"
 # ------------------------------------------------------------------------------
 # Glob pure Python files
 file(GLOB_RECURSE PYTHON_SOURCE_FILES    "${CMAKE_CURRENT_SOURCE_DIR}/trueform/*.py")
-file(GLOB_RECURSE PYTHON_BLENDER_SOURCE_FILES    "${CMAKE_CURRENT_SOURCE_DIR}/blender/*.py")
+file(GLOB_RECURSE PYTHON_BLENDER_SOURCE_FILES    "${CMAKE_CURRENT_SOURCE_DIR}/bpy/*.py")
 file(GLOB_RECURSE PYTHON_TEST_FILES      "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.py")
 file(GLOB_RECURSE PYTHON_EXAMPLE_FILES   "${CMAKE_CURRENT_SOURCE_DIR}/examples/**/*.py")
 # file(GLOB_RECURSE PYTHON_BENCHMARK_FILES "${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/*.py")
@@ -158,8 +158,8 @@ if(TF_BUILD_PYTHON_BLENDER_INTEGRATION)
   add_custom_command(
           TARGET copy_python_files POST_BUILD
           COMMAND ${CMAKE_COMMAND} -E copy_directory
-          "${CMAKE_CURRENT_SOURCE_DIR}/blender"
-          "${CMAKE_CURRENT_BINARY_DIR}/trueform/blender"
+          "${CMAKE_CURRENT_SOURCE_DIR}/bpy"
+          "${CMAKE_CURRENT_BINARY_DIR}/trueform/bpy"
           COMMENT "Syncing Blender integration Python sources to build directory"
           VERBATIM
   )
@@ -176,25 +176,19 @@ message(STATUS "Python bindings configured. Build with 'cmake --build . --target
 
 # 11. Blender Bundle Target
 # ------------------------------------------------------------------------------
-set(TF_BLENDER_BUNDLE_DIR "${CMAKE_CURRENT_BINARY_DIR}/trueform_boolean")
-set(TF_BLENDER_BUNDLE_ZIP "${CMAKE_CURRENT_BINARY_DIR}/trueform_boolean.zip")
-set(TF_BLENDER_PLUGIN_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/examples/blender-boolean/__init__.py")
+set(TF_BLENDER_BUNDLE_NAME "trueform-bpy")
+set(TF_BLENDER_BUNDLE_ZIP "${CMAKE_CURRENT_BINARY_DIR}/trueform-bpy-plugin.zip")
+set(TF_BLENDER_PLUGIN_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/examples/bpy-plugin/__init__.py")
+set(TF_BLENDER_PACKAGE_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/tools/package_blender_plugin.py")
 
 add_custom_target(build_blender_plugin DEPENDS _trueform copy_python_files)
 add_custom_command(
         TARGET build_blender_plugin POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E rm -rf "${TF_BLENDER_BUNDLE_DIR}"
-        COMMAND ${CMAKE_COMMAND} -E make_directory "${TF_BLENDER_BUNDLE_DIR}/libs"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${TF_BLENDER_PLUGIN_SCRIPT}"
-        "${TF_BLENDER_BUNDLE_DIR}/__init__.py"
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_CURRENT_BINARY_DIR}/trueform"
-        "${TF_BLENDER_BUNDLE_DIR}/libs/trueform"
-        COMMAND ${CMAKE_COMMAND} -E tar cf
-        "${TF_BLENDER_BUNDLE_ZIP}"
-        --format=zip
-        "${TF_BLENDER_BUNDLE_DIR}"
+        COMMAND "${Python_EXECUTABLE}" "${TF_BLENDER_PACKAGE_SCRIPT}"
+        --plugin-init "${TF_BLENDER_PLUGIN_SCRIPT}"
+        --trueform-root "${CMAKE_CURRENT_BINARY_DIR}/trueform"
+        --output "${TF_BLENDER_BUNDLE_ZIP}"
+        --bundle-name "${TF_BLENDER_BUNDLE_NAME}"
         COMMENT "Creating Blender bundle at ${TF_BLENDER_BUNDLE_ZIP}"
         VERBATIM
 )

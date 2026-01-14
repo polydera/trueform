@@ -18,8 +18,9 @@ Usage:
     if blender.functions.intersects(obj_a, obj_b):
         ...
 
-    # Create Blender object from arrays
-    obj = blender.convert.create_object(faces, points, name="Result")
+    # Convert Blender object to trueform and back
+    mesh = blender.convert.from_blender(obj)
+    obj = blender.convert.to_blender(mesh, name="Result")
 
 Copyright (c) 2025 Žiga Sajovic, XLAB
 Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.

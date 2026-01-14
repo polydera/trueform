@@ -68,12 +68,14 @@ def boolean_difference(
         ((result_faces, result_points), labels, (paths, curve_points)) = tf.boolean_difference(
             mesh_a, mesh_b, return_curves=True
         )
-        mesh_obj = convert.make_mesh_object(result_faces, result_points, name)
-        curves_obj = convert.make_curves_object(paths, curve_points, f"{name}_Curves")
+        result_mesh = tf.Mesh(result_faces, result_points)
+        mesh_obj = convert.to_blender(result_mesh, name=name)
+        curves_obj = convert.to_blender_curves(paths, curve_points, f"{name}_Curves")
         return mesh_obj, curves_obj
     else:
         ((result_faces, result_points), _labels) = tf.boolean_difference(mesh_a, mesh_b)
-        return convert.make_mesh_object(result_faces, result_points, name)
+        result_mesh = tf.Mesh(result_faces, result_points)
+        return convert.to_blender(result_mesh, name=name)
 
 
 @overload
@@ -125,12 +127,14 @@ def boolean_union(
         ((result_faces, result_points), _labels, (paths, curve_points)) = tf.boolean_union(
             mesh_a, mesh_b, return_curves=True
         )
-        mesh_obj = convert.make_mesh_object(result_faces, result_points, name)
-        curves_obj = convert.make_curves_object(paths, curve_points, f"{name}_Curves")
+        result_mesh = tf.Mesh(result_faces, result_points)
+        mesh_obj = convert.to_blender(result_mesh, name=name)
+        curves_obj = convert.to_blender_curves(paths, curve_points, f"{name}_Curves")
         return mesh_obj, curves_obj
     else:
         ((result_faces, result_points), _labels) = tf.boolean_union(mesh_a, mesh_b)
-        return convert.make_mesh_object(result_faces, result_points, name)
+        result_mesh = tf.Mesh(result_faces, result_points)
+        return convert.to_blender(result_mesh, name=name)
 
 
 @overload
@@ -182,12 +186,14 @@ def boolean_intersection(
         ((result_faces, result_points), _labels, (paths, curve_points)) = tf.boolean_intersection(
             mesh_a, mesh_b, return_curves=True
         )
-        mesh_obj = convert.make_mesh_object(result_faces, result_points, name)
-        curves_obj = convert.make_curves_object(paths, curve_points, f"{name}_Curves")
+        result_mesh = tf.Mesh(result_faces, result_points)
+        mesh_obj = convert.to_blender(result_mesh, name=name)
+        curves_obj = convert.to_blender_curves(paths, curve_points, f"{name}_Curves")
         return mesh_obj, curves_obj
     else:
         ((result_faces, result_points), _labels) = tf.boolean_intersection(mesh_a, mesh_b)
-        return convert.make_mesh_object(result_faces, result_points, name)
+        result_mesh = tf.Mesh(result_faces, result_points)
+        return convert.to_blender(result_mesh, name=name)
 
 
 # --- Intersection queries ---
@@ -241,4 +247,4 @@ def intersection_curves(
 
     paths, points = tf.intersection_curves(mesh_a, mesh_b)
 
-    return convert.make_curves_object(paths, points, name)
+    return convert.to_blender_curves(paths, points, name)

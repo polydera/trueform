@@ -27,6 +27,7 @@ Thumbs.db
 __pycache__/
 *.pyc
 *.pyo
+.venv/
 
 # Misc
 *.log
