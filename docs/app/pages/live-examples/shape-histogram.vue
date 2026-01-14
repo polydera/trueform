@@ -99,7 +99,10 @@ const badge = computed(() => ({
   polygons: polygonLabel.value,
 }));
 
-watch(meshSize, () => loadThreejs(), { immediate: true });
+watch(meshSize, () => {
+  radiusPercent.value = 7.5;
+  loadThreejs();
+}, { immediate: true });
 
 onBeforeUnmount(() => {
   tearDownRequested = true;
