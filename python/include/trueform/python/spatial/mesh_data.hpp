@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (www.trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (www.trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 
 #include "../core/offset_blocked_array.hpp"
@@ -21,6 +21,8 @@
 #include <trueform/core/polygons.hpp>
 #include <trueform/core/range.hpp>
 #include <trueform/core/views/blocked_range.hpp>
+#include <trueform/geometry/compute_normals.hpp>
+#include <trueform/geometry/compute_point_normals.hpp>
 #include <trueform/python/util/make_numpy_array.hpp>
 #include <trueform/spatial/aabb_tree.hpp>
 #include <trueform/spatial/tree_config.hpp>
@@ -100,6 +102,20 @@ public:
     }
   }
 
+  auto build_normals() -> void {
+    if (!_normals_array || _normals_modified) {
+      do_build_normals();
+    }
+  }
+
+  auto build_point_normals() -> void {
+    build_face_membership();
+    build_normals();
+    if (!_point_normals_array || _point_normals_modified) {
+      do_build_point_normals();
+    }
+  }
+
   // Getters (auto-build if needed)
   auto tree() -> tf::aabb_tree<Index, RealT, Dims> & {
     build_tree();
@@ -126,10 +142,18 @@ public:
     return make_manifold_edge_link_view();
   }
 
-  // Has checks
-  auto has_tree() const -> bool {
-    return _tree != nullptr && !_tree_modified;
+  auto normals() {
+    build_normals();
+    return make_normals_view();
   }
+
+  auto point_normals() {
+    build_point_normals();
+    return make_point_normals_view();
+  }
+
+  // Has checks
+  auto has_tree() const -> bool { return _tree != nullptr && !_tree_modified; }
 
   auto has_face_membership() const -> bool {
     return _face_membership_array != nullptr && !_face_membership_modified;
@@ -144,7 +168,16 @@ public:
   }
 
   auto has_manifold_edge_link() const -> bool {
-    return _manifold_edge_link_array != nullptr && !_manifold_edge_link_modified;
+    return _manifold_edge_link_array != nullptr &&
+           !_manifold_edge_link_modified;
+  }
+
+  auto has_normals() const -> bool {
+    return _normals_array != nullptr && !_normals_modified;
+  }
+
+  auto has_point_normals() const -> bool {
+    return _point_normals_array != nullptr && !_point_normals_modified;
   }
 
   // Array accessors
@@ -172,9 +205,21 @@ public:
     return *_manifold_edge_link_array;
   }
 
+  auto normals_array() -> const
+      nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>> & {
+    build_normals();
+    return *_normals_array;
+  }
+
+  auto point_normals_array() -> const
+      nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>> & {
+    build_point_normals();
+    return *_point_normals_array;
+  }
+
   // Setters for pre-computed structures
-  auto set_face_membership(
-      tf::py::offset_blocked_array_wrapper<Index, Index> fm) {
+  auto
+  set_face_membership(tf::py::offset_blocked_array_wrapper<Index, Index> fm) {
     if (!_face_membership_array)
       _face_membership_array =
           std::make_unique<tf::py::offset_blocked_array_wrapper<Index, Index>>(
@@ -213,6 +258,28 @@ public:
                                              nanobind::shape<-1, Ngon>>>();
     *_manifold_edge_link_array = mel;
     _manifold_edge_link_modified = false;
+  }
+
+  auto set_normals(
+      nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>
+          normals) {
+    if (!_normals_array)
+      _normals_array =
+          std::make_unique<nanobind::ndarray<nanobind::numpy, RealT,
+                                             nanobind::shape<-1, Dims>>>();
+    *_normals_array = normals;
+    _normals_modified = false;
+  }
+
+  auto set_point_normals(
+      nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>
+          point_normals) {
+    if (!_point_normals_array)
+      _point_normals_array =
+          std::make_unique<nanobind::ndarray<nanobind::numpy, RealT,
+                                             nanobind::shape<-1, Dims>>>();
+    *_point_normals_array = point_normals;
+    _point_normals_modified = false;
   }
 
   // Data array accessors
@@ -254,6 +321,8 @@ public:
     _manifold_edge_link_modified = true;
     _face_link_modified = true;
     _vertex_link_modified = true;
+    _normals_modified = true;
+    _point_normals_modified = true;
   }
 
 private:
@@ -350,6 +419,52 @@ private:
     return tf::make_manifold_edge_link_like(mel);
   }
 
+  auto do_build_normals() -> void {
+      if (!_normals_array)
+        _normals_array =
+            std::make_unique<nanobind::ndarray<nanobind::numpy, RealT,
+                                               nanobind::shape<-1, Dims>>>();
+    if constexpr (Dims == 3) {
+      auto polygons = make_primitive_range();
+      auto normals_buff = tf::compute_normals(polygons);
+      *_normals_array = make_numpy_array<nanobind::shape<-1, Dims>>(
+          std::move(normals_buff.data_buffer()), {normals_buff.size(), Dims});
+    }
+      _normals_modified = false;
+  }
+
+  auto do_build_point_normals() -> void {
+    if (!_point_normals_array)
+      _point_normals_array =
+          std::make_unique<nanobind::ndarray<nanobind::numpy, RealT,
+                                             nanobind::shape<-1, Dims>>>();
+    if constexpr (Dims == 3) {
+    auto polygons = make_primitive_range();
+    // Tag polygons with face_membership and normals for compute_point_normals
+    auto tagged = polygons | tf::tag(face_membership()) |
+                  tf::tag_normals(make_normals_view());
+    auto point_normals_buff = tf::compute_point_normals(tagged);
+    *_point_normals_array = make_numpy_array<nanobind::shape<-1, Dims>>(
+        std::move(point_normals_buff.data_buffer()),
+        {point_normals_buff.size(), Dims});
+    }
+    _point_normals_modified = false;
+
+  }
+
+  auto make_normals_view() {
+    const RealT *data = static_cast<const RealT *>(_normals_array->data());
+    std::size_t count = _normals_array->shape(0) * Dims;
+    return tf::make_unit_vectors<Dims>(tf::make_range(data, count));
+  }
+
+  auto make_point_normals_view() {
+    const RealT *data =
+        static_cast<const RealT *>(_point_normals_array->data());
+    std::size_t count = _point_normals_array->shape(0) * Dims;
+    return tf::make_unit_vectors<Dims>(tf::make_range(data, count));
+  }
+
   nanobind::ndarray<nanobind::numpy, Index, nanobind::shape<-1, Ngon>>
       _faces_array;
   nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>
@@ -364,11 +479,19 @@ private:
       _face_link_array;
   std::unique_ptr<tf::py::offset_blocked_array_wrapper<Index, Index>>
       _vertex_link_array;
+  std::unique_ptr<
+      nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>>
+      _normals_array;
+  std::unique_ptr<
+      nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>>
+      _point_normals_array;
   bool _tree_modified = false;
   bool _face_membership_modified = false;
   bool _manifold_edge_link_modified = false;
   bool _face_link_modified = false;
   bool _vertex_link_modified = false;
+  bool _normals_modified = false;
+  bool _point_normals_modified = false;
 };
 
 // Specialization for dynamic-size polygons (n-gons)
@@ -437,6 +560,20 @@ public:
     }
   }
 
+  auto build_normals() -> void {
+    if (!_normals_array || _normals_modified) {
+      do_build_normals();
+    }
+  }
+
+  auto build_point_normals() -> void {
+    build_face_membership();
+    build_normals();
+    if (!_point_normals_array || _point_normals_modified) {
+      do_build_point_normals();
+    }
+  }
+
   // Getters (auto-build if needed)
   auto tree() -> tf::aabb_tree<Index, RealT, Dims> & {
     build_tree();
@@ -463,10 +600,18 @@ public:
     return make_manifold_edge_link_view();
   }
 
-  // Has checks
-  auto has_tree() const -> bool {
-    return _tree != nullptr && !_tree_modified;
+  auto normals() {
+    build_normals();
+    return make_normals_view();
   }
+
+  auto point_normals() {
+    build_point_normals();
+    return make_point_normals_view();
+  }
+
+  // Has checks
+  auto has_tree() const -> bool { return _tree != nullptr && !_tree_modified; }
 
   auto has_face_membership() const -> bool {
     return _face_membership_array != nullptr && !_face_membership_modified;
@@ -481,7 +626,16 @@ public:
   }
 
   auto has_manifold_edge_link() const -> bool {
-    return _manifold_edge_link_array != nullptr && !_manifold_edge_link_modified;
+    return _manifold_edge_link_array != nullptr &&
+           !_manifold_edge_link_modified;
+  }
+
+  auto has_normals() const -> bool {
+    return _normals_array != nullptr && !_normals_modified;
+  }
+
+  auto has_point_normals() const -> bool {
+    return _point_normals_array != nullptr && !_point_normals_modified;
   }
 
   // Array accessors
@@ -509,9 +663,21 @@ public:
     return *_manifold_edge_link_array;
   }
 
+  auto normals_array() -> const
+      nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>> & {
+    build_normals();
+    return *_normals_array;
+  }
+
+  auto point_normals_array() -> const
+      nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>> & {
+    build_point_normals();
+    return *_point_normals_array;
+  }
+
   // Setters for pre-computed structures
-  auto set_face_membership(
-      tf::py::offset_blocked_array_wrapper<Index, Index> fm) {
+  auto
+  set_face_membership(tf::py::offset_blocked_array_wrapper<Index, Index> fm) {
     if (!_face_membership_array)
       _face_membership_array =
           std::make_unique<tf::py::offset_blocked_array_wrapper<Index, Index>>(
@@ -551,6 +717,28 @@ public:
       _manifold_edge_link_array->set_arrays(mel.offsets_array(),
                                             mel.data_array());
     _manifold_edge_link_modified = false;
+  }
+
+  auto set_normals(
+      nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>
+          normals) {
+    if (!_normals_array)
+      _normals_array =
+          std::make_unique<nanobind::ndarray<nanobind::numpy, RealT,
+                                             nanobind::shape<-1, Dims>>>();
+    *_normals_array = normals;
+    _normals_modified = false;
+  }
+
+  auto set_point_normals(
+      nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>
+          point_normals) {
+    if (!_point_normals_array)
+      _point_normals_array =
+          std::make_unique<nanobind::ndarray<nanobind::numpy, RealT,
+                                             nanobind::shape<-1, Dims>>>();
+    *_point_normals_array = point_normals;
+    _point_normals_modified = false;
   }
 
   // Data array accessors
@@ -597,6 +785,8 @@ public:
     _manifold_edge_link_modified = true;
     _face_link_modified = true;
     _vertex_link_modified = true;
+    _normals_modified = true;
+    _point_normals_modified = true;
   }
 
 private:
@@ -691,22 +881,69 @@ private:
     _manifold_edge_link_modified = false;
   }
 
+  auto do_build_normals() -> void {
+    if (!_normals_array)
+      _normals_array =
+          std::make_unique<nanobind::ndarray<nanobind::numpy, RealT,
+                                             nanobind::shape<-1, Dims>>>();
+    if constexpr (Dims == 3) {
+    auto polygons = make_primitive_range();
+    auto normals_buff = tf::compute_normals(polygons);
+    *_normals_array = make_numpy_array<nanobind::shape<-1, Dims>>(
+        std::move(normals_buff.data_buffer()), {normals_buff.size(), Dims});
+    }
+    _normals_modified = false;
+  }
+
+  auto do_build_point_normals() -> void {
+    if (!_point_normals_array)
+      _point_normals_array =
+          std::make_unique<nanobind::ndarray<nanobind::numpy, RealT,
+                                             nanobind::shape<-1, Dims>>>();
+    if constexpr (Dims == 3) {
+    auto polygons = make_primitive_range();
+    // Tag polygons with face_membership and normals for compute_point_normals
+    auto tagged = polygons | tf::tag(face_membership()) |
+                  tf::tag_normals(make_normals_view());
+    auto point_normals_buff = tf::compute_point_normals(tagged);
+    *_point_normals_array = make_numpy_array<nanobind::shape<-1, Dims>>(
+        std::move(point_normals_buff.data_buffer()),
+        {point_normals_buff.size(), Dims});
+    }
+    _point_normals_modified = false;
+  }
+
   auto make_manifold_edge_link_view() {
     struct dref_t {
       auto operator()(Index i) const -> tf::manifold_edge_peer<Index> {
         return {i};
       }
     };
-    const Index *offsets_data =
-        static_cast<const Index *>(_manifold_edge_link_array->offsets_array().data());
-    const Index *data_data =
-        static_cast<const Index *>(_manifold_edge_link_array->data_array().data());
-    auto offsets_range = tf::make_range(offsets_data, _manifold_edge_link_array->offsets_array().size());
-    auto data_range = tf::make_range(data_data, _manifold_edge_link_array->data_array().size());
+    const Index *offsets_data = static_cast<const Index *>(
+        _manifold_edge_link_array->offsets_array().data());
+    const Index *data_data = static_cast<const Index *>(
+        _manifold_edge_link_array->data_array().data());
+    auto offsets_range = tf::make_range(
+        offsets_data, _manifold_edge_link_array->offsets_array().size());
+    auto data_range = tf::make_range(
+        data_data, _manifold_edge_link_array->data_array().size());
     // Map the data to manifold_edge_peer
     auto mapped = tf::make_mapped_range(data_range, dref_t{});
     auto mel = tf::make_offset_block_range(offsets_range, mapped);
     return tf::make_manifold_edge_link_like(mel);
+  }
+
+  auto make_normals_view() {
+    const RealT *data = static_cast<const RealT *>(_normals_array->data());
+    std::size_t count = _normals_array->shape(0) * Dims;
+    return tf::make_unit_vectors<Dims>(tf::make_range(data, count));
+  }
+
+  auto make_point_normals_view() {
+    const RealT *data =
+        static_cast<const RealT *>(_point_normals_array->data());
+    std::size_t count = _point_normals_array->shape(0) * Dims;
+    return tf::make_unit_vectors<Dims>(tf::make_range(data, count));
   }
 
   std::unique_ptr<tf::py::offset_blocked_array_wrapper<Index, Index>>
@@ -722,11 +959,19 @@ private:
       _face_link_array;
   std::unique_ptr<tf::py::offset_blocked_array_wrapper<Index, Index>>
       _vertex_link_array;
+  std::unique_ptr<
+      nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>>
+      _normals_array;
+  std::unique_ptr<
+      nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>>
+      _point_normals_array;
   bool _tree_modified = false;
   bool _face_membership_modified = false;
   bool _manifold_edge_link_modified = false;
   bool _face_link_modified = false;
   bool _vertex_link_modified = false;
+  bool _normals_modified = false;
+  bool _point_normals_modified = false;
 };
 
 } // namespace tf::py

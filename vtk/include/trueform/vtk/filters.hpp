@@ -16,6 +16,7 @@
 #include <trueform/vtk/filters/boolean.hpp>
 #include <trueform/vtk/filters/boundary_paths.hpp>
 #include <trueform/vtk/filters/connected_components.hpp>
+#include <trueform/vtk/filters/curvatures_generator.hpp>
 #include <trueform/vtk/filters/intersection_curves.hpp>
 #include <trueform/vtk/filters/isobands.hpp>
 #include <trueform/vtk/filters/isocontours.hpp>

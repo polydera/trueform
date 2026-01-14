@@ -16,6 +16,7 @@
 #include "../core/basis.hpp"
 #include "../core/buffer.hpp"
 #include "../core/coordinate_type.hpp"
+#include "../core/epsilon.hpp"
 #include "../core/linalg/least_squares.hpp"
 #include "../core/none.hpp"
 #include "../core/points.hpp"
@@ -164,7 +165,7 @@ auto compute_principal_curvatures(
     tf::vector<T, 3> d0_world, d1_world;
 
     T denom0 = b_coef * b_coef + (k0 - T(2) * a) * (k0 - T(2) * a);
-    if (denom0 > T(1e-12)) {
+    if (denom0 > tf::epsilon2<T>) {
       T inv_len = T(1) / tf::sqrt(denom0);
       T local_d0_x = b_coef * inv_len;
       T local_d0_y = (k0 - T(2) * a) * inv_len;
@@ -212,8 +213,7 @@ void compute_principal_curvatures(const tf::polygons<PolygonsPolicy> &polygons,
   } else {
     const auto &points = polygons.points();
 
-    auto compute = [&ks0, &ks1, &dirs0, &dirs1, &polygons, &points,
-                    k](const auto &normals) {
+    auto compute = [&, k](const auto &normals) {
       using T = tf::coordinate_type<PolygonsPolicy>;
       const auto n_vertices = points.size();
       const auto &vlink = polygons.vertex_link();

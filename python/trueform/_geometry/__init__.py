@@ -11,10 +11,20 @@ from .fit_rigid_alignment import fit_rigid_alignment
 from .fit_obb_alignment import fit_obb_alignment
 from .fit_knn_alignment import fit_knn_alignment
 from .chamfer_error import chamfer_error
+from .triangulated import triangulated
+from .compute_normals import compute_normals
+from .compute_point_normals import compute_point_normals
+from .compute_principal_curvatures import compute_principal_curvatures
+from .compute_shape_index import compute_shape_index
 
 __all__ = [
     "fit_rigid_alignment",
     "fit_obb_alignment",
     "fit_knn_alignment",
     "chamfer_error",
+    "triangulated",
+    "compute_normals",
+    "compute_point_normals",
+    "compute_principal_curvatures",
+    "compute_shape_index",
 ]

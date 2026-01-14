@@ -7,6 +7,8 @@ find_package(VTK REQUIRED COMPONENTS
   InteractionStyle
   RenderingCore
   RenderingOpenGL2
+  RenderingAnnotation
+  RenderingFreeType
 )
 
 # Utility library for examples
@@ -39,6 +41,7 @@ add_vtk_example(boundary_paths)
 add_vtk_example(connected_components)
 add_vtk_example(collision)
 add_vtk_example(closest_pair)
+add_vtk_example(shape_histogram)
 
 # Target to build all examples
 add_custom_target(vtk_examples DEPENDS
@@ -51,4 +54,5 @@ add_custom_target(vtk_examples DEPENDS
   vtk_example_connected_components
   vtk_example_collision
   vtk_example_closest_pair
+  vtk_example_shape_histogram
 )

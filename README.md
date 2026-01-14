@@ -122,7 +122,7 @@ tf::parallel_transform(points, scalars, tf::distance_f(some_plane));
 
 ```cpp
 std::vector<float> cut_values = {0.1f, 0.5f, 1.0f};
-auto [contour_mesh, contour_labels, isocontours] = tf::embedded_isocurves<int>(
+auto [contour_mesh, contour_labels, isocontours] = tf::embedded_isocurves(
     triangles, scalars, tf::make_range(cut_values), tf::return_curves);
 ```
 

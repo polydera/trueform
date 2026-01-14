@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (www.trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (www.trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 
 #pragma once
 
@@ -25,6 +25,7 @@
 #include <trueform/core/polygons_buffer.hpp>
 #include <trueform/core/segments_buffer.hpp>
 #include <trueform/core/transformation_like.hpp>
+#include <trueform/core/unit_vectors_buffer.hpp>
 #include <trueform/python/util/make_capsule.hpp>
 
 namespace tf::py {
@@ -106,6 +107,14 @@ auto make_numpy_array(tf::points_buffer<RealT, Dims> &&points_buf) {
   auto num_points = points_buf.size();
   return make_numpy_array<nanobind::shape<-1, Dims>>(
       std::move(points_buf.data_buffer()), {num_points, Dims});
+}
+
+template <typename RealT, std::size_t Dims>
+auto make_numpy_array(
+    tf::unit_vectors_buffer<RealT, Dims> &&unit_vectors_buffer) {
+  auto num_vecs = unit_vectors_buffer.size();
+  return make_numpy_array<nanobind::shape<-1, Dims>>(
+      std::move(unit_vectors_buffer.data_buffer()), {num_vecs, Dims});
 }
 
 template <typename Index, typename RealT, std::size_t Dims>

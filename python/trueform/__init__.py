@@ -28,7 +28,8 @@ from ._reindex import reindex_by_ids, reindex_by_mask, reindex_by_ids_on_points,
 from ._topology import label_connected_components, cell_membership, manifold_edge_link, face_link, vertex_link_edges, vertex_link_faces, boundary_edges, boundary_paths, boundary_curves, non_manifold_edges, orient_faces_consistently, connect_edges_to_paths
 from ._spatial import neighbor_search, gather_intersecting_ids, gather_ids_within_distance
 from ._core.transformed import transformed
-from ._geometry import fit_rigid_alignment, fit_obb_alignment, fit_knn_alignment, chamfer_error
+from ._geometry import fit_rigid_alignment, fit_obb_alignment, fit_knn_alignment, chamfer_error, triangulated
+from ._geometry import compute_normals, compute_point_normals, compute_principal_curvatures, compute_shape_index
 
 # IO functions
 from ._io import read_stl, write_stl, read_obj, write_obj
@@ -86,6 +87,11 @@ __all__ = [
     'fit_obb_alignment',
     'fit_knn_alignment',
     'chamfer_error',
+    'triangulated',
+    'compute_normals',
+    'compute_point_normals',
+    'compute_principal_curvatures',
+    'compute_shape_index',
     # IO
     'read_stl',
     'write_stl',

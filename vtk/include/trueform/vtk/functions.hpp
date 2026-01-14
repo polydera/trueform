@@ -19,6 +19,7 @@
 #include <trueform/vtk/functions/cleaned_points.hpp>
 #include <trueform/vtk/functions/compute_cell_normals.hpp>
 #include <trueform/vtk/functions/compute_point_normals.hpp>
+#include <trueform/vtk/functions/compute_principal_curvatures.hpp>
 #include <trueform/vtk/functions/distance.hpp>
 #include <trueform/vtk/functions/ensure_positive_orientation.hpp>
 #include <trueform/vtk/functions/fit_knn_alignment.hpp>

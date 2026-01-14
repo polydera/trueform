@@ -18,6 +18,7 @@
 class vtkSignedCharArray;
 class vtkIntArray;
 class vtkIdTypeArray;
+class vtkFloatArray;
 
 namespace tf::vtk {
 
@@ -56,5 +57,29 @@ auto make_vtk_array(const tf::buffer<vtkIdType> &buffer)
 /// @return A new vtkIdTypeArray object with transferred ownership.
 auto make_vtk_array(tf::buffer<vtkIdType> &&buffer)
     -> vtkSmartPointer<vtkIdTypeArray>;
+
+/// @brief Creates vtkIdTypeArray from a buffer (copies data).
+/// @param buffer Trueform buffer.
+/// @return A new vtkFloatArray object with copied data.
+auto make_vtk_array(const tf::buffer<float> &buffer)
+    -> vtkSmartPointer<vtkFloatArray>;
+
+/// @brief Creates vtkIdTypeArray from a buffer (moves data).
+/// @param buffer Trueform buffer (consumed).
+/// @return A new vtkFloatArray object with transferred ownership.
+auto make_vtk_array(tf::buffer<float> &&buffer)
+    -> vtkSmartPointer<vtkFloatArray>;
+
+/// @brief Creates vtkFloatArray from a unit_vectors_buffer (copies data).
+/// @param buffer Trueform unit_vectors_buffer.
+/// @return A new vtkFloatArray with 3 components per tuple.
+auto make_vtk_array(const tf::unit_vectors_buffer<float, 3> &buffer)
+    -> vtkSmartPointer<vtkFloatArray>;
+
+/// @brief Creates vtkFloatArray from a unit_vectors_buffer (moves data).
+/// @param buffer Trueform unit_vectors_buffer (consumed).
+/// @return A new vtkFloatArray with 3 components per tuple.
+auto make_vtk_array(tf::unit_vectors_buffer<float, 3> &&buffer)
+    -> vtkSmartPointer<vtkFloatArray>;
 
 } // namespace tf::vtk
