@@ -208,6 +208,14 @@ export class ShapeHistogramExample extends ThreejsBase {
     this.wasmInstance.FS.unlink(this.paths[0]);
   }
 
+  public getAabbDiagonal(): number {
+    return this.wasmInstance.shape_histogram_get_aabb_diagonal();
+  }
+
+  public setRadius(radius: number): void {
+    this.wasmInstance.shape_histogram_set_radius(radius);
+  }
+
   public override dispose() {
     // Remove histogram canvas
     if (this.histogramCanvas && this.histogramCanvas.parentNode) {

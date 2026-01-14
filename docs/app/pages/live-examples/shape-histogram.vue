@@ -34,6 +34,19 @@ const meshCount = 1;
 const meshes = computed(() => buildMeshes(meshCount));
 const polygonLabel = computed(() => formatPolygonLabel(meshCount));
 
+// Radius slider: 1% to 25% of AABB diagonal
+const radiusPercent = ref(7.5);
+const aabbDiagonal = ref(1);
+
+const updateRadius = () => {
+  if (exampleClass) {
+    const radius = aabbDiagonal.value * (radiusPercent.value / 100);
+    exampleClass.setRadius(radius);
+  }
+};
+
+watch(radiusPercent, updateRadius);
+
 let tearDownRequested = false;
 let currentLoadId = 0;
 
@@ -65,6 +78,8 @@ const loadThreejs = async () => {
         isDark.value,
       );
       instance.refreshTimeValue = getAvgTime;
+      // Store AABB diagonal for radius slider
+      aabbDiagonal.value = instance.getAabbDiagonal();
       return instance;
     },
   });
@@ -115,6 +130,12 @@ watch(isDark, (dark) => {
       <div v-else class="flex gap-1 items-center text-muted">
         <UIcon name="i-lucide-mouse-pointer" class="size-4 ml-1" />
         <p class="text-sm">Hover over the mesh to see local shape index histogram.</p>
+      </div>
+      <div class="flex gap-2 items-center text-muted mt-2">
+        <UIcon name="i-lucide-circle" class="size-4 ml-1" />
+        <span class="text-sm w-16">Radius:</span>
+        <USlider v-model="radiusPercent" :min="0" :max="15" :step="0.5" class="w-32" />
+        <span class="text-sm w-12">{{ radiusPercent.toFixed(1) }}%</span>
       </div>
     </template>
     <template #containers>

@@ -24,6 +24,7 @@ public:
   std::vector<unsigned char> vertex_colors; // RGB per vertex
   std::array<int, num_bins> histogram_bins{};
   tf::vertex_link<int> vlink;
+  float aabb_diagonal = 1.0f;
   bool colors_updated = false;
 
   auto build_shape_index() -> void {
@@ -52,6 +53,10 @@ public:
       data.face_membership->build(data.polygons.polygons());
     }
     vlink.build(data.polygons.polygons(), *data.face_membership);
+
+    // Compute AABB diagonal once
+    auto aabb = tf::aabb_from(data.polygons.points());
+    aabb_diagonal = aabb.diagonal().length();
 
     colors_updated = true;
   }
@@ -102,6 +107,11 @@ public:
   }
 
   auto set_radius(float r) -> void { radius_ = r; }
+
+  auto get_aabb_diagonal() -> float {
+    auto *b = get_shape_bridge();
+    return b ? b->aabb_diagonal : 1.0f;
+  }
 
   auto OnMouseMove(std::array<float, 3> origin, std::array<float, 3> direction,
                    std::array<float, 3> camera_position,

@@ -129,6 +129,17 @@ auto shape_histogram_get_histogram_bins() -> emscripten::val {
   return sh->get_histogram_bins();
 }
 
+auto shape_histogram_set_radius(float r) -> void {
+  auto *sh = get_shape_histogram_interactor();
+  if (sh)
+    sh->set_radius(r);
+}
+
+auto shape_histogram_get_aabb_diagonal() -> float {
+  auto *sh = get_shape_histogram_interactor();
+  return sh ? sh->get_aabb_diagonal() : 1.0f;
+}
+
 EMSCRIPTEN_BINDINGS(boolean) {
   emscripten::function("get_number_of_mesh_data", &get_number_of_mesh_data);
   emscripten::function("get_number_of_instances", &get_number_of_instances);
@@ -171,6 +182,10 @@ EMSCRIPTEN_BINDINGS(boolean) {
                        &shape_histogram_get_vertex_colors);
   emscripten::function("shape_histogram_get_histogram_bins",
                        &shape_histogram_get_histogram_bins);
+  emscripten::function("shape_histogram_set_radius",
+                       &shape_histogram_set_radius);
+  emscripten::function("shape_histogram_get_aabb_diagonal",
+                       &shape_histogram_get_aabb_diagonal);
 }
 
 EMSCRIPTEN_BINDINGS(VectorString) {
