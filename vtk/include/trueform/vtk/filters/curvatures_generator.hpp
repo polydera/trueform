@@ -2,7 +2,7 @@
 * Copyright (c) 2025 XLAB
 * All rights reserved.
 *
-* This file is part of trueform (www.trueform.polydera.com)
+* This file is part of trueform (trueform.polydera.com)
 *
 * Licensed for noncommercial use under the PolyForm Noncommercial
 * License 1.0.0.
