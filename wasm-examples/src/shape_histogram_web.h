@@ -16,7 +16,7 @@ constexpr float bin_width = 2.0f / num_bins; // Range [-1, 1]
 
 // Colors (RGB bytes)
 constexpr std::array<unsigned char, 3> white = {255, 255, 255};
-constexpr std::array<unsigned char, 3> highlight = {255, 180, 140}; // Coral/orange
+constexpr std::array<unsigned char, 3> highlight = {63, 255, 233}; // Cyan #3fffe9
 
 class tf_bridge_shape_histogram : public tf_bridge_interface {
 public:

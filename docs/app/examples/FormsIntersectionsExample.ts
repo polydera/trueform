@@ -49,7 +49,7 @@ export class FormsIntersectionsExample extends ThreejsBase {
     });
 
     const opts: curvesToCurvePolyOpts = {
-      tubeColor: 0xff2020,
+      tubeColor: 0x00d5be,
       lineWidth: 0.2,
     };
 

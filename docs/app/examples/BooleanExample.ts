@@ -194,7 +194,7 @@ export class BooleanExample extends ThreejsBase {
     });
 
     this.curveRenderer = new CurveRenderer({
-      color: 0xff2020,
+      color: 0x00d5be,
       radius: 0.075,
       maxSegments: 20000,
     });

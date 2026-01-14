@@ -161,7 +161,7 @@ export class IsobandsExample extends ThreejsBase {
     });
 
     this.curveRenderer = new CurveRenderer({
-      color: 0x2020ff,
+      color: 0x00d5be,
       radius: 0.075,
       maxSegments: 20000,
     });
