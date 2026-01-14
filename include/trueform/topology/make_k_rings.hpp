@@ -91,8 +91,8 @@ namespace tf {
 /// @param inclusive If true, include the seed vertex in its own neighborhood.
 /// @return Offset block buffer containing k-ring neighborhoods.
 template <typename Policy>
-auto make_k_ring(const tf::vertex_link_like<Policy> &vlink, std::size_t k,
-                 bool inclusive = false) {
+auto make_k_rings(const tf::vertex_link_like<Policy> &vlink, std::size_t k,
+                  bool inclusive = false) {
   using Index = std::decay_t<decltype(vlink[0][0])>;
   const auto n_vertices = vlink.size();
 

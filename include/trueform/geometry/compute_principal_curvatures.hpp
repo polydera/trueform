@@ -25,7 +25,7 @@
 #include "../core/unit_vector_like.hpp"
 #include "../core/views/sequence_range.hpp"
 #include "../topology/face_membership.hpp"
-#include "../topology/make_k_ring.hpp"
+#include "../topology/make_k_rings.hpp"
 #include "../topology/policy/vertex_link.hpp"
 #include "../topology/vertex_link.hpp"
 #include "./compute_point_normals.hpp"

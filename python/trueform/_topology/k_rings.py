@@ -74,7 +74,7 @@ def k_rings(
 
     # ===== BUILD SUFFIX AND DISPATCH =====
     suffix = topology_suffix(connectivity.offsets.dtype)
-    func_name = f"make_k_ring_{suffix}"
+    func_name = f"make_k_rings_{suffix}"
     cpp_func = getattr(_trueform.topology, func_name)
 
     # Call C++ function

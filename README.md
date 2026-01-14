@@ -70,7 +70,7 @@ auto [components, component_ids] = tf::split_into_components(polygons, labels);
 
 // Vertex neighborhoods
 auto v_link = tf::make_vertex_link(polygons);
-auto k2_ring = tf::make_k_ring(v_link, 2);
+auto k2_ring = tf::make_k_rings(v_link, 2);
 auto neighs = tf::make_neighborhoods(polygons.points() | tf::tag(v_link), 0.5f);
 
 // Principal curvatures and directions
