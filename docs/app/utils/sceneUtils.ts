@@ -341,8 +341,11 @@ export function fitCameraToAllMeshesFromZPlane(sceneBundle: SceneBundle, offset:
     const maxDimension = Math.max(size.x, size.y, size.z);
 
     // Calculate distance needed to fit all objects in view
+    // Account for aspect ratio - on portrait mobile, width is limiting factor
     const fov = camera.fov * (Math.PI / 180); // Convert to radians
-    const distance = (maxDimension * offset) / (2 * Math.tan(fov / 2));
+    const fitHeightDistance = (maxDimension * offset) / (2 * Math.tan(fov / 2));
+    const fitWidthDistance = fitHeightDistance / camera.aspect;
+    const distance = Math.max(fitHeightDistance, fitWidthDistance);
 
     // Position camera to look at the scene from z=0 direction
     // This means the camera will be positioned along the positive Z axis
