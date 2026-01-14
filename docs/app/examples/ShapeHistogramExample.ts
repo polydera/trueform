@@ -18,6 +18,8 @@ export class ShapeHistogramExample extends ThreejsBase {
     // Pass showStats = false to hide GPU/CPU charts
     super(wasmInstance, paths, container, undefined, true, false, isDarkMode);
 
+    this.lockRotationOnTouchDrag = true;
+
     // Setup vertex colors on the mesh geometry
     this.setupVertexColors();
 

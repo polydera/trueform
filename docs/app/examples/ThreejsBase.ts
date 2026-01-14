@@ -54,10 +54,12 @@ export abstract class ThreejsBase implements IThreejsBase {
 
   protected syncSceneControls = true;
   protected renderer2Interactive = false;
+  protected lockRotationOnTouchDrag = false;
 
   private raycaster = new THREE.Raycaster();
   private ndc = new THREE.Vector2();
   private ray = new THREE.Ray();
+  private touchDragPointerId: number | null = null;
 
   public refreshTimeValue?: () => number;
 
@@ -280,18 +282,25 @@ export abstract class ThreejsBase implements IThreejsBase {
   public onPointerUp(event: PointerEvent) {
     const handled = this.wasmInstance.OnLeftButtonUp();
     this.updateMeshes();
-    if (handled) {
+    const isTouchDragLocked = this.isTouchDragLocked(event);
+    if (isTouchDragLocked) {
+      this.touchDragPointerId = null;
+    }
+    if (handled || isTouchDragLocked) {
       event.stopPropagation();
     }
   }
   public onPointerDown(event: PointerEvent) {
     let handled = false;
     if (event.pointerType == "touch") {
-      this.onPointerMove(event, true);
+      const startedOnMesh = this.onPointerMove(event, true);
+      if (this.lockRotationOnTouchDrag && startedOnMesh) {
+        this.touchDragPointerId = event.pointerId;
+      }
     }
     if (event.buttons === 1) handled = this.wasmInstance.OnLeftButtonDown();
     this.updateMeshes();
-    if (handled) {
+    if (handled || this.isTouchDragLocked(event)) {
       event.stopPropagation();
     }
   }
@@ -324,9 +333,10 @@ export abstract class ThreejsBase implements IThreejsBase {
       );
     }
     this.updateMeshes();
-    if (handled && !touchHover) {
+    if ((handled && !touchHover) || this.isTouchDragLocked(event)) {
       event.stopPropagation();
     }
+    return handled;
   }
 
   /**
@@ -502,6 +512,15 @@ export abstract class ThreejsBase implements IThreejsBase {
 
   protected addCleanup(callback: () => void) {
     this.cleanupCallbacks.push(callback);
+  }
+
+  private isTouchDragLocked(event: PointerEvent) {
+    return (
+      this.lockRotationOnTouchDrag &&
+      event.pointerType === "touch" &&
+      this.touchDragPointerId !== null &&
+      event.pointerId === this.touchDragPointerId
+    );
   }
 
   private animate = () => {
