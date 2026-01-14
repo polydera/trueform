@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { useWasmModule } from "@/composables/useWasmModule";
-import { ShapeHistogramExample } from "@/examples/ShapeHistogramExample";
+import { ShapeHistogramExample, SHAPE_HISTOGRAM_NUM_BINS } from "@/examples/ShapeHistogramExample";
 import { useExampleLoadingState } from "@/composables/useExampleLoadingState";
 import { useMeshSelection } from "@/composables/useMeshSelection";
 import { getExampleMetadata } from "@/utils/liveExamples";
+import { VisXYContainer, VisGroupedBar, VisAxis } from "@unovis/vue";
 
 const metadata = getExampleMetadata("shape-histogram");
 if (metadata) {
@@ -22,8 +23,15 @@ const { isTouchscreen } = useTouchscreen();
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
 const { loadExampleWithAssets } = useWasmModule();
-const { isLoading, loadingMessage, loadingError, resetLoading, setLoadingMessage, failLoading, finishLoading } =
-  useExampleLoadingState();
+const {
+  isLoading,
+  loadingMessage,
+  loadingError,
+  resetLoading,
+  setLoadingMessage,
+  failLoading,
+  finishLoading,
+} = useExampleLoadingState();
 const { meshSize, buildMeshes, formatPolygonLabel } = useMeshSelection();
 
 const threejsContainer = ref<HTMLElement | null>(null);
@@ -33,6 +41,26 @@ const avgTime = ref("0");
 const meshCount = 1;
 const meshes = computed(() => buildMeshes(meshCount));
 const polygonLabel = computed(() => formatPolygonLabel(meshCount));
+
+const histogramBins = ref<number[]>(Array.from({ length: SHAPE_HISTOGRAM_NUM_BINS }, () => 0));
+const histogramData = computed(() =>
+  histogramBins.value.map((value, index) => ({
+    value,
+    index,
+  })),
+);
+const histogramX = (d: { index: number }) => d.index;
+const histogramY = [(d: { value: number }) => d.value];
+const histogramColor = () => "#00d5be";
+const histogramMargin = { top: 8, right: 8, bottom: 4, left: 8 };
+const histogramDomain = [-0.5, SHAPE_HISTOGRAM_NUM_BINS - 0.5] as [number, number];
+const histogramTickValues = [
+  histogramDomain[0],
+  (histogramDomain[0] + histogramDomain[1]) / 2,
+  histogramDomain[1],
+];
+const histogramTickFormat = (_value: number, i: number, ticks: number[]) =>
+  i === 0 ? "-1" : i === ticks.length - 1 ? "1" : "0";
 
 // Radius slider: 1% to 25% of AABB diagonal
 const radiusPercent = ref(7.5);
@@ -60,6 +88,7 @@ const disposeExample = () => {
 const loadThreejs = async () => {
   const loadId = ++currentLoadId;
   disposeExample();
+  histogramBins.value = Array.from({ length: SHAPE_HISTOGRAM_NUM_BINS }, () => 0);
   exampleClass = await loadExampleWithAssets({
     meshes: meshes.value,
     skipOverlayIfCached: true,
@@ -71,12 +100,11 @@ const loadThreejs = async () => {
         return null;
       }
 
-      const instance = new ShapeHistogramExample(
-        wasmInstance,
-        meshFilenames,
-        el,
-        isDark.value,
-      );
+      const instance = new ShapeHistogramExample(wasmInstance, meshFilenames, el, isDark.value);
+      instance.onHistogramUpdate = (bins) => {
+        if (tearDownRequested || loadId !== currentLoadId) return;
+        histogramBins.value = bins;
+      };
       instance.refreshTimeValue = getAvgTime;
       // Store AABB diagonal for radius slider
       aabbDiagonal.value = instance.getAabbDiagonal();
@@ -99,10 +127,14 @@ const badge = computed(() => ({
   polygons: polygonLabel.value,
 }));
 
-watch(meshSize, () => {
-  radiusPercent.value = 7.5;
-  loadThreejs();
-}, { immediate: true });
+watch(
+  meshSize,
+  () => {
+    radiusPercent.value = 7.5;
+    loadThreejs();
+  },
+  { immediate: true },
+);
 
 onBeforeUnmount(() => {
   tearDownRequested = true;
@@ -142,7 +174,41 @@ watch(isDark, (dark) => {
       </div>
     </template>
     <template #containers>
-      <div ref="threejsContainer" id="threejsContainer" class="h-full flex-1 min-h-0 w-screen md:w-full"></div>
+      <div class="relative h-full flex-1 min-h-0 w-screen md:w-full">
+        <div ref="threejsContainer" id="threejsContainer" class="absolute inset-0"></div>
+        <div
+          class="pointer-events-none unovis absolute bottom-3 md:bottom-4 right-3 md:right-4 w-[calc(100vw-1.5rem)] sm:w-auto z-10 rounded-lg bg-neutral-400/10 shadow-lg backdrop-blur px-2.5 pt-2 pb-1.5 text-xs flex flex-col gap-1"
+        >
+          <div class="text-center text-sm md:text-base font-semibold tracking-wide opacity-90">
+            Shape Index
+          </div>
+          <div class="h-[18vh] w-full sm:h-[20vh] sm:w-[20vw]">
+            <ClientOnly>
+              <VisXYContainer
+                class="h-full w-full"
+                :margin="histogramMargin"
+                :xDomain="histogramDomain"
+              >
+                <VisGroupedBar
+                  :data="histogramData"
+                  :x="histogramX"
+                  :y="histogramY"
+                  :color="histogramColor"
+                  :duration="50"
+                />
+                <VisAxis
+                  type="x"
+                  :tickValues="histogramTickValues"
+                  :tickFormat="histogramTickFormat"
+                  :gridLine="false"
+                  :tickLine="false"
+                  :tickPadding="1"
+                />
+              </VisXYContainer>
+            </ClientOnly>
+          </div>
+        </div>
+      </div>
     </template>
   </ExampleLayout>
 </template>
