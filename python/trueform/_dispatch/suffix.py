@@ -73,13 +73,34 @@ def build_suffix_pair(meta0, meta1) -> str:
     return "".join(parts)
 
 
-def topology_suffix(index_dtype: np.dtype, ngon: str) -> str:
+def topology_suffix(
+    index_dtype: np.dtype,
+    ngon: str = None,
+    *,
+    real_dtype: np.dtype = None,
+    dims: int = None
+) -> str:
     """
-    Suffix for topology operations (no real type).
-    Pattern: {index}_{ngon}
-    Used by: topology.boundary_edges, vertex_link, face_link, etc.
+    Suffix for topology operations with dtype-based components.
+
+    Pattern: {index}[_{ngon}][_{real}][_{dims}]
+    Components are joined with underscores, omitted when None.
+
+    Examples:
+        topology_suffix(int32)                              -> 'int'
+        topology_suffix(int32, '3')                         -> 'int_3'
+        topology_suffix(int32, real_dtype=float32, dims=3)  -> 'int_float_3'
+
+    Used by: k_ring, neighborhoods, boundary_edges, vertex_link, face_link, etc.
     """
-    return f"{dtype_str(index_dtype)}_{ngon}"
+    parts = [dtype_str(index_dtype)]
+    if ngon is not None:
+        parts.append(ngon)
+    if real_dtype is not None:
+        parts.append(dtype_str(real_dtype))
+    if dims is not None:
+        parts.append(str(dims))
+    return "_".join(parts)
 
 
 def connectivity_suffix(storage: str, index_dtype: np.dtype) -> str:

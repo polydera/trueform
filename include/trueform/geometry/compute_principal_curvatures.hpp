@@ -274,6 +274,8 @@ template <typename PolygonsPolicy, typename Range0, typename Range1>
 void compute_principal_curvatures(const tf::polygons<PolygonsPolicy> &polygons,
                                   Range0 &&ks0, Range1 &&ks1,
                                   std::size_t k = 2) {
+  static_assert(tf::coordinate_dims_v<PolygonsPolicy> == 3,
+               "3D dimensionality required");
   return geometry::compute_principal_curvatures(polygons, ks0, ks1, tf::none,
                                                 tf::none, k);
 }
@@ -283,8 +285,66 @@ template <typename PolygonsPolicy, typename Range0, typename Range1,
 void compute_principal_curvatures(const tf::polygons<PolygonsPolicy> &polygons,
                                   Range0 &&ks0, Range1 &&ks1, Range2 &&dirs0,
                                   Range3 &&dirs1, std::size_t k = 2) {
+  static_assert(tf::coordinate_dims_v<PolygonsPolicy> == 3,
+               "3D dimensionality required");
   return geometry::compute_principal_curvatures(polygons, ks0, ks1, dirs0,
                                                 dirs1, k);
+}
+
+/// @ingroup geometry
+/// @brief Compute principal curvatures for all vertices, returning result buffers.
+///
+/// Convenience wrapper that allocates output buffers internally.
+/// Principal curvatures (k0, k1) characterize surface curvature at each vertex,
+/// where k0 is the maximum curvature and k1 is the minimum curvature.
+///
+/// @tparam PolygonsPolicy The polygons policy type.
+/// @param polygons The input polygons.
+/// @param k Number of rings for neighborhood (default 2).
+/// @return Pair of buffers {k0, k1} containing principal curvatures per vertex.
+template <typename PolygonsPolicy>
+auto make_principal_curvatures(const tf::polygons<PolygonsPolicy> &polygons,
+                               std::size_t k = 2) {
+  static_assert(tf::coordinate_dims_v<PolygonsPolicy> == 3,
+               "3D dimensionality required");
+  using T = tf::coordinate_type<PolygonsPolicy>;
+  tf::buffer<T> ks0;
+  ks0.allocate(polygons.points().size());
+  tf::buffer<T> ks1;
+  ks1.allocate(polygons.points().size());
+  geometry::compute_principal_curvatures(polygons, ks0, ks1, k);
+  return std::make_pair(std::move(ks0), std::move(ks1));
+}
+
+/// @ingroup geometry
+/// @brief Compute principal curvatures and directions for all vertices.
+///
+/// Convenience wrapper that allocates output buffers internally.
+/// Returns both principal curvatures (k0, k1) and their corresponding
+/// directions (d0, d1) as unit vectors in the tangent plane.
+///
+/// @tparam PolygonsPolicy The polygons policy type.
+/// @param polygons The input polygons.
+/// @param k Number of rings for neighborhood (default 2).
+/// @return Tuple of {k0, k1, d0, d1} where k0/k1 are curvature buffers and
+///         d0/d1 are unit_vectors_buffers containing principal directions.
+template <typename PolygonsPolicy>
+auto make_principal_directions(const tf::polygons<PolygonsPolicy> &polygons,
+                               std::size_t k = 2) {
+  static_assert(tf::coordinate_dims_v<PolygonsPolicy> == 3,
+               "3D dimensionality required");
+  using T = tf::coordinate_type<PolygonsPolicy>;
+  tf::buffer<T> ks0;
+  ks0.allocate(polygons.points().size());
+  tf::buffer<T> ks1;
+  ks1.allocate(polygons.points().size());
+  tf::unit_vectors_buffer<T, tf::coordinate_dims_v<PolygonsPolicy>> dirs0;
+  dirs0.allocate(polygons.points().size());
+  tf::unit_vectors_buffer<T, tf::coordinate_dims_v<PolygonsPolicy>> dirs1;
+  dirs1.allocate(polygons.points().size());
+  geometry::compute_principal_curvatures(polygons, ks0, ks1, dirs0, dirs1, k);
+  return std::make_tuple(std::move(ks0), std::move(ks1), std::move(dirs0),
+                         std::move(dirs1));
 }
 
 } // namespace tf

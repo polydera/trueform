@@ -15,10 +15,11 @@
 #include "../core/algorithm/generate_offset_blocks.hpp"
 #include "../core/buffer.hpp"
 #include "../core/coordinate_type.hpp"
-#include "../core/distance.hpp"
+#include "../core/frame_of.hpp"
 #include "../core/hash_set.hpp"
 #include "../core/offset_block_buffer.hpp"
 #include "../core/points.hpp"
+#include "../core/transformed.hpp"
 #include "../core/views/sequence_range.hpp"
 #include "./policy/vertex_link.hpp"
 #include "./vertex_link_like.hpp"
@@ -64,7 +65,7 @@ template <typename Index> struct neighborhood_applier {
       Index vid = queue[front++];
 
       for (auto neighbor : vlink[vid]) {
-        if (visited.count(neighbor))
+        if (neighbor < 0 || visited.count(neighbor))
           continue;
 
         visited.insert(neighbor);
@@ -107,8 +108,8 @@ auto make_neighborhoods(const tf::vertex_link_like<Policy> &vlink,
   tf::offset_block_buffer<Index, Index> result;
   tf::generate_offset_blocks(
       tf::make_sequence_range(static_cast<Index>(n_vertices)), result,
-      [&, applier = topology::neighborhood_applier<Index>()](Index seed,
-                                                   auto &id_buff) mutable {
+      [&, applier = topology::neighborhood_applier<Index>()](
+          Index seed, auto &id_buff) mutable {
         applier(vlink, seed, distance2_f, radius, inclusive,
                 [&](Index neighbor) { id_buff.push_back(neighbor); });
       });
@@ -134,11 +135,13 @@ auto make_neighborhoods(const tf::points<Policy> &pts,
                 "Points must have vertex_link policy attached");
 
   const auto &vlink = pts.vertex_link();
+  auto frame = tf::frame_of(pts);
 
   return make_neighborhoods(
       vlink,
       [&](auto seed, auto neighbor) {
-        return tf::distance2(pts[seed], pts[neighbor]);
+        auto dist_vec = tf::transformed(pts[seed] - pts[neighbor], frame);
+        return dist_vec.length2();
       },
       radius, inclusive);
 }

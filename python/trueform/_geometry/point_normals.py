@@ -1,5 +1,5 @@
 """
-Shape index computation
+Vertex normals computation
 
 Copyright (c) 2025 Žiga Sajovic, XLAB
 Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
@@ -11,22 +11,17 @@ from typing import Union, Tuple
 import numpy as np
 from .._spatial import Mesh
 from .._core import OffsetBlockedArray
-from .compute_principal_curvatures import compute_principal_curvatures
+from .._dispatch import ensure_mesh
 
 
-def compute_shape_index(
-    data: Union[Mesh, Tuple[np.ndarray, np.ndarray], Tuple[OffsetBlockedArray, np.ndarray]],
-    k: int = 2
+def point_normals(
+    data: Union[Mesh, Tuple[np.ndarray, np.ndarray], Tuple[OffsetBlockedArray, np.ndarray]]
 ) -> np.ndarray:
     """
-    Compute shape index at each vertex.
+    Compute vertex normals for a mesh.
 
-    Shape index maps principal curvatures to a normalized scale [-1, 1]:
-      - -1: spherical cup (concave)
-      - -0.5: cylindrical cup
-      -  0: saddle point
-      -  0.5: cylindrical cap
-      -  1: spherical cap (convex)
+    Vertex normals are computed by averaging adjacent face normals,
+    weighted by face area.
 
     Parameters
     ----------
@@ -34,13 +29,11 @@ def compute_shape_index(
         - Mesh: Mesh object
         - (faces, points): Tuple with face indices and point coordinates
         - (OffsetBlockedArray, points): Dynamic polygon mesh
-    k : int, default 2
-        k-ring neighborhood size for curvature estimation.
 
     Returns
     -------
-    shape_index : np.ndarray of shape (num_points,)
-        Shape index at each vertex, range [-1, 1].
+    point_normals : np.ndarray of shape (num_points, 3)
+        Unit vertex normals
 
     Raises
     ------
@@ -59,12 +52,10 @@ def compute_shape_index(
     >>>
     >>> # From Mesh
     >>> mesh = tf.Mesh(faces, points)
-    >>> si = tf.compute_shape_index(mesh)
+    >>> pn = tf.point_normals(mesh)
     >>>
-    >>> # From tuple with custom k-ring
-    >>> si = tf.compute_shape_index((faces, points), k=3)
+    >>> # From tuple
+    >>> pn = tf.point_normals((faces, points))
     """
-    k0, k1 = compute_principal_curvatures(data, k=k, directions=False)
-
-    # S = (2/π) * arctan((k1 + k0) / (k1 - k0))
-    return (2.0 / np.pi) * np.arctan2(k1 + k0, k1 - k0)
+    mesh = ensure_mesh(data, dims=3)
+    return mesh.point_normals

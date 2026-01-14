@@ -1,5 +1,5 @@
 """
-Vertex normals computation
+Face normals computation
 
 Copyright (c) 2025 Žiga Sajovic, XLAB
 Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
@@ -14,14 +14,11 @@ from .._core import OffsetBlockedArray
 from .._dispatch import ensure_mesh
 
 
-def compute_point_normals(
+def normals(
     data: Union[Mesh, Tuple[np.ndarray, np.ndarray], Tuple[OffsetBlockedArray, np.ndarray]]
 ) -> np.ndarray:
     """
-    Compute vertex normals for a mesh.
-
-    Vertex normals are computed by averaging adjacent face normals,
-    weighted by face area.
+    Compute face normals for a mesh.
 
     Parameters
     ----------
@@ -32,8 +29,8 @@ def compute_point_normals(
 
     Returns
     -------
-    point_normals : np.ndarray of shape (num_points, 3)
-        Unit vertex normals
+    normals : np.ndarray of shape (num_faces, 3)
+        Unit face normals
 
     Raises
     ------
@@ -52,10 +49,10 @@ def compute_point_normals(
     >>>
     >>> # From Mesh
     >>> mesh = tf.Mesh(faces, points)
-    >>> pn = tf.compute_point_normals(mesh)
+    >>> n = tf.normals(mesh)
     >>>
     >>> # From tuple
-    >>> pn = tf.compute_point_normals((faces, points))
+    >>> n = tf.normals((faces, points))
     """
     mesh = ensure_mesh(data, dims=3)
-    return mesh.point_normals
+    return mesh.normals
