@@ -38,7 +38,7 @@ auto generate_offset_blocks(
     for (const auto &element : range) {
       auto old_size = tf::core::size(data);
       fill_block_f(element, data);
-      *it++ = tf::core::size(data) - old_size;
+      *it++ = static_cast<Index>(tf::core::size(data) - old_size);
     }
   };
   auto aggregate_f =

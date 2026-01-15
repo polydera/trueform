@@ -48,8 +48,8 @@ public:
     }
     _nodes.reserve(n_pts + 2);
     _nodes.allocate(n_pts);
-    _triangles.reserve((n_pts - 3) * 1.5f);
-    Index size = n_pts;
+    _triangles.reserve(static_cast<std::size_t>((n_pts - 3) * 1.5f));
+    Index size = static_cast<Index>(n_pts);
     auto f = [](node_t &n, Index prev, Index i, Index next) {
       n.id = i;
       n.pt_id = i;
@@ -152,7 +152,7 @@ private:
   }
 
   auto split_polygon(Index a_id, Index b_id) {
-    auto n_id = _nodes.size();
+    Index n_id = static_cast<Index>(_nodes.size());
     auto na = _nodes[a_id];
     auto nb = _nodes[b_id];
     _nodes.push_back(na);
@@ -185,7 +185,7 @@ private:
     auto run_split = [&](auto a, auto b) {
       auto c_id = split_polygon(a, b);
       bool success = run_implementation(points, a);
-      success &= run_implementation(points, c_id);
+      success = success && run_implementation(points, c_id);
       return success;
     };
     auto a = start_id;
@@ -469,8 +469,8 @@ private:
   template <typename Range>
   auto is_valid_diagonal(const Range &points, const node_t &a,
                          const node_t &b) {
-    auto is_middle_inside = middle_inside(points, a, b) << 1;
-    auto does_not_cause_flip =
+    int is_middle_inside = middle_inside(points, a, b) << 1;
+    int does_not_cause_flip =
         ((locally_inside(points, a, b) && locally_inside(points, b, a) &&
           is_middle_inside && // locally visible
           (area(points, prev(a), a, prev(b)) != 0.0 ||
@@ -479,7 +479,7 @@ private:
          (a.point(points) == b.point(points) &&
           area(points, prev(a), a, next(a)) > 0 &&
           area(points, prev(b), b, next(b)) > 0));
-    auto does_not_intersect =
+    int does_not_intersect =
         (next(a).pt_id != b.pt_id && prev(a).pt_id != b.pt_id &&
          !intersects_polygon(points, a, b))
         << 2;

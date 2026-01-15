@@ -17,7 +17,8 @@ template <typename Iterator, typename RandomIterator> struct indirect_policy {
   auto
   operator()(typename std::iterator_traits<Iterator>::reference index) const
       -> decltype(auto) {
-    return data_iter[index];
+    using diff_t = typename std::iterator_traits<RandomIterator>::difference_type;
+    return data_iter[static_cast<diff_t>(index)];
   }
   RandomIterator data_iter;
 };

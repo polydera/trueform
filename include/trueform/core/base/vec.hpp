@@ -39,7 +39,7 @@ template <typename T, std::size_t Dims> struct vec_view {
   auto operator=(const vec_view<U, Dims> &other)
       -> std::enable_if_t<std::is_assignable_v<T &, U>, vec_view &> {
     for (std::size_t i = 0; i < Dims; ++i)
-      _data[i] = other.data()[i];
+      _data[i] = static_cast<T>(other.data()[i]);
     return *this;
   }
 
@@ -101,21 +101,21 @@ template <typename T, std::size_t Dims> struct vec {
             typename V = std::enable_if_t<std::is_assignable_v<T &, U>, void>>
   vec(const vec_view<U, Dims> &other) {
     for (std::size_t i = 0; i < Dims; ++i)
-      _data[i] = other.data()[i];
+      _data[i] = static_cast<T>(other.data()[i]);
   }
 
   template <typename U,
             typename V = std::enable_if_t<std::is_assignable_v<T &, U>, void>>
   vec(const vec<U, Dims> &other) {
     for (std::size_t i = 0; i < Dims; ++i)
-      _data[i] = other.data()[i];
+      _data[i] = static_cast<T>(other.data()[i]);
   }
 
   template <typename U>
   auto operator=(const vec_view<U, Dims> &other)
       -> std::enable_if_t<std::is_assignable_v<T &, U>, vec &> {
     for (std::size_t i = 0; i < Dims; ++i)
-      _data[i] = other.data()[i];
+      _data[i] = static_cast<T>(other.data()[i]);
     return *this;
   }
 
@@ -123,7 +123,7 @@ template <typename T, std::size_t Dims> struct vec {
   auto operator=(const vec<U, Dims> &other)
       -> std::enable_if_t<std::is_assignable_v<T &, U>, vec &> {
     for (std::size_t i = 0; i < Dims; ++i)
-      _data[i] = other.data()[i];
+      _data[i] = static_cast<T>(other.data()[i]);
     return *this;
   }
 
@@ -139,7 +139,7 @@ template <typename U>
 auto vec_view<T, Dims>::operator=(const vec<U, Dims> &other)
     -> std::enable_if_t<std::is_assignable_v<T &, U>, vec_view &> {
   for (std::size_t i = 0; i < Dims; ++i)
-    _data[i] = other.data()[i];
+    _data[i] = static_cast<T>(other.data()[i]);
   return *this;
 }
 } // namespace tf::core
