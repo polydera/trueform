@@ -108,7 +108,7 @@ auto compute_principal_curvatures(
   auto [t0, t1] = tf::make_basis_from_normal(normal);
   auto origin = points[vid];
 
-  constexpr std::size_t cols = 3;
+  constexpr std::size_t cols = 5;
 
   // Resize workspace
   state.A.allocate(n * cols);
@@ -117,6 +117,7 @@ auto compute_principal_curvatures(
   state.work.allocate(work_size);
 
   // Build system: project neighbors to local coords
+  // Fit z = ax² + bxy + cy² + dx + ey (linear terms improve robustness)
   std::size_t i = 0;
   for (auto neighbor_id : neighbors) {
     auto p = points[neighbor_id];
@@ -130,6 +131,8 @@ auto compute_principal_curvatures(
     state.A[i + 0 * n] = x * x;
     state.A[i + 1 * n] = x * y;
     state.A[i + 2 * n] = y * y;
+    state.A[i + 3 * n] = x;
+    state.A[i + 4 * n] = y;
     // Negate z: shape operator S = -Hessian for z = f(x,y)
     state.b_vec[i] = -z;
     ++i;
