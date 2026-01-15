@@ -232,6 +232,39 @@ endif()
 message(STATUS "    FCL: Ready (FetchContent)")
 
 # ------------------------------------------------------------------------------
+# Coal - High-performance collision library (FCL fork)
+# ------------------------------------------------------------------------------
+
+message(STATUS "  - Coal (High-performance collision library, FCL fork)")
+FetchContent_Declare(
+    coal
+    GIT_REPOSITORY https://github.com/coal-library/coal.git
+    GIT_TAG devel
+)
+
+# Coal options - disable optional dependencies we don't need
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(COAL_BUILD_WITH_TRACY OFF CACHE BOOL "" FORCE)
+set(COAL_ENABLE_LOGGING OFF CACHE BOOL "" FORCE)
+set(COAL_HAS_OCTOMAP OFF CACHE BOOL "" FORCE)
+set(COAL_HAS_QHULL OFF CACHE BOOL "" FORCE)
+set(HPP_FCL_HAS_OCTOMAP OFF CACHE BOOL "" FORCE)
+set(HPP_FCL_HAS_QHULL OFF CACHE BOOL "" FORCE)
+# Disable Python bindings - we only need C++ library
+set(BUILD_PYTHON_INTERFACE OFF CACHE BOOL "" FORCE)
+set(COAL_BUILD_PYTHON_INTERFACE OFF CACHE BOOL "" FORCE)
+
+FetchContent_GetProperties(coal)
+if(NOT coal_POPULATED)
+    FetchContent_Populate(coal)
+
+    # Add Coal as subdirectory
+    add_subdirectory(${coal_SOURCE_DIR} ${coal_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
+
+message(STATUS "    Coal: Ready (FetchContent)")
+
+# ------------------------------------------------------------------------------
 # libigl - Geometry Processing Library (header-only)
 # ------------------------------------------------------------------------------
 
@@ -336,6 +369,9 @@ add_subdirectory(cgal-common)
 message(STATUS "  - fcl-common (FCL conversions)")
 add_subdirectory(fcl-common)
 
+message(STATUS "  - coal-common (Coal conversions)")
+add_subdirectory(coal-common)
+
 message(STATUS "  - igl-common (libigl conversions)")
 add_subdirectory(igl-common)
 
@@ -411,6 +447,9 @@ set(ALL_BENCHMARK_IMPLS
     spatial-polygons_to_polygons-closest_point-fcl-impl
     spatial-polygons_to_polygons-collision-tf-impl
     spatial-polygons_to_polygons-collision-fcl-impl
+    spatial-polygons-build_tree-coal-impl
+    spatial-polygons_to_polygons-closest_point-coal-impl
+    spatial-polygons_to_polygons-collision-coal-impl
 
     # Geometry module
     geometry-principal_curvatures-tf-impl
@@ -465,6 +504,9 @@ set(BENCHMARK_TARGETS
     spatial-polygons_to_polygons-closest_point-fcl
     spatial-polygons_to_polygons-collision-tf
     spatial-polygons_to_polygons-collision-fcl
+    spatial-polygons-build_tree-coal
+    spatial-polygons_to_polygons-closest_point-coal
+    spatial-polygons_to_polygons-collision-coal
     topology-connected_components-cgal
     topology-connected_components-tf
     topology-boundary_paths-cgal

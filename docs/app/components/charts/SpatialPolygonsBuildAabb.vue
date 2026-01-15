@@ -14,8 +14,9 @@ const y = [
   (d: any) => d.tf_aabb,
   (d: any) => d.cgal,
   (d: any) => d.fcl_aabb,
+  (d: any) => d.coal_aabb,
 ];
-const color = (_: any, i: number) => ["#00d5be", "#fdff4e", "#9b59b6"][i];
+const color = (_: any, i: number) => ["#00d5be", "#fdff4e", "#9b59b6", "#e74c3c"][i];
 
 const round = (n: number) => Math.round(n * 1e2) / 1e2;
 const template = (d: any) => `<div class="flex flex-col gap-0.5">
@@ -23,10 +24,11 @@ const template = (d: any) => `<div class="flex flex-col gap-0.5">
     <div><span class="text-primary font-bold">TF AABB:</span> ${round(d.tf_aabb)} ms</div>
     <div><span class="text-[#fdff4e]">CGAL:</span> ${round(d.cgal)} ms</div>
     <div><span class="text-[#9b59b6]">FCL AABB:</span> ${round(d.fcl_aabb)} ms</div>
+    <div><span class="text-[#e74c3c]">Coal AABB:</span> ${round(d.coal_aabb)} ms</div>
   </div>`;
 
 const lastPoint = data[data.length - 1];
-const maxY = Math.max(...data.flatMap((d: any) => [d.tf_aabb, d.cgal, d.fcl_aabb]));
+const maxY = Math.max(...data.flatMap((d: any) => [d.tf_aabb, d.cgal, d.fcl_aabb, d.coal_aabb]));
 const tfYPercent = 100 - (lastPoint.tf_aabb / maxY * 100);
 
 const annotations = computed(() => [
@@ -65,6 +67,10 @@ const annotations = computed(() => [
       <div class="flex gap-1.5 items-center">
         <div class="size-3 bg-[#9b59b6] rounded"></div>
         <span class="text-sm">FCL</span>
+      </div>
+      <div class="flex gap-1.5 items-center">
+        <div class="size-3 bg-[#e74c3c] rounded"></div>
+        <span class="text-sm">Coal</span>
       </div>
     </div>
     <VisXYContainer :data="data">

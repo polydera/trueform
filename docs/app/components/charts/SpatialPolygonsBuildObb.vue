@@ -13,18 +13,20 @@ const x = (d: any) => d.polygons;
 const y = [
   (d: any) => d.tf_obb,
   (d: any) => d.fcl_obb,
+  (d: any) => d.coal_obb,
 ];
-const color = (_: any, i: number) => ["#00d5be", "#9b59b6"][i];
+const color = (_: any, i: number) => ["#00d5be", "#9b59b6", "#e74c3c"][i];
 
 const round = (n: number) => Math.round(n * 1e2) / 1e2;
 const template = (d: any) => `<div class="flex flex-col gap-0.5">
     <div class="font-medium text-lg">${numKM(d.polygons)} polygons</div>
     <div><span class="text-primary font-bold">TF OBB:</span> ${round(d.tf_obb)} ms</div>
     <div><span class="text-[#9b59b6]">FCL OBB:</span> ${round(d.fcl_obb)} ms</div>
+    <div><span class="text-[#e74c3c]">Coal OBB:</span> ${round(d.coal_obb)} ms</div>
   </div>`;
 
 const lastPoint = data[data.length - 1];
-const maxY = Math.max(...data.flatMap((d: any) => [d.tf_obb, d.fcl_obb]));
+const maxY = Math.max(...data.flatMap((d: any) => [d.tf_obb, d.fcl_obb, d.coal_obb]));
 const tfYPercent = 100 - (lastPoint.tf_obb / maxY * 100);
 
 const annotations = computed(() => [
@@ -59,6 +61,10 @@ const annotations = computed(() => [
       <div class="flex gap-1.5 items-center">
         <div class="size-3 bg-[#9b59b6] rounded"></div>
         <span class="text-sm">FCL</span>
+      </div>
+      <div class="flex gap-1.5 items-center">
+        <div class="size-3 bg-[#e74c3c] rounded"></div>
+        <span class="text-sm">Coal</span>
       </div>
     </div>
     <VisXYContainer :data="data">

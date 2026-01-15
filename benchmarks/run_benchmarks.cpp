@@ -45,7 +45,7 @@
 #include "intersect/mesh_mesh_curves-tf.hpp"
 #ifdef HAVE_VTK
 #include "intersect/isocontours-vtk.hpp"
-#include "intersect/mesh_mesh_curves-vtk.hpp"
+// #include "intersect/mesh_mesh_curves-vtk.hpp"
 #endif
 
 // Spatial module
@@ -58,8 +58,6 @@
 #include "spatial/polygons-build_tree-tf.hpp"
 #include "spatial/polygons_to_polygons-closest_point-fcl.hpp"
 #include "spatial/polygons_to_polygons-closest_point-tf.hpp"
-#include "spatial/polygons_to_polygons-collision-fcl.hpp"
-#include "spatial/polygons_to_polygons-collision-tf.hpp"
 
 #include "common/test_meshes.hpp"
 
@@ -199,18 +197,10 @@ int main(int argc, char *argv[]) {
        benchmark::run_polygons_build_tree_cgal_benchmark, 10},
       {"spatial-polygons-build_tree-fcl",
        benchmark::run_polygons_build_tree_fcl_benchmark, 10},
-      // {"spatial-polygons-closest_point-tf",
-      //  benchmark::run_polygons_closest_point_tf_benchmark, 10},
-      // {"spatial-polygons-closest_point-cgal",
-      //  benchmark::run_polygons_closest_point_cgal_benchmark, 10},
       {"spatial-polygons_to_polygons-closest_point-tf",
        benchmark::run_polygons_to_polygons_closest_point_tf_benchmark, 1000},
       {"spatial-polygons_to_polygons-closest_point-fcl",
        benchmark::run_polygons_to_polygons_closest_point_fcl_benchmark, 1000},
-      // {"spatial-polygons_to_polygons-collision-tf",
-      //  benchmark::run_polygons_to_polygons_collision_tf_benchmark, 1000},
-      // {"spatial-polygons_to_polygons-collision-fcl",
-      //  benchmark::run_polygons_to_polygons_collision_fcl_benchmark, 1000},
   };
 
   // Simple CLI: run all benchmarks with default mesh paths and samples

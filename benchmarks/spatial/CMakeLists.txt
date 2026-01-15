@@ -90,3 +90,24 @@ target_link_libraries(spatial-polygons_to_polygons-collision-fcl-impl benchmark_
 
 add_executable(spatial-polygons_to_polygons-collision-fcl polygons_to_polygons-collision-fcl.cpp)
 target_link_libraries(spatial-polygons_to_polygons-collision-fcl spatial-polygons_to_polygons-collision-fcl-impl)
+
+# Coal polygons tree building
+add_library(spatial-polygons-build_tree-coal-impl OBJECT polygons-build_tree-coal-impl.cpp)
+target_link_libraries(spatial-polygons-build_tree-coal-impl benchmark_coal_common)
+
+add_executable(spatial-polygons-build_tree-coal polygons-build_tree-coal.cpp)
+target_link_libraries(spatial-polygons-build_tree-coal spatial-polygons-build_tree-coal-impl)
+
+# Coal polygons to polygons closest point queries
+add_library(spatial-polygons_to_polygons-closest_point-coal-impl OBJECT polygons_to_polygons-closest_point-coal-impl.cpp)
+target_link_libraries(spatial-polygons_to_polygons-closest_point-coal-impl benchmark_coal_common)
+
+add_executable(spatial-polygons_to_polygons-closest_point-coal polygons_to_polygons-closest_point-coal.cpp)
+target_link_libraries(spatial-polygons_to_polygons-closest_point-coal spatial-polygons_to_polygons-closest_point-coal-impl)
+
+# Coal polygons to polygons collision queries
+add_library(spatial-polygons_to_polygons-collision-coal-impl OBJECT polygons_to_polygons-collision-coal-impl.cpp)
+target_link_libraries(spatial-polygons_to_polygons-collision-coal-impl benchmark_coal_common)
+
+add_executable(spatial-polygons_to_polygons-collision-coal polygons_to_polygons-collision-coal.cpp)
+target_link_libraries(spatial-polygons_to_polygons-collision-coal spatial-polygons_to_polygons-collision-coal-impl)

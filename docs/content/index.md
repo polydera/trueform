@@ -103,7 +103,7 @@ Why trueform
   Real-time Performance
 
   #description
-  Interactive speed on million-polygon meshes. Parallel algorithms benchmarked against VTK, CGAL, libigl, FCL, and nanoflann.
+  Interactive speed on million-polygon meshes. Algorithms benchmarked against VTK, CGAL, libigl, Coal, FCL, and nanoflann.
   :::
 
   :::u-page-feature
