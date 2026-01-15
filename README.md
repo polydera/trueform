@@ -198,7 +198,7 @@ Results at 1M polygons:
 - [Benchmarks](https://trueform.polydera.com/cpp/benchmarks) — Performance comparisons
 - [Examples](https://trueform.polydera.com/cpp/examples) — Workflows and library comparisons
 - [Python Bindings](https://trueform.polydera.com/py/getting-started) — Full API for Python
-- [Publications](https://trueform.polydera.com/cpp/about/publications) — Formal proofs and theoretical foundations
+- [Research](https://trueform.polydera.com/cpp/about/research) — Theory, publications, and citation
 
 ## License
 
