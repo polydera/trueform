@@ -207,3 +207,18 @@ install(
         DESTINATION .
         FILES_MATCHING PATTERN "*.py"
 )
+
+# 13. C++ Headers & CMake Config for Wheel Distribution
+# ------------------------------------------------------------------------------
+# Install the header-only C++ library inside the Python package.
+# Users can find headers via: python -c "import trueform; print(trueform.get_include())"
+install(
+        DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../include/"
+        DESTINATION trueform/include
+)
+
+# Install CMake config for find_package(trueform) support
+install(
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/cmake/trueform-config.cmake"
+        DESTINATION trueform/cmake_config
+)
