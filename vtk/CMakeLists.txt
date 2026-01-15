@@ -92,6 +92,7 @@ set(TRUEFORM_VTK_SOURCES
 
 add_library(trueform_vtk ${TRUEFORM_VTK_SOURCES})
 add_library(tf::vtk ALIAS trueform_vtk)
+set_target_properties(trueform_vtk PROPERTIES EXPORT_NAME vtk)
 
 target_compile_features(trueform_vtk PUBLIC cxx_std_17)
 
@@ -123,3 +124,41 @@ endif()
 if(TF_BUILD_VTK_EXAMPLES)
   add_subdirectory(examples)
 endif()
+
+# ==============================================================================
+# Installation
+# ==============================================================================
+include(GNUInstallDirs)
+
+# Install the library
+install(TARGETS trueform_vtk
+  EXPORT trueformVtkTargets
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+# Install headers
+install(DIRECTORY include/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+# Install CMake config
+install(EXPORT trueformVtkTargets
+  FILE trueformVtkTargets.cmake
+  NAMESPACE tf::
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/trueform_vtk
+)
+
+# Generate and install package config file
+include(CMakePackageConfigHelpers)
+
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/trueform_vtkConfig.cmake
+"include(CMakeFindDependencyMacro)
+find_dependency(trueform REQUIRED)
+find_dependency(VTK REQUIRED COMPONENTS CommonCore CommonDataModel)
+include(\"\${CMAKE_CURRENT_LIST_DIR}/trueformVtkTargets.cmake\")
+")
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/trueform_vtkConfig.cmake
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/trueform_vtk
+)
