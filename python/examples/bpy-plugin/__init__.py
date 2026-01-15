@@ -52,12 +52,7 @@ def manage_path(add=True):
             if base in sys.path:
                 sys.path.remove(base)
 
-
-def _get_modules_dir() -> Optional[str]:
-    return bpy.utils.user_resource("SCRIPTS", path="modules")
-
 # --- INITIALIZATION ---
-
 def get_tf_libs():
     manage_path(add=True)
     try:
