@@ -38,7 +38,3 @@ Each test file should:
 3. Use assertions to verify correctness
 4. Print clear success/failure messages
 5. Exit with code 1 on failure (for CI integration)
-
-## Current Tests
-
-- `test_closest_metric_point_pair.py`: Tests for the `closest_metric_point_pair` function with various primitive combinations in 2D and 3D

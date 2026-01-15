@@ -1,30 +1,49 @@
 # trueform
 
-`trueform` is a C++ library for real-time geometric processing. Spatial queries, mesh booleans, isocontours, topology — at interactive speed on million-polygon meshes. Robust on real-world inputs: non-manifold flaps, inconsistent geometry, the artifacts that pipelines accumulate. Algorithms with formal guarantees. Header-only; works directly on your data with zero-copy views.
+Real-time geometric processing. Easy to use, robust on real-world meshes.
+
+Spatial queries, mesh booleans, isocontours, topology — at interactive speed on million-polygon meshes. Robust on non-manifold flaps, inconsistent geometry, the artifacts that pipelines accumulate. Header-only C++17; works directly on your data with zero-copy views.
 
 **[▶ Try it live](https://trueform.polydera.com/live-examples/boolean)** — Booleans, collision, isobands in your browser.
 
-## Research Foundation
+**[Documentation](https://trueform.polydera.com)** — Primitives, trees, topology, booleans — step by step.
 
-Geometry pipelines accumulate defects. Sculpting, remeshing, format conversion—each step can introduce non-manifold flaps, inconsistencies, and surface artifacts. By the time geometry reaches your algorithm, it is rarely the ideal manifold most methods assume.
+## Installation
 
-`trueform` is built around a simple idea: **a mesh should be understood as an intended surface, observed through the noise of floating-point arithmetic and prior processing.**
+```bash
+pip install trueform
+```
 
-These defects are additive—they attach to the surface without redefining it. The underlying structure remains recoverable.
+This installs both Python bindings and C++ headers. For CMake integration:
 
-This perspective shapes the algorithms:
+```cmake
+find_package(trueform REQUIRED CONFIG)
+target_link_libraries(my_target PRIVATE tf::trueform)
+```
 
-- **Topological consistency.** The intersection graph is reduced to its unique canonical form. The reduction diagram maps each intersection to its simplest representative in the ε-topology, ensuring consistency under floating-point uncertainty.
+Then configure and build your project:
 
-- **Artifacts are modeled as independent noise.** Geometric inconsistencies decompose locally across polygon regions; topological artifacts decompose globally across manifold edge-connected components—enabling robust classification of the intended structure.
+```bash
+cmake -B build -Dtrueform_ROOT=$(python -m trueform.cmake)
+cmake --build build
+```
 
-The result is **commutative correctness**: operations on non-ideal meshes behave as if applied to the intended geometry. Chain operations freely and defer cleanup to the end.
+Or use FetchContent directly:
 
-→ [Read the papers](https://trueform.polydera.com/cpp/about/publications)
+```cmake
+include(FetchContent)
+FetchContent_Declare(trueform
+  GIT_REPOSITORY https://github.com/xlabmedical/trueform.git
+  GIT_TAG main)
+FetchContent_MakeAvailable(trueform)
+target_link_libraries(my_target PRIVATE tf::trueform)
+```
+
+→ [Full installation guide](https://trueform.polydera.com/cpp/getting-started/installation)
+
+**VTK Integration:** Bring trueform performance to VTK applications. Filters and functions that integrate with VTK pipelines. → [VTK documentation](https://trueform.polydera.com/cpp/vtk)
 
 ## Quick Tour
-
-Here's how trueform enables complex geometric workflows with minimal code:
 
 ```cpp
 #include <trueform/trueform.hpp>
@@ -42,7 +61,6 @@ auto d_polygons = tf::make_polygons(tf::make_offset_block_range(offsets, indices
 auto segments = tf::make_segments(tf::make_slide_range<2>(indices), points);
 // or just read a file
 auto mesh = tf::read_stl("file.stl");
-// auto triangles = mesh.polygons();
 ```
 
 **Primitive queries** work directly on geometry:
@@ -151,66 +169,46 @@ auto tri_mesh = tf::triangulated(polygons);
 tf::ensure_positive_orientation(polygons);
 ```
 
-→ **[Geometry Walkthrough](https://trueform.polydera.com/cpp/examples/mesh-assembly)** — A hands-on tour from raw geometry through booleans and connected components.
+→ [Geometry Walkthrough](https://trueform.polydera.com/cpp/examples/mesh-assembly) — A hands-on tour from raw geometry through booleans and connected components.
 
-→ **[Modules](https://trueform.polydera.com/cpp/modules)** — Primitives, ranges, policies, and the patterns that connect them.
+→ [Modules](https://trueform.polydera.com/cpp/modules) — Primitives, ranges, policies, and the patterns that connect them.
 
-## Installation
+## Benchmarks
 
-**Requirements:**
-- C++17 or later
-- Intel TBB (Threading Building Blocks)
+Results at 1M polygons:
 
-`trueform` is header-only. Integrate using CMake's `FetchContent`:
+| Operation | Input | Time | Speedup | Baseline | TrueForm |
+|-----------|-------|------|---------|----------|----------|
+| Boolean Union | 2 × 1M | 28 ms | **84×** | CGAL `Simple_cartesian<double>` | reduction diagrams, double |
+| Mesh–Mesh Curves | 2 × 1M | 7 ms | **233×** | CGAL `Simple_cartesian<double>` | reduction diagrams, double |
+| Self-Intersection | 2 × 1M | 173 ms | **32×** | libigl EPECK (GMP/MPFR) | reduction diagrams, double |
+| Isocontours | 1M, 16 cuts | 3.8 ms | **38×** | VTK `vtkContourFilter` | reduction diagrams, float |
+| Connected Components | 1M | 15 ms | **10×** | CGAL | parallel union-find |
+| Boundary Paths | 1M | 12 ms | **11×** | CGAL | Hierholzer's algorithm |
+| k-NN Query | 500K | 1.7 µs | **3×** | nanoflann k-d tree | AABB tree |
+| Mesh–Mesh Distance | 2 × 1M | 0.2 ms | **2×** | Coal (FCL) `OBBRSS` | OBBRSS tree |
+| Principal Curvatures | 1M | 25 ms | **55×** | libigl | parallel k-ring quadric fitting |
 
-```cmake
-include(FetchContent)
-
-FetchContent_Declare(
-  trueform
-  GIT_REPOSITORY https://github.com/xlabmedical/trueform.git
-  GIT_TAG        main
-)
-
-FetchContent_MakeAvailable(trueform)
-target_link_libraries(my_target PRIVATE tf::trueform)
-```
+→ [Full benchmarks](https://trueform.polydera.com/cpp/benchmarks) — Detailed comparisons with VTK, CGAL, libigl, Coal, FCL, and nanoflann.
 
 ## Documentation
 
-Comprehensive documentation is available at **[trueform.polydera.com](https://trueform.polydera.com)**
-
-- 📚 **[Getting Started](https://trueform.polydera.com/cpp/getting-started)** - Requirements and installation via CMake FetchContent
-- 📖 **[Modules](https://trueform.polydera.com/cpp/modules)** - Primitives, trees, topology, booleans — step by step
-- 📊 **[Benchmarks](https://trueform.polydera.com/cpp/benchmarks)** - Benchmarked against VTK, CGAL, libigl, FCL, and nanoflann
-- 💡 **[Examples](https://trueform.polydera.com/cpp/examples)** - Core features, performance comparisons, and framework integration
-- 📄 **[Publications](https://trueform.polydera.com/cpp/about/publications)** - Research behind trueform's spatial hierarchy and mesh booleans
+- [Getting Started](https://trueform.polydera.com/cpp/getting-started) — Installation and first steps
+- [Modules](https://trueform.polydera.com/cpp/modules) — Primitives, trees, topology, booleans
+- [Benchmarks](https://trueform.polydera.com/cpp/benchmarks) — Performance comparisons
+- [Examples](https://trueform.polydera.com/cpp/examples) — Workflows and library comparisons
+- [Python Bindings](https://trueform.polydera.com/py/getting-started) — Full API for Python
+- [Publications](https://trueform.polydera.com/cpp/about/publications) — Formal proofs and theoretical foundations
 
 ## License
 
-Trueform is distributed under a dual-license model:
-- **Noncommercial use**: PolyForm Noncommercial License 1.0.0
-- **Commercial use**: Separate paid agreement with XLAB
-
-See [LICENSE.noncommercial](./LICENSE.noncommercial) and [license documentation](https://trueform.polydera.com/cpp/about/license) for details. For commercial licensing, contact [info@polydera.com](mailto:info@polydera.com).
-
-### 3rd Party Licenses
-
-**Core library:**
-- **Intel TBB** - Apache License 2.0
-
-**Python bindings:**
-- **nanobind** - BSD-3-Clause License
+Dual-licensed:
+- **Noncommercial**: [PolyForm Noncommercial License 1.0.0](./LICENSE.noncommercial)
+- **Commercial**: Contact [info@polydera.com](mailto:info@polydera.com)
 
 ## Contributing
 
-We welcome contributions! Browse [open issues](https://github.com/xlabmedical/trueform/issues) labeled by difficulty (`easy`, `medium`, `hard`) to find something that matches your experience level.
-
-**Get Started:**
-- 📖 Read the full contributing guide: [CONTRIBUTING.md](./CONTRIBUTING.md)
-- 🌐 View on the documentation site: [Contributing Guide](https://trueform.polydera.com/cpp/about/contributing)
-
-By contributing, you certify that your work may be distributed under both the PolyForm Noncommercial License and any commercial licenses XLAB offers.
+Browse [open issues](https://github.com/xlabmedical/trueform/issues) labeled by difficulty. See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ## Citation
 
@@ -221,11 +219,11 @@ If you use trueform in your work, please cite:
     title={trueform: Real-time Geometric Processing},
     author={Sajovic, {\v{Z}}iga and {et al.}},
     year={2025},
-    url={https://github.com/xlabmedical/trueform},
-    note={Header-only C++ library for real-time geometric processing. Easy to use, robust on real-world meshes. Features spatial acceleration,
-    topology, intersections, boolean operations, and parallel algorithms.}
+    url={https://github.com/xlabmedical/trueform}
 }
 ```
+
 ---
 
 **Developed by [XLAB](https://xlab.si)**
+
