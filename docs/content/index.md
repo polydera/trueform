@@ -174,6 +174,15 @@ Integrations
   ---
   Real-time geometric processing in your Python workflow. NumPy in, NumPy out.
   :::
+
+  :::card
+  ---
+  icon: i-lucide-cube
+  title: Blender
+  to: /py/blender
+  ---
+  Bring trueform performance to Blender add-ons. Cached meshes with automatic updates for live preview.
+  :::
 ::
 :::
 
