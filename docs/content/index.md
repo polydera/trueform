@@ -177,7 +177,7 @@ Integrations
 
   :::card
   ---
-  icon: i-lucide-cube
+  icon: i-vscode-icons:file-type-blender
   title: Blender
   to: /py/blender
   ---
