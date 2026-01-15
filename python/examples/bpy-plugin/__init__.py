@@ -52,27 +52,15 @@ def manage_path(add=True):
             if base in sys.path:
                 sys.path.remove(base)
 
-
-def _get_modules_dir() -> Optional[str]:
-    return bpy.utils.user_resource("SCRIPTS", path="modules")
-
 # --- INITIALIZATION ---
-
 def get_tf_libs():
     manage_path(add=True)
     try:
         import trueform as tf
-        import trueform.blender as tfb
+        import trueform.bpy as tfb
         return tf, tfb
     except ImportError:
         return None, None
-
-def ensure_trueform_registered(tfb) -> None:
-    if not hasattr(bpy.types, "TRUEFORM_OT_interactive_boolean"):
-        try:
-            tfb.register()
-        except:
-            pass
 
 _PREVIEW_CURVES_NAME = None
 _PREVIEW_MATERIAL_NAME = "Trueform_Preview_Orange"
@@ -123,7 +111,6 @@ def _update_preview(context):
     tf, tfb = get_tf_libs()
     if not tf or not tfb: return
 
-    ensure_trueform_registered(tfb)
     obj_a, obj_b = props.target_a, props.target_b
 
     if not obj_a or not obj_b or obj_a == obj_b:
