@@ -131,8 +131,8 @@ def _update_preview(context):
         return
 
     try:
-        mesh_a = tfb.meshes.get(obj_a)
-        mesh_b = tfb.meshes.get(obj_b)
+        mesh_a = tfb.scene.get(obj_a)
+        mesh_b = tfb.scene.get(obj_b)
         paths, points = tf.intersection_curves(mesh_a, mesh_b)
 
         global _PREVIEW_CURVES_NAME
@@ -203,7 +203,7 @@ class MESH_OT_trueform_boolean(bpy.types.Operator):
 
         _remove_preview_curves()
         try:
-            op_map = {'DIFFERENCE': tfb.functions.boolean_difference, 'UNION': tfb.functions.boolean_union, 'INTERSECTION': tfb.functions.boolean_intersection}
+            op_map = {'DIFFERENCE': tfb.scene.boolean_difference, 'UNION': tfb.scene.boolean_union, 'INTERSECTION': tfb.scene.boolean_intersection}
             result = op_map[props.operation](props.target_a, props.target_b, name=f"TFB_{props.target_a.name}")
             if props.hide_inputs:
                 props.target_a.hide_set(True)
@@ -249,7 +249,7 @@ def register():
 
     _tf, tfb = get_tf_libs()
     if tfb:
-        tfb.meshes.set_cache_enabled(True)
+        tfb.register()
 
     if _on_depsgraph_update not in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.append(_on_depsgraph_update)
@@ -258,8 +258,7 @@ def register():
 def unregister():
     _tf, tfb = get_tf_libs()
     if tfb:
-        tfb.meshes.set_cache_enabled(False)
-
+        tfb.unregister()
 
     if _on_depsgraph_update in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.remove(_on_depsgraph_update)

@@ -3,24 +3,35 @@ Trueform Blender integration.
 
 Provides trueform mesh operations for Blender.
 
-Usage:
-    from trueform import blender
+Usage - Standalone scripts:
+    import trueform as tf
+    from trueform import bpy
 
-    # Get tf.Mesh from Blender object (cached, with world transform)
-    mesh = blender.meshes.get(obj)
+    # Convert Blender mesh to tf.Mesh
+    mesh = bpy.convert.from_blender(obj)
 
-    # Boolean operations (returns new Blender object)
-    result = blender.functions.boolean_difference(obj_a, obj_b)
-    result = blender.functions.boolean_union(obj_a, obj_b)
-    result = blender.functions.boolean_intersection(obj_a, obj_b)
+    # Run trueform operations
+    result_faces, result_points = tf.boolean_difference(mesh_a, mesh_b)
+    result = tf.Mesh(result_faces, result_points)
 
-    # Check intersection
-    if blender.functions.intersects(obj_a, obj_b):
-        ...
+    # Convert back to Blender
+    obj = bpy.convert.to_blender(result, name="Result")
 
-    # Convert Blender object to trueform and back
-    mesh = blender.convert.from_blender(obj)
-    obj = blender.convert.to_blender(mesh, name="Result")
+Usage - Add-ons with live preview:
+    from trueform import bpy
+
+    # Register scene handlers (call once on add-on register)
+    bpy.register()
+
+    # Get tf.Mesh from scene objects (cached, with world transform)
+    # Only works for objects linked to the active scene/view layer
+    mesh = bpy.scene.get(obj)
+
+    # High-level boolean operations (returns new Blender object)
+    result = bpy.scene.boolean_difference(obj_a, obj_b)
+
+    # Unregister on add-on unregister
+    bpy.unregister()
 
 Copyright (c) 2025 Žiga Sajovic, XLAB
 Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
@@ -38,17 +49,13 @@ bl_info = {
     "category": "Mesh",
 }
 
-from . import meshes
+from . import scene
 from . import convert
-from . import functions
-from . import operators
 
 
 def register():
-    meshes.register()
-    operators.register()
+    scene.register()
 
 
 def unregister():
-    operators.unregister()
-    meshes.unregister()
+    scene.unregister()

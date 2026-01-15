@@ -1,7 +1,8 @@
 """
-Trueform mesh operations for Blender.
+Trueform mesh operations for Blender scene objects.
 
 High-level functions that take Blender objects and return Blender objects.
+Only works for objects linked to the active scene/view layer.
 
 Copyright (c) 2025 Žiga Sajovic, XLAB
 Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
@@ -13,8 +14,17 @@ from typing import Tuple, overload, Literal
 import bpy
 import trueform as tf
 
-from . import meshes
-from . import convert
+from . import get
+from .. import convert
+
+
+__all__ = [
+    "boolean_difference",
+    "boolean_union",
+    "boolean_intersection",
+    "intersects",
+    "intersection_curves",
+]
 
 
 # --- Boolean operations ---
@@ -61,8 +71,8 @@ def boolean_difference(
         If return_curves=False: mesh object with boolean result
         If return_curves=True: (mesh object, curves object)
     """
-    mesh_a = meshes.get(obj_a)
-    mesh_b = meshes.get(obj_b)
+    mesh_a = get(obj_a)
+    mesh_b = get(obj_b)
 
     if return_curves:
         ((result_faces, result_points), labels, (paths, curve_points)) = tf.boolean_difference(
@@ -120,8 +130,8 @@ def boolean_union(
         If return_curves=False: mesh object with boolean result
         If return_curves=True: (mesh object, curves object)
     """
-    mesh_a = meshes.get(obj_a)
-    mesh_b = meshes.get(obj_b)
+    mesh_a = get(obj_a)
+    mesh_b = get(obj_b)
 
     if return_curves:
         ((result_faces, result_points), _labels, (paths, curve_points)) = tf.boolean_union(
@@ -179,8 +189,8 @@ def boolean_intersection(
         If return_curves=False: mesh object with boolean result
         If return_curves=True: (mesh object, curves object)
     """
-    mesh_a = meshes.get(obj_a)
-    mesh_b = meshes.get(obj_b)
+    mesh_a = get(obj_a)
+    mesh_b = get(obj_b)
 
     if return_curves:
         ((result_faces, result_points), _labels, (paths, curve_points)) = tf.boolean_intersection(
@@ -214,8 +224,8 @@ def intersects(obj_a: bpy.types.Object, obj_b: bpy.types.Object) -> bool:
     bool
         True if the meshes intersect, False otherwise
     """
-    mesh_a = meshes.get(obj_a)
-    mesh_b = meshes.get(obj_b)
+    mesh_a = get(obj_a)
+    mesh_b = get(obj_b)
 
     return tf.intersects(mesh_a, mesh_b)
 
@@ -242,8 +252,8 @@ def intersection_curves(
     bpy.types.Object
         Curves object containing the intersection polylines
     """
-    mesh_a = meshes.get(obj_a)
-    mesh_b = meshes.get(obj_b)
+    mesh_a = get(obj_a)
+    mesh_b = get(obj_b)
 
     paths, points = tf.intersection_curves(mesh_a, mesh_b)
 
