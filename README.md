@@ -11,7 +11,7 @@ Spatial queries, mesh booleans, isocontours, topology — at interactive speed o
 ## Requirements
 
 - C++17 or later
-- [oneTBB](https://github.com/oneapi-src/oneTBB) for parallelism
+- [oneTBB](https://github.com/oneapi-src/oneTBB)
 
 ## Installation
 

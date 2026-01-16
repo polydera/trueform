@@ -52,7 +52,7 @@ target_include_directories(_trueform PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/includ
 # 6. Compiler Flags & Optimization
 # ------------------------------------------------------------------------------
 if(MSVC)
-  target_compile_options(_trueform PRIVATE /W4)
+  target_compile_options(_trueform PRIVATE /W4 /wd4458 /wd4701)
 else()
   target_compile_options(_trueform PRIVATE -Wall -Wextra)
 endif()

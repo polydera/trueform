@@ -17,7 +17,7 @@ target_link_libraries(example_utils PUBLIC tf::trueform)
 target_include_directories(example_utils PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_options(example_utils PRIVATE
   $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Wpedantic>
-  $<$<CXX_COMPILER_ID:MSVC>:/W4>
+  $<$<CXX_COMPILER_ID:MSVC>:/W4 /wd4458 /wd4701>
 )
 
 # Mesh assembly example
@@ -26,7 +26,7 @@ target_link_libraries(mesh_assembly PRIVATE tf::trueform example_utils)
 target_include_directories(mesh_assembly PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_options(mesh_assembly PRIVATE
   $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Wpedantic>
-  $<$<CXX_COMPILER_ID:MSVC>:/W4>
+  $<$<CXX_COMPILER_ID:MSVC>:/W4 /wd4458 /wd4701>
 )
 
 # Alignment example
@@ -37,7 +37,7 @@ target_compile_definitions(alignment PRIVATE
 )
 target_compile_options(alignment PRIVATE
   $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Wpedantic>
-  $<$<CXX_COMPILER_ID:MSVC>:/W4>
+  $<$<CXX_COMPILER_ID:MSVC>:/W4 /wd4458 /wd4701>
 )
 
 # Collect all example targets
