@@ -52,7 +52,7 @@ Spatial queries, mesh booleans, isocontours, topology — at interactive speed o
 
 #default
   ::chart-carousel
-  :::
+  ::
 ::
 
 :::u-page-section{class="dark:bg-neutral-950"}
