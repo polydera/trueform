@@ -190,15 +190,17 @@ Integrations
   :::u-page-c-t-a
   ---
   links:
-    - label: C++ with CMake
-      to: '/cpp/getting-started/installation'
+    - label: C++
+      to: '/cpp/getting-started'
+      icon: i-vscode-icons:file-type-cpp
       trailingIcon: i-lucide-arrow-right
-    - label: Python with pip
-      to: '/py/getting-started/installation'
+    - label: Python
+      to: '/py/getting-started'
+      icon: i-vscode-icons:file-type-python
       variant: subtle
       trailingIcon: i-lucide-arrow-right
-  title: Ready to build?
-  description: C++ via CMake FetchContent. Python via pip install.
+  title: Start now
+  description: From pip install to mesh booleans — in minutes.
   class: dark:bg-neutral-950
   ---
   :::
