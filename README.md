@@ -74,12 +74,13 @@ auto d_polygons = tf::make_polygons(tf::make_offset_block_range(offsets, indices
 auto segments = tf::make_segments(tf::make_slide_range<2>(indices), points);
 // or just read a file
 auto polygons_buffer = tf::read_stl("file.stl");
+auto polygons = polygons_buffer.polygons();
 ```
 
 **Primitive queries** work directly on geometry:
 
 ```cpp
-auto polygon = polygons_buffer.front();
+auto polygon = polygons.front();
 auto segment = segments.back();
 auto ray = tf::make_ray_between_points(
     tf::make_point(0.2f, 0.2f, -1.0f),

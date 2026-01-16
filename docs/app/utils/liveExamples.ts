@@ -8,30 +8,29 @@ export const liveExamples: ExampleMetadata[] = [
   // Mesh operations
   {
     title: "Boolean",
-    description: "Drag a mesh. The boolean updates in real time.",
+    description: "Interactive mesh boolean. Drag to see the difference update in real time.",
     to: "boolean",
   },
   {
     title: "Slicing",
-    description: "Scroll to move the plane. Cross-sections update live.",
+    description: "Interactive mesh slicing. Scroll to move the slicing planes through geometry.",
     to: "slicing",
   },
   // Mesh analysis
   {
     title: "Shape Index",
-    description: "Hover over the mesh. Local shape distribution updates live.",
+    description: "Curvature-based shape analysis. Hover to see local shape index histograms.",
     to: "shape-histogram",
   },
   // Spatial queries
   {
     title: "Collision",
-    description: "Drag a mesh. Contact detection runs live as you move.",
+    description: "Interactive collision detection. Drag to see contacts update live.",
     to: "collision",
   },
   {
     title: "Closest Points",
-    description:
-      "Drag a mesh and release. It snaps to the nearest point instantly.",
+    description: "Nearest point queries between meshes. Drag and release to snap to the closest point.",
     to: "closest-points",
   },
 ]
