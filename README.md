@@ -233,6 +233,7 @@ If you use trueform in your work, please cite:
 @software{trueform2025,
     title={trueform: Real-time Geometric Processing},
     author={Sajovic, {\v{Z}}iga and {et al.}},
+    organization={XLAB d.o.o.},
     year={2025},
     url={https://github.com/xlabmedical/trueform}
 }
@@ -240,5 +241,4 @@ If you use trueform in your work, please cite:
 
 ---
 
-**Developed by [XLAB](https://xlab.si)**
-
+**Developed by [XLAB Medical](https://xlab.si)**
