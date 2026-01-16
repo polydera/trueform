@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 #include "../../core/algorithm/circular_decrement.hpp"
 #include "../../core/algorithm/circular_increment.hpp"
@@ -25,10 +25,12 @@ template <typename Range, typename Policy, typename Index>
 auto compute_vertex_link(const Range &input_blocks,
                          const tf::face_membership_like<Policy> &blink,
                          tf::buffer<Index> &offsets, tf::buffer<Index> &data) {
-  auto fill_f = [&input_blocks, &blink](Index id, tf::buffer<Index> &buff) {
+  auto fill_f = [&input_blocks, &blink](auto id, tf::buffer<Index> &buff) {
     auto old_size = buff.size();
     for (const auto &block : tf::make_indirect_range(blink[id], input_blocks)) {
-      Index sub_id = static_cast<Index>(std::find(block.begin(), block.end(), id) - block.begin());
+      Index sub_id = static_cast<Index>(
+          std::find(block.begin(), block.end(), static_cast<Index>(id)) -
+          block.begin());
       auto push_f = [&](auto n_id) {
         if (std::find(buff.begin() + old_size, buff.end(), block[n_id]) ==
             buff.end())
@@ -56,7 +58,7 @@ auto compute_vertex_link(
     const Range &input_blocks,
     const tf::scoped_face_membership<Index, SubIndex> &blink,
     tf::buffer<Index> &offsets, tf::buffer<Index> &data) {
-  auto fill_f = [&input_blocks, &blink](Index id, tf::buffer<Index> &buff) {
+  auto fill_f = [&input_blocks, &blink](auto id, tf::buffer<Index> &buff) {
     auto old_size = buff.size();
     for (const auto &[block_id, sub_id] : blink[id]) {
       const auto &block = input_blocks[block_id];

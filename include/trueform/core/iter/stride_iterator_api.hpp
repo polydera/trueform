@@ -111,10 +111,10 @@ public:
     return (obj.base_iter() - other.base_iter()) / obj.iterator_stride();
   }
 
-  auto operator[](int n) const -> decltype(auto) {
+  auto operator[](typename base_t::difference_type n) const -> decltype(auto) {
     return *(base_t::as_derived() + n);
   }
-  auto operator[](int n) -> decltype(auto) {
+  auto operator[](typename base_t::difference_type n) -> decltype(auto) {
     return *(base_t::as_derived() + n);
   }
 
