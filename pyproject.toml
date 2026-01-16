@@ -37,8 +37,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/xlabmedical/trueform"
-Documentation = "https://github.com/xlabmedical/trueform/tree/main/docs"
+Homepage = "https://trueform.polydera.com"
+Documentation = "https://trueform.polydera.com"
+Repository = "https://github.com/xlabmedical/trueform"
 Issues = "https://github.com/xlabmedical/trueform/issues"
 
 [tool.scikit-build]
