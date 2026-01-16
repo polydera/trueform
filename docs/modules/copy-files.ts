@@ -10,6 +10,7 @@ export default defineNuxtModule({
 
   setup(options, nuxt) {
     async function copyAll() {
+      // Copy WASM module
       const wasmFile = {
         from: "../wasm-examples/build/dist/native.wasm",
         to: "public/native.wasm",
@@ -24,21 +25,32 @@ export default defineNuxtModule({
       await mkdir(dirname(wasmFile.to), { recursive: true });
       await copyFile(wasmFile.from, wasmFile.to);
 
-      // Copy all files from build/dist except .wasm files
+      // Copy all files from build/dist to app/examples
       const distDir = "../wasm-examples/build/dist";
       const allFiles = await glob(`${distDir}/**/*`, {
         absolute: false,
         onlyFiles: true
       });
 
-      const filesToCopy = allFiles;
-
-      for (const file of filesToCopy) {
+      for (const file of allFiles) {
         const fileName = basename(file);
         const destPath = join("app/examples/", fileName);
 
         await mkdir(dirname(destPath), { recursive: true });
         await copyFile(file, destPath);
+      }
+
+      // Copy STL meshes from benchmarks
+      const stlFiles = await glob("../benchmarks/data/dragon-*.stl", {
+        absolute: false,
+        onlyFiles: true
+      });
+
+      await mkdir("public/stl", { recursive: true });
+
+      for (const file of stlFiles) {
+        const fileName = basename(file);
+        await copyFile(file, join("public/stl", fileName));
       }
     }
 
