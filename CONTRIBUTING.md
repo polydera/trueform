@@ -14,56 +14,108 @@ Pick an issue, comment that you're working on it, and get started.
 
 **Interested in joining our team?** If you successfully tackle a hard-difficulty issue, we'd love to talk. Reach out to [info@polydera.com](mailto:info@polydera.com).
 
-## Building from Source
+## Repository Structure
+
+| Directory | Description |
+|-----------|-------------|
+| `include/` | Header-only C++17 core library |
+| `python/` | Python bindings, tests, and examples |
+| `vtk/` | VTK integration library and examples |
+| `examples/` | C++ examples |
+| `benchmarks/` | Performance comparisons |
+| `tests/` | C++ tests |
+| `docs/` | Documentation |
+
+## Building
+
+### Core Library
+
+Header-only. No build required—just include and link `tf::trueform`.
+
+### Python
 
 ```bash
-git clone https://github.com/xlabmedical/trueform.git
-cd trueform
-mkdir build && cd build
-cmake ..
-make -j8
+cmake -B build -DTF_BUILD_PYTHON=ON
+cmake --build build --parallel --target python
+pip install ./build/python
 ```
 
-Build examples:
+Run tests:
 ```bash
-make examples -j8
+python python/tests/run_tests.py
+```
+
+### VTK Integration
+
+```bash
+cmake -B build -DTF_BUILD_VTK_INTEGRATION=ON
+cmake --build build --parallel
+```
+
+VTK examples:
+```bash
+cmake -B build -DTF_BUILD_VTK_INTEGRATION=ON -DTF_BUILD_VTK_EXAMPLES=ON
+cmake --build build --parallel --target vtk_examples
+```
+
+### C++ Examples
+
+```bash
+cmake -B build -DTF_BUILD_EXAMPLES=ON
+cmake --build build --parallel --target examples
+```
+
+### Benchmarks
+
+```bash
+cmake -B build -DTF_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel --target benchmarks
 ```
 
 ## Workflow
 
-1. **Fork the repo** and create a branch:
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
+**1. Fork and branch**
+```bash
+git checkout -b feature/your-feature-name
+```
 
-2. **Make your changes.** See code guidelines below.
+**2. Make your changes** following the code guidelines below.
 
-3. **Commit with clear messages:**
-   ```bash
-   git commit -m "Add mesh arrangements dual function"
-   git commit -m "Fix intersection curve indexing bug"
-   ```
+**3. Commit with clear messages**
 
-4. **Push and open a pull request:**
-   ```bash
-   git push origin feature/your-feature-name
-   ```
+One-liner summary, then explanation if needed:
+```bash
+git commit -m "Add linear terms to curvature quadratic fitting
 
-   Reference the issue (e.g., "Fixes #42") and describe what you did.
+Extends the fitted surface from ax² + bxy + cy² to include dx + ey.
+Linear terms absorb local plane tilt, improving robustness when the
+neighborhood center doesn't coincide with the vertex."
+```
+
+**4. Push and open a pull request**
+```bash
+git push origin feature/your-feature-name
+```
+
+Reference the issue (e.g., "Fixes #42") and describe what you did.
 
 ## Code Guidelines
 
 Trueform is built on composability and zero-copy semantics. When contributing:
 
 - **Build on existing algorithms.** Implement new functionality using already-written parallel algorithms. Don't reinvent parallelism—compose it.
-- **One function, one file.** Each user-facing function in `tf::` namespace gets its own file in the module directory.
+- **One function, one file.** Each user-facing function in `tf::` namespace gets its own file in the module directory. Include only the functions you use, not entire modules.
 - **Small functions, delegated responsibilities.** Break complex operations into small, focused functions. Each should do one thing clearly.
 - **Naming:** `snake_case` for functions/variables, `PascalCase` for template arguments.
 - **Minimize comments.** Code should be self-explanatory. Comment only non-obvious algorithmic choices.
 
 ## Documentation
 
-If you add a public API, update `docs/content/` with:
+**Docstrings:** Add docstrings to new functions:
+- C++: Doxygen-style (`/// @brief`, `/// @param`, `/// @return`) in header files
+- Python: Docstrings with parameter descriptions and return types
+
+**Docs site:** If you add a public API, update `docs/content/` with:
 - What the function does (brief, one sentence)
 - Example usage
 - Return value description if non-obvious

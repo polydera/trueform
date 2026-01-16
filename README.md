@@ -2,33 +2,42 @@
 
 Real-time geometric processing. Easy to use, robust on real-world meshes.
 
-Spatial queries, mesh booleans, isocontours, topology — at interactive speed on million-polygon meshes. Robust on non-manifold flaps, inconsistent geometry, the artifacts that pipelines accumulate. Header-only C++17; works directly on your data with zero-copy views.
+Spatial queries, mesh booleans, isocontours, topology — at interactive speed on million-polygon meshes. Robust to non-manifold flaps, inconsistent winding, and pipeline artifacts. Header-only C++17; works directly on your data with zero-copy views.
 
-**[▶ Try it live](https://trueform.polydera.com/live-examples/boolean)** — Booleans, collision, isobands in your browser.
+**[▶ Try it live](https://trueform.polydera.com/live-examples/boolean)** — Real-time booleans, collisions, and isobands on 500k polygon meshes in your browser.
 
-**[Documentation](https://trueform.polydera.com)** — Primitives, trees, topology, booleans — step by step.
+**[Documentation and Tutorials](https://trueform.polydera.com)** — Primitives, trees, topology, booleans — step by step.
+
+## Requirements
+
+- C++17 or later
+- [oneTBB](https://github.com/oneapi-src/oneTBB) for parallelism
 
 ## Installation
+
+Install both the Python bindings and the C++ header-only CMake package via pip:
 
 ```bash
 pip install trueform
 ```
 
-This installs both Python bindings and C++ headers. For CMake integration:
+Use the header-only library as a CMake package:
 
 ```cmake
 find_package(trueform REQUIRED CONFIG)
 target_link_libraries(my_target PRIVATE tf::trueform)
 ```
 
-Then configure and build your project:
+Configure your build so CMake can find the package installed by pip:
 
 ```bash
 cmake -B build -Dtrueform_ROOT=$(python -m trueform.cmake)
 cmake --build build
 ```
 
-Or use FetchContent directly:
+### FetchContent
+
+Use FetchContent directly:
 
 ```cmake
 include(FetchContent)
@@ -41,7 +50,11 @@ target_link_libraries(my_target PRIVATE tf::trueform)
 
 → [Full installation guide](https://trueform.polydera.com/cpp/getting-started/installation)
 
-**VTK Integration:** Bring trueform performance to VTK applications. Filters and functions that integrate with VTK pipelines. → [VTK documentation](https://trueform.polydera.com/cpp/vtk)
+## Integrations
+
+- **[VTK](https://trueform.polydera.com/cpp/vtk)** — Filters and functions that integrate with VTK pipelines
+- **[Python](https://trueform.polydera.com/py/getting-started)** — NumPy in, NumPy out
+- **[Blender](https://trueform.polydera.com/py/blender)** — Cached meshes with automatic updates for live preview
 
 ## Quick Tour
 
@@ -55,26 +68,26 @@ std::vector<int> indices = {0, 1, 2};
 auto points = tf::make_points<3>(raw_points);
 auto triangles = tf::make_polygons(tf::make_blocked_range<3>(indices), points);
 // or maybe faces are variable
-std::vector<int> offsets = {0, 1};
+std::vector<int> offsets = {0, 3};
 auto d_polygons = tf::make_polygons(tf::make_offset_block_range(offsets, indices), points);
 // or maybe the indices are a curve
 auto segments = tf::make_segments(tf::make_slide_range<2>(indices), points);
 // or just read a file
-auto mesh = tf::read_stl("file.stl");
+auto polygons_buffer = tf::read_stl("file.stl");
 ```
 
 **Primitive queries** work directly on geometry:
 
 ```cpp
-auto triangle = triangles.front();
+auto polygon = polygons_buffer.front();
 auto segment = segments.back();
 auto ray = tf::make_ray_between_points(
     tf::make_point(0.2f, 0.2f, -1.0f),
     tf::make_point(0.2f, 0.2f, 1.0f));
 
-auto [dist2, pt_on_tri, pt_on_seg] = tf::closest_metric_point_pair(triangle, segment);
-bool contains = tf::contains_point(triangle, points[0]);
-if (auto hit = tf::ray_hit(ray, triangle)) {
+auto [dist2, pt_on_poly, pt_on_seg] = tf::closest_metric_point_pair(polygon, segment);
+bool contains = tf::contains_point(polygon, points[0]);
+if (auto hit = tf::ray_hit(ray, polygon)) {
     auto [status, t, hit_point] = hit;
 }
 ```
@@ -82,6 +95,7 @@ if (auto hit = tf::ray_hit(ray, triangle)) {
 **Mesh analysis** reveals structure and defects:
 
 ```cpp
+auto polygons = polygons_buffer.polygons();
 // Connected components
 auto [n_components, labels] = tf::make_manifold_edge_connected_component_labels(polygons);
 auto [components, component_ids] = tf::split_into_components(polygons, labels);
@@ -175,13 +189,13 @@ tf::ensure_positive_orientation(polygons);
 
 ## Benchmarks
 
-Results at 1M polygons:
+Sample comparisons against VTK, CGAL, libigl, Coal, FCL, and nanoflann:
 
 | Operation | Input | Time | Speedup | Baseline | TrueForm |
 |-----------|-------|------|---------|----------|----------|
 | Boolean Union | 2 × 1M | 28 ms | **84×** | CGAL `Simple_cartesian<double>` | reduction diagrams, double |
 | Mesh–Mesh Curves | 2 × 1M | 7 ms | **233×** | CGAL `Simple_cartesian<double>` | reduction diagrams, double |
-| Self-Intersection | 2 × 1M | 173 ms | **32×** | libigl EPECK (GMP/MPFR) | reduction diagrams, double |
+| Self-Intersection | 2M | 173 ms | **32×** | libigl EPECK (GMP/MPFR) | reduction diagrams, double |
 | Isocontours | 1M, 16 cuts | 3.8 ms | **38×** | VTK `vtkContourFilter` | reduction diagrams, float |
 | Connected Components | 1M | 15 ms | **10×** | CGAL | parallel union-find |
 | Boundary Paths | 1M | 12 ms | **11×** | CGAL | Hierholzer's algorithm |
@@ -189,7 +203,7 @@ Results at 1M polygons:
 | Mesh–Mesh Distance | 2 × 1M | 0.2 ms | **2×** | Coal (FCL) `OBBRSS` | OBBRSS tree |
 | Principal Curvatures | 1M | 25 ms | **55×** | libigl | parallel k-ring quadric fitting |
 
-→ [Full benchmarks](https://trueform.polydera.com/cpp/benchmarks) — Detailed comparisons with VTK, CGAL, libigl, Coal, FCL, and nanoflann.
+Apple M4 Max, 16 threads, Clang `-O3 -march=native`. Full methodology, interactive charts, source code, and datasets in [benchmarks documentation](https://trueform.polydera.com/cpp/benchmarks).
 
 ## Documentation
 
