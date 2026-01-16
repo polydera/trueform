@@ -40,17 +40,18 @@ export default defineNuxtModule({
         await copyFile(file, destPath);
       }
 
-      // Copy STL meshes from benchmarks
-      const stlFiles = await glob("../benchmarks/data/dragon-*.stl", {
-        absolute: false,
-        onlyFiles: true
-      });
+      // Copy STL meshes from benchmarks (excluding 750k, 1M - too large for Nuxt)
+      const stlFiles = [
+        "dragon-50k.stl",
+        "dragon-125k.stl",
+        "dragon-250k.stl",
+        "dragon-500k.stl",
+      ];
 
       await mkdir("public/stl", { recursive: true });
 
-      for (const file of stlFiles) {
-        const fileName = basename(file);
-        await copyFile(file, join("public/stl", fileName));
+      for (const fileName of stlFiles) {
+        await copyFile(join("../benchmarks/data", fileName), join("public/stl", fileName));
       }
     }
 
