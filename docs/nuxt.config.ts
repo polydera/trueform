@@ -4,10 +4,10 @@ export default defineNuxtConfig({
     "@nuxt/eslint",
     "@nuxt/image",
     "@nuxt/ui",
+    "nuxt-llms",
     "@nuxt/content",
     "nuxt-og-image",
     "./modules/copy-files",
-    // "nuxt-llms",
   ],
 
   devtools: {
@@ -87,29 +87,24 @@ export default defineNuxtConfig({
     },
   },
 
-  // llms: {
-  //   domain: 'https://docs-template.nuxt.dev/',
-  //   title: 'Nuxt Docs Template',
-  //   description: 'A template for building documentation with Nuxt UI and Nuxt Content.',
-  //   full: {
-  //     title: 'Nuxt Docs Template - Full Documentation',
-  //     description: 'This is the full documentation for the Nuxt Docs Template.'
-  //   },
-  //   sections: [
-  //     {
-  //       title: 'Getting Started',
-  //       contentCollection: 'docs',
-  //       contentFilters: [
-  //         { field: 'path', operator: 'LIKE', value: '/getting-started%' }
-  //       ]
-  //     },
-  //     {
-  //       title: 'Essentials',
-  //       contentCollection: 'docs',
-  //       contentFilters: [
-  //         { field: 'path', operator: 'LIKE', value: '/essentials%' }
-  //       ]
-  //     }
-  //   ]
-  // }
+  llms: {
+    domain: "https://trueform.polydera.com/",
+    title: "trueform — Real-time geometric processing",
+    description:
+      "Geometry library for real-time spatial queries, mesh booleans, and topology. C++ header-only with Python bindings.",
+    sections: [
+      {
+        title: "C++ API and guides",
+        description:
+          "C++ header-only API reference, usage guides, and examples for geometry processing.",
+        contentCollection: "docsCpp",
+      },
+      {
+        title: "Python API and guides",
+        description:
+          "Python bindings API reference, usage guides, and examples for geometry processing.",
+        contentCollection: "docsPy",
+      },
+    ],
+  },
 });
