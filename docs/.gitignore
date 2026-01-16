@@ -29,3 +29,4 @@ logs
 
 *.wasm
 **/native.*
+public/stl/*
