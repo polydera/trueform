@@ -1,64 +1,10 @@
 <script setup lang="ts">
-import { codeToHtml } from 'shiki'
-
-// Pre-highlight code snippets for both themes
-const highlightedDark = ref<Record<string, string>>({})
-const highlightedLight = ref<Record<string, string>>({})
-
-const colorMode = useColorMode()
-
-const codeSnippets = {
-  vectorFloat: 'std::vector<float>',
-  vectorInt: 'std::vector<int>',
-  points: 'points = tf::make_points<3>(coords)',
-  pointsFeature1: 'auto v = pt + vec;',
-  pointsFeature2: 'auto d = tf::dot(a, b);',
-  pointsFeature3: 'auto c = tf::cross(a, b);',
-  faces: 'faces = tf::make_blocked_range<3>(ids)',
-  facesFeature1: 'auto [a,b,c] = faces[i];',
-  facesFeature2: 'for (auto f : faces) { }',
-  polygons: 'polygons = tf::make_polygons(faces, points)',
-  polygonsFeature1: 'auto poly = polygons.front();',
-  polygonsFeature2: 'auto [p0, p1, p2] = poly;',
-  polygonsFeature3: 'auto a = tf::area(poly);',
-  polygonsFeature4: 'auto n = tf::make_normal(poly);',
-  tree: 'tf::aabb_tree<int, float, 3> tree{polygons};',
-  fm: 'auto fm = tf::make_face_membership(polygons);',
-  mel: 'auto mel = tf::make_manifold_edge_link(polygons);',
-  tagged: 'tagged = polygons | tf::tag(tree) | ... | tf::tag(mel)',
-  form0: 'form0 = tagged | tf::tag(transform0)',
-  form1: 'form1 = tagged | tf::tag(transform1)',
-  op1: 'tf::make_boolean(form0, form1, op);',
-  op2: 'tf::distance2(form0, form1);',
-  op3: 'tf::intersects(form0, form1);',
-}
-
-const highlighted = computed(() => {
-  return colorMode.value === 'dark' ? highlightedDark.value : highlightedLight.value
-})
-
-onMounted(async () => {
-  const darkResults: Record<string, string> = {}
-  const lightResults: Record<string, string> = {}
-  for (const [key, code] of Object.entries(codeSnippets)) {
-    darkResults[key] = await codeToHtml(code, {
-      lang: 'cpp',
-      theme: 'github-dark-default',
-    })
-    lightResults[key] = await codeToHtml(code, {
-      lang: 'cpp',
-      theme: 'github-light-default',
-    })
-  }
-  highlightedDark.value = darkResults
-  highlightedLight.value = lightResults
-})
 </script>
 
 <template>
   <div class="core-hierarchy-diagram my-8 flex flex-col items-center">
     <div class="diagram-box">
-      <svg viewBox="0 0 580 976" class="w-full">
+      <svg viewBox="0 0 580 1050" class="w-full">
         <!-- Arrowhead marker -->
         <defs>
           <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
@@ -67,90 +13,83 @@ onMounted(async () => {
         </defs>
 
         <!-- Stage 1: Raw Data - two boxes -->
-        <g transform="translate(145, 25)">
+        <g transform="translate(160, 25)">
           <text x="0" y="-8" class="stage-label" text-anchor="middle">Your Data</text>
           <rect x="-90" y="0" width="180" height="36" rx="6" class="stage-box" />
-          <foreignObject x="-85" y="4" width="170" height="28">
-            <div class="code-line-wrapper">
-              <div v-if="highlighted.vectorFloat" class="shiki-wrapper shiki-line" v-html="highlighted.vectorFloat" />
-              <code v-else class="code-line">std::vector&lt;float&gt;</code>
-            </div>
-          </foreignObject>
+          <text x="0" y="23" class="code-text" text-anchor="middle">
+            <tspan class="syn-ns">std</tspan><tspan>::</tspan><tspan class="syn-type">vector</tspan><tspan>&lt;</tspan><tspan class="syn-kw">float</tspan><tspan>&gt;</tspan>
+          </text>
         </g>
 
-        <g transform="translate(435, 25)">
+        <g transform="translate(420, 25)">
           <text x="0" y="-8" class="stage-label" text-anchor="middle">Your Data</text>
           <rect x="-90" y="0" width="180" height="36" rx="6" class="stage-box" />
-          <foreignObject x="-85" y="4" width="170" height="28">
-            <div class="code-line-wrapper">
-              <div v-if="highlighted.vectorInt" class="shiki-wrapper shiki-line" v-html="highlighted.vectorInt" />
-              <code v-else class="code-line">std::vector&lt;int&gt;</code>
-            </div>
-          </foreignObject>
+          <text x="0" y="23" class="code-text" text-anchor="middle">
+            <tspan class="syn-ns">std</tspan><tspan>::</tspan><tspan class="syn-type">vector</tspan><tspan>&lt;</tspan><tspan class="syn-kw">int</tspan><tspan>&gt;</tspan>
+          </text>
         </g>
 
         <!-- Arrows down -->
-        <path d="M 145 66 L 145 95" class="arrow-line" marker-end="url(#arrow)" />
-        <path d="M 435 66 L 435 95" class="arrow-line" marker-end="url(#arrow)" />
+        <path d="M 160 66 L 160 95" class="arrow-line" marker-end="url(#arrow)" />
+        <path d="M 420 66 L 420 95" class="arrow-line" marker-end="url(#arrow)" />
 
         <!-- Stage 2: Two boxes side by side -->
         <!-- Points box -->
-        <g transform="translate(145, 115)">
-          <text x="0" y="-8" class="stage-label" text-anchor="middle">Primitive Range</text>
-          <rect x="-138" y="0" width="276" height="75" rx="6" class="stage-box stage-enriched" />
-          <foreignObject x="-133" y="4" width="266" height="67">
-            <div class="card-content">
-              <div v-if="highlighted.points" class="shiki-wrapper" v-html="highlighted.points" />
-              <code v-else class="code-create"><span class="hl">points</span> = tf::make_points&lt;3&gt;(coords)</code>
-              <div class="card-divider"></div>
-              <div v-if="highlighted.pointsFeature1" class="shiki-wrapper shiki-small" v-html="highlighted.pointsFeature1" />
-              <code v-else class="code-feature">auto v = pt + vec;</code>
-              <div v-if="highlighted.pointsFeature2" class="shiki-wrapper shiki-small" v-html="highlighted.pointsFeature2" />
-              <code v-else class="code-feature">auto d = tf::dot(a, b);</code>
-            </div>
-          </foreignObject>
+        <g transform="translate(160, 115)">
+          <text x="0" y="-8" class="stage-label" text-anchor="middle">Points Range</text>
+          <rect x="-120" y="0" width="240" height="75" rx="6" class="stage-box stage-enriched" />
+          <text x="-110" y="18" class="code-text">
+            <tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">make_points</tspan><tspan>&lt;</tspan><tspan class="syn-num">3</tspan><tspan>&gt;(</tspan><tspan class="syn-var">coords</tspan><tspan>)</tspan>
+          </text>
+          <line x1="-110" y1="26" x2="110" y2="26" class="divider-line" />
+          <text x="-110" y="42" class="code-small">
+            <tspan class="syn-kw">auto</tspan><tspan class="syn-var"> v</tspan><tspan> = </tspan><tspan class="syn-var">pt</tspan><tspan> + </tspan><tspan class="syn-var">vec</tspan><tspan>;</tspan>
+          </text>
+          <text x="-110" y="56" class="code-small">
+            <tspan class="syn-kw">auto</tspan><tspan class="syn-var"> d</tspan><tspan> = </tspan><tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">dot</tspan><tspan>(</tspan><tspan class="syn-var">a</tspan><tspan>, </tspan><tspan class="syn-var">b</tspan><tspan>);</tspan>
+          </text>
         </g>
 
         <!-- Faces box -->
-        <g transform="translate(435, 115)">
-          <text x="0" y="-8" class="stage-label" text-anchor="middle">Index Range</text>
-          <rect x="-138" y="0" width="276" height="75" rx="6" class="stage-box stage-enriched" />
-          <foreignObject x="-133" y="4" width="266" height="67">
-            <div class="card-content">
-              <div v-if="highlighted.faces" class="shiki-wrapper" v-html="highlighted.faces" />
-              <code v-else class="code-create"><span class="hl">faces</span> = tf::make_blocked_range&lt;3&gt;(ids)</code>
-              <div class="card-divider"></div>
-              <div v-if="highlighted.facesFeature1" class="shiki-wrapper shiki-small" v-html="highlighted.facesFeature1" />
-              <code v-else class="code-feature">auto [a,b,c] = faces[i];</code>
-              <div v-if="highlighted.facesFeature2" class="shiki-wrapper shiki-small" v-html="highlighted.facesFeature2" />
-              <code v-else class="code-feature">for (auto f : faces) { }</code>
-            </div>
-          </foreignObject>
+        <g transform="translate(420, 115)">
+          <text x="0" y="-8" class="stage-label" text-anchor="middle">Faces Range</text>
+          <rect x="-120" y="0" width="240" height="75" rx="6" class="stage-box stage-enriched" />
+          <text x="-110" y="18" class="code-text">
+            <tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">make_blocked_range</tspan><tspan>&lt;</tspan><tspan class="syn-num">3</tspan><tspan>&gt;(</tspan><tspan class="syn-var">ids</tspan><tspan>)</tspan>
+          </text>
+          <line x1="-110" y1="26" x2="110" y2="26" class="divider-line" />
+          <text x="-110" y="42" class="code-small">
+            <tspan class="syn-kw">auto</tspan><tspan> [</tspan><tspan class="syn-var">a</tspan><tspan>,</tspan><tspan class="syn-var">b</tspan><tspan>,</tspan><tspan class="syn-var">c</tspan><tspan>] = </tspan><tspan class="syn-var">faces</tspan><tspan>[</tspan><tspan class="syn-var">i</tspan><tspan>];</tspan>
+          </text>
+          <text x="-110" y="56" class="code-small">
+            <tspan class="syn-ctrl">for</tspan><tspan> (</tspan><tspan class="syn-kw">auto</tspan><tspan class="syn-var"> f</tspan><tspan> : </tspan><tspan class="syn-var">faces</tspan><tspan>) { }</tspan>
+          </text>
         </g>
 
         <!-- Arrows converging to polygons -->
-        <path d="M 205 195 L 250 240" class="arrow-line" marker-end="url(#arrow)" />
-        <path d="M 375 195 L 330 240" class="arrow-line" marker-end="url(#arrow)" />
+        <path d="M 220 195 L 255 240" class="arrow-line" marker-end="url(#arrow)" />
+        <path d="M 360 195 L 325 240" class="arrow-line" marker-end="url(#arrow)" />
 
         <!-- Stage 3: Polygons -->
         <g transform="translate(290, 265)">
           <text x="0" y="-10" class="stage-label" text-anchor="middle">Composed Range</text>
           <rect x="-165" y="0" width="330" height="115" rx="6" class="stage-box stage-enriched" />
-          <foreignObject x="-160" y="4" width="320" height="107">
-            <div class="card-content">
-              <div v-if="highlighted.polygons" class="shiki-wrapper" v-html="highlighted.polygons" />
-              <code v-else class="code-create"><span class="hl">polygons</span> = tf::make_polygons(faces, points)</code>
-              <div class="card-divider"></div>
-              <div v-if="highlighted.polygonsFeature1" class="shiki-wrapper shiki-small" v-html="highlighted.polygonsFeature1" />
-              <code v-else class="code-feature">auto poly = polygons.front();</code>
-              <div v-if="highlighted.polygonsFeature2" class="shiki-wrapper shiki-small" v-html="highlighted.polygonsFeature2" />
-              <code v-else class="code-feature">auto [p0, p1, p2] = poly;</code>
-              <div v-if="highlighted.polygonsFeature3" class="shiki-wrapper shiki-small" v-html="highlighted.polygonsFeature3" />
-              <code v-else class="code-feature">auto a = tf::area(poly);</code>
-              <div v-if="highlighted.polygonsFeature4" class="shiki-wrapper shiki-small" v-html="highlighted.polygonsFeature4" />
-              <code v-else class="code-feature">auto n = tf::make_normal(poly);</code>
-            </div>
-          </foreignObject>
+          <text x="-155" y="18" class="code-text">
+            <tspan class="syn-var">polygons</tspan><tspan> = </tspan><tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">make_polygons</tspan><tspan>(</tspan><tspan class="syn-var">faces</tspan><tspan>, </tspan><tspan class="syn-var">points</tspan><tspan>)</tspan>
+          </text>
+          <line x1="-155" y1="26" x2="155" y2="26" class="divider-line" />
+          <text x="-155" y="44" class="code-small">
+            <tspan class="syn-kw">auto</tspan><tspan class="syn-var"> poly</tspan><tspan> = </tspan><tspan class="syn-var">polygons</tspan><tspan>.</tspan><tspan class="syn-fn">front</tspan><tspan>();</tspan>
+          </text>
+          <text x="-155" y="58" class="code-small">
+            <tspan class="syn-kw">auto</tspan><tspan> [</tspan><tspan class="syn-var">p0</tspan><tspan>, </tspan><tspan class="syn-var">p1</tspan><tspan>, </tspan><tspan class="syn-var">p2</tspan><tspan>] = </tspan><tspan class="syn-var">poly</tspan><tspan>;</tspan>
+          </text>
+          <text x="-155" y="72" class="code-small">
+            <tspan class="syn-kw">auto</tspan><tspan class="syn-var"> a</tspan><tspan> = </tspan><tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">area</tspan><tspan>(</tspan><tspan class="syn-var">poly</tspan><tspan>);</tspan>
+          </text>
+          <text x="-155" y="86" class="code-small">
+            <tspan class="syn-kw">auto</tspan><tspan class="syn-var"> n</tspan><tspan> = </tspan><tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">make_normal</tspan><tspan>(</tspan><tspan class="syn-var">poly</tspan><tspan>);</tspan>
+          </text>
         </g>
 
         <!-- Arrow down to big container -->
@@ -169,23 +108,17 @@ onMounted(async () => {
           <!-- Inner box: tree -->
           <g transform="translate(-202, 38)">
             <rect x="0" y="0" width="405" height="32" rx="5" class="stage-box stage-enriched" />
-            <foreignObject x="6" y="8" width="393" height="20">
-              <div class="card-content-inner">
-                <div v-if="highlighted.tree" class="shiki-wrapper shiki-tiny" v-html="highlighted.tree" />
-                <code v-else class="code-tiny">tf::aabb_tree&lt;int, float, 3&gt; tree{polygons};</code>
-              </div>
-            </foreignObject>
+            <text x="10" y="21" class="code-tiny">
+              <tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-type">aabb_tree</tspan><tspan>&lt;</tspan><tspan class="syn-kw">int</tspan><tspan>, </tspan><tspan class="syn-kw">float</tspan><tspan>, </tspan><tspan class="syn-num">3</tspan><tspan>&gt; </tspan><tspan class="syn-var">tree</tspan><tspan>{</tspan><tspan class="syn-var">polygons</tspan><tspan>};</tspan>
+            </text>
           </g>
 
           <!-- Inner box: face_membership -->
           <g transform="translate(-202, 78)">
             <rect x="0" y="0" width="405" height="32" rx="5" class="stage-box stage-enriched" />
-            <foreignObject x="6" y="8" width="393" height="20">
-              <div class="card-content-inner">
-                <div v-if="highlighted.fm" class="shiki-wrapper shiki-tiny" v-html="highlighted.fm" />
-                <code v-else class="code-tiny">auto fm = tf::make_face_membership(polygons);</code>
-              </div>
-            </foreignObject>
+            <text x="10" y="21" class="code-tiny">
+              <tspan class="syn-kw">auto</tspan><tspan class="syn-var"> fm</tspan><tspan> = </tspan><tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">make_face_membership</tspan><tspan>(</tspan><tspan class="syn-var">polygons</tspan><tspan>);</tspan>
+            </text>
           </g>
 
           <!-- Ellipsis box -->
@@ -197,12 +130,9 @@ onMounted(async () => {
           <!-- Inner box: manifold_edge_link -->
           <g transform="translate(-202, 138)">
             <rect x="0" y="0" width="405" height="32" rx="5" class="stage-box stage-enriched" />
-            <foreignObject x="6" y="8" width="393" height="20">
-              <div class="card-content-inner">
-                <div v-if="highlighted.mel" class="shiki-wrapper shiki-tiny" v-html="highlighted.mel" />
-                <code v-else class="code-tiny">auto mel = tf::make_manifold_edge_link(polygons);</code>
-              </div>
-            </foreignObject>
+            <text x="10" y="21" class="code-tiny">
+              <tspan class="syn-kw">auto</tspan><tspan class="syn-var"> mel</tspan><tspan> = </tspan><tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">make_manifold_edge_link</tspan><tspan>(</tspan><tspan class="syn-var">polygons</tspan><tspan>);</tspan>
+            </text>
           </g>
 
           <!-- Arrow from precompute to attach policies -->
@@ -211,12 +141,9 @@ onMounted(async () => {
           <!-- Attach Policies sub-section -->
           <text x="0" y="228" class="stage-label" text-anchor="middle">Attach Policies</text>
           <rect x="-220" y="235" width="440" height="28" rx="6" class="stage-box stage-enriched" />
-          <foreignObject x="-215" y="241" width="430" height="20">
-            <div class="card-content">
-              <div v-if="highlighted.tagged" class="shiki-wrapper shiki-small" v-html="highlighted.tagged" />
-              <code v-else class="code-create"><span class="hl">tagged</span> = polygons | tf::tag(tree) | ... | tf::tag(mel)</code>
-            </div>
-          </foreignObject>
+          <text x="-210" y="254" class="code-small">
+            <tspan class="syn-var">tagged</tspan><tspan> = </tspan><tspan class="syn-var">polygons</tspan><tspan> | </tspan><tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">tag</tspan><tspan>(</tspan><tspan class="syn-var">tree</tspan><tspan>) | ... | </tspan><tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">tag</tspan><tspan>(</tspan><tspan class="syn-var">mel</tspan><tspan>)</tspan>
+          </text>
         </g>
 
         <!-- Arrows branching to transforms from the big container -->
@@ -227,24 +154,18 @@ onMounted(async () => {
         <g transform="translate(145, 795)">
           <text x="0" y="-10" class="stage-label" text-anchor="middle">+ Transform</text>
           <rect x="-130" y="0" width="260" height="28" rx="6" class="stage-box stage-enriched" />
-          <foreignObject x="-125" y="6" width="250" height="20">
-            <div class="card-content">
-              <div v-if="highlighted.form0" class="shiki-wrapper shiki-small" v-html="highlighted.form0" />
-              <code v-else class="code-create"><span class="hl">form0</span> = tagged | tf::tag(transform0)</code>
-            </div>
-          </foreignObject>
+          <text x="-120" y="19" class="code-small">
+            <tspan class="syn-var">form0</tspan><tspan> = </tspan><tspan class="syn-var">tagged</tspan><tspan> | </tspan><tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">tag</tspan><tspan>(</tspan><tspan class="syn-var">transform0</tspan><tspan>)</tspan>
+          </text>
         </g>
 
         <!-- Stage 5b: Form1 -->
         <g transform="translate(435, 795)">
           <text x="0" y="-10" class="stage-label" text-anchor="middle">+ Transform</text>
           <rect x="-130" y="0" width="260" height="28" rx="6" class="stage-box stage-enriched" />
-          <foreignObject x="-125" y="6" width="250" height="20">
-            <div class="card-content">
-              <div v-if="highlighted.form1" class="shiki-wrapper shiki-small" v-html="highlighted.form1" />
-              <code v-else class="code-create"><span class="hl">form1</span> = tagged | tf::tag(transform1)</code>
-            </div>
-          </foreignObject>
+          <text x="-120" y="19" class="code-small">
+            <tspan class="syn-var">form1</tspan><tspan> = </tspan><tspan class="syn-var">tagged</tspan><tspan> | </tspan><tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">tag</tspan><tspan>(</tspan><tspan class="syn-var">transform1</tspan><tspan>)</tspan>
+          </text>
         </g>
 
         <!-- Arrows converging to operations -->
@@ -254,17 +175,38 @@ onMounted(async () => {
         <!-- Stage 6: Algorithms between forms -->
         <g transform="translate(290, 888)">
           <text x="0" y="-10" class="stage-label" text-anchor="middle">Algorithms</text>
-          <rect x="-124" y="0" width="248" height="68" rx="6" class="stage-box stage-enriched" />
-          <foreignObject x="-119" y="8" width="238" height="56">
-            <div class="card-content">
-              <div v-if="highlighted.op1" class="shiki-wrapper shiki-small" v-html="highlighted.op1" />
-              <code v-else class="code-feature">tf::make_boolean(form0, form1, op);</code>
-              <div v-if="highlighted.op2" class="shiki-wrapper shiki-small" v-html="highlighted.op2" />
-              <code v-else class="code-feature">tf::distance2(form0, form1);</code>
-              <div v-if="highlighted.op3" class="shiki-wrapper shiki-small" v-html="highlighted.op3" />
-              <code v-else class="code-feature">tf::intersects(form0, form1);</code>
-            </div>
-          </foreignObject>
+          <!-- Outer container -->
+          <rect x="-150" y="0" width="300" height="145" rx="10" class="stage-box stage-container" />
+
+          <!-- Inner box: make_boolean -->
+          <g transform="translate(-130, 12)">
+            <rect x="0" y="0" width="260" height="28" rx="5" class="stage-box stage-enriched" />
+            <text x="10" y="19" class="code-small">
+              <tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">make_boolean</tspan><tspan>(</tspan><tspan class="syn-var">form0</tspan><tspan>, </tspan><tspan class="syn-var">form1</tspan><tspan>, </tspan><tspan class="syn-var">op</tspan><tspan>);</tspan>
+            </text>
+          </g>
+
+          <!-- Inner box: intersects -->
+          <g transform="translate(-130, 47)">
+            <rect x="0" y="0" width="260" height="28" rx="5" class="stage-box stage-enriched" />
+            <text x="10" y="19" class="code-small">
+              <tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">intersects</tspan><tspan>(</tspan><tspan class="syn-var">form0</tspan><tspan>, </tspan><tspan class="syn-var">form1</tspan><tspan>);</tspan>
+            </text>
+          </g>
+
+          <!-- Ellipsis box -->
+          <g transform="translate(-25, 82)">
+            <rect x="0" y="0" width="50" height="16" rx="3" class="stage-box stage-enriched" />
+            <text x="25" y="12" class="ellipsis-text" text-anchor="middle">...</text>
+          </g>
+
+          <!-- Inner box: distance2 -->
+          <g transform="translate(-130, 105)">
+            <rect x="0" y="0" width="260" height="28" rx="5" class="stage-box stage-enriched" />
+            <text x="10" y="19" class="code-small">
+              <tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">distance2</tspan><tspan>(</tspan><tspan class="syn-var">form0</tspan><tspan>, </tspan><tspan class="syn-var">form1</tspan><tspan>);</tspan>
+            </text>
+          </g>
         </g>
       </svg>
     </div>
@@ -356,6 +298,12 @@ onMounted(async () => {
   opacity: 0.6;
 }
 
+.divider-line {
+  stroke: currentColor;
+  stroke-width: 1;
+  opacity: 0.1;
+}
+
 .arrow-line {
   stroke: currentColor;
   stroke-width: 1.5;
@@ -363,95 +311,89 @@ onMounted(async () => {
   opacity: 0.4;
 }
 
-.card-content {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.card-divider {
-  height: 1px;
-  background: currentColor;
-  opacity: 0.1;
-  margin: 4px 0;
-}
-
-.code-line-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-}
-
-.code-line {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 12px;
-  color: inherit;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-}
-
-.shiki-line {
-  font-size: 12px;
-}
-
-.code-create {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+/* Code text styles with monospace font */
+.code-text {
+  font-family: 'SF Mono', SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
   font-size: 11.5px;
-  color: inherit;
-  opacity: 0.9;
+  fill: currentColor;
 }
 
-.code-feature {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+.code-small {
+  font-family: 'SF Mono', SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
   font-size: 11px;
-  color: inherit;
-  opacity: 0.7;
-}
-
-.hl {
-  color: rgb(20, 184, 166);
-}
-
-.shiki-wrapper {
-  font-size: 11.5px;
-  line-height: 1.4;
-}
-
-.shiki-wrapper :deep(pre) {
-  margin: 0;
-  padding: 0;
-  background: transparent !important;
-}
-
-.shiki-wrapper :deep(code) {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: inherit;
-}
-
-.shiki-small {
-  font-size: 11px;
-  opacity: 0.85;
-}
-
-.shiki-tiny {
-  font-size: 10.5px;
-  opacity: 0.9;
-}
-
-.card-content-inner {
-  display: flex;
-  align-items: center;
-  height: 100%;
+  fill: currentColor;
 }
 
 .code-tiny {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: 'SF Mono', SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
   font-size: 10.5px;
-  color: inherit;
-  opacity: 0.85;
+  fill: currentColor;
+}
+
+/* VS Code Light+ theme colors */
+.syn-kw {
+  fill: #0000ff;
+}
+
+.syn-ctrl {
+  fill: #af00db;
+}
+
+.syn-type {
+  fill: #267f99;
+}
+
+.syn-fn {
+  fill: #795E26;
+}
+
+.syn-ns {
+  fill: #267f99;
+}
+
+.syn-var {
+  fill: #001080;
+}
+
+.syn-num {
+  fill: #098658;
+}
+
+.syn-str {
+  fill: #a31515;
+}
+
+/* VS Code Dark+ theme colors */
+.dark .syn-kw {
+  fill: #569CD6;
+}
+
+.dark .syn-ctrl {
+  fill: #C586C0;
+}
+
+.dark .syn-type {
+  fill: #4EC9B0;
+}
+
+.dark .syn-fn {
+  fill: #DCDCAA;
+}
+
+.dark .syn-ns {
+  fill: #4EC9B0;
+}
+
+.dark .syn-var {
+  fill: #9CDCFE;
+}
+
+.dark .syn-num {
+  fill: #B5CEA8;
+}
+
+.dark .syn-str {
+  fill: #CE9178;
 }
 
 .diagram-caption {
