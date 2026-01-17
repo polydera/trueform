@@ -139,11 +139,11 @@ if (typeof props.icon === "string" && !runtimeConfig.hasNuxtIcon && process.dev)
         </div>
       </div>
       <div class="flex flex-row justify-center items-center text-left w-full">
-        <img v-if="siteLogo" :src="siteLogo" height="60" />
+        <img v-if="siteLogo" :src="siteLogo" height="60px" />
         <template v-else>
           <svg
-            height="50"
-            width="50"
+            height="50px"
+            width="50px"
             class="mr-3"
             viewBox="0 0 200 200"
             xmlns="http://www.w3.org/2000/svg"
