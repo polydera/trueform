@@ -12,7 +12,7 @@
 */
 #pragma once
 #include "../index_map.hpp"
-#include "./parallel_apply.hpp"
+#include "./parallel_for_each.hpp"
 #include "./remove_if_and_make_map.hpp"
 
 namespace tf {
@@ -36,7 +36,7 @@ auto update_by_mask(tf::index_map_buffer<Index> &im, const Range0 &mask) {
   if (it == im.kept_ids().end())
     return;
   im.kept_ids().erase_till_end(it);
-  tf::parallel_apply(
+  tf::parallel_for_each(
       im.f(),
       [&](Index &id) {
         if (id != none)

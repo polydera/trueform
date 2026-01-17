@@ -11,7 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include "../core/algorithm/parallel_apply.hpp"
+#include "../core/algorithm/parallel_for_each.hpp"
 #include "../core/algorithm/parallel_fill.hpp"
 #include "../core/area.hpp"
 #include "../core/buffer.hpp"
@@ -105,7 +105,7 @@ void orient_faces_consistently(tf::faces<Policy> &faces,
 
     // If flipped faces have more weight, flip entire region
     if (weight_flipped > weight_not_flipped) {
-      tf::parallel_apply(
+      tf::parallel_for_each(
           tf::make_indirect_range(queue, faces),
           [](auto &&face) { std::reverse(face.begin(), face.end()); });
     }

@@ -11,7 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include "../../core/algorithm/parallel_apply.hpp"
+#include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/algorithm/parallel_for.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/polygons.hpp"
@@ -78,10 +78,10 @@ auto make_surface_scalar_labels(const tf::polygons<Policy> &polygons,
   tf::buffer<LabelType> out;
   out.allocate(polygons.size());
   tf::parallel_fill(out, -2);
-  tf::parallel_apply(
+  tf::parallel_for_each(
       intersections, [&](const auto &r) { out[r.front().object] = -1; },
       tf::checked);
-  tf::parallel_apply(
+  tf::parallel_for_each(
       tf::zip(out, polygons.faces()),
       [&](auto pair) {
         auto &&[label, face] = pair;
@@ -104,7 +104,7 @@ auto make_scalar_labels(
 
   tf::buffer<LabelType> categories;
   categories.allocate(scalars.size());
-  tf::parallel_apply(tf::zip(scalars, categories), [&](auto pair) {
+  tf::parallel_for_each(tf::zip(scalars, categories), [&](auto pair) {
     auto &&[scalar, category] = pair;
     category = std::lower_bound(cut_values.begin(), cut_values.end(), scalar) -
                cut_values.begin();

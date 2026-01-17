@@ -32,7 +32,7 @@ auto make_surface_component_labels(const tf::polygons<Policy> &polygons,
   tf::connected_component_labels<LabelType> _components;
   _components.labels.allocate(mask.size());
   tf::parallel_fill(mask, true);
-  tf::parallel_apply(intersections, [&](const auto &r) {
+  tf::parallel_for_each(intersections, [&](const auto &r) {
     for (auto i : r) {
       mask[i.object] = false;
       _components.labels[i.object] = -1;
@@ -139,14 +139,14 @@ auto make_polygon_arrangement_labels(
   tf::buffer<LabelType> map;
   map.allocate(offset + cc.n_components);
   auto n_components = tf::make_dense_equivalence_class_map(ids, map);
-  tf::parallel_apply(
+  tf::parallel_for_each(
       sc.labels,
       [&map](auto &id) {
         if (id != -1)
           id = map[id];
       },
       tf::checked);
-  tf::parallel_apply(
+  tf::parallel_for_each(
       cc.labels, [&map, offset](auto &id) { id = map[id + offset]; },
       tf::checked);
   return tf::cut::polygon_arrangement_labels<LabelType>{

@@ -127,7 +127,7 @@ auto make_isobands(
   labels.allocate(faces.size());
   auto cut_labels = tf::drop(labels, polygon_size);
   auto original_labels = tf::take(labels, polygon_size);
-  tf::parallel_apply(
+  tf::parallel_for_each(
       tf::zip(selected_bands,
               tf::make_offset_block_range(cf_offsets, cut_labels)),
       [](auto pair) {

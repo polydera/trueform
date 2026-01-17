@@ -115,7 +115,7 @@ private:
         tf::make_indirect_range(im.kept_ids(), base_t::_intersection_points),
         points);
     base_t::_intersection_points = std::move(points);
-    tf::parallel_apply(base_t::_intersections,
+    tf::parallel_for_each(base_t::_intersections,
                        [&](auto &i) { i.id = im.f()[i.id]; });
   }
 

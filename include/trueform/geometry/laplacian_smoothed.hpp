@@ -12,7 +12,7 @@
  */
 #pragma once
 
-#include "../core/algorithm/parallel_apply.hpp"
+#include "../core/algorithm/parallel_for_each.hpp"
 #include "../core/algorithm/parallel_copy.hpp"
 #include "../core/coordinate_type.hpp"
 #include "../core/points_buffer.hpp"
@@ -75,7 +75,7 @@ auto laplacian_smoothed(const tf::points<Policy> &pts, std::size_t iterations,
   next.allocate(pts.size());
 
   for (std::size_t iter = 0; iter < iterations; ++iter) {
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::zip(current.points(), next.points(),
                 tf::make_block_indirect_range(vlink, current.points())),
         [&](auto tup) {

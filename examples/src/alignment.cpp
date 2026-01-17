@@ -123,7 +123,7 @@ int main(int argc, char *argv[]) {
   // Create transformed copy of smoothed points
   tf::points_buffer<float, 3> source1;
   source1.allocate(smoothed.size());
-  tf::parallel_apply(tf::zip(smoothed.points(), source1.points()),
+  tf::parallel_for_each(tf::zip(smoothed.points(), source1.points()),
                      [&](auto tup) {
                        auto [src, dst] = tup;
                        dst = tf::transformed(src, T1);
@@ -328,7 +328,7 @@ int main(int argc, char *argv[]) {
 
   tf::points_buffer<float, 3> source_low;
   source_low.allocate(mesh_low.points().size());
-  tf::parallel_apply(tf::zip(mesh_low.points(), source_low.points()),
+  tf::parallel_for_each(tf::zip(mesh_low.points(), source_low.points()),
                      [&](auto tup) {
                        auto [src, dst] = tup;
                        dst = tf::transformed(src, T_low);

@@ -11,7 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include "../core/algorithm/parallel_apply.hpp"
+#include "../core/algorithm/parallel_for_each.hpp"
 #include "../core/polygons_buffer.hpp"
 #include "../core/views/sequence_range.hpp"
 
@@ -50,7 +50,7 @@ auto make_plane_mesh(RealType width, RealType height, Index width_ticks,
   const RealType dy = height / static_cast<RealType>(height_ticks);
 
   // Generate vertices
-  tf::parallel_apply(
+  tf::parallel_for_each(
       tf::make_sequence_range(height_ticks + 1),
       [&](Index j) {
         RealType y = -hh + static_cast<RealType>(j) * dy;
@@ -63,7 +63,7 @@ auto make_plane_mesh(RealType width, RealType height, Index width_ticks,
       tf::checked);
 
   // Generate faces (2 triangles per cell, CCW for +z normal)
-  tf::parallel_apply(
+  tf::parallel_for_each(
       tf::make_sequence_range(height_ticks),
       [&](Index j) {
         for (Index i = 0; i < width_ticks; ++i) {

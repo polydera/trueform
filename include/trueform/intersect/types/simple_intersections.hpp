@@ -12,7 +12,7 @@
 */
 #pragma once
 #include "../../core/algorithm/compute_offsets.hpp"
-#include "../../core/algorithm/parallel_apply.hpp"
+#include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/point.hpp"
 #include "../../core/policy/ids.hpp"
@@ -79,7 +79,7 @@ private:
       id_map[iter->point_id] = current_id;
     }
     ++_vertex_points_offset;
-    tf::parallel_apply(_intersections, [&](auto &intersection) {
+    tf::parallel_for_each(_intersections, [&](auto &intersection) {
       intersection.id = id_map[intersection.id];
     });
     _points = std::move(new_points);

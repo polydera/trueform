@@ -180,7 +180,7 @@ auto reindexed_by_mask(const tf::polygons<Policy> &polygons, const Range &mask,
     tf::buffer<bool> point_mask;
     point_mask.allocate(polygons.points().size());
     tf::parallel_fill(point_mask, false);
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::make_indirect_range(face_im.kept_ids(), polygons.faces()),
         [&](auto &&face) {
           for (auto &e : face)
@@ -236,7 +236,7 @@ auto reindexed_by_mask(const tf::segments<Policy> &segments, const Range &mask,
     tf::buffer<bool> point_mask;
     point_mask.allocate(segments.points().size());
     tf::parallel_fill(point_mask, false);
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::make_indirect_range(edge_im.kept_ids(), segments.edges()),
         [&](auto &&edge) {
           for (auto &e : edge)

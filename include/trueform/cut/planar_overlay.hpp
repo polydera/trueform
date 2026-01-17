@@ -62,7 +62,7 @@ public:
             }),
         tf::make_points<2>(raw1), edge_map);
 
-    tf::parallel_apply(
+    tf::parallel_for_each(
         base_t::edges_buffer().data_buffer(),
         [&pt_map, offset = Index(si.intersection_points().size())](auto &x) {
           if (x > offset)

@@ -11,7 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include "../core/algorithm/parallel_apply.hpp"
+#include "../core/algorithm/parallel_for_each.hpp"
 #include "../core/angle.hpp"
 #include "../core/polygons_buffer.hpp"
 #include "../core/views/sequence_range.hpp"
@@ -61,7 +61,7 @@ auto make_cylinder_mesh(RealType radius, RealType height, Index segments)
 
   // Ring vertices
   tg.run([&] {
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::make_sequence_range(segments),
         [&](Index j) {
           RealType theta = RealType{360} * static_cast<RealType>(j) /
@@ -76,7 +76,7 @@ auto make_cylinder_mesh(RealType radius, RealType height, Index segments)
 
   // Top cap faces (CCW when viewed from above)
   tg.run([&] {
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::make_sequence_range(segments),
         [&](Index j) {
           Index next = (j + 1) % segments;
@@ -88,7 +88,7 @@ auto make_cylinder_mesh(RealType radius, RealType height, Index segments)
 
   // Bottom cap faces (CCW when viewed from below)
   tg.run([&] {
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::make_sequence_range(segments),
         [&](Index j) {
           Index next = (j + 1) % segments;
@@ -100,7 +100,7 @@ auto make_cylinder_mesh(RealType radius, RealType height, Index segments)
 
   // Side faces (two triangles per quad, CCW when viewed from outside)
   tg.run([&] {
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::make_sequence_range(segments),
         [&](Index j) {
           Index next = (j + 1) % segments;

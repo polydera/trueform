@@ -12,7 +12,7 @@
 */
 #pragma once
 #include "../views/zip.hpp"
-#include "./parallel_apply.hpp"
+#include "./parallel_for_each.hpp"
 #include <algorithm>
 
 namespace tf {
@@ -33,7 +33,7 @@ auto parallel_copy_blocked(const Range0 &input, Range1 &&output) {
     for (auto &&[in, out] : tf::zip(input, output))
       std::copy(in.begin(), in.end(), out.begin());
   else
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::zip(input, output),
         [](auto &&pair) {
           auto &&[in, out] = pair;
@@ -57,7 +57,7 @@ auto parallel_copy_blocked_reverse(const Range0 &input, Range1 &&output) {
     for (auto &&[in, out] : tf::zip(input, output))
       std::reverse_copy(in.begin(), in.end(), out.begin());
   else
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::zip(input, output),
         [](auto &&pair) {
           auto &&[in, out] = pair;

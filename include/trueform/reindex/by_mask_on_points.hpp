@@ -52,7 +52,7 @@ auto reindexed_by_mask_on_points(const tf::polygons<Policy> &polygons,
     tf::buffer<bool> face_mask;
     face_mask.allocate(polygons.faces().size());
 
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::zip(face_mask, polygons.faces()),
         [&](auto &&zipped) {
           auto &keep = std::get<0>(zipped);
@@ -117,7 +117,7 @@ auto reindexed_by_mask_on_points(const tf::segments<Policy> &segments,
     tf::buffer<bool> edge_mask;
     edge_mask.allocate(segments.edges().size());
 
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::zip(edge_mask, segments.edges()),
         [&](auto &&zipped) {
           auto &keep = std::get<0>(zipped);

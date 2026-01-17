@@ -11,7 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include "../../core/algorithm/parallel_apply.hpp"
+#include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/array_hash.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/hash_set.hpp"
@@ -250,7 +250,7 @@ auto compute_self_simplification_mask(
       break;
     }
   }
-  tf::parallel_apply(
+  tf::parallel_for_each(
       tf::make_range(intersection_ids.begin() + sequential_offset,
                      intersection_ids.end()),
       [&](const auto &e) {

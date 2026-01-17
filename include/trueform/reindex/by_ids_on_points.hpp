@@ -56,7 +56,7 @@ auto reindexed_by_ids_on_points(const tf::polygons<Policy> &polygons,
 
     const Index none =
         Index(point_im.f().size()); // sentinel used in ids_to_index_map
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::zip(face_mask, polygons.faces()),
         [&](auto &&zipped) {
           auto &keep = std::get<0>(zipped);
@@ -125,7 +125,7 @@ auto reindexed_by_ids_on_points(const tf::segments<Policy> &segments,
 
     const Index none =
         Index(point_im.f().size()); // sentinel used in ids_to_index_map
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::zip(edge_mask, segments.edges()),
         [&](auto &&zipped) {
           auto &keep = std::get<0>(zipped);

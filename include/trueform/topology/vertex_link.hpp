@@ -11,7 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include "../core/algorithm/parallel_apply.hpp"
+#include "../core/algorithm/parallel_for_each.hpp"
 #include "../core/algorithm/parallel_copy.hpp"
 #include "../core/edges.hpp"
 #include "../core/offset_block_buffer.hpp"
@@ -118,7 +118,7 @@ public:
               tf::make_mapped_range(edges, [](const auto &r) { return r[0]; })),
           as_em.data_buffer());
     case tf::edge_orientation::bidirectional:
-      tf::parallel_apply(
+      tf::parallel_for_each(
           tf::enumerate(as_em),
           [&](auto pair) {
             auto &&[id, block] = pair;

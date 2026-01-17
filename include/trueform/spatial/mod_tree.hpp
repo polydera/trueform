@@ -225,7 +225,7 @@ private:
         [](const auto &x) { return tf::aabb_from(x); }, tf::checked);
 
     // Remap IDs and partition
-    tf::parallel_apply(main_tree_buffer().nodes(), [&](auto &node) {
+    tf::parallel_for_each(main_tree_buffer().nodes(), [&](auto &node) {
       if (!node.is_leaf())
         return;
       auto &&data = node.get_data();
@@ -239,7 +239,7 @@ private:
   }
   template <typename F> auto update_main_tree(const F &keep_if) {
     auto &&ids = main_tree_buffer().ids();
-    tf::parallel_apply(main_tree_buffer().nodes(), [&](auto &node) {
+    tf::parallel_for_each(main_tree_buffer().nodes(), [&](auto &node) {
       if (!node.is_leaf())
         return;
       auto &&data = node.get_data();

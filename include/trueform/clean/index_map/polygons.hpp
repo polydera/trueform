@@ -53,7 +53,7 @@ auto make_clean_index_map(const tf::core::polygons<Range0, Range1> &polygons,
   auto &contained_points = kept_polygons;
   contained_points.allocate(polygons.points().size());
   tf::parallel_fill(contained_points, false);
-  tf::parallel_apply(
+  tf::parallel_for_each(
       tf::make_indirect_range(face_map.kept_ids(), polygons.faces()),
       [&](const auto &face) {
         for (auto e : face)

@@ -11,7 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include "../core/algorithm/parallel_apply.hpp"
+#include "../core/algorithm/parallel_for_each.hpp"
 #include "../core/faces.hpp"
 #include <algorithm>
 
@@ -27,7 +27,7 @@ namespace tf {
 /// @param faces The faces range (modified in place).
 template <typename Policy>
 auto reverse_winding(tf::faces<Policy> &faces) -> void {
-  tf::parallel_apply(faces, [](auto &&face) {
+  tf::parallel_for_each(faces, [](auto &&face) {
     std::reverse(face.begin(), face.end());
   });
 }

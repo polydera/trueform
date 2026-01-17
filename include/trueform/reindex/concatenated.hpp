@@ -11,7 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include "../core/algorithm/parallel_apply.hpp"
+#include "../core/algorithm/parallel_for_each.hpp"
 #include "../core/algorithm/parallel_copy.hpp"
 #include "../core/frame_of.hpp"
 #include "../core/polygons.hpp"
@@ -36,7 +36,7 @@ auto copy_with_transformation(const R0 &source, R1 &&destincation,
   if constexpr (tf::linalg::is_identity<T>)
     tf::parallel_copy(source, destincation);
   else {
-    tf::parallel_apply(tf::zip(source, destincation),
+    tf::parallel_for_each(tf::zip(source, destincation),
                        [&transformation](auto &&pair) {
                          auto &&[src, dst] = pair;
                          dst = tf::transformed(src, transformation);
@@ -60,7 +60,7 @@ auto concatenated_impl(tf::polygons_buffer<Index, RealT, Dims, Ngon> &out,
     const Index end_f = start_f + static_cast<Index>(polygons.faces().size());
 
     const Index point_offset = start_p;
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::zip(polygons.faces(),
                 tf::slice(out.faces_buffer(), start_f, end_f)),
         [point_offset](auto pair) {
@@ -225,7 +225,7 @@ auto concatenated(const tf::segments<Policy0> &segments0,
     const Index end_f = start_f + static_cast<Index>(segments.edges().size());
 
     const Index point_offset = start_p;
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::zip(segments.edges(),
                 tf::slice(out.edges_buffer(), start_f, end_f)),
         [point_offset](auto pair) {
@@ -387,7 +387,7 @@ auto concatenated_impl(tf::polygons_buffer<Index, RealT, Dims, Ngon> &out,
     const Index end_f = start_f + static_cast<Index>(polygons.faces().size());
 
     const Index point_offset = start_p;
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::zip(polygons.faces(),
                 tf::slice(out.faces_buffer(), start_f, end_f)),
         [point_offset](auto pair) {
@@ -503,7 +503,7 @@ auto concatenated(const tf::segments<Policy> &, const Range &r) {
     const Index end_f = start_f + static_cast<Index>(segments.edges().size());
 
     const Index point_offset = start_p;
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::zip(segments.edges(),
                 tf::slice(out.edges_buffer(), start_f, end_f)),
         [point_offset](auto pair) {

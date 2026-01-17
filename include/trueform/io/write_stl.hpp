@@ -11,7 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include "../core/algorithm/parallel_apply.hpp"
+#include "../core/algorithm/parallel_for_each.hpp"
 #include "../core/buffer.hpp"
 #include "../core/frame_of.hpp"
 #include "../core/policy/normals.hpp"
@@ -107,7 +107,7 @@ auto write_stl(const tf::polygons<Policy> &polygons, std::string filename)
     if constexpr (tf::has_normals_policy<Policy>) {
       // With normals - zip polygons, normals, and output buffer
 
-      tf::parallel_apply(
+      tf::parallel_for_each(
           tf::zip(polygons, polygons.normals(), triangles),
           [&frame](auto tuple) {
             auto &&[polygon, normal, out_struct] = tuple;
@@ -131,7 +131,7 @@ auto write_stl(const tf::polygons<Policy> &polygons, std::string filename)
           }, tf::checked);
     } else {
 
-      tf::parallel_apply(tf::zip(polygons, triangles), [&frame](auto tuple) {
+      tf::parallel_for_each(tf::zip(polygons, triangles), [&frame](auto tuple) {
         auto &&[polygon, out_struct] = tuple;
 
         // Zero normal

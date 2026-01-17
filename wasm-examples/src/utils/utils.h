@@ -14,7 +14,7 @@ auto center_and_scale_p(tf::polygons_buffer<int, float, 3, 3> &poly) -> void {
   auto aabb = tf::aabb_from(tf::make_polygon(pts));
   auto center = aabb.center().as_vector();
   auto r = aabb.diagonal().length() / 2;
-  tf::parallel_apply(pts.as_vector_view(), [&](auto pt) {
+  tf::parallel_for_each(pts.as_vector_view(), [&](auto pt) {
     pt -= center;
     pt *= 10 / r;
   });

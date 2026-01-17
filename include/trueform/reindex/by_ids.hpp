@@ -54,7 +54,7 @@ auto reindexed_by_ids(const tf::polygons<Policy> &polygons, const Range &ids,
     tf::parallel_fill(point_mask, false);
     // benign race: multiple threads may write `true` to the same byte.
     // safe because writes are idempotent and there's a barrier at loop end.
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::make_indirect_range(face_im.kept_ids(), polygons.faces()),
         [&](auto &&face) {
           for (auto &e : face)
@@ -111,7 +111,7 @@ auto reindexed_by_ids(const tf::segments<Policy> &segments, const Range &ids,
     tf::parallel_fill(point_mask, false);
     // benign race: multiple threads may write `true` to the same byte.
     // safe because writes are idempotent and there's a barrier at loop end.
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::make_indirect_range(edge_im.kept_ids(), segments.edges()),
         [&](auto &&edge) {
           for (auto &e : edge)

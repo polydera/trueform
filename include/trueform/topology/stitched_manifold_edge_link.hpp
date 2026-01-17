@@ -11,7 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include "../core/algorithm/parallel_apply.hpp"
+#include "../core/algorithm/parallel_for_each.hpp"
 #include "../core/algorithm/parallel_fill.hpp"
 #include "../core/algorithm/parallel_for.hpp"
 #include "../core/algorithm/parallel_transform.hpp"
@@ -75,7 +75,7 @@ auto stitched_manifold_edge_link(
   dirty_point_mask.allocate(fm_stitched.size());
   tf::parallel_fill(dirty_point_mask, false);
 
-  tf::parallel_apply(
+  tf::parallel_for_each(
       tf::make_sequence_range(n_dirty),
       [&](Index i) {
         const auto &face = result_faces[dirty_start + i];
@@ -117,7 +117,7 @@ auto stitched_manifold_edge_link(
   };
 
   // Copy & remap clean faces from mesh0
-  tf::parallel_apply(
+  tf::parallel_for_each(
       im.polygons0.kept_ids(),
       [&](Index orig_face_id) {
         Index result_face_id =
@@ -153,7 +153,7 @@ auto stitched_manifold_edge_link(
       tf::checked);
 
   // Copy & remap clean faces from mesh1
-  tf::parallel_apply(
+  tf::parallel_for_each(
       im.polygons1.kept_ids(),
       [&](Index orig_face_id) {
         Index result_face_id =
@@ -189,7 +189,7 @@ auto stitched_manifold_edge_link(
       tf::checked);
 
   // Initialize dirty faces as needing recomputation
-  tf::parallel_apply(
+  tf::parallel_for_each(
       tf::make_sequence_range(n_dirty),
       [&](Index i) {
         Index result_face_id = dirty_start + i;

@@ -52,7 +52,7 @@ public:
     } else
       build_intersections(segments);
     _work_buffer.allocate(is_base_t::edges().size() * 4);
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::zip(is_base_t::edges(), tf::make_blocked_range<4>(_work_buffer)),
         [](auto pair) {
           auto &&[_in, _out] = pair;

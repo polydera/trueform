@@ -28,7 +28,7 @@ auto neighbor_search_batch(polydata *input, vtkPoints *points)
 auto neighbor_search_batch(polydata *input, points_t points)
     -> std::vector<neighbor_result> {
   std::vector<neighbor_result> results(points.size());
-  tf::parallel_apply(
+  tf::parallel_for_each(
       tf::zip(results, points),
       [&](auto pair) {
         auto &&[result, pt] = pair;
@@ -46,7 +46,7 @@ auto neighbor_search_batch(std::pair<polydata *, vtkMatrix4x4 *> input,
 auto neighbor_search_batch(std::pair<polydata *, vtkMatrix4x4 *> input,
                            points_t points) -> std::vector<neighbor_result> {
   std::vector<neighbor_result> results(points.size());
-  tf::parallel_apply(
+  tf::parallel_for_each(
       tf::zip(results, points),
       [&](auto pair) {
         auto &&[result, pt] = pair;
@@ -68,7 +68,7 @@ auto neighbor_search_batch(polydata *input, vtkPoints *points, float radius)
 auto neighbor_search_batch(polydata *input, points_t points, float radius)
     -> std::vector<neighbor_result> {
   std::vector<neighbor_result> results(points.size());
-  tf::parallel_apply(
+  tf::parallel_for_each(
       tf::zip(results, points),
       [&](auto pair) {
         auto &&[result, pt] = pair;
@@ -88,7 +88,7 @@ auto neighbor_search_batch(std::pair<polydata *, vtkMatrix4x4 *> input,
                            points_t points, float radius)
     -> std::vector<neighbor_result> {
   std::vector<neighbor_result> results(points.size());
-  tf::parallel_apply(
+  tf::parallel_for_each(
       tf::zip(results, points),
       [&](auto pair) {
         auto &&[result, pt] = pair;

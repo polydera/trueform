@@ -71,7 +71,7 @@ private:
   template <typename Policy> auto build_edges(const tf::edges<Policy> &edges) {
     tf::make_contiguous_index_hash_map(edges, _ihm);
     _work_edges.allocate(edges.size());
-    tf::parallel_apply(tf::zip(edges, _work_edges), [&](auto pair) {
+    tf::parallel_for_each(tf::zip(edges, _work_edges), [&](auto pair) {
       auto &&[_in, _out] = pair;
       _out[0] = _ihm.f()[_in[0]];
       _out[1] = _ihm.f()[_in[1]];

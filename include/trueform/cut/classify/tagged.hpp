@@ -13,7 +13,7 @@
 #pragma once
 #include "../../core/algorithm/generic_generate.hpp"
 #include "../../core/algorithm/make_equivalence_class_map.hpp"
-#include "../../core/algorithm/parallel_apply.hpp"
+#include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/array_hash.hpp"
 #include "../../core/blocked_buffer.hpp"
@@ -73,7 +73,7 @@ auto compute_joint_components(
   tf::buffer<tf::set_type> sets;
   sets.allocate(n_labels);
   tf::parallel_fill(sets, tf::set_type::closed);
-  tf::parallel_apply(
+  tf::parallel_for_each(
       tf::zip(polygons.manifold_edge_link(), labels, pal.polygon_labels),
       [&](auto pair) {
         auto &[mel, label, old_label] = pair;
@@ -116,7 +116,7 @@ auto classify_missing_components(
     tf::buffer<Index> reprs;
     reprs.allocate(n_components);
     tf::parallel_fill(reprs, -1);
-    tf::parallel_apply(tf::enumerate(labels), [&](auto pair) {
+    tf::parallel_for_each(tf::enumerate(labels), [&](auto pair) {
       const auto &[id, label] = pair;
       if (label == -1)
         return;
@@ -146,7 +146,7 @@ auto classify_missing_components(
         pt = ibp.intersection_points()[v.id];
       return pt;
     };
-    tf::parallel_apply(tf::zip(counts, reprs_poly, reprs_cut), [&](auto tup) {
+    tf::parallel_for_each(tf::zip(counts, reprs_poly, reprs_cut), [&](auto tup) {
       auto &&[count, poly_id, cut_id] = tup;
       if (!(count[0] == 0 && count[1] == 0 && count[2] == 0 && count[3] == 0))
         return;
@@ -286,7 +286,7 @@ auto make_classifications(
                          tf::arrangement_class flags) {
     pal.n_components = 2;
     auto remap = [&](auto &labels) {
-      tf::parallel_apply(
+      tf::parallel_for_each(
           labels,
           [&](auto &label) {
             if (label == -1)

@@ -11,7 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include "../../core/algorithm/parallel_apply.hpp"
+#include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/algorithm/parallel_iota.hpp"
 #include "../../core/algorithm/partition_range_into_parts.hpp"
 #include "../../core/buffer.hpp"
@@ -74,7 +74,7 @@ auto build_tree_nodes(buffer<tree_node<Index, tf::obb<RealT, Dims>>> &nodes,
   }
   Index n_ids = use_ids ? Index(ids.size()) : Index(primitives.size());
   nodes.allocate(max_nodes_in_tree(n_ids, config.inner_size, config.leaf_size));
-  tf::parallel_apply(nodes, [](auto &x) { x.set_as_empty(); }, tf::checked);
+  tf::parallel_for_each(nodes, [](auto &x) { x.set_as_empty(); }, tf::checked);
   if (!use_ids) {
     ids.allocate(primitives.size());
     tf::parallel_iota(ids, 0);

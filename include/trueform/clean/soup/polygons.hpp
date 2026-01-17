@@ -12,7 +12,7 @@
 */
 #pragma once
 #include "../../core/algorithm/make_unique_index_map.hpp"
-#include "../../core/algorithm/parallel_apply.hpp"
+#include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/algorithm/parallel_copy.hpp"
 #include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/algorithm/remove_if_and_make_map.hpp"
@@ -72,7 +72,7 @@ private:
                            RealT tolerance) {
     base_t::points_buffer().allocate(polygons.size() * Ngons);
     auto points = base_t::points();
-    tf::parallel_apply(tf::zip(polygons, tf::make_blocked_range<Ngons>(points)),
+    tf::parallel_for_each(tf::zip(polygons, tf::make_blocked_range<Ngons>(points)),
                        [](auto pair) {
                          auto &&[_in, _out] = pair;
                          std::copy(_in.begin(), _in.end(), _out.begin());
@@ -148,7 +148,7 @@ private:
                   r.begin();
     base_t::points_buffer().erase(base_t::points_buffer().begin() + n_kept,
                                   base_t::points_buffer().end());
-    tf::parallel_apply(
+    tf::parallel_for_each(
         base_t::faces_buffer(),
         [&](auto &&face) {
           for (auto &e : face)

@@ -64,14 +64,14 @@ auto fit_knn_alignment(
   buffer.allocate(X.size());
   if (k == 1) {
     // Classic ICP: single nearest neighbor
-    tf::parallel_apply(tf::zip(X, buffer), [&](auto tup) {
+    tf::parallel_for_each(tf::zip(X, buffer), [&](auto tup) {
       auto &&[x, out] = tup;
       auto [id, cpt] = tf::neighbor_search(tf::make_form(Y), tf::transformed(x, tf::frame_of(X)));
       out = cpt.point;
     });
   } else {
     // Soft correspondences: k-nearest neighbors with Gaussian weighting
-    tf::parallel_apply(tf::zip(X, buffer), [&](auto tup) {
+    tf::parallel_for_each(tf::zip(X, buffer), [&](auto tup) {
       auto &&[x, out] = tup;
       std::array<tf::nearest_neighbor<typename Policy1::index_type,
                                       tf::coordinate_type<Policy1>,

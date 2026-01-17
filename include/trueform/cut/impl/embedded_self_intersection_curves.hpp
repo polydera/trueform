@@ -40,7 +40,7 @@ auto embedded_self_intersection_curves(
   tf::buffer<bool> polygons_mask;
   polygons_mask.allocate(_polygons.size());
   tf::parallel_fill(polygons_mask, true);
-  tf::parallel_apply(descriptors,
+  tf::parallel_for_each(descriptors,
                      [&](auto d) { polygons_mask[d.object] = false; });
   tf::buffer<Index> face_ids;
   face_ids.reserve(polygons_mask.size());

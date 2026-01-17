@@ -11,7 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include "../core/algorithm/parallel_apply.hpp"
+#include "../core/algorithm/parallel_for_each.hpp"
 #include "../core/policy/normals.hpp"
 #include "../core/polygons.hpp"
 #include "../core/unit_vector.hpp"
@@ -54,7 +54,7 @@ auto compute_point_normals(const tf::polygons<Policy> &polygons)
     const auto &fm = polygons.face_membership();
     const auto &poly_normals = polygons.normals();
 
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::zip(normals.unit_vectors(), fm), [&poly_normals](auto pair) {
           auto &&[normal, poly_ids] = pair;
           tf::vector<T, 3> sum{T(0), T(0), T(0)};

@@ -59,7 +59,7 @@ auto make_clean_index_map(const tf::core::segments<Range0, Range1> &segments,
   tf::buffer<bool> contained_points;
   contained_points.allocate(segments.points().size());
   tf::parallel_fill(contained_points, false);
-  tf::parallel_apply(
+  tf::parallel_for_each(
       tf::make_indirect_range(edge_map.kept_ids(), segments.edges()),
       [&](const auto &edge) {
         contained_points[edge[0]] = true;

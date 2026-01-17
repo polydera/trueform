@@ -11,7 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include "../core/algorithm/parallel_apply.hpp"
+#include "../core/algorithm/parallel_for_each.hpp"
 #include "../core/buffer.hpp"
 #include "../core/frame_of.hpp"
 #include "../core/polygons.hpp"
@@ -68,7 +68,7 @@ auto write_obj(const tf::polygons<Policy> &polygons, std::string filename)
 
   // Compute point line sizes in parallel (store in [1..n])
   // Format: "v x y z\n"
-  tf::parallel_apply(
+  tf::parallel_for_each(
       tf::enumerate(polygons.points()),
       [&point_offsets, &frame](auto pair) {
         auto &&[idx, point] = pair;
@@ -99,7 +99,7 @@ auto write_obj(const tf::polygons<Policy> &polygons, std::string filename)
 
   // Compute face line sizes in parallel (store in [1..n])
   // Format: "f i1 i2 i3 ...\n"
-  tf::parallel_apply(
+  tf::parallel_for_each(
       tf::enumerate(polygons.faces()),
       [&face_offsets](auto pair) {
         auto &&[idx, face] = pair;
@@ -145,7 +145,7 @@ auto write_obj(const tf::polygons<Policy> &polygons, std::string filename)
   // ========== PASS 2: Write in parallel ==========
 
   // Write points in parallel
-  tf::parallel_apply(
+  tf::parallel_for_each(
       tf::enumerate(polygons.points()),
       [&output, &point_offsets, &frame](auto pair) {
         auto &&[idx, point] = pair;
@@ -170,7 +170,7 @@ auto write_obj(const tf::polygons<Policy> &polygons, std::string filename)
       tf::checked);
 
   // Write faces in parallel
-  tf::parallel_apply(
+  tf::parallel_for_each(
       tf::enumerate(polygons.faces()),
       [&output, &face_offsets](auto pair) {
         auto &&[idx, face] = pair;

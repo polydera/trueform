@@ -12,7 +12,7 @@
 */
 #pragma once
 #include "../../core/algorithm/make_unique_index_map.hpp"
-#include "../../core/algorithm/parallel_apply.hpp"
+#include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/algorithm/parallel_copy.hpp"
 #include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/algorithm/remove_if_and_make_map.hpp"
@@ -56,7 +56,7 @@ private:
   auto remove_uncontained_points() {
     _contained_points.allocate(base_t::points().size());
     tf::parallel_fill(_contained_points, false);
-    tf::parallel_apply(
+    tf::parallel_for_each(
         base_t::edges(),
         [&](const auto &edge) {
           _contained_points[edge[0]] = true;
@@ -71,7 +71,7 @@ private:
                   r.begin();
     base_t::points_buffer().erase(base_t::points_buffer().begin() + n_kept,
                                   base_t::points_buffer().end());
-    tf::parallel_apply(
+    tf::parallel_for_each(
         base_t::edges(),
         [&](auto &&edge) {
           edge[0] = map[edge[0]];
@@ -85,7 +85,7 @@ private:
                            RealT tolerance) {
     base_t::points_buffer().allocate(segments.size() * 2);
     auto points = base_t::points();
-    tf::parallel_apply(tf::zip(segments, tf::make_blocked_range<2>(points)),
+    tf::parallel_for_each(tf::zip(segments, tf::make_blocked_range<2>(points)),
                        [](auto pair) {
                          auto &&[_in, _out] = pair;
                          _out[0] = _in[0];
@@ -116,7 +116,7 @@ private:
 
   auto make_initial_edges() {
     base_t::edges_buffer().data_buffer().allocate(_im.f().size());
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::zip(tf::make_blocked_range<2>(_im.f()), base_t::edges_buffer()),
         [](auto pair) {
           auto &&[_in, _out] = pair;

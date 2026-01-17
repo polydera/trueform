@@ -78,7 +78,7 @@ auto embedded_isocurves(
   std::size_t polygon_size = all_ids.polygons.data_buffer().size();
   auto cut_labels = tf::drop(labels, polygon_size);
   auto original_labels = tf::take(labels, polygon_size);
-  tf::parallel_apply(
+  tf::parallel_for_each(
       tf::enumerate(tf::make_offset_block_range(cf_offsets, cut_labels)),
       [](auto pair) {
         auto [id, r] = pair;

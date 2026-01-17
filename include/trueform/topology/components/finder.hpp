@@ -12,7 +12,7 @@
  */
 #pragma once
 #include "../../core/algorithm/make_equivalence_class_map.hpp"
-#include "../../core/algorithm/parallel_apply.hpp"
+#include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/hash_set.hpp"
 #include "../../core/local_buffer.hpp"
@@ -32,7 +32,7 @@ public:
     clear();
     initialize(labels.size());
     auto n_components = run_propagation(mask, applier);
-    tf::parallel_apply(tf::zip(work_labels_range(), labels), [&](auto pair) {
+    tf::parallel_for_each(tf::zip(work_labels_range(), labels), [&](auto pair) {
       auto &&[wl, l] = pair;
       auto wll = wl.load(std::memory_order_relaxed);
       if (wll != -1)
@@ -140,7 +140,7 @@ private:
   auto initialize(std::size_t size) {
     _n_labels = size;
     _work_labels_ptr.reset(new std::atomic<label_t>[size]);
-    tf::parallel_apply(work_labels_range(),
+    tf::parallel_for_each(work_labels_range(),
                        [](auto &x) { x.store(-1, std::memory_order_relaxed); });
   }
 

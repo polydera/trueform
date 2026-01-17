@@ -11,7 +11,8 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include "./parallel_apply.hpp"
+#include "../views/sequence_range.hpp"
+#include "./parallel_for_each.hpp"
 namespace tf {
 /// @ingroup core_algorithms
 /// @brief Inverts a mapping with support for missing (none-tagged) entries.
@@ -42,10 +43,10 @@ namespace tf {
 template <typename Range0, typename Range1, typename Index>
 auto invert_map_with_nones(const Range0 &map, Range1 &&inverse_map,
                            Index none_tag, Index offset = 0) {
-  tf::parallel_apply(std::size_t(0), std::size_t(map.size()),
-                     [&](std::size_t index) {
-                       if (map[index] != none_tag)
-                         inverse_map[map[index]] = index + offset;
-                     });
+  tf::parallel_for_each(tf::make_sequence_range(map.size()),
+                        [&](std::size_t index) {
+                          if (map[index] != none_tag)
+                            inverse_map[map[index]] = index + offset;
+                        });
 }
 } // namespace tf

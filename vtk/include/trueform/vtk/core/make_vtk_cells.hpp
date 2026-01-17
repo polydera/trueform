@@ -33,7 +33,7 @@ auto make_vtk_cells(const tf::blocked_buffer<vtkIdType, V> &faces)
   offsets->SetNumberOfTuples(static_cast<vtkIdType>(n + 1));
   auto *offsets_ptr =
       static_cast<vtkIdType *>(offsets->GetVoidPointer(0));
-  tf::parallel_apply(tf::enumerate(tf::make_range(offsets_ptr, n + 1)),
+  tf::parallel_for_each(tf::enumerate(tf::make_range(offsets_ptr, n + 1)),
                      [](auto pair) {
                        auto &&[id, offset] = pair;
                        offset = static_cast<vtkIdType>(V * id);
@@ -61,7 +61,7 @@ auto make_vtk_cells(tf::blocked_buffer<vtkIdType, V> &&faces)
   auto offsets = cells->GetOffsetsArray();
   offsets->SetNumberOfTuples(static_cast<vtkIdType>(n + 1));
   auto *offsets_ptr = static_cast<vtkIdType *>(offsets->GetVoidPointer(0));
-  tf::parallel_apply(tf::enumerate(tf::make_range(offsets_ptr, n + 1)),
+  tf::parallel_for_each(tf::enumerate(tf::make_range(offsets_ptr, n + 1)),
                      [](auto pair) {
                        auto &&[id, offset] = pair;
                        offset = static_cast<vtkIdType>(V * id);

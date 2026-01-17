@@ -14,7 +14,7 @@
 #include "../buffer.hpp"
 #include "../index_map.hpp"
 #include "../views/enumerate.hpp"
-#include "./parallel_apply.hpp"
+#include "./parallel_for_each.hpp"
 #include "./parallel_iota.hpp"
 #include "tbb/parallel_sort.h"
 namespace tf {
@@ -42,7 +42,7 @@ auto make_index_map_stable(tf::index_map_buffer<Index> &src, Index none_tag) {
   for (auto [i, e] : tf::enumerate(kept_ids_prime)) {
     f_prime[e] = i;
   }
-  tf::parallel_apply(
+  tf::parallel_for_each(
       src.f(),
       [&](auto &x) {
         if (x != none_tag)

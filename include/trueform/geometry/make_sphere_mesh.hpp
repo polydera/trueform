@@ -11,7 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include "../core/algorithm/parallel_apply.hpp"
+#include "../core/algorithm/parallel_for_each.hpp"
 #include "../core/angle.hpp"
 #include "../core/polygons_buffer.hpp"
 #include "../core/views/sequence_range.hpp"
@@ -58,7 +58,7 @@ auto make_sphere_mesh(RealType radius, Index stacks, Index segments)
 
   // Middle ring vertices
   tg.run([&] {
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::make_sequence_range(Index(1), stacks),
         [&](Index i) {
           RealType phi = RealType(180) * static_cast<RealType>(i) /
@@ -80,7 +80,7 @@ auto make_sphere_mesh(RealType radius, Index stacks, Index segments)
 
   // Top cap faces
   tg.run([&] {
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::make_sequence_range(segments),
         [&](Index j) {
           Index next = (j + 1) % segments;
@@ -92,7 +92,7 @@ auto make_sphere_mesh(RealType radius, Index stacks, Index segments)
 
   // Middle quad faces (triangulated)
   tg.run([&] {
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::make_sequence_range(stacks - 2),
         [&](Index i) {
           Index ring_start = 1 + i * segments;
@@ -117,7 +117,7 @@ auto make_sphere_mesh(RealType radius, Index stacks, Index segments)
 
   // Bottom cap faces
   tg.run([&] {
-    tf::parallel_apply(
+    tf::parallel_for_each(
         tf::make_sequence_range(segments),
         [&](Index j) {
           Index next = (j + 1) % segments;

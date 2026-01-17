@@ -120,7 +120,7 @@ private:
     tf::parallel_copy(
         tf::make_indirect_range(im.kept_ids(), _intersection_points), points);
     _intersection_points = std::move(points);
-    tf::parallel_apply(_intersections, [&](auto &i) { i.id = im.f()[i.id]; });
+    tf::parallel_for_each(_intersections, [&](auto &i) { i.id = im.f()[i.id]; });
   }
 
   template <typename Policy>

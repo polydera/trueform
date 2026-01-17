@@ -11,7 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include "../core/algorithm/parallel_apply.hpp"
+#include "../core/algorithm/parallel_for_each.hpp"
 #include "../core/algorithm/parallel_fill.hpp"
 #include "../core/buffer.hpp"
 #include "../core/faces.hpp"
@@ -82,7 +82,7 @@ auto stitched_face_membership(const tf::faces<FacesPolicy> &result_faces,
   constexpr Index sentinel = Index(-1);
 
   // Points from mesh0: count kept clean polygons + dirty
-  tf::parallel_apply(
+  tf::parallel_for_each(
       im.points0.kept_ids(),
       [&](Index orig_idx) {
         Index result_idx = im.points0.f()[orig_idx] + im.points0_offset;
@@ -98,7 +98,7 @@ auto stitched_face_membership(const tf::faces<FacesPolicy> &result_faces,
       tf::checked);
 
   // Points from mesh1: count kept clean polygons + dirty
-  tf::parallel_apply(
+  tf::parallel_for_each(
       im.points1.kept_ids(),
       [&](Index orig_idx) {
         Index result_idx = im.points1.f()[orig_idx] + im.points1_offset;
@@ -114,7 +114,7 @@ auto stitched_face_membership(const tf::faces<FacesPolicy> &result_faces,
       tf::checked);
 
   // Created points: only dirty contribution
-  tf::parallel_apply(
+  tf::parallel_for_each(
       tf::make_sequence_range(num_created),
       [&](Index i) {
         Index result_idx = im.created_points_offset + i;
@@ -134,7 +134,7 @@ auto stitched_face_membership(const tf::faces<FacesPolicy> &result_faces,
   const auto &offs = offsets;
 
   // Copy from mesh0: kept clean polygons (remapped) + dirty
-  tf::parallel_apply(
+  tf::parallel_for_each(
       im.points0.kept_ids(),
       [&](Index orig_idx) {
         Index result_idx = im.points0.f()[orig_idx] + im.points0_offset;
@@ -154,7 +154,7 @@ auto stitched_face_membership(const tf::faces<FacesPolicy> &result_faces,
       tf::checked);
 
   // Copy from mesh1: kept clean polygons (remapped) + dirty
-  tf::parallel_apply(
+  tf::parallel_for_each(
       im.points1.kept_ids(),
       [&](Index orig_idx) {
         Index result_idx = im.points1.f()[orig_idx] + im.points1_offset;
@@ -174,7 +174,7 @@ auto stitched_face_membership(const tf::faces<FacesPolicy> &result_faces,
       tf::checked);
 
   // Copy created points: only dirty polygons
-  tf::parallel_apply(
+  tf::parallel_for_each(
       tf::make_sequence_range(num_created),
       [&](Index i) {
         Index result_idx = im.created_points_offset + i;
