@@ -66,13 +66,13 @@ std::vector<float> raw_points = {0, 0, 0, 1, 0, 0, 0, 1, 0};
 std::vector<int> indices = {0, 1, 2};
 
 auto points = tf::make_points<3>(raw_points);
-auto triangles = tf::make_polygons(tf::make_blocked_range<3>(indices), points);
+auto faces = tf::make_faces<3>(indices);
+auto triangles = tf::make_polygons(faces, points);
 // or maybe faces are variable
 std::vector<int> offsets = {0, 3};
-auto d_polygons = tf::make_polygons(tf::make_offset_block_range(offsets, indices), points);
-// or maybe the indices are a curve
-auto segments = tf::make_segments(tf::make_slide_range<2>(indices), points);
-// or just read a file
+auto d_faces = tf::make_faces(offsets, indices);
+auto d_polygons = tf::make_polygons(d_faces, points);
+
 auto polygons_buffer = tf::read_stl("file.stl");
 auto polygons = polygons_buffer.polygons();
 ```
@@ -81,7 +81,7 @@ auto polygons = polygons_buffer.polygons();
 
 ```cpp
 auto polygon = polygons.front();
-auto segment = segments.back();
+auto segment = tf::make_segment_between_points(points[0], points[1]);
 auto ray = tf::make_ray_between_points(
     tf::make_point(0.2f, 0.2f, -1.0f),
     tf::make_point(0.2f, 0.2f, 1.0f));

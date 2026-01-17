@@ -4,7 +4,7 @@
 <template>
   <div class="core-hierarchy-diagram my-8 flex flex-col items-center">
     <div class="diagram-box">
-      <svg viewBox="0 0 580 1050" class="w-full">
+      <svg viewBox="0 0 580 1036" class="w-full">
         <!-- Arrowhead marker -->
         <defs>
           <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
@@ -17,7 +17,7 @@
           <text x="0" y="-8" class="stage-label" text-anchor="middle">Your Data</text>
           <rect x="-90" y="0" width="180" height="36" rx="6" class="stage-box" />
           <text x="0" y="23" class="code-text" text-anchor="middle">
-            <tspan class="syn-ns">std</tspan><tspan>::</tspan><tspan class="syn-type">vector</tspan><tspan>&lt;</tspan><tspan class="syn-kw">float</tspan><tspan>&gt;</tspan>
+            <tspan class="syn-ns">std</tspan><tspan>::</tspan><tspan class="syn-type">vector</tspan><tspan>&lt;</tspan><tspan class="syn-kw">int</tspan><tspan>&gt;</tspan>
           </text>
         </g>
 
@@ -25,7 +25,7 @@
           <text x="0" y="-8" class="stage-label" text-anchor="middle">Your Data</text>
           <rect x="-90" y="0" width="180" height="36" rx="6" class="stage-box" />
           <text x="0" y="23" class="code-text" text-anchor="middle">
-            <tspan class="syn-ns">std</tspan><tspan>::</tspan><tspan class="syn-type">vector</tspan><tspan>&lt;</tspan><tspan class="syn-kw">int</tspan><tspan>&gt;</tspan>
+            <tspan class="syn-ns">std</tspan><tspan>::</tspan><tspan class="syn-type">vector</tspan><tspan>&lt;</tspan><tspan class="syn-kw">float</tspan><tspan>&gt;</tspan>
           </text>
         </g>
 
@@ -34,8 +34,24 @@
         <path d="M 420 66 L 420 95" class="arrow-line" marker-end="url(#arrow)" />
 
         <!-- Stage 2: Two boxes side by side -->
-        <!-- Points box -->
+        <!-- Faces box -->
         <g transform="translate(160, 115)">
+          <text x="0" y="-8" class="stage-label" text-anchor="middle">Faces Range</text>
+          <rect x="-120" y="0" width="240" height="75" rx="6" class="stage-box stage-enriched" />
+          <text x="-110" y="18" class="code-text">
+            <tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">make_faces</tspan><tspan>&lt;</tspan><tspan class="syn-num">3</tspan><tspan>&gt;(</tspan><tspan class="syn-var">ids</tspan><tspan>)</tspan>
+          </text>
+          <line x1="-110" y1="26" x2="110" y2="26" class="divider-line" />
+          <text x="-110" y="42" class="code-small">
+            <tspan class="syn-kw">auto</tspan><tspan> [</tspan><tspan class="syn-var">a</tspan><tspan>,</tspan><tspan class="syn-var">b</tspan><tspan>,</tspan><tspan class="syn-var">c</tspan><tspan>] = </tspan><tspan class="syn-var">faces</tspan><tspan>[</tspan><tspan class="syn-var">i</tspan><tspan>];</tspan>
+          </text>
+          <text x="-110" y="56" class="code-small">
+            <tspan class="syn-ctrl">for</tspan><tspan> (</tspan><tspan class="syn-kw">auto</tspan><tspan class="syn-var"> f</tspan><tspan> : </tspan><tspan class="syn-var">faces</tspan><tspan>) { }</tspan>
+          </text>
+        </g>
+
+        <!-- Points box -->
+        <g transform="translate(420, 115)">
           <text x="0" y="-8" class="stage-label" text-anchor="middle">Points Range</text>
           <rect x="-120" y="0" width="240" height="75" rx="6" class="stage-box stage-enriched" />
           <text x="-110" y="18" class="code-text">
@@ -50,22 +66,6 @@
           </text>
         </g>
 
-        <!-- Faces box -->
-        <g transform="translate(420, 115)">
-          <text x="0" y="-8" class="stage-label" text-anchor="middle">Faces Range</text>
-          <rect x="-120" y="0" width="240" height="75" rx="6" class="stage-box stage-enriched" />
-          <text x="-110" y="18" class="code-text">
-            <tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">make_blocked_range</tspan><tspan>&lt;</tspan><tspan class="syn-num">3</tspan><tspan>&gt;(</tspan><tspan class="syn-var">ids</tspan><tspan>)</tspan>
-          </text>
-          <line x1="-110" y1="26" x2="110" y2="26" class="divider-line" />
-          <text x="-110" y="42" class="code-small">
-            <tspan class="syn-kw">auto</tspan><tspan> [</tspan><tspan class="syn-var">a</tspan><tspan>,</tspan><tspan class="syn-var">b</tspan><tspan>,</tspan><tspan class="syn-var">c</tspan><tspan>] = </tspan><tspan class="syn-var">faces</tspan><tspan>[</tspan><tspan class="syn-var">i</tspan><tspan>];</tspan>
-          </text>
-          <text x="-110" y="56" class="code-small">
-            <tspan class="syn-ctrl">for</tspan><tspan> (</tspan><tspan class="syn-kw">auto</tspan><tspan class="syn-var"> f</tspan><tspan> : </tspan><tspan class="syn-var">faces</tspan><tspan>) { }</tspan>
-          </text>
-        </g>
-
         <!-- Arrows converging to polygons -->
         <path d="M 220 195 L 255 240" class="arrow-line" marker-end="url(#arrow)" />
         <path d="M 360 195 L 325 240" class="arrow-line" marker-end="url(#arrow)" />
@@ -73,7 +73,7 @@
         <!-- Stage 3: Polygons -->
         <g transform="translate(290, 265)">
           <text x="0" y="-10" class="stage-label" text-anchor="middle">Composed Range</text>
-          <rect x="-165" y="0" width="330" height="115" rx="6" class="stage-box stage-enriched" />
+          <rect x="-165" y="0" width="330" height="90" rx="6" class="stage-box stage-enriched" />
           <text x="-155" y="18" class="code-text">
             <tspan class="syn-var">polygons</tspan><tspan> = </tspan><tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">make_polygons</tspan><tspan>(</tspan><tspan class="syn-var">faces</tspan><tspan>, </tspan><tspan class="syn-var">points</tspan><tspan>)</tspan>
           </text>
@@ -85,18 +85,15 @@
             <tspan class="syn-kw">auto</tspan><tspan> [</tspan><tspan class="syn-var">p0</tspan><tspan>, </tspan><tspan class="syn-var">p1</tspan><tspan>, </tspan><tspan class="syn-var">p2</tspan><tspan>] = </tspan><tspan class="syn-var">poly</tspan><tspan>;</tspan>
           </text>
           <text x="-155" y="72" class="code-small">
-            <tspan class="syn-kw">auto</tspan><tspan class="syn-var"> a</tspan><tspan> = </tspan><tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">area</tspan><tspan>(</tspan><tspan class="syn-var">poly</tspan><tspan>);</tspan>
-          </text>
-          <text x="-155" y="86" class="code-small">
-            <tspan class="syn-kw">auto</tspan><tspan class="syn-var"> n</tspan><tspan> = </tspan><tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">make_normal</tspan><tspan>(</tspan><tspan class="syn-var">poly</tspan><tspan>);</tspan>
+            <tspan class="syn-kw">auto</tspan><tspan> [</tspan><tspan class="syn-var">id0</tspan><tspan>, </tspan><tspan class="syn-var">id1</tspan><tspan>, </tspan><tspan class="syn-var">id2</tspan><tspan>] = </tspan><tspan class="syn-var">poly</tspan><tspan>.</tspan><tspan class="syn-fn">indices</tspan><tspan>();</tspan>
           </text>
         </g>
 
         <!-- Arrow down to big container -->
-        <path d="M 290 385 L 290 415" class="arrow-line" marker-end="url(#arrow)" />
+        <path d="M 290 360 L 290 401" class="arrow-line" marker-end="url(#arrow)" />
 
         <!-- Stage 4: Big container for Optional Structures + Attach Policies -->
-        <g transform="translate(290, 445)">
+        <g transform="translate(290, 431)">
           <text x="0" y="-10" class="stage-label" text-anchor="middle">Optional Structures</text>
           <!-- Outer dashed container -->
           <rect x="-240" y="0" width="480" height="280" rx="10" class="stage-box stage-container" />
@@ -147,11 +144,11 @@
         </g>
 
         <!-- Arrows branching to transforms from the big container -->
-        <path d="M 200 730 L 145 770" class="arrow-line" marker-end="url(#arrow)" />
-        <path d="M 380 730 L 435 770" class="arrow-line" marker-end="url(#arrow)" />
+        <path d="M 200 716 L 145 756" class="arrow-line" marker-end="url(#arrow)" />
+        <path d="M 380 716 L 435 756" class="arrow-line" marker-end="url(#arrow)" />
 
         <!-- Stage 5a: Form0 -->
-        <g transform="translate(145, 795)">
+        <g transform="translate(145, 781)">
           <text x="0" y="-10" class="stage-label" text-anchor="middle">+ Transform</text>
           <rect x="-130" y="0" width="260" height="28" rx="6" class="stage-box stage-enriched" />
           <text x="-120" y="19" class="code-small">
@@ -160,7 +157,7 @@
         </g>
 
         <!-- Stage 5b: Form1 -->
-        <g transform="translate(435, 795)">
+        <g transform="translate(435, 781)">
           <text x="0" y="-10" class="stage-label" text-anchor="middle">+ Transform</text>
           <rect x="-130" y="0" width="260" height="28" rx="6" class="stage-box stage-enriched" />
           <text x="-120" y="19" class="code-small">
@@ -169,11 +166,11 @@
         </g>
 
         <!-- Arrows converging to operations -->
-        <path d="M 205 828 L 250 863" class="arrow-line" marker-end="url(#arrow)" />
-        <path d="M 375 828 L 330 863" class="arrow-line" marker-end="url(#arrow)" />
+        <path d="M 205 814 L 250 849" class="arrow-line" marker-end="url(#arrow)" />
+        <path d="M 375 814 L 330 849" class="arrow-line" marker-end="url(#arrow)" />
 
         <!-- Stage 6: Algorithms between forms -->
-        <g transform="translate(290, 888)">
+        <g transform="translate(290, 874)">
           <text x="0" y="-10" class="stage-label" text-anchor="middle">Algorithms</text>
           <!-- Outer container -->
           <rect x="-150" y="0" width="300" height="145" rx="10" class="stage-box stage-container" />

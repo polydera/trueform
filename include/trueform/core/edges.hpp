@@ -13,6 +13,7 @@
 #pragma once
 
 #include "./range.hpp"
+#include "./views/blocked_range.hpp"
 #include <type_traits>
 
 namespace tf {
@@ -58,12 +59,21 @@ template <typename Policy, typename T> auto wrap_like(edges<Policy> &&, T &&t) {
 /// @ingroup core_ranges
 /// @brief Create an edges wrapper from a range.
 ///
+/// Automatically detects whether the input is a flat array of indices
+/// or already structured as pairs. Flat arrays are blocked by 2.
+///
 /// @tparam Range The input range type.
 /// @param r The range of edge data.
 /// @return An @ref tf::edges wrapping the range.
 template <typename Range> auto make_edges(Range &&r) {
   auto r0 = tf::make_range(r);
-  return tf::edges<decltype(r0)>{r0};
+  if constexpr (tf::static_size_v<decltype(r0[0])> == 2) {
+    // Already structured as pairs, just wrap
+    return tf::edges<decltype(r0)>{r0};
+  } else {
+    // Flat array of scalars, block by 2
+    return make_edges(tf::make_blocked_range<2>(r0));
+  }
 }
 
 template <typename Range> auto make_edges(edges<Range> r) -> edges<Range> {
