@@ -56,6 +56,11 @@ export default defineNuxtConfig({
     cloudflare: {
       deployConfig: true,
       nodeCompat: true,
+      pages: {
+        routes: {
+          exclude: ["/cpp/*", "/py/*", "/live-examples/*"],
+        },
+      },
     },
   },
 
