@@ -14,6 +14,7 @@
 #include "./base/segments.hpp"
 #include "./base/soup.hpp"
 #include "./edges.hpp"
+#include "./form.hpp"
 #include "./points.hpp"
 
 namespace tf {
@@ -22,11 +23,15 @@ namespace tf {
 /// @brief A range of line segments.
 ///
 /// Wraps a range policy providing access to segment primitives.
+/// Inherits from form to enable policy composition with spatial trees,
+/// frames, and other policies.
 ///
 /// @tparam Policy The underlying range policy.
-template <typename Policy> struct segments : Policy {
-  segments(const Policy &r) : Policy{r} {}
-  segments(Policy &&r) : Policy{std::move(r)} {}
+template <typename Policy>
+struct segments : form<coordinate_dims_v<Policy>, Policy> {
+  using base = form<coordinate_dims_v<Policy>, Policy>;
+  segments(const Policy &r) : base{r} {}
+  segments(Policy &&r) : base{std::move(r)} {}
 };
 
 template <typename Policy>

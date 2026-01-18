@@ -32,6 +32,13 @@ target_compile_options(test_duplicate_faces PRIVATE
   $<$<CXX_COMPILER_ID:MSVC>:/W4 /wd4458 /wd4701>
 )
 
+add_executable(test test.cpp)
+target_link_libraries(test PRIVATE tf::trueform)
+target_compile_options(test PRIVATE
+  $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Wpedantic>
+  $<$<CXX_COMPILER_ID:MSVC>:/W4 /wd4458 /wd4701>
+)
+
 add_custom_target(trueform_tests
   DEPENDS
     boolean_topology_test

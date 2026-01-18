@@ -11,9 +11,10 @@
 * Author: Žiga Sajovic
 */
 #pragma once
+#include "../../core/frame_of.hpp"
 #include "../../core/policy/id.hpp"
 #include "../../core/transformed.hpp"
-#include "../form.hpp"
+#include "../../core/form.hpp"
 #include "../tree/self_search.hpp"
 #include <atomic>
 
@@ -58,8 +59,8 @@ auto search_self(const tf::form<Dims, Policy> &form, const F0 &check_bvs,
                  int parallelism_depth = 6) -> bool {
   using Index = typename Policy::index_type;
   auto bv_f = [&](const auto &bv0, const auto &bv1) -> bool {
-    return check_bvs(tf::transformed(bv0, form.transformation()),
-                     tf::transformed(bv1, form.transformation()));
+    return check_bvs(tf::transformed(bv0, tf::transformation_of(form)),
+                     tf::transformed(bv1, tf::transformation_of(form)));
   };
   return tf::spatial::impl::self_search(
       form.tree(), bv_f,
@@ -68,11 +69,11 @@ auto search_self(const tf::form<Dims, Policy> &form, const F0 &check_bvs,
         for (Index i0 = 0; i0 < Index(ids0.size()); ++i0) {
           auto id0 = ids0[i0];
           auto obj0 = tf::tag_id(
-              id0, tf::transformed(form[id0], form.transformation()));
+              id0, tf::transformed(form[id0], tf::transformation_of(form)));
           for (Index i1 = (i0 + 1) * is_self; i1 < Index(ids1.size()); ++i1) {
             auto id1 = ids1[i1];
             auto obj1 = tf::tag_id(
-                id1, tf::transformed(form[id1], form.transformation()));
+                id1, tf::transformed(form[id1], tf::transformation_of(form)));
             if (bv_f(form.tree().primitive_aabbs()[id0],
                      form.tree().primitive_aabbs()[id1]) &&
                 primitive_apply(obj0, obj1))
@@ -128,10 +129,10 @@ auto search_self_form_dispatch(const tf::form<Dims, Policy> &form,
                     decltype(primitive_apply(
                         tf::tag_id(Index(0),
                                    tf::transformed(form[Index(0)],
-                                                   form.transformation())),
+                                                   tf::transformation_of(form))),
                         tf::tag_id(Index(0),
                                    tf::transformed(form[Index(0)],
-                                                   form.transformation())))),
+                                                   tf::transformation_of(form))))),
                     void>) {
     std::atomic_bool flag{false};
     auto abort_f = [&flag] { return flag.load(); };

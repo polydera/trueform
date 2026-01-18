@@ -187,7 +187,7 @@ auto fit_obb_alignment(const tf::points<Policy0> &X_,
               for (std::size_t i = 0; i < N_t::value; ++i) {
                 auto query_pt = tf::transformed(pt_world, candidates[i]);
                 auto [id, cpt] =
-                    tf::neighbor_search(tf::make_form(Y_), query_pt);
+                    tf::neighbor_search(Y_, query_pt);
                 errs[i] = cpt.metric;
               }
               return errs;

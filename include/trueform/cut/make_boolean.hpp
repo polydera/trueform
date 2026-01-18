@@ -48,7 +48,7 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
             std::common_type_t<typename std::decay_t<decltype(p0)>::index_type,
                                typename std::decay_t<decltype(p1)>::index_type>;
         tf::intersections_between_polygons<Index, double, 3> ibp;
-        ibp.build(tf::make_form(p0), tf::make_form(p1));
+        ibp.build(p0, p1);
         tf::tagged_cut_faces<Index> tcf;
         tcf.build(p0, p1, ibp);
         return tf::cut::make_boolean<int>(p0, p1, ibp, tcf,
@@ -75,7 +75,7 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
             std::common_type_t<typename std::decay_t<decltype(p0)>::index_type,
                                typename std::decay_t<decltype(p1)>::index_type>;
         tf::intersections_between_polygons<Index, double, 3> ibp;
-        ibp.build(tf::make_form(p0), tf::make_form(p1));
+        ibp.build(p0, p1);
         tf::tagged_cut_faces<Index> tcf;
         tcf.build(p0, p1, ibp);
         return tf::cut::make_boolean<int>(p0, p1, ibp, tcf,
@@ -103,7 +103,7 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
             std::common_type_t<typename std::decay_t<decltype(p0)>::index_type,
                                typename std::decay_t<decltype(p1)>::index_type>;
         tf::intersections_between_polygons<Index, double, 3> ibp;
-        ibp.build(tf::make_form(p0), tf::make_form(p1));
+        ibp.build(p0, p1);
         tf::tagged_cut_faces<Index> tcf;
         tcf.build(p0, p1, ibp);
         auto res = tf::cut::make_boolean<int>(
@@ -145,7 +145,7 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
             std::common_type_t<typename std::decay_t<decltype(p0)>::index_type,
                                typename std::decay_t<decltype(p1)>::index_type>;
         tf::intersections_between_polygons<Index, double, 3> ibp;
-        ibp.build(tf::make_form(p0), tf::make_form(p1));
+        ibp.build(p0, p1);
         tf::tagged_cut_faces<Index> tcf;
         tcf.build(p0, p1, ibp);
         auto [res_mesh, res_labels, res_im] = tf::cut::make_boolean<int>(

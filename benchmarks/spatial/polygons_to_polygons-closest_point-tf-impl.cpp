@@ -24,7 +24,7 @@ int run_polygons_to_polygons_closest_point_tf_benchmark(
 
     tf::aabb_tree<int, float, 3> tree_aabb;
     tree_aabb.build(polygons.polygons(), config);
-    auto form_aabb = tf::make_form(tree_aabb, polygons.polygons());
+    auto form_aabb = polygons.polygons() | tf::tag(tree_aabb);
 
     auto time_aabb = benchmark::mean_time_of(
         [&]() {
@@ -36,7 +36,7 @@ int run_polygons_to_polygons_closest_point_tf_benchmark(
         },
         [&]() {
           auto cpt = tf::neighbor_search(
-              form_aabb, tf::make_form(frame, tree_aabb, polygons.polygons()));
+              form_aabb, polygons.polygons() | tf::tag(tree_aabb) | tf::tag(frame));
           benchmark::do_not_optimize(cpt);
         },
         n_samples);
@@ -45,7 +45,7 @@ int run_polygons_to_polygons_closest_point_tf_benchmark(
 
     tf::obb_tree<int, float, 3> tree_obb;
     tree_obb.build(polygons.polygons(), config);
-    auto form_obb = tf::make_form(tree_obb, polygons.polygons());
+    auto form_obb = polygons.polygons() | tf::tag(tree_obb);
 
     auto time_obb = benchmark::mean_time_of(
         [&]() {
@@ -57,7 +57,7 @@ int run_polygons_to_polygons_closest_point_tf_benchmark(
         },
         [&]() {
           auto cpt = tf::neighbor_search(
-              form_obb, tf::make_form(frame, tree_obb, polygons.polygons()));
+              form_obb, polygons.polygons() | tf::tag(tree_obb) | tf::tag(frame));
           benchmark::do_not_optimize(cpt);
         },
         n_samples);
@@ -66,7 +66,7 @@ int run_polygons_to_polygons_closest_point_tf_benchmark(
 
     tf::obbrss_tree<int, float, 3> tree_obbrss;
     tree_obbrss.build(polygons.polygons(), config);
-    auto form_obbrss = tf::make_form(tree_obbrss, polygons.polygons());
+    auto form_obbrss = polygons.polygons() | tf::tag(tree_obbrss);
 
     auto time_obbrss = benchmark::mean_time_of(
         [&]() {
@@ -78,7 +78,7 @@ int run_polygons_to_polygons_closest_point_tf_benchmark(
         },
         [&]() {
           auto cpt = tf::neighbor_search(
-              form_obbrss, tf::make_form(frame, tree_obbrss, polygons.polygons()));
+              form_obbrss, polygons.polygons() | tf::tag(tree_obbrss) | tf::tag(frame));
           benchmark::do_not_optimize(cpt);
         },
         n_samples);

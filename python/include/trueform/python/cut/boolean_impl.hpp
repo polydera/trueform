@@ -27,14 +27,14 @@ auto boolean(mesh_wrapper<Index0, RealT, Ngon0, Dims> &form_wrapper0,
              tf::boolean_op op) {
   bool has0 = form_wrapper0.has_transformation();
   bool has1 = form_wrapper1.has_transformation();
-  auto form0 = tf::make_form(form_wrapper0.tree(),
-                             form_wrapper0.make_primitive_range() |
-                                 tf::tag(form_wrapper0.manifold_edge_link()) |
-                                 tf::tag(form_wrapper0.face_membership()));
-  auto form1 = tf::make_form(form_wrapper1.tree(),
-                             form_wrapper1.make_primitive_range() |
-                                 tf::tag(form_wrapper1.manifold_edge_link()) |
-                                 tf::tag(form_wrapper1.face_membership()));
+  auto form0 = form_wrapper0.make_primitive_range() |
+               tf::tag(form_wrapper0.manifold_edge_link()) |
+               tf::tag(form_wrapper0.face_membership()) |
+               tf::tag(form_wrapper0.tree());
+  auto form1 = form_wrapper1.make_primitive_range() |
+               tf::tag(form_wrapper1.manifold_edge_link()) |
+               tf::tag(form_wrapper1.face_membership()) |
+               tf::tag(form_wrapper1.tree());
   auto make_return = [&op](auto &&form0, auto form1) {
     auto [result_mesh, labels] = tf::make_boolean(form0, form1, op);
     // Extract mesh as (faces, points) - move ownership
@@ -64,14 +64,14 @@ auto boolean(mesh_wrapper<Index0, RealT, Ngon0, Dims> &form_wrapper0,
              tf::boolean_op op, tf::return_curves_t) {
   bool has0 = form_wrapper0.has_transformation();
   bool has1 = form_wrapper1.has_transformation();
-  auto form0 = tf::make_form(form_wrapper0.tree(),
-                             form_wrapper0.make_primitive_range() |
-                                 tf::tag(form_wrapper0.manifold_edge_link()) |
-                                 tf::tag(form_wrapper0.face_membership()));
-  auto form1 = tf::make_form(form_wrapper1.tree(),
-                             form_wrapper1.make_primitive_range() |
-                                 tf::tag(form_wrapper1.manifold_edge_link()) |
-                                 tf::tag(form_wrapper1.face_membership()));
+  auto form0 = form_wrapper0.make_primitive_range() |
+               tf::tag(form_wrapper0.manifold_edge_link()) |
+               tf::tag(form_wrapper0.face_membership()) |
+               tf::tag(form_wrapper0.tree());
+  auto form1 = form_wrapper1.make_primitive_range() |
+               tf::tag(form_wrapper1.manifold_edge_link()) |
+               tf::tag(form_wrapper1.face_membership()) |
+               tf::tag(form_wrapper1.tree());
   auto make_return = [&op](auto &&form0, auto form1) {
     auto [result_mesh, labels, curves] =
         tf::make_boolean(form0, form1, op, tf::return_curves);

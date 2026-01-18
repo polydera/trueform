@@ -18,8 +18,7 @@ tf::tree<int, float, 3> point_tree(pts, tf::config_tree(4, 4));
 auto query_pt = tf::random_point<float, 3>();
 std::array<tf::nearest_neighbor<int, float, 3>, 10> knn_buffer;
 auto knn = tf::neighbor_search(
-    tf::make_form( // optional_transformation,
-        point_tree, pts),
+    pts | tf::tag(point_tree), // optional: | tf::tag(frame)
     query_pt,
     tf::make_nearest_neighbors(knn_buffer.begin(), 10 /*, search_radius*/));
 for (auto [primitive_id, metric_point] : knn) {
@@ -40,9 +39,9 @@ auto triangles = tf::make_polygons(
 tf::tree<int, float, 3> tree(triangles, tf::config_tree(4, 4));
 std::vector<std::pair<int, int>> intersecting_primitives;
 tf::gather_ids(
-    tf::make_form(tree, triangles),
-    tf::make_form( // M.dot(x - pts[0]) + pts[10]
-        tf::random_frame_at(pts[0], pts[10]), tree, triangles),
+    triangles | tf::tag(tree),
+    triangles | tf::tag(tree) // M.dot(x - pts[0]) + pts[10]
+        | tf::tag(tf::random_frame_at(pts[0], pts[10])),
     tf::intersects_f, std::back_inserter(intersecting_primitives));
 ```
 <p float="left">
@@ -94,7 +93,7 @@ float aim_cos_angle = 0.95f;
 
 tf::search(
     // The form applies the dynamic frame to the static tree and emitters.
-    tf::make_form(frame, emitter_tree, emitters),
+    emitters | tf::tag(emitter_tree) | tf::tag(frame),
     // Broad-phase: Quickly cull any nodes outside the target radius.
     [&](const auto &aabb) {
         return tf::distance2(aabb, query_pt) < aim_radius2;
@@ -709,7 +708,7 @@ tree.build<tf::spatial::nth_element>(primitive_range, tf::config_tree(4, 4));
 
 > primitive → primitive_range → **form**
 
-A `tf::form` is a composite of a [primitive_range](#primitive-ranges), a [spatial structure](#spatial-structures) and a [frame](#transformations-and-frames) (the frame may be omittted). It is used for spatial queries.
+Forms (`points`, `segments`, `polygons`) can have trees attached via pipe syntax. With a tree attached, they become queryable spatial structures.
 
 ```c++
 std::vector<float> raw_pts;
@@ -717,9 +716,14 @@ auto pts = tf::make_points<3>(raw_pts)
            | tf::tag_id("point cloud");
 tf::tree<int, float, 3> tree(pts, tf::config_tree(4, 4));
 tf::frame<float, 3> frame = tf::random_transformation<float, 3>();
-auto form = tf::make_form(frame, tree, pts);
+
+// Attach tree to form
+auto form = pts | tf::tag(tree);
+
+// Attach tree and frame (for positioning)
+auto positioned_form = pts | tf::tag(tree) | tf::tag(frame);
 ```
-A form behaves like the [primitive range](#primitive-ranges) it wraps:
+A form behaves like the primitive range:
 ```c++
 auto pt0 = form[0];
 ```

@@ -26,7 +26,7 @@ int run_point_cloud_knn_tf_benchmark(const std::vector<std::string> &mesh_paths,
 
     tf::aabb_tree<int, float, 3> tree_aabb;
     tree_aabb.build(points, config);
-    auto form_aabb = tf::make_form(tree_aabb, points);
+    auto form_aabb = points | tf::tag(tree_aabb);
 
     for (int k = 1; k <= max_k; ++k) {
       auto time = benchmark::mean_time_of(
@@ -45,7 +45,7 @@ int run_point_cloud_knn_tf_benchmark(const std::vector<std::string> &mesh_paths,
 
     tf::obb_tree<int, float, 3> tree_obb;
     tree_obb.build(points, config);
-    auto form_obb = tf::make_form(tree_obb, points);
+    auto form_obb = points | tf::tag(tree_obb);
 
     for (int k = 1; k <= max_k; ++k) {
       auto time = benchmark::mean_time_of(
@@ -64,7 +64,7 @@ int run_point_cloud_knn_tf_benchmark(const std::vector<std::string> &mesh_paths,
 
     tf::obbrss_tree<int, float, 3> tree_obbrss;
     tree_obbrss.build(points, config);
-    auto form_obbrss = tf::make_form(tree_obbrss, points);
+    auto form_obbrss = points | tf::tag(tree_obbrss);
 
     for (int k = 1; k <= max_k; ++k) {
       auto time = benchmark::mean_time_of(

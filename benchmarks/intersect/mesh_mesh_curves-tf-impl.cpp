@@ -27,7 +27,8 @@ int run_mesh_mesh_curves_tf_benchmark(
     tf::manifold_edge_link<int, 3> mel;
     mel.build(polygons.faces(), fm);
     tf::aabb_tree<int, float, 3> tree(polygons, tf::config_tree(4, 4));
-    auto form1 = tf::make_form(tree, polygons | tf::tag(mel) | tf::tag(fm));
+    auto tagged = polygons | tf::tag(mel) | tf::tag(fm);
+    auto form1 = tagged | tf::tag(tree);
 
     // Rotation around centroid, using smallest axis
     auto aabb = tf::aabb_from(polygons);
@@ -49,8 +50,7 @@ int run_mesh_mesh_curves_tf_benchmark(
           ++iter;
         },
         [&]() {
-          auto form2 =
-              tf::make_form(frame, tree, polygons | tf::tag(mel) | tf::tag(fm));
+          auto form2 = tagged | tf::tag(tree) | tf::tag(frame);
           auto curves = tf::make_intersection_curves(form1, form2);
           benchmark::do_not_optimize(curves);
         },

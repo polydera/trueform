@@ -24,10 +24,10 @@ namespace tf::py {
 template <typename Index0, typename RealT, std::size_t Ngon0, std::size_t Dims>
 auto self_intersection_curves(
     mesh_wrapper<Index0, RealT, Ngon0, Dims> &form_wrapper) {
-  auto form0 = tf::make_form(form_wrapper.tree(),
-                             form_wrapper.make_primitive_range() |
-                                 tf::tag(form_wrapper.manifold_edge_link()) |
-                                 tf::tag(form_wrapper.face_membership()));
+  auto form0 = form_wrapper.make_primitive_range() |
+               tf::tag(form_wrapper.manifold_edge_link()) |
+               tf::tag(form_wrapper.face_membership()) |
+               tf::tag(form_wrapper.tree());
   auto curves = tf::make_self_intersection_curves(form0);
   auto [paths, c_points] = make_numpy_array(std::move(curves));
   return nanobind::make_tuple(nanobind::make_tuple(paths.first, paths.second),

@@ -134,8 +134,7 @@ public:
       auto &inst = get_instances()[*instance_id];
 
       // Get the cell/face that was hit
-      auto form =
-          tf::make_form(inst.frame, data.tree, data.polygons.polygons());
+      auto form = data.polygons.polygons() | tf::tag(data.tree) | tf::tag(inst.frame);
       auto ray_result = tf::ray_cast(ray, form, tf::ray_config<float>{});
 
       if (ray_result) {

@@ -18,7 +18,8 @@
 #include "../core/algorithm/parallel_copy.hpp"
 #include "../core/local_buffer.hpp"
 #include "../core/views/zip.hpp"
-#include "../spatial/form.hpp"
+#include "../core/polygons.hpp"
+#include "../spatial/policy/tree.hpp"
 #include "../spatial/search_self.hpp"
 #include "../topology/edge_representation.hpp"
 #include "../topology/policy/face_membership.hpp"
@@ -40,7 +41,7 @@ namespace tf {
 /// (excluding adjacent faces). Use @ref tf::make_self_intersection_curves
 /// for high-level curve extraction.
 ///
-/// Use @ref tf::make_form to create forms with the required tree policy
+/// Use pipe syntax with @ref tf::tag to add the required tree policy
 /// (@ref tf::tree or @ref tf::mod_tree) and topology policies
 /// (@ref tf::face_membership and @ref tf::manifold_edge_link).
 ///
@@ -50,7 +51,9 @@ namespace tf {
 template <typename Index, typename RealT, std::size_t Dims>
 class intersections_within_polygons {
 public:
-  template <typename Policy> auto build(const tf::form<Dims, Policy> &_form) {
+  template <typename Policy> auto build(const tf::polygons<Policy> &_form) {
+    static_assert(tf::has_tree_policy<Policy>,
+                  "Use polygons | tf::tag(tree)");
     static_assert(tf::has_face_membership_policy<Policy>,
                   "Use polygons | tf::tag(face_membership)");
     static_assert(tf::has_manifold_edge_link_policy<Policy>,
@@ -124,7 +127,7 @@ private:
   }
 
   template <typename Policy>
-  auto compute_buffers(const tf::form<Dims, Policy> &form) {
+  auto compute_buffers(const tf::polygons<Policy> &form) {
     auto make_handle = [&](auto poly, const auto &fe, const auto &mel) {
       return tf::intersect::polygon::make_handle(
           poly, poly.id(),

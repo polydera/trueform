@@ -13,6 +13,7 @@
 #pragma once
 
 #include "../core/intersects.hpp"
+#include "./policy/tree.hpp"
 #include "./search.hpp"
 
 namespace tf {
@@ -28,6 +29,10 @@ namespace tf {
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const tf::form<Dims, Policy0> &form0,
                 const tf::form<Dims, Policy1> &form1) -> bool {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "First form must have a tree policy attached. Use: form | tf::tag(tree)");
+  static_assert(tf::has_tree_policy<Policy1>,
+                "Second form must have a tree policy attached. Use: form | tf::tag(tree)");
   return tf::search(form0, form1, tf::intersects_f, tf::intersects_f);
 }
 
@@ -40,6 +45,8 @@ auto intersects(const tf::form<Dims, Policy0> &form0,
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const tf::form<Dims, Policy0> &form,
                 const tf::point_like<Dims, Policy1> &obj) -> bool {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   return tf::search(
       form, [&](const auto &aabb) { return intersects(aabb, obj); },
       [&](const auto &other) { return tf::intersects(other, obj); });
@@ -50,6 +57,8 @@ auto intersects(const tf::form<Dims, Policy0> &form,
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const tf::form<Dims, Policy0> &form,
                 const tf::polygon<Dims, Policy1> &obj) -> bool {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   auto obj_aabb = tf::aabb_from(obj);
   return tf::search(
       form, [&](const auto &aabb) { return intersects(aabb, obj_aabb); },
@@ -61,6 +70,8 @@ auto intersects(const tf::form<Dims, Policy0> &form,
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const tf::form<Dims, Policy0> &form,
                 const tf::segment<Dims, Policy1> &obj) -> bool {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   return tf::search(
       form, [&](const auto &aabb) { return intersects(aabb, obj); },
       [&](const auto &other) { return tf::intersects(other, obj); });
@@ -71,6 +82,8 @@ auto intersects(const tf::form<Dims, Policy0> &form,
 template <std::size_t Dims, typename Policy0, typename Policy>
 auto intersects(const tf::form<Dims, Policy0> &form,
                 const tf::ray_like<Dims, Policy> &obj) -> bool {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   return tf::search(
       form, [&](const auto &aabb) { return intersects(aabb, obj); },
       [&](const auto &other) { return tf::intersects(other, obj); });
@@ -81,6 +94,8 @@ auto intersects(const tf::form<Dims, Policy0> &form,
 template <std::size_t Dims, typename Policy0, typename Policy>
 auto intersects(const tf::form<Dims, Policy0> &form,
                 const tf::line_like<Dims, Policy> &obj) -> bool {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   return tf::search(
       form, [&](const auto &aabb) { return intersects(aabb, obj); },
       [&](const auto &other) { return tf::intersects(other, obj); });
@@ -91,6 +106,8 @@ auto intersects(const tf::form<Dims, Policy0> &form,
 template <std::size_t Dims, typename Policy0, typename Policy>
 auto intersects(const tf::form<Dims, Policy0> &form,
                 const tf::plane_like<Dims, Policy> &obj) -> bool {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   return tf::search(
       form, [&](const auto &aabb) { return intersects(aabb, obj); },
       [&](const auto &other) { return tf::intersects(other, obj); });

@@ -73,7 +73,7 @@ auto embedded_self_intersection_curves(const tf::polygons<Policy> &_polygons) {
   } else {
     using Index = std::common_type_t<typename Policy::index_type>;
     tf::intersections_within_polygons<Index, double, 3> iwp;
-    iwp.build(tf::make_form(_polygons));
+    iwp.build(_polygons);
     tf::cut_faces<Index> cf;
     cf.build(_polygons, iwp);
     return tf::cut::embedded_self_intersection_curves<Index>(
@@ -131,7 +131,7 @@ auto embedded_self_intersection_curves(const tf::polygons<Policy> &_polygons,
   } else {
     using Index = std::common_type_t<typename Policy::index_type>;
     tf::intersections_within_polygons<Index, double, 3> iwp;
-    iwp.build(tf::make_form(_polygons));
+    iwp.build(_polygons);
     tf::cut_faces<Index> cf;
     cf.build(_polygons, iwp);
     auto res = tf::cut::embedded_self_intersection_curves<Index>(

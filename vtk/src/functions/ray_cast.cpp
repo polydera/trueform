@@ -11,6 +11,7 @@
 * Author: Žiga Sajovic
 */
 #include <trueform/spatial/ray_cast.hpp>
+#include <trueform/spatial/policy.hpp>
 #include <trueform/vtk/functions/ray_cast.hpp>
 #include <vtkMatrix4x4.h>
 
@@ -22,7 +23,7 @@ auto ray_cast(tf::ray<float, 3> ray, polydata *input) -> ray_cast_result {
 
 auto ray_cast(tf::ray<float, 3> ray, polydata *input,
               tf::ray_config<float> config) -> ray_cast_result {
-  auto form = tf::make_form(input->poly_tree(), input->polygons());
+  auto form = input->polygons() | tf::tag(input->poly_tree());
   return tf::ray_cast(ray, form, config);
 }
 
@@ -36,7 +37,7 @@ auto ray_cast(tf::ray<float, 3> ray, std::pair<polydata *, vtkMatrix4x4 *> input
   auto [mesh, matrix] = input;
   tf::frame<double, 3> frame;
   frame.fill(matrix->GetData());
-  auto form = tf::make_form(frame, mesh->poly_tree(), mesh->polygons());
+  auto form = mesh->polygons() | tf::tag(mesh->poly_tree()) | tf::tag(frame);
   return tf::ray_cast(ray, form, config);
 }
 

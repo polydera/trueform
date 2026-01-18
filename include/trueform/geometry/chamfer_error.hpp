@@ -50,7 +50,7 @@ auto chamfer_error(const tf::points<Policy0> &A, const tf::points<Policy1> &B) {
           return acc + arg;
         } else {
           auto query = tf::transformed(arg, tf::frame_of(A));
-          auto [id, cpt] = tf::neighbor_search(tf::make_form(B), query);
+          auto [id, cpt] = tf::neighbor_search(B, query);
           return acc + tf::sqrt(cpt.metric);
         }
       },

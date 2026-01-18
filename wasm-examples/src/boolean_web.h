@@ -3,7 +3,8 @@
 #include "trueform/geometry/make_sphere_mesh.hpp"
 #include "trueform/io/read_stl.hpp"
 #include "trueform/random.hpp"
-#include "trueform/spatial/form.hpp"
+#include "trueform/core/form.hpp"
+#include "trueform/spatial/policy/tree.hpp"
 #include "trueform/spatial/ray_cast.hpp"
 #include "trueform/trueform.hpp"
 #include "main.h"
@@ -24,12 +25,14 @@ public:
     auto &data0 = mesh_data_store[inst0.mesh_data_id];
     auto &data1 = mesh_data_store[inst1.mesh_data_id];
 
-    const auto form0 =
-        tf::make_form(inst0.frame, data0.tree, data0.polygons.polygons()) |
-        tf::tag(*data0.face_membership) | tf::tag(*data0.manifold_edge_link);
-    const auto form1 =
-        tf::make_form(inst1.frame, data1.tree, data1.polygons.polygons()) |
-        tf::tag(*data1.face_membership) | tf::tag(*data1.manifold_edge_link);
+    const auto form0 = data0.polygons.polygons() |
+                       tf::tag(*data0.face_membership) |
+                       tf::tag(*data0.manifold_edge_link) |
+                       tf::tag(data0.tree) | tf::tag(inst0.frame);
+    const auto form1 = data1.polygons.polygons() |
+                       tf::tag(*data1.face_membership) |
+                       tf::tag(*data1.manifold_edge_link) |
+                       tf::tag(data1.tree) | tf::tag(inst1.frame);
 
     return tf::make_boolean(form0, form1, tf::boolean_op::left_difference,
                             tf::return_curves);

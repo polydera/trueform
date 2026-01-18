@@ -11,10 +11,11 @@
 * Author: Žiga Sajovic
 */
 #pragma once
+#include "../../core/frame_of.hpp"
 #include "../../core/policy/buffer.hpp"
 #include "../../core/policy/id.hpp"
 #include "../../core/transformed.hpp"
-#include "../form.hpp"
+#include "../../core/form.hpp"
 #include "../make_buffer_for_form.hpp"
 #include "../tree/dual_search.hpp"
 #include "../tree/search.hpp"
@@ -79,23 +80,23 @@ auto search(const tf::form<Dims, Policy> &form, const F0 &check_bv,
   return tf::spatial::impl::search(
       form.tree(),
       [&check_bv, &form](const auto &bv) {
-        return check_bv(tf::transformed(bv, form.frame()));
+        return check_bv(tf::transformed(bv, tf::frame_of(form)));
       },
       [primitive_apply, &form, &check_bv, &buff](const auto &r,
                                                   const auto &primitive_aabbs) {
         for (const auto &id : r)
-          if (check_bv(tf::transformed(primitive_aabbs[id], form.frame()))) {
+          if (check_bv(tf::transformed(primitive_aabbs[id], tf::frame_of(form)))) {
             if constexpr (std::is_same_v<decltype(primitive_apply(tf::tag_id(
                                              id, tf::transformed(
                                                      form[id] | tf::tag(buff),
-                                                     form.frame())))),
+                                                     tf::frame_of(form))))),
                                          void>) {
               primitive_apply(tf::tag_id(
-                  id, tf::transformed(form[id] | tf::tag(buff), form.frame())));
+                  id, tf::transformed(form[id] | tf::tag(buff), tf::frame_of(form))));
             } else {
               if (primitive_apply(
                       tf::tag_id(id, tf::transformed(form[id] | tf::tag(buff),
-                                                     form.frame()))))
+                                                     tf::frame_of(form)))))
                 return true;
             }
           }
@@ -138,8 +139,8 @@ auto search(const tf::form<Dims, Policy0> &form0,
             const F1 &primitive_apply, const F2 &abort,
             int parallelism_depth = 6) -> bool {
   auto bv_f = [&](const auto &bv0, const auto &bv1) -> bool {
-    return check_bvs(tf::transformed(bv0, form0.frame()),
-                     tf::transformed(bv1, form1.frame()));
+    return check_bvs(tf::transformed(bv0, tf::frame_of(form0)),
+                     tf::transformed(bv1, tf::frame_of(form1)));
   };
   auto buff0 = make_local_buffer_for_form(form0);
   auto buff1 = make_local_buffer_for_form(form1);
@@ -150,13 +151,13 @@ auto search(const tf::form<Dims, Policy0> &form0,
                const auto &aabbs1) {
         for (const auto &id0 : r0) {
           auto obj0 = tf::tag_id(
-              id0, tf::transformed(form0[id0] | tf::tag(buff0), form0.frame()));
+              id0, tf::transformed(form0[id0] | tf::tag(buff0), tf::frame_of(form0)));
           for (const auto &id1 : r1)
             if (bv_f(aabbs0[id0], aabbs1[id1]) &&
                 primitive_apply(
                     obj0,
                     tf::tag_id(id1, tf::transformed(form1[id1] | tf::tag(buff1),
-                                                    form1.frame()))))
+                                                    tf::frame_of(form1)))))
               return true;
         }
         return false;
@@ -211,10 +212,10 @@ auto dual_form_search_dispatch(const tf::form<Dims, Policy0> &form0,
 
   using buff0_t = decltype(tf::core::make_local_buffer_for_transformed(
       std::declval<const tf::form<Dims, Policy0> &>()[Index0(0)],
-      std::declval<const tf::form<Dims, Policy0> &>().frame()));
+      tf::frame_of(std::declval<const tf::form<Dims, Policy0> &>())));
   using buff1_t = decltype(tf::core::make_local_buffer_for_transformed(
       std::declval<const tf::form<Dims, Policy1> &>()[Index1(0)],
-      std::declval<const tf::form<Dims, Policy1> &>().frame()));
+      tf::frame_of(std::declval<const tf::form<Dims, Policy1> &>())));
   constexpr bool returns_bool = !std::is_same_v<
       decltype(std::declval<const F1 &>()(
           tf::tag_id(
@@ -222,13 +223,13 @@ auto dual_form_search_dispatch(const tf::form<Dims, Policy0> &form0,
               tf::transformed(
                   std::declval<const tf::form<Dims, Policy0> &>()[Index0(0)] |
                       tf::tag(std::declval<buff0_t &>()),
-                  std::declval<const tf::form<Dims, Policy0> &>().frame())),
+                  tf::frame_of(std::declval<const tf::form<Dims, Policy0> &>()))),
           tf::tag_id(
               Index1(0),
               tf::transformed(
                   std::declval<const tf::form<Dims, Policy1> &>()[Index1(0)] |
                       tf::tag(std::declval<buff1_t &>()),
-                  std::declval<const tf::form<Dims, Policy1> &>().frame())))),
+                  tf::frame_of(std::declval<const tf::form<Dims, Policy1> &>()))))),
       void>;
 
   if constexpr (returns_bool) {

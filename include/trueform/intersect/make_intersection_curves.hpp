@@ -22,8 +22,8 @@ namespace tf {
 /// @brief Extract intersection curves where two meshes intersect.
 ///
 /// Computes the geometric intersection between two polygon meshes and
-/// returns the result as connected curves. Use @ref tf::make_form to create
-/// forms with the required tree policy (@ref tf::tree or @ref tf::mod_tree)
+/// returns the result as connected curves. Use pipe syntax with @ref tf::tag
+/// to add the required tree policy (@ref tf::tree or @ref tf::mod_tree)
 /// and topology policies (@ref tf::face_membership and @ref tf::manifold_edge_link).
 ///
 /// @tparam Dims The number of dimensions.
@@ -34,9 +34,9 @@ namespace tf {
 /// @return A @ref tf::curves_buffer containing connected intersection curves.
 ///
 /// @see tf::intersections_between_polygons for low-level access.
-template <std::size_t Dims, typename Policy0, typename Policy1>
-auto make_intersection_curves(const tf::form<Dims, Policy0> &form0,
-                              const tf::form<Dims, Policy1> &form1) {
+template <typename Policy0, typename Policy1>
+auto make_intersection_curves(const tf::polygons<Policy0> &form0,
+                              const tf::polygons<Policy1> &form1) {
   using Index =
       std::common_type_t<typename Policy0::index_type, typename Policy1::index_type>;
   tf::intersections_between_polygons<Index, double,

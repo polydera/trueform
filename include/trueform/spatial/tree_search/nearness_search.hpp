@@ -13,9 +13,10 @@
 #pragma once
 
 #include "../../core/coordinate_type.hpp"
+#include "../../core/frame_of.hpp"
 #include "../../core/policy/buffer.hpp"
 #include "../../core/transformed.hpp"
-#include "../form.hpp"
+#include "../../core/form.hpp"
 #include "../make_buffer_for_form.hpp"
 #include "../nearest_neighbors.hpp"
 #include "../tree/dual_proximity.hpp"
@@ -172,11 +173,11 @@ auto nearness_search(const tf::form<Dims, Policy0> &form, const F0 &bv_metric,
   return nearness_search(
       form.tree(),
       [&](const auto &bv) {
-        return bv_metric(tf::transformed(bv, form.frame()));
+        return bv_metric(tf::transformed(bv, tf::frame_of(form)));
       },
       [&](auto id) {
         return closest_point_f(
-            tf::transformed(form[id] | tf::tag(buff), form.frame()));
+            tf::transformed(form[id] | tf::tag(buff), tf::frame_of(form)));
       });
 }
 
@@ -188,11 +189,11 @@ auto nearness_search(const tf::form<Dims, Policy0> &form, const F0 &bv_metric,
   return nearness_search(
       form.tree(),
       [&](const auto &bv) {
-        return bv_metric(tf::transformed(bv, form.frame()));
+        return bv_metric(tf::transformed(bv, tf::frame_of(form)));
       },
       [&](auto id) {
         return closest_point_f(
-            tf::transformed(form[id] | tf::tag(buff), form.frame()));
+            tf::transformed(form[id] | tf::tag(buff), tf::frame_of(form)));
       },
       radius);
 }
@@ -207,11 +208,11 @@ auto nearness_search(const tf::form<Dims, Policy0> &form, const F0 &bv_metric,
   nearness_search(
       form.tree(),
       [&](const auto &bv) {
-        return bv_metric(tf::transformed(bv, form.frame()));
+        return bv_metric(tf::transformed(bv, tf::frame_of(form)));
       },
       [&](auto id) {
         return closest_point_f(
-            tf::transformed(form[id] | tf::tag(buff), form.frame()));
+            tf::transformed(form[id] | tf::tag(buff), tf::frame_of(form)));
       },
       knn);
   return knn;
@@ -239,13 +240,13 @@ auto nearness_search(const tf::form<Dims, Policy0> &form0,
   return nearness_search_trees(
       form0.tree(), form1.tree(),
       [&](const auto &bv0, const auto &bv1) {
-        return traversal_metrics(tf::transformed(bv0, form0.frame()),
-                                 tf::transformed(bv1, form1.frame()));
+        return traversal_metrics(tf::transformed(bv0, tf::frame_of(form0)),
+                                 tf::transformed(bv1, tf::frame_of(form1)));
       },
       [&](auto id0, auto id1) {
         return closest_point_f(
-            tf::transformed(form0[id0] | tf::tag(buff0), form0.frame()),
-            tf::transformed(form1[id1] | tf::tag(buff1), form1.frame()));
+            tf::transformed(form0[id0] | tf::tag(buff0), tf::frame_of(form0)),
+            tf::transformed(form1[id1] | tf::tag(buff1), tf::frame_of(form1)));
       });
 }
 
@@ -259,13 +260,13 @@ auto nearness_search(const tf::form<Dims, Policy0> &form0,
   return nearness_search_trees(
       form0.tree(), form1.tree(),
       [&](const auto &bv0, const auto &bv1) {
-        return traversal_metrics(tf::transformed(bv0, form0.frame()),
-                                 tf::transformed(bv1, form1.frame()));
+        return traversal_metrics(tf::transformed(bv0, tf::frame_of(form0)),
+                                 tf::transformed(bv1, tf::frame_of(form1)));
       },
       [&](auto id0, auto id1) {
         return closest_point_f(
-            tf::transformed(form0[id0] | tf::tag(buff0), form0.frame()),
-            tf::transformed(form1[id1] | tf::tag(buff1), form1.frame()));
+            tf::transformed(form0[id0] | tf::tag(buff0), tf::frame_of(form0)),
+            tf::transformed(form1[id1] | tf::tag(buff1), tf::frame_of(form1)));
       },
       radius);
 }

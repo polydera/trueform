@@ -14,6 +14,7 @@
 #include "./base/polygons.hpp"
 #include "./base/soup.hpp"
 #include "./faces.hpp"
+#include "./form.hpp"
 #include "./points.hpp"
 
 namespace tf {
@@ -22,11 +23,15 @@ namespace tf {
 /// @brief A range of polygons.
 ///
 /// Wraps a range policy providing access to polygon primitives.
+/// Inherits from form to enable policy composition with spatial trees,
+/// frames, and other policies.
 ///
 /// @tparam Policy The underlying range policy.
-template <typename Policy> struct polygons : Policy {
-  polygons(const Policy &r) : Policy{r} {}
-  polygons(Policy &&r) : Policy{std::move(r)} {}
+template <typename Policy>
+struct polygons : form<coordinate_dims_v<Policy>, Policy> {
+  using base = form<coordinate_dims_v<Policy>, Policy>;
+  polygons(const Policy &r) : base{r} {}
+  polygons(Policy &&r) : base{std::move(r)} {}
 };
 
 template <typename Policy>

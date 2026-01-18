@@ -11,6 +11,7 @@
 * Author: Žiga Sajovic
 */
 #include <trueform/spatial/neighbor_search.hpp>
+#include <trueform/spatial/policy.hpp>
 #include <trueform/vtk/functions/neighbor_search.hpp>
 #include <vtkMatrix4x4.h>
 
@@ -22,15 +23,15 @@ namespace {
 template <typename F>
 auto with_form(polydata *input, F &&f) {
   if (input->GetNumberOfPolys() > 0) {
-    auto form = tf::make_form(input->poly_tree(), input->polygons());
+    auto form = input->polygons() | tf::tag(input->poly_tree());
     return f(form);
   } else if (input->GetNumberOfLines() > 0) {
     auto segments = tf::make_segments(
         tf::make_edges(input->edges_buffer()), input->points());
-    auto form = tf::make_form(input->segment_tree(), segments);
+    auto form = segments | tf::tag(input->segment_tree());
     return f(form);
   } else {
-    auto form = tf::make_form(input->point_tree(), input->points());
+    auto form = input->points() | tf::tag(input->point_tree());
     return f(form);
   }
 }
@@ -41,15 +42,15 @@ auto with_form(polydata *input, vtkMatrix4x4 *matrix, F &&f) {
   tf::frame<double, 3> frame;
   frame.fill(matrix->GetData());
   if (input->GetNumberOfPolys() > 0) {
-    auto form = tf::make_form(frame, input->poly_tree(), input->polygons());
+    auto form = input->polygons() | tf::tag(input->poly_tree()) | tf::tag(frame);
     return f(form);
   } else if (input->GetNumberOfLines() > 0) {
     auto segments = tf::make_segments(
         tf::make_edges(input->edges_buffer()), input->points());
-    auto form = tf::make_form(frame, input->segment_tree(), segments);
+    auto form = segments | tf::tag(input->segment_tree()) | tf::tag(frame);
     return f(form);
   } else {
-    auto form = tf::make_form(frame, input->point_tree(), input->points());
+    auto form = input->points() | tf::tag(input->point_tree()) | tf::tag(frame);
     return f(form);
   }
 }

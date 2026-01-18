@@ -21,7 +21,8 @@
 #include <trueform/core/coordinate_type.hpp>
 #include <trueform/core/frame.hpp>
 #include <trueform/core/policy/frame.hpp>
-#include <trueform/spatial/form.hpp>
+#include <trueform/core/form.hpp>
+#include <trueform/spatial/policy/tree.hpp>
 #include <trueform/spatial/neighbor_search.hpp>
 
 namespace tf::py {
@@ -31,10 +32,8 @@ auto form_form_neighbor_search(FormWrapper0 &form_wrapper0,
                                std::optional<RealT> radius) {
   bool has0 = form_wrapper0.has_transformation();
   bool has1 = form_wrapper1.has_transformation();
-  auto form0 =
-      tf::make_form(form_wrapper0.tree(), form_wrapper0.make_primitive_range());
-  auto form1 =
-      tf::make_form(form_wrapper1.tree(), form_wrapper1.make_primitive_range());
+  auto form0 = form_wrapper0.make_primitive_range() | tf::tag(form_wrapper0.tree());
+  auto form1 = form_wrapper1.make_primitive_range() | tf::tag(form_wrapper1.tree());
 
   using Dims_t = std::integral_constant<std::size_t, tf::coordinate_dims_v<decltype(form0)>>;
   constexpr auto Dims = Dims_t::value;

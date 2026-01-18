@@ -18,7 +18,8 @@
 #include <trueform/geometry/fit_knn_alignment.hpp>
 #include <trueform/python/spatial/point_cloud.hpp>
 #include <trueform/python/util/make_numpy_array.hpp>
-#include <trueform/spatial/form.hpp>
+#include <trueform/core/form.hpp>
+#include <trueform/spatial/policy/tree.hpp>
 
 namespace tf::py {
 
@@ -34,7 +35,7 @@ auto fit_knn_alignment_impl(point_cloud_wrapper<RealT, Dims> &cloud0,
   bool has1 = cloud1.has_transformation();
 
   // tree() auto-builds if needed
-  auto form1 = tf::make_form(cloud1.tree(), pts1);
+  auto form1 = pts1 | tf::tag(cloud1.tree());
 
   auto compute = [&]() {
     if (has0 && has1) {

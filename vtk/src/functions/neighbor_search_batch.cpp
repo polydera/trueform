@@ -11,6 +11,7 @@
 * Author: Žiga Sajovic
 */
 #include <trueform/core.hpp>
+#include <trueform/spatial/policy.hpp>
 #include <trueform/vtk/functions/neighbor_search.hpp>
 #include <trueform/vtk/functions/neighbor_search_batch.hpp>
 

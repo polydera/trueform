@@ -23,7 +23,8 @@
 #include <trueform/core/intersects.hpp>
 #include <trueform/core/policy/frame.hpp>
 #include <trueform/python/util/make_numpy_array.hpp>
-#include <trueform/spatial/form.hpp>
+#include <trueform/core/form.hpp>
+#include <trueform/spatial/policy/tree.hpp>
 #include <trueform/spatial/gather_ids.hpp>
 #include <type_traits>
 #include <vector>
@@ -45,11 +46,9 @@ auto form_form_gather_ids(FormWrapper0 &form_wrapper0,
   bool has0 = form_wrapper0.has_transformation();
   bool has1 = form_wrapper1.has_transformation();
 
-  auto form0 =
-      tf::make_form(form_wrapper0.tree(), form_wrapper0.make_primitive_range());
+  auto form0 = form_wrapper0.make_primitive_range() | tf::tag(form_wrapper0.tree());
 
-  auto form1 =
-      tf::make_form(form_wrapper1.tree(), form_wrapper1.make_primitive_range());
+  auto form1 = form_wrapper1.make_primitive_range() | tf::tag(form_wrapper1.tree());
   if (predicate_type == "intersects") {
     auto aabbs_pred = [](const auto &aabb0, const auto &aabb1) {
       return tf::intersects(aabb0, aabb1);

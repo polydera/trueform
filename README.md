@@ -126,9 +126,9 @@ tf::orient_faces_consistently(polygons);
 ```cpp
 tf::aabb_tree<int, float, 3> tree(polygons, tf::config_tree(4, 4));
 
-auto dynamic_form = tf::make_form(
-    tf::make_frame(tf::random_transformation<float, 3>()), tree, polygons);
-auto static_form = tf::make_form(tree, polygons);
+auto dynamic_form = polygons | tf::tag(tree)
+    | tf::tag(tf::make_frame(tf::random_transformation<float, 3>()));
+auto static_form = polygons | tf::tag(tree);
 
 // Collision detection
 bool does_intersect = tf::intersects(static_form, dynamic_form);

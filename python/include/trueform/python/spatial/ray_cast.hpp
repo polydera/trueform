@@ -22,7 +22,8 @@
 #include <trueform/core/ray_config.hpp>
 #include <trueform/core/ray_like.hpp>
 #include <trueform/python/util/ray_config_helper.hpp>
-#include <trueform/spatial/form.hpp>
+#include <trueform/core/form.hpp>
+#include <trueform/spatial/policy/tree.hpp>
 #include <trueform/spatial/ray_cast.hpp>
 #include <tuple>
 
@@ -47,13 +48,13 @@ auto ray_cast(tf::ray_like<Dims, Policy> ray, FormWrapper &form_wrapper,
   if (form_wrapper.has_transformation()) {
     return make_return(tf::ray_cast(
         ray,
-        tf::make_form(tf::make_frame(form_wrapper.transformation_view()),
-                      form_wrapper.tree(), form_wrapper.make_primitive_range()),
+        form_wrapper.make_primitive_range() | tf::tag(form_wrapper.tree()) |
+            tf::tag(tf::make_frame(form_wrapper.transformation_view())),
         config));
   } else {
     return make_return(tf::ray_cast(
         ray,
-        tf::make_form(form_wrapper.tree(), form_wrapper.make_primitive_range()),
+        form_wrapper.make_primitive_range() | tf::tag(form_wrapper.tree()),
         config));
   }
 }

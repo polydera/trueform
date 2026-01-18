@@ -55,7 +55,7 @@ int main() {
   // Tree-based k-NN search
   std::array<tf::nearest_neighbor<int, float, 3>, k> knn_buffer;
   auto knn = tf::make_nearest_neighbors(knn_buffer.begin(), k);
-  tf::neighbor_search(tf::make_form(points_with_tree), query_point, knn);
+  tf::neighbor_search(points_with_tree, query_point, knn);
 
   std::cout << "\n=== Tree-based k-NN results ===" << std::endl;
   std::vector<std::pair<float, int>> tree_results;

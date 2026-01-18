@@ -32,7 +32,7 @@ auto test_raycast(const Polygons &polygons, const Tree &tree, int polygon_id,
   float offset = 0.01f;
   auto ray = tf::make_ray(centroid + offset * normal, -normal);
 
-  auto form = tf::make_form(tree, polygons);
+  auto form = polygons | tf::tag(tree);
   auto info = tf::ray_cast(ray, form);
 
   if (!info) {
@@ -57,7 +57,7 @@ auto test_neighbor_search(const Polygons &polygons, const Tree &tree,
   auto poly = polygons[polygon_id];
   auto centroid = tf::centroid(poly);
 
-  auto form = tf::make_form(tree, polygons);
+  auto form = polygons | tf::tag(tree);
   auto nearest = tf::neighbor_search(form, centroid);
 
   if (!nearest) {

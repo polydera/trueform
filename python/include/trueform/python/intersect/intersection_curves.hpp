@@ -28,14 +28,14 @@ auto intersection_curves(
     mesh_wrapper<Index1, RealT, Ngon1, Dims> &form_wrapper1) {
   bool has0 = form_wrapper0.has_transformation();
   bool has1 = form_wrapper1.has_transformation();
-  auto form0 = tf::make_form(form_wrapper0.tree(),
-                             form_wrapper0.make_primitive_range() |
-                                 tf::tag(form_wrapper0.manifold_edge_link()) |
-                                 tf::tag(form_wrapper0.face_membership()));
-  auto form1 = tf::make_form(form_wrapper1.tree(),
-                             form_wrapper1.make_primitive_range() |
-                                 tf::tag(form_wrapper1.manifold_edge_link()) |
-                                 tf::tag(form_wrapper1.face_membership()));
+  auto form0 = form_wrapper0.make_primitive_range() |
+               tf::tag(form_wrapper0.manifold_edge_link()) |
+               tf::tag(form_wrapper0.face_membership()) |
+               tf::tag(form_wrapper0.tree());
+  auto form1 = form_wrapper1.make_primitive_range() |
+               tf::tag(form_wrapper1.manifold_edge_link()) |
+               tf::tag(form_wrapper1.face_membership()) |
+               tf::tag(form_wrapper1.tree());
   auto make_return = [](auto &&form0, auto &&form1) {
     auto curves = tf::make_intersection_curves(form0, form1);
     auto [paths, c_points] = make_numpy_array(std::move(curves));

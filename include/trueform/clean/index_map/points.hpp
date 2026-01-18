@@ -54,7 +54,7 @@ auto make_clean_index_map(const tf::points<Policy> &points,
   if constexpr (tf::has_tree_policy<Policy>) {
     tf::buffer<std::array<Index, 2>> ids;
     tf::gather_self_ids(
-        tf::make_form(points),
+        points,
         [d2 = tolerance * tolerance](const auto &x, const auto &y) {
           return distance2(x, y) <= d2;
         },

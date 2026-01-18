@@ -16,7 +16,8 @@
 #include <trueform/core/policy/frame.hpp>
 #include <trueform/geometry/chamfer_error.hpp>
 #include <trueform/python/spatial/point_cloud.hpp>
-#include <trueform/spatial/form.hpp>
+#include <trueform/core/form.hpp>
+#include <trueform/spatial/policy/tree.hpp>
 
 namespace tf::py {
 
@@ -30,7 +31,7 @@ auto chamfer_error_impl(point_cloud_wrapper<RealT, Dims> &cloud0,
   bool has1 = cloud1.has_transformation();
 
   // tree() auto-builds if needed
-  auto form1 = tf::make_form(cloud1.tree(), pts1);
+  auto form1 = pts1 | tf::tag(cloud1.tree());
 
   if (has0 && has1) {
     return tf::chamfer_error(

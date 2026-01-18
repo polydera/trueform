@@ -2,7 +2,8 @@
 #include "trueform/core/curves_buffer.hpp"
 #include "trueform/io/read_stl.hpp"
 #include "trueform/random.hpp"
-#include "trueform/spatial/form.hpp"
+#include "trueform/core/form.hpp"
+#include "trueform/spatial/policy/tree.hpp"
 #include "trueform/spatial/ray_cast.hpp"
 #include "trueform/trueform.hpp"
 #include "main.h"
@@ -22,8 +23,8 @@ public:
       -> void {
     auto &selected_inst = instances[selected_id];
     auto &selected_data = mesh_data_store[selected_inst.mesh_data_id];
-    auto form0 = tf::make_form(selected_inst.frame, selected_data.tree,
-                               selected_data.polygons.polygons());
+    auto form0 = selected_data.polygons.polygons() |
+                 tf::tag(selected_data.tree) | tf::tag(selected_inst.frame);
 
     for (std::size_t i = 0; i < instances.size(); ++i) {
       if (i == selected_id) {
@@ -32,7 +33,7 @@ public:
       auto &inst = instances[i];
       auto &data = mesh_data_store[inst.mesh_data_id];
       const bool collision = tf::intersects(
-          form0, tf::make_form(inst.frame, data.tree, data.polygons.polygons()));
+          form0, data.polygons.polygons() | tf::tag(data.tree) | tf::tag(inst.frame));
       if (collision) {
         colliding.insert(i);
       } else {

@@ -18,7 +18,8 @@
 #include "../core/epsilon.hpp"
 #include "../core/local_buffer.hpp"
 #include "../core/views/zip.hpp"
-#include "../spatial/form.hpp"
+#include "../core/polygons.hpp"
+#include "../spatial/policy/tree.hpp"
 #include "../spatial/search.hpp"
 #include "../topology/edge_representation.hpp"
 #include "../topology/policy/face_membership.hpp"
@@ -40,7 +41,7 @@ namespace tf {
 /// along with topological information about where intersections occur.
 /// Use @ref tf::make_intersection_curves for high-level curve extraction.
 ///
-/// Use @ref tf::make_form to create forms with the required tree policy
+/// Use pipe syntax with @ref tf::tag to add the required tree policy
 /// (@ref tf::tree or @ref tf::mod_tree) and topology policies
 /// (@ref tf::face_membership and @ref tf::manifold_edge_link).
 ///
@@ -54,8 +55,12 @@ class intersections_between_polygons
 
 public:
   template <typename Policy0, typename Policy1>
-  auto build(const tf::form<Dims, Policy0> &_form0,
-             const tf::form<Dims, Policy1> &_form1) {
+  auto build(const tf::polygons<Policy0> &_form0,
+             const tf::polygons<Policy1> &_form1) {
+    static_assert(tf::has_tree_policy<Policy0>,
+                  "Use polygons | tf::tag(tree)");
+    static_assert(tf::has_tree_policy<Policy1>,
+                  "Use polygons | tf::tag(tree)");
     static_assert(tf::has_face_membership_policy<Policy0>,
                   "Use polygons | tf::tag(face_membership)");
     static_assert(tf::has_face_membership_policy<Policy1>,
@@ -120,8 +125,8 @@ private:
   }
 
   template <typename Policy0, typename Policy1>
-  auto compute_buffers(const tf::form<Dims, Policy0> &form0,
-                       const tf::form<Dims, Policy1> &form1) {
+  auto compute_buffers(const tf::polygons<Policy0> &form0,
+                       const tf::polygons<Policy1> &form1) {
 
     auto make_handle = [&](auto poly, const auto &fe, const auto &mel) {
       return tf::intersect::polygon::make_handle(

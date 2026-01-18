@@ -26,7 +26,8 @@ int run_boolean_tf_benchmark(const std::vector<std::string> &mesh_paths,
     mel.build(polygons.faces(), fm);
     tf::aabb_tree<int, float, 3> tree(polygons, tf::config_tree(4, 4));
 
-    auto form0 = tf::make_form(tree, polygons | tf::tag(mel) | tf::tag(fm));
+    auto tagged = polygons | tf::tag(mel) | tf::tag(fm);
+    auto form0 = tagged | tf::tag(tree);
 
     // Rotation around centroid, using smallest axis
     auto aabb = tf::aabb_from(polygons);
@@ -48,8 +49,7 @@ int run_boolean_tf_benchmark(const std::vector<std::string> &mesh_paths,
           ++iter;
         },
         [&]() {
-          auto form1 =
-              tf::make_form(frame, tree, polygons | tf::tag(mel) | tf::tag(fm));
+          auto form1 = tagged | tf::tag(tree) | tf::tag(frame);
           auto result = tf::make_boolean(form0, form1, tf::boolean_op::merge);
           benchmark::do_not_optimize(result);
         },

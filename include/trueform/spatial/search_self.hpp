@@ -11,6 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
+#include "./policy/tree.hpp"
 #include "./tree_search/self_search.hpp"
 
 namespace tf {
@@ -53,6 +54,8 @@ auto search_self(const tf::tree_like<TreePolicy> &tree, const F0 &check_bvs,
 template <std::size_t Dims, typename Policy, typename F0, typename F1>
 auto search_self(const tf::form<Dims, Policy> &form, const F0 &check_bvs,
                  const F1 &primitive_apply, int parallelism_depth = 6) -> bool {
+  static_assert(tf::has_tree_policy<Policy>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   return spatial::search_self_form_dispatch(form, check_bvs, primitive_apply,
                                             parallelism_depth);
 }

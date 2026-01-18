@@ -13,7 +13,8 @@
 #pragma once
 
 #include <trueform/core/frame.hpp>
-#include <trueform/spatial/form.hpp>
+#include <trueform/core/form.hpp>
+#include <trueform/spatial/policy/tree.hpp>
 #include <trueform/spatial/intersects.hpp>
 
 namespace tf::py {
@@ -22,12 +23,12 @@ auto form_intersects_primitive(FormWrapper &form_wrapper,
                                const Primitive &primitive) {
   if (form_wrapper.has_transformation()) {
     return tf::intersects(
-        tf::make_form(tf::make_frame(form_wrapper.transformation_view()),
-                      form_wrapper.tree(), form_wrapper.make_primitive_range()),
+        form_wrapper.make_primitive_range() | tf::tag(form_wrapper.tree()) |
+            tf::tag(tf::make_frame(form_wrapper.transformation_view())),
         primitive);
   } else {
     return tf::intersects(
-        tf::make_form(form_wrapper.tree(), form_wrapper.make_primitive_range()),
+        form_wrapper.make_primitive_range() | tf::tag(form_wrapper.tree()),
         primitive);
   }
 }

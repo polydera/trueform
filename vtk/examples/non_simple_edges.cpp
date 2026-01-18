@@ -350,7 +350,7 @@ auto test_form_local_buffer() -> bool {
   tree.build(polygons, tf::config_tree(4, 4));
 
   // Create form
-  auto form = tf::make_form(tree, polygons);
+  auto form = polygons | tf::tag(tree);
 
   auto rotation = tf::make_rotation(tf::deg<float>{90.0f}, tf::axis<2>);
 
@@ -399,7 +399,7 @@ auto test_static_form_local_buffer() -> bool {
   tree.build(polygons, tf::config_tree(4, 4));
 
   // Create form
-  auto form = tf::make_form(tree, polygons);
+  auto form = polygons | tf::tag(tree);
 
   auto rotation = tf::make_rotation(tf::deg<float>{90.0f}, tf::axis<2>);
 

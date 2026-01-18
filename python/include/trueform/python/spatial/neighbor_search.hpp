@@ -18,8 +18,9 @@
 #include <nanobind/stl/vector.h>
 #include <optional>
 #include <trueform/core/frame.hpp>
-#include <trueform/spatial/form.hpp>
+#include <trueform/core/form.hpp>
 #include <trueform/spatial/nearest_neighbor.hpp>
+#include <trueform/spatial/policy/tree.hpp>
 #include <trueform/spatial/neighbor_search.hpp>
 #include <vector>
 
@@ -55,12 +56,12 @@ auto neighbor_search(FormWrapper &form_wrapper, const Primitive &query,
     r = *radius;
   if (form_wrapper.has_transformation()) {
     return make_return(tf::neighbor_search(
-        tf::make_form(tf::make_frame(form_wrapper.transformation_view()),
-                      form_wrapper.tree(), form_wrapper.make_primitive_range()),
+        form_wrapper.make_primitive_range() | tf::tag(form_wrapper.tree()) |
+            tf::tag(tf::make_frame(form_wrapper.transformation_view())),
         query, r));
   } else {
     return make_return(tf::neighbor_search(
-        tf::make_form(form_wrapper.tree(), form_wrapper.make_primitive_range()),
+        form_wrapper.make_primitive_range() | tf::tag(form_wrapper.tree()),
         query, r));
   }
 }
@@ -84,12 +85,12 @@ auto neighbor_search(FormWrapper &from_wrapper, const Primitive &query, int k,
 
   if (from_wrapper.has_transformation()) {
     tf::neighbor_search(
-        tf::make_form(tf::make_frame(from_wrapper.transformation_view()),
-                      from_wrapper.tree(), from_wrapper.make_primitive_range()),
+        from_wrapper.make_primitive_range() | tf::tag(from_wrapper.tree()) |
+            tf::tag(tf::make_frame(from_wrapper.transformation_view())),
         query, knn);
   } else {
     tf::neighbor_search(
-        tf::make_form(from_wrapper.tree(), from_wrapper.make_primitive_range()),
+        from_wrapper.make_primitive_range() | tf::tag(from_wrapper.tree()),
         query, knn);
   }
 

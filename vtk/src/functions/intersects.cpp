@@ -17,8 +17,8 @@
 namespace tf::vtk {
 
 auto intersects(polydata *input0, polydata *input1) -> bool {
-  auto form0 = tf::make_form(input0->poly_tree(), input0->polygons());
-  auto form1 = tf::make_form(input1->poly_tree(), input1->polygons());
+  auto form0 = input0->polygons() | tf::tag(input0->poly_tree());
+  auto form1 = input1->polygons() | tf::tag(input1->poly_tree());
   return tf::intersects(form0, form1);
 }
 
@@ -27,8 +27,8 @@ auto intersects(std::pair<polydata *, vtkMatrix4x4 *> input0, polydata *input1)
   auto [mesh0, matrix0] = input0;
   tf::frame<double, 3> frame0;
   frame0.fill(matrix0->GetData());
-  auto form0 = tf::make_form(frame0, mesh0->poly_tree(), mesh0->polygons());
-  auto form1 = tf::make_form(input1->poly_tree(), input1->polygons());
+  auto form0 = mesh0->polygons() | tf::tag(mesh0->poly_tree()) | tf::tag(frame0);
+  auto form1 = input1->polygons() | tf::tag(input1->poly_tree());
   return tf::intersects(form0, form1);
 }
 
@@ -37,8 +37,8 @@ auto intersects(polydata *input0, std::pair<polydata *, vtkMatrix4x4 *> input1)
   auto [mesh1, matrix1] = input1;
   tf::frame<double, 3> frame1;
   frame1.fill(matrix1->GetData());
-  auto form0 = tf::make_form(input0->poly_tree(), input0->polygons());
-  auto form1 = tf::make_form(frame1, mesh1->poly_tree(), mesh1->polygons());
+  auto form0 = input0->polygons() | tf::tag(input0->poly_tree());
+  auto form1 = mesh1->polygons() | tf::tag(mesh1->poly_tree()) | tf::tag(frame1);
   return tf::intersects(form0, form1);
 }
 
@@ -50,8 +50,8 @@ auto intersects(std::pair<polydata *, vtkMatrix4x4 *> input0,
   frame0.fill(matrix0->GetData());
   tf::frame<double, 3> frame1;
   frame1.fill(matrix1->GetData());
-  auto form0 = tf::make_form(frame0, mesh0->poly_tree(), mesh0->polygons());
-  auto form1 = tf::make_form(frame1, mesh1->poly_tree(), mesh1->polygons());
+  auto form0 = mesh0->polygons() | tf::tag(mesh0->poly_tree()) | tf::tag(frame0);
+  auto form1 = mesh1->polygons() | tf::tag(mesh1->poly_tree()) | tf::tag(frame1);
   return tf::intersects(form0, form1);
 }
 

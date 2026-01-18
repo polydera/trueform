@@ -43,7 +43,6 @@
 
 #include "./spatial/aabb_tree.hpp"             // IWYU pragma: export
 #include "./spatial/distance.hpp"              // IWYU pragma: export
-#include "./spatial/form.hpp"                  // IWYU pragma: export
 #include "./spatial/gather_ids.hpp"            // IWYU pragma: export
 #include "./spatial/gather_self_ids.hpp"       // IWYU pragma: export
 #include "./spatial/intersects.hpp"            // IWYU pragma: export

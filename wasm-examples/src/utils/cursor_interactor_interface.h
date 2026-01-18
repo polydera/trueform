@@ -79,8 +79,7 @@ public:
     for (std::size_t i = 0; i < instances.size(); ++i) {
       auto &inst = instances[i];
       auto &data = mesh_data_store[inst.mesh_data_id];
-      auto form =
-          tf::make_form(inst.frame, data.tree, data.polygons.polygons());
+      auto form = data.polygons.polygons() | tf::tag(data.tree) | tf::tag(inst.frame);
       auto res = tf::ray_cast(ray, form, config);
       if (res) {
         result = res;

@@ -66,7 +66,7 @@ auto fit_knn_alignment(
     // Classic ICP: single nearest neighbor
     tf::parallel_for_each(tf::zip(X, buffer), [&](auto tup) {
       auto &&[x, out] = tup;
-      auto [id, cpt] = tf::neighbor_search(tf::make_form(Y), tf::transformed(x, tf::frame_of(X)));
+      auto [id, cpt] = tf::neighbor_search(Y, tf::transformed(x, tf::frame_of(X)));
       out = cpt.point;
     });
   } else {
@@ -80,7 +80,7 @@ auto fit_knn_alignment(
           knn_buffer;
       auto knn = tf::make_nearest_neighbors(knn_buffer.begin(),
                                             std::min(k, std::size_t(10)));
-      tf::neighbor_search(tf::make_form(Y), tf::transformed(x, tf::frame_of(X)),
+      tf::neighbor_search(Y, tf::transformed(x, tf::frame_of(X)),
                           knn);
       auto sig = sigma < 0 ? knn.metric() : sigma * sigma;
       for (std::size_t i = 0; i < Dims; ++i)

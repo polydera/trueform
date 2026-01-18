@@ -16,8 +16,9 @@
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
 #include <trueform/core/buffer.hpp>
+#include <trueform/core/form.hpp>
 #include <trueform/python/util/make_numpy_array.hpp>
-#include <trueform/spatial/form.hpp>
+#include <trueform/spatial/policy/tree.hpp>
 #include <trueform/spatial/gather_ids.hpp>
 
 namespace tf::py {
@@ -32,11 +33,11 @@ auto gather_ids(FormWrapper &form_wrapper, const F0 &aabb_predicate,
 
   if (form_wrapper.has_transformation()) {
     tf::gather_ids(
-        tf::make_form(tf::make_frame(form_wrapper.transformation_view()),
-                      form_wrapper.tree(), form_wrapper.make_primitive_range()),
+        form_wrapper.make_primitive_range() | tf::tag(form_wrapper.tree()) |
+            tf::tag(tf::make_frame(form_wrapper.transformation_view())),
         aabb_predicate, primitive_predicate, std::back_inserter(buffer));
   } else {
-    tf::gather_ids(tf::make_form(form_wrapper.tree(), form_wrapper.make_primitive_range()),
+    tf::gather_ids(form_wrapper.make_primitive_range() | tf::tag(form_wrapper.tree()),
                    aabb_predicate, primitive_predicate, std::back_inserter(buffer));
   }
 

@@ -11,6 +11,7 @@
 * Author: Žiga Sajovic
 */
 #include <trueform/spatial/ray_cast.hpp>
+#include <trueform/spatial/policy.hpp>
 #include <trueform/vtk/functions/pick.hpp>
 #include <vtkMapper.h>
 #include <vtkMatrix4x4.h>
@@ -50,10 +51,10 @@ auto pick_impl(tf::ray<float, 3> ray, Actors &actors) -> pick_result {
     if (matrix) {
       tf::frame<float, 3> frame;
       frame.fill(matrix->GetData());
-      auto form = tf::make_form(frame, input->poly_tree(), input->polygons());
+      auto form = input->polygons() | tf::tag(input->poly_tree()) | tf::tag(frame);
       hit = tf::ray_cast(ray, form, config);
     } else {
-      auto form = tf::make_form(input->poly_tree(), input->polygons());
+      auto form = input->polygons() | tf::tag(input->poly_tree());
       hit = tf::ray_cast(ray, form, config);
     }
 

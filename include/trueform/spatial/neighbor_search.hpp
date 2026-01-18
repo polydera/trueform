@@ -20,6 +20,7 @@
 #include "../core/polygon.hpp"
 #include "../core/ray_like.hpp"
 #include "../core/segment.hpp"
+#include "./policy/tree.hpp"
 #include "./tree/traversal_metric.hpp"
 #include "./tree_search/nearness_search.hpp"
 
@@ -41,6 +42,8 @@ namespace tf {
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::point_like<Dims, Policy1> &obj) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   return tf::spatial::nearness_search(
       form,
       [&](const auto &bv) { return tf::spatial::traversal_metric(bv, obj); },
@@ -60,6 +63,8 @@ template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::point_like<Dims, Policy1> &obj,
                      tf::coordinate_type<Policy0, Policy1> radius) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   return tf::spatial::nearness_search(
       form,
       [&](const auto &bv) { return tf::spatial::traversal_metric(bv, obj); },
@@ -81,6 +86,8 @@ template <std::size_t Dims, typename Policy0, typename Policy1,
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::point_like<Dims, Policy1> &obj,
                      tf::nearest_neighbors<RandomIt> &knn) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   return tf::spatial::nearness_search(
       form,
       [&](const auto &bv) { return tf::spatial::traversal_metric(bv, obj); },
@@ -108,6 +115,8 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::segment<Dims, Policy1> &obj) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   auto obj_aabb = tf::aabb_from(obj);
   return tf::spatial::nearness_search(
       form,
@@ -124,6 +133,8 @@ template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::segment<Dims, Policy1> &obj,
                      tf::coordinate_type<Policy0, Policy1> radius) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   auto obj_aabb = tf::aabb_from(obj);
   return tf::spatial::nearness_search(
       form,
@@ -142,6 +153,8 @@ template <std::size_t Dims, typename Policy0, typename Policy1,
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::segment<Dims, Policy1> &obj,
                      tf::nearest_neighbors<RandomIt> &knn) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   auto obj_aabb = tf::aabb_from(obj);
   return tf::spatial::nearness_search(
       form,
@@ -172,6 +185,8 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::ray_like<Dims, Policy1> &obj) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   return tf::spatial::nearness_search(
       form,
       [&](const auto &bv) { return tf::spatial::traversal_metric(bv, obj); },
@@ -184,6 +199,8 @@ template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::ray_like<Dims, Policy1> &obj,
                      tf::coordinate_type<Policy0, Policy1> radius) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   return tf::spatial::nearness_search(
       form,
       [&](const auto &bv) { return tf::spatial::traversal_metric(bv, obj); },
@@ -198,6 +215,8 @@ template <std::size_t Dims, typename Policy0, typename Policy1,
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::ray_like<Dims, Policy1> &obj,
                      tf::nearest_neighbors<RandomIt> &knn) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   return tf::spatial::nearness_search(
       form,
       [&](const auto &bv) { return tf::spatial::traversal_metric(bv, obj); },
@@ -224,6 +243,8 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::line_like<Dims, Policy1> &obj) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   return tf::spatial::nearness_search(
       form,
       [&](const auto &bv) { return tf::spatial::traversal_metric(bv, obj); },
@@ -236,6 +257,8 @@ template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::line_like<Dims, Policy1> &obj,
                      tf::coordinate_type<Policy0, Policy1> radius) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   return tf::spatial::nearness_search(
       form,
       [&](const auto &bv) { return tf::spatial::traversal_metric(bv, obj); },
@@ -250,6 +273,8 @@ template <std::size_t Dims, typename Policy0, typename Policy1,
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::line_like<Dims, Policy1> &obj,
                      tf::nearest_neighbors<RandomIt> &knn) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   return tf::spatial::nearness_search(
       form,
       [&](const auto &bv) { return tf::spatial::traversal_metric(bv, obj); },
@@ -276,6 +301,8 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::plane_like<Dims, Policy1> &obj) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   return tf::spatial::nearness_search(
       form,
       [&](const auto &bv) { return tf::spatial::traversal_metric(bv, obj); },
@@ -288,6 +315,8 @@ template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::plane_like<Dims, Policy1> &obj,
                      tf::coordinate_type<Policy0, Policy1> radius) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   return tf::spatial::nearness_search(
       form,
       [&](const auto &bv) { return tf::spatial::traversal_metric(bv, obj); },
@@ -302,6 +331,8 @@ template <std::size_t Dims, typename Policy0, typename Policy1,
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::plane_like<Dims, Policy1> &obj,
                      tf::nearest_neighbors<RandomIt> &knn) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   return tf::spatial::nearness_search(
       form,
       [&](const auto &bv) { return tf::spatial::traversal_metric(bv, obj); },
@@ -328,6 +359,8 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::polygon<Dims, Policy1> &obj) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   auto obj_aabb = tf::aabb_from(obj);
   auto plane_obj = tf::tag_plane(obj);
   return tf::spatial::nearness_search(
@@ -344,6 +377,8 @@ template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::polygon<Dims, Policy1> &obj,
                      tf::coordinate_type<Policy0, Policy1> radius) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   auto obj_aabb = tf::aabb_from(obj);
   auto plane_obj = tf::tag_plane(obj);
   return tf::spatial::nearness_search(
@@ -362,6 +397,8 @@ template <std::size_t Dims, typename Policy0, typename Policy1,
 auto neighbor_search(const tf::form<Dims, Policy0> &form,
                      const tf::polygon<Dims, Policy1> &obj,
                      tf::nearest_neighbors<RandomIt> &knn) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   auto obj_aabb = tf::aabb_from(obj);
   auto plane_obj = tf::tag_plane(obj);
   return tf::spatial::nearness_search(
@@ -387,6 +424,8 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
 template <typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<2, Policy0> &form,
                      const tf::polygon<2, Policy1> &obj) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   auto obj_aabb = tf::aabb_from(obj);
   return tf::spatial::nearness_search(
       form,
@@ -402,6 +441,8 @@ template <typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<2, Policy0> &form,
                      const tf::polygon<2, Policy1> &obj,
                      tf::coordinate_type<Policy0, Policy1> radius) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   auto obj_aabb = tf::aabb_from(obj);
   return tf::spatial::nearness_search(
       form,
@@ -418,6 +459,8 @@ template <typename Policy0, typename Policy1, typename RandomIt>
 auto neighbor_search(const tf::form<2, Policy0> &form,
                      const tf::polygon<2, Policy1> &obj,
                      tf::nearest_neighbors<RandomIt> &knn) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   auto obj_aabb = tf::aabb_from(obj);
   return tf::spatial::nearness_search(
       form,
@@ -453,6 +496,10 @@ auto neighbor_search(const tf::form<2, Policy0> &form,
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form0,
                      const tf::form<Dims, Policy1> &form1) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "First form must have a tree policy attached. Use: form | tf::tag(tree)");
+  static_assert(tf::has_tree_policy<Policy1>,
+                "Second form must have a tree policy attached. Use: form | tf::tag(tree)");
   return tf::spatial::nearness_search(
       form0, form1, [](const auto &obj0, const auto &obj1) {
         return tf::closest_metric_point_pair(obj0, obj1);
@@ -464,6 +511,10 @@ template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form0,
                      const tf::form<Dims, Policy1> &form1,
                      tf::coordinate_type<Policy0, Policy1> radius) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "First form must have a tree policy attached. Use: form | tf::tag(tree)");
+  static_assert(tf::has_tree_policy<Policy1>,
+                "Second form must have a tree policy attached. Use: form | tf::tag(tree)");
   return tf::spatial::nearness_search(
       form0, form1,
       [](const auto &obj0, const auto &obj1) {

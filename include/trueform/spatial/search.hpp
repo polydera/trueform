@@ -11,6 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
+#include "./policy/tree.hpp"
 #include "./tree_search/search.hpp"
 
 namespace tf {
@@ -31,6 +32,8 @@ namespace tf {
 template <std::size_t Dims, typename Policy, typename F0, typename F1>
 auto search(const tf::form<Dims, Policy> &form, const F0 &check_bv,
             const F1 &primitive_apply) -> bool {
+  static_assert(tf::has_tree_policy<Policy>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
   return tf::spatial::search(form, check_bv, primitive_apply);
 }
 
@@ -50,6 +53,10 @@ template <std::size_t Dims, typename Policy0, typename Policy1, typename F0,
 auto search(const tf::form<Dims, Policy0> &form0,
             const tf::form<Dims, Policy1> &form1, const F0 &check_bvs,
             const F1 &primitive_apply) -> bool {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "First form must have a tree policy attached. Use: form | tf::tag(tree)");
+  static_assert(tf::has_tree_policy<Policy1>,
+                "Second form must have a tree policy attached. Use: form | tf::tag(tree)");
   return spatial::dual_form_search_dispatch(form0, form1, check_bvs,
                                             primitive_apply, 6);
 }

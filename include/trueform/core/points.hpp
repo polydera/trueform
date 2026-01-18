@@ -12,6 +12,7 @@
 */
 #pragma once
 
+#include "./form.hpp"
 #include "./range.hpp"
 #include "./vectors.hpp"
 #include "./views/mapped_range.hpp"
@@ -60,11 +61,15 @@ template <typename T> struct pt_as_dref {
 ///
 /// Wraps a range policy and provides point-specific operations like
 /// `as_vector_view()` and type conversion via `as<T>()`.
+/// Inherits from form to enable policy composition with spatial trees,
+/// frames, and other policies.
 ///
 /// @tparam Policy The underlying range policy.
-template <typename Policy> struct points : Policy {
-  points(const Policy &r) : Policy{r} {}
-  points(Policy &&r) : Policy{std::move(r)} {}
+template <typename Policy>
+struct points : form<coordinate_dims_v<Policy>, Policy> {
+  using base = form<coordinate_dims_v<Policy>, Policy>;
+  points(const Policy &r) : base{r} {}
+  points(Policy &&r) : base{std::move(r)} {}
 
   auto as_vector_view() const {
     auto r = tf::make_mapped_range(*this, core::pt_vec_dref{});
