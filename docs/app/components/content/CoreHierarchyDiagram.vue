@@ -73,18 +73,18 @@
         <!-- Stage 3: Polygons -->
         <g transform="translate(290, 265)">
           <text x="0" y="-10" class="stage-label" text-anchor="middle">Composed Range</text>
-          <rect x="-165" y="0" width="330" height="90" rx="6" class="stage-box stage-enriched" />
-          <text x="-155" y="18" class="code-text">
+          <rect x="-195" y="0" width="390" height="90" rx="6" class="stage-box stage-enriched" />
+          <text x="-185" y="18" class="code-text">
             <tspan class="syn-var">polygons</tspan><tspan> = </tspan><tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">make_polygons</tspan><tspan>(</tspan><tspan class="syn-var">faces</tspan><tspan>, </tspan><tspan class="syn-var">points</tspan><tspan>)</tspan>
           </text>
-          <line x1="-155" y1="26" x2="155" y2="26" class="divider-line" />
-          <text x="-155" y="44" class="code-small">
+          <line x1="-185" y1="26" x2="185" y2="26" class="divider-line" />
+          <text x="-185" y="44" class="code-small">
             <tspan class="syn-kw">auto</tspan><tspan class="syn-var"> poly</tspan><tspan> = </tspan><tspan class="syn-var">polygons</tspan><tspan>.</tspan><tspan class="syn-fn">front</tspan><tspan>();</tspan>
           </text>
-          <text x="-155" y="58" class="code-small">
+          <text x="-185" y="58" class="code-small">
             <tspan class="syn-kw">auto</tspan><tspan> [</tspan><tspan class="syn-var">p0</tspan><tspan>, </tspan><tspan class="syn-var">p1</tspan><tspan>, </tspan><tspan class="syn-var">p2</tspan><tspan>] = </tspan><tspan class="syn-var">poly</tspan><tspan>;</tspan>
           </text>
-          <text x="-155" y="72" class="code-small">
+          <text x="-185" y="72" class="code-small">
             <tspan class="syn-kw">auto</tspan><tspan> [</tspan><tspan class="syn-var">id0</tspan><tspan>, </tspan><tspan class="syn-var">id1</tspan><tspan>, </tspan><tspan class="syn-var">id2</tspan><tspan>] = </tspan><tspan class="syn-var">poly</tspan><tspan>.</tspan><tspan class="syn-fn">indices</tspan><tspan>();</tspan>
           </text>
         </g>
@@ -152,7 +152,7 @@
           <text x="0" y="-10" class="stage-label" text-anchor="middle">+ Transform</text>
           <rect x="-130" y="0" width="260" height="28" rx="6" class="stage-box stage-enriched" />
           <text x="-120" y="19" class="code-small">
-            <tspan class="syn-var">form0</tspan><tspan> = </tspan><tspan class="syn-var">tagged</tspan><tspan> | </tspan><tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">tag</tspan><tspan>(</tspan><tspan class="syn-var">transform0</tspan><tspan>)</tspan>
+            <tspan class="syn-var">form0</tspan><tspan> = </tspan><tspan class="syn-var">tagged</tspan><tspan> | </tspan><tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">tag</tspan><tspan>(</tspan><tspan class="syn-var">tr0</tspan><tspan>)</tspan>
           </text>
         </g>
 
@@ -161,7 +161,7 @@
           <text x="0" y="-10" class="stage-label" text-anchor="middle">+ Transform</text>
           <rect x="-130" y="0" width="260" height="28" rx="6" class="stage-box stage-enriched" />
           <text x="-120" y="19" class="code-small">
-            <tspan class="syn-var">form1</tspan><tspan> = </tspan><tspan class="syn-var">tagged</tspan><tspan> | </tspan><tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">tag</tspan><tspan>(</tspan><tspan class="syn-var">transform1</tspan><tspan>)</tspan>
+            <tspan class="syn-var">form1</tspan><tspan> = </tspan><tspan class="syn-var">tagged</tspan><tspan> | </tspan><tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">tag</tspan><tspan>(</tspan><tspan class="syn-var">tr1</tspan><tspan>)</tspan>
           </text>
         </g>
 
@@ -173,19 +173,19 @@
         <g transform="translate(290, 874)">
           <text x="0" y="-10" class="stage-label" text-anchor="middle">Algorithms</text>
           <!-- Outer container -->
-          <rect x="-150" y="0" width="300" height="145" rx="10" class="stage-box stage-container" />
+          <rect x="-175" y="0" width="350" height="145" rx="10" class="stage-box stage-container" />
 
           <!-- Inner box: make_boolean -->
-          <g transform="translate(-130, 12)">
-            <rect x="0" y="0" width="260" height="28" rx="5" class="stage-box stage-enriched" />
+          <g transform="translate(-155, 12)">
+            <rect x="0" y="0" width="310" height="28" rx="5" class="stage-box stage-enriched" />
             <text x="10" y="19" class="code-small">
               <tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">make_boolean</tspan><tspan>(</tspan><tspan class="syn-var">form0</tspan><tspan>, </tspan><tspan class="syn-var">form1</tspan><tspan>, </tspan><tspan class="syn-var">op</tspan><tspan>);</tspan>
             </text>
           </g>
 
           <!-- Inner box: intersects -->
-          <g transform="translate(-130, 47)">
-            <rect x="0" y="0" width="260" height="28" rx="5" class="stage-box stage-enriched" />
+          <g transform="translate(-155, 47)">
+            <rect x="0" y="0" width="310" height="28" rx="5" class="stage-box stage-enriched" />
             <text x="10" y="19" class="code-small">
               <tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">intersects</tspan><tspan>(</tspan><tspan class="syn-var">form0</tspan><tspan>, </tspan><tspan class="syn-var">form1</tspan><tspan>);</tspan>
             </text>
@@ -198,8 +198,8 @@
           </g>
 
           <!-- Inner box: distance2 -->
-          <g transform="translate(-130, 105)">
-            <rect x="0" y="0" width="260" height="28" rx="5" class="stage-box stage-enriched" />
+          <g transform="translate(-155, 105)">
+            <rect x="0" y="0" width="310" height="28" rx="5" class="stage-box stage-enriched" />
             <text x="10" y="19" class="code-small">
               <tspan class="syn-ns">tf</tspan><tspan>::</tspan><tspan class="syn-fn">distance2</tspan><tspan>(</tspan><tspan class="syn-var">form0</tspan><tspan>, </tspan><tspan class="syn-var">form1</tspan><tspan>);</tspan>
             </text>
@@ -280,7 +280,7 @@
 }
 
 .stage-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
   fill: currentColor;
   opacity: 0.5;
@@ -289,7 +289,7 @@
 }
 
 .ellipsis-text {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   fill: currentColor;
   opacity: 0.6;
@@ -311,19 +311,19 @@
 /* Code text styles with monospace font */
 .code-text {
   font-family: 'SF Mono', SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-  font-size: 11.5px;
+  font-size: 13px;
   fill: currentColor;
 }
 
 .code-small {
   font-family: 'SF Mono', SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-  font-size: 11px;
+  font-size: 12.5px;
   fill: currentColor;
 }
 
 .code-tiny {
   font-family: 'SF Mono', SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-  font-size: 10.5px;
+  font-size: 12px;
   fill: currentColor;
 }
 

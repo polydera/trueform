@@ -4,7 +4,7 @@
 <template>
   <div class="python-flow-diagram my-8 flex flex-col items-center">
     <div class="diagram-box">
-      <svg viewBox="0 0 420 708" class="w-full">
+      <svg viewBox="0 0 500 708" class="w-full">
         <!-- Arrowhead marker -->
         <defs>
           <marker id="py-arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
@@ -13,7 +13,7 @@
         </defs>
 
         <!-- Stage 1: NumPy Arrays Input - two boxes -->
-        <g transform="translate(115, 25)">
+        <g transform="translate(155, 25)">
           <text x="0" y="-8" class="stage-label" text-anchor="middle">faces</text>
           <rect x="-85" y="0" width="170" height="36" rx="6" class="stage-box" />
           <text x="0" y="23" class="code-text" text-anchor="middle">
@@ -21,7 +21,7 @@
           </text>
         </g>
 
-        <g transform="translate(305, 25)">
+        <g transform="translate(345, 25)">
           <text x="0" y="-8" class="stage-label" text-anchor="middle">points</text>
           <rect x="-85" y="0" width="170" height="36" rx="6" class="stage-box" />
           <text x="0" y="23" class="code-text" text-anchor="middle">
@@ -30,11 +30,11 @@
         </g>
 
         <!-- Arrows converging -->
-        <path d="M 145 66 L 180 95" class="arrow-line" marker-end="url(#py-arrow)" />
-        <path d="M 275 66 L 240 95" class="arrow-line" marker-end="url(#py-arrow)" />
+        <path d="M 185 66 L 220 95" class="arrow-line" marker-end="url(#py-arrow)" />
+        <path d="M 315 66 L 280 95" class="arrow-line" marker-end="url(#py-arrow)" />
 
         <!-- Stage 2: Mesh -->
-        <g transform="translate(210, 115)">
+        <g transform="translate(250, 115)">
           <text x="0" y="-8" class="stage-label" text-anchor="middle">Form</text>
           <rect x="-130" y="0" width="260" height="36" rx="6" class="stage-box stage-enriched" />
           <text x="0" y="23" class="code-text" text-anchor="middle">
@@ -43,82 +43,82 @@
         </g>
 
         <!-- Arrow down -->
-        <path d="M 210 156 L 210 185" class="arrow-line" marker-end="url(#py-arrow)" />
+        <path d="M 250 156 L 250 185" class="arrow-line" marker-end="url(#py-arrow)" />
 
         <!-- Stage 3: Properties -->
-        <g transform="translate(210, 215)">
+        <g transform="translate(250, 215)">
           <text x="0" y="-10" class="stage-label" text-anchor="middle">Properties (cached on demand)</text>
           <!-- Outer dashed container -->
-          <rect x="-125" y="0" width="250" height="80" rx="10" class="stage-box stage-container" />
+          <rect x="-155" y="0" width="310" height="80" rx="10" class="stage-box stage-container" />
 
           <!-- Property boxes - row 1 -->
-          <g transform="translate(-105, 12)">
-            <rect x="0" y="0" width="100" height="26" rx="5" class="stage-box stage-enriched" />
+          <g transform="translate(-135, 12)">
+            <rect x="0" y="0" width="130" height="26" rx="5" class="stage-box stage-enriched" />
             <text x="10" y="18" class="code-tiny">
               <tspan class="syn-var">.normals</tspan>
             </text>
           </g>
           <g transform="translate(5, 12)">
-            <rect x="0" y="0" width="100" height="26" rx="5" class="stage-box stage-enriched" />
+            <rect x="0" y="0" width="130" height="26" rx="5" class="stage-box stage-enriched" />
             <text x="10" y="18" class="code-tiny">
               <tspan class="syn-var">.vertex_link</tspan>
             </text>
           </g>
 
           <!-- Property boxes - row 2 -->
-          <g transform="translate(-105, 44)">
-            <rect x="0" y="0" width="100" height="26" rx="5" class="stage-box stage-enriched" />
+          <g transform="translate(-135, 44)">
+            <rect x="0" y="0" width="130" height="26" rx="5" class="stage-box stage-enriched" />
             <text x="10" y="18" class="code-tiny">
               <tspan class="syn-var">.face_link</tspan>
             </text>
           </g>
           <g transform="translate(5, 44)">
-            <rect x="0" y="0" width="100" height="26" rx="5" class="stage-box stage-enriched" />
-            <text x="50" y="18" class="ellipsis-text" text-anchor="middle">...</text>
+            <rect x="0" y="0" width="130" height="26" rx="5" class="stage-box stage-enriched" />
+            <text x="65" y="18" class="ellipsis-text" text-anchor="middle">...</text>
           </g>
         </g>
 
         <!-- Arrows branching to two shared views -->
-        <path d="M 145 300 L 105 340" class="arrow-line" marker-end="url(#py-arrow)" />
-        <path d="M 275 300 L 315 340" class="arrow-line" marker-end="url(#py-arrow)" />
+        <path d="M 165 300 L 120 340" class="arrow-line" marker-end="url(#py-arrow)" />
+        <path d="M 335 300 L 380 340" class="arrow-line" marker-end="url(#py-arrow)" />
 
         <!-- Stage 4a: mesh0 shared_view -->
-        <g transform="translate(105, 365)">
+        <g transform="translate(120, 365)">
           <text x="0" y="-10" class="stage-label" text-anchor="middle">Shared View</text>
-          <rect x="-95" y="0" width="190" height="45" rx="6" class="stage-box stage-enriched" />
-          <text x="-85" y="17" class="code-tiny">
+          <rect x="-110" y="0" width="220" height="45" rx="6" class="stage-box stage-enriched" />
+          <text x="-100" y="17" class="code-tiny">
             <tspan class="syn-var">mesh0</tspan><tspan> = </tspan><tspan class="syn-var">mesh</tspan><tspan>.</tspan><tspan class="syn-fn">shared_view</tspan><tspan>()</tspan>
           </text>
-          <text x="-85" y="35" class="code-tiny">
+          <text x="-100" y="35" class="code-tiny">
             <tspan class="syn-var">mesh0</tspan><tspan>.</tspan><tspan class="syn-var">transformation</tspan><tspan> = </tspan><tspan class="syn-var">t0</tspan>
           </text>
         </g>
 
         <!-- Stage 4b: mesh1 shared_view -->
-        <g transform="translate(315, 365)">
+        <g transform="translate(380, 365)">
           <text x="0" y="-10" class="stage-label" text-anchor="middle">Shared View</text>
-          <rect x="-95" y="0" width="190" height="45" rx="6" class="stage-box stage-enriched" />
-          <text x="-85" y="17" class="code-tiny">
+          <rect x="-110" y="0" width="220" height="45" rx="6" class="stage-box stage-enriched" />
+          <text x="-100" y="17" class="code-tiny">
             <tspan class="syn-var">mesh1</tspan><tspan> = </tspan><tspan class="syn-var">mesh</tspan><tspan>.</tspan><tspan class="syn-fn">shared_view</tspan><tspan>()</tspan>
           </text>
-          <text x="-85" y="35" class="code-tiny">
+          <text x="-100" y="35" class="code-tiny">
             <tspan class="syn-var">mesh1</tspan><tspan>.</tspan><tspan class="syn-var">transformation</tspan><tspan> = </tspan><tspan class="syn-var">t1</tspan>
           </text>
         </g>
 
         <!-- Arrows converging to algorithms -->
-        <path d="M 145 415 L 185 450" class="arrow-line" marker-end="url(#py-arrow)" />
-        <path d="M 275 415 L 235 450" class="arrow-line" marker-end="url(#py-arrow)" />
+        <path d="M 165 415 L 210 450" class="arrow-line" marker-end="url(#py-arrow)" />
+        <path d="M 335 415 L 290 450" class="arrow-line" marker-end="url(#py-arrow)" />
 
         <!-- Stage 5: Algorithms -->
-        <g transform="translate(210, 475)">
+        <g transform="translate(250, 475)">
           <text x="0" y="-10" class="stage-label" text-anchor="middle">Algorithms</text>
           <!-- Outer container -->
-          <rect x="-150" y="0" width="300" height="110" rx="10" class="stage-box stage-container" />
+          <rect x="-175" y="0" width="350" height="110" rx="10" class="stage-box stage-container" />
 
           <!-- Inner box: boolean_union -->
-          <g transform="translate(-130, 12)">
-            <rect x="0" y="0" width="260" height="28" rx="5" class="stage-box stage-enriched" />
+          <g transform="translate(-155, 12)">
+            <rect x="0" y="0" width="310" height="28" rx="5" class="stage-box stage-enriched" />
             <text x="10" y="19" class="code-small">
               <tspan class="syn-var">tf</tspan><tspan>.</tspan><tspan class="syn-fn">boolean_union</tspan><tspan>(</tspan><tspan class="syn-var">mesh0</tspan><tspan>, </tspan><tspan class="syn-var">mesh1</tspan><tspan>)</tspan>
             </text>
@@ -131,8 +131,8 @@
           </g>
 
           <!-- Inner box: intersection_curves -->
-          <g transform="translate(-130, 70)">
-            <rect x="0" y="0" width="260" height="28" rx="5" class="stage-box stage-enriched" />
+          <g transform="translate(-155, 70)">
+            <rect x="0" y="0" width="310" height="28" rx="5" class="stage-box stage-enriched" />
             <text x="10" y="19" class="code-small">
               <tspan class="syn-var">tf</tspan><tspan>.</tspan><tspan class="syn-fn">intersection_curves</tspan><tspan>(</tspan><tspan class="syn-var">mesh0</tspan><tspan>, </tspan><tspan class="syn-var">mesh1</tspan><tspan>)</tspan>
             </text>
@@ -140,10 +140,10 @@
         </g>
 
         <!-- Arrow down -->
-        <path d="M 210 590 L 210 630" class="arrow-line" marker-end="url(#py-arrow)" />
+        <path d="M 250 590 L 250 630" class="arrow-line" marker-end="url(#py-arrow)" />
 
         <!-- Stage 6: Result -->
-        <g transform="translate(210, 655)">
+        <g transform="translate(250, 655)">
           <text x="0" y="-8" class="stage-label" text-anchor="middle">Result</text>
           <rect x="-100" y="0" width="200" height="36" rx="6" class="stage-box" />
           <text x="0" y="23" class="code-text" text-anchor="middle">
@@ -172,7 +172,7 @@
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 12px;
   padding: 1rem 0.5rem;
-  max-width: 28rem;
+  max-width: 30rem;
   width: 100%;
 }
 
@@ -225,7 +225,7 @@
 }
 
 .stage-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
   fill: currentColor;
   opacity: 0.5;
@@ -234,7 +234,7 @@
 }
 
 .ellipsis-text {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   fill: currentColor;
   opacity: 0.6;
@@ -256,19 +256,19 @@
 /* Code text styles with monospace font */
 .code-text {
   font-family: 'SF Mono', SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-  font-size: 12px;
+  font-size: 13px;
   fill: currentColor;
 }
 
 .code-small {
   font-family: 'SF Mono', SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-  font-size: 11px;
+  font-size: 12.5px;
   fill: currentColor;
 }
 
 .code-tiny {
   font-family: 'SF Mono', SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-  font-size: 10.5px;
+  font-size: 12px;
   fill: currentColor;
 }
 
@@ -336,7 +336,7 @@
   color: var(--color-neutral-500);
   font-style: italic;
   margin-top: 0.75rem;
-  max-width: 28rem;
+  max-width: 30rem;
   line-height: 1.5;
 }
 
