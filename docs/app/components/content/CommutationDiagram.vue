@@ -326,10 +326,10 @@ const overlay = computed(() => {
   transform: translateZ(0); /* helps Safari compositing */
 }
 .kbox-lg {
-  font-size: 1.1rem; /* matches your .math-label */
+  font-size: clamp(0.95rem, 2.5vw, 1.1rem);
 }
 .kbox-sm {
-  font-size: 0.9rem; /* matches your .math-label-small */
+  font-size: clamp(0.75rem, 2vw, 0.9rem);
 }
 .kbox :deep(.katex) {
   color: inherit;

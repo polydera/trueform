@@ -149,7 +149,7 @@ const overlay = computed(() => {
     mesh: boxStyle(285, 70, 140, 55),
 
     // Arrow labels (already in global SVG coords)
-    topArrow: boxStyle(170, 168, 110, 25),
+    topArrow: boxStyle(170, 165, 110, 25),
     bottomArrow: boxStyle(170, 198, 110, 25),
 
     // F label
@@ -288,10 +288,10 @@ const overlay = computed(() => {
   transform: translateZ(0); /* helps Safari compositing */
 }
 .kbox-lg {
-  font-size: 1.2rem;
+  font-size: clamp(0.8rem, 2.5vw, 1.2rem);
 }
 .kbox-sm {
-  font-size: 0.75rem;
+  font-size: clamp(0.55rem, 1.8vw, 0.75rem);
 }
 
 /* KaTeX color inherits from component */
