@@ -29,7 +29,7 @@ from ._topology import label_connected_components, cell_membership, manifold_edg
 from ._spatial import neighbor_search, gather_intersecting_ids, gather_ids_within_distance
 from ._core.transformed import transformed
 from ._geometry import fit_rigid_alignment, fit_obb_alignment, fit_knn_alignment, chamfer_error, triangulated
-from ._geometry import normals, point_normals, principal_curvatures, shape_index
+from ._geometry import normals, point_normals, principal_curvatures, shape_index, ensure_positive_orientation
 
 # IO functions
 from ._io import read_stl, write_stl, read_obj, write_obj
@@ -94,6 +94,7 @@ __all__ = [
     'point_normals',
     'principal_curvatures',
     'shape_index',
+    'ensure_positive_orientation',
     # IO
     'read_stl',
     'write_stl',

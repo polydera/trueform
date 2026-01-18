@@ -16,6 +16,7 @@ from .normals import normals
 from .point_normals import point_normals
 from .principal_curvatures import principal_curvatures
 from .shape_index import shape_index
+from .ensure_positive_orientation import ensure_positive_orientation
 
 __all__ = [
     "fit_rigid_alignment",
@@ -27,4 +28,5 @@ __all__ = [
     "point_normals",
     "principal_curvatures",
     "shape_index",
+    "ensure_positive_orientation",
 ]
