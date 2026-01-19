@@ -1,6 +1,6 @@
 # trueform
 
-Real-time geometric processing. Easy to use, robust on real-world meshes.
+Real-time geometric processing. Easy to use, robust on real-world data.
 
 Spatial queries, mesh booleans, isocontours, topology — at interactive speed on million-polygon meshes. Robust to non-manifold flaps, inconsistent winding, and pipeline artifacts. Header-only C++17; works directly on your data with zero-copy views.
 

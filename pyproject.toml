@@ -7,7 +7,7 @@ build-backend = "scikit_build_core.build"
 [project]
 name = "trueform"
 dynamic = ["version"]
-description = "Real-time geometric processing: spatial queries, mesh booleans, isocontours, and topology."
+description = "Real-time geometric processing on NumPy arrays. Easy to use, robust on real-world data."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { file = "LICENSE.noncommercial" }
@@ -15,7 +15,17 @@ authors = [
   { name = "Ziga Sajovic", email = "info@polydera.com" },
   { name = "XLAB" },
 ]
-keywords = ["geometry", "nanobind", "computational-geometry", "meshes"]
+keywords = [
+    "mesh",
+    "geometry",
+    "computational-geometry",
+    "mesh-processing",
+    "mesh-boolean",
+    "collision-detection",
+    "point-cloud",
+    "csg",
+    "numpy",
+]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
