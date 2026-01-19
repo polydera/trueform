@@ -85,7 +85,7 @@ Example: add extra CMake flags for the build:
 
 ```bash
 docker compose run --rm \
-  -e CMAKE_FLAGS="-DBUILD_EXAMPLES=OFF -DBUILD_PYTHON=OFF -DDIST_DIR=/workspace/wasm-examples/build/web/dist -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE=ON" \
+  -e CMAKE_FLAGS="-DTF_BUILD_EXAMPLES=OFF -DTF_BUILD_PYTHON=OFF -DDIST_DIR=/workspace/wasm-examples/build/web/dist -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE=ON" \
   web-example
 ```
 

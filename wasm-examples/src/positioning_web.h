@@ -69,7 +69,6 @@ public:
 
 private:
   tf::point<double, 3> normal_mesh_color{0.8, 0.8, 0.8};
-  tf::point<double, 3> selected_mesh_color{1., 0.8, 1.};
   std::vector<float> positioning_times;
 
   bool moving_mode = false;
@@ -120,12 +119,8 @@ private:
         auto t_use = std::min(t, 1.f - eps);
         auto s_t = 3 * t_use * t_use - 2 * t_use * t_use * t_use;
         auto pt = m_ray.origin + s_t * m_ray.direction;
-        auto color =
-            selected_mesh_color + t_use * (normal_mesh_color - selected_mesh_color);
         move_instance(*selected_instance, pt - m_prev_pt);
         auto focal = m_focal_ray(s_t);
-        bridge->get_instance(*selected_instance)
-            .set_color(color[0], color[1], color[2]);
         lambda_set_focal(focal[0], focal[1], focal[2]);
         m_prev_pt = pt;
         return t;
