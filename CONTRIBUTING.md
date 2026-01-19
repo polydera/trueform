@@ -92,7 +92,15 @@ Linear terms absorb local plane tilt, improving robustness when the
 neighborhood center doesn't coincide with the vertex."
 ```
 
-**4. Push and open a pull request**
+**4. Verify build and tests pass**
+
+```bash
+python tools/verify_build.py
+```
+
+This clones the repo to a temp directory and verifies everything works from scratch: C++ build and installation, `find_package` integration, Python pip install, and the full test suite. Use `--skip-vtk` if you don't have VTK installed, or `--only-python` to test just the Python package.
+
+**5. Push and open a pull request**
 ```bash
 git push origin feature/your-feature-name
 ```
