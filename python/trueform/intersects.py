@@ -132,7 +132,6 @@ def _spatial_intersects(obj0, obj1, type0, type1, type_pair):
 
 def _form_prim_intersects(obj0, obj1, type0, type1, type_pair):
     """Form x primitive intersects."""
-    from ._spatial import Mesh, EdgeMesh, PointCloud
 
     if type_pair not in INTERSECTS_FORM_PRIM:
         supported = {t.__name__ for pair in INTERSECTS_FORM_PRIM.keys() for t in pair}
@@ -158,7 +157,6 @@ def _form_prim_intersects(obj0, obj1, type0, type1, type_pair):
 
 def _form_form_intersects(obj0, obj1, type0, type1, type_pair):
     """Form x form intersects."""
-    from ._spatial import Mesh, EdgeMesh, PointCloud
 
     if type_pair not in INTERSECTS_FORM_FORM:
         supported = {t.__name__ for pair in INTERSECTS_FORM_FORM.keys() for t in pair}

@@ -10,11 +10,6 @@ Copyright (c) 2025 Žiga Sajovic, XLAB
 """
 
 import sys
-import os
-
-# Add parent directory to path so we can import trueform
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 import numpy as np
 import pytest
 import trueform as tf

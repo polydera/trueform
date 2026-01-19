@@ -7,7 +7,6 @@ Commercial licensing available via info@polydera.com.
 https://github.com/xlabmedical/trueform
 """
 
-import numpy as np
 from typing import TYPE_CHECKING
 
 from .. import _trueform

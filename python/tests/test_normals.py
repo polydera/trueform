@@ -5,8 +5,6 @@ Copyright (c) 2025 Ziga Sajovic, XLAB
 """
 
 import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
 import numpy as np
@@ -135,9 +133,9 @@ def test_normals_planar_faces(index_dtype, real_dtype):
     # Both triangles lie in xy-plane, so normals should be +/- z
     for i in range(len(faces)):
         # Normal should be parallel to z-axis
-        assert abs(normals[i, 0]) < 1e-6, f"Normal x component should be ~0"
-        assert abs(normals[i, 1]) < 1e-6, f"Normal y component should be ~0"
-        assert abs(abs(normals[i, 2]) - 1.0) < 1e-6, f"Normal z component should be ~1"
+        assert abs(normals[i, 0]) < 1e-6, "Normal x component should be ~0"
+        assert abs(normals[i, 1]) < 1e-6, "Normal y component should be ~0"
+        assert abs(abs(normals[i, 2]) - 1.0) < 1e-6, "Normal z component should be ~1"
 
 
 # ==============================================================================

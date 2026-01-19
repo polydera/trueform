@@ -5,11 +5,6 @@ Copyright (c) 2025 Žiga Sajovic, XLAB
 """
 
 import sys
-import os
-
-# Add parent directory to path so we can import trueform
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 import pytest
 import numpy as np
 import trueform as tf
@@ -60,7 +55,7 @@ def test_single_threshold(dtype):
     # Verify points shape
     assert points_out.ndim == 2, f"Expected 2D array for points, got shape {points_out.shape}"
     assert points_out.shape[1] == 3, f"Expected 3D points, got shape {points_out.shape}"
-    assert points_out.dtype == dtype, f"Points dtype should match mesh dtype"
+    assert points_out.dtype == dtype, "Points dtype should match mesh dtype"
 
     # Verify path indices are valid
     for path_ids in paths:
@@ -94,7 +89,7 @@ def test_multiple_thresholds(dtype):
     assert isinstance(points_out, np.ndarray), "points should be numpy array"
 
     # Verify points dtype
-    assert points_out.dtype == dtype, f"Points dtype should match mesh dtype"
+    assert points_out.dtype == dtype, "Points dtype should match mesh dtype"
 
     # Should have curves (possibly more than single threshold)
     # Number of curves depends on mesh topology, but should be > 0

@@ -65,7 +65,7 @@ def _extract_meta_from_tuple(data: tuple) -> InputMeta:
         ngon = str(V) if V in (2, 3) else str(V)
         index_dtype = indices.dtype
     else:
-        raise TypeError(f"indices must be ndarray or OffsetBlockedArray")
+        raise TypeError("indices must be ndarray or OffsetBlockedArray")
 
     return InputMeta(
         index_dtype=index_dtype,

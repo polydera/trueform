@@ -78,7 +78,7 @@ def ray_cast(ray: Any, target: Any, config: Optional[Tuple[float, float]] = None
 
     # Validate dimensions match
     if not hasattr(ray, 'dims') or not hasattr(target, 'dims'):
-        raise TypeError(f"Both ray and target must have 'dims' attribute")
+        raise TypeError("Both ray and target must have 'dims' attribute")
 
     if ray.dims != target.dims:
         raise ValueError(
@@ -88,7 +88,7 @@ def ray_cast(ray: Any, target: Any, config: Optional[Tuple[float, float]] = None
 
     # Validate dtypes match
     if not hasattr(ray, 'dtype') or not hasattr(target, 'dtype'):
-        raise TypeError(f"Both ray and target must have 'dtype' attribute")
+        raise TypeError("Both ray and target must have 'dtype' attribute")
 
     if ray.dtype != target.dtype:
         raise TypeError(
@@ -97,9 +97,6 @@ def ray_cast(ray: Any, target: Any, config: Optional[Tuple[float, float]] = None
         )
 
     target_type = type(target)
-
-    # Check if target is a spatial form
-    from ._spatial import Mesh, EdgeMesh, PointCloud
 
     if target_type in SPATIAL_RAY_CAST:
         return _spatial_ray_cast(ray, target, target_type, config)

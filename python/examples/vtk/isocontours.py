@@ -3,7 +3,7 @@ Interactive isocontour extraction example with VTK
 
 Features:
 - Extract multiple isocontours from scalar field on mesh
-- Scroll wheel (with Shift) to move isocontour levels
+- Scroll wheel (with Ctrl) to move isocontour levels
 - Press 'n' to randomize the cutting plane
 - Real-time performance metrics for isocontour extraction
 
@@ -15,11 +15,8 @@ Multiple isocontour levels are extracted simultaneously and visualized as tubes.
 Extraction time is averaged over the last 100 frames.
 """
 import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../'))
 
 import vtk
-from vtk.util import numpy_support
 import numpy as np
 import trueform as tf
 
@@ -143,7 +140,7 @@ class IsocontourInteractor(BaseInteractor):
 
     def on_mouse_wheel_forward(self, obj, event):
         """Handle mouse wheel forward"""
-        if self.GetInteractor().GetShiftKey():
+        if self.GetInteractor().GetControlKey():
             # Move isocontours forward
             self.distance += self.spacing * 0.1
             self.compute_curves()
@@ -153,7 +150,7 @@ class IsocontourInteractor(BaseInteractor):
 
     def on_mouse_wheel_backward(self, obj, event):
         """Handle mouse wheel backward"""
-        if self.GetInteractor().GetShiftKey():
+        if self.GetInteractor().GetControlKey():
             # Move isocontours backward
             self.distance -= self.spacing * 0.1
             self.compute_curves()
@@ -243,7 +240,7 @@ def main():
     renderer_text.AddViewProp(text_instructions)
 
     text_help = create_text_actor(
-        "Hold Shift and scroll to move\n\nPowered by trueform",
+        "Hold Ctrl and scroll to move\n\nPowered by trueform",
         font_size=38,
         position=(0.97, 0.55),
         justification='right'

@@ -10,7 +10,7 @@ https://github.com/xlabmedical/trueform
 import numpy as np
 from typing import Any, Optional, Union, List, Tuple
 from .. import _trueform
-from .._primitives import Point, Segment, Polygon, Ray, Line
+from .._primitives import Point
 
 # Dispatch infrastructure
 from .._dispatch import (

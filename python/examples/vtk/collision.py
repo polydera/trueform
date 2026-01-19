@@ -16,17 +16,13 @@ If fewer than 25 meshes are provided, they are cycled to fill the grid.
 Times are averaged over the last 1000 frames.
 """
 import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../'))
 
 import vtk
-import numpy as np
 import trueform as tf
 import time
 
 # Import utilities
 from util import (
-    MeshData,
     load_mesh,
     load_mesh_shared,
     BaseInteractor,

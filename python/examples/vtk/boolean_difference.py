@@ -19,8 +19,6 @@ https://github.com/xlabmedical/trueform
 """
 
 import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../'))
 
 import vtk
 import numpy as np

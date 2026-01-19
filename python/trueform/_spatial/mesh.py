@@ -446,13 +446,13 @@ class Mesh:
         if self._is_dynamic:
             if not isinstance(value, OffsetBlockedArray):
                 raise TypeError(
-                    f"manifold_edge_link must be OffsetBlockedArray for dynamic mesh"
+                    "manifold_edge_link must be OffsetBlockedArray for dynamic mesh"
                 )
             self._wrapper.set_manifold_edge_link(value._wrapper)
         else:
             if not isinstance(value, np.ndarray):
                 raise TypeError(
-                    f"manifold_edge_link must be numpy array for fixed-size mesh"
+                    "manifold_edge_link must be numpy array for fixed-size mesh"
                 )
             if not value.flags["C_CONTIGUOUS"]:
                 value = np.ascontiguousarray(value)

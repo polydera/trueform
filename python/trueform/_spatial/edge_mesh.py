@@ -8,7 +8,6 @@ https://github.com/xlabmedical/trueform
 """
 
 import numpy as np
-from typing import Union
 from .._core import OffsetBlockedArray
 from ._validation import (
     validate_points,

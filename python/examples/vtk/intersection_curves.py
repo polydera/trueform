@@ -15,8 +15,6 @@ Multiple intersection curves may be extracted depending on mesh topology.
 Extraction time is averaged over the last 100 frames.
 """
 import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../'))
 
 import vtk
 import numpy as np
@@ -25,7 +23,6 @@ import time
 
 # Import utilities
 from util import (
-    MeshData,
     load_mesh,
     random_rotation_matrix,
     curves_to_polydata,

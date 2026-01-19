@@ -67,9 +67,8 @@ def transformed(
             f"got shape {transformation.shape}"
         )
 
-    # Extract rotation and translation parts
+    # Extract rotation part (translation handled via homogeneous coordinates)
     R = transformation[:dims, :dims]  # Rotation matrix
-    t = transformation[:dims, dims]   # Translation vector
 
     # Helper: Transform a point (affine transformation)
     def transform_point(pt):

@@ -8,7 +8,6 @@ https://github.com/xlabmedical/trueform
 """
 
 import numpy as np
-from typing import Union
 from .._trueform.spatial import (
     PointCloudWrapperFloat2D,
     PointCloudWrapperFloat3D,

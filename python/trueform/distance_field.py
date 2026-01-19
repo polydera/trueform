@@ -119,7 +119,7 @@ def distance_field(points: Any, primitive: Any) -> np.ndarray:
 
     # Validate primitive has matching dims
     if not hasattr(primitive, 'dims'):
-        raise TypeError(f"Primitive must have 'dims' attribute")
+        raise TypeError("Primitive must have 'dims' attribute")
 
     if primitive.dims != dims:
         raise ValueError(
@@ -129,7 +129,7 @@ def distance_field(points: Any, primitive: Any) -> np.ndarray:
 
     # Validate primitive dtype matches
     if not hasattr(primitive, 'dtype'):
-        raise TypeError(f"Primitive must have 'dtype' attribute")
+        raise TypeError("Primitive must have 'dtype' attribute")
 
     if primitive.dtype != points_array.dtype:
         raise TypeError(

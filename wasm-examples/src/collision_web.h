@@ -91,10 +91,8 @@ public:
                    normal_mesh_color[2]);
   }
 
-  auto set_active_color(std::size_t instance_id) -> void {
-    bridge->get_instance(instance_id)
-        .set_color(selected_mesh_color[0], selected_mesh_color[1],
-                   selected_mesh_color[2]);
+  auto set_active_color(std::size_t) -> void {
+    // Don't change color on selection - keep normal appearance
   }
 
   auto reset_colliding_colors() -> void {

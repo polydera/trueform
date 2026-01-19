@@ -15,10 +15,6 @@ Default meshes: dragon-500k.stl and dragon-50k.stl
 import sys
 import os
 import numpy as np
-
-# Add parent directory to path for local development
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-
 import trueform as tf
 
 
@@ -60,7 +56,8 @@ def compute_chamfer_symmetric(cloud0: tf.PointCloud, cloud1: tf.PointCloud) -> f
 
 def main():
     # Default data directory
-    data_dir = os.path.join(os.path.dirname(__file__), '../../../benchmarks/data/')
+    data_dir = os.path.join(os.path.dirname(
+        __file__), '../../benchmarks/data/')
 
     # Parse command line arguments
     if len(sys.argv) >= 3:
@@ -98,7 +95,8 @@ def main():
 
     # Create random transformation: rotation around centroid + large translation
     R = random_rotation_matrix_3d()
-    translation = np.array([diagonal * 2.5, diagonal * -1.5, diagonal * 2.0], dtype=np.float32)
+    translation = np.array(
+        [diagonal * 2.5, diagonal * -1.5, diagonal * 2.0], dtype=np.float32)
 
     # Build transformation: translate to origin, rotate, translate back, then translate far
     T_to_origin = make_transformation(np.eye(3, dtype=np.float32), -centroid)
@@ -124,7 +122,8 @@ def main():
     # Baseline: how different are the meshes due to resolution?
     baseline_cloud = tf.PointCloud(source_pts_original)
     chamfer_baseline = tf.chamfer_error(baseline_cloud, target_cloud)
-    print(f"\nBaseline Chamfer (resolution difference): {chamfer_baseline:.6f}")
+    print(
+        f"\nBaseline Chamfer (resolution difference): {chamfer_baseline:.6f}")
 
     # Initial error (meshes far apart)
     chamfer_initial = tf.chamfer_error(source_cloud, target_cloud)
@@ -203,7 +202,8 @@ def main():
     subsample_stride = max(1, len(source_pts_shuffled) // n_samples)
     print(f"\nStarting from OBB: Chamfer = {chamfer_obb_shuffled:.6f}")
     print(f"Baseline (best possible): {chamfer_baseline:.6f}")
-    print(f"Subsampling: ~{n_samples} / {len(source_pts_shuffled)} points per iteration")
+    print(
+        f"Subsampling: ~{n_samples} / {len(source_pts_shuffled)} points per iteration")
     print(f"Using k={k} nearest neighbors")
 
     ema = 0.0
@@ -213,7 +213,8 @@ def main():
     for iter_num in range(max_iters):
         # Random subsample for this iteration
         offset = np.random.randint(0, subsample_stride)
-        ids = np.arange(offset, len(source_pts_shuffled), subsample_stride)[:n_samples]
+        ids = np.arange(offset, len(source_pts_shuffled),
+                        subsample_stride)[:n_samples]
         subsample_pts = source_pts_shuffled[ids]
         subsample_cloud = tf.PointCloud(subsample_pts)
         subsample_cloud.transformation = T_accum
@@ -226,7 +227,8 @@ def main():
 
         # Evaluate Chamfer error on a different subset
         eval_offset = np.random.randint(0, subsample_stride)
-        eval_ids = np.arange(eval_offset, len(source_pts_shuffled), subsample_stride)[:n_samples]
+        eval_ids = np.arange(eval_offset, len(
+            source_pts_shuffled), subsample_stride)[:n_samples]
         eval_pts = source_pts_shuffled[eval_ids]
         eval_cloud = tf.PointCloud(eval_pts)
         eval_cloud.transformation = T_accum
@@ -235,8 +237,10 @@ def main():
 
         # EMA update
         ema_prev = ema
-        ema = chamfer if iter_num == 0 else alpha * chamfer + (1.0 - alpha) * ema
-        rel_change = 1.0 if iter_num == 0 else (ema_prev - ema) / ema if ema > 0 else 0
+        ema = chamfer if iter_num == 0 else alpha * \
+            chamfer + (1.0 - alpha) * ema
+        rel_change = 1.0 if iter_num == 0 else (
+            ema_prev - ema) / ema if ema > 0 else 0
 
         print(f"  iter {iter_num}: Chamfer = {chamfer:.6f} (EMA = {ema:.6f})")
 
@@ -260,13 +264,15 @@ def main():
     print("\n" + "=" * 60)
     print("FINAL SUMMARY")
     print("=" * 60)
-    print(f"\nMeshes: {os.path.basename(high_res_path)} (target) vs {os.path.basename(low_res_path)} (source)")
+    print(
+        f"\nMeshes: {os.path.basename(high_res_path)} (target) vs {os.path.basename(low_res_path)} (source)")
     print(f"Baseline Chamfer (resolution difference): {chamfer_baseline:.6f}")
-    print(f"\nAlignment pipeline on shuffled points:")
+    print("\nAlignment pipeline on shuffled points:")
     print(f"  1. Initial (far apart):  {chamfer_initial:.2f}")
     print(f"  2. After OBB alignment:  {chamfer_obb_shuffled:.6f}")
     print(f"  3. After ICP refinement: {chamfer_final:.6f}")
-    print(f"\nICP achieved {(chamfer_obb_shuffled - chamfer_final) / chamfer_obb_shuffled * 100:.1f}% improvement over OBB")
+    print(
+        f"\nICP achieved {(chamfer_obb_shuffled - chamfer_final) / chamfer_obb_shuffled * 100:.1f}% improvement over OBB")
 
 
 if __name__ == "__main__":

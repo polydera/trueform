@@ -77,15 +77,17 @@ def _gather_ids(form: Any, query: Any, predicate: str = "intersects", distance: 
 
     # Validate predicate
     if predicate not in ("intersects", "within_distance"):
-        raise ValueError(f"Invalid predicate '{predicate}'. Must be 'intersects' or 'within_distance'")
+        raise ValueError(
+            f"Invalid predicate '{predicate}'. Must be 'intersects' or 'within_distance'")
 
     # Validate distance for within_distance
     if predicate == "within_distance" and distance is None:
-        raise ValueError("distance is required when predicate='within_distance'")
+        raise ValueError(
+            "distance is required when predicate='within_distance'")
 
     # Validate dimensions match
     if not hasattr(form, 'dims') or not hasattr(query, 'dims'):
-        raise TypeError(f"Both form and query must have 'dims' attribute")
+        raise TypeError("Both form and query must have 'dims' attribute")
 
     if form.dims != query.dims:
         raise ValueError(
@@ -115,12 +117,10 @@ def _gather_ids(form: Any, query: Any, predicate: str = "intersects", distance: 
 
 def _form_prim_gather_ids(form, query, type_pair, predicate, distance):
     """Form x primitive gather_ids."""
-    from .mesh import Mesh
-    from .edge_mesh import EdgeMesh
-    from .point_cloud import PointCloud
 
     if type_pair not in GATHER_IDS_FORM_PRIM:
-        supported = {t.__name__ for pair in GATHER_IDS_FORM_PRIM.keys() for t in pair}
+        supported = {t.__name__ for pair in GATHER_IDS_FORM_PRIM.keys()
+                     for t in pair}
         raise TypeError(
             f"gather_ids not implemented for types: {type_pair[0].__name__}, {type_pair[1].__name__}. "
             f"Supported types: {', '.join(sorted(supported))}"
@@ -143,12 +143,10 @@ def _form_prim_gather_ids(form, query, type_pair, predicate, distance):
 
 def _form_form_gather_ids(form, query, type_pair, predicate, distance):
     """Form x form gather_ids."""
-    from .mesh import Mesh
-    from .edge_mesh import EdgeMesh
-    from .point_cloud import PointCloud
 
     if type_pair not in GATHER_IDS_FORM_FORM:
-        supported = {t.__name__ for pair in GATHER_IDS_FORM_FORM.keys() for t in pair}
+        supported = {t.__name__ for pair in GATHER_IDS_FORM_FORM.keys()
+                     for t in pair}
         raise TypeError(
             f"gather_ids not implemented for types: {type_pair[0].__name__}, {type_pair[1].__name__}. "
             f"Supported form-form types: {', '.join(sorted(supported))}"
@@ -161,7 +159,8 @@ def _form_form_gather_ids(form, query, type_pair, predicate, distance):
     form1_obj = form if needs_swap else query
 
     # Apply index canonicalization (int32 before int64 for same types)
-    form0_obj, form1_obj, extra_swap = canonicalize_index_order(form0_obj, form1_obj)
+    form0_obj, form1_obj, extra_swap = canonicalize_index_order(
+        form0_obj, form1_obj)
 
     # Build suffix using dispatch utility
     meta0 = extract_meta(form0_obj)
@@ -170,7 +169,8 @@ def _form_form_gather_ids(form, query, type_pair, predicate, distance):
 
     func_name = func_template.format(suffix)
     cpp_func = getattr(_trueform.spatial, func_name)
-    result = cpp_func(form0_obj._wrapper, form1_obj._wrapper, predicate, distance)
+    result = cpp_func(form0_obj._wrapper, form1_obj._wrapper,
+                      predicate, distance)
 
     # If forms were swapped, swap result columns back
     # Result is numpy array of shape (N, 2) with columns [id0, id1]

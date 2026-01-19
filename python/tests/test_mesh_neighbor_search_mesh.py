@@ -7,11 +7,6 @@ Commercial licensing available via info@polydera.com.
 https://github.com/xlabmedical/trueform
 """
 import sys
-import os
-
-# Add parent directory to path so we can import trueform
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 import pytest
 import numpy as np
 import trueform as tf

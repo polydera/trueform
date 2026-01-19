@@ -6,13 +6,6 @@ Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
 Commercial licensing available via info@polydera.com.
 https://github.com/xlabmedical/trueform
 """
-
-import sys
-import os
-
-# Add parent directory to path so we can import trueform
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 import numpy as np
 import pytest
 import trueform as tf

@@ -7,7 +7,6 @@ Commercial licensing available via info@polydera.com.
 https://github.com/xlabmedical/trueform
 """
 
-import numpy as np
 from .. import _trueform
 from .._core import OffsetBlockedArray
 from .._dispatch import topology_suffix
