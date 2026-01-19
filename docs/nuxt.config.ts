@@ -5,8 +5,11 @@ export default defineNuxtConfig({
     "@nuxt/image",
     "@nuxt/ui",
     "nuxt-llms",
+    "@nuxtjs/robots",
+    "@nuxtjs/sitemap",
     "@nuxt/content",
     "nuxt-og-image",
+    "nuxt-schema-org",
     "./modules/copy-files",
   ],
 
@@ -35,6 +38,18 @@ export default defineNuxtConfig({
   site: {
     url: process.env.NUXT_PUBLIC_SITE_URL || "https://trueform.polydera.com",
     name: "trueform",
+    identity: {
+      type: "Organization",
+      name: "XLAB Medical",
+      url: "https://trueform.polydera.com",
+      logo: "https://trueform.polydera.com/tf.png",
+    },
+  },
+
+  // Sitemap configuration
+  sitemap: {
+    autoLastmod: true,
+    zeroRuntime: true,
   },
 
   nitro: {

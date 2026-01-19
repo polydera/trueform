@@ -1,12 +1,13 @@
 import { defineContentConfig, defineCollection, z } from '@nuxt/content'
+import { asSitemapCollection } from '@nuxtjs/sitemap/content'
 
 export default defineContentConfig({
   collections: {
-    landing: defineCollection({
-      type: 'page',
-      source: 'index.md'
-    }),
-    docsCpp: defineCollection({
+    landing: defineCollection(asSitemapCollection({
+        type: 'page',
+        source: 'index.md'
+      })),
+    docsCpp: defineCollection(asSitemapCollection({
       type: 'page',
       source: {
         include: 'cpp/**',
@@ -19,8 +20,8 @@ export default defineContentConfig({
           target: z.string().optional()
         })).optional()
       })
-    }),
-    docsPy: defineCollection({
+    })),
+    docsPy: defineCollection(asSitemapCollection({
       type: 'page',
       source: {
         include: 'py/**',
@@ -33,6 +34,6 @@ export default defineContentConfig({
           target: z.string().optional()
         })).optional()
       })
-    }),
+    })),
   }
 })

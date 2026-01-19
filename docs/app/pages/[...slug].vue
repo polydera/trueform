@@ -47,9 +47,33 @@ useSeoMeta({
   ogDescription: description,
 });
 
-// defineComponent("Docs", {
-//   headline: headline.value,
-// });
+// Build breadcrumb list for Schema.org
+const breadcrumbs = computed(() => {
+  const items: { name: string; item: string }[] = [];
+  const pathParts = route.path.split("/").filter(Boolean);
+
+  let currentPath = "";
+  pathParts.forEach((part, index) => {
+    currentPath += `/${part}`;
+    const navItem = navigation?.value
+      ?.flatMap((n) => [n, ...(n.children || [])])
+      .find((item) => item.path === currentPath);
+
+    items.push({
+      name: navItem?.title || part,
+      item: `https://trueform.polydera.com${currentPath}`,
+    });
+  });
+
+  return items;
+});
+
+// Add breadcrumb structured data
+useSchemaOrg([
+  defineBreadcrumb({
+    itemListElement: breadcrumbs.value,
+  }),
+]);
 </script>
 
 <template>

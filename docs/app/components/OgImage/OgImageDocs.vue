@@ -85,7 +85,7 @@ const IconComponent = runtimeConfig.hasNuxtIcon
         return h("div", "missing @nuxt/icon");
       },
     });
-if (typeof props.icon === "string" && !runtimeConfig.hasNuxtIcon && process.dev) {
+if (typeof props.icon === "string" && !runtimeConfig.hasNuxtIcon && import.meta.dev) {
   console.warn("Please install `@nuxt/icon` to use icons with the fallback OG Image component.");
   // eslint-disable-next-line no-console
   console.log("\nnpx nuxi module add icon\n");
@@ -139,7 +139,7 @@ if (typeof props.icon === "string" && !runtimeConfig.hasNuxtIcon && process.dev)
         </div>
       </div>
       <div class="flex flex-row justify-center items-center text-left w-full">
-        <img v-if="siteLogo" :src="siteLogo" height="60px" />
+        <img v-if="siteLogo" :src="siteLogo" height="60" />
         <template v-else>
           <svg
             height="50px"
