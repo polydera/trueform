@@ -99,7 +99,9 @@ auto self_search(const tf::tree_like<TreePolicy> &tree, const F &bvs_apply,
     return false;
   self_search_params<tf::tree_like<TreePolicy>, F, F1, F2> params{
       tree, bvs_apply, apply, abort};
-  self_search(0, 0, parallelism_depth, params);
+  tbb::task_group tg;
+  tg.run([&] { self_search(0, 0, parallelism_depth, params); });
+  tg.wait();
   return params.found;
 }
 
