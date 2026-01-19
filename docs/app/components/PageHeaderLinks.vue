@@ -61,7 +61,15 @@ async function copyPage() {
         content: 'w-48',
       }"
     >
-      <UButton icon="i-lucide-copy" label="Copy page" color="neutral" variant="outline" />
+      <UButton label="Copy page" color="neutral" variant="outline">
+        <template #trailing>
+          <div class="flex items-center gap-0.5">
+            <UIcon name="i-lucide-copy" />
+            <UIcon name="i-simple-icons:openai" />
+            <UIcon name="i-simple-icons:anthropic" />
+          </div>
+        </template>
+      </UButton>
     </UDropdownMenu>
   </div>
 </template>
