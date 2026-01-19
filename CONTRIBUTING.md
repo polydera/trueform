@@ -36,7 +36,7 @@ Header-only. No build required—just include and link `tf::trueform`.
 
 ```bash
 cmake -B build -DTF_BUILD_PYTHON=ON
-cmake --build build --parallel --target python
+cmake --build build --parallel --target trueform_python
 pip install ./build/python
 ```
 
@@ -55,14 +55,14 @@ cmake --build build --parallel
 VTK examples:
 ```bash
 cmake -B build -DTF_BUILD_VTK_INTEGRATION=ON -DTF_BUILD_VTK_EXAMPLES=ON
-cmake --build build --parallel --target vtk_examples
+cmake --build build --parallel --target trueform_vtk_examples
 ```
 
 ### C++ Examples
 
 ```bash
 cmake -B build -DTF_BUILD_EXAMPLES=ON
-cmake --build build --parallel --target examples
+cmake --build build --parallel --target trueform_examples
 ```
 
 ### Benchmarks

@@ -44,7 +44,7 @@ add_vtk_example(closest_pair)
 add_vtk_example(shape_histogram)
 
 # Target to build all examples
-add_custom_target(vtk_examples DEPENDS
+add_custom_target(trueform_vtk_examples DEPENDS
   vtk_example_non_simple_edges
   vtk_example_intersection_curves
   vtk_example_boolean

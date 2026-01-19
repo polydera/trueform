@@ -127,7 +127,7 @@ file(GLOB_RECURSE PYTHON_EXAMPLE_FILES   "${CMAKE_CURRENT_SOURCE_DIR}/examples/*
 # file(GLOB_RECURSE PYTHON_BENCHMARK_FILES "${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/*.py")
 
 # Create a custom target to sync Python files to the build directory
-add_custom_target(copy_python_files ALL
+add_custom_target(trueform_copy_python_files ALL
         DEPENDS
         ${PYTHON_SOURCE_FILES}
         ${PYTHON_TEST_FILES}
@@ -136,7 +136,7 @@ add_custom_target(copy_python_files ALL
 )
 
 add_custom_command(
-        TARGET copy_python_files POST_BUILD
+        TARGET trueform_copy_python_files POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/trueform"
         "${CMAKE_CURRENT_BINARY_DIR}/trueform"
@@ -151,7 +151,7 @@ add_custom_command(
 )
 if(TF_BUILD_PYTHON_BLENDER_INTEGRATION)
   add_custom_command(
-          TARGET copy_python_files POST_BUILD
+          TARGET trueform_copy_python_files POST_BUILD
           COMMAND ${CMAKE_COMMAND} -E copy_directory
           "${CMAKE_CURRENT_SOURCE_DIR}/bpy"
           "${CMAKE_CURRENT_BINARY_DIR}/trueform/bpy"
@@ -161,13 +161,13 @@ if(TF_BUILD_PYTHON_BLENDER_INTEGRATION)
 endif()
 
 # Ensure the binary extension waits for the python file copy
-add_dependencies(_trueform copy_python_files)
+add_dependencies(_trueform trueform_copy_python_files)
 
 # 11. Final Target
 # ------------------------------------------------------------------------------
 # Helper target for users to run explicitly
-add_custom_target(python DEPENDS _trueform)
-message(STATUS "Python bindings configured. Build with 'cmake --build . --target python'")
+add_custom_target(trueform_python DEPENDS _trueform)
+message(STATUS "Python bindings configured. Build with 'cmake --build . --target trueform_python'")
 
 # 11. Blender Bundle Target
 # ------------------------------------------------------------------------------
@@ -176,7 +176,7 @@ set(TF_BLENDER_BUNDLE_ZIP "${CMAKE_CURRENT_BINARY_DIR}/trueform-bpy-plugin.zip")
 set(TF_BLENDER_PLUGIN_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/examples/bpy-plugin/__init__.py")
 set(TF_BLENDER_PACKAGE_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/tools/package_blender_plugin.py")
 
-add_custom_target(build_blender_plugin DEPENDS _trueform copy_python_files)
+add_custom_target(build_blender_plugin DEPENDS _trueform trueform_copy_python_files)
 add_custom_command(
         TARGET build_blender_plugin POST_BUILD
         COMMAND "${Python_EXECUTABLE}" "${TF_BLENDER_PACKAGE_SCRIPT}"

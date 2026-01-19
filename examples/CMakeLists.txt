@@ -10,19 +10,19 @@ if(NOT TARGET tf::trueform)
 endif()
 
 # Object library with reusable example utilities (cylinder, etc.)
-add_library(example_utils OBJECT
+add_library(trueform_example_utils OBJECT
   src/cylinder.cpp
 )
-target_link_libraries(example_utils PUBLIC tf::trueform)
-target_include_directories(example_utils PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_compile_options(example_utils PRIVATE
+target_link_libraries(trueform_example_utils PUBLIC tf::trueform)
+target_include_directories(trueform_example_utils PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_compile_options(trueform_example_utils PRIVATE
   $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Wpedantic>
   $<$<CXX_COMPILER_ID:MSVC>:/W3 /wd4244 /wd4458 /wd4701>
 )
 
 # Mesh assembly example
 add_executable(mesh_assembly src/mesh_assembly.cpp)
-target_link_libraries(mesh_assembly PRIVATE tf::trueform example_utils)
+target_link_libraries(mesh_assembly PRIVATE tf::trueform trueform_example_utils)
 target_include_directories(mesh_assembly PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_options(mesh_assembly PRIVATE
   $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Wpedantic>
@@ -41,4 +41,4 @@ target_compile_options(alignment PRIVATE
 )
 
 # Collect all example targets
-add_custom_target(examples DEPENDS mesh_assembly alignment)
+add_custom_target(trueform_examples DEPENDS mesh_assembly alignment)

@@ -52,7 +52,7 @@ cmake.args = [
   "-DTF_USE_SYSTEM_LIBS=OFF",
   "-DTF_USE_STATIC_TBB=ON",
 ]
-build.targets = ["python"]
+build.targets = ["trueform_python"]
 sdist.include = [
   "CMakeLists.txt",
   "COMMERCIAL.md",
