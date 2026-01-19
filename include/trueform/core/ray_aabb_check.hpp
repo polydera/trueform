@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 #include "./aabb_like.hpp"
 #include "./intersect_status.hpp"
@@ -29,17 +29,27 @@ auto ray_aabb_check(const tf::ray_like<Dims, Policy0> &ray,
   auto &&max = bounding_box.max;
   auto safe_max = [](auto a, auto b) { return a > b ? a : b; };
   auto safe_min = [](auto a, auto b) { return a < b ? a : b; };
+
+  const RealT e = RealT(2) * std::numeric_limits<RealT>::epsilon();
+
   for (std::size_t i = 0; i < Dims; ++i) {
     auto min_i = min[i];
     auto max_i = max[i];
+
     if (ray_dir_inv[i] < 0)
       std::swap(min_i, max_i);
+
     auto t0 = (min_i - ray.origin[i]) * ray_dir_inv[i];
-    auto t1 = (max_i - ray.origin[i]) * ray_dir_inv[i] *
-              (1 + 2 * std::numeric_limits<RealT>::epsilon());
+    auto t1 = (max_i - ray.origin[i]) * ray_dir_inv[i];
+
+    t1 *= (t0 == t1)
+              ? RealT(1)
+              : ((ray_dir_inv[i] >= 0) ? (RealT(1) + e) : (RealT(1) - e));
+
     min_t = safe_max(t0, min_t);
     max_t = safe_min(t1, max_t);
   }
+
   if (min_t <= max_t) {
     t_min = min_t;
     t_max = max_t;
@@ -47,4 +57,5 @@ auto ray_aabb_check(const tf::ray_like<Dims, Policy0> &ray,
   }
   return intersect_status::none;
 }
+
 } // namespace tf::core
