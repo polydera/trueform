@@ -6,8 +6,8 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "trueform"
-version = "0.0.0"
-description = "Trueform - high-performance geometric processing primitives with nanobind-powered Python bindings."
+dynamic = ["version"]
+description = "Real-time geometric processing: spatial queries, mesh booleans, isocontours, and topology."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { file = "LICENSE.noncommercial" }
@@ -39,8 +39,8 @@ dependencies = [
 [project.urls]
 Homepage = "https://trueform.polydera.com"
 Documentation = "https://trueform.polydera.com"
-Repository = "https://github.com/xlabmedical/trueform"
-Issues = "https://github.com/xlabmedical/trueform/issues"
+Repository = "https://github.com/polydera/trueform"
+Issues = "https://github.com/polydera/trueform/issues"
 
 [tool.scikit-build]
 build-dir = "build/{wheel_tag}"
@@ -73,6 +73,11 @@ wheel.license-files = [
   "LICENSE.noncommercial",
   "licenses/*",
 ]
+
+[tool.scikit-build.metadata.version]
+provider = "scikit_build_core.metadata.regex"
+input = "CMakeLists.txt"
+regex = 'project\(trueform\s+VERSION\s+(?P<value>[0-9.]+)'
 
 [tool.cibuildwheel]
 # Default: build only CPython 3.11 wheels

@@ -111,12 +111,7 @@ endif()
 
 # 9. Version Injection
 # ------------------------------------------------------------------------------
-# If built via scikit-build-core, use that version. Otherwise, use dev placeholder.
-if(DEFINED SKBUILD_PROJECT_VERSION)
-  set(TRUEFORM_VERSION ${SKBUILD_PROJECT_VERSION})
-else()
-  set(TRUEFORM_VERSION "0.0.0-dev")
-endif()
+set(TRUEFORM_VERSION ${PROJECT_VERSION})
 
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/trueform/_version.py"
         "__version__ = \"${TRUEFORM_VERSION}\"\n"

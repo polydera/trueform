@@ -17,7 +17,13 @@ endif()
 # ==============================================================================
 # Project Configuration
 # ==============================================================================
-project(trueform VERSION 0.0.0 LANGUAGES CXX)
+project(trueform VERSION 0.1.0 LANGUAGES CXX)
+
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.hpp.in
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/trueform/version.hpp
+    @ONLY
+)
 
 message(STATUS "CMAKE_OSX_DEPLOYMENT_TARGET = ${CMAKE_OSX_DEPLOYMENT_TARGET}")
 
