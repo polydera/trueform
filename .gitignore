@@ -34,3 +34,6 @@ __pycache__/
 *.tmp
 *.bak
 *.zip
+
+# Generated
+include/trueform/version.hpp
