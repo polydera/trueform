@@ -51,10 +51,12 @@ auto make_clean_index_map(const tf::core::polygons<Range0, Range1> &polygons,
   tf::mask_to_index_map(kept_polygons, face_map);
   // mark points that are contained in any polygon
   auto &contained_points = kept_polygons;
-  contained_points.allocate(polygons.points().size());
+  contained_points.allocate(point_map.kept_ids().size());
   tf::parallel_fill(contained_points, false);
   tf::parallel_for_each(
-      tf::make_indirect_range(face_map.kept_ids(), polygons.faces()),
+      tf::make_indirect_range(
+          face_map.kept_ids(),
+          tf::make_block_indirect_range(polygons.faces(), point_map.f())),
       [&](const auto &face) {
         for (auto e : face)
           contained_points[e] = true;

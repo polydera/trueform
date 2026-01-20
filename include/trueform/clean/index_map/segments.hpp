@@ -17,6 +17,7 @@
 #include "../../core/base/segments.hpp"
 #include "../../core/index_map.hpp"
 #include "../../core/none.hpp"
+#include "../../core/views/block_indirect_range.hpp"
 #include "./points.hpp"
 
 namespace tf {
@@ -57,10 +58,12 @@ auto make_clean_index_map(const tf::core::segments<Range0, Range1> &segments,
 
   // now remove all uncontained points from the map
   tf::buffer<bool> contained_points;
-  contained_points.allocate(segments.points().size());
+  contained_points.allocate(point_map.kept_ids().size());
   tf::parallel_fill(contained_points, false);
   tf::parallel_for_each(
-      tf::make_indirect_range(edge_map.kept_ids(), segments.edges()),
+      tf::make_indirect_range(
+          edge_map.kept_ids(),
+          tf::make_block_indirect_range(segments.edges(), point_map.f())),
       [&](const auto &edge) {
         contained_points[edge[0]] = true;
         contained_points[edge[1]] = true;

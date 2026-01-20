@@ -36,4 +36,6 @@
 #include "./algorithm/parallel_iota.hpp"
 #include "./algorithm/parallel_transform.hpp"
 #include "./algorithm/reduce.hpp"
+#include "./algorithm/remove_by_mask_and_make_map.hpp"
 #include "./algorithm/remove_if_and_make_map.hpp"
+#include "./algorithm/keep_by_mask_and_make_map.hpp"
