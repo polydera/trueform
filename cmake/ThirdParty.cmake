@@ -6,6 +6,9 @@
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}")
 include(CPM)
 
+# Dependency Versions
+set(TF_CATCH2_VERSION "3.5.2" CACHE STRING "Catch2 version for testing")
+
 # Allow the project to use system libraries if the global flag is set
 set(CPM_USE_LOCAL_PACKAGES ${TF_USE_SYSTEM_LIBS})
 
@@ -70,4 +73,19 @@ if(TF_BUILD_PYTHON)
     include("${CPM_PACKAGE_nanobind_SOURCE_DIR}/cmake/nanobind-config.cmake")
   endif()
 
+endif()
+
+# ------------------------------------------------------------------------------
+# Dependency: Catch2 (Testing Framework)
+# ------------------------------------------------------------------------------
+if(TF_BUILD_TESTS)
+  CPMAddPackage(
+    NAME Catch2
+    GITHUB_REPOSITORY catchorg/Catch2
+    VERSION ${TF_CATCH2_VERSION}
+    OPTIONS
+      "CATCH_INSTALL_DOCS OFF"
+      "CATCH_INSTALL_EXTRAS OFF"
+  )
+  list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/extras)
 endif()
