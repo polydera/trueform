@@ -35,8 +35,9 @@ auto ray_aabb_check(const tf::ray_like<Dims, Policy0> &ray,
     if (ray_dir_inv[i] < 0)
       std::swap(min_i, max_i);
     auto t0 = (min_i - ray.origin[i]) * ray_dir_inv[i];
-    auto t1 = (max_i - ray.origin[i]) * ray_dir_inv[i] +
-              RealT(2) * std::numeric_limits<RealT>::epsilon();
+    auto t1 = (max_i - ray.origin[i]) * ray_dir_inv[i];
+    t1 *= RealT(1) +
+          std::copysign(RealT(2) * std::numeric_limits<RealT>::epsilon(), t1);
     min_t = safe_max(t0, min_t);
     max_t = safe_min(t1, max_t);
   }

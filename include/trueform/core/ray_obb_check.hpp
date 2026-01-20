@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 #include "./dot.hpp"
 #include "./epsilon_inverse.hpp"
@@ -36,8 +36,9 @@ auto ray_obb_check(const tf::ray_like<Dims, Policy0> &ray,
     if (local_inv_dir_i < 0)
       std::swap(min_i, max_i);
     auto t0 = (min_i - local_origin_i) * local_inv_dir_i;
-    auto t1 = (max_i - local_origin_i) * local_inv_dir_i +
-              RealT(2) * std::numeric_limits<RealT>::epsilon();
+    auto t1 = (max_i - local_origin_i) * local_inv_dir_i;
+    t1 *= RealT(1) +
+          std::copysign(RealT(2) * std::numeric_limits<RealT>::epsilon(), t1);
     min_t = safe_max(t0, min_t);
     max_t = safe_min(t1, max_t);
   }
