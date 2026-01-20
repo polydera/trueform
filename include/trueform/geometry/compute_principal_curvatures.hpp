@@ -274,7 +274,7 @@ namespace tf {
 /// @param output Output range of std::array<T, 2> for {k1, k2} per vertex.
 /// @param k Number of rings for neighborhood (default 2).
 template <typename PolygonsPolicy, typename Range0, typename Range1>
-void compute_principal_curvatures(const tf::polygons<PolygonsPolicy> &polygons,
+auto compute_principal_curvatures(const tf::polygons<PolygonsPolicy> &polygons,
                                   Range0 &&ks0, Range1 &&ks1,
                                   std::size_t k = 2) {
   static_assert(tf::coordinate_dims_v<PolygonsPolicy> == 3,
@@ -285,7 +285,7 @@ void compute_principal_curvatures(const tf::polygons<PolygonsPolicy> &polygons,
 
 template <typename PolygonsPolicy, typename Range0, typename Range1,
           typename Range2, typename Range3>
-void compute_principal_curvatures(const tf::polygons<PolygonsPolicy> &polygons,
+auto compute_principal_curvatures(const tf::polygons<PolygonsPolicy> &polygons,
                                   Range0 &&ks0, Range1 &&ks1, Range2 &&dirs0,
                                   Range3 &&dirs1, std::size_t k = 2) {
   static_assert(tf::coordinate_dims_v<PolygonsPolicy> == 3,
@@ -315,7 +315,7 @@ auto make_principal_curvatures(const tf::polygons<PolygonsPolicy> &polygons,
   ks0.allocate(polygons.points().size());
   tf::buffer<T> ks1;
   ks1.allocate(polygons.points().size());
-  geometry::compute_principal_curvatures(polygons, ks0, ks1, k);
+  compute_principal_curvatures(polygons, ks0, ks1, k);
   return std::make_pair(std::move(ks0), std::move(ks1));
 }
 
@@ -345,7 +345,7 @@ auto make_principal_directions(const tf::polygons<PolygonsPolicy> &polygons,
   dirs0.allocate(polygons.points().size());
   tf::unit_vectors_buffer<T, tf::coordinate_dims_v<PolygonsPolicy>> dirs1;
   dirs1.allocate(polygons.points().size());
-  geometry::compute_principal_curvatures(polygons, ks0, ks1, dirs0, dirs1, k);
+  compute_principal_curvatures(polygons, ks0, ks1, dirs0, dirs1, k);
   return std::make_tuple(std::move(ks0), std::move(ks1), std::move(dirs0),
                          std::move(dirs1));
 }
