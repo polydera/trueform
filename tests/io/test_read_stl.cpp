@@ -8,15 +8,21 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_template_test_macros.hpp>
 #include <trueform/io.hpp>
-#include <fstream>
-#include <filesystem>
+#include <atomic>
 #include <cstdio>
+#include <filesystem>
+#include <fstream>
+#include <random>
 
 namespace {
 
-// Helper to create a temporary file path
+// Helper to create a unique temporary file path
 auto temp_stl_path() -> std::filesystem::path {
-    return std::filesystem::temp_directory_path() / "trueform_test.stl";
+    static std::atomic<int> counter{0};
+    static auto process_id = std::random_device{}();
+    auto id = counter.fetch_add(1);
+    auto name = std::string("trueform_test_") + std::to_string(process_id) + "_" + std::to_string(id) + ".stl";
+    return std::filesystem::temp_directory_path() / name;
 }
 
 // Create a simple ASCII STL with one triangle

@@ -9,13 +9,19 @@
 #include <catch2/catch_template_test_macros.hpp>
 #include <trueform/io.hpp>
 #include <trueform/core.hpp>
+#include <atomic>
 #include <filesystem>
+#include <random>
 #include "canonicalize_mesh.hpp"
 
 namespace {
 
 auto temp_stl_path() -> std::filesystem::path {
-    return std::filesystem::temp_directory_path() / "trueform_write_test.stl";
+    static std::atomic<int> counter{0};
+    static auto process_id = std::random_device{}();
+    auto id = counter.fetch_add(1);
+    auto name = std::string("trueform_write_test_") + std::to_string(process_id) + "_" + std::to_string(id) + ".stl";
+    return std::filesystem::temp_directory_path() / name;
 }
 
 struct TempFileCleanup {
