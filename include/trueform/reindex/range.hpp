@@ -80,7 +80,7 @@ auto reindexed(const tf::range<Iter0, N0> &range_in,
 template <typename Iter0, std::size_t N0, typename Range0, typename Range1>
 auto reindexed(const tf::range<Iter0, N0> &range_in,
                const tf::index_map<Range0, Range1> &im) {
-  using T = typename Iter0::value_type;
+  using T = typename std::iterator_traits<Iter0>::value_type;
   if constexpr (std::is_trivially_default_constructible<T>::value &&
                 std::is_trivially_destructible<T>::value) {
     tf::buffer<T> out;
