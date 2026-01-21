@@ -644,7 +644,10 @@ TEMPLATE_TEST_CASE("clean_polygons_large_mesh", "[clean][clean_polygons]",
     }
 
     // Triangulate the grid
-    auto idx = [](int x, int y) -> index_t { return index_t(y * (grid_size + 1) + x); };
+    auto idx = [](int x, int y) -> index_t {
+        constexpr int grid_size = 10;
+        return index_t(y * (grid_size + 1) + x);
+    };
 
     for (int y = 0; y < grid_size; ++y) {
         for (int x = 0; x < grid_size; ++x) {

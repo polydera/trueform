@@ -39,8 +39,10 @@ auto stitch_mod_tree(const Primitives &result_primitives,
       tf::make_sequence_range(Index(0), n_new),
       [&](Index i) { return im.polygons1_offset + i; });
 
-  constexpr Index sentinel = Index(-1);
-  auto keep_if = [](Index id) { return id != sentinel; };
+  auto keep_if = [](Index id) {
+    constexpr Index sentinel = Index(-1);
+    return id != sentinel;
+  };
 
   auto index_map =
       tf::make_index_map(tf::make_range(im.polygons0.f()), new_ids);
@@ -66,11 +68,14 @@ auto stitch_mod_tree(const Primitives &result_primitives, tf::none_t,
         return i < kept0 ? i : dirty_start + (i - kept0);
       });
 
-  constexpr Index sentinel = Index(-1);
-  auto keep_if = [](Index id) { return id != sentinel; };
+  auto keep_if = [](Index id) {
+    constexpr Index sentinel = Index(-1);
+    return id != sentinel;
+  };
 
   // polygons1.f() is 0-based, need to add offset for actual result positions
   auto old_ids = tf::make_mapped_range(im.polygons1.f(), [&](Index id) {
+    constexpr Index sentinel = Index(-1);
     return id != sentinel ? id + im.polygons1_offset : sentinel;
   });
 

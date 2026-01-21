@@ -10,6 +10,7 @@ add_library(trueform_test_common INTERFACE)
 target_include_directories(trueform_test_common INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/common)
 target_link_libraries(trueform_test_common INTERFACE tf::trueform Catch2::Catch2WithMain)
 target_compile_definitions(trueform_test_common INTERFACE TF_TEST_DATA_DIR="${TF_TEST_DATA_DIR}")
+target_compile_options(trueform_test_common INTERFACE $<$<CXX_COMPILER_ID:MSVC>:/bigobj>)
 
 # Add module subdirectories
 add_subdirectory(core)

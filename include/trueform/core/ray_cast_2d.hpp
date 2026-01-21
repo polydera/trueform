@@ -12,6 +12,7 @@
  */
 #pragma once
 #include "./contains_coplanar_point.hpp"
+#include "./ray_like.hpp"
 #include "./line_like.hpp"
 #include "./parallelogram_area.hpp"
 #include "./polygon.hpp"
