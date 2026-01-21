@@ -1,5 +1,9 @@
 # trueform
 
+[![Tests](https://github.com/xlabmedical/trueform/actions/workflows/tests.yml/badge.svg)](https://github.com/xlabmedical/trueform/actions/workflows/tests.yml)
+[![Docs](https://github.com/xlabmedical/trueform/actions/workflows/generate-docs.yml/badge.svg)](https://github.com/xlabmedical/trueform/actions/workflows/generate-docs.yml)
+[![PyPI](https://github.com/xlabmedical/trueform/actions/workflows/build-python.yml/badge.svg)](https://github.com/xlabmedical/trueform/actions/workflows/build-python.yml)
+
 Real-time geometric processing. Easy to use, robust on real-world data.
 
 Spatial queries, mesh booleans, isocontours, topology — at interactive speed on million-polygon meshes. Robust to non-manifold flaps, inconsistent winding, and pipeline artifacts. Header-only C++17; works directly on your data with zero-copy views.

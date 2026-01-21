@@ -1,4 +1,4 @@
-name: Build and Publish Wheels
+name: PyPI
 
 env:
   BLENDER_VERSION: "5.0"
