@@ -78,38 +78,7 @@ set_target_properties(_trueform PROPERTIES
         EXCLUDE_FROM_ALL TRUE
 )
 
-# 8. Runtime Dependencies (DLLs/Shared Libs)
-# ------------------------------------------------------------------------------
-# Copy TBB shared library next to the extension module so it can be found at runtime.
-if(NOT ${TF_USE_STATIC_TBB})
-  message(STATUS "Configuring TBB share library copy for Python bindings ${TF_USE_STATIC_TBB}")
-  install(FILES $<TARGET_FILE:TBB::tbb> DESTINATION _trueform)
-
-  add_custom_command(
-          TARGET _trueform POST_BUILD
-          COMMAND ${CMAKE_COMMAND} -E copy_if_different
-          $<TARGET_FILE:TBB::tbb>
-          $<TARGET_FILE_DIR:_trueform>
-          COMMENT "Copying TBB shared library to executable directory"
-  )
-
-  if(APPLE)
-    set_target_properties(_trueform PROPERTIES
-            MACOSX_RPATH ON
-            BUILD_RPATH     "@loader_path"
-            INSTALL_RPATH   "@loader_path"
-    )
-  endif()
-
-  if(UNIX AND NOT APPLE)
-    set_target_properties(_trueform PROPERTIES
-            BUILD_RPATH   "$ORIGIN"
-            INSTALL_RPATH "$ORIGIN"
-    )
-  endif()
-endif()
-
-# 9. Version Injection
+# 8. Version Injection
 # ------------------------------------------------------------------------------
 set(TRUEFORM_VERSION ${PROJECT_VERSION})
 
@@ -117,7 +86,7 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/trueform/_version.py"
         "__version__ = \"${TRUEFORM_VERSION}\"\n"
 )
 
-# 10. Python Source Management (Copy to Build Dir)
+# 9. Python Source Management (Copy to Build Dir)
 # ------------------------------------------------------------------------------
 # Glob pure Python files
 file(GLOB_RECURSE PYTHON_SOURCE_FILES    "${CMAKE_CURRENT_SOURCE_DIR}/trueform/*.py")
@@ -163,7 +132,7 @@ endif()
 # Ensure the binary extension waits for the python file copy
 add_dependencies(_trueform trueform_copy_python_files)
 
-# 11. Final Target
+# 10. Final Target
 # ------------------------------------------------------------------------------
 # Helper target for users to run explicitly
 add_custom_target(trueform_python DEPENDS _trueform)

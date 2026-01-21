@@ -15,38 +15,30 @@ set(CPM_USE_LOCAL_PACKAGES ${TF_USE_SYSTEM_LIBS})
 # ------------------------------------------------------------------------------
 # Dependency: oneTBB (Threading Building Blocks)
 # ------------------------------------------------------------------------------
-if(TF_USE_STATIC_TBB)
-    set(TBB_BUILD_SHARED OFF)
+if(TF_BUILD_PYTHON)
+  # Python wheels bundle static TBB - force fetch, ignore system TBB
+  set(CPM_USE_LOCAL_PACKAGES OFF)
+  CPMAddPackage(
+    NAME                TBB
+    GITHUB_REPOSITORY   oneapi-src/oneTBB
+    GIT_TAG             v${TF_TBB_VERSION}
+    OPTIONS
+    "BUILD_SHARED_LIBS OFF"
+    "TBB_BUILD ON"
+    "TBB_INSTALL ON"
+    "TBB_TEST OFF"
+    "TBB_STRICT OFF"
+    "TBBMALLOC_BUILD OFF"
+    "TBBMALLOC_PROXY_BUILD OFF"
+    "TBBBIND_BUILD OFF"
+    "TBB_DISABLE_HWLOC_AUTOMATIC_SEARCH ON"
+    "CMAKE_POLICY_VERSION_MINIMUM 3.5"
+  )
+  # Reset for other dependencies
+  set(CPM_USE_LOCAL_PACKAGES ${TF_USE_SYSTEM_LIBS})
 else()
-    set(TBB_BUILD_SHARED ON)
-endif()
-
-if(TF_USE_STATIC_TBB AND TF_USE_SYSTEM_LIBS)
-    message(WARNING "TF_USE_STATIC_TBB is ON while TF_USE_SYSTEM_LIBS is also ON. Building custom TBB to allow static linkage.")
-    set(CPM_USE_LOCAL_PACKAGES OFF)
-endif()
-
-set(BUILD_SHARED_LIBS ${TBB_BUILD_SHARED})
-
-CPMAddPackage(
-        NAME                TBB
-        GITHUB_REPOSITORY   oneapi-src/oneTBB
-        GIT_TAG             v${TF_TBB_VERSION}
-        OPTIONS
-        "TBB_BUILD ON"
-        "TBB_INSTALL ON"
-        "TBB_TEST OFF"                          # Disable tests for faster integration
-        "TBB_STRICT OFF"                        # Disable -Werror (needed for Emscripten)
-        "TBBMALLOC_BUILD OFF"                   # Disable custom allocator
-        "TBBMALLOC_PROXY_BUILD OFF"
-        "TBBBIND_BUILD OFF"
-        "TBB_DISABLE_HWLOC_AUTOMATIC_SEARCH ON" # Prevent looking for hwloc system lib
-        "CMAKE_POLICY_VERSION_MINIMUM 3.5"      # Support for CMake >= 4.0
-)
-
-if(TF_USE_STATIC_TBB AND TF_USE_SYSTEM_LIBS)
-    # Reset CPM flag to allow other dependencies to use system libs
-    set(CPM_USE_LOCAL_PACKAGES ON)
+  # C++ builds require system TBB
+  find_package(TBB REQUIRED)
 endif()
 
 # ------------------------------------------------------------------------------

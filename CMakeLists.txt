@@ -46,16 +46,6 @@ option(TF_USE_SYSTEM_LIBS         "Use system installed libraries where possible
 option(TF_ENABLE_IPO              "Enable Interprocedural Optimization (LTO)." OFF)
 
 # 2. Dependent options
-## TF_USE_STATIC_TBB: Link TBB statically when building Python bindings to avoid
-## potential runtime issues with locating shared TBB libraries.
-cmake_dependent_option(
-        TF_USE_STATIC_TBB
-        "Link TBB statically."
-        ON
-        "TF_BUILD_PYTHON"
-        OFF
-)
-
 ## TF_BUILD_VTK_EXAMPLES: Build VTK examples only if VTK integration is enabled.
 cmake_dependent_option(
         TF_BUILD_VTK_EXAMPLES
@@ -68,24 +58,10 @@ cmake_dependent_option(
 
 # Dependency Versions (Cache variables allow user overrides)
 set(TF_TBB_VERSION "2022.3.0" CACHE STRING
-        "Version of TBB to use when TF_USE_SYSTEM_TBB is OFF.")
+        "Version of TBB to fetch for Python builds.")
 
 set(TF_NANOBIND_VERSION "2.0.0" CACHE STRING
-        "Version of nanobind to fetch when TF_USE_SYSTEM_NANOBIND is OFF.")
-
-# Check for incompatible options
-if(TF_USE_SYSTEM_LIBS AND TF_USE_STATIC_TBB)
-  message(WARNING "TF_USE_SYSTEM_LIBS is ON while TF_USE_STATIC_TBB is also ON.
-    These options are probably incompatible since system TBB is built as shared by default.
-    Things may not work as expected."
-  )
-endif()
-if(TF_BUILD_PYTHON AND NOT TF_USE_STATIC_TBB)
-  message(WARNING "TF_BUILD_PYTHON is ON and TF_USE_STATIC_TBB is OFF.
-    This may lead to issues with locating the TBB shared library at runtime
-    or version conflicts with other Python packages."
-  )
-endif()
+        "Version of nanobind to fetch for Python builds.")
 
 # ==============================================================================
 # Compiler Flags
