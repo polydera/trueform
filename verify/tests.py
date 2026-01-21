@@ -216,7 +216,6 @@ def build_for_tests(work_dir: Path, source_dir: Path) -> Path:
 
     num_jobs = max(1, multiprocessing.cpu_count())
 
-    # Setup
     print_step("Setup")
 
     if work_dir.exists():
@@ -234,7 +233,6 @@ def build_for_tests(work_dir: Path, source_dir: Path) -> Path:
         print_fail("Create work directory", str(e))
         return None
 
-    # Clone
     print_step("Clone Repository")
 
     try:
@@ -244,7 +242,6 @@ def build_for_tests(work_dir: Path, source_dir: Path) -> Path:
         print_fail("Clone repository", getattr(e, 'stdout', str(e)))
         return None
 
-    # Configure with tests enabled
     print_step("Configure")
 
     try:
@@ -260,7 +257,6 @@ def build_for_tests(work_dir: Path, source_dir: Path) -> Path:
         print_fail("Configure CMake", getattr(e, 'stdout', str(e)))
         return None
 
-    # Build tests
     print_step("Build Tests")
 
     try:
@@ -319,27 +315,24 @@ def run_tests(
         if venv_info:
             print(f"  Venv:   {venv_info.venv_dir}")
     else:
-        print(f"  Build:  (will build)")
+        print("  Build:  (will build)")
         build_dir = build_for_tests(work_dir, source_dir)
         if build_dir is None:
             return False
         clone_dir = work_dir / "trueform"
 
-    # Run C++ tests
     if skip_cpp:
         print_step("C++ Tests")
         print_skip("ctest", "skipped by user")
     else:
         cpp_passed = run_cpp_tests(build_dir)
 
-    # Run Python tests
     if skip_python:
         print_step("Python Tests")
         print_skip("pytest", "skipped by user")
     else:
         python_passed = run_python_tests(clone_dir, venv_info)
 
-    # Summary
     print_step("Summary")
 
     all_passed = cpp_passed and python_passed

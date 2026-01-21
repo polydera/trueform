@@ -278,7 +278,7 @@ auto compute_principal_curvatures(const tf::polygons<PolygonsPolicy> &polygons,
                                   Range0 &&ks0, Range1 &&ks1,
                                   std::size_t k = 2) {
   static_assert(tf::coordinate_dims_v<PolygonsPolicy> == 3,
-               "3D dimensionality required");
+                "3D dimensionality required");
   return geometry::compute_principal_curvatures(polygons, ks0, ks1, tf::none,
                                                 tf::none, k);
 }
@@ -289,13 +289,14 @@ auto compute_principal_curvatures(const tf::polygons<PolygonsPolicy> &polygons,
                                   Range0 &&ks0, Range1 &&ks1, Range2 &&dirs0,
                                   Range3 &&dirs1, std::size_t k = 2) {
   static_assert(tf::coordinate_dims_v<PolygonsPolicy> == 3,
-               "3D dimensionality required");
+                "3D dimensionality required");
   return geometry::compute_principal_curvatures(polygons, ks0, ks1, dirs0,
                                                 dirs1, k);
 }
 
 /// @ingroup geometry
-/// @brief Compute principal curvatures for all vertices, returning result buffers.
+/// @brief Compute principal curvatures for all vertices, returning result
+/// buffers.
 ///
 /// Convenience wrapper that allocates output buffers internally.
 /// Principal curvatures (k0, k1) characterize surface curvature at each vertex,
@@ -309,7 +310,7 @@ template <typename PolygonsPolicy>
 auto make_principal_curvatures(const tf::polygons<PolygonsPolicy> &polygons,
                                std::size_t k = 2) {
   static_assert(tf::coordinate_dims_v<PolygonsPolicy> == 3,
-               "3D dimensionality required");
+                "3D dimensionality required");
   using T = tf::coordinate_type<PolygonsPolicy>;
   tf::buffer<T> ks0;
   ks0.allocate(polygons.points().size());
@@ -335,7 +336,7 @@ template <typename PolygonsPolicy>
 auto make_principal_directions(const tf::polygons<PolygonsPolicy> &polygons,
                                std::size_t k = 2) {
   static_assert(tf::coordinate_dims_v<PolygonsPolicy> == 3,
-               "3D dimensionality required");
+                "3D dimensionality required");
   using T = tf::coordinate_type<PolygonsPolicy>;
   tf::buffer<T> ks0;
   ks0.allocate(polygons.points().size());

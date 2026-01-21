@@ -24,7 +24,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-# Import the run functions from sibling modules
 from build import run_build, colored, Colors
 from tests import run_tests
 
@@ -96,7 +95,6 @@ def main() -> int:
                 print(colored(f"Warning: Could not clean up: {e}", Colors.YELLOW))
         return 1
 
-    # Run tests using the work directory
     test_success = run_tests(
         work_dir=work_dir,
         skip_cpp=False,

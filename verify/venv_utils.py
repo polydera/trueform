@@ -23,13 +23,6 @@ class VenvInfo:
         self.python_exe = python_exe
         self.bin_name = bin_name
 
-    @property
-    def pip_exe(self) -> Path:
-        """Path to pip executable."""
-        if sys.platform == "win32":
-            return self.bin_path / "pip.exe"
-        return self.bin_path / "pip"
-
     def get_env(self) -> dict:
         """Get environment dict with venv activated."""
         env = os.environ.copy()
@@ -70,8 +63,8 @@ class VenvInfo:
         capture: bool = True,
         check: bool = True,
     ) -> subprocess.CompletedProcess:
-        """Run venv pip with given arguments."""
-        return self.run([str(self.pip_exe)] + args, cwd=cwd, capture=capture, check=check)
+        """Run venv pip with given arguments (via python -m pip for portability)."""
+        return self.run_python(["-m", "pip"] + args, cwd=cwd, capture=capture, check=check)
 
 
 class _VenvBuilder(venv.EnvBuilder):

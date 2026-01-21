@@ -653,7 +653,6 @@ int main() {
 
     def build_python(self) -> bool:
         """Build and install Python bindings."""
-        # Build
         try:
             self.venv_info.run(
                 [
@@ -692,22 +691,19 @@ int main() {
         skip_vtk: bool = False,
         skip_python: bool = False,
     ) -> bool:
-        # Setup
         print_step("Setup")
         if not self.do_setup():
             return False
 
-        # Clone
         print_step("Clone")
         if not self.do_clone():
             return False
 
-        # Configure C++
         print_step("Configure")
         if not self.do_configure(skip_vtk=skip_vtk):
             return False
 
-        # Create venv before configuring Python (so we use venv's Python)
+        # Create venv before configuring Python so we use venv's Python
         venv_ok = False
         if not skip_python:
             venv_ok = self.do_create_venv()
@@ -719,7 +715,6 @@ int main() {
         else:
             print_skip("Python", "skipped by user")
 
-        # Build
         print_step("Build")
         self.build_examples()
         self.build_tests()
@@ -743,7 +738,6 @@ int main() {
         else:
             print_skip("trueform_python", "venv creation failed")
 
-        # Install
         print_step("Install")
         if not self.install_cmake():
             return False
@@ -756,11 +750,9 @@ int main() {
         else:
             print_skip("pip install", "Python build failed")
 
-        # Verify trueform
         print_step("Verify trueform")
         self.verify_trueform()
 
-        # Verify trueform_vtk
         if skip_vtk:
             print_step("Verify trueform_vtk")
             print_skip("VTK verification", "skipped by user")
@@ -768,7 +760,6 @@ int main() {
             print_step("Verify trueform_vtk")
             self.verify_trueform_vtk()
 
-        # Verify pip
         if skip_python:
             print_step("Verify pip")
             print_skip("pip verification", "skipped by user")
@@ -776,11 +767,9 @@ int main() {
             print_step("Verify pip")
             self.verify_pip()
 
-        # Test find_package
         print_step("Test find_package")
         self.test_find_package()
 
-        # Test find_package (vtk)
         if skip_vtk:
             print_step("Test find_package (vtk)")
             print_skip("VTK find_package test", "skipped by user")
@@ -788,7 +777,6 @@ int main() {
             print_step("Test find_package (vtk)")
             self.test_find_package_vtk()
 
-        # Test find_package (pip)
         if skip_python:
             print_step("Test find_package (pip)")
             print_skip("pip find_package test", "skipped by user")
@@ -801,7 +789,6 @@ int main() {
     def print_summary(self) -> bool:
         print_step("Summary")
 
-        passed = sum(1 for _, p, _ in self.results if p)
         failed = sum(1 for _, p, _ in self.results if not p)
         total = len(self.results)
 
