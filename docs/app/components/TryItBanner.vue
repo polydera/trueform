@@ -8,7 +8,7 @@ const props = withDefaults(
   {
     to: "/live-examples/boolean",
     title: "Try it in your browser",
-    description: "Booleans, collision detection, and isocontours—running live.",
+    description: "Interactive mesh booleans, collisions, isobands and more. No install needed.",
   },
 );
 </script>
