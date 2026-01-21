@@ -12,6 +12,7 @@
 */
 #pragma once
 #include "../core/sqrt.hpp"
+#include "../core/constants.hpp"
 #include "../core/transformation.hpp"
 #include "../core/vector.hpp"
 #include "./random.hpp"
@@ -42,10 +43,9 @@ auto random_transformation(tf::vector_like<3, U> translation)
   T x1_rand = tf::random<T>(T(0), T(1));
   T x2_rand = tf::random<T>(T(0), T(1));
 
-  const T PI_TIMES_2 = static_cast<T>(2.0 * M_PI);
 
-  T theta = x0_rand * PI_TIMES_2; // Rotation about the pole (Z)
-  T phi = x1_rand * PI_TIMES_2;   // For direction of pole deflection
+  T theta = x0_rand * tf::two_pi<T>; // Rotation about the pole (Z)
+  T phi = x1_rand * tf::two_pi<T>;   // For direction of pole deflection
   T z_val =
       x2_rand * static_cast<T>(2.0); // For magnitude of pole deflection [0,2]
 
@@ -82,8 +82,7 @@ auto random_transformation(tf::vector_like<2, U> translation)
     -> tf::transformation<tf::coordinate_type<U>, 2> {
   using T = tf::coordinate_type<U>;
 
-  const T PI_TIMES_2 = static_cast<T>(2.0 * M_PI);
-  T theta = tf::random<T>(T(0), PI_TIMES_2);
+  T theta = tf::random<T>(T(0), tf::two_pi<T>);
 
   T ct = std::cos(theta);
   T st = std::sin(theta);
