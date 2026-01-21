@@ -8,7 +8,7 @@ Real-time geometric processing. Easy to use, robust on real-world data.
 
 Spatial queries, mesh booleans, isocontours, topology — at interactive speed on million-polygon meshes. Robust to non-manifold flaps, inconsistent winding, and pipeline artifacts. Header-only C++17; works directly on your data with zero-copy views.
 
-**[▶ Try it live](https://trueform.polydera.com/live-examples/boolean)** — Real-time booleans, collisions, and isobands on 500k polygon meshes in your browser.
+**[▶ Try it live](https://trueform.polydera.com/live-examples/boolean)** — Interactive mesh booleans, collisions, isobands and more. No install needed. 
 
 **[Documentation and Tutorials](https://trueform.polydera.com)** — Primitives, trees, topology, booleans — step by step.
 
