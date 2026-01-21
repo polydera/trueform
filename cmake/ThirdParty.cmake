@@ -21,8 +21,9 @@ else()
     set(TBB_BUILD_SHARED ON)
 endif()
 
-if(TF_USE_STATIC_TBB)
-    set(CPM_DOWNLOAD_TBB TRUE)
+if(TF_USE_STATIC_TBB AND TF_USE_SYSTEM_LIBS)
+    message(WARNING "TF_USE_STATIC_TBB is ON while TF_USE_SYSTEM_LIBS is also ON. Building custom TBB to allow static linkage.")
+    set(CPM_USE_LOCAL_PACKAGES OFF)
 endif()
 
 CPMAddPackage(
@@ -41,6 +42,11 @@ CPMAddPackage(
         "TBB_DISABLE_HWLOC_AUTOMATIC_SEARCH ON" # Prevent looking for hwloc system lib
         "CMAKE_POLICY_VERSION_MINIMUM 3.5"      # Support for CMake >= 4.0
 )
+
+if(TF_USE_STATIC_TBB AND TF_USE_SYSTEM_LIBS)
+    # Reset CPM flag to allow other dependencies to use system libs
+    set(CPM_USE_LOCAL_PACKAGES ON)
+endif()
 
 # ------------------------------------------------------------------------------
 # Dependency: Nanobind (Python Bindings)
