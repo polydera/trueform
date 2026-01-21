@@ -44,7 +44,7 @@ template <typename Index, typename Real>
 auto create_pentagon() -> tf::polygons_buffer<Index, Real, 3, 5> {
     tf::polygons_buffer<Index, Real, 3, 5> result;
 
-    constexpr Real pi = Real(3.14159265358979323846);
+    Real pi = Real(3.14159265358979323846);
     for (int i = 0; i < 5; ++i) {
         Real angle = Real(2) * pi * Real(i) / Real(5);
         result.points_buffer().emplace_back(std::cos(angle), std::sin(angle), Real(0));
@@ -62,7 +62,7 @@ template <typename Index, typename Real>
 auto create_hexagon() -> tf::polygons_buffer<Index, Real, 3, 6> {
     tf::polygons_buffer<Index, Real, 3, 6> result;
 
-    constexpr Real pi = Real(3.14159265358979323846);
+    Real pi = Real(3.14159265358979323846);
     for (int i = 0; i < 6; ++i) {
         Real angle = Real(2) * pi * Real(i) / Real(6);
         result.points_buffer().emplace_back(std::cos(angle), std::sin(angle), Real(0));
@@ -117,6 +117,29 @@ auto create_mixed_mesh() -> tf::polygons_buffer<Index, Real, 3, tf::dynamic_size
 } // anonymous namespace
 
 // =============================================================================
+// Vector Initialization Test (Debug)
+// =============================================================================
+
+TEST_CASE("vector_initialization_check", "[geometry][triangulation][debug]")
+{
+    // Test if tf::vector is properly zero-initialized
+    tf::vector<float, 3> v1{};
+    std::cout << "=== vector_initialization_check ===" << std::endl;
+    std::cout << "tf::vector<float, 3>{} = (" << v1[0] << ", " << v1[1] << ", " << v1[2] << ")" << std::endl;
+
+    tf::vector<double, 3> v2{};
+    std::cout << "tf::vector<double, 3>{} = (" << v2[0] << ", " << v2[1] << ", " << v2[2] << ")" << std::endl;
+
+    // Check they are zero
+    REQUIRE(v1[0] == 0.0f);
+    REQUIRE(v1[1] == 0.0f);
+    REQUIRE(v1[2] == 0.0f);
+    REQUIRE(v2[0] == 0.0);
+    REQUIRE(v2[1] == 0.0);
+    REQUIRE(v2[2] == 0.0);
+}
+
+// =============================================================================
 // Single Quad - Triangle Count
 // =============================================================================
 
@@ -153,21 +176,21 @@ TEMPLATE_TEST_CASE("triangulated_quad_area_preserved", "[geometry][triangulation
     real_t tri_area = tf::area(tri_mesh.polygons());
 
     // Debug output
-    std::cerr << "=== triangulated_quad_area_preserved ===" << std::endl;
-    std::cerr << "Original points:" << std::endl;
+    std::cout << "=== triangulated_quad_area_preserved ===" << std::endl;
+    std::cout << "Original points:" << std::endl;
     for (std::size_t i = 0; i < quad.points().size(); ++i) {
-        std::cerr << "  " << i << ": (" << quad.points()[i][0] << ", " << quad.points()[i][1] << ", " << quad.points()[i][2] << ")" << std::endl;
+        std::cout << "  " << i << ": (" << quad.points()[i][0] << ", " << quad.points()[i][1] << ", " << quad.points()[i][2] << ")" << std::endl;
     }
-    std::cerr << "Original area: " << original_area << std::endl;
-    std::cerr << "Triangulated faces: " << tri_mesh.faces().size() << std::endl;
+    std::cout << "Original area: " << original_area << std::endl;
+    std::cout << "Triangulated faces: " << tri_mesh.faces().size() << std::endl;
     for (std::size_t i = 0; i < tri_mesh.faces().size(); ++i) {
-        std::cerr << "  face " << i << ": (" << tri_mesh.faces()[i][0] << ", " << tri_mesh.faces()[i][1] << ", " << tri_mesh.faces()[i][2] << ")" << std::endl;
+        std::cout << "  face " << i << ": (" << tri_mesh.faces()[i][0] << ", " << tri_mesh.faces()[i][1] << ", " << tri_mesh.faces()[i][2] << ")" << std::endl;
     }
-    std::cerr << "Triangulated points:" << std::endl;
+    std::cout << "Triangulated points:" << std::endl;
     for (std::size_t i = 0; i < tri_mesh.points().size(); ++i) {
-        std::cerr << "  " << i << ": (" << tri_mesh.points()[i][0] << ", " << tri_mesh.points()[i][1] << ", " << tri_mesh.points()[i][2] << ")" << std::endl;
+        std::cout << "  " << i << ": (" << tri_mesh.points()[i][0] << ", " << tri_mesh.points()[i][1] << ", " << tri_mesh.points()[i][2] << ")" << std::endl;
     }
-    std::cerr << "Triangulated area: " << tri_area << std::endl;
+    std::cout << "Triangulated area: " << tri_area << std::endl;
 
     // Unit square has area 1.0
     REQUIRE(std::abs(original_area - real_t(1)) < real_t(1e-5));
@@ -190,12 +213,29 @@ TEMPLATE_TEST_CASE("triangulated_pentagon", "[geometry][triangulation]",
 
     auto tri_mesh = tf::triangulated(pentagon.polygons());
 
+    // Debug output
+    std::cout << "=== triangulated_pentagon ===" << std::endl;
+    std::cout << "Original points:" << std::endl;
+    for (std::size_t i = 0; i < pentagon.points().size(); ++i) {
+        std::cout << "  " << i << ": (" << pentagon.points()[i][0] << ", " << pentagon.points()[i][1] << ", " << pentagon.points()[i][2] << ")" << std::endl;
+    }
+    std::cout << "Original area: " << original_area << std::endl;
+    std::cout << "Triangulated faces: " << tri_mesh.faces().size() << std::endl;
+    for (std::size_t i = 0; i < tri_mesh.faces().size(); ++i) {
+        std::cout << "  face " << i << ": (" << tri_mesh.faces()[i][0] << ", " << tri_mesh.faces()[i][1] << ", " << tri_mesh.faces()[i][2] << ")" << std::endl;
+    }
+    std::cout << "Triangulated points:" << std::endl;
+    for (std::size_t i = 0; i < tri_mesh.points().size(); ++i) {
+        std::cout << "  " << i << ": (" << tri_mesh.points()[i][0] << ", " << tri_mesh.points()[i][1] << ", " << tri_mesh.points()[i][2] << ")" << std::endl;
+    }
+    real_t tri_area = tf::area(tri_mesh.polygons());
+    std::cout << "Triangulated area: " << tri_area << std::endl;
+
     // 5-gon → 3 triangles
     REQUIRE(tri_mesh.faces().size() == 3);
     REQUIRE(tri_mesh.points().size() == 5);
 
     // Area preserved
-    real_t tri_area = tf::area(tri_mesh.polygons());
     REQUIRE(std::abs(tri_area - original_area) < real_t(1e-5));
 }
 
@@ -212,17 +252,36 @@ TEMPLATE_TEST_CASE("triangulated_hexagon_area_preserved", "[geometry][triangulat
 
     auto hexagon = create_hexagon<index_t, real_t>();
 
+    // Debug output
+    std::cout << "=== triangulated_hexagon_area_preserved ===" << std::endl;
+    std::cout << "Original points:" << std::endl;
+    for (std::size_t i = 0; i < hexagon.points().size(); ++i) {
+        std::cout << "  " << i << ": (" << hexagon.points()[i][0] << ", " << hexagon.points()[i][1] << ", " << hexagon.points()[i][2] << ")" << std::endl;
+    }
+
     // Regular hexagon with unit radius has area 3*sqrt(3)/2
     real_t expected_area = real_t(3) * std::sqrt(real_t(3)) / real_t(2);
     real_t original_area = tf::area(hexagon.polygons());
+    std::cout << "Expected area: " << expected_area << std::endl;
+    std::cout << "Original area: " << original_area << std::endl;
     REQUIRE(std::abs(original_area - expected_area) < real_t(1e-5));
 
     auto tri_mesh = tf::triangulated(hexagon.polygons());
+
+    std::cout << "Triangulated faces: " << tri_mesh.faces().size() << std::endl;
+    for (std::size_t i = 0; i < tri_mesh.faces().size(); ++i) {
+        std::cout << "  face " << i << ": (" << tri_mesh.faces()[i][0] << ", " << tri_mesh.faces()[i][1] << ", " << tri_mesh.faces()[i][2] << ")" << std::endl;
+    }
+    std::cout << "Triangulated points:" << std::endl;
+    for (std::size_t i = 0; i < tri_mesh.points().size(); ++i) {
+        std::cout << "  " << i << ": (" << tri_mesh.points()[i][0] << ", " << tri_mesh.points()[i][1] << ", " << tri_mesh.points()[i][2] << ")" << std::endl;
+    }
 
     // 6-gon → 4 triangles
     REQUIRE(tri_mesh.faces().size() == 4);
 
     real_t tri_area = tf::area(tri_mesh.polygons());
+    std::cout << "Triangulated area: " << tri_area << std::endl;
     REQUIRE(std::abs(tri_area - original_area) < real_t(1e-5));
 }
 
@@ -242,6 +301,28 @@ TEMPLATE_TEST_CASE("triangulated_two_quads", "[geometry][triangulation]",
 
     auto tri_mesh = tf::triangulated(quads.polygons());
 
+    // Debug output
+    std::cout << "=== triangulated_two_quads ===" << std::endl;
+    std::cout << "Original points:" << std::endl;
+    for (std::size_t i = 0; i < quads.points().size(); ++i) {
+        std::cout << "  " << i << ": (" << quads.points()[i][0] << ", " << quads.points()[i][1] << ", " << quads.points()[i][2] << ")" << std::endl;
+    }
+    std::cout << "Original faces:" << std::endl;
+    for (std::size_t i = 0; i < quads.faces().size(); ++i) {
+        std::cout << "  face " << i << ": (" << quads.faces()[i][0] << ", " << quads.faces()[i][1] << ", " << quads.faces()[i][2] << ", " << quads.faces()[i][3] << ")" << std::endl;
+    }
+    std::cout << "Original area: " << original_area << std::endl;
+    std::cout << "Triangulated faces: " << tri_mesh.faces().size() << std::endl;
+    for (std::size_t i = 0; i < tri_mesh.faces().size(); ++i) {
+        std::cout << "  face " << i << ": (" << tri_mesh.faces()[i][0] << ", " << tri_mesh.faces()[i][1] << ", " << tri_mesh.faces()[i][2] << ")" << std::endl;
+    }
+    std::cout << "Triangulated points:" << std::endl;
+    for (std::size_t i = 0; i < tri_mesh.points().size(); ++i) {
+        std::cout << "  " << i << ": (" << tri_mesh.points()[i][0] << ", " << tri_mesh.points()[i][1] << ", " << tri_mesh.points()[i][2] << ")" << std::endl;
+    }
+    real_t tri_area = tf::area(tri_mesh.polygons());
+    std::cout << "Triangulated area: " << tri_area << std::endl;
+
     // 2 quads → 4 triangles
     REQUIRE(tri_mesh.faces().size() == 4);
     REQUIRE(tri_mesh.points().size() == 6);
@@ -249,7 +330,6 @@ TEMPLATE_TEST_CASE("triangulated_two_quads", "[geometry][triangulation]",
     // Two unit squares = area 2.0
     REQUIRE(std::abs(original_area - real_t(2)) < real_t(1e-5));
 
-    real_t tri_area = tf::area(tri_mesh.polygons());
     REQUIRE(std::abs(tri_area - original_area) < real_t(1e-5));
 }
 
@@ -269,10 +349,27 @@ TEMPLATE_TEST_CASE("triangulated_mixed_mesh", "[geometry][triangulation]",
 
     auto tri_mesh = tf::triangulated(mixed.polygons());
 
+    // Debug output
+    std::cout << "=== triangulated_mixed_mesh ===" << std::endl;
+    std::cout << "Original points:" << std::endl;
+    for (std::size_t i = 0; i < mixed.points().size(); ++i) {
+        std::cout << "  " << i << ": (" << mixed.points()[i][0] << ", " << mixed.points()[i][1] << ", " << mixed.points()[i][2] << ")" << std::endl;
+    }
+    std::cout << "Original area: " << original_area << std::endl;
+    std::cout << "Triangulated faces: " << tri_mesh.faces().size() << std::endl;
+    for (std::size_t i = 0; i < tri_mesh.faces().size(); ++i) {
+        std::cout << "  face " << i << ": (" << tri_mesh.faces()[i][0] << ", " << tri_mesh.faces()[i][1] << ", " << tri_mesh.faces()[i][2] << ")" << std::endl;
+    }
+    std::cout << "Triangulated points:" << std::endl;
+    for (std::size_t i = 0; i < tri_mesh.points().size(); ++i) {
+        std::cout << "  " << i << ": (" << tri_mesh.points()[i][0] << ", " << tri_mesh.points()[i][1] << ", " << tri_mesh.points()[i][2] << ")" << std::endl;
+    }
+    real_t tri_area = tf::area(tri_mesh.polygons());
+    std::cout << "Triangulated area: " << tri_area << std::endl;
+
     // Triangle (1) + Quad (2) = 3 triangles
     REQUIRE(tri_mesh.faces().size() == 3);
 
-    real_t tri_area = tf::area(tri_mesh.polygons());
     REQUIRE(std::abs(tri_area - original_area) < real_t(1e-5));
 }
 
@@ -338,10 +435,10 @@ TEMPLATE_TEST_CASE("triangulated_large_circle", "[geometry][triangulation]",
 {
     using real_t = TestType;
 
-    constexpr int n = 1000;
+    int n = 1000;
     tf::points_buffer<real_t, 3> points;
 
-    constexpr real_t pi = real_t(3.14159265358979323846);
+    real_t pi = real_t(3.14159265358979323846);
     for (int i = 0; i < n; ++i) {
         real_t angle = real_t(2) * pi * real_t(i) / real_t(n);
         points.emplace_back(std::cos(angle), std::sin(angle), real_t(0));
@@ -352,9 +449,23 @@ TEMPLATE_TEST_CASE("triangulated_large_circle", "[geometry][triangulation]",
     // Circle with radius 1 has area pi
     real_t expected_area = pi;
     real_t original_area = tf::area(polygon);
+
+    // Debug output
+    std::cout << "=== triangulated_large_circle ===" << std::endl;
+    std::cout << "n = " << n << std::endl;
+    std::cout << "Expected area: " << expected_area << std::endl;
+    std::cout << "Original area: " << original_area << std::endl;
+
     REQUIRE(std::abs(original_area - expected_area) < real_t(0.001));
 
     auto tri_mesh = tf::triangulated(polygon);
+
+    std::cout << "Triangulated faces: " << tri_mesh.faces().size() << std::endl;
+    std::cout << "Triangulated points: " << tri_mesh.points().size() << std::endl;
+    // Print first few faces
+    for (std::size_t i = 0; i < std::min(std::size_t(5), tri_mesh.faces().size()); ++i) {
+        std::cout << "  face " << i << ": (" << tri_mesh.faces()[i][0] << ", " << tri_mesh.faces()[i][1] << ", " << tri_mesh.faces()[i][2] << ")" << std::endl;
+    }
 
     // n-gon → n-2 triangles
     REQUIRE(tri_mesh.faces().size() == n - 2);
@@ -362,6 +473,7 @@ TEMPLATE_TEST_CASE("triangulated_large_circle", "[geometry][triangulation]",
 
     // Area preserved
     real_t tri_area = tf::area(tri_mesh.polygons());
+    std::cout << "Triangulated area: " << tri_area << std::endl;
     REQUIRE(std::abs(tri_area - original_area) < real_t(0.001));
 }
 
