@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 #include "./algorithm/reduce.hpp"
 #include "./point.hpp"
@@ -96,6 +96,7 @@ template <typename Policy> auto centroid(const tf::polygons<Policy> &polygons) {
 
   // Map each polygon to (vertex_count, sum_of_vertices)
   auto polygon_data = tf::make_mapped_range(polygons, [](const auto &poly) {
+    constexpr auto Dims = tf::coordinate_dims_v<Policy>;
     tf::vector<T, Dims> sum;
     for (std::size_t i = 0; i < Dims; ++i)
       sum[i] = 0;
