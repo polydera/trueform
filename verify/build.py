@@ -25,11 +25,28 @@ import argparse
 import multiprocessing
 import os
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 from typing import List, Optional, Tuple
+
+
+def get_default_work_dir() -> Path:
+    """Get default work directory. Avoids temp on Windows (MSB8029)."""
+    if sys.platform == "win32":
+        return Path.home() / ".trueform-verify"
+    return Path(tempfile.gettempdir()) / "trueform-verify"
+
+
+def robust_rmtree(path: Path) -> None:
+    """Remove directory tree, handling Windows permission issues."""
+    def on_error(func, fpath, exc_info):
+        os.chmod(fpath, stat.S_IWRITE)
+        func(fpath)
+
+    shutil.rmtree(path, onerror=on_error)
 
 from venv_utils import VenvInfo, create_venv
 
@@ -42,6 +59,21 @@ class Colors:
     BLUE = "\033[94m"
     BOLD = "\033[1m"
     RESET = "\033[0m"
+
+
+def _enable_ansi_windows():
+    """Enable ANSI escape codes on Windows."""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
+    except Exception:
+        pass
+
+
+_enable_ansi_windows()
 
 
 def colored(text: str, color: str) -> str:
@@ -164,7 +196,7 @@ class BuildVerifier:
     def do_setup(self) -> bool:
         if self.work_dir.exists():
             try:
-                shutil.rmtree(self.work_dir)
+                robust_rmtree(self.work_dir)
             except Exception as e:
                 return self.record_result("Clean work directory", False, str(e))
         self.record_result("Clean work directory", True)
@@ -830,7 +862,7 @@ def run_build_cpp_only(
     Returns True if all checks passed, False otherwise.
     """
     if work_dir is None:
-        work_dir = Path(tempfile.gettempdir()) / "trueform-verify"
+        work_dir = get_default_work_dir()
     if source_dir is None:
         source_dir = Path(__file__).resolve().parent.parent
     install_prefix = work_dir / "install"
@@ -942,7 +974,7 @@ def run_build_python_only(
     Returns True if all checks passed, False otherwise.
     """
     if work_dir is None:
-        work_dir = Path(tempfile.gettempdir()) / "trueform-verify"
+        work_dir = get_default_work_dir()
     if source_dir is None:
         source_dir = Path(__file__).resolve().parent.parent
 
@@ -1027,7 +1059,7 @@ def run_build(
     Returns True if all checks passed, False otherwise.
     """
     if work_dir is None:
-        work_dir = Path(tempfile.gettempdir()) / "trueform-verify"
+        work_dir = get_default_work_dir()
     if source_dir is None:
         source_dir = Path(__file__).resolve().parent.parent
     if install_prefix is None:
@@ -1063,7 +1095,7 @@ def run_build(
     if not keep and work_dir.exists():
         print(f"\nCleaning up {work_dir}...")
         try:
-            shutil.rmtree(work_dir)
+            robust_rmtree(work_dir)
         except Exception as e:
             print(colored(f"Warning: Could not clean up: {e}", Colors.YELLOW))
 

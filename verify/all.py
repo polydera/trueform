@@ -19,12 +19,10 @@ Examples:
 """
 
 import argparse
-import shutil
 import sys
-import tempfile
 from pathlib import Path
 
-from build import run_build, run_build_cpp_only, run_build_python_only, colored, Colors
+from build import run_build, run_build_cpp_only, run_build_python_only, colored, Colors, get_default_work_dir, robust_rmtree
 from tests import run_tests
 
 
@@ -93,7 +91,7 @@ def main() -> int:
     # Set default work_dir if not specified
     work_dir = args.work_dir
     if work_dir is None:
-        work_dir = Path(tempfile.gettempdir()) / "trueform-verify"
+        work_dir = get_default_work_dir()
 
     # Determine mode
     if args.cpp_only:
@@ -164,7 +162,7 @@ def main() -> int:
 def _cleanup(work_dir: Path) -> None:
     print(f"\nCleaning up {work_dir}...")
     try:
-        shutil.rmtree(work_dir)
+        robust_rmtree(work_dir)
     except Exception as e:
         print(colored(f"Warning: Could not clean up: {e}", Colors.YELLOW))
 

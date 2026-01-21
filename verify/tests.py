@@ -21,26 +21,10 @@ import argparse
 import multiprocessing
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
+from build import get_default_work_dir, Colors, colored
 from venv_utils import VenvInfo, get_venv_info
-
-
-# ANSI color codes
-class Colors:
-    GREEN = "\033[92m"
-    RED = "\033[91m"
-    YELLOW = "\033[93m"
-    BLUE = "\033[94m"
-    BOLD = "\033[1m"
-    RESET = "\033[0m"
-
-
-def colored(text: str, color: str) -> str:
-    if sys.stdout.isatty():
-        return f"{color}{text}{Colors.RESET}"
-    return text
 
 
 def print_header(name: str) -> None:
@@ -233,7 +217,7 @@ def run_tests(
     if source_dir is None:
         source_dir = Path(__file__).resolve().parent.parent
     if work_dir is None:
-        work_dir = Path(tempfile.gettempdir()) / "trueform-verify"
+        work_dir = get_default_work_dir()
 
     clone_dir = work_dir / "trueform"
     build_dir = clone_dir / "build"
