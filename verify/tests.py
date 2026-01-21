@@ -2,11 +2,16 @@
 """
 Run trueform C++ and Python tests.
 
+This script runs tests on existing builds. It does not build anything.
+If the build or venv is missing, tests are skipped.
+
+Note: Use all.py to build and run tests together.
+
 Usage:
     python verify/tests.py [options]
 
 Examples:
-    python verify/tests.py                           # Run tests (builds if needed)
+    python verify/tests.py                           # Run all tests
     python verify/tests.py --work-dir ./my-build     # Use specific work directory
     python verify/tests.py --skip-cpp                # Only Python tests
     python verify/tests.py --skip-python             # Only C++ tests
@@ -14,7 +19,6 @@ Examples:
 
 import argparse
 import multiprocessing
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -209,70 +213,6 @@ def run_python_tests(source_dir: Path, venv_info: VenvInfo = None) -> bool:
     return False
 
 
-def build_for_tests(work_dir: Path, source_dir: Path) -> Path:
-    """Build the project for testing."""
-    clone_dir = work_dir / "trueform"
-    build_dir = clone_dir / "build"
-
-    num_jobs = max(1, multiprocessing.cpu_count())
-
-    print_step("Setup")
-
-    if work_dir.exists():
-        try:
-            shutil.rmtree(work_dir)
-            print_pass("Clean work directory")
-        except Exception as e:
-            print_fail("Clean work directory", str(e))
-            return None
-
-    try:
-        work_dir.mkdir(parents=True, exist_ok=True)
-        print_pass("Create work directory")
-    except Exception as e:
-        print_fail("Create work directory", str(e))
-        return None
-
-    print_step("Clone Repository")
-
-    try:
-        run_cmd(["git", "clone", str(source_dir), str(clone_dir)], cwd=work_dir, capture=True)
-        print_pass("Clone repository")
-    except subprocess.CalledProcessError as e:
-        print_fail("Clone repository", getattr(e, 'stdout', str(e)))
-        return None
-
-    print_step("Configure")
-
-    try:
-        run_cmd([
-            "cmake",
-            "-S", str(clone_dir),
-            "-B", str(build_dir),
-            "-DCMAKE_BUILD_TYPE=Release",
-            "-DTF_BUILD_TESTS=ON",
-        ], capture=True)
-        print_pass("Configure CMake")
-    except subprocess.CalledProcessError as e:
-        print_fail("Configure CMake", getattr(e, 'stdout', str(e)))
-        return None
-
-    print_step("Build Tests")
-
-    try:
-        run_cmd([
-            "cmake", "--build", str(build_dir),
-            "--target", "trueform_tests",
-            "--parallel", str(num_jobs),
-        ], capture=True)
-        print_pass(f"Build trueform_tests (jobs={num_jobs})")
-    except subprocess.CalledProcessError as e:
-        print_fail("Build trueform_tests", getattr(e, 'stdout', str(e)))
-        return None
-
-    return build_dir
-
-
 def run_tests(
     work_dir: Path = None,
     skip_cpp: bool = False,
@@ -295,41 +235,38 @@ def run_tests(
     if work_dir is None:
         work_dir = Path(tempfile.gettempdir()) / "trueform-verify"
 
-    # Derive build_dir from work_dir
-    build_dir = work_dir / "trueform" / "build"
+    clone_dir = work_dir / "trueform"
+    build_dir = clone_dir / "build"
+    venv_info = get_venv_info(work_dir / "venv")
 
     print(colored("Trueform Tests", Colors.BOLD + Colors.BLUE))
     print(f"  Source: {source_dir}")
     print(f"  Work:   {work_dir}")
+    if build_dir.exists():
+        print(f"  Build:  {build_dir}")
+    if venv_info:
+        print(f"  Venv:   {venv_info.venv_dir}")
 
     cpp_passed = True
     python_passed = True
 
-    # Check if build exists, otherwise build it
-    venv_info = None
-    if build_dir.exists():
-        print(f"  Build:  {build_dir}")
-        clone_dir = work_dir / "trueform"
-        # Check for venv
-        venv_info = get_venv_info(work_dir / "venv")
-        if venv_info:
-            print(f"  Venv:   {venv_info.venv_dir}")
-    else:
-        print("  Build:  (will build)")
-        build_dir = build_for_tests(work_dir, source_dir)
-        if build_dir is None:
-            return False
-        clone_dir = work_dir / "trueform"
-
+    # C++ tests
     if skip_cpp:
         print_step("C++ Tests")
         print_skip("ctest", "skipped by user")
+    elif not build_dir.exists():
+        print_step("C++ Tests")
+        print_skip("ctest", "no build found")
     else:
         cpp_passed = run_cpp_tests(build_dir)
 
+    # Python tests
     if skip_python:
         print_step("Python Tests")
         print_skip("pytest", "skipped by user")
+    elif not venv_info:
+        print_step("Python Tests")
+        print_skip("pytest", "no venv found")
     else:
         python_passed = run_python_tests(clone_dir, venv_info)
 

@@ -8,14 +8,16 @@ This script:
 3. Installs and verifies the installation
 4. Tests find_package from external projects
 
+Note: This script only builds. Use all.py to build and run tests.
+
 Usage:
     python verify/build.py [options]
 
 Examples:
     python verify/build.py                       # Full build and verify
-    python verify/build.py --work-dir ./build    # Use specific work directory
     python verify/build.py --skip-vtk            # Skip VTK integration
     python verify/build.py --skip-python         # Skip Python bindings
+    python verify/build.py --skip-examples       # Skip building examples
     python verify/build.py --keep                # Keep build artifacts
 """
 
@@ -690,6 +692,7 @@ int main() {
         self,
         skip_vtk: bool = False,
         skip_python: bool = False,
+        skip_examples: bool = False,
     ) -> bool:
         print_step("Setup")
         if not self.do_setup():
@@ -716,7 +719,10 @@ int main() {
             print_skip("Python", "skipped by user")
 
         print_step("Build")
-        self.build_examples()
+        if skip_examples:
+            print_skip("trueform_examples", "skipped by user")
+        else:
+            self.build_examples()
         self.build_tests()
 
         vtk_ok = False
@@ -726,7 +732,10 @@ int main() {
         else:
             vtk_ok = self.build_vtk()
             if vtk_ok:
-                self.build_vtk_examples()
+                if skip_examples:
+                    print_skip("trueform_vtk_examples", "skipped by user")
+                else:
+                    self.build_vtk_examples()
             else:
                 print_skip("trueform_vtk_examples", "VTK build failed")
 
@@ -807,11 +816,207 @@ int main() {
             return False
 
 
+def run_build_cpp_only(
+    work_dir: Path = None,
+    skip_vtk: bool = False,
+    skip_examples: bool = False,
+    branch: str = None,
+    keep: bool = False,
+    source_dir: Path = None,
+) -> bool:
+    """
+    Build and verify C++ only (no Python).
+
+    Returns True if all checks passed, False otherwise.
+    """
+    if work_dir is None:
+        work_dir = Path(tempfile.gettempdir()) / "trueform-verify"
+    if source_dir is None:
+        source_dir = Path(__file__).resolve().parent.parent
+    install_prefix = work_dir / "install"
+
+    print(colored("Trueform C++ Build", Colors.BOLD + Colors.BLUE))
+    print(f"  Source:  {source_dir}")
+    print(f"  Work:    {work_dir}")
+    print(f"  Install: {install_prefix}")
+    if branch:
+        print(f"  Branch:  {branch}")
+    print()
+
+    verifier = BuildVerifier(
+        work_dir=work_dir,
+        install_prefix=install_prefix,
+        source_dir=source_dir,
+        branch=branch,
+    )
+
+    try:
+        print_step("Setup")
+        if not verifier.do_setup():
+            return False
+
+        print_step("Clone")
+        if not verifier.do_clone():
+            return False
+
+        print_step("Configure")
+        if not verifier.do_configure(skip_vtk=skip_vtk):
+            return False
+
+        print_step("Build")
+        if skip_examples:
+            print_skip("trueform_examples", "skipped by user")
+        else:
+            verifier.build_examples()
+        verifier.build_tests()
+
+        if skip_vtk:
+            print_skip("trueform_vtk", "skipped by user")
+            print_skip("trueform_vtk_examples", "skipped by user")
+        else:
+            vtk_ok = verifier.build_vtk()
+            if vtk_ok:
+                if skip_examples:
+                    print_skip("trueform_vtk_examples", "skipped by user")
+                else:
+                    verifier.build_vtk_examples()
+            else:
+                print_skip("trueform_vtk_examples", "VTK build failed")
+
+        print_step("Install")
+        if not verifier.install_cmake():
+            return False
+
+        print_step("Verify trueform")
+        verifier.verify_trueform()
+
+        if skip_vtk:
+            print_step("Verify trueform_vtk")
+            print_skip("VTK verification", "skipped by user")
+        else:
+            print_step("Verify trueform_vtk")
+            verifier.verify_trueform_vtk()
+
+        print_step("Test find_package")
+        verifier.test_find_package()
+
+        if skip_vtk:
+            print_step("Test find_package (vtk)")
+            print_skip("VTK find_package test", "skipped by user")
+        else:
+            print_step("Test find_package (vtk)")
+            verifier.test_find_package_vtk()
+
+    except KeyboardInterrupt:
+        print(colored("\nInterrupted by user", Colors.YELLOW))
+        return False
+
+    print_step("Summary")
+    failed = sum(1 for _, p, _ in verifier.results if not p)
+    total = len(verifier.results)
+
+    for name, success, _ in verifier.results:
+        if success:
+            print(f"  {colored('[PASS]', Colors.GREEN)} {name}")
+        else:
+            print(f"  {colored('[FAIL]', Colors.RED)} {name}")
+
+    print()
+    if failed == 0:
+        print(colored(f"All {total} checks passed!", Colors.GREEN + Colors.BOLD))
+        return True
+    else:
+        print(colored(f"{failed}/{total} checks failed", Colors.RED + Colors.BOLD))
+        return False
+
+
+def run_build_python_only(
+    work_dir: Path = None,
+    branch: str = None,
+    keep: bool = False,
+    source_dir: Path = None,
+) -> bool:
+    """
+    Build Python bindings only (for CI).
+
+    Returns True if all checks passed, False otherwise.
+    """
+    if work_dir is None:
+        work_dir = Path(tempfile.gettempdir()) / "trueform-verify"
+    if source_dir is None:
+        source_dir = Path(__file__).resolve().parent.parent
+
+    print(colored("Trueform Python Build", Colors.BOLD + Colors.BLUE))
+    print(f"  Source: {source_dir}")
+    print(f"  Work:   {work_dir}")
+    if branch:
+        print(f"  Branch: {branch}")
+    print()
+
+    verifier = BuildVerifier(
+        work_dir=work_dir,
+        install_prefix=work_dir / "install",
+        source_dir=source_dir,
+        branch=branch,
+    )
+
+    try:
+        print_step("Setup")
+        if not verifier.do_setup():
+            return False
+
+        print_step("Clone")
+        if not verifier.do_clone():
+            return False
+
+        print_step("Create venv")
+        if not verifier.do_create_venv():
+            return False
+
+        print_step("Configure")
+        if not verifier.do_configure_python():
+            return False
+
+        print_step("Build")
+        if not verifier.build_python():
+            return False
+
+        print_step("Install")
+        if not verifier.install_pip():
+            return False
+
+        print_step("Verify")
+        verifier.verify_pip()
+
+    except KeyboardInterrupt:
+        print(colored("\nInterrupted by user", Colors.YELLOW))
+        return False
+
+    print_step("Summary")
+    failed = sum(1 for _, p, _ in verifier.results if not p)
+    total = len(verifier.results)
+
+    for name, success, _ in verifier.results:
+        if success:
+            print(f"  {colored('[PASS]', Colors.GREEN)} {name}")
+        else:
+            print(f"  {colored('[FAIL]', Colors.RED)} {name}")
+
+    print()
+    if failed == 0:
+        print(colored(f"All {total} checks passed!", Colors.GREEN + Colors.BOLD))
+        return True
+    else:
+        print(colored(f"{failed}/{total} checks failed", Colors.RED + Colors.BOLD))
+        return False
+
+
 def run_build(
     work_dir: Path = None,
     install_prefix: Path = None,
     skip_vtk: bool = False,
     skip_python: bool = False,
+    skip_examples: bool = False,
     branch: str = None,
     keep: bool = False,
     source_dir: Path = None,
@@ -847,6 +1052,7 @@ def run_build(
         verifier.run_all(
             skip_vtk=skip_vtk,
             skip_python=skip_python,
+            skip_examples=skip_examples,
         )
     except KeyboardInterrupt:
         print(colored("\nInterrupted by user", Colors.YELLOW))
@@ -893,6 +1099,11 @@ def main() -> int:
         help="Skip Python package",
     )
     parser.add_argument(
+        "--skip-examples",
+        action="store_true",
+        help="Skip building examples",
+    )
+    parser.add_argument(
         "--branch",
         type=str,
         default=None,
@@ -911,6 +1122,7 @@ def main() -> int:
         install_prefix=args.install_prefix,
         skip_vtk=args.skip_vtk,
         skip_python=args.skip_python,
+        skip_examples=args.skip_examples,
         branch=args.branch,
         keep=args.keep,
     )
