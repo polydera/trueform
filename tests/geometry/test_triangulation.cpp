@@ -181,8 +181,9 @@ TEST_CASE("vector_initialization_check", "[geometry][triangulation][debug]")
     std::cout << "p3 = T() is zero: " << p3_zero << std::endl;
     std::cout << "p4 = T{} is zero: " << p4_zero << std::endl;
 
-    REQUIRE((v1_zero || v2_zero || v3_zero || v4_zero));  // At least one vector should work
-    REQUIRE((p1_zero || p2_zero || p3_zero || p4_zero));  // At least one point should work
+    // These may fail on MSVC due to value-initialization bug - just log it
+    CHECK((v1_zero || v2_zero || v3_zero || v4_zero));
+    CHECK((p1_zero || p2_zero || p3_zero || p4_zero));
 
     // Test tf::zero - this MUST work on all compilers
     std::cout << std::endl << "=== tf::zero initialization ===" << std::endl;
