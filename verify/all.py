@@ -80,6 +80,11 @@ def main() -> int:
         action="store_true",
         help="Keep build artifacts",
     )
+    parser.add_argument(
+        "--static-tbb",
+        action="store_true",
+        help="Build TBB as static library (avoids Windows DLL issues)",
+    )
 
     args = parser.parse_args()
 
@@ -101,6 +106,7 @@ def main() -> int:
             skip_examples=args.skip_examples,
             branch=args.branch,
             keep=True,
+            static_tbb=args.static_tbb,
         )
         if not build_success:
             if not args.keep and work_dir.exists():
@@ -140,6 +146,7 @@ def main() -> int:
             skip_examples=args.skip_examples,
             branch=args.branch,
             keep=True,
+            static_tbb=args.static_tbb,
         )
         if not build_success:
             if not args.keep and work_dir.exists():

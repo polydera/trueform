@@ -225,7 +225,7 @@ class BuildVerifier:
     # =========================================================================
     # Configure
     # =========================================================================
-    def do_configure(self, skip_vtk: bool = False) -> bool:
+    def do_configure(self, skip_vtk: bool = False, static_tbb: bool = False) -> bool:
         self.build_dir.mkdir(parents=True, exist_ok=True)
 
         cmake_args = [
@@ -237,6 +237,8 @@ class BuildVerifier:
             "-DTF_BUILD_EXAMPLES=ON",
             "-DTF_BUILD_TESTS=ON",
         ]
+        if static_tbb:
+            cmake_args.append("-DTF_USE_STATIC_TBB=ON")
         if not skip_vtk:
             cmake_args.extend([
                 "-DTF_BUILD_VTK_INTEGRATION=ON",
@@ -725,6 +727,7 @@ int main() {
         skip_vtk: bool = False,
         skip_python: bool = False,
         skip_examples: bool = False,
+        static_tbb: bool = False,
     ) -> bool:
         print_step("Setup")
         if not self.do_setup():
@@ -735,7 +738,7 @@ int main() {
             return False
 
         print_step("Configure")
-        if not self.do_configure(skip_vtk=skip_vtk):
+        if not self.do_configure(skip_vtk=skip_vtk, static_tbb=static_tbb):
             return False
 
         # Create venv before configuring Python so we use venv's Python
@@ -855,6 +858,7 @@ def run_build_cpp_only(
     branch: str = None,
     keep: bool = False,
     source_dir: Path = None,
+    static_tbb: bool = False,
 ) -> bool:
     """
     Build and verify C++ only (no Python).
@@ -892,7 +896,7 @@ def run_build_cpp_only(
             return False
 
         print_step("Configure")
-        if not verifier.do_configure(skip_vtk=skip_vtk):
+        if not verifier.do_configure(skip_vtk=skip_vtk, static_tbb=static_tbb):
             return False
 
         print_step("Build")
@@ -1052,6 +1056,7 @@ def run_build(
     branch: str = None,
     keep: bool = False,
     source_dir: Path = None,
+    static_tbb: bool = False,
 ) -> bool:
     """
     Build and install trueform from a clean clone.
@@ -1085,6 +1090,7 @@ def run_build(
             skip_vtk=skip_vtk,
             skip_python=skip_python,
             skip_examples=skip_examples,
+            static_tbb=static_tbb,
         )
     except KeyboardInterrupt:
         print(colored("\nInterrupted by user", Colors.YELLOW))
@@ -1146,6 +1152,11 @@ def main() -> int:
         action="store_true",
         help="Keep build artifacts",
     )
+    parser.add_argument(
+        "--static-tbb",
+        action="store_true",
+        help="Build TBB as static library (avoids Windows DLL issues)",
+    )
 
     args = parser.parse_args()
 
@@ -1157,6 +1168,7 @@ def main() -> int:
         skip_examples=args.skip_examples,
         branch=args.branch,
         keep=args.keep,
+        static_tbb=args.static_tbb,
     )
 
     return 0 if success else 1
