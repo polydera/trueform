@@ -30,7 +30,6 @@ def make_dynamic_faces(faces_array):
 
 def compute_signed_volume(faces, points):
     """Compute signed volume of a closed mesh."""
-    mesh = tf.Mesh(faces, points)
     # Use trueform's signed_volume if available, otherwise compute manually
     total = 0.0
     for face in faces:
@@ -270,7 +269,7 @@ def test_does_not_modify_input(index_dtype, real_dtype):
     faces, points = create_tetrahedron_negative(index_dtype, real_dtype)
     faces_original = faces.copy()
 
-    result = tf.ensure_positive_orientation((faces, points))
+    _result = tf.ensure_positive_orientation((faces, points))
 
     # Input should be unchanged
     np.testing.assert_array_equal(faces, faces_original)

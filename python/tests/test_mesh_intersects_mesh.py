@@ -98,8 +98,8 @@ def test_mesh_intersects_mesh_2d_hit(index_dtype0, index_dtype1, real_dtype, mes
     else:
         mesh1 = create_tiled_plane_2d_dynamic(index_dtype1, real_dtype, offset_x=1.0)
 
-    assert tf.intersects(mesh0, mesh1) == True
-    assert tf.intersects(mesh1, mesh0) == True  # Symmetric
+    assert tf.intersects(mesh0, mesh1)
+    assert tf.intersects(mesh1, mesh0)  # Symmetric
 
 
 @pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
@@ -120,8 +120,8 @@ def test_mesh_intersects_mesh_2d_miss(index_dtype0, index_dtype1, real_dtype, me
     else:
         mesh1 = create_tiled_plane_2d_dynamic(index_dtype1, real_dtype, offset_x=5.0)
 
-    assert tf.intersects(mesh0, mesh1) == False
-    assert tf.intersects(mesh1, mesh0) == False
+    assert not tf.intersects(mesh0, mesh1)
+    assert not tf.intersects(mesh1, mesh0)
 
 
 # ==============================================================================
@@ -146,8 +146,8 @@ def test_mesh_intersects_mesh_3d_hit(index_dtype0, index_dtype1, real_dtype, mes
     else:
         mesh1 = create_tiled_plane_3d_dynamic(index_dtype1, real_dtype, offset_z=0.0)
 
-    assert tf.intersects(mesh0, mesh1) == True
-    assert tf.intersects(mesh1, mesh0) == True
+    assert tf.intersects(mesh0, mesh1)
+    assert tf.intersects(mesh1, mesh0)
 
 
 @pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
@@ -168,8 +168,8 @@ def test_mesh_intersects_mesh_3d_miss(index_dtype0, index_dtype1, real_dtype, me
     else:
         mesh1 = create_tiled_plane_3d_dynamic(index_dtype1, real_dtype, offset_z=5.0)
 
-    assert tf.intersects(mesh0, mesh1) == False
-    assert tf.intersects(mesh1, mesh0) == False
+    assert not tf.intersects(mesh0, mesh1)
+    assert not tf.intersects(mesh1, mesh0)
 
 
 # ==============================================================================
@@ -194,7 +194,7 @@ def test_mesh_intersects_mesh_with_transformation_2d(index_dtype0, index_dtype1,
         mesh1 = create_tiled_plane_2d_dynamic(index_dtype1, real_dtype, offset_x=1.0)
 
     # Verify intersection before transformation
-    assert tf.intersects(mesh0, mesh1) == True
+    assert tf.intersects(mesh0, mesh1)
 
     # Apply same transformation to both: translate by [5, 3]
     transformation = np.array([
@@ -207,8 +207,8 @@ def test_mesh_intersects_mesh_with_transformation_2d(index_dtype0, index_dtype1,
     mesh1.transformation = transformation
 
     # Should still intersect
-    assert tf.intersects(mesh0, mesh1) == True
-    assert tf.intersects(mesh1, mesh0) == True
+    assert tf.intersects(mesh0, mesh1)
+    assert tf.intersects(mesh1, mesh0)
 
 
 @pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
@@ -229,7 +229,7 @@ def test_mesh_intersects_mesh_with_transformation_3d(index_dtype0, index_dtype1,
         mesh1 = create_tiled_plane_3d_dynamic(index_dtype1, real_dtype, offset_z=0.0)
 
     # Verify intersection before transformation
-    assert tf.intersects(mesh0, mesh1) == True
+    assert tf.intersects(mesh0, mesh1)
 
     # Apply same transformation to both: translate by [10, 5, 2]
     transformation = np.array([
@@ -243,8 +243,8 @@ def test_mesh_intersects_mesh_with_transformation_3d(index_dtype0, index_dtype1,
     mesh1.transformation = transformation
 
     # Should still intersect
-    assert tf.intersects(mesh0, mesh1) == True
-    assert tf.intersects(mesh1, mesh0) == True
+    assert tf.intersects(mesh0, mesh1)
+    assert tf.intersects(mesh1, mesh0)
 
 
 # ==============================================================================
@@ -258,7 +258,7 @@ def test_mesh_intersects_mesh_different_transformations_2d(real_dtype):
     mesh1 = create_tiled_plane_2d_triangles(np.int32, real_dtype, offset_x=1.0)
 
     # Verify intersection before transformation
-    assert tf.intersects(mesh0, mesh1) == True
+    assert tf.intersects(mesh0, mesh1)
 
     # Apply different transformations
     # mesh0: no transformation
@@ -272,8 +272,8 @@ def test_mesh_intersects_mesh_different_transformations_2d(real_dtype):
     mesh1.transformation = transformation1
 
     # Should NOT intersect anymore
-    assert tf.intersects(mesh0, mesh1) == False
-    assert tf.intersects(mesh1, mesh0) == False
+    assert not tf.intersects(mesh0, mesh1)
+    assert not tf.intersects(mesh1, mesh0)
 
 
 # ==============================================================================
@@ -315,7 +315,7 @@ def test_mesh_intersects_itself(real_dtype):
     """Test mesh intersecting with itself"""
     mesh = create_tiled_plane_2d_triangles(np.int32, real_dtype)
 
-    assert tf.intersects(mesh, mesh) == True
+    assert tf.intersects(mesh, mesh)
 
 
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)

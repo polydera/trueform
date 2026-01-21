@@ -110,8 +110,8 @@ def test_mesh_intersects_point_2d_hit(index_dtype, real_dtype, mesh_type):
         # Point in center of face 0 (quad [0,1,4,3])
         pt = tf.Point(np.array([0.5, 0.5], dtype=real_dtype))
 
-    assert tf.intersects(mesh, pt) == True
-    assert tf.intersects(pt, mesh) == True
+    assert tf.intersects(mesh, pt)
+    assert tf.intersects(pt, mesh)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -127,8 +127,8 @@ def test_mesh_intersects_point_2d_miss(index_dtype, real_dtype, mesh_type):
     # Point outside mesh bounds
     pt = tf.Point(np.array([5.0, 5.0], dtype=real_dtype))
 
-    assert tf.intersects(mesh, pt) == False
-    assert tf.intersects(pt, mesh) == False
+    assert not tf.intersects(mesh, pt)
+    assert not tf.intersects(pt, mesh)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -143,8 +143,8 @@ def test_mesh_intersects_point_3d_hit(index_dtype, real_dtype, mesh_type):
         mesh = create_tiled_plane_3d_dynamic(index_dtype, real_dtype)
         pt = tf.Point(np.array([0.5, 0.5, 0.0], dtype=real_dtype))
 
-    assert tf.intersects(mesh, pt) == True
-    assert tf.intersects(pt, mesh) == True
+    assert tf.intersects(mesh, pt)
+    assert tf.intersects(pt, mesh)
 
 
 # ==============================================================================
@@ -164,8 +164,8 @@ def test_mesh_intersects_segment_2d_hit(index_dtype, real_dtype, mesh_type):
     # Segment crossing the first cell diagonally
     seg = tf.Segment(np.array([[0.2, 0.2], [0.8, 0.8]], dtype=real_dtype))
 
-    assert tf.intersects(mesh, seg) == True
-    assert tf.intersects(seg, mesh) == True
+    assert tf.intersects(mesh, seg)
+    assert tf.intersects(seg, mesh)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -181,8 +181,8 @@ def test_mesh_intersects_segment_2d_miss(index_dtype, real_dtype, mesh_type):
     # Segment outside mesh bounds
     seg = tf.Segment(np.array([[5.0, 5.0], [6.0, 6.0]], dtype=real_dtype))
 
-    assert tf.intersects(mesh, seg) == False
-    assert tf.intersects(seg, mesh) == False
+    assert not tf.intersects(mesh, seg)
+    assert not tf.intersects(seg, mesh)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -198,8 +198,8 @@ def test_mesh_intersects_segment_3d_hit(index_dtype, real_dtype, mesh_type):
     # Segment piercing the plane at z=0
     seg = tf.Segment(np.array([[0.5, 0.5, -1.0], [0.5, 0.5, 1.0]], dtype=real_dtype))
 
-    assert tf.intersects(mesh, seg) == True
-    assert tf.intersects(seg, mesh) == True
+    assert tf.intersects(mesh, seg)
+    assert tf.intersects(seg, mesh)
 
 
 # ==============================================================================
@@ -219,8 +219,8 @@ def test_mesh_intersects_polygon_2d_hit(index_dtype, real_dtype, mesh_type):
     # Small triangle inside first cell
     poly = tf.Polygon(np.array([[0.3, 0.3], [0.7, 0.3], [0.5, 0.7]], dtype=real_dtype))
 
-    assert tf.intersects(mesh, poly) == True
-    assert tf.intersects(poly, mesh) == True
+    assert tf.intersects(mesh, poly)
+    assert tf.intersects(poly, mesh)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -236,8 +236,8 @@ def test_mesh_intersects_polygon_2d_miss(index_dtype, real_dtype, mesh_type):
     # Triangle outside mesh bounds
     poly = tf.Polygon(np.array([[5.0, 5.0], [6.0, 5.0], [5.5, 6.0]], dtype=real_dtype))
 
-    assert tf.intersects(mesh, poly) == False
-    assert tf.intersects(poly, mesh) == False
+    assert not tf.intersects(mesh, poly)
+    assert not tf.intersects(poly, mesh)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -253,8 +253,8 @@ def test_mesh_intersects_polygon_3d_hit(index_dtype, real_dtype, mesh_type):
     # Triangle in the plane z=0, inside first cell
     poly = tf.Polygon(np.array([[0.3, 0.3, 0.0], [0.7, 0.3, 0.0], [0.5, 0.7, 0.0]], dtype=real_dtype))
 
-    assert tf.intersects(mesh, poly) == True
-    assert tf.intersects(poly, mesh) == True
+    assert tf.intersects(mesh, poly)
+    assert tf.intersects(poly, mesh)
 
 
 # ==============================================================================
@@ -277,8 +277,8 @@ def test_mesh_intersects_ray_2d_hit(index_dtype, real_dtype, mesh_type):
         direction=np.array([1.0, 0.0], dtype=real_dtype)
     )
 
-    assert tf.intersects(mesh, ray) == True
-    assert tf.intersects(ray, mesh) == True
+    assert tf.intersects(mesh, ray)
+    assert tf.intersects(ray, mesh)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -297,8 +297,8 @@ def test_mesh_intersects_ray_2d_miss(index_dtype, real_dtype, mesh_type):
         direction=np.array([-1.0, 0.0], dtype=real_dtype)
     )
 
-    assert tf.intersects(mesh, ray) == False
-    assert tf.intersects(ray, mesh) == False
+    assert not tf.intersects(mesh, ray)
+    assert not tf.intersects(ray, mesh)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -317,8 +317,8 @@ def test_mesh_intersects_ray_3d_hit(index_dtype, real_dtype, mesh_type):
         direction=np.array([0.0, 0.0, -1.0], dtype=real_dtype)
     )
 
-    assert tf.intersects(mesh, ray) == True
-    assert tf.intersects(ray, mesh) == True
+    assert tf.intersects(mesh, ray)
+    assert tf.intersects(ray, mesh)
 
 
 # ==============================================================================
@@ -341,8 +341,8 @@ def test_mesh_intersects_line_2d_hit(index_dtype, real_dtype, mesh_type):
         direction=np.array([1.0, 0.0], dtype=real_dtype)
     )
 
-    assert tf.intersects(mesh, line) == True
-    assert tf.intersects(line, mesh) == True
+    assert tf.intersects(mesh, line)
+    assert tf.intersects(line, mesh)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -361,8 +361,8 @@ def test_mesh_intersects_line_2d_miss(index_dtype, real_dtype, mesh_type):
         direction=np.array([1.0, 0.0], dtype=real_dtype)
     )
 
-    assert tf.intersects(mesh, line) == False
-    assert tf.intersects(line, mesh) == False
+    assert not tf.intersects(mesh, line)
+    assert not tf.intersects(line, mesh)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -381,8 +381,8 @@ def test_mesh_intersects_line_3d_hit(index_dtype, real_dtype, mesh_type):
         direction=np.array([0.0, 0.0, 1.0], dtype=real_dtype)
     )
 
-    assert tf.intersects(mesh, line) == True
-    assert tf.intersects(line, mesh) == True
+    assert tf.intersects(mesh, line)
+    assert tf.intersects(line, mesh)
 
 
 # ==============================================================================
@@ -405,8 +405,8 @@ def test_mesh_intersects_plane_3d_hit(index_dtype, real_dtype, mesh_type):
         origin=np.array([0.0, 0.0, 0.0], dtype=real_dtype)
     )
 
-    assert tf.intersects(mesh, plane) == True
-    assert tf.intersects(plane, mesh) == True
+    assert tf.intersects(mesh, plane)
+    assert tf.intersects(plane, mesh)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -425,8 +425,8 @@ def test_mesh_intersects_plane_3d_miss(index_dtype, real_dtype, mesh_type):
         origin=np.array([0.0, 0.0, 2.0], dtype=real_dtype)
     )
 
-    assert tf.intersects(mesh, plane) == False
-    assert tf.intersects(plane, mesh) == False
+    assert not tf.intersects(mesh, plane)
+    assert not tf.intersects(plane, mesh)
 
 
 # ==============================================================================
@@ -446,7 +446,7 @@ def test_mesh_intersects_with_transformation_2d(index_dtype, real_dtype, mesh_ty
         pt = tf.Point(np.array([0.5, 0.5], dtype=real_dtype))
 
     # Verify intersection before transformation
-    assert tf.intersects(mesh, pt) == True
+    assert tf.intersects(mesh, pt)
 
     # Apply transformation: translate by [5, 3]
     transformation = np.array([
@@ -463,8 +463,8 @@ def test_mesh_intersects_with_transformation_2d(index_dtype, real_dtype, mesh_ty
     pt_transformed = tf.Point(pt_transformed_coords)
 
     # Should still intersect
-    assert tf.intersects(mesh, pt_transformed) == True
-    assert tf.intersects(pt_transformed, mesh) == True
+    assert tf.intersects(mesh, pt_transformed)
+    assert tf.intersects(pt_transformed, mesh)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -479,7 +479,7 @@ def test_mesh_intersects_with_transformation_3d(index_dtype, real_dtype, mesh_ty
 
     # Segment that intersects untransformed mesh
     seg = tf.Segment(np.array([[0.5, 0.5, -1.0], [0.5, 0.5, 1.0]], dtype=real_dtype))
-    assert tf.intersects(mesh, seg) == True
+    assert tf.intersects(mesh, seg)
 
     # Apply transformation: translate by [10, 5, 2]
     transformation = np.array([
@@ -497,8 +497,8 @@ def test_mesh_intersects_with_transformation_3d(index_dtype, real_dtype, mesh_ty
     seg_transformed = tf.Segment(seg_transformed_data)
 
     # Should still intersect
-    assert tf.intersects(mesh, seg_transformed) == True
-    assert tf.intersects(seg_transformed, mesh) == True
+    assert tf.intersects(mesh, seg_transformed)
+    assert tf.intersects(seg_transformed, mesh)
 
 
 # ==============================================================================

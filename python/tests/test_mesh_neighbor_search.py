@@ -246,7 +246,7 @@ def test_mesh_neighbor_search_with_radius_2d_tri(index_dtype, real_dtype):
         if result is not None:
             idx2, dist2_2, pt2 = result
             assert dist2_2 <= 0.001 ** 2  # Distance should be within radius
-    except:
+    except Exception:
         # If no result found within radius, that's also valid behavior
         pass
 

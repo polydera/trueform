@@ -297,13 +297,13 @@ def test_distance_dimension_mismatch():
     pt_3d = tf.Point([0.0, 0.0, 0.0])
 
     try:
-        result = tf.distance(pt_2d, pt_3d)
+        _result = tf.distance(pt_2d, pt_3d)
         assert False, "Expected ValueError was not raised"
     except ValueError as e:
         assert "Dimension mismatch" in str(e)
 
     try:
-        result = tf.distance2(pt_2d, pt_3d)
+        _result = tf.distance2(pt_2d, pt_3d)
         assert False, "Expected ValueError was not raised"
     except ValueError as e:
         assert "Dimension mismatch" in str(e)

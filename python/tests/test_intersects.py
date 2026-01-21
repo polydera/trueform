@@ -17,12 +17,12 @@ def test_intersects_point_point(dtype):
     pt1 = tf.Point(np.array([1.0, 2.0, 3.0], dtype=dtype))
     pt2 = tf.Point(np.array([1.0, 2.0, 3.0], dtype=dtype))
     result = tf.intersects(pt1, pt2)
-    assert result == True, f"Same points should intersect ({dtype})"
+    assert result, f"Same points should intersect ({dtype})"
 
     # Different points should not intersect
     pt3 = tf.Point(np.array([5.0, 6.0, 7.0], dtype=dtype))
     result = tf.intersects(pt1, pt3)
-    assert result == False, f"Different points should not intersect ({dtype})"
+    assert not result, f"Different points should not intersect ({dtype})"
 
 
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
@@ -35,16 +35,16 @@ def test_intersects_point_aabb(dtype):
         max=np.array([1.0, 1.0], dtype=dtype)
     )
     result = tf.intersects(pt_inside, box)
-    assert result == True, f"Point inside AABB should intersect ({dtype})"
+    assert result, f"Point inside AABB should intersect ({dtype})"
 
     # Point outside AABB
     pt_outside = tf.Point(np.array([2.0, 2.0], dtype=dtype))
     result = tf.intersects(pt_outside, box)
-    assert result == False, f"Point outside AABB should not intersect ({dtype})"
+    assert not result, f"Point outside AABB should not intersect ({dtype})"
 
     # Test swap order
     result = tf.intersects(box, pt_inside)
-    assert result == True, f"Swapped order should work ({dtype})"
+    assert result, f"Swapped order should work ({dtype})"
 
 
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
@@ -60,7 +60,7 @@ def test_intersects_aabb_aabb(dtype):
         max=np.array([3.0, 3.0, 3.0], dtype=dtype)
     )
     result = tf.intersects(box1, box2)
-    assert result == True, f"Overlapping AABBs should intersect ({dtype})"
+    assert result, f"Overlapping AABBs should intersect ({dtype})"
 
     # Non-overlapping AABBs
     box3 = tf.AABB(
@@ -68,7 +68,7 @@ def test_intersects_aabb_aabb(dtype):
         max=np.array([6.0, 6.0, 6.0], dtype=dtype)
     )
     result = tf.intersects(box1, box3)
-    assert result == False, f"Non-overlapping AABBs should not intersect ({dtype})"
+    assert not result, f"Non-overlapping AABBs should not intersect ({dtype})"
 
 
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
@@ -78,16 +78,16 @@ def test_intersects_point_segment(dtype):
     pt_on = tf.Point(np.array([0.5, 0.5], dtype=dtype))
     seg = tf.Segment(np.array([[0.0, 0.0], [1.0, 1.0]], dtype=dtype))
     result = tf.intersects(pt_on, seg)
-    assert result == True, f"Point on segment should intersect ({dtype})"
+    assert result, f"Point on segment should intersect ({dtype})"
 
     # Point off segment
     pt_off = tf.Point(np.array([0.5, 0.0], dtype=dtype))
     result = tf.intersects(pt_off, seg)
-    assert result == False, f"Point off segment should not intersect ({dtype})"
+    assert not result, f"Point off segment should not intersect ({dtype})"
 
     # Test swap
     result = tf.intersects(seg, pt_on)
-    assert result == True, f"Swapped order should work ({dtype})"
+    assert result, f"Swapped order should work ({dtype})"
 
 
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
@@ -97,12 +97,12 @@ def test_intersects_segment_segment(dtype):
     seg1 = tf.Segment(np.array([[0.0, 0.0], [1.0, 1.0]], dtype=dtype))
     seg2 = tf.Segment(np.array([[0.0, 1.0], [1.0, 0.0]], dtype=dtype))
     result = tf.intersects(seg1, seg2)
-    assert result == True, f"Intersecting segments should intersect ({dtype})"
+    assert result, f"Intersecting segments should intersect ({dtype})"
 
     # Non-intersecting segments (2D)
     seg3 = tf.Segment(np.array([[2.0, 2.0], [3.0, 3.0]], dtype=dtype))
     result = tf.intersects(seg1, seg3)
-    assert result == False, f"Non-intersecting segments should not intersect ({dtype})"
+    assert not result, f"Non-intersecting segments should not intersect ({dtype})"
 
 
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
@@ -120,16 +120,16 @@ def test_intersects_point_polygon(dtype):
     # Point inside polygon
     pt_inside = tf.Point(np.array([0.5, 0.5], dtype=dtype))
     result = tf.intersects(pt_inside, poly)
-    assert result == True, f"Point inside polygon should intersect ({dtype})"
+    assert result, f"Point inside polygon should intersect ({dtype})"
 
     # Point outside polygon
     pt_outside = tf.Point(np.array([2.0, 2.0], dtype=dtype))
     result = tf.intersects(pt_outside, poly)
-    assert result == False, f"Point outside polygon should not intersect ({dtype})"
+    assert not result, f"Point outside polygon should not intersect ({dtype})"
 
     # Test swap
     result = tf.intersects(poly, pt_inside)
-    assert result == True, f"Swapped order should work ({dtype})"
+    assert result, f"Swapped order should work ({dtype})"
 
 
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
@@ -142,7 +142,7 @@ def test_intersects_ray_segment(dtype):
     )
     seg = tf.Segment(np.array([[0.5, 0.0], [0.5, 1.0]], dtype=dtype))
     result = tf.intersects(ray, seg)
-    assert result == True, f"Ray should intersect segment ({dtype})"
+    assert result, f"Ray should intersect segment ({dtype})"
 
     # Ray missing segment
     ray_miss = tf.Ray(
@@ -150,11 +150,11 @@ def test_intersects_ray_segment(dtype):
         direction=np.array([1.0, 0.0], dtype=dtype)
     )
     result = tf.intersects(ray_miss, seg)
-    assert result == False, f"Ray should not intersect segment ({dtype})"
+    assert not result, f"Ray should not intersect segment ({dtype})"
 
     # Test swap
     result = tf.intersects(seg, ray)
-    assert result == True, f"Swapped order should work ({dtype})"
+    assert result, f"Swapped order should work ({dtype})"
 
 
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
@@ -174,7 +174,7 @@ def test_intersects_ray_polygon(dtype):
         direction=np.array([0.0, 0.0, -1.0], dtype=dtype)
     )
     result = tf.intersects(ray, poly)
-    assert result == True, f"Ray should intersect polygon ({dtype})"
+    assert result, f"Ray should intersect polygon ({dtype})"
 
     # Ray missing polygon
     ray_miss = tf.Ray(
@@ -182,11 +182,11 @@ def test_intersects_ray_polygon(dtype):
         direction=np.array([0.0, 0.0, -1.0], dtype=dtype)
     )
     result = tf.intersects(ray_miss, poly)
-    assert result == False, f"Ray should not intersect polygon ({dtype})"
+    assert not result, f"Ray should not intersect polygon ({dtype})"
 
     # Test swap
     result = tf.intersects(poly, ray)
-    assert result == True, f"Swapped order should work ({dtype})"
+    assert result, f"Swapped order should work ({dtype})"
 
 
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
@@ -202,7 +202,7 @@ def test_intersects_line_line(dtype):
         direction=np.array([0.0, 1.0], dtype=dtype)
     )
     result = tf.intersects(line1, line2)
-    assert result == True, f"Intersecting lines should intersect ({dtype})"
+    assert result, f"Intersecting lines should intersect ({dtype})"
 
     # Parallel lines (2D)
     line3 = tf.Line(
@@ -210,7 +210,7 @@ def test_intersects_line_line(dtype):
         direction=np.array([1.0, 0.0], dtype=dtype)
     )
     result = tf.intersects(line1, line3)
-    assert result == False, f"Parallel lines should not intersect ({dtype})"
+    assert not result, f"Parallel lines should not intersect ({dtype})"
 
 
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
@@ -222,12 +222,12 @@ def test_intersects_plane_primitives(dtype):
     # Point on plane
     pt_on = tf.Point(np.array([1.0, 1.0, 0.0], dtype=dtype))
     result = tf.intersects(plane, pt_on)
-    assert result == True, f"Point on plane should intersect ({dtype})"
+    assert result, f"Point on plane should intersect ({dtype})"
 
     # Point off plane
     pt_off = tf.Point(np.array([1.0, 1.0, 5.0], dtype=dtype))
     result = tf.intersects(plane, pt_off)
-    assert result == False, f"Point off plane should not intersect ({dtype})"
+    assert not result, f"Point off plane should not intersect ({dtype})"
 
     # Ray hitting plane
     ray = tf.Ray(
@@ -235,7 +235,7 @@ def test_intersects_plane_primitives(dtype):
         direction=np.array([0.0, 0.0, -1.0], dtype=dtype)
     )
     result = tf.intersects(plane, ray)
-    assert result == True, f"Ray should intersect plane ({dtype})"
+    assert result, f"Ray should intersect plane ({dtype})"
 
     # Ray parallel to plane
     ray_parallel = tf.Ray(
@@ -243,7 +243,7 @@ def test_intersects_plane_primitives(dtype):
         direction=np.array([1.0, 0.0, 0.0], dtype=dtype)
     )
     result = tf.intersects(plane, ray_parallel)
-    assert result == False, f"Parallel ray should not intersect plane ({dtype})"
+    assert not result, f"Parallel ray should not intersect plane ({dtype})"
 
     # Test swap with AABB
     box = tf.AABB(
@@ -251,10 +251,10 @@ def test_intersects_plane_primitives(dtype):
         max=np.array([1.0, 1.0, 1.0], dtype=dtype)
     )
     result = tf.intersects(plane, box)
-    assert result == True, f"Plane should intersect AABB ({dtype})"
+    assert result, f"Plane should intersect AABB ({dtype})"
 
     result = tf.intersects(box, plane)
-    assert result == True, f"Swapped order should work ({dtype})"
+    assert result, f"Swapped order should work ({dtype})"
 
 
 def test_intersects_dimension_mismatch():
@@ -263,7 +263,7 @@ def test_intersects_dimension_mismatch():
     pt_3d = tf.Point([0.0, 0.0, 0.0])
 
     try:
-        result = tf.intersects(pt_2d, pt_3d)
+        _result = tf.intersects(pt_2d, pt_3d)
         assert False, "Expected ValueError was not raised"
     except ValueError as e:
         assert "Dimension mismatch" in str(e)

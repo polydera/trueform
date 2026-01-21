@@ -152,7 +152,7 @@ def test_isobands_selected_bands(mesh_type):
 
     # Labels should only contain values from selected bands
     unique_labels = np.unique(labels)
-    assert all(l in selected for l in unique_labels), \
+    assert all(label in selected for label in unique_labels), \
         f"Labels {unique_labels} should only contain selected bands {selected}"
 
 

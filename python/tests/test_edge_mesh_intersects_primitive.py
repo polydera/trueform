@@ -53,8 +53,8 @@ def test_edge_mesh_intersects_point_2d_hit(index_dtype, real_dtype):
     # Point on edge 1 at [1.5, 0]
     pt = tf.Point(np.array([1.5, 0.0], dtype=real_dtype))
 
-    assert tf.intersects(edge_mesh, pt) == True
-    assert tf.intersects(pt, edge_mesh) == True  # Symmetric
+    assert tf.intersects(edge_mesh, pt)
+    assert tf.intersects(pt, edge_mesh)  # Symmetric
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -66,8 +66,8 @@ def test_edge_mesh_intersects_point_2d_miss(index_dtype, real_dtype):
     # Point above edge mesh at [1.5, 1.0]
     pt = tf.Point(np.array([1.5, 1.0], dtype=real_dtype))
 
-    assert tf.intersects(edge_mesh, pt) == False
-    assert tf.intersects(pt, edge_mesh) == False
+    assert not tf.intersects(edge_mesh, pt)
+    assert not tf.intersects(pt, edge_mesh)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -79,8 +79,8 @@ def test_edge_mesh_intersects_point_3d_hit(index_dtype, real_dtype):
     # Point on edge 1 at [1.5, 0, 0]
     pt = tf.Point(np.array([1.5, 0.0, 0.0], dtype=real_dtype))
 
-    assert tf.intersects(edge_mesh, pt) == True
-    assert tf.intersects(pt, edge_mesh) == True
+    assert tf.intersects(edge_mesh, pt)
+    assert tf.intersects(pt, edge_mesh)
 
 
 # ==============================================================================
@@ -96,8 +96,8 @@ def test_edge_mesh_intersects_segment_2d_hit(index_dtype, real_dtype):
     # Vertical segment crossing edge 1 at x=1.5
     seg = tf.Segment(np.array([[1.5, -1.0], [1.5, 1.0]], dtype=real_dtype))
 
-    assert tf.intersects(edge_mesh, seg) == True
-    assert tf.intersects(seg, edge_mesh) == True
+    assert tf.intersects(edge_mesh, seg)
+    assert tf.intersects(seg, edge_mesh)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -109,8 +109,8 @@ def test_edge_mesh_intersects_segment_2d_miss(index_dtype, real_dtype):
     # Segment above the edge mesh
     seg = tf.Segment(np.array([[1.5, 1.0], [1.5, 2.0]], dtype=real_dtype))
 
-    assert tf.intersects(edge_mesh, seg) == False
-    assert tf.intersects(seg, edge_mesh) == False
+    assert not tf.intersects(edge_mesh, seg)
+    assert not tf.intersects(seg, edge_mesh)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -122,8 +122,8 @@ def test_edge_mesh_intersects_segment_3d_hit(index_dtype, real_dtype):
     # Vertical segment (in z) crossing edge 1 at [1.5, 0, z]
     seg = tf.Segment(np.array([[1.5, 0.0, -1.0], [1.5, 0.0, 1.0]], dtype=real_dtype))
 
-    assert tf.intersects(edge_mesh, seg) == True
-    assert tf.intersects(seg, edge_mesh) == True
+    assert tf.intersects(edge_mesh, seg)
+    assert tf.intersects(seg, edge_mesh)
 
 
 # ==============================================================================
@@ -139,8 +139,8 @@ def test_edge_mesh_intersects_polygon_2d_hit(index_dtype, real_dtype):
     # Triangle overlapping edge 1 (straddles y=0)
     poly = tf.Polygon(np.array([[1.3, -0.1], [1.7, -0.1], [1.5, 0.1]], dtype=real_dtype))
 
-    assert tf.intersects(edge_mesh, poly) == True
-    assert tf.intersects(poly, edge_mesh) == True
+    assert tf.intersects(edge_mesh, poly)
+    assert tf.intersects(poly, edge_mesh)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -152,8 +152,8 @@ def test_edge_mesh_intersects_polygon_2d_miss(index_dtype, real_dtype):
     # Triangle entirely above edge mesh
     poly = tf.Polygon(np.array([[1.3, 1.0], [1.7, 1.0], [1.5, 1.5]], dtype=real_dtype))
 
-    assert tf.intersects(edge_mesh, poly) == False
-    assert tf.intersects(poly, edge_mesh) == False
+    assert not tf.intersects(edge_mesh, poly)
+    assert not tf.intersects(poly, edge_mesh)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -165,8 +165,8 @@ def test_edge_mesh_intersects_polygon_3d_hit(index_dtype, real_dtype):
     # Triangle in xy-plane overlapping edge 1
     poly = tf.Polygon(np.array([[1.3, -0.1, 0.0], [1.7, -0.1, 0.0], [1.5, 0.1, 0.0]], dtype=real_dtype))
 
-    assert tf.intersects(edge_mesh, poly) == True
-    assert tf.intersects(poly, edge_mesh) == True
+    assert tf.intersects(edge_mesh, poly)
+    assert tf.intersects(poly, edge_mesh)
 
 
 # ==============================================================================
@@ -185,8 +185,8 @@ def test_edge_mesh_intersects_ray_2d_hit(index_dtype, real_dtype):
         direction=np.array([0.0, -1.0], dtype=real_dtype)
     )
 
-    assert tf.intersects(edge_mesh, ray) == True
-    assert tf.intersects(ray, edge_mesh) == True
+    assert tf.intersects(edge_mesh, ray)
+    assert tf.intersects(ray, edge_mesh)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -201,8 +201,8 @@ def test_edge_mesh_intersects_ray_2d_miss(index_dtype, real_dtype):
         direction=np.array([0.0, 1.0], dtype=real_dtype)
     )
 
-    assert tf.intersects(edge_mesh, ray) == False
-    assert tf.intersects(ray, edge_mesh) == False
+    assert not tf.intersects(edge_mesh, ray)
+    assert not tf.intersects(ray, edge_mesh)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -217,8 +217,8 @@ def test_edge_mesh_intersects_ray_3d_hit(index_dtype, real_dtype):
         direction=np.array([0.0, 0.0, -1.0], dtype=real_dtype)
     )
 
-    assert tf.intersects(edge_mesh, ray) == True
-    assert tf.intersects(ray, edge_mesh) == True
+    assert tf.intersects(edge_mesh, ray)
+    assert tf.intersects(ray, edge_mesh)
 
 
 # ==============================================================================
@@ -237,8 +237,8 @@ def test_edge_mesh_intersects_line_2d_hit(index_dtype, real_dtype):
         direction=np.array([0.0, 1.0], dtype=real_dtype)
     )
 
-    assert tf.intersects(edge_mesh, line) == True
-    assert tf.intersects(line, edge_mesh) == True
+    assert tf.intersects(edge_mesh, line)
+    assert tf.intersects(line, edge_mesh)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -253,8 +253,8 @@ def test_edge_mesh_intersects_line_2d_miss(index_dtype, real_dtype):
         direction=np.array([1.0, 0.0], dtype=real_dtype)
     )
 
-    assert tf.intersects(edge_mesh, line) == False
-    assert tf.intersects(line, edge_mesh) == False
+    assert not tf.intersects(edge_mesh, line)
+    assert not tf.intersects(line, edge_mesh)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -269,8 +269,8 @@ def test_edge_mesh_intersects_line_3d_hit(index_dtype, real_dtype):
         direction=np.array([0.0, 0.0, 1.0], dtype=real_dtype)
     )
 
-    assert tf.intersects(edge_mesh, line) == True
-    assert tf.intersects(line, edge_mesh) == True
+    assert tf.intersects(edge_mesh, line)
+    assert tf.intersects(line, edge_mesh)
 
 
 # ==============================================================================
@@ -289,8 +289,8 @@ def test_edge_mesh_intersects_plane_3d_hit(index_dtype, real_dtype):
         origin=np.array([0.0, 0.0, 0.0], dtype=real_dtype)
     )
 
-    assert tf.intersects(edge_mesh, plane) == True
-    assert tf.intersects(plane, edge_mesh) == True
+    assert tf.intersects(edge_mesh, plane)
+    assert tf.intersects(plane, edge_mesh)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -305,8 +305,8 @@ def test_edge_mesh_intersects_plane_3d_miss(index_dtype, real_dtype):
         origin=np.array([0.0, 0.0, 2.0], dtype=real_dtype)
     )
 
-    assert tf.intersects(edge_mesh, plane) == False
-    assert tf.intersects(plane, edge_mesh) == False
+    assert not tf.intersects(edge_mesh, plane)
+    assert not tf.intersects(plane, edge_mesh)
 
 
 # ==============================================================================
@@ -321,7 +321,7 @@ def test_edge_mesh_intersects_with_transformation_2d(index_dtype, real_dtype):
 
     # Point that intersects untransformed edge mesh
     pt = tf.Point(np.array([1.5, 0.0], dtype=real_dtype))
-    assert tf.intersects(edge_mesh, pt) == True
+    assert tf.intersects(edge_mesh, pt)
 
     # Apply transformation: translate by [5, 3]
     transformation = np.array([
@@ -338,8 +338,8 @@ def test_edge_mesh_intersects_with_transformation_2d(index_dtype, real_dtype):
     pt_transformed = tf.Point(pt_transformed_coords)
 
     # Should still intersect
-    assert tf.intersects(edge_mesh, pt_transformed) == True
-    assert tf.intersects(pt_transformed, edge_mesh) == True
+    assert tf.intersects(edge_mesh, pt_transformed)
+    assert tf.intersects(pt_transformed, edge_mesh)
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
@@ -350,7 +350,7 @@ def test_edge_mesh_intersects_with_transformation_3d(index_dtype, real_dtype):
 
     # Segment that intersects untransformed edge mesh
     seg = tf.Segment(np.array([[1.5, 0.0, -1.0], [1.5, 0.0, 1.0]], dtype=real_dtype))
-    assert tf.intersects(edge_mesh, seg) == True
+    assert tf.intersects(edge_mesh, seg)
 
     # Apply transformation: translate by [10, 5, 2]
     transformation = np.array([
@@ -368,8 +368,8 @@ def test_edge_mesh_intersects_with_transformation_3d(index_dtype, real_dtype):
     seg_transformed = tf.Segment(seg_transformed_data)
 
     # Should still intersect
-    assert tf.intersects(edge_mesh, seg_transformed) == True
-    assert tf.intersects(seg_transformed, edge_mesh) == True
+    assert tf.intersects(edge_mesh, seg_transformed)
+    assert tf.intersects(seg_transformed, edge_mesh)
 
 
 # ==============================================================================

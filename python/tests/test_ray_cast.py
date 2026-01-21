@@ -307,7 +307,7 @@ def test_dimension_mismatch():
     segment_3d = tf.Segment([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]])
 
     try:
-        t = tf.ray_cast(ray_2d, segment_3d)
+        _t = tf.ray_cast(ray_2d, segment_3d)
         assert False, "Expected ValueError was not raised"
     except ValueError as e:
         assert "Dimension mismatch" in str(e)

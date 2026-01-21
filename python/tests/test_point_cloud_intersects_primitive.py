@@ -52,8 +52,8 @@ def test_point_cloud_intersects_point_2d_hit(real_dtype):
     # Point at same location as cloud point [1, 1]
     pt = tf.Point(np.array([1.0, 1.0], dtype=real_dtype))
 
-    assert tf.intersects(cloud, pt) == True
-    assert tf.intersects(pt, cloud) == True
+    assert tf.intersects(cloud, pt)
+    assert tf.intersects(pt, cloud)
 
 
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
@@ -64,8 +64,8 @@ def test_point_cloud_intersects_point_2d_miss(real_dtype):
     # Point between grid points (not on any cloud point)
     pt = tf.Point(np.array([0.5, 0.5], dtype=real_dtype))
 
-    assert tf.intersects(cloud, pt) == False
-    assert tf.intersects(pt, cloud) == False
+    assert not tf.intersects(cloud, pt)
+    assert not tf.intersects(pt, cloud)
 
 
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
@@ -76,8 +76,8 @@ def test_point_cloud_intersects_point_3d_hit(real_dtype):
     # Point at same location as cloud point [1, 1, 0]
     pt = tf.Point(np.array([1.0, 1.0, 0.0], dtype=real_dtype))
 
-    assert tf.intersects(cloud, pt) == True
-    assert tf.intersects(pt, cloud) == True
+    assert tf.intersects(cloud, pt)
+    assert tf.intersects(pt, cloud)
 
 
 # ==============================================================================
@@ -92,8 +92,8 @@ def test_point_cloud_intersects_segment_2d_hit(real_dtype):
     # Segment that passes through point [1, 1]
     seg = tf.Segment(np.array([[0.5, 1.0], [1.5, 1.0]], dtype=real_dtype))
 
-    assert tf.intersects(cloud, seg) == True
-    assert tf.intersects(seg, cloud) == True
+    assert tf.intersects(cloud, seg)
+    assert tf.intersects(seg, cloud)
 
 
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
@@ -104,8 +104,8 @@ def test_point_cloud_intersects_segment_2d_miss(real_dtype):
     # Segment that doesn't pass through any cloud point
     seg = tf.Segment(np.array([[0.5, 0.5], [1.5, 0.5]], dtype=real_dtype))
 
-    assert tf.intersects(cloud, seg) == False
-    assert tf.intersects(seg, cloud) == False
+    assert not tf.intersects(cloud, seg)
+    assert not tf.intersects(seg, cloud)
 
 
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
@@ -116,8 +116,8 @@ def test_point_cloud_intersects_segment_3d_hit(real_dtype):
     # Segment that passes through point [1, 1, 0]
     seg = tf.Segment(np.array([[1.0, 1.0, -1.0], [1.0, 1.0, 1.0]], dtype=real_dtype))
 
-    assert tf.intersects(cloud, seg) == True
-    assert tf.intersects(seg, cloud) == True
+    assert tf.intersects(cloud, seg)
+    assert tf.intersects(seg, cloud)
 
 
 # ==============================================================================
@@ -132,8 +132,8 @@ def test_point_cloud_intersects_polygon_2d_hit(real_dtype):
     # Triangle containing point [1, 1]
     poly = tf.Polygon(np.array([[0.5, 0.5], [1.5, 0.5], [1.0, 1.5]], dtype=real_dtype))
 
-    assert tf.intersects(cloud, poly) == True
-    assert tf.intersects(poly, cloud) == True
+    assert tf.intersects(cloud, poly)
+    assert tf.intersects(poly, cloud)
 
 
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
@@ -144,8 +144,8 @@ def test_point_cloud_intersects_polygon_2d_miss(real_dtype):
     # Triangle that doesn't contain any cloud point
     poly = tf.Polygon(np.array([[0.1, 0.1], [0.4, 0.1], [0.25, 0.4]], dtype=real_dtype))
 
-    assert tf.intersects(cloud, poly) == False
-    assert tf.intersects(poly, cloud) == False
+    assert not tf.intersects(cloud, poly)
+    assert not tf.intersects(poly, cloud)
 
 
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
@@ -156,8 +156,8 @@ def test_point_cloud_intersects_polygon_3d_hit(real_dtype):
     # Triangle in z=0 plane containing point [1, 1, 0]
     poly = tf.Polygon(np.array([[0.5, 0.5, 0.0], [1.5, 0.5, 0.0], [1.0, 1.5, 0.0]], dtype=real_dtype))
 
-    assert tf.intersects(cloud, poly) == True
-    assert tf.intersects(poly, cloud) == True
+    assert tf.intersects(cloud, poly)
+    assert tf.intersects(poly, cloud)
 
 
 # ==============================================================================
@@ -175,8 +175,8 @@ def test_point_cloud_intersects_ray_2d_hit(real_dtype):
         direction=np.array([0.0, 1.0], dtype=real_dtype)
     )
 
-    assert tf.intersects(cloud, ray) == True
-    assert tf.intersects(ray, cloud) == True
+    assert tf.intersects(cloud, ray)
+    assert tf.intersects(ray, cloud)
 
 
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
@@ -190,8 +190,8 @@ def test_point_cloud_intersects_ray_2d_miss(real_dtype):
         direction=np.array([0.0, 1.0], dtype=real_dtype)
     )
 
-    assert tf.intersects(cloud, ray) == False
-    assert tf.intersects(ray, cloud) == False
+    assert not tf.intersects(cloud, ray)
+    assert not tf.intersects(ray, cloud)
 
 
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
@@ -205,8 +205,8 @@ def test_point_cloud_intersects_ray_3d_hit(real_dtype):
         direction=np.array([0.0, 0.0, -1.0], dtype=real_dtype)
     )
 
-    assert tf.intersects(cloud, ray) == True
-    assert tf.intersects(ray, cloud) == True
+    assert tf.intersects(cloud, ray)
+    assert tf.intersects(ray, cloud)
 
 
 # ==============================================================================
@@ -224,8 +224,8 @@ def test_point_cloud_intersects_line_2d_hit(real_dtype):
         direction=np.array([1.0, 0.0], dtype=real_dtype)
     )
 
-    assert tf.intersects(cloud, line) == True
-    assert tf.intersects(line, cloud) == True
+    assert tf.intersects(cloud, line)
+    assert tf.intersects(line, cloud)
 
 
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
@@ -239,8 +239,8 @@ def test_point_cloud_intersects_line_2d_miss(real_dtype):
         direction=np.array([1.0, 0.0], dtype=real_dtype)
     )
 
-    assert tf.intersects(cloud, line) == False
-    assert tf.intersects(line, cloud) == False
+    assert not tf.intersects(cloud, line)
+    assert not tf.intersects(line, cloud)
 
 
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
@@ -254,8 +254,8 @@ def test_point_cloud_intersects_line_3d_hit(real_dtype):
         direction=np.array([0.0, 0.0, 1.0], dtype=real_dtype)
     )
 
-    assert tf.intersects(cloud, line) == True
-    assert tf.intersects(line, cloud) == True
+    assert tf.intersects(cloud, line)
+    assert tf.intersects(line, cloud)
 
 
 # ==============================================================================
@@ -273,8 +273,8 @@ def test_point_cloud_intersects_plane_3d_hit(real_dtype):
         origin=np.array([0.0, 0.0, 0.0], dtype=real_dtype)
     )
 
-    assert tf.intersects(cloud, plane) == True
-    assert tf.intersects(plane, cloud) == True
+    assert tf.intersects(cloud, plane)
+    assert tf.intersects(plane, cloud)
 
 
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
@@ -288,8 +288,8 @@ def test_point_cloud_intersects_plane_3d_miss(real_dtype):
         origin=np.array([0.0, 0.0, 2.0], dtype=real_dtype)
     )
 
-    assert tf.intersects(cloud, plane) == False
-    assert tf.intersects(plane, cloud) == False
+    assert not tf.intersects(cloud, plane)
+    assert not tf.intersects(plane, cloud)
 
 
 # ==============================================================================
@@ -303,7 +303,7 @@ def test_point_cloud_intersects_with_transformation_2d(real_dtype):
 
     # Point that intersects untransformed cloud
     pt = tf.Point(np.array([1.0, 1.0], dtype=real_dtype))
-    assert tf.intersects(cloud, pt) == True
+    assert tf.intersects(cloud, pt)
 
     # Apply transformation: translate by [5, 3]
     transformation = np.array([
@@ -320,8 +320,8 @@ def test_point_cloud_intersects_with_transformation_2d(real_dtype):
     pt_transformed = tf.Point(pt_transformed_coords)
 
     # Should still intersect
-    assert tf.intersects(cloud, pt_transformed) == True
-    assert tf.intersects(pt_transformed, cloud) == True
+    assert tf.intersects(cloud, pt_transformed)
+    assert tf.intersects(pt_transformed, cloud)
 
 
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
@@ -331,7 +331,7 @@ def test_point_cloud_intersects_with_transformation_3d(real_dtype):
 
     # Segment that intersects untransformed cloud
     seg = tf.Segment(np.array([[1.0, 1.0, -1.0], [1.0, 1.0, 1.0]], dtype=real_dtype))
-    assert tf.intersects(cloud, seg) == True
+    assert tf.intersects(cloud, seg)
 
     # Apply transformation: translate by [10, 5, 2]
     transformation = np.array([
@@ -349,8 +349,8 @@ def test_point_cloud_intersects_with_transformation_3d(real_dtype):
     seg_transformed = tf.Segment(seg_transformed_data)
 
     # Should still intersect
-    assert tf.intersects(cloud, seg_transformed) == True
-    assert tf.intersects(seg_transformed, cloud) == True
+    assert tf.intersects(cloud, seg_transformed)
+    assert tf.intersects(seg_transformed, cloud)
 
 
 # ==============================================================================

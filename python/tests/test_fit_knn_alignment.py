@@ -368,7 +368,6 @@ def test_fit_knn_alignment_iterated_icp(dtype):
     T_true = create_rotation_translation_z_3d(15, 0.3, 0.2, 0.1, dtype)
     pts1 = apply_transform_3d(pts0, T_true)
 
-    cloud0 = tf.PointCloud(pts0)
     cloud1 = tf.PointCloud(pts1.astype(dtype))
 
     # Run several ICP iterations

@@ -352,7 +352,6 @@ def create_polygon_soup_with_duplicates(dims, V, dtype):
 def test_cleaned_points_exact_duplicates(dims, dtype):
     """Test removing exact duplicate points."""
     points = create_points_with_duplicates(dims, dtype)
-    original_count = len(points)
 
     # Clean without index map
     cleaned_points = tf.cleaned(points)
@@ -375,7 +374,6 @@ def test_cleaned_points_exact_duplicates(dims, dtype):
 def test_cleaned_points_with_tolerance(dims, dtype):
     """Test merging points within tolerance."""
     points = create_points_with_tolerance_duplicates(dims, dtype)
-    original_count = len(points)
 
     # Clean with tolerance
     tolerance = 0.01 if dtype == np.float32 else 0.01

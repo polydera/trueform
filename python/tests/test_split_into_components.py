@@ -563,12 +563,11 @@ def test_split_into_components_mesh_invalid_ngon():
     # Create a "mesh" with V=2 (should use EdgeMesh instead)
     edges = np.array([[0, 1]], dtype=np.int32)
     points = np.array([[0, 0, 0], [1, 0, 0]], dtype=np.float32)
-    labels = np.array([0], dtype=np.int32)
 
     # Mesh only supports NGon=3 (triangles) for fixed-size or dynamic for variable-sized
     with pytest.raises(ValueError):
         # This will fail when constructing the Mesh
-        mesh = tf.Mesh(edges, points)
+        _mesh = tf.Mesh(edges, points)
 
 
 # ==============================================================================
