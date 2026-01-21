@@ -16,6 +16,7 @@
 #include <trueform/trueform.hpp>
 #include "type_traits.hpp"
 #include <cmath>
+#include <iostream>
 
 namespace {
 
@@ -150,6 +151,23 @@ TEMPLATE_TEST_CASE("triangulated_quad_area_preserved", "[geometry][triangulation
 
     auto tri_mesh = tf::triangulated(quad.polygons());
     real_t tri_area = tf::area(tri_mesh.polygons());
+
+    // Debug output
+    std::cerr << "=== triangulated_quad_area_preserved ===" << std::endl;
+    std::cerr << "Original points:" << std::endl;
+    for (std::size_t i = 0; i < quad.points().size(); ++i) {
+        std::cerr << "  " << i << ": (" << quad.points()[i][0] << ", " << quad.points()[i][1] << ", " << quad.points()[i][2] << ")" << std::endl;
+    }
+    std::cerr << "Original area: " << original_area << std::endl;
+    std::cerr << "Triangulated faces: " << tri_mesh.faces().size() << std::endl;
+    for (std::size_t i = 0; i < tri_mesh.faces().size(); ++i) {
+        std::cerr << "  face " << i << ": (" << tri_mesh.faces()[i][0] << ", " << tri_mesh.faces()[i][1] << ", " << tri_mesh.faces()[i][2] << ")" << std::endl;
+    }
+    std::cerr << "Triangulated points:" << std::endl;
+    for (std::size_t i = 0; i < tri_mesh.points().size(); ++i) {
+        std::cerr << "  " << i << ": (" << tri_mesh.points()[i][0] << ", " << tri_mesh.points()[i][1] << ", " << tri_mesh.points()[i][2] << ")" << std::endl;
+    }
+    std::cerr << "Triangulated area: " << tri_area << std::endl;
 
     // Unit square has area 1.0
     REQUIRE(std::abs(original_area - real_t(1)) < real_t(1e-5));
