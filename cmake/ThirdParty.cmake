@@ -26,12 +26,13 @@ if(TF_USE_STATIC_TBB AND TF_USE_SYSTEM_LIBS)
     set(CPM_USE_LOCAL_PACKAGES OFF)
 endif()
 
+set(BUILD_SHARED_LIBS ${TBB_BUILD_SHARED})
+
 CPMAddPackage(
         NAME                TBB
         GITHUB_REPOSITORY   oneapi-src/oneTBB
         GIT_TAG             v${TF_TBB_VERSION}
         OPTIONS
-        "BUILD_SHARED_LIBS ${TBB_BUILD_SHARED}"    # Set static or shared linkage
         "TBB_BUILD ON"
         "TBB_INSTALL ON"
         "TBB_TEST OFF"                          # Disable tests for faster integration
