@@ -65,7 +65,7 @@ public:
 
   using Policy::Policy;
   using Policy::operator=;
-  // vector_like() = default;
+  vector_like() = default;
   vector_like(const vector_like &) = default;
   vector_like(vector_like &&) = default;
   auto operator=(const vector_like &) -> vector_like & = default;

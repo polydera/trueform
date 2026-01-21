@@ -69,7 +69,7 @@ public:
 
   using Policy::Policy;
   using Policy::operator=;
-  // point_like() = default;
+  point_like() = default;
   point_like(const point_like &) = default;
   point_like(point_like &&) = default;
   auto operator=(const point_like &) -> point_like & = default;
