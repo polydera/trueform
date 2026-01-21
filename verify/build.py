@@ -239,6 +239,7 @@ class BuildVerifier:
         ]
         if static_tbb:
             cmake_args.append("-DTF_USE_STATIC_TBB=ON")
+            cmake_args.append("-DTF_USE_SYSTEM_LIBS=OFF")
         if not skip_vtk:
             cmake_args.extend([
                 "-DTF_BUILD_VTK_INTEGRATION=ON",
