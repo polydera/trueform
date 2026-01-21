@@ -27,7 +27,7 @@ template <std::size_t I> struct axis_t {
   template <typename T, std::size_t Dims>
   constexpr operator unit_vector<T, Dims>() const {
     static_assert(I < Dims, "Axis index must be less than dimensions");
-    tf::vector<T, Dims> data{};
+    tf::vector<T, Dims> data = tf::zero;
     data[I] = T{1};
     return unit_vector<T, Dims>{tf::unsafe, data};
   }

@@ -71,7 +71,7 @@ auto area2(const tf::polygon<N, Policy> &_poly) {
 
   const auto size = _poly.size();
 
-  vec_t normal{}; // Newell's method accumulator
+  vec_t normal = tf::zero; // Newell's method accumulator
 
   for (std::size_t i = 0, prev = size - 1; i < size; prev = i++) {
     const auto &p0 = _poly[prev];

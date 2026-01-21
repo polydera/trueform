@@ -85,7 +85,7 @@ auto ray_hit(
     using RealT = tf::coordinate_type<Policy0, Policy1>;
     auto ray1 = tf::make_ray_between_points(seg[0], seg[1]);
     auto [status, t0, t1] = tf::core::line_line_check_full(ray, ray1);
-    tf::point<tf::coordinate_type<decltype(t0), decltype(t1)>, Dims> pt = {};
+    tf::point<tf::coordinate_type<decltype(t0), decltype(t1)>, Dims> pt = tf::zero;
     if (status == tf::intersect_status::non_parallel &&
         t0 >= config.min_t - tf::epsilon<RealT> &&
         t0 <= config.max_t + tf::epsilon<RealT> &&
@@ -113,7 +113,7 @@ auto ray_hit(
   } else {
     using RealT = tf::coordinate_type<Policy0, Policy1>;
     auto [status, t0, t1] = tf::core::line_line_check_full(ray, line);
-    tf::point<tf::coordinate_type<Policy0, Policy1>, Dims> pt = {};
+    tf::point<tf::coordinate_type<Policy0, Policy1>, Dims> pt = tf::zero;
     if (status == tf::intersect_status::non_parallel &&
         t0 >= config.min_t - tf::epsilon<RealT> &&
         t0 <= config.max_t + tf::epsilon<RealT>) {
@@ -139,7 +139,7 @@ auto ray_hit(
   } else {
     using RealT = tf::coordinate_type<Policy0, Policy1>;
     auto [status, t0, t1] = tf::core::line_line_check_full(ray, ray1);
-    tf::point<tf::coordinate_type<Policy0, Policy1>, Dims> pt = {};
+    tf::point<tf::coordinate_type<Policy0, Policy1>, Dims> pt = tf::zero;
     if (status == tf::intersect_status::non_parallel &&
         t0 >= config.min_t - tf::epsilon<RealT> &&
         t0 <= config.max_t + tf::epsilon<RealT> &&

@@ -37,7 +37,7 @@ auto laplacian_smoothed(const tf::point_like<Dims, Policy0> &pt,
     out = pt;
     return out;
   }
-  tf::vector<tf::coordinate_type<Policy0>, Dims> centroid{};
+  tf::vector<tf::coordinate_type<Policy0>, Dims> centroid = tf::zero;
   for (auto pt : neighbors)
     centroid += pt.as_vector_view();
   centroid /= tf::coordinate_type<Policy0>(neighbors.size());

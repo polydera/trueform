@@ -183,6 +183,21 @@ TEST_CASE("vector_initialization_check", "[geometry][triangulation][debug]")
 
     REQUIRE((v1_zero || v2_zero || v3_zero || v4_zero));  // At least one vector should work
     REQUIRE((p1_zero || p2_zero || p3_zero || p4_zero));  // At least one point should work
+
+    // Test tf::zero - this MUST work on all compilers
+    std::cout << std::endl << "=== tf::zero initialization ===" << std::endl;
+
+    tf::vector<float, 3> vz = tf::zero;
+    std::cout << "tf::vector<float, 3> vz = tf::zero = (" << vz[0] << ", " << vz[1] << ", " << vz[2] << ")" << std::endl;
+    bool vz_zero = (vz[0] == 0.0f && vz[1] == 0.0f && vz[2] == 0.0f);
+    std::cout << "vz is zero: " << vz_zero << std::endl;
+    REQUIRE(vz_zero);
+
+    tf::point<float, 3> pz = tf::zero;
+    std::cout << "tf::point<float, 3> pz = tf::zero = (" << pz[0] << ", " << pz[1] << ", " << pz[2] << ")" << std::endl;
+    bool pz_zero = (pz[0] == 0.0f && pz[1] == 0.0f && pz[2] == 0.0f);
+    std::cout << "pz is zero: " << pz_zero << std::endl;
+    REQUIRE(pz_zero);
 }
 
 // =============================================================================
@@ -514,8 +529,8 @@ TEMPLATE_TEST_CASE("triangulated_large_circle", "[geometry][triangulation]",
     }
 
     // n-gon → n-2 triangles
-    REQUIRE(tri_mesh.faces().size() == n - 2);
-    REQUIRE(tri_mesh.points().size() == n);
+    REQUIRE(int(tri_mesh.faces().size()) == n - 2);
+    REQUIRE(int(tri_mesh.points().size()) == n);
 
     // Area preserved
     real_t tri_area = tf::area(tri_mesh.polygons());

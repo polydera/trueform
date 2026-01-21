@@ -186,5 +186,6 @@
 #include "./core/view.hpp"                        // IWYU pragma: export
 #include "./core/views.hpp"                       // IWYU pragma: export
 #include "./core/wedge.hpp"                       // IWYU pragma: export
+#include "./core/zero.hpp"                        // IWYU pragma: export
 #include "./core/zip_apply.hpp"                   // IWYU pragma: export
 #include "./core/zip_range.hpp"                   // IWYU pragma: export

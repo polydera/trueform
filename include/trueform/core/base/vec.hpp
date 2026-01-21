@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include "../zero.hpp"
 #include <array>
 namespace tf::core {
 template <typename T, std::size_t Dims> struct vec;
@@ -28,6 +29,12 @@ template <typename T, std::size_t Dims> struct vec_view {
   explicit vec_view(T *vecr) : _data(vecr) {}
   vec_view(const vec_view &other) : _data{other._data} {}
   vec_view(vec_view &&other) : _data{other._data} {}
+
+  auto operator=(tf::zero_t) -> vec_view & {
+    for (std::size_t i = 0; i < Dims; ++i)
+      _data[i] = T(0);
+    return *this;
+  }
 
   auto operator=(const vec_view &other) -> vec_view & {
     for (std::size_t i = 0; i < Dims; ++i)
@@ -87,6 +94,11 @@ template <typename T, std::size_t Dims> struct vec {
   using coordinate_dims = std::integral_constant<std::size_t, Dims>;
 
   vec() = default;
+  vec(tf::zero_t) : _data{} {}
+  auto operator=(tf::zero_t) -> vec & {
+    _data = {};
+    return *this;
+  }
   vec(std::array<T, Dims> _data) : _data{_data} {}
 
   template <typename... Ts,

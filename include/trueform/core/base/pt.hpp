@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include "../zero.hpp"
 #include <array>
 #include <type_traits>
 namespace tf::core {
@@ -29,6 +30,12 @@ template <typename T, std::size_t Dims> struct pt_view {
   explicit pt_view(T *ptr) : _data(ptr) {}
   pt_view(const pt_view &other) : _data{other._data} {}
   pt_view(pt_view &&other) : _data{other._data} {}
+
+  auto operator=(tf::zero_t) -> pt_view & {
+    for (std::size_t i = 0; i < Dims; ++i)
+      _data[i] = T(0);
+    return *this;
+  }
 
   auto operator=(const pt_view &other) -> pt_view & {
     for (std::size_t i = 0; i < Dims; ++i)
@@ -93,6 +100,11 @@ template <typename T, std::size_t Dims> struct pt {
   using coordinate_dims = std::integral_constant<std::size_t, Dims>;
 
   pt() = default;
+  pt(tf::zero_t) : _data{} {}
+  auto operator=(tf::zero_t) -> pt & {
+    _data = {};
+    return *this;
+  }
   pt(std::array<T, Dims> _data) : _data{_data} {}
   template <typename... Ts,
             typename V = std::enable_if_t<
