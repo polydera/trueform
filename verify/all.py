@@ -80,6 +80,12 @@ def main() -> int:
         action="store_true",
         help="Keep build artifacts",
     )
+    parser.add_argument(
+        "--toolchain-file",
+        type=Path,
+        default=None,
+        help="CMake toolchain file (e.g., vcpkg.cmake)",
+    )
 
     args = parser.parse_args()
 
@@ -101,6 +107,7 @@ def main() -> int:
             skip_examples=args.skip_examples,
             branch=args.branch,
             keep=True,
+            toolchain_file=args.toolchain_file,
         )
         if not build_success:
             if not args.keep and work_dir.exists():
@@ -118,6 +125,7 @@ def main() -> int:
             work_dir=work_dir,
             branch=args.branch,
             keep=True,
+            toolchain_file=args.toolchain_file,
         )
         if not build_success:
             if not args.keep and work_dir.exists():
@@ -140,6 +148,7 @@ def main() -> int:
             skip_examples=args.skip_examples,
             branch=args.branch,
             keep=True,
+            toolchain_file=args.toolchain_file,
         )
         if not build_success:
             if not args.keep and work_dir.exists():

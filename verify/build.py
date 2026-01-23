@@ -138,11 +138,13 @@ class BuildVerifier:
         install_prefix: Path,
         source_dir: Path,
         branch: Optional[str] = None,
+        toolchain_file: Optional[Path] = None,
     ):
         self.work_dir = work_dir
         self.install_prefix = install_prefix
         self.source_dir = source_dir
         self.branch = branch
+        self.toolchain_file = toolchain_file
         self.clone_dir = work_dir / "trueform"
         self.build_dir = self.clone_dir / "build"
         self.python_build_dir = self.clone_dir / "build-python"
@@ -238,6 +240,8 @@ class BuildVerifier:
             "-DTF_BUILD_EXAMPLES=ON",
             "-DTF_BUILD_TESTS=ON",
         ]
+        if self.toolchain_file:
+            cmake_args.append(f"-DCMAKE_TOOLCHAIN_FILE={self.toolchain_file}")
         if not skip_vtk:
             cmake_args.extend([
                 "-DTF_BUILD_VTK_INTEGRATION=ON",
@@ -265,6 +269,8 @@ class BuildVerifier:
             "-DTF_USE_SYSTEM_LIBS=OFF",
             f"-DPython3_EXECUTABLE={self.venv_info.python_exe}",
         ]
+        if self.toolchain_file:
+            cmake_args.append(f"-DCMAKE_TOOLCHAIN_FILE={self.toolchain_file}")
 
         try:
             self.run_cmd(cmake_args, cwd=self.python_build_dir, env=self.venv_info.get_env())
@@ -856,6 +862,7 @@ def run_build_cpp_only(
     branch: str = None,
     keep: bool = False,
     source_dir: Path = None,
+    toolchain_file: Path = None,
 ) -> bool:
     """
     Build and verify C++ only (no Python).
@@ -881,6 +888,7 @@ def run_build_cpp_only(
         install_prefix=install_prefix,
         source_dir=source_dir,
         branch=branch,
+        toolchain_file=toolchain_file,
     )
 
     try:
@@ -968,6 +976,7 @@ def run_build_python_only(
     branch: str = None,
     keep: bool = False,
     source_dir: Path = None,
+    toolchain_file: Path = None,
 ) -> bool:
     """
     Build Python bindings only (for CI).
@@ -991,6 +1000,7 @@ def run_build_python_only(
         install_prefix=work_dir / "install",
         source_dir=source_dir,
         branch=branch,
+        toolchain_file=toolchain_file,
     )
 
     try:
@@ -1053,6 +1063,7 @@ def run_build(
     branch: str = None,
     keep: bool = False,
     source_dir: Path = None,
+    toolchain_file: Path = None,
 ) -> bool:
     """
     Build and install trueform from a clean clone.
@@ -1079,6 +1090,7 @@ def run_build(
         install_prefix=install_prefix,
         source_dir=source_dir,
         branch=branch,
+        toolchain_file=toolchain_file,
     )
 
     try:
@@ -1147,6 +1159,12 @@ def main() -> int:
         action="store_true",
         help="Keep build artifacts",
     )
+    parser.add_argument(
+        "--toolchain-file",
+        type=Path,
+        default=None,
+        help="CMake toolchain file (e.g., vcpkg.cmake)",
+    )
 
     args = parser.parse_args()
 
@@ -1158,6 +1176,7 @@ def main() -> int:
         skip_examples=args.skip_examples,
         branch=args.branch,
         keep=args.keep,
+        toolchain_file=args.toolchain_file,
     )
 
     return 0 if success else 1
