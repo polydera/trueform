@@ -147,7 +147,6 @@ class BuildVerifier:
         self.toolchain_file = toolchain_file
         self.clone_dir = work_dir / "trueform"
         self.build_dir = self.clone_dir / "build"
-        self.python_build_dir = self.clone_dir / "build-python"
         self.test_project_dir = work_dir / "test-project"
         self.venv_dir = work_dir / "venv"
         self.venv_info: Optional[VenvInfo] = None
@@ -256,30 +255,6 @@ class BuildVerifier:
                 "C++", False, e.stdout if e.stdout else str(e)
             )
 
-    def do_configure_python(self) -> bool:
-        self.python_build_dir.mkdir(parents=True, exist_ok=True)
-
-        # Use venv Python (venv must be created before calling this)
-        cmake_args = [
-            "cmake",
-            "-S", str(self.clone_dir),
-            "-B", str(self.python_build_dir),
-            "-DCMAKE_BUILD_TYPE=Release",
-            "-DTF_BUILD_PYTHON=ON",
-            "-DTF_USE_SYSTEM_LIBS=OFF",
-            f"-DPython3_EXECUTABLE={self.venv_info.python_exe}",
-        ]
-        if self.toolchain_file:
-            cmake_args.append(f"-DCMAKE_TOOLCHAIN_FILE={self.toolchain_file}")
-
-        try:
-            self.run_cmd(cmake_args, cwd=self.python_build_dir, env=self.venv_info.get_env())
-            return self.record_result("Python", True)
-        except subprocess.CalledProcessError as e:
-            return self.record_result(
-                "Python", False, e.stdout if e.stdout else str(e)
-            )
-
     # =========================================================================
     # Build
     # =========================================================================
@@ -335,62 +310,19 @@ class BuildVerifier:
                 "cmake --install", False, e.stdout if e.stdout else str(e)
             )
 
-    def install_pip(self) -> bool:
-        """Install Python package from CMake build directory."""
-        python_pkg_dir = self.python_build_dir / "python"
-        if not python_pkg_dir.exists():
-            return self.record_result("pip install", False, "Python build directory not found")
-
-        # Create pyproject.toml for pip install of pre-built package
-        pyproject = python_pkg_dir / "pyproject.toml"
-        pyproject.write_text("""\
-[build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
-
-[project]
-name = "trueform"
-version = "0.0.0"
-description = "Real-time geometric processing on NumPy arrays. Easy to use, robust on real-world data."
-authors = [
-  { name = "Ziga Sajovic", email = "info@polydera.com" },
-  { name = "XLAB" },
-]
-keywords = [
-    "mesh",
-    "geometry",
-    "computational-geometry",
-    "mesh-processing",
-    "mesh-boolean",
-    "collision-detection",
-    "point-cloud",
-    "csg",
-    "numpy",
-]
-dependencies = ["numpy>=1.23"]
-
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["trueform*"]
-
-[tool.setuptools.package-data]
-trueform = [
-    "*.so",
-    "*.pyd",
-    "*.dylib",
-    "*.dll",
-    "include/**/*.hpp",
-    "include/**/*.h",
-    "cmake_config/*.cmake",
-]
-""")
+    def install_wheel(self) -> bool:
+        """Install wheel from wheelhouse."""
+        wheel_dir = self.work_dir / "wheelhouse"
+        wheels = list(wheel_dir.glob("trueform-*.whl"))
+        if not wheels:
+            return self.record_result("Install wheel", False, "No wheel found")
 
         try:
-            self.venv_info.run_pip(["install", str(python_pkg_dir)], cwd=self.work_dir)
-            return self.record_result("pip install (from build)", True)
+            self.venv_info.run_pip(["install", str(wheels[0])], cwd=self.work_dir)
+            return self.record_result("Install wheel", True)
         except subprocess.CalledProcessError as e:
             return self.record_result(
-                "pip install", False, e.stdout if e.stdout else str(e)
+                "Install wheel", False, e.stdout if e.stdout else str(e)
             )
 
     # =========================================================================
@@ -470,17 +402,18 @@ trueform = [
         test_build_dir = self.test_project_dir / "build"
         test_build_dir.mkdir(parents=True, exist_ok=True)
 
+        cmake_args = [
+            "cmake",
+            "-S", str(self.test_project_dir),
+            "-B", str(test_build_dir),
+            f"-DCMAKE_PREFIX_PATH={self.install_prefix}",
+            "-DCMAKE_BUILD_TYPE=Release",
+        ]
+        if self.toolchain_file:
+            cmake_args.append(f"-DCMAKE_TOOLCHAIN_FILE={self.toolchain_file}")
+
         try:
-            self.run_cmd(
-                [
-                    "cmake",
-                    "-S", str(self.test_project_dir),
-                    "-B", str(test_build_dir),
-                    f"-DCMAKE_PREFIX_PATH={self.install_prefix}",
-                    "-DCMAKE_BUILD_TYPE=Release",
-                ],
-                cwd=test_build_dir,
-            )
+            self.run_cmd(cmake_args, cwd=test_build_dir)
             self.record_result("Configure test project", True)
         except subprocess.CalledProcessError as e:
             return self.record_result(
@@ -556,17 +489,18 @@ int main() {
         vtk_build_dir = vtk_test_dir / "build"
         vtk_build_dir.mkdir(parents=True, exist_ok=True)
 
+        cmake_args = [
+            "cmake",
+            "-S", str(vtk_test_dir),
+            "-B", str(vtk_build_dir),
+            f"-DCMAKE_PREFIX_PATH={self.install_prefix}",
+            "-DCMAKE_BUILD_TYPE=Release",
+        ]
+        if self.toolchain_file:
+            cmake_args.append(f"-DCMAKE_TOOLCHAIN_FILE={self.toolchain_file}")
+
         try:
-            self.run_cmd(
-                [
-                    "cmake",
-                    "-S", str(vtk_test_dir),
-                    "-B", str(vtk_build_dir),
-                    f"-DCMAKE_PREFIX_PATH={self.install_prefix}",
-                    "-DCMAKE_BUILD_TYPE=Release",
-                ],
-                cwd=vtk_build_dir,
-            )
+            self.run_cmd(cmake_args, cwd=vtk_build_dir)
             self.record_result("Configure test project", True)
         except subprocess.CalledProcessError as e:
             return self.record_result(
@@ -630,17 +564,18 @@ int main() {
                 f"Could not get cmake dir: {e.stdout if e.stdout else str(e)}"
             )
 
+        cmake_args = [
+            "cmake",
+            "-S", str(pip_test_dir),
+            "-B", str(pip_build_dir),
+            f"-Dtrueform_ROOT={cmake_dir}",
+            "-DCMAKE_BUILD_TYPE=Release",
+        ]
+        if self.toolchain_file:
+            cmake_args.append(f"-DCMAKE_TOOLCHAIN_FILE={self.toolchain_file}")
+
         try:
-            self.run_cmd(
-                [
-                    "cmake",
-                    "-S", str(pip_test_dir),
-                    "-B", str(pip_build_dir),
-                    f"-Dtrueform_ROOT={cmake_dir}",
-                    "-DCMAKE_BUILD_TYPE=Release",
-                ],
-                cwd=pip_build_dir,
-            )
+            self.run_cmd(cmake_args, cwd=pip_build_dir)
             self.record_result("Configure test project", True)
         except subprocess.CalledProcessError as e:
             return self.record_result(
@@ -692,36 +627,20 @@ int main() {
         except Exception as e:
             return self.record_result("Create venv", False, str(e))
 
-    def build_python(self) -> bool:
-        """Build and install Python bindings."""
-        try:
-            self.venv_info.run(
-                [
-                    "cmake", "--build", str(self.python_build_dir),
-                    "--target", "trueform_python",
-                    "--parallel", str(self._get_parallel_jobs()),
-                ],
-                cwd=self.python_build_dir,
-            )
-        except subprocess.CalledProcessError as e:
-            return self.record_result(
-                "trueform_python", False, e.stdout if e.stdout else str(e)
-            )
+    def build_wheel(self) -> bool:
+        """Build Python wheel using pip wheel."""
+        wheel_dir = self.work_dir / "wheelhouse"
+        wheel_dir.mkdir(parents=True, exist_ok=True)
 
-        # Install to python build dir (puts headers and cmake config in place)
-        python_pkg_dir = self.python_build_dir / "python"
         try:
-            self.venv_info.run(
-                [
-                    "cmake", "--install", str(self.python_build_dir),
-                    "--prefix", str(python_pkg_dir),
-                ],
-                cwd=self.python_build_dir,
+            self.venv_info.run_pip(
+                ["wheel", str(self.clone_dir), "--no-deps", "--wheel-dir", str(wheel_dir)],
+                cwd=self.clone_dir,
             )
-            return self.record_result("trueform_python", True)
+            return self.record_result("Build wheel", True)
         except subprocess.CalledProcessError as e:
             return self.record_result(
-                "trueform_python", False, e.stdout if e.stdout else str(e)
+                "Build wheel", False, e.stdout if e.stdout else str(e)
             )
 
     # =========================================================================
@@ -745,15 +664,12 @@ int main() {
         if not self.do_configure(skip_vtk=skip_vtk):
             return False
 
-        # Create venv before configuring Python so we use venv's Python
+        # Create venv for Python wheel build
         venv_ok = False
         if not skip_python:
             venv_ok = self.do_create_venv()
-            if venv_ok:
-                if not self.do_configure_python():
-                    return False
-            else:
-                print_skip("Python configure", "venv creation failed")
+            if not venv_ok:
+                print_skip("Python wheel", "venv creation failed")
         else:
             print_skip("Python", "skipped by user")
 
@@ -778,13 +694,13 @@ int main() {
             else:
                 print_skip("trueform_vtk_examples", "VTK build failed")
 
-        python_ok = False
+        wheel_ok = False
         if skip_python:
-            print_skip("trueform_python", "skipped by user")
+            print_skip("Build wheel", "skipped by user")
         elif venv_ok:
-            python_ok = self.build_python()
+            wheel_ok = self.build_wheel()
         else:
-            print_skip("trueform_python", "venv creation failed")
+            print_skip("Build wheel", "venv creation failed")
 
         print_step("Install")
         if not self.install_cmake():
@@ -792,11 +708,11 @@ int main() {
 
         pip_ok = False
         if skip_python:
-            print_skip("pip install", "skipped by user")
-        elif python_ok and venv_ok:
-            pip_ok = self.install_pip()
+            print_skip("Install wheel", "skipped by user")
+        elif wheel_ok and venv_ok:
+            pip_ok = self.install_wheel()
         else:
-            print_skip("pip install", "Python build failed")
+            print_skip("Install wheel", "wheel build failed")
 
         print_step("Verify trueform")
         self.verify_trueform()
@@ -855,6 +771,16 @@ int main() {
             return False
 
 
+def _resolve_toolchain_file(toolchain_file: Optional[Path]) -> Optional[Path]:
+    """Resolve toolchain file from argument or CMAKE_TOOLCHAIN_FILE env var."""
+    if toolchain_file is not None:
+        return toolchain_file
+    env_toolchain = os.environ.get("CMAKE_TOOLCHAIN_FILE")
+    if env_toolchain:
+        return Path(env_toolchain)
+    return None
+
+
 def run_build_cpp_only(
     work_dir: Path = None,
     skip_vtk: bool = False,
@@ -873,6 +799,7 @@ def run_build_cpp_only(
         work_dir = get_default_work_dir()
     if source_dir is None:
         source_dir = Path(__file__).resolve().parent.parent
+    toolchain_file = _resolve_toolchain_file(toolchain_file)
     install_prefix = work_dir / "install"
 
     print(colored("Trueform C++ Build", Colors.BOLD + Colors.BLUE))
@@ -881,6 +808,8 @@ def run_build_cpp_only(
     print(f"  Install: {install_prefix}")
     if branch:
         print(f"  Branch:  {branch}")
+    if toolchain_file:
+        print(f"  Toolchain: {toolchain_file}")
     print()
 
     verifier = BuildVerifier(
@@ -987,12 +916,15 @@ def run_build_python_only(
         work_dir = get_default_work_dir()
     if source_dir is None:
         source_dir = Path(__file__).resolve().parent.parent
+    toolchain_file = _resolve_toolchain_file(toolchain_file)
 
     print(colored("Trueform Python Build", Colors.BOLD + Colors.BLUE))
     print(f"  Source: {source_dir}")
     print(f"  Work:   {work_dir}")
     if branch:
         print(f"  Branch: {branch}")
+    if toolchain_file:
+        print(f"  Toolchain: {toolchain_file}")
     print()
 
     verifier = BuildVerifier(
@@ -1016,16 +948,12 @@ def run_build_python_only(
         if not verifier.do_create_venv():
             return False
 
-        print_step("Configure")
-        if not verifier.do_configure_python():
-            return False
-
         print_step("Build")
-        if not verifier.build_python():
+        if not verifier.build_wheel():
             return False
 
         print_step("Install")
-        if not verifier.install_pip():
+        if not verifier.install_wheel():
             return False
 
         print_step("Verify")
@@ -1076,6 +1004,7 @@ def run_build(
         source_dir = Path(__file__).resolve().parent.parent
     if install_prefix is None:
         install_prefix = work_dir / "install"
+    toolchain_file = _resolve_toolchain_file(toolchain_file)
 
     print(colored("Trueform Build Verification", Colors.BOLD + Colors.BLUE))
     print(f"  Source:  {source_dir}")
@@ -1083,6 +1012,8 @@ def run_build(
     print(f"  Install: {install_prefix}")
     if branch:
         print(f"  Branch:  {branch}")
+    if toolchain_file:
+        print(f"  Toolchain: {toolchain_file}")
     print()
 
     verifier = BuildVerifier(

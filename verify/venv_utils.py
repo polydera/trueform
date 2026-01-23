@@ -6,6 +6,7 @@ Provides proper venv creation and environment handling without
 platform-specific hardcoding.
 """
 
+import multiprocessing
 import os
 import subprocess
 import sys
@@ -29,6 +30,9 @@ class VenvInfo:
         env["VIRTUAL_ENV"] = str(self.venv_dir)
         env["PATH"] = str(self.bin_path) + os.pathsep + env.get("PATH", "")
         env.pop("PYTHONHOME", None)
+        # Enable parallel cmake builds by default
+        if "CMAKE_BUILD_PARALLEL_LEVEL" not in env:
+            env["CMAKE_BUILD_PARALLEL_LEVEL"] = str(multiprocessing.cpu_count())
         return env
 
     def run(
