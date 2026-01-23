@@ -71,8 +71,8 @@ endif()
 # We want the compiled module (.so/.pyd) to sit inside the 'trueform' package folder
 # in the build directory, allowing for in-place testing.
 set_target_properties(_trueform PROPERTIES
-        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/trueform"
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/trueform"
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/src/trueform"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/src/trueform"
         EXCLUDE_FROM_ALL TRUE
 )
 
@@ -80,14 +80,14 @@ set_target_properties(_trueform PROPERTIES
 # ------------------------------------------------------------------------------
 set(TRUEFORM_VERSION ${PROJECT_VERSION})
 
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/trueform/_version.py"
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/src/trueform/_version.py"
         "__version__ = \"${TRUEFORM_VERSION}\"\n"
 )
 
 # 9. Python Source Management (Copy to Build Dir)
 # ------------------------------------------------------------------------------
 # Glob pure Python files (only trueform package - tests/examples run from source)
-file(GLOB_RECURSE PYTHON_SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/trueform/*.py")
+file(GLOB_RECURSE PYTHON_SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/trueform/*.py")
 
 # Create a custom target to sync Python files to the build directory
 add_custom_target(trueform_copy_python_files ALL
@@ -98,8 +98,8 @@ add_custom_target(trueform_copy_python_files ALL
 add_custom_command(
         TARGET trueform_copy_python_files POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_CURRENT_SOURCE_DIR}/trueform"
-        "${CMAKE_CURRENT_BINARY_DIR}/trueform"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/trueform"
+        "${CMAKE_CURRENT_BINARY_DIR}/src/trueform"
         COMMENT "Syncing Python sources to build directory"
         VERBATIM
 )
@@ -119,11 +119,11 @@ message(STATUS "Python bindings configured. Build with 'cmake --build . --target
 install(TARGETS _trueform LIBRARY DESTINATION trueform)
 
 # Install the generated version file
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/trueform/_version.py" DESTINATION trueform)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/src/trueform/_version.py" DESTINATION trueform)
 
 # Install the pure Python package
 install(
-        DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/trueform"
+        DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/trueform"
         DESTINATION .
         FILES_MATCHING PATTERN "*.py"
 )

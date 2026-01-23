@@ -134,22 +134,20 @@ def run_cpp_tests(build_dir: Path) -> bool:
 
 
 def run_python_tests(source_dir: Path, venv_info: VenvInfo = None) -> bool:
-    """Run Python tests via run_tests.py."""
+    """Run Python tests via pytest."""
     import re
 
     print_step("Python Tests")
 
-    test_runner = source_dir / "python" / "tests" / "run_tests.py"
-    if not test_runner.exists():
-        print_fail("Python tests", f"Test runner not found: {test_runner}")
+    test_dir = source_dir / "python" / "tests"
+    if not test_dir.exists():
+        print_fail("Python tests", f"Test directory not found: {test_dir}")
         return False
 
-    # Install pytest and run tests
     output = ""
     success = False
 
     if venv_info:
-        # Install pytest in venv
         try:
             venv_info.run_pip(["install", "pytest"])
             print_pass("Install pytest")
@@ -157,39 +155,43 @@ def run_python_tests(source_dir: Path, venv_info: VenvInfo = None) -> bool:
             print_fail("Install pytest", getattr(e, 'stdout', str(e)))
             return False
 
-        # Run tests using venv
         try:
-            result = venv_info.run_python([str(test_runner)], cwd=source_dir)
+            result = venv_info.run_python(["-m", "pytest", str(test_dir), "-v"], cwd=source_dir)
             output = result.stdout
             success = True
         except subprocess.CalledProcessError as e:
             output = getattr(e, 'stdout', str(e))
     else:
-        # Run tests using current Python
         try:
-            result = run_cmd([sys.executable, str(test_runner)], cwd=source_dir, capture=True)
+            result = run_cmd([sys.executable, "-m", "pytest", str(test_dir), "-v"], cwd=source_dir, capture=True)
             output = result.stdout
             success = True
         except subprocess.CalledProcessError as e:
             output = getattr(e, 'stdout', str(e))
 
-    # Parse output - format is "Total: X\nPassed: Y\nFailed: Z"
-    total_match = re.search(r'Total:\s*(\d+)', output)
-    passed_match = re.search(r'Passed:\s*(\d+)', output)
-    failed_match = re.search(r'Failed:\s*(\d+)', output)
+    # Parse pytest summary line: "X passed" or "X passed, Y failed" or "X errors"
+    match = re.search(r'(\d+)\s+passed', output)
+    failed_match = re.search(r'(\d+)\s+failed', output)
+    error_match = re.search(r'(\d+)\s+errors?', output)
 
-    if passed_match and total_match:
-        passed = passed_match.group(1)
-        total = total_match.group(1)
-        failed = failed_match.group(1) if failed_match else "0"
-        if success and ("ALL TESTS PASSED" in output or failed == "0"):
+    passed = int(match.group(1)) if match else 0
+    failed = int(failed_match.group(1)) if failed_match else 0
+    errors = int(error_match.group(1)) if error_match else 0
+    total = passed + failed
+
+    if errors > 0:
+        print_fail("pytest", f"{errors} collection errors")
+        return False
+
+    if total > 0:
+        if success and failed == 0:
             print_pass(f"pytest ({passed}/{total} passed)")
             return True
         else:
             print_fail("pytest", f"{passed}/{total} passed, {failed} failed")
             return False
 
-    if success and "ALL TESTS PASSED" in output:
+    if success:
         print_pass("pytest")
         return True
 
