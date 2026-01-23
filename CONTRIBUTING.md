@@ -114,6 +114,7 @@ Options:
 - `--skip-python` — Skip Python package verification
 - `--keep` — Keep build artifacts for debugging
 - `--work-dir <path>` — Use a specific working directory
+- `--toolchain-file <path>` — CMake toolchain file (also reads `CMAKE_TOOLCHAIN_FILE` env var)
 
 **5. Push and open a pull request**
 ```bash
