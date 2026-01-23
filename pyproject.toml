@@ -60,7 +60,6 @@ cmake.args = [
   "-DTF_BUILD_EXAMPLES=OFF",
   "-DTF_BUILD_BENCHMARKS=OFF",
   "-DTF_USE_SYSTEM_LIBS=OFF",
-  "-DTF_USE_STATIC_TBB=ON",
 ]
 build.targets = ["trueform_python"]
 sdist.include = [
