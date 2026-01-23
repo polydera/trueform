@@ -17,7 +17,7 @@ set(TF_DIR ${TF_DIR} CACHE INTERNAL "")
 
 # TBB is required - must be installed on the system
 include(CMakeFindDependencyMacro)
-find_dependency(TBB REQUIRED)
+find_dependency(TBB CONFIG REQUIRED)
 
 # Create the interface target
 if (NOT TARGET tf::trueform)

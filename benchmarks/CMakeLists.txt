@@ -46,12 +46,12 @@ endif()
 
 # Boost
 message(STATUS "  - Boost")
-find_package(Boost REQUIRED)
+find_package(Boost CONFIG REQUIRED)
 message(STATUS "    Boost: Found (version ${Boost_VERSION})")
 
 # TBB
 message(STATUS "  - TBB")
-find_package(TBB REQUIRED)
+find_package(TBB CONFIG REQUIRED)
 message(STATUS "    TBB: found, version: ${TBB_VERSION}")
 
 # OpenMP

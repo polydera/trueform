@@ -116,6 +116,14 @@ template <std::size_t Dims, typename Policy>
 struct static_size<unit_vector_like<Dims, Policy>>
     : std::integral_constant<std::size_t, Dims> {};
 
+/// @ingroup core_primitives
+/// @brief No-op for unit vectors (already normalized).
+template <std::size_t N, typename T>
+auto normalize(const unit_vector_like<N, T> &v)
+    -> const unit_vector_like<N, T> & {
+  return v;
+}
+
 template <std::size_t Dims, typename Policy>
 auto unwrap(const unit_vector_like<Dims, Policy> &vec) -> decltype(auto) {
   return static_cast<const Policy &>(vec);

@@ -6,7 +6,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Find trueform if not already available
 if(NOT TARGET tf::trueform)
-  find_package(trueform REQUIRED)
+  find_package(trueform CONFIG REQUIRED)
 endif()
 
 # Object library with reusable example utilities (cylinder, etc.)

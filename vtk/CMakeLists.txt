@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 project(trueform_vtk LANGUAGES CXX)
 
 find_package(Freetype QUIET)
-find_package(VTK REQUIRED COMPONENTS
+find_package(VTK CONFIG REQUIRED COMPONENTS
   CommonCore
   CommonDataModel
 )

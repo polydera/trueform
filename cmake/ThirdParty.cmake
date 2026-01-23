@@ -38,7 +38,7 @@ if(TF_BUILD_PYTHON)
   set(CPM_USE_LOCAL_PACKAGES ${TF_USE_SYSTEM_LIBS})
 else()
   # C++ builds require system TBB
-  find_package(TBB REQUIRED)
+  find_package(TBB CONFIG REQUIRED)
 endif()
 
 # ------------------------------------------------------------------------------

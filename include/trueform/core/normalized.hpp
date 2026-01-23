@@ -31,4 +31,12 @@ auto normalized(const vector_like<N, T> &v)
     -> tf::unit_vector<tf::coordinate_type<T>, N> {
   return v;
 }
+
+/// @ingroup core_primitives
+/// @brief Return a copy of a unit vector (already normalized).
+template <std::size_t N, typename T>
+auto normalized(const unit_vector_like<N, T> &v)
+    -> tf::unit_vector<tf::coordinate_type<T>, N> {
+  return v;
+}
 } // namespace tf
