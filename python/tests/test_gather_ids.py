@@ -364,20 +364,6 @@ def test_gather_ids_return_dtype():
 # ==============================================================================
 
 if __name__ == "__main__":
-    print("Testing gather_ids functionality\n")
-    print("=" * 70)
-
-    # Run pytest programmatically
+    import sys
     import pytest
-    exit_code = pytest.main([__file__, "-v"])
-
-    if exit_code == 0:
-        print("\n" + "=" * 70)
-        print("[PASS] ALL TESTS PASSED!")
-        print("=" * 70)
-    else:
-        print("\n" + "=" * 70)
-        print("[FAIL] SOME TESTS FAILED")
-        print("=" * 70)
-
-    exit(exit_code)
+    sys.exit(pytest.main([__file__, "-v"]))

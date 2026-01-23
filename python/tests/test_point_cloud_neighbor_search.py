@@ -469,40 +469,5 @@ def test_neighbor_search_with_scale_transformation():
 
 
 if __name__ == "__main__":
-    print("Testing neighbor_search functionality\n")
-    print("=" * 60)
-
-    try:
-        test_neighbor_search_point_2d()
-        test_neighbor_search_point_3d()
-        test_neighbor_search_knn_point()
-        test_neighbor_search_with_radius()
-        test_neighbor_search_knn_with_radius()
-        test_neighbor_search_segment_2d()
-        test_neighbor_search_segment_3d()
-        test_neighbor_search_polygon_2d()
-        test_neighbor_search_polygon_3d()
-        test_neighbor_search_ray_3d()
-        test_neighbor_search_line_3d()
-        test_neighbor_search_numpy_array()
-        test_neighbor_search_double_precision()
-        test_neighbor_search_dimension_mismatch()
-        test_neighbor_search_invalid_k()
-        test_neighbor_search_knn_all_points()
-        test_neighbor_search_knn_more_than_available()
-        test_neighbor_search_with_transformation_2d()
-        test_neighbor_search_with_transformation_3d()
-        test_neighbor_search_with_transformation_knn()
-        test_neighbor_search_transformation_clear()
-        test_neighbor_search_with_rotation_transformation()
-        test_neighbor_search_with_scale_transformation()
-
-        print("\n" + "=" * 60)
-        print("[PASS] ALL TESTS PASSED!")
-        print("=" * 60)
-
-    except Exception as e:
-        print(f"\n[FAIL] TEST FAILED: {e}")
-        import traceback
-        traceback.print_exc()
-        exit(1)
+    import sys
+    sys.exit(pytest.main([__file__, "-v"]))
