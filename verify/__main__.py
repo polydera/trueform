@@ -8,22 +8,22 @@ Modes:
     --python-only   Python only: build bindings, install, verify, and run pytest
 
 Usage:
-    python verify/all.py [options]
+    python -m verify [options]
 
 Examples:
-    python verify/all.py                                        # Full verification
-    python verify/all.py --cpp-only                             # C++ build and tests
-    python verify/all.py --cpp-only --skip-vtk --skip-examples  # Fast C++ tests only
-    python verify/all.py --python-only                          # Python tests only
-    python verify/all.py --keep                                 # Keep build artifacts
+    python -m verify                                        # Full verification
+    python -m verify --cpp-only                             # C++ build and tests
+    python -m verify --cpp-only --skip-vtk --skip-examples  # Fast C++ tests only
+    python -m verify --python-only                          # Python tests only
+    python -m verify --keep                                 # Keep build artifacts
 """
 
 import argparse
 import sys
 from pathlib import Path
 
-from build import run_build, run_build_cpp_only, run_build_python_only, colored, Colors, get_default_work_dir, robust_rmtree
-from tests import run_tests
+from .build import run_build, run_build_cpp_only, run_build_python_only, colored, Colors, get_default_work_dir, robust_rmtree
+from .tests import run_tests
 
 
 def main() -> int:

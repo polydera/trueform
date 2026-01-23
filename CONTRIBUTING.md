@@ -44,14 +44,13 @@ ctest --test-dir build --output-on-failure
 ### Python
 
 ```bash
-cmake -B build -DTF_BUILD_PYTHON=ON
-cmake --build build --parallel --target trueform_python
-pip install ./build/python
+CMAKE_BUILD_PARALLEL_LEVEL=8 pip wheel . -w dist
+pip install dist/trueform-*.whl
 ```
 
 Run tests:
 ```bash
-python python/tests/run_tests.py
+pytest python/tests
 ```
 
 ### VTK Integration
@@ -104,7 +103,7 @@ neighborhood center doesn't coincide with the vertex."
 **4. Verify build and tests pass**
 
 ```bash
-python verify/all.py
+python -m verify
 ```
 
 This clones the repo to a temp directory and verifies everything works from scratch: C++ build and installation, `find_package` integration, Python pip install, and the full test suite.

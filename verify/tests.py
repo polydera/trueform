@@ -5,16 +5,16 @@ Run trueform C++ and Python tests.
 This script runs tests on existing builds. It does not build anything.
 If the build or venv is missing, tests are skipped.
 
-Note: Use all.py to build and run tests together.
+Note: Use `python -m verify` to build and run tests together.
 
 Usage:
-    python verify/tests.py [options]
+    python -m verify.tests [options]
 
 Examples:
-    python verify/tests.py                           # Run all tests
-    python verify/tests.py --work-dir ./my-build     # Use specific work directory
-    python verify/tests.py --skip-cpp                # Only Python tests
-    python verify/tests.py --skip-python             # Only C++ tests
+    python -m verify.tests                           # Run all tests
+    python -m verify.tests --work-dir ./my-build     # Use specific work directory
+    python -m verify.tests --skip-cpp                # Only Python tests
+    python -m verify.tests --skip-python             # Only C++ tests
 """
 
 import argparse
@@ -23,8 +23,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from build import get_default_work_dir, Colors, colored
-from venv_utils import VenvInfo, get_venv_info
+from .build import get_default_work_dir, Colors, colored
+from .venv_utils import VenvInfo, get_venv_info
 
 
 def print_header(name: str) -> None:

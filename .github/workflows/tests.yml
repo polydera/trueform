@@ -29,7 +29,7 @@ jobs:
           echo "CXX=clang++" >> $GITHUB_ENV
 
       - name: Build and test
-        run: python3 verify/all.py --cpp-only --skip-vtk --skip-examples
+        run: python3 -m verify --cpp-only --skip-vtk --skip-examples
 
   test-python:
     name: Python Tests
@@ -48,4 +48,4 @@ jobs:
           python-version: "3.11"
 
       - name: Build and test
-        run: python3 verify/all.py --python-only
+        run: python3 -m verify --python-only

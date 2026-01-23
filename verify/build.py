@@ -8,17 +8,17 @@ This script:
 3. Installs and verifies the installation
 4. Tests find_package from external projects
 
-Note: This script only builds. Use all.py to build and run tests.
+Note: This script only builds. Use `python -m verify` to build and run tests.
 
 Usage:
-    python verify/build.py [options]
+    python -m verify.build [options]
 
 Examples:
-    python verify/build.py                       # Full build and verify
-    python verify/build.py --skip-vtk            # Skip VTK integration
-    python verify/build.py --skip-python         # Skip Python bindings
-    python verify/build.py --skip-examples       # Skip building examples
-    python verify/build.py --keep                # Keep build artifacts
+    python -m verify.build                       # Full build and verify
+    python -m verify.build --skip-vtk            # Skip VTK integration
+    python -m verify.build --skip-python         # Skip Python bindings
+    python -m verify.build --skip-examples       # Skip building examples
+    python -m verify.build --keep                # Keep build artifacts
 """
 
 import argparse
@@ -48,7 +48,7 @@ def robust_rmtree(path: Path) -> None:
 
     shutil.rmtree(path, onerror=on_error)
 
-from venv_utils import VenvInfo, create_venv
+from .venv_utils import VenvInfo, create_venv
 
 
 # ANSI color codes
