@@ -109,7 +109,7 @@ target_include_directories(trueform INTERFACE
 # Subdirectories
 # ==============================================================================
 if(TF_BUILD_EXAMPLES)
-  add_subdirectory(examples EXCLUDE_FROM_ALL)
+  add_subdirectory(examples)
 endif()
 
 if(TF_BUILD_PYTHON)
