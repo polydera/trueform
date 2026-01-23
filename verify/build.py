@@ -191,6 +191,24 @@ class BuildVerifier:
             cmd.extend(["--config", "Release"])
         return self.run_cmd(cmd, cwd=self.build_dir)
 
+    def _find_test_executable(self, build_dir: Path, name: str) -> Optional[Path]:
+        """Find executable portably (handles MSVC Release/ subdirectory)."""
+        if sys.platform == "win32":
+            # MSVC multi-config: check Release/, Debug/, then root
+            candidates = [
+                build_dir / "Release" / f"{name}.exe",
+                build_dir / "Debug" / f"{name}.exe",
+                build_dir / f"{name}.exe",
+            ]
+        else:
+            # Unix single-config: check root
+            candidates = [build_dir / name]
+
+        for candidate in candidates:
+            if candidate.is_file():
+                return candidate
+        return None
+
 
     # =========================================================================
     # Setup & Clone
@@ -431,14 +449,8 @@ class BuildVerifier:
                 "Build test project", False, e.stdout if e.stdout else str(e)
             )
 
-        test_exe = test_build_dir / "test_app"
-        if not test_exe.exists():
-            for candidate in test_build_dir.rglob("test_app*"):
-                if candidate.is_file() and os.access(candidate, os.X_OK):
-                    test_exe = candidate
-                    break
-
-        if not test_exe.exists():
+        test_exe = self._find_test_executable(test_build_dir, "test_app")
+        if test_exe is None:
             return self.record_result("Run test executable", False, "Executable not found")
 
         try:
@@ -518,14 +530,8 @@ int main() {
                 "Build test project", False, e.stdout if e.stdout else str(e)
             )
 
-        test_exe = vtk_build_dir / "test_app"
-        if not test_exe.exists():
-            for candidate in vtk_build_dir.rglob("test_app*"):
-                if candidate.is_file() and os.access(candidate, os.X_OK):
-                    test_exe = candidate
-                    break
-
-        if not test_exe.exists():
+        test_exe = self._find_test_executable(vtk_build_dir, "test_app")
+        if test_exe is None:
             return self.record_result("Run test executable", False, "Executable not found")
 
         try:
@@ -593,14 +599,8 @@ int main() {
                 "Build test project", False, e.stdout if e.stdout else str(e)
             )
 
-        test_exe = pip_build_dir / "test_app"
-        if not test_exe.exists():
-            for candidate in pip_build_dir.rglob("test_app*"):
-                if candidate.is_file() and os.access(candidate, os.X_OK):
-                    test_exe = candidate
-                    break
-
-        if not test_exe.exists():
+        test_exe = self._find_test_executable(pip_build_dir, "test_app")
+        if test_exe is None:
             return self.record_result("Run test executable", False, "Executable not found")
 
         try:
