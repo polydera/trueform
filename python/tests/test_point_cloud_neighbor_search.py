@@ -498,11 +498,11 @@ if __name__ == "__main__":
         test_neighbor_search_with_scale_transformation()
 
         print("\n" + "=" * 60)
-        print("✓ ALL TESTS PASSED!")
+        print("[PASS] ALL TESTS PASSED!")
         print("=" * 60)
 
     except Exception as e:
-        print(f"\n✗ TEST FAILED: {e}")
+        print(f"\n[FAIL] TEST FAILED: {e}")
         import traceback
         traceback.print_exc()
         exit(1)

@@ -40,7 +40,7 @@ def run_test_file(test_file):
     if result.returncode == 0:
         return True
     else:
-        print(f"\n✗ Test failed with exit code: {result.returncode}")
+        print(f"\n[FAIL] Test failed with exit code: {result.returncode}")
         return False
 
 
@@ -89,10 +89,10 @@ def main():
             print(f"  - {test}")
 
     if failed == 0:
-        print("\n✓ ALL TESTS PASSED!")
+        print("\n[PASS] ALL TESTS PASSED!")
         return 0
     else:
-        print(f"\n✗ {failed} TEST(S) FAILED")
+        print(f"\n[FAIL] {failed} TEST(S) FAILED")
         return 1
 
 

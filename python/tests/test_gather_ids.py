@@ -373,11 +373,11 @@ if __name__ == "__main__":
 
     if exit_code == 0:
         print("\n" + "=" * 70)
-        print("✓ ALL TESTS PASSED!")
+        print("[PASS] ALL TESTS PASSED!")
         print("=" * 70)
     else:
         print("\n" + "=" * 70)
-        print("✗ SOME TESTS FAILED")
+        print("[FAIL] SOME TESTS FAILED")
         print("=" * 70)
 
     exit(exit_code)
