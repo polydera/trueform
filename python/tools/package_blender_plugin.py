@@ -26,10 +26,16 @@ def _copy_tree(source: Path, destination: Path) -> None:
     shutil.copytree(source, destination)
 
 
+def _get_default_bpy_source() -> Path:
+    """Get default bpy source path relative to this script (python/tools/ -> python/bpy/)."""
+    return Path(__file__).resolve().parent.parent / "bpy"
+
+
 def package_blender_plugin(
     plugin_init: Path,
     output: Path,
     trueform_root: Path | None,
+    bpy_source: Path | None,
     bundle_name: str,
 ) -> Path:
     plugin_init = plugin_init.resolve()
@@ -37,6 +43,11 @@ def package_blender_plugin(
         raise FileNotFoundError(f"plugin init not found: {plugin_init}")
 
     resolved_trueform_root = _resolve_trueform_root(str(trueform_root) if trueform_root else None)
+
+    # Resolve bpy source (default: python/bpy/ relative to this script)
+    resolved_bpy_source = (bpy_source or _get_default_bpy_source()).resolve()
+    if not resolved_bpy_source.is_dir():
+        raise FileNotFoundError(f"bpy source not found: {resolved_bpy_source}")
 
     output.parent.mkdir(parents=True, exist_ok=True)
 
@@ -48,6 +59,7 @@ def package_blender_plugin(
 
         shutil.copy2(plugin_init, bundle_root / "__init__.py")
         _copy_tree(resolved_trueform_root, libs_dir)
+        _copy_tree(resolved_bpy_source, libs_dir / "bpy")
 
         archive_base = output.with_suffix("")
         shutil.make_archive(
@@ -68,7 +80,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Package the Trueform Blender add-on zip.")
     parser.add_argument("--plugin-init", required=True, help="Path to add-on __init__.py")
     parser.add_argument("--output", required=True, help="Output zip path")
-    parser.add_argument("--trueform-root", help="Path to trueform package root")
+    parser.add_argument("--trueform-root", help="Path to trueform package root (default: find via import)")
+    parser.add_argument("--bpy-source", help="Path to bpy source directory (default: python/bpy/)")
     parser.add_argument("--bundle-name", default="trueform-bpy", help="Top-level bundle folder")
     args = parser.parse_args()
 
@@ -76,6 +89,7 @@ def main() -> None:
         plugin_init=Path(args.plugin_init),
         output=Path(args.output),
         trueform_root=Path(args.trueform_root) if args.trueform_root else None,
+        bpy_source=Path(args.bpy_source) if args.bpy_source else None,
         bundle_name=args.bundle_name,
     )
 

@@ -3,8 +3,6 @@
 # ==============================================================================
 message(STATUS "trueform: Configuring Python bindings")
 
-option(TF_BUILD_PYTHON_BLENDER_INTEGRATION "Build Python trueform.blender bindings." ON)
-
 include(CheckCXXCompilerFlag)
 
 # 1. Compiler Tweaks
@@ -88,20 +86,13 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/trueform/_version.py"
 
 # 9. Python Source Management (Copy to Build Dir)
 # ------------------------------------------------------------------------------
-# Glob pure Python files
-file(GLOB_RECURSE PYTHON_SOURCE_FILES    "${CMAKE_CURRENT_SOURCE_DIR}/trueform/*.py")
-file(GLOB_RECURSE PYTHON_BLENDER_SOURCE_FILES    "${CMAKE_CURRENT_SOURCE_DIR}/bpy/*.py")
-file(GLOB_RECURSE PYTHON_TEST_FILES      "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.py")
-file(GLOB_RECURSE PYTHON_EXAMPLE_FILES   "${CMAKE_CURRENT_SOURCE_DIR}/examples/**/*.py")
-# file(GLOB_RECURSE PYTHON_BENCHMARK_FILES "${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/*.py")
+# Glob pure Python files (only trueform package - tests/examples run from source)
+file(GLOB_RECURSE PYTHON_SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/trueform/*.py")
 
 # Create a custom target to sync Python files to the build directory
 add_custom_target(trueform_copy_python_files ALL
         DEPENDS
         ${PYTHON_SOURCE_FILES}
-        ${PYTHON_TEST_FILES}
-        ${PYTHON_EXAMPLE_FILES}
-        ${PYTHON_BLENDER_SOURCE_FILES}
 )
 
 add_custom_command(
@@ -109,25 +100,9 @@ add_custom_command(
         COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/trueform"
         "${CMAKE_CURRENT_BINARY_DIR}/trueform"
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_CURRENT_SOURCE_DIR}/tests"
-        "${CMAKE_CURRENT_BINARY_DIR}/tests"
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_CURRENT_SOURCE_DIR}/examples"
-        "${CMAKE_CURRENT_BINARY_DIR}/examples"
-        COMMENT "Syncing Python sources, tests, and examples to build directory"
+        COMMENT "Syncing Python sources to build directory"
         VERBATIM
 )
-if(TF_BUILD_PYTHON_BLENDER_INTEGRATION)
-  add_custom_command(
-          TARGET trueform_copy_python_files POST_BUILD
-          COMMAND ${CMAKE_COMMAND} -E copy_directory
-          "${CMAKE_CURRENT_SOURCE_DIR}/bpy"
-          "${CMAKE_CURRENT_BINARY_DIR}/trueform/bpy"
-          COMMENT "Syncing Blender integration Python sources to build directory"
-          VERBATIM
-  )
-endif()
 
 # Ensure the binary extension waits for the python file copy
 add_dependencies(_trueform trueform_copy_python_files)
@@ -138,26 +113,7 @@ add_dependencies(_trueform trueform_copy_python_files)
 add_custom_target(trueform_python DEPENDS _trueform)
 message(STATUS "Python bindings configured. Build with 'cmake --build . --target trueform_python'")
 
-# 11. Blender Bundle Target
-# ------------------------------------------------------------------------------
-set(TF_BLENDER_BUNDLE_NAME "trueform-bpy")
-set(TF_BLENDER_BUNDLE_ZIP "${CMAKE_CURRENT_BINARY_DIR}/trueform-bpy-plugin.zip")
-set(TF_BLENDER_PLUGIN_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/examples/bpy-plugin/__init__.py")
-set(TF_BLENDER_PACKAGE_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/tools/package_blender_plugin.py")
-
-add_custom_target(build_blender_plugin DEPENDS _trueform trueform_copy_python_files)
-add_custom_command(
-        TARGET build_blender_plugin POST_BUILD
-        COMMAND "${Python_EXECUTABLE}" "${TF_BLENDER_PACKAGE_SCRIPT}"
-        --plugin-init "${TF_BLENDER_PLUGIN_SCRIPT}"
-        --trueform-root "${CMAKE_CURRENT_BINARY_DIR}/trueform"
-        --output "${TF_BLENDER_BUNDLE_ZIP}"
-        --bundle-name "${TF_BLENDER_BUNDLE_NAME}"
-        COMMENT "Creating Blender bundle at ${TF_BLENDER_BUNDLE_ZIP}"
-        VERBATIM
-)
-
-# 12. Installation
+# 11. Installation
 # ------------------------------------------------------------------------------
 # Install the compiled extension
 install(TARGETS _trueform LIBRARY DESTINATION trueform)
@@ -172,7 +128,7 @@ install(
         FILES_MATCHING PATTERN "*.py"
 )
 
-# 13. C++ Headers & CMake Config for Wheel Distribution
+# 12. C++ Headers & CMake Config for Wheel Distribution
 # ------------------------------------------------------------------------------
 # Install the header-only C++ library inside the Python package.
 # Users can find headers via: python -c "import trueform; print(trueform.get_include())"
