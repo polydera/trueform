@@ -126,7 +126,7 @@ auto transformed(const unit_vector_like<Dims, Policy> &_this,
                  const transformation_like<Dims, U> &transform) {
   if constexpr (!linalg::is_identity<U>) {
     auto out = wrap_like(_this, transformed(unwrap(_this), transform));
-    tf::normalize(out);
+    tf::core::normalize(out);
     return out;
   } else
     return _this;
@@ -139,7 +139,7 @@ auto transformed(const unit_vector_like<Dims, Policy> &_this,
                  const frame_like<Dims, U> &transform) {
   if constexpr (!linalg::is_identity<U>) {
     auto out = wrap_like(_this, transformed(unwrap(_this), transform));
-    tf::normalize(out);
+    tf::core::normalize(out);
     return out;
   } else
     return _this;
@@ -166,7 +166,7 @@ auto transformed_normal(const unit_vector_like<Dims, Policy> &_this,
         tf::linalg::make_transpose_view(frame.inverse_transformation()),
         tf::linalg::make_transpose_view(frame.transformation()));
     auto out = transformed(_this, inv_frame);
-    tf::normalize(out);
+    tf::core::normalize(out);
     return out;
   } else
     return _this;

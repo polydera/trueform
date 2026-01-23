@@ -11,8 +11,8 @@
 * Author: Žiga Sajovic
 */
 #pragma once
+#include "./base/normalize.hpp"
 #include "./base/vec.hpp"
-#include "./normalize.hpp"
 #include "./unsafe.hpp"
 #include "./vector_like.hpp"
 #include <type_traits>
@@ -47,12 +47,8 @@ public:
   unit_vector_like() = default;
   unit_vector_like(const unit_vector_like &other) : base_t{other} {}
   unit_vector_like(unit_vector_like &&other) : base_t{other} {}
-  unit_vector_like(const base_t &other) : base_t{other} {
-    tf::normalize(static_cast<base_t &>(*this));
-  }
-  unit_vector_like(base_t &&other) : base_t{other} {
-    tf::normalize(static_cast<base_t &>(*this));
-  }
+  unit_vector_like(const base_t &other) : base_t{other} { tf::core::normalize(*this); }
+  unit_vector_like(base_t &&other) : base_t{other} { tf::core::normalize(*this); }
   unit_vector_like(tf::unsafe_t, const base_t &other) : base_t{other} {}
   unit_vector_like(tf::unsafe_t, base_t &&other) : base_t{other} {}
 
@@ -117,14 +113,6 @@ public:
 template <std::size_t Dims, typename Policy>
 struct static_size<unit_vector_like<Dims, Policy>>
     : std::integral_constant<std::size_t, Dims> {};
-
-/// @ingroup core_primitives
-/// @brief No-op for unit vectors (already normalized).
-template <std::size_t N, typename T>
-auto normalize(const unit_vector_like<N, T> &v)
-    -> const unit_vector_like<N, T> & {
-  return v;
-}
 
 template <std::size_t Dims, typename Policy>
 auto unwrap(const unit_vector_like<Dims, Policy> &vec) -> decltype(auto) {

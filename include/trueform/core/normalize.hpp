@@ -8,10 +8,11 @@
 * License 1.0.0.
 * Commercial licensing available via info@polydera.com.
 *
-* Author: Žiga Sajovic
+* Author: Ziga Sajovic
 */
 #pragma once
-#include "./vector_like.hpp"
+#include "./base/normalize.hpp"
+#include "./unit_vector_like.hpp"
 
 namespace tf {
 
@@ -27,8 +28,14 @@ namespace tf {
 /// @return Reference to the normalized vector view.
 template <std::size_t N, typename T>
 auto normalize(vector_like<N, T> &v) -> vector_like<N, T> & {
-  auto d = v.length();
-  v /= d + (d == 0);
+  return core::normalize(v);
+}
+
+/// @ingroup core_primitives
+/// @brief No-op for unit vectors (already normalized).
+template <std::size_t N, typename T>
+auto normalize(const unit_vector_like<N, T> &v)
+    -> const unit_vector_like<N, T> & {
   return v;
 }
 } // namespace tf
