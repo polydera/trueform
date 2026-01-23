@@ -48,9 +48,11 @@ public:
   unit_vector_like(const unit_vector_like &other) : base_t{other} {}
   unit_vector_like(unit_vector_like &&other) : base_t{other} {}
   unit_vector_like(const base_t &other) : base_t{other} {
-    tf::normalize(*this);
+    tf::normalize(static_cast<base_t &>(*this));
   }
-  unit_vector_like(base_t &&other) : base_t{other} { tf::normalize(*this); }
+  unit_vector_like(base_t &&other) : base_t{other} {
+    tf::normalize(static_cast<base_t &>(*this));
+  }
   unit_vector_like(tf::unsafe_t, const base_t &other) : base_t{other} {}
   unit_vector_like(tf::unsafe_t, base_t &&other) : base_t{other} {}
 
