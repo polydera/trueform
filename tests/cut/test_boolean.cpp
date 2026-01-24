@@ -400,3 +400,198 @@ TEMPLATE_TEST_CASE("boolean_non_overlapping", "[boolean]",
                 std::max(tf::epsilon<real_t>, real_t(0.01)));
     }
 }
+
+// =============================================================================
+// Test 6: Overlapping Spheres - Two Spheres with Intersecting Surfaces
+// =============================================================================
+
+TEMPLATE_TEST_CASE("boolean_overlapping_spheres", "[boolean]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    real_t radius = real_t(1);
+    real_t separation = real_t(1); // Centers separated by 1 unit (spheres overlap)
+
+    auto sphere1 = tf::make_sphere_mesh<index_t>(radius, 50, 50);
+    tf::ensure_positive_orientation(sphere1.polygons());
+
+    auto sphere2 = tf::make_sphere_mesh<index_t>(radius, 50, 50);
+    tf::ensure_positive_orientation(sphere2.polygons());
+
+    // Translate sphere2 along X-axis
+    auto sphere2_transform = tf::make_transformation_from_translation(
+        tf::make_vector(separation, real_t(0), real_t(0)));
+    auto sphere2_frame = tf::make_frame(sphere2_transform);
+
+    // Single sphere volume
+    constexpr real_t pi = real_t(3.14159265358979323846);
+    real_t sphere_volume = (real_t(4) / real_t(3)) * pi * radius * radius * radius;
+
+    // Lens (intersection) volume for two equal spheres:
+    // V_lens = (pi * h^2 / 12) * (3*r1 + 3*r2 - h) where h = 2*r - d
+    // For r1 = r2 = r and d = separation:
+    real_t h = real_t(2) * radius - separation;
+    real_t lens_volume = (pi * h * h / real_t(12)) * (real_t(6) * radius - h);
+
+    // Test merge (union)
+    {
+        auto [merged, labels] = tf::make_boolean(
+            sphere1.polygons(),
+            sphere2.polygons() | tf::tag(sphere2_frame),
+            tf::boolean_op::merge);
+
+        auto boundaries = tf::make_boundary_paths(merged.polygons());
+        auto non_manifold = tf::make_non_manifold_edges(merged.polygons());
+
+        REQUIRE(boundaries.size() == 0);
+        REQUIRE(non_manifold.size() == 0);
+
+        // Union volume = 2 * sphere - lens
+        real_t merged_volume = tf::signed_volume(merged.polygons());
+        real_t expected = real_t(2) * sphere_volume - lens_volume;
+
+        REQUIRE(std::abs(merged_volume - expected) < expected * real_t(0.02));
+    }
+
+    // Test intersection (lens shape)
+    {
+        auto [intersection, labels] = tf::make_boolean(
+            sphere1.polygons(),
+            sphere2.polygons() | tf::tag(sphere2_frame),
+            tf::boolean_op::intersection);
+
+        auto boundaries = tf::make_boundary_paths(intersection.polygons());
+        auto non_manifold = tf::make_non_manifold_edges(intersection.polygons());
+
+        REQUIRE(boundaries.size() == 0);
+        REQUIRE(non_manifold.size() == 0);
+
+        // Intersection volume = lens
+        real_t intersection_volume = tf::signed_volume(intersection.polygons());
+
+        REQUIRE(std::abs(intersection_volume - lens_volume) < lens_volume * real_t(0.02));
+    }
+
+    // Test left difference (sphere1 - sphere2)
+    {
+        auto [diff, labels] = tf::make_boolean(
+            sphere1.polygons(),
+            sphere2.polygons() | tf::tag(sphere2_frame),
+            tf::boolean_op::left_difference);
+
+        auto boundaries = tf::make_boundary_paths(diff.polygons());
+        auto non_manifold = tf::make_non_manifold_edges(diff.polygons());
+
+        REQUIRE(boundaries.size() == 0);
+        REQUIRE(non_manifold.size() == 0);
+
+        // Left difference volume = sphere1 - lens
+        real_t diff_volume = tf::signed_volume(diff.polygons());
+        real_t expected = sphere_volume - lens_volume;
+
+        REQUIRE(std::abs(diff_volume - expected) < expected * real_t(0.02));
+    }
+}
+
+// =============================================================================
+// Test 7: Multi-Component Mesh - Two Spheres as One Mesh, One Contains a Sphere
+// =============================================================================
+
+TEMPLATE_TEST_CASE("boolean_multi_component", "[boolean]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    constexpr real_t pi = real_t(3.14159265358979323846);
+
+    // Create two separate spheres as a single multi-component mesh
+    real_t outer_radius = real_t(2);
+    auto sphere_left = tf::make_sphere_mesh<index_t>(outer_radius, 40, 40);
+    tf::ensure_positive_orientation(sphere_left.polygons());
+
+    auto sphere_right = tf::make_sphere_mesh<index_t>(outer_radius, 40, 40);
+    tf::ensure_positive_orientation(sphere_right.polygons());
+
+    // Translate right sphere far enough to not overlap
+    auto right_transform = tf::make_transformation_from_translation(
+        tf::make_vector(real_t(10), real_t(0), real_t(0)));
+    auto right_frame = tf::make_frame(right_transform);
+
+    // Concatenate into multi-component mesh
+    auto two_spheres = tf::concatenated(
+        sphere_left.polygons(),
+        sphere_right.polygons() | tf::tag(right_frame));
+
+    real_t outer_volume = (real_t(4) / real_t(3)) * pi * outer_radius * outer_radius * outer_radius;
+
+    // Create small sphere inside the LEFT sphere
+    real_t inner_radius = real_t(1);
+    auto inner_sphere = tf::make_sphere_mesh<index_t>(inner_radius, 30, 30);
+    tf::ensure_positive_orientation(inner_sphere.polygons());
+
+    real_t inner_volume = (real_t(4) / real_t(3)) * pi * inner_radius * inner_radius * inner_radius;
+
+    // Test merge: inner sphere is inside left sphere, should just be the two outer spheres
+    {
+        auto [merged, labels] = tf::make_boolean(
+            two_spheres.polygons(),
+            inner_sphere.polygons(),
+            tf::boolean_op::merge);
+
+        auto boundaries = tf::make_boundary_paths(merged.polygons());
+        auto non_manifold = tf::make_non_manifold_edges(merged.polygons());
+
+        REQUIRE(boundaries.size() == 0);
+        REQUIRE(non_manifold.size() == 0);
+
+        // Union with inner fully inside left = just the two outer spheres
+        real_t merged_volume = tf::signed_volume(merged.polygons());
+        real_t expected = real_t(2) * outer_volume;
+
+        REQUIRE(std::abs(merged_volume - expected) < expected * real_t(0.02));
+    }
+
+    // Test left difference: carve inner from left sphere, right sphere unchanged
+    {
+        auto [diff, labels] = tf::make_boolean(
+            two_spheres.polygons(),
+            inner_sphere.polygons(),
+            tf::boolean_op::left_difference);
+
+        auto boundaries = tf::make_boundary_paths(diff.polygons());
+        auto non_manifold = tf::make_non_manifold_edges(diff.polygons());
+
+        REQUIRE(boundaries.size() == 0);
+        REQUIRE(non_manifold.size() == 0);
+
+        // Left sphere becomes hollow, right sphere unchanged
+        real_t diff_volume = tf::signed_volume(diff.polygons());
+        real_t expected = (outer_volume - inner_volume) + outer_volume;
+
+        REQUIRE(std::abs(diff_volume - expected) < expected * real_t(0.02));
+    }
+
+    // Test intersection: only the inner sphere (inside left) remains
+    {
+        auto [intersection, labels] = tf::make_boolean(
+            two_spheres.polygons(),
+            inner_sphere.polygons(),
+            tf::boolean_op::intersection);
+
+        auto boundaries = tf::make_boundary_paths(intersection.polygons());
+        auto non_manifold = tf::make_non_manifold_edges(intersection.polygons());
+
+        REQUIRE(boundaries.size() == 0);
+        REQUIRE(non_manifold.size() == 0);
+
+        // Intersection = inner sphere (since it's fully inside left)
+        real_t intersection_volume = tf::signed_volume(intersection.polygons());
+
+        REQUIRE(std::abs(intersection_volume - inner_volume) < inner_volume * real_t(0.02));
+    }
+}
