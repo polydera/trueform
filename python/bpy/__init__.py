@@ -39,6 +39,8 @@ Commercial licensing available via info@polydera.com.
 https://github.com/xlabmedical/trueform
 """
 
+from . import convert  # noqa: F401 - re-exported as bpy.convert
+from . import scene
 bl_info = {
     "name": "Trueform",
     "author": "Žiga Sajovic, XLAB",
@@ -48,9 +50,6 @@ bl_info = {
     "description": "Trueform mesh operations for Blender.",
     "category": "Mesh",
 }
-
-from . import scene
-from . import convert
 
 
 def register():

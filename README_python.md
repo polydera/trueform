@@ -52,10 +52,27 @@ dynamic_mesh.transformation = rotation_matrix
 
 does_intersect = tf.intersects(static_mesh, dynamic_mesh)
 distance = tf.distance(static_mesh, dynamic_mesh)
-pairs = tf.gather_intersecting_ids(static_mesh, dynamic_mesh)
+(id0, id1), (dist2, pt0, pt1) = tf.neighbor_search(static_mesh, dynamic_mesh)
+neighbors = tf.neighbor_search(dynamic_mesh, static_mesh.points[0], k=10)
+for idx, dist2, pt in neighbors:
+    pass
 ```
 
 → [Full documentation](https://trueform.polydera.com/py/modules) covers mesh analysis, topology, isocontours, curvature, and more.
+
+## Examples
+
+- **[Guided Examples](https://trueform.polydera.com/py/examples)** — Step-by-step walkthroughs for spatial queries, topology, and booleans
+- **[VTK Integration](https://trueform.polydera.com/py/examples/vtk-integration)** — Interactive VTK applications
+
+Run examples locally:
+
+```bash
+git clone https://github.com/polydera/trueform.git
+cd trueform/python/examples
+pip install vtk  # for interactive examples
+python vtk/collision.py mesh.stl
+```
 
 ## Blender Integration
 
@@ -75,7 +92,7 @@ Cached meshes with automatic dirty-tracking for live preview add-ons. See [Blend
 | Mesh–Mesh Distance | 2 × 1M | 0.2 ms | **2×** | Coal (FCL) `OBBRSS` |
 | Principal Curvatures | 1M | 25 ms | **55×** | libigl |
 
-Apple M4 Max, 16 threads, Clang `-O3 -march=native`. [Full methodology](https://trueform.polydera.com/py/benchmarks)
+Apple M4 Max, 16 threads, Clang `-O3`. [Full methodology](https://trueform.polydera.com/py/benchmarks)
 
 ## License
 
