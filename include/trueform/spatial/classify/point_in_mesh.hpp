@@ -87,6 +87,8 @@ auto classify_point(const tf::point_like<3, Policy0> &_point,
           auto res = tf::ray_hit(ray, polygon);
           if (!res)
             return false;
+          if (res.t < tf::epsilon<real_type>)
+            return false;  // skip self-hit at origin
           if (is_on_edge(polygon, res.point)) {
             failed = true;
             return true;
@@ -175,6 +177,8 @@ auto classify_point(const tf::point_like<3, Policy0> &_point,
           auto res = tf::ray_hit(ray, polygon);
           if (!res)
             return false;
+          if (res.t < tf::epsilon<real_type>)
+            return false;  // skip self-hit at origin
           if (is_on_edge(polygon, res.point)) {
             failed = true;
             return true;

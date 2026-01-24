@@ -71,6 +71,11 @@ public:
 
   auto extract(tf::buffer<Index> &offsets,
                tf::buffer<loop::vertex<Index>> &vertices) {
+    if (_fs.faces().size() == 0) {
+      // Fall back to base loop when cutting produces no valid faces
+      write_face(_base_loop, vertices, offsets);
+      return;
+    }
     if (_fs.holes().size())
       extract_with_holes(vertices, offsets);
     else

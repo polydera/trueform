@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 #include "../../core/faces.hpp"
 #include "../../core/views/blocked_range.hpp"
@@ -107,9 +107,10 @@ private:
           std::copy(crossings[next].begin(), crossings[next].end() - 1,
                     std::back_inserter(_base_loops_vertices));
           current = descriptors[next].end;
-          next = std::find_if(
-                     descriptors.begin() + next + 1, descriptors.end(),
-                     [&](const auto &d) { return !(d.start < current); }) -
+          next = std::find_if(descriptors.begin() + next + 1, descriptors.end(),
+                              [&, outer_end = end](const auto &d) {
+                                return d.start >= current && d.end <= outer_end;
+                              }) -
                  descriptors.begin();
           if (next == n_crossings || descriptors[next].start >= end) {
             break;
