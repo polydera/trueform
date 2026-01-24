@@ -55,17 +55,6 @@ else()
   target_compile_options(_trueform PRIVATE -Wall -Wextra)
 endif()
 
-# Enable aggressive optimizations in Release mode
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
-  check_cxx_compiler_flag("-march=native" SUPPORTS_MARCH_NATIVE)
-  if(SUPPORTS_MARCH_NATIVE)
-    message(STATUS "Compiler supports -march=native for Python bindings")
-    target_compile_options(_trueform PRIVATE -march=native)
-  else()
-    message(WARNING "Compiler does NOT support -march=native")
-  endif()
-endif()
-
 # 7. Output Directory Layout
 # ------------------------------------------------------------------------------
 # We want the compiled module (.so/.pyd) to sit inside the 'trueform' package folder

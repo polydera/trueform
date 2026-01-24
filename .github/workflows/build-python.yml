@@ -87,6 +87,27 @@ jobs:
           cibuildwheel --output-dir wheelhouse
 
       # ------------------------------------------------------
+      # Test built wheel
+      # ------------------------------------------------------
+      - name: Test wheel
+        shell: bash
+        run: |
+          # Create fresh venv for testing
+          python -m venv test-venv
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            source test-venv/Scripts/activate
+          else
+            source test-venv/bin/activate
+          fi
+
+          # Install wheel and test dependencies
+          pip install wheelhouse/trueform-*.whl
+          pip install pytest numpy
+
+          # Run tests
+          python -m pytest python/tests -v --tb=short
+
+      # ------------------------------------------------------
       # Package Blender plugin (Python 3.11 / Blender 5.0)
       # ------------------------------------------------------
       - name: Package Blender plugin

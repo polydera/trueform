@@ -15,7 +15,7 @@ orientation: horizontal
 Real-time [geometric processing]{.text-primary}
 
 #description
-Spatial queries, mesh booleans, isocontours, topology — at interactive speed on million-polygon meshes. Robust to non-manifold flaps, inconsistent winding, and pipeline artifacts. Algorithms with formal guarantees. C++ header-only; Python with NumPy in and out.
+Spatial queries, mesh booleans, isocontours, topology — at interactive speed on million-polygon meshes. Robust to non-manifold flaps, inconsistent winding, and pipeline artifacts. C++ header-only; Python with NumPy in and out.
 
 #links
   :::u-button
@@ -92,7 +92,7 @@ Why trueform
   Robust by Design
 
   #description
-  Production-tested on meshes with non-manifold flaps, inconsistent geometry, and accumulated pipeline artifacts. Algorithms with formal correctness guarantees.
+  Production-tested on meshes with non-manifold flaps, inconsistent geometry, and accumulated pipeline artifacts.
   :::
 
   :::u-page-feature
@@ -147,7 +147,7 @@ Why trueform
   Cut & Boolean Operations
 
   #description
-  Combine and cut meshes with union, intersection, difference. Commutative correctness: defer mesh cleanup to the final step without corrupting results.
+  Combine and cut meshes with union, intersection, difference. Commutative correctness: chain operations freely, clean up once at the end.
   :::
 :::
 
