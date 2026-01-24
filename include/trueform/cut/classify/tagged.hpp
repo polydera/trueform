@@ -1,20 +1,20 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 #include "../../core/algorithm/generic_generate.hpp"
 #include "../../core/algorithm/make_equivalence_class_map.hpp"
-#include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/algorithm/parallel_fill.hpp"
+#include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/array_hash.hpp"
 #include "../../core/blocked_buffer.hpp"
 #include "../../core/hash_set.hpp"
@@ -146,23 +146,26 @@ auto classify_missing_components(
         pt = ibp.intersection_points()[v.id];
       return pt;
     };
-    tf::parallel_for_each(tf::zip(counts, reprs_poly, reprs_cut), [&](auto tup) {
-      auto &&[count, poly_id, cut_id] = tup;
-      if (!(count[0] == 0 && count[1] == 0 && count[2] == 0 && count[3] == 0))
-        return;
-      else if (poly_id != -1) {
-        auto point = tf::transformed(tf::centroid(polygons[poly_id]), frame);
-        auto c =
-            tf::spatial::classify_point(point, polygons_other, jlabels_other);
-        count[c == tf::containment::outside] = 1;
-      } else {
-        auto point = tf::centroid(tf::make_polygon(
-            tf::make_mapped_range(loops[cut_id], get_loop_point)));
-        auto c =
-            tf::spatial::classify_point(point, polygons_other, jlabels_other);
-        count[c == tf::containment::outside] = 1;
-      }
-    });
+    tf::parallel_for_each(
+        tf::zip(counts, reprs_poly, reprs_cut), [&](auto tup) {
+          auto &&[count, poly_id, cut_id] = tup;
+          if (!(count[0] == 0 && count[1] == 0 && count[2] == 0 &&
+                count[3] == 0))
+            return;
+          else if (poly_id != -1) {
+            auto point =
+                tf::transformed(tf::centroid(polygons[poly_id]), frame);
+            auto c = tf::spatial::classify_point(point, polygons_other,
+                                                 jlabels_other);
+            count[c == tf::containment::outside] = 1;
+          } else {
+            auto point = tf::centroid(tf::make_polygon(
+                tf::make_mapped_range(loops[cut_id], get_loop_point)));
+            auto c = tf::spatial::classify_point(point, polygons_other,
+                                                 jlabels_other);
+            count[c == tf::containment::outside] = 1;
+          }
+        });
   };
 
   tbb::parallel_invoke(
