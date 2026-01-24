@@ -20,9 +20,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install TBB
-        run: sudo apt-get update && sudo apt-get install -y libtbb-dev
-
       - name: Set compiler env
         run: |
           echo "CC=clang" >> $GITHUB_ENV
