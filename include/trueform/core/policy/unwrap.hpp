@@ -45,6 +45,9 @@ template <typename T, typename F> auto wrap_map(T &&t, const F& map) -> decltype
 }
 
 namespace policy {
+// MSVC workaround: unqualified lookup from tf::policy should find tf::unwrap
+// in the enclosing namespace, but MSVC fails when ADL also finds candidates
+// (tf::core::unwrap). Explicitly importing the fallback fixes this.
 using ::tf::unwrap;
 using ::tf::wrap_like;
 
