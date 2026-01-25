@@ -114,14 +114,6 @@ vtk_module_autoinit(
 
 target_compile_options(trueform_vtk PRIVATE -Wall -Wextra -Wpedantic -Wno-extra-semi)
 
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
-  include(CheckCXXCompilerFlag)
-  check_cxx_compiler_flag("-march=native" SUPPORTS_MARCH_NATIVE)
-  if(SUPPORTS_MARCH_NATIVE)
-    target_compile_options(trueform_vtk PRIVATE -march=native)
-  endif()
-endif()
-
 if(TF_BUILD_VTK_EXAMPLES)
   add_subdirectory(examples)
 endif()
