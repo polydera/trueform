@@ -1,7 +1,9 @@
-cmake_minimum_required(VERSION 3.27)
+cmake_minimum_required(VERSION 3.16)
 
 # CMP0148: Use the new behavior for finding Python interpreters and libraries
-cmake_policy(SET CMP0148 NEW)
+if(POLICY CMP0148)
+  cmake_policy(SET CMP0148 NEW)
+endif()
 
 # ==============================================================================
 # Platform configuration

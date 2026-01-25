@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.16)
 project(test_trueform LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
