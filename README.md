@@ -53,6 +53,22 @@ FetchContent_MakeAvailable(trueform)
 target_link_libraries(my_target PRIVATE tf::trueform)
 ```
 
+### Conan
+
+Create the package from the recipe included in the repository:
+
+```bash
+git clone https://github.com/polydera/trueform.git
+conan create trueform/conan/trueform --build=missing
+```
+
+Then add to your `conanfile.txt`:
+
+```ini
+[requires]
+trueform/[>=0.1.0]
+```
+
 → [Full installation guide](https://trueform.polydera.com/cpp/getting-started/installation)
 
 ## Integrations
