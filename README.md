@@ -69,6 +69,14 @@ Then add to your `conanfile.txt`:
 trueform/[>=0.1.0]
 ```
 
+Install dependencies and build:
+
+```bash
+conan install . --build=missing
+cmake --preset conan-release
+cmake --build --preset conan-release
+```
+
 → [Full installation guide](https://trueform.polydera.com/cpp/getting-started/installation)
 
 ## Integrations
