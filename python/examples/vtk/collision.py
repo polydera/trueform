@@ -1,21 +1,10 @@
 """
-Interactive ray casting and collision detection example with VTK
+Interactive collision detection example with VTK
 
-Features:
-- Mouse over meshes to highlight them using trueform ray casting
-- Click and drag to move meshes
-- Colliding meshes turn cyan during drag
-- Meshes are randomly rotated on initialization
-- Real-time performance metrics displayed on screen (ray picking and collision detection times)
-
-Usage:
-    python collision.py mesh1.stl [mesh2.stl mesh3.stl ...]
-
-Meshes are arranged in a 5×5 grid (25 instances total).
+Meshes are arranged in a 5x5 grid (25 instances total).
 If fewer than 25 meshes are provided, they are cycled to fill the grid.
 Times are averaged over the last 1000 frames.
 """
-import sys
 
 import vtk
 import trueform as tf
@@ -32,6 +21,7 @@ from util import (
     format_time_us,
     create_text_actor,
     create_renderer_with_text_strip,
+    create_parser,
 )
 
 # Collision-specific color (local to this example)
@@ -116,11 +106,14 @@ class MouseRaycastInteractor(BaseInteractor):
 
 def main():
     # Parse command line arguments
-    if len(sys.argv) < 2:
-        print("Usage: python collision.py mesh1.stl [mesh2.stl mesh3.stl ...]")
-        sys.exit(1)
-
-    mesh_files = sys.argv[1:]
+    parser = create_parser("Interactive collision detection (5x5 grid)", mesh_args="many")
+    parser.epilog = """
+Controls:
+  Hover        Highlight mesh
+  Mouse drag   Move mesh (colliding meshes turn cyan)
+"""
+    args = parser.parse_args()
+    mesh_files = args.meshes
 
     # Load each unique mesh file once and build structures
     # Use dynamic=True to test OffsetBlockedArray
@@ -161,23 +154,14 @@ def main():
     for mesh_data in mesh_data_list:
         renderer.AddActor(mesh_data.actor)
 
-    # Create text actors for bottom strip
+    # Create text actor for timing
     collide_text = create_text_actor(
         "Collision time: 0.0 μs",
         font_size=38,
-        position=(0.03, 0.30),
+        position=(0.03, 0.50),
         justification='left'
     )
     renderer_text.AddViewProp(collide_text)
-
-    text_help = create_text_actor(
-        "Hover to highlight\nClick and drag to move meshes\nColliding meshes turn cyan\n\nPowered by trueform",
-        font_size=38,
-        position=(0.97, 0.55),
-        justification='right'
-    )
-    text_help.GetTextProperty().SetLineSpacing(1.4)
-    renderer_text.AddViewProp(text_help)
 
     # Setup render window
     render_window = vtk.vtkRenderWindow()

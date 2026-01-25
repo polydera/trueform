@@ -38,6 +38,10 @@ from .scene import (
     setup_basic_scene,
 )
 
+from .cli import (
+    create_parser,
+)
+
 __all__ = [
     # Geometry
     'MeshData',
@@ -61,4 +65,6 @@ __all__ = [
     'create_text_actor',
     'create_renderer_with_text_strip',
     'setup_basic_scene',
+    # CLI
+    'create_parser',
 ]

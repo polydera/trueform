@@ -1,24 +1,10 @@
 """
-VTK interactive example for boolean difference operations on meshes
+Interactive boolean difference example with VTK
 
-This example combines mesh loading from intersection_curves with the dual viewport
-layout from isobands. It loads two meshes, computes their boolean difference,
-and displays:
-  - Left viewport: Both input meshes + intersection curves (red)
-  - Right viewport: Result mesh from boolean difference
-
-Interactive controls:
-  - Drag either mesh to move it (updates boolean result in real-time)
-  - Press 'n' to randomize mesh orientations
-  - Standard mouse controls for camera
-
-Copyright (c) 2025 Žiga Sajovic, XLAB
-Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
-Commercial licensing available via info@polydera.com.
-https://github.com/xlabmedical/trueform
+Left viewport shows input meshes with intersection curves.
+Right viewport shows the boolean difference result.
+Operation time is averaged over the last 100 frames.
 """
-
-import sys
 
 import vtk
 import numpy as np
@@ -36,6 +22,7 @@ from util import (
     random_rotation_matrix,
     format_time_ms,
     create_text_actor,
+    create_parser,
 )
 
 
@@ -182,15 +169,16 @@ class BooleanDifferenceInteractor(BaseInteractor):
 
 
 def main():
-    """Main entry point"""
     # Parse command line arguments
-    if len(sys.argv) < 2:
-        print("Usage: python boolean_difference.py mesh1.stl [mesh2.stl]")
-        print("\nIf only one mesh is provided, it will be used for both inputs (using shared_view)")
-        sys.exit(1)
-
-    mesh_file1 = sys.argv[1]
-    mesh_file2 = sys.argv[2] if len(sys.argv) > 2 else None
+    parser = create_parser("Interactive boolean difference", mesh_args=2)
+    parser.epilog = """
+Controls:
+  N            Randomize mesh orientations
+  Mouse drag   Move meshes / rotate camera
+"""
+    args = parser.parse_args()
+    mesh_file1 = args.mesh1
+    mesh_file2 = args.mesh2
 
     # Load first mesh (use dynamic=True to test OffsetBlockedArray)
     mesh_data0 = load_mesh(mesh_file1, (0.0, 0.0, 0.0), target_radius=10.0, random_rotation=True, dynamic=True)
@@ -264,28 +252,10 @@ def main():
     text_time = create_text_actor(
         "Boolean difference time: 0 ms",
         font_size=38,
-        position=(0.03, 0.30),
+        position=(0.03, 0.50),
         justification='left'
     )
     renderer_text.AddViewProp(text_time)
-
-    total_polygons = mesh_data0.mesh.number_of_faces + mesh_data1.mesh.number_of_faces
-    text_polygons = create_text_actor(
-        f"Total polygons: {total_polygons}",
-        font_size=38,
-        position=(0.03, 0.70),
-        justification='left'
-    )
-    renderer_text.AddViewProp(text_polygons)
-
-    text_help = create_text_actor(
-        "Press N to randomize orientations\nDrag meshes to interact\n\nPowered by trueform",
-        font_size=38,
-        position=(0.97, 0.55),
-        justification='right'
-    )
-    text_help.GetTextProperty().SetLineSpacing(1.4)
-    renderer_text.AddViewProp(text_help)
 
     # === RENDER WINDOW AND INTERACTOR ===
 

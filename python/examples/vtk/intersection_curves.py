@@ -1,20 +1,9 @@
 """
 Interactive intersection curves extraction example with VTK
 
-Features:
-- Extract intersection curves between two meshes
-- Press 'n' to randomize mesh orientations
-- Drag meshes to see curves update in real-time
-- Real-time performance metrics for intersection curve extraction
-
-Usage:
-    python intersection_curves.py mesh1.stl mesh2.stl
-
-If only one mesh is provided, it will be duplicated.
 Multiple intersection curves may be extracted depending on mesh topology.
 Extraction time is averaged over the last 100 frames.
 """
-import sys
 
 import vtk
 import numpy as np
@@ -31,6 +20,7 @@ from util import (
     format_time_ms,
     create_text_actor,
     create_renderer_with_text_strip,
+    create_parser,
 )
 
 
@@ -135,12 +125,15 @@ class IntersectionCurvesInteractor(BaseInteractor):
 
 def main():
     # Parse command line arguments
-    if len(sys.argv) < 2:
-        print("Usage: python intersection_curves.py mesh1.stl [mesh2.stl]")
-        sys.exit(1)
-
-    mesh_file1 = sys.argv[1]
-    mesh_file2 = sys.argv[2] if len(sys.argv) > 2 else sys.argv[1]
+    parser = create_parser("Interactive intersection curves extraction", mesh_args=2)
+    parser.epilog = """
+Controls:
+  N            Randomize mesh orientations
+  Mouse drag   Move meshes / rotate camera
+"""
+    args = parser.parse_args()
+    mesh_file1 = args.mesh1
+    mesh_file2 = args.mesh2 if args.mesh2 else args.mesh1
 
     # Load meshes with random rotations at specified positions
     # Use dynamic=True to test OffsetBlockedArray
@@ -177,33 +170,14 @@ def main():
 
     renderer.AddActor(curve_actor)
 
-    # Create text actors for bottom strip
-    total_polygons = mesh_data0.mesh.number_of_faces + mesh_data1.mesh.number_of_faces
-
+    # Create text actor for timing
     text_time = create_text_actor(
         "Intersection curve time: 0 ms",
         font_size=38,
-        position=(0.03, 0.30),
+        position=(0.03, 0.50),
         justification='left'
     )
     renderer_text.AddViewProp(text_time)
-
-    text_polygons = create_text_actor(
-        f"Total polygons: {total_polygons}",
-        font_size=38,
-        position=(0.03, 0.70),
-        justification='left'
-    )
-    renderer_text.AddViewProp(text_polygons)
-
-    text_help = create_text_actor(
-        "Press N to randomize orientations\nDrag meshes to interact\n\nPowered by trueform",
-        font_size=38,
-        position=(0.97, 0.55),
-        justification='right'
-    )
-    text_help.GetTextProperty().SetLineSpacing(1.4)
-    renderer_text.AddViewProp(text_help)
 
     # Setup render window and interactor
     render_window = vtk.vtkRenderWindow()

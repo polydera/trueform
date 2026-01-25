@@ -1,22 +1,11 @@
 """
 Interactive isoband extraction example with VTK
 
-Features:
-- Extract isobands (regions between threshold values) from scalar field on mesh
-- Scroll wheel (with Ctrl) to move isoband levels
-- Press 'n' to randomize the cutting plane
-- Real-time performance metrics for isoband extraction
-- Dual viewport showing original mesh with curves (left) and extracted bands (right)
-
-Usage:
-    python isobands.py mesh.stl
-
 The scalar field is computed as signed distance from a random plane.
 Multiple isobands are extracted simultaneously with every other band selected.
 Boundary curves between bands are visualized as red tubes.
 Extraction time is averaged over the last 100 frames.
 """
-import sys
 
 import vtk
 import numpy as np
@@ -32,6 +21,7 @@ from util import (
     RollingAverage,
     format_time_ms,
     create_text_actor,
+    create_parser,
 )
 
 # Set to True to test dynamic mesh (OffsetBlockedArray)
@@ -181,11 +171,15 @@ class IsobandInteractor(BaseInteractor):
 
 def main():
     # Parse command line arguments
-    if len(sys.argv) < 2:
-        print("Usage: python isobands.py mesh.stl")
-        sys.exit(1)
-
-    mesh_file = sys.argv[1]
+    parser = create_parser("Interactive isoband extraction", mesh_args=1)
+    parser.epilog = """
+Controls:
+  N              Randomize cutting plane
+  Ctrl + Scroll  Move isoband levels
+  Mouse drag     Rotate camera
+"""
+    args = parser.parse_args()
+    mesh_file = args.mesh
 
     # Load mesh
     faces, points = tf.read_stl(mesh_file)
@@ -273,27 +267,10 @@ def main():
     text_time = create_text_actor(
         "Isobands time: 0 ms",
         font_size=38,
-        position=(0.03, 0.30),
+        position=(0.03, 0.50),
         justification='left'
     )
     renderer_text.AddViewProp(text_time)
-
-    text_instructions = create_text_actor(
-        "Press N to randomize plane",
-        font_size=38,
-        position=(0.03, 0.70),
-        justification='left'
-    )
-    renderer_text.AddViewProp(text_instructions)
-
-    text_help = create_text_actor(
-        "Hold Ctrl and scroll to move\n\nPowered by trueform",
-        font_size=38,
-        position=(0.97, 0.55),
-        justification='right'
-    )
-    text_help.GetTextProperty().SetLineSpacing(1.4)
-    renderer_text.AddViewProp(text_help)
 
     # === RENDER WINDOW AND INTERACTOR ===
 

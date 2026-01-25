@@ -1,20 +1,10 @@
 """
 Interactive isocontour extraction example with VTK
 
-Features:
-- Extract multiple isocontours from scalar field on mesh
-- Scroll wheel (with Ctrl) to move isocontour levels
-- Press 'n' to randomize the cutting plane
-- Real-time performance metrics for isocontour extraction
-
-Usage:
-    python isocontours.py mesh.stl
-
 The scalar field is computed as signed distance from a random plane.
 Multiple isocontour levels are extracted simultaneously and visualized as tubes.
 Extraction time is averaged over the last 100 frames.
 """
-import sys
 
 import vtk
 import numpy as np
@@ -31,6 +21,7 @@ from util import (
     format_time_ms,
     create_text_actor,
     create_renderer_with_text_strip,
+    create_parser,
 )
 
 # Set to True to test dynamic mesh (OffsetBlockedArray)
@@ -64,14 +55,16 @@ class IsocontourInteractor(BaseInteractor):
         # Add custom event handlers for scrolling and keys
         self.AddObserver("KeyPressEvent", self.on_key_press)
         self.AddObserver("MouseWheelForwardEvent", self.on_mouse_wheel_forward)
-        self.AddObserver("MouseWheelBackwardEvent", self.on_mouse_wheel_backward)
+        self.AddObserver("MouseWheelBackwardEvent",
+                         self.on_mouse_wheel_backward)
 
     def reset_plane(self):
         """Create a new random plane and compute scalar field"""
         # Create random plane through a random point
         random_normal = np.random.randn(3).astype(np.float32)
         random_normal /= np.linalg.norm(random_normal)
-        random_point = self.mesh.points[np.random.randint(0, len(self.mesh.points))]
+        random_point = self.mesh.points[np.random.randint(
+            0, len(self.mesh.points))]
 
         plane = tf.Plane.from_point_normal(random_point, random_normal)
 
@@ -99,19 +92,22 @@ class IsocontourInteractor(BaseInteractor):
         # Generate evenly spaced thresholds offset by wrapped_offset
         # Extend below and above the range so wrapping is seamless
         thresholds = np.array(
-            [self.min_d + wrapped_offset + i * self.spacing for i in range(-1, N + 2)],
+            [self.min_d + wrapped_offset + i *
+                self.spacing for i in range(-1, N + 2)],
             dtype=self.mesh.dtype
         )
 
         # Extract isocontours with timing
         start_time = time_module.perf_counter()
-        paths, curve_points = tf.isocontours(self.mesh, self.scalars, thresholds)
+        paths, curve_points = tf.isocontours(
+            self.mesh, self.scalars, thresholds)
         elapsed = time_module.perf_counter() - start_time
 
         # Update timing
         self.times.add(elapsed)
         avg_time = self.times.get_average()
-        self.text_actor.SetInput(f"Isocontours time: {format_time_ms(avg_time)}")
+        self.text_actor.SetInput(
+            f"Isocontours time: {format_time_ms(avg_time)}")
 
         # Convert curves to polydata (no tube filter needed!)
         if len(paths) > 0 and len(curve_points) > 0:
@@ -161,11 +157,15 @@ class IsocontourInteractor(BaseInteractor):
 
 def main():
     # Parse command line arguments
-    if len(sys.argv) < 2:
-        print("Usage: python isocontours.py mesh.stl")
-        sys.exit(1)
-
-    mesh_file = sys.argv[1]
+    parser = create_parser("Interactive isocontour extraction", mesh_args=1)
+    parser.epilog = """
+Controls:
+  N              Randomize cutting plane
+  Ctrl + Scroll  Move isocontour levels
+  Mouse drag     Rotate camera
+"""
+    args = parser.parse_args()
+    mesh_file = args.mesh
 
     # Load mesh
     faces, points = tf.read_stl(mesh_file)
@@ -175,10 +175,12 @@ def main():
         faces = tf.as_offset_blocked(faces)
 
     # Center and scale mesh
-    transform = compute_centering_and_scaling_transform(points, target_radius=10.0)
+    transform = compute_centering_and_scaling_transform(
+        points, target_radius=10.0)
 
     # Apply transformation
-    points_homogeneous = np.hstack([points, np.ones((len(points), 1), dtype=points.dtype)])
+    points_homogeneous = np.hstack(
+        [points, np.ones((len(points), 1), dtype=points.dtype)])
     points_transformed = (transform @ points_homogeneous.T).T[:, :3]
 
     # Create trueform mesh FIRST (this is the primary data structure)
@@ -222,31 +224,14 @@ def main():
 
     renderer.AddActor(curve_actor)
 
-    # Create text actors for bottom strip
+    # Create text actor for timing
     text_time = create_text_actor(
         "Isocontours time: 0 ms",
         font_size=38,
-        position=(0.03, 0.30),
+        position=(0.03, 0.50),
         justification='left'
     )
     renderer_text.AddViewProp(text_time)
-
-    text_instructions = create_text_actor(
-        "Press N to randomize plane",
-        font_size=38,
-        position=(0.03, 0.70),
-        justification='left'
-    )
-    renderer_text.AddViewProp(text_instructions)
-
-    text_help = create_text_actor(
-        "Hold Ctrl and scroll to move\n\nPowered by trueform",
-        font_size=38,
-        position=(0.97, 0.55),
-        justification='right'
-    )
-    text_help.GetTextProperty().SetLineSpacing(1.4)
-    renderer_text.AddViewProp(text_help)
 
     # Setup render window and interactor
     render_window = vtk.vtkRenderWindow()
