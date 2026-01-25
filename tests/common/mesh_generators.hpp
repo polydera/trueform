@@ -297,4 +297,40 @@ auto create_grid_points_3d(std::size_t nx, std::size_t ny, std::size_t nz)
     return result;
 }
 
+// =============================================================================
+// Dynamic Mesh Conversion Utilities
+// =============================================================================
+
+/**
+ * @brief Convert a fixed-size polygons_buffer to dynamic
+ */
+template <typename Index, typename Real, std::size_t Dims, std::size_t N>
+auto to_dynamic(const tf::polygons_buffer<Index, Real, Dims, N>& fixed)
+    -> tf::polygons_buffer<Index, Real, Dims, tf::dynamic_size>
+{
+    tf::polygons_buffer<Index, Real, Dims, tf::dynamic_size> result;
+
+    for (const auto& pt : fixed.points()) {
+        result.points_buffer().push_back(pt);
+    }
+
+    for (const auto& face : fixed.faces()) {
+        result.faces_buffer().push_back(tf::make_range(face));
+    }
+
+    return result;
+}
+
+/**
+ * @brief Conditionally convert to dynamic based on template bool
+ */
+template <bool ToDynamic, typename Index, typename Real, std::size_t Dims, std::size_t N>
+auto maybe_as_dynamic(tf::polygons_buffer<Index, Real, Dims, N>&& mesh) {
+    if constexpr (ToDynamic) {
+        return to_dynamic(mesh);
+    } else {
+        return std::move(mesh);
+    }
+}
+
 } // namespace tf::test

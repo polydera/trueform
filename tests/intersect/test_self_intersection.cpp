@@ -14,6 +14,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <trueform/trueform.hpp>
 #include "type_traits.hpp"
+#include "mesh_generators.hpp"
 #include <cmath>
 
 // =============================================================================
@@ -54,14 +55,19 @@ auto create_vertical_plane_y0() -> tf::polygons_buffer<Index, Real, 3, 4> {
 // =============================================================================
 
 TEMPLATE_TEST_CASE("self_intersection_concatenation_equivalence", "[self_intersection]",
-    (tf::test::type_pair<std::int32_t, float>),
-    (tf::test::type_pair<std::int64_t, double>))
+    (tf::test::type_pair_dyn<std::int32_t, float, false>),
+    (tf::test::type_pair_dyn<std::int32_t, float, true>),
+    (tf::test::type_pair_dyn<std::int64_t, double, false>),
+    (tf::test::type_pair_dyn<std::int64_t, double, true>))
 {
     using index_t = typename TestType::index_type;
     using real_t = typename TestType::real_type;
+    constexpr bool dyn = TestType::is_dynamic;
 
-    auto plane_h = create_horizontal_plane<index_t, real_t>(real_t(0));
-    auto plane_v = create_vertical_plane_y0<index_t, real_t>();
+    auto plane_h = tf::test::maybe_as_dynamic<dyn>(
+        create_horizontal_plane<index_t, real_t>(real_t(0)));
+    auto plane_v = tf::test::maybe_as_dynamic<dyn>(
+        create_vertical_plane_y0<index_t, real_t>());
 
     // Method 1: Intersection between two separate meshes
     auto curves_ab = tf::make_intersection_curves(plane_h.polygons(), plane_v.polygons());
@@ -93,13 +99,17 @@ TEMPLATE_TEST_CASE("self_intersection_concatenation_equivalence", "[self_interse
 // =============================================================================
 
 TEMPLATE_TEST_CASE("self_intersection_sphere_clean", "[self_intersection]",
-    (tf::test::type_pair<std::int32_t, float>),
-    (tf::test::type_pair<std::int64_t, double>))
+    (tf::test::type_pair_dyn<std::int32_t, float, false>),
+    (tf::test::type_pair_dyn<std::int32_t, float, true>),
+    (tf::test::type_pair_dyn<std::int64_t, double, false>),
+    (tf::test::type_pair_dyn<std::int64_t, double, true>))
 {
     using index_t = typename TestType::index_type;
     using real_t = typename TestType::real_type;
+    constexpr bool dyn = TestType::is_dynamic;
 
-    auto sphere = tf::make_sphere_mesh<index_t>(real_t(1), 20, 20);
+    auto sphere = tf::test::maybe_as_dynamic<dyn>(
+        tf::make_sphere_mesh<index_t>(real_t(1), 20, 20));
     auto curves = tf::make_self_intersection_curves(sphere.polygons());
 
     REQUIRE(curves.paths().size() == 0);
@@ -110,13 +120,17 @@ TEMPLATE_TEST_CASE("self_intersection_sphere_clean", "[self_intersection]",
 // =============================================================================
 
 TEMPLATE_TEST_CASE("self_intersection_box_clean", "[self_intersection]",
-    (tf::test::type_pair<std::int32_t, float>),
-    (tf::test::type_pair<std::int64_t, double>))
+    (tf::test::type_pair_dyn<std::int32_t, float, false>),
+    (tf::test::type_pair_dyn<std::int32_t, float, true>),
+    (tf::test::type_pair_dyn<std::int64_t, double, false>),
+    (tf::test::type_pair_dyn<std::int64_t, double, true>))
 {
     using index_t = typename TestType::index_type;
     using real_t = typename TestType::real_type;
+    constexpr bool dyn = TestType::is_dynamic;
 
-    auto box = tf::make_box_mesh<index_t>(real_t(2), real_t(1), real_t(3));
+    auto box = tf::test::maybe_as_dynamic<dyn>(
+        tf::make_box_mesh<index_t>(real_t(2), real_t(1), real_t(3)));
     auto curves = tf::make_self_intersection_curves(box.polygons());
 
     REQUIRE(curves.paths().size() == 0);
@@ -127,13 +141,17 @@ TEMPLATE_TEST_CASE("self_intersection_box_clean", "[self_intersection]",
 // =============================================================================
 
 TEMPLATE_TEST_CASE("self_intersection_cylinder_clean", "[self_intersection]",
-    (tf::test::type_pair<std::int32_t, float>),
-    (tf::test::type_pair<std::int64_t, double>))
+    (tf::test::type_pair_dyn<std::int32_t, float, false>),
+    (tf::test::type_pair_dyn<std::int32_t, float, true>),
+    (tf::test::type_pair_dyn<std::int64_t, double, false>),
+    (tf::test::type_pair_dyn<std::int64_t, double, true>))
 {
     using index_t = typename TestType::index_type;
     using real_t = typename TestType::real_type;
+    constexpr bool dyn = TestType::is_dynamic;
 
-    auto cylinder = tf::make_cylinder_mesh<index_t>(real_t(1), real_t(2), 20);
+    auto cylinder = tf::test::maybe_as_dynamic<dyn>(
+        tf::make_cylinder_mesh<index_t>(real_t(1), real_t(2), 20));
     auto curves = tf::make_self_intersection_curves(cylinder.polygons());
 
     REQUIRE(curves.paths().size() == 0);
@@ -144,13 +162,17 @@ TEMPLATE_TEST_CASE("self_intersection_cylinder_clean", "[self_intersection]",
 // =============================================================================
 
 TEMPLATE_TEST_CASE("self_intersection_plane_clean", "[self_intersection]",
-    (tf::test::type_pair<std::int32_t, float>),
-    (tf::test::type_pair<std::int64_t, double>))
+    (tf::test::type_pair_dyn<std::int32_t, float, false>),
+    (tf::test::type_pair_dyn<std::int32_t, float, true>),
+    (tf::test::type_pair_dyn<std::int64_t, double, false>),
+    (tf::test::type_pair_dyn<std::int64_t, double, true>))
 {
     using index_t = typename TestType::index_type;
     using real_t = typename TestType::real_type;
+    constexpr bool dyn = TestType::is_dynamic;
 
-    auto plane = tf::make_plane_mesh<index_t>(real_t(2), real_t(2), 10, 10);
+    auto plane = tf::test::maybe_as_dynamic<dyn>(
+        tf::make_plane_mesh<index_t>(real_t(2), real_t(2), 10, 10));
     auto curves = tf::make_self_intersection_curves(plane.polygons());
 
     REQUIRE(curves.paths().size() == 0);
@@ -161,15 +183,20 @@ TEMPLATE_TEST_CASE("self_intersection_plane_clean", "[self_intersection]",
 // =============================================================================
 
 TEMPLATE_TEST_CASE("self_intersection_overlapping_planes", "[self_intersection]",
-    (tf::test::type_pair<std::int32_t, float>),
-    (tf::test::type_pair<std::int64_t, double>))
+    (tf::test::type_pair_dyn<std::int32_t, float, false>),
+    (tf::test::type_pair_dyn<std::int32_t, float, true>),
+    (tf::test::type_pair_dyn<std::int64_t, double, false>),
+    (tf::test::type_pair_dyn<std::int64_t, double, true>))
 {
     using index_t = typename TestType::index_type;
     using real_t = typename TestType::real_type;
+    constexpr bool dyn = TestType::is_dynamic;
 
     // Create two crossing planes
-    auto plane_h = create_horizontal_plane<index_t, real_t>(real_t(0));
-    auto plane_v = create_vertical_plane_y0<index_t, real_t>();
+    auto plane_h = tf::test::maybe_as_dynamic<dyn>(
+        create_horizontal_plane<index_t, real_t>(real_t(0)));
+    auto plane_v = tf::test::maybe_as_dynamic<dyn>(
+        create_vertical_plane_y0<index_t, real_t>());
 
     // Concatenate them into a single mesh
     auto combined = tf::concatenated(plane_h.polygons(), plane_v.polygons());
@@ -192,17 +219,22 @@ TEMPLATE_TEST_CASE("self_intersection_overlapping_planes", "[self_intersection]"
 // =============================================================================
 
 TEMPLATE_TEST_CASE("self_intersection_sphere_plane_concatenated", "[self_intersection]",
-    (tf::test::type_pair<std::int32_t, float>),
-    (tf::test::type_pair<std::int64_t, double>))
+    (tf::test::type_pair_dyn<std::int32_t, float, false>),
+    (tf::test::type_pair_dyn<std::int32_t, float, true>),
+    (tf::test::type_pair_dyn<std::int64_t, double, false>),
+    (tf::test::type_pair_dyn<std::int64_t, double, true>))
 {
     using index_t = typename TestType::index_type;
     using real_t = typename TestType::real_type;
+    constexpr bool dyn = TestType::is_dynamic;
 
     // Unit sphere centered at origin
-    auto sphere = tf::make_sphere_mesh<index_t>(real_t(1), 30, 30);
+    auto sphere = tf::test::maybe_as_dynamic<dyn>(
+        tf::make_sphere_mesh<index_t>(real_t(1), 30, 30));
 
     // Horizontal plane at z=0.5
-    auto plane = create_horizontal_plane<index_t, real_t>(real_t(0.5));
+    auto plane = tf::test::maybe_as_dynamic<dyn>(
+        create_horizontal_plane<index_t, real_t>(real_t(0.5)));
 
     // Concatenate into single mesh
     auto combined = tf::concatenated(sphere.polygons(), plane.polygons());
@@ -232,19 +264,26 @@ TEMPLATE_TEST_CASE("self_intersection_sphere_plane_concatenated", "[self_interse
 // =============================================================================
 
 TEMPLATE_TEST_CASE("self_intersection_sphere_multiple_planes_concatenated", "[self_intersection]",
-    (tf::test::type_pair<std::int32_t, float>),
-    (tf::test::type_pair<std::int64_t, double>))
+    (tf::test::type_pair_dyn<std::int32_t, float, false>),
+    (tf::test::type_pair_dyn<std::int32_t, float, true>),
+    (tf::test::type_pair_dyn<std::int64_t, double, false>),
+    (tf::test::type_pair_dyn<std::int64_t, double, true>))
 {
     using index_t = typename TestType::index_type;
     using real_t = typename TestType::real_type;
+    constexpr bool dyn = TestType::is_dynamic;
 
     // Unit sphere centered at origin
-    auto sphere = tf::make_sphere_mesh<index_t>(real_t(1), 50, 50);
+    auto sphere = tf::test::maybe_as_dynamic<dyn>(
+        tf::make_sphere_mesh<index_t>(real_t(1), 50, 50));
 
     // Three horizontal planes at z = -0.5, 0, 0.5
-    auto plane1 = create_horizontal_plane<index_t, real_t>(real_t(-0.5));
-    auto plane2 = create_horizontal_plane<index_t, real_t>(real_t(0));
-    auto plane3 = create_horizontal_plane<index_t, real_t>(real_t(0.5));
+    auto plane1 = tf::test::maybe_as_dynamic<dyn>(
+        create_horizontal_plane<index_t, real_t>(real_t(-0.5)));
+    auto plane2 = tf::test::maybe_as_dynamic<dyn>(
+        create_horizontal_plane<index_t, real_t>(real_t(0)));
+    auto plane3 = tf::test::maybe_as_dynamic<dyn>(
+        create_horizontal_plane<index_t, real_t>(real_t(0.5)));
 
     // Concatenate all into single mesh
     auto combined = tf::concatenated(
@@ -345,14 +384,19 @@ auto create_tall_vertical_plane_y0() -> tf::polygons_buffer<Index, Real, 3, 4> {
 }
 
 TEMPLATE_TEST_CASE("self_intersection_three_planes_vs_vertical_concatenated", "[self_intersection]",
-    (tf::test::type_pair<std::int32_t, float>),
-    (tf::test::type_pair<std::int64_t, double>))
+    (tf::test::type_pair_dyn<std::int32_t, float, false>),
+    (tf::test::type_pair_dyn<std::int32_t, float, true>),
+    (tf::test::type_pair_dyn<std::int64_t, double, false>),
+    (tf::test::type_pair_dyn<std::int64_t, double, true>))
 {
     using index_t = typename TestType::index_type;
     using real_t = typename TestType::real_type;
+    constexpr bool dyn = TestType::is_dynamic;
 
-    auto planes_h = create_three_horizontal_planes<index_t, real_t>();
-    auto plane_v = create_tall_vertical_plane_y0<index_t, real_t>();
+    auto planes_h = tf::test::maybe_as_dynamic<dyn>(
+        create_three_horizontal_planes<index_t, real_t>());
+    auto plane_v = tf::test::maybe_as_dynamic<dyn>(
+        create_tall_vertical_plane_y0<index_t, real_t>());
 
     // Concatenate into single mesh
     auto combined = tf::concatenated(planes_h.polygons(), plane_v.polygons());

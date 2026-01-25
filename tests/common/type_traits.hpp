@@ -59,4 +59,25 @@ using index_types = std::tuple<std::int32_t, std::int64_t>;
  */
 using real_types = std::tuple<float, double>;
 
+/**
+ * @brief Type pair with single dynamic flag for 1-mesh tests
+ */
+template <typename IndexT, typename RealT, bool Dynamic>
+struct type_pair_dyn {
+    using index_type = IndexT;
+    using real_type = RealT;
+    static constexpr bool is_dynamic = Dynamic;
+};
+
+/**
+ * @brief Type pair with two dynamic flags for 2-mesh tests
+ */
+template <typename IndexT, typename RealT, bool Dynamic1, bool Dynamic2>
+struct type_pair_dyn2 {
+    using index_type = IndexT;
+    using real_type = RealT;
+    static constexpr bool is_dynamic1 = Dynamic1;
+    static constexpr bool is_dynamic2 = Dynamic2;
+};
+
 } // namespace tf::test

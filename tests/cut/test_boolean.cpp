@@ -15,6 +15,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <trueform/trueform.hpp>
 #include "type_traits.hpp"
+#include "mesh_generators.hpp"
 #include <cmath>
 
 // =============================================================================
@@ -22,18 +23,28 @@
 // =============================================================================
 
 TEMPLATE_TEST_CASE("boolean_topology_repeated_ops", "[boolean]",
-    (tf::test::type_pair<std::int32_t, double>),
-    (tf::test::type_pair<std::int64_t, double>))
+    (tf::test::type_pair_dyn2<std::int32_t, double, false, false>),
+    (tf::test::type_pair_dyn2<std::int32_t, double, true, false>),
+    (tf::test::type_pair_dyn2<std::int32_t, double, false, true>),
+    (tf::test::type_pair_dyn2<std::int32_t, double, true, true>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, false, false>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, true, false>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, false, true>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, true, true>))
 {
     using index_t = typename TestType::index_type;
     using real_t = typename TestType::real_type;
+    constexpr bool dyn1 = TestType::is_dynamic1;
+    constexpr bool dyn2 = TestType::is_dynamic2;
 
     // Create base sphere
-    auto big_sphere = tf::make_sphere_mesh<index_t>(real_t(10), 40, 40);
+    auto big_sphere = tf::test::maybe_as_dynamic<dyn1>(
+        tf::make_sphere_mesh<index_t>(real_t(10), 40, 40));
     tf::ensure_positive_orientation(big_sphere.polygons());
 
     // Create small sphere for operation
-    auto small_sphere = tf::make_sphere_mesh<index_t>(real_t(0.5), 20, 20);
+    auto small_sphere = tf::test::maybe_as_dynamic<dyn2>(
+        tf::make_sphere_mesh<index_t>(real_t(0.5), 20, 20));
     tf::ensure_positive_orientation(small_sphere.polygons());
 
     // Place small sphere at north pole of big sphere
@@ -92,23 +103,37 @@ TEMPLATE_TEST_CASE("boolean_topology_repeated_ops", "[boolean]",
 // =============================================================================
 
 TEMPLATE_TEST_CASE("boolean_bicylinder_intersection", "[boolean]",
-    (tf::test::type_pair<std::int32_t, double>),
-    (tf::test::type_pair<std::int64_t, double>))
+    (tf::test::type_pair_dyn2<std::int32_t, double, false, false>),
+    (tf::test::type_pair_dyn2<std::int32_t, double, true, false>),
+    (tf::test::type_pair_dyn2<std::int32_t, double, false, true>),
+    (tf::test::type_pair_dyn2<std::int32_t, double, true, true>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, false, false>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, true, false>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, false, true>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, true, true>))
 {
     using index_t = typename TestType::index_type;
     using real_t = typename TestType::real_type;
+    constexpr bool dyn1 = TestType::is_dynamic1;
+    constexpr bool dyn2 = TestType::is_dynamic2;
 
     // Create a cylinder
     real_t radius = real_t(1);
     real_t height = real_t(4);
-    auto cylinder = tf::make_cylinder_mesh<index_t>(radius, height, 400);
-    tf::ensure_positive_orientation(cylinder.polygons());
-    auto triangulated = tf::triangulated(cylinder.polygons());
+    auto cylinder_raw = tf::make_cylinder_mesh<index_t>(radius, height, 400);
+    tf::ensure_positive_orientation(cylinder_raw.polygons());
+    auto triangulated_raw = tf::triangulated(cylinder_raw.polygons());
+
+    auto triangulated = tf::test::maybe_as_dynamic<dyn1>(std::move(triangulated_raw));
 
     // Rotate 90 degrees around X-axis, centered at cylinder's centroid
     auto center = tf::centroid(triangulated.polygons());
-    auto horizontal_cylinder = triangulated.polygons() |
-        tf::tag(tf::make_rotation(tf::deg(real_t(90)), tf::axis<0>, center));
+    auto rotation = tf::make_rotation(tf::deg(real_t(90)), tf::axis<0>, center);
+
+    // Create the rotated cylinder (same mesh, different dynamic flag)
+    auto triangulated2_raw = tf::triangulated(cylinder_raw.polygons());
+    auto triangulated2 = tf::test::maybe_as_dynamic<dyn2>(std::move(triangulated2_raw));
+    auto horizontal_cylinder = triangulated2.polygons() | tf::tag(rotation);
 
     // Boolean intersection creates Steinmetz solid (bicylinder)
     auto [bicylinder, labels] = tf::make_boolean(
@@ -136,20 +161,30 @@ TEMPLATE_TEST_CASE("boolean_bicylinder_intersection", "[boolean]",
 // =============================================================================
 
 TEMPLATE_TEST_CASE("boolean_nested_spheres", "[boolean]",
-    (tf::test::type_pair<std::int32_t, float>),
-    (tf::test::type_pair<std::int64_t, double>))
+    (tf::test::type_pair_dyn2<std::int32_t, float, false, false>),
+    (tf::test::type_pair_dyn2<std::int32_t, float, true, false>),
+    (tf::test::type_pair_dyn2<std::int32_t, float, false, true>),
+    (tf::test::type_pair_dyn2<std::int32_t, float, true, true>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, false, false>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, true, false>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, false, true>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, true, true>))
 {
     using index_t = typename TestType::index_type;
     using real_t = typename TestType::real_type;
+    constexpr bool dyn1 = TestType::is_dynamic1;
+    constexpr bool dyn2 = TestType::is_dynamic2;
 
     // Outer sphere radius 2, inner sphere radius 1
     real_t outer_radius = real_t(2);
     real_t inner_radius = real_t(1);
 
-    auto outer_sphere = tf::make_sphere_mesh<index_t>(outer_radius, 300, 300);
+    auto outer_sphere = tf::test::maybe_as_dynamic<dyn1>(
+        tf::make_sphere_mesh<index_t>(outer_radius, 300, 300));
     tf::ensure_positive_orientation(outer_sphere.polygons());
 
-    auto inner_sphere = tf::make_sphere_mesh<index_t>(inner_radius, 200, 200);
+    auto inner_sphere = tf::test::maybe_as_dynamic<dyn2>(
+        tf::make_sphere_mesh<index_t>(inner_radius, 200, 200));
     tf::ensure_positive_orientation(inner_sphere.polygons());
 
     // Volume formula: V = (4/3) * pi * r^3
@@ -235,17 +270,27 @@ TEMPLATE_TEST_CASE("boolean_nested_spheres", "[boolean]",
 // =============================================================================
 
 TEMPLATE_TEST_CASE("boolean_overlapping_boxes", "[boolean]",
-    (tf::test::type_pair<std::int32_t, float>),
-    (tf::test::type_pair<std::int64_t, double>))
+    (tf::test::type_pair_dyn2<std::int32_t, float, false, false>),
+    (tf::test::type_pair_dyn2<std::int32_t, float, true, false>),
+    (tf::test::type_pair_dyn2<std::int32_t, float, false, true>),
+    (tf::test::type_pair_dyn2<std::int32_t, float, true, true>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, false, false>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, true, false>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, false, true>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, true, true>))
 {
     using index_t = typename TestType::index_type;
     using real_t = typename TestType::real_type;
+    constexpr bool dyn1 = TestType::is_dynamic1;
+    constexpr bool dyn2 = TestType::is_dynamic2;
 
     // Two unit boxes, second translated by (0.5, 0, 0)
-    auto box1 = tf::make_box_mesh<index_t>(real_t(1), real_t(1), real_t(1));
+    auto box1 = tf::test::maybe_as_dynamic<dyn1>(
+        tf::make_box_mesh<index_t>(real_t(1), real_t(1), real_t(1)));
     tf::ensure_positive_orientation(box1.polygons());
 
-    auto box2 = tf::make_box_mesh<index_t>(real_t(1), real_t(1), real_t(1));
+    auto box2 = tf::test::maybe_as_dynamic<dyn2>(
+        tf::make_box_mesh<index_t>(real_t(1), real_t(1), real_t(1)));
     tf::ensure_positive_orientation(box2.polygons());
 
     auto box2_transform = tf::make_transformation_from_translation(
@@ -346,16 +391,26 @@ TEMPLATE_TEST_CASE("boolean_overlapping_boxes", "[boolean]",
 // =============================================================================
 
 TEMPLATE_TEST_CASE("boolean_non_overlapping", "[boolean]",
-    (tf::test::type_pair<std::int32_t, float>),
-    (tf::test::type_pair<std::int64_t, double>))
+    (tf::test::type_pair_dyn2<std::int32_t, float, false, false>),
+    (tf::test::type_pair_dyn2<std::int32_t, float, true, false>),
+    (tf::test::type_pair_dyn2<std::int32_t, float, false, true>),
+    (tf::test::type_pair_dyn2<std::int32_t, float, true, true>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, false, false>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, true, false>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, false, true>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, true, true>))
 {
     using index_t = typename TestType::index_type;
     using real_t = typename TestType::real_type;
+    constexpr bool dyn1 = TestType::is_dynamic1;
+    constexpr bool dyn2 = TestType::is_dynamic2;
 
-    auto box1 = tf::make_box_mesh<index_t>(real_t(1), real_t(1), real_t(1));
+    auto box1 = tf::test::maybe_as_dynamic<dyn1>(
+        tf::make_box_mesh<index_t>(real_t(1), real_t(1), real_t(1)));
     tf::ensure_positive_orientation(box1.polygons());
 
-    auto box2 = tf::make_box_mesh<index_t>(real_t(1), real_t(1), real_t(1));
+    auto box2 = tf::test::maybe_as_dynamic<dyn2>(
+        tf::make_box_mesh<index_t>(real_t(1), real_t(1), real_t(1)));
     tf::ensure_positive_orientation(box2.polygons());
 
     // Translate box2 far away (no overlap)
@@ -406,19 +461,29 @@ TEMPLATE_TEST_CASE("boolean_non_overlapping", "[boolean]",
 // =============================================================================
 
 TEMPLATE_TEST_CASE("boolean_overlapping_spheres", "[boolean]",
-    (tf::test::type_pair<std::int32_t, float>),
-    (tf::test::type_pair<std::int64_t, double>))
+    (tf::test::type_pair_dyn2<std::int32_t, float, false, false>),
+    (tf::test::type_pair_dyn2<std::int32_t, float, true, false>),
+    (tf::test::type_pair_dyn2<std::int32_t, float, false, true>),
+    (tf::test::type_pair_dyn2<std::int32_t, float, true, true>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, false, false>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, true, false>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, false, true>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, true, true>))
 {
     using index_t = typename TestType::index_type;
     using real_t = typename TestType::real_type;
+    constexpr bool dyn1 = TestType::is_dynamic1;
+    constexpr bool dyn2 = TestType::is_dynamic2;
 
     real_t radius = real_t(1);
     real_t separation = real_t(1); // Centers separated by 1 unit (spheres overlap)
 
-    auto sphere1 = tf::make_sphere_mesh<index_t>(radius, 50, 50);
+    auto sphere1 = tf::test::maybe_as_dynamic<dyn1>(
+        tf::make_sphere_mesh<index_t>(radius, 50, 50));
     tf::ensure_positive_orientation(sphere1.polygons());
 
-    auto sphere2 = tf::make_sphere_mesh<index_t>(radius, 50, 50);
+    auto sphere2 = tf::test::maybe_as_dynamic<dyn2>(
+        tf::make_sphere_mesh<index_t>(radius, 50, 50));
     tf::ensure_positive_orientation(sphere2.polygons());
 
     // Translate sphere2 along X-axis
@@ -501,20 +566,30 @@ TEMPLATE_TEST_CASE("boolean_overlapping_spheres", "[boolean]",
 // =============================================================================
 
 TEMPLATE_TEST_CASE("boolean_multi_component", "[boolean]",
-    (tf::test::type_pair<std::int32_t, float>),
-    (tf::test::type_pair<std::int64_t, double>))
+    (tf::test::type_pair_dyn2<std::int32_t, float, false, false>),
+    (tf::test::type_pair_dyn2<std::int32_t, float, true, false>),
+    (tf::test::type_pair_dyn2<std::int32_t, float, false, true>),
+    (tf::test::type_pair_dyn2<std::int32_t, float, true, true>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, false, false>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, true, false>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, false, true>),
+    (tf::test::type_pair_dyn2<std::int64_t, double, true, true>))
 {
     using index_t = typename TestType::index_type;
     using real_t = typename TestType::real_type;
+    constexpr bool dyn1 = TestType::is_dynamic1;
+    constexpr bool dyn2 = TestType::is_dynamic2;
 
     constexpr real_t pi = real_t(3.14159265358979323846);
 
     // Create two separate spheres as a single multi-component mesh
     real_t outer_radius = real_t(2);
-    auto sphere_left = tf::make_sphere_mesh<index_t>(outer_radius, 40, 40);
+    auto sphere_left = tf::test::maybe_as_dynamic<dyn1>(
+        tf::make_sphere_mesh<index_t>(outer_radius, 40, 40));
     tf::ensure_positive_orientation(sphere_left.polygons());
 
-    auto sphere_right = tf::make_sphere_mesh<index_t>(outer_radius, 40, 40);
+    auto sphere_right = tf::test::maybe_as_dynamic<dyn1>(
+        tf::make_sphere_mesh<index_t>(outer_radius, 40, 40));
     tf::ensure_positive_orientation(sphere_right.polygons());
 
     // Translate right sphere far enough to not overlap
@@ -531,7 +606,8 @@ TEMPLATE_TEST_CASE("boolean_multi_component", "[boolean]",
 
     // Create small sphere inside the LEFT sphere
     real_t inner_radius = real_t(1);
-    auto inner_sphere = tf::make_sphere_mesh<index_t>(inner_radius, 30, 30);
+    auto inner_sphere = tf::test::maybe_as_dynamic<dyn2>(
+        tf::make_sphere_mesh<index_t>(inner_radius, 30, 30));
     tf::ensure_positive_orientation(inner_sphere.polygons());
 
     real_t inner_volume = (real_t(4) / real_t(3)) * pi * inner_radius * inner_radius * inner_radius;
