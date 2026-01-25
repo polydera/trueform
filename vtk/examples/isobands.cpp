@@ -44,23 +44,15 @@ public:
   }
 
   auto OnMouseWheelBackward() -> void override {
-    if (this->Interactor->GetShiftKey()) {
-      _offset -= _spacing * 0.1f;
-      update_cut_values();
-      this->Interactor->Render();
-    } else {
-      vtkInteractorStyleTrackballCamera::OnMouseWheelBackward();
-    }
+    _offset -= _spacing * 0.1f;
+    update_cut_values();
+    this->Interactor->Render();
   }
 
   auto OnMouseWheelForward() -> void override {
-    if (this->Interactor->GetShiftKey()) {
-      _offset += _spacing * 0.1f;
-      update_cut_values();
-      this->Interactor->Render();
-    } else {
-      vtkInteractorStyleTrackballCamera::OnMouseWheelForward();
-    }
+    _offset += _spacing * 0.1f;
+    update_cut_values();
+    this->Interactor->Render();
   }
 
 protected:

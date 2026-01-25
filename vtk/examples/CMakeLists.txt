@@ -32,7 +32,6 @@ function(add_vtk_example name)
 endfunction()
 
 # Individual examples
-add_vtk_example(non_simple_edges)
 add_vtk_example(intersection_curves)
 add_vtk_example(boolean)
 add_vtk_example(isocontours)
@@ -41,11 +40,9 @@ add_vtk_example(boundary_paths)
 add_vtk_example(connected_components)
 add_vtk_example(collision)
 add_vtk_example(closest_pair)
-add_vtk_example(shape_histogram)
 
 # Target to build all examples
 add_custom_target(trueform_vtk_examples DEPENDS
-  vtk_example_non_simple_edges
   vtk_example_intersection_curves
   vtk_example_boolean
   vtk_example_isocontours
@@ -54,5 +51,4 @@ add_custom_target(trueform_vtk_examples DEPENDS
   vtk_example_connected_components
   vtk_example_collision
   vtk_example_closest_pair
-  vtk_example_shape_histogram
 )
