@@ -456,6 +456,252 @@ class TestConcatenatedReferentialIntegrity:
 
 
 # ==============================================================================
+# Transformation Tests
+# ==============================================================================
+
+def create_translation_3d(tx, ty, tz, dtype):
+    """Create a 3D translation matrix."""
+    return np.array([
+        [1, 0, 0, tx],
+        [0, 1, 0, ty],
+        [0, 0, 1, tz],
+        [0, 0, 0, 1]
+    ], dtype=dtype)
+
+
+def create_rotation_z_3d(angle_degrees, dtype):
+    """Create a 3D rotation matrix around Z-axis."""
+    angle = np.radians(angle_degrees)
+    cos_a = np.cos(angle)
+    sin_a = np.sin(angle)
+    return np.array([
+        [cos_a, -sin_a, 0, 0],
+        [sin_a,  cos_a, 0, 0],
+        [0,      0,     1, 0],
+        [0,      0,     0, 1]
+    ], dtype=dtype)
+
+
+def create_translation_2d(tx, ty, dtype):
+    """Create a 2D translation matrix."""
+    return np.array([
+        [1, 0, tx],
+        [0, 1, ty],
+        [0, 0, 1]
+    ], dtype=dtype)
+
+
+class TestConcatenatedTransformations:
+    """Tests for concatenated with transformations applied to meshes."""
+
+    def test_mesh_with_translation(self):
+        """Test concatenating mesh with translation transformation."""
+        # Mesh at origin
+        mesh1 = tf.Mesh(
+            np.array([[0, 1, 2]], dtype=np.int32),
+            np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float32)
+        )
+        # Mesh at origin with translation to (10, 0, 0)
+        mesh2 = tf.Mesh(
+            np.array([[0, 1, 2]], dtype=np.int32),
+            np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float32)
+        )
+        mesh2.transformation = create_translation_3d(10, 0, 0, np.float32)
+
+        result_faces, result_points = tf.concatenated([mesh1, mesh2])
+
+        # mesh1 points unchanged
+        np.testing.assert_array_almost_equal(result_points[0], [0, 0, 0])
+        np.testing.assert_array_almost_equal(result_points[1], [1, 0, 0])
+        np.testing.assert_array_almost_equal(result_points[2], [0, 1, 0])
+
+        # mesh2 points translated by (10, 0, 0)
+        np.testing.assert_array_almost_equal(result_points[3], [10, 0, 0])
+        np.testing.assert_array_almost_equal(result_points[4], [11, 0, 0])
+        np.testing.assert_array_almost_equal(result_points[5], [10, 1, 0])
+
+    def test_mesh_with_rotation(self):
+        """Test concatenating mesh with rotation transformation."""
+        # Mesh with point at (1, 0, 0)
+        mesh1 = tf.Mesh(
+            np.array([[0, 1, 2]], dtype=np.int32),
+            np.array([[0, 0, 0], [1, 0, 0], [0, 0, 1]], dtype=np.float32)
+        )
+        # Mesh rotated 90° around Z - point at (1, 0, 0) should become (0, 1, 0)
+        mesh2 = tf.Mesh(
+            np.array([[0, 1, 2]], dtype=np.int32),
+            np.array([[0, 0, 0], [1, 0, 0], [0, 0, 1]], dtype=np.float32)
+        )
+        mesh2.transformation = create_rotation_z_3d(90, np.float32)
+
+        result_faces, result_points = tf.concatenated([mesh1, mesh2])
+
+        # mesh1 points unchanged
+        np.testing.assert_array_almost_equal(result_points[1], [1, 0, 0])
+
+        # mesh2 point at (1, 0, 0) rotated 90° around Z -> (0, 1, 0)
+        np.testing.assert_array_almost_equal(result_points[4], [0, 1, 0], decimal=5)
+
+    def test_multiple_meshes_with_transformations(self):
+        """Test concatenating multiple meshes with different transformations."""
+        base_faces = np.array([[0, 1, 2]], dtype=np.int32)
+        base_points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float32)
+
+        mesh1 = tf.Mesh(base_faces.copy(), base_points.copy())
+        # No transformation
+
+        mesh2 = tf.Mesh(base_faces.copy(), base_points.copy())
+        mesh2.transformation = create_translation_3d(5, 0, 0, np.float32)
+
+        mesh3 = tf.Mesh(base_faces.copy(), base_points.copy())
+        mesh3.transformation = create_translation_3d(10, 0, 0, np.float32)
+
+        result_faces, result_points = tf.concatenated([mesh1, mesh2, mesh3])
+
+        # Verify correct number of faces and points
+        assert result_faces.shape == (3, 3)
+        assert result_points.shape == (9, 3)
+
+        # Verify transformations applied
+        # mesh1: origin
+        np.testing.assert_array_almost_equal(result_points[0], [0, 0, 0])
+        # mesh2: translated by (5, 0, 0)
+        np.testing.assert_array_almost_equal(result_points[3], [5, 0, 0])
+        # mesh3: translated by (10, 0, 0)
+        np.testing.assert_array_almost_equal(result_points[6], [10, 0, 0])
+
+    def test_mesh_no_transformation_returns_original(self):
+        """Test that mesh without transformation returns unchanged points."""
+        mesh = tf.Mesh(
+            np.array([[0, 1, 2]], dtype=np.int32),
+            np.array([[1.5, 2.5, 3.5], [4.5, 5.5, 6.5], [7.5, 8.5, 9.5]], dtype=np.float32)
+        )
+        # No transformation set
+
+        result_faces, result_points = tf.concatenated([mesh])
+
+        np.testing.assert_array_equal(result_points, mesh.points)
+
+    def test_edgemesh_with_translation(self):
+        """Test concatenating edge meshes with translation transformation."""
+        # EdgeMesh at origin
+        em1 = tf.EdgeMesh(
+            np.array([[0, 1]], dtype=np.int32),
+            np.array([[0, 0, 0], [1, 0, 0]], dtype=np.float32)
+        )
+        # EdgeMesh with translation
+        em2 = tf.EdgeMesh(
+            np.array([[0, 1]], dtype=np.int32),
+            np.array([[0, 0, 0], [1, 0, 0]], dtype=np.float32)
+        )
+        em2.transformation = create_translation_3d(0, 5, 0, np.float32)
+
+        result_edges, result_points = tf.concatenated([em1, em2])
+
+        # em1 points unchanged
+        np.testing.assert_array_almost_equal(result_points[0], [0, 0, 0])
+        np.testing.assert_array_almost_equal(result_points[1], [1, 0, 0])
+
+        # em2 points translated by (0, 5, 0)
+        np.testing.assert_array_almost_equal(result_points[2], [0, 5, 0])
+        np.testing.assert_array_almost_equal(result_points[3], [1, 5, 0])
+
+    def test_2d_mesh_with_translation(self):
+        """Test concatenating 2D meshes with translation transformation."""
+        mesh1 = tf.Mesh(
+            np.array([[0, 1, 2]], dtype=np.int32),
+            np.array([[0, 0], [1, 0], [0, 1]], dtype=np.float32)
+        )
+        mesh2 = tf.Mesh(
+            np.array([[0, 1, 2]], dtype=np.int32),
+            np.array([[0, 0], [1, 0], [0, 1]], dtype=np.float32)
+        )
+        mesh2.transformation = create_translation_2d(3, 4, np.float32)
+
+        result_faces, result_points = tf.concatenated([mesh1, mesh2])
+
+        # mesh1 points unchanged
+        np.testing.assert_array_almost_equal(result_points[0], [0, 0])
+
+        # mesh2 points translated by (3, 4)
+        np.testing.assert_array_almost_equal(result_points[3], [3, 4])
+        np.testing.assert_array_almost_equal(result_points[4], [4, 4])
+        np.testing.assert_array_almost_equal(result_points[5], [3, 5])
+
+    def test_dynamic_mesh_with_transformation(self):
+        """Test concatenating dynamic mesh with transformation."""
+        # Fixed mesh
+        mesh1 = tf.Mesh(
+            np.array([[0, 1, 2]], dtype=np.int32),
+            np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float32)
+        )
+
+        # Dynamic mesh with transformation
+        offsets = np.array([0, 3, 7], dtype=np.int32)
+        data = np.array([0, 1, 2, 0, 2, 3, 4], dtype=np.int32)
+        mesh2 = tf.Mesh(
+            tf.OffsetBlockedArray(offsets, data),
+            np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0.5, 0.5, 0]], dtype=np.float32)
+        )
+        mesh2.transformation = create_translation_3d(10, 10, 10, np.float32)
+
+        result_faces, result_points = tf.concatenated([mesh1, mesh2])
+
+        # Result should be dynamic
+        assert isinstance(result_faces, tf.OffsetBlockedArray)
+
+        # mesh1 points unchanged
+        np.testing.assert_array_almost_equal(result_points[0], [0, 0, 0])
+
+        # mesh2 points translated by (10, 10, 10)
+        np.testing.assert_array_almost_equal(result_points[3], [10, 10, 10])
+        np.testing.assert_array_almost_equal(result_points[7], [10.5, 10.5, 10])
+
+    def test_transformation_preserves_dtype(self):
+        """Test that transformation preserves point dtype."""
+        for dtype in [np.float32, np.float64]:
+            mesh1 = tf.Mesh(
+                np.array([[0, 1, 2]], dtype=np.int32),
+                np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=dtype)
+            )
+            mesh2 = tf.Mesh(
+                np.array([[0, 1, 2]], dtype=np.int32),
+                np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=dtype)
+            )
+            mesh2.transformation = create_translation_3d(5, 0, 0, dtype)
+
+            _, result_points = tf.concatenated([mesh1, mesh2])
+
+            assert result_points.dtype == dtype
+
+    def test_transformation_with_referential_integrity(self):
+        """Test that face indices correctly reference transformed points."""
+        mesh1 = tf.Mesh(
+            np.array([[0, 1, 2]], dtype=np.int32),
+            np.array([[0, 0, 0], [10, 0, 0], [0, 10, 0]], dtype=np.float32)
+        )
+        mesh2 = tf.Mesh(
+            np.array([[0, 1, 2]], dtype=np.int32),
+            np.array([[0, 0, 0], [10, 0, 0], [0, 10, 0]], dtype=np.float32)
+        )
+        mesh2.transformation = create_translation_3d(100, 100, 100, np.float32)
+
+        result_faces, result_points = tf.concatenated([mesh1, mesh2])
+
+        # Verify first face references mesh1 points (untransformed)
+        face0_pts = result_points[result_faces[0]]
+        np.testing.assert_array_almost_equal(face0_pts[0], [0, 0, 0])
+        np.testing.assert_array_almost_equal(face0_pts[1], [10, 0, 0])
+        np.testing.assert_array_almost_equal(face0_pts[2], [0, 10, 0])
+
+        # Verify second face references mesh2 points (transformed)
+        face1_pts = result_points[result_faces[1]]
+        np.testing.assert_array_almost_equal(face1_pts[0], [100, 100, 100])
+        np.testing.assert_array_almost_equal(face1_pts[1], [110, 100, 100])
+        np.testing.assert_array_almost_equal(face1_pts[2], [100, 110, 100])
+
+
+# ==============================================================================
 # Main runner
 # ==============================================================================
 
