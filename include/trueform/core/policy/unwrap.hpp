@@ -45,6 +45,9 @@ template <typename T, typename F> auto wrap_map(T &&t, const F& map) -> decltype
 }
 
 namespace policy {
+using ::tf::unwrap;
+using ::tf::wrap_like;
+
 struct plain_op {};
 template <typename T> auto operator|(T &&t, plain_op) -> decltype(auto) {
   return wrap_like(t, unwrapped(static_cast<T &&>(t)));
