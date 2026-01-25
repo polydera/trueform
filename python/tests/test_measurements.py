@@ -171,7 +171,8 @@ def test_area_matches_manual(dtype):
 def test_mesh_area_box(dtype, index_dtype):
     """Box surface area matches 2(wh + hd + wd)."""
     w, h, d = 2.0, 3.0, 4.0
-    faces, points = tf.make_box_mesh(w, h, d, dtype=dtype, index_dtype=index_dtype)
+    faces, points = tf.make_box_mesh(
+        w, h, d, dtype=dtype, index_dtype=index_dtype)
 
     computed = tf.area((faces, points))
     expected = 2 * (w * h + h * d + w * d)
@@ -203,7 +204,8 @@ def test_mesh_area_unit_cube(dtype):
 def test_mesh_area_sphere(dtype):
     """Sphere surface area matches 4*pi*r^2."""
     radius = 2.0
-    faces, points = tf.make_sphere_mesh(radius, stacks=40, segments=40, dtype=dtype)
+    faces, points = tf.make_sphere_mesh(
+        radius, stacks=40, segments=40, dtype=dtype)
 
     computed = tf.area((faces, points))
     expected = 4 * np.pi * radius**2
@@ -215,7 +217,8 @@ def test_mesh_area_sphere(dtype):
 def test_mesh_area_cylinder(dtype):
     """Cylinder surface area matches 2*pi*r^2 + 2*pi*r*h."""
     radius, height = 1.5, 3.0
-    faces, points = tf.make_cylinder_mesh(radius, height, segments=64, dtype=dtype)
+    faces, points = tf.make_cylinder_mesh(
+        radius, height, segments=64, dtype=dtype)
 
     computed = tf.area((faces, points))
     expected = 2 * np.pi * radius**2 + 2 * np.pi * radius * height
@@ -227,7 +230,8 @@ def test_mesh_area_cylinder(dtype):
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 def test_mesh_area_matches_manual(dtype, index_dtype):
     """Mesh area matches manual computation."""
-    faces, points = tf.make_box_mesh(2.0, 3.0, 4.0, dtype=dtype, index_dtype=index_dtype)
+    faces, points = tf.make_box_mesh(
+        2.0, 3.0, 4.0, dtype=dtype, index_dtype=index_dtype)
 
     computed = tf.area((faces, points))
     expected = manual_mesh_area(faces, points)
@@ -243,7 +247,8 @@ def test_mesh_area_matches_manual(dtype, index_dtype):
 def test_volume_box(dtype, index_dtype):
     """Box volume matches w*h*d."""
     w, h, d = 2.0, 3.0, 4.0
-    faces, points = tf.make_box_mesh(w, h, d, dtype=dtype, index_dtype=index_dtype)
+    faces, points = tf.make_box_mesh(
+        w, h, d, dtype=dtype, index_dtype=index_dtype)
 
     computed = tf.volume((faces, points))
     expected = w * h * d
@@ -275,7 +280,8 @@ def test_volume_unit_cube(dtype):
 def test_volume_sphere(dtype):
     """Sphere volume matches (4/3)*pi*r^3."""
     radius = 2.0
-    faces, points = tf.make_sphere_mesh(radius, stacks=40, segments=40, dtype=dtype)
+    faces, points = tf.make_sphere_mesh(
+        radius, stacks=40, segments=40, dtype=dtype)
 
     computed = tf.volume((faces, points))
     expected = (4 / 3) * np.pi * radius**3
@@ -287,7 +293,8 @@ def test_volume_sphere(dtype):
 def test_volume_cylinder(dtype):
     """Cylinder volume matches pi*r^2*h."""
     radius, height = 1.5, 3.0
-    faces, points = tf.make_cylinder_mesh(radius, height, segments=64, dtype=dtype)
+    faces, points = tf.make_cylinder_mesh(
+        radius, height, segments=64, dtype=dtype)
 
     computed = tf.volume((faces, points))
     expected = np.pi * radius**2 * height
@@ -299,7 +306,8 @@ def test_volume_cylinder(dtype):
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 def test_volume_matches_manual(dtype, index_dtype):
     """Volume matches manual signed volume computation."""
-    faces, points = tf.make_box_mesh(2.0, 3.0, 4.0, dtype=dtype, index_dtype=index_dtype)
+    faces, points = tf.make_box_mesh(
+        2.0, 3.0, 4.0, dtype=dtype, index_dtype=index_dtype)
 
     computed = tf.volume((faces, points))
     expected = abs(manual_signed_volume(faces, points))
@@ -314,7 +322,8 @@ def test_volume_matches_manual(dtype, index_dtype):
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 def test_signed_volume_positive(dtype, index_dtype):
     """Outward-facing normals give positive volume."""
-    faces, points = tf.make_box_mesh(1.0, 1.0, 1.0, dtype=dtype, index_dtype=index_dtype)
+    faces, points = tf.make_box_mesh(
+        1.0, 1.0, 1.0, dtype=dtype, index_dtype=index_dtype)
 
     sv = tf.signed_volume((faces, points))
     assert sv > 0, "Outward normals should give positive volume"
@@ -349,7 +358,8 @@ def test_volume_is_abs_signed_volume(dtype):
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 def test_signed_volume_matches_manual(dtype, index_dtype):
     """Signed volume matches manual computation."""
-    faces, points = tf.make_box_mesh(2.0, 3.0, 4.0, dtype=dtype, index_dtype=index_dtype)
+    faces, points = tf.make_box_mesh(
+        2.0, 3.0, 4.0, dtype=dtype, index_dtype=index_dtype)
 
     computed = tf.signed_volume((faces, points))
     expected = manual_signed_volume(faces, points)
@@ -386,7 +396,8 @@ def test_volume_requires_3d():
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 def test_area_2d_mesh(dtype, index_dtype):
     """Area works for 2D mesh (plane)."""
-    faces, points = tf.make_plane_mesh(4.0, 3.0, dtype=dtype, index_dtype=index_dtype)
+    faces, points = tf.make_plane_mesh(
+        4.0, 3.0, dtype=dtype, index_dtype=index_dtype)
 
     computed = tf.area((faces, points))
     expected = 4.0 * 3.0
