@@ -1,8 +1,9 @@
 # trueform
 
-[![Tests](https://github.com/xlabmedical/trueform/actions/workflows/tests.yml/badge.svg)](https://github.com/xlabmedical/trueform/actions/workflows/tests.yml)
-[![Docs](https://github.com/xlabmedical/trueform/actions/workflows/generate-docs.yml/badge.svg)](https://github.com/xlabmedical/trueform/actions/workflows/generate-docs.yml)
-[![PyPI](https://github.com/xlabmedical/trueform/actions/workflows/build-python.yml/badge.svg)](https://github.com/xlabmedical/trueform/actions/workflows/build-python.yml)
+[![Tests](https://github.com/polydera/trueform/actions/workflows/tests.yml/badge.svg)](https://github.com/polydera/trueform/actions/workflows/tests.yml)
+[![Docs](https://github.com/polydera/trueform/actions/workflows/generate-docs.yml/badge.svg)](https://github.com/polydera/trueform/actions/workflows/generate-docs.yml)
+[![Build](https://github.com/polydera/trueform/actions/workflows/build-python.yml/badge.svg)](https://github.com/polydera/trueform/actions/workflows/build-python.yml)
+[![PyPI](https://img.shields.io/pypi/v/trueform)](https://pypi.org/project/trueform/)
 
 Real-time geometric processing. Easy to use, robust on real-world data.
 
