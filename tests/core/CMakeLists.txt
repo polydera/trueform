@@ -3,6 +3,7 @@ add_executable(trueform_core_tests
   test_closest_metric_point_pair.cpp
   test_intersects.cpp
   test_ray_cast.cpp
+  test_transformed.cpp
 )
 
 target_link_libraries(trueform_core_tests PRIVATE trueform_test_common)

@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 #include "./aabb_like.hpp"
 #include "./base/aabb.hpp"
@@ -583,10 +583,7 @@ auto transformed(const line<Dims, Policy0, Policy1> &line,
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const plane<Dims, Policy> &plane,
                  const frame_like<Dims, U> &frame) {
-  auto inv_frame = tf::make_frame_like(
-      tf::linalg::make_transpose_view(frame.inverse_transformation()),
-      tf::linalg::make_transpose_view(frame.transformation()));
-  auto normal = transformed(plane.normal, inv_frame);
+  auto normal = transformed_normal(plane.normal, frame);
   tf::coordinate_type<U> d = plane.d;
   // we have a translation
   if constexpr (Dims + 1 ==
@@ -1072,10 +1069,7 @@ template <std::size_t Dims, typename Policy, typename Base, typename U>
 auto transformed(const tag_normal<Dims, Policy, Base> &_this,
                  const frame_like<Dims, U> &frame) {
   auto base = transformed(unwrap(_this), frame);
-  auto inv_frame = tf::make_frame_like(
-      tf::linalg::make_transpose_view(frame.inverse_transformation()),
-      tf::linalg::make_transpose_view(frame.transformation()));
-  return tf::tag_normal(transformed(_this.normal(), inv_frame),
+  return tf::tag_normal(tf::transformed_normal(_this.normal(), frame),
                         std::move(base));
 }
 

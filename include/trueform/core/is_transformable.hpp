@@ -29,7 +29,7 @@ struct is_transformable<
 template <typename... Ts, typename U>
 struct is_transformable<tf::tuple<Ts...>, U>
     : std::integral_constant<bool,
-                             (... && detail::is_transformable<Ts, U>::value)> {
+                             (... || detail::is_transformable<Ts, U>::value)> {
 };
 } // namespace detail
 
