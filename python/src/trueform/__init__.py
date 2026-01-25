@@ -30,6 +30,8 @@ from ._spatial import neighbor_search, gather_intersecting_ids, gather_ids_withi
 from ._core.transformed import transformed
 from ._geometry import fit_rigid_alignment, fit_obb_alignment, fit_knn_alignment, chamfer_error, triangulated
 from ._geometry import normals, point_normals, principal_curvatures, shape_index, ensure_positive_orientation
+from ._geometry import make_sphere_mesh, make_cylinder_mesh, make_box_mesh, make_plane_mesh
+from ._geometry import signed_volume, volume, area
 
 # IO functions
 from ._io import read_stl, write_stl, read_obj, write_obj
@@ -95,6 +97,13 @@ __all__ = [
     'principal_curvatures',
     'shape_index',
     'ensure_positive_orientation',
+    'make_sphere_mesh',
+    'make_cylinder_mesh',
+    'make_box_mesh',
+    'make_plane_mesh',
+    'signed_volume',
+    'volume',
+    'area',
     # IO
     'read_stl',
     'write_stl',

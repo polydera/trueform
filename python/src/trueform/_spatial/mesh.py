@@ -181,7 +181,8 @@ class Mesh:
                 )
 
             # Ensure C-contiguous and store
-            self._faces = ensure_contiguous(faces)
+            faces = ensure_contiguous(faces)
+            self._faces = faces
 
             # Determine index type
             index_type = "Int" if faces.dtype == np.int32 else "Int64"

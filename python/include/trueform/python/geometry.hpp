@@ -30,6 +30,10 @@ void register_principal_curvatures(nanobind::module_ &m);
 
 void register_ensure_positive_orientation(nanobind::module_ &m);
 
+void register_make_mesh_primitives(nanobind::module_ &m);
+
+void register_measurements(nanobind::module_ &m);
+
 void register_geometry_module(nanobind::module_ &m);
 
 } // namespace tf::py

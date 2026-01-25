@@ -17,6 +17,13 @@ from .point_normals import point_normals
 from .principal_curvatures import principal_curvatures
 from .shape_index import shape_index
 from .ensure_positive_orientation import ensure_positive_orientation
+from .make_mesh_primitives import (
+    make_sphere_mesh,
+    make_cylinder_mesh,
+    make_box_mesh,
+    make_plane_mesh,
+)
+from .measurements import signed_volume, volume, area
 
 __all__ = [
     "fit_rigid_alignment",
@@ -29,4 +36,11 @@ __all__ = [
     "principal_curvatures",
     "shape_index",
     "ensure_positive_orientation",
+    "make_sphere_mesh",
+    "make_cylinder_mesh",
+    "make_box_mesh",
+    "make_plane_mesh",
+    "signed_volume",
+    "volume",
+    "area",
 ]

@@ -16,7 +16,8 @@ from .._dispatch import extract_meta, build_suffix, InputMeta
 
 
 def triangulated(
-    data: Union[np.ndarray, Mesh, Tuple[np.ndarray, np.ndarray], Tuple[OffsetBlockedArray, np.ndarray]]
+    data: Union[np.ndarray, Mesh, Tuple[np.ndarray, np.ndarray],
+                Tuple[OffsetBlockedArray, np.ndarray]]
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Triangulate polygons into triangles.
