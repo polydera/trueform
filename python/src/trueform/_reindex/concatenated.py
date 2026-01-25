@@ -13,14 +13,28 @@ from .._spatial import Mesh, EdgeMesh
 from .._core import OffsetBlockedArray
 
 
+def _apply_transformation(points: np.ndarray, transformation: np.ndarray) -> np.ndarray:
+    """Apply transformation matrix to points array, or return unchanged if None."""
+    if transformation is None:
+        return points
+    dims = points.shape[1]
+    ones = np.ones((len(points), 1), dtype=points.dtype)
+    homogeneous = np.hstack([points, ones])
+    transformed = (transformation @ homogeneous.T).T[:, :dims]
+    return transformed.astype(points.dtype)
+
+
 def concatenated(
-    data: Union[List[Tuple[np.ndarray, np.ndarray]], List[Mesh], List[EdgeMesh]]
+    data: Union[List[Tuple[np.ndarray, np.ndarray]],
+                List[Mesh], List[EdgeMesh]]
 ) -> Union[Tuple[np.ndarray, np.ndarray], Tuple[OffsetBlockedArray, np.ndarray]]:
     """
     Concatenate multiple meshes or edge meshes into a single geometry.
 
     Takes a list of geometric data and merges them into a single unified structure,
     automatically handling index offsetting to maintain referential integrity.
+    If Mesh or EdgeMesh objects have transformations set, they are applied to the
+    points before concatenation.
 
     Parameters
     ----------
@@ -32,6 +46,7 @@ def concatenated(
 
         All geometries must have same dims (point dimensions): all 2D or all 3D.
         Dtypes can be mixed - numpy will handle type promotion automatically.
+        Transformations on Mesh/EdgeMesh objects are applied to points.
 
         Mixing is allowed:
         - Fixed-size with different V (e.g., triangles + quads) → dynamic output
@@ -84,21 +99,22 @@ def concatenated(
     if not data:
         raise ValueError("Cannot concatenate empty list")
 
-    # Normalize input - extract indices and points from Mesh/EdgeMesh objects
     if isinstance(data[0], Mesh):
-        # Check all are Mesh
         if not all(isinstance(item, Mesh) for item in data):
-            raise TypeError("All items must be Mesh objects when first item is Mesh")
-        data_list = [(mesh.faces, mesh.points) for mesh in data]
+            raise TypeError(
+                "All items must be Mesh objects when first item is Mesh")
+        data_list = [(m.faces, _apply_transformation(
+            m.points, m.transformation)) for m in data]
     elif isinstance(data[0], EdgeMesh):
-        # Check all are EdgeMesh
         if not all(isinstance(item, EdgeMesh) for item in data):
-            raise TypeError("All items must be EdgeMesh objects when first item is EdgeMesh")
-        data_list = [(edgemesh.edges, edgemesh.points) for edgemesh in data]
+            raise TypeError(
+                "All items must be EdgeMesh objects when first item is EdgeMesh")
+        data_list = [(e.edges, _apply_transformation(
+            e.points, e.transformation)) for e in data]
     else:
-        # Assume list of tuples
         if not all(isinstance(item, tuple) and len(item) == 2 for item in data):
-            raise TypeError("All items must be (indices, points) tuples when first item is tuple")
+            raise TypeError(
+                "All items must be (indices, points) tuples when first item is tuple")
         data_list = data
 
     # Validate dims and analyze index types
@@ -115,8 +131,10 @@ def concatenated(
     # Determine if we need dynamic output:
     # - Any item is already dynamic (OffsetBlockedArray)
     # - Fixed-size items have different V values (mixed ngon)
-    has_dynamic = any(isinstance(idx, OffsetBlockedArray) for idx, _ in data_list)
-    fixed_items = [(idx, pts) for idx, pts in data_list if not isinstance(idx, OffsetBlockedArray)]
+    has_dynamic = any(isinstance(idx, OffsetBlockedArray)
+                      for idx, _ in data_list)
+    fixed_items = [(idx, pts) for idx, pts in data_list if not isinstance(
+        idx, OffsetBlockedArray)]
 
     if fixed_items:
         v_values = set(idx.shape[1] for idx, _ in fixed_items)
@@ -131,7 +149,8 @@ def concatenated(
     point_offsets = np.concatenate([[0], np.cumsum(point_counts[:-1])])
 
     # Concatenate points
-    concatenated_points = np.concatenate([points for _, points in data_list], axis=0)
+    concatenated_points = np.concatenate(
+        [points for _, points in data_list], axis=0)
 
     if use_dynamic:
         # Dynamic output: convert all to OffsetBlockedArray format
@@ -155,13 +174,15 @@ def concatenated(
         concatenated_offsets = np.concatenate([[0], np.cumsum(block_sizes)])
 
         # Match dtype to input
-        out_dtype = first_indices.dtype if isinstance(first_indices, OffsetBlockedArray) else first_indices.dtype
+        out_dtype = first_indices.dtype if isinstance(
+            first_indices, OffsetBlockedArray) else first_indices.dtype
         concatenated_offsets = concatenated_offsets.astype(out_dtype)
         concatenated_data = concatenated_data.astype(out_dtype)
 
         return OffsetBlockedArray(concatenated_offsets, concatenated_data), concatenated_points
     else:
         # Fixed-size case: all same V, simple concatenation
-        offset_indices = [indices + offset for (indices, _), offset in zip(data_list, point_offsets)]
+        offset_indices = [
+            indices + offset for (indices, _), offset in zip(data_list, point_offsets)]
         concatenated_indices = np.concatenate(offset_indices, axis=0)
         return concatenated_indices, concatenated_points

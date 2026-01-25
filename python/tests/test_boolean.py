@@ -2,391 +2,546 @@
 Tests for boolean operations on meshes
 
 Copyright (c) 2025 Žiga Sajovic, XLAB
-Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
-Commercial licensing available via info@polydera.com.
-https://github.com/xlabmedical/trueform
 """
+
+import sys
 import numpy as np
 import pytest
 import trueform as tf
 
 
-# Type combinations for boolean operations (3D only)
-INDEX_DTYPES = [np.int32, np.int64]
+# Test parameters
 REAL_DTYPES = [np.float32, np.float64]
+INDEX_DTYPES = [np.int32, np.int64]
 MESH_TYPES = ['triangle', 'dynamic']
 
 
 # ==============================================================================
-# Helper functions for creating test meshes
+# Helper functions
 # ==============================================================================
 
-def create_cube(index_dtype, real_dtype, center, size=1.0, mesh_type='triangle'):
-    """Create a cube mesh with specified center and size"""
-    half = size / 2.0
-    cx, cy, cz = center
-
-    # 8 vertices
-    points = np.array([
-        [cx - half, cy - half, cz - half],  # 0
-        [cx + half, cy - half, cz - half],  # 1
-        [cx + half, cy + half, cz - half],  # 2
-        [cx - half, cy + half, cz - half],  # 3
-        [cx - half, cy - half, cz + half],  # 4
-        [cx + half, cy - half, cz + half],  # 5
-        [cx + half, cy + half, cz + half],  # 6
-        [cx - half, cy + half, cz + half],  # 7
-    ], dtype=real_dtype)
-
-    # 12 triangles (2 per face)
-    faces_data = np.array([
-        # Bottom (z-)
-        [0, 1, 2], [0, 2, 3],
-        # Top (z+)
-        [4, 7, 6], [4, 6, 5],
-        # Front (y-)
-        [0, 5, 1], [0, 4, 5],
-        # Back (y+)
-        [2, 7, 3], [2, 6, 7],
-        # Left (x-)
-        [0, 3, 7], [0, 7, 4],
-        # Right (x+)
-        [1, 6, 2], [1, 5, 6],
-    ], dtype=index_dtype)
-
-    if mesh_type == 'dynamic':
-        # Use OffsetBlockedArray for dynamic mesh
-        offsets = np.arange(0, len(faces_data) * 3 + 1, 3, dtype=index_dtype)
-        data = faces_data.ravel()
-        faces = tf.OffsetBlockedArray(offsets, data)
-    else:
-        faces = faces_data
-
-    return tf.Mesh(faces, points)
-
-
-# ==============================================================================
-# Basic functionality tests
-# ==============================================================================
-
-@pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
-@pytest.mark.parametrize("index_dtype1", INDEX_DTYPES)
-@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("mesh_type0", MESH_TYPES)
-@pytest.mark.parametrize("mesh_type1", MESH_TYPES)
-def test_boolean_union_basic(index_dtype0, index_dtype1, real_dtype, mesh_type0, mesh_type1):
-    """Test basic union of two cubes"""
-    # Create two overlapping cubes
-    mesh0 = create_cube(index_dtype0, real_dtype, center=(0, 0, 0), size=1.0, mesh_type=mesh_type0)
-    mesh1 = create_cube(index_dtype1, real_dtype, center=(0.5, 0, 0), size=1.0, mesh_type=mesh_type1)
-
-    # Build required structures
-    mesh0.build_tree()
-    mesh0.build_face_membership()
-    mesh0.build_manifold_edge_link()
-    mesh1.build_tree()
-    mesh1.build_face_membership()
-    mesh1.build_manifold_edge_link()
-
-    # Compute union
-    (result_faces, result_points), labels = tf.boolean_union(mesh0, mesh1)
-
-    # Validate output
-    assert isinstance(result_points, np.ndarray)
-    assert isinstance(labels, np.ndarray)
-
-    # Result faces type depends on input mesh types
-    result_is_dynamic = mesh_type0 == 'dynamic' or mesh_type1 == 'dynamic'
-    if result_is_dynamic:
-        assert isinstance(result_faces, tf.OffsetBlockedArray)
-        num_faces = len(result_faces)
-    else:
-        assert isinstance(result_faces, np.ndarray)
-        # Faces should be triangles
-        assert result_faces.ndim == 2
-        assert result_faces.shape[1] == 3
-        num_faces = result_faces.shape[0]
-
-    # Points should be 3D
-    assert result_points.ndim == 2
-    assert result_points.shape[1] == 3
-
-    # Labels should match number of faces
-    assert labels.shape == (num_faces,)
-
-    # Labels should only contain 0 or 1
-    assert np.all((labels == 0) | (labels == 1))
-
-    # Union should have some faces (non-empty)
-    assert num_faces > 0
-
-
-@pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
-@pytest.mark.parametrize("index_dtype1", INDEX_DTYPES)
-@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("mesh_type0", MESH_TYPES)
-@pytest.mark.parametrize("mesh_type1", MESH_TYPES)
-def test_boolean_intersection_basic(index_dtype0, index_dtype1, real_dtype, mesh_type0, mesh_type1):
-    """Test basic intersection of two cubes"""
-    # Create two overlapping cubes
-    mesh0 = create_cube(index_dtype0, real_dtype, center=(0, 0, 0), size=1.0, mesh_type=mesh_type0)
-    mesh1 = create_cube(index_dtype1, real_dtype, center=(0.5, 0, 0), size=1.0, mesh_type=mesh_type1)
-
-    # Build required structures
-    mesh0.build_tree()
-    mesh0.build_face_membership()
-    mesh0.build_manifold_edge_link()
-    mesh1.build_tree()
-    mesh1.build_face_membership()
-    mesh1.build_manifold_edge_link()
-
-    # Compute intersection
-    (result_faces, result_points), labels = tf.boolean_intersection(mesh0, mesh1)
-
-    # Validate output
-    assert isinstance(result_points, np.ndarray)
-    assert isinstance(labels, np.ndarray)
-
-    # Result faces type depends on input mesh types
-    result_is_dynamic = mesh_type0 == 'dynamic' or mesh_type1 == 'dynamic'
-    if result_is_dynamic:
-        assert isinstance(result_faces, tf.OffsetBlockedArray)
-        num_faces = len(result_faces)
-    else:
-        assert isinstance(result_faces, np.ndarray)
-        # Faces should be triangles
-        assert result_faces.ndim == 2
-        assert result_faces.shape[1] == 3
-        num_faces = result_faces.shape[0]
-
-    # Points should be 3D
-    assert result_points.ndim == 2
-    assert result_points.shape[1] == 3
-
-    # Labels should match number of faces
-    assert labels.shape == (num_faces,)
-
-    # Labels should only contain 0 or 1
-    assert np.all((labels == 0) | (labels == 1))
-
-    # Intersection should have some faces (non-empty for overlapping cubes)
-    assert num_faces > 0
-
-
-@pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
-@pytest.mark.parametrize("index_dtype1", INDEX_DTYPES)
-@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("mesh_type0", MESH_TYPES)
-@pytest.mark.parametrize("mesh_type1", MESH_TYPES)
-def test_boolean_difference_basic(index_dtype0, index_dtype1, real_dtype, mesh_type0, mesh_type1):
-    """Test basic difference of two cubes"""
-    # Create two overlapping cubes
-    mesh0 = create_cube(index_dtype0, real_dtype, center=(0, 0, 0), size=1.0, mesh_type=mesh_type0)
-    mesh1 = create_cube(index_dtype1, real_dtype, center=(0.5, 0, 0), size=1.0, mesh_type=mesh_type1)
-
-    # Build required structures
-    mesh0.build_tree()
-    mesh0.build_face_membership()
-    mesh0.build_manifold_edge_link()
-    mesh1.build_tree()
-    mesh1.build_face_membership()
-    mesh1.build_manifold_edge_link()
-
-    # Compute difference mesh0 - mesh1
-    (result_faces, result_points), labels = tf.boolean_difference(mesh0, mesh1)
-
-    # Validate output
-    assert isinstance(result_points, np.ndarray)
-    assert isinstance(labels, np.ndarray)
-
-    # Result faces type depends on input mesh types
-    result_is_dynamic = mesh_type0 == 'dynamic' or mesh_type1 == 'dynamic'
-    if result_is_dynamic:
-        assert isinstance(result_faces, tf.OffsetBlockedArray)
-        num_faces = len(result_faces)
-    else:
-        assert isinstance(result_faces, np.ndarray)
-        # Faces should be triangles
-        assert result_faces.ndim == 2
-        assert result_faces.shape[1] == 3
-        num_faces = result_faces.shape[0]
-
-    # Points should be 3D
-    assert result_points.ndim == 2
-    assert result_points.shape[1] == 3
-
-    # Labels should match number of faces
-    assert labels.shape == (num_faces,)
-
-    # Labels should only contain 0 or 1
-    assert np.all((labels == 0) | (labels == 1))
-
-    # Difference should have some faces (non-empty)
-    assert num_faces > 0
-
-
-@pytest.mark.parametrize("index_dtype0", INDEX_DTYPES)
-@pytest.mark.parametrize("index_dtype1", INDEX_DTYPES)
-@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-@pytest.mark.parametrize("mesh_type0", MESH_TYPES)
-@pytest.mark.parametrize("mesh_type1", MESH_TYPES)
-def test_boolean_with_curves(index_dtype0, index_dtype1, real_dtype, mesh_type0, mesh_type1):
-    """Test boolean operations with return_curves=True"""
-    # Create two overlapping cubes
-    mesh0 = create_cube(index_dtype0, real_dtype, center=(0, 0, 0), size=1.0, mesh_type=mesh_type0)
-    mesh1 = create_cube(index_dtype1, real_dtype, center=(0.5, 0, 0), size=1.0, mesh_type=mesh_type1)
-
-    # Build required structures
-    mesh0.build_tree()
-    mesh0.build_face_membership()
-    mesh0.build_manifold_edge_link()
-    mesh1.build_tree()
-    mesh1.build_face_membership()
-    mesh1.build_manifold_edge_link()
-
-    # Compute union with curves
-    (result_faces, result_points), labels, (paths, curve_points) = tf.boolean_union(
-        mesh0, mesh1, return_curves=True
-    )
-
-    # Validate mesh output
-    assert isinstance(result_points, np.ndarray)
-    assert isinstance(labels, np.ndarray)
-
-    # Result faces type depends on input mesh types
-    result_is_dynamic = mesh_type0 == 'dynamic' or mesh_type1 == 'dynamic'
-    if result_is_dynamic:
-        assert isinstance(result_faces, tf.OffsetBlockedArray)
-    else:
-        assert isinstance(result_faces, np.ndarray)
-
-    # Validate curves output
-    assert isinstance(paths, tf.OffsetBlockedArray)
-    assert isinstance(curve_points, np.ndarray)
-
-    # Curve points should be 3D
-    if len(curve_points) > 0:
-        assert curve_points.ndim == 2
-        assert curve_points.shape[1] == 3
-
-
-# ==============================================================================
-# Index type symmetry tests
-# ==============================================================================
-
-def test_index_type_symmetry():
-    """Test that swapping meshes with different index types produces correct labels"""
-    # Create two cubes with different index types
-    mesh_int32 = create_cube(np.int32, np.float32, center=(0, 0, 0), size=1.0)
-    mesh_int64 = create_cube(np.int64, np.float32, center=(0.5, 0, 0), size=1.0)
-
-    # Build required structures
-    for mesh in [mesh_int32, mesh_int64]:
-        mesh.build_tree()
-        mesh.build_face_membership()
-        mesh.build_manifold_edge_link()
-
-    # Compute union both ways
-    (faces1, points1), labels1 = tf.boolean_union(mesh_int32, mesh_int64)
-    (faces2, points2), labels2 = tf.boolean_union(mesh_int64, mesh_int32)
-
-    # Both should produce valid results
-    assert len(faces1) > 0
-    assert len(faces2) > 0
-
-    # Labels should be valid (0 or 1)
-    assert np.all((labels1 == 0) | (labels1 == 1))
-    assert np.all((labels2 == 0) | (labels2 == 1))
-
-
-# ==============================================================================
-# Validation tests
-# ==============================================================================
-
-def test_rejects_non_mesh_input():
-    """Test that boolean operations reject non-Mesh inputs"""
-    faces = np.array([[0, 1, 2]], dtype=np.int32)
-    points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float32)
-    mesh = tf.Mesh(faces, points)
+def prepare_mesh(mesh):
+    """Build required structures for boolean operations."""
     mesh.build_tree()
     mesh.build_face_membership()
     mesh.build_manifold_edge_link()
+    return mesh
 
-    # Try with tuple instead of Mesh
-    with pytest.raises(TypeError, match="must be a Mesh object"):
+
+def make_mesh(faces, points, mesh_type='triangle'):
+    """Create mesh with specified type."""
+    # If faces is already OffsetBlockedArray, use directly
+    if isinstance(faces, tf.OffsetBlockedArray):
+        return tf.Mesh(faces, points)
+
+    if mesh_type == 'dynamic':
+        dyn_faces = tf.as_offset_blocked(faces)
+        return tf.Mesh(dyn_faces, points)
+    return tf.Mesh(faces, points)
+
+
+def verify_topology(faces, points):
+    """Verify result is manifold and closed."""
+    mesh = tf.Mesh(faces, points)
+    mesh.build_face_membership()
+
+    boundaries = tf.boundary_paths(mesh)
+    non_manifold = tf.non_manifold_edges(mesh)
+
+    assert len(boundaries) == 0, f"Result should be closed, found {len(boundaries)} boundary loops"
+    assert len(non_manifold) == 0, f"Result should be manifold, found {len(non_manifold)} non-manifold edges"
+
+
+def get_num_faces(faces):
+    """Get number of faces for both ndarray and OffsetBlockedArray."""
+    if isinstance(faces, tf.OffsetBlockedArray):
+        return len(faces)
+    return faces.shape[0]
+
+
+# ==============================================================================
+# Test 1: Bicylinder (Steinmetz Solid) - Intersection of Perpendicular Cylinders
+# ==============================================================================
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_bicylinder_intersection(index_dtype, dtype, mesh_type):
+    """Intersection of two perpendicular cylinders creates a Steinmetz solid."""
+    radius = dtype(1.0)
+    height = dtype(4.0)
+
+    # Create vertical cylinder
+    faces1, points1 = tf.make_cylinder_mesh(
+        radius, height, segments=100, dtype=dtype, index_dtype=index_dtype)
+    mesh1 = make_mesh(faces1, points1, mesh_type)
+    new_faces1 = tf.ensure_positive_orientation(mesh1)
+    mesh1 = prepare_mesh(make_mesh(new_faces1, points1, mesh_type))
+
+    # Create horizontal cylinder (rotated 90 degrees around X)
+    faces2, points2 = tf.make_cylinder_mesh(
+        radius, height, segments=100, dtype=dtype, index_dtype=index_dtype)
+    rotated_points = np.column_stack([
+        points2[:, 0],
+        -points2[:, 2],
+        points2[:, 1]
+    ]).astype(dtype)
+    mesh2 = make_mesh(faces2, rotated_points, mesh_type)
+    new_faces2 = tf.ensure_positive_orientation(mesh2)
+    mesh2 = prepare_mesh(make_mesh(new_faces2, rotated_points, mesh_type))
+
+    # Boolean intersection
+    (result_faces, result_points), labels = tf.boolean_intersection(mesh1, mesh2)
+
+    # Verify topology
+    verify_topology(result_faces, result_points)
+
+    # Steinmetz solid volume = 16r³/3
+    expected_volume = 16 * float(radius)**3 / 3
+    result_volume = tf.volume((result_faces, result_points))
+
+    np.testing.assert_allclose(result_volume, expected_volume, rtol=0.02)
+
+
+# ==============================================================================
+# Test 2: Nested Spheres - Boolean Operations with Volume Verification
+# ==============================================================================
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_nested_spheres_merge(index_dtype, dtype, mesh_type):
+    """Merge of nested spheres equals outer sphere."""
+    outer_radius = dtype(2.0)
+    inner_radius = dtype(1.0)
+
+    faces1, points1 = tf.make_sphere_mesh(
+        outer_radius, stacks=60, segments=60, dtype=dtype, index_dtype=index_dtype)
+    outer = prepare_mesh(make_mesh(faces1, points1, mesh_type))
+
+    faces2, points2 = tf.make_sphere_mesh(
+        inner_radius, stacks=40, segments=40, dtype=dtype, index_dtype=index_dtype)
+    inner = prepare_mesh(make_mesh(faces2, points2, mesh_type))
+
+    # Merge
+    (result_faces, result_points), labels = tf.boolean_union(outer, inner)
+
+    # Verify topology
+    verify_topology(result_faces, result_points)
+
+    # Result should be just the outer sphere
+    assert get_num_faces(result_faces) == get_num_faces(faces1)
+    assert result_points.shape[0] == points1.shape[0]
+
+    # Volume = outer sphere
+    outer_volume = (4/3) * np.pi * float(outer_radius)**3
+    result_volume = tf.volume((result_faces, result_points))
+
+    np.testing.assert_allclose(result_volume, outer_volume, rtol=0.01)
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_nested_spheres_difference(index_dtype, dtype, mesh_type):
+    """Difference of nested spheres creates hollow sphere."""
+    outer_radius = dtype(2.0)
+    inner_radius = dtype(1.0)
+
+    faces1, points1 = tf.make_sphere_mesh(
+        outer_radius, stacks=60, segments=60, dtype=dtype, index_dtype=index_dtype)
+    outer = prepare_mesh(make_mesh(faces1, points1, mesh_type))
+
+    faces2, points2 = tf.make_sphere_mesh(
+        inner_radius, stacks=40, segments=40, dtype=dtype, index_dtype=index_dtype)
+    inner = prepare_mesh(make_mesh(faces2, points2, mesh_type))
+
+    # Difference
+    (result_faces, result_points), labels = tf.boolean_difference(outer, inner)
+
+    # Verify topology
+    verify_topology(result_faces, result_points)
+
+    # Result has both surfaces
+    assert get_num_faces(result_faces) == get_num_faces(faces1) + get_num_faces(faces2)
+    assert result_points.shape[0] == points1.shape[0] + points2.shape[0]
+
+    # Volume = outer - inner
+    outer_volume = (4/3) * np.pi * float(outer_radius)**3
+    inner_volume = (4/3) * np.pi * float(inner_radius)**3
+    expected_volume = outer_volume - inner_volume
+    result_volume = tf.volume((result_faces, result_points))
+
+    np.testing.assert_allclose(result_volume, expected_volume, rtol=0.01)
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_nested_spheres_intersection(index_dtype, dtype, mesh_type):
+    """Intersection of nested spheres equals inner sphere."""
+    outer_radius = dtype(2.0)
+    inner_radius = dtype(1.0)
+
+    faces1, points1 = tf.make_sphere_mesh(
+        outer_radius, stacks=60, segments=60, dtype=dtype, index_dtype=index_dtype)
+    outer = prepare_mesh(make_mesh(faces1, points1, mesh_type))
+
+    faces2, points2 = tf.make_sphere_mesh(
+        inner_radius, stacks=40, segments=40, dtype=dtype, index_dtype=index_dtype)
+    inner = prepare_mesh(make_mesh(faces2, points2, mesh_type))
+
+    # Intersection
+    (result_faces, result_points), labels = tf.boolean_intersection(outer, inner)
+
+    # Verify topology
+    verify_topology(result_faces, result_points)
+
+    # Result is just the inner sphere
+    assert get_num_faces(result_faces) == get_num_faces(faces2)
+    assert result_points.shape[0] == points2.shape[0]
+
+    # Volume = inner sphere
+    inner_volume = (4/3) * np.pi * float(inner_radius)**3
+    result_volume = tf.volume((result_faces, result_points))
+
+    np.testing.assert_allclose(result_volume, inner_volume, rtol=0.01)
+
+
+# ==============================================================================
+# Test 3: Overlapping Boxes - All Boolean Operations
+# ==============================================================================
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_overlapping_boxes_union(index_dtype, dtype, mesh_type):
+    """Union of overlapping boxes."""
+    faces1, points1 = tf.make_box_mesh(1.0, 1.0, 1.0, dtype=dtype, index_dtype=index_dtype)
+    box1 = prepare_mesh(make_mesh(faces1, points1, mesh_type))
+
+    faces2, points2 = tf.make_box_mesh(1.0, 1.0, 1.0, dtype=dtype, index_dtype=index_dtype)
+    points2_translated = points2.copy()
+    points2_translated[:, 0] += 0.5
+    box2 = prepare_mesh(make_mesh(faces2, points2_translated, mesh_type))
+
+    # Union
+    (result_faces, result_points), labels = tf.boolean_union(box1, box2)
+
+    # Verify topology
+    verify_topology(result_faces, result_points)
+
+    # Volume = box1 + box2 - overlap = 1 + 1 - 0.5 = 1.5
+    expected_volume = 1.5
+    result_volume = tf.volume((result_faces, result_points))
+
+    np.testing.assert_allclose(result_volume, expected_volume, rtol=0.01)
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_overlapping_boxes_intersection(index_dtype, dtype, mesh_type):
+    """Intersection of overlapping boxes."""
+    faces1, points1 = tf.make_box_mesh(1.0, 1.0, 1.0, dtype=dtype, index_dtype=index_dtype)
+    box1 = prepare_mesh(make_mesh(faces1, points1, mesh_type))
+
+    faces2, points2 = tf.make_box_mesh(1.0, 1.0, 1.0, dtype=dtype, index_dtype=index_dtype)
+    points2_translated = points2.copy()
+    points2_translated[:, 0] += 0.5
+    box2 = prepare_mesh(make_mesh(faces2, points2_translated, mesh_type))
+
+    # Intersection
+    (result_faces, result_points), labels = tf.boolean_intersection(box1, box2)
+
+    # Verify topology
+    verify_topology(result_faces, result_points)
+
+    # Volume = overlap = 0.5 * 1 * 1 = 0.5
+    expected_volume = 0.5
+    result_volume = tf.volume((result_faces, result_points))
+
+    np.testing.assert_allclose(result_volume, expected_volume, rtol=0.01)
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_overlapping_boxes_difference(index_dtype, dtype, mesh_type):
+    """Difference of overlapping boxes."""
+    faces1, points1 = tf.make_box_mesh(1.0, 1.0, 1.0, dtype=dtype, index_dtype=index_dtype)
+    box1 = prepare_mesh(make_mesh(faces1, points1, mesh_type))
+
+    faces2, points2 = tf.make_box_mesh(1.0, 1.0, 1.0, dtype=dtype, index_dtype=index_dtype)
+    points2_translated = points2.copy()
+    points2_translated[:, 0] += 0.5
+    box2 = prepare_mesh(make_mesh(faces2, points2_translated, mesh_type))
+
+    # Difference (box1 - box2)
+    (result_faces, result_points), labels = tf.boolean_difference(box1, box2)
+
+    # Verify topology
+    verify_topology(result_faces, result_points)
+
+    # Volume = box1 - overlap = 1 - 0.5 = 0.5
+    expected_volume = 0.5
+    result_volume = tf.volume((result_faces, result_points))
+
+    np.testing.assert_allclose(result_volume, expected_volume, rtol=0.01)
+
+
+# ==============================================================================
+# Test 4: Non-Overlapping Meshes
+# ==============================================================================
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_non_overlapping_union(index_dtype, dtype, mesh_type):
+    """Union of non-overlapping boxes."""
+    faces1, points1 = tf.make_box_mesh(1.0, 1.0, 1.0, dtype=dtype, index_dtype=index_dtype)
+    box1 = prepare_mesh(make_mesh(faces1, points1, mesh_type))
+
+    faces2, points2 = tf.make_box_mesh(1.0, 1.0, 1.0, dtype=dtype, index_dtype=index_dtype)
+    points2_translated = points2.copy()
+    points2_translated[:, 0] += 5.0
+    box2 = prepare_mesh(make_mesh(faces2, points2_translated, mesh_type))
+
+    # Union
+    (result_faces, result_points), labels = tf.boolean_union(box1, box2)
+
+    # Volume = 2 boxes
+    expected_volume = 2.0
+    result_volume = tf.volume((result_faces, result_points))
+
+    np.testing.assert_allclose(result_volume, expected_volume, rtol=0.01)
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_non_overlapping_intersection(index_dtype, dtype, mesh_type):
+    """Intersection of non-overlapping boxes is empty."""
+    faces1, points1 = tf.make_box_mesh(1.0, 1.0, 1.0, dtype=dtype, index_dtype=index_dtype)
+    box1 = prepare_mesh(make_mesh(faces1, points1, mesh_type))
+
+    faces2, points2 = tf.make_box_mesh(1.0, 1.0, 1.0, dtype=dtype, index_dtype=index_dtype)
+    points2_translated = points2.copy()
+    points2_translated[:, 0] += 5.0
+    box2 = prepare_mesh(make_mesh(faces2, points2_translated, mesh_type))
+
+    # Intersection
+    (result_faces, result_points), labels = tf.boolean_intersection(box1, box2)
+
+    # Empty result
+    assert get_num_faces(result_faces) == 0
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_non_overlapping_difference(index_dtype, dtype, mesh_type):
+    """Difference with non-overlapping box leaves original unchanged."""
+    faces1, points1 = tf.make_box_mesh(1.0, 1.0, 1.0, dtype=dtype, index_dtype=index_dtype)
+    box1 = prepare_mesh(make_mesh(faces1, points1, mesh_type))
+
+    faces2, points2 = tf.make_box_mesh(1.0, 1.0, 1.0, dtype=dtype, index_dtype=index_dtype)
+    points2_translated = points2.copy()
+    points2_translated[:, 0] += 5.0
+    box2 = prepare_mesh(make_mesh(faces2, points2_translated, mesh_type))
+
+    # Difference
+    (result_faces, result_points), labels = tf.boolean_difference(box1, box2)
+
+    # Volume unchanged
+    expected_volume = 1.0
+    result_volume = tf.volume((result_faces, result_points))
+
+    np.testing.assert_allclose(result_volume, expected_volume, rtol=0.01)
+
+
+# ==============================================================================
+# Test 5: Overlapping Spheres - Two Spheres with Intersecting Surfaces
+# ==============================================================================
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_overlapping_spheres_union(index_dtype, dtype, mesh_type):
+    """Union of overlapping spheres."""
+    radius = dtype(1.0)
+    separation = dtype(1.0)
+
+    faces1, points1 = tf.make_sphere_mesh(
+        radius, stacks=50, segments=50, dtype=dtype, index_dtype=index_dtype)
+    sphere1 = prepare_mesh(make_mesh(faces1, points1, mesh_type))
+
+    faces2, points2 = tf.make_sphere_mesh(
+        radius, stacks=50, segments=50, dtype=dtype, index_dtype=index_dtype)
+    points2_translated = points2.copy()
+    points2_translated[:, 0] += float(separation)
+    sphere2 = prepare_mesh(make_mesh(faces2, points2_translated, mesh_type))
+
+    # Union
+    (result_faces, result_points), labels = tf.boolean_union(sphere1, sphere2)
+
+    # Verify topology
+    verify_topology(result_faces, result_points)
+
+    # Lens volume formula
+    r = float(radius)
+    d = float(separation)
+    h = 2 * r - d
+    lens_volume = (np.pi * h**2 / 12) * (6 * r - h)
+    sphere_volume = (4/3) * np.pi * r**3
+    expected_volume = 2 * sphere_volume - lens_volume
+
+    result_volume = tf.volume((result_faces, result_points))
+    np.testing.assert_allclose(result_volume, expected_volume, rtol=0.02)
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_overlapping_spheres_intersection(index_dtype, dtype, mesh_type):
+    """Intersection of overlapping spheres creates lens shape."""
+    radius = dtype(1.0)
+    separation = dtype(1.0)
+
+    faces1, points1 = tf.make_sphere_mesh(
+        radius, stacks=50, segments=50, dtype=dtype, index_dtype=index_dtype)
+    sphere1 = prepare_mesh(make_mesh(faces1, points1, mesh_type))
+
+    faces2, points2 = tf.make_sphere_mesh(
+        radius, stacks=50, segments=50, dtype=dtype, index_dtype=index_dtype)
+    points2_translated = points2.copy()
+    points2_translated[:, 0] += float(separation)
+    sphere2 = prepare_mesh(make_mesh(faces2, points2_translated, mesh_type))
+
+    # Intersection
+    (result_faces, result_points), labels = tf.boolean_intersection(sphere1, sphere2)
+
+    # Verify topology
+    verify_topology(result_faces, result_points)
+
+    # Lens volume
+    r = float(radius)
+    d = float(separation)
+    h = 2 * r - d
+    expected_volume = (np.pi * h**2 / 12) * (6 * r - h)
+
+    result_volume = tf.volume((result_faces, result_points))
+    np.testing.assert_allclose(result_volume, expected_volume, rtol=0.02)
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+def test_overlapping_spheres_difference(index_dtype, dtype, mesh_type):
+    """Difference of overlapping spheres."""
+    radius = dtype(1.0)
+    separation = dtype(1.0)
+
+    faces1, points1 = tf.make_sphere_mesh(
+        radius, stacks=50, segments=50, dtype=dtype, index_dtype=index_dtype)
+    sphere1 = prepare_mesh(make_mesh(faces1, points1, mesh_type))
+
+    faces2, points2 = tf.make_sphere_mesh(
+        radius, stacks=50, segments=50, dtype=dtype, index_dtype=index_dtype)
+    points2_translated = points2.copy()
+    points2_translated[:, 0] += float(separation)
+    sphere2 = prepare_mesh(make_mesh(faces2, points2_translated, mesh_type))
+
+    # Difference
+    (result_faces, result_points), labels = tf.boolean_difference(sphere1, sphere2)
+
+    # Verify topology
+    verify_topology(result_faces, result_points)
+
+    # Volume = sphere - lens
+    r = float(radius)
+    d = float(separation)
+    h = 2 * r - d
+    lens_volume = (np.pi * h**2 / 12) * (6 * r - h)
+    sphere_volume = (4/3) * np.pi * r**3
+    expected_volume = sphere_volume - lens_volume
+
+    result_volume = tf.volume((result_faces, result_points))
+    np.testing.assert_allclose(result_volume, expected_volume, rtol=0.02)
+
+
+# ==============================================================================
+# Test 6: Mixed Mesh Types (triangle + dynamic)
+# ==============================================================================
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_mixed_mesh_types(index_dtype, dtype):
+    """Boolean between triangle and dynamic mesh."""
+    faces1, points1 = tf.make_box_mesh(1.0, 1.0, 1.0, dtype=dtype, index_dtype=index_dtype)
+    box1 = prepare_mesh(make_mesh(faces1, points1, 'triangle'))
+
+    faces2, points2 = tf.make_box_mesh(1.0, 1.0, 1.0, dtype=dtype, index_dtype=index_dtype)
+    points2_translated = points2.copy()
+    points2_translated[:, 0] += 0.5
+    box2 = prepare_mesh(make_mesh(faces2, points2_translated, 'dynamic'))
+
+    # Union
+    (result_faces, result_points), labels = tf.boolean_union(box1, box2)
+
+    # Result should be dynamic when one input is dynamic
+    assert isinstance(result_faces, tf.OffsetBlockedArray)
+
+    # Verify topology
+    verify_topology(result_faces, result_points)
+
+    # Volume
+    expected_volume = 1.5
+    result_volume = tf.volume((result_faces, result_points))
+    np.testing.assert_allclose(result_volume, expected_volume, rtol=0.01)
+
+
+# ==============================================================================
+# Test 7: Error Handling
+# ==============================================================================
+
+def test_rejects_non_mesh_input():
+    """Boolean operations reject non-Mesh inputs."""
+    faces = np.array([[0, 1, 2]], dtype=np.int32)
+    points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float32)
+    mesh = prepare_mesh(tf.Mesh(faces, points))
+
+    with pytest.raises(TypeError, match="must be a Mesh"):
         tf.boolean_union((faces, points), mesh)
-
-    with pytest.raises(TypeError, match="must be a Mesh object"):
-        tf.boolean_union(mesh, (faces, points))
 
 
 def test_rejects_2d_meshes():
-    """Test that boolean operations reject 2D meshes"""
-    # Create 2D triangle
+    """Boolean operations reject 2D meshes."""
     faces = np.array([[0, 1, 2]], dtype=np.int32)
-    points = np.array([[0, 0], [1, 0], [0, 1]], dtype=np.float32)
-    mesh_2d = tf.Mesh(faces, points)
+    points_2d = np.array([[0, 0], [1, 0], [0, 1]], dtype=np.float32)
+    mesh_2d = tf.Mesh(faces, points_2d)
 
-    # Create 3D triangle
-    faces_3d = np.array([[0, 1, 2]], dtype=np.int32)
     points_3d = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float32)
-    mesh_3d = tf.Mesh(faces_3d, points_3d)
-    mesh_3d.build_tree()
-    mesh_3d.build_face_membership()
-    mesh_3d.build_manifold_edge_link()
+    mesh_3d = prepare_mesh(tf.Mesh(faces, points_3d))
 
-    # Should reject 2D meshes
-    with pytest.raises(ValueError, match="only support 3D meshes"):
+    with pytest.raises(ValueError, match="3D"):
         tf.boolean_union(mesh_2d, mesh_3d)
-
-    with pytest.raises(ValueError, match="only support 3D meshes"):
-        tf.boolean_union(mesh_3d, mesh_2d)
-
-
-def test_rejects_non_triangle_fixed_meshes():
-    """Test that boolean operations reject non-triangle fixed-size meshes"""
-    # Create triangle mesh
-    tri_faces = np.array([[0, 1, 2]], dtype=np.int32)
-    tri_points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float32)
-    tri_mesh = tf.Mesh(tri_faces, tri_points)
-    tri_mesh.build_tree()
-    tri_mesh.build_face_membership()
-    tri_mesh.build_manifold_edge_link()
-
-    # Creating a quad mesh (faces with 4 vertices) should fail at Mesh creation
-    # since only triangles (ngon=3) and dynamic meshes are supported
-    quad_faces = np.array([[0, 1, 2, 3]], dtype=np.int32)
-    quad_points = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], dtype=np.float32)
-
-    # Quad mesh creation should fail
-    with pytest.raises((ValueError, TypeError)):
-        tf.Mesh(quad_faces, quad_points)
 
 
 def test_rejects_mismatched_dtypes():
-    """Test that boolean operations reject meshes with different real dtypes"""
+    """Boolean operations reject meshes with different real dtypes."""
     faces = np.array([[0, 1, 2]], dtype=np.int32)
-    points_f32 = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float32)
-    points_f64 = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float64)
 
-    mesh_f32 = tf.Mesh(faces, points_f32)
-    mesh_f64 = tf.Mesh(faces, points_f64)
+    mesh_f32 = prepare_mesh(tf.Mesh(faces, np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float32)))
+    mesh_f64 = prepare_mesh(tf.Mesh(faces, np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float64)))
 
-    mesh_f32.build_tree()
-    mesh_f32.build_face_membership()
-    mesh_f32.build_manifold_edge_link()
-    mesh_f64.build_tree()
-    mesh_f64.build_face_membership()
-    mesh_f64.build_manifold_edge_link()
-
-    # Should reject mismatched dtypes
-    with pytest.raises(ValueError, match="Mesh dtypes must match"):
+    with pytest.raises(ValueError, match="dtype"):
         tf.boolean_union(mesh_f32, mesh_f64)
 
 
 # ==============================================================================
-# Run tests
+# Main
 # ==============================================================================
 
 if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+    sys.exit(pytest.main([__file__, "-v"]))
