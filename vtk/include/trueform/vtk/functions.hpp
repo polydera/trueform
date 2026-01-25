@@ -13,6 +13,7 @@
 #pragma once
 
 #include <trueform/vtk/functions/aabb_from.hpp>
+#include <trueform/vtk/functions/area.hpp>
 #include <trueform/vtk/functions/chamfer_error.hpp>
 #include <trueform/vtk/functions/cleaned_lines.hpp>
 #include <trueform/vtk/functions/cleaned_polygons.hpp>

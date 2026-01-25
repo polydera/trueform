@@ -47,6 +47,7 @@ set(TRUEFORM_VTK_SOURCES
   src/core/make_world_ray.cpp
   src/core/polydata.cpp
   src/functions/aabb_from.cpp
+  src/functions/area.cpp
   src/functions/chamfer_error.cpp
   src/functions/cleaned_lines.cpp
   src/functions/cleaned_polygons.cpp

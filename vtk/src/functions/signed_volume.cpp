@@ -21,7 +21,7 @@ auto signed_volume(polydata *input) -> double {
     return 0.0;
   }
 
-  return tf::signed_volume(input->polygons());
+  return tf::signed_volume(tf::make_polygons(input->polys(), input->points().as<double>()));
 }
 
 } // namespace tf::vtk

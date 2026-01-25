@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 #include "./algorithm/circular_increment.hpp"
 #include "./algorithm/reduce.hpp"
@@ -119,7 +119,7 @@ auto area(const tf::polygon<N, Policy> &_poly) {
 template <typename Policy> auto area(const tf::polygons<Policy> &polys) {
   return tf::reduce(tf::make_mapped_range(
                         polys, [](const auto &poly) { return tf::area(poly); }),
-                    std::plus<>{}, tf::coordinate_type<Policy>(0));
+                    std::plus<>{}, tf::coordinate_type<Policy>(0), tf::checked);
 }
 
 /// @ingroup core_properties
