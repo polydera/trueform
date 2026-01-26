@@ -97,14 +97,17 @@ regex = 'project\(trueform\s+VERSION\s+(?P<value>[0-9.]+)'
 #   CIBW_BUILD="cp311-* cp312-*"
 build = "cp311-*"
 
-# Skip PyPy and unneeded older CPython releases
-skip = "pp*"
+skip = "*musllinux*"
 
 build-verbosity = 1
 
+# Test wheels after building
+test-requires = ["pytest", "pytest-xdist", "numpy"]
+test-command = "pytest {project}/python/tests -v --tb=short -n auto"
+
 # Global env variables for all platforms
 environment = """
-CMAKE_BUILD_PARALLEL_LEVEL=8
+CMAKE_BUILD_PARALLEL_LEVEL=12
 """
 
 # -----------------------------------------

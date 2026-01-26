@@ -32,6 +32,18 @@ jobs:
           ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref }}
 
       # ------------------------------------------------------
+      # Set Python command (python on Windows, python3 elsewhere)
+      # ------------------------------------------------------
+      - name: Set Python command
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            echo "PY=python" >> $GITHUB_ENV
+          else
+            echo "PY=python3" >> $GITHUB_ENV
+          fi
+
+      # ------------------------------------------------------
       # Windows compiler environment
       # ------------------------------------------------------
       - uses: ilammy/msvc-dev-cmd@v1
@@ -60,52 +72,29 @@ jobs:
           echo "CMAKE_CXX_COMPILER=clang++" >> $GITHUB_ENV
 
       # ------------------------------------------------------
-      # Install cibuildwheel
+      # Setup Python (non-Windows only)
+      # Windows uses system Python; cibuildwheel downloads exact versions via nuget
       # ------------------------------------------------------
       - uses: actions/setup-python@v5
+        if: runner.os != 'Windows'
         with:
           python-version: ${{ matrix.python-version }}
 
+      # ------------------------------------------------------
+      # Build and test wheels
+      # Test config is in pyproject.toml [tool.cibuildwheel]
+      # ------------------------------------------------------
       - name: Install cibuildwheel
-        run: pip install cibuildwheel==3.3.0
+        run: ${{ env.PY }} -m pip install cibuildwheel==3.3.0
 
-      # ------------------------------------------------------
-      # Build wheels
-      # ------------------------------------------------------
-      - name: Build wheels
+      - name: Build and test wheels
         shell: bash
         run: |
-          # Dynamically create the build identifier from the matrix
-          # "3.11" -> "311", "3.12" -> "312"
-          # Result: CIBW_BUILD="cp311-*"
           VER_NO_DOT=$(echo "${{ matrix.python-version }}" | tr -d '.')
           export CIBW_BUILD="cp${VER_NO_DOT}-*"
-          
+
           echo "Building for target: $CIBW_BUILD"
-          
-          # Run cibuildwheel (Platform is auto-detected by cibw)
-          cibuildwheel --output-dir wheelhouse
-
-      # ------------------------------------------------------
-      # Test built wheel
-      # ------------------------------------------------------
-      - name: Test wheel
-        shell: bash
-        run: |
-          # Create fresh venv for testing
-          python -m venv test-venv
-          if [[ "$RUNNER_OS" == "Windows" ]]; then
-            source test-venv/Scripts/activate
-          else
-            source test-venv/bin/activate
-          fi
-
-          # Install wheel and test dependencies
-          pip install wheelhouse/trueform-*.whl
-          pip install pytest numpy
-
-          # Run tests
-          python -m pytest python/tests -v --tb=short
+          $PY -m cibuildwheel --output-dir wheelhouse
 
       # ------------------------------------------------------
       # Package Blender plugin (Python 3.11 / Blender 5.0)
@@ -114,9 +103,9 @@ jobs:
         if: matrix.python-version == env.BLENDER_PYTHON_VERSION
         shell: bash
         run: |
-          python -m pip install --force-reinstall wheelhouse/trueform-*.whl
+          $PY -m pip install --force-reinstall wheelhouse/trueform-*.whl
           BLENDER_PY_NO_DOT=$(echo "${{ env.BLENDER_PYTHON_VERSION }}" | tr -d '.')
-          python python/tools/package_blender_plugin.py \
+          $PY python/tools/package_blender_plugin.py \
             --plugin-init python/examples/bpy-plugin/__init__.py \
             --output wheelhouse/trueform-bpy-plugin-${{ runner.os }}-py${BLENDER_PY_NO_DOT}.zip
 
@@ -126,7 +115,6 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          # Must include python version in name to prevent overwrites in parallel matrix jobs
           name: trueform-wheels-${{ matrix.os }}-${{ matrix.python-version }}
           path: |
             wheelhouse/*.whl
@@ -156,9 +144,3 @@ jobs:
             dist/**/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
