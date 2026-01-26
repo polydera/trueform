@@ -68,7 +68,7 @@ jobs:
           update-environment: ${{ runner.os != 'Windows' }}
 
       - name: Install cibuildwheel
-        run: pip install cibuildwheel==3.3.0
+        run: python -m pip install cibuildwheel==3.3.0
 
       # ------------------------------------------------------
       # Build wheels
@@ -85,7 +85,7 @@ jobs:
           echo "Building for target: $CIBW_BUILD"
           
           # Run cibuildwheel (Platform is auto-detected by cibw)
-          cibuildwheel --output-dir wheelhouse
+          python -m cibuildwheel --output-dir wheelhouse
 
       # ------------------------------------------------------
       # Test built wheel
