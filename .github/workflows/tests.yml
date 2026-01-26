@@ -1,21 +1,18 @@
 name: Tests
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
   pull_request:
     branches: [main]
     paths-ignore:
       - 'docs/**'
       - '*.md'
+  workflow_dispatch:
 
 jobs:
   test-cpp:
     name: C++ Tests
     runs-on: trueform-linux
+    environment: tests
 
     steps:
       - uses: actions/checkout@v4
@@ -31,6 +28,7 @@ jobs:
   test-python:
     name: Python Tests
     runs-on: trueform-linux
+    environment: tests
 
     steps:
       - uses: actions/checkout@v4
