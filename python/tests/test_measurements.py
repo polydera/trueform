@@ -389,6 +389,151 @@ def test_volume_requires_3d():
 
 
 # ==============================================================================
+# Dynamic Mesh (OffsetBlockedArray) Tests
+# ==============================================================================
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_area_dynamic_mesh_tuple(dtype, index_dtype):
+    """Area works with (OffsetBlockedArray, points) tuple."""
+    # Create a simple mesh: two triangles forming a square
+    offsets = np.array([0, 3, 6], dtype=index_dtype)
+    data = np.array([0, 1, 2, 0, 2, 3], dtype=index_dtype)
+    dyn_faces = tf.OffsetBlockedArray(offsets, data)
+
+    points = np.array([
+        [0, 0, 0],
+        [1, 0, 0],
+        [1, 1, 0],
+        [0, 1, 0]
+    ], dtype=dtype)
+
+    computed = tf.area((dyn_faces, points))
+    expected = 1.0  # Unit square
+    np.testing.assert_allclose(computed, expected, rtol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_volume_dynamic_mesh_tuple(dtype, index_dtype):
+    """Volume works with (OffsetBlockedArray, points) tuple."""
+    # Create box mesh and convert to dynamic
+    faces, points = tf.make_box_mesh(
+        2.0, 3.0, 4.0, dtype=dtype, index_dtype=index_dtype)
+
+    # Convert to OffsetBlockedArray
+    dyn_faces = tf.as_offset_blocked(faces)
+
+    computed = tf.volume((dyn_faces, points))
+    expected = 2.0 * 3.0 * 4.0
+    np.testing.assert_allclose(computed, expected, rtol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_signed_volume_dynamic_mesh_tuple(dtype, index_dtype):
+    """Signed volume works with (OffsetBlockedArray, points) tuple."""
+    # Create box mesh and convert to dynamic
+    faces, points = tf.make_box_mesh(
+        2.0, 3.0, 4.0, dtype=dtype, index_dtype=index_dtype)
+
+    # Convert to OffsetBlockedArray
+    dyn_faces = tf.as_offset_blocked(faces)
+
+    computed = tf.signed_volume((dyn_faces, points))
+    expected = 2.0 * 3.0 * 4.0
+    np.testing.assert_allclose(computed, expected, rtol=1e-5)
+    assert computed > 0, "Outward normals should give positive volume"
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_area_dynamic_mesh_object(dtype, index_dtype):
+    """Area works with Mesh object created from OffsetBlockedArray."""
+    faces, points = tf.make_box_mesh(
+        2.0, 3.0, 4.0, dtype=dtype, index_dtype=index_dtype)
+    dyn_faces = tf.as_offset_blocked(faces)
+    mesh = tf.Mesh(dyn_faces, points)
+
+    computed = tf.area(mesh)
+    expected = 2 * (2.0 * 3.0 + 3.0 * 4.0 + 2.0 * 4.0)
+    np.testing.assert_allclose(computed, expected, rtol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_volume_dynamic_mesh_object(dtype, index_dtype):
+    """Volume works with Mesh object created from OffsetBlockedArray."""
+    faces, points = tf.make_box_mesh(
+        2.0, 3.0, 4.0, dtype=dtype, index_dtype=index_dtype)
+    dyn_faces = tf.as_offset_blocked(faces)
+    mesh = tf.Mesh(dyn_faces, points)
+
+    computed = tf.volume(mesh)
+    expected = 2.0 * 3.0 * 4.0
+    np.testing.assert_allclose(computed, expected, rtol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_signed_volume_dynamic_mesh_object(dtype, index_dtype):
+    """Signed volume works with Mesh object created from OffsetBlockedArray."""
+    faces, points = tf.make_box_mesh(
+        2.0, 3.0, 4.0, dtype=dtype, index_dtype=index_dtype)
+    dyn_faces = tf.as_offset_blocked(faces)
+    mesh = tf.Mesh(dyn_faces, points)
+
+    computed = tf.signed_volume(mesh)
+    expected = 2.0 * 3.0 * 4.0
+    np.testing.assert_allclose(computed, expected, rtol=1e-5)
+    assert computed > 0, "Outward normals should give positive volume"
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_area_dynamic_mesh_mixed_ngons(dtype):
+    """Area works with mixed n-gon dynamic mesh."""
+    # Triangle + quad + pentagon (all in z=0 plane)
+    offsets = np.array([0, 3, 7, 12], dtype=np.int32)
+    data = np.array([
+        0, 1, 2,           # triangle
+        3, 4, 5, 6,        # quad
+        7, 8, 9, 10, 11    # pentagon
+    ], dtype=np.int32)
+    dyn_faces = tf.OffsetBlockedArray(offsets, data)
+
+    # Triangle: vertices at (0,0), (1,0), (0.5, 0.866) -> area ≈ 0.433
+    # Quad: unit square -> area = 1.0
+    # Pentagon: regular pentagon with r=1 -> area ≈ 2.377
+    points = np.array([
+        # Triangle (equilateral, side=1)
+        [0, 0, 0],
+        [1, 0, 0],
+        [0.5, np.sqrt(3)/2, 0],
+        # Quad (unit square)
+        [2, 0, 0],
+        [3, 0, 0],
+        [3, 1, 0],
+        [2, 1, 0],
+        # Pentagon (regular, r=1)
+        [5 + np.cos(0), np.sin(0), 0],
+        [5 + np.cos(2*np.pi/5), np.sin(2*np.pi/5), 0],
+        [5 + np.cos(4*np.pi/5), np.sin(4*np.pi/5), 0],
+        [5 + np.cos(6*np.pi/5), np.sin(6*np.pi/5), 0],
+        [5 + np.cos(8*np.pi/5), np.sin(8*np.pi/5), 0],
+    ], dtype=dtype)
+
+    computed = tf.area((dyn_faces, points))
+
+    # Manual calculation
+    triangle_area = np.sqrt(3) / 4  # equilateral triangle side=1
+    quad_area = 1.0
+    pentagon_area = (5/2) * 1**2 * np.sin(2*np.pi/5)  # regular pentagon r=1
+
+    expected = triangle_area + quad_area + pentagon_area
+    np.testing.assert_allclose(computed, expected, rtol=1e-4)
+
+
+# ==============================================================================
 # 2D Mesh Area Tests
 # ==============================================================================
 
