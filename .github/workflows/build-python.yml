@@ -65,6 +65,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          update-environment: ${{ runner.os != 'Windows' }}
 
       - name: Install cibuildwheel
         run: pip install cibuildwheel==3.3.0
