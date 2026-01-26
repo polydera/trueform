@@ -49,4 +49,30 @@ auto make_vertex_link(const tf::polygons<Policy> &polygons) {
   }
 }
 
+/// @ingroup topology_connectivity
+/// @brief Create vertex link from segments.
+///
+/// Convenience function that builds and returns a vertex_link structure
+/// from segment connectivity. The index type is automatically deduced
+/// from the segments unless specified.
+///
+/// @tparam Index The index type (auto-deduced if not specified).
+/// @tparam Policy The segments policy type.
+/// @param segments The segments range.
+/// @param eo The edge orientation mode (default: bidirectional).
+/// @return A vertex_link structure containing vertex neighborhoods.
+template <typename Index = tf::none_t, typename Policy>
+auto make_vertex_link(
+    const tf::segments<Policy> &segments,
+    tf::edge_orientation eo = tf::edge_orientation::bidirectional) {
+  if constexpr (std::is_same_v<Index, tf::none_t>) {
+    return make_vertex_link<std::decay_t<decltype(segments.edges()[0][0])>>(
+        segments, eo);
+  } else {
+    tf::vertex_link<Index> vl;
+    vl.build(segments, eo);
+    return vl;
+  }
+}
+
 } // namespace tf
