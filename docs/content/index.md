@@ -15,7 +15,7 @@ orientation: horizontal
 Real-time [geometric processing]{.text-primary}
 
 #description
-Spatial queries, mesh booleans, isocontours, topology — at interactive speed on million-polygon meshes. Robust to non-manifold flaps, inconsistent winding, and pipeline artifacts. C++ header-only; Python with NumPy in and out.
+Spatial queries, mesh booleans, isocontours, topology — at interactive speed on million-polygon meshes. Robust to non-manifold flaps, inconsistent winding, and pipeline artifacts. C++ header-only; Python with NumPy in, NumPy out.
 
 #links
   :::u-button
@@ -114,7 +114,7 @@ Why trueform
   Zero-Copy Views
 
   #description
-  Wrap your existing data with geometric meaning. No copies, no conversions, no new types to learn. Your buffers, enriched with spatial semantics.
+  Wrap your existing data with geometric meaning. No copies, no boiler-plate. Your buffers, enriched with spatial semantics.
   :::
 
   :::u-page-feature
