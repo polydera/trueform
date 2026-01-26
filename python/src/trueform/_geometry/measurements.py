@@ -17,7 +17,7 @@ from .._dispatch import ensure_mesh, extract_meta, build_suffix
 
 
 def signed_volume(
-    data: Union[Mesh, Tuple[np.ndarray, np.ndarray]]
+    data: Union[Mesh, Tuple[np.ndarray, np.ndarray], Tuple[OffsetBlockedArray, np.ndarray]]
 ) -> float:
     """
     Compute signed volume of a closed 3D mesh.
@@ -31,6 +31,7 @@ def signed_volume(
     data : Mesh or tuple
         - Mesh: tf.Mesh object (must be 3D)
         - (faces, points): Tuple with face indices and point coordinates
+        - (OffsetBlockedArray, points): Dynamic polygon mesh
 
     Returns
     -------
@@ -54,7 +55,7 @@ def signed_volume(
 
 
 def volume(
-    data: Union[Mesh, Tuple[np.ndarray, np.ndarray]]
+    data: Union[Mesh, Tuple[np.ndarray, np.ndarray], Tuple[OffsetBlockedArray, np.ndarray]]
 ) -> float:
     """
     Compute volume of a closed 3D mesh.
@@ -66,6 +67,7 @@ def volume(
     data : Mesh or tuple
         - Mesh: tf.Mesh object (must be 3D)
         - (faces, points): Tuple with face indices and point coordinates
+        - (OffsetBlockedArray, points): Dynamic polygon mesh
 
     Returns
     -------
