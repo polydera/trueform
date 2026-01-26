@@ -38,7 +38,7 @@ jobs:
         shell: bash
         run: |
           if [[ "$RUNNER_OS" == "Windows" ]]; then
-            echo "PY=python" >> $GITHUB_ENV
+            echo "PY=py" >> $GITHUB_ENV
           else
             echo "PY=python3" >> $GITHUB_ENV
           fi
@@ -85,6 +85,7 @@ jobs:
       # Test config is in pyproject.toml [tool.cibuildwheel]
       # ------------------------------------------------------
       - name: Install cibuildwheel
+        shell: bash
         run: ${{ env.PY }} -m pip install cibuildwheel==3.3.0
 
       - name: Build and test wheels
