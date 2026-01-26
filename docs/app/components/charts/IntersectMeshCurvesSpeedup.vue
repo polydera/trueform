@@ -1,0 +1,41 @@
+<script setup lang="ts">
+import { VisXYContainer, VisGroupedBar, VisAxis, VisTooltip } from "@unovis/vue";
+import { GroupedBar } from "@unovis/ts";
+import data from "../../../benchmarks/mesh_mesh_curves.json";
+
+const x = (_: any, i: number) => i;
+const y = [(d: any) => d.cgal / d.tf];
+const color = (_: any, i: number) => ["#fdff4e"][i];
+
+const round = (n: number) => Math.round(n * 10) / 10;
+const triggers = {
+  [GroupedBar.selectors.bar]: (d: any) => `<div class="flex flex-col gap-0.5">
+    <div class="font-medium text-lg">2 × ${numKM(d.polygons)} polygons</div>
+    <div><span class="text-[#fdff4e]">vs CGAL:</span> ${round(d.cgal / d.tf)}×</div>
+  </div>`,
+};
+</script>
+<template>
+  <div class="w-full unovis flex flex-col gap-2.5 items-center justify-center">
+    <h2 class="text-xl font-medium text-center">
+      Mesh-Mesh Intersection Curves (Speedup)
+    </h2>
+    <div class="flex gap-4 items-center justify-center flex-wrap">
+      <div class="flex gap-1.5 items-center">
+        <div class="size-3 bg-[#fdff4e] rounded"></div>
+        <span class="text-sm">vs CGAL</span>
+      </div>
+    </div>
+    <VisXYContainer>
+      <VisGroupedBar :data="data" :x="x" :y="y" :color="color" :duration="300" />
+      <VisTooltip :triggers="triggers" />
+      <VisAxis
+        type="x"
+        label="Number of Polygons"
+        :tickFormat="(value: number) => data[value]?.polygons ? `2×${numKM(data[value].polygons)}` : ''"
+        :numTicks="data?.length || 0"
+      />
+      <VisAxis type="y" label="Speedup Factor" />
+    </VisXYContainer>
+  </div>
+</template>

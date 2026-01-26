@@ -1,0 +1,164 @@
+name: PyPI
+
+env:
+  BLENDER_VERSION: "5.0"
+  BLENDER_PYTHON_VERSION: "3.11"
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Semver tag (e.g., v1.2.3)'
+        required: true
+        type: string
+
+jobs:
+  build-wheels:
+    name: ${{ matrix.os }} - ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [trueform-win, trueform-linux, macos-latest]
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref }}
+
+      # ------------------------------------------------------
+      # Windows compiler environment
+      # ------------------------------------------------------
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+
+      - name: Set Windows compiler env
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          echo "CC=clang-cl.exe" >> $GITHUB_ENV
+          echo "CXX=clang-cl.exe" >> $GITHUB_ENV
+          echo "CMAKE_C_COMPILER=clang-cl.exe" >> $GITHUB_ENV
+          echo "CMAKE_CXX_COMPILER=clang-cl.exe" >> $GITHUB_ENV
+          echo "CMAKE_GENERATOR=Ninja" >> $GITHUB_ENV
+
+      # ------------------------------------------------------
+      # Linux compiler environment
+      # ------------------------------------------------------
+      - name: Set Linux compiler env
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
+          echo "CMAKE_C_COMPILER=clang" >> $GITHUB_ENV
+          echo "CMAKE_CXX_COMPILER=clang++" >> $GITHUB_ENV
+
+      # ------------------------------------------------------
+      # Install cibuildwheel
+      # ------------------------------------------------------
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install cibuildwheel
+        run: pip install cibuildwheel==3.3.0
+
+      # ------------------------------------------------------
+      # Build wheels
+      # ------------------------------------------------------
+      - name: Build wheels
+        shell: bash
+        run: |
+          # Dynamically create the build identifier from the matrix
+          # "3.11" -> "311", "3.12" -> "312"
+          # Result: CIBW_BUILD="cp311-*"
+          VER_NO_DOT=$(echo "${{ matrix.python-version }}" | tr -d '.')
+          export CIBW_BUILD="cp${VER_NO_DOT}-*"
+          
+          echo "Building for target: $CIBW_BUILD"
+          
+          # Run cibuildwheel (Platform is auto-detected by cibw)
+          cibuildwheel --output-dir wheelhouse
+
+      # ------------------------------------------------------
+      # Test built wheel
+      # ------------------------------------------------------
+      - name: Test wheel
+        shell: bash
+        run: |
+          # Create fresh venv for testing
+          python -m venv test-venv
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            source test-venv/Scripts/activate
+          else
+            source test-venv/bin/activate
+          fi
+
+          # Install wheel and test dependencies
+          pip install wheelhouse/trueform-*.whl
+          pip install pytest numpy
+
+          # Run tests
+          python -m pytest python/tests -v --tb=short
+
+      # ------------------------------------------------------
+      # Package Blender plugin (Python 3.11 / Blender 5.0)
+      # ------------------------------------------------------
+      - name: Package Blender plugin
+        if: matrix.python-version == env.BLENDER_PYTHON_VERSION
+        shell: bash
+        run: |
+          python -m pip install --force-reinstall wheelhouse/trueform-*.whl
+          BLENDER_PY_NO_DOT=$(echo "${{ env.BLENDER_PYTHON_VERSION }}" | tr -d '.')
+          python python/tools/package_blender_plugin.py \
+            --plugin-init python/examples/bpy-plugin/__init__.py \
+            --output wheelhouse/trueform-bpy-plugin-${{ runner.os }}-py${BLENDER_PY_NO_DOT}.zip
+
+      # ------------------------------------------------------
+      # Upload wheels for publish job
+      # ------------------------------------------------------
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          # Must include python version in name to prevent overwrites in parallel matrix jobs
+          name: trueform-wheels-${{ matrix.os }}-${{ matrix.python-version }}
+          path: |
+            wheelhouse/*.whl
+            wheelhouse/*.zip
+
+  # ----------------------------------------------------------
+  # PUBLISH WHEELS (GitHub Release + PyPI)
+  # ----------------------------------------------------------
+  publish:
+    needs: build-wheels
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: trueform-wheels-*
+          merge-multiple: true
+          path: dist
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          files: |
+            dist/**/*.whl
+            dist/**/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}

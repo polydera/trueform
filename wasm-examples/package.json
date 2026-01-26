@@ -1,0 +1,16 @@
+{
+  "name": "wasm-demo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.ts",
+  "scripts": {
+    "serve": "npx http-server ./web -c-1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/polydera/trueform.git"
+  },
+  "devDependencies": {
+  },
+  "private": true
+}

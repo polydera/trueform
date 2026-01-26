@@ -1,0 +1,39 @@
+# Build directories
+build/
+build-*/
+cmake-build-*/
+wheelhouse/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Compiled
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.pyd
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# Misc
+*.log
+*.tmp
+*.bak
+*.zip
+
+# Generated
+include/trueform/version.hpp

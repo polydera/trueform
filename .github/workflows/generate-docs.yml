@@ -1,0 +1,93 @@
+name: Docs
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Build WebAssembly assets
+        run: |
+          docker compose -f wasm-examples/extras/docker-compose.yml \
+            up --build --abort-on-container-exit --exit-code-from web-example
+
+      - name: Tear down docker compose
+        if: always()
+        run: |
+          docker compose -f wasm-examples/extras/docker-compose.yml down \
+            --volumes --remove-orphans
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasm-build
+          path: wasm-examples/build/dist
+          retention-days: 7
+
+  build:
+    runs-on: ubuntu-latest
+    needs: build-wasm
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download WASM artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: wasm-build
+          path: wasm-examples/build/dist
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.2
+
+      - name: Install node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: docs/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: docs
+        run: pnpm install
+
+      - name: Generate docs
+        working-directory: docs
+        run: pnpm build
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+
+      - name: Upload docs artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-build
+          path: docs/dist
+          retention-days: 7
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Download docs artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: docs-build
+          path: dist
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=trueform

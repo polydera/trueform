@@ -1,0 +1,155 @@
+[build-system]
+requires = [
+  "scikit-build-core>=0.9.2",
+]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "trueform"
+dynamic = ["version"]
+description = "Real-time geometric processing on NumPy arrays. Easy to use, robust on real-world data."
+readme = "README_python.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE.noncommercial" }
+authors = [
+  { name = "Ziga Sajovic", email = "info@polydera.com" },
+  { name = "XLAB" },
+]
+keywords = [
+    "mesh",
+    "geometry",
+    "computational-geometry",
+    "mesh-processing",
+    "mesh-boolean",
+    "collision-detection",
+    "point-cloud",
+    "csg",
+    "numpy",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "License :: Other/Proprietary License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Scientific/Engineering :: Mathematics",
+  "Topic :: Scientific/Engineering :: Visualization",
+]
+dependencies = [
+  "numpy>=1.23",
+]
+
+[project.urls]
+Homepage = "https://trueform.polydera.com"
+Documentation = "https://trueform.polydera.com"
+Repository = "https://github.com/polydera/trueform"
+Issues = "https://github.com/polydera/trueform/issues"
+
+[tool.scikit-build]
+build-dir = "build/{wheel_tag}"
+cmake.build-type = "Release"
+cmake.args = [
+  "-DTF_BUILD_PYTHON=ON",
+  "-DTF_BUILD_EXAMPLES=OFF",
+  "-DTF_BUILD_BENCHMARKS=OFF",
+  "-DTF_USE_SYSTEM_LIBS=OFF",
+]
+build.targets = ["trueform_python"]
+sdist.include = [
+  "CMakeLists.txt",
+  "COMMERCIAL.md",
+  "CONTRIBUTING.md",
+  "LICENSE",
+  "LICENSE.noncommercial",
+  "README.md",
+  "README_python.md",
+  "cmake",
+  "docs",
+  "examples",
+  "include",
+  "licenses",
+  "python",
+  "trueformConfig.cmake.in",
+]
+wheel.license-files = [
+  "LICENSE",
+  "LICENSE.noncommercial",
+  "licenses/*",
+]
+
+[tool.scikit-build.metadata.version]
+provider = "scikit_build_core.metadata.regex"
+input = "CMakeLists.txt"
+regex = 'project\(trueform\s+VERSION\s+(?P<value>[0-9.]+)'
+
+[tool.cibuildwheel]
+# Default: build only CPython 3.11 wheels
+# CI can override this with:
+#   CIBW_BUILD="cp311-* cp312-*"
+build = "cp311-*"
+
+# Skip PyPy and unneeded older CPython releases
+skip = "pp*"
+
+build-verbosity = 1
+
+# Global env variables for all platforms
+environment = """
+CMAKE_BUILD_PARALLEL_LEVEL=8
+"""
+
+# -----------------------------------------
+# Linux configuration
+# -----------------------------------------
+[tool.cibuildwheel.linux]
+archs = ["x86_64"] # Optionally add "aarch64" for ARM builds
+
+environment = { CC = "clang", CXX = "clang++", CMAKE_C_COMPILER = "clang", CMAKE_CXX_COMPILER = "clang++" }
+
+before-build = """
+# Detect package manager
+if command -v apk >/dev/null 2>&1; then
+    echo "Detected musllinux (Alpine). Installing clang via apk."
+    apk add --no-cache clang clang-static llvm-dev build-base
+
+elif command -v dnf >/dev/null 2>&1; then
+    echo "Detected manylinux_2_28 (AlmaLinux). Installing clang via dnf."
+    dnf install -y clang llvm-devel
+
+elif command -v yum >/dev/null 2>&1; then
+    echo "Detected older manylinux (CentOS). Installing clang via yum."
+    yum install -y clang llvm-devel
+
+else
+    echo "ERROR: Unsupported Linux base image"
+    exit 1
+fi
+
+# Verify clang version
+clang --version
+"""
+
+# -----------------------------------------
+# macOS configuration
+# -----------------------------------------
+[tool.cibuildwheel.macos]
+archs = ["arm64"]
+environment = """
+MACOSX_DEPLOYMENT_TARGET=11.0
+"""
+
+
+# -----------------------------------------
+# Windows configuration
+# -----------------------------------------
+[tool.cibuildwheel.windows]
+archs = ["AMD64"]

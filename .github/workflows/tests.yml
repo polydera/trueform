@@ -1,0 +1,48 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+
+jobs:
+  test-cpp:
+    name: C++ Tests
+    runs-on: trueform-linux
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set compiler env
+        run: |
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
+
+      - name: Build and test
+        run: python3 -m verify --cpp-only --skip-vtk --skip-examples
+
+  test-python:
+    name: Python Tests
+    runs-on: trueform-linux
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set compiler env
+        run: |
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build and test
+        run: python3 -m verify --python-only

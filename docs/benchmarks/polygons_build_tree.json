@@ -1,0 +1,80 @@
+[
+  {
+    "polygons": 58298,
+    "tf_aabb": 1.07,
+    "tf_obb": 2.53,
+    "tf_obbrss": 3.77,
+    "cgal": 10.66,
+    "fcl_aabb": 15.76,
+    "fcl_obb": 56.21,
+    "fcl_obbrss": 83.39,
+    "coal_aabb": 10.47,
+    "coal_obb": 49.25,
+    "coal_obbrss": 77.87
+  },
+  {
+    "polygons": 141966,
+    "tf_aabb": 2.65,
+    "tf_obb": 5.62,
+    "tf_obbrss": 8.29,
+    "cgal": 27.52,
+    "fcl_aabb": 40.39,
+    "fcl_obb": 142.99,
+    "fcl_obbrss": 211.44,
+    "coal_aabb": 26.92,
+    "coal_obb": 126.66,
+    "coal_obbrss": 197.12
+  },
+  {
+    "polygons": 244026,
+    "tf_aabb": 4.5,
+    "tf_obb": 8.71,
+    "tf_obbrss": 12.69,
+    "cgal": 50.03,
+    "fcl_aabb": 72.25,
+    "fcl_obb": 250.55,
+    "fcl_obbrss": 369.48,
+    "coal_aabb": 48.06,
+    "coal_obb": 221.01,
+    "coal_obbrss": 344.34
+  },
+  {
+    "polygons": 480868,
+    "tf_aabb": 8.89,
+    "tf_obb": 18.69,
+    "tf_obbrss": 32.17,
+    "cgal": 104.72,
+    "fcl_aabb": 151.06,
+    "fcl_obb": 507.38,
+    "fcl_obbrss": 747.02,
+    "coal_aabb": 102.69,
+    "coal_obb": 444.57,
+    "coal_obbrss": 689.13
+  },
+  {
+    "polygons": 722980,
+    "tf_aabb": 12.53,
+    "tf_obb": 24.68,
+    "tf_obbrss": 41.47,
+    "cgal": 164.31,
+    "fcl_aabb": 233.3,
+    "fcl_obb": 775.08,
+    "fcl_obbrss": 1125.62,
+    "coal_aabb": 154.61,
+    "coal_obb": 672.81,
+    "coal_obbrss": 1044.11
+  },
+  {
+    "polygons": 1025766,
+    "tf_aabb": 16.28,
+    "tf_obb": 37.33,
+    "tf_obbrss": 59.26,
+    "cgal": 238.27,
+    "fcl_aabb": 335.91,
+    "fcl_obb": 1105.58,
+    "fcl_obbrss": 1619.25,
+    "coal_aabb": 224.99,
+    "coal_obb": 959.03,
+    "coal_obbrss": 1483.19
+  }
+]

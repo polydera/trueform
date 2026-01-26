@@ -1,0 +1,111 @@
+<script setup lang="ts">
+import { useWasmModule } from "@/composables/useWasmModule";
+import { PositioningExample } from "@/examples/PositioningExample";
+import { useExampleLoadingState } from "@/composables/useExampleLoadingState";
+import { useMeshSelection } from "@/composables/useMeshSelection";
+import { getExampleMetadata } from "@/utils/liveExamples";
+
+const metadata = getExampleMetadata("closest-points");
+if (metadata) {
+  defineOgImageComponent("Docs", {
+    title: metadata.title,
+    description: metadata.description,
+    headline: "Live Example",
+  });
+  useSeoMeta({
+    title: metadata.title,
+    description: metadata.description,
+  });
+}
+
+const colorMode = useColorMode();
+const isDark = computed(() => colorMode.value === "dark");
+const { loadExampleWithAssets } = useWasmModule();
+const { isLoading, loadingMessage, loadingError, resetLoading, setLoadingMessage, failLoading, finishLoading } =
+  useExampleLoadingState();
+const { meshSize, buildMeshes, formatPolygonLabel } = useMeshSelection();
+
+const threejsContainer = ref<HTMLElement | null>(null);
+let exampleClass: PositioningExample | null = null;
+const meshCount = 2;
+const meshes = computed(() => buildMeshes(meshCount));
+const polygonLabel = computed(() => formatPolygonLabel(meshCount));
+
+const badge = computed(() => ({
+  polygons: polygonLabel.value,
+}));
+
+const actionButtons = [
+  { icon: "i-lucide-rotate-3d", label: "Randomize", keyboardShortcut: "N", onClick: () => exampleClass?.randomize() },
+];
+
+let tearDownRequested = false;
+let currentLoadId = 0;
+
+const disposeExample = () => {
+  if (exampleClass) {
+    exampleClass.dispose();
+    exampleClass = null;
+  }
+};
+
+const loadThreejs = async () => {
+  const loadId = ++currentLoadId;
+  disposeExample();
+  exampleClass = await loadExampleWithAssets({
+    meshes: meshes.value,
+    skipOverlayIfCached: true,
+    loading: { resetLoading, setLoadingMessage, failLoading, finishLoading },
+    isTornDown: () => tearDownRequested || loadId !== currentLoadId,
+    createScene: (wasmInstance, meshFilenames) => {
+      const el = threejsContainer.value;
+      if (!el) {
+        return null;
+      }
+
+      return new PositioningExample(
+        wasmInstance,
+        meshFilenames,
+        el,
+        isDark.value,
+      );
+    },
+  });
+};
+
+watch(meshSize, () => loadThreejs(), { immediate: true });
+
+onBeforeUnmount(() => {
+  tearDownRequested = true;
+  disposeExample();
+});
+
+watch(isDark, (dark) => {
+  if (exampleClass) {
+    exampleClass.applyTheme(dark);
+  }
+});
+</script>
+
+<template>
+  <ExampleLayout
+    :title="metadata?.title"
+    :badge="badge"
+    :polygon-label="polygonLabel"
+    :loading="isLoading"
+    :loading-message="loadingMessage"
+    :loading-error="loadingError"
+    :action-buttons="actionButtons"
+    @retry="loadThreejs"
+  >
+    <template #info>
+      <div class="flex gap-2 items-center text-muted">
+        <UIcon name="i-lucide-hand" class="size-4 ml-1" />
+        <p class="text-sm">Drag a mesh and release. It snaps to the nearest point instantly.</p>
+      </div>
+    </template>
+    <template #containers>
+      <div ref="threejsContainer" id="threejsContainer" class="h-full flex-1 min-h-0 w-screen md:w-full"></div>
+    </template>
+  </ExampleLayout>
+</template>
