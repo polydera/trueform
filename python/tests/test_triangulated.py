@@ -293,6 +293,31 @@ def test_dynamic_2d(dtype):
     assert points.shape == (4, 2), f"Expected (4, 2), got {points.shape}"
 
 
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_dynamic_mesh_object(dtype, index_dtype):
+    """Triangulate Mesh object created from OffsetBlockedArray."""
+    offsets = np.array([0, 4, 8], dtype=index_dtype)
+    data = np.array([0, 1, 2, 3, 1, 4, 5, 2], dtype=index_dtype)
+    dyn_faces = tf.OffsetBlockedArray(offsets, data)
+
+    points_in = np.array([
+        [0, 0, 0],
+        [1, 0, 0],
+        [1, 1, 0],
+        [0, 1, 0],
+        [2, 0, 0],
+        [2, 1, 0]
+    ], dtype=dtype)
+
+    mesh = tf.Mesh(dyn_faces, points_in)
+    faces, points = tf.triangulated(mesh)
+
+    # 2 quads -> 4 triangles
+    assert faces.shape == (4, 3), f"Expected (4, 3), got {faces.shape}"
+    assert points.shape == (6, 3), f"Expected (6, 3), got {points.shape}"
+
+
 # ==============================================================================
 # Correctness Tests
 # ==============================================================================
