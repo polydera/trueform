@@ -131,3 +131,12 @@ install(
         FILES "${CMAKE_CURRENT_SOURCE_DIR}/cmake/trueform-config.cmake"
         DESTINATION trueform/cmake_config
 )
+
+# Install Conan test_package for conan create verification
+install(
+        DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../conan/trueform/test_package/"
+        DESTINATION trueform/conan/test_package
+        PATTERN "build" EXCLUDE
+        PATTERN "CMakeUserPresets.json" EXCLUDE
+)
+

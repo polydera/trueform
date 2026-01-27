@@ -65,21 +65,24 @@ cmake.args = [
   "-DTF_USE_SYSTEM_LIBS=OFF",
 ]
 build.targets = ["trueform_python"]
+sdist.exclude = [
+  "/*/**",
+  "/*",
+]
 sdist.include = [
-  "CMakeLists.txt",
-  "COMMERCIAL.md",
-  "CONTRIBUTING.md",
-  "LICENSE",
-  "LICENSE.noncommercial",
-  "README.md",
-  "README_python.md",
-  "cmake",
-  "docs",
-  "examples",
-  "include",
-  "licenses",
-  "python",
-  "trueformConfig.cmake.in",
+  "/pyproject.toml",
+  "/CMakeLists.txt",
+  "/LICENSE",
+  "/LICENSE.noncommercial",
+  "/README.md",
+  "/README_python.md",
+  "/examples/**",
+  "/trueformConfig.cmake.in",
+  "/cmake/**",
+  "/conan/trueform/**",
+  "/include/**",
+  "/licenses/**",
+  "/python/**",
 ]
 wheel.license-files = [
   "LICENSE",

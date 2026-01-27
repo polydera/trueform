@@ -13,71 +13,32 @@ Spatial queries, mesh booleans, isocontours, topology — at interactive speed o
 
 **[Documentation and Tutorials](https://trueform.polydera.com)** — Primitives, trees, topology, booleans — step by step.
 
-## Requirements
-
-- C++17 or later
-- [oneTBB](https://github.com/oneapi-src/oneTBB)
-
 ## Installation
 
-Install both the Python bindings and the C++ header-only CMake package via pip:
+`trueform` is a C++17 header-only library. It depends on [oneTBB](https://github.com/oneapi-src/oneTBB).
 
 ```bash
 pip install trueform
 ```
 
-Use the header-only library as a CMake package:
+The pip package includes C++ headers with cmake and conan integration modules.
 
+**Conan** (handles TBB automatically):
+```bash
+python -m trueform.conan create
+```
+
+**CMake** (requires TBB installed):
 ```cmake
 find_package(trueform REQUIRED CONFIG)
 target_link_libraries(my_target PRIVATE tf::trueform)
 ```
 
-Configure your build so CMake can find the package installed by pip:
-
 ```bash
 cmake -B build -Dtrueform_ROOT=$(python -m trueform.cmake)
-cmake --build build
 ```
 
-### FetchContent
-
-Use FetchContent directly:
-
-```cmake
-include(FetchContent)
-FetchContent_Declare(trueform
-  GIT_REPOSITORY https://github.com/polydera/trueform.git
-  GIT_TAG main)
-FetchContent_MakeAvailable(trueform)
-target_link_libraries(my_target PRIVATE tf::trueform)
-```
-
-### Conan
-
-Create the package from the recipe included in the repository:
-
-```bash
-git clone https://github.com/polydera/trueform.git
-conan create trueform/conan/trueform --build=missing
-```
-
-Then add to your `conanfile.txt`:
-
-```ini
-[requires]
-trueform/[>=0.1.0]
-```
-
-Install dependencies and build:
-
-```bash
-conan install . --build=missing
-cmake --preset conan-release
-cmake --build --preset conan-release
-```
-
-→ [Full installation guide](https://trueform.polydera.com/cpp/getting-started/installation)
+For manual installation without pip (FetchContent, system install, conan from repo), see the [full installation guide](https://trueform.polydera.com/cpp/getting-started/installation).
 
 ## Integrations
 
