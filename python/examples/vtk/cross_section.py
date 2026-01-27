@@ -1,13 +1,13 @@
 """
-Interactive isoband extraction example with VTK
+Interactive cross-section example with VTK
 
 Single viewport showing:
 - Original mesh (semi-transparent)
-- Isoband curves (teal)
-- Filled isoband polygons (muted teal)
+- Cross-section curves (teal)
+- Filled cross-section polygons (muted teal)
 
 The scalar field is computed as signed distance from a plane.
-Scroll to move the isoband levels. Press N to randomize the plane.
+Scroll to move the cutting plane. Press N to randomize the plane.
 """
 
 import vtk
@@ -27,25 +27,23 @@ from util import (
     create_parser,
 )
 
-# Set to True to test dynamic mesh (OffsetBlockedArray)
-USE_DYNAMIC_MESH = True
 
+class CrossSectionInteractor(BaseInteractor):
+    """Interactor for cross-section visualization"""
 
-class IsobandInteractor(BaseInteractor):
-    def __init__(self, mesh_data, isobands_polydata, curve_polydata, text_actor):
+    def __init__(self, mesh_data, fill_polydata, curve_polydata, text_actor):
         super().__init__()
 
         self.mesh_data = mesh_data
         self.mesh = mesh_data.mesh
-        self.isobands_polydata = isobands_polydata
+        self.fill_polydata = fill_polydata
         self.curve_polydata = curve_polydata
         self.text_actor = text_actor
 
         self.scalars = None
-        self.distance = 0.0
+        self.cut_value = 0.0
         self.min_d = 0.0
-        self.max_d = 0.0
-        self.spacing = 0.1
+        self.max_d = 1.0
 
         self.times = RollingAverage(maxlen=100)
 
@@ -64,11 +62,9 @@ class IsobandInteractor(BaseInteractor):
         plane = tf.Plane.from_point_normal(center, normal)
 
         self.scalars = tf.distance_field(self.mesh.points, plane)
-        self.distance = 0.0
-
         self.min_d = float(np.min(self.scalars))
         self.max_d = float(np.max(self.scalars))
-        self.spacing = (self.max_d - self.min_d) / 10.0
+        self.cut_value = (self.min_d + self.max_d) * 0.5
 
     def randomize_plane(self):
         """Create random plane through a random point"""
@@ -79,53 +75,41 @@ class IsobandInteractor(BaseInteractor):
         plane = tf.Plane.from_point_normal(random_point, random_normal)
 
         self.scalars = tf.distance_field(self.mesh.points, plane)
-        self.distance = 0.0
-
         self.min_d = float(np.min(self.scalars))
         self.max_d = float(np.max(self.scalars))
-        self.spacing = (self.max_d - self.min_d) / 10.0
+        self.cut_value = (self.min_d + self.max_d) * 0.5
 
-    def compute_bands(self):
+    def compute_cross_section(self):
+        """Extract cross-section curves and triangulate"""
         import time as time_module
 
-        N = 10
-
-        wrapped_offset = self.distance % self.spacing
-        if wrapped_offset < 0:
-            wrapped_offset += self.spacing
-
-        cutvalues = np.array(
-            [self.min_d + wrapped_offset + i * self.spacing for i in range(-1, N + 2)],
-            dtype=self.mesh.dtype
-        )
-
-        parity = int(np.floor(self.distance / self.spacing)) & 1
-        selected_bands = np.array([i for i in range(N + 2) if (i & 1) == parity], dtype=np.int32)
-
         start_time = time_module.perf_counter()
-        (band_faces, band_points), labels, (paths, curve_points) = tf.isobands(
-            self.mesh, self.scalars, cutvalues, selected_bands, return_curves=True
-        )
+
+        paths, curve_points = tf.isocontours(self.mesh, self.scalars, self.cut_value)
+
+        if len(paths) > 0 and len(curve_points) > 0:
+            tri_faces, tri_points = tf.triangulated((paths, curve_points))
+        else:
+            tri_faces, tri_points = np.zeros((0, 3), dtype=np.int32), np.zeros((0, 3), dtype=self.mesh.dtype)
+
         elapsed = time_module.perf_counter() - start_time
 
         self.times.add(elapsed)
         avg_time = self.times.get_average()
-        self.text_actor.SetInput(f"Isobands time: {format_time_ms(avg_time)}")
+        self.text_actor.SetInput(f"Cross-section time: {format_time_ms(avg_time)}")
 
-        if len(band_faces) > 0 and len(band_points) > 0:
-            poly = numpy_to_polydata(band_points, band_faces)
-            self.isobands_polydata.ShallowCopy(poly)
+        if len(tri_faces) > 0 and len(tri_points) > 0:
+            poly = numpy_to_polydata(tri_points, tri_faces)
+            self.fill_polydata.ShallowCopy(poly)
         else:
-            self.isobands_polydata.Initialize()
-
-        self.isobands_polydata.Modified()
+            self.fill_polydata.Initialize()
+        self.fill_polydata.Modified()
 
         if len(paths) > 0 and len(curve_points) > 0:
             curve_poly = curves_to_polydata(paths, curve_points)
             self.curve_polydata.ShallowCopy(curve_poly)
         else:
             self.curve_polydata.Initialize()
-
         self.curve_polydata.Modified()
 
         if self.GetInteractor() is not None:
@@ -135,40 +119,41 @@ class IsobandInteractor(BaseInteractor):
         key = self.GetInteractor().GetKeySym()
         if key == "n":
             self.randomize_plane()
-            self.compute_bands()
+            self.compute_cross_section()
         else:
             vtk.vtkInteractorStyleTrackballCamera.OnKeyPress(self)
 
     def on_mouse_wheel_forward(self, obj, event):
         if self.GetInteractor().GetControlKey():
-            self.distance += self.spacing * 0.1
-            self.compute_bands()
+            range_d = self.max_d - self.min_d
+            margin = range_d * 0.01
+            self.cut_value = min(self.max_d - margin, self.cut_value + 0.005 * range_d)
+            self.compute_cross_section()
         else:
             vtk.vtkInteractorStyleTrackballCamera.OnMouseWheelForward(self)
 
     def on_mouse_wheel_backward(self, obj, event):
         if self.GetInteractor().GetControlKey():
-            self.distance -= self.spacing * 0.1
-            self.compute_bands()
+            range_d = self.max_d - self.min_d
+            margin = range_d * 0.01
+            self.cut_value = max(self.min_d + margin, self.cut_value - 0.005 * range_d)
+            self.compute_cross_section()
         else:
             vtk.vtkInteractorStyleTrackballCamera.OnMouseWheelBackward(self)
 
 
 def main():
-    parser = create_parser("Interactive isoband extraction", mesh_args=1)
+    parser = create_parser("Interactive cross-section", mesh_args=1)
     parser.epilog = """
 Controls:
   N              Randomize cutting plane
-  Ctrl + Scroll  Move isoband levels
+  Ctrl + Scroll  Move cutting plane
   Mouse drag     Rotate camera
 """
     args = parser.parse_args()
     mesh_file = args.mesh
 
     faces, points = tf.read_stl(mesh_file)
-
-    if USE_DYNAMIC_MESH:
-        faces = tf.as_offset_blocked(faces)
 
     transform = compute_centering_and_scaling_transform(points, target_radius=10.0)
     points_homogeneous = np.hstack([points, np.ones((len(points), 1), dtype=points.dtype)])
@@ -180,6 +165,7 @@ Controls:
 
     renderer, renderer_text = create_renderer_with_text_strip()
 
+    # Original mesh (semi-transparent)
     mapper = vtk.vtkPolyDataMapper()
     mapper.SetInputData(poly)
     actor = vtk.vtkActor()
@@ -194,15 +180,17 @@ Controls:
 
     mesh_data = MeshData(mesh, actor, matrix)
 
-    isobands_poly = vtk.vtkPolyData()
-    isobands_poly.Initialize()
-    isobands_mapper = vtk.vtkPolyDataMapper()
-    isobands_mapper.SetInputData(isobands_poly)
-    isobands_actor = vtk.vtkActor()
-    isobands_actor.SetMapper(isobands_mapper)
-    isobands_actor.GetProperty().SetColor(0.0, 0.659, 0.604)
-    renderer.AddActor(isobands_actor)
+    # Cross-section fill (muted teal)
+    fill_poly = vtk.vtkPolyData()
+    fill_poly.Initialize()
+    fill_mapper = vtk.vtkPolyDataMapper()
+    fill_mapper.SetInputData(fill_poly)
+    fill_actor = vtk.vtkActor()
+    fill_actor.SetMapper(fill_mapper)
+    fill_actor.GetProperty().SetColor(0.0, 0.659, 0.604)
+    renderer.AddActor(fill_actor)
 
+    # Cross-section curves (brighter teal)
     curve_poly = vtk.vtkPolyData()
     curve_poly.Initialize()
     curve_mapper = vtk.vtkPolyDataMapper()
@@ -215,7 +203,7 @@ Controls:
     renderer.AddActor(curve_actor)
 
     text_time = create_text_actor(
-        "Isobands time: 0 ms",
+        "Cross-section time: 0 ms",
         font_size=38,
         position=(0.03, 0.50),
         justification='left'
@@ -230,10 +218,10 @@ Controls:
     interactor = vtk.vtkRenderWindowInteractor()
     interactor.SetRenderWindow(render_window)
 
-    style = IsobandInteractor(mesh_data, isobands_poly, curve_poly, text_time)
+    style = CrossSectionInteractor(mesh_data, fill_poly, curve_poly, text_time)
     interactor.SetInteractorStyle(style)
 
-    style.compute_bands()
+    style.compute_cross_section()
 
     render_window.Render()
     interactor.Start()

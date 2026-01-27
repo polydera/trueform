@@ -9,9 +9,9 @@ import {
 import { ThreejsBase } from "@/examples/ThreejsBase";
 import * as THREE from "three";
 
-export class IsobandsExample extends ThreejsBase {
+export class CrossSectionExample extends ThreejsBase {
   private curveRenderer: CurveRenderer;
-  private isobandsMesh: THREE.Mesh;
+  private crossSectionMesh: THREE.Mesh;
   private keyPressed = false;
 
   public randomize() {
@@ -25,9 +25,11 @@ export class IsobandsExample extends ThreejsBase {
     container: HTMLElement,
     isDarkMode = true,
   ) {
+    // Single viewport - no second container
     super(wasmInstance, paths, container, undefined, true, false, isDarkMode);
     this.sceneBundle1.controls.enableZoom = false;
 
+    // Make the original mesh semi-transparent
     this.instancedMeshes.forEach((instancedMesh) => {
       const material = instancedMesh.material as THREE.MeshMatcapMaterial;
       material.transparent = true;
@@ -155,10 +157,10 @@ export class IsobandsExample extends ThreejsBase {
     });
     this.sceneBundle1.scene.add(this.curveRenderer.object);
 
-    this.isobandsMesh = createMesh(this.isDarkMode);
-    const isobandsMaterial = this.isobandsMesh.material as THREE.MeshMatcapMaterial;
-    isobandsMaterial.color = new THREE.Color(0x00a89a);
-    this.sceneBundle1.scene.add(this.isobandsMesh);
+    this.crossSectionMesh = createMesh(this.isDarkMode);
+    const crossSectionMaterial = this.crossSectionMesh.material as THREE.MeshMatcapMaterial;
+    crossSectionMaterial.color = new THREE.Color(0x00a89a);
+    this.sceneBundle1.scene.add(this.crossSectionMesh);
 
     this.updateMeshes();
     fitCameraToAllMeshesFromZPlane(this.sceneBundle1, 1.5);
@@ -167,6 +169,7 @@ export class IsobandsExample extends ThreejsBase {
   public override updateMeshes() {
     super.updateMeshes();
 
+    // Update curves
     const curveOutput = this.wasmInstance.get_curve_mesh();
     if (curveOutput && curveOutput.updated) {
       const points = curveOutput.get_curve_points();
@@ -176,14 +179,15 @@ export class IsobandsExample extends ThreejsBase {
       this.curveRenderer.update(curves);
     }
 
+    // Update filled cross-section mesh
     const resultMesh = this.wasmInstance.get_result_mesh();
     if (resultMesh) {
-      updateResultMesh(resultMesh, this.isobandsMesh);
+      updateResultMesh(resultMesh, this.crossSectionMesh);
     }
   }
 
   public runMain() {
-    this.wasmInstance.run_main_isobands(this.paths[0]!);
+    this.wasmInstance.run_main_cross_section(this.paths[0]!);
     this.wasmInstance.FS.unlink(this.paths[0]);
   }
 }

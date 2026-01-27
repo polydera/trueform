@@ -16,6 +16,11 @@ export const liveExamples: ExampleMetadata[] = [
     description: "Interactive mesh slicing. Scroll to move the slicing planes through geometry.",
     to: "slicing",
   },
+  {
+    title: "Cross-Section",
+    description: "Interactive cross-section visualization. Scroll to move the cutting plane through the mesh.",
+    to: "cross-section",
+  },
   // Mesh analysis
   {
     title: "Shape Index",

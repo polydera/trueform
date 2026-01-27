@@ -28,7 +28,7 @@ def create_parser(description: str, mesh_args: int | str = 1) -> argparse.Argume
     )
 
     if mesh_args == 1:
-        parser.add_argument("mesh", help="Path to mesh file (STL, OBJ, etc.)")
+        parser.add_argument("mesh", help="Path to mesh file (STL)")
     elif mesh_args == 2:
         parser.add_argument("mesh1", help="Path to first mesh file")
         parser.add_argument(

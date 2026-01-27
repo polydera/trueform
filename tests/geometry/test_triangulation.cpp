@@ -455,6 +455,155 @@ TEMPLATE_TEST_CASE("triangulated_large_circle", "[geometry][triangulation]",
 }
 
 // =============================================================================
+// Large Polygon Clockwise (CW) - Tests auto-detection of winding order
+// =============================================================================
+
+TEMPLATE_TEST_CASE("triangulated_large_circle_clockwise", "[geometry][triangulation]",
+    (float),
+    (double))
+{
+    using real_t = TestType;
+
+    int n = 1000;
+    tf::points_buffer<real_t, 3> points;
+
+    real_t pi = real_t(3.14159265358979323846);
+    // Generate points in CLOCKWISE order (negative angle direction)
+    for (int i = 0; i < n; ++i) {
+        real_t angle = -real_t(2) * pi * real_t(i) / real_t(n);
+        points.emplace_back(std::cos(angle), std::sin(angle), real_t(0));
+    }
+
+    auto polygon = tf::make_polygon(points);
+
+    // Circle with radius 1 has area pi
+    real_t expected_area = pi;
+    real_t original_area = tf::area(polygon);
+
+    // Debug output
+    std::cout << "=== triangulated_large_circle_clockwise ===" << std::endl;
+    std::cout << "n = " << n << std::endl;
+    std::cout << "Expected area: " << expected_area << std::endl;
+    std::cout << "Original area: " << original_area << std::endl;
+
+    REQUIRE(std::abs(original_area - expected_area) < real_t(0.001));
+
+    auto tri_mesh = tf::triangulated(polygon);
+
+    std::cout << "Triangulated faces: " << tri_mesh.faces().size() << std::endl;
+    std::cout << "Triangulated points: " << tri_mesh.points().size() << std::endl;
+    // Print first few faces
+    for (std::size_t i = 0; i < std::min(std::size_t(5), tri_mesh.faces().size()); ++i) {
+        std::cout << "  face " << i << ": (" << tri_mesh.faces()[i][0] << ", " << tri_mesh.faces()[i][1] << ", " << tri_mesh.faces()[i][2] << ")" << std::endl;
+    }
+
+    // n-gon → n-2 triangles
+    REQUIRE(int(tri_mesh.faces().size()) == n - 2);
+    REQUIRE(int(tri_mesh.points().size()) == n);
+
+    // Area preserved
+    real_t tri_area = tf::area(tri_mesh.polygons());
+    std::cout << "Triangulated area: " << tri_area << std::endl;
+    REQUIRE(std::abs(tri_area - original_area) < real_t(0.001));
+}
+
+// =============================================================================
+// 2D Polygon Tests
+// =============================================================================
+
+TEMPLATE_TEST_CASE("triangulated_quad_2d", "[geometry][triangulation]",
+    (float),
+    (double))
+{
+    using real_t = TestType;
+
+    tf::points_buffer<real_t, 2> points;
+    points.emplace_back(real_t(0), real_t(0));
+    points.emplace_back(real_t(1), real_t(0));
+    points.emplace_back(real_t(1), real_t(1));
+    points.emplace_back(real_t(0), real_t(1));
+
+    auto polygon = tf::make_polygon(points);
+
+    auto tri_mesh = tf::triangulated(polygon);
+
+    // 4-gon → 2 triangles
+    REQUIRE(tri_mesh.faces().size() == 2);
+    REQUIRE(tri_mesh.points().size() == 4);
+
+    // Area preserved (unit square = 1.0)
+    real_t tri_area = tf::area(tri_mesh.polygons());
+    REQUIRE(std::abs(tri_area - real_t(1)) < real_t(1e-5));
+}
+
+TEMPLATE_TEST_CASE("triangulated_large_circle_2d", "[geometry][triangulation]",
+    (float),
+    (double))
+{
+    using real_t = TestType;
+
+    int n = 1000;
+    tf::points_buffer<real_t, 2> points;
+
+    real_t pi = real_t(3.14159265358979323846);
+    for (int i = 0; i < n; ++i) {
+        real_t angle = real_t(2) * pi * real_t(i) / real_t(n);
+        points.emplace_back(std::cos(angle), std::sin(angle));
+    }
+
+    auto polygon = tf::make_polygon(points);
+
+    real_t expected_area = pi;
+    real_t original_area = tf::area(polygon);
+
+    REQUIRE(std::abs(original_area - expected_area) < real_t(0.001));
+
+    auto tri_mesh = tf::triangulated(polygon);
+
+    // n-gon → n-2 triangles
+    REQUIRE(int(tri_mesh.faces().size()) == n - 2);
+    REQUIRE(int(tri_mesh.points().size()) == n);
+
+    // Area preserved
+    real_t tri_area = tf::area(tri_mesh.polygons());
+    REQUIRE(std::abs(tri_area - original_area) < real_t(0.001));
+}
+
+TEMPLATE_TEST_CASE("triangulated_large_circle_2d_clockwise", "[geometry][triangulation]",
+    (float),
+    (double))
+{
+    using real_t = TestType;
+
+    int n = 1000;
+    tf::points_buffer<real_t, 2> points;
+
+    real_t pi = real_t(3.14159265358979323846);
+    // Generate points in CLOCKWISE order (negative angle direction)
+    for (int i = 0; i < n; ++i) {
+        real_t angle = -real_t(2) * pi * real_t(i) / real_t(n);
+        points.emplace_back(std::cos(angle), std::sin(angle));
+    }
+
+    auto polygon = tf::make_polygon(points);
+
+    real_t expected_area = pi;
+    real_t original_area = tf::area(polygon);
+
+    REQUIRE(std::abs(original_area - expected_area) < real_t(0.001));
+
+    auto tri_mesh = tf::triangulated(polygon);
+
+    // n-gon → n-2 triangles
+    REQUIRE(int(tri_mesh.faces().size()) == n - 2);
+    REQUIRE(int(tri_mesh.points().size()) == n);
+
+    // Area preserved
+    real_t tri_area = tf::area(tri_mesh.polygons());
+    REQUIRE(std::abs(tri_area - original_area) < real_t(0.001));
+}
+
+// =============================================================================
 // Triangle Mesh Unchanged
 // =============================================================================
 

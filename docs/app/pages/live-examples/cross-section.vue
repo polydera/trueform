@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { useWasmModule } from "@/composables/useWasmModule";
-import { IsobandsExample } from "@/examples/IsobandsExample";
+import { CrossSectionExample } from "@/examples/CrossSectionExample";
 import { useExampleLoadingState } from "@/composables/useExampleLoadingState";
 import { useMeshSelection } from "@/composables/useMeshSelection";
 import { getExampleMetadata } from "@/utils/liveExamples";
 
-const metadata = getExampleMetadata("slicing");
+const metadata = getExampleMetadata("cross-section");
 if (metadata) {
   defineOgImageComponent("Docs", {
     title: metadata.title,
@@ -27,7 +27,7 @@ const { isLoading, loadingMessage, loadingError, resetLoading, setLoadingMessage
 const { meshSize, buildMeshes, formatPolygonLabel } = useMeshSelection();
 
 const threejsContainer = ref<HTMLElement | null>(null);
-let exampleClass: IsobandsExample | null = null;
+let exampleClass: CrossSectionExample | null = null;
 const meshCount = 1;
 const meshes = computed(() => buildMeshes(meshCount));
 const polygonLabel = computed(() => formatPolygonLabel(meshCount));
@@ -75,7 +75,7 @@ const loadThreejs = async () => {
         return null;
       }
 
-      const instance = new IsobandsExample(
+      const instance = new CrossSectionExample(
         wasmInstance,
         meshFilenames,
         el,
@@ -115,15 +115,15 @@ watch(isDark, (dark) => {
     <template #info>
       <div v-if="isTouchscreen" class="flex gap-1 items-center text-muted">
         <UIcon name="i-lucide-hand" class="size-4 ml-1" />
-        <p class="text-sm">Scroll with one finger to move the plane.</p>
+        <p class="text-sm">Scroll with one finger to move the cutting plane.</p>
       </div>
       <div v-else class="flex gap-1 items-center text-muted">
         <UKbd variant="soft" value="scroll" />
-        <p class="text-sm">Scroll to move the plane. Cross-sections update live.</p>
+        <p class="text-sm">Scroll to move the cutting plane. Cross-sections update live.</p>
       </div>
     </template>
     <template #containers>
-      <div ref="threejsContainer" id="threejsContainer" class="h-full flex-1 min-h-0 w-screen md:w-full"></div>
+      <div ref="threejsContainer" id="threejsContainer" class="h-full w-full min-h-0"></div>
     </template>
   </ExampleLayout>
 </template>

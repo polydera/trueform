@@ -141,8 +141,8 @@ auto make_isobands(
     tf::parallel_fill(tf::slice(original_labels, start, end), id);
     start = end;
   }
-  return std::make_pair(
+  return std::make_tuple(
       tf::make_polygons_buffer(std::move(faces), std::move(points_out)),
-      std::move(labels));
+      std::move(labels), std::move(created_ids));
 }
 } // namespace tf::cut

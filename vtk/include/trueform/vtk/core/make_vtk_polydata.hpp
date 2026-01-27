@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 #include <trueform/core/curves_buffer.hpp>
 #include <trueform/core/polygons_buffer.hpp>
@@ -53,7 +53,8 @@ auto make_vtk_polydata(
     const tf::polygons_buffer<vtkIdType, float, 3, tf::dynamic_size> &polys)
     -> vtkSmartPointer<vtkPolyData>;
 
-/// @brief Creates vtkPolyData from a dynamic polygons_buffer (moves data, zero-copy).
+/// @brief Creates vtkPolyData from a dynamic polygons_buffer (moves data,
+/// zero-copy).
 /// @param polys Trueform polygons buffer with vtkIdType indices (consumed).
 /// @return A new vtkPolyData with transferred ownership.
 auto make_vtk_polydata(
@@ -66,7 +67,8 @@ auto make_vtk_polydata(
 auto make_vtk_polydata(const tf::curves_buffer<vtkIdType, float, 3> &curves)
     -> vtkSmartPointer<vtkPolyData>;
 
-/// @brief Creates vtkPolyData (lines) from a curves_buffer (moves data, zero-copy).
+/// @brief Creates vtkPolyData (lines) from a curves_buffer (moves data,
+/// zero-copy).
 /// @param curves Trueform curves buffer with vtkIdType indices (consumed).
 /// @return A new vtkPolyData with lines.
 auto make_vtk_polydata(tf::curves_buffer<vtkIdType, float, 3> &&curves)
@@ -78,7 +80,8 @@ auto make_vtk_polydata(tf::curves_buffer<vtkIdType, float, 3> &&curves)
 auto make_vtk_polydata(const tf::segments_buffer<vtkIdType, float, 3> &segments)
     -> vtkSmartPointer<vtkPolyData>;
 
-/// @brief Creates vtkPolyData (lines) from a segments_buffer (moves data, zero-copy).
+/// @brief Creates vtkPolyData (lines) from a segments_buffer (moves data,
+/// zero-copy).
 /// @param segments Trueform segments buffer with vtkIdType indices (consumed).
 /// @return A new vtkPolyData with lines.
 auto make_vtk_polydata(tf::segments_buffer<vtkIdType, float, 3> &&segments)

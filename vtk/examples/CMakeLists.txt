@@ -36,6 +36,7 @@ add_vtk_example(intersection_curves)
 add_vtk_example(boolean)
 add_vtk_example(isocontours)
 add_vtk_example(isobands)
+add_vtk_example(cross_section)
 add_vtk_example(boundary_paths)
 add_vtk_example(connected_components)
 add_vtk_example(collision)
@@ -47,6 +48,7 @@ add_custom_target(trueform_vtk_examples DEPENDS
   vtk_example_boolean
   vtk_example_isocontours
   vtk_example_isobands
+  vtk_example_cross_section
   vtk_example_boundary_paths
   vtk_example_connected_components
   vtk_example_collision

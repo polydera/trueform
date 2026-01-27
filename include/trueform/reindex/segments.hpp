@@ -16,8 +16,8 @@
 #include "../core/index_map.hpp"
 #include "../core/segments.hpp"
 #include "../core/segments_buffer.hpp"
-#include "../core/views/block_indirect_range.hpp"
 #include "../core/views/indirect_range.hpp"
+#include "../core/views/mapped_range.hpp"
 namespace tf {
 
 /// @ingroup reindex
@@ -42,10 +42,12 @@ auto reindexed(const tf::segments<Policy> &segments,
                const tf::index_map<Range0, Range1> &edge_im,
                const tf::index_map<Range2, Range3> &point_im,
                tf::segments<Policy1> &out) {
+  using Index = std::decay_t<decltype(point_im.f()[0])>;
+  auto remapped_edges = tf::make_mapped_range(segments.edges(), [&](auto edge) {
+    return std::array<Index, 2>{point_im.f()[edge[0]], point_im.f()[edge[1]]};
+  });
   tf::parallel_copy(
-      tf::make_indirect_range(
-          edge_im.kept_ids(),
-          tf::make_block_indirect_range(segments.edges(), point_im.f())),
+      tf::make_indirect_range(edge_im.kept_ids(), remapped_edges),
       out.edges());
   tf::parallel_copy(
       tf::make_indirect_range(point_im.kept_ids(), segments.points()),

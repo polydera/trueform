@@ -2,6 +2,7 @@
 #include <emscripten/val.h>
 #include "boolean_web.h"
 #include "collision_web.h"
+#include "cross_section_web.h"
 #include "isobands_web.h"
 #include "main.h"
 #include "positioning_web.h"
@@ -166,6 +167,8 @@ EMSCRIPTEN_BINDINGS(boolean) {
   emscripten::function("run_main_collisions", &run_main_collisions);
   // Isobands
   emscripten::function("run_main_isobands", &run_main_isobands);
+  // Cross-section
+  emscripten::function("run_main_cross_section", &run_main_cross_section);
   // Shape histogram
   emscripten::function("run_main_shape_histogram", &run_main_shape_histogram);
   emscripten::function("shape_histogram_colors_updated",

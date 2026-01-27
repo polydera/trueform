@@ -63,6 +63,21 @@ public:
       f(_nodes[i], i - 1, i, i + 1);
     f(_nodes[0], size - 1, 0, 1);
     f(_nodes[size - 1], size - 2, size - 1, 0);
+
+    // Compute signed area to detect winding order
+    // Using shoelace formula: positive = CCW, negative = CW
+    double sum = 0;
+    for (Index i = 0, j = size - 1; i < size; j = i++) {
+      const auto &p1 = points[i];
+      const auto &p2 = points[j];
+      sum += (p2[0] - p1[0]) * (p1[1] + p2[1]);
+    }
+    // If CW (sum < 0), swap prev/next to make it CCW
+    if (sum < 0) {
+      for (Index i = 0; i < size; ++i)
+        std::swap(_nodes[i].prev, _nodes[i].next);
+    }
+
     // enable z-order hashing for larger polygons
     _hashing = n_pts > 80;
     if (_hashing) {

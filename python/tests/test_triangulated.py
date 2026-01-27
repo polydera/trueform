@@ -438,6 +438,38 @@ def test_large_polygon(dtype):
 
 
 @pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_large_polygon_clockwise(dtype):
+    """Triangulate a clockwise polygon (tests auto-detection of winding order)."""
+    n = 100
+    # Generate points in CLOCKWISE order (negative angle direction)
+    angles = np.linspace(0, -2*np.pi, n, endpoint=False)
+    polygon = np.column_stack([
+        np.cos(angles),
+        np.sin(angles),
+        np.zeros(n)
+    ]).astype(dtype)
+
+    faces, points = tf.triangulated(polygon)
+
+    # n-gon -> n-2 triangles
+    expected_triangles = n - 2
+    assert faces.shape == (expected_triangles, 3), \
+        f"Expected ({expected_triangles}, 3), got {faces.shape}"
+
+    # Verify area is preserved (circle with radius 1 has area pi)
+    total_area = 0.0
+    for face in faces:
+        v0, v1, v2 = points[face[0]], points[face[1]], points[face[2]]
+        edge1 = v1 - v0
+        edge2 = v2 - v0
+        total_area += 0.5 * np.linalg.norm(np.cross(edge1, edge2))
+
+    expected_area = np.pi
+    assert abs(total_area - expected_area) < 0.01, \
+        f"Expected area {expected_area}, got {total_area}"
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
 def test_convex_polygon(dtype):
     """Triangulate a convex polygon (hexagon)."""
     n = 6

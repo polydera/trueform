@@ -105,16 +105,18 @@ int main() {
 
   auto *poly = reader->GetOutput();
 
-  // Create scalar field as distance from a plane through centroid
+  // Create scalar field as signed distance to a plane through centroid
   auto points = tf::vtk::make_points(poly);
   auto center = tf::centroid(points);
+  auto normal = tf::make_unit_vector(1.f, 2.f, 1.f);
+  auto plane = tf::make_plane(normal, center);
 
   vtkNew<vtkFloatArray> scalars;
-  scalars->SetName("distance");
+  scalars->SetName("plane_distance");
   scalars->SetNumberOfTuples(poly->GetNumberOfPoints());
 
   auto scalars_range = tf::vtk::make_range(scalars.Get());
-  tf::parallel_transform(points, scalars_range, tf::distance_f(center));
+  tf::parallel_transform(points, scalars_range, tf::distance_f(plane));
 
   float min_d = *std::min_element(scalars_range.begin(), scalars_range.end());
   float max_d = *std::max_element(scalars_range.begin(), scalars_range.end());
@@ -133,7 +135,7 @@ int main() {
   vtkNew<vtkOpenGLActor> mesh_actor;
   mesh_actor->SetMapper(mesh_mapper);
   mesh_actor->GetProperty()->SetColor(0.5, 0.5, 0.55);
-  mesh_actor->GetProperty()->SetOpacity(0.3);
+  mesh_actor->GetProperty()->SetOpacity(0.15);
 
   // Visualization - isobands
   vtkNew<vtkOpenGLPolyDataMapper> band_mapper;
@@ -141,13 +143,12 @@ int main() {
   band_mapper->SetScalarModeToUseCellData();
   band_mapper->SetColorModeToMapScalars();
 
-  // Create a lookup table for band colors
+  // Create a lookup table for band colors (shades of teal)
   vtkNew<vtkLookupTable> lut;
   lut->SetNumberOfTableValues(10);
   for (int i = 0; i < 10; ++i) {
     float t = static_cast<float>(i) / 9.0f;
-    lut->SetTableValue(i, 0.2 + 0.6 * t, 0.3 + 0.4 * (1 - t), 0.8 - 0.3 * t,
-                       1.0);
+    lut->SetTableValue(i, 0.0 + 0.35 * t, 0.4 + 0.4 * t, 0.36 + 0.38 * t, 1.0);
   }
   lut->Build();
   band_mapper->SetLookupTable(lut);
@@ -166,7 +167,7 @@ int main() {
   curve_mapper->SetInputConnection(tube->GetOutputPort());
   vtkNew<vtkOpenGLActor> curve_actor;
   curve_actor->SetMapper(curve_mapper);
-  curve_actor->GetProperty()->SetColor(1.0, 0.2, 0.2);
+  curve_actor->GetProperty()->SetColor(0.0, 0.95, 0.85);
 
   vtkNew<vtkOpenGLRenderer> renderer;
   renderer->AddActor(mesh_actor);

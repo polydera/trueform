@@ -57,6 +57,7 @@ Issues = "https://github.com/polydera/trueform/issues"
 [tool.scikit-build]
 build-dir = "build/{wheel_tag}"
 cmake.build-type = "Release"
+ninja.make-fallback = false
 cmake.args = [
   "-DTF_BUILD_PYTHON=ON",
   "-DTF_BUILD_EXAMPLES=OFF",

@@ -78,9 +78,9 @@ public:
       throw std::runtime_error("Isobands bridge requires at least one mesh.");
     }
     auto points = mesh_store[0].polygons.points();
-    auto plane =
-        tf::make_plane(tf::normalized(tf::random_vector<float, 3>()),
-                       points[tf::random<int>(0, points.size() - 1)]);
+    auto center = tf::centroid(points);
+    auto normal = tf::make_unit_vector(1.f, 2.f, 1.f);
+    auto plane = tf::make_plane(normal, center);
     scalars.allocate(points.size());
     tf::parallel_transform(points, scalars, tf::distance_f(plane));
     distance = 0;
@@ -97,9 +97,8 @@ public:
 
   auto OnMouseWheel(int delta, bool shiftKey) -> bool override {
     if (shiftKey) {
-      distance += delta * 0.05f;
-      // Wrap for infinite scrolling
       const float range = max_d - min_d;
+      distance += delta * 0.003f * range;
       float offset = std::fmod(distance - min_d, range);
       if (offset < 0) {
         offset += range;

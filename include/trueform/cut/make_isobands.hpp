@@ -14,6 +14,7 @@
 #include "../core/curves_buffer.hpp"
 #include "../core/none.hpp"
 #include "../intersect/scalar_field_intersections.hpp"
+#include "../reindex/by_ids_on_points.hpp"
 #include "../topology/connect_edges_to_paths.hpp"
 #include "./impl/isobands.hpp"
 #include "./return_curves.hpp"
@@ -59,8 +60,10 @@ auto make_isobands(const tf::polygons<Policy> &polygons, const Range0 &scalars,
     sfi.build_many(polygons, scalars, cut_vals);
     tf::scalar_cut_faces<Index> scf;
     scf.build(polygons, sfi);
-    return cut::make_isobands<Index>(polygons, sfi, scf, scalars,
-                                     tf::make_range(cut_vals), selected_bands);
+    auto [res_polygons, labels, created_ids] =
+        cut::make_isobands<Index>(polygons, sfi, scf, scalars,
+                                  tf::make_range(cut_vals), selected_bands);
+    return std::make_pair(std::move(res_polygons), std::move(labels));
   }
 }
 
@@ -97,18 +100,21 @@ auto make_isobands(const tf::polygons<Policy> &polygons, const Range0 &scalars,
     sfi.build_many(polygons, scalars, cut_vals);
     tf::scalar_cut_faces<Index> scf;
     scf.build(polygons, sfi);
-    auto [res_polygons, labels] = cut::make_isobands<Index>(
+    auto [res_polygons, labels, created_ids] = cut::make_isobands<Index>(
         polygons, sfi, scf, scalars, tf::make_range(cut_vals), selected_bands);
     auto ie = tf::make_mapped_range(scf.intersection_edges(), [](auto e) {
       return std::array<Index, 2>{e[0].id, e[1].id};
     });
-    auto paths = tf::connect_edges_to_paths(tf::make_edges(ie));
+    auto all_segments =
+        tf::make_segments(tf::make_edges(ie), sfi.intersection_points());
+    auto filtered_segments =
+        tf::reindexed_by_ids_on_points(all_segments, created_ids);
+    auto paths = tf::connect_edges_to_paths(filtered_segments.edges());
     tf::curves_buffer<Index, tf::coordinate_type<Policy>,
                       tf::coordinate_dims_v<Policy>>
         cb;
     cb.paths_buffer() = std::move(paths);
-    cb.points_buffer().allocate(sfi.intersection_points().size());
-    tf::parallel_copy(sfi.intersection_points(), cb.points());
+    cb.points_buffer() = std::move(filtered_segments.points_buffer());
     return std::make_tuple(std::move(res_polygons), std::move(labels),
                            std::move(cb));
   }

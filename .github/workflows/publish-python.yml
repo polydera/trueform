@@ -21,6 +21,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Build sdist
+        run: |
+          python3 -m pip install build
+          python3 -m build --sdist --outdir dist
+
+      - name: List dist contents
+        run: ls -la dist/
+
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
