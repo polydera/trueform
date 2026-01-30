@@ -79,17 +79,18 @@ auto stitched_face_membership(const tf::faces<FacesPolicy> &result_faces,
   offsets.allocate(n_result_points + 1);
   tf::parallel_fill(offsets, 0);
   const Index num_created = n_result_points - im.created_points_offset;
-  constexpr Index sentinel = Index(-1);
+  const Index sentinel0 = Index(im.polygons0.f().size());
+  const Index sentinel1 = Index(im.polygons1.f().size());
 
   // Points from mesh0: count kept clean polygons + dirty
   tf::parallel_for_each(
       im.points0.kept_ids(),
-      [&](Index orig_idx) {
+      [&, sentinel0](Index orig_idx) {
         Index result_idx = im.points0.f()[orig_idx] + im.points0_offset;
         Index count = 0;
         for (auto poly_id : fm0[orig_idx]) {
           Index remapped = im.polygons0.f()[poly_id];
-          if (remapped != sentinel &&
+          if (remapped != sentinel0 &&
               !dirty_mask[remapped + im.polygons0_offset])
             ++count;
         }
@@ -100,12 +101,12 @@ auto stitched_face_membership(const tf::faces<FacesPolicy> &result_faces,
   // Points from mesh1: count kept clean polygons + dirty
   tf::parallel_for_each(
       im.points1.kept_ids(),
-      [&](Index orig_idx) {
+      [&, sentinel1](Index orig_idx) {
         Index result_idx = im.points1.f()[orig_idx] + im.points1_offset;
         Index count = 0;
         for (auto poly_id : fm1[orig_idx]) {
           Index remapped = im.polygons1.f()[poly_id];
-          if (remapped != sentinel &&
+          if (remapped != sentinel1 &&
               !dirty_mask[remapped + im.polygons1_offset])
             ++count;
         }
@@ -136,12 +137,12 @@ auto stitched_face_membership(const tf::faces<FacesPolicy> &result_faces,
   // Copy from mesh0: kept clean polygons (remapped) + dirty
   tf::parallel_for_each(
       im.points0.kept_ids(),
-      [&](Index orig_idx) {
+      [&, sentinel0](Index orig_idx) {
         Index result_idx = im.points0.f()[orig_idx] + im.points0_offset;
         auto dest = data.begin() + offs[result_idx];
         for (auto poly_id : fm0[orig_idx]) {
           Index remapped = im.polygons0.f()[poly_id];
-          if (remapped != sentinel &&
+          if (remapped != sentinel0 &&
               !dirty_mask[remapped + im.polygons0_offset])
             *dest++ = remapped + im.polygons0_offset;
         }
@@ -156,12 +157,12 @@ auto stitched_face_membership(const tf::faces<FacesPolicy> &result_faces,
   // Copy from mesh1: kept clean polygons (remapped) + dirty
   tf::parallel_for_each(
       im.points1.kept_ids(),
-      [&](Index orig_idx) {
+      [&, sentinel1](Index orig_idx) {
         Index result_idx = im.points1.f()[orig_idx] + im.points1_offset;
         auto dest = data.begin() + offs[result_idx];
         for (auto poly_id : fm1[orig_idx]) {
           Index remapped = im.polygons1.f()[poly_id];
-          if (remapped != sentinel &&
+          if (remapped != sentinel1 &&
               !dirty_mask[remapped + im.polygons1_offset])
             *dest++ = remapped + im.polygons1_offset;
         }

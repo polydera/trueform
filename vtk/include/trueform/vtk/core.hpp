@@ -35,3 +35,4 @@
 #include <trueform/vtk/core/make_vtk_transform.hpp>
 #include <trueform/vtk/core/make_world_ray.hpp>
 #include <trueform/vtk/core/polydata.hpp>
+#include <trueform/vtk/core/tree_index_map.hpp>

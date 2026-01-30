@@ -4,6 +4,7 @@ add_executable(trueform_spatial_tests
   test_intersects.cpp
   test_gather_ids.cpp
   test_mod_tree.cpp
+  test_mod_tree_queries.cpp
 )
 
 target_link_libraries(trueform_spatial_tests PRIVATE trueform_test_common)

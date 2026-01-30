@@ -41,6 +41,7 @@
  *  Policy-based composition for attaching spatial trees to ranges.
  */
 
+#include "./spatial/aabb_mod_tree.hpp"         // IWYU pragma: export
 #include "./spatial/aabb_tree.hpp"             // IWYU pragma: export
 #include "./spatial/distance.hpp"              // IWYU pragma: export
 #include "./spatial/gather_ids.hpp"            // IWYU pragma: export
@@ -52,7 +53,9 @@
 #include "./spatial/nearest_neighbor_pair.hpp" // IWYU pragma: export
 #include "./spatial/nearest_neighbors.hpp"     // IWYU pragma: export
 #include "./spatial/neighbor_search.hpp"       // IWYU pragma: export
+#include "./spatial/obb_mod_tree.hpp"          // IWYU pragma: export
 #include "./spatial/obb_tree.hpp"              // IWYU pragma: export
+#include "./spatial/obbrss_mod_tree.hpp"       // IWYU pragma: export
 #include "./spatial/obbrss_tree.hpp"           // IWYU pragma: export
 #include "./spatial/partitioning.hpp"          // IWYU pragma: export
 #include "./spatial/policy.hpp"                // IWYU pragma: export
@@ -63,6 +66,7 @@
 #include "./spatial/stitch_mod_tree.hpp"       // IWYU pragma: export
 #include "./spatial/tree.hpp"                  // IWYU pragma: export
 #include "./spatial/tree_config.hpp"           // IWYU pragma: export
+#include "./spatial/tree_index_map.hpp"        // IWYU pragma: export
 #include "./spatial/tree_like.hpp"             // IWYU pragma: export
 #include "./spatial/tree_metric_info.hpp"      // IWYU pragma: export
 #include "./spatial/tree_metric_info_pair.hpp" // IWYU pragma: export

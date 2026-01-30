@@ -99,7 +99,8 @@ auto stitched_manifold_edge_link(
     result.data_buffer().allocate(result_faces.size() * NResult);
   }
 
-  constexpr Index sentinel = Index(-1);
+  const Index sentinel0 = Index(im.polygons0.f().size());
+  const Index sentinel1 = Index(im.polygons1.f().size());
   constexpr Index needs_recompute = Index(-4);
 
   auto is_dirty_edge = [&](Index v0, Index v1) {
@@ -119,7 +120,7 @@ auto stitched_manifold_edge_link(
   // Copy & remap clean faces from mesh0
   tf::parallel_for_each(
       im.polygons0.kept_ids(),
-      [&](Index orig_face_id) {
+      [&, sentinel0](Index orig_face_id) {
         Index result_face_id =
             im.polygons0.f()[orig_face_id] + im.polygons0_offset;
         const auto &orig_peers = mel0[orig_face_id];
@@ -142,7 +143,7 @@ auto stitched_manifold_edge_link(
             result_peers[current] = {tf::manifold_edge_peer<Index>::boundary};
           } else {
             Index remapped_peer = im.polygons0.f()[orig_peer];
-            if (remapped_peer == sentinel) {
+            if (remapped_peer == sentinel0) {
               result_peers[current] = {needs_recompute};
             } else {
               result_peers[current] = {remapped_peer + im.polygons0_offset};
@@ -155,7 +156,7 @@ auto stitched_manifold_edge_link(
   // Copy & remap clean faces from mesh1
   tf::parallel_for_each(
       im.polygons1.kept_ids(),
-      [&](Index orig_face_id) {
+      [&, sentinel1](Index orig_face_id) {
         Index result_face_id =
             im.polygons1.f()[orig_face_id] + im.polygons1_offset;
         const auto &orig_peers = mel1[orig_face_id];
@@ -178,7 +179,7 @@ auto stitched_manifold_edge_link(
             result_peers[current] = {tf::manifold_edge_peer<Index>::boundary};
           } else {
             Index remapped_peer = im.polygons1.f()[orig_peer];
-            if (remapped_peer == sentinel) {
+            if (remapped_peer == sentinel1) {
               result_peers[current] = {needs_recompute};
             } else {
               result_peers[current] = {remapped_peer + im.polygons1_offset};

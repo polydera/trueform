@@ -27,6 +27,11 @@ export const liveExamples: ExampleMetadata[] = [
     description: "Curvature-based shape analysis. Hover to see local shape index histograms.",
     to: "shape-histogram",
   },
+  {
+    title: "Free-Form Smoothing",
+    description: "Interactive mesh smoothing. Drag to smooth vertices with incremental tree updates.",
+    to: "free-form-smoothing",
+  },
   // Spatial queries
   {
     title: "Collision",

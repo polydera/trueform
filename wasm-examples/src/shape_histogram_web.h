@@ -235,7 +235,7 @@ private:
         [&points](int seed, int neighbor) {
           return tf::distance2(points[seed], points[neighbor]);
         },
-        radius_, true, [this](int idx) { current_indices_.push_back(idx); });
+        radius_, [this](int idx) { current_indices_.push_back(idx); }, true);
 
     // Color current neighborhood
     auto neigh_colors = tf::make_indirect_range(current_indices_, colors_range);

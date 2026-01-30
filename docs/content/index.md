@@ -125,7 +125,7 @@ Why trueform
   Spatial Acceleration
 
   #description
-  Fast spatial queries on point clouds, curves, and meshes. k-NN, closest points, ray casting, collision detection. Transform geometry without rebuilding acceleration structures.
+  Fast spatial queries on moving point clouds, curves, and meshes. Immutable and modifiable trees for changing topology. k-NN, closest points, ray casting, collision detection.
   :::
 
   :::u-page-feature

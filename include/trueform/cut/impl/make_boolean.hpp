@@ -54,13 +54,16 @@ auto make_boolean(
       });
   tf::buffer<Index> original_map0;
   original_map0.allocate(polygons0.points().size());
-  tf::parallel_fill(original_map0, -1);
+  const Index sentinel0 = Index(original_map0.size());
+  tf::parallel_fill(original_map0, sentinel0);
   tf::buffer<Index> original_map1;
   original_map1.allocate(polygons1.points().size());
-  tf::parallel_fill(original_map1, -1);
+  const Index sentinel1 = Index(original_map1.size());
+  tf::parallel_fill(original_map1, sentinel1);
   tf::buffer<Index> created_map;
   created_map.allocate(ibp.intersection_points().size());
-  tf::parallel_fill(created_map, -1);
+  const Index sentinel_created = Index(created_map.size());
+  tf::parallel_fill(created_map, sentinel_created);
   Index original_current0 = 0;
   Index original_current1 = 0;
   Index create_current = 0;
@@ -70,18 +73,19 @@ auto make_boolean(
   original_ids1.reserve(polygons1.points().size());
   tf::buffer<Index> created_ids;
   created_ids.reserve(created_map.size());
-  auto process_map_on_loops = [&created_map, &create_current,
-                               &created_ids](const auto &loops, auto &omap,
-                                             auto &ocurr, auto &oids) {
+  auto process_map_on_loops = [&created_map, &create_current, &created_ids,
+                               sentinel_created](const auto &loops, auto &omap,
+                                                 Index omap_sentinel,
+                                                 auto &ocurr, auto &oids) {
     for (const auto &loop : loops)
       for (auto v : loop) {
         if (v.source == tf::loop::vertex_source::created) {
-          if (created_map[v.id] == -1) {
+          if (created_map[v.id] == sentinel_created) {
             created_ids.push_back(v.id);
             created_map[v.id] = create_current++;
           }
         } else {
-          if (omap[v.id] == -1) {
+          if (omap[v.id] == omap_sentinel) {
             omap[v.id] = ocurr++;
             oids.push_back(v.id);
           }
@@ -92,14 +96,15 @@ auto make_boolean(
   int index1 = 1;
   process_map_on_loops(
       tf::make_indirect_range(pai0.cut_faces[index0], tcf.mapped_loops0()),
-      original_map0, original_current0, original_ids0);
+      original_map0, sentinel0, original_current0, original_ids0);
   process_map_on_loops(
       tf::make_indirect_range(pai1.cut_faces[index1], tcf.mapped_loops1()),
-      original_map1, original_current1, original_ids1);
-  auto fill_map = [](const auto &faces, auto &map, auto &curr, auto &ids) {
+      original_map1, sentinel1, original_current1, original_ids1);
+  auto fill_map = [](const auto &faces, auto &map, Index sentinel, auto &curr,
+                     auto &ids) {
     for (const auto &face : faces) {
       for (auto v : face)
-        if (map[v] == -1) {
+        if (map[v] == sentinel) {
           map[v] = curr++;
           ids.push_back(v);
         }
@@ -109,12 +114,12 @@ auto make_boolean(
       [&] {
         fill_map(
             tf::make_indirect_range(pai0.polygons[index0], polygons0.faces()),
-            original_map0, original_current0, original_ids0);
+            original_map0, sentinel0, original_current0, original_ids0);
       },
       [&] {
         fill_map(
             tf::make_indirect_range(pai1.polygons[index1], polygons1.faces()),
-            original_map1, original_current1, original_ids1);
+            original_map1, sentinel1, original_current1, original_ids1);
       });
 
   auto map_vertex_f0 = [&](auto v) {
@@ -224,9 +229,11 @@ auto make_boolean(
     tf::index_map_buffer<Index> polygons_im0;
     tf::index_map_buffer<Index> polygons_im1;
     tf::ids_to_index_map(pai0.polygons[1], polygons_im0,
-                         Index(_polygons0.size()), Index(0), Index(-1));
+                         Index(_polygons0.size()), Index(0),
+                         Index(_polygons0.size()));
     tf::ids_to_index_map(pai1.polygons[1], polygons_im1,
-                         Index(_polygons1.size()), Index(0), Index(-1));
+                         Index(_polygons1.size()), Index(0),
+                         Index(_polygons1.size()));
     return std::make_tuple(
         tf::make_polygons_buffer(std::move(faces), std::move(points)),
         std::move(labels),

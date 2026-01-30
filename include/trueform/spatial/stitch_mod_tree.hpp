@@ -11,7 +11,6 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include "../core/index_map.hpp"
 #include "../core/none.hpp"
 #include "../core/points.hpp"
 #include "../core/polygons.hpp"
@@ -34,19 +33,14 @@ auto stitch_mod_tree(const Primitives &result_primitives,
   const Index n_new =
       Index(result_primitives.size()) - im.polygons1_offset;
 
-  // New primitives start at polygons1_offset (kept1 + dirty)
-  auto new_ids = tf::make_mapped_range(
+  // Dirty primitives start at polygons1_offset (kept1 + dirty)
+  auto dirty_ids = tf::make_mapped_range(
       tf::make_sequence_range(Index(0), n_new),
       [&](Index i) { return im.polygons1_offset + i; });
 
-  auto keep_if = [](Index id) {
-    constexpr Index sentinel = Index(-1);
-    return id != sentinel;
-  };
-
-  auto index_map =
-      tf::make_index_map(tf::make_range(im.polygons0.f()), new_ids);
-  mod_tree0.update_tree(result_primitives, index_map, keep_if, config);
+  auto tree_map =
+      tf::make_tree_index_map(tf::make_range(im.polygons0.f()), dirty_ids);
+  mod_tree0.update(result_primitives, tree_map, config);
 }
 
 /// Stitch mod_tree when it is the right operand of a boolean operation.
@@ -62,25 +56,21 @@ auto stitch_mod_tree(const Primitives &result_primitives, tf::none_t,
   const Index dirty_start = kept0 + kept1;
   const Index n_dirty = Index(result_primitives.size()) - dirty_start;
 
-  // New primitives: kept0 at [0, kept0) + dirty at [dirty_start, end)
-  auto new_ids = tf::make_mapped_range(
+  // Dirty primitives: kept0 at [0, kept0) + dirty at [dirty_start, end)
+  auto dirty_ids = tf::make_mapped_range(
       tf::make_sequence_range(Index(0), kept0 + n_dirty), [&](Index i) {
         return i < kept0 ? i : dirty_start + (i - kept0);
       });
 
-  auto keep_if = [](Index id) {
-    constexpr Index sentinel = Index(-1);
-    return id != sentinel;
-  };
+  const Index sentinel = Index(im.polygons1.f().size());
 
   // polygons1.f() is 0-based, need to add offset for actual result positions
-  auto old_ids = tf::make_mapped_range(im.polygons1.f(), [&](Index id) {
-    constexpr Index sentinel = Index(-1);
+  auto f = tf::make_mapped_range(im.polygons1.f(), [&, sentinel](Index id) {
     return id != sentinel ? id + im.polygons1_offset : sentinel;
   });
 
-  auto index_map = tf::make_index_map(tf::make_range(old_ids), new_ids);
-  mod_tree1.update_tree(result_primitives, index_map, keep_if, config);
+  auto tree_map = tf::make_tree_index_map(tf::make_range(f), dirty_ids);
+  mod_tree1.update(result_primitives, tree_map, config);
 }
 
 } // namespace tf::spatial

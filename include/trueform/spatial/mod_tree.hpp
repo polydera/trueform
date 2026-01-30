@@ -14,58 +14,12 @@
 #include "../core/aabb_from.hpp"
 #include "../core/algorithm/parallel_copy.hpp"
 #include "../core/algorithm/parallel_transform.hpp"
-#include "../core/buffer.hpp"
-#include "../core/index_map.hpp"
 #include "../core/views/indirect_range.hpp"
 #include "./mod_tree_like.hpp"
 #include "./partitioning.hpp"
-#include "./tree/build_aabb_nodes.hpp"
-#include "./tree_config.hpp"
+#include "./tree/tree_buffers_utilities.hpp"
+#include "./tree_index_map.hpp"
 #include <algorithm>
-
-namespace tf::spatial {
-
-template <typename Index, typename BV>
-auto clear_tree_buffers(tree_buffers<Index, BV> &buffers) -> void {
-  buffers.primitive_aabbs_buffer().clear();
-  buffers.nodes_buffer().clear();
-  buffers.ids_buffer().clear();
-}
-
-// Clear tree_buffers_core (nodes + ids only)
-template <typename Index, typename BV>
-auto clear_tree_buffers_core(tree_buffers_core<Index, BV> &buffers) -> void {
-  buffers.nodes_buffer().clear();
-  buffers.ids_buffer().clear();
-}
-
-template <typename Partitioner, typename Index, typename BV, typename Range>
-auto build_tree_buffers(tree_buffers<Index, BV> &buffers,
-                        const Range &primitives, tree_config config,
-                        bool use_ids = false) -> void {
-  if (!use_ids) {
-    buffers.primitive_aabbs_buffer().allocate(primitives.size());
-    tf::parallel_transform(
-        primitives, buffers.primitive_aabbs_buffer(),
-        [](const auto &x) { return tf::aabb_from(x); }, tf::checked);
-  }
-  build_tree_nodes<Partitioner>(buffers.nodes_buffer(), buffers.ids_buffer(),
-                                primitives, buffers.primitive_aabbs_buffer(),
-                                config, use_ids);
-}
-
-// Build tree nodes for tree_buffers_core using external aabbs
-template <typename Partitioner, typename Index, typename BV, typename Range,
-          typename AabbRange>
-auto build_tree_nodes_with_aabbs(tree_buffers_core<Index, BV> &buffers,
-                                 const Range &primitives,
-                                 const AabbRange &aabbs, tree_config config,
-                                 bool use_ids = false) -> void {
-  build_tree_nodes<Partitioner>(buffers.nodes_buffer(), buffers.ids_buffer(),
-                                primitives, aabbs, config, use_ids);
-}
-
-} // namespace tf::spatial
 
 namespace tf {
 /**
@@ -145,62 +99,62 @@ public:
   }
 
   /**
-   * @brief Updates the tree with new or modified objects.
+   * @brief Updates the tree with new dirty objects (no remapping).
    *
    * This prunes the main tree using the `keep_if` predicate and constructs the
-   * delta tree from the given set of new objects and their corresponding IDs.
+   * delta tree from the given set of dirty objects and their corresponding IDs.
    *
-   * @tparam Range0  A range of geometric objects
-   * @tparam Range1  A range of object indices
-   * @tparam F       A unary predicate defining which indices to keep
-   * @param objects  New or updated geometric objects
-   * @param ids      Indices of the updated objects
-   * @param keep_if  Predicate returning true for IDs that should remain in the
-   * tree
-   * @param config   Tree configuration (see ref::tree_config)
+   * @tparam Range0    A range of geometric objects
+   * @tparam Range1    A range of dirty object IDs
+   * @tparam F         A unary predicate defining which indices to keep
+   * @param objects    All geometric objects
+   * @param dirty_ids  IDs of dirty/new objects to add to delta tree
+   * @param keep_if    Predicate returning true for IDs that should remain
+   * @param config     Tree configuration (see @ref tree_config)
    */
   template <typename Range0, typename Range1, typename F>
-  auto update(const Range0 &objects, const Range1 &ids, const F &keep_if,
-              tree_config config) {
+  auto update(const Range0 &objects, const Range1 &dirty_ids,
+                   const F &keep_if, tree_config config) {
     // Estimate new delta size
-    Index estimated_delta = Index(delta_ids_buffer().size() + ids.size());
+    Index estimated_delta = Index(delta_ids_buffer().size() + dirty_ids.size());
     if (estimated_delta * 2 > Index(main_tree_buffer().ids().size())) {
       build(objects, config);
       return;
     }
     update_main_tree(keep_if);
-    update_delta_tree(objects, ids, keep_if, config);
+    update_delta_tree(objects, dirty_ids, keep_if, config);
   }
 
   /**
-   * @brief Updates the tree using an index reindex_map (via ref::index_map).
+   * @brief Updates the tree using a tree_index_map (with remapping).
    *
-   * Used when object IDs have been remapped or reordered. This prunes the main
-   * tree and constructs a new delta tree using the remapped IDs.
+   * Used when object IDs have been remapped. This remaps main tree IDs via
+   * `tree_map.f()`, prunes removed elements, and constructs the delta tree
+   * from `tree_map.dirty_ids()`. The keep_if predicate is derived from the
+   * sentinel value `f().size()`.
    *
-   * @tparam Range     A range of geometric objects
-   * @tparam Range1    Underlying type for `index_map::f()` (forward map)
-   * @tparam Range2    Underlying type for `index_map::kept_ids()` (kept/valid
-   * IDs)
-   * @tparam F         A predicate that determines which IDs to keep
-   * @param objects    New or updated geometric objects
-   * @param index_map    Index reindex_map (see ref::index_map)
-   * @param keep_if    Predicate for keeping existing IDs
-   * @param config     Tree configuration (see ref::tree_config)
+   * @tparam Range   A range of geometric objects
+   * @tparam Range1  Underlying type for `tree_map.f()`
+   * @tparam Range2  Underlying type for `tree_map.dirty_ids()`
+   * @param objects  All geometric objects
+   * @param tree_map Tree index map (see @ref tf::tree_index_map)
+   * @param config   Tree configuration (see @ref tree_config)
    */
-  template <typename Range, typename Range1, typename Range2, typename F>
-  auto update_tree(const Range &objects,
-                   const tf::index_map<Range1, Range2> &index_map,
-                   const F &keep_if, tree_config config) {
+  template <typename Range, typename Range1, typename Range2>
+  auto update(const Range &objects,
+                   const tf::tree_index_map<Range1, Range2> &tree_map,
+                   tree_config config) {
+    const Index sentinel = Index(tree_map.f().size());
+    auto keep_if = [sentinel](Index id) { return id != sentinel; };
     // Estimate new delta size
     Index estimated_delta =
-        Index(delta_ids_buffer().size() + index_map.kept_ids().size());
+        Index(delta_ids_buffer().size() + tree_map.dirty_ids().size());
     if (estimated_delta * 2 > Index(main_tree_buffer().ids().size())) {
       build(objects, config);
       return;
     }
-    update_main_tree(objects, index_map.f(), keep_if);
-    update_delta_tree(objects, index_map, keep_if, config);
+    update_main_tree(objects, tree_map.f(), keep_if);
+    update_delta_tree(objects, tree_map, keep_if, config);
   }
 
   /**
@@ -267,6 +221,16 @@ private:
     // this will only bump down the end pointer
     delta_ids_buffer().allocate(write_to - delta_ids_buffer().begin());
 
+    // Update AABBs for all delta primitives (their geometry may have changed)
+    auto delta_objects =
+        tf::make_indirect_range(delta_ids_buffer(), objects);
+    auto delta_aabbs =
+        tf::make_indirect_range(delta_ids_buffer(),
+                                base_t::primitive_aabbs_buffer());
+    tf::parallel_transform(
+        delta_objects, delta_aabbs,
+        [](const auto &x) { return tf::aabb_from(x); }, tf::checked);
+
     // Pre-populate tree ids with global ids so tree can use shared aabbs
     delta_tree_buffer().ids_buffer().allocate(delta_ids_buffer().size());
     tf::parallel_copy(delta_ids_buffer(), delta_tree_buffer().ids_buffer());
@@ -280,19 +244,19 @@ private:
 
   template <typename Range, typename Range1, typename Range2, typename F>
   auto update_delta_tree(const Range &objects,
-                         const tf::index_map<Range1, Range2> &index_map,
+                         const tf::tree_index_map<Range1, Range2> &tree_map,
                          const F &keep_if, tree_config config) {
-    auto n_additional_objects = index_map.kept_ids().size();
+    auto n_additional_objects = tree_map.dirty_ids().size();
     delta_ids_buffer().allocate(n_additional_objects +
                                 delta_ids_buffer().size());
     // keep all old ids that are not in the
     // other region (as those will get copied from there)
     auto &&old_delta_ids = delta_tree_buffer().ids();
-    auto &&mapped_ids = tf::make_indirect_range(old_delta_ids, index_map.f());
+    auto &&mapped_ids = tf::make_indirect_range(old_delta_ids, tree_map.f());
     auto write_to = std::copy_if(mapped_ids.begin(), mapped_ids.end(),
                                  delta_ids_buffer().begin(), keep_if);
-    write_to = std::copy(index_map.kept_ids().begin(),
-                         index_map.kept_ids().end(), write_to);
+    write_to = std::copy(tree_map.dirty_ids().begin(),
+                         tree_map.dirty_ids().end(), write_to);
     // this will only bump down the end pointer
     delta_ids_buffer().allocate(write_to - delta_ids_buffer().begin());
 

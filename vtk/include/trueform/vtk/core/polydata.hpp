@@ -12,7 +12,7 @@
 */
 #pragma once
 #include <trueform/core.hpp>
-#include <trueform/spatial/aabb_tree.hpp>
+#include <trueform/spatial/aabb_mod_tree.hpp>
 #include <trueform/topology/face_link.hpp>
 #include <trueform/topology/face_membership.hpp>
 #include <trueform/topology/manifold_edge_link.hpp>
@@ -24,6 +24,7 @@
 #include <trueform/vtk/core/make_polygons.hpp>
 #include <trueform/vtk/core/make_polys.hpp>
 #include <trueform/vtk/core/make_segments.hpp>
+#include <trueform/vtk/core/tree_index_map.hpp>
 #include <memory>
 #include <vtkObjectFactory.h>
 #include <vtkPolyData.h>
@@ -89,7 +90,7 @@ public:
   auto cell_normals() -> normals_t;
 
   /// @brief Get AABB tree for polygons. Built lazily on first access.
-  auto poly_tree() -> const tf::aabb_tree<vtkIdType, float, 3> &;
+  auto poly_tree() -> const tf::aabb_mod_tree<vtkIdType, float, 3> &;
 
   /// @brief Get face membership structure. Built lazily on first access.
   auto face_membership() -> const tf::face_membership<vtkIdType> &;
@@ -108,13 +109,67 @@ public:
   auto edges_buffer() -> const tf::blocked_buffer<vtkIdType, 2> &;
 
   /// @brief Get AABB tree for line segments. Built lazily on first access.
-  auto segment_tree() -> const tf::aabb_tree<vtkIdType, float, 3> &;
+  auto segment_tree() -> const tf::aabb_mod_tree<vtkIdType, float, 3> &;
+
+  /// @brief Reset segment_tree (forces rebuild on next access).
+  auto reset_segment_tree() -> void;
+
+  /// @brief Update segment_tree incrementally with dirty segment IDs.
+  /// @param dirty_ids Range of segment IDs whose geometry changed.
+  auto update_segment_tree(tf::range<vtkIdType *, tf::dynamic_size> dirty_ids)
+      -> void;
+
+  /// @brief Update segment_tree incrementally with dirty segment IDs.
+  /// @param dirty_ids Vector of segment IDs whose geometry changed.
+  auto update_segment_tree(const std::vector<vtkIdType> &dirty_ids) -> void {
+    update_segment_tree(tf::make_range(
+        const_cast<vtkIdType *>(dirty_ids.data()), dirty_ids.size()));
+  }
+
+  /// @brief Update segment_tree incrementally with tree_index_map.
+  /// @param tree_map Index map for remapping scenarios.
+  auto update_segment_tree(const tree_index_map_t &tree_map) -> void;
 
   /// @brief Get AABB tree for points. Built lazily on first access.
-  auto point_tree() -> const tf::aabb_tree<vtkIdType, float, 3> &;
+  auto point_tree() -> const tf::aabb_mod_tree<vtkIdType, float, 3> &;
 
-  /// @brief Mark poly_tree as modified (prevents rebuild on next access).
-  auto modified_poly_tree() -> void;
+  /// @brief Reset poly_tree (forces rebuild on next access).
+  auto reset_poly_tree() -> void;
+
+  /// @brief Reset point_tree (forces rebuild on next access).
+  auto reset_point_tree() -> void;
+
+  /// @brief Update point_tree incrementally with dirty point IDs.
+  /// @param dirty_ids Range of point IDs whose geometry changed.
+  auto update_point_tree(tf::range<vtkIdType *, tf::dynamic_size> dirty_ids)
+      -> void;
+
+  /// @brief Update point_tree incrementally with dirty point IDs.
+  /// @param dirty_ids Vector of point IDs whose geometry changed.
+  auto update_point_tree(const std::vector<vtkIdType> &dirty_ids) -> void {
+    update_point_tree(tf::make_range(const_cast<vtkIdType *>(dirty_ids.data()),
+                                     dirty_ids.size()));
+  }
+
+  /// @brief Update point_tree incrementally with tree_index_map.
+  /// @param tree_map Index map for remapping scenarios.
+  auto update_point_tree(const tree_index_map_t &tree_map) -> void;
+
+  /// @brief Update poly_tree incrementally with dirty polygon IDs.
+  /// @param dirty_ids Range of polygon IDs whose geometry changed.
+  auto update_poly_tree(tf::range<vtkIdType *, tf::dynamic_size> dirty_ids)
+      -> void;
+
+  /// @brief Update poly_tree incrementally with dirty polygon IDs.
+  /// @param dirty_ids Vector of polygon IDs whose geometry changed.
+  auto update_poly_tree(const std::vector<vtkIdType> &dirty_ids) -> void {
+    update_poly_tree(tf::make_range(const_cast<vtkIdType *>(dirty_ids.data()),
+                                    dirty_ids.size()));
+  }
+
+  /// @brief Update poly_tree incrementally with tree_index_map.
+  /// @param tree_map Index map for remapping scenarios.
+  auto update_poly_tree(const tree_index_map_t &tree_map) -> void;
 
   /// @brief Mark face_membership as modified (prevents rebuild on next access).
   auto modified_face_membership() -> void;
@@ -130,12 +185,6 @@ public:
 
   /// @brief Mark edges_buffer as modified (prevents rebuild on next access).
   auto modified_edges_buffer() -> void;
-
-  /// @brief Mark segment_tree as modified (prevents rebuild on next access).
-  auto modified_segment_tree() -> void;
-
-  /// @brief Mark point_tree as modified (prevents rebuild on next access).
-  auto modified_point_tree() -> void;
 
 protected:
   polydata();
@@ -160,14 +209,14 @@ private:
   vtkMTimeType _segment_tree_mtime = 0;
   vtkMTimeType _point_tree_mtime = 0;
 
-  std::shared_ptr<tf::aabb_tree<vtkIdType, float, 3>> _poly_tree;
+  std::shared_ptr<tf::aabb_mod_tree<vtkIdType, float, 3>> _poly_tree;
   std::shared_ptr<tf::face_membership<vtkIdType>> _fm;
   std::shared_ptr<tf::manifold_edge_link<vtkIdType, tf::dynamic_size>> _mel;
   std::shared_ptr<tf::face_link<vtkIdType>> _fl;
   std::shared_ptr<tf::vertex_link<vtkIdType>> _vl;
   std::shared_ptr<tf::blocked_buffer<vtkIdType, 2>> _edges_buffer;
-  std::shared_ptr<tf::aabb_tree<vtkIdType, float, 3>> _segment_tree;
-  std::shared_ptr<tf::aabb_tree<vtkIdType, float, 3>> _point_tree;
+  std::shared_ptr<tf::aabb_mod_tree<vtkIdType, float, 3>> _segment_tree;
+  std::shared_ptr<tf::aabb_mod_tree<vtkIdType, float, 3>> _point_tree;
 
   polydata(const polydata &) = delete;
   void operator=(const polydata &) = delete;

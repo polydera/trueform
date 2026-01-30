@@ -48,8 +48,8 @@ template <typename Index> struct neighborhood_applier {
   template <typename VertexLinkPolicy, typename Distance2Func, typename RealT,
             typename F>
   void operator()(const tf::vertex_link_like<VertexLinkPolicy> &vlink,
-                  Index seed, Distance2Func distance2_f, RealT radius,
-                  bool inclusive, F &&f) {
+                  Index seed, Distance2Func distance2_f, RealT radius, F &&f,
+                  bool inclusive) {
     const RealT radius2 = radius * radius;
 
     visited.clear();
@@ -110,8 +110,9 @@ auto make_neighborhoods(const tf::vertex_link_like<Policy> &vlink,
       tf::make_sequence_range(static_cast<Index>(n_vertices)), result,
       [&, applier = topology::neighborhood_applier<Index>()](
           Index seed, auto &id_buff) mutable {
-        applier(vlink, seed, distance2_f, radius, inclusive,
-                [&](Index neighbor) { id_buff.push_back(neighbor); });
+        applier(
+            vlink, seed, distance2_f, radius,
+            [&](Index neighbor) { id_buff.push_back(neighbor); }, inclusive);
       });
 
   return result;

@@ -7,6 +7,7 @@
 #include "main.h"
 #include "positioning_web.h"
 #include "shape_histogram_web.h"
+#include "laplacian_smoothing_web.h"
 #include "utils/bridge_web.h"
 #include "utils/cursor_interactor_interface.h"
 
@@ -139,6 +140,54 @@ auto shape_histogram_get_aabb_diagonal() -> float {
   return sh ? sh->get_aabb_diagonal() : 1.0f;
 }
 
+// Laplacian smoothing helpers
+auto get_laplacian_smoothing_interactor()
+    -> cursor_interactor_laplacian_smoothing * {
+  return dynamic_cast<cursor_interactor_laplacian_smoothing *>(
+      &require_interactor());
+}
+
+auto laplacian_smoothing_colors_updated() -> bool {
+  auto *ls = get_laplacian_smoothing_interactor();
+  return ls ? ls->colors_updated() : false;
+}
+
+auto laplacian_smoothing_points_updated() -> bool {
+  auto *ls = get_laplacian_smoothing_interactor();
+  return ls ? ls->points_updated() : false;
+}
+
+auto laplacian_smoothing_get_vertex_colors() -> emscripten::val {
+  auto *ls = get_laplacian_smoothing_interactor();
+  if (!ls)
+    return emscripten::val::undefined();
+  return ls->get_vertex_colors();
+}
+
+auto laplacian_smoothing_get_points() -> emscripten::val {
+  auto *ls = get_laplacian_smoothing_interactor();
+  if (!ls)
+    return emscripten::val::undefined();
+  return ls->get_points();
+}
+
+auto laplacian_smoothing_set_radius(float r) -> void {
+  auto *ls = get_laplacian_smoothing_interactor();
+  if (ls)
+    ls->set_radius(r);
+}
+
+auto laplacian_smoothing_set_lambda(float l) -> void {
+  auto *ls = get_laplacian_smoothing_interactor();
+  if (ls)
+    ls->set_lambda(l);
+}
+
+auto laplacian_smoothing_get_aabb_diagonal() -> float {
+  auto *ls = get_laplacian_smoothing_interactor();
+  return ls ? ls->get_aabb_diagonal() : 1.0f;
+}
+
 EMSCRIPTEN_BINDINGS(boolean) {
   emscripten::function("get_number_of_mesh_data", &get_number_of_mesh_data);
   emscripten::function("get_number_of_instances", &get_number_of_instances);
@@ -181,6 +230,23 @@ EMSCRIPTEN_BINDINGS(boolean) {
                        &shape_histogram_set_radius);
   emscripten::function("shape_histogram_get_aabb_diagonal",
                        &shape_histogram_get_aabb_diagonal);
+  // Laplacian smoothing
+  emscripten::function("run_main_laplacian_smoothing",
+                       &run_main_laplacian_smoothing);
+  emscripten::function("laplacian_smoothing_colors_updated",
+                       &laplacian_smoothing_colors_updated);
+  emscripten::function("laplacian_smoothing_points_updated",
+                       &laplacian_smoothing_points_updated);
+  emscripten::function("laplacian_smoothing_get_vertex_colors",
+                       &laplacian_smoothing_get_vertex_colors);
+  emscripten::function("laplacian_smoothing_get_points",
+                       &laplacian_smoothing_get_points);
+  emscripten::function("laplacian_smoothing_set_radius",
+                       &laplacian_smoothing_set_radius);
+  emscripten::function("laplacian_smoothing_set_lambda",
+                       &laplacian_smoothing_set_lambda);
+  emscripten::function("laplacian_smoothing_get_aabb_diagonal",
+                       &laplacian_smoothing_get_aabb_diagonal);
 }
 
 EMSCRIPTEN_BINDINGS(VectorString) {

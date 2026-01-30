@@ -45,6 +45,8 @@ const showLibPicker = computed(() => {
 
       <UColorModeButton v-if="header?.colorMode" />
 
+      <GitHubStars />
+
       <template v-if="header?.links">
         <UButton
           v-for="(link, index) of header.links"

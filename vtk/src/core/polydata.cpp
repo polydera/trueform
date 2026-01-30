@@ -11,6 +11,7 @@
 * Author: Žiga Sajovic
 */
 #include <trueform/vtk/core/polydata.hpp>
+#include <trueform/core/hash_set.hpp>
 #include <vtkInformation.h>
 #include <vtkInformationVector.h>
 
@@ -99,7 +100,7 @@ auto polydata::cell_normals() -> normals_t {
   return make_cell_normals(this);
 }
 
-auto polydata::poly_tree() -> const tf::aabb_tree<vtkIdType, float, 3> & {
+auto polydata::poly_tree() -> const tf::aabb_mod_tree<vtkIdType, float, 3> & {
   build_poly_tree();
   return *_poly_tree;
 }
@@ -130,17 +131,42 @@ auto polydata::edges_buffer() -> const tf::blocked_buffer<vtkIdType, 2> & {
   return *_edges_buffer;
 }
 
-auto polydata::segment_tree() -> const tf::aabb_tree<vtkIdType, float, 3> & {
+auto polydata::segment_tree() -> const tf::aabb_mod_tree<vtkIdType, float, 3> & {
   build_segment_tree();
   return *_segment_tree;
 }
 
-auto polydata::point_tree() -> const tf::aabb_tree<vtkIdType, float, 3> & {
+auto polydata::point_tree() -> const tf::aabb_mod_tree<vtkIdType, float, 3> & {
   build_point_tree();
   return *_point_tree;
 }
 
-auto polydata::modified_poly_tree() -> void {
+auto polydata::reset_poly_tree() -> void { _poly_tree_mtime = 0; }
+
+auto polydata::update_poly_tree(
+    tf::range<vtkIdType *, tf::dynamic_size> dirty_ids) -> void {
+  if (!_poly_tree) {
+    _poly_tree = std::make_shared<tf::aabb_mod_tree<vtkIdType, float, 3>>();
+    _poly_tree->build(polygons(), tf::config_tree(4, 4));
+    _poly_tree_mtime = std::max(GetPoints()->GetMTime(), GetPolys()->GetMTime());
+    return;
+  }
+  tf::hash_set<vtkIdType> dirty_set(dirty_ids.begin(), dirty_ids.end());
+  auto keep_if = [&dirty_set](vtkIdType id) {
+    return dirty_set.find(id) == dirty_set.end();
+  };
+  _poly_tree->update(polygons(), dirty_ids, keep_if, tf::config_tree(4, 4));
+  _poly_tree_mtime = std::max(GetPoints()->GetMTime(), GetPolys()->GetMTime());
+}
+
+auto polydata::update_poly_tree(const tree_index_map_t &tree_map) -> void {
+  if (!_poly_tree) {
+    _poly_tree = std::make_shared<tf::aabb_mod_tree<vtkIdType, float, 3>>();
+    _poly_tree->build(polygons(), tf::config_tree(4, 4));
+    _poly_tree_mtime = std::max(GetPoints()->GetMTime(), GetPolys()->GetMTime());
+    return;
+  }
+  _poly_tree->update(polygons(), tree_map, tf::config_tree(4, 4));
   _poly_tree_mtime = std::max(GetPoints()->GetMTime(), GetPolys()->GetMTime());
 }
 
@@ -164,11 +190,65 @@ auto polydata::modified_edges_buffer() -> void {
   _edges_buffer_mtime = GetLines()->GetMTime();
 }
 
-auto polydata::modified_segment_tree() -> void {
-  _segment_tree_mtime = std::max(GetPoints()->GetMTime(), GetLines()->GetMTime());
+auto polydata::reset_segment_tree() -> void { _segment_tree_mtime = 0; }
+
+auto polydata::update_segment_tree(
+    tf::range<vtkIdType *, tf::dynamic_size> dirty_ids) -> void {
+  if (!_segment_tree) {
+    _segment_tree = std::make_shared<tf::aabb_mod_tree<vtkIdType, float, 3>>();
+    _segment_tree->build(segments(), tf::config_tree(4, 4));
+    _segment_tree_mtime =
+        std::max(GetPoints()->GetMTime(), GetLines()->GetMTime());
+    return;
+  }
+  tf::hash_set<vtkIdType> dirty_set(dirty_ids.begin(), dirty_ids.end());
+  auto keep_if = [&dirty_set](vtkIdType id) {
+    return dirty_set.find(id) == dirty_set.end();
+  };
+  _segment_tree->update(segments(), dirty_ids, keep_if, tf::config_tree(4, 4));
+  _segment_tree_mtime =
+      std::max(GetPoints()->GetMTime(), GetLines()->GetMTime());
 }
 
-auto polydata::modified_point_tree() -> void {
+auto polydata::update_segment_tree(const tree_index_map_t &tree_map) -> void {
+  if (!_segment_tree) {
+    _segment_tree = std::make_shared<tf::aabb_mod_tree<vtkIdType, float, 3>>();
+    _segment_tree->build(segments(), tf::config_tree(4, 4));
+    _segment_tree_mtime =
+        std::max(GetPoints()->GetMTime(), GetLines()->GetMTime());
+    return;
+  }
+  _segment_tree->update(segments(), tree_map, tf::config_tree(4, 4));
+  _segment_tree_mtime =
+      std::max(GetPoints()->GetMTime(), GetLines()->GetMTime());
+}
+
+auto polydata::reset_point_tree() -> void { _point_tree_mtime = 0; }
+
+auto polydata::update_point_tree(
+    tf::range<vtkIdType *, tf::dynamic_size> dirty_ids) -> void {
+  if (!_point_tree) {
+    _point_tree = std::make_shared<tf::aabb_mod_tree<vtkIdType, float, 3>>();
+    _point_tree->build(points(), tf::config_tree(4, 4));
+    _point_tree_mtime = GetPoints()->GetMTime();
+    return;
+  }
+  tf::hash_set<vtkIdType> dirty_set(dirty_ids.begin(), dirty_ids.end());
+  auto keep_if = [&dirty_set](vtkIdType id) {
+    return dirty_set.find(id) == dirty_set.end();
+  };
+  _point_tree->update(points(), dirty_ids, keep_if, tf::config_tree(4, 4));
+  _point_tree_mtime = GetPoints()->GetMTime();
+}
+
+auto polydata::update_point_tree(const tree_index_map_t &tree_map) -> void {
+  if (!_point_tree) {
+    _point_tree = std::make_shared<tf::aabb_mod_tree<vtkIdType, float, 3>>();
+    _point_tree->build(points(), tf::config_tree(4, 4));
+    _point_tree_mtime = GetPoints()->GetMTime();
+    return;
+  }
+  _point_tree->update(points(), tree_map, tf::config_tree(4, 4));
   _point_tree_mtime = GetPoints()->GetMTime();
 }
 
@@ -178,7 +258,7 @@ auto polydata::build_poly_tree() -> void {
   auto mtime = std::max(points_mtime, polys_mtime);
   if (!_poly_tree || _poly_tree_mtime < mtime) {
     if (!_poly_tree)
-      _poly_tree = std::make_unique<tf::aabb_tree<vtkIdType, float, 3>>();
+      _poly_tree = std::make_unique<tf::aabb_mod_tree<vtkIdType, float, 3>>();
     _poly_tree->build(polygons(), tf::config_tree(4, 4));
     _poly_tree_mtime = mtime;
   }
@@ -252,7 +332,7 @@ auto polydata::build_segment_tree() -> void {
   auto mtime = std::max(points_mtime, lines_mtime);
   if (!_segment_tree || _segment_tree_mtime < mtime) {
     if (!_segment_tree)
-      _segment_tree = std::make_unique<tf::aabb_tree<vtkIdType, float, 3>>();
+      _segment_tree = std::make_unique<tf::aabb_mod_tree<vtkIdType, float, 3>>();
     auto segs = tf::make_segments(tf::make_edges(edges_buffer()), points());
     _segment_tree->build(segs, tf::config_tree(4, 4));
     _segment_tree_mtime = mtime;
@@ -263,7 +343,7 @@ auto polydata::build_point_tree() -> void {
   auto mtime = GetPoints()->GetMTime();
   if (!_point_tree || _point_tree_mtime < mtime) {
     if (!_point_tree)
-      _point_tree = std::make_unique<tf::aabb_tree<vtkIdType, float, 3>>();
+      _point_tree = std::make_unique<tf::aabb_mod_tree<vtkIdType, float, 3>>();
     _point_tree->build(points(), tf::config_tree(4, 4));
     _point_tree_mtime = mtime;
   }

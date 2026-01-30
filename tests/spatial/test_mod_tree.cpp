@@ -16,6 +16,7 @@
 #include <trueform/trueform.hpp>
 #include "type_traits.hpp"
 #include <cmath>
+#include <set>
 
 // =============================================================================
 // Helper functions
@@ -485,5 +486,221 @@ TEMPLATE_TEST_CASE("mod_tree_union_boolean", "[mod_tree]",
             REQUIRE(info_fresh);
             REQUIRE(info_stitched.element == info_fresh.element);
         }
+    }
+}
+
+// =============================================================================
+// Test 9: mod_tree repeated update with dirty_ids (no remapping)
+// =============================================================================
+
+TEMPLATE_TEST_CASE("mod_tree_repeated_update_dirty_ids", "[mod_tree]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    // Create a sphere mesh (mutable copy for vertex modification)
+    auto sphere = tf::make_sphere_mesh<index_t>(real_t(1), 30, 30);
+
+    // Build face_membership to find all polygons affected by vertex changes
+    tf::face_membership<index_t> fm;
+    fm.build(sphere.polygons());
+
+    // Build initial mod_tree
+    tf::mod_tree<index_t, tf::aabb<real_t, 3>> tree;
+    tree.build(sphere.polygons(), tf::config_tree(4, 4));
+
+    constexpr int n_iterations = 10;
+    constexpr int n_seed_polys = 5;
+
+    for (int iter = 0; iter < n_iterations; ++iter) {
+        // Pick some seed polygon IDs - spread across the mesh
+        std::vector<index_t> seed_poly_ids;
+        for (int i = 0; i < n_seed_polys; ++i) {
+            index_t id = static_cast<index_t>(
+                (iter * n_seed_polys + i * (sphere.size() / n_seed_polys)) % sphere.size());
+            seed_poly_ids.push_back(id);
+        }
+
+        // Collect all vertices to modify and track ALL affected polygons
+        std::set<index_t> modified_vertices;
+        std::set<index_t> dirty_poly_set;
+        std::vector<index_t> dirty_poly_ids;
+
+        // First pass: collect vertices from seed polygons
+        for (auto poly_id : seed_poly_ids) {
+            auto face = sphere.faces()[poly_id];
+            for (auto vid : face) {
+                modified_vertices.insert(vid);
+            }
+        }
+
+        // Second pass: find ALL polygons that use modified vertices
+        for (auto vid : modified_vertices) {
+            for (auto face_id : fm[vid]) {
+                if (dirty_poly_set.find(face_id) == dirty_poly_set.end()) {
+                    dirty_poly_set.insert(face_id);
+                    dirty_poly_ids.push_back(face_id);
+                }
+            }
+        }
+
+        // Actually modify geometry - perturb the collected vertices
+        real_t perturbation = real_t(0.01) * (iter + 1);
+        for (auto vid : modified_vertices) {
+            auto pt = sphere.points()[vid];
+            // Perturb along normal direction (radial for sphere)
+            auto dir = tf::make_unit_vector(pt - tf::point<real_t, 3>{0, 0, 0});
+            sphere.points()[vid] = pt + perturbation * dir;
+        }
+
+        // Remove dirty IDs from main tree, add to delta
+        auto keep_if = [&dirty_poly_set](index_t id) {
+            return dirty_poly_set.find(id) == dirty_poly_set.end();
+        };
+
+        // Update the tree with ALL affected polygon IDs
+        tree.update(sphere.polygons(), dirty_poly_ids, keep_if, tf::config_tree(4, 4));
+
+        // Build fresh tree for comparison
+        tf::aabb_tree<index_t, real_t, 3> fresh_tree(sphere.polygons(), tf::config_tree(4, 4));
+
+        // Fire ray at each dirty polygon and verify consistency
+        for (auto poly_id : dirty_poly_ids) {
+            auto poly = sphere.polygons()[poly_id];
+            auto centroid = tf::centroid(poly);
+            auto normal = tf::make_normal(poly);
+
+            real_t offset = real_t(0.01);
+            auto ray = tf::make_ray(centroid + offset * normal, -normal);
+
+            auto form_mod = sphere.polygons() | tf::tag(tree);
+            auto form_fresh = sphere.polygons() | tf::tag(fresh_tree);
+
+            auto info_mod = tf::ray_cast(ray, form_mod);
+            auto info_fresh = tf::ray_cast(ray, form_fresh);
+
+            REQUIRE(info_mod);
+            REQUIRE(info_fresh);
+            REQUIRE(info_mod.element == info_fresh.element);
+        }
+
+        // Also test neighbor_search on dirty region
+        for (auto poly_id : dirty_poly_ids) {
+            auto poly = sphere.polygons()[poly_id];
+            auto centroid = tf::centroid(poly);
+
+            auto form_mod = sphere.polygons() | tf::tag(tree);
+            auto form_fresh = sphere.polygons() | tf::tag(fresh_tree);
+
+            auto nearest_mod = tf::neighbor_search(form_mod, centroid);
+            auto nearest_fresh = tf::neighbor_search(form_fresh, centroid);
+
+            REQUIRE(nearest_mod);
+            REQUIRE(nearest_fresh);
+            REQUIRE(std::abs(nearest_mod.metric() - nearest_fresh.metric()) < tf::epsilon<real_t>);
+        }
+    }
+}
+
+// =============================================================================
+// Test 10: mod_tree repeated update with tree_index_map (with remapping)
+// =============================================================================
+
+TEMPLATE_TEST_CASE("mod_tree_repeated_update_tree_index_map", "[mod_tree]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    // Create a sphere mesh
+    auto sphere = tf::make_sphere_mesh<index_t>(real_t(1), 30, 30);
+    const index_t n_polys = static_cast<index_t>(sphere.size());
+
+    // Build initial mod_tree
+    tf::mod_tree<index_t, tf::aabb<real_t, 3>> tree;
+    tree.build(sphere.polygons(), tf::config_tree(4, 4));
+
+    // Current polygons buffer that we'll update each iteration
+    auto current_polys = sphere;
+
+    constexpr int n_iterations = 10;
+    constexpr int n_dirty_per_iter = 5;
+
+    for (int iter = 0; iter < n_iterations; ++iter) {
+        // Create shuffled IDs - rotate by iteration offset to get different orderings
+        tf::buffer<index_t> shuffled_ids;
+        shuffled_ids.allocate(n_polys);
+        for (index_t i = 0; i < n_polys; ++i) {
+            // Rotate indices: new position = (old + offset) % n
+            index_t offset = static_cast<index_t>((iter + 1) * 7);  // Different offset each iter
+            shuffled_ids[i] = (i + offset) % n_polys;
+        }
+
+        // Reindex polygons with shuffled IDs - this actually reorders them
+        auto [reindexed_polys, face_im, point_im] =
+            tf::reindexed_by_ids(current_polys.polygons(), shuffled_ids, tf::return_index_map);
+
+        // Pick some of the NEW polygon IDs as "dirty"
+        tf::buffer<index_t> dirty_ids;
+        dirty_ids.allocate(n_dirty_per_iter);
+        for (int i = 0; i < n_dirty_per_iter; ++i) {
+            // Pick IDs spread across the reindexed mesh
+            dirty_ids[i] = static_cast<index_t>(
+                (i * (reindexed_polys.size() / n_dirty_per_iter)) % reindexed_polys.size());
+        }
+
+        // Create tree_index_map with the face remapping
+        auto tree_map = tf::make_tree_index_map(
+            tf::make_range(face_im.f()), tf::make_range(dirty_ids));
+
+        // Update the tree with reindexed polygons
+        tree.update(reindexed_polys.polygons(), tree_map, tf::config_tree(4, 4));
+
+        // Build fresh tree for comparison
+        tf::aabb_tree<index_t, real_t, 3> fresh_tree(reindexed_polys.polygons(), tf::config_tree(4, 4));
+
+        // Fire ray at each dirty polygon and verify consistency
+        for (int i = 0; i < n_dirty_per_iter; ++i) {
+            auto poly_id = dirty_ids[i];
+            auto poly = reindexed_polys.polygons()[poly_id];
+            auto centroid = tf::centroid(poly);
+            auto normal = tf::make_normal(poly);
+
+            real_t offset = real_t(0.01);
+            auto ray = tf::make_ray(centroid + offset * normal, -normal);
+
+            auto form_mod = reindexed_polys.polygons() | tf::tag(tree);
+            auto form_fresh = reindexed_polys.polygons() | tf::tag(fresh_tree);
+
+            auto info_mod = tf::ray_cast(ray, form_mod);
+            auto info_fresh = tf::ray_cast(ray, form_fresh);
+
+            REQUIRE(info_mod);
+            REQUIRE(info_fresh);
+            REQUIRE(info_mod.element == info_fresh.element);
+        }
+
+        // Also test neighbor_search on dirty region
+        for (int i = 0; i < n_dirty_per_iter; ++i) {
+            auto poly_id = dirty_ids[i];
+            auto poly = reindexed_polys.polygons()[poly_id];
+            auto centroid = tf::centroid(poly);
+
+            auto form_mod = reindexed_polys.polygons() | tf::tag(tree);
+            auto form_fresh = reindexed_polys.polygons() | tf::tag(fresh_tree);
+
+            auto nearest_mod = tf::neighbor_search(form_mod, centroid);
+            auto nearest_fresh = tf::neighbor_search(form_fresh, centroid);
+
+            REQUIRE(nearest_mod);
+            REQUIRE(nearest_fresh);
+            REQUIRE(std::abs(nearest_mod.metric() - nearest_fresh.metric()) < tf::epsilon<real_t>);
+        }
+
+        // Update current_polys for next iteration
+        current_polys = std::move(reindexed_polys);
     }
 }
