@@ -24,6 +24,12 @@ namespace tf::vtk {
 auto make_vtk_points(const tf::points_buffer<float, 3> &points)
     -> vtkSmartPointer<vtkPoints>;
 
+/// @brief Creates vtkPoints from a points_buffer (copies data).
+/// @param points Trueform points buffer.
+/// @return A new vtkPoints object with copied data.
+auto make_vtk_points(const tf::points_buffer<double, 3> &points)
+    -> vtkSmartPointer<vtkPoints>;
+
 /// @brief Creates vtkPoints from a points_buffer (moves data).
 /// @param points Trueform points buffer (consumed).
 /// @return A new vtkPoints object with transferred ownership.

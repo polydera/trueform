@@ -111,3 +111,10 @@ target_link_libraries(spatial-polygons_to_polygons-collision-coal-impl benchmark
 
 add_executable(spatial-polygons_to_polygons-collision-coal polygons_to_polygons-collision-coal.cpp)
 target_link_libraries(spatial-polygons_to_polygons-collision-coal spatial-polygons_to_polygons-collision-coal-impl)
+
+# TrueForm mod_tree update
+add_library(spatial-mod_tree-update-tf-impl OBJECT mod_tree-update-tf-impl.cpp)
+target_link_libraries(spatial-mod_tree-update-tf-impl benchmark_common)
+
+add_executable(spatial-mod_tree-update-tf mod_tree-update-tf.cpp)
+target_link_libraries(spatial-mod_tree-update-tf spatial-mod_tree-update-tf-impl)

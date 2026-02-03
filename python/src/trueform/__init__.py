@@ -25,13 +25,13 @@ from ._intersect import isocontours, intersection_curves, self_intersection_curv
 from ._cut import isobands, boolean_union, boolean_intersection, boolean_difference, embedded_self_intersection_curves
 from ._clean import cleaned
 from ._reindex import reindex_by_ids, reindex_by_mask, reindex_by_ids_on_points, reindex_by_mask_on_points, split_into_components, concatenated
-from ._topology import label_connected_components, cell_membership, manifold_edge_link, face_link, vertex_link_edges, vertex_link_faces, k_rings, neighborhoods, boundary_edges, boundary_paths, boundary_curves, non_manifold_edges, orient_faces_consistently, connect_edges_to_paths
+from ._topology import label_connected_components, cell_membership, manifold_edge_link, face_link, vertex_link_edges, vertex_link_faces, k_rings, neighborhoods, boundary_edges, boundary_paths, boundary_curves, non_manifold_edges, orient_faces_consistently, connect_edges_to_paths, is_closed, is_open, is_manifold, is_non_manifold
 from ._spatial import neighbor_search, gather_intersecting_ids, gather_ids_within_distance
 from ._core.transformed import transformed
 from ._geometry import fit_rigid_alignment, fit_obb_alignment, fit_knn_alignment, chamfer_error, triangulated
 from ._geometry import normals, point_normals, principal_curvatures, shape_index, ensure_positive_orientation
 from ._geometry import make_sphere_mesh, make_cylinder_mesh, make_box_mesh, make_plane_mesh
-from ._geometry import signed_volume, volume, area
+from ._geometry import signed_volume, volume, area, laplacian_smoothed
 
 # IO functions
 from ._io import read_stl, write_stl, read_obj, write_obj
@@ -82,6 +82,10 @@ __all__ = [
     'non_manifold_edges',
     'orient_faces_consistently',
     'connect_edges_to_paths',
+    'is_closed',
+    'is_open',
+    'is_manifold',
+    'is_non_manifold',
     'neighbor_search',
     'gather_intersecting_ids',
     'gather_ids_within_distance',
@@ -104,6 +108,7 @@ __all__ = [
     'signed_volume',
     'volume',
     'area',
+    'laplacian_smoothed',
     # IO
     'read_stl',
     'write_stl',

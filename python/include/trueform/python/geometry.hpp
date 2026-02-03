@@ -34,6 +34,8 @@ void register_make_mesh_primitives(nanobind::module_ &m);
 
 void register_measurements(nanobind::module_ &m);
 
+void register_laplacian_smoothed(nanobind::module_ &m);
+
 void register_geometry_module(nanobind::module_ &m);
 
 } // namespace tf::py

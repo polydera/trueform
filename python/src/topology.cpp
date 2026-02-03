@@ -32,6 +32,8 @@ auto register_topology(nanobind::module_ &m) -> void {
   register_topology_connect_edges_to_paths(topology_module);
   register_topology_make_k_rings(topology_module);
   register_topology_make_neighborhoods(topology_module);
+  register_topology_is_closed(topology_module);
+  register_topology_is_manifold(topology_module);
 }
 
 } // namespace tf::py

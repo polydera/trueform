@@ -366,6 +366,7 @@ set(ALL_BENCHMARK_IMPLS
     spatial-polygons-build_tree-coal-impl
     spatial-polygons_to_polygons-closest_point-coal-impl
     spatial-polygons_to_polygons-collision-coal-impl
+    spatial-mod_tree-update-tf-impl
 
     # Geometry module
     geometry-principal_curvatures-tf-impl
@@ -419,6 +420,7 @@ set(BENCHMARK_TARGETS
     spatial-polygons-build_tree-coal
     spatial-polygons_to_polygons-closest_point-coal
     spatial-polygons_to_polygons-collision-coal
+    spatial-mod_tree-update-tf
     topology-connected_components-cgal
     topology-connected_components-tf
     topology-boundary_paths-cgal

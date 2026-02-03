@@ -11,8 +11,9 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include "../core/algorithm/parallel_for_each.hpp"
 #include "../core/algorithm/parallel_copy.hpp"
+#include "../core/algorithm/parallel_for_each.hpp"
+#include "tbb/task_group.h"
 #include "../core/frame_of.hpp"
 #include "../core/polygons.hpp"
 #include "../core/polygons_buffer.hpp"
@@ -382,10 +383,8 @@ auto concatenated_impl(tf::polygons_buffer<Index, RealT, Dims, Ngon> &out,
   Index start_p = 0;
   Index start_f = 0;
 
-  auto make_copy = [&](const auto &polygons) {
-    const Index end_p = start_p + static_cast<Index>(polygons.points().size());
-    const Index end_f = start_f + static_cast<Index>(polygons.faces().size());
-
+  auto make_copy = [&](const auto &polygons, Index start_f, Index end_f,
+                       Index start_p, Index end_p) {
     const Index point_offset = start_p;
     tf::parallel_for_each(
         tf::zip(polygons.faces(),
@@ -402,16 +401,25 @@ auto concatenated_impl(tf::polygons_buffer<Index, RealT, Dims, Ngon> &out,
         },
         tf::checked);
 
-    impl::copy_with_transformation(polygons.points(),
-                                    tf::slice(out.points_buffer(), start_p, end_p),
-                                    tf::frame_of(polygons));
+    impl::copy_with_transformation(
+        polygons.points(), tf::slice(out.points_buffer(), start_p, end_p),
+        tf::frame_of(polygons));
+  };
+
+  tbb::task_group tg;
+  for (decltype(r.size()) i = 0; i < r.size(); ++i) {
+    const auto &polygons = r[i];
+    const Index end_p = start_p + static_cast<Index>(polygons.points().size());
+    const Index end_f = start_f + static_cast<Index>(polygons.faces().size());
+
+    tg.run([&, i, start_f, end_f, start_p, end_p]() {
+      make_copy(r[i], start_f, end_f, start_p, end_p);
+    });
 
     start_p = end_p;
     start_f = end_f;
-  };
-
-  for (const auto &polygons : r)
-    make_copy(polygons);
+  }
+  tg.wait();
   return out;
 }
 
@@ -498,10 +506,8 @@ auto concatenated(const tf::segments<Policy> &, const Range &r) {
   Index start_p = 0;
   Index start_f = 0;
 
-  auto make_copy = [&](const auto &segments) {
-    const Index end_p = start_p + static_cast<Index>(segments.points().size());
-    const Index end_f = start_f + static_cast<Index>(segments.edges().size());
-
+  auto make_copy = [&](const auto &segments, Index start_f, Index end_f,
+                       Index start_p, Index end_p) {
     const Index point_offset = start_p;
     tf::parallel_for_each(
         tf::zip(segments.edges(),
@@ -514,23 +520,32 @@ auto concatenated(const tf::segments<Policy> &, const Range &r) {
         },
         tf::checked);
 
-    impl::copy_with_transformation(segments.points(),
-                                    tf::slice(out.points_buffer(), start_p, end_p),
-                                    tf::frame_of(segments));
+    impl::copy_with_transformation(
+        segments.points(), tf::slice(out.points_buffer(), start_p, end_p),
+        tf::frame_of(segments));
+  };
+
+  tbb::task_group tg;
+  for (decltype(r.size()) i = 0; i < r.size(); ++i) {
+    const auto &segments = r[i];
+    const Index end_p = start_p + static_cast<Index>(segments.points().size());
+    const Index end_f = start_f + static_cast<Index>(segments.edges().size());
+
+    tg.run([&, i, start_f, end_f, start_p, end_p]() {
+      make_copy(r[i], start_f, end_f, start_p, end_p);
+    });
 
     start_p = end_p;
     start_f = end_f;
-  };
-
-  for (const auto &segments : r)
-    make_copy(segments);
+  }
+  tg.wait();
 
   return out;
 }
 
 template <typename Policy, typename Range>
 auto concatenated(const tf::points<Policy> &, const Range &r) {
-  auto total_point_size = 0;
+  std::size_t total_point_size = 0;
   for (const auto &points : r)
     total_point_size += points.size();
   tf::points_buffer<tf::coordinate_type<Policy>, tf::coordinate_dims_v<Policy>>
@@ -539,24 +554,28 @@ auto concatenated(const tf::points<Policy> &, const Range &r) {
 
   std::size_t start_p = 0;
 
-  auto make_copy = [&](const auto &points) {
-    const std::size_t end_p = start_p + static_cast<std::size_t>(points.size());
-
+  auto make_copy = [&](const auto &points, std::size_t start_p,
+                       std::size_t end_p) {
     impl::copy_with_transformation(points, tf::slice(out, start_p, end_p),
                                    tf::frame_of(points));
-
-    start_p = end_p;
   };
 
-  for (const auto &points : r)
-    make_copy(points);
+  tbb::task_group tg;
+  for (decltype(r.size()) i = 0; i < r.size(); ++i) {
+    const std::size_t end_p = start_p + static_cast<std::size_t>(r[i].size());
+
+    tg.run([&, i, start_p, end_p]() { make_copy(r[i], start_p, end_p); });
+
+    start_p = end_p;
+  }
+  tg.wait();
 
   return out;
 }
 
 template <typename Policy, typename Range>
 auto concatenated(const tf::vectors<Policy> &, const Range &r) {
-  auto total_vector_size = 0;
+  std::size_t total_vector_size = 0;
   for (const auto &vectors : r)
     total_vector_size += vectors.size();
   tf::vectors_buffer<tf::coordinate_type<Policy>, tf::coordinate_dims_v<Policy>>
@@ -565,23 +584,27 @@ auto concatenated(const tf::vectors<Policy> &, const Range &r) {
 
   std::size_t start_p = 0;
 
-  auto make_copy = [&](const auto &vectors) {
-    const std::size_t end_p =
-        start_p + static_cast<std::size_t>(vectors.size());
-
+  auto make_copy = [&](const auto &vectors, std::size_t start_p,
+                       std::size_t end_p) {
     impl::copy_with_transformation(vectors, tf::slice(out, start_p, end_p),
                                    tf::frame_of(vectors));
-
-    start_p = end_p;
   };
 
-  for (const auto &vectors : r)
-    make_copy(vectors);
+  tbb::task_group tg;
+  for (decltype(r.size()) i = 0; i < r.size(); ++i) {
+    const std::size_t end_p =
+        start_p + static_cast<std::size_t>(r[i].size());
+
+    tg.run([&, i, start_p, end_p]() { make_copy(r[i], start_p, end_p); });
+
+    start_p = end_p;
+  }
+  tg.wait();
   return out;
 }
 template <typename Policy, typename Range>
 auto concatenated(const tf::unit_vectors<Policy> &, const Range &r) {
-  auto total_unit_vector_size = 0;
+  std::size_t total_unit_vector_size = 0;
   for (const auto &unit_vectors : r)
     total_unit_vector_size += unit_vectors.size();
   tf::unit_vectors_buffer<tf::coordinate_type<Policy>,
@@ -591,18 +614,22 @@ auto concatenated(const tf::unit_vectors<Policy> &, const Range &r) {
 
   std::size_t start_p = 0;
 
-  auto make_copy = [&](const auto &unit_vectors) {
-    const std::size_t end_p =
-        start_p + static_cast<std::size_t>(unit_vectors.size());
-
+  auto make_copy = [&](const auto &unit_vectors, std::size_t start_p,
+                       std::size_t end_p) {
     impl::copy_with_transformation(unit_vectors, tf::slice(out, start_p, end_p),
                                    tf::frame_of(unit_vectors));
-
-    start_p = end_p;
   };
 
-  for (const auto &unit_vectors : r)
-    make_copy(unit_vectors);
+  tbb::task_group tg;
+  for (decltype(r.size()) i = 0; i < r.size(); ++i) {
+    const std::size_t end_p =
+        start_p + static_cast<std::size_t>(r[i].size());
+
+    tg.run([&, i, start_p, end_p]() { make_copy(r[i], start_p, end_p); });
+
+    start_p = end_p;
+  }
+  tg.wait();
 
   return out;
 }

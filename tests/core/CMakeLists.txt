@@ -2,6 +2,7 @@ add_executable(trueform_core_tests
   test_classify.cpp
   test_closest_metric_point_pair.cpp
   test_intersects.cpp
+  test_least_squares_parallel.cpp
   test_ray_cast.cpp
   test_transformed.cpp
 )

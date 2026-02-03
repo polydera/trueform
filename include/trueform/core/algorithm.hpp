@@ -30,6 +30,7 @@
 #include "./algorithm/parallel_copy.hpp"
 #include "./algorithm/parallel_copy_blocked.hpp"
 #include "./algorithm/parallel_copy_by_map_with_nones.hpp"
+#include "./algorithm/parallel_contains.hpp"
 #include "./algorithm/parallel_fill.hpp"
 #include "./algorithm/parallel_for.hpp"
 #include "./algorithm/parallel_for_each.hpp"

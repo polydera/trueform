@@ -56,6 +56,7 @@
 #include "spatial/polygons-build_tree-cgal.hpp"
 #include "spatial/polygons-build_tree-fcl.hpp"
 #include "spatial/polygons-build_tree-tf.hpp"
+#include "spatial/mod_tree-update-tf.hpp"
 #include "spatial/polygons_to_polygons-closest_point-fcl.hpp"
 #include "spatial/polygons_to_polygons-closest_point-tf.hpp"
 
@@ -201,6 +202,8 @@ int main(int argc, char *argv[]) {
        benchmark::run_polygons_to_polygons_closest_point_tf_benchmark, 1000},
       {"spatial-polygons_to_polygons-closest_point-fcl",
        benchmark::run_polygons_to_polygons_closest_point_fcl_benchmark, 1000},
+      {"spatial-mod_tree-update-tf",
+       benchmark::run_mod_tree_update_tf_benchmark, 10},
   };
 
   // Simple CLI: run all benchmarks with default mesh paths and samples

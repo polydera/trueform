@@ -3,7 +3,8 @@
  * @brief Tests for mesh analysis functions
  *
  * Tests for:
- * - is_closed
+ * - is_closed / is_open
+ * - is_manifold / is_non_manifold
  * - make_non_manifold_edges
  * - orient_faces_consistently
  *
@@ -101,6 +102,129 @@ TEMPLATE_TEST_CASE("is_closed_triangle_strip", "[topology][analysis]",
 
     auto mesh = tf::test::create_triangle_strip_3d<index_t, real_t>(5);
     REQUIRE_FALSE(tf::is_closed(mesh.polygons()));
+}
+
+// =============================================================================
+// is_open - Open Mesh
+// =============================================================================
+
+TEMPLATE_TEST_CASE("is_open_open_mesh", "[topology][analysis]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto mesh = tf::test::create_two_triangles_3d<index_t, real_t>();
+    REQUIRE(tf::is_open(mesh.polygons()));
+}
+
+// =============================================================================
+// is_open - Closed Mesh
+// =============================================================================
+
+TEMPLATE_TEST_CASE("is_open_closed_mesh", "[topology][analysis]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto mesh = tf::test::create_tetrahedron_3d<index_t, real_t>();
+    REQUIRE_FALSE(tf::is_open(mesh.polygons()));
+}
+
+// =============================================================================
+// is_manifold - Manifold Mesh
+// =============================================================================
+
+TEMPLATE_TEST_CASE("is_manifold_two_triangles", "[topology][analysis]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto mesh = tf::test::create_two_triangles_3d<index_t, real_t>();
+    REQUIRE(tf::is_manifold(mesh.polygons()));
+}
+
+TEMPLATE_TEST_CASE("is_manifold_tetrahedron", "[topology][analysis]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto mesh = tf::test::create_tetrahedron_3d<index_t, real_t>();
+    REQUIRE(tf::is_manifold(mesh.polygons()));
+}
+
+TEMPLATE_TEST_CASE("is_manifold_grid_mesh", "[topology][analysis]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto mesh = tf::test::create_grid_mesh_3d<index_t, real_t>(5, 5);
+    REQUIRE(tf::is_manifold(mesh.polygons()));
+}
+
+// =============================================================================
+// is_manifold - Non-Manifold Mesh
+// =============================================================================
+
+TEMPLATE_TEST_CASE("is_manifold_non_manifold_mesh", "[topology][analysis]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto mesh = tf::test::create_non_manifold_mesh_3d<index_t, real_t>();
+    REQUIRE_FALSE(tf::is_manifold(mesh.polygons()));
+}
+
+// =============================================================================
+// is_non_manifold - Manifold Mesh
+// =============================================================================
+
+TEMPLATE_TEST_CASE("is_non_manifold_manifold_mesh", "[topology][analysis]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto mesh = tf::test::create_two_triangles_3d<index_t, real_t>();
+    REQUIRE_FALSE(tf::is_non_manifold(mesh.polygons()));
+}
+
+TEMPLATE_TEST_CASE("is_non_manifold_tetrahedron", "[topology][analysis]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto mesh = tf::test::create_tetrahedron_3d<index_t, real_t>();
+    REQUIRE_FALSE(tf::is_non_manifold(mesh.polygons()));
+}
+
+// =============================================================================
+// is_non_manifold - Non-Manifold Mesh
+// =============================================================================
+
+TEMPLATE_TEST_CASE("is_non_manifold_non_manifold_mesh", "[topology][analysis]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto mesh = tf::test::create_non_manifold_mesh_3d<index_t, real_t>();
+    REQUIRE(tf::is_non_manifold(mesh.polygons()));
 }
 
 // =============================================================================

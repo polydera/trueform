@@ -24,6 +24,7 @@ from .make_mesh_primitives import (
     make_plane_mesh,
 )
 from .measurements import signed_volume, volume, area
+from .laplacian_smoothed import laplacian_smoothed
 
 __all__ = [
     "fit_rigid_alignment",
@@ -43,4 +44,5 @@ __all__ = [
     "signed_volume",
     "volume",
     "area",
+    "laplacian_smoothed",
 ]

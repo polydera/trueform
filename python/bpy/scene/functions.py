@@ -22,6 +22,9 @@ __all__ = [
     "boolean_difference",
     "boolean_union",
     "boolean_intersection",
+    "boolean_difference_mesh",
+    "boolean_union_mesh",
+    "boolean_intersection_mesh",
     "intersects",
     "intersection_curves",
 ]
@@ -204,6 +207,53 @@ def boolean_intersection(
         ((result_faces, result_points), _labels) = tf.boolean_intersection(mesh_a, mesh_b)
         result_mesh = tf.Mesh(result_faces, result_points)
         return convert.to_blender(result_mesh, name=name)
+
+
+# --- Raw boolean operations (return tf.Mesh, no Blender object) ---
+
+def boolean_difference_mesh(
+    obj_a: bpy.types.Object,
+    obj_b: bpy.types.Object,
+) -> tf.Mesh:
+    """
+    Compute boolean difference and return tf.Mesh (no Blender object created).
+
+    Use with convert.update_blender() for efficient live updates.
+    """
+    mesh_a = get(obj_a)
+    mesh_b = get(obj_b)
+    ((result_faces, result_points), _labels) = tf.boolean_difference(mesh_a, mesh_b)
+    return tf.Mesh(result_faces, result_points)
+
+
+def boolean_union_mesh(
+    obj_a: bpy.types.Object,
+    obj_b: bpy.types.Object,
+) -> tf.Mesh:
+    """
+    Compute boolean union and return tf.Mesh (no Blender object created).
+
+    Use with convert.update_blender() for efficient live updates.
+    """
+    mesh_a = get(obj_a)
+    mesh_b = get(obj_b)
+    ((result_faces, result_points), _labels) = tf.boolean_union(mesh_a, mesh_b)
+    return tf.Mesh(result_faces, result_points)
+
+
+def boolean_intersection_mesh(
+    obj_a: bpy.types.Object,
+    obj_b: bpy.types.Object,
+) -> tf.Mesh:
+    """
+    Compute boolean intersection and return tf.Mesh (no Blender object created).
+
+    Use with convert.update_blender() for efficient live updates.
+    """
+    mesh_a = get(obj_a)
+    mesh_b = get(obj_b)
+    ((result_faces, result_points), _labels) = tf.boolean_intersection(mesh_a, mesh_b)
+    return tf.Mesh(result_faces, result_points)
 
 
 # --- Intersection queries ---

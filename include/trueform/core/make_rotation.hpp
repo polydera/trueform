@@ -283,6 +283,34 @@ auto make_rotation(deg<T> angle, const point_like<2, PointPolicy>& pivot)
 }
 
 /// @ingroup core_primitives
+/// @brief Create 3D rotation from rotation vector (Rodrigues representation).
+///
+/// The rotation vector encodes both axis and angle: the direction is the
+/// rotation axis, and the magnitude is the rotation angle in radians.
+///
+/// @tparam T The scalar type.
+/// @param rx X component of rotation vector (radians).
+/// @param ry Y component of rotation vector (radians).
+/// @param rz Z component of rotation vector (radians).
+/// @return A 3D @ref tf::transformation.
+template <typename T>
+auto make_rotation_from_rodrigues(T rx, T ry, T rz) -> transformation<T, 3> {
+  T theta = tf::sqrt(rx * rx + ry * ry + rz * rz);
+
+  if (theta < epsilon<T>) {
+    // Small angle approximation: R ≈ I + [r]×
+    return transformation<T, 3>{
+      1,   -rz,  ry, 0,
+      rz,   1,  -rx, 0,
+     -ry,  rx,   1,  0
+    };
+  }
+
+  auto axis = tf::make_unit_vector(tf::unsafe, rx / theta, ry / theta, rz / theta);
+  return make_rotation(rad<T>{theta}, axis);
+}
+
+/// @ingroup core_primitives
 /// @brief Create 2D rotation aligning one direction to another.
 ///
 /// Returns a transformation that rotates the `from` direction to the `to`

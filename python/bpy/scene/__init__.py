@@ -95,7 +95,7 @@ def _refresh_tracked(depsgraph: bpy.types.Depsgraph) -> None:
     """
     Rebuild the set of mesh datablocks present in the depsgraph.
 
-    Iterates evaluated objects and tracks their original mesh datablocks.
+    Iterates all IDs (including hidden objects) and tracks mesh datablocks.
 
     Parameters
     ----------
@@ -106,11 +106,14 @@ def _refresh_tracked(depsgraph: bpy.types.Depsgraph) -> None:
 
     tracked: set[int] = set()
 
-    for obj_eval in depsgraph.objects:
-        if obj_eval.type != 'MESH':
+    # Use depsgraph.ids to include hidden objects (depsgraph.objects excludes them)
+    for id_eval in depsgraph.ids:
+        if not isinstance(id_eval, bpy.types.Object):
+            continue
+        if id_eval.type != 'MESH':
             continue
 
-        obj = getattr(obj_eval, "original", None)
+        obj = getattr(id_eval, "original", None)
         if obj is None or obj.data is None:
             continue
 

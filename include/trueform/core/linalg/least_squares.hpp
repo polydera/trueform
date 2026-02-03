@@ -71,7 +71,6 @@ auto solve_least_squares(T *A, const T *b, T *x, std::size_t rows,
   T *norms_dir = norms_upd + cols;
   std::size_t *perm = reinterpret_cast<std::size_t *>(norms_dir + cols);
 
-  // Copy b (A is modified in-place)
   for (std::size_t i = 0; i < rows; ++i)
     bw[i] = b[i];
 
@@ -88,7 +87,6 @@ auto solve_least_squares(T *A, const T *b, T *x, std::size_t rows,
       max_norm = norms_upd[j];
   }
 
-  // Auto threshold (matches Eigen: eps * max_norm, scaled by sqrt(size))
   if (thresh < T(0))
     thresh = std::numeric_limits<T>::epsilon() * max_norm * tf::sqrt(T(size));
 

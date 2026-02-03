@@ -107,7 +107,6 @@ jobs:
           BLENDER_PY_NO_DOT=$(echo "${{ env.BLENDER_PYTHON_VERSION }}" | tr -d '.')
           $PY python/tools/package_blender_plugin.py \
             --wheel wheelhouse/trueform-*.whl \
-            --plugin-init python/examples/bpy-plugin/__init__.py \
             --output wheelhouse/trueform-bpy-plugin-${{ runner.os }}-py${BLENDER_PY_NO_DOT}.zip
 
       # ------------------------------------------------------

@@ -122,10 +122,10 @@ Why trueform
   icon: i-lucide-tree-pine
   ---
   #title
-  Spatial Acceleration
+  Spatial Acceleration & Geometry
 
   #description
-  Fast spatial queries on moving point clouds, curves, and meshes. Immutable and modifiable trees for changing topology. k-NN, closest points, ray casting, collision detection.
+  Fast spatial queries on moving geometry. Modifiable trees for changing topology. Ray casting, collision detection and k-NN. Point cloud alignment with point-to-plane ICP.
   :::
 
   :::u-page-feature

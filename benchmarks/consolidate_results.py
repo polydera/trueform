@@ -153,6 +153,7 @@ JSON_OUTPUT_NAMES = {
     "polygons-closest_point": "polygons_closest_point",
     "polygons_to_polygons-closest_point": "mesh_mesh_closest_point",
     "polygons_to_polygons-collision": "mesh_mesh_collision",
+    "mod_tree-update": "mod_tree_update",
 }
 
 
@@ -276,6 +277,19 @@ def pivot_with_extra(df: pd.DataFrame, size_col: str, extra_col: str) -> pd.Data
     return pivot
 
 
+def pivot_mod_tree(df: pd.DataFrame) -> pd.DataFrame:
+    """Pivot mod_tree update benchmark: polygons × dirty_pct with update_pct values."""
+    pivot = df.pivot_table(
+        index="dirty_pct",
+        columns="polygons",
+        values="update_pct",
+        aggfunc="first"
+    ).reset_index()
+
+    pivot.columns.name = None
+    return pivot
+
+
 def convert_to_json(csv_path: Path, output_dir: Path) -> Optional[Path]:
     """Convert a consolidated CSV to JSON for charts."""
     test_name = csv_path.stem.replace("consolidated-", "")
@@ -293,8 +307,11 @@ def convert_to_json(csv_path: Path, output_dir: Path) -> Optional[Path]:
     has_bv = "bv" in df.columns
     has_k = "k" in df.columns
     has_n_cuts = "n_cuts" in df.columns
+    has_dirty_pct = "dirty_pct" in df.columns
 
-    if has_bv and has_k:
+    if has_dirty_pct:
+        pivot = pivot_mod_tree(df)
+    elif has_bv and has_k:
         pivot = pivot_with_bv_and_extra(df, "points", "k")
     elif has_bv:
         size_col = "points" if "points" in df.columns else "polygons"
