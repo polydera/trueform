@@ -29,6 +29,7 @@
 #include <trueform/vtk/functions/fit_obb_alignment.hpp>
 #include <trueform/vtk/functions/fit_rigid_alignment.hpp>
 #include <trueform/vtk/functions/intersects.hpp>
+#include <trueform/vtk/functions/embedded_intersection_curves.hpp>
 #include <trueform/vtk/functions/make_boolean.hpp>
 #include <trueform/vtk/functions/make_boundary_edges.hpp>
 #include <trueform/vtk/functions/make_boundary_paths.hpp>
