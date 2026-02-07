@@ -60,6 +60,10 @@ set(TRUEFORM_VTK_SOURCES
   src/functions/fit_knn_alignment.cpp
   src/functions/fit_obb_alignment.cpp
   src/functions/fit_rigid_alignment.cpp
+  src/functions/embedded_intersection_curves_pp.cpp
+  src/functions/embedded_intersection_curves_mp.cpp
+  src/functions/embedded_intersection_curves_pm.cpp
+  src/functions/embedded_intersection_curves_mm.cpp
   src/functions/make_boolean_pp.cpp
   src/functions/make_boolean_mp.cpp
   src/functions/make_boolean_pm.cpp

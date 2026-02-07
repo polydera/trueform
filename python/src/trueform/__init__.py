@@ -22,7 +22,7 @@ from .intersects import intersects
 from .distance import distance, distance2
 from .distance_field import distance_field
 from ._intersect import isocontours, intersection_curves, self_intersection_curves
-from ._cut import isobands, boolean_union, boolean_intersection, boolean_difference, embedded_self_intersection_curves
+from ._cut import isobands, boolean_union, boolean_intersection, boolean_difference, embedded_self_intersection_curves, embedded_intersection_curves
 from ._clean import cleaned
 from ._reindex import reindex_by_ids, reindex_by_mask, reindex_by_ids_on_points, reindex_by_mask_on_points, split_into_components, concatenated
 from ._topology import label_connected_components, cell_membership, manifold_edge_link, face_link, vertex_link_edges, vertex_link_faces, k_rings, neighborhoods, boundary_edges, boundary_paths, boundary_curves, non_manifold_edges, orient_faces_consistently, connect_edges_to_paths, is_closed, is_open, is_manifold, is_non_manifold
@@ -61,6 +61,7 @@ __all__ = [
     'boolean_intersection',
     'boolean_difference',
     'embedded_self_intersection_curves',
+    'embedded_intersection_curves',
     'cleaned',
     'reindex_by_ids',
     'reindex_by_mask',

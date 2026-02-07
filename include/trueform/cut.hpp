@@ -43,6 +43,7 @@
 
 #include "./cut/arrangement_class.hpp"                 // IWYU pragma: export
 #include "./cut/cut_faces.hpp"                         // IWYU pragma: export
+#include "./cut/embedded_intersection_curves.hpp"      // IWYU pragma: export
 #include "./cut/embedded_isocurves.hpp"                // IWYU pragma: export
 #include "./cut/embedded_self_intersection_curves.hpp" // IWYU pragma: export
 #include "./cut/loops.hpp"                             // IWYU pragma: export

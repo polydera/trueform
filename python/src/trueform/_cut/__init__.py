@@ -10,6 +10,7 @@ https://github.com/polydera/trueform
 from .isobands import isobands
 from .boolean import boolean_union, boolean_intersection, boolean_difference
 from .embedded_self_intersection_curves import embedded_self_intersection_curves
+from .embedded_intersection_curves import embedded_intersection_curves
 
 __all__ = [
     'isobands',
@@ -17,4 +18,5 @@ __all__ = [
     'boolean_intersection',
     'boolean_difference',
     'embedded_self_intersection_curves',
+    'embedded_intersection_curves',
 ]

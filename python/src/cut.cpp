@@ -23,6 +23,7 @@ auto register_cut(nanobind::module_ &m) -> void {
   register_cut_isobands(cut_module);
   register_cut_boolean(cut_module);
   register_cut_embedded_self_intersection_curves(cut_module);
+  register_cut_embedded_intersection_curves(cut_module);
 }
 
 } // namespace tf::py
