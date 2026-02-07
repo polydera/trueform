@@ -25,6 +25,9 @@ namespace tf::vtk {
 /// Computes the optimal rigid transformation T such that T(source) ≈ target
 /// using the Kabsch/Procrustes algorithm. Requires point correspondences
 /// (same vertex count, same order).
+///
+/// If target has point normals, uses point-to-plane minimization (faster).
+/// If both source and target have normals, uses normal weighting.
 
 /// @brief Fit rigid alignment from source to target.
 /// @param source The source polydata.

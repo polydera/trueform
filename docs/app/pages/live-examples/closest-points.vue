@@ -31,7 +31,17 @@ const meshCount = 2;
 const meshes = computed(() => buildMeshes(meshCount));
 const polygonLabel = computed(() => formatPolygonLabel(meshCount));
 
+const avgTime = ref("0");
+const updateAvgTime = () => {
+  if (exampleClass) {
+    avgTime.value = exampleClass.getAverageTime().toFixed(2);
+  }
+};
+
 const badge = computed(() => ({
+  icon: "i-lucide-gauge",
+  label: "Query:",
+  value: `${avgTime.value} ms`,
   polygons: polygonLabel.value,
 }));
 
@@ -63,12 +73,16 @@ const loadThreejs = async () => {
         return null;
       }
 
-      return new PositioningExample(
+      const instance = new PositioningExample(
         wasmInstance,
         meshFilenames,
         el,
         isDark.value,
       );
+      instance.refreshTimeValue = updateAvgTime;
+      // Update time after initial load
+      nextTick(() => updateAvgTime());
+      return instance;
     },
   });
 };
@@ -101,7 +115,7 @@ watch(isDark, (dark) => {
     <template #info>
       <div class="flex gap-2 items-center text-muted">
         <UIcon name="i-lucide-hand" class="size-4 ml-1" />
-        <p class="text-sm">Drag a mesh and release. It snaps to the nearest point instantly.</p>
+        <p class="text-sm">Drag a mesh. Closest pair updates live.</p>
       </div>
     </template>
     <template #containers>

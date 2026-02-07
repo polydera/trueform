@@ -77,6 +77,12 @@ private:
   tf::ray<float, 3> m_ray;
   tf::ray<float, 3> m_focal_ray;
 
+  // Closest points visualization
+  tf::point<double, 3> m_closest_pt0;
+  tf::point<double, 3> m_closest_pt1;
+  bool m_has_closest_points = false;
+  float m_aabb_diagonal = 1.0f;
+
   auto add_position_time(float t) -> void {
     auto avg = add_time(positioning_times, t);
     m_time = avg;
@@ -100,12 +106,18 @@ private:
       auto eps = 0.01f;
       if (dt == 0) {
         if (pos_bridge->intersects_other(*selected_instance)) {
+          m_has_closest_points = false;
           return 1.0f;
         }
         auto neighbors = pos_bridge->closest_metric_point_pair(*selected_instance);
         auto pt0 = neighbors.info.first;
         m_pt1 = neighbors.info.second;
         m_ray = tf::make_ray_between_points(pt0, m_pt1);
+
+        // Initialize closest points for animation visualization
+        m_closest_pt0 = pt0;
+        m_closest_pt1 = m_pt1;
+        m_has_closest_points = true;
 
         tf::point<double, 3> old_focal = {focal_point[0], focal_point[1],
                                           focal_point[2]};
@@ -123,8 +135,15 @@ private:
         auto focal = m_focal_ray(s_t);
         lambda_set_focal(focal[0], focal[1], focal[2]);
         m_prev_pt = pt;
+
+        // Update closest point visualization (shrinking line)
+        m_closest_pt0 = pt;
+        // m_closest_pt1 stays at target
+
         return t;
       }
+      // Animation complete - hide visualization
+      m_has_closest_points = false;
       lambda_set_focal(m_pt1[0], m_pt1[1], m_pt1[2]);
       return 1.0f;
     }
@@ -150,6 +169,47 @@ private:
 
 public:
   auto get_value() -> bool { return selected_mode; }
+
+  auto is_dragging() -> bool { return selected_mode && selected_instance.has_value(); }
+
+  // Returns the stored closest points (computed during drag)
+  auto get_closest_points() -> std::array<float, 6> {
+    return {
+      static_cast<float>(m_closest_pt0[0]), static_cast<float>(m_closest_pt0[1]), static_cast<float>(m_closest_pt0[2]),
+      static_cast<float>(m_closest_pt1[0]), static_cast<float>(m_closest_pt1[1]), static_cast<float>(m_closest_pt1[2])
+    };
+  }
+
+  auto has_valid_closest_points() -> bool { return m_has_closest_points; }
+
+  auto get_aabb_diagonal() -> float { return m_aabb_diagonal; }
+
+  auto set_aabb_diagonal(float diag) -> void { m_aabb_diagonal = diag; }
+
+  // Set instance matrix from JS (for repositioning based on screen orientation)
+  auto set_instance_matrix(std::size_t instance_id, const std::array<double, 16> &matrix) -> void {
+    if (instance_id >= bridge->get_instances().size()) return;
+    auto &inst = bridge->get_instance(instance_id);
+    inst.matrix = matrix;
+    inst.matrix_updated = true;
+    bridge->update_frame(instance_id);
+  }
+
+  // Compute closest points for initial display (called after loading)
+  auto compute_initial_closest_points() -> void {
+    if (auto *pos_bridge = static_cast<positioning_bridge *>(bridge.get())) {
+      if (pos_bridge->get_instances().size() < 2) return;
+      // Use instance 0 as reference
+      if (!pos_bridge->intersects_other(0)) {
+        tf::tick();
+        auto neighbors = pos_bridge->closest_metric_point_pair(0);
+        add_position_time(tf::tock());
+        m_closest_pt0 = neighbors.info.first;
+        m_closest_pt1 = neighbors.info.second;
+        m_has_closest_points = true;
+      }
+    }
+  }
 
   auto OnLeftButtonUpCustom(std::array<double, 3> focal_point,
                             emscripten::val lambda_set_focal, float dt)
@@ -211,6 +271,20 @@ public:
       dx = next_point - last_point;
       last_point = next_point;
       cursor_interactor_interface::move_selected(*selected_instance);
+
+      // Update closest points for visualization (with timing)
+      if (auto *pos_bridge = static_cast<positioning_bridge *>(bridge.get())) {
+        if (!pos_bridge->intersects_other(*selected_instance)) {
+          tf::tick();
+          auto neighbors = pos_bridge->closest_metric_point_pair(*selected_instance);
+          add_position_time(tf::tock());
+          m_closest_pt0 = neighbors.info.first;
+          m_closest_pt1 = neighbors.info.second;
+          m_has_closest_points = true;
+        } else {
+          m_has_closest_points = false;
+        }
+      }
       return true;
     } else if (camera_mode) {
       return false;
@@ -248,6 +322,10 @@ int run_main_positioning(std::vector<std::string> &paths) {
     utils::center_and_scale_p(poly);
     total_polygons += poly.size();
 
+    // Compute AABB diagonal for sizing
+    auto aabb = tf::aabb_from(poly.points());
+    float diag = tf::distance(aabb.min, aabb.max);
+
     auto mesh_id = interactor->add_mesh_data(std::move(poly), false);
     auto instance_id = interactor->add_instance(mesh_id);
     auto &inst = interactor->get_instances()[instance_id];
@@ -257,7 +335,17 @@ int run_main_positioning(std::vector<std::string> &paths) {
     if (auto *pos_interactor =
             dynamic_cast<cursor_interactor_positioning *>(interactor.get())) {
       pos_interactor->reset_active_color(instance_id);
+      // Store max AABB diagonal
+      if (diag > pos_interactor->get_aabb_diagonal()) {
+        pos_interactor->set_aabb_diagonal(diag);
+      }
     }
+  }
+
+  // Compute initial closest points for visualization
+  if (auto *pos_interactor =
+          dynamic_cast<cursor_interactor_positioning *>(interactor.get())) {
+    pos_interactor->compute_initial_closest_points();
   }
 
   interactor->total_polygons = total_polygons;

@@ -83,7 +83,6 @@ auto fit_rigid_alignment_point_to_plane(
   const std::size_t n = X.size();
   constexpr std::size_t cols = 6;
 
-  // Allocate buffers
   state.A.allocate(n * cols);
   state.b_vec.allocate(n);
 
@@ -106,37 +105,36 @@ auto fit_rigid_alignment_point_to_plane(
         auto x = tf::transformed(X[i], fX);
         auto y = tf::transformed(Y[i], fY);
 
-        // Transform normal to world space (rotation only)
         auto normal = tf::transformed_normal(normals[i], fY);
 
-        // cross = x × n
+        T sqrt_w = T(1);
+        if constexpr (tf::has_normals_policy<Policy0>) {
+          auto src_normal = tf::transformed_normal(X_.normals()[i], fX);
+          T w = std::max(T(0), tf::dot(src_normal, normal));
+          sqrt_w = std::sqrt(w);
+        }
+
         auto cross = tf::cross(x.as_vector_view(), normal);
 
-        // Column-major: A[i + col*n]
-        state.A[i + 0 * n] = cross[0];
-        state.A[i + 1 * n] = cross[1];
-        state.A[i + 2 * n] = cross[2];
-        state.A[i + 3 * n] = normal[0];
-        state.A[i + 4 * n] = normal[1];
-        state.A[i + 5 * n] = normal[2];
+        state.A[i + 0 * n] = sqrt_w * cross[0];
+        state.A[i + 1 * n] = sqrt_w * cross[1];
+        state.A[i + 2 * n] = sqrt_w * cross[2];
+        state.A[i + 3 * n] = sqrt_w * normal[0];
+        state.A[i + 4 * n] = sqrt_w * normal[1];
+        state.A[i + 5 * n] = sqrt_w * normal[2];
 
-        // b[i] = (y - x) · n
-        state.b_vec[i] = tf::dot(y - x, normal);
+        state.b_vec[i] = sqrt_w * tf::dot(y - x, normal);
       },
       tf::checked);
 
-  // Solve least squares using parallel TSQR
   std::array<T, cols> coeffs;
   tf::linalg::solve_least_squares_parallel(state.A.data(), state.b_vec.data(),
                                            coeffs.data(), n, cols,
                                            state.solver_state);
 
-  // Build transformation from Rodrigues vector and translation
-  // coeffs = [rx, ry, rz, tx, ty, tz]
   auto result =
       tf::make_rotation_from_rodrigues(coeffs[0], coeffs[1], coeffs[2]);
 
-  // Set translation
   result(0, 3) = coeffs[3];
   result(1, 3) = coeffs[4];
   result(2, 3) = coeffs[5];

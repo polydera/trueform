@@ -16,6 +16,7 @@
 #include "../core/frame_of.hpp"
 #include "../core/make_rotation.hpp"
 #include "../core/obb_from.hpp"
+#include "../core/orthogonalize.hpp"
 #include "../core/policy/unwrap.hpp"
 #include "../core/transformation.hpp"
 #include "../core/transformed.hpp"
@@ -139,6 +140,9 @@ auto fit_obb_alignment(const tf::points<Policy0> &X_,
       T_base(i, j) = s;
     }
   }
+
+  // Orthogonalize R to correct numerical drift
+  tf::orthogonalize(T_base);
 
   // t = c1 - R * c0
   const auto c0 = obb0.center();

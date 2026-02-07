@@ -1,4 +1,4 @@
-name: PyPI
+name: Build Py
 
 env:
   BLENDER_VERSION: "5.0"

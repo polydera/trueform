@@ -10,6 +10,7 @@ https://github.com/polydera/trueform
 from .fit_rigid_alignment import fit_rigid_alignment
 from .fit_obb_alignment import fit_obb_alignment
 from .fit_knn_alignment import fit_knn_alignment
+from .fit_icp_alignment import fit_icp_alignment
 from .chamfer_error import chamfer_error
 from .triangulated import triangulated
 from .normals import normals
@@ -25,11 +26,13 @@ from .make_mesh_primitives import (
 )
 from .measurements import signed_volume, volume, area
 from .laplacian_smoothed import laplacian_smoothed
+from .taubin_smoothed import taubin_smoothed
 
 __all__ = [
     "fit_rigid_alignment",
     "fit_obb_alignment",
     "fit_knn_alignment",
+    "fit_icp_alignment",
     "chamfer_error",
     "triangulated",
     "normals",
@@ -45,4 +48,5 @@ __all__ = [
     "volume",
     "area",
     "laplacian_smoothed",
+    "taubin_smoothed",
 ]

@@ -211,7 +211,7 @@ def test_chamfer_error_dimension_mismatch():
     cloud2d = tf.PointCloud(pts2d)
     cloud3d = tf.PointCloud(pts3d)
 
-    with pytest.raises(ValueError, match="Dimension mismatch"):
+    with pytest.raises(ValueError, match="Expected 2D, got 3D"):
         tf.chamfer_error(cloud2d, cloud3d)
 
 

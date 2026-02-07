@@ -401,7 +401,7 @@ export abstract class ThreejsBase implements IThreejsBase {
       indexCounters.set(meshDataId, 0);
     }
 
-    // Build instanceIndices map
+    // Build instanceIndices map and handle per-mesh opacity
     for (let i = 0; i < numInstances; i++) {
       const inst = this.wasmInstance.get_instance_on_idx(i);
       if (!inst) continue;
@@ -409,6 +409,15 @@ export abstract class ThreejsBase implements IThreejsBase {
       const indexInBatch = indexCounters.get(meshDataId) ?? 0;
       this.instanceIndices.set(i, { meshDataId, indexInBatch });
       indexCounters.set(meshDataId, indexInBatch + 1);
+
+      // Handle opacity - if single instance per mesh, set material opacity
+      const instancedMesh = this.instancedMeshes.get(meshDataId);
+      if (instancedMesh && countPerMeshData.get(meshDataId) === 1 && inst.opacity < 1.0) {
+        const material = instancedMesh.material as THREE.MeshMatcapMaterial;
+        material.transparent = true;
+        material.opacity = inst.opacity;
+        material.needsUpdate = true;
+      }
     }
   }
 

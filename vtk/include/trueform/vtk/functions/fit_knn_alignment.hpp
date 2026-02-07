@@ -11,6 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
+#include <trueform/geometry/knn_alignment_config.hpp>
 #include <trueform/vtk/core/polydata.hpp>
 #include <cstddef>
 #include <utility>
@@ -26,46 +27,47 @@ namespace tf::vtk {
 /// For each point in source, finds the k nearest neighbors in target
 /// and computes a weighted correspondence. This is one iteration of ICP
 /// when k=1. For k>1, soft correspondences provide robustness to noise.
+///
+/// If target has point normals, uses point-to-plane ICP (faster convergence).
+/// If both source and target have normals, uses normal weighting.
 
 /// @brief Fit k-NN alignment from source to target.
 /// @param source The source polydata.
 /// @param target The target polydata.
-/// @param k Number of nearest neighbors (default: 1 = classic ICP).
-/// @param sigma Gaussian kernel width. If negative, uses adaptive scaling.
+/// @param config Configuration (k, sigma, outlier_proportion).
 /// @return Transformation matrix mapping source to target.
-auto fit_knn_alignment(polydata *source, polydata *target, std::size_t k = 1,
-                       float sigma = -1) -> vtkSmartPointer<vtkMatrix4x4>;
+auto fit_knn_alignment(polydata *source, polydata *target,
+                       const tf::knn_alignment_config &config = {})
+    -> vtkSmartPointer<vtkMatrix4x4>;
 
 /// @brief Fit k-NN alignment from transformed source to target.
 /// @param source The source polydata with transform.
 /// @param target The target polydata.
-/// @param k Number of nearest neighbors.
-/// @param sigma Gaussian kernel width.
+/// @param config Configuration (k, sigma, outlier_proportion).
 /// @return Transformation matrix mapping source to target.
 auto fit_knn_alignment(std::pair<polydata *, vtkMatrix4x4 *> source,
-                       polydata *target, std::size_t k = 1, float sigma = -1)
+                       polydata *target,
+                       const tf::knn_alignment_config &config = {})
     -> vtkSmartPointer<vtkMatrix4x4>;
 
 /// @brief Fit k-NN alignment from source to transformed target.
 /// @param source The source polydata.
 /// @param target The target polydata with transform.
-/// @param k Number of nearest neighbors.
-/// @param sigma Gaussian kernel width.
+/// @param config Configuration (k, sigma, outlier_proportion).
 /// @return Transformation matrix mapping source to target.
 auto fit_knn_alignment(polydata *source,
                        std::pair<polydata *, vtkMatrix4x4 *> target,
-                       std::size_t k = 1, float sigma = -1)
+                       const tf::knn_alignment_config &config = {})
     -> vtkSmartPointer<vtkMatrix4x4>;
 
 /// @brief Fit k-NN alignment between two transformed polydata.
 /// @param source The source polydata with transform.
 /// @param target The target polydata with transform.
-/// @param k Number of nearest neighbors.
-/// @param sigma Gaussian kernel width.
+/// @param config Configuration (k, sigma, outlier_proportion).
 /// @return Transformation matrix mapping source to target.
 auto fit_knn_alignment(std::pair<polydata *, vtkMatrix4x4 *> source,
                        std::pair<polydata *, vtkMatrix4x4 *> target,
-                       std::size_t k = 1, float sigma = -1)
+                       const tf::knn_alignment_config &config = {})
     -> vtkSmartPointer<vtkMatrix4x4>;
 
 } // namespace tf::vtk
