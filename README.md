@@ -186,6 +186,7 @@ Sample comparisons against VTK, CGAL, libigl, Coal, FCL, and nanoflann:
 |-----------|-------|------|---------|----------|----------|
 | Boolean Union | 2 × 1M | 28 ms | **84×** | CGAL `Simple_cartesian<double>` | reduction diagrams, double |
 | Mesh–Mesh Curves | 2 × 1M | 7 ms | **233×** | CGAL `Simple_cartesian<double>` | reduction diagrams, double |
+| ICP Registration | 1M | 7.7 ms | **93×** | libigl | AABB tree, random subsampling |
 | Self-Intersection | 1M | 78 ms | **37×** | libigl EPECK (GMP/MPFR) | reduction diagrams, double |
 | Isocontours | 1M, 16 cuts | 3.8 ms | **38×** | VTK `vtkContourFilter` | reduction diagrams, float |
 | Connected Components | 1M | 15 ms | **10×** | CGAL | parallel union-find |

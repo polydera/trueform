@@ -53,7 +53,8 @@ namespace tf {
 /// @see @ref tf::icp_config
 /// @see @ref tf::icp_state
 template <typename Policy0, typename Policy1>
-auto fit_icp_alignment(const tf::points<Policy0> &X, const tf::points<Policy1> &Y,
+auto fit_icp_alignment(const tf::points<Policy0> &X,
+                       const tf::points<Policy1> &Y,
                        icp_state<Policy0, Policy1> &state,
                        const icp_config &config = {})
     -> tf::transformation<tf::coordinate_type<Policy0, Policy1>,
@@ -66,7 +67,8 @@ auto fit_icp_alignment(const tf::points<Policy0> &X, const tf::points<Policy1> &
                 "Target point set Y must have a tree policy attached");
 
   // Track two transformations:
-  // - T_total: includes initial frame, used for world positioning during iterations
+  // - T_total: includes initial frame, used for world positioning during
+  // iterations
   // - T_delta: pure accumulated delta (world-to-world), what we return
   auto T_total = tf::concrete_transformation_of(X);
   auto T_delta = tf::make_identity_transformation<T, Dims>();
@@ -108,24 +110,25 @@ auto fit_icp_alignment(const tf::points<Policy0> &X, const tf::points<Policy1> &
       T_total = tf::transformed(T_total, T_iter);
       T_delta = tf::transformed(T_delta, T_iter);
     }
+    if (config.min_relative_improvement > 0) {
+      std::size_t eval_offset = (iter * 31 + 13) % stride;
+      auto eval_ids = make_cyclic_sequence_range(n_samples, n, eval_offset);
+      auto eval_sample =
+          tf::make_points(tf::make_indirect_range(eval_ids, X_plain)) |
+          tf::tag(T_total);
 
-    std::size_t eval_offset = (iter * 31 + 13) % stride;
-    auto eval_ids = make_cyclic_sequence_range(n_samples, n, eval_offset);
-    auto eval_sample =
-        tf::make_points(tf::make_indirect_range(eval_ids, X_plain)) |
-        tf::tag(T_total);
+      T error = tf::chamfer_error(eval_sample, Y, config.outlier_proportion);
 
-    T error = tf::chamfer_error(eval_sample, Y, config.outlier_proportion);
+      ema_prev = ema;
+      ema = (iter == 0)
+                ? error
+                : config.ema_alpha * error + (T(1) - config.ema_alpha) * ema;
 
-    ema_prev = ema;
-    ema = (iter == 0)
-              ? error
-              : config.ema_alpha * error + (T(1) - config.ema_alpha) * ema;
-
-    if (iter > 0) {
-      T rel_change = (ema_prev - ema) / ema_prev;
-      if (rel_change < T(config.min_relative_improvement))
-        break;
+      if (iter > 0) {
+        T rel_change = (ema_prev - ema) / ema_prev;
+        if (rel_change < T(config.min_relative_improvement))
+          break;
+      }
     }
   }
 
@@ -138,7 +141,8 @@ auto fit_icp_alignment(const tf::points<Policy0> &X, const tf::points<Policy1> &
 /// @see @ref fit_icp_alignment(const tf::points<Policy0>&, const
 /// tf::points<Policy1>&, icp_state<Policy0, Policy1>&, const icp_config&)
 template <typename Policy0, typename Policy1>
-auto fit_icp_alignment(const tf::points<Policy0> &X, const tf::points<Policy1> &Y,
+auto fit_icp_alignment(const tf::points<Policy0> &X,
+                       const tf::points<Policy1> &Y,
                        const icp_config &config = {})
     -> tf::transformation<tf::coordinate_type<Policy0, Policy1>,
                           tf::coordinate_dims_v<Policy0>> {
