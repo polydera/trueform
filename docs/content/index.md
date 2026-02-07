@@ -86,6 +86,17 @@ Why trueform
 #features
   :::u-page-feature
   ---
+  icon: i-lucide-atom
+  ---
+  #title
+  Easy to Use
+
+  #description
+  No boilerplate. Ranges wrap your data with geometric meaning. Tag structures onto them for compile-time algorithm selection.
+  :::
+
+  :::u-page-feature
+  ---
   icon: i-lucide-shield-check
   ---
   #title
@@ -104,17 +115,6 @@ Why trueform
 
   #description
   Interactive speed on million-polygon meshes. Algorithms benchmarked against VTK, CGAL, libigl, Coal, FCL, and nanoflann.
-  :::
-
-  :::u-page-feature
-  ---
-  icon: i-lucide-atom
-  ---
-  #title
-  Zero-Copy Views
-
-  #description
-  Wrap your existing data with geometric meaning. No copies, no boiler-plate. Your buffers, enriched with spatial semantics.
   :::
 
   :::u-page-feature

@@ -30,6 +30,8 @@ struct instance {
   tf::frame<double, 3> frame;
   std::array<double, 16> matrix{};
   std::array<double, 3> color{1.0, 1.0, 1.0};
+  double opacity = 1.0;
+  bool selectable = true;
   bool matrix_updated = true;
 
   instance() {
@@ -42,6 +44,8 @@ struct instance {
   auto set_color(double r, double g, double b) -> void {
     color = {r, g, b};
   }
+
+  auto set_opacity(double o) -> void { opacity = o; }
 
   auto get_matrix() -> emscripten::val {
     matrix_updated = false;

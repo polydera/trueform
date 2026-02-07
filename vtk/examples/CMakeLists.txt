@@ -42,6 +42,7 @@ add_vtk_example(connected_components)
 add_vtk_example(collision)
 add_vtk_example(closest_pair)
 add_vtk_example(laplacian_smoothing)
+add_vtk_example(alignment)
 
 # Target to build all examples
 add_custom_target(trueform_vtk_examples DEPENDS
@@ -55,4 +56,5 @@ add_custom_target(trueform_vtk_examples DEPENDS
   vtk_example_collision
   vtk_example_closest_pair
   vtk_example_laplacian_smoothing
+  vtk_example_alignment
 )

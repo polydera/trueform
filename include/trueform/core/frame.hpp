@@ -59,4 +59,16 @@ template <std::size_t Dims, typename Policy>
 auto make_frame(const tf::transformation_like<Dims, Policy> &_transformation) {
   return tf::frame<tf::coordinate_type<Policy>, Dims>{_transformation};
 }
+
+/// @ingroup core_primitives
+/// @brief Create an identity frame.
+///
+/// @tparam T The scalar type (e.g., float, double).
+/// @tparam Dims The dimensionality (e.g., 2, 3).
+/// @return A @ref tf::frame instance representing identity.
+template <typename T, std::size_t Dims>
+auto make_identity_frame() {
+  return tf::frame<T, Dims>{tf::make_identity_transformation<T, Dims>(),
+                            tf::make_identity_transformation<T, Dims>()};
+}
 } // namespace tf

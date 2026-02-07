@@ -12,7 +12,6 @@
  */
 #include <array>
 #include <iostream>
-#include <set>
 #include <trueform/trueform.hpp>
 #include <trueform/vtk/core.hpp>
 #include <trueform/vtk/filters.hpp>
@@ -93,9 +92,7 @@ public:
         this->Interactor->Render();
       }
       poly_->reset_poly_tree();
-      tf::tick();
       poly_->poly_tree();
-      tf::tock("build");
     }
     vtkInteractorStyleTrackballCamera::OnLeftButtonUp();
   }
@@ -320,9 +317,7 @@ private:
     colors_->Modified();
     poly_->Modified();
 
-    tf::tick();
     poly_->update_poly_tree(polygon_ids_);
-    tf::tock("update");
   }
 
   tf::vtk::polydata *poly_ = nullptr;

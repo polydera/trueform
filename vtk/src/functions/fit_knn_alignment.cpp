@@ -17,41 +17,92 @@
 
 namespace tf::vtk {
 
-auto fit_knn_alignment(polydata *source, polydata *target, std::size_t k,
-                       float sigma) -> vtkSmartPointer<vtkMatrix4x4> {
-  auto target_with_tree = target->points() | tf::tag(target->point_tree());
-  auto T = tf::fit_knn_alignment(source->points(), target_with_tree, k, sigma);
-  return make_vtk_matrix(T);
+auto fit_knn_alignment(polydata *source, polydata *target,
+                       const tf::knn_alignment_config &config)
+    -> vtkSmartPointer<vtkMatrix4x4> {
+  auto src_normals = source->point_normals();
+  auto tgt_normals = target->point_normals();
+
+  if (src_normals.size() > 0 && tgt_normals.size() > 0) {
+    // Both have normals: point-to-plane with normal weighting
+    auto src = source->points() | tf::tag_normals(src_normals);
+    auto tgt = target->points() | tf::tag(target->point_tree()) |
+               tf::tag_normals(tgt_normals);
+    return make_vtk_matrix(tf::fit_knn_alignment(src, tgt, config));
+  } else if (tgt_normals.size() > 0) {
+    // Target has normals: point-to-plane
+    auto tgt = target->points() | tf::tag(target->point_tree()) |
+               tf::tag_normals(tgt_normals);
+    return make_vtk_matrix(
+        tf::fit_knn_alignment(source->points(), tgt, config));
+  } else {
+    // No normals: point-to-point
+    auto tgt = target->points() | tf::tag(target->point_tree());
+    return make_vtk_matrix(
+        tf::fit_knn_alignment(source->points(), tgt, config));
+  }
 }
 
 auto fit_knn_alignment(std::pair<polydata *, vtkMatrix4x4 *> source,
-                       polydata *target, std::size_t k, float sigma)
+                       polydata *target, const tf::knn_alignment_config &config)
     -> vtkSmartPointer<vtkMatrix4x4> {
   auto [src_mesh, src_matrix] = source;
   tf::frame<double, 3> src_frame;
   src_frame.fill(src_matrix->GetData());
-  auto target_with_tree = target->points() | tf::tag(target->point_tree());
-  auto T = tf::fit_knn_alignment(src_mesh->points() | tf::tag(src_frame),
-                                 target_with_tree, k, sigma);
-  return make_vtk_matrix(T);
+
+  auto src_normals = src_mesh->point_normals();
+  auto tgt_normals = target->point_normals();
+
+  if (src_normals.size() > 0 && tgt_normals.size() > 0) {
+    auto src =
+        src_mesh->points() | tf::tag(src_frame) | tf::tag_normals(src_normals);
+    auto tgt = target->points() | tf::tag(target->point_tree()) |
+               tf::tag_normals(tgt_normals);
+    return make_vtk_matrix(tf::fit_knn_alignment(src, tgt, config));
+  } else if (tgt_normals.size() > 0) {
+    auto src = src_mesh->points() | tf::tag(src_frame);
+    auto tgt = target->points() | tf::tag(target->point_tree()) |
+               tf::tag_normals(tgt_normals);
+    return make_vtk_matrix(tf::fit_knn_alignment(src, tgt, config));
+  } else {
+    auto src = src_mesh->points() | tf::tag(src_frame);
+    auto tgt = target->points() | tf::tag(target->point_tree());
+    return make_vtk_matrix(tf::fit_knn_alignment(src, tgt, config));
+  }
 }
 
 auto fit_knn_alignment(polydata *source,
                        std::pair<polydata *, vtkMatrix4x4 *> target,
-                       std::size_t k, float sigma)
+                       const tf::knn_alignment_config &config)
     -> vtkSmartPointer<vtkMatrix4x4> {
   auto [tgt_mesh, tgt_matrix] = target;
   tf::frame<double, 3> tgt_frame;
   tgt_frame.fill(tgt_matrix->GetData());
-  auto target_with_tree =
-      tgt_mesh->points() | tf::tag(tgt_frame) | tf::tag(tgt_mesh->point_tree());
-  auto T = tf::fit_knn_alignment(source->points(), target_with_tree, k, sigma);
-  return make_vtk_matrix(T);
+
+  auto src_normals = source->point_normals();
+  auto tgt_normals = tgt_mesh->point_normals();
+
+  if (src_normals.size() > 0 && tgt_normals.size() > 0) {
+    auto src = source->points() | tf::tag_normals(src_normals);
+    auto tgt = tgt_mesh->points() | tf::tag(tgt_frame) |
+               tf::tag(tgt_mesh->point_tree()) | tf::tag_normals(tgt_normals);
+    return make_vtk_matrix(tf::fit_knn_alignment(src, tgt, config));
+  } else if (tgt_normals.size() > 0) {
+    auto tgt = tgt_mesh->points() | tf::tag(tgt_frame) |
+               tf::tag(tgt_mesh->point_tree()) | tf::tag_normals(tgt_normals);
+    return make_vtk_matrix(
+        tf::fit_knn_alignment(source->points(), tgt, config));
+  } else {
+    auto tgt =
+        tgt_mesh->points() | tf::tag(tgt_frame) | tf::tag(tgt_mesh->point_tree());
+    return make_vtk_matrix(
+        tf::fit_knn_alignment(source->points(), tgt, config));
+  }
 }
 
 auto fit_knn_alignment(std::pair<polydata *, vtkMatrix4x4 *> source,
                        std::pair<polydata *, vtkMatrix4x4 *> target,
-                       std::size_t k, float sigma)
+                       const tf::knn_alignment_config &config)
     -> vtkSmartPointer<vtkMatrix4x4> {
   auto [src_mesh, src_matrix] = source;
   auto [tgt_mesh, tgt_matrix] = target;
@@ -59,11 +110,27 @@ auto fit_knn_alignment(std::pair<polydata *, vtkMatrix4x4 *> source,
   src_frame.fill(src_matrix->GetData());
   tf::frame<double, 3> tgt_frame;
   tgt_frame.fill(tgt_matrix->GetData());
-  auto target_with_tree =
-      tgt_mesh->points() | tf::tag(tgt_frame) | tf::tag(tgt_mesh->point_tree());
-  auto T = tf::fit_knn_alignment(src_mesh->points() | tf::tag(src_frame),
-                                 target_with_tree, k, sigma);
-  return make_vtk_matrix(T);
+
+  auto src_normals = src_mesh->point_normals();
+  auto tgt_normals = tgt_mesh->point_normals();
+
+  if (src_normals.size() > 0 && tgt_normals.size() > 0) {
+    auto src =
+        src_mesh->points() | tf::tag(src_frame) | tf::tag_normals(src_normals);
+    auto tgt = tgt_mesh->points() | tf::tag(tgt_frame) |
+               tf::tag(tgt_mesh->point_tree()) | tf::tag_normals(tgt_normals);
+    return make_vtk_matrix(tf::fit_knn_alignment(src, tgt, config));
+  } else if (tgt_normals.size() > 0) {
+    auto src = src_mesh->points() | tf::tag(src_frame);
+    auto tgt = tgt_mesh->points() | tf::tag(tgt_frame) |
+               tf::tag(tgt_mesh->point_tree()) | tf::tag_normals(tgt_normals);
+    return make_vtk_matrix(tf::fit_knn_alignment(src, tgt, config));
+  } else {
+    auto src = src_mesh->points() | tf::tag(src_frame);
+    auto tgt =
+        tgt_mesh->points() | tf::tag(tgt_frame) | tf::tag(tgt_mesh->point_tree());
+    return make_vtk_matrix(tf::fit_knn_alignment(src, tgt, config));
+  }
 }
 
 } // namespace tf::vtk

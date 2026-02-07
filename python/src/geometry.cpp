@@ -21,6 +21,7 @@ auto register_geometry_module(nanobind::module_ &m) -> void {
   register_fit_rigid_alignment(geometry_module);
   register_fit_obb_alignment(geometry_module);
   register_fit_knn_alignment(geometry_module);
+  register_fit_icp_alignment(geometry_module);
   register_chamfer_error(geometry_module);
   register_triangulated(geometry_module);
   register_principal_curvatures(geometry_module);
@@ -28,6 +29,7 @@ auto register_geometry_module(nanobind::module_ &m) -> void {
   register_make_mesh_primitives(geometry_module);
   register_measurements(geometry_module);
   register_laplacian_smoothed(geometry_module);
+  register_taubin_smoothed(geometry_module);
 }
 
 } // namespace tf::py

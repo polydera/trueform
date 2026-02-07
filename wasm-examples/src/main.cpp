@@ -1,5 +1,6 @@
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
+#include "alignment_web.h"
 #include "boolean_web.h"
 #include "collision_web.h"
 #include "cross_section_web.h"
@@ -188,6 +189,88 @@ auto laplacian_smoothing_get_aabb_diagonal() -> float {
   return ls ? ls->get_aabb_diagonal() : 1.0f;
 }
 
+// Alignment helpers
+auto get_alignment_interactor() -> cursor_interactor_alignment * {
+  return dynamic_cast<cursor_interactor_alignment *>(&require_interactor());
+}
+
+auto alignment_run_align() -> float {
+  auto *al = get_alignment_interactor();
+  return al ? al->run_alignment() : -1.0f;
+}
+
+auto alignment_set_source_matrix(const std::array<double, 16> &matrix) -> void {
+  auto *al = get_alignment_interactor();
+  if (al)
+    al->set_source_matrix(matrix);
+}
+
+auto alignment_get_source_matrix() -> emscripten::val {
+  auto *al = get_alignment_interactor();
+  if (!al)
+    return emscripten::val::undefined();
+  auto matrix = al->get_source_matrix();
+  auto result = emscripten::val::array();
+  for (int i = 0; i < 16; ++i) {
+    result.call<void>("push", matrix[i]);
+  }
+  return result;
+}
+
+auto alignment_is_aligned() -> bool {
+  auto *al = get_alignment_interactor();
+  return al ? al->is_aligned() : false;
+}
+
+auto alignment_get_aabb_diagonal() -> float {
+  auto *al = get_alignment_interactor();
+  return al ? al->get_aabb_diagonal() : 1.0f;
+}
+
+auto alignment_get_alignment_time() -> float {
+  auto *al = get_alignment_interactor();
+  return al ? al->get_alignment_time() : 0.0f;
+}
+
+// Positioning helpers
+auto get_positioning_interactor() -> cursor_interactor_positioning * {
+  return dynamic_cast<cursor_interactor_positioning *>(&require_interactor());
+}
+
+auto positioning_is_dragging() -> bool {
+  auto *pos = get_positioning_interactor();
+  return pos ? pos->is_dragging() : false;
+}
+
+auto positioning_has_closest_points() -> bool {
+  auto *pos = get_positioning_interactor();
+  return pos ? pos->has_valid_closest_points() : false;
+}
+
+auto positioning_get_closest_points() -> emscripten::val {
+  auto *pos = get_positioning_interactor();
+  if (!pos)
+    return emscripten::val::undefined();
+  auto pts = pos->get_closest_points();
+  auto result = emscripten::val::array();
+  for (int i = 0; i < 6; ++i) {
+    result.call<void>("push", pts[i]);
+  }
+  return result;
+}
+
+auto positioning_get_aabb_diagonal() -> float {
+  auto *pos = get_positioning_interactor();
+  return pos ? pos->get_aabb_diagonal() : 1.0f;
+}
+
+auto positioning_set_instance_matrix(int instance_id, const std::array<double, 16> &matrix) -> void {
+  auto *pos = get_positioning_interactor();
+  if (pos && instance_id >= 0) {
+    pos->set_instance_matrix(static_cast<std::size_t>(instance_id), matrix);
+  }
+}
+
 EMSCRIPTEN_BINDINGS(boolean) {
   emscripten::function("get_number_of_mesh_data", &get_number_of_mesh_data);
   emscripten::function("get_number_of_instances", &get_number_of_instances);
@@ -247,6 +330,28 @@ EMSCRIPTEN_BINDINGS(boolean) {
                        &laplacian_smoothing_set_lambda);
   emscripten::function("laplacian_smoothing_get_aabb_diagonal",
                        &laplacian_smoothing_get_aabb_diagonal);
+  // Alignment
+  emscripten::function("run_main_alignment", &run_main_alignment);
+  emscripten::function("alignment_run_align", &alignment_run_align);
+  emscripten::function("alignment_set_source_matrix",
+                       &alignment_set_source_matrix);
+  emscripten::function("alignment_get_source_matrix",
+                       &alignment_get_source_matrix);
+  emscripten::function("alignment_is_aligned", &alignment_is_aligned);
+  emscripten::function("alignment_get_aabb_diagonal",
+                       &alignment_get_aabb_diagonal);
+  emscripten::function("alignment_get_alignment_time",
+                       &alignment_get_alignment_time);
+  // Positioning
+  emscripten::function("positioning_is_dragging", &positioning_is_dragging);
+  emscripten::function("positioning_has_closest_points",
+                       &positioning_has_closest_points);
+  emscripten::function("positioning_get_closest_points",
+                       &positioning_get_closest_points);
+  emscripten::function("positioning_get_aabb_diagonal",
+                       &positioning_get_aabb_diagonal);
+  emscripten::function("positioning_set_instance_matrix",
+                       &positioning_set_instance_matrix);
 }
 
 EMSCRIPTEN_BINDINGS(VectorString) {
@@ -300,6 +405,7 @@ EMSCRIPTEN_BINDINGS(instance) {
       .function("update_frame", &instance::update_frame)
       .property("mesh_data_id", &instance::mesh_data_id)
       .property("color", &instance::color)
+      .property("opacity", &instance::opacity)
       .property("matrix_updated", &instance::matrix_updated);
 }
 

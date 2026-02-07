@@ -15,6 +15,7 @@
 #include <trueform/vtk/functions/aabb_from.hpp>
 #include <trueform/vtk/functions/area.hpp>
 #include <trueform/vtk/functions/chamfer_error.hpp>
+#include <trueform/vtk/functions/laplacian_smoothed.hpp>
 #include <trueform/vtk/functions/cleaned_lines.hpp>
 #include <trueform/vtk/functions/cleaned_polygons.hpp>
 #include <trueform/vtk/functions/cleaned_points.hpp>
@@ -23,6 +24,7 @@
 #include <trueform/vtk/functions/compute_principal_curvatures.hpp>
 #include <trueform/vtk/functions/distance.hpp>
 #include <trueform/vtk/functions/ensure_positive_orientation.hpp>
+#include <trueform/vtk/functions/fit_icp_alignment.hpp>
 #include <trueform/vtk/functions/fit_knn_alignment.hpp>
 #include <trueform/vtk/functions/fit_obb_alignment.hpp>
 #include <trueform/vtk/functions/fit_rigid_alignment.hpp>
@@ -50,6 +52,7 @@
 #include <trueform/vtk/functions/resolved_self_intersections.hpp>
 #include <trueform/vtk/functions/signed_volume.hpp>
 #include <trueform/vtk/functions/split_into_components.hpp>
+#include <trueform/vtk/functions/taubin_smoothed.hpp>
 #include <trueform/vtk/functions/triangulated.hpp>
 #include <trueform/vtk/functions/write_obj.hpp>
 #include <trueform/vtk/functions/write_stl.hpp>

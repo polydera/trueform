@@ -11,6 +11,7 @@ from .meta import InputMeta, extract_meta
 from .suffix import dtype_str, build_suffix, build_suffix_pair, topology_suffix, connectivity_suffix
 from .canonicalize import canonicalize_index_order
 from .ensure_mesh import ensure_mesh
+from .ensure_point_cloud import ensure_point_cloud
 
 __all__ = [
     'InputMeta',
@@ -22,4 +23,5 @@ __all__ = [
     'connectivity_suffix',
     'canonicalize_index_order',
     'ensure_mesh',
+    'ensure_point_cloud',
 ]

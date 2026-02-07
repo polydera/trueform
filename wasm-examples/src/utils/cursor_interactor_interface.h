@@ -78,6 +78,10 @@ public:
 
     for (std::size_t i = 0; i < instances.size(); ++i) {
       auto &inst = instances[i];
+      // Skip non-selectable instances
+      if (!inst.selectable) {
+        continue;
+      }
       auto &data = mesh_data_store[inst.mesh_data_id];
       auto form = data.polygons.polygons() | tf::tag(data.tree) | tf::tag(inst.frame);
       auto res = tf::ray_cast(ray, form, config);

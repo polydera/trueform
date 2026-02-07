@@ -12,6 +12,11 @@ export const liveExamples: ExampleMetadata[] = [
     to: "boolean",
   },
   {
+    title: "Mesh Registration",
+    description: "Automatic mesh registration. Move and rotate the source mesh, then click Align.",
+    to: "alignment",
+  },
+  {
     title: "Slicing",
     description: "Interactive mesh slicing. Scroll to move the slicing planes through geometry.",
     to: "slicing",
@@ -40,7 +45,7 @@ export const liveExamples: ExampleMetadata[] = [
   },
   {
     title: "Closest Points",
-    description: "Nearest point queries between meshes. Drag and release to snap to the closest point.",
+    description: "Spatial neighbor search. Drag to see the closest point pair update in real time.",
     to: "closest-points",
   },
 ]

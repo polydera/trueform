@@ -1,278 +1,368 @@
 """
 Point cloud alignment example using trueform
 
-Demonstrates alignment between two meshes with different resolutions:
-1. Rigid vs OBB alignment (with correspondences)
-2. Shuffled points to show rigid alignment fails without correspondences
-3. ICP refinement using k-NN alignment
+Demonstrates alignment between point clouds:
+1. With correspondences (smoothed mesh -> same vertex count)
+2. Without correspondences (shuffled points)
+3. ICP refinement (Point-to-Point vs Point-to-Plane)
+4. Different mesh resolutions
 
 Usage:
-    python alignment.py [high_res.stl] [low_res.stl]
+    python alignment.py [mesh.stl]
 
-Default meshes: dragon-500k.stl and dragon-50k.stl
+Default mesh: dragon-500k.stl
 """
 
 import sys
 import os
+import time
 import numpy as np
 import trueform as tf
 
 
-def random_rotation_matrix_3d() -> np.ndarray:
-    """Generate a random 3D rotation matrix using QR decomposition."""
-    # Random matrix
+def random_transformation_at(centroid: np.ndarray, translation: np.ndarray) -> np.ndarray:
+    """Create random rotation around centroid + translation."""
+    # Random rotation matrix using QR decomposition
     A = np.random.randn(3, 3).astype(np.float32)
-    # QR decomposition gives orthogonal matrix
     Q, R = np.linalg.qr(A)
-    # Ensure proper rotation (det = 1, not -1)
     if np.linalg.det(Q) < 0:
         Q[:, 0] *= -1
-    return Q
 
-
-def make_transformation(rotation: np.ndarray, translation: np.ndarray) -> np.ndarray:
-    """Create a 4x4 homogeneous transformation matrix."""
+    # Build: translate_back @ rotate @ translate_to_origin @ translate_far
     T = np.eye(4, dtype=np.float32)
-    T[:3, :3] = rotation
-    T[:3, 3] = translation
+    T[:3, :3] = Q
+    T[:3, 3] = centroid - Q @ centroid + translation
     return T
 
 
 def transform_points(points: np.ndarray, T: np.ndarray) -> np.ndarray:
     """Apply transformation matrix to points."""
-    # points: (N, 3), T: (4, 4)
     ones = np.ones((points.shape[0], 1), dtype=points.dtype)
-    homogeneous = np.hstack([points, ones])  # (N, 4)
-    transformed = (T @ homogeneous.T).T  # (N, 4)
+    homogeneous = np.hstack([points, ones])
+    transformed = (T @ homogeneous.T).T
     return transformed[:, :3].astype(points.dtype)
 
 
-def compute_chamfer_symmetric(cloud0: tf.PointCloud, cloud1: tf.PointCloud) -> float:
-    """Compute symmetric Chamfer distance."""
-    fwd = tf.chamfer_error(cloud0, cloud1)
-    bwd = tf.chamfer_error(cloud1, cloud0)
-    return (fwd + bwd) / 2
+def compute_rms_error(A: np.ndarray, B: np.ndarray) -> float:
+    """Compute RMS error between corresponding points."""
+    diff = A - B
+    return np.sqrt(np.mean(np.sum(diff * diff, axis=1)))
+
+
+def compute_max_error(A: np.ndarray, B: np.ndarray) -> float:
+    """Compute max error between corresponding points."""
+    diff = A - B
+    return np.sqrt(np.max(np.sum(diff * diff, axis=1)))
 
 
 def main():
     # Default data directory
-    data_dir = os.path.join(os.path.dirname(
-        __file__), '../../benchmarks/data/')
+    data_dir = os.path.join(os.path.dirname(__file__), '../../benchmarks/data/')
 
     # Parse command line arguments
-    if len(sys.argv) >= 3:
-        high_res_path = sys.argv[1]
-        low_res_path = sys.argv[2]
+    if len(sys.argv) >= 2:
+        mesh_path = sys.argv[1]
     else:
-        high_res_path = os.path.join(data_dir, 'dragon-500k.stl')
-        low_res_path = os.path.join(data_dir, 'dragon-50k.stl')
+        mesh_path = os.path.join(data_dir, 'dragon-500k.stl')
 
-    print("=" * 60)
-    print("Point Cloud Alignment Example")
-    print("=" * 60)
+    print(f"Loading mesh: {mesh_path}")
 
-    # Load meshes (read_stl returns (faces, points) tuple)
-    print(f"\nLoading high-res mesh: {high_res_path}")
-    faces_high, points_high = tf.read_stl(high_res_path)
-    print(f"  {len(points_high)} vertices, {len(faces_high)} triangles")
+    # Read the mesh
+    faces, points = tf.read_stl(mesh_path)
+    if len(faces) == 0:
+        print("Failed to load mesh or mesh is empty")
+        return 1
 
-    print(f"\nLoading low-res mesh: {low_res_path}")
-    faces_low, points_low = tf.read_stl(low_res_path)
-    print(f"  {len(points_low)} vertices, {len(faces_low)} triangles")
+    print(f"Loaded {len(faces)} triangles, {len(points)} vertices")
 
-    # Create point clouds from mesh vertices
-    target_cloud = tf.PointCloud(points_high)
-    source_pts_original = points_low.copy()
-
-    # Compute AABB diagonal for scaling
-    aabb_min = points_high.min(axis=0)
-    aabb_max = points_high.max(axis=0)
+    # Compute AABB and diagonal
+    aabb_min = points.min(axis=0)
+    aabb_max = points.max(axis=0)
     diagonal = np.linalg.norm(aabb_max - aabb_min)
-    print(f"\nAABB diagonal: {diagonal:.2f}")
+    print(f"AABB diagonal: {diagonal:.2f}")
 
-    # Compute centroid of source mesh
-    centroid = source_pts_original.mean(axis=0)
+    # Build vertex connectivity and create smoothed source mesh
+    print("\nBuilding vertex link...")
+    mesh = tf.Mesh(faces, points)
+    vlink = mesh.vertex_link
 
-    # Create random transformation: rotation around centroid + large translation
-    R = random_rotation_matrix_3d()
-    translation = np.array(
-        [diagonal * 2.5, diagonal * -1.5, diagonal * 2.0], dtype=np.float32)
+    smooth_iters = 200
+    smooth_lambda = 0.9
+    print(f"Smoothing mesh ({smooth_iters} iterations, lambda={smooth_lambda})...")
 
-    # Build transformation: translate to origin, rotate, translate back, then translate far
-    T_to_origin = make_transformation(np.eye(3, dtype=np.float32), -centroid)
-    T_rotate = make_transformation(R, np.zeros(3, dtype=np.float32))
-    T_from_origin = make_transformation(np.eye(3, dtype=np.float32), centroid)
-    T_translate = make_transformation(np.eye(3, dtype=np.float32), translation)
+    smoothed_points = tf.laplacian_smoothed(mesh, iterations=smooth_iters, lambda_=smooth_lambda)
 
-    # Combined: T_translate @ T_from_origin @ T_rotate @ T_to_origin
-    T_combined = T_translate @ T_from_origin @ T_rotate @ T_to_origin
+    smooth_rms = compute_rms_error(points, smoothed_points)
+    print(f"Smoothing RMS displacement: {smooth_rms:.6f} ({100.0 * smooth_rms / diagonal:.2f}% of diagonal)")
 
-    # Transform source points
-    source_pts_transformed = transform_points(source_pts_original, T_combined)
+    # Build tree on target for OBB disambiguation and ICP
+    target_cloud = tf.PointCloud(points)
+
+    # Compute normals for point-to-plane ICP
+    print("Computing point normals...")
+    target_normals = tf.point_normals(mesh)
 
     # =========================================================================
-    # Part 1: Initial alignment with correspondences preserved
+    # Part 1: With correspondences (rigid transformation)
     # =========================================================================
     print("\n" + "=" * 60)
-    print("PART 1: With correspondences (same point order)")
+    print("=== PART 1: With correspondences ===")
     print("=" * 60)
 
-    source_cloud = tf.PointCloud(source_pts_transformed)
+    # Compute centroid of smoothed mesh
+    centroid = smoothed_points.mean(axis=0)
 
-    # Baseline: how different are the meshes due to resolution?
-    baseline_cloud = tf.PointCloud(source_pts_original)
-    chamfer_baseline = tf.chamfer_error(baseline_cloud, target_cloud)
-    print(
-        f"\nBaseline Chamfer (resolution difference): {chamfer_baseline:.6f}")
+    # Random rotation around centroid + large translation (2.5x diagonal away)
+    far_translation = np.array([diagonal * 2.5, diagonal * -1.5, diagonal * 2.0], dtype=np.float32)
+    T1 = random_transformation_at(centroid, far_translation)
 
-    # Initial error (meshes far apart)
-    chamfer_initial = tf.chamfer_error(source_cloud, target_cloud)
-    print(f"Initial Chamfer (after transformation): {chamfer_initial:.2f}")
+    print("\nTransforming smoothed mesh (rotation around centroid + translation)")
 
-    # Rigid alignment (requires correspondences)
-    print("\nRigid alignment (Kabsch):")
-    T_rigid = tf.fit_rigid_alignment(source_cloud, baseline_cloud)
-    source_cloud.transformation = T_rigid
-    chamfer_rigid = tf.chamfer_error(source_cloud, target_cloud)
-    print(f"  Chamfer error: {chamfer_rigid:.6f}")
-    source_cloud.transformation = None  # Reset for next test
+    # Create transformed copy of smoothed points
+    source1_pts = transform_points(smoothed_points, T1)
 
-    # OBB alignment (correspondence-free, uses tree for disambiguation)
-    print("\nOBB alignment:")
-    T_obb = tf.fit_obb_alignment(source_cloud, target_cloud)
-    source_cloud.transformation = T_obb
-    chamfer_obb = tf.chamfer_error(source_cloud, target_cloud)
-    print(f"  Chamfer error: {chamfer_obb:.6f}")
+    initial1 = compute_max_error(points, source1_pts)
+    print(f"Initial error: {initial1:.2f}")
+
+    source1 = tf.PointCloud(source1_pts)
+    baseline1 = tf.PointCloud(smoothed_points)
+
+    print("\nRigid alignment:")
+    T_rigid1 = tf.fit_rigid_alignment(source1, baseline1)
+    source1.transformation = T_rigid1
+    rigid1_pts = transform_points(source1_pts, T_rigid1)
+    rigid1_rms = compute_rms_error(points, rigid1_pts)
+    print(f"  RMS error: {rigid1_rms:.6f}")
+    source1.transformation = None
+
+    print("\nOBB alignment (no tree):")
+    baseline_cloud = tf.PointCloud(points)
+    T_obb1_no_tree = tf.fit_obb_alignment(source1, baseline_cloud, sample_size=0)
+    obb1_no_tree_pts = transform_points(source1_pts, T_obb1_no_tree)
+    obb1_no_tree_rms = compute_rms_error(points, obb1_no_tree_pts)
+    print(f"  RMS error: {obb1_no_tree_rms:.6f}")
+
+    print("\nOBB alignment (with tree):")
+    T_obb1_tree = tf.fit_obb_alignment(source1, target_cloud)
+    obb1_tree_pts = transform_points(source1_pts, T_obb1_tree)
+    obb1_tree_rms = compute_rms_error(points, obb1_tree_pts)
+    print(f"  RMS error: {obb1_tree_rms:.6f}")
 
     print("\n--- Summary (Part 1) ---")
-    print(f"  Baseline:        {chamfer_baseline:.6f} (best possible)")
-    print(f"  Rigid:           {chamfer_rigid:.6f}")
-    print(f"  OBB:             {chamfer_obb:.6f}")
+    print(f"  Ground truth:    {smooth_rms:.6f}")
+    print(f"  Rigid:           {rigid1_rms:.6f}")
+    print(f"  OBB (no tree):   {obb1_no_tree_rms:.6f}")
+    print(f"  OBB (with tree): {obb1_tree_rms:.6f}")
 
     # =========================================================================
-    # Part 2: Shuffled points (no correspondences)
+    # Part 2: Without correspondences (shuffled source)
     # =========================================================================
     print("\n" + "=" * 60)
-    print("PART 2: Without correspondences (shuffled)")
+    print("=== PART 2: Without correspondences (shuffled) ===")
     print("=" * 60)
 
-    # Shuffle the source points
-    shuffle_ids = np.random.permutation(len(source_pts_transformed))
-    source_pts_shuffled = source_pts_transformed[shuffle_ids]
-    source_shuffled = tf.PointCloud(source_pts_shuffled)
+    # Create shuffled indices
+    shuffle_ids = np.random.permutation(len(source1_pts))
+    source2_pts = source1_pts[shuffle_ids]
+    target_shuffled = points[shuffle_ids]
 
-    # Rigid alignment (will FAIL - no correspondences)
-    # Fitting shuffled source against unshuffled baseline breaks correspondence
-    print("\nRigid alignment (will FAIL - no correspondences):")
-    T_rigid_shuffled = tf.fit_rigid_alignment(source_shuffled, baseline_cloud)
-    source_shuffled.transformation = T_rigid_shuffled
-    chamfer_rigid_shuffled = tf.chamfer_error(source_shuffled, target_cloud)
-    print(f"  Chamfer error: {chamfer_rigid_shuffled:.6f} (FAILS)")
-    source_shuffled.transformation = None
+    source2 = tf.PointCloud(source2_pts)
 
-    # OBB alignment (correspondence-free - still works!)
-    print("\nOBB alignment (correspondence-free - still works!):")
-    T_obb_shuffled = tf.fit_obb_alignment(source_shuffled, target_cloud)
-    source_shuffled.transformation = T_obb_shuffled
-    chamfer_obb_shuffled = tf.chamfer_error(source_shuffled, target_cloud)
-    print(f"  Chamfer error: {chamfer_obb_shuffled:.6f}")
+    print("\nRigid alignment (will fail - no correspondences):")
+    T_rigid2 = tf.fit_rigid_alignment(source2, baseline_cloud)
+    rigid2_pts = transform_points(source2_pts, T_rigid2)
+    rigid2_rms = compute_rms_error(target_shuffled, rigid2_pts)
+    print(f"  RMS error: {rigid2_rms:.6f}")
+
+    print("\nOBB alignment (no tree - ambiguous):")
+    T_obb2_no_tree = tf.fit_obb_alignment(source2, baseline_cloud, sample_size=0)
+    obb2_no_tree_pts = transform_points(source2_pts, T_obb2_no_tree)
+    obb2_no_tree_rms = compute_rms_error(target_shuffled, obb2_no_tree_pts)
+    print(f"  RMS error: {obb2_no_tree_rms:.6f}")
+
+    print("\nOBB alignment (with tree - disambiguated):")
+    T_obb2_tree = tf.fit_obb_alignment(source2, target_cloud)
+    obb2_tree_pts = transform_points(source2_pts, T_obb2_tree)
+    obb2_tree_rms = compute_rms_error(target_shuffled, obb2_tree_pts)
+    print(f"  RMS error: {obb2_tree_rms:.6f}")
 
     print("\n--- Summary (Part 2) ---")
-    print(f"  Baseline:        {chamfer_baseline:.6f} (best possible)")
-    print(f"  Rigid:           {chamfer_rigid_shuffled:.6f} (FAILS)")
-    print(f"  OBB:             {chamfer_obb_shuffled:.6f}")
+    print(f"  Ground truth:    {smooth_rms:.6f}")
+    print(f"  Rigid:           {rigid2_rms:.6f} (FAILS)")
+    print(f"  OBB (no tree):   {obb2_no_tree_rms:.6f} (may be wrong orientation)")
+    print(f"  OBB (with tree): {obb2_tree_rms:.6f}")
 
     # =========================================================================
-    # Part 3: ICP refinement
+    # Part 3: ICP refinement - Point-to-Point vs Point-to-Plane
     # =========================================================================
     print("\n" + "=" * 60)
-    print("PART 3: ICP refinement")
+    print("=== PART 3: ICP refinement ===")
     print("=" * 60)
 
-    # Start from OBB result (using shuffled source)
-    T_accum = T_obb_shuffled.copy()
+    print(f"Ground truth RMS: {smooth_rms:.6f}")
+    print(f"Starting from OBB with tree: RMS = {obb2_tree_rms:.6f}")
 
-    # ICP parameters
-    max_iters = 50
+    # ICP configuration
+    max_iterations = 50
     n_samples = 1000
-    k = 5  # Number of nearest neighbors
-    alpha = 0.3  # EMA smoothing factor
-    rel_tol = 0.001  # Stop when < 0.1% relative improvement
+    k = 1
+    min_relative_improvement = 1e-6
 
-    subsample_stride = max(1, len(source_pts_shuffled) // n_samples)
-    print(f"\nStarting from OBB: Chamfer = {chamfer_obb_shuffled:.6f}")
-    print(f"Baseline (best possible): {chamfer_baseline:.6f}")
-    print(
-        f"Subsampling: ~{n_samples} / {len(source_pts_shuffled)} points per iteration")
-    print(f"Using k={k} nearest neighbors")
+    print(f"Subsampling: ~{n_samples} / {len(source2_pts)} points per iteration")
 
-    ema = 0.0
-    ema_prev = 0.0
+    # Run Point-to-Point ICP (returns delta, compose with initial transform)
+    print("\nPoint-to-Point ICP...")
+    source2.transformation = T_obb2_tree
+    t0 = time.perf_counter()
+    T_p2p_delta = tf.fit_icp_alignment(
+        source2, target_cloud,
+        max_iterations=max_iterations,
+        n_samples=n_samples,
+        k=k,
+        min_relative_improvement=min_relative_improvement
+    )
+    p2p_time = (time.perf_counter() - t0) * 1000
+    T_p2p = T_p2p_delta @ T_obb2_tree  # total = delta @ init
+    p2p_pts = transform_points(source2_pts, T_p2p)
+    p2p_rms = compute_rms_error(target_shuffled, p2p_pts)
+    print(f"  Final RMS: {p2p_rms:.6f}, time: {p2p_time:.1f} ms")
 
-    print("\nICP iterations:")
-    for iter_num in range(max_iters):
-        # Random subsample for this iteration
-        offset = np.random.randint(0, subsample_stride)
-        ids = np.arange(offset, len(source_pts_shuffled),
-                        subsample_stride)[:n_samples]
-        subsample_pts = source_pts_shuffled[ids]
-        subsample_cloud = tf.PointCloud(subsample_pts)
-        subsample_cloud.transformation = T_accum
+    # Run Point-to-Plane ICP (returns delta, compose with initial transform)
+    print("\nPoint-to-Plane ICP...")
+    source2.transformation = T_obb2_tree
+    t0 = time.perf_counter()
+    T_p2l_delta = tf.fit_icp_alignment(
+        source2, (target_cloud, target_normals),
+        max_iterations=max_iterations,
+        n_samples=n_samples,
+        k=k,
+        min_relative_improvement=min_relative_improvement
+    )
+    p2l_time = (time.perf_counter() - t0) * 1000
+    T_p2l = T_p2l_delta @ T_obb2_tree  # total = delta @ init
+    p2l_pts = transform_points(source2_pts, T_p2l)
+    p2l_rms = compute_rms_error(target_shuffled, p2l_pts)
+    print(f"  Final RMS: {p2l_rms:.6f}, time: {p2l_time:.1f} ms")
 
-        # Fit k-NN alignment
-        T_iter = tf.fit_knn_alignment(subsample_cloud, target_cloud, k=k)
-
-        # Accumulate transformation: T_accum = T_iter @ T_accum
-        T_accum = T_iter @ T_accum
-
-        # Evaluate Chamfer error on a different subset
-        eval_offset = np.random.randint(0, subsample_stride)
-        eval_ids = np.arange(eval_offset, len(
-            source_pts_shuffled), subsample_stride)[:n_samples]
-        eval_pts = source_pts_shuffled[eval_ids]
-        eval_cloud = tf.PointCloud(eval_pts)
-        eval_cloud.transformation = T_accum
-
-        chamfer = tf.chamfer_error(eval_cloud, target_cloud)
-
-        # EMA update
-        ema_prev = ema
-        ema = chamfer if iter_num == 0 else alpha * \
-            chamfer + (1.0 - alpha) * ema
-        rel_change = 1.0 if iter_num == 0 else (
-            ema_prev - ema) / ema if ema > 0 else 0
-
-        print(f"  iter {iter_num}: Chamfer = {chamfer:.6f} (EMA = {ema:.6f})")
-
-        if iter_num > 0 and rel_change < rel_tol:
-            break
-
-    print(f"Converged after {iter_num + 1} iterations")
-
-    # Final evaluation on full point cloud
-    source_shuffled.transformation = T_accum
-    chamfer_final = tf.chamfer_error(source_shuffled, target_cloud)
-
-    print("\n--- Summary (Part 3) ---")
-    print(f"  Baseline:        {chamfer_baseline:.6f} (best possible)")
-    print(f"  OBB:             {chamfer_obb_shuffled:.6f}")
-    print(f"  After ICP:       {chamfer_final:.6f}")
+    print("\n--- ICP Comparison ---")
+    print(f"  Ground truth RMS:    {smooth_rms:.6f}")
+    print(f"  Point-to-Point: RMS={p2p_rms:.6f}, time={p2p_time:.1f} ms")
+    print(f"  Point-to-Plane: RMS={p2l_rms:.6f}, time={p2l_time:.1f} ms")
+    if p2l_time < p2p_time:
+        print(f"  Point-to-Plane was {p2p_time / p2l_time:.1f}x faster!")
 
     # =========================================================================
-    # Final Summary
+    # Part 4: Different mesh resolutions (no correspondences possible)
     # =========================================================================
     print("\n" + "=" * 60)
-    print("FINAL SUMMARY")
+    print("=== PART 4: Different mesh resolutions ===")
     print("=" * 60)
-    print(
-        f"\nMeshes: {os.path.basename(high_res_path)} (target) vs {os.path.basename(low_res_path)} (source)")
-    print(f"Baseline Chamfer (resolution difference): {chamfer_baseline:.6f}")
-    print("\nAlignment pipeline on shuffled points:")
-    print(f"  1. Initial (far apart):  {chamfer_initial:.2f}")
-    print(f"  2. After OBB alignment:  {chamfer_obb_shuffled:.6f}")
-    print(f"  3. After ICP refinement: {chamfer_final:.6f}")
-    print(
-        f"\nICP achieved {(chamfer_obb_shuffled - chamfer_final) / chamfer_obb_shuffled * 100:.1f}% improvement over OBB")
+
+    # Load a lower-resolution version of the mesh
+    low_res_path = os.path.join(data_dir, 'dragon-50k.stl')
+    print(f"\nLoading low-res mesh: {low_res_path}")
+
+    try:
+        faces_low, points_low = tf.read_stl(low_res_path)
+        if len(faces_low) == 0:
+            print("Failed to load low-res mesh, skipping Part 4")
+            return 0
+    except Exception:
+        print("Failed to load low-res mesh, skipping Part 4")
+        return 0
+
+    print(f"High-res: {len(points)} vertices")
+    print(f"Low-res:  {len(points_low)} vertices")
+
+    # Build cloud on low-res mesh
+    low_res_cloud = tf.PointCloud(points_low)
+
+    # Baseline Chamfer: how different are the meshes due to resolution?
+    chamfer_baseline_fwd = tf.chamfer_error(low_res_cloud, target_cloud)
+    chamfer_baseline_bwd = tf.chamfer_error(target_cloud, low_res_cloud)
+    print("\nBaseline Chamfer (aligned, different resolutions):")
+    print(f"  Low->High: {chamfer_baseline_fwd:.6f}")
+    print(f"  High->Low: {chamfer_baseline_bwd:.6f}")
+    print(f"  Symmetric: {(chamfer_baseline_fwd + chamfer_baseline_bwd) / 2:.6f}")
+
+    # Transform low-res mesh far away
+    centroid_low = points_low.mean(axis=0)
+    T_low = random_transformation_at(centroid_low, far_translation)
+
+    source_low_pts = transform_points(points_low, T_low)
+    source_low = tf.PointCloud(source_low_pts)
+
+    # Initial Chamfer error (meshes far apart)
+    chamfer_init_fwd = tf.chamfer_error(source_low, target_cloud)
+    chamfer_init_bwd = tf.chamfer_error(target_cloud, source_low)
+    print("\nInitial Chamfer error:")
+    print(f"  Low->High: {chamfer_init_fwd:.2f}")
+    print(f"  High->Low: {chamfer_init_bwd:.2f}")
+    print(f"  Symmetric: {(chamfer_init_fwd + chamfer_init_bwd) / 2:.2f}")
+
+    # OBB alignment (no tree)
+    print("\nOBB alignment (no tree):")
+    T_obb_low_no_tree = tf.fit_obb_alignment(source_low, baseline_cloud, sample_size=0)
+    source_low.transformation = T_obb_low_no_tree
+    chamfer_obb_no_tree = tf.chamfer_error(source_low, target_cloud)
+    print(f"  Chamfer (Low->High): {chamfer_obb_no_tree:.6f}")
+    source_low.transformation = None
+
+    # OBB alignment (with tree)
+    print("\nOBB alignment (with tree):")
+    T_obb_low_tree = tf.fit_obb_alignment(source_low, target_cloud)
+    source_low.transformation = T_obb_low_tree
+    chamfer_obb_tree = tf.chamfer_error(source_low, target_cloud)
+    print(f"  Chamfer (Low->High): {chamfer_obb_tree:.6f}")
+
+    # ICP refinement - compare Point-to-Point vs Point-to-Plane
+    print("\nICP refinement (comparing P2P vs P2L):")
+
+    # Run Point-to-Point ICP (returns delta, compose with initial transform)
+    print("\nPoint-to-Point ICP...")
+    source_low.transformation = T_obb_low_tree
+    t0 = time.perf_counter()
+    T_p2p_low_delta = tf.fit_icp_alignment(
+        source_low, target_cloud,
+        max_iterations=max_iterations,
+        n_samples=n_samples,
+        k=k,
+        min_relative_improvement=min_relative_improvement
+    )
+    p2p_time_low = (time.perf_counter() - t0) * 1000
+    T_p2p_low = T_p2p_low_delta @ T_obb_low_tree  # total = delta @ init
+    source_low.transformation = T_p2p_low
+    p2p_chamfer_low = tf.chamfer_error(source_low, target_cloud)
+    print(f"  Chamfer: {p2p_chamfer_low:.6f}, time: {p2p_time_low:.1f} ms")
+
+    # Run Point-to-Plane ICP (returns delta, compose with initial transform)
+    print("\nPoint-to-Plane ICP...")
+    source_low.transformation = T_obb_low_tree
+    t0 = time.perf_counter()
+    T_p2l_low_delta = tf.fit_icp_alignment(
+        source_low, (target_cloud, target_normals),
+        max_iterations=max_iterations,
+        n_samples=n_samples,
+        k=k,
+        min_relative_improvement=min_relative_improvement
+    )
+    p2l_time_low = (time.perf_counter() - t0) * 1000
+    T_p2l_low = T_p2l_low_delta @ T_obb_low_tree  # total = delta @ init
+    source_low.transformation = T_p2l_low
+    p2l_chamfer_low = tf.chamfer_error(source_low, target_cloud)
+    print(f"  Chamfer: {p2l_chamfer_low:.6f}, time: {p2l_time_low:.1f} ms")
+
+    print("\n--- Summary (Part 4) ---")
+    print(f"  Baseline:        {chamfer_baseline_fwd:.6f} (best possible)")
+    print(f"  Initial:         {chamfer_init_fwd:.2f} (after transformation)")
+    print(f"  OBB (no tree):   {chamfer_obb_no_tree:.6f}")
+    print(f"  OBB (with tree): {chamfer_obb_tree:.6f}")
+    print(f"  P2P ICP: Chamfer={p2p_chamfer_low:.6f}, time={p2p_time_low:.1f} ms")
+    print(f"  P2L ICP: Chamfer={p2l_chamfer_low:.6f}, time={p2l_time_low:.1f} ms")
+    if p2l_time_low < p2p_time_low:
+        print(f"  Point-to-Plane was {p2p_time_low / p2l_time_low:.1f}x faster!")
+
+    return 0
 
 
 if __name__ == "__main__":

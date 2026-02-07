@@ -23,10 +23,15 @@ def fit_obb_alignment(
     """
     Compute a rigid alignment from cloud0 to cloud1 using oriented bounding boxes.
 
-    The returned transform T maps points from cloud0 into cloud1:
-        y ≈ T(x) = R * x + t
-    where R aligns the OBB axes of cloud0 to those of cloud1, and t aligns
-    the OBB centers. No point correspondences are used.
+    Aligns the OBB axes and centers of cloud0 to those of cloud1.
+    No point correspondences are used.
+
+    Returns a DELTA transformation mapping source world coordinates to target
+    world coordinates. To get the total transformation for source local coords:
+
+    >>> delta = tf.fit_obb_alignment(source, target)
+    >>> total = delta @ source.transformation
+    >>> source.transformation = total
 
     If point clouds have transformations set, the alignment is computed
     in world space (with transformations applied).
@@ -48,18 +53,16 @@ def fit_obb_alignment(
     Returns
     -------
     transformation : ndarray of shape (3, 3) for 2D or (4, 4) for 3D
-        Homogeneous transformation matrix mapping cloud0 -> cloud1
+        Delta transformation mapping source_world -> target_world.
 
     Examples
     --------
     >>> import trueform as tf
     >>> import numpy as np
-    >>> # Create point clouds with different orientations
-    >>> pts0 = np.random.randn(100, 3).astype(np.float32)
-    >>> pts1 = pts0 @ rotation_matrix + translation
-    >>> cloud0 = tf.PointCloud(pts0)
-    >>> cloud1 = tf.PointCloud(pts1)
-    >>> T = tf.fit_obb_alignment(cloud0, cloud1)
+    >>> # Coarse alignment via OBB
+    >>> delta = tf.fit_obb_alignment(source, target)
+    >>> # Compose with initial transform
+    >>> source.transformation = delta @ source.transformation
     """
     if cloud0.dims != cloud1.dims:
         raise ValueError(

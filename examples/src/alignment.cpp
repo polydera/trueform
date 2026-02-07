@@ -91,19 +91,9 @@ int main(int argc, char *argv[]) {
   // Compute normals for point-to-plane ICP
   std::cout << "Computing point normals..." << std::endl;
   auto normals = tf::compute_point_normals(mesh.polygons() | tf::tag(fm));
-  auto target_with_normals =
-      mesh.points() | tf::tag(target_tree) | tf::tag_normals(normals.unit_vectors());
+  auto target_with_normals = mesh.points() | tf::tag(target_tree) |
+                             tf::tag_normals(normals.unit_vectors());
 
-  // Lambda to create strided sample indices
-  auto make_ids = [](std::size_t size, std::size_t offset, std::size_t stride,
-                     std::size_t count) {
-    return tf::take(tf::make_mapped_range(tf::make_sequence_range(size),
-                                          [size, offset, stride](auto id) {
-                                            return (offset + id * stride) %
-                                                   size;
-                                          }),
-                    count);
-  };
 
   // =========================================================================
   // Part 1: With correspondences (rigid transformation)
@@ -130,31 +120,30 @@ int main(int argc, char *argv[]) {
   tf::points_buffer<float, 3> source1;
   source1.allocate(smoothed.size());
   tf::parallel_for_each(tf::zip(smoothed.points(), source1.points()),
-                     [&](auto tup) {
-                       auto [src, dst] = tup;
-                       dst = tf::transformed(src, T1);
-                     });
+                        [&](auto tup) {
+                          auto [src, dst] = tup;
+                          dst = tf::transformed(src, T1);
+                        });
 
   float initial1 = compute_max_error(mesh.points(), source1.points());
   std::cout << "Initial error: " << initial1 << std::endl;
 
   std::cout << "\nRigid alignment:" << std::endl;
   auto T_rigid1 = tf::fit_rigid_alignment(source1.points(), mesh.points());
-  float rigid1_rms = compute_rms_error(
-      mesh.points(), source1.points() | tf::tag(T_rigid1));
+  float rigid1_rms =
+      compute_rms_error(mesh.points(), source1.points() | tf::tag(T_rigid1));
   std::cout << "  RMS error: " << rigid1_rms << std::endl;
 
   std::cout << "\nOBB alignment (no tree):" << std::endl;
   auto T_obb1_no_tree = tf::fit_obb_alignment(source1.points(), mesh.points());
   float obb1_no_tree_rms = compute_rms_error(
-      mesh.points(),
-      source1.points() | tf::tag(T_obb1_no_tree));
+      mesh.points(), source1.points() | tf::tag(T_obb1_no_tree));
   std::cout << "  RMS error: " << obb1_no_tree_rms << std::endl;
 
   std::cout << "\nOBB alignment (with tree):" << std::endl;
   auto T_obb1_tree = tf::fit_obb_alignment(source1.points(), target_with_tree);
-  float obb1_tree_rms = compute_rms_error(
-      mesh.points(), source1.points() | tf::tag(T_obb1_tree));
+  float obb1_tree_rms =
+      compute_rms_error(mesh.points(), source1.points() | tf::tag(T_obb1_tree));
   std::cout << "  RMS error: " << obb1_tree_rms << std::endl;
 
   std::cout << "\n--- Summary (Part 1) ---" << std::endl;
@@ -192,15 +181,14 @@ int main(int argc, char *argv[]) {
   std::cout << "\nRigid alignment (will fail - no correspondences):"
             << std::endl;
   auto T_rigid2 = tf::fit_rigid_alignment(source2.points(), mesh.points());
-  float rigid2_rms = compute_rms_error(
-      target_shuffled, source2.points() | tf::tag(T_rigid2));
+  float rigid2_rms =
+      compute_rms_error(target_shuffled, source2.points() | tf::tag(T_rigid2));
   std::cout << "  RMS error: " << rigid2_rms << std::endl;
 
   std::cout << "\nOBB alignment (no tree - ambiguous):" << std::endl;
   auto T_obb2_no_tree = tf::fit_obb_alignment(source2.points(), mesh.points());
   float obb2_no_tree_rms = compute_rms_error(
-      target_shuffled,
-      source2.points() | tf::tag(T_obb2_no_tree));
+      target_shuffled, source2.points() | tf::tag(T_obb2_no_tree));
   std::cout << "  RMS error: " << obb2_no_tree_rms << std::endl;
 
   std::cout << "\nOBB alignment (with tree - disambiguated):" << std::endl;
@@ -228,80 +216,43 @@ int main(int argc, char *argv[]) {
   std::cout << "Starting from OBB with tree: RMS = " << obb2_tree_rms
             << std::endl;
 
-  // ICP parameters
-  constexpr std::size_t max_iters = 50;
-  constexpr std::size_t n_samples = 1000;
-  constexpr std::size_t k = 1;
-  constexpr float alpha = 0.3f;     // EMA smoothing factor
-  constexpr float rel_tol = 0.001f; // stop when < 0.1% relative improvement
+  // ICP configuration
+  tf::icp_config icp_cfg;
+  icp_cfg.max_iterations = 50;
+  icp_cfg.n_samples = 1000;
+  icp_cfg.k = 1;
+  icp_cfg.min_relative_improvement = 0.001f;
 
-  std::size_t subsample_stride =
-      std::max(std::size_t(1), source2.size() / n_samples);
-  std::cout << "Subsampling: ~" << n_samples << " / " << source2.size()
+  std::cout << "Subsampling: ~" << icp_cfg.n_samples << " / " << source2.size()
             << " points per iteration" << std::endl;
 
-  // Generic ICP runner that works with any target type
-  auto run_icp = [&](const auto &target, const char *name) {
-    auto T_accum = T_obb2_tree;
-    float ema = 0.0f;
-    float ema_prev = 0.0f;
-
-    std::cout << "\n" << name << " ICP:" << std::endl;
-    std::size_t iter = 0;
-    for (; iter < max_iters; ++iter) {
-      std::size_t offset = tf::random(std::size_t(0), subsample_stride - 1);
-      auto ids = make_ids(source2.size(), offset, subsample_stride, n_samples);
-      auto subsample =
-          tf::make_points(tf::make_indirect_range(ids, source2.points()));
-
-      auto subsample_with_frame = subsample | tf::tag(T_accum);
-
-      auto T_iter = tf::fit_knn_alignment(subsample_with_frame, target, k);
-
-      T_accum = tf::transformed(T_accum, T_iter);
-
-      // Evaluate Chamfer error on a different subset
-      std::size_t eval_offset = tf::random(std::size_t(0), subsample_stride - 1);
-      auto eval_ids =
-          make_ids(source2.size(), eval_offset, subsample_stride, n_samples);
-      auto eval_sample =
-          tf::make_points(tf::make_indirect_range(eval_ids, source2.points()));
-      float chamfer =
-          tf::chamfer_error(eval_sample | tf::tag(T_accum), target_with_tree);
-
-      ema_prev = ema;
-      ema = (iter == 0) ? chamfer : alpha * chamfer + (1.0f - alpha) * ema;
-      float rel_change = (iter == 0) ? 1.0f : (ema_prev - ema) / ema;
-
-      std::cout << "  iter " << iter << ": Chamfer = " << chamfer
-                << " (EMA = " << ema << ")" << std::endl;
-
-      if (iter > 0 && rel_change < rel_tol)
-        break;
-    }
-    std::cout << "Converged after " << (iter + 1) << " iterations" << std::endl;
-
-    float final_rms =
-        compute_rms_error(target_shuffled, source2.points() | tf::tag(T_accum));
-    return std::make_pair(iter + 1, final_rms);
-  };
-
   // Run Point-to-Point ICP
-  auto [p2p_iters, p2p_rms] = run_icp(target_with_tree, "Point-to-Point");
+  // ICP returns DELTA (world-to-world), compose with initial frame to get TOTAL
+  std::cout << "\nPoint-to-Point ICP..." << std::endl;
+  tf::tick();
+  auto T_p2p_delta = tf::fit_icp_alignment(source2.points() | tf::tag(T_obb2_tree),
+                                     target_with_tree, icp_cfg);
+  auto T_p2p = tf::transformed(T_obb2_tree, T_p2p_delta);
+  auto p2p_time = tf::tock();
+  float p2p_rms = compute_rms_error(target_shuffled, source2.points() | tf::tag(T_p2p));
+  std::cout << "  Final RMS: " << p2p_rms << ", time: " << p2p_time << " ms" << std::endl;
 
   // Run Point-to-Plane ICP
-  auto [p2l_iters, p2l_rms] = run_icp(target_with_normals, "Point-to-Plane");
+  std::cout << "\nPoint-to-Plane ICP..." << std::endl;
+  tf::tick();
+  auto T_p2l_delta = tf::fit_icp_alignment(source2.points() | tf::tag(T_obb2_tree),
+                                     target_with_normals, icp_cfg);
+  auto T_p2l = tf::transformed(T_obb2_tree, T_p2l_delta);
+  auto p2l_time = tf::tock();
+  float p2l_rms = compute_rms_error(target_shuffled, source2.points() | tf::tag(T_p2l));
+  std::cout << "  Final RMS: " << p2l_rms << ", time: " << p2l_time << " ms" << std::endl;
 
   std::cout << "\n--- ICP Comparison ---" << std::endl;
   std::cout << "  Ground truth RMS:    " << smooth_rms << std::endl;
-  std::cout << "  Point-to-Point: " << p2p_iters << " iters, RMS = " << p2p_rms
-            << std::endl;
-  std::cout << "  Point-to-Plane: " << p2l_iters << " iters, RMS = " << p2l_rms
-            << std::endl;
-  if (p2l_iters < p2p_iters) {
-    std::cout << "  Point-to-Plane converged "
-              << (static_cast<float>(p2p_iters) / p2l_iters)
-              << "x faster!" << std::endl;
+  std::cout << "  Point-to-Point: RMS=" << p2p_rms << ", time=" << p2p_time << " ms" << std::endl;
+  std::cout << "  Point-to-Plane: RMS=" << p2l_rms << ", time=" << p2l_time << " ms" << std::endl;
+  if (p2l_time < p2p_time) {
+    std::cout << "  Point-to-Plane was " << (p2p_time / p2l_time) << "x faster!" << std::endl;
   }
 
   // =========================================================================
@@ -352,10 +303,10 @@ int main(int argc, char *argv[]) {
   tf::points_buffer<float, 3> source_low;
   source_low.allocate(mesh_low.points().size());
   tf::parallel_for_each(tf::zip(mesh_low.points(), source_low.points()),
-                     [&](auto tup) {
-                       auto [src, dst] = tup;
-                       dst = tf::transformed(src, T_low);
-                     });
+                        [&](auto tup) {
+                          auto [src, dst] = tup;
+                          dst = tf::transformed(src, T_low);
+                        });
 
   // Build tree on transformed source for bidirectional chamfer
   tf::aabb_tree<int, float, 3> source_low_tree(source_low.points(),
@@ -378,8 +329,7 @@ int main(int argc, char *argv[]) {
   auto T_obb_low_no_tree =
       tf::fit_obb_alignment(source_low.points(), mesh.points());
   float chamfer_obb_no_tree = tf::chamfer_error(
-      source_low.points() | tf::tag(T_obb_low_no_tree),
-      target_with_tree);
+      source_low.points() | tf::tag(T_obb_low_no_tree), target_with_tree);
   std::cout << "  Chamfer (Low→High): " << chamfer_obb_no_tree << std::endl;
 
   // OBB alignment (with tree)
@@ -387,70 +337,34 @@ int main(int argc, char *argv[]) {
   auto T_obb_low_tree =
       tf::fit_obb_alignment(source_low.points(), target_with_tree);
   float chamfer_obb_tree = tf::chamfer_error(
-      source_low.points() | tf::tag(T_obb_low_tree),
-      target_with_tree);
+      source_low.points() | tf::tag(T_obb_low_tree), target_with_tree);
   std::cout << "  Chamfer (Low→High): " << chamfer_obb_tree << std::endl;
 
   // ICP refinement - compare Point-to-Point vs Point-to-Plane
   std::cout << "\nICP refinement (comparing P2P vs P2L):" << std::endl;
 
-  std::size_t subsample_stride_low =
-      std::max(std::size_t(1), source_low.size() / n_samples);
+  // Run Point-to-Point ICP
+  // ICP returns DELTA, compose with initial frame to get TOTAL
+  std::cout << "\nPoint-to-Point ICP..." << std::endl;
+  tf::tick();
+  auto T_p2p_low_delta = tf::fit_icp_alignment(
+      source_low.points() | tf::tag(T_obb_low_tree), target_with_tree, icp_cfg);
+  auto T_p2p_low = tf::transformed(T_obb_low_tree, T_p2p_low_delta);
+  auto p2p_time_low = tf::tock();
+  float p2p_chamfer_low =
+      tf::chamfer_error(source_low.points() | tf::tag(T_p2p_low), target_with_tree);
+  std::cout << "  Chamfer: " << p2p_chamfer_low << ", time: " << p2p_time_low << " ms" << std::endl;
 
-  auto run_icp_low = [&](const auto &target, const char *name) {
-    auto T_accum_low = T_obb_low_tree;
-    float ema_low = 0.0f;
-    float ema_low_prev = 0.0f;
-
-    std::cout << "\n" << name << " ICP:" << std::endl;
-    std::size_t iter_low = 0;
-    for (; iter_low < max_iters; ++iter_low) {
-      std::size_t offset = tf::random(std::size_t(0), subsample_stride_low - 1);
-      auto ids =
-          make_ids(source_low.size(), offset, subsample_stride_low, n_samples);
-      auto subsample_low =
-          tf::make_points(tf::make_indirect_range(ids, source_low.points()));
-
-      auto subsample_low_with_frame = subsample_low | tf::tag(T_accum_low);
-
-      auto T_iter = tf::fit_knn_alignment(subsample_low_with_frame, target, k);
-
-      T_accum_low = tf::transformed(T_accum_low, T_iter);
-
-      // Evaluate Chamfer error on a different subset
-      std::size_t eval_offset =
-          tf::random(std::size_t(0), subsample_stride_low - 1);
-      auto eval_ids = make_ids(source_low.size(), eval_offset,
-                               subsample_stride_low, n_samples);
-      auto eval_sample = tf::make_points(
-          tf::make_indirect_range(eval_ids, source_low.points()));
-      float chamfer = tf::chamfer_error(eval_sample | tf::tag(T_accum_low),
-                                        target_with_tree);
-
-      ema_low_prev = ema_low;
-      ema_low = (iter_low == 0) ? chamfer
-                                : alpha * chamfer + (1.0f - alpha) * ema_low;
-      float rel_change =
-          (iter_low == 0) ? 1.0f : (ema_low_prev - ema_low) / ema_low;
-
-      std::cout << "  iter " << iter_low << ": Chamfer = " << chamfer
-                << " (EMA = " << ema_low << ")" << std::endl;
-
-      if (iter_low > 0 && rel_change < rel_tol)
-        break;
-    }
-    std::cout << "Converged after " << (iter_low + 1) << " iterations"
-              << std::endl;
-
-    float chamfer_final = tf::chamfer_error(
-        source_low.points() | tf::tag(T_accum_low), target_with_tree);
-    return std::make_pair(iter_low + 1, chamfer_final);
-  };
-
-  auto [p2p_iters_low, p2p_chamfer_low] =
-      run_icp_low(target_with_tree, "Point-to-Point");
-  auto [p2l_iters_low, p2l_chamfer_low] =
-      run_icp_low(target_with_normals, "Point-to-Plane");
+  // Run Point-to-Plane ICP
+  std::cout << "\nPoint-to-Plane ICP..." << std::endl;
+  tf::tick();
+  auto T_p2l_low_delta = tf::fit_icp_alignment(
+      source_low.points() | tf::tag(T_obb_low_tree), target_with_normals, icp_cfg);
+  auto T_p2l_low = tf::transformed(T_obb_low_tree, T_p2l_low_delta);
+  auto p2l_time_low = tf::tock();
+  float p2l_chamfer_low =
+      tf::chamfer_error(source_low.points() | tf::tag(T_p2l_low), target_with_tree);
+  std::cout << "  Chamfer: " << p2l_chamfer_low << ", time: " << p2l_time_low << " ms" << std::endl;
 
   std::cout << "\n--- Summary (Part 4) ---" << std::endl;
   std::cout << "  Baseline:        " << chamfer_baseline_fwd
@@ -459,14 +373,10 @@ int main(int argc, char *argv[]) {
             << " (after transformation)" << std::endl;
   std::cout << "  OBB (no tree):   " << chamfer_obb_no_tree << std::endl;
   std::cout << "  OBB (with tree): " << chamfer_obb_tree << std::endl;
-  std::cout << "  P2P ICP: " << p2p_iters_low << " iters, Chamfer = "
-            << p2p_chamfer_low << std::endl;
-  std::cout << "  P2L ICP: " << p2l_iters_low << " iters, Chamfer = "
-            << p2l_chamfer_low << std::endl;
-  if (p2l_iters_low < p2p_iters_low) {
-    std::cout << "  Point-to-Plane converged "
-              << (static_cast<float>(p2p_iters_low) / p2l_iters_low)
-              << "x faster!" << std::endl;
+  std::cout << "  P2P ICP: Chamfer=" << p2p_chamfer_low << ", time=" << p2p_time_low << " ms" << std::endl;
+  std::cout << "  P2L ICP: Chamfer=" << p2l_chamfer_low << ", time=" << p2l_time_low << " ms" << std::endl;
+  if (p2l_time_low < p2p_time_low) {
+    std::cout << "  Point-to-Plane was " << (p2p_time_low / p2l_time_low) << "x faster!" << std::endl;
   }
 
   return 0;

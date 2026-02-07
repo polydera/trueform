@@ -19,8 +19,23 @@ namespace tf::vtk {
 
 auto fit_rigid_alignment(polydata *source, polydata *target)
     -> vtkSmartPointer<vtkMatrix4x4> {
-  auto T = tf::fit_rigid_alignment(source->points(), target->points());
-  return make_vtk_matrix(T);
+  auto src_normals = source->point_normals();
+  auto tgt_normals = target->point_normals();
+
+  if (src_normals.size() > 0 && tgt_normals.size() > 0) {
+    // Both have normals: point-to-plane with normal weighting
+    auto src = source->points() | tf::tag_normals(src_normals);
+    auto tgt = target->points() | tf::tag_normals(tgt_normals);
+    return make_vtk_matrix(tf::fit_rigid_alignment(src, tgt));
+  } else if (tgt_normals.size() > 0) {
+    // Target has normals: point-to-plane
+    auto tgt = target->points() | tf::tag_normals(tgt_normals);
+    return make_vtk_matrix(tf::fit_rigid_alignment(source->points(), tgt));
+  } else {
+    // No normals: point-to-point
+    return make_vtk_matrix(
+        tf::fit_rigid_alignment(source->points(), target->points()));
+  }
 }
 
 auto fit_rigid_alignment(std::pair<polydata *, vtkMatrix4x4 *> source,
@@ -28,9 +43,23 @@ auto fit_rigid_alignment(std::pair<polydata *, vtkMatrix4x4 *> source,
   auto [src_mesh, src_matrix] = source;
   tf::frame<double, 3> src_frame;
   src_frame.fill(src_matrix->GetData());
-  auto T = tf::fit_rigid_alignment(src_mesh->points() | tf::tag(src_frame),
-                                   target->points());
-  return make_vtk_matrix(T);
+
+  auto src_normals = src_mesh->point_normals();
+  auto tgt_normals = target->point_normals();
+
+  if (src_normals.size() > 0 && tgt_normals.size() > 0) {
+    auto src =
+        src_mesh->points() | tf::tag(src_frame) | tf::tag_normals(src_normals);
+    auto tgt = target->points() | tf::tag_normals(tgt_normals);
+    return make_vtk_matrix(tf::fit_rigid_alignment(src, tgt));
+  } else if (tgt_normals.size() > 0) {
+    auto src = src_mesh->points() | tf::tag(src_frame);
+    auto tgt = target->points() | tf::tag_normals(tgt_normals);
+    return make_vtk_matrix(tf::fit_rigid_alignment(src, tgt));
+  } else {
+    auto src = src_mesh->points() | tf::tag(src_frame);
+    return make_vtk_matrix(tf::fit_rigid_alignment(src, target->points()));
+  }
 }
 
 auto fit_rigid_alignment(polydata *source,
@@ -39,9 +68,23 @@ auto fit_rigid_alignment(polydata *source,
   auto [tgt_mesh, tgt_matrix] = target;
   tf::frame<double, 3> tgt_frame;
   tgt_frame.fill(tgt_matrix->GetData());
-  auto T = tf::fit_rigid_alignment(source->points(),
-                                   tgt_mesh->points() | tf::tag(tgt_frame));
-  return make_vtk_matrix(T);
+
+  auto src_normals = source->point_normals();
+  auto tgt_normals = tgt_mesh->point_normals();
+
+  if (src_normals.size() > 0 && tgt_normals.size() > 0) {
+    auto src = source->points() | tf::tag_normals(src_normals);
+    auto tgt =
+        tgt_mesh->points() | tf::tag(tgt_frame) | tf::tag_normals(tgt_normals);
+    return make_vtk_matrix(tf::fit_rigid_alignment(src, tgt));
+  } else if (tgt_normals.size() > 0) {
+    auto tgt =
+        tgt_mesh->points() | tf::tag(tgt_frame) | tf::tag_normals(tgt_normals);
+    return make_vtk_matrix(tf::fit_rigid_alignment(source->points(), tgt));
+  } else {
+    auto tgt = tgt_mesh->points() | tf::tag(tgt_frame);
+    return make_vtk_matrix(tf::fit_rigid_alignment(source->points(), tgt));
+  }
 }
 
 auto fit_rigid_alignment(std::pair<polydata *, vtkMatrix4x4 *> source,
@@ -53,9 +96,26 @@ auto fit_rigid_alignment(std::pair<polydata *, vtkMatrix4x4 *> source,
   src_frame.fill(src_matrix->GetData());
   tf::frame<double, 3> tgt_frame;
   tgt_frame.fill(tgt_matrix->GetData());
-  auto T = tf::fit_rigid_alignment(src_mesh->points() | tf::tag(src_frame),
-                                   tgt_mesh->points() | tf::tag(tgt_frame));
-  return make_vtk_matrix(T);
+
+  auto src_normals = src_mesh->point_normals();
+  auto tgt_normals = tgt_mesh->point_normals();
+
+  if (src_normals.size() > 0 && tgt_normals.size() > 0) {
+    auto src =
+        src_mesh->points() | tf::tag(src_frame) | tf::tag_normals(src_normals);
+    auto tgt =
+        tgt_mesh->points() | tf::tag(tgt_frame) | tf::tag_normals(tgt_normals);
+    return make_vtk_matrix(tf::fit_rigid_alignment(src, tgt));
+  } else if (tgt_normals.size() > 0) {
+    auto src = src_mesh->points() | tf::tag(src_frame);
+    auto tgt =
+        tgt_mesh->points() | tf::tag(tgt_frame) | tf::tag_normals(tgt_normals);
+    return make_vtk_matrix(tf::fit_rigid_alignment(src, tgt));
+  } else {
+    auto src = src_mesh->points() | tf::tag(src_frame);
+    auto tgt = tgt_mesh->points() | tf::tag(tgt_frame);
+    return make_vtk_matrix(tf::fit_rigid_alignment(src, tgt));
+  }
 }
 
 } // namespace tf::vtk

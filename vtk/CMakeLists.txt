@@ -56,6 +56,7 @@ set(TRUEFORM_VTK_SOURCES
   src/functions/compute_point_normals.cpp
   src/functions/compute_principal_curvatures.cpp
   src/functions/ensure_positive_orientation.cpp
+  src/functions/fit_icp_alignment.cpp
   src/functions/fit_knn_alignment.cpp
   src/functions/fit_obb_alignment.cpp
   src/functions/fit_rigid_alignment.cpp
@@ -76,6 +77,7 @@ set(TRUEFORM_VTK_SOURCES
   src/functions/neighbor_search_k.cpp
   src/functions/neighbor_search_k_batch.cpp
   src/functions/intersects.cpp
+  src/functions/laplacian_smoothed.cpp
   src/functions/obb_from.cpp
   src/functions/orient_faces_consistently.cpp
   src/functions/pick.cpp
@@ -86,6 +88,7 @@ set(TRUEFORM_VTK_SOURCES
   src/functions/resolved_self_intersections.cpp
   src/functions/signed_volume.cpp
   src/functions/split_into_components.cpp
+  src/functions/taubin_smoothed.cpp
   src/functions/triangulated.cpp
   src/functions/write_obj.cpp
   src/functions/write_stl.cpp

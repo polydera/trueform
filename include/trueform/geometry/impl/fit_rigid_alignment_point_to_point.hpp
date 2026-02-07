@@ -45,39 +45,31 @@ auto fit_rigid_alignment_point_to_point(const tf::points<Policy0> &X_,
   static_assert(Dims == 2 || Dims == 3,
                 "Only 2D and 3D point sets are supported");
 
-  // Extract plain points and frames
   const auto &X = X_ | tf::plain();
   const auto &Y = Y_ | tf::plain();
   const auto &tX = tf::frame_of(X_).transformation();
   const auto &tY = tf::frame_of(Y_).transformation();
 
-  // Compute cross-covariance on plain points
   auto [cx, cy, H] = tf::cross_covariance_of(X, Y);
 
-  // Transform H and centroids to world space
   H = tf::core::transformed_cross_covariance(H, tX, tY);
   auto cx_world = tf::transformed(cx, tX);
   auto cy_world = tf::transformed(cy, tY);
 
-  // HtH = H^T * H
   std::array<std::array<T, Dims>, Dims> HtH{};
   for (std::size_t i = 0; i < Dims; ++i)
     for (std::size_t j = 0; j < Dims; ++j)
       for (std::size_t k = 0; k < Dims; ++k)
         HtH[i][j] += H[k][i] * H[k][j];
 
-  // sigma_sq: squared singular values of H (descending)
-  // V: right singular vectors of H (columns), from eig(HtH)
   auto [sigma_sq, _, V] = tf::svd_of_symmetric(HtH);
 
-  // Build R = V * U^T
   tf::transformation<T, Dims> out;
   for (std::size_t i = 0; i < Dims; ++i)
     for (std::size_t j = 0; j < Dims; ++j)
       out(i, j) = T(0);
 
   std::array<T, Dims> inv_sigma{};
-  // Use relative threshold based on largest singular value for scale invariance
   const T threshold = sigma_sq[0] * tf::epsilon2<T>;
   for (std::size_t col = 0; col < Dims; ++col) {
     inv_sigma[col] = (sigma_sq[col] > threshold)
@@ -85,10 +77,7 @@ auto fit_rigid_alignment_point_to_point(const tf::points<Policy0> &X_,
                          : T(0);
   }
 
-  // First compute R = V * U^T without reflection handling
-  // For H = U Σ V^T, the Kabsch rotation is R = V * U^T
   for (std::size_t col = 0; col < Dims; ++col) {
-    // u = H * v_col / sigma = left singular vector
     tf::vector<T, Dims> u;
     for (std::size_t i = 0; i < Dims; ++i) {
       u[i] = T(0);
@@ -96,14 +85,12 @@ auto fit_rigid_alignment_point_to_point(const tf::points<Policy0> &X_,
         u[i] += H[i][k] * V[col][k];
     }
 
-    // R += v_col * (inv_sigma[col] * u^T) = outer(v, u) → V * U^T
     const T a = inv_sigma[col];
     for (std::size_t i = 0; i < Dims; ++i)
       for (std::size_t j = 0; j < Dims; ++j)
         out(i, j) += V[col][i] * (a * u[j]);
   }
 
-  // det(R)
   T det;
   if constexpr (Dims == 2) {
     det = out(0, 0) * out(1, 1) - out(0, 1) * out(1, 0);
@@ -137,7 +124,6 @@ auto fit_rigid_alignment_point_to_point(const tf::points<Policy0> &X_,
     }
   }
 
-  // t = cy_world - R * cx_world
   for (std::size_t i = 0; i < Dims; ++i) {
     out(i, Dims) = cy_world[i];
     for (std::size_t j = 0; j < Dims; ++j)
