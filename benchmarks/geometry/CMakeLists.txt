@@ -34,3 +34,24 @@ target_link_libraries(geometry-point_normals-vtk-impl benchmark_vtk_common)
 
 add_executable(geometry-point_normals-vtk point_normals-vtk.cpp)
 target_link_libraries(geometry-point_normals-vtk geometry-point_normals-vtk-impl)
+
+# TrueForm ICP registration
+add_library(geometry-icp_registration-tf-impl OBJECT icp_registration-tf-impl.cpp)
+target_link_libraries(geometry-icp_registration-tf-impl benchmark_common)
+
+add_executable(geometry-icp_registration-tf icp_registration-tf.cpp)
+target_link_libraries(geometry-icp_registration-tf geometry-icp_registration-tf-impl)
+
+# VTK ICP registration
+add_library(geometry-icp_registration-vtk-impl OBJECT icp_registration-vtk-impl.cpp)
+target_link_libraries(geometry-icp_registration-vtk-impl benchmark_vtk_common)
+
+add_executable(geometry-icp_registration-vtk icp_registration-vtk.cpp)
+target_link_libraries(geometry-icp_registration-vtk geometry-icp_registration-vtk-impl)
+
+# libigl ICP registration
+add_library(geometry-icp_registration-igl-impl OBJECT icp_registration-igl-impl.cpp)
+target_link_libraries(geometry-icp_registration-igl-impl benchmark_igl_common)
+
+add_executable(geometry-icp_registration-igl icp_registration-igl.cpp)
+target_link_libraries(geometry-icp_registration-igl geometry-icp_registration-igl-impl)

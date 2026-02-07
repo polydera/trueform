@@ -441,6 +441,8 @@ set(BENCHMARK_TARGETS
     geometry-principal_curvatures-igl
     geometry-point_normals-tf
     geometry-point_normals-igl
+    geometry-icp_registration-tf
+    geometry-icp_registration-igl
     io-read_stl-tf
     io-read_stl-igl
     run-benchmarks
@@ -454,6 +456,7 @@ if(HAVE_VTK)
         intersect-isocontours-vtk
         cut-embedded_isocurves-vtk
         geometry-point_normals-vtk
+        geometry-icp_registration-vtk
         io-read_stl-vtk
     )
 endif()
@@ -476,6 +479,7 @@ if(OpenMP_CXX_FOUND)
         cut-embedded_self_intersection_curves-igl
         geometry-principal_curvatures-igl
         geometry-point_normals-igl
+        geometry-icp_registration-igl
         io-read_stl-igl
         run-benchmarks
     )
