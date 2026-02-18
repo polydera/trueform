@@ -60,6 +60,12 @@
 #include "spatial/polygons_to_polygons-closest_point-fcl.hpp"
 #include "spatial/polygons_to_polygons-closest_point-tf.hpp"
 
+// Remesh module
+#include "remesh/decimation-tf.hpp"
+#include "remesh/decimation-cgal.hpp"
+#include "remesh/isotropic_remeshing-tf.hpp"
+#include "remesh/isotropic_remeshing-cgal.hpp"
+
 #include "common/test_meshes.hpp"
 
 struct benchmark_info {
@@ -204,6 +210,12 @@ int main(int argc, char *argv[]) {
        benchmark::run_polygons_to_polygons_closest_point_fcl_benchmark, 1000},
       {"spatial-mod_tree-update-tf",
        benchmark::run_mod_tree_update_tf_benchmark, 10},
+
+      // Remesh module
+      {"remesh-decimation-tf", benchmark::run_decimation_tf_benchmark, 10},
+      {"remesh-decimation-cgal", benchmark::run_decimation_cgal_benchmark, 10},
+      {"remesh-isotropic_remeshing-tf", benchmark::run_isotropic_remeshing_tf_benchmark, 10},
+      {"remesh-isotropic_remeshing-cgal", benchmark::run_isotropic_remeshing_cgal_benchmark, 10},
   };
 
   // Simple CLI: run all benchmarks with default mesh paths and samples

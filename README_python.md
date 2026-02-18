@@ -2,7 +2,7 @@
 
 Real-time geometric processing on NumPy arrays. Easy to use, robust on real-world data.
 
-Spatial queries, mesh booleans, isocontours, topology — at interactive speed on million-polygon meshes. Robust to non-manifold flaps, inconsistent winding, and pipeline artifacts. NumPy in, NumPy out.
+Mesh booleans, registration, remeshing and queries — at interactive speed on million-polygon meshes. Robust to non-manifold flaps, inconsistent winding, and pipeline artifacts. NumPy in, NumPy out.
 
 **[Documentation](https://trueform.polydera.com/py/getting-started)** | **[Live Examples](https://trueform.polydera.com/live-examples/boolean)**
 
@@ -91,6 +91,7 @@ Cached meshes with automatic dirty-tracking for live preview add-ons. See [Blend
 | Boundary Paths | 1M | 12 ms | **11×** | CGAL |
 | k-NN Query | 500K | 1.7 µs | **3×** | nanoflann k-d tree |
 | Mesh–Mesh Distance | 2 × 1M | 0.2 ms | **2×** | Coal (FCL) `OBBRSS` |
+| Decimation (50%) | 1M | 72 ms | **50×** | CGAL `edge_collapse` |
 | Principal Curvatures | 1M | 25 ms | **55×** | libigl |
 
 Apple M4 Max, 16 threads, Clang `-O3`. [Full methodology](https://trueform.polydera.com/py/benchmarks)

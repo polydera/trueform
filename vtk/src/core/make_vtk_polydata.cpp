@@ -32,6 +32,15 @@ auto make_vtk_polydata(
   return out;
 }
 
+auto make_vtk_polydata(
+    const tf::polygons_buffer<int, float, 3, tf::dynamic_size> &polys)
+    -> vtkSmartPointer<vtkPolyData> {
+  auto out = vtkSmartPointer<vtkPolyData>::New();
+  out->SetPoints(make_vtk_points(polys.points_buffer()));
+  out->SetPolys(make_vtk_cells(polys.faces_buffer()));
+  return out;
+}
+
 auto make_vtk_polydata(const tf::curves_buffer<vtkIdType, float, 3> &curves)
     -> vtkSmartPointer<vtkPolyData> {
   auto out = vtkSmartPointer<vtkPolyData>::New();

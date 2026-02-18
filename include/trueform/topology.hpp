@@ -64,7 +64,12 @@
 #include "./topology/directed_edge_link.hpp"         // IWYU pragma: export
 #include "./topology/edge_id_in_face.hpp"            // IWYU pragma: export
 #include "./topology/edge_orientation.hpp"           // IWYU pragma: export
+#include "./topology/euler_characteristic.hpp"       // IWYU pragma: export
 #include "./topology/face_edge_neighbors.hpp"        // IWYU pragma: export
+#include "./topology/face_edge_neighbors_tagged.hpp" // IWYU pragma: export
+#include "./topology/half_edge.hpp"                   // IWYU pragma: export
+#include "./topology/half_edge_handle.hpp"            // IWYU pragma: export
+#include "./topology/half_edges.hpp"                  // IWYU pragma: export
 #include "./topology/face_hole_relations.hpp"        // IWYU pragma: export
 #include "./topology/face_link.hpp"                  // IWYU pragma: export
 #include "./topology/face_membership.hpp"            // IWYU pragma: export
@@ -80,6 +85,7 @@
 #include "./topology/make_edge_membership.hpp"       // IWYU pragma: export
 #include "./topology/make_face_link.hpp"            // IWYU pragma: export
 #include "./topology/make_face_membership.hpp"      // IWYU pragma: export
+#include "./topology/make_half_edges.hpp"           // IWYU pragma: export
 #include "./topology/make_k_rings.hpp"              // IWYU pragma: export
 #include "./topology/make_manifold_edge_connected_component_labels.hpp" // IWYU pragma: export
 #include "./topology/make_manifold_edge_link.hpp"   // IWYU pragma: export

@@ -17,6 +17,10 @@ export default defineNuxtConfig({
     enabled: false,
   },
 
+  colorMode: {
+    preference: "dark",
+  },
+
   css: ["~/assets/css/main.css"],
 
   content: {

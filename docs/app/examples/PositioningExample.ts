@@ -37,7 +37,8 @@ export class PositioningExample extends ThreejsBase {
     this.positionMeshesForScreen(container);
     this.setupOrthographicCamera(container);
 
-    // Update to show initial visualization
+    // Recompute closest points after repositioning and show
+    this.wasmInstance.positioning_compute_closest_points?.();
     this.updateMeshes();
   }
 

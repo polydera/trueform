@@ -7,11 +7,11 @@
 
 Real-time geometric processing. Easy to use, robust on real-world data.
 
-Spatial queries, mesh booleans, isocontours, topology — at interactive speed on million-polygon meshes. Robust to non-manifold flaps, inconsistent winding, and pipeline artifacts. Header-only C++17; works directly on your data with zero-copy views.
+Mesh booleans, registration, remeshing and queries — at interactive speed on million-polygon meshes. Robust to non-manifold flaps, inconsistent winding, and pipeline artifacts. Header-only C++17; works directly on your data with zero-copy views.
 
 **[▶ Try it live](https://trueform.polydera.com/live-examples/boolean)** — Interactive mesh booleans, collisions, isobands and more. No install needed. 
 
-**[Documentation and Tutorials](https://trueform.polydera.com)** — Primitives, trees, topology, booleans — step by step.
+**[Documentation and Tutorials](https://trueform.polydera.com)** — Booleans, remeshing, registration, topology — step by step.
 
 ## Installation
 
@@ -193,6 +193,7 @@ Sample comparisons against VTK, CGAL, libigl, Coal, FCL, and nanoflann:
 | Boundary Paths | 1M | 12 ms | **11×** | CGAL | Hierholzer's algorithm |
 | k-NN Query | 500K | 1.7 µs | **3×** | nanoflann k-d tree | AABB tree |
 | Mesh–Mesh Distance | 2 × 1M | 0.2 ms | **2×** | Coal (FCL) `OBBRSS` | OBBRSS tree |
+| Decimation (50%) | 1M | 72 ms | **50×** | CGAL `edge_collapse` | parallel partitioned collapse |
 | Principal Curvatures | 1M | 25 ms | **55×** | libigl | parallel k-ring quadric fitting |
 
 Apple M4 Max, 16 threads, Clang `-O3 -march=native`. Full methodology, interactive charts, source code, and datasets in [benchmarks documentation](https://trueform.polydera.com/cpp/benchmarks).

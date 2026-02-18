@@ -16,12 +16,14 @@
 #include <trueform/vtk/functions/area.hpp>
 #include <trueform/vtk/functions/chamfer_error.hpp>
 #include <trueform/vtk/functions/laplacian_smoothed.hpp>
+#include <trueform/vtk/functions/collapsed_short_edges.hpp>
 #include <trueform/vtk/functions/cleaned_lines.hpp>
 #include <trueform/vtk/functions/cleaned_polygons.hpp>
 #include <trueform/vtk/functions/cleaned_points.hpp>
 #include <trueform/vtk/functions/compute_cell_normals.hpp>
 #include <trueform/vtk/functions/compute_point_normals.hpp>
 #include <trueform/vtk/functions/compute_principal_curvatures.hpp>
+#include <trueform/vtk/functions/decimated.hpp>
 #include <trueform/vtk/functions/distance.hpp>
 #include <trueform/vtk/functions/ensure_positive_orientation.hpp>
 #include <trueform/vtk/functions/fit_icp_alignment.hpp>
@@ -29,8 +31,10 @@
 #include <trueform/vtk/functions/fit_obb_alignment.hpp>
 #include <trueform/vtk/functions/fit_rigid_alignment.hpp>
 #include <trueform/vtk/functions/intersects.hpp>
+#include <trueform/vtk/functions/isotropic_remeshed.hpp>
 #include <trueform/vtk/functions/embedded_intersection_curves.hpp>
 #include <trueform/vtk/functions/make_boolean.hpp>
+#include <trueform/vtk/functions/mean_edge_length.hpp>
 #include <trueform/vtk/functions/make_boundary_edges.hpp>
 #include <trueform/vtk/functions/make_boundary_paths.hpp>
 #include <trueform/vtk/functions/make_connected_components.hpp>

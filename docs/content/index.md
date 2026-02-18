@@ -1,7 +1,7 @@
 ---
 seo:
   title: trueform — Real-time geometric processing
-  description: Geometry library for real-time spatial queries, mesh booleans, and topology. C++ header-only with Python bindings.
+  description: Geometry library for real-time mesh booleans, registration, remeshing and queries. C++ header-only with Python bindings.
 ---
 
 ::u-page-hero{class="dark:bg-gradient-to-b from-neutral-900 to-neutral-950"}
@@ -15,7 +15,7 @@ orientation: horizontal
 Real-time [geometric processing]{.text-primary}
 
 #description
-Spatial queries, mesh booleans, isocontours, topology — at interactive speed on million-polygon meshes. Robust to non-manifold flaps, inconsistent winding, and pipeline artifacts. C++ header-only; Python with NumPy in, NumPy out.
+Mesh booleans, registration, remeshing and queries — at interactive speed on million-polygon meshes. Robust to non-manifold flaps, inconsistent winding, and pipeline artifacts. C++ header-only; Python with NumPy in, NumPy out.
 
 #links
   :::u-button
@@ -122,21 +122,10 @@ Why trueform
   icon: i-lucide-tree-pine
   ---
   #title
-  Spatial Acceleration & Geometry
+  Queries & Topology
 
   #description
-  Fast spatial queries on moving geometry. Modifiable trees for changing topology. Ray casting, collision detection and k-NN. Point cloud alignment with point-to-plane ICP.
-  :::
-
-  :::u-page-feature
-  ---
-  icon: i-lucide-shapes
-  ---
-  #title
-  Topology & Intersections
-
-  #description
-  Understand mesh structure—connectivity, boundaries, connected components. Find where meshes meet: intersection curves, self-intersections, isocontours.
+  Spatial trees for collision detection, distance queries, ray casting, and k-NN on moving geometry. Connectivity analysis, boundaries, and connected components.
   :::
 
   :::u-page-feature
@@ -144,10 +133,21 @@ Why trueform
   icon: i-lucide-scissors
   ---
   #title
-  Cut & Boolean Operations
+  Booleans & Intersections
 
   #description
-  Combine and cut meshes with union, intersection, difference. Commutative correctness: chain operations freely, clean up once at the end.
+  Union, intersection, and difference on closed meshes. Intersection curves, isocontours, and isobands. Commutative correctness: chain operations freely.
+  :::
+
+  :::u-page-feature
+  ---
+  icon: i-lucide-triangle
+  ---
+  #title
+  Remeshing & Registration
+
+  #description
+  Decimation and isotropic remeshing for mesh simplification and quality improvement. Point cloud alignment with ICP, OBB fitting, and rigid registration.
   :::
 :::
 

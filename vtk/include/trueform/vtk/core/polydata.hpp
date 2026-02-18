@@ -15,6 +15,7 @@
 #include <trueform/spatial/aabb_mod_tree.hpp>
 #include <trueform/topology/face_link.hpp>
 #include <trueform/topology/face_membership.hpp>
+#include <trueform/topology/half_edges.hpp>
 #include <trueform/topology/manifold_edge_link.hpp>
 #include <trueform/topology/vertex_link.hpp>
 #include <trueform/vtk/core/make_curves.hpp>
@@ -105,6 +106,9 @@ public:
   /// @brief Get vertex link structure. Built lazily on first access.
   auto vertex_link() -> const tf::vertex_link<vtkIdType> &;
 
+  /// @brief Get half-edge structure. Built lazily on first access.
+  auto half_edges() -> const tf::half_edges<vtkIdType> &;
+
   /// @brief Get edges buffer from lines. Built lazily on first access.
   auto edges_buffer() -> const tf::blocked_buffer<vtkIdType, 2> &;
 
@@ -186,6 +190,12 @@ public:
   /// @brief Mark edges_buffer as modified (prevents rebuild on next access).
   auto modified_edges_buffer() -> void;
 
+  /// @brief Set half-edge structure (moves in, marks as current).
+  auto set_half_edges(tf::half_edges<vtkIdType> &&he) -> void;
+
+  /// @brief Mark half_edges as modified (prevents rebuild on next access).
+  auto modified_half_edges() -> void;
+
 protected:
   polydata();
   ~polydata() override = default;
@@ -197,6 +207,7 @@ private:
   auto build_face_link() -> void;
   auto build_vertex_link() -> void;
   auto build_edges_buffer() -> void;
+  auto build_half_edges() -> void;
   auto build_segment_tree() -> void;
   auto build_point_tree() -> void;
 
@@ -206,6 +217,7 @@ private:
   vtkMTimeType _fl_mtime = 0;
   vtkMTimeType _vl_mtime = 0;
   vtkMTimeType _edges_buffer_mtime = 0;
+  vtkMTimeType _he_mtime = 0;
   vtkMTimeType _segment_tree_mtime = 0;
   vtkMTimeType _point_tree_mtime = 0;
 
@@ -215,6 +227,7 @@ private:
   std::shared_ptr<tf::face_link<vtkIdType>> _fl;
   std::shared_ptr<tf::vertex_link<vtkIdType>> _vl;
   std::shared_ptr<tf::blocked_buffer<vtkIdType, 2>> _edges_buffer;
+  std::shared_ptr<tf::half_edges<vtkIdType>> _he;
   std::shared_ptr<tf::aabb_mod_tree<vtkIdType, float, 3>> _segment_tree;
   std::shared_ptr<tf::aabb_mod_tree<vtkIdType, float, 3>> _point_tree;
 

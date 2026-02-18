@@ -20,5 +20,6 @@
 #include "./io.hpp"        // IWYU pragma: export
 #include "./random.hpp"    // IWYU pragma: export
 #include "./reindex.hpp"   // IWYU pragma: export
+#include "./remesh.hpp"    // IWYU pragma: export
 #include "./spatial.hpp"   // IWYU pragma: export
 #include "./topology.hpp"  // IWYU pragma: export

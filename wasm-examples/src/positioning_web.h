@@ -195,11 +195,10 @@ public:
     bridge->update_frame(instance_id);
   }
 
-  // Compute closest points for initial display (called after loading)
+  // Compute closest points for display
   auto compute_initial_closest_points() -> void {
     if (auto *pos_bridge = static_cast<positioning_bridge *>(bridge.get())) {
       if (pos_bridge->get_instances().size() < 2) return;
-      // Use instance 0 as reference
       if (!pos_bridge->intersects_other(0)) {
         tf::tick();
         auto neighbors = pos_bridge->closest_metric_point_pair(0);
@@ -207,6 +206,8 @@ public:
         m_closest_pt0 = neighbors.info.first;
         m_closest_pt1 = neighbors.info.second;
         m_has_closest_points = true;
+      } else {
+        m_has_closest_points = false;
       }
     }
   }
@@ -295,6 +296,7 @@ public:
   auto OnKeyPress(std::string key) -> bool override {
     if (key == "n") {
       randomize_rotations();
+      compute_initial_closest_points();
       return true;
     } else {
       return false;

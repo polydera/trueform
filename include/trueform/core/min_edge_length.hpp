@@ -14,9 +14,11 @@
 
 #include "./algorithm/reduce.hpp"
 #include "./coordinate_type.hpp"
-#include "./distance.hpp"
+#include "./frame_of.hpp"
 #include "./polygons.hpp"
 #include "./segments.hpp"
+#include "./sqrt.hpp"
+#include "./transformed.hpp"
 #include "./views/mapped_range.hpp"
 
 namespace tf {
@@ -27,18 +29,21 @@ namespace tf {
 /// @return The minimum edge length.
 template <typename Policy>
 auto min_edge_length(const tf::polygons<Policy> &polygons) {
+  auto frame = tf::frame_of(polygons);
   return tf::sqrt(tf::reduce(
-      tf::make_mapped_range(polygons,
-                            [&](const auto &polygon) {
-                              auto min_len2 = std::numeric_limits<
-                                  tf::coordinate_type<Policy>>::max();
-                              std::size_t n = polygon.size();
-                              std::size_t prev = n - 1;
-                              for (std::size_t i = 0; i < n; prev = i++)
-                                min_len2 = std::min(
-                                    min_len2, distance2(polygon[prev], polygon[i]));
-                              return min_len2;
-                            }),
+      tf::make_mapped_range(
+          polygons,
+          [&frame](const auto &polygon) {
+            auto min_len2 =
+                std::numeric_limits<tf::coordinate_type<Policy>>::max();
+            std::size_t n = polygon.size();
+            std::size_t prev = n - 1;
+            for (std::size_t i = 0; i < n; prev = i++)
+              min_len2 = std::min(
+                  min_len2,
+                  tf::transformed(polygon[i] - polygon[prev], frame).length2());
+            return min_len2;
+          }),
       [](const auto &x, const auto &y) { return std::min(x, y); },
       std::numeric_limits<tf::coordinate_type<Policy>>::max(), tf::checked));
 }
@@ -50,11 +55,13 @@ auto min_edge_length(const tf::polygons<Policy> &polygons) {
 /// @return The minimum edge length.
 template <typename Policy>
 auto min_edge_length(const tf::segments<Policy> &segments) {
+  auto frame = tf::frame_of(segments);
   return tf::sqrt(tf::reduce(
-      tf::make_mapped_range(segments,
-                            [&](const auto &segment) {
-                              return distance2(segment[0], segment[1]);
-                            }),
+      tf::make_mapped_range(
+          segments,
+          [&frame](const auto &segment) {
+            return tf::transformed(segment[1] - segment[0], frame).length2();
+          }),
       [](const auto &x, const auto &y) { return std::min(x, y); },
       std::numeric_limits<tf::coordinate_type<Policy>>::max(), tf::checked));
 }

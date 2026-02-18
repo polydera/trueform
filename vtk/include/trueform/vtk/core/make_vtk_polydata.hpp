@@ -46,6 +46,26 @@ auto make_vtk_polydata(tf::polygons_buffer<vtkIdType, float, 3, V> &&polys)
   return out;
 }
 
+/// @brief Creates vtkPolyData from an int-indexed polygons_buffer (copies data).
+template <std::size_t V>
+auto make_vtk_polydata(const tf::polygons_buffer<int, float, 3, V> &polys)
+    -> vtkSmartPointer<vtkPolyData> {
+  auto out = vtkSmartPointer<vtkPolyData>::New();
+  out->SetPoints(make_vtk_points(polys.points_buffer()));
+  out->SetPolys(make_vtk_cells(polys.faces_buffer()));
+  return out;
+}
+
+/// @brief Creates vtkPolyData from an int-indexed double polygons_buffer (copies data).
+template <std::size_t V>
+auto make_vtk_polydata(const tf::polygons_buffer<int, double, 3, V> &polys)
+    -> vtkSmartPointer<vtkPolyData> {
+  auto out = vtkSmartPointer<vtkPolyData>::New();
+  out->SetPoints(make_vtk_points(polys.points_buffer()));
+  out->SetPolys(make_vtk_cells(polys.faces_buffer()));
+  return out;
+}
+
 /// @brief Creates vtkPolyData from a double polygons_buffer (copies data).
 /// @tparam V Vertex count per polygon.
 /// @param polys Trueform polygons buffer.
@@ -85,6 +105,12 @@ auto make_vtk_polydata(
 /// @return A new vtkPolyData with transferred ownership.
 auto make_vtk_polydata(
     tf::polygons_buffer<vtkIdType, float, 3, tf::dynamic_size> &&polys)
+    -> vtkSmartPointer<vtkPolyData>;
+
+/// @brief Creates vtkPolyData from an int-indexed dynamic polygons_buffer
+/// (copies data with conversion to vtkIdType).
+auto make_vtk_polydata(
+    const tf::polygons_buffer<int, float, 3, tf::dynamic_size> &polys)
     -> vtkSmartPointer<vtkPolyData>;
 
 /// @brief Creates vtkPolyData (lines) from a curves_buffer (copies data).

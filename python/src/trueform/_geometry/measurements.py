@@ -1,5 +1,5 @@
 """
-Mesh measurement functions (volume, area)
+Mesh measurement functions (volume, area, mean_edge_length)
 
 Copyright (c) 2025 Žiga Sajovic, XLAB
 Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
@@ -142,3 +142,60 @@ def area(
     suffix = build_suffix(extract_meta(mesh))
     func = getattr(_trueform.geometry, f"area_{suffix}")
     return func(mesh._wrapper)
+
+
+def mean_edge_length(
+    data: Union[Mesh, Tuple[np.ndarray, np.ndarray],
+                Tuple[OffsetBlockedArray, np.ndarray]]
+) -> float:
+    """
+    Compute mean edge length of a polygon mesh.
+
+    Parameters
+    ----------
+    data : Mesh or tuple
+        - Mesh: tf.Mesh object
+        - (faces, points): Tuple with face indices and point coordinates
+        - (OffsetBlockedArray, points): Dynamic polygon mesh
+
+    Returns
+    -------
+    float
+        The mean edge length.
+
+    Examples
+    --------
+    >>> import trueform as tf
+    >>> mesh = tf.Mesh(*tf.read_stl("model.stl"))
+    >>> tf.mean_edge_length(mesh)
+    0.042
+    """
+    transform = None
+    if isinstance(data, Mesh):
+        faces, points = data.faces, data.points
+        transform = data.transformation
+    elif isinstance(data, tuple) and len(data) == 2:
+        faces, points = data
+    else:
+        raise TypeError(
+            f"data must be a Mesh or (faces, points) tuple, "
+            f"got {type(data).__name__}"
+        )
+
+    if isinstance(faces, OffsetBlockedArray):
+        offsets = faces.offsets
+        idx = faces.data
+        next_pos = np.arange(len(idx)) + 1
+        next_pos[offsets[1:] - 1] = offsets[:-1]
+        edges = points[idx[next_pos]] - points[idx]
+    else:
+        p = points[faces]
+        p_next = np.roll(p, -1, axis=1)
+        edges = (p_next - p).reshape(-1, points.shape[1])
+
+    if transform is not None:
+        rotation = transform[:3, :3]
+        edges = edges @ rotation.T
+
+    lengths = np.linalg.norm(edges, axis=1)
+    return float(lengths.mean())
