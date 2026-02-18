@@ -465,4 +465,138 @@ auto create_inconsistent_winding_mesh_3d()
     return result;
 }
 
+// =============================================================================
+// Diamond Mesh - Fan around interior edge for collapse testing
+// =============================================================================
+
+/**
+ * @brief Create a diamond mesh with an interior edge (0,1) and boundary
+ *
+ *     2---3
+ *    / \ / \
+ *   0---1---4
+ *    \ / \ /
+ *     5---6
+ *
+ * Faces: (0,1,2), (1,3,2), (1,4,3), (1,0,5), (1,5,6), (1,6,4)
+ * Edge (0,1) is interior with 2 adjacent faces.
+ * Vertex 1 has valence 6, vertex 0 has valence 3 (boundary).
+ */
+template <typename Index, typename Real>
+auto create_diamond_mesh_3d() -> tf::polygons_buffer<Index, Real, 3, 3> {
+  tf::polygons_buffer<Index, Real, 3, 3> result;
+
+  result.points_buffer().emplace_back(Real(0), Real(0), Real(0));
+  result.points_buffer().emplace_back(Real(1), Real(0), Real(0));
+  result.points_buffer().emplace_back(Real(0.5), Real(1), Real(0));
+  result.points_buffer().emplace_back(Real(1.5), Real(1), Real(0));
+  result.points_buffer().emplace_back(Real(2), Real(0), Real(0));
+  result.points_buffer().emplace_back(Real(0.5), Real(-1), Real(0));
+  result.points_buffer().emplace_back(Real(1.5), Real(-1), Real(0));
+
+  result.faces_buffer().emplace_back(Index(0), Index(1), Index(2));
+  result.faces_buffer().emplace_back(Index(1), Index(3), Index(2));
+  result.faces_buffer().emplace_back(Index(1), Index(4), Index(3));
+  result.faces_buffer().emplace_back(Index(1), Index(0), Index(5));
+  result.faces_buffer().emplace_back(Index(1), Index(5), Index(6));
+  result.faces_buffer().emplace_back(Index(1), Index(6), Index(4));
+
+  return result;
+}
+
+// =============================================================================
+// Link Condition Failure Mesh
+// =============================================================================
+
+/**
+ * @brief Mesh where collapsing edge (0,1) violates the link condition.
+ *
+ * Vertex 4 is a neighbor of both v0 and v1 but NOT an opposite vertex
+ * of the faces adjacent to edge (0,1), making shared ring count = 3 > 2.
+ *
+ * Faces: (0,1,2), (1,0,3), (0,3,4), (1,4,3)
+ */
+template <typename Index, typename Real>
+auto create_link_condition_fail_mesh_3d()
+    -> tf::polygons_buffer<Index, Real, 3, 3> {
+  tf::polygons_buffer<Index, Real, 3, 3> result;
+
+  result.points_buffer().emplace_back(Real(0), Real(0), Real(0));
+  result.points_buffer().emplace_back(Real(2), Real(0), Real(0));
+  result.points_buffer().emplace_back(Real(1), Real(2), Real(0));
+  result.points_buffer().emplace_back(Real(1), Real(-1), Real(0));
+  result.points_buffer().emplace_back(Real(1), Real(-2), Real(0));
+
+  result.faces_buffer().emplace_back(Index(0), Index(1), Index(2));
+  result.faces_buffer().emplace_back(Index(1), Index(0), Index(3));
+  result.faces_buffer().emplace_back(Index(0), Index(3), Index(4));
+  result.faces_buffer().emplace_back(Index(1), Index(4), Index(3));
+
+  return result;
+}
+
+// =============================================================================
+// Non-Manifold Ring Mesh
+// =============================================================================
+
+/**
+ * @brief Mesh where edge (0,1) is manifold but edge {0,2} has 3 faces.
+ *
+ * Rotation around vertex 0 encounters a non-manifold edge,
+ * preventing collapse even though the collapsing edge itself is manifold.
+ *
+ * Faces: (0,1,2), (1,0,3), (0,2,4), (2,0,5)
+ */
+template <typename Index, typename Real>
+auto create_non_manifold_ring_mesh_3d()
+    -> tf::polygons_buffer<Index, Real, 3, 3> {
+  tf::polygons_buffer<Index, Real, 3, 3> result;
+
+  result.points_buffer().emplace_back(Real(0), Real(0), Real(0));
+  result.points_buffer().emplace_back(Real(2), Real(0), Real(0));
+  result.points_buffer().emplace_back(Real(1), Real(2), Real(0));
+  result.points_buffer().emplace_back(Real(1), Real(-2), Real(0));
+  result.points_buffer().emplace_back(Real(-1), Real(2), Real(0));
+  result.points_buffer().emplace_back(Real(-1), Real(1), Real(0));
+
+  result.faces_buffer().emplace_back(Index(0), Index(1), Index(2));
+  result.faces_buffer().emplace_back(Index(1), Index(0), Index(3));
+  result.faces_buffer().emplace_back(Index(0), Index(2), Index(4));
+  result.faces_buffer().emplace_back(Index(2), Index(0), Index(5));
+
+  return result;
+}
+
+// =============================================================================
+// Boundary Collapse Mesh
+// =============================================================================
+
+/**
+ * @brief Open mesh where edge (0,1) is a boundary edge.
+ *
+ *     2---3
+ *    / \ / \
+ *   0---1---4
+ *
+ * Faces: (0,1,2), (1,3,2), (1,4,3)
+ * Edge (0,1) is boundary (only face 0).
+ */
+template <typename Index, typename Real>
+auto create_boundary_collapse_mesh_3d()
+    -> tf::polygons_buffer<Index, Real, 3, 3> {
+  tf::polygons_buffer<Index, Real, 3, 3> result;
+
+  result.points_buffer().emplace_back(Real(0), Real(0), Real(0));
+  result.points_buffer().emplace_back(Real(1), Real(0), Real(0));
+  result.points_buffer().emplace_back(Real(0.5), Real(1), Real(0));
+  result.points_buffer().emplace_back(Real(1.5), Real(1), Real(0));
+  result.points_buffer().emplace_back(Real(2), Real(0), Real(0));
+
+  result.faces_buffer().emplace_back(Index(0), Index(1), Index(2));
+  result.faces_buffer().emplace_back(Index(1), Index(3), Index(2));
+  result.faces_buffer().emplace_back(Index(1), Index(4), Index(3));
+
+  return result;
+}
+
 } // namespace tf::test

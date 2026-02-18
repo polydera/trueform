@@ -42,6 +42,20 @@ target_link_libraries(topology-boundary_paths-igl-impl benchmark_igl_common)
 add_executable(topology-boundary_paths-igl boundary_paths-igl.cpp)
 target_link_libraries(topology-boundary_paths-igl topology-boundary_paths-igl-impl)
 
+# TrueForm half-edge construction
+add_library(topology-half_edges-tf-impl OBJECT half_edges-tf-impl.cpp)
+target_link_libraries(topology-half_edges-tf-impl benchmark_common)
+
+add_executable(topology-half_edges-tf half_edges-tf.cpp)
+target_link_libraries(topology-half_edges-tf topology-half_edges-tf-impl)
+
+# CGAL half-edge construction
+add_library(topology-half_edges-cgal-impl OBJECT half_edges-cgal-impl.cpp)
+target_link_libraries(topology-half_edges-cgal-impl benchmark_cgal_common)
+
+add_executable(topology-half_edges-cgal half_edges-cgal.cpp)
+target_link_libraries(topology-half_edges-cgal topology-half_edges-cgal-impl)
+
 # VTK benchmarks (optional)
 if(HAVE_VTK)
     # VTK connected components

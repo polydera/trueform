@@ -38,21 +38,25 @@ auto signed_volume(const tf::polygons<Policy> &polygons) {
 
   auto frame = tf::frame_of(polygons);
 
-  auto polygon_volumes = tf::make_mapped_range(polygons, [&frame](const auto &poly) {
-    T sum = 0;
-    auto p0 = tf::transformed(poly[0], frame);
-    auto size = poly.size();
-    for (decltype(size) i = 1; i + 1 < size; ++i) {
-      auto p1 = tf::transformed(poly[i], frame);
-      auto p2 = tf::transformed(poly[i + 1], frame);
-      sum += tf::dot(p0.as_vector_view(),
-                     tf::cross(p1.as_vector_view(), p2.as_vector_view()));
-    }
-    return sum;
-  });
+  // Use first vertex as reference for numerical stability.
+  // Volume is translation-invariant for closed meshes, so
+  // V = (1/6) * sum(dot(p0-r, cross(p1-r, p2-r))) for any r.
+  auto ref = tf::transformed(polygons.points()[0], frame);
+
+  auto polygon_volumes =
+      tf::make_mapped_range(polygons, [&frame, &ref](const auto &poly) {
+        T sum = 0;
+        auto v0 = tf::transformed(poly[0], frame) - ref;
+        auto size = poly.size();
+        for (decltype(size) i = 1; i + 1 < size; ++i) {
+          auto v1 = tf::transformed(poly[i], frame) - ref;
+          auto v2 = tf::transformed(poly[i + 1], frame) - ref;
+          sum += tf::dot(v0, tf::cross(v1, v2));
+        }
+        return sum;
+      });
 
   T result = tf::reduce(polygon_volumes, std::plus<>{}, T{0}, tf::checked);
-
   return result / T{6};
 }
 } // namespace tf

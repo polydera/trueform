@@ -320,6 +320,9 @@ add_subdirectory(geometry EXCLUDE_FROM_ALL)
 message(STATUS "  - io")
 add_subdirectory(io EXCLUDE_FROM_ALL)
 
+message(STATUS "  - remesh")
+add_subdirectory(remesh EXCLUDE_FROM_ALL)
+
 # ==============================================================================
 # Unified benchmark runner
 # ==============================================================================
@@ -342,6 +345,8 @@ set(ALL_BENCHMARK_IMPLS
     topology-boundary_paths-cgal-impl
     topology-boundary_paths-tf-impl
     topology-boundary_paths-igl-impl
+    topology-half_edges-tf-impl
+    topology-half_edges-cgal-impl
 
     # Intersect module
     intersect-mesh_mesh_curves-tf-impl
@@ -377,6 +382,12 @@ set(ALL_BENCHMARK_IMPLS
     # IO module
     io-read_stl-tf-impl
     io-read_stl-igl-impl
+
+    # Remesh module
+    remesh-decimation-tf-impl
+    remesh-decimation-cgal-impl
+    remesh-isotropic_remeshing-tf-impl
+    remesh-isotropic_remeshing-cgal-impl
 )
 
 if(HAVE_VTK)
@@ -427,6 +438,8 @@ set(BENCHMARK_TARGETS
     topology-boundary_paths-tf
     topology-connected_components-igl
     topology-boundary_paths-igl
+    topology-half_edges-tf
+    topology-half_edges-cgal
     intersect-mesh_mesh_curves-tf
     intersect-mesh_mesh_curves-cgal
     intersect-isocontours-tf
@@ -445,6 +458,10 @@ set(BENCHMARK_TARGETS
     geometry-icp_registration-igl
     io-read_stl-tf
     io-read_stl-igl
+    remesh-decimation-tf
+    remesh-decimation-cgal
+    remesh-isotropic_remeshing-tf
+    remesh-isotropic_remeshing-cgal
     run-benchmarks
 )
 

@@ -550,6 +550,203 @@ def test_area_2d_mesh(dtype, index_dtype):
 
 
 # ==============================================================================
+# Transformation Helpers
+# ==============================================================================
+
+def make_uniform_scale(s, dtype=np.float64):
+    """Create a 4x4 uniform scale matrix."""
+    m = np.eye(4, dtype=dtype)
+    m[0, 0] = s
+    m[1, 1] = s
+    m[2, 2] = s
+    return m
+
+
+def make_rotation_z(angle_deg, dtype=np.float64):
+    """Create a 4x4 rotation matrix around Z axis."""
+    a = np.radians(angle_deg)
+    c, s = np.cos(a), np.sin(a)
+    m = np.eye(4, dtype=dtype)
+    m[0, 0] = c
+    m[0, 1] = -s
+    m[1, 0] = s
+    m[1, 1] = c
+    return m
+
+
+def make_translation(tx, ty, tz, dtype=np.float64):
+    """Create a 4x4 translation matrix."""
+    m = np.eye(4, dtype=dtype)
+    m[0, 3] = tx
+    m[1, 3] = ty
+    m[2, 3] = tz
+    return m
+
+
+# ==============================================================================
+# Transformation-Aware Measurement Tests (on Spheres)
+# ==============================================================================
+
+SPHERE_RADIUS = 1.0
+SPHERE_STACKS = 40
+SPHERE_SEGMENTS = 40
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_area_sphere_with_uniform_scale(dtype):
+    """Area of a scaled sphere equals 4*pi*(s*r)^2."""
+    scale = 2.0
+    faces, points = tf.make_sphere_mesh(
+        SPHERE_RADIUS, stacks=SPHERE_STACKS, segments=SPHERE_SEGMENTS,
+        dtype=dtype)
+    mesh = tf.Mesh(faces, points)
+    mesh.transformation = make_uniform_scale(scale, dtype)
+
+    computed = tf.area(mesh)
+    expected = 4 * np.pi * (scale * SPHERE_RADIUS) ** 2
+    np.testing.assert_allclose(computed, expected, rtol=0.01)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_area_sphere_with_rotation(dtype):
+    """Area is unchanged by rotation."""
+    faces, points = tf.make_sphere_mesh(
+        SPHERE_RADIUS, stacks=SPHERE_STACKS, segments=SPHERE_SEGMENTS,
+        dtype=dtype)
+
+    area_no_transform = tf.area((faces, points))
+
+    mesh = tf.Mesh(faces, points)
+    mesh.transformation = make_rotation_z(45.0, dtype)
+
+    area_rotated = tf.area(mesh)
+    np.testing.assert_allclose(area_rotated, area_no_transform, rtol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_volume_sphere_with_uniform_scale(dtype):
+    """Volume of a scaled sphere equals (4/3)*pi*(s*r)^3."""
+    scale = 2.0
+    faces, points = tf.make_sphere_mesh(
+        SPHERE_RADIUS, stacks=SPHERE_STACKS, segments=SPHERE_SEGMENTS,
+        dtype=dtype)
+    mesh = tf.Mesh(faces, points)
+    mesh.transformation = make_uniform_scale(scale, dtype)
+
+    computed = tf.volume(mesh)
+    expected = (4 / 3) * np.pi * (scale * SPHERE_RADIUS) ** 3
+    np.testing.assert_allclose(computed, expected, rtol=0.01)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_volume_sphere_with_rotation(dtype):
+    """Volume is unchanged by rotation."""
+    faces, points = tf.make_sphere_mesh(
+        SPHERE_RADIUS, stacks=SPHERE_STACKS, segments=SPHERE_SEGMENTS,
+        dtype=dtype)
+
+    vol_no_transform = tf.volume((faces, points))
+
+    mesh = tf.Mesh(faces, points)
+    mesh.transformation = make_rotation_z(45.0, dtype)
+
+    vol_rotated = tf.volume(mesh)
+    np.testing.assert_allclose(vol_rotated, vol_no_transform, rtol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_signed_volume_sphere_with_uniform_scale(dtype):
+    """Signed volume scales by s^3."""
+    scale = 3.0
+    faces, points = tf.make_sphere_mesh(
+        SPHERE_RADIUS, stacks=SPHERE_STACKS, segments=SPHERE_SEGMENTS,
+        dtype=dtype)
+
+    sv_base = tf.signed_volume((faces, points))
+
+    mesh = tf.Mesh(faces, points)
+    mesh.transformation = make_uniform_scale(scale, dtype)
+
+    sv_scaled = tf.signed_volume(mesh)
+    np.testing.assert_allclose(sv_scaled, sv_base * scale ** 3, rtol=0.01)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_mean_edge_length_sphere_with_uniform_scale(dtype):
+    """Mean edge length scales linearly with uniform scale."""
+    scale = 2.0
+    faces, points = tf.make_sphere_mesh(
+        SPHERE_RADIUS, stacks=SPHERE_STACKS, segments=SPHERE_SEGMENTS,
+        dtype=dtype)
+
+    mel_base = tf.mean_edge_length((faces, points))
+
+    mesh = tf.Mesh(faces, points)
+    mesh.transformation = make_uniform_scale(scale, dtype)
+
+    mel_scaled = tf.mean_edge_length(mesh)
+    np.testing.assert_allclose(mel_scaled, mel_base * scale, rtol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_mean_edge_length_sphere_with_rotation(dtype):
+    """Mean edge length is unchanged by rotation."""
+    faces, points = tf.make_sphere_mesh(
+        SPHERE_RADIUS, stacks=SPHERE_STACKS, segments=SPHERE_SEGMENTS,
+        dtype=dtype)
+
+    mel_base = tf.mean_edge_length((faces, points))
+
+    mesh = tf.Mesh(faces, points)
+    mesh.transformation = make_rotation_z(45.0, dtype)
+
+    mel_rotated = tf.mean_edge_length(mesh)
+    np.testing.assert_allclose(mel_rotated, mel_base, rtol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_measurements_sphere_translation_invariant(dtype):
+    """Translation does not change area, volume, or mean edge length."""
+    faces, points = tf.make_sphere_mesh(
+        SPHERE_RADIUS, stacks=SPHERE_STACKS, segments=SPHERE_SEGMENTS,
+        dtype=dtype)
+
+    area_base = tf.area((faces, points))
+    vol_base = tf.volume((faces, points))
+    mel_base = tf.mean_edge_length((faces, points))
+
+    mesh = tf.Mesh(faces, points)
+    mesh.transformation = make_translation(100.0, -50.0, 25.0, dtype)
+
+    np.testing.assert_allclose(tf.area(mesh), area_base, rtol=1e-5)
+    np.testing.assert_allclose(tf.volume(mesh), vol_base, rtol=1e-5)
+    np.testing.assert_allclose(tf.mean_edge_length(mesh), mel_base, rtol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_measurements_sphere_composed_transform(dtype):
+    """Scale + rotation gives correct scaled measurements."""
+    scale = 1.5
+    faces, points = tf.make_sphere_mesh(
+        SPHERE_RADIUS, stacks=SPHERE_STACKS, segments=SPHERE_SEGMENTS,
+        dtype=dtype)
+
+    area_base = tf.area((faces, points))
+    vol_base = tf.volume((faces, points))
+    mel_base = tf.mean_edge_length((faces, points))
+
+    mesh = tf.Mesh(faces, points)
+    mesh.transformation = make_rotation_z(30.0, dtype) @ make_uniform_scale(scale, dtype)
+
+    np.testing.assert_allclose(
+        tf.area(mesh), area_base * scale ** 2, rtol=0.01)
+    np.testing.assert_allclose(
+        tf.volume(mesh), vol_base * scale ** 3, rtol=0.01)
+    np.testing.assert_allclose(
+        tf.mean_edge_length(mesh), mel_base * scale, rtol=1e-4)
+
+
+# ==============================================================================
 # Main
 # ==============================================================================
 

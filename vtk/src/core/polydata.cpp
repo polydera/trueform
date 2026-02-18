@@ -47,6 +47,7 @@ void polydata::ShallowCopy(vtkDataObject *src) {
     _fl_mtime = other->_fl_mtime;
     _vl_mtime = other->_vl_mtime;
     _edges_buffer_mtime = other->_edges_buffer_mtime;
+    _he_mtime = other->_he_mtime;
     _segment_tree_mtime = other->_segment_tree_mtime;
     _point_tree_mtime = other->_point_tree_mtime;
     _poly_tree = other->_poly_tree;
@@ -55,6 +56,7 @@ void polydata::ShallowCopy(vtkDataObject *src) {
     _fl = other->_fl;
     _vl = other->_vl;
     _edges_buffer = other->_edges_buffer;
+    _he = other->_he;
     _segment_tree = other->_segment_tree;
     _point_tree = other->_point_tree;
   } else {
@@ -65,6 +67,7 @@ void polydata::ShallowCopy(vtkDataObject *src) {
     _fl_mtime = 0;
     _vl_mtime = 0;
     _edges_buffer_mtime = 0;
+    _he_mtime = 0;
     _segment_tree_mtime = 0;
     _point_tree_mtime = 0;
   }
@@ -124,6 +127,11 @@ auto polydata::face_link() -> const tf::face_link<vtkIdType> & {
 auto polydata::vertex_link() -> const tf::vertex_link<vtkIdType> & {
   build_vertex_link();
   return *_vl;
+}
+
+auto polydata::half_edges() -> const tf::half_edges<vtkIdType> & {
+  build_half_edges();
+  return *_he;
 }
 
 auto polydata::edges_buffer() -> const tf::blocked_buffer<vtkIdType, 2> & {
@@ -188,6 +196,15 @@ auto polydata::modified_vertex_link() -> void {
 
 auto polydata::modified_edges_buffer() -> void {
   _edges_buffer_mtime = GetLines()->GetMTime();
+}
+
+auto polydata::set_half_edges(tf::half_edges<vtkIdType> &&he) -> void {
+  _he = std::make_shared<tf::half_edges<vtkIdType>>(std::move(he));
+  _he_mtime = GetPolys()->GetMTime();
+}
+
+auto polydata::modified_half_edges() -> void {
+  _he_mtime = GetPolys()->GetMTime();
 }
 
 auto polydata::reset_segment_tree() -> void { _segment_tree_mtime = 0; }
@@ -302,6 +319,16 @@ auto polydata::build_vertex_link() -> void {
       _vl = std::make_unique<tf::vertex_link<vtkIdType>>();
     _vl->build(tf::make_faces(polys()), face_membership());
     _vl_mtime = mtime;
+  }
+}
+
+auto polydata::build_half_edges() -> void {
+  auto mtime = GetPolys()->GetMTime();
+  if (!_he || _he_mtime < mtime) {
+    if (!_he)
+      _he = std::make_unique<tf::half_edges<vtkIdType>>();
+    _he->build(polygons() | tf::tag(face_membership()));
+    _he_mtime = mtime;
   }
 }
 

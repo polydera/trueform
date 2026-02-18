@@ -1,6 +1,7 @@
 add_executable(trueform_topology_tests
   test_boundary.cpp
   test_connectivity.cpp
+  test_half_edges.cpp
   test_neighborhoods.cpp
   test_mesh_analysis.cpp
   test_connected_components.cpp

@@ -264,6 +264,11 @@ auto positioning_get_aabb_diagonal() -> float {
   return pos ? pos->get_aabb_diagonal() : 1.0f;
 }
 
+auto positioning_compute_closest_points() -> void {
+  auto *pos = get_positioning_interactor();
+  if (pos) pos->compute_initial_closest_points();
+}
+
 auto positioning_set_instance_matrix(int instance_id, const std::array<double, 16> &matrix) -> void {
   auto *pos = get_positioning_interactor();
   if (pos && instance_id >= 0) {
@@ -350,6 +355,8 @@ EMSCRIPTEN_BINDINGS(boolean) {
                        &positioning_get_closest_points);
   emscripten::function("positioning_get_aabb_diagonal",
                        &positioning_get_aabb_diagonal);
+  emscripten::function("positioning_compute_closest_points",
+                       &positioning_compute_closest_points);
   emscripten::function("positioning_set_instance_matrix",
                        &positioning_set_instance_matrix);
 }

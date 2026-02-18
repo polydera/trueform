@@ -60,4 +60,29 @@ auto make_vtk_cells(tf::offset_block_buffer<vtkIdType, vtkIdType> &&faces)
   return cells;
 }
 
+auto make_vtk_cells(const tf::offset_block_buffer<int, int> &faces)
+    -> vtkSmartPointer<vtkCellArray> {
+  auto cells = vtkSmartPointer<vtkCellArray>::New();
+  auto n = faces.size();
+  if (n == 0)
+    return cells;
+
+  auto n_offsets = n + (n != 0);
+  auto offsets = cells->GetOffsetsArray();
+  offsets->SetNumberOfTuples(static_cast<vtkIdType>(n_offsets));
+  auto *offsets_ptr = static_cast<vtkIdType *>(offsets->GetVoidPointer(0));
+  tf::parallel_transform(faces.offsets_buffer(),
+                         tf::make_range(offsets_ptr, n_offsets),
+                         [](int v) { return static_cast<vtkIdType>(v); });
+
+  auto n_conn = faces.data_buffer().size();
+  auto conn = cells->GetConnectivityArray();
+  conn->SetNumberOfTuples(static_cast<vtkIdType>(n_conn));
+  auto *conn_ptr = static_cast<vtkIdType *>(conn->GetVoidPointer(0));
+  tf::parallel_transform(faces.data_buffer(), tf::make_range(conn_ptr, n_conn),
+                         [](int v) { return static_cast<vtkIdType>(v); });
+
+  return cells;
+}
+
 } // namespace tf::vtk

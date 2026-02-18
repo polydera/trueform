@@ -14,6 +14,7 @@
 #include <nanobind/ndarray.h>
 #include <trueform/core/area.hpp>
 #include <trueform/core/signed_volume.hpp>
+#include <trueform/core.hpp>
 #include <trueform/python/spatial/mesh.hpp>
 
 namespace nb = nanobind;
@@ -27,7 +28,12 @@ namespace impl {
 
 template <typename Index, std::size_t Ngon, typename RealT>
 auto signed_volume_impl(const mesh_wrapper<Index, RealT, Ngon, 3> &mesh) {
-  return tf::signed_volume(mesh.make_primitive_range());
+  auto polys = mesh.make_primitive_range();
+  auto run = [](auto &&form) { return tf::signed_volume(form); };
+  if (mesh.has_transformation())
+    return run(polys | tf::tag(mesh.transformation_view()));
+  else
+    return run(polys);
 }
 
 // ============================================================================
@@ -53,7 +59,12 @@ auto area_polygon(
 
 template <typename Index, std::size_t Ngon, std::size_t Dims, typename RealT>
 auto area_mesh(const mesh_wrapper<Index, RealT, Ngon, Dims> &mesh) {
-  return tf::area(mesh.make_primitive_range());
+  auto polys = mesh.make_primitive_range();
+  auto run = [](auto &&form) { return tf::area(form); };
+  if (mesh.has_transformation())
+    return run(polys | tf::tag(mesh.transformation_view()));
+  else
+    return run(polys);
 }
 
 } // namespace impl

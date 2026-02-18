@@ -49,12 +49,14 @@ set(TRUEFORM_VTK_SOURCES
   src/functions/aabb_from.cpp
   src/functions/area.cpp
   src/functions/chamfer_error.cpp
+  src/functions/collapsed_short_edges.cpp
   src/functions/cleaned_lines.cpp
   src/functions/cleaned_polygons.cpp
   src/functions/cleaned_points.cpp
   src/functions/compute_cell_normals.cpp
   src/functions/compute_point_normals.cpp
   src/functions/compute_principal_curvatures.cpp
+  src/functions/decimated.cpp
   src/functions/ensure_positive_orientation.cpp
   src/functions/fit_icp_alignment.cpp
   src/functions/fit_knn_alignment.cpp
@@ -68,6 +70,8 @@ set(TRUEFORM_VTK_SOURCES
   src/functions/make_boolean_mp.cpp
   src/functions/make_boolean_pm.cpp
   src/functions/make_boolean_mm.cpp
+  src/functions/isotropic_remeshed.cpp
+  src/functions/mean_edge_length.cpp
   src/functions/make_boundary_edges.cpp
   src/functions/make_boundary_paths.cpp
   src/functions/make_connected_components.cpp

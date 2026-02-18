@@ -14,10 +14,11 @@
 
 #include "./algorithm/reduce.hpp"
 #include "./coordinate_type.hpp"
-#include "./distance.hpp"
+#include "./frame_of.hpp"
 #include "./polygons.hpp"
-#include "./views/mapped_range.hpp"
 #include "./segments.hpp"
+#include "./transformed.hpp"
+#include "./views/mapped_range.hpp"
 
 namespace tf {
 /// @ingroup core_queries
@@ -27,15 +28,17 @@ namespace tf {
 /// @return The mean edge length.
 template <typename Policy>
 auto mean_edge_length(const tf::polygons<Policy> &polygons) {
+  auto frame = tf::frame_of(polygons);
   auto [total_edge_length, n_edges] = tf::reduce(
       tf::make_mapped_range(
           polygons,
-          [&](const auto &polygon) {
+          [&frame](const auto &polygon) {
             std::pair<tf::coordinate_type<Policy>, std::size_t> out{
                 0, polygon.size()};
-            std::size_t prev = out.second;
+            std::size_t prev = out.second - 1;
             for (std::size_t i = 0; i < out.second; prev = i++)
-              out.first += distance(polygon[prev], polygon[i]);
+              out.first +=
+                  tf::transformed(polygon[i] - polygon[prev], frame).length();
             return out;
           }),
       [](const auto &x, const auto &y) {
@@ -52,11 +55,14 @@ auto mean_edge_length(const tf::polygons<Policy> &polygons) {
 /// @return The mean edge length.
 template <typename Policy>
 auto mean_edge_length(const tf::segments<Policy> &segments) {
+  auto frame = tf::frame_of(segments);
   return tf::reduce(
-             tf::make_mapped_range(segments,
-                                   [&](const auto &segment) {
-                                     return distance(segment[0], segment[1]);
-                                   }),
+             tf::make_mapped_range(
+                 segments,
+                 [&frame](const auto &segment) {
+                   return tf::transformed(segment[1] - segment[0], frame)
+                       .length();
+                 }),
              std::plus<>{}, tf::coordinate_type<Policy>{}, tf::checked) /
          segments.size();
 }

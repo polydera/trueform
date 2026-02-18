@@ -14,11 +14,13 @@
 #include "./algorithm/circular_increment.hpp"
 #include "./algorithm/reduce.hpp"
 #include "./cross.hpp"
+#include "./frame_of.hpp"
 #include "./parallelogram_area.hpp"
 #include "./polygon.hpp"
 #include "./polygons.hpp"
 #include "./sqrt.hpp"
 #include "./static_size.hpp"
+#include "./transformed.hpp"
 #include "./vector.hpp"
 #include "./views/mapped_range.hpp"
 
@@ -101,6 +103,74 @@ auto area2(const tf::polygon<N, Policy> &_poly) {
 }
 
 /// @ingroup core_properties
+/// @brief Compute the signed area of a 2D polygon under a transformation.
+/// @overload
+template <typename Policy, typename U>
+auto signed_area(const tf::polygon<2, Policy> &_poly,
+                 const frame_like<2, U> &frame) {
+  if constexpr (tf::static_size_v<Policy> == 3) {
+    auto e0 = tf::transformed(_poly[1] - _poly[0], frame);
+    auto e1 = tf::transformed(_poly[2] - _poly[0], frame);
+    return (e0[0] * e1[1] - e1[0] * e0[1]) / 2;
+  } else {
+    tf::coordinate_type<Policy> a = 0;
+    auto size = _poly.size();
+    for (decltype(size) i = 1; i + 1 < size; ++i) {
+      auto ei = tf::transformed(_poly[i] - _poly[0], frame);
+      auto ei1 = tf::transformed(_poly[i + 1] - _poly[0], frame);
+      a += ei[0] * ei1[1] - ei[1] * ei1[0];
+    }
+    return a / 2;
+  }
+}
+
+/// @ingroup core_properties
+/// @brief Compute the squared area of an N-dimensional polygon under a
+/// transformation.
+/// @overload
+template <std::size_t N, typename Policy, typename U>
+auto area2(const tf::polygon<N, Policy> &_poly,
+           const frame_like<N, U> &frame) {
+  if constexpr (N == 2) {
+    auto sa = tf::signed_area(_poly, frame);
+    return sa * sa;
+  } else {
+    if constexpr (tf::static_size_v<Policy> == 3) {
+      auto e0 = tf::transformed(_poly[1] - _poly[0], frame);
+      auto e1 = tf::transformed(_poly[2] - _poly[0], frame);
+      if constexpr (N == 3) {
+        return tf::cross(e0, e1).length2() / 4;
+      } else {
+        return tf::parallelogram_area2(e0, e1) / 4;
+      }
+    } else {
+      using T = tf::coordinate_type<Policy>;
+      auto size = _poly.size();
+      if constexpr (N == 3) {
+        T nx = 0, ny = 0, nz = 0;
+        for (decltype(size) i = 1; i + 1 < size; ++i) {
+          auto ei = tf::transformed(_poly[i] - _poly[0], frame);
+          auto ei1 = tf::transformed(_poly[i + 1] - _poly[0], frame);
+          auto c = tf::cross(ei, ei1);
+          nx += c[0];
+          ny += c[1];
+          nz += c[2];
+        }
+        return (nx * nx + ny * ny + nz * nz) / 4;
+      } else {
+        T total = 0;
+        for (decltype(size) i = 1; i + 1 < size; ++i) {
+          auto ei = tf::transformed(_poly[i] - _poly[0], frame);
+          auto ei1 = tf::transformed(_poly[i + 1] - _poly[0], frame);
+          total += tf::parallelogram_area2(ei, ei1);
+        }
+        return total / 4;
+      }
+    }
+  }
+}
+
+/// @ingroup core_properties
 /// @brief Compute the area of an N-dimensional polygon.
 ///
 /// For 2D, returns absolute value of signed area. For higher dimensions,
@@ -115,17 +185,35 @@ auto area(const tf::polygon<N, Policy> &_poly) {
 }
 
 /// @ingroup core_properties
+/// @brief Compute the area of an N-dimensional polygon under a transformation.
+/// @overload
+template <std::size_t N, typename Policy, typename U>
+auto area(const tf::polygon<N, Policy> &_poly,
+          const frame_like<N, U> &frame) {
+  if constexpr (N == 2) {
+    return std::abs(tf::signed_area(_poly, frame));
+  } else {
+    return tf::sqrt(tf::area2(_poly, frame));
+  }
+}
+
+/// @ingroup core_properties
 /// @brief Compute the total area of a range of polygons.
+///
+/// Respects tagged transformations via frame_of.
 template <typename Policy> auto area(const tf::polygons<Policy> &polys) {
-  return tf::reduce(tf::make_mapped_range(
-                        polys, [](const auto &poly) { return tf::area(poly); }),
-                    std::plus<>{}, tf::coordinate_type<Policy>(0), tf::checked);
+  auto frame = tf::frame_of(polys);
+  return tf::reduce(
+      tf::make_mapped_range(
+          polys,
+          [&frame](const auto &poly) { return tf::area(poly, frame); }),
+      std::plus<>{}, tf::coordinate_type<Policy>(0), tf::checked);
 }
 
 /// @ingroup core_properties
 /// @brief Compute the squared total area of a range of polygons.
 template <typename Policy> auto area2(const tf::polygons<Policy> &polys) {
-  auto area = tf::area(polys);
-  return area * area;
+  auto a = tf::area(polys);
+  return a * a;
 }
 } // namespace tf
