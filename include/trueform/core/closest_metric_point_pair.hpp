@@ -11,6 +11,7 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "./aabb_like.hpp"
 #include "./algorithm/min.hpp"
 #include "./closest_point_on_triangle.hpp"
 #include "./closest_point_parametric.hpp"
@@ -610,4 +611,227 @@ auto closest_metric_point_pair(const tf::polygon<Dims, Policy0> &poly_in0,
     }
   }
 }
+// ============================================================================
+// AABB overloads
+// ============================================================================
+
+/// @ingroup core_queries
+/// @brief Computes the closest @ref tf::metric_point_pair between the objects.
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point_pair(const tf::aabb_like<Dims, T0> &aabb,
+                               const tf::point_like<Dims, T1> &pt) {
+  using T = tf::coordinate_type<T0, T1>;
+  tf::point<T, Dims> clamped;
+  T dist2 = T{};
+  for (std::size_t i = 0; i < Dims; ++i) {
+    auto v = pt[i];
+    auto lo = aabb.min[i];
+    auto hi = aabb.max[i];
+    auto c = std::min(std::max(v, lo), hi);
+    clamped[i] = c;
+    auto d = c - v;
+    dist2 += d * d;
+  }
+  return tf::make_metric_point_pair(dist2, clamped, pt);
+}
+
+/// @ingroup core_queries
+/// @brief Computes the closest @ref tf::metric_point_pair between the objects.
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point_pair(const tf::point_like<Dims, T0> &pt,
+                               const tf::aabb_like<Dims, T1> &aabb) {
+  auto res = closest_metric_point_pair(aabb, pt);
+  std::swap(res.first, res.second);
+  return res;
+}
+
+/// @ingroup core_queries
+/// @brief Computes the closest @ref tf::metric_point_pair between the objects.
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point_pair(const tf::aabb_like<Dims, T0> &aabb,
+                               const tf::line_like<Dims, T1> &line) {
+  auto t = tf::closest_point_parametric(line, aabb);
+  auto pt = line.origin + t * line.direction;
+  return tf::closest_metric_point_pair(aabb, pt);
+}
+
+/// @ingroup core_queries
+/// @brief Computes the closest @ref tf::metric_point_pair between the objects.
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point_pair(const tf::line_like<Dims, T0> &line,
+                               const tf::aabb_like<Dims, T1> &aabb) {
+  auto res = closest_metric_point_pair(aabb, line);
+  std::swap(res.first, res.second);
+  return res;
+}
+
+/// @ingroup core_queries
+/// @brief Computes the closest @ref tf::metric_point_pair between the objects.
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point_pair(const tf::aabb_like<Dims, T0> &aabb,
+                               const tf::ray_like<Dims, T1> &ray) {
+  auto t = tf::closest_point_parametric(ray, aabb);
+  auto pt = ray.origin + t * ray.direction;
+  return tf::closest_metric_point_pair(aabb, pt);
+}
+
+/// @ingroup core_queries
+/// @brief Computes the closest @ref tf::metric_point_pair between the objects.
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point_pair(const tf::ray_like<Dims, T0> &ray,
+                               const tf::aabb_like<Dims, T1> &aabb) {
+  auto res = closest_metric_point_pair(aabb, ray);
+  std::swap(res.first, res.second);
+  return res;
+}
+
+/// @ingroup core_queries
+/// @brief Computes the closest @ref tf::metric_point_pair between the objects.
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point_pair(const tf::aabb_like<Dims, T0> &aabb,
+                               const tf::segment<Dims, T1> &seg) {
+  auto t = tf::closest_point_parametric(seg, aabb);
+  auto l = tf::make_line_between_points(seg[0], seg[1]);
+  auto pt = l.origin + t * l.direction;
+  return tf::closest_metric_point_pair(aabb, pt);
+}
+
+/// @ingroup core_queries
+/// @brief Computes the closest @ref tf::metric_point_pair between the objects.
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point_pair(const tf::segment<Dims, T0> &seg,
+                               const tf::aabb_like<Dims, T1> &aabb) {
+  auto res = closest_metric_point_pair(aabb, seg);
+  std::swap(res.first, res.second);
+  return res;
+}
+
+/// @ingroup core_queries
+/// @brief Computes the closest @ref tf::metric_point_pair between the objects.
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point_pair(const tf::aabb_like<Dims, T0> &aabb,
+                               const tf::plane_like<Dims, T1> &plane) {
+  using T = tf::coordinate_type<T0, T1>;
+  // Determine which side of the plane the AABB center lies on,
+  // then pick the vertex closest to the plane from that side.
+  auto d_center = tf::dot(plane.normal, aabb.center()) + plane.d;
+  tf::point<T, Dims> support;
+  for (std::size_t i = 0; i < Dims; ++i) {
+    // d_center > 0: minimize dot → pick min when normal >= 0, max when < 0
+    // d_center < 0: maximize dot → pick max when normal >= 0, min when < 0
+    bool pick_min = (plane.normal[i] >= T(0)) == (d_center > T(0));
+    support[i] = pick_min ? aabb.min[i] : aabb.max[i];
+  }
+  auto d = tf::dot(plane.normal, support) + plane.d;
+  // If the support vertex is on the opposite side from the center (or on the
+  // plane), the plane intersects the AABB.
+  if (d * d_center <= T(0)) {
+    // Project the AABB center onto the plane to get a contact point.
+    auto center = aabb.center();
+    auto pt = center - d_center * plane.normal;
+    // Clamp back onto the AABB to ensure the point lies inside both.
+    for (std::size_t i = 0; i < Dims; ++i)
+      pt[i] = std::min(std::max(pt[i], T(aabb.min[i])), T(aabb.max[i]));
+    return tf::make_metric_point_pair(T(0), pt, pt);
+  }
+  auto pt_on_plane = support - d * plane.normal;
+  return tf::make_metric_point_pair(d * d, support, pt_on_plane);
+}
+
+/// @ingroup core_queries
+/// @brief Computes the closest @ref tf::metric_point_pair between the objects.
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point_pair(const tf::plane_like<Dims, T0> &plane,
+                               const tf::aabb_like<Dims, T1> &aabb) {
+  auto res = closest_metric_point_pair(aabb, plane);
+  std::swap(res.first, res.second);
+  return res;
+}
+
+/// @ingroup core_queries
+/// @brief Computes the closest @ref tf::metric_point_pair between the objects.
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point_pair(const tf::aabb_like<Dims, T0> &a,
+                               const tf::aabb_like<Dims, T1> &b) {
+  using T = tf::coordinate_type<T0, T1>;
+  tf::point<T, Dims> pt_a, pt_b;
+  T dist2 = T{};
+  for (std::size_t i = 0; i < Dims; ++i) {
+    auto a_lo = T(a.min[i]), a_hi = T(a.max[i]);
+    auto b_lo = T(b.min[i]), b_hi = T(b.max[i]);
+    if (a_hi < b_lo) {
+      pt_a[i] = a_hi;
+      pt_b[i] = b_lo;
+      auto gap = b_lo - a_hi;
+      dist2 += gap * gap;
+    } else if (b_hi < a_lo) {
+      pt_a[i] = a_lo;
+      pt_b[i] = b_hi;
+      auto gap = a_lo - b_hi;
+      dist2 += gap * gap;
+    } else {
+      auto overlap = std::max(a_lo, b_lo);
+      pt_a[i] = overlap;
+      pt_b[i] = overlap;
+    }
+  }
+  return tf::make_metric_point_pair(dist2, pt_a, pt_b);
+}
+
+/// @ingroup core_queries
+/// @brief Computes the closest @ref tf::metric_point_pair between the objects.
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point_pair(const tf::aabb_like<Dims, T0> &aabb,
+                               const tf::polygon<Dims, T1> &poly_in) {
+  using T = tf::coordinate_type<T0, T1>;
+  const auto &poly = tf::tag_plane(poly_in);
+  // Face case: support vertex projected onto polygon plane
+  auto d_center =
+      tf::dot(poly.plane().normal, aabb.center()) + poly.plane().d;
+  tf::point<T, Dims> support;
+  for (std::size_t i = 0; i < Dims; ++i) {
+    bool pick_min = (poly.plane().normal[i] >= T(0)) == (d_center > T(0));
+    support[i] = pick_min ? aabb.min[i] : aabb.max[i];
+  }
+  auto d = tf::dot(poly.plane().normal, support) + poly.plane().d;
+  auto best = tf::make_metric_point_pair(std::numeric_limits<T>::max(),
+                                         support, support);
+  if (d * d_center <= T(0)) {
+    // Polygon plane intersects the AABB. Project center onto plane,
+    // clamp to AABB, and check if that point is inside the polygon face.
+    auto center = aabb.center();
+    auto pt = center - d_center * poly.plane().normal;
+    for (std::size_t i = 0; i < Dims; ++i)
+      pt[i] = std::min(std::max(pt[i], T(aabb.min[i])), T(aabb.max[i]));
+    if (tf::contains_coplanar_point(poly, pt))
+      return tf::make_metric_point_pair(T(0), pt, pt);
+  } else {
+    auto proj = support - d * poly.plane().normal;
+    if (tf::contains_coplanar_point(poly, proj))
+      best = tf::make_metric_point_pair(d * d, support, proj);
+  }
+  // Edge cases
+  std::size_t size = poly.size();
+  std::size_t prev = size - 1;
+  for (std::size_t i = 0; i < size; prev = i++) {
+    auto seg = tf::make_segment_between_points(poly[prev], poly[i]);
+    auto tmp = tf::closest_metric_point_pair(aabb, seg);
+    if (tmp.metric < best.metric)
+      best = tmp;
+    if (best.metric < tf::epsilon2<T>)
+      return best;
+  }
+  return best;
+}
+
+/// @ingroup core_queries
+/// @brief Computes the closest @ref tf::metric_point_pair between the objects.
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point_pair(const tf::polygon<Dims, T0> &poly,
+                               const tf::aabb_like<Dims, T1> &aabb) {
+  auto res = closest_metric_point_pair(aabb, poly);
+  std::swap(res.first, res.second);
+  return res;
+}
+
 } // namespace tf

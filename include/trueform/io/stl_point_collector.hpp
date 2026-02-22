@@ -12,7 +12,9 @@
 */
 #pragma once
 #include "../core/buffer.hpp"
+#include "../core/range.hpp"
 #include <cstdint>
+#include <cstring>
 #include <fstream>
 #include <string>
 
@@ -32,6 +34,22 @@ public:
 
     return is_bin ? read_binary_into_(f, out_xyz)
                   : read_ascii_into_(f, out_xyz);
+  }
+
+  // Read from memory buffer and append x,y,z floats into tf::buffer<T>.
+  // For ASCII format, data must be null-terminated past end (for strtof).
+  template <class T>
+  auto read(tf::range<const char *, tf::dynamic_size> data,
+            tf::buffer<T> &out_xyz) -> bool {
+    if (data.empty())
+      return false;
+
+    bool is_bin{};
+    if (!detect_binary_mem_(data, is_bin))
+      return false;
+
+    return is_bin ? read_binary_mem_(data, out_xyz)
+                  : read_ascii_mem_(data, out_xyz);
   }
 
 private:
@@ -172,6 +190,104 @@ private:
       *dst++ = static_cast<T>(x);
       *dst++ = static_cast<T>(y);
       *dst++ = static_cast<T>(z);
+    }
+    return true;
+  }
+
+  // ---------- Memory: Format detection ----------
+  static auto
+  detect_binary_mem_(tf::range<const char *, tf::dynamic_size> data,
+                     bool &is_bin) -> bool {
+    const auto sz = data.size();
+    if (sz < 84) {
+      is_bin = false;
+      return true;
+    }
+    std::uint32_t tri_count{};
+    std::memcpy(&tri_count, data.begin() + 80, 4);
+    const std::uint64_t expected = 84ull + 50ull * tri_count;
+    is_bin = (expected == sz);
+    return true;
+  }
+
+  // ---------- Memory: Reading: Binary ----------
+  template <class T>
+  auto read_binary_mem_(tf::range<const char *, tf::dynamic_size> data,
+                        tf::buffer<T> &out) -> bool {
+    std::uint32_t tri_count{};
+    std::memcpy(&tri_count, data.begin() + 80, 4);
+
+    const std::uint64_t total_floats =
+        static_cast<std::uint64_t>(tri_count) * 9ull;
+    reserve_more_(out, total_floats);
+    const std::size_t base = out.size();
+    out.allocate(base + static_cast<std::size_t>(total_floats));
+
+    const char *tri = data.begin() + 84;
+    T *dst = &out[base];
+    for (std::uint32_t i = 0; i < tri_count; ++i) {
+      const float *fl = reinterpret_cast<const float *>(tri);
+      dst[0] = static_cast<T>(fl[3]);
+      dst[1] = static_cast<T>(fl[4]);
+      dst[2] = static_cast<T>(fl[5]);
+      dst[3] = static_cast<T>(fl[6]);
+      dst[4] = static_cast<T>(fl[7]);
+      dst[5] = static_cast<T>(fl[8]);
+      dst[6] = static_cast<T>(fl[9]);
+      dst[7] = static_cast<T>(fl[10]);
+      dst[8] = static_cast<T>(fl[11]);
+      tri += 50;
+      dst += 9;
+    }
+    return true;
+  }
+
+  // ---------- Memory: Reading: ASCII ----------
+  template <class T>
+  auto read_ascii_mem_(tf::range<const char *, tf::dynamic_size> data,
+                       tf::buffer<T> &out) -> bool {
+    const char *begin = data.begin();
+    const char *end = data.end();
+
+    // First pass: count vertex lines
+    std::uint64_t vcount = 0;
+    const char *p = begin;
+    while (p < end) {
+      const char *nl =
+          static_cast<const char *>(std::memchr(p, '\n', end - p));
+      if (!nl)
+        nl = end;
+      const char *b = skip_ws_(p);
+      if (b + 7 <= nl && starts_with_vertex_(b))
+        ++vcount;
+      p = nl + 1;
+    }
+
+    // Allocate output
+    const std::uint64_t floats_to_add = vcount * 3ull;
+    reserve_more_(out, floats_to_add);
+    const std::size_t base = out.size();
+    out.allocate(base + static_cast<std::size_t>(floats_to_add));
+    T *dst = &out[base];
+
+    // Second pass: parse
+    p = begin;
+    while (p < end) {
+      const char *nl =
+          static_cast<const char *>(std::memchr(p, '\n', end - p));
+      if (!nl)
+        nl = end;
+      const char *b = skip_ws_(p);
+      if (b + 7 <= nl && starts_with_vertex_(b)) {
+        b += 6;
+        float x{}, y{}, z{};
+        if (!parse_three_floats_(b, x, y, z))
+          return false;
+        *dst++ = static_cast<T>(x);
+        *dst++ = static_cast<T>(y);
+        *dst++ = static_cast<T>(z);
+      }
+      p = nl + 1;
     }
     return true;
   }

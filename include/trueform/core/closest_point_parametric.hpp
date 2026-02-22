@@ -11,6 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
+#include "./aabb_like.hpp"
 #include "./dot.hpp"
 #include "./line.hpp"
 #include "./line_line_check.hpp"
@@ -19,6 +20,7 @@
 #include "./ray_like.hpp"
 #include "./segment.hpp"
 #include <algorithm>
+#include <limits>
 
 namespace tf {
 
@@ -691,6 +693,184 @@ auto closest_point_parametric(const tf::segment<Dims, Policy0> &segment0,
   // - For colinear-overlap, you'll land on one overlap endpoint (d=0, valid).
 
   return {best_t0, best_t1};
+}
+
+// ============================================================================
+// AABB × parametric primitives
+// ============================================================================
+//
+// D(t) = Σ_i max(min_i − p_i(t), 0, p_i(t) − max_i)² is convex
+// piecewise-quadratic in t, with breakpoints where p_i(t) crosses a
+// slab boundary.  We check every breakpoint plus the analytic minimum
+// within each interval.
+//
+// bounded_lo / bounded_hi: true when the domain has a finite bound
+// (ray: bounded_lo, segment: both).
+
+namespace core {
+
+template <std::size_t Dims, typename AabbPolicy, typename OriginPolicy,
+          typename DirPolicy>
+auto closest_point_parametric_aabb(
+    const tf::aabb_like<Dims, AabbPolicy> &aabb,
+    const tf::point_like<Dims, OriginPolicy> &origin,
+    const tf::vector_like<Dims, DirPolicy> &direction,
+    tf::coordinate_type<AabbPolicy, OriginPolicy, DirPolicy> t_lo,
+    tf::coordinate_type<AabbPolicy, OriginPolicy, DirPolicy> t_hi,
+    bool bounded_lo, bool bounded_hi) {
+
+  using T = tf::coordinate_type<AabbPolicy, OriginPolicy, DirPolicy>;
+
+  // Evaluate D(t)
+  auto eval = [&](T t) -> T {
+    T d2 = T{};
+    for (std::size_t i = 0; i < Dims; ++i) {
+      auto p = T(origin[i]) + t * T(direction[i]);
+      auto c = std::min(std::max(p, T(aabb.min[i])), T(aabb.max[i]));
+      auto diff = p - c;
+      d2 += diff * diff;
+    }
+    return d2;
+  };
+
+  // Analytic minimum of the quadratic piece active at the probe point.
+  // D(t) = Σ_active (a_i + b_i·t)²  →  t* = −Σ(a_i·b_i) / Σ(b_i²)
+  auto quad_opt = [&](T probe) -> T {
+    T sum_bb = T{}, sum_ab = T{};
+    for (std::size_t i = 0; i < Dims; ++i) {
+      auto p = T(origin[i]) + probe * T(direction[i]);
+      auto lo = T(aabb.min[i]);
+      auto hi = T(aabb.max[i]);
+      if (p < lo) {
+        auto a = lo - T(origin[i]);
+        auto b = -T(direction[i]);
+        sum_bb += b * b;
+        sum_ab += a * b;
+      } else if (p > hi) {
+        auto a = T(origin[i]) - hi;
+        auto b = T(direction[i]);
+        sum_bb += b * b;
+        sum_ab += a * b;
+      }
+    }
+    if (sum_bb > T(0))
+      return -sum_ab / sum_bb;
+    return probe;
+  };
+
+  // Collect breakpoints within domain
+  T bp[Dims * 2];
+  std::size_t n = 0;
+  for (std::size_t i = 0; i < Dims; ++i) {
+    auto d = T(direction[i]);
+    if (d * d > T(0)) {
+      auto inv = T(1) / d;
+      auto t0 = (T(aabb.min[i]) - T(origin[i])) * inv;
+      auto t1 = (T(aabb.max[i]) - T(origin[i])) * inv;
+      if ((!bounded_lo || t0 >= t_lo) && (!bounded_hi || t0 <= t_hi))
+        bp[n++] = t0;
+      if ((!bounded_lo || t1 >= t_lo) && (!bounded_hi || t1 <= t_hi))
+        bp[n++] = t1;
+    }
+  }
+  std::sort(bp, bp + n);
+
+  T best_t = T{};
+  T best_d2 = std::numeric_limits<T>::max();
+  auto consider = [&](T t) {
+    auto d2 = eval(t);
+    if (d2 < best_d2) {
+      best_d2 = d2;
+      best_t = t;
+    }
+  };
+
+  // Domain boundaries
+  if (bounded_lo)
+    consider(t_lo);
+  if (bounded_hi)
+    consider(t_hi);
+
+  // All breakpoints
+  for (std::size_t i = 0; i < n; ++i)
+    consider(bp[i]);
+
+  // Interior interval minima
+  for (std::size_t i = 0; i + 1 < n; ++i) {
+    if (bp[i + 1] > bp[i]) {
+      auto t_opt = quad_opt((bp[i] + bp[i + 1]) * T(0.5));
+      if (t_opt > bp[i] && t_opt < bp[i + 1])
+        consider(t_opt);
+    }
+  }
+
+  // Outer interval before first breakpoint
+  {
+    auto probe = n > 0 ? bp[0] - T(1) : T(0);
+    if (bounded_lo && n > 0)
+      probe = (t_lo + bp[0]) * T(0.5);
+    auto t_opt = quad_opt(probe);
+    auto lo_bound =
+        bounded_lo ? t_lo : -std::numeric_limits<T>::max();
+    auto hi_bound =
+        n > 0 ? bp[0] : (bounded_hi ? t_hi : std::numeric_limits<T>::max());
+    if (t_opt >= lo_bound && t_opt <= hi_bound)
+      consider(t_opt);
+  }
+
+  // Outer interval after last breakpoint
+  {
+    auto probe = n > 0 ? bp[n - 1] + T(1) : T(0);
+    if (bounded_hi && n > 0)
+      probe = (bp[n - 1] + t_hi) * T(0.5);
+    auto t_opt = quad_opt(probe);
+    auto lo_bound =
+        n > 0 ? bp[n - 1]
+               : (bounded_lo ? t_lo : -std::numeric_limits<T>::max());
+    auto hi_bound =
+        bounded_hi ? t_hi : std::numeric_limits<T>::max();
+    if (t_opt >= lo_bound && t_opt <= hi_bound)
+      consider(t_opt);
+  }
+
+  // Degenerate: no breakpoints and unbounded → direction ≈ 0
+  if (n == 0 && !bounded_lo && !bounded_hi)
+    consider(T(0));
+
+  return best_t;
+}
+
+} // namespace core
+
+/// @ingroup core_queries
+/// @brief Computes the parametric location on a line closest to an AABB.
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_point_parametric(const tf::line_like<Dims, T0> &line,
+                              const tf::aabb_like<Dims, T1> &aabb) {
+  using T = tf::coordinate_type<T0, T1>;
+  return core::closest_point_parametric_aabb(aabb, line.origin, line.direction,
+                                             T{}, T{}, false, false);
+}
+
+/// @ingroup core_queries
+/// @brief Computes the parametric location on a ray closest to an AABB.
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_point_parametric(const tf::ray_like<Dims, T0> &ray,
+                              const tf::aabb_like<Dims, T1> &aabb) {
+  using T = tf::coordinate_type<T0, T1>;
+  return core::closest_point_parametric_aabb(aabb, ray.origin, ray.direction,
+                                             T(0), T{}, true, false);
+}
+
+/// @ingroup core_queries
+/// @brief Computes the parametric location on a segment closest to an AABB.
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_point_parametric(const tf::segment<Dims, T0> &seg,
+                              const tf::aabb_like<Dims, T1> &aabb) {
+  using T = tf::coordinate_type<T0, T1>;
+  auto dir = seg[1] - seg[0];
+  return core::closest_point_parametric_aabb(aabb, seg[0], dir, T(0), T(1),
+                                             true, true);
 }
 
 } // namespace tf

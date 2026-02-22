@@ -481,6 +481,73 @@ auto neighbor_search(const tf::form<2, Policy0> &form,
 }
 
 // ============================================================================
+// AABB overloads
+// ============================================================================
+
+/// @ingroup spatial_queries
+/// @brief Find the nearest neighbor to an AABB.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto neighbor_search(const tf::form<Dims, Policy0> &form,
+                     const tf::aabb_like<Dims, Policy1> &obj) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
+  return tf::spatial::nearness_search(
+      form,
+      [&](const auto &bv) {
+        return tf::spatial::traversal_metric(bv, obj);
+      },
+      [&](const auto &primitive) {
+        return tf::closest_metric_point(primitive, obj);
+      });
+}
+
+/// @overload
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto neighbor_search(const tf::form<Dims, Policy0> &form,
+                     const tf::aabb_like<Dims, Policy1> &obj,
+                     tf::coordinate_type<Policy0, Policy1> radius) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
+  return tf::spatial::nearness_search(
+      form,
+      [&](const auto &bv) {
+        return tf::spatial::traversal_metric(bv, obj);
+      },
+      [&](const auto &primitive) {
+        return tf::closest_metric_point(primitive, obj);
+      },
+      radius);
+}
+
+/// @overload
+template <std::size_t Dims, typename Policy0, typename Policy1,
+          typename RandomIt>
+auto neighbor_search(const tf::form<Dims, Policy0> &form,
+                     const tf::aabb_like<Dims, Policy1> &obj,
+                     tf::nearest_neighbors<RandomIt> &knn) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
+  return tf::spatial::nearness_search(
+      form,
+      [&](const auto &bv) {
+        return tf::spatial::traversal_metric(bv, obj);
+      },
+      [&](const auto &primitive) {
+        return tf::closest_metric_point(primitive, obj);
+      },
+      knn);
+}
+
+/// @overload
+template <std::size_t Dims, typename Policy0, typename Policy1,
+          typename RandomIt>
+auto neighbor_search(const tf::form<Dims, Policy0> &form,
+                     const tf::aabb_like<Dims, Policy1> &obj,
+                     tf::nearest_neighbors<RandomIt> &&knn) {
+  return neighbor_search(form, obj, knn);
+}
+
+// ============================================================================
 // Form-to-form overloads (dual tree)
 // ============================================================================
 

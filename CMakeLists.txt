@@ -40,6 +40,7 @@ include(CMakeDependentOption)
 
 # 1. Build features
 option(TF_BUILD_PYTHON            "Build Python bindings." OFF)
+option(TF_BUILD_TYPESCRIPT        "Build TypeScript/WASM bindings." OFF)
 option(TF_BUILD_BENCHMARKS        "Build benchmarks." OFF)
 option(TF_BUILD_EXAMPLES          "Build examples." OFF)
 option(TF_BUILD_VTK_INTEGRATION   "Build trueform VTK integration." OFF)
@@ -56,6 +57,21 @@ cmake_dependent_option(
         "TF_BUILD_VTK_INTEGRATION"
         OFF
 )
+
+# TypeScript/WASM builds are cross-compiled with Emscripten.
+# Force incompatible options OFF and use static TBB via CPM.
+if(TF_BUILD_TYPESCRIPT)
+  if(NOT EMSCRIPTEN)
+    message(FATAL_ERROR "TF_BUILD_TYPESCRIPT requires Emscripten. Configure with: emcmake cmake ...")
+  endif()
+  set(TF_BUILD_PYTHON          OFF CACHE BOOL "" FORCE)
+  set(TF_BUILD_BENCHMARKS      OFF CACHE BOOL "" FORCE)
+  set(TF_BUILD_EXAMPLES        OFF CACHE BOOL "" FORCE)
+  set(TF_BUILD_VTK_INTEGRATION OFF CACHE BOOL "" FORCE)
+  set(TF_BUILD_TESTS           OFF CACHE BOOL "" FORCE)
+  set(TF_ENABLE_ASAN           OFF CACHE BOOL "" FORCE)
+  set(TF_USE_SYSTEM_LIBS       OFF CACHE BOOL "" FORCE)
+endif()
 
 
 # Dependency Versions (Cache variables allow user overrides)
@@ -116,6 +132,10 @@ endif()
 
 if(TF_BUILD_PYTHON)
   add_subdirectory(python)
+endif()
+
+if(TF_BUILD_TYPESCRIPT)
+  add_subdirectory(typescript)
 endif()
 
 if(TF_BUILD_BENCHMARKS)

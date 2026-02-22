@@ -388,4 +388,125 @@ auto closest_metric_point(const tf::plane_like<Dims, Policy0> &plane,
   return tf::make_metric_point(res.metric, res.first);
 }
 
+// ============================================================================
+// AABB overloads
+// ============================================================================
+
+/// @ingroup core_queries
+/// @overload
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point(const tf::aabb_like<Dims, T0> &aabb,
+                          const tf::point_like<Dims, T1> &pt) {
+  auto res = closest_metric_point_pair(aabb, pt);
+  return tf::make_metric_point(res.metric, res.first);
+}
+
+/// @ingroup core_queries
+/// @overload
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point(const tf::point_like<Dims, T0> &pt,
+                          const tf::aabb_like<Dims, T1> &aabb) {
+  auto res = closest_metric_point_pair(pt, aabb);
+  return tf::make_metric_point(res.metric, res.first);
+}
+
+/// @ingroup core_queries
+/// @overload
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point(const tf::aabb_like<Dims, T0> &aabb,
+                          const tf::line_like<Dims, T1> &line) {
+  auto res = closest_metric_point_pair(aabb, line);
+  return tf::make_metric_point(res.metric, res.first);
+}
+
+/// @ingroup core_queries
+/// @overload
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point(const tf::line_like<Dims, T0> &line,
+                          const tf::aabb_like<Dims, T1> &aabb) {
+  auto res = closest_metric_point_pair(line, aabb);
+  return tf::make_metric_point(res.metric, res.first);
+}
+
+/// @ingroup core_queries
+/// @overload
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point(const tf::aabb_like<Dims, T0> &aabb,
+                          const tf::ray_like<Dims, T1> &ray) {
+  auto res = closest_metric_point_pair(aabb, ray);
+  return tf::make_metric_point(res.metric, res.first);
+}
+
+/// @ingroup core_queries
+/// @overload
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point(const tf::ray_like<Dims, T0> &ray,
+                          const tf::aabb_like<Dims, T1> &aabb) {
+  auto res = closest_metric_point_pair(ray, aabb);
+  return tf::make_metric_point(res.metric, res.first);
+}
+
+/// @ingroup core_queries
+/// @overload
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point(const tf::aabb_like<Dims, T0> &aabb,
+                          const tf::segment<Dims, T1> &seg) {
+  auto res = closest_metric_point_pair(aabb, seg);
+  return tf::make_metric_point(res.metric, res.first);
+}
+
+/// @ingroup core_queries
+/// @overload
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point(const tf::segment<Dims, T0> &seg,
+                          const tf::aabb_like<Dims, T1> &aabb) {
+  auto res = closest_metric_point_pair(seg, aabb);
+  return tf::make_metric_point(res.metric, res.first);
+}
+
+/// @ingroup core_queries
+/// @overload
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point(const tf::aabb_like<Dims, T0> &aabb,
+                          const tf::plane_like<Dims, T1> &plane) {
+  auto res = closest_metric_point_pair(aabb, plane);
+  return tf::make_metric_point(res.metric, res.first);
+}
+
+/// @ingroup core_queries
+/// @overload
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point(const tf::plane_like<Dims, T0> &plane,
+                          const tf::aabb_like<Dims, T1> &aabb) {
+  auto res = closest_metric_point_pair(plane, aabb);
+  return tf::make_metric_point(res.metric, res.first);
+}
+
+/// @ingroup core_queries
+/// @overload
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point(const tf::aabb_like<Dims, T0> &a,
+                          const tf::aabb_like<Dims, T1> &b) {
+  auto res = closest_metric_point_pair(a, b);
+  return tf::make_metric_point(res.metric, res.first);
+}
+
+/// @ingroup core_queries
+/// @overload
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point(const tf::aabb_like<Dims, T0> &aabb,
+                          const tf::polygon<Dims, T1> &poly) {
+  auto res = closest_metric_point_pair(aabb, poly);
+  return tf::make_metric_point(res.metric, res.first);
+}
+
+/// @ingroup core_queries
+/// @overload
+template <std::size_t Dims, typename T0, typename T1>
+auto closest_metric_point(const tf::polygon<Dims, T0> &poly,
+                          const tf::aabb_like<Dims, T1> &aabb) {
+  auto res = closest_metric_point_pair(poly, aabb);
+  return tf::make_metric_point(res.metric, res.first);
+}
+
 } // namespace tf

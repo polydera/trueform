@@ -1,0 +1,25 @@
+/*
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
+
+export {
+  distance2, closestPoint, closestPointPair,
+  neighborSearch, intersects, rayCast,
+} from "./sync";
+export type {
+  ClosestPointResult, ClosestPointBatchResult,
+  ClosestPointPairResult, ClosestPointPairBatchResult,
+  NeighborResult, NeighborBatchResult, NeighborPairResult,
+  RayCastResult, RayCastPrimBatchResult, RayCastFormBatchResult,
+  RayCastOptions,
+} from "./sync";
+export * as async from "./async";
