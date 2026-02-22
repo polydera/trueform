@@ -15,6 +15,7 @@
 #include "../core/buffer.hpp"
 #include "../core/offset_block_buffer.hpp"
 #include "../core/points_buffer.hpp"
+#include "../core/range.hpp"
 #include <charconv>
 #include <cstdint>
 #include <cstdlib>
@@ -65,6 +66,64 @@ public:
       return false;
 
     return true;
+  }
+
+  // Read OBJ from memory buffer with dynamic Ngon
+  template <typename Index, typename RealT, std::size_t Dims>
+  auto read(tf::range<const char *, tf::dynamic_size> data,
+            tf::points_buffer<RealT, Dims> &out_points,
+            tf::offset_block_buffer<Index, Index> &out_faces) -> bool {
+    const char *data_ptr = data.begin();
+    const char *data_end = data.end();
+
+    std::uint64_t vertex_count{}, face_count{}, face_index_count{};
+    _count_elements(data_ptr, data_end, vertex_count, face_count,
+                    face_index_count);
+
+    const std::size_t points_base = out_points.size();
+    out_points.allocate(points_base + static_cast<std::size_t>(vertex_count));
+
+    auto &offsets = out_faces.offsets_buffer();
+    auto &fdata = out_faces.data_buffer();
+    const std::size_t offsets_base = offsets.size();
+    const std::size_t data_base = fdata.size();
+
+    if (offsets_base == 0) {
+      offsets.allocate(static_cast<std::size_t>(face_count) + 1);
+      offsets[0] = 0;
+    } else {
+      offsets.reallocate(offsets_base + static_cast<std::size_t>(face_count));
+    }
+    fdata.allocate(data_base + static_cast<std::size_t>(face_index_count));
+
+    return _read_data_dynamic<Index, RealT, Dims>(
+        data_ptr, data_end, out_points, points_base, offsets, fdata,
+        offsets_base, data_base);
+  }
+
+  // Read OBJ from memory buffer with fixed Ngon
+  template <typename Index, typename RealT, std::size_t Dims, std::size_t Ngon>
+  auto read(tf::range<const char *, tf::dynamic_size> data,
+            tf::points_buffer<RealT, Dims> &out_points,
+            tf::blocked_buffer<Index, Ngon> &out_faces) -> bool {
+    const char *data_ptr = data.begin();
+    const char *data_end = data.end();
+
+    std::uint64_t vertex_count{}, face_count{}, face_index_count{};
+    _count_elements(data_ptr, data_end, vertex_count, face_count,
+                    face_index_count);
+
+    if (face_index_count != face_count * Ngon)
+      return false;
+
+    const std::size_t points_base = out_points.size();
+    out_points.allocate(points_base + static_cast<std::size_t>(vertex_count));
+
+    const std::size_t faces_base = out_faces.size();
+    out_faces.allocate(faces_base + static_cast<std::size_t>(face_count));
+
+    return _read_data_fixed<Index, RealT, Dims, Ngon>(
+        data_ptr, data_end, out_points, points_base, out_faces, faces_base);
   }
 
   // Read OBJ with fixed Ngon (e.g., triangles only, quads only)

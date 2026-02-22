@@ -341,6 +341,90 @@ auto distance2(const plane_like<Dims, T0> &p, const aabb_like<Dims, T1> &aabb) {
   return distance2(aabb, p);
 }
 
+// AABB to Segment
+template <std::size_t Dims, typename T0, typename T1>
+auto distance2(const aabb_like<Dims, T0> &aabb, const segment<Dims, T1> &s) {
+  return closest_metric_point(aabb, s).metric;
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance(const aabb_like<Dims, T0> &aabb, const segment<Dims, T1> &s) {
+  return tf::sqrt(distance2(aabb, s));
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance2(const segment<Dims, T0> &s, const aabb_like<Dims, T1> &aabb) {
+  return distance2(aabb, s);
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance(const segment<Dims, T0> &s, const aabb_like<Dims, T1> &aabb) {
+  return distance(aabb, s);
+}
+
+// AABB to Ray
+template <std::size_t Dims, typename T0, typename T1>
+auto distance2(const aabb_like<Dims, T0> &aabb, const ray_like<Dims, T1> &r) {
+  return closest_metric_point(aabb, r).metric;
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance(const aabb_like<Dims, T0> &aabb, const ray_like<Dims, T1> &r) {
+  return tf::sqrt(distance2(aabb, r));
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance2(const ray_like<Dims, T0> &r, const aabb_like<Dims, T1> &aabb) {
+  return distance2(aabb, r);
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance(const ray_like<Dims, T0> &r, const aabb_like<Dims, T1> &aabb) {
+  return distance(aabb, r);
+}
+
+// AABB to Line
+template <std::size_t Dims, typename T0, typename T1>
+auto distance2(const aabb_like<Dims, T0> &aabb, const line_like<Dims, T1> &l) {
+  return closest_metric_point(aabb, l).metric;
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance(const aabb_like<Dims, T0> &aabb, const line_like<Dims, T1> &l) {
+  return tf::sqrt(distance2(aabb, l));
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance2(const line_like<Dims, T0> &l, const aabb_like<Dims, T1> &aabb) {
+  return distance2(aabb, l);
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance(const line_like<Dims, T0> &l, const aabb_like<Dims, T1> &aabb) {
+  return distance(aabb, l);
+}
+
+// AABB to Polygon
+template <std::size_t Dims, typename T0, typename T1>
+auto distance2(const aabb_like<Dims, T0> &aabb, const polygon<Dims, T1> &poly) {
+  return closest_metric_point(aabb, poly).metric;
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance(const aabb_like<Dims, T0> &aabb, const polygon<Dims, T1> &poly) {
+  return tf::sqrt(distance2(aabb, poly));
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance2(const polygon<Dims, T0> &poly, const aabb_like<Dims, T1> &aabb) {
+  return distance2(aabb, poly);
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance(const polygon<Dims, T0> &poly, const aabb_like<Dims, T1> &aabb) {
+  return distance(aabb, poly);
+}
+
 // OBB to Plane
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto distance(const tf::obb_like<Dims, Policy0> &obb,

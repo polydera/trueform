@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>trueform wasm tests</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace; background: #0d1117; color: #c9d1d9; display: flex; height: 100vh; font-size: 13px; }
+
+    #sidebar { width: 280px; min-width: 280px; background: #161b22; border-right: 1px solid #30363d; display: flex; flex-direction: column; }
+    #sidebar h1 { font-size: 14px; padding: 16px; border-bottom: 1px solid #30363d; color: #f0f6fc; letter-spacing: 0.5px; }
+    #test-list { flex: 1; overflow-y: auto; padding: 8px; }
+    .test-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 4px; cursor: pointer; user-select: none; }
+    .test-item:hover { background: #1c2129; }
+    .test-item input { accent-color: #58a6ff; }
+    .test-item label { cursor: pointer; flex: 1; }
+    .test-group { color: #8b949e; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; padding: 12px 8px 4px; display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+    .test-group:hover { color: #c9d1d9; }
+    .group-checkbox { accent-color: #58a6ff; }
+    #controls { padding: 12px; border-top: 1px solid #30363d; display: flex; gap: 8px; }
+    #controls button { flex: 1; padding: 8px; border: 1px solid #30363d; border-radius: 6px; background: #21262d; color: #c9d1d9; cursor: pointer; font-family: inherit; font-size: 12px; }
+    #controls button:hover { background: #30363d; }
+    #run-btn { background: #238636 !important; border-color: #2ea043 !important; color: #fff !important; }
+    #run-btn:hover { background: #2ea043 !important; }
+    #run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    #output-panel { flex: 1; display: flex; flex-direction: column; }
+    #output-header { padding: 12px 16px; border-bottom: 1px solid #30363d; display: flex; align-items: center; justify-content: space-between; }
+    #output-header span { color: #8b949e; font-size: 12px; }
+    #clear-btn { background: none; border: 1px solid #30363d; border-radius: 4px; color: #8b949e; padding: 4px 10px; cursor: pointer; font-family: inherit; font-size: 11px; }
+    #clear-btn:hover { color: #c9d1d9; border-color: #484f58; }
+    #output { flex: 1; overflow-y: auto; padding: 16px; white-space: pre-wrap; line-height: 1.6; }
+    .line-pass { color: #3fb950; }
+    .line-fail { color: #f85149; }
+    .line-info { color: #58a6ff; }
+    .line-dim { color: #484f58; }
+    .line-heading { color: #f0f6fc; font-weight: bold; }
+    .line-bench { color: #d2a8ff; }
+
+    .status { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .status-idle { background: #30363d; }
+    .status-running { background: #d29922; animation: pulse 0.8s infinite; }
+    .status-pass { background: #3fb950; }
+    .status-fail { background: #f85149; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  </style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>TRUEFORM TESTS</h1>
+  <div id="test-list"></div>
+  <div id="controls">
+    <button id="select-all-btn">All</button>
+    <button id="select-none-btn">None</button>
+    <button id="run-btn">Run Selected</button>
+  </div>
+</div>
+
+<div id="output-panel">
+  <div id="output-header">
+    <span id="summary"></span>
+    <button id="clear-btn">Clear</button>
+  </div>
+  <div id="output"></div>
+</div>
+
+<script type="module">
+  import("./runner.mjs").catch(e => {
+    document.getElementById("output").textContent = "LOAD ERROR: " + e.message + "\n" + e.stack;
+  });
+</script>
+</body>
+</html>

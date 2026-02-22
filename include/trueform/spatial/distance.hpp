@@ -231,6 +231,40 @@ auto distance(const tf::plane_like<Dims, Policy0> &obj,
 }
 
 /// @ingroup spatial_queries
+/// @brief Compute the squared distance from a form to an AABB.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance2(const tf::form<Dims, Policy0> &form,
+               const tf::aabb_like<Dims, Policy1> &obj) {
+  static_assert(tf::has_tree_policy<Policy0>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
+  return neighbor_search(form, obj).metric();
+}
+
+/// @overload
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance2(const tf::aabb_like<Dims, Policy0> &obj,
+               const tf::form<Dims, Policy1> &form) {
+  static_assert(tf::has_tree_policy<Policy1>,
+                "Form must have a tree policy attached. Use: form | tf::tag(tree)");
+  return neighbor_search(form, obj).metric();
+}
+
+/// @ingroup spatial_queries
+/// @brief Compute the Euclidean distance from a form to an AABB.
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance(const tf::form<Dims, Policy0> &form,
+              const tf::aabb_like<Dims, Policy1> &obj) {
+  return tf::sqrt(distance2(form, obj));
+}
+
+/// @overload
+template <std::size_t Dims, typename Policy0, typename Policy1>
+auto distance(const tf::aabb_like<Dims, Policy0> &obj,
+              const tf::form<Dims, Policy1> &form) {
+  return tf::sqrt(distance2(form, obj));
+}
+
+/// @ingroup spatial_queries
 /// @brief Compute the squared distance between two forms.
 ///
 /// Uses dual-tree traversal to find the closest pair of primitives.

@@ -64,4 +64,56 @@ auto read_obj(std::string_view file_path)
 template <std::size_t Ngon> auto read_obj(std::string_view file_path) {
   return read_obj<int, Ngon>(file_path);
 }
+
+/// @ingroup io
+/// @brief Read OBJ from a memory buffer with dynamic polygon sizes.
+template <typename Index = int>
+auto read_obj(tf::range<const char *, tf::dynamic_size> data)
+    -> tf::polygons_buffer<Index, float, 3, tf::dynamic_size> {
+  tf::polygons_buffer<Index, float, 3, tf::dynamic_size> out;
+  tf::io::obj_reader reader;
+  if (!reader.read(data, out.points_buffer(), out.faces_buffer())) {
+    return {};
+  }
+  return out;
+}
+
+/// @ingroup io
+/// @brief Read OBJ from a memory buffer with fixed polygon size.
+template <typename Index = int, std::size_t Ngon>
+auto read_obj(tf::range<const char *, tf::dynamic_size> data)
+    -> tf::polygons_buffer<Index, float, 3, Ngon> {
+  tf::polygons_buffer<Index, float, 3, Ngon> out;
+  tf::io::obj_reader reader;
+  if (!reader.read(data, out.points_buffer(), out.faces_buffer())) {
+    return {};
+  }
+  return out;
+}
+
+/// @overload
+template <std::size_t Ngon>
+auto read_obj(tf::range<const char *, tf::dynamic_size> data) {
+  return read_obj<int, Ngon>(data);
+}
+
+/// @brief Non-const char* overloads — delegate to const char*.
+template <typename Index = int>
+auto read_obj(tf::range<char *, tf::dynamic_size> data)
+    -> tf::polygons_buffer<Index, float, 3, tf::dynamic_size> {
+  return read_obj<Index>(
+      tf::make_range(static_cast<const char *>(data.begin()), data.size()));
+}
+
+template <typename Index = int, std::size_t Ngon>
+auto read_obj(tf::range<char *, tf::dynamic_size> data)
+    -> tf::polygons_buffer<Index, float, 3, Ngon> {
+  return read_obj<Index, Ngon>(
+      tf::make_range(static_cast<const char *>(data.begin()), data.size()));
+}
+
+template <std::size_t Ngon>
+auto read_obj(tf::range<char *, tf::dynamic_size> data) {
+  return read_obj<int, Ngon>(data);
+}
 } // namespace tf

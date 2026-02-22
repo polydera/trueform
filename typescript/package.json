@@ -1,0 +1,28 @@
+{
+  "name": "trueform",
+  "version": "0.1.0",
+  "description": "TypeScript bindings for trueform geometry library",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc && node build.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "SEE LICENSE IN LICENSE",
+  "author": "XLAB",
+  "devDependencies": {
+    "esbuild": "^0.27.3",
+    "typescript": "^5.9.3"
+  }
+}

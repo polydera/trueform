@@ -15,8 +15,8 @@ set(CPM_USE_LOCAL_PACKAGES ${TF_USE_SYSTEM_LIBS})
 # ------------------------------------------------------------------------------
 # Dependency: oneTBB (Threading Building Blocks)
 # ------------------------------------------------------------------------------
-if(TF_BUILD_PYTHON)
-  # Python wheels bundle static TBB - force fetch, ignore system TBB
+if(TF_BUILD_PYTHON OR TF_BUILD_TYPESCRIPT)
+  # Python wheels and WASM bundles need static TBB - force fetch, ignore system TBB
   set(CPM_USE_LOCAL_PACKAGES OFF)
   CPMAddPackage(
     NAME                TBB
