@@ -271,6 +271,109 @@ static auto take(tf::ts::wasm_ndarray<T> &arr,
 }
 
 // ============================================================================
+// multi_take: per-axis Cartesian indexing
+// specs is a JS array: each element is null (all), a number (single), or
+// a wasm_ndarray<int> (fancy index). Unspecified trailing axes default to null.
+// Output shape: null → keep dim, number → squeeze, array → use array length.
+// ============================================================================
+
+template <typename T>
+static auto multi_take(tf::ts::wasm_ndarray<T> &arr, emscripten::val specs)
+    -> tf::ts::wasm_ndarray<T> {
+  auto &in_shape = arr.raw_shape();
+  auto ndim = static_cast<int>(in_shape.size());
+  auto n_specs = specs["length"].as<int>();
+
+  // Per-axis: mode (0=all, 1=single, 2=array)
+  tf::small_vector<int, 4> axis_mode(ndim);
+  tf::small_vector<int, 4> axis_single(ndim);
+  tf::small_vector<const int *, 4> axis_idx(ndim);
+  tf::small_vector<int, 4> axis_count(ndim);
+  tf::small_vector<tf::ts::wasm_ndarray<int>, 4> holders(ndim);
+
+  for (int d = 0; d < ndim; ++d) {
+    if (d >= n_specs || specs[d].isNull() || specs[d].isUndefined()) {
+      axis_mode[d] = 0;
+      axis_count[d] = in_shape[d];
+      axis_idx[d] = nullptr;
+    } else if (specs[d].isNumber()) {
+      axis_mode[d] = 1;
+      auto idx = specs[d].as<int>();
+      axis_single[d] = idx < 0 ? idx + in_shape[d] : idx;
+      axis_count[d] = 1;
+      axis_idx[d] = nullptr;
+    } else {
+      axis_mode[d] = 2;
+      holders[d] = specs[d].as<tf::ts::wasm_ndarray<int>>(
+          emscripten::allow_raw_pointers());
+      axis_idx[d] = holders[d].raw_data();
+      axis_count[d] = static_cast<int>(holders[d].length());
+    }
+  }
+
+  // Output shape (skip squeezed single-index axes)
+  tf::small_vector<int, 3> out_shape;
+  for (int d = 0; d < ndim; ++d)
+    if (axis_mode[d] != 1)
+      out_shape.push_back(axis_count[d]);
+  if (out_shape.empty())
+    out_shape.push_back(1);
+
+  std::size_t total = 1;
+  for (auto s : out_shape)
+    total *= s;
+
+  // Input strides
+  tf::small_vector<std::size_t, 4> in_stride(ndim);
+  in_stride[ndim - 1] = 1;
+  for (int d = ndim - 2; d >= 0; --d)
+    in_stride[d] = in_stride[d + 1] * in_shape[d + 1];
+
+  // Find contiguous trailing "all" axes for memcpy optimization
+  int copy_from = ndim;
+  for (int d = ndim - 1; d >= 0; --d) {
+    if (axis_mode[d] == 0)
+      copy_from = d;
+    else
+      break;
+  }
+  std::size_t inner = 1;
+  for (int d = copy_from; d < ndim; ++d)
+    inner *= in_shape[d];
+
+  std::size_t n_outer = total / inner;
+
+  tf::buffer<T> buf;
+  buf.allocate(total);
+  auto *out = buf.data();
+  auto *src = arr.raw_data();
+
+  // Odometer over active (non-trailing-all) axes
+  tf::small_vector<int, 4> coords(static_cast<std::size_t>(copy_from), 0);
+
+  for (std::size_t i = 0; i < n_outer; ++i) {
+    std::size_t src_off = 0;
+    for (int d = 0; d < copy_from; ++d) {
+      int si = axis_mode[d] == 0 ? coords[d]
+             : axis_mode[d] == 1 ? axis_single[d]
+             : axis_idx[d][coords[d]];
+      src_off += si * in_stride[d];
+    }
+
+    std::memcpy(out + i * inner, src + src_off, inner * sizeof(T));
+
+    for (int d = copy_from - 1; d >= 0; --d) {
+      if (++coords[d] < axis_count[d])
+        break;
+      coords[d] = 0;
+    }
+  }
+
+  return tf::ts::wasm_ndarray<T>::from_buffer(std::move(buf),
+                                              std::move(out_shape));
+}
+
+// ============================================================================
 // take_along_axis: per-element index along axis (np.take_along_axis)
 // ============================================================================
 
@@ -985,6 +1088,11 @@ EMSCRIPTEN_BINDINGS(trueform_buffers) {
   emscripten::function("take_float32", &take<float>);
   emscripten::function("take_int32", &take<int>);
   emscripten::function("take_int8", &take<std::int8_t>);
+
+  // --- multi_take ---
+  emscripten::function("multi_take_float32", &multi_take<float>);
+  emscripten::function("multi_take_int32", &multi_take<int>);
+  emscripten::function("multi_take_int8", &multi_take<std::int8_t>);
 
   // --- take_along_axis ---
   emscripten::function("take_along_axis_float32", &take_along_axis<float>);

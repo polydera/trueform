@@ -14,6 +14,18 @@ await import("./test_mesh.mjs");
 await import("./test_io.mjs");
 await import("./test_spatial.mjs");
 await import("./test_bench_spatial.mjs");
+await import("./test_geometry.mjs");
+await import("./test_mesh_setters.mjs");
+await import("./test_point_cloud.mjs");
+await import("./test_registration.mjs");
+await import("./test_remesh.mjs");
+await import("./test_topology.mjs");
+await import("./test_reindex.mjs");
+await import("./test_transformations.mjs");
+await import("./test_clean.mjs");
+await import("./test_cut.mjs");
+await import("./test_intersect.mjs");
+await import("./test_io_roundtrip.mjs");
 
 // ============================================================================
 // UI setup

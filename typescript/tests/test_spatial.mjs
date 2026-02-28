@@ -777,6 +777,74 @@ describe("Spatial: rayCast", () => {
     res.hits.delete(); res.ts.delete(); res.elementIds.delete();
     rays.delete(); m.delete();
   });
+
+  // --- per-ray config ---
+
+  test("per-ray minT/maxT × triangle", () => {
+    const tf = getTf();
+    const t = tf.triangle(tf.point(0, 0, 0), tf.point(1, 0, 0), tf.point(0, 1, 0));
+    // ray0: hit at t=1, ray1: hit at t=2
+    const rays = tf.ray(new Float32Array([
+      0.25,0.25,-1, 0,0,1,
+      0.1,0.1,-2,   0,0,1,
+    ]), 2);
+    // ray0: maxT=0.5 blocks the hit (t=1 > 0.5), ray1: maxT=5 allows the hit (t=2 < 5)
+    const minTs = tf.ndarray(new Float32Array([0, 0]));
+    const maxTs = tf.ndarray(new Float32Array([0.5, 5]));
+    const res = tf.rayCast(rays, t, { minT: minTs, maxT: maxTs });
+    const h = res.hits.data;
+    const ts = res.ts.data;
+    assert(h[0] === 0, "ray0 should miss (maxT=0.5)");
+    assert(h[1] === 1, "ray1 should hit (maxT=5)");
+    approx(ts[1], 2.0, "t1");
+    log(`  per-ray config × triangle: hits=[${h[0]},${h[1]}], ts=[_,${ts[1].toFixed(1)}]`, "line-pass");
+    res.hits.delete(); res.ts.delete();
+    rays.delete(); t.delete(); minTs.delete(); maxTs.delete();
+  });
+
+  test("per-ray minT/maxT × mesh", () => {
+    const tf = getTf();
+    const { faces, points } = twoTriangles();
+    const m = tf.mesh(faces, points);
+    // 3 rays all aimed at the mesh from z=5 going down
+    const rays = tf.ray(new Float32Array([
+      0.5,0.5,5,  0,0,-1,  // hits at t=5
+      0.5,0.5,5,  0,0,-1,  // hits at t=5
+      0.5,0.5,5,  0,0,-1,  // hits at t=5
+    ]), 3);
+    // ray0: maxT=3 blocks, ray1: maxT=10 allows, ray2: minT=6 blocks
+    const minTs = tf.ndarray(new Float32Array([0, 0, 6]));
+    const maxTs = tf.ndarray(new Float32Array([3, 10, 10]));
+    const res = tf.rayCast(rays, m, { minT: minTs, maxT: maxTs });
+    const h = res.hits.data;
+    const ts = res.ts.data;
+    assert(h[0] === 0, "ray0 should miss (maxT=3 < t=5)");
+    assert(h[1] === 1, "ray1 should hit (maxT=10)");
+    assert(h[2] === 0, "ray2 should miss (minT=6 > t=5)");
+    approx(ts[1], 5.0, "t1");
+    log(`  per-ray config × mesh: hits=[${h[0]},${h[1]},${h[2]}]`, "line-pass");
+    res.hits.delete(); res.ts.delete(); res.elementIds.delete();
+    rays.delete(); m.delete(); minTs.delete(); maxTs.delete();
+  });
+
+  test("mixed config: scalar minT + NDArray maxT", () => {
+    const tf = getTf();
+    const t = tf.triangle(tf.point(0, 0, 0), tf.point(1, 0, 0), tf.point(0, 1, 0));
+    // ray0: hit at t=1, ray1: hit at t=2
+    const rays = tf.ray(new Float32Array([
+      0.25,0.25,-1, 0,0,1,
+      0.1,0.1,-2,   0,0,1,
+    ]), 2);
+    // scalar minT=0, per-ray maxT: ray0 blocked (0.5 < 1), ray1 allowed (5 > 2)
+    const maxTs = tf.ndarray(new Float32Array([0.5, 5]));
+    const res = tf.rayCast(rays, t, { minT: 0, maxT: maxTs });
+    const h = res.hits.data;
+    assert(h[0] === 0, "ray0 should miss");
+    assert(h[1] === 1, "ray1 should hit");
+    log(`  mixed config (scalar + NDArray): hits=[${h[0]},${h[1]}]`, "line-pass");
+    res.hits.delete(); res.ts.delete();
+    rays.delete(); t.delete(); maxTs.delete();
+  });
 });
 
 // ============================================================================
@@ -847,5 +915,279 @@ describe("Spatial: async", () => {
     approx(res.t, 2.0, "t");
     log(`  async rayCast: hit=${res.hit}, t=${res.t.toFixed(3)}, face=${res.elementId}`, "line-pass");
     r.delete(); m.delete();
+  });
+
+  test("async rayCast per-ray config", async () => {
+    const tf = getTf();
+    const { faces, points } = twoTriangles();
+    const m = tf.mesh(faces, points);
+    // 2 rays aimed at mesh from z=5
+    const rays = tf.ray(new Float32Array([
+      0.5,0.5,5,  0,0,-1,  // hits at t=5
+      0.5,0.5,5,  0,0,-1,  // hits at t=5
+    ]), 2);
+    const minTs = tf.ndarray(new Float32Array([0, 0]));
+    const maxTs = tf.ndarray(new Float32Array([3, 10]));
+    const res = await tf.async.rayCast(rays, m, { minT: minTs, maxT: maxTs });
+    const h = res.hits.data;
+    assert(h[0] === 0, "ray0 should miss (maxT=3)");
+    assert(h[1] === 1, "ray1 should hit (maxT=10)");
+    log(`  async rayCast per-ray: hits=[${h[0]},${h[1]}]`, "line-pass");
+    res.hits.delete(); res.ts.delete(); res.elementIds.delete();
+    rays.delete(); m.delete(); minTs.delete(); maxTs.delete();
+  });
+});
+
+// ============================================================================
+// PointCloud spatial queries
+// ============================================================================
+
+describe("Spatial: PointCloud", () => {
+
+  test("pointCloud × point distance2", () => {
+    const tf = getTf();
+    const box = tf.boxMesh(2, 2, 2);
+    const pc = tf.pointCloud(box);
+    const p = tf.point(0, 0, 5);
+    const d = tf.distance2(pc, p);
+    assert(typeof d === "number", "single query returns number");
+    assert(d > 0, `distance should be > 0, got ${d}`);
+    log(`  pointCloud × point distance2 = ${d.toFixed(4)}`, "line-pass");
+    p.delete(); pc.delete(); box.delete();
+  });
+
+  test("pointCloud × mesh distance2", () => {
+    const tf = getTf();
+    const box = tf.boxMesh(2, 2, 2);
+    const pc = tf.pointCloud(box);
+    const { faces, points } = twoTriangles();
+    const shifted = new Float32Array(points.length);
+    for (let i = 0; i < points.length; i += 3) {
+      shifted[i] = points[i]; shifted[i+1] = points[i+1]; shifted[i+2] = points[i+2] + 10;
+    }
+    const m = tf.mesh(new Int32Array(faces), shifted);
+    const d = tf.distance2(pc, m);
+    assert(typeof d === "number", "FF returns number");
+    assert(d > 0, `distance should be > 0, got ${d}`);
+    log(`  pointCloud × mesh distance2 = ${d.toFixed(4)}`, "line-pass");
+    m.delete(); pc.delete(); box.delete();
+  });
+
+  test("pointCloud × point neighborSearch", () => {
+    const tf = getTf();
+    const box = tf.boxMesh(2, 2, 2);
+    const pc = tf.pointCloud(box);
+    const p = tf.point(0, 0, 5);
+    const r = tf.neighborSearch(pc, p);
+    assert(r.elementId >= 0, `should find element, got ${r.elementId}`);
+    assert(r.distance2 > 0, `distance should be > 0`);
+    log(`  pointCloud × point neighbor: elem=${r.elementId}, d2=${r.distance2.toFixed(4)}`, "line-pass");
+    r.point.delete(); p.delete(); pc.delete(); box.delete();
+  });
+
+  test("pointCloud × point intersects", () => {
+    const tf = getTf();
+    const box = tf.boxMesh(2, 2, 2);
+    const pc = tf.pointCloud(box);
+    const p_far = tf.point(100, 100, 100);
+    const r = tf.intersects(pc, p_far);
+    assert(r === false, "far point should not intersect");
+    log(`  pointCloud × far point intersects = ${r}`, "line-pass");
+    p_far.delete(); pc.delete(); box.delete();
+  });
+
+  test("pointCloud rayCast", () => {
+    const tf = getTf();
+    const box = tf.boxMesh(2, 2, 2);
+    const pc = tf.pointCloud(box);
+    // Aim directly through a known vertex (1,1,1) of the 2×2×2 box
+    const r = tf.ray(tf.point(1, 1, 5), tf.vector(0, 0, -1));
+    const res = tf.rayCast(r, pc);
+    assert(res.hit === true, "should hit vertex");
+    assert(res.elementId >= 0, `should have element, got ${res.elementId}`);
+    log(`  pointCloud rayCast: hit=${res.hit}, t=${res.t.toFixed(3)}, elem=${res.elementId}`, "line-pass");
+    r.delete(); pc.delete(); box.delete();
+  });
+
+  test("batch: pointCloud × 3 points distance2", () => {
+    const tf = getTf();
+    const box = tf.boxMesh(2, 2, 2);
+    const pc = tf.pointCloud(box);
+    const pts = tf.point(new Float32Array([0,0,5, 0,0,10, 0,0,15]), 3);
+    const d = tf.distance2(pc, pts);
+    assert(typeof d !== "number", "batch returns NDArray");
+    const v = d.data;
+    assert(v[0] < v[1] && v[1] < v[2], `distances should increase: [${v[0]}, ${v[1]}, ${v[2]}]`);
+    log(`  batch pointCloud × 3 points = [${v[0].toFixed(2)}, ${v[1].toFixed(2)}, ${v[2].toFixed(2)}]`, "line-pass");
+    d.delete(); pts.delete(); pc.delete(); box.delete();
+  });
+
+  test("batch: pointCloud × 3 points neighborSearch", () => {
+    const tf = getTf();
+    const box = tf.boxMesh(2, 2, 2);
+    const pc = tf.pointCloud(box);
+    const pts = tf.point(new Float32Array([0,0,5, 0,0,10, 0,0,15]), 3);
+    const r = tf.neighborSearch(pc, pts);
+    assert(r.elementIds.shape[0] === 3, "should have 3 results");
+    const dists = r.distances.data;
+    assert(dists[0] < dists[1] && dists[1] < dists[2], "distances should increase");
+    log(`  batch pointCloud × 3 points neighbor: dists=[${dists[0].toFixed(2)},${dists[1].toFixed(2)},${dists[2].toFixed(2)}]`, "line-pass");
+    r.elementIds.delete(); r.points.delete(); r.distances.delete();
+    pts.delete(); pc.delete(); box.delete();
+  });
+});
+
+// ============================================================================
+// k-NN neighbor search
+// ============================================================================
+
+describe("Spatial: k-NN neighborSearch", () => {
+
+  test("mesh × point k=3", () => {
+    const tf = getTf();
+    const box = tf.boxMesh(2, 2, 2);
+    const p = tf.point(0, 0, 0);
+    const r = tf.neighborSearch(box, p, { k: 3 });
+    assert(r.elementIds.shape[0] === 3, `expected 3 results, got ${r.elementIds.shape[0]}`);
+    const dists = r.distances.data;
+    assert(dists[0] <= dists[1] && dists[1] <= dists[2],
+      `distances should be sorted: [${dists[0]}, ${dists[1]}, ${dists[2]}]`);
+    log(`  mesh × point k=3: [${dists[0].toFixed(4)}, ${dists[1].toFixed(4)}, ${dists[2].toFixed(4)}]`, "line-pass");
+    r.elementIds.delete(); r.points.delete(); r.distances.delete();
+    p.delete(); box.delete();
+  });
+
+  test("mesh × point k=5 with radius", () => {
+    const tf = getTf();
+    const box = tf.boxMesh(2, 2, 2);
+    const p = tf.point(0, 0, 0);
+    // Very small radius — should find fewer than 5
+    const r = tf.neighborSearch(box, p, { k: 5, radius: 0.01 });
+    const count = r.elementIds.shape[0];
+    assert(count <= 5, `should find <= 5, got ${count}`);
+    log(`  mesh × point k=5 radius=0.01: found ${count}`, "line-pass");
+    r.elementIds.delete(); r.points.delete(); r.distances.delete();
+    p.delete(); box.delete();
+  });
+
+  test("batch: mesh × 3 points k=2", () => {
+    const tf = getTf();
+    const box = tf.boxMesh(2, 2, 2);
+    const pts = tf.point(new Float32Array([0,0,0, 0,0,5, 0,0,10]), 3);
+    const r = tf.neighborSearch(box, pts, { k: 2 });
+    assert(r.elementIds.shape[0] === 3 && r.elementIds.shape[1] === 2,
+      `expected [3, 2], got [${r.elementIds.shape}]`);
+    assert(r.counts.shape[0] === 3, `expected 3 counts, got ${r.counts.shape[0]}`);
+    const counts = r.counts.data;
+    assert(counts[0] === 2, `pt0 should find 2, got ${counts[0]}`);
+    assert(counts[1] === 2, `pt1 should find 2, got ${counts[1]}`);
+    assert(counts[2] === 2, `pt2 should find 2, got ${counts[2]}`);
+    log(`  batch mesh × 3 points k=2: counts=[${counts[0]},${counts[1]},${counts[2]}]`, "line-pass");
+    r.elementIds.delete(); r.points.delete(); r.distances.delete(); r.counts.delete();
+    pts.delete(); box.delete();
+  });
+
+  test("pointCloud × point k=3", () => {
+    const tf = getTf();
+    const box = tf.boxMesh(2, 2, 2);
+    const pc = tf.pointCloud(box);
+    const p = tf.point(0, 0, 0);
+    const r = tf.neighborSearch(pc, p, { k: 3 });
+    assert(r.elementIds.shape[0] === 3, `expected 3 results, got ${r.elementIds.shape[0]}`);
+    const dists = r.distances.data;
+    assert(dists[0] <= dists[1] && dists[1] <= dists[2],
+      `distances should be sorted: [${dists[0]}, ${dists[1]}, ${dists[2]}]`);
+    log(`  pointCloud × point k=3: [${dists[0].toFixed(4)}, ${dists[1].toFixed(4)}, ${dists[2].toFixed(4)}]`, "line-pass");
+    r.elementIds.delete(); r.points.delete(); r.distances.delete();
+    p.delete(); pc.delete(); box.delete();
+  });
+
+  test("neighborSearch with radius (no k)", () => {
+    const tf = getTf();
+    const { faces, points } = twoTriangles();
+    const m = tf.mesh(faces, points);
+    const q = tf.point(0.5, 0.5, 1);
+    const r = tf.neighborSearch(m, q, { radius: 100 });
+    assert(r.elementId === 0, `expected face 0, got ${r.elementId}`);
+    approx(r.distance2, 1.0, "d2");
+    log(`  neighborSearch with radius: face=${r.elementId}, d2=${r.distance2.toFixed(4)}`, "line-pass");
+    r.point.delete(); q.delete(); m.delete();
+  });
+
+  test("k-NN with radius: partial results (single)", () => {
+    const tf = getTf();
+    const box = tf.boxMesh(2, 2, 2);
+    // Query point far away, tiny radius — should find 0 neighbors
+    const p = tf.point(100, 100, 100);
+    const r = tf.neighborSearch(box, p, { k: 5, radius: 0.001 });
+    const count = r.elementIds.shape[0];
+    assert(count === 0, `expected 0 results with tiny radius, got ${count}`);
+    log(`  k-NN tiny radius single: found ${count}`, "line-pass");
+    r.elementIds.delete(); r.points.delete(); r.distances.delete();
+    p.delete(); box.delete();
+  });
+
+  test("k-NN with radius: batch -1 padding", () => {
+    const tf = getTf();
+    const box = tf.boxMesh(2, 2, 2);
+    // pt0: at center, should find k neighbors
+    // pt1: far away with tiny radius, should find 0
+    // pt2: at center with large radius, should find k
+    const pts = tf.point(new Float32Array([
+      0, 0, 0,
+      100, 100, 100,
+      0, 0, 0,
+    ]), 3);
+    const r = tf.neighborSearch(box, pts, { k: 3, radius: 0.001 });
+    assert(r.elementIds.shape[0] === 3, `expected N=3, got ${r.elementIds.shape[0]}`);
+    assert(r.elementIds.shape[1] === 3, `expected k=3, got ${r.elementIds.shape[1]}`);
+
+    const counts = r.counts.data;
+    const ids = r.elementIds.data;
+
+    // pt0: at center with tiny radius — may find 0 since box surface is at distance 1
+    assert(counts[0] >= 0, `pt0 count valid`);
+    // pt1: 100,100,100 with radius 0.001 — definitely 0
+    assert(counts[1] === 0, `pt1 should find 0 with tiny radius, got ${counts[1]}`);
+    // pt2: same as pt0
+    assert(counts[2] >= 0, `pt2 count valid`);
+
+    // Verify -1 padding for pt1 (all slots should be -1)
+    const base1 = 1 * 3; // pt1 offset in flat [N, k] array
+    assert(ids[base1 + 0] === -1, `pt1 slot0 should be -1, got ${ids[base1 + 0]}`);
+    assert(ids[base1 + 1] === -1, `pt1 slot1 should be -1, got ${ids[base1 + 1]}`);
+    assert(ids[base1 + 2] === -1, `pt1 slot2 should be -1, got ${ids[base1 + 2]}`);
+
+    log(`  k-NN batch radius -1 padding: counts=[${counts[0]},${counts[1]},${counts[2]}], pt1 ids=[${ids[base1]},${ids[base1+1]},${ids[base1+2]}]`, "line-pass");
+    r.elementIds.delete(); r.points.delete(); r.distances.delete(); r.counts.delete();
+    pts.delete(); box.delete();
+  });
+
+  test("k-NN with radius: mixed counts", () => {
+    const tf = getTf();
+    const box = tf.boxMesh(2, 2, 2);
+    // Use a large enough radius to find some but maybe not all
+    // pt0: at surface (1,0,0) — close to faces, should find 3 within radius 2
+    // pt1: far at (0,0,50) — radius 2 too small, finds 0
+    const pts = tf.point(new Float32Array([
+      1, 0, 0,
+      0, 0, 50,
+    ]), 2);
+    const r = tf.neighborSearch(box, pts, { k: 5, radius: 2 });
+    const counts = r.counts.data;
+    const ids = r.elementIds.data;
+
+    assert(counts[0] > 0, `pt0 at surface should find some, got ${counts[0]}`);
+    assert(counts[1] === 0, `pt1 far away should find 0, got ${counts[1]}`);
+
+    // Verify unused slots in pt1 are -1
+    const base1 = 1 * 5;
+    for (let j = 0; j < 5; j++) {
+      assert(ids[base1 + j] === -1, `pt1 slot ${j} should be -1, got ${ids[base1 + j]}`);
+    }
+
+    log(`  k-NN mixed counts: pt0 found ${counts[0]}, pt1 found ${counts[1]}`, "line-pass");
+    r.elementIds.delete(); r.points.delete(); r.distances.delete(); r.counts.delete();
+    pts.delete(); box.delete();
   });
 });

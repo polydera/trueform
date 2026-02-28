@@ -13,6 +13,7 @@
 #pragma once
 #include "../../core/algorithm/circular_increment.hpp"
 #include "../../core/classify.hpp"
+#include "../../core/normalized.hpp"
 #include "../../core/frame_of.hpp"
 #include "../../core/polygons.hpp"
 #include "../../core/transformed.hpp"
@@ -131,6 +132,20 @@ auto classify_by_wedge_on_shared_edge(
 
   // Lambda: classify other-mesh faces using wedge (plane0 + wedge_plane)
   auto classify_with_wedge = [&, &d0 = d0, &loop0 = loop0](const auto &wedge_plane) {
+    // Collect up to 2 non-coplanar other-mesh faces for potential forcing.
+    // Skipped faces (near-coplanar 0.01 zone) don't fill a slot.
+    // Coplanar faces (aligned/opposing) are recorded but marked as coplanar.
+    struct collected_t {
+      LabelType label;
+      int tag;
+      int classification;
+      bool coplanar;
+    };
+    std::array<collected_t, 2> collected;
+    int n_collected = 0;
+    int n_total_other = 0; // all other-mesh faces sharing this edge
+    bool overflow = false;
+
     for (auto other_id : neighbors) {
       const auto &[loop_other, mapped_other, d_other] = zipped[other_id];
       if (d_other.tag == d0.tag)
@@ -144,6 +159,7 @@ auto classify_by_wedge_on_shared_edge(
           tf::edge_id_in_face(loop0[edge_id], loop0[next_edge_id], loop_other);
       if (other_edge_id == loop_other.size())
         continue;
+      ++n_total_other;
       auto other_next_edge_id =
           tf::circular_increment(other_edge_id, std::size_t{loop_other.size()});
       auto u_other = tf::normalized(intersection_points[mapped_other[other_next_edge_id].id] -
@@ -175,24 +191,48 @@ auto classify_by_wedge_on_shared_edge(
       bool same_as_A = (loop_other[other_edge_id] == loop0[edge_id]);
 
       int classification;
+      bool is_coplanar = false;
       if (on_A) {
-        // C is on A's half-plane
-        // same_as_A → aligned, opposite → opposing
         classification = same_as_A ? 2 : 3;
+        is_coplanar = true;
       } else if (on_B) {
-        // C is on B's half-plane
-        // B has opposite edge direction to A, so:
-        // same_as_A means opposite_to_B → opposing
-        // opposite_to_A means same_as_B → aligned
         classification = same_as_A ? 3 : 2;
-      } else if (d0_dot < 0 && dw_dot < 0) {
+        is_coplanar = true;
+      }
+      else if (std::abs(d0_dot) < RealT(0.01) || std::abs(dw_dot) < RealT(0.01)) {
+        // Near-coplanar: skip — don't fill a slot
+        continue;
+      }
+      else if (d0_dot < 0 && dw_dot < 0) {
         classification = 0; // inside
       } else {
         classification = 1; // outside
       }
 
       auto label_other = pal1.cut_labels[other_id - partition_id];
-      local_r[d_other.tag][label_other][classification]++;
+
+      if (n_collected < 2) {
+        collected[n_collected++] = {label_other,
+                                    int(d_other.tag), classification, is_coplanar};
+      } else {
+        overflow = true;
+        // More than 2: count directly, no forcing possible
+        local_r[int(d_other.tag)][label_other][classification]++;
+      }
+    }
+
+    // Apply counts — with forcing when possible
+    if (n_total_other == 2 && n_collected == 2 && !overflow &&
+        !collected[0].coplanar && !collected[1].coplanar &&
+        collected[0].classification == collected[1].classification) {
+      // Both got same in/out classification — force opposing
+      // Keep first as-is, flip second
+      collected[1].classification = 1 - collected[0].classification;
+    }
+
+    for (int i = 0; i < n_collected; ++i) {
+      auto &c = collected[i];
+      local_r[c.tag][c.label][c.classification]++;
     }
   };
 

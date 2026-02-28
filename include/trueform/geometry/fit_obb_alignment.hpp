@@ -156,7 +156,8 @@ auto fit_obb_alignment(const tf::points<Policy0> &X_,
 
   // If Y has tree policy, disambiguate using chamfer distance
   if constexpr (tf::has_tree_policy<Policy1>) {
-    // Cap sample size at number of points
+    // 0 means use all points
+    if (sample_size == 0) sample_size = X_.size();
     sample_size = std::min(sample_size, X_.size());
     std::size_t stride = std::max(std::size_t(1), X_.size() / sample_size);
 

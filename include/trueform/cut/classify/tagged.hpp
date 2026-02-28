@@ -20,13 +20,16 @@
 #include "../../core/hash_set.hpp"
 #include "../../core/views/zip.hpp"
 #include "../../spatial/classify/point_in_mesh.hpp"
+#include "../../spatial/signed_distance.hpp"
 #include "../../topology/set_component_labels.hpp"
 #include "../arrangement_class.hpp"
+#include "../boolean_config.hpp"
 #include "../impl/labels.hpp"
 #include "../tagged_cut_faces.hpp"
 #include "./classify_on_shared_edge.hpp"
 #include "tbb/parallel_invoke.h"
 #include "tbb/parallel_sort.h"
+#include <algorithm>
 
 namespace tf::cut {
 template <typename Policy, typename Range0, typename Range1, typename LabelType>
@@ -88,6 +91,91 @@ auto compute_joint_components(
       tf::checked);
   return tf::set_component_labels<LabelType>{{std::move(labels), n_labels},
                                              std::move(sets)};
+}
+
+template <typename Policy0, typename Policy1, typename Index, typename RealT,
+          std::size_t Dims, typename LabelType>
+auto classify_missing_components_using_signed_distance(
+    const tf::polygons<Policy0> _polygons0,
+    const tf::polygons<Policy1> &_polygons1,
+    tf::blocked_buffer<Index, 4> &counts0,
+    tf::blocked_buffer<Index, 4> &counts1,
+    const tf::cut::polygon_arrangement_labels<LabelType> &pal0,
+    const tf::cut::polygon_arrangement_labels<LabelType> &pal1,
+    const tf::intersect::tagged_intersections<Index, RealT, Dims> &ibp,
+    const tf::tagged_cut_faces<Index> &tcf) {
+
+  auto needs_classification = [](const auto &count) {
+    return count[0] == 0 && count[1] == 0 && count[2] == 0 && count[3] == 0;
+  };
+
+  auto make_reprs = [](const auto &labels, auto n_components) {
+    tf::buffer<Index> reprs;
+    reprs.allocate(n_components);
+    tf::parallel_fill(reprs, -1);
+    tf::parallel_for_each(tf::enumerate(labels), [&](auto pair) {
+      const auto &[id, label] = pair;
+      if (label == -1)
+        return;
+      reprs[label] = id;
+    });
+    return reprs;
+  };
+
+  auto compute_missing = [&ibp, &needs_classification, &make_reprs](
+                             auto &counts, const auto &polygons,
+                             const auto &polygons_other, const auto &pal,
+                             const auto &loops) {
+    bool any = false;
+    for (auto &&c : counts)
+      if (needs_classification(c)) {
+        any = true;
+        break;
+      }
+    if (!any)
+      return;
+    auto reprs_poly = make_reprs(pal.polygon_labels, pal.n_components);
+    auto reprs_cut = make_reprs(pal.cut_labels, pal.n_components);
+    auto frame = tf::frame_of(polygons);
+    auto get_loop_point = [&](auto v) {
+      tf::point<RealT, Dims> pt;
+      if (v.source == tf::loop::vertex_source::original)
+        pt = tf::transformed(polygons.points()[v.id], frame);
+      else
+        pt = ibp.intersection_points()[v.id];
+      return pt;
+    };
+    tf::parallel_for_each(
+        tf::zip(counts, reprs_poly, reprs_cut), [&](auto tup) {
+          auto &&[count, poly_id, cut_id] = tup;
+          if (!needs_classification(count))
+            return;
+          // Get representative point in world coordinates
+          tf::point<RealT, Dims> point;
+          if (poly_id != -1)
+            point = tf::transformed(tf::centroid(polygons[poly_id]), frame);
+          else
+            point = tf::centroid(tf::make_polygon(
+                tf::make_mapped_range(loops[cut_id], get_loop_point)));
+          auto sd = tf::signed_distance(polygons_other, point);
+          bool is_outside = sd > RealT(0);
+          count[0] = 0;
+          count[1] = 0;
+          count[2] = 0;
+          count[3] = 0;
+          count[is_outside] = 1;
+        });
+  };
+
+  tbb::parallel_invoke(
+      [&] {
+        compute_missing(counts1, _polygons1, _polygons0, pal1,
+                        tcf.mapped_loops1());
+      },
+      [&] {
+        compute_missing(counts0, _polygons0, _polygons1, pal0,
+                        tcf.mapped_loops0());
+      });
 }
 
 template <typename Policy0, typename Policy1, typename Index, typename RealT,
@@ -191,7 +279,8 @@ auto make_classification_counts(
     const tf::polygons<Policy0> _polygons0,
     const tf::polygons<Policy1> &_polygons1,
     const tf::intersect::tagged_intersections<Index, RealT, Dims> &ibp,
-    const tf::tagged_cut_faces<Index> &tcf) {
+    const tf::tagged_cut_faces<Index> &tcf,
+    const tf::boolean_config &config) {
   auto [pal0, pal1] = make_polygon_arrangement_labels<LabelType>(
       _polygons0, _polygons1, ibp, tcf);
   auto make_polygons = [](const auto &form) {
@@ -212,11 +301,13 @@ auto make_classification_counts(
   tf::parallel_fill(counts1.data_buffer(), 0);
 
   auto zipped = tf::zip(tcf.loops(), tcf.mapped_loops(), tcf.descriptors());
+  using local_map_t = std::array<tf::hash_map<LabelType, std::array<Index, 4>>, 2>;
   tf::blocked_reduce(
-      tf::enumerate(zipped), std::tie(counts0, counts1),
-      std::array<tf::hash_map<LabelType, std::array<Index, 4>>, 2>{},
+      tf::enumerate(zipped),
+      std::tie(counts0, counts1),
+      local_map_t{},
       [&tcf, &polygons0, &polygons1, &ibp, &zipped, &pal0 = pal0,
-       &pal1 = pal1](const auto &r, auto &local_r) {
+       &pal1 = pal1](const auto &r, auto &lr) {
         for (const auto &[face_id, face_data] : r) {
           const auto &[loop0, mapped_loop0, d0] = face_data;
 
@@ -237,7 +328,7 @@ auto make_classification_counts(
                   tf::cut::classify_by_wedge_on_shared_edge(
                       std::forward_as_tuple(loop0, mapped_loop0, d0), curr,
                       conn[curr], zipped, polys_self, polys_other, pal_other,
-                      partition_other, local_r,
+                      partition_other, lr,
                       tf::make_points(ibp.intersection_points()));
                 }
               };
@@ -252,24 +343,25 @@ auto make_classification_counts(
           }
         }
       },
-      [](const auto &local, auto &result) {
+      [](const auto &lr, auto &result) {
         auto &[res0, res1] = result;
-        for (auto [label, cs] : local[0]) {
-          res0[label][0] += cs[0];
-          res0[label][1] += cs[1];
-          res0[label][2] += cs[2];
-          res0[label][3] += cs[3];
+        for (auto [label, cs] : lr[0]) {
+          res0[label][0] += cs[0]; res0[label][1] += cs[1];
+          res0[label][2] += cs[2]; res0[label][3] += cs[3];
         }
-        for (auto [label, cs] : local[1]) {
-          res1[label][0] += cs[0];
-          res1[label][1] += cs[1];
-          res1[label][2] += cs[2];
-          res1[label][3] += cs[3];
+        for (auto [label, cs] : lr[1]) {
+          res1[label][0] += cs[0]; res1[label][1] += cs[1];
+          res1[label][2] += cs[2]; res1[label][3] += cs[3];
         }
       });
 
-  classify_missing_components(polygons0, polygons1, counts0, counts1, pal0,
-                              pal1, ibp, tcf);
+  if (config.everything_is_outside_of_an_open_mesh)
+    classify_missing_components(polygons0, polygons1, counts0, counts1, pal0,
+                                pal1, ibp, tcf);
+  else
+    classify_missing_components_using_signed_distance(
+        polygons0, polygons1, counts0, counts1, pal0, pal1, ibp, tcf);
+
   return std::make_tuple(std::move(pal0), std::move(pal1), std::move(counts0),
                          std::move(counts1));
 }
@@ -281,9 +373,11 @@ auto make_classifications(
     const tf::polygons<Policy1> &_polygons1,
     const tf::intersect::tagged_intersections<Index, RealT, Dims> &ibp,
     const tf::tagged_cut_faces<Index> &tcf,
-    std::array<tf::arrangement_class, 2> flags) {
+    std::array<tf::arrangement_class, 2> flags,
+    const tf::boolean_config &config) {
   auto [pal0, pal1, counts0, counts1] =
-      make_classification_counts<LabelType>(_polygons0, _polygons1, ibp, tcf);
+      make_classification_counts<LabelType>(_polygons0, _polygons1, ibp, tcf,
+                                            config);
 
   auto make_classes = [](const auto &counts, auto &pal,
                          tf::arrangement_class flags) {

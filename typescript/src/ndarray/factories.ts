@@ -19,20 +19,21 @@ function nd(dtype: string): string {
 }
 
 /** Create a WASM-resident NDArray from a typed array (or plain number[]) + shape. */
-export function ndarray(data: number[], shape: number[]): NDArrayFloat32;
-export function ndarray(data: Float32Array, shape: number[]): NDArrayFloat32;
-export function ndarray(data: Int32Array, shape: number[]): NDArrayInt32;
-export function ndarray(data: Int8Array, shape: number[]): NDArrayInt8;
+export function ndarray(data: number[], shape?: number[]): NDArrayFloat32;
+export function ndarray(data: Float32Array, shape?: number[]): NDArrayFloat32;
+export function ndarray(data: Int32Array, shape?: number[]): NDArrayInt32;
+export function ndarray(data: Int8Array, shape?: number[]): NDArrayInt8;
 export function ndarray(
-  data: number[] | Float32Array | Int32Array | Int8Array, shape: number[],
+  data: number[] | Float32Array | Int32Array | Int8Array, shape?: number[],
 ): NDArray {
   const m = native();
+  const s = shape ?? [data.length];
   if (data instanceof Int32Array)
-    return new NDArray(m.NativeInt32NDArray.from_js(data, shape), "int32");
+    return new NDArray(m.NativeInt32NDArray.from_js(data, s), "int32");
   if (data instanceof Int8Array)
-    return new NDArray(m.NativeInt8NDArray.from_js(data, shape), "int8");
+    return new NDArray(m.NativeInt8NDArray.from_js(data, s), "int8");
   const f32 = data instanceof Float32Array ? data : new Float32Array(data);
-  return new NDArray(m.NativeFloat32NDArray.from_js(f32, shape), "float32");
+  return new NDArray(m.NativeFloat32NDArray.from_js(f32, s), "float32");
 }
 
 /** Generate a random WASM-resident NDArray. */
@@ -134,10 +135,14 @@ export function eye(dtype: string, n: number): NDArray {
 }
 
 /** Create a WASM-resident NDArray with evenly spaced values [start, stop). */
+export function arange(dtype: "float32", stop: number): NDArrayFloat32;
+export function arange(dtype: "int32", stop: number): NDArrayInt32;
 export function arange(dtype: "float32", start: number, stop: number, step?: number): NDArrayFloat32;
 export function arange(dtype: "int32", start: number, stop: number, step?: number): NDArrayInt32;
-export function arange(dtype: string, start: number, stop: number, step: number = 1): NDArray {
-  const raw = native()[`arange_${nd(dtype)}`](start, stop, step);
+export function arange(dtype: string, startOrStop: number, stop?: number, step: number = 1): NDArray {
+  const actualStart = stop === undefined ? 0 : startOrStop;
+  const actualStop = stop === undefined ? startOrStop : stop;
+  const raw = native()[`arange_${nd(dtype)}`](actualStart, actualStop, step);
   return new NDArray(raw, dtype);
 }
 

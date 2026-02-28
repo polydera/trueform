@@ -197,39 +197,21 @@ private:
 
   template <typename Range>
   auto split_earcut(const Range &points, Index start_id, std::true_type) {
-    auto run_split = [&](auto a, auto b) {
-      auto c_id = split_polygon(a, b);
-      bool success = run_implementation(points, a);
-      success = success && run_implementation(points, c_id);
-      return success;
-    };
     auto a = start_id;
-    std::pair<int, double> flag{-1, -std::numeric_limits<double>::max()};
-    auto picked_a = a;
-    auto picked_b = a;
     do {
       auto b = next(next(_nodes[a])).id;
       while (b != start_id && b != prev(_nodes[a]).id) {
-        if (_nodes[a].pt_id != _nodes[b].pt_id) {
-          auto diag_flag = is_valid_diagonal(points, _nodes[a], _nodes[b]);
-          if (diag_flag == 7) {
-            return run_split(a, b);
-          } else {
-            auto local_flag = std::make_pair(
-                diag_flag,
-                -(_nodes[a].point(points) - _nodes[b].point(points)).length2());
-            if (local_flag > flag) {
-              picked_a = a;
-              picked_b = b;
-              flag = local_flag;
-            }
-          }
+        if (_nodes[a].pt_id != _nodes[b].pt_id &&
+            is_valid_diagonal(points, _nodes[a], _nodes[b])) {
+          auto c_id = split_polygon(a, b);
+          bool success = run_implementation(points, a);
+          success = success && run_implementation(points, c_id);
+          return success;
         }
         b = next(_nodes[b]).id;
       }
       a = next(_nodes[a]).id;
     } while (a != start_id);
-    run_split(picked_a, picked_b);
     return false;
   }
 

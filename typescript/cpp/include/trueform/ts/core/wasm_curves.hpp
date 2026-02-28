@@ -56,6 +56,16 @@ public:
     return tf::make_curves(paths_range(), points_range());
   }
 
+  // -- Construction from JS-side ndarrays --
+
+  static auto create(wasm_offset_blocked_buffer<int, int> paths,
+                     wasm_ndarray<float> points) -> wasm_curves {
+    wasm_curves wc;
+    wc._paths = std::move(paths);
+    wc._points = std::move(points);
+    return wc;
+  }
+
   // -- Construction from C++ curves_buffer --
 
   static auto from_curves_buffer(tf::curves_buffer<int, float, 3> &&cb)

@@ -714,6 +714,10 @@ TEMPLATE_TEST_CASE("clean_polygons_dynamic_no_duplicates", "[clean][clean_polygo
 
     REQUIRE(result.faces().size() == input.faces().size());
     REQUIRE(result.points().size() == input.points().size());
+
+    auto canonical_result = tf::test::canonicalize_mesh(result);
+    auto canonical_expected = tf::test::canonicalize_mesh(input);
+    REQUIRE(tf::test::meshes_equal(canonical_result, canonical_expected));
 }
 
 TEMPLATE_TEST_CASE("clean_polygons_dynamic_mixed_ngons", "[clean][clean_polygons][dynamic]",
@@ -731,6 +735,10 @@ TEMPLATE_TEST_CASE("clean_polygons_dynamic_mixed_ngons", "[clean][clean_polygons
     // Clean mixed mesh should remain unchanged
     REQUIRE(result.faces().size() == input.faces().size());
     REQUIRE(result.points().size() == input.points().size());
+
+    auto canonical_result = tf::test::canonicalize_mesh(result);
+    auto canonical_expected = tf::test::canonicalize_mesh(input);
+    REQUIRE(tf::test::meshes_equal(canonical_result, canonical_expected));
 }
 
 TEMPLATE_TEST_CASE("clean_polygons_dynamic_duplicate_vertices", "[clean][clean_polygons][dynamic]",
@@ -908,4 +916,292 @@ TEMPLATE_TEST_CASE("clean_polygons_dynamic_empty", "[clean][clean_polygons][dyna
 
     REQUIRE(result.faces().size() == 0);
     REQUIRE(result.points().size() == 0);
+}
+
+// =============================================================================
+// Dynamic soup: tri + quad with duplicate vertices
+// =============================================================================
+
+TEMPLATE_TEST_CASE("clean_polygons_dynamic_soup_tri_quad", "[clean][clean_polygons][dynamic]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    // Soup: triangle and quad sharing an edge via duplicate vertices
+    tf::polygons_buffer<index_t, real_t, 3, tf::dynamic_size> input;
+
+    // Triangle vertices (0-2)
+    input.points_buffer().emplace_back(real_t(0), real_t(0), real_t(0));
+    input.points_buffer().emplace_back(real_t(1), real_t(0), real_t(0));
+    input.points_buffer().emplace_back(real_t(0.5), real_t(1), real_t(0));
+    // Quad vertices (3-6), vertex 3 duplicates vertex 1
+    input.points_buffer().emplace_back(real_t(1), real_t(0), real_t(0));  // dup of 1
+    input.points_buffer().emplace_back(real_t(2), real_t(0), real_t(0));
+    input.points_buffer().emplace_back(real_t(2), real_t(1), real_t(0));
+    input.points_buffer().emplace_back(real_t(1), real_t(1), real_t(0));
+
+    input.faces_buffer().push_back({index_t(0), index_t(1), index_t(2)});
+    input.faces_buffer().push_back({index_t(3), index_t(4), index_t(5), index_t(6)});
+
+    auto result = tf::cleaned(input.polygons());
+
+    // Duplicate vertex merges: 7 -> 6 unique points
+    REQUIRE(result.points().size() == 6);
+    REQUIRE(result.faces().size() == 2);
+}
+
+// =============================================================================
+// Dynamic soup: tri + quad + pentagon, no duplicates
+// =============================================================================
+
+TEMPLATE_TEST_CASE("clean_polygons_dynamic_soup_tri_quad_pentagon", "[clean][clean_polygons][dynamic]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    tf::polygons_buffer<index_t, real_t, 3, tf::dynamic_size> input;
+
+    // Triangle vertices (0-2)
+    input.points_buffer().emplace_back(real_t(0), real_t(0), real_t(0));
+    input.points_buffer().emplace_back(real_t(1), real_t(0), real_t(0));
+    input.points_buffer().emplace_back(real_t(0.5), real_t(1), real_t(0));
+
+    // Quad vertices (3-6)
+    input.points_buffer().emplace_back(real_t(2), real_t(0), real_t(0));
+    input.points_buffer().emplace_back(real_t(3), real_t(0), real_t(0));
+    input.points_buffer().emplace_back(real_t(3), real_t(1), real_t(0));
+    input.points_buffer().emplace_back(real_t(2), real_t(1), real_t(0));
+
+    // Pentagon vertices (7-11)
+    real_t pi = real_t(3.14159265358979323846);
+    for (int i = 0; i < 5; ++i) {
+        real_t angle = real_t(2) * pi * real_t(i) / real_t(5);
+        input.points_buffer().emplace_back(
+            real_t(5) + std::cos(angle), std::sin(angle), real_t(0));
+    }
+
+    input.faces_buffer().push_back({index_t(0), index_t(1), index_t(2)});
+    input.faces_buffer().push_back({index_t(3), index_t(4), index_t(5), index_t(6)});
+    input.faces_buffer().push_back({index_t(7), index_t(8), index_t(9), index_t(10), index_t(11)});
+
+    auto result = tf::cleaned(input.polygons());
+
+    // No duplicates — everything unchanged
+    REQUIRE(result.points().size() == 12);
+    REQUIRE(result.faces().size() == 3);
+
+    // Canonical round-trip
+    auto canonical_result = tf::test::canonicalize_mesh(result);
+    auto canonical_expected = tf::test::canonicalize_mesh(input);
+    REQUIRE(tf::test::meshes_equal(canonical_result, canonical_expected));
+}
+
+// =============================================================================
+// Dynamic soup: shared edge merge between tri and pentagon
+// =============================================================================
+
+TEMPLATE_TEST_CASE("clean_polygons_dynamic_soup_shared_edge_merge", "[clean][clean_polygons][dynamic]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    tf::polygons_buffer<index_t, real_t, 3, tf::dynamic_size> input;
+
+    // Triangle vertices (0-2)
+    input.points_buffer().emplace_back(real_t(0), real_t(0), real_t(0));
+    input.points_buffer().emplace_back(real_t(1), real_t(0), real_t(0));
+    input.points_buffer().emplace_back(real_t(0.5), real_t(1), real_t(0));
+
+    // Pentagon vertices (3-7), first two duplicate the shared edge
+    input.points_buffer().emplace_back(real_t(1), real_t(0), real_t(0));       // dup of 1
+    input.points_buffer().emplace_back(real_t(0), real_t(0), real_t(0));       // dup of 0
+    input.points_buffer().emplace_back(real_t(0), real_t(-1), real_t(0));
+    input.points_buffer().emplace_back(real_t(0.5), real_t(-1.5), real_t(0));
+    input.points_buffer().emplace_back(real_t(1), real_t(-1), real_t(0));
+
+    input.faces_buffer().push_back({index_t(0), index_t(1), index_t(2)});
+    input.faces_buffer().push_back({index_t(3), index_t(4), index_t(5), index_t(6), index_t(7)});
+
+    auto result = tf::cleaned(input.polygons());
+
+    // 8 input points, 2 duplicates -> 6 unique
+    REQUIRE(result.points().size() == 6);
+    REQUIRE(result.faces().size() == 2);
+}
+
+// =============================================================================
+// Dynamic soup: shared edge merge with index map
+// =============================================================================
+
+TEMPLATE_TEST_CASE("clean_polygons_dynamic_soup_shared_edge_index_map", "[clean][clean_polygons][dynamic]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    tf::polygons_buffer<index_t, real_t, 3, tf::dynamic_size> input;
+
+    // Triangle (0-2)
+    input.points_buffer().emplace_back(real_t(0), real_t(0), real_t(0));
+    input.points_buffer().emplace_back(real_t(1), real_t(0), real_t(0));
+    input.points_buffer().emplace_back(real_t(0.5), real_t(1), real_t(0));
+    // Quad (3-6), vertex 3 = dup of 1, vertex 4 = dup of 2
+    input.points_buffer().emplace_back(real_t(1), real_t(0), real_t(0));    // dup of 1
+    input.points_buffer().emplace_back(real_t(0.5), real_t(1), real_t(0));  // dup of 2
+    input.points_buffer().emplace_back(real_t(2), real_t(0), real_t(0));
+    input.points_buffer().emplace_back(real_t(1.5), real_t(1), real_t(0));
+
+    input.faces_buffer().push_back({index_t(0), index_t(1), index_t(2)});
+    input.faces_buffer().push_back({index_t(3), index_t(4), index_t(5), index_t(6)});
+
+    auto [result, face_im, point_im] = tf::cleaned(input.polygons(), tf::return_index_map);
+
+    // 7 -> 5 unique points (3 merges with 1, 4 merges with 2)
+    REQUIRE(result.points().size() == 5);
+    REQUIRE(result.faces().size() == 2);
+
+    // Point index map: duplicates map to same output
+    REQUIRE(point_im.f().size() == 7);
+    REQUIRE(point_im.f()[1] == point_im.f()[3]);  // both map to same
+    REQUIRE(point_im.f()[2] == point_im.f()[4]);  // both map to same
+
+    // Face index map: both faces kept
+    REQUIRE(face_im.kept_ids().size() == 2);
+}
+
+// =============================================================================
+// Dynamic soup: tolerance merge across different face sizes
+// =============================================================================
+
+TEMPLATE_TEST_CASE("clean_polygons_dynamic_soup_tolerance_mixed", "[clean][clean_polygons][dynamic]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    tf::polygons_buffer<index_t, real_t, 3, tf::dynamic_size> input;
+
+    // Triangle: (0,0,0)-(1,0,0)-(0.5,1,0)
+    input.points_buffer().emplace_back(real_t(0), real_t(0), real_t(0));
+    input.points_buffer().emplace_back(real_t(1), real_t(0), real_t(0));
+    input.points_buffer().emplace_back(real_t(0.5), real_t(1), real_t(0));
+
+    // Quad with slightly offset shared edge
+    input.points_buffer().emplace_back(real_t(1.001), real_t(0), real_t(0));   // near 1
+    input.points_buffer().emplace_back(real_t(0.5), real_t(1.001), real_t(0)); // near 2
+    input.points_buffer().emplace_back(real_t(2), real_t(0), real_t(0));
+    input.points_buffer().emplace_back(real_t(1.5), real_t(1), real_t(0));
+
+    input.faces_buffer().push_back({index_t(0), index_t(1), index_t(2)});
+    input.faces_buffer().push_back({index_t(3), index_t(4), index_t(6), index_t(5)});
+
+    const real_t tolerance = real_t(0.01);
+    auto result = tf::cleaned(input.polygons(), tolerance);
+
+    // Near-coincident vertices merge: 7 -> 5
+    REQUIRE(result.points().size() == 5);
+    REQUIRE(result.faces().size() == 2);
+}
+
+// =============================================================================
+// Dynamic soup: degenerate faces among different sizes
+// =============================================================================
+
+TEMPLATE_TEST_CASE("clean_polygons_dynamic_soup_degenerate_mixed", "[clean][clean_polygons][dynamic]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    tf::polygons_buffer<index_t, real_t, 3, tf::dynamic_size> input;
+
+    input.points_buffer().emplace_back(real_t(0), real_t(0), real_t(0));
+    input.points_buffer().emplace_back(real_t(1), real_t(0), real_t(0));
+    input.points_buffer().emplace_back(real_t(0.5), real_t(1), real_t(0));
+    input.points_buffer().emplace_back(real_t(2), real_t(0), real_t(0));
+    input.points_buffer().emplace_back(real_t(1.5), real_t(1), real_t(0));
+
+    // Valid triangle
+    input.faces_buffer().push_back({index_t(0), index_t(1), index_t(2)});
+    // Degenerate quad (only 2 unique vertices)
+    input.faces_buffer().push_back({index_t(0), index_t(0), index_t(1), index_t(1)});
+    // Valid pentagon
+    input.faces_buffer().push_back({index_t(0), index_t(1), index_t(3), index_t(4), index_t(2)});
+
+    auto result = tf::cleaned(input.polygons());
+
+    // Degenerate quad removed, 2 valid faces remain
+    REQUIRE(result.faces().size() == 2);
+    REQUIRE(result.points().size() == 5);
+}
+
+// =============================================================================
+// Dynamic soup: all faces degenerate with mixed sizes
+// =============================================================================
+
+TEMPLATE_TEST_CASE("clean_polygons_dynamic_soup_all_degenerate_mixed", "[clean][clean_polygons][dynamic]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    tf::polygons_buffer<index_t, real_t, 3, tf::dynamic_size> input;
+
+    input.points_buffer().emplace_back(real_t(0), real_t(0), real_t(0));
+    input.points_buffer().emplace_back(real_t(1), real_t(0), real_t(0));
+
+    // All degenerate: only 2 unique vertices each
+    input.faces_buffer().push_back({index_t(0), index_t(0), index_t(1)});
+    input.faces_buffer().push_back({index_t(0), index_t(1), index_t(0), index_t(1)});
+    input.faces_buffer().push_back({index_t(0), index_t(0), index_t(1), index_t(1), index_t(0)});
+
+    auto result = tf::cleaned(input.polygons());
+
+    REQUIRE(result.faces().size() == 0);
+    REQUIRE(result.points().size() == 0);
+}
+
+// =============================================================================
+// Dynamic soup: duplicate faces with different sizes
+// =============================================================================
+
+TEMPLATE_TEST_CASE("clean_polygons_dynamic_soup_duplicate_mixed_faces", "[clean][clean_polygons][dynamic]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    tf::polygons_buffer<index_t, real_t, 3, tf::dynamic_size> input;
+
+    input.points_buffer().emplace_back(real_t(0), real_t(0), real_t(0));
+    input.points_buffer().emplace_back(real_t(1), real_t(0), real_t(0));
+    input.points_buffer().emplace_back(real_t(1), real_t(1), real_t(0));
+    input.points_buffer().emplace_back(real_t(0), real_t(1), real_t(0));
+    input.points_buffer().emplace_back(real_t(0.5), real_t(0.5), real_t(1));
+
+    // Triangle
+    input.faces_buffer().push_back({index_t(0), index_t(1), index_t(4)});
+    // Quad
+    input.faces_buffer().push_back({index_t(0), index_t(1), index_t(2), index_t(3)});
+    // Rotated duplicate of quad
+    input.faces_buffer().push_back({index_t(1), index_t(2), index_t(3), index_t(0)});
+    // Rotated duplicate of triangle
+    input.faces_buffer().push_back({index_t(1), index_t(4), index_t(0)});
+
+    auto result = tf::cleaned(input.polygons());
+
+    // Duplicates removed: 1 triangle + 1 quad
+    REQUIRE(result.faces().size() == 2);
+    REQUIRE(result.points().size() == 5);
 }

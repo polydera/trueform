@@ -73,11 +73,11 @@ public:
     return tf::make_blocked_range<2>(_all_edges);
   }
 
-private:
   auto base_loop() const -> const tf::buffer<vertex<Index>> & {
     return _base_loop;
   }
 
+private:
   auto edges() const { return tf::make_blocked_range<2>(_edges); }
 
   template <typename Range0, typename Range, typename F>

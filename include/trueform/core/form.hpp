@@ -12,7 +12,6 @@
  */
 #pragma once
 
-#include "./coordinate_dims.hpp"
 #include <utility>
 
 namespace tf {

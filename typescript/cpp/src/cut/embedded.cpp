@@ -27,16 +27,27 @@ using namespace tf::ts;
 
 auto sync_embedded_intersection_curves(wasm_mesh &m0, wasm_mesh &m1)
     -> wasm_mesh {
-  auto poly = tf::embedded_intersection_curves(m0.polygons_range(),
-                                               m1.polygons_range());
+  auto fm0 = m0.face_membership_range();
+  auto mel0 = m0.manifold_edge_link_range();
+  auto fm1 = m1.face_membership_range();
+  auto mel1 = m1.manifold_edge_link_range();
+  auto poly = tf::embedded_intersection_curves(
+      m0.polygons_range() | tf::tag(m0.tree()) | tf::tag(fm0) | tf::tag(mel0),
+      m1.polygons_range() | tf::tag(m1.tree()) | tf::tag(fm1) | tf::tag(mel1));
   return wasm_mesh::from_polygons_buffer(std::move(poly));
 }
 
 auto sync_embedded_intersection_curves_with_curves(wasm_mesh &m0,
                                                    wasm_mesh &m1)
     -> cut_result_with_curves {
+  auto fm0 = m0.face_membership_range();
+  auto mel0 = m0.manifold_edge_link_range();
+  auto fm1 = m1.face_membership_range();
+  auto mel1 = m1.manifold_edge_link_range();
   auto [poly, curves] = tf::embedded_intersection_curves(
-      m0.polygons_range(), m1.polygons_range(), tf::return_curves);
+      m0.polygons_range() | tf::tag(m0.tree()) | tf::tag(fm0) | tf::tag(mel0),
+      m1.polygons_range() | tf::tag(m1.tree()) | tf::tag(fm1) | tf::tag(mel1),
+      tf::return_curves);
   return {wasm_mesh::from_polygons_buffer(std::move(poly)),
           wasm_curves::from_curves_buffer(std::move(curves))};
 }
@@ -63,14 +74,20 @@ auto async_embedded_intersection_curves_with_curves(wasm_mesh &m0,
 // ============================================================================
 
 auto sync_embedded_self_intersection_curves(wasm_mesh &m) -> wasm_mesh {
-  auto poly = tf::embedded_self_intersection_curves(m.polygons_range());
+  auto fm = m.face_membership_range();
+  auto mel = m.manifold_edge_link_range();
+  auto poly = tf::embedded_self_intersection_curves(
+      m.polygons_range() | tf::tag(m.tree()) | tf::tag(fm) | tf::tag(mel));
   return wasm_mesh::from_polygons_buffer(std::move(poly));
 }
 
 auto sync_embedded_self_intersection_curves_with_curves(wasm_mesh &m)
     -> cut_result_with_curves {
+  auto fm = m.face_membership_range();
+  auto mel = m.manifold_edge_link_range();
   auto [poly, curves] = tf::embedded_self_intersection_curves(
-      m.polygons_range(), tf::return_curves);
+      m.polygons_range() | tf::tag(m.tree()) | tf::tag(fm) | tf::tag(mel),
+      tf::return_curves);
   return {wasm_mesh::from_polygons_buffer(std::move(poly)),
           wasm_curves::from_curves_buffer(std::move(curves))};
 }

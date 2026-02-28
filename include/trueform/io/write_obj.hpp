@@ -25,42 +25,33 @@
 namespace tf {
 
 /// @ingroup io
-/// @brief Write polygons to ASCII OBJ file.
+/// @brief Serialize polygons to an ASCII OBJ buffer.
 ///
-/// Writes OBJ format with 1-based indices.
-/// When the polygons are tagged with a frame, points are transformed
-/// before writing.
+/// Builds the complete OBJ representation in memory using a parallel
+/// two-pass algorithm (compute sizes, prefix sum, parallel write).
+/// When the polygons are tagged with a frame, points are transformed.
 ///
-/// @note Uses parallel writing with offset buffers for optimal speed.
-///
+/// @tparam Byte The byte type for the output buffer (default: char).
 /// @tparam Policy The policy type of the polygons.
 /// @param polygons The @ref tf::polygons to write (must be 3D).
-/// @param filename Output filename (.obj appended if missing).
-/// @return true if write succeeded, false otherwise.
-template <typename Policy>
-auto write_obj(const tf::polygons<Policy> &polygons, std::string filename)
-    -> bool {
-  // Validate dimensions (must be 3D)
+/// @return Buffer containing the ASCII OBJ data, or empty buffer on failure.
+template <typename Byte = char, typename Policy>
+auto write_obj_to_buffer(const tf::polygons<Policy> &polygons)
+    -> tf::buffer<Byte> {
+  static_assert(sizeof(Byte) == 1, "Byte type must be 1 byte");
   static_assert(tf::coordinate_dims_v<Policy> == 3,
                 "write_obj requires 3D polygons");
 
-  // Ensure filename ends with .obj
-  if (filename.size() < 4 || filename.substr(filename.size() - 4) != ".obj") {
-    filename += ".obj";
-  }
-
-  // Get frame for transformation (identity if no frame policy)
   const auto &frame = tf::frame_of(polygons);
 
   const std::size_t num_points = polygons.points().size();
   const std::size_t num_faces = polygons.faces().size();
 
   if (num_points == 0 || num_faces == 0)
-    return false;
+    return {};
 
   // ========== PASS 1: Compute line sizes into offset arrays ==========
 
-  // Allocate offset buffers (sizes go into [1..n], then prefix sum)
   tf::buffer<std::size_t> point_offsets;
   tf::buffer<std::size_t> face_offsets;
   point_offsets.allocate(num_points + 1);
@@ -74,7 +65,6 @@ auto write_obj(const tf::polygons<Policy> &polygons, std::string filename)
         auto &&[idx, point] = pair;
         auto transformed_pt = tf::transformed(point, frame);
 
-        // Compute size: "v " + x + " " + y + " " + z + "\n"
         char temp[128];
         std::size_t size = 2; // "v "
 
@@ -104,13 +94,11 @@ auto write_obj(const tf::polygons<Policy> &polygons, std::string filename)
       [&face_offsets](auto pair) {
         auto &&[idx, face] = pair;
 
-        // Compute size: "f" + for each index: " " + index
         char temp[32];
         std::size_t size = 1; // "f"
 
         for (const auto &vertex_idx : face) {
           size += 1; // " "
-          // OBJ uses 1-based indices
           auto res =
               std::to_chars(temp, temp + 32, static_cast<int>(vertex_idx) + 1);
           size += res.ptr - temp;
@@ -123,13 +111,11 @@ auto write_obj(const tf::polygons<Policy> &polygons, std::string filename)
 
   // ========== Convert sizes to offsets (in-place prefix sum) ==========
 
-  // Point offsets
   point_offsets[0] = 0;
   for (std::size_t i = 1; i <= num_points; ++i) {
     point_offsets[i] += point_offsets[i - 1];
   }
 
-  // Face offsets (start after all points)
   face_offsets[0] = point_offsets[num_points];
   for (std::size_t i = 1; i <= num_faces; ++i) {
     face_offsets[i] += face_offsets[i - 1];
@@ -139,7 +125,7 @@ auto write_obj(const tf::polygons<Policy> &polygons, std::string filename)
 
   // ========== Allocate output buffer ==========
 
-  tf::buffer<char> output;
+  tf::buffer<Byte> output;
   output.allocate(total_size);
 
   // ========== PASS 2: Write in parallel ==========
@@ -151,7 +137,7 @@ auto write_obj(const tf::polygons<Policy> &polygons, std::string filename)
         auto &&[idx, point] = pair;
         auto transformed_pt = tf::transformed(point, frame);
 
-        char *ptr = &output[point_offsets[idx]];
+        char *ptr = reinterpret_cast<char *>(&output[point_offsets[idx]]);
         *ptr++ = 'v';
         *ptr++ = ' ';
 
@@ -175,12 +161,11 @@ auto write_obj(const tf::polygons<Policy> &polygons, std::string filename)
       [&output, &face_offsets](auto pair) {
         auto &&[idx, face] = pair;
 
-        char *ptr = &output[face_offsets[idx]];
+        char *ptr = reinterpret_cast<char *>(&output[face_offsets[idx]]);
         *ptr++ = 'f';
 
         for (const auto &vertex_idx : face) {
           *ptr++ = ' ';
-          // OBJ uses 1-based indices
           auto res =
               std::to_chars(ptr, ptr + 32, static_cast<int>(vertex_idx) + 1);
           ptr = res.ptr;
@@ -189,17 +174,41 @@ auto write_obj(const tf::polygons<Policy> &polygons, std::string filename)
       },
       tf::checked);
 
-  // ========== Write to file ==========
+  return output;
+}
+
+/// @ingroup io
+/// @brief Write polygons to ASCII OBJ file.
+///
+/// Writes OBJ format with 1-based indices.
+/// When the polygons are tagged with a frame, points are transformed
+/// before writing.
+///
+/// @tparam Policy The policy type of the polygons.
+/// @param polygons The @ref tf::polygons to write (must be 3D).
+/// @param filename Output filename (.obj appended if missing).
+/// @return true if write succeeded, false otherwise.
+template <typename Policy>
+auto write_obj(const tf::polygons<Policy> &polygons, std::string filename)
+    -> bool {
+  static_assert(tf::coordinate_dims_v<Policy> == 3,
+                "write_obj requires 3D polygons");
+
+  if (filename.size() < 4 || filename.substr(filename.size() - 4) != ".obj") {
+    filename += ".obj";
+  }
+
+  auto buf = write_obj_to_buffer(polygons);
+  if (buf.size() == 0)
+    return false;
 
   std::ofstream file(filename, std::ios::binary);
   if (!file)
     return false;
 
-  file.write(output.begin(), static_cast<std::streamsize>(total_size));
-  if (!file)
-    return false;
-
-  return true;
+  file.write(reinterpret_cast<const char *>(buf.data()),
+             static_cast<std::streamsize>(buf.size()));
+  return !!file;
 }
 
 } // namespace tf

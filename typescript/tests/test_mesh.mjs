@@ -189,7 +189,7 @@ describe("Mesh", () => {
     const block0 = fl.get(0);
     let found1 = false;
     for (let i = 0; i < block0.length; i++) {
-      if (block0[i] === 1) found1 = true;
+      if (block0.get(i) === 1) found1 = true;
     }
     assert(found1, "face 0 should be adjacent to face 1");
     log("  face 0 adjacent to face 1", "line-pass");

@@ -20,5 +20,5 @@ export {
   point, vector, segment, triangle,
   ray, line, plane, aabb, polygon,
 } from "./factories";
-export { makeTranslation, makeRotation } from "./transformations";
+export { makeTranslation, makeRotation, makeRandomRotation } from "./transformations";
 export type { Axis } from "./transformations";

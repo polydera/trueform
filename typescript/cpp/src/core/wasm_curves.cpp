@@ -16,6 +16,7 @@
 
 EMSCRIPTEN_BINDINGS(trueform_curves) {
   emscripten::class_<tf::ts::wasm_curves>("NativeCurves")
+      .class_function("create", &tf::ts::wasm_curves::create)
       .function("paths", &tf::ts::wasm_curves::paths)
       .function("points", &tf::ts::wasm_curves::points)
       .function("size", &tf::ts::wasm_curves::size)

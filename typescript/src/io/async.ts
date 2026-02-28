@@ -13,6 +13,7 @@
 
 import { native, dispatcher } from "../native";
 import { Mesh } from "../form/Mesh";
+import { NDArray, NDArrayInt8 } from "../ndarray/NDArray";
 
 /** Read an STL file (binary or ASCII) into a triangle mesh, off the main thread. */
 export async function readStl(data: ArrayBuffer | Uint8Array): Promise<Mesh> {
@@ -29,5 +30,21 @@ export async function readObj(data: ArrayBuffer | Uint8Array): Promise<Mesh> {
   return dispatcher().run(
     () => native().dispatch_read_obj_buffer(bytes),
     (raw) => new Mesh(raw),
+  );
+}
+
+/** Serialize a mesh to binary STL format, off the main thread. */
+export async function writeStl(mesh: Mesh): Promise<NDArrayInt8> {
+  return dispatcher().run(
+    () => native().dispatch_write_stl_buffer(mesh._handle),
+    (raw) => new NDArray(raw, "int8"),
+  );
+}
+
+/** Serialize a mesh to ASCII OBJ format, off the main thread. */
+export async function writeObj(mesh: Mesh): Promise<NDArrayInt8> {
+  return dispatcher().run(
+    () => native().dispatch_write_obj_buffer(mesh._handle),
+    (raw) => new NDArray(raw, "int8"),
   );
 }

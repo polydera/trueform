@@ -12,7 +12,7 @@
  */
 
 export {
-  distance2, closestPoint, closestPointPair,
+  distance, distance2, closestPoint, closestPointPair,
   neighborSearch, intersects, rayCast,
 } from "./sync";
 export type {

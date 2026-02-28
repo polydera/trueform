@@ -13,33 +13,33 @@
     "typecheck": "nuxt typecheck"
   },
   "dependencies": {
-    "@iconify-json/lucide": "^1.2.90",
-    "@iconify-json/simple-icons": "^1.2.70",
-    "@iconify-json/vscode-icons": "^1.2.42",
-    "@nuxt/content": "^3.11.2",
+    "@iconify-json/lucide": "^1.2.94",
+    "@iconify-json/simple-icons": "^1.2.71",
+    "@iconify-json/vscode-icons": "^1.2.44",
+    "@nuxt/content": "^3.12.0",
     "@nuxt/image": "^2.0.0",
-    "@nuxt/ui": "^4.4.0",
+    "@nuxt/ui": "^4.5.0",
     "@nuxtjs/robots": "^5.7.0",
     "@nuxtjs/sitemap": "^7.6.0",
     "@unovis/ts": "^1.6.4",
     "@unovis/vue": "^1.6.4",
     "better-sqlite3": "^12.6.2",
     "fast-glob": "^3.3.3",
-    "katex": "^0.16.28",
+    "katex": "^0.16.33",
     "nuxt": "^4.3.1",
     "nuxt-llms": "0.2.0",
     "nuxt-og-image": "^5.1.13",
     "nuxt-schema-org": "^5.0.10",
-    "stats-gl": "^4.0.2",
+    "stats-gl": "^4.1.0",
     "three": "^0.182.0"
   },
   "devDependencies": {
-    "@nuxt/eslint": "^1.15.1",
+    "@nuxt/eslint": "^1.15.2",
     "@types/three": "^0.182.0",
-    "eslint": "^10.0.0",
+    "eslint": "^10.0.2",
     "typescript": "^5.9.3",
-    "vue-tsc": "^3.2.4",
-    "wrangler": "^4.65.0"
+    "vue-tsc": "^3.2.5",
+    "wrangler": "^4.69.0"
   },
   "resolutions": {
     "unimport": "4.1.1"

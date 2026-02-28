@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useWasmModule } from "@/composables/useWasmModule";
+import { useTrueform } from "@/composables/useTrueform";
 import { BooleanExample } from "@/examples/BooleanExample";
 import { useExampleLoadingState } from "@/composables/useExampleLoadingState";
 import { useMeshSelection } from "@/composables/useMeshSelection";
@@ -20,23 +20,15 @@ if (metadata) {
 
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
-const { loadExampleWithAssets } = useWasmModule();
-const {
-  isLoading,
-  loadingMessage,
-  loadingError,
-  resetLoading,
-  setLoadingMessage,
-  failLoading,
-  finishLoading,
-} = useExampleLoadingState();
-const { meshSize, buildMeshes, formatPolygonLabel } = useMeshSelection();
+const { load: loadTF } = useTrueform();
+const { isLoading, loadingMessage, loadingError, resetLoading, setLoadingMessage, failLoading, finishLoading } =
+  useExampleLoadingState();
+const { meshSize, meshUrl, meshFilename, formatPolygonLabel } = useMeshSelection();
 
 const threejsContainer = ref<HTMLElement | null>(null);
 const threejsContainer2 = ref<HTMLElement | null>(null);
 let exampleClass: BooleanExample | null = null;
 const meshCount = 1;
-const meshes = computed(() => buildMeshes(meshCount));
 const polygonLabel = computed(() => formatPolygonLabel(meshCount));
 const sphereSizeSteps = ref(0);
 const sphereSizeBounds = {
@@ -84,32 +76,41 @@ const loadThreejs = async () => {
   const loadId = ++currentLoadId;
   disposeExample();
   sphereSizeSteps.value = 0;
-  exampleClass = await loadExampleWithAssets({
-    meshes: meshes.value,
-    skipOverlayIfCached: true,
-    loading: { resetLoading, setLoadingMessage, failLoading, finishLoading },
-    isTornDown: () => tearDownRequested || loadId !== currentLoadId,
-    createScene: (wasmInstance, meshFilenames) => {
-      const el = threejsContainer.value;
-      const el2 = threejsContainer2.value;
-      if (!el || !el2) {
-        return null;
-      }
+  resetLoading();
 
-      const instance = new BooleanExample(wasmInstance, meshFilenames, el, el2, isDark.value);
-      instance.refreshTimeValue = getAvgTime;
-      instance.onSphereSizeDelta = (delta) => {
-        const nextValue = Math.min(
-          sphereSizeBounds.max,
-          Math.max(sphereSizeBounds.min, sphereSizeSteps.value + delta),
-        );
-        if (nextValue === sphereSizeSteps.value) return;
-        isSyncingSphereSize.value = true;
-        sphereSizeSteps.value = nextValue;
-      };
-      return instance;
-    },
-  });
+  try {
+    setLoadingMessage("Loading trueform...");
+    const tf = await loadTF();
+    if (tearDownRequested || loadId !== currentLoadId) { finishLoading(); return; }
+
+    setLoadingMessage("Fetching mesh...");
+    const resp = await fetch(meshUrl.value);
+    const fileBuffer = await resp.arrayBuffer();
+    if (tearDownRequested || loadId !== currentLoadId) { finishLoading(); return; }
+
+    setLoadingMessage("Initializing renderer...");
+    const el = threejsContainer.value;
+    const el2 = threejsContainer2.value;
+    if (!el || !el2) { finishLoading(); return; }
+
+    exampleClass = new BooleanExample(tf, fileBuffer, meshFilename.value, el, el2, isDark.value);
+    exampleClass.refreshTimeValue = getAvgTime;
+    exampleClass.onSphereSizeDelta = (delta) => {
+      const nextValue = Math.min(
+        sphereSizeBounds.max,
+        Math.max(sphereSizeBounds.min, sphereSizeSteps.value + delta),
+      );
+      if (nextValue === sphereSizeSteps.value) return;
+      isSyncingSphereSize.value = true;
+      sphereSizeSteps.value = nextValue;
+    };
+    getAvgTime();
+    finishLoading();
+  } catch (error) {
+    if (!tearDownRequested && loadId === currentLoadId) {
+      failLoading(error);
+    }
+  }
 };
 
 watch(meshSize, () => loadThreejs(), { immediate: true });

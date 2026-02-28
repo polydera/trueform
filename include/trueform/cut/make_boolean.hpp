@@ -14,6 +14,7 @@
 #include "../core/curves_buffer.hpp"
 #include "../intersect/intersections_between_polygons.hpp"
 #include "../topology/connect_edges_to_paths.hpp"
+#include "./boolean_config.hpp"
 #include "./boolean_op.hpp"
 #include "./impl/dispatch.hpp"
 #include "./impl/make_boolean.hpp"
@@ -41,9 +42,10 @@ namespace tf {
 /// @see tf::make_mesh_arrangements for full region decomposition.
 template <typename Policy0, typename Policy1>
 auto make_boolean(const tf::polygons<Policy0> &_polygons0,
-                  const tf::polygons<Policy1> &_polygons1, tf::boolean_op op) {
+                  const tf::polygons<Policy1> &_polygons1, tf::boolean_op op,
+                  tf::boolean_config config = {}) {
   return cut::impl::boolean_dispatch(
-      _polygons0, _polygons1, [op](const auto &p0, const auto &p1) {
+      _polygons0, _polygons1, [op, config](const auto &p0, const auto &p1) {
         using Index =
             std::common_type_t<typename std::decay_t<decltype(p0)>::index_type,
                                typename std::decay_t<decltype(p1)>::index_type>;
@@ -51,7 +53,7 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
         ibp.build(p0, p1);
         tf::tagged_cut_faces<Index> tcf;
         tcf.build(p0, p1, ibp);
-        return tf::cut::make_boolean<int>(p0, p1, ibp, tcf,
+        return tf::cut::make_boolean<int>(p0, p1, ibp, tcf, config,
                                           tf::cut::make_boolean_op_spec(op));
       });
 }
@@ -68,9 +70,10 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
 template <typename Policy0, typename Policy1>
 auto make_boolean(const tf::polygons<Policy0> &_polygons0,
                   const tf::polygons<Policy1> &_polygons1, tf::boolean_op op,
-                  tf::return_index_map_t) {
+                  tf::return_index_map_t,
+                  tf::boolean_config config = {}) {
   return cut::impl::boolean_dispatch(
-      _polygons0, _polygons1, [op](const auto &p0, const auto &p1) {
+      _polygons0, _polygons1, [op, config](const auto &p0, const auto &p1) {
         using Index =
             std::common_type_t<typename std::decay_t<decltype(p0)>::index_type,
                                typename std::decay_t<decltype(p1)>::index_type>;
@@ -78,7 +81,7 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
         ibp.build(p0, p1);
         tf::tagged_cut_faces<Index> tcf;
         tcf.build(p0, p1, ibp);
-        return tf::cut::make_boolean<int>(p0, p1, ibp, tcf,
+        return tf::cut::make_boolean<int>(p0, p1, ibp, tcf, config,
                                           tf::cut::make_boolean_op_spec(op),
                                           tf::return_index_map);
       });
@@ -96,9 +99,10 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
 template <typename Policy0, typename Policy1>
 auto make_boolean(const tf::polygons<Policy0> &_polygons0,
                   const tf::polygons<Policy1> &_polygons1, tf::boolean_op op,
-                  tf::return_curves_t) {
+                  tf::return_curves_t,
+                  tf::boolean_config config = {}) {
   return cut::impl::boolean_dispatch(
-      _polygons0, _polygons1, [op](const auto &p0, const auto &p1) {
+      _polygons0, _polygons1, [op, config](const auto &p0, const auto &p1) {
         using Index =
             std::common_type_t<typename std::decay_t<decltype(p0)>::index_type,
                                typename std::decay_t<decltype(p1)>::index_type>;
@@ -107,7 +111,7 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
         tf::tagged_cut_faces<Index> tcf;
         tcf.build(p0, p1, ibp);
         auto res = tf::cut::make_boolean<int>(
-            p0, p1, ibp, tcf, tf::cut::make_boolean_op_spec(op));
+            p0, p1, ibp, tcf, config, tf::cut::make_boolean_op_spec(op));
         auto ie = tf::make_mapped_range(tcf.intersection_edges(), [](auto e) {
           return std::array<Index, 2>{e[0].id, e[1].id};
         });
@@ -138,9 +142,10 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
 template <typename Policy0, typename Policy1>
 auto make_boolean(const tf::polygons<Policy0> &_polygons0,
                   const tf::polygons<Policy1> &_polygons1, tf::boolean_op op,
-                  tf::return_curves_t, tf::return_index_map_t) {
+                  tf::return_curves_t, tf::return_index_map_t,
+                  tf::boolean_config config = {}) {
   return cut::impl::boolean_dispatch(
-      _polygons0, _polygons1, [op](const auto &p0, const auto &p1) {
+      _polygons0, _polygons1, [op, config](const auto &p0, const auto &p1) {
         using Index =
             std::common_type_t<typename std::decay_t<decltype(p0)>::index_type,
                                typename std::decay_t<decltype(p1)>::index_type>;
@@ -149,7 +154,7 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
         tf::tagged_cut_faces<Index> tcf;
         tcf.build(p0, p1, ibp);
         auto [res_mesh, res_labels, res_im] = tf::cut::make_boolean<int>(
-            p0, p1, ibp, tcf, tf::cut::make_boolean_op_spec(op),
+            p0, p1, ibp, tcf, config, tf::cut::make_boolean_op_spec(op),
             tf::return_index_map);
         auto ie = tf::make_mapped_range(tcf.intersection_edges(), [](auto e) {
           return std::array<Index, 2>{e[0].id, e[1].id};

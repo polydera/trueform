@@ -6,6 +6,96 @@ import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
 
 // ============================================================================
+// RollingAverage — circular buffer of last N samples
+// ============================================================================
+
+export class RollingAverage {
+  private samples: number[] = [];
+  private index = 0;
+  private readonly capacity: number;
+
+  constructor(capacity = 10) {
+    this.capacity = capacity;
+  }
+
+  add(value: number) {
+    if (this.samples.length < this.capacity) {
+      this.samples.push(value);
+    } else {
+      this.samples[this.index] = value;
+    }
+    this.index = (this.index + 1) % this.capacity;
+  }
+
+  clear() {
+    this.samples = [];
+    this.index = 0;
+  }
+
+  get average(): number {
+    if (this.samples.length === 0) return 0;
+    let sum = 0;
+    for (const s of this.samples) sum += s;
+    return sum / this.samples.length;
+  }
+}
+
+// ============================================================================
+// centerAndScale — AABB center at origin, diagonal/2 = 10
+// ============================================================================
+
+/** Center mesh at origin and scale so AABB diagonal/2 = 10. Modifies points in-place. */
+export function centerAndScale(tf: any, mesh: any) {
+  const points = mesh.points;
+  const pMin = tf.min(points, 0);
+  const pMax = tf.max(points, 0);
+  const center = pMin.add(pMax).mul_(0.5);
+  const diag = pMax.sub(pMin);
+  const r = (tf.norm(diag) as number) / 2;
+  points.sub_(center);
+  points.mul_(10 / r);
+  pMin.delete(); pMax.delete(); center.delete(); diag.delete();
+}
+
+// ============================================================================
+// randomTransformation — random rotation + translation (row-major 4x4)
+// ============================================================================
+
+/** Random rotation + translation as row-major 4x4 NDArrayFloat32 [4,4]. Caller must .delete() result. */
+export function randomTransformation(tf: any, tx: number, ty: number, tz: number): any {
+  const R = tf.makeRandomRotation();
+  const T = tf.makeTranslation(tx, ty, tz);
+  const result = T.matMul(R);
+  R.delete(); T.delete();
+  return result;
+}
+
+// ============================================================================
+// pickMesh — ray pick against an array of tf meshes
+// ============================================================================
+
+export interface PickResult {
+  /** Index of the hit mesh in the array. */
+  index: number;
+  /** Ray parameter t at the hit point. */
+  t: number;
+}
+
+/** Cast a tf ray against an array of tf meshes, return the closest hit or null. */
+export function pickMesh(tf: any, ray: any, meshes: any[]): PickResult | null {
+  let bestT = Infinity;
+  let bestId = -1;
+  for (let i = 0; i < meshes.length; i++) {
+    const result = tf.rayCast(ray, meshes[i]);
+    if (result.hit && result.t < bestT) {
+      bestT = result.t;
+      bestId = i;
+    }
+  }
+  return bestId >= 0 ? { index: bestId, t: bestT } : null;
+}
+
+// ============================================================================
 // CurveRenderer - Efficient instanced tube rendering (cylinders + spheres)
 // ============================================================================
 
@@ -252,6 +342,52 @@ export class CurveRenderer {
     buf[o + 13] = my;
     buf[o + 14] = mz;
     buf[o + 15] = 1;
+  }
+
+  /**
+   * Update from flat typed arrays — zero-copy from TF Curves.
+   * Reads OffsetBlockedBuffer layout directly: no per-path JS array allocation.
+   */
+  updateFromBuffers(points: Float32Array, indices: Int32Array, offsets: Int32Array): void {
+    if (!points || points.length === 0 || offsets.length < 2) {
+      this.cylinderMesh.count = 0;
+      this.sphereMesh.count = 0;
+      return;
+    }
+
+    const vertCount = points.length / 3;
+    const r = this.radius;
+    const nPaths = offsets.length - 1;
+    let cylIdx = 0;
+    let sphIdx = 0;
+
+    for (let p = 0; p < nPaths; p++) {
+      const start = offsets[p]!;
+      const end = offsets[p + 1]!;
+      if (end - start < 2) continue;
+
+      for (let j = start; j < end; j++) {
+        const idx = indices[j]!;
+        if (idx < 0 || idx >= vertCount) continue;
+
+        const x = points[idx * 3]!, y = points[idx * 3 + 1]!, z = points[idx * 3 + 2]!;
+
+        if (sphIdx < this.maxSegments) this.writeSphereMatrix(sphIdx++, x, y, z, r);
+
+        if (j < end - 1) {
+          const ni = indices[j + 1]!;
+          if (ni < 0 || ni >= vertCount) continue;
+          if (cylIdx < this.maxSegments)
+            this.writeCylinderMatrix(cylIdx++, x, y, z,
+              points[ni * 3]!, points[ni * 3 + 1]!, points[ni * 3 + 2]!, r);
+        }
+      }
+    }
+
+    this.cylinderMesh.count = cylIdx;
+    this.sphereMesh.count = sphIdx;
+    this.cylinderMesh.instanceMatrix.needsUpdate = true;
+    this.sphereMesh.instanceMatrix.needsUpdate = true;
   }
 
   dispose(): void {

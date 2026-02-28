@@ -292,6 +292,40 @@ describe("NDArray", () => {
   });
 
   // ==========================================================================
+  test("isNaN", () => {
+    const tf = getTf();
+
+    // Method
+    const a = tf.ndarray(new Float32Array([1, NaN, 3, NaN, 5]));
+    const mask = a.isNaN();
+    assert(mask.dtype === "bool", `dtype: ${mask.dtype}`);
+    assert(mask.data[0] === 0 && mask.data[1] === 1, "detects NaN");
+    assert(mask.data[2] === 0 && mask.data[3] === 1 && mask.data[4] === 0, "non-NaN is 0");
+    log("  .isNaN() method", "line-pass");
+    mask.delete();
+
+    // Free function
+    const mask2 = tf.isNaN(a);
+    assert(mask2.data[1] === 1 && mask2.data[4] === 0, "free function");
+    log("  tf.isNaN() free function", "line-pass");
+    mask2.delete();
+
+    // No NaN
+    const b = tf.ndarray(new Float32Array([1, 2, 3]));
+    const mask3 = b.isNaN();
+    assert(mask3.data[0] === 0 && mask3.data[1] === 0 && mask3.data[2] === 0, "no NaN");
+    log("  no NaN → all false", "line-pass");
+    mask3.delete(); b.delete();
+
+    // All NaN
+    const c = tf.ndarray(new Float32Array([NaN, NaN]));
+    const mask4 = c.isNaN();
+    assert(mask4.data[0] === 1 && mask4.data[1] === 1, "all NaN");
+    log("  all NaN → all true", "line-pass");
+    mask4.delete(); c.delete(); a.delete();
+  });
+
+  // ==========================================================================
   test("matMul", () => {
     const tf = getTf();
 
@@ -372,13 +406,13 @@ describe("NDArray", () => {
   test("dot & cross", () => {
     const tf = getTf();
 
-    // dot 1D
+    // dot 1D → returns number
     const a1 = tf.ndarray(new Float32Array([1, 2, 3]), [3]);
     const b1 = tf.ndarray(new Float32Array([4, 5, 6]), [3]);
     const r1 = tf.dot(a1, b1);
-    approx(r1.data[0], 32);
+    approx(r1, 32);
     log("  dot 1D: 32", "line-pass");
-    r1.delete(); b1.delete(); a1.delete();
+    b1.delete(); a1.delete();
 
     // dot batch
     const a2 = tf.ndarray(new Float32Array([1,0,0, 0,1,0]), [2, 3]);
@@ -1038,6 +1072,89 @@ describe("NDArray", () => {
     assert(sd4r.data[0] === 10 && sd4r.data[1] === 30, "setDifference int32");
     log("  setDifference int32", "line-pass");
     sd4r.delete(); sd4b.delete(); sd4a.delete();
+
+    // ---- 2D row-wise set operations ----
+
+    // unique 2D — row-wise dedup (sorted rows)
+    // rows: [1,2], [1,2], [3,4], [5,6], [5,6] → [1,2], [3,4], [5,6]
+    const u2d = tf.ndarray(new Float32Array([1,2, 1,2, 3,4, 5,6, 5,6]), [5, 2]);
+    const u2dr = tf.unique(u2d);
+    assert(u2dr.ndim === 2, "unique 2D ndim");
+    assert(u2dr.shape[0] === 3 && u2dr.shape[1] === 2, "unique 2D shape");
+    approx(u2dr.data[0], 1); approx(u2dr.data[1], 2);
+    approx(u2dr.data[2], 3); approx(u2dr.data[3], 4);
+    approx(u2dr.data[4], 5); approx(u2dr.data[5], 6);
+    log("  unique 2D", "line-pass");
+    u2dr.delete(); u2d.delete();
+
+    // unique 2D int32
+    const u2di = tf.ndarray(new Int32Array([0,0,1, 0,0,1, 1,2,3]), [3, 3]);
+    const u2dir = tf.unique(u2di);
+    assert(u2dir.shape[0] === 2 && u2dir.shape[1] === 3, "unique 2D int32 shape");
+    assert(u2dir.data[0] === 0 && u2dir.data[1] === 0 && u2dir.data[2] === 1, "unique 2D int32 row0");
+    assert(u2dir.data[3] === 1 && u2dir.data[4] === 2 && u2dir.data[5] === 3, "unique 2D int32 row1");
+    log("  unique 2D int32", "line-pass");
+    u2dir.delete(); u2di.delete();
+
+    // setUnion 2D — row-wise sorted merge
+    // a: [1,2], [3,4], [5,6]   b: [2,3], [3,4], [7,8]
+    // union: [1,2], [2,3], [3,4], [5,6], [7,8]
+    const su2da = tf.ndarray(new Float32Array([1,2, 3,4, 5,6]), [3, 2]);
+    const su2db = tf.ndarray(new Float32Array([2,3, 3,4, 7,8]), [3, 2]);
+    const su2dr = tf.setUnion(su2da, su2db);
+    assert(su2dr.ndim === 2, "setUnion 2D ndim");
+    assert(su2dr.shape[0] === 5 && su2dr.shape[1] === 2, "setUnion 2D shape");
+    approx(su2dr.data[0], 1); approx(su2dr.data[1], 2);  // [1,2]
+    approx(su2dr.data[2], 2); approx(su2dr.data[3], 3);  // [2,3]
+    approx(su2dr.data[4], 3); approx(su2dr.data[5], 4);  // [3,4]
+    approx(su2dr.data[6], 5); approx(su2dr.data[7], 6);  // [5,6]
+    approx(su2dr.data[8], 7); approx(su2dr.data[9], 8);  // [7,8]
+    log("  setUnion 2D", "line-pass");
+    su2dr.delete(); su2db.delete(); su2da.delete();
+
+    // setIntersection 2D — row-wise
+    // a: [1,2], [3,4], [5,6]   b: [0,1], [3,4], [5,6], [9,9]
+    // intersection: [3,4], [5,6]
+    const si2da = tf.ndarray(new Float32Array([1,2, 3,4, 5,6]), [3, 2]);
+    const si2db = tf.ndarray(new Float32Array([0,1, 3,4, 5,6, 9,9]), [4, 2]);
+    const si2dr = tf.setIntersection(si2da, si2db);
+    assert(si2dr.ndim === 2, "setIntersection 2D ndim");
+    assert(si2dr.shape[0] === 2 && si2dr.shape[1] === 2, "setIntersection 2D shape");
+    approx(si2dr.data[0], 3); approx(si2dr.data[1], 4);
+    approx(si2dr.data[2], 5); approx(si2dr.data[3], 6);
+    log("  setIntersection 2D", "line-pass");
+    si2dr.delete(); si2db.delete(); si2da.delete();
+
+    // setIntersection 2D — empty (no shared rows)
+    const si2ea = tf.ndarray(new Int32Array([1,0, 2,0]), [2, 2]);
+    const si2eb = tf.ndarray(new Int32Array([1,1, 2,1]), [2, 2]);
+    const si2er = tf.setIntersection(si2ea, si2eb);
+    assert(si2er.shape[0] === 0, "setIntersection 2D empty");
+    log("  setIntersection 2D empty", "line-pass");
+    si2er.delete(); si2eb.delete(); si2ea.delete();
+
+    // setDifference 2D — row-wise
+    // a: [1,2], [3,4], [5,6], [7,8]   b: [3,4], [7,8]
+    // difference: [1,2], [5,6]
+    const sd2da = tf.ndarray(new Float32Array([1,2, 3,4, 5,6, 7,8]), [4, 2]);
+    const sd2db = tf.ndarray(new Float32Array([3,4, 7,8]), [2, 2]);
+    const sd2dr = tf.setDifference(sd2da, sd2db);
+    assert(sd2dr.ndim === 2, "setDifference 2D ndim");
+    assert(sd2dr.shape[0] === 2 && sd2dr.shape[1] === 2, "setDifference 2D shape");
+    approx(sd2dr.data[0], 1); approx(sd2dr.data[1], 2);
+    approx(sd2dr.data[2], 5); approx(sd2dr.data[3], 6);
+    log("  setDifference 2D", "line-pass");
+    sd2dr.delete(); sd2db.delete(); sd2da.delete();
+
+    // setDifference 2D — lexicographic order matters
+    // a: [1,2], [1,3]   b: [1,2]  → [1,3] (first col same, second col differs)
+    const sd2la = tf.ndarray(new Int32Array([1,2, 1,3]), [2, 2]);
+    const sd2lb = tf.ndarray(new Int32Array([1,2]), [1, 2]);
+    const sd2lr = tf.setDifference(sd2la, sd2lb);
+    assert(sd2lr.shape[0] === 1 && sd2lr.shape[1] === 2, "setDifference 2D lex shape");
+    assert(sd2lr.data[0] === 1 && sd2lr.data[1] === 3, "setDifference 2D lex values");
+    log("  setDifference 2D lexicographic", "line-pass");
+    sd2lr.delete(); sd2lb.delete(); sd2la.delete();
   });
 
   // ==========================================================================
@@ -1213,6 +1330,24 @@ describe("NDArray", () => {
     assert(a8.data[0] === 42 && a8.data[3] === 42, "int32 assign scalar");
     log("  assign int32", "line-pass");
     a8.delete();
+
+    // reshape [4,4] → [16], then indexed assign at flat indices 3,7,11
+    // (simulates setting translation column in a row-major 4x4 matrix)
+    const mat = tf.ndarray(new Float32Array([
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      0, 0, 1, 0,
+      0, 0, 0, 1,
+    ]), [4, 4]);
+    const flat = mat.reshape([16]);
+    const ridx = tf.ndarray(new Int32Array([3, 7, 11]), [3]);
+    const rval = tf.ndarray(new Float32Array([10, 20, 30]), [3]);
+    flat.assign(ridx, rval);
+    approx(mat.data[3], 10);
+    approx(mat.data[7], 20);
+    approx(mat.data[11], 30);
+    log("  assign via reshape [4,4]→[16] at flat indices", "line-pass");
+    flat.delete(); ridx.delete(); rval.delete(); mat.delete();
   });
 
   // ==========================================================================
@@ -1325,6 +1460,378 @@ describe("NDArray", () => {
     approx(angles.data[2], Math.PI / 2);    // (0,1) → pi/2
     log("  atan2 vector angles", "line-pass");
     angles.delete(); vx.delete(); vy.delete();
+  });
+
+  // ==========================================================================
+  test("multi-axis take — column extraction", () => {
+    const tf = getTf();
+    const pts = tf.ndarray(new Float32Array([
+      1, 2, 3,
+      4, 5, 6,
+      7, 8, 9,
+    ]), [3, 3]);
+
+    // pts.take(null, 0) → x column [3]
+    const x = pts.take(null, 0);
+    assert(x.shape.length === 1, `expected 1D, got ${x.shape.length}D`);
+    assert(x.shape[0] === 3, `expected 3 elements, got ${x.shape[0]}`);
+    approx(x.data[0], 1, "x[0]");
+    approx(x.data[1], 4, "x[1]");
+    approx(x.data[2], 7, "x[2]");
+    log("  take(null, 0) → x column", "line-pass");
+
+    // pts.take(null, [0, 2]) → [N, 2] x,z columns
+    const xz = pts.take(null, [0, 2]);
+    assert(xz.shape[0] === 3 && xz.shape[1] === 2, `expected [3,2], got [${xz.shape}]`);
+    approx(xz.data[0], 1, "xz[0,0]");
+    approx(xz.data[1], 3, "xz[0,1]");
+    approx(xz.data[2], 4, "xz[1,0]");
+    approx(xz.data[3], 6, "xz[1,1]");
+    log("  take(null, [0,2]) → x,z columns", "line-pass");
+
+    xz.delete();
+    x.delete();
+    pts.delete();
+  });
+
+  // ==========================================================================
+  test("multi-axis take — row subset", () => {
+    const tf = getTf();
+    const arr = tf.ndarray(new Float32Array([
+      1, 2, 3,
+      4, 5, 6,
+      7, 8, 9,
+      10, 11, 12,
+    ]), [4, 3]);
+
+    // take([0, 2]) → rows 0,2 → [2, 3]
+    const rows = arr.take([0, 2]);
+    assert(rows.shape[0] === 2 && rows.shape[1] === 3, `expected [2,3], got [${rows.shape}]`);
+    approx(rows.data[0], 1, "row0[0]");
+    approx(rows.data[3], 7, "row2[0]");
+    log("  take([0,2]) → 2 rows", "line-pass");
+
+    rows.delete();
+    arr.delete();
+  });
+
+  // ==========================================================================
+  test("multi-axis take — single index (squeeze)", () => {
+    const tf = getTf();
+    const arr = tf.ndarray(new Float32Array([
+      1, 2, 3,
+      4, 5, 6,
+    ]), [2, 3]);
+
+    // take(1) → row 1 → [3] (squeezed)
+    const row1 = arr.take(1);
+    assert(row1.shape.length === 1, `expected 1D, got ${row1.shape.length}D`);
+    assert(row1.shape[0] === 3, `expected 3, got ${row1.shape[0]}`);
+    approx(row1.data[0], 4, "row1[0]");
+    approx(row1.data[1], 5, "row1[1]");
+    approx(row1.data[2], 6, "row1[2]");
+    log("  take(1) → single row squeezed", "line-pass");
+
+    // take(0, 2) → scalar element [0,2] → [1] (both squeezed)
+    const elem = arr.take(0, 2);
+    assert(elem.shape[0] === 1, `expected [1], got [${elem.shape}]`);
+    approx(elem.data[0], 3, "elem [0,2]");
+    log("  take(0, 2) → single element", "line-pass");
+
+    elem.delete();
+    row1.delete();
+    arr.delete();
+  });
+
+  // ==========================================================================
+  test("multi-axis take — submatrix", () => {
+    const tf = getTf();
+    const arr = tf.ndarray(new Float32Array([
+      1, 2, 3,
+      4, 5, 6,
+      7, 8, 9,
+    ]), [3, 3]);
+
+    // take([0, 2], [1, 2]) → [[2,3],[8,9]] → [2, 2]
+    const sub = arr.take([0, 2], [1, 2]);
+    assert(sub.shape[0] === 2 && sub.shape[1] === 2, `expected [2,2], got [${sub.shape}]`);
+    approx(sub.data[0], 2, "[0,1]");
+    approx(sub.data[1], 3, "[0,2]");
+    approx(sub.data[2], 8, "[2,1]");
+    approx(sub.data[3], 9, "[2,2]");
+    log("  take([0,2], [1,2]) → 2x2 submatrix", "line-pass");
+
+    sub.delete();
+    arr.delete();
+  });
+
+  // ==========================================================================
+  test("multi-axis take — backward compat with NDArray indices", () => {
+    const tf = getTf();
+    const arr = tf.ndarray(new Float32Array([10, 20, 30, 40, 50]), [5]);
+    const idx = tf.ndarray(new Int32Array([0, 2, 4]), [3]);
+
+    const result = arr.take(idx);
+    assert(result.shape[0] === 3, `expected 3, got ${result.shape[0]}`);
+    approx(result.data[0], 10, "[0]");
+    approx(result.data[1], 30, "[2]");
+    approx(result.data[2], 50, "[4]");
+    log("  take(NDArray) backward compat", "line-pass");
+
+    result.delete();
+    idx.delete();
+    arr.delete();
+  });
+
+  // ==========================================================================
+  test("norm instance method", () => {
+    const tf = getTf();
+    // Per-row norm on [3, 3]
+    const pts = tf.ndarray(new Float32Array([
+      3, 4, 0,
+      0, 0, 5,
+      1, 0, 0,
+    ]), [3, 3]);
+
+    const norms = pts.norm(1);
+    assert(norms.shape.length === 1 && norms.shape[0] === 3, `expected [3], got [${norms.shape}]`);
+    approx(norms.data[0], 5.0, "norm of [3,4,0]");
+    approx(norms.data[1], 5.0, "norm of [0,0,5]");
+    approx(norms.data[2], 1.0, "norm of [1,0,0]");
+    log("  pts.norm(1) per-row norms", "line-pass");
+
+    // Global norm
+    const simple = tf.ndarray(new Float32Array([3, 4]), [2]);
+    const g = simple.norm();
+    approx(g, 5.0, "global norm of [3,4]");
+    log("  [3,4].norm() = 5", "line-pass");
+
+    simple.delete();
+    norms.delete();
+    pts.delete();
+  });
+
+  // ==========================================================================
+  test("arange(dtype, stop) shorthand", () => {
+    const tf = getTf();
+
+    const r = tf.arange("int32", 5);
+    assert(r.shape[0] === 5, `expected 5 elements, got ${r.shape[0]}`);
+    const d = r.data;
+    assert(d[0] === 0 && d[1] === 1 && d[4] === 4, "expected [0,1,2,3,4]");
+    log("  arange('int32', 5) → [0,1,2,3,4]", "line-pass");
+
+    const rf = tf.arange("float32", 3);
+    assert(rf.shape[0] === 3, `expected 3 elements, got ${rf.shape[0]}`);
+    approx(rf.data[0], 0, "rf[0]");
+    approx(rf.data[2], 2, "rf[2]");
+    log("  arange('float32', 3) → [0,1,2]", "line-pass");
+
+    rf.delete();
+    r.delete();
+  });
+
+  // ==========================================================================
+  test("ndarray from number[]", () => {
+    const tf = getTf();
+    const a = tf.ndarray([1, 2, 3]);
+    assert(a.dtype === "float32", `dtype: ${a.dtype}`);
+    assert(a.shape[0] === 3, "shape");
+    approx(a.data[0], 1);
+    log("  ndarray([1,2,3]) → float32", "line-pass");
+    a.delete();
+  });
+
+  // ==========================================================================
+  test("random", () => {
+    const tf = getTf();
+
+    const r1 = tf.random("float32", [3, 3]);
+    assert(r1.dtype === "float32", `dtype: ${r1.dtype}`);
+    assert(r1.shape[0] === 3 && r1.shape[1] === 3, "shape");
+    assert(r1.length === 9, "length");
+    log("  random('float32', [3,3])", "line-pass");
+    r1.delete();
+
+    const r2 = tf.random("int32", [10], 0, 100);
+    assert(r2.dtype === "int32", `dtype: ${r2.dtype}`);
+    assert(r2.shape[0] === 10, "shape");
+    let allInRange = true;
+    for (let i = 0; i < 10; i++) {
+      if (r2.data[i] < 0 || r2.data[i] >= 100) allInRange = false;
+    }
+    assert(allInRange, "all values in [0, 100)");
+    log("  random('int32', [10], 0, 100)", "line-pass");
+    r2.delete();
+  });
+
+  // ==========================================================================
+  test("row accessor", () => {
+    const tf = getTf();
+    const m = tf.ndarray(new Float32Array([1,2,3, 4,5,6]), [2, 3]);
+    const row0 = m.row(0);
+    assert(row0.shape[0] === 3, `row shape: ${row0.shape}`);
+    approx(row0.data[0], 1); approx(row0.data[2], 3);
+    log("  .row(0)", "line-pass");
+
+    const row1 = m.row(1);
+    approx(row1.data[0], 4);
+    log("  .row(1)", "line-pass");
+
+    row1.delete(); row0.delete(); m.delete();
+  });
+
+  // ==========================================================================
+  test("slice", () => {
+    const tf = getTf();
+    const a = tf.ndarray(new Float32Array([1,2,3,4,5,6,7,8,9]), [3, 3]);
+    const s = a.slice(1, 3);
+    assert(s.shape[0] === 2 && s.shape[1] === 3, `slice shape: [${s.shape}]`);
+    approx(s.data[0], 4); approx(s.data[3], 7);
+    log("  .slice(1, 3)", "line-pass");
+
+    const s2 = a.slice(0, 1);
+    assert(s2.shape[0] === 1 && s2.shape[1] === 3, "slice [0,1)");
+    approx(s2.data[0], 1);
+    log("  .slice(0, 1)", "line-pass");
+
+    s2.delete(); s.delete(); a.delete();
+  });
+
+  // ==========================================================================
+  test("[Symbol.iterator]", () => {
+    const tf = getTf();
+    const a = tf.ndarray(new Float32Array([1,2,3,4,5,6]), [3, 2]);
+    let count = 0;
+    let firstVal = null;
+    for (const row of a) {
+      if (count === 0) firstVal = row.data[0];
+      count++;
+    }
+    assert(count === 3, `expected 3 iterations, got ${count}`);
+    approx(firstVal, 1, "first row first elem");
+    log("  [Symbol.iterator] on 2D", "line-pass");
+
+    // 1D iteration
+    const b = tf.ndarray(new Float32Array([10, 20, 30]), [3]);
+    let sum = 0;
+    for (const val of b) sum += val;
+    approx(sum, 60);
+    log("  [Symbol.iterator] on 1D", "line-pass");
+
+    b.delete(); a.delete();
+  });
+
+  // ==========================================================================
+  test("as (type cast)", () => {
+    const tf = getTf();
+
+    // float32 → int32
+    const f = tf.ndarray(new Float32Array([1.5, 2.7, 3.1]), [3]);
+    const i = f.as("int32");
+    assert(i.dtype === "int32", `dtype: ${i.dtype}`);
+    assert(i.data[0] === 1, "truncated to 1");
+    log("  .as('int32')", "line-pass");
+    i.delete(); f.delete();
+
+    // int32 → float32
+    const ii = tf.ndarray(new Int32Array([4, 5, 6]), [3]);
+    const ff = ii.as("float32");
+    assert(ff.dtype === "float32", `dtype: ${ff.dtype}`);
+    approx(ff.data[0], 4);
+    log("  .as('float32')", "line-pass");
+    ff.delete(); ii.delete();
+  });
+
+  // ==========================================================================
+  test("mod & mod_", () => {
+    const tf = getTf();
+
+    const a = tf.ndarray(new Float32Array([5, 7, 10, 13]), [4]);
+    const r = tf.mod(a, 3);
+    approx(r.data[0], 2); approx(r.data[1], 1); approx(r.data[2], 1); approx(r.data[3], 1);
+    log("  mod(a, 3)", "line-pass");
+    r.delete();
+
+    // mod with NDArray
+    const b = tf.ndarray(new Float32Array([3, 4, 5, 6]), [4]);
+    const r2 = tf.mod(a, b);
+    approx(r2.data[0], 2); approx(r2.data[1], 3);
+    log("  mod(a, b)", "line-pass");
+    r2.delete(); b.delete();
+
+    // mod_ in-place
+    const c = tf.ndarray(new Float32Array([10, 11, 12]), [3]);
+    tf.mod_(c, 5);
+    approx(c.data[0], 0); approx(c.data[1], 1); approx(c.data[2], 2);
+    log("  mod_ in-place", "line-pass");
+    c.delete(); a.delete();
+  });
+
+  // ==========================================================================
+  test("sub_ in-place", () => {
+    const tf = getTf();
+    const a = tf.ndarray(new Float32Array([10, 20, 30]), [3]);
+    a.sub_(5);
+    approx(a.data[0], 5); approx(a.data[1], 15); approx(a.data[2], 25);
+    log("  sub_ scalar", "line-pass");
+
+    const b = tf.ndarray(new Float32Array([1, 2, 3]), [3]);
+    a.sub_(b);
+    approx(a.data[0], 4); approx(a.data[1], 13); approx(a.data[2], 22);
+    log("  sub_ buffer", "line-pass");
+    b.delete(); a.delete();
+  });
+
+  // ==========================================================================
+  test("clip_ in-place", () => {
+    const tf = getTf();
+    const a = tf.ndarray(new Float32Array([-1, 0, 3, 5, 10, 15]), [6]);
+    a.clip_(0, 10);
+    approx(a.data[0], 0, "clamped min");
+    approx(a.data[2], 3, "unchanged");
+    approx(a.data[5], 10, "clamped max");
+    log("  clip_ in-place", "line-pass");
+    a.delete();
+  });
+
+  // ==========================================================================
+  test("creation dtype variants", () => {
+    const tf = getTf();
+
+    // zeros bool
+    const zb = tf.zeros("bool", [4]);
+    assert(zb.dtype === "bool", `dtype: ${zb.dtype}`);
+    assert(zb.data[0] === 0, "zeros bool value");
+    log("  zeros('bool', [4])", "line-pass");
+    zb.delete();
+
+    // ones int8
+    const oi = tf.ones("int8", [3]);
+    assert(oi.dtype === "int8", `dtype: ${oi.dtype}`);
+    assert(oi.data[0] === 1, "ones int8 value");
+    log("  ones('int8', [3])", "line-pass");
+    oi.delete();
+
+    // ones bool
+    const ob = tf.ones("bool", [3]);
+    assert(ob.dtype === "bool", `dtype: ${ob.dtype}`);
+    assert(ob.data[0] === 1, "ones bool value");
+    log("  ones('bool', [3])", "line-pass");
+    ob.delete();
+
+    // full int32
+    const fi = tf.full("int32", [4], 42);
+    assert(fi.dtype === "int32", `dtype: ${fi.dtype}`);
+    assert(fi.data[0] === 42 && fi.data[3] === 42, "full int32 values");
+    log("  full('int32', [4], 42)", "line-pass");
+    fi.delete();
+
+    // zeros int32
+    const zi = tf.zeros("int32", [3]);
+    assert(zi.dtype === "int32" && zi.data[0] === 0, "zeros int32");
+    log("  zeros('int32', [3])", "line-pass");
+    zi.delete();
   });
 
 });

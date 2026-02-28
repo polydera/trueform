@@ -4,10 +4,11 @@
 [![Docs](https://github.com/polydera/trueform/actions/workflows/generate-docs.yml/badge.svg)](https://github.com/polydera/trueform/actions/workflows/generate-docs.yml)
 [![Build](https://github.com/polydera/trueform/actions/workflows/build-python.yml/badge.svg)](https://github.com/polydera/trueform/actions/workflows/build-python.yml)
 [![PyPI](https://img.shields.io/pypi/v/trueform)](https://pypi.org/project/trueform/)
+[![npm](https://img.shields.io/npm/v/@polydera/trueform)](https://www.npmjs.com/package/@polydera/trueform)
 
 Real-time geometric processing. Easy to use, robust on real-world data.
 
-Mesh booleans, registration, remeshing and queries — at interactive speed on million-polygon meshes. Robust to non-manifold flaps, inconsistent winding, and pipeline artifacts. Header-only C++17; works directly on your data with zero-copy views.
+Mesh booleans, registration, remeshing and queries — at interactive speed on million-polygon meshes. Robust to non-manifold flaps, inconsistent winding, and pipeline artifacts. One engine across C++, Python, and TypeScript.
 
 **[▶ Try it live](https://trueform.polydera.com/live-examples/boolean)** — Interactive mesh booleans, collisions, isobands and more. No install needed. 
 
@@ -40,10 +41,22 @@ cmake -B build -Dtrueform_ROOT=$(python -m trueform.cmake)
 
 For manual installation without pip (FetchContent, system install, conan from repo), see the [full installation guide](https://trueform.polydera.com/cpp/getting-started/installation).
 
+**Python** — the same pip package includes Python bindings:
+```python
+import trueform as tf
+mesh = tf.read_stl("model.stl")
+```
+
+**TypeScript** — browser and Node.js:
+```bash
+npm install @polydera/trueform
+```
+
 ## Integrations
 
-- **[VTK](https://trueform.polydera.com/cpp/vtk)** — Filters and functions that integrate with VTK pipelines
 - **[Python](https://trueform.polydera.com/py/getting-started)** — NumPy in, NumPy out
+- **[TypeScript](https://trueform.polydera.com/ts/getting-started)** — NDArrays in, NDArrays out. Browser and Node.js.
+- **[VTK](https://trueform.polydera.com/cpp/vtk)** — Filters and functions that integrate with VTK pipelines
 - **[Blender](https://trueform.polydera.com/py/blender)** — Cached meshes with automatic updates for live preview
 
 ## Quick Tour
@@ -205,6 +218,7 @@ Apple M4 Max, 16 threads, Clang `-O3 -march=native`. Full methodology, interacti
 - [Benchmarks](https://trueform.polydera.com/cpp/benchmarks) — Performance comparisons
 - [Examples](https://trueform.polydera.com/cpp/examples) — Workflows and library comparisons
 - [Python Bindings](https://trueform.polydera.com/py/getting-started) — Full API for Python
+- [TypeScript SDK](https://trueform.polydera.com/ts/getting-started) — WASM-powered, browser and Node.js
 - [Research](https://trueform.polydera.com/cpp/about/research) — Theory, publications, and citation
 
 ## License

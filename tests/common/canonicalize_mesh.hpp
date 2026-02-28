@@ -225,4 +225,36 @@ auto meshes_equal(const tf::polygons_buffer<Index, Real, Dims, Ngon>& a,
     return true;
 }
 
+/// @brief Check if two canonicalized dynamic meshes are equal.
+template <typename Index, typename Real, std::size_t Dims>
+auto meshes_equal(const tf::polygons_buffer<Index, Real, Dims, tf::dynamic_size>& a,
+                  const tf::polygons_buffer<Index, Real, Dims, tf::dynamic_size>& b,
+                  Real tolerance = Real(1e-5)) -> bool
+{
+    auto pa = a.points();
+    auto pb = b.points();
+    auto fa = a.faces();
+    auto fb = b.faces();
+
+    if (pa.size() != pb.size()) return false;
+    if (fa.size() != fb.size()) return false;
+
+    // Compare points
+    for (std::size_t i = 0; i < pa.size(); ++i) {
+        for (std::size_t d = 0; d < Dims; ++d) {
+            if (std::abs(pa[i][d] - pb[i][d]) > tolerance) return false;
+        }
+    }
+
+    // Compare faces
+    for (std::size_t i = 0; i < fa.size(); ++i) {
+        if (fa[i].size() != fb[i].size()) return false;
+        for (std::size_t v = 0; v < fa[i].size(); ++v) {
+            if (fa[i][v] != fb[i][v]) return false;
+        }
+    }
+
+    return true;
+}
+
 } // namespace tf::test

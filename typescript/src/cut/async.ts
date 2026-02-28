@@ -131,7 +131,15 @@ export async function booleanDifferenceWithCurves(
 
 export async function isobands(
   mesh: Mesh, scalars: NDArrayFloat32, cutValues: Float32Array,
+  opts?: { selectedBands?: number[] },
 ): Promise<IsobandsResult> {
+  const sb = opts?.selectedBands;
+  if (sb) {
+    return dispatcher().run(
+      () => native().dispatch_isobands_selected(mesh._handle, scalars._handle, cutValues, sb),
+      (raw) => wrapIsobands(raw),
+    );
+  }
   return dispatcher().run(
     () => native().dispatch_isobands(mesh._handle, scalars._handle, cutValues),
     (raw) => wrapIsobands(raw),
@@ -140,7 +148,17 @@ export async function isobands(
 
 export async function isobandsWithCurves(
   mesh: Mesh, scalars: NDArrayFloat32, cutValues: Float32Array,
+  opts?: { selectedBands?: number[] },
 ): Promise<IsobandsResultWithCurves> {
+  const sb = opts?.selectedBands;
+  if (sb) {
+    return dispatcher().run(
+      () => native().dispatch_isobands_with_curves_selected(
+        mesh._handle, scalars._handle, cutValues, sb,
+      ),
+      (raw) => wrapIsobandsWithCurves(raw),
+    );
+  }
   return dispatcher().run(
     () =>
       native().dispatch_isobands_with_curves(

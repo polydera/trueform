@@ -12,7 +12,7 @@
  */
 
 import { native } from "../native";
-import { NDArray, NDArrayFloat32 } from "./NDArray";
+import { NDArray, NDArrayBool, NDArrayFloat32 } from "./NDArray";
 import { norm } from "./reductions";
 
 function nd(dtype: string): string {
@@ -23,57 +23,71 @@ function nd(dtype: string): string {
 // Unary math functions (float32 only)
 // ============================================================================
 
+/** Element-wise square root. */
 export function sqrt(arr: NDArray): NDArrayFloat32 {
   return new NDArray(native().sqrt_float32(arr._handle), "float32");
 }
+/** Element-wise square root, in-place. */
 export function sqrt_(arr: NDArray): NDArray {
   native().sqrt_inplace_float32(arr._handle);
   return arr;
 }
 
+/** Element-wise sine (radians). */
 export function sin(arr: NDArray): NDArrayFloat32 {
   return new NDArray(native().sin_float32(arr._handle), "float32");
 }
+/** Element-wise sine, in-place. */
 export function sin_(arr: NDArray): NDArray {
   native().sin_inplace_float32(arr._handle);
   return arr;
 }
 
+/** Element-wise cosine (radians). */
 export function cos(arr: NDArray): NDArrayFloat32 {
   return new NDArray(native().cos_float32(arr._handle), "float32");
 }
+/** Element-wise cosine, in-place. */
 export function cos_(arr: NDArray): NDArray {
   native().cos_inplace_float32(arr._handle);
   return arr;
 }
 
+/** Element-wise tangent (radians). */
 export function tan(arr: NDArray): NDArrayFloat32 {
   return new NDArray(native().tan_float32(arr._handle), "float32");
 }
+/** Element-wise tangent, in-place. */
 export function tan_(arr: NDArray): NDArray {
   native().tan_inplace_float32(arr._handle);
   return arr;
 }
 
+/** Element-wise arc sine. */
 export function asin(arr: NDArray): NDArrayFloat32 {
   return new NDArray(native().asin_float32(arr._handle), "float32");
 }
+/** Element-wise arc sine, in-place. */
 export function asin_(arr: NDArray): NDArray {
   native().asin_inplace_float32(arr._handle);
   return arr;
 }
 
+/** Element-wise arc cosine. */
 export function acos(arr: NDArray): NDArrayFloat32 {
   return new NDArray(native().acos_float32(arr._handle), "float32");
 }
+/** Element-wise arc cosine, in-place. */
 export function acos_(arr: NDArray): NDArray {
   native().acos_inplace_float32(arr._handle);
   return arr;
 }
 
+/** Element-wise arc tangent. */
 export function atan(arr: NDArray): NDArrayFloat32 {
   return new NDArray(native().atan_float32(arr._handle), "float32");
 }
+/** Element-wise arc tangent, in-place. */
 export function atan_(arr: NDArray): NDArray {
   native().atan_inplace_float32(arr._handle);
   return arr;
@@ -84,57 +98,71 @@ export function atan2(y: NDArray, x: NDArray): NDArrayFloat32 {
   return new NDArray(native().atan2_float32(y._handle, x._handle), "float32");
 }
 
+/** Element-wise exponential (e^x). */
 export function exp(arr: NDArray): NDArrayFloat32 {
   return new NDArray(native().exp_float32(arr._handle), "float32");
 }
+/** Element-wise exponential, in-place. */
 export function exp_(arr: NDArray): NDArray {
   native().exp_inplace_float32(arr._handle);
   return arr;
 }
 
+/** Element-wise natural logarithm. */
 export function log(arr: NDArray): NDArrayFloat32 {
   return new NDArray(native().log_float32(arr._handle), "float32");
 }
+/** Element-wise natural logarithm, in-place. */
 export function log_(arr: NDArray): NDArray {
   native().log_inplace_float32(arr._handle);
   return arr;
 }
 
+/** Element-wise base-2 logarithm. */
 export function log2(arr: NDArray): NDArrayFloat32 {
   return new NDArray(native().log2_float32(arr._handle), "float32");
 }
+/** Element-wise base-2 logarithm, in-place. */
 export function log2_(arr: NDArray): NDArray {
   native().log2_inplace_float32(arr._handle);
   return arr;
 }
 
+/** Element-wise base-10 logarithm. */
 export function log10(arr: NDArray): NDArrayFloat32 {
   return new NDArray(native().log10_float32(arr._handle), "float32");
 }
+/** Element-wise base-10 logarithm, in-place. */
 export function log10_(arr: NDArray): NDArray {
   native().log10_inplace_float32(arr._handle);
   return arr;
 }
 
+/** Element-wise floor. */
 export function floor(arr: NDArray): NDArrayFloat32 {
   return new NDArray(native().floor_float32(arr._handle), "float32");
 }
+/** Element-wise floor, in-place. */
 export function floor_(arr: NDArray): NDArray {
   native().floor_inplace_float32(arr._handle);
   return arr;
 }
 
+/** Element-wise ceiling. */
 export function ceil(arr: NDArray): NDArrayFloat32 {
   return new NDArray(native().ceil_float32(arr._handle), "float32");
 }
+/** Element-wise ceiling, in-place. */
 export function ceil_(arr: NDArray): NDArray {
   native().ceil_inplace_float32(arr._handle);
   return arr;
 }
 
+/** Element-wise rounding to nearest integer. */
 export function round(arr: NDArray): NDArrayFloat32 {
   return new NDArray(native().round_float32(arr._handle), "float32");
 }
+/** Element-wise rounding, in-place. */
 export function round_(arr: NDArray): NDArray {
   native().round_inplace_float32(arr._handle);
   return arr;
@@ -144,9 +172,11 @@ export function round_(arr: NDArray): NDArray {
 // pow (float32, takes scalar exponent)
 // ============================================================================
 
+/** Element-wise power. */
 export function pow(arr: NDArray, exponent: number): NDArrayFloat32 {
   return new NDArray(native().pow_float32(arr._handle, exponent), "float32");
 }
+/** Element-wise power, in-place. */
 export function pow_(arr: NDArray, exponent: number): NDArray {
   native().pow_inplace_float32(arr._handle, exponent);
   return arr;
@@ -156,14 +186,17 @@ export function pow_(arr: NDArray, exponent: number): NDArray {
 // Multi-dtype wrappers (abs, neg, clip work on all dtypes)
 // ============================================================================
 
+/** Element-wise absolute value. Supports all dtypes. */
 export function abs(arr: NDArray): NDArray {
   return new NDArray(native()[`abs_${nd(arr.dtype)}`](arr._handle), arr.dtype);
 }
 
+/** Element-wise negation. Supports all dtypes. */
 export function neg(arr: NDArray): NDArray {
   return new NDArray(native()[`neg_${nd(arr.dtype)}`](arr._handle), arr.dtype);
 }
 
+/** Clamp values to `[lo, hi]`. Supports all dtypes. */
 export function clip(arr: NDArray, lo: number, hi: number): NDArray {
   return new NDArray(
     native()[`clip_${nd(arr.dtype)}`](arr._handle, lo, hi),
@@ -175,10 +208,16 @@ export function clip(arr: NDArray, lo: number, hi: number): NDArray {
 // dot / cross
 // ============================================================================
 
-/** Dot product along last axis. [N,3] x [N,3] -> [N]. Broadcasts batch dims. */
-export function dot(a: NDArray, b: NDArray): NDArray {
+/** Dot product along last axis. [N,3] x [N,3] -> [N]. Broadcasts batch dims. Returns number for 1D inputs. */
+export function dot(a: NDArray, b: NDArray): number | NDArray {
   const nd_ = nd(a.dtype);
-  return new NDArray(native()[`dot_${nd_}`](a._handle, b._handle), a.dtype);
+  const handle = native()[`dot_${nd_}`](a._handle, b._handle);
+  if (a.ndim === 1 && b.ndim === 1) {
+    const val = (handle.data() as Float32Array | Int32Array)[0];
+    handle.delete();
+    return val;
+  }
+  return new NDArray(handle, a.dtype);
 }
 
 /** Cross product along last axis (must be 3). [N,3] x [N,3] -> [N,3]. Broadcasts batch dims. */
@@ -215,4 +254,27 @@ export function normalize_(arr: NDArray, axis?: number): NDArray {
   arr.div_(expanded);
   expanded.delete();
   return arr;
+}
+
+// ============================================================================
+// mod (truncated remainder — matches JS % operator)
+// ============================================================================
+
+/** Element-wise remainder (truncated, matching JS `%`). Supports all dtypes. */
+export function mod(a: NDArray, b: NDArray | number): NDArray {
+  return a.mod(b);
+}
+
+/** Element-wise remainder in-place. */
+export function mod_(a: NDArray, b: NDArray | number): NDArray {
+  return a.mod_(b);
+}
+
+// ============================================================================
+// isNaN
+// ============================================================================
+
+/** Element-wise NaN detection. Returns true where value is NaN. */
+export function isNaN(arr: NDArray): NDArrayBool {
+  return arr.isNaN();
 }

@@ -334,3 +334,275 @@ TEMPLATE_TEST_CASE("isocontours_at_boundaries", "[isocontours]",
         }
     }
 }
+
+// =============================================================================
+// Test 3.7: On-grid single threshold (cut value lands exactly on vertices)
+// =============================================================================
+
+TEMPLATE_TEST_CASE("isocontours_on_grid_single_threshold", "[isocontours]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    // Plane mesh: x in [-2, 2], y in [-2, 2], z = 0
+    // 20 subdivisions → x-coords: -2.0, -1.8, ..., 0.0, ..., 1.8, 2.0
+    auto grid = tf::make_plane_mesh<index_t>(real_t(4), real_t(4), 20, 20);
+
+    // Scalar field: x-coordinate
+    std::vector<real_t> scalar_x;
+    scalar_x.reserve(grid.points().size());
+    for (decltype(grid.points().size()) i = 0; i < grid.points().size(); ++i) {
+        scalar_x.push_back(grid.points()[i][0]);
+    }
+
+    // Threshold at x=0 lands exactly on grid vertices
+    auto contours = tf::make_isocontours(grid.polygons(), tf::make_range(scalar_x), real_t(0));
+
+    // Should produce curves (previously returned 0 with strict inequalities)
+    REQUIRE(contours.paths().size() >= 1);
+    REQUIRE(contours.points().size() > 0);
+
+    // All intersection points should be at x ≈ 0
+    for (const auto& pt : contours.points()) {
+        REQUIRE(std::abs(pt[0]) < tf::epsilon<real_t>);
+    }
+
+    // Points should span the full y range
+    real_t min_y = std::numeric_limits<real_t>::max();
+    real_t max_y = std::numeric_limits<real_t>::lowest();
+    for (const auto& pt : contours.points()) {
+        min_y = std::min(min_y, pt[1]);
+        max_y = std::max(max_y, pt[1]);
+    }
+    REQUIRE(min_y <= real_t(-1.9));
+    REQUIRE(max_y >= real_t(1.9));
+}
+
+// =============================================================================
+// Test 3.8: On-grid multiple thresholds
+// =============================================================================
+
+TEMPLATE_TEST_CASE("isocontours_on_grid_multiple_thresholds", "[isocontours]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto grid = tf::make_plane_mesh<index_t>(real_t(4), real_t(4), 20, 20);
+
+    std::vector<real_t> scalar_x;
+    scalar_x.reserve(grid.points().size());
+    for (decltype(grid.points().size()) i = 0; i < grid.points().size(); ++i) {
+        scalar_x.push_back(grid.points()[i][0]);
+    }
+
+    // Multiple on-grid thresholds at x = -1, 0, 1
+    std::array<real_t, 3> thresholds = {real_t(-1), real_t(0), real_t(1)};
+    auto contours = tf::make_isocontours(
+        grid.polygons(),
+        tf::make_range(scalar_x),
+        tf::make_range(thresholds));
+
+    // Should produce 3 curves (one per threshold)
+    REQUIRE(contours.paths().size() == 3);
+
+    // Collect average x per curve to sort them
+    std::vector<std::pair<real_t, std::size_t>> curve_x;
+    for (std::size_t i = 0; i < contours.paths().size(); ++i) {
+        real_t avg_x = real_t(0);
+        for (auto idx : contours.paths()[i]) {
+            avg_x += contours.points()[idx][0];
+        }
+        avg_x /= contours.paths()[i].size();
+        curve_x.emplace_back(avg_x, i);
+    }
+    std::sort(curve_x.begin(), curve_x.end());
+
+    // Each curve should be at its respective x threshold
+    std::array<real_t, 3> expected_x = {real_t(-1), real_t(0), real_t(1)};
+    for (std::size_t i = 0; i < 3; ++i) {
+        for (auto idx : contours.paths()[curve_x[i].second]) {
+            const auto& pt = contours.points()[idx];
+            REQUIRE(std::abs(pt[0] - expected_x[i]) < tf::epsilon<real_t>);
+        }
+    }
+}
+
+// =============================================================================
+// Test 3.9: Half-open boundary convention
+// =============================================================================
+
+TEMPLATE_TEST_CASE("isocontours_half_open_boundary", "[isocontours]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto grid = tf::make_plane_mesh<index_t>(real_t(4), real_t(4), 20, 20);
+
+    // Scalar field: x-coordinate (range [-2, 2])
+    std::vector<real_t> scalar_x;
+    scalar_x.reserve(grid.points().size());
+    for (decltype(grid.points().size()) i = 0; i < grid.points().size(); ++i) {
+        scalar_x.push_back(grid.points()[i][0]);
+    }
+
+    // Threshold at minimum (-2): half-open [min, max) should fire on edges
+    // going from x=-2 to x>-2
+    auto contours_min = tf::make_isocontours(grid.polygons(), tf::make_range(scalar_x), real_t(-2));
+    REQUIRE(contours_min.paths().size() >= 1);
+    for (const auto& pt : contours_min.points()) {
+        REQUIRE(std::abs(pt[0] - real_t(-2)) < tf::epsilon<real_t>);
+    }
+
+    // Threshold at maximum (2): cut < max fails since max == cut → 0 curves
+    auto contours_max = tf::make_isocontours(grid.polygons(), tf::make_range(scalar_x), real_t(2));
+    REQUIRE(contours_max.paths().size() == 0);
+}
+
+// =============================================================================
+// Test 3.10: Basic isobands extraction
+// =============================================================================
+
+TEMPLATE_TEST_CASE("isobands_basic", "[isobands]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto grid = tf::make_plane_mesh<index_t>(real_t(4), real_t(4), 20, 20);
+
+    // Scalar field: x-coordinate (range [-2, 2])
+    std::vector<real_t> scalar_x;
+    scalar_x.reserve(grid.points().size());
+    for (decltype(grid.points().size()) i = 0; i < grid.points().size(); ++i) {
+        scalar_x.push_back(grid.points()[i][0]);
+    }
+
+    // Cut values at -0.5 and 0.5 → 3 bands:
+    //   band 0: x <= -0.5
+    //   band 1: -0.5 < x <= 0.5
+    //   band 2: x > 0.5
+    std::array<real_t, 2> cut_values = {real_t(-0.5), real_t(0.5)};
+    std::array<index_t, 1> selected = {index_t(1)}; // middle band
+
+    auto [mesh, labels] = tf::make_isobands(
+        grid.polygons(),
+        tf::make_range(scalar_x),
+        tf::make_range(cut_values),
+        tf::make_range(selected));
+
+    // Output mesh should have faces
+    REQUIRE(mesh.polygons().size() > 0);
+
+    // Labels size matches face count
+    REQUIRE(labels.size() == mesh.polygons().size());
+
+    // All labels should be 1 (the selected band)
+    for (decltype(labels.size()) i = 0; i < labels.size(); ++i) {
+        REQUIRE(labels[i] == index_t(1));
+    }
+
+    // All output vertices should have x in [-0.5, 0.5] (within tolerance)
+    for (const auto& pt : mesh.points()) {
+        REQUIRE(pt[0] >= real_t(-0.5) - tf::epsilon<real_t>);
+        REQUIRE(pt[0] <= real_t(0.5) + tf::epsilon<real_t>);
+    }
+}
+
+// =============================================================================
+// Test 3.11: Isobands with on-grid thresholds
+// =============================================================================
+
+TEMPLATE_TEST_CASE("isobands_on_grid_thresholds", "[isobands]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto grid = tf::make_plane_mesh<index_t>(real_t(4), real_t(4), 20, 20);
+
+    // Scalar field: x-coordinate
+    std::vector<real_t> scalar_x;
+    scalar_x.reserve(grid.points().size());
+    for (decltype(grid.points().size()) i = 0; i < grid.points().size(); ++i) {
+        scalar_x.push_back(grid.points()[i][0]);
+    }
+
+    // On-grid cut values at -1, 0, 1 → 4 bands:
+    //   band 0: x <= -1
+    //   band 1: -1 < x <= 0
+    //   band 2: 0 < x <= 1
+    //   band 3: x > 1
+    std::array<real_t, 3> cut_values = {real_t(-1), real_t(0), real_t(1)};
+    std::array<index_t, 2> selected = {index_t(1), index_t(2)};
+
+    auto [mesh, labels] = tf::make_isobands(
+        grid.polygons(),
+        tf::make_range(scalar_x),
+        tf::make_range(cut_values),
+        tf::make_range(selected));
+
+    REQUIRE(mesh.polygons().size() > 0);
+    REQUIRE(labels.size() == mesh.polygons().size());
+
+    // Labels should be either 1 or 2
+    for (decltype(labels.size()) i = 0; i < labels.size(); ++i) {
+        REQUIRE((labels[i] == index_t(1) || labels[i] == index_t(2)));
+    }
+
+    // All output vertices should have x in [-1, 1] (within tolerance)
+    for (const auto& pt : mesh.points()) {
+        REQUIRE(pt[0] >= real_t(-1) - tf::epsilon<real_t>);
+        REQUIRE(pt[0] <= real_t(1) + tf::epsilon<real_t>);
+    }
+}
+
+// =============================================================================
+// Test 3.12: Isobands with boundary curves
+// =============================================================================
+
+TEMPLATE_TEST_CASE("isobands_with_curves", "[isobands]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto grid = tf::make_plane_mesh<index_t>(real_t(4), real_t(4), 20, 20);
+
+    std::vector<real_t> scalar_x;
+    scalar_x.reserve(grid.points().size());
+    for (decltype(grid.points().size()) i = 0; i < grid.points().size(); ++i) {
+        scalar_x.push_back(grid.points()[i][0]);
+    }
+
+    std::array<real_t, 2> cut_values = {real_t(-0.5), real_t(0.5)};
+    std::array<index_t, 1> selected = {index_t(1)};
+
+    auto [mesh, labels, curves] = tf::make_isobands(
+        grid.polygons(),
+        tf::make_range(scalar_x),
+        tf::make_range(cut_values),
+        tf::make_range(selected),
+        tf::return_curves);
+
+    REQUIRE(mesh.polygons().size() > 0);
+
+    // Boundary curves should exist (two cut boundaries)
+    REQUIRE(curves.paths().size() >= 1);
+    REQUIRE(curves.points().size() > 0);
+
+    // Curve points should be at the cut value boundaries
+    for (const auto& pt : curves.points()) {
+        bool at_left = std::abs(pt[0] - real_t(-0.5)) < tf::epsilon<real_t>;
+        bool at_right = std::abs(pt[0] - real_t(0.5)) < tf::epsilon<real_t>;
+        REQUIRE((at_left || at_right));
+    }
+}

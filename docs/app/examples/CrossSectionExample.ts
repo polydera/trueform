@@ -1,193 +1,289 @@
-import type { MainModule } from "@/examples/native";
-import { fitCameraToAllMeshesFromZPlane } from "@/utils/sceneUtils";
-import {
-  buffersToCurves,
-  createMesh,
-  updateResultMesh,
-  CurveRenderer,
-} from "@/utils/utils";
-import { ThreejsBase } from "@/examples/ThreejsBase";
+import { fitCameraToAllMeshesFromZPlane, createScene, type SceneBundle } from "@/utils/sceneUtils";
+import { centerAndScale, CurveRenderer, RollingAverage } from "@/utils/utils";
 import * as THREE from "three";
 
-export class CrossSectionExample extends ThreejsBase {
+type TF = typeof import("@/examples/trueform/index.js");
+
+export class CrossSectionExample {
+  private tf: TF;
+  private mesh: any;
+  private container: HTMLElement;
+  private renderer: THREE.WebGLRenderer;
+  private sceneBundle: SceneBundle;
   private curveRenderer: CurveRenderer;
+  private baseMesh: THREE.Mesh;
   private crossSectionMesh: THREE.Mesh;
-  private keyPressed = false;
+  private running = true;
+  private cleanups: (() => void)[] = [];
 
-  public randomize() {
-    this.wasmInstance.OnKeyPress("n");
-    this.updateMeshes();
-  }
+  // Scalar field (NDArray [N], persists across scroll events)
+  private scalarsND: any = null;
+  private scalarMin = 0;
+  private scalarMax = 1;
+  private planeOffset = 0;
+  private normalVec: any = null;
+  private timing = new RollingAverage();
 
-  constructor(
-    wasmInstance: MainModule,
-    paths: string[],
-    container: HTMLElement,
-    isDarkMode = true,
-  ) {
-    // Single viewport - no second container
-    super(wasmInstance, paths, container, undefined, true, false, isDarkMode);
-    this.sceneBundle1.controls.enableZoom = false;
+  public refreshTimeValue: (() => number) | null = null;
 
-    // Make the original mesh semi-transparent
-    this.instancedMeshes.forEach((instancedMesh) => {
-      const material = instancedMesh.material as THREE.MeshMatcapMaterial;
-      material.transparent = true;
-      material.opacity = 0.25;
-      material.depthWrite = false;
+  constructor(tf: TF, fileBuffer: ArrayBuffer, fileName: string, container: HTMLElement, isDarkMode = true) {
+    this.tf = tf;
+    this.container = container;
+
+    // Load mesh
+    const ext = fileName.split(".").pop()?.toLowerCase();
+    this.mesh = ext === "stl" ? tf.readStl(fileBuffer) : tf.readObj(fileBuffer);
+
+    // Center and scale mesh (AABB center at origin, diagonal/2 = 10)
+    centerAndScale(this.tf, this.mesh);
+
+    // Initial normal [1, 2, 1] normalized
+    this.normalVec = tf.normalize(tf.vector(1, 2, 1));
+
+    // Compute initial scalar field
+    this.computeScalars();
+
+    // Three.js setup
+    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    container.appendChild(this.renderer.domElement);
+
+    this.sceneBundle = createScene(this.renderer, {
+      backgroundColor: isDarkMode ? 0x1e1e1e : 0xfafafa,
+      enableFog: false,
     });
 
-    const interceptKeyDownEvent = (event: KeyboardEvent) => {
-      if (this.keyPressed) return;
-      this.keyPressed = true;
-      if (event.key === "n") {
-        this.randomize();
-        return;
-      }
-      this.wasmInstance.OnKeyPress(event.key);
-      this.updateMeshes();
-    };
-    const interceptKeyUpEvent = (_event: KeyboardEvent) => {
-      this.keyPressed = false;
-    };
-    window.addEventListener("keydown", interceptKeyDownEvent);
-    window.addEventListener("keyup", interceptKeyUpEvent);
+    // Base mesh (semi-transparent)
+    const points = this.mesh.points;
+    const faces = this.mesh.faces;
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(points.data, 3));
+    geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(faces.data.buffer, faces.data.byteOffset, faces.data.length), 1));
+    geometry.computeVertexNormals();
+    geometry.computeBoundingSphere();
 
-    const isEventFromCanvas = (eventTarget: EventTarget | null) => {
-      if (!eventTarget) return false;
-      const target = eventTarget as Node;
-      const container1 = this.renderer.domElement.parentElement;
-      return !!container1 && container1.contains(target);
+    const matcapUrl = isDarkMode
+      ? "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/635D52_A9BCC0_B1AEA0_819598.png"
+      : "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/2D2D2F_C6C2C5_727176_94949B.png";
+    const baseMaterial = new THREE.MeshMatcapMaterial({
+      side: THREE.DoubleSide,
+      flatShading: true,
+      transparent: true,
+      opacity: 0.25,
+      depthWrite: false,
+    });
+    this.baseMesh = new THREE.Mesh(geometry, baseMaterial);
+    this.baseMesh.matrixAutoUpdate = false;
+    this.sceneBundle.scene.add(this.baseMesh);
+
+    // Cross-section cap mesh
+    const capMaterial = new THREE.MeshMatcapMaterial({
+      side: THREE.DoubleSide,
+      flatShading: true,
+      color: new THREE.Color(0x00a89a),
+    });
+    this.crossSectionMesh = new THREE.Mesh(new THREE.BufferGeometry(), capMaterial);
+    this.crossSectionMesh.matrixAutoUpdate = false;
+    this.sceneBundle.scene.add(this.crossSectionMesh);
+
+    // Load matcap texture
+    new THREE.TextureLoader().load(matcapUrl, (tex) => {
+      baseMaterial.matcap = tex;
+      baseMaterial.needsUpdate = true;
+      capMaterial.matcap = tex.clone();
+      capMaterial.needsUpdate = true;
+    });
+
+    // Curve renderer
+    this.curveRenderer = new CurveRenderer({ color: 0x00d5be, radius: 0.075, maxSegments: 20000 });
+    this.sceneBundle.scene.add(this.curveRenderer.object);
+
+    // Compute initial cross-section
+    this.recomputeCrossSection();
+
+    // Fit camera
+    fitCameraToAllMeshesFromZPlane(this.sceneBundle, 1.5);
+    this.sceneBundle.controls.enableZoom = false;
+
+    // Scroll interaction (matches WASM cross_section_web.h:104)
+    const range = () => this.scalarMax - this.scalarMin;
+    const margin = () => range() * 0.01;
+    const scrollStep = (delta: number) => {
+      this.planeOffset += delta * 0.003 * range();
+      this.planeOffset = Math.max(
+        this.scalarMin + margin(),
+        Math.min(this.scalarMax - margin(), this.planeOffset),
+      );
+      this.recomputeCrossSection();
     };
 
-    const interceptWheelEvent = (event: WheelEvent) => {
-      if (!isEventFromCanvas(event.target)) return;
+    const onWheel = (event: WheelEvent) => {
+      if (!container.contains(event.target as Node)) return;
+      event.preventDefault();
       const delta = event.deltaY !== 0 ? event.deltaY : event.deltaX;
       if (delta === 0) return;
-      event.preventDefault();
-      const normalizedDelta = delta / Math.abs(delta);
-      const handled = this.wasmInstance.OnMouseWheel(normalizedDelta, true);
-      this.updateMeshes();
-      if (handled) event.stopImmediatePropagation();
+      scrollStep(Math.sign(delta));
     };
-    const wheelListenerOptions = {
-      passive: false,
-      capture: true,
-    };
-    window.addEventListener("wheel", interceptWheelEvent, wheelListenerOptions);
+    window.addEventListener("wheel", onWheel, { passive: false, capture: true });
+    this.cleanups.push(() => window.removeEventListener("wheel", onWheel, { passive: false, capture: true } as any));
 
-    let touchScrollActive = false;
+    // Touch scroll
+    let touchActive = false;
     let lastTouchY = 0;
-    const setTouchScrollMode = (active: boolean) => {
-      touchScrollActive = active;
-      this.sceneBundle1.controls.enabled = !active;
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1 || !container.contains(e.target as Node)) return;
+      e.preventDefault();
+      touchActive = true;
+      this.sceneBundle.controls.enabled = false;
+      lastTouchY = e.touches[0]!.clientY;
     };
-    const touchScrollThresholdPx = 10;
-    const getAverageTouchY = (touches: TouchList) => {
-      let sum = 0;
-      for (let i = 0; i < touches.length; i++) {
-        sum += touches[i]!.clientY;
-      }
-      return sum / touches.length;
+    const onTouchMove = (e: TouchEvent) => {
+      if (!touchActive || e.touches.length !== 1) { touchActive = false; this.sceneBundle.controls.enabled = true; return; }
+      e.preventDefault();
+      const dy = e.touches[0]!.clientY - lastTouchY;
+      if (Math.abs(dy) < 10) return;
+      scrollStep(Math.sign(dy));
+      lastTouchY = e.touches[0]!.clientY;
     };
-
-    const interceptTouchStart = (event: TouchEvent) => {
-      if (event.touches.length !== 1) return;
-      if (!isEventFromCanvas(event.target)) return;
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation();
-      setTouchScrollMode(true);
-      lastTouchY = getAverageTouchY(event.touches);
-    };
-
-    const interceptTouchMove = (event: TouchEvent) => {
-      if (!touchScrollActive) return;
-      if (event.touches.length !== 1) {
-        setTouchScrollMode(false);
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation();
-      const currentY = getAverageTouchY(event.touches);
-      const deltaY = currentY - lastTouchY;
-      if (Math.abs(deltaY) < touchScrollThresholdPx) return;
-      const normalizedDelta = deltaY / Math.abs(deltaY);
-      const handled = this.wasmInstance.OnMouseWheel(normalizedDelta, true);
-      this.updateMeshes();
-      if (handled) {
-        event.stopImmediatePropagation();
-      }
-      lastTouchY = currentY;
-    };
-
-    const interceptTouchEnd = (event: TouchEvent) => {
-      if (touchScrollActive) {
-        setTouchScrollMode(false);
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
-      }
-    };
-
-    const touchListenerOptions = {
-      passive: false,
-      capture: true,
-    };
-    window.addEventListener("touchstart", interceptTouchStart, touchListenerOptions);
-    window.addEventListener("touchmove", interceptTouchMove, touchListenerOptions);
-    window.addEventListener("touchend", interceptTouchEnd, touchListenerOptions);
-    window.addEventListener("touchcancel", interceptTouchEnd, touchListenerOptions);
-
-    this.addCleanup(() => {
-      window.removeEventListener("keydown", interceptKeyDownEvent);
-      window.removeEventListener("keyup", interceptKeyUpEvent);
-      window.removeEventListener("wheel", interceptWheelEvent, wheelListenerOptions);
-      window.removeEventListener("touchstart", interceptTouchStart, touchListenerOptions);
-      window.removeEventListener("touchmove", interceptTouchMove, touchListenerOptions);
-      window.removeEventListener("touchend", interceptTouchEnd, touchListenerOptions);
-      window.removeEventListener("touchcancel", interceptTouchEnd, touchListenerOptions);
+    const onTouchEnd = () => { touchActive = false; this.sceneBundle.controls.enabled = true; };
+    const touchOpts = { passive: false, capture: true };
+    window.addEventListener("touchstart", onTouchStart, touchOpts);
+    window.addEventListener("touchmove", onTouchMove, touchOpts);
+    window.addEventListener("touchend", onTouchEnd, touchOpts);
+    window.addEventListener("touchcancel", onTouchEnd, touchOpts);
+    this.cleanups.push(() => {
+      window.removeEventListener("touchstart", onTouchStart, touchOpts as any);
+      window.removeEventListener("touchmove", onTouchMove, touchOpts as any);
+      window.removeEventListener("touchend", onTouchEnd, touchOpts as any);
+      window.removeEventListener("touchcancel", onTouchEnd, touchOpts as any);
     });
 
-    this.curveRenderer = new CurveRenderer({
-      color: 0x00d5be,
-      radius: 0.075,
-      maxSegments: 20000,
-    });
-    this.sceneBundle1.scene.add(this.curveRenderer.object);
+    // Resize
+    const resizeObs = new ResizeObserver(() => this.resize());
+    resizeObs.observe(container);
+    this.cleanups.push(() => resizeObs.disconnect());
+    this.resize();
 
-    this.crossSectionMesh = createMesh(this.isDarkMode);
-    const crossSectionMaterial = this.crossSectionMesh.material as THREE.MeshMatcapMaterial;
-    crossSectionMaterial.color = new THREE.Color(0x00a89a);
-    this.sceneBundle1.scene.add(this.crossSectionMesh);
-
-    this.updateMeshes();
-    fitCameraToAllMeshesFromZPlane(this.sceneBundle1, 1.5);
+    // Animate
+    this.animate();
   }
 
-  public override updateMeshes() {
-    super.updateMeshes();
+  private computeScalars() {
+    const tf = this.tf;
+    if (this.scalarsND) { this.scalarsND.delete(); this.scalarsND = null; }
 
-    // Update curves
-    const curveOutput = this.wasmInstance.get_curve_mesh();
-    if (curveOutput && curveOutput.updated) {
-      const points = curveOutput.get_curve_points();
-      const ids = curveOutput.get_curve_ids();
-      const offsets = curveOutput.get_curve_offsets();
-      const curves = buffersToCurves(points, ids, offsets);
-      this.curveRenderer.update(curves);
-    }
+    const points = this.mesh.points;
+    const centroid = tf.mean(points, 0) as any;
+    const d = -(tf.dot(this.normalVec, centroid) as number);
+    const p = tf.plane(this.normalVec, d);
+    const pts = tf.point(points);
 
-    // Update filled cross-section mesh
-    const resultMesh = this.wasmInstance.get_result_mesh();
-    if (resultMesh) {
-      updateResultMesh(resultMesh, this.crossSectionMesh);
-    }
+    this.scalarsND = tf.distance(pts, p);
+    this.scalarMin = this.scalarsND.min() as number;
+    this.scalarMax = this.scalarsND.max() as number;
+    this.planeOffset = (this.scalarMin + this.scalarMax) * 0.5;
+
+    centroid.delete();
   }
 
-  public runMain() {
-    this.wasmInstance.run_main_cross_section(this.paths[0]!);
-    this.wasmInstance.FS.unlink(this.paths[0]);
+  private recomputeCrossSection() {
+    const t0 = performance.now();
+    const tf = this.tf;
+
+    // 1. Isocontours at the cut value → boundary curves
+    const curves = tf.isocontours(this.mesh, this.scalarsND, this.planeOffset);
+
+    // 2. Triangulate curve paths as polygons → filled cap mesh
+    const cap = tf.triangulate({ faces: curves.paths, points: curves.points });
+
+    this.timing.add(performance.now() - t0);
+
+    // 3. Update cap mesh geometry
+    const capPoints = cap.points;
+    const capFaces = cap.faces;
+    const geom = this.crossSectionMesh.geometry;
+    geom.setAttribute("position", new THREE.BufferAttribute(capPoints.data, 3));
+    geom.setIndex(new THREE.BufferAttribute(
+      new Uint32Array(capFaces.data.buffer, capFaces.data.byteOffset, capFaces.data.length), 1,
+    ));
+    if (capPoints.data.length >= 3) {
+      geom.computeBoundingSphere();
+      geom.computeBoundingBox();
+    }
+
+    // 4. Update curves for tube rendering
+    const curvePts = curves.points.data as Float32Array;
+    const paths: number[][] = [];
+    for (const p of curves.paths) {
+      paths.push(Array.from(p.data));
+      p.delete();
+    }
+    this.curveRenderer.update({ points: curvePts, paths });
+
+    // Cleanup
+    cap.delete();
+    curves.delete();
+    if (this.refreshTimeValue) this.refreshTimeValue();
+  }
+
+  public randomize() {
+    const tf = this.tf;
+    this.normalVec.delete();
+    this.normalVec = tf.normalize(tf.vector(tf.random("float32", [3], -1, 1)));
+    this.computeScalars();
+    this.recomputeCrossSection();
+  }
+
+  public getAverageTime(): number {
+    return this.timing.average;
+  }
+
+  public applyTheme(isDark: boolean) {
+    this.sceneBundle.scene.background = new THREE.Color(isDark ? 0x1e1e1e : 0xfafafa);
+
+    const matcapUrl = isDark
+      ? "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/635D52_A9BCC0_B1AEA0_819598.png"
+      : "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/2D2D2F_C6C2C5_727176_94949B.png";
+    const newTex = new THREE.TextureLoader().load(matcapUrl);
+
+    const baseMat = this.baseMesh.material as THREE.MeshMatcapMaterial;
+    if (baseMat.matcap) baseMat.matcap.dispose();
+    baseMat.matcap = newTex;
+
+    const capMat = this.crossSectionMesh.material as THREE.MeshMatcapMaterial;
+    if (capMat.matcap) capMat.matcap.dispose();
+    capMat.matcap = newTex.clone();
+  }
+
+  private resize() {
+    const w = this.container.clientWidth;
+    const h = this.container.clientHeight;
+    this.renderer.setSize(w, h);
+    this.renderer.setPixelRatio(window.devicePixelRatio);
+    this.sceneBundle.camera.aspect = w / h;
+    this.sceneBundle.camera.updateProjectionMatrix();
+  }
+
+  private animate() {
+    if (!this.running) return;
+    requestAnimationFrame(() => this.animate());
+    this.sceneBundle.controls.update();
+    this.renderer.render(this.sceneBundle.scene, this.sceneBundle.camera);
+  }
+
+  public dispose() {
+    this.running = false;
+    for (const fn of this.cleanups) fn();
+    this.cleanups = [];
+    this.sceneBundle.controls.dispose();
+    this.baseMesh.geometry.dispose();
+    (this.baseMesh.material as THREE.Material).dispose();
+    this.crossSectionMesh.geometry.dispose();
+    (this.crossSectionMesh.material as THREE.Material).dispose();
+    this.curveRenderer.dispose();
+    this.renderer.dispose();
+    this.renderer.domElement.remove();
+    if (this.scalarsND) { this.scalarsND.delete(); this.scalarsND = null; }
+    if (this.normalVec) { this.normalVec.delete(); this.normalVec = null; }
+    this.mesh.delete();
   }
 }

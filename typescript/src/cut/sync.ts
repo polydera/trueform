@@ -16,30 +16,47 @@ import { NDArray, NDArrayInt8, NDArrayInt32, NDArrayFloat32 } from "../ndarray/N
 import { Mesh } from "../form/Mesh";
 import { Curves } from "../form/Curves";
 
+/** Result of a boolean operation. */
 export interface LabeledCutResult {
+  /** The result mesh. */
   mesh: Mesh;
+  /** Per-face region labels. */
   labels: NDArrayInt8;
 }
 
+/** Result of a boolean operation with intersection curves. */
 export interface LabeledCutResultWithCurves {
+  /** The result mesh. */
   mesh: Mesh;
+  /** Per-face region labels. */
   labels: NDArrayInt8;
+  /** Intersection curves. */
   curves: Curves;
 }
 
+/** Result of isobands slicing. */
 export interface IsobandsResult {
+  /** The result mesh with band regions. */
   mesh: Mesh;
+  /** Per-face band ID. */
   labels: NDArrayInt32;
 }
 
+/** Result of isobands slicing with isocontour curves. */
 export interface IsobandsResultWithCurves {
+  /** The result mesh with band regions. */
   mesh: Mesh;
+  /** Per-face band ID. */
   labels: NDArrayInt32;
+  /** Isocontour polylines. */
   curves: Curves;
 }
 
+/** Result of embedded intersection with curves. */
 export interface CutResultWithCurves {
+  /** The mesh with embedded intersection edges. */
   mesh: Mesh;
+  /** Intersection curves. */
   curves: Curves;
 }
 
@@ -84,6 +101,7 @@ function wrapCutWithCurves(raw: any): CutResultWithCurves {
 // Booleans
 // ============================================================================
 
+/** Boolean union of two meshes. Result is the volume covered by either mesh. */
 export function booleanUnion(m0: Mesh, m1: Mesh): LabeledCutResult;
 export function booleanUnion(
   m0: Mesh, m1: Mesh, opts: { returnCurves: true },
@@ -99,6 +117,7 @@ export function booleanUnion(
   return wrapLabeled(native().boolean_union(m0._handle, m1._handle));
 }
 
+/** Boolean intersection of two meshes. Result is the volume covered by both. */
 export function booleanIntersection(m0: Mesh, m1: Mesh): LabeledCutResult;
 export function booleanIntersection(
   m0: Mesh, m1: Mesh, opts: { returnCurves: true },
@@ -114,6 +133,7 @@ export function booleanIntersection(
   return wrapLabeled(native().boolean_intersection(m0._handle, m1._handle));
 }
 
+/** Boolean difference: m0 minus m1. Result is m0 with m1 subtracted. */
 export function booleanDifference(m0: Mesh, m1: Mesh): LabeledCutResult;
 export function booleanDifference(
   m0: Mesh, m1: Mesh, opts: { returnCurves: true },
@@ -133,6 +153,15 @@ export function booleanDifference(
 // Isobands
 // ============================================================================
 
+/**
+ * Slice a mesh by scalar field isocontours into band regions.
+ *
+ * @param mesh - Input mesh
+ * @param scalars - Per-vertex scalar values [V]
+ * @param cutValues - Isocontour thresholds. N values create N+1 bands.
+ * @param opts.selectedBands - Band indices to keep (0-indexed)
+ * @param opts.returnCurves - If true, include isocontour polylines
+ */
 export function isobands(
   mesh: Mesh, scalars: NDArrayFloat32, cutValues: Float32Array,
 ): IsobandsResult;
@@ -142,11 +171,30 @@ export function isobands(
 ): IsobandsResultWithCurves;
 export function isobands(
   mesh: Mesh, scalars: NDArrayFloat32, cutValues: Float32Array,
-  opts?: { returnCurves: true },
+  opts: { selectedBands: number[] },
+): IsobandsResult;
+export function isobands(
+  mesh: Mesh, scalars: NDArrayFloat32, cutValues: Float32Array,
+  opts: { selectedBands: number[], returnCurves: true },
+): IsobandsResultWithCurves;
+export function isobands(
+  mesh: Mesh, scalars: NDArrayFloat32, cutValues: Float32Array,
+  opts?: { returnCurves?: boolean, selectedBands?: number[] },
 ): IsobandsResult | IsobandsResultWithCurves {
+  const sb = opts?.selectedBands;
   if (opts?.returnCurves) {
+    if (sb) {
+      return wrapIsobandsWithCurves(
+        native().isobands_with_curves_selected(mesh._handle, scalars._handle, cutValues, sb),
+      );
+    }
     return wrapIsobandsWithCurves(
       native().isobands_with_curves(mesh._handle, scalars._handle, cutValues),
+    );
+  }
+  if (sb) {
+    return wrapIsobands(
+      native().isobands_selected(mesh._handle, scalars._handle, cutValues, sb),
     );
   }
   return wrapIsobands(
@@ -158,6 +206,7 @@ export function isobands(
 // Embedded intersection curves
 // ============================================================================
 
+/** Embed intersection curves of m0 and m1 as edges in m0. */
 export function embeddedIntersectionCurves(m0: Mesh, m1: Mesh): Mesh;
 export function embeddedIntersectionCurves(
   m0: Mesh, m1: Mesh, opts: { returnCurves: true },
@@ -181,6 +230,7 @@ export function embeddedIntersectionCurves(
 // Embedded self-intersection curves
 // ============================================================================
 
+/** Detect and resolve self-intersections, splitting faces along intersection curves. */
 export function embeddedSelfIntersectionCurves(mesh: Mesh): Mesh;
 export function embeddedSelfIntersectionCurves(
   mesh: Mesh, opts: { returnCurves: true },

@@ -12,7 +12,7 @@ export default defineNuxtModule({
     async function copyAll() {
       // Copy WASM module
       const wasmFile = {
-        from: "../wasm-examples/build/dist/native.wasm",
+        from: "wasm-examples/build/dist/native.wasm",
         to: "public/native.wasm",
       };
 
@@ -26,7 +26,7 @@ export default defineNuxtModule({
       await copyFile(wasmFile.from, wasmFile.to);
 
       // Copy all files from build/dist to app/examples
-      const distDir = "../wasm-examples/build/dist";
+      const distDir = "wasm-examples/build/dist";
       const allFiles = await glob(`${distDir}/**/*`, {
         absolute: false,
         onlyFiles: true
@@ -39,6 +39,15 @@ export default defineNuxtModule({
         await mkdir(dirname(destPath), { recursive: true });
         await copyFile(file, destPath);
       }
+
+      // Copy trueform SDK
+      const tfDistDir = "../typescript/dist";
+      const tfFiles = ["index.js", "index.js.map", "index.d.ts", "index.d.ts.map", "trueform_wasm.js", "trueform_wasm.wasm"];
+      await mkdir("app/examples/trueform", { recursive: true });
+      for (const f of tfFiles) {
+        await copyFile(join(tfDistDir, f), join("app/examples/trueform", f));
+      }
+      await copyFile(join(tfDistDir, "trueform_wasm.wasm"), "public/trueform_wasm.wasm");
 
       // Copy STL meshes from benchmarks (excluding 750k, 1M - too large for Nuxt)
       const stlFiles = [

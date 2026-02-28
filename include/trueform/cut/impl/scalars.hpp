@@ -1,24 +1,23 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
-#include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/algorithm/parallel_for.hpp"
+#include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/polygons.hpp"
 #include "../../core/small_vector.hpp"
 #include "../../core/views/zip.hpp"
 #include "../../intersect/types/simple_intersections.hpp"
-#include "../../topology/topo_type.hpp"
 #include "../loop/vertex_source.hpp"
 #include "../scalar_cut_faces.hpp"
 #include "./ids_common.hpp"
@@ -26,9 +25,8 @@
 namespace tf::cut {
 template <typename LabelType, typename Policy, typename Range0, typename Range1,
           typename F>
-auto make_cut_faces_scalar_labels(const tf::polygons<Policy> &polygons,
-                                  const Range0 &loops,
-                                  const Range1 &intersections,
+auto make_cut_faces_scalar_labels(const tf::polygons<Policy> &,
+                                  const Range0 &loops, const Range1 &,
                                   const F &get_category,
                                   std::size_t n_categories) {
   /*
@@ -50,18 +48,8 @@ auto make_cut_faces_scalar_labels(const tf::polygons<Policy> &polygons,
           counts.clear();
           counts.resize(n_categories);
           for (const auto &v : loop) {
-            auto i_id = v.intersection_index;
-            decltype(i_id) v_id;
             if (v.source == tf::loop::vertex_source::original)
-              v_id = v.id;
-            else if (intersections[i_id].target.label !=
-                     tf::topo_type::vertex) {
-              continue;
-            } else {
-              v_id = polygons.faces()[intersections[i_id].object]
-                                     [intersections[i_id].target.id];
-            }
-            counts[get_category(v_id)]++;
+              counts[get_category(v.id)]++;
           }
           label =
               std::max_element(counts.begin(), counts.end()) - counts.begin();

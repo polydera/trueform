@@ -15,7 +15,7 @@ export {
   sum, min, max, mean, norm, sort, sort_, argsort, atan2,
   unique, setUnion, setIntersection, setDifference,
 } from "../ndarray/async";
-export { readStl, readObj } from "../io/async";
+export { readStl, readObj, writeStl, writeObj } from "../io/async";
 export {
   booleanUnion, booleanUnionWithCurves,
   booleanIntersection, booleanIntersectionWithCurves,
@@ -26,6 +26,29 @@ export {
 } from "../cut/async";
 export { intersectionCurves, selfIntersectionCurves, isocontours } from "../intersect/async";
 export {
-  distance2, closestPoint, closestPointPair,
+  distance, distance2, closestPoint, closestPointPair,
   neighborSearch, intersects, rayCast,
 } from "../spatial/async";
+export {
+  triangulate, sphereMesh, cylinderMesh, boxMesh, planeMesh,
+  area, signedVolume, volume, meanEdgeLength, minEdgeLength, maxEdgeLength,
+  positivelyOriented,
+  principalCurvatures, principalDirections, shapeIndex,
+  laplacianSmoothed, taubinSmoothed,
+  fitRigidAlignment, fitIcpAlignment, fitObbAlignment, chamferError,
+} from "../geometry/async";
+export {
+  isClosed, isOpen, isManifold, isNonManifold,
+  eulerCharacteristic,
+  boundaryEdges, nonManifoldEdges,
+  boundaryPaths, kRings, neighborhoods, connectEdgesToPaths,
+  labelConnectedComponents, connectedComponents,
+  consistentlyOriented,
+} from "../topology/async";
+export { cleaned } from "../clean/async";
+export {
+  reindexed, reindexedByMask, reindexedByIds,
+  reindexedByMaskOnPoints, reindexedByIdsOnPoints,
+  concatenateMeshes, splitIntoComponents,
+} from "../reindex/async";
+export { decimated, isotropicRemeshed } from "../remesh/async";

@@ -25,6 +25,7 @@
 #include "trueform/topology/vertex_link_like.hpp"
 #include "trueform/core/transformation_view.hpp"
 #include "trueform/spatial/aabb_tree.hpp"
+#include "trueform/topology/half_edges.hpp"
 #include "trueform/core/policy/frame.hpp"
 #include "trueform/spatial/policy/tree.hpp"
 #include "trueform/ts/core/wasm_ndarray.hpp"
@@ -58,6 +59,14 @@ class wasm_mesh {
   wasm_offset_blocked_buffer<int, int> _fl;
   wasm_offset_blocked_buffer<int, int> _vl;
 
+  // Normals cache
+  wasm_ndarray<float> _normals;        // [F, 3]
+  wasm_ndarray<float> _point_normals;  // [V, 3]
+
+  // Half-edge cache
+  std::shared_ptr<tf::half_edges<int>> _he;
+  uint32_t _he_gen = 0;
+
   // Spatial tree cache
   std::shared_ptr<tf::aabb_tree<int, float, 3>> _tree;
   uint32_t _tree_faces_gen = 0;
@@ -70,6 +79,10 @@ class wasm_mesh {
   uint32_t _mel_gen = 0;
   uint32_t _fl_gen = 0;
   uint32_t _vl_gen = 0;
+  uint32_t _normals_faces_gen = 0;
+  uint32_t _normals_points_gen = 0;
+  uint32_t _point_normals_faces_gen = 0;
+  uint32_t _point_normals_points_gen = 0;
 
 public:
   wasm_mesh() = default;
@@ -169,12 +182,61 @@ public:
     return *_tree;
   }
 
+  // -- Half-edge access (lazy build, cached) --
+
+  auto half_edges() -> tf::half_edges<int> & {
+    ensure_half_edges();
+    return *_he;
+  }
+
+  auto set_half_edges(tf::half_edges<int> &&he) -> void {
+    _he = std::make_shared<tf::half_edges<int>>(std::move(he));
+    _he_gen = _faces_gen;
+  }
+
   // -- Topology access (lazy build, returns copy of cached wasm type) --
 
   auto face_membership() -> wasm_offset_blocked_buffer<int, int>;
   auto manifold_edge_link() -> wasm_ndarray<int>;
   auto face_link() -> wasm_offset_blocked_buffer<int, int>;
   auto vertex_link() -> wasm_offset_blocked_buffer<int, int>;
+
+  // -- Topology setters (bypass lazy build, mark as fresh) --
+
+  void set_face_membership(wasm_offset_blocked_buffer<int, int> fm) {
+    _fm = std::move(fm);
+    _fm_gen = _faces_gen;
+  }
+  void set_vertex_link(wasm_offset_blocked_buffer<int, int> vl) {
+    _vl = std::move(vl);
+    _vl_gen = _faces_gen;
+  }
+  void set_face_link(wasm_offset_blocked_buffer<int, int> fl) {
+    _fl = std::move(fl);
+    _fl_gen = _faces_gen;
+  }
+  void set_manifold_edge_link(wasm_ndarray<int> mel) {
+    _mel = std::move(mel);
+    _mel_gen = _faces_gen;
+  }
+
+  // -- Normals access (lazy build, returns copy of cached wasm type) --
+
+  auto normals() -> wasm_ndarray<float>;
+  auto point_normals() -> wasm_ndarray<float>;
+
+  // -- Normals setters (bypass lazy build, mark as fresh) --
+
+  void set_normals(wasm_ndarray<float> n) {
+    _normals = std::move(n);
+    _normals_faces_gen = _faces_gen;
+    _normals_points_gen = _points_gen;
+  }
+  void set_point_normals(wasm_ndarray<float> pn) {
+    _point_normals = std::move(pn);
+    _point_normals_faces_gen = _faces_gen;
+    _point_normals_points_gen = _points_gen;
+  }
 
   // -- Internal: trueform range views over raw data --
 
@@ -242,15 +304,21 @@ public:
     _mel.destroy();
     _fl.destroy();
     _vl.destroy();
+    _normals.destroy();
+    _point_normals.destroy();
+    _he.reset();
   }
 
   auto is_valid() const -> bool { return _faces.is_valid(); }
 
 private:
+  void ensure_half_edges();
   void ensure_face_membership();
   void ensure_manifold_edge_link();
   void ensure_face_link();
   void ensure_vertex_link();
+  void ensure_normals();
+  void ensure_point_normals();
 };
 
 } // namespace ts

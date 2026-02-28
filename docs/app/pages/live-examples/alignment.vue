@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useWasmModule } from "@/composables/useWasmModule";
+import { useTrueform } from "@/composables/useTrueform";
 import { AlignmentExample, type InteractionMode } from "@/examples/AlignmentExample";
 import { useExampleLoadingState } from "@/composables/useExampleLoadingState";
 import { useMeshSelection } from "@/composables/useMeshSelection";
@@ -20,7 +20,7 @@ if (metadata) {
 
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
-const { loadExampleWithAssets } = useWasmModule();
+const { load: loadTF } = useTrueform();
 const {
   isLoading,
   loadingMessage,
@@ -30,19 +30,11 @@ const {
   failLoading,
   finishLoading,
 } = useExampleLoadingState();
-const { meshSize, buildMeshes, formatPolygonLabel } = useMeshSelection();
+const { meshSize, meshUrl, meshFilename } = useMeshSelection();
 
 const threejsContainer = ref<HTMLElement | null>(null);
 let exampleClass: AlignmentExample | null = null;
 
-// Two meshes: source (user-selected) and target (50k dragon)
-const meshes = computed(() => {
-  const sourceMesh = buildMeshes(1)[0];
-  return [
-    sourceMesh,
-    { url: "/stl/dragon-50k.stl", filename: "dragon-50k-target.stl" },
-  ];
-});
 const polygonLabel = computed(() => `${meshSize.value} + 50k`);
 
 const alignmentTime = ref(0);
@@ -94,20 +86,37 @@ const loadThreejs = async () => {
   isAligned.value = false;
   alignmentTime.value = 0;
   currentMode.value = "move";
+  resetLoading();
 
-  exampleClass = await loadExampleWithAssets({
-    meshes: meshes.value,
-    skipOverlayIfCached: true,
-    loading: { resetLoading, setLoadingMessage, failLoading, finishLoading },
-    isTornDown: () => tearDownRequested || loadId !== currentLoadId,
-    createScene: (wasmInstance, meshFilenames) => {
-      const el = threejsContainer.value;
-      if (!el) {
-        return null;
-      }
-      return new AlignmentExample(wasmInstance, meshFilenames, el, isDark.value);
-    },
-  });
+  try {
+    setLoadingMessage("Loading trueform...");
+    const tf = await loadTF();
+    if (tearDownRequested || loadId !== currentLoadId) { finishLoading(); return; }
+
+    setLoadingMessage("Fetching meshes...");
+    const [sourceResp, targetResp] = await Promise.all([
+      fetch(meshUrl.value),
+      fetch("/stl/dragon-50k.stl"),
+    ]);
+    const [sourceBuffer, targetBuffer] = await Promise.all([
+      sourceResp.arrayBuffer(),
+      targetResp.arrayBuffer(),
+    ]);
+    if (tearDownRequested || loadId !== currentLoadId) { finishLoading(); return; }
+
+    setLoadingMessage("Initializing renderer...");
+    const el = threejsContainer.value;
+    if (!el) { finishLoading(); return; }
+
+    exampleClass = new AlignmentExample(
+      tf, sourceBuffer, meshFilename.value, targetBuffer, el, isDark.value,
+    );
+    finishLoading();
+  } catch (error) {
+    if (!tearDownRequested && loadId === currentLoadId) {
+      failLoading(error);
+    }
+  }
 };
 
 watch(meshSize, () => loadThreejs(), { immediate: true });

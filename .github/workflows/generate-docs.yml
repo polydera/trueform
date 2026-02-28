@@ -15,20 +15,27 @@ jobs:
 
       - name: Build WebAssembly assets
         run: |
-          docker compose -f wasm-examples/extras/docker-compose.yml \
+          docker compose -f docs/wasm-examples/extras/docker-compose.yml \
             up --build --abort-on-container-exit --exit-code-from web-example
 
       - name: Tear down docker compose
         if: always()
         run: |
-          docker compose -f wasm-examples/extras/docker-compose.yml down \
+          docker compose -f docs/wasm-examples/extras/docker-compose.yml down \
             --volumes --remove-orphans
 
-      - name: Upload artifacts
+      - name: Upload WASM artifacts
         uses: actions/upload-artifact@v4
         with:
           name: wasm-build
-          path: wasm-examples/build/dist
+          path: docs/wasm-examples/build/dist
+          retention-days: 7
+
+      - name: Upload TypeScript SDK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ts-sdk-build
+          path: typescript/dist
           retention-days: 7
 
   build:
@@ -43,7 +50,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: wasm-build
-          path: wasm-examples/build/dist
+          path: docs/wasm-examples/build/dist
+
+      - name: Download TypeScript SDK artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ts-sdk-build
+          path: typescript/dist
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4

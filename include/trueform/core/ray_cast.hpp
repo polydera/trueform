@@ -27,6 +27,7 @@
 #include "./ray_cast_2d.hpp"
 #include "./ray_cast_info.hpp"
 #include "./ray_config.hpp"
+#include "./ray_triangle_check.hpp"
 #include "./ray_obb_check.hpp"
 #include "./segment.hpp"
 
@@ -81,7 +82,13 @@ auto ray_cast(
     const tf::ray_config<tf::coordinate_type<Policy0, Policy1>> &config = {}) {
   if constexpr (Dims == 2) {
     return core::ray_cast_2d(ray, poly_in, config);
+  } else if constexpr (Dims == 3 && tf::static_size_v<Policy1> == 3) {
+    return core::ray_triangle_check(ray, poly_in, config);
   } else {
+    if constexpr (Dims == 3) {
+      if (poly_in.size() == 3)
+        return core::ray_triangle_check(ray, poly_in, config);
+    }
     using RealT = tf::coordinate_type<Policy0, Policy1>;
     const auto &poly = tf::tag_plane(poly_in);
     auto result = ray_cast(ray, poly.plane(), config);

@@ -177,3 +177,320 @@ describe("Primitive factories (NDArray overloads)", () => {
   });
 
 });
+
+// ============================================================================
+// Variadic, flat-array, and Primitive-based overloads
+// ============================================================================
+
+describe("Primitive factories (other overloads)", () => {
+
+  // ---------- point ----------
+  test("point variadic", () => {
+    const tf = getTf();
+    const p = tf.point(1, 2, 3);
+    assert(p.type === "point", `type: ${p.type}`);
+    assert(p.isBatch === false, "single not batch");
+    approx(p.data[0], 1); approx(p.data[1], 2); approx(p.data[2], 3);
+    log("  point(1, 2, 3)", "line-pass");
+    p.delete();
+  });
+
+  test("point from Float32Array", () => {
+    const tf = getTf();
+    const p = tf.point(new Float32Array([4, 5, 6]));
+    assert(p.type === "point");
+    approx(p.data[0], 4);
+    log("  point(Float32Array)", "line-pass");
+    p.delete();
+  });
+
+  test("point from number[]", () => {
+    const tf = getTf();
+    const p = tf.point([7, 8, 9]);
+    assert(p.type === "point");
+    approx(p.data[0], 7);
+    log("  point([7,8,9])", "line-pass");
+    p.delete();
+  });
+
+  test("point batch from flat + dims", () => {
+    const tf = getTf();
+    const p = tf.point(new Float32Array([1,2,3, 4,5,6]), 3);
+    assert(p.type === "point");
+    assert(p.isBatch === true, "should be batch");
+    assert(p.count === 2, `count: ${p.count}`);
+    assert(p.shape[0] === 2 && p.shape[1] === 3, `shape: [${p.shape}]`);
+    log("  point(data, 3) → batch[2,3]", "line-pass");
+
+    const p0 = p.at(0);
+    assert(p0.isBatch === false, "at(0) not batch");
+    approx(p0.data[0], 1);
+    log("  batch.at(0) works", "line-pass");
+    p0.delete();
+    p.delete();
+  });
+
+  // ---------- vector ----------
+  test("vector variadic", () => {
+    const tf = getTf();
+    const v = tf.vector(0, 1, 0);
+    assert(v.type === "vector");
+    approx(v.data[1], 1);
+    log("  vector(0, 1, 0)", "line-pass");
+    v.delete();
+  });
+
+  test("vector from Float32Array", () => {
+    const tf = getTf();
+    const v = tf.vector(new Float32Array([1, 0, 0]));
+    assert(v.type === "vector");
+    approx(v.data[0], 1);
+    log("  vector(Float32Array)", "line-pass");
+    v.delete();
+  });
+
+  test("vector batch from flat + dims", () => {
+    const tf = getTf();
+    const v = tf.vector(new Float32Array([1,0,0, 0,1,0, 0,0,1]), 3);
+    assert(v.isBatch === true);
+    assert(v.count === 3, `count: ${v.count}`);
+    log("  vector(data, 3) → batch[3,3]", "line-pass");
+    v.delete();
+  });
+
+  // ---------- segment from Primitives ----------
+  test("segment from Point + Point", () => {
+    const tf = getTf();
+    const a = tf.point(0, 0, 0);
+    const b = tf.point(1, 1, 1);
+    const s = tf.segment(a, b);
+    assert(s.type === "segment");
+    assert(s.shape[0] === 2 && s.shape[1] === 3, `shape: [${s.shape}]`);
+    approx(s.data[0], 0); approx(s.data[3], 1);
+    log("  segment(Point, Point)", "line-pass");
+    s.delete(); b.delete(); a.delete();
+  });
+
+  test("segment from flat array", () => {
+    const tf = getTf();
+    const s = tf.segment([0,0,0, 1,1,1]);
+    assert(s.type === "segment");
+    assert(s.shape[0] === 2 && s.shape[1] === 3, `shape: [${s.shape}]`);
+    log("  segment([0,0,0, 1,1,1])", "line-pass");
+    s.delete();
+  });
+
+  test("segment batch from flat + dims", () => {
+    const tf = getTf();
+    const s = tf.segment(new Float32Array([0,0,0, 1,1,1, 2,2,2, 3,3,3]), 3);
+    assert(s.isBatch === true);
+    assert(s.count === 2, `count: ${s.count}`);
+    log("  segment(data, 3) → batch[2,2,3]", "line-pass");
+    s.delete();
+  });
+
+  // ---------- triangle from Primitives ----------
+  test("triangle from Point × 3", () => {
+    const tf = getTf();
+    const a = tf.point(0, 0, 0);
+    const b = tf.point(1, 0, 0);
+    const c = tf.point(0, 1, 0);
+    const tri = tf.triangle(a, b, c);
+    assert(tri.type === "triangle");
+    assert(tri.shape[0] === 3 && tri.shape[1] === 3, `shape: [${tri.shape}]`);
+    approx(tri.data[3], 1);
+    log("  triangle(Point, Point, Point)", "line-pass");
+    tri.delete(); c.delete(); b.delete(); a.delete();
+  });
+
+  test("triangle from flat array", () => {
+    const tf = getTf();
+    const tri = tf.triangle([0,0,0, 1,0,0, 0,1,0]);
+    assert(tri.type === "triangle");
+    assert(tri.shape[0] === 3 && tri.shape[1] === 3, `shape: [${tri.shape}]`);
+    log("  triangle([...])", "line-pass");
+    tri.delete();
+  });
+
+  test("triangle batch from flat + dims", () => {
+    const tf = getTf();
+    const tri = tf.triangle(new Float32Array([
+      0,0,0, 1,0,0, 0,1,0,
+      1,1,1, 2,1,1, 1,2,1,
+    ]), 3);
+    assert(tri.isBatch === true);
+    assert(tri.count === 2, `count: ${tri.count}`);
+    log("  triangle(data, 3) → batch[2,3,3]", "line-pass");
+    tri.delete();
+  });
+
+  // ---------- ray from Primitives ----------
+  test("ray from Point + Vector", () => {
+    const tf = getTf();
+    const o = tf.point(0, 0, 0);
+    const d = tf.vector(0, 0, 1);
+    const r = tf.ray(o, d);
+    assert(r.type === "ray");
+    assert(r.shape[0] === 2 && r.shape[1] === 3, `shape: [${r.shape}]`);
+    approx(r.data[5], 1);
+    log("  ray(Point, Vector)", "line-pass");
+    r.delete(); d.delete(); o.delete();
+  });
+
+  test("ray from flat array", () => {
+    const tf = getTf();
+    const r = tf.ray([0,0,0, 1,0,0]);
+    assert(r.type === "ray");
+    assert(r.shape[0] === 2 && r.shape[1] === 3, `shape: [${r.shape}]`);
+    log("  ray([...])", "line-pass");
+    r.delete();
+  });
+
+  test("ray batch from flat + dims", () => {
+    const tf = getTf();
+    const r = tf.ray(new Float32Array([
+      0,0,0, 1,0,0,
+      0,0,0, 0,1,0,
+    ]), 3);
+    assert(r.isBatch === true);
+    assert(r.count === 2, `count: ${r.count}`);
+    log("  ray(data, 3) → batch[2,2,3]", "line-pass");
+    r.delete();
+  });
+
+  // ---------- line from Primitives ----------
+  test("line from Point + Vector", () => {
+    const tf = getTf();
+    const o = tf.point(1, 2, 3);
+    const d = tf.vector(0, 0, 1);
+    const l = tf.line(o, d);
+    assert(l.type === "line");
+    assert(l.shape[0] === 2 && l.shape[1] === 3, `shape: [${l.shape}]`);
+    approx(l.data[0], 1); approx(l.data[5], 1);
+    log("  line(Point, Vector)", "line-pass");
+    l.delete(); d.delete(); o.delete();
+  });
+
+  test("line from flat array", () => {
+    const tf = getTf();
+    const l = tf.line([1,2,3, 0,0,1]);
+    assert(l.type === "line");
+    assert(l.shape[0] === 2 && l.shape[1] === 3, `shape: [${l.shape}]`);
+    log("  line([...])", "line-pass");
+    l.delete();
+  });
+
+  test("line batch from flat + dims", () => {
+    const tf = getTf();
+    const l = tf.line(new Float32Array([
+      0,0,0, 1,0,0,
+      0,0,0, 0,1,0,
+    ]), 3);
+    assert(l.isBatch === true);
+    assert(l.count === 2, `count: ${l.count}`);
+    log("  line(data, 3) → batch[2,2,3]", "line-pass");
+    l.delete();
+  });
+
+  // ---------- plane ----------
+  test("plane from Vector + offset", () => {
+    const tf = getTf();
+    const n = tf.vector(0, 0, 1);
+    const pl = tf.plane(n, 5);
+    assert(pl.type === "plane");
+    approx(pl.data[2], 1); approx(pl.data[3], 5);
+    log("  plane(Vector, offset)", "line-pass");
+    pl.delete(); n.delete();
+  });
+
+  test("plane from NDArray + offset", () => {
+    const tf = getTf();
+    const n = tf.ndarray(new Float32Array([0, 1, 0]), [3]);
+    const pl = tf.plane(n, 3);
+    assert(pl.type === "plane");
+    approx(pl.data[1], 1); approx(pl.data[3], 3);
+    log("  plane(NDArray, offset)", "line-pass");
+    pl.delete(); n.delete();
+  });
+
+  test("plane from flat [a,b,c,d]", () => {
+    const tf = getTf();
+    const pl = tf.plane([0, 0, 1, 2]);
+    assert(pl.type === "plane");
+    approx(pl.data[2], 1); approx(pl.data[3], 2);
+    log("  plane([0,0,1,2])", "line-pass");
+    pl.delete();
+  });
+
+  // ---------- aabb from Primitives ----------
+  test("aabb from Point + Point", () => {
+    const tf = getTf();
+    const lo = tf.point(0, 0, 0);
+    const hi = tf.point(1, 2, 3);
+    const box = tf.aabb(lo, hi);
+    assert(box.type === "aabb");
+    assert(box.shape[0] === 2 && box.shape[1] === 3, `shape: [${box.shape}]`);
+    approx(box.data[0], 0); approx(box.data[5], 3);
+    log("  aabb(Point, Point)", "line-pass");
+    box.delete(); hi.delete(); lo.delete();
+  });
+
+  test("aabb from flat array", () => {
+    const tf = getTf();
+    const box = tf.aabb([0,0,0, 1,2,3]);
+    assert(box.type === "aabb");
+    assert(box.shape[0] === 2 && box.shape[1] === 3, `shape: [${box.shape}]`);
+    log("  aabb([0,0,0, 1,2,3])", "line-pass");
+    box.delete();
+  });
+
+  test("aabb batch from flat + dims", () => {
+    const tf = getTf();
+    const box = tf.aabb(new Float32Array([
+      0,0,0, 1,1,1,
+      2,2,2, 3,3,3,
+    ]), 3);
+    assert(box.isBatch === true);
+    assert(box.count === 2, `count: ${box.count}`);
+    log("  aabb(data, 3) → batch[2,2,3]", "line-pass");
+    box.delete();
+  });
+
+  // ---------- polygon ----------
+  test("polygon from Point[]", () => {
+    const tf = getTf();
+    const pts = [
+      tf.point(0, 0, 0),
+      tf.point(1, 0, 0),
+      tf.point(1, 1, 0),
+      tf.point(0, 1, 0),
+    ];
+    const poly = tf.polygon(pts);
+    assert(poly.type === "polygon");
+    assert(poly.shape[0] === 4 && poly.shape[1] === 3, `shape: [${poly.shape}]`);
+    approx(poly.data[3], 1);
+    log("  polygon(Point[])", "line-pass");
+    poly.delete();
+    for (const p of pts) p.delete();
+  });
+
+  test("polygon from flat + dims", () => {
+    const tf = getTf();
+    const poly = tf.polygon(new Float32Array([0,0,0, 1,0,0, 1,1,0, 0,1,0]), 3);
+    assert(poly.type === "polygon");
+    assert(poly.shape[0] === 4 && poly.shape[1] === 3, `shape: [${poly.shape}]`);
+    log("  polygon(data, 3)", "line-pass");
+    poly.delete();
+  });
+
+  // ---------- batch properties ----------
+  test("isBatch false on single", () => {
+    const tf = getTf();
+    const p = tf.point(1, 2, 3);
+    assert(p.isBatch === false, `single isBatch: ${p.isBatch}`);
+    assert(p.count === 1, `single count: ${p.count}`);
+    log("  single: isBatch=false, count=1", "line-pass");
+    p.delete();
+  });
+
+});

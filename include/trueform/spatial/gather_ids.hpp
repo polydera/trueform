@@ -12,6 +12,7 @@
 */
 #pragma once
 
+#include "../core/is_form.hpp"
 #include "../core/local_vector.hpp"
 #include "./policy/tree.hpp"
 #include "./search.hpp"
@@ -85,7 +86,8 @@ auto gather_ids(const tf::form<Dims, Policy0> &form0,
 /// @param out Output iterator to write IDs.
 /// @return Iterator past the last written element.
 template <std::size_t Dims, typename Policy, typename F0, typename F1,
-          typename Iterator>
+          typename Iterator,
+          std::enable_if_t<!tf::is_form<F0>, int> = 0>
 auto gather_ids(const tf::form<Dims, Policy> &form, const F0 &aabb_predicate,
                 const F1 &primitive_predicate, Iterator out) -> Iterator {
   static_assert(tf::has_tree_policy<Policy>,
@@ -99,7 +101,8 @@ auto gather_ids(const tf::form<Dims, Policy> &form, const F0 &aabb_predicate,
 
 /// @ingroup spatial_queries
 /// @brief Gather primitive IDs using a single predicate for both tests.
-template <std::size_t Dims, typename Policy, typename F, typename Iterator>
+template <std::size_t Dims, typename Policy, typename F, typename Iterator,
+          std::enable_if_t<!tf::is_form<F>, int> = 0>
 auto gather_ids(const tf::form<Dims, Policy> &form, const F &predicate,
                 Iterator out) -> Iterator {
   return gather_ids(form, predicate, predicate, out);
