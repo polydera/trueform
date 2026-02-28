@@ -171,7 +171,6 @@ auto dispatch_single(Fn &&fn, const float *ptr, prim_type t, int n_verts = 0)
   case prim_type::polygon:
     return fn(as_polygon(ptr, n_verts));
   }
-  __builtin_unreachable();
 }
 
 // ============================================================================

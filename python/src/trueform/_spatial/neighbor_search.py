@@ -1,7 +1,7 @@
 """
 Neighbor search functions for spatial queries
 
-Copyright (c) 2025 Žiga Sajovic, XLAB
+Copyright (c) 2025 Ziga Sajovic, XLAB
 Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
 Commercial licensing available via info@polydera.com.
 https://github.com/polydera/trueform
@@ -10,22 +10,10 @@ https://github.com/polydera/trueform
 import numpy as np
 from typing import Any, Optional, Union, List, Tuple
 from .. import _trueform
+from .._primitives.primitive import Primitive
 from .._primitives import Point
-
-# Dispatch infrastructure
-from .._dispatch import (
-    extract_meta,
-    build_suffix,
-    build_suffix_pair,
-    canonicalize_index_order,
-)
-from ._dispatch import (
-    NEIGHBOR_SEARCH,
-    NEIGHBOR_SEARCH_KNN,
-    NEIGHBOR_SEARCH_FORM_FORM,
-)
-
-# Spatial forms (imported at function level to avoid circular imports)
+from .._dispatch import extract_meta, build_suffix, build_suffix_pair, canonicalize_index_order
+from ._dispatch import NEIGHBOR_SEARCH_FORM_FORM
 
 
 def neighbor_search(
@@ -38,13 +26,13 @@ def neighbor_search(
     Search for nearest neighbor(s) in a spatial structure.
 
     Performs spatial queries to find the closest element(s) in a point cloud, mesh, or edge mesh to a given
-    geometric primitive (point, segment, polygon, ray, or line) or another spatial form.
+    geometric primitive (point, segment, triangle, polygon, ray, or line) or another spatial form.
 
     Parameters
     ----------
     spatial_object : PointCloud, Mesh, or EdgeMesh
         The spatial structure to search in
-    query : Point, Segment, Polygon, Ray, Line, PointCloud, Mesh, EdgeMesh, or numpy array
+    query : Point, Segment, Triangle, Polygon, Ray, Line, PointCloud, Mesh, EdgeMesh, or numpy array
         The geometric primitive or spatial form to query with. Can be a wrapped primitive,
         another spatial form, or a numpy array (which will be treated as a Point)
     radius : float, optional
@@ -58,17 +46,27 @@ def neighbor_search(
 
     Returns
     -------
-    single_result : tuple[int, float, ndarray] (form-primitive query)
-        When k is None: Returns (index, distance_squared, point) for the nearest neighbor,
+    single_result : tuple[int, float, ndarray] (single primitive, k=None)
+        Returns (index, distance_squared, point) for the nearest neighbor,
         where index is the element index, distance_squared is the squared distance,
         and point is the coordinates of the closest point on the query primitive.
+        Returns None if no neighbor found within radius.
+    batch_result : tuple[ndarray, ndarray, ndarray] (batch primitive, k=None)
+        Returns (ids[N], distances[N], points[N, D]) where ids contains element indices
+        (-1 for not found), distances contains squared distances (inf for not found),
+        and points contains closest points on the spatial structure.
+    single_knn : list[tuple[int, float, ndarray]] (single primitive, k specified)
+        Returns a list of up to k tuples (index, distance_squared, point)
+        sorted by distance (closest first).
+    batch_knn : tuple[ndarray, ndarray, ndarray, ndarray] (batch primitive, k specified)
+        Returns (ids[N,K], distances[N,K], points[N,K,D], counts[N]) where
+        ids contains element indices (-1 padding for unfilled slots),
+        distances contains squared distances, points contains closest points,
+        and counts[i] gives the number of valid neighbors for query i.
     form_form_result : tuple[tuple[int, int], tuple[float, ndarray, ndarray]] (form-form query)
-        When query is a form: Returns ((index0, index1), (distance, point0, point1)) where
+        Returns ((index0, index1), (distance, point0, point1)) where
         index0 and index1 are element indices in the two forms, distance is the squared distance,
         and point0, point1 are the closest points on each form.
-    multiple_results : list[tuple[int, float, ndarray]] (form-primitive KNN)
-        When k is specified: Returns a list of up to k tuples (index, distance_squared, point)
-        sorted by distance (closest first).
 
     Examples
     --------
@@ -94,6 +92,15 @@ def neighbor_search(
     >>> seg = tf.Segment([[0.5, 0.5, 0], [0.5, 0.5, 1]])
     >>> idx, dist2, closest_pt = tf.neighbor_search(mesh, seg)
     >>>
+    >>> # Batch query: find nearest neighbor for 100 query points
+    >>> query_pts = tf.Point(np.random.rand(100, 3).astype(np.float32))
+    >>> ids, dists, pts = tf.neighbor_search(cloud, query_pts)
+    >>> print(f"ids shape: {ids.shape}, dists shape: {dists.shape}")
+    >>>
+    >>> # Batch k-NN: find 3 nearest neighbors for 100 query points
+    >>> ids, dists, pts, counts = tf.neighbor_search(cloud, query_pts, k=3)
+    >>> print(f"ids shape: {ids.shape}, counts: {counts}")  # (100, 3), (100,)
+    >>>
     >>> # Form-form neighbor search
     >>> cloud2 = tf.PointCloud(points + 0.5)
     >>> (idx0, idx1), (dist, pt0, pt1) = tf.neighbor_search(cloud, cloud2)
@@ -103,14 +110,48 @@ def neighbor_search(
     from .edge_mesh import EdgeMesh
     from .point_cloud import PointCloud
 
-    # Check if query is also a form (for form-form neighbor search)
-    query_type = type(query)
-    is_form_form = query_type in (Mesh, EdgeMesh, PointCloud)
+    is_form_query = isinstance(query, (Mesh, EdgeMesh, PointCloud))
 
-    if is_form_form:
+    if is_form_query:
         return _form_form_neighbor_search(spatial_object, query, radius, k)
+
+    # Wrap raw numpy arrays as Point
+    if isinstance(query, np.ndarray):
+        if query.ndim == 1:
+            query = Point(query)
+        else:
+            raise TypeError(
+                f"numpy array queries must be 1D point arrays, got shape {query.shape}")
+
+    if not isinstance(query, Primitive):
+        raise TypeError(
+            f"query must be a Primitive, got {type(query).__name__}")
+
+    if spatial_object.dims != query.dims:
+        raise ValueError(
+            f"Dimension mismatch: spatial_object has {spatial_object.dims}D, "
+            f"query has {query.dims}D. "
+            f"Both must have the same dimensionality (2D or 3D).")
+
+    if spatial_object.dtype != query.dtype:
+        raise TypeError(
+            f"Dtype mismatch: spatial_object has {spatial_object.dtype}, "
+            f"query has {query.dtype}. "
+            f"Both objects must have the same dtype.")
+
+    meta = extract_meta(spatial_object)
+    suffix = build_suffix(meta)
+
+    if k is None:
+        fn = getattr(_trueform.spatial,
+                      f"neighbor_search_{meta.form_name}_fp_{suffix}")
+        return fn(spatial_object._wrapper, query._wrapper, radius)
     else:
-        return _form_prim_neighbor_search(spatial_object, query, radius, k)
+        if not isinstance(k, int) or k <= 0:
+            raise ValueError(f"k must be a positive integer, got {k}")
+        fn = getattr(_trueform.spatial,
+                      f"neighbor_search_knn_{meta.form_name}_fp_{suffix}")
+        return fn(spatial_object._wrapper, query._wrapper, k, radius)
 
 
 def _form_form_neighbor_search(form0, form1, radius, k):
@@ -119,14 +160,12 @@ def _form_form_neighbor_search(form0, form1, radius, k):
     if k is not None:
         raise ValueError("KNN (k parameter) is not supported for form-form neighbor_search")
 
-    # Validate dimensions match
     if form0.dims != form1.dims:
         raise ValueError(
             f"Dimension mismatch: first form has {form0.dims}D, "
             f"second form has {form1.dims}D. Both must have the same dimensionality (2D or 3D)."
         )
 
-    # Get type pair
     form0_type = type(form0)
     form1_type = type(form1)
     type_pair = (form0_type, form1_type)
@@ -140,14 +179,11 @@ def _form_form_neighbor_search(form0, form1, radius, k):
 
     func_template, needs_swap = NEIGHBOR_SEARCH_FORM_FORM[type_pair]
 
-    # Apply dispatch table swap
     form0_obj = form1 if needs_swap else form0
     form1_obj = form0 if needs_swap else form1
 
-    # Apply index canonicalization (int32 before int64 for same types)
     form0_obj, form1_obj, extra_swap = canonicalize_index_order(form0_obj, form1_obj)
 
-    # Build suffix using dispatch utility
     meta0 = extract_meta(form0_obj)
     meta1 = extract_meta(form1_obj)
     suffix = build_suffix_pair(meta0, meta1)
@@ -156,90 +192,8 @@ def _form_form_neighbor_search(form0, form1, radius, k):
     cpp_func = getattr(_trueform.spatial, func_name)
     result = cpp_func(form0_obj._wrapper, form1_obj._wrapper, radius)
 
-    # If forms were swapped, swap results back
     if result is not None and (needs_swap or extra_swap):
         (idx0, idx1), (dist, pt0, pt1) = result
         result = ((idx1, idx0), (dist, pt1, pt0))
 
     return result
-
-
-def _form_prim_neighbor_search(spatial_object, query, radius, k):
-    """Form x primitive neighbor search using centralized dispatch."""
-
-    # Normalize query to a primitive type
-    if isinstance(query, np.ndarray):
-        # Treat numpy arrays as points
-        if query.ndim == 1:
-            query_type = Point
-            query_data = query
-            dims = query.shape[0]
-        else:
-            raise TypeError(
-                f"numpy array queries must be 1D point arrays, got shape {query.shape}"
-            )
-    else:
-        query_type = type(query)
-        query_data = query.data if hasattr(query, 'data') else query
-        dims = query.dims if hasattr(query, 'dims') else None
-
-    # Validate dimensions match
-    obj_dims = spatial_object.dims
-    if dims is None:
-        raise TypeError(f"Cannot determine dimensions for query type {query_type}")
-    if obj_dims != dims:
-        raise ValueError(
-            f"Dimension mismatch: spatial_object has {obj_dims}D, query has {dims}D. "
-            f"Both must have the same dimensionality (2D or 3D)."
-        )
-
-    # Get form type and dispatch table
-    form_type = type(spatial_object)
-
-    if form_type not in NEIGHBOR_SEARCH:
-        raise TypeError(
-            f"neighbor_search not implemented for spatial object type: {form_type.__name__}. "
-            f"Supported types: {', '.join(t.__name__ for t in NEIGHBOR_SEARCH.keys())}"
-        )
-
-    # Build suffix using centralized dispatch
-    meta = extract_meta(spatial_object)
-    suffix = build_suffix(meta)
-
-    # Convert query_data to match object dtype if necessary
-    obj_dtype = spatial_object.points.dtype
-    if isinstance(query_data, np.ndarray) and query_data.dtype != obj_dtype:
-        query_data = query_data.astype(obj_dtype)
-
-    # Choose dispatch table based on whether k is specified
-    if k is None:
-        # Non-KNN query - single nearest neighbor
-        dispatch_table = NEIGHBOR_SEARCH[form_type]
-
-        if query_type not in dispatch_table:
-            supported = ", ".join(t.__name__ for t in dispatch_table.keys())
-            raise TypeError(
-                f"neighbor_search not implemented for query type: {query_type.__name__}. "
-                f"Supported types: {supported}"
-            )
-
-        func_name = dispatch_table[query_type].format(suffix)
-        cpp_func = getattr(_trueform.spatial, func_name)
-        return cpp_func(spatial_object._wrapper, query_data, radius)
-    else:
-        # KNN query - k nearest neighbors
-        dispatch_table = NEIGHBOR_SEARCH_KNN[form_type]
-
-        if query_type not in dispatch_table:
-            supported = ", ".join(t.__name__ for t in dispatch_table.keys())
-            raise TypeError(
-                f"neighbor_search (KNN) not implemented for query type: {query_type.__name__}. "
-                f"Supported types: {supported}"
-            )
-
-        if not isinstance(k, int) or k <= 0:
-            raise ValueError(f"k must be a positive integer, got {k}")
-
-        func_name = dispatch_table[query_type].format(suffix)
-        cpp_func = getattr(_trueform.spatial, func_name)
-        return cpp_func(spatial_object._wrapper, query_data, k, radius)

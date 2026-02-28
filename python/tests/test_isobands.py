@@ -77,7 +77,7 @@ def test_isobands_basic(index_dtype, real_dtype, mesh_type):
 
     # Create scalar field using distance to horizontal plane
     plane = tf.Plane(np.array([0, 0, 1, 0], dtype=real_dtype))
-    distances = tf.distance_field(mesh.points, plane)
+    distances = tf.distance(tf.Point(mesh.points), plane)
 
     # Extract isobands at different z-levels
     cut_values = np.array([-0.5, 0.0, 0.5], dtype=real_dtype)
@@ -117,7 +117,7 @@ def test_isobands_single_cut_value(real_dtype, mesh_type):
     mesh = create_octahedron(np.int32, real_dtype, mesh_type)
 
     plane = tf.Plane(np.array([0, 0, 1, 0], dtype=real_dtype))
-    distances = tf.distance_field(mesh.points, plane)
+    distances = tf.distance(tf.Point(mesh.points), plane)
 
     # Single cut value creates 2 bands
     (result_faces, result_points), labels = tf.isobands(mesh, distances, 0.0)
@@ -139,7 +139,7 @@ def test_isobands_selected_bands(mesh_type):
     mesh = create_octahedron(np.int32, np.float32, mesh_type)
 
     plane = tf.Plane(np.array([0, 0, 1, 0], dtype=np.float32))
-    distances = tf.distance_field(mesh.points, plane)
+    distances = tf.distance(tf.Point(mesh.points), plane)
 
     # 3 cut values create 4 bands (0, 1, 2, 3)
     cut_values = np.array([-0.5, 0.0, 0.5], dtype=np.float32)
@@ -162,7 +162,7 @@ def test_isobands_with_curves(mesh_type):
     mesh = create_octahedron(np.int32, np.float32, mesh_type)
 
     plane = tf.Plane(np.array([0, 0, 1, 0], dtype=np.float32))
-    distances = tf.distance_field(mesh.points, plane)
+    distances = tf.distance(tf.Point(mesh.points), plane)
 
     cut_values = np.array([-0.5, 0.0, 0.5], dtype=np.float32)
     (result_faces, result_points), labels, (paths, curve_points) = tf.isobands(
@@ -196,7 +196,7 @@ def test_isobands_path_indices_valid(mesh_type):
     mesh = create_octahedron(np.int32, np.float32, mesh_type)
 
     plane = tf.Plane(np.array([0, 0, 1, 0], dtype=np.float32))
-    distances = tf.distance_field(mesh.points, plane)
+    distances = tf.distance(tf.Point(mesh.points), plane)
 
     cut_values = np.array([0.0], dtype=np.float32)
     (result_faces, result_points), labels, (paths, curve_points) = tf.isobands(

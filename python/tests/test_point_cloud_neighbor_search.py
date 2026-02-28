@@ -16,7 +16,7 @@ def test_neighbor_search_point_2d():
 
     # Query with a point close to [0, 0]
     # [0.1, 0.1] becomes float64 from numpy, but dispatch will convert to match cloud
-    query = tf.Point([0.1, 0.1])
+    query = tf.Point(np.array([0.1, 0.1], dtype=np.float32))
     idx, dist2, closest_pt = tf.neighbor_search(cloud, query)
 
     assert idx == 0  # Should find point at [0, 0]
@@ -29,7 +29,7 @@ def test_neighbor_search_point_3d():
     points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=np.float32)
     cloud = tf.PointCloud(points)
 
-    query = tf.Point([0.2, 0.2, 0.2])
+    query = tf.Point(np.array([0.2, 0.2, 0.2], dtype=np.float32))
 
     # Test without radius
     idx, dist2, closest_pt = tf.neighbor_search(cloud, query)
@@ -55,7 +55,7 @@ def test_neighbor_search_knn_point():
     points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=np.float32)
     cloud = tf.PointCloud(points)
 
-    query = tf.Point([0.1, 0.1, 0.1])
+    query = tf.Point(np.array([0.1, 0.1, 0.1], dtype=np.float32))
 
     # Test WITHOUT radius (radius=None)
     results = tf.neighbor_search(cloud, query, k=3)
@@ -90,7 +90,7 @@ def test_neighbor_search_with_radius():
     points = np.array([[0, 0, 0], [10, 0, 0], [0, 10, 0]], dtype=np.float32)
     cloud = tf.PointCloud(points)
 
-    query = tf.Point([0.5, 0.5, 0.5])
+    query = tf.Point(np.array([0.5, 0.5, 0.5], dtype=np.float32))
 
     # Search with small radius - should find the origin
     idx, dist2, closest_pt = tf.neighbor_search(cloud, query, radius=2.0)
@@ -106,7 +106,7 @@ def test_neighbor_search_knn_with_radius():
     points = np.array([[0, 0, 0], [1, 0, 0], [10, 0, 0], [0, 10, 0]], dtype=np.float32)
     cloud = tf.PointCloud(points)
 
-    query = tf.Point([0.0, 0.0, 0.0])
+    query = tf.Point(np.array([0.0, 0.0, 0.0], dtype=np.float32))
 
     # Request 4 neighbors but limit radius to exclude far points
     results = tf.neighbor_search(cloud, query, radius=5.0, k=4)
@@ -123,7 +123,7 @@ def test_neighbor_search_segment_2d():
     cloud = tf.PointCloud(points)
 
     # Segment from [0.5, 0] to [0.5, 1]
-    query = tf.Segment([[0.5, 0], [0.5, 1]])
+    query = tf.Segment(np.array([[0.5, 0], [0.5, 1]], dtype=np.float32))
     idx, dist2, closest_pt = tf.neighbor_search(cloud, query)
 
     # Should find one of the points at distance 0.5
@@ -136,7 +136,7 @@ def test_neighbor_search_segment_3d():
     cloud = tf.PointCloud(points)
 
     # Segment along x-axis
-    query = tf.Segment([[0, 0.5, 0], [2, 0.5, 0]])
+    query = tf.Segment(np.array([[0, 0.5, 0], [2, 0.5, 0]], dtype=np.float32))
     idx, dist2, closest_pt = tf.neighbor_search(cloud, query)
 
     # Point at [0,0,0] or [2,0,0] should be nearest
@@ -149,7 +149,7 @@ def test_neighbor_search_polygon_2d():
     cloud = tf.PointCloud(points)
 
     # Triangle around origin
-    query = tf.Polygon([[1, 1], [2, 1], [1.5, 2]])
+    query = tf.Polygon(np.array([[1, 1], [2, 1], [1.5, 2]], dtype=np.float32))
     idx, dist2, closest_pt = tf.neighbor_search(cloud, query)
 
     # Origin should be closest
@@ -162,7 +162,7 @@ def test_neighbor_search_polygon_3d():
     cloud = tf.PointCloud(points)
 
     # Triangle in xy-plane
-    query = tf.Polygon([[1, 1, 0], [2, 1, 0], [1.5, 2, 0]])
+    query = tf.Polygon(np.array([[1, 1, 0], [2, 1, 0], [1.5, 2, 0]], dtype=np.float32))
     idx, dist2, closest_pt = tf.neighbor_search(cloud, query)
 
     # Origin should be closest
@@ -175,8 +175,7 @@ def test_neighbor_search_ray_3d():
     cloud = tf.PointCloud(points)
 
     # Ray from [0, 0.5, 0] along x-axis
-    # Float lists become float64 from numpy, Ray keeps float64
-    query = tf.Ray(origin=[0, 0.5, 0], direction=[1, 0, 0])
+    query = tf.Ray(origin=np.array([0, 0.5, 0], dtype=np.float32), direction=np.array([1, 0, 0], dtype=np.float32))
     idx, dist2, closest_pt = tf.neighbor_search(cloud, query)
 
     # Some point should be found
@@ -191,8 +190,7 @@ def test_neighbor_search_line_3d():
     cloud = tf.PointCloud(points)
 
     # Line through [0, 0.5, 0] along x-axis
-    # Float lists become float64 from numpy, Line keeps float64
-    query = tf.Line(origin=[0, 0.5, 0], direction=[1, 0, 0])
+    query = tf.Line(origin=np.array([0, 0.5, 0], dtype=np.float32), direction=np.array([1, 0, 0], dtype=np.float32))
     idx, dist2, closest_pt = tf.neighbor_search(cloud, query)
 
     # Some point should be found
@@ -233,8 +231,7 @@ def test_neighbor_search_dimension_mismatch():
     points_3d = np.array([[0, 0, 0], [1, 0, 0]], dtype=np.float32)
     cloud_3d = tf.PointCloud(points_3d)
 
-    # Integer list [0, 0] will be converted to float32 by Point
-    query_2d = tf.Point([0, 0])
+    query_2d = tf.Point(np.array([0, 0], dtype=np.float32))
 
     with pytest.raises(ValueError, match="Dimension mismatch"):
         tf.neighbor_search(cloud_3d, query_2d)
@@ -244,7 +241,7 @@ def test_neighbor_search_invalid_k():
     """Test that invalid k value raises error"""
     points = np.array([[0, 0, 0], [1, 0, 0]], dtype=np.float32)
     cloud = tf.PointCloud(points)
-    query = tf.Point([0, 0, 0])
+    query = tf.Point(np.array([0, 0, 0], dtype=np.float32))
 
     with pytest.raises(ValueError, match="k must be a positive integer"):
         tf.neighbor_search(cloud, query, k=0)
@@ -258,7 +255,7 @@ def test_neighbor_search_knn_all_points():
     points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float32)
     cloud = tf.PointCloud(points)
 
-    query = tf.Point([0, 0, 0])
+    query = tf.Point(np.array([0, 0, 0], dtype=np.float32))
     results = tf.neighbor_search(cloud, query, k=3)
 
     assert len(results) == 3
@@ -272,7 +269,7 @@ def test_neighbor_search_knn_more_than_available():
     points = np.array([[0, 0, 0], [1, 0, 0]], dtype=np.float32)
     cloud = tf.PointCloud(points)
 
-    query = tf.Point([0, 0, 0])
+    query = tf.Point(np.array([0, 0, 0], dtype=np.float32))
     results = tf.neighbor_search(cloud, query, k=10)
 
     # Should return at most 2 results (all available points)
@@ -300,7 +297,7 @@ def test_neighbor_search_with_transformation_2d():
     cloud.transformation = transformation
 
     # Query point at [5.1, 3.1] in world coordinates - should be close to transformed origin [5, 3]
-    query = tf.Point([5.1, 3.1])
+    query = tf.Point(np.array([5.1, 3.1], dtype=np.float32))
     idx, dist2, closest_pt = tf.neighbor_search(cloud, query)
 
     assert idx == 0  # Should find the origin point (index 0)
@@ -333,7 +330,7 @@ def test_neighbor_search_with_transformation_3d():
     cloud.transformation = transformation
 
     # Query point at [10.2, 5.1, 2.1] in world coordinates - close to transformed origin [10, 5, 2]
-    query = tf.Point([10.2, 5.1, 2.1])
+    query = tf.Point(np.array([10.2, 5.1, 2.1], dtype=np.float32))
     idx, dist2, closest_pt = tf.neighbor_search(cloud, query)
 
     assert idx == 0  # Should find the origin point (index 0)
@@ -362,7 +359,7 @@ def test_neighbor_search_with_transformation_knn():
     cloud.transformation = transformation
 
     # Query at transformed origin in world coordinates
-    query = tf.Point([5.0, 5.0, 5.0])
+    query = tf.Point(np.array([5.0, 5.0, 5.0], dtype=np.float32))
     results = tf.neighbor_search(cloud, query, k=3)
 
     assert len(results) == 3
@@ -393,7 +390,7 @@ def test_neighbor_search_transformation_clear():
     cloud.transformation = transformation
 
     # Query should find point at transformed location [10, 0, 0]
-    query1 = tf.Point([10.1, 0, 0])
+    query1 = tf.Point(np.array([10.1, 0, 0], dtype=np.float32))
     idx1, dist2_1, _ = tf.neighbor_search(cloud, query1)
     assert idx1 == 0
     assert np.isclose(dist2_1, 0.01, atol=1e-5)
@@ -402,7 +399,7 @@ def test_neighbor_search_transformation_clear():
     cloud.transformation = None
 
     # Now query at original location [0, 0, 0]
-    query2 = tf.Point([0.1, 0, 0])
+    query2 = tf.Point(np.array([0.1, 0, 0], dtype=np.float32))
     idx2, dist2_2, _ = tf.neighbor_search(cloud, query2)
     assert idx2 == 0
     assert np.isclose(dist2_2, 0.01, atol=1e-5)
@@ -431,7 +428,7 @@ def test_neighbor_search_with_rotation_transformation():
     cloud.transformation = transformation
 
     # Query point at [0, 1.1, 0] in world coordinates - close to rotated [1, 0, 0]
-    query = tf.Point([0, 1.1, 0])
+    query = tf.Point(np.array([0, 1.1, 0], dtype=np.float32))
     idx, dist2, closest_pt = tf.neighbor_search(cloud, query)
 
     assert idx == 0  # Should find first point
@@ -459,7 +456,7 @@ def test_neighbor_search_with_scale_transformation():
     cloud.transformation = transformation
 
     # Query point at [2.1, 0, 0] in world coordinates - close to scaled [1, 0, 0]
-    query = tf.Point([2.1, 0, 0])
+    query = tf.Point(np.array([2.1, 0, 0], dtype=np.float32))
     idx, dist2, closest_pt = tf.neighbor_search(cloud, query)
 
     assert idx == 0  # Should find first point

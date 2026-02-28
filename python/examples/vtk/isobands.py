@@ -63,7 +63,7 @@ class IsobandInteractor(BaseInteractor):
 
         plane = tf.Plane.from_point_normal(center, normal)
 
-        self.scalars = tf.distance_field(self.mesh.points, plane)
+        self.scalars = tf.distance(tf.Point(self.mesh.points), plane)
         self.distance = 0.0
 
         self.min_d = float(np.min(self.scalars))
@@ -78,7 +78,7 @@ class IsobandInteractor(BaseInteractor):
 
         plane = tf.Plane.from_point_normal(random_point, random_normal)
 
-        self.scalars = tf.distance_field(self.mesh.points, plane)
+        self.scalars = tf.distance(tf.Point(self.mesh.points), plane)
         self.distance = 0.0
 
         self.min_d = float(np.min(self.scalars))

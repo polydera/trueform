@@ -83,9 +83,9 @@ def test_mesh_neighbor_search_point(index_dtype, real_dtype, dims, ngon):
 
     # Create query point near origin
     if dims == 2:
-        query = tf.Point([0.1, 0.1])
+        query = tf.Point(np.array([0.1, 0.1], dtype=real_dtype))
     else:  # dims == 3
-        query = tf.Point([0.1, 0.1, 0.1])
+        query = tf.Point(np.array([0.1, 0.1, 0.1], dtype=real_dtype))
 
     # Query mesh
     idx, dist2, closest_pt = tf.neighbor_search(mesh, query)
@@ -114,9 +114,9 @@ def test_mesh_neighbor_search_segment(index_dtype, real_dtype, dims, ngon):
 
     # Create segment query
     if dims == 2:
-        query = tf.Segment([[0.1, 0.1], [0.2, 0.2]])
+        query = tf.Segment(np.array([[0.1, 0.1], [0.2, 0.2]], dtype=real_dtype))
     else:  # dims == 3
-        query = tf.Segment([[0.1, 0.1, 0.1], [0.2, 0.2, 0.2]])
+        query = tf.Segment(np.array([[0.1, 0.1, 0.1], [0.2, 0.2, 0.2]], dtype=real_dtype))
 
     idx, dist2, closest_pt = tf.neighbor_search(mesh, query)
 
@@ -136,9 +136,9 @@ def test_mesh_neighbor_search_polygon(index_dtype, real_dtype, dims, ngon):
 
     # Create polygon query (triangle)
     if dims == 2:
-        query = tf.Polygon([[0.1, 0.1], [0.3, 0.1], [0.2, 0.3]])
+        query = tf.Polygon(np.array([[0.1, 0.1], [0.3, 0.1], [0.2, 0.3]], dtype=real_dtype))
     else:  # dims == 3
-        query = tf.Polygon([[0.1, 0.1, 0.1], [0.3, 0.1, 0.1], [0.2, 0.3, 0.1]])
+        query = tf.Polygon(np.array([[0.1, 0.1, 0.1], [0.3, 0.1, 0.1], [0.2, 0.3, 0.1]], dtype=real_dtype))
 
     idx, dist2, closest_pt = tf.neighbor_search(mesh, query)
 
@@ -158,9 +158,9 @@ def test_mesh_neighbor_search_ray(index_dtype, real_dtype, dims, ngon):
 
     # Create ray query
     if dims == 2:
-        query = tf.Ray(origin=[0.1, 0.1], direction=[1.0, 1.0])
+        query = tf.Ray(origin=np.array([0.1, 0.1], dtype=real_dtype), direction=np.array([1.0, 1.0], dtype=real_dtype))
     else:  # dims == 3
-        query = tf.Ray(origin=[0.1, 0.1, 0.1], direction=[1.0, 1.0, 1.0])
+        query = tf.Ray(origin=np.array([0.1, 0.1, 0.1], dtype=real_dtype), direction=np.array([1.0, 1.0, 1.0], dtype=real_dtype))
 
     idx, dist2, closest_pt = tf.neighbor_search(mesh, query)
 
@@ -180,9 +180,9 @@ def test_mesh_neighbor_search_line(index_dtype, real_dtype, dims, ngon):
 
     # Create line query
     if dims == 2:
-        query = tf.Line(data=[[0.1, 0.1], [1.0, 1.0]])
+        query = tf.Line(data=np.array([[0.1, 0.1], [1.0, 1.0]], dtype=real_dtype))
     else:  # dims == 3
-        query = tf.Line(data=[[0.1, 0.1, 0.1], [1.0, 1.0, 1.0]])
+        query = tf.Line(data=np.array([[0.1, 0.1, 0.1], [1.0, 1.0, 1.0]], dtype=real_dtype))
 
     idx, dist2, closest_pt = tf.neighbor_search(mesh, query)
 
@@ -202,9 +202,9 @@ def test_mesh_neighbor_search_knn_point(index_dtype, real_dtype, dims, ngon):
 
     # Create query point
     if dims == 2:
-        query = tf.Point([0.5, 0.5])
+        query = tf.Point(np.array([0.5, 0.5], dtype=real_dtype))
     else:  # dims == 3
-        query = tf.Point([0.5, 0.5, 0.5])
+        query = tf.Point(np.array([0.5, 0.5, 0.5], dtype=real_dtype))
 
     # Query for k=2 nearest faces
     k = 2
@@ -232,7 +232,7 @@ def test_mesh_neighbor_search_with_radius_2d_tri(index_dtype, real_dtype):
     """Test mesh neighbor search with radius constraint"""
     mesh = create_2d_triangle_mesh(index_dtype, real_dtype)
 
-    query = tf.Point([0.1, 0.1])
+    query = tf.Point(np.array([0.1, 0.1], dtype=real_dtype))
 
     # Test with large radius - should find something
     idx1, dist2_1, pt1 = tf.neighbor_search(mesh, query, radius=10.0)
@@ -257,7 +257,7 @@ def test_mesh_neighbor_search_knn_with_radius_3d_tri(index_dtype, real_dtype):
     """Test mesh KNN search with radius constraint"""
     mesh = create_3d_triangle_mesh(index_dtype, real_dtype)
 
-    query = tf.Point([0.5, 0.5, 0.5])
+    query = tf.Point(np.array([0.5, 0.5, 0.5], dtype=real_dtype))
 
     # Test KNN with large radius
     results = tf.neighbor_search(mesh, query, k=2, radius=10.0)
@@ -272,7 +272,7 @@ def test_mesh_neighbor_search_with_radius_dynamic(index_dtype, real_dtype):
     """Test dynamic mesh neighbor search with radius constraint"""
     mesh = create_3d_dynamic_mesh(index_dtype, real_dtype)
 
-    query = tf.Point([0.1, 0.1, 0.1])
+    query = tf.Point(np.array([0.1, 0.1, 0.1], dtype=real_dtype))
 
     # Test with large radius - should find something
     idx1, dist2_1, pt1 = tf.neighbor_search(mesh, query, radius=10.0)

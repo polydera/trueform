@@ -11,9 +11,10 @@ from typing import Union, Tuple
 import numpy as np
 from .. import _trueform
 from .._spatial import Mesh
-from .._primitives import Polygon
+from .._primitives import Polygon, Triangle
 from .._core import OffsetBlockedArray
-from .._dispatch import ensure_mesh, extract_meta, build_suffix
+from .._primitives.primitive import Primitive
+from .._dispatch import ensure_mesh, extract_meta, build_suffix, InputMeta
 
 
 def signed_volume(
@@ -85,37 +86,42 @@ def volume(
 
 
 def area(
-    data: Union[np.ndarray, Polygon, Mesh, Tuple[np.ndarray, np.ndarray],
+    data: Union[np.ndarray, Triangle, Polygon, Mesh, Tuple[np.ndarray, np.ndarray],
                 Tuple[OffsetBlockedArray, np.ndarray]]
-) -> float:
+):
     """
-    Compute area of a polygon or total surface area of a mesh.
+    Compute area of a triangle, polygon, or total surface area of a mesh.
 
     Parameters
     ----------
-    data : np.ndarray, Polygon, Mesh, or tuple
-        - np.ndarray shape (N, D): Single polygon with N vertices in D dimensions
-        - Polygon: tf.Polygon object
+    data : Triangle, Polygon, np.ndarray, Mesh, or tuple
+        - Triangle: Single or batch of triangles. Returns scalar or (N,) array.
+        - Polygon: Single or batch of polygons. Returns scalar or (N,) array.
+        - np.ndarray shape (V, D): Single polygon with V vertices in D dimensions
         - Mesh: Triangle mesh (returns total surface area)
         - (faces, points): Tuple with face indices and point coordinates
         - (OffsetBlockedArray, points): Dynamic polygon mesh
 
     Returns
     -------
-    float
-        Area of the polygon, or total surface area of all faces.
+    float or np.ndarray
+        Scalar for single primitive or mesh, array for batch primitives.
 
     Examples
     --------
     >>> import trueform as tf
     >>> import numpy as np
     >>>
-    >>> # Single polygon as array
-    >>> polygon = np.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0]], dtype=np.float32)
-    >>> tf.area(polygon)
-    1.0
+    >>> # Single triangle
+    >>> tri = tf.Triangle(a=[0,0,0], b=[1,0,0], c=[0,1,0])
+    >>> tf.area(tri)
+    0.5
     >>>
-    >>> # Single polygon as Polygon object
+    >>> # Batch of triangles
+    >>> tris = tf.Triangle(np.random.rand(50, 3, 3).astype(np.float32))
+    >>> areas = tf.area(tris)  # shape (50,)
+    >>>
+    >>> # Single polygon
     >>> poly = tf.Polygon([[0,0,0],[1,0,0],[1,1,0],[0,1,0]])
     >>> tf.area(poly)
     1.0
@@ -125,17 +131,19 @@ def area(
     >>> tf.area((faces, points))
     6.0
     """
-    # Handle Polygon object - extract vertices
-    if isinstance(data, Polygon):
-        data = data.vertices
+    # Triangle or Polygon primitive → dispatch to C++ primitive binding
+    if isinstance(data, (Triangle, Polygon)):
+        suffix = build_suffix(InputMeta(None, data.dtype, None, data.dims))
+        fn = getattr(_trueform.spatial, f"area_prim_{suffix}")
+        return fn(data._wrapper)
 
-    meta = extract_meta(data)
-
-    # Single polygon (points only, no index dtype means it's just points)
-    if meta.index_dtype is None:
-        suffix = build_suffix(meta)
-        func = getattr(_trueform.geometry, f"area_{suffix}")
-        return func(data)
+    # Handle raw ndarray polygon (no wrapper)
+    if isinstance(data, np.ndarray):
+        meta = extract_meta(data)
+        if meta.index_dtype is None:
+            suffix = build_suffix(meta)
+            func = getattr(_trueform.geometry, f"area_{suffix}")
+            return func(data)
 
     # Mesh or tuple
     mesh = ensure_mesh(data)
@@ -145,15 +153,17 @@ def area(
 
 
 def mean_edge_length(
-    data: Union[Mesh, Tuple[np.ndarray, np.ndarray],
+    data: Union[Triangle, Polygon, Mesh, Tuple[np.ndarray, np.ndarray],
                 Tuple[OffsetBlockedArray, np.ndarray]]
 ) -> float:
     """
-    Compute mean edge length of a polygon mesh.
+    Compute mean edge length of a triangle, polygon, or mesh.
 
     Parameters
     ----------
-    data : Mesh or tuple
+    data : Triangle, Polygon, Mesh, or tuple
+        - Triangle: Single or batch. Returns mean over all edges.
+        - Polygon: Single or batch. Returns mean over all edges.
         - Mesh: tf.Mesh object
         - (faces, points): Tuple with face indices and point coordinates
         - (OffsetBlockedArray, points): Dynamic polygon mesh
@@ -166,10 +176,22 @@ def mean_edge_length(
     Examples
     --------
     >>> import trueform as tf
+    >>> tri = tf.Triangle(a=[0,0,0], b=[1,0,0], c=[0,1,0])
+    >>> tf.mean_edge_length(tri)
+    1.1380...
+    >>>
     >>> mesh = tf.Mesh(*tf.read_stl("model.stl"))
     >>> tf.mean_edge_length(mesh)
     0.042
     """
+    # Triangle or Polygon primitive — pure numpy
+    if isinstance(data, (Triangle, Polygon)):
+        verts = data.data
+        v_next = np.roll(verts, -1, axis=-2)
+        edges = (v_next - verts).reshape(-1, verts.shape[-1])
+        lengths = np.linalg.norm(edges, axis=1)
+        return float(lengths.mean())
+
     transform = None
     if isinstance(data, Mesh):
         faces, points = data.faces, data.points
@@ -178,7 +200,7 @@ def mean_edge_length(
         faces, points = data
     else:
         raise TypeError(
-            f"data must be a Mesh or (faces, points) tuple, "
+            f"data must be a Triangle, Polygon, Mesh, or (faces, points) tuple, "
             f"got {type(data).__name__}"
         )
 

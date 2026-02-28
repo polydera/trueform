@@ -10,6 +10,18 @@ Real-time geometric processing in TypeScript. WASM-backed NDArrays with vectoriz
 npm install @polydera/trueform
 ```
 
+## Requirements
+
+- **Node.js** 18+ or any modern browser with WebAssembly support
+- **SharedArrayBuffer** — required for multithreading. In browsers, the page must be served with:
+
+```
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: require-corp
+```
+
+Node.js enables SharedArrayBuffer by default.
+
 ## Quick Tour
 
 **NDArray** — WASM-backed numerical arrays:

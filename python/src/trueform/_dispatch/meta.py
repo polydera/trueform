@@ -16,6 +16,7 @@ class InputMeta(NamedTuple):
     real_dtype: np.dtype             # np.float32 or np.float64
     ngon: Optional[str]              # None for PointCloud/EdgeMesh, '2'/'3'/'dyn' for Mesh/tuples
     dims: int                        # 2 or 3
+    form_name: Optional[str] = None  # "mesh", "edge_mesh", "point_cloud", or None
 
 
 def extract_meta(data) -> InputMeta:
@@ -28,20 +29,23 @@ def extract_meta(data) -> InputMeta:
             real_dtype=data.dtype,
             ngon='dyn' if data.is_dynamic else str(data.ngon),
             dims=data.dims,
+            form_name="mesh",
         )
     elif isinstance(data, EdgeMesh):
         return InputMeta(
             index_dtype=data.edges.dtype,
             real_dtype=data.dtype,
-            ngon=None,  # EdgeMesh has no ngon
+            ngon=None,
             dims=data.dims,
+            form_name="edge_mesh",
         )
     elif isinstance(data, PointCloud):
         return InputMeta(
-            index_dtype=None,  # PointCloud has no index
+            index_dtype=None,
             real_dtype=data.dtype,
             ngon=None,
             dims=data.dims,
+            form_name="point_cloud",
         )
     elif isinstance(data, tuple):
         return _extract_meta_from_tuple(data)

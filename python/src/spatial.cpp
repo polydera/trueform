@@ -24,25 +24,13 @@ auto register_spatial_module(nanobind::module_ &m) -> void {
   register_mesh(spatial_module);
   register_edge_mesh(spatial_module);
 
-  // Register spatial operations
-  register_point_cloud_neighbor_search(spatial_module);
-  register_mesh_neighbor_search(spatial_module);
-  register_edge_mesh_neighbor_search(spatial_module);
+  // Register spatial operations (form x form)
   register_point_cloud_neighbor_search_point_cloud(spatial_module);
   register_edge_mesh_neighbor_search_edge_mesh(spatial_module);
   register_edge_mesh_neighbor_search_point_cloud(spatial_module);
   register_mesh_neighbor_search_point_cloud(spatial_module);
   register_mesh_neighbor_search_edge_mesh(spatial_module);
   register_mesh_neighbor_search_mesh(spatial_module);
-  register_point_cloud_ray_cast(spatial_module);
-  register_mesh_ray_cast(spatial_module);
-  register_edge_mesh_ray_cast(spatial_module);
-  register_mesh_intersects_primitive(spatial_module);
-  register_edge_mesh_intersects_primitive(spatial_module);
-  register_point_cloud_intersects_primitive(spatial_module);
-  register_mesh_gather_ids_primitive(spatial_module);
-  register_edge_mesh_gather_ids_primitive(spatial_module);
-  register_point_cloud_gather_ids_primitive(spatial_module);
   register_point_cloud_gather_ids_point_cloud(spatial_module);
   register_edge_mesh_gather_ids_edge_mesh(spatial_module);
   register_edge_mesh_gather_ids_point_cloud(spatial_module);
@@ -55,6 +43,17 @@ auto register_spatial_module(nanobind::module_ &m) -> void {
   register_mesh_intersects_point_cloud(spatial_module);
   register_mesh_intersects_edge_mesh(spatial_module);
   register_mesh_intersects_mesh(spatial_module);
+
+  // Unified prim × prim operations (dispatch-based)
+  register_prim_prim_ops(spatial_module);
+
+  // Primitive geometry operations (area, normals)
+  register_prim_geometry_ops(spatial_module);
+
+  // Unified form × prim operations (dispatch-based)
+  register_mesh_fp(spatial_module);
+  register_edge_mesh_fp(spatial_module);
+  register_point_cloud_fp(spatial_module);
 }
 
 } // namespace tf::py

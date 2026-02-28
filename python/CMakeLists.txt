@@ -52,7 +52,8 @@ target_include_directories(_trueform PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/includ
 if(MSVC)
   target_compile_options(_trueform PRIVATE /W3 /wd4244 /wd4267 /wd4458 /wd4701)
 else()
-  target_compile_options(_trueform PRIVATE -Wall -Wextra)
+  # -Wno-nested-anon-types and -Wno-zero-length-array suppress nanobind warnings
+  target_compile_options(_trueform PRIVATE -Wall -Wextra -Wpedantic -Wno-nested-anon-types -Wno-zero-length-array)
 endif()
 
 # 7. Output Directory Layout

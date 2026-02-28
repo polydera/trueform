@@ -321,7 +321,7 @@ def test_point_cloud_gather_ids_segment_within_distance_2d(real_dtype):
 def test_gather_ids_dimension_mismatch():
     """Test that dimension mismatch raises an error"""
     mesh_2d = create_simple_mesh_2d(np.int32, np.float32)
-    pt_3d = tf.Point([0.0, 0.0, 0.0])
+    pt_3d = tf.Point(np.array([0.0, 0.0, 0.0], dtype=np.float32))
 
     with pytest.raises(ValueError, match="Dimension mismatch"):
         tf.gather_intersecting_ids(mesh_2d, pt_3d)
@@ -330,7 +330,7 @@ def test_gather_ids_dimension_mismatch():
 def test_gather_ids_missing_threshold():
     """Test that missing threshold for within_distance raises an error"""
     mesh = create_simple_mesh_2d(np.int32, np.float32)
-    pt = tf.Point([0.5, 0.5])
+    pt = tf.Point(np.array([0.5, 0.5], dtype=np.float32))
 
     with pytest.raises(ValueError, match="distance is required"):
         tf.gather_ids_within_distance(mesh, pt, distance=None)
@@ -349,7 +349,7 @@ def test_gather_ids_return_dtype():
     """Test that gather_ids returns correct dtype based on form index type"""
     # Mesh with int32 indices
     mesh_int32 = create_simple_mesh_2d(np.int32, np.float32)
-    pt = tf.Point([0.3, 0.3])
+    pt = tf.Point(np.array([0.3, 0.3], dtype=np.float32))
     ids = tf.gather_intersecting_ids(mesh_int32, pt)
     assert ids.dtype == np.int32, "Should return int32 for int32-indexed mesh"
 

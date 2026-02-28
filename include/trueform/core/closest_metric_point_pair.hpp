@@ -784,42 +784,65 @@ template <std::size_t Dims, typename T0, typename T1>
 auto closest_metric_point_pair(const tf::aabb_like<Dims, T0> &aabb,
                                const tf::polygon<Dims, T1> &poly_in) {
   using T = tf::coordinate_type<T0, T1>;
-  const auto &poly = tf::tag_plane(poly_in);
-  // Face case: support vertex projected onto polygon plane
-  auto d_center =
-      tf::dot(poly.plane().normal, aabb.center()) + poly.plane().d;
-  tf::point<T, Dims> support;
-  for (std::size_t i = 0; i < Dims; ++i) {
-    bool pick_min = (poly.plane().normal[i] >= T(0)) == (d_center > T(0));
-    support[i] = pick_min ? aabb.min[i] : aabb.max[i];
-  }
-  auto d = tf::dot(poly.plane().normal, support) + poly.plane().d;
+  tf::point<T, Dims> dummy = tf::zero;
   auto best = tf::make_metric_point_pair(std::numeric_limits<T>::max(),
-                                         support, support);
-  if (d * d_center <= T(0)) {
-    // Polygon plane intersects the AABB. Project center onto plane,
-    // clamp to AABB, and check if that point is inside the polygon face.
-    auto center = aabb.center();
-    auto pt = center - d_center * poly.plane().normal;
-    for (std::size_t i = 0; i < Dims; ++i)
-      pt[i] = std::min(std::max(pt[i], T(aabb.min[i])), T(aabb.max[i]));
-    if (tf::contains_coplanar_point(poly, pt))
-      return tf::make_metric_point_pair(T(0), pt, pt);
+                                         dummy, dummy);
+  if constexpr (Dims >= 3) {
+    const auto &poly = tf::tag_plane(poly_in);
+    // Face case: support vertex projected onto polygon plane
+    auto d_center =
+        tf::dot(poly.plane().normal, aabb.center()) + poly.plane().d;
+    tf::point<T, Dims> support;
+    for (std::size_t i = 0; i < Dims; ++i) {
+      bool pick_min = (poly.plane().normal[i] >= T(0)) == (d_center > T(0));
+      support[i] = pick_min ? aabb.min[i] : aabb.max[i];
+    }
+    auto d = tf::dot(poly.plane().normal, support) + poly.plane().d;
+    best = tf::make_metric_point_pair(std::numeric_limits<T>::max(),
+                                      support, support);
+    if (d * d_center <= T(0)) {
+      // Polygon plane intersects the AABB. Project center onto plane,
+      // clamp to AABB, and check if that point is inside the polygon face.
+      auto center = aabb.center();
+      auto pt = center - d_center * poly.plane().normal;
+      for (std::size_t i = 0; i < Dims; ++i)
+        pt[i] = std::min(std::max(pt[i], T(aabb.min[i])), T(aabb.max[i]));
+      if (tf::contains_coplanar_point(poly, pt))
+        return tf::make_metric_point_pair(T(0), pt, pt);
+    } else {
+      auto proj = support - d * poly.plane().normal;
+      if (tf::contains_coplanar_point(poly, proj))
+        best = tf::make_metric_point_pair(d * d, support, proj);
+    }
+    // Edge cases
+    std::size_t size = poly.size();
+    std::size_t prev = size - 1;
+    for (std::size_t i = 0; i < size; prev = i++) {
+      auto seg = tf::make_segment_between_points(poly[prev], poly[i]);
+      auto tmp = tf::closest_metric_point_pair(aabb, seg);
+      if (tmp.metric < best.metric)
+        best = tmp;
+      if (best.metric < tf::epsilon2<T>)
+        return best;
+    }
   } else {
-    auto proj = support - d * poly.plane().normal;
-    if (tf::contains_coplanar_point(poly, proj))
-      best = tf::make_metric_point_pair(d * d, support, proj);
-  }
-  // Edge cases
-  std::size_t size = poly.size();
-  std::size_t prev = size - 1;
-  for (std::size_t i = 0; i < size; prev = i++) {
-    auto seg = tf::make_segment_between_points(poly[prev], poly[i]);
-    auto tmp = tf::closest_metric_point_pair(aabb, seg);
-    if (tmp.metric < best.metric)
-      best = tmp;
-    if (best.metric < tf::epsilon2<T>)
-      return best;
+    // 2D: no plane available. Check containment + edge loop.
+    tf::point<T, Dims> center;
+    for (std::size_t i = 0; i < Dims; ++i)
+      center[i] = (T(aabb.min[i]) + T(aabb.max[i])) / T(2);
+    if (tf::contains_coplanar_point(poly_in, center))
+      return tf::make_metric_point_pair(T(0), center, center);
+    // Edge cases
+    std::size_t size = poly_in.size();
+    std::size_t prev = size - 1;
+    for (std::size_t i = 0; i < size; prev = i++) {
+      auto seg = tf::make_segment_between_points(poly_in[prev], poly_in[i]);
+      auto tmp = tf::closest_metric_point_pair(aabb, seg);
+      if (tmp.metric < best.metric)
+        best = tmp;
+      if (best.metric < tf::epsilon2<T>)
+        return best;
+    }
   }
   return best;
 }

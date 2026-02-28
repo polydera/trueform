@@ -1,102 +1,68 @@
 """
 Polygon primitive
 
-Copyright (c) 2025 Žiga Sajovic, XLAB
+Copyright (c) 2025 Ziga Sajovic, XLAB
 Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
 Commercial licensing available via info@polydera.com.
 https://github.com/polydera/trueform
 """
 
 import numpy as np
+from .primitive import Primitive, PrimitiveType
 
 
-class Polygon:
+class Polygon(Primitive):
     """
     A polygon defined by ordered vertices.
 
     Parameters
     ----------
-    vertices : np.ndarray
-        Ordered vertices, shape (N, D) where N >= 3, D is 2 or 3, dtype float32 or float64
+    data : array-like
+        Vertex data. Shape (V, D) for a single polygon, (N, V, D) for a
+        batch, where V >= 3 and D is 2 or 3.
 
     Examples
     --------
-    >>> import numpy as np
     >>> from trueform import Polygon
-    >>> tri = Polygon([[0, 0], [1, 0], [0.5, 1]])
-    >>> tri.num_vertices
-    3
-    >>> tri.dims
+    >>> quad = Polygon([[0, 0], [1, 0], [1, 1], [0, 1]])
+    >>> quad.num_vertices
+    4
+    >>> quad.dims
     2
+
+    Batch construction:
+
+    >>> import numpy as np
+    >>> polys = Polygon(np.random.rand(50, 5, 3))
+    >>> polys.count
+    50
     """
 
-    def __init__(self, vertices: np.ndarray):
-        # Convert to numpy if needed
-        vertices = np.asarray(vertices)
-
-        # Validate shape
-        if vertices.ndim != 2:
-            raise ValueError(
-                f"Polygon vertices must be 2D array, got shape {vertices.shape}")
-
-        num_vertices = vertices.shape[0]
-        if num_vertices < 3:
-            raise ValueError(
-                f"Polygon must have at least 3 vertices, got {num_vertices}")
-
-        # Validate dimensionality
-        dims = vertices.shape[1]
-        if dims not in [2, 3]:
-            raise ValueError(
-                f"Polygon must be 2D or 3D, got {dims} dimensions")
-
-        # Validate dtype
-        if vertices.dtype not in [np.float32, np.float64]:
-            # Try to convert
-            vertices = vertices.astype(np.float32)
-
-        # Ensure C-contiguous
-        if not vertices.flags['C_CONTIGUOUS']:
-            vertices = np.ascontiguousarray(vertices)
-
-        self._data = vertices
-        self._dims = dims
-        self._dtype = vertices.dtype
+    def __init__(self, data):
+        data = np.asarray(data)
+        if data.dtype not in (np.float32, np.float64):
+            data = data.astype(np.float32)
+        if not data.flags['C_CONTIGUOUS']:
+            data = np.ascontiguousarray(data)
+        dims = data.shape[-1]
+        if dims not in (2, 3):
+            raise ValueError(f"Polygon must be 2D or 3D, got {dims} dimensions")
+        self._init_wrapper(data, PrimitiveType.polygon, dims)
 
     @property
     def vertices(self) -> np.ndarray:
-        """Get all vertices as (N, D) array."""
-        return self._data
-
-    @property
-    def data(self) -> np.ndarray:
-        """Get underlying data array."""
+        """Get vertices as (V, D) or (N, V, D) array."""
         return self._data
 
     @property
     def num_vertices(self) -> int:
-        """Get number of vertices."""
-        return self._data.shape[0]
-
-    @property
-    def dims(self) -> int:
-        """Get dimensionality (2 or 3)."""
-        return self._dims
-
-    @property
-    def dtype(self) -> np.dtype:
-        """Get data type (float32 or float64)."""
-        return self._dtype
+        """Get number of vertices per polygon."""
+        return self._data.shape[-2]
 
     def __repr__(self) -> str:
-        n_verts = self.num_vertices
-        if n_verts <= 5:
-            # Show actual vertices for small polygons
+        nv = self.num_vertices
+        if self.is_batch:
+            return f"Polygon(batch={self.count}, vertices={nv}, dims={self._dims}, dtype={self._dtype})"
+        if nv <= 5:
             return f"Polygon({self._data.tolist()}, dtype={self._dtype})"
-        else:
-            # Show summary for large polygons
-            return f"Polygon({n_verts} vertices, {self._dims}D, dtype={self._dtype})"
-
-    def __len__(self) -> int:
-        """Get number of vertices (for len(polygon) syntax)."""
-        return self.num_vertices
+        return f"Polygon({nv} vertices, dims={self._dims}, dtype={self._dtype})"

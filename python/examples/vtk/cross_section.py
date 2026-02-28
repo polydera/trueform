@@ -61,7 +61,7 @@ class CrossSectionInteractor(BaseInteractor):
 
         plane = tf.Plane.from_point_normal(center, normal)
 
-        self.scalars = tf.distance_field(self.mesh.points, plane)
+        self.scalars = tf.distance(tf.Point(self.mesh.points), plane)
         self.min_d = float(np.min(self.scalars))
         self.max_d = float(np.max(self.scalars))
         self.cut_value = (self.min_d + self.max_d) * 0.5
@@ -74,7 +74,7 @@ class CrossSectionInteractor(BaseInteractor):
 
         plane = tf.Plane.from_point_normal(random_point, random_normal)
 
-        self.scalars = tf.distance_field(self.mesh.points, plane)
+        self.scalars = tf.distance(tf.Point(self.mesh.points), plane)
         self.min_d = float(np.min(self.scalars))
         self.max_d = float(np.max(self.scalars))
         self.cut_value = (self.min_d + self.max_d) * 0.5
