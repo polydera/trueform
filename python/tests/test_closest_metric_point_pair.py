@@ -19,7 +19,7 @@ def test_point_polygon_2d_inside():
         [0.0, 1.0]
     ], dtype=np.float32)
 
-    pt_inside = tf.Point([0.5, 0.5])
+    pt_inside = tf.Point(np.array([0.5, 0.5], dtype=np.float32))
     poly = tf.Polygon(square)
 
     dist2, p0, p1 = tf.closest_metric_point_pair(pt_inside, poly)
@@ -35,7 +35,7 @@ def test_point_polygon_2d_outside():
         [0.0, 1.0]
     ], dtype=np.float32)
 
-    pt_outside = tf.Point([2.0, 0.5])
+    pt_outside = tf.Point(np.array([2.0, 0.5], dtype=np.float32))
     poly = tf.Polygon(square)
 
     dist2, p0, p1 = tf.closest_metric_point_pair(pt_outside, poly)
@@ -51,7 +51,7 @@ def test_point_polygon_3d_inside():
         [0.5, 1.0, 0.0]
     ], dtype=np.float64)
 
-    pt_inside = tf.Point([0.5, 0.3, 0.0])
+    pt_inside = tf.Point(np.array([0.5, 0.3, 0.0], dtype=np.float64))
     poly = tf.Polygon(triangle)
 
     dist2, p0, p1 = tf.closest_metric_point_pair(pt_inside, poly)
@@ -66,7 +66,7 @@ def test_point_polygon_3d_above():
         [0.5, 1.0, 0.0]
     ], dtype=np.float64)
 
-    pt_above = tf.Point([0.5, 0.3, 2.0])
+    pt_above = tf.Point(np.array([0.5, 0.3, 2.0], dtype=np.float64))
     poly = tf.Polygon(triangle)
 
     dist2, p0, p1 = tf.closest_metric_point_pair(pt_above, poly)
@@ -150,7 +150,7 @@ def test_segment_polygon_2d_intersecting():
         [0.0, 1.0]
     ], dtype=np.float32)
 
-    seg_intersect = tf.Segment([[0.5, -0.5], [0.5, 1.5]])
+    seg_intersect = tf.Segment(np.array([[0.5, -0.5], [0.5, 1.5]], dtype=np.float32))
     poly = tf.Polygon(square)
 
     dist2, p0, p1 = tf.closest_metric_point_pair(seg_intersect, poly)
@@ -166,7 +166,7 @@ def test_segment_polygon_2d_outside():
         [0.0, 1.0]
     ], dtype=np.float32)
 
-    seg_outside = tf.Segment([[2.0, 0.0], [3.0, 0.0]])
+    seg_outside = tf.Segment(np.array([[2.0, 0.0], [3.0, 0.0]], dtype=np.float32))
     poly = tf.Polygon(square)
 
     dist2, p0, p1 = tf.closest_metric_point_pair(seg_outside, poly)
@@ -181,7 +181,9 @@ def test_ray_polygon_3d_hitting():
         [0.5, 1.0, 0.0]
     ], dtype=np.float32)
 
-    ray_hit = tf.Ray(origin=[0.5, 0.3, 2.0], direction=[0.0, 0.0, -1.0])
+    ray_hit = tf.Ray(
+        origin=np.array([0.5, 0.3, 2.0], dtype=np.float32),
+        direction=np.array([0.0, 0.0, -1.0], dtype=np.float32))
     poly = tf.Polygon(triangle)
 
     dist2, p0, p1 = tf.closest_metric_point_pair(ray_hit, poly)
@@ -196,7 +198,9 @@ def test_ray_polygon_3d_missing():
         [0.5, 1.0, 0.0]
     ], dtype=np.float32)
 
-    ray_miss = tf.Ray(origin=[0.5, 0.3, 2.0], direction=[0.0, 0.0, 1.0])
+    ray_miss = tf.Ray(
+        origin=np.array([0.5, 0.3, 2.0], dtype=np.float32),
+        direction=np.array([0.0, 0.0, 1.0], dtype=np.float32))
     poly = tf.Polygon(triangle)
 
     dist2, p0, p1 = tf.closest_metric_point_pair(ray_miss, poly)
@@ -212,7 +216,9 @@ def test_line_polygon_2d_intersecting():
         [0.0, 1.0]
     ], dtype=np.float32)
 
-    line_intersect = tf.Line(origin=[0.5, -1.0], direction=[0.0, 1.0])
+    line_intersect = tf.Line(
+        origin=np.array([0.5, -1.0], dtype=np.float32),
+        direction=np.array([0.0, 1.0], dtype=np.float32))
     poly = tf.Polygon(square)
 
     dist2, p0, p1 = tf.closest_metric_point_pair(line_intersect, poly)
@@ -228,7 +234,9 @@ def test_line_polygon_2d_parallel():
         [0.0, 1.0]
     ], dtype=np.float32)
 
-    line_parallel = tf.Line(origin=[2.0, 0.0], direction=[0.0, 1.0])
+    line_parallel = tf.Line(
+        origin=np.array([2.0, 0.0], dtype=np.float32),
+        direction=np.array([0.0, 1.0], dtype=np.float32))
     poly = tf.Polygon(square)
 
     dist2, p0, p1 = tf.closest_metric_point_pair(line_parallel, poly)
@@ -940,6 +948,441 @@ def test_swap_symmetry_segment_polygon(dtype):
 
     dist2_a, c0_a, c1_a = tf.closest_metric_point_pair(seg, poly)
     dist2_b, c0_b, c1_b = tf.closest_metric_point_pair(poly, seg)
+
+    assert np.isclose(dist2_a, dist2_b), "Distances should match after swap"
+    assert np.allclose(c0_a, c1_b, atol=1e-5), "c0 of A should equal c1 of B"
+    assert np.allclose(c1_a, c0_b, atol=1e-5), "c1 of A should equal c0 of B"
+
+
+# ==============================================================================
+# Full Matrix Tests - AABB combinations
+# ==============================================================================
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("dims", [2, 3])
+def test_aabb_point_outside(dtype, dims):
+    """Test AABB-Point with point outside box."""
+    # AABB [0,0]-[1,1], Point [2, 0.5] -> closest on AABB is [1, 0.5], dist2 = 1.0
+    min_corner = np.zeros(dims, dtype=dtype)
+    max_corner = np.ones(dims, dtype=dtype)
+    box = tf.AABB(min=min_corner, max=max_corner)
+
+    pt_coords = np.zeros(dims, dtype=dtype)
+    pt_coords[0] = 2.0
+    pt_coords[1] = 0.5
+    pt = tf.Point(pt_coords)
+
+    dist2, c0, c1 = tf.closest_metric_point_pair(box, pt)
+
+    expected_c0 = np.zeros(dims, dtype=dtype)
+    expected_c0[0] = 1.0
+    expected_c0[1] = 0.5
+
+    assert np.isclose(dist2, 1.0), f"Expected dist2=1.0, got {dist2}"
+    assert np.allclose(c0, expected_c0, atol=1e-5), f"c0 should be [1, 0.5, ...], got {c0}"
+    assert np.allclose(c1, pt.data, atol=1e-5), f"c1 should be the point"
+    assert np.isclose(tf.distance2(box, pt), dist2), "distance2 should match"
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("dims", [2, 3])
+def test_aabb_point_inside(dtype, dims):
+    """Test AABB-Point with point inside box."""
+    min_corner = np.zeros(dims, dtype=dtype)
+    max_corner = np.ones(dims, dtype=dtype)
+    box = tf.AABB(min=min_corner, max=max_corner)
+
+    pt_coords = np.full(dims, 0.5, dtype=dtype)
+    pt = tf.Point(pt_coords)
+
+    dist2, c0, c1 = tf.closest_metric_point_pair(box, pt)
+
+    assert np.isclose(dist2, 0.0, atol=1e-5), f"Expected dist2=0.0, got {dist2}"
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("dims", [2, 3])
+def test_aabb_point_corner(dtype, dims):
+    """Test AABB-Point with point at diagonal from corner."""
+    # AABB [0,0]-[1,1], Point [2, 2] -> closest is [1,1], dist2 = 2.0
+    min_corner = np.zeros(dims, dtype=dtype)
+    max_corner = np.ones(dims, dtype=dtype)
+    box = tf.AABB(min=min_corner, max=max_corner)
+
+    pt_coords = np.full(dims, 2.0, dtype=dtype)
+    pt = tf.Point(pt_coords)
+
+    dist2, c0, c1 = tf.closest_metric_point_pair(box, pt)
+
+    expected_dist2 = float(dims)  # 2.0 for 2D, 3.0 for 3D
+    assert np.isclose(dist2, expected_dist2), f"Expected dist2={expected_dist2}, got {dist2}"
+    assert np.allclose(c0, max_corner, atol=1e-5), f"c0 should be max corner, got {c0}"
+    assert np.isclose(tf.distance2(box, pt), dist2), "distance2 should match"
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("dims", [2, 3])
+def test_aabb_segment_outside(dtype, dims):
+    """Test AABB-Segment with segment outside box."""
+    # AABB [0,0]-[1,1], Segment [2,0]-[2,1] -> dist = 1 (closest face)
+    min_corner = np.zeros(dims, dtype=dtype)
+    max_corner = np.ones(dims, dtype=dtype)
+    box = tf.AABB(min=min_corner, max=max_corner)
+
+    seg_pts = np.zeros((2, dims), dtype=dtype)
+    seg_pts[0, 0] = 2.0
+    seg_pts[0, 1] = 0.0
+    seg_pts[1, 0] = 2.0
+    seg_pts[1, 1] = 1.0
+    seg = tf.Segment(seg_pts)
+
+    dist2, c0, c1 = tf.closest_metric_point_pair(box, seg)
+
+    assert np.isclose(dist2, 1.0), f"Expected dist2=1.0, got {dist2}"
+    assert np.isclose(c0[0], 1.0, atol=1e-5), f"c0 x should be 1.0, got {c0[0]}"
+    assert np.isclose(c1[0], 2.0, atol=1e-5), f"c1 x should be 2.0, got {c1[0]}"
+    assert np.isclose(tf.distance2(box, seg), dist2), "distance2 should match"
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("dims", [2, 3])
+def test_aabb_segment_crossing(dtype, dims):
+    """Test AABB-Segment with segment crossing box."""
+    min_corner = np.zeros(dims, dtype=dtype)
+    max_corner = np.ones(dims, dtype=dtype)
+    box = tf.AABB(min=min_corner, max=max_corner)
+
+    seg_pts = np.zeros((2, dims), dtype=dtype)
+    seg_pts[0, 0] = -1.0
+    seg_pts[0, 1] = 0.5
+    seg_pts[1, 0] = 2.0
+    seg_pts[1, 1] = 0.5
+    seg = tf.Segment(seg_pts)
+
+    dist2, c0, c1 = tf.closest_metric_point_pair(box, seg)
+
+    assert np.isclose(dist2, 0.0, atol=1e-5), f"Expected dist2=0.0, got {dist2}"
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("dims", [2, 3])
+def test_aabb_ray_hitting(dtype, dims):
+    """Test AABB-Ray with ray hitting box."""
+    min_corner = np.zeros(dims, dtype=dtype)
+    max_corner = np.ones(dims, dtype=dtype)
+    box = tf.AABB(min=min_corner, max=max_corner)
+
+    # Ray from [0.5, 0.5, 5] pointing toward -y (or -last axis)
+    origin = np.full(dims, 0.5, dtype=dtype)
+    origin[-1] = 5.0
+    direction = np.zeros(dims, dtype=dtype)
+    direction[-1] = -1.0
+    ray = tf.Ray(origin=origin, direction=direction)
+
+    dist2, c0, c1 = tf.closest_metric_point_pair(box, ray)
+
+    assert np.isclose(dist2, 0.0, atol=1e-5), f"Expected dist2=0.0, got {dist2}"
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("dims", [2, 3])
+def test_aabb_ray_missing(dtype, dims):
+    """Test AABB-Ray with ray pointing away from box."""
+    min_corner = np.zeros(dims, dtype=dtype)
+    max_corner = np.ones(dims, dtype=dtype)
+    box = tf.AABB(min=min_corner, max=max_corner)
+
+    # Ray from [2, 0.5, ...] pointing in +x direction (away from box)
+    origin = np.full(dims, 0.5, dtype=dtype)
+    origin[0] = 2.0
+    direction = np.zeros(dims, dtype=dtype)
+    direction[0] = 1.0
+    ray = tf.Ray(origin=origin, direction=direction)
+
+    dist2, c0, c1 = tf.closest_metric_point_pair(box, ray)
+
+    # Closest on box is [1, 0.5, ...], closest on ray is origin [2, 0.5, ...], dist2 = 1.0
+    assert np.isclose(dist2, 1.0), f"Expected dist2=1.0, got {dist2}"
+    assert np.isclose(c0[0], 1.0, atol=1e-5), f"c0 x should be 1.0, got {c0[0]}"
+    assert np.isclose(c1[0], 2.0, atol=1e-5), f"c1 x should be 2.0, got {c1[0]}"
+    assert np.isclose(tf.distance2(box, ray), dist2), "distance2 should match"
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("dims", [2, 3])
+def test_aabb_line_intersecting(dtype, dims):
+    """Test AABB-Line with line passing through box."""
+    min_corner = np.zeros(dims, dtype=dtype)
+    max_corner = np.ones(dims, dtype=dtype)
+    box = tf.AABB(min=min_corner, max=max_corner)
+
+    origin = np.full(dims, 0.5, dtype=dtype)
+    origin[0] = -5.0
+    direction = np.zeros(dims, dtype=dtype)
+    direction[0] = 1.0
+    line = tf.Line(origin=origin, direction=direction)
+
+    dist2, c0, c1 = tf.closest_metric_point_pair(box, line)
+
+    assert np.isclose(dist2, 0.0, atol=1e-5), f"Expected dist2=0.0, got {dist2}"
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("dims", [2, 3])
+def test_aabb_line_parallel(dtype, dims):
+    """Test AABB-Line parallel to box face."""
+    min_corner = np.zeros(dims, dtype=dtype)
+    max_corner = np.ones(dims, dtype=dtype)
+    box = tf.AABB(min=min_corner, max=max_corner)
+
+    # Line at x=3 along y-axis
+    origin = np.zeros(dims, dtype=dtype)
+    origin[0] = 3.0
+    direction = np.zeros(dims, dtype=dtype)
+    direction[1] = 1.0
+    line = tf.Line(origin=origin, direction=direction)
+
+    dist2, c0, c1 = tf.closest_metric_point_pair(box, line)
+
+    assert np.isclose(dist2, 4.0), f"Expected dist2=4.0, got {dist2}"
+    assert np.isclose(c0[0], 1.0, atol=1e-5), f"c0 x should be 1.0, got {c0[0]}"
+    assert np.isclose(c1[0], 3.0, atol=1e-5), f"c1 x should be 3.0, got {c1[0]}"
+    assert np.isclose(tf.distance2(box, line), dist2), "distance2 should match"
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("dims", [2, 3])
+def test_aabb_polygon_separated(dtype, dims):
+    """Test AABB-Polygon with clear separation."""
+    # AABB [0,0]-[1,1], triangle at x=3
+    min_corner = np.zeros(dims, dtype=dtype)
+    max_corner = np.ones(dims, dtype=dtype)
+    box = tf.AABB(min=min_corner, max=max_corner)
+
+    tri = np.zeros((3, dims), dtype=dtype)
+    tri[0, 0] = 3.0
+    tri[0, 1] = 0.0
+    tri[1, 0] = 4.0
+    tri[1, 1] = 0.0
+    tri[2, 0] = 3.5
+    tri[2, 1] = 1.0
+    poly = tf.Polygon(tri)
+
+    dist2, c0, c1 = tf.closest_metric_point_pair(box, poly)
+
+    assert np.isclose(dist2, 4.0), f"Expected dist2=4.0, got {dist2}"
+    assert np.isclose(c0[0], 1.0, atol=1e-5), f"c0 x should be 1.0, got {c0[0]}"
+    assert np.isclose(c1[0], 3.0, atol=1e-5), f"c1 x should be 3.0, got {c1[0]}"
+    assert np.isclose(tf.distance2(box, poly), dist2), "distance2 should match"
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("dims", [2, 3])
+def test_aabb_polygon_overlapping(dtype, dims):
+    """Test AABB-Polygon overlapping."""
+    min_corner = np.zeros(dims, dtype=dtype)
+    max_corner = np.ones(dims, dtype=dtype)
+    box = tf.AABB(min=min_corner, max=max_corner)
+
+    # Triangle that overlaps the AABB
+    tri = np.zeros((3, dims), dtype=dtype)
+    tri[0, 0] = 0.5
+    tri[0, 1] = 0.5
+    tri[1, 0] = 2.0
+    tri[1, 1] = 0.5
+    tri[2, 0] = 0.5
+    tri[2, 1] = 2.0
+    poly = tf.Polygon(tri)
+
+    dist2, c0, c1 = tf.closest_metric_point_pair(box, poly)
+
+    assert np.isclose(dist2, 0.0, atol=1e-5), f"Expected dist2=0.0, got {dist2}"
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_aabb_plane_intersecting(dtype):
+    """Test AABB-Plane with plane cutting through box (3D only)."""
+    box = tf.AABB(
+        min=np.array([0.0, 0.0, 0.0], dtype=dtype),
+        max=np.array([1.0, 1.0, 1.0], dtype=dtype)
+    )
+    # Plane at z=0.5 cuts through box
+    plane = tf.Plane(np.array([0.0, 0.0, 1.0, -0.5], dtype=dtype))
+
+    dist2, c0, c1 = tf.closest_metric_point_pair(box, plane)
+
+    assert np.isclose(dist2, 0.0, atol=1e-5), f"Expected dist2=0.0, got {dist2}"
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_aabb_plane_separated(dtype):
+    """Test AABB-Plane with plane above box (3D only)."""
+    box = tf.AABB(
+        min=np.array([0.0, 0.0, 0.0], dtype=dtype),
+        max=np.array([1.0, 1.0, 1.0], dtype=dtype)
+    )
+    # Plane at z=4
+    plane = tf.Plane(np.array([0.0, 0.0, 1.0, -4.0], dtype=dtype))
+
+    dist2, c0, c1 = tf.closest_metric_point_pair(box, plane)
+
+    # Closest on box is any point on z=1 face, closest on plane is projection, dist = 3
+    assert np.isclose(dist2, 9.0), f"Expected dist2=9.0, got {dist2}"
+    assert np.isclose(c0[2], 1.0, atol=1e-5), f"c0 z should be 1.0, got {c0[2]}"
+    assert np.isclose(c1[2], 4.0, atol=1e-5), f"c1 z should be 4.0, got {c1[2]}"
+    assert np.isclose(tf.distance2(box, plane), dist2), "distance2 should match"
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("dims", [2, 3])
+def test_aabb_aabb_separated(dtype, dims):
+    """Test AABB-AABB with separated boxes."""
+    box1 = tf.AABB(
+        min=np.zeros(dims, dtype=dtype),
+        max=np.ones(dims, dtype=dtype)
+    )
+    min2 = np.zeros(dims, dtype=dtype)
+    min2[0] = 3.0
+    max2 = np.ones(dims, dtype=dtype)
+    max2[0] = 4.0
+    box2 = tf.AABB(min=min2, max=max2)
+
+    dist2, c0, c1 = tf.closest_metric_point_pair(box1, box2)
+
+    assert np.isclose(dist2, 4.0), f"Expected dist2=4.0, got {dist2}"
+    assert np.isclose(c0[0], 1.0, atol=1e-5), f"c0 x should be 1.0, got {c0[0]}"
+    assert np.isclose(c1[0], 3.0, atol=1e-5), f"c1 x should be 3.0, got {c1[0]}"
+    assert np.isclose(tf.distance2(box1, box2), dist2), "distance2 should match"
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("dims", [2, 3])
+def test_aabb_aabb_overlapping(dtype, dims):
+    """Test AABB-AABB with overlapping boxes."""
+    box1 = tf.AABB(
+        min=np.zeros(dims, dtype=dtype),
+        max=np.ones(dims, dtype=dtype)
+    )
+    min2 = np.full(dims, 0.5, dtype=dtype)
+    max2 = np.full(dims, 1.5, dtype=dtype)
+    box2 = tf.AABB(min=min2, max=max2)
+
+    dist2, c0, c1 = tf.closest_metric_point_pair(box1, box2)
+
+    assert np.isclose(dist2, 0.0, atol=1e-5), f"Expected dist2=0.0, got {dist2}"
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("dims", [2, 3])
+def test_aabb_aabb_touching(dtype, dims):
+    """Test AABB-AABB with touching boxes (shared face)."""
+    box1 = tf.AABB(
+        min=np.zeros(dims, dtype=dtype),
+        max=np.ones(dims, dtype=dtype)
+    )
+    min2 = np.zeros(dims, dtype=dtype)
+    min2[0] = 1.0
+    max2 = np.ones(dims, dtype=dtype)
+    max2[0] = 2.0
+    box2 = tf.AABB(min=min2, max=max2)
+
+    dist2, c0, c1 = tf.closest_metric_point_pair(box1, box2)
+
+    assert np.isclose(dist2, 0.0, atol=1e-5), f"Expected dist2=0.0, got {dist2}"
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("dims", [2, 3])
+def test_aabb_aabb_contained(dtype, dims):
+    """Test AABB-AABB with one box contained in another."""
+    box1 = tf.AABB(
+        min=np.zeros(dims, dtype=dtype),
+        max=np.full(dims, 4.0, dtype=dtype)
+    )
+    box2 = tf.AABB(
+        min=np.ones(dims, dtype=dtype),
+        max=np.full(dims, 2.0, dtype=dtype)
+    )
+
+    dist2, c0, c1 = tf.closest_metric_point_pair(box1, box2)
+
+    assert np.isclose(dist2, 0.0, atol=1e-5), f"Expected dist2=0.0, got {dist2}"
+
+
+# ==============================================================================
+# AABB swap symmetry tests
+# ==============================================================================
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_swap_symmetry_aabb_point(dtype):
+    """Test swap symmetry for AABB-Point."""
+    box = tf.AABB(
+        min=np.array([0.0, 0.0, 0.0], dtype=dtype),
+        max=np.array([1.0, 1.0, 1.0], dtype=dtype)
+    )
+    pt = tf.Point(np.array([2.0, 0.5, 0.5], dtype=dtype))
+
+    dist2_a, c0_a, c1_a = tf.closest_metric_point_pair(box, pt)
+    dist2_b, c0_b, c1_b = tf.closest_metric_point_pair(pt, box)
+
+    assert np.isclose(dist2_a, dist2_b), "Distances should match after swap"
+    assert np.allclose(c0_a, c1_b, atol=1e-5), "c0 of A should equal c1 of B"
+    assert np.allclose(c1_a, c0_b, atol=1e-5), "c1 of A should equal c0 of B"
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_swap_symmetry_aabb_segment(dtype):
+    """Test swap symmetry for AABB-Segment."""
+    box = tf.AABB(
+        min=np.array([0.0, 0.0, 0.0], dtype=dtype),
+        max=np.array([1.0, 1.0, 1.0], dtype=dtype)
+    )
+    seg = tf.Segment(np.array([[3.0, 0.5, 0.5], [5.0, 0.5, 0.5]], dtype=dtype))
+
+    dist2_a, c0_a, c1_a = tf.closest_metric_point_pair(box, seg)
+    dist2_b, c0_b, c1_b = tf.closest_metric_point_pair(seg, box)
+
+    assert np.isclose(dist2_a, dist2_b), "Distances should match after swap"
+    assert np.allclose(c0_a, c1_b, atol=1e-5), "c0 of A should equal c1 of B"
+    assert np.allclose(c1_a, c0_b, atol=1e-5), "c1 of A should equal c0 of B"
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_swap_symmetry_aabb_aabb(dtype):
+    """Test swap symmetry for AABB-AABB."""
+    box1 = tf.AABB(
+        min=np.array([0.0, 0.0, 0.0], dtype=dtype),
+        max=np.array([1.0, 1.0, 1.0], dtype=dtype)
+    )
+    box2 = tf.AABB(
+        min=np.array([3.0, 0.0, 0.0], dtype=dtype),
+        max=np.array([4.0, 1.0, 1.0], dtype=dtype)
+    )
+
+    dist2_a, c0_a, c1_a = tf.closest_metric_point_pair(box1, box2)
+    dist2_b, c0_b, c1_b = tf.closest_metric_point_pair(box2, box1)
+
+    assert np.isclose(dist2_a, dist2_b), "Distances should match after swap"
+    assert np.allclose(c0_a, c1_b, atol=1e-5), "c0 of A should equal c1 of B"
+    assert np.allclose(c1_a, c0_b, atol=1e-5), "c1 of A should equal c0 of B"
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_swap_symmetry_aabb_polygon(dtype):
+    """Test swap symmetry for AABB-Polygon."""
+    box = tf.AABB(
+        min=np.array([0.0, 0.0, 0.0], dtype=dtype),
+        max=np.array([1.0, 1.0, 1.0], dtype=dtype)
+    )
+    tri = np.array([
+        [3.0, 0.0, 0.0],
+        [4.0, 0.0, 0.0],
+        [3.5, 1.0, 0.0]
+    ], dtype=dtype)
+    poly = tf.Polygon(tri)
+
+    dist2_a, c0_a, c1_a = tf.closest_metric_point_pair(box, poly)
+    dist2_b, c0_b, c1_b = tf.closest_metric_point_pair(poly, box)
 
     assert np.isclose(dist2_a, dist2_b), "Distances should match after swap"
     assert np.allclose(c0_a, c1_b, atol=1e-5), "c0 of A should equal c1 of B"

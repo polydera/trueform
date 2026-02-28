@@ -747,6 +747,216 @@ def test_measurements_sphere_composed_transform(dtype):
 
 
 # ==============================================================================
+# Triangle Primitive Area Tests
+# ==============================================================================
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_area_triangle_primitive_single_3d(dtype):
+    """Area of a single 3D Triangle primitive."""
+    tri = tf.Triangle(np.array([
+        [0, 0, 0],
+        [2, 0, 0],
+        [0, 2, 0]
+    ], dtype=dtype))
+
+    computed = tf.area(tri)
+    assert isinstance(computed, float)
+    np.testing.assert_allclose(computed, 2.0, rtol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_area_triangle_primitive_single_2d(dtype):
+    """Area of a single 2D Triangle primitive."""
+    tri = tf.Triangle(np.array([
+        [0, 0],
+        [1, 0],
+        [0, 1]
+    ], dtype=dtype))
+
+    computed = tf.area(tri)
+    assert isinstance(computed, float)
+    np.testing.assert_allclose(computed, 0.5, rtol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_area_triangle_primitive_batch(dtype):
+    """Area of a batch of Triangle primitives returns array."""
+    data = np.array([
+        [[0, 0, 0], [1, 0, 0], [0, 1, 0]],   # area = 0.5
+        [[0, 0, 0], [2, 0, 0], [0, 2, 0]],   # area = 2.0
+        [[0, 0, 0], [3, 0, 0], [0, 3, 0]],   # area = 4.5
+    ], dtype=dtype)
+    tris = tf.Triangle(data)
+
+    computed = tf.area(tris)
+    assert isinstance(computed, np.ndarray)
+    assert computed.shape == (3,)
+    np.testing.assert_allclose(computed, [0.5, 2.0, 4.5], rtol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_area_triangle_primitive_batch_2d(dtype):
+    """Area of a batch of 2D Triangle primitives."""
+    data = np.array([
+        [[0, 0], [1, 0], [0, 1]],   # area = 0.5
+        [[0, 0], [2, 0], [0, 2]],   # area = 2.0
+    ], dtype=dtype)
+    tris = tf.Triangle(data)
+
+    computed = tf.area(tris)
+    assert isinstance(computed, np.ndarray)
+    assert computed.shape == (2,)
+    np.testing.assert_allclose(computed, [0.5, 2.0], rtol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_area_triangle_primitive_unit_right(dtype):
+    """Unit right triangle has area 0.5."""
+    tri = tf.Triangle(a=np.array([0, 0, 0], dtype=dtype),
+                      b=np.array([1, 0, 0], dtype=dtype),
+                      c=np.array([0, 1, 0], dtype=dtype))
+
+    computed = tf.area(tri)
+    np.testing.assert_allclose(computed, 0.5, rtol=1e-5)
+
+
+# ==============================================================================
+# Polygon Primitive Area Tests (batch)
+# ==============================================================================
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_area_polygon_primitive_batch_3d(dtype):
+    """Area of a batch of 3D Polygon primitives."""
+    # Two unit squares
+    data = np.array([
+        [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]],   # area = 1.0
+        [[0, 0, 0], [2, 0, 0], [2, 2, 0], [0, 2, 0]],   # area = 4.0
+    ], dtype=dtype)
+    polys = tf.Polygon(data)
+
+    computed = tf.area(polys)
+    assert isinstance(computed, np.ndarray)
+    assert computed.shape == (2,)
+    np.testing.assert_allclose(computed, [1.0, 4.0], rtol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_area_polygon_primitive_batch_2d(dtype):
+    """Area of a batch of 2D Polygon primitives."""
+    data = np.array([
+        [[0, 0], [1, 0], [1, 1], [0, 1]],   # area = 1.0
+        [[0, 0], [3, 0], [3, 2], [0, 2]],   # area = 6.0
+    ], dtype=dtype)
+    polys = tf.Polygon(data)
+
+    computed = tf.area(polys)
+    assert isinstance(computed, np.ndarray)
+    assert computed.shape == (2,)
+    np.testing.assert_allclose(computed, [1.0, 6.0], rtol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_area_polygon_primitive_single_still_works(dtype):
+    """Single Polygon still works after refactor."""
+    poly = tf.Polygon(np.array([
+        [0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]
+    ], dtype=dtype))
+
+    computed = tf.area(poly)
+    np.testing.assert_allclose(computed, 1.0, rtol=1e-5)
+
+
+# ==============================================================================
+# Triangle/Polygon Primitive mean_edge_length Tests
+# ==============================================================================
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_mean_edge_length_triangle_single(dtype):
+    """Mean edge length of a unit right triangle."""
+    tri = tf.Triangle(np.array([
+        [0, 0, 0],
+        [1, 0, 0],
+        [0, 1, 0]
+    ], dtype=dtype))
+
+    computed = tf.mean_edge_length(tri)
+    # Edges: 1, 1, sqrt(2) → mean = (2 + sqrt(2)) / 3
+    expected = (2.0 + np.sqrt(2)) / 3.0
+    np.testing.assert_allclose(computed, expected, rtol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_mean_edge_length_equilateral_triangle(dtype):
+    """Equilateral triangle with side=2 has mean edge length 2."""
+    tri = tf.Triangle(np.array([
+        [0, 0, 0],
+        [2, 0, 0],
+        [1, np.sqrt(3), 0]
+    ], dtype=dtype))
+
+    computed = tf.mean_edge_length(tri)
+    np.testing.assert_allclose(computed, 2.0, rtol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_mean_edge_length_triangle_batch(dtype):
+    """Mean edge length across a batch of triangles."""
+    data = np.array([
+        [[0, 0, 0], [1, 0, 0], [0, 1, 0]],
+        [[0, 0, 0], [2, 0, 0], [0, 2, 0]],
+    ], dtype=dtype)
+    tris = tf.Triangle(data)
+
+    computed = tf.mean_edge_length(tris)
+    # Tri 1: edges 1, 1, sqrt(2). Tri 2: edges 2, 2, 2*sqrt(2)
+    # Total 6 edges, mean = (1 + 1 + sqrt(2) + 2 + 2 + 2*sqrt(2)) / 6
+    expected = (6.0 + 3 * np.sqrt(2)) / 6.0
+    np.testing.assert_allclose(computed, expected, rtol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_mean_edge_length_polygon_single(dtype):
+    """Mean edge length of a unit square polygon."""
+    poly = tf.Polygon(np.array([
+        [0, 0, 0],
+        [1, 0, 0],
+        [1, 1, 0],
+        [0, 1, 0]
+    ], dtype=dtype))
+
+    computed = tf.mean_edge_length(poly)
+    np.testing.assert_allclose(computed, 1.0, rtol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_mean_edge_length_polygon_batch(dtype):
+    """Mean edge length across a batch of polygons."""
+    data = np.array([
+        [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]],   # unit square, all edges = 1
+        [[0, 0, 0], [2, 0, 0], [2, 2, 0], [0, 2, 0]],   # 2x2 square, all edges = 2
+    ], dtype=dtype)
+    polys = tf.Polygon(data)
+
+    computed = tf.mean_edge_length(polys)
+    # 4 edges of length 1 + 4 edges of length 2 → mean = 12/8 = 1.5
+    np.testing.assert_allclose(computed, 1.5, rtol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_mean_edge_length_triangle_2d(dtype):
+    """Mean edge length works for 2D triangles."""
+    tri = tf.Triangle(np.array([
+        [0, 0],
+        [1, 0],
+        [0, 1]
+    ], dtype=dtype))
+
+    computed = tf.mean_edge_length(tri)
+    expected = (2.0 + np.sqrt(2)) / 3.0
+    np.testing.assert_allclose(computed, expected, rtol=1e-5)
+
+
+# ==============================================================================
 # Main
 # ==============================================================================
 

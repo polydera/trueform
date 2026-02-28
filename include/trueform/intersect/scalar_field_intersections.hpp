@@ -12,7 +12,6 @@
  */
 #pragma once
 #include "../core/algorithm/block_reduce.hpp"
-#include "../core/epsilon.hpp"
 #include "../core/polygons.hpp"
 #include "../core/views/enumerate.hpp"
 #include "./types/simple_intersections.hpp"
@@ -92,29 +91,16 @@ private:
               auto t = (cut_value - scalar_field[id0]) /
                        (scalar_field[id1] - scalar_field[id0]);
 
-              if (t < tf::epsilon<RealT>) {
-                // Vertex intersection: snap to original vertex position
-                Index pt_id = points.size();
-                points.push_back(polygon[v0]);
-                edge_point_ids.push_back(
-                    {Index(id0), Index(id0), Index(pt_id)});
-                intersections.push_back(
-                    {Index(polygon_id),
-                     tf::intersect::intersection_target<Index>{
-                         Index(v0), tf::topo_type::vertex},
-                     pt_id});
-              } else {
-                auto created_point = polygon[v0] + t * edge;
-                Index pt_id = points.size();
-                points.push_back(created_point);
-                edge_point_ids.push_back(
-                    {Index(id0), Index(id1), Index(pt_id)});
-                intersections.push_back(
-                    {Index(polygon_id),
-                     tf::intersect::intersection_target<Index>{
-                         Index(prev), tf::topo_type::edge},
-                     pt_id});
-              }
+              auto created_point = polygon[v0] + t * edge;
+              Index pt_id = points.size();
+              points.push_back(created_point);
+              edge_point_ids.push_back(
+                  {Index(id0), Index(id1), Index(pt_id)});
+              intersections.push_back(
+                  {Index(polygon_id),
+                   tf::intersect::intersection_target<Index>{
+                       Index(prev), tf::topo_type::edge},
+                   pt_id});
             }
           }
         },

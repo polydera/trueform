@@ -12,6 +12,7 @@
 */
 #pragma once
 #include <tuple>
+#include <algorithm>
 #include <utility>
 
 namespace tf::intersect {
@@ -21,10 +22,8 @@ template <typename Index> struct simple_edge_point_id {
   Index point_id;
   simple_edge_point_id() = default;
   simple_edge_point_id(Index pt0, Index pt1, Index point_id)
-      : vertex_id0{pt0}, vertex_id1{pt1}, point_id{point_id} {
-    if (pt1 < pt0)
-      std::swap(pt0, pt1);
-  }
+      : vertex_id0{std::min(pt0, pt1)}, vertex_id1{std::max(pt0, pt1)},
+        point_id{point_id} {}
 
   friend auto operator<(const simple_edge_point_id &e0,
                         const simple_edge_point_id &e1) -> bool {

@@ -69,7 +69,7 @@ class IsocontourInteractor(BaseInteractor):
         plane = tf.Plane.from_point_normal(random_point, random_normal)
 
         # Compute scalar field (signed distance to plane)
-        self.scalars = tf.distance_field(self.mesh.points, plane)
+        self.scalars = tf.distance(tf.Point(self.mesh.points), plane)
         self.distance = 0.0
 
         # Cache min/max for adaptive level spacing

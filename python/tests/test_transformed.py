@@ -386,6 +386,205 @@ def test_transformed_dimension_mismatch():
         tf.transformed(pt_3d, T_2d)
 
 
+# ==============================================================================
+# Batch Tests
+# ==============================================================================
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_transformed_batch_point_3d(dtype):
+    """Test batch point transformation"""
+    pts = tf.Point(np.array([
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, 0, 1]
+    ], dtype=dtype))
+    assert pts.is_batch
+    T = create_rotation_z_3d(90, dtype)
+
+    result = tf.transformed(pts, T)
+
+    assert result.is_batch
+    assert result.count == 3
+    expected = np.array([
+        [0, 1, 0],
+        [-1, 0, 0],
+        [0, 0, 1]
+    ], dtype=dtype)
+    assert np.allclose(result.data, expected, atol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_transformed_batch_point_2d(dtype):
+    """Test batch 2D point transformation"""
+    pts = tf.Point(np.array([
+        [1, 0],
+        [0, 1],
+    ], dtype=dtype))
+    assert pts.is_batch
+    T = create_rotation_translation_2d(90, 2, 3, dtype)
+
+    result = tf.transformed(pts, T)
+
+    assert result.is_batch
+    assert result.count == 2
+    # [1,0] -> [0,1] + [2,3] = [2,4]
+    # [0,1] -> [-1,0] + [2,3] = [1,3]
+    expected = np.array([[2, 4], [1, 3]], dtype=dtype)
+    assert np.allclose(result.data, expected, atol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_transformed_batch_segment_3d(dtype):
+    """Test batch segment transformation"""
+    segs = tf.Segment(np.array([
+        [[1, 0, 0], [2, 0, 0]],
+        [[0, 1, 0], [0, 2, 0]],
+    ], dtype=dtype))
+    assert segs.is_batch
+    T = create_rotation_z_3d(90, dtype)
+
+    result = tf.transformed(segs, T)
+
+    assert result.is_batch
+    assert result.count == 2
+    # seg1: [1,0,0]->[0,1,0], [2,0,0]->[0,2,0]
+    # seg2: [0,1,0]->[-1,0,0], [0,2,0]->[-2,0,0]
+    expected = np.array([
+        [[0, 1, 0], [0, 2, 0]],
+        [[-1, 0, 0], [-2, 0, 0]],
+    ], dtype=dtype)
+    assert np.allclose(result.data, expected, atol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_transformed_batch_ray_3d(dtype):
+    """Test batch ray transformation"""
+    rays = tf.Ray(data=np.array([
+        [[0, 0, 0], [1, 0, 0]],
+        [[1, 0, 0], [0, 1, 0]],
+    ], dtype=dtype))
+    assert rays.is_batch
+    T = create_rotation_z_3d(90, dtype)
+
+    result = tf.transformed(rays, T)
+
+    assert result.is_batch
+    assert result.count == 2
+    # ray1: origin [0,0,0]->[0,0,0], dir [1,0,0]->[0,1,0]
+    # ray2: origin [1,0,0]->[0,1,0], dir [0,1,0]->[-1,0,0]
+    assert np.allclose(result.data[0, 0], [0, 0, 0], atol=1e-5)
+    assert np.allclose(result.data[0, 1], [0, 1, 0], atol=1e-5)
+    assert np.allclose(result.data[1, 0], [0, 1, 0], atol=1e-5)
+    assert np.allclose(result.data[1, 1], [-1, 0, 0], atol=1e-5)
+    # Directions should be unit vectors
+    assert np.allclose(np.linalg.norm(result.data[:, 1], axis=-1), 1.0, atol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_transformed_batch_line_3d(dtype):
+    """Test batch line transformation"""
+    lines = tf.Line(data=np.array([
+        [[0, 0, 0], [1, 0, 0]],
+        [[0, 0, 0], [0, 0, 1]],
+    ], dtype=dtype))
+    assert lines.is_batch
+    T = create_rotation_z_3d(90, dtype)
+
+    result = tf.transformed(lines, T)
+
+    assert result.is_batch
+    assert result.count == 2
+    # line1 dir [1,0,0] -> [0,1,0]
+    # line2 dir [0,0,1] -> [0,0,1] (z-axis unaffected by z-rotation)
+    assert np.allclose(result.data[0, 1], [0, 1, 0], atol=1e-5)
+    assert np.allclose(result.data[1, 1], [0, 0, 1], atol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_transformed_batch_aabb_3d(dtype):
+    """Test batch AABB transformation"""
+    batch_data = np.array([
+        [[0, 0, 0], [1, 1, 1]],
+        [[2, 0, 0], [3, 1, 1]],
+    ], dtype=dtype)
+    boxes = tf.AABB(batch_data)
+    assert boxes.is_batch
+
+    T = create_rotation_translation_z_3d(0, 10, 0, 0, dtype)  # translate x+10
+
+    result = tf.transformed(boxes, T)
+
+    assert result.is_batch
+    assert result.count == 2
+    # box1: [0,0,0]-[1,1,1] -> [10,0,0]-[11,1,1]
+    # box2: [2,0,0]-[3,1,1] -> [12,0,0]-[13,1,1]
+    assert np.allclose(result.data[0, 0], [10, 0, 0], atol=1e-5)
+    assert np.allclose(result.data[0, 1], [11, 1, 1], atol=1e-5)
+    assert np.allclose(result.data[1, 0], [12, 0, 0], atol=1e-5)
+    assert np.allclose(result.data[1, 1], [13, 1, 1], atol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_transformed_batch_polygon_3d(dtype):
+    """Test batch polygon transformation"""
+    polys = tf.Polygon(np.array([
+        [[1, 0, 0], [0, 1, 0], [0, 0, 0]],
+        [[2, 0, 0], [0, 2, 0], [0, 0, 0]],
+    ], dtype=dtype))
+    assert polys.is_batch
+    T = create_rotation_z_3d(90, dtype)
+
+    result = tf.transformed(polys, T)
+
+    assert result.is_batch
+    assert result.count == 2
+    # poly1 vertex0: [1,0,0] -> [0,1,0]
+    assert np.allclose(result.data[0, 0], [0, 1, 0], atol=1e-5)
+    # poly2 vertex0: [2,0,0] -> [0,2,0]
+    assert np.allclose(result.data[1, 0], [0, 2, 0], atol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_transformed_batch_plane_3d(dtype):
+    """Test batch plane transformation"""
+    planes = tf.Plane(np.array([
+        [0, 0, 1, 0],     # z=0 plane
+        [0, 0, 1, -5],    # z=5 plane
+    ], dtype=dtype))
+    assert planes.is_batch
+
+    # Translate up by 10
+    T = create_rotation_translation_z_3d(0, 0, 0, 10, dtype)
+
+    result = tf.transformed(planes, T)
+
+    assert result.is_batch
+    assert result.count == 2
+    # z=0 plane moved up: normal [0,0,1], d = -10
+    assert np.allclose(result.data[0, :3], [0, 0, 1], atol=1e-5)
+    assert np.isclose(result.data[0, 3], -10, atol=1e-5)
+    # z=5 plane moved up: normal [0,0,1], d = -15
+    assert np.allclose(result.data[1, :3], [0, 0, 1], atol=1e-5)
+    assert np.isclose(result.data[1, 3], -15, atol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_transformed_batch_preserves_distances(dtype):
+    """Test that transformation preserves distances between batch elements."""
+    pts = tf.Point(np.array([
+        [0, 0, 0],
+        [3, 0, 0],
+    ], dtype=dtype))
+    T = create_rotation_translation_z_3d(45, 10, 20, 30, dtype)
+
+    result = tf.transformed(pts, T)
+
+    # Distance between transformed points should equal original
+    original_dist = np.linalg.norm(pts.data[0] - pts.data[1])
+    transformed_dist = np.linalg.norm(result.data[0] - result.data[1])
+    assert np.isclose(original_dist, transformed_dist, atol=1e-4)
+
+
 if __name__ == "__main__":
     # Run tests with verbose output
     import sys

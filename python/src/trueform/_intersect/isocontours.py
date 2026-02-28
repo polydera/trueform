@@ -58,7 +58,7 @@ def isocontours(
     >>> faces, points = tf.read_stl("mesh.stl")
     >>> mesh = tf.Mesh(faces, points)
     >>> plane = tf.Plane(normal=[0.0, 0.0, 1.0], offset=0.0)
-    >>> distances = tf.distance_field(mesh.points, plane)
+    >>> distances = tf.distance(tf.Point(mesh.points), plane)
     >>>
     >>> # Extract single isocontour at z=0 using Mesh
     >>> paths, points = tf.isocontours(mesh, distances, 0.0)

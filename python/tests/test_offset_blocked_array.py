@@ -156,7 +156,7 @@ def test_mesh_quad_neighbor_search(index_dtype, real_dtype):
     )
     mesh = tf.Mesh(tf.as_offset_blocked(quads), points)
 
-    result = tf.neighbor_search(mesh, tf.Point([0.5, 0.5, 0.0]))
+    result = tf.neighbor_search(mesh, tf.Point(np.array([0.5, 0.5, 0.0], dtype=real_dtype)))
     assert result is not None
 
 

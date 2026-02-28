@@ -889,6 +889,30 @@ auto distance2(const segment<Dims, T1> &seg, const sphere_like<Dims, T0> &s) {
   return distance2(seg, s);
 }
 
+template <std::size_t Dims, typename T0, typename T1>
+auto distance(const sphere_like<Dims, T0> &s, const plane_like<Dims, T1> &p) {
+  auto d2 = distance2(p, s.origin);
+  if (d2 + tf::epsilon2<decltype(d2)> < s.r * s.r)
+    return decltype(d2)(0);
+  return tf::sqrt(d2) - s.r;
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance(const plane_like<Dims, T1> &p, const sphere_like<Dims, T0> &s) {
+  return distance(s, p);
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance2(const sphere_like<Dims, T0> &s, const plane_like<Dims, T1> &p) {
+  auto d = distance(s, p);
+  return d * d;
+}
+
+template <std::size_t Dims, typename T0, typename T1>
+auto distance2(const plane_like<Dims, T1> &p, const sphere_like<Dims, T0> &s) {
+  return distance2(s, p);
+}
+
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto distance(const tf::rss_like<Dims, Policy0> &rss0,
               const tf::rss_like<Dims, Policy1> &rss1) {

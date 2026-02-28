@@ -13,7 +13,7 @@
     "typecheck": "nuxt typecheck"
   },
   "dependencies": {
-    "@iconify-json/lucide": "^1.2.94",
+    "@iconify-json/lucide": "^1.2.95",
     "@iconify-json/simple-icons": "^1.2.71",
     "@iconify-json/vscode-icons": "^1.2.44",
     "@nuxt/content": "^3.12.0",
@@ -54,7 +54,8 @@
       "tar@<=7.5.3": ">=7.5.4",
       "lodash-es@>=4.0.0 <=4.17.22": ">=4.17.23",
       "lodash@>=4.0.0 <=4.17.22": ">=4.17.23",
-      "tar@<7.5.7": ">=7.5.7"
+      "tar@<7.5.7": ">=7.5.7",
+      "serialize-javascript@<=7.0.2": ">=7.0.3"
     },
     "ignoredBuiltDependencies": [
       "@parcel/watcher",

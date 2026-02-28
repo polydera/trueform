@@ -23,12 +23,6 @@ void register_mesh(nanobind::module_ &m);
 
 void register_edge_mesh(nanobind::module_ &m);
 
-void register_point_cloud_neighbor_search(nanobind::module_ &m);
-
-void register_mesh_neighbor_search(nanobind::module_ &m);
-
-void register_edge_mesh_neighbor_search(nanobind::module_ &m);
-
 void register_point_cloud_neighbor_search_point_cloud(nanobind::module_ &m);
 
 void register_edge_mesh_neighbor_search_edge_mesh(nanobind::module_ &m);
@@ -40,24 +34,6 @@ void register_mesh_neighbor_search_point_cloud(nanobind::module_ &m);
 void register_mesh_neighbor_search_edge_mesh(nanobind::module_ &m);
 
 void register_mesh_neighbor_search_mesh(nanobind::module_ &m);
-
-void register_point_cloud_ray_cast(nanobind::module_ &m);
-
-void register_mesh_ray_cast(nanobind::module_ &m);
-
-void register_edge_mesh_ray_cast(nanobind::module_ &m);
-
-void register_mesh_intersects_primitive(nanobind::module_ &m);
-
-void register_edge_mesh_intersects_primitive(nanobind::module_ &m);
-
-void register_point_cloud_intersects_primitive(nanobind::module_ &m);
-
-void register_mesh_gather_ids_primitive(nanobind::module_ &m);
-
-void register_edge_mesh_gather_ids_primitive(nanobind::module_ &m);
-
-void register_point_cloud_gather_ids_primitive(nanobind::module_ &m);
 
 void register_point_cloud_gather_ids_point_cloud(nanobind::module_ &m);
 
@@ -82,6 +58,13 @@ void register_mesh_intersects_point_cloud(nanobind::module_ &m);
 void register_mesh_intersects_edge_mesh(nanobind::module_ &m);
 
 void register_mesh_intersects_mesh(nanobind::module_ &m);
+
+auto register_prim_prim_ops(nanobind::module_ &m) -> void;
+auto register_prim_geometry_ops(nanobind::module_ &m) -> void;
+
+auto register_mesh_fp(nanobind::module_ &m) -> void;
+auto register_edge_mesh_fp(nanobind::module_ &m) -> void;
+auto register_point_cloud_fp(nanobind::module_ &m) -> void;
 
 void register_spatial_module(nanobind::module_ &m);
 

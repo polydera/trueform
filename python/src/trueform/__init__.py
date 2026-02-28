@@ -14,13 +14,12 @@ except ImportError:
 
 # Core data structures
 from ._spatial import PointCloud, Mesh, EdgeMesh
-from ._core import closest_metric_point_pair, closest_metric_point
 from ._core import OffsetBlockedArray, as_offset_blocked
 # Top-level functions
-from .ray_cast import ray_cast
-from .intersects import intersects
-from .distance import distance, distance2
-from .distance_field import distance_field
+from ._spatial.ray_cast import ray_cast
+from ._spatial.intersects import intersects
+from ._spatial.distance import distance, distance2
+from ._spatial.closest_point import closest_metric_point_pair, closest_metric_point, closest_point_pair
 from ._intersect import isocontours, intersection_curves, self_intersection_curves
 from ._cut import isobands, boolean_union, boolean_intersection, boolean_difference, embedded_self_intersection_curves, embedded_intersection_curves
 from ._clean import cleaned
@@ -38,7 +37,7 @@ from ._remesh import decimated, isotropic_remeshed
 from ._io import read_stl, write_stl, read_obj, write_obj
 
 # Primitives
-from ._primitives import Point, Segment, Polygon, AABB, Ray, Line, Plane
+from ._primitives import Primitive, PrimitiveType, Point, Segment, Triangle, Polygon, AABB, Ray, Line, Plane
 
 __all__ = [
     # Core
@@ -49,11 +48,11 @@ __all__ = [
     'as_offset_blocked',
     'closest_metric_point_pair',
     'closest_metric_point',
+    'closest_point_pair',
     'ray_cast',
     'intersects',
     'distance',
     'distance2',
-    'distance_field',
     'isocontours',
     'isobands',
     'intersection_curves',
@@ -123,6 +122,7 @@ __all__ = [
     'read_obj',
     'write_obj',
     # Primitives
-    'Point', 'Segment', 'Polygon', 'AABB', 'Ray', 'Line', 'Plane',
+    'Primitive', 'PrimitiveType',
+    'Point', 'Segment', 'Triangle', 'Polygon', 'AABB', 'Ray', 'Line', 'Plane',
     '__version__',
 ]

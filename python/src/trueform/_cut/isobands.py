@@ -76,7 +76,7 @@ def isobands(
     >>> faces, points = tf.read_stl("mesh.stl")
     >>> mesh = tf.Mesh(faces, points)
     >>> plane = tf.Plane(normal=[0.0, 0.0, 1.0], offset=0.0)
-    >>> distances = tf.distance_field(mesh.points, plane)
+    >>> distances = tf.distance(tf.Point(mesh.points), plane)
     >>>
     >>> # Extract isobands at different height levels using Mesh
     >>> (band_faces, band_points), labels = tf.isobands(mesh, distances, [-1.0, 0.0, 1.0])

@@ -69,115 +69,102 @@ def transformed(
 
     # Extract rotation part (translation handled via homogeneous coordinates)
     R = transformation[:dims, :dims]  # Rotation matrix
+    dtype = primitive.data.dtype
 
-    # Helper: Transform a point (affine transformation)
-    def transform_point(pt):
-        """Apply affine transformation: R*pt + t"""
-        homogeneous = np.append(pt, 1)
-        return transformation[:dims] @ homogeneous
+    # Vectorized helpers that handle both single and batch shapes.
+    # Any shape (..., D) is flattened to (M, D), transformed, and reshaped back.
 
-    # Helper: Transform a vector/direction (rotation only)
-    def transform_vector(vec):
-        """Apply rotation only: R*vec"""
-        return R @ vec
+    def transform_points(pts):
+        """Apply affine transformation to point(s). Shape (..., D) -> (..., D)."""
+        shape = pts.shape
+        flat = pts.reshape(-1, dims)
+        ones = np.ones((flat.shape[0], 1), dtype=dtype)
+        homo = np.hstack([flat, ones])
+        result = homo @ transformation[:dims].T
+        return result.reshape(shape).astype(dtype)
+
+    def transform_vectors(vecs):
+        """Apply rotation to vector(s). Shape (..., D) -> (..., D)."""
+        shape = vecs.shape
+        flat = vecs.reshape(-1, dims)
+        result = flat @ R.T
+        return result.reshape(shape).astype(dtype)
 
     # Dispatch based on primitive type
     if prim_type is Point:
-        new_data = transform_point(primitive.data)
-        return Point(new_data)
+        # Single (D,) or batch (N, D) - all entries are points
+        return Point(transform_points(primitive.data))
 
     elif prim_type is Segment:
-        # Transform both endpoints
-        pt0 = primitive.data[0]
-        pt1 = primitive.data[1]
-        new_data = np.array([
-            transform_point(pt0),
-            transform_point(pt1)
-        ], dtype=primitive.data.dtype)
-        return Segment(new_data)
+        # Single (2, D) or batch (N, 2, D) - all entries are point coords
+        return Segment(transform_points(primitive.data))
 
     elif prim_type is Polygon:
-        # Transform all vertices
-        new_data = np.array([
-            transform_point(pt) for pt in primitive.data
-        ], dtype=primitive.data.dtype)
-        return Polygon(new_data)
+        # Single (V, D) or batch (N, V, D) - all entries are point coords
+        return Polygon(transform_points(primitive.data))
 
     elif prim_type is AABB:
-        # Efficient AABB transformation without transforming all 8 corners
-        # Method: Transform center and half-extents separately
-        center = (primitive.data[0] + primitive.data[1]) / 2
-        half_extent = (primitive.data[1] - primitive.data[0]) / 2
+        # Single (2, D) or batch (N, 2, D)
+        min_pts = primitive.data[..., 0, :]  # (..., D)
+        max_pts = primitive.data[..., 1, :]  # (..., D)
+        center = (min_pts + max_pts) / 2
+        half_extent = (max_pts - min_pts) / 2
 
-        # Transform center as a point
-        new_center = transform_point(center)
+        new_center = transform_points(center)
+        # |R|^T @ half_extent, vectorized for any leading dims
+        he_shape = half_extent.shape
+        new_half_extent = half_extent.reshape(-1, dims) @ np.abs(R).T
+        new_half_extent = new_half_extent.reshape(he_shape).astype(dtype)
 
-        # Transform half-extents using absolute rotation values
-        # This accounts for potential axis flipping
-        new_half_extent = np.abs(R) @ half_extent
-
-        # Reconstruct AABB
         new_min = new_center - new_half_extent
         new_max = new_center + new_half_extent
-        new_data = np.array([new_min, new_max], dtype=primitive.data.dtype)
         return AABB(min=new_min, max=new_max)
 
     elif prim_type is Ray:
-        # Transform origin (point) and direction (vector)
-        origin = primitive.data[0]
-        direction = primitive.data[1]
+        # Single (2, D) or batch (N, 2, D)
+        origin = primitive.data[..., 0, :]     # (..., D)
+        direction = primitive.data[..., 1, :]  # (..., D)
 
-        new_origin = transform_point(origin)
-        new_direction = transform_vector(direction)
+        new_origin = transform_points(origin)
+        new_direction = transform_vectors(direction)
+        new_direction = new_direction / np.linalg.norm(
+            new_direction, axis=-1, keepdims=True)
 
-        # Renormalize direction (transformation might scale it)
-        new_direction = new_direction / np.linalg.norm(new_direction)
-
-        new_data = np.array([new_origin, new_direction], dtype=primitive.data.dtype)
+        new_data = np.stack([new_origin, new_direction], axis=-2).astype(dtype)
         return Ray(data=new_data)
 
     elif prim_type is Line:
-        # Transform origin (point) and direction (vector)
-        origin = primitive.data[0]
-        direction = primitive.data[1]
+        # Single (2, D) or batch (N, 2, D)
+        origin = primitive.data[..., 0, :]     # (..., D)
+        direction = primitive.data[..., 1, :]  # (..., D)
 
-        new_origin = transform_point(origin)
-        new_direction = transform_vector(direction)
+        new_origin = transform_points(origin)
+        new_direction = transform_vectors(direction)
+        new_direction = new_direction / np.linalg.norm(
+            new_direction, axis=-1, keepdims=True)
 
-        # Renormalize direction (transformation might scale it)
-        new_direction = new_direction / np.linalg.norm(new_direction)
-
-        new_data = np.array([new_origin, new_direction], dtype=primitive.data.dtype)
+        new_data = np.stack([new_origin, new_direction], axis=-2).astype(dtype)
         return Line(data=new_data)
 
     elif prim_type is Plane:
-        # For planes, we need to transform the normal and recompute d
-        # Plane equation: n·x + d = 0
-        # Normal transforms as: n' = (R^-T) * n (inverse transpose for normals)
-        # But for orthogonal transformations (rotation), R^-T = R
+        # Single (D+1,) or batch (N, D+1)
+        normal = primitive.data[..., :dims]  # (..., D)
+        d = primitive.data[..., dims]        # scalar or (N,)
 
-        # Get original normal and d
-        normal = primitive.data[:dims]
-        d = primitive.data[dims]
-
-        # Transform normal using inverse transpose of rotation
-        # For rotation matrices: R^-T = R, so we can use R directly
-        # For general transformations, we'd need: (R^-1)^T
         R_inv_T = np.linalg.inv(R).T
-        new_normal = R_inv_T @ normal
+        n_shape = normal.shape
+        new_normal = normal.reshape(-1, dims) @ R_inv_T.T
+        new_normal = new_normal.reshape(n_shape)
+        new_normal = new_normal / np.linalg.norm(
+            new_normal, axis=-1, keepdims=True)
 
-        # Renormalize
-        new_normal = new_normal / np.linalg.norm(new_normal)
+        # Reconstruct d from a point on the original plane: p = -d * n
+        point_on_plane = -np.expand_dims(d, -1) * normal
+        transformed_pt = transform_points(point_on_plane)
+        new_d = -np.einsum('...i,...i->...', new_normal, transformed_pt)
 
-        # Recompute d from transformed normal and a point on the plane
-        # Original point on plane: any point where n·p + d = 0
-        # Use origin projection: p = -d * n
-        point_on_plane = -d * normal
-        transformed_point = transform_point(point_on_plane)
-        new_d = -np.dot(new_normal, transformed_point)
-
-        # Reconstruct plane data: [nx, ny, nz, d]
-        new_data = np.append(new_normal, new_d).astype(primitive.data.dtype)
+        new_data = np.concatenate(
+            [new_normal, np.expand_dims(new_d, -1)], axis=-1).astype(dtype)
         return Plane(new_data)
 
     else:

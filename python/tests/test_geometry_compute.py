@@ -525,6 +525,147 @@ def test_point_normals_matches_mesh_property(index_dtype, real_dtype):
 
 
 # ==============================================================================
+# Triangle Primitive normals Tests
+# ==============================================================================
+
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_normals_triangle_single(real_dtype):
+    """Normal of a single 3D triangle in the XY plane points along Z."""
+    tri = tf.Triangle(np.array([
+        [0, 0, 0],
+        [1, 0, 0],
+        [0, 1, 0]
+    ], dtype=real_dtype))
+
+    n = tf.normals(tri)
+    assert n.shape == (3,)
+    assert n.dtype == real_dtype
+    # Cross product of (1,0,0)x(0,1,0) = (0,0,1)
+    np.testing.assert_allclose(np.abs(n), [0, 0, 1], atol=1e-6)
+
+
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_normals_triangle_single_unit_vector(real_dtype):
+    """Normal of a single triangle is a unit vector."""
+    tri = tf.Triangle(np.array([
+        [1, 2, 3],
+        [4, 5, 3],
+        [2, 7, 3]
+    ], dtype=real_dtype))
+
+    n = tf.normals(tri)
+    length = np.linalg.norm(n)
+    np.testing.assert_allclose(length, 1.0, atol=1e-6)
+
+
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_normals_triangle_batch(real_dtype):
+    """Normals of a batch of triangles returns (N, 3) array."""
+    data = np.array([
+        [[0, 0, 0], [1, 0, 0], [0, 1, 0]],   # normal ~ (0, 0, 1)
+        [[0, 0, 0], [0, 1, 0], [0, 0, 1]],   # normal ~ (1, 0, 0)
+        [[0, 0, 0], [0, 0, 1], [1, 0, 0]],   # normal ~ (0, 1, 0)
+    ], dtype=real_dtype)
+    tris = tf.Triangle(data)
+
+    n = tf.normals(tris)
+    assert n.shape == (3, 3)
+    assert n.dtype == real_dtype
+
+    # All should be unit vectors
+    lengths = np.linalg.norm(n, axis=1)
+    np.testing.assert_allclose(lengths, 1.0, atol=1e-6)
+
+
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_normals_triangle_batch_values(real_dtype):
+    """Batch triangle normals have correct directions."""
+    # Triangle in XY plane → normal along Z
+    data = np.array([
+        [[0, 0, 0], [1, 0, 0], [0, 1, 0]],
+    ], dtype=real_dtype)
+    tris = tf.Triangle(data)
+
+    n = tf.normals(tris)
+    np.testing.assert_allclose(np.abs(n[0]), [0, 0, 1], atol=1e-6)
+
+
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_normals_triangle_2d_raises(real_dtype):
+    """Normals raises ValueError for 2D triangles."""
+    tri = tf.Triangle(np.array([
+        [0, 0], [1, 0], [0, 1]
+    ], dtype=real_dtype))
+
+    with pytest.raises(ValueError, match="3D"):
+        tf.normals(tri)
+
+
+# ==============================================================================
+# Polygon Primitive normals Tests
+# ==============================================================================
+
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_normals_polygon_single(real_dtype):
+    """Normal of a single 3D polygon in the XY plane points along Z."""
+    poly = tf.Polygon(np.array([
+        [0, 0, 0],
+        [1, 0, 0],
+        [1, 1, 0],
+        [0, 1, 0]
+    ], dtype=real_dtype))
+
+    n = tf.normals(poly)
+    assert n.shape == (3,)
+    assert n.dtype == real_dtype
+    np.testing.assert_allclose(np.abs(n), [0, 0, 1], atol=1e-6)
+
+
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_normals_polygon_single_unit_vector(real_dtype):
+    """Normal of a single polygon is a unit vector."""
+    poly = tf.Polygon(np.array([
+        [1, 2, 3],
+        [4, 5, 3],
+        [2, 7, 3],
+        [0, 4, 3]
+    ], dtype=real_dtype))
+
+    n = tf.normals(poly)
+    length = np.linalg.norm(n)
+    np.testing.assert_allclose(length, 1.0, atol=1e-6)
+
+
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_normals_polygon_batch(real_dtype):
+    """Normals of a batch of polygons returns (N, 3) array."""
+    data = np.array([
+        [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]],   # XY plane
+        [[0, 0, 0], [0, 1, 0], [0, 1, 1], [0, 0, 1]],   # YZ plane
+    ], dtype=real_dtype)
+    polys = tf.Polygon(data)
+
+    n = tf.normals(polys)
+    assert n.shape == (2, 3)
+    assert n.dtype == real_dtype
+
+    # All should be unit vectors
+    lengths = np.linalg.norm(n, axis=1)
+    np.testing.assert_allclose(lengths, 1.0, atol=1e-6)
+
+
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_normals_polygon_2d_raises(real_dtype):
+    """Normals raises ValueError for 2D polygons."""
+    poly = tf.Polygon(np.array([
+        [0, 0], [1, 0], [1, 1], [0, 1]
+    ], dtype=real_dtype))
+
+    with pytest.raises(ValueError, match="3D"):
+        tf.normals(poly)
+
+
+# ==============================================================================
 # Main runner
 # ==============================================================================
 

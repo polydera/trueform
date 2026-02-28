@@ -7,12 +7,14 @@ Commercial licensing available via info@polydera.com.
 https://github.com/polydera/trueform
 """
 
+from .primitive import Primitive, PrimitiveType
 from .point import Point
 from .segment import Segment
+from .triangle import Triangle
 from .polygon import Polygon
 from .aabb import AABB
 from .ray import Ray
 from .line import Line
 from .plane import Plane
 
-__all__ = ['Point', 'Segment', 'Polygon', 'AABB', 'Ray', 'Line', 'Plane']
+__all__ = ['Primitive', 'PrimitiveType', 'Point', 'Segment', 'Triangle', 'Polygon', 'AABB', 'Ray', 'Line', 'Plane']

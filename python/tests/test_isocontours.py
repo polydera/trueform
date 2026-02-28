@@ -43,7 +43,7 @@ def test_single_threshold(dtype):
 
     # Create scalar field (distance to z=0.5 plane)
     plane = tf.Plane(np.array([0, 0, 1, -0.5], dtype=dtype))
-    scalar_field = tf.distance_field(mesh.points, plane)
+    scalar_field = tf.distance(tf.Point(mesh.points), plane)
 
     # Extract isocontour at 0.0 (z=0.5 plane)
     paths, points_out = tf.isocontours(mesh, scalar_field, 0.0)
@@ -78,7 +78,7 @@ def test_multiple_thresholds(dtype):
 
     # Create scalar field
     plane = tf.Plane(np.array([0, 0, 1, 0], dtype=dtype))
-    scalar_field = tf.distance_field(mesh.points, plane)
+    scalar_field = tf.distance(tf.Point(mesh.points), plane)
 
     # Extract multiple isocontours
     thresholds = np.array([0.0, 0.5, 1.0], dtype=dtype)
@@ -97,8 +97,8 @@ def test_multiple_thresholds(dtype):
 
 
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
-def test_with_distance_field(dtype):
-    """Test isocontours using distance_field for scalar values"""
+def test_with_batch_distance(dtype):
+    """Test isocontours using batch distance for scalar values"""
     # Create mesh from STL-like data
     faces = np.array([
         [0, 1, 2], [0, 2, 3], [0, 3, 4], [0, 4, 1],
@@ -116,7 +116,7 @@ def test_with_distance_field(dtype):
 
     # Create scalar field using distance to horizontal plane
     plane = tf.Plane(np.array([0, 0, 1, 0], dtype=dtype))
-    distances = tf.distance_field(mesh.points, plane)
+    distances = tf.distance(tf.Point(mesh.points), plane)
 
     # Extract isocontour at z=0
     paths, curve_points = tf.isocontours(mesh, distances, 0.0)
@@ -261,7 +261,7 @@ def test_iteration_over_curves():
     mesh = tf.Mesh(faces, points)
 
     plane = tf.Plane(np.array([0, 0, 1, 0], dtype=np.float32))
-    scalar_field = tf.distance_field(mesh.points, plane)
+    scalar_field = tf.distance(tf.Point(mesh.points), plane)
 
     paths, curve_points = tf.isocontours(mesh, scalar_field, 0.0)
 
@@ -335,7 +335,7 @@ def test_dynamic_mesh_isocontours(mesh_type):
 
     # Create scalar field using distance to horizontal plane
     plane = tf.Plane(np.array([0, 0, 1, 0], dtype=np.float32))
-    distances = tf.distance_field(mesh.points, plane)
+    distances = tf.distance(tf.Point(mesh.points), plane)
 
     # Extract isocontour at z=0
     paths, curve_points = tf.isocontours(mesh, distances, 0.0)
@@ -368,7 +368,7 @@ def test_dynamic_multiple_thresholds(mesh_type):
 
     # Create scalar field
     plane = tf.Plane(np.array([0, 0, 1, 0], dtype=np.float32))
-    scalar_field = tf.distance_field(mesh.points, plane)
+    scalar_field = tf.distance(tf.Point(mesh.points), plane)
 
     # Extract multiple isocontours
     thresholds = np.array([0.0, 0.5, 1.0], dtype=np.float32)
