@@ -39,3 +39,4 @@ __pycache__/
 include/trueform/version.hpp
 typescript/LICENSE
 typescript/LICENSE.noncommercial
+typescript/package-lock.json

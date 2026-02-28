@@ -20,6 +20,7 @@ export function test(name, fn) {
 }
 
 export function log(text, cls = "") {
+  if (typeof document === "undefined") return;
   const div = document.createElement("div");
   div.className = cls;
   div.textContent = text;
