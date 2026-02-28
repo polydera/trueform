@@ -31,11 +31,11 @@
     "nuxt-og-image": "^5.1.13",
     "nuxt-schema-org": "^5.0.10",
     "stats-gl": "^4.1.0",
-    "three": "^0.182.0"
+    "three": "^0.183.2"
   },
   "devDependencies": {
     "@nuxt/eslint": "^1.15.2",
-    "@types/three": "^0.182.0",
+    "@types/three": "^0.183.1",
     "eslint": "^10.0.2",
     "typescript": "^5.9.3",
     "vue-tsc": "^3.2.5",
