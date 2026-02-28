@@ -26,8 +26,14 @@ auto sync_boolean(wasm_mesh &m0, wasm_mesh &m1, tf::boolean_op op)
     -> labeled_cut_result {
   bool has0 = m0.has_transformation();
   bool has1 = m1.has_transformation();
+  auto fm0 = m0.face_membership_range();
+  auto mel0 = m0.manifold_edge_link_range();
+  auto fm1 = m1.face_membership_range();
+  auto mel1 = m1.manifold_edge_link_range();
   auto make_return = [&](auto &&poly0, auto &&poly1) -> labeled_cut_result {
-    auto [poly, labels] = tf::make_boolean(poly0, poly1, op);
+    auto [poly, labels] = tf::make_boolean(
+        poly0 | tf::tag(m0.tree()) | tf::tag(fm0) | tf::tag(mel0),
+        poly1 | tf::tag(m1.tree()) | tf::tag(fm1) | tf::tag(mel1), op);
     return {wasm_mesh::from_polygons_buffer(std::move(poly)),
             wasm_ndarray<std::int8_t>::from_buffer(std::move(labels))};
   };
@@ -51,10 +57,16 @@ auto sync_boolean_with_curves(wasm_mesh &m0, wasm_mesh &m1, tf::boolean_op op)
     -> labeled_cut_result_with_curves {
   bool has0 = m0.has_transformation();
   bool has1 = m1.has_transformation();
+  auto fm0 = m0.face_membership_range();
+  auto mel0 = m0.manifold_edge_link_range();
+  auto fm1 = m1.face_membership_range();
+  auto mel1 = m1.manifold_edge_link_range();
   auto make_return = [&](auto &&poly0,
                          auto &&poly1) -> labeled_cut_result_with_curves {
-    auto [poly, labels, curves] =
-        tf::make_boolean(poly0, poly1, op, tf::return_curves);
+    auto [poly, labels, curves] = tf::make_boolean(
+        poly0 | tf::tag(m0.tree()) | tf::tag(fm0) | tf::tag(mel0),
+        poly1 | tf::tag(m1.tree()) | tf::tag(fm1) | tf::tag(mel1),
+        op, tf::return_curves);
     return {wasm_mesh::from_polygons_buffer(std::move(poly)),
             wasm_ndarray<std::int8_t>::from_buffer(std::move(labels)),
             wasm_curves::from_curves_buffer(std::move(curves))};

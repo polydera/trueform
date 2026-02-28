@@ -35,5 +35,19 @@ export default defineContentConfig({
         })).optional()
       })
     })),
+    docsTs: defineCollection(asSitemapCollection({
+      type: 'page',
+      source: {
+        include: 'ts/**',
+      },
+      schema: z.object({
+        links: z.array(z.object({
+          label: z.string(),
+          icon: z.string(),
+          to: z.string(),
+          target: z.string().optional()
+        })).optional()
+      })
+    })),
   }
 })

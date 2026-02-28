@@ -375,6 +375,43 @@ auto div_scalar_inplace(wasm_ndarray<T> &a, T scalar) -> void {
 }
 
 // ============================================================================
+// mod (truncated remainder — matches JS % operator)
+// ============================================================================
+
+template <typename T>
+auto mod(const wasm_ndarray<T> &a, const wasm_ndarray<T> &b)
+    -> wasm_ndarray<T> {
+  return elementwise(a, b, [](T x, T y) -> T {
+    if constexpr (std::is_floating_point_v<T>) return std::fmod(x, y);
+    else return x % y;
+  });
+}
+
+template <typename T>
+auto mod_inplace(wasm_ndarray<T> &a, const wasm_ndarray<T> &b) -> void {
+  elementwise_inplace(a, b, [](T x, T y) -> T {
+    if constexpr (std::is_floating_point_v<T>) return std::fmod(x, y);
+    else return x % y;
+  });
+}
+
+template <typename T>
+auto mod_scalar(const wasm_ndarray<T> &a, T scalar) -> wasm_ndarray<T> {
+  return detail::scalar_op(a, scalar, [](T x, T y) -> T {
+    if constexpr (std::is_floating_point_v<T>) return std::fmod(x, y);
+    else return x % y;
+  });
+}
+
+template <typename T>
+auto mod_scalar_inplace(wasm_ndarray<T> &a, T scalar) -> void {
+  detail::scalar_op_inplace(a, scalar, [](T x, T y) -> T {
+    if constexpr (std::is_floating_point_v<T>) return std::fmod(x, y);
+    else return x % y;
+  });
+}
+
+// ============================================================================
 // Generic unary op
 // ============================================================================
 

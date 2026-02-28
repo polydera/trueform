@@ -31,7 +31,7 @@ const { data: surround } = await useAsyncData(
 const title = page.value.seo?.title || page.value.title;
 const description = page.value.seo?.description || page.value.description;
 
-const headline = computed(() => `${findPageHeadline(navigation?.value, page.value?.path)} | ${library.value === "cpp" ? "C++" : "PY"}`);
+const headline = computed(() => `${findPageHeadline(navigation?.value, page.value?.path)} | ${library.value === "cpp" ? "C++" : library.value === "py" ? "PY" : "TS"}`);
 
 // Generate OG image using nuxt-og-image with headline
 defineOgImageComponent("Docs", {

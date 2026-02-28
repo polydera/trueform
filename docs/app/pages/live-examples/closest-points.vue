@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { useWasmModule } from "@/composables/useWasmModule";
-import { PositioningExample } from "@/examples/PositioningExample";
+import { useTrueform } from "@/composables/useTrueform";
+import { ClosestPointsExample } from "@/examples/ClosestPointsExample";
 import { useExampleLoadingState } from "@/composables/useExampleLoadingState";
 import { useMeshSelection } from "@/composables/useMeshSelection";
 import { getExampleMetadata } from "@/utils/liveExamples";
@@ -20,22 +20,23 @@ if (metadata) {
 
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
-const { loadExampleWithAssets } = useWasmModule();
+const { load: loadTF } = useTrueform();
 const { isLoading, loadingMessage, loadingError, resetLoading, setLoadingMessage, failLoading, finishLoading } =
   useExampleLoadingState();
-const { meshSize, buildMeshes, formatPolygonLabel } = useMeshSelection();
+const { meshSize, meshUrl, meshFilename, formatPolygonLabel } = useMeshSelection();
 
 const threejsContainer = ref<HTMLElement | null>(null);
-let exampleClass: PositioningExample | null = null;
+let exampleClass: ClosestPointsExample | null = null;
+
 const meshCount = 2;
-const meshes = computed(() => buildMeshes(meshCount));
 const polygonLabel = computed(() => formatPolygonLabel(meshCount));
 
 const avgTime = ref("0");
-const updateAvgTime = () => {
+const getAvgTime = () => {
   if (exampleClass) {
     avgTime.value = exampleClass.getAverageTime().toFixed(2);
   }
+  return 0;
 };
 
 const badge = computed(() => ({
@@ -62,29 +63,31 @@ const disposeExample = () => {
 const loadThreejs = async () => {
   const loadId = ++currentLoadId;
   disposeExample();
-  exampleClass = await loadExampleWithAssets({
-    meshes: meshes.value,
-    skipOverlayIfCached: true,
-    loading: { resetLoading, setLoadingMessage, failLoading, finishLoading },
-    isTornDown: () => tearDownRequested || loadId !== currentLoadId,
-    createScene: (wasmInstance, meshFilenames) => {
-      const el = threejsContainer.value;
-      if (!el) {
-        return null;
-      }
+  resetLoading();
 
-      const instance = new PositioningExample(
-        wasmInstance,
-        meshFilenames,
-        el,
-        isDark.value,
-      );
-      instance.refreshTimeValue = updateAvgTime;
-      // Update time after initial load
-      nextTick(() => updateAvgTime());
-      return instance;
-    },
-  });
+  try {
+    setLoadingMessage("Loading trueform...");
+    const tf = await loadTF();
+    if (tearDownRequested || loadId !== currentLoadId) { finishLoading(); return; }
+
+    setLoadingMessage("Fetching mesh...");
+    const resp = await fetch(meshUrl.value);
+    const fileBuffer = await resp.arrayBuffer();
+    if (tearDownRequested || loadId !== currentLoadId) { finishLoading(); return; }
+
+    setLoadingMessage("Initializing renderer...");
+    const el = threejsContainer.value;
+    if (!el) { finishLoading(); return; }
+
+    exampleClass = new ClosestPointsExample(tf, fileBuffer, meshFilename.value, el, isDark.value);
+    exampleClass.refreshTimeValue = getAvgTime;
+    getAvgTime();
+    finishLoading();
+  } catch (error) {
+    if (!tearDownRequested && loadId === currentLoadId) {
+      failLoading(error);
+    }
+  }
 };
 
 watch(meshSize, () => loadThreejs(), { immediate: true });

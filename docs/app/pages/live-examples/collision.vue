@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useWasmModule } from "@/composables/useWasmModule";
+import { useTrueform } from "@/composables/useTrueform";
 import { CollisionExample } from "@/examples/CollisionExample";
 import { useExampleLoadingState } from "@/composables/useExampleLoadingState";
 import { useMeshSelection } from "@/composables/useMeshSelection";
@@ -20,26 +20,32 @@ if (metadata) {
 
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
-const { loadExampleWithAssets } = useWasmModule();
-const {
-  isLoading,
-  loadingMessage,
-  loadingError,
-  resetLoading,
-  setLoadingMessage,
-  failLoading,
-  finishLoading,
-} = useExampleLoadingState();
-const { meshSize, buildMeshes, formatPolygonLabel } = useMeshSelection();
+const { load: loadTF } = useTrueform();
+const { isLoading, loadingMessage, loadingError, resetLoading, setLoadingMessage, failLoading, finishLoading } =
+  useExampleLoadingState();
+const { meshSize, meshUrl, meshFilename, formatPolygonLabel } = useMeshSelection();
 
 const threejsContainer = ref<HTMLElement | null>(null);
 let exampleClass: CollisionExample | null = null;
 
+const meshCount = 25; // 5x5 grid
+const polygonLabel = computed(() => formatPolygonLabel(meshCount));
+
 const avgTime = ref("0");
 const avgPickTime = ref("0");
-const meshCount = 25; // 5x5 grid as defined in collision_web.h
-const meshes = computed(() => buildMeshes(2)); // Only 2 unique meshes are loaded
-const polygonLabel = computed(() => formatPolygonLabel(meshCount));
+const getAvgTime = () => {
+  if (exampleClass) {
+    avgTime.value = exampleClass.getAverageTime().toFixed(2);
+    avgPickTime.value = exampleClass.getAveragePickTime().toFixed(2);
+  }
+  return 0;
+};
+
+const badge = computed(() => ({
+  icon: "i-lucide-gauge",
+  value: `${avgTime.value} ms`,
+  polygons: polygonLabel.value,
+}));
 
 let tearDownRequested = false;
 let currentLoadId = 0;
@@ -54,37 +60,32 @@ const disposeExample = () => {
 const loadThreejs = async () => {
   const loadId = ++currentLoadId;
   disposeExample();
-  exampleClass = await loadExampleWithAssets({
-    meshes: meshes.value,
-    skipOverlayIfCached: true,
-    loading: { resetLoading, setLoadingMessage, failLoading, finishLoading },
-    isTornDown: () => tearDownRequested || loadId !== currentLoadId,
-    createScene: (wasmInstance, meshFilenames) => {
-      const el = threejsContainer.value;
-      if (!el) {
-        return null;
-      }
+  resetLoading();
 
-      const instance = new CollisionExample(wasmInstance, meshFilenames, el, isDark.value);
-      instance.refreshTimeValue = getAvgTime;
-      return instance;
-    },
-  });
-};
+  try {
+    setLoadingMessage("Loading trueform...");
+    const tf = await loadTF();
+    if (tearDownRequested || loadId !== currentLoadId) { finishLoading(); return; }
 
-const getAvgTime = () => {
-  if (exampleClass) {
-    avgTime.value = exampleClass.getAverageTime().toFixed(2);
-    avgPickTime.value = exampleClass.getAveragePickTime().toFixed(2);
+    setLoadingMessage("Fetching mesh...");
+    const resp = await fetch(meshUrl.value);
+    const fileBuffer = await resp.arrayBuffer();
+    if (tearDownRequested || loadId !== currentLoadId) { finishLoading(); return; }
+
+    setLoadingMessage("Initializing renderer...");
+    const el = threejsContainer.value;
+    if (!el) { finishLoading(); return; }
+
+    exampleClass = new CollisionExample(tf, fileBuffer, meshFilename.value, el, isDark.value);
+    exampleClass.refreshTimeValue = getAvgTime;
+    getAvgTime();
+    finishLoading();
+  } catch (error) {
+    if (!tearDownRequested && loadId === currentLoadId) {
+      failLoading(error);
+    }
   }
-  return 0;
 };
-
-const badge = computed(() => ({
-  icon: "i-lucide-gauge",
-  value: `${avgTime.value} ms`,
-  polygons: polygonLabel.value,
-}));
 
 watch(meshSize, () => loadThreejs(), { immediate: true });
 

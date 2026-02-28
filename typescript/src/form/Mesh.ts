@@ -42,6 +42,15 @@ interface NativeMesh {
   manifold_edge_link(): NativeNDArray<Int32Array>;
   face_link(): NativeOffsetBlockedIntBuffer;
   vertex_link(): NativeOffsetBlockedIntBuffer;
+  set_face_membership(fm: NativeOffsetBlockedIntBuffer): void;
+  set_vertex_link(vl: NativeOffsetBlockedIntBuffer): void;
+  set_face_link(fl: NativeOffsetBlockedIntBuffer): void;
+  set_manifold_edge_link(mel: NativeNDArray<Int32Array>): void;
+  normals(): NativeNDArray<Float32Array>;
+  point_normals(): NativeNDArray<Float32Array>;
+  set_normals(n: NativeNDArray<Float32Array>): void;
+  set_point_normals(pn: NativeNDArray<Float32Array>): void;
+  ensure_tree(): void;
   destroy(): void;
   is_valid(): boolean;
   delete(): void;
@@ -139,6 +148,11 @@ export class Mesh {
     return new OffsetBlockedBuffer(this._handle.face_membership());
   }
 
+  /** Set precomputed face membership (bypasses lazy computation). */
+  set faceMembership(fm: OffsetBlockedBuffer) {
+    this._handle.set_face_membership(fm._handle);
+  }
+
   /**
    * Per-face neighbor faces via shared manifold edges, as NDArrayInt32 [F, 3].
    *
@@ -152,14 +166,54 @@ export class Mesh {
     return new NDArray(this._handle.manifold_edge_link(), "int32");
   }
 
+  /** Set precomputed manifold edge link (bypasses lazy computation). */
+  set manifoldEdgeLink(mel: NDArrayInt32) {
+    this._handle.set_manifold_edge_link(mel._handle);
+  }
+
   /** Per-face adjacent faces (faces sharing at least one vertex). */
   get faceLink(): OffsetBlockedBuffer {
     return new OffsetBlockedBuffer(this._handle.face_link());
   }
 
+  /** Set precomputed face link (bypasses lazy computation). */
+  set faceLink(fl: OffsetBlockedBuffer) {
+    this._handle.set_face_link(fl._handle);
+  }
+
   /** Per-vertex adjacent vertices (connected by an edge). */
   get vertexLink(): OffsetBlockedBuffer {
     return new OffsetBlockedBuffer(this._handle.vertex_link());
+  }
+
+  /** Set precomputed vertex link (bypasses lazy computation). */
+  set vertexLink(vl: OffsetBlockedBuffer) {
+    this._handle.set_vertex_link(vl._handle);
+  }
+
+  /** Face normals as NDArrayFloat32 [F, 3]. Lazily computed and cached. */
+  get normals(): NDArrayFloat32 {
+    return new NDArray(this._handle.normals(), "float32");
+  }
+
+  /** Set precomputed face normals (bypasses lazy computation). */
+  set normals(n: NDArrayFloat32) {
+    this._handle.set_normals(n._handle);
+  }
+
+  /** Vertex normals as NDArrayFloat32 [V, 3]. Lazily computed and cached. */
+  get pointNormals(): NDArrayFloat32 {
+    return new NDArray(this._handle.point_normals(), "float32");
+  }
+
+  /** Set precomputed vertex normals (bypasses lazy computation). */
+  set pointNormals(pn: NDArrayFloat32) {
+    this._handle.set_point_normals(pn._handle);
+  }
+
+  /** Pre-build the spatial AABB tree. No-op if already built and up-to-date. */
+  buildTree(): void {
+    this._handle.ensure_tree();
   }
 
   delete(): void {

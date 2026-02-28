@@ -1,7 +1,7 @@
 {
-  "name": "trueform",
-  "version": "0.1.0",
-  "description": "TypeScript bindings for trueform geometry library",
+  "name": "@polydera/trueform",
+  "version": "0.7.0",
+  "description": "Real-time geometric processing in TypeScript. WASM-backed NDArrays with vectorized operations, spatial queries, mesh booleans, and registration — at native speed in the browser and Node.js.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -13,14 +13,44 @@
   },
   "sideEffects": false,
   "scripts": {
-    "build": "tsc && node build.mjs",
+    "build": "node build.mjs",
     "typecheck": "tsc --noEmit"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE",
+    "LICENSE.noncommercial"
   ],
+  "keywords": [
+    "mesh",
+    "geometry",
+    "computational-geometry",
+    "mesh-processing",
+    "mesh-boolean",
+    "collision-detection",
+    "point-cloud",
+    "csg",
+    "wasm",
+    "ndarray",
+    "spatial-queries",
+    "isocontours"
+  ],
+  "homepage": "https://trueform.polydera.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/polydera/trueform",
+    "directory": "typescript"
+  },
+  "bugs": {
+    "url": "https://github.com/polydera/trueform/issues"
+  },
   "license": "SEE LICENSE IN LICENSE",
-  "author": "XLAB",
+  "author": {
+    "name": "Polydera",
+    "email": "info@polydera.com",
+    "url": "https://polydera.com"
+  },
   "devDependencies": {
     "esbuild": "^0.27.3",
     "typescript": "^5.9.3"

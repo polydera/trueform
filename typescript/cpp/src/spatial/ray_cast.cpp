@@ -13,11 +13,13 @@
 
 #include "trueform/core/algorithm/parallel_for_each.hpp"
 #include "trueform/core/ray_cast.hpp"
+#include "trueform/core/views/constant.hpp"
 #include "trueform/core/views/sequence_range.hpp"
 #include "trueform/spatial/ray_cast.hpp"
 #include "trueform/ts/core/promise.hpp"
 #include "trueform/ts/core/wasm_mesh.hpp"
 #include "trueform/ts/core/wasm_ndarray.hpp"
+#include "trueform/ts/core/wasm_point_cloud.hpp"
 #include "trueform/ts/spatial/prim_dispatch.hpp"
 #include "trueform/ts/spatial/result_types.hpp"
 #include <emscripten/bind.h>
@@ -72,9 +74,10 @@ auto rc_prim_single(const float *ray_ptr, const float *b, prim_type tb, int vb,
   }
 }
 
-auto rc_prim_batch(wasm_ndarray<float> &rays, wasm_ndarray<float> &b,
-                   prim_type tb, float min_t,
-                   float max_t) -> ray_cast_prim_batch_result {
+template <typename MinR, typename MaxR>
+auto rc_prim_batch_impl(wasm_ndarray<float> &rays, wasm_ndarray<float> &b,
+                        prim_type tb, MinR min_r,
+                        MaxR max_r) -> ray_cast_prim_batch_result {
   int vb = poly_verts(b, tb);
   int sb = stride_of(b, tb);
   bool b_rays = is_batch(rays, prim_type::ray);
@@ -95,7 +98,7 @@ auto rc_prim_batch(wasm_ndarray<float> &rays, wasm_ndarray<float> &b,
 
   auto compute = [=](int i) {
     auto r = rc_prim_single(pr + i * stride_ray, pb + i * stride_b, tb, vb,
-                            min_t, max_t);
+                            min_r[i], max_r[i]);
     h[i] = r.hit ? 1 : 0;
     t[i] = r.t;
   };
@@ -110,11 +113,29 @@ auto rc_prim_batch(wasm_ndarray<float> &rays, wasm_ndarray<float> &b,
           wasm_ndarray<float>::from_buffer(std::move(ts), {n})};
 }
 
+auto rc_prim_batch(wasm_ndarray<float> &rays, wasm_ndarray<float> &b,
+                   prim_type tb, float min_t,
+                   float max_t) -> ray_cast_prim_batch_result {
+  bool b_rays = is_batch(rays, prim_type::ray);
+  int n = b_rays ? batch_count(rays, prim_type::ray) : batch_count(b, tb);
+  return rc_prim_batch_impl(rays, b, tb, tf::make_constant_range(min_t, n),
+                            tf::make_constant_range(max_t, n));
+}
+
+auto rc_prim_batch_rc(wasm_ndarray<float> &rays, wasm_ndarray<float> &b,
+                      prim_type tb, wasm_ndarray<float> &min_ts,
+                      wasm_ndarray<float> &max_ts)
+    -> ray_cast_prim_batch_result {
+  return rc_prim_batch_impl(rays, b, tb, min_ts.make_range(),
+                            max_ts.make_range());
+}
+
 // ============================================================================
-// Form target helpers
+// Form target helpers — templated on FormT
 // ============================================================================
 
-auto rc_form_single(wasm_mesh &m, const float *ray_ptr, float min_t,
+template <typename FormT>
+auto rc_form_single(FormT &m, const float *ray_ptr, float min_t,
                     float max_t) -> ray_cast_result {
   auto ray = as_ray(ray_ptr);
   auto config = tf::make_ray_config(min_t, max_t);
@@ -124,8 +145,9 @@ auto rc_form_single(wasm_mesh &m, const float *ray_ptr, float min_t,
   });
 }
 
-auto rc_form_batch(wasm_mesh &m, wasm_ndarray<float> &rays, float min_t,
-                   float max_t) -> ray_cast_form_batch_result {
+template <typename FormT, typename MinR, typename MaxR>
+auto rc_form_batch_impl(FormT &m, wasm_ndarray<float> &rays, MinR min_r,
+                        MaxR max_r) -> ray_cast_form_batch_result {
   int n = batch_count(rays, prim_type::ray);
   const float *pr = rays.raw_data();
 
@@ -140,9 +162,9 @@ auto rc_form_batch(wasm_mesh &m, wasm_ndarray<float> &rays, float min_t,
   auto *d = ids.data();
 
   m.with_form([&](const auto &form) {
-    auto config = tf::make_ray_config(min_t, max_t);
     auto compute = [&](int i) {
       auto ray = as_ray(pr + i * 6);
+      auto config = tf::make_ray_config(min_r[i], max_r[i]);
       auto r = tf::ray_cast(ray, form, config);
       h[i] = bool(r) ? 1 : 0;
       t[i] = r.info.t;
@@ -158,6 +180,23 @@ auto rc_form_batch(wasm_mesh &m, wasm_ndarray<float> &rays, float min_t,
   return {wasm_ndarray<std::int8_t>::from_buffer(std::move(hits), {n}),
           wasm_ndarray<float>::from_buffer(std::move(ts), {n}),
           wasm_ndarray<int>::from_buffer(std::move(ids), {n})};
+}
+
+template <typename FormT>
+auto rc_form_batch(FormT &m, wasm_ndarray<float> &rays, float min_t,
+                   float max_t) -> ray_cast_form_batch_result {
+  int n = batch_count(rays, prim_type::ray);
+  return rc_form_batch_impl(m, rays, tf::make_constant_range(min_t, n),
+                            tf::make_constant_range(max_t, n));
+}
+
+template <typename FormT>
+auto rc_form_batch_rc(FormT &m, wasm_ndarray<float> &rays,
+                      wasm_ndarray<float> &min_ts,
+                      wasm_ndarray<float> &max_ts)
+    -> ray_cast_form_batch_result {
+  return rc_form_batch_impl(m, rays, min_ts.make_range(),
+                            max_ts.make_range());
 }
 
 // ============================================================================
@@ -176,11 +215,58 @@ auto sync_ray_cast_p(wasm_ndarray<float> &rays, wasm_ndarray<float> &b,
   return emscripten::val(rc_prim_batch(rays, b, tb, min_t, max_t));
 }
 
-auto sync_ray_cast_f(wasm_ndarray<float> &rays, wasm_mesh &m, float min_t,
-                     float max_t) -> emscripten::val {
+auto sync_ray_cast_p_rc(wasm_ndarray<float> &rays, wasm_ndarray<float> &b,
+                        int tb_int, wasm_ndarray<float> &min_ts,
+                        wasm_ndarray<float> &max_ts) -> emscripten::val {
+  auto tb = static_cast<prim_type>(tb_int);
+  bool br = is_batch(rays, prim_type::ray);
+  bool bb = is_batch(b, tb);
+  if (!br && !bb)
+    return emscripten::val(rc_prim_single(
+        rays.raw_data(), b.raw_data(), tb, poly_verts(b, tb),
+        min_ts.raw_data()[0], max_ts.raw_data()[0]));
+  return emscripten::val(rc_prim_batch_rc(rays, b, tb, min_ts, max_ts));
+}
+
+template <typename FormT>
+auto sync_rc_f(wasm_ndarray<float> &rays, FormT &m, float min_t,
+               float max_t) -> emscripten::val {
   if (!is_batch(rays, prim_type::ray))
     return emscripten::val(rc_form_single(m, rays.raw_data(), min_t, max_t));
   return emscripten::val(rc_form_batch(m, rays, min_t, max_t));
+}
+
+template <typename FormT>
+auto sync_rc_f_rc(wasm_ndarray<float> &rays, FormT &m,
+                  wasm_ndarray<float> &min_ts,
+                  wasm_ndarray<float> &max_ts) -> emscripten::val {
+  if (!is_batch(rays, prim_type::ray))
+    return emscripten::val(rc_form_single(m, rays.raw_data(),
+                                          min_ts.raw_data()[0],
+                                          max_ts.raw_data()[0]));
+  return emscripten::val(rc_form_batch_rc(m, rays, min_ts, max_ts));
+}
+
+auto sync_ray_cast_f(wasm_ndarray<float> &rays, wasm_mesh &m, float min_t,
+                     float max_t) -> emscripten::val {
+  return sync_rc_f(rays, m, min_t, max_t);
+}
+
+auto sync_ray_cast_f_rc(wasm_ndarray<float> &rays, wasm_mesh &m,
+                        wasm_ndarray<float> &min_ts,
+                        wasm_ndarray<float> &max_ts) -> emscripten::val {
+  return sync_rc_f_rc(rays, m, min_ts, max_ts);
+}
+
+auto sync_ray_cast_f_pc(wasm_ndarray<float> &rays, wasm_point_cloud &m,
+                        float min_t, float max_t) -> emscripten::val {
+  return sync_rc_f(rays, m, min_t, max_t);
+}
+
+auto sync_ray_cast_f_pc_rc(wasm_ndarray<float> &rays, wasm_point_cloud &m,
+                           wasm_ndarray<float> &min_ts,
+                           wasm_ndarray<float> &max_ts) -> emscripten::val {
+  return sync_rc_f_rc(rays, m, min_ts, max_ts);
 }
 
 // ============================================================================
@@ -213,23 +299,98 @@ auto async_ray_cast_p(wasm_ndarray<float> &rays, wasm_ndarray<float> &b,
   });
 }
 
-auto async_ray_cast_f(wasm_ndarray<float> &rays, wasm_mesh &m, float min_t,
-                      float max_t) -> promise_t {
+auto async_ray_cast_p_rc(wasm_ndarray<float> &rays, wasm_ndarray<float> &b,
+                         int tb_int, wasm_ndarray<float> &min_ts,
+                         wasm_ndarray<float> &max_ts) -> promise_t {
+  auto tb = static_cast<prim_type>(tb_int);
+  bool br = is_batch(rays, prim_type::ray);
+  bool bb = is_batch(b, tb);
+
+  if (!br && !bb) {
+    int vb = poly_verts(b, tb);
+    float mn = min_ts.raw_data()[0];
+    float mx = max_ts.raw_data()[0];
+    return promise(
+        [rays = rays, b = b, tb, vb, mn, mx]() -> ray_cast_result {
+          return rc_prim_single(
+              const_cast<wasm_ndarray<float> &>(rays).raw_data(),
+              const_cast<wasm_ndarray<float> &>(b).raw_data(), tb, vb, mn, mx);
+        });
+  }
+
+  return promise([rays = rays, b = b, tb, min_ts = min_ts,
+                  max_ts = max_ts]() -> ray_cast_prim_batch_result {
+    return rc_prim_batch_rc(const_cast<wasm_ndarray<float> &>(rays),
+                            const_cast<wasm_ndarray<float> &>(b), tb,
+                            const_cast<wasm_ndarray<float> &>(min_ts),
+                            const_cast<wasm_ndarray<float> &>(max_ts));
+  });
+}
+
+template <typename FormT>
+auto async_rc_f(wasm_ndarray<float> &rays, FormT &m, float min_t,
+                float max_t) -> promise_t {
   if (!is_batch(rays, prim_type::ray)) {
     return promise(
         [rays = rays, m = m, min_t, max_t]() -> ray_cast_result {
           return rc_form_single(
-              const_cast<wasm_mesh &>(m),
+              const_cast<FormT &>(m),
               const_cast<wasm_ndarray<float> &>(rays).raw_data(), min_t, max_t);
         });
   }
 
   return promise([rays = rays, m = m, min_t,
                   max_t]() -> ray_cast_form_batch_result {
-    return rc_form_batch(const_cast<wasm_mesh &>(m),
+    return rc_form_batch(const_cast<FormT &>(m),
                          const_cast<wasm_ndarray<float> &>(rays), min_t,
                          max_t);
   });
+}
+
+template <typename FormT>
+auto async_rc_f_rc(wasm_ndarray<float> &rays, FormT &m,
+                   wasm_ndarray<float> &min_ts,
+                   wasm_ndarray<float> &max_ts) -> promise_t {
+  if (!is_batch(rays, prim_type::ray)) {
+    float mn = min_ts.raw_data()[0];
+    float mx = max_ts.raw_data()[0];
+    return promise(
+        [rays = rays, m = m, mn, mx]() -> ray_cast_result {
+          return rc_form_single(
+              const_cast<FormT &>(m),
+              const_cast<wasm_ndarray<float> &>(rays).raw_data(), mn, mx);
+        });
+  }
+
+  return promise([rays = rays, m = m, min_ts = min_ts,
+                  max_ts = max_ts]() -> ray_cast_form_batch_result {
+    return rc_form_batch_rc(const_cast<FormT &>(m),
+                            const_cast<wasm_ndarray<float> &>(rays),
+                            const_cast<wasm_ndarray<float> &>(min_ts),
+                            const_cast<wasm_ndarray<float> &>(max_ts));
+  });
+}
+
+auto async_ray_cast_f(wasm_ndarray<float> &rays, wasm_mesh &m, float min_t,
+                      float max_t) -> promise_t {
+  return async_rc_f(rays, m, min_t, max_t);
+}
+
+auto async_ray_cast_f_rc(wasm_ndarray<float> &rays, wasm_mesh &m,
+                         wasm_ndarray<float> &min_ts,
+                         wasm_ndarray<float> &max_ts) -> promise_t {
+  return async_rc_f_rc(rays, m, min_ts, max_ts);
+}
+
+auto async_ray_cast_f_pc(wasm_ndarray<float> &rays, wasm_point_cloud &m,
+                         float min_t, float max_t) -> promise_t {
+  return async_rc_f(rays, m, min_t, max_t);
+}
+
+auto async_ray_cast_f_pc_rc(wasm_ndarray<float> &rays, wasm_point_cloud &m,
+                            wasm_ndarray<float> &min_ts,
+                            wasm_ndarray<float> &max_ts) -> promise_t {
+  return async_rc_f_rc(rays, m, min_ts, max_ts);
 }
 
 } // namespace
@@ -252,7 +413,15 @@ EMSCRIPTEN_BINDINGS(trueform_ray_cast) {
       .field("elementIds", &tf::ts::ray_cast_form_batch_result::element_ids);
 
   emscripten::function("ray_cast_p", &sync_ray_cast_p);
+  emscripten::function("ray_cast_p_rc", &sync_ray_cast_p_rc);
   emscripten::function("ray_cast_f", &sync_ray_cast_f);
+  emscripten::function("ray_cast_f_rc", &sync_ray_cast_f_rc);
+  emscripten::function("ray_cast_f_pc", &sync_ray_cast_f_pc);
+  emscripten::function("ray_cast_f_pc_rc", &sync_ray_cast_f_pc_rc);
   emscripten::function("dispatch_ray_cast_p", &async_ray_cast_p);
+  emscripten::function("dispatch_ray_cast_p_rc", &async_ray_cast_p_rc);
   emscripten::function("dispatch_ray_cast_f", &async_ray_cast_f);
+  emscripten::function("dispatch_ray_cast_f_rc", &async_ray_cast_f_rc);
+  emscripten::function("dispatch_ray_cast_f_pc", &async_ray_cast_f_pc);
+  emscripten::function("dispatch_ray_cast_f_pc_rc", &async_ray_cast_f_pc_rc);
 }

@@ -103,6 +103,7 @@
 #include "./core/intersects.hpp"                  // IWYU pragma: export
 #include "./core/interval.hpp"                    // IWYU pragma: export
 #include "./core/inverted.hpp"                    // IWYU pragma: export
+#include "./core/is_form.hpp"                     // IWYU pragma: export
 #include "./core/is_soup.hpp"                     // IWYU pragma: export
 #include "./core/largest_axis.hpp"                // IWYU pragma: export
 #include "./core/line.hpp"                        // IWYU pragma: export

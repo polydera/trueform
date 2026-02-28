@@ -12,22 +12,38 @@
  */
 
 import { ndarray } from "../ndarray/factories";
-import type { NDArrayFloat32 } from "../ndarray/NDArray";
+import type { NDArray, NDArrayFloat32 } from "../ndarray/NDArray";
 
-/** Axis specifier: principal axis name or arbitrary unit vector [x, y, z]. */
-export type Axis = "x" | "y" | "z" | [number, number, number];
+/** Axis specifier: principal axis name or arbitrary unit vector. */
+export type Axis = "x" | "y" | "z" | [number, number, number] | NDArray;
 
 const DEG_TO_RAD = Math.PI / 180;
+
+function toXYZ(v: [number, number, number] | NDArray): [number, number, number] {
+  if (Array.isArray(v)) return v;
+  const d = v.data as Float32Array;
+  return [d[0], d[1], d[2]];
+}
 
 /**
  * Returns a 4x4 translation matrix as NDArrayFloat32 [4, 4], row-major.
  */
-export function makeTranslation(x: number, y: number, z: number): NDArrayFloat32 {
+export function makeTranslation(v: [number, number, number] | NDArray): NDArrayFloat32;
+export function makeTranslation(x: number, y: number, z: number): NDArrayFloat32;
+export function makeTranslation(
+  xOrV: number | [number, number, number] | NDArray, y?: number, z?: number,
+): NDArrayFloat32 {
+  let tx: number, ty: number, tz: number;
+  if (typeof xOrV === "number") {
+    tx = xOrV; ty = y!; tz = z!;
+  } else {
+    [tx, ty, tz] = toXYZ(xOrV);
+  }
   // prettier-ignore
   return ndarray(new Float32Array([
-    1, 0, 0, x,
-    0, 1, 0, y,
-    0, 0, 1, z,
+    1, 0, 0, tx,
+    0, 1, 0, ty,
+    0, 0, 1, tz,
     0, 0, 0, 1,
   ]), [4, 4]);
 }
@@ -36,13 +52,13 @@ export function makeTranslation(x: number, y: number, z: number): NDArrayFloat32
  * Returns a 4x4 rotation matrix as NDArrayFloat32 [4, 4], row-major.
  *
  * @param degrees Rotation angle in degrees.
- * @param axis Principal axis ("x", "y", "z") or unit vector [x, y, z].
- * @param pivot Optional pivot point [x, y, z].
+ * @param axis Principal axis ("x", "y", "z") or unit vector.
+ * @param pivot Optional pivot point.
  */
 export function makeRotation(
   degrees: number,
   axis: Axis,
-  pivot?: [number, number, number],
+  pivot?: [number, number, number] | NDArray,
 ): NDArrayFloat32 {
   const rad = degrees * DEG_TO_RAD;
   const c = Math.cos(rad);
@@ -75,7 +91,7 @@ export function makeRotation(
       0,  0, 0, 1,
     ]);
   } else {
-    const [x, y, z] = axis;
+    const [x, y, z] = toXYZ(axis);
     const t = 1 - c;
     // prettier-ignore
     out = new Float32Array([
@@ -87,7 +103,7 @@ export function makeRotation(
   }
 
   if (pivot) {
-    const [px, py, pz] = pivot;
+    const [px, py, pz] = toXYZ(pivot);
     // T = translate(pivot) * R * translate(-pivot)
     // translation column = pivot - R * pivot
     out[3] = px - (out[0] * px + out[1] * py + out[2] * pz);
@@ -96,4 +112,21 @@ export function makeRotation(
   }
 
   return ndarray(out, [4, 4]);
+}
+
+/**
+ * Returns a 4x4 random rotation matrix as NDArrayFloat32 [4, 4], row-major.
+ *
+ * @param pivot Optional pivot point.
+ */
+export function makeRandomRotation(
+  pivot?: [number, number, number] | NDArray,
+): NDArrayFloat32 {
+  const r0 = Math.random() * 2 - 1;
+  const r1 = Math.random() * 2 - 1;
+  const r2 = Math.random() * 2 - 1;
+  const len = Math.sqrt(r0 * r0 + r1 * r1 + r2 * r2) || 1;
+  const axis: [number, number, number] = [r0 / len, r1 / len, r2 / len];
+  const degrees = Math.random() * 360;
+  return makeRotation(degrees, axis, pivot);
 }

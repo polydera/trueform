@@ -30,8 +30,13 @@ using namespace tf::ts;
 // ============================================================================
 
 auto sync_intersection_curves(wasm_mesh &m0, wasm_mesh &m1) -> wasm_curves {
-  auto cb = tf::make_intersection_curves(m0.polygons_range(),
-                                         m1.polygons_range());
+  auto fm0 = m0.face_membership_range();
+  auto mel0 = m0.manifold_edge_link_range();
+  auto fm1 = m1.face_membership_range();
+  auto mel1 = m1.manifold_edge_link_range();
+  auto cb = tf::make_intersection_curves(
+      m0.polygons_range() | tf::tag(m0.tree()) | tf::tag(fm0) | tf::tag(mel0),
+      m1.polygons_range() | tf::tag(m1.tree()) | tf::tag(fm1) | tf::tag(mel1));
   return wasm_curves::from_curves_buffer(std::move(cb));
 }
 
@@ -47,7 +52,10 @@ auto async_intersection_curves(wasm_mesh &m0, wasm_mesh &m1) -> promise_t {
 // ============================================================================
 
 auto sync_self_intersection_curves(wasm_mesh &m) -> wasm_curves {
-  auto cb = tf::make_self_intersection_curves(m.polygons_range());
+  auto fm = m.face_membership_range();
+  auto mel = m.manifold_edge_link_range();
+  auto cb = tf::make_self_intersection_curves(
+      m.polygons_range() | tf::tag(m.tree()) | tf::tag(fm) | tf::tag(mel));
   return wasm_curves::from_curves_buffer(std::move(cb));
 }
 

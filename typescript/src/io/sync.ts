@@ -13,6 +13,7 @@
 
 import { native } from "../native";
 import { Mesh } from "../form/Mesh";
+import { NDArray, NDArrayInt8 } from "../ndarray/NDArray";
 
 /** Read an STL file (binary or ASCII) into a triangle mesh. */
 export function readStl(data: ArrayBuffer | Uint8Array): Mesh {
@@ -24,4 +25,14 @@ export function readStl(data: ArrayBuffer | Uint8Array): Mesh {
 export function readObj(data: ArrayBuffer | Uint8Array): Mesh {
   const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
   return new Mesh(native().read_obj_buffer(bytes));
+}
+
+/** Serialize a mesh to binary STL format. */
+export function writeStl(mesh: Mesh): NDArrayInt8 {
+  return new NDArray(native().write_stl_buffer(mesh._handle), "int8");
+}
+
+/** Serialize a mesh to ASCII OBJ format. */
+export function writeObj(mesh: Mesh): NDArrayInt8 {
+  return new NDArray(native().write_obj_buffer(mesh._handle), "int8");
 }

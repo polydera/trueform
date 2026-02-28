@@ -19,6 +19,7 @@
 #include "../../reindex/concatenated.hpp"
 #include "../../reindex/return_index_map.hpp"
 #include "../arrangement_class.hpp"
+#include "../boolean_config.hpp"
 #include "../classify/tagged.hpp"
 #include "./ids_common.hpp"
 #include "./triangulate_cut_faces.hpp"
@@ -31,6 +32,7 @@ auto make_boolean(
     const tf::polygons<Policy1> &_polygons1,
     const tf::intersect::tagged_intersections<Index, RealT, Dims> &ibp,
     const tf::tagged_cut_faces<Index> &tcf,
+    const tf::boolean_config &config,
     std::array<tf::arrangement_class, 2> classes,
     std::integral_constant<bool, MakeMaps>) {
   auto make_polygons = [](const auto &form) {
@@ -42,7 +44,7 @@ auto make_boolean(
   auto polygons0 = make_polygons(_polygons0);
   auto polygons1 = make_polygons(_polygons1);
   auto [pal0, pal1] = tf::cut::make_classifications<LabelType>(
-      polygons0, polygons1, ibp, tcf, classes);
+      polygons0, polygons1, ibp, tcf, classes, config);
   tf::cut::polygon_arrangement_ids<Index> pai0;
   tf::cut::polygon_arrangement_ids<Index> pai1;
   tbb::parallel_invoke(
@@ -257,9 +259,10 @@ auto make_boolean(
     const tf::polygons<Policy1> &_polygons1,
     const tf::intersect::tagged_intersections<Index, RealT, Dims> &ibp,
     const tf::tagged_cut_faces<Index> &tcf,
+    const tf::boolean_config &config,
     std::array<tf::arrangement_class, 2> classes) {
-  return make_boolean<LabelType>(_polygons0, _polygons1, ibp, tcf, classes,
-                                 std::false_type{});
+  return make_boolean<LabelType>(_polygons0, _polygons1, ibp, tcf, config,
+                                 classes, std::false_type{});
 }
 
 template <typename LabelType, typename Policy0, typename Policy1,
@@ -269,8 +272,9 @@ auto make_boolean(
     const tf::polygons<Policy1> &_polygons1,
     const tf::intersect::tagged_intersections<Index, RealT, Dims> &ibp,
     const tf::tagged_cut_faces<Index> &tcf,
+    const tf::boolean_config &config,
     std::array<tf::arrangement_class, 2> classes, tf::return_index_map_t) {
-  return make_boolean<LabelType>(_polygons0, _polygons1, ibp, tcf, classes,
-                                 std::true_type{});
+  return make_boolean<LabelType>(_polygons0, _polygons1, ibp, tcf, config,
+                                 classes, std::true_type{});
 }
 } // namespace tf::cut

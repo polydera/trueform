@@ -56,9 +56,9 @@ export function point(arr: NDArrayFloat32): Point;
 export function point(
   ...args: any[]
 ): Point {
-  // point(ndarray)
+  // point(ndarray) — shared_view() bumps refcount so both sides own the buffer
   if (args[0] instanceof NDArray && !(args[0] instanceof Primitive)) {
-    return new Primitive(args[0]._handle, "point") as Point;
+    return new Primitive(args[0]._handle.shared_view(), "point") as Point;
   }
   // point(x, y) or point(x, y, z)
   if (typeof args[0] === "number") {
@@ -89,7 +89,7 @@ export function vector(
   ...args: any[]
 ): Vector {
   if (args[0] instanceof NDArray && !(args[0] instanceof Primitive)) {
-    return new Primitive(args[0]._handle, "vector") as Vector;
+    return new Primitive(args[0]._handle.shared_view(), "vector") as Vector;
   }
   if (typeof args[0] === "number") {
     const f32 = new Float32Array(args);
@@ -265,14 +265,16 @@ export function line(
 
 /** Create a plane from normal Vector and offset. */
 export function plane(normal: Vector, offset: number): Plane;
+/** Create a plane from normal NDArray and offset. */
+export function plane(normal: NDArrayFloat32, offset: number): Plane;
 /** Create a plane from a flat [a, b, c, d] array. */
 export function plane(data: number[] | Float32Array): Plane;
 export function plane(
-  normalOrData: Vector | number[] | Float32Array,
+  normalOrData: Vector | NDArrayFloat32 | number[] | Float32Array,
   offset?: number,
 ): Plane {
-  if (normalOrData instanceof Primitive) {
-    const n = normalOrData.data;
+  if (normalOrData instanceof NDArray) {
+    const n = normalOrData.data as Float32Array;
     const f32 = new Float32Array([n[0], n[1], n[2], offset!]);
     return makePrimitive(f32, [4], "plane") as Plane;
   }
@@ -337,7 +339,7 @@ export function polygon(
   dims?: number,
 ): Polygon {
   if (verticesOrData instanceof NDArray && !(verticesOrData instanceof Primitive)) {
-    return new Primitive(verticesOrData._handle, "polygon") as Polygon;
+    return new Primitive(verticesOrData._handle.shared_view(), "polygon") as Polygon;
   }
   if (Array.isArray(verticesOrData) && verticesOrData.length > 0
       && verticesOrData[0] instanceof Primitive) {

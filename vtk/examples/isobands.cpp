@@ -44,12 +44,20 @@ public:
   }
 
   auto OnMouseWheelBackward() -> void override {
+    if (this->Interactor->GetControlKey()) {
+      vtkInteractorStyleTrackballCamera::OnMouseWheelBackward();
+      return;
+    }
     _offset -= _spacing * 0.1f;
     update_cut_values();
     this->Interactor->Render();
   }
 
   auto OnMouseWheelForward() -> void override {
+    if (this->Interactor->GetControlKey()) {
+      vtkInteractorStyleTrackballCamera::OnMouseWheelForward();
+      return;
+    }
     _offset += _spacing * 0.1f;
     update_cut_values();
     this->Interactor->Render();

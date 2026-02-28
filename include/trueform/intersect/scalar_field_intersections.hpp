@@ -1,17 +1,18 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 #include "../core/algorithm/block_reduce.hpp"
+#include "../core/epsilon.hpp"
 #include "../core/polygons.hpp"
 #include "../core/views/enumerate.hpp"
 #include "./types/simple_intersections.hpp"
@@ -38,7 +39,7 @@ public:
   auto build(const tf::polygons<Policy> &polygons, const Range &scalar_field,
              typename Range::value_type cut_value = {}) {
     return build_impl(polygons, scalar_field, [cut_value](auto min, auto max) {
-      return std::make_pair(min < cut_value && max > cut_value, cut_value);
+      return std::make_pair(min <= cut_value && cut_value < max, cut_value);
     });
   }
 
@@ -90,15 +91,30 @@ private:
 
               auto t = (cut_value - scalar_field[id0]) /
                        (scalar_field[id1] - scalar_field[id0]);
-              auto created_point = polygon[v0] + t * edge;
-              Index pt_id = points.size();
-              points.push_back(created_point);
-              edge_point_ids.push_back({Index(id0), Index(id1), Index(pt_id)});
-              intersections.push_back(
-                  {Index(polygon_id),
-                   tf::intersect::intersection_target<Index>{
-                       Index(prev), tf::topo_type::edge},
-                   pt_id});
+
+              if (t < tf::epsilon<RealT>) {
+                // Vertex intersection: snap to original vertex position
+                Index pt_id = points.size();
+                points.push_back(polygon[v0]);
+                edge_point_ids.push_back(
+                    {Index(id0), Index(id0), Index(pt_id)});
+                intersections.push_back(
+                    {Index(polygon_id),
+                     tf::intersect::intersection_target<Index>{
+                         Index(v0), tf::topo_type::vertex},
+                     pt_id});
+              } else {
+                auto created_point = polygon[v0] + t * edge;
+                Index pt_id = points.size();
+                points.push_back(created_point);
+                edge_point_ids.push_back(
+                    {Index(id0), Index(id1), Index(pt_id)});
+                intersections.push_back(
+                    {Index(polygon_id),
+                     tf::intersect::intersection_target<Index>{
+                         Index(prev), tf::topo_type::edge},
+                     pt_id});
+              }
             }
           }
         },
@@ -137,8 +153,8 @@ private:
 
   template <typename T, typename Range>
   auto handle_cut(T min, T max, const Range &cut_values) {
-    // Find the first cut value strictly greater than min
-    auto it = std::upper_bound(cut_values.begin(), cut_values.end(), min);
+    // Find the first cut value >= min (half-open [min, max) convention)
+    auto it = std::lower_bound(cut_values.begin(), cut_values.end(), min);
 
     // Check if that cut value is still below max
     if (it == cut_values.end() || *it >= max)

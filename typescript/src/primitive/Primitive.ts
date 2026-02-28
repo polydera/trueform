@@ -13,6 +13,7 @@
 
 import { NDArray, NativeNDArray } from "../ndarray/NDArray";
 
+/** Discriminator for geometric primitive kinds. */
 export type PrimitiveType =
   | "point" | "vector" | "segment" | "triangle"
   | "ray" | "line" | "plane" | "aabb" | "polygon";
@@ -71,12 +72,21 @@ function singleNdim(type: PrimitiveType): number {
   }
 }
 
+/** A point in 2D or 3D space. Shape: `[D]` or batch `[N, D]`. */
 export type Point    = Primitive & { readonly type: "point" };
+/** A direction vector. Shape: `[D]` or batch `[N, D]`. */
 export type Vector   = Primitive & { readonly type: "vector" };
+/** A line segment defined by two endpoints. Shape: `[2, D]` or batch `[N, 2, D]`. */
 export type Segment  = Primitive & { readonly type: "segment" };
+/** A triangle defined by three vertices. Shape: `[3, D]` or batch `[N, 3, D]`. */
 export type Triangle = Primitive & { readonly type: "triangle" };
+/** A ray defined by origin and direction. Shape: `[2, D]` or batch `[N, 2, D]`. */
 export type Ray      = Primitive & { readonly type: "ray" };
+/** A line extending infinitely in both directions. Shape: `[2, D]` or batch `[N, 2, D]`. */
 export type Line     = Primitive & { readonly type: "line" };
+/** An infinite plane (ax+by+cz+d=0). Shape: `[4]` or batch `[N, 4]`. */
 export type Plane    = Primitive & { readonly type: "plane" };
+/** An axis-aligned bounding box. Shape: `[2, D]` or batch `[N, 2, D]`. */
 export type AABB     = Primitive & { readonly type: "aabb" };
+/** A polygon defined by ordered vertices. Shape: `[V, D]`. */
 export type Polygon  = Primitive & { readonly type: "polygon" };

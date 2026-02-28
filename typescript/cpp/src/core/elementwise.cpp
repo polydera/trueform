@@ -310,6 +310,71 @@ static auto async_div_scalar_inplace(tf::ts::wasm_ndarray<T> &a, T scalar)
 }
 
 // ============================================================================
+// Sync — mod
+// ============================================================================
+
+template <typename T>
+static auto sync_mod(tf::ts::wasm_ndarray<T> &a, tf::ts::wasm_ndarray<T> &b)
+    -> tf::ts::wasm_ndarray<T> {
+  return tf::ts::mod(a, b);
+}
+
+template <typename T>
+static auto sync_mod_scalar(tf::ts::wasm_ndarray<T> &a, T scalar)
+    -> tf::ts::wasm_ndarray<T> {
+  return tf::ts::mod_scalar(a, scalar);
+}
+
+template <typename T>
+static auto sync_mod_inplace(tf::ts::wasm_ndarray<T> &a,
+                              tf::ts::wasm_ndarray<T> &b) -> void {
+  tf::ts::mod_inplace(a, b);
+}
+
+template <typename T>
+static auto sync_mod_scalar_inplace(tf::ts::wasm_ndarray<T> &a, T scalar)
+    -> void {
+  tf::ts::mod_scalar_inplace(a, scalar);
+}
+
+// ============================================================================
+// Async — mod
+// ============================================================================
+
+template <typename T>
+static auto async_mod(tf::ts::wasm_ndarray<T> &a, tf::ts::wasm_ndarray<T> &b)
+    -> tf::ts::promise_t {
+  return tf::ts::promise([a, b]() { return tf::ts::mod(a, b); });
+}
+
+template <typename T>
+static auto async_mod_scalar(tf::ts::wasm_ndarray<T> &a, T scalar)
+    -> tf::ts::promise_t {
+  return tf::ts::promise(
+      [a, scalar]() { return tf::ts::mod_scalar(a, scalar); });
+}
+
+template <typename T>
+static auto async_mod_inplace(tf::ts::wasm_ndarray<T> &a,
+                               tf::ts::wasm_ndarray<T> &b)
+    -> tf::ts::promise_t {
+  return tf::ts::promise([a, b]() {
+    tf::ts::mod_inplace(const_cast<tf::ts::wasm_ndarray<T> &>(a), b);
+    return a;
+  });
+}
+
+template <typename T>
+static auto async_mod_scalar_inplace(tf::ts::wasm_ndarray<T> &a, T scalar)
+    -> tf::ts::promise_t {
+  return tf::ts::promise([a, scalar]() {
+    tf::ts::mod_scalar_inplace(const_cast<tf::ts::wasm_ndarray<T> &>(a),
+                                scalar);
+    return a;
+  });
+}
+
+// ============================================================================
 // Sync — unary ops
 // ============================================================================
 
@@ -1099,6 +1164,33 @@ EMSCRIPTEN_BINDINGS(trueform_elementwise) {
   emscripten::function("dispatch_div_scalar_inplace_int32",
                        &async_div_scalar_inplace<int>);
 
+  // --- mod: buffer ---
+  emscripten::function("mod_float32", &sync_mod<float>);
+  emscripten::function("mod_int32", &sync_mod<int>);
+  emscripten::function("mod_inplace_float32", &sync_mod_inplace<float>);
+  emscripten::function("mod_inplace_int32", &sync_mod_inplace<int>);
+  // --- mod: scalar ---
+  emscripten::function("mod_scalar_float32", &sync_mod_scalar<float>);
+  emscripten::function("mod_scalar_int32", &sync_mod_scalar<int>);
+  emscripten::function("mod_scalar_inplace_float32",
+                       &sync_mod_scalar_inplace<float>);
+  emscripten::function("mod_scalar_inplace_int32",
+                       &sync_mod_scalar_inplace<int>);
+
+  // --- Async: mod ---
+  emscripten::function("dispatch_mod_float32", &async_mod<float>);
+  emscripten::function("dispatch_mod_int32", &async_mod<int>);
+  emscripten::function("dispatch_mod_scalar_float32",
+                       &async_mod_scalar<float>);
+  emscripten::function("dispatch_mod_scalar_int32", &async_mod_scalar<int>);
+  emscripten::function("dispatch_mod_inplace_float32",
+                       &async_mod_inplace<float>);
+  emscripten::function("dispatch_mod_inplace_int32", &async_mod_inplace<int>);
+  emscripten::function("dispatch_mod_scalar_inplace_float32",
+                       &async_mod_scalar_inplace<float>);
+  emscripten::function("dispatch_mod_scalar_inplace_int32",
+                       &async_mod_scalar_inplace<int>);
+
   // ==========================================================================
   // Unary ops
   // ==========================================================================
@@ -1253,15 +1345,18 @@ EMSCRIPTEN_BINDINGS(trueform_elementwise) {
   emscripten::function("sub_int8", &sync_sub<std::int8_t>);
   emscripten::function("mul_int8", &sync_mul<std::int8_t>);
   emscripten::function("div_int8", &sync_div<std::int8_t>);
+  emscripten::function("mod_int8", &sync_mod<std::int8_t>);
   emscripten::function("add_inplace_int8", &sync_add_inplace<std::int8_t>);
   emscripten::function("sub_inplace_int8", &sync_sub_inplace<std::int8_t>);
   emscripten::function("mul_inplace_int8", &sync_mul_inplace<std::int8_t>);
   emscripten::function("div_inplace_int8", &sync_div_inplace<std::int8_t>);
+  emscripten::function("mod_inplace_int8", &sync_mod_inplace<std::int8_t>);
   // --- Sync: scalar ---
   emscripten::function("add_scalar_int8", &sync_add_scalar<std::int8_t>);
   emscripten::function("sub_scalar_int8", &sync_sub_scalar<std::int8_t>);
   emscripten::function("mul_scalar_int8", &sync_mul_scalar<std::int8_t>);
   emscripten::function("div_scalar_int8", &sync_div_scalar<std::int8_t>);
+  emscripten::function("mod_scalar_int8", &sync_mod_scalar<std::int8_t>);
   emscripten::function("add_scalar_inplace_int8",
                        &sync_add_scalar_inplace<std::int8_t>);
   emscripten::function("sub_scalar_inplace_int8",
@@ -1270,11 +1365,14 @@ EMSCRIPTEN_BINDINGS(trueform_elementwise) {
                        &sync_mul_scalar_inplace<std::int8_t>);
   emscripten::function("div_scalar_inplace_int8",
                        &sync_div_scalar_inplace<std::int8_t>);
+  emscripten::function("mod_scalar_inplace_int8",
+                       &sync_mod_scalar_inplace<std::int8_t>);
   // --- Async: buffer ---
   emscripten::function("dispatch_add_int8", &async_add<std::int8_t>);
   emscripten::function("dispatch_sub_int8", &async_sub<std::int8_t>);
   emscripten::function("dispatch_mul_int8", &async_mul<std::int8_t>);
   emscripten::function("dispatch_div_int8", &async_div<std::int8_t>);
+  emscripten::function("dispatch_mod_int8", &async_mod<std::int8_t>);
   emscripten::function("dispatch_add_inplace_int8",
                        &async_add_inplace<std::int8_t>);
   emscripten::function("dispatch_sub_inplace_int8",
@@ -1283,6 +1381,8 @@ EMSCRIPTEN_BINDINGS(trueform_elementwise) {
                        &async_mul_inplace<std::int8_t>);
   emscripten::function("dispatch_div_inplace_int8",
                        &async_div_inplace<std::int8_t>);
+  emscripten::function("dispatch_mod_inplace_int8",
+                       &async_mod_inplace<std::int8_t>);
   // --- Async: scalar ---
   emscripten::function("dispatch_add_scalar_int8",
                        &async_add_scalar<std::int8_t>);
@@ -1292,6 +1392,8 @@ EMSCRIPTEN_BINDINGS(trueform_elementwise) {
                        &async_mul_scalar<std::int8_t>);
   emscripten::function("dispatch_div_scalar_int8",
                        &async_div_scalar<std::int8_t>);
+  emscripten::function("dispatch_mod_scalar_int8",
+                       &async_mod_scalar<std::int8_t>);
   emscripten::function("dispatch_add_scalar_inplace_int8",
                        &async_add_scalar_inplace<std::int8_t>);
   emscripten::function("dispatch_sub_scalar_inplace_int8",
@@ -1300,6 +1402,8 @@ EMSCRIPTEN_BINDINGS(trueform_elementwise) {
                        &async_mul_scalar_inplace<std::int8_t>);
   emscripten::function("dispatch_div_scalar_inplace_int8",
                        &async_div_scalar_inplace<std::int8_t>);
+  emscripten::function("dispatch_mod_scalar_inplace_int8",
+                       &async_mod_scalar_inplace<std::int8_t>);
 
   // ==========================================================================
   // Relational ops — sync

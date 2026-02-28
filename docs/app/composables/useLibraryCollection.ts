@@ -4,13 +4,13 @@ export const useLibraryCollection = () => {
   // Determine library from route path, fallback to storage
   const library = computed(() => {
     const pathLibrary = route.path.split("/")[1];
-    if (pathLibrary === "cpp" || pathLibrary === "py") {
-      return pathLibrary as "cpp" | "py";
+    if (pathLibrary === "cpp" || pathLibrary === "py" || pathLibrary === "ts") {
+      return pathLibrary as "cpp" | "py" | "ts";
     }
     return "cpp";
   });
 
-  const collection = computed(() => (library.value === "cpp" ? "docsCpp" : "docsPy"));
+  const collection = computed(() => (library.value === "cpp" ? "docsCpp" : library.value === "py" ? "docsPy" : "docsTs"));
 
   // Fetch navigation data
   const { data: navigation } = useAsyncData(

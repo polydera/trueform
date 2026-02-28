@@ -1,7 +1,7 @@
 ---
 seo:
   title: trueform — Real-time geometric processing
-  description: Geometry library for real-time mesh booleans, registration, remeshing and queries. C++ header-only with Python bindings.
+  description: Geometry library for real-time mesh booleans, registration, remeshing and queries. One engine across C++, Python, and TypeScript.
 ---
 
 ::u-page-hero{class="dark:bg-gradient-to-b from-neutral-900 to-neutral-950"}
@@ -15,7 +15,7 @@ orientation: horizontal
 Real-time [geometric processing]{.text-primary}
 
 #description
-Mesh booleans, registration, remeshing and queries — at interactive speed on million-polygon meshes. Robust to non-manifold flaps, inconsistent winding, and pipeline artifacts. C++ header-only; Python with NumPy in, NumPy out.
+Mesh booleans, registration, remeshing and queries — at interactive speed on million-polygon meshes. Robust to non-manifold flaps, inconsistent winding, and pipeline artifacts. One engine across C++, Python, and TypeScript.
 
 #links
   :::u-button
@@ -34,6 +34,16 @@ Mesh booleans, registration, remeshing and queries — at interactive speed on m
   size: xl
   variant: subtle
   trailing-icon: i-vscode-icons:file-type-python
+  ---
+  Get started
+  :::
+
+  :::u-button
+  ---
+  to: /ts/getting-started
+  size: xl
+  variant: subtle
+  trailing-icon: i-vscode-icons:file-type-typescript-official
   ---
   Get started
   :::
@@ -92,7 +102,7 @@ Why trueform
   Easy to Use
 
   #description
-  No boilerplate. Ranges wrap your data with geometric meaning. Tag structures onto them for compile-time algorithm selection.
+  Simple code just works. Zero-copy views in C++, NumPy arrays in Python, vectorized NDArrays in the browser. Native speed everywhere — same engine underneath.
   :::
 
   :::u-page-feature
@@ -159,20 +169,29 @@ Integrations
 ::card-group
   :::card
   ---
-  icon: i-lucide-layers
-  title: VTK
-  to: /cpp/vtk
-  ---
-  Bring trueform performance to VTK applications. Filters and functions that integrate with VTK pipelines.
-  :::
-
-  :::card
-  ---
   icon: i-vscode-icons:file-type-python
   title: Python
   to: /py/getting-started
   ---
   Real-time geometric processing in your Python workflow. NumPy in, NumPy out.
+  :::
+
+  :::card
+  ---
+  icon: i-vscode-icons:file-type-typescript-official
+  title: TypeScript
+  to: /ts/getting-started
+  ---
+  Real-time geometric processing in the browser and Node.js. Vectorized NDArrays with vectorized numerical and geometric queries.
+  :::
+
+  :::card
+  ---
+  icon: i-lucide-layers
+  title: VTK
+  to: /cpp/vtk
+  ---
+  Bring trueform performance to VTK applications. Filters and functions that integrate with VTK pipelines.
   :::
 
   :::card
@@ -193,14 +212,20 @@ Integrations
     - label: C++
       to: '/cpp/getting-started'
       icon: i-vscode-icons:file-type-cpp
+      variant: subtle
       trailingIcon: i-lucide-arrow-right
     - label: Python
       to: '/py/getting-started'
       icon: i-vscode-icons:file-type-python
       variant: subtle
       trailingIcon: i-lucide-arrow-right
+    - label: TypeScript
+      to: '/ts/getting-started'
+      icon: i-vscode-icons:file-type-typescript-official
+      variant: subtle
+      trailingIcon: i-lucide-arrow-right
   title: Start now
-  description: From pip install to mesh booleans — in minutes.
+  description: From install to mesh booleans — in minutes.
   class: dark:bg-neutral-950
   ---
   :::

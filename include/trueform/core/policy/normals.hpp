@@ -1,17 +1,18 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 
 #pragma once
+#include "../polygons.hpp"
 #include "./normal.hpp"
 #include "./unwrap.hpp"
 #include "./zipped.hpp"
@@ -67,7 +68,8 @@ private:
  * @ingroup core_policies
  * @brief Zip normals with a range for per-element normal access.
  *
- * Zips a normals range with a base range so each element has a `.normal()` accessor.
+ * Zips a normals range with a base range so each element has a `.normal()`
+ * accessor.
  *
  * @tparam Range The normals range type.
  * @tparam Base The range being augmented.
@@ -204,6 +206,14 @@ template <typename Range> auto tag_normals(Range &&normals) {
 template <typename Range> auto zip_normals(Range &&normals) {
   return policy::zip_normals_op<std::decay_t<Range>>{
       static_cast<Range &&>(normals)};
+}
+
+template <typename Policy>
+auto make_normal(const tf::polygons<Policy> &polygons, std::size_t face_id) {
+  if constexpr (tf::has_normals_policy<Policy>)
+    return polygons.normals()[face_id];
+  else
+    return tf::make_normal(polygons[face_id]);
 }
 
 } // namespace tf

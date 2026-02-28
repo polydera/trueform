@@ -12,6 +12,7 @@
 */
 #pragma once
 #include "../arrangement_class.hpp"
+#include "../boolean_config.hpp"
 #include "../classify/tagged.hpp"
 #include "./ids_common.hpp"
 #include "./make_boolean_common.hpp"
@@ -24,7 +25,8 @@ auto make_mesh_arrangements(
     const tf::polygons<Policy0> _polygons0,
     const tf::polygons<Policy1> &_polygons1,
     const tf::intersect::tagged_intersections<Index, RealT, Dims> &ibp,
-    const tf::tagged_cut_faces<Index> &tcf) {
+    const tf::tagged_cut_faces<Index> &tcf,
+    const tf::boolean_config &config) {
   auto make_polygons = [](const auto &form) {
     return tf::wrap_map(form, [](auto &&x) {
       return tf::core::make_polygons(x.faces(),
@@ -35,7 +37,7 @@ auto make_mesh_arrangements(
   auto polygons1 = make_polygons(_polygons1);
   auto [pal0, pal1, counts0, counts1] =
       tf::cut::make_classification_counts<LabelType>(polygons0, polygons1, ibp,
-                                                     tcf);
+                                                     tcf, config);
   tf::cut::polygon_arrangement_ids<Index> pai0;
   tf::cut::polygon_arrangement_ids<Index> pai1;
   tbb::parallel_invoke(

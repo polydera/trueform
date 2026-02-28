@@ -30,7 +30,7 @@ export default defineNuxtConfig({
           searchDepth: 1,
         },
         highlight: {
-          langs: ["cpp", "python", "bash", "cmake"],
+          langs: ["cpp", "python", "typescript", "bash", "cmake"],
         },
       },
     },
@@ -77,7 +77,7 @@ export default defineNuxtConfig({
       nodeCompat: true,
       pages: {
         routes: {
-          exclude: ["/cpp/*", "/py/*", "/live-examples/*"],
+          exclude: ["/cpp/*", "/py/*", "/ts/*", "/live-examples/*"],
         },
       },
     },
@@ -106,6 +106,9 @@ export default defineNuxtConfig({
         "Cross-Origin-Resource-Policy": "cross-origin",
       },
     },
+    worker: {
+      format: "es",
+    },
     build: {
       sourcemap: false,
     },
@@ -128,6 +131,12 @@ export default defineNuxtConfig({
         description:
           "Python bindings API reference, usage guides, and examples for geometry processing.",
         contentCollection: "docsPy",
+      },
+      {
+        title: "TypeScript API and guides",
+        description:
+          "TypeScript SDK API reference, usage guides, and examples for geometry processing in the browser and Node.js.",
+        contentCollection: "docsTs",
       },
     ],
   },

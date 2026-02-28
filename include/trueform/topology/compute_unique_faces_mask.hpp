@@ -63,15 +63,12 @@ auto compute_unique_faces_mask(const tf::faces<FacesPolicy> &faces,
       tf::face_edge_neighbors(fmem, faces, face_id, Index(face[0]),
                               Index(face[1]), std::back_inserter(neighbors));
 
-      // Check if we're the smallest ID (cheap test)
+      // Mark larger-ID same-size equal neighbors as duplicates
+      auto size = face.size();
       for (Index neighbor_id : neighbors) {
-        if (neighbor_id < face_id)
-          return; // Not smallest, skip
-      }
-
-      // We're smallest - mark duplicates as false (not unique)
-      for (Index neighbor_id : neighbors) {
-        if (tf::are_faces_equal(face, faces[neighbor_id])) {
+        if (neighbor_id > face_id &&
+            faces[neighbor_id].size() == size &&
+            tf::are_faces_equal(face, faces[neighbor_id])) {
           mask[neighbor_id] = false;
         }
       }

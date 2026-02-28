@@ -58,32 +58,16 @@ export class OffsetBlockedBuffer {
     return new NDArray(this._handle.data(), "int32");
   }
 
-  /** Returns block i as a subarray view. No allocation. */
-  get(i: number): Int32Array {
-    const offH = this._handle.offsets();
-    const datH = this._handle.data();
-    const offsets = offH.data();
-    const allData = datH.data();
-    const result = allData.subarray(offsets[i], offsets[i + 1]);
-    offH.destroy();
-    datH.destroy();
-    return result;
+  /** Returns block i as NDArrayInt32. */
+  get(i: number): NDArrayInt32 {
+    return new NDArray(this._handle.get(i), "int32");
   }
 
-  /** Iterate over blocks as subarray views. */
-  *[Symbol.iterator](): Iterator<Int32Array> {
-    const offH = this._handle.offsets();
-    const datH = this._handle.data();
-    try {
-      const offsets = offH.data();
-      const allData = datH.data();
-      const n = this._handle.size();
-      for (let i = 0; i < n; i++) {
-        yield allData.subarray(offsets[i], offsets[i + 1]);
-      }
-    } finally {
-      offH.destroy();
-      datH.destroy();
+  /** Iterate over blocks as NDArrayInt32. */
+  *[Symbol.iterator](): Iterator<NDArrayInt32> {
+    const n = this._handle.size();
+    for (let i = 0; i < n; i++) {
+      yield new NDArray(this._handle.get(i), "int32");
     }
   }
 

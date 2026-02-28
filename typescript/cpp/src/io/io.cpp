@@ -13,8 +13,11 @@
 
 #include "trueform/io/read_obj.hpp"
 #include "trueform/io/read_stl.hpp"
+#include "trueform/io/write_obj.hpp"
+#include "trueform/io/write_stl.hpp"
 #include "trueform/ts/core/promise.hpp"
 #include "trueform/ts/core/wasm_mesh.hpp"
+#include "trueform/ts/core/wasm_ndarray.hpp"
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
 #include <string>
@@ -85,6 +88,54 @@ auto async_read_obj_buffer(const emscripten::val &js_data)
       });
 }
 
+// ============================================================================
+// Write STL / OBJ to buffer
+// ============================================================================
+
+auto sync_write_stl_buffer(tf::ts::wasm_mesh &m)
+    -> tf::ts::wasm_ndarray<std::int8_t> {
+  auto poly = m.polygons_range();
+  tf::buffer<std::int8_t> buf;
+  if (m.has_transformation()) {
+    buf = tf::write_stl_to_buffer<std::int8_t>(
+        poly | tf::tag(m.transformation_view()));
+  } else {
+    buf = tf::write_stl_to_buffer<std::int8_t>(poly);
+  }
+  auto len = static_cast<int>(buf.size());
+  return tf::ts::wasm_ndarray<std::int8_t>::from_buffer(std::move(buf), {len});
+}
+
+auto async_write_stl_buffer(tf::ts::wasm_mesh &m) -> tf::ts::promise_t {
+  auto mesh = m.shared_view();
+  return tf::ts::promise([mesh]() {
+    return sync_write_stl_buffer(
+        const_cast<tf::ts::wasm_mesh &>(mesh));
+  });
+}
+
+auto sync_write_obj_buffer(tf::ts::wasm_mesh &m)
+    -> tf::ts::wasm_ndarray<std::int8_t> {
+  auto poly = m.polygons_range();
+  tf::buffer<std::int8_t> buf;
+  if (m.has_transformation()) {
+    buf = tf::write_obj_to_buffer<std::int8_t>(
+        poly | tf::tag(m.transformation_view()));
+  } else {
+    buf = tf::write_obj_to_buffer<std::int8_t>(poly);
+  }
+  auto len = static_cast<int>(buf.size());
+  return tf::ts::wasm_ndarray<std::int8_t>::from_buffer(std::move(buf), {len});
+}
+
+auto async_write_obj_buffer(tf::ts::wasm_mesh &m) -> tf::ts::promise_t {
+  auto mesh = m.shared_view();
+  return tf::ts::promise([mesh]() {
+    return sync_write_obj_buffer(
+        const_cast<tf::ts::wasm_mesh &>(mesh));
+  });
+}
+
 } // namespace
 
 EMSCRIPTEN_BINDINGS(trueform_io) {
@@ -96,4 +147,8 @@ EMSCRIPTEN_BINDINGS(trueform_io) {
   emscripten::function("dispatch_read_obj", &async_read_obj);
   emscripten::function("read_obj_buffer", &sync_read_obj_buffer);
   emscripten::function("dispatch_read_obj_buffer", &async_read_obj_buffer);
+  emscripten::function("write_stl_buffer", &sync_write_stl_buffer);
+  emscripten::function("dispatch_write_stl_buffer", &async_write_stl_buffer);
+  emscripten::function("write_obj_buffer", &sync_write_obj_buffer);
+  emscripten::function("dispatch_write_obj_buffer", &async_write_obj_buffer);
 }

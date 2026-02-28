@@ -18,6 +18,7 @@
 #include "trueform/ts/core/promise.hpp"
 #include "trueform/ts/core/wasm_mesh.hpp"
 #include "trueform/ts/core/wasm_ndarray.hpp"
+#include "trueform/ts/core/wasm_point_cloud.hpp"
 #include "trueform/ts/spatial/prim_dispatch.hpp"
 #include <emscripten/bind.h>
 
@@ -73,10 +74,11 @@ auto pp_batch(wasm_ndarray<float> &a, prim_type ta, wasm_ndarray<float> &b,
 }
 
 // ============================================================================
-// FP helpers (form × prim)
+// FP helpers (form × prim) — templated on FormT
 // ============================================================================
 
-auto fp_single(wasm_mesh &m, const float *b, prim_type tb, int vb) -> bool {
+template <typename FormT>
+auto fp_single(FormT &m, const float *b, prim_type tb, int vb) -> bool {
   return m.with_form([&](const auto &form) -> bool {
     return dispatch_single(
         [&](const auto &pb) -> bool { return tf::intersects(form, pb); }, b, tb,
@@ -84,7 +86,8 @@ auto fp_single(wasm_mesh &m, const float *b, prim_type tb, int vb) -> bool {
   });
 }
 
-auto fp_batch(wasm_mesh &m, wasm_ndarray<float> &b,
+template <typename FormT>
+auto fp_batch(FormT &m, wasm_ndarray<float> &b,
               prim_type tb) -> wasm_ndarray<std::int8_t> {
   int vb = poly_verts(b, tb);
   int sb = stride_of(b, tb);
@@ -116,10 +119,11 @@ auto fp_batch(wasm_mesh &m, wasm_ndarray<float> &b,
 }
 
 // ============================================================================
-// FF helper (form × form)
+// FF helper (form × form) — templated on F0, F1
 // ============================================================================
 
-auto ff_compute(wasm_mesh &m0, wasm_mesh &m1) -> bool {
+template <typename F0, typename F1>
+auto ff_compute(F0 &m0, F1 &m1) -> bool {
   return m0.with_form([&](const auto &form0) -> bool {
     return m1.with_form([&](const auto &form1) -> bool {
       return tf::intersects(form0, form1);
@@ -128,9 +132,22 @@ auto ff_compute(wasm_mesh &m0, wasm_mesh &m1) -> bool {
 }
 
 // ============================================================================
+// Sync FP dispatch — template on FormT
+// ============================================================================
+
+template <typename FormT>
+auto sync_fp(FormT &m, wasm_ndarray<float> &b, int tb_int) -> emscripten::val {
+  auto tb = static_cast<prim_type>(tb_int);
+  if (!is_batch(b, tb))
+    return emscripten::val(fp_single(m, b.raw_data(), tb, poly_verts(b, tb)));
+  return emscripten::val(fp_batch(m, b, tb));
+}
+
+// ============================================================================
 // Sync entry points
 // ============================================================================
 
+// PP
 auto sync_intersects_pp(wasm_ndarray<float> &a, int ta_int,
                         wasm_ndarray<float> &b,
                         int tb_int) -> emscripten::val {
@@ -143,23 +160,59 @@ auto sync_intersects_pp(wasm_ndarray<float> &a, int ta_int,
   return emscripten::val(pp_batch(a, ta, b, tb));
 }
 
+// FP thin wrappers
 auto sync_intersects_fp(wasm_mesh &m, wasm_ndarray<float> &b,
-                        int tb_int) -> emscripten::val {
-  auto tb = static_cast<prim_type>(tb_int);
-  if (!is_batch(b, tb))
-    return emscripten::val(
-        fp_single(m, b.raw_data(), tb, poly_verts(b, tb)));
-  return emscripten::val(fp_batch(m, b, tb));
+                        int tb) -> emscripten::val {
+  return sync_fp(m, b, tb);
+}
+auto sync_intersects_fp_pc(wasm_point_cloud &m, wasm_ndarray<float> &b,
+                           int tb) -> emscripten::val {
+  return sync_fp(m, b, tb);
 }
 
+// FF thin wrappers
 auto sync_intersects_ff(wasm_mesh &m0, wasm_mesh &m1) -> bool {
   return ff_compute(m0, m1);
+}
+auto sync_intersects_ff_mp(wasm_mesh &m0, wasm_point_cloud &m1) -> bool {
+  return ff_compute(m0, m1);
+}
+auto sync_intersects_ff_pm(wasm_point_cloud &m0, wasm_mesh &m1) -> bool {
+  return ff_compute(m0, m1);
+}
+auto sync_intersects_ff_pc(wasm_point_cloud &m0,
+                           wasm_point_cloud &m1) -> bool {
+  return ff_compute(m0, m1);
+}
+
+// ============================================================================
+// Async FP dispatch — template on FormT
+// ============================================================================
+
+template <typename FormT>
+auto async_fp(FormT &m, wasm_ndarray<float> &b, int tb_int) -> promise_t {
+  auto tb = static_cast<prim_type>(tb_int);
+
+  if (!is_batch(b, tb)) {
+    int vb = poly_verts(b, tb);
+    return promise([m = m, b = b, tb, vb]() -> bool {
+      return fp_single(const_cast<FormT &>(m),
+                       const_cast<wasm_ndarray<float> &>(b).raw_data(), tb, vb);
+    });
+  }
+
+  return promise(
+      [m = m, b = b, tb]() -> wasm_ndarray<std::int8_t> {
+        return fp_batch(const_cast<FormT &>(m),
+                        const_cast<wasm_ndarray<float> &>(b), tb);
+      });
 }
 
 // ============================================================================
 // Async entry points
 // ============================================================================
 
+// PP
 auto async_intersects_pp(wasm_ndarray<float> &a, int ta_int,
                          wasm_ndarray<float> &b,
                          int tb_int) -> promise_t {
@@ -183,38 +236,59 @@ auto async_intersects_pp(wasm_ndarray<float> &a, int ta_int,
       });
 }
 
+// FP thin wrappers
 auto async_intersects_fp(wasm_mesh &m, wasm_ndarray<float> &b,
-                         int tb_int) -> promise_t {
-  auto tb = static_cast<prim_type>(tb_int);
-
-  if (!is_batch(b, tb)) {
-    int vb = poly_verts(b, tb);
-    return promise([m = m, b = b, tb, vb]() -> bool {
-      return fp_single(const_cast<wasm_mesh &>(m),
-                       const_cast<wasm_ndarray<float> &>(b).raw_data(), tb, vb);
-    });
-  }
-
-  return promise(
-      [m = m, b = b, tb]() -> wasm_ndarray<std::int8_t> {
-        return fp_batch(const_cast<wasm_mesh &>(m),
-                        const_cast<wasm_ndarray<float> &>(b), tb);
-      });
+                         int tb) -> promise_t {
+  return async_fp(m, b, tb);
+}
+auto async_intersects_fp_pc(wasm_point_cloud &m, wasm_ndarray<float> &b,
+                            int tb) -> promise_t {
+  return async_fp(m, b, tb);
 }
 
-auto async_intersects_ff(wasm_mesh &m0, wasm_mesh &m1) -> promise_t {
+// FF — template dispatch
+template <typename F0, typename F1>
+auto async_ff(F0 &m0, F1 &m1) -> promise_t {
   return promise([a = m0, b = m1]() -> bool {
-    return ff_compute(const_cast<wasm_mesh &>(a), const_cast<wasm_mesh &>(b));
+    return ff_compute(const_cast<F0 &>(a), const_cast<F1 &>(b));
   });
+}
+
+// FF thin wrappers
+auto async_intersects_ff(wasm_mesh &m0, wasm_mesh &m1) -> promise_t {
+  return async_ff(m0, m1);
+}
+auto async_intersects_ff_mp(wasm_mesh &m0, wasm_point_cloud &m1) -> promise_t {
+  return async_ff(m0, m1);
+}
+auto async_intersects_ff_pm(wasm_point_cloud &m0, wasm_mesh &m1) -> promise_t {
+  return async_ff(m0, m1);
+}
+auto async_intersects_ff_pc(wasm_point_cloud &m0,
+                            wasm_point_cloud &m1) -> promise_t {
+  return async_ff(m0, m1);
 }
 
 } // namespace
 
 EMSCRIPTEN_BINDINGS(trueform_intersects) {
+  // PP
   emscripten::function("intersects_pp", &sync_intersects_pp);
-  emscripten::function("intersects_fp", &sync_intersects_fp);
-  emscripten::function("intersects_ff", &sync_intersects_ff);
   emscripten::function("dispatch_intersects_pp", &async_intersects_pp);
+
+  // FP — mesh & point cloud
+  emscripten::function("intersects_fp", &sync_intersects_fp);
+  emscripten::function("intersects_fp_pc", &sync_intersects_fp_pc);
   emscripten::function("dispatch_intersects_fp", &async_intersects_fp);
+  emscripten::function("dispatch_intersects_fp_pc", &async_intersects_fp_pc);
+
+  // FF — all 4 combos
+  emscripten::function("intersects_ff", &sync_intersects_ff);
+  emscripten::function("intersects_ff_mp", &sync_intersects_ff_mp);
+  emscripten::function("intersects_ff_pm", &sync_intersects_ff_pm);
+  emscripten::function("intersects_ff_pc", &sync_intersects_ff_pc);
   emscripten::function("dispatch_intersects_ff", &async_intersects_ff);
+  emscripten::function("dispatch_intersects_ff_mp", &async_intersects_ff_mp);
+  emscripten::function("dispatch_intersects_ff_pm", &async_intersects_ff_pm);
+  emscripten::function("dispatch_intersects_ff_pc", &async_intersects_ff_pc);
 }

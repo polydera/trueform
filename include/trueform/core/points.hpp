@@ -12,6 +12,7 @@
 */
 #pragma once
 
+#include "./coordinate_dims.hpp"
 #include "./form.hpp"
 #include "./range.hpp"
 #include "./vectors.hpp"

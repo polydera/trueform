@@ -96,5 +96,18 @@ struct neighbor_result_pair {
   wasm_ndarray<float> point1; // [3], closest point on form1
 };
 
+struct neighbor_knn_result {
+  wasm_ndarray<int> element_ids; // [count]
+  wasm_ndarray<float> points;   // [count, 3]
+  wasm_ndarray<float> distances; // [count]
+};
+
+struct neighbor_knn_batch_result {
+  wasm_ndarray<int> element_ids; // [N, k] padded with -1
+  wasm_ndarray<float> points;   // [N, k, 3]
+  wasm_ndarray<float> distances; // [N, k]
+  wasm_ndarray<int> counts;     // [N] actual count per query
+};
+
 } // namespace ts
 } // namespace tf
