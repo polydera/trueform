@@ -173,7 +173,7 @@ Integrations
   title: Python
   to: /py/getting-started
   ---
-  Real-time geometric processing in your Python workflow. NumPy in, NumPy out.
+  Real-time geometric processing in your Python workflow. Enriched NumPy arrays with vectorized spatial queries, mesh booleans, and topology. NumPy in, NumPy out.
   :::
 
   :::card
@@ -182,7 +182,7 @@ Integrations
   title: TypeScript
   to: /ts/getting-started
   ---
-  Real-time geometric processing in the browser and Node.js. Vectorized NDArrays with vectorized numerical and geometric queries.
+  Real-time geometric processing in the browser and Node.js. WASM-backed NDArrays with vectorized numerical and geometric queries.
   :::
 
   :::card

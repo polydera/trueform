@@ -56,7 +56,8 @@ TS_DIR="${REPO_ROOT}/typescript"
 
 if [[ -d "${TS_DIR}" ]]; then
     echo "Building TypeScript SDK..."
-    rm -rf "${REPO_ROOT}/build-wasm"
+    export TF_WASM_BUILD_DIR="build-wasm-docker"
+    rm -rf "${REPO_ROOT}/${TF_WASM_BUILD_DIR}"
     cd "${TS_DIR}"
     npm install
     npm run build

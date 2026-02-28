@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
-const buildDir = resolve(root, "build-wasm");
+const buildDir = resolve(root, process.env.TF_WASM_BUILD_DIR || "build-wasm");
 
 // -- WASM build (emcmake + cmake) --
 if (!existsSync(resolve(buildDir, "CMakeCache.txt"))) {
