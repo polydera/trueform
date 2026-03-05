@@ -97,6 +97,48 @@ auto register_io_read_obj(nanobind::module_ &m) -> void {
       "    Face indices into the points array\n"
       "points : ndarray of shape (num_points, 3) and dtype float32\n"
       "    3D coordinates of mesh vertices");
+
+  // Register int32 dynamic variant
+  m.def(
+      "read_obj_dynamic_int",
+      [](const std::string &filename) {
+        return read_obj_dynamic_impl<int>(filename);
+      },
+      nanobind::arg("filename"),
+      "Read an OBJ file with dynamic polygon sizes and int32 indices.\n\n"
+      "Parameters\n"
+      "----------\n"
+      "filename : str\n"
+      "    Path to the OBJ file\n\n"
+      "Returns\n"
+      "-------\n"
+      "offsets : ndarray of shape (num_faces + 1,) and dtype int32\n"
+      "    Block boundaries for variable-length faces\n"
+      "data : ndarray of shape (total_indices,) and dtype int32\n"
+      "    Packed face indices\n"
+      "points : ndarray of shape (num_points, 3) and dtype float32\n"
+      "    3D coordinates of mesh vertices");
+
+  // Register int64 dynamic variant
+  m.def(
+      "read_obj_dynamic_int64",
+      [](const std::string &filename) {
+        return read_obj_dynamic_impl<int64_t>(filename);
+      },
+      nanobind::arg("filename"),
+      "Read an OBJ file with dynamic polygon sizes and int64 indices.\n\n"
+      "Parameters\n"
+      "----------\n"
+      "filename : str\n"
+      "    Path to the OBJ file\n\n"
+      "Returns\n"
+      "-------\n"
+      "offsets : ndarray of shape (num_faces + 1,) and dtype int64\n"
+      "    Block boundaries for variable-length faces\n"
+      "data : ndarray of shape (total_indices,) and dtype int64\n"
+      "    Packed face indices\n"
+      "points : ndarray of shape (num_points, 3) and dtype float32\n"
+      "    3D coordinates of mesh vertices");
 }
 
 } // namespace tf::py

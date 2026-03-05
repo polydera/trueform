@@ -38,6 +38,20 @@ auto read_obj_impl(const std::string &filename) {
   return nanobind::make_tuple(faces, points);
 }
 
+/// @brief Template implementation for read_obj with dynamic polygon sizes
+/// @tparam Index The index type (int or int64_t)
+/// @param filename Path to OBJ file
+/// @return Tuple of (offsets, data, points) as numpy arrays
+template <typename Index>
+auto read_obj_dynamic_impl(const std::string &filename) {
+  auto polys = tf::read_obj<Index>(filename);
+
+  auto [offsets, data] = make_numpy_array(std::move(polys.faces_buffer()));
+  auto points = make_numpy_array(std::move(polys.points_buffer()));
+
+  return nanobind::make_tuple(offsets, data, points);
+}
+
 auto register_io_read_obj(nanobind::module_ &m) -> void;
 
 } // namespace tf::py

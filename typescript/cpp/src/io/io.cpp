@@ -18,9 +18,15 @@
 #include "trueform/ts/core/promise.hpp"
 #include "trueform/ts/core/wasm_mesh.hpp"
 #include "trueform/ts/core/wasm_ndarray.hpp"
+#include "trueform/ts/core/wasm_offset_blocked_buffer.hpp"
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
 #include <string>
+
+struct mesh_data_result {
+  tf::ts::wasm_offset_blocked_buffer<int, int> faces;
+  tf::ts::wasm_ndarray<float> points;
+};
 
 namespace {
 
@@ -88,6 +94,39 @@ auto async_read_obj_buffer(const emscripten::val &js_data)
       });
 }
 
+auto sync_read_obj_buffer_data(const emscripten::val &js_data)
+    -> mesh_data_result {
+  auto buf = copy_js_to_buffer_(js_data);
+  auto poly = tf::read_obj<int>(
+      tf::make_range(buf.data(), buf.data() + buf.size() - 1));
+  auto points_len = poly.points_buffer().data_buffer().size();
+  return {
+      tf::ts::wasm_offset_blocked_buffer<int, int>::from_buffer(
+          std::move(poly.faces_buffer())),
+      tf::ts::wasm_ndarray<float>::from_buffer(
+          std::move(poly.points_buffer().data_buffer()),
+          {static_cast<int>(points_len / 3), 3}),
+  };
+}
+
+auto async_read_obj_buffer_data(const emscripten::val &js_data)
+    -> tf::ts::promise_t {
+  auto buf = copy_js_to_buffer_(js_data);
+  return tf::ts::promise(
+      [buf = std::move(buf)]() -> mesh_data_result {
+        auto poly = tf::read_obj<int>(
+            tf::make_range(buf.data(), buf.data() + buf.size() - 1));
+        auto points_len = poly.points_buffer().data_buffer().size();
+        return {
+            tf::ts::wasm_offset_blocked_buffer<int, int>::from_buffer(
+                std::move(poly.faces_buffer())),
+            tf::ts::wasm_ndarray<float>::from_buffer(
+                std::move(poly.points_buffer().data_buffer()),
+                {static_cast<int>(points_len / 3), 3}),
+        };
+      });
+}
+
 // ============================================================================
 // Write STL / OBJ to buffer
 // ============================================================================
@@ -139,6 +178,10 @@ auto async_write_obj_buffer(tf::ts::wasm_mesh &m) -> tf::ts::promise_t {
 } // namespace
 
 EMSCRIPTEN_BINDINGS(trueform_io) {
+  emscripten::value_object<mesh_data_result>("MeshDataResult")
+      .field("faces", &mesh_data_result::faces)
+      .field("points", &mesh_data_result::points);
+
   emscripten::function("read_stl", &sync_read_stl);
   emscripten::function("dispatch_read_stl", &async_read_stl);
   emscripten::function("read_stl_buffer", &sync_read_stl_buffer);
@@ -147,6 +190,8 @@ EMSCRIPTEN_BINDINGS(trueform_io) {
   emscripten::function("dispatch_read_obj", &async_read_obj);
   emscripten::function("read_obj_buffer", &sync_read_obj_buffer);
   emscripten::function("dispatch_read_obj_buffer", &async_read_obj_buffer);
+  emscripten::function("read_obj_buffer_data", &sync_read_obj_buffer_data);
+  emscripten::function("dispatch_read_obj_buffer_data", &async_read_obj_buffer_data);
   emscripten::function("write_stl_buffer", &sync_write_stl_buffer);
   emscripten::function("dispatch_write_stl_buffer", &async_write_stl_buffer);
   emscripten::function("write_obj_buffer", &sync_write_obj_buffer);

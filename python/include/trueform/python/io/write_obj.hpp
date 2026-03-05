@@ -23,6 +23,7 @@
 #include <trueform/core/range.hpp>
 #include <trueform/core/transformation_view.hpp>
 #include <trueform/core/views/blocked_range.hpp>
+#include <trueform/core/views/offset_block_range.hpp>
 #include <trueform/io/write_obj.hpp>
 
 namespace tf::py {
@@ -61,6 +62,51 @@ auto write_obj_impl(
   auto polygons = tf::make_polygons(faces, pts);
 
   // Apply transformation if provided
+  if (transformation_opt.has_value()) {
+    const auto &trans_array = *transformation_opt;
+    auto transformation_view =
+        tf::make_transformation_view<3>(trans_array.data());
+    auto transformed_polygons =
+        polygons | tf::tag(tf::make_frame(transformation_view));
+    return tf::write_obj(transformed_polygons, filename);
+  } else {
+    return tf::write_obj(polygons, filename);
+  }
+}
+
+/// @brief Template implementation for write_obj with dynamic polygon sizes
+/// @tparam Index The index type (int or int64_t)
+/// @tparam RealT The real type for points (float or double)
+/// @param offsets_array Numpy array of block offsets (num_faces + 1,)
+/// @param data_array Numpy array of packed face indices (total_indices,)
+/// @param points_array Numpy array of points (M, 3) with dtype RealT
+/// @param transformation_opt Optional transformation matrix (4, 4)
+/// @param filename Output filename
+/// @return true if write succeeded, false otherwise
+template <typename Index, typename RealT>
+auto write_obj_dynamic_impl(
+    nanobind::ndarray<nanobind::numpy, Index, nanobind::shape<-1>>
+        offsets_array,
+    nanobind::ndarray<nanobind::numpy, Index, nanobind::shape<-1>> data_array,
+    nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, 3>>
+        points_array,
+    std::optional<
+        nanobind::ndarray<nanobind::numpy, float, nanobind::shape<4, 4>>>
+        transformation_opt,
+    const std::string &filename) -> bool {
+
+  RealT *data_pts = static_cast<RealT *>(points_array.data());
+  std::size_t count_pts = points_array.shape(0) * 3;
+  auto pts = tf::make_points<3>(tf::make_range(data_pts, count_pts));
+
+  Index *offsets_data = static_cast<Index *>(offsets_array.data());
+  Index *face_data = static_cast<Index *>(data_array.data());
+  auto offsets_range = tf::make_range(offsets_data, offsets_array.size());
+  auto data_range = tf::make_range(face_data, data_array.size());
+  auto faces = tf::make_offset_block_range(offsets_range, data_range);
+
+  auto polygons = tf::make_polygons(faces, pts);
+
   if (transformation_opt.has_value()) {
     const auto &trans_array = *transformation_opt;
     auto transformation_view =

@@ -1,5 +1,14 @@
 import { describe, test, log, assert, getTf } from "./harness.mjs";
 
+/** Helper: serialize mesh to Uint8Array via writeStl/writeObj. */
+function toBytes(tf, mesh, writeFn) {
+  const raw = writeFn(mesh);
+  const buf = new Uint8Array(raw.data.length);
+  for (let i = 0; i < buf.length; i++) buf[i] = raw.data[i];
+  raw.delete();
+  return buf;
+}
+
 describe("I/O write + roundtrip", () => {
 
   test("writeStl returns bytes", () => {
@@ -59,6 +68,116 @@ describe("I/O write + roundtrip", () => {
     log(`  OBJ roundtrip: ${originalFaces} faces preserved`, "line-pass");
 
     m2.delete(); objBytes.delete(); mesh.delete();
+  });
+
+});
+
+describe("readStlData / readObjData", () => {
+
+  test("readStlData returns MeshLike with correct shapes", () => {
+    const tf = getTf();
+    const mesh = tf.sphereMesh(1, 8, 8);
+    const nf = mesh.numberOfFaces;
+    const np = mesh.numberOfPoints;
+    const buf = toBytes(tf, mesh, (m) => tf.writeStl(m));
+
+    const data = tf.readStlData(buf);
+
+    assert(data.faces != null, "faces is defined");
+    assert(data.points != null, "points is defined");
+    assert(data.faces.dtype === "int32", `faces dtype: ${data.faces.dtype}`);
+    assert(data.points.dtype === "float32", `points dtype: ${data.points.dtype}`);
+    assert(data.faces.shape[0] === nf, `faces rows: ${data.faces.shape[0]} === ${nf}`);
+    assert(data.faces.shape[1] === 3, `faces cols: ${data.faces.shape[1]} === 3`);
+    assert(data.points.shape[0] === np, `points rows: ${data.points.shape[0]} === ${np}`);
+    assert(data.points.shape[1] === 3, `points cols: ${data.points.shape[1]} === 3`);
+    log(`  readStlData: ${nf} faces, ${np} points`, "line-pass");
+
+    data.faces.delete(); data.points.delete(); mesh.delete();
+  });
+
+  test("readObjData returns MeshLike with NDArrayInt32 faces", () => {
+    const tf = getTf();
+    const mesh = tf.sphereMesh(1, 8, 8);
+    const nf = mesh.numberOfFaces;
+    const np = mesh.numberOfPoints;
+    const buf = toBytes(tf, mesh, (m) => tf.writeObj(m));
+
+    const data = tf.readObjData(buf);
+
+    assert(data.faces.dtype === "int32", `faces dtype: ${data.faces.dtype}`);
+    assert(data.points.dtype === "float32", `points dtype: ${data.points.dtype}`);
+    assert(data.faces.shape[0] === nf, `faces rows: ${data.faces.shape[0]} === ${nf}`);
+    assert(data.faces.shape[1] === 3, `faces cols: ${data.faces.shape[1]} === 3`);
+    assert(data.points.shape[0] === np, `points rows: ${data.points.shape[0]} === ${np}`);
+    log(`  readObjData: ${nf} faces, ${np} points`, "line-pass");
+
+    data.faces.delete(); data.points.delete(); mesh.delete();
+  });
+
+  test("readObjData({ dynamic }) returns OffsetBlockedBuffer faces", () => {
+    const tf = getTf();
+    const mesh = tf.sphereMesh(1, 8, 8);
+    const nf = mesh.numberOfFaces;
+    const buf = toBytes(tf, mesh, (m) => tf.writeObj(m));
+
+    const data = tf.readObjData(buf, { dynamic: true });
+
+    // OffsetBlockedBuffer has .length and .offsets, not .shape
+    assert(data.faces.length === nf, `faces blocks: ${data.faces.length} === ${nf}`);
+    assert(data.faces.offsets != null, "faces has offsets (OffsetBlockedBuffer)");
+    assert(data.points.dtype === "float32", `points dtype: ${data.points.dtype}`);
+    log(`  readObjData dynamic: ${nf} polygons`, "line-pass");
+
+    data.faces.delete(); data.points.delete(); mesh.delete();
+  });
+
+  test("readObj({ dynamic }) triangulates correctly", () => {
+    const tf = getTf();
+    const mesh = tf.sphereMesh(1, 8, 8);
+    const nf = mesh.numberOfFaces;
+    const buf = toBytes(tf, mesh, (m) => tf.writeObj(m));
+
+    // OBJ from writeObj is all triangles, so dynamic read + triangulate
+    // should produce the same face count
+    const m2 = tf.readObj(buf, { dynamic: true });
+    assert(m2.numberOfFaces === nf,
+      `dynamic roundtrip faces: ${m2.numberOfFaces} === ${nf}`);
+    log(`  readObj dynamic roundtrip: ${nf} faces`, "line-pass");
+
+    m2.delete(); mesh.delete();
+  });
+
+  test("readStlData → triangulate → Mesh roundtrip", () => {
+    const tf = getTf();
+    const mesh = tf.sphereMesh(1, 8, 8);
+    const nf = mesh.numberOfFaces;
+    const buf = toBytes(tf, mesh, (m) => tf.writeStl(m));
+
+    const data = tf.readStlData(buf);
+    const m2 = tf.triangulate(data);
+
+    assert(m2.numberOfFaces === nf,
+      `triangulated faces: ${m2.numberOfFaces} === ${nf}`);
+    log(`  readStlData → triangulate: ${nf} faces`, "line-pass");
+
+    data.faces.delete(); data.points.delete(); m2.delete(); mesh.delete();
+  });
+
+  test("readObjData({ dynamic }) → triangulate roundtrip", () => {
+    const tf = getTf();
+    const mesh = tf.sphereMesh(1, 8, 8);
+    const nf = mesh.numberOfFaces;
+    const buf = toBytes(tf, mesh, (m) => tf.writeObj(m));
+
+    const data = tf.readObjData(buf, { dynamic: true });
+    const m2 = tf.triangulate(data);
+
+    assert(m2.numberOfFaces === nf,
+      `triangulated faces: ${m2.numberOfFaces} === ${nf}`);
+    log(`  readObjData dynamic → triangulate: ${nf} faces`, "line-pass");
+
+    data.faces.delete(); data.points.delete(); m2.delete(); mesh.delete();
   });
 
 });

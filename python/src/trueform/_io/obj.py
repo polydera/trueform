@@ -11,10 +11,11 @@ import numpy as np
 from typing import Tuple, Optional, Union
 from .. import _trueform
 from .._spatial.mesh import Mesh
+from .._core import OffsetBlockedArray
 from .._dispatch import InputMeta, build_suffix
 
 
-def read_obj(filename: str, ngon: int, index_dtype: Union[type, np.dtype] = np.int32) -> Tuple[np.ndarray, np.ndarray]:
+def read_obj(filename: str, ngon: Optional[int] = None, index_dtype: Union[type, np.dtype] = np.int32):
     """
     Read an OBJ file and return mesh data as numpy arrays.
 
@@ -22,42 +23,46 @@ def read_obj(filename: str, ngon: int, index_dtype: Union[type, np.dtype] = np.i
     ----------
     filename : str
         Path to the OBJ file to read
-    ngon : int
-        Number of vertices per face. Must be 3 (triangles) or 4 (quads).
-        This parameter is required because numpy arrays cannot be ragged
-        (all rows must have the same length). The returned faces array
-        will have shape (num_faces, ngon).
+    ngon : int or None, optional
+        Number of vertices per face. Must be 3 (triangles), 4 (quads), or None.
+        - ``None`` (default): reads all polygons as-is, returning an
+          ``OffsetBlockedArray`` for faces (supports mixed polygon sizes).
+        - ``3`` or ``4``: reads fixed-size faces, returning a 2D ndarray
+          of shape ``(num_faces, ngon)``.
     index_dtype : dtype, optional
         Data type for face indices. Must be np.int32 or np.int64. Default is np.int32.
 
     Returns
     -------
-    faces : ndarray of shape (num_faces, ngon) with dtype specified by index_dtype
-        Face indices into the points array. Each row contains ngon indices
-        that reference vertices in the points array.
+    When ``ngon`` is None (dynamic):
+
+    faces : OffsetBlockedArray
+        Variable-length face indices. Each block contains the vertex indices
+        for one face.
     points : ndarray of shape (num_points, 3) and dtype float32
-        3D coordinates of mesh vertices. Each row is a (x, y, z) coordinate.
+        3D coordinates of mesh vertices.
+
+    When ``ngon`` is 3 or 4 (fixed):
+
+    faces : ndarray of shape (num_faces, ngon) with dtype specified by index_dtype
+        Face indices into the points array.
+    points : ndarray of shape (num_points, 3) and dtype float32
+        3D coordinates of mesh vertices.
 
     Examples
     --------
     >>> import trueform as tf
-    >>> # Read triangular mesh with default int32 indices
+    >>> # Read with dynamic polygon sizes (default)
+    >>> faces, points = tf.read_obj("model.obj")
+    >>> print(type(faces))  # OffsetBlockedArray
+    >>>
+    >>> # Read triangular mesh
     >>> faces, points = tf.read_obj("model.obj", ngon=3)
     >>> print(f"Faces shape: {faces.shape}")  # (N, 3)
     >>>
     >>> # Read quad mesh with int64 indices
     >>> faces, points = tf.read_obj("quad_model.obj", ngon=4, index_dtype=np.int64)
     >>> print(f"Faces shape: {faces.shape}")  # (N, 4)
-
-    Notes
-    -----
-    The OBJ file format stores indexed mesh data. This function:
-    - Reads ASCII OBJ files
-    - Returns zero-copy numpy arrays (memory is managed by numpy)
-    - Face indices are 0-based (converted from OBJ's 1-based indexing)
-    - Only vertex positions are read (normals and texture coordinates are ignored)
-    - If the OBJ file contains faces with more vertices than ngon, only the
-      first ngon vertices are kept; faces with fewer vertices cause an error
     """
     # Normalize dtype
     if isinstance(index_dtype, type):
@@ -65,18 +70,24 @@ def read_obj(filename: str, ngon: int, index_dtype: Union[type, np.dtype] = np.i
     elif not isinstance(index_dtype, np.dtype):
         index_dtype = np.dtype(index_dtype)
 
-    # Validate ngon
-    if ngon not in (3, 4):
-        raise ValueError(f"ngon must be 3 or 4, got {ngon}")
-
     # Validate index_dtype
     if index_dtype not in (np.dtype(np.int32), np.dtype(np.int64)):
         raise ValueError(
             f"index_dtype must be np.int32 or np.int64, got {index_dtype}"
         )
 
-    # Build suffix and dispatch
     index_str = 'int' if index_dtype == np.int32 else 'int64'
+
+    # Dynamic read (default)
+    if ngon is None:
+        func = getattr(_trueform.io, f"read_obj_dynamic_{index_str}")
+        offsets, data, points = func(filename)
+        return OffsetBlockedArray(offsets, data), points
+
+    # Fixed-size read
+    if ngon not in (3, 4):
+        raise ValueError(f"ngon must be 3, 4, or None, got {ngon}")
+
     suffix = f"{index_str}{ngon}"
     func = getattr(_trueform.io, f"read_obj_{suffix}")
     return func(filename)
@@ -99,9 +110,9 @@ def write_obj(
     data : tuple or Mesh
         Input geometric data:
         - Tuple (faces, points) where:
-          * faces: shape (N, ngon) with dtype int32 or int64
-          * points: shape (M, 3) with dtype float32 or float64
-        - Mesh object (must be 3D mesh)
+          * faces: ndarray of shape (N, ngon) or OffsetBlockedArray
+          * points: ndarray of shape (M, 3) with dtype float32 or float64
+        - Mesh object (fixed or dynamic, must be 3D)
     filename : str
         Path to output OBJ file.
         The .obj extension will be appended if not present.
@@ -124,10 +135,9 @@ def write_obj(
     >>> points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float32)
     >>> tf.write_obj((faces, points), "triangle.obj")
     >>>
-    >>> # Quad mesh
-    >>> faces = np.array([[0, 1, 2, 3]], dtype=np.int32)
-    >>> points = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], dtype=np.float32)
-    >>> tf.write_obj((faces, points), "quad.obj")
+    >>> # Dynamic mesh (mixed polygon sizes)
+    >>> faces, points = tf.read_obj("model.obj")
+    >>> tf.write_obj((faces, points), "output.obj")
     >>>
     >>> # Mesh object
     >>> mesh = tf.Mesh(faces, points)
@@ -135,7 +145,7 @@ def write_obj(
 
     Notes
     -----
-    - Supports both triangular (ngon=3) and quad (ngon=4) meshes
+    - Supports triangular (ngon=3), quad (ngon=4), and dynamic polygon meshes
     - Points must be 3D (shape (N, 3))
     - ASCII OBJ format is used for writing
     - Arrays must be C-contiguous
@@ -148,12 +158,6 @@ def write_obj(
         if mesh.dims != 3:
             raise ValueError(
                 f"OBJ format only supports 3D meshes, but mesh has {mesh.dims}D points."
-            )
-
-        if mesh.is_dynamic or mesh.ngon not in (3, 4):
-            raise ValueError(
-                f"OBJ format only supports triangular or quad meshes, but mesh has "
-                f"{'dynamic' if mesh.is_dynamic else f'{mesh.ngon}-gon'} faces."
             )
 
         # Extract data from mesh
@@ -176,19 +180,6 @@ def write_obj(
     else:
         raise TypeError(
             f"Expected tuple or Mesh object, got {type(data).__name__}"
-        )
-
-    # Validate faces shape and dtype
-    if faces.ndim != 2 or faces.shape[1] not in (3, 4):
-        raise ValueError(
-            f"faces must have shape (N, 3) or (N, 4), got shape {faces.shape}"
-        )
-
-    ngon = str(faces.shape[1])
-    faces_dtype = faces.dtype
-    if faces_dtype not in (np.int32, np.int64):
-        raise ValueError(
-            f"faces dtype must be np.int32 or np.int64, got {faces_dtype}"
         )
 
     # Validate points shape and dtype
@@ -216,11 +207,48 @@ def write_obj(
         if not transformation.flags['C_CONTIGUOUS']:
             transformation = np.ascontiguousarray(transformation)
 
-    # Ensure arrays are C-contiguous
-    if not faces.flags['C_CONTIGUOUS']:
-        faces = np.ascontiguousarray(faces)
+    # Ensure points are C-contiguous
     if not points.flags['C_CONTIGUOUS']:
         points = np.ascontiguousarray(points)
+
+    # Dynamic faces (OffsetBlockedArray)
+    if isinstance(faces, OffsetBlockedArray):
+        faces_dtype = faces.dtype
+        if faces_dtype not in (np.int32, np.int64):
+            raise ValueError(
+                f"faces dtype must be np.int32 or np.int64, got {faces_dtype}"
+            )
+        meta = InputMeta(faces_dtype, points_dtype, 'dyn', 3)
+        suffix = build_suffix(meta)
+        func = getattr(_trueform.io, f"write_obj_{suffix}")
+        offsets = faces.offsets
+        data = faces.data
+        if not offsets.flags['C_CONTIGUOUS']:
+            offsets = np.ascontiguousarray(offsets)
+        if not data.flags['C_CONTIGUOUS']:
+            data = np.ascontiguousarray(data)
+        return func(offsets, data, points, transformation, filename)
+
+    # Fixed-size faces (ndarray)
+    if not isinstance(faces, np.ndarray):
+        raise TypeError(
+            f"faces must be ndarray or OffsetBlockedArray, got {type(faces).__name__}"
+        )
+
+    if faces.ndim != 2 or faces.shape[1] not in (3, 4):
+        raise ValueError(
+            f"faces must have shape (N, 3) or (N, 4), got shape {faces.shape}"
+        )
+
+    ngon = str(faces.shape[1])
+    faces_dtype = faces.dtype
+    if faces_dtype not in (np.int32, np.int64):
+        raise ValueError(
+            f"faces dtype must be np.int32 or np.int64, got {faces_dtype}"
+        )
+
+    if not faces.flags['C_CONTIGUOUS']:
+        faces = np.ascontiguousarray(faces)
 
     # Build suffix and dispatch
     meta = InputMeta(faces_dtype, points_dtype, ngon, 3)

@@ -11,5 +11,6 @@
  * Author: Žiga Sajovic
  */
 
-export { readStl, readObj } from "./sync";
+export { readStl, readStlData, readObj, readObjData } from "./sync";
+export type { ReadObjOptions } from "./sync";
 export * as async from "./async";

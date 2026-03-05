@@ -68,7 +68,8 @@ export {
 } from "./ndarray/math";
 
 // IO
-export { readStl, readObj, writeStl, writeObj } from "./io/sync";
+export { readStl, readStlData, readObj, readObjData, writeStl, writeObj } from "./io/sync";
+export type { ReadObjOptions } from "./io/sync";
 
 // Cut operations
 export {

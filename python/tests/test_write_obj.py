@@ -410,21 +410,93 @@ def test_write_obj_mesh_2d_error():
             tf.write_obj(mesh, obj_file)
 
 
-def test_write_obj_mesh_dynamic_error():
-    """Test that dynamic mesh raises error"""
+# =============================================================================
+# Dynamic mesh tests
+# =============================================================================
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("point_dtype", POINT_DTYPES)
+def test_write_obj_dynamic_tuple(index_dtype, point_dtype):
+    """Test writing dynamic faces as OffsetBlockedArray tuple"""
     with tempfile.TemporaryDirectory() as tmpdir:
         obj_file = os.path.join(tmpdir, "dynamic.obj")
 
-        # Create a dynamic mesh
-        offsets = np.array([0, 3, 7], dtype=np.int32)
-        data = np.array([0, 1, 2, 0, 2, 3, 4], dtype=np.int32)
+        # Create mixed faces: triangle + quad
+        offsets = np.array([0, 3, 7], dtype=index_dtype)
+        data = np.array([0, 1, 2, 0, 1, 3, 2], dtype=index_dtype)
         faces = tf.OffsetBlockedArray(offsets, data)
-        points = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0.5, 0.5, 0]], dtype=np.float32)
+        points = np.array(
+            [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]],
+            dtype=point_dtype,
+        )
+
+        success = tf.write_obj((faces, points), obj_file)
+        assert success, "write_obj should succeed with dynamic faces"
+
+        # Verify file exists and is non-empty
+        assert os.path.exists(obj_file)
+        assert os.path.getsize(obj_file) > 0
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_write_obj_dynamic_mesh(index_dtype):
+    """Test writing a dynamic Mesh object"""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        obj_file = os.path.join(tmpdir, "dynamic_mesh.obj")
+
+        offsets = np.array([0, 3, 7], dtype=index_dtype)
+        data = np.array([0, 1, 2, 0, 1, 3, 2], dtype=index_dtype)
+        faces = tf.OffsetBlockedArray(offsets, data)
+        points = np.array(
+            [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]],
+            dtype=np.float32,
+        )
         mesh = tf.Mesh(faces, points)
 
-        # Should raise error for dynamic mesh
-        with pytest.raises(ValueError, match="dynamic"):
-            tf.write_obj(mesh, obj_file)
+        success = tf.write_obj(mesh, obj_file)
+        assert success, "write_obj should succeed with dynamic Mesh"
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_write_obj_dynamic_round_trip(index_dtype):
+    """Test dynamic write → dynamic read round-trip"""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        obj_file = os.path.join(tmpdir, "round_trip.obj")
+
+        # Create mixed faces: triangle + quad
+        offsets_orig = np.array([0, 3, 7], dtype=index_dtype)
+        data_orig = np.array([0, 1, 2, 0, 1, 3, 2], dtype=index_dtype)
+        faces_orig = tf.OffsetBlockedArray(offsets_orig, data_orig)
+        points_orig = np.array(
+            [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]],
+            dtype=np.float32,
+        )
+
+        success = tf.write_obj((faces_orig, points_orig), obj_file)
+        assert success
+
+        # Read back as dynamic
+        faces_read, points_read = tf.read_obj(obj_file, index_dtype=index_dtype)
+
+        assert isinstance(faces_read, tf.OffsetBlockedArray)
+        assert len(faces_read) == len(faces_orig)
+        assert points_read.shape == points_orig.shape
+
+        # Check face sizes match
+        for i in range(len(faces_orig)):
+            assert len(faces_read[i]) == len(faces_orig[i]), \
+                f"Face {i} size mismatch: {len(faces_read[i])} vs {len(faces_orig[i])}"
+
+        # Check face indices match
+        for i in range(len(faces_orig)):
+            np.testing.assert_array_equal(
+                faces_read[i], faces_orig[i],
+                err_msg=f"Face {i} indices mismatch",
+            )
+
+        # Check points match
+        np.testing.assert_allclose(points_read, points_orig, atol=1e-5)
 
 
 if __name__ == "__main__":

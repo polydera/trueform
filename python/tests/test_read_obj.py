@@ -284,7 +284,7 @@ def test_read_obj_invalid_ngon():
         obj_file = os.path.join(tmpdir, "test.obj")
         create_simple_triangle_obj(obj_file)
 
-        with pytest.raises(ValueError, match="ngon must be 3 or 4"):
+        with pytest.raises(ValueError, match="ngon must be 3, 4, or None"):
             tf.read_obj(obj_file, ngon=5)
 
 
@@ -296,6 +296,115 @@ def test_read_obj_invalid_dtype():
 
         with pytest.raises(ValueError, match="index_dtype must be"):
             tf.read_obj(obj_file, ngon=3, index_dtype=np.float32)
+
+
+# =============================================================================
+# Dynamic read tests
+# =============================================================================
+
+
+def create_mixed_obj(filename):
+    """Create an OBJ file with mixed triangles and quads"""
+    obj_content = """# Mixed: triangles and quads
+v 0 0 0
+v 1 0 0
+v 1 1 0
+v 0 1 0
+v 2 0 0
+f 1 2 3
+f 1 3 4
+f 1 2 5 3
+"""
+    with open(filename, 'w') as f:
+        f.write(obj_content)
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_read_obj_dynamic_default(index_dtype):
+    """Test that default read (ngon=None) returns OffsetBlockedArray"""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        obj_file = os.path.join(tmpdir, "test.obj")
+        create_simple_triangle_obj(obj_file)
+
+        faces, points = tf.read_obj(obj_file, index_dtype=index_dtype)
+
+        assert isinstance(faces, tf.OffsetBlockedArray), \
+            f"Expected OffsetBlockedArray, got {type(faces)}"
+        assert isinstance(points, np.ndarray)
+        assert len(faces) == 1
+        assert points.shape == (3, 3)
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_read_obj_dynamic_triangles(index_dtype):
+    """Test dynamic read of pure triangles"""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        obj_file = os.path.join(tmpdir, "cube.obj")
+        create_cube_triangles_obj(obj_file)
+
+        faces, points = tf.read_obj(obj_file, index_dtype=index_dtype)
+
+        assert isinstance(faces, tf.OffsetBlockedArray)
+        assert len(faces) == 12
+        assert points.shape[0] == 8
+
+        # Each face should be a triangle
+        for i in range(len(faces)):
+            assert len(faces[i]) == 3, f"Face {i} should have 3 vertices"
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_read_obj_dynamic_quads(index_dtype):
+    """Test dynamic read of pure quads"""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        obj_file = os.path.join(tmpdir, "cube.obj")
+        create_cube_quads_obj(obj_file)
+
+        faces, points = tf.read_obj(obj_file, index_dtype=index_dtype)
+
+        assert isinstance(faces, tf.OffsetBlockedArray)
+        assert len(faces) == 6
+        assert points.shape[0] == 8
+
+        # Each face should be a quad
+        for i in range(len(faces)):
+            assert len(faces[i]) == 4, f"Face {i} should have 4 vertices"
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_read_obj_dynamic_mixed(index_dtype):
+    """Test dynamic read of mixed polygons (triangles + quads)"""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        obj_file = os.path.join(tmpdir, "mixed.obj")
+        create_mixed_obj(obj_file)
+
+        faces, points = tf.read_obj(obj_file, index_dtype=index_dtype)
+
+        assert isinstance(faces, tf.OffsetBlockedArray)
+        assert len(faces) == 3
+        assert points.shape[0] == 5
+
+        # First two faces are triangles, third is a quad
+        assert len(faces[0]) == 3
+        assert len(faces[1]) == 3
+        assert len(faces[2]) == 4
+
+        # Check 0-based indices of first face
+        assert faces[0][0] == 0
+        assert faces[0][1] == 1
+        assert faces[0][2] == 2
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_read_obj_dynamic_index_dtype(index_dtype):
+    """Test that dynamic read respects index_dtype"""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        obj_file = os.path.join(tmpdir, "test.obj")
+        create_simple_triangle_obj(obj_file)
+
+        faces, points = tf.read_obj(obj_file, index_dtype=index_dtype)
+
+        assert faces.dtype == index_dtype, f"Expected dtype {index_dtype}, got {faces.dtype}"
 
 
 if __name__ == "__main__":

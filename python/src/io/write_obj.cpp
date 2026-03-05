@@ -178,6 +178,102 @@ auto register_io_write_obj(nanobind::module_ &m) -> void {
       nanobind::arg("filename"),
       "Write a quad mesh to an OBJ file with int64 indices and float64 "
       "points.");
+
+  // int32, float32, dynamic
+  m.def(
+      "write_obj_intdynfloat3d",
+      [](nanobind::ndarray<nanobind::numpy, int, nanobind::shape<-1>>
+             offsets_array,
+         nanobind::ndarray<nanobind::numpy, int, nanobind::shape<-1>>
+             data_array,
+         nanobind::ndarray<nanobind::numpy, float, nanobind::shape<-1, 3>>
+             points_array,
+         std::optional<
+             nanobind::ndarray<nanobind::numpy, float, nanobind::shape<4, 4>>>
+             transformation_opt,
+         const std::string &filename) {
+        return write_obj_dynamic_impl<int, float>(
+            offsets_array, data_array, points_array, transformation_opt,
+            filename);
+      },
+      nanobind::arg("offsets"), nanobind::arg("data"),
+      nanobind::arg("points"),
+      nanobind::arg("transformation").none() = nanobind::none(),
+      nanobind::arg("filename"),
+      "Write a dynamic polygon mesh to an OBJ file with int32 indices and "
+      "float32 points.");
+
+  // int32, double, dynamic
+  m.def(
+      "write_obj_intdyndouble3d",
+      [](nanobind::ndarray<nanobind::numpy, int, nanobind::shape<-1>>
+             offsets_array,
+         nanobind::ndarray<nanobind::numpy, int, nanobind::shape<-1>>
+             data_array,
+         nanobind::ndarray<nanobind::numpy, double, nanobind::shape<-1, 3>>
+             points_array,
+         std::optional<
+             nanobind::ndarray<nanobind::numpy, float, nanobind::shape<4, 4>>>
+             transformation_opt,
+         const std::string &filename) {
+        return write_obj_dynamic_impl<int, double>(
+            offsets_array, data_array, points_array, transformation_opt,
+            filename);
+      },
+      nanobind::arg("offsets"), nanobind::arg("data"),
+      nanobind::arg("points"),
+      nanobind::arg("transformation").none() = nanobind::none(),
+      nanobind::arg("filename"),
+      "Write a dynamic polygon mesh to an OBJ file with int32 indices and "
+      "float64 points.");
+
+  // int64, float32, dynamic
+  m.def(
+      "write_obj_int64dynfloat3d",
+      [](nanobind::ndarray<nanobind::numpy, int64_t, nanobind::shape<-1>>
+             offsets_array,
+         nanobind::ndarray<nanobind::numpy, int64_t, nanobind::shape<-1>>
+             data_array,
+         nanobind::ndarray<nanobind::numpy, float, nanobind::shape<-1, 3>>
+             points_array,
+         std::optional<
+             nanobind::ndarray<nanobind::numpy, float, nanobind::shape<4, 4>>>
+             transformation_opt,
+         const std::string &filename) {
+        return write_obj_dynamic_impl<int64_t, float>(
+            offsets_array, data_array, points_array, transformation_opt,
+            filename);
+      },
+      nanobind::arg("offsets"), nanobind::arg("data"),
+      nanobind::arg("points"),
+      nanobind::arg("transformation").none() = nanobind::none(),
+      nanobind::arg("filename"),
+      "Write a dynamic polygon mesh to an OBJ file with int64 indices and "
+      "float32 points.");
+
+  // int64, double, dynamic
+  m.def(
+      "write_obj_int64dyndouble3d",
+      [](nanobind::ndarray<nanobind::numpy, int64_t, nanobind::shape<-1>>
+             offsets_array,
+         nanobind::ndarray<nanobind::numpy, int64_t, nanobind::shape<-1>>
+             data_array,
+         nanobind::ndarray<nanobind::numpy, double, nanobind::shape<-1, 3>>
+             points_array,
+         std::optional<
+             nanobind::ndarray<nanobind::numpy, float, nanobind::shape<4, 4>>>
+             transformation_opt,
+         const std::string &filename) {
+        return write_obj_dynamic_impl<int64_t, double>(
+            offsets_array, data_array, points_array, transformation_opt,
+            filename);
+      },
+      nanobind::arg("offsets"), nanobind::arg("data"),
+      nanobind::arg("points"),
+      nanobind::arg("transformation").none() = nanobind::none(),
+      nanobind::arg("filename"),
+      "Write a dynamic polygon mesh to an OBJ file with int64 indices and "
+      "float64 points.");
 }
 
 } // namespace tf::py
