@@ -205,7 +205,7 @@ private:
             is_valid_diagonal(points, _nodes[a], _nodes[b])) {
           auto c_id = split_polygon(a, b);
           bool success = run_implementation(points, a);
-          success = success && run_implementation(points, c_id);
+          success &= run_implementation(points, c_id);
           return success;
         }
         b = next(_nodes[b]).id;

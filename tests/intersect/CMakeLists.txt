@@ -2,6 +2,7 @@ add_executable(trueform_intersect_tests
   test_intersection_curves.cpp
   test_self_intersection.cpp
   test_isocontours.cpp
+  test_exact_intersections.cpp
 )
 
 target_link_libraries(trueform_intersect_tests PRIVATE trueform_test_common)

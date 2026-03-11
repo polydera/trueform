@@ -43,7 +43,8 @@ namespace tf {
 /// @return Signed distance (positive = outside, negative = inside).
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto signed_distance(const tf::polygons<Policy0> &polygons,
-                     const tf::point_like<Dims, Policy1> &point) {
+                     const tf::point_like<Dims, Policy1> &_point) -> double {
+  static_assert(Dims == 3, "signed_distance requires 3D");
   static_assert(tf::coordinate_dims_v<Policy0> == Dims,
                 "Polygon dimensions must match point dimensions");
   static_assert(tf::has_tree_policy<Policy0>, "Use polygons | tf::tag(tree)");
@@ -52,26 +53,31 @@ auto signed_distance(const tf::polygons<Policy0> &polygons,
   static_assert(tf::has_manifold_edge_link_policy<Policy0>,
                 "Use polygons | tf::tag(manifold_edge_link)");
 
-  using RealT = tf::coordinate_type<Policy0, Policy1>;
+  // Work in double precision
+  auto dpolygons = tf::wrap_map(polygons, [](auto &&x) {
+    return tf::core::make_polygons(x.faces(),
+                                   x.points().template as<double>());
+  });
+  tf::point<double, 3> point = _point;;
 
-  auto proj = tf::neighbor_search(polygons, point);
+  auto proj = tf::neighbor_search(dpolygons, point);
   if (!proj)
-    return RealT(0);
+    return 0.0;
 
-  auto frame = tf::frame_of(polygons);
+  auto frame = tf::frame_of(dpolygons);
   auto face_id = proj.element;
   auto closest_pt = proj.info.point;
-  auto poly = polygons[face_id];
+  auto poly = dpolygons[face_id];
   auto face_normal =
-      tf::transformed_normal(tf::make_normal(polygons, face_id), frame);
+      tf::transformed_normal(tf::make_normal(dpolygons, face_id), frame);
   auto sz = poly.size();
   auto diff = point - closest_pt;
-  constexpr auto eps2 = tf::epsilon2<RealT>;
+  constexpr auto eps2 = tf::epsilon2<double>;
 
   // Determine closest feature: vertex, edge, or face interior
   int on_vert = -1;
   {
-    RealT best = eps2;
+    double best = eps2;
     for (decltype(sz) v = 0; v < sz; ++v) {
       auto d2 = (tf::transformed(poly[v], frame) - closest_pt).length2();
       if (d2 < best) {
@@ -82,7 +88,7 @@ auto signed_distance(const tf::polygons<Policy0> &polygons,
   }
   int on_edge = -1;
   if (on_vert < 0) {
-    RealT best = eps2;
+    double best = eps2;
     auto prev = sz - 1;
     for (decltype(sz) i = 0; i < sz; prev = i++) {
       auto d2 = tf::distance2(
@@ -98,20 +104,14 @@ auto signed_distance(const tf::polygons<Policy0> &polygons,
 
   // Compute pseudonormal-based sign
   auto dist = tf::sqrt(proj.metric());
-  RealT sign_dot;
+  double sign_dot;
   if (on_vert >= 0) {
-    // Vertex on boundary → outside
     auto vert_id = poly.indices()[on_vert];
-    for (auto fi : polygons.face_membership()[vert_id]) {
-      for (auto mel : polygons.manifold_edge_link()[fi])
-        if (mel.is_boundary())
-          return dist;
-    }
     // Vertex: angle-weighted normal from all incident faces
-    sign_dot = RealT(0);
-    for (auto fi : polygons.face_membership()[vert_id]) {
-      auto fp = polygons[fi];
-      auto fn = tf::transformed_normal(tf::make_normal(polygons, fi), frame);
+    sign_dot = 0.0;
+    for (auto fi : dpolygons.face_membership()[vert_id]) {
+      auto fp = dpolygons[fi];
+      auto fn = tf::transformed_normal(tf::make_normal(dpolygons, fi), frame);
       auto fsz = fp.size();
       for (decltype(fsz) j = 0; j < fsz; ++j) {
         if (fp.indices()[j] != vert_id)
@@ -128,20 +128,19 @@ auto signed_distance(const tf::polygons<Policy0> &polygons,
       }
     }
   } else if (on_edge >= 0) {
-    // Boundary edge → outside
-    auto peer = polygons.manifold_edge_link()[face_id][on_edge];
+    auto peer = dpolygons.manifold_edge_link()[face_id][on_edge];
     // Edge: sum of this face normal + peer face normal
     sign_dot = tf::dot(diff, face_normal);
     if (peer.is_simple())
       sign_dot +=
           tf::dot(diff, tf::transformed_normal(
-                            tf::make_normal(polygons, peer.face_peer), frame));
+                            tf::make_normal(dpolygons, peer.face_peer), frame));
   } else {
     // Face interior
     sign_dot = tf::dot(diff, face_normal);
   }
 
-  return sign_dot >= RealT(0) ? dist : -dist;
+  return sign_dot >= 0.0 ? dist : -dist;
 }
 
 /// @copydoc signed_distance(const tf::polygons<Policy0>&, const

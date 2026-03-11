@@ -16,6 +16,8 @@
 #include "./algorithm/reduce.hpp"
 #include "./coordinate_type.hpp"
 #include "./empty_aabb.hpp"
+#include "./obb_like.hpp"
+#include "./obbrss_like.hpp"
 #include "./point_like.hpp"
 #include "./points.hpp"
 #include "./polygon.hpp"
@@ -107,6 +109,42 @@ auto aabb_from(const tf::polygons<Policy> &polygons) {
 template <typename Policy>
 auto aabb_from(const tf::segments<Policy> &segments) {
   return aabb_from(segments.points());
+}
+
+/// @ingroup core_primitives
+/// @brief Construct an AABB from an oriented bounding box.
+///
+/// Enumerates all 2^Dims corners of the OBB and returns the tightest
+/// enclosing axis-aligned bounding box.
+template <std::size_t Dims, typename Policy>
+auto aabb_from(const obb_like<Dims, Policy> &obb) {
+  auto result = aabb_from(obb.origin);
+  for (std::size_t mask = 1; mask < (std::size_t(1) << Dims); ++mask) {
+    point<coordinate_type<Policy>, Dims> corner = obb.origin;
+    for (std::size_t i = 0; i < Dims; ++i)
+      if (mask & (std::size_t(1) << i))
+        corner += obb.axes[i] * obb.extent[i];
+    aabb_union_inplace(result, corner);
+  }
+  return result;
+}
+
+/// @ingroup core_primitives
+/// @brief Construct an AABB from an OBB-RSS hybrid bounding volume.
+///
+/// Uses the OBB part (obb_origin, axes, extent) to compute the enclosing
+/// axis-aligned bounding box.
+template <std::size_t Dims, typename Policy>
+auto aabb_from(const obbrss_like<Dims, Policy> &bv) {
+  auto result = aabb_from(bv.obb_origin);
+  for (std::size_t mask = 1; mask < (std::size_t(1) << Dims); ++mask) {
+    point<coordinate_type<Policy>, Dims> corner = bv.obb_origin;
+    for (std::size_t i = 0; i < Dims; ++i)
+      if (mask & (std::size_t(1) << i))
+        corner += bv.axes[i] * bv.extent[i];
+    aabb_union_inplace(result, corner);
+  }
+  return result;
 }
 
 } // namespace tf
