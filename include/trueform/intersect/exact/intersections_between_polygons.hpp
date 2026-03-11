@@ -348,22 +348,38 @@ private:
     auto plane0 = compute_face_plane(face_buf0);
     auto plane1 = compute_face_plane(face_buf1);
 
-    // Compute orient3d_sign for all vertices vs opposite face plane
+    // Compute orient3d_sign for all vertices vs opposite face plane.
+    // sign_mask bits: 0 = has_negative, 1 = has_zero, 2 = has_positive.
+    constexpr int has_negative = 1 << 0;
+    constexpr int has_zero = 1 << 1;
+    constexpr int has_positive = 1 << 2;
+    constexpr int has_crossing = has_negative | has_positive;
+
     tf::small_vector<int, 16> signs0, signs1;
     signs0.resize(n0);
     signs1.resize(n1);
+    int mask0 = 0, mask1 = 0;
     if (plane1.valid)
-      for (decltype(n0) i = 0; i < n0; ++i)
+      for (decltype(n0) i = 0; i < n0; ++i) {
         signs0[i] = orient3d_sign({face_buf1[plane1.i0], face_buf1[plane1.i1],
                                    face_buf1[plane1.i2], face_buf0[i]});
+        mask0 |= 1 << (signs0[i] + 1);
+      }
     if (plane0.valid)
-      for (decltype(n1) j = 0; j < n1; ++j)
+      for (decltype(n1) j = 0; j < n1; ++j) {
         signs1[j] = orient3d_sign({face_buf0[plane0.i0], face_buf0[plane0.i1],
                                    face_buf0[plane0.i2], face_buf1[j]});
+        mask1 |= 1 << (signs1[j] + 1);
+      }
 
-    auto is_zero_f = [](auto x) { return x == 0; };
-    bool any_zero = std::any_of(signs0.begin(), signs0.end(), is_zero_f) ||
-                    std::any_of(signs1.begin(), signs1.end(), is_zero_f);
+    // Both faces strictly on one side of the other's plane → no intersection.
+    int combined = mask0 | mask1;
+    if (!(combined & has_zero) &&
+        (mask0 & has_crossing) != has_crossing &&
+        (mask1 & has_crossing) != has_crossing)
+      return;
+
+    bool any_zero = combined & has_zero;
     auto is_rep0 = [&](std::size_t i) -> std::pair<bool, bool> {
       auto v_global = poly0.indices()[i];
       return {Index(fm0[v_global].front()) == face0_id,
@@ -376,12 +392,12 @@ private:
     };
 
     // EF / crossing-EE / crossing-VE (both directions)
-    crossing_edges_vs_face(face_buf0, n0, face_buf1, n1, signs0, tag0, tag1,
-                           face0_id, face1_id, mel0, is_rep1, plane1, ints,
-                           pts);
-    crossing_edges_vs_face(face_buf1, n1, face_buf0, n0, signs1, tag1, tag0,
-                           face1_id, face0_id, mel1, is_rep0, plane0, ints,
-                           pts);
+    if ((mask0 & has_crossing) == has_crossing)
+      crossing_edges_vs_face(face_buf0, n0, face_buf1, n1, signs0, tag0, tag1,
+                             face0_id, face1_id, mel0, is_rep1, ints, pts);
+    if ((mask1 & has_crossing) == has_crossing)
+      crossing_edges_vs_face(face_buf1, n1, face_buf0, n0, signs1, tag1, tag0,
+                             face1_id, face0_id, mel1, is_rep0, ints, pts);
     if (!any_zero)
       return;
 

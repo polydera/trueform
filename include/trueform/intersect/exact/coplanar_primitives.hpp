@@ -46,7 +46,7 @@ inline auto coplanar_edge_edge_point(const vertex &a0, const vertex &a1,
 /// plane (sign==0). Handles VV (shared coords), VE (vertex on edge
 /// interior), and coplanar EE (crossing edges with all endpoints
 /// on-plane). Skips VE when the edge has strict +/− signs — those are
-/// already caught by classify_crossing.
+/// already caught by crossing_edges_vs_face.
 template <typename Index, typename IsRep0, typename IsRep1, typename Ints,
           typename Pts>
 void coplanar_primitives(
@@ -82,8 +82,8 @@ void coplanar_primitives(
 
       // VE: vertex i of poly0 on edge j of poly1 (interior only, not
       // endpoints). Guard: only when edge j is NOT strict +/- (at least one
-      // endpoint on poly0's plane). If strict +/-, classify_crossing handles
-      // it.
+      // endpoint on poly0's plane). If strict +/-, crossing_edges_vs_face
+      // handles it.
       if (vrep_i && erep_j && signs0[i] == 0 && signs1[j] * signs1[nj] == 0 &&
           plane1.valid && !pts_equal(face0[i].pt, face1[j].pt) &&
           !pts_equal(face0[i].pt, face1[nj].pt)) {
@@ -101,8 +101,8 @@ void coplanar_primitives(
 
       // VE: vertex j of poly1 on edge i of poly0 (interior only, not
       // endpoints). Guard: only when edge i is NOT strict +/- (at least one
-      // endpoint on poly1's plane). If strict +/-, classify_crossing handles
-      // it.
+      // endpoint on poly1's plane). If strict +/-, crossing_edges_vs_face
+      // handles it.
       if (vrep_j && erep_i && signs1[j] == 0 && signs0[i] * signs0[ni] == 0 &&
           plane0.valid && !pts_equal(face1[j].pt, face0[i].pt) &&
           !pts_equal(face1[j].pt, face0[ni].pt)) {
