@@ -264,7 +264,7 @@ TEST_CASE("Edge hits face interior (1 EF + 1 VF)", "[exact][ef]") {
 }
 
 // =============================================================================
-// Slow path: fan orient3d zero → classify_crossing
+// Fan orient3d zero → crossing_edges_vs_face classification
 // =============================================================================
 
 TEST_CASE("Edge through face edge (EE)", "[exact][ee]") {
@@ -498,4 +498,255 @@ TEST_CASE("3 mesh: 2 identical + 1 crossing — 4 VV + 2 EF", "[exact][nmesh]") 
   CHECK(c.ee == 0);
   CHECK(c.vf == 0);
   CHECK(c.ef == 2);
+}
+
+// =============================================================================
+// Fan-based crossing classification tests
+// =============================================================================
+
+TEST_CASE("Fan: edge on diagonal → EF", "[exact][fan]") {
+  auto a = make_mesh<4>(
+      {{{0, 0, 0}}, {{4, 0, 0}}, {{4, 4, 0}}, {{0, 4, 0}}},
+      {{{0, 1, 2, 3}}});
+  auto b = make_mesh<3>(
+      {{{2, 2, 3}}, {{2, 2, -3}}, {{8, 8, 0}}}, {{{0, 1, 2}}});
+  auto c = count_primitives(a, b);
+  CHECK(c.vv == 0);
+  CHECK(c.ve == 0);
+  CHECK(c.ee == 0);
+  CHECK(c.vf == 1);
+  CHECK(c.ef == 1);
+}
+
+TEST_CASE("Fan: edge on real edge → EE", "[exact][fan]") {
+  auto a = make_mesh<4>(
+      {{{0, 0, 0}}, {{4, 0, 0}}, {{4, 4, 0}}, {{0, 4, 0}}},
+      {{{0, 1, 2, 3}}});
+  auto b = make_mesh<3>(
+      {{{4, 2, 3}}, {{4, 2, -3}}, {{8, 2, 0}}}, {{{0, 1, 2}}});
+  auto c = count_primitives(a, b);
+  CHECK(c.vv == 0);
+  CHECK(c.ve == 0);
+  CHECK(c.ee == 1);
+  CHECK(c.vf == 0);
+  CHECK(c.ef == 0);
+}
+
+TEST_CASE("Fan: edge through vertex → VE", "[exact][fan]") {
+  auto a = make_mesh<4>(
+      {{{0, 0, 0}}, {{4, 0, 0}}, {{4, 4, 0}}, {{0, 4, 0}}},
+      {{{0, 1, 2, 3}}});
+  auto b = make_mesh<3>(
+      {{{4, 4, 3}}, {{4, 4, -3}}, {{8, 8, 0}}}, {{{0, 1, 2}}});
+  auto c = count_primitives(a, b);
+  CHECK(c.vv == 0);
+  CHECK(c.ve == 1);
+  CHECK(c.ee == 0);
+  CHECK(c.vf == 0);
+  CHECK(c.ef == 0);
+}
+
+TEST_CASE("Fan: edge through fan apex → VE", "[exact][fan]") {
+  auto a = make_mesh<4>(
+      {{{0, 0, 0}}, {{4, 0, 0}}, {{4, 4, 0}}, {{0, 4, 0}}},
+      {{{0, 1, 2, 3}}});
+  auto b = make_mesh<3>(
+      {{{0, 0, 3}}, {{0, 0, -3}}, {{-4, 0, 0}}}, {{{0, 1, 2}}});
+  auto c = count_primitives(a, b);
+  CHECK(c.vv == 0);
+  CHECK(c.ve == 1);
+  CHECK(c.ee == 0);
+  CHECK(c.vf == 0);
+  CHECK(c.ef == 0);
+}
+
+TEST_CASE("Fan: edge on first real edge → EE", "[exact][fan]") {
+  auto a = make_mesh<4>(
+      {{{0, 0, 0}}, {{4, 0, 0}}, {{4, 4, 0}}, {{0, 4, 0}}},
+      {{{0, 1, 2, 3}}});
+  auto b = make_mesh<3>(
+      {{{2, 0, 3}}, {{2, 0, -3}}, {{2, -4, 0}}}, {{{0, 1, 2}}});
+  auto c = count_primitives(a, b);
+  CHECK(c.vv == 0);
+  CHECK(c.ve == 0);
+  CHECK(c.ee == 1);
+  CHECK(c.vf == 0);
+  CHECK(c.ef == 0);
+}
+
+TEST_CASE("Fan: edge on last real edge → EE", "[exact][fan]") {
+  auto a = make_mesh<4>(
+      {{{0, 0, 0}}, {{4, 0, 0}}, {{4, 4, 0}}, {{0, 4, 0}}},
+      {{{0, 1, 2, 3}}});
+  auto b = make_mesh<3>(
+      {{{0, 2, 3}}, {{0, 2, -3}}, {{-4, 2, 0}}}, {{{0, 1, 2}}});
+  auto c = count_primitives(a, b);
+  CHECK(c.vv == 0);
+  CHECK(c.ve == 0);
+  CHECK(c.ee == 1);
+  CHECK(c.vf == 0);
+  CHECK(c.ef == 0);
+}
+
+TEST_CASE("Two quads: both EE (edges on edges)", "[exact][fan]") {
+  auto a = make_mesh<4>(
+      {{{-3, -3, 0}}, {{3, -3, 0}}, {{3, 3, 0}}, {{-3, 3, 0}}},
+      {{{0, 1, 2, 3}}});
+  auto b = make_mesh<4>(
+      {{{0, -3, -3}}, {{0, 3, -3}}, {{0, 3, 3}}, {{0, -3, 3}}},
+      {{{0, 1, 2, 3}}});
+  auto c = count_primitives(a, b);
+  CHECK(c.vv == 0);
+  CHECK(c.ve == 0);
+  CHECK(c.ee == 2);
+  CHECK(c.vf == 0);
+  CHECK(c.ef == 0);
+}
+
+TEST_CASE("Two quads: both EF (interior crossing)", "[exact][fan]") {
+  auto a = make_mesh<4>(
+      {{{-5, -5, 0}}, {{5, -5, 0}}, {{5, 5, 0}}, {{-5, 5, 0}}},
+      {{{0, 1, 2, 3}}});
+  auto b = make_mesh<4>(
+      {{{-2, 0, -2}}, {{2, 0, -2}}, {{2, 0, 2}}, {{-2, 0, 2}}},
+      {{{0, 1, 2, 3}}});
+  auto c = count_primitives(a, b);
+  CHECK(c.vv == 0);
+  CHECK(c.ve == 0);
+  CHECK(c.ee == 0);
+  CHECK(c.vf == 0);
+  CHECK(c.ef == 2);
+}
+
+TEST_CASE("Quad+tri: EE on edge + EF interior", "[exact][fan]") {
+  auto a = make_mesh<4>(
+      {{{-3, -3, 0}}, {{3, -3, 0}}, {{3, 3, 0}}, {{-3, 3, 0}}},
+      {{{0, 1, 2, 3}}});
+  auto b = make_mesh<3>(
+      {{{0, 3, 3}}, {{0, 3, -3}}, {{0, 0, -3}}}, {{{0, 1, 2}}});
+  auto c = count_primitives(a, b);
+  CHECK(c.vv == 0);
+  CHECK(c.ve == 0);
+  CHECK(c.ee == 1);
+  CHECK(c.vf == 0);
+  CHECK(c.ef == 1);
+}
+
+TEST_CASE("Quad+tri: VE at vertex + EF interior", "[exact][fan]") {
+  auto a = make_mesh<4>(
+      {{{-3, -3, 0}}, {{3, -3, 0}}, {{3, 3, 0}}, {{-3, 3, 0}}},
+      {{{0, 1, 2, 3}}});
+  auto b = make_mesh<3>(
+      {{{3, 3, 3}}, {{3, 3, -3}}, {{0, 0, -3}}}, {{{0, 1, 2}}});
+  auto c = count_primitives(a, b);
+  CHECK(c.vv == 0);
+  CHECK(c.ve == 1);
+  CHECK(c.ee == 0);
+  CHECK(c.vf == 0);
+  CHECK(c.ef == 1);
+}
+
+TEST_CASE("Fan: quad over diagonal → 2 VE", "[exact][fan]") {
+  auto a = make_mesh<4>(
+      {{{0, 0, 0}}, {{4, 0, 0}}, {{4, 4, 0}}, {{0, 4, 0}}},
+      {{{0, 1, 2, 3}}});
+  auto b = make_mesh<4>(
+      {{{0, 0, 2}}, {{4, 4, 2}}, {{4, 4, -2}}, {{0, 0, -2}}},
+      {{{0, 1, 2, 3}}});
+  auto c = count_primitives(a, b);
+  CHECK(c.vv == 0);
+  CHECK(c.ve == 2);
+  CHECK(c.ee == 0);
+  CHECK(c.vf == 0);
+  CHECK(c.ef == 0);
+}
+
+TEST_CASE("Fan: quad over diagonal → 2 VV", "[exact][fan]") {
+  auto a = make_mesh<4>(
+      {{{0, 0, 0}}, {{4, 0, 0}}, {{4, 4, 0}}, {{0, 4, 0}}},
+      {{{0, 1, 2, 3}}});
+  auto b = make_mesh<4>(
+      {{{0, 0, 0}}, {{4, 4, 0}}, {{4, 4, 2}}, {{0, 0, 2}}},
+      {{{0, 1, 2, 3}}});
+  auto c = count_primitives(a, b);
+  CHECK(c.vv == 2);
+  CHECK(c.ve == 0);
+  CHECK(c.ee == 0);
+  CHECK(c.vf == 0);
+  CHECK(c.ef == 0);
+}
+
+TEST_CASE("Vertical quad on face → 2 VF", "[exact][fan]") {
+  auto a = make_mesh<4>(
+      {{{-4, -4, 0}}, {{4, -4, 0}}, {{4, 4, 0}}, {{-4, 4, 0}}},
+      {{{0, 1, 2, 3}}});
+  auto b = make_mesh<4>(
+      {{{1, 0, 0}}, {{3, 0, 0}}, {{3, 0, 2}}, {{1, 0, 2}}},
+      {{{0, 1, 2, 3}}});
+  auto c = count_primitives(a, b);
+  CHECK(c.vv == 0);
+  CHECK(c.ve == 0);
+  CHECK(c.ee == 0);
+  CHECK(c.vf == 2);
+  CHECK(c.ef == 0);
+}
+
+TEST_CASE("Vertical quad on edges → 2 VE", "[exact][fan]") {
+  auto a = make_mesh<4>(
+      {{{0, 0, 0}}, {{4, 0, 0}}, {{4, 4, 0}}, {{0, 4, 0}}},
+      {{{0, 1, 2, 3}}});
+  auto b = make_mesh<4>(
+      {{{0, 2, 0}}, {{4, 2, 0}}, {{4, 2, 2}}, {{0, 2, 2}}},
+      {{{0, 1, 2, 3}}});
+  auto c = count_primitives(a, b);
+  CHECK(c.vv == 0);
+  CHECK(c.ve == 2);
+  CHECK(c.ee == 0);
+  CHECK(c.vf == 0);
+  CHECK(c.ef == 0);
+}
+
+TEST_CASE("Vertical quad extends over → 2 EE", "[exact][fan]") {
+  auto a = make_mesh<4>(
+      {{{0, 0, 0}}, {{4, 0, 0}}, {{4, 4, 0}}, {{0, 4, 0}}},
+      {{{0, 1, 2, 3}}});
+  auto b = make_mesh<4>(
+      {{{-1, 2, 0}}, {{5, 2, 0}}, {{5, 2, 2}}, {{-1, 2, 2}}},
+      {{{0, 1, 2, 3}}});
+  auto c = count_primitives(a, b);
+  CHECK(c.vv == 0);
+  CHECK(c.ve == 0);
+  CHECK(c.ee == 2);
+  CHECK(c.vf == 0);
+  CHECK(c.ef == 0);
+}
+
+TEST_CASE("Vertical quad on edge — no crossing", "[exact][fan]") {
+  auto a = make_mesh<4>(
+      {{{0, 0, 0}}, {{4, 0, 0}}, {{4, 4, 0}}, {{0, 4, 0}}},
+      {{{0, 1, 2, 3}}});
+  auto b = make_mesh<4>(
+      {{{0, 0, 0}}, {{4, 0, 0}}, {{4, 0, 2}}, {{0, 0, 2}}},
+      {{{0, 1, 2, 3}}});
+  auto c = count_primitives(a, b);
+  CHECK(c.vv == 2);
+  CHECK(c.ve == 0);
+  CHECK(c.ee == 0);
+  CHECK(c.vf == 0);
+  CHECK(c.ef == 0);
+}
+
+TEST_CASE("Perp quads: 1 EE + 1 EF", "[exact][fan]") {
+  auto a = make_mesh<4>(
+      {{{-3, -3, 0}}, {{3, -3, 0}}, {{3, 3, 0}}, {{-3, 3, 0}}},
+      {{{0, 1, 2, 3}}});
+  auto b = make_mesh<4>(
+      {{{-1, 0, -3}}, {{3, 0, -3}}, {{3, 0, 3}}, {{-1, 0, 3}}},
+      {{{0, 1, 2, 3}}});
+  auto c = count_primitives(a, b);
+  CHECK(c.vv == 0);
+  CHECK(c.ve == 0);
+  CHECK(c.ee == 1);
+  CHECK(c.vf == 0);
+  CHECK(c.ef == 1);
 }
