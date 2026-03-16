@@ -15,6 +15,7 @@
 #include "../../core/algorithm/circular_increment.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/small_vector.hpp"
+#include "../../exact/coplanar_edge_edge_point.hpp"
 #include "../../exact/orient2d.hpp"
 #include "../../exact/orient3d.hpp"
 #include "../../exact/segments_cross.hpp"
@@ -23,24 +24,6 @@
 #include "./face_plane_info.hpp"
 
 namespace tf::exact {
-
-/// Compute crossing point of two coplanar edges via orient2d interpolation.
-inline auto coplanar_edge_edge_point(const vertex &a0, const vertex &a1,
-                                     const vertex &b0, const vertex &b1,
-                                     int ax0, int ax1) -> pt3 {
-  pt2 pa0 = {a0.pt[ax0], a0.pt[ax1]}, pa1 = {a1.pt[ax0], a1.pt[ax1]};
-  pt2 pb0 = {b0.pt[ax0], b0.pt[ax1]}, pb1 = {b1.pt[ax0], b1.pt[ax1]};
-  auto d0 = orient2d(pb0, pb1, pa0);
-  auto d1 = orient2d(pb0, pb1, pa1);
-  auto abs_d0 = d0 < 0 ? -d0 : d0;
-  auto abs_d1 = d1 < 0 ? -d1 : d1;
-  auto sum = abs_d0 + abs_d1;
-  pt3 point;
-  for (int i = 0; i < 3; ++i)
-    point[i] = static_cast<int32_t>(div_round(
-        abs_d1 * int128(a0.pt[i]) + abs_d0 * int128(a1.pt[i]), sum));
-  return point;
-}
 
 /// Detect intersections between features that lie on the other face's
 /// plane (sign==0). Handles VV (shared coords), VE (vertex on edge

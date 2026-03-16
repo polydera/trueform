@@ -1,19 +1,20 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 #include "./buffer.hpp"
 #include "./cache_aligned_slot.hpp"
 #include "./views/mapped_range.hpp"
+#include "tbb/cache_aligned_allocator.h"
 #include "tbb/task_arena.h"
 #include <vector>
 
@@ -147,7 +148,8 @@ public:
 
   auto buffers() const {
     return tf::make_mapped_range(
-        _buffers, [](const auto &x) -> const tf::buffer<T> & { return x.value; });
+        _buffers,
+        [](const auto &x) -> const tf::buffer<T> & { return x.value; });
   }
 
 private:
@@ -161,7 +163,10 @@ private:
     return _buffers[tbb::this_task_arena::current_thread_index()].value;
   }
 
-  std::vector<core::cache_aligned_slot<tf::buffer<T>>> _buffers;
+  std::vector<
+      core::cache_aligned_slot<tf::buffer<T>>,
+      tbb::cache_aligned_allocator<core::cache_aligned_slot<tf::buffer<T>>>>
+      _buffers;
 };
 
 } // namespace tf

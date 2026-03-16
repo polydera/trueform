@@ -1,18 +1,19 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 #include "../core/buffer.hpp"
 #include "../core/range.hpp"
+#include "./external/fast_float.hpp"
 #include <cstdint>
 #include <cstring>
 #include <fstream>
@@ -37,7 +38,6 @@ public:
   }
 
   // Read from memory buffer and append x,y,z floats into tf::buffer<T>.
-  // For ASCII format, data must be null-terminated past end (for strtof).
   template <class T>
   auto read(tf::range<const char *, tf::dynamic_size> data,
             tf::buffer<T> &out_xyz) -> bool {
@@ -91,24 +91,30 @@ private:
     return true;
   }
 
-  // ---------- Counting ----------
-  static auto count_points_ascii_(std::ifstream &f, std::uint64_t &out_points)
-      -> bool {
-    f.clear();
-    f.seekg(0, std::ios::beg);
-    std::uint64_t count = 0;
-    std::string line;
-    while (std::getline(f, line)) {
-      const char *b = skip_ws_(line.c_str());
-      if (starts_with_vertex_(b)) {
-        char *endp{};
-        (void)std::strtof(b + 6, &endp);
-        (void)std::strtof(endp, &endp);
-        (void)std::strtof(endp, &endp);
-        ++count;
+  // ---------- Single-pass ASCII ----------
+  template <class T>
+  static auto read_ascii_single_pass_(const char *p, const char *end,
+                                      tf::buffer<T> &out) -> bool {
+    // Estimate: STL vertex line ~30 bytes, ~1/4 of lines are vertices
+    auto est = static_cast<std::size_t>(end - p) / 40;
+    reserve_more_(out, est * 3);
+
+    while (p < end) {
+      const char *nl = static_cast<const char *>(std::memchr(p, '\n', end - p));
+      if (!nl)
+        nl = end;
+      const char *b = skip_ws_(p);
+      if (b + 7 <= nl && starts_with_vertex_(b)) {
+        b += 6;
+        float x{}, y{}, z{};
+        if (!parse_three_floats_(b, nl, x, y, z))
+          return false;
+        out.push_back(static_cast<T>(x));
+        out.push_back(static_cast<T>(y));
+        out.push_back(static_cast<T>(z));
       }
+      p = nl + 1;
     }
-    out_points = count;
     return true;
   }
 
@@ -164,40 +170,22 @@ private:
   // ---------- Reading: ASCII ----------
   template <class T>
   auto read_ascii_into_(std::ifstream &f, tf::buffer<T> &out) -> bool {
-    std::uint64_t vcount{};
-    if (!count_points_ascii_(f, vcount))
+    // Load file into memory for single-pass
+    std::uint64_t sz{};
+    if (!file_size_(f, sz))
       return false;
-
-    const std::uint64_t floats_to_add = vcount * 3ull;
-    reserve_more_(out, floats_to_add);
-    const std::size_t base = out.size();
-    out.allocate(base + static_cast<std::size_t>(floats_to_add));
-    T *dst = &out[base];
-
+    tf::buffer<char> file_data;
+    file_data.allocate(static_cast<std::size_t>(sz));
     f.clear();
     f.seekg(0, std::ios::beg);
-    std::string line;
-    while (std::getline(f, line)) {
-      const char *p = skip_ws_(line.c_str());
-      if (!starts_with_vertex_(p))
-        continue;
-
-      p += 6; // skip "vertex"
-      float x{}, y{}, z{};
-      if (!parse_three_floats_(p, x, y, z))
-        return false;
-
-      *dst++ = static_cast<T>(x);
-      *dst++ = static_cast<T>(y);
-      *dst++ = static_cast<T>(z);
-    }
-    return true;
+    if (!f.read(file_data.begin(), static_cast<std::streamsize>(sz)))
+      return false;
+    return read_ascii_single_pass_(file_data.begin(), file_data.end(), out);
   }
 
   // ---------- Memory: Format detection ----------
-  static auto
-  detect_binary_mem_(tf::range<const char *, tf::dynamic_size> data,
-                     bool &is_bin) -> bool {
+  static auto detect_binary_mem_(tf::range<const char *, tf::dynamic_size> data,
+                                 bool &is_bin) -> bool {
     const auto sz = data.size();
     if (sz < 84) {
       is_bin = false;
@@ -246,67 +234,23 @@ private:
   template <class T>
   auto read_ascii_mem_(tf::range<const char *, tf::dynamic_size> data,
                        tf::buffer<T> &out) -> bool {
-    const char *begin = data.begin();
-    const char *end = data.end();
-
-    // First pass: count vertex lines
-    std::uint64_t vcount = 0;
-    const char *p = begin;
-    while (p < end) {
-      const char *nl =
-          static_cast<const char *>(std::memchr(p, '\n', end - p));
-      if (!nl)
-        nl = end;
-      const char *b = skip_ws_(p);
-      if (b + 7 <= nl && starts_with_vertex_(b))
-        ++vcount;
-      p = nl + 1;
-    }
-
-    // Allocate output
-    const std::uint64_t floats_to_add = vcount * 3ull;
-    reserve_more_(out, floats_to_add);
-    const std::size_t base = out.size();
-    out.allocate(base + static_cast<std::size_t>(floats_to_add));
-    T *dst = &out[base];
-
-    // Second pass: parse
-    p = begin;
-    while (p < end) {
-      const char *nl =
-          static_cast<const char *>(std::memchr(p, '\n', end - p));
-      if (!nl)
-        nl = end;
-      const char *b = skip_ws_(p);
-      if (b + 7 <= nl && starts_with_vertex_(b)) {
-        b += 6;
-        float x{}, y{}, z{};
-        if (!parse_three_floats_(b, x, y, z))
-          return false;
-        *dst++ = static_cast<T>(x);
-        *dst++ = static_cast<T>(y);
-        *dst++ = static_cast<T>(z);
-      }
-      p = nl + 1;
-    }
-    return true;
+    return read_ascii_single_pass_(data.begin(), data.end(), out);
   }
 
   // ---------- Parse helpers ----------
-  static auto parse_three_floats_(const char *p, float &x, float &y, float &z)
-      -> bool {
-    char *endp{};
+  static auto parse_three_floats_(const char *p, const char *end, float &x,
+                                  float &y, float &z) -> bool {
     p = skip_ws_(p);
-    x = std::strtof(p, &endp);
-    if (endp == p)
+    auto r = tf::external::fast_float::from_chars(p, end, x);
+    if (r.ec != std::errc{})
       return false;
-    p = skip_ws_(endp);
-    y = std::strtof(p, &endp);
-    if (endp == p)
+    p = skip_ws_(r.ptr);
+    r = tf::external::fast_float::from_chars(p, end, y);
+    if (r.ec != std::errc{})
       return false;
-    p = skip_ws_(endp);
-    z = std::strtof(p, &endp);
-    if (endp == p)
+    p = skip_ws_(r.ptr);
+    r = tf::external::fast_float::from_chars(p, end, z);
+    if (r.ec != std::errc{})
       return false;
     return true;
   }

@@ -170,8 +170,8 @@ auto make_duplicator(const tf::polygons<Policy0> &form0,
 /// `.face_membership()`, and `.manifold_edge_link()`.
 template <typename FormsRange> auto make_duplicator(const FormsRange &forms) {
   return [forms = tf::make_range(forms)](auto rec, auto &buffer) {
-    auto &f0 = forms[rec.tag];
-    auto &f1 = forms[rec.tag_other];
+    auto &&f0 = forms[rec.tag];
+    auto &&f1 = forms[rec.tag_other];
     duplicate_intersection(f0.faces(), f0.face_membership(),
                            f0.manifold_edge_link(), f1.faces(),
                            f1.face_membership(), f1.manifold_edge_link(), rec,

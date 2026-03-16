@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 
 #include "./aabb_like.hpp"
@@ -49,10 +49,17 @@ template <std::size_t Dims, typename Policy0, typename Policy1>
 auto intersects(const aabb_like<Dims, Policy0> &a,
                 const aabb_like<Dims, Policy1> &b) -> bool {
   using RealT = tf::coordinate_type<Policy0, Policy1>;
-  for (std::size_t i = 0; i < Dims; ++i) {
-    if (a.max[i] + std::numeric_limits<RealT>::epsilon() < b.min[i] ||
-        b.max[i] + std::numeric_limits<RealT>::epsilon() < a.min[i])
-      return false;
+  if constexpr (std::is_floating_point_v<RealT>) {
+    for (std::size_t i = 0; i < Dims; ++i) {
+      if (a.max[i] + std::numeric_limits<RealT>::epsilon() < b.min[i] ||
+          b.max[i] + std::numeric_limits<RealT>::epsilon() < a.min[i])
+        return false;
+    }
+  } else {
+    for (std::size_t i = 0; i < Dims; ++i) {
+      if (a.max[i] < b.min[i] || b.max[i] < a.min[i])
+        return false;
+    }
   }
   return true;
 }

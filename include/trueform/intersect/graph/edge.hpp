@@ -11,11 +11,17 @@
  * Author: Žiga Sajovic
  */
 #pragma once
-#include "../../topology/topo_id.hpp"
 
-namespace tf::intersect {
+namespace tf::intersect::graph {
 
-template <typename Index>
-using intersection_target = tf::topo_id<Index>;
+template <typename Index> struct edge {
+  short tag;
+  short tag_other;
+  Index object;
+  Index object_other;
+  Index point_0;
+  Index point_1;
+  Index id; // canonical group ID
+};
 
-} // namespace tf::intersect
+} // namespace tf::intersect::graph

@@ -24,8 +24,7 @@ namespace tf::exact {
 template <typename Index, typename RealType, std::size_t Dims>
 class tagged_intersections {
 public:
-  /// All intersections grouped by key() = (tag, tag_other, object,
-  /// object_other).
+  /// All intersections grouped by key() = (tag, object).
   auto intersections() const {
     return tf::make_offset_block_range(_intersections_offsets, _intersections);
   }
@@ -66,7 +65,7 @@ protected:
       return;
     tbb::parallel_sort(_intersections.begin(), _intersections.end());
 
-    // Group offsets by key() = (tag, tag_other, object, object_other)
+    // Group offsets by key() = (tag, object)
     _intersections_offsets.reserve(n_ids * 2 + 1);
     tf::compute_offsets(_intersections,
                         std::back_inserter(_intersections_offsets), Index(0),
