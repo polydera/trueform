@@ -112,7 +112,7 @@ TEMPLATE_TEST_CASE("fit_rigid_alignment_rotation", "[geometry][alignment]",
     T_true(0, 0) = cos_a;  T_true(0, 1) = -sin_a; T_true(0, 2) = real_t(0); T_true(0, 3) = real_t(0);
     T_true(1, 0) = sin_a;  T_true(1, 1) = cos_a;  T_true(1, 2) = real_t(0); T_true(1, 3) = real_t(0);
     T_true(2, 0) = real_t(0); T_true(2, 1) = real_t(0); T_true(2, 2) = real_t(1); T_true(2, 3) = real_t(0);
-    T_true(3, 0) = real_t(0); T_true(3, 1) = real_t(0); T_true(3, 2) = real_t(0); T_true(3, 3) = real_t(1);
+
 
     // Transform source points
     tf::points_buffer<real_t, 3> source;
@@ -149,7 +149,7 @@ TEMPLATE_TEST_CASE("fit_rigid_alignment_rotation_translation", "[geometry][align
     T_true(0, 0) = cos_a;  T_true(0, 1) = -sin_a; T_true(0, 2) = real_t(0); T_true(0, 3) = real_t(10);
     T_true(1, 0) = sin_a;  T_true(1, 1) = cos_a;  T_true(1, 2) = real_t(0); T_true(1, 3) = real_t(-5);
     T_true(2, 0) = real_t(0); T_true(2, 1) = real_t(0); T_true(2, 2) = real_t(1); T_true(2, 3) = real_t(3);
-    T_true(3, 0) = real_t(0); T_true(3, 1) = real_t(0); T_true(3, 2) = real_t(0); T_true(3, 3) = real_t(1);
+
 
     // Transform source points
     tf::points_buffer<real_t, 3> source;
@@ -186,7 +186,7 @@ TEMPLATE_TEST_CASE("fit_obb_alignment_basic", "[geometry][alignment]",
     T_true(0, 0) = cos_a;  T_true(0, 1) = -sin_a; T_true(0, 2) = real_t(0); T_true(0, 3) = real_t(5);
     T_true(1, 0) = sin_a;  T_true(1, 1) = cos_a;  T_true(1, 2) = real_t(0); T_true(1, 3) = real_t(-2);
     T_true(2, 0) = real_t(0); T_true(2, 1) = real_t(0); T_true(2, 2) = real_t(1); T_true(2, 3) = real_t(1);
-    T_true(3, 0) = real_t(0); T_true(3, 1) = real_t(0); T_true(3, 2) = real_t(0); T_true(3, 3) = real_t(1);
+
 
     // Transform source points
     tf::points_buffer<real_t, 3> source;
@@ -326,7 +326,7 @@ TEMPLATE_TEST_CASE("fit_rigid_alignment_different_resolutions", "[geometry][alig
     T_true(0, 0) = cos_a;  T_true(0, 1) = -sin_a; T_true(0, 2) = real_t(0); T_true(0, 3) = real_t(3);
     T_true(1, 0) = sin_a;  T_true(1, 1) = cos_a;  T_true(1, 2) = real_t(0); T_true(1, 3) = real_t(-2);
     T_true(2, 0) = real_t(0); T_true(2, 1) = real_t(0); T_true(2, 2) = real_t(1); T_true(2, 3) = real_t(1);
-    T_true(3, 0) = real_t(0); T_true(3, 1) = real_t(0); T_true(3, 2) = real_t(0); T_true(3, 3) = real_t(1);
+
 
     tf::points_buffer<real_t, 3> source;
     source.allocate(sphere_low.points().size());
@@ -435,7 +435,7 @@ TEMPLATE_TEST_CASE("fit_icp_alignment_rotation", "[geometry][alignment][icp]",
     T_true(0, 0) = cos_a;  T_true(0, 1) = -sin_a; T_true(0, 2) = real_t(0); T_true(0, 3) = real_t(0);
     T_true(1, 0) = sin_a;  T_true(1, 1) = cos_a;  T_true(1, 2) = real_t(0); T_true(1, 3) = real_t(0);
     T_true(2, 0) = real_t(0); T_true(2, 1) = real_t(0); T_true(2, 2) = real_t(1); T_true(2, 3) = real_t(0);
-    T_true(3, 0) = real_t(0); T_true(3, 1) = real_t(0); T_true(3, 2) = real_t(0); T_true(3, 3) = real_t(1);
+
 
     tf::points_buffer<real_t, 3> source;
     source.allocate(box.points().size());
@@ -477,7 +477,7 @@ TEMPLATE_TEST_CASE("fit_icp_alignment_rotation_translation", "[geometry][alignme
     T_true(0, 0) = cos_a;  T_true(0, 1) = -sin_a; T_true(0, 2) = real_t(0); T_true(0, 3) = real_t(0.2);
     T_true(1, 0) = sin_a;  T_true(1, 1) = cos_a;  T_true(1, 2) = real_t(0); T_true(1, 3) = real_t(0.15);
     T_true(2, 0) = real_t(0); T_true(2, 1) = real_t(0); T_true(2, 2) = real_t(1); T_true(2, 3) = real_t(0.1);
-    T_true(3, 0) = real_t(0); T_true(3, 1) = real_t(0); T_true(3, 2) = real_t(0); T_true(3, 3) = real_t(1);
+
 
     tf::points_buffer<real_t, 3> source;
     source.allocate(sphere.points().size());
@@ -522,7 +522,7 @@ TEMPLATE_TEST_CASE("fit_icp_alignment_point_to_plane", "[geometry][alignment][ic
     T_true(0, 0) = cos_a;  T_true(0, 1) = -sin_a; T_true(0, 2) = real_t(0); T_true(0, 3) = real_t(0.1);
     T_true(1, 0) = sin_a;  T_true(1, 1) = cos_a;  T_true(1, 2) = real_t(0); T_true(1, 3) = real_t(0.1);
     T_true(2, 0) = real_t(0); T_true(2, 1) = real_t(0); T_true(2, 2) = real_t(1); T_true(2, 3) = real_t(0.05);
-    T_true(3, 0) = real_t(0); T_true(3, 1) = real_t(0); T_true(3, 2) = real_t(0); T_true(3, 3) = real_t(1);
+
 
     tf::points_buffer<real_t, 3> source;
     source.allocate(sphere.points().size());
@@ -567,7 +567,7 @@ TEMPLATE_TEST_CASE("fit_icp_alignment_with_initial_frame", "[geometry][alignment
     T_true(0, 0) = cos_a;  T_true(0, 1) = -sin_a; T_true(0, 2) = real_t(0); T_true(0, 3) = real_t(0.5);
     T_true(1, 0) = sin_a;  T_true(1, 1) = cos_a;  T_true(1, 2) = real_t(0); T_true(1, 3) = real_t(0.3);
     T_true(2, 0) = real_t(0); T_true(2, 1) = real_t(0); T_true(2, 2) = real_t(1); T_true(2, 3) = real_t(0.2);
-    T_true(3, 0) = real_t(0); T_true(3, 1) = real_t(0); T_true(3, 2) = real_t(0); T_true(3, 3) = real_t(1);
+
 
     tf::points_buffer<real_t, 3> source;
     source.allocate(sphere.points().size());
@@ -621,7 +621,7 @@ TEMPLATE_TEST_CASE("fit_icp_alignment_convergence", "[geometry][alignment][icp]"
     T_true(0, 0) = cos_a;  T_true(0, 1) = -sin_a; T_true(0, 2) = real_t(0); T_true(0, 3) = real_t(0.15);
     T_true(1, 0) = sin_a;  T_true(1, 1) = cos_a;  T_true(1, 2) = real_t(0); T_true(1, 3) = real_t(0.1);
     T_true(2, 0) = real_t(0); T_true(2, 1) = real_t(0); T_true(2, 2) = real_t(1); T_true(2, 3) = real_t(0.05);
-    T_true(3, 0) = real_t(0); T_true(3, 1) = real_t(0); T_true(3, 2) = real_t(0); T_true(3, 3) = real_t(1);
+
 
     tf::points_buffer<real_t, 3> source;
     source.allocate(sphere.points().size());
@@ -680,7 +680,7 @@ TEMPLATE_TEST_CASE("fit_rigid_alignment_target_transform", "[geometry][alignment
     T_source(0, 0) = cos_a;  T_source(0, 1) = -sin_a; T_source(0, 2) = real_t(0); T_source(0, 3) = real_t(12);
     T_source(1, 0) = sin_a;  T_source(1, 1) = cos_a;  T_source(1, 2) = real_t(0); T_source(1, 3) = real_t(-3);
     T_source(2, 0) = real_t(0); T_source(2, 1) = real_t(0); T_source(2, 2) = real_t(1); T_source(2, 3) = real_t(4);
-    T_source(3, 0) = real_t(0); T_source(3, 1) = real_t(0); T_source(3, 2) = real_t(0); T_source(3, 3) = real_t(1);
+
 
     // Both use same local points with different transforms
     auto source_with_transform = box.points() | tf::tag(T_source);
@@ -728,7 +728,7 @@ TEMPLATE_TEST_CASE("fit_obb_alignment_target_transform", "[geometry][alignment][
     T_target(0, 0) = cos_t;  T_target(0, 1) = -sin_t; T_target(0, 2) = real_t(0); T_target(0, 3) = real_t(10);
     T_target(1, 0) = sin_t;  T_target(1, 1) = cos_t;  T_target(1, 2) = real_t(0); T_target(1, 3) = real_t(-5);
     T_target(2, 0) = real_t(0); T_target(2, 1) = real_t(0); T_target(2, 2) = real_t(1); T_target(2, 3) = real_t(3);
-    T_target(3, 0) = real_t(0); T_target(3, 1) = real_t(0); T_target(3, 2) = real_t(0); T_target(3, 3) = real_t(1);
+
 
     // Source transformation (different from target)
     real_t source_angle = real_t(3.14159265358979323846) / real_t(4);  // 45 degrees
@@ -739,7 +739,7 @@ TEMPLATE_TEST_CASE("fit_obb_alignment_target_transform", "[geometry][alignment][
     T_source(0, 0) = cos_s;  T_source(0, 1) = -sin_s; T_source(0, 2) = real_t(0); T_source(0, 3) = real_t(5);
     T_source(1, 0) = sin_s;  T_source(1, 1) = cos_s;  T_source(1, 2) = real_t(0); T_source(1, 3) = real_t(-2);
     T_source(2, 0) = real_t(0); T_source(2, 1) = real_t(0); T_source(2, 2) = real_t(1); T_source(2, 3) = real_t(1);
-    T_source(3, 0) = real_t(0); T_source(3, 1) = real_t(0); T_source(3, 2) = real_t(0); T_source(3, 3) = real_t(1);
+
 
     // Create REVERSED source points (no index correspondence with target)
     tf::points_buffer<real_t, 3> source_reversed;
@@ -933,7 +933,7 @@ TEMPLATE_TEST_CASE("fit_icp_alignment_both_transforms", "[geometry][alignment][i
     T_target(0, 0) = cos_t;  T_target(0, 1) = -sin_t; T_target(0, 2) = real_t(0); T_target(0, 3) = real_t(10);
     T_target(1, 0) = sin_t;  T_target(1, 1) = cos_t;  T_target(1, 2) = real_t(0); T_target(1, 3) = real_t(-5);
     T_target(2, 0) = real_t(0); T_target(2, 1) = real_t(0); T_target(2, 2) = real_t(1); T_target(2, 3) = real_t(3);
-    T_target(3, 0) = real_t(0); T_target(3, 1) = real_t(0); T_target(3, 2) = real_t(0); T_target(3, 3) = real_t(1);
+
 
     // Source transformation (small offset from target)
     real_t source_angle = target_angle + real_t(0.05);
@@ -944,7 +944,7 @@ TEMPLATE_TEST_CASE("fit_icp_alignment_both_transforms", "[geometry][alignment][i
     T_source(0, 0) = cos_s;  T_source(0, 1) = -sin_s; T_source(0, 2) = real_t(0); T_source(0, 3) = real_t(10.1);
     T_source(1, 0) = sin_s;  T_source(1, 1) = cos_s;  T_source(1, 2) = real_t(0); T_source(1, 3) = real_t(-4.9);
     T_source(2, 0) = real_t(0); T_source(2, 1) = real_t(0); T_source(2, 2) = real_t(1); T_source(2, 3) = real_t(3.1);
-    T_source(3, 0) = real_t(0); T_source(3, 1) = real_t(0); T_source(3, 2) = real_t(0); T_source(3, 3) = real_t(1);
+
 
     // Create REVERSED source points (no index correspondence)
     tf::points_buffer<real_t, 3> source_reversed;
@@ -1271,13 +1271,13 @@ TEMPLATE_TEST_CASE("fit_obb_alignment_all_transform_combos", "[geometry][alignme
     T_source(0, 0) = cos_a;  T_source(0, 1) = -sin_a; T_source(0, 2) = real_t(0); T_source(0, 3) = real_t(5);
     T_source(1, 0) = sin_a;  T_source(1, 1) = cos_a;  T_source(1, 2) = real_t(0); T_source(1, 3) = real_t(-2);
     T_source(2, 0) = real_t(0); T_source(2, 1) = real_t(0); T_source(2, 2) = real_t(1); T_source(2, 3) = real_t(1);
-    T_source(3, 0) = real_t(0); T_source(3, 1) = real_t(0); T_source(3, 2) = real_t(0); T_source(3, 3) = real_t(1);
+
 
     tf::transformation<real_t, 3> T_target;
     T_target(0, 0) = real_t(1); T_target(0, 1) = real_t(0); T_target(0, 2) = real_t(0); T_target(0, 3) = real_t(10);
     T_target(1, 0) = real_t(0); T_target(1, 1) = real_t(1); T_target(1, 2) = real_t(0); T_target(1, 3) = real_t(-5);
     T_target(2, 0) = real_t(0); T_target(2, 1) = real_t(0); T_target(2, 2) = real_t(1); T_target(2, 3) = real_t(3);
-    T_target(3, 0) = real_t(0); T_target(3, 1) = real_t(0); T_target(3, 2) = real_t(0); T_target(3, 3) = real_t(1);
+
 
     // Pre-transform points
     tf::points_buffer<real_t, 3> source_world, target_world;

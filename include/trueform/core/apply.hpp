@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 #include <tuple>
 #include <utility>
@@ -42,5 +42,22 @@ auto apply(F &&f, Tuple &&tuple) -> decltype(auto) {
   constexpr std::size_t N = std::tuple_size_v<std::decay_t<Tuple>>;
   return detail::apply(static_cast<F &&>(f), std::make_index_sequence<N>{},
                        static_cast<Tuple &&>(tuple));
+}
+
+/// @ingroup core_algorithms
+/// @brief Construct a type T from tuple elements as constructor arguments.
+///
+/// Unpacks a tuple and constructs T with its elements. Useful with
+/// @ref tf::zip_with to map zipped ranges into typed structs.
+///
+/// @tparam T The type to construct.
+/// @tparam Tuple The tuple type.
+/// @param tuple The tuple to unpack.
+/// @return An instance of T constructed from the tuple elements.
+template <typename T, typename Tuple>
+auto apply(Tuple &&tuple) -> decltype(auto) {
+  return tf::apply(
+      [](auto &&...args) { return T{static_cast<decltype(args) &&>(args)...}; },
+      static_cast<Tuple &&>(tuple));
 }
 } // namespace tf

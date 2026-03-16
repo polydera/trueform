@@ -4,6 +4,7 @@ add_executable(trueform_core_tests
   test_intersects.cpp
   test_least_squares_parallel.cpp
   test_ray_cast.cpp
+  test_ranges.cpp
   test_transformed.cpp
 )
 

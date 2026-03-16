@@ -12,10 +12,13 @@
  */
 #pragma once
 
+#if defined(_MSC_VER) && !defined(__clang__)
+#include <__msvc_int128.hpp>
+#endif
+
 namespace tf::exact {
 
 #if defined(_MSC_VER) && !defined(__clang__)
-#include <__msvc_int128.hpp>
 using int128 = std::_Signed128;
 #elif defined(__GNUC__) || defined(__clang__)
 using int128 = __int128;

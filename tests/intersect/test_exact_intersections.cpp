@@ -4,9 +4,9 @@
  *
  * Verifies 5-type classification (VV, VE, EE, VF, EF) by counting unique
  * intersection points per canonical type. Types are symmetric:
- *   (edge, face) == (face, edge) → EF
- *   (vertex, edge) == (edge, vertex) → VE
- *   (vertex, face) == (face, vertex) → VF
+ *   (edge, face) == (face, edge) -> EF
+ *   (vertex, edge) == (edge, vertex) -> VE
+ *   (vertex, face) == (face, vertex) -> VF
  *
  * Copyright (c) 2025 Ziga Sajovic, XLAB
  */
@@ -218,7 +218,7 @@ TEST_CASE("Coplanar EE+VF mixed (partial overlap)", "[exact][coplanar]") {
 }
 
 // =============================================================================
-// Non-coplanar: all EF (fast path — all vertices off opposite plane)
+// Non-coplanar: all EF (fast path - all vertices off opposite plane)
 // =============================================================================
 
 TEST_CASE("Crossing quads (all EF)", "[exact][ef]") {
@@ -264,7 +264,7 @@ TEST_CASE("Edge hits face interior (1 EF + 1 VF)", "[exact][ef]") {
 }
 
 // =============================================================================
-// Fan orient3d zero → crossing_edges_vs_face classification
+// Fan orient3d zero -> crossing_edges_vs_face classification
 // =============================================================================
 
 TEST_CASE("Edge through face edge (EE)", "[exact][ee]") {
@@ -281,7 +281,7 @@ TEST_CASE("Edge through face edge (EE)", "[exact][ee]") {
   CHECK(c.ef == 0);
 }
 
-TEST_CASE("Edge through vertex — no duplicate VE", "[exact][ve]") {
+TEST_CASE("Edge through vertex - no duplicate VE", "[exact][ve]") {
   auto a = make_mesh<4>(
       {{{-2, 0, 0}}, {{2, 0, 0}}, {{2, 4, 0}}, {{-2, 4, 0}}},
       {{{0, 1, 2, 3}}});
@@ -387,7 +387,7 @@ TEST_CASE("VV + VE (shared vertex, edge through vertex)", "[exact][mixed]") {
 // N-mesh tests (range overload + dedup)
 // =============================================================================
 
-TEST_CASE("3 identical quads — 4 VV only", "[exact][nmesh]") {
+TEST_CASE("3 identical quads - 4 VV only", "[exact][nmesh]") {
   auto q = make_mesh<4>(
       {{{-1, -1, 0}}, {{1, -1, 0}}, {{1, 1, 0}}, {{-1, 1, 0}}},
       {{{0, 1, 2, 3}}});
@@ -406,7 +406,7 @@ TEST_CASE("3 identical quads — 4 VV only", "[exact][nmesh]") {
   CHECK(c.ef == 0);
 }
 
-TEST_CASE("3 mesh: 2 identical + 1 inside — 4 VV + 4 VF", "[exact][nmesh]") {
+TEST_CASE("3 mesh: 2 identical + 1 inside - 4 VV + 4 VF", "[exact][nmesh]") {
   auto big = make_mesh<4>(
       {{{-3, -3, 0}}, {{3, -3, 0}}, {{3, 3, 0}}, {{-3, 3, 0}}},
       {{{0, 1, 2, 3}}});
@@ -438,7 +438,7 @@ TEST_CASE("3 mesh: 2 identical + 1 inside — 4 VV + 4 VF", "[exact][nmesh]") {
   CHECK(c.ef == 0);
 }
 
-TEST_CASE("3 mesh: shared vertex dedup — 4 VV", "[exact][nmesh]") {
+TEST_CASE("3 mesh: shared vertex dedup - 4 VV", "[exact][nmesh]") {
   auto q = make_mesh<4>(
       {{{-1, -1, 0}}, {{1, -1, 0}}, {{1, 1, 0}}, {{-1, 1, 0}}},
       {{{0, 1, 2, 3}}});
@@ -469,7 +469,7 @@ TEST_CASE("3 mesh: shared vertex dedup — 4 VV", "[exact][nmesh]") {
   CHECK(c.ef == 0);
 }
 
-TEST_CASE("3 mesh: 2 identical + 1 crossing — 4 VV + 2 EF", "[exact][nmesh]") {
+TEST_CASE("3 mesh: 2 identical + 1 crossing - 4 VV + 2 EF", "[exact][nmesh]") {
   auto q = make_mesh<4>(
       {{{-3, -3, 0}}, {{3, -3, 0}}, {{3, 3, 0}}, {{-3, 3, 0}}},
       {{{0, 1, 2, 3}}});
@@ -504,7 +504,7 @@ TEST_CASE("3 mesh: 2 identical + 1 crossing — 4 VV + 2 EF", "[exact][nmesh]") 
 // Fan-based crossing classification tests
 // =============================================================================
 
-TEST_CASE("Fan: edge on diagonal → EF", "[exact][fan]") {
+TEST_CASE("Fan: edge on diagonal -> EF", "[exact][fan]") {
   auto a = make_mesh<4>(
       {{{0, 0, 0}}, {{4, 0, 0}}, {{4, 4, 0}}, {{0, 4, 0}}},
       {{{0, 1, 2, 3}}});
@@ -518,7 +518,7 @@ TEST_CASE("Fan: edge on diagonal → EF", "[exact][fan]") {
   CHECK(c.ef == 1);
 }
 
-TEST_CASE("Fan: edge on real edge → EE", "[exact][fan]") {
+TEST_CASE("Fan: edge on real edge -> EE", "[exact][fan]") {
   auto a = make_mesh<4>(
       {{{0, 0, 0}}, {{4, 0, 0}}, {{4, 4, 0}}, {{0, 4, 0}}},
       {{{0, 1, 2, 3}}});
@@ -532,7 +532,7 @@ TEST_CASE("Fan: edge on real edge → EE", "[exact][fan]") {
   CHECK(c.ef == 0);
 }
 
-TEST_CASE("Fan: edge through vertex → VE", "[exact][fan]") {
+TEST_CASE("Fan: edge through vertex -> VE", "[exact][fan]") {
   auto a = make_mesh<4>(
       {{{0, 0, 0}}, {{4, 0, 0}}, {{4, 4, 0}}, {{0, 4, 0}}},
       {{{0, 1, 2, 3}}});
@@ -546,7 +546,7 @@ TEST_CASE("Fan: edge through vertex → VE", "[exact][fan]") {
   CHECK(c.ef == 0);
 }
 
-TEST_CASE("Fan: edge through fan apex → VE", "[exact][fan]") {
+TEST_CASE("Fan: edge through fan apex -> VE", "[exact][fan]") {
   auto a = make_mesh<4>(
       {{{0, 0, 0}}, {{4, 0, 0}}, {{4, 4, 0}}, {{0, 4, 0}}},
       {{{0, 1, 2, 3}}});
@@ -560,7 +560,7 @@ TEST_CASE("Fan: edge through fan apex → VE", "[exact][fan]") {
   CHECK(c.ef == 0);
 }
 
-TEST_CASE("Fan: edge on first real edge → EE", "[exact][fan]") {
+TEST_CASE("Fan: edge on first real edge -> EE", "[exact][fan]") {
   auto a = make_mesh<4>(
       {{{0, 0, 0}}, {{4, 0, 0}}, {{4, 4, 0}}, {{0, 4, 0}}},
       {{{0, 1, 2, 3}}});
@@ -574,7 +574,7 @@ TEST_CASE("Fan: edge on first real edge → EE", "[exact][fan]") {
   CHECK(c.ef == 0);
 }
 
-TEST_CASE("Fan: edge on last real edge → EE", "[exact][fan]") {
+TEST_CASE("Fan: edge on last real edge -> EE", "[exact][fan]") {
   auto a = make_mesh<4>(
       {{{0, 0, 0}}, {{4, 0, 0}}, {{4, 4, 0}}, {{0, 4, 0}}},
       {{{0, 1, 2, 3}}});
@@ -646,7 +646,7 @@ TEST_CASE("Quad+tri: VE at vertex + EF interior", "[exact][fan]") {
   CHECK(c.ef == 1);
 }
 
-TEST_CASE("Fan: quad over diagonal → 2 VE", "[exact][fan]") {
+TEST_CASE("Fan: quad over diagonal -> 2 VE", "[exact][fan]") {
   auto a = make_mesh<4>(
       {{{0, 0, 0}}, {{4, 0, 0}}, {{4, 4, 0}}, {{0, 4, 0}}},
       {{{0, 1, 2, 3}}});
@@ -661,7 +661,7 @@ TEST_CASE("Fan: quad over diagonal → 2 VE", "[exact][fan]") {
   CHECK(c.ef == 0);
 }
 
-TEST_CASE("Fan: quad over diagonal → 2 VV", "[exact][fan]") {
+TEST_CASE("Fan: quad over diagonal -> 2 VV", "[exact][fan]") {
   auto a = make_mesh<4>(
       {{{0, 0, 0}}, {{4, 0, 0}}, {{4, 4, 0}}, {{0, 4, 0}}},
       {{{0, 1, 2, 3}}});
@@ -676,7 +676,7 @@ TEST_CASE("Fan: quad over diagonal → 2 VV", "[exact][fan]") {
   CHECK(c.ef == 0);
 }
 
-TEST_CASE("Vertical quad on face → 2 VF", "[exact][fan]") {
+TEST_CASE("Vertical quad on face -> 2 VF", "[exact][fan]") {
   auto a = make_mesh<4>(
       {{{-4, -4, 0}}, {{4, -4, 0}}, {{4, 4, 0}}, {{-4, 4, 0}}},
       {{{0, 1, 2, 3}}});
@@ -691,7 +691,7 @@ TEST_CASE("Vertical quad on face → 2 VF", "[exact][fan]") {
   CHECK(c.ef == 0);
 }
 
-TEST_CASE("Vertical quad on edges → 2 VE", "[exact][fan]") {
+TEST_CASE("Vertical quad on edges -> 2 VE", "[exact][fan]") {
   auto a = make_mesh<4>(
       {{{0, 0, 0}}, {{4, 0, 0}}, {{4, 4, 0}}, {{0, 4, 0}}},
       {{{0, 1, 2, 3}}});
@@ -706,7 +706,7 @@ TEST_CASE("Vertical quad on edges → 2 VE", "[exact][fan]") {
   CHECK(c.ef == 0);
 }
 
-TEST_CASE("Vertical quad extends over → 2 EE", "[exact][fan]") {
+TEST_CASE("Vertical quad extends over -> 2 EE", "[exact][fan]") {
   auto a = make_mesh<4>(
       {{{0, 0, 0}}, {{4, 0, 0}}, {{4, 4, 0}}, {{0, 4, 0}}},
       {{{0, 1, 2, 3}}});
@@ -721,7 +721,7 @@ TEST_CASE("Vertical quad extends over → 2 EE", "[exact][fan]") {
   CHECK(c.ef == 0);
 }
 
-TEST_CASE("Vertical quad on edge — no crossing", "[exact][fan]") {
+TEST_CASE("Vertical quad on edge - no crossing", "[exact][fan]") {
   auto a = make_mesh<4>(
       {{{0, 0, 0}}, {{4, 0, 0}}, {{4, 4, 0}}, {{0, 4, 0}}},
       {{{0, 1, 2, 3}}});

@@ -31,3 +31,4 @@
 #include "./views/unit_vectors.hpp"
 #include "./views/vectors.hpp"
 #include "./views/zip.hpp"
+#include "./views/zip_with.hpp"
