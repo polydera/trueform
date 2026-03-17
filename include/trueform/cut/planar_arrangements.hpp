@@ -30,9 +30,9 @@ namespace tf {
 /// @tparam Index The index type.
 /// @tparam RealType The coordinate type.
 template <typename Index, typename RealType>
-class planar_arrangements : public tf::planar_embedding<Index, RealType>,
+class planar_arrangements : public tf::planar_embedding<Index>,
                             public tf::planar_overlay<Index, RealType, 2> {
-  using pe_base_t = tf::planar_embedding<Index, RealType>;
+  using pe_base_t = tf::planar_embedding<Index>;
   using is_base_t = tf::planar_overlay<Index, RealType, 2>;
 
 public:

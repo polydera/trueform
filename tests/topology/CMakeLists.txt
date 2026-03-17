@@ -7,6 +7,10 @@ add_executable(trueform_topology_tests
   test_connected_components.cpp
   test_duplicate_faces.cpp
   test_stitching.cpp
+  test_planar_graph_regions.cpp
+  test_face_hole_relations.cpp
+  test_face_split_by_edges.cpp
+  test_hole_patcher.cpp
 )
 
 target_link_libraries(trueform_topology_tests PRIVATE trueform_test_common)

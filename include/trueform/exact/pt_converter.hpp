@@ -14,7 +14,6 @@
 
 #include "../core/aabb_from.hpp"
 #include "../core/aabb_union.hpp"
-#include "../core/coordinate_dims.hpp"
 #include "../core/coordinate_type.hpp"
 #include "../core/frame_of.hpp"
 #include "../core/none.hpp"
@@ -51,26 +50,13 @@ template <typename RealT, std::size_t Dims> struct pt_converter {
   }
 };
 
-template <typename RealT = tf::none_t, typename Policy0, typename Policy1>
-auto make_pt_converter(const tf::polygons<Policy0> &form0,
-                       const tf::polygons<Policy1> &form1) {
+template <typename RealT = tf::none_t, std::size_t Dims, typename Policy>
+auto make_pt_converter(const tf::aabb_like<Dims, Policy> &aabb) {
   if constexpr (std::is_same_v<RealT, tf::none_t>) {
-    return make_pt_converter<tf::coordinate_type<Policy0, Policy1>>(form0,
-                                                                    form1);
+    return make_pt_converter<tf::coordinate_type<Policy>>(aabb);
   } else {
-    constexpr auto Dims = tf::coordinate_dims_v<Policy0>;
-
-    auto make_aabb = [](const auto &form) {
-      using P = std::decay_t<decltype(form)>;
-      if constexpr (tf::has_tree_policy<P>)
-        return tf::transformed(tf::aabb_from(form.tree()), tf::frame_of(form));
-      else
-        return tf::transformed(tf::aabb_from(form.points()),
-                               tf::frame_of(form));
-    };
-    auto combined = tf::aabb_union(make_aabb(form0), make_aabb(form1));
-    auto center = combined.center();
-    auto diag = combined.diagonal();
+    auto center = aabb.center();
+    auto diag = aabb.diagonal();
     RealT max_extent = 0;
     for (std::size_t i = 0; i < Dims; ++i) {
       if (diag[i] > max_extent)
@@ -86,43 +72,47 @@ auto make_pt_converter(const tf::polygons<Policy0> &form0,
   }
 }
 
+template <typename RealT = tf::none_t, typename Policy>
+auto make_pt_converter(const tf::points<Policy> &pts) {
+  auto make_aabb = [](const auto &form) {
+    using P = std::decay_t<decltype(form)>;
+    if constexpr (tf::has_tree_policy<P>)
+      return tf::transformed(tf::aabb_from(form.tree()), tf::frame_of(form));
+    else
+      return tf::transformed(tf::aabb_from(form), tf::frame_of(form));
+  };
+  return make_pt_converter<RealT>(make_aabb(pts));
+}
+
+template <typename RealT = tf::none_t, typename Policy0, typename Policy1>
+auto make_pt_converter(const tf::polygons<Policy0> &form0,
+                       const tf::polygons<Policy1> &form1) {
+  auto make_aabb = [](const auto &form) {
+    using P = std::decay_t<decltype(form)>;
+    if constexpr (tf::has_tree_policy<P>)
+      return tf::transformed(tf::aabb_from(form.tree()), tf::frame_of(form));
+    else
+      return tf::transformed(tf::aabb_from(form.points()), tf::frame_of(form));
+  };
+  return make_pt_converter<RealT>(
+      tf::aabb_union(make_aabb(form0), make_aabb(form1)));
+}
+
 template <typename RealT = tf::none_t, typename Iterator, std::size_t N>
 auto make_pt_converter(tf::range<Iterator, N> forms) {
-  if constexpr (std::is_same_v<RealT, tf::none_t>) {
-    using Policy = typename std::decay_t<decltype(forms[0])>::policy_t;
-    return make_pt_converter<tf::coordinate_type<Policy>>(forms);
-  } else {
-    using form_t = std::decay_t<decltype(forms[0])>;
-    constexpr auto Dims = tf::coordinate_dims_v<form_t>;
+  auto make_aabb = [](const auto &form) {
+    using P = std::decay_t<decltype(form)>;
+    if constexpr (tf::has_tree_policy<P>)
+      return tf::transformed(tf::aabb_from(form.tree()), tf::frame_of(form));
+    else
+      return tf::transformed(tf::aabb_from(form.points()), tf::frame_of(form));
+  };
 
-    auto make_aabb = [](const auto &form) {
-      using P = std::decay_t<decltype(form)>;
-      if constexpr (tf::has_tree_policy<P>)
-        return tf::transformed(tf::aabb_from(form.tree()), tf::frame_of(form));
-      else
-        return tf::transformed(tf::aabb_from(form.points()),
-                               tf::frame_of(form));
-    };
+  auto combined = make_aabb(forms[0]);
+  for (std::size_t i = 1; i < forms.size(); ++i)
+    combined = tf::aabb_union(combined, make_aabb(forms[i]));
 
-    auto combined = make_aabb(forms[0]);
-    for (std::size_t i = 1; i < forms.size(); ++i)
-      combined = tf::aabb_union(combined, make_aabb(forms[i]));
-
-    auto center = combined.center();
-    auto diag = combined.diagonal();
-    RealT max_extent = 0;
-    for (std::size_t i = 0; i < Dims; ++i) {
-      if (diag[i] > max_extent)
-        max_extent = diag[i];
-    }
-
-    constexpr auto cRangeIntMax =
-        static_cast<RealT>(0.99) *
-        static_cast<RealT>(std::numeric_limits<int32_t>::max());
-    auto scale = max_extent > 0 ? cRangeIntMax / max_extent : RealT(1);
-
-    return pt_converter<RealT, Dims>{scale, center};
-  }
+  return make_pt_converter<RealT>(combined);
 }
 
 } // namespace tf::exact

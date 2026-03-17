@@ -95,10 +95,17 @@ template <std::size_t N, typename T0, typename T1>
 auto intersects(const point_like<N, T0> &point, const aabb_like<N, T1> &box)
     -> bool {
   using RealT = tf::coordinate_type<T0, T1>;
-  for (std::size_t i = 0; i < N; ++i) {
-    if (point[i] + std::numeric_limits<RealT>::epsilon() < box.min[i] ||
-        point[i] - std::numeric_limits<RealT>::epsilon() > box.max[i])
-      return false;
+  if constexpr (std::is_floating_point_v<RealT>) {
+    for (std::size_t i = 0; i < N; ++i) {
+      if (point[i] + std::numeric_limits<RealT>::epsilon() < box.min[i] ||
+          point[i] - std::numeric_limits<RealT>::epsilon() > box.max[i])
+        return false;
+    }
+  } else {
+    for (std::size_t i = 0; i < N; ++i) {
+      if (point[i] < box.min[i] || point[i] > box.max[i])
+        return false;
+    }
   }
   return true;
 }
