@@ -13,6 +13,7 @@
 #include <trueform/core/polygons_buffer.hpp>
 #include <trueform/core/views/mapped_range.hpp>
 #include <trueform/core/views/sequence_range.hpp>
+#include <trueform/core/algorithm/circular_increment.hpp>
 #include <trueform/core/views/zip.hpp>
 #include <trueform/intersect/exact/intersections_between_polygons.hpp>
 #include <trueform/intersect/graph/intersection_graph.hpp>
@@ -69,20 +70,28 @@ auto build_graph(std::array<tf::polygons_buffer<int, float, 3, 4>, N> &meshes,
   ibp.build(forms, mode);
 
   auto &conv = ibp.converter();
-  auto ipts = ibp.intersection_points();
   auto get_face = [&](int tag, int object) {
     return forms[tag].faces()[object];
   };
-  auto get_point = [&](int tag, int id) -> tf::point<int32_t, 3> {
-    if (tag == -1)
-      return ipts[id];
+  auto get_mesh_point = [&](int tag, int id) -> tf::point<int32_t, 3> {
     return conv.convert(forms[tag].points()[id]);
   };
-  auto get_flat_id = [&](const auto &rec) -> int {
-    return ibp.get_flat_index(rec);
-  };
 
-  ig.build(ibp.intersections(), get_face, get_point, get_flat_id);
+  ig.build(ibp, get_face, get_mesh_point);
+}
+
+auto count_point_classes(const IG &ig,
+                         const tf::exact::intersections_between_polygons<Index, float> &ibp)
+    -> std::pair<std::size_t, std::size_t> {
+  auto remap = ig.point_remap();
+  auto n_ipts = ibp.intersection_points().size();
+  if (remap.size() == 0)
+    return {n_ipts, ig.points().size() - n_ipts};
+  std::set<int> original_ids;
+  for (std::size_t i = 0; i < n_ipts; ++i)
+    original_ids.insert(remap[i]);
+  auto n_original = original_ids.size();
+  return {n_original, ig.points().size() - n_original};
 }
 
 auto collect_edge_points(const IG &ig) -> std::set<int> {
@@ -102,13 +111,25 @@ auto all_groups_have_n_instances(const IG &ig, std::size_t expected) -> bool {
   return true;
 }
 
+auto check_no_consecutive_duplicates(const IG &ig) -> bool {
+  for (auto loop : ig.loops()) {
+    for (std::size_t i = 0; i < loop.size(); ++i) {
+      auto next = tf::circular_increment(i, loop.size());
+      if (loop[i].id == loop[next].id &&
+          loop[i].source == loop[next].source)
+        return false;
+    }
+  }
+  return true;
+}
+
 auto check_face_edge_tags(
     const IG &ig,
     const tf::exact::intersections_between_polygons<Index, float> &ibp)
     -> bool {
   auto &&edge_data = ig.edge_groups();
   for (auto [subrange, loop, face_edges] :
-       tf::zip(ibp.intersections(), ig.loops(), ig.edges())) {
+       tf::zip(ibp.intersections(), ig.loops(), ig.edge_ids())) {
     if (subrange.size() == 0)
       continue;
     auto tag = subrange[0].tag;
@@ -151,8 +172,9 @@ TEST_CASE("EE proper crossing (X on face)", "[graph][crossing]") {
   CHECK(ig.edge_groups().size() == 6);
   CHECK(all_groups_have_n_instances(ig, 2));
   CHECK(collect_edge_points(ig).size() == 7);
-  CHECK(ig.edges().begin()[0].size() == 4);
+  CHECK(ig.edge_ids().begin()[0].size() == 4);
   CHECK(check_face_edge_tags(ig, ibp));
+  CHECK(check_no_consecutive_duplicates(ig));
 }
 
 TEST_CASE("VE T-junction", "[graph][crossing]") {
@@ -168,13 +190,12 @@ TEST_CASE("VE T-junction", "[graph][crossing]") {
   CHECK(ibp.intersection_points().size() == 6);
   CHECK(ig.edge_groups().size() == 5);
 
-  auto pts = collect_edge_points(ig);
-  auto cb = ig.crossing_base();
-  auto n_crossing =
-      std::count_if(pts.begin(), pts.end(), [cb](int id) { return id >= cb; });
-  CHECK(n_crossing == 0);
-  CHECK(ig.edges().begin()[0].size() == 3);
+  auto [n_orig_ve, n_cross_ve] = count_point_classes(ig, ibp);
+  CHECK(n_orig_ve == 6);
+  CHECK(n_cross_ve == 0);
+  CHECK(ig.edge_ids().begin()[0].size() == 3);
   CHECK(check_face_edge_tags(ig, ibp));
+  CHECK(check_no_consecutive_duplicates(ig));
 }
 
 TEST_CASE("VV same-position endpoints", "[graph][crossing]") {
@@ -192,8 +213,9 @@ TEST_CASE("VV same-position endpoints", "[graph][crossing]") {
   CHECK(ig.edge_groups().size() == 2);
   CHECK(all_groups_have_n_instances(ig, 2));
   CHECK(collect_edge_points(ig).size() == 3);
-  CHECK(ig.edges().begin()[0].size() == 2);
+  CHECK(ig.edge_ids().begin()[0].size() == 2);
   CHECK(check_face_edge_tags(ig, ibp));
+  CHECK(check_no_consecutive_duplicates(ig));
 }
 
 TEST_CASE("Multiple EE (3 crossings at origin)", "[graph][crossing]") {
@@ -211,12 +233,11 @@ TEST_CASE("Multiple EE (3 crossings at origin)", "[graph][crossing]") {
   CHECK(ig.point_remap().size() > 0);
   CHECK(ig.edge_groups().size() == 8);
 
-  auto pts = collect_edge_points(ig);
-  auto cb = ig.crossing_base();
-  auto n_crossing =
-      std::count_if(pts.begin(), pts.end(), [cb](int id) { return id >= cb; });
-  CHECK(n_crossing == 1);
+  auto [n_orig_ee3, n_cross_ee3] = count_point_classes(ig, ibp);
+  CHECK(n_orig_ee3 == 8);
+  CHECK(n_cross_ee3 == 1);
   CHECK(check_face_edge_tags(ig, ibp));
+  CHECK(check_no_consecutive_duplicates(ig));
 }
 
 TEST_CASE("No crossings (parallel cutters)", "[graph][crossing]") {
@@ -233,10 +254,11 @@ TEST_CASE("No crossings (parallel cutters)", "[graph][crossing]") {
   CHECK(ig.edge_groups().size() == 2);
   CHECK(all_groups_have_n_instances(ig, 2));
   CHECK(ig.point_remap().size() == 0);
-  CHECK(ig.crossing_points().size() == 0);
+  CHECK(ig.points().size() == ibp.intersection_points().size());
   CHECK(collect_edge_points(ig).size() == 4);
-  CHECK(ig.edges().begin()[0].size() == 2);
+  CHECK(ig.edge_ids().begin()[0].size() == 2);
   CHECK(check_face_edge_tags(ig, ibp));
+  CHECK(check_no_consecutive_duplicates(ig));
 }
 
 TEST_CASE("EE with parallel splitters", "[graph][crossing]") {
@@ -253,9 +275,12 @@ TEST_CASE("EE with parallel splitters", "[graph][crossing]") {
   CHECK(ibp.intersection_points().size() == 10);
   CHECK(ig.edge_groups().size() == 11);
   CHECK(all_groups_have_n_instances(ig, 2));
-  CHECK(ig.crossing_points().size() == 2);
-  CHECK(ig.edges().begin()[0].size() == 7);
+  auto [n_orig_par, n_cross_par] = count_point_classes(ig, ibp);
+  CHECK(n_orig_par == 10);
+  CHECK(n_cross_par == 2);
+  CHECK(ig.edge_ids().begin()[0].size() == 7);
   CHECK(check_face_edge_tags(ig, ibp));
+  CHECK(check_no_consecutive_duplicates(ig));
 }
 
 // =============================================================================
@@ -273,8 +298,9 @@ TEST_CASE("Coplanar partial overlap", "[graph][coplanar]") {
 
   CHECK(ibp.intersection_points().size() == 4);
   CHECK(ig.edge_groups().size() == 4);
-  CHECK(ig.edges().begin()[0].size() == 3);
+  CHECK(ig.edge_ids().begin()[0].size() == 3);
   CHECK(check_face_edge_tags(ig, ibp));
+  CHECK(check_no_consecutive_duplicates(ig));
 }
 
 TEST_CASE("Coplanar partial overlap with splitter", "[graph][coplanar]") {
@@ -289,8 +315,9 @@ TEST_CASE("Coplanar partial overlap with splitter", "[graph][coplanar]") {
 
   CHECK(ibp.intersection_points().size() == 8);
   CHECK(ig.edge_groups().size() == 9);
-  CHECK(ig.edges().begin()[0].size() == 8);
+  CHECK(ig.edge_ids().begin()[0].size() == 8);
   CHECK(check_face_edge_tags(ig, ibp));
+  CHECK(check_no_consecutive_duplicates(ig));
 }
 
 TEST_CASE("Coplanar B fully inside A", "[graph][coplanar]") {
@@ -304,9 +331,10 @@ TEST_CASE("Coplanar B fully inside A", "[graph][coplanar]") {
 
   CHECK(ibp.intersection_points().size() == 4);
   CHECK(ig.edge_groups().size() == 4);
-  CHECK(ig.edges().begin()[0].size() == 4);
-  CHECK(ig.edges().begin()[1].size() == 0);
+  CHECK(ig.edge_ids().begin()[0].size() == 4);
+  CHECK(ig.edge_ids().begin()[1].size() == 0);
   CHECK(check_face_edge_tags(ig, ibp));
+  CHECK(check_no_consecutive_duplicates(ig));
 }
 
 TEST_CASE("Coplanar B inside A, shared bottom edge", "[graph][coplanar]") {
@@ -320,9 +348,10 @@ TEST_CASE("Coplanar B inside A, shared bottom edge", "[graph][coplanar]") {
 
   CHECK(ibp.intersection_points().size() == 4);
   CHECK(ig.edge_groups().size() == 3);
-  CHECK(ig.edges().begin()[0].size() == 3);
-  CHECK(ig.edges().begin()[1].size() == 0);
+  CHECK(ig.edge_ids().begin()[0].size() == 3);
+  CHECK(ig.edge_ids().begin()[1].size() == 0);
   CHECK(check_face_edge_tags(ig, ibp));
+  CHECK(check_no_consecutive_duplicates(ig));
 }
 
 TEST_CASE("Coplanar identical quads (no edges)", "[graph][coplanar]") {
@@ -336,8 +365,9 @@ TEST_CASE("Coplanar identical quads (no edges)", "[graph][coplanar]") {
 
   CHECK(ibp.intersection_points().size() == 4);
   CHECK(ig.edge_groups().size() == 0);
-  CHECK(ig.edges().begin()[0].size() == 0);
-  CHECK(ig.edges().begin()[1].size() == 0);
+  CHECK(ig.edge_ids().begin()[0].size() == 0);
+  CHECK(ig.edge_ids().begin()[1].size() == 0);
+  CHECK(check_no_consecutive_duplicates(ig));
 }
 
 TEST_CASE("Coplanar corner overlap", "[graph][coplanar]") {
@@ -351,9 +381,10 @@ TEST_CASE("Coplanar corner overlap", "[graph][coplanar]") {
 
   CHECK(ibp.intersection_points().size() == 4);
   CHECK(ig.edge_groups().size() == 4);
-  CHECK(ig.edges().begin()[0].size() == 2);
-  CHECK(ig.edges().begin()[1].size() == 2);
+  CHECK(ig.edge_ids().begin()[0].size() == 2);
+  CHECK(ig.edge_ids().begin()[1].size() == 2);
   CHECK(check_face_edge_tags(ig, ibp));
+  CHECK(check_no_consecutive_duplicates(ig));
 }
 
 TEST_CASE("Coplanar shared edge (adjacent quads, no overlap)", "[graph][coplanar]") {
@@ -367,6 +398,7 @@ TEST_CASE("Coplanar shared edge (adjacent quads, no overlap)", "[graph][coplanar
 
   CHECK(ibp.intersection_points().size() == 2);
   CHECK(ig.edge_groups().size() == 0);
-  CHECK(ig.edges().begin()[0].size() == 0);
-  CHECK(ig.edges().begin()[1].size() == 0);
+  CHECK(ig.edge_ids().begin()[0].size() == 0);
+  CHECK(ig.edge_ids().begin()[1].size() == 0);
+  CHECK(check_no_consecutive_duplicates(ig));
 }

@@ -46,6 +46,8 @@ public:
 
   auto flat_intersections() const { return tf::make_range(_intersections); }
 
+  auto tag_offsets() const { return tf::make_range(_tag_offsets); }
+
   auto clear() {
     _intersections.clear();
     _intersections_offsets.clear();

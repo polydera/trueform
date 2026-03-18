@@ -21,7 +21,6 @@
 #include "./edge_orientation.hpp"
 
 #include <algorithm>
-#include <cstdio>
 #include <type_traits>
 
 namespace tf {

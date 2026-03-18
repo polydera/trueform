@@ -27,23 +27,19 @@ namespace tf::intersect::graph {
 /// Compute EE crossing point coordinates.
 ///
 /// Groups EE records by triple, computes one crossing point per unique triple.
-/// Sets crossing_base and fills crossing_points buffer.
 ///
 /// @param ee_range         Sorted EE record range
-/// @param max_point_id     Largest existing point ID
 /// @param edge_defs        Canonical edge groups
 /// @param get_point        Point accessor
-/// @param crossing_base    [out] First crossing point ID
 /// @param crossing_points  [out] Computed crossing point coordinates
 /// @return EE group offsets (for collect_split_entries)
 template <typename Index, typename EERange, typename GetPoint>
 auto compute_ee_crossing_points(
-    const EERange &ee_range, Index max_point_id,
+    const EERange &ee_range,
     const tf::offset_block_buffer<Index, edge<Index>> &edge_defs,
-    const GetPoint &get_point, Index &crossing_base,
+    const GetPoint &get_point,
     tf::buffer<tf::point<int32_t, 3>> &crossing_points)
     -> tf::buffer<Index> {
-  crossing_base = max_point_id + 1;
   auto ee_count = ee_range.size();
 
   tf::buffer<Index> ee_offsets;
