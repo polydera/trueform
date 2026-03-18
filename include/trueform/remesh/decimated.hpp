@@ -52,7 +52,7 @@ auto decimated(
     tf::parallel_copy(polygons.points(), points.points());
 
     tf::decimate(he, points.points(), target_proportion, config);
-    auto [fim, vim] = he.compact();
+    auto [fim, vim, eim] = he.compact();
 
     tf::polygons_buffer<Index, Real, Dims, 3> mesh;
     mesh.faces_buffer() = tf::make_faces_buffer(he);

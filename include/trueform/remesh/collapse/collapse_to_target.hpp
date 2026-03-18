@@ -126,36 +126,47 @@ auto collapse_to_target(tf::half_edges<Index> &he,
 
     auto eh = tf::edge_handle<Index>{eid};
     auto heh0 = policy.half_edge_to_collapse(he, eh);
-    if (he.half_edge(heh0).is_removed())
+    if (he.half_edge(heh0).is_removed()) {
       continue;
+    }
 
-    if (scores[eid] >= max_score)
+    if (scores[eid] >= max_score) {
+
       continue;
+    }
 
     Index expected_b = to_bucket(scores[eid]);
-    if (expected_b != min_bucket)
+    if (expected_b != min_bucket) {
+
       continue;
+    }
 
     auto v0 = he.start_vertex_handle(tf::unsafe, heh0).id();
     auto v1 = he.end_vertex_handle(tf::unsafe, heh0).id();
 
     if (is_frozen(v0) || is_frozen(v1)) {
       scores[eid] = max_score;
+
       continue;
     }
 
     if (he.is_boundary_vertex(v0) && he.is_boundary_vertex(v1) &&
         (preserve_boundary || !he.is_boundary(tf::unsafe, eh))) {
       scores[eid] = max_score;
+
       continue;
     }
 
-    if (!he.is_collapse_ok(eh, ring))
+    if (!he.is_collapse_ok(eh, ring)) {
+
       continue;
+    }
 
     auto pt = policy.collapsed_point(he, points, heh0);
-    if (!policy.is_collapse_allowed(he, points, heh0, pt))
+    if (!policy.is_collapse_allowed(he, points, heh0, pt)) {
+
       continue;
+    }
 
     auto faces_removed = he.collapse(heh0);
     remaining -= faces_removed;

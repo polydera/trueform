@@ -16,6 +16,7 @@
 #include "../util/make_numpy_array.hpp"
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
+#include <trueform/core/angle.hpp>
 #include <trueform/remesh/decimated.hpp>
 #include <trueform/core.hpp>
 
@@ -24,7 +25,8 @@ namespace tf::py {
 template <typename Index, typename RealT>
 auto decimated_impl(mesh_wrapper<Index, RealT, 3, 3> &wrapper,
                     RealT target_proportion, RealT max_aspect_ratio,
-                    bool preserve_boundary, double stabilizer, bool parallel) {
+                    bool preserve_boundary, double stabilizer, bool parallel,
+                    double feature_angle, RealT feature_weight) {
   auto polys = wrapper.make_primitive_range();
   auto fm = wrapper.face_membership();
   tf::half_edges<Index> he;
@@ -36,6 +38,8 @@ auto decimated_impl(mesh_wrapper<Index, RealT, 3, 3> &wrapper,
   config.preserve_boundary = preserve_boundary;
   config.stabilizer = stabilizer;
   config.parallel = parallel;
+  config.feature_angle = tf::rad<RealT>(RealT(feature_angle));
+  config.feature_weight = feature_weight;
 
   auto run = [&](auto &&form) {
     auto [result, result_he] = tf::decimated(form, target_proportion, config);

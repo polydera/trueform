@@ -12,10 +12,11 @@
  */
 #pragma once
 
+#include <tuple>
+
 #include "tbb/parallel_invoke.h"
 
 #include "../core/algorithm/mask_to_index_map.hpp"
-#include "../core/algorithm/mask_to_map.hpp"
 #include "../core/algorithm/parallel_fill.hpp"
 #include "../core/algorithm/parallel_for_each.hpp"
 #include "../core/index_map.hpp"
@@ -46,8 +47,7 @@ namespace tf {
 ///
 /// @tparam Index The signed integer type for indices.
 template <typename Index>
-class half_edges
-    : public half_edges_like<topology::half_edges_buffers<Index>> {
+class half_edges : public half_edges_like<topology::half_edges_buffers<Index>> {
   using base_t = half_edges_like<topology::half_edges_buffers<Index>>;
 
 public:
@@ -75,8 +75,8 @@ public:
   }
 
   template <typename Faces, typename Policy>
-  auto build(const Faces &faces,
-             const tf::face_membership_like<Policy> &fm) -> void {
+  auto build(const Faces &faces, const tf::face_membership_like<Policy> &fm)
+      -> void {
     this->_half_edges.clear();
     tf::topology::compute_half_edges<Index>(faces, fm, this->_half_edges);
     build_handle_buffers(Index(faces.size()), Index(fm.size()));
@@ -96,27 +96,25 @@ public:
   }
 
   auto compact()
-      -> std::pair<tf::index_map_buffer<Index>, tf::index_map_buffer<Index>> {
+      -> std::tuple<tf::index_map_buffer<Index>, tf::index_map_buffer<Index>,
+                    tf::index_map_buffer<Index>> {
     Index n_edges = Index(this->_half_edges.size() / 2);
     Index n_old_faces = Index(this->_face_half_edges.size());
     Index n_old_verts = Index(this->_vertex_half_edges.size());
 
-    tf::buffer<Index> edge_map;
-    edge_map.allocate(n_edges);
+    tf::index_map_buffer<Index> edge_im;
     tf::index_map_buffer<Index> face_im;
     tf::index_map_buffer<Index> vert_im;
 
-    Index n_new_edges = 0;
-
     tbb::parallel_invoke(
         [&] {
-          n_new_edges = tf::mask_to_map(
+          tf::mask_to_index_map(
               tf::make_mapped_range(
                   tf::make_sequence_range(n_edges),
                   [&](Index e) {
                     return !this->_half_edges[e << 1].is_removed();
                   }),
-              edge_map);
+              edge_im);
         },
         [&] {
           tf::mask_to_index_map(
@@ -137,31 +135,30 @@ public:
               vert_im);
         });
 
+    Index n_new_edges = Index(edge_im.kept_ids().size());
     tf::buffer<tf::half_edge<Index>> new_hes;
     new_hes.allocate(n_new_edges * 2);
+    auto &em = edge_im.f();
     auto &fm = face_im.f();
     auto &vm = vert_im.f();
-    tf::parallel_for_each(
-        tf::make_sequence_range(n_edges), [&](Index e) {
-          if (edge_map[e] == n_edges)
-            return;
-          for (int side = 0; side < 2; ++side) {
-            auto &h = this->_half_edges[(e << 1) + side];
-            auto &nh = new_hes[(edge_map[e] << 1) + side];
-            nh.face = h.face >= 0 ? fm[h.face] : h.face;
-            nh.vertex = vm[h.vertex];
-            nh.next = h.has_next()
-                          ? (edge_map[h.next >> 1] << 1) + (h.next & 1)
-                          : h.next;
-          }
-        });
+    tf::parallel_for_each(tf::make_sequence_range(n_edges), [&](Index e) {
+      if (em[e] == Index(em.size()))
+        return;
+      for (int side = 0; side < 2; ++side) {
+        auto &h = this->_half_edges[(e << 1) + side];
+        auto &nh = new_hes[(em[e] << 1) + side];
+        nh.face = h.face >= 0 ? fm[h.face] : h.face;
+        nh.vertex = vm[h.vertex];
+        nh.next = h.has_next() ? (em[h.next >> 1] << 1) + (h.next & 1) : h.next;
+      }
+    });
     this->_half_edges = std::move(new_hes);
 
     Index n_new_faces = Index(face_im.kept_ids().size());
     Index n_new_verts = Index(vert_im.kept_ids().size());
     build_handle_buffers(n_new_faces, n_new_verts);
 
-    return {std::move(face_im), std::move(vert_im)};
+    return {std::move(face_im), std::move(vert_im), std::move(edge_im)};
   }
 
 private:

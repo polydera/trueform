@@ -18,11 +18,13 @@
 #include "../core/frame_of.hpp"
 #include "../core/points_buffer.hpp"
 #include "../reindex/points.hpp"
-#include "./collapse_short_edges.hpp"
+#include "./collapse/collapse_to_exhaustion.hpp"
+#include "./collapse/collapse_to_exhaustion_parallel.hpp"
+#include "./length_collapse_policy.hpp"
 #include "./optimize_valence.hpp"
-#include "./tangential_relaxation.hpp"
 #include "./remesh_config.hpp"
 #include "./split_long_edges.hpp"
+#include "./tangential_relaxation.hpp"
 #include "./valence_deviation.hpp"
 
 namespace tf {
@@ -33,8 +35,7 @@ namespace tf {
 /// Each iteration: split edges > 4/3*L, collapse edges < 4/5*L,
 /// optimize valence via edge flips, then tangential relaxation.
 /// Edge lengths are measured in the given coordinate frame.
-template <typename Index, typename Real, std::size_t Dims,
-          typename FramePolicy>
+template <typename Index, typename Real, std::size_t Dims, typename FramePolicy>
 auto isotropic_remesh(tf::half_edges<Index> &he,
                       tf::points_buffer<Real, Dims> &points,
                       const tf::frame_like<Dims, FramePolicy> &frame,
@@ -42,9 +43,10 @@ auto isotropic_remesh(tf::half_edges<Index> &he,
   Real high = Real(4) / 3 * config.target_length;
   Real low = Real(4) / 5 * config.target_length;
 
-  tf::length_collapse_config<Real> collapse_cfg{
-      high,           config.preserve_boundary, config.use_quadric,
-      config.max_aspect_ratio, 1e-6, config.parallel};
+  tf::length_collapse_policy<Real> policy(
+      low, high, config.preserve_boundary, config.use_quadric,
+      config.max_aspect_ratio, 1e-6, config.feature_angle,
+      config.feature_weight);
 
   tf::points_buffer<double, Dims> old_pos;
 
@@ -52,16 +54,32 @@ auto isotropic_remesh(tf::half_edges<Index> &he,
     tf::split_long_edges(he, points, frame, high, config.preserve_boundary);
 
     auto tagged = points.points() | tf::tag(frame);
-    tf::collapse_short_edges(he, tagged, low, collapse_cfg);
+    policy.init(he, tagged);
 
-    auto [face_im, vert_im] = he.compact();
+    if (config.parallel) {
+      tf::remesh::collapse_to_exhaustion_parallel<1024>(he, tagged, policy);
+    } else {
+      tf::remesh::collapse_to_exhaustion(he, tagged, policy);
+    }
+
+    auto [face_im, vert_im, edge_im] = he.compact();
     points = tf::reindexed(points.points(), vert_im);
 
     auto deviation = tf::remesh::compute_valence_deviations(he);
-    tf::remesh::optimize_valence(he, deviation, 1);
 
-    tf::remesh::tangential_relaxation(he, points.points(), old_pos,
-                                       config.relaxation_iters, config.lambda);
+    if (policy.preserve_features()) {
+      // auto mask = tf::make_feature_mask(he, points.points(),
+      //                                    config.feature_angle);
+      policy.feature_mask().compact(edge_im, vert_im);
+      tf::remesh::optimize_valence(he, deviation, policy.feature_mask(), 1);
+      tf::remesh::tangential_relaxation(he, points.points(), old_pos,
+                                        policy.feature_mask(),
+                                        config.relaxation_iters, config.lambda);
+    } else {
+      tf::remesh::optimize_valence(he, deviation, 1);
+      tf::remesh::tangential_relaxation(he, points.points(), old_pos,
+                                        config.relaxation_iters, config.lambda);
+    }
   }
 }
 

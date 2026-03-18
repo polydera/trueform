@@ -24,6 +24,10 @@ export interface DecimateOptions {
   stabilizer?: number;
   /** Use parallel partitioned collapse. Default: true */
   parallel?: boolean;
+  /** Feature edge detection angle in degrees. Edges sharper than this are preserved. Negative disables. Default: -1 */
+  featureAngle?: number;
+  /** Feature edge preservation weight. Higher = stronger. Default: 100 */
+  featureWeight?: number;
 }
 
 /** Options for isotropic remeshing. */
@@ -42,10 +46,16 @@ export interface RemeshOptions {
   useQuadric?: boolean;
   /** Use parallel execution. Default: true */
   parallel?: boolean;
+  /** Feature edge detection angle in degrees. Edges sharper than this are preserved. Negative disables. Default: -1 */
+  featureAngle?: number;
+  /** Feature edge preservation weight. Higher = stronger. Default: 100 */
+  featureWeight?: number;
 }
 
 /** Decimate a mesh to a target proportion of original faces. Returns a new Mesh. */
 export function decimated(m: Mesh, targetProportion: number, opts?: DecimateOptions): Mesh {
+  const fa = opts?.featureAngle != null && opts.featureAngle >= 0
+    ? opts.featureAngle * Math.PI / 180 : -1;
   return new Mesh(native().decimated(
     m._handle,
     targetProportion,
@@ -53,11 +63,15 @@ export function decimated(m: Mesh, targetProportion: number, opts?: DecimateOpti
     opts?.preserveBoundary ?? false,
     opts?.stabilizer ?? 1e-3,
     opts?.parallel ?? true,
+    fa,
+    opts?.featureWeight ?? 100,
   ));
 }
 
 /** Isotropic remesh to uniform target edge length. Returns a new Mesh. */
 export function isotropicRemeshed(m: Mesh, targetLength: number, opts?: RemeshOptions): Mesh {
+  const fa = opts?.featureAngle != null && opts.featureAngle >= 0
+    ? opts.featureAngle * Math.PI / 180 : -1;
   return new Mesh(native().isotropic_remeshed(
     m._handle,
     targetLength,
@@ -68,5 +82,7 @@ export function isotropicRemeshed(m: Mesh, targetLength: number, opts?: RemeshOp
     opts?.preserveBoundary ?? false,
     opts?.useQuadric ?? false,
     opts?.parallel ?? true,
+    fa,
+    opts?.featureWeight ?? 100,
   ));
 }

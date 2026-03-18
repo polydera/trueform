@@ -42,7 +42,8 @@ auto decimate(
   Index current_faces = he.number_of_faces();
   Index target_faces = Index(current_faces * target_proportion);
   tf::collapse_policy<Real> policy{config.max_aspect_ratio,
-                                   config.preserve_boundary, config.stabilizer};
+                                   config.preserve_boundary, config.stabilizer,
+                                   config.feature_angle, config.feature_weight};
   policy.init(he, points);
   if (config.parallel) {
     return tf::remesh::collapse_to_target_parallel<1024>(

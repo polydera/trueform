@@ -18,6 +18,8 @@ import type { DecimateOptions, RemeshOptions } from "./sync";
 
 /** Decimate a mesh to a target proportion of original faces (async). Returns a new Mesh. */
 export async function decimated(m: Mesh, targetProportion: number, opts?: DecimateOptions): Promise<Mesh> {
+  const fa = opts?.featureAngle != null && opts.featureAngle >= 0
+    ? opts.featureAngle * Math.PI / 180 : -1;
   return dispatcher().run(
     () => native().dispatch_decimated(
       m._handle,
@@ -26,6 +28,8 @@ export async function decimated(m: Mesh, targetProportion: number, opts?: Decima
       opts?.preserveBoundary ?? false,
       opts?.stabilizer ?? 1e-3,
       opts?.parallel ?? true,
+      fa,
+      opts?.featureWeight ?? 100,
     ),
     (raw) => new Mesh(raw),
   );
@@ -33,6 +37,8 @@ export async function decimated(m: Mesh, targetProportion: number, opts?: Decima
 
 /** Isotropic remesh to uniform target edge length (async). Returns a new Mesh. */
 export async function isotropicRemeshed(m: Mesh, targetLength: number, opts?: RemeshOptions): Promise<Mesh> {
+  const fa = opts?.featureAngle != null && opts.featureAngle >= 0
+    ? opts.featureAngle * Math.PI / 180 : -1;
   return dispatcher().run(
     () => native().dispatch_isotropic_remeshed(
       m._handle,
@@ -44,6 +50,8 @@ export async function isotropicRemeshed(m: Mesh, targetLength: number, opts?: Re
       opts?.preserveBoundary ?? false,
       opts?.useQuadric ?? false,
       opts?.parallel ?? true,
+      fa,
+      opts?.featureWeight ?? 100,
     ),
     (raw) => new Mesh(raw),
   );

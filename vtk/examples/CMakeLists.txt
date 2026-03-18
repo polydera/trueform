@@ -44,6 +44,7 @@ add_vtk_example(closest_pair)
 add_vtk_example(laplacian_smoothing)
 add_vtk_example(alignment)
 add_vtk_example(remeshing)
+add_vtk_example(decimate_with_feature_edges)
 
 # Target to build all examples
 add_custom_target(trueform_vtk_examples DEPENDS
@@ -59,4 +60,5 @@ add_custom_target(trueform_vtk_examples DEPENDS
   vtk_example_laplacian_smoothing
   vtk_example_alignment
   vtk_example_remeshing
+  vtk_example_decimate_with_feature_edges
 )

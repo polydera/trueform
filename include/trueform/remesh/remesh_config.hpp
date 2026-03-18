@@ -12,6 +12,8 @@
  */
 #pragma once
 
+#include "../core/angle.hpp"
+
 namespace tf {
 
 /// @ingroup remesh
@@ -47,6 +49,13 @@ template <typename Real> struct remesh_config {
   /// If true, use parallel partitioned collapse. If false, sequential.
   bool parallel = true;
 
+  /// Dihedral angle threshold for feature edge detection.
+  /// Edges sharper than this are preserved. Negative disables.
+  tf::rad<Real> feature_angle{Real(-1)};
+
+  /// Penalty weight for feature edge quadrics, relative to mean face
+  /// quadric trace. Higher values preserve features more rigidly.
+  Real feature_weight = Real(100);
 };
 
 /// @brief Create a remesh config with just a target edge length.

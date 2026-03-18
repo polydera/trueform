@@ -46,7 +46,9 @@ auto collapse_short_edges(
                                           config.preserve_boundary,
                                           config.use_quadric,
                                           config.max_aspect_ratio,
-                                          config.stabilizer);
+                                          config.stabilizer,
+                                          config.feature_angle,
+                                          config.feature_weight);
   if (config.parallel) {
     return tf::remesh::collapse_to_exhaustion_parallel<1024>(he, points,
                                                              policy);
@@ -88,7 +90,9 @@ auto collapse_short_edges(
                                           config.preserve_boundary,
                                           config.use_quadric,
                                           config.max_aspect_ratio,
-                                          config.stabilizer);
+                                          config.stabilizer,
+                                          config.feature_angle,
+                                          config.feature_weight);
   policy.init(he, points);
   if (config.parallel) {
     return tf::remesh::collapse_to_target_parallel<1024>(

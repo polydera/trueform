@@ -11,6 +11,7 @@
  * Author: Žiga Sajovic
  */
 
+#include "trueform/core/angle.hpp"
 #include "trueform/remesh/decimated.hpp"
 #include "trueform/remesh/isotropic_remeshed.hpp"
 #include "trueform/ts/core/promise.hpp"
@@ -25,7 +26,8 @@ using namespace tf::ts;
 
 auto sync_decimated(wasm_mesh &m, float target_proportion,
                     float max_aspect_ratio, bool preserve_boundary,
-                    double stabilizer, bool parallel) -> wasm_mesh {
+                    double stabilizer, bool parallel,
+                    float feature_angle, float feature_weight) -> wasm_mesh {
   auto polys = m.polygons_range();
   auto fm = m.face_membership_range();
   auto &he = m.half_edges();
@@ -36,6 +38,8 @@ auto sync_decimated(wasm_mesh &m, float target_proportion,
   config.preserve_boundary = preserve_boundary;
   config.stabilizer = stabilizer;
   config.parallel = parallel;
+  config.feature_angle = tf::rad<float>(feature_angle);
+  config.feature_weight = feature_weight;
 
   auto run = [&](auto &&form) -> wasm_mesh {
     auto [result, result_he] =
@@ -55,7 +59,8 @@ auto sync_isotropic_remeshed(wasm_mesh &m, float target_length,
                               int iterations, int relaxation_iters,
                               float max_aspect_ratio, float lambda,
                               bool preserve_boundary, bool use_quadric,
-                              bool parallel) -> wasm_mesh {
+                              bool parallel, float feature_angle,
+                              float feature_weight) -> wasm_mesh {
   auto polys = m.polygons_range();
   auto fm = m.face_membership_range();
   auto &he = m.half_edges();
@@ -70,6 +75,8 @@ auto sync_isotropic_remeshed(wasm_mesh &m, float target_length,
   config.preserve_boundary = preserve_boundary;
   config.use_quadric = use_quadric;
   config.parallel = parallel;
+  config.feature_angle = tf::rad<float>(feature_angle);
+  config.feature_weight = feature_weight;
 
   auto run = [&](auto &&form) -> wasm_mesh {
     auto [result, result_he] = tf::isotropic_remeshed(form, config);
@@ -88,12 +95,14 @@ auto sync_isotropic_remeshed(wasm_mesh &m, float target_length,
 
 auto async_decimated(wasm_mesh &m, float target_proportion,
                      float max_aspect_ratio, bool preserve_boundary,
-                     double stabilizer, bool parallel) -> promise_t {
+                     double stabilizer, bool parallel,
+                     float feature_angle, float feature_weight) -> promise_t {
   return promise([a = m, target_proportion, max_aspect_ratio,
-                  preserve_boundary, stabilizer, parallel]() -> wasm_mesh {
+                  preserve_boundary, stabilizer, parallel, feature_angle,
+                  feature_weight]() -> wasm_mesh {
     return sync_decimated(const_cast<wasm_mesh &>(a), target_proportion,
                           max_aspect_ratio, preserve_boundary, stabilizer,
-                          parallel);
+                          parallel, feature_angle, feature_weight);
   });
 }
 
@@ -101,14 +110,15 @@ auto async_isotropic_remeshed(wasm_mesh &m, float target_length,
                                int iterations, int relaxation_iters,
                                float max_aspect_ratio, float lambda,
                                bool preserve_boundary, bool use_quadric,
-                               bool parallel) -> promise_t {
+                               bool parallel, float feature_angle,
+                               float feature_weight) -> promise_t {
   return promise([a = m, target_length, iterations, relaxation_iters,
                   max_aspect_ratio, lambda, preserve_boundary, use_quadric,
-                  parallel]() -> wasm_mesh {
+                  parallel, feature_angle, feature_weight]() -> wasm_mesh {
     return sync_isotropic_remeshed(
         const_cast<wasm_mesh &>(a), target_length, iterations,
         relaxation_iters, max_aspect_ratio, lambda, preserve_boundary,
-        use_quadric, parallel);
+        use_quadric, parallel, feature_angle, feature_weight);
   });
 }
 

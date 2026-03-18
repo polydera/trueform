@@ -8,6 +8,7 @@ https://github.com/polydera/trueform
 """
 
 from typing import Union, Tuple
+import math
 import numpy as np
 from .. import _trueform
 from .._spatial import Mesh
@@ -24,7 +25,9 @@ def isotropic_remeshed(
     lambda_: float = 0.5,
     preserve_boundary: bool = False,
     use_quadric: bool = False,
-    parallel: bool = True
+    parallel: bool = True,
+    feature_angle: float = -1.0,
+    feature_weight: float = 100.0
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Isotropic remeshing of a triangle mesh.
@@ -57,6 +60,12 @@ def isotropic_remeshed(
         Default is False.
     parallel : bool, optional
         If True, use parallel execution. Default is True.
+    feature_angle : float, optional
+        Feature edge detection angle in degrees. Edges sharper than this are
+        preserved. Set negative to disable. Default is -1.0.
+    feature_weight : float, optional
+        Penalty weight for feature edge quadrics. Higher values preserve
+        features more rigidly. Default is 100.0.
 
     Returns
     -------
@@ -70,7 +79,7 @@ def isotropic_remeshed(
     >>> import trueform as tf
     >>> mesh = tf.Mesh(*tf.read_stl("model.stl"))
     >>> faces, points = tf.isotropic_remeshed(mesh, 0.02)
-    >>> faces, points = tf.isotropic_remeshed((mesh.faces, mesh.points), 0.02)
+    >>> faces, points = tf.isotropic_remeshed(mesh, 0.02, feature_angle=30)
     """
 
     if isinstance(data, tuple) and len(data) == 2:
@@ -98,6 +107,8 @@ def isotropic_remeshed(
     func_name = f"isotropic_remeshed_{suffix}"
     cpp_func = getattr(_trueform.remesh, func_name)
 
+    fa = math.radians(feature_angle) if feature_angle >= 0 else -1.0
+
     return cpp_func(
         data._wrapper,
         target_length,
@@ -107,5 +118,7 @@ def isotropic_remeshed(
         lambda_,
         preserve_boundary,
         use_quadric,
-        parallel
+        parallel,
+        fa,
+        feature_weight
     )

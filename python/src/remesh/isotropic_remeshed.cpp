@@ -27,15 +27,17 @@ auto register_isotropic_remeshed(nanobind::module_ &m) -> void {
       [](mesh_wrapper<int, float, 3, 3> &wrapper, float target_length,
          int iterations, int relaxation_iters, float max_aspect_ratio,
          float lambda, bool preserve_boundary, bool use_quadric,
-         bool parallel) {
+         bool parallel, double feature_angle, float feature_weight) {
         return isotropic_remeshed_impl<int, float>(
             wrapper, target_length, iterations, relaxation_iters,
-            max_aspect_ratio, lambda, preserve_boundary, use_quadric, parallel);
+            max_aspect_ratio, lambda, preserve_boundary, use_quadric, parallel,
+            feature_angle, feature_weight);
       },
       arg("mesh"), arg("target_length"), arg("iterations") = 3,
       arg("relaxation_iters") = 3, arg("max_aspect_ratio") = -1.f,
       arg("lambda_") = 0.5f, arg("preserve_boundary") = false,
-      arg("use_quadric") = false, arg("parallel") = true);
+      arg("use_quadric") = false, arg("parallel") = true,
+      arg("feature_angle") = -1.0, arg("feature_weight") = 100.f);
 
   // int32, float64, 3D
   m.def(
@@ -43,15 +45,17 @@ auto register_isotropic_remeshed(nanobind::module_ &m) -> void {
       [](mesh_wrapper<int, double, 3, 3> &wrapper, double target_length,
          int iterations, int relaxation_iters, double max_aspect_ratio,
          double lambda, bool preserve_boundary, bool use_quadric,
-         bool parallel) {
+         bool parallel, double feature_angle, double feature_weight) {
         return isotropic_remeshed_impl<int, double>(
             wrapper, target_length, iterations, relaxation_iters,
-            max_aspect_ratio, lambda, preserve_boundary, use_quadric, parallel);
+            max_aspect_ratio, lambda, preserve_boundary, use_quadric, parallel,
+            feature_angle, feature_weight);
       },
       arg("mesh"), arg("target_length"), arg("iterations") = 3,
       arg("relaxation_iters") = 3, arg("max_aspect_ratio") = -1.0,
       arg("lambda_") = 0.5, arg("preserve_boundary") = false,
-      arg("use_quadric") = false, arg("parallel") = true);
+      arg("use_quadric") = false, arg("parallel") = true,
+      arg("feature_angle") = -1.0, arg("feature_weight") = 100.0);
 
   // int64, float32, 3D
   m.def(
@@ -59,15 +63,17 @@ auto register_isotropic_remeshed(nanobind::module_ &m) -> void {
       [](mesh_wrapper<int64_t, float, 3, 3> &wrapper, float target_length,
          int iterations, int relaxation_iters, float max_aspect_ratio,
          float lambda, bool preserve_boundary, bool use_quadric,
-         bool parallel) {
+         bool parallel, double feature_angle, float feature_weight) {
         return isotropic_remeshed_impl<int64_t, float>(
             wrapper, target_length, iterations, relaxation_iters,
-            max_aspect_ratio, lambda, preserve_boundary, use_quadric, parallel);
+            max_aspect_ratio, lambda, preserve_boundary, use_quadric, parallel,
+            feature_angle, feature_weight);
       },
       arg("mesh"), arg("target_length"), arg("iterations") = 3,
       arg("relaxation_iters") = 3, arg("max_aspect_ratio") = -1.f,
       arg("lambda_") = 0.5f, arg("preserve_boundary") = false,
-      arg("use_quadric") = false, arg("parallel") = true);
+      arg("use_quadric") = false, arg("parallel") = true,
+      arg("feature_angle") = -1.0, arg("feature_weight") = 100.f);
 
   // int64, float64, 3D
   m.def(
@@ -75,15 +81,17 @@ auto register_isotropic_remeshed(nanobind::module_ &m) -> void {
       [](mesh_wrapper<int64_t, double, 3, 3> &wrapper, double target_length,
          int iterations, int relaxation_iters, double max_aspect_ratio,
          double lambda, bool preserve_boundary, bool use_quadric,
-         bool parallel) {
+         bool parallel, double feature_angle, double feature_weight) {
         return isotropic_remeshed_impl<int64_t, double>(
             wrapper, target_length, iterations, relaxation_iters,
-            max_aspect_ratio, lambda, preserve_boundary, use_quadric, parallel);
+            max_aspect_ratio, lambda, preserve_boundary, use_quadric, parallel,
+            feature_angle, feature_weight);
       },
       arg("mesh"), arg("target_length"), arg("iterations") = 3,
       arg("relaxation_iters") = 3, arg("max_aspect_ratio") = -1.0,
       arg("lambda_") = 0.5, arg("preserve_boundary") = false,
-      arg("use_quadric") = false, arg("parallel") = true);
+      arg("use_quadric") = false, arg("parallel") = true,
+      arg("feature_angle") = -1.0, arg("feature_weight") = 100.0);
 }
 
 } // namespace tf::py

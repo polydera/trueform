@@ -17,6 +17,7 @@
 
 #include "../core/buffer.hpp"
 #include "../topology/half_edges.hpp"
+#include "./feature_mask.hpp"
 #include "./valence_deviation.hpp"
 
 namespace tf::remesh {
@@ -79,6 +80,65 @@ auto optimize_valence(tf::half_edges<Index> &he,
   return n_flipped;
 }
 
+/// @ingroup remesh
+/// @brief Optimize vertex valence by flipping edges (feature-aware).
+///
+/// Same as the base overload, but skips flipping feature edges.
+template <typename Index>
+auto optimize_valence(tf::half_edges<Index> &he,
+                      tf::buffer<std::int8_t> &deviation,
+                      const feature_mask &mask,
+                      int iterations = 1) -> Index {
+  Index n_flipped = 0;
+  for (int iter = 0; iter < iterations; ++iter) {
+    Index flipped_this_iter = 0;
+    for (auto eh : he.edge_handles()) {
+      if (!he.is_flip_ok(eh))
+        continue;
+      if (mask.is_feature(eh.id()))
+        continue;
+      auto a0 = he.half_edge_handle(tf::unsafe, eh, false);
+      auto a1 = he.next(tf::unsafe, a0);
+      auto a2 = he.next(tf::unsafe, a1);
+      auto b0 = he.half_edge_handle(tf::unsafe, eh, true);
+      auto b1 = he.next(tf::unsafe, b0);
+      auto b2 = he.next(tf::unsafe, b1);
+
+      auto va0 = he.start_vertex_handle(tf::unsafe, a0).id();
+      auto va1 = he.start_vertex_handle(tf::unsafe, a1).id();
+      auto va2 = he.start_vertex_handle(tf::unsafe, a2).id();
+      auto vb2 = he.start_vertex_handle(tf::unsafe, b2).id();
+
+      // Skip if any involved vertex is on a feature edge
+      if (mask.vertex_type(va0) != vertex_feature_type::regular ||
+          mask.vertex_type(va1) != vertex_feature_type::regular ||
+          mask.vertex_type(va2) != vertex_feature_type::regular ||
+          mask.vertex_type(vb2) != vertex_feature_type::regular)
+        continue;
+
+      auto before = std::abs(deviation[va0]) + std::abs(deviation[va1]) +
+                    std::abs(deviation[va2]) + std::abs(deviation[vb2]);
+      auto after =
+          std::abs(deviation[va0] - 1) + std::abs(deviation[va1] - 1) +
+          std::abs(deviation[va2] + 1) + std::abs(deviation[vb2] + 1);
+
+      if (after >= before)
+        continue;
+
+      deviation[va0]--;
+      deviation[va1]--;
+      deviation[va2]++;
+      deviation[vb2]++;
+      he.flip(eh);
+      ++flipped_this_iter;
+    }
+    n_flipped += flipped_this_iter;
+    if (flipped_this_iter == 0)
+      break;
+  }
+  return n_flipped;
+}
+
 } // namespace tf::remesh
 
 namespace tf {
@@ -96,6 +156,18 @@ auto optimize_valence(tf::half_edges<Index> &he, int iterations = 1)
     -> Index {
   auto deviation = tf::remesh::compute_valence_deviations(he);
   return tf::remesh::optimize_valence(he, deviation, iterations);
+}
+
+/// @ingroup remesh
+/// @brief Optimize vertex valence by flipping edges (feature-aware).
+///
+/// Convenience overload that computes valence deviations internally.
+template <typename Index>
+auto optimize_valence(tf::half_edges<Index> &he,
+                      const tf::remesh::feature_mask &mask,
+                      int iterations = 1) -> Index {
+  auto deviation = tf::remesh::compute_valence_deviations(he);
+  return tf::remesh::optimize_valence(he, deviation, mask, iterations);
 }
 
 } // namespace tf
