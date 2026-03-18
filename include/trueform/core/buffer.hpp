@@ -38,8 +38,7 @@ namespace tf {
 /// @note This container is used internally.
 /// @see `allocate()` and `reallocate()` for uninitialized memory allocation.
 template <typename T> class buffer {
-  static_assert(std::is_trivially_default_constructible<T>::value &&
-                    std::is_trivially_destructible<T>::value,
+  static_assert(std::is_trivially_destructible<T>::value,
                 "Just use std::vector");
 
 public:
