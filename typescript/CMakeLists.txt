@@ -29,6 +29,7 @@ add_executable(trueform_wasm
     cpp/src/core/wasm_index_map.cpp
     cpp/src/io/io.cpp
     cpp/src/cut/boolean.cpp
+    cpp/src/cut/mesh_arrangement.cpp
     cpp/src/cut/isobands.cpp
     cpp/src/cut/embedded.cpp
     cpp/src/intersect/intersect.cpp

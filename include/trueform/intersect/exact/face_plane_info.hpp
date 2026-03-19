@@ -37,15 +37,15 @@ inline auto compute_face_plane(const tf::buffer<vertex> &face)
     ++id1;
   if (id1 >= n)
     return {0, 1, 0, 0, 0, false};
-  int64_t e0x = face[id1].pt[0] - face[id0].pt[0];
-  int64_t e0y = face[id1].pt[1] - face[id0].pt[1];
-  int64_t e0z = face[id1].pt[2] - face[id0].pt[2];
+  int64_t e0x = int64_t(face[id1].pt[0]) - int64_t(face[id0].pt[0]);
+  int64_t e0y = int64_t(face[id1].pt[1]) - int64_t(face[id0].pt[1]);
+  int64_t e0z = int64_t(face[id1].pt[2]) - int64_t(face[id0].pt[2]);
   int128 nx = 0, ny = 0, nz = 0;
   std::size_t id2 = id1 + 1;
   for (; id2 < n; ++id2) {
-    int64_t e1x = face[id2].pt[0] - face[id0].pt[0];
-    int64_t e1y = face[id2].pt[1] - face[id0].pt[1];
-    int64_t e1z = face[id2].pt[2] - face[id0].pt[2];
+    int64_t e1x = int64_t(face[id2].pt[0]) - int64_t(face[id0].pt[0]);
+    int64_t e1y = int64_t(face[id2].pt[1]) - int64_t(face[id0].pt[1]);
+    int64_t e1z = int64_t(face[id2].pt[2]) - int64_t(face[id0].pt[2]);
     nx = int128(e0y) * e1z - int128(e0z) * e1y;
     ny = int128(e0z) * e1x - int128(e0x) * e1z;
     nz = int128(e0x) * e1y - int128(e0y) * e1x;

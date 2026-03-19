@@ -98,7 +98,7 @@ auto run(const test_geometry &geo, const std::vector<vertex_t> &loop,
 
 } // namespace
 
-TEST_CASE("No edges — emit base loop", "[face_cutter]") {
+TEST_CASE("No edges - emit base loop", "[face_cutter]") {
   test_geometry geo{{{0, 0, 0}, {200, 0, 0}, {200, 200, 0}, {0, 200, 0}},
                     {0, 1, 2, 3}};
   auto faces = run(geo, {V(0), V(1), V(2), V(3)}, {});

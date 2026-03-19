@@ -64,9 +64,11 @@ public:
   auto edge_groups() const { return tf::make_range(_edge_defs); }
   auto tag_offsets() const { return tf::make_range(_tag_offsets); }
   auto point_remap() const { return tf::make_range(_point_remap); }
+  auto crossing_point_ids() const { return tf::make_range(_crossing_point_ids); }
 
   auto clear() {
     _points.clear();
+    _crossing_point_ids.clear();
     _descriptors.clear();
     _tag_offsets.clear();
     _loops.clear();
@@ -239,15 +241,17 @@ private:
     auto ee_offsets = intersect::graph::compute_ee_crossing_points<Index>(
         ee_range, _edge_defs, get_point, crossing_points);
     auto crossing_base = n_ipts;
-
     ve_range = intersect::graph::dedup_ve(ve_range);
-
     tf::buffer<std::array<Index, 2>> merge_pairs;
     intersect::graph::collect_vv_pairs<Index>(vv_range, merge_pairs);
 
+    for (const auto &p : merge_pairs) {
+      _crossing_point_ids.push_back(p[0]);
+      _crossing_point_ids.push_back(p[1]);
+    }
+
     auto entries = intersect::graph::collect_split_entries<Index>(
         ee_range, ee_offsets, ve_range, crossing_base);
-
     if (entries.size() > 0) {
       intersect::graph::split_edges<Index>(entries, crossing_base,
                                            crossing_points, _edge_defs, _edges,
@@ -256,6 +260,9 @@ private:
 
     auto total_size =
         crossing_base + static_cast<Index>(crossing_points.size());
+
+    for (Index i = crossing_base; i < total_size; ++i)
+      _crossing_point_ids.push_back(i);
 
     if (merge_pairs.size() == 0) {
       _points.allocate(total_size);
@@ -266,7 +273,6 @@ private:
       return;
     }
 
-    // Equivalence class compaction
     _point_remap.allocate(total_size);
     auto n_classes =
         tf::make_dense_equivalence_class_map(merge_pairs, _point_remap);
@@ -278,7 +284,6 @@ private:
                                            ? ipts[i]
                                            : crossing_points[i - crossing_base];
                               });
-
     _points.allocate(n_classes);
     tf::parallel_copy(all_coords,
                       tf::make_indirect_range(_point_remap, _points));
@@ -287,14 +292,16 @@ private:
       e.point_0 = _point_remap[e.point_0];
       e.point_1 = _point_remap[e.point_1];
     });
-
     tf::parallel_for_each(_loops.data_buffer(), [&](auto &v) {
       if (v.source == intersect::graph::vertex_source::created)
         v.id = _point_remap[v.id];
     });
 
     intersect::graph::canonicalize_edges(_edge_defs, _edges);
+
     compact_loops_dedup();
+
+    collect_crossing_point_ids();
   }
 
   auto compact_loops_dedup() -> void {
@@ -343,7 +350,19 @@ private:
     _loops.offsets_buffer() = std::move(new_offsets);
   }
 
+  auto collect_crossing_point_ids() -> void {
+    if (_crossing_point_ids.size() == 0)
+      return;
+    if (_point_remap.size() > 0)
+      for (auto &id : _crossing_point_ids)
+        id = _point_remap[id];
+    std::sort(_crossing_point_ids.begin(), _crossing_point_ids.end());
+    _crossing_point_ids.erase_till_end(
+        std::unique(_crossing_point_ids.begin(), _crossing_point_ids.end()));
+  }
+
   tf::points_buffer<int32_t, 3> _points;
+  tf::buffer<Index> _crossing_point_ids;
   tf::buffer<intersect::graph::face_descriptor<Index>> _descriptors;
   tf::buffer<Index> _tag_offsets;
   tf::offset_block_buffer<Index, intersect::graph::vertex<Index>> _loops;

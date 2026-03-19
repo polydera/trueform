@@ -63,7 +63,8 @@ triangle_segment_intersect_point_sos(const std::array<vertex, 5> &vs)
                     sum));
   } else {
     for (int i = 0; i < 3; ++i)
-      point[i] = (vs[3].pt[i] + vs[4].pt[i]) / 2;
+      point[i] = static_cast<int32_t>(
+          (int64_t(vs[3].pt[i]) + int64_t(vs[4].pt[i])) / 2);
   }
 
   return point;

@@ -40,7 +40,7 @@ auto expand_other(const Faces &faces, const FE &fe, const MEL &mel,
         faces[rec.object_other]
              [tf::circular_increment<Index>(rec.target_other.id, Index(N))];
 
-    auto &link = mel[rec.object_other][rec.target_other.id];
+    auto &&link = mel[rec.object_other][rec.target_other.id];
     if (link.is_simple()) {
       Index n_face = link.face_peer;
       Index n_edge = tf::edge_id_in_face(e1, e0, faces[n_face]);
@@ -111,7 +111,7 @@ auto duplicate_intersection(const Faces0 &faces0, const FE0 &fe0,
     Index e1 = faces0[rec.object]
                      [tf::circular_increment<Index>(rec.target.id, Index(N))];
 
-    auto &link = mel0[rec.object][rec.target.id];
+    auto &&link = mel0[rec.object][rec.target.id];
     if (link.is_simple()) {
       Index n_face = link.face_peer;
       Index n_edge = tf::edge_id_in_face(e1, e0, faces0[n_face]);

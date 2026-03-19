@@ -1,19 +1,23 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
+#include "../../core/algorithm/parallel_fill.hpp"
+#include "../../intersect/exact/vertex_converter.hpp"
+#include "../../intersect/graph/intersection_graph.hpp"
 #include "../arrangement_class.hpp"
 #include "../boolean_config.hpp"
 #include "../classify/tagged.hpp"
+#include "../face_cuts.hpp"
 #include "./ids_common.hpp"
 #include "./make_boolean_common.hpp"
 
@@ -25,8 +29,7 @@ auto make_mesh_arrangements(
     const tf::polygons<Policy0> _polygons0,
     const tf::polygons<Policy1> &_polygons1,
     const tf::intersect::tagged_intersections<Index, RealT, Dims> &ibp,
-    const tf::tagged_cut_faces<Index> &tcf,
-    const tf::boolean_config &config) {
+    const tf::tagged_cut_faces<Index> &tcf, const tf::boolean_config &config) {
   auto make_polygons = [](const auto &form) {
     return tf::wrap_map(form, [](auto &&x) {
       return tf::core::make_polygons(x.faces(),

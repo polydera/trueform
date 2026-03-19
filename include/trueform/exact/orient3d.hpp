@@ -25,13 +25,14 @@ inline auto div_round(int128 n, int128 d) -> int128 {
 
 /// Core SoS orient3d of (a, b, c) relative to origin.
 /// Points must be pre-sorted by vertex ID and translated so that
-/// the fourth point is at the origin.
-inline auto orient3d_sos_presorted(const pt3 &a, const pt3 &b, const pt3 &c) -> bool {
+/// the fourth point is at the origin. Takes int64 to avoid int32 overflow
+/// from the translation step.
+inline auto orient3d_sos_presorted(const std::array<int64_t, 3> &a,
+                                    const std::array<int64_t, 3> &b,
+                                    const std::array<int64_t, 3> &c) -> bool {
   using I128 = int128;
-  using I64 = int64_t;
-
-  I64 bx = b[0], by = b[1], bz = b[2];
-  I64 cx = c[0], cy = c[1], cz = c[2];
+  int64_t bx = b[0], by = b[1], bz = b[2];
+  int64_t cx = c[0], cy = c[1], cz = c[2];
   I128 cross_x = I128(by) * cz - I128(bz) * cy;
   I128 cross_y = I128(bz) * cx - I128(bx) * cz;
   I128 cross_z = I128(bx) * cy - I128(by) * cx;
@@ -41,7 +42,7 @@ inline auto orient3d_sos_presorted(const pt3 &a, const pt3 &b, const pt3 &c) -> 
     return det > 0;
 
   // SoS perturbation cascade
-  I64 v;
+  int64_t v;
   v = bx * cy - by * cx;
   if (v)
     return v > 0;
@@ -52,28 +53,28 @@ inline auto orient3d_sos_presorted(const pt3 &a, const pt3 &b, const pt3 &c) -> 
   if (v)
     return v > 0;
 
-  I64 ax = a[0], ay = a[1], az = a[2];
+  int64_t ax = a[0], ay = a[1], az = a[2];
   v = -(ax * cy - ay * cx);
   if (v)
     return v > 0;
-  if (c[0])
-    return c[0] > 0;
-  if (c[1])
-    return c[1] < 0;
+  if (cx)
+    return cx > 0;
+  if (cy)
+    return cy < 0;
 
   v = ax * cz - az * cx;
   if (v)
     return v > 0;
-  if (c[2])
-    return c[2] > 0;
+  if (cz)
+    return cz > 0;
 
   v = ax * by - ay * bx;
   if (v)
     return v > 0;
-  if (b[0])
-    return b[0] < 0;
-  if (b[1])
-    return b[1] > 0;
+  if (bx)
+    return bx < 0;
+  if (by)
+    return by > 0;
   if (a[0])
     return a[0] > 0;
 
@@ -101,11 +102,11 @@ inline auto orient3d_sos(const vertex *vs) -> bool {
   auto &pc = vs[order[2]].pt;
   auto &pd = vs[order[3]].pt;
 
-  pt3 a, b, c;
+  std::array<int64_t, 3> a, b, c;
   for (int i = 0; i < 3; ++i) {
-    a[i] = pa[i] - pd[i];
-    b[i] = pb[i] - pd[i];
-    c[i] = pc[i] - pd[i];
+    a[i] = int64_t(pa[i]) - int64_t(pd[i]);
+    b[i] = int64_t(pb[i]) - int64_t(pd[i]);
+    c[i] = int64_t(pc[i]) - int64_t(pd[i]);
   }
 
   return odd != orient3d_sos_presorted(a, b, c);
@@ -118,12 +119,16 @@ inline auto orient3d_sos(const std::array<vertex, 4> &vs) -> bool {
 /// Exact orient3d volume (signed). Used for barycentric weight computation.
 inline auto orient3d_value(const pt3 &a, const pt3 &b, const pt3 &c,
                            const pt3 &d) -> int128 {
+  int64_t ax = int64_t(b[0]) - a[0], ay = int64_t(b[1]) - a[1],
+          az = int64_t(b[2]) - a[2];
+  int64_t bx = int64_t(c[0]) - a[0], by = int64_t(c[1]) - a[1],
+          bz = int64_t(c[2]) - a[2];
+  int64_t cx = int64_t(d[0]) - a[0], cy = int64_t(d[1]) - a[1],
+          cz = int64_t(d[2]) - a[2];
   using I = int128;
-  I ax = b[0] - a[0], ay = b[1] - a[1], az = b[2] - a[2];
-  I bx = c[0] - a[0], by = c[1] - a[1], bz = c[2] - a[2];
-  I cx = d[0] - a[0], cy = d[1] - a[1], cz = d[2] - a[2];
-  return ax * (by * cz - bz * cy) - ay * (bx * cz - bz * cx) +
-         az * (bx * cy - by * cx);
+  return I(ax) * (I(by) * cz - I(bz) * cy) -
+         I(ay) * (I(bx) * cz - I(bz) * cx) +
+         I(az) * (I(bx) * cy - I(by) * cx);
 }
 
 /// Exact orient3d sign (no SoS). Returns -1, 0, or +1.

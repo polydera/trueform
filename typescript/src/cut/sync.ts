@@ -227,6 +227,71 @@ export function embeddedIntersectionCurves(
 }
 
 // ============================================================================
+// Mesh Arrangement
+// ============================================================================
+
+/** Result of mesh arrangement. */
+export interface MeshArrangementResult {
+  /** The merged mesh with all faces split along intersection curves. */
+  mesh: Mesh;
+  /** Per-face tag: which input mesh each face came from. */
+  tagLabels: NDArrayInt32;
+  /** Per-face origin: which face in the original mesh. */
+  faceLabels: NDArrayInt32;
+}
+
+/** Result of mesh arrangement with intersection curves. */
+export interface MeshArrangementResultWithCurves {
+  /** The merged mesh. */
+  mesh: Mesh;
+  /** Per-face tag. */
+  tagLabels: NDArrayInt32;
+  /** Per-face origin. */
+  faceLabels: NDArrayInt32;
+  /** Intersection curves. */
+  curves: Curves;
+}
+
+function wrapArrangement(raw: any): MeshArrangementResult {
+  return {
+    mesh: new Mesh(raw.mesh),
+    tagLabels: new NDArray(raw.tagLabels, "int32"),
+    faceLabels: new NDArray(raw.faceLabels, "int32"),
+  };
+}
+
+function wrapArrangementWithCurves(raw: any): MeshArrangementResultWithCurves {
+  return {
+    mesh: new Mesh(raw.mesh),
+    tagLabels: new NDArray(raw.tagLabels, "int32"),
+    faceLabels: new NDArray(raw.faceLabels, "int32"),
+    curves: new Curves(raw.curves),
+  };
+}
+
+/**
+ * Build a mesh arrangement from N meshes.
+ *
+ * Splits all faces along intersection curves and merges into one mesh.
+ * Each face is tagged with its source mesh and original face index.
+ */
+export function meshArrangement(meshes: Mesh[]): MeshArrangementResult;
+export function meshArrangement(
+  meshes: Mesh[], opts: { returnCurves: true },
+): MeshArrangementResultWithCurves;
+export function meshArrangement(
+  meshes: Mesh[], opts?: { returnCurves: true },
+): MeshArrangementResult | MeshArrangementResultWithCurves {
+  const handles = meshes.map(m => m._handle);
+  if (opts?.returnCurves) {
+    return wrapArrangementWithCurves(
+      native().mesh_arrangement_with_curves(handles),
+    );
+  }
+  return wrapArrangement(native().mesh_arrangement(handles));
+}
+
+// ============================================================================
 // Embedded self-intersection curves
 // ============================================================================
 

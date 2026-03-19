@@ -21,24 +21,27 @@ namespace tf::exact {
 /// Exact orient2d: positive if c is left of a->b, negative if right, zero if
 /// collinear. Exact for int32 inputs — products use int128 to avoid overflow.
 inline auto orient2d(const pt2 &a, const pt2 &b, const pt2 &c) -> int128 {
-  return int128(b[0] - a[0]) * int128(c[1] - a[1]) -
-         int128(b[1] - a[1]) * int128(c[0] - a[0]);
+  return int128(int64_t(b[0]) - int64_t(a[0])) *
+             int128(int64_t(c[1]) - int64_t(a[1])) -
+         int128(int64_t(b[1]) - int64_t(a[1])) *
+             int128(int64_t(c[0]) - int64_t(a[0]));
 }
 
 /// Exact squared distance between two 2D int32 points.
 inline auto distance2(const pt2 &a, const pt2 &b) -> int128 {
-  int128 dx = a[0] - b[0], dy = a[1] - b[1];
-  return dx * dx + dy * dy;
+  int64_t dx = int64_t(a[0]) - int64_t(b[0]),
+          dy = int64_t(a[1]) - int64_t(b[1]);
+  return int128(dx) * dx + int128(dy) * dy;
 }
 
 /// Exact orient2d sign for 3 vertices projected to 2D via axes (ax0, ax1).
 /// Returns -1, 0, or +1.
 inline auto orient2d_sign(const vertex &v0, const vertex &v1, const vertex &v2,
                            int ax0, int ax1) -> int {
-  int128 det = int128(v1.pt[ax0] - v0.pt[ax0]) *
-                   int128(v2.pt[ax1] - v0.pt[ax1]) -
-               int128(v1.pt[ax1] - v0.pt[ax1]) *
-                   int128(v2.pt[ax0] - v0.pt[ax0]);
+  int128 det = int128(int64_t(v1.pt[ax0]) - int64_t(v0.pt[ax0])) *
+                   int128(int64_t(v2.pt[ax1]) - int64_t(v0.pt[ax1])) -
+               int128(int64_t(v1.pt[ax1]) - int64_t(v0.pt[ax1])) *
+                   int128(int64_t(v2.pt[ax0]) - int64_t(v0.pt[ax0]));
   return (det > 0) ? 1 : (det < 0) ? -1 : 0;
 }
 
@@ -56,10 +59,10 @@ inline auto orient2d_sos(const vertex &v0, const vertex &v1, const vertex &v2,
         odd = !odd;
         std::swap(order[i], order[j]);
       }
-  int64_t a0 = vs[order[0]]->pt[ax0] - vs[order[2]]->pt[ax0];
-  int64_t a1 = vs[order[0]]->pt[ax1] - vs[order[2]]->pt[ax1];
-  int64_t b0 = vs[order[1]]->pt[ax0] - vs[order[2]]->pt[ax0];
-  int64_t b1 = vs[order[1]]->pt[ax1] - vs[order[2]]->pt[ax1];
+  int64_t a0 = int64_t(vs[order[0]]->pt[ax0]) - int64_t(vs[order[2]]->pt[ax0]);
+  int64_t a1 = int64_t(vs[order[0]]->pt[ax1]) - int64_t(vs[order[2]]->pt[ax1]);
+  int64_t b0 = int64_t(vs[order[1]]->pt[ax0]) - int64_t(vs[order[2]]->pt[ax0]);
+  int64_t b1 = int64_t(vs[order[1]]->pt[ax1]) - int64_t(vs[order[2]]->pt[ax1]);
   int128 det = int128(a0) * b1 - int128(a1) * b0;
   if (det)
     return (det > 0) != odd;

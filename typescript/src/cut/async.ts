@@ -195,6 +195,52 @@ export async function embeddedIntersectionCurvesWithCurves(
 }
 
 // ============================================================================
+// Mesh Arrangement
+// ============================================================================
+
+import type {
+  MeshArrangementResult,
+  MeshArrangementResultWithCurves,
+} from "./sync";
+
+function wrapArrangement(raw: any): MeshArrangementResult {
+  return {
+    mesh: new Mesh(raw.mesh),
+    tagLabels: new NDArray(raw.tagLabels, "int32"),
+    faceLabels: new NDArray(raw.faceLabels, "int32"),
+  };
+}
+
+function wrapArrangementWithCurves(raw: any): MeshArrangementResultWithCurves {
+  return {
+    mesh: new Mesh(raw.mesh),
+    tagLabels: new NDArray(raw.tagLabels, "int32"),
+    faceLabels: new NDArray(raw.faceLabels, "int32"),
+    curves: new Curves(raw.curves),
+  };
+}
+
+export async function meshArrangement(
+  meshes: Mesh[],
+): Promise<MeshArrangementResult> {
+  const handles = meshes.map(m => m._handle);
+  return dispatcher().run(
+    () => native().dispatch_mesh_arrangement(handles),
+    (raw) => wrapArrangement(raw),
+  );
+}
+
+export async function meshArrangementWithCurves(
+  meshes: Mesh[],
+): Promise<MeshArrangementResultWithCurves> {
+  const handles = meshes.map(m => m._handle);
+  return dispatcher().run(
+    () => native().dispatch_mesh_arrangement_with_curves(handles),
+    (raw) => wrapArrangementWithCurves(raw),
+  );
+}
+
+// ============================================================================
 // Embedded self-intersection curves
 // ============================================================================
 
