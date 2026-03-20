@@ -35,17 +35,11 @@ auto isotropic_remeshed_impl(mesh_wrapper<Index, RealT, 3, 3> &wrapper,
   he.build(polys.faces(), fm);
   auto tagged = polys | tf::tag(fm) | tf::tag(he);
 
-  tf::remesh_config<RealT> config;
-  config.target_length = target_length;
-  config.iterations = iterations;
-  config.relaxation_iters = relaxation_iters;
-  config.max_aspect_ratio = max_aspect_ratio;
-  config.lambda = lambda;
-  config.preserve_boundary = preserve_boundary;
-  config.use_quadric = use_quadric;
-  config.parallel = parallel;
-  config.feature_angle = tf::rad<RealT>(RealT(feature_angle));
-  config.feature_weight = feature_weight;
+  tf::remesh_config<RealT> config{
+      target_length,  iterations,        relaxation_iters,
+      max_aspect_ratio, lambda,          preserve_boundary,
+      use_quadric,    parallel,          tf::rad<RealT>(RealT(feature_angle)),
+      feature_weight};
 
   auto run = [&](auto &&form) {
     auto [result, result_he] = tf::isotropic_remeshed(form, config);

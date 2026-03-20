@@ -12,7 +12,7 @@
  */
 #pragma once
 
-#include "../core/angle.hpp"
+#include "./collapse_config.hpp"
 
 #include <limits>
 
@@ -21,38 +21,24 @@ namespace tf {
 /// @ingroup remesh
 /// @brief Configuration for edge-length-based collapse.
 ///
-/// Shared parameters for both exhaustion-mode and target-mode
-/// short-edge collapse.
+/// Extends collapse_config with geometric constraints for the
+/// convenience API (collapse_short_edges).
 ///
 /// @tparam Real The scalar type.
-template <typename Real> struct length_collapse_config {
-  /// Maximum edge length allowed after a collapse. Collapses that
-  /// would create longer edges are rejected.
+template <typename Real>
+struct length_collapse_config : collapse_config<Real> {
   Real max_length = std::numeric_limits<Real>::max();
+  Real max_aspect_ratio = Real(40);
 
-  /// If true, boundary edges are never collapsed.
-  bool preserve_boundary = false;
-
-  /// If true, use quadric error metric for vertex placement.
-  /// If false, keep the surviving vertex at its original position.
-  bool use_quadric = true;
-
-  /// Maximum aspect ratio allowed after a collapse.
-  Real max_aspect_ratio = 40;
-
-  /// Tikhonov stabilizer for quadric solve.
-  double stabilizer = 1e-6;
-
-  /// If true, use parallel partitioned collapse. If false, sequential.
-  bool parallel = true;
-
-  /// Dihedral angle threshold for feature edge detection.
-  /// Edges sharper than this are preserved. Negative disables.
-  tf::rad<Real> feature_angle{Real(-1)};
-
-  /// Penalty weight for feature edge quadrics, relative to mean face
-  /// quadric trace. Higher values preserve features more rigidly.
-  Real feature_weight = Real(100);
+  length_collapse_config(
+      Real max_length = std::numeric_limits<Real>::max(),
+      Real max_aspect_ratio = Real(40), bool preserve_boundary = true,
+      bool use_quadric = true, bool parallel = true,
+      tf::rad<Real> feature_angle = tf::rad<Real>(Real(-1)),
+      Real feature_weight = Real(100), double stabilizer = 1e-6)
+      : collapse_config<Real>{preserve_boundary, use_quadric, parallel,
+                              feature_angle, feature_weight, stabilizer},
+        max_length(max_length), max_aspect_ratio(max_aspect_ratio) {}
 };
 
 } // namespace tf

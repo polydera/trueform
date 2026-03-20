@@ -12,35 +12,28 @@
  */
 #pragma once
 
-#include "../core/angle.hpp"
+#include "./collapse_config.hpp"
 
 namespace tf {
 
 /// @ingroup remesh
 /// @brief Configuration for quadric error metric decimation.
 ///
+/// Extends collapse_config with geometric constraints for the
+/// convenience API (decimate). Defaults to stabilizer = 1e-3.
+///
 /// @tparam Real The scalar type.
-template <typename Real> struct decimate_config {
-  /// Maximum aspect ratio allowed after a collapse.
-  /// Set negative to disable the check.
-  Real max_aspect_ratio = 40;
+template <typename Real>
+struct decimate_config : collapse_config<Real> {
+  Real max_aspect_ratio = Real(40);
 
-  /// If true, boundary edges are never collapsed.
-  bool preserve_boundary = false;
-
-  /// Tikhonov stabilizer for quadric solve.
-  double stabilizer = 1e-3;
-
-  /// If true, use parallel partitioned collapse. If false, sequential.
-  bool parallel = true;
-
-  /// Dihedral angle threshold for feature edge detection.
-  /// Edges sharper than this are preserved. Negative disables.
-  tf::rad<Real> feature_angle{Real(-1)};
-
-  /// Penalty weight for feature edge quadrics, relative to mean face
-  /// quadric trace. Higher values preserve features more rigidly.
-  Real feature_weight = Real(100);
+  decimate_config(Real max_aspect_ratio = 40, bool preserve_boundary = true,
+                  bool parallel = true,
+                  tf::rad<Real> feature_angle = tf::rad<Real>(Real(-1)),
+                  Real feature_weight = Real(100), double stabilizer = 1e-3)
+      : collapse_config<Real>{preserve_boundary, true, parallel, feature_angle,
+                              feature_weight, stabilizer},
+        max_aspect_ratio(max_aspect_ratio) {}
 };
 
 } // namespace tf

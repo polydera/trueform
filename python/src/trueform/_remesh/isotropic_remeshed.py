@@ -23,7 +23,7 @@ def isotropic_remeshed(
     relaxation_iters: int = 3,
     max_aspect_ratio: float = -1.0,
     lambda_: float = 0.5,
-    preserve_boundary: bool = False,
+    preserve_boundary: bool = True,
     use_quadric: bool = False,
     parallel: bool = True,
     feature_angle: float = -1.0,

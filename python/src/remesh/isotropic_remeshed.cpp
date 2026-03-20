@@ -35,7 +35,7 @@ auto register_isotropic_remeshed(nanobind::module_ &m) -> void {
       },
       arg("mesh"), arg("target_length"), arg("iterations") = 3,
       arg("relaxation_iters") = 3, arg("max_aspect_ratio") = -1.f,
-      arg("lambda_") = 0.5f, arg("preserve_boundary") = false,
+      arg("lambda_") = 0.5f, arg("preserve_boundary") = true,
       arg("use_quadric") = false, arg("parallel") = true,
       arg("feature_angle") = -1.0, arg("feature_weight") = 100.f);
 
@@ -53,7 +53,7 @@ auto register_isotropic_remeshed(nanobind::module_ &m) -> void {
       },
       arg("mesh"), arg("target_length"), arg("iterations") = 3,
       arg("relaxation_iters") = 3, arg("max_aspect_ratio") = -1.0,
-      arg("lambda_") = 0.5, arg("preserve_boundary") = false,
+      arg("lambda_") = 0.5, arg("preserve_boundary") = true,
       arg("use_quadric") = false, arg("parallel") = true,
       arg("feature_angle") = -1.0, arg("feature_weight") = 100.0);
 
@@ -71,7 +71,7 @@ auto register_isotropic_remeshed(nanobind::module_ &m) -> void {
       },
       arg("mesh"), arg("target_length"), arg("iterations") = 3,
       arg("relaxation_iters") = 3, arg("max_aspect_ratio") = -1.f,
-      arg("lambda_") = 0.5f, arg("preserve_boundary") = false,
+      arg("lambda_") = 0.5f, arg("preserve_boundary") = true,
       arg("use_quadric") = false, arg("parallel") = true,
       arg("feature_angle") = -1.0, arg("feature_weight") = 100.f);
 
@@ -89,7 +89,7 @@ auto register_isotropic_remeshed(nanobind::module_ &m) -> void {
       },
       arg("mesh"), arg("target_length"), arg("iterations") = 3,
       arg("relaxation_iters") = 3, arg("max_aspect_ratio") = -1.0,
-      arg("lambda_") = 0.5, arg("preserve_boundary") = false,
+      arg("lambda_") = 0.5, arg("preserve_boundary") = true,
       arg("use_quadric") = false, arg("parallel") = true,
       arg("feature_angle") = -1.0, arg("feature_weight") = 100.0);
 }

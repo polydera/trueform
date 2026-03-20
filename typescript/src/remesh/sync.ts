@@ -18,7 +18,7 @@ import { Mesh } from "../form/Mesh";
 export interface DecimateOptions {
   /** Maximum triangle aspect ratio after collapse. Negative to disable. Default: 40 */
   maxAspectRatio?: number;
-  /** If true, boundary edges are never collapsed. Default: false */
+  /** If true, boundary edges are never collapsed. Default: true */
   preserveBoundary?: boolean;
   /** Tikhonov stabilizer for quadric solve. Default: 1e-3 */
   stabilizer?: number;
@@ -40,7 +40,7 @@ export interface RemeshOptions {
   maxAspectRatio?: number;
   /** Damping factor for tangential relaxation in (0, 1]. Default: 0.5 */
   lambda?: number;
-  /** If true, boundary edges are never split or collapsed. Default: false */
+  /** If true, boundary edges are never split or collapsed. Default: true */
   preserveBoundary?: boolean;
   /** Use quadric error metric for collapse vertex placement. Default: false */
   useQuadric?: boolean;
@@ -60,7 +60,7 @@ export function decimated(m: Mesh, targetProportion: number, opts?: DecimateOpti
     m._handle,
     targetProportion,
     opts?.maxAspectRatio ?? 40,
-    opts?.preserveBoundary ?? false,
+    opts?.preserveBoundary ?? true,
     opts?.stabilizer ?? 1e-3,
     opts?.parallel ?? true,
     fa,
@@ -79,7 +79,7 @@ export function isotropicRemeshed(m: Mesh, targetLength: number, opts?: RemeshOp
     opts?.relaxationIters ?? 3,
     opts?.maxAspectRatio ?? -1,
     opts?.lambda ?? 0.5,
-    opts?.preserveBoundary ?? false,
+    opts?.preserveBoundary ?? true,
     opts?.useQuadric ?? false,
     opts?.parallel ?? true,
     fa,

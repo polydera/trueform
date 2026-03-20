@@ -28,8 +28,7 @@ int run_isotropic_remeshing_tf_benchmark(
     auto tagged = polys | tf::tag(he);
     float mel = tf::mean_edge_length(polys);
 
-    tf::remesh_config<float> config;
-    config.target_length = 2.0f * mel;
+    tf::remesh_config<float> config{2.0f * mel};
 
     auto time = benchmark::min_time_of(
         [&]() {
@@ -50,8 +49,7 @@ int run_isotropic_remeshing_tf_benchmark(
 
   float multipliers[] = {1.0f, 2.0f, 3.0f, 4.0f};
   for (float mult : multipliers) {
-    tf::remesh_config<float> config;
-    config.target_length = mult * mel_1m;
+    tf::remesh_config<float> config{mult * mel_1m};
 
     auto time = benchmark::min_time_of(
         [&]() {

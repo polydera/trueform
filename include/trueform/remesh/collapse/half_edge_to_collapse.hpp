@@ -20,8 +20,8 @@ namespace tf::remesh {
 /// @ingroup remesh
 /// @brief Pick the collapse direction for an edge.
 ///
-/// Returns the half-edge whose start vertex will be removed and whose
-/// end vertex will survive. Prefers keeping the boundary vertex.
+/// Returns the half-edge whose start vertex will survive and whose
+/// end vertex will be removed. Prefers keeping the boundary vertex.
 template <typename Index>
 auto half_edge_to_collapse(const tf::half_edges<Index> &he,
                            tf::edge_handle<Index> eh)
@@ -37,8 +37,8 @@ auto half_edge_to_collapse(const tf::half_edges<Index> &he,
 /// @ingroup remesh
 /// @brief Pick the collapse direction for an edge with feature awareness.
 ///
-/// Returns the half-edge whose start vertex will be removed and whose
-/// end vertex will survive. Prefers keeping the more constrained vertex:
+/// Returns the half-edge whose start vertex will survive and whose
+/// end vertex will be removed. Prefers keeping the more constrained vertex:
 /// boundary > corner > crease > regular.
 template <typename Index>
 auto half_edge_to_collapse(const tf::half_edges<Index> &he,

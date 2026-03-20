@@ -16,7 +16,6 @@
 #include "../core/frame_of.hpp"
 #include "../core/polygons_buffer.hpp"
 #include "../core/static_size.hpp"
-#include "../reindex/points.hpp"
 #include "../topology/policy/half_edges.hpp"
 #include "./isotropic_remesh.hpp"
 

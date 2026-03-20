@@ -76,8 +76,7 @@ int main() {
   float mel = tf::vtk::mean_edge_length(vtk_dec);
   std::cout << "isotropic remesh (target length " << mel << ") ...\n";
   t0 = std::chrono::high_resolution_clock::now();
-  tf::remesh_config<float> rem_config;
-  rem_config.target_length = mel;
+  tf::remesh_config<float> rem_config{mel};
   rem_config.use_quadric = true;
   auto vtk_rem = tf::vtk::isotropic_remeshed(vtk_dec, rem_config);
   t1 = std::chrono::high_resolution_clock::now();

@@ -126,6 +126,19 @@ auto make_vtk_polydata(const tf::curves_buffer<vtkIdType, float, 3> &curves)
 auto make_vtk_polydata(tf::curves_buffer<vtkIdType, float, 3> &&curves)
     -> vtkSmartPointer<vtkPolyData>;
 
+/// @brief Creates vtkPolyData (lines) from a curves_buffer (copies data).
+/// @param curves Trueform curves buffer.
+/// @return A new vtkPolyData with lines.
+auto make_vtk_polydata(const tf::curves_buffer<int, float, 3> &curves)
+    -> vtkSmartPointer<vtkPolyData>;
+
+/// @brief Creates vtkPolyData (lines) from a curves_buffer (moves data,
+/// zero-copy).
+/// @param curves Trueform curves buffer with vtkIdType indices (consumed).
+/// @return A new vtkPolyData with lines.
+auto make_vtk_polydata(tf::curves_buffer<int, float, 3> &&curves)
+    -> vtkSmartPointer<vtkPolyData>;
+
 /// @brief Creates vtkPolyData (lines) from a segments_buffer (copies data).
 /// @param segments Trueform segments buffer.
 /// @return A new vtkPolyData with lines.

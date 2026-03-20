@@ -20,7 +20,7 @@ def decimated(
     target_proportion: float,
     *,
     max_aspect_ratio: float = 40.0,
-    preserve_boundary: bool = False,
+    preserve_boundary: bool = True,
     stabilizer: float = 1e-3,
     parallel: bool = True,
     feature_angle: float = -1.0,

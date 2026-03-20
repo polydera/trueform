@@ -458,134 +458,142 @@ public:
     return is_collapse_ok_impl(eh, ring);
   }
 
+  /// Collapse a half-edge, merging its end vertex into its start vertex.
+  /// Follows OpenMesh's two-phase approach:
+  ///   1. collapse_edge: splice out the collapsing edge, retarget vertices
+  ///   2. collapse_loop: for each degenerate 2-edge face, splice the
+  ///      surviving halfedge into the neighbor face's loop
   auto collapse(const half_edge_handle_t &heh_in) -> index_type {
     using Index = index_type;
     constexpr auto del = tf::half_edge<Index>::removed;
-    auto heh_opp = opposite(tf::unsafe, heh_in);
-    auto v0 = this->half_edges_data()[heh_in.id()].vertex;
-    auto v1 = this->half_edges_data()[heh_opp.id()].vertex;
+    auto &&hes = this->half_edges_data();
 
-    bool has_fa = this->half_edges_data()[heh_in.id()].is_simple();
-    bool has_fb = this->half_edges_data()[heh_opp.id()].is_simple();
+    auto h = heh_in;
+    auto o = opposite(tf::unsafe, h);
+    auto hn = next(tf::unsafe, h);
+    auto hp = previous(tf::unsafe, h);
+    auto on = next(tf::unsafe, o);
+    auto op = previous(tf::unsafe, o);
 
-    half_edge_handle_t a1, a2;
-    Index face_a = -1;
-    bool fa_degenerates = false;
-    if (has_fa) {
-      a1 = next(tf::unsafe, heh_in);
-      a2 = previous(tf::unsafe, heh_in);
-      face_a = this->half_edges_data()[heh_in.id()].face;
-      fa_degenerates = (next(tf::unsafe, a1) == a2);
-    }
+    auto fh = hes[h.id()].face;   // face of h (may be < 0 if boundary)
+    auto fo = hes[o.id()].face;   // face of o
+    auto vh = hes[h.id()].vertex;  // surviving vertex (start of h)
+    auto vo = hes[o.id()].vertex;  // removed vertex (start of o = end of h)
 
-    half_edge_handle_t b1, b2;
-    Index face_b = -1;
-    bool fb_degenerates = false;
-    if (has_fb) {
-      b1 = next(tf::unsafe, heh_opp);
-      b2 = previous(tf::unsafe, heh_opp);
-      face_b = this->half_edges_data()[heh_opp.id()].face;
-      fb_degenerates = (next(tf::unsafe, b1) == b2);
-    }
+    // Phase 1: collapse_edge — retarget vertices, splice out h and o
 
-    half_edge_handle_t oa2, prev_oa2, ob1, prev_ob1;
-    if (has_fa && fa_degenerates) {
-      oa2 = opposite(tf::unsafe, a2);
-      prev_oa2 = previous(tf::unsafe, oa2);
-    }
-    if (has_fb && fb_degenerates) {
-      ob1 = opposite(tf::unsafe, b1);
-      prev_ob1 = previous(tf::unsafe, ob1);
-    }
-
-    half_edge_handle_t prev_bnd;
-    if (!has_fa)
-      prev_bnd = previous(tf::unsafe, heh_in);
-    if (!has_fb)
-      prev_bnd = previous(tf::unsafe, heh_opp);
-
-    auto ring_he = heh_opp;
+    // Retarget all halfedges around vo to vh
+    auto ring = o;
     do {
-      this->half_edges_data()[ring_he.id()].vertex = v0;
-      ring_he = rotated(tf::unsafe, ring_he);
-    } while (ring_he != heh_opp);
+      hes[ring.id()].vertex = vh;
+      ring = rotated(tf::unsafe, ring);
+    } while (ring != o);
 
+    // Splice h out of its face loop: hp->next = hn
+    hes[hp.id()].next = hn.id();
+    // Splice o out of its face loop: op->next = on
+    hes[op.id()].next = on.id();
+
+    // Update face->halfedge if it pointed to h or o
+    if (fh >= 0)
+      this->face_half_edges()[fh] = hn;
+    if (fo >= 0)
+      this->face_half_edges()[fo] = on;
+
+    // Update vertex->halfedge for surviving vertex
+    if (this->vertex_half_edges()[vh] == o)
+      this->vertex_half_edges()[vh] = hn;
+
+    // Mark collapsed edge as removed
+    hes[h.id()].face = del;
+    hes[o.id()].face = del;
+
+    // Mark removed vertex
+    this->vertex_half_edges()[vo] = half_edge_handle_t::invalid();
+
+    // Phase 2: collapse degenerate loops
     Index faces_removed = 0;
-    if (has_fa && fa_degenerates) {
-      this->half_edges_data()[a1.id()] = this->half_edges_data()[oa2.id()];
-      this->half_edges_data()[prev_oa2.id()].next = a1.id();
 
-      auto face_d = this->half_edges_data()[a1.id()].face;
-      if (face_d >= 0)
-        this->face_half_edges()[face_d] = half_edge_handle_t{a1.id()};
+    // Check face of h: if next(next(hn)) == hn, it's a 2-edge loop
+    if (next(tf::unsafe, next(tf::unsafe, hn)) == hn)
+      faces_removed += collapse_loop(next(tf::unsafe, hn));
 
-      this->half_edges_data()[a2.id()].face = del;
-      this->half_edges_data()[oa2.id()].face = del;
-      this->face_half_edges()[face_a] = half_edge_handle_t::invalid();
-      ++faces_removed;
-    } else if (has_fa) {
-      this->half_edges_data()[a2.id()].next = a1.id();
-      this->face_half_edges()[face_a] = a1;
-    }
+    // Check face of o: if next(next(on)) == on, it's a 2-edge loop
+    if (next(tf::unsafe, next(tf::unsafe, on)) == on)
+      faces_removed += collapse_loop(on);
 
-    if (has_fb && fb_degenerates) {
-      if (has_fa && fa_degenerates && prev_ob1 == oa2)
-        prev_ob1 = a1;
-
-      this->half_edges_data()[b2.id()] = this->half_edges_data()[ob1.id()];
-      this->half_edges_data()[prev_ob1.id()].next = b2.id();
-
-      auto face_e = this->half_edges_data()[b2.id()].face;
-      if (face_e >= 0)
-        this->face_half_edges()[face_e] = half_edge_handle_t{b2.id()};
-
-      this->half_edges_data()[b1.id()].face = del;
-      this->half_edges_data()[ob1.id()].face = del;
-      this->face_half_edges()[face_b] = half_edge_handle_t::invalid();
-      ++faces_removed;
-    } else if (has_fb) {
-      this->half_edges_data()[b2.id()].next = b1.id();
-      this->face_half_edges()[face_b] = b1;
-    }
-
-    if (!has_fa)
-      this->half_edges_data()[prev_bnd.id()].next =
-          this->half_edges_data()[heh_in.id()].next;
-    if (!has_fb)
-      this->half_edges_data()[prev_bnd.id()].next =
-          this->half_edges_data()[heh_opp.id()].next;
-
-    this->half_edges_data()[heh_in.id()].face = del;
-    this->half_edges_data()[heh_opp.id()].face = del;
-
-    this->vertex_half_edges()[v1] = half_edge_handle_t::invalid();
-
-    if (has_fa && fa_degenerates) {
-      auto oa1 = opposite(tf::unsafe, a1);
-      this->vertex_half_edges()[v0] = half_edge_handle_t{a1.id()};
-      auto v2 = this->half_edges_data()[oa1.id()].vertex;
-      if (this->vertex_half_edges()[v2].id() == a2.id())
-        this->vertex_half_edges()[v2] = oa1;
-    } else if (has_fa) {
-      this->vertex_half_edges()[v0] = a1;
-    }
-    if (has_fb && fb_degenerates) {
-      auto ob2 = opposite(tf::unsafe, b2);
-      if (!has_fa || !fa_degenerates)
-        this->vertex_half_edges()[v0] = ob2;
-      auto v3 = this->half_edges_data()[b2.id()].vertex;
-      if (this->vertex_half_edges()[v3].id() == ob1.id())
-        this->vertex_half_edges()[v3] = half_edge_handle_t{b2.id()};
-    } else if (has_fb) {
-      if (!has_fa)
-        this->vertex_half_edges()[v0] = b1;
-    }
+    // Adjust outgoing halfedge for vh to prefer boundary
+    adjust_outgoing_halfedge(vh);
 
     this->_n_faces -= faces_removed;
     --this->_n_vertices;
-
     return faces_removed;
   }
+
+private:
+  /// Collapse a degenerate 2-halfedge loop.
+  /// h0 and h1 = next(h0) form the loop. h1 takes over o0's position
+  /// in the neighbor face's loop. Edge (h0, o0) is removed.
+  auto collapse_loop(const half_edge_handle_t &hh) -> index_type {
+    using Index = index_type;
+    constexpr auto del = tf::half_edge<Index>::removed;
+    auto &&hes = this->half_edges_data();
+
+    auto h0 = hh;
+    auto h1 = next(tf::unsafe, h0);
+    auto o0 = opposite(tf::unsafe, h0);
+    auto o1 = opposite(tf::unsafe, h1);
+    auto v0 = hes[h1.id()].vertex;  // start of h1 = end of h0
+    auto v1 = hes[h0.id()].vertex;  // start of h0 = end of h1
+    auto fh = hes[h0.id()].face;    // face of the loop (to be removed)
+    auto fo = hes[o0.id()].face;    // face on the other side of o0
+
+    // Splice h1 into o0's position in fo's loop
+    hes[h1.id()].next = hes[o0.id()].next;
+    hes[previous(tf::unsafe, o0).id()].next = h1.id();
+
+    // h1 now belongs to fo
+    hes[h1.id()].face = fo;
+
+    // Update vertex->halfedge
+    this->vertex_half_edges()[v0] = h1;
+    adjust_outgoing_halfedge(v0);
+    this->vertex_half_edges()[v1] = o1;
+    adjust_outgoing_halfedge(v1);
+
+    // Update face->halfedge for fo if it pointed to o0
+    if (fo >= 0 && this->face_half_edges()[fo] == o0)
+      this->face_half_edges()[fo] = h1;
+
+    // Remove the degenerate face
+    if (fh >= 0)
+      this->face_half_edges()[fh] = half_edge_handle_t::invalid();
+
+    // Mark edge (h0, o0) as removed
+    hes[h0.id()].face = del;
+    hes[o0.id()].face = del;
+
+    return (fh >= 0) ? 1 : 0;
+  }
+
+  /// Adjust vertex->halfedge to prefer a boundary halfedge if one exists.
+  auto adjust_outgoing_halfedge(index_type v) -> void {
+    auto start = this->vertex_half_edges()[v];
+    if (!start.is_valid())
+      return;
+    auto cur = start;
+    do {
+      if (this->half_edges_data()[cur.id()].is_boundary()) {
+        this->vertex_half_edges()[v] = cur;
+        return;
+      }
+      cur = rotated(cur);
+      if (!cur.is_valid())
+        return;
+    } while (cur != start);
+  }
+
+public:
 
   auto collapse(const edge_handle_t &eh) -> index_type {
     return collapse(half_edge_handle(tf::unsafe, eh, false));

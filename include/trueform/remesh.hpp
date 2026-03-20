@@ -16,13 +16,17 @@
  *  Edge collapse, decimation policies, and mesh simplification.
  */
 
-#include "./remesh/collapse_policy.hpp"          // IWYU pragma: export
+#include "./remesh/collapse_checker.hpp"         // IWYU pragma: export
+#include "./remesh/collapse_config.hpp"          // IWYU pragma: export
+#include "./remesh/collapse_edges.hpp"           // IWYU pragma: export
+#include "./remesh/collapse_handler.hpp"         // IWYU pragma: export
 #include "./remesh/collapse_short_edges.hpp"     // IWYU pragma: export
 #include "./remesh/collapsed_short_edges.hpp"    // IWYU pragma: export
 #include "./remesh/decimate.hpp"                 // IWYU pragma: export
 #include "./remesh/decimated.hpp"                // IWYU pragma: export
 #include "./remesh/isotropic_remesh.hpp"         // IWYU pragma: export
 #include "./remesh/isotropic_remeshed.hpp"       // IWYU pragma: export
-#include "./remesh/length_collapse_policy.hpp"   // IWYU pragma: export
 #include "./remesh/optimize_valence.hpp"         // IWYU pragma: export
+#include "./remesh/split_edges.hpp"              // IWYU pragma: export
+#include "./remesh/split_handler.hpp"            // IWYU pragma: export
 #include "./remesh/split_long_edges.hpp"         // IWYU pragma: export

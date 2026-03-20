@@ -12,7 +12,7 @@
  */
 #pragma once
 
-#include "../core/angle.hpp"
+#include "./collapse_config.hpp"
 
 namespace tf {
 
@@ -20,9 +20,8 @@ namespace tf {
 /// @brief Configuration for isotropic remeshing.
 ///
 /// @tparam Real The scalar type.
-template <typename Real> struct remesh_config {
-  /// Target edge length. Edges longer than this are split,
-  /// edges shorter are collapsed.
+template <typename Real> struct remesh_config : collapse_config<Real> {
+  /// Target edge length.
   Real target_length;
 
   /// Number of outer iterations (split + collapse + flip + relax).
@@ -31,31 +30,24 @@ template <typename Real> struct remesh_config {
   /// Number of tangential relaxation iterations per outer iteration.
   int relaxation_iters = 3;
 
-  /// Maximum aspect ratio allowed after a collapse. Collapses that
-  /// would create triangles with worse aspect ratio are rejected.
+  /// Maximum aspect ratio allowed after a collapse.
   /// Set negative to disable the check.
-  Real max_aspect_ratio = -1;
+  Real max_aspect_ratio = Real(-1);
 
   /// Damping factor for tangential relaxation in (0, 1].
   Real lambda = Real(0.5);
 
-  /// If true, boundary edges are never split or collapsed.
-  bool preserve_boundary = false;
-
-  /// If true, use quadric error metric for collapse vertex placement.
-  /// If false, keep the surviving vertex at its original position.
-  bool use_quadric = false;
-
-  /// If true, use parallel partitioned collapse. If false, sequential.
-  bool parallel = true;
-
-  /// Dihedral angle threshold for feature edge detection.
-  /// Edges sharper than this are preserved. Negative disables.
-  tf::rad<Real> feature_angle{Real(-1)};
-
-  /// Penalty weight for feature edge quadrics, relative to mean face
-  /// quadric trace. Higher values preserve features more rigidly.
-  Real feature_weight = Real(100);
+  remesh_config(Real target_length, int iterations = 3,
+                int relaxation_iters = 3, Real max_aspect_ratio = Real(-1),
+                Real lambda = Real(0.5), bool preserve_boundary = true,
+                bool use_quadric = false, bool parallel = true,
+                tf::rad<Real> feature_angle = tf::rad<Real>(Real(-1)),
+                Real feature_weight = Real(100), double stabilizer = 1e-6)
+      : collapse_config<Real>{preserve_boundary, use_quadric, parallel,
+                              feature_angle, feature_weight, stabilizer},
+        target_length(target_length), iterations(iterations),
+        relaxation_iters(relaxation_iters), max_aspect_ratio(max_aspect_ratio),
+        lambda(lambda) {}
 };
 
 /// @brief Create a remesh config with just a target edge length.

@@ -427,6 +427,34 @@ auto compute_vertex_quadrics(const tf::half_edges<Index> &he,
 }
 
 /// @ingroup remesh
+/// @brief Compute the quadric collapse error for an edge.
+///
+/// Combines the vertex quadrics, solves for the optimal point, and
+/// returns the square root of the quadric error at that point.
+/// For boundary vertices, evaluates at the surviving vertex instead.
+template <typename Real, typename Index, typename PointsPolicy>
+auto collapse_error_quadric(const tf::buffer<quadric> &quadrics,
+                            const tf::points<PointsPolicy> &points,
+                            const tf::half_edges<Index> &he,
+                            tf::half_edge_handle<Index> heh,
+                            double stabilizer = 0) -> Real {
+  auto v0 = he.start_vertex_handle(tf::unsafe, heh).id();
+  auto v1 = he.end_vertex_handle(tf::unsafe, heh).id();
+  quadric q = quadrics[v0];
+  q += quadrics[v1];
+  if (he.is_boundary_vertex(v0) || he.is_boundary_vertex(v1))
+    return tf::sqrt(Real(q.evaluate(points[v0])));
+  auto mid = tf::make_point(Real(points[v0][0] + points[v1][0]) / 2,
+                            Real(points[v0][1] + points[v1][1]) / 2,
+                            Real(points[v0][2] + points[v1][2]) / 2);
+  if (auto opt = solve_optimal_quadric<Real>(q, mid, stabilizer))
+    return tf::sqrt(Real(q.evaluate(*opt)));
+  auto e0 = q.evaluate(points[v0]);
+  auto e1 = q.evaluate(points[v1]);
+  return tf::sqrt(Real(std::min({e0, e1, q.evaluate(mid)})));
+}
+
+/// @ingroup remesh
 /// @brief Compute the quadric-optimal collapse point.
 ///
 /// Tries pseudoinverse solve first; falls back to the best of v0, v1, or

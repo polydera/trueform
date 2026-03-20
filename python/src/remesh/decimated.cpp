@@ -33,7 +33,7 @@ auto register_decimated(nanobind::module_ &m) -> void {
                                           feature_angle, feature_weight);
       },
       arg("mesh"), arg("target_proportion"), arg("max_aspect_ratio") = 40.f,
-      arg("preserve_boundary") = false, arg("stabilizer") = 1e-3,
+      arg("preserve_boundary") = true, arg("stabilizer") = 1e-3,
       arg("parallel") = true, arg("feature_angle") = -1.0,
       arg("feature_weight") = 100.f);
 
@@ -49,7 +49,7 @@ auto register_decimated(nanobind::module_ &m) -> void {
                                            feature_angle, feature_weight);
       },
       arg("mesh"), arg("target_proportion"), arg("max_aspect_ratio") = 40.0,
-      arg("preserve_boundary") = false, arg("stabilizer") = 1e-3,
+      arg("preserve_boundary") = true, arg("stabilizer") = 1e-3,
       arg("parallel") = true, arg("feature_angle") = -1.0,
       arg("feature_weight") = 100.0);
 
@@ -64,7 +64,7 @@ auto register_decimated(nanobind::module_ &m) -> void {
             stabilizer, parallel, feature_angle, feature_weight);
       },
       arg("mesh"), arg("target_proportion"), arg("max_aspect_ratio") = 40.f,
-      arg("preserve_boundary") = false, arg("stabilizer") = 1e-3,
+      arg("preserve_boundary") = true, arg("stabilizer") = 1e-3,
       arg("parallel") = true, arg("feature_angle") = -1.0,
       arg("feature_weight") = 100.f);
 
@@ -80,7 +80,7 @@ auto register_decimated(nanobind::module_ &m) -> void {
             stabilizer, parallel, feature_angle, feature_weight);
       },
       arg("mesh"), arg("target_proportion"), arg("max_aspect_ratio") = 40.0,
-      arg("preserve_boundary") = false, arg("stabilizer") = 1e-3,
+      arg("preserve_boundary") = true, arg("stabilizer") = 1e-3,
       arg("parallel") = true, arg("feature_angle") = -1.0,
       arg("feature_weight") = 100.0);
 }

@@ -49,8 +49,6 @@ template <std::size_t N_BUCKETS = 2048, typename Index, typename Policy,
 auto collapse_to_exhaustion_parallel(tf::half_edges<Index> &he,
                                      tf::points<PointsPolicy> &points,
                                      Policy &policy) -> Index {
-  policy.init(he, points);
-
   int n_parts = int(2 * std::thread::hardware_concurrency());
   Index n_faces_alloc = Index(he.face_half_edge_handles().size());
   Index n_edges = Index(he.half_edges_buffer().size() / 2);

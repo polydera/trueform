@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #include <trueform/vtk/core/make_vtk_polydata.hpp>
 
 namespace tf::vtk {
@@ -50,6 +50,22 @@ auto make_vtk_polydata(const tf::curves_buffer<vtkIdType, float, 3> &curves)
 }
 
 auto make_vtk_polydata(tf::curves_buffer<vtkIdType, float, 3> &&curves)
+    -> vtkSmartPointer<vtkPolyData> {
+  auto out = vtkSmartPointer<vtkPolyData>::New();
+  out->SetPoints(make_vtk_points(std::move(curves.points_buffer())));
+  out->SetLines(make_vtk_cells(std::move(curves.paths_buffer())));
+  return out;
+}
+
+auto make_vtk_polydata(const tf::curves_buffer<int, float, 3> &curves)
+    -> vtkSmartPointer<vtkPolyData> {
+  auto out = vtkSmartPointer<vtkPolyData>::New();
+  out->SetPoints(make_vtk_points(curves.points_buffer()));
+  out->SetLines(make_vtk_cells(curves.paths_buffer()));
+  return out;
+}
+
+auto make_vtk_polydata(tf::curves_buffer<int, float, 3> &&curves)
     -> vtkSmartPointer<vtkPolyData> {
   auto out = vtkSmartPointer<vtkPolyData>::New();
   out->SetPoints(make_vtk_points(std::move(curves.points_buffer())));

@@ -66,17 +66,11 @@ auto sync_isotropic_remeshed(wasm_mesh &m, float target_length,
   auto &he = m.half_edges();
   auto tagged = polys | tf::tag(fm) | tf::tag(he);
 
-  tf::remesh_config<float> config;
-  config.target_length = target_length;
-  config.iterations = iterations;
-  config.relaxation_iters = relaxation_iters;
-  config.max_aspect_ratio = max_aspect_ratio;
-  config.lambda = lambda;
-  config.preserve_boundary = preserve_boundary;
-  config.use_quadric = use_quadric;
-  config.parallel = parallel;
-  config.feature_angle = tf::rad<float>(feature_angle);
-  config.feature_weight = feature_weight;
+  tf::remesh_config<float> config{target_length, iterations, relaxation_iters,
+                                  max_aspect_ratio, lambda, preserve_boundary,
+                                  use_quadric, parallel,
+                                  tf::rad<float>(feature_angle),
+                                  feature_weight};
 
   auto run = [&](auto &&form) -> wasm_mesh {
     auto [result, result_he] = tf::isotropic_remeshed(form, config);

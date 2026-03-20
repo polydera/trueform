@@ -13,18 +13,15 @@
 #pragma once
 
 #include "../core/coordinate_type.hpp"
-#include "./collapse/collapse_to_target.hpp"
-#include "./collapse/collapse_to_target_parallel.hpp"
-#include "./collapse_policy.hpp"
+#include "./collapse_checker.hpp"
+#include "./collapse_edges.hpp"
+#include "./collapse_handler.hpp"
 #include "./decimate_config.hpp"
 
 namespace tf {
 
 /// @ingroup remesh
 /// @brief Decimate a mesh to a target face count using quadric error metrics.
-///
-/// Dispatches to sequential or parallel implementation based on
-/// `config.parallel` (default true).
 ///
 /// @param he The half-edge structure (modified in place).
 /// @param points The vertex positions (modified in place).
@@ -39,19 +36,17 @@ auto decimate(
         tf::decimate_config<tf::coordinate_type<PointsPolicy>>{})
     -> Index {
   using Real = tf::coordinate_type<PointsPolicy>;
-  Index current_faces = he.number_of_faces();
-  Index target_faces = Index(current_faces * target_proportion);
-  tf::collapse_policy<Real> policy{config.max_aspect_ratio,
-                                   config.preserve_boundary, config.stabilizer,
-                                   config.feature_angle, config.feature_weight};
-  policy.init(he, points);
-  if (config.parallel) {
-    return tf::remesh::collapse_to_target_parallel<1024>(
-        he, points, current_faces, target_faces, policy);
-  } else {
-    return tf::remesh::collapse_to_target(he, points, current_faces,
-                                          target_faces, policy);
-  }
+  Index target_faces = Index(he.number_of_faces() * target_proportion);
+
+  auto score = [](const auto &he, const auto &points, auto heh,
+                  const auto &handler) -> Real {
+    return tf::remesh::collapse_error_quadric<Real>(
+        handler._quadrics, points, he, heh, handler._config.stabilizer);
+  };
+
+  auto checker = tf::make_collapse_checker<Real>(config.max_aspect_ratio);
+  auto handler = tf::make_collapse_handler<Real>(score, checker, config);
+  return tf::collapse_edges(he, points, handler, target_faces);
 }
 
 template <typename Index, typename PointsPolicy>

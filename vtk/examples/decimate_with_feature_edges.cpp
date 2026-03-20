@@ -82,8 +82,7 @@ int main() {
   std::cout << "decimated: " << n_dec << " faces\n";
 
   // Isotropic remesh without quadric
-  tf::remesh_config<float> rem_cfg_no_q;
-  rem_cfg_no_q.target_length = 0.8f;
+  tf::remesh_config<float> rem_cfg_no_q{0.8f};
   rem_cfg_no_q.use_quadric = false;
   rem_cfg_no_q.feature_angle = tf::deg(30.f);
   rem_cfg_no_q.feature_weight = 100;
@@ -94,8 +93,7 @@ int main() {
   std::cout << "remesh (no quadric): " << n_rem_no_q << " faces\n";
 
   // Isotropic remesh with quadric
-  tf::remesh_config<float> rem_cfg_q;
-  rem_cfg_q.target_length = 0.8f;
+  tf::remesh_config<float> rem_cfg_q{0.8f};
   rem_cfg_q.use_quadric = true;
   rem_cfg_q.feature_angle = tf::deg(30.f);
   rem_cfg_q.feature_weight = 100;
