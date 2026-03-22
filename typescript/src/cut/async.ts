@@ -222,21 +222,23 @@ function wrapArrangementWithCurves(raw: any): MeshArrangementResultWithCurves {
 
 export async function meshArrangement(
   meshes: Mesh[],
-): Promise<MeshArrangementResult> {
+): Promise<MeshArrangementResult>;
+export async function meshArrangement(
+  meshes: Mesh[], opts: { returnCurves: true },
+): Promise<MeshArrangementResultWithCurves>;
+export async function meshArrangement(
+  meshes: Mesh[], opts?: { returnCurves: true },
+): Promise<MeshArrangementResult | MeshArrangementResultWithCurves> {
   const handles = meshes.map(m => m._handle);
+  if (opts?.returnCurves) {
+    return dispatcher().run(
+      () => native().dispatch_mesh_arrangement_with_curves(handles),
+      (raw) => wrapArrangementWithCurves(raw),
+    );
+  }
   return dispatcher().run(
     () => native().dispatch_mesh_arrangement(handles),
     (raw) => wrapArrangement(raw),
-  );
-}
-
-export async function meshArrangementWithCurves(
-  meshes: Mesh[],
-): Promise<MeshArrangementResultWithCurves> {
-  const handles = meshes.map(m => m._handle);
-  return dispatcher().run(
-    () => native().dispatch_mesh_arrangement_with_curves(handles),
-    (raw) => wrapArrangementWithCurves(raw),
   );
 }
 

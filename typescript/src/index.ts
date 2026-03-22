@@ -76,6 +76,7 @@ export {
   booleanUnion, booleanIntersection, booleanDifference,
   isobands,
   embeddedIntersectionCurves, embeddedSelfIntersectionCurves,
+  meshArrangement,
 } from "./cut/sync";
 
 // Intersect operations
@@ -84,6 +85,7 @@ export type {
   LabeledCutResult, LabeledCutResultWithCurves,
   IsobandsResult, IsobandsResultWithCurves,
   CutResultWithCurves,
+  MeshArrangementResult, MeshArrangementResultWithCurves,
 } from "./cut/sync";
 
 // Spatial queries

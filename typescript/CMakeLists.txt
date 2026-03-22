@@ -59,7 +59,6 @@ target_compile_options(trueform_wasm PRIVATE
   -O3
   -flto
   -msimd128
-  -mrelaxed-simd
   -mbulk-memory
   -pthread
   -sSHARED_MEMORY=1
@@ -80,6 +79,8 @@ target_link_options(trueform_wasm PRIVATE
   -sEXPORT_ES6=1
   -sENVIRONMENT=web,node
   -sALLOW_MEMORY_GROWTH=1
+  -sMAXIMUM_MEMORY=4GB
+  -sINITIAL_MEMORY=256MB
   -sUSE_PTHREADS=1
   -sPTHREAD_POOL_SIZE='navigator.hardwareConcurrency*2+1'
   -sALLOW_BLOCKING_ON_MAIN_THREAD=1
