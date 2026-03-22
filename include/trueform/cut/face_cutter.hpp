@@ -49,8 +49,8 @@ public:
     }
 
     if (edge_defs.size() == 1) {
-      auto &e = edge_defs[0];
-      auto [p0, p1] = find_pair_in_loop(loop, e.point_0, e.point_1);
+      auto &&e = edge_defs[0];
+      auto [p0, p1] = find_pair_in_loop(loop, e[0], e[1]);
       if (p0 >= 0 && p1 >= 0) {
         split_at(loop, p0, p1, offsets, vertices);
         return 2;
@@ -119,10 +119,13 @@ private:
     _edges.clear();
     _points.clear();
 
+    // Base loop vertices are inserted first; shared vertices
+    // keep the loop's topo_id (sub_id) rather than the dummy
+    // used for edge-only lookups below.
     tf::make_contiguous_index_hash_map(loop, _ihm, Index(0));
     for (const auto &e : edge_defs) {
-      auto v0 = vertex_t{source::created, e.point_0, Index(0)};
-      auto v1 = vertex_t{source::created, e.point_1, Index(0)};
+      auto v0 = vertex_t{source::created, e[0], {0, tf::topo_type::none}};
+      auto v1 = vertex_t{source::created, e[1], {0, tf::topo_type::none}};
       if (_ihm.f().find(v0) == _ihm.f().end()) {
         _ihm.kept_ids().push_back(v0);
         _ihm.f()[v0] = static_cast<Index>(_ihm.kept_ids().size() - 1);
@@ -140,9 +143,9 @@ private:
     _edges.reserve(edge_defs.size() * 2);
     for (const auto &e : edge_defs) {
       _edges.push_back(
-          _ihm.f()[vertex_t{source::created, e.point_0, Index(0)}]);
+          _ihm.f()[vertex_t{source::created, e[0], {0, tf::topo_type::none}}]);
       _edges.push_back(
-          _ihm.f()[vertex_t{source::created, e.point_1, Index(0)}]);
+          _ihm.f()[vertex_t{source::created, e[1], {0, tf::topo_type::none}}]);
     }
 
     _points.allocate(_ihm.kept_ids().size());

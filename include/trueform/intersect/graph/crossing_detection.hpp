@@ -53,68 +53,48 @@ auto test_edge_pair(const edge<Index> &ea, const edge<Index> &eb,
 
   auto lo = std::min(eid_a, eid_b), hi = std::max(eid_a, eid_b);
 
-  // Check all 4 endpoint pairs for VV (different IDs, same coords).
-  // segment_intersect only returns one hit — misses the second VV
-  // when two segments are collinear/identical.
-  auto coords_eq = [](const auto &a, const auto &b) {
-    return a[0] == b[0] && a[1] == b[1] && a[2] == b[2];
-  };
-  auto emit_vv = [&](Index ida, Index idb) {
-    if (ida != idb)
-      out.push_back({lo, hi, std::min(ida, idb), std::max(ida, idb), {},
-                     crossing_record<Index>::vv});
-  };
-  int n_vv = 0;
-  if (coords_eq(pa0, pb0)) { emit_vv(ea.point_0, eb.point_0); ++n_vv; }
-  if (coords_eq(pa0, pb1)) { emit_vv(ea.point_0, eb.point_1); ++n_vv; }
-  if (coords_eq(pa1, pb0)) { emit_vv(ea.point_1, eb.point_0); ++n_vv; }
-  if (coords_eq(pa1, pb1)) { emit_vv(ea.point_1, eb.point_1); ++n_vv; }
-
-  // If both endpoints matched, segments are identical — no EE/VE possible.
-  if (n_vv >= 2)
-    return;
-
   tf::exact::vertex va0{ea.point_0, pa0}, va1{ea.point_1, pa1};
   tf::exact::vertex vb0{eb.point_0, pb0}, vb1{eb.point_1, pb1};
 
-  auto hit = tf::exact::segment_intersect(va0, va1, vb0, vb1, ax0, ax1);
-  if (!hit)
+  auto hits = tf::exact::classify_segments(va0, va1, vb0, vb1, ax0, ax1);
+  if (!hits)
     return;
 
-  auto &h = *hit;
-
-  if (h.target_a.label == tf::topo_type::edge &&
-      h.target_b.label == tf::topo_type::edge) {
-    std::array<face_id<Index>, 4> faces = {
-        face_id<Index>{ea.tag, ea.object},
-        face_id<Index>{ea.tag_other, ea.object_other},
-        face_id<Index>{eb.tag, eb.object},
-        face_id<Index>{eb.tag_other, eb.object_other}};
-    std::sort(faces.begin(), faces.end());
-    (void)std::unique(faces.begin(), faces.end());
-    out.push_back({lo, hi, {}, {}, {faces[0], faces[1], faces[2]},
-                   crossing_record<Index>::ee});
-  } else if (h.target_a.label == tf::topo_type::vertex &&
-             h.target_b.label == tf::topo_type::vertex) {
-    // Already emitted above if coords matched — skip duplicate.
-    if (n_vv == 0) {
+  auto emit = [&](const tf::exact::segment_intersection<short> &h) {
+    if (h.target_a.label == tf::topo_type::edge &&
+        h.target_b.label == tf::topo_type::edge) {
+      std::array<face_id<Index>, 4> faces = {
+          face_id<Index>{ea.tag, ea.object},
+          face_id<Index>{ea.tag_other, ea.object_other},
+          face_id<Index>{eb.tag, eb.object},
+          face_id<Index>{eb.tag_other, eb.object_other}};
+      std::sort(faces.begin(), faces.end());
+      (void)std::unique(faces.begin(), faces.end());
+      out.push_back({lo, hi, {}, {}, {faces[0], faces[1], faces[2]},
+                     crossing_record<Index>::ee});
+    } else if (h.target_a.label == tf::topo_type::vertex &&
+               h.target_b.label == tf::topo_type::vertex) {
       Index pa = h.target_a.id == 0 ? ea.point_0 : ea.point_1;
       Index pb = h.target_b.id == 0 ? eb.point_0 : eb.point_1;
       out.push_back({lo, hi, std::min(pa, pb), std::max(pa, pb), {},
                      crossing_record<Index>::vv});
-    }
-  } else {
-    Index edge_id, point_id;
-    if (h.target_a.label == tf::topo_type::vertex) {
-      edge_id = eid_b;
-      point_id = h.target_a.id == 0 ? ea.point_0 : ea.point_1;
     } else {
-      edge_id = eid_a;
-      point_id = h.target_b.id == 0 ? eb.point_0 : eb.point_1;
+      Index edge_id, point_id;
+      if (h.target_a.label == tf::topo_type::vertex) {
+        edge_id = eid_b;
+        point_id = h.target_a.id == 0 ? ea.point_0 : ea.point_1;
+      } else {
+        edge_id = eid_a;
+        point_id = h.target_b.id == 0 ? eb.point_0 : eb.point_1;
+      }
+      out.push_back(
+          {edge_id, {}, point_id, {}, {}, crossing_record<Index>::ve});
     }
-    out.push_back(
-        {edge_id, {}, point_id, {}, {}, crossing_record<Index>::ve});
-  }
+  };
+
+  emit(hits->first);
+  if (hits->second)
+    emit(*hits->second);
 }
 
 /// Detect crossings on one face — brute force (k <= 8).

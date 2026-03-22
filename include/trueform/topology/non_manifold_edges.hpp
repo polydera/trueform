@@ -56,8 +56,8 @@ auto make_non_manifold_edges(const tf::faces<Policy> &faces,
                           [face_id = Index(face_id)](const auto &x) {
                             return x > face_id;
                           })) {
-            buffer.push_back(face[prev]);
-            buffer.push_back(face[i]);
+            buffer.push_back(std::min(face[prev], face[i]));
+            buffer.push_back(std::max(face[prev], face[i]));
           }
         }
       });

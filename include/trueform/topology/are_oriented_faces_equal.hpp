@@ -35,22 +35,22 @@ template <typename Face1, typename Face2>
 auto are_oriented_faces_equal(const Face1 &face, const Face2 &neighbor) -> bool {
   constexpr auto N1 = tf::static_size_v<Face1>;
   constexpr auto N2 = tf::static_size_v<Face2>;
-  using Index = std::decay_t<decltype(face[0])>;
+  using vertex_t = std::decay_t<decltype(face[0])>;
 
   if constexpr (N1 == 3 && N2 == 3) {
-    // Fast path for triangles
-    return face[0] == neighbor[0] ? (face[1] == neighbor[1] && face[2] == neighbor[2])
-         : face[0] == neighbor[1] ? (face[1] == neighbor[2] && face[2] == neighbor[0])
-         : face[0] == neighbor[2] ? (face[1] == neighbor[0] && face[2] == neighbor[1])
-         : false;
+    vertex_t v0 = face[0], v1 = face[1], v2 = face[2];
+    vertex_t n0 = neighbor[0], n1 = neighbor[1], n2 = neighbor[2];
+    return (v0 == n0 && v1 == n1 && v2 == n2) ||
+           (v0 == n1 && v1 == n2 && v2 == n0) ||
+           (v0 == n2 && v1 == n0 && v2 == n1);
   } else {
-    Index N = face.size();
-    if (static_cast<Index>(neighbor.size()) != N)
+    auto N = face.size();
+    if (static_cast<decltype(N)>(neighbor.size()) != N)
       return false;
 
     // Find face[0] in neighbor
-    Index start = N;
-    for (Index i = 0; i < N; ++i) {
+    auto start = N;
+    for (decltype(N) i = 0; i < N; ++i) {
       if (neighbor[i] == face[0]) {
         start = i;
         break;
@@ -60,7 +60,7 @@ auto are_oriented_faces_equal(const Face1 &face, const Face2 &neighbor) -> bool 
       return false;
 
     // Check forward match
-    for (Index k = 1; k < N; ++k) {
+    for (decltype(N) k = 1; k < N; ++k) {
       if (face[k] != neighbor[(start + k) % N])
         return false;
     }

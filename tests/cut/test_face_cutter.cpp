@@ -9,6 +9,7 @@
  */
 
 #include <catch2/catch_test_macros.hpp>
+#include <trueform/core/views/mapped_range.hpp>
 #include <trueform/cut/face_cutter.hpp>
 #include <trueform/exact/projection_axes.hpp>
 #include <trueform/intersect/graph/edge.hpp>
@@ -20,8 +21,8 @@ using edge_t = tf::intersect::graph::edge<Index>;
 
 namespace {
 
-auto V(Index id) -> vertex_t { return {source::original, id, 0}; }
-auto C(Index id) -> vertex_t { return {source::created, id, 0}; }
+auto V(Index id) -> vertex_t { return {source::original, id, {0, tf::topo_type::none}}; }
+auto C(Index id) -> vertex_t { return {source::created, id, {0, tf::topo_type::none}}; }
 
 auto vless(const vertex_t &a, const vertex_t &b) -> bool {
   if (a.source != b.source) return a.source < b.source;
@@ -85,13 +86,19 @@ auto collect_faces(const tf::buffer<Index> &offsets,
   return result;
 }
 
+auto make_edge_pairs(const std::vector<edge_t> &edges) {
+  return tf::make_mapped_range(tf::make_range(edges), [](const edge_t &e) {
+    return std::array<Index, 2>{e.point_0, e.point_1};
+  });
+}
+
 auto run(const test_geometry &geo, const std::vector<vertex_t> &loop,
          const std::vector<edge_t> &edges)
     -> std::vector<std::vector<vertex_t>> {
   tf::face_cutter<Index> fc;
   tf::buffer<Index> offsets;
   tf::buffer<vertex_t> vertices;
-  fc.build(tf::make_range(loop), tf::make_range(edges),
+  fc.build(tf::make_range(loop), make_edge_pairs(edges),
            geo.make_get_point(), offsets, vertices);
   return canonical_faces(collect_faces(offsets, vertices));
 }

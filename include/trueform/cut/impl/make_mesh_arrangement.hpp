@@ -151,7 +151,7 @@ auto make_mesh_arrangement(
 
   return std::make_tuple(
       tf::make_polygons_buffer(std::move(faces), std::move(pts_buf)),
-      std::move(tag_labels), std::move(face_labels));
+      std::move(tag_labels), std::move(face_labels), std::move(map_data));
 }
 
 } // namespace tf::cut

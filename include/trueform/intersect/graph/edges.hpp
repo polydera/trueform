@@ -99,8 +99,6 @@ auto try_expand_boundary(const Loop &loop, const Target &t0, const Target &t1,
   if (!on_same_boundary_edge(t0, t1, face_size))
     return false;
 
-  // Determine forward direction: start at the point closer to the edge's
-  // start vertex (lower index in the face winding).
   auto start_id = id0, end_id = id1;
 
   auto v = tf::topo_type::vertex;
@@ -111,23 +109,29 @@ auto try_expand_boundary(const Loop &loop, const Target &t0, const Target &t1,
     if (tf::circular_increment(Index(t1.id), face_size) == Index(t0.id))
       std::swap(start_id, end_id);
   } else if (t0.label == e && t1.label == e) {
-    // edge-edge: both on same edge, order by parametric position
-    // The loop has them in forward order — start is the one that appears
-    // first in the loop. We let emit_boundary_sub_edges handle this since
-    // it searches for start_id first.
+    // edge-edge: both on same edge, loop has them in parametric order.
+    // Scan for whichever appears first — that's the start.
+    auto n = loop.size();
+    for (std::size_t i = 0; i < n; ++i) {
+      if (loop[i].source != vertex_source::created)
+        continue;
+      if (loop[i].id == id0)
+        break; // id0 first → default order is correct
+      if (loop[i].id == id1) {
+        std::swap(start_id, end_id);
+        break;
+      }
+    }
   } else {
     // vertex-edge: the vertex at the START of the edge comes first
-    // Edge e goes from vertex e to vertex (e+1)%n
     auto edge_id = (t0.label == e) ? Index(t0.id) : Index(t1.id);
     auto vert_id = (t0.label == v) ? Index(t0.id) : Index(t1.id);
     auto vert_rec_id = (t0.label == v) ? id0 : id1;
     auto edge_rec_id = (t0.label == e) ? id0 : id1;
-    // If vertex == edge start → vertex comes first
     if (vert_id == edge_id) {
       start_id = vert_rec_id;
       end_id = edge_rec_id;
     } else {
-      // vertex == edge end → edge point comes first
       start_id = edge_rec_id;
       end_id = vert_rec_id;
     }

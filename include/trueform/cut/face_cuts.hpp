@@ -33,6 +33,10 @@ template <typename Index> class face_cuts {
 
 public:
   auto loops() const { return tf::make_range(_loops); }
+  auto loops_buffer() const
+      -> const tf::offset_block_buffer<Index, vertex_t> & {
+    return _loops;
+  }
   auto descriptors() const { return tf::make_range(_descriptors); }
   auto tag_offsets() const { return tf::make_range(_tag_offsets); }
 
@@ -58,6 +62,7 @@ public:
       tf::buffer<Index> offsets;
       tf::buffer<vertex_t> vertices;
       tf::buffer<desc_t> descs;
+      tf::buffer<std::array<Index, 2>> edge_buf;
       tf::face_cutter<Index> cutter;
     };
 
@@ -76,16 +81,28 @@ public:
         auto face = get_face_f(desc.tag, desc.object);
         using source = intersect::graph::vertex_source;
         auto axes = tf::exact::projection_axes(
-            get_point(vertex_t{source::original, Index(face[0]), 0}),
-            get_point(vertex_t{source::original, Index(face[1]), 0}),
-            get_point(vertex_t{source::original, Index(face[2]), 0}));
+            get_point(vertex_t{source::original, Index(face[0]),
+                              {0, tf::topo_type::vertex}}),
+            get_point(vertex_t{source::original, Index(face[1]),
+                              {1, tf::topo_type::vertex}}),
+            get_point(vertex_t{source::original, Index(face[2]),
+                              {2, tf::topo_type::vertex}}));
         auto get_projected_point =
             [&, axes](const vertex_t &v) -> tf::point<int32_t, 2> {
           auto pt = get_point(v);
           return {pt[axes.first], pt[axes.second]};
         };
-        auto n_loops = local.cutter.build(loop, edges, get_projected_point,
-                                          local.offsets, local.vertices);
+        local.edge_buf.clear();
+        for (auto &&e : edges) {
+          local.edge_buf.push_back(
+              {std::min(e.point_0, e.point_1), std::max(e.point_0, e.point_1)});
+        }
+        std::sort(local.edge_buf.begin(), local.edge_buf.end());
+        local.edge_buf.erase_till_end(
+            std::unique(local.edge_buf.begin(), local.edge_buf.end()));
+        auto n_loops = local.cutter.build(loop, tf::make_range(local.edge_buf),
+                                          get_projected_point, local.offsets,
+                                          local.vertices);
         for (Index i = 0; i < n_loops; ++i)
           local.descs.push_back(desc);
       }

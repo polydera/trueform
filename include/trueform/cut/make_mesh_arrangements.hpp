@@ -96,9 +96,11 @@ auto make_mesh_arrangement(
   tf::face_cuts<Index> fc;
   fc.build(ig, get_face, get_mesh_point);
 
-  auto result = tf::cut::make_mesh_arrangement<Index>(ig, fc, forms, conv);
+  auto [mesh, tag_labels, face_labels, map_data] =
+      tf::cut::make_mesh_arrangement<Index>(ig, fc, forms, conv);
 
-  return result;
+  return std::make_tuple(std::move(mesh), std::move(tag_labels),
+                         std::move(face_labels));
 }
 
 /// @ingroup cut_boolean
@@ -134,7 +136,7 @@ auto make_mesh_arrangement(const Range &forms, tf::intersect_mode mode,
   tf::face_cuts<Index> fc;
   fc.build(ig, get_face, get_mesh_point);
 
-  auto [mesh, tag_labels, face_labels] =
+  auto [mesh, tag_labels, face_labels, map_data] =
       tf::cut::make_mesh_arrangement<Index>(ig, fc, forms, conv);
 
   // Extract curves from edge groups

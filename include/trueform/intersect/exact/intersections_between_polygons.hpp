@@ -199,18 +199,26 @@ private:
                       tf::local_buffer<intersection_t> &l_intersections,
                       tf::local_buffer<pt3> &l_points,
                       tf::local_buffer<vertex> &l_face_verts) {
-    tf::search(form0, form1, tf::intersects_f,
-               [&](const auto &poly0, const auto &poly1) {
-                 auto &ints = *l_intersections;
-                 auto &pts = *l_points;
-                 auto &face_buf = *l_face_verts;
-                 edges_vs_face_sos(poly0, poly1, tag0, tag1,
-                                   form0.manifold_edge_link(), _converter,
-                                   face_buf, ints, pts);
-                 edges_vs_face_sos(poly1, poly0, tag1, tag0,
-                                   form1.manifold_edge_link(), _converter,
-                                   face_buf, ints, pts);
-               });
+    auto &conv = _converter;
+    tf::search(
+        form0, form1,
+        [&](const auto &bv0, const auto &bv1) {
+          return tf::intersects(tf::make_aabb(conv.convert(bv0.min),
+                                              conv.convert(bv0.max)),
+                                tf::make_aabb(conv.convert(bv1.min),
+                                              conv.convert(bv1.max)));
+        },
+        [&](const auto &poly0, const auto &poly1) {
+          auto &ints = *l_intersections;
+          auto &pts = *l_points;
+          auto &face_buf = *l_face_verts;
+          edges_vs_face_sos(poly0, poly1, tag0, tag1,
+                            form0.manifold_edge_link(), _converter, face_buf,
+                            ints, pts);
+          edges_vs_face_sos(poly1, poly0, tag1, tag0,
+                            form1.manifold_edge_link(), _converter, face_buf,
+                            ints, pts);
+        });
   }
 
   /// Combine thread-local buffers, duplicate intersections, finalize.
@@ -428,14 +436,22 @@ private:
                                  tf::local_buffer<pt3> &l_pts,
                                  tf::local_buffer<vertex> &l_fb0,
                                  tf::local_buffer<vertex> &l_fb1) {
-    tf::search(form0, form1, tf::intersects_f,
-               [&](const auto &poly0, const auto &poly1) {
-                 primitives_polygon_pair(
-                     poly0, poly1, tag0, tag1, form0.manifold_edge_link(),
-                     form1.manifold_edge_link(), form0.face_membership(),
-                     form1.face_membership(), _converter, *l_fb0, *l_fb1,
-                     *l_ints, *l_pts);
-               });
+    auto &conv = _converter;
+    tf::search(
+        form0, form1,
+        [&](const auto &bv0, const auto &bv1) {
+          return tf::intersects(tf::make_aabb(conv.convert(bv0.min),
+                                              conv.convert(bv0.max)),
+                                tf::make_aabb(conv.convert(bv1.min),
+                                              conv.convert(bv1.max)));
+        },
+        [&](const auto &poly0, const auto &poly1) {
+          primitives_polygon_pair(
+              poly0, poly1, tag0, tag1, form0.manifold_edge_link(),
+              form1.manifold_edge_link(), form0.face_membership(),
+              form1.face_membership(), _converter, *l_fb0, *l_fb1, *l_ints,
+              *l_pts);
+        });
   }
 
   vertex_converter<RealType, Dims> _converter;

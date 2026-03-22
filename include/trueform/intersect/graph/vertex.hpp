@@ -14,6 +14,8 @@
 
 #include <cstdint>
 
+#include "../../topology/topo_id.hpp"
+
 namespace tf::intersect::graph {
 
 enum class vertex_source : uint8_t { original = 0, created = 1 };
@@ -21,11 +23,13 @@ enum class vertex_source : uint8_t { original = 0, created = 1 };
 template <typename Index> struct vertex {
   vertex_source source;
   Index id;
-  Index sub_id; // original: face-local edge index
-                // created: flat intersection index
+  tf::topo_id<short> sub_id; // where on the original polygon (vertex/edge/face)
 
-  auto operator==(const vertex &o) const {
-    return source == o.source && id == o.id;
+  friend auto operator==(const vertex &a, const vertex &b) {
+    return a.source == b.source && a.id == b.id;
+  }
+  friend auto operator!=(const vertex &a, const vertex &b) {
+    return !(a == b);
   }
 };
 

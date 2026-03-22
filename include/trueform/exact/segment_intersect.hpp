@@ -70,11 +70,90 @@ inline auto segments_cross_sos(const vertex &a0, const vertex &a1,
   return (o1 != o2) && (o3 != o4);
 }
 
+// ── full classification ─────────────────────────────────────────────
+
+/// Full classification of two segments. Returns up to 2 contacts.
+///
+/// Handles: coordinate VV (skips topological VV with shared IDs),
+/// VE including containment (both endpoints of one on the other),
+/// and EE proper crossing.
+///
+/// Returns:
+///   nullopt                 — no contact
+///   {hit, nullopt}          — one contact (VV, VE, or EE)
+///   {hit1, hit2}            — two contacts (containment or overlap)
+inline auto classify_segments(const vertex &a0, const vertex &a1,
+                              const vertex &b0, const vertex &b1, int ax0,
+                              int ax1)
+    -> std::optional<std::pair<segment_intersection<short>,
+                               std::optional<segment_intersection<short>>>> {
+  auto pts_equal = [](const pt3 &x, const pt3 &y) {
+    return x[0] == y[0] && x[1] == y[1] && x[2] == y[2];
+  };
+
+  segment_intersection<short> buf[4];
+  int n = 0;
+
+  // VV: coordinate equality, skip topological (same ID)
+  if (a0.id != b0.id && pts_equal(a0.pt, b0.pt))
+    buf[n++] = {{0, tf::topo_type::vertex}, {0, tf::topo_type::vertex}};
+  if (a0.id != b1.id && pts_equal(a0.pt, b1.pt))
+    buf[n++] = {{0, tf::topo_type::vertex}, {1, tf::topo_type::vertex}};
+  if (a1.id != b0.id && pts_equal(a1.pt, b0.pt))
+    buf[n++] = {{1, tf::topo_type::vertex}, {0, tf::topo_type::vertex}};
+  if (a1.id != b1.id && pts_equal(a1.pt, b1.pt))
+    buf[n++] = {{1, tf::topo_type::vertex}, {1, tf::topo_type::vertex}};
+
+  if (n >= 2)
+    return std::pair{buf[0], std::optional{buf[1]}};
+
+  // VE: endpoint of A on interior of B
+  if (a0.id != b0.id && a0.id != b1.id)
+    if (auto t = point_on_segment(a0, b0, b1, ax0, ax1);
+        t && t->label == tf::topo_type::edge)
+      buf[n++] = {{0, tf::topo_type::vertex}, *t};
+  if (a1.id != b0.id && a1.id != b1.id)
+    if (auto t = point_on_segment(a1, b0, b1, ax0, ax1);
+        t && t->label == tf::topo_type::edge)
+      buf[n++] = {{1, tf::topo_type::vertex}, *t};
+
+  if (n >= 2)
+    return std::pair{buf[0], std::optional{buf[1]}};
+
+  // VE: endpoint of B on interior of A
+  if (b0.id != a0.id && b0.id != a1.id)
+    if (auto t = point_on_segment(b0, a0, a1, ax0, ax1);
+        t && t->label == tf::topo_type::edge)
+      buf[n++] = {*t, {0, tf::topo_type::vertex}};
+  if (b1.id != a0.id && b1.id != a1.id)
+    if (auto t = point_on_segment(b1, a0, a1, ax0, ax1);
+        t && t->label == tf::topo_type::edge)
+      buf[n++] = {*t, {1, tf::topo_type::vertex}};
+
+  if (n >= 2)
+    return std::pair{buf[0], std::optional{buf[1]}};
+  if (n == 1)
+    return std::pair{buf[0], std::optional<segment_intersection<short>>{}};
+
+  // EE: proper crossing (only if no VV/VE)
+  pt2 pa0 = {a0.pt[ax0], a0.pt[ax1]}, pa1 = {a1.pt[ax0], a1.pt[ax1]};
+  pt2 pb0 = {b0.pt[ax0], b0.pt[ax1]}, pb1 = {b1.pt[ax0], b1.pt[ax1]};
+  if (segments_cross(pa0, pa1, pb0, pb1))
+    return std::pair{
+        segment_intersection<short>{{0, tf::topo_type::edge},
+                                    {0, tf::topo_type::edge}},
+        std::optional<segment_intersection<short>>{}};
+
+  return std::nullopt;
+}
+
 // ── detection only ──────────────────────────────────────────────────
 
 /// Primitives: full VV/VE/EE classification, no point computation.
 /// Topological VV (same point ID = same contour) is skipped.
 /// Real VV (different IDs, same coordinates) is reported.
+/// @note Superseded by classify_segments for crossing detection.
+///       Kept for segment_intersect_point and base_loops.
 inline auto segment_intersect(const vertex &a0, const vertex &a1,
                               const vertex &b0, const vertex &b1, int ax0,
                               int ax1)

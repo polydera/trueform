@@ -49,8 +49,7 @@ template <typename Index, typename Subrange, typename Face, typename GetPoint,
 auto extract_loop(const Subrange &subrange, const Face &face, Index tag,
                   const GetPoint &get_point, const GetFlatId &get_flat_id,
                   tf::buffer<loop_node<Index>> &work,
-                  tf::buffer<vertex<Index>> &buffer)
-    -> void {
+                  tf::buffer<vertex<Index>> &buffer) -> void {
   using i128 = tf::exact::int128;
   work.clear();
   for (const auto &rec : subrange) {
@@ -83,7 +82,8 @@ auto extract_loop(const Subrange &subrange, const Face &face, Index tag,
       ++wit;
 
     if (edge_begin == wit) {
-      buffer.push_back({vertex_source::original, vi0, ei});
+      buffer.push_back(
+          {vertex_source::original, vi0, {short(ei), tf::topo_type::vertex}});
       continue;
     }
 
@@ -109,10 +109,13 @@ auto extract_loop(const Subrange &subrange, const Face &face, Index tag,
     });
 
     if (edge_begin->label != tf::topo_type::vertex)
-      buffer.push_back({vertex_source::original, vi0, ei});
+      buffer.push_back(
+          {vertex_source::original, vi0, {short(ei), tf::topo_type::vertex}});
 
     for (auto jt = edge_begin; jt != wit; ++jt)
-      buffer.push_back({vertex_source::created, jt->point_id, jt->flat_id});
+      buffer.push_back({vertex_source::created,
+                        jt->point_id,
+                        {short(jt->target_id), jt->label}});
   }
 }
 

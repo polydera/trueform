@@ -53,6 +53,7 @@
 
 #include "./topology/are_faces_equal.hpp"            // IWYU pragma: export
 #include "./topology/are_oriented_faces_equal.hpp"   // IWYU pragma: export
+#include "./topology/compare_faces.hpp"              // IWYU pragma: export
 #include "./topology/boundary_edges.hpp"             // IWYU pragma: export
 #include "./topology/boundary_paths.hpp"             // IWYU pragma: export
 #include "./topology/components/finder.hpp"          // IWYU pragma: export
