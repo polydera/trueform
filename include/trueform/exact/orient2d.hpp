@@ -36,8 +36,9 @@ inline auto distance2(const pt2 &a, const pt2 &b) -> int128 {
 
 /// Exact orient2d sign for 3 vertices projected to 2D via axes (ax0, ax1).
 /// Returns -1, 0, or +1.
-inline auto orient2d_sign(const vertex &v0, const vertex &v1, const vertex &v2,
-                           int ax0, int ax1) -> int {
+template <typename Index>
+auto orient2d_sign(const vertex<Index> &v0, const vertex<Index> &v1,
+                   const vertex<Index> &v2, int ax0, int ax1) -> int {
   int128 det = int128(int64_t(v1.pt[ax0]) - int64_t(v0.pt[ax0])) *
                    int128(int64_t(v2.pt[ax1]) - int64_t(v0.pt[ax1])) -
                int128(int64_t(v1.pt[ax1]) - int64_t(v0.pt[ax1])) *
@@ -48,10 +49,11 @@ inline auto orient2d_sign(const vertex &v0, const vertex &v1, const vertex &v2,
 /// SoS orient2d for 3 vertices projected to 2D via axes (ax0, ax1).
 /// Sort by ID, translate to last as origin, compute det, SoS cascade if 0.
 /// Returns true for positive orientation (after parity correction).
-inline auto orient2d_sos(const vertex &v0, const vertex &v1, const vertex &v2,
-                          int ax0, int ax1) -> bool {
+template <typename Index>
+auto orient2d_sos(const vertex<Index> &v0, const vertex<Index> &v1,
+                  const vertex<Index> &v2, int ax0, int ax1) -> bool {
   std::array<int, 3> order = {0, 1, 2};
-  const vertex *vs[3] = {&v0, &v1, &v2};
+  const vertex<Index> *vs[3] = {&v0, &v1, &v2};
   bool odd = false;
   for (int i = 0; i < 2; ++i)
     for (int j = i + 1; j < 3; ++j)

@@ -53,8 +53,8 @@ auto test_edge_pair(const edge<Index> &ea, const edge<Index> &eb,
 
   auto lo = std::min(eid_a, eid_b), hi = std::max(eid_a, eid_b);
 
-  tf::exact::vertex va0{ea.point_0, pa0}, va1{ea.point_1, pa1};
-  tf::exact::vertex vb0{eb.point_0, pb0}, vb1{eb.point_1, pb1};
+  tf::exact::vertex<Index> va0{ea.point_0, pa0}, va1{ea.point_1, pa1};
+  tf::exact::vertex<Index> vb0{eb.point_0, pb0}, vb1{eb.point_1, pb1};
 
   auto hits = tf::exact::classify_segments(va0, va1, vb0, vb1, ax0, ax1);
   if (!hits)

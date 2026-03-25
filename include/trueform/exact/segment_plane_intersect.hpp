@@ -21,8 +21,9 @@ namespace tf::exact {
 /// Uses orient3d volumes as distance weights, snaps to int32 via div_round.
 /// Returns nullopt if both endpoints lie on the plane (degenerate).
 /// Caller must ensure v0 and v1 are on opposite sides of the plane.
-inline auto segment_plane_intersect(const pt3 &a, const pt3 &b, const pt3 &c,
-                                     const vertex &v0, const vertex &v1)
+template <typename Index>
+auto segment_plane_intersect(const pt3 &a, const pt3 &b, const pt3 &c,
+                             const vertex<Index> &v0, const vertex<Index> &v1)
     -> std::optional<pt3> {
   auto vol_d = orient3d_value(a, b, c, v0.pt);
   auto vol_e = orient3d_value(a, b, c, v1.pt);

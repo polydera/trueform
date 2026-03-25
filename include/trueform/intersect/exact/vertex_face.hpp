@@ -25,8 +25,8 @@ namespace tf::exact {
 /// Vertex-face: check if representative source vertices with sign==0 lie
 /// strictly inside the target face polygon (in 2D projection).
 template <typename Index, typename SourceVRep, typename Ints, typename Pts>
-void vertex_face(const tf::buffer<vertex> &source_verts, std::size_t n_source,
-                 const tf::buffer<vertex> &target_verts, std::size_t n_target,
+void vertex_face(const tf::buffer<tf::exact::vertex<Index>> &source_verts, std::size_t n_source,
+                 const tf::buffer<tf::exact::vertex<Index>> &target_verts, std::size_t n_target,
                  const tf::small_vector<int, 16> &source_signs, int source_tag,
                  int target_tag, Index source_face_id, Index target_face_id,
                  const SourceVRep &source_vrep,

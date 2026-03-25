@@ -36,12 +36,12 @@ inline auto projection_axes(const tf::exact::pt3 &p0, const tf::exact::pt3 &p1,
   i128 anx = nx < 0 ? -nx : nx;
   i128 any = ny < 0 ? -ny : ny;
   i128 anz = nz < 0 ? -nz : nz;
-  // Swap axes when dominant component is negative to preserve winding
+  // Swap axes when dominant component is negative to preserve winding.
   if (anz >= anx && anz >= any)
-    return nz > 0 ? std::pair{0, 1} : std::pair{1, 0};
+    return nz >= 0 ? std::pair{0, 1} : std::pair{1, 0};
   if (any >= anx)
-    return ny > 0 ? std::pair{0, 2} : std::pair{2, 0};
-  return nx > 0 ? std::pair{1, 2} : std::pair{2, 1};
+    return ny >= 0 ? std::pair{2, 0} : std::pair{0, 2};
+  return nx >= 0 ? std::pair{1, 2} : std::pair{2, 1};
 }
 
 } // namespace tf::exact

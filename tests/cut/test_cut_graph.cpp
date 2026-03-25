@@ -9,14 +9,17 @@
  */
 
 #include <catch2/catch_test_macros.hpp>
+#include <trueform/core/algorithm/parallel_for_each.hpp>
 #include <trueform/core/polygons_buffer.hpp>
 #include <trueform/core/views/mapped_range.hpp>
 #include <trueform/core/views/sequence_range.hpp>
 #include <trueform/cut/cut_graph.hpp>
 #include <trueform/cut/face_cuts.hpp>
+#include <trueform/geometry/make_box_mesh.hpp>
 #include <trueform/intersect/exact/intersections_between_polygons.hpp>
 #include <trueform/intersect/graph/intersection_graph.hpp>
 #include <trueform/spatial/aabb_tree.hpp>
+#include <trueform/topology/connect_edges_to_paths.hpp>
 #include <trueform/topology/make_face_membership.hpp>
 #include <trueform/topology/make_manifold_edge_link.hpp>
 
@@ -287,4 +290,158 @@ TEST_CASE("Tube penetrating quad", "[cut_graph]") {
   auto ie = sorted_edges(cg);
   CHECK(ie.size() == 4);
   CHECK(ie == std::vector<std::array<Index, 2>>{{0,1},{0,2},{1,3},{2,3}});
+}
+
+// ── Box mesh pipeline helper ──────────────────────────────────────
+
+struct box_result {
+  tf::intersection_graph<Index> ig;
+  tf::face_cuts<Index> fc;
+  tf::cut_graph<Index> cg;
+  tf::offset_block_buffer<Index, Index> paths;
+};
+
+template <typename F0, typename F1>
+auto run_box_pipeline(F0 &box0, F1 &box1) -> box_result {
+  tf::aabb_tree<int, float, 3> t0(box0.polygons(), tf::config_tree(4, 4));
+  tf::aabb_tree<int, float, 3> t1(box1.polygons(), tf::config_tree(4, 4));
+  auto fm0 = tf::make_face_membership(box0.polygons());
+  auto fm1 = tf::make_face_membership(box1.polygons());
+  auto mel0 = tf::make_manifold_edge_link(box0.polygons());
+  auto mel1 = tf::make_manifold_edge_link(box1.polygons());
+  auto f0 = box0.polygons() | tf::tag(t0) | tf::tag(fm0) | tf::tag(mel0);
+  auto f1 = box1.polygons() | tf::tag(t1) | tf::tag(fm1) | tf::tag(mel1);
+
+  decltype(f0) forms[] = {f0, f1};
+  auto range = tf::make_range(forms, forms + 2);
+
+  tf::exact::intersections_between_polygons<Index, float> ibp;
+  ibp.build(range, tf::intersect_mode::primitives);
+
+  auto &conv = ibp.converter();
+  auto get_face = [&](int tag, int object) {
+    return range[tag].faces()[object];
+  };
+  auto get_mesh_point = [&](int tag, int id) -> tf::point<int32_t, 3> {
+    return conv.convert(
+        tf::transformed(range[tag].points()[id], tf::frame_of(range[tag])));
+  };
+
+  box_result r;
+  r.ig.build(ibp, get_face, get_mesh_point);
+  r.fc.build(r.ig, get_face, get_mesh_point);
+  r.cg.build(r.fc, int(r.ig.points().size()));
+
+  auto ie = r.cg.intersection_edges();
+  tf::blocked_buffer<Index, 2> edge_buf;
+  edge_buf.allocate(ie.size());
+  for (std::size_t i = 0; i < ie.size(); ++i) {
+    edge_buf[i][0] = ie[i][0];
+    edge_buf[i][1] = ie[i][1];
+  }
+  r.paths = tf::connect_edges_to_paths(tf::make_edges(edge_buf));
+  return r;
+}
+
+auto check_all_paths_closed(const box_result &r) {
+  for (auto path : r.paths) {
+    REQUIRE(path.size() > 2);
+    CHECK(path[0] == path[path.size() - 1]);
+  }
+}
+
+auto check_coplanar_all(const box_result &r, bool expect_opposing) {
+  auto pairs = r.cg.coplanar_pairs();
+  for (std::size_t i = 0; i < pairs.size(); ++i)
+    CHECK(pairs[i].opposing == expect_opposing);
+}
+
+// ── Box mesh tests: stacked (opposing coplanar) ───────────────────
+
+TEST_CASE("Stacked boxes same resolution", "[cut_graph][box]") {
+  auto box0 = tf::make_box_mesh<int>(2.0f, 2.0f, 2.0f, 4, 4, 4);
+  auto box1 = tf::make_box_mesh<int>(2.0f, 2.0f, 2.0f, 4, 4, 4);
+  tf::parallel_for_each(box0.polygons().points(), [](auto pt) { pt[1] -= 1.0f; });
+  tf::parallel_for_each(box1.polygons().points(), [](auto pt) { pt[1] += 1.0f; });
+
+  auto r = run_box_pipeline(box0, box1);
+  CHECK(r.ig.points().size() == 41);
+  CHECK(r.cg.intersection_edges().size() == 16);
+  CHECK(r.paths.size() == 1);
+  check_all_paths_closed(r);
+  CHECK(r.cg.coplanar_pairs().size() == 64);
+  check_coplanar_all(r, true);
+}
+
+TEST_CASE("Stacked boxes different resolution", "[cut_graph][box]") {
+  auto box0 = tf::make_box_mesh<int>(2.0f, 2.0f, 2.0f, 3, 3, 3);
+  auto box1 = tf::make_box_mesh<int>(2.0f, 2.0f, 2.0f, 5, 5, 5);
+  tf::parallel_for_each(box0.polygons().points(), [](auto pt) { pt[1] -= 1.0f; });
+  tf::parallel_for_each(box1.polygons().points(), [](auto pt) { pt[1] += 1.0f; });
+
+  auto r = run_box_pipeline(box0, box1);
+  CHECK(r.ig.points().size() == 131);
+  CHECK(r.cg.intersection_edges().size() == 28);
+  CHECK(r.paths.size() == 1);
+  check_all_paths_closed(r);
+  CHECK(r.cg.coplanar_pairs().size() == 152);
+  check_coplanar_all(r, true);
+}
+
+TEST_CASE("Wider box low res", "[cut_graph][box]") {
+  auto box0 = tf::make_box_mesh<int>(2.0f, 2.0f, 2.0f, 1, 1, 1);
+  auto box1 = tf::make_box_mesh<int>(3.0f, 2.0f, 3.0f, 2, 2, 2);
+  tf::parallel_for_each(box0.polygons().points(), [](auto pt) { pt[1] -= 1.0f; });
+  tf::parallel_for_each(box1.polygons().points(), [](auto pt) { pt[1] += 1.0f; });
+
+  auto r = run_box_pipeline(box0, box1);
+  CHECK(r.ig.points().size() == 15);
+  CHECK(r.cg.intersection_edges().size() == 12);
+  CHECK(r.paths.size() == 1);
+  check_all_paths_closed(r);
+  CHECK(r.cg.coplanar_pairs().size() == 12);
+  check_coplanar_all(r, true);
+}
+
+TEST_CASE("Wider box high res", "[cut_graph][box]") {
+  auto box0 = tf::make_box_mesh<int>(2.0f, 2.0f, 2.0f, 4, 4, 4);
+  auto box1 = tf::make_box_mesh<int>(3.0f, 2.0f, 3.0f, 5, 5, 5);
+  tf::parallel_for_each(box0.polygons().points(), [](auto pt) { pt[1] -= 1.0f; });
+  tf::parallel_for_each(box1.polygons().points(), [](auto pt) { pt[1] += 1.0f; });
+
+  auto r = run_box_pipeline(box0, box1);
+  CHECK(r.ig.points().size() == 159);
+  CHECK(r.cg.intersection_edges().size() == 44);
+  CHECK(r.paths.size() == 1);
+  check_all_paths_closed(r);
+  CHECK(r.cg.coplanar_pairs().size() == 172);
+  check_coplanar_all(r, true);
+}
+
+// ── Box mesh tests: inside (aligned coplanar) ─────────────────────
+
+TEST_CASE("Box inside coplanar top", "[cut_graph][box]") {
+  auto box0 = tf::make_box_mesh<int>(3.0f, 2.0f, 3.0f, 3, 3, 3);
+  auto box1 = tf::make_box_mesh<int>(1.0f, 2.0f, 1.0f, 2, 2, 2);
+
+  auto r = run_box_pipeline(box0, box1);
+  CHECK(r.ig.points().size() == 18);
+  CHECK(r.cg.intersection_edges().size() == 16);
+  CHECK(r.paths.size() == 2);
+  check_all_paths_closed(r);
+  CHECK(r.cg.coplanar_pairs().size() == 16);
+  check_coplanar_all(r, false);
+}
+
+TEST_CASE("Box inside coplanar top high res", "[cut_graph][box]") {
+  auto box0 = tf::make_box_mesh<int>(3.0f, 2.0f, 3.0f, 5, 5, 5);
+  auto box1 = tf::make_box_mesh<int>(1.0f, 2.0f, 1.0f, 4, 4, 4);
+
+  auto r = run_box_pipeline(box0, box1);
+  CHECK(r.ig.points().size() == 150);
+  CHECK(r.cg.intersection_edges().size() == 58);
+  CHECK(r.paths.size() == 2);
+  check_all_paths_closed(r);
+  CHECK(r.cg.coplanar_pairs().size() == 159);
+  check_coplanar_all(r, false);
 }

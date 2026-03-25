@@ -14,15 +14,13 @@
 
 #include "../../core/concatenated_blocked_range_collections.hpp"
 #include "../../core/frame_of.hpp"
-#include "../../core/normal.hpp"
-#include "../../core/projector.hpp"
+#include "../../core/polygons_buffer.hpp"
 #include "../../core/transformed.hpp"
 #include "../../core/views/mapped_range.hpp"
 #include "../../core/views/zip.hpp"
-#include "../../intersect/exact/intersections_between_polygons.hpp"
-#include "../../intersect/exact/vertex_converter.hpp"
+#include "../../exact/projection_axes.hpp"
+#include "../../exact/vertex_converter.hpp"
 #include "../../intersect/graph/intersection_graph.hpp"
-#include "../../reindex/concatenated.hpp"
 #include "../face_cuts.hpp"
 #include "./make_arrangement_map_data.hpp"
 #include "./triangulate_arrangement_cuts.hpp"
@@ -53,15 +51,23 @@ auto make_mesh_arrangement(
   auto make_projector = [&](const auto &desc) {
     auto tag = desc.tag;
     auto object = desc.object;
-    auto frame = tf::frame_of(forms[tag]);
-    auto proj = tf::make_simple_projector(
-        tf::transformed_normal(tf::make_normal(forms[tag][object]), frame));
-    auto pts = ig.points();
-    return [proj, &forms, &converter, pts, frame,
-            tag](const auto &v) -> tf::point<double, 2> {
+    auto face = forms[tag].faces()[object];
+    auto ipts = ig.points();
+    auto get_pt = [&, tag](Index vid) -> tf::point<int32_t, 3> {
+      return converter.convert(tf::transformed(forms[tag].points()[vid],
+                                               tf::frame_of(forms[tag])));
+    };
+    auto axes = tf::exact::projection_axes(get_pt(face[0]), get_pt(face[1]),
+                                           get_pt(face[2]));
+    return [axes, &converter, ipts, tag,
+            &forms](const auto &v) -> tf::point<int32_t, 2> {
+      tf::point<int32_t, 3> pt;
       if (v.source == tf::intersect::graph::vertex_source::original)
-        return proj(tf::transformed(forms[tag].points()[v.id], frame));
-      return proj(converter.deconvert(pts[v.id]));
+        pt = converter.convert(tf::transformed(forms[tag].points()[v.id],
+                                               tf::frame_of(forms[tag])));
+      else
+        pt = ipts[v.id];
+      return {pt[axes.first], pt[axes.second]};
     };
   };
 
@@ -87,8 +93,8 @@ auto make_mesh_arrangement(
       });
 
   // 4. Concatenate faces: uncut (per mesh) + triangulated cuts
-  auto faces =
-      tf::concatenated_blocked_range_collections<Index>(uncut_faces, tf::make_range(&triangles, 1));
+  auto faces = tf::concatenated_blocked_range_collections<Index>(
+      uncut_faces, tf::make_range(&triangles, 1));
 
   // 5. Build points (parallel per mesh + intersection points)
   auto total_pts =
@@ -97,8 +103,8 @@ auto make_mesh_arrangement(
   pts_buf.allocate(total_pts);
 
   {
-    auto pts_range = tf::make_offset_block_range(
-        map_data.original_offsets, pts_buf);
+    auto pts_range =
+        tf::make_offset_block_range(map_data.original_offsets, pts_buf);
     tbb::task_group tg;
     for (Index t = 0; t < n_meshes; ++t) {
       tg.run([&, t] {
@@ -106,9 +112,9 @@ auto make_mesh_arrangement(
         tf::parallel_copy(
             tf::make_points(tf::make_indirect_range(
                 map_data.original_ids[t],
-                tf::make_mapped_range(forms[t].points(), [frame](auto pt) {
-                  return tf::transformed(pt, frame);
-                }))),
+                tf::make_mapped_range(
+                    forms[t].points(),
+                    [frame](auto pt) { return tf::transformed(pt, frame); }))),
             pts_range[t]);
       });
     }
@@ -130,8 +136,8 @@ auto make_mesh_arrangement(
   face_labels.allocate(total_faces);
 
   {
-    auto tag_uncut = tf::make_offset_block_range(
-        map_data.original_face_offsets, tag_labels);
+    auto tag_uncut =
+        tf::make_offset_block_range(map_data.original_face_offsets, tag_labels);
     auto face_uncut = tf::make_offset_block_range(
         map_data.original_face_offsets, face_labels);
     tbb::task_group tg;

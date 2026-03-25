@@ -23,8 +23,8 @@ using pt3 = tf::point<int32_t, 3>;
 /// Vertex with unique ID for SoS (Simulation of Simplicity) perturbation.
 /// The ID determines the perturbation priority in exact predicates,
 /// guaranteeing no degenerate (zero) results.
-struct vertex {
-  int id;
+template <typename Index = int> struct vertex {
+  Index id;
   pt3 pt;
 };
 

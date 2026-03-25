@@ -45,7 +45,7 @@ auto signed_area_2x(const Range &loop, const GetPoint &get_point) -> int128 {
     return 0;
   pt2 p0 = get_point(loop[n - 1]);
   for (decltype(n) i = 0; i < n; ++i) {
-    auto p1 = get_point(loop[i]);
+    pt2 p1 = get_point(loop[i]);
     area2 += int128(int64_t(p1[1]) + int64_t(p0[1])) *
              int128(int64_t(p0[0]) - int64_t(p1[0]));
     p0 = p1;
@@ -61,7 +61,7 @@ auto signed_area_2x(const tf::polygon<2, Policy> &polygon) -> int128 {
     return 0;
   pt2 p0 = polygon[n - 1];
   for (decltype(n) i = 0; i < n; ++i) {
-    auto p1 = polygon[i];
+    pt2 p1 = polygon[i];
     area2 += int128(int64_t(p1[1]) + int64_t(p0[1])) *
              int128(int64_t(p0[0]) - int64_t(p1[0]));
     p0 = p1;

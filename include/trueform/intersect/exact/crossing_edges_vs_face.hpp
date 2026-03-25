@@ -32,16 +32,16 @@ namespace tf::exact {
 ///
 /// Classification is fully determined by exact orient3d values.
 /// segment_plane_intersect is only used to compute the point coordinates.
-template <typename Index, typename IsRep, typename MEL, typename Ints,
-          typename Pts>
+template <typename Index, typename EdgeIsRep, typename FaceIsRep,
+          typename Ints, typename Pts>
 void crossing_edges_vs_face(
-    const tf::buffer<vertex> &edge_verts, std::size_t n_edge,
-    const tf::buffer<vertex> &face_verts, std::size_t n_face,
+    const tf::buffer<tf::exact::vertex<Index>> &edge_verts, std::size_t n_edge,
+    const tf::buffer<tf::exact::vertex<Index>> &face_verts, std::size_t n_face,
     const tf::small_vector<int, 16> &edge_signs, int edge_tag, int face_tag,
-    Index edge_face_id, Index face_id, const MEL &mel,
-    const IsRep &face_is_rep, Ints &ints, Pts &pts) {
+    Index edge_face_id, Index face_id, const EdgeIsRep &edge_is_rep,
+    const FaceIsRep &face_is_rep, Ints &ints, Pts &pts, bool both_crossing) {
   for (std::size_t i = 0; i < n_edge; ++i) {
-    if (!mel[edge_face_id][i].is_representative(edge_face_id))
+    if (!edge_is_rep(i).second)
       continue;
     auto ni = tf::circular_increment(i, n_edge);
     if (edge_signs[i] * edge_signs[ni] >= 0)
@@ -108,7 +108,9 @@ void crossing_edges_vs_face(
       if (on_real_edge) {
         std::size_t edge_k =
             (v2 == 0) ? t + 1 : (v1 == 0) ? 0 : n_face - 1;
-        if (edge_tag < face_tag && face_is_rep(edge_k).second)
+        bool erep = edge_is_rep(i).second;
+        bool ferep = face_is_rep(edge_k).second;
+        if (erep && ferep && (!both_crossing || edge_tag < face_tag))
           emit_record(edge_tag, face_tag, edge_face_id, face_id,
                       {Index(i), tf::topo_type::edge},
                       {Index(edge_k), tf::topo_type::edge}, P, ints, pts);

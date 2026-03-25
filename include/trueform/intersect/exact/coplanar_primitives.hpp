@@ -33,8 +33,8 @@ namespace tf::exact {
 template <typename Index, typename IsRep0, typename IsRep1, typename Ints,
           typename Pts>
 void coplanar_primitives(
-    const tf::buffer<vertex> &face0, std::size_t n0,
-    const tf::buffer<vertex> &face1, std::size_t n1,
+    const tf::buffer<tf::exact::vertex<Index>> &face0, std::size_t n0,
+    const tf::buffer<tf::exact::vertex<Index>> &face1, std::size_t n1,
     const tf::small_vector<int, 16> &signs0,
     const tf::small_vector<int, 16> &signs1, int tag0, int tag1,
     Index face0_id, Index face1_id, const IsRep0 &is_rep0,

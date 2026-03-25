@@ -27,7 +27,8 @@ struct face_plane_info {
 };
 
 /// Find 3 non-collinear vertices and compute 2D projection axes.
-inline auto compute_face_plane(const tf::buffer<vertex> &face)
+template <typename Index>
+auto compute_face_plane(const tf::buffer<vertex<Index>> &face)
     -> face_plane_info {
   auto n = face.size();
   std::size_t id0 = 0, id1 = 1;

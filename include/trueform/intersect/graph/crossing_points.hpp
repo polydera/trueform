@@ -66,8 +66,8 @@ auto compute_ee_crossing_points(
     auto pb0 = get_point(-1, eb.point_0);
     auto pb1 = get_point(-1, eb.point_1);
     auto [ax0, ax1] = tf::exact::projection_axes(pa0, pa1, pb0);
-    tf::exact::vertex va0{ea.point_0, pa0}, va1{ea.point_1, pa1};
-    tf::exact::vertex vb0{eb.point_0, pb0}, vb1{eb.point_1, pb1};
+    tf::exact::vertex<Index> va0{ea.point_0, pa0}, va1{ea.point_1, pa1};
+    tf::exact::vertex<Index> vb0{eb.point_0, pb0}, vb1{eb.point_1, pb1};
     crossing_points[g] =
         tf::exact::coplanar_edge_edge_point(va0, va1, vb0, vb1, ax0, ax1);
   });

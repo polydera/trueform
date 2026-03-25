@@ -19,9 +19,10 @@
 namespace tf::exact {
 
 /// Compute crossing point of two coplanar edges via orient2d interpolation.
-inline auto coplanar_edge_edge_point(const vertex &a0, const vertex &a1,
-                                     const vertex &b0, const vertex &b1,
-                                     int ax0, int ax1) -> pt3 {
+template <typename Index>
+auto coplanar_edge_edge_point(const vertex<Index> &a0, const vertex<Index> &a1,
+                              const vertex<Index> &b0, const vertex<Index> &b1,
+                              int ax0, int ax1) -> pt3 {
   pt2 pa0 = {a0.pt[ax0], a0.pt[ax1]}, pa1 = {a1.pt[ax0], a1.pt[ax1]};
   pt2 pb0 = {b0.pt[ax0], b0.pt[ax1]}, pb1 = {b1.pt[ax0], b1.pt[ax1]};
   auto d0 = orient2d(pb0, pb1, pa0);

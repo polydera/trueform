@@ -42,19 +42,19 @@ inline auto orient3d_sos_presorted(const std::array<int64_t, 3> &a,
     return det > 0;
 
   // SoS perturbation cascade
-  int64_t v;
-  v = bx * cy - by * cx;
+  I128 v;
+  v = I128(bx) * cy - I128(by) * cx;
   if (v)
     return v > 0;
-  v = -(bx * cz - bz * cx);
+  v = -(I128(bx) * cz - I128(bz) * cx);
   if (v)
     return v > 0;
-  v = by * cz - bz * cy;
+  v = I128(by) * cz - I128(bz) * cy;
   if (v)
     return v > 0;
 
   int64_t ax = a[0], ay = a[1], az = a[2];
-  v = -(ax * cy - ay * cx);
+  v = -(I128(ax) * cy - I128(ay) * cx);
   if (v)
     return v > 0;
   if (cx)
@@ -62,13 +62,13 @@ inline auto orient3d_sos_presorted(const std::array<int64_t, 3> &a,
   if (cy)
     return cy < 0;
 
-  v = ax * cz - az * cx;
+  v = I128(ax) * cz - I128(az) * cx;
   if (v)
     return v > 0;
   if (cz)
     return cz > 0;
 
-  v = ax * by - ay * bx;
+  v = I128(ax) * by - I128(ay) * bx;
   if (v)
     return v > 0;
   if (bx)
@@ -84,7 +84,8 @@ inline auto orient3d_sos_presorted(const std::array<int64_t, 3> &a,
 /// SoS orient3d for 4 vertices. Sorts by ID and applies parity correction.
 /// Returns true if the fourth point is on the positive side of the
 /// oriented plane defined by the first three.
-inline auto orient3d_sos(const vertex *vs) -> bool {
+template <typename Index>
+auto orient3d_sos(const vertex<Index> *vs) -> bool {
   bool odd = false;
   std::array<int, 4> order = {0, 1, 2, 3};
 
@@ -112,7 +113,8 @@ inline auto orient3d_sos(const vertex *vs) -> bool {
   return odd != orient3d_sos_presorted(a, b, c);
 }
 
-inline auto orient3d_sos(const std::array<vertex, 4> &vs) -> bool {
+template <typename Index>
+auto orient3d_sos(const std::array<vertex<Index>, 4> &vs) -> bool {
   return orient3d_sos(vs.data());
 }
 
@@ -132,7 +134,8 @@ inline auto orient3d_value(const pt3 &a, const pt3 &b, const pt3 &c,
 }
 
 /// Exact orient3d sign (no SoS). Returns -1, 0, or +1.
-inline auto orient3d_sign(const std::array<vertex, 4> &vs) -> int {
+template <typename Index>
+auto orient3d_sign(const std::array<vertex<Index>, 4> &vs) -> int {
   auto val = orient3d_value(vs[0].pt, vs[1].pt, vs[2].pt, vs[3].pt);
   return (val > 0) ? 1 : (val < 0) ? -1 : 0;
 }

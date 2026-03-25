@@ -22,12 +22,13 @@ namespace tf::exact {
 /// Uses SoS orient3d for all intersection tests (sign convention must be
 /// consistent). On intersection, computes orient3d volumes for barycentric
 /// weights (absolute values only, so sign convention is irrelevant).
-inline auto
-triangle_segment_intersect_point_sos(const std::array<vertex, 5> &vs)
-    -> std::optional<pt3> {
+template <typename Index>
+auto triangle_segment_intersect_point_sos(
+    const std::array<vertex<Index>, 5> &vs) -> std::optional<pt3> {
 
   auto orient = [&](int p, int q, int r, int s) -> bool {
-    return orient3d_sos(std::array<vertex, 4>{vs[p], vs[q], vs[r], vs[s]});
+    return orient3d_sos(
+        std::array<vertex<Index>, 4>{vs[p], vs[q], vs[r], vs[s]});
   };
 
   constexpr int a = 0, b = 1, c = 2, d = 3, e = 4;

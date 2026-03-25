@@ -15,15 +15,16 @@
 #include "../../core/algorithm/generic_generate.hpp"
 #include "../../core/point.hpp"
 #include "../../core/small_vector.hpp"
-#include "../../geometry/impl/ear_cutter.hpp"
+#include "../../topology/ear_cutter.hpp"
 #include "../arrangement_map_data.hpp"
 
 namespace tf::cut {
 
 /// Triangulate cut face loops and produce triangle indices + labels.
 ///
-/// For each cut face loop, projects to 2D using make_projector,
-/// ear-cuts, and maps triangle vertex indices through map_data.map_vertex.
+/// For each cut face loop, projects to 2D using make_projector (int32),
+/// triangulates with exact ear_cutter, and maps vertex indices through
+/// map_data.map_vertex.
 /// Produces three parallel buffers: triangle indices, tag labels, face labels.
 template <typename Index, typename Range, typename MakeProjector>
 auto triangulate_arrangement_cuts(
@@ -37,8 +38,8 @@ auto triangulate_arrangement_cuts(
   tf::generic_generate(
       zipped_descs_loops,
       std::tie(triangles, tag_labels, face_labels),
-      std::make_pair(tf::small_vector<tf::point<double, 2>, 10>{},
-                     tf::geom::earcutter<Index>{}),
+      std::make_pair(tf::small_vector<tf::point<int32_t, 2>, 10>{},
+                     tf::ear_cutter<Index>{}),
       [&make_projector, &map_data](
           const auto &pair, auto &buffers, auto &state) {
         auto [desc, loop] = pair;
@@ -48,9 +49,9 @@ auto triangulate_arrangement_cuts(
         pts.clear();
         for (const auto &v : loop)
           pts.push_back(projector(v));
-        earcut(pts);
-        auto n_tris = earcut.indices().size() / 3;
-        for (auto id : earcut.indices())
+        earcut.build(tf::make_points(pts));
+        auto n_tris = earcut.indices_buffer().size() / 3;
+        for (auto id : earcut.indices_buffer())
           tri_buf.push_back(map_data.map_vertex(desc.tag, loop[id]));
         for (std::size_t i = 0; i < n_tris; ++i) {
           tag_buf.push_back(desc.tag);

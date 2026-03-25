@@ -39,8 +39,9 @@ template <typename Index> struct segment_intersection {
 /// Test if point p lies on segment (a, b) in 2D projection.
 /// Returns {0, vertex} if p==a, {1, vertex} if p==b,
 ///         {0, edge} if interior, nullopt if outside.
-inline auto point_on_segment(const vertex &p, const vertex &a, const vertex &b,
-                             int ax0, int ax1)
+template <typename Index>
+auto point_on_segment(const vertex<Index> &p, const vertex<Index> &a,
+                      const vertex<Index> &b, int ax0, int ax1)
     -> std::optional<tf::topo_id<short>> {
   if (p.pt[0] == a.pt[0] && p.pt[1] == a.pt[1] && p.pt[2] == a.pt[2])
     return tf::topo_id<short>{0, tf::topo_type::vertex};
@@ -60,9 +61,10 @@ inline auto point_on_segment(const vertex &p, const vertex &a, const vertex &b,
 // ── segments_cross_sos ──────────────────────────────────────────────
 
 /// SoS segment crossing test: 4 orient2d_sos calls, never zero.
-inline auto segments_cross_sos(const vertex &a0, const vertex &a1,
-                               const vertex &b0, const vertex &b1, int ax0,
-                               int ax1) -> bool {
+template <typename Index>
+auto segments_cross_sos(const vertex<Index> &a0, const vertex<Index> &a1,
+                        const vertex<Index> &b0, const vertex<Index> &b1,
+                        int ax0, int ax1) -> bool {
   bool o1 = orient2d_sos(a0, a1, b0, ax0, ax1);
   bool o2 = orient2d_sos(a0, a1, b1, ax0, ax1);
   bool o3 = orient2d_sos(b0, b1, a0, ax0, ax1);
@@ -82,9 +84,10 @@ inline auto segments_cross_sos(const vertex &a0, const vertex &a1,
 ///   nullopt                 — no contact
 ///   {hit, nullopt}          — one contact (VV, VE, or EE)
 ///   {hit1, hit2}            — two contacts (containment or overlap)
-inline auto classify_segments(const vertex &a0, const vertex &a1,
-                              const vertex &b0, const vertex &b1, int ax0,
-                              int ax1)
+template <typename Index>
+auto classify_segments(const vertex<Index> &a0, const vertex<Index> &a1,
+                       const vertex<Index> &b0, const vertex<Index> &b1,
+                       int ax0, int ax1)
     -> std::optional<std::pair<segment_intersection<short>,
                                std::optional<segment_intersection<short>>>> {
   auto pts_equal = [](const pt3 &x, const pt3 &y) {
@@ -154,9 +157,10 @@ inline auto classify_segments(const vertex &a0, const vertex &a1,
 /// Real VV (different IDs, same coordinates) is reported.
 /// @note Superseded by classify_segments for crossing detection.
 ///       Kept for segment_intersect_point and base_loops.
-inline auto segment_intersect(const vertex &a0, const vertex &a1,
-                              const vertex &b0, const vertex &b1, int ax0,
-                              int ax1)
+template <typename Index>
+auto segment_intersect(const vertex<Index> &a0, const vertex<Index> &a1,
+                       const vertex<Index> &b0, const vertex<Index> &b1,
+                       int ax0, int ax1)
     -> std::optional<segment_intersection<short>> {
   // Topological VV: shared point ID → same contour, skip
   if (a0.id == b0.id || a0.id == b1.id || a1.id == b0.id || a1.id == b1.id)
@@ -208,9 +212,10 @@ inline auto segment_intersect(const vertex &a0, const vertex &a1,
 
 /// SoS: real VV by coordinate check, EE by orient2d_sos.
 /// Topological VV (same point ID) is skipped.
-inline auto segment_intersect_sos(const vertex &a0, const vertex &a1,
-                                  const vertex &b0, const vertex &b1, int ax0,
-                                  int ax1)
+template <typename Index>
+auto segment_intersect_sos(const vertex<Index> &a0, const vertex<Index> &a1,
+                           const vertex<Index> &b0, const vertex<Index> &b1,
+                           int ax0, int ax1)
     -> std::optional<segment_intersection<short>> {
   // Topological VV: shared point ID → same contour, skip
   if (a0.id == b0.id || a0.id == b1.id || a1.id == b0.id || a1.id == b1.id)
@@ -244,9 +249,10 @@ inline auto segment_intersect_sos(const vertex &a0, const vertex &a1,
 // ── detection + point ───────────────────────────────────────────────
 
 /// Primitives: full classification + intersection point.
-inline auto segment_intersect_point(const vertex &a0, const vertex &a1,
-                                    const vertex &b0, const vertex &b1,
-                                    int ax0, int ax1)
+template <typename Index>
+auto segment_intersect_point(const vertex<Index> &a0, const vertex<Index> &a1,
+                             const vertex<Index> &b0, const vertex<Index> &b1,
+                             int ax0, int ax1)
     -> std::optional<std::pair<segment_intersection<short>, pt3>> {
   auto hit = segment_intersect(a0, a1, b0, b1, ax0, ax1);
   if (!hit)
@@ -265,9 +271,11 @@ inline auto segment_intersect_point(const vertex &a0, const vertex &a1,
 }
 
 /// SoS: real VV + proper crossing, with intersection point.
-inline auto segment_intersect_point_sos(const vertex &a0, const vertex &a1,
-                                        const vertex &b0, const vertex &b1,
-                                        int ax0, int ax1)
+template <typename Index>
+auto segment_intersect_point_sos(const vertex<Index> &a0,
+                                 const vertex<Index> &a1,
+                                 const vertex<Index> &b0,
+                                 const vertex<Index> &b1, int ax0, int ax1)
     -> std::optional<std::pair<segment_intersection<short>, pt3>> {
   auto hit = segment_intersect_sos(a0, a1, b0, b1, ax0, ax1);
   if (!hit)

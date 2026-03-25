@@ -12,9 +12,9 @@
  */
 #pragma once
 
-#include "../../core/small_vector.hpp"
-#include "../../exact/pt_converter.hpp"
-#include "../../exact/vertex.hpp"
+#include "../core/small_vector.hpp"
+#include "../exact/pt_converter.hpp"
+#include "../exact/vertex.hpp"
 
 namespace tf::exact {
 
@@ -26,9 +26,10 @@ template <typename RealT, std::size_t Dims> struct vertex_converter {
   tf::small_vector<int, 4> offsets;
 
   /// Convert a point from mesh `tag` with local index `idx`.
-  template <typename P>
-  auto operator()(int tag, int idx, const P &p) const -> vertex {
-    return {idx + offsets[tag], coords(p)};
+  template <typename Index, typename P>
+  auto operator()(int tag, Index idx, const P &p) const
+      -> tf::exact::vertex<Index> {
+    return {idx + static_cast<Index>(offsets[tag]), coords(p)};
   }
 
   /// Coordinate-only conversion (no ID).
