@@ -11,7 +11,10 @@
 * Author: Žiga Sajovic
 */
 #pragma once
+#include "./algorithm/parallel_copy.hpp"
 #include "./buffer.hpp"
+#include "./coordinate_dims.hpp"
+#include "./coordinate_type.hpp"
 #include "./iter/point_iterator.hpp"
 #include "./points.hpp"
 namespace tf {
@@ -113,5 +116,17 @@ public:
 private:
   tf::buffer<T> _raw_buffer;
 };
+
+/// @ingroup core_buffers
+/// @brief Create a points buffer from a points view.
+template <typename Policy>
+auto make_points_buffer(const tf::points<Policy> &points) {
+  using RealT = tf::coordinate_type<Policy>;
+  constexpr auto Dims = tf::coordinate_dims_v<Policy>;
+  tf::points_buffer<RealT, Dims> out;
+  out.allocate(points.size());
+  tf::parallel_copy(points, out.points());
+  return out;
+}
 
 } // namespace tf

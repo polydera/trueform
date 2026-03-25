@@ -11,6 +11,7 @@ from .isobands import isobands
 from .boolean import boolean_union, boolean_intersection, boolean_difference
 from .embedded_self_intersection_curves import embedded_self_intersection_curves
 from .embedded_intersection_curves import embedded_intersection_curves
+from .mesh_arrangement import mesh_arrangements
 
 __all__ = [
     'isobands',
@@ -19,4 +20,5 @@ __all__ = [
     'boolean_difference',
     'embedded_self_intersection_curves',
     'embedded_intersection_curves',
+    'mesh_arrangements',
 ]

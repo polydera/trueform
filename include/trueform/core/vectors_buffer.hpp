@@ -11,7 +11,10 @@
 * Author: Žiga Sajovic
 */
 #pragma once
+#include "./algorithm/parallel_copy.hpp"
 #include "./buffer.hpp"
+#include "./coordinate_dims.hpp"
+#include "./coordinate_type.hpp"
 #include "./iter/vector_iterator.hpp"
 #include "./vectors.hpp"
 namespace tf {
@@ -108,5 +111,17 @@ public:
 private:
   tf::buffer<T> _raw_buffer;
 };
+
+/// @ingroup core_buffers
+/// @brief Create a vectors buffer from a vectors view.
+template <typename Policy>
+auto make_vectors_buffer(const tf::vectors<Policy> &vectors) {
+  using RealT = tf::coordinate_type<Policy>;
+  constexpr auto Dims = tf::coordinate_dims_v<Policy>;
+  tf::vectors_buffer<RealT, Dims> out;
+  out.allocate(vectors.size());
+  tf::parallel_copy(vectors, out.vectors());
+  return out;
+}
 
 } // namespace tf

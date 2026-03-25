@@ -54,7 +54,7 @@ auto run_arrangement(MeshRange &meshes) -> arrangement_result {
       any_transformed = true;
 
   auto run = [](const auto &forms) -> arrangement_result {
-    auto [mesh, tag_labels, face_labels] = tf::make_mesh_arrangement(forms);
+    auto [mesh, tag_labels, face_labels] = tf::make_mesh_arrangements(forms);
     return {wasm_mesh::from_polygons_buffer(std::move(mesh)),
             wasm_ndarray<int>::from_buffer(std::move(tag_labels)),
             wasm_ndarray<int>::from_buffer(std::move(face_labels))};
@@ -94,7 +94,7 @@ auto run_arrangement_with_curves(MeshRange &meshes)
 
   auto run = [](const auto &forms) -> arrangement_result_with_curves {
     auto [mesh, tag_labels, face_labels, curves] =
-        tf::make_mesh_arrangement(forms, tf::return_curves);
+        tf::make_mesh_arrangements(forms, tf::return_curves);
     return {wasm_mesh::from_polygons_buffer(std::move(mesh)),
             wasm_ndarray<int>::from_buffer(std::move(tag_labels)),
             wasm_ndarray<int>::from_buffer(std::move(face_labels)),
@@ -172,10 +172,10 @@ EMSCRIPTEN_BINDINGS(trueform_mesh_arrangement) {
       .field("faceLabels", &arrangement_result_with_curves::face_labels)
       .field("curves", &arrangement_result_with_curves::curves);
 
-  emscripten::function("mesh_arrangement", &sync_mesh_arrangement);
-  emscripten::function("mesh_arrangement_with_curves",
+  emscripten::function("mesh_arrangements", &sync_mesh_arrangement);
+  emscripten::function("mesh_arrangements_with_curves",
                        &sync_mesh_arrangement_with_curves);
-  emscripten::function("dispatch_mesh_arrangement", &async_mesh_arrangement);
-  emscripten::function("dispatch_mesh_arrangement_with_curves",
+  emscripten::function("dispatch_mesh_arrangements", &async_mesh_arrangement);
+  emscripten::function("dispatch_mesh_arrangements_with_curves",
                        &async_mesh_arrangement_with_curves);
 }

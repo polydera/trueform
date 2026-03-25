@@ -1,16 +1,18 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
+#include "./algorithm/parallel_copy.hpp"
+#include "./algorithm/parallel_copy_blocked.hpp"
 #include "./base/polygons.hpp"
 #include "./blocked_buffer.hpp"
 #include "./faces.hpp"
@@ -18,6 +20,7 @@
 #include "./points.hpp"
 #include "./points_buffer.hpp"
 #include "./polygons.hpp"
+#include "./views/enumerate.hpp"
 namespace tf {
 
 /// @ingroup core_buffers
@@ -218,4 +221,33 @@ auto make_polygons_buffer(tf::blocked_buffer<Index, N> &&faces,
   out.points_buffer() = std::move(points);
   return out;
 }
+
+/// @ingroup core_buffers
+/// @brief Create a polygons buffer
+template <typename Policy>
+auto make_polygons_buffer(const tf::polygons<Policy> &polygons) {
+  constexpr auto N = tf::static_size_v<decltype(polygons[0])>;
+  using Index = std::decay_t<decltype(polygons.faces()[0][0])>;
+  using RealT = tf::coordinate_type<Policy>;
+  constexpr auto Dims = tf::coordinate_dims_v<Policy>;
+  tf::polygons_buffer<Index, RealT, Dims, 3> out;
+  if (!polygons.size())
+    return out;
+  out.points_buffer().allocate(polygons.points().size());
+  tf::parallel_copy(polygons.points(), out.points());
+  if constexpr (N == tf::dynamic_size) {
+    auto &offsets = out.faces_buffer().offsets_buffer();
+    offsets.allocate(polygons.size() + 1);
+    offsets[0] = 0;
+    for (auto [i, f] : tf::enumerate(polygons.faces()))
+      offsets[i + 1] = offsets[i] + f.size();
+    out.faces_buffer().data_buffer().allocate(offsets.back());
+    tf::parallel_copy_blocked(polygons.faces(), out.faces());
+  } else {
+    out.faces_buffer().allocate(polygons.size());
+    tf::parallel_copy(polygons.faces(), out.faces());
+  }
+  return out;
+}
+
 } // namespace tf

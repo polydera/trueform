@@ -1,0 +1,122 @@
+"""
+Mesh arrangement operations
+
+Copyright (c) 2025 Žiga Sajovic, XLAB
+Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
+Commercial licensing available via info@polydera.com.
+https://github.com/polydera/trueform
+"""
+
+import numpy as np
+from typing import Tuple, Union
+from .. import _trueform
+from .._spatial import Mesh
+from .._core import OffsetBlockedArray
+from .._dispatch import extract_meta, build_suffix
+
+
+def mesh_arrangements(
+    meshes,
+    *,
+    return_curves: bool = False
+):
+    """
+    Compute mesh arrangement from N meshes.
+
+    Splits all faces along intersection curves and merges into one mesh.
+    Each face is tagged with its source mesh index and original face index.
+
+    Parameters
+    ----------
+    meshes : list of Mesh
+        Two or more 3D triangle meshes. All must have the same real dtype
+        (float32 or float64).
+    return_curves : bool, default False
+        If True, also return intersection curves.
+
+    Returns
+    -------
+    result_faces : np.ndarray
+        Face indices of the arrangement mesh, shape (N, 3)
+    result_points : np.ndarray
+        Point coordinates of the arrangement mesh, shape (M, 3)
+    tag_labels : np.ndarray
+        Per-face label: which input mesh each face came from, shape (N,)
+    face_labels : np.ndarray
+        Per-face label: which face in the original mesh, shape (N,)
+    paths : OffsetBlockedArray, optional
+        Only returned if return_curves=True.
+        Intersection curve paths as indices into curve_points.
+    curve_points : np.ndarray, optional
+        Only returned if return_curves=True.
+        Curve point coordinates, shape (P, 3).
+
+    Examples
+    --------
+    >>> import trueform as tf
+    >>> m0 = tf.Mesh(*tf.read_stl("mesh0.stl"))
+    >>> m1 = tf.Mesh(*tf.read_stl("mesh1.stl"))
+    >>> (faces, points), tag_labels, face_labels = tf.mesh_arrangements([m0, m1])
+    """
+
+    # Validate
+    if not isinstance(meshes, (list, tuple)) or len(meshes) < 2:
+        raise ValueError("mesh_arrangements requires a list of at least 2 meshes")
+
+    for i, m in enumerate(meshes):
+        if not isinstance(m, Mesh):
+            raise TypeError(
+                f"meshes[{i}] must be a Mesh object, got {type(m).__name__}"
+            )
+        if m.dims != 3:
+            raise ValueError(
+                f"meshes[{i}] must be 3D, got {m.dims}D"
+            )
+        if m.ngon != 3 and not m.is_dynamic:
+            raise ValueError(
+                f"meshes[{i}] must be triangle or dynamic, got {m.ngon}-gons"
+            )
+
+    # Validate all have same types
+    meta0 = extract_meta(meshes[0])
+    for i, m in enumerate(meshes[1:], 1):
+        mi = extract_meta(m)
+        if mi.real_dtype != meta0.real_dtype:
+            raise ValueError(
+                f"All meshes must have same real dtype: meshes[0] has {meta0.real_dtype}, "
+                f"meshes[{i}] has {mi.real_dtype}"
+            )
+        if mi.index_dtype != meta0.index_dtype:
+            raise ValueError(
+                f"All meshes must have same index dtype: meshes[0] has {meta0.index_dtype}, "
+                f"meshes[{i}] has {mi.index_dtype}"
+            )
+        if mi.ngon != meta0.ngon:
+            raise ValueError(
+                f"All meshes must have same ngon: meshes[0] has {meta0.ngon}, "
+                f"meshes[{i}] has {mi.ngon}"
+            )
+
+    # Build suffix from first mesh
+    meta = meta0
+    suffix = build_suffix(meta)
+
+    # Extract wrappers
+    wrappers = [m._wrapper for m in meshes]
+
+    # Dispatch
+    if return_curves:
+        func_name = f"mesh_arrangements_curves_{suffix}"
+        (result_faces, result_points), tag_labels, face_labels, \
+            ((paths_offsets, paths_data), curve_points) = getattr(
+                _trueform.cut, func_name
+            )(wrappers)
+        paths = OffsetBlockedArray(paths_offsets, paths_data)
+        return (result_faces, result_points), tag_labels, face_labels, \
+            (paths, curve_points)
+    else:
+        func_name = f"mesh_arrangements_{suffix}"
+        (result_faces, result_points), tag_labels, face_labels = getattr(
+            _trueform.cut, func_name
+        )(wrappers)
+        return (result_faces, result_points), tag_labels, face_labels

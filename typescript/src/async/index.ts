@@ -23,7 +23,7 @@ export {
   isobands, isobandsWithCurves,
   embeddedIntersectionCurves, embeddedIntersectionCurvesWithCurves,
   embeddedSelfIntersectionCurves, embeddedSelfIntersectionCurvesWithCurves,
-  meshArrangement,
+  meshArrangements,
 } from "../cut/async";
 export { intersectionCurves, selfIntersectionCurves, isocontours } from "../intersect/async";
 export {

@@ -72,22 +72,22 @@ auto make_mesh_arrangements(const tf::polygons<Policy0> &_polygons0,
 /// @param forms The input meshes.
 /// @return Tuple of (polygons_buffer, tag labels, face labels).
 template <typename Range>
-auto make_mesh_arrangement(
+auto make_mesh_arrangements(
     const Range &forms,
     tf::intersect_mode mode = tf::intersect_mode::primitives) {
   using Index = std::decay_t<decltype(forms[0].faces()[0][0])>;
-  using RealType =
-      tf::coordinate_type<decltype(forms[0])>;
+  using RealType = tf::coordinate_type<decltype(forms[0])>;
 
   tf::exact::intersections_between_polygons<Index, RealType> ibp;
   ibp.build(forms, mode);
 
   auto &conv = ibp.converter();
-  auto get_face = [&](int tag, int object) {
+  auto get_face = [&](int tag, Index object) {
     return forms[tag].faces()[object];
   };
-  auto get_mesh_point = [&](int tag, int id) -> tf::point<int32_t, 3> {
-    return conv.convert(forms[tag].points()[id]);
+  auto get_mesh_point = [&](int tag, Index id) -> tf::point<int32_t, 3> {
+    return conv.convert(
+        tf::transformed(forms[tag].points()[id], tf::frame_of(forms[tag])));
   };
 
   tf::intersection_graph<Index> ig;
@@ -106,7 +106,7 @@ auto make_mesh_arrangement(
 /// @ingroup cut_boolean
 /// @brief Build a merged mesh with intersection curves.
 ///
-/// Same as make_mesh_arrangement, but also returns the intersection
+/// Same as make_mesh_arrangements, but also returns the intersection
 /// curves as a curves_buffer.
 ///
 /// @tparam Range A range of tagged polygon forms.
@@ -114,8 +114,8 @@ auto make_mesh_arrangement(
 /// @param tag Pass @ref tf::return_curves to get intersection curves.
 /// @return Tuple of (polygons_buffer, tag labels, face labels, curves_buffer).
 template <typename Range>
-auto make_mesh_arrangement(const Range &forms, tf::intersect_mode mode,
-                           tf::return_curves_t) {
+auto make_mesh_arrangements(const Range &forms, tf::intersect_mode mode,
+                            tf::return_curves_t) {
   using Index = std::decay_t<decltype(forms[0].faces()[0][0])>;
   using RealType = tf::coordinate_type<decltype(forms[0])>;
 
@@ -123,11 +123,12 @@ auto make_mesh_arrangement(const Range &forms, tf::intersect_mode mode,
   ibp.build(forms, mode);
 
   auto &conv = ibp.converter();
-  auto get_face = [&](int tag, int object) {
+  auto get_face = [&](int tag, Index object) {
     return forms[tag].faces()[object];
   };
-  auto get_mesh_point = [&](int tag, int id) -> tf::point<int32_t, 3> {
-    return conv.convert(forms[tag].points()[id]);
+  auto get_mesh_point = [&](int tag, Index id) -> tf::point<int32_t, 3> {
+    return conv.convert(
+        tf::transformed(forms[tag].points()[id], tf::frame_of(forms[tag])));
   };
 
   tf::intersection_graph<Index> ig;
@@ -155,7 +156,6 @@ auto make_mesh_arrangement(const Range &forms, tf::intersect_mode mode,
           ipts, [&conv](const auto &pt) { return conv.deconvert(pt); })),
       cb.points());
 
-
   return std::make_tuple(std::move(mesh), std::move(tag_labels),
                          std::move(face_labels), std::move(cb));
 }
@@ -163,8 +163,8 @@ auto make_mesh_arrangement(const Range &forms, tf::intersect_mode mode,
 /// @ingroup cut_boolean
 /// @brief Build a merged mesh with curves (default intersect mode).
 template <typename Range>
-auto make_mesh_arrangement(const Range &forms, tf::return_curves_t) {
-  return make_mesh_arrangement(forms, tf::intersect_mode::primitives,
+auto make_mesh_arrangements(const Range &forms, tf::return_curves_t) {
+  return make_mesh_arrangements(forms, tf::intersect_mode::primitives,
                                tf::return_curves);
 }
 

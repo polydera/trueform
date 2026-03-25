@@ -275,20 +275,20 @@ function wrapArrangementWithCurves(raw: any): MeshArrangementResultWithCurves {
  * Splits all faces along intersection curves and merges into one mesh.
  * Each face is tagged with its source mesh and original face index.
  */
-export function meshArrangement(meshes: Mesh[]): MeshArrangementResult;
-export function meshArrangement(
+export function meshArrangements(meshes: Mesh[]): MeshArrangementResult;
+export function meshArrangements(
   meshes: Mesh[], opts: { returnCurves: true },
 ): MeshArrangementResultWithCurves;
-export function meshArrangement(
+export function meshArrangements(
   meshes: Mesh[], opts?: { returnCurves: true },
 ): MeshArrangementResult | MeshArrangementResultWithCurves {
   const handles = meshes.map(m => m._handle);
   if (opts?.returnCurves) {
     return wrapArrangementWithCurves(
-      native().mesh_arrangement_with_curves(handles),
+      native().mesh_arrangements_with_curves(handles),
     );
   }
-  return wrapArrangement(native().mesh_arrangement(handles));
+  return wrapArrangement(native().mesh_arrangements(handles));
 }
 
 // ============================================================================

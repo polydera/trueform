@@ -76,7 +76,7 @@ export {
   booleanUnion, booleanIntersection, booleanDifference,
   isobands,
   embeddedIntersectionCurves, embeddedSelfIntersectionCurves,
-  meshArrangement,
+  meshArrangements,
 } from "./cut/sync";
 
 // Intersect operations

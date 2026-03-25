@@ -11,13 +11,9 @@
  * Author: Žiga Sajovic
  */
 #pragma once
-#include "../../core/algorithm/parallel_fill.hpp"
-#include "../../intersect/exact/vertex_converter.hpp"
-#include "../../intersect/graph/intersection_graph.hpp"
 #include "../arrangement_class.hpp"
 #include "../boolean_config.hpp"
 #include "../classify/tagged.hpp"
-#include "../face_cuts.hpp"
 #include "./ids_common.hpp"
 #include "./make_boolean_common.hpp"
 

@@ -11,8 +11,11 @@
 * Author: Žiga Sajovic
 */
 #pragma once
+#include "./algorithm/parallel_copy.hpp"
 #include "./base/segments.hpp"
 #include "./blocked_buffer.hpp"
+#include "./coordinate_dims.hpp"
+#include "./coordinate_type.hpp"
 #include "./edges.hpp"
 #include "./points.hpp"
 #include "./points_buffer.hpp"
@@ -108,4 +111,32 @@ private:
   tf::blocked_buffer<Index, 2> _edges_buffer;
   tf::points_buffer<RealT, Dims> _points_buffer;
 };
+/// @ingroup core_buffers
+/// @brief Create a segments buffer from edges and points buffers.
+template <typename Index, typename RealT, std::size_t Dims>
+auto make_segments_buffer(tf::blocked_buffer<Index, 2> &&edges,
+                          tf::points_buffer<RealT, Dims> &&points) {
+  tf::segments_buffer<Index, RealT, Dims> out;
+  out.edges_buffer() = std::move(edges);
+  out.points_buffer() = std::move(points);
+  return out;
+}
+
+/// @ingroup core_buffers
+/// @brief Create a segments buffer from a segments view.
+template <typename Policy>
+auto make_segments_buffer(const tf::segments<Policy> &segments) {
+  using Index = std::decay_t<decltype(segments.edges()[0][0])>;
+  using RealT = tf::coordinate_type<Policy>;
+  constexpr auto Dims = tf::coordinate_dims_v<Policy>;
+  tf::segments_buffer<Index, RealT, Dims> out;
+  if (!segments.size())
+    return out;
+  out.points_buffer().allocate(segments.points().size());
+  tf::parallel_copy(segments.points(), out.points());
+  out.edges_buffer().allocate(segments.size());
+  tf::parallel_copy(segments.edges(), out.edges());
+  return out;
+}
+
 } // namespace tf

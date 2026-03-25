@@ -15,7 +15,7 @@ export {
   booleanUnion, booleanIntersection, booleanDifference,
   isobands,
   embeddedIntersectionCurves, embeddedSelfIntersectionCurves,
-  meshArrangement,
+  meshArrangements,
 } from "./sync";
 export type {
   LabeledCutResult, LabeledCutResultWithCurves,
