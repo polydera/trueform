@@ -17,6 +17,7 @@
 #include "../intersect/intersections_between_polygons.hpp"
 #include "../topology/connect_edges_to_paths.hpp"
 #include "./boolean_config.hpp"
+#include "./cut_graph.hpp"
 #include "./face_cuts.hpp"
 #include "./impl/dispatch.hpp"
 #include "./impl/make_mesh_arrangement.hpp"
@@ -140,12 +141,23 @@ auto make_mesh_arrangements(const Range &forms, tf::intersect_mode mode,
   auto [mesh, tag_labels, face_labels, map_data] =
       tf::cut::make_mesh_arrangement<Index>(ig, fc, forms, conv);
 
-  // Extract curves from edge groups
-  auto edge_pairs = tf::make_mapped_range(
-      ig.edge_groups(), [](const auto &group) -> std::array<Index, 2> {
-        return {group[0].point_0, group[0].point_1};
-      });
-  auto paths = tf::connect_edges_to_paths(tf::make_edges(edge_pairs));
+  // Extract intersection curves. SoS: edge_groups directly describe the
+  // contour. Primitives: coplanar faces produce shared edges that are not
+  // part of the contour — use cut_graph to collect them all.
+  auto paths = [&]() {
+    if (mode == tf::intersect_mode::sos) {
+      auto edge_pairs = tf::make_mapped_range(
+          ig.edge_groups(), [](const auto &group) -> std::array<Index, 2> {
+            return {group[0].point_0, group[0].point_1};
+          });
+      return tf::connect_edges_to_paths(tf::make_edges(edge_pairs));
+    } else { // intersect_mode::primitives
+      tf::cut_graph<Index> cg;
+      cg.build(fc, static_cast<Index>(ig.points().size()));
+      return tf::connect_edges_to_paths(
+          tf::make_edges(cg.intersection_edges()));
+    }
+  }();
 
   tf::curves_buffer<Index, RealType, 3> cb;
   cb.paths_buffer() = std::move(paths);
@@ -165,7 +177,7 @@ auto make_mesh_arrangements(const Range &forms, tf::intersect_mode mode,
 template <typename Range>
 auto make_mesh_arrangements(const Range &forms, tf::return_curves_t) {
   return make_mesh_arrangements(forms, tf::intersect_mode::primitives,
-                               tf::return_curves);
+                                tf::return_curves);
 }
 
 } // namespace tf

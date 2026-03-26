@@ -14,6 +14,7 @@
 
 #include "../core/polygon.hpp"
 #include "./int128.hpp"
+#include "./projection_axes.hpp"
 #include "./vertex.hpp"
 
 namespace tf::exact {
@@ -53,20 +54,29 @@ auto signed_area_2x(const Range &loop, const GetPoint &get_point) -> int128 {
   return area2;
 }
 
-template <typename Policy>
-auto signed_area_2x(const tf::polygon<2, Policy> &polygon) -> int128 {
-  int128 area2 = 0;
-  auto n = polygon.size();
-  if (n < 3)
-    return 0;
-  pt2 p0 = polygon[n - 1];
-  for (decltype(n) i = 0; i < n; ++i) {
-    pt2 p1 = polygon[i];
-    area2 += int128(int64_t(p1[1]) + int64_t(p0[1])) *
-             int128(int64_t(p0[0]) - int64_t(p1[0]));
-    p0 = p1;
+template <std::size_t Dims, typename Policy>
+auto signed_area_2x(const tf::polygon<Dims, Policy> &polygon) -> int128 {
+  static_assert(Dims == 2 || Dims == 3);
+  if constexpr (Dims == 2) {
+    int128 area2 = 0;
+    auto n = polygon.size();
+    if (n < 3)
+      return 0;
+    pt2 p0 = polygon[n - 1];
+    for (decltype(n) i = 0; i < n; ++i) {
+      pt2 p1 = polygon[i];
+      area2 += int128(int64_t(p1[1]) + int64_t(p0[1])) *
+               int128(int64_t(p0[0]) - int64_t(p1[0]));
+      p0 = p1;
+    }
+    return area2;
+  } else {
+    auto axes = tf::exact::projection_axes(polygon[0], polygon[1], polygon[2]);
+    auto get_point = [&](const auto &pt) {
+      return pt2{pt[axes.first], pt[axes.second]};
+    };
+    return signed_area_2x(polygon, get_point);
   }
-  return area2;
 }
 
 } // namespace tf::exact

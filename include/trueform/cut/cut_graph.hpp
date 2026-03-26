@@ -53,13 +53,16 @@ public:
                                        _connectivity);
   }
   auto coplanar_pairs() const { return tf::make_range(_coplanar_pairs); }
+
   auto intersection_edges() const {
     return tf::make_range(_intersection_edges);
   }
+
   auto is_intersection_edge(Index flat_v0, Index flat_v1) const -> bool {
     return _ie_set.count(
                {std::min(flat_v0, flat_v1), std::max(flat_v0, flat_v1)}) > 0;
   }
+
   auto is_intersection_edge(const vertex_t &v0, const vertex_t &v1) const
       -> bool {
     if (v0.source != source::created || v1.source != source::created)
