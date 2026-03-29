@@ -1,6 +1,6 @@
 /**
  * @file test_exact_intersections.cpp
- * @brief Tests for tf::exact::intersections_between_polygons (primitives mode)
+ * @brief Tests for tf::intersections_between_polygons (primitives mode)
  *
  * Verifies 5-type classification (VV, VE, EE, VF, EF) by counting unique
  * intersection points per canonical type. Types are symmetric:
@@ -13,8 +13,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include <trueform/core/polygons_buffer.hpp>
-#include <trueform/intersect/exact/intersections_between_polygons.hpp>
-#include <trueform/intersect/exact/intersections_within_polygons.hpp>
+#include <trueform/intersect/intersections_between_polygons.hpp>
+#include <trueform/intersect/intersections_within_polygons.hpp>
 #include <trueform/intersect/intersect_mode.hpp>
 #include <trueform/reindex/concatenated.hpp>
 #include <trueform/spatial/aabb_tree.hpp>
@@ -63,7 +63,7 @@ auto count_primitives(const MeshA &mesh_a, const MeshB &mesh_b) -> type_counts {
   auto tag_a = mesh_a.polygons() | tf::tag(ta) | tf::tag(fma) | tf::tag(mela);
   auto tag_b = mesh_b.polygons() | tf::tag(tb) | tf::tag(fmb) | tf::tag(melb);
 
-  tf::exact::intersections_between_polygons<Index, float> ibp;
+  tf::intersections_between_polygons<Index, float> ibp;
   ibp.build(tag_a, tag_b, tf::intersect_mode::primitives);
 
   std::set<int> s_vv, s_ve, s_ee, s_vf, s_ef;
@@ -95,7 +95,7 @@ auto count_primitives(const MeshA &mesh_a, const MeshB &mesh_b) -> type_counts {
 
 template <typename Tagged>
 auto count_primitives_n(Tagged *forms, std::size_t n) -> type_counts {
-  tf::exact::intersections_between_polygons<Index, float> ibp;
+  tf::intersections_between_polygons<Index, float> ibp;
   ibp.build(tf::make_range(forms, forms + n), tf::intersect_mode::primitives);
 
   std::set<int> s_vv, s_ve, s_ee, s_vf, s_ef;
@@ -136,7 +136,7 @@ auto count_self_primitives(const MeshA &mesh_a, const MeshB &mesh_b)
   auto mel = tf::make_manifold_edge_link(merged.polygons());
   auto tagged = merged.polygons() | tf::tag(tree) | tf::tag(fm) | tf::tag(mel);
 
-  tf::exact::intersections_within_polygons<Index, float> iwp;
+  tf::intersections_within_polygons<Index, float> iwp;
   iwp.build(tagged, tf::intersect_mode::primitives);
 
   std::set<int> s_vv, s_ve, s_ee, s_vf, s_ef;
@@ -180,7 +180,7 @@ auto count_self_primitives_n(Tagged *forms, std::size_t n) -> type_counts {
   auto mel = tf::make_manifold_edge_link(merged.polygons());
   auto tagged = merged.polygons() | tf::tag(tree) | tf::tag(fm) | tf::tag(mel);
 
-  tf::exact::intersections_within_polygons<Index, float> iwp;
+  tf::intersections_within_polygons<Index, float> iwp;
   iwp.build(tagged, tf::intersect_mode::primitives);
 
   std::set<int> s_vv, s_ve, s_ee, s_vf, s_ef;
@@ -888,7 +888,7 @@ auto count_within(const Mesh &mesh) -> type_counts {
   auto fm = tf::make_face_membership(mesh.polygons());
   auto mel = tf::make_manifold_edge_link(mesh.polygons());
   auto tagged = mesh.polygons() | tf::tag(tree) | tf::tag(fm) | tf::tag(mel);
-  tf::exact::intersections_within_polygons<Index, float> iwp;
+  tf::intersections_within_polygons<Index, float> iwp;
   iwp.build(tagged, tf::intersect_mode::primitives);
   std::set<int> s_vv, s_ve, s_ee, s_vf, s_ef;
   for (auto subrange : iwp.intersections()) {

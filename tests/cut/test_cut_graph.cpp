@@ -16,7 +16,7 @@
 #include <trueform/cut/cut_graph.hpp>
 #include <trueform/cut/face_cuts.hpp>
 #include <trueform/geometry/make_box_mesh.hpp>
-#include <trueform/intersect/exact/intersections_between_polygons.hpp>
+#include <trueform/intersect/intersections_between_polygons.hpp>
 #include <trueform/intersect/graph/intersection_graph.hpp>
 #include <trueform/spatial/aabb_tree.hpp>
 #include <trueform/topology/connect_edges_to_paths.hpp>
@@ -66,7 +66,7 @@ void run_pipeline(
            tf::tag(mels[i]);
   });
 
-  tf::exact::intersections_between_polygons<Index, float> ibp;
+  tf::intersections_between_polygons<Index, float> ibp;
   ibp.build(forms, tf::intersect_mode::primitives);
 
   auto &conv = ibp.converter();
@@ -315,7 +315,7 @@ auto run_box_pipeline(F0 &box0, F1 &box1) -> box_result {
   decltype(f0) forms[] = {f0, f1};
   auto range = tf::make_range(forms, forms + 2);
 
-  tf::exact::intersections_between_polygons<Index, float> ibp;
+  tf::intersections_between_polygons<Index, float> ibp;
   ibp.build(range, tf::intersect_mode::primitives);
 
   auto &conv = ibp.converter();

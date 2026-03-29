@@ -13,7 +13,7 @@
 #include <trueform/core/views/mapped_range.hpp>
 #include <trueform/core/views/sequence_range.hpp>
 #include <trueform/cut/face_cuts.hpp>
-#include <trueform/intersect/exact/intersections_between_polygons.hpp>
+#include <trueform/intersect/intersections_between_polygons.hpp>
 #include <trueform/intersect/graph/intersection_graph.hpp>
 #include <trueform/spatial/aabb_tree.hpp>
 #include <trueform/topology/make_face_membership.hpp>
@@ -62,7 +62,7 @@ auto build_and_cut(
            tf::tag(mels[i]);
   });
 
-  tf::exact::intersections_between_polygons<Index, float> ibp;
+  tf::intersections_between_polygons<Index, float> ibp;
   ibp.build(forms, tf::intersect_mode::primitives);
 
   auto &conv = ibp.converter();

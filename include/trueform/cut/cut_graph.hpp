@@ -15,13 +15,17 @@
 #include "../core/algorithm/circular_increment.hpp"
 #include "../core/algorithm/generic_generate.hpp"
 #include "../core/algorithm/parallel_fill.hpp"
+#include "../core/algorithm/parallel_transform.hpp"
 #include "../core/algorithm/parallel_for_each.hpp"
 #include "../core/array_hash.hpp"
 #include "../core/buffer.hpp"
 #include "../core/hash_set.hpp"
+#include "../intersect/graph/intersection_graph.hpp"
 #include "../intersect/graph/vertex.hpp"
 #include "../topology/compare_faces.hpp"
+#include "../topology/face_edge_neighbors.hpp"
 #include "../topology/face_membership.hpp"
+#include "../topology/is_on_same_edge.hpp"
 #include "../topology/structures/compute_face_link_per_edge.hpp"
 #include "./face_cuts.hpp"
 
@@ -93,6 +97,21 @@ public:
     build_intersection_edges(fc);
   }
 
+  template <typename Policy>
+  auto build(const tf::face_cuts<Index> &fc,
+             const tf::intersection_graph<Index> &ig,
+             const tf::polygons<Policy> &polygons) -> void {
+    clear();
+    auto &src = fc.loops_buffer();
+    if (!src.size())
+      return;
+
+    build_flat_ids(fc, static_cast<Index>(ig.points().size()));
+    build_connectivity(fc);
+    build_coplanar_pairs_self(fc);
+    build_intersection_edges_self(polygons, ig, fc);
+  }
+
 private:
   auto build_flat_ids(const tf::face_cuts<Index> &fc, Index n_ipts) -> void {
     auto &src = fc.loops_buffer();
@@ -132,9 +151,8 @@ private:
           auto &m = maps[tag];
           for (auto &&[s, d] : tf::zip(src_loops, dst_loops))
             for (std::size_t i = 0; i < s.size(); ++i)
-              d[i] = (s[i].source == source::created)
-                         ? s[i].id
-                         : base + m[s[i].id];
+              d[i] = (s[i].source == source::created) ? s[i].id
+                                                      : base + m[s[i].id];
         });
 
     _n_flat = tag_base[n_tags];
@@ -148,7 +166,8 @@ private:
     tf::topology::compute_face_link_per_edge(flat_loops, _fm, _connectivity);
   }
 
-  auto build_coplanar_pairs(const tf::face_cuts<Index> &fc) -> void {
+  template <bool WithSelf>
+  auto build_coplanar_pairs_impl(const tf::face_cuts<Index> &fc) -> void {
     auto descs = fc.descriptors();
     auto loops = fc.loops();
 
@@ -162,13 +181,26 @@ private:
           for (auto nj : edge_neighbors[0]) {
             if (nj <= Index(li))
               continue;
-            if (descs[nj].tag == descs[li].tag)
-              continue;
+            if constexpr (WithSelf) {
+              if (descs[nj].object == descs[li].object)
+                continue;
+            } else {
+              if (descs[nj].tag == descs[li].tag)
+                continue;
+            }
             int cmp = tf::compare_faces(loop, loops[nj]);
             if (cmp != 0)
               out.push_back({Index(li), nj, cmp < 0});
           }
         });
+  }
+
+  auto build_coplanar_pairs(const tf::face_cuts<Index> &fc) -> void {
+    return build_coplanar_pairs_impl<false>(fc);
+  }
+
+  auto build_coplanar_pairs_self(const tf::face_cuts<Index> &fc) -> void {
+    return build_coplanar_pairs_impl<true>(fc);
   }
 
   auto build_intersection_edges(const tf::face_cuts<Index> &fc) -> void {
@@ -207,6 +239,111 @@ private:
                              }
                            }
                          });
+
+    tbb::parallel_sort(_intersection_edges.begin(), _intersection_edges.end());
+    _intersection_edges.erase_till_end(
+        std::unique(_intersection_edges.begin(), _intersection_edges.end()));
+
+    for (auto &&e : _intersection_edges)
+      _ie_set.insert(e);
+  }
+
+  template <typename Policy>
+  auto build_intersection_edges_self(
+      const tf::polygons<Policy> &polygons,
+      const tf::intersection_graph<Index> &ig,
+      const tf::face_cuts<Index> &fc) -> void {
+    auto &&mel = polygons.manifold_edge_link();
+    auto descs = fc.descriptors();
+    auto loops = fc.loops();
+    auto conn = connectivity_per_face_edge(fc);
+    auto flat_loops = tf::make_offset_block_range(
+        fc.loops_buffer().offsets_buffer(), tf::make_range(_flat_data));
+
+    _coplanar_mask.allocate(flat_loops.size());
+    tf::parallel_fill(_coplanar_mask, false);
+    tf::parallel_for_each(_coplanar_pairs, [&](const auto &p) {
+      _coplanar_mask[p.loop_a] = true;
+      _coplanar_mask[p.loop_b] = true;
+    });
+
+    // Phase 1: copy all edges from intersection graph
+    _intersection_edges.allocate(ig.edge_groups().size());
+    tf::parallel_transform(ig.edge_groups(), _intersection_edges,
+                           [](const auto &group) -> std::array<Index, 2> {
+                             auto a = group[0].point_0, b = group[0].point_1;
+                             return {std::min(a, b), std::max(a, b)};
+                           });
+
+    // Phase 2: boundary edges with new neighbors
+    tf::generic_generate(
+        tf::enumerate(tf::zip(flat_loops, conn, loops)), _intersection_edges,
+        tf::small_vector<Index, 5>{},
+        [&](const auto &item, auto &out, auto &neighbor_buf) {
+          auto &&[li, tup] = item;
+          auto &&[flat_loop, edge_neighbors, orig_loop] = tup;
+          if (_coplanar_mask[li])
+            return;
+          auto my_object = descs[li].object;
+          auto face = polygons.faces()[my_object];
+          auto face_size = face.size();
+          auto n = flat_loop.size();
+
+          for (std::size_t ei = 0; ei < n; ++ei) {
+            auto next = tf::circular_increment(ei, n);
+            auto &v0 = orig_loop[ei];
+            auto &v1 = orig_loop[next];
+
+            if (!tf::is_on_same_edge(v0.sub_id, v1.sub_id, face_size))
+              continue;
+
+            // Determine which original edge this sits on
+            auto edge_idx =
+                (v0.sub_id.label == tf::topo_type::edge)   ? v0.sub_id.id
+                : (v1.sub_id.label == tf::topo_type::edge) ? v1.sub_id.id
+                                                           : v0.sub_id.id;
+
+            auto &&link = mel[my_object][edge_idx];
+
+            // Collect expected original neighbors for this edge
+            neighbor_buf.clear();
+            if (link.is_simple()) {
+              neighbor_buf.push_back(link.face_peer);
+            } else if (!link.is_manifold()) {
+              Index e0 = face[edge_idx];
+              Index e1 = face[tf::circular_increment(
+                  static_cast<Index>(edge_idx),
+                  static_cast<Index>(face_size))];
+              tf::face_edge_neighbors(polygons.face_membership(),
+                                      polygons.faces(), my_object, e0, e1,
+                                      std::back_inserter(neighbor_buf));
+            }
+            // else: boundary edge — no expected neighbors
+
+            // Check if any actual neighbor is NOT in expected set
+            bool has_new_neighbor = false;
+            for (auto nj : edge_neighbors[ei]) {
+              auto nj_object = descs[nj].object;
+              if (nj_object == my_object)
+                continue;
+              bool expected = false;
+              for (auto exp : neighbor_buf)
+                if (nj_object == exp) {
+                  expected = true;
+                  break;
+                }
+              if (!expected) {
+                has_new_neighbor = true;
+                break;
+              }
+            }
+
+            if (has_new_neighbor) {
+              auto a = flat_loop[ei], b = flat_loop[next];
+              out.push_back({std::min(a, b), std::max(a, b)});
+            }
+          }
+        });
 
     tbb::parallel_sort(_intersection_edges.begin(), _intersection_edges.end());
     _intersection_edges.erase_till_end(

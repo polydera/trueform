@@ -15,7 +15,7 @@
 #include <trueform/core/views/sequence_range.hpp>
 #include <trueform/core/algorithm/circular_increment.hpp>
 #include <trueform/core/views/zip.hpp>
-#include <trueform/intersect/exact/intersections_between_polygons.hpp>
+#include <trueform/intersect/intersections_between_polygons.hpp>
 #include <trueform/intersect/graph/intersection_graph.hpp>
 #include <trueform/spatial/aabb_tree.hpp>
 #include <trueform/topology/make_face_membership.hpp>
@@ -50,7 +50,7 @@ auto make_mesh(const std::vector<std::array<float, 3>> &pts,
 
 template <int N>
 auto build_graph(std::array<tf::polygons_buffer<int, float, 3, 4>, N> &meshes,
-                 tf::exact::intersections_between_polygons<Index, float> &ibp,
+                 tf::intersections_between_polygons<Index, float> &ibp,
                  IG &ig,
                  tf::intersect_mode mode = tf::intersect_mode::primitives) {
   tf::aabb_tree<int, float, 3> trees[N];
@@ -81,7 +81,7 @@ auto build_graph(std::array<tf::polygons_buffer<int, float, 3, 4>, N> &meshes,
 }
 
 auto count_point_classes(const IG &ig,
-                         const tf::exact::intersections_between_polygons<Index, float> &ibp)
+                         const tf::intersections_between_polygons<Index, float> &ibp)
     -> std::pair<std::size_t, std::size_t> {
   auto remap = ig.point_remap();
   auto n_ipts = ibp.intersection_points().size();
@@ -144,7 +144,7 @@ auto check_no_consecutive_duplicates(const IG &ig) -> bool {
 
 auto check_face_edge_tags(
     const IG &ig,
-    const tf::exact::intersections_between_polygons<Index, float> &ibp)
+    const tf::intersections_between_polygons<Index, float> &ibp)
     -> bool {
   auto &&edge_data = ig.edge_groups();
   for (auto [subrange, loop, face_edges] :
@@ -183,7 +183,7 @@ TEST_CASE("EE proper crossing (X on face)", "[graph][crossing]") {
   auto cutB = make_mesh<4>({{{-2,2,-1}},{{2,-2,-1}},{{2,-2,1}},{{-2,2,1}}}, {{{0,1,2,3}}});
   std::array meshes = {face, cutA, cutB};
 
-  tf::exact::intersections_between_polygons<Index, float> ibp;
+  tf::intersections_between_polygons<Index, float> ibp;
   IG ig;
   build_graph<3>(meshes, ibp, ig);
 
@@ -202,7 +202,7 @@ TEST_CASE("VE T-junction", "[graph][crossing]") {
   auto cutB = make_mesh<4>({{{0,-2,-1}},{{0,0,-1}},{{0,0,1}},{{0,-2,1}}}, {{{0,1,2,3}}});
   std::array meshes = {face, cutA, cutB};
 
-  tf::exact::intersections_between_polygons<Index, float> ibp;
+  tf::intersections_between_polygons<Index, float> ibp;
   IG ig;
   build_graph<3>(meshes, ibp, ig);
 
@@ -223,7 +223,7 @@ TEST_CASE("VV same-position endpoints", "[graph][crossing]") {
   auto cutB = make_mesh<4>({{{0,-2,-1}},{{0,0,-1}},{{0,0,1}},{{0,-2,1}}}, {{{0,1,2,3}}});
   std::array meshes = {face, cutA, cutB};
 
-  tf::exact::intersections_between_polygons<Index, float> ibp;
+  tf::intersections_between_polygons<Index, float> ibp;
   IG ig;
   build_graph<3>(meshes, ibp, ig);
 
@@ -244,7 +244,7 @@ TEST_CASE("Multiple EE (3 crossings at origin)", "[graph][crossing]") {
   auto cutC = make_mesh<4>({{{-3,3,-1}},{{3,-3,-1}},{{3,-3,1}},{{-3,3,1}}}, {{{0,1,2,3}}});
   std::array meshes = {face, cutA, cutB, cutC};
 
-  tf::exact::intersections_between_polygons<Index, float> ibp;
+  tf::intersections_between_polygons<Index, float> ibp;
   IG ig;
   build_graph<4>(meshes, ibp, ig);
 
@@ -265,7 +265,7 @@ TEST_CASE("No crossings (parallel cutters)", "[graph][crossing]") {
   auto cutB = make_mesh<4>({{{-2,1,-1}},{{2,1,-1}},{{2,1,1}},{{-2,1,1}}}, {{{0,1,2,3}}});
   std::array meshes = {face, cutA, cutB};
 
-  tf::exact::intersections_between_polygons<Index, float> ibp;
+  tf::intersections_between_polygons<Index, float> ibp;
   IG ig;
   build_graph<3>(meshes, ibp, ig);
 
@@ -287,7 +287,7 @@ TEST_CASE("EE with parallel splitters", "[graph][crossing]") {
   auto splitB = make_mesh<4>({{{1,-2,-1}},{{1,2,-1}},{{1,2,1}},{{1,-2,1}}}, {{{0,1,2,3}}});
   std::array meshes = {face, cutter, splitA, splitB};
 
-  tf::exact::intersections_between_polygons<Index, float> ibp;
+  tf::intersections_between_polygons<Index, float> ibp;
   IG ig;
   build_graph<4>(meshes, ibp, ig);
 
@@ -311,7 +311,7 @@ TEST_CASE("Coplanar partial overlap", "[graph][coplanar]") {
   auto B = make_mesh<4>({{{0,-1,0}},{{3,-1,0}},{{3,1,0}},{{0,1,0}}}, {{{0,1,2,3}}});
   std::array meshes = {A, B};
 
-  tf::exact::intersections_between_polygons<Index, float> ibp;
+  tf::intersections_between_polygons<Index, float> ibp;
   IG ig;
   build_graph<2>(meshes, ibp, ig);
 
@@ -328,7 +328,7 @@ TEST_CASE("Coplanar partial overlap with splitter", "[graph][coplanar]") {
   auto C = make_mesh<4>({{{1,-3,-1}},{{1,3,-1}},{{1,3,1}},{{1,-3,1}}}, {{{0,1,2,3}}});
   std::array meshes = {A, B, C};
 
-  tf::exact::intersections_between_polygons<Index, float> ibp;
+  tf::intersections_between_polygons<Index, float> ibp;
   IG ig;
   build_graph<3>(meshes, ibp, ig);
 
@@ -344,7 +344,7 @@ TEST_CASE("Coplanar B fully inside A", "[graph][coplanar]") {
   auto B = make_mesh<4>({{{-1,-1,0}},{{1,-1,0}},{{1,1,0}},{{-1,1,0}}}, {{{0,1,2,3}}});
   std::array meshes = {A, B};
 
-  tf::exact::intersections_between_polygons<Index, float> ibp;
+  tf::intersections_between_polygons<Index, float> ibp;
   IG ig;
   build_graph<2>(meshes, ibp, ig);
 
@@ -361,7 +361,7 @@ TEST_CASE("Coplanar B inside A, shared bottom edge", "[graph][coplanar]") {
   auto B = make_mesh<4>({{{-1,-3,0}},{{1,-3,0}},{{1,0,0}},{{-1,0,0}}}, {{{0,1,2,3}}});
   std::array meshes = {A, B};
 
-  tf::exact::intersections_between_polygons<Index, float> ibp;
+  tf::intersections_between_polygons<Index, float> ibp;
   IG ig;
   build_graph<2>(meshes, ibp, ig);
 
@@ -378,7 +378,7 @@ TEST_CASE("Coplanar identical quads (no edges)", "[graph][coplanar]") {
   auto B = make_mesh<4>({{{-2,-2,0}},{{2,-2,0}},{{2,2,0}},{{-2,2,0}}}, {{{0,1,2,3}}});
   std::array meshes = {A, B};
 
-  tf::exact::intersections_between_polygons<Index, float> ibp;
+  tf::intersections_between_polygons<Index, float> ibp;
   IG ig;
   build_graph<2>(meshes, ibp, ig);
 
@@ -394,7 +394,7 @@ TEST_CASE("Coplanar corner overlap", "[graph][coplanar]") {
   auto B = make_mesh<4>({{{1,1,0}},{{4,1,0}},{{4,4,0}},{{1,4,0}}}, {{{0,1,2,3}}});
   std::array meshes = {A, B};
 
-  tf::exact::intersections_between_polygons<Index, float> ibp;
+  tf::intersections_between_polygons<Index, float> ibp;
   IG ig;
   build_graph<2>(meshes, ibp, ig);
 
@@ -411,7 +411,7 @@ TEST_CASE("Coplanar shared edge (adjacent quads, no overlap)", "[graph][coplanar
   auto B = make_mesh<4>({{{2,0,0}},{{4,0,0}},{{4,2,0}},{{2,2,0}}}, {{{0,1,2,3}}});
   std::array meshes = {A, B};
 
-  tf::exact::intersections_between_polygons<Index, float> ibp;
+  tf::intersections_between_polygons<Index, float> ibp;
   IG ig;
   build_graph<2>(meshes, ibp, ig);
 
@@ -433,7 +433,7 @@ TEST_CASE("Edge-on-face with perpendicular cutter", "[graph][coplanar]") {
       {{{0,-4,-1}},{{0,4,-1}},{{0,4,3}},{{0,-4,3}}}, {{{0,1,2,3}}});
   std::array meshes = {A, B, C};
 
-  tf::exact::intersections_between_polygons<Index, float> ibp;
+  tf::intersections_between_polygons<Index, float> ibp;
   IG ig;
   build_graph<3>(meshes, ibp, ig);
 
@@ -458,7 +458,7 @@ TEST_CASE("Shared edge: C contained in B (bottom edges on A)", "[graph][shared]"
       {{{-1,0,0}},{{1,0,0}},{{1,-1.5f,2}},{{-1,-1.5f,2}}}, {{{0,1,2,3}}});
   std::array meshes = {A, B, C};
 
-  tf::exact::intersections_between_polygons<Index, float> ibp;
+  tf::intersections_between_polygons<Index, float> ibp;
   IG ig;
   build_graph<3>(meshes, ibp, ig);
 
@@ -478,7 +478,7 @@ TEST_CASE("Shared edge: both pierce A, C narrower", "[graph][shared]") {
       {{{-2,2,-2}},{{2,2,-2}},{{2,-2,2}},{{-2,-2,2}}}, {{{0,1,2,3}}});
   std::array meshes = {A, B, C};
 
-  tf::exact::intersections_between_polygons<Index, float> ibp;
+  tf::intersections_between_polygons<Index, float> ibp;
   IG ig;
   build_graph<3>(meshes, ibp, ig);
 
@@ -500,7 +500,7 @@ TEST_CASE("Shared edge: same width, VV+VV", "[graph][shared]") {
       {{{-6,2,-2}},{{6,2,-2}},{{6,-2,2}},{{-6,-2,2}}}, {{{0,1,2,3}}});
   std::array meshes = {A, B, C};
 
-  tf::exact::intersections_between_polygons<Index, float> ibp;
+  tf::intersections_between_polygons<Index, float> ibp;
   IG ig;
   build_graph<3>(meshes, ibp, ig);
 
@@ -522,7 +522,7 @@ TEST_CASE("Shared edge: VV one side, VE other", "[graph][shared]") {
       {{{-6,2,-2}},{{2,2,-2}},{{2,-2,2}},{{-6,-2,2}}}, {{{0,1,2,3}}});
   std::array meshes = {A, B, C};
 
-  tf::exact::intersections_between_polygons<Index, float> ibp;
+  tf::intersections_between_polygons<Index, float> ibp;
   IG ig;
   build_graph<3>(meshes, ibp, ig);
 
