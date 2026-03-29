@@ -12,7 +12,7 @@
 */
 #pragma once
 #include "../core/curves_buffer.hpp"
-#include "../cut/impl/dispatch.hpp"
+#include "../cut/dispatch/boolean.hpp"
 #include "../topology/connect_edges_to_paths.hpp"
 #include "./intersections_between_polygons.hpp"
 #include "./make_intersection_edges.hpp"
@@ -37,7 +37,7 @@ namespace tf {
 template <typename Policy0, typename Policy1>
 auto make_intersection_curves(const tf::polygons<Policy0> &_polygons0,
                               const tf::polygons<Policy1> &_polygons1) {
-  return cut::impl::boolean_dispatch(
+  return cut::dispatch::boolean(
       _polygons0, _polygons1, [](const auto &form0, const auto &form1) {
         using Index =
             std::common_type_t<typename std::decay_t<decltype(form0)>::index_type,

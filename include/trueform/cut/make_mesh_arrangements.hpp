@@ -14,162 +14,183 @@
 #include "../core/algorithm/parallel_copy.hpp"
 #include "../core/curves_buffer.hpp"
 #include "../intersect/exact/intersections_between_polygons.hpp"
-#include "../intersect/intersections_between_polygons.hpp"
+#include "../intersect/graph/intersection_graph.hpp"
 #include "../topology/connect_edges_to_paths.hpp"
-#include "./boolean_config.hpp"
+#include "./construct/make_mesh_arrangements.hpp"
 #include "./cut_graph.hpp"
+#include "./dispatch/arrangement.hpp"
+#include "./dispatch/boolean.hpp"
+#include "./dispatch/build_exact_pipeline.hpp"
 #include "./face_cuts.hpp"
-#include "./impl/dispatch.hpp"
-#include "./impl/make_mesh_arrangement.hpp"
-#include "./impl/make_mesh_arrangements.hpp"
 #include "./return_curves.hpp"
-#include "./tagged_cut_faces.hpp"
 
 namespace tf {
 
 /// @ingroup cut_boolean
 /// @brief Decompose two meshes into classified regions.
-///
-/// Returns all subdivided regions created by mesh intersection,
-/// each classified by origin and spatial relationship (inside/outside).
-/// This is the complete decomposition from which any boolean operation
-/// can be reconstructed.
-///
-/// @tparam Policy0 The policy type of the first mesh.
-/// @tparam Policy1 The policy type of the second mesh.
-/// @param _polygons0 The first mesh @ref tf::polygons (or tagged form).
-/// @param _polygons1 The second mesh @ref tf::polygons (or tagged form).
-/// @return Tuple of (vector of @ref tf::polygons_buffer, labels, @ref
-/// tf::arrangement_class).
-///
-/// @see tf::make_boolean for combined boolean results.
-/// @see tf::arrangement_class for classification values.
 template <typename Policy0, typename Policy1>
-auto make_mesh_arrangements(const tf::polygons<Policy0> &_polygons0,
-                            const tf::polygons<Policy1> &_polygons1,
-                            tf::boolean_config config = {}) {
-  return cut::impl::boolean_dispatch(
-      _polygons0, _polygons1, [config](const auto &p0, const auto &p1) {
+auto make_mesh_arrangements(
+    const tf::polygons<Policy0> &_polygons0,
+    const tf::polygons<Policy1> &_polygons1,
+    tf::intersect_mode mode = tf::intersect_mode::primitives) {
+  return cut::dispatch::boolean(
+      _polygons0, _polygons1, [mode](const auto &p0, const auto &p1) {
         using Index =
             std::common_type_t<typename std::decay_t<decltype(p0)>::index_type,
                                typename std::decay_t<decltype(p1)>::index_type>;
-        tf::intersections_between_polygons<Index, double, 3> ibp;
-        ibp.build(p0, p1);
-        tf::tagged_cut_faces<Index> tcf;
-        tcf.build(p0, p1, ibp);
-        return tf::cut::make_mesh_arrangements<int>(p0, p1, ibp, tcf, config);
+        using RealType = tf::coordinate_type<std::decay_t<decltype(p0)>,
+                                             std::decay_t<decltype(p1)>>;
+        auto [ibp, ig, fc, cg] =
+            cut::dispatch::build_exact_pipeline<Index, RealType>(p0, p1, mode);
+        auto [mesh, tag_labels, face_labels, map_data] =
+            tf::cut::make_mesh_arrangements<Index>(ig, fc, p0, p1,
+                                                   ibp.converter());
+        return std::make_tuple(std::move(mesh), std::move(tag_labels),
+                               std::move(face_labels));
       });
 }
 
 /// @ingroup cut_boolean
+/// @brief Decompose two meshes with curve output.
+template <typename Policy0, typename Policy1>
+auto make_mesh_arrangements(
+    const tf::polygons<Policy0> &_polygons0,
+    const tf::polygons<Policy1> &_polygons1, tf::intersect_mode mode,
+    tf::return_curves_t) {
+  return cut::dispatch::boolean(
+      _polygons0, _polygons1, [mode](const auto &p0, const auto &p1) {
+        using Index =
+            std::common_type_t<typename std::decay_t<decltype(p0)>::index_type,
+                               typename std::decay_t<decltype(p1)>::index_type>;
+        using RealType = tf::coordinate_type<std::decay_t<decltype(p0)>,
+                                             std::decay_t<decltype(p1)>>;
+        auto [ibp, ig, fc, cg] =
+            cut::dispatch::build_exact_pipeline<Index, RealType>(p0, p1, mode);
+        auto [mesh, tag_labels, face_labels, map_data] =
+            tf::cut::make_mesh_arrangements<Index>(ig, fc, p0, p1,
+                                                   ibp.converter());
+
+        auto paths = tf::connect_edges_to_paths(
+            tf::make_edges(cg.intersection_edges()));
+        auto &conv = ibp.converter();
+        auto ipts = ig.points();
+        tf::curves_buffer<Index, RealType, 3> cb;
+        cb.paths_buffer() = std::move(paths);
+        cb.points_buffer().allocate(ipts.size());
+        tf::parallel_copy(
+            tf::make_points(tf::make_mapped_range(
+                ipts, [&conv](const auto &pt) { return conv.deconvert(pt); })),
+            cb.points());
+
+        return std::make_tuple(std::move(mesh), std::move(tag_labels),
+                               std::move(face_labels), std::move(cb));
+      });
+}
+
+/// @ingroup cut_boolean
+/// @brief Decompose two meshes with curves (default intersect mode).
+template <typename Policy0, typename Policy1>
+auto make_mesh_arrangements(const tf::polygons<Policy0> &_polygons0,
+                            const tf::polygons<Policy1> &_polygons1,
+                            tf::return_curves_t) {
+  return make_mesh_arrangements(_polygons0, _polygons1,
+                                tf::intersect_mode::primitives,
+                                tf::return_curves);
+}
+
+/// @ingroup cut_boolean
 /// @brief Build a single merged mesh from N intersected meshes.
-///
-/// Splits all faces along intersection curves and merges into one mesh.
-/// Returns (mesh, tag_labels, face_labels) where tag_labels identifies
-/// which input mesh each face came from, and face_labels identifies which
-/// face in that mesh.
-///
-/// @tparam Range A range of tagged polygon forms (with tree + fm + mel).
-/// @param forms The input meshes.
-/// @return Tuple of (polygons_buffer, tag labels, face labels).
 template <typename Range>
 auto make_mesh_arrangements(
-    const Range &forms,
+    const Range &_forms,
     tf::intersect_mode mode = tf::intersect_mode::primitives) {
-  using Index = std::decay_t<decltype(forms[0].faces()[0][0])>;
-  using RealType = tf::coordinate_type<decltype(forms[0])>;
+  return cut::dispatch::arrangement(_forms, [mode](const auto &forms) {
+    using Index = std::decay_t<decltype(forms[0].faces()[0][0])>;
+    using RealType = tf::coordinate_type<decltype(forms[0])>;
 
-  tf::exact::intersections_between_polygons<Index, RealType> ibp;
-  ibp.build(forms, mode);
+    tf::exact::intersections_between_polygons<Index, RealType> ibp;
+    ibp.build(forms, mode);
 
-  auto &conv = ibp.converter();
-  auto get_face = [&](int tag, Index object) {
-    return forms[tag].faces()[object];
-  };
-  auto get_mesh_point = [&](int tag, Index id) -> tf::point<int32_t, 3> {
-    return conv.convert(
-        tf::transformed(forms[tag].points()[id], tf::frame_of(forms[tag])));
-  };
+    auto &conv = ibp.converter();
+    auto apply_to_face = [&](int tag, Index object, const auto &f) {
+      f(forms[tag].faces()[object]);
+    };
+    auto get_mesh_point = [&](int tag, Index id) -> tf::point<int32_t, 3> {
+      return conv.convert(
+          tf::transformed(forms[tag].points()[id], tf::frame_of(forms[tag])));
+    };
 
-  tf::intersection_graph<Index> ig;
-  ig.build(ibp, get_face, get_mesh_point);
+    tf::intersection_graph<Index> ig;
+    ig.build(ibp, apply_to_face, get_mesh_point);
 
-  tf::face_cuts<Index> fc;
-  fc.build(ig, get_face, get_mesh_point);
+    tf::face_cuts<Index> fc;
+    fc.build(ig, apply_to_face, get_mesh_point);
 
-  auto [mesh, tag_labels, face_labels, map_data] =
-      tf::cut::make_mesh_arrangement<Index>(ig, fc, forms, conv);
+    auto [mesh, tag_labels, face_labels, map_data] =
+        tf::cut::make_mesh_arrangements<Index>(ig, fc, forms, conv);
 
-  return std::make_tuple(std::move(mesh), std::move(tag_labels),
-                         std::move(face_labels));
+    return std::make_tuple(std::move(mesh), std::move(tag_labels),
+                           std::move(face_labels));
+  });
 }
 
 /// @ingroup cut_boolean
 /// @brief Build a merged mesh with intersection curves.
-///
-/// Same as make_mesh_arrangements, but also returns the intersection
-/// curves as a curves_buffer.
-///
-/// @tparam Range A range of tagged polygon forms.
-/// @param forms The input meshes.
-/// @param tag Pass @ref tf::return_curves to get intersection curves.
-/// @return Tuple of (polygons_buffer, tag labels, face labels, curves_buffer).
 template <typename Range>
-auto make_mesh_arrangements(const Range &forms, tf::intersect_mode mode,
+auto make_mesh_arrangements(const Range &_forms, tf::intersect_mode mode,
                             tf::return_curves_t) {
-  using Index = std::decay_t<decltype(forms[0].faces()[0][0])>;
-  using RealType = tf::coordinate_type<decltype(forms[0])>;
+  return cut::dispatch::arrangement(_forms, [mode](const auto &forms) {
+    using Index = std::decay_t<decltype(forms[0].faces()[0][0])>;
+    using RealType = tf::coordinate_type<decltype(forms[0])>;
 
-  tf::exact::intersections_between_polygons<Index, RealType> ibp;
-  ibp.build(forms, mode);
+    tf::exact::intersections_between_polygons<Index, RealType> ibp;
+    ibp.build(forms, mode);
 
-  auto &conv = ibp.converter();
-  auto get_face = [&](int tag, Index object) {
-    return forms[tag].faces()[object];
-  };
-  auto get_mesh_point = [&](int tag, Index id) -> tf::point<int32_t, 3> {
-    return conv.convert(
-        tf::transformed(forms[tag].points()[id], tf::frame_of(forms[tag])));
-  };
+    auto &conv = ibp.converter();
+    auto apply_to_face = [&](int tag, Index object, const auto &f) {
+      f(forms[tag].faces()[object]);
+    };
+    auto get_mesh_point = [&](int tag, Index id) -> tf::point<int32_t, 3> {
+      return conv.convert(
+          tf::transformed(forms[tag].points()[id], tf::frame_of(forms[tag])));
+    };
 
-  tf::intersection_graph<Index> ig;
-  ig.build(ibp, get_face, get_mesh_point);
+    tf::intersection_graph<Index> ig;
+    ig.build(ibp, apply_to_face, get_mesh_point);
 
-  tf::face_cuts<Index> fc;
-  fc.build(ig, get_face, get_mesh_point);
+    tf::face_cuts<Index> fc;
+    fc.build(ig, apply_to_face, get_mesh_point);
 
-  auto [mesh, tag_labels, face_labels, map_data] =
-      tf::cut::make_mesh_arrangement<Index>(ig, fc, forms, conv);
+    auto [mesh, tag_labels, face_labels, map_data] =
+        tf::cut::make_mesh_arrangements<Index>(ig, fc, forms, conv);
 
-  // Extract intersection curves. SoS: edge_groups directly describe the
-  // contour. Primitives: coplanar faces produce shared edges that are not
-  // part of the contour — use cut_graph to collect them all.
-  auto paths = [&]() {
-    if (mode == tf::intersect_mode::sos) {
-      auto edge_pairs = tf::make_mapped_range(
-          ig.edge_groups(), [](const auto &group) -> std::array<Index, 2> {
-            return {group[0].point_0, group[0].point_1};
-          });
-      return tf::connect_edges_to_paths(tf::make_edges(edge_pairs));
-    } else { // intersect_mode::primitives
-      tf::cut_graph<Index> cg;
-      cg.build(fc, static_cast<Index>(ig.points().size()));
-      return tf::connect_edges_to_paths(
-          tf::make_edges(cg.intersection_edges()));
-    }
-  }();
+    auto paths = [&]() {
+      if (mode == tf::intersect_mode::sos) {
+        auto edge_pairs = tf::make_mapped_range(
+            ig.edge_groups(), [](const auto &group) -> std::array<Index, 2> {
+              return {group[0].point_0, group[0].point_1};
+            });
+        return tf::connect_edges_to_paths(tf::make_edges(edge_pairs));
+      } else {
+        tf::cut_graph<Index> cg;
+        cg.build(fc, static_cast<Index>(ig.points().size()));
+        return tf::connect_edges_to_paths(
+            tf::make_edges(cg.intersection_edges()));
+      }
+    }();
 
-  tf::curves_buffer<Index, RealType, 3> cb;
-  cb.paths_buffer() = std::move(paths);
-  auto ipts = ig.points();
-  cb.points_buffer().allocate(ipts.size());
-  tf::parallel_copy(
-      tf::make_points(tf::make_mapped_range(
-          ipts, [&conv](const auto &pt) { return conv.deconvert(pt); })),
-      cb.points());
+    tf::curves_buffer<Index, RealType, 3> cb;
+    cb.paths_buffer() = std::move(paths);
+    auto ipts = ig.points();
+    cb.points_buffer().allocate(ipts.size());
+    tf::parallel_copy(
+        tf::make_points(tf::make_mapped_range(
+            ipts, [&conv](const auto &pt) { return conv.deconvert(pt); })),
+        cb.points());
 
-  return std::make_tuple(std::move(mesh), std::move(tag_labels),
-                         std::move(face_labels), std::move(cb));
+    return std::make_tuple(std::move(mesh), std::move(tag_labels),
+                           std::move(face_labels), std::move(cb));
+  });
 }
 
 /// @ingroup cut_boolean

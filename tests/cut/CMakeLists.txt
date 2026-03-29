@@ -1,9 +1,11 @@
 add_executable(trueform_cut_tests
   test_boolean.cpp
+  test_boolean_pair.cpp
   test_cut_graph.cpp
   test_embedded_intersection_curves.cpp
   test_face_cutter.cpp
   test_face_cuts.cpp
+  test_mesh_arrangements.cpp
 )
 
 target_link_libraries(trueform_cut_tests PRIVATE trueform_test_common)
