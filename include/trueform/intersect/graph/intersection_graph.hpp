@@ -84,7 +84,7 @@ public:
   /// apply_to_face(tag, object, f) calls f(face) with the face view.
   template <typename ApplyToFace, typename GetMeshPoint>
   auto
-  build(const tf::exact::tagged_intersections<Index, int32_t, 3> &intersections,
+  build(const tf::intersect::tagged_intersections<Index, int32_t, 3> &intersections,
         const ApplyToFace &apply_to_face,
         const GetMeshPoint &get_mesh_point) -> void {
     clear();

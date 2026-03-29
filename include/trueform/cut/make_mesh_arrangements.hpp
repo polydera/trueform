@@ -13,7 +13,7 @@
 #pragma once
 #include "../core/algorithm/parallel_copy.hpp"
 #include "../core/curves_buffer.hpp"
-#include "../intersect/exact/intersections_between_polygons.hpp"
+#include "../intersect/intersections_between_polygons.hpp"
 #include "../intersect/graph/intersection_graph.hpp"
 #include "../topology/connect_edges_to_paths.hpp"
 #include "./construct/make_mesh_arrangements.hpp"
@@ -108,7 +108,7 @@ auto make_mesh_arrangements(
     using Index = std::decay_t<decltype(forms[0].faces()[0][0])>;
     using RealType = tf::coordinate_type<decltype(forms[0])>;
 
-    tf::exact::intersections_between_polygons<Index, RealType> ibp;
+    tf::intersections_between_polygons<Index, RealType> ibp;
     ibp.build(forms, mode);
 
     auto &conv = ibp.converter();
@@ -143,7 +143,7 @@ auto make_mesh_arrangements(const Range &_forms, tf::intersect_mode mode,
     using Index = std::decay_t<decltype(forms[0].faces()[0][0])>;
     using RealType = tf::coordinate_type<decltype(forms[0])>;
 
-    tf::exact::intersections_between_polygons<Index, RealType> ibp;
+    tf::intersections_between_polygons<Index, RealType> ibp;
     ibp.build(forms, mode);
 
     auto &conv = ibp.converter();

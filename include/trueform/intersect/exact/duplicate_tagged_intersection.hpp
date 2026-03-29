@@ -21,7 +21,7 @@
 #include "../../topology/vertex_id_in_face.hpp"
 #include "./tagged_intersection.hpp"
 
-namespace tf::exact {
+namespace tf::intersect {
 
 namespace detail {
 
@@ -172,11 +172,10 @@ template <typename FormsRange> auto make_duplicator(const FormsRange &forms) {
   return [forms = tf::make_range(forms)](auto rec, auto &buffer) {
     auto &&f0 = forms[rec.tag];
     auto &&f1 = forms[rec.tag_other];
-    duplicate_intersection(f0.faces(), f0.face_membership(),
-                           f0.manifold_edge_link(), f1.faces(),
-                           f1.face_membership(), f1.manifold_edge_link(), rec,
-                           buffer);
+    duplicate_intersection(
+        f0.faces(), f0.face_membership(), f0.manifold_edge_link(), f1.faces(),
+        f1.face_membership(), f1.manifold_edge_link(), rec, buffer);
   };
 }
 
-} // namespace tf::exact
+} // namespace tf::intersect

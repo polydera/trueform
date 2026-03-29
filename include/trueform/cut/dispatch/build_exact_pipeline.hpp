@@ -14,7 +14,7 @@
 
 #include "../../core/frame_of.hpp"
 #include "../../core/transformed.hpp"
-#include "../../intersect/exact/intersections_between_polygons.hpp"
+#include "../../intersect/intersections_between_polygons.hpp"
 #include "../../intersect/graph/intersection_graph.hpp"
 #include "../cut_graph.hpp"
 #include "../face_cuts.hpp"
@@ -25,7 +25,7 @@ template <typename Index, typename RealType, typename Policy0, typename Policy1>
 auto build_exact_pipeline(
     const tf::polygons<Policy0> &p0, const tf::polygons<Policy1> &p1,
     tf::intersect_mode mode = tf::intersect_mode::primitives) {
-  tf::exact::intersections_between_polygons<Index, RealType> ibp;
+  tf::intersections_between_polygons<Index, RealType> ibp;
   ibp.build(p0, p1, mode);
 
   auto &conv = ibp.converter();

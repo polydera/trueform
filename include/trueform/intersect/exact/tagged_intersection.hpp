@@ -12,26 +12,24 @@
  */
 #pragma once
 
-#include "../types/intersection_target.hpp"
+#include "../../topology/topo_id.hpp"
 #include <tuple>
 
-namespace tf::exact {
+namespace tf::intersect {
 
 template <typename Index> struct tagged_intersection {
   Index tag;
   Index tag_other;
   Index object;
   Index object_other;
-  tf::intersect::intersection_target<Index> target;
-  tf::intersect::intersection_target<Index> target_other;
+  tf::topo_id<Index> target;
+  tf::topo_id<Index> target_other;
   Index id;
 
-  auto key() const {
-    return std::make_tuple(tag, object);
-  }
+  auto key() const { return std::make_tuple(tag, object); }
 
   friend auto operator<(const tagged_intersection &a,
-                         const tagged_intersection &b) -> bool {
+                        const tagged_intersection &b) -> bool {
     return std::make_tuple(a.tag, a.object, a.tag_other, a.object_other,
                            a.target, a.target_other, a.id) <
            std::make_tuple(b.tag, b.object, b.tag_other, b.object_other,
@@ -39,7 +37,7 @@ template <typename Index> struct tagged_intersection {
   }
 
   friend auto operator==(const tagged_intersection &a,
-                          const tagged_intersection &b) -> bool {
+                         const tagged_intersection &b) -> bool {
     return std::make_tuple(a.tag, a.object, a.tag_other, a.object_other,
                            a.target, a.target_other, a.id) ==
            std::make_tuple(b.tag, b.object, b.tag_other, b.object_other,
@@ -47,4 +45,4 @@ template <typename Index> struct tagged_intersection {
   }
 };
 
-} // namespace tf::exact
+} // namespace tf::intersect

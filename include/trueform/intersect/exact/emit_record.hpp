@@ -13,16 +13,14 @@
 #pragma once
 
 #include "../../exact/vertex.hpp"
-#include "../types/intersection_target.hpp"
-#include "./tagged_intersection.hpp"
+#include "../../topology/topo_id.hpp"
 
 namespace tf::exact {
 
 /// Push an intersection record + point into the thread-local buffers.
 template <typename Index, typename Ints, typename Pts>
 auto emit_record(int tag, int tag_other, Index object, Index object_other,
-                 tf::intersect::intersection_target<Index> target,
-                 tf::intersect::intersection_target<Index> target_other,
+                 tf::topo_id<Index> target, tf::topo_id<Index> target_other,
                  const pt3 &point, Ints &ints, Pts &pts) {
   Index id = pts.size();
   pts.push_back(point);

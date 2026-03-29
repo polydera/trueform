@@ -24,14 +24,15 @@
 #include "tbb/parallel_sort.h"
 #include <algorithm>
 
-namespace tf::exact {
+namespace tf::intersect {
 
 /// Deduplicate vertex intersection points. Multiple records for the same
 /// mesh vertex (from different face pairs) get merged to one point ID.
 /// VV records also merge cross-mesh vertex pairs via union-find.
 template <typename Index, typename FacesLookup>
 void dedup_vertex_points(tf::buffer<tagged_intersection<Index>> &intersections,
-                         tf::buffer<pt3> &points, const FacesLookup &faces) {
+                         tf::buffer<tf::exact::pt3> &points,
+                         const FacesLookup &faces) {
   struct tag_vid {
     Index tag, vid;
     auto operator<(const tag_vid &o) const -> bool {
@@ -86,8 +87,7 @@ void dedup_vertex_points(tf::buffer<tagged_intersection<Index>> &intersections,
       [&](const tagged_intersection<Index> &rec, auto &bufs) {
         auto &[pair_buf, ip_buf] = bufs;
         if (rec.target.label == tf::topo_type::vertex) {
-          auto a =
-              find_idx(rec.tag, faces(rec.tag, rec.object, rec.target.id));
+          auto a = find_idx(rec.tag, faces(rec.tag, rec.object, rec.target.id));
           ip_buf.push_back({a, rec.id});
           if (rec.target_other.label == tf::topo_type::vertex) {
             auto b =
@@ -127,18 +127,17 @@ void dedup_vertex_points(tf::buffer<tagged_intersection<Index>> &intersections,
       e = next_id++;
 
   // Step 6: Build compact points + remap records
-  tf::buffer<pt3> new_pts;
+  tf::buffer<tf::exact::pt3> new_pts;
   new_pts.allocate(next_id);
 
   // Parallel copy (idempotent: same-class vertex writes identical data)
   tf::parallel_copy(points, tf::make_indirect_range(point_map, new_pts));
   //
-  tf::parallel_for_each(intersections,
-                        [&](tagged_intersection<Index> &rec) {
-                          rec.id = point_map[rec.id];
-                        });
+  tf::parallel_for_each(intersections, [&](tagged_intersection<Index> &rec) {
+    rec.id = point_map[rec.id];
+  });
 
   points = std::move(new_pts);
 }
 
-} // namespace tf::exact
+} // namespace tf::intersect

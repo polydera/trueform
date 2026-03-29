@@ -19,7 +19,7 @@
 #include "./tagged_intersection.hpp"
 #include "tbb/parallel_sort.h"
 
-namespace tf::exact {
+namespace tf::intersect {
 
 template <typename Index, typename RealType, std::size_t Dims>
 class tagged_intersections {
@@ -97,4 +97,4 @@ protected:
   tf::buffer<tf::point<RealType, Dims>> _intersection_points;
 };
 
-} // namespace tf::exact
+} // namespace tf::intersect

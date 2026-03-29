@@ -94,12 +94,10 @@ private:
               auto created_point = polygon[v0] + t * edge;
               Index pt_id = points.size();
               points.push_back(created_point);
-              edge_point_ids.push_back(
-                  {Index(id0), Index(id1), Index(pt_id)});
+              edge_point_ids.push_back({Index(id0), Index(id1), Index(pt_id)});
               intersections.push_back(
                   {Index(polygon_id),
-                   tf::intersect::intersection_target<Index>{
-                       Index(prev), tf::topo_type::edge},
+                   tf::topo_id<Index>{Index(prev), tf::topo_type::edge},
                    pt_id});
             }
           }

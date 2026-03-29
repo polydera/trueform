@@ -14,6 +14,7 @@
 
 #include "../../core/algorithm/circular_increment.hpp"
 #include "../../core/buffer.hpp"
+#include "../../topology/is_on_same_edge.hpp"
 #include "../../topology/topo_type.hpp"
 #include "./edge.hpp"
 #include "./vertex.hpp"
@@ -29,22 +30,9 @@ namespace tf::intersect::graph {
 /// edge-edge: same edge index
 /// vertex-edge: vertex is an endpoint of the edge
 template <typename Target, typename Index>
-auto on_same_boundary_edge(const Target &t0, const Target &t1,
-                           Index face_size) -> bool {
-  auto v = tf::topo_type::vertex;
-  auto e = tf::topo_type::edge;
-  if (t0.label == v && t1.label == v)
-    return t1.id == tf::circular_increment(Index(t0.id), face_size) ||
-           t0.id == tf::circular_increment(Index(t1.id), face_size);
-  if (t0.label == e && t1.label == e)
-    return t0.id == t1.id;
-  if (t0.label == v && t1.label == e)
-    return t0.id == t1.id ||
-           t0.id == tf::circular_increment(Index(t1.id), face_size);
-  if (t0.label == e && t1.label == v)
-    return t1.id == t0.id ||
-           t1.id == tf::circular_increment(Index(t0.id), face_size);
-  return false;
+auto on_same_boundary_edge(const Target &t0, const Target &t1, Index face_size)
+    -> bool {
+  return tf::is_on_same_edge(t0, t1, face_size);
 }
 
 /// Walk a loop forward from start_id to end_id, emitting sub-edges.
@@ -52,8 +40,7 @@ auto on_same_boundary_edge(const Target &t0, const Target &t1,
 template <typename Index, typename Loop>
 auto emit_boundary_sub_edges(const Loop &loop, Index start_id, Index end_id,
                              short tag, short tag_other, Index object,
-                             Index object_other,
-                             tf::buffer<edge<Index>> &buf)
+                             Index object_other, tf::buffer<edge<Index>> &buf)
     -> bool {
   auto n = loop.size();
   std::size_t pos = n;
@@ -94,8 +81,7 @@ template <typename Index, typename Target, typename Loop>
 auto try_expand_boundary(const Loop &loop, const Target &t0, const Target &t1,
                          Index face_size, Index id0, Index id1, short tag,
                          short tag_other, Index object, Index object_other,
-                         tf::buffer<edge<Index>> &buf)
-    -> bool {
+                         tf::buffer<edge<Index>> &buf) -> bool {
   if (!on_same_boundary_edge(t0, t1, face_size))
     return false;
 
@@ -146,11 +132,11 @@ template <typename Index, typename AllSubranges>
 auto find_loop_index(const AllSubranges &subranges, Index tag, Index object)
     -> std::size_t {
   auto key = std::make_pair(tag, object);
-  auto it = std::lower_bound(
-      subranges.begin(), subranges.end(), key,
-      [](const auto &sr, const auto &k) {
-        return std::make_pair(sr[0].tag, sr[0].object) < k;
-      });
+  auto it =
+      std::lower_bound(subranges.begin(), subranges.end(), key,
+                       [](const auto &sr, const auto &k) {
+                         return std::make_pair(sr[0].tag, sr[0].object) < k;
+                       });
   if (it == subranges.end())
     return std::size_t(-1);
   auto &&sr = *it;
@@ -165,8 +151,8 @@ template <typename Index, typename Record, typename AllLoops,
           typename AllSubranges, typename ApplyToFace>
 auto emit_edge(const Record &r0, const Record &r1, Index face_size,
                const AllLoops &all_loops, const AllSubranges &all_subranges,
-               const ApplyToFace &apply_to_face,
-               tf::buffer<edge<Index>> &buf) -> void {
+               const ApplyToFace &apply_to_face, tf::buffer<edge<Index>> &buf)
+    -> void {
   auto tag = short(r0.tag);
   auto tag_other = short(r0.tag_other);
 
@@ -199,11 +185,12 @@ auto emit_edge(const Record &r0, const Record &r1, Index face_size,
 /// Extract edges for a subrange, expanding boundary edges using base loops.
 template <typename Index, typename Subrange, typename AllLoops,
           typename AllSubranges, typename ApplyToFace>
-auto extract_edges_with_expansion(
-    const Subrange &subrange, Index face_size, std::size_t this_loop_idx,
-    const AllLoops &all_loops, const AllSubranges &all_subranges,
-    const ApplyToFace &apply_to_face,
-    tf::buffer<edge<Index>> &buf) -> void {
+auto extract_edges_with_expansion(const Subrange &subrange, Index face_size,
+                                  std::size_t this_loop_idx,
+                                  const AllLoops &all_loops,
+                                  const AllSubranges &all_subranges,
+                                  const ApplyToFace &apply_to_face,
+                                  tf::buffer<edge<Index>> &buf) -> void {
   auto it = subrange.begin();
   auto end = subrange.end();
   while (it != end) {
@@ -213,9 +200,8 @@ auto extract_edges_with_expansion(
              r.object_other == group_begin->object_other;
     });
     if (it - group_begin == 2)
-      emit_edge<Index>(group_begin[0], group_begin[1], face_size,
-                       this_loop_idx, all_loops, all_subranges, apply_to_face,
-                       buf);
+      emit_edge<Index>(group_begin[0], group_begin[1], face_size, this_loop_idx,
+                       all_loops, all_subranges, apply_to_face, buf);
   }
 }
 
