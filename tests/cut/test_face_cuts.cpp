@@ -66,15 +66,15 @@ auto build_and_cut(
   ibp.build(forms, tf::intersect_mode::primitives);
 
   auto &conv = ibp.converter();
-  auto get_face = [&](int tag, int object) {
-    return forms[tag].faces()[object];
+  auto apply_to_face = [&](int tag, int object, const auto &f) {
+    f(forms[tag].faces()[object]);
   };
   auto get_mesh_point = [&](int tag, int id) -> tf::point<int32_t, 3> {
     return conv.convert(forms[tag].points()[id]);
   };
 
-  ig.build(ibp, get_face, get_mesh_point);
-  fc.build(ig, get_face, get_mesh_point);
+  ig.build(ibp, apply_to_face, get_mesh_point);
+  fc.build(ig, apply_to_face, get_mesh_point);
 }
 
 auto count_per_tag(const tf::face_cuts<Index> &fc, int n_tags)

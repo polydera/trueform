@@ -30,10 +30,10 @@ template <typename Index> class edge_extractor {
 public:
   /// Extract edges for one face's intersection subrange.
   template <typename Subrange, typename AllLoops, typename AllSubranges,
-            typename GetFace>
+            typename ApplyToFace>
   auto extract(const Subrange &subrange, Index face_size,
                const AllLoops &all_loops, const AllSubranges &all_subranges,
-               const GetFace &get_face,
+               const ApplyToFace &apply_to_face,
                tf::buffer<edge<Index>> &buf) -> void {
     auto it = subrange.begin();
     auto end = subrange.end();
@@ -46,13 +46,15 @@ public:
       auto n = it - group_begin;
       if (n == 2) {
         emit_edge<Index>(group_begin[0], group_begin[1], face_size,
-                         all_loops, all_subranges, get_face, buf);
+                         all_loops, all_subranges, apply_to_face, buf);
       } else if (n > 2) {
-        Index other_size =
-            get_face(group_begin->tag_other, group_begin->object_other)
-                .size();
-        extract_coplanar(group_begin, it, other_size, face_size,
-                         all_loops, all_subranges, get_face, buf);
+        apply_to_face(
+            group_begin->tag_other, group_begin->object_other,
+            [&](const auto &other_face) {
+              Index other_size = other_face.size();
+              extract_coplanar(group_begin, it, other_size, face_size,
+                               all_loops, all_subranges, apply_to_face, buf);
+            });
       }
     }
   }
@@ -69,11 +71,11 @@ private:
   /// are duplicated to both adjacent edges. For each edge group with 2
   /// records where at least one is edge-type, emits via emit_edge.
   template <typename Iterator, typename AllLoops, typename AllSubranges,
-            typename GetFace>
+            typename ApplyToFace>
   auto extract_coplanar(Iterator begin, Iterator end, Index other_poly_size,
                         Index face_size, const AllLoops &all_loops,
                         const AllSubranges &all_subranges,
-                        const GetFace &get_face,
+                        const ApplyToFace &apply_to_face,
                         tf::buffer<edge<Index>> &buf) -> void {
     _work.clear();
 
@@ -110,8 +112,8 @@ private:
         continue;
       auto &r0 = *(begin + group_begin_w->rec_idx);
       auto &r1 = *(begin + (group_begin_w + 1)->rec_idx);
-      emit_edge<Index>(r0, r1, face_size, all_loops, all_subranges, get_face,
-                       buf);
+      emit_edge<Index>(r0, r1, face_size, all_loops, all_subranges,
+                       apply_to_face, buf);
     }
   }
 

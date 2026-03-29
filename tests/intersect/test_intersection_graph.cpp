@@ -70,14 +70,14 @@ auto build_graph(std::array<tf::polygons_buffer<int, float, 3, 4>, N> &meshes,
   ibp.build(forms, mode);
 
   auto &conv = ibp.converter();
-  auto get_face = [&](int tag, int object) {
-    return forms[tag].faces()[object];
+  auto apply_to_face = [&](int tag, int object, const auto &f) {
+    f(forms[tag].faces()[object]);
   };
   auto get_mesh_point = [&](int tag, int id) -> tf::point<int32_t, 3> {
     return conv.convert(forms[tag].points()[id]);
   };
 
-  ig.build(ibp, get_face, get_mesh_point);
+  ig.build(ibp, apply_to_face, get_mesh_point);
 }
 
 auto count_point_classes(const IG &ig,

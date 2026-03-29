@@ -34,17 +34,18 @@ namespace tf::cut {
 ///   0 = inside (on_negative_side)
 ///   1 = outside (on_positive_side)
 template <typename Loop, typename Desc, typename Neighbors, typename AllLoops,
-          typename AllDescs, typename GetPoint, typename GetFace,
+          typename AllDescs, typename GetPoint, typename ApplyToFace,
           typename IsCoplanar, typename Labels, typename Counts>
 void classify_edge_by_wedge(const Loop &loop0, const Desc &desc0,
                             std::size_t edge_id, const Neighbors &neighbors,
                             const AllLoops &all_loops,
                             const AllDescs &all_descs,
-                            const GetPoint &get_point, const GetFace &get_face,
+                            const GetPoint &get_point,
+                            const ApplyToFace &apply_to_face,
                             const IsCoplanar &is_coplanar, const Labels &labels,
                             Counts &local_counts) {
-  using pt3 = tf::exact::pt3;
-  using pt2 = tf::exact::pt2;
+  using pt3 = tf::point<int32_t, 3>;
+  using pt2 = tf::point<int32_t, 2>;
   using vertex_t = std::decay_t<decltype(loop0[0])>;
 
   auto n = loop0.size();
@@ -58,24 +59,28 @@ void classify_edge_by_wedge(const Loop &loop0, const Desc &desc0,
   // Find a face vertex to the left of directed edge (e0→e1) in projected 2D.
   auto find_left_vertex = [&](int tag, int object, const pt3 &e0,
                               const pt3 &e1) -> pt3 {
-    auto face = get_face(tag, object);
-    auto mk = [](auto id) {
-      return vertex_t{tf::intersect::graph::vertex_source::original, id, {}};
-    };
-    auto p0 = get_point(tag, mk(face[0]));
-    auto p1 = get_point(tag, mk(face[1]));
-    auto p2 = get_point(tag, mk(face[2]));
-    auto axes = tf::exact::projection_axes(p0, p1, p2);
-    int ax0 = axes.first, ax1 = axes.second;
-    pt2 e0_2d = {e0[ax0], e0[ax1]};
-    pt2 e1_2d = {e1[ax0], e1[ax1]};
-    for (std::size_t k = 0; k < face.size(); ++k) {
-      auto fv = get_point(tag, mk(face[k]));
-      pt2 fv_2d = {fv[ax0], fv[ax1]};
-      if (tf::exact::orient2d(e0_2d, e1_2d, fv_2d) > 0)
-        return fv;
-    }
-    return e0; // degenerate
+    pt3 result = e0; // degenerate fallback
+    apply_to_face(tag, object, [&](const auto &face) {
+      auto mk = [](auto id) {
+        return vertex_t{tf::intersect::graph::vertex_source::original, id, {}};
+      };
+      auto p0 = get_point(tag, mk(face[0]));
+      auto p1 = get_point(tag, mk(face[1]));
+      auto p2 = get_point(tag, mk(face[2]));
+      auto axes = tf::exact::projection_axes(p0, p1, p2);
+      int ax0 = axes.first, ax1 = axes.second;
+      pt2 e0_2d = {e0[ax0], e0[ax1]};
+      pt2 e1_2d = {e1[ax0], e1[ax1]};
+      for (std::size_t k = 0; k < face.size(); ++k) {
+        auto fv = get_point(tag, mk(face[k]));
+        pt2 fv_2d = {fv[ax0], fv[ax1]};
+        if (tf::exact::orient2d(e0_2d, e1_2d, fv_2d) > 0) {
+          result = fv;
+          return;
+        }
+      }
+    });
+    return result;
   };
 
   // Face A: current face, edge direction v0→v1
@@ -90,7 +95,7 @@ void classify_edge_by_wedge(const Loop &loop0, const Desc &desc0,
       if (is_coplanar(n_id))
         continue;
 
-      auto &loop_other = all_loops[n_id];
+      auto &&loop_other = all_loops[n_id];
       auto eid = tf::edge_id_in_face(v0_id, v1_id, loop_other);
       if (eid == loop_other.size())
         continue;
@@ -119,7 +124,7 @@ void classify_edge_by_wedge(const Loop &loop0, const Desc &desc0,
     if (d_wp.tag != desc0.tag)
       continue;
 
-    auto &loop_wp = all_loops[wp_id];
+    auto &&loop_wp = all_loops[wp_id];
     auto eid = tf::edge_id_in_face(v0_id, v1_id, loop_wp);
     if (eid == loop_wp.size())
       continue;

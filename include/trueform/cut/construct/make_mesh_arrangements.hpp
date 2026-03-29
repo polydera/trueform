@@ -30,9 +30,9 @@ namespace tf::cut {
 /// Build a mesh arrangement from a range of tagged polygon forms.
 ///
 /// Takes the intersection graph, face cuts, and a range of polygon forms.
-/// Returns (mesh, tag_labels, face_labels).
+/// Returns (mesh, tag_labels, face_labels, map_data).
 template <typename Index, typename FormsRange, typename RealType>
-auto make_mesh_arrangement(
+auto make_mesh_arrangements(
     const tf::intersection_graph<Index> &ig, const tf::face_cuts<Index> &fc,
     const FormsRange &forms,
     const tf::exact::vertex_converter<RealType, 3> &converter) {
@@ -153,6 +153,160 @@ auto make_mesh_arrangement(
       tf::parallel_copy(tri_origins, tf::drop(face_labels, tri_off));
     });
     tg.wait();
+  }
+
+  return std::make_tuple(
+      tf::make_polygons_buffer(std::move(faces), std::move(pts_buf)),
+      std::move(tag_labels), std::move(face_labels), std::move(map_data));
+}
+
+/// 2-mesh overload: different policy types.
+template <typename Index, typename Policy0, typename Policy1, typename RealType>
+auto make_mesh_arrangements(
+    const tf::intersection_graph<Index> &ig, const tf::face_cuts<Index> &fc,
+    const tf::polygons<Policy0> &form0, const tf::polygons<Policy1> &form1,
+    const tf::exact::vertex_converter<RealType, 3> &converter) {
+  auto apply_to_polygons = [&](Index tag, const auto &f) {
+    if (tag == 0)
+      f(form0);
+    else
+      f(form1);
+  };
+
+  auto map_data = tf::cut::make_arrangement_map_data<Index>(
+      fc, apply_to_polygons, Index(2));
+
+  tf::buffer<Index> tri_data;
+  tf::buffer<Index> tri_tags;
+  tf::buffer<Index> tri_origins;
+
+  auto make_projector = [&](const auto &desc) {
+    auto tag = desc.tag;
+    auto object = desc.object;
+    auto ipts = ig.points();
+    auto get_pt = [&, tag](Index vid) -> tf::point<int32_t, 3> {
+      if (tag == 0)
+        return converter.convert(
+            tf::transformed(form0.points()[vid], tf::frame_of(form0)));
+      else
+        return converter.convert(
+            tf::transformed(form1.points()[vid], tf::frame_of(form1)));
+    };
+    auto make_axes = [&](auto face) {
+      return tf::exact::projection_axes(get_pt(face[0]), get_pt(face[1]),
+                                        get_pt(face[2]));
+    };
+    auto axes = tag == 0 ? make_axes(form0.faces()[object])
+                         : make_axes(form1.faces()[object]);
+    return [axes, &converter, ipts, tag, &form0,
+            &form1](const auto &v) -> tf::point<int32_t, 2> {
+      tf::point<int32_t, 3> pt;
+      if (v.source == tf::intersect::graph::vertex_source::original) {
+        if (tag == 0)
+          pt = converter.convert(
+              tf::transformed(form0.points()[v.id], tf::frame_of(form0)));
+        else
+          pt = converter.convert(
+              tf::transformed(form1.points()[v.id], tf::frame_of(form1)));
+      } else {
+        pt = ipts[v.id];
+      }
+      return {pt[axes.first], pt[axes.second]};
+    };
+  };
+
+  tf::cut::triangulate_arrangement_cuts<Index>(
+      tf::zip(fc.descriptors(), fc.loops()), make_projector, map_data, tri_data,
+      tri_tags, tri_origins);
+
+  auto triangles = tf::make_blocked_range<3>(tf::make_range(tri_data));
+
+  auto original_maps = tf::make_offset_block_range(map_data.point_offsets,
+                                                   map_data.original_map);
+
+  auto uncut_faces0 = tf::make_indirect_range(
+      map_data.original_face_ids[0],
+      tf::make_block_indirect_range(
+          form0.faces(),
+          tf::make_mapped_range(original_maps[0],
+                                [off = map_data.original_offsets[0]](
+                                    Index x) { return x + off; })));
+  auto uncut_faces1 = tf::make_indirect_range(
+      map_data.original_face_ids[1],
+      tf::make_block_indirect_range(
+          form1.faces(),
+          tf::make_mapped_range(original_maps[1],
+                                [off = map_data.original_offsets[1]](
+                                    Index x) { return x + off; })));
+
+  auto faces = tf::concatenated_blocked_range_collections<Index>(
+      tf::make_range(&uncut_faces0, 1), tf::make_range(&uncut_faces1, 1),
+      tf::make_range(&triangles, 1));
+
+  auto total_pts =
+      map_data.total_original_points + static_cast<Index>(ig.points().size());
+  tf::points_buffer<RealType, 3> pts_buf;
+  pts_buf.allocate(total_pts);
+
+  {
+    auto pts_range =
+        tf::make_offset_block_range(map_data.original_offsets, pts_buf);
+    tbb::task_group tg;
+    tg.run([&] {
+      auto frame = tf::frame_of(form0);
+      tf::parallel_copy(
+          tf::make_points(tf::make_indirect_range(
+              map_data.original_ids[0],
+              tf::make_mapped_range(
+                  form0.points(),
+                  [frame](auto pt) { return tf::transformed(pt, frame); }))),
+          pts_range[0]);
+    });
+    tg.run([&] {
+      auto frame = tf::frame_of(form1);
+      tf::parallel_copy(
+          tf::make_points(tf::make_indirect_range(
+              map_data.original_ids[1],
+              tf::make_mapped_range(
+                  form1.points(),
+                  [frame](auto pt) { return tf::transformed(pt, frame); }))),
+          pts_range[1]);
+    });
+    tg.run([&] {
+      auto ipts = ig.points();
+      tf::parallel_copy(
+          tf::make_points(tf::make_mapped_range(
+              ipts, [&converter](auto pt) { return converter.deconvert(pt); })),
+          tf::drop(pts_buf, map_data.total_original_points));
+    });
+    tg.wait();
+  }
+
+  auto total_faces = static_cast<Index>(faces.size());
+  tf::buffer<Index> tag_labels;
+  tf::buffer<Index> face_labels;
+  tag_labels.allocate(total_faces);
+  face_labels.allocate(total_faces);
+
+  {
+    auto tag_uncut =
+        tf::make_offset_block_range(map_data.original_face_offsets, tag_labels);
+    auto face_uncut = tf::make_offset_block_range(
+        map_data.original_face_offsets, face_labels);
+    tbb::parallel_invoke(
+        [&] {
+          tf::parallel_fill(tag_uncut[0], Index(0));
+          tf::parallel_copy(map_data.original_face_ids[0], face_uncut[0]);
+        },
+        [&] {
+          tf::parallel_fill(tag_uncut[1], Index(1));
+          tf::parallel_copy(map_data.original_face_ids[1], face_uncut[1]);
+        },
+        [&] {
+          auto tri_off = map_data.total_original_faces;
+          tf::parallel_copy(tri_tags, tf::drop(tag_labels, tri_off));
+          tf::parallel_copy(tri_origins, tf::drop(face_labels, tri_off));
+        });
   }
 
   return std::make_tuple(

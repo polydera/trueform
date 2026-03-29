@@ -36,7 +36,7 @@ public:
     auto off_end = _tag_offsets[tag + 1];
     auto offsets_slice =
         tf::make_range(_intersections_offsets.begin() + off_begin,
-                        _intersections_offsets.begin() + off_end + 1);
+                       _intersections_offsets.begin() + off_end + 1);
     return tf::make_offset_block_range(offsets_slice, _intersections);
   }
 
@@ -62,18 +62,20 @@ public:
 protected:
   /// Sort intersections, compute group offsets by key(), and tag-level offsets.
   /// `n_tags` is the number of meshes.
-  auto finalize(Index n_ids, Index n_tags) {
-    if (n_ids == 0)
+  auto finalize(Index n_tags) {
+    Index n_ids = _intersection_points.size();
+    if (n_ids == 0) {
+      _tag_offsets.allocate(n_tags + 1);
+      std::fill(_tag_offsets.begin(), _tag_offsets.end(), Index(0));
       return;
+    }
     tbb::parallel_sort(_intersections.begin(), _intersections.end());
 
     // Group offsets by key() = (tag, object)
     _intersections_offsets.reserve(n_ids * 2 + 1);
-    tf::compute_offsets(_intersections,
-                        std::back_inserter(_intersections_offsets), Index(0),
-                        [](const auto &x0, const auto &x1) {
-                          return x0.key() == x1.key();
-                        });
+    tf::compute_offsets(
+        _intersections, std::back_inserter(_intersections_offsets), Index(0),
+        [](const auto &x0, const auto &x1) { return x0.key() == x1.key(); });
 
     // Tag-level offsets: _tag_offsets[i] = first group index where tag >= i
     auto n_groups = _intersections_offsets.size() - 1;

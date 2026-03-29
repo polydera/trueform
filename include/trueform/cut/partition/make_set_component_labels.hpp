@@ -18,8 +18,8 @@
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/array_hash.hpp"
 #include "../../core/hash_set.hpp"
+#include "../../core/polygons.hpp"
 #include "../../core/views/zip.hpp"
-#include "../../topology/policy/manifold_edge_link.hpp"
 #include "../../topology/set_component_labels.hpp"
 #include "./partition_labels.hpp"
 #include "tbb/parallel_sort.h"
@@ -31,12 +31,12 @@ namespace tf::cut {
 /// Merges cut face components connected through same-tag manifold edges,
 /// and detects open/closed sets. Used for classifying missing components
 /// (no intersection edges → point-in-mesh fallback).
-template <typename LabelType, typename Policy, typename Descriptors,
-          typename Connectivity, typename AllDescs>
+template <typename LabelType, typename Index, typename Policy,
+          typename Descriptors, typename Connectivity, typename AllDescs>
 auto make_set_component_labels(
     const tf::polygons<Policy> &polygons, const Descriptors &descriptors,
     const Connectivity &conn, const AllDescs &all_descs,
-    const tf::cut::partition_labels<LabelType> &pal) {
+    const tf::cut::partition_labels<LabelType> &pal, Index tag_offset) {
   tf::buffer<std::array<LabelType, 2>> ids;
   tf::buffer<LabelType> labels;
   labels.allocate(pal.polygon_labels.size());
@@ -55,7 +55,7 @@ auto make_set_component_labels(
           for (auto next : nexts) {
             if (d.tag != all_descs[next].tag)
               continue;
-            auto next_label = pal.cut_labels[next];
+            auto next_label = pal.cut_labels[next - tag_offset];
             if (next_label == -1)
               continue;
             std::array<LabelType, 2> pair{next_label, label};

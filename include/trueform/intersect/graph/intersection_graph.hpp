@@ -14,6 +14,7 @@
 
 #include "../../core/algorithm/block_reduce_sequenced_aggregate.hpp"
 #include "../../core/algorithm/circular_increment.hpp"
+#include "../../core/algorithm/generic_generate.hpp"
 #include "../../core/algorithm/make_equivalence_class_map.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/none.hpp"
@@ -64,7 +65,9 @@ public:
   auto edge_groups() const { return tf::make_range(_edge_defs); }
   auto tag_offsets() const { return tf::make_range(_tag_offsets); }
   auto point_remap() const { return tf::make_range(_point_remap); }
-  auto crossing_point_ids() const { return tf::make_range(_crossing_point_ids); }
+  auto crossing_point_ids() const {
+    return tf::make_range(_crossing_point_ids);
+  }
 
   auto clear() {
     _points.clear();
@@ -78,11 +81,18 @@ public:
   }
 
   /// Build loops, edges, canonicalize, and resolve crossings.
-  template <typename GetFace, typename GetMeshPoint>
+  /// apply_to_face(tag, object, f) calls f(face) with the face view.
+  template <typename ApplyToFace, typename GetMeshPoint>
   auto
   build(const tf::exact::tagged_intersections<Index, int32_t, 3> &intersections,
-        const GetFace &get_face, const GetMeshPoint &get_mesh_point) -> void {
+        const ApplyToFace &apply_to_face,
+        const GetMeshPoint &get_mesh_point) -> void {
     clear();
+
+    auto tag_offs = intersections.tag_offsets();
+    _tag_offsets.allocate(tag_offs.size());
+    tf::parallel_copy(tag_offs, tf::make_range(_tag_offsets));
+
     const auto &subranges = intersections.intersections();
     if (subranges.size() == 0)
       return;
@@ -95,21 +105,18 @@ public:
     auto get_flat_id = [&](const auto &rec) -> Index {
       return intersections.get_flat_index(rec);
     };
-    auto tag_offs = intersections.tag_offsets();
-    _tag_offsets.allocate(tag_offs.size());
-    tf::parallel_copy(tag_offs, tf::make_range(_tag_offsets));
-    build_loops(subranges, get_face, get_point, get_flat_id);
-    build_edges(subranges, get_face);
+    build_loops(subranges, apply_to_face, get_point, get_flat_id);
+    build_edges(subranges, apply_to_face);
     intersect::graph::canonicalize_edges(_edge_defs, _edges);
-    detect_and_split_crossings(ipts, get_face, get_point);
+    detect_and_split_crossings(ipts, apply_to_face, get_point);
   }
 
 private:
-  template <typename Subranges, typename GetFace, typename GetPoint,
+  template <typename Subranges, typename ApplyToFace, typename GetPoint,
             typename GetFlatId>
-  auto build_loops(const Subranges &subranges, const GetFace &get_face,
-                   const GetPoint &get_point, const GetFlatId &get_flat_id)
-      -> void {
+  auto build_loops(const Subranges &subranges,
+                   const ApplyToFace &apply_to_face, const GetPoint &get_point,
+                   const GetFlatId &get_flat_id) -> void {
     auto n = subranges.size();
     _loops.offsets_buffer().allocate(n + 1);
     _loops.offsets_buffer()[0] = 0;
@@ -124,7 +131,7 @@ private:
     };
 
     auto task = [&](auto &&range, local_t &local) {
-      auto get_face_f = get_face;
+      auto apply_to_face_f = apply_to_face;
       auto get_point_f = get_point;
       auto get_flat_id_f = get_flat_id;
       local.sizes.allocate(range.size());
@@ -133,9 +140,11 @@ private:
         auto old_size = local.data.size();
         auto tag = subrange[0].tag;
         auto object = subrange[0].object;
-        intersect::graph::extract_loop<Index>(subrange, get_face_f(tag, object),
-                                              tag, get_point_f, get_flat_id_f,
-                                              local.work, local.data);
+        apply_to_face_f(tag, object, [&](const auto &face) {
+          intersect::graph::extract_loop<Index>(subrange, face, tag,
+                                                get_point_f, get_flat_id_f,
+                                                local.work, local.data);
+        });
         local.descs.push_back({tag, object});
         *sit++ = static_cast<Index>(local.data.size() - old_size);
       }
@@ -155,9 +164,9 @@ private:
                                            agg);
   }
 
-  template <typename Subranges, typename GetFace>
-  auto build_edges(const Subranges &subranges, const GetFace &get_face)
-      -> void {
+  template <typename Subranges, typename ApplyToFace>
+  auto build_edges(const Subranges &subranges,
+                   const ApplyToFace &apply_to_face) -> void {
     auto n = subranges.size();
     _edges.offsets_buffer().allocate(n + 1);
     _edges.offsets_buffer()[0] = 0;
@@ -172,7 +181,7 @@ private:
     };
 
     auto task = [&](auto &&range, local_t &local) {
-      auto get_face_f = get_face;
+      auto apply_to_face_f = apply_to_face;
       local.counts.allocate(range.size());
       auto cit = local.counts.begin();
       for (const auto &subrange : range) {
@@ -180,9 +189,11 @@ private:
         if (subrange.size() != 0) {
           auto tag = subrange[0].tag;
           auto object = subrange[0].object;
-          auto face_size = get_face_f(tag, object).size();
-          local.extractor.extract(subrange, face_size, all_loops, subranges,
-                                  get_face_f, local.data);
+          apply_to_face_f(tag, object, [&](const auto &face) {
+            auto face_size = face.size();
+            local.extractor.extract(subrange, face_size, all_loops, subranges,
+                                    apply_to_face_f, local.data);
+          });
         }
         *cit++ = static_cast<Index>(local.data.size() - old_size);
       }
@@ -214,8 +225,9 @@ private:
                                            agg);
   }
 
-  template <typename IPoints, typename GetFace, typename GetPoint>
-  auto detect_and_split_crossings(const IPoints &ipts, const GetFace &get_face,
+  template <typename IPoints, typename ApplyToFace, typename GetPoint>
+  auto detect_and_split_crossings(const IPoints &ipts,
+                                  const ApplyToFace &apply_to_face,
                                   const GetPoint &get_point) -> void {
     if (_edges.size() == 0) {
       _points.allocate(ipts.size());
@@ -226,7 +238,7 @@ private:
     auto n_ipts = static_cast<Index>(ipts.size());
 
     auto records = intersect::graph::gather_crossing_records<Index>(
-        _edges, _edge_defs, get_face, get_point);
+        _edges, _edge_defs, apply_to_face, get_point);
     if (records.size() == 0) {
       _points.allocate(n_ipts);
       tf::parallel_copy(ipts, tf::make_range(_points));
@@ -242,6 +254,7 @@ private:
         ee_range, _edge_defs, get_point, crossing_points);
     auto crossing_base = n_ipts;
     ve_range = intersect::graph::dedup_ve(ve_range);
+
     tf::buffer<std::array<Index, 2>> merge_pairs;
     intersect::graph::collect_vv_pairs<Index>(vv_range, merge_pairs);
 
@@ -274,8 +287,8 @@ private:
     }
 
     _point_remap.allocate(total_size);
-    auto n_classes =
-        tf::make_dense_equivalence_class_map(merge_pairs, _point_remap);
+    auto n_classes = fix_collapsed_edge_chains(
+        tf::make_dense_equivalence_class_map(merge_pairs, _point_remap));
 
     auto all_coords =
         tf::make_mapped_range(tf::make_sequence_range(total_size),
@@ -359,6 +372,58 @@ private:
     std::sort(_crossing_point_ids.begin(), _crossing_point_ids.end());
     _crossing_point_ids.erase_till_end(
         std::unique(_crossing_point_ids.begin(), _crossing_point_ids.end()));
+  }
+
+  /// Fix collapsed zero-length edge chains after point remapping.
+  ///
+  /// When two intersection points land on the same int32 coordinate,
+  /// VV merging makes them share a remap class, turning their edge
+  /// into a self-loop. Transitive chains (A==B==C) make it worse.
+  /// Union-find groups collapsed endpoints; the representative keeps
+  /// its class, others get fresh classes so they become distinct
+  /// points again. 
+  auto fix_collapsed_edge_chains(Index n_classes) -> Index {
+    tf::buffer<std::array<Index, 2>> collapsed;
+    tf::generic_generate(
+        _edge_defs.data_buffer(), collapsed, [&](const auto &e, auto &out) {
+          if (_point_remap[e.point_0] == _point_remap[e.point_1])
+            out.push_back({std::min(e.point_0, e.point_1),
+                           std::max(e.point_0, e.point_1)});
+        });
+    if (collapsed.size() == 0)
+      return n_classes;
+    std::sort(collapsed.begin(), collapsed.end());
+    collapsed.erase_till_end(std::unique(collapsed.begin(), collapsed.end()));
+
+    // Union-find on collapsed edges (small set)
+    tf::buffer<Index> parent;
+    parent.allocate(_point_remap.size());
+    tf::parallel_fill(parent, -1);
+    auto find = [&](Index x) -> Index {
+      while (parent[x] != -1 && parent[x] != x) {
+        auto p = parent[x];
+        parent[x] = p;
+        x = p;
+      }
+      return x;
+    };
+    for (auto &e : collapsed) {
+      if (parent[e[0]] == Index(-1)) parent[e[0]] = e[0];
+      if (parent[e[1]] == Index(-1)) parent[e[1]] = e[1];
+      auto a = find(e[0]), b = find(e[1]);
+      if (a != b)
+        parent[std::max(a, b)] = std::min(a, b);
+    }
+
+    // Non-representatives get fresh classes
+    for (auto &e : collapsed)
+      for (auto id : e)
+        if (parent[id] != Index(-1) && find(id) != id) {
+          _point_remap[id] = n_classes++;
+          parent[id] = Index(-1);
+        }
+
+    return n_classes;
   }
 
   tf::points_buffer<int32_t, 3> _points;

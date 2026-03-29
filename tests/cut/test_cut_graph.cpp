@@ -70,15 +70,15 @@ void run_pipeline(
   ibp.build(forms, tf::intersect_mode::primitives);
 
   auto &conv = ibp.converter();
-  auto get_face = [&](int tag, int object) {
-    return forms[tag].faces()[object];
+  auto apply_to_face = [&](int tag, int object, const auto &f) {
+    f(forms[tag].faces()[object]);
   };
   auto get_mesh_point = [&](int tag, int id) -> tf::point<int32_t, 3> {
     return conv.convert(forms[tag].points()[id]);
   };
 
-  ig.build(ibp, get_face, get_mesh_point);
-  fc.build(ig, get_face, get_mesh_point);
+  ig.build(ibp, apply_to_face, get_mesh_point);
+  fc.build(ig, apply_to_face, get_mesh_point);
   cg.build(fc, int(ig.points().size()));
 }
 
@@ -319,8 +319,8 @@ auto run_box_pipeline(F0 &box0, F1 &box1) -> box_result {
   ibp.build(range, tf::intersect_mode::primitives);
 
   auto &conv = ibp.converter();
-  auto get_face = [&](int tag, int object) {
-    return range[tag].faces()[object];
+  auto apply_to_face = [&](int tag, int object, const auto &f) {
+    f(range[tag].faces()[object]);
   };
   auto get_mesh_point = [&](int tag, int id) -> tf::point<int32_t, 3> {
     return conv.convert(
@@ -328,8 +328,8 @@ auto run_box_pipeline(F0 &box0, F1 &box1) -> box_result {
   };
 
   box_result r;
-  r.ig.build(ibp, get_face, get_mesh_point);
-  r.fc.build(r.ig, get_face, get_mesh_point);
+  r.ig.build(ibp, apply_to_face, get_mesh_point);
+  r.fc.build(r.ig, apply_to_face, get_mesh_point);
   r.cg.build(r.fc, int(r.ig.points().size()));
 
   auto ie = r.cg.intersection_edges();

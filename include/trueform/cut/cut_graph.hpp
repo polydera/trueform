@@ -53,6 +53,7 @@ public:
                                        _connectivity);
   }
   auto coplanar_pairs() const { return tf::make_range(_coplanar_pairs); }
+  auto coplanar_mask() const { return tf::make_range(_coplanar_mask); }
 
   auto intersection_edges() const {
     return tf::make_range(_intersection_edges);
@@ -75,6 +76,7 @@ public:
     _fm.clear();
     _connectivity.clear();
     _coplanar_pairs.clear();
+    _coplanar_mask.clear();
     _intersection_edges.clear();
     _ie_set.clear();
   }
@@ -175,19 +177,18 @@ private:
     auto flat_loops = tf::make_offset_block_range(
         fc.loops_buffer().offsets_buffer(), tf::make_range(_flat_data));
 
-    tf::buffer<bool> is_coplanar;
-    is_coplanar.allocate(flat_loops.size());
-    tf::parallel_fill(is_coplanar, false);
+    _coplanar_mask.allocate(flat_loops.size());
+    tf::parallel_fill(_coplanar_mask, false);
     tf::parallel_for_each(_coplanar_pairs, [&](const auto &p) {
-      is_coplanar[p.loop_a] = true;
-      is_coplanar[p.loop_b] = true;
+      _coplanar_mask[p.loop_a] = true;
+      _coplanar_mask[p.loop_b] = true;
     });
 
     tf::generic_generate(tf::enumerate(tf::zip(flat_loops, conn)),
                          _intersection_edges, [&](const auto &item, auto &out) {
                            auto &&[li, tup] = item;
                            auto &&[loop, edge_neighbors] = tup;
-                           if (is_coplanar[li])
+                           if (_coplanar_mask[li])
                              return;
                            auto my_tag = descs[li].tag;
                            auto n = loop.size();
@@ -220,6 +221,7 @@ private:
   tf::face_membership<Index> _fm;
   tf::offset_block_buffer<Index, Index> _connectivity;
   tf::buffer<coplanar_pair> _coplanar_pairs;
+  tf::buffer<bool> _coplanar_mask;
   tf::buffer<std::array<Index, 2>> _intersection_edges;
   tf::hash_set<std::array<Index, 2>, tf::array_hash<Index, 2>> _ie_set;
 };

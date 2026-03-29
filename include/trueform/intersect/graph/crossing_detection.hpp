@@ -157,11 +157,11 @@ auto detect_crossings_tree(
 /// _edges stores instance indices into _edge_defs.data_buffer().
 /// Each instance carries its own (tag, tag_other) for correct triple
 /// construction even with duplicate triangles.
-template <typename Index, typename GetFace, typename GetPoint>
+template <typename Index, typename ApplyToFace, typename GetPoint>
 auto gather_crossing_records(
     const tf::offset_block_buffer<Index, Index> &edges,
     const tf::offset_block_buffer<Index, edge<Index>> &edge_defs,
-    const GetFace &get_face, const GetPoint &get_point)
+    const ApplyToFace &apply_to_face, const GetPoint &get_point)
     -> tf::buffer<crossing_record<Index>> {
   struct local_t {
     tf::buffer<crossing_record<Index>> records;
@@ -175,27 +175,28 @@ auto gather_crossing_records(
 
   auto task = [&](auto &&range, local_t &local) {
     auto get_point_f = get_point;
-    auto get_face_f = get_face;
+    auto apply_to_face_f = apply_to_face;
     for (const auto &face_edges : range) {
       auto k = face_edges.size();
       if (k < 2)
         continue;
       // Instance index → edge instance → face polygon for projection axes
       auto &&inst = edge_data[face_edges[0]];
-      auto face = get_face_f(inst.tag, inst.object);
-      auto fp0 = get_point_f(inst.tag, face[0]);
-      auto fp1 = get_point_f(inst.tag, face[1]);
-      auto fp2 = get_point_f(inst.tag, face[2]);
-      auto [ax0, ax1] = tf::exact::projection_axes(fp0, fp1, fp2);
+      apply_to_face_f(inst.tag, inst.object, [&](const auto &face) {
+        auto fp0 = get_point_f(inst.tag, face[0]);
+        auto fp1 = get_point_f(inst.tag, face[1]);
+        auto fp2 = get_point_f(inst.tag, face[2]);
+        auto [ax0, ax1] = tf::exact::projection_axes(fp0, fp1, fp2);
 
-      if (k <= 8)
-        detect_crossings_brute<Index>(face_edges.begin(), k, edge_data, ax0,
-                                      ax1, get_point_f, local.records);
-      else
-        detect_crossings_tree<Index>(face_edges.begin(), k, edge_data, ax0,
-                                     ax1, get_point_f, local.records,
-                                     local.pts_2d, local.edge_pairs,
-                                     local.tree);
+        if (k <= 8)
+          detect_crossings_brute<Index>(face_edges.begin(), k, edge_data, ax0,
+                                        ax1, get_point_f, local.records);
+        else
+          detect_crossings_tree<Index>(face_edges.begin(), k, edge_data, ax0,
+                                       ax1, get_point_f, local.records,
+                                       local.pts_2d, local.edge_pairs,
+                                       local.tree);
+      });
     }
   };
 

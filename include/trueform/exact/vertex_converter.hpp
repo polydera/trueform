@@ -45,12 +45,24 @@ template <typename RealT, std::size_t Dims> struct vertex_converter {
   }
 };
 
+template <typename RealT = tf::none_t, typename Policy>
+auto make_vertex_converter(const tf::polygons<Policy> &form) {
+  if constexpr (std::is_same_v<RealT, tf::none_t>) {
+    return make_vertex_converter<tf::coordinate_type<Policy>>(form);
+  } else {
+    constexpr auto Dims = tf::coordinate_dims_v<Policy>;
+    auto conv = make_pt_converter<RealT>(form);
+    return vertex_converter<RealT, Dims>{
+        conv, {0, static_cast<int>(form.points().size())}};
+  }
+}
+
 template <typename RealT = tf::none_t, typename Policy0, typename Policy1>
 auto make_vertex_converter(const tf::polygons<Policy0> &form0,
                            const tf::polygons<Policy1> &form1) {
   if constexpr (std::is_same_v<RealT, tf::none_t>) {
     return make_vertex_converter<tf::coordinate_type<Policy0, Policy1>>(form0,
-                                                                       form1);
+                                                                        form1);
   } else {
     constexpr auto Dims = tf::coordinate_dims_v<Policy0>;
     auto conv = make_pt_converter<RealT>(form0, form1);

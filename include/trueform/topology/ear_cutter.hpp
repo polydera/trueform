@@ -595,6 +595,7 @@ private:
     if (has_run(pv)) {
       emit_fan(N, P, pv);
       emit_triangle(N, _removed[pv.run_last].pt_id, V);
+      pv.run_first = pv.run_last = Index(-1);
       pv.next = nv.id;
       nv.prev = pv.id;
       return;
@@ -602,6 +603,7 @@ private:
     if (has_run(v)) {
       emit_fan(P, V, v);
       emit_triangle(P, _removed[v.run_last].pt_id, N);
+      v.run_first = v.run_last = Index(-1);
       pv.next = nv.id;
       nv.prev = pv.id;
       return;
@@ -609,6 +611,7 @@ private:
     if (has_run(nv)) {
       emit_fan(V, N, nv);
       emit_triangle(V, _removed[nv.run_last].pt_id, P);
+      nv.run_first = nv.run_last = Index(-1);
       pv.next = nv.id;
       nv.prev = pv.id;
       return;
@@ -808,12 +811,10 @@ private:
     if (a.prev != a.next)
       return; // more than 2 nodes, nothing to do
     auto &b = _nodes[a.next];
-    if (has_run(a)) {
+    if (has_run(a))
       emit_fan(b.pt_id, a.pt_id, a);
-    }
-    if (has_run(b)) {
+    if (has_run(b))
       emit_fan(a.pt_id, b.pt_id, b);
-    }
   }
 
   /// Entry point: resolve shards first, then earcut.
@@ -824,7 +825,7 @@ private:
 
     Index clean = resolve_shards(pts, start);
     if (clean == Index(-1))
-      return true; // shards recursed into triangulate
+      return true;
 
     if (_nodes[clean].next == clean || _nodes[_nodes[clean].next].next == clean)
       return true;

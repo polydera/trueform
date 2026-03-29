@@ -39,7 +39,7 @@ namespace tf::cut {
 /// are flood-filled through manifold_edge_link.
 template <typename Index, typename LabelType, typename Policy,
           typename Descriptors>
-auto make_surface_component_labels(const tf::polygons<Policy> &polygons,
+auto make_surface_component_labels2(const tf::polygons<Policy> &polygons,
                                    const Descriptors &descriptors,
                                    Index expected_components = 2) {
   static_assert(tf::has_manifold_edge_link_policy<Policy>,
@@ -63,22 +63,32 @@ auto make_surface_component_labels(const tf::polygons<Policy> &polygons,
 /// Walks through cut_graph connectivity, not crossing intersection edges.
 /// Takes pre-sliced loops and connectivity for a single tag.
 template <typename LabelType, typename Index, typename Loops,
-          typename Connectivity>
+          typename Connectivity, typename Descs>
 auto make_cut_component_labels(const Loops &loops, const Connectivity &conn,
-                               const tf::cut_graph<Index> &cg) {
+                               const tf::cut_graph<Index> &cg,
+                               const Descs &descs) {
   tf::connected_component_labels<LabelType> cl;
   cl.labels.allocate(loops.size());
   cl.n_components = tf::label_connected_components<Index>(
       cl.labels, [&](Index id, const auto &f) {
         auto loop = loops[id];
         auto edge_conn = conn[id];
+        auto my_tag = descs[id].tag;
         auto size = loop.size();
         auto prev = size - 1;
         for (decltype(size) i = 0; i < size; prev = i++) {
-          if (cg.is_intersection_edge(loop[prev], loop[i]) ||
-              edge_conn[prev].size() != 1)
+          if (cg.is_intersection_edge(loop[prev], loop[i]))
             continue;
-          f(edge_conn[prev].front());
+          auto same_tag_count = 0;
+          Index same_tag_neighbor = -1;
+          for (auto nid : edge_conn[prev]) {
+            if (descs[nid].tag == my_tag) {
+              same_tag_count++;
+              same_tag_neighbor = nid;
+            }
+          }
+          if (same_tag_count == 1)
+            f(same_tag_neighbor);
         }
       });
   return cl;
@@ -91,7 +101,8 @@ auto make_cut_component_labels(const tf::face_cuts<Index> &fc,
                                const tf::cut_graph<Index> &cg) {
   auto loops = fc.loops();
   auto conn = cg.connectivity_per_face_edge(fc);
-  auto cl = make_cut_component_labels<LabelType, Index>(loops, conn, cg);
+  auto descs = fc.descriptors();
+  auto cl = make_cut_component_labels<LabelType, Index>(loops, conn, cg, descs);
 
   auto per_tag = tf::make_offset_block_range(fc.tag_offsets(), cl.labels);
 
@@ -197,11 +208,11 @@ auto make_partition_labels(const tf::polygons<Policy0> &form0,
   tbb::parallel_invoke(
       [&] { cut_cls = make_cut_component_labels<LabelType>(fc, cg); },
       [&] {
-        sc0 = make_surface_component_labels<Index, LabelType>(form0,
+        sc0 = make_surface_component_labels2<Index, LabelType>(form0,
                                                               descs_per_tag[0]);
       },
       [&] {
-        sc1 = make_surface_component_labels<Index, LabelType>(form1,
+        sc1 = make_surface_component_labels2<Index, LabelType>(form1,
                                                               descs_per_tag[1]);
       });
 
@@ -244,7 +255,7 @@ auto make_partition_labels(tf::range<Iterator, N> forms,
   tg.run([&] { cut_cls = make_cut_component_labels<LabelType>(fc, cg); });
   for (std::size_t t = 0; t < n_tags; ++t)
     tg.run([&, t] {
-      scs[t] = make_surface_component_labels<Index, LabelType>(
+      scs[t] = make_surface_component_labels2<Index, LabelType>(
           forms[t], descs_per_tag[t]);
     });
   tg.wait();
