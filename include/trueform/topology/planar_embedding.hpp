@@ -48,6 +48,10 @@ public:
     }
   }
 
+  template <typename Policy> auto build(const tf::segments<Policy> &segments) {
+    return build(segments.edges(), segments.points());
+  }
+
   auto faces() const { return tf::make_indirect_range(_faces, _pgr); }
   auto holes() const { return tf::make_indirect_range(_holes, _pgr); }
 
@@ -77,8 +81,7 @@ private:
     for (auto [i, region] : tf::enumerate(_pgr)) {
       if (region.size() < 3)
         continue;
-      auto sign = tf::exact::signed_area_sign(
-          tf::make_polygon(region, points));
+      auto sign = tf::exact::signed_area_sign(tf::make_polygon(region, points));
       if (sign > 0)
         _faces.push_back(Index(i));
       else

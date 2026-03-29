@@ -50,5 +50,4 @@
 #include "./cut/make_isobands.hpp"                     // IWYU pragma: export
 #include "./cut/make_mesh_arrangements.hpp"            // IWYU pragma: export
 #include "./cut/make_polygon_arrangements.hpp"         // IWYU pragma: export
-#include "./cut/planar_arrangements.hpp"               // IWYU pragma: export
-#include "./cut/planar_overlay.hpp"                    // IWYU pragma: export
+#include "./cut/make_segment_arrangements.hpp"         // IWYU pragma: export

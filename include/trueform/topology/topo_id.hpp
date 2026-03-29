@@ -30,6 +30,10 @@ template <typename Index> struct topo_id {
   friend auto operator==(const topo_id &a, const topo_id &b) -> bool {
     return std::make_pair(a.label, a.id) == std::make_pair(b.label, b.id);
   }
+
+  friend auto operator!=(const topo_id &a, const topo_id &b) -> bool {
+    return !(a == b);
+  }
 };
 
 } // namespace tf

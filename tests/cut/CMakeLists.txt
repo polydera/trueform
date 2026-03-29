@@ -7,6 +7,7 @@ add_executable(trueform_cut_tests
   test_face_cutter.cpp
   test_face_cuts.cpp
   test_mesh_arrangements.cpp
+  test_segment_arrangements.cpp
   test_self_arrangements.cpp
 )
 

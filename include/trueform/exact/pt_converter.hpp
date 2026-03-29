@@ -96,6 +96,18 @@ auto make_pt_converter(const tf::polygons<Policy> &form) {
   return make_pt_converter<RealT>(make_aabb(form));
 }
 
+template <typename RealT = tf::none_t, typename Policy>
+auto make_pt_converter(const tf::segments<Policy> &form) {
+  auto make_aabb = [](const auto &form) {
+    using P = std::decay_t<decltype(form)>;
+    if constexpr (tf::has_tree_policy<P>)
+      return tf::transformed(tf::aabb_from(form.tree()), tf::frame_of(form));
+    else
+      return tf::transformed(tf::aabb_from(form.points()), tf::frame_of(form));
+  };
+  return make_pt_converter<RealT>(make_aabb(form));
+}
+
 template <typename RealT = tf::none_t, typename Policy0, typename Policy1>
 auto make_pt_converter(const tf::polygons<Policy0> &form0,
                        const tf::polygons<Policy1> &form1) {

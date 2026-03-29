@@ -13,16 +13,16 @@
 #pragma once
 #include "../../core/buffer.hpp"
 #include "../../topology/edge_membership_like.hpp"
-#include "../types/intersection.hpp"
+#include "./intersection.hpp"
 
 namespace tf::intersect {
 
 namespace detail {
-template <typename Index, typename Policy>
+template <typename Index, typename Policy, typename Edges>
 auto duplicate_intersection1(
-    intersect::intersection<Index> i,
-    const tf::edge_membership_like<Policy> &em,
-    tf::buffer<intersect::intersection<Index>> &buffer) {
+    tf::intersect::intersection<Index> i,
+    const tf::edge_membership_like<Policy> &em, const Edges &edges,
+    tf::buffer<tf::intersect::intersection<Index>> &buffer) {
   auto push_f = [&](auto i) {
     buffer.push_back(i);
     std::swap(i.target, i.target_other);
@@ -32,24 +32,27 @@ auto duplicate_intersection1(
   if (i.target_other.label == tf::topo_type::edge) {
     push_f(i);
   } else if (i.target_other.label == tf::topo_type::vertex) {
-    for (auto edge_id1 : em[i.target_other.id]) {
+    auto vid = Index(edges[i.object_other][i.target_other.id]);
+    for (auto edge_id1 : em[vid]) {
       i.object_other = edge_id1;
       push_f(i);
     }
   }
 }
 } // namespace detail
-template <typename Index, typename Policy>
+
+template <typename Index, typename Policy, typename Edges>
 auto duplicate_intersection(
-    intersect::intersection<Index> i,
-    const tf::edge_membership_like<Policy> &em,
-    tf::buffer<intersect::intersection<Index>> &buffer) {
+    tf::intersect::intersection<Index> i,
+    const tf::edge_membership_like<Policy> &em, const Edges &edges,
+    tf::buffer<tf::intersect::intersection<Index>> &buffer) {
   if (i.target.label == tf::topo_type::edge) {
-    detail::duplicate_intersection1(i, em, buffer);
+    detail::duplicate_intersection1(i, em, edges, buffer);
   } else if (i.target.label == tf::topo_type::vertex) {
-    for (auto edge_id0 : em[i.target.id]) {
+    auto vid = Index(edges[i.object][i.target.id]);
+    for (auto edge_id0 : em[vid]) {
       i.object = edge_id0;
-      detail::duplicate_intersection1(i, em, buffer);
+      detail::duplicate_intersection1(i, em, edges, buffer);
     }
   }
 }

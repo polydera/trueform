@@ -176,7 +176,7 @@ auto make_classification_counts(
   // Classify missing components (no intersection edges)
   classify_missing<Index, LabelType>(
       counts0, counts1, polygons0, polygons1, pal0, pal1, fc, cg,
-      config.everything_is_outside_of_an_open_mesh, get_created_point);
+      config.support_multi_nesting, get_created_point);
 
   return std::make_tuple(std::move(pal0), std::move(pal1), std::move(counts0),
                          std::move(counts1));

@@ -63,6 +63,8 @@ auto expand_other(const Faces &faces, const FE &fe, const MEL &mel,
   } else if (rec.target_other.label == tf::topo_type::vertex) {
     Index vid = faces[rec.object_other][rec.target_other.id];
     for (auto face_id : fe[vid]) {
+      if (face_id == rec.object)
+        continue;
       auto n = rec;
       n.object_other = face_id;
       n.target_other.id = tf::vertex_id_in_face<Index>(vid, faces[face_id]);
@@ -134,6 +136,8 @@ auto duplicate_intersection(const Faces0 &faces0, const FE0 &fe0,
   } else if (rec.target.label == tf::topo_type::vertex) {
     Index vid = faces0[rec.object][rec.target.id];
     for (auto face_id : fe0[vid]) {
+      if (face_id == rec.object_other)
+        continue;
       auto n = rec;
       n.object = face_id;
       n.target.id = tf::vertex_id_in_face<Index>(vid, faces0[face_id]);

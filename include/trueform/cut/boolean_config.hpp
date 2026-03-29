@@ -17,11 +17,12 @@ namespace tf {
 /// @ingroup cut_boolean
 /// @brief Configuration for boolean operations.
 struct boolean_config {
-  /// When true, uses ray-based containment through joint components
-  /// where open mesh components are treated as outside.
-  /// When false, uses pseudonormal signed distance.
-  /// Default: false.
-  bool everything_is_outside_of_an_open_mesh = false;
+  /// When true, uses ray-based containment to correctly classify
+  /// multi-nested geometry (e.g., a shell inside another shell).
+  /// Open mesh components are treated as having no interior.
+  /// When false, uses signed distance to the nearest surface —
+  /// faster but only sees the closest component.
+  bool support_multi_nesting = true;
 };
 
 } // namespace tf
