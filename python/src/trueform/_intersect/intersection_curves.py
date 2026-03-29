@@ -8,82 +8,81 @@ https://github.com/polydera/trueform
 """
 
 import numpy as np
-from typing import Tuple
+from typing import Tuple, Union, List
 from .. import _trueform
 from .._spatial import Mesh
 from .._core import OffsetBlockedArray
-from .._dispatch import extract_meta, build_suffix_pair, canonicalize_index_order
+from .._dispatch import extract_meta, build_suffix, build_suffix_pair, canonicalize_index_order
+
+_MODE_MAP = {"sos": 0, "primitives": 1}
 
 
 def intersection_curves(
-    mesh0: Mesh,
-    mesh1: Mesh
+    meshes_or_mesh0: Union[Mesh, List[Mesh]],
+    mesh1: Mesh = None,
+    *,
+    mode: str = "sos"
 ) -> Tuple[OffsetBlockedArray, np.ndarray]:
     """
-    Compute intersection curves between two 3D meshes.
+    Compute intersection curves between meshes.
 
-    Finds the curves where two meshes intersect in 3D space.
-    Returns paths (as indices into points) and the curve point coordinates.
+    Accepts either two meshes or a list of meshes. For two meshes, finds
+    the curves where they intersect. For a list, finds all pairwise
+    intersection curves.
 
     Parameters
     ----------
-    mesh0 : Mesh
-        First 3D mesh with topology
-    mesh1 : Mesh
-        Second 3D mesh with topology
-        Must have same real dtype (float32 or float64) as mesh0
+    meshes_or_mesh0 : Mesh or list of Mesh
+        Either the first mesh (when mesh1 is provided), or a list of
+        2+ meshes for N-mesh intersection.
+    mesh1 : Mesh, optional
+        Second mesh. Required when meshes_or_mesh0 is a single Mesh.
+    mode : str, default "sos"
+        Intersection mode. "sos" = SoS (fast), "primitives" = handles
+        shared edges/vertices.
 
     Returns
     -------
     paths : OffsetBlockedArray
         Paths as indices into the points array. Each path is one curve.
-        Iterate over paths to get individual curves: `for path_ids in paths: ...`
     points : np.ndarray
-        Curve point coordinates with shape (N, 3)
-        Access curve points via: `curve_points = points[paths[i]]`
-
-    Raises
-    ------
-    ValueError
-        If meshes are not 3D
-        If meshes have different real dtypes
-    TypeError
-        If inputs are not Mesh objects
+        Curve point coordinates with shape (N, 3).
 
     Examples
     --------
     >>> import trueform as tf
-    >>> import numpy as np
-    >>> # Create two intersecting meshes
-    >>> faces1, points1 = tf.read_stl("mesh1.stl")
-    >>> faces2, points2 = tf.read_stl("mesh2.stl")
-    >>> mesh1 = tf.Mesh(faces1, points1)
-    >>> mesh2 = tf.Mesh(faces2, points2)
-    >>>
-    >>> # Compute intersection curves
-    >>> paths, points = tf.intersection_curves(mesh1, mesh2)
-    >>> print(f"Found {len(paths)} curve(s)")
-    >>>
-    >>> # Iterate over curves
-    >>> for path_ids in paths:
-    ...     curve_points = points[path_ids]
-    ...     # Process curve (e.g., plot, analyze, etc.)
+    >>> # Two-mesh intersection
+    >>> paths, points = tf.intersection_curves(mesh0, mesh1)
+    >>> # N-mesh intersection
+    >>> paths, points = tf.intersection_curves([mesh0, mesh1, mesh2])
+    >>> # With primitives mode
+    >>> paths, points = tf.intersection_curves(mesh0, mesh1, mode="primitives")
     """
 
-    # 1. VALIDATE INPUTS ARE MESH OBJECTS
+    if mode not in _MODE_MAP:
+        raise ValueError(f"mode must be 'sos' or 'primitives', got '{mode}'")
+
+    if isinstance(meshes_or_mesh0, (list, tuple)):
+        return _intersection_curves_list(meshes_or_mesh0, mode=_MODE_MAP[mode])
+    else:
+        if mesh1 is None:
+            raise ValueError(
+                "intersection_curves requires either two meshes or a list of meshes"
+            )
+        return _intersection_curves_pair(meshes_or_mesh0, mesh1, mode=_MODE_MAP[mode])
+
+
+def _intersection_curves_pair(mesh0: Mesh, mesh1: Mesh, *, mode: int) -> Tuple[OffsetBlockedArray, np.ndarray]:
     if not isinstance(mesh0, Mesh):
         raise TypeError(
             f"mesh0 must be a Mesh object, got {type(mesh0).__name__}. "
             f"Topology information is required for intersection curves."
         )
-
     if not isinstance(mesh1, Mesh):
         raise TypeError(
             f"mesh1 must be a Mesh object, got {type(mesh1).__name__}. "
             f"Topology information is required for intersection curves."
         )
-
-    # 2. VALIDATE BOTH ARE 3D
     if mesh0.dims != 3:
         raise ValueError(
             f"intersection_curves only supports 3D meshes, got mesh0 with {mesh0.dims}D"
@@ -92,31 +91,58 @@ def intersection_curves(
         raise ValueError(
             f"intersection_curves only supports 3D meshes, got mesh1 with {mesh1.dims}D"
         )
-
-    # 3. VALIDATE REAL DTYPES MATCH
     if mesh0.dtype != mesh1.dtype:
         raise ValueError(
             f"Mesh dtypes must match: mesh0 has {mesh0.dtype}, mesh1 has {mesh1.dtype}. "
             f"Convert both meshes to the same dtype (float32 or float64)."
         )
 
-    # 4. HANDLE INDEX TYPE SYMMETRY
-    # C++ only implements: int×int, int×int64, int64×int64
-    # If we have int64×int, swap to int×int64
     mesh0, mesh1, _ = canonicalize_index_order(mesh0, mesh1)
-
-    # 5. BUILD SUFFIX FOR C++ FUNCTION
     meta0 = extract_meta(mesh0)
     meta1 = extract_meta(mesh1)
     suffix = build_suffix_pair(meta0, meta1)
 
-    # 6. DISPATCH TO C++
     func_name = f"intersection_curves_mesh_mesh_{suffix}"
     (paths_offsets, paths_data), points = getattr(_trueform.intersect, func_name)(
-        mesh0._wrapper, mesh1._wrapper
+        mesh0._wrapper, mesh1._wrapper, mode
     )
+    return OffsetBlockedArray(paths_offsets, paths_data), points
 
-    # 7. WRAP PATHS IN OffsetBlockedArray
-    paths = OffsetBlockedArray(paths_offsets, paths_data)
 
-    return paths, points
+def _intersection_curves_list(meshes: list, *, mode: int) -> Tuple[OffsetBlockedArray, np.ndarray]:
+    if len(meshes) < 2:
+        raise ValueError("intersection_curves requires at least 2 meshes")
+
+    for i, m in enumerate(meshes):
+        if not isinstance(m, Mesh):
+            raise TypeError(f"meshes[{i}] must be a Mesh object, got {type(m).__name__}")
+        if m.dims != 3:
+            raise ValueError(f"meshes[{i}] must be 3D, got {m.dims}D")
+
+    meta0 = extract_meta(meshes[0])
+    for i, m in enumerate(meshes[1:], 1):
+        mi = extract_meta(m)
+        if mi.real_dtype != meta0.real_dtype:
+            raise ValueError(
+                f"All meshes must have same real dtype: meshes[0] has {meta0.real_dtype}, "
+                f"meshes[{i}] has {mi.real_dtype}"
+            )
+        if mi.index_dtype != meta0.index_dtype:
+            raise ValueError(
+                f"All meshes must have same index dtype: meshes[0] has {meta0.index_dtype}, "
+                f"meshes[{i}] has {mi.index_dtype}"
+            )
+        if mi.ngon != meta0.ngon:
+            raise ValueError(
+                f"All meshes must have same ngon: meshes[0] has {meta0.ngon}, "
+                f"meshes[{i}] has {mi.ngon}"
+            )
+
+    suffix = build_suffix(meta0)
+    wrappers = [m._wrapper for m in meshes]
+
+    func_name = f"intersection_curves_list_{suffix}"
+    (paths_offsets, paths_data), points = getattr(_trueform.intersect, func_name)(
+        wrappers, mode
+    )
+    return OffsetBlockedArray(paths_offsets, paths_data), points

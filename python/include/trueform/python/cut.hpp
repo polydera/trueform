@@ -22,6 +22,7 @@ auto register_cut_boolean(nanobind::module_ &m) -> void;
 auto register_cut_embedded_self_intersection_curves(nanobind::module_ &m) -> void;
 auto register_cut_embedded_intersection_curves(nanobind::module_ &m) -> void;
 auto register_cut_mesh_arrangements(nanobind::module_ &m) -> void;
+auto register_cut_polygon_arrangement(nanobind::module_ &m) -> void;
 
 auto register_cut(nanobind::module_ &m) -> void;
 

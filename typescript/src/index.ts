@@ -76,16 +76,18 @@ export {
   booleanUnion, booleanIntersection, booleanDifference,
   isobands,
   embeddedIntersectionCurves, embeddedSelfIntersectionCurves,
-  meshArrangements,
+  meshArrangements, polygonArrangements,
 } from "./cut/sync";
 
 // Intersect operations
 export { intersectionCurves, selfIntersectionCurves, isocontours } from "./intersect/sync";
+export type { IntersectMode, IntersectionCurvesOpts } from "./intersect/sync";
 export type {
   LabeledCutResult, LabeledCutResultWithCurves,
   IsobandsResult, IsobandsResultWithCurves,
   CutResultWithCurves,
   MeshArrangementResult, MeshArrangementResultWithCurves,
+  PolygonArrangementResult, PolygonArrangementResultWithCurves,
 } from "./cut/sync";
 
 // Spatial queries

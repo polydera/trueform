@@ -92,13 +92,16 @@ def test_intersection_curves_basic(index_dtype0, index_dtype1, real_dtype, mesh_
     """Test basic intersection between two perpendicular planes"""
     # Create horizontal plane at z=0.5
     if mesh_type0 == 'triangle':
-        mesh0 = create_horizontal_plane_triangles(index_dtype0, real_dtype, z=0.5)
+        mesh0 = create_horizontal_plane_triangles(
+            index_dtype0, real_dtype, z=0.5)
     else:
-        mesh0 = create_horizontal_plane_dynamic(index_dtype0, real_dtype, z=0.5)
+        mesh0 = create_horizontal_plane_dynamic(
+            index_dtype0, real_dtype, z=0.5)
 
     # Create vertical plane at x=0.5
     if mesh_type1 == 'triangle':
-        mesh1 = create_vertical_plane_triangles(index_dtype1, real_dtype, x=0.5)
+        mesh1 = create_vertical_plane_triangles(
+            index_dtype1, real_dtype, x=0.5)
     else:
         mesh1 = create_vertical_plane_dynamic(index_dtype1, real_dtype, x=0.5)
 
@@ -106,7 +109,8 @@ def test_intersection_curves_basic(index_dtype0, index_dtype1, real_dtype, mesh_
     paths, points = tf.intersection_curves(mesh0, mesh1)
 
     # Verify return types
-    assert isinstance(paths, tf.OffsetBlockedArray), "paths should be OffsetBlockedArray"
+    assert isinstance(
+        paths, tf.OffsetBlockedArray), "paths should be OffsetBlockedArray"
     assert isinstance(points, np.ndarray), "points should be numpy array"
 
     # Verify points shape
@@ -117,7 +121,8 @@ def test_intersection_curves_basic(index_dtype0, index_dtype1, real_dtype, mesh_
     # Verify path indices are valid
     for path_ids in paths:
         assert np.all(path_ids >= 0), "Path indices should be non-negative"
-        assert np.all(path_ids < len(points)), f"Path indices should be < {len(points)}"
+        assert np.all(path_ids < len(points)
+                      ), f"Path indices should be < {len(points)}"
 
 
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
@@ -152,8 +157,8 @@ def test_intersection_curves_symmetry(index_dtype, real_dtype):
     mesh1 = create_vertical_plane_triangles(index_dtype, real_dtype, x=0.5)
 
     # Compute both orders
-    paths01, points01 = tf.intersection_curves(mesh0, mesh1)
-    paths10, points10 = tf.intersection_curves(mesh1, mesh0)
+    paths01, points01 = tf.intersection_curves(mesh0, mesh1, mode="primitives")
+    paths10, points10 = tf.intersection_curves(mesh1, mesh0, mode="primitives")
 
     # Both should produce valid results
     assert isinstance(paths01, tf.OffsetBlockedArray)
@@ -162,7 +167,8 @@ def test_intersection_curves_symmetry(index_dtype, real_dtype):
     assert isinstance(points10, np.ndarray)
 
     # Point counts should match
-    assert len(points01) == len(points10), "Should have same number of curve points"
+    assert len(points01) == len(
+        points10), "Should have same number of curve points"
 
 
 # ==============================================================================
@@ -255,8 +261,10 @@ def test_intersection_curves_with_transformation(real_dtype):
     # Should still find intersection curves
     paths, points = tf.intersection_curves(mesh0, mesh1)
 
-    assert isinstance(paths, tf.OffsetBlockedArray), "Should return OffsetBlockedArray"
-    assert isinstance(points, np.ndarray), "Should return numpy array for points"
+    assert isinstance(
+        paths, tf.OffsetBlockedArray), "Should return OffsetBlockedArray"
+    assert isinstance(
+        points, np.ndarray), "Should return numpy array for points"
     assert points.dtype == real_dtype, "Points dtype should match mesh dtype"
 
 

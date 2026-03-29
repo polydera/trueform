@@ -15,8 +15,13 @@ from .._core import OffsetBlockedArray
 from .._dispatch import InputMeta, build_suffix
 
 
+_MODE_MAP = {"sos": 0, "primitives": 1}
+
+
 def self_intersection_curves(
-    mesh: Mesh
+    mesh: Mesh,
+    *,
+    mode: str = "sos"
 ) -> Tuple[OffsetBlockedArray, np.ndarray]:
     """
     Find self-intersection curves within a 3D mesh.
@@ -80,10 +85,14 @@ def self_intersection_curves(
     meta = InputMeta(mesh.faces.dtype, mesh.dtype, ngon, 3)
     suffix = build_suffix(meta)
 
-    # 4. DISPATCH TO C++
+    # 4. VALIDATE MODE
+    if mode not in _MODE_MAP:
+        raise ValueError(f"mode must be 'sos' or 'primitives', got '{mode}'")
+
+    # 5. DISPATCH TO C++
     func_name = f"self_intersection_curves_mesh_{suffix}"
     (paths_offsets, paths_data), points = getattr(_trueform.intersect, func_name)(
-        mesh._wrapper
+        mesh._wrapper, _MODE_MAP[mode]
     )
 
     # 5. WRAP PATHS IN OffsetBlockedArray

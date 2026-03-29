@@ -208,3 +208,65 @@ describe("Embedded curves", () => {
   });
 
 });
+
+describe("Mesh arrangements", () => {
+
+  test("meshArrangements([m0, m1])", () => {
+    const { tf, s0, s1 } = twoSpheres();
+    const result = tf.meshArrangements([s0, s1]);
+
+    assert(result.mesh.numberOfFaces > 0, "has faces");
+    assert(result.tagLabels.length === result.mesh.numberOfFaces, "tagLabels match");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log(`  meshArrangements: ${result.mesh.numberOfFaces} faces`, "line-pass");
+
+    result.faceLabels.delete(); result.tagLabels.delete(); result.mesh.delete();
+    s1.delete(); s0.delete();
+  });
+
+  test("meshArrangements with curves", () => {
+    const { tf, s0, s1 } = twoSpheres();
+    const result = tf.meshArrangements([s0, s1], { returnCurves: true });
+
+    assert(result.mesh.numberOfFaces > 0, "has faces");
+    assert(result.curves !== undefined, "has curves");
+    assert(result.curves.length > 0, `curves count: ${result.curves.length}`);
+    log(`  meshArrangements with curves: ${result.curves.length} curves`, "line-pass");
+
+    result.curves.delete(); result.faceLabels.delete(); result.tagLabels.delete();
+    result.mesh.delete(); s1.delete(); s0.delete();
+  });
+
+});
+
+describe("Polygon arrangements", () => {
+
+  test("polygonArrangements (no SI)", () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1, 8, 8);
+    const result = tf.polygonArrangements(sphere);
+
+    assert(result.mesh.numberOfFaces === sphere.numberOfFaces,
+      "no self-intersection → same face count");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log("  polygonArrangements (no SI)", "line-pass");
+
+    result.faceLabels.delete(); result.mesh.delete(); sphere.delete();
+  });
+
+  test("polygonArrangements with curves (no SI)", () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1, 8, 8);
+    const result = tf.polygonArrangements(sphere, { returnCurves: true });
+
+    assert(result.mesh.numberOfFaces === sphere.numberOfFaces, "same face count");
+    assert(result.curves !== undefined, "has curves");
+    assert(result.curves.length === 0, "no SI curves");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log("  polygonArrangements with curves (no SI)", "line-pass");
+
+    result.curves.delete(); result.faceLabels.delete(); result.mesh.delete();
+    sphere.delete();
+  });
+
+});

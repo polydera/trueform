@@ -35,6 +35,49 @@ describe("Intersection curves", () => {
 
 });
 
+describe("Intersection curves (N-mesh + mode)", () => {
+
+  test("intersectionCurves([m0, m1, m2])", () => {
+    const tf = getTf();
+    const s0 = tf.sphereMesh(1, 16, 16);
+    const s1 = tf.sphereMesh(1, 16, 16);
+    const s2 = tf.sphereMesh(1, 16, 16);
+    s0.transformation = tf.makeTranslation(0.5, 0, 0);
+    s1.transformation = tf.makeTranslation(-0.5, 0, 0);
+    s2.transformation = tf.makeTranslation(0, 0.5, 0);
+
+    const curves = tf.intersectionCurves([s0, s1, s2]);
+
+    assert(curves.length >= 3, `expected >= 3 curves, got ${curves.length}`);
+    assert(curves.points.shape[1] === 3, "3D points");
+    log(`  N-mesh curves: ${curves.length} curves`, "line-pass");
+
+    curves.delete(); s2.delete(); s1.delete(); s0.delete();
+  });
+
+  test("intersectionCurves with mode", () => {
+    const { tf, s0, s1 } = twoSpheres();
+    const curves = tf.intersectionCurves(s0, s1, { mode: "primitives" });
+
+    assert(curves.length > 0, `curves count: ${curves.length}`);
+    log(`  curves (primitives mode): ${curves.length} curves`, "line-pass");
+
+    curves.delete(); s1.delete(); s0.delete();
+  });
+
+  test("selfIntersectionCurves with mode", () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1, 8, 8);
+    const curves = tf.selfIntersectionCurves(sphere, { mode: "primitives" });
+
+    assert(curves.length === 0, "sphere has no self-intersections");
+    log("  selfIntersectionCurves (primitives mode)", "line-pass");
+
+    curves.delete(); sphere.delete();
+  });
+
+});
+
 describe("Isocontours", () => {
 
   test("isocontours single threshold", () => {

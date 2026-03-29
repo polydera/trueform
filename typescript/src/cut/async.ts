@@ -267,3 +267,45 @@ export async function embeddedSelfIntersectionCurvesWithCurves(
     (raw) => wrapCutWithCurves(raw),
   );
 }
+
+// ============================================================================
+// Polygon arrangements (self-intersection arrangements)
+// ============================================================================
+
+import type {
+  PolygonArrangementResult,
+  PolygonArrangementResultWithCurves,
+} from "./sync";
+
+function wrapPolygonArrangement(raw: any): PolygonArrangementResult {
+  return {
+    mesh: new Mesh(raw.mesh),
+    faceLabels: new NDArray(raw.faceLabels, "int32"),
+  };
+}
+
+function wrapPolygonArrangementWithCurves(raw: any): PolygonArrangementResultWithCurves {
+  return {
+    mesh: new Mesh(raw.mesh),
+    faceLabels: new NDArray(raw.faceLabels, "int32"),
+    curves: new Curves(raw.curves),
+  };
+}
+
+export async function polygonArrangements(
+  mesh: Mesh,
+): Promise<PolygonArrangementResult> {
+  return dispatcher().run(
+    () => native().dispatch_polygon_arrangements(mesh._handle),
+    (raw) => wrapPolygonArrangement(raw),
+  );
+}
+
+export async function polygonArrangementsWithCurves(
+  mesh: Mesh,
+): Promise<PolygonArrangementResultWithCurves> {
+  return dispatcher().run(
+    () => native().dispatch_polygon_arrangements_with_curves(mesh._handle),
+    (raw) => wrapPolygonArrangementWithCurves(raw),
+  );
+}

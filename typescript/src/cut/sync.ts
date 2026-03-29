@@ -312,3 +312,63 @@ export function embeddedSelfIntersectionCurves(
     native().embedded_self_intersection_curves(mesh._handle),
   );
 }
+
+// ============================================================================
+// Polygon arrangements (self-intersection arrangements)
+// ============================================================================
+
+/** Result of polygon arrangement (self-intersection decomposition). */
+export interface PolygonArrangementResult {
+  /** The split mesh with faces subdivided at self-intersection curves. */
+  mesh: Mesh;
+  /** Per-face origin: which original face each output face came from. */
+  faceLabels: NDArrayInt32;
+}
+
+/** Result of polygon arrangement with intersection curves. */
+export interface PolygonArrangementResultWithCurves {
+  /** The split mesh. */
+  mesh: Mesh;
+  /** Per-face origin. */
+  faceLabels: NDArrayInt32;
+  /** Self-intersection curves. */
+  curves: Curves;
+}
+
+function wrapPolygonArrangement(raw: any): PolygonArrangementResult {
+  return {
+    mesh: new Mesh(raw.mesh),
+    faceLabels: new NDArray(raw.faceLabels, "int32"),
+  };
+}
+
+function wrapPolygonArrangementWithCurves(raw: any): PolygonArrangementResultWithCurves {
+  return {
+    mesh: new Mesh(raw.mesh),
+    faceLabels: new NDArray(raw.faceLabels, "int32"),
+    curves: new Curves(raw.curves),
+  };
+}
+
+/**
+ * Decompose a mesh at its self-intersection curves.
+ *
+ * Splits all faces along self-intersection curves and returns
+ * the subdivided mesh with per-face labels identifying original faces.
+ */
+export function polygonArrangements(mesh: Mesh): PolygonArrangementResult;
+export function polygonArrangements(
+  mesh: Mesh, opts: { returnCurves: true },
+): PolygonArrangementResultWithCurves;
+export function polygonArrangements(
+  mesh: Mesh, opts?: { returnCurves: true },
+): PolygonArrangementResult | PolygonArrangementResultWithCurves {
+  if (opts?.returnCurves) {
+    return wrapPolygonArrangementWithCurves(
+      native().polygon_arrangements_with_curves(mesh._handle),
+    );
+  }
+  return wrapPolygonArrangement(
+    native().polygon_arrangements(mesh._handle),
+  );
+}

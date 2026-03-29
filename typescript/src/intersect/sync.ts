@@ -16,14 +16,50 @@ import { Mesh } from "../form/Mesh";
 import { Curves } from "../form/Curves";
 import { NDArrayFloat32 } from "../ndarray/NDArray";
 
+/** Intersection mode: "sos" (fast) or "primitives" (handles shared geometry). */
+export type IntersectMode = "sos" | "primitives";
+
+const MODE_MAP: Record<IntersectMode, number> = { sos: 0, primitives: 1 };
+
+export interface IntersectionCurvesOpts {
+  mode?: IntersectMode;
+}
+
 /** Compute intersection curves between two meshes. */
-export function intersectionCurves(m0: Mesh, m1: Mesh): Curves {
-  return new Curves(native().intersection_curves(m0._handle, m1._handle));
+export function intersectionCurves(m0: Mesh, m1: Mesh): Curves;
+/** Compute intersection curves between two meshes with options. */
+export function intersectionCurves(
+  m0: Mesh, m1: Mesh, opts: IntersectionCurvesOpts,
+): Curves;
+/** Compute intersection curves from N meshes. */
+export function intersectionCurves(
+  meshes: Mesh[], opts?: IntersectionCurvesOpts,
+): Curves;
+export function intersectionCurves(
+  m0OrMeshes: Mesh | Mesh[],
+  m1OrOpts?: Mesh | IntersectionCurvesOpts,
+  opts?: IntersectionCurvesOpts,
+): Curves {
+  if (Array.isArray(m0OrMeshes)) {
+    const mode = MODE_MAP[(m1OrOpts as IntersectionCurvesOpts)?.mode ?? "sos"];
+    const handles = m0OrMeshes.map(m => m._handle);
+    return new Curves(native().intersection_curves_list(handles, mode));
+  }
+  const m1 = m1OrOpts as Mesh;
+  const mode = MODE_MAP[opts?.mode ?? "sos"];
+  return new Curves(
+    native().intersection_curves(m0OrMeshes._handle, m1._handle, mode),
+  );
 }
 
 /** Find curves where a mesh intersects itself. */
-export function selfIntersectionCurves(mesh: Mesh): Curves {
-  return new Curves(native().self_intersection_curves(mesh._handle));
+export function selfIntersectionCurves(
+  mesh: Mesh, opts?: IntersectionCurvesOpts,
+): Curves {
+  const mode = MODE_MAP[opts?.mode ?? "sos"];
+  return new Curves(
+    native().self_intersection_curves(mesh._handle, mode),
+  );
 }
 
 /** Extract isocontour curves from a scalar field at one or more thresholds. */

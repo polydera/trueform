@@ -15,21 +15,40 @@ import { native, dispatcher } from "../native";
 import { Mesh } from "../form/Mesh";
 import { Curves } from "../form/Curves";
 import { NDArrayFloat32 } from "../ndarray/NDArray";
+import { IntersectMode, IntersectionCurvesOpts } from "./sync";
+
+const MODE_MAP: Record<IntersectMode, number> = { sos: 0, primitives: 1 };
 
 /** Compute intersection curves between two meshes, off the main thread. */
 export async function intersectionCurves(
-  m0: Mesh, m1: Mesh,
+  m0: Mesh, m1: Mesh, opts?: IntersectionCurvesOpts,
 ): Promise<Curves> {
+  const mode = MODE_MAP[opts?.mode ?? "sos"];
   return dispatcher().run(
-    () => native().dispatch_intersection_curves(m0._handle, m1._handle),
+    () => native().dispatch_intersection_curves(m0._handle, m1._handle, mode),
+    (raw) => new Curves(raw),
+  );
+}
+
+/** Compute intersection curves from N meshes, off the main thread. */
+export async function intersectionCurvesList(
+  meshes: Mesh[], opts?: IntersectionCurvesOpts,
+): Promise<Curves> {
+  const mode = MODE_MAP[opts?.mode ?? "sos"];
+  const handles = meshes.map(m => m._handle);
+  return dispatcher().run(
+    () => native().dispatch_intersection_curves_list(handles, mode),
     (raw) => new Curves(raw),
   );
 }
 
 /** Find curves where a mesh intersects itself, off the main thread. */
-export async function selfIntersectionCurves(mesh: Mesh): Promise<Curves> {
+export async function selfIntersectionCurves(
+  mesh: Mesh, opts?: IntersectionCurvesOpts,
+): Promise<Curves> {
+  const mode = MODE_MAP[opts?.mode ?? "sos"];
   return dispatcher().run(
-    () => native().dispatch_self_intersection_curves(mesh._handle),
+    () => native().dispatch_self_intersection_curves(mesh._handle, mode),
     (raw) => new Curves(raw),
   );
 }
