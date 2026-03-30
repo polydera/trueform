@@ -27,29 +27,63 @@ using namespace tf::ts;
 
 auto sync_embedded_intersection_curves(wasm_mesh &m0, wasm_mesh &m1)
     -> wasm_mesh {
+  bool has0 = m0.has_transformation();
+  bool has1 = m1.has_transformation();
   auto fm0 = m0.face_membership_range();
   auto mel0 = m0.manifold_edge_link_range();
   auto fm1 = m1.face_membership_range();
   auto mel1 = m1.manifold_edge_link_range();
-  auto poly = tf::embedded_intersection_curves(
-      m0.polygons_range() | tf::tag(m0.tree()) | tf::tag(fm0) | tf::tag(mel0),
-      m1.polygons_range() | tf::tag(m1.tree()) | tf::tag(fm1) | tf::tag(mel1));
-  return wasm_mesh::from_polygons_buffer(std::move(poly));
+  auto make_return = [&](auto &&poly0, auto &&poly1) -> wasm_mesh {
+    auto poly = tf::embedded_intersection_curves(
+        poly0 | tf::tag(m0.tree()) | tf::tag(fm0) | tf::tag(mel0),
+        poly1 | tf::tag(m1.tree()) | tf::tag(fm1) | tf::tag(mel1));
+    return wasm_mesh::from_polygons_buffer(std::move(poly));
+  };
+  if (has0 && has1)
+    return make_return(
+        m0.polygons_range() | tf::tag(m0.transformation_view()),
+        m1.polygons_range() | tf::tag(m1.transformation_view()));
+  else if (has0)
+    return make_return(
+        m0.polygons_range() | tf::tag(m0.transformation_view()),
+        m1.polygons_range());
+  else if (has1)
+    return make_return(m0.polygons_range(),
+                       m1.polygons_range() | tf::tag(m1.transformation_view()));
+  else
+    return make_return(m0.polygons_range(), m1.polygons_range());
 }
 
 auto sync_embedded_intersection_curves_with_curves(wasm_mesh &m0,
                                                    wasm_mesh &m1)
     -> cut_result_with_curves {
+  bool has0 = m0.has_transformation();
+  bool has1 = m1.has_transformation();
   auto fm0 = m0.face_membership_range();
   auto mel0 = m0.manifold_edge_link_range();
   auto fm1 = m1.face_membership_range();
   auto mel1 = m1.manifold_edge_link_range();
-  auto [poly, curves] = tf::embedded_intersection_curves(
-      m0.polygons_range() | tf::tag(m0.tree()) | tf::tag(fm0) | tf::tag(mel0),
-      m1.polygons_range() | tf::tag(m1.tree()) | tf::tag(fm1) | tf::tag(mel1),
-      tf::return_curves);
-  return {wasm_mesh::from_polygons_buffer(std::move(poly)),
-          wasm_curves::from_curves_buffer(std::move(curves))};
+  auto make_return = [&](auto &&poly0, auto &&poly1) -> cut_result_with_curves {
+    auto [poly, curves] = tf::embedded_intersection_curves(
+        poly0 | tf::tag(m0.tree()) | tf::tag(fm0) | tf::tag(mel0),
+        poly1 | tf::tag(m1.tree()) | tf::tag(fm1) | tf::tag(mel1),
+        tf::return_curves);
+    return {wasm_mesh::from_polygons_buffer(std::move(poly)),
+            wasm_curves::from_curves_buffer(std::move(curves))};
+  };
+  if (has0 && has1)
+    return make_return(
+        m0.polygons_range() | tf::tag(m0.transformation_view()),
+        m1.polygons_range() | tf::tag(m1.transformation_view()));
+  else if (has0)
+    return make_return(
+        m0.polygons_range() | tf::tag(m0.transformation_view()),
+        m1.polygons_range());
+  else if (has1)
+    return make_return(m0.polygons_range(),
+                       m1.polygons_range() | tf::tag(m1.transformation_view()));
+  else
+    return make_return(m0.polygons_range(), m1.polygons_range());
 }
 
 auto async_embedded_intersection_curves(wasm_mesh &m0, wasm_mesh &m1)
