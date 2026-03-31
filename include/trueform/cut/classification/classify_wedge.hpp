@@ -44,9 +44,6 @@ void classify_edge_by_wedge(const Loop &loop0, const Desc &desc0,
                             const ApplyToFace &apply_to_face,
                             const IsCoplanar &is_coplanar, const Labels &labels,
                             Counts &local_counts) {
-  using pt3 = tf::point<int32_t, 3>;
-  using pt2 = tf::point<int32_t, 2>;
-  using vertex_t = std::decay_t<decltype(loop0[0])>;
 
   auto n = loop0.size();
   auto next_edge_id = tf::circular_increment(edge_id, n);
@@ -55,6 +52,11 @@ void classify_edge_by_wedge(const Loop &loop0, const Desc &desc0,
 
   auto v0 = get_point(desc0.tag, v0_id);
   auto v1 = get_point(desc0.tag, v1_id);
+
+  using Int = tf::coordinate_type<decltype(v0)>;
+  using pt3 = tf::point<Int, 3>;
+  using pt2 = tf::point<Int, 2>;
+  using vertex_t = std::decay_t<decltype(loop0[0])>;
 
   // Find a face vertex to the left of directed edge (e0→e1) in projected 2D.
   auto find_left_vertex = [&](int tag, int object, const pt3 &e0,
@@ -103,9 +105,10 @@ void classify_edge_by_wedge(const Loop &loop0, const Desc &desc0,
       // Test point: face vertex to the left of the edge from the
       // other face's perspective
       bool other_same_dir = (loop_other[eid] == v0_id);
-      auto test_pt = other_same_dir
-          ? find_left_vertex(d_other.tag, d_other.object, v0, v1)
-          : find_left_vertex(d_other.tag, d_other.object, v1, v0);
+      auto test_pt =
+          other_same_dir
+              ? find_left_vertex(d_other.tag, d_other.object, v0, v1)
+              : find_left_vertex(d_other.tag, d_other.object, v1, v0);
 
       auto side = tf::exact::classify_wedge(v0, v1, wa, wb, test_pt);
       if (side == tf::sidedness::on_boundary)

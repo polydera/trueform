@@ -38,7 +38,7 @@ namespace tf {
 /// @param _polygons1 The second mesh @ref tf::polygons (or tagged form).
 /// @param mode The intersection mode (sos or primitives).
 /// @return A @ref tf::curves_buffer containing connected intersection curves.
-template <typename Policy0, typename Policy1>
+template <typename Int = tf::exact::int32, typename Policy0, typename Policy1>
 auto make_intersection_curves(
     const tf::polygons<Policy0> &_polygons0,
     const tf::polygons<Policy1> &_polygons1,
@@ -51,7 +51,7 @@ auto make_intersection_curves(
         using RealType = tf::coordinate_type<std::decay_t<decltype(p0)>,
                                              std::decay_t<decltype(p1)>>;
 
-        tf::intersections_between_polygons<Index, RealType> ibp;
+        tf::intersections_between_polygons<Index, RealType, Int> ibp;
         ibp.build(p0, p1, mode);
 
         auto &conv = ibp.converter();
@@ -62,7 +62,7 @@ auto make_intersection_curves(
             f(p1.faces()[object]);
         };
         auto get_mesh_point = [&](int tag,
-                                  Index id) -> tf::point<int32_t, 3> {
+                                  Index id) -> tf::point<Int, 3> {
           if (tag == 0)
             return conv.convert(
                 tf::transformed(p0.points()[id], tf::frame_of(p0)));
@@ -71,7 +71,7 @@ auto make_intersection_curves(
                 tf::transformed(p1.points()[id], tf::frame_of(p1)));
         };
 
-        tf::intersection_graph<Index> ig;
+        tf::intersection_graph<Index, Int> ig;
         ig.build(ibp, apply_to_face, get_mesh_point);
 
         auto paths = [&]() {
@@ -83,7 +83,7 @@ auto make_intersection_curves(
                 });
             return tf::connect_edges_to_paths(tf::make_edges(edge_pairs));
           } else {
-            tf::face_cuts<Index> fc;
+            tf::face_cuts<Index, Int> fc;
             fc.build(ig, apply_to_face, get_mesh_point);
 
             tf::cut_graph<Index> cg;
@@ -109,24 +109,24 @@ auto make_intersection_curves(
 
 namespace intersect {
 
-template <typename FormsRange>
+template <typename Int, typename FormsRange>
 auto intersection_curves_n(const FormsRange &forms, tf::intersect_mode mode) {
   using Index = std::decay_t<decltype(forms[0].faces()[0][0])>;
   using RealType = tf::coordinate_type<decltype(forms[0])>;
 
-  tf::intersections_between_polygons<Index, RealType> ibp;
+  tf::intersections_between_polygons<Index, RealType, Int> ibp;
   ibp.build(forms, mode);
 
   auto &conv = ibp.converter();
   auto apply_to_face = [&](int tag, Index object, const auto &f) {
     f(forms[tag].faces()[object]);
   };
-  auto get_mesh_point = [&](int tag, Index id) -> tf::point<int32_t, 3> {
+  auto get_mesh_point = [&](int tag, Index id) -> tf::point<Int, 3> {
     return conv.convert(
         tf::transformed(forms[tag].points()[id], tf::frame_of(forms[tag])));
   };
 
-  tf::intersection_graph<Index> ig;
+  tf::intersection_graph<Index, Int> ig;
   ig.build(ibp, apply_to_face, get_mesh_point);
 
   auto paths = [&]() {
@@ -138,7 +138,7 @@ auto intersection_curves_n(const FormsRange &forms, tf::intersect_mode mode) {
           });
       return tf::connect_edges_to_paths(tf::make_edges(edge_pairs));
     } else {
-      tf::face_cuts<Index> fc;
+      tf::face_cuts<Index, Int> fc;
       fc.build(ig, apply_to_face, get_mesh_point);
 
       tf::cut_graph<Index> cg;
@@ -172,12 +172,12 @@ auto intersection_curves_n(const FormsRange &forms, tf::intersect_mode mode) {
 /// @param _forms The input meshes.
 /// @param mode The intersection mode (sos or primitives).
 /// @return A @ref tf::curves_buffer containing connected intersection curves.
-template <typename Range>
+template <typename Int = tf::exact::int32, typename Range>
 auto make_intersection_curves(
     const Range &_forms,
     tf::intersect_mode mode = tf::intersect_mode::sos) {
   return cut::dispatch::arrangement(_forms, [mode](const auto &forms) {
-    return intersect::intersection_curves_n(forms, mode);
+    return intersect::intersection_curves_n<Int>(forms, mode);
   });
 }
 

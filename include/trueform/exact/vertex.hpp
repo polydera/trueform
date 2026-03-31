@@ -13,19 +13,19 @@
 #pragma once
 
 #include "../core/point.hpp"
-#include <cstdint>
 
 namespace tf::exact {
 
-using pt2 = tf::point<int32_t, 2>;
-using pt3 = tf::point<int32_t, 3>;
+template <typename Int> using pt2 = tf::point<Int, 2>;
+
+template <typename Int> using pt3 = tf::point<Int, 3>;
 
 /// Vertex with unique ID for SoS (Simulation of Simplicity) perturbation.
 /// The ID determines the perturbation priority in exact predicates,
 /// guaranteeing no degenerate (zero) results.
-template <typename Index = int> struct vertex {
+template <typename Index, typename Int> struct vertex {
   Index id;
-  pt3 pt;
+  pt3<Int> pt;
 };
 
 } // namespace tf::exact

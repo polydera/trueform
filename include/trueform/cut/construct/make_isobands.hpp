@@ -33,20 +33,18 @@
 namespace tf::cut {
 
 template <typename LabelType, typename Index, typename Policy, typename RealT,
-          std::size_t Dims, typename SelectedBands>
+          std::size_t Dims, typename Int, typename SelectedBands>
 auto make_isobands(
     const tf::polygons<Policy> &polygons,
     const tf::intersect::simple_intersections<Index, RealT, Dims> &si,
-    const tf::face_cuts<Index> &fc,
+    const tf::face_cuts<Index, Int> &fc,
     const tf::cut::partition_ids<Index> &pids,
     const SelectedBands &selected_bands) {
   using vertex_t = tf::intersect::graph::vertex<Index>;
   using source = tf::intersect::graph::vertex_source;
 
-  auto polygon_ids =
-      tf::make_indirect_range(selected_bands, pids.polygons);
-  auto cut_ids =
-      tf::make_indirect_range(selected_bands, pids.cut_faces);
+  auto polygon_ids = tf::make_indirect_range(selected_bands, pids.polygons);
+  auto cut_ids = tf::make_indirect_range(selected_bands, pids.cut_faces);
 
   auto loops = fc.loops();
   auto descs = fc.descriptors();
@@ -71,8 +69,7 @@ auto make_isobands(
   Index created_current = 0;
 
   // Pass 1: cut face loops for selected bands
-  for (auto &&band_loops :
-       tf::make_block_indirect_range(cut_ids, loops)) {
+  for (auto &&band_loops : tf::make_block_indirect_range(cut_ids, loops)) {
     for (auto loop : band_loops) {
       for (const auto &v : loop) {
         if (v.source == source::created) {
@@ -111,9 +108,10 @@ auto make_isobands(
 
   auto make_projector = [&](const auto &desc) {
     auto fp = polygons[desc.object];
-    auto axes = tf::exact::projection_axes(conv(fp[0]), conv(fp[1]), conv(fp[2]));
-    return [axes, &conv, &polygons, ipts](const vertex_t &v)
-               -> tf::point<int32_t, 2> {
+    auto axes =
+        tf::exact::projection_axes(conv(fp[0]), conv(fp[1]), conv(fp[2]));
+    return [axes, &conv, &polygons,
+            ipts](const vertex_t &v) -> tf::point<Int, 2> {
       auto pt = (v.source == source::original) ? conv(polygons.points()[v.id])
                                                : conv(ipts[v.id]);
       return {pt[axes.first], pt[axes.second]};
@@ -125,9 +123,9 @@ auto make_isobands(
 
   tf::generate_offset_blocks(
       cut_ids, cf_offsets, triangles, [&](const auto &ids, auto &tri_buf) {
-        tf::cut::triangulate_partition_cuts<Index>(
-            tf::make_indirect_range(ids, tf::zip(descs, loops)),
-            make_projector, map_vertex, tri_buf.data_buffer());
+        tf::cut::triangulate_partition_cuts<Int>(
+            tf::make_indirect_range(ids, tf::zip(descs, loops)), make_projector,
+            map_vertex, tri_buf.data_buffer());
       });
 
   // Build uncut face ranges (remapped)
@@ -142,9 +140,8 @@ auto make_isobands(
   tf::points_buffer<tf::coordinate_type<Policy>, tf::coordinate_dims_v<Policy>>
       pts_out;
   pts_out.allocate(original_current + created_current);
-  tf::parallel_copy(
-      tf::make_indirect_range(original_ids, polygons.points()),
-      tf::take(pts_out, original_current));
+  tf::parallel_copy(tf::make_indirect_range(original_ids, polygons.points()),
+                    tf::take(pts_out, original_current));
   tf::parallel_copy(
       tf::make_indirect_range(created_ids, si.intersection_points()),
       tf::drop(pts_out, original_current));

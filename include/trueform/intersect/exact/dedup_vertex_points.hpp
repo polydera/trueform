@@ -29,9 +29,9 @@ namespace tf::intersect {
 /// Deduplicate vertex intersection points. Multiple records for the same
 /// mesh vertex (from different face pairs) get merged to one point ID.
 /// VV records also merge cross-mesh vertex pairs via union-find.
-template <typename Index, typename FacesLookup>
+template <typename Index, typename Int, typename FacesLookup>
 void dedup_vertex_points(tf::buffer<tagged_intersection<Index>> &intersections,
-                         tf::buffer<tf::exact::pt3> &points,
+                         tf::buffer<tf::exact::pt3<Int>> &points,
                          const FacesLookup &faces) {
   struct tag_vid {
     Index tag, vid;
@@ -127,7 +127,7 @@ void dedup_vertex_points(tf::buffer<tagged_intersection<Index>> &intersections,
       e = next_id++;
 
   // Step 6: Build compact points + remap records
-  tf::buffer<tf::exact::pt3> new_pts;
+  tf::buffer<tf::exact::pt3<Int>> new_pts;
   new_pts.allocate(next_id);
 
   // Parallel copy (idempotent: same-class vertex writes identical data)

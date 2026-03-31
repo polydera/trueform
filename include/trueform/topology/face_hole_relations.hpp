@@ -23,6 +23,7 @@
 #include "../core/views/mapped_range.hpp"
 #include "../core/views/slide_range.hpp"
 #include "../exact/classify.hpp"
+#include "../exact/meta.hpp"
 #include "../exact/pt_converter.hpp"
 #include "../exact/signed_area.hpp"
 #include "../spatial/aabb_tree.hpp"
@@ -39,10 +40,11 @@ namespace tf {
 /// that contains a point from the hole). Uses an AABB tree for efficient
 /// spatial queries and exact orient2d for point-in-polygon.
 ///
-/// Float points are converted to int32 via pt_converter. Areas computed
+/// Float points are converted via pt_converter. Areas computed
 /// internally via exact signed_area_2x.
-template <typename Index>
+template <typename Index, typename Int = tf::exact::int32>
 class face_hole_relations : public tf::offset_block_buffer<Index, Index> {
+  using T2 = typename tf::exact::meta<Int>::T2;
   using base_t = tf::offset_block_buffer<Index, Index>;
 
 public:
@@ -57,7 +59,7 @@ public:
     if constexpr (std::is_integral_v<coord_t>) {
       build_impl(faces, holes, points);
     } else {
-      auto conv = tf::exact::make_pt_converter(points);
+      auto conv = tf::exact::make_pt_converter<Int>(points);
       auto int_pts = tf::make_points(tf::make_mapped_range(
           points, [&](const auto &pt) { return conv(pt); }));
       build_impl(faces, holes, int_pts);
@@ -101,21 +103,18 @@ private:
   auto build_impl(const tf::faces<Policy0> &faces,
                   const tf::faces<Policy1> &holes,
                   const tf::points<Policy2> &points) {
-    using i128 = tf::exact::int128;
     _face_areas.allocate(faces.size());
     for (std::size_t i = 0; i < faces.size(); ++i) {
       auto a = tf::exact::signed_area_2x(faces[i], [&](auto idx) {
         auto &&p = points[idx];
-        return tf::exact::pt2{p[0], p[1]};
+        return tf::exact::pt2<Int>{p[0], p[1]};
       });
       _face_areas[i] = a < 0 ? -a : a;
     }
 
-    // Build int32 AABB tree on face polygons
     auto fcs = tf::make_polygons(faces, points);
     _tree.build(fcs, tf::config_tree(4, 4));
 
-    // Assign each hole to its smallest containing face
     auto &offsets = base_t::offsets_buffer();
     auto &data = base_t::data_buffer();
     _hole_in_face.allocate(holes.size());
@@ -125,7 +124,7 @@ private:
     for (auto &&[hole_id, in_face] : tf::enumerate(_hole_in_face)) {
       auto &&test_pt = points[holes[hole_id][0]];
       in_face = -1;
-      i128 best_area = i128(0);
+      T2 best_area = T2(0);
       bool found = false;
 
       tf::search(_tree, tf::intersects_f(test_pt),
@@ -138,7 +137,7 @@ private:
                      return;
 
                    auto &&hole_pt = points[holes[hole_id][vid]];
-                   tf::point<int32_t, 2> qpt = {hole_pt[0], hole_pt[1]};
+                   tf::point<Int, 2> qpt = {hole_pt[0], hole_pt[1]};
                    auto result = tf::exact::classify(qpt, fcs[face_id]);
                    if (result != tf::containment::outside) {
                      in_face = face_id;
@@ -159,8 +158,8 @@ private:
         data[--offsets[face_id]] = hole_id;
   }
 
-  tf::aabb_tree<Index, int32_t, 2> _tree;
-  tf::buffer<tf::exact::int128> _face_areas;
+  tf::aabb_tree<Index, Int, 2> _tree;
+  tf::buffer<T2> _face_areas;
   tf::buffer<Index> _hole_in_face;
 };
 } // namespace tf

@@ -12,7 +12,7 @@
  */
 #pragma once
 
-#include "../../exact/int128.hpp"
+#include "../../exact/meta.hpp"
 
 #include <array>
 #include <cstdint>
@@ -53,9 +53,9 @@ template <typename Index> struct edge_split_entry {
   }
 };
 
-template <typename Index> struct split_point {
+template <typename Index, typename Int> struct split_point {
   Index point_id;
-  tf::exact::int128 t;
+  typename tf::exact::meta<Int>::T2 t;
 };
 
 } // namespace tf::intersect::graph

@@ -24,10 +24,11 @@ namespace tf::exact {
 ///
 /// Tests face_a's non-shared vertices against face_b's plane.
 /// If they are on the same side as edge_vertex, face_a comes first.
-inline auto
-compare_coplanar_intersections(const std::array<vertex, 3> &face_a,
-                               const std::array<vertex, 3> &face_b,
-                               const vertex &edge_vertex) -> int {
+template <typename Index, typename Int>
+auto compare_coplanar_intersections(
+    const std::array<vertex<Index, Int>, 3> &face_a,
+    const std::array<vertex<Index, Int>, 3> &face_b,
+    const vertex<Index, Int> &edge_vertex) -> int {
   // Find face_a's non-shared vertices
   int fa_non[3]{}, n_fa_non = 0;
   for (int i = 0; i < 3; ++i) {
@@ -42,24 +43,22 @@ compare_coplanar_intersections(const std::array<vertex, 3> &face_a,
   }
   int n_shared = 3 - n_fa_non;
 
-  auto side = [&](const vertex &p) {
-    return orient3d_sos({face_b[0], face_b[1], face_b[2], p});
+  auto side = [&](const vertex<Index, Int> &p) {
+    return orient3d_sos(
+        std::array<vertex<Index, Int>, 4>{face_b[0], face_b[1], face_b[2], p});
   };
 
   bool ev = side(edge_vertex);
 
   if (n_shared >= 2) {
-    // Shared edge: one non-shared vertex, always decisive
     return side(face_a[fa_non[0]]) == ev ? -1 : 1;
   } else if (n_shared == 1) {
-    // Shared vertex: two non-shared, must agree
     bool o1 = side(face_a[fa_non[0]]);
     bool o2 = side(face_a[fa_non[1]]);
     if (o1 != o2)
       return 0;
     return o1 == ev ? -1 : 1;
   } else {
-    // No shared: all three must agree
     bool o1 = side(face_a[fa_non[0]]);
     bool o2 = side(face_a[fa_non[1]]);
     bool o3 = side(face_a[fa_non[2]]);

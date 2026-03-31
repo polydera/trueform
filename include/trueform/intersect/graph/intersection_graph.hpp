@@ -53,7 +53,8 @@ namespace tf {
 ///
 /// After building, edges are canonicalized and crossings are detected
 /// and resolved (EE splits, VE splits, VV merges).
-template <typename Index> class intersection_graph {
+template <typename Index, typename Int = tf::exact::int32>
+class intersection_graph {
 public:
   auto points() const { return _points.points(); }
   auto descriptors() const { return tf::make_range(_descriptors); }
@@ -84,9 +85,9 @@ public:
   /// apply_to_face(tag, object, f) calls f(face) with the face view.
   template <typename ApplyToFace, typename GetMeshPoint>
   auto
-  build(const tf::intersect::tagged_intersections<Index, int32_t, 3> &intersections,
-        const ApplyToFace &apply_to_face,
-        const GetMeshPoint &get_mesh_point) -> void {
+  build(const tf::intersect::tagged_intersections<Index, Int, 3> &intersections,
+        const ApplyToFace &apply_to_face, const GetMeshPoint &get_mesh_point)
+      -> void {
     clear();
 
     auto tag_offs = intersections.tag_offsets();
@@ -97,7 +98,7 @@ public:
     if (subranges.size() == 0)
       return;
     const auto &ipts = intersections.intersection_points();
-    auto get_point = [&](Index tag, Index id) -> tf::point<int32_t, 3> {
+    auto get_point = [&](Index tag, Index id) -> tf::point<Int, 3> {
       if (tag == -1)
         return ipts[id];
       return get_mesh_point(tag, id);
@@ -114,9 +115,9 @@ public:
 private:
   template <typename Subranges, typename ApplyToFace, typename GetPoint,
             typename GetFlatId>
-  auto build_loops(const Subranges &subranges,
-                   const ApplyToFace &apply_to_face, const GetPoint &get_point,
-                   const GetFlatId &get_flat_id) -> void {
+  auto build_loops(const Subranges &subranges, const ApplyToFace &apply_to_face,
+                   const GetPoint &get_point, const GetFlatId &get_flat_id)
+      -> void {
     auto n = subranges.size();
     _loops.offsets_buffer().allocate(n + 1);
     _loops.offsets_buffer()[0] = 0;
@@ -126,7 +127,7 @@ private:
     struct local_t {
       tf::buffer<Index> sizes;
       tf::buffer<intersect::graph::vertex<Index>> data;
-      tf::buffer<intersect::graph::loop_node<Index>> work;
+      tf::buffer<intersect::graph::loop_node<Index, Int>> work;
       tf::buffer<intersect::graph::face_descriptor<Index>> descs;
     };
 
@@ -141,7 +142,7 @@ private:
         auto tag = subrange[0].tag;
         auto object = subrange[0].object;
         apply_to_face_f(tag, object, [&](const auto &face) {
-          intersect::graph::extract_loop<Index>(subrange, face, tag,
+          intersect::graph::extract_loop(subrange, face, tag,
                                                 get_point_f, get_flat_id_f,
                                                 local.work, local.data);
         });
@@ -165,8 +166,8 @@ private:
   }
 
   template <typename Subranges, typename ApplyToFace>
-  auto build_edges(const Subranges &subranges,
-                   const ApplyToFace &apply_to_face) -> void {
+  auto build_edges(const Subranges &subranges, const ApplyToFace &apply_to_face)
+      -> void {
     auto n = subranges.size();
     _edges.offsets_buffer().allocate(n + 1);
     _edges.offsets_buffer()[0] = 0;
@@ -249,7 +250,7 @@ private:
     auto [ee_range, ve_range, vv_range] =
         intersect::graph::find_type_ranges<Index>(records);
 
-    tf::buffer<tf::point<int32_t, 3>> crossing_points;
+    tf::buffer<tf::point<Int, 3>> crossing_points;
     auto ee_offsets = intersect::graph::compute_ee_crossing_points<Index>(
         ee_range, _edge_defs, get_point, crossing_points);
     auto crossing_base = n_ipts;
@@ -266,7 +267,7 @@ private:
     auto entries = intersect::graph::collect_split_entries<Index>(
         ee_range, ee_offsets, ve_range, crossing_base);
     if (entries.size() > 0) {
-      intersect::graph::split_edges<Index>(entries, crossing_base,
+      intersect::graph::split_edges(entries, crossing_base,
                                            crossing_points, _edge_defs, _edges,
                                            get_point, merge_pairs);
     }
@@ -290,13 +291,11 @@ private:
     auto n_classes = fix_collapsed_edge_chains(
         tf::make_dense_equivalence_class_map(merge_pairs, _point_remap));
 
-    auto all_coords =
-        tf::make_mapped_range(tf::make_sequence_range(total_size),
-                              [&](Index i) -> tf::point<int32_t, 3> {
-                                return i < crossing_base
-                                           ? ipts[i]
-                                           : crossing_points[i - crossing_base];
-                              });
+    auto all_coords = tf::make_mapped_range(
+        tf::make_sequence_range(total_size), [&](Index i) -> tf::point<Int, 3> {
+          return i < crossing_base ? ipts[i]
+                                   : crossing_points[i - crossing_base];
+        });
     _points.allocate(n_classes);
     tf::parallel_copy(all_coords,
                       tf::make_indirect_range(_point_remap, _points));
@@ -381,7 +380,7 @@ private:
   /// into a self-loop. Transitive chains (A==B==C) make it worse.
   /// Union-find groups collapsed endpoints; the representative keeps
   /// its class, others get fresh classes so they become distinct
-  /// points again. 
+  /// points again.
   auto fix_collapsed_edge_chains(Index n_classes) -> Index {
     tf::buffer<std::array<Index, 2>> collapsed;
     tf::generic_generate(
@@ -408,8 +407,10 @@ private:
       return x;
     };
     for (auto &e : collapsed) {
-      if (parent[e[0]] == Index(-1)) parent[e[0]] = e[0];
-      if (parent[e[1]] == Index(-1)) parent[e[1]] = e[1];
+      if (parent[e[0]] == Index(-1))
+        parent[e[0]] = e[0];
+      if (parent[e[1]] == Index(-1))
+        parent[e[1]] = e[1];
       auto a = find(e[0]), b = find(e[1]);
       if (a != b)
         parent[std::max(a, b)] = std::min(a, b);
@@ -426,7 +427,7 @@ private:
     return n_classes;
   }
 
-  tf::points_buffer<int32_t, 3> _points;
+  tf::points_buffer<Int, 3> _points;
   tf::buffer<Index> _crossing_point_ids;
   tf::buffer<intersect::graph::face_descriptor<Index>> _descriptors;
   tf::buffer<Index> _tag_offsets;

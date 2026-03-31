@@ -29,11 +29,12 @@
 
 namespace tf::cut {
 
-template <typename Index, typename Policy, typename RealType>
+template <typename Index, typename Policy, typename RealType, typename Int>
 auto embedded_intersection_curves(
     const tf::polygons<Policy> &polygons,
-    const tf::intersection_graph<Index> &ig, const tf::face_cuts<Index> &fc,
-    const tf::exact::vertex_converter<RealType, 3> &converter, Index tag) {
+    const tf::intersection_graph<Index, Int> &ig,
+    const tf::face_cuts<Index, Int> &fc,
+    const tf::exact::vertex_converter<Int, RealType, 3> &converter, Index tag) {
   auto ipts = ig.points();
   auto map_data = tf::cut::make_embed_map_data<Index>(fc, polygons, tag);
 
@@ -45,15 +46,15 @@ auto embedded_intersection_curves(
   auto make_projector = [&](const auto &desc) {
     auto object = desc.object;
     auto face = polygons.faces()[object];
-    auto get_pt = [&](Index vid) -> tf::point<int32_t, 3> {
+    auto get_pt = [&](Index vid) -> tf::point<Int, 3> {
       return converter.convert(
           tf::transformed(polygons.points()[vid], tf::frame_of(polygons)));
     };
     auto axes = tf::exact::projection_axes(get_pt(face[0]), get_pt(face[1]),
                                            get_pt(face[2]));
     return [axes, &converter, ipts,
-            &polygons](const auto &v) -> tf::point<int32_t, 2> {
-      tf::point<int32_t, 3> pt;
+            &polygons](const auto &v) -> tf::point<Int, 2> {
+      tf::point<Int, 3> pt;
       if (v.source == tf::intersect::graph::vertex_source::original)
         pt = converter.convert(
             tf::transformed(polygons.points()[v.id], tf::frame_of(polygons)));
@@ -63,12 +64,10 @@ auto embedded_intersection_curves(
     };
   };
 
-  auto map_vertex = [&](auto, const auto &v) {
-    return map_data.map_vertex(v);
-  };
+  auto map_vertex = [&](auto, const auto &v) { return map_data.map_vertex(v); };
 
   tf::buffer<Index> tri_data;
-  tf::cut::triangulate_partition_cuts<Index>(
+  tf::cut::triangulate_partition_cuts<Int>(
       tf::zip(descs_per_tag[tag], loops_per_tag[tag]), make_projector,
       map_vertex, tri_data);
 
@@ -89,10 +88,11 @@ auto embedded_intersection_curves(
   auto frame = tf::frame_of(polygons);
   tf::parallel_copy(
       tf::make_points(tf::make_indirect_range(
-          map_data.original_ids,
-          tf::make_mapped_range(
-              polygons.points(),
-              [frame](auto pt) { return tf::transformed(pt, frame); }))),
+          map_data.original_ids, tf::make_mapped_range(polygons.points(),
+                                                       [frame](auto pt) {
+                                                         return tf::transformed(
+                                                             pt, frame);
+                                                       }))),
       tf::take(pts_buf, map_data.n_original_points));
 
   tf::parallel_copy(

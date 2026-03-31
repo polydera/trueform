@@ -35,11 +35,10 @@ namespace tf::intersect {
 ///        index 0/1 for vertex targets).
 /// @param points Raw int32 intersection points.
 /// @param edges_lookup edges_lookup(object, local_id) → global vertex ID.
-template <typename Index, std::size_t Dims, typename EdgesLookup>
+template <typename Index, typename Int, std::size_t Dims, typename EdgesLookup>
 void dedup_segment_vertex_points(
     tf::buffer<tf::intersect::intersection<Index>> &intersections,
-    tf::buffer<tf::point<int32_t, Dims>> &points,
-    const EdgesLookup &edges_lookup) {
+    tf::buffer<tf::point<Int, Dims>> &points, const EdgesLookup &edges_lookup) {
   struct merge_pair {
     Index a, b;
   };
@@ -85,8 +84,8 @@ void dedup_segment_vertex_points(
           auto a = find_idx(edges_lookup(rec.object, rec.target.id));
           ip_buf.push_back({a, rec.id});
           if (rec.target_other.label == tf::topo_type::vertex) {
-            auto b = find_idx(
-                edges_lookup(rec.object_other, rec.target_other.id));
+            auto b =
+                find_idx(edges_lookup(rec.object_other, rec.target_other.id));
             ip_buf.push_back({b, rec.id});
             if (a != b)
               pair_buf.push_back({a, b});
@@ -120,16 +119,16 @@ void dedup_segment_vertex_points(
       e = next_id++;
 
   // Step 6: Build compact points + remap records
-  tf::buffer<tf::point<int32_t, Dims>> new_pts;
+  tf::buffer<tf::point<Int, Dims>> new_pts;
   new_pts.allocate(next_id);
 
   // Parallel copy (idempotent: same-class vertex writes identical data)
   tf::parallel_copy(points, tf::make_indirect_range(point_map, new_pts));
 
-  tf::parallel_for_each(
-      intersections, [&](tf::intersect::intersection<Index> &rec) {
-        rec.id = point_map[rec.id];
-      });
+  tf::parallel_for_each(intersections,
+                        [&](tf::intersect::intersection<Index> &rec) {
+                          rec.id = point_map[rec.id];
+                        });
 
   points = std::move(new_pts);
 }

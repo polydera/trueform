@@ -20,19 +20,19 @@
 namespace tf::exact {
 
 /// Exact point-in-polygon classification via winding number.
-/// Uses orient2d with int128 — no epsilon, no floating point.
+/// Uses orient2d with exact arithmetic — no epsilon, no floating point.
 /// Returns inside, outside, or on_boundary.
-template <typename Policy>
-auto classify(const tf::point<int32_t, 2> &q,
-              const tf::polygon<2, Policy> &poly) -> tf::containment {
+template <typename Int, typename Policy>
+auto classify(const tf::point<Int, 2> &q, const tf::polygon<2, Policy> &poly)
+    -> tf::containment {
   int crossings = 0;
   auto n = poly.size();
-  pt2 pi = {poly[n - 1][0], poly[n - 1][1]};
+  pt2<Int> pi = {Int(poly[n - 1][0]), Int(poly[n - 1][1])};
   for (decltype(n) i = 0; i < n; ++i) {
-    pt2 pj = {poly[i][0], poly[i][1]};
+    pt2<Int> pj = {Int(poly[i][0]), Int(poly[i][1])};
 
     // On-boundary check: orient2d == 0 and within bounding box
-    auto o = orient2d(pi, pj, {q[0], q[1]});
+    auto o = orient2d(pi, pj, pt2<Int>{q[0], q[1]});
     if (o == 0) {
       if (q[0] >= std::min(pi[0], pj[0]) && q[0] <= std::max(pi[0], pj[0]) &&
           q[1] >= std::min(pi[1], pj[1]) && q[1] <= std::max(pi[1], pj[1]))

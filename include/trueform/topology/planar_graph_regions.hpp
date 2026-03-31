@@ -15,7 +15,7 @@
 #include "../core/offset_block_buffer.hpp"
 #include "../core/points.hpp"
 #include "../core/views/mapped_range.hpp"
-#include "../exact/int128.hpp"
+#include "../exact/meta.hpp"
 #include "../exact/pt_converter.hpp"
 #include "./edge_membership.hpp"
 #include "./edge_orientation.hpp"
@@ -29,15 +29,17 @@ namespace tf {
 /// @brief Extracts closed regions from a planar graph.
 ///
 /// Given directed edges and vertex positions, walks the graph to find
-/// all minimal closed loops (regions). Uses exact int128 polar sort for
+/// all minimal closed loops (regions). Uses exact polar sort for
 /// edge ordering at each vertex. Float points are converted to int32 via
 /// pt_converter before ordering.
 ///
 /// Walk uses the cp-algorithms approach: at each vertex, find the twin
 /// of the incoming edge in the sorted adjacency, take the cyclic successor.
 /// Inner faces are CW, outer face is CCW.
-template <typename Index> class planar_graph_regions
-    : public tf::offset_block_buffer<Index, Index> {
+template <typename Index, typename Int = tf::exact::int32>
+class planar_graph_regions : public tf::offset_block_buffer<Index, Index> {
+  using T1 = typename tf::exact::meta<Int>::T1;
+  using T2 = typename tf::exact::meta<Int>::T2;
   using base_t = tf::offset_block_buffer<Index, Index>;
 
 public:
@@ -51,7 +53,7 @@ public:
     if constexpr (std::is_integral_v<coord_t>) {
       sort_adjacency(directed_edges, points);
     } else {
-      auto conv = tf::exact::make_pt_converter(points);
+      auto conv = tf::exact::make_pt_converter<Int>(points);
       auto int_pts = tf::make_points(tf::make_mapped_range(
           points, [&](const auto &pt) { return conv(pt); }));
       sort_adjacency(directed_edges, int_pts);
@@ -68,11 +70,10 @@ public:
 
 private:
   /// Sort outgoing edges at each vertex by polar angle (CCW).
-  /// Uses int128 cross product — exact for int32 coordinates.
+  /// Uses exact cross product via meta<Int>::T2.
   template <typename Policy0, typename Policy1>
   auto sort_adjacency(const tf::edges<Policy0> &edges,
                       const tf::points<Policy1> &points) {
-    using i128 = tf::exact::int128;
 
     for (std::size_t v = 0; v < _em.size(); ++v) {
       auto &&adj = _em[v];
@@ -85,10 +86,10 @@ private:
         auto pa = points[edges[a][1]];
         auto pb = points[edges[b][1]];
 
-        i128 ax = i128(pa[0] - pv[0]), ay = i128(pa[1] - pv[1]);
-        i128 bx = i128(pb[0] - pv[0]), by = i128(pb[1] - pv[1]);
+        T1 ax = T1(pa[0]) - pv[0], ay = T1(pa[1]) - pv[1];
+        T1 bx = T1(pb[0]) - pv[0], by = T1(pb[1]) - pv[1];
 
-        auto half = [](i128 x, i128 y) -> bool {
+        auto half = [](T1 x, T1 y) -> bool {
           return (y > 0) || (y == 0 && x > 0);
         };
 
@@ -97,12 +98,12 @@ private:
         if (ha != hb)
           return ha > hb;
 
-        i128 cross = ax * by - ay * bx;
+        T2 cross = T2(ax) * by - T2(ay) * bx;
         if (cross != 0)
           return cross > 0;
 
-        i128 da = ax * ax + ay * ay;
-        i128 db = bx * bx + by * by;
+        T2 da = T2(ax) * ax + T2(ay) * ay;
+        T2 db = T2(bx) * bx + T2(by) * by;
         if (da != db)
           return da < db;
 

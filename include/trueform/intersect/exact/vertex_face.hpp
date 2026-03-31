@@ -24,17 +24,18 @@ namespace tf::exact {
 
 /// Vertex-face: check if representative source vertices with sign==0 lie
 /// strictly inside the target face polygon (in 2D projection).
-template <typename Index, typename SourceVRep, typename SourceShared,
-          typename Ints, typename Pts>
-void vertex_face(const tf::buffer<tf::exact::vertex<Index>> &source_verts,
+template <typename Index, typename Int, typename SourceVRep,
+          typename SourceShared, typename Intersections, typename Pts>
+void vertex_face(const tf::buffer<tf::exact::vertex<Index, Int>> &source_verts,
                  std::size_t n_source,
-                 const tf::buffer<tf::exact::vertex<Index>> &target_verts,
+                 const tf::buffer<tf::exact::vertex<Index, Int>> &target_verts,
                  std::size_t n_target,
                  const tf::small_vector<int, 16> &source_signs,
                  int source_tag, int target_tag, Index source_face_id,
                  Index target_face_id, const SourceVRep &source_vrep,
                  const SourceShared &source_shared,
-                 const face_plane_info &target_plane, Ints &ints, Pts &pts) {
+                 const face_plane_info &target_plane, Intersections &intersections,
+                 Pts &pts) {
   if (!target_plane.valid)
     return;
   int ax0 = target_plane.ax0, ax1 = target_plane.ax1;
@@ -62,23 +63,25 @@ void vertex_face(const tf::buffer<tf::exact::vertex<Index>> &source_verts,
       emit_record(source_tag, target_tag, source_face_id, target_face_id,
                   {Index(i), tf::topo_type::vertex},
                   {target_face_id, tf::topo_type::face}, source_verts[i].pt,
-                  ints, pts);
+                  intersections, pts);
   }
 }
 
-template <typename Index, typename SourceVRep, typename Ints, typename Pts>
-void vertex_face(const tf::buffer<tf::exact::vertex<Index>> &source_verts,
+template <typename Index, typename Int, typename SourceVRep,
+          typename Intersections, typename Pts>
+void vertex_face(const tf::buffer<tf::exact::vertex<Index, Int>> &source_verts,
                  std::size_t n_source,
-                 const tf::buffer<tf::exact::vertex<Index>> &target_verts,
+                 const tf::buffer<tf::exact::vertex<Index, Int>> &target_verts,
                  std::size_t n_target,
                  const tf::small_vector<int, 16> &source_signs,
                  int source_tag, int target_tag, Index source_face_id,
                  Index target_face_id, const SourceVRep &source_vrep,
-                 const face_plane_info &target_plane, Ints &ints, Pts &pts) {
+                 const face_plane_info &target_plane, Intersections &intersections,
+                 Pts &pts) {
   vertex_face(source_verts, n_source, target_verts, n_target, source_signs,
               source_tag, target_tag, source_face_id, target_face_id,
               source_vrep, [](std::size_t) { return false; }, target_plane,
-              ints, pts);
+              intersections, pts);
 }
 
 } // namespace tf::exact

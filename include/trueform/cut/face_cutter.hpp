@@ -29,16 +29,16 @@ namespace tf {
 /// remaps to contiguous indices, calls face_split_by_edges, and maps
 /// output back to graph::vertex<Index>.
 ///
-/// get_point must return already-projected point<int32_t, 2>.
+/// get_point must return already-projected point<Int, 2>.
 ///
 /// Fast path: 0 edges emits base loop; 1 edge with both endpoints on
 /// the loop splits into 2 sub-loops without invoking face_split_by_edges.
-template <typename Index> class face_cutter {
+template <typename Index, typename Int = tf::exact::int32> class face_cutter {
   using vertex_t = intersect::graph::vertex<Index>;
   using source = intersect::graph::vertex_source;
 
 public:
-  /// get_point(graph::vertex<Index>) → point<int32_t, 2> (already projected)
+  /// get_point(graph::vertex<Index>) → point<Int, 2> (already projected)
   template <typename Loop, typename EdgeDefs, typename GetPoint>
   auto build(const Loop &loop, const EdgeDefs &edge_defs,
              const GetPoint &get_point, tf::buffer<Index> &offsets,
@@ -205,11 +205,11 @@ private:
   };
 
   tf::index_hash_map<vertex_t, Index, hash_t> _ihm;
-  tf::face_split_by_edges<Index> _fs;
-  tf::hole_patcher<Index> _hp;
+  tf::face_split_by_edges<Index, Int> _fs;
+  tf::hole_patcher<Index, Int> _hp;
   tf::buffer<Index> _edges;
   tf::buffer<Index> _base_loop;
-  tf::points_buffer<int32_t, 2> _points;
+  tf::points_buffer<Int, 2> _points;
 };
 
 } // namespace tf

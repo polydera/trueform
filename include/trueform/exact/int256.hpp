@@ -24,175 +24,142 @@
 
 namespace tf::exact {
 
-/// Signed 256-bit integer. Two's complement, 4 x uint64 limbs (low to high).
+/// Signed 256-bit integer. Two's complement, 2 x uint128 limbs (lo, hi).
 /// Trivially default constructible (no zero-init).
 class int256 {
 public:
-  using limb_type = std::uint64_t;
+  using limb_type = tf::exact::uint128;
 
 private:
-  limb_type _data[4];
+  limb_type _lo;
+  limb_type _hi;
 
-#if defined(_MSC_VER) && defined(_M_X64)
-  static inline auto _addcarry(limb_type a, limb_type b, limb_type cin,
-                               limb_type &out) -> limb_type {
-    return static_cast<limb_type>(
-        _addcarry_u64(static_cast<unsigned char>(cin), a, b, &out));
-  }
-
-  static inline auto _subborrow(limb_type a, limb_type b, limb_type bin,
-                                limb_type &out) -> limb_type {
-    return static_cast<limb_type>(
-        _subborrow_u64(static_cast<unsigned char>(bin), a, b, &out));
-  }
-
-  static inline auto _mul128(limb_type a, limb_type b, limb_type &hi)
+  /// Full 128x128 -> 256 unsigned multiply. Returns low 128 bits, writes
+  /// high 128 bits to @p hi_out.
+  static auto _umul_full(limb_type a, limb_type b, limb_type &hi_out)
       -> limb_type {
-    return _umul128(a, b, &hi);
-  }
-#elif defined(__SIZEOF_INT128__)
-  static inline auto _addcarry(limb_type a, limb_type b, limb_type cin,
-                               limb_type &out) -> limb_type {
-    using u128 = unsigned __int128;
-    const auto s =
-        static_cast<u128>(a) + static_cast<u128>(b) + static_cast<u128>(cin);
-    out = static_cast<limb_type>(s);
-    return static_cast<limb_type>(s >> 64);
-  }
+    auto a0 = static_cast<std::uint64_t>(a);
+    auto a1 = static_cast<std::uint64_t>(a >> 64);
+    auto b0 = static_cast<std::uint64_t>(b);
+    auto b1 = static_cast<std::uint64_t>(b >> 64);
 
-  static inline auto _subborrow(limb_type a, limb_type b, limb_type bin,
-                                limb_type &out) -> limb_type {
-    out = a - b - bin;
-    return static_cast<limb_type>((a < b) || (bin && a == b));
+    limb_type p00 = static_cast<limb_type>(a0) * b0;
+    limb_type p01 = static_cast<limb_type>(a0) * b1;
+    limb_type p10 = static_cast<limb_type>(a1) * b0;
+    limb_type p11 = static_cast<limb_type>(a1) * b1;
+
+    limb_type mid = (p00 >> 64) + static_cast<std::uint64_t>(p01) +
+                    static_cast<std::uint64_t>(p10);
+    hi_out = p11 + (p01 >> 64) + (p10 >> 64) + (mid >> 64);
+    return (static_cast<limb_type>(static_cast<std::uint64_t>(p00))) |
+           (mid << 64);
   }
-
-  static inline auto _mul128(limb_type a, limb_type b, limb_type &hi)
-      -> limb_type {
-    using u128 = unsigned __int128;
-    const auto p = static_cast<u128>(a) * static_cast<u128>(b);
-    hi = static_cast<limb_type>(p >> 64);
-    return static_cast<limb_type>(p);
-  }
-#else
-  static inline auto _addcarry(limb_type a, limb_type b, limb_type cin,
-                               limb_type &out) -> limb_type {
-    const auto s1 = static_cast<limb_type>(a + b);
-    const auto c1 = static_cast<limb_type>(s1 < a);
-    const auto s2 = static_cast<limb_type>(s1 + cin);
-    const auto c2 = static_cast<limb_type>(s2 < s1);
-    out = s2;
-    return static_cast<limb_type>(c1 + c2);
-  }
-
-  static inline auto _subborrow(limb_type a, limb_type b, limb_type bin,
-                                limb_type &out) -> limb_type {
-    const auto t1 = static_cast<limb_type>(a - b);
-    const auto b1 = static_cast<limb_type>(a < b);
-    const auto t2 = static_cast<limb_type>(t1 - bin);
-    const auto b2 = static_cast<limb_type>(t1 < bin);
-    out = t2;
-    return static_cast<limb_type>(b1 + b2);
-  }
-
-  static inline auto _mul128(limb_type a, limb_type b, limb_type &hi)
-      -> limb_type {
-    const auto a0 = static_cast<limb_type>(static_cast<std::uint32_t>(a));
-    const auto a1 = static_cast<limb_type>(a >> 32);
-    const auto b0 = static_cast<limb_type>(static_cast<std::uint32_t>(b));
-    const auto b1 = static_cast<limb_type>(b >> 32);
-
-    const auto p00 = a0 * b0;
-    const auto p01 = a0 * b1;
-    const auto p10 = a1 * b0;
-    const auto p11 = a1 * b1;
-
-    const auto mid = (p00 >> 32) + static_cast<std::uint32_t>(p01) +
-                     static_cast<std::uint32_t>(p10);
-
-    hi = p11 + (p01 >> 32) + (p10 >> 32) + (mid >> 32);
-    return (p00 & 0xffffffffull) | (mid << 32);
-  }
-#endif
 
   static constexpr auto _cmp_unsigned(const int256 &a, const int256 &b)
       -> int {
-    for (int i = 3; i >= 0; --i) {
-      if (a._data[i] < b._data[i])
-        return -1;
-      if (a._data[i] > b._data[i])
-        return 1;
-    }
+    if (a._hi != b._hi)
+      return (a._hi < b._hi) ? -1 : 1;
+    if (a._lo != b._lo)
+      return (a._lo < b._lo) ? -1 : 1;
     return 0;
   }
 
   static auto _unsigned_add(const int256 &a, const int256 &b) -> int256 {
-    int256 r;
-    limb_type c = 0;
-    c = _addcarry(a._data[0], b._data[0], c, r._data[0]);
-    c = _addcarry(a._data[1], b._data[1], c, r._data[1]);
-    c = _addcarry(a._data[2], b._data[2], c, r._data[2]);
-    (void)_addcarry(a._data[3], b._data[3], c, r._data[3]);
-    return r;
+    limb_type lo = a._lo + b._lo;
+    limb_type carry = (lo < a._lo) ? limb_type(1) : limb_type(0);
+    limb_type hi = a._hi + b._hi + carry;
+    return int256(lo, hi);
   }
 
   static auto _unsigned_sub(const int256 &a, const int256 &b) -> int256 {
-    int256 r;
-    limb_type c = 0;
-    c = _subborrow(a._data[0], b._data[0], c, r._data[0]);
-    c = _subborrow(a._data[1], b._data[1], c, r._data[1]);
-    c = _subborrow(a._data[2], b._data[2], c, r._data[2]);
-    (void)_subborrow(a._data[3], b._data[3], c, r._data[3]);
-    return r;
+    limb_type borrow = (a._lo < b._lo) ? limb_type(1) : limb_type(0);
+    limb_type lo = a._lo - b._lo;
+    limb_type hi = a._hi - b._hi - borrow;
+    return int256(lo, hi);
   }
 
   static auto _unsigned_mul(const int256 &a, const int256 &b) -> int256 {
-    int256 r{};
-    auto add_at = [&](unsigned idx, limb_type lo, limb_type hi) {
-      limb_type carry = 0;
-      carry = _addcarry(r._data[idx], lo, 0, r._data[idx]);
-      if (idx + 1 < 4) {
-        carry = _addcarry(r._data[idx + 1], hi, carry, r._data[idx + 1]);
-        for (unsigned k = idx + 2; k < 4 && carry; ++k)
-          carry = _addcarry(r._data[k], 0, carry, r._data[k]);
-      }
-    };
-    for (unsigned i = 0; i < 4; ++i)
-      for (unsigned j = 0; i + j < 4; ++j) {
-        limb_type hi = 0;
-        const auto lo = _mul128(a._data[i], b._data[j], hi);
-        add_at(i + j, lo, hi);
-      }
-    return r;
+    limb_type lo_hi;
+    limb_type lo_lo = _umul_full(a._lo, b._lo, lo_hi);
+    limb_type cross = a._lo * b._hi + a._hi * b._lo;
+    return int256(lo_lo, lo_hi + cross);
   }
 
   static auto _bit_width(const int256 &v) -> unsigned {
-    for (int i = 3; i >= 0; --i) {
-      if (v._data[i] != 0) {
+    if (v._hi != 0) {
+      auto h = static_cast<std::uint64_t>(v._hi >> 64);
+      if (h != 0) {
 #if defined(__GNUC__) || defined(__clang__)
-        return static_cast<unsigned>(i) * 64u + 64u -
-               static_cast<unsigned>(__builtin_clzll(v._data[i]));
+        return 192u + 64u - static_cast<unsigned>(__builtin_clzll(h));
 #elif defined(_MSC_VER)
         unsigned long idx;
-        _BitScanReverse64(&idx, v._data[i]);
-        return static_cast<unsigned>(i) * 64u + idx + 1u;
+        _BitScanReverse64(&idx, h);
+        return 192u + idx + 1u;
 #else
         unsigned n = 0;
-        auto t = v._data[i];
-        while ((t >>= 1) != 0)
+        while ((h >>= 1) != 0)
           ++n;
-        return static_cast<unsigned>(i) * 64u + n + 1u;
+        return 192u + n + 1u;
 #endif
       }
+      auto l = static_cast<std::uint64_t>(v._hi);
+#if defined(__GNUC__) || defined(__clang__)
+      return 128u + 64u - static_cast<unsigned>(__builtin_clzll(l));
+#elif defined(_MSC_VER)
+      unsigned long idx;
+      _BitScanReverse64(&idx, l);
+      return 128u + idx + 1u;
+#else
+      unsigned n = 0;
+      while ((l >>= 1) != 0)
+        ++n;
+      return 128u + n + 1u;
+#endif
+    }
+    if (v._lo != 0) {
+      auto h = static_cast<std::uint64_t>(v._lo >> 64);
+      if (h != 0) {
+#if defined(__GNUC__) || defined(__clang__)
+        return 64u + 64u - static_cast<unsigned>(__builtin_clzll(h));
+#elif defined(_MSC_VER)
+        unsigned long idx;
+        _BitScanReverse64(&idx, h);
+        return 64u + idx + 1u;
+#else
+        unsigned n = 0;
+        while ((h >>= 1) != 0)
+          ++n;
+        return 64u + n + 1u;
+#endif
+      }
+      auto l = static_cast<std::uint64_t>(v._lo);
+#if defined(__GNUC__) || defined(__clang__)
+      return 64u - static_cast<unsigned>(__builtin_clzll(l));
+#elif defined(_MSC_VER)
+      unsigned long idx;
+      _BitScanReverse64(&idx, l);
+      return idx + 1u;
+#else
+      unsigned n = 0;
+      while ((l >>= 1) != 0)
+        ++n;
+      return n + 1u;
+#endif
     }
     return 0;
   }
 
   static constexpr auto _get_bit(const int256 &v, unsigned i) -> bool {
-    return ((v._data[i / 64u] >> (i % 64u)) & 1ull) != 0;
+    if (i < 128)
+      return ((v._lo >> i) & limb_type(1)) != 0;
+    return ((v._hi >> (i - 128)) & limb_type(1)) != 0;
   }
 
   constexpr auto _set_bit(unsigned i) -> void {
-    _data[i / 64u] |= (1ull << (i % 64u));
+    if (i < 128)
+      _lo |= (limb_type(1) << i);
+    else
+      _hi |= (limb_type(1) << (i - 128));
   }
 
   static auto _unsigned_divmod(const int256 &num, const int256 &den)
@@ -204,11 +171,8 @@ private:
     int256 r(0);
     const auto nbits = _bit_width(num);
     for (unsigned k = nbits; k-- > 0;) {
-      r._data[3] = (r._data[3] << 1) | (r._data[2] >> 63);
-      r._data[2] = (r._data[2] << 1) | (r._data[1] >> 63);
-      r._data[1] = (r._data[1] << 1) | (r._data[0] >> 63);
-      r._data[0] = (r._data[0] << 1) |
-                    static_cast<limb_type>(_get_bit(num, k));
+      r._hi = (r._hi << 1) | (r._lo >> 127);
+      r._lo = (r._lo << 1) | static_cast<limb_type>(_get_bit(num, k));
       if (_cmp_unsigned(r, den) >= 0) {
         r = _unsigned_sub(r, den);
         q._set_bit(k);
@@ -218,15 +182,11 @@ private:
   }
 
   auto _negate_in_place() -> void {
-    _data[0] = ~_data[0];
-    _data[1] = ~_data[1];
-    _data[2] = ~_data[2];
-    _data[3] = ~_data[3];
-    limb_type c = 1;
-    c = _addcarry(_data[0], 0, c, _data[0]);
-    c = _addcarry(_data[1], 0, c, _data[1]);
-    c = _addcarry(_data[2], 0, c, _data[2]);
-    (void)_addcarry(_data[3], 0, c, _data[3]);
+    _lo = ~_lo;
+    _hi = ~_hi;
+    _lo += 1;
+    if (_lo == 0)
+      _hi += 1;
   }
 
   static auto _abs(const int256 &v) -> int256 {
@@ -241,55 +201,44 @@ public:
   int256() = default;
 
   template <typename T, std::enable_if_t<std::is_integral_v<T>, int> = 0>
-  constexpr int256(T v) noexcept : _data{static_cast<limb_type>(v), 0, 0, 0} {
-    if constexpr (std::is_signed_v<T>) {
-      if (v < 0) {
-        _data[1] = ~limb_type(0);
-        _data[2] = ~limb_type(0);
-        _data[3] = ~limb_type(0);
-      }
-    }
-  }
+  constexpr int256(T v) noexcept
+      : _lo(static_cast<limb_type>(static_cast<tf::exact::int128>(v))),
+        _hi(std::is_signed_v<T> && v < 0 ? ~limb_type(0) : limb_type(0)) {}
 
   constexpr int256(tf::exact::int128 v) noexcept
-      : _data{static_cast<limb_type>(v),
-              static_cast<limb_type>(v >> 64), 0, 0} {
-    if (v < 0) {
-      _data[2] = ~limb_type(0);
-      _data[3] = ~limb_type(0);
-    }
-  }
+      : _lo(static_cast<limb_type>(v)),
+        _hi(v < 0 ? ~limb_type(0) : limb_type(0)) {}
 
-  constexpr explicit int256(limb_type x0, limb_type x1, limb_type x2,
-                            limb_type x3) noexcept
-      : _data{x0, x1, x2, x3} {}
+  constexpr explicit int256(limb_type lo, limb_type hi) noexcept
+      : _lo(lo), _hi(hi) {}
 
   template <typename T, std::enable_if_t<std::is_integral_v<T>, int> = 0>
   constexpr explicit operator T() const noexcept {
-    return static_cast<T>(_data[0]);
+    return static_cast<T>(_lo);
+  }
+
+  constexpr explicit operator tf::exact::int128() const noexcept {
+    return static_cast<tf::exact::int128>(_lo);
   }
 
   constexpr explicit operator bool() const noexcept {
-    return (_data[0] | _data[1] | _data[2] | _data[3]) != 0;
+    return (_lo | _hi) != 0;
   }
 
   [[nodiscard]] constexpr auto is_negative() const noexcept -> bool {
-    return (_data[3] >> 63) != 0;
+    return static_cast<tf::exact::int128>(_hi) < 0;
   }
 
   [[nodiscard]] constexpr auto is_zero() const noexcept -> bool {
-    return (_data[0] | _data[1] | _data[2] | _data[3]) == 0;
+    return (_lo | _hi) == 0;
   }
 
-  [[nodiscard]] constexpr auto raw_limb(unsigned i) const noexcept
-      -> limb_type {
-    return _data[i];
-  }
+  [[nodiscard]] constexpr auto lo() const noexcept -> limb_type { return _lo; }
+  [[nodiscard]] constexpr auto hi() const noexcept -> limb_type { return _hi; }
 
   friend constexpr auto operator==(const int256 &a, const int256 &b) noexcept
       -> bool {
-    return a._data[0] == b._data[0] && a._data[1] == b._data[1] &&
-           a._data[2] == b._data[2] && a._data[3] == b._data[3];
+    return a._lo == b._lo && a._hi == b._hi;
   }
 
   friend constexpr auto operator!=(const int256 &a, const int256 &b) noexcept
@@ -299,15 +248,11 @@ public:
 
   friend constexpr auto operator<(const int256 &a, const int256 &b) noexcept
       -> bool {
-    auto a3 = static_cast<std::int64_t>(a._data[3]);
-    auto b3 = static_cast<std::int64_t>(b._data[3]);
-    if (a3 != b3)
-      return a3 < b3;
-    if (a._data[2] != b._data[2])
-      return a._data[2] < b._data[2];
-    if (a._data[1] != b._data[1])
-      return a._data[1] < b._data[1];
-    return a._data[0] < b._data[0];
+    auto a_hi = static_cast<tf::exact::int128>(a._hi);
+    auto b_hi = static_cast<tf::exact::int128>(b._hi);
+    if (a_hi != b_hi)
+      return a_hi < b_hi;
+    return a._lo < b._lo;
   }
 
   friend constexpr auto operator>(const int256 &a, const int256 &b) noexcept
@@ -364,25 +309,22 @@ public:
   }
 
   friend constexpr auto operator~(const int256 &v) noexcept -> int256 {
-    return int256(~v._data[0], ~v._data[1], ~v._data[2], ~v._data[3]);
+    return int256(~v._lo, ~v._hi);
   }
 
   friend constexpr auto operator&(const int256 &a, const int256 &b) noexcept
       -> int256 {
-    return int256(a._data[0] & b._data[0], a._data[1] & b._data[1],
-                  a._data[2] & b._data[2], a._data[3] & b._data[3]);
+    return int256(a._lo & b._lo, a._hi & b._hi);
   }
 
   friend constexpr auto operator|(const int256 &a, const int256 &b) noexcept
       -> int256 {
-    return int256(a._data[0] | b._data[0], a._data[1] | b._data[1],
-                  a._data[2] | b._data[2], a._data[3] | b._data[3]);
+    return int256(a._lo | b._lo, a._hi | b._hi);
   }
 
   friend constexpr auto operator^(const int256 &a, const int256 &b) noexcept
       -> int256 {
-    return int256(a._data[0] ^ b._data[0], a._data[1] ^ b._data[1],
-                  a._data[2] ^ b._data[2], a._data[3] ^ b._data[3]);
+    return int256(a._lo ^ b._lo, a._hi ^ b._hi);
   }
 
   friend auto operator<<(const int256 &a, unsigned s) noexcept -> int256 {
@@ -390,21 +332,9 @@ public:
       return int256(0);
     if (s == 0)
       return a;
-    int256 r;
-    const auto ls = s / 64u;
-    const auto bs = s % 64u;
-    for (unsigned i = 0; i < 4; ++i) {
-      if (i < ls) {
-        r._data[i] = 0;
-        continue;
-      }
-      auto src = i - ls;
-      auto v = a._data[src] << bs;
-      if (bs != 0 && src > 0)
-        v |= a._data[src - 1] >> (64u - bs);
-      r._data[i] = v;
-    }
-    return r;
+    if (s >= 128)
+      return int256(limb_type(0), a._lo << (s - 128));
+    return int256(a._lo << s, (a._hi << s) | (a._lo >> (128 - s)));
   }
 
   friend auto operator>>(const int256 &a, unsigned s) noexcept -> int256 {
@@ -412,24 +342,17 @@ public:
       return a.is_negative() ? int256(-1) : int256(0);
     if (s == 0)
       return a;
-    int256 r;
-    const auto ls = s / 64u;
-    const auto bs = s % 64u;
-    const auto fill = a.is_negative() ? ~limb_type(0) : limb_type(0);
-    for (unsigned i = 0; i < 4; ++i) {
-      auto src = i + ls;
-      if (src >= 4) {
-        r._data[i] = fill;
-        continue;
-      }
-      auto v = a._data[src] >> bs;
-      if (bs != 0) {
-        auto hi = (src + 1 < 4) ? a._data[src + 1] : fill;
-        v |= hi << (64u - bs);
-      }
-      r._data[i] = v;
+    auto fill = a.is_negative()
+                    ? ~limb_type(0)
+                    : limb_type(0);
+    if (s >= 128) {
+      auto signed_hi = static_cast<tf::exact::int128>(a._hi);
+      return int256(
+          static_cast<limb_type>(signed_hi >> (s - 128)), fill);
     }
-    return r;
+    auto signed_hi = static_cast<tf::exact::int128>(a._hi);
+    return int256((a._lo >> s) | (a._hi << (128 - s)),
+                  static_cast<limb_type>(signed_hi >> s));
   }
 
   auto operator+=(const int256 &o) noexcept -> int256 & {

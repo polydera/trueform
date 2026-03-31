@@ -96,8 +96,8 @@ auto make_cut_component_labels(const Loops &loops, const Connectivity &conn,
 
 /// Label cut face components, then partition labels by tag.
 /// Returns one connected_component_labels per tag.
-template <typename LabelType, typename Index>
-auto make_cut_component_labels(const tf::face_cuts<Index> &fc,
+template <typename LabelType, typename Index, typename Int>
+auto make_cut_component_labels(const tf::face_cuts<Index, Int> &fc,
                                const tf::cut_graph<Index> &cg) {
   auto loops = fc.loops();
   auto conn = cg.connectivity_per_face_edge(fc);
@@ -189,11 +189,11 @@ auto merge_labels(tf::connected_component_labels<LabelType> &&sc,
 }
 
 /// Build partition labels for a 2-mesh pair.
-template <typename LabelType, typename Index, typename Policy0,
+template <typename LabelType, typename Index, typename Int, typename Policy0,
           typename Policy1>
 auto make_partition_labels(const tf::polygons<Policy0> &form0,
                            const tf::polygons<Policy1> &form1,
-                           const tf::face_cuts<Index> &fc,
+                           const tf::face_cuts<Index, Int> &fc,
                            const tf::cut_graph<Index> &cg) {
   auto descs_per_tag =
       tf::make_offset_block_range(fc.tag_offsets(), fc.descriptors());
@@ -235,9 +235,10 @@ auto make_partition_labels(const tf::polygons<Policy0> &form0,
 }
 
 /// Build partition labels for N meshes.
-template <typename LabelType, typename Index, typename Iterator, std::size_t N>
+template <typename LabelType, typename Index, typename Int, typename Iterator,
+          std::size_t N>
 auto make_partition_labels(tf::range<Iterator, N> forms,
-                           const tf::face_cuts<Index> &fc,
+                           const tf::face_cuts<Index, Int> &fc,
                            const tf::cut_graph<Index> &cg) {
   auto n_tags = forms.size();
   auto descs_per_tag =

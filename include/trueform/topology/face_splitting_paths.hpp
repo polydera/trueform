@@ -12,16 +12,20 @@
  */
 #pragma once
 #include "../core/polygon.hpp"
+#include "../exact/meta.hpp"
 #include "../exact/pt_converter.hpp"
 #include "../exact/signed_area.hpp"
 #include "./face_paths_extractor.hpp"
 
 namespace tf {
-template <typename Index> class face_splitting_paths {
+template <typename Index, typename Int = tf::exact::int32>
+class face_splitting_paths {
+  using T2 = typename tf::exact::meta<Int>::T2;
+
 public:
   struct path_descriptor {
     Index start, end;
-    tf::exact::int128 signed_area;
+    T2 signed_area;
   };
 
   template <typename Range, typename Policy0, typename Policy1>
@@ -31,7 +35,7 @@ public:
     if constexpr (std::is_integral_v<coord_t>) {
       build_impl(base_loop, edges, points);
     } else {
-      auto conv = tf::exact::make_pt_converter(points);
+      auto conv = tf::exact::make_pt_converter<Int>(points);
       auto int_pts = tf::make_points(tf::make_mapped_range(
           points, [&](const auto &pt) { return conv(pt); }));
       build_impl(base_loop, edges, int_pts);

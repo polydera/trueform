@@ -35,7 +35,7 @@ namespace tf {
 /// @param _polygons1 The second mesh @ref tf::polygons (or tagged form).
 /// @param op The @ref tf::boolean_op to perform.
 /// @return Tuple of (@ref tf::polygons_buffer, labels buffer).
-template <typename Policy0, typename Policy1>
+template <typename Int = tf::exact::int32, typename Policy0, typename Policy1>
 auto make_boolean(const tf::polygons<Policy0> &_polygons0,
                   const tf::polygons<Policy1> &_polygons1, tf::boolean_op op,
                   tf::boolean_config config = {}) {
@@ -47,8 +47,8 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
         using RealType = tf::coordinate_type<std::decay_t<decltype(p0)>,
                                              std::decay_t<decltype(p1)>>;
         auto [ibp, ig, fc, cg] =
-            cut::dispatch::build_exact_pipeline<Index, RealType>(p0, p1);
-        return tf::cut::make_boolean<int, Index>(
+            cut::dispatch::build_exact_pipeline<Index, RealType, Int>(p0, p1);
+        return tf::cut::make_boolean<int>(
             p0, p1, ig, fc, cg, ibp.converter(),
             tf::cut::make_boolean_op_spec(op), config);
       });
@@ -57,7 +57,7 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
 /// @ingroup cut_boolean
 /// @brief Perform boolean operations with face origin mapping.
 /// @overload
-template <typename Policy0, typename Policy1>
+template <typename Int = tf::exact::int32, typename Policy0, typename Policy1>
 auto make_boolean(const tf::polygons<Policy0> &_polygons0,
                   const tf::polygons<Policy1> &_polygons1, tf::boolean_op op,
                   tf::return_index_map_t,
@@ -70,8 +70,8 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
         using RealType = tf::coordinate_type<std::decay_t<decltype(p0)>,
                                              std::decay_t<decltype(p1)>>;
         auto [ibp, ig, fc, cg] =
-            cut::dispatch::build_exact_pipeline<Index, RealType>(p0, p1);
-        return tf::cut::make_boolean<int, Index>(
+            cut::dispatch::build_exact_pipeline<Index, RealType, Int>(p0, p1);
+        return tf::cut::make_boolean<int>(
             p0, p1, ig, fc, cg, ibp.converter(),
             tf::cut::make_boolean_op_spec(op), config, tf::return_index_map);
       });
@@ -80,7 +80,7 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
 /// @ingroup cut_boolean
 /// @brief Perform boolean operations with curve output.
 /// @overload
-template <typename Policy0, typename Policy1>
+template <typename Int = tf::exact::int32, typename Policy0, typename Policy1>
 auto make_boolean(const tf::polygons<Policy0> &_polygons0,
                   const tf::polygons<Policy1> &_polygons1, tf::boolean_op op,
                   tf::return_curves_t,
@@ -93,8 +93,8 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
         using RealType = tf::coordinate_type<std::decay_t<decltype(p0)>,
                                              std::decay_t<decltype(p1)>>;
         auto [ibp, ig, fc, cg] =
-            cut::dispatch::build_exact_pipeline<Index, RealType>(p0, p1);
-        auto res = tf::cut::make_boolean<int, Index>(
+            cut::dispatch::build_exact_pipeline<Index, RealType, Int>(p0, p1);
+        auto res = tf::cut::make_boolean<int>(
             p0, p1, ig, fc, cg, ibp.converter(),
             tf::cut::make_boolean_op_spec(op), config);
 
@@ -117,7 +117,7 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
 /// @ingroup cut_boolean
 /// @brief Perform boolean operations with curves and face origin mapping.
 /// @overload
-template <typename Policy0, typename Policy1>
+template <typename Int = tf::exact::int32, typename Policy0, typename Policy1>
 auto make_boolean(const tf::polygons<Policy0> &_polygons0,
                   const tf::polygons<Policy1> &_polygons1, tf::boolean_op op,
                   tf::return_curves_t, tf::return_index_map_t,
@@ -130,9 +130,9 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
         using RealType = tf::coordinate_type<std::decay_t<decltype(p0)>,
                                              std::decay_t<decltype(p1)>>;
         auto [ibp, ig, fc, cg] =
-            cut::dispatch::build_exact_pipeline<Index, RealType>(p0, p1);
+            cut::dispatch::build_exact_pipeline<Index, RealType, Int>(p0, p1);
         auto [res_mesh, res_labels, res_im] =
-            tf::cut::make_boolean<int, Index>(
+            tf::cut::make_boolean<int>(
                 p0, p1, ig, fc, cg, ibp.converter(),
                 tf::cut::make_boolean_op_spec(op), config,
                 tf::return_index_map);
@@ -149,7 +149,8 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
                 ipts, [&conv](const auto &pt) { return conv.deconvert(pt); })),
             cb.points());
         return std::make_tuple(std::move(res_mesh), std::move(res_labels),
-                               std::move(cb), std::move(res_im));
+                               std::move(cb),
+                               std::move(res_im));
       });
 }
 

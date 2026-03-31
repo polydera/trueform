@@ -12,7 +12,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <trueform/exact/classify_wedge.hpp>
 
-using pt3 = tf::exact::pt3;
+using pt3 = tf::exact::pt3<tf::exact::int32>;
 using S = tf::sidedness;
 
 TEST_CASE("Convex wedge boundary", "[classify_wedge]") {

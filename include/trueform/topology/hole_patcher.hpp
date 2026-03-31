@@ -19,6 +19,7 @@
 #include "../core/faces.hpp"
 #include "../core/points.hpp"
 #include "../core/views/mapped_range.hpp"
+#include "../exact/meta.hpp"
 #include "../exact/orient2d.hpp"
 #include "../exact/pt_converter.hpp"
 #include "../exact/segments_cross.hpp"
@@ -32,13 +33,17 @@ namespace tf {
 ///
 /// Given an outer loop (face boundary) and inner loops (holes), creates
 /// a single polygon by connecting holes to the outer boundary. Uses exact
-/// int32 arithmetic for all geometric predicates. Float points are
+/// arithmetic for all geometric predicates. Float points are
 /// converted via pt_converter.
 ///
 /// If a hole shares a vertex with the face, splices directly there
 /// (no bridge edges). Otherwise, uses a heap-based algorithm to find
 /// the nearest visible vertex.
-template <typename Index> class hole_patcher {
+template <typename Index, typename Int = tf::exact::int32>
+class hole_patcher {
+  using T1 = typename tf::exact::meta<Int>::T1;
+  using T2 = typename tf::exact::meta<Int>::T2;
+
 public:
   template <typename Range, typename Policy0, typename Policy1>
   auto build(const Range &loop, const tf::faces<Policy0> &holes,
@@ -50,7 +55,7 @@ public:
     if constexpr (std::is_integral_v<coord_t>) {
       build_impl(loop, holes, points);
     } else {
-      auto conv = tf::exact::make_pt_converter(points);
+      auto conv = tf::exact::make_pt_converter<Int>(points);
       auto int_pts = tf::make_points(tf::make_mapped_range(
           points, [&](const auto &pt) { return conv(pt); }));
       build_impl(loop, holes, int_pts);
@@ -85,7 +90,7 @@ private:
   template <typename Policy>
   auto pt(const tf::points<Policy> &points, const node_t &node) const {
     auto &&p = points[node.pt_id];
-    return tf::exact::pt2{p[0], p[1]};
+    return tf::exact::pt2<Int>{p[0], p[1]};
   }
 
   auto fill_buffer() {
@@ -240,8 +245,8 @@ private:
     auto compare = [&](const auto &x0, const auto &x1) {
       auto p0 = pt(points, _nodes[x0.id]);
       auto p1 = pt(points, _nodes[x1.id]);
-      return std::make_pair(x0.d2, -int64_t(p0[axis])) >
-             std::make_pair(x1.d2, -int64_t(p1[axis]));
+      return std::make_pair(x0.d2, -T1(p0[axis])) >
+             std::make_pair(x1.d2, -T1(p1[axis]));
     };
 
     std::make_heap(_face_heap.begin(), _face_heap.end(), compare);
@@ -259,17 +264,17 @@ private:
   template <typename Policy0, typename Policy1>
   auto compute_axis(const tf::faces<Policy0> &holes,
                     const tf::points<Policy1> &points) -> int {
-    int32_t min0 = std::numeric_limits<int32_t>::max();
-    int32_t max0 = std::numeric_limits<int32_t>::min();
-    int32_t min1 = std::numeric_limits<int32_t>::max();
-    int32_t max1 = std::numeric_limits<int32_t>::min();
+    Int min0 = std::numeric_limits<Int>::max();
+    Int max0 = std::numeric_limits<Int>::min();
+    Int min1 = std::numeric_limits<Int>::max();
+    Int max1 = std::numeric_limits<Int>::min();
     for (const auto &hole : holes) {
       for (auto id : hole) {
         auto &&p = points[id];
-        min0 = std::min(min0, static_cast<int32_t>(p[0]));
-        max0 = std::max(max0, static_cast<int32_t>(p[0]));
-        min1 = std::min(min1, static_cast<int32_t>(p[1]));
-        max1 = std::max(max1, static_cast<int32_t>(p[1]));
+        min0 = std::min(min0, Int(p[0]));
+        max0 = std::max(max0, Int(p[0]));
+        min1 = std::min(min1, Int(p[1]));
+        max1 = std::max(max1, Int(p[1]));
       }
     }
     return (max0 - min0 >= max1 - min1) ? 0 : 1;
@@ -302,7 +307,7 @@ private:
   }
 
   struct heap_node_t {
-    tf::exact::int128 d2;
+    T2 d2;
     Index id;
   };
 

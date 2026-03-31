@@ -30,16 +30,15 @@ namespace tf {
 /// @tparam Policy The policy type of the mesh.
 /// @param _polygons The input @ref tf::polygons (or tagged form).
 /// @return Tuple of (@ref tf::polygons_buffer, face labels).
-template <typename Policy>
+template <typename Int = tf::exact::int32, typename Policy>
 auto make_polygon_arrangements(const tf::polygons<Policy> &_polygons) {
   return cut::dispatch::self_boolean(_polygons, [](const auto &p) {
     using Index = std::decay_t<decltype(p.faces()[0][0])>;
     using RealType = tf::coordinate_type<std::decay_t<decltype(p)>>;
     auto [iwp, ig, fc, cg] =
-        cut::dispatch::build_self_pipeline<Index, RealType>(p);
+        cut::dispatch::build_self_pipeline<Index, RealType, Int>(p);
     auto [mesh, face_labels, map_data] =
-        tf::cut::make_polygon_arrangements<Index>(p, ig, fc,
-                                                  iwp.converter());
+        tf::cut::make_polygon_arrangements(p, ig, fc, iwp.converter());
     return std::make_pair(std::move(mesh), std::move(face_labels));
   });
 }
@@ -47,20 +46,19 @@ auto make_polygon_arrangements(const tf::polygons<Policy> &_polygons) {
 /// @ingroup cut_boolean
 /// @brief Split a single mesh at self-intersection curves with curve output.
 /// @overload
-template <typename Policy>
+template <typename Int = tf::exact::int32, typename Policy>
 auto make_polygon_arrangements(const tf::polygons<Policy> &_polygons,
                                tf::return_curves_t) {
   return cut::dispatch::self_boolean(_polygons, [](const auto &p) {
     using Index = std::decay_t<decltype(p.faces()[0][0])>;
     using RealType = tf::coordinate_type<std::decay_t<decltype(p)>>;
     auto [iwp, ig, fc, cg] =
-        cut::dispatch::build_self_pipeline<Index, RealType>(p);
+        cut::dispatch::build_self_pipeline<Index, RealType, Int>(p);
     auto [mesh, face_labels, map_data] =
-        tf::cut::make_polygon_arrangements<Index>(p, ig, fc,
-                                                  iwp.converter());
+        tf::cut::make_polygon_arrangements(p, ig, fc, iwp.converter());
 
-    auto paths = tf::connect_edges_to_paths(
-        tf::make_edges(cg.intersection_edges()));
+    auto paths =
+        tf::connect_edges_to_paths(tf::make_edges(cg.intersection_edges()));
     auto &conv = iwp.converter();
     auto ipts = ig.points();
     tf::curves_buffer<Index, RealType, 3> cb;

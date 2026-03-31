@@ -17,7 +17,6 @@
 #include "../core/buffer.hpp"
 #include "../core/none.hpp"
 #include "../core/offset_block_buffer.hpp"
-#include "../core/small_vector.hpp"
 #include "../exact/projection_axes.hpp"
 #include "../intersect/graph/face_descriptor.hpp"
 #include "../intersect/graph/intersection_graph.hpp"
@@ -30,7 +29,7 @@ namespace tf {
 ///
 /// Iterates faces from the intersection graph, runs face_cutter on each,
 /// and collects all subdivided loops with their descriptors.
-template <typename Index> class face_cuts {
+template <typename Index, typename Int = tf::exact::int32> class face_cuts {
   using vertex_t = intersect::graph::vertex<Index>;
   using desc_t = intersect::graph::face_descriptor<Index>;
 
@@ -50,7 +49,7 @@ public:
   }
 
   template <typename ApplyToFace, typename GetMeshPoint>
-  auto build(const tf::intersection_graph<Index> &ig,
+  auto build(const tf::intersection_graph<Index, Int> &ig,
              const ApplyToFace &apply_to_face,
              const GetMeshPoint &get_mesh_point) -> void {
     clear();
@@ -67,7 +66,7 @@ public:
       tf::buffer<vertex_t> vertices;
       tf::buffer<desc_t> descs;
       tf::buffer<std::array<Index, 2>> edge_buf;
-      tf::face_cutter<Index> cutter;
+      tf::face_cutter<Index, Int> cutter;
     };
 
     auto task = [&](auto &&range, local_t &local) {
@@ -76,8 +75,8 @@ public:
       for (const auto &[desc, loop, edges] : range) {
         if (desc.tag == Index(-1))
           continue;
-        auto get_point =
-            [&, &desc = desc](const vertex_t &v) -> tf::point<int32_t, 3> {
+        auto get_point = [&, &desc =
+                                 desc](const vertex_t &v) -> tf::point<Int, 3> {
           if (v.source == intersect::graph::vertex_source::created)
             return pts[v.id];
           return get_mesh_point_f(desc.tag, v.id);
@@ -97,7 +96,7 @@ public:
                                      Index(face[2]),
                                      {2, tf::topo_type::vertex}}));
               auto get_projected_point =
-                  [&, axes](const vertex_t &v) -> tf::point<int32_t, 2> {
+                  [&, axes](const vertex_t &v) -> tf::point<Int, 2> {
                 auto pt = get_point(v);
                 return {pt[axes.first], pt[axes.second]};
               };
@@ -145,9 +144,8 @@ public:
   /// Build from simple_intersections (isocurves/isobands).
   /// Single tag, exactly 2 intersection records per face.
   template <typename Policy, typename RealT, std::size_t Dims>
-  auto build(
-      const tf::polygons<Policy> &polygons,
-      const tf::intersect::simple_intersections<Index, RealT, Dims> &si)
+  auto build(const tf::polygons<Policy> &polygons,
+             const tf::intersect::simple_intersections<Index, RealT, Dims> &si)
       -> void {
     clear();
     auto subranges = si.intersections();
@@ -166,10 +164,12 @@ public:
       auto n = static_cast<Index>(face.size());
       auto e0 = static_cast<Index>(r0.target.id);
       auto e1 = static_cast<Index>(r1.target.id);
-      auto c0 = vertex_t{intersect::graph::vertex_source::created, r0.id,
-                          {short(e0), tf::topo_type::edge}};
-      auto c1 = vertex_t{intersect::graph::vertex_source::created, r1.id,
-                          {short(e1), tf::topo_type::edge}};
+      auto c0 = vertex_t{intersect::graph::vertex_source::created,
+                         r0.id,
+                         {short(e0), tf::topo_type::edge}};
+      auto c1 = vertex_t{intersect::graph::vertex_source::created,
+                         r1.id,
+                         {short(e1), tf::topo_type::edge}};
       auto ov = [&](Index ei) {
         return vertex_t{intersect::graph::vertex_source::original,
                         Index(face[ei]),
@@ -180,8 +180,8 @@ public:
       _loops.offsets_buffer().push_back(
           static_cast<Index>(_loops.data_buffer().size()));
       _loops.data_buffer().push_back(c0);
-      for (Index i = tf::circular_increment(e0, n); i != tf::circular_increment(e1, n);
-           i = tf::circular_increment(i, n))
+      for (Index i = tf::circular_increment(e0, n);
+           i != tf::circular_increment(e1, n); i = tf::circular_increment(i, n))
         _loops.data_buffer().push_back(ov(i));
       _loops.data_buffer().push_back(c1);
       _descriptors.push_back({0, object});
@@ -190,8 +190,8 @@ public:
       _loops.offsets_buffer().push_back(
           static_cast<Index>(_loops.data_buffer().size()));
       _loops.data_buffer().push_back(c1);
-      for (Index i = tf::circular_increment(e1, n); i != tf::circular_increment(e0, n);
-           i = tf::circular_increment(i, n))
+      for (Index i = tf::circular_increment(e1, n);
+           i != tf::circular_increment(e0, n); i = tf::circular_increment(i, n))
         _loops.data_buffer().push_back(ov(i));
       _loops.data_buffer().push_back(c0);
       _descriptors.push_back({0, object});

@@ -38,12 +38,12 @@ namespace tf::cut {
 /// point (centroid of a polygon or cut face loop) and queries
 /// signed_distance against the other mesh.
 template <typename Index, typename LabelType, typename Policy0,
-          typename Policy1, typename GetCreatedPoint>
+          typename Policy1, typename Int, typename GetCreatedPoint>
 void classify_missing_by_signed_distance(
     tf::blocked_buffer<Index, 4> &counts, const tf::polygons<Policy0> &polygons,
     const tf::polygons<Policy1> &polygons_other,
     const tf::cut::partition_labels<LabelType> &pal,
-    const tf::face_cuts<Index> &fc, std::size_t tag_self,
+    const tf::face_cuts<Index, Int> &fc, std::size_t tag_self,
     const GetCreatedPoint &get_created_point) {
   using vertex_t = intersect::graph::vertex<Index>;
   using source = intersect::graph::vertex_source;
@@ -123,13 +123,13 @@ void classify_missing_by_signed_distance(
 /// components connected through same-tag manifold edges), then uses
 /// classify_point for each missing component.
 template <typename Index, typename LabelType, typename Policy0,
-          typename Policy1, typename GetCreatedPoint>
+          typename Policy1, typename Int, typename GetCreatedPoint>
 void classify_missing_by_containment(
     tf::blocked_buffer<Index, 4> &counts, const tf::polygons<Policy0> &polygons,
     const tf::polygons<Policy1> &polygons_other,
     const tf::cut::partition_labels<LabelType> &pal,
     const tf::cut::partition_labels<LabelType> &pal_other,
-    const tf::face_cuts<Index> &fc, const tf::cut_graph<Index> &cg,
+    const tf::face_cuts<Index, Int> &fc, const tf::cut_graph<Index> &cg,
     std::size_t tag_self, std::size_t tag_other,
     const GetCreatedPoint &get_created_point) {
   using vertex_t = intersect::graph::vertex<Index>;
@@ -214,14 +214,14 @@ void classify_missing_by_containment(
 /// joint components) when use_containment is true, otherwise falls
 /// back to signed distance.
 template <typename Index, typename LabelType, typename Policy0,
-          typename Policy1, typename GetCreatedPoint>
+          typename Policy1, typename Int, typename GetCreatedPoint>
 void classify_missing(tf::blocked_buffer<Index, 4> &counts0,
                       tf::blocked_buffer<Index, 4> &counts1,
                       const tf::polygons<Policy0> &polygons0,
                       const tf::polygons<Policy1> &polygons1,
                       const tf::cut::partition_labels<LabelType> &pal0,
                       const tf::cut::partition_labels<LabelType> &pal1,
-                      const tf::face_cuts<Index> &fc,
+                      const tf::face_cuts<Index, Int> &fc,
                       const tf::cut_graph<Index> &cg, bool use_containment,
                       const GetCreatedPoint &get_created_point) {
   if (use_containment) {

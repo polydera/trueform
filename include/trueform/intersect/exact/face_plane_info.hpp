@@ -13,7 +13,7 @@
 #pragma once
 
 #include "../../core/buffer.hpp"
-#include "../../exact/int128.hpp"
+#include "../../exact/meta.hpp"
 #include "../../exact/vertex.hpp"
 
 namespace tf::exact {
@@ -27,9 +27,11 @@ struct face_plane_info {
 };
 
 /// Find 3 non-collinear vertices and compute 2D projection axes.
-template <typename Index>
-auto compute_face_plane(const tf::buffer<vertex<Index>> &face)
+template <typename Index, typename Int>
+auto compute_face_plane(const tf::buffer<vertex<Index, Int>> &face)
     -> face_plane_info {
+  using T1 = typename meta<Int>::T1;
+  using T2 = typename meta<Int>::T2;
   auto n = face.size();
   std::size_t id0 = 0, id1 = 1;
   while (id1 < n && face[id1].pt[0] == face[id0].pt[0] &&
@@ -38,18 +40,18 @@ auto compute_face_plane(const tf::buffer<vertex<Index>> &face)
     ++id1;
   if (id1 >= n)
     return {0, 1, 0, 0, 0, false};
-  int64_t e0x = int64_t(face[id1].pt[0]) - int64_t(face[id0].pt[0]);
-  int64_t e0y = int64_t(face[id1].pt[1]) - int64_t(face[id0].pt[1]);
-  int64_t e0z = int64_t(face[id1].pt[2]) - int64_t(face[id0].pt[2]);
-  int128 nx = 0, ny = 0, nz = 0;
+  T1 e0x = T1(face[id1].pt[0]) - T1(face[id0].pt[0]);
+  T1 e0y = T1(face[id1].pt[1]) - T1(face[id0].pt[1]);
+  T1 e0z = T1(face[id1].pt[2]) - T1(face[id0].pt[2]);
+  T2 nx = 0, ny = 0, nz = 0;
   std::size_t id2 = id1 + 1;
   for (; id2 < n; ++id2) {
-    int64_t e1x = int64_t(face[id2].pt[0]) - int64_t(face[id0].pt[0]);
-    int64_t e1y = int64_t(face[id2].pt[1]) - int64_t(face[id0].pt[1]);
-    int64_t e1z = int64_t(face[id2].pt[2]) - int64_t(face[id0].pt[2]);
-    nx = int128(e0y) * e1z - int128(e0z) * e1y;
-    ny = int128(e0z) * e1x - int128(e0x) * e1z;
-    nz = int128(e0x) * e1y - int128(e0y) * e1x;
+    T1 e1x = T1(face[id2].pt[0]) - T1(face[id0].pt[0]);
+    T1 e1y = T1(face[id2].pt[1]) - T1(face[id0].pt[1]);
+    T1 e1z = T1(face[id2].pt[2]) - T1(face[id0].pt[2]);
+    nx = T2(e0y) * e1z - T2(e0z) * e1y;
+    ny = T2(e0z) * e1x - T2(e0x) * e1z;
+    nz = T2(e0x) * e1y - T2(e0y) * e1x;
     if (nx != 0 || ny != 0 || nz != 0)
       break;
   }

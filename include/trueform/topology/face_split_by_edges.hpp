@@ -20,7 +20,7 @@
 #include "../core/views/enumerate.hpp"
 #include "../core/views/mapped_range.hpp"
 #include "../exact/classify.hpp"
-#include "../exact/int128.hpp"
+#include "../exact/meta.hpp"
 #include "../exact/pt_converter.hpp"
 #include "../exact/signed_area.hpp"
 #include "../spatial/aabb_tree.hpp"
@@ -38,7 +38,12 @@ namespace tf {
 /// paths (crossings, loops, cuts, non-crossings) and extracts all sub-faces
 /// and holes. Uses exact int32 arithmetic for all geometric predicates.
 /// Float points are converted via pt_converter.
-template <typename Index> class face_split_by_edges {
+template <typename Index, typename Int = tf::exact::int32>
+class face_split_by_edges {
+private:
+  using T1 = typename tf::exact::meta<Int>::T1;
+  using T2 = typename tf::exact::meta<Int>::T2;
+
 public:
   template <typename Range, typename Policy0, typename Policy1>
   auto build(const Range &face, const tf::edges<Policy0> &edges,
@@ -48,7 +53,7 @@ public:
     if constexpr (std::is_integral_v<coord_t>) {
       build_impl(face, edges, points);
     } else {
-      auto conv = tf::exact::make_pt_converter(points);
+      auto conv = tf::exact::make_pt_converter<Int>(points);
       auto int_pts = tf::make_points(tf::make_mapped_range(
           points, [&](const auto &pt) { return conv(pt); }));
       build_impl(face, edges, int_pts);
@@ -173,17 +178,16 @@ private:
          tf::zip(_spaths.non_crossing_paths(), _non_crossing_in_base_loop)) {
       in_base_loop = -1;
       auto &&pt = points[path[1]];
-      tf::point<int32_t, 2> qpt = {pt[0], pt[1]};
-      tf::search(
-          _tree, tf::intersects_f(qpt),
-          [&, &in_base_loop = in_base_loop](Index b_id) {
-            if (tf::exact::classify(qpt, polygons[b_id]) !=
-                tf::containment::outside) {
-              in_base_loop = b_id;
-              return true;
-            }
-            return false;
-          });
+      tf::point<Int, 2> qpt = {pt[0], pt[1]};
+      tf::search(_tree, tf::intersects_f(qpt),
+                 [&, &in_base_loop = in_base_loop](Index b_id) {
+                   if (tf::exact::classify(qpt, polygons[b_id]) !=
+                       tf::containment::outside) {
+                     in_base_loop = b_id;
+                     return true;
+                   }
+                   return false;
+                 });
     }
   }
 
@@ -217,7 +221,7 @@ private:
   template <typename Policy>
   auto copy_from_planar_regions(const tf::points<Policy> &points) {
     // find exterior: most negative signed_area_2x
-    tf::exact::int128 min_area = 0;
+    T2 min_area = 0;
     Index min_id = -1;
     Index count = 0;
     for (const auto &region : _pgr) {
@@ -269,7 +273,7 @@ private:
   auto process_cuts() {
     for (const auto &cut : _spaths.cut_paths()) {
       auto id = Index(_signed_areas.size());
-      _signed_areas.push_back(tf::exact::int128(0));
+      _signed_areas.push_back(T2(0));
       _offsets.push_back(_vertices.size());
       std::copy(cut.begin(), cut.end(), std::back_inserter(_vertices));
       if (cut.size() > 2)
@@ -301,8 +305,7 @@ private:
   }
 
   template <typename Range, typename Policy>
-  auto process_paths(const Range &base_loop,
-                     const tf::points<Policy> &points) {
+  auto process_paths(const Range &base_loop, const tf::points<Policy> &points) {
     divide_base_loop_with_crossing_paths(base_loop);
     if (_spaths.non_crossing_paths().size()) {
       process_non_crossings(points);
@@ -330,17 +333,17 @@ private:
     _fhr.build(tf::make_faces(faces()), tf::make_faces(holes()), points);
   }
 
-  tf::planar_graph_regions<Index> _pgr;
-  tf::face_splitting_paths<Index> _spaths;
-  tf::face_hole_relations<Index> _fhr;
-  tf::aabb_tree<Index, int32_t, 2> _tree;
+  tf::planar_graph_regions<Index, Int> _pgr;
+  tf::face_splitting_paths<Index, Int> _spaths;
+  tf::face_hole_relations<Index, Int> _fhr;
+  tf::aabb_tree<Index, Int, 2> _tree;
   tf::buffer<Index> _base_loops_vertices;
   tf::buffer<Index> _base_loops_offsets;
   tf::buffer<Index> _work_edges;
   tf::buffer<Index> _non_crossing_in_base_loop;
   tf::buffer<Index> _faces;
   tf::buffer<Index> _holes;
-  tf::buffer<tf::exact::int128> _signed_areas;
+  tf::buffer<T2> _signed_areas;
   tf::buffer<Index> _vertices;
   tf::buffer<Index> _offsets;
 };

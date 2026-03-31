@@ -22,13 +22,15 @@ namespace tf::exact {
 /// Uses SoS orient3d for all intersection tests (sign convention must be
 /// consistent). On intersection, computes orient3d volumes for barycentric
 /// weights (absolute values only, so sign convention is irrelevant).
-template <typename Index>
+template <typename Index, typename Int>
 auto triangle_segment_intersect_point_sos(
-    const std::array<vertex<Index>, 5> &vs) -> std::optional<pt3> {
+    const std::array<vertex<Index, Int>, 5> &vs) -> std::optional<pt3<Int>> {
+  using T1 = typename meta<Int>::T1;
+  using T2 = typename meta<Int>::T2;
 
   auto orient = [&](int p, int q, int r, int s) -> bool {
     return orient3d_sos(
-        std::array<vertex<Index>, 4>{vs[p], vs[q], vs[r], vs[s]});
+        std::array<vertex<Index, Int>, 4>{vs[p], vs[q], vs[r], vs[s]});
   };
 
   constexpr int a = 0, b = 1, c = 2, d = 3, e = 4;
@@ -56,16 +58,14 @@ auto triangle_segment_intersect_point_sos(
   auto abs_e = vol_e < 0 ? -vol_e : vol_e;
   auto sum = abs_d + abs_e;
 
-  pt3 point;
+  pt3<Int> point;
   if (sum != 0) {
     for (int i = 0; i < 3; ++i)
-      point[i] = static_cast<int32_t>(
-          div_round(abs_e * int128(vs[3].pt[i]) + abs_d * int128(vs[4].pt[i]),
-                    sum));
+      point[i] = static_cast<Int>(
+          div_round(abs_e * T2(vs[3].pt[i]) + abs_d * T2(vs[4].pt[i]), sum));
   } else {
     for (int i = 0; i < 3; ++i)
-      point[i] = static_cast<int32_t>(
-          (int64_t(vs[3].pt[i]) + int64_t(vs[4].pt[i])) / 2);
+      point[i] = static_cast<Int>((T1(vs[3].pt[i]) + T1(vs[4].pt[i])) / 2);
   }
 
   return point;

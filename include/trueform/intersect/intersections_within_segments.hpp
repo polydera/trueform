@@ -36,12 +36,14 @@ namespace tf {
 /// axes are computed per pair via the dominant normal plane.
 /// Points are stored as int32 internally and deconverted to float
 /// for output.
-template <typename Index, typename RealType, std::size_t Dims>
+template <typename Index, typename RealType, std::size_t Dims,
+          typename Int = tf::exact::int32>
 class intersections_within_segments {
   static_assert(Dims == 2 || Dims == 3, "Only 2D and 3D segments supported");
 
 public:
-  auto converter() const -> const tf::exact::pt_converter<RealType, Dims> & {
+  auto converter() const
+      -> const tf::exact::pt_converter<Int, RealType, Dims> & {
     return _converter;
   }
 
@@ -66,7 +68,7 @@ public:
     static_assert(tf::coordinate_dims_v<Policy> == Dims,
                   "Dimension mismatch between segments and class template");
     clear();
-    _converter = tf::exact::make_pt_converter<RealType>(segments);
+    _converter = tf::exact::make_pt_converter<Int, RealType>(segments);
 
     auto [raw_intersections, raw_points] = generate_intersections(segments);
 
@@ -76,7 +78,7 @@ public:
     }
 
     // Deduplicate vertex points (VV merge + shared vertex collapse)
-    tf::intersect::dedup_segment_vertex_points<Index, Dims>(
+    tf::intersect::dedup_segment_vertex_points(
         raw_intersections, raw_points,
         [&](Index object, Index local_id) -> Index {
           return Index(segments.edges()[object][local_id]);
@@ -88,8 +90,7 @@ public:
     tf::buffer<tf::intersect::intersection<Index>> expanded;
     if (Index(raw_intersections.size()) > 1000)
       tf::generic_generate(
-          raw_intersections, expanded,
-          [&](const auto &rec, auto &buffer) {
+          raw_intersections, expanded, [&](const auto &rec, auto &buffer) {
             tf::intersect::duplicate_intersection(rec, em, edges, buffer);
           });
     else {
@@ -126,7 +127,7 @@ private:
   auto generate_intersections_impl(const tf::segments<Policy> &segments,
                                    int parallelism_depth) {
     tf::local_buffer<tf::intersect::intersection<Index>> l_intersections;
-    tf::local_buffer<tf::point<int32_t, Dims>> l_points;
+    tf::local_buffer<tf::point<Int, Dims>> l_points;
     l_intersections.reserve_all(1000);
     l_points.reserve_all(1000);
 
@@ -135,9 +136,8 @@ private:
     tf::search_self(
         segments,
         [&](const auto &bv0, const auto &bv1) {
-          return tf::intersects(
-              tf::make_aabb(conv(bv0.min), conv(bv0.max)),
-              tf::make_aabb(conv(bv1.min), conv(bv1.max)));
+          return tf::intersects(tf::make_aabb(conv(bv0.min), conv(bv0.max)),
+                                tf::make_aabb(conv(bv1.min), conv(bv1.max)));
         },
         [&](const auto &seg0, const auto &seg1) {
           intersect_pair(seg0, seg1, segments.edge_membership(),
@@ -146,7 +146,7 @@ private:
         parallelism_depth);
 
     tf::buffer<tf::intersect::intersection<Index>> intersections;
-    tf::buffer<tf::point<int32_t, Dims>> points;
+    tf::buffer<tf::point<Int, Dims>> points;
     l_points.to_buffer(points);
     intersections.allocate(l_intersections.total_size());
     auto it = intersections.begin();
@@ -161,15 +161,16 @@ private:
     return std::make_pair(std::move(intersections), std::move(points));
   }
 
-  static auto get_axes(const tf::exact::vertex<Index> &a0,
-                       const tf::exact::vertex<Index> &a1,
-                       const tf::exact::vertex<Index> &b0,
-                       const tf::exact::vertex<Index> &b1)
+  static auto get_axes(const tf::exact::vertex<Index, Int> &a0,
+                       const tf::exact::vertex<Index, Int> &a1,
+                       const tf::exact::vertex<Index, Int> &b0,
+                       const tf::exact::vertex<Index, Int> &b1)
       -> std::pair<int, int> {
     if constexpr (Dims == 2)
       return {0, 1};
     else {
-      auto pts_equal = [](const tf::exact::pt3 &x, const tf::exact::pt3 &y) {
+      auto pts_equal = [](const tf::exact::pt3<Int> &x,
+                          const tf::exact::pt3<Int> &y) {
         return x[0] == y[0] && x[1] == y[1] && x[2] == y[2];
       };
       // Pick a third point that differs from a0 and a1
@@ -180,16 +181,17 @@ private:
   }
 
   template <typename Point>
-  auto make_vertex(Index id, const Point &p) const -> tf::exact::vertex<Index> {
+  auto make_vertex(Index id, const Point &p) const
+      -> tf::exact::vertex<Index, Int> {
     auto converted = _converter(p);
     if constexpr (Dims == 2)
-      return {id, tf::exact::pt3{converted[0], converted[1], 0}};
+      return {id, tf::exact::pt3<Int>{converted[0], converted[1], 0}};
     else
       return {id, converted};
   }
 
-  static auto make_point(const tf::exact::pt3 &pt3, int a0, int a1)
-      -> tf::point<int32_t, Dims> {
+  static auto make_point(const tf::exact::pt3<Int> &pt3, int a0, int a1)
+      -> tf::point<Int, Dims> {
     if constexpr (Dims == 2)
       return {pt3[a0], pt3[a1]};
     else
@@ -199,7 +201,7 @@ private:
   template <typename Seg0, typename Seg1, typename EM>
   auto intersect_pair(const Seg0 &seg0, const Seg1 &seg1, const EM &em,
                       tf::buffer<tf::intersect::intersection<Index>> &ints,
-                      tf::buffer<tf::point<int32_t, Dims>> &pts) const {
+                      tf::buffer<tf::point<Int, Dims>> &pts) const {
     auto id0 = Index(seg0.id());
     auto id1 = Index(seg1.id());
 
@@ -241,7 +243,8 @@ private:
       return true;
     };
 
-    auto emit = [&, ax0 = ax0, ax1 = ax1](const tf::exact::segment_intersection<short> &hit) {
+    auto emit = [&, ax0 = ax0,
+                 ax1 = ax1](const tf::exact::segment_intersection<short> &hit) {
       if (!should_emit(hit))
         return;
       auto pt = compute_point(hit, a0, a1, b0, b1, ax0, ax1);
@@ -266,11 +269,11 @@ private:
   }
 
   static auto compute_point(const tf::exact::segment_intersection<short> &hit,
-                            const tf::exact::vertex<Index> &a0,
-                            const tf::exact::vertex<Index> &a1,
-                            const tf::exact::vertex<Index> &b0,
-                            const tf::exact::vertex<Index> &b1, int ax0,
-                            int ax1) -> tf::point<int32_t, Dims> {
+                            const tf::exact::vertex<Index, Int> &a0,
+                            const tf::exact::vertex<Index, Int> &a1,
+                            const tf::exact::vertex<Index, Int> &b0,
+                            const tf::exact::vertex<Index, Int> &b1, int ax0,
+                            int ax1) -> tf::point<Int, Dims> {
     if (hit.target_a.label == tf::topo_type::vertex) {
       auto &v = (hit.target_a.id == 0) ? a0 : a1;
       return make_point(v.pt, ax0, ax1);
@@ -280,20 +283,20 @@ private:
       return make_point(v.pt, ax0, ax1);
     }
     if constexpr (Dims == 2) {
-      tf::exact::pt2 pa0 = {a0.pt[ax0], a0.pt[ax1]};
-      tf::exact::pt2 pa1 = {a1.pt[ax0], a1.pt[ax1]};
-      tf::exact::pt2 pb0 = {b0.pt[ax0], b0.pt[ax1]};
-      tf::exact::pt2 pb1 = {b1.pt[ax0], b1.pt[ax1]};
+      tf::exact::pt2<Int> pa0 = {a0.pt[ax0], a0.pt[ax1]};
+      tf::exact::pt2<Int> pa1 = {a1.pt[ax0], a1.pt[ax1]};
+      tf::exact::pt2<Int> pb0 = {b0.pt[ax0], b0.pt[ax1]};
+      tf::exact::pt2<Int> pb1 = {b1.pt[ax0], b1.pt[ax1]};
       return tf::exact::coplanar_edge_edge_point(pa0, pa1, pb0, pb1);
     } else {
       return tf::exact::coplanar_edge_edge_point(a0, a1, b0, b1, ax0, ax1);
     }
   }
 
-  tf::exact::pt_converter<RealType, Dims> _converter;
+  tf::exact::pt_converter<Int, RealType, Dims> _converter;
   tf::buffer<Index> _intersections_offsets;
   tf::buffer<tf::intersect::intersection<Index>> _intersections;
-  tf::buffer<tf::point<int32_t, Dims>> _intersection_points;
+  tf::buffer<tf::point<Int, Dims>> _intersection_points;
 };
 
 } // namespace tf

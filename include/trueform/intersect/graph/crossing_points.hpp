@@ -31,14 +31,13 @@ namespace tf::intersect::graph {
 /// @param ee_range         Sorted EE record range
 /// @param edge_defs        Canonical edge groups
 /// @param get_point        Point accessor
-/// @param crossing_points  [out] Computed crossing point coordinates
+/// @param crossing_points  [out] Computed crossing point coordinates (Int precision)
 /// @return EE group offsets (for collect_split_entries)
-template <typename Index, typename EERange, typename GetPoint>
+template <typename Index, typename EERange, typename GetPoint, typename Int>
 auto compute_ee_crossing_points(
     const EERange &ee_range,
     const tf::offset_block_buffer<Index, edge<Index>> &edge_defs,
-    const GetPoint &get_point,
-    tf::buffer<tf::point<int32_t, 3>> &crossing_points)
+    const GetPoint &get_point, tf::buffer<tf::point<Int, 3>> &crossing_points)
     -> tf::buffer<Index> {
   auto ee_count = ee_range.size();
 
@@ -47,10 +46,9 @@ auto compute_ee_crossing_points(
     return ee_offsets;
 
   ee_offsets.reserve(ee_count + 1);
-  tf::compute_offsets(ee_range, std::back_inserter(ee_offsets), Index(0),
-                      [](const auto &a, const auto &b) {
-                        return a.triple == b.triple;
-                      });
+  tf::compute_offsets(
+      ee_range, std::back_inserter(ee_offsets), Index(0),
+      [](const auto &a, const auto &b) { return a.triple == b.triple; });
   auto num_unique = ee_offsets.size() - 1;
 
   crossing_points.allocate(num_unique);
@@ -66,8 +64,8 @@ auto compute_ee_crossing_points(
     auto pb0 = get_point(-1, eb.point_0);
     auto pb1 = get_point(-1, eb.point_1);
     auto [ax0, ax1] = tf::exact::projection_axes(pa0, pa1, pb0);
-    tf::exact::vertex<Index> va0{ea.point_0, pa0}, va1{ea.point_1, pa1};
-    tf::exact::vertex<Index> vb0{eb.point_0, pb0}, vb1{eb.point_1, pb1};
+    tf::exact::vertex<Index, Int> va0{ea.point_0, pa0}, va1{ea.point_1, pa1};
+    tf::exact::vertex<Index, Int> vb0{eb.point_0, pb0}, vb1{eb.point_1, pb1};
     crossing_points[g] =
         tf::exact::coplanar_edge_edge_point(va0, va1, vb0, vb1, ax0, ax1);
   });

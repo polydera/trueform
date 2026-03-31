@@ -21,11 +21,12 @@
 
 namespace tf::cut::dispatch {
 
-template <typename Index, typename RealType, typename Policy0, typename Policy1>
+template <typename Index, typename RealType, typename Int,
+          typename Policy0, typename Policy1>
 auto build_exact_pipeline(
     const tf::polygons<Policy0> &p0, const tf::polygons<Policy1> &p1,
     tf::intersect_mode mode = tf::intersect_mode::primitives) {
-  tf::intersections_between_polygons<Index, RealType> ibp;
+  tf::intersections_between_polygons<Index, RealType, Int> ibp;
   ibp.build(p0, p1, mode);
 
   auto &conv = ibp.converter();
@@ -35,7 +36,7 @@ auto build_exact_pipeline(
     else
       f(p1.faces()[object]);
   };
-  auto get_mesh_point = [&](int tag, Index id) -> tf::point<int32_t, 3> {
+  auto get_mesh_point = [&](int tag, Index id) -> tf::point<Int, 3> {
     if (tag == 0)
       return conv.convert(
           tf::transformed(p0.points()[id], tf::frame_of(p0)));
@@ -44,10 +45,10 @@ auto build_exact_pipeline(
           tf::transformed(p1.points()[id], tf::frame_of(p1)));
   };
 
-  tf::intersection_graph<Index> ig;
+  tf::intersection_graph<Index, Int> ig;
   ig.build(ibp, apply_to_face, get_mesh_point);
 
-  tf::face_cuts<Index> fc;
+  tf::face_cuts<Index, Int> fc;
   fc.build(ig, apply_to_face, get_mesh_point);
 
   tf::cut_graph<Index> cg;

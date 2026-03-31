@@ -12,9 +12,9 @@
  */
 #pragma once
 
+#include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/algorithm/parallel_for.hpp"
 #include "../../core/algorithm/parallel_for_each.hpp"
-#include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/small_vector.hpp"
 #include "../../core/views/zip.hpp"
@@ -28,8 +28,9 @@ namespace tf::cut {
 
 /// Classify cut face loops by scalar band.
 /// For each loop, counts original vertices per category (majority vote).
-template <typename LabelType, typename Index, typename GetCategory>
-auto make_cut_scalar_labels(const tf::face_cuts<Index> &fc,
+template <typename LabelType, typename Index, typename Int,
+          typename GetCategory>
+auto make_cut_scalar_labels(const tf::face_cuts<Index, Int> &fc,
                             const GetCategory &get_category,
                             std::size_t n_categories) {
   auto loops = fc.loops();
@@ -56,8 +57,8 @@ auto make_cut_scalar_labels(const tf::face_cuts<Index> &fc,
 
 /// Classify uncut surface faces by scalar band.
 /// Cut faces get label -1, uncut faces get category of first vertex.
-template <typename LabelType, typename Index, typename Policy,
-          typename RealT, std::size_t Dims, typename GetCategory>
+template <typename LabelType, typename Index, typename Policy, typename RealT,
+          std::size_t Dims, typename GetCategory>
 auto make_surface_scalar_labels(
     const tf::polygons<Policy> &polygons,
     const tf::intersect::simple_intersections<Index, RealT, Dims> &si,
@@ -82,11 +83,12 @@ auto make_surface_scalar_labels(
 /// Build scalar labels for both cut and uncut faces.
 /// Returns partition_labels with n_components = n_cut_values + 1.
 template <typename LabelType, typename Index, typename Policy, typename RealT,
-          std::size_t Dims, typename Scalars, typename Iterator, std::size_t N>
+          std::size_t Dims, typename Int, typename Scalars, typename Iterator,
+          std::size_t N>
 auto make_scalar_labels(
     const tf::polygons<Policy> &polygons,
     const tf::intersect::simple_intersections<Index, RealT, Dims> &si,
-    const tf::face_cuts<Index> &fc, const Scalars &scalars,
+    const tf::face_cuts<Index, Int> &fc, const Scalars &scalars,
     tf::range<Iterator, N> cut_values) {
   tf::buffer<LabelType> categories;
   categories.allocate(scalars.size());

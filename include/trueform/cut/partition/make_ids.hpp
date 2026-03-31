@@ -70,11 +70,11 @@ auto make_partition_ids(
 }
 
 /// Build partition_ids for a 2-mesh pair.
-template <typename LabelType, typename Index, typename Policy0,
+template <typename LabelType, typename Index, typename Int, typename Policy0,
           typename Policy1>
 auto make_partition_ids(const tf::polygons<Policy0> &form0,
                         const tf::polygons<Policy1> &form1,
-                        const tf::face_cuts<Index> &fc,
+                        const tf::face_cuts<Index, Int> &fc,
                         const tf::cut_graph<Index> &cg) {
   auto pals = make_partition_labels<LabelType>(form0, form1, fc, cg);
 
@@ -87,9 +87,10 @@ auto make_partition_ids(const tf::polygons<Policy0> &form0,
 }
 
 /// Build partition_ids for N meshes.
-template <typename LabelType, typename Index, typename Iterator, std::size_t N>
+template <typename LabelType, typename Index, typename Int, typename Iterator,
+          std::size_t N>
 auto make_partition_ids(tf::range<Iterator, N> forms,
-                        const tf::face_cuts<Index> &fc,
+                        const tf::face_cuts<Index, Int> &fc,
                         const tf::cut_graph<Index> &cg) {
   auto pals = make_partition_labels<LabelType>(forms, fc, cg);
   auto n_tags = forms.size();

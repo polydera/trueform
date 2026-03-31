@@ -17,8 +17,8 @@
 #include "../../core/intersects.hpp"
 #include "../../core/none.hpp"
 #include "../../core/offset_block_buffer.hpp"
-#include "../../core/reallocate.hpp"
 #include "../../core/points_buffer.hpp"
+#include "../../core/reallocate.hpp"
 #include "../../core/segments.hpp"
 #include "../../exact/projection_axes.hpp"
 #include "../../exact/segment_intersect.hpp"
@@ -38,12 +38,12 @@ namespace tf::intersect::graph {
 /// ea, eb are the specific edge instances (with correct per-face context).
 /// eid_a, eid_b are canonical group IDs (from edge.id), used in records.
 template <typename Index, typename GetPoint>
-auto test_edge_pair(const edge<Index> &ea, const edge<Index> &eb,
-                    Index eid_a, Index eid_b, int ax0, int ax1,
-                    const GetPoint &get_point,
+auto test_edge_pair(const edge<Index> &ea, const edge<Index> &eb, Index eid_a,
+                    Index eid_b, int ax0, int ax1, const GetPoint &get_point,
                     tf::buffer<crossing_record<Index>> &out) -> void {
   auto pa0 = get_point(-1, ea.point_0);
   auto pa1 = get_point(-1, ea.point_1);
+  using Int = tf::coordinate_type<decltype(pa0)>;
   if (pa0[0] == pa1[0] && pa0[1] == pa1[1] && pa0[2] == pa1[2])
     return;
   auto pb0 = get_point(-1, eb.point_0);
@@ -53,8 +53,8 @@ auto test_edge_pair(const edge<Index> &ea, const edge<Index> &eb,
 
   auto lo = std::min(eid_a, eid_b), hi = std::max(eid_a, eid_b);
 
-  tf::exact::vertex<Index> va0{ea.point_0, pa0}, va1{ea.point_1, pa1};
-  tf::exact::vertex<Index> vb0{eb.point_0, pb0}, vb1{eb.point_1, pb1};
+  tf::exact::vertex<Index, Int> va0{ea.point_0, pa0}, va1{ea.point_1, pa1};
+  tf::exact::vertex<Index, Int> vb0{eb.point_0, pb0}, vb1{eb.point_1, pb1};
 
   auto hits = tf::exact::classify_segments(va0, va1, vb0, vb1, ax0, ax1);
   if (!hits)
@@ -70,13 +70,21 @@ auto test_edge_pair(const edge<Index> &ea, const edge<Index> &eb,
           face_id<Index>{eb.tag_other, eb.object_other}};
       std::sort(faces.begin(), faces.end());
       (void)std::unique(faces.begin(), faces.end());
-      out.push_back({lo, hi, {}, {}, {faces[0], faces[1], faces[2]},
+      out.push_back({lo,
+                     hi,
+                     {},
+                     {},
+                     {faces[0], faces[1], faces[2]},
                      crossing_record<Index>::ee});
     } else if (h.target_a.label == tf::topo_type::vertex &&
                h.target_b.label == tf::topo_type::vertex) {
       Index pa = h.target_a.id == 0 ? ea.point_0 : ea.point_1;
       Index pb = h.target_b.id == 0 ? eb.point_0 : eb.point_1;
-      out.push_back({lo, hi, std::min(pa, pb), std::max(pa, pb), {},
+      out.push_back({lo,
+                     hi,
+                     std::min(pa, pb),
+                     std::max(pa, pb),
+                     {},
                      crossing_record<Index>::vv});
     } else {
       Index edge_id, point_id;
@@ -102,11 +110,10 @@ auto test_edge_pair(const edge<Index> &ea, const edge<Index> &eb,
 /// edge_ids are instance indices into edge_data (the flat buffer).
 /// Canonical group IDs come from edge.id.
 template <typename Index, typename GetPoint>
-auto detect_crossings_brute(
-    const Index *edge_ids, std::size_t k,
-    const tf::buffer<edge<Index>> &edge_data, int ax0, int ax1,
-    const GetPoint &get_point,
-    tf::buffer<crossing_record<Index>> &out) -> void {
+auto detect_crossings_brute(const Index *edge_ids, std::size_t k,
+                            const tf::buffer<edge<Index>> &edge_data, int ax0,
+                            int ax1, const GetPoint &get_point,
+                            tf::buffer<crossing_record<Index>> &out) -> void {
   for (std::size_t i = 0; i < k; ++i) {
     auto &&ea = edge_data[edge_ids[i]];
     for (std::size_t j = i + 1; j < k; ++j) {
@@ -119,14 +126,14 @@ auto detect_crossings_brute(
 /// Detect crossings on one face — AABB tree (k > 8).
 ///
 /// edge_ids are instance indices into edge_data (the flat buffer).
-template <typename Index, typename GetPoint>
-auto detect_crossings_tree(
-    const Index *edge_ids, std::size_t k,
-    const tf::buffer<edge<Index>> &edge_data, int ax0, int ax1,
-    const GetPoint &get_point,
-    tf::buffer<crossing_record<Index>> &out,
-    tf::points_buffer<int32_t, 2> &pts_2d, tf::buffer<int> &edge_pairs,
-    tf::aabb_tree<int, int32_t, 2> &tree) -> void {
+template <typename Index, typename GetPoint, typename Int>
+auto detect_crossings_tree(const Index *edge_ids, std::size_t k,
+                           const tf::buffer<edge<Index>> &edge_data, int ax0,
+                           int ax1, const GetPoint &get_point,
+                           tf::buffer<crossing_record<Index>> &out,
+                           tf::points_buffer<Int, 2> &pts_2d,
+                           tf::buffer<int> &edge_pairs,
+                           tf::aabb_tree<int, Int, 2> &tree) -> void {
   pts_2d.clear();
   edge_pairs.clear();
   pts_2d.reserve(k * 2);
@@ -163,11 +170,12 @@ auto gather_crossing_records(
     const tf::offset_block_buffer<Index, edge<Index>> &edge_defs,
     const ApplyToFace &apply_to_face, const GetPoint &get_point)
     -> tf::buffer<crossing_record<Index>> {
+  using Int = tf::coordinate_type<decltype(get_point(-1, 0))>;
   struct local_t {
     tf::buffer<crossing_record<Index>> records;
-    tf::points_buffer<int32_t, 2> pts_2d;
+    tf::points_buffer<Int, 2> pts_2d;
     tf::buffer<int> edge_pairs;
-    tf::aabb_tree<int, int32_t, 2> tree;
+    tf::aabb_tree<int, Int, 2> tree;
   };
 
   tf::buffer<crossing_record<Index>> out;
@@ -192,10 +200,9 @@ auto gather_crossing_records(
           detect_crossings_brute<Index>(face_edges.begin(), k, edge_data, ax0,
                                         ax1, get_point_f, local.records);
         else
-          detect_crossings_tree<Index>(face_edges.begin(), k, edge_data, ax0,
-                                       ax1, get_point_f, local.records,
-                                       local.pts_2d, local.edge_pairs,
-                                       local.tree);
+          detect_crossings_tree<Index>(
+              face_edges.begin(), k, edge_data, ax0, ax1, get_point_f,
+              local.records, local.pts_2d, local.edge_pairs, local.tree);
       });
     }
   };
@@ -204,8 +211,7 @@ auto gather_crossing_records(
     tf::core::append(local.records, out);
   };
 
-  tf::blocked_reduce_sequenced_aggregate(edges, tf::none, local_t{}, task,
-                                         agg);
+  tf::blocked_reduce_sequenced_aggregate(edges, tf::none, local_t{}, task, agg);
   return out;
 }
 

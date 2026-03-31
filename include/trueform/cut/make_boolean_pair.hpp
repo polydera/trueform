@@ -36,14 +36,14 @@ namespace tf {
 /// @param _polygons0 The first mesh @ref tf::polygons (or tagged form).
 /// @param _polygons1 The second mesh @ref tf::polygons (or tagged form).
 /// @param op The @ref tf::boolean_op to perform.
-/// @return Tuple of (left @ref tf::polygons_buffer, right @ref tf::polygons_buffer).
+/// @return Tuple of (left @ref tf::polygons_buffer, right @ref
+/// tf::polygons_buffer).
 ///
 /// @see tf::make_boolean for combined boolean results.
-template <typename Policy0, typename Policy1>
+template <typename Int = tf::exact::int32, typename Policy0, typename Policy1>
 auto make_boolean_pair(const tf::polygons<Policy0> &_polygons0,
                        const tf::polygons<Policy1> &_polygons1,
-                       tf::boolean_op op,
-                       tf::boolean_config config = {}) {
+                       tf::boolean_op op, tf::boolean_config config = {}) {
   return cut::dispatch::boolean(
       _polygons0, _polygons1, [op, config](const auto &p0, const auto &p1) {
         using Index =
@@ -52,8 +52,8 @@ auto make_boolean_pair(const tf::polygons<Policy0> &_polygons0,
         using RealType = tf::coordinate_type<std::decay_t<decltype(p0)>,
                                              std::decay_t<decltype(p1)>>;
         auto [ibp, ig, fc, cg] =
-            cut::dispatch::build_exact_pipeline<Index, RealType>(p0, p1);
-        return tf::cut::make_boolean_pair<int, Index>(
+            cut::dispatch::build_exact_pipeline<Index, RealType, Int>(p0, p1);
+        return tf::cut::make_boolean_pair<int>(
             p0, p1, ig, fc, cg, ibp.converter(),
             tf::cut::make_boolean_op_spec(op), config);
       });
@@ -62,7 +62,7 @@ auto make_boolean_pair(const tf::polygons<Policy0> &_polygons0,
 /// @ingroup cut_boolean
 /// @brief Perform boolean operations returning both halves with curve output.
 /// @overload
-template <typename Policy0, typename Policy1>
+template <typename Int = tf::exact::int32, typename Policy0, typename Policy1>
 auto make_boolean_pair(const tf::polygons<Policy0> &_polygons0,
                        const tf::polygons<Policy1> &_polygons1,
                        tf::boolean_op op, tf::return_curves_t,
@@ -75,13 +75,13 @@ auto make_boolean_pair(const tf::polygons<Policy0> &_polygons0,
         using RealType = tf::coordinate_type<std::decay_t<decltype(p0)>,
                                              std::decay_t<decltype(p1)>>;
         auto [ibp, ig, fc, cg] =
-            cut::dispatch::build_exact_pipeline<Index, RealType>(p0, p1);
-        auto res = tf::cut::make_boolean_pair<int, Index>(
+            cut::dispatch::build_exact_pipeline<Index, RealType, Int>(p0, p1);
+        auto res = tf::cut::make_boolean_pair<int>(
             p0, p1, ig, fc, cg, ibp.converter(),
             tf::cut::make_boolean_op_spec(op), config);
 
-        auto paths = tf::connect_edges_to_paths(
-            tf::make_edges(cg.intersection_edges()));
+        auto paths =
+            tf::connect_edges_to_paths(tf::make_edges(cg.intersection_edges()));
         auto &conv = ibp.converter();
         auto ipts = ig.points();
         tf::curves_buffer<Index, RealType, 3> cb;

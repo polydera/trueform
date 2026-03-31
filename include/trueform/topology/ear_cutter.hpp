@@ -17,21 +17,20 @@
 #include "../core/polygon.hpp"
 #include "../core/views/mapped_range.hpp"
 #include "../core/views/sequence_range.hpp"
-#include "../exact/int128.hpp"
+#include "../exact/meta.hpp"
 #include "../exact/pt_converter.hpp"
 #include "../exact/signed_area.hpp"
 #include <algorithm>
-#include <cstdint>
 #include <utility>
 
 namespace tf {
 
 /// Exact ear-clipping triangulation for 2D polygons.
 ///
-/// Accepts int32 or float points. Float inputs are automatically
-/// converted to int32 via pt_converter for exact arithmetic.
-/// All predicates use exact int128 arithmetic (int64 differences of
-/// int32 inputs, multiplied in int128). Positive area = CCW.
+/// Accepts integral or float points. Float inputs are automatically
+/// converted via pt_converter for exact arithmetic.
+/// All predicates use exact arithmetic via meta<Int> (T1 differences,
+/// T2 products). Positive area = CCW.
 ///
 /// build(ids, points): ids are identity indices into the points
 /// buffer. Handles pseudosimple polygons from hole bridging (doubled
@@ -66,9 +65,9 @@ namespace tf {
 /// When an ear has runs on multiple edges, the last point of one run
 /// is re-inserted and the polygon is split via diagonal, distributing
 /// runs across two sub-polygons that are triangulated recursively.
-template <typename Index> class ear_cutter {
-  using i64 = int64_t;
-  using i128 = tf::exact::int128;
+template <typename Index, typename Int = tf::exact::int32> class ear_cutter {
+  using T1 = typename tf::exact::meta<Int>::T1;
+  using T2 = typename tf::exact::meta<Int>::T2;
 
 public:
   auto faces() const { return tf::make_blocked_range<3>(_triangles); }
@@ -92,7 +91,7 @@ public:
     if constexpr (std::is_integral_v<coord_t>) {
       return run(ids, points);
     } else {
-      auto conv = tf::exact::make_pt_converter(points);
+      auto conv = tf::exact::make_pt_converter<Int>(points);
       auto int_pts = tf::make_points(tf::make_mapped_range(
           points, [&](const auto &pt) { return conv(pt); }));
       return run(ids, int_pts);
@@ -166,7 +165,7 @@ private:
   struct node_t {
     Index id, pt_id, prev, next;
     Index run_first, run_last; // -1 if no collinear run
-    i64 z;                     // z-order Morton code
+    T1 z;                     // z-order Morton code
     Index prev_z, next_z;      // z-order linked list
   };
 
@@ -192,7 +191,7 @@ private:
 
   // ── Z-order hashing for spatial acceleration ──
 
-  static auto z_order(i64 x, i64 y) -> i64 {
+  static auto z_order(T1 x, T1 y) -> T1 {
     x = (x | (x << 8)) & 0x00FF00FF;
     x = (x | (x << 4)) & 0x0F0F0F0F;
     x = (x | (x << 2)) & 0x33333333;
@@ -218,10 +217,10 @@ private:
       _max_y = std::max(_max_y, p[1]);
       c = _nodes[c].next;
     }
-    i64 range = std::max(i64(_max_x) - i64(_min_x), i64(_max_y) - i64(_min_y));
+    T1 range = std::max(T1(_max_x) - T1(_min_x), T1(_max_y) - T1(_min_y));
     _z_shift = 0;
     if (range > 0) {
-      auto r = static_cast<uint64_t>(range);
+      auto r = static_cast<typename tf::exact::meta<Int>::unsigned_T1>(range);
       while (r > 32767) {
         r >>= 1;
         ++_z_shift;
@@ -229,9 +228,9 @@ private:
     }
   }
 
-  auto to_z(int32_t x, int32_t y) const -> i64 {
-    i64 nx = (i64(x) - i64(_min_x)) >> _z_shift;
-    i64 ny = (i64(y) - i64(_min_y)) >> _z_shift;
+  auto to_z(Int x, Int y) const -> T1 {
+    T1 nx = (T1(x) - T1(_min_x)) >> _z_shift;
+    T1 ny = (T1(y) - T1(_min_y)) >> _z_shift;
     return z_order(nx, ny);
   }
 
@@ -340,23 +339,23 @@ private:
     return {pv_id, nc_id};
   }
 
-  // ── Exact predicates (int32 → int128) ──
+  // ── Exact predicates (Int → T1/T2) ──
 
   template <typename Pts>
   auto area(const Pts &pts, const node_t &p, const node_t &q,
-            const node_t &r) const -> i128 {
+            const node_t &r) const -> T2 {
     auto &&pp = pts[p.pt_id];
     auto &&pq = pts[q.pt_id];
     auto &&pr = pts[r.pt_id];
-    return i128(i64(pq[0]) - i64(pp[0])) * i128(i64(pr[1]) - i64(pp[1])) -
-           i128(i64(pq[1]) - i64(pp[1])) * i128(i64(pr[0]) - i64(pp[0]));
+    return T2(T1(pq[0]) - T1(pp[0])) * T2(T1(pr[1]) - T1(pp[1])) -
+           T2(T1(pq[1]) - T1(pp[1])) * T2(T1(pr[0]) - T1(pp[0]));
   }
 
   template <typename Pts>
   auto contains_point(const Pts &pts, const node_t &a, const node_t &b,
                       const node_t &c, const node_t &p) const -> bool {
-    auto cross = [](i64 ax, i64 ay, i64 bx, i64 by, i64 px, i64 py) -> i128 {
-      return i128(bx - px) * i128(ay - py) - i128(ax - px) * i128(by - py);
+    auto cross = [](T1 ax, T1 ay, T1 bx, T1 by, T1 px, T1 py) -> T2 {
+      return T2(bx - px) * T2(ay - py) - T2(ax - px) * T2(by - py);
     };
     auto &&pa = pts[a.pt_id];
     auto &&pb = pts[b.pt_id];
@@ -380,7 +379,7 @@ private:
   template <typename Pts>
   auto intersects(const Pts &pts, const node_t &p1, const node_t &q1,
                   const node_t &p2, const node_t &q2) const -> bool {
-    auto sign = [](i128 v) -> int { return (v > 0) - (v < 0); };
+    auto sign = [](T2 v) -> int { return (v > 0) - (v < 0); };
     int o1 = sign(area(pts, p1, q1, p2));
     int o2 = sign(area(pts, p1, q1, q2));
     int o3 = sign(area(pts, p2, q2, p1));
@@ -426,18 +425,18 @@ private:
       -> bool {
     Index p_id = a.id;
     bool inside = false;
-    i64 mx = i64(pts[a.pt_id][0]) + i64(pts[b.pt_id][0]);
-    i64 my = i64(pts[a.pt_id][1]) + i64(pts[b.pt_id][1]);
+    T1 mx = T1(pts[a.pt_id][0]) + T1(pts[b.pt_id][0]);
+    T1 my = T1(pts[a.pt_id][1]) + T1(pts[b.pt_id][1]);
     do {
       auto &p = _nodes[p_id];
-      i64 py = 2 * i64(pts[p.pt_id][1]);
-      i64 pny = 2 * i64(pts[next(p).pt_id][1]);
+      T1 py = 2 * T1(pts[p.pt_id][1]);
+      T1 pny = 2 * T1(pts[next(p).pt_id][1]);
       if ((py > my) != (pny > my) && pny != py) {
-        i64 px = pts[p.pt_id][0];
-        i64 pnx = pts[next(p).pt_id][0];
-        i128 dy = i128(pny - py);
-        i128 lhs = i128(mx) * dy - i128(2 * px) * dy;
-        i128 rhs = i128(pnx - px) * i128(my - py);
+        T1 px = pts[p.pt_id][0];
+        T1 pnx = pts[next(p).pt_id][0];
+        T2 dy = T2(pny - py);
+        T2 lhs = T2(mx) * dy - T2(2 * px) * dy;
+        T2 rhs = T2(pnx - px) * T2(my - py);
         if (dy < 0) {
           lhs = -lhs;
           rhs = -rhs;
@@ -493,8 +492,8 @@ private:
     auto min_ty = std::min({pa[1], pb[1], pc[1]});
     auto max_tx = std::max({pa[0], pb[0], pc[0]});
     auto max_ty = std::max({pa[1], pb[1], pc[1]});
-    i64 min_z = to_z(min_tx, min_ty);
-    i64 max_z = to_z(max_tx, max_ty);
+    T1 min_z = to_z(min_tx, min_ty);
+    T1 max_z = to_z(max_tx, max_ty);
 
     // Search forward in z-order
     Index p = v.next_z;
@@ -838,7 +837,7 @@ private:
   tf::buffer<node_t> _nodes;
   tf::buffer<Index> _triangles;
   tf::buffer<removed_node_t> _removed;
-  int32_t _min_x = 0, _max_x = 0, _min_y = 0, _max_y = 0;
+  Int _min_x = 0, _max_x = 0, _min_y = 0, _max_y = 0;
   int _z_shift = 0;
   bool _hashing = false;
 };

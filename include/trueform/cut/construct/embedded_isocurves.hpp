@@ -33,11 +33,11 @@
 namespace tf::cut {
 
 template <typename LabelType, typename Index, typename Policy, typename RealT,
-          std::size_t Dims>
+          std::size_t Dims, typename Int>
 auto embedded_isocurves(
     const tf::polygons<Policy> &polygons,
     const tf::intersect::simple_intersections<Index, RealT, Dims> &si,
-    const tf::face_cuts<Index> &fc,
+    const tf::face_cuts<Index, Int> &fc,
     const tf::cut::partition_ids<Index> &pids) {
   using vertex_t = tf::intersect::graph::vertex<Index>;
   using source = tf::intersect::graph::vertex_source;
@@ -62,7 +62,7 @@ auto embedded_isocurves(
     auto fp = polygons[desc.object];
     auto axes = tf::exact::projection_axes(conv(fp[0]), conv(fp[1]), conv(fp[2]));
     return [axes, &conv, &polygons, ipts](const vertex_t &v)
-               -> tf::point<int32_t, 2> {
+               -> tf::point<Int, 2> {
       auto pt = (v.source == source::original) ? conv(polygons.points()[v.id])
                                                : conv(ipts[v.id]);
       return {pt[axes.first], pt[axes.second]};
@@ -78,7 +78,7 @@ auto embedded_isocurves(
   tf::generate_offset_blocks(
       pids.cut_faces, cf_offsets, triangles,
       [&](const auto &ids, auto &tri_buf) {
-        tf::cut::triangulate_partition_cuts<Index>(
+        tf::cut::triangulate_partition_cuts<Int>(
             tf::make_indirect_range(ids, tf::zip(descs, loops)),
             make_projector, map_vertex, tri_buf.data_buffer());
       });

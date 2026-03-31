@@ -26,24 +26,22 @@ namespace tf {
 /// @tparam Policy The policy type for the segments.
 /// @param _segments The input segments (plain or with tree/edge_membership).
 /// @return A pair of (segments_buffer, edge_labels).
-template <typename Policy>
+template <typename Int = tf::exact::int32, typename Policy>
 auto make_segment_arrangements(const tf::segments<Policy> &_segments) {
-  return cut::dispatch::segment_dispatch(
-      _segments, [](const auto &segments) {
-        using Index = std::decay_t<decltype(segments.edges()[0][0])>;
-        using RealType = tf::coordinate_type<std::decay_t<decltype(segments)>>;
-        constexpr auto Dims =
-            tf::coordinate_dims_v<std::decay_t<decltype(segments)>>;
+  return cut::dispatch::segment_dispatch(_segments, [](const auto &segments) {
+    using Index = std::decay_t<decltype(segments.edges()[0][0])>;
+    using RealType = tf::coordinate_type<std::decay_t<decltype(segments)>>;
+    constexpr auto Dims =
+        tf::coordinate_dims_v<std::decay_t<decltype(segments)>>;
 
-        tf::intersections_within_segments<Index, RealType, Dims> si;
-        si.build(segments);
+    tf::intersections_within_segments<Index, RealType, Dims, Int> si;
+    si.build(segments);
 
-        tf::intersect::segment_intersection_graph<Index, RealType, Dims> sig;
-        sig.build(si, segments);
+    tf::intersect::segment_intersection_graph<Index, Dims, Int> sig;
+    sig.build(si, segments);
 
-        return tf::cut::make_segment_arrangements(sig, segments,
-                                                   si.converter());
-      });
+    return tf::cut::make_segment_arrangements(sig, segments, si.converter());
+  });
 }
 
 } // namespace tf

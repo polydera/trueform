@@ -13,7 +13,6 @@
 #pragma once
 #include "../core/algorithm/parallel_copy.hpp"
 #include "../core/curves_buffer.hpp"
-#include "../intersect/make_intersection_edges.hpp"
 #include "../topology/connect_edges_to_paths.hpp"
 #include "./construct/embedded_intersection_curves.hpp"
 #include "./dispatch/build_self_pipeline.hpp"
@@ -31,35 +30,34 @@ namespace tf {
 /// @tparam Policy The policy type of the mesh.
 /// @param _polygons The input @ref tf::polygons (or tagged form).
 /// @return A @ref tf::polygons_buffer with embedded intersection edges.
-template <typename Policy>
-auto embedded_self_intersection_curves(
-    const tf::polygons<Policy> &_polygons) {
+template <typename Int = tf::exact::int32, typename Policy>
+auto embedded_self_intersection_curves(const tf::polygons<Policy> &_polygons) {
   return cut::dispatch::self_boolean(_polygons, [](const auto &p) {
     using Index = std::decay_t<decltype(p.faces()[0][0])>;
     using RealType = tf::coordinate_type<std::decay_t<decltype(p)>>;
     auto [iwp, ig, fc, cg] =
-        cut::dispatch::build_self_pipeline<Index, RealType>(p);
-    return tf::cut::embedded_intersection_curves<Index>(
-        p, ig, fc, iwp.converter(), Index(0));
+        cut::dispatch::build_self_pipeline<Index, RealType, Int>(p);
+    return tf::cut::embedded_intersection_curves(p, ig, fc, iwp.converter(),
+                                                 Index(0));
   });
 }
 
 /// @ingroup cut_boolean
 /// @brief Embed self-intersection curves with curve output.
 /// @overload
-template <typename Policy>
+template <typename Int = tf::exact::int32, typename Policy>
 auto embedded_self_intersection_curves(const tf::polygons<Policy> &_polygons,
                                        tf::return_curves_t) {
   return cut::dispatch::self_boolean(_polygons, [](const auto &p) {
     using Index = std::decay_t<decltype(p.faces()[0][0])>;
     using RealType = tf::coordinate_type<std::decay_t<decltype(p)>>;
     auto [iwp, ig, fc, cg] =
-        cut::dispatch::build_self_pipeline<Index, RealType>(p);
-    auto res = tf::cut::embedded_intersection_curves<Index>(
-        p, ig, fc, iwp.converter(), Index(0));
+        cut::dispatch::build_self_pipeline<Index, RealType, Int>(p);
+    auto res = tf::cut::embedded_intersection_curves(p, ig, fc, iwp.converter(),
+                                                     Index(0));
 
-    auto paths = tf::connect_edges_to_paths(
-        tf::make_edges(cg.intersection_edges()));
+    auto paths =
+        tf::connect_edges_to_paths(tf::make_edges(cg.intersection_edges()));
     auto &conv = iwp.converter();
     auto ipts = ig.points();
     tf::curves_buffer<Index, RealType, 3> cb;

@@ -31,11 +31,12 @@ namespace tf::cut {
 ///   [graph intersection points (deconverted) | original segment points]
 ///
 /// Edge labels: for each output edge, the index of the original edge.
-template <typename Index, typename RealType, std::size_t Dims, typename Policy>
+template <typename Index, std::size_t Dims, typename Int, typename RealType,
+          typename Policy>
 auto make_segment_arrangements(
-    const tf::intersect::segment_intersection_graph<Index, RealType, Dims> &sig,
+    const tf::intersect::segment_intersection_graph<Index, Dims, Int> &sig,
     const tf::segments<Policy> &segments,
-    const tf::exact::pt_converter<RealType, Dims> &conv)
+    const tf::exact::pt_converter<Int, RealType, Dims> &conv)
     -> std::pair<tf::segments_buffer<Index, RealType, Dims>,
                  tf::buffer<Index>> {
 
@@ -111,7 +112,7 @@ auto make_segment_arrangements(
                                   tf::drop(origins, e_im.kept_ids().size()));
 
   tf::parallel_for_each(tf::zip(sig.origin_edges(), o_blocks), [](auto pair) {
-      auto &&[origin, edge] = pair;
+    auto &&[origin, edge] = pair;
     for (auto &e : edge)
       e = origin;
   });

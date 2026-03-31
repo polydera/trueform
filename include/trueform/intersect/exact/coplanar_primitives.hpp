@@ -29,21 +29,22 @@ namespace tf::exact {
 /// interior), and coplanar EE (crossing edges with all endpoints
 /// on-plane). Skips VE when the edge has strict +/− signs — those are
 /// already caught by crossing_edges_vs_face.
-template <typename Index, typename IsRep0, typename IsRep1,
-          typename IsShared0, typename IsShared1, typename Ints, typename Pts>
+template <typename Index, typename Int, typename IsRep0, typename IsRep1,
+          typename IsShared0, typename IsShared1, typename Intersections,
+          typename Pts>
 void coplanar_primitives(
-    const tf::buffer<tf::exact::vertex<Index>> &face0, std::size_t n0,
-    const tf::buffer<tf::exact::vertex<Index>> &face1, std::size_t n1,
+    const tf::buffer<tf::exact::vertex<Index, Int>> &face0, std::size_t n0,
+    const tf::buffer<tf::exact::vertex<Index, Int>> &face1, std::size_t n1,
     const tf::small_vector<int, 16> &signs0,
-    const tf::small_vector<int, 16> &signs1, int tag0, int tag1,
-    Index face0_id, Index face1_id, const IsRep0 &is_rep0,
-    const IsRep1 &is_rep1, const face_plane_info &plane0,
-    const face_plane_info &plane1, const IsShared0 &is_shared0,
-    const IsShared1 &is_shared1, Ints &ints, Pts &pts) {
-  auto between = [](int32_t a, int32_t b, int32_t v) {
+    const tf::small_vector<int, 16> &signs1, int tag0, int tag1, Index face0_id,
+    Index face1_id, const IsRep0 &is_rep0, const IsRep1 &is_rep1,
+    const face_plane_info &plane0, const face_plane_info &plane1,
+    const IsShared0 &is_shared0, const IsShared1 &is_shared1,
+    Intersections &intersections, Pts &pts) {
+  auto between = [](Int a, Int b, Int v) {
     return (a <= v && v <= b) || (b <= v && v <= a);
   };
-  auto pts_equal = [](const pt3 &a, const pt3 &b) {
+  auto pts_equal = [](const pt3<Int> &a, const pt3<Int> &b) {
     return a[0] == b[0] && a[1] == b[1] && a[2] == b[2];
   };
   for (std::size_t i = 0; i < n0; ++i) {
@@ -58,20 +59,19 @@ void coplanar_primitives(
       auto sh_nj = is_shared1(nj);
 
       // VV: vertex i == vertex j (skip topologically shared vertices)
-      if (!(sh_i && sh_j) && vrep_i && vrep_j &&
-          signs0[i] == 0 && signs1[j] == 0 &&
-          face0[i].pt[0] == face1[j].pt[0] &&
+      if (!(sh_i && sh_j) && vrep_i && vrep_j && signs0[i] == 0 &&
+          signs1[j] == 0 && face0[i].pt[0] == face1[j].pt[0] &&
           face0[i].pt[1] == face1[j].pt[1] &&
           face0[i].pt[2] == face1[j].pt[2]) {
         emit_record(
             tag0, tag1, face0_id, face1_id, {Index(i), tf::topo_type::vertex},
-            {Index(j), tf::topo_type::vertex}, face0[i].pt, ints, pts);
+            {Index(j), tf::topo_type::vertex}, face0[i].pt, intersections, pts);
       }
 
       // VE: vertex i of poly0 on edge j of poly1
-      if (!sh_i && vrep_i && erep_j &&
-          signs0[i] == 0 && signs1[j] * signs1[nj] == 0 &&
-          plane1.valid && !pts_equal(face0[i].pt, face1[j].pt) &&
+      if (!sh_i && vrep_i && erep_j && signs0[i] == 0 &&
+          signs1[j] * signs1[nj] == 0 && plane1.valid &&
+          !pts_equal(face0[i].pt, face1[j].pt) &&
           !pts_equal(face0[i].pt, face1[nj].pt)) {
         if (orient2d_sign(face1[j], face1[nj], face0[i], plane1.ax0,
                           plane1.ax1) == 0 &&
@@ -79,16 +79,16 @@ void coplanar_primitives(
                     face0[i].pt[plane1.ax0]) &&
             between(face1[j].pt[plane1.ax1], face1[nj].pt[plane1.ax1],
                     face0[i].pt[plane1.ax1])) {
-          emit_record(tag0, tag1, face0_id, face1_id,
-                      {Index(i), tf::topo_type::vertex},
-                      {Index(j), tf::topo_type::edge}, face0[i].pt, ints, pts);
+          emit_record(
+              tag0, tag1, face0_id, face1_id, {Index(i), tf::topo_type::vertex},
+              {Index(j), tf::topo_type::edge}, face0[i].pt, intersections, pts);
         }
       }
 
       // VE: vertex j of poly1 on edge i of poly0
-      if (!sh_j && vrep_j && erep_i &&
-          signs1[j] == 0 && signs0[i] * signs0[ni] == 0 &&
-          plane0.valid && !pts_equal(face1[j].pt, face0[i].pt) &&
+      if (!sh_j && vrep_j && erep_i && signs1[j] == 0 &&
+          signs0[i] * signs0[ni] == 0 && plane0.valid &&
+          !pts_equal(face1[j].pt, face0[i].pt) &&
           !pts_equal(face1[j].pt, face0[ni].pt)) {
         if (orient2d_sign(face0[i], face0[ni], face1[j], plane0.ax0,
                           plane0.ax1) == 0 &&
@@ -96,48 +96,48 @@ void coplanar_primitives(
                     face1[j].pt[plane0.ax0]) &&
             between(face0[i].pt[plane0.ax1], face0[ni].pt[plane0.ax1],
                     face1[j].pt[plane0.ax1])) {
-          emit_record(tag1, tag0, face1_id, face0_id,
-                      {Index(j), tf::topo_type::vertex},
-                      {Index(i), tf::topo_type::edge}, face1[j].pt, ints, pts);
+          emit_record(
+              tag1, tag0, face1_id, face0_id, {Index(j), tf::topo_type::vertex},
+              {Index(i), tf::topo_type::edge}, face1[j].pt, intersections, pts);
         }
       }
 
       // EE: coplanar edges cross (skip if either edge IS the shared edge)
       if (!((sh_i && sh_ni) || (sh_j && sh_nj)) && erep_i && erep_j &&
-          signs0[i] == 0 && signs0[ni] == 0 &&
-          signs1[j] == 0 && signs1[nj] == 0) {
+          signs0[i] == 0 && signs0[ni] == 0 && signs1[j] == 0 &&
+          signs1[nj] == 0) {
         int ax0 = plane1.valid ? plane1.ax0 : plane0.ax0;
         int ax1 = plane1.valid ? plane1.ax1 : plane0.ax1;
-        pt2 p0i = {face0[i].pt[ax0], face0[i].pt[ax1]};
-        pt2 p0ni = {face0[ni].pt[ax0], face0[ni].pt[ax1]};
-        pt2 p1j = {face1[j].pt[ax0], face1[j].pt[ax1]};
-        pt2 p1nj = {face1[nj].pt[ax0], face1[nj].pt[ax1]};
+        pt2<Int> p0i = {face0[i].pt[ax0], face0[i].pt[ax1]};
+        pt2<Int> p0ni = {face0[ni].pt[ax0], face0[ni].pt[ax1]};
+        pt2<Int> p1j = {face1[j].pt[ax0], face1[j].pt[ax1]};
+        pt2<Int> p1nj = {face1[nj].pt[ax0], face1[nj].pt[ax1]};
         if (segments_cross(p0i, p0ni, p1j, p1nj)) {
           auto pt = coplanar_edge_edge_point(face0[i], face0[ni], face1[j],
                                              face1[nj], ax0, ax1);
           emit_record(tag0, tag1, face0_id, face1_id,
                       {Index(i), tf::topo_type::edge},
-                      {Index(j), tf::topo_type::edge}, pt, ints, pts);
+                      {Index(j), tf::topo_type::edge}, pt, intersections, pts);
         }
       }
     }
   }
 }
 
-template <typename Index, typename IsRep0, typename IsRep1, typename Ints,
-          typename Pts>
+template <typename Index, typename Int, typename IsRep0, typename IsRep1,
+          typename Intersections, typename Pts>
 void coplanar_primitives(
-    const tf::buffer<tf::exact::vertex<Index>> &face0, std::size_t n0,
-    const tf::buffer<tf::exact::vertex<Index>> &face1, std::size_t n1,
+    const tf::buffer<tf::exact::vertex<Index, Int>> &face0, std::size_t n0,
+    const tf::buffer<tf::exact::vertex<Index, Int>> &face1, std::size_t n1,
     const tf::small_vector<int, 16> &signs0,
-    const tf::small_vector<int, 16> &signs1, int tag0, int tag1,
-    Index face0_id, Index face1_id, const IsRep0 &is_rep0,
-    const IsRep1 &is_rep1, const face_plane_info &plane0,
-    const face_plane_info &plane1, Ints &ints, Pts &pts) {
+    const tf::small_vector<int, 16> &signs1, int tag0, int tag1, Index face0_id,
+    Index face1_id, const IsRep0 &is_rep0, const IsRep1 &is_rep1,
+    const face_plane_info &plane0, const face_plane_info &plane1,
+    Intersections &intersections, Pts &pts) {
   auto no_shared = [](std::size_t) { return false; };
   coplanar_primitives(face0, n0, face1, n1, signs0, signs1, tag0, tag1,
                       face0_id, face1_id, is_rep0, is_rep1, plane0, plane1,
-                      no_shared, no_shared, ints, pts);
+                      no_shared, no_shared, intersections, pts);
 }
 
 } // namespace tf::exact

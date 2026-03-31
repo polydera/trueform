@@ -35,7 +35,7 @@ auto build_iso_pipeline(const tf::polygons<Policy> &polygons,
       sfi;
   sfi.build_many(polygons, scalars, cut_vals);
 
-  tf::face_cuts<Index> fc;
+  tf::face_cuts<Index, tf::exact::int32> fc;
   fc.build(polygons, sfi);
 
   auto labels = tf::cut::make_scalar_labels<Index>(

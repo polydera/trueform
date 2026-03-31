@@ -52,7 +52,8 @@ public:
     bool opposing;
   };
 
-  auto connectivity_per_face_edge(const tf::face_cuts<Index> &fc) const {
+  template <typename Int>
+  auto connectivity_per_face_edge(const tf::face_cuts<Index, Int> &fc) const {
     return tf::make_offset_block_range(fc.loops_buffer().offsets_buffer(),
                                        _connectivity);
   }
@@ -85,7 +86,8 @@ public:
     _ie_set.clear();
   }
 
-  auto build(const tf::face_cuts<Index> &fc, Index n_ipts) -> void {
+  template<typename Int>
+  auto build(const tf::face_cuts<Index, Int> &fc, Index n_ipts) -> void {
     clear();
     auto &src = fc.loops_buffer();
     if (!src.size())
@@ -97,9 +99,9 @@ public:
     build_intersection_edges(fc);
   }
 
-  template <typename Policy>
-  auto build(const tf::face_cuts<Index> &fc,
-             const tf::intersection_graph<Index> &ig,
+  template <typename Int, typename Policy>
+  auto build(const tf::face_cuts<Index, Int> &fc,
+             const tf::intersection_graph<Index, Int> &ig,
              const tf::polygons<Policy> &polygons) -> void {
     clear();
     auto &src = fc.loops_buffer();
@@ -113,7 +115,8 @@ public:
   }
 
 private:
-  auto build_flat_ids(const tf::face_cuts<Index> &fc, Index n_ipts) -> void {
+  template <typename Int>
+  auto build_flat_ids(const tf::face_cuts<Index, Int> &fc, Index n_ipts) -> void {
     auto &src = fc.loops_buffer();
     auto tag_offs = fc.tag_offsets();
     auto n_tags = tag_offs.size() - 1;
@@ -158,7 +161,8 @@ private:
     _n_flat = tag_base[n_tags];
   }
 
-  auto build_connectivity(const tf::face_cuts<Index> &fc) -> void {
+  template <typename Int>
+  auto build_connectivity(const tf::face_cuts<Index, Int> &fc) -> void {
     auto &src = fc.loops_buffer();
     auto flat_loops = tf::make_offset_block_range(src.offsets_buffer(),
                                                   tf::make_range(_flat_data));
@@ -166,8 +170,8 @@ private:
     tf::topology::compute_face_link_per_edge(flat_loops, _fm, _connectivity);
   }
 
-  template <bool WithSelf>
-  auto build_coplanar_pairs_impl(const tf::face_cuts<Index> &fc) -> void {
+  template <bool WithSelf, typename Int>
+  auto build_coplanar_pairs_impl(const tf::face_cuts<Index, Int> &fc) -> void {
     auto descs = fc.descriptors();
     auto loops = fc.loops();
 
@@ -195,15 +199,18 @@ private:
         });
   }
 
-  auto build_coplanar_pairs(const tf::face_cuts<Index> &fc) -> void {
+  template <typename Int>
+  auto build_coplanar_pairs(const tf::face_cuts<Index, Int> &fc) -> void {
     return build_coplanar_pairs_impl<false>(fc);
   }
 
-  auto build_coplanar_pairs_self(const tf::face_cuts<Index> &fc) -> void {
+  template <typename Int>
+  auto build_coplanar_pairs_self(const tf::face_cuts<Index, Int> &fc) -> void {
     return build_coplanar_pairs_impl<true>(fc);
   }
 
-  auto build_intersection_edges(const tf::face_cuts<Index> &fc) -> void {
+  template <typename Int>
+  auto build_intersection_edges(const tf::face_cuts<Index, Int> &fc) -> void {
     auto descs = fc.descriptors();
     auto conn = connectivity_per_face_edge(fc);
     auto flat_loops = tf::make_offset_block_range(
@@ -248,11 +255,11 @@ private:
       _ie_set.insert(e);
   }
 
-  template <typename Policy>
+  template <typename Int, typename Policy>
   auto build_intersection_edges_self(
       const tf::polygons<Policy> &polygons,
-      const tf::intersection_graph<Index> &ig,
-      const tf::face_cuts<Index> &fc) -> void {
+      const tf::intersection_graph<Index, Int> &ig,
+      const tf::face_cuts<Index, Int> &fc) -> void {
     auto &&mel = polygons.manifold_edge_link();
     auto descs = fc.descriptors();
     auto loops = fc.loops();

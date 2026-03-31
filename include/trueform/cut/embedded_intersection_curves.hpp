@@ -33,7 +33,7 @@ namespace tf {
 /// @param _polygons0 The mesh to embed curves into.
 /// @param _polygons1 The mesh providing the cutting surface.
 /// @return A @ref tf::polygons_buffer with embedded intersection edges.
-template <typename Policy0, typename Policy1>
+template <typename Int = tf::exact::int32, typename Policy0, typename Policy1>
 auto embedded_intersection_curves(const tf::polygons<Policy0> &_polygons0,
                                   const tf::polygons<Policy1> &_polygons1) {
   return cut::dispatch::boolean(
@@ -44,7 +44,7 @@ auto embedded_intersection_curves(const tf::polygons<Policy0> &_polygons0,
         using RealType = tf::coordinate_type<std::decay_t<decltype(p0)>,
                                              std::decay_t<decltype(p1)>>;
         auto [ibp, ig, fc, cg] =
-            cut::dispatch::build_exact_pipeline<Index, RealType>(p0, p1);
+            cut::dispatch::build_exact_pipeline<Index, RealType, Int>(p0, p1);
         return tf::cut::embedded_intersection_curves<Index>(
             p0, ig, fc, ibp.converter(), Index(0));
       });
@@ -53,7 +53,7 @@ auto embedded_intersection_curves(const tf::polygons<Policy0> &_polygons0,
 /// @ingroup cut_boolean
 /// @brief Embed intersection curves from mesh B into mesh A with curve output.
 /// @overload
-template <typename Policy0, typename Policy1>
+template <typename Int = tf::exact::int32, typename Policy0, typename Policy1>
 auto embedded_intersection_curves(const tf::polygons<Policy0> &_polygons0,
                                   const tf::polygons<Policy1> &_polygons1,
                                   tf::return_curves_t) {
@@ -65,12 +65,12 @@ auto embedded_intersection_curves(const tf::polygons<Policy0> &_polygons0,
         using RealType = tf::coordinate_type<std::decay_t<decltype(p0)>,
                                              std::decay_t<decltype(p1)>>;
         auto [ibp, ig, fc, cg] =
-            cut::dispatch::build_exact_pipeline<Index, RealType>(p0, p1);
+            cut::dispatch::build_exact_pipeline<Index, RealType, Int>(p0, p1);
         auto res = tf::cut::embedded_intersection_curves<Index>(
             p0, ig, fc, ibp.converter(), Index(0));
 
-        auto paths = tf::connect_edges_to_paths(
-            tf::make_edges(cg.intersection_edges()));
+        auto paths =
+            tf::connect_edges_to_paths(tf::make_edges(cg.intersection_edges()));
         auto &conv = ibp.converter();
         auto ipts = ig.points();
         tf::curves_buffer<Index, RealType, 3> cb;
@@ -78,8 +78,7 @@ auto embedded_intersection_curves(const tf::polygons<Policy0> &_polygons0,
         cb.points_buffer().allocate(ipts.size());
         tf::parallel_copy(
             tf::make_points(tf::make_mapped_range(
-                ipts,
-                [&conv](const auto &pt) { return conv.deconvert(pt); })),
+                ipts, [&conv](const auto &pt) { return conv.deconvert(pt); })),
             cb.points());
         return std::make_tuple(std::move(res), std::move(cb));
       });

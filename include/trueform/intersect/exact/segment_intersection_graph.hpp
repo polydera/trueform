@@ -22,25 +22,26 @@
 #include "../../core/offset_block_buffer.hpp"
 #include "../../core/reallocate.hpp"
 #include "../../core/views/indirect_range.hpp"
-#include "../../exact/int128.hpp"
+#include "../../exact/meta.hpp"
 #include "../../intersect/graph/vertex.hpp"
 #include "../intersections_within_segments.hpp"
 #include <algorithm>
 
 namespace tf::intersect {
 
-template <typename Index, typename RealType, std::size_t Dims>
+template <typename Index, std::size_t Dims, typename Int = tf::exact::int32>
 class segment_intersection_graph {
 private:
   using vtx = tf::intersect::graph::vertex<Index>;
   using src = tf::intersect::graph::vertex_source;
   using edge_t = std::array<vtx, 2>;
   using merge_t = std::array<Index, 2>;
-  using i128 = tf::exact::int128;
+  using T1 = typename tf::exact::meta<Int>::T1;
+  using T2 = typename tf::exact::meta<Int>::T2;
 
   struct work_node {
     Index point_id;
-    i128 t;
+    T2 t;
     tf::topo_id<Index> sub_id;
   };
 
@@ -66,7 +67,7 @@ public:
     return tf::make_range(_sub_edges.data_buffer());
   }
 
-  template <typename Policy>
+  template <typename RealType, typename Policy>
   auto build(const tf::intersections_within_segments<Index, RealType, Dims> &si,
              const tf::segments<Policy> &segments) {
     auto groups = si.intersections();
@@ -126,22 +127,22 @@ private:
 
     auto p0 = conv(seg_points[v0]);
     auto p1 = conv(seg_points[v1]);
-    i128 dx = i128(p1[0]) - p0[0];
-    i128 dy = i128(p1[1]) - p0[1];
-    i128 dz = i128(0);
+    T1 dx = T1(p1[0]) - p0[0];
+    T1 dy = T1(p1[1]) - p0[1];
+    T1 dz = T1(0);
     if constexpr (Dims == 3)
-      dz = i128(p1[2]) - p0[2];
+      dz = T1(p1[2]) - p0[2];
 
     // 1. Fill work buffer
     local.work.clear();
     for (const auto &rec : group) {
       if (rec.target.label == tf::topo_type::vertex) {
-        local.work.push_back({rec.id, i128(rec.target.id), rec.target});
+        local.work.push_back({rec.id, T2(rec.target.id), rec.target});
       } else {
         auto q = _points[rec.id];
-        i128 t = dx * (i128(q[0]) - p0[0]) + dy * (i128(q[1]) - p0[1]);
+        T2 t = T2(dx) * (T1(q[0]) - p0[0]) + T2(dy) * (T1(q[1]) - p0[1]);
         if constexpr (Dims == 3)
-          t += dz * (i128(q[2]) - p0[2]);
+          t += T2(dz) * (T1(q[2]) - p0[2]);
         local.work.push_back({rec.id, t, rec.target});
       }
     }
@@ -217,7 +218,7 @@ private:
       auto n_classes =
           tf::make_dense_equivalence_class_map(merges, _point_remap);
 
-      tf::buffer<tf::point<int32_t, Dims>> new_pts;
+      tf::buffer<tf::point<Int, Dims>> new_pts;
       new_pts.allocate(n_classes);
       tf::parallel_copy(_points,
                         tf::make_indirect_range(_point_remap, new_pts));
@@ -236,7 +237,7 @@ private:
     }
   }
 
-  tf::buffer<tf::point<int32_t, Dims>> _points;
+  tf::buffer<tf::point<Int, Dims>> _points;
   tf::buffer<Index> _point_remap;
   tf::buffer<Index> _origin_edges;
   tf::offset_block_buffer<Index, edge_t> _sub_edges;

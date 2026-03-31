@@ -36,18 +36,18 @@
 namespace tf::cut {
 
 template <typename LabelType, typename Index, typename Policy0,
-          typename Policy1, typename RealType>
+          typename Policy1, typename RealType, typename Int>
 auto make_boolean_pair(const tf::polygons<Policy0> &polygons0,
                        const tf::polygons<Policy1> &polygons1,
-                       const tf::intersection_graph<Index> &ig,
-                       const tf::face_cuts<Index> &fc,
+                       const tf::intersection_graph<Index, Int> &ig,
+                       const tf::face_cuts<Index, Int> &fc,
                        const tf::cut_graph<Index> &cg,
-                       const tf::exact::vertex_converter<RealType, 3> &converter,
+                       const tf::exact::vertex_converter<Int, RealType, 3> &converter,
                        std::array<tf::arrangement_class, 2> classes,
                        const tf::boolean_config &config) {
   auto ipts = ig.points();
 
-  auto cls_labels = tf::cut::make_classification_labels<LabelType, Index>(
+  auto cls_labels = tf::cut::make_classification_labels<LabelType>(
       polygons0, polygons1, fc, cg, converter, tf::make_points(ipts), classes,
       config);
 
@@ -65,7 +65,7 @@ auto make_boolean_pair(const tf::polygons<Policy0> &polygons0,
       f(polygons1);
   };
 
-  auto map_data = tf::cut::make_splice_map_data<Index>(
+  auto map_data = tf::cut::make_splice_map_data(
       fc, static_cast<Index>(ipts.size()), pids, include_labels,
       apply_to_polygons);
 
@@ -77,7 +77,7 @@ auto make_boolean_pair(const tf::polygons<Policy0> &polygons0,
   auto make_projector = [&](const auto &desc) {
     auto tag = desc.tag;
     auto object = desc.object;
-    auto get_pt = [&, tag](Index vid) -> tf::point<int32_t, 3> {
+    auto get_pt = [&, tag](Index vid) -> tf::point<Int, 3> {
       if (tag == 0)
         return converter.convert(
             tf::transformed(polygons0.points()[vid], tf::frame_of(polygons0)));
@@ -92,8 +92,8 @@ auto make_boolean_pair(const tf::polygons<Policy0> &polygons0,
     auto axes = tag == 0 ? make_axes(polygons0.faces()[object])
                          : make_axes(polygons1.faces()[object]);
     return [axes, &converter, ipts, tag, &polygons0,
-            &polygons1](const auto &v) -> tf::point<int32_t, 2> {
-      tf::point<int32_t, 3> pt;
+            &polygons1](const auto &v) -> tf::point<Int, 2> {
+      tf::point<Int, 3> pt;
       if (v.source == tf::intersect::graph::vertex_source::original) {
         if (tag == 0)
           pt = converter.convert(tf::transformed(polygons0.points()[v.id],
@@ -123,11 +123,11 @@ auto make_boolean_pair(const tf::polygons<Policy0> &polygons0,
                                 tf::zip(descs_per_tag[1], loops_per_tag[1]));
     tbb::parallel_invoke(
         [&] {
-          tf::cut::triangulate_partition_cuts<Index>(
+          tf::cut::triangulate_partition_cuts<Int>(
               selected0, make_projector, map_vertex, tri_data0);
         },
         [&] {
-          tf::cut::triangulate_partition_cuts<Index>(
+          tf::cut::triangulate_partition_cuts<Int>(
               selected1, make_projector, map_vertex, tri_data1);
         });
   }

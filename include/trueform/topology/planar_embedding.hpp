@@ -31,7 +31,8 @@ namespace tf {
 /// and holes. Faces are CCW-oriented regions with positive area, holes
 /// are CW-oriented regions with negative area. The embedding also computes
 /// parent-child relationships between faces and holes.
-template <typename Index> class planar_embedding {
+template <typename Index, typename Int = tf::exact::int32>
+class planar_embedding {
 public:
   template <typename Policy0, typename Policy1>
   auto build(const tf::edges<Policy0> &directed_edges,
@@ -41,7 +42,7 @@ public:
     if constexpr (std::is_integral_v<coord_t>) {
       build_impl(directed_edges, points);
     } else {
-      auto conv = tf::exact::make_pt_converter(points);
+      auto conv = tf::exact::make_pt_converter<Int>(points);
       auto int_pts = tf::make_points(tf::make_mapped_range(
           points, [&](const auto &pt) { return conv(pt); }));
       build_impl(directed_edges, int_pts);
@@ -89,8 +90,8 @@ private:
     }
   }
 
-  tf::planar_graph_regions<Index> _pgr;
-  tf::face_hole_relations<Index> _fhr;
+  tf::planar_graph_regions<Index, Int> _pgr;
+  tf::face_hole_relations<Index, Int> _fhr;
   tf::buffer<Index> _faces;
   tf::buffer<Index> _holes;
 };

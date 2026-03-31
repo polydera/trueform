@@ -17,9 +17,9 @@
 #include "../../core/views/enumerate.hpp"
 #include "../../core/views/indirect_range.hpp"
 #include "../../core/views/zip.hpp"
-#include "./arrangement_map_data.hpp"
 #include "../face_cuts.hpp"
 #include "../partition/partition_ids.hpp"
+#include "./arrangement_map_data.hpp"
 #include "tbb/task_group.h"
 
 namespace tf::cut {
@@ -29,10 +29,10 @@ namespace tf::cut {
 /// Walks cut face loops and uncut faces in parallel per mesh, assigns
 /// contiguous IDs to original vertices on first encounter. Created
 /// vertices (intersection points) are all used — offset after originals.
-template <typename Index, typename ApplyToPolygons>
-auto make_arrangement_map_data(
-    const tf::face_cuts<Index> &fc,
-    const ApplyToPolygons &apply_to_polygons, Index n_meshes)
+template <typename Index, typename Int, typename ApplyToPolygons>
+auto make_arrangement_map_data(const tf::face_cuts<Index, Int> &fc,
+                               const ApplyToPolygons &apply_to_polygons,
+                               Index n_meshes)
     -> tf::cut::arrangement_map_data<Index> {
   tf::cut::arrangement_map_data<Index> d;
   d.n_meshes = n_meshes;
@@ -134,9 +134,10 @@ auto make_arrangement_map_data(
 /// Uses partition_ids to select which cut face loops and uncut polygons
 /// to include per mesh. Builds both original and created vertex remapping.
 /// Face IDs come from partition_ids — not stored here.
-template <typename Index, typename LabelType, typename ApplyToPolygons>
+template <typename Index, typename Int, typename LabelType,
+          typename ApplyToPolygons>
 auto make_partition_map_data(
-    const tf::face_cuts<Index> &fc, Index n_created_points,
+    const tf::face_cuts<Index, Int> &fc, Index n_created_points,
     const tf::small_vector<tf::cut::partition_ids<Index>, 4> &pids,
     const tf::small_vector<LabelType, 4> &include_labels,
     const ApplyToPolygons &apply_to_polygons)
@@ -235,9 +236,10 @@ auto make_partition_map_data(
 /// Same vertex discovery as make_partition_map_data but original_offsets
 /// stay zeroed (each mesh's IDs are 0-based) and created vertices are
 /// tracked per mesh rather than shared.
-template <typename Index, typename LabelType, typename ApplyToPolygons>
+template <typename Index, typename Int, typename LabelType,
+          typename ApplyToPolygons>
 auto make_splice_map_data(
-    const tf::face_cuts<Index> &fc, Index n_created_points,
+    const tf::face_cuts<Index, Int> &fc, Index n_created_points,
     const tf::small_vector<tf::cut::partition_ids<Index>, 4> &pids,
     const tf::small_vector<LabelType, 4> &include_labels,
     const ApplyToPolygons &apply_to_polygons)
@@ -263,8 +265,7 @@ auto make_splice_map_data(
   d.created_counts.resize(n_meshes, 0);
   for (Index i = 0; i < n_meshes; ++i) {
     d.created_maps[i].allocate(n_created_points);
-    tf::parallel_fill(d.created_maps[i],
-                      static_cast<Index>(n_created_points));
+    tf::parallel_fill(d.created_maps[i], static_cast<Index>(n_created_points));
   }
 
   d.original_offsets.allocate(n_meshes + 1);
@@ -334,8 +335,8 @@ auto make_splice_map_data(
 ///
 /// All original vertices referenced by tag's cut face loops and uncut
 /// faces get compacted. All created vertices are used by direct offset.
-template <typename Index, typename Policy>
-auto make_embed_map_data(const tf::face_cuts<Index> &fc,
+template <typename Index, typename Int, typename Policy>
+auto make_embed_map_data(const tf::face_cuts<Index, Int> &fc,
                          const tf::polygons<Policy> &polygons, Index tag)
     -> tf::cut::embed_map_data<Index> {
   tf::cut::embed_map_data<Index> d;

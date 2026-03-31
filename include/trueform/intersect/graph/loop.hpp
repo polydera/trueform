@@ -14,7 +14,7 @@
 
 #include "../../core/algorithm/circular_increment.hpp"
 #include "../../core/buffer.hpp"
-#include "../../exact/int128.hpp"
+#include "../../exact/meta.hpp"
 #include "../../topology/topo_type.hpp"
 #include "./vertex.hpp"
 
@@ -24,12 +24,12 @@
 namespace tf::intersect::graph {
 
 /// Work node for parametric sorting of intersection points along an edge.
-template <typename Index> struct loop_node {
+template <typename Index, typename Int> struct loop_node {
   Index target_id;
   tf::topo_type label;
   Index point_id;
   Index flat_id;
-  tf::exact::int128 t;
+  typename tf::exact::meta<Int>::T2 t;
 };
 
 /// Extract a boundary loop for one face from its intersection records.
@@ -40,23 +40,24 @@ template <typename Index> struct loop_node {
 /// @param subrange   Intersection records for this face
 /// @param face       Range of vertex indices for this face
 /// @param tag        Mesh tag for this face
-/// @param get_point  (tag, id) -> point<int32_t, 3>; tag == -1 for intersection
+/// @param get_point  (tag, id) -> point<Int, 3>; tag == -1 for intersection
 /// @param get_flat_id (record) -> flat index in intersections buffer
 /// @param work       Reusable scratch buffer
 /// @param buffer     Output vertex buffer (appended to)
-template <typename Index, typename Subrange, typename Face, typename GetPoint,
-          typename GetFlatId>
+template <typename Index, typename Int, typename Subrange, typename Face,
+          typename GetPoint, typename GetFlatId>
 auto extract_loop(const Subrange &subrange, const Face &face, Index tag,
                   const GetPoint &get_point, const GetFlatId &get_flat_id,
-                  tf::buffer<loop_node<Index>> &work,
+                  tf::buffer<loop_node<Index, Int>> &work,
                   tf::buffer<vertex<Index>> &buffer) -> void {
-  using i128 = tf::exact::int128;
+  using T1 = typename tf::exact::meta<Int>::T1;
+  using T2 = typename tf::exact::meta<Int>::T2;
   work.clear();
   for (const auto &rec : subrange) {
     if (rec.target.label == tf::topo_type::face)
       continue;
     work.push_back(
-        {rec.target.id, rec.target.label, rec.id, get_flat_id(rec), i128(0)});
+        {rec.target.id, rec.target.label, rec.id, get_flat_id(rec), T2(0)});
   }
 
   std::sort(work.begin(), work.end(), [](const auto &a, const auto &b) {
@@ -89,14 +90,14 @@ auto extract_loop(const Subrange &subrange, const Face &face, Index tag,
 
     auto p0 = get_point(tag, vi0);
     auto p1 = get_point(tag, vi1);
-    i128 dx = i128(p1[0]) - p0[0];
-    i128 dy = i128(p1[1]) - p0[1];
-    i128 dz = i128(p1[2]) - p0[2];
+    T1 dx = T1(p1[0]) - p0[0];
+    T1 dy = T1(p1[1]) - p0[1];
+    T1 dz = T1(p1[2]) - p0[2];
 
     for (auto jt = edge_begin; jt != wit; ++jt) {
       auto p = get_point(-1, jt->point_id);
-      jt->t = dx * (i128(p[0]) - p0[0]) + dy * (i128(p[1]) - p0[1]) +
-              dz * (i128(p[2]) - p0[2]);
+      jt->t = T2(dx) * (T1(p[0]) - p0[0]) + T2(dy) * (T1(p[1]) - p0[1]) +
+              T2(dz) * (T1(p[2]) - p0[2]);
     }
 
     bool fwd = vi0 < vi1;

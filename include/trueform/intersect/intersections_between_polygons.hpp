@@ -40,11 +40,11 @@ namespace tf {
 /// Stores intersection points as int32 coordinates computed via exact
 /// arithmetic (SoS or primitives). No float round-trip — int32 points are the
 /// primary representation. Supports convex polygon faces of any size.
-template <typename Index, typename RealType>
+template <typename Index, typename RealType, typename Int = tf::exact::int32>
 class intersections_between_polygons
-    : public tf::intersect::tagged_intersections<Index, int32_t, 3> {
+    : public tf::intersect::tagged_intersections<Index, Int, 3> {
   static constexpr std::size_t Dims = 3;
-  using base_t = tf::intersect::tagged_intersections<Index, int32_t, Dims>;
+  using base_t = tf::intersect::tagged_intersections<Index, Int, Dims>;
   using intersection_t = tf::intersect::tagged_intersection<Index>;
 
 public:
@@ -66,7 +66,7 @@ public:
                   "Use polygons | tf::tag(face_membership)");
 
     base_t::clear();
-    _converter = tf::exact::make_vertex_converter<RealType>(form0, form1);
+    _converter = tf::exact::make_vertex_converter<Int, RealType>(form0, form1);
 
     if (mode == tf::intersect_mode::primitives)
       build_primitives(form0, form1);
@@ -78,7 +78,7 @@ public:
   auto build(tf::range<Iterator, N> forms,
              tf::intersect_mode mode = tf::intersect_mode::primitives) {
     base_t::clear();
-    _converter = tf::exact::make_vertex_converter<RealType>(forms);
+    _converter = tf::exact::make_vertex_converter<Int, RealType>(forms);
 
     if (mode == tf::intersect_mode::primitives)
       build_primitives(forms);
@@ -91,8 +91,8 @@ private:
   auto build_sos(const tf::polygons<Policy0> &form0,
                  const tf::polygons<Policy1> &form1) {
     tf::local_buffer<intersection_t> l_intersections;
-    tf::local_buffer<tf::exact::pt3> l_points;
-    tf::local_buffer<tf::exact::vertex<Index>> l_face_verts;
+    tf::local_buffer<tf::exact::pt3<Int>> l_points;
+    tf::local_buffer<tf::exact::vertex<Index, Int>> l_face_verts;
     l_intersections.reserve_all(1000);
     l_points.reserve_all(1000);
 
@@ -106,9 +106,9 @@ private:
   auto build_primitives(const tf::polygons<Policy0> &form0,
                         const tf::polygons<Policy1> &form1) {
     tf::local_buffer<intersection_t> l_intersections;
-    tf::local_buffer<tf::exact::pt3> l_points;
-    tf::local_buffer<tf::exact::vertex<Index>> l_face_verts0;
-    tf::local_buffer<tf::exact::vertex<Index>> l_face_verts1;
+    tf::local_buffer<tf::exact::pt3<Int>> l_points;
+    tf::local_buffer<tf::exact::vertex<Index, Int>> l_face_verts0;
+    tf::local_buffer<tf::exact::vertex<Index, Int>> l_face_verts1;
     l_intersections.reserve_all(1000);
     l_points.reserve_all(1000);
 
@@ -136,8 +136,8 @@ private:
   template <typename Iterator, std::size_t N>
   auto build_sos(tf::range<Iterator, N> forms) {
     tf::local_buffer<intersection_t> l_intersections;
-    tf::local_buffer<tf::exact::pt3> l_points;
-    tf::local_buffer<tf::exact::vertex<Index>> l_face_verts;
+    tf::local_buffer<tf::exact::pt3<Int>> l_points;
+    tf::local_buffer<tf::exact::vertex<Index, Int>> l_face_verts;
     l_intersections.reserve_all(1000);
     l_points.reserve_all(1000);
 
@@ -158,9 +158,9 @@ private:
   template <typename Iterator, std::size_t N>
   auto build_primitives(tf::range<Iterator, N> forms) {
     tf::local_buffer<intersection_t> l_intersections;
-    tf::local_buffer<tf::exact::pt3> l_points;
-    tf::local_buffer<tf::exact::vertex<Index>> l_face_verts0;
-    tf::local_buffer<tf::exact::vertex<Index>> l_face_verts1;
+    tf::local_buffer<tf::exact::pt3<Int>> l_points;
+    tf::local_buffer<tf::exact::vertex<Index, Int>> l_face_verts0;
+    tf::local_buffer<tf::exact::vertex<Index, Int>> l_face_verts1;
     l_intersections.reserve_all(1000);
     l_points.reserve_all(1000);
 
@@ -193,12 +193,11 @@ private:
 
   /// Run pairwise edge-vs-face search between two tagged polygons.
   template <typename Policy0, typename Policy1>
-  auto
-  intersect_pair(const tf::polygons<Policy0> &form0,
-                 const tf::polygons<Policy1> &form1, int tag0, int tag1,
-                 tf::local_buffer<intersection_t> &l_intersections,
-                 tf::local_buffer<tf::exact::pt3> &l_points,
-                 tf::local_buffer<tf::exact::vertex<Index>> &l_face_verts) {
+  auto intersect_pair(
+      const tf::polygons<Policy0> &form0, const tf::polygons<Policy1> &form1,
+      int tag0, int tag1, tf::local_buffer<intersection_t> &l_intersections,
+      tf::local_buffer<tf::exact::pt3<Int>> &l_points,
+      tf::local_buffer<tf::exact::vertex<Index, Int>> &l_face_verts) {
     auto &conv = _converter;
     tf::search(
         form0, form1,
@@ -230,7 +229,7 @@ private:
   /// Combine thread-local buffers, duplicate intersections, finalize.
   template <typename Duplicator>
   auto finalize_sos_build(tf::local_buffer<intersection_t> &l_intersections,
-                          tf::local_buffer<tf::exact::pt3> &l_points,
+                          tf::local_buffer<tf::exact::pt3<Int>> &l_points,
                           Duplicator &&duplicator, Index n_tags) {
     auto points = l_points.to_buffer();
     if (points.size() == 0)
@@ -281,7 +280,7 @@ private:
   /// Convert a polygon's vertices to exact vertices into the provided buffer.
   template <typename Poly, typename Conv>
   static auto convert_face(const Poly &poly, int tag, const Conv &conv,
-                           tf::buffer<tf::exact::vertex<Index>> &out) {
+                           tf::buffer<tf::exact::vertex<Index, Int>> &out) {
     auto n = poly.size();
     out.reallocate(n);
     for (decltype(n) k = 0; k < n; ++k)
@@ -290,15 +289,15 @@ private:
 
   /// Test one edge against a convex face via fan triangulation.
   static auto
-  edge_vs_convex_face_sos(const tf::buffer<tf::exact::vertex<Index>> &face,
-                          const tf::exact::vertex<Index> &v0,
-                          const tf::exact::vertex<Index> &v1)
-      -> std::optional<tf::exact::pt3> {
+  edge_vs_convex_face_sos(const tf::buffer<tf::exact::vertex<Index, Int>> &face,
+                          const tf::exact::vertex<Index, Int> &v0,
+                          const tf::exact::vertex<Index, Int> &v1)
+      -> std::optional<tf::exact::pt3<Int>> {
     auto n = face.size();
     for (decltype(n) t = 0; t + 2 < n; ++t) {
       if (auto pt = tf::exact::triangle_segment_intersect_point_sos(
-              std::array<tf::exact::vertex<Index>, 5>{face[0], face[t + 1],
-                                                      face[t + 2], v0, v1}))
+              std::array<tf::exact::vertex<Index, Int>, 5>{
+                  face[0], face[t + 1], face[t + 2], v0, v1}))
         return pt;
     }
     return std::nullopt;
@@ -308,12 +307,12 @@ private:
   /// `face_poly`. `edge_tag`/`face_tag` are the mesh tags.
   template <typename EdgePoly, typename FacePoly, typename EdgeIsRep,
             typename Conv, typename Ints, typename Pts>
-  static auto edges_vs_face_sos(const EdgePoly &edge_poly,
-                                const FacePoly &face_poly, int edge_tag,
-                                int face_tag, const EdgeIsRep &edge_is_rep,
-                                const Conv &conv,
-                                tf::buffer<tf::exact::vertex<Index>> &face_buf,
-                                Ints &ints, Pts &pts) {
+  static auto
+  edges_vs_face_sos(const EdgePoly &edge_poly, const FacePoly &face_poly,
+                    int edge_tag, int face_tag, const EdgeIsRep &edge_is_rep,
+                    const Conv &conv,
+                    tf::buffer<tf::exact::vertex<Index, Int>> &face_buf,
+                    Ints &ints, Pts &pts) {
     auto edge_id = Index(edge_poly.id());
     auto face_id = Index(face_poly.id());
 
@@ -325,7 +324,8 @@ private:
         continue;
       auto next_j = tf::circular_increment(j, n);
       auto v0 = conv(edge_tag, Index(edge_poly.indices()[j]), edge_poly[j]);
-      auto v1 = conv(edge_tag, Index(edge_poly.indices()[next_j]), edge_poly[next_j]);
+      auto v1 =
+          conv(edge_tag, Index(edge_poly.indices()[next_j]), edge_poly[next_j]);
 
       if (auto pt = edge_vs_convex_face_sos(face_buf, v0, v1)) {
         Index id = pts.size();
@@ -345,11 +345,13 @@ private:
   template <typename Poly0, typename Poly1, typename MEL0, typename MEL1,
             typename FM0, typename FM1, typename Conv, typename Ints,
             typename Pts>
-  static auto primitives_polygon_pair(
-      const Poly0 &poly0, const Poly1 &poly1, int tag0, int tag1,
-      const MEL0 &mel0, const MEL1 &mel1, const FM0 &fm0, const FM1 &fm1,
-      const Conv &conv, tf::buffer<tf::exact::vertex<Index>> &face_buf0,
-      tf::buffer<tf::exact::vertex<Index>> &face_buf1, Ints &ints, Pts &pts) {
+  static auto
+  primitives_polygon_pair(const Poly0 &poly0, const Poly1 &poly1, int tag0,
+                          int tag1, const MEL0 &mel0, const MEL1 &mel1,
+                          const FM0 &fm0, const FM1 &fm1, const Conv &conv,
+                          tf::buffer<tf::exact::vertex<Index, Int>> &face_buf0,
+                          tf::buffer<tf::exact::vertex<Index, Int>> &face_buf1,
+                          Ints &ints, Pts &pts) {
     auto face0_id = Index(poly0.id());
     auto face1_id = Index(poly1.id());
 
@@ -375,14 +377,14 @@ private:
     int mask0 = 0, mask1 = 0;
     if (plane1.valid)
       for (decltype(n0) i = 0; i < n0; ++i) {
-        signs0[i] = orient3d_sign(std::array<tf::exact::vertex<Index>, 4>{
+        signs0[i] = orient3d_sign(std::array<tf::exact::vertex<Index, Int>, 4>{
             face_buf1[plane1.i0], face_buf1[plane1.i1], face_buf1[plane1.i2],
             face_buf0[i]});
         mask0 |= 1 << (signs0[i] + 1);
       }
     if (plane0.valid)
       for (decltype(n1) j = 0; j < n1; ++j) {
-        signs1[j] = orient3d_sign(std::array<tf::exact::vertex<Index>, 4>{
+        signs1[j] = orient3d_sign(std::array<tf::exact::vertex<Index, Int>, 4>{
             face_buf0[plane0.i0], face_buf0[plane0.i1], face_buf0[plane0.i2],
             face_buf1[j]});
         mask1 |= 1 << (signs1[j] + 1);
@@ -440,13 +442,12 @@ private:
 
   /// Run primitives pairwise intersection between two tagged polygons.
   template <typename Policy0, typename Policy1>
-  auto
-  primitives_intersect_pair(const tf::polygons<Policy0> &form0,
-                            const tf::polygons<Policy1> &form1, int tag0,
-                            int tag1, tf::local_buffer<intersection_t> &l_ints,
-                            tf::local_buffer<tf::exact::pt3> &l_pts,
-                            tf::local_buffer<tf::exact::vertex<Index>> &l_fb0,
-                            tf::local_buffer<tf::exact::vertex<Index>> &l_fb1) {
+  auto primitives_intersect_pair(
+      const tf::polygons<Policy0> &form0, const tf::polygons<Policy1> &form1,
+      int tag0, int tag1, tf::local_buffer<intersection_t> &l_ints,
+      tf::local_buffer<tf::exact::pt3<Int>> &l_pts,
+      tf::local_buffer<tf::exact::vertex<Index, Int>> &l_fb0,
+      tf::local_buffer<tf::exact::vertex<Index, Int>> &l_fb1) {
     auto &conv = _converter;
     tf::search(
         form0, form1,
@@ -464,7 +465,7 @@ private:
         });
   }
 
-  tf::exact::vertex_converter<RealType, Dims> _converter;
+  tf::exact::vertex_converter<Int, RealType, Dims> _converter;
 };
 
 } // namespace tf

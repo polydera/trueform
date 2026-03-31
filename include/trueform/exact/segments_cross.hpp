@@ -19,8 +19,9 @@ namespace tf::exact {
 /// Proper segment crossing test: do segments (a,b) and (c,d) properly cross?
 /// Returns true only for proper crossings (not touching at endpoints or
 /// collinear overlap).
-inline auto segments_cross(const pt2 &a, const pt2 &b, const pt2 &c,
-                           const pt2 &d) -> bool {
+template <typename Int>
+auto segments_cross(const pt2<Int> &a, const pt2<Int> &b, const pt2<Int> &c,
+                    const pt2<Int> &d) -> bool {
   auto o1 = orient2d(a, b, c);
   auto o2 = orient2d(a, b, d);
   auto o3 = orient2d(c, d, a);

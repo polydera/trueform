@@ -45,14 +45,14 @@ namespace tf::cut {
 ///
 /// Returns (pal0, pal1, counts0, counts1) where counts[component][i]
 /// holds votes: 0=inside, 1=outside, 2=aligned, 3=opposing.
-template <typename LabelType, typename Index, typename Policy0,
+template <typename LabelType, typename Index, typename Policy0, typename Int,
           typename Policy1, typename RealT, std::size_t Dims,
           typename PointsPolicy>
 auto make_classification_counts(
     const tf::polygons<Policy0> &polygons0,
-    const tf::polygons<Policy1> &polygons1, const tf::face_cuts<Index> &fc,
+    const tf::polygons<Policy1> &polygons1, const tf::face_cuts<Index, Int> &fc,
     const tf::cut_graph<Index> &cg,
-    const tf::exact::vertex_converter<RealT, Dims> &conv,
+    const tf::exact::vertex_converter<Int, RealT, Dims> &conv,
     const tf::points<PointsPolicy> &created_points,
     const tf::boolean_config &config) {
   using vertex_t = tf::intersect::graph::vertex<Index>;
@@ -61,7 +61,7 @@ auto make_classification_counts(
   auto frame0 = tf::frame_of(polygons0);
   auto frame1 = tf::frame_of(polygons1);
 
-  auto get_point = [&](int tag, const vertex_t &v) -> tf::exact::pt3 {
+  auto get_point = [&](int tag, const vertex_t &v) -> tf::exact::pt3<Int> {
     if (v.source == source::original) {
       if (tag == 0)
         return conv.convert(tf::transformed(polygons0.points()[v.id], frame0));
@@ -188,13 +188,13 @@ auto make_classification_counts(
 /// label to 0 (exclude) or 1 (include) based on majority vote and
 /// the requested arrangement_class flags.
 template <typename LabelType, typename Index, typename Policy0,
-          typename Policy1, typename RealT, std::size_t Dims,
+          typename Policy1, typename RealT, std::size_t Dims, typename Int,
           typename PointsPolicy>
 auto make_classification_labels(
     const tf::polygons<Policy0> &polygons0,
-    const tf::polygons<Policy1> &polygons1, const tf::face_cuts<Index> &fc,
+    const tf::polygons<Policy1> &polygons1, const tf::face_cuts<Index, Int> &fc,
     const tf::cut_graph<Index> &cg,
-    const tf::exact::vertex_converter<RealT, Dims> &conv,
+    const tf::exact::vertex_converter<Int, RealT, Dims> &conv,
     const tf::points<PointsPolicy> &created_points,
     std::array<tf::arrangement_class, 2> flags,
     const tf::boolean_config &config) {

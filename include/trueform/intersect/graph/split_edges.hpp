@@ -21,6 +21,7 @@
 #include "../../core/point.hpp"
 #include "../../core/reallocate.hpp"
 #include "../../core/views/offset_block_range.hpp"
+#include "../../exact/meta.hpp"
 #include "./crossing_record.hpp"
 #include "./edge.hpp"
 #include "tbb/parallel_sort.h"
@@ -36,14 +37,17 @@ namespace tf::intersect::graph {
 /// unchanged or gets split into sub-edges. Returns same-t merge pairs
 /// (multiple EE crossings at the same parametric location) for the caller
 /// to combine with other merge sources. Does not remap or re-canonicalize.
-template <typename Index, typename GetPoint>
+template <typename Index, typename Int, typename GetPoint>
 auto split_edges(tf::buffer<edge_split_entry<Index>> &entries,
                  Index crossing_base,
-                 const tf::buffer<tf::point<int32_t, 3>> &crossing_points,
+                 const tf::buffer<tf::point<Int, 3>> &crossing_points,
                  tf::offset_block_buffer<Index, edge<Index>> &edge_defs,
                  tf::offset_block_buffer<Index, Index> &edges,
                  const GetPoint &get_point,
                  tf::buffer<std::array<Index, 2>> &merge_pairs) -> void {
+  using T1 = typename tf::exact::meta<Int>::T1;
+  using T2 = typename tf::exact::meta<Int>::T2;
+
   // Sort by (edge_id, point_id), deduplicate
   tbb::parallel_sort(entries.begin(), entries.end());
   entries.erase_till_end(std::unique(entries.begin(), entries.end()));
@@ -79,7 +83,7 @@ auto split_edges(tf::buffer<edge_split_entry<Index>> &entries,
     tf::buffer<edge<Index>> new_edges;
     tf::buffer<Index> counts;
     tf::buffer<std::array<Index, 2>> merges;
-    tf::buffer<split_point<Index>> work;
+    tf::buffer<split_point<Index, Int>> work;
   };
 
   auto task = [&](auto &&range, local_t &local) {
@@ -108,17 +112,16 @@ auto split_edges(tf::buffer<edge_split_entry<Index>> &entries,
 
         auto p0 = get_point_f(-1, e.point_0);
         auto p1 = get_point_f(-1, e.point_1);
-        using i128 = tf::exact::int128;
-        i128 dx = i128(p1[0]) - p0[0], dy = i128(p1[1]) - p0[1],
-             dz = i128(p1[2]) - p0[2];
+        T1 dx = T1(p1[0]) - p0[0], dy = T1(p1[1]) - p0[1],
+           dz = T1(p1[2]) - p0[2];
 
         local.work.clear();
         for (auto &entry : group) {
           auto pid = entry.point_id;
           auto q = (pid >= crossing_base) ? crossing_points[pid - crossing_base]
                                           : get_point_f(-1, pid);
-          i128 t = dx * (i128(q[0]) - p0[0]) + dy * (i128(q[1]) - p0[1]) +
-                   dz * (i128(q[2]) - p0[2]);
+          T2 t = T2(dx) * (T1(q[0]) - p0[0]) + T2(dy) * (T1(q[1]) - p0[1]) +
+                 T2(dz) * (T1(q[2]) - p0[2]);
           local.work.push_back({pid, t});
         }
 
