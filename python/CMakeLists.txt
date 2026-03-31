@@ -22,9 +22,54 @@ find_package(nanobind CONFIG REQUIRED)
 
 # 3. Source Collection
 # ------------------------------------------------------------------------------
-# Note: GLOB_RECURSE is convenient but requires re-running CMake if files are added.
-file(GLOB_RECURSE BINDING_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
-file(GLOB_RECURSE BINDING_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp")
+# Explicit file lists — no GLOB. Add new files to the respective
+# sources.cmake or headers.cmake when creating new bindings.
+
+# Top-level binding sources (module entry points)
+set(BINDING_TOP_SOURCES
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/clean.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/core.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/cut.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/geometry.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/intersect.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/io.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/reindex.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/remesh.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/spatial.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/topology.cpp
+)
+
+# Per-module binding sources
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/clean/sources.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/core/sources.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/cut/sources.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/geometry/sources.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/intersect/sources.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/io/sources.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/reindex/sources.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/remesh/sources.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/spatial/sources.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/topology/sources.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/util/sources.cmake)
+
+set(BINDING_SOURCES
+  ${BINDING_TOP_SOURCES}
+  ${MODULE_CLEAN_SOURCES}
+  ${MODULE_CORE_SOURCES}
+  ${MODULE_CUT_SOURCES}
+  ${MODULE_GEOMETRY_SOURCES}
+  ${MODULE_INTERSECT_SOURCES}
+  ${MODULE_IO_SOURCES}
+  ${MODULE_REINDEX_SOURCES}
+  ${MODULE_REMESH_SOURCES}
+  ${MODULE_SPATIAL_SOURCES}
+  ${MODULE_TOPOLOGY_SOURCES}
+  ${MODULE_UTIL_SOURCES}
+)
+
+# Binding headers
+include(${CMAKE_CURRENT_SOURCE_DIR}/include/headers.cmake)
 
 # 4. Target Definition (_trueform)
 # ------------------------------------------------------------------------------

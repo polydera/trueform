@@ -53,9 +53,17 @@ auto register_intersection_curves_int64int64_float3d(nanobind::module_ &m) -> vo
         nanobind::arg("mesh0"), nanobind::arg("mesh1"),
         nanobind::arg("mode") = 0);
 
-  // List overload
+  // List overloads
   m.def("intersection_curves_list_int643float3d",
         [](std::vector<mesh_wrapper<int64_t, float, 3, 3>> &meshes, int mode) {
+          return intersection_curves(meshes,
+                                     static_cast<tf::intersect_mode>(mode));
+        },
+        nanobind::arg("meshes"), nanobind::arg("mode") = 0);
+
+  m.def("intersection_curves_list_int64dynfloat3d",
+        [](std::vector<mesh_wrapper<int64_t, float, dynamic_size, 3>> &meshes,
+           int mode) {
           return intersection_curves(meshes,
                                      static_cast<tf::intersect_mode>(mode));
         },

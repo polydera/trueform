@@ -19,12 +19,20 @@ auto register_mesh_arrangements_int3float3d(nanobind::module_ &m) -> void;
 auto register_mesh_arrangements_int3double3d(nanobind::module_ &m) -> void;
 auto register_mesh_arrangements_int643float3d(nanobind::module_ &m) -> void;
 auto register_mesh_arrangements_int643double3d(nanobind::module_ &m) -> void;
+auto register_mesh_arrangements_intdynfloat3d(nanobind::module_ &m) -> void;
+auto register_mesh_arrangements_intdyndouble3d(nanobind::module_ &m) -> void;
+auto register_mesh_arrangements_int64dynfloat3d(nanobind::module_ &m) -> void;
+auto register_mesh_arrangements_int64dyndouble3d(nanobind::module_ &m) -> void;
 
 auto register_cut_mesh_arrangements(nanobind::module_ &m) -> void {
   register_mesh_arrangements_int3float3d(m);
   register_mesh_arrangements_int3double3d(m);
   register_mesh_arrangements_int643float3d(m);
   register_mesh_arrangements_int643double3d(m);
+  register_mesh_arrangements_intdynfloat3d(m);
+  register_mesh_arrangements_intdyndouble3d(m);
+  register_mesh_arrangements_int64dynfloat3d(m);
+  register_mesh_arrangements_int64dyndouble3d(m);
 }
 
 } // namespace tf::py

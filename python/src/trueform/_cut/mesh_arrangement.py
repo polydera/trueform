@@ -101,6 +101,9 @@ def mesh_arrangements(
     meta = meta0
     suffix = build_suffix(meta)
 
+    # All meshes must be same type (enforced above), so check first
+    result_is_dynamic = meshes[0].is_dynamic
+
     # Extract wrappers
     wrappers = [m._wrapper for m in meshes]
 
@@ -111,6 +114,8 @@ def mesh_arrangements(
             ((paths_offsets, paths_data), curve_points) = getattr(
                 _trueform.cut, func_name
             )(wrappers)
+        if result_is_dynamic:
+            result_faces = OffsetBlockedArray(result_faces[0], result_faces[1])
         paths = OffsetBlockedArray(paths_offsets, paths_data)
         return (result_faces, result_points), tag_labels, face_labels, \
             (paths, curve_points)
@@ -119,4 +124,6 @@ def mesh_arrangements(
         (result_faces, result_points), tag_labels, face_labels = getattr(
             _trueform.cut, func_name
         )(wrappers)
+        if result_is_dynamic:
+            result_faces = OffsetBlockedArray(result_faces[0], result_faces[1])
         return (result_faces, result_points), tag_labels, face_labels

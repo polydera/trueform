@@ -53,9 +53,17 @@ auto register_intersection_curves_intint_double3d(nanobind::module_ &m) -> void 
         nanobind::arg("mesh0"), nanobind::arg("mesh1"),
         nanobind::arg("mode") = 0);
 
-  // List overload
+  // List overloads
   m.def("intersection_curves_list_int3double3d",
         [](std::vector<mesh_wrapper<int, double, 3, 3>> &meshes, int mode) {
+          return intersection_curves(meshes,
+                                     static_cast<tf::intersect_mode>(mode));
+        },
+        nanobind::arg("meshes"), nanobind::arg("mode") = 0);
+
+  m.def("intersection_curves_list_intdyndouble3d",
+        [](std::vector<mesh_wrapper<int, double, dynamic_size, 3>> &meshes,
+           int mode) {
           return intersection_curves(meshes,
                                      static_cast<tf::intersect_mode>(mode));
         },

@@ -70,12 +70,16 @@ def polygon_arrangements(
     meta = InputMeta(mesh.faces.dtype, mesh.dtype, ngon, 3)
     suffix = build_suffix(meta)
 
+    result_is_dynamic = mesh.is_dynamic
+
     if return_curves:
         func_name = f"polygon_arrangements_curves_{suffix}"
         (result_faces, result_points), face_labels, \
             ((paths_offsets, paths_data), curve_points) = getattr(
                 _trueform.cut, func_name
             )(mesh._wrapper)
+        if result_is_dynamic:
+            result_faces = OffsetBlockedArray(result_faces[0], result_faces[1])
         paths = OffsetBlockedArray(paths_offsets, paths_data)
         return (result_faces, result_points), face_labels, \
             (paths, curve_points)
@@ -84,4 +88,6 @@ def polygon_arrangements(
         (result_faces, result_points), face_labels = getattr(
             _trueform.cut, func_name
         )(mesh._wrapper)
+        if result_is_dynamic:
+            result_faces = OffsetBlockedArray(result_faces[0], result_faces[1])
         return (result_faces, result_points), face_labels
