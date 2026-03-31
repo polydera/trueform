@@ -107,6 +107,61 @@ auto make_intersection_curves(
       });
 }
 
+namespace intersect {
+
+template <typename FormsRange>
+auto intersection_curves_n(const FormsRange &forms, tf::intersect_mode mode) {
+  using Index = std::decay_t<decltype(forms[0].faces()[0][0])>;
+  using RealType = tf::coordinate_type<decltype(forms[0])>;
+
+  tf::intersections_between_polygons<Index, RealType> ibp;
+  ibp.build(forms, mode);
+
+  auto &conv = ibp.converter();
+  auto apply_to_face = [&](int tag, Index object, const auto &f) {
+    f(forms[tag].faces()[object]);
+  };
+  auto get_mesh_point = [&](int tag, Index id) -> tf::point<int32_t, 3> {
+    return conv.convert(
+        tf::transformed(forms[tag].points()[id], tf::frame_of(forms[tag])));
+  };
+
+  tf::intersection_graph<Index> ig;
+  ig.build(ibp, apply_to_face, get_mesh_point);
+
+  auto paths = [&]() {
+    if (mode == tf::intersect_mode::sos) {
+      auto edge_pairs = tf::make_mapped_range(
+          ig.edge_groups(),
+          [](const auto &group) -> std::array<Index, 2> {
+            return {group[0].point_0, group[0].point_1};
+          });
+      return tf::connect_edges_to_paths(tf::make_edges(edge_pairs));
+    } else {
+      tf::face_cuts<Index> fc;
+      fc.build(ig, apply_to_face, get_mesh_point);
+
+      tf::cut_graph<Index> cg;
+      cg.build(fc, static_cast<Index>(ig.points().size()));
+
+      return tf::connect_edges_to_paths(
+          tf::make_edges(cg.intersection_edges()));
+    }
+  }();
+
+  auto ipts = ig.points();
+  tf::curves_buffer<Index, RealType, 3> cb;
+  cb.paths_buffer() = std::move(paths);
+  cb.points_buffer().allocate(ipts.size());
+  tf::parallel_copy(
+      tf::make_points(tf::make_mapped_range(
+          ipts, [&conv](const auto &pt) { return conv.deconvert(pt); })),
+      cb.points());
+  return cb;
+}
+
+} // namespace intersect
+
 /// @ingroup intersect_curves
 /// @brief Extract intersection curves from N meshes.
 ///
@@ -122,54 +177,7 @@ auto make_intersection_curves(
     const Range &_forms,
     tf::intersect_mode mode = tf::intersect_mode::sos) {
   return cut::dispatch::arrangement(_forms, [mode](const auto &forms) {
-    using Index = std::decay_t<decltype(forms[0].faces()[0][0])>;
-    using RealType = tf::coordinate_type<decltype(forms[0])>;
-
-    tf::intersections_between_polygons<Index, RealType> ibp;
-    ibp.build(forms, mode);
-
-    auto &conv = ibp.converter();
-    auto apply_to_face = [&](int tag, Index object, const auto &f) {
-      f(forms[tag].faces()[object]);
-    };
-    auto get_mesh_point = [&](int tag, Index id) -> tf::point<int32_t, 3> {
-      return conv.convert(
-          tf::transformed(forms[tag].points()[id], tf::frame_of(forms[tag])));
-    };
-
-    tf::intersection_graph<Index> ig;
-    ig.build(ibp, apply_to_face, get_mesh_point);
-
-    auto paths = [&]() {
-      if (mode == tf::intersect_mode::sos) {
-        auto edge_pairs = tf::make_mapped_range(
-            ig.edge_groups(),
-            [](const auto &group) -> std::array<Index, 2> {
-              return {group[0].point_0, group[0].point_1};
-            });
-        return tf::connect_edges_to_paths(tf::make_edges(edge_pairs));
-      } else {
-        tf::face_cuts<Index> fc;
-        fc.build(ig, apply_to_face, get_mesh_point);
-
-        tf::cut_graph<Index> cg;
-        cg.build(fc, static_cast<Index>(ig.points().size()));
-
-        return tf::connect_edges_to_paths(
-            tf::make_edges(cg.intersection_edges()));
-      }
-    }();
-
-    auto ipts = ig.points();
-    tf::curves_buffer<Index, RealType, 3> cb;
-    cb.paths_buffer() = std::move(paths);
-    cb.points_buffer().allocate(ipts.size());
-    tf::parallel_copy(
-        tf::make_points(tf::make_mapped_range(
-            ipts,
-            [&conv](const auto &pt) { return conv.deconvert(pt); })),
-        cb.points());
-    return cb;
+    return intersect::intersection_curves_n(forms, mode);
   });
 }
 

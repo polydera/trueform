@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 
 #include "./static_size.hpp"
@@ -220,11 +220,9 @@ auto make_range(Iterator it, Iterator end) -> range<Iterator, N> {
 /// @param c The container to view.
 /// @return A `range` with either static or dynamic size, depending on
 /// specialization.
-template <typename Container>
-auto make_range(Container &c)
-    -> range<decltype(std::begin(c)), tf::static_size_v<Container>> {
-  return range<decltype(std::begin(c)), tf::static_size_v<Container>>(
-      std::begin(c), std::end(c));
+template <typename Container> auto make_range(Container &c) {
+  return range<decltype(c.begin()), tf::static_size_v<Container>>(c.begin(),
+                                                                  c.end());
 }
 /// @ingroup core_ranges
 /// @brief Create a range from a const container reference.
@@ -241,10 +239,8 @@ auto make_range(Container &c)
 /// @param c The const container to view.
 /// @return A `range` with either static or dynamic size, depending on
 /// specialization.
-template <typename Container>
-auto make_range(const Container &c)
-    -> range<decltype(std::begin(c)), tf::static_size_v<Container>> {
-  return range<decltype(std::begin(c)), tf::static_size_v<Container>>(
-      std::begin(c), std::end(c));
+template <typename Container> auto make_range(const Container &c) {
+  return range<decltype(c.begin()), tf::static_size_v<Container>>(c.begin(),
+                                                                  c.end());
 }
 } // namespace tf

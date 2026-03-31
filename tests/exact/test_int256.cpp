@@ -313,7 +313,7 @@ TEST_CASE("int256 shift round-trip", "[int256]") {
   for (auto &v : vals) {
     I256 w(v);
     for (unsigned s = 0; s < 128; ++s)
-      REQUIRE((w << s) >> s == w);
+      REQUIRE(((w << s) >> s) == w);
   }
 }
 
@@ -454,9 +454,9 @@ TEST_CASE("int256 increment decrement", "[int256]") {
 // ============================================================================
 
 TEST_CASE("int256 independent reference mul", "[int256]") {
-  // Independent schoolbook 4x4 multiply using unsigned __int128
+  // Independent schoolbook 4x4 multiply using tf::exact::uint128
   auto mul_ref = [](const I256 &a, const I256 &b) -> I256 {
-    using u128 = unsigned __int128;
+    using u128 = tf::exact::uint128;
     uint64_t r[4] = {0, 0, 0, 0};
     for (unsigned i = 0; i < 4; ++i) {
       uint64_t carry = 0;

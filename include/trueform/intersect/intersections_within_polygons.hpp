@@ -324,14 +324,13 @@ private:
                             ints, pts, shared1);
         });
 
-    auto make_self_duplicator = [&](auto rec, auto &buffer) {
-      tf::intersect::duplicate_intersection(form.faces(), form.face_membership(),
-                             form.manifold_edge_link(), form.faces(),
-                             form.face_membership(), form.manifold_edge_link(),
-                             rec, buffer);
+    auto self_duplicator = [&](auto rec, auto &buffer) {
+      tf::intersect::duplicate_intersection_self(
+          form.faces(), form.face_membership(), form.manifold_edge_link(), rec,
+          buffer);
     };
 
-    finalize_sos_build(l_intersections, l_points, make_self_duplicator);
+    finalize_sos_build(l_intersections, l_points, self_duplicator);
   }
 
   template <typename Policy>
@@ -377,13 +376,12 @@ private:
 
     base_t::_intersection_points = std::move(points);
 
-    auto make_self_duplicator = [&](auto rec, auto &buffer) {
-      tf::intersect::duplicate_intersection(
-          form.faces(), form.face_membership(), form.manifold_edge_link(),
+    auto self_duplicator = [&](auto rec, auto &buffer) {
+      tf::intersect::duplicate_intersection_self(
           form.faces(), form.face_membership(), form.manifold_edge_link(), rec,
           buffer);
     };
-    tf::generic_generate(raw, base_t::_intersections, make_self_duplicator);
+    tf::generic_generate(raw, base_t::_intersections, self_duplicator);
     base_t::finalize(Index(1));
   }
 

@@ -18,8 +18,9 @@ namespace views {
 template <typename Range> struct offset_block_policy {
   Range range;
   template <typename Iterator> auto operator()(Iterator start) const {
-    return tf::make_range(range.begin() + *start,
-                          range.begin() + *std::next(start));
+    return tf::make_range(
+        range.begin() + static_cast<std::ptrdiff_t>(*start),
+        range.begin() + static_cast<std::ptrdiff_t>(*std::next(start)));
   }
 };
 

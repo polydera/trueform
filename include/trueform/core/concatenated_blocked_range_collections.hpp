@@ -21,6 +21,56 @@
 
 namespace tf {
 
+namespace core::impl {
+
+template <typename Index, typename Collection>
+auto sum_blocks_in(const Collection &coll) -> Index {
+  Index s = 0;
+  for (const auto &sub : coll)
+    s += static_cast<Index>(sub.size());
+  return s;
+}
+
+template <typename Index, typename SubRange, typename Buffer>
+auto copy_sub_blocked(const SubRange &sub, Buffer &out, Index &start) -> void {
+  const Index end = start + static_cast<Index>(sub.size());
+  tf::parallel_copy(sub, tf::slice(out, start, end));
+  start = end;
+}
+
+template <typename Index, typename SubRange, typename Buffer>
+auto copy_sub_offset(const SubRange &sub, Buffer &out, Index &start) -> void {
+  const Index end = start + static_cast<Index>(sub.size());
+  tf::parallel_copy_blocked(sub, tf::slice(out, start, end));
+  start = end;
+}
+
+template <typename Index, typename SubRange>
+auto fill_offsets_for_sub(const SubRange &sub, tf::buffer<Index> &offsets,
+                          Index &start_i) -> void {
+  using Elem =
+      std::decay_t<decltype(*std::begin(std::declval<SubRange &>()))>;
+  constexpr std::size_t Ksub = tf::static_size_v<Elem>;
+
+  const Index end_i = start_i + static_cast<Index>(sub.size());
+
+  if constexpr (Ksub != tf::dynamic_size) {
+    auto seg = tf::slice(offsets, start_i, end_i + Index{1});
+    Index base = seg[0];
+    for (Index i = 0; i < static_cast<Index>(seg.size()); ++i)
+      seg[i] = base + static_cast<Index>(Ksub) * i;
+  } else {
+    auto slide =
+        tf::slice(tf::make_slide_range<2>(offsets), start_i, end_i);
+    for (auto &&[ofs, block] : tf::zip(slide, sub))
+      ofs[1] = ofs[0] + static_cast<Index>(block.size());
+  }
+
+  start_i = end_i;
+}
+
+} // namespace core::impl
+
 /// @ingroup core_ranges
 /// @brief Concatenate collections of blocked ranges into a single buffer.
 ///
@@ -40,108 +90,59 @@ namespace tf {
 template <typename Index, typename Range0, typename Range1, typename... Ranges>
 auto concatenated_blocked_range_collections(const Range0 &r0, const Range1 &r1,
                                             const Ranges &...rs) {
-  // Deduce static block arity of a collection's sub-range element type.
   constexpr std::size_t K0 = tf::static_size_v<decltype(r0.front().front())>;
   constexpr std::size_t K1 = tf::static_size_v<decltype(r1.front().front())>;
 
-  // Are ALL collections composed of sub-ranges with the same fixed
-  // (non-dynamic) arity?
   constexpr bool all_same_static_size =
       (K0 != tf::dynamic_size) && (K0 == K1) &&
       (true && ... && (K0 == tf::static_size_v<decltype(rs.front().front())>));
 
-  // Total number of blocks = sum of sizes of all sub-ranges in all collections
-  auto sum_blocks = [](const auto &coll) -> Index {
-    Index s = 0;
-    for (const auto &sub : coll)
-      s += static_cast<Index>(sub.size());
-    return s;
-  };
   const Index total_blocks =
-      sum_blocks(r0) + sum_blocks(r1) + (Index{0} + ... + sum_blocks(rs));
-
-  // Helper to iterate all collections with a callable f(collection)
-  auto for_each_collection = [&](auto &&f) {
-    f(r0);
-    f(r1);
-    (f(rs), ...);
-  };
+      core::impl::sum_blocks_in<Index>(r0) + core::impl::sum_blocks_in<Index>(r1) +
+      (Index{0} + ... + core::impl::sum_blocks_in<Index>(rs));
 
   if constexpr (all_same_static_size) {
-    // ---- Same fixed arity across all sub-ranges → blocked buffer ----
     constexpr auto K = K0;
     tf::blocked_buffer<Index, K> out;
     out.allocate(total_blocks);
 
     Index start = 0;
-    auto copy_sub = [&](const auto &sub) {
-      const Index end = start + static_cast<Index>(sub.size());
-      tf::parallel_copy(sub, tf::slice(out, start, end));
-      start = end;
-    };
-    for_each_collection([&](const auto &coll) {
+    auto copy_coll = [&](const auto &coll) {
       for (const auto &sub : coll)
-        copy_sub(sub);
-    });
+        core::impl::copy_sub_blocked<Index>(sub, out, start);
+    };
+    copy_coll(r0);
+    copy_coll(r1);
+    (copy_coll(rs), ...);
 
     return out;
 
   } else {
-    // ---- Mixed/different (or dynamic) arities → offset buffer ----
     tf::offset_block_buffer<Index, Index> out;
     auto &offsets = out.offsets_buffer();
 
     offsets.allocate(total_blocks + Index{1});
     offsets[0] = 0;
 
-    // Fill offsets by walking each sub-range. Fixed-arity uses arithmetic
-    // stride, dynamic arity uses local prefix-sum of block sizes.
     Index start_i = 0;
-
-    auto fill_offsets_for_sub = [&](const auto &sub) {
-      using SubRange = std::decay_t<decltype(sub)>;
-      using Elem =
-          std::decay_t<decltype(*std::begin(std::declval<SubRange &>()))>;
-      constexpr std::size_t Ksub = tf::static_size_v<Elem>;
-
-      const Index end_i = start_i + static_cast<Index>(sub.size());
-
-      if constexpr (Ksub != tf::dynamic_size) {
-        // Write offsets[start_i .. end_i] and terminal at end_i as an
-        // arithmetic progression.
-        auto seg = tf::slice(offsets, start_i, end_i + Index{1});
-        Index base = seg[0];
-        for (Index i = 0; i < static_cast<Index>(seg.size()); ++i)
-          seg[i] = base + static_cast<Index>(Ksub) * i;
-      } else {
-        // Dynamic: prefix-sum block extents into offsets[start_i .. end_i]
-        auto slide =
-            tf::slice(tf::make_slide_range<2>(offsets), start_i, end_i);
-        for (auto &&[ofs, block] : tf::zip(slide, sub))
-          ofs[1] = ofs[0] + static_cast<Index>(block.size());
-      }
-
-      start_i = end_i;
-    };
-
-    for_each_collection([&](const auto &coll) {
+    auto fill_coll = [&](const auto &coll) {
       for (const auto &sub : coll)
-        fill_offsets_for_sub(sub);
-    });
+        core::impl::fill_offsets_for_sub<Index>(sub, offsets, start_i);
+    };
+    fill_coll(r0);
+    fill_coll(r1);
+    (fill_coll(rs), ...);
 
-    // Allocate payload and copy the blocks
     out.data_buffer().allocate(offsets.back());
 
     Index start = 0;
-    auto copy_sub = [&](const auto &sub) {
-      const Index end = start + static_cast<Index>(sub.size());
-      tf::parallel_copy_blocked(sub, tf::slice(out, start, end));
-      start = end;
-    };
-    for_each_collection([&](const auto &coll) {
+    auto copy_coll = [&](const auto &coll) {
       for (const auto &sub : coll)
-        copy_sub(sub);
-    });
+        core::impl::copy_sub_offset<Index>(sub, out, start);
+    };
+    copy_coll(r0);
+    copy_coll(r1);
+    (copy_coll(rs), ...);
 
     return out;
   }

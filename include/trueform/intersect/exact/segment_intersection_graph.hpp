@@ -57,18 +57,21 @@ public:
   auto point_remap() const { return tf::make_range(_point_remap); }
   auto origin_edges() const { return tf::make_range(_origin_edges); }
   auto sub_edges() const { return tf::make_range(_sub_edges); }
-  auto sub_edges_buffer() const -> const tf::offset_block_buffer<Index, edge_t>&{ return _sub_edges; }
+  auto sub_edges_buffer() const
+      -> const tf::offset_block_buffer<Index, edge_t> & {
+    return _sub_edges;
+  }
 
   auto flat_sub_edges() const {
     return tf::make_range(_sub_edges.data_buffer());
   }
 
   template <typename Policy>
-  auto build(const tf::intersections_within_segments<Index, RealType,
-                                                                Dims> &si,
+  auto build(const tf::intersections_within_segments<Index, RealType, Dims> &si,
              const tf::segments<Policy> &segments) {
     auto groups = si.intersections();
     auto seg_edges = segments.edges();
+    auto seg_points = segments.points();
     auto n_groups = groups.size();
 
     _points.allocate(si.intersection_points().size());
@@ -78,7 +81,6 @@ public:
     _sub_edges.offsets_buffer()[0] = 0;
     std::size_t group_i = 1;
 
-    auto &points = _points;
     auto &conv = si.converter();
 
     auto task = [&](auto &&range, local_t &local) {
@@ -88,7 +90,7 @@ public:
         auto old_size = local.data.size();
         if (group.size() > 0) {
           local.origins.push_back(group.front().object);
-          process_group(group, seg_edges, points, conv, local);
+          process_group(group, seg_edges, seg_points, conv, local);
         }
         *sit++ = static_cast<Index>(local.data.size() - old_size);
       }
@@ -115,15 +117,15 @@ public:
 
 private:
   template <typename Group, typename Edges, typename Points, typename Conv>
-  static auto process_group(const Group &group, const Edges &seg_edges,
-                            const Points &points, const Conv &conv,
-                            local_t &local) {
+  auto process_group(const Group &group, const Edges &seg_edges,
+                     const Points &seg_points, const Conv &conv,
+                     local_t &local) {
     auto edge_id = group.front().object;
     Index v0 = seg_edges[edge_id][0];
     Index v1 = seg_edges[edge_id][1];
 
-    auto p0 = conv(points[v0]);
-    auto p1 = conv(points[v1]);
+    auto p0 = conv(seg_points[v0]);
+    auto p1 = conv(seg_points[v1]);
     i128 dx = i128(p1[0]) - p0[0];
     i128 dy = i128(p1[1]) - p0[1];
     i128 dz = i128(0);
@@ -136,7 +138,7 @@ private:
       if (rec.target.label == tf::topo_type::vertex) {
         local.work.push_back({rec.id, i128(rec.target.id), rec.target});
       } else {
-        auto q = points[rec.id];
+        auto q = _points[rec.id];
         i128 t = dx * (i128(q[0]) - p0[0]) + dy * (i128(q[1]) - p0[1]);
         if constexpr (Dims == 3)
           t += dz * (i128(q[2]) - p0[2]);
@@ -154,6 +156,9 @@ private:
       return w.sub_id != tf::topo_id<Index>{Index(1), tf::topo_type::vertex};
     });
 
+    bool has_v0 = v0_end != local.work.begin();
+    bool has_v1 = v1_start != local.work.end();
+
     // 3. Sort edge entries by (t, point_id)
     std::sort(v0_end, v1_start, [](const auto &a, const auto &b) {
       return std::make_pair(a.t, a.point_id) < std::make_pair(b.t, b.point_id);
@@ -165,11 +170,8 @@ private:
           return a.sub_id == b.sub_id && a.point_id == b.point_id;
         });
 
-    bool has_v0 = v0_end != local.work.begin();
-    bool has_v1 = v1_start != local.work.end();
-
-    // 5. Same-t merge pairs on edge entries
-    for (auto it = v0_end + 1; it < v1_start; ++it) {
+    // 5. Same-t merge pairs
+    for (auto it = local.work.begin() + 1; it < w_end; ++it) {
       auto prev = it - 1;
       if (it->t == prev->t && it->point_id != prev->point_id)
         local.merges.push_back({std::min(prev->point_id, it->point_id),

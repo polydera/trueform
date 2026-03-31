@@ -23,15 +23,13 @@
 
 namespace tf::intersect {
 
-namespace detail {
+namespace impl {
 
-/// Expand the target_other side of an intersection record to neighbor
-/// faces sharing the hit edge or vertex. For each expansion, calls
-/// `emit(record)`.
 template <typename Index, typename Faces, typename FE, typename MEL,
           typename Emit>
 auto expand_other(const Faces &faces, const FE &fe, const MEL &mel,
-                  tagged_intersection<Index> rec, Emit &&emit) {
+                  tagged_intersection<Index> rec, bool is_self,
+                  Emit &&emit) {
   if (rec.target_other.label == tf::topo_type::edge) {
     emit(rec);
     auto N = faces[rec.object_other].size();
@@ -63,7 +61,7 @@ auto expand_other(const Faces &faces, const FE &fe, const MEL &mel,
   } else if (rec.target_other.label == tf::topo_type::vertex) {
     Index vid = faces[rec.object_other][rec.target_other.id];
     for (auto face_id : fe[vid]) {
-      if (face_id == rec.object)
+      if (is_self && face_id == rec.object)
         continue;
       auto n = rec;
       n.object_other = face_id;
@@ -71,27 +69,18 @@ auto expand_other(const Faces &faces, const FE &fe, const MEL &mel,
       emit(n);
     }
   } else {
-    // face — no expansion needed
     emit(rec);
   }
 }
 
-} // namespace detail
-
-/// Duplicate a single intersection record to all affected faces on both
-/// meshes, and mirror each to the other mesh's perspective.
-///
-/// Expands the target side (mesh[tag]) and target_other side
-/// (mesh[tag_other]) to neighbor faces sharing hit edges. Each expanded
-/// record is pushed twice: original + mirrored.
 template <typename Index, typename Faces0, typename FE0, typename MEL0,
           typename Faces1, typename FE1, typename MEL1>
-auto duplicate_intersection(const Faces0 &faces0, const FE0 &fe0,
-                            const MEL0 &mel0, const Faces1 &faces1,
-                            const FE1 &fe1, const MEL1 &mel1,
-                            tagged_intersection<Index> rec,
-                            tf::buffer<tagged_intersection<Index>> &out) {
-
+auto duplicate_intersection_impl(const Faces0 &faces0, const FE0 &fe0,
+                                 const MEL0 &mel0, const Faces1 &faces1,
+                                 const FE1 &fe1, const MEL1 &mel1,
+                                 tagged_intersection<Index> rec,
+                                 tf::buffer<tagged_intersection<Index>> &out,
+                                 bool is_self) {
   auto push_both = [&](tagged_intersection<Index> r) {
     out.push_back(r);
     std::swap(r.tag, r.tag_other);
@@ -100,10 +89,8 @@ auto duplicate_intersection(const Faces0 &faces0, const FE0 &fe0,
     out.push_back(r);
   };
 
-  // Expand target side (mesh[tag]), then for each, expand target_other side
-  // (mesh[tag_other]).
   auto expand_and_push = [&](tagged_intersection<Index> r) {
-    detail::expand_other(faces1, fe1, mel1, r, push_both);
+    impl::expand_other(faces1, fe1, mel1, r, is_self, push_both);
   };
 
   if (rec.target.label == tf::topo_type::edge) {
@@ -136,7 +123,7 @@ auto duplicate_intersection(const Faces0 &faces0, const FE0 &fe0,
   } else if (rec.target.label == tf::topo_type::vertex) {
     Index vid = faces0[rec.object][rec.target.id];
     for (auto face_id : fe0[vid]) {
-      if (face_id == rec.object_other)
+      if (is_self && face_id == rec.object_other)
         continue;
       auto n = rec;
       n.object = face_id;
@@ -144,9 +131,32 @@ auto duplicate_intersection(const Faces0 &faces0, const FE0 &fe0,
       expand_and_push(n);
     }
   } else {
-    // face — no expansion on target side, just expand other side
     expand_and_push(rec);
   }
+}
+
+} // namespace impl
+
+/// Two-mesh duplicate_intersection (is_self = false).
+template <typename Index, typename Faces0, typename FE0, typename MEL0,
+          typename Faces1, typename FE1, typename MEL1>
+auto duplicate_intersection(const Faces0 &faces0, const FE0 &fe0,
+                            const MEL0 &mel0, const Faces1 &faces1,
+                            const FE1 &fe1, const MEL1 &mel1,
+                            tagged_intersection<Index> rec,
+                            tf::buffer<tagged_intersection<Index>> &out) {
+  impl::duplicate_intersection_impl(faces0, fe0, mel0, faces1, fe1, mel1, rec,
+                                    out, false);
+}
+
+/// Self-intersection duplicate_intersection (is_self = true).
+template <typename Index, typename Faces, typename FE, typename MEL>
+auto duplicate_intersection_self(const Faces &faces, const FE &fe,
+                                 const MEL &mel,
+                                 tagged_intersection<Index> rec,
+                                 tf::buffer<tagged_intersection<Index>> &out) {
+  impl::duplicate_intersection_impl(faces, fe, mel, faces, fe, mel, rec, out,
+                                    true);
 }
 
 /// Returns a duplicator callable for use with `tf::generic_generate`.
@@ -170,8 +180,7 @@ auto make_duplicator(const tf::polygons<Policy0> &form0,
 }
 
 /// Returns a duplicator callable for use with `tf::generic_generate`.
-/// N-mesh overload: `forms[i]` must provide `.faces()`,
-/// `.face_membership()`, and `.manifold_edge_link()`.
+/// N-mesh overload.
 template <typename FormsRange> auto make_duplicator(const FormsRange &forms) {
   return [forms = tf::make_range(forms)](auto rec, auto &buffer) {
     auto &&f0 = forms[rec.tag];
@@ -179,6 +188,15 @@ template <typename FormsRange> auto make_duplicator(const FormsRange &forms) {
     duplicate_intersection(
         f0.faces(), f0.face_membership(), f0.manifold_edge_link(), f1.faces(),
         f1.face_membership(), f1.manifold_edge_link(), rec, buffer);
+  };
+}
+
+/// Returns a self-intersection duplicator callable.
+template <typename Policy>
+auto make_self_duplicator(const tf::polygons<Policy> &form) {
+  return [&](auto rec, auto &buffer) {
+    duplicate_intersection_self(form.faces(), form.face_membership(),
+                                form.manifold_edge_link(), rec, buffer);
   };
 }
 

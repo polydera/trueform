@@ -20,8 +20,10 @@ namespace tf::exact {
 
 #if defined(_MSC_VER) && !defined(__clang__)
 using int128 = std::_Signed128;
+using uint128 = std::_Unsigned128;
 #elif defined(__GNUC__) || defined(__clang__)
 using int128 = __int128;
+using uint128 = unsigned __int128;
 #else
 #error "No 128-bit integer type available for this compiler"
 #endif
