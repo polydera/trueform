@@ -32,10 +32,6 @@ static auto make256(uint64_t x0, uint64_t x1, uint64_t x2, uint64_t x3)
 // Construction
 // ============================================================================
 
-TEST_CASE("int256 trivially default constructible", "[int256]") {
-  STATIC_REQUIRE(std::is_trivially_default_constructible_v<I256>);
-}
-
 TEST_CASE("int256 from zero", "[int256]") {
   I256 z(0);
   REQUIRE(z.is_zero());

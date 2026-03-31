@@ -130,6 +130,8 @@ auto make_boolean(
 
   tf::buffer<Index> tri_data0;
   tf::buffer<Index> tri_data1;
+  tf::buffer<Index> tri_origins0;
+  tf::buffer<Index> tri_origins1;
 
   {
     auto selected0 =
@@ -139,15 +141,29 @@ auto make_boolean(
         tf::make_indirect_range(pids[1].cut_faces[include_labels[1]],
                                 tf::zip(descs_per_tag[1], loops_per_tag[1]));
 
-    tbb::parallel_invoke(
-        [&] {
-          tf::cut::triangulate_partition_cuts<Int>(selected0, make_projector,
-                                                   map_vertex, tri_data0);
-        },
-        [&] {
-          tf::cut::triangulate_partition_cuts<Int>(selected1, make_projector,
-                                                   map_vertex, tri_data1);
-        });
+    if constexpr (MakeMaps) {
+      tbb::parallel_invoke(
+          [&] {
+            tf::cut::triangulate_partition_cuts<Int>(selected0, make_projector,
+                                                     map_vertex, tri_data0,
+                                                     tri_origins0);
+          },
+          [&] {
+            tf::cut::triangulate_partition_cuts<Int>(selected1, make_projector,
+                                                     map_vertex, tri_data1,
+                                                     tri_origins1);
+          });
+    } else {
+      tbb::parallel_invoke(
+          [&] {
+            tf::cut::triangulate_partition_cuts<Int>(selected0, make_projector,
+                                                     map_vertex, tri_data0);
+          },
+          [&] {
+            tf::cut::triangulate_partition_cuts<Int>(selected1, make_projector,
+                                                     map_vertex, tri_data1);
+          });
+    }
   }
 
   auto triangles0 = tf::make_blocked_range<3>(tf::make_range(tri_data0));
@@ -239,6 +255,22 @@ auto make_boolean(
                     std::int8_t(1));
 
   if constexpr (MakeMaps) {
+    // Build face_labels: which original face each output face came from
+    tf::buffer<Index> face_labels;
+    face_labels.allocate(faces.size());
+    auto fl_off = std::size_t(0);
+    tf::parallel_copy(polys0, tf::take(tf::drop(face_labels, fl_off),
+                                        mapped_faces0.size()));
+    fl_off += mapped_faces0.size();
+    tf::parallel_copy(polys1, tf::take(tf::drop(face_labels, fl_off),
+                                        mapped_faces1.size()));
+    fl_off += mapped_faces1.size();
+    tf::parallel_copy(tri_origins0, tf::take(tf::drop(face_labels, fl_off),
+                                              triangles0.size()));
+    fl_off += triangles0.size();
+    tf::parallel_copy(tri_origins1, tf::take(tf::drop(face_labels, fl_off),
+                                              triangles1.size()));
+
     // Build index maps for tracing output back to input
     auto make_point_map = [](auto &ids_buf, auto total) {
       tf::index_map_buffer<Index> im;
@@ -276,7 +308,7 @@ auto make_boolean(
             Index(map_data.original_offsets[1]), std::move(created_im),
             Index(map_data.total_original_points), std::move(polygons_im0),
             Index(0), std::move(polygons_im1), Index(mapped_faces0.size()),
-            direction0, direction1});
+            direction0, direction1, std::move(face_labels)});
   } else {
     return std::make_pair(
         tf::make_polygons_buffer(std::move(faces), std::move(pts_buf)),
