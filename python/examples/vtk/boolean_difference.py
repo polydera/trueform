@@ -73,7 +73,7 @@ class BooleanDifferenceInteractor(BaseInteractor):
         mesh1 = self.mesh_data1.mesh
 
         # Compute boolean difference with curves
-        (result_faces, result_points), labels, (paths, curve_points) = (
+        (result_faces, result_points), labels, face_labels, (paths, curve_points) = (
             tf.boolean_difference(mesh0, mesh1, return_curves=True)
         )
 

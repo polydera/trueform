@@ -25,19 +25,21 @@ using namespace tf::ts;
 // Embedded intersection curves (mesh0 × mesh1 → split mesh0)
 // ============================================================================
 
-auto sync_embedded_intersection_curves(wasm_mesh &m0, wasm_mesh &m1)
-    -> wasm_mesh {
+auto sync_embedded_intersection_curves(wasm_mesh &m0, wasm_mesh &m1, int mode)
+    -> cut_result {
   bool has0 = m0.has_transformation();
   bool has1 = m1.has_transformation();
   auto fm0 = m0.face_membership_range();
   auto mel0 = m0.manifold_edge_link_range();
   auto fm1 = m1.face_membership_range();
   auto mel1 = m1.manifold_edge_link_range();
-  auto make_return = [&](auto &&poly0, auto &&poly1) -> wasm_mesh {
-    auto poly = tf::embedded_intersection_curves(
+  auto m = static_cast<tf::intersect_mode>(mode);
+  auto make_return = [&](auto &&poly0, auto &&poly1) -> cut_result {
+    auto [poly, face_labels] = tf::embedded_intersection_curves(
         poly0 | tf::tag(m0.tree()) | tf::tag(fm0) | tf::tag(mel0),
-        poly1 | tf::tag(m1.tree()) | tf::tag(fm1) | tf::tag(mel1));
-    return wasm_mesh::from_polygons_buffer(std::move(poly));
+        poly1 | tf::tag(m1.tree()) | tf::tag(fm1) | tf::tag(mel1), m);
+    return {wasm_mesh::from_polygons_buffer(std::move(poly)),
+            wasm_ndarray<std::int32_t>::from_buffer(std::move(face_labels))};
   };
   if (has0 && has1)
     return make_return(
@@ -55,7 +57,7 @@ auto sync_embedded_intersection_curves(wasm_mesh &m0, wasm_mesh &m1)
 }
 
 auto sync_embedded_intersection_curves_with_curves(wasm_mesh &m0,
-                                                   wasm_mesh &m1)
+                                                   wasm_mesh &m1, int mode)
     -> cut_result_with_curves {
   bool has0 = m0.has_transformation();
   bool has1 = m1.has_transformation();
@@ -63,12 +65,14 @@ auto sync_embedded_intersection_curves_with_curves(wasm_mesh &m0,
   auto mel0 = m0.manifold_edge_link_range();
   auto fm1 = m1.face_membership_range();
   auto mel1 = m1.manifold_edge_link_range();
+  auto m = static_cast<tf::intersect_mode>(mode);
   auto make_return = [&](auto &&poly0, auto &&poly1) -> cut_result_with_curves {
-    auto [poly, curves] = tf::embedded_intersection_curves(
+    auto [poly, face_labels, curves] = tf::embedded_intersection_curves(
         poly0 | tf::tag(m0.tree()) | tf::tag(fm0) | tf::tag(mel0),
         poly1 | tf::tag(m1.tree()) | tf::tag(fm1) | tf::tag(mel1),
-        tf::return_curves);
+        m, tf::return_curves);
     return {wasm_mesh::from_polygons_buffer(std::move(poly)),
+            wasm_ndarray<std::int32_t>::from_buffer(std::move(face_labels)),
             wasm_curves::from_curves_buffer(std::move(curves))};
   };
   if (has0 && has1)
@@ -86,20 +90,20 @@ auto sync_embedded_intersection_curves_with_curves(wasm_mesh &m0,
     return make_return(m0.polygons_range(), m1.polygons_range());
 }
 
-auto async_embedded_intersection_curves(wasm_mesh &m0, wasm_mesh &m1)
+auto async_embedded_intersection_curves(wasm_mesh &m0, wasm_mesh &m1, int mode)
     -> promise_t {
-  return promise([a = m0, b = m1]() -> wasm_mesh {
+  return promise([a = m0, b = m1, mode]() -> cut_result {
     return sync_embedded_intersection_curves(const_cast<wasm_mesh &>(a),
-                                             const_cast<wasm_mesh &>(b));
+                                             const_cast<wasm_mesh &>(b), mode);
   });
 }
 
 auto async_embedded_intersection_curves_with_curves(wasm_mesh &m0,
-                                                    wasm_mesh &m1)
+                                                    wasm_mesh &m1, int mode)
     -> promise_t {
-  return promise([a = m0, b = m1]() -> cut_result_with_curves {
+  return promise([a = m0, b = m1, mode]() -> cut_result_with_curves {
     return sync_embedded_intersection_curves_with_curves(
-        const_cast<wasm_mesh &>(a), const_cast<wasm_mesh &>(b));
+        const_cast<wasm_mesh &>(a), const_cast<wasm_mesh &>(b), mode);
   });
 }
 
@@ -107,46 +111,57 @@ auto async_embedded_intersection_curves_with_curves(wasm_mesh &m0,
 // Embedded self-intersection curves (mesh → split mesh)
 // ============================================================================
 
-auto sync_embedded_self_intersection_curves(wasm_mesh &m) -> wasm_mesh {
+auto sync_embedded_self_intersection_curves(wasm_mesh &m, int mode)
+    -> cut_result {
   auto fm = m.face_membership_range();
   auto mel = m.manifold_edge_link_range();
-  auto poly = tf::embedded_self_intersection_curves(
-      m.polygons_range() | tf::tag(m.tree()) | tf::tag(fm) | tf::tag(mel));
-  return wasm_mesh::from_polygons_buffer(std::move(poly));
+  auto [poly, face_labels] = tf::embedded_self_intersection_curves(
+      m.polygons_range() | tf::tag(m.tree()) | tf::tag(fm) | tf::tag(mel),
+      static_cast<tf::intersect_mode>(mode));
+  return {wasm_mesh::from_polygons_buffer(std::move(poly)),
+          wasm_ndarray<std::int32_t>::from_buffer(std::move(face_labels))};
 }
 
-auto sync_embedded_self_intersection_curves_with_curves(wasm_mesh &m)
+auto sync_embedded_self_intersection_curves_with_curves(wasm_mesh &m, int mode)
     -> cut_result_with_curves {
   auto fm = m.face_membership_range();
   auto mel = m.manifold_edge_link_range();
-  auto [poly, curves] = tf::embedded_self_intersection_curves(
+  auto [poly, face_labels, curves] = tf::embedded_self_intersection_curves(
       m.polygons_range() | tf::tag(m.tree()) | tf::tag(fm) | tf::tag(mel),
-      tf::return_curves);
+      static_cast<tf::intersect_mode>(mode), tf::return_curves);
   return {wasm_mesh::from_polygons_buffer(std::move(poly)),
+          wasm_ndarray<std::int32_t>::from_buffer(std::move(face_labels)),
           wasm_curves::from_curves_buffer(std::move(curves))};
 }
 
-auto async_embedded_self_intersection_curves(wasm_mesh &m) -> promise_t {
-  return promise([a = m]() -> wasm_mesh {
-    return sync_embedded_self_intersection_curves(const_cast<wasm_mesh &>(a));
+auto async_embedded_self_intersection_curves(wasm_mesh &m, int mode)
+    -> promise_t {
+  return promise([a = m, mode]() -> cut_result {
+    return sync_embedded_self_intersection_curves(const_cast<wasm_mesh &>(a),
+                                                  mode);
   });
 }
 
-auto async_embedded_self_intersection_curves_with_curves(wasm_mesh &m)
+auto async_embedded_self_intersection_curves_with_curves(wasm_mesh &m, int mode)
     -> promise_t {
-  return promise([a = m]() -> cut_result_with_curves {
+  return promise([a = m, mode]() -> cut_result_with_curves {
     return sync_embedded_self_intersection_curves_with_curves(
-        const_cast<wasm_mesh &>(a));
+        const_cast<wasm_mesh &>(a), mode);
   });
 }
 
 } // namespace
 
 EMSCRIPTEN_BINDINGS(trueform_embedded) {
-  // Result type
+  // Result types
+  emscripten::value_object<tf::ts::cut_result>("CutResult")
+      .field("mesh", &tf::ts::cut_result::mesh)
+      .field("faceLabels", &tf::ts::cut_result::face_labels);
+
   emscripten::value_object<tf::ts::cut_result_with_curves>(
       "CutResultWithCurves")
       .field("mesh", &tf::ts::cut_result_with_curves::mesh)
+      .field("faceLabels", &tf::ts::cut_result_with_curves::face_labels)
       .field("curves", &tf::ts::cut_result_with_curves::curves);
 
   // Embedded intersection curves — sync

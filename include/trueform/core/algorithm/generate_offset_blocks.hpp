@@ -84,10 +84,10 @@ auto generate_offset_blocks(
 
 /// @ingroup core_algorithms
 /// @brief Generate offset-blocks into a blocked buffer.
-template <typename Range, typename Index, typename... Ts, typename F>
+template <typename Range, typename Index, typename... Buffers, typename F>
 auto generate_offset_blocks(
     const Range &input_data, tf::buffer<Index> &offsets,
-    std::tuple<tf::buffer<Ts>...> &data, const F &fill_block_f,
+    std::tuple<Buffers...> &data, const F &fill_block_f,
     std::size_t n_tasks = std::thread::hardware_concurrency() * 5) {
   return core::generate_offset_blocks(input_data, offsets, data, fill_block_f,
                                       n_tasks);

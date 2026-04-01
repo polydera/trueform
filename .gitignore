@@ -40,3 +40,5 @@ include/trueform/version.hpp
 typescript/LICENSE
 typescript/LICENSE.noncommercial
 typescript/package-lock.json
+typescript/dist/*
+node_modules/

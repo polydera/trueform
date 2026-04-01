@@ -82,9 +82,8 @@ auto extract_meshes(emscripten::val js_meshes) -> std::vector<wasm_mesh> {
   return meshes;
 }
 
-auto sync_intersection_curves_list(emscripten::val js_meshes, int mode)
+auto intersection_curves_list_impl(std::vector<wasm_mesh> &meshes, int mode)
     -> wasm_curves {
-  auto meshes = extract_meshes(js_meshes);
   auto mesh_range = tf::make_range(meshes);
   bool any_transformed = false;
   for (auto &m : meshes)
@@ -120,10 +119,18 @@ auto sync_intersection_curves_list(emscripten::val js_meshes, int mode)
   return run(tagged);
 }
 
+auto sync_intersection_curves_list(emscripten::val js_meshes, int mode)
+    -> wasm_curves {
+  auto meshes = extract_meshes(js_meshes);
+  return intersection_curves_list_impl(meshes, mode);
+}
+
 auto async_intersection_curves_list(emscripten::val js_meshes, int mode)
     -> promise_t {
-  return promise([js_meshes, mode]() -> wasm_curves {
-    return sync_intersection_curves_list(js_meshes, mode);
+  auto meshes = extract_meshes(js_meshes);
+  return promise([ms = std::move(meshes), mode]() -> wasm_curves {
+    auto &meshes = const_cast<std::vector<wasm_mesh> &>(ms);
+    return intersection_curves_list_impl(meshes, mode);
   });
 }
 

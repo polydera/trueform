@@ -31,11 +31,12 @@ auto sync_boolean(wasm_mesh &m0, wasm_mesh &m1, tf::boolean_op op)
   auto fm1 = m1.face_membership_range();
   auto mel1 = m1.manifold_edge_link_range();
   auto make_return = [&](auto &&poly0, auto &&poly1) -> labeled_cut_result {
-    auto [poly, labels] = tf::make_boolean(
+    auto [poly, labels, face_labels] = tf::make_boolean(
         poly0 | tf::tag(m0.tree()) | tf::tag(fm0) | tf::tag(mel0),
         poly1 | tf::tag(m1.tree()) | tf::tag(fm1) | tf::tag(mel1), op);
     return {wasm_mesh::from_polygons_buffer(std::move(poly)),
-            wasm_ndarray<std::int8_t>::from_buffer(std::move(labels))};
+            wasm_ndarray<std::int8_t>::from_buffer(std::move(labels)),
+            wasm_ndarray<std::int32_t>::from_buffer(std::move(face_labels))};
   };
   if (has0 && has1)
     return make_return(
@@ -63,12 +64,13 @@ auto sync_boolean_with_curves(wasm_mesh &m0, wasm_mesh &m1, tf::boolean_op op)
   auto mel1 = m1.manifold_edge_link_range();
   auto make_return = [&](auto &&poly0,
                          auto &&poly1) -> labeled_cut_result_with_curves {
-    auto [poly, labels, curves] = tf::make_boolean(
+    auto [poly, labels, face_labels, curves] = tf::make_boolean(
         poly0 | tf::tag(m0.tree()) | tf::tag(fm0) | tf::tag(mel0),
         poly1 | tf::tag(m1.tree()) | tf::tag(fm1) | tf::tag(mel1),
         op, tf::return_curves);
     return {wasm_mesh::from_polygons_buffer(std::move(poly)),
             wasm_ndarray<std::int8_t>::from_buffer(std::move(labels)),
+            wasm_ndarray<std::int32_t>::from_buffer(std::move(face_labels)),
             wasm_curves::from_curves_buffer(std::move(curves))};
   };
   if (has0 && has1)
@@ -166,12 +168,14 @@ EMSCRIPTEN_BINDINGS(trueform_boolean) {
   // Result types
   emscripten::value_object<tf::ts::labeled_cut_result>("LabeledCutResult")
       .field("mesh", &tf::ts::labeled_cut_result::mesh)
-      .field("labels", &tf::ts::labeled_cut_result::labels);
+      .field("labels", &tf::ts::labeled_cut_result::labels)
+      .field("faceLabels", &tf::ts::labeled_cut_result::face_labels);
 
   emscripten::value_object<tf::ts::labeled_cut_result_with_curves>(
       "LabeledCutResultWithCurves")
       .field("mesh", &tf::ts::labeled_cut_result_with_curves::mesh)
       .field("labels", &tf::ts::labeled_cut_result_with_curves::labels)
+      .field("faceLabels", &tf::ts::labeled_cut_result_with_curves::face_labels)
       .field("curves", &tf::ts::labeled_cut_result_with_curves::curves);
 
   // Sync

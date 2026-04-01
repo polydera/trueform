@@ -20,9 +20,10 @@
 namespace tf::cut::dispatch {
 
 template <typename Index, typename RealType, typename Int, typename Policy>
-auto build_self_pipeline(const tf::polygons<Policy> &p) {
+auto build_self_pipeline(const tf::polygons<Policy> &p,
+                         tf::intersect_mode mode) {
   tf::intersections_within_polygons<Index, RealType, Int> iwp;
-  iwp.build(p, tf::intersect_mode::primitives);
+  iwp.build(p, mode);
 
   auto &conv = iwp.converter();
   auto apply_to_face = [&](int, Index object, const auto &f) {
@@ -33,7 +34,7 @@ auto build_self_pipeline(const tf::polygons<Policy> &p) {
   };
 
   tf::intersection_graph<Index, Int> ig;
-  ig.build(iwp, apply_to_face, get_mesh_point);
+  ig.build(iwp, apply_to_face, get_mesh_point, mode);
 
   tf::face_cuts<Index, Int> fc;
   fc.build(ig, apply_to_face, get_mesh_point);

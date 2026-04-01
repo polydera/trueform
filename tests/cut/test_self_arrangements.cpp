@@ -66,7 +66,7 @@ TEMPLATE_TEST_CASE("Self arrangements: 3 spheres match mesh arrangements",
                                  tf::return_curves);
 
   SECTION("embedded_self_intersection_curves") {
-    auto [mesh, curves] = tf::embedded_self_intersection_curves(
+    auto [mesh, fl_, curves] = tf::embedded_self_intersection_curves(
         merged.polygons(), tf::return_curves);
 
     REQUIRE(count_degenerate(mesh) == 0);

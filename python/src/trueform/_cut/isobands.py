@@ -172,7 +172,7 @@ def isobands(
     # Dispatch to C++ based on return_curves
     if return_curves:
         func_name = f"make_isobands_curves_{suffix}"
-        (result_faces, result_points), labels, ((paths_offsets, paths_data), curve_points) = getattr(
+        (result_faces, result_points), labels, face_labels, ((paths_offsets, paths_data), curve_points) = getattr(
             _trueform.cut, func_name
         )(mesh._wrapper, scalar_field, cut_values_array, selected_bands_array)
 
@@ -183,10 +183,10 @@ def isobands(
         # Wrap paths in OffsetBlockedArray
         paths = OffsetBlockedArray(paths_offsets, paths_data)
 
-        return (result_faces, result_points), labels, (paths, curve_points)
+        return (result_faces, result_points), labels, face_labels, (paths, curve_points)
     else:
         func_name = f"make_isobands_{suffix}"
-        (result_faces, result_points), labels = getattr(_trueform.cut, func_name)(
+        (result_faces, result_points), labels, face_labels = getattr(_trueform.cut, func_name)(
             mesh._wrapper, scalar_field, cut_values_array, selected_bands_array
         )
 
@@ -194,4 +194,4 @@ def isobands(
         if mesh.is_dynamic:
             result_faces = OffsetBlockedArray(result_faces[0], result_faces[1])
 
-        return (result_faces, result_points), labels
+        return (result_faces, result_points), labels, face_labels

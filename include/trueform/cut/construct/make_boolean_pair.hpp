@@ -113,6 +113,7 @@ auto make_boolean_pair(const tf::polygons<Policy0> &polygons0,
   };
 
   tf::buffer<Index> tri_data0, tri_data1;
+  tf::buffer<Index> tri_origins0, tri_origins1;
 
   {
     auto selected0 =
@@ -124,11 +125,13 @@ auto make_boolean_pair(const tf::polygons<Policy0> &polygons0,
     tbb::parallel_invoke(
         [&] {
           tf::cut::triangulate_partition_cuts<Int>(
-              selected0, make_projector, map_vertex, tri_data0);
+              selected0, make_projector, map_vertex, tri_data0,
+              tri_origins0);
         },
         [&] {
           tf::cut::triangulate_partition_cuts<Int>(
-              selected1, make_projector, map_vertex, tri_data1);
+              selected1, make_projector, map_vertex, tri_data1,
+              tri_origins1);
         });
   }
 
@@ -141,7 +144,8 @@ auto make_boolean_pair(const tf::polygons<Policy0> &polygons0,
   auto [direction0, direction1] = tf::make_directions(classes[0], classes[1]);
 
   auto build_half = [&](auto tag, const auto &polygons, const auto &polys,
-                         const auto &triangles, const auto &original_map_range,
+                         const auto &triangles, const auto &tri_origins,
+                         const auto &original_map_range,
                          tf::direction direction) {
     auto mapped_faces = tf::make_indirect_range(
         polys, tf::make_block_indirect_range(polygons.faces(),
@@ -173,28 +177,37 @@ auto make_boolean_pair(const tf::polygons<Policy0> &polygons0,
             })),
         tf::drop(pts_buf, n_orig));
 
-    return tf::make_polygons_buffer(std::move(faces), std::move(pts_buf));
+    tf::buffer<Index> face_labels;
+    face_labels.allocate(faces.size());
+    tf::parallel_copy(polys, tf::take(face_labels, mapped_faces.size()));
+    tf::parallel_copy(tri_origins,
+                      tf::drop(face_labels, mapped_faces.size()));
+
+    return std::make_pair(
+        tf::make_polygons_buffer(std::move(faces), std::move(pts_buf)),
+        std::move(face_labels));
   };
 
   auto polys0 = pids[0].polygons[include_labels[0]];
   auto polys1 = pids[1].polygons[include_labels[1]];
 
   using result_t =
-      decltype(build_half(0, polygons0, polys0, triangles0, original_maps[0],
-                          direction0));
+      decltype(build_half(0, polygons0, polys0, triangles0, tri_origins0,
+                          original_maps[0], direction0));
   result_t left, right;
 
   tbb::parallel_invoke(
       [&, &direction0 = direction0] {
-        left = build_half(0, polygons0, polys0, triangles0, original_maps[0],
-                          direction0);
+        left = build_half(0, polygons0, polys0, triangles0, tri_origins0,
+                          original_maps[0], direction0);
       },
       [&, &direction1 = direction1] {
-        right = build_half(1, polygons1, polys1, triangles1, original_maps[1],
-                           direction1);
+        right = build_half(1, polygons1, polys1, triangles1, tri_origins1,
+                           original_maps[1], direction1);
       });
 
-  return std::make_pair(std::move(left), std::move(right));
+  return std::make_tuple(std::move(left.first), std::move(right.first),
+                         std::move(left.second), std::move(right.second));
 }
 
 } // namespace tf::cut

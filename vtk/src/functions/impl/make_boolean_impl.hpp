@@ -34,7 +34,7 @@ inline auto make_base(polydata *in) {
 template <typename F0, typename F1>
 auto compute_boolean(F0 &&form0, F1 &&form1, tf::boolean_op op)
     -> vtkSmartPointer<polydata> {
-  auto [mesh, labels] = tf::make_boolean(form0, form1, op);
+  auto [mesh, labels, face_labels] = tf::make_boolean(form0, form1, op);
 
   auto out = vtkSmartPointer<polydata>::New();
   out->ShallowCopy(make_vtk_polydata(std::move(mesh)));
@@ -43,13 +43,18 @@ auto compute_boolean(F0 &&form0, F1 &&form1, tf::boolean_op op)
   label_array->SetName("Labels");
   out->GetCellData()->SetScalars(label_array);
 
+
+  auto face_label_array = make_vtk_array(std::move(face_labels));
+  face_label_array->SetName("Face Labels");
+  out->GetCellData()->SetScalars(face_label_array);
+
   return out;
 }
 
 template <typename F0, typename F1>
 auto compute_boolean_with_curves(F0 &&form0, F1 &&form1, tf::boolean_op op)
     -> std::pair<vtkSmartPointer<polydata>, vtkSmartPointer<polydata>> {
-  auto [mesh, labels, curves] =
+  auto [mesh, labels, face_labels, curves] =
       tf::make_boolean(form0, form1, op, tf::return_curves);
 
   auto out = vtkSmartPointer<polydata>::New();
@@ -58,6 +63,10 @@ auto compute_boolean_with_curves(F0 &&form0, F1 &&form1, tf::boolean_op op)
   auto label_array = make_vtk_array(std::move(labels));
   label_array->SetName("Labels");
   out->GetCellData()->SetScalars(label_array);
+
+  auto face_label_array = make_vtk_array(std::move(face_labels));
+  face_label_array->SetName("Face Labels");
+  out->GetCellData()->SetScalars(face_label_array);
 
   auto out_curves = vtkSmartPointer<polydata>::New();
   out_curves->ShallowCopy(make_vtk_polydata(std::move(curves)));

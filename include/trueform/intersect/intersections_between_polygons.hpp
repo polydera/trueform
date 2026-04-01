@@ -68,7 +68,7 @@ public:
     base_t::clear();
     _converter = tf::exact::make_vertex_converter<Int, RealType>(form0, form1);
 
-    if (mode == tf::intersect_mode::primitives)
+    if (mode & tf::intersect_mode::primitives)
       build_primitives(form0, form1);
     else
       build_sos(form0, form1);
@@ -80,7 +80,7 @@ public:
     base_t::clear();
     _converter = tf::exact::make_vertex_converter<Int, RealType>(forms);
 
-    if (mode == tf::intersect_mode::primitives)
+    if (mode & tf::intersect_mode::primitives)
       build_primitives(forms);
     else
       build_sos(forms);

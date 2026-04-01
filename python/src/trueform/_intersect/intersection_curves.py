@@ -14,14 +14,29 @@ from .._spatial import Mesh
 from .._core import OffsetBlockedArray
 from .._dispatch import extract_meta, build_suffix, build_suffix_pair, canonicalize_index_order
 
-_MODE_MAP = {"sos": 0, "primitives": 1}
+_MODE_MAP = {"sos": 1, "primitives": 2}
+_RESOLVE_CROSSINGS = 4
+_RESOLVE_SELF_CROSSINGS = 8
+
+
+def _build_mode(mode: str, resolve_crossings: bool, resolve_self_crossings: bool) -> int:
+    if mode not in _MODE_MAP:
+        raise ValueError(f"mode must be 'sos' or 'primitives', got '{mode}'")
+    m = _MODE_MAP[mode]
+    if resolve_crossings:
+        m |= _RESOLVE_CROSSINGS
+    if resolve_self_crossings:
+        m |= _RESOLVE_SELF_CROSSINGS
+    return m
 
 
 def intersection_curves(
     meshes_or_mesh0: Union[Mesh, List[Mesh]],
     mesh1: Mesh = None,
     *,
-    mode: str = "sos"
+    mode: str = "sos",
+    resolve_crossings: bool = None,
+    resolve_self_crossings: bool = False
 ) -> Tuple[OffsetBlockedArray, np.ndarray]:
     """
     Compute intersection curves between meshes.
@@ -40,6 +55,11 @@ def intersection_curves(
     mode : str, default "sos"
         Intersection mode. "sos" = SoS (fast), "primitives" = handles
         shared edges/vertices.
+    resolve_crossings : bool, optional
+        Resolve crossings between different contours on the same face.
+        Default: False for 2-mesh, True for N-mesh.
+    resolve_self_crossings : bool, default False
+        Resolve self-crossings within a single contour.
 
     Returns
     -------
@@ -47,29 +67,20 @@ def intersection_curves(
         Paths as indices into the points array. Each path is one curve.
     points : np.ndarray
         Curve point coordinates with shape (N, 3).
-
-    Examples
-    --------
-    >>> import trueform as tf
-    >>> # Two-mesh intersection
-    >>> paths, points = tf.intersection_curves(mesh0, mesh1)
-    >>> # N-mesh intersection
-    >>> paths, points = tf.intersection_curves([mesh0, mesh1, mesh2])
-    >>> # With primitives mode
-    >>> paths, points = tf.intersection_curves(mesh0, mesh1, mode="primitives")
     """
 
-    if mode not in _MODE_MAP:
-        raise ValueError(f"mode must be 'sos' or 'primitives', got '{mode}'")
-
     if isinstance(meshes_or_mesh0, (list, tuple)):
-        return _intersection_curves_list(meshes_or_mesh0, mode=_MODE_MAP[mode])
+        rc = resolve_crossings if resolve_crossings is not None else True
+        m = _build_mode(mode, rc, resolve_self_crossings)
+        return _intersection_curves_list(meshes_or_mesh0, mode=m)
     else:
         if mesh1 is None:
             raise ValueError(
                 "intersection_curves requires either two meshes or a list of meshes"
             )
-        return _intersection_curves_pair(meshes_or_mesh0, mesh1, mode=_MODE_MAP[mode])
+        rc = resolve_crossings if resolve_crossings is not None else False
+        m = _build_mode(mode, rc, resolve_self_crossings)
+        return _intersection_curves_pair(meshes_or_mesh0, mesh1, mode=m)
 
 
 def _intersection_curves_pair(mesh0: Mesh, mesh1: Mesh, *, mode: int) -> Tuple[OffsetBlockedArray, np.ndarray]:

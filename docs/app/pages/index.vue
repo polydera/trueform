@@ -10,7 +10,7 @@ const title = page.value.seo?.title || page.value.title;
 const description = page.value.seo?.description || page.value.description;
 
 // Generate OG image using nuxt-og-image
-defineOgImageComponent("Docs", {
+defineOgImage("Docs", {
   title,
   description,
 });

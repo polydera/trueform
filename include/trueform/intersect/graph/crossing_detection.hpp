@@ -25,6 +25,7 @@
 #include "../../exact/vertex.hpp"
 #include "../../spatial/aabb_tree.hpp"
 #include "../../spatial/search_self.hpp"
+#include "../intersect_mode.hpp"
 #include "./crossing_record.hpp"
 #include "./edge.hpp"
 
@@ -105,6 +106,17 @@ auto test_edge_pair(const edge<Index> &ea, const edge<Index> &eb, Index eid_a,
     emit(*hits->second);
 }
 
+template <typename Index>
+auto has_a_single_contour(const Index *edge_ids, std::size_t k,
+                          const tf::buffer<edge<Index>> &edge_data) {
+  if (k <= 1) return true;
+  auto t = edge_data[edge_ids[0]].tag_other;
+  for (std::size_t i = 1; i < k; ++i)
+    if (edge_data[edge_ids[i]].tag_other != t)
+      return false;
+  return true;
+}
+
 /// Detect crossings on one face — brute force (k <= 8).
 ///
 /// edge_ids are instance indices into edge_data (the flat buffer).
@@ -113,11 +125,18 @@ template <typename Index, typename GetPoint>
 auto detect_crossings_brute(const Index *edge_ids, std::size_t k,
                             const tf::buffer<edge<Index>> &edge_data, int ax0,
                             int ax1, const GetPoint &get_point,
-                            tf::buffer<crossing_record<Index>> &out) -> void {
+                            tf::buffer<crossing_record<Index>> &out,
+                            tf::intersect_mode mode) -> void {
+  if (!(mode & tf::intersect_mode::resolve_self_crossing_contours) &&
+      has_a_single_contour(edge_ids, k, edge_data))
+    return;
   for (std::size_t i = 0; i < k; ++i) {
     auto &&ea = edge_data[edge_ids[i]];
     for (std::size_t j = i + 1; j < k; ++j) {
       auto &&eb = edge_data[edge_ids[j]];
+      if (ea.tag_other == eb.tag_other &&
+          !(mode & tf::intersect_mode::resolve_self_crossing_contours))
+        continue;
       test_edge_pair<Index>(ea, eb, ea.id, eb.id, ax0, ax1, get_point, out);
     }
   }
@@ -133,7 +152,11 @@ auto detect_crossings_tree(const Index *edge_ids, std::size_t k,
                            tf::buffer<crossing_record<Index>> &out,
                            tf::points_buffer<Int, 2> &pts_2d,
                            tf::buffer<int> &edge_pairs,
-                           tf::aabb_tree<int, Int, 2> &tree) -> void {
+                           tf::aabb_tree<int, Int, 2> &tree,
+                           tf::intersect_mode mode) -> void {
+  if (!(mode & tf::intersect_mode::resolve_self_crossing_contours) &&
+      has_a_single_contour(edge_ids, k, edge_data))
+    return;
   pts_2d.clear();
   edge_pairs.clear();
   pts_2d.reserve(k * 2);
@@ -154,6 +177,9 @@ auto detect_crossings_tree(const Index *edge_ids, std::size_t k,
       [&](int id0, int id1) {
         auto &&ea = edge_data[edge_ids[id0]];
         auto &&eb = edge_data[edge_ids[id1]];
+        if (ea.tag_other == eb.tag_other &&
+            !(mode & tf::intersect_mode::resolve_self_crossing_contours))
+          return;
         test_edge_pair<Index>(ea, eb, ea.id, eb.id, ax0, ax1, get_point, out);
       },
       /*parallelism_depth=*/0);
@@ -168,8 +194,8 @@ template <typename Index, typename ApplyToFace, typename GetPoint>
 auto gather_crossing_records(
     const tf::offset_block_buffer<Index, Index> &edges,
     const tf::offset_block_buffer<Index, edge<Index>> &edge_defs,
-    const ApplyToFace &apply_to_face, const GetPoint &get_point)
-    -> tf::buffer<crossing_record<Index>> {
+    const ApplyToFace &apply_to_face, const GetPoint &get_point,
+    tf::intersect_mode mode) -> tf::buffer<crossing_record<Index>> {
   using Int = tf::coordinate_type<decltype(get_point(-1, 0))>;
   struct local_t {
     tf::buffer<crossing_record<Index>> records;
@@ -198,11 +224,11 @@ auto gather_crossing_records(
 
         if (k <= 8)
           detect_crossings_brute<Index>(face_edges.begin(), k, edge_data, ax0,
-                                        ax1, get_point_f, local.records);
+                                        ax1, get_point_f, local.records, mode);
         else
           detect_crossings_tree<Index>(
               face_edges.begin(), k, edge_data, ax0, ax1, get_point_f,
-              local.records, local.pts_2d, local.edge_pairs, local.tree);
+              local.records, local.pts_2d, local.edge_pairs, local.tree, mode);
       });
     }
   };

@@ -44,22 +44,24 @@ auto extract_ints(emscripten::val js_arr) -> std::vector<int> {
 auto sync_isobands(wasm_mesh &mesh, wasm_ndarray<float> &scalars,
                    emscripten::val js_cut_values) -> isobands_result {
   auto cv = extract_cut_values(js_cut_values);
-  auto [poly, labels] = tf::embedded_isocurves(
+  auto [poly, labels, face_labels] = tf::embedded_isocurves(
       mesh.polygons_range(), scalars.make_range(),
       tf::make_range(cv.data(), cv.size()));
   return {wasm_mesh::from_polygons_buffer(std::move(poly)),
-          wasm_ndarray<int>::from_buffer(std::move(labels))};
+          wasm_ndarray<int>::from_buffer(std::move(labels)),
+          wasm_ndarray<std::int32_t>::from_buffer(std::move(face_labels))};
 }
 
 auto sync_isobands_with_curves(wasm_mesh &mesh, wasm_ndarray<float> &scalars,
                                emscripten::val js_cut_values)
     -> isobands_result_with_curves {
   auto cv = extract_cut_values(js_cut_values);
-  auto [poly, labels, curves] = tf::embedded_isocurves(
+  auto [poly, labels, face_labels, curves] = tf::embedded_isocurves(
       mesh.polygons_range(), scalars.make_range(),
       tf::make_range(cv.data(), cv.size()), tf::return_curves);
   return {wasm_mesh::from_polygons_buffer(std::move(poly)),
           wasm_ndarray<int>::from_buffer(std::move(labels)),
+          wasm_ndarray<std::int32_t>::from_buffer(std::move(face_labels)),
           wasm_curves::from_curves_buffer(std::move(curves))};
 }
 
@@ -71,12 +73,13 @@ auto sync_isobands_selected(wasm_mesh &mesh, wasm_ndarray<float> &scalars,
     -> isobands_result {
   auto cv = extract_cut_values(js_cut_values);
   auto sb = extract_ints(js_selected_bands);
-  auto [poly, labels] = tf::make_isobands(
+  auto [poly, labels, face_labels] = tf::make_isobands(
       mesh.polygons_range(), scalars.make_range(),
       tf::make_range(cv.data(), cv.size()),
       tf::make_range(sb.data(), sb.size()));
   return {wasm_mesh::from_polygons_buffer(std::move(poly)),
-          wasm_ndarray<int>::from_buffer(std::move(labels))};
+          wasm_ndarray<int>::from_buffer(std::move(labels)),
+          wasm_ndarray<std::int32_t>::from_buffer(std::move(face_labels))};
 }
 
 auto sync_isobands_with_curves_selected(
@@ -85,12 +88,13 @@ auto sync_isobands_with_curves_selected(
     -> isobands_result_with_curves {
   auto cv = extract_cut_values(js_cut_values);
   auto sb = extract_ints(js_selected_bands);
-  auto [poly, labels, curves] = tf::make_isobands(
+  auto [poly, labels, face_labels, curves] = tf::make_isobands(
       mesh.polygons_range(), scalars.make_range(),
       tf::make_range(cv.data(), cv.size()),
       tf::make_range(sb.data(), sb.size()), tf::return_curves);
   return {wasm_mesh::from_polygons_buffer(std::move(poly)),
           wasm_ndarray<int>::from_buffer(std::move(labels)),
+          wasm_ndarray<std::int32_t>::from_buffer(std::move(face_labels)),
           wasm_curves::from_curves_buffer(std::move(curves))};
 }
 
@@ -101,12 +105,13 @@ auto async_isobands(wasm_mesh &mesh, wasm_ndarray<float> &scalars,
   auto cv = extract_cut_values(js_cut_values);
   return promise([m = mesh, s = scalars,
                   cv = std::move(cv)]() -> isobands_result {
-    auto [poly, labels] = tf::embedded_isocurves(
+    auto [poly, labels, face_labels] = tf::embedded_isocurves(
         const_cast<wasm_mesh &>(m).polygons_range(),
         const_cast<wasm_ndarray<float> &>(s).make_range(),
         tf::make_range(cv.data(), cv.size()));
     return {wasm_mesh::from_polygons_buffer(std::move(poly)),
-            wasm_ndarray<int>::from_buffer(std::move(labels))};
+            wasm_ndarray<int>::from_buffer(std::move(labels)),
+            wasm_ndarray<std::int32_t>::from_buffer(std::move(face_labels))};
   });
 }
 
@@ -116,12 +121,13 @@ auto async_isobands_with_curves(wasm_mesh &mesh, wasm_ndarray<float> &scalars,
   return promise(
       [m = mesh, s = scalars,
        cv = std::move(cv)]() -> isobands_result_with_curves {
-        auto [poly, labels, curves] = tf::embedded_isocurves(
+        auto [poly, labels, face_labels, curves] = tf::embedded_isocurves(
             const_cast<wasm_mesh &>(m).polygons_range(),
             const_cast<wasm_ndarray<float> &>(s).make_range(),
             tf::make_range(cv.data(), cv.size()), tf::return_curves);
         return {wasm_mesh::from_polygons_buffer(std::move(poly)),
                 wasm_ndarray<int>::from_buffer(std::move(labels)),
+                wasm_ndarray<std::int32_t>::from_buffer(std::move(face_labels)),
                 wasm_curves::from_curves_buffer(std::move(curves))};
       });
 }
@@ -133,13 +139,14 @@ auto async_isobands_selected(wasm_mesh &mesh, wasm_ndarray<float> &scalars,
   auto sb = extract_ints(js_selected_bands);
   return promise([m = mesh, s = scalars, cv = std::move(cv),
                   sb = std::move(sb)]() -> isobands_result {
-    auto [poly, labels] = tf::make_isobands(
+    auto [poly, labels, face_labels] = tf::make_isobands(
         const_cast<wasm_mesh &>(m).polygons_range(),
         const_cast<wasm_ndarray<float> &>(s).make_range(),
         tf::make_range(cv.data(), cv.size()),
         tf::make_range(sb.data(), sb.size()));
     return {wasm_mesh::from_polygons_buffer(std::move(poly)),
-            wasm_ndarray<int>::from_buffer(std::move(labels))};
+            wasm_ndarray<int>::from_buffer(std::move(labels)),
+            wasm_ndarray<std::int32_t>::from_buffer(std::move(face_labels))};
   });
 }
 
@@ -152,13 +159,14 @@ auto async_isobands_with_curves_selected(
   return promise(
       [m = mesh, s = scalars, cv = std::move(cv),
        sb = std::move(sb)]() -> isobands_result_with_curves {
-        auto [poly, labels, curves] = tf::make_isobands(
+        auto [poly, labels, face_labels, curves] = tf::make_isobands(
             const_cast<wasm_mesh &>(m).polygons_range(),
             const_cast<wasm_ndarray<float> &>(s).make_range(),
             tf::make_range(cv.data(), cv.size()),
             tf::make_range(sb.data(), sb.size()), tf::return_curves);
         return {wasm_mesh::from_polygons_buffer(std::move(poly)),
                 wasm_ndarray<int>::from_buffer(std::move(labels)),
+                wasm_ndarray<std::int32_t>::from_buffer(std::move(face_labels)),
                 wasm_curves::from_curves_buffer(std::move(curves))};
       });
 }
@@ -169,12 +177,14 @@ EMSCRIPTEN_BINDINGS(trueform_isobands) {
   // Result types
   emscripten::value_object<tf::ts::isobands_result>("IsobandsResult")
       .field("mesh", &tf::ts::isobands_result::mesh)
-      .field("labels", &tf::ts::isobands_result::labels);
+      .field("labels", &tf::ts::isobands_result::labels)
+      .field("faceLabels", &tf::ts::isobands_result::face_labels);
 
   emscripten::value_object<tf::ts::isobands_result_with_curves>(
       "IsobandsResultWithCurves")
       .field("mesh", &tf::ts::isobands_result_with_curves::mesh)
       .field("labels", &tf::ts::isobands_result_with_curves::labels)
+      .field("faceLabels", &tf::ts::isobands_result_with_curves::face_labels)
       .field("curves", &tf::ts::isobands_result_with_curves::curves);
 
   // Sync

@@ -43,7 +43,7 @@ int run_embedded_isocurves_tf_benchmark(
 
       auto time = benchmark::min_time_of(
           [&]() {
-            auto [result_mesh, labels] = tf::embedded_isocurves<int>(
+            auto [result_mesh, labels, fl_] = tf::embedded_isocurves<int>(
                 polygons, tf::make_range(scalar_field),
                 tf::make_range(cut_values));
             benchmark::do_not_optimize(result_mesh);

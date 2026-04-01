@@ -37,7 +37,7 @@ auto test_repeated_boolean(tf::boolean_op op, const char *op_name,
   auto frame = tf::make_frame(transform);
 
   // First boolean - establish baseline
-  auto [current, labels] = tf::make_boolean(
+  auto [current, labels, fl_] = tf::make_boolean(
       big_sphere.polygons(), small_sphere.polygons() | tf::tag(frame), op);
 
   auto baseline_points = current.points().size();
@@ -58,7 +58,7 @@ auto test_repeated_boolean(tf::boolean_op op, const char *op_name,
 
   // Repeated boolean at same point (coplanarity test)
   for (int i = 2; i <= num_iterations; ++i) {
-    auto [next, next_labels] = tf::make_boolean(
+    auto [next, next_labels, next_fl_] = tf::make_boolean(
         current.polygons(), small_sphere.polygons() | tf::tag(frame), op);
 
     boundaries = tf::make_boundary_paths(next.polygons());

@@ -67,8 +67,7 @@ auto make_mesh_arrangements(const tf::polygons<Policy0> &_polygons0,
             cut::dispatch::build_exact_pipeline<Index, RealType, Int>(p0, p1,
                                                                       mode);
         auto [mesh, tag_labels, face_labels, map_data] =
-            tf::cut::make_mesh_arrangements(ig, fc, p0, p1,
-                                                   ibp.converter());
+            tf::cut::make_mesh_arrangements(ig, fc, p0, p1, ibp.converter());
 
         auto paths =
             tf::connect_edges_to_paths(tf::make_edges(cg.intersection_edges()));
@@ -118,7 +117,7 @@ auto mesh_arrangements_n(const FormsRange &forms, tf::intersect_mode mode) {
   };
 
   tf::intersection_graph<Index, Int> ig;
-  ig.build(ibp, apply_to_face, get_mesh_point);
+  ig.build(ibp, apply_to_face, get_mesh_point, mode);
 
   tf::face_cuts<Index, Int> fc;
   fc.build(ig, apply_to_face, get_mesh_point);
@@ -149,7 +148,7 @@ auto mesh_arrangements_n_curves(const FormsRange &forms,
   };
 
   tf::intersection_graph<Index, Int> ig;
-  ig.build(ibp, apply_to_face, get_mesh_point);
+  ig.build(ibp, apply_to_face, get_mesh_point, mode);
 
   tf::face_cuts<Index, Int> fc;
   fc.build(ig, apply_to_face, get_mesh_point);
@@ -158,7 +157,7 @@ auto mesh_arrangements_n_curves(const FormsRange &forms,
       tf::cut::make_mesh_arrangements(ig, fc, forms, conv);
 
   auto paths = [&]() {
-    if (mode == tf::intersect_mode::sos) {
+    if (mode & tf::intersect_mode::sos) {
       auto edge_pairs = tf::make_mapped_range(
           ig.edge_groups(), [](const auto &group) -> std::array<Index, 2> {
             return {group[0].point_0, group[0].point_1};
@@ -192,7 +191,8 @@ auto mesh_arrangements_n_curves(const FormsRange &forms,
 template <typename Int = tf::exact::int32, typename Range>
 auto make_mesh_arrangements(
     const Range &_forms,
-    tf::intersect_mode mode = tf::intersect_mode::primitives) {
+    tf::intersect_mode mode = tf::intersect_mode::primitives |
+                              tf::intersect_mode::resolve_crossing_contours) {
   return cut::dispatch::arrangement(_forms, [mode](const auto &forms) {
     return cut::mesh_arrangements_n<Int>(forms, mode);
   });
@@ -212,8 +212,11 @@ auto make_mesh_arrangements(const Range &_forms, tf::intersect_mode mode,
 /// @brief Build a merged mesh with curves (default intersect mode).
 template <typename Int = tf::exact::int32, typename Range>
 auto make_mesh_arrangements(const Range &forms, tf::return_curves_t) {
-  return make_mesh_arrangements<Int>(forms, tf::intersect_mode::primitives,
-                                     tf::return_curves);
+  return make_mesh_arrangements<Int>(
+      forms,
+      tf::intersect_mode::primitives |
+          tf::intersect_mode::resolve_crossing_contours,
+      tf::return_curves);
 }
 
 } // namespace tf

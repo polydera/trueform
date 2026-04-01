@@ -37,6 +37,5 @@ template <typename Index> struct stitch_index_maps {
   Index polygons1_offset;
   tf::direction direction0;
   tf::direction direction1;
-  tf::buffer<Index> face_labels;
 };
 } // namespace tf

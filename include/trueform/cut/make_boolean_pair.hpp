@@ -52,7 +52,8 @@ auto make_boolean_pair(const tf::polygons<Policy0> &_polygons0,
         using RealType = tf::coordinate_type<std::decay_t<decltype(p0)>,
                                              std::decay_t<decltype(p1)>>;
         auto [ibp, ig, fc, cg] =
-            cut::dispatch::build_exact_pipeline<Index, RealType, Int>(p0, p1);
+            cut::dispatch::build_exact_pipeline<Index, RealType, Int>(
+                p0, p1, tf::intersect_mode::primitives);
         return tf::cut::make_boolean_pair<int>(
             p0, p1, ig, fc, cg, ibp.converter(),
             tf::cut::make_boolean_op_spec(op), config);
@@ -75,10 +76,12 @@ auto make_boolean_pair(const tf::polygons<Policy0> &_polygons0,
         using RealType = tf::coordinate_type<std::decay_t<decltype(p0)>,
                                              std::decay_t<decltype(p1)>>;
         auto [ibp, ig, fc, cg] =
-            cut::dispatch::build_exact_pipeline<Index, RealType, Int>(p0, p1);
-        auto res = tf::cut::make_boolean_pair<int>(
-            p0, p1, ig, fc, cg, ibp.converter(),
-            tf::cut::make_boolean_op_spec(op), config);
+            cut::dispatch::build_exact_pipeline<Index, RealType, Int>(
+                p0, p1, tf::intersect_mode::primitives);
+        auto [left, right, fl_left, fl_right] =
+            tf::cut::make_boolean_pair<int>(
+                p0, p1, ig, fc, cg, ibp.converter(),
+                tf::cut::make_boolean_op_spec(op), config);
 
         auto paths =
             tf::connect_edges_to_paths(tf::make_edges(cg.intersection_edges()));
@@ -91,7 +94,8 @@ auto make_boolean_pair(const tf::polygons<Policy0> &_polygons0,
             tf::make_points(tf::make_mapped_range(
                 ipts, [&conv](const auto &pt) { return conv.deconvert(pt); })),
             cb.points());
-        return std::make_tuple(std::move(res.first), std::move(res.second),
+        return std::make_tuple(std::move(left), std::move(right),
+                               std::move(fl_left), std::move(fl_right),
                                std::move(cb));
       });
 }

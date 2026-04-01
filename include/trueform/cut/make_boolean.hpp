@@ -47,10 +47,11 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
         using RealType = tf::coordinate_type<std::decay_t<decltype(p0)>,
                                              std::decay_t<decltype(p1)>>;
         auto [ibp, ig, fc, cg] =
-            cut::dispatch::build_exact_pipeline<Index, RealType, Int>(p0, p1);
-        return tf::cut::make_boolean<int>(
-            p0, p1, ig, fc, cg, ibp.converter(),
-            tf::cut::make_boolean_op_spec(op), config);
+            cut::dispatch::build_exact_pipeline<Index, RealType, Int>(
+                p0, p1, tf::intersect_mode::primitives);
+        return tf::cut::make_boolean<int>(p0, p1, ig, fc, cg, ibp.converter(),
+                                          tf::cut::make_boolean_op_spec(op),
+                                          config);
       });
 }
 
@@ -60,8 +61,7 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
 template <typename Int = tf::exact::int32, typename Policy0, typename Policy1>
 auto make_boolean(const tf::polygons<Policy0> &_polygons0,
                   const tf::polygons<Policy1> &_polygons1, tf::boolean_op op,
-                  tf::return_index_map_t,
-                  tf::boolean_config config = {}) {
+                  tf::return_index_map_t, tf::boolean_config config = {}) {
   return cut::dispatch::boolean(
       _polygons0, _polygons1, [op, config](const auto &p0, const auto &p1) {
         using Index =
@@ -70,10 +70,11 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
         using RealType = tf::coordinate_type<std::decay_t<decltype(p0)>,
                                              std::decay_t<decltype(p1)>>;
         auto [ibp, ig, fc, cg] =
-            cut::dispatch::build_exact_pipeline<Index, RealType, Int>(p0, p1);
-        return tf::cut::make_boolean<int>(
-            p0, p1, ig, fc, cg, ibp.converter(),
-            tf::cut::make_boolean_op_spec(op), config, tf::return_index_map);
+            cut::dispatch::build_exact_pipeline<Index, RealType, Int>(
+                p0, p1, tf::intersect_mode::primitives);
+        return tf::cut::make_boolean<int>(p0, p1, ig, fc, cg, ibp.converter(),
+                                          tf::cut::make_boolean_op_spec(op),
+                                          config, tf::return_index_map);
       });
 }
 
@@ -83,8 +84,7 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
 template <typename Int = tf::exact::int32, typename Policy0, typename Policy1>
 auto make_boolean(const tf::polygons<Policy0> &_polygons0,
                   const tf::polygons<Policy1> &_polygons1, tf::boolean_op op,
-                  tf::return_curves_t,
-                  tf::boolean_config config = {}) {
+                  tf::return_curves_t, tf::boolean_config config = {}) {
   return cut::dispatch::boolean(
       _polygons0, _polygons1, [op, config](const auto &p0, const auto &p1) {
         using Index =
@@ -93,13 +93,14 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
         using RealType = tf::coordinate_type<std::decay_t<decltype(p0)>,
                                              std::decay_t<decltype(p1)>>;
         auto [ibp, ig, fc, cg] =
-            cut::dispatch::build_exact_pipeline<Index, RealType, Int>(p0, p1);
-        auto res = tf::cut::make_boolean<int>(
+            cut::dispatch::build_exact_pipeline<Index, RealType, Int>(
+                p0, p1, tf::intersect_mode::primitives);
+        auto [res_mesh, res_labels, res_fl] = tf::cut::make_boolean<int>(
             p0, p1, ig, fc, cg, ibp.converter(),
             tf::cut::make_boolean_op_spec(op), config);
 
-        auto paths = tf::connect_edges_to_paths(
-            tf::make_edges(cg.intersection_edges()));
+        auto paths =
+            tf::connect_edges_to_paths(tf::make_edges(cg.intersection_edges()));
         auto &conv = ibp.converter();
         auto ipts = ig.points();
         tf::curves_buffer<Index, RealType, 3> cb;
@@ -109,8 +110,8 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
             tf::make_points(tf::make_mapped_range(
                 ipts, [&conv](const auto &pt) { return conv.deconvert(pt); })),
             cb.points());
-        return std::make_tuple(std::move(res.first), std::move(res.second),
-                               std::move(cb));
+        return std::make_tuple(std::move(res_mesh), std::move(res_labels),
+                               std::move(res_fl), std::move(cb));
       });
 }
 
@@ -130,15 +131,15 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
         using RealType = tf::coordinate_type<std::decay_t<decltype(p0)>,
                                              std::decay_t<decltype(p1)>>;
         auto [ibp, ig, fc, cg] =
-            cut::dispatch::build_exact_pipeline<Index, RealType, Int>(p0, p1);
-        auto [res_mesh, res_labels, res_im] =
-            tf::cut::make_boolean<int>(
-                p0, p1, ig, fc, cg, ibp.converter(),
-                tf::cut::make_boolean_op_spec(op), config,
-                tf::return_index_map);
+            cut::dispatch::build_exact_pipeline<Index, RealType, Int>(
+                p0, p1, tf::intersect_mode::primitives);
+        auto [res_mesh, res_labels, res_fl, res_im] =
+            tf::cut::make_boolean<int>(p0, p1, ig, fc, cg, ibp.converter(),
+                                       tf::cut::make_boolean_op_spec(op),
+                                       config, tf::return_index_map);
 
-        auto paths = tf::connect_edges_to_paths(
-            tf::make_edges(cg.intersection_edges()));
+        auto paths =
+            tf::connect_edges_to_paths(tf::make_edges(cg.intersection_edges()));
         auto &conv = ibp.converter();
         auto ipts = ig.points();
         tf::curves_buffer<Index, RealType, 3> cb;
@@ -149,10 +150,9 @@ auto make_boolean(const tf::polygons<Policy0> &_polygons0,
                 ipts, [&conv](const auto &pt) { return conv.deconvert(pt); })),
             cb.points());
         return std::make_tuple(std::move(res_mesh), std::move(res_labels),
-                               std::move(cb),
+                               std::move(res_fl), std::move(cb),
                                std::move(res_im));
       });
 }
 
 } // namespace tf
-

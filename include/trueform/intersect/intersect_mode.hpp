@@ -14,9 +14,20 @@
 
 namespace tf {
 
-enum class intersect_mode {
-  sos,        // SoS fan triangulation — all records are (edge, face)
-  primitives  // Conforming 5-type classification (EF, EE, VE, VF, VV)
+enum class intersect_mode : int {
+  sos = 1,        // SoS fan triangulation — all records are (edge, face)
+  primitives = 2, // Conforming 5-type classification (EF, EE, VE, VF, VV)
+  resolve_crossing_contours = 4,       // crossings between different contours (tag_i,tag_j) vs (tag_i,tag_k)
+  resolve_self_crossing_contours = 8,  // self-crossings within a single contour (tag_i,tag_j)
+  resolve_contours = resolve_crossing_contours | resolve_self_crossing_contours
 };
+
+constexpr auto operator|(intersect_mode a, intersect_mode b) -> intersect_mode {
+  return static_cast<intersect_mode>(static_cast<int>(a) | static_cast<int>(b));
+}
+
+constexpr auto operator&(intersect_mode a, intersect_mode b) -> bool {
+  return (static_cast<int>(a) & static_cast<int>(b)) != 0;
+}
 
 } // namespace tf

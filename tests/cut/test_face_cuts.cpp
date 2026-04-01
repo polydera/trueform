@@ -73,7 +73,7 @@ auto build_and_cut(
     return conv.convert(forms[tag].points()[id]);
   };
 
-  ig.build(ibp, apply_to_face, get_mesh_point);
+  ig.build(ibp, apply_to_face, get_mesh_point, tf::intersect_mode::primitives | tf::intersect_mode::resolve_contours);
   fc.build(ig, apply_to_face, get_mesh_point);
 }
 

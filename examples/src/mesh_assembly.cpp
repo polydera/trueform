@@ -146,7 +146,7 @@ int main() {
   // It removes the interior faces where meshes overlap, producing a single
   // watertight manifold result (0 boundaries, 0 non-manifold edges).
   // Result is triangulated: polygons_buffer<int, float, 3, 3>
-  auto [pencil, labels0] = tf::make_boolean(
+  auto [pencil, labels0, fl0_] = tf::make_boolean(
       triangulated_cylinder.polygons(), cone.polygons(), tf::boolean_op::merge);
 
   print_topology("Pencil (union)", pencil.polygons());
@@ -169,7 +169,7 @@ int main() {
 
   // Boolean intersection of vertical pencil and horizontal cylinder.
   // The result is the classic Steinmetz solid - the region inside both shapes.
-  auto [bicylinder, labels1] = tf::make_boolean(
+  auto [bicylinder, labels1, fl1_] = tf::make_boolean(
       pencil.polygons(), horizontal_cylinder, tf::boolean_op::intersection);
 
   print_topology("Bicylinder (intersection)", bicylinder.polygons());
@@ -194,7 +194,7 @@ int main() {
                                      min_d + 3 * step, min_d + 4 * step};
   std::array<int, 3> selected_bands = {0, 2, 4}; // first, middle, last
 
-  auto [slices, band_labels] = tf::make_isobands(
+  auto [slices, band_labels, fl_] = tf::make_isobands(
       bicylinder.polygons(), scalars, tf::make_range(cut_values),
       tf::make_range(selected_bands));
 

@@ -21,66 +21,66 @@ auto register_embedded_intersection_curves_intint33double3d(nanobind::module_ &m
   // 3×3 without curves
   m.def("embedded_intersection_curves_mesh_mesh_intint33double3d",
         [](mesh_wrapper<int, double, 3, 3> &mesh0,
-           mesh_wrapper<int, double, 3, 3> &mesh1) {
-          return embedded_intersection_curves(mesh0, mesh1);
+           mesh_wrapper<int, double, 3, 3> &mesh1, int mode) {
+          return embedded_intersection_curves(mesh0, mesh1, mode);
         },
-        nanobind::arg("mesh0"), nanobind::arg("mesh1"));
+        nanobind::arg("mesh0"), nanobind::arg("mesh1"), nanobind::arg("mode"));
 
   // 3×3 with curves
   m.def("embedded_intersection_curves_curves_mesh_mesh_intint33double3d",
         [](mesh_wrapper<int, double, 3, 3> &mesh0,
-           mesh_wrapper<int, double, 3, 3> &mesh1) {
-          return embedded_intersection_curves(mesh0, mesh1, tf::return_curves);
+           mesh_wrapper<int, double, 3, 3> &mesh1, int mode) {
+          return embedded_intersection_curves(mesh0, mesh1, mode, tf::return_curves);
         },
-        nanobind::arg("mesh0"), nanobind::arg("mesh1"));
+        nanobind::arg("mesh0"), nanobind::arg("mesh1"), nanobind::arg("mode"));
 
   // 3×dyn without curves
   m.def("embedded_intersection_curves_mesh_mesh_intint3dyndouble3d",
         [](mesh_wrapper<int, double, 3, 3> &mesh0,
-           mesh_wrapper<int, double, dynamic_size, 3> &mesh1) {
-          return embedded_intersection_curves(mesh0, mesh1);
+           mesh_wrapper<int, double, dynamic_size, 3> &mesh1, int mode) {
+          return embedded_intersection_curves(mesh0, mesh1, mode);
         },
-        nanobind::arg("mesh0"), nanobind::arg("mesh1"));
+        nanobind::arg("mesh0"), nanobind::arg("mesh1"), nanobind::arg("mode"));
 
   // 3×dyn with curves
   m.def("embedded_intersection_curves_curves_mesh_mesh_intint3dyndouble3d",
         [](mesh_wrapper<int, double, 3, 3> &mesh0,
-           mesh_wrapper<int, double, dynamic_size, 3> &mesh1) {
-          return embedded_intersection_curves(mesh0, mesh1, tf::return_curves);
+           mesh_wrapper<int, double, dynamic_size, 3> &mesh1, int mode) {
+          return embedded_intersection_curves(mesh0, mesh1, mode, tf::return_curves);
         },
-        nanobind::arg("mesh0"), nanobind::arg("mesh1"));
+        nanobind::arg("mesh0"), nanobind::arg("mesh1"), nanobind::arg("mode"));
 
   // dyn×3 without curves
   m.def("embedded_intersection_curves_mesh_mesh_intintdyn3double3d",
         [](mesh_wrapper<int, double, dynamic_size, 3> &mesh0,
-           mesh_wrapper<int, double, 3, 3> &mesh1) {
-          return embedded_intersection_curves(mesh0, mesh1);
+           mesh_wrapper<int, double, 3, 3> &mesh1, int mode) {
+          return embedded_intersection_curves(mesh0, mesh1, mode);
         },
-        nanobind::arg("mesh0"), nanobind::arg("mesh1"));
+        nanobind::arg("mesh0"), nanobind::arg("mesh1"), nanobind::arg("mode"));
 
   // dyn×3 with curves
   m.def("embedded_intersection_curves_curves_mesh_mesh_intintdyn3double3d",
         [](mesh_wrapper<int, double, dynamic_size, 3> &mesh0,
-           mesh_wrapper<int, double, 3, 3> &mesh1) {
-          return embedded_intersection_curves(mesh0, mesh1, tf::return_curves);
+           mesh_wrapper<int, double, 3, 3> &mesh1, int mode) {
+          return embedded_intersection_curves(mesh0, mesh1, mode, tf::return_curves);
         },
-        nanobind::arg("mesh0"), nanobind::arg("mesh1"));
+        nanobind::arg("mesh0"), nanobind::arg("mesh1"), nanobind::arg("mode"));
 
   // dyn×dyn without curves
   m.def("embedded_intersection_curves_mesh_mesh_intintdyndyndouble3d",
         [](mesh_wrapper<int, double, dynamic_size, 3> &mesh0,
-           mesh_wrapper<int, double, dynamic_size, 3> &mesh1) {
-          return embedded_intersection_curves(mesh0, mesh1);
+           mesh_wrapper<int, double, dynamic_size, 3> &mesh1, int mode) {
+          return embedded_intersection_curves(mesh0, mesh1, mode);
         },
-        nanobind::arg("mesh0"), nanobind::arg("mesh1"));
+        nanobind::arg("mesh0"), nanobind::arg("mesh1"), nanobind::arg("mode"));
 
   // dyn×dyn with curves
   m.def("embedded_intersection_curves_curves_mesh_mesh_intintdyndyndouble3d",
         [](mesh_wrapper<int, double, dynamic_size, 3> &mesh0,
-           mesh_wrapper<int, double, dynamic_size, 3> &mesh1) {
-          return embedded_intersection_curves(mesh0, mesh1, tf::return_curves);
+           mesh_wrapper<int, double, dynamic_size, 3> &mesh1, int mode) {
+          return embedded_intersection_curves(mesh0, mesh1, mode, tf::return_curves);
         },
-        nanobind::arg("mesh0"), nanobind::arg("mesh1"));
+        nanobind::arg("mesh0"), nanobind::arg("mesh1"), nanobind::arg("mode"));
 }
 
 } // namespace tf::py

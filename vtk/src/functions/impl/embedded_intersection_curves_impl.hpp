@@ -12,8 +12,10 @@
 */
 #pragma once
 #include <trueform/cut/embedded_intersection_curves.hpp>
+#include <trueform/vtk/core/make_vtk_array.hpp>
 #include <trueform/vtk/core/make_vtk_polydata.hpp>
 #include <trueform/vtk/functions/embedded_intersection_curves.hpp>
+#include <vtkCellData.h>
 
 namespace tf::vtk::impl {
 
@@ -31,10 +33,14 @@ inline auto make_base(polydata *in) {
 template <typename F0, typename F1>
 auto compute_embedded_intersection_curves(F0 &&form0, F1 &&form1)
     -> vtkSmartPointer<polydata> {
-  auto mesh = tf::embedded_intersection_curves(form0, form1);
+  auto [mesh, face_labels] = tf::embedded_intersection_curves(form0, form1);
 
   auto out = vtkSmartPointer<polydata>::New();
   out->ShallowCopy(make_vtk_polydata(std::move(mesh)));
+
+  auto face_label_array = make_vtk_array(std::move(face_labels));
+  face_label_array->SetName("Face Labels");
+  out->GetCellData()->SetScalars(face_label_array);
 
   return out;
 }
@@ -42,11 +48,15 @@ auto compute_embedded_intersection_curves(F0 &&form0, F1 &&form1)
 template <typename F0, typename F1>
 auto compute_embedded_intersection_curves_with_curves(F0 &&form0, F1 &&form1)
     -> std::pair<vtkSmartPointer<polydata>, vtkSmartPointer<polydata>> {
-  auto [mesh, curves] =
+  auto [mesh, face_labels, curves] =
       tf::embedded_intersection_curves(form0, form1, tf::return_curves);
 
   auto out = vtkSmartPointer<polydata>::New();
   out->ShallowCopy(make_vtk_polydata(std::move(mesh)));
+
+  auto face_label_array = make_vtk_array(std::move(face_labels));
+  face_label_array->SetName("Face Labels");
+  out->GetCellData()->SetScalars(face_label_array);
 
   auto out_curves = vtkSmartPointer<polydata>::New();
   out_curves->ShallowCopy(make_vtk_polydata(std::move(curves)));

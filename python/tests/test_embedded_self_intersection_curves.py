@@ -100,7 +100,7 @@ def test_embedded_no_intersection(index_dtype, real_dtype, mesh_type):
     """Test embedded_self_intersection_curves for mesh with no self-intersections"""
     mesh = create_tetrahedron_triangles(index_dtype, real_dtype, mesh_type)
 
-    result_faces, result_points = tf.embedded_self_intersection_curves(mesh)
+    (result_faces, result_points), face_labels = tf.embedded_self_intersection_curves(mesh)
 
     # Verify return types based on mesh type
     assert isinstance(result_points, np.ndarray), "result_points should be numpy array"
@@ -133,7 +133,7 @@ def test_embedded_with_intersection(index_dtype, real_dtype, mesh_type):
     """Test embedded_self_intersection_curves for mesh with self-intersections"""
     mesh = create_self_intersecting_triangles(index_dtype, real_dtype, mesh_type)
 
-    result_faces, result_points = tf.embedded_self_intersection_curves(mesh)
+    (result_faces, result_points), face_labels = tf.embedded_self_intersection_curves(mesh)
 
     # Verify return types based on mesh type
     assert isinstance(result_points, np.ndarray), "result_points should be numpy array"
@@ -168,7 +168,7 @@ def test_embedded_with_curves(index_dtype, real_dtype, mesh_type):
     """Test embedded_self_intersection_curves with return_curves=True"""
     mesh = create_self_intersecting_triangles(index_dtype, real_dtype, mesh_type)
 
-    (result_faces, result_points), (paths, curve_points) = tf.embedded_self_intersection_curves(
+    (result_faces, result_points), face_labels, (paths, curve_points) = tf.embedded_self_intersection_curves(
         mesh, return_curves=True
     )
 
@@ -207,7 +207,7 @@ def test_embedded_curves_iteration(real_dtype):
     """Test iterating over curves when return_curves=True"""
     mesh = create_self_intersecting_triangles(np.int32, real_dtype)
 
-    (result_faces, result_points), (paths, curve_points) = tf.embedded_self_intersection_curves(
+    (result_faces, result_points), face_labels, (paths, curve_points) = tf.embedded_self_intersection_curves(
         mesh, return_curves=True
     )
 
@@ -232,7 +232,7 @@ def test_embedded_valid_indices(real_dtype):
     """Test that all path indices are valid when return_curves=True"""
     mesh = create_self_intersecting_triangles(np.int32, real_dtype)
 
-    (result_faces, result_points), (paths, curve_points) = tf.embedded_self_intersection_curves(
+    (result_faces, result_points), face_labels, (paths, curve_points) = tf.embedded_self_intersection_curves(
         mesh, return_curves=True
     )
 
@@ -255,7 +255,7 @@ def test_embedded_no_intersection_with_curves(index_dtype, real_dtype, mesh_type
     """Test embedded_self_intersection_curves with return_curves=True on mesh without self-intersections"""
     mesh = create_tetrahedron_triangles(index_dtype, real_dtype, mesh_type)
 
-    (result_faces, result_points), (paths, curve_points) = tf.embedded_self_intersection_curves(
+    (result_faces, result_points), face_labels, (paths, curve_points) = tf.embedded_self_intersection_curves(
         mesh, return_curves=True
     )
 

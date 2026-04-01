@@ -29,14 +29,18 @@ namespace tf {
 ///
 /// @tparam Policy The policy type of the mesh.
 /// @param _polygons The input @ref tf::polygons (or tagged form).
+/// @param mode The intersection mode flags.
 /// @return Tuple of (@ref tf::polygons_buffer, face labels).
 template <typename Int = tf::exact::int32, typename Policy>
-auto make_polygon_arrangements(const tf::polygons<Policy> &_polygons) {
-  return cut::dispatch::self_boolean(_polygons, [](const auto &p) {
+auto make_polygon_arrangements(
+    const tf::polygons<Policy> &_polygons,
+    tf::intersect_mode mode = tf::intersect_mode::primitives |
+                              tf::intersect_mode::resolve_contours) {
+  return cut::dispatch::self_boolean(_polygons, [mode](const auto &p) {
     using Index = std::decay_t<decltype(p.faces()[0][0])>;
     using RealType = tf::coordinate_type<std::decay_t<decltype(p)>>;
     auto [iwp, ig, fc, cg] =
-        cut::dispatch::build_self_pipeline<Index, RealType, Int>(p);
+        cut::dispatch::build_self_pipeline<Index, RealType, Int>(p, mode);
     auto [mesh, face_labels, map_data] =
         tf::cut::make_polygon_arrangements(p, ig, fc, iwp.converter());
     return std::make_pair(std::move(mesh), std::move(face_labels));
@@ -49,11 +53,24 @@ auto make_polygon_arrangements(const tf::polygons<Policy> &_polygons) {
 template <typename Int = tf::exact::int32, typename Policy>
 auto make_polygon_arrangements(const tf::polygons<Policy> &_polygons,
                                tf::return_curves_t) {
-  return cut::dispatch::self_boolean(_polygons, [](const auto &p) {
+  return make_polygon_arrangements<Int>(
+      _polygons, tf::intersect_mode::primitives |
+                     tf::intersect_mode::resolve_contours,
+      tf::return_curves);
+}
+
+/// @ingroup cut_boolean
+/// @brief Split a single mesh at self-intersection curves with curve output.
+/// @overload
+template <typename Int = tf::exact::int32, typename Policy>
+auto make_polygon_arrangements(const tf::polygons<Policy> &_polygons,
+                               tf::intersect_mode mode,
+                               tf::return_curves_t) {
+  return cut::dispatch::self_boolean(_polygons, [mode](const auto &p) {
     using Index = std::decay_t<decltype(p.faces()[0][0])>;
     using RealType = tf::coordinate_type<std::decay_t<decltype(p)>>;
     auto [iwp, ig, fc, cg] =
-        cut::dispatch::build_self_pipeline<Index, RealType, Int>(p);
+        cut::dispatch::build_self_pipeline<Index, RealType, Int>(p, mode);
     auto [mesh, face_labels, map_data] =
         tf::cut::make_polygon_arrangements(p, ig, fc, iwp.converter());
 

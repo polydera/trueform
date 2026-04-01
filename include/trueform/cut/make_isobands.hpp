@@ -51,9 +51,10 @@ auto make_isobands(const tf::polygons<Policy> &polygons, const Range0 &scalars,
   } else {
     auto [sfi, fc, pids] =
         cut::dispatch::build_iso_pipeline<Index>(polygons, scalars, cut_values);
-    auto [res_polygons, labels, created_ids] =
+    auto [res_polygons, labels, face_labels, created_ids] =
         tf::cut::make_isobands<Index>(polygons, sfi, fc, pids, selected_bands);
-    return std::make_pair(std::move(res_polygons), std::move(labels));
+    return std::make_tuple(std::move(res_polygons), std::move(labels),
+                           std::move(face_labels));
   }
 }
 
@@ -74,7 +75,7 @@ auto make_isobands(const tf::polygons<Policy> &polygons, const Range0 &scalars,
   } else {
     auto [sfi, fc, pids] =
         cut::dispatch::build_iso_pipeline<Index>(polygons, scalars, cut_values);
-    auto [res_polygons, labels, created_ids] =
+    auto [res_polygons, labels, face_labels, created_ids] =
         tf::cut::make_isobands<Index>(polygons, sfi, fc, pids, selected_bands);
 
     auto ie = tf::make_intersection_edges(sfi);
@@ -91,7 +92,7 @@ auto make_isobands(const tf::polygons<Policy> &polygons, const Range0 &scalars,
     cb.points_buffer() = std::move(filtered_segments.points_buffer());
 
     return std::make_tuple(std::move(res_polygons), std::move(labels),
-                           std::move(cb));
+                           std::move(face_labels), std::move(cb));
   }
 }
 

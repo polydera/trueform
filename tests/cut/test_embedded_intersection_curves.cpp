@@ -57,11 +57,12 @@ TEMPLATE_TEST_CASE("embedded_intersection_curves_overlapping_spheres", "[embedde
     real_t original_volume = tf::signed_volume(sphere1.polygons());
     real_t original_area = tf::area(sphere1.polygons());
 
-    auto result = tf::embedded_intersection_curves(
+    auto [result, fl_] = tf::embedded_intersection_curves(
         sphere1.polygons(),
         sphere2.polygons() | tf::tag(sphere2_frame));
 
     // Topology: manifold and closed
+    REQUIRE(fl_.size() == result.polygons().size());
     REQUIRE(tf::is_manifold(result.polygons()));
     REQUIRE(tf::is_closed(result.polygons()));
 
@@ -111,12 +112,13 @@ TEMPLATE_TEST_CASE("embedded_intersection_curves_with_curves", "[embedded_inters
         tf::make_vector(separation, real_t(0), real_t(0)));
     auto sphere2_frame = tf::make_frame(sphere2_transform);
 
-    auto [result, curves] = tf::embedded_intersection_curves(
+    auto [result, fl_, curves] = tf::embedded_intersection_curves(
         sphere1.polygons(),
         sphere2.polygons() | tf::tag(sphere2_frame),
         tf::return_curves);
 
     // Topology: manifold and closed
+    REQUIRE(fl_.size() == result.polygons().size());
     REQUIRE(tf::is_manifold(result.polygons()));
     REQUIRE(tf::is_closed(result.polygons()));
 
@@ -164,11 +166,12 @@ TEMPLATE_TEST_CASE("embedded_intersection_curves_non_overlapping", "[embedded_in
     std::size_t original_points = box1.points().size();
     real_t original_volume = tf::signed_volume(box1.polygons());
 
-    auto result = tf::embedded_intersection_curves(
+    auto [result, fl_] = tf::embedded_intersection_curves(
         box1.polygons(),
         box2.polygons() | tf::tag(box2_frame));
 
     // Same face and point count (no intersection)
+    REQUIRE(fl_.size() == result.polygons().size());
     REQUIRE(result.polygons().size() == original_faces);
     REQUIRE(result.points().size() == original_points);
 
@@ -181,7 +184,7 @@ TEMPLATE_TEST_CASE("embedded_intersection_curves_non_overlapping", "[embedded_in
     REQUIRE(tf::is_closed(result.polygons()));
 
     // With curves variant: no curves
-    auto [result2, curves] = tf::embedded_intersection_curves(
+    auto [result2, fl2_, curves] = tf::embedded_intersection_curves(
         box1.polygons(),
         box2.polygons() | tf::tag(box2_frame),
         tf::return_curves);
@@ -224,12 +227,13 @@ TEMPLATE_TEST_CASE("embedded_intersection_curves_overlapping_boxes", "[embedded_
     real_t original_volume = tf::signed_volume(box1.polygons());
     real_t original_area = tf::area(box1.polygons());
 
-    auto [result, curves] = tf::embedded_intersection_curves(
+    auto [result, fl_, curves] = tf::embedded_intersection_curves(
         box1.polygons(),
         box2.polygons() | tf::tag(box2_frame),
         tf::return_curves);
 
     // Topology preserved
+    REQUIRE(fl_.size() == result.polygons().size());
     REQUIRE(tf::is_manifold(result.polygons()));
     REQUIRE(tf::is_closed(result.polygons()));
 
@@ -270,13 +274,13 @@ TEMPLATE_TEST_CASE("embedded_intersection_curves_matches_boolean", "[embedded_in
     auto sphere2_frame = tf::make_frame(sphere2_transform);
 
     // Get curves from embedded_intersection_curves
-    auto [embedded_result, embedded_curves] = tf::embedded_intersection_curves(
+    auto [embedded_result, efl_, embedded_curves] = tf::embedded_intersection_curves(
         sphere1.polygons(),
         sphere2.polygons() | tf::tag(sphere2_frame),
         tf::return_curves);
 
     // Get intersection from boolean
-    auto [boolean_result, labels] = tf::make_boolean(
+    auto [boolean_result, labels, fl_] = tf::make_boolean(
         sphere1.polygons(),
         sphere2.polygons() | tf::tag(sphere2_frame),
         tf::boolean_op::intersection);
@@ -323,12 +327,13 @@ TEMPLATE_TEST_CASE("embedded_intersection_curves_nested", "[embedded_intersectio
     std::size_t original_points = outer_sphere.points().size();
     real_t original_volume = tf::signed_volume(outer_sphere.polygons());
 
-    auto [result, curves] = tf::embedded_intersection_curves(
+    auto [result, fl_, curves] = tf::embedded_intersection_curves(
         outer_sphere.polygons(),
         inner_sphere.polygons(),
         tf::return_curves);
 
     // No surface intersection when fully nested
+    REQUIRE(fl_.size() == result.polygons().size());
     REQUIRE(result.polygons().size() == original_faces);
     REQUIRE(result.points().size() == original_points);
 

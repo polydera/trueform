@@ -81,7 +81,7 @@ export {
 
 // Intersect operations
 export { intersectionCurves, selfIntersectionCurves, isocontours } from "./intersect/sync";
-export type { IntersectMode, IntersectionCurvesOpts } from "./intersect/sync";
+export type { IntersectOpts } from "./intersect/sync";
 export type {
   LabeledCutResult, LabeledCutResultWithCurves,
   IsobandsResult, IsobandsResultWithCurves,

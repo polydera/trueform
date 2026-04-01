@@ -50,13 +50,14 @@ auto make_isobands_impl(
   auto selected_bands_range =
       tf::make_range(selected_bands.data(), selected_bands.shape(0));
 
-  // Call C++ make_isobands (returns mesh, labels)
-  auto [result_mesh, labels] = tf::make_isobands<Index>(
+  // Call C++ make_isobands (returns mesh, labels, face_labels)
+  auto [result_mesh, labels, face_labels] = tf::make_isobands<Index>(
       polygons, scalars_range, cut_values_range, selected_bands_range);
 
   // Extract mesh as (faces, points) - move ownership
   return nanobind::make_tuple(make_numpy_array(std::move(result_mesh)),
-                              make_numpy_array(std::move(labels)));
+                              make_numpy_array(std::move(labels)),
+                              make_numpy_array(std::move(face_labels)));
 }
 
 /// @brief Implementation for make_isobands with return_curves
@@ -83,8 +84,8 @@ auto make_isobands_with_curves_impl(
   auto selected_bands_range =
       tf::make_range(selected_bands.data(), selected_bands.shape(0));
 
-  // Call C++ make_isobands with return_curves (returns mesh, labels, curves)
-  auto [result_mesh, labels, curves] =
+  // Call C++ make_isobands with return_curves (returns mesh, labels, face_labels, curves)
+  auto [result_mesh, labels, face_labels, curves] =
       tf::make_isobands<Index>(polygons, scalars_range, cut_values_range,
                                selected_bands_range, tf::return_curves);
 
@@ -93,6 +94,7 @@ auto make_isobands_with_curves_impl(
 
   // Extract labels buffer - move ownership
   auto labels_array = make_numpy_array(std::move(labels));
+  auto face_labels_array = make_numpy_array(std::move(face_labels));
 
   // Extract curves as ((paths_offsets, paths_data), curve_points) - move
   // ownership
@@ -100,6 +102,7 @@ auto make_isobands_with_curves_impl(
   auto curve_pair = nanobind::make_tuple(
       nanobind::make_tuple(paths.first, paths.second), std::move(c_points));
   return nanobind::make_tuple(std::move(mesh_pair), std::move(labels_array),
+                              std::move(face_labels_array),
                               std::move(curve_pair));
 }
 

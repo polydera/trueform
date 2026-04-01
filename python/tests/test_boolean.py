@@ -94,7 +94,7 @@ def test_bicylinder_intersection(index_dtype, dtype, mesh_type):
     mesh2 = prepare_mesh(make_mesh(new_faces2, rotated_points, mesh_type))
 
     # Boolean intersection
-    (result_faces, result_points), labels = tf.boolean_intersection(mesh1, mesh2)
+    (result_faces, result_points), labels, face_labels = tf.boolean_intersection(mesh1, mesh2)
 
     # Verify topology
     verify_topology(result_faces, result_points)
@@ -127,7 +127,7 @@ def test_nested_spheres_merge(index_dtype, dtype, mesh_type):
     inner = prepare_mesh(make_mesh(faces2, points2, mesh_type))
 
     # Merge
-    (result_faces, result_points), labels = tf.boolean_union(outer, inner)
+    (result_faces, result_points), labels, face_labels = tf.boolean_union(outer, inner)
 
     # Verify topology
     verify_topology(result_faces, result_points)
@@ -160,7 +160,7 @@ def test_nested_spheres_difference(index_dtype, dtype, mesh_type):
     inner = prepare_mesh(make_mesh(faces2, points2, mesh_type))
 
     # Difference
-    (result_faces, result_points), labels = tf.boolean_difference(outer, inner)
+    (result_faces, result_points), labels, face_labels = tf.boolean_difference(outer, inner)
 
     # Verify topology
     verify_topology(result_faces, result_points)
@@ -195,7 +195,7 @@ def test_nested_spheres_intersection(index_dtype, dtype, mesh_type):
     inner = prepare_mesh(make_mesh(faces2, points2, mesh_type))
 
     # Intersection
-    (result_faces, result_points), labels = tf.boolean_intersection(outer, inner)
+    (result_faces, result_points), labels, face_labels = tf.boolean_intersection(outer, inner)
 
     # Verify topology
     verify_topology(result_faces, result_points)
@@ -229,7 +229,7 @@ def test_overlapping_boxes_union(index_dtype, dtype, mesh_type):
     box2 = prepare_mesh(make_mesh(faces2, points2_translated, mesh_type))
 
     # Union
-    (result_faces, result_points), labels = tf.boolean_union(box1, box2)
+    (result_faces, result_points), labels, face_labels = tf.boolean_union(box1, box2)
 
     # Verify topology
     verify_topology(result_faces, result_points)
@@ -255,7 +255,7 @@ def test_overlapping_boxes_intersection(index_dtype, dtype, mesh_type):
     box2 = prepare_mesh(make_mesh(faces2, points2_translated, mesh_type))
 
     # Intersection
-    (result_faces, result_points), labels = tf.boolean_intersection(box1, box2)
+    (result_faces, result_points), labels, face_labels = tf.boolean_intersection(box1, box2)
 
     # Verify topology
     verify_topology(result_faces, result_points)
@@ -281,7 +281,7 @@ def test_overlapping_boxes_difference(index_dtype, dtype, mesh_type):
     box2 = prepare_mesh(make_mesh(faces2, points2_translated, mesh_type))
 
     # Difference (box1 - box2)
-    (result_faces, result_points), labels = tf.boolean_difference(box1, box2)
+    (result_faces, result_points), labels, face_labels = tf.boolean_difference(box1, box2)
 
     # Verify topology
     verify_topology(result_faces, result_points)
@@ -311,7 +311,7 @@ def test_non_overlapping_union(index_dtype, dtype, mesh_type):
     box2 = prepare_mesh(make_mesh(faces2, points2_translated, mesh_type))
 
     # Union
-    (result_faces, result_points), labels = tf.boolean_union(box1, box2)
+    (result_faces, result_points), labels, face_labels = tf.boolean_union(box1, box2)
 
     # Volume = 2 boxes
     expected_volume = 2.0
@@ -334,7 +334,7 @@ def test_non_overlapping_intersection(index_dtype, dtype, mesh_type):
     box2 = prepare_mesh(make_mesh(faces2, points2_translated, mesh_type))
 
     # Intersection
-    (result_faces, result_points), labels = tf.boolean_intersection(box1, box2)
+    (result_faces, result_points), labels, face_labels = tf.boolean_intersection(box1, box2)
 
     # Empty result
     assert get_num_faces(result_faces) == 0
@@ -354,7 +354,7 @@ def test_non_overlapping_difference(index_dtype, dtype, mesh_type):
     box2 = prepare_mesh(make_mesh(faces2, points2_translated, mesh_type))
 
     # Difference
-    (result_faces, result_points), labels = tf.boolean_difference(box1, box2)
+    (result_faces, result_points), labels, face_labels = tf.boolean_difference(box1, box2)
 
     # Volume unchanged
     expected_volume = 1.0
@@ -386,7 +386,7 @@ def test_overlapping_spheres_union(index_dtype, dtype, mesh_type):
     sphere2 = prepare_mesh(make_mesh(faces2, points2_translated, mesh_type))
 
     # Union
-    (result_faces, result_points), labels = tf.boolean_union(sphere1, sphere2)
+    (result_faces, result_points), labels, face_labels = tf.boolean_union(sphere1, sphere2)
 
     # Verify topology
     verify_topology(result_faces, result_points)
@@ -422,7 +422,7 @@ def test_overlapping_spheres_intersection(index_dtype, dtype, mesh_type):
     sphere2 = prepare_mesh(make_mesh(faces2, points2_translated, mesh_type))
 
     # Intersection
-    (result_faces, result_points), labels = tf.boolean_intersection(sphere1, sphere2)
+    (result_faces, result_points), labels, face_labels = tf.boolean_intersection(sphere1, sphere2)
 
     # Verify topology
     verify_topology(result_faces, result_points)
@@ -456,7 +456,7 @@ def test_overlapping_spheres_difference(index_dtype, dtype, mesh_type):
     sphere2 = prepare_mesh(make_mesh(faces2, points2_translated, mesh_type))
 
     # Difference
-    (result_faces, result_points), labels = tf.boolean_difference(sphere1, sphere2)
+    (result_faces, result_points), labels, face_labels = tf.boolean_difference(sphere1, sphere2)
 
     # Verify topology
     verify_topology(result_faces, result_points)
@@ -490,7 +490,7 @@ def test_mixed_mesh_types(index_dtype, dtype):
     box2 = prepare_mesh(make_mesh(faces2, points2_translated, 'dynamic'))
 
     # Union
-    (result_faces, result_points), labels = tf.boolean_union(box1, box2)
+    (result_faces, result_points), labels, face_labels = tf.boolean_union(box1, box2)
 
     # Result should be dynamic when one input is dynamic
     assert isinstance(result_faces, tf.OffsetBlockedArray)

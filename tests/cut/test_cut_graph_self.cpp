@@ -84,7 +84,7 @@ auto run_between(std::array<tf::polygons_buffer<int, float, 3, 4>, N> &meshes,
     return conv.convert(forms[tag].points()[id]);
   };
 
-  ig.build(ibp, apply_to_face, get_mesh_point);
+  ig.build(ibp, apply_to_face, get_mesh_point, tf::intersect_mode::primitives | tf::intersect_mode::resolve_contours);
   fc.build(ig, apply_to_face, get_mesh_point);
   cg.build(fc, int(ig.points().size()));
 }
@@ -113,7 +113,7 @@ auto run_within(std::array<tf::polygons_buffer<int, float, 3, 4>, N> &meshes,
     return conv.convert(m.points()[id]);
   };
 
-  ig.build(iwp, apply_to_face, get_mesh_point);
+  ig.build(iwp, apply_to_face, get_mesh_point, tf::intersect_mode::primitives | tf::intersect_mode::resolve_contours);
   fc.build(ig, apply_to_face, get_mesh_point);
   cg.build(fc, ig, tagged);
 }

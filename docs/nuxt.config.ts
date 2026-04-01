@@ -11,6 +11,7 @@ export default defineNuxtConfig({
     "nuxt-og-image",
     "nuxt-schema-org",
     "./modules/copy-files",
+    "@nuxt/fonts",
   ],
 
   devtools: {
@@ -50,6 +51,12 @@ export default defineNuxtConfig({
     },
   },
 
+  ogImage: {
+    security: {
+      secret: "af94914efaa6630c19a796c440b8d39d248e81d92f5ea5ce1b8c639bd0153e3e",
+    },
+  },
+
   // Sitemap configuration
   sitemap: {
     autoLastmod: true,
@@ -57,6 +64,11 @@ export default defineNuxtConfig({
   },
 
   nitro: {
+    esbuild: {
+      options: {
+        target: "es2022",
+      },
+    },
     prerender: {
       routes: ["/"],
       crawlLinks: true,
@@ -111,6 +123,16 @@ export default defineNuxtConfig({
     },
     build: {
       sourcemap: false,
+    },
+    optimizeDeps: {
+      include: [
+        '@vue/devtools-core',
+        '@vue/devtools-kit',
+        '@unhead/schema-org/vue',
+        '@vueuse/core',
+        '@unovis/vue',
+        '@unovis/ts',
+      ],
     },
   },
 

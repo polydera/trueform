@@ -14,30 +14,42 @@ from .._spatial import Mesh
 from .._core import OffsetBlockedArray
 from .._dispatch import extract_meta, build_suffix_pair
 
+_MODE_MAP = {"sos": 1, "primitives": 2}
+_RESOLVE_CROSSINGS = 4
+_RESOLVE_SELF_CROSSINGS = 8
+
 
 def embedded_intersection_curves(
     mesh0: Mesh,
     mesh1: Mesh,
-    return_curves: bool = False
-) -> Union[Tuple[np.ndarray, np.ndarray],
-           Tuple[Tuple[np.ndarray, np.ndarray], Tuple[OffsetBlockedArray, np.ndarray]]]:
+    return_curves: bool = False,
+    *,
+    mode: str = "primitives",
+    resolve_crossings: bool = False,
+    resolve_self_crossings: bool = False
+):
     """
     Embed intersection curves between mesh A and mesh B into mesh A.
 
     Splits faces of mesh0 along intersection curves with mesh1, so that the
     intersections become edges in the resulting mesh. All faces from mesh0
     are preserved (split where intersecting), with no faces from mesh1.
-    Supports both triangle meshes and dynamic (variable polygon size) meshes.
 
     Parameters
     ----------
     mesh0 : Mesh
-        3D mesh to embed curves into (triangle or dynamic)
+        3D mesh to embed curves into (triangle or dynamic).
     mesh1 : Mesh
-        3D mesh providing the cutting surface (triangle or dynamic)
-        Must have same real dtype (float32 or float64) as mesh0
+        3D mesh providing the cutting surface (triangle or dynamic).
+        Must have same real dtype as mesh0.
     return_curves : bool, default False
-        If True, also return the intersection curves
+        If True, also return the intersection curves.
+    mode : str, default "primitives"
+        Intersection mode. "sos" or "primitives".
+    resolve_crossings : bool, default False
+        Resolve crossings between different contours on the same face.
+    resolve_self_crossings : bool, default False
+        Resolve self-crossings within a single contour.
 
     Returns
     -------
@@ -45,47 +57,16 @@ def embedded_intersection_curves(
         Face indices of the result mesh. Returns np.ndarray with shape (N, 3)
         if both inputs are triangle meshes, otherwise OffsetBlockedArray.
     result_points : np.ndarray
-        Point coordinates of the result mesh, shape (M, 3)
+        Point coordinates of the result mesh, shape (M, 3).
+    face_labels : np.ndarray
+        Per-face origin: which face in the original mesh each output face
+        came from. Shape (N,).
     paths : OffsetBlockedArray, optional
-        Only returned if return_curves=True
-        Intersection curves as indices into curve_points
+        Only returned if return_curves=True.
+        Intersection curves as indices into curve_points.
     curve_points : np.ndarray, optional
-        Only returned if return_curves=True
-        Curve point coordinates with shape (P, 3)
-
-    Raises
-    ------
-    ValueError
-        If meshes are not 3D or have mismatched dtypes
-    TypeError
-        If inputs are not Mesh objects
-
-    Examples
-    --------
-    >>> import trueform as tf
-    >>> # Load two meshes
-    >>> mesh0 = tf.Mesh(*tf.read_stl("mesh0.stl"))
-    >>> mesh1 = tf.Mesh(*tf.read_stl("mesh1.stl"))
-    >>>
-    >>> # Embed intersection curves into mesh0
-    >>> faces, points = tf.embedded_intersection_curves(mesh0, mesh1)
-    >>> print(f"Result has {len(faces)} faces")
-    >>>
-    >>> # Get curves as well
-    >>> (faces, points), (paths, curve_pts) = tf.embedded_intersection_curves(
-    ...     mesh0, mesh1, return_curves=True
-    ... )
-    >>> print(f"Found {len(paths)} intersection curve(s)")
-
-    Notes
-    -----
-    This is useful when you need to mark where meshes intersect without
-    carving—for example, projecting cutting guides onto a surface or
-    visualizing contact regions.
-
-    Unlike boolean operations, this function does not remove any faces
-    from mesh0. The output mesh has the same volume and surface area
-    as mesh0, with additional edges along the intersection curves.
+        Only returned if return_curves=True.
+        Curve point coordinates with shape (P, 3).
     """
 
     if not isinstance(mesh0, Mesh):
@@ -93,13 +74,11 @@ def embedded_intersection_curves(
             f"mesh0 must be a Mesh object, got {type(mesh0).__name__}. "
             f"Topology information is required for embedded_intersection_curves."
         )
-
     if not isinstance(mesh1, Mesh):
         raise TypeError(
             f"mesh1 must be a Mesh object, got {type(mesh1).__name__}. "
             f"Topology information is required for embedded_intersection_curves."
         )
-
     if mesh0.dims != 3:
         raise ValueError(
             f"embedded_intersection_curves only supports 3D meshes, got mesh0 with {mesh0.dims}D"
@@ -108,7 +87,6 @@ def embedded_intersection_curves(
         raise ValueError(
             f"embedded_intersection_curves only supports 3D meshes, got mesh1 with {mesh1.dims}D"
         )
-
     if mesh0.ngon != 3 and not mesh0.is_dynamic:
         raise ValueError(
             f"embedded_intersection_curves only supports triangle or dynamic meshes, got mesh0 with {mesh0.ngon}-gons"
@@ -117,41 +95,45 @@ def embedded_intersection_curves(
         raise ValueError(
             f"embedded_intersection_curves only supports triangle or dynamic meshes, got mesh1 with {mesh1.ngon}-gons"
         )
-
     if mesh0.dtype != mesh1.dtype:
         raise ValueError(
             f"Mesh dtypes must match: mesh0 has {mesh0.dtype}, mesh1 has {mesh1.dtype}. "
             f"Convert both meshes to the same dtype (float32 or float64)."
         )
 
-    # Unlike boolean, we don't canonicalize index order because
-    # embedded_intersection_curves is asymmetric (always embeds into mesh0)
+    if mode not in _MODE_MAP:
+        raise ValueError(f"mode must be 'sos' or 'primitives', got '{mode}'")
+
+    mode_int = _MODE_MAP[mode]
+    if resolve_crossings:
+        mode_int |= _RESOLVE_CROSSINGS
+    if resolve_self_crossings:
+        mode_int |= _RESOLVE_SELF_CROSSINGS
+
     meta0 = extract_meta(mesh0)
     meta1 = extract_meta(mesh1)
     suffix = build_suffix_pair(meta0, meta1)
 
-    # Only mesh0 faces are returned, so result type depends only on mesh0
     result_is_dynamic = mesh0.is_dynamic
 
     if return_curves:
         func_name = f"embedded_intersection_curves_curves_mesh_mesh_{suffix}"
-        (result_faces, result_points), ((paths_offsets, paths_data), curve_points) = getattr(
+        (result_faces, result_points), face_labels, ((paths_offsets, paths_data), curve_points) = getattr(
             _trueform.cut, func_name
-        )(mesh0._wrapper, mesh1._wrapper)
+        )(mesh0._wrapper, mesh1._wrapper, mode_int)
 
         if result_is_dynamic:
             result_faces = OffsetBlockedArray(result_faces[0], result_faces[1])
 
         paths = OffsetBlockedArray(paths_offsets, paths_data)
-
-        return (result_faces, result_points), (paths, curve_points)
+        return (result_faces, result_points), face_labels, (paths, curve_points)
     else:
         func_name = f"embedded_intersection_curves_mesh_mesh_{suffix}"
-        result_faces, result_points = getattr(_trueform.cut, func_name)(
-            mesh0._wrapper, mesh1._wrapper
+        (result_faces, result_points), face_labels = getattr(_trueform.cut, func_name)(
+            mesh0._wrapper, mesh1._wrapper, mode_int
         )
 
         if result_is_dynamic:
             result_faces = OffsetBlockedArray(result_faces[0], result_faces[1])
 
-        return result_faces, result_points
+        return (result_faces, result_points), face_labels

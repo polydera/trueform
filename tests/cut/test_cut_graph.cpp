@@ -77,7 +77,7 @@ void run_pipeline(
     return conv.convert(forms[tag].points()[id]);
   };
 
-  ig.build(ibp, apply_to_face, get_mesh_point);
+  ig.build(ibp, apply_to_face, get_mesh_point, tf::intersect_mode::primitives | tf::intersect_mode::resolve_contours);
   fc.build(ig, apply_to_face, get_mesh_point);
   cg.build(fc, int(ig.points().size()));
 }
@@ -328,7 +328,7 @@ auto run_box_pipeline(F0 &box0, F1 &box1) -> box_result {
   };
 
   box_result r;
-  r.ig.build(ibp, apply_to_face, get_mesh_point);
+  r.ig.build(ibp, apply_to_face, get_mesh_point, tf::intersect_mode::primitives | tf::intersect_mode::resolve_contours);
   r.fc.build(r.ig, apply_to_face, get_mesh_point);
   r.cg.build(r.fc, int(r.ig.points().size()));
 

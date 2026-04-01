@@ -11,7 +11,7 @@ Usage - Standalone scripts:
     mesh = bpy.convert.from_blender(obj)
 
     # Run trueform operations
-    result_faces, result_points = tf.boolean_difference(mesh_a, mesh_b)
+    (result_faces, result_points), _labels, _fl = tf.boolean_difference(mesh_a, mesh_b)
     result = tf.Mesh(result_faces, result_points)
 
     # Convert back to Blender

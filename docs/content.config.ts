@@ -1,53 +1,51 @@
 import { defineContentConfig, defineCollection, z } from '@nuxt/content'
-import { asSitemapCollection } from '@nuxtjs/sitemap/content'
+import { defineSitemapSchema } from '@nuxtjs/sitemap/content'
+
+const linksSchema = z.array(z.object({
+  label: z.string(),
+  icon: z.string(),
+  to: z.string(),
+  target: z.string().optional()
+})).optional()
 
 export default defineContentConfig({
   collections: {
-    landing: defineCollection(asSitemapCollection({
-        type: 'page',
-        source: 'index.md'
-      })),
-    docsCpp: defineCollection(asSitemapCollection({
+    landing: defineCollection({
+      type: 'page',
+      source: 'index.md',
+      schema: z.object({
+        sitemap: defineSitemapSchema()
+      })
+    }),
+    docsCpp: defineCollection({
       type: 'page',
       source: {
         include: 'cpp/**',
       },
       schema: z.object({
-        links: z.array(z.object({
-          label: z.string(),
-          icon: z.string(),
-          to: z.string(),
-          target: z.string().optional()
-        })).optional()
+        sitemap: defineSitemapSchema(),
+        links: linksSchema
       })
-    })),
-    docsPy: defineCollection(asSitemapCollection({
+    }),
+    docsPy: defineCollection({
       type: 'page',
       source: {
         include: 'py/**',
       },
       schema: z.object({
-        links: z.array(z.object({
-          label: z.string(),
-          icon: z.string(),
-          to: z.string(),
-          target: z.string().optional()
-        })).optional()
+        sitemap: defineSitemapSchema(),
+        links: linksSchema
       })
-    })),
-    docsTs: defineCollection(asSitemapCollection({
+    }),
+    docsTs: defineCollection({
       type: 'page',
       source: {
         include: 'ts/**',
       },
       schema: z.object({
-        links: z.array(z.object({
-          label: z.string(),
-          icon: z.string(),
-          to: z.string(),
-          target: z.string().optional()
-        })).optional()
+        sitemap: defineSitemapSchema(),
+        links: linksSchema
       })
-    })),
+    }),
   }
 })

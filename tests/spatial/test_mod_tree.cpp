@@ -218,7 +218,7 @@ TEMPLATE_TEST_CASE("mod_tree_stitched_boolean_raycast", "[mod_tree]",
         tf::vector<real_t, 3>{real_t(0.5), real_t(0.5), real_t(0.5)}));
 
     // Do the boolean (left difference)
-    auto [result, labels, index_maps] = tf::make_boolean(
+    auto [result, labels, fl_, index_maps] = tf::make_boolean(
         box.polygons() | tf::tag(fm0) | tf::tag(mel0) | tf::tag(mod_tree_input),
         sphere.polygons() | tf::tag(fm1) | tf::tag(mel1) | tf::tag(tree1) | tf::tag(frame),
         tf::boolean_op::left_difference, tf::return_index_map);
@@ -293,7 +293,7 @@ TEMPLATE_TEST_CASE("mod_tree_stitched_boolean_neighbor_search", "[mod_tree]",
         tf::vector<real_t, 3>{real_t(0.5), real_t(0.5), real_t(0.5)}));
 
     // Do the boolean
-    auto [result, labels, index_maps] = tf::make_boolean(
+    auto [result, labels, fl_, index_maps] = tf::make_boolean(
         box.polygons() | tf::tag(fm0) | tf::tag(mel0) | tf::tag(mod_tree_input),
         sphere.polygons() | tf::tag(fm1) | tf::tag(mel1) | tf::tag(tree1) | tf::tag(frame),
         tf::boolean_op::left_difference, tf::return_index_map);
@@ -365,7 +365,7 @@ TEMPLATE_TEST_CASE("mod_tree_main_and_delta", "[mod_tree]",
         tf::vector<real_t, 3>{real_t(0), real_t(0), real_t(1)}));
 
     // Do the boolean
-    auto [result, labels, index_maps] = tf::make_boolean(
+    auto [result, labels, fl_, index_maps] = tf::make_boolean(
         sphere0.polygons() | tf::tag(fm0) | tf::tag(mel0) | tf::tag(mod_tree_input),
         sphere1.polygons() | tf::tag(fm1) | tf::tag(mel1) | tf::tag(tree1) | tf::tag(frame),
         tf::boolean_op::left_difference, tf::return_index_map);
@@ -455,7 +455,7 @@ TEMPLATE_TEST_CASE("mod_tree_union_boolean", "[mod_tree]",
         tf::vector<real_t, 3>{real_t(0.5), real_t(0), real_t(0)}));
 
     // Do union boolean
-    auto [result, labels, index_maps] = tf::make_boolean(
+    auto [result, labels, fl_, index_maps] = tf::make_boolean(
         box1.polygons() | tf::tag(fm0) | tf::tag(mel0) | tf::tag(mod_tree_input),
         box2.polygons() | tf::tag(fm1) | tf::tag(mel1) | tf::tag(tree1) | tf::tag(frame),
         tf::boolean_op::merge, tf::return_index_map);

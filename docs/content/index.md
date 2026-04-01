@@ -1,7 +1,7 @@
 ---
 seo:
   title: trueform — Real-time geometric processing
-  description: Geometry library for real-time mesh booleans, registration, remeshing and queries. One engine across C++, Python, and TypeScript.
+  description: Geometry library for real-time arrangements, booleans, registration, remeshing and queries. One engine across C++, Python, and TypeScript.
 ---
 
 ::u-page-hero{class="dark:bg-gradient-to-b from-neutral-900 to-neutral-950"}
@@ -15,7 +15,7 @@ orientation: horizontal
 Real-time [geometric processing]{.text-primary}
 
 #description
-Mesh booleans, registration, remeshing and queries — at interactive speed on million-polygon meshes. Robust to non-manifold flaps, inconsistent winding, and pipeline artifacts. One engine across C++, Python, and TypeScript.
+Arrangements, booleans, registration, remeshing and queries — at interactive speed on million-polygon meshes. Exact and robust to non-manifold flaps and pipeline artifacts. One engine across C++, Python, and TypeScript.
 
 #links
   :::u-button
@@ -113,7 +113,7 @@ Why trueform
   Robust by Design
 
   #description
-  Production-tested on meshes with non-manifold flaps, inconsistent geometry, and accumulated pipeline artifacts.
+  Exact predicates and canonical topology. Handles non-manifold flaps, inconsistent winding, coplanar faces, and accumulated pipeline artifacts.
   :::
 
   :::u-page-feature
@@ -143,10 +143,10 @@ Why trueform
   icon: i-lucide-scissors
   ---
   #title
-  Booleans & Intersections
+  Arrangements & Booleans
 
   #description
-  Union, intersection, and difference on closed meshes. Intersection curves, isocontours, and isobands. Commutative correctness: chain operations freely.
+  Multi-mesh arrangements and self-intersection resolution. Booleans and intersection curves, isocontours, and isobands. Exact predicates with canonical topology and commutative correctness.
   :::
 
   :::u-page-feature

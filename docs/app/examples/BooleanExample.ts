@@ -420,6 +420,7 @@ export class BooleanExample {
     pathsOffsets.delete(); pathsData.delete(); pathsBuf.delete(); pts.delete();
 
     this.resultMesh = result.mesh;
+    result.faceLabels.delete();
     result.labels.delete();
     result.curves.delete();
 

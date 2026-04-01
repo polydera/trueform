@@ -1,6 +1,6 @@
 # trueform
 
-Real-time geometric processing on NumPy arrays. Enriched NumPy arrays with support for vectorized spatial queries. Mesh booleans, registration, remeshing — at interactive speed on million-polygon meshes. Robust to non-manifold flaps, inconsistent winding, and pipeline artifacts. NumPy in, NumPy out.
+Real-time geometric processing on NumPy arrays. Enriched NumPy arrays with support for vectorized spatial queries. Arrangements, booleans, registration, remeshing — at interactive speed on million-polygon meshes. Exact and robust to non-manifold flaps and pipeline artifacts. NumPy in, NumPy out.
 
 **[Documentation](https://trueform.polydera.com/py/getting-started)** | **[Live Examples](https://trueform.polydera.com/live-examples/boolean)**
 
@@ -63,10 +63,10 @@ if (t := tf.ray_cast(ray, triangle)) is not None:
 **Boolean operations:**
 
 ```python
-(result_faces, result_points), labels = tf.boolean_union(mesh0, mesh1)
+(result_faces, result_points), labels, face_labels = tf.boolean_union(mesh0, mesh1)
 
 # With intersection curves
-(result_faces, result_points), labels, (paths, curve_points) = tf.boolean_union(
+(result_faces, result_points), labels, face_labels, (paths, curve_points) = tf.boolean_union(
     mesh0, mesh1, return_curves=True
 )
 ```
@@ -105,19 +105,19 @@ Cached meshes with automatic dirty-tracking for live preview add-ons. See [Blend
 
 ## Benchmarks
 
-| Operation | Input | Time | Speedup | Baseline |
-|-----------|-------|------|---------|----------|
-| Boolean Union | 2 × 1M | 28 ms | **84×** | CGAL `Simple_cartesian<double>` |
-| Mesh–Mesh Curves | 2 × 1M | 7 ms | **233×** | CGAL `Simple_cartesian<double>` |
-| ICP Registration | 1M | 7.7 ms | **93×** | libigl |
-| Self-Intersection | 1M | 78 ms | **37×** | libigl EPECK (GMP/MPFR) |
-| Isocontours | 1M, 16 cuts | 3.8 ms | **38×** | VTK `vtkContourFilter` |
-| Connected Components | 1M | 15 ms | **10×** | CGAL |
-| Boundary Paths | 1M | 12 ms | **11×** | CGAL |
-| k-NN Query | 500K | 1.7 µs | **3×** | nanoflann k-d tree |
-| Mesh–Mesh Distance | 2 × 1M | 0.2 ms | **2×** | Coal (FCL) `OBBRSS` |
-| Decimation (50%) | 1M | 72 ms | **50×** | CGAL `edge_collapse` |
-| Principal Curvatures | 1M | 25 ms | **55×** | libigl |
+| Operation | Input | Time | Speedup | Baseline | TrueForm |
+|-----------|-------|------|---------|----------|----------|
+| Boolean Union | 2 × 1M | 28 ms | **84×** | CGAL `Simple_cartesian<double>` | exact predicates, canonical topology |
+| Mesh–Mesh Curves | 2 × 1M | 7 ms | **233×** | CGAL `Simple_cartesian<double>` | exact predicates, canonical topology |
+| ICP Registration | 1M | 7.7 ms | **93×** | libigl | AABB tree, random subsampling |
+| Self-Intersection | 1M | 78 ms | **37×** | libigl EPECK (GMP/MPFR) | exact predicates, canonical topology |
+| Isocontours | 1M, 16 cuts | 3.8 ms | **38×** | VTK `vtkContourFilter` | exact predicates |
+| Connected Components | 1M | 15 ms | **10×** | CGAL | parallel union-find |
+| Boundary Paths | 1M | 12 ms | **11×** | CGAL | Hierholzer's algorithm |
+| k-NN Query | 500K | 1.7 µs | **3×** | nanoflann k-d tree | AABB tree |
+| Mesh–Mesh Distance | 2 × 1M | 0.2 ms | **2×** | Coal (FCL) `OBBRSS` | OBBRSS tree |
+| Decimation (50%) | 1M | 72 ms | **50×** | CGAL `edge_collapse` | parallel partitioned collapse |
+| Principal Curvatures | 1M | 25 ms | **55×** | libigl | parallel k-ring quadric fitting |
 
 Apple M4 Max, 16 threads, Clang `-O3`. [Full methodology](https://trueform.polydera.com/py/benchmarks)
 

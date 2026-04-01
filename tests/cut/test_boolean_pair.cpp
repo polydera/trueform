@@ -78,16 +78,18 @@ TEMPLATE_TEST_CASE("boolean_pair_spheres_diff", "[boolean_pair]",
   auto tagged1 = s1.polygons() | tf::tag(t1.fm) | tf::tag(t1.mel) |
                  tf::tag(t1.tree) | tf::tag(frame);
 
-  auto [combined, labels, curves] =
+  auto [combined, labels, fl_, curves] =
       tf::make_boolean(tagged0, tagged1,
                        tf::boolean_op::left_difference, tf::return_curves);
 
-  auto [left, right] =
+  auto [left, right, fl_left, fl_right] =
       tf::make_boolean_pair(tagged0, tagged1,
                             tf::boolean_op::left_difference);
 
   REQUIRE(count_degenerate(left) == 0);
   REQUIRE(count_degenerate(right) == 0);
+  REQUIRE(fl_left.size() == left.faces().size());
+  REQUIRE(fl_right.size() == right.faces().size());
   REQUIRE(left.faces().size() + right.faces().size() ==
           combined.faces().size());
 
@@ -129,14 +131,16 @@ TEMPLATE_TEST_CASE("boolean_pair_spheres_union", "[boolean_pair]",
   auto tagged1 = s1.polygons() | tf::tag(t1.fm) | tf::tag(t1.mel) |
                  tf::tag(t1.tree) | tf::tag(frame);
 
-  auto [combined, labels] =
+  auto [combined, labels, fl_] =
       tf::make_boolean(tagged0, tagged1, tf::boolean_op::merge);
 
-  auto [left, right] =
+  auto [left, right, fl_left, fl_right] =
       tf::make_boolean_pair(tagged0, tagged1, tf::boolean_op::merge);
 
   REQUIRE(count_degenerate(left) == 0);
   REQUIRE(count_degenerate(right) == 0);
+  REQUIRE(fl_left.size() == left.faces().size());
+  REQUIRE(fl_right.size() == right.faces().size());
   REQUIRE(left.faces().size() + right.faces().size() ==
           combined.faces().size());
 }
@@ -165,7 +169,7 @@ TEMPLATE_TEST_CASE("boolean_pair_with_curves", "[boolean_pair]",
   auto tagged1 = s1.polygons() | tf::tag(t1.fm) | tf::tag(t1.mel) |
                  tf::tag(t1.tree) | tf::tag(frame);
 
-  auto [left, right, curves] =
+  auto [left, right, fl_left, fl_right, curves] =
       tf::make_boolean_pair(tagged0, tagged1,
                             tf::boolean_op::left_difference, tf::return_curves);
 
@@ -207,16 +211,18 @@ TEMPLATE_TEST_CASE("boolean_pair_box_sphere_corner", "[boolean_pair]",
   auto tagged1 = sphere.polygons() | tf::tag(t1.fm) | tf::tag(t1.mel) |
                  tf::tag(t1.tree) | tf::tag(frame);
 
-  auto [combined, labels, curves] =
+  auto [combined, labels, fl_, curves] =
       tf::make_boolean(tagged0, tagged1,
                        tf::boolean_op::left_difference, tf::return_curves);
 
-  auto [left, right] =
+  auto [left, right, fl_left, fl_right] =
       tf::make_boolean_pair(tagged0, tagged1,
                             tf::boolean_op::left_difference);
 
   REQUIRE(count_degenerate(left) == 0);
   REQUIRE(count_degenerate(right) == 0);
+  REQUIRE(fl_left.size() == left.faces().size());
+  REQUIRE(fl_right.size() == right.faces().size());
   REQUIRE(left.faces().size() + right.faces().size() ==
           combined.faces().size());
 

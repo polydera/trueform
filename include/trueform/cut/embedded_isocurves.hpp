@@ -49,7 +49,10 @@ auto embedded_isocurves(const tf::polygons<Policy> &polygons,
   } else {
     auto [sfi, fc, pids] =
         cut::dispatch::build_iso_pipeline<Index>(polygons, scalars, cut_values);
-    return tf::cut::embedded_isocurves<Index>(polygons, sfi, fc, pids);
+    auto [res_polygons, labels, face_labels] =
+        tf::cut::embedded_isocurves<Index>(polygons, sfi, fc, pids);
+    return std::make_tuple(std::move(res_polygons), std::move(labels),
+                           std::move(face_labels));
   }
 }
 
@@ -69,7 +72,7 @@ auto embedded_isocurves(const tf::polygons<Policy> &polygons,
   } else {
     auto [sfi, fc, pids] =
         cut::dispatch::build_iso_pipeline<Index>(polygons, scalars, cut_values);
-    auto [res_polygons, labels] =
+    auto [res_polygons, labels, face_labels] =
         tf::cut::embedded_isocurves<Index>(polygons, sfi, fc, pids);
 
     auto ie = tf::make_intersection_edges(sfi);
@@ -82,7 +85,7 @@ auto embedded_isocurves(const tf::polygons<Policy> &polygons,
     tf::parallel_copy(sfi.intersection_points(), cb.points());
 
     return std::make_tuple(std::move(res_polygons), std::move(labels),
-                           std::move(cb));
+                           std::move(face_labels), std::move(cb));
   }
 }
 

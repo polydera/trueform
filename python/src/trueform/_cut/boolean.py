@@ -53,6 +53,8 @@ def boolean_union(
     labels : np.ndarray
         Labels indicating which source mesh each face came from, shape (N,)
         Values: 0=mesh0, 1=mesh1
+    face_labels : np.ndarray
+        Labels indicating which source face each face came from, shape (N,)
     paths : OffsetBlockedArray, optional
         Only returned if return_curves=True
         Intersection curves as indices into curve_points
@@ -68,11 +70,11 @@ def boolean_union(
     >>> mesh1 = tf.Mesh(*tf.read_stl("mesh1.stl"))
     >>>
     >>> # Compute union
-    >>> (faces, points), labels = tf.boolean_union(mesh0, mesh1)
+    >>> (faces, points), labels, face_labels = tf.boolean_union(mesh0, mesh1)
     >>> print(f"Union has {len(faces)} faces")
     >>>
     >>> # Compute union with curves
-    >>> (faces, points), labels, (paths, curve_pts) = tf.boolean_union(
+    >>> (faces, points), labels, face_labels, (paths, curve_pts) = tf.boolean_union(
     ...     mesh0, mesh1, return_curves=True
     ... )
     """
@@ -111,6 +113,8 @@ def boolean_intersection(
     labels : np.ndarray
         Labels indicating which source mesh each face came from, shape (N,)
         Values: 0=mesh0, 1=mesh1
+    face_labels : np.ndarray
+        Labels indicating which source face each face came from, shape (N,)
     paths : OffsetBlockedArray, optional
         Only returned if return_curves=True
         Intersection curves as indices into curve_points
@@ -126,7 +130,7 @@ def boolean_intersection(
     >>> mesh1 = tf.Mesh(*tf.read_stl("mesh1.stl"))
     >>>
     >>> # Compute intersection
-    >>> (faces, points), labels = tf.boolean_intersection(mesh0, mesh1)
+    >>> (faces, points), labels, face_labels = tf.boolean_intersection(mesh0, mesh1)
     >>> print(f"Intersection has {len(faces)} faces")
     """
     return _boolean_impl(mesh0, mesh1, _OP_INTERSECTION, return_curves)
@@ -167,6 +171,8 @@ def boolean_difference(
     labels : np.ndarray
         Labels indicating which source mesh each face came from, shape (N,)
         Values: 0=mesh0, 1=mesh1
+    face_labels : np.ndarray
+        Labels indicating which source face each face came from, shape (N,)
     paths : OffsetBlockedArray, optional
         Only returned if return_curves=True
         Intersection curves as indices into curve_points
@@ -182,11 +188,11 @@ def boolean_difference(
     >>> mesh1 = tf.Mesh(*tf.read_stl("mesh1.stl"))
     >>>
     >>> # Compute difference mesh0 - mesh1
-    >>> (faces, points), labels = tf.boolean_difference(mesh0, mesh1)
+    >>> (faces, points), labels, face_labels = tf.boolean_difference(mesh0, mesh1)
     >>> print(f"Difference has {len(faces)} faces")
     >>>
     >>> # Compute reverse difference mesh1 - mesh0
-    >>> (faces, points), labels = tf.boolean_difference(mesh1, mesh0)
+    >>> (faces, points), labels, face_labels = tf.boolean_difference(mesh1, mesh0)
     """
     return _boolean_impl(mesh0, mesh1, _OP_DIFFERENCE, return_curves)
 
@@ -254,7 +260,7 @@ def _boolean_impl(mesh0, mesh1, op_int, return_curves):
     # 7. DISPATCH TO C++
     if return_curves:
         func_name = f"boolean_curves_mesh_mesh_{suffix}"
-        (result_faces, result_points), labels, ((paths_offsets, paths_data), curve_points) = getattr(
+        (result_faces, result_points), labels, face_labels, ((paths_offsets, paths_data), curve_points) = getattr(
             _trueform.cut, func_name
         )(mesh0._wrapper, mesh1._wrapper, op_int)
 
@@ -270,10 +276,10 @@ def _boolean_impl(mesh0, mesh1, op_int, return_curves):
         # Wrap paths in OffsetBlockedArray
         paths = OffsetBlockedArray(paths_offsets, paths_data)
 
-        return (result_faces, result_points), labels, (paths, curve_points)
+        return (result_faces, result_points), labels, face_labels, (paths, curve_points)
     else:
         func_name = f"boolean_mesh_mesh_{suffix}"
-        (result_faces, result_points), labels = getattr(_trueform.cut, func_name)(
+        (result_faces, result_points), labels, face_labels = getattr(_trueform.cut, func_name)(
             mesh0._wrapper, mesh1._wrapper, op_int
         )
 
@@ -286,4 +292,4 @@ def _boolean_impl(mesh0, mesh1, op_int, return_curves):
         if result_is_dynamic:
             result_faces = OffsetBlockedArray(result_faces[0], result_faces[1])
 
-        return (result_faces, result_points), labels
+        return (result_faces, result_points), labels, face_labels

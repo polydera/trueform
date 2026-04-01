@@ -15,10 +15,18 @@ from .._core import OffsetBlockedArray
 from .._dispatch import extract_meta, build_suffix
 
 
+_MODE_MAP = {"sos": 1, "primitives": 2}
+_RESOLVE_CROSSINGS = 4
+_RESOLVE_SELF_CROSSINGS = 8
+
+
 def mesh_arrangements(
     meshes,
     *,
-    return_curves: bool = False
+    return_curves: bool = False,
+    mode: str = "primitives",
+    resolve_crossings: bool = None,
+    resolve_self_crossings: bool = False
 ):
     """
     Compute mesh arrangement from N meshes.
@@ -33,6 +41,13 @@ def mesh_arrangements(
         (float32 or float64).
     return_curves : bool, default False
         If True, also return intersection curves.
+    mode : str, default "primitives"
+        Intersection mode. "sos" or "primitives".
+    resolve_crossings : bool, optional
+        Resolve crossings between different contours on the same face.
+        Default: False for 2 meshes, True for 3+ meshes.
+    resolve_self_crossings : bool, default False
+        Resolve self-crossings within a single contour.
 
     Returns
     -------
@@ -104,6 +119,16 @@ def mesh_arrangements(
     # All meshes must be same type (enforced above), so check first
     result_is_dynamic = meshes[0].is_dynamic
 
+    # Build mode int
+    if mode not in _MODE_MAP:
+        raise ValueError(f"mode must be 'sos' or 'primitives', got '{mode}'")
+    mode_int = _MODE_MAP[mode]
+    rc = resolve_crossings if resolve_crossings is not None else len(meshes) > 2
+    if rc:
+        mode_int |= _RESOLVE_CROSSINGS
+    if resolve_self_crossings:
+        mode_int |= _RESOLVE_SELF_CROSSINGS
+
     # Extract wrappers
     wrappers = [m._wrapper for m in meshes]
 
@@ -113,7 +138,7 @@ def mesh_arrangements(
         (result_faces, result_points), tag_labels, face_labels, \
             ((paths_offsets, paths_data), curve_points) = getattr(
                 _trueform.cut, func_name
-            )(wrappers)
+            )(wrappers, mode_int)
         if result_is_dynamic:
             result_faces = OffsetBlockedArray(result_faces[0], result_faces[1])
         paths = OffsetBlockedArray(paths_offsets, paths_data)
@@ -123,7 +148,7 @@ def mesh_arrangements(
         func_name = f"mesh_arrangements_{suffix}"
         (result_faces, result_points), tag_labels, face_labels = getattr(
             _trueform.cut, func_name
-        )(wrappers)
+        )(wrappers, mode_int)
         if result_is_dynamic:
             result_faces = OffsetBlockedArray(result_faces[0], result_faces[1])
         return (result_faces, result_points), tag_labels, face_labels

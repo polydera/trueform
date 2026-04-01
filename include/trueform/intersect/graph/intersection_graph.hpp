@@ -23,6 +23,7 @@
 #include "../../core/views/drop.hpp"
 #include "../../core/views/take.hpp"
 #include "../exact/tagged_intersections.hpp"
+#include "../intersect_mode.hpp"
 #include "./canonicalize_edges.hpp"
 #include "./collect_vv_pairs.hpp"
 #include "./crossing_classification.hpp"
@@ -86,8 +87,8 @@ public:
   template <typename ApplyToFace, typename GetMeshPoint>
   auto
   build(const tf::intersect::tagged_intersections<Index, Int, 3> &intersections,
-        const ApplyToFace &apply_to_face, const GetMeshPoint &get_mesh_point)
-      -> void {
+        const ApplyToFace &apply_to_face, const GetMeshPoint &get_mesh_point,
+        tf::intersect_mode mode) -> void {
     clear();
 
     auto tag_offs = intersections.tag_offsets();
@@ -109,7 +110,12 @@ public:
     build_loops(subranges, apply_to_face, get_point, get_flat_id);
     build_edges(subranges, apply_to_face);
     intersect::graph::canonicalize_edges(_edge_defs, _edges);
-    detect_and_split_crossings(ipts, apply_to_face, get_point);
+    if (!(mode & tf::intersect_mode::resolve_self_crossing_contours) &&
+        _tag_offsets.size() < (3 + 1)) {
+      _points.allocate(ipts.size());
+      tf::parallel_copy(ipts, tf::make_range(_points));
+    } else
+      detect_and_split_crossings(ipts, apply_to_face, get_point, mode);
   }
 
 private:
@@ -142,9 +148,8 @@ private:
         auto tag = subrange[0].tag;
         auto object = subrange[0].object;
         apply_to_face_f(tag, object, [&](const auto &face) {
-          intersect::graph::extract_loop(subrange, face, tag,
-                                                get_point_f, get_flat_id_f,
-                                                local.work, local.data);
+          intersect::graph::extract_loop(subrange, face, tag, get_point_f,
+                                         get_flat_id_f, local.work, local.data);
         });
         local.descs.push_back({tag, object});
         *sit++ = static_cast<Index>(local.data.size() - old_size);
@@ -229,7 +234,7 @@ private:
   template <typename IPoints, typename ApplyToFace, typename GetPoint>
   auto detect_and_split_crossings(const IPoints &ipts,
                                   const ApplyToFace &apply_to_face,
-                                  const GetPoint &get_point) -> void {
+                                  const GetPoint &get_point, tf::intersect_mode mode) -> void {
     if (_edges.size() == 0) {
       _points.allocate(ipts.size());
       tf::parallel_copy(ipts, tf::make_range(_points));
@@ -239,7 +244,7 @@ private:
     auto n_ipts = static_cast<Index>(ipts.size());
 
     auto records = intersect::graph::gather_crossing_records<Index>(
-        _edges, _edge_defs, apply_to_face, get_point);
+        _edges, _edge_defs, apply_to_face, get_point, mode);
     if (records.size() == 0) {
       _points.allocate(n_ipts);
       tf::parallel_copy(ipts, tf::make_range(_points));
@@ -267,9 +272,8 @@ private:
     auto entries = intersect::graph::collect_split_entries<Index>(
         ee_range, ee_offsets, ve_range, crossing_base);
     if (entries.size() > 0) {
-      intersect::graph::split_edges(entries, crossing_base,
-                                           crossing_points, _edge_defs, _edges,
-                                           get_point, merge_pairs);
+      intersect::graph::split_edges(entries, crossing_base, crossing_points,
+                                    _edge_defs, _edges, get_point, merge_pairs);
     }
 
     auto total_size =

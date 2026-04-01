@@ -51,7 +51,7 @@ describe("Topology", () => {
     assert(ecTorus === 0, `expected euler=0 for torus, got ${ecTorus}`);
     log(`  torus euler = ${ecTorus}`, "line-pass");
 
-    diff.labels.delete();
+    diff.faceLabels.delete(); diff.labels.delete();
     torus.delete();
     cyl.delete();
     box.delete();

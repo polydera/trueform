@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 #include "../core/algorithm/parallel_copy.hpp"
 #include "../core/curves_buffer.hpp"
@@ -17,9 +17,9 @@
 #include "../cut/dispatch/self_boolean.hpp"
 #include "../cut/face_cuts.hpp"
 #include "../topology/connect_edges_to_paths.hpp"
-#include "./intersections_within_polygons.hpp"
 #include "./graph/intersection_graph.hpp"
 #include "./intersect_mode.hpp"
+#include "./intersections_within_polygons.hpp"
 
 namespace tf {
 
@@ -43,13 +43,12 @@ auto self_intersection_curves(const tf::polygons<Policy> &p,
   };
 
   tf::intersection_graph<Index, Int> ig;
-  ig.build(iwp, apply_to_face, get_mesh_point);
+  ig.build(iwp, apply_to_face, get_mesh_point, mode);
 
   auto paths = [&]() {
-    if (mode == tf::intersect_mode::sos) {
+    if (mode & tf::intersect_mode::sos) {
       auto edge_pairs = tf::make_mapped_range(
-          ig.edge_groups(),
-          [](const auto &group) -> std::array<Index, 2> {
+          ig.edge_groups(), [](const auto &group) -> std::array<Index, 2> {
             return {group[0].point_0, group[0].point_1};
           });
       return tf::connect_edges_to_paths(tf::make_edges(edge_pairs));
@@ -87,11 +86,13 @@ auto self_intersection_curves(const tf::polygons<Policy> &p,
 /// @tparam Policy The policy type for the mesh.
 /// @param _polygons The input @ref tf::polygons (or tagged form).
 /// @param mode The intersection mode (sos or primitives).
-/// @return A @ref tf::curves_buffer containing connected self-intersection curves.
+/// @return A @ref tf::curves_buffer containing connected self-intersection
+/// curves.
 template <typename Int = tf::exact::int32, typename Policy>
 auto make_self_intersection_curves(
     const tf::polygons<Policy> &_polygons,
-    tf::intersect_mode mode = tf::intersect_mode::sos) {
+    tf::intersect_mode mode = tf::intersect_mode::sos |
+                              tf::intersect_mode::resolve_contours) {
   return cut::dispatch::self_boolean(_polygons, [mode](const auto &p) {
     return intersect::self_intersection_curves<Int>(p, mode);
   });

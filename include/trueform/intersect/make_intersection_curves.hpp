@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 #include "../core/algorithm/parallel_copy.hpp"
 #include "../core/curves_buffer.hpp"
@@ -20,9 +20,9 @@
 #include "../cut/dispatch/boolean.hpp"
 #include "../cut/face_cuts.hpp"
 #include "../topology/connect_edges_to_paths.hpp"
-#include "./intersections_between_polygons.hpp"
 #include "./graph/intersection_graph.hpp"
 #include "./intersect_mode.hpp"
+#include "./intersections_between_polygons.hpp"
 
 namespace tf {
 
@@ -61,8 +61,7 @@ auto make_intersection_curves(
           else
             f(p1.faces()[object]);
         };
-        auto get_mesh_point = [&](int tag,
-                                  Index id) -> tf::point<Int, 3> {
+        auto get_mesh_point = [&](int tag, Index id) -> tf::point<Int, 3> {
           if (tag == 0)
             return conv.convert(
                 tf::transformed(p0.points()[id], tf::frame_of(p0)));
@@ -72,10 +71,10 @@ auto make_intersection_curves(
         };
 
         tf::intersection_graph<Index, Int> ig;
-        ig.build(ibp, apply_to_face, get_mesh_point);
+        ig.build(ibp, apply_to_face, get_mesh_point, mode);
 
         auto paths = [&]() {
-          if (mode == tf::intersect_mode::sos) {
+          if (mode & tf::intersect_mode::sos) {
             auto edge_pairs = tf::make_mapped_range(
                 ig.edge_groups(),
                 [](const auto &group) -> std::array<Index, 2> {
@@ -100,8 +99,7 @@ auto make_intersection_curves(
         cb.points_buffer().allocate(ipts.size());
         tf::parallel_copy(
             tf::make_points(tf::make_mapped_range(
-                ipts,
-                [&conv](const auto &pt) { return conv.deconvert(pt); })),
+                ipts, [&conv](const auto &pt) { return conv.deconvert(pt); })),
             cb.points());
         return cb;
       });
@@ -127,13 +125,12 @@ auto intersection_curves_n(const FormsRange &forms, tf::intersect_mode mode) {
   };
 
   tf::intersection_graph<Index, Int> ig;
-  ig.build(ibp, apply_to_face, get_mesh_point);
+  ig.build(ibp, apply_to_face, get_mesh_point, mode);
 
   auto paths = [&]() {
-    if (mode == tf::intersect_mode::sos) {
+    if (mode & tf::intersect_mode::sos) {
       auto edge_pairs = tf::make_mapped_range(
-          ig.edge_groups(),
-          [](const auto &group) -> std::array<Index, 2> {
+          ig.edge_groups(), [](const auto &group) -> std::array<Index, 2> {
             return {group[0].point_0, group[0].point_1};
           });
       return tf::connect_edges_to_paths(tf::make_edges(edge_pairs));
@@ -175,7 +172,8 @@ auto intersection_curves_n(const FormsRange &forms, tf::intersect_mode mode) {
 template <typename Int = tf::exact::int32, typename Range>
 auto make_intersection_curves(
     const Range &_forms,
-    tf::intersect_mode mode = tf::intersect_mode::sos) {
+    tf::intersect_mode mode = tf::intersect_mode::sos |
+                              tf::intersect_mode::resolve_crossing_contours) {
   return cut::dispatch::arrangement(_forms, [mode](const auto &forms) {
     return intersect::intersection_curves_n<Int>(forms, mode);
   });

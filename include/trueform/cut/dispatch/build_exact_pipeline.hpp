@@ -14,18 +14,18 @@
 
 #include "../../core/frame_of.hpp"
 #include "../../core/transformed.hpp"
-#include "../../intersect/intersections_between_polygons.hpp"
 #include "../../intersect/graph/intersection_graph.hpp"
+#include "../../intersect/intersections_between_polygons.hpp"
 #include "../cut_graph.hpp"
 #include "../face_cuts.hpp"
 
 namespace tf::cut::dispatch {
 
-template <typename Index, typename RealType, typename Int,
-          typename Policy0, typename Policy1>
-auto build_exact_pipeline(
-    const tf::polygons<Policy0> &p0, const tf::polygons<Policy1> &p1,
-    tf::intersect_mode mode = tf::intersect_mode::primitives) {
+template <typename Index, typename RealType, typename Int, typename Policy0,
+          typename Policy1>
+auto build_exact_pipeline(const tf::polygons<Policy0> &p0,
+                          const tf::polygons<Policy1> &p1,
+                          tf::intersect_mode mode) {
   tf::intersections_between_polygons<Index, RealType, Int> ibp;
   ibp.build(p0, p1, mode);
 
@@ -38,15 +38,13 @@ auto build_exact_pipeline(
   };
   auto get_mesh_point = [&](int tag, Index id) -> tf::point<Int, 3> {
     if (tag == 0)
-      return conv.convert(
-          tf::transformed(p0.points()[id], tf::frame_of(p0)));
+      return conv.convert(tf::transformed(p0.points()[id], tf::frame_of(p0)));
     else
-      return conv.convert(
-          tf::transformed(p1.points()[id], tf::frame_of(p1)));
+      return conv.convert(tf::transformed(p1.points()[id], tf::frame_of(p1)));
   };
 
   tf::intersection_graph<Index, Int> ig;
-  ig.build(ibp, apply_to_face, get_mesh_point);
+  ig.build(ibp, apply_to_face, get_mesh_point, mode);
 
   tf::face_cuts<Index, Int> fc;
   fc.build(ig, apply_to_face, get_mesh_point);

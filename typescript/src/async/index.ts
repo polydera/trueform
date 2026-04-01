@@ -17,13 +17,10 @@ export {
 } from "../ndarray/async";
 export { readStl, readObj, writeStl, writeObj } from "../io/async";
 export {
-  booleanUnion, booleanUnionWithCurves,
-  booleanIntersection, booleanIntersectionWithCurves,
-  booleanDifference, booleanDifferenceWithCurves,
-  isobands, isobandsWithCurves,
-  embeddedIntersectionCurves, embeddedIntersectionCurvesWithCurves,
-  embeddedSelfIntersectionCurves, embeddedSelfIntersectionCurvesWithCurves,
-  meshArrangements,
+  booleanUnion, booleanIntersection, booleanDifference,
+  isobands,
+  embeddedIntersectionCurves, embeddedSelfIntersectionCurves,
+  meshArrangements, polygonArrangements,
 } from "../cut/async";
 export { intersectionCurves, selfIntersectionCurves, isocontours } from "../intersect/async";
 export {

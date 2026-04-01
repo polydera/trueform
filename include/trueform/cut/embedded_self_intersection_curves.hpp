@@ -23,22 +23,19 @@ namespace tf {
 
 /// @ingroup cut_boolean
 /// @brief Embed self-intersection curves into mesh topology.
-///
-/// Finds where a mesh intersects itself and splits faces along
-/// those curves.
-///
-/// @tparam Policy The policy type of the mesh.
-/// @param _polygons The input @ref tf::polygons (or tagged form).
-/// @return A @ref tf::polygons_buffer with embedded intersection edges.
 template <typename Int = tf::exact::int32, typename Policy>
-auto embedded_self_intersection_curves(const tf::polygons<Policy> &_polygons) {
-  return cut::dispatch::self_boolean(_polygons, [](const auto &p) {
+auto embedded_self_intersection_curves(
+    const tf::polygons<Policy> &_polygons,
+    tf::intersect_mode mode = tf::intersect_mode::primitives |
+                              tf::intersect_mode::resolve_contours) {
+  return cut::dispatch::self_boolean(_polygons, [mode](const auto &p) {
     using Index = std::decay_t<decltype(p.faces()[0][0])>;
     using RealType = tf::coordinate_type<std::decay_t<decltype(p)>>;
     auto [iwp, ig, fc, cg] =
-        cut::dispatch::build_self_pipeline<Index, RealType, Int>(p);
-    return tf::cut::embedded_intersection_curves(p, ig, fc, iwp.converter(),
-                                                 Index(0));
+        cut::dispatch::build_self_pipeline<Index, RealType, Int>(p, mode);
+    auto [res, fl] = tf::cut::embedded_intersection_curves(
+        p, ig, fc, iwp.converter(), Index(0));
+    return std::make_tuple(std::move(res), std::move(fl));
   });
 }
 
@@ -48,13 +45,26 @@ auto embedded_self_intersection_curves(const tf::polygons<Policy> &_polygons) {
 template <typename Int = tf::exact::int32, typename Policy>
 auto embedded_self_intersection_curves(const tf::polygons<Policy> &_polygons,
                                        tf::return_curves_t) {
-  return cut::dispatch::self_boolean(_polygons, [](const auto &p) {
+  return embedded_self_intersection_curves<Int>(
+      _polygons, tf::intersect_mode::primitives |
+                     tf::intersect_mode::resolve_contours,
+      tf::return_curves);
+}
+
+/// @ingroup cut_boolean
+/// @brief Embed self-intersection curves with curve output.
+/// @overload
+template <typename Int = tf::exact::int32, typename Policy>
+auto embedded_self_intersection_curves(const tf::polygons<Policy> &_polygons,
+                                       tf::intersect_mode mode,
+                                       tf::return_curves_t) {
+  return cut::dispatch::self_boolean(_polygons, [mode](const auto &p) {
     using Index = std::decay_t<decltype(p.faces()[0][0])>;
     using RealType = tf::coordinate_type<std::decay_t<decltype(p)>>;
     auto [iwp, ig, fc, cg] =
-        cut::dispatch::build_self_pipeline<Index, RealType, Int>(p);
-    auto res = tf::cut::embedded_intersection_curves(p, ig, fc, iwp.converter(),
-                                                     Index(0));
+        cut::dispatch::build_self_pipeline<Index, RealType, Int>(p, mode);
+    auto [res, fl] = tf::cut::embedded_intersection_curves(
+        p, ig, fc, iwp.converter(), Index(0));
 
     auto paths =
         tf::connect_edges_to_paths(tf::make_edges(cg.intersection_edges()));
@@ -67,7 +77,7 @@ auto embedded_self_intersection_curves(const tf::polygons<Policy> &_polygons,
         tf::make_points(tf::make_mapped_range(
             ipts, [&conv](const auto &pt) { return conv.deconvert(pt); })),
         cb.points());
-    return std::make_tuple(std::move(res), std::move(cb));
+    return std::make_tuple(std::move(res), std::move(fl), std::move(cb));
   });
 }
 

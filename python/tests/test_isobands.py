@@ -81,7 +81,7 @@ def test_isobands_basic(index_dtype, real_dtype, mesh_type):
 
     # Extract isobands at different z-levels
     cut_values = np.array([-0.5, 0.0, 0.5], dtype=real_dtype)
-    (result_faces, result_points), labels = tf.isobands(mesh, distances, cut_values)
+    (result_faces, result_points), labels, face_labels = tf.isobands(mesh, distances, cut_values)
 
     # Verify return types based on mesh type
     assert isinstance(result_points, np.ndarray), "result_points should be numpy array"
@@ -120,7 +120,7 @@ def test_isobands_single_cut_value(real_dtype, mesh_type):
     distances = tf.distance(tf.Point(mesh.points), plane)
 
     # Single cut value creates 2 bands
-    (result_faces, result_points), labels = tf.isobands(mesh, distances, 0.0)
+    (result_faces, result_points), labels, face_labels = tf.isobands(mesh, distances, 0.0)
 
     assert isinstance(result_points, np.ndarray)
     if mesh_type == 'dynamic':
@@ -146,7 +146,7 @@ def test_isobands_selected_bands(mesh_type):
 
     # Only extract bands 1 and 2 (middle bands)
     selected = np.array([1, 2], dtype=np.int32)
-    (result_faces, result_points), labels = tf.isobands(
+    (result_faces, result_points), labels, face_labels = tf.isobands(
         mesh, distances, cut_values, selected_bands=selected
     )
 
@@ -165,7 +165,7 @@ def test_isobands_with_curves(mesh_type):
     distances = tf.distance(tf.Point(mesh.points), plane)
 
     cut_values = np.array([-0.5, 0.0, 0.5], dtype=np.float32)
-    (result_faces, result_points), labels, (paths, curve_points) = tf.isobands(
+    (result_faces, result_points), labels, face_labels, (paths, curve_points) = tf.isobands(
         mesh, distances, cut_values, return_curves=True
     )
 
@@ -199,7 +199,7 @@ def test_isobands_path_indices_valid(mesh_type):
     distances = tf.distance(tf.Point(mesh.points), plane)
 
     cut_values = np.array([0.0], dtype=np.float32)
-    (result_faces, result_points), labels, (paths, curve_points) = tf.isobands(
+    (result_faces, result_points), labels, face_labels, (paths, curve_points) = tf.isobands(
         mesh, distances, cut_values, return_curves=True
     )
 
@@ -226,7 +226,7 @@ def test_isobands_tuple_input():
     scalar_field = np.array([0.0, 0.5, 1.0, 0.5], dtype=np.float32)
 
     # Test with tuple input
-    (result_faces, result_points), labels = tf.isobands(
+    (result_faces, result_points), labels, face_labels = tf.isobands(
         (faces, points), scalar_field, [0.25, 0.75]
     )
 

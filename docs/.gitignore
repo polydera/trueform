@@ -29,4 +29,5 @@ logs
 
 *.wasm
 **/native.*
+app/examples/trueform/*
 public/stl/*

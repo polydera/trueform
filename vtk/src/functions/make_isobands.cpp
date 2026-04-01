@@ -53,7 +53,7 @@ auto make_isobands(vtkPolyData *input, const char *scalars_name,
   auto cut_values_r = tf::make_range(cut_values.data(), cut_values.size());
   auto selected_bands_r = tf::make_range(selected_bands.data(), selected_bands.size());
 
-  auto [result_polys, labels] =
+  auto [result_polys, labels, face_labels] =
       tf::make_isobands<vtkIdType>(polygons, scalars, cut_values_r, selected_bands_r);
 
   auto out = vtkSmartPointer<polydata>::New();
@@ -62,6 +62,10 @@ auto make_isobands(vtkPolyData *input, const char *scalars_name,
   auto label_array = make_vtk_array(std::move(labels));
   label_array->SetName("BandLabel");
   out->GetCellData()->SetScalars(label_array);
+
+  auto face_label_array = make_vtk_array(std::move(face_labels));
+  face_label_array->SetName("Face Labels");
+  out->GetCellData()->AddArray(face_label_array);
 
   return out;
 }
@@ -99,7 +103,7 @@ auto make_isobands(vtkPolyData *input, const char *scalars_name,
   auto cut_values_r = tf::make_range(cut_values.data(), cut_values.size());
   auto selected_bands_r = tf::make_range(selected_bands.data(), selected_bands.size());
 
-  auto [result_polys, labels, curves] = tf::make_isobands<vtkIdType>(
+  auto [result_polys, labels, face_labels, curves] = tf::make_isobands<vtkIdType>(
       polygons, scalars, cut_values_r, selected_bands_r, tf::return_curves);
 
   auto out = vtkSmartPointer<polydata>::New();
@@ -108,6 +112,10 @@ auto make_isobands(vtkPolyData *input, const char *scalars_name,
   auto label_array = make_vtk_array(std::move(labels));
   label_array->SetName("BandLabel");
   out->GetCellData()->SetScalars(label_array);
+
+  auto face_label_array = make_vtk_array(std::move(face_labels));
+  face_label_array->SetName("Face Labels");
+  out->GetCellData()->AddArray(face_label_array);
 
   auto out_curves = vtkSmartPointer<polydata>::New();
   out_curves->ShallowCopy(make_vtk_polydata(std::move(curves)));

@@ -24,7 +24,8 @@ template <typename Index0, typename RealT, std::size_t Ngon0, std::size_t Dims,
           typename Index1, std::size_t Ngon1>
 auto embedded_intersection_curves(
     mesh_wrapper<Index0, RealT, Ngon0, Dims> &form_wrapper0,
-    mesh_wrapper<Index1, RealT, Ngon1, Dims> &form_wrapper1) {
+    mesh_wrapper<Index1, RealT, Ngon1, Dims> &form_wrapper1,
+    int mode) {
   bool has0 = form_wrapper0.has_transformation();
   bool has1 = form_wrapper1.has_transformation();
   auto form0 = form_wrapper0.make_primitive_range() |
@@ -35,9 +36,12 @@ auto embedded_intersection_curves(
                tf::tag(form_wrapper1.manifold_edge_link()) |
                tf::tag(form_wrapper1.face_membership()) |
                tf::tag(form_wrapper1.tree());
-  auto make_return = [](auto &&form0, auto form1) {
-    auto result_mesh = tf::embedded_intersection_curves(form0, form1);
-    return make_numpy_array(std::move(result_mesh));
+  auto m = static_cast<tf::intersect_mode>(mode);
+  auto make_return = [m](auto &&form0, auto form1) {
+    auto [result_mesh, face_labels] =
+        tf::embedded_intersection_curves(form0, form1, m);
+    return nanobind::make_tuple(make_numpy_array(std::move(result_mesh)),
+                                make_numpy_array(std::move(face_labels)));
   };
   if (has0 && has1)
     return make_return(
@@ -60,7 +64,7 @@ template <typename Index0, typename RealT, std::size_t Ngon0, std::size_t Dims,
 auto embedded_intersection_curves(
     mesh_wrapper<Index0, RealT, Ngon0, Dims> &form_wrapper0,
     mesh_wrapper<Index1, RealT, Ngon1, Dims> &form_wrapper1,
-    tf::return_curves_t) {
+    int mode, tf::return_curves_t) {
   bool has0 = form_wrapper0.has_transformation();
   bool has1 = form_wrapper1.has_transformation();
   auto form0 = form_wrapper0.make_primitive_range() |
@@ -71,14 +75,18 @@ auto embedded_intersection_curves(
                tf::tag(form_wrapper1.manifold_edge_link()) |
                tf::tag(form_wrapper1.face_membership()) |
                tf::tag(form_wrapper1.tree());
-  auto make_return = [](auto &&form0, auto form1) {
-    auto [result_mesh, curves] =
-        tf::embedded_intersection_curves(form0, form1, tf::return_curves);
+  auto m = static_cast<tf::intersect_mode>(mode);
+  auto make_return = [m](auto &&form0, auto form1) {
+    auto [result_mesh, face_labels, curves] =
+        tf::embedded_intersection_curves(form0, form1, m, tf::return_curves);
     auto mesh_pair = make_numpy_array(std::move(result_mesh));
+    auto face_labels_array = make_numpy_array(std::move(face_labels));
     auto [paths, c_points] = make_numpy_array(std::move(curves));
     auto curve_pair = nanobind::make_tuple(
         nanobind::make_tuple(paths.first, paths.second), std::move(c_points));
-    return nanobind::make_tuple(std::move(mesh_pair), std::move(curve_pair));
+    return nanobind::make_tuple(std::move(mesh_pair),
+                                std::move(face_labels_array),
+                                std::move(curve_pair));
   };
   if (has0 && has1)
     return make_return(

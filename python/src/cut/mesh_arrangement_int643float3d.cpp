@@ -19,14 +19,14 @@ auto register_mesh_arrangements_int643float3d(nanobind::module_ &m) -> void {
   using W = mesh_wrapper<int64_t, float, 3, 3>;
 
   m.def("mesh_arrangements_int643float3d",
-        [](std::vector<W> &meshes) { return mesh_arrangements(meshes); },
-        nanobind::arg("meshes"));
+        [](std::vector<W> &meshes, int mode) { return mesh_arrangements(meshes, mode); },
+        nanobind::arg("meshes"), nanobind::arg("mode"));
 
   m.def("mesh_arrangements_curves_int643float3d",
-        [](std::vector<W> &meshes) {
-          return mesh_arrangements(meshes, tf::return_curves);
+        [](std::vector<W> &meshes, int mode) {
+          return mesh_arrangements(meshes, mode, tf::return_curves);
         },
-        nanobind::arg("meshes"));
+        nanobind::arg("meshes"), nanobind::arg("mode"));
 }
 
 } // namespace tf::py

@@ -15,6 +15,7 @@ import { native } from "../native";
 import { NDArray, NDArrayInt8, NDArrayInt32, NDArrayFloat32 } from "../ndarray/NDArray";
 import { Mesh } from "../form/Mesh";
 import { Curves } from "../form/Curves";
+import { IntersectOpts, buildMode } from "../intersect/sync";
 
 /** Result of a boolean operation. */
 export interface LabeledCutResult {
@@ -22,6 +23,8 @@ export interface LabeledCutResult {
   mesh: Mesh;
   /** Per-face region labels. */
   labels: NDArrayInt8;
+  /** Per-face origin: which face in the original mesh. */
+  faceLabels: NDArrayInt32;
 }
 
 /** Result of a boolean operation with intersection curves. */
@@ -30,6 +33,8 @@ export interface LabeledCutResultWithCurves {
   mesh: Mesh;
   /** Per-face region labels. */
   labels: NDArrayInt8;
+  /** Per-face origin: which face in the original mesh. */
+  faceLabels: NDArrayInt32;
   /** Intersection curves. */
   curves: Curves;
 }
@@ -40,6 +45,8 @@ export interface IsobandsResult {
   mesh: Mesh;
   /** Per-face band ID. */
   labels: NDArrayInt32;
+  /** Per-face origin: which face in the original mesh. */
+  faceLabels: NDArrayInt32;
 }
 
 /** Result of isobands slicing with isocontour curves. */
@@ -48,14 +55,26 @@ export interface IsobandsResultWithCurves {
   mesh: Mesh;
   /** Per-face band ID. */
   labels: NDArrayInt32;
+  /** Per-face origin: which face in the original mesh. */
+  faceLabels: NDArrayInt32;
   /** Isocontour polylines. */
   curves: Curves;
+}
+
+/** Result of embedded intersection. */
+export interface CutResult {
+  /** The mesh with embedded intersection edges. */
+  mesh: Mesh;
+  /** Per-face origin: which face in the original mesh. */
+  faceLabels: NDArrayInt32;
 }
 
 /** Result of embedded intersection with curves. */
 export interface CutResultWithCurves {
   /** The mesh with embedded intersection edges. */
   mesh: Mesh;
+  /** Per-face origin: which face in the original mesh. */
+  faceLabels: NDArrayInt32;
   /** Intersection curves. */
   curves: Curves;
 }
@@ -64,6 +83,7 @@ function wrapLabeled(raw: any): LabeledCutResult {
   return {
     mesh: new Mesh(raw.mesh),
     labels: new NDArray(raw.labels, "int8"),
+    faceLabels: new NDArray(raw.faceLabels, "int32"),
   };
 }
 
@@ -71,6 +91,7 @@ function wrapLabeledWithCurves(raw: any): LabeledCutResultWithCurves {
   return {
     mesh: new Mesh(raw.mesh),
     labels: new NDArray(raw.labels, "int8"),
+    faceLabels: new NDArray(raw.faceLabels, "int32"),
     curves: new Curves(raw.curves),
   };
 }
@@ -79,6 +100,7 @@ function wrapIsobands(raw: any): IsobandsResult {
   return {
     mesh: new Mesh(raw.mesh),
     labels: new NDArray(raw.labels, "int32"),
+    faceLabels: new NDArray(raw.faceLabels, "int32"),
   };
 }
 
@@ -86,13 +108,22 @@ function wrapIsobandsWithCurves(raw: any): IsobandsResultWithCurves {
   return {
     mesh: new Mesh(raw.mesh),
     labels: new NDArray(raw.labels, "int32"),
+    faceLabels: new NDArray(raw.faceLabels, "int32"),
     curves: new Curves(raw.curves),
+  };
+}
+
+function wrapCut(raw: any): CutResult {
+  return {
+    mesh: new Mesh(raw.mesh),
+    faceLabels: new NDArray(raw.faceLabels, "int32"),
   };
 }
 
 function wrapCutWithCurves(raw: any): CutResultWithCurves {
   return {
     mesh: new Mesh(raw.mesh),
+    faceLabels: new NDArray(raw.faceLabels, "int32"),
     curves: new Curves(raw.curves),
   };
 }
@@ -207,22 +238,26 @@ export function isobands(
 // ============================================================================
 
 /** Embed intersection curves of m0 and m1 as edges in m0. */
-export function embeddedIntersectionCurves(m0: Mesh, m1: Mesh): Mesh;
+export function embeddedIntersectionCurves(m0: Mesh, m1: Mesh): CutResult;
 export function embeddedIntersectionCurves(
-  m0: Mesh, m1: Mesh, opts: { returnCurves: true },
+  m0: Mesh, m1: Mesh, opts: IntersectOpts & { returnCurves: true },
 ): CutResultWithCurves;
 export function embeddedIntersectionCurves(
-  m0: Mesh, m1: Mesh, opts?: { returnCurves: true },
-): Mesh | CutResultWithCurves {
+  m0: Mesh, m1: Mesh, opts: IntersectOpts,
+): CutResult;
+export function embeddedIntersectionCurves(
+  m0: Mesh, m1: Mesh, opts?: IntersectOpts & { returnCurves?: true },
+): CutResult | CutResultWithCurves {
+  const mode = buildMode(opts, "primitives", false, false);
   if (opts?.returnCurves) {
     return wrapCutWithCurves(
       native().embedded_intersection_curves_with_curves(
-        m0._handle, m1._handle,
+        m0._handle, m1._handle, mode,
       ),
     );
   }
-  return new Mesh(
-    native().embedded_intersection_curves(m0._handle, m1._handle),
+  return wrapCut(
+    native().embedded_intersection_curves(m0._handle, m1._handle, mode),
   );
 }
 
@@ -277,18 +312,23 @@ function wrapArrangementWithCurves(raw: any): MeshArrangementResultWithCurves {
  */
 export function meshArrangements(meshes: Mesh[]): MeshArrangementResult;
 export function meshArrangements(
-  meshes: Mesh[], opts: { returnCurves: true },
+  meshes: Mesh[], opts: IntersectOpts & { returnCurves: true },
 ): MeshArrangementResultWithCurves;
 export function meshArrangements(
-  meshes: Mesh[], opts?: { returnCurves: true },
+  meshes: Mesh[], opts: IntersectOpts,
+): MeshArrangementResult;
+export function meshArrangements(
+  meshes: Mesh[], opts?: IntersectOpts & { returnCurves?: true },
 ): MeshArrangementResult | MeshArrangementResultWithCurves {
+  const rc = opts?.resolveCrossings ?? (meshes.length > 2);
+  const mode = buildMode(opts, "primitives", rc, false);
   const handles = meshes.map(m => m._handle);
   if (opts?.returnCurves) {
     return wrapArrangementWithCurves(
-      native().mesh_arrangements_with_curves(handles),
+      native().mesh_arrangements_with_curves(handles, mode),
     );
   }
-  return wrapArrangement(native().mesh_arrangements(handles));
+  return wrapArrangement(native().mesh_arrangements(handles, mode));
 }
 
 // ============================================================================
@@ -296,20 +336,24 @@ export function meshArrangements(
 // ============================================================================
 
 /** Detect and resolve self-intersections, splitting faces along intersection curves. */
-export function embeddedSelfIntersectionCurves(mesh: Mesh): Mesh;
+export function embeddedSelfIntersectionCurves(mesh: Mesh): CutResult;
 export function embeddedSelfIntersectionCurves(
-  mesh: Mesh, opts: { returnCurves: true },
+  mesh: Mesh, opts: IntersectOpts & { returnCurves: true },
 ): CutResultWithCurves;
 export function embeddedSelfIntersectionCurves(
-  mesh: Mesh, opts?: { returnCurves: true },
-): Mesh | CutResultWithCurves {
+  mesh: Mesh, opts: IntersectOpts,
+): CutResult;
+export function embeddedSelfIntersectionCurves(
+  mesh: Mesh, opts?: IntersectOpts & { returnCurves?: true },
+): CutResult | CutResultWithCurves {
+  const mode = buildMode(opts, "primitives", true, true);
   if (opts?.returnCurves) {
     return wrapCutWithCurves(
-      native().embedded_self_intersection_curves_with_curves(mesh._handle),
+      native().embedded_self_intersection_curves_with_curves(mesh._handle, mode),
     );
   }
-  return new Mesh(
-    native().embedded_self_intersection_curves(mesh._handle),
+  return wrapCut(
+    native().embedded_self_intersection_curves(mesh._handle, mode),
   );
 }
 
@@ -358,17 +402,21 @@ function wrapPolygonArrangementWithCurves(raw: any): PolygonArrangementResultWit
  */
 export function polygonArrangements(mesh: Mesh): PolygonArrangementResult;
 export function polygonArrangements(
-  mesh: Mesh, opts: { returnCurves: true },
+  mesh: Mesh, opts: IntersectOpts & { returnCurves: true },
 ): PolygonArrangementResultWithCurves;
 export function polygonArrangements(
-  mesh: Mesh, opts?: { returnCurves: true },
+  mesh: Mesh, opts: IntersectOpts,
+): PolygonArrangementResult;
+export function polygonArrangements(
+  mesh: Mesh, opts?: IntersectOpts & { returnCurves?: true },
 ): PolygonArrangementResult | PolygonArrangementResultWithCurves {
+  const mode = buildMode(opts, "primitives", true, true);
   if (opts?.returnCurves) {
     return wrapPolygonArrangementWithCurves(
-      native().polygon_arrangements_with_curves(mesh._handle),
+      native().polygon_arrangements_with_curves(mesh._handle, mode),
     );
   }
   return wrapPolygonArrangement(
-    native().polygon_arrangements(mesh._handle),
+    native().polygon_arrangements(mesh._handle, mode),
   );
 }

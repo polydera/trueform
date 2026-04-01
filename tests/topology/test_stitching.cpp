@@ -104,7 +104,7 @@ TEMPLATE_TEST_CASE("stitched_face_membership_box_minus_sphere", "[topology][stit
         tf::vector<real_t, 3>{real_t(0.5), real_t(0.5), real_t(0.5)}));
 
     // Do the boolean (left difference)
-    auto [result, labels, index_maps] = tf::make_boolean(
+    auto [result, labels, fl_, index_maps] = tf::make_boolean(
         box.polygons() | tf::tag(fm0) | tf::tag(mel0) | tf::tag(tree0),
         sphere.polygons() | tf::tag(fm1) | tf::tag(mel1) | tf::tag(tree1) | tf::tag(frame),
         tf::boolean_op::left_difference, tf::return_index_map);
@@ -158,7 +158,7 @@ TEMPLATE_TEST_CASE("stitched_manifold_edge_link_box_minus_sphere", "[topology][s
         tf::vector<real_t, 3>{real_t(0.5), real_t(0.5), real_t(0.5)}));
 
     // Do the boolean (left difference)
-    auto [result, labels, index_maps] = tf::make_boolean(
+    auto [result, labels, fl_, index_maps] = tf::make_boolean(
         box.polygons() | tf::tag(fm0) | tf::tag(mel0) | tf::tag(tree0),
         sphere.polygons() | tf::tag(fm1) | tf::tag(mel1) | tf::tag(tree1) | tf::tag(frame),
         tf::boolean_op::left_difference, tf::return_index_map);
@@ -215,7 +215,7 @@ TEMPLATE_TEST_CASE("stitched_face_membership_sphere_minus_sphere", "[topology][s
         tf::vector<real_t, 3>{real_t(0), real_t(0), real_t(1)}));
 
     // Do the boolean (left difference)
-    auto [result, labels, index_maps] = tf::make_boolean(
+    auto [result, labels, fl_, index_maps] = tf::make_boolean(
         sphere0.polygons() | tf::tag(fm0) | tf::tag(mel0) | tf::tag(tree0),
         sphere1.polygons() | tf::tag(fm1) | tf::tag(mel1) | tf::tag(tree1) | tf::tag(frame),
         tf::boolean_op::left_difference, tf::return_index_map);
@@ -267,7 +267,7 @@ TEMPLATE_TEST_CASE("stitched_manifold_edge_link_sphere_minus_sphere", "[topology
         tf::vector<real_t, 3>{real_t(0), real_t(0), real_t(1)}));
 
     // Do the boolean (left difference)
-    auto [result, labels, index_maps] = tf::make_boolean(
+    auto [result, labels, fl_, index_maps] = tf::make_boolean(
         sphere0.polygons() | tf::tag(fm0) | tf::tag(mel0) | tf::tag(tree0),
         sphere1.polygons() | tf::tag(fm1) | tf::tag(mel1) | tf::tag(tree1) | tf::tag(frame),
         tf::boolean_op::left_difference, tf::return_index_map);
@@ -323,7 +323,7 @@ TEMPLATE_TEST_CASE("stitched_face_membership_union", "[topology][stitching]",
         tf::vector<real_t, 3>{real_t(0.5), real_t(0), real_t(0)}));
 
     // Do union boolean
-    auto [result, labels, index_maps] = tf::make_boolean(
+    auto [result, labels, fl_, index_maps] = tf::make_boolean(
         box1.polygons() | tf::tag(fm0) | tf::tag(mel0) | tf::tag(tree0),
         box2.polygons() | tf::tag(fm1) | tf::tag(mel1) | tf::tag(tree1) | tf::tag(frame),
         tf::boolean_op::merge, tf::return_index_map);
@@ -375,7 +375,7 @@ TEMPLATE_TEST_CASE("stitched_manifold_edge_link_union", "[topology][stitching]",
         tf::vector<real_t, 3>{real_t(0.5), real_t(0), real_t(0)}));
 
     // Do union boolean
-    auto [result, labels, index_maps] = tf::make_boolean(
+    auto [result, labels, fl_, index_maps] = tf::make_boolean(
         box1.polygons() | tf::tag(fm0) | tf::tag(mel0) | tf::tag(tree0),
         box2.polygons() | tf::tag(fm1) | tf::tag(mel1) | tf::tag(tree1) | tf::tag(frame),
         tf::boolean_op::merge, tf::return_index_map);
@@ -431,7 +431,7 @@ TEMPLATE_TEST_CASE("stitched_structures_cylinder", "[topology][stitching]",
         tf::vector<real_t, 3>{real_t(1), real_t(0), real_t(0)}));
 
     // Do the boolean (left difference)
-    auto [result, labels, index_maps] = tf::make_boolean(
+    auto [result, labels, fl_, index_maps] = tf::make_boolean(
         cylinder.polygons() | tf::tag(fm0) | tf::tag(mel0) | tf::tag(tree0),
         sphere.polygons() | tf::tag(fm1) | tf::tag(mel1) | tf::tag(tree1) | tf::tag(frame),
         tf::boolean_op::left_difference, tf::return_index_map);
@@ -492,7 +492,7 @@ TEMPLATE_TEST_CASE("stitched_structures_chained_booleans", "[topology][stitching
         tf::vector<real_t, 3>{real_t(0.5), real_t(0.5), real_t(0.5)}));
 
     // First boolean
-    auto [result1, labels1, index_maps1] = tf::make_boolean(
+    auto [result1, labels1, fl1_, index_maps1] = tf::make_boolean(
         box.polygons() | tf::tag(fm0) | tf::tag(mel0) | tf::tag(tree0),
         sphere1.polygons() | tf::tag(fm1) | tf::tag(mel1) | tf::tag(tree1) | tf::tag(frame1),
         tf::boolean_op::left_difference, tf::return_index_map);
@@ -518,7 +518,7 @@ TEMPLATE_TEST_CASE("stitched_structures_chained_booleans", "[topology][stitching
         tf::vector<real_t, 3>{real_t(-0.5), real_t(-0.5), real_t(-0.5)}));
 
     // Second boolean
-    auto [result2, labels2, index_maps2] = tf::make_boolean(
+    auto [result2, labels2, fl2_, index_maps2] = tf::make_boolean(
         result1.polygons() | tf::tag(fm_res1) | tf::tag(mel_res1) | tf::tag(tree_res1),
         sphere2.polygons() | tf::tag(fm2) | tf::tag(mel2) | tf::tag(tree2) | tf::tag(frame2),
         tf::boolean_op::left_difference, tf::return_index_map);

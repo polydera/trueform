@@ -3,9 +3,8 @@
  * @credits Nuxt SEO <https://nuxtseo.com/>
  */
 
-import { useOgImageRuntimeConfig } from "#og-image/app/utils";
 import { useSiteConfig } from "#site-config/app/composables";
-import { computed, defineComponent, h, resolveComponent } from "vue";
+import { computed } from "vue";
 
 // convert to typescript props
 const props = withDefaults(
@@ -29,10 +28,8 @@ const props = withDefaults(
 
 const HexRegex = /^#(?:[0-9a-f]{3}){1,2}$/i;
 
-const runtimeConfig = useOgImageRuntimeConfig();
-
 const colorMode = computed(() => {
-  return props.colorMode || runtimeConfig.colorPreference || "light";
+  return props.colorMode || "light";
 });
 
 const themeHex = computed(() => {
@@ -78,19 +75,9 @@ const siteLogo = computed(() => {
   return props.siteLogo || siteConfig.logo;
 });
 
-const IconComponent = runtimeConfig.hasNuxtIcon
-  ? resolveComponent("Icon")
-  : defineComponent({
-      render() {
-        return h("div", "missing @nuxt/icon");
-      },
-    });
-if (typeof props.icon === "string" && !runtimeConfig.hasNuxtIcon && import.meta.dev) {
-  console.warn("Please install `@nuxt/icon` to use icons with the fallback OG Image component.");
-  // eslint-disable-next-line no-console
-  console.log("\nnpx nuxi module add icon\n");
-  // create simple div renderer component
-}
+const iconName = computed(() => {
+  return typeof props.icon === "string" ? props.icon : undefined;
+});
 </script>
 
 <template>
@@ -134,12 +121,18 @@ if (typeof props.icon === "string" && !runtimeConfig.hasNuxtIcon && import.meta.
             {{ description }}
           </p>
         </div>
-        <div v-if="Boolean(icon)" style="width: 30%" class="flex justify-end">
-          <IconComponent :name="icon" size="250px" style="margin: 0 auto; opacity: 0.7" />
+        <div v-if="iconName" style="width: 30%" class="flex justify-end">
+          <Icon :name="iconName" size="250px" style="margin: 0 auto; opacity: 0.7" />
         </div>
       </div>
       <div class="flex flex-row justify-center items-center text-left w-full">
-        <img v-if="siteLogo" :src="siteLogo" height="60" />
+        <img
+          v-if="siteLogo"
+          :src="siteLogo"
+          height="240"
+          width="240"
+          style="transform: translate(172px, 124px)"
+        />
         <template v-else>
           <svg
             height="50px"

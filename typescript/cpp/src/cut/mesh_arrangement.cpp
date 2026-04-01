@@ -46,15 +46,16 @@ auto extract_meshes(emscripten::val js_meshes) -> std::vector<wasm_mesh> {
 }
 
 template <typename MeshRange>
-auto run_arrangement(MeshRange &meshes) -> arrangement_result {
+auto run_arrangement(MeshRange &meshes, int mode) -> arrangement_result {
   auto mesh_range = tf::make_range(meshes);
   bool any_transformed = false;
   for (auto &m : meshes)
     if (m.has_transformation())
       any_transformed = true;
 
-  auto run = [](const auto &forms) -> arrangement_result {
-    auto [mesh, tag_labels, face_labels] = tf::make_mesh_arrangements(forms);
+  auto run = [mode](const auto &forms) -> arrangement_result {
+    auto [mesh, tag_labels, face_labels] = tf::make_mesh_arrangements(
+        forms, static_cast<tf::intersect_mode>(mode));
     return {wasm_mesh::from_polygons_buffer(std::move(mesh)),
             wasm_ndarray<int>::from_buffer(std::move(tag_labels)),
             wasm_ndarray<int>::from_buffer(std::move(face_labels))};
@@ -84,7 +85,7 @@ auto run_arrangement(MeshRange &meshes) -> arrangement_result {
 }
 
 template <typename MeshRange>
-auto run_arrangement_with_curves(MeshRange &meshes)
+auto run_arrangement_with_curves(MeshRange &meshes, int mode)
     -> arrangement_result_with_curves {
   auto mesh_range = tf::make_range(meshes);
   bool any_transformed = false;
@@ -92,9 +93,10 @@ auto run_arrangement_with_curves(MeshRange &meshes)
     if (m.has_transformation())
       any_transformed = true;
 
-  auto run = [](const auto &forms) -> arrangement_result_with_curves {
+  auto run = [mode](const auto &forms) -> arrangement_result_with_curves {
     auto [mesh, tag_labels, face_labels, curves] =
-        tf::make_mesh_arrangements(forms, tf::return_curves);
+        tf::make_mesh_arrangements(
+            forms, static_cast<tf::intersect_mode>(mode), tf::return_curves);
     return {wasm_mesh::from_polygons_buffer(std::move(mesh)),
             wasm_ndarray<int>::from_buffer(std::move(tag_labels)),
             wasm_ndarray<int>::from_buffer(std::move(face_labels)),
@@ -126,34 +128,35 @@ auto run_arrangement_with_curves(MeshRange &meshes)
 
 // -- Sync --
 
-auto sync_mesh_arrangement(emscripten::val js_meshes) -> arrangement_result {
+auto sync_mesh_arrangement(emscripten::val js_meshes, int mode)
+    -> arrangement_result {
   auto meshes = extract_meshes(js_meshes);
-  return run_arrangement(meshes);
+  return run_arrangement(meshes, mode);
 }
 
-auto sync_mesh_arrangement_with_curves(emscripten::val js_meshes)
+auto sync_mesh_arrangement_with_curves(emscripten::val js_meshes, int mode)
     -> arrangement_result_with_curves {
   auto meshes = extract_meshes(js_meshes);
-  return run_arrangement_with_curves(meshes);
+  return run_arrangement_with_curves(meshes, mode);
 }
 
 // -- Async --
 
-auto async_mesh_arrangement(emscripten::val js_meshes) -> promise_t {
+auto async_mesh_arrangement(emscripten::val js_meshes, int mode) -> promise_t {
   auto meshes = extract_meshes(js_meshes);
-  return promise([ms = std::move(meshes)]() -> arrangement_result {
+  return promise([ms = std::move(meshes), mode]() -> arrangement_result {
     auto &meshes = const_cast<std::vector<wasm_mesh> &>(ms);
-    return run_arrangement(meshes);
+    return run_arrangement(meshes, mode);
   });
 }
 
-auto async_mesh_arrangement_with_curves(emscripten::val js_meshes)
+auto async_mesh_arrangement_with_curves(emscripten::val js_meshes, int mode)
     -> promise_t {
   auto meshes = extract_meshes(js_meshes);
   return promise(
-      [ms = std::move(meshes)]() -> arrangement_result_with_curves {
+      [ms = std::move(meshes), mode]() -> arrangement_result_with_curves {
         auto &meshes = const_cast<std::vector<wasm_mesh> &>(ms);
-        return run_arrangement_with_curves(meshes);
+        return run_arrangement_with_curves(meshes, mode);
       });
 }
 

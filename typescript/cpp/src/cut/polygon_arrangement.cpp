@@ -31,36 +31,40 @@ struct polygon_arrangement_result_with_curves {
   wasm_curves curves;
 };
 
-auto sync_polygon_arrangements(wasm_mesh &m) -> polygon_arrangement_result {
+auto sync_polygon_arrangements(wasm_mesh &m, int mode)
+    -> polygon_arrangement_result {
   auto fm = m.face_membership_range();
   auto mel = m.manifold_edge_link_range();
   auto [mesh, face_labels] = tf::make_polygon_arrangements(
-      m.polygons_range() | tf::tag(m.tree()) | tf::tag(fm) | tf::tag(mel));
+      m.polygons_range() | tf::tag(m.tree()) | tf::tag(fm) | tf::tag(mel),
+      static_cast<tf::intersect_mode>(mode));
   return {wasm_mesh::from_polygons_buffer(std::move(mesh)),
           wasm_ndarray<int>::from_buffer(std::move(face_labels))};
 }
 
-auto sync_polygon_arrangements_with_curves(wasm_mesh &m)
+auto sync_polygon_arrangements_with_curves(wasm_mesh &m, int mode)
     -> polygon_arrangement_result_with_curves {
   auto fm = m.face_membership_range();
   auto mel = m.manifold_edge_link_range();
   auto [mesh, face_labels, curves] = tf::make_polygon_arrangements(
       m.polygons_range() | tf::tag(m.tree()) | tf::tag(fm) | tf::tag(mel),
-      tf::return_curves);
+      static_cast<tf::intersect_mode>(mode), tf::return_curves);
   return {wasm_mesh::from_polygons_buffer(std::move(mesh)),
           wasm_ndarray<int>::from_buffer(std::move(face_labels)),
           wasm_curves::from_curves_buffer(std::move(curves))};
 }
 
-auto async_polygon_arrangements(wasm_mesh &m) -> promise_t {
-  return promise([a = m]() -> polygon_arrangement_result {
-    return sync_polygon_arrangements(const_cast<wasm_mesh &>(a));
+auto async_polygon_arrangements(wasm_mesh &m, int mode) -> promise_t {
+  return promise([a = m, mode]() -> polygon_arrangement_result {
+    return sync_polygon_arrangements(const_cast<wasm_mesh &>(a), mode);
   });
 }
 
-auto async_polygon_arrangements_with_curves(wasm_mesh &m) -> promise_t {
-  return promise([a = m]() -> polygon_arrangement_result_with_curves {
-    return sync_polygon_arrangements_with_curves(const_cast<wasm_mesh &>(a));
+auto async_polygon_arrangements_with_curves(wasm_mesh &m, int mode)
+    -> promise_t {
+  return promise([a = m, mode]() -> polygon_arrangement_result_with_curves {
+    return sync_polygon_arrangements_with_curves(const_cast<wasm_mesh &>(a),
+                                                 mode);
   });
 }
 

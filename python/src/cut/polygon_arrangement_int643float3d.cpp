@@ -17,28 +17,28 @@ namespace tf::py {
 
 auto register_polygon_arrangement_int643float3d(nanobind::module_ &m) -> void {
   m.def("polygon_arrangements_int643float3d",
-        [](mesh_wrapper<int64_t, float, 3, 3> &mesh) {
-          return polygon_arrangements(mesh);
+        [](mesh_wrapper<int64_t, float, 3, 3> &mesh, int mode) {
+          return polygon_arrangements(mesh, mode);
         },
-        nanobind::arg("mesh"));
+        nanobind::arg("mesh"), nanobind::arg("mode"));
 
   m.def("polygon_arrangements_curves_int643float3d",
-        [](mesh_wrapper<int64_t, float, 3, 3> &mesh) {
-          return polygon_arrangements(mesh, tf::return_curves);
+        [](mesh_wrapper<int64_t, float, 3, 3> &mesh, int mode) {
+          return polygon_arrangements(mesh, mode, tf::return_curves);
         },
-        nanobind::arg("mesh"));
+        nanobind::arg("mesh"), nanobind::arg("mode"));
 
   m.def("polygon_arrangements_int64dynfloat3d",
-        [](mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh) {
-          return polygon_arrangements(mesh);
+        [](mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh, int mode) {
+          return polygon_arrangements(mesh, mode);
         },
-        nanobind::arg("mesh"));
+        nanobind::arg("mesh"), nanobind::arg("mode"));
 
   m.def("polygon_arrangements_curves_int64dynfloat3d",
-        [](mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh) {
-          return polygon_arrangements(mesh, tf::return_curves);
+        [](mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh, int mode) {
+          return polygon_arrangements(mesh, mode, tf::return_curves);
         },
-        nanobind::arg("mesh"));
+        nanobind::arg("mesh"), nanobind::arg("mode"));
 }
 
 } // namespace tf::py

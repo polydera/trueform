@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 #include "../spatial/mesh.hpp"
 #include "../util/make_numpy_array.hpp"
@@ -36,10 +36,12 @@ auto boolean(mesh_wrapper<Index0, RealT, Ngon0, Dims> &form_wrapper0,
                tf::tag(form_wrapper1.face_membership()) |
                tf::tag(form_wrapper1.tree());
   auto make_return = [&op](auto &&form0, auto form1) {
-    auto [result_mesh, labels] = tf::make_boolean(form0, form1, op);
+    auto [result_mesh, labels, face_labels] =
+        tf::make_boolean(form0, form1, op);
     // Extract mesh as (faces, points) - move ownership
     return nanobind::make_tuple(make_numpy_array(std::move(result_mesh)),
-                                make_numpy_array(std::move(labels)));
+                                make_numpy_array(std::move(labels)),
+                                make_numpy_array(std::move(face_labels)));
   };
   if (has0 && has1)
     return make_return(
@@ -73,13 +75,14 @@ auto boolean(mesh_wrapper<Index0, RealT, Ngon0, Dims> &form_wrapper0,
                tf::tag(form_wrapper1.face_membership()) |
                tf::tag(form_wrapper1.tree());
   auto make_return = [&op](auto &&form0, auto form1) {
-    auto [result_mesh, labels, curves] =
+    auto [result_mesh, labels, face_labels, curves] =
         tf::make_boolean(form0, form1, op, tf::return_curves);
     // Extract mesh as (faces, points) - move ownership
     auto mesh_pair = make_numpy_array(std::move(result_mesh));
 
     // Extract labels buffer - move ownership
     auto labels_array = make_numpy_array(std::move(labels));
+    auto face_labels_array = make_numpy_array(std::move(face_labels));
 
     // Extract curves as ((paths_offsets, paths_data), curve_points) - move
     // ownership
@@ -87,6 +90,7 @@ auto boolean(mesh_wrapper<Index0, RealT, Ngon0, Dims> &form_wrapper0,
     auto curve_pair = nanobind::make_tuple(
         nanobind::make_tuple(paths.first, paths.second), std::move(c_points));
     return nanobind::make_tuple(std::move(mesh_pair), std::move(labels_array),
+                                std::move(face_labels_array), 
                                 std::move(curve_pair));
   };
   if (has0 && has1)

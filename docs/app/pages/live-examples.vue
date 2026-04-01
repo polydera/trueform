@@ -7,7 +7,7 @@ const isMobile = useMediaQuery("(max-width: 1024px)");
 const isLandscape = useMediaQuery("(orientation: landscape)");
 
 // Generate OG image for live examples page
-defineOgImageComponent("Docs", {
+defineOgImage("Docs", {
   title: "Live Examples",
   description: "Interactive examples showcasing trueform's core features.",
 });

@@ -239,6 +239,7 @@ export class IsobandsExample {
     // Cleanup
     result.mesh.delete();
     result.labels.delete();
+    result.faceLabels.delete();
     result.curves.delete();
 
     if (this.refreshTimeValue) this.refreshTimeValue();

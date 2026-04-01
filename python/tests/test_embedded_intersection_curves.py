@@ -69,7 +69,10 @@ def test_overlapping_spheres(index_dtype, dtype, mesh_type):
     original_volume = tf.volume((faces1, points1))
     original_area = tf.area((faces1, points1))
 
-    result_faces, result_points = tf.embedded_intersection_curves(sphere1, sphere2)
+    (result_faces, result_points), face_labels = tf.embedded_intersection_curves(sphere1, sphere2)
+
+    # face_labels matches face count
+    assert len(face_labels) == get_num_faces(result_faces)
 
     # Topology preserved
     result_mesh = tf.Mesh(result_faces, result_points)
@@ -110,8 +113,11 @@ def test_overlapping_spheres_with_curves(index_dtype, dtype, mesh_type):
     points2_translated[:, 0] += float(separation)
     sphere2 = prepare_mesh(make_mesh(faces2, points2_translated, mesh_type))
 
-    (result_faces, result_points), (paths, curve_points) = tf.embedded_intersection_curves(
+    (result_faces, result_points), face_labels, (paths, curve_points) = tf.embedded_intersection_curves(
         sphere1, sphere2, return_curves=True)
+
+    # face_labels matches face count
+    assert len(face_labels) == get_num_faces(result_faces)
 
     # Topology preserved
     result_mesh = tf.Mesh(result_faces, result_points)
@@ -148,7 +154,10 @@ def test_non_overlapping(index_dtype, dtype, mesh_type):
     original_num_points = points1.shape[0]
     original_volume = tf.volume((faces1, points1))
 
-    result_faces, result_points = tf.embedded_intersection_curves(box1, box2)
+    (result_faces, result_points), face_labels = tf.embedded_intersection_curves(box1, box2)
+
+    # face_labels matches face count
+    assert len(face_labels) == get_num_faces(result_faces)
 
     # Same face and point count
     assert get_num_faces(result_faces) == original_num_faces
@@ -176,7 +185,7 @@ def test_non_overlapping_with_curves(index_dtype, dtype):
     points2_translated[:, 0] += 5.0
     box2 = prepare_mesh(make_mesh(faces2, points2_translated))
 
-    (result_faces, result_points), (paths, curve_points) = tf.embedded_intersection_curves(
+    (result_faces, result_points), face_labels, (paths, curve_points) = tf.embedded_intersection_curves(
         box1, box2, return_curves=True)
 
     assert len(paths) == 0
@@ -203,8 +212,11 @@ def test_overlapping_boxes(index_dtype, dtype, mesh_type):
     original_volume = tf.volume((faces1, points1))
     original_area = tf.area((faces1, points1))
 
-    (result_faces, result_points), (paths, curve_points) = tf.embedded_intersection_curves(
+    (result_faces, result_points), face_labels, (paths, curve_points) = tf.embedded_intersection_curves(
         box1, box2, return_curves=True)
+
+    # face_labels matches face count
+    assert len(face_labels) == get_num_faces(result_faces)
 
     # Topology preserved
     result_mesh = tf.Mesh(result_faces, result_points)
@@ -247,8 +259,11 @@ def test_nested_spheres(index_dtype, dtype, mesh_type):
     original_num_points = points1.shape[0]
     original_volume = tf.volume((faces1, points1))
 
-    (result_faces, result_points), (paths, curve_points) = tf.embedded_intersection_curves(
+    (result_faces, result_points), face_labels, (paths, curve_points) = tf.embedded_intersection_curves(
         outer, inner, return_curves=True)
+
+    # face_labels matches face count
+    assert len(face_labels) == get_num_faces(result_faces)
 
     # Same face and point count
     assert get_num_faces(result_faces) == original_num_faces
@@ -281,7 +296,7 @@ def test_mixed_index_types_int32_int64(dtype):
     points2[:, 0] += 1.0
     sphere2 = prepare_mesh(tf.Mesh(faces2, points2))
 
-    result_faces, result_points = tf.embedded_intersection_curves(sphere1, sphere2)
+    (result_faces, result_points), face_labels = tf.embedded_intersection_curves(sphere1, sphere2)
 
     result_mesh = tf.Mesh(result_faces, result_points)
     assert tf.is_manifold(result_mesh)
@@ -298,7 +313,7 @@ def test_mixed_index_types_int64_int32(dtype):
     points2[:, 0] += 1.0
     sphere2 = prepare_mesh(tf.Mesh(faces2, points2))
 
-    result_faces, result_points = tf.embedded_intersection_curves(sphere1, sphere2)
+    (result_faces, result_points), face_labels = tf.embedded_intersection_curves(sphere1, sphere2)
 
     result_mesh = tf.Mesh(result_faces, result_points)
     assert tf.is_manifold(result_mesh)
@@ -321,7 +336,7 @@ def test_mixed_mesh_types_triangle_dynamic(index_dtype, dtype):
     points2_translated[:, 0] += 0.5
     box2 = prepare_mesh(make_mesh(faces2, points2_translated, 'dynamic'))
 
-    result_faces, result_points = tf.embedded_intersection_curves(box1, box2)
+    (result_faces, result_points), face_labels = tf.embedded_intersection_curves(box1, box2)
 
     # Result type depends only on mesh0 (triangle), not mesh1
     assert isinstance(result_faces, np.ndarray)
@@ -343,7 +358,7 @@ def test_mixed_mesh_types_dynamic_triangle(index_dtype, dtype):
     points2_translated[:, 0] += 0.5
     box2 = prepare_mesh(make_mesh(faces2, points2_translated, 'triangle'))
 
-    result_faces, result_points = tf.embedded_intersection_curves(box1, box2)
+    (result_faces, result_points), face_labels = tf.embedded_intersection_curves(box1, box2)
 
     # Result type depends only on mesh0 (dynamic), not mesh1
     assert isinstance(result_faces, tf.OffsetBlockedArray)

@@ -103,7 +103,7 @@ class IsobandInteractor(BaseInteractor):
         selected_bands = np.array([i for i in range(N + 2) if (i & 1) == parity], dtype=np.int32)
 
         start_time = time_module.perf_counter()
-        (band_faces, band_points), labels, (paths, curve_points) = tf.isobands(
+        (band_faces, band_points), labels, face_labels, (paths, curve_points) = tf.isobands(
             self.mesh, self.scalars, cutvalues, selected_bands, return_curves=True
         )
         elapsed = time_module.perf_counter() - start_time

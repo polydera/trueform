@@ -55,7 +55,7 @@ public:
     base_t::clear();
     _converter = tf::exact::make_vertex_converter<Int, RealType>(form);
 
-    if (mode == tf::intersect_mode::primitives)
+    if (mode & tf::intersect_mode::primitives)
       build_primitives(form);
     else
       build_sos(form);

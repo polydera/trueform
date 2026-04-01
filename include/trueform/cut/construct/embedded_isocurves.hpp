@@ -73,15 +73,18 @@ auto embedded_isocurves(
   auto descs = fc.descriptors();
 
   tf::buffer<Index> cf_offsets;
-  tf::blocked_buffer<Index, 3> triangles;
+  std::tuple<tf::blocked_buffer<Index, 3>, tf::buffer<Index>> tri_data;
 
   tf::generate_offset_blocks(
-      pids.cut_faces, cf_offsets, triangles,
-      [&](const auto &ids, auto &tri_buf) {
+      pids.cut_faces, cf_offsets, tri_data,
+      [&](const auto &ids, auto &tri_bufs) {
+      auto &&[tri_buf, fl_buf] = tri_bufs;
         tf::cut::triangulate_partition_cuts<Int>(
             tf::make_indirect_range(ids, tf::zip(descs, loops)),
-            make_projector, map_vertex, tri_buf.data_buffer());
+            make_projector, map_vertex, tri_buf.data_buffer(), fl_buf);
       });
+
+  auto && [triangles, tri_origins] = tri_data;
 
   auto faces = tf::concatenated_blocked_ranges<Index>(
       tf::make_indirect_range(pids.polygons.data_buffer(), polygons.faces()),
@@ -108,9 +111,16 @@ auto embedded_isocurves(
     start = end;
   }
 
-  return std::make_pair(
+  // Build face_labels: which original face each output face came from
+  tf::buffer<Index> face_labels;
+  face_labels.allocate(faces.size());
+  tf::parallel_copy(pids.polygons.data_buffer(),
+                    tf::take(face_labels, polygon_size));
+  tf::parallel_copy(tri_origins, tf::drop(face_labels, polygon_size));
+
+  return std::make_tuple(
       tf::make_polygons_buffer(std::move(faces), std::move(pts_buf)),
-      std::move(labels));
+      std::move(labels), std::move(face_labels));
 }
 
 } // namespace tf::cut

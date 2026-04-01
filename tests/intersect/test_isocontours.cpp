@@ -491,7 +491,7 @@ TEMPLATE_TEST_CASE("isobands_basic", "[isobands]",
     std::array<real_t, 2> cut_values = {real_t(-0.5), real_t(0.5)};
     std::array<index_t, 1> selected = {index_t(1)}; // middle band
 
-    auto [mesh, labels] = tf::make_isobands(
+    auto [mesh, labels, fl_] = tf::make_isobands(
         grid.polygons(),
         tf::make_range(scalar_x),
         tf::make_range(cut_values),
@@ -502,6 +502,7 @@ TEMPLATE_TEST_CASE("isobands_basic", "[isobands]",
 
     // Labels size matches face count
     REQUIRE(labels.size() == mesh.polygons().size());
+    REQUIRE(fl_.size() == mesh.polygons().size());
 
     // All labels should be 1 (the selected band)
     for (decltype(labels.size()) i = 0; i < labels.size(); ++i) {
@@ -543,7 +544,7 @@ TEMPLATE_TEST_CASE("isobands_on_grid_thresholds", "[isobands]",
     std::array<real_t, 3> cut_values = {real_t(-1), real_t(0), real_t(1)};
     std::array<index_t, 2> selected = {index_t(1), index_t(2)};
 
-    auto [mesh, labels] = tf::make_isobands(
+    auto [mesh, labels, fl_] = tf::make_isobands(
         grid.polygons(),
         tf::make_range(scalar_x),
         tf::make_range(cut_values),
@@ -551,6 +552,7 @@ TEMPLATE_TEST_CASE("isobands_on_grid_thresholds", "[isobands]",
 
     REQUIRE(mesh.polygons().size() > 0);
     REQUIRE(labels.size() == mesh.polygons().size());
+    REQUIRE(fl_.size() == mesh.polygons().size());
 
     // Labels should be either 1 or 2
     for (decltype(labels.size()) i = 0; i < labels.size(); ++i) {
@@ -586,7 +588,7 @@ TEMPLATE_TEST_CASE("isobands_with_curves", "[isobands]",
     std::array<real_t, 2> cut_values = {real_t(-0.5), real_t(0.5)};
     std::array<index_t, 1> selected = {index_t(1)};
 
-    auto [mesh, labels, curves] = tf::make_isobands(
+    auto [mesh, labels, fl_, curves] = tf::make_isobands(
         grid.polygons(),
         tf::make_range(scalar_x),
         tf::make_range(cut_values),

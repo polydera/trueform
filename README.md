@@ -8,11 +8,11 @@
 
 Real-time geometric processing. Easy to use, robust on real-world data.
 
-Mesh booleans, registration, remeshing and queries — at interactive speed on million-polygon meshes. Robust to non-manifold flaps, inconsistent winding, and pipeline artifacts. One engine across C++, Python, and TypeScript.
+Arrangements, booleans, registration, remeshing and queries — at interactive speed on million-polygon meshes. Exact and robust to non-manifold flaps and pipeline artifacts. One engine across C++, Python, and TypeScript.
 
 **[▶ Try it live](https://trueform.polydera.com/live-examples/boolean)** — Interactive mesh booleans, collisions, isobands and more. No install needed. 
 
-**[Documentation and Tutorials](https://trueform.polydera.com)** — Booleans, remeshing, registration, topology — step by step.
+**[Documentation and Tutorials](https://trueform.polydera.com)** — Arrangements, booleans, remeshing, registration, topology — step by step.
 
 ## Installation
 
@@ -149,13 +149,13 @@ auto curves = tf::make_intersection_curves(static_form, dynamic_form);
 **Boolean operations** combine meshes:
 
 ```cpp
-auto [result_mesh, labels] = tf::make_boolean(
+auto [result_mesh, labels, face_labels] = tf::make_boolean(
     polygons0,
     polygons1 | tf::tag(tf::make_rotation(tf::deg(45.f), tf::axis<2>)),
     tf::boolean_op::merge);
 
 // With intersection curves
-auto [result, labels, curves] = tf::make_boolean(
+auto [result, labels, face_labels, curves] = tf::make_boolean(
     polygons0, polygons1, tf::boolean_op::intersection, tf::return_curves);
 ```
 
@@ -170,7 +170,7 @@ tf::parallel_transform(polygons.points(), scalars, tf::distance_f(plane));
 
 // Extract isocontours embedded into the mesh
 std::vector<float> cut_values = {-0.5f, 0.0f, 0.5f};
-auto [contour_mesh, contour_labels, isocontours] = tf::embedded_isocurves(
+auto [contour_mesh, contour_labels, face_labels, isocontours] = tf::embedded_isocurves(
     polygons, scalars, tf::make_range(cut_values), tf::return_curves);
 ```
 
@@ -197,11 +197,11 @@ Sample comparisons against VTK, CGAL, libigl, Coal, FCL, and nanoflann:
 
 | Operation | Input | Time | Speedup | Baseline | TrueForm |
 |-----------|-------|------|---------|----------|----------|
-| Boolean Union | 2 × 1M | 28 ms | **84×** | CGAL `Simple_cartesian<double>` | reduction diagrams, double |
-| Mesh–Mesh Curves | 2 × 1M | 7 ms | **233×** | CGAL `Simple_cartesian<double>` | reduction diagrams, double |
+| Boolean Union | 2 × 1M | 28 ms | **84×** | CGAL `Simple_cartesian<double>` | exact predicates, canonical topology |
+| Mesh–Mesh Curves | 2 × 1M | 7 ms | **233×** | CGAL `Simple_cartesian<double>` | exact predicates, canonical topology |
 | ICP Registration | 1M | 7.7 ms | **93×** | libigl | AABB tree, random subsampling |
-| Self-Intersection | 1M | 78 ms | **37×** | libigl EPECK (GMP/MPFR) | reduction diagrams, double |
-| Isocontours | 1M, 16 cuts | 3.8 ms | **38×** | VTK `vtkContourFilter` | reduction diagrams, float |
+| Self-Intersection | 1M | 78 ms | **37×** | libigl EPECK (GMP/MPFR) | exact predicates, canonical topology |
+| Isocontours | 1M, 16 cuts | 3.8 ms | **38×** | VTK `vtkContourFilter` | exact predicates |
 | Connected Components | 1M | 15 ms | **10×** | CGAL | parallel union-find |
 | Boundary Paths | 1M | 12 ms | **11×** | CGAL | Hierholzer's algorithm |
 | k-NN Query | 500K | 1.7 µs | **3×** | nanoflann k-d tree | AABB tree |

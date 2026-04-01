@@ -64,7 +64,7 @@ TEMPLATE_TEST_CASE("boolean_topology_repeated_ops", "[boolean]",
 
     for (auto op : ops) {
         // First boolean
-        auto [current, labels] = tf::make_boolean(
+        auto [current, labels, fl_] = tf::make_boolean(
             big_sphere.polygons(),
             small_sphere.polygons() | tf::tag(frame),
             op);
@@ -81,7 +81,7 @@ TEMPLATE_TEST_CASE("boolean_topology_repeated_ops", "[boolean]",
 
         // Repeated boolean at same point (coplanarity test)
         for (int i = 2; i <= 4; ++i) {
-            auto [next, next_labels] = tf::make_boolean(
+            auto [next, next_labels, next_fl_] = tf::make_boolean(
                 current.polygons(),
                 small_sphere.polygons() | tf::tag(frame),
                 op);
@@ -140,7 +140,7 @@ TEMPLATE_TEST_CASE("boolean_bicylinder_intersection", "[boolean]",
     auto horizontal_cylinder = triangulated2.polygons() | tf::tag(rotation);
 
     // Boolean intersection creates Steinmetz solid (bicylinder)
-    auto [bicylinder, labels] = tf::make_boolean(
+    auto [bicylinder, labels, fl_] = tf::make_boolean(
         triangulated.polygons(),
         horizontal_cylinder,
         tf::boolean_op::intersection);
@@ -198,7 +198,7 @@ TEMPLATE_TEST_CASE("boolean_nested_spheres", "[boolean]",
 
     // Test 3.1: Merge (union) - inner fully inside outer, result is outer sphere
     {
-        auto [merged, labels] = tf::make_boolean(
+        auto [merged, labels, fl_] = tf::make_boolean(
             outer_sphere.polygons(),
             inner_sphere.polygons(),
             tf::boolean_op::merge);
@@ -221,7 +221,7 @@ TEMPLATE_TEST_CASE("boolean_nested_spheres", "[boolean]",
 
     // Test 3.2: Left difference - hollow sphere (outer minus inner)
     {
-        auto [hollow, labels] = tf::make_boolean(
+        auto [hollow, labels, fl_] = tf::make_boolean(
             outer_sphere.polygons(),
             inner_sphere.polygons(),
             tf::boolean_op::left_difference);
@@ -246,7 +246,7 @@ TEMPLATE_TEST_CASE("boolean_nested_spheres", "[boolean]",
 
     // Test 3.3: Intersection - inner sphere is fully inside outer, result is inner
     {
-        auto [intersection, labels] = tf::make_boolean(
+        auto [intersection, labels, fl_] = tf::make_boolean(
             outer_sphere.polygons(),
             inner_sphere.polygons(),
             tf::boolean_op::intersection);
@@ -308,7 +308,7 @@ TEMPLATE_TEST_CASE("boolean_overlapping_boxes", "[boolean]",
 
     // Test merge (union)
     {
-        auto [merged, labels] = tf::make_boolean(
+        auto [merged, labels, fl_] = tf::make_boolean(
             box1.polygons(),
             box2.polygons() | tf::tag(box2_frame),
             tf::boolean_op::merge);
@@ -329,7 +329,7 @@ TEMPLATE_TEST_CASE("boolean_overlapping_boxes", "[boolean]",
 
     // Test intersection
     {
-        auto [intersection, labels] = tf::make_boolean(
+        auto [intersection, labels, fl_] = tf::make_boolean(
             box1.polygons(),
             box2.polygons() | tf::tag(box2_frame),
             tf::boolean_op::intersection);
@@ -349,7 +349,7 @@ TEMPLATE_TEST_CASE("boolean_overlapping_boxes", "[boolean]",
 
     // Test left difference (box1 - box2)
     {
-        auto [diff, labels] = tf::make_boolean(
+        auto [diff, labels, fl_] = tf::make_boolean(
             box1.polygons(),
             box2.polygons() | tf::tag(box2_frame),
             tf::boolean_op::left_difference);
@@ -370,7 +370,7 @@ TEMPLATE_TEST_CASE("boolean_overlapping_boxes", "[boolean]",
 
     // Test right difference (box2 - box1)
     {
-        auto [diff, labels] = tf::make_boolean(
+        auto [diff, labels, fl_] = tf::make_boolean(
             box1.polygons(),
             box2.polygons() | tf::tag(box2_frame),
             tf::boolean_op::right_difference);
@@ -426,7 +426,7 @@ TEMPLATE_TEST_CASE("boolean_non_overlapping", "[boolean]",
 
     // Merge of non-overlapping = sum of volumes
     {
-        auto [merged, labels] = tf::make_boolean(
+        auto [merged, labels, fl_] = tf::make_boolean(
             box1.polygons(),
             box2.polygons() | tf::tag(box2_frame),
             tf::boolean_op::merge);
@@ -438,7 +438,7 @@ TEMPLATE_TEST_CASE("boolean_non_overlapping", "[boolean]",
 
     // Intersection of non-overlapping = empty (0 volume)
     {
-        auto [intersection, labels] = tf::make_boolean(
+        auto [intersection, labels, fl_] = tf::make_boolean(
             box1.polygons(),
             box2.polygons() | tf::tag(box2_frame),
             tf::boolean_op::intersection);
@@ -449,7 +449,7 @@ TEMPLATE_TEST_CASE("boolean_non_overlapping", "[boolean]",
 
     // Left difference of non-overlapping = box1 unchanged
     {
-        auto [diff, labels] = tf::make_boolean(
+        auto [diff, labels, fl_] = tf::make_boolean(
             box1.polygons(),
             box2.polygons() | tf::tag(box2_frame),
             tf::boolean_op::left_difference);
@@ -507,7 +507,7 @@ TEMPLATE_TEST_CASE("boolean_overlapping_spheres", "[boolean]",
 
     // Test merge (union)
     {
-        auto [merged, labels] = tf::make_boolean(
+        auto [merged, labels, fl_] = tf::make_boolean(
             sphere1.polygons(),
             sphere2.polygons() | tf::tag(sphere2_frame),
             tf::boolean_op::merge);
@@ -527,7 +527,7 @@ TEMPLATE_TEST_CASE("boolean_overlapping_spheres", "[boolean]",
 
     // Test intersection (lens shape)
     {
-        auto [intersection, labels] = tf::make_boolean(
+        auto [intersection, labels, fl_] = tf::make_boolean(
             sphere1.polygons(),
             sphere2.polygons() | tf::tag(sphere2_frame),
             tf::boolean_op::intersection);
@@ -546,7 +546,7 @@ TEMPLATE_TEST_CASE("boolean_overlapping_spheres", "[boolean]",
 
     // Test left difference (sphere1 - sphere2)
     {
-        auto [diff, labels] = tf::make_boolean(
+        auto [diff, labels, fl_] = tf::make_boolean(
             sphere1.polygons(),
             sphere2.polygons() | tf::tag(sphere2_frame),
             tf::boolean_op::left_difference);
@@ -618,7 +618,7 @@ TEMPLATE_TEST_CASE("boolean_multi_component", "[boolean]",
 
     // Test merge: inner sphere is inside left sphere, should just be the two outer spheres
     {
-        auto [merged, labels] = tf::make_boolean(
+        auto [merged, labels, fl_] = tf::make_boolean(
             two_spheres.polygons(),
             inner_sphere.polygons(),
             tf::boolean_op::merge);
@@ -638,7 +638,7 @@ TEMPLATE_TEST_CASE("boolean_multi_component", "[boolean]",
 
     // Test left difference: carve inner from left sphere, right sphere unchanged
     {
-        auto [diff, labels] = tf::make_boolean(
+        auto [diff, labels, fl_] = tf::make_boolean(
             two_spheres.polygons(),
             inner_sphere.polygons(),
             tf::boolean_op::left_difference);
@@ -658,7 +658,7 @@ TEMPLATE_TEST_CASE("boolean_multi_component", "[boolean]",
 
     // Test intersection: only the inner sphere (inside left) remains
     {
-        auto [intersection, labels] = tf::make_boolean(
+        auto [intersection, labels, fl_] = tf::make_boolean(
             two_spheres.polygons(),
             inner_sphere.polygons(),
             tf::boolean_op::intersection);

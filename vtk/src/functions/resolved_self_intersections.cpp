@@ -11,8 +11,10 @@
 * Author: Žiga Sajovic
 */
 #include <trueform/cut/embedded_self_intersection_curves.hpp>
+#include <trueform/vtk/core/make_vtk_array.hpp>
 #include <trueform/vtk/core/make_vtk_polydata.hpp>
 #include <trueform/vtk/functions/resolved_self_intersections.hpp>
+#include <vtkCellData.h>
 
 namespace tf::vtk {
 
@@ -30,9 +32,14 @@ auto resolved_self_intersections(polydata *input) -> vtkSmartPointer<polydata> {
     return nullptr;
   }
 
-  auto result = tf::embedded_self_intersection_curves(make_base(input));
+  auto [result, face_labels] = tf::embedded_self_intersection_curves(make_base(input));
   auto out = vtkSmartPointer<polydata>::New();
   out->ShallowCopy(make_vtk_polydata(std::move(result)));
+
+  auto face_label_array = make_vtk_array(std::move(face_labels));
+  face_label_array->SetName("Face Labels");
+  out->GetCellData()->SetScalars(face_label_array);
+
   return out;
 }
 
@@ -42,11 +49,15 @@ auto resolved_self_intersections(polydata *input, tf::return_curves_t)
     return {nullptr, nullptr};
   }
 
-  auto [result, curves] =
+  auto [result, face_labels, curves] =
       tf::embedded_self_intersection_curves(make_base(input), tf::return_curves);
 
   auto out_mesh = vtkSmartPointer<polydata>::New();
   out_mesh->ShallowCopy(make_vtk_polydata(std::move(result)));
+
+  auto face_label_array = make_vtk_array(std::move(face_labels));
+  face_label_array->SetName("Face Labels");
+  out_mesh->GetCellData()->SetScalars(face_label_array);
 
   auto out_curves = vtkSmartPointer<polydata>::New();
   out_curves->ShallowCopy(make_vtk_polydata(std::move(curves)));

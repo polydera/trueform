@@ -67,9 +67,10 @@ auto embedded_intersection_curves(
   auto map_vertex = [&](auto, const auto &v) { return map_data.map_vertex(v); };
 
   tf::buffer<Index> tri_data;
+  tf::buffer<Index> tri_origins;
   tf::cut::triangulate_partition_cuts<Int>(
       tf::zip(descs_per_tag[tag], loops_per_tag[tag]), make_projector,
-      map_vertex, tri_data);
+      map_vertex, tri_data, tri_origins);
 
   auto triangles = tf::make_blocked_range<3>(tf::make_range(tri_data));
 
@@ -100,7 +101,15 @@ auto embedded_intersection_curves(
           ipts, [&converter](auto pt) { return converter.deconvert(pt); })),
       tf::drop(pts_buf, map_data.n_original_points));
 
-  return tf::make_polygons_buffer(std::move(faces), std::move(pts_buf));
+  tf::buffer<Index> face_labels;
+  face_labels.allocate(faces.size());
+  tf::parallel_copy(map_data.uncut_face_ids,
+                    tf::take(face_labels, mapped_faces.size()));
+  tf::parallel_copy(tri_origins, tf::drop(face_labels, mapped_faces.size()));
+
+  return std::make_tuple(
+      tf::make_polygons_buffer(std::move(faces), std::move(pts_buf)),
+      std::move(face_labels));
 }
 
 } // namespace tf::cut
