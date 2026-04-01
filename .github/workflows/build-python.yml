@@ -53,10 +53,10 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          echo "CC=clang-cl.exe" >> $GITHUB_ENV
-          echo "CXX=clang-cl.exe" >> $GITHUB_ENV
-          echo "CMAKE_C_COMPILER=clang-cl.exe" >> $GITHUB_ENV
-          echo "CMAKE_CXX_COMPILER=clang-cl.exe" >> $GITHUB_ENV
+          echo "CC=cl.exe" >> $GITHUB_ENV
+          echo "CXX=cl.exe" >> $GITHUB_ENV
+          echo "CMAKE_C_COMPILER=cl.exe" >> $GITHUB_ENV
+          echo "CMAKE_CXX_COMPILER=cl.exe" >> $GITHUB_ENV
           echo "CMAKE_GENERATOR=Ninja" >> $GITHUB_ENV
 
       # ------------------------------------------------------
