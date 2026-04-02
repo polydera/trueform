@@ -52,6 +52,11 @@ mesh = tf.read_stl("model.stl")
 npm install @polydera/trueform
 ```
 
+**NuGet** — Visual Studio / MSBuild:
+```
+Install-Package polydera.trueform
+```
+
 ## Integrations
 
 - **[Python](https://trueform.polydera.com/py/getting-started)** — NumPy in, NumPy out

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>polydera.trueform</id>
+    <version>$version$</version>
+    <title>Trueform SDK</title>
+    <authors>Polydera</authors>
+    <owners>Polydera</owners>
+    <readme>README.md</readme>
+    <description>Real-time geometric processing. Easy to use, robust on real-world data. Arrangements, booleans, registration, remeshing and queries — at interactive speed on million-polygon meshes. Header-only C++17, parallel via oneTBB.</description>
+    <projectUrl>https://trueform.polydera.com</projectUrl>
+    <repository type="git" url="https://github.com/polydera/trueform" />
+    <license type="file">LICENSE</license>
+    <licenseUrl>https://aka.ms/deprecateLicenseUrl</licenseUrl>
+    <requireLicenseAcceptance>true</requireLicenseAcceptance>
+    <copyright>Copyright (c) 2025 XLAB. All rights reserved.</copyright>
+    <tags>mesh geometry computational-geometry mesh-processing mesh-boolean csg spatial-queries collision-detection point-cloud header-only cpp17 native</tags>
+    <dependencies>
+      <dependency id="inteltbb.devel.win" version="2022.0.0" />
+    </dependencies>
+  </metadata>
+</package>
