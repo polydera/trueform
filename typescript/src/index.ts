@@ -108,9 +108,9 @@ export type {
 
 // Geometry operations
 export {
-  triangulate, sphereMesh, cylinderMesh, boxMesh, planeMesh, tubeMesh,
+  triangulate, sphereMesh, cylinderMesh, boxMesh, planeMesh, tubeMesh, sharpEdges,
   area, signedVolume, volume, meanEdgeLength, minEdgeLength, maxEdgeLength,
-  positivelyOriented,
+  reverseWinding, positivelyOriented,
   principalCurvatures, principalDirections, shapeIndex,
   laplacianSmoothed, taubinSmoothed,
   fitRigidAlignment, fitIcpAlignment, fitObbAlignment, chamferError,

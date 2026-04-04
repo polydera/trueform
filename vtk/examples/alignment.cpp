@@ -38,12 +38,16 @@ public:
                   tf::vtk::polydata *target_poly,
                   tf::transformation<float, 3> *T_source,
                   tf::transformation<float, 3> *T_target,
-                  vtkOpenGLActor *source_actor) -> void {
+                  vtkOpenGLActor *source_actor,
+                  vtkOpenGLActor *target_actor,
+                  float diagonal) -> void {
     _source_poly = source_poly;
     _target_poly = target_poly;
     _T_source = T_source;
     _T_target = T_target;
     _source_actor = source_actor;
+    _target_actor = target_actor;
+    _diagonal = diagonal;
   }
 
   auto OnKeyPress() -> void override {
@@ -51,6 +55,9 @@ public:
 
     if (std::string(key) == "a" || std::string(key) == "A") {
       run_alignment();
+      this->Interactor->Render();
+    } else if (std::string(key) == "n" || std::string(key) == "N") {
+      randomize_target();
       this->Interactor->Render();
     } else {
       tf::vtk::examples::drag_interactor::OnKeyPress();
@@ -123,6 +130,23 @@ private:
     }
   }
 
+  auto randomize_target() -> void {
+    auto centroid = tf::centroid(_target_poly->points());
+
+    // Random offset within 4× diagonal
+    auto max_offset = _diagonal * 4.f;
+    auto rand_offset = tf::make_vector(
+        (static_cast<float>(rand()) / RAND_MAX - 0.5f) * 2.f * max_offset,
+        (static_cast<float>(rand()) / RAND_MAX - 0.5f) * 2.f * max_offset,
+        (static_cast<float>(rand()) / RAND_MAX - 0.5f) * 2.f * max_offset);
+    auto new_origin = centroid + rand_offset;
+
+    *_T_target = tf::random_transformation_at(centroid, new_origin);
+    _target_actor->SetUserMatrix(tf::vtk::make_vtk_matrix(*_T_target));
+
+    std::cout << "Target randomized" << std::endl;
+  }
+
   auto run_alignment() -> void {
     // Sync transform from actor (in case user dragged it)
     sync_transform_from_actor();
@@ -166,6 +190,8 @@ private:
   tf::transformation<float, 3> *_T_source = nullptr;
   tf::transformation<float, 3> *_T_target = nullptr;
   vtkOpenGLActor *_source_actor = nullptr;
+  vtkOpenGLActor *_target_actor = nullptr;
+  float _diagonal = 0.f;
 
   // Rotation state
   bool _rotating = false;
@@ -180,6 +206,7 @@ int main() {
   std::cout << "=== Alignment Example ===" << std::endl;
   std::cout << "Drag source mesh (teal) to move it" << std::endl;
   std::cout << "Press 'A' to align source to target" << std::endl;
+  std::cout << "Press 'N' to randomize target position" << std::endl;
   std::cout << std::endl;
 
   // Load mesh
@@ -248,7 +275,7 @@ int main() {
 
   vtkNew<alignment_interactor> style;
   style->initialize(source_poly, target_poly, &T_source, &T_target,
-                    source_actor);
+                    source_actor, target_actor, diag);
   style->add_actor(source_actor, renderer); // Only source is draggable
   interactor->SetInteractorStyle(style);
 

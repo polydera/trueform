@@ -106,6 +106,16 @@ export async function planeMesh(
   );
 }
 
+// ============ Edge Analysis ============
+
+/** Sharp edges where the dihedral angle exceeds the threshold (in degrees, async). Returns [N, 2] Int32 array of vertex index pairs. */
+export async function sharpEdges(m: Mesh, angleDeg: number): Promise<NDArrayInt32> {
+  return dispatcher().run(
+    () => native().dispatch_sharp_edges(m._handle, angleDeg),
+    (raw) => new NDArray(raw, "int32"),
+  );
+}
+
 // ============ Measurements ============
 
 /** Total surface area of a mesh (async). */
@@ -142,6 +152,14 @@ export async function maxEdgeLength(m: Mesh): Promise<number> {
 }
 
 // ============ Orientation ============
+
+/** Return a new mesh with reversed face winding (flipped normals, async). */
+export async function reverseWinding(m: Mesh): Promise<Mesh> {
+  return dispatcher().run(
+    () => native().dispatch_reverse_winding(m._handle),
+    (raw) => new Mesh(raw),
+  );
+}
 
 /** Return a new mesh with consistently oriented, outward-pointing normals (async). */
 export async function positivelyOriented(m: Mesh, isConsistent?: boolean): Promise<Mesh> {

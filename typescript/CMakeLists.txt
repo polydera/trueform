@@ -47,6 +47,7 @@ add_executable(trueform_wasm
     cpp/src/geometry/curvature.cpp
     cpp/src/geometry/smoothing.cpp
     cpp/src/geometry/registration.cpp
+    cpp/src/geometry/edges.cpp
     cpp/src/clean/clean.cpp
     cpp/src/reindex/reindex.cpp
     cpp/src/topology/topology.cpp

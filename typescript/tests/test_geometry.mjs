@@ -484,6 +484,39 @@ describe("Geometry", () => {
   });
 
   // ==========================================================================
+  test("sharpEdges (subdivided box → 12 sharp edges)", () => {
+    const tf = getTf();
+    const box = tf.boxMesh(2, 3, 4, 4, 4, 4);
+
+    const edges = tf.sharpEdges(box, 30);
+    assert(edges.shape[1] === 2, `expected shape [N, 2], got shape[1]=${edges.shape[1]}`);
+    // 12 box edges × 4 subdivisions = 48 sharp edge segments
+    assert(edges.shape[0] === 48, `expected 48 sharp edges, got ${edges.shape[0]}`);
+    log(`  box(2,3,4, 4,4,4) → ${edges.shape[0]} sharp edges at 30°`, "line-pass");
+
+    edges.delete();
+    box.delete();
+  });
+
+  // ==========================================================================
+  test("reverseWinding (flips signed volume)", () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10);
+
+    const sv = tf.signedVolume(sphere);
+    assert(sv > 0, `expected positive signedVolume, got ${sv}`);
+    log(`  sphere signedVolume = ${sv.toFixed(4)} (positive)`, "line-pass");
+
+    const flipped = tf.reverseWinding(sphere);
+    const svFlipped = tf.signedVolume(flipped);
+    assert(svFlipped < 0, `expected negative signedVolume, got ${svFlipped}`);
+    log(`  reversed signedVolume = ${svFlipped.toFixed(4)} (negative)`, "line-pass");
+
+    flipped.delete();
+    sphere.delete();
+  });
+
+  // ==========================================================================
   test("normals (plane — all same direction)", () => {
     const tf = getTf();
     const plane = tf.planeMesh(10, 5);

@@ -12,7 +12,7 @@
  */
 
 import { native } from "../native";
-import { NDArray, type NDArrayFloat32 } from "../ndarray/NDArray";
+import { NDArray, type NDArrayFloat32, type NDArrayInt32 } from "../ndarray/NDArray";
 import { OffsetBlockedBuffer } from "../ndarray/OffsetBlockedBuffer";
 import { Curves } from "../form/Curves";
 import { Mesh } from "../form/Mesh";
@@ -73,6 +73,13 @@ export function planeMesh(
   return new Mesh(native().make_plane_mesh(width, height, wt, ht));
 }
 
+// ============ Edge Analysis ============
+
+/** Sharp edges where the dihedral angle exceeds the threshold (in degrees). Returns [N, 2] Int32 array of vertex index pairs. */
+export function sharpEdges(m: Mesh, angleDeg: number): NDArrayInt32 {
+  return new NDArray(native().sharp_edges(m._handle, angleDeg), "int32");
+}
+
 // ============ Measurements ============
 
 /** Total surface area of a mesh. Respects transformation. */
@@ -106,6 +113,11 @@ export function maxEdgeLength(m: Mesh): number {
 }
 
 // ============ Orientation ============
+
+/** Return a new mesh with reversed face winding (flipped normals). */
+export function reverseWinding(m: Mesh): Mesh {
+  return new Mesh(native().reverse_winding(m._handle));
+}
 
 /** Return a new mesh with consistently oriented, outward-pointing normals. */
 export function positivelyOriented(m: Mesh, isConsistent?: boolean): Mesh {
