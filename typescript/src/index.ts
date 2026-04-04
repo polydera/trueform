@@ -44,7 +44,7 @@ export { mesh, pointCloud, curves } from "./form/factories";
 // Primitive factories
 export {
   point, vector, segment, triangle,
-  ray, line, plane, aabb, polygon,
+  ray, line, plane, aabb, aabbFrom, polygon,
 } from "./primitive";
 
 // Transformations
@@ -108,7 +108,7 @@ export type {
 
 // Geometry operations
 export {
-  triangulate, sphereMesh, cylinderMesh, boxMesh, planeMesh,
+  triangulate, sphereMesh, cylinderMesh, boxMesh, planeMesh, tubeMesh,
   area, signedVolume, volume, meanEdgeLength, minEdgeLength, maxEdgeLength,
   positivelyOriented,
   principalCurvatures, principalDirections, shapeIndex,

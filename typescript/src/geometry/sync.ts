@@ -14,6 +14,7 @@
 import { native } from "../native";
 import { NDArray, type NDArrayFloat32 } from "../ndarray/NDArray";
 import { OffsetBlockedBuffer } from "../ndarray/OffsetBlockedBuffer";
+import { Curves } from "../form/Curves";
 import { Mesh } from "../form/Mesh";
 import { PointCloud } from "../form/PointCloud";
 import { Primitive, Polygon } from "../primitive";
@@ -55,6 +56,11 @@ export function boxMesh(
     return new Mesh(native().make_box_mesh_subdivided(width, height, depth, widthTicks, heightTicks, depthTicks));
   }
   return new Mesh(native().make_box_mesh(width, height, depth));
+}
+
+/** Create a tube mesh from curves using parallel transport frames. */
+export function tubeMesh(curves: Curves, radius: number, radialSegments: number = 8): Mesh {
+  return new Mesh(native().make_tube_mesh(curves._handle, radius, radialSegments));
 }
 
 /** Create a flat rectangular plane mesh in the XY plane, centered at origin. */

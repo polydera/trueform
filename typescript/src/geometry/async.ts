@@ -14,6 +14,7 @@
 import { native, dispatcher } from "../native";
 import { NDArray, NDArrayInt32, NDArrayFloat32 } from "../ndarray/NDArray";
 import { OffsetBlockedBuffer } from "../ndarray/OffsetBlockedBuffer";
+import { Curves } from "../form/Curves";
 import { Mesh } from "../form/Mesh";
 import { PointCloud } from "../form/PointCloud";
 import { Primitive, Polygon } from "../primitive";
@@ -80,6 +81,14 @@ export async function boxMesh(
   }
   return dispatcher().run(
     () => native().dispatch_make_box_mesh(width, height, depth),
+    (raw) => new Mesh(raw),
+  );
+}
+
+/** Create a tube mesh from curves using parallel transport frames (async). */
+export async function tubeMesh(curves: Curves, radius: number, radialSegments: number = 8): Promise<Mesh> {
+  return dispatcher().run(
+    () => native().dispatch_make_tube_mesh(curves._handle, radius, radialSegments),
     (raw) => new Mesh(raw),
   );
 }

@@ -28,7 +28,7 @@ export {
   neighborSearch, intersects, rayCast,
 } from "../spatial/async";
 export {
-  triangulate, sphereMesh, cylinderMesh, boxMesh, planeMesh,
+  triangulate, sphereMesh, cylinderMesh, boxMesh, planeMesh, tubeMesh,
   area, signedVolume, volume, meanEdgeLength, minEdgeLength, maxEdgeLength,
   positivelyOriented,
   principalCurvatures, principalDirections, shapeIndex,

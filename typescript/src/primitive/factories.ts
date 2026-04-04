@@ -324,6 +324,14 @@ export function aabb(
   return makePrimitive(f32, [2, dims], "aabb") as AABB;
 }
 
+/** Compute the axis-aligned bounding box of points, a mesh, or a point cloud. */
+export function aabbFrom(input: NDArrayFloat32): AABB;
+export function aabbFrom(input: { points: NDArrayFloat32 }): AABB;
+export function aabbFrom(input: NDArrayFloat32 | { points: NDArrayFloat32 }): AABB {
+  const pts = input instanceof NDArray ? input : input.points;
+  return aabb(pts.min(0) as NDArrayFloat32, pts.max(0) as NDArrayFloat32);
+}
+
 // ============================================================================
 // Polygon
 // ============================================================================

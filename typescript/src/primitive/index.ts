@@ -18,7 +18,7 @@ export {
 } from "./Primitive";
 export {
   point, vector, segment, triangle,
-  ray, line, plane, aabb, polygon,
+  ray, line, plane, aabb, aabbFrom, polygon,
 } from "./factories";
 export { makeTranslation, makeRotation, makeRandomRotation } from "./transformations";
 export type { Axis } from "./transformations";

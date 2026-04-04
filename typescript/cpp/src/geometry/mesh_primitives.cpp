@@ -11,11 +11,13 @@
  * Author: Žiga Sajovic
  */
 
-#include "trueform/geometry/make_sphere_mesh.hpp"
-#include "trueform/geometry/make_cylinder_mesh.hpp"
 #include "trueform/geometry/make_box_mesh.hpp"
+#include "trueform/geometry/make_cylinder_mesh.hpp"
 #include "trueform/geometry/make_plane_mesh.hpp"
+#include "trueform/geometry/make_sphere_mesh.hpp"
+#include "trueform/geometry/make_tube_mesh.hpp"
 #include "trueform/ts/core/promise.hpp"
+#include "trueform/ts/core/wasm_curves.hpp"
 #include "trueform/ts/core/wasm_mesh.hpp"
 #include <emscripten/bind.h>
 
@@ -94,6 +96,20 @@ auto async_make_plane_mesh(float width, float height, int width_ticks,
   });
 }
 
+auto sync_make_tube_mesh(wasm_curves &curves, float radius, int radial_segments)
+    -> wasm_mesh {
+  auto result = tf::make_tube_mesh(curves.curves_range(), radius, radial_segments);
+  return wasm_mesh::from_polygons_buffer(std::move(result));
+}
+
+auto async_make_tube_mesh(wasm_curves &curves, float radius,
+                          int radial_segments) -> promise_t {
+  return promise([c = curves, radius, radial_segments]() -> wasm_mesh {
+    return sync_make_tube_mesh(const_cast<wasm_curves &>(c), radius,
+                               radial_segments);
+  });
+}
+
 } // namespace
 
 EMSCRIPTEN_BINDINGS(trueform_geometry_mesh_primitives) {
@@ -113,4 +129,6 @@ EMSCRIPTEN_BINDINGS(trueform_geometry_mesh_primitives) {
   emscripten::function("dispatch_make_box_mesh_subdivided",
                        &async_make_box_mesh_subdivided);
   emscripten::function("dispatch_make_plane_mesh", &async_make_plane_mesh);
+  emscripten::function("make_tube_mesh", &sync_make_tube_mesh);
+  emscripten::function("dispatch_make_tube_mesh", &async_make_tube_mesh);
 }

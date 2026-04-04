@@ -456,6 +456,45 @@ describe("Primitive factories (other overloads)", () => {
     box.delete();
   });
 
+  // ---------- aabbFrom ----------
+  test("aabbFrom NDArray points", () => {
+    const tf = getTf();
+    const points = tf.ndarray(new Float32Array([
+      1, 2, 3,
+      4, 5, 6,
+      -1, 0, 10,
+    ]), [3, 3]);
+
+    const box = tf.aabbFrom(points);
+    assert(box.type === "aabb", `type: ${box.type}`);
+    assert(box.shape[0] === 2 && box.shape[1] === 3, `shape: [${box.shape}]`);
+    approx(box.data[0], -1); approx(box.data[1], 0); approx(box.data[2], 3);
+    approx(box.data[3], 4); approx(box.data[4], 5); approx(box.data[5], 10);
+    log("  aabbFrom(ndarray[3,3]) → aabb[2,3]", "line-pass");
+
+    box.delete(); points.delete();
+  });
+
+  test("aabbFrom mesh", () => {
+    const tf = getTf();
+    const faces = tf.ndarray(new Int32Array([0, 1, 2]), [1, 3]);
+    const points = tf.ndarray(new Float32Array([
+      0, 0, 0,
+      3, 0, 0,
+      0, 4, 0,
+    ]), [3, 3]);
+    const m = tf.mesh(faces, points);
+
+    const box = tf.aabbFrom(m);
+    assert(box.type === "aabb", `type: ${box.type}`);
+    assert(box.shape[0] === 2 && box.shape[1] === 3, `shape: [${box.shape}]`);
+    approx(box.data[0], 0); approx(box.data[1], 0); approx(box.data[2], 0);
+    approx(box.data[3], 3); approx(box.data[4], 4); approx(box.data[5], 0);
+    log("  aabbFrom(mesh) → aabb[2,3]", "line-pass");
+
+    box.delete(); m.delete();
+  });
+
   // ---------- polygon ----------
   test("polygon from Point[]", () => {
     const tf = getTf();

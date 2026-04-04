@@ -52,9 +52,11 @@
 #include "./geometry/impl/ear_cutter.hpp"              // IWYU pragma: export
 #include "./geometry/laplacian_smoothed.hpp"           // IWYU pragma: export
 #include "./geometry/make_box_mesh.hpp"                // IWYU pragma: export
+#include "./geometry/make_curve_frames.hpp"            // IWYU pragma: export
 #include "./geometry/make_cylinder_mesh.hpp"           // IWYU pragma: export
 #include "./geometry/make_plane_mesh.hpp"              // IWYU pragma: export
 #include "./geometry/make_sphere_mesh.hpp"             // IWYU pragma: export
+#include "./geometry/make_tube_mesh.hpp"               // IWYU pragma: export
 #include "./geometry/taubin_smoothed.hpp"              // IWYU pragma: export
 #include "./geometry/triangulated.hpp"                 // IWYU pragma: export
 #include "./geometry/triangulated_faces.hpp"           // IWYU pragma: export
