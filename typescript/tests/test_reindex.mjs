@@ -311,6 +311,112 @@ describe("Reindex", () => {
   });
 
   // ==========================================================================
+  test("splitIntoComponents (per-face label counts match component face counts)", () => {
+    const tf = getTf();
+    const s1 = tf.sphereMesh(1.0, 8, 8);
+    const s2 = tf.sphereMesh(0.5, 6, 6);
+    const combined = tf.concatenateMeshes(s1, s2);
+
+    const cc = tf.connectedComponents(combined, "edge");
+    const split = tf.splitIntoComponents(combined, cc.labels);
+
+    // Count per-face labels (from cc.labels, not split.labels)
+    const count0 = tf.sum(cc.labels.eq(0));
+    const count1 = tf.sum(cc.labels.eq(1));
+    assert(count0 === split.components[0].numberOfFaces,
+      `label 0 count ${count0} != component 0 faces ${split.components[0].numberOfFaces}`);
+    assert(count1 === split.components[1].numberOfFaces,
+      `label 1 count ${count1} != component 1 faces ${split.components[1].numberOfFaces}`);
+    log(`  per-face label counts: ${count0} + ${count1} = ${combined.numberOfFaces}`, "line-pass");
+
+    // split.labels is per-component unique label values
+    assert(split.labels.length === 2, `expected 2 unique labels, got ${split.labels.length}`);
+
+    for (const c of split.components) c.delete();
+    split.labels.delete();
+    cc.labels.delete();
+    combined.delete();
+    s2.delete();
+    s1.delete();
+  });
+
+  // ==========================================================================
+  test("splitIntoComponents (per-face label counts, async)", async () => {
+    const tf = getTf();
+    const s1 = tf.sphereMesh(1.0, 8, 8);
+    const s2 = tf.sphereMesh(0.5, 6, 6);
+    const combined = tf.concatenateMeshes(s1, s2);
+
+    const cc = tf.connectedComponents(combined, "edge");
+    const split = await tf.async.splitIntoComponents(combined, cc.labels);
+
+    const count0 = tf.sum(cc.labels.eq(0));
+    const count1 = tf.sum(cc.labels.eq(1));
+    assert(count0 === split.components[0].numberOfFaces,
+      `label 0 count ${count0} != component 0 faces ${split.components[0].numberOfFaces}`);
+    assert(count1 === split.components[1].numberOfFaces,
+      `label 1 count ${count1} != component 1 faces ${split.components[1].numberOfFaces}`);
+    log(`  async: per-face label counts: ${count0} + ${count1} = ${combined.numberOfFaces}`, "line-pass");
+
+    assert(split.labels.length === 2, `expected 2 unique labels, got ${split.labels.length}`);
+
+    for (const c of split.components) c.delete();
+    split.labels.delete();
+    cc.labels.delete();
+    combined.delete();
+    s2.delete();
+    s1.delete();
+  });
+
+  // ==========================================================================
+  test("splitIntoComponents after boolean (sync)", () => {
+    const tf = getTf();
+    const s0 = tf.sphereMesh(1.0, 10, 10);
+    const s1 = tf.sphereMesh(1.0, 10, 10);
+    s1.transformation = tf.makeTranslation(0.8, 0, 0);
+
+    const { mesh, labels } = tf.booleanDifference(s0, s1);
+    const split = tf.splitIntoComponents(mesh, labels);
+    assert(split.components.length > 0, `expected >0 components, got ${split.components.length}`);
+
+    const totalFaces = split.components.reduce((s, c) => s + c.numberOfFaces, 0);
+    assert(totalFaces === mesh.numberOfFaces,
+      `component faces ${totalFaces} != mesh faces ${mesh.numberOfFaces}`);
+    log(`  boolean → split: ${split.components.length} components, ${totalFaces} faces`, "line-pass");
+
+    for (const c of split.components) c.delete();
+    split.labels.delete();
+    labels.delete();
+    mesh.delete();
+    s1.delete();
+    s0.delete();
+  });
+
+  // ==========================================================================
+  test("splitIntoComponents after boolean (async)", async () => {
+    const tf = getTf();
+    const s0 = tf.sphereMesh(1.0, 10, 10);
+    const s1 = tf.sphereMesh(1.0, 10, 10);
+    s1.transformation = tf.makeTranslation(0.8, 0, 0);
+
+    const { mesh, labels } = await tf.async.booleanDifference(s0, s1);
+    const split = await tf.async.splitIntoComponents(mesh, labels);
+    assert(split.components.length > 0, `expected >0 components, got ${split.components.length}`);
+
+    const totalFaces = split.components.reduce((s, c) => s + c.numberOfFaces, 0);
+    assert(totalFaces === mesh.numberOfFaces,
+      `component faces ${totalFaces} != mesh faces ${mesh.numberOfFaces}`);
+    log(`  async boolean → split: ${split.components.length} components, ${totalFaces} faces`, "line-pass");
+
+    for (const c of split.components) c.delete();
+    split.labels.delete();
+    labels.delete();
+    mesh.delete();
+    s1.delete();
+    s0.delete();
+  });
+
+  // ==========================================================================
   test("reindexedByMask → reindexed round-trip preserves geometry", () => {
     const tf = getTf();
     const box = tf.boxMesh(2, 2, 2);

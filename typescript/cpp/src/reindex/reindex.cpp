@@ -294,38 +294,47 @@ auto async_concatenate_meshes(emscripten::val js_meshes) -> promise_t {
 // split_into_components(mesh, labels) → {components: Mesh[], labels: int[]}
 // ============================================================================
 
-auto sync_split_into_components(wasm_mesh &m, wasm_ndarray<int> &labels)
-    -> emscripten::val {
+auto compute_split(wasm_mesh &m, wasm_ndarray<int> &labels) -> split_components_result {
   auto poly = m.polygons_range();
   auto [components, comp_labels] =
       tf::split_into_components(poly, labels.make_range());
 
-  auto result = emscripten::val::object();
-  auto js_meshes = emscripten::val::array();
-  auto js_labels = emscripten::val::array();
-  for (std::size_t i = 0; i < components.size(); ++i) {
-    js_meshes.call<void>(
-        "push", wasm_mesh::from_polygons_buffer(std::move(components[i])));
-    js_labels.call<void>("push", comp_labels[i]);
-  }
-  result.set("components", js_meshes);
-  result.set("labels", js_labels);
+  split_components_result result;
+  result.components.reserve(components.size());
+  for (auto &c : components)
+    result.components.push_back(
+        wasm_mesh::from_polygons_buffer(std::move(c)));
+  tf::buffer<int> lbuf;
+  lbuf.allocate(comp_labels.size());
+  for (std::size_t i = 0; i < comp_labels.size(); ++i)
+    lbuf[i] = comp_labels[i];
+  result.labels = wasm_ndarray<int>::from_buffer(
+      std::move(lbuf), {static_cast<int>(comp_labels.size())});
   return result;
+}
+
+auto sync_split_into_components(wasm_mesh &m, wasm_ndarray<int> &labels)
+    -> split_components_result {
+  return compute_split(m, labels);
 }
 
 auto async_split_into_components(wasm_mesh &m, wasm_ndarray<int> &labels)
     -> promise_t {
   return promise(
-      [a = m, b = labels]() -> emscripten::val {
-        return sync_split_into_components(const_cast<wasm_mesh &>(a),
-                                          const_cast<wasm_ndarray<int> &>(b));
+      [a = m, b = labels]() -> split_components_result {
+        return compute_split(const_cast<wasm_mesh &>(a),
+                             const_cast<wasm_ndarray<int> &>(b));
       });
 }
 
 } // namespace
 
 EMSCRIPTEN_BINDINGS(trueform_reindex) {
-  // Result type
+  // Result types
+  emscripten::value_object<tf::ts::split_components_result>("SplitResult")
+      .field("components", &tf::ts::split_components_result::components)
+      .field("labels", &tf::ts::split_components_result::labels);
+
   emscripten::value_object<tf::ts::reindexed_mesh_result>(
       "ReindexedMeshResult")
       .field("mesh", &tf::ts::reindexed_mesh_result::mesh)

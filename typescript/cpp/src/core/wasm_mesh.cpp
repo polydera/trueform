@@ -208,4 +208,6 @@ EMSCRIPTEN_BINDINGS(trueform_mesh) {
       .function("ensure_tree", &tf::ts::wasm_mesh::ensure_tree)
       .function("destroy", &tf::ts::wasm_mesh::destroy)
       .function("is_valid", &tf::ts::wasm_mesh::is_valid);
+
+  emscripten::register_vector<tf::ts::wasm_mesh>("VectorMesh");
 }

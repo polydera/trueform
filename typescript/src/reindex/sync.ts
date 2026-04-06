@@ -31,7 +31,7 @@ export interface SplitResult {
   /** One mesh per component. */
   components: Mesh[];
   /** Per-component label values. */
-  labels: number[];
+  labels: NDArrayInt32;
 }
 
 // ============================================================================
@@ -206,8 +206,11 @@ export function concatenateMeshes(...args: any[]): Mesh {
 export function splitIntoComponents(m: Mesh, labels: NDArrayInt32): SplitResult {
   const safeLabels = labels.dtype === "int32" ? labels : labels.as("int32");
   const raw = native().split_into_components(m._handle, safeLabels._handle);
+  const comps: Mesh[] = [];
+  for (let i = 0; i < raw.components.size(); i++)
+    comps.push(new Mesh(raw.components.get(i)));
   return {
-    components: Array.from(raw.components, (h: any) => new Mesh(h)),
-    labels: Array.from(raw.labels),
+    components: comps,
+    labels: new NDArray(raw.labels, "int32"),
   };
 }

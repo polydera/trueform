@@ -14,6 +14,8 @@
 
 #include "trueform/ts/core/wasm_index_map.hpp"
 #include "trueform/ts/core/wasm_mesh.hpp"
+#include "trueform/ts/core/wasm_ndarray.hpp"
+#include <vector>
 
 namespace tf {
 namespace ts {
@@ -22,6 +24,11 @@ struct reindexed_mesh_result {
   wasm_mesh mesh;
   wasm_index_map face_map;
   wasm_index_map point_map;
+};
+
+struct split_components_result {
+  std::vector<wasm_mesh> components;
+  wasm_ndarray<std::int32_t> labels;
 };
 
 } // namespace ts
