@@ -68,10 +68,11 @@ export async function reindexedByMask(
   mask: NDArrayBool,
   opts?: { returnIndexMap: true },
 ): Promise<Mesh | ReindexedMeshResult> {
+  const safeMask = mask.dtype === "bool" ? mask : mask.as("bool");
   if (opts?.returnIndexMap) {
     return dispatcher().run(
       () =>
-        native().dispatch_reindexed_by_mask_with_maps(m._handle, mask._handle),
+        native().dispatch_reindexed_by_mask_with_maps(m._handle, safeMask._handle),
       (raw) => ({
         mesh: new Mesh(raw.mesh),
         faceMap: new IndexMap(raw.faceMap),
@@ -80,7 +81,7 @@ export async function reindexedByMask(
     );
   }
   return dispatcher().run(
-    () => native().dispatch_reindexed_by_mask(m._handle, mask._handle),
+    () => native().dispatch_reindexed_by_mask(m._handle, safeMask._handle),
     (raw) => new Mesh(raw),
   );
 }
@@ -105,10 +106,11 @@ export async function reindexedByIds(
   ids: NDArrayInt32,
   opts?: { returnIndexMap: true },
 ): Promise<Mesh | ReindexedMeshResult> {
+  const safeIds = ids.dtype === "int32" ? ids : ids.as("int32");
   if (opts?.returnIndexMap) {
     return dispatcher().run(
       () =>
-        native().dispatch_reindexed_by_ids_with_maps(m._handle, ids._handle),
+        native().dispatch_reindexed_by_ids_with_maps(m._handle, safeIds._handle),
       (raw) => ({
         mesh: new Mesh(raw.mesh),
         faceMap: new IndexMap(raw.faceMap),
@@ -117,7 +119,7 @@ export async function reindexedByIds(
     );
   }
   return dispatcher().run(
-    () => native().dispatch_reindexed_by_ids(m._handle, ids._handle),
+    () => native().dispatch_reindexed_by_ids(m._handle, safeIds._handle),
     (raw) => new Mesh(raw),
   );
 }
@@ -142,12 +144,13 @@ export async function reindexedByMaskOnPoints(
   mask: NDArrayBool,
   opts?: { returnIndexMap: true },
 ): Promise<Mesh | ReindexedMeshResult> {
+  const safeMask = mask.dtype === "bool" ? mask : mask.as("bool");
   if (opts?.returnIndexMap) {
     return dispatcher().run(
       () =>
         native().dispatch_reindexed_by_mask_on_points_with_maps(
           m._handle,
-          mask._handle,
+          safeMask._handle,
         ),
       (raw) => ({
         mesh: new Mesh(raw.mesh),
@@ -158,7 +161,7 @@ export async function reindexedByMaskOnPoints(
   }
   return dispatcher().run(
     () =>
-      native().dispatch_reindexed_by_mask_on_points(m._handle, mask._handle),
+      native().dispatch_reindexed_by_mask_on_points(m._handle, safeMask._handle),
     (raw) => new Mesh(raw),
   );
 }
@@ -183,12 +186,13 @@ export async function reindexedByIdsOnPoints(
   ids: NDArrayInt32,
   opts?: { returnIndexMap: true },
 ): Promise<Mesh | ReindexedMeshResult> {
+  const safeIds = ids.dtype === "int32" ? ids : ids.as("int32");
   if (opts?.returnIndexMap) {
     return dispatcher().run(
       () =>
         native().dispatch_reindexed_by_ids_on_points_with_maps(
           m._handle,
-          ids._handle,
+          safeIds._handle,
         ),
       (raw) => ({
         mesh: new Mesh(raw.mesh),
@@ -199,7 +203,7 @@ export async function reindexedByIdsOnPoints(
   }
   return dispatcher().run(
     () =>
-      native().dispatch_reindexed_by_ids_on_points(m._handle, ids._handle),
+      native().dispatch_reindexed_by_ids_on_points(m._handle, safeIds._handle),
     (raw) => new Mesh(raw),
   );
 }
@@ -229,8 +233,9 @@ export async function splitIntoComponents(
   m: Mesh,
   labels: NDArrayInt32,
 ): Promise<SplitResult> {
+  const safeLabels = labels.dtype === "int32" ? labels : labels.as("int32");
   return dispatcher().run(
-    () => native().dispatch_split_into_components(m._handle, labels._handle),
+    () => native().dispatch_split_into_components(m._handle, safeLabels._handle),
     (raw) => ({
       components: Array.from(raw.components, (h: any) => new Mesh(h)),
       labels: Array.from(raw.labels),

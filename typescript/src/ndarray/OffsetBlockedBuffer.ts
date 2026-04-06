@@ -11,10 +11,11 @@
  * Author: Žiga Sajovic
  */
 
+import { native } from "../native";
 import { registry } from "../internal/registry";
 import { NDArray, NativeNDArray, NDArrayInt32 } from "./NDArray";
 
-interface NativeOffsetBlockedIntBuffer {
+export interface NativeOffsetBlockedIntBuffer {
   offsets(): NativeNDArray<Int32Array>;
   data(): NativeNDArray<Int32Array>;
   size(): number;
@@ -78,4 +79,10 @@ export class OffsetBlockedBuffer {
   [Symbol.dispose](): void {
     this._handle.destroy();
   }
+}
+
+/** Create a WASM-resident offset-blocked buffer from offsets and data arrays. */
+export function offsetBlockedBuffer(offsets: NDArrayInt32, data: NDArrayInt32): OffsetBlockedBuffer {
+  return new OffsetBlockedBuffer(
+    native().NativeOffsetBlockedIntBuffer.create(offsets._handle, data._handle));
 }

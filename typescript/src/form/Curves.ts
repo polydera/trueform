@@ -13,17 +13,7 @@
 
 import { registry } from "../internal/registry";
 import { NDArray, NDArrayFloat32 } from "../ndarray/NDArray";
-import { OffsetBlockedBuffer } from "../ndarray/OffsetBlockedBuffer";
-
-interface NativeOffsetBlockedIntBuffer {
-  offsets(): any;
-  data(): any;
-  size(): number;
-  get(i: number): any;
-  destroy(): void;
-  is_valid(): boolean;
-  delete(): void;
-}
+import { OffsetBlockedBuffer, NativeOffsetBlockedIntBuffer } from "../ndarray/OffsetBlockedBuffer";
 
 interface NativeCurves {
   paths(): NativeOffsetBlockedIntBuffer;

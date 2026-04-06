@@ -471,7 +471,7 @@ auto concatenated_diff_gons(const Range &r) {
   for (const auto &polygons : r)
     fill_offsets(polygons);
 
-  out.faces_buffer().allocate(offsets.back());
+  out.faces_buffer().data_buffer().allocate(offsets.back());
   out.points_buffer().allocate(total_point_size);
   concatenated_impl(out, r);
   return out;

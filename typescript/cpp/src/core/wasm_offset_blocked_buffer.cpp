@@ -24,5 +24,6 @@ EMSCRIPTEN_BINDINGS(trueform_offset_blocked_buffer) {
       .function("size", &obb_int::size)
       .function("get", &obb_int::get)
       .function("destroy", &obb_int::destroy)
-      .function("is_valid", &obb_int::is_valid);
+      .function("is_valid", &obb_int::is_valid)
+      .class_function("create", &obb_int::create);
 }

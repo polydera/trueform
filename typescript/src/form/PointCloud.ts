@@ -14,19 +14,9 @@
 import { native } from "../native";
 import { registry } from "../internal/registry";
 import { NDArray, NativeNDArray, NDArrayFloat32 } from "../ndarray/NDArray";
-import { OffsetBlockedBuffer } from "../ndarray/OffsetBlockedBuffer";
+import { OffsetBlockedBuffer, NativeOffsetBlockedIntBuffer } from "../ndarray/OffsetBlockedBuffer";
 import { ndarray } from "../ndarray/factories";
 import { Mesh } from "./Mesh";
-
-interface NativeOffsetBlockedIntBuffer {
-  offsets(): NativeNDArray<Int32Array>;
-  data(): NativeNDArray<Int32Array>;
-  size(): number;
-  get(i: number): NativeNDArray<Int32Array>;
-  destroy(): void;
-  is_valid(): boolean;
-  delete(): void;
-}
 
 interface NativePointCloud {
   points(): NativeNDArray<Float32Array>;

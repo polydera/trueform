@@ -160,9 +160,69 @@ describe("Geometry", () => {
     batch.delete();
   });
 
-  // NOTE: triangulate_dynamic (MeshLike with OffsetBlockedBuffer faces)
-  // is not tested here because OffsetBlockedBuffer has no public JS
-  // constructor yet. The C++ binding compiles and is tested via C++ tests.
+  // ==========================================================================
+  test("offsetBlockedBuffer factory", () => {
+    const tf = getTf();
+    // Two paths: [0,1,2] and [3,4]
+    const offsets = tf.ndarray(new Int32Array([0, 3, 5]), [3]);
+    const data = tf.ndarray(new Int32Array([0, 1, 2, 3, 4]), [5]);
+
+    const obb = tf.offsetBlockedBuffer(offsets, data);
+    assert(obb.length === 2, `expected 2 blocks, got ${obb.length}`);
+
+    const b0 = obb.get(0);
+    assert(b0.length === 3, `block 0 size: ${b0.length}`);
+    const b0d = b0.data;
+    assert(b0d[0] === 0 && b0d[1] === 1 && b0d[2] === 2, `block 0 data: [${b0d}]`);
+
+    const b1 = obb.get(1);
+    assert(b1.length === 2, `block 1 size: ${b1.length}`);
+    const b1d = b1.data;
+    assert(b1d[0] === 3 && b1d[1] === 4, `block 1 data: [${b1d}]`);
+
+    log("  offsetBlockedBuffer([0,3,5], [0,1,2,3,4]) → 2 blocks", "line-pass");
+
+    b1.delete();
+    b0.delete();
+    obb.delete();
+    data.delete();
+    offsets.delete();
+  });
+
+  // ==========================================================================
+  test("curves from offsetBlockedBuffer + points", () => {
+    const tf = getTf();
+    // Two curves: [0→1→2] and [3→4]
+    const offsets = tf.ndarray(new Int32Array([0, 3, 5]), [3]);
+    const data = tf.ndarray(new Int32Array([0, 1, 2, 3, 4]), [5]);
+    const points = tf.ndarray(new Float32Array([
+      0,0,0, 1,0,0, 2,0,0, 0,1,0, 1,1,0,
+    ]), [5, 3]);
+
+    const paths = tf.offsetBlockedBuffer(offsets, data);
+    const c = tf.curves(paths, points);
+
+    assert(c.length === 2, `expected 2 curves, got ${c.length}`);
+
+    const pts = c.points;
+    assert(pts.shape[0] === 5 && pts.shape[1] === 3, `points shape: [${pts.shape}]`);
+
+    log("  curves from obb + points → 2 curves, 5 points", "line-pass");
+
+    // Make tube mesh from curves
+    const tubes = tf.tubeMesh(c, 0.1, 6);
+    assert(tubes.numberOfFaces > 0, `tube faces: ${tubes.numberOfFaces}`);
+    assert(tubes.numberOfPoints > 0, `tube points: ${tubes.numberOfPoints}`);
+    log(`  tubeMesh → ${tubes.numberOfFaces} faces, ${tubes.numberOfPoints} points`, "line-pass");
+
+    tubes.delete();
+    pts.delete();
+    c.delete();
+    paths.delete();
+    points.delete();
+    data.delete();
+    offsets.delete();
+  });
 
   // ==========================================================================
   test("sphereMesh", () => {

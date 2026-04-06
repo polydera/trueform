@@ -45,6 +45,14 @@ public:
                             std::shared_ptr<tf::buffer<ValueT>> data, int size)
       : _offsets(std::move(offsets)), _data(std::move(data)), _size(size) {}
 
+  /// Construct from two ndarrays (shares storage).
+  static auto create(wasm_ndarray<IndexT> offsets, wasm_ndarray<ValueT> data)
+      -> wasm_offset_blocked_buffer {
+    auto size = static_cast<int>(offsets.size()) - 1;
+    return wasm_offset_blocked_buffer(offsets.raw_storage(), data.raw_storage(),
+                                      size);
+  }
+
   /// Construct from an offset_block_buffer (moves data, wraps in shared_ptrs).
   static auto from_buffer(tf::offset_block_buffer<IndexT, ValueT> &&ob)
       -> wasm_offset_blocked_buffer {

@@ -14,6 +14,7 @@
 #include <trueform/trueform.hpp>
 #include <trueform/vtk/core.hpp>
 #include <trueform/vtk/core/make_vtk_polydata.hpp>
+#include <trueform/vtk/filters/stl_reader.hpp>
 #include <vtkNew.h>
 #include <vtkOpenGLActor.h>
 #include <vtkOpenGLPolyDataMapper.h>
@@ -24,33 +25,39 @@
 #include <vtkInteractorStyleTrackballCamera.h>
 
 int main() {
-  auto box = tf::make_box_mesh(2.f, 3.f, 4.f, 10, 10, 10);
-  auto polygons = box.polygons();
+  vtkNew<tf::vtk::stl_reader> reader;
+  reader->set_file_name(TRUEFORM_DATA_DIR "/benchmarks/data/dragon-500k.stl");
+  reader->Update();
 
-  auto edges = tf::make_sharp_edges(polygons, tf::deg(45.f));
-  auto segments = tf::make_segments(edges, polygons.points());
+  auto *poly = tf::vtk::polydata::SafeDownCast(reader->GetOutput());
+  auto polygons = poly->polygons();
 
-  std::cout << "Box: " << polygons.faces().size() << " faces, "
+  std::cout << "Mesh: " << polygons.faces().size() << " faces, "
             << polygons.points().size() << " points\n";
-  std::cout << "Sharp edges (>45°): " << edges.size() << "\n";
 
-  // Tube mesh from sharp edges for visualization
-  auto edge_curves = tf::make_curves(
-      tf::make_paths(edges), polygons.points());
-  auto tubes = tf::make_tube_mesh(edge_curves, 0.02f, 6);
+  // Sharp edges
+  auto edges = tf::make_sharp_edges(polygons, tf::deg(30.f));
+  std::cout << "Sharp edges (>30°): " << edges.size() << "\n";
 
-  std::cout << "Tube mesh: " << tubes.faces_buffer().size() << " faces\n";
+  // Connect edges to paths
+  auto paths = tf::connect_edges_to_paths(tf::make_edges(edges));
+  auto curves = tf::make_curves(paths, polygons.points());
+  std::cout << "Paths: " << curves.size() << "\n";
 
-  // Box mesh
-  auto box_pd = tf::vtk::make_vtk_polydata(box);
-  vtkNew<vtkOpenGLPolyDataMapper> box_mapper;
-  box_mapper->SetInputData(box_pd);
-  vtkNew<vtkOpenGLActor> box_actor;
-  box_actor->SetMapper(box_mapper);
-  box_actor->GetProperty()->SetColor(0.8, 0.8, 0.9);
-  box_actor->GetProperty()->SetOpacity(0.5);
+  // Tube mesh from curves
+  auto mel = tf::mean_edge_length(polygons);
+  auto tubes = tf::make_tube_mesh(curves, 0.0005340481836018277f);
+  std::cout << "Tubes: " << tubes.faces_buffer().size() << " faces, "
+            << tubes.points_buffer().size() << " points\n";
 
-  // Edge tubes
+  // Mesh actor
+  vtkNew<vtkOpenGLPolyDataMapper> mesh_mapper;
+  mesh_mapper->SetInputConnection(reader->GetOutputPort());
+  vtkNew<vtkOpenGLActor> mesh_actor;
+  mesh_actor->SetMapper(mesh_mapper);
+  mesh_actor->GetProperty()->SetColor(0.8, 0.8, 0.9);
+
+  // Tube actor
   auto tubes_pd = tf::vtk::make_vtk_polydata(tubes);
   vtkNew<vtkOpenGLPolyDataMapper> tubes_mapper;
   tubes_mapper->SetInputData(tubes_pd);
@@ -59,14 +66,14 @@ int main() {
   tubes_actor->GetProperty()->SetColor(1.0, 0.2, 0.2);
 
   vtkNew<vtkOpenGLRenderer> renderer;
-  renderer->AddActor(box_actor);
+  renderer->AddActor(mesh_actor);
   renderer->AddActor(tubes_actor);
   renderer->SetBackground(0.1, 0.1, 0.15);
 
   vtkNew<vtkRenderWindow> window;
   window->AddRenderer(renderer);
   window->SetSize(1200, 900);
-  window->SetWindowName("Sharp Edges (>45°)");
+  window->SetWindowName("Sharp Edges (>30°) — dragon 500k");
 
   vtkNew<vtkRenderWindowInteractor> interactor;
   interactor->SetRenderWindow(window);

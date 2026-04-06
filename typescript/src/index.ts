@@ -24,7 +24,7 @@ export {
 
 // NDArray + typed aliases
 export { NDArray, NDArrayInt8, NDArrayInt32, NDArrayFloat32, NDArrayBool } from "./ndarray/NDArray";
-export { OffsetBlockedBuffer } from "./ndarray/OffsetBlockedBuffer";
+export { OffsetBlockedBuffer, offsetBlockedBuffer } from "./ndarray/OffsetBlockedBuffer";
 export { IndexMap } from "./core/IndexMap";
 export { Mesh } from "./form/Mesh";
 export { PointCloud } from "./form/PointCloud";
