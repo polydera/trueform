@@ -181,4 +181,36 @@ describe("Remesh", () => {
     plane.delete();
   });
 
+  // ==========================================================================
+  test("async: decimated (box to 50%)", async () => {
+    const tf = getTf();
+    const box = tf.boxMesh(2, 3, 4);
+    const origFaces = box.numberOfFaces; // 12
+
+    const dec = await tf.async.decimated(box, 0.5);
+    assert(dec.numberOfFaces <= origFaces, `face count should decrease: ${dec.numberOfFaces} <= ${origFaces}`);
+    assert(dec.numberOfFaces > 0, "should have at least 1 face");
+    assert(dec.numberOfPoints > 0, "should have at least 1 point");
+    assert(dec.numberOfPoints <= box.numberOfPoints, `point count should decrease: ${dec.numberOfPoints} <= ${box.numberOfPoints}`);
+    log(`  async: box 12 faces → ${dec.numberOfFaces} faces, ${dec.numberOfPoints} points`, "line-pass");
+
+    dec.delete();
+    box.delete();
+  });
+
+  // ==========================================================================
+  test("async: isotropicRemeshed (box — basic)", async () => {
+    const tf = getTf();
+    const box = tf.boxMesh(2, 3, 4, 3, 3, 3);
+    const mel = tf.meanEdgeLength(box);
+
+    const rem = await tf.async.isotropicRemeshed(box, mel * 2.0);
+    assert(rem.numberOfFaces > 0, "should have faces");
+    assert(rem.numberOfPoints > 0, "should have points");
+    log(`  async: box ${box.numberOfFaces} faces → remeshed ${rem.numberOfFaces} faces (target=${(mel * 2).toFixed(3)})`, "line-pass");
+
+    rem.delete();
+    box.delete();
+  });
+
 });

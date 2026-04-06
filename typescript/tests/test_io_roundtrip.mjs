@@ -70,6 +70,42 @@ describe("I/O write + roundtrip", () => {
     m2.delete(); objBytes.delete(); mesh.delete();
   });
 
+  // ==========================================================================
+  test("async: STL roundtrip", async () => {
+    const tf = getTf();
+    const mesh = tf.sphereMesh(1, 8, 8);
+    const originalFaces = mesh.numberOfFaces;
+
+    const stlBytes = await tf.async.writeStl(mesh);
+    const buf = new Uint8Array(stlBytes.data.length);
+    for (let i = 0; i < buf.length; i++) buf[i] = stlBytes.data[i];
+    const m2 = await tf.async.readStl(buf.buffer);
+
+    assert(m2.numberOfFaces === originalFaces,
+      `faces: ${m2.numberOfFaces} === ${originalFaces}`);
+    log(`  async STL roundtrip: ${originalFaces} faces preserved`, "line-pass");
+
+    m2.delete(); stlBytes.delete(); mesh.delete();
+  });
+
+  // ==========================================================================
+  test("async: OBJ roundtrip", async () => {
+    const tf = getTf();
+    const mesh = tf.sphereMesh(1, 8, 8);
+    const originalFaces = mesh.numberOfFaces;
+
+    const objBytes = await tf.async.writeObj(mesh);
+    const buf = new Uint8Array(objBytes.data.length);
+    for (let i = 0; i < buf.length; i++) buf[i] = objBytes.data[i];
+    const m2 = await tf.async.readObj(buf.buffer);
+
+    assert(m2.numberOfFaces === originalFaces,
+      `faces: ${m2.numberOfFaces} === ${originalFaces}`);
+    log(`  async OBJ roundtrip: ${originalFaces} faces preserved`, "line-pass");
+
+    m2.delete(); objBytes.delete(); mesh.delete();
+  });
+
 });
 
 describe("readStlData / readObjData", () => {

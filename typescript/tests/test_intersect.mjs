@@ -106,4 +106,17 @@ describe("Isocontours", () => {
     curves.delete(); scalars.delete(); plane.delete();
   });
 
+  test("async: isocontours", async () => {
+    const tf = getTf();
+    const plane = tf.planeMesh(4, 4, 20, 20);
+    const scalars = plane.points.take(null, 0);
+
+    const curves = await tf.async.isocontours(plane, scalars, 0.0);
+    assert(curves.length > 0, `curves count: ${curves.length}`);
+    assert(curves.points.shape[1] === 3, "3D points");
+    log(`  async isocontours: ${curves.length} curves`, "line-pass");
+
+    curves.delete(); scalars.delete(); plane.delete();
+  });
+
 });

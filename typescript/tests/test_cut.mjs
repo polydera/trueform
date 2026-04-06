@@ -92,6 +92,46 @@ describe("Boolean operations", () => {
     s1.delete(); s0.delete();
   });
 
+  test("async: booleanUnion", async () => {
+    const { tf, s0, s1 } = twoSpheres();
+    const result = await tf.async.booleanUnion(s0, s1);
+
+    assert(result.mesh.numberOfFaces > 0, "has faces");
+    assert(result.labels.length === result.mesh.numberOfFaces,
+      `labels length ${result.labels.length} matches faces ${result.mesh.numberOfFaces}`);
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log(`  async union: ${result.mesh.numberOfFaces} faces`, "line-pass");
+
+    result.faceLabels.delete(); result.labels.delete(); result.mesh.delete();
+    s1.delete(); s0.delete();
+  });
+
+  test("async: booleanIntersection", async () => {
+    const { tf, s0, s1 } = twoSpheres();
+    const result = await tf.async.booleanIntersection(s0, s1);
+
+    assert(result.mesh.numberOfFaces > 0, "has faces");
+    assert(result.labels.length === result.mesh.numberOfFaces, "labels match");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log(`  async intersection: ${result.mesh.numberOfFaces} faces`, "line-pass");
+
+    result.faceLabels.delete(); result.labels.delete(); result.mesh.delete();
+    s1.delete(); s0.delete();
+  });
+
+  test("async: booleanDifference", async () => {
+    const { tf, s0, s1 } = twoSpheres();
+    const result = await tf.async.booleanDifference(s0, s1);
+
+    assert(result.mesh.numberOfFaces > 0, "has faces");
+    assert(result.labels.length === result.mesh.numberOfFaces, "labels match");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log(`  async difference: ${result.mesh.numberOfFaces} faces`, "line-pass");
+
+    result.faceLabels.delete(); result.labels.delete(); result.mesh.delete();
+    s1.delete(); s0.delete();
+  });
+
 });
 
 describe("Isobands", () => {
@@ -163,6 +203,22 @@ describe("Isobands", () => {
     scalars.delete(); plane.delete();
   });
 
+  test("async: isobands", async () => {
+    const tf = getTf();
+    const plane = tf.planeMesh(4, 4, 20, 20);
+    const scalars = plane.points.take(null, 0);
+    const cutValues = new Float32Array([-1, 0, 1]);
+
+    const result = await tf.async.isobands(plane, scalars, cutValues);
+    assert(result.mesh.numberOfFaces > 0, "has faces");
+    assert(result.labels.length === result.mesh.numberOfFaces, "labels match faces");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log(`  async isobands: ${result.mesh.numberOfFaces} faces`, "line-pass");
+
+    result.faceLabels.delete(); result.labels.delete(); result.mesh.delete();
+    scalars.delete(); plane.delete();
+  });
+
 });
 
 describe("Embedded curves", () => {
@@ -219,6 +275,31 @@ describe("Embedded curves", () => {
     log("  embeddedSelfIntersection with curves (no SI)", "line-pass");
 
     result.curves.delete(); result.faceLabels.delete(); result.mesh.delete(); sphere.delete();
+  });
+
+  test("async: embeddedIntersectionCurves", async () => {
+    const { tf, s0, s1 } = twoSpheres();
+    const result = await tf.async.embeddedIntersectionCurves(s0, s1);
+
+    assert(result.mesh.numberOfFaces >= s0.numberOfFaces,
+      "embedded mesh has at least as many faces");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log(`  async embedded: ${result.mesh.numberOfFaces} faces`, "line-pass");
+
+    result.faceLabels.delete(); result.mesh.delete(); s1.delete(); s0.delete();
+  });
+
+  test("async: embeddedSelfIntersectionCurves", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1, 8, 8);
+    const result = await tf.async.embeddedSelfIntersectionCurves(sphere);
+
+    assert(result.mesh.numberOfFaces === sphere.numberOfFaces,
+      "no self-intersection → same face count");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log("  async embeddedSelfIntersection (no SI)", "line-pass");
+
+    result.faceLabels.delete(); result.mesh.delete(); sphere.delete();
   });
 
 });

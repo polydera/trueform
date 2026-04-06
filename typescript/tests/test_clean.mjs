@@ -128,4 +128,18 @@ describe("Clean", () => {
     mesh.delete(); soup.delete();
   });
 
+  test("async: cleaned", async () => {
+    const tf = getTf();
+    const { faces, points } = meshWithDuplicateVertex();
+    const m = tf.mesh(faces, points);
+    const clean = await tf.async.cleaned(m);
+
+    assert(clean.numberOfPoints <= m.numberOfPoints,
+      `expected fewer points: ${clean.numberOfPoints} <= ${m.numberOfPoints}`);
+    assert(clean.numberOfFaces === 1, `expected 1 face (duplicate removed), got ${clean.numberOfFaces}`);
+    log(`  async cleaned: ${m.numberOfPoints} → ${clean.numberOfPoints} points`, "line-pass");
+
+    clean.delete(); m.delete();
+  });
+
 });

@@ -283,4 +283,119 @@ describe("Topology", () => {
     sphere.delete();
   });
 
+  // ==========================================================================
+  // ASYNC VARIANTS
+  // ==========================================================================
+
+  test("async: isClosed / isOpen", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10);
+    const plane = tf.planeMesh(10, 5);
+    assert(await tf.async.isClosed(sphere) === true, "sphere closed");
+    assert(await tf.async.isOpen(plane) === true, "plane open");
+    log("  async isClosed/isOpen OK", "line-pass");
+    plane.delete(); sphere.delete();
+  });
+
+  test("async: isManifold / isNonManifold", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10);
+    assert(await tf.async.isManifold(sphere) === true, "manifold");
+    assert(await tf.async.isNonManifold(sphere) === false, "not non-manifold");
+    log("  async isManifold/isNonManifold OK", "line-pass");
+    sphere.delete();
+  });
+
+  test("async: eulerCharacteristic", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 16, 16);
+    const ec = await tf.async.eulerCharacteristic(sphere);
+    assert(ec === 2, `expected 2, got ${ec}`);
+    log(`  async euler = ${ec}`, "line-pass");
+    sphere.delete();
+  });
+
+  test("async: boundaryEdges", async () => {
+    const tf = getTf();
+    const plane = tf.planeMesh(10, 5);
+    const be = await tf.async.boundaryEdges(plane);
+    assert(be.shape[0] === 4, `expected 4 boundary edges, got ${be.shape[0]}`);
+    log(`  async boundaryEdges: ${be.shape[0]}`, "line-pass");
+    be.delete(); plane.delete();
+  });
+
+  test("async: nonManifoldEdges", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10);
+    const nme = await tf.async.nonManifoldEdges(sphere);
+    assert(nme.shape[0] === 0, `expected 0, got ${nme.shape[0]}`);
+    log("  async nonManifoldEdges: 0", "line-pass");
+    nme.delete(); sphere.delete();
+  });
+
+  test("async: boundaryPaths", async () => {
+    const tf = getTf();
+    const plane = tf.planeMesh(10, 5);
+    const bp = await tf.async.boundaryPaths(plane);
+    assert(bp.length === 1, `expected 1 path, got ${bp.length}`);
+    log(`  async boundaryPaths: ${bp.length} path`, "line-pass");
+    bp.delete(); plane.delete();
+  });
+
+  test("async: kRings", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10);
+    const kr = await tf.async.kRings(sphere, 1);
+    assert(kr.length === sphere.numberOfPoints, "ring count matches");
+    log(`  async kRings: ${kr.length} rings`, "line-pass");
+    kr.delete(); sphere.delete();
+  });
+
+  test("async: neighborhoods", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10);
+    const nbr = await tf.async.neighborhoods(sphere, 0.5);
+    assert(nbr.length === sphere.numberOfPoints, "neighborhood count matches");
+    log(`  async neighborhoods: ${nbr.length}`, "line-pass");
+    nbr.delete(); sphere.delete();
+  });
+
+  test("async: connectEdgesToPaths", async () => {
+    const tf = getTf();
+    const edges = tf.ndarray(new Int32Array([0, 1, 1, 2, 2, 0]), [3, 2]);
+    const paths = await tf.async.connectEdgesToPaths(edges);
+    assert(paths.length === 1, `expected 1 path, got ${paths.length}`);
+    log(`  async connectEdgesToPaths: ${paths.length} path`, "line-pass");
+    paths.delete(); edges.delete();
+  });
+
+  test("async: connectedComponents", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10);
+    const cc = await tf.async.connectedComponents(sphere, "edge");
+    assert(cc.nComponents === 1, `expected 1, got ${cc.nComponents}`);
+    log(`  async connectedComponents: ${cc.nComponents}`, "line-pass");
+    cc.labels.delete(); sphere.delete();
+  });
+
+  test("async: labelConnectedComponents (manifoldEdgeLink)", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10);
+    const mel = sphere.manifoldEdgeLink;
+    const result = await tf.async.labelConnectedComponents(mel);
+    assert(result.nComponents === 1, `expected 1 component, got ${result.nComponents}`);
+    assert(result.labels.shape[0] === sphere.numberOfFaces, "labels match face count");
+    log(`  async labelConnectedComponents: ${result.nComponents}`, "line-pass");
+    result.labels.delete(); mel.delete(); sphere.delete();
+  });
+
+  test("async: consistentlyOriented", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10);
+    const oriented = await tf.async.consistentlyOriented(sphere);
+    assert(oriented.numberOfFaces === sphere.numberOfFaces, "face count preserved");
+    log(`  async consistentlyOriented: ${oriented.numberOfFaces} faces`, "line-pass");
+    oriented.delete(); sphere.delete();
+  });
+
 });

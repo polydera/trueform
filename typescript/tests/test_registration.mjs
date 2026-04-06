@@ -148,6 +148,31 @@ describe("Chamfer Error", () => {
     tgt.delete();
   });
 
+  // ==========================================================================
+  test("async: chamferError (known offset)", async () => {
+    const tf = getTf();
+    const pts0 = new Float32Array([
+      0,0,0, 1,0,0, 0,1,0, 0,0,1,
+      1,1,0, 1,0,1, 0,1,1, 1,1,1,
+    ]);
+    const pts1 = new Float32Array(pts0.length);
+    for (let i = 0; i < pts0.length; i += 3) {
+      pts1[i] = pts0[i] + 1;
+      pts1[i+1] = pts0[i+1];
+      pts1[i+2] = pts0[i+2];
+    }
+
+    const src = tf.pointCloud(pts0);
+    const tgt = tf.pointCloud(pts1);
+
+    const err = await tf.async.chamferError(src, tgt);
+    approx(err, 0.5, "async chamfer error", 1e-4);
+    log(`  async: error = ${err} (expected 0.5)`, "line-pass");
+
+    src.delete();
+    tgt.delete();
+  });
+
 });
 
 // ============================================================================
@@ -261,6 +286,32 @@ describe("Rigid Alignment", () => {
     const det = R[0]*(R[4]*R[8]-R[5]*R[7]) - R[1]*(R[3]*R[8]-R[5]*R[6]) + R[2]*(R[3]*R[7]-R[4]*R[6]);
     assert(Math.abs(det - 1.0) < 1e-3, `det(R) should be ~1, got ${det}`);
     log(`  det(R) = ${det.toFixed(6)}`, "line-pass");
+
+    T.delete();
+    src.delete();
+    tgt.delete();
+  });
+
+  // ==========================================================================
+  test("async: fitRigidAlignment (rotation + translation)", async () => {
+    const tf = getTf();
+    const pts0 = new Float32Array([
+      0,0,0, 1,0,0, 0,1,0, 0,0,1, 1,1,1,
+    ]);
+    const Ttrue = rotTransZ(45, 10, -5, 3);
+    const pts1 = applyTransform(pts0, Ttrue);
+
+    const src = tf.pointCloud(pts0);
+    const tgt = tf.pointCloud(pts1);
+    const T = await tf.async.fitRigidAlignment(src, tgt);
+    const d = T.data;
+
+    const aligned = applyTransform(pts0, d);
+    for (let i = 0; i < pts1.length; i++) {
+      assert(Math.abs(aligned[i] - pts1[i]) < 1e-3,
+        `point mismatch at ${i}: ${aligned[i]} vs ${pts1[i]}`);
+    }
+    log("  async: rot(45)+trans recovered", "line-pass");
 
     T.delete();
     src.delete();
@@ -481,6 +532,34 @@ describe("ICP Alignment", () => {
     tgt.delete();
   });
 
+  // ==========================================================================
+  test("async: fitIcpAlignment (small translation converges)", async () => {
+    const tf = getTf();
+    const pts0 = randomPoints(200, 42);
+    const pts1 = new Float32Array(pts0.length);
+    for (let i = 0; i < pts0.length; i += 3) {
+      pts1[i]   = pts0[i]   + 0.1;
+      pts1[i+1] = pts0[i+1] + 0.05;
+      pts1[i+2] = pts0[i+2] + 0.1;
+    }
+
+    const src = tf.pointCloud(pts0);
+    const tgt = tf.pointCloud(pts1);
+    const T = await tf.async.fitIcpAlignment(src, tgt, { maxIterations: 50 });
+    const d = T.data;
+
+    const aligned = applyTransform(pts0, d);
+    const alignedPC = tf.pointCloud(aligned);
+    const err = tf.chamferError(alignedPC, tgt);
+    assert(err < 0.01, `async ICP should converge, got error ${err}`);
+    log(`  async: chamfer error after ICP = ${err.toFixed(6)}`, "line-pass");
+
+    T.delete();
+    alignedPC.delete();
+    src.delete();
+    tgt.delete();
+  });
+
 });
 
 // ============================================================================
@@ -598,6 +677,35 @@ describe("OBB Alignment", () => {
     Tobb.delete();
     afterIcpPC.delete();
     afterObbPC.delete();
+    src.delete();
+    tgt.delete();
+  });
+
+  // ==========================================================================
+  test("async: fitObbAlignment (translation)", async () => {
+    const tf = getTf();
+    const pts0 = elongatedBox(200, 4, 2, 1, 123);
+    const pts1 = new Float32Array(pts0.length);
+    for (let i = 0; i < pts0.length; i += 3) {
+      pts1[i]   = pts0[i]   + 3;
+      pts1[i+1] = pts0[i+1] + 5;
+      pts1[i+2] = pts0[i+2] - 2;
+    }
+
+    const src = tf.pointCloud(pts0);
+    const tgt = tf.pointCloud(pts1);
+    const T = await tf.async.fitObbAlignment(src, tgt);
+    assert(T.shape[0] === 4 && T.shape[1] === 4, `shape [${T.shape}]`);
+
+    const d = T.data;
+    const aligned = applyTransform(pts0, d);
+    const alignedPC = tf.pointCloud(aligned);
+    const err = tf.chamferError(alignedPC, tgt);
+    assert(err < 0.5, `async OBB alignment error too high: ${err}`);
+    log(`  async: chamfer after OBB = ${err.toFixed(4)}`, "line-pass");
+
+    T.delete();
+    alignedPC.delete();
     src.delete();
     tgt.delete();
   });

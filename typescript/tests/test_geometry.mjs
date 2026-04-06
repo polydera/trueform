@@ -597,4 +597,188 @@ describe("Geometry", () => {
     plane.delete();
   });
 
+  // ==========================================================================
+  // ASYNC VARIANTS
+  // ==========================================================================
+
+  test("async: sphereMesh", async () => {
+    const tf = getTf();
+    const sphere = await tf.async.sphereMesh(1.0, 10, 10);
+    assert(sphere.numberOfPoints === 92, `expected 92 points, got ${sphere.numberOfPoints}`);
+    assert(sphere.numberOfFaces === 180, `expected 180 faces, got ${sphere.numberOfFaces}`);
+    log(`  async sphere → ${sphere.numberOfFaces} faces`, "line-pass");
+    sphere.delete();
+  });
+
+  test("async: cylinderMesh", async () => {
+    const tf = getTf();
+    const cyl = await tf.async.cylinderMesh(1.0, 2.0, 20);
+    assert(cyl.numberOfPoints === 42, `expected 42 points, got ${cyl.numberOfPoints}`);
+    assert(cyl.numberOfFaces === 80, `expected 80 faces, got ${cyl.numberOfFaces}`);
+    log(`  async cylinder → ${cyl.numberOfFaces} faces`, "line-pass");
+    cyl.delete();
+  });
+
+  test("async: boxMesh", async () => {
+    const tf = getTf();
+    const box = await tf.async.boxMesh(2, 1, 3);
+    assert(box.numberOfPoints === 8, `expected 8 points, got ${box.numberOfPoints}`);
+    assert(box.numberOfFaces === 12, `expected 12 faces, got ${box.numberOfFaces}`);
+    log(`  async box → ${box.numberOfFaces} faces`, "line-pass");
+    box.delete();
+  });
+
+  test("async: planeMesh", async () => {
+    const tf = getTf();
+    const plane = await tf.async.planeMesh(10, 5);
+    assert(plane.numberOfPoints === 4, `expected 4 points, got ${plane.numberOfPoints}`);
+    assert(plane.numberOfFaces === 2, `expected 2 faces, got ${plane.numberOfFaces}`);
+    log(`  async plane → ${plane.numberOfFaces} faces`, "line-pass");
+    plane.delete();
+  });
+
+  test("async: triangulate", async () => {
+    const tf = getTf();
+    const faces = tf.ndarray(new Int32Array([0, 1, 2, 3, 4, 5, 6, 7]), [2, 4]);
+    const points = tf.ndarray(new Float32Array([
+      0,0,0, 1,0,0, 1,1,0, 0,1,0,
+      2,0,0, 3,0,0, 3,1,0, 2,1,0,
+    ]), [8, 3]);
+    const tri = await tf.async.triangulate({ faces, points });
+    assert(tri.numberOfFaces === 4, `expected 4 faces, got ${tri.numberOfFaces}`);
+    log(`  async triangulate 2 quads → ${tri.numberOfFaces} tris`, "line-pass");
+    tri.delete(); points.delete(); faces.delete();
+  });
+
+  test("async: tubeMesh", async () => {
+    const tf = getTf();
+    const offsets = tf.ndarray(new Int32Array([0, 3, 5]), [3]);
+    const data = tf.ndarray(new Int32Array([0, 1, 2, 3, 4]), [5]);
+    const points = tf.ndarray(new Float32Array([
+      0,0,0, 1,0,0, 2,0,0, 0,1,0, 1,1,0,
+    ]), [5, 3]);
+    const paths = tf.offsetBlockedBuffer(offsets, data);
+    const c = tf.curves(paths, points);
+    const tubes = await tf.async.tubeMesh(c, 0.1, 6);
+    assert(tubes.numberOfFaces > 0, `tube faces: ${tubes.numberOfFaces}`);
+    log(`  async tubeMesh → ${tubes.numberOfFaces} faces`, "line-pass");
+    tubes.delete(); c.delete(); paths.delete(); points.delete(); data.delete(); offsets.delete();
+  });
+
+  test("async: sharpEdges", async () => {
+    const tf = getTf();
+    const box = tf.boxMesh(2, 3, 4, 4, 4, 4);
+    const edges = await tf.async.sharpEdges(box, 30);
+    assert(edges.shape[0] === 48, `expected 48 sharp edges, got ${edges.shape[0]}`);
+    log(`  async sharpEdges → ${edges.shape[0]}`, "line-pass");
+    edges.delete(); box.delete();
+  });
+
+  test("async: area + volume + signedVolume", async () => {
+    const tf = getTf();
+    const box = tf.boxMesh(2, 3, 4);
+    const a = await tf.async.area(box);
+    const v = await tf.async.volume(box);
+    const sv = await tf.async.signedVolume(box);
+    assert(Math.abs(a - 52) < 0.01, `area: ${a}`);
+    assert(Math.abs(v - 24) < 0.01, `volume: ${v}`);
+    assert(Math.abs(Math.abs(sv) - 24) < 0.01, `signedVolume: ${sv}`);
+    log(`  async area=${a}, volume=${v}, signedVolume=${sv}`, "line-pass");
+    box.delete();
+  });
+
+  test("async: meanEdgeLength + minEdgeLength + maxEdgeLength", async () => {
+    const tf = getTf();
+    const box = tf.boxMesh(2, 3, 4);
+    const mel = await tf.async.meanEdgeLength(box);
+    const minEl = await tf.async.minEdgeLength(box);
+    const maxEl = await tf.async.maxEdgeLength(box);
+    assert(minEl > 0 && maxEl >= minEl && mel >= minEl && mel <= maxEl, "edge lengths valid");
+    log(`  async edgeLengths: min=${minEl.toFixed(3)}, mean=${mel.toFixed(3)}, max=${maxEl.toFixed(3)}`, "line-pass");
+    box.delete();
+  });
+
+  test("async: reverseWinding", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10);
+    const sv = tf.signedVolume(sphere);
+    assert(sv > 0, "original positive");
+    const flipped = await tf.async.reverseWinding(sphere);
+    const svFlipped = tf.signedVolume(flipped);
+    assert(svFlipped < 0, `expected negative, got ${svFlipped}`);
+    log(`  async reverseWinding: ${sv.toFixed(4)} → ${svFlipped.toFixed(4)}`, "line-pass");
+    flipped.delete(); sphere.delete();
+  });
+
+  test("async: positivelyOriented", async () => {
+    const tf = getTf();
+    const box = tf.boxMesh(2, 3, 4);
+    const fh = box.faces;
+    const faceData = fh.data;
+    const reversed = new Int32Array(faceData.length);
+    for (let i = 0; i < faceData.length; i += 3) {
+      reversed[i] = faceData[i];
+      reversed[i + 1] = faceData[i + 2];
+      reversed[i + 2] = faceData[i + 1];
+    }
+    const ph = box.points;
+    const negMesh = tf.mesh(reversed, ph.data);
+    const oriented = await tf.async.positivelyOriented(negMesh);
+    const sv = tf.signedVolume(oriented);
+    assert(sv > 0, `expected positive, got ${sv}`);
+    log(`  async positivelyOriented: signedVolume = ${sv.toFixed(3)}`, "line-pass");
+    oriented.delete(); negMesh.delete(); ph.delete(); fh.delete(); box.delete();
+  });
+
+  test("async: principalCurvatures", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(2.0, 20, 20);
+    const { k0, k1 } = await tf.async.principalCurvatures(sphere);
+    assert(k0.shape[0] === sphere.numberOfPoints, "k0 count");
+    const meanK0 = tf.mean(k0);
+    assert(Math.abs(meanK0 - 0.5) < 0.15, `mean k0 ~0.5, got ${meanK0}`);
+    log(`  async principalCurvatures: mean k0=${meanK0.toFixed(3)}`, "line-pass");
+    k0.delete(); k1.delete(); sphere.delete();
+  });
+
+  test("async: principalDirections", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(2.0, 10, 10);
+    const { k0, k1, d0, d1 } = await tf.async.principalDirections(sphere);
+    assert(d0.shape[0] === sphere.numberOfPoints && d0.shape[1] === 3, "d0 shape");
+    log(`  async principalDirections: d0 [${d0.shape}]`, "line-pass");
+    k0.delete(); k1.delete(); d0.delete(); d1.delete(); sphere.delete();
+  });
+
+  test("async: shapeIndex", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(2.0, 20, 20);
+    const si = await tf.async.shapeIndex(sphere);
+    const meanSI = tf.mean(si);
+    assert(meanSI > 0.5, `expected sphere mean SI > 0.5, got ${meanSI}`);
+    log(`  async shapeIndex: mean=${meanSI.toFixed(3)}`, "line-pass");
+    si.delete(); sphere.delete();
+  });
+
+  test("async: laplacianSmoothed", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10);
+    const smoothed = await tf.async.laplacianSmoothed(sphere, 3, 0.5);
+    assert(smoothed.numberOfFaces === sphere.numberOfFaces, "face count preserved");
+    log(`  async laplacianSmoothed: ${smoothed.numberOfFaces} faces`, "line-pass");
+    smoothed.delete(); sphere.delete();
+  });
+
+  test("async: taubinSmoothed", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10);
+    const smoothed = await tf.async.taubinSmoothed(sphere, 5, 0.5, 0.1);
+    const origVol = tf.volume(sphere);
+    const smoothVol = tf.volume(smoothed);
+    const ratio = smoothVol / origVol;
+    assert(ratio > 0.8 && ratio < 1.2, `volume ratio: ${ratio}`);
+    log(`  async taubinSmoothed: volume ratio=${ratio.toFixed(4)}`, "line-pass");
+    smoothed.delete(); sphere.delete();
+  });
+
 });

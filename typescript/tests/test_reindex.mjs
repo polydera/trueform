@@ -439,4 +439,104 @@ describe("Reindex", () => {
     box.delete();
   });
 
+  // ==========================================================================
+  test("async: reindexedByMask (keep half the faces)", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10);
+    const nf = sphere.numberOfFaces;
+
+    const maskData = new Int8Array(nf);
+    for (let i = 0; i < Math.floor(nf / 2); i++) maskData[i] = 1;
+    const mask = tf.ndarray(maskData, [nf]);
+
+    const filtered = await tf.async.reindexedByMask(sphere, mask);
+    assert(filtered.numberOfFaces === Math.floor(nf / 2),
+      `expected ${Math.floor(nf / 2)} faces, got ${filtered.numberOfFaces}`);
+    assert(filtered.numberOfPoints <= sphere.numberOfPoints,
+      "filtered should have <= original points");
+    assert(filtered.numberOfPoints > 0, "filtered should have > 0 points");
+    log(`  async: ${nf} → ${filtered.numberOfFaces} faces, ${filtered.numberOfPoints} points`, "line-pass");
+
+    filtered.delete();
+    mask.delete();
+    sphere.delete();
+  });
+
+  // ==========================================================================
+  test("async: reindexedByIds (extract specific faces)", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10);
+
+    const ids = tf.ndarray(new Int32Array([0, 1, 2, 3, 4]), [5]);
+    const filtered = await tf.async.reindexedByIds(sphere, ids);
+    assert(filtered.numberOfFaces === 5, `expected 5 faces, got ${filtered.numberOfFaces}`);
+    assert(filtered.numberOfPoints > 0, "should have points");
+    log(`  async: extracted 5 faces → ${filtered.numberOfPoints} points`, "line-pass");
+
+    filtered.delete();
+    ids.delete();
+    sphere.delete();
+  });
+
+  // ==========================================================================
+  test("async: reindexedByMaskOnPoints (point mask → face filter)", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10);
+    const np = sphere.numberOfPoints;
+
+    const maskData = new Int8Array(np);
+    for (let i = 0; i < Math.floor(np / 2); i++) maskData[i] = 1;
+    const mask = tf.ndarray(maskData, [np]);
+
+    const filtered = await tf.async.reindexedByMaskOnPoints(sphere, mask);
+    assert(filtered.numberOfFaces > 0, "should have some faces");
+    assert(filtered.numberOfFaces < sphere.numberOfFaces,
+      "should have fewer faces than original");
+    assert(filtered.numberOfPoints <= Math.floor(np / 2),
+      "should have at most kept-point-count points");
+    log(`  async: ${sphere.numberOfFaces} → ${filtered.numberOfFaces} faces (point mask)`, "line-pass");
+
+    filtered.delete();
+    mask.delete();
+    sphere.delete();
+  });
+
+  // ==========================================================================
+  test("async: reindexedByIdsOnPoints (point IDs → face filter)", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10);
+
+    const idsArr = new Int32Array(20);
+    for (let i = 0; i < 20; i++) idsArr[i] = i;
+    const ids = tf.ndarray(idsArr, [20]);
+
+    const filtered = await tf.async.reindexedByIdsOnPoints(sphere, ids);
+    assert(filtered.numberOfFaces > 0, "should have some faces");
+    assert(filtered.numberOfFaces < sphere.numberOfFaces,
+      "should have fewer faces than original");
+    log(`  async: kept 20 point IDs → ${filtered.numberOfFaces} faces`, "line-pass");
+
+    filtered.delete();
+    ids.delete();
+    sphere.delete();
+  });
+
+  // ==========================================================================
+  test("async: concatenateMeshes (two spheres)", async () => {
+    const tf = getTf();
+    const s1 = tf.sphereMesh(1.0, 8, 8);
+    const s2 = tf.sphereMesh(0.5, 6, 6);
+
+    const combined = await tf.async.concatenateMeshes(s1, s2);
+    assert(combined.numberOfFaces === s1.numberOfFaces + s2.numberOfFaces,
+      `expected ${s1.numberOfFaces + s2.numberOfFaces} faces, got ${combined.numberOfFaces}`);
+    assert(combined.numberOfPoints === s1.numberOfPoints + s2.numberOfPoints,
+      `expected ${s1.numberOfPoints + s2.numberOfPoints} points, got ${combined.numberOfPoints}`);
+    log(`  async: ${s1.numberOfFaces}+${s2.numberOfFaces} = ${combined.numberOfFaces} faces`, "line-pass");
+
+    combined.delete();
+    s2.delete();
+    s1.delete();
+  });
+
 });
