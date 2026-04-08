@@ -30,14 +30,17 @@ template <typename Index> struct half_edges_ranges {
   using char_range_t = tf::range<const char *, tf::dynamic_size>;
 
   half_edges_ranges(he_range_t hes, heh_range_t fhes, heh_range_t vhes,
-                    char_range_t bverts, Index nf, Index nv)
+                    char_range_t bverts, char_range_t nmverts, Index nf,
+                    Index nv)
       : _half_edges{hes}, _face_half_edges{fhes}, _vertex_half_edges{vhes},
-        _boundary_vertices{bverts}, _n_faces{nf}, _n_vertices{nv} {}
+        _boundary_vertices{bverts}, _non_manifold_vertices{nmverts},
+        _n_faces{nf}, _n_vertices{nv} {}
 
   auto half_edges_data() const { return _half_edges; }
   auto face_half_edges() const { return _face_half_edges; }
   auto vertex_half_edges() const { return _vertex_half_edges; }
   auto boundary_vertex_data() const { return _boundary_vertices; }
+  auto non_manifold_vertex_data() const { return _non_manifold_vertices; }
   auto n_faces() const -> Index { return _n_faces; }
   auto n_vertices() const -> Index { return _n_vertices; }
 
@@ -46,6 +49,7 @@ protected:
   heh_range_t _face_half_edges;
   heh_range_t _vertex_half_edges;
   char_range_t _boundary_vertices;
+  char_range_t _non_manifold_vertices;
   Index _n_faces;
   Index _n_vertices;
 };

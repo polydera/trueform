@@ -48,7 +48,7 @@ export {
 } from "./primitive";
 
 // Transformations
-export { makeTranslation, makeRotation, makeRandomRotation } from "./primitive";
+export { makeTranslation, makeRotation, makeRandomRotation, inverted } from "./primitive";
 export type { Axis } from "./primitive";
 
 // Sync reductions

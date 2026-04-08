@@ -87,6 +87,7 @@ public:
     this->_face_half_edges.clear();
     this->_vertex_half_edges.clear();
     this->_boundary_vertices.clear();
+    this->_non_manifold_vertices.clear();
     this->_n_faces = 0;
     this->_n_vertices = 0;
   }
@@ -156,6 +157,7 @@ public:
 
     Index n_new_faces = Index(face_im.kept_ids().size());
     Index n_new_verts = Index(vert_im.kept_ids().size());
+
     build_handle_buffers(n_new_faces, n_new_verts);
 
     return {std::move(face_im), std::move(vert_im), std::move(edge_im)};
@@ -171,6 +173,8 @@ private:
     tf::parallel_fill(this->_vertex_half_edges, half_edge_handle_t::invalid());
     this->_boundary_vertices.allocate(n_verts);
     tf::parallel_fill(this->_boundary_vertices, char(0));
+    this->_non_manifold_vertices.allocate(n_verts);
+    tf::parallel_fill(this->_non_manifold_vertices, char(0));
     tf::parallel_for_each(
         tf::make_mapped_range(
             tf::make_sequence_range(Index(this->_half_edges.size())),
@@ -183,6 +187,40 @@ private:
           } else if (h.is_boundary()) {
             this->_boundary_vertices[h.vertex] = 1;
           }
+        });
+
+    // Detect non-manifold vertices: compare sequential per-vertex incident
+    // count to the number of half-edges reachable by walking rotated() from
+    // the vertex's representative. A mismatch means the vertex has a split
+    // fan or is incident to a non-manifold edge sentinel that rotated() can
+    // not cross — either case produces stale .vertex pointers during
+    // collapse and we must forbid it in is_collapse_ok.
+    tf::buffer<Index> vertex_degree;
+    vertex_degree.allocate(n_verts);
+    tf::parallel_fill(vertex_degree, Index(0));
+    for (const auto &h : this->_half_edges) {
+      if (h.vertex >= 0 && h.vertex < n_verts)
+        ++vertex_degree[h.vertex];
+    }
+    tf::parallel_for_each(
+        tf::make_sequence_range(n_verts),
+        [&](Index v) {
+          auto seed = this->_vertex_half_edges[v];
+          if (!seed.is_valid()) {
+            this->_non_manifold_vertices[v] = 1;
+            return;
+          }
+          Index reachable = 0;
+          auto cur = seed;
+          do {
+            ++reachable;
+            auto nxt = this->rotated(cur);
+            if (!nxt.is_valid())
+              break;
+            cur = nxt;
+          } while (cur != seed);
+          if (reachable < vertex_degree[v])
+            this->_non_manifold_vertices[v] = 1;
         });
   }
 };

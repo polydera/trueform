@@ -443,15 +443,15 @@ auto collapse_error_quadric(const tf::buffer<quadric> &quadrics,
   quadric q = quadrics[v0];
   q += quadrics[v1];
   if (he.is_boundary_vertex(v0) || he.is_boundary_vertex(v1))
-    return tf::sqrt(Real(q.evaluate(points[v0])));
+    return tf::sqrt(std::max(Real(q.evaluate(points[v0])), Real(0)));
   auto mid = tf::make_point(Real(points[v0][0] + points[v1][0]) / 2,
                             Real(points[v0][1] + points[v1][1]) / 2,
                             Real(points[v0][2] + points[v1][2]) / 2);
   if (auto opt = solve_optimal_quadric<Real>(q, mid, stabilizer))
-    return tf::sqrt(Real(q.evaluate(*opt)));
+    return tf::sqrt(std::max(Real(q.evaluate(*opt)), Real(0)));
   auto e0 = q.evaluate(points[v0]);
   auto e1 = q.evaluate(points[v1]);
-  return tf::sqrt(Real(std::min({e0, e1, q.evaluate(mid)})));
+  return tf::sqrt(std::max(Real(std::min({e0, e1, q.evaluate(mid)})), Real(0)));
 }
 
 /// @ingroup remesh

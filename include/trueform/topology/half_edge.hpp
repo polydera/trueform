@@ -38,6 +38,7 @@ template <typename Index> struct half_edge {
   Index face;
   Index vertex;
   Index next;
+  Index prev;
 
   /// @brief Returns true if this half-edge has a valid next pointer.
   auto has_next() const -> bool { return next >= 0; }

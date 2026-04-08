@@ -11,6 +11,8 @@
  * Author: Žiga Sajovic
  */
 
+#include "trueform/core/inverted.hpp"
+#include "trueform/core/transformation_view.hpp"
 #include "trueform/ts/core/elementwise.hpp"
 #include "trueform/ts/core/promise.hpp"
 #include <cstdint>
@@ -113,6 +115,40 @@ static auto sync_mat_mul(tf::ts::wasm_ndarray<T> &a,
                          tf::ts::wasm_ndarray<T> &b)
     -> tf::ts::wasm_ndarray<T> {
   return tf::ts::mat_mul(a, b);
+}
+
+// ============================================================================
+// Sync — inverted (4x4 or 3x3 affine matrix)
+// ============================================================================
+
+static auto sync_inverted(tf::ts::wasm_ndarray<float> &m)
+    -> tf::ts::wasm_ndarray<float> {
+  auto rows = m.shape_at(0);
+  if (rows == 4) {
+    auto input_view = tf::make_transformation_view<3>(
+        const_cast<float *>(m.raw_data()));
+    auto out = tf::inverted(input_view);
+    tf::buffer<float> buf;
+    buf.allocate(16);
+    for (std::size_t i = 0; i < 3; ++i)
+      for (std::size_t j = 0; j < 4; ++j)
+        buf[i * 4 + j] = out(i, j);
+    buf[12] = 0; buf[13] = 0; buf[14] = 0; buf[15] = 1;
+    return tf::ts::wasm_ndarray<float>::from_buffer(std::move(buf), {4, 4});
+  }
+  if (rows == 3) {
+    auto input_view = tf::make_transformation_view<2>(
+        const_cast<float *>(m.raw_data()));
+    auto out = tf::inverted(input_view);
+    tf::buffer<float> buf;
+    buf.allocate(9);
+    for (std::size_t i = 0; i < 2; ++i)
+      for (std::size_t j = 0; j < 3; ++j)
+        buf[i * 3 + j] = out(i, j);
+    buf[6] = 0; buf[7] = 0; buf[8] = 1;
+    return tf::ts::wasm_ndarray<float>::from_buffer(std::move(buf), {3, 3});
+  }
+  return {};
 }
 
 // ============================================================================
@@ -1085,6 +1121,9 @@ EMSCRIPTEN_BINDINGS(trueform_elementwise) {
   // --- matMul ---
   emscripten::function("mat_mul_float32", &sync_mat_mul<float>);
   emscripten::function("mat_mul_int32", &sync_mat_mul<int>);
+
+  // --- inverted ---
+  emscripten::function("inverted_float32", &sync_inverted);
 
   // --- Async: buffer × buffer (copy) ---
   emscripten::function("dispatch_add_float32", &async_add<float>);

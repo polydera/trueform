@@ -11,8 +11,10 @@
  * Author: Žiga Sajovic
  */
 
+import { native } from "../native";
+import { NDArray } from "../ndarray/NDArray";
 import { ndarray } from "../ndarray/factories";
-import type { NDArray, NDArrayFloat32 } from "../ndarray/NDArray";
+import type { NDArrayFloat32 } from "../ndarray/NDArray";
 
 /** Axis specifier: principal axis name or arbitrary unit vector. */
 export type Axis = "x" | "y" | "z" | [number, number, number] | NDArray;
@@ -112,6 +114,27 @@ export function makeRotation(
   }
 
   return ndarray(out, [4, 4]);
+}
+
+/**
+ * Invert an affine transformation matrix.
+ *
+ * Supports 4x4 (3D affine) and 3x3 (2D affine) matrices.
+ * Inversion is computed in double precision regardless of input dtype.
+ *
+ * @param m The 4x4 or 3x3 transformation matrix.
+ * @returns The inverted matrix with the same shape.
+ * @throws If the matrix is not 4x4 or 3x3.
+ */
+export function inverted(m: NDArrayFloat32): NDArrayFloat32 {
+  if (m.shape.length !== 2 || m.shape[0] !== m.shape[1] ||
+      (m.shape[0] !== 4 && m.shape[0] !== 3)) {
+    throw new Error(
+      `inverted: expected 4x4 or 3x3 matrix, got [${m.shape.join(", ")}]`,
+    );
+  }
+  const safe = m.dtype === "float32" ? m : m.as("float32");
+  return new NDArray(native().inverted_float32(safe._handle), "float32");
 }
 
 /**

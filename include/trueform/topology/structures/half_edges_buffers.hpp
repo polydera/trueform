@@ -37,6 +37,9 @@ template <typename Index> struct half_edges_buffers {
   auto boundary_vertex_data() const {
     return tf::make_range(_boundary_vertices);
   }
+  auto non_manifold_vertex_data() const {
+    return tf::make_range(_non_manifold_vertices);
+  }
   auto n_faces() const -> Index { return _n_faces; }
   auto n_vertices() const -> Index { return _n_vertices; }
 
@@ -67,12 +70,19 @@ template <typename Index> struct half_edges_buffers {
   auto boundary_vertex_data_buffer() const -> const tf::buffer<char> & {
     return _boundary_vertices;
   }
+  auto non_manifold_vertex_data_buffer() -> tf::buffer<char> & {
+    return _non_manifold_vertices;
+  }
+  auto non_manifold_vertex_data_buffer() const -> const tf::buffer<char> & {
+    return _non_manifold_vertices;
+  }
 
 protected:
   tf::buffer<tf::half_edge<Index>> _half_edges;
   tf::buffer<half_edge_handle_t> _face_half_edges;
   tf::buffer<half_edge_handle_t> _vertex_half_edges;
   tf::buffer<char> _boundary_vertices;
+  tf::buffer<char> _non_manifold_vertices;
   Index _n_faces = 0;
   Index _n_vertices = 0;
 };

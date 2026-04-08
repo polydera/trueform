@@ -13,6 +13,8 @@
 #pragma once
 
 #include "../../core/algorithm/block_reduce.hpp"
+#include "../../core/algorithm/circular_decrement.hpp"
+#include "../../core/algorithm/circular_increment.hpp"
 #include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
@@ -41,10 +43,12 @@ auto compute_half_edges_finish(tf::buffer<Index> &id_map,
                                std::size_t n_verts) -> void {
   using half_edge_t = tf::half_edge<Index>;
 
-  // Remap next pointers from flat edge indices to global half-edge indices
+  // Remap next/prev pointers from flat edge indices to global half-edge indices
   tf::parallel_for_each(half_edges, [&](auto &h) {
     if (h.next != half_edge_t::no_id)
       h.next = id_map[h.next];
+    if (h.prev != half_edge_t::no_id)
+      h.prev = id_map[h.prev];
   });
 
   if (border_ids.size() == 0)
@@ -94,10 +98,14 @@ auto compute_half_edges_finish(tf::buffer<Index> &id_map,
       continue;
     auto last_id = path.back();
     auto first_id = path.front();
-    if (half_edges[last_id ^ 1].vertex == half_edges[first_id].vertex)
+    if (half_edges[last_id ^ 1].vertex == half_edges[first_id].vertex) {
       half_edges[last_id].next = first_id;
-    for (auto [a, b] : tf::make_slide_range<2>(path))
+      half_edges[first_id].prev = last_id;
+    }
+    for (auto [a, b] : tf::make_slide_range<2>(path)) {
       half_edges[a].next = b;
+      half_edges[b].prev = a;
+    }
   }
 }
 
@@ -189,13 +197,16 @@ auto compute_half_edges(const Faces &faces,
         nghs.data(), nghs.data() + 2);
     auto n_neighbors = ngh_end - nghs.data();
 
-    half_edge_t this_edge{face_id, Index(face[current]), current};
+    // next/prev fields temporarily hold the edge-in-face index
+    // (remapped to global flat indices in aggregate, then to global
+    // half-edge indices in compute_half_edges_finish)
+    half_edge_t this_edge{face_id, Index(face[current]), current, current};
 
     if (n_neighbors == 0) {
       // Boundary edge
       local.push_back(this_edge);
       local.push_back(half_edge_t{half_edge_t::boundary, Index(face[next_idx]),
-                                  half_edge_t::no_id});
+                                  half_edge_t::no_id, half_edge_t::no_id});
     } else if (n_neighbors == 1) {
       // Simple (manifold) edge
       local.push_back(this_edge);
@@ -204,15 +215,18 @@ auto compute_half_edges(const Faces &faces,
       if (other_vertex == this_edge.vertex) {
         // Orientation fault: neighbor edge starts at same vertex
         local.push_back(half_edge_t{half_edge_t::orientation_fault,
-                                    Index(face[next_idx]), half_edge_t::no_id});
+                                    Index(face[next_idx]), half_edge_t::no_id,
+                                    half_edge_t::no_id});
       } else {
-        local.push_back(half_edge_t{nghs[0][0], other_vertex, nghs[0][1]});
+        local.push_back(
+            half_edge_t{nghs[0][0], other_vertex, nghs[0][1], nghs[0][1]});
       }
     } else {
       // Non-manifold edge
       local.push_back(this_edge);
       local.push_back(half_edge_t{half_edge_t::non_manifold,
-                                  Index(face[next_idx]), half_edge_t::no_id});
+                                  Index(face[next_idx]), half_edge_t::no_id,
+                                  half_edge_t::no_id});
     }
   };
 
@@ -227,17 +241,22 @@ auto compute_half_edges(const Faces &faces,
       auto modified = h;
       if (modified.face >= 0) {
         if constexpr (StaticN != tf::dynamic_size && StaticN <= 8) {
-          Index next_edge =
-              (modified.next + 1) * (modified.next < Index(StaticN - 1));
-          mask[modified.face] |= (1 << modified.next);
-          id_map[Index(StaticN) * modified.face + modified.next] = current;
+          Index cur_edge = modified.next;
+          Index next_edge = tf::circular_increment(cur_edge, Index(StaticN));
+          Index prev_edge = tf::circular_decrement(cur_edge, Index(StaticN));
+          mask[modified.face] |= (1 << cur_edge);
+          id_map[Index(StaticN) * modified.face + cur_edge] = current;
           modified.next = Index(StaticN) * modified.face + next_edge;
+          modified.prev = Index(StaticN) * modified.face + prev_edge;
         } else {
           auto sz = get_face_size(modified.face);
-          Index next_edge = (modified.next + 1) % sz;
-          mask[edge_offset(modified.face, modified.next)] = 1;
-          id_map[edge_offset(modified.face, modified.next)] = current;
+          Index cur_edge = modified.next;
+          Index next_edge = tf::circular_increment(cur_edge, sz);
+          Index prev_edge = tf::circular_decrement(cur_edge, sz);
+          mask[edge_offset(modified.face, cur_edge)] = 1;
+          id_map[edge_offset(modified.face, cur_edge)] = current;
           modified.next = edge_offset(modified.face, next_edge);
+          modified.prev = edge_offset(modified.face, prev_edge);
         }
       } else if (modified.is_boundary()) {
         border_ids.push_back(current);

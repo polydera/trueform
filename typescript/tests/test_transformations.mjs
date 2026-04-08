@@ -118,4 +118,68 @@ describe("Transformations", () => {
     r.delete();
   });
 
+  // ==========================================================================
+  test("inverted 4x4: T * T^-1 = I", () => {
+    const tf = getTf();
+    const t = tf.makeTranslation(1, 2, 3);
+    const r = tf.makeRotation(37, "y");
+    const m = t.matMul(r);
+
+    const inv = tf.inverted(m);
+    assert(inv.shape[0] === 4 && inv.shape[1] === 4, "4x4");
+
+    // Verify M * M^-1 ≈ I
+    const id = m.matMul(inv);
+    const d = id.data;
+    for (let i = 0; i < 4; i++)
+      for (let j = 0; j < 4; j++) {
+        const expected = i === j ? 1 : 0;
+        approx(d[i * 4 + j], expected, `I[${i},${j}]`);
+      }
+    log("  inverted 4x4: M * M^-1 ≈ I", "line-pass");
+
+    id.delete(); inv.delete(); m.delete(); r.delete(); t.delete();
+  });
+
+  // ==========================================================================
+  test("inverted 3x3 (2D affine)", () => {
+    const tf = getTf();
+    // 2D affine: rotation + translation
+    // | cos -sin tx |
+    // | sin  cos ty |
+    // |  0    0   1 |
+    const c = Math.cos(Math.PI / 4);
+    const s = Math.sin(Math.PI / 4);
+    const m = tf.ndarray(new Float32Array([
+      c, -s, 2,
+      s,  c, 3,
+      0,  0, 1,
+    ]), [3, 3]);
+
+    const inv = tf.inverted(m);
+    assert(inv.shape[0] === 3 && inv.shape[1] === 3, "3x3");
+
+    const id = m.matMul(inv);
+    const d = id.data;
+    for (let i = 0; i < 3; i++)
+      for (let j = 0; j < 3; j++) {
+        const expected = i === j ? 1 : 0;
+        approx(d[i * 3 + j], expected, `I[${i},${j}]`);
+      }
+    log("  inverted 3x3: M * M^-1 ≈ I", "line-pass");
+
+    id.delete(); inv.delete(); m.delete();
+  });
+
+  // ==========================================================================
+  test("inverted throws on invalid shape", () => {
+    const tf = getTf();
+    const m = tf.ndarray(new Float32Array(4), [2, 2]);
+    let threw = false;
+    try { tf.inverted(m); } catch (e) { threw = true; }
+    assert(threw, "expected throw on 2x2 matrix");
+    log("  inverted 2x2 → throws", "line-pass");
+    m.delete();
+  });
+
 });
