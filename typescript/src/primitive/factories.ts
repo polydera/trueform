@@ -324,6 +324,30 @@ export function aabb(
   return makePrimitive(f32, [2, dims], "aabb") as AABB;
 }
 
+/** Oriented bounding box result. */
+export interface OBB {
+  /** Corner origin point [3]. */
+  origin: NDArrayFloat32;
+  /** Orthonormal axes, each row is a unit vector [3, 3]. */
+  axes: NDArrayFloat32;
+  /** Full extents along each axis [3]. */
+  extent: NDArrayFloat32;
+}
+
+/** Compute the oriented bounding box of points or a mesh. */
+export function obbFrom(input: NDArrayFloat32): OBB;
+export function obbFrom(input: { points: NDArrayFloat32 }): OBB;
+export function obbFrom(input: NDArrayFloat32 | { points: NDArrayFloat32 }): OBB {
+  const pts = input instanceof NDArray ? input : input.points;
+  const safe = pts.dtype === "float32" ? pts : pts.as("float32");
+  const raw = native().obb_from(safe._handle);
+  return {
+    origin: new NDArray(raw.origin, "float32"),
+    axes: new NDArray(raw.axes, "float32"),
+    extent: new NDArray(raw.extent, "float32"),
+  };
+}
+
 /** Compute the axis-aligned bounding box of points, a mesh, or a point cloud. */
 export function aabbFrom(input: NDArrayFloat32): AABB;
 export function aabbFrom(input: { points: NDArrayFloat32 }): AABB;

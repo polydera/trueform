@@ -190,6 +190,8 @@ private:
                                          (id - n_already_fixed)];
             if (hp->next >= n_already_fixed)
               hp->next += agg.inner_half_edge_offset;
+            if (hp->prev >= n_already_fixed)
+              hp->prev += agg.inner_half_edge_offset;
             if (hp->face >= agg.n_original_polys)
               hp->face += agg.polygon_offset;
           }
@@ -454,6 +456,9 @@ private:
       h0.next = he_ids[1];
       h1.next = he_ids[2];
       h2.next = he_ids[0];
+      h0.prev = he_ids[2];
+      h1.prev = he_ids[0];
+      h2.prev = he_ids[1];
       h0.face = face_id;
       h1.face = face_id;
       h2.face = face_id;

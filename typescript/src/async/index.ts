@@ -50,3 +50,4 @@ export {
   concatenateMeshes, splitIntoComponents,
 } from "../reindex/async";
 export { decimated, isotropicRemeshed } from "../remesh/async";
+export { obbFrom } from "../primitive/async";

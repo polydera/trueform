@@ -495,6 +495,43 @@ describe("Primitive factories (other overloads)", () => {
     box.delete(); m.delete();
   });
 
+  // ---------- obbFrom ----------
+  test("obbFrom mesh", () => {
+    const tf = getTf();
+    const box = tf.boxMesh(2, 3, 4);
+    const obb = tf.obbFrom(box);
+
+    assert(obb.origin.shape[0] === 3, `origin shape: [${obb.origin.shape}]`);
+    assert(obb.axes.shape[0] === 3 && obb.axes.shape[1] === 3, `axes shape: [${obb.axes.shape}]`);
+    assert(obb.extent.shape[0] === 3, `extent shape: [${obb.extent.shape}]`);
+
+    // Extents should be close to box dimensions (2, 3, 4) in some order
+    const e = Array.from(obb.extent.data).sort((a, b) => a - b);
+    assert(Math.abs(e[0] - 2) < 0.1, `smallest extent ~2, got ${e[0]}`);
+    assert(Math.abs(e[1] - 3) < 0.1, `middle extent ~3, got ${e[1]}`);
+    assert(Math.abs(e[2] - 4) < 0.1, `largest extent ~4, got ${e[2]}`);
+    log(`  obbFrom(box) → extents [${e.map(v => v.toFixed(2))}]`, "line-pass");
+
+    obb.extent.delete(); obb.axes.delete(); obb.origin.delete();
+    box.delete();
+  });
+
+  test("obbFrom NDArray points", () => {
+    const tf = getTf();
+    const points = tf.ndarray(new Float32Array([
+      0,0,0, 1,0,0, 0,1,0, 0,0,1,
+    ]), [4, 3]);
+
+    const obb = tf.obbFrom(points);
+    assert(obb.origin.shape[0] === 3, "origin [3]");
+    assert(obb.axes.shape[0] === 3 && obb.axes.shape[1] === 3, "axes [3,3]");
+    assert(obb.extent.shape[0] === 3, "extent [3]");
+    log("  obbFrom(points) → origin/axes/extent shapes OK", "line-pass");
+
+    obb.extent.delete(); obb.axes.delete(); obb.origin.delete();
+    points.delete();
+  });
+
   // ---------- polygon ----------
   test("polygon from Point[]", () => {
     const tf = getTf();

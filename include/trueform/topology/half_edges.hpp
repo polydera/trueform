@@ -151,6 +151,7 @@ public:
         nh.face = h.face >= 0 ? fm[h.face] : h.face;
         nh.vertex = vm[h.vertex];
         nh.next = h.has_next() ? (em[h.next >> 1] << 1) + (h.next & 1) : h.next;
+        nh.prev = h.prev >= 0 ? (em[h.prev >> 1] << 1) + (h.prev & 1) : h.prev;
       }
     });
     this->_half_edges = std::move(new_hes);

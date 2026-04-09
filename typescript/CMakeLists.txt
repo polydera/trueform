@@ -27,6 +27,7 @@ add_executable(trueform_wasm
     cpp/src/core/wasm_curves.cpp
     cpp/src/core/random.cpp
     cpp/src/core/wasm_index_map.cpp
+    cpp/src/core/obb.cpp
     cpp/src/io/io.cpp
     cpp/src/cut/boolean.cpp
     cpp/src/cut/mesh_arrangement.cpp

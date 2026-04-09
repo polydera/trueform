@@ -22,6 +22,7 @@ add_subdirectory(cut)
 add_subdirectory(exact)
 add_subdirectory(clean)
 add_subdirectory(reindex)
+add_subdirectory(remesh)
 add_subdirectory(io)
 
 # Aggregate target for all Catch2 tests
@@ -35,5 +36,6 @@ add_custom_target(trueform_tests DEPENDS
   trueform_exact_tests
   trueform_clean_tests
   trueform_reindex_tests
+  trueform_remesh_tests
   trueform_io_tests
 )

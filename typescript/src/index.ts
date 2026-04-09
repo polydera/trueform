@@ -44,8 +44,9 @@ export { mesh, pointCloud, curves } from "./form/factories";
 // Primitive factories
 export {
   point, vector, segment, triangle,
-  ray, line, plane, aabb, aabbFrom, polygon,
+  ray, line, plane, aabb, aabbFrom, obbFrom, polygon,
 } from "./primitive";
+export type { OBB } from "./primitive";
 
 // Transformations
 export { makeTranslation, makeRotation, makeRandomRotation, inverted } from "./primitive";
