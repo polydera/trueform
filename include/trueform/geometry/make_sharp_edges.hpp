@@ -59,7 +59,7 @@ auto make_sharp_edges(const tf::polygons<Policy> &polygons,
                                continue;
                              auto d = tf::dot(normals[face_id],
                                               normals[peer.face_peer]);
-                             if (d < cos_threshold) {
+                             if (d <= cos_threshold) {
                                buffer.push_back(std::min(face[prev], face[i]));
                                buffer.push_back(std::max(face[prev], face[i]));
                              }
