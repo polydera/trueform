@@ -21,7 +21,7 @@ TEST_CASE("decimated (box to 50%)", "[remesh][decimate]") {
   REQUIRE(dec.points().size() <= box.points().size());
 }
 
-TEST_CASE("decimated (sphere — preserves rough shape)", "[remesh][decimate]") {
+TEST_CASE("decimated (sphere -preserves rough shape)", "[remesh][decimate]") {
   auto sphere = tf::make_sphere_mesh(1.0f, 20, 20);
   auto orig_faces = sphere.faces().size();
 
@@ -51,7 +51,7 @@ TEST_CASE("decimated with options", "[remesh][decimate]") {
   REQUIRE(dec.faces().size() <= sphere.faces().size());
 }
 
-TEST_CASE("isotropicRemeshed (box — basic)", "[remesh][isotropic]") {
+TEST_CASE("isotropicRemeshed (box -basic)", "[remesh][isotropic]") {
   auto box = tf::make_box_mesh(2.0f, 3.0f, 4.0f, 3, 3, 3);
   auto mel = tf::mean_edge_length(box.polygons());
 
@@ -60,7 +60,7 @@ TEST_CASE("isotropicRemeshed (box — basic)", "[remesh][isotropic]") {
   REQUIRE(rem.points().size() > 0);
 }
 
-TEST_CASE("isotropicRemeshed (sphere — edge lengths converge)",
+TEST_CASE("isotropicRemeshed (sphere -edge lengths converge)",
           "[remesh][isotropic]") {
   auto sphere = tf::make_sphere_mesh(1.0f, 10, 10);
   auto target = tf::mean_edge_length(sphere.polygons());
