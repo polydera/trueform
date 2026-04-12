@@ -536,89 +536,109 @@ private:
     }
   }
 
-  /// Re-insert LAST removed point from a run back into the linked list.
-  /// Returns new node id. Owner keeps the remaining run (points between
-  /// owner and the reinserted node — all collinear, invariant preserved).
-  auto reinsert_last_from_run(Index owner_id) -> Index {
-    auto &owner = _nodes[owner_id];
-    Index last = owner.run_last;
-    Index last_pt = _removed[last].pt_id;
-
-    // Pop last from run
-    if (owner.run_first == last) {
-      owner.run_first = Index(-1);
-      owner.run_last = Index(-1);
-    } else {
-      Index cur = owner.run_first;
-      while (_removed[cur].next != last)
-        cur = _removed[cur].next;
-      _removed[cur].next = Index(-1);
-      owner.run_last = cur;
+  /// Process a collinear run: fan-triangulate the interior from apex,
+  /// return (first_pt, last_pt) for the two sub-triangle nodes.
+  auto process_run(Index apex, const node_t &owner)
+      -> std::pair<Index, Index> {
+    Index first_pt = _removed[owner.run_first].pt_id;
+    Index last_pt = _removed[owner.run_last].pt_id;
+    Index cur = owner.run_first;
+    while (_removed[cur].next != Index(-1)) {
+      Index nxt = _removed[cur].next;
+      emit_triangle(apex, _removed[cur].pt_id, _removed[nxt].pt_id);
+      cur = nxt;
     }
-
-    Index after = owner.next;
-    Index new_id = static_cast<Index>(_nodes.size());
-    // push_back may invalidate references — use ids after this
-    _nodes.push_back({new_id, last_pt, owner_id, after, Index(-1), Index(-1), 0,
-                      Index(-1), Index(-1)});
-    _nodes[after].prev = new_id;
-    _nodes[owner_id].next = new_id;
-    return new_id;
+    return {first_pt, last_pt};
   }
 
-  /// Emit ear (P, V, N). Check each edge for collinear runs.
-  /// 0 runs: plain triangle. 1 run: fan expand. 2+ runs: reinsert
-  /// a point from a run, split polygon, dispatch both halves.
-  template <typename Pts> auto emit_ear(node_t &v, const Pts &pts) -> void {
-    auto &pv = prev(v);
-    auto &nv = next(v);
-    Index P = pv.pt_id, V = v.pt_id, N = nv.pt_id;
-    int n_runs = has_run(pv) + has_run(v) + has_run(nv);
+  /// Recursively triangulate a 3-node loop, handling collinear runs.
+  /// The triangle is (a, v, b) where a=prev(v), b=next(v).
+  auto resolve_triangle(Index v_id) -> void {
+    auto a_id = _nodes[v_id].prev;
+    auto b_id = _nodes[v_id].next;
 
-    if (n_runs >= 2) {
-      Index run_owner_id;
-      if (has_run(pv))
-        run_owner_id = pv.id;
-      else if (has_run(v))
-        run_owner_id = v.id;
-      else
-        run_owner_id = nv.id;
-      Index prev_of_owner = _nodes[run_owner_id].prev;
-      Index new_id = reinsert_last_from_run(run_owner_id);
-      Index other = split_polygon(new_id, prev_of_owner);
-      triangulate(pts, new_id);
-      triangulate(pts, other);
+    auto split_and_recurse = [&](Index owner_id, Index first_pt,
+                                 Index last_pt) {
+      Index next_id = _nodes[owner_id].next;
+      Index opp_id = _nodes[owner_id].prev;
+
+      Index n_id = static_cast<Index>(_nodes.size());
+      _nodes.push_back({n_id, first_pt, Index(-1), Index(-1),
+                         Index(-1), Index(-1), 0, Index(-1), Index(-1)});
+
+      // Sub-triangle 1: (owner, n_node=first, opp)
+      _nodes[owner_id].next = n_id;
+      _nodes[owner_id].prev = opp_id;
+      _nodes[n_id].prev = owner_id;
+      _nodes[n_id].next = opp_id;
+      _nodes[opp_id].prev = n_id;
+      _nodes[opp_id].next = owner_id;
+      resolve_triangle(n_id);
+
+      // Reuse n_node for last_pt in sub-triangle 2: (n_node=last, next, opp)
+      _nodes[n_id].pt_id = last_pt;
+      _nodes[n_id].run_first = Index(-1);
+      _nodes[n_id].run_last = Index(-1);
+      _nodes[n_id].next = next_id;
+      _nodes[n_id].prev = opp_id;
+      _nodes[next_id].prev = n_id;
+      _nodes[next_id].next = opp_id;
+      _nodes[opp_id].prev = next_id;
+      _nodes[opp_id].next = n_id;
+      resolve_triangle(next_id);
+    };
+
+    if (has_run(_nodes[a_id])) {
+      auto [first_pt, last_pt] = process_run(_nodes[b_id].pt_id, _nodes[a_id]);
+      _nodes[a_id].run_first = _nodes[a_id].run_last = Index(-1);
+      split_and_recurse(a_id, first_pt, last_pt);
+    } else if (has_run(_nodes[v_id])) {
+      auto [first_pt, last_pt] = process_run(_nodes[a_id].pt_id, _nodes[v_id]);
+      _nodes[v_id].run_first = _nodes[v_id].run_last = Index(-1);
+      split_and_recurse(v_id, first_pt, last_pt);
+    } else if (has_run(_nodes[b_id])) {
+      auto [first_pt, last_pt] = process_run(_nodes[v_id].pt_id, _nodes[b_id]);
+      _nodes[b_id].run_first = _nodes[b_id].run_last = Index(-1);
+      split_and_recurse(b_id, first_pt, last_pt);
+    } else {
+      emit_triangle(_nodes[a_id].pt_id, _nodes[v_id].pt_id,
+                     _nodes[b_id].pt_id);
+    }
+  }
+
+  /// Clip ear v from the polygon and emit its triangles via
+  /// resolve_triangle. Saves/restores a and b around the resolve so
+  /// the polygon linked list stays intact.
+  auto emit_ear(node_t &v) -> void {
+    Index a_id = v.prev;
+    Index b_id = v.next;
+
+    if (_nodes[b_id].next == a_id) {
+      // Already a 3-node loop — resolve directly, then clear runs
+      auto saved_a = _nodes[a_id];
+      auto saved_b = _nodes[b_id];
+      resolve_triangle(v.id);
+      _nodes[a_id] = saved_a;
+      _nodes[b_id] = saved_b;
+      _nodes[a_id].run_first = _nodes[a_id].run_last = Index(-1);
+      _nodes[b_id].run_first = _nodes[b_id].run_last = Index(-1);
+      _nodes[a_id].next = b_id;
+      _nodes[b_id].prev = a_id;
       return;
     }
 
-    if (has_run(pv)) {
-      emit_fan(N, P, pv);
-      emit_triangle(N, _removed[pv.run_last].pt_id, V);
-      pv.run_first = pv.run_last = Index(-1);
-      pv.next = nv.id;
-      nv.prev = pv.id;
-      return;
-    }
-    if (has_run(v)) {
-      emit_fan(P, V, v);
-      emit_triangle(P, _removed[v.run_last].pt_id, N);
-      v.run_first = v.run_last = Index(-1);
-      pv.next = nv.id;
-      nv.prev = pv.id;
-      return;
-    }
-    if (has_run(nv)) {
-      emit_fan(V, N, nv);
-      emit_triangle(V, _removed[nv.run_last].pt_id, P);
-      nv.run_first = nv.run_last = Index(-1);
-      pv.next = nv.id;
-      nv.prev = pv.id;
-      return;
-    }
-
-    emit_triangle(P, V, N);
-    pv.next = nv.id;
-    nv.prev = pv.id;
+    // Polygon has more than 3 nodes
+    auto saved_a = _nodes[a_id];
+    auto saved_b = _nodes[b_id];
+    _nodes[b_id].run_first = _nodes[b_id].run_last = Index(-1);
+    _nodes[a_id].prev = b_id;
+    _nodes[b_id].next = a_id;
+    resolve_triangle(v.id);
+    _nodes[a_id] = saved_a;
+    _nodes[b_id] = saved_b;
+    _nodes[a_id].run_first = _nodes[a_id].run_last = Index(-1);
+    _nodes[a_id].next = b_id;
+    _nodes[b_id].prev = a_id;
   }
 
   // ── Split polygon ──
@@ -768,13 +788,13 @@ private:
       auto &cur = _nodes[current_id];
       bool ear = _hashing ? is_ear_hashed(cur, pts) : is_ear(cur, pts);
       if (ear) {
-        emit_ear(_nodes[current_id], pts);
+        emit_ear(_nodes[current_id]);
         current_id = next(next(_nodes[current_id])).id;
         end_id = current_id;
         continue;
       }
       if (next(next(next(_nodes[current_id]))).id == current_id) {
-        emit_ear(_nodes[current_id], pts);
+        emit_ear(_nodes[current_id]);
         return false;
       }
       current_id = next(_nodes[current_id]).id;
@@ -810,10 +830,14 @@ private:
     if (a.prev != a.next)
       return; // more than 2 nodes, nothing to do
     auto &b = _nodes[a.next];
-    if (has_run(a))
+    if (has_run(a)) {
       emit_fan(b.pt_id, a.pt_id, a);
-    if (has_run(b))
+      a.run_first = a.run_last = Index(-1);
+    }
+    if (has_run(b)) {
       emit_fan(a.pt_id, b.pt_id, b);
+      b.run_first = b.run_last = Index(-1);
+    }
   }
 
   /// Entry point: resolve shards first, then earcut.

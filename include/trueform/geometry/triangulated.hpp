@@ -58,9 +58,9 @@ auto triangulated(const tf::polygon<Dims, Policy> &polygon) {
     auto make_polygon_f = [&polygon](const auto &pts) {
       using RealT = tf::coordinate_type<Policy>;
       tf::polygons_buffer<Index, RealT, Dims, 3> out;
-      tf::geom::earcutter<Index> earcut{};
-      earcut(pts);
-      std::copy(earcut.indices().begin(), earcut.indices().end(),
+      tf::ear_cutter<Index> earcut{};
+      earcut.build(tf::make_points(pts));
+      std::copy(earcut.indices_buffer().begin(), earcut.indices_buffer().end(),
                 std::back_inserter(out.faces_buffer().data_buffer()));
 
       out.points_buffer().allocate(polygon.size());

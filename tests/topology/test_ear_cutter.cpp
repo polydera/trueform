@@ -259,3 +259,17 @@ TEST_CASE("5 consecutive collinear points (float)", "[ear_cutter]") {
   std::vector<int> ids = {0, 1, 2, 3, 4, 5};
   check_all_rotations(ids, pts);
 }
+
+TEST_CASE("Coincident vertex pairs from arrangement", "[ear_cutter]") {
+  // 7-vertex polygon from cylinder/sphere intersection (fc loop 249).
+  // Two pairs of coincident 2D points: pt2==pt3, pt4==pt5.
+  auto pts = make_pts({{469890606, 38424444},
+                        {-471815356, 14819068},
+                        {-473023691, -37},
+                        {-473023691, -37},
+                        {473023700, -37},
+                        {473023700, -37},
+                        {470228476, 34280776}});
+  std::vector<int> ids = {0, 1, 2, 3, 4, 5, 6};
+  check_all_rotations_exact(ids, pts);
+}

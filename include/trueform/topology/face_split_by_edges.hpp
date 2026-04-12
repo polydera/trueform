@@ -77,6 +77,11 @@ public:
                                        _fhr.data_buffer());
   }
 
+  auto face_splitting_paths() const
+      -> const tf::face_splitting_paths<Index, Int> & {
+    return _spaths;
+  }
+
   auto clear() {
     _pgr.clear();
     _spaths.clear();

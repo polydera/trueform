@@ -96,6 +96,9 @@ TEMPLATE_TEST_CASE("mesh_arrangements_3_spheres", "[arrangements]",
   // 3 pairwise intersections split at 2 triple points → 6 curves, 2 endpoints
   REQUIRE(curves.paths().size() == 6);
   REQUIRE(count_open_endpoints<index_t>(curves.paths()) == 2);
+
+  // Closed inputs → closed output
+  REQUIRE(tf::make_boundary_edges(mesh.polygons()).size() == 0);
 }
 
 TEMPLATE_TEST_CASE("mesh_arrangements_2_spheres", "[arrangements]",
@@ -132,4 +135,51 @@ TEMPLATE_TEST_CASE("mesh_arrangements_2_spheres", "[arrangements]",
   // 2 overlapping spheres → 1 closed intersection curve, 0 endpoints
   REQUIRE(curves.paths().size() == 1);
   REQUIRE(count_open_endpoints<index_t>(curves.paths()) == 0);
+
+  // Closed inputs → closed output
+  REQUIRE(tf::make_boundary_edges(mesh.polygons()).size() == 0);
+}
+
+TEST_CASE("mesh_arrangements_box_cylinder_sphere", "[arrangements]") {
+  using index_t = int;
+  using real_t = float;
+
+  auto box = tf::make_box_mesh<index_t>(real_t(5), real_t(2), real_t(5));
+  auto cylinder = tf::make_cylinder_mesh<index_t>(real_t(2), real_t(10), 50);
+  auto sphere = tf::make_sphere_mesh<index_t>(real_t(3), 20, 20);
+
+  const std::array forms{
+      box.polygons(),
+      cylinder.polygons(),
+      sphere.polygons(),
+  };
+
+  auto [mesh, tag_labels, face_labels, curves] =
+      tf::make_mesh_arrangements(
+          tf::make_range(forms.begin(), forms.end()),
+          tf::intersect_mode::primitives |
+              tf::intersect_mode::resolve_crossing_contours,
+          tf::return_curves);
+
+  REQUIRE(count_degenerate(mesh) == 0);
+
+  int tag_counts[3] = {};
+  for (auto t : tag_labels)
+    tag_counts[t]++;
+  REQUIRE(tag_counts[0] > 0);
+  REQUIRE(tag_counts[1] > 0);
+  REQUIRE(tag_counts[2] > 0);
+
+  auto nmedges = tf::make_non_manifold_edges(mesh.polygons());
+  auto nm_paths = tf::connect_edges_to_paths(tf::make_edges(nmedges));
+  auto ig_sizes = get_sorted_sizes<index_t>(curves.paths());
+  auto nm_sizes = get_sorted_sizes<index_t>(nm_paths);
+  REQUIRE(ig_sizes.size() == nm_sizes.size());
+  REQUIRE(ig_sizes == nm_sizes);
+
+  // 3 pairwise intersections with 8 junction points
+  REQUIRE(count_open_endpoints<index_t>(curves.paths()) == 8);
+
+  // Closed inputs - closed output (the earcut coincident-vertex fix)
+  REQUIRE(tf::make_boundary_edges(mesh.polygons()).size() == 0);
 }

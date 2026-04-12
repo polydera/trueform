@@ -49,7 +49,6 @@
 #include "./geometry/fit_similarity_alignment.hpp"     // IWYU pragma: export
 #include "./geometry/icp_config.hpp"                   // IWYU pragma: export
 #include "./geometry/icp_state.hpp"                    // IWYU pragma: export
-#include "./geometry/impl/ear_cutter.hpp"              // IWYU pragma: export
 #include "./geometry/laplacian_smoothed.hpp"           // IWYU pragma: export
 #include "./geometry/make_box_mesh.hpp"                // IWYU pragma: export
 #include "./geometry/make_curve_frames.hpp"            // IWYU pragma: export

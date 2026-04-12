@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 #include "../core/algorithm/generic_generate.hpp"
 #include "../core/blocked_buffer.hpp"
@@ -17,7 +17,7 @@
 #include "../core/polygons.hpp"
 #include "../core/projector.hpp"
 #include "../core/small_vector.hpp"
-#include "./impl/ear_cutter.hpp"
+#include "../topology/ear_cutter.hpp"
 
 namespace tf {
 namespace impl {
@@ -28,10 +28,11 @@ auto triangulated_faces_2d(const tf::polygons<Policy> &polygons) {
 
   tf::buffer<Index> out;
   tf::generic_generate(
-      polygons, out, tf::geom::earcutter<Index>{},
+      polygons, out, tf::ear_cutter<Index>{},
       [](const auto &poly, auto &buffer, auto &earcut) {
-        earcut(poly);
-        auto r = tf::make_indirect_range(earcut.indices(), poly.indices());
+        earcut.build(tf::make_points(poly));
+        auto r =
+            tf::make_indirect_range(earcut.indices_buffer(), poly.indices());
         std::copy(r.begin(), r.end(), std::back_inserter(buffer));
       });
 
@@ -46,15 +47,16 @@ auto triangulated_faces_nd(const tf::polygons<Policy> &polygons) {
   tf::generic_generate(
       polygons, out,
       std::make_pair(tf::small_vector<tf::point<double, 2>, 10>{},
-                     tf::geom::earcutter<Index>{}),
+                     tf::ear_cutter<Index>{}),
       [](const auto &poly, auto &buffer, auto &state) {
         auto &[pts, earcut] = state;
         auto projector = tf::make_simple_projector(poly);
         pts.clear();
         for (const auto &v : poly)
           pts.push_back(projector(v));
-        earcut(pts);
-        auto r = tf::make_indirect_range(earcut.indices(), poly.indices());
+        earcut.build(tf::make_points(pts));
+        auto r =
+            tf::make_indirect_range(earcut.indices_buffer(), poly.indices());
         std::copy(r.begin(), r.end(), std::back_inserter(buffer));
       });
 

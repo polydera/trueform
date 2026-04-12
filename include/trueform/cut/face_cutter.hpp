@@ -60,6 +60,11 @@ public:
     return build_generic(loop, edge_defs, get_point, offsets, vertices);
   }
 
+  auto splitter() const -> const tf::face_split_by_edges<Index, Int> & {
+    return _fs;
+  }
+  auto index_hash_map() const -> const auto & { return _ihm; }
+
   auto clear() -> void {
     _ihm.clear();
     _fs.clear();
@@ -75,17 +80,21 @@ private:
       -> std::pair<Index, Index> {
     Index p0 = -1, p1 = -1;
     for (Index i = 0; i < static_cast<Index>(loop.size()); ++i) {
-      if (loop[i].source != source::created) continue;
-      if      (loop[i].id == id0) p0 = i;
-      else if (loop[i].id == id1) p1 = i;
-      if (p0 >= 0 && p1 >= 0) return {p0, p1};
+      if (loop[i].source != source::created)
+        continue;
+      if (loop[i].id == id0)
+        p0 = i;
+      else if (loop[i].id == id1)
+        p1 = i;
+      if (p0 >= 0 && p1 >= 0)
+        return {p0, p1};
     }
     return {p0, p1};
   }
 
   template <typename Loop>
   static auto emit_loop(const Loop &loop, tf::buffer<Index> &offsets,
-                         tf::buffer<vertex_t> &vertices) {
+                        tf::buffer<vertex_t> &vertices) {
     offsets.push_back(static_cast<Index>(vertices.size()));
     for (const auto &v : loop)
       vertices.push_back(v);
@@ -93,8 +102,8 @@ private:
 
   template <typename Loop>
   static auto split_at(const Loop &loop, Index pos0, Index pos1,
-                        tf::buffer<Index> &offsets,
-                        tf::buffer<vertex_t> &vertices) {
+                       tf::buffer<Index> &offsets,
+                       tf::buffer<vertex_t> &vertices) {
     if (pos0 > pos1)
       std::swap(pos0, pos1);
     auto n = static_cast<Index>(loop.size());
