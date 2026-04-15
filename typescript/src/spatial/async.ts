@@ -436,3 +436,10 @@ export async function rayCast(
     },
   );
 }
+
+// ============ Precompute ============
+
+/** Build the spatial AABB tree off the main thread. Cached on the mesh. */
+export async function buildTree(m: Mesh): Promise<void> {
+  await dispatcher().run(() => native().dispatch_ensure(m._handle, 0));
+}

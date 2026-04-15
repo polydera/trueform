@@ -269,3 +269,17 @@ export async function chamferError(source: PointCloud, target: PointCloud, opts?
     ),
   );
 }
+
+// ============ Precompute ============
+
+/** Compute face normals off the main thread. Result is cached on the mesh. */
+export async function computeNormals(m: Mesh): Promise<NDArrayFloat32> {
+  await dispatcher().run(() => native().dispatch_ensure(m._handle, 1));
+  return m.normals;
+}
+
+/** Compute vertex normals off the main thread. Result is cached on the mesh. */
+export async function computePointNormals(m: Mesh): Promise<NDArrayFloat32> {
+  await dispatcher().run(() => native().dispatch_ensure(m._handle, 2));
+  return m.pointNormals;
+}

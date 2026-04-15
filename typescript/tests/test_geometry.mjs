@@ -781,4 +781,68 @@ describe("Geometry", () => {
     smoothed.delete(); sphere.delete();
   });
 
+  test("async: computeNormals", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10);
+    const normals = await tf.async.computeNormals(sphere);
+    assert(normals.shape[0] === sphere.numberOfFaces, `expected ${sphere.numberOfFaces} normals`);
+    assert(normals.shape[1] === 3, "3D normals");
+    log(`  async computeNormals: [${normals.shape}]`, "line-pass");
+    normals.delete(); sphere.delete();
+  });
+
+  test("async: computePointNormals", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10);
+    const pn = await tf.async.computePointNormals(sphere);
+    assert(pn.shape[0] === sphere.numberOfPoints, `expected ${sphere.numberOfPoints} point normals`);
+    assert(pn.shape[1] === 3, "3D normals");
+    log(`  async computePointNormals: [${pn.shape}]`, "line-pass");
+    pn.delete(); sphere.delete();
+  });
+
+  test("async: buildTree", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10);
+    await tf.async.buildTree(sphere);
+    log("  async buildTree: OK", "line-pass");
+    sphere.delete();
+  });
+
+  test("async: computeFaceMembership", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10);
+    const fm = await tf.async.computeFaceMembership(sphere);
+    assert(fm.length === sphere.numberOfPoints, `expected ${sphere.numberOfPoints} entries`);
+    log(`  async computeFaceMembership: ${fm.length} entries`, "line-pass");
+    fm.delete(); sphere.delete();
+  });
+
+  test("async: computeManifoldEdgeLink", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10);
+    const mel = await tf.async.computeManifoldEdgeLink(sphere);
+    assert(mel.shape[0] === sphere.numberOfFaces, `expected ${sphere.numberOfFaces} rows`);
+    log(`  async computeManifoldEdgeLink: [${mel.shape}]`, "line-pass");
+    mel.delete(); sphere.delete();
+  });
+
+  test("async: computeFaceLink", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10);
+    const fl = await tf.async.computeFaceLink(sphere);
+    assert(fl.length === sphere.numberOfFaces, `expected ${sphere.numberOfFaces} entries`);
+    log(`  async computeFaceLink: ${fl.length} entries`, "line-pass");
+    fl.delete(); sphere.delete();
+  });
+
+  test("async: computeVertexLink", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10);
+    const vl = await tf.async.computeVertexLink(sphere);
+    assert(vl.length === sphere.numberOfPoints, `expected ${sphere.numberOfPoints} entries`);
+    log(`  async computeVertexLink: ${vl.length} entries`, "line-pass");
+    vl.delete(); sphere.delete();
+  });
+
 });

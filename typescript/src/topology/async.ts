@@ -126,3 +126,29 @@ export async function consistentlyOriented(m: Mesh): Promise<Mesh> {
     (raw) => new Mesh(raw),
   );
 }
+
+// ============ Precompute ============
+
+/** Compute face membership off the main thread. Result is cached on the mesh. */
+export async function computeFaceMembership(m: Mesh): Promise<OffsetBlockedBuffer> {
+  await dispatcher().run(() => native().dispatch_ensure(m._handle, 3));
+  return m.faceMembership;
+}
+
+/** Compute manifold edge link off the main thread. Result is cached on the mesh. */
+export async function computeManifoldEdgeLink(m: Mesh): Promise<NDArrayInt32> {
+  await dispatcher().run(() => native().dispatch_ensure(m._handle, 4));
+  return m.manifoldEdgeLink;
+}
+
+/** Compute face link off the main thread. Result is cached on the mesh. */
+export async function computeFaceLink(m: Mesh): Promise<OffsetBlockedBuffer> {
+  await dispatcher().run(() => native().dispatch_ensure(m._handle, 5));
+  return m.faceLink;
+}
+
+/** Compute vertex link off the main thread. Result is cached on the mesh. */
+export async function computeVertexLink(m: Mesh): Promise<OffsetBlockedBuffer> {
+  await dispatcher().run(() => native().dispatch_ensure(m._handle, 6));
+  return m.vertexLink;
+}

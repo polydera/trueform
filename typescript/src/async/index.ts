@@ -26,6 +26,7 @@ export { intersectionCurves, selfIntersectionCurves, isocontours } from "../inte
 export {
   distance, distance2, closestPoint, closestPointPair,
   neighborSearch, intersects, rayCast,
+  buildTree,
 } from "../spatial/async";
 export {
   triangulate, sphereMesh, cylinderMesh, boxMesh, planeMesh, tubeMesh, sharpEdges,
@@ -34,6 +35,7 @@ export {
   principalCurvatures, principalDirections, shapeIndex,
   laplacianSmoothed, taubinSmoothed,
   fitRigidAlignment, fitIcpAlignment, fitObbAlignment, chamferError,
+  computeNormals, computePointNormals,
 } from "../geometry/async";
 export {
   isClosed, isOpen, isManifold, isNonManifold,
@@ -42,6 +44,7 @@ export {
   boundaryPaths, kRings, neighborhoods, connectEdgesToPaths,
   labelConnectedComponents, connectedComponents,
   consistentlyOriented,
+  computeFaceMembership, computeManifoldEdgeLink, computeFaceLink, computeVertexLink,
 } from "../topology/async";
 export { cleaned } from "../clean/async";
 export {
