@@ -19,7 +19,7 @@ endif()
 # ==============================================================================
 # Project Configuration
 # ==============================================================================
-project(trueform VERSION 0.8.1 LANGUAGES CXX)
+project(trueform VERSION 0.8.2 LANGUAGES CXX)
 
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.hpp.in

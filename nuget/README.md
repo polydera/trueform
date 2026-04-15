@@ -43,15 +43,21 @@ tf::write_stl(result, "output.stl");
 
 ## Benchmarks
 
-| Operation | Input | Time | Speedup | Baseline |
-|-----------|-------|------|---------|----------|
-| Boolean Union | 2 x 1M | 28 ms | **84x** | CGAL `Simple_cartesian<double>` |
-| Mesh-Mesh Curves | 2 x 1M | 7 ms | **233x** | CGAL `Simple_cartesian<double>` |
-| Decimation (50%) | 1M | 72 ms | **50x** | CGAL `edge_collapse` |
-| ICP Registration | 1M | 7.7 ms | **93x** | libigl |
-| Connected Components | 1M | 15 ms | **10x** | CGAL |
+| Operation | Input | Time | Speedup | Baseline | TrueForm |
+|-----------|-------|------|---------|----------|----------|
+| Boolean Union | 2 × 1M | 28 ms | **84×** | CGAL `Simple_cartesian<double>` | exact predicates, canonical topology |
+| Mesh–Mesh Curves | 2 × 1M | 7 ms | **233×** | CGAL `Simple_cartesian<double>` | exact predicates, canonical topology |
+| ICP Registration | 1M | 7.7 ms | **93×** | libigl | AABB tree, random subsampling |
+| Self-Intersection | 1M | 78 ms | **37×** | libigl EPECK (GMP/MPFR) | exact predicates, canonical topology |
+| Isocontours | 1M, 16 cuts | 3.8 ms | **38×** | VTK `vtkContourFilter` | exact predicates |
+| Connected Components | 1M | 15 ms | **10×** | CGAL | parallel union-find |
+| Boundary Paths | 1M | 12 ms | **11×** | CGAL | Hierholzer's algorithm |
+| k-NN Query | 500K | 1.7 µs | **3×** | nanoflann k-d tree | AABB tree |
+| Mesh–Mesh Distance | 2 × 1M | 0.2 ms | **2×** | Coal (FCL) `OBBRSS` | OBBRSS tree |
+| Decimation (50%) | 1M | 72 ms | **50×** | CGAL `edge_collapse` | parallel partitioned collapse |
+| Principal Curvatures | 1M | 25 ms | **55×** | libigl | parallel k-ring quadric fitting |
 
-[Full benchmarks](https://trueform.polydera.com/cpp/benchmarks) — methodology, interactive charts, and datasets.
+Apple M4 Max, 16 threads, Clang `-O3 -march=native`. [Full methodology](https://trueform.polydera.com/cpp/benchmarks)
 
 ## Documentation
 

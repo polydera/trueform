@@ -85,7 +85,7 @@ target_link_options(trueform_wasm PRIVATE
   -sMAXIMUM_MEMORY=4GB
   -sINITIAL_MEMORY=256MB
   -sUSE_PTHREADS=1
-  -sPTHREAD_POOL_SIZE='navigator.hardwareConcurrency*2+1'
+  -sPTHREAD_POOL_SIZE='navigator.hardwareConcurrency'
   -sALLOW_BLOCKING_ON_MAIN_THREAD=1
   "-sEXPORTED_RUNTIME_METHODS=['wasmMemory']"
   -sSTACK_SIZE=8MB
