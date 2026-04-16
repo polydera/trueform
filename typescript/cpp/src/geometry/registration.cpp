@@ -103,7 +103,7 @@ auto async_fit_icp(wasm_point_cloud &src, wasm_point_cloud &tgt,
                    float outlier_proportion, float min_relative_improvement,
                    float ema_alpha) -> promise_t {
   // Ensure tree is built on the main thread before dispatching.
-  tgt.ensure_tree();
+  (void)tgt.tree();
   return promise(
       [src = src, tgt = tgt, max_iterations, n_samples, k, sigma,
        outlier_proportion, min_relative_improvement,
@@ -236,7 +236,7 @@ auto sync_fit_obb(wasm_point_cloud &src, wasm_point_cloud &tgt,
 
 auto async_fit_obb(wasm_point_cloud &src, wasm_point_cloud &tgt,
                    int sample_size) -> promise_t {
-  tgt.ensure_tree();
+  (void)tgt.tree();
   return promise(
       [src = src, tgt = tgt, sample_size]() -> wasm_ndarray<float> {
         auto &s = const_cast<wasm_point_cloud &>(src);
@@ -269,7 +269,7 @@ auto sync_chamfer_error(wasm_point_cloud &src, wasm_point_cloud &tgt,
 
 auto async_chamfer_error(wasm_point_cloud &src, wasm_point_cloud &tgt,
                          float outlier_proportion) -> promise_t {
-  tgt.ensure_tree();
+  (void)tgt.tree();
   return promise(
       [src = src, tgt = tgt, outlier_proportion]() -> float {
         auto &s = const_cast<wasm_point_cloud &>(src);

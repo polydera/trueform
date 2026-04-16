@@ -56,9 +56,9 @@ export function point(arr: NDArrayFloat32): Point;
 export function point(
   ...args: any[]
 ): Point {
-  // point(ndarray) — shared_view() bumps refcount so both sides own the buffer
+  // point(ndarray) — shallow_copy() bumps refcount so both sides own the buffer
   if (args[0] instanceof NDArray && !(args[0] instanceof Primitive)) {
-    return new Primitive(args[0]._handle.shared_view(), "point") as Point;
+    return new Primitive(args[0]._handle.shallow_copy(), "point") as Point;
   }
   // point(x, y) or point(x, y, z)
   if (typeof args[0] === "number") {
@@ -89,7 +89,7 @@ export function vector(
   ...args: any[]
 ): Vector {
   if (args[0] instanceof NDArray && !(args[0] instanceof Primitive)) {
-    return new Primitive(args[0]._handle.shared_view(), "vector") as Vector;
+    return new Primitive(args[0]._handle.shallow_copy(), "vector") as Vector;
   }
   if (typeof args[0] === "number") {
     const f32 = new Float32Array(args);
@@ -371,7 +371,7 @@ export function polygon(
   dims?: number,
 ): Polygon {
   if (verticesOrData instanceof NDArray && !(verticesOrData instanceof Primitive)) {
-    return new Primitive(verticesOrData._handle.shared_view(), "polygon") as Polygon;
+    return new Primitive(verticesOrData._handle.shallow_copy(), "polygon") as Polygon;
   }
   if (Array.isArray(verticesOrData) && verticesOrData.length > 0
       && verticesOrData[0] instanceof Primitive) {

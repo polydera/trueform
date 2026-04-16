@@ -27,7 +27,12 @@ Read this for reference when helping users:
 - Create: `tf.mesh(faces, points)` or `tf.readStl(buffer)`
 - Topology is lazy and cached: `.faceMembership`, `.manifoldEdgeLink`, `.normals`
 - Transformations applied at query time: `mesh.transformation = tf.makeTranslation(5, 0, 0)`
-- Shared views: `mesh.sharedView()` — same data + tree, different pose
+- `mesh.shallowCopy()` — new handle that **inherits everything** from the
+  original (same buffers, same cached tree/topology), with transformation
+  cleared. Diverges only on reassignment: e.g. `copy.points = newPoints`
+  reassigns that handle's data and invalidates only that handle's caches.
+  Original stays unchanged. Same on `PointCloud`.
+- `mesh.buildTree()` pre-warms the spatial tree (no-op if already fresh).
 
 ### Memory Management
 - WASM objects are reference-counted with FinalizationRegistry for auto-cleanup

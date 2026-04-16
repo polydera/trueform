@@ -1,6 +1,6 @@
 {
   "name": "@polydera/trueform",
-  "version": "0.8.3",
+  "version": "0.8.4",
   "description": "Real-time geometric processing in TypeScript. WASM-backed NDArrays with vectorized operations, spatial queries, arrangements, booleans, registration, and remeshing — at native speed in the browser and Node.js. Exact and robust. NDArrays in, NDArrays out.",
   "type": "module",
   "main": "./dist/index.js",

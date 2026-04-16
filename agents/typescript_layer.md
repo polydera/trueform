@@ -60,26 +60,50 @@ auto async_boolean_union(wasm_mesh &m0, wasm_mesh &m1) -> promise_t {
 
 Captures are by value (shared_ptr refcount increment). The lambda runs on a TBB worker thread. `promise_t = uintptr_t` (slot address). JS polls via `Atomics.waitAsync`.
 
-### 1.3 WASM Types
+### 1.3 WASM Types — the 2-layer `wasm_mesh` / `wasm_point_cloud`
 
-**`wasm_mesh`** (`cpp/include/trueform/ts/core/wasm_mesh.hpp`):
-- Holds `shared_ptr<mesh_data>` with faces, points, and lazy topology caches
-- Generation counters (`face_gen`, `points_gen`, `fm_gen`, `mel_gen`) track staleness
-- Topology (face_membership, manifold_edge_link) built on first access, cached
-- Exposed as `NativeMesh` class in JS
+`wasm_mesh` is a thin handle holding `std::shared_ptr<mesh_data>`.
+`mesh_data` owns the actual state: `wasm_ndarray` buffers, every lazy
+cache slot (`_tree`, `_fm`, `_mel`, `_fl`, `_vl`, `_normals`,
+`_point_normals`, `_he`), and generation counters. `ensure_*` are
+private; callers go through accessors (`m.tree()`, `m.normals()`, …)
+which trigger the build. Same pattern for `wasm_point_cloud` /
+`point_cloud_data`.
 
-**`wasm_ndarray<T>`** (`cpp/include/trueform/ts/core/wasm_ndarray.hpp`):
-- `shared_ptr<tf::buffer<T>>` + offset + length + shape
-- `.data()` returns `typed_memory_view` → zero-copy TypedArray view into WASM heap
-- `from_buffer(buffer&&, shape)` — takes ownership via shared_ptr
-- `from_js(js_array, shape)` — copies JS TypedArray into WASM buffer
+Two copy semantics:
 
-### 1.4 Shared Ownership
+1. **Default handle copy** (`wasm_mesh b = a;` / `[m = m, ...]` lambda
+   capture) copies only the `shared_ptr` — both handles point to the
+   **same** `mesh_data`. This is why async works: a worker's
+   `ensure_*` lands on the `mesh_data` the JS-side handle holds, so the
+   cache survives the await. Contract: the caller must not reassign
+   mesh data while an async op against it is pending.
 
-All WASM types use `shared_ptr`. Copying a `wasm_mesh` or `wasm_ndarray` increments the refcount. This ensures:
-- Async lambdas keep data alive until completion
-- Multiple TS handles can reference the same C++ data
-- Deletion is safe from any handle
+2. **`shallow_copy()`** allocates a new `mesh_data` and copy-assigns
+   every field from the source. Buffers, cache slot values, and gens
+   all start shared via inner shared_ptrs — the two handles are
+   observationally identical — then the transformation is cleared on
+   the copy. Divergence happens only via reassignment: `set_points` /
+   `set_faces` reassigns that handle's slot and bumps its gens;
+   siblings are untouched. Stale caches on the mutated handle rebuild
+   into that handle's slot only.
+
+`wasm_ndarray<T>` is single-layer: `shared_ptr<tf::buffer<T>>` + offset
++ length + shape. `from_buffer()` takes ownership, `from_js()` copies
+from a JS TypedArray, `shallow_copy()` returns a new wrapper over the
+same storage.
+
+Diagnostic inspectors on the native handle — `is_tree_built()`,
+`is_tree_fresh()`, and the per-cache equivalents — expose slot state
+for tests; not wrapped in TS. `Mesh.buildTree()` forwards to a void
+`build_tree()` on the handle (the `tree()` accessor's `const aabb_tree&`
+return can't cross embind).
+
+### 1.4 Lifetime & cleanup
+
+Every state-owning field is `shared_ptr`-backed, so defaulted
+destructors release everything via refcount. `destroy()` is a
+"release-now" escape hatch — on the handle it's just `_data.reset()`.
 
 ---
 
@@ -124,7 +148,8 @@ export class Mesh {
     get faceMembership(): OffsetBlockedBuffer { /* lazy, cached in C++ */ }
     get manifoldEdgeLink(): NDArrayInt32 { /* lazy, cached in C++ */ }
 
-    sharedView(): Mesh { return new Mesh(this._handle.shared_view()); }
+    shallowCopy(): Mesh { return new Mesh(this._handle.shallow_copy()); }
+    buildTree(): void { this._handle.build_tree(); }
     delete(): void { this._handle.destroy(); }
     [Symbol.dispose](): void { this._handle.destroy(); }
 }
@@ -245,7 +270,11 @@ This section is essential for anyone adding new TS bindings. The WASM runtime ha
 
 ### 4.1 What CAN Cross Threads
 
-- **`wasm_mesh`** — container of `shared_ptr` members. Copy increments refcount atomically. Safe.
+- **`wasm_mesh` / `wasm_point_cloud`** — thin handles over
+  `shared_ptr<mesh_data>` / `shared_ptr<point_cloud_data>`. Copy = atomic
+  refcount++ on the inner data. **Both handles then share the same
+  `mesh_data`** — this is the mechanism that makes async caches land on
+  the JS-visible original (see §1.3). Safe.
 - **`wasm_ndarray<T>`** — wraps `shared_ptr<tf::buffer<T>>`. Copy is a refcount increment. Safe.
 - **POD types** (int, float, bool) — always safe.
 - **`std::vector<POD>`** — safe once copied/moved into the lambda.
@@ -270,9 +299,9 @@ auto async_boolean_union(wasm_mesh &m0, wasm_mesh &m1) -> promise_t {
 }
 ```
 
-**Why capture by copy**: The originals are on the main thread's stack. The lambda runs on a TBB worker thread. Copying wasm_mesh/wasm_ndarray just copies shared_ptrs (atomic refcount increment), keeping the underlying buffers alive.
+**Why capture by copy**: The originals are on the main thread's stack. The lambda runs on a TBB worker thread. Copying `wasm_mesh` / `wasm_ndarray` just copies shared_ptrs (atomic refcount increment), keeping the underlying data alive. Crucially for `wasm_mesh`, the copy shares the **same** `mesh_data` as the original (see §1.3), so any cache the worker builds via `m.tree()` / `m.normals()` / etc. lands on the `mesh_data` the JS-visible handle holds.
 
-**Why const_cast**: Lambda captures are const by default. The sync function takes `&` (non-const) because it may trigger lazy topology builds (tree, face_membership). `const_cast` is safe because the capture is an independent copy — no race with the original.
+**Why const_cast**: Lambda captures are const by default. The sync function takes `&` (non-const) because it may trigger lazy cache builds through accessors. `const_cast` is safe here because the only thing being mutated is the inner `mesh_data`'s cache slots, and the await contract guarantees the JS caller is not concurrently mutating the same mesh.
 
 ### 4.4 The emscripten::val Extraction Pattern
 

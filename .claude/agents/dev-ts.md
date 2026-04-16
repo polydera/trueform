@@ -14,8 +14,29 @@ Read these for the binding patterns and thread-safety rules:
 
 ## WASM Thread-Safety Rules (CRITICAL)
 
+### `wasm_mesh` / `wasm_point_cloud` are 2-layer handles
+
+`wasm_mesh` wraps `std::shared_ptr<mesh_data>` (same for `wasm_point_cloud`
+/ `point_cloud_data`). `mesh_data` owns the actual state: buffers, lazy
+cache slots, generation counters.
+
+- **Default copy** (including `[m = m, ...]` in an async lambda) copies
+  the `shared_ptr` — both handles point to the same `mesh_data`. Worker
+  accessors (`m.tree()`, `m.normals()`, …) build into the caller's
+  `mesh_data`; that's why capture-by-copy works for async.
+- **`shallow_copy()`** allocates a fresh `mesh_data` and copy-assigns every
+  field from the source — all buffers and cache slots start shared via
+  inner `shared_ptr`s, all gens equal — then clears the transformation.
+  Divergence is by reassignment only (e.g. `copy.set_points(X)` bumps that
+  handle's `_points_gen`, leaving the sibling untouched).
+
+`ensure_*` are private on `mesh_data`; callers go through accessors.
+Tests use diagnostic inspectors on the native handle —
+`mesh._handle.is_tree_built()` / `is_tree_fresh()` — not wrapped in TS.
+
 ### What CAN cross threads (safe to capture in async lambdas)
-- `wasm_mesh`, `wasm_ndarray<T>` — contain `shared_ptr`, copy increments refcount atomically
+- `wasm_mesh`, `wasm_point_cloud` — thin `shared_ptr<…_data>` handles.
+- `wasm_ndarray<T>` — `shared_ptr<buffer<T>>` + shape; copy = atomic refcount++.
 - POD types (int, float, bool)
 - `std::vector<POD>` (after extraction from JS)
 

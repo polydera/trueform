@@ -25,7 +25,7 @@ export interface NativeNDArray<T = any> {
   slice(start: number, end: number): NativeNDArray<T>;
   destroy(): void;
   is_valid(): boolean;
-  shared_view(): NativeNDArray<T>;
+  shallow_copy(): NativeNDArray<T>;
   delete(): void;
 }
 
@@ -131,8 +131,8 @@ export class NDArray<T = any> {
     const dstNative = nativeDtype(dtype);
     if (srcNative === dstNative) {
       // Same underlying storage — just relabel (e.g. int8 ↔ bool)
-      // shared_view() bumps refcount so both sides own the buffer
-      return new NDArray(this._handle.shared_view(), dtype);
+      // shallow_copy() bumps refcount so both sides own the buffer
+      return new NDArray(this._handle.shallow_copy(), dtype);
     }
     const raw = native()[`cast_${srcNative}_to_${dstNative}`](this._handle);
     return new NDArray(raw, dtype);
@@ -626,7 +626,7 @@ export class NDArray<T = any> {
 
   /** Flatten to 1D. Zero-copy (shared view). */
   flatten(): NDArray<T> {
-    const view = this._handle.shared_view();
+    const view = this._handle.shallow_copy();
     view.set_shape([this.length]);
     return new NDArray<T>(view, this.dtype);
   }
@@ -640,7 +640,7 @@ export class NDArray<T = any> {
       newShape.push(s[i]);
     }
     if (newShape.length === 0) newShape.push(1);
-    const view = this._handle.shared_view();
+    const view = this._handle.shallow_copy();
     view.set_shape(newShape);
     return new NDArray<T>(view, this.dtype);
   }
@@ -649,14 +649,14 @@ export class NDArray<T = any> {
   unsqueeze(axis: number): NDArray<T> {
     const s = this.shape.slice();
     s.splice(axis, 0, 1);
-    const view = this._handle.shared_view();
+    const view = this._handle.shallow_copy();
     view.set_shape(s);
     return new NDArray<T>(view, this.dtype);
   }
 
   /** Reshape to new dimensions (must preserve total element count). Zero-copy. */
   reshape(shape: number[]): NDArray<T> {
-    const view = this._handle.shared_view();
+    const view = this._handle.shallow_copy();
     view.set_shape(shape);
     return new NDArray<T>(view, this.dtype);
   }

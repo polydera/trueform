@@ -28,12 +28,12 @@ interface NativePointCloud {
   normals(): NativeNDArray<Float32Array>;
   has_normals(): boolean;
   set_normals(n: NativeNDArray<Float32Array>): void;
-  shared_view(): NativePointCloud;
+  shallow_copy(): NativePointCloud;
   has_transformation(): boolean;
   transformation(): NativeNDArray<Float32Array>;
   set_transformation(t: NativeNDArray<Float32Array>): void;
   clear_transformation(): void;
-  ensure_tree(): void;
+  build_tree(): void;
   destroy(): void;
   is_valid(): boolean;
   delete(): void;
@@ -118,16 +118,17 @@ export class PointCloud {
   }
 
   /**
-   * Creates a shared view — cheap copy sharing all data and caches.
-   * Transformation is not shared (the view has no transformation).
+   * Forks the point cloud into a new handle that shares the underlying
+   * buffers but has its own cache slots; the transformation is cleared
+   * so the copy can take a different pose.
    */
-  sharedView(): PointCloud {
-    return new PointCloud(this._handle.shared_view());
+  shallowCopy(): PointCloud {
+    return new PointCloud(this._handle.shallow_copy());
   }
 
   /** Pre-build the spatial AABB tree. No-op if already built and up-to-date. */
   buildTree(): void {
-    this._handle.ensure_tree();
+    this._handle.build_tree();
   }
 
   /**

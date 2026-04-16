@@ -73,7 +73,7 @@ export class ClosestPointsExample {
       : [[0, -spacing / 2, 0], [0, spacing / 2, 0]];
 
     const mesh0 = this.baseMesh;
-    const mesh1 = this.baseMesh.sharedView();
+    const mesh1 = this.baseMesh.shallowCopy();
     // No random rotation on first frame — just translate into position
     const mat0 = tf.makeTranslation(...offsets[0]!);
     mesh0.transformation = mat0;
@@ -483,7 +483,7 @@ export class ClosestPointsExample {
     this.renderer.dispose();
     this.renderer.domElement.remove();
 
-    // Delete tf meshes (sharedView first, then baseMesh)
+    // Delete tf meshes (shallow copy first, then baseMesh)
     for (let i = this.tfMeshes.length - 1; i >= 0; i--) {
       this.tfMeshes[i].delete();
     }

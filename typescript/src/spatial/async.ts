@@ -439,7 +439,11 @@ export async function rayCast(
 
 // ============ Precompute ============
 
-/** Build the spatial AABB tree off the main thread. Cached on the mesh. */
-export async function buildTree(m: Mesh): Promise<void> {
-  await dispatcher().run(() => native().dispatch_ensure(m._handle, 0));
+/** Build the spatial AABB tree off the main thread. Cached on the mesh or point cloud. */
+export async function buildTree(m: Mesh | PointCloud): Promise<void> {
+  if (m instanceof Mesh) {
+    await dispatcher().run(() => native().dispatch_ensure(m._handle, 0));
+  } else {
+    await dispatcher().run(() => native().dispatch_ensure_pc(m._handle));
+  }
 }

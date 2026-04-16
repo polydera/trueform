@@ -23,7 +23,8 @@ interface NativeMesh {
   number_of_points(): number;
   set_faces(faces: NativeNDArray<Int32Array>): void;
   set_points(points: NativeNDArray<Float32Array>): void;
-  shared_view(): NativeMesh;
+  shallow_copy(): NativeMesh;
+  build_tree(): void;
   has_transformation(): boolean;
   transformation(): NativeNDArray<Float32Array>;
   set_transformation(t: NativeNDArray<Float32Array>): void;
@@ -40,7 +41,6 @@ interface NativeMesh {
   point_normals(): NativeNDArray<Float32Array>;
   set_normals(n: NativeNDArray<Float32Array>): void;
   set_point_normals(pn: NativeNDArray<Float32Array>): void;
-  ensure_tree(): void;
   destroy(): void;
   is_valid(): boolean;
   delete(): void;
@@ -54,7 +54,8 @@ interface NativeMesh {
  * are built lazily on first access and cached. Mutating faces/points via
  * Setting faces/points invalidates stale caches.
  *
- * sharedView() creates a cheap copy that shares all data and caches.
+ * shallowCopy() creates a forked copy that shares the underlying buffers
+ * but has its own cache slots and (cleared) transformation.
  * Each accessor returns an independent handle safe against manual .delete().
  */
 export class Mesh {
@@ -123,11 +124,12 @@ export class Mesh {
   }
 
   /**
-   * Creates a shared view — cheap copy sharing all data and caches.
-   * Transformation is not shared (the view has no transformation).
+   * Forks the mesh into a new handle that shares the underlying buffers
+   * but has its own cache slots; the transformation is cleared so the
+   * copy can take a different pose.
    */
-  sharedView(): Mesh {
-    return new Mesh(this._handle.shared_view());
+  shallowCopy(): Mesh {
+    return new Mesh(this._handle.shallow_copy());
   }
 
   /**
@@ -203,7 +205,7 @@ export class Mesh {
 
   /** Pre-build the spatial AABB tree. No-op if already built and up-to-date. */
   buildTree(): void {
-    this._handle.ensure_tree();
+    this._handle.build_tree();
   }
 
   delete(): void {

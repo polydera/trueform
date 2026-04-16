@@ -161,20 +161,37 @@ mesh.buildTree();
 
 ### Transformations
 
-Transformations are applied at query time — the underlying data stays in local coordinates. This enables shared views with different poses without copying geometry or rebuilding trees.
+Transformations are applied at query time — the underlying data stays in local coordinates.
 
 ```ts
 mesh.transformation = tf.makeTranslation(5, 0, 0);
 mesh.transformation = tf.makeRotation(90, "z");
 mesh.transformation = null;  // clear
+```
 
-// Shared views: same data + tree, different pose per instance
-const viewA = mesh.sharedView();
+### Shallow copies (posed views)
+
+`mesh.shallowCopy()` returns a new handle that **inherits everything
+from the original** — same buffers, same cached tree, same topology —
+and clears the transformation. Siblings diverge only when you
+**reassign** data: `copy.points = …` or `copy.faces = …` affects that
+handle only and invalidates only that handle's caches. Same on
+`PointCloud`.
+
+```ts
+const base = tf.mesh(faces, points);
+base.buildTree();
+
+const viewA = base.shallowCopy();
 viewA.transformation = tf.makeTranslation(5, 0, 0);
-const viewB = mesh.sharedView();
+const viewB = base.shallowCopy();
 viewB.transformation = tf.makeTranslation(-5, 0, 0);
-// Both share the same underlying tree — only the transform differs
-const d = tf.distance(viewA, viewB);
+tf.distance(viewA, viewB);                // both reuse base's tree
+
+const moved = base.shallowCopy();
+moved.points = translatedPoints;          // only `moved` diverges
+tf.distance(moved, probe);                // rebuilds tree for `moved`
+tf.distance(base, probe);                 // base's tree unchanged
 ```
 
 ### Memory Management

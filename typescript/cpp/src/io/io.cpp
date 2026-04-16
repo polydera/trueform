@@ -146,7 +146,7 @@ auto sync_write_stl_buffer(tf::ts::wasm_mesh &m)
 }
 
 auto async_write_stl_buffer(tf::ts::wasm_mesh &m) -> tf::ts::promise_t {
-  auto mesh = m.shared_view();
+  auto mesh = m.shallow_copy();
   return tf::ts::promise([mesh]() {
     return sync_write_stl_buffer(
         const_cast<tf::ts::wasm_mesh &>(mesh));
@@ -168,7 +168,7 @@ auto sync_write_obj_buffer(tf::ts::wasm_mesh &m)
 }
 
 auto async_write_obj_buffer(tf::ts::wasm_mesh &m) -> tf::ts::promise_t {
-  auto mesh = m.shared_view();
+  auto mesh = m.shallow_copy();
   return tf::ts::promise([mesh]() {
     return sync_write_obj_buffer(
         const_cast<tf::ts::wasm_mesh &>(mesh));

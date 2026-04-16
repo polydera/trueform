@@ -14,20 +14,6 @@
 #include "trueform/ts/core/wasm_point_cloud.hpp"
 #include <emscripten/bind.h>
 
-namespace tf {
-namespace ts {
-
-void wasm_point_cloud::ensure_tree() {
-  if (_tree && _tree_gen == _points_gen)
-    return;
-  _tree = std::make_shared<tf::aabb_tree<int, float, 3>>(
-      points_range(), tf::config_tree(4, 4));
-  _tree_gen = _points_gen;
-}
-
-} // namespace ts
-} // namespace tf
-
 EMSCRIPTEN_BINDINGS(trueform_point_cloud) {
   emscripten::class_<tf::ts::wasm_point_cloud>("NativePointCloud")
       .class_function("create", &tf::ts::wasm_point_cloud::create)
@@ -40,12 +26,15 @@ EMSCRIPTEN_BINDINGS(trueform_point_cloud) {
       .function("normals", &tf::ts::wasm_point_cloud::normals)
       .function("has_normals", &tf::ts::wasm_point_cloud::has_normals)
       .function("set_normals", &tf::ts::wasm_point_cloud::set_normals)
-      .function("shared_view", &tf::ts::wasm_point_cloud::shared_view)
+      .function("shallow_copy", &tf::ts::wasm_point_cloud::shallow_copy)
       .function("has_transformation", &tf::ts::wasm_point_cloud::has_transformation)
       .function("transformation", &tf::ts::wasm_point_cloud::transformation)
       .function("set_transformation", &tf::ts::wasm_point_cloud::set_transformation)
       .function("clear_transformation", &tf::ts::wasm_point_cloud::clear_transformation)
-      .function("ensure_tree", &tf::ts::wasm_point_cloud::ensure_tree)
+      .function("build_tree", &tf::ts::wasm_point_cloud::build_tree)
       .function("destroy", &tf::ts::wasm_point_cloud::destroy)
-      .function("is_valid", &tf::ts::wasm_point_cloud::is_valid);
+      .function("is_valid", &tf::ts::wasm_point_cloud::is_valid)
+      // -- Cache state inspectors (diagnostic) --
+      .function("is_tree_built", &tf::ts::wasm_point_cloud::is_tree_built)
+      .function("is_tree_fresh", &tf::ts::wasm_point_cloud::is_tree_fresh);
 }

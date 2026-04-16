@@ -22,6 +22,7 @@ add_executable(trueform_wasm
     cpp/src/core/reductions.cpp
     cpp/src/core/elementwise.cpp
     cpp/src/core/wasm_offset_blocked_buffer.cpp
+    cpp/src/core/mesh_data.cpp
     cpp/src/core/wasm_mesh.cpp
     cpp/src/core/wasm_point_cloud.cpp
     cpp/src/core/wasm_curves.cpp

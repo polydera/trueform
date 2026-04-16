@@ -84,18 +84,18 @@ describe("Mesh", () => {
     ph.delete();
   });
 
-  test("Shared view", () => {
+  test("Shallow copy", () => {
     const tf = getTf();
     const { faces, points } = twoTriangles();
     const m = tf.mesh(faces, points);
-    const v = m.sharedView();
+    const v = m.shallowCopy();
 
-    assert(v.numberOfFaces === 2, "shared view has same face count");
-    assert(v.numberOfPoints === 4, "shared view has same point count");
+    assert(v.numberOfFaces === 2, "shallow copy has same face count");
+    assert(v.numberOfPoints === 4, "shallow copy has same point count");
 
     const vf = v.faces;
-    assert(vf.data[0] === 0, "shared view faces match");
-    log("  sharedView shares data", "line-pass");
+    assert(vf.data[0] === 0, "shallow copy faces match");
+    log("  shallowCopy shares data", "line-pass");
 
     vf.delete();
     v.delete();

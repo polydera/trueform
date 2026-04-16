@@ -1039,7 +1039,7 @@ EMSCRIPTEN_BINDINGS(trueform_buffers) {
       .function("slice", &tf::ts::wasm_ndarray<int>::slice)
       .function("destroy", &tf::ts::wasm_ndarray<int>::destroy)
       .function("is_valid", &tf::ts::wasm_ndarray<int>::is_valid)
-      .function("shared_view", &tf::ts::wasm_ndarray<int>::shared_view);
+      .function("shallow_copy", &tf::ts::wasm_ndarray<int>::shallow_copy);
 
   emscripten::class_<tf::ts::wasm_ndarray<std::int8_t>>("NativeInt8NDArray")
       .class_function("from_js", &tf::ts::wasm_ndarray<std::int8_t>::from_js)
@@ -1053,7 +1053,7 @@ EMSCRIPTEN_BINDINGS(trueform_buffers) {
       .function("slice", &tf::ts::wasm_ndarray<std::int8_t>::slice)
       .function("destroy", &tf::ts::wasm_ndarray<std::int8_t>::destroy)
       .function("is_valid", &tf::ts::wasm_ndarray<std::int8_t>::is_valid)
-      .function("shared_view", &tf::ts::wasm_ndarray<std::int8_t>::shared_view);
+      .function("shallow_copy", &tf::ts::wasm_ndarray<std::int8_t>::shallow_copy);
 
   emscripten::class_<tf::ts::wasm_ndarray<float>>("NativeFloat32NDArray")
       .class_function("from_js", &tf::ts::wasm_ndarray<float>::from_js)
@@ -1067,7 +1067,7 @@ EMSCRIPTEN_BINDINGS(trueform_buffers) {
       .function("slice", &tf::ts::wasm_ndarray<float>::slice)
       .function("destroy", &tf::ts::wasm_ndarray<float>::destroy)
       .function("is_valid", &tf::ts::wasm_ndarray<float>::is_valid)
-      .function("shared_view", &tf::ts::wasm_ndarray<float>::shared_view);
+      .function("shallow_copy", &tf::ts::wasm_ndarray<float>::shallow_copy);
 
   // --- stack ---
   emscripten::function("stack_float32", &stack<float>);

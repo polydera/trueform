@@ -143,7 +143,7 @@ describe("PointCloud", () => {
   });
 
   // ==========================================================================
-  test("sharedView shares data", () => {
+  test("shallowCopy shares data", () => {
     const tf = getTf();
     const pc = tf.pointCloud(new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]));
 
@@ -152,12 +152,12 @@ describe("PointCloud", () => {
     ]), [4, 4]);
     pc.transformation = t;
 
-    const view = pc.sharedView();
+    const view = pc.shallowCopy();
     assert(view.numberOfPoints === pc.numberOfPoints,
-      "shared view has same point count");
+      "shallow copy has same point count");
     assert(view.transformation === null,
-      "shared view has no transformation");
-    log("  sharedView: same points, no transformation", "line-pass");
+      "shallow copy has no transformation");
+    log("  shallowCopy: same points, no transformation", "line-pass");
 
     t.delete();
     view.delete();

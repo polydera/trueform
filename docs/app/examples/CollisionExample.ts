@@ -40,12 +40,12 @@ export class CollisionExample {
     this.baseMesh = ext === "stl" ? tf.readStl(fileBuffer) : tf.readObj(fileBuffer);
     centerAndScale(tf, this.baseMesh);
 
-    // Create 5x5 grid of meshes: baseMesh for first slot, sharedView() for the rest
+    // Create 5x5 grid of meshes: baseMesh for first slot, shallowCopy() for the rest
     const gridSize = 5;
     const spacing = 15;
     for (let j = 0; j < gridSize; j++) {
       for (let i = 0; i < gridSize; i++) {
-        const tfMesh = (i === 0 && j === 0) ? this.baseMesh : this.baseMesh.sharedView();
+        const tfMesh = (i === 0 && j === 0) ? this.baseMesh : this.baseMesh.shallowCopy();
         const mat = randomTransformation(tf, i * spacing, j * spacing, 0);
         tfMesh.transformation = mat;
         mat.delete();
@@ -293,7 +293,7 @@ export class CollisionExample {
     }
     this.renderer.dispose();
     this.renderer.domElement.remove();
-    // Delete tf meshes (sharedViews first, then baseMesh)
+    // Delete tf meshes (shallow copies first, then baseMesh)
     for (let i = this.tfMeshes.length - 1; i >= 0; i--) {
       this.tfMeshes[i].delete();
     }

@@ -127,7 +127,7 @@ public:
 
   auto is_valid() const -> bool { return _storage != nullptr; }
 
-  auto shared_view() const -> wasm_ndarray<T> {
+  auto shallow_copy() const -> wasm_ndarray<T> {
     return wasm_ndarray<T>(_storage, _offset, _length, _shape);
   }
 
