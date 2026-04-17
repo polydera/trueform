@@ -17,10 +17,12 @@
 #include "trueform/core/algorithm/reduce.hpp"
 #include "trueform/core/range.hpp"
 #include "trueform/core/views/blocked_range.hpp"
+#include "trueform/core/views/mapped_range.hpp"
 #include "trueform/core/views/sequence_range.hpp"
 #include "trueform/ts/core/parallel_config.hpp"
 #include "trueform/ts/core/wasm_ndarray.hpp"
 #include <cmath>
+#include <functional>
 #include <limits>
 
 namespace tf {
@@ -109,7 +111,7 @@ auto axis_reduce_impl(const wasm_ndarray<T> &arr, int axis, BinaryOp op,
 // ============================================================================
 
 template <typename T> auto sum(const wasm_ndarray<T> &arr) -> T {
-  auto r = tf::make_range(arr.raw_data(), arr.length());
+  auto r = arr.make_range();
   if (arr.length() < parallel_threshold) {
     T acc{0};
     for (auto e : r) acc += e;
@@ -128,7 +130,7 @@ auto sum(const wasm_ndarray<T> &arr, int axis) -> wasm_ndarray<T> {
 // ============================================================================
 
 template <typename T> auto min(const wasm_ndarray<T> &arr) -> T {
-  auto r = tf::make_range(arr.raw_data(), arr.length());
+  auto r = arr.make_range();
   if (arr.length() < parallel_threshold) {
     T acc = std::numeric_limits<T>::max();
     for (auto e : r) acc = acc < e ? acc : e;
@@ -151,7 +153,7 @@ auto min(const wasm_ndarray<T> &arr, int axis) -> wasm_ndarray<T> {
 // ============================================================================
 
 template <typename T> auto max(const wasm_ndarray<T> &arr) -> T {
-  auto r = tf::make_range(arr.raw_data(), arr.length());
+  auto r = arr.make_range();
   if (arr.length() < parallel_threshold) {
     T acc = std::numeric_limits<T>::lowest();
     for (auto e : r) acc = acc > e ? acc : e;
@@ -174,7 +176,7 @@ auto max(const wasm_ndarray<T> &arr, int axis) -> wasm_ndarray<T> {
 // ============================================================================
 
 template <typename T> auto mean(const wasm_ndarray<T> &arr) -> double {
-  auto r = tf::make_range(arr.raw_data(), arr.length());
+  auto r = arr.make_range();
   double s;
   if (arr.length() < parallel_threshold) {
     s = 0.0;
@@ -251,9 +253,10 @@ template <typename T> auto norm(const wasm_ndarray<T> &arr) -> float {
       s += static_cast<double>(data[i]) * static_cast<double>(data[i]);
   } else {
     auto r = tf::make_range(data, len);
-    s = tf::reduce(
-        r, [](double a, T b) { return a + static_cast<double>(b) * static_cast<double>(b); },
-        0.0, tf::checked);
+    auto squared = tf::make_mapped_range(r, [](T v) {
+      return static_cast<double>(v) * static_cast<double>(v);
+    });
+    s = tf::reduce(squared, std::plus<>{}, 0.0, tf::checked);
   }
   return static_cast<float>(std::sqrt(s));
 }

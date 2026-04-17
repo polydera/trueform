@@ -72,6 +72,18 @@ auto async_with_js_input(wasm_mesh &m, emscripten::val js_values) -> promise_t {
 - `retrieve()` called by JS on main thread, converter casts `std::any` → `emscripten::val`
 - The `emscripten::val` conversion (via embind value_object bindings) happens in retrieve — main thread
 
+### `make_range()` vs `raw_data()`
+
+`wasm_ndarray<T>::raw_data()` already applies `_offset` — it returns
+`_storage->data() + _offset`, so pointer arithmetic is view-local.
+Same with `arr.make_range()` — baked-in offset + length.
+
+Rule:
+- Full linear iteration → `arr.make_range()`. **Don't** write
+  `tf::make_range(arr.raw_data(), arr.length())`.
+- Strided / broadcast / multi-array indexing → `raw_data()` is correct.
+- Sub-range (contiguous chunk) → `tf::make_range(arr.raw_data() + start, len)`.
+
 ## Adding a New Binding
 
 1. **C++ binding** (`typescript/cpp/src/<module>/<function>.cpp`):

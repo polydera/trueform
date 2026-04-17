@@ -1421,6 +1421,16 @@ describe("NDArray", () => {
     approx(n5r, 5);
     log("  norm int32", "line-pass");
     n5.delete();
+
+    // regression: large array triggers the parallel reduce path — pre-fix the
+    // squaring lambda was applied in the aggregate phase too, squaring partial
+    // sums and giving a wildly wrong result.
+    const nLarge = 100_000;
+    const n6 = tf.full("float32", [nLarge], 1);
+    approx(n6.norm(), Math.sqrt(nLarge),
+      "norm large array (parallel reduce correctness)", 1e-3);
+    log("  norm large array (parallel reducer correctness)", "line-pass");
+    n6.delete();
   });
 
   // ==========================================================================

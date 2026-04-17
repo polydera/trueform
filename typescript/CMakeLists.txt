@@ -29,6 +29,7 @@ add_executable(trueform_wasm
     cpp/src/core/random.cpp
     cpp/src/core/wasm_index_map.cpp
     cpp/src/core/obb.cpp
+    cpp/src/core/histogram.cpp
     cpp/src/core/ensure.cpp
     cpp/src/io/io.cpp
     cpp/src/cut/boolean.cpp

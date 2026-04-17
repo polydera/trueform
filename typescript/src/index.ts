@@ -55,6 +55,10 @@ export type { Axis } from "./primitive";
 // Sync reductions
 export { sum, min, max, mean, norm, argmin, argmax, any, all } from "./ndarray/reductions";
 
+// Histogram / bincount
+export { bincount, histogram } from "./ndarray/histogram";
+export type { BincountOptions, HistogramOptions, HistogramResult } from "./ndarray/histogram";
+
 // Math functions
 export {
   sqrt, sqrt_, sin, sin_, cos, cos_, tan, tan_,

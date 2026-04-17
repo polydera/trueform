@@ -105,6 +105,35 @@ Every state-owning field is `shared_ptr`-backed, so defaulted
 destructors release everything via refcount. `destroy()` is a
 "release-now" escape hatch — on the handle it's just `_data.reset()`.
 
+### 1.5 `make_range()` vs `raw_data()` — choose the right idiom
+
+`wasm_ndarray<T>` exposes two views into its data:
+
+- `arr.make_range()` → `tf::range<T*, tf::dynamic_size>` over the view's
+  full logical data. Baked-in offset: internally it's
+  `tf::make_range(_storage->data() + _offset, _length)`.
+- `arr.raw_data()` → `T*` pointing at the view's logical start. Also
+  baked-in offset (`_storage->data() + _offset`). Use when you need a
+  pointer for arithmetic.
+
+Rule of thumb in binding code:
+
+**Full linear iteration over a single ndarray** → always `arr.make_range()`:
+```cpp
+// ✓ Idiomatic
+auto r = arr.make_range();
+auto total = tf::reduce(r, std::plus<T>{}, T{0}, tf::checked);
+
+// ✗ Verbose manual stitch — don't do this
+auto r = tf::make_range(arr.raw_data(), arr.length());
+```
+
+**Strided / broadcast / multi-array walks** → `raw_data()` is correct. These patterns index with computed offsets (`data[o * reduce * inner + r * inner + i]`, or lockstep `ad[i] + bd[i * stride_b]`) and can't be expressed with a single range. Examples: axis reductions, element-wise ops on batches, `assign_at_ids` / `assign_mask` patterns in `elementwise.hpp`.
+
+**Sub-range of an ndarray (a contiguous chunk)** → `tf::make_range(arr.raw_data() + start, len)`. This is the exception to the first rule.
+
+**Offset safety**: `raw_data()` ALREADY applies `_offset`, so pointer-arithmetic callers don't need to re-offset. Views produced by `row()` / `slice()` work transparently — callers see view-local pointers bounded by view-local length.
+
 ---
 
 ## 2. TypeScript Wrapper Layer (`typescript/src/`)

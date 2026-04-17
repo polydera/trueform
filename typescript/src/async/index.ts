@@ -14,6 +14,7 @@
 export {
   sum, min, max, mean, norm, sort, sort_, argsort, atan2,
   unique, setUnion, setIntersection, setDifference,
+  bincount, histogram,
 } from "../ndarray/async";
 export { readStl, readObj, writeStl, writeObj } from "../io/async";
 export {

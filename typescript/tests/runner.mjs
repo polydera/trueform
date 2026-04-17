@@ -18,6 +18,7 @@ await import("./test_geometry.mjs");
 await import("./test_mesh_setters.mjs");
 await import("./test_shallow_copy.mjs");
 await import("./test_async_precompute.mjs");
+await import("./test_histogram.mjs");
 await import("./test_point_cloud.mjs");
 await import("./test_registration.mjs");
 await import("./test_remesh.mjs");

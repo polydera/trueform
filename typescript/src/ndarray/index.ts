@@ -21,6 +21,8 @@ export {
   unique, setUnion, setIntersection, setDifference,
 } from "./factories";
 export { sum, min, max, mean, norm, argmin, argmax, any, all } from "./reductions";
+export { bincount, histogram } from "./histogram";
+export type { BincountOptions, HistogramOptions, HistogramResult } from "./histogram";
 export {
   sqrt, sqrt_, sin, sin_, cos, cos_, tan, tan_,
   asin, asin_, acos, acos_, atan, atan_,
