@@ -15,7 +15,7 @@
 #include "../../core/algorithm/generic_generate.hpp"
 #include "../../core/point.hpp"
 #include "../../core/small_vector.hpp"
-#include "../../topology/ear_cutter.hpp"
+#include "../../topology/delaunay_triangulator.hpp"
 #include "./arrangement_map_data.hpp"
 
 namespace tf::cut {
@@ -23,7 +23,7 @@ namespace tf::cut {
 /// Triangulate cut face loops and produce triangle indices + labels.
 ///
 /// For each cut face loop, projects to 2D using make_projector (int32),
-/// triangulates with exact ear_cutter, and maps vertex indices through
+/// triangulates with exact delaunay_triangulator, and maps vertex indices through
 /// map_data.map_vertex.
 /// Produces three parallel buffers: triangle indices, tag labels, face labels.
 template <typename Int, typename Index, typename Range, typename MapVertex,
@@ -38,19 +38,19 @@ auto triangulate_arrangement_cuts(const Range &zipped_descs_loops,
   tf::generic_generate(zipped_descs_loops,
                        std::tie(triangles, tag_labels, face_labels),
                        std::make_pair(tf::small_vector<tf::point<Int, 2>, 10>{},
-                                      tf::ear_cutter<Index, Int>{}),
+                                      tf::delaunay_triangulator<Index, Int>{}),
                        [&make_projector, &map_vertex](
                            const auto &pair, auto &buffers, auto &state) {
                          auto [desc, loop] = pair;
                          auto &[tri_buf, tag_buf, face_buf] = buffers;
-                         auto &[pts, earcut] = state;
+                         auto &[pts, tri] = state;
                          auto projector = make_projector(desc);
                          pts.clear();
                          for (const auto &v : loop)
                            pts.push_back(projector(v));
-                         earcut.build(tf::make_points(pts));
-                         auto n_tris = earcut.indices_buffer().size() / 3;
-                         for (auto id : earcut.indices_buffer())
+                         tri.build(tf::make_points(pts));
+                         auto n_tris = tri.indices_buffer().size() / 3;
+                         for (auto id : tri.indices_buffer())
                            tri_buf.push_back(map_vertex(desc.tag, loop[id]));
                          for (std::size_t i = 0; i < n_tris; ++i) {
                            tag_buf.push_back(desc.tag);
@@ -84,19 +84,19 @@ auto triangulate_partition_cuts(const Range &zipped_descs_loops,
                                 tf::buffer<Index> &face_origins) {
   tf::generic_generate(zipped_descs_loops, std::tie(triangles, face_origins),
                        std::make_pair(tf::small_vector<tf::point<Int, 2>, 10>{},
-                                      tf::ear_cutter<Index, Int>{}),
+                                      tf::delaunay_triangulator<Index, Int>{}),
                        [&make_projector, &map_vertex](
                            const auto &pair, auto &buffers, auto &state) {
                          auto [desc, loop] = pair;
                          auto &[tri_buf, origin_buf] = buffers;
-                         auto &[pts, earcut] = state;
+                         auto &[pts, tri] = state;
                          auto projector = make_projector(desc);
                          pts.clear();
                          for (const auto &v : loop)
                            pts.push_back(projector(v));
-                         earcut.build(tf::make_points(pts));
-                         auto n_tris = earcut.indices_buffer().size() / 3;
-                         for (auto id : earcut.indices_buffer())
+                         tri.build(tf::make_points(pts));
+                         auto n_tris = tri.indices_buffer().size() / 3;
+                         for (auto id : tri.indices_buffer())
                            tri_buf.push_back(map_vertex(desc.tag, loop[id]));
                          for (std::size_t i = 0; i < n_tris; ++i)
                            origin_buf.push_back(desc.object);
@@ -112,18 +112,18 @@ auto triangulate_partition_cuts(const Range &zipped_descs_loops,
                                 tf::buffer<Index> &triangles) {
   tf::generic_generate(zipped_descs_loops, std::tie(triangles),
                        std::make_pair(tf::small_vector<tf::point<Int, 2>, 10>{},
-                                      tf::ear_cutter<Index, Int>{}),
+                                      tf::delaunay_triangulator<Index, Int>{}),
                        [&make_projector, &map_vertex](
                            const auto &pair, auto &buffers, auto &state) {
                          auto [desc, loop] = pair;
                          auto &[tri_buf] = buffers;
-                         auto &[pts, earcut] = state;
+                         auto &[pts, tri] = state;
                          auto projector = make_projector(desc);
                          pts.clear();
                          for (const auto &v : loop)
                            pts.push_back(projector(v));
-                         earcut.build(tf::make_points(pts));
-                         for (auto id : earcut.indices_buffer())
+                         tri.build(tf::make_points(pts));
+                         for (auto id : tri.indices_buffer())
                            tri_buf.push_back(map_vertex(desc.tag, loop[id]));
                        });
 }

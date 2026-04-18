@@ -12,6 +12,7 @@ add_executable(trueform_topology_tests
   test_face_split_by_edges.cpp
   test_hole_patcher.cpp
   test_ear_cutter.cpp
+  test_delaunay_triangulator.cpp
 )
 
 target_link_libraries(trueform_topology_tests PRIVATE trueform_test_common)

@@ -17,7 +17,8 @@
 #include "../core/polygons.hpp"
 #include "../core/projector.hpp"
 #include "../core/small_vector.hpp"
-#include "../topology/ear_cutter.hpp"
+#include "../core/views/drop.hpp"
+#include "../topology/delaunay_triangulator.hpp"
 
 namespace tf {
 namespace impl {
@@ -28,11 +29,14 @@ auto triangulated_faces_2d(const tf::polygons<Policy> &polygons) {
 
   tf::buffer<Index> out;
   tf::generic_generate(
-      polygons, out, tf::ear_cutter<Index>{},
-      [](const auto &poly, auto &buffer, auto &earcut) {
-        earcut.build(tf::make_points(poly));
+      polygons, out, tf::delaunay_triangulator<Index>{},
+      [](const auto &poly, auto &buffer, auto &tri) {
+        if (poly.indices().front() == poly.indices().back())
+          tri.build(tf::make_points(tf::drop(poly, 1)));
+        else
+          tri.build(tf::make_points(poly));
         auto r =
-            tf::make_indirect_range(earcut.indices_buffer(), poly.indices());
+            tf::make_indirect_range(tri.indices_buffer(), poly.indices());
         std::copy(r.begin(), r.end(), std::back_inserter(buffer));
       });
 
@@ -47,16 +51,18 @@ auto triangulated_faces_nd(const tf::polygons<Policy> &polygons) {
   tf::generic_generate(
       polygons, out,
       std::make_pair(tf::small_vector<tf::point<double, 2>, 10>{},
-                     tf::ear_cutter<Index>{}),
+                     tf::delaunay_triangulator<Index>{}),
       [](const auto &poly, auto &buffer, auto &state) {
-        auto &[pts, earcut] = state;
+        auto &[pts, tri] = state;
         auto projector = tf::make_simple_projector(poly);
         pts.clear();
         for (const auto &v : poly)
           pts.push_back(projector(v));
-        earcut.build(tf::make_points(pts));
+        if (poly.indices().front() == poly.indices().back())
+          pts.pop_back();
+        tri.build(tf::make_points(pts));
         auto r =
-            tf::make_indirect_range(earcut.indices_buffer(), poly.indices());
+            tf::make_indirect_range(tri.indices_buffer(), poly.indices());
         std::copy(r.begin(), r.end(), std::back_inserter(buffer));
       });
 

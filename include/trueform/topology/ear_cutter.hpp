@@ -641,9 +641,7 @@ private:
     _nodes[b_id].prev = a_id;
   }
 
-  // ── Split polygon ──
-
-  auto split_polygon(Index a_id, Index b_id) -> Index {
+ auto split_polygon(Index a_id, Index b_id) -> Index {
     Index n_id = static_cast<Index>(_nodes.size());
     auto na = _nodes[a_id];
     auto nb = _nodes[b_id];
@@ -652,27 +650,38 @@ private:
     auto &a = _nodes[a_id];
     auto &b = _nodes[b_id];
 
-    auto &a2 = _nodes[n_id];
-    a2.id = n_id;
+    // "left" loop gets a and b
+    a.prev = b.id;
+    //
+    b.next = a.id;
+    // since next becomes a, no runs on this edge
+    b.run_first = Index(-1);
+    b.run_last = Index(-1);
+
+    // "right" loop gets a2 and b2
+    Index a2_id = n_id;
+    Index b2_id = n_id + 1;
+    auto &a2 = _nodes[a2_id];
+    // change only the modified values
+    a2.id = a2_id;
+    a2.next = b2_id;
+    // since next becomes b2, no runs on this edge
     a2.run_first = Index(-1);
     a2.run_last = Index(-1);
-    auto &b2 = _nodes[n_id + 1];
-    b2.id = n_id + 1;
-    b2.run_first = Index(-1);
-    b2.run_last = Index(-1);
-
-    auto an_id = a.next;
-    auto bp_id = b.prev;
-
-    a.next = b.id;
-    b.prev = a.id;
-    a2.prev = b2.id;
-    _nodes[an_id].prev = a2.id;
-    b2.next = a2.id;
-    _nodes[bp_id].next = b2.id;
-
+    //
+    prev(na).next = a2_id;
+    //
+    auto &b2 = _nodes[b2_id];
+    // change only the modified values
+    b2.id = b2_id;
+    b2.prev = a2_id;
+    // next is the old next. so we carry over runs
+    b2.run_first = nb.run_first;
+    b2.run_last = nb.run_last;
+    //
+    next(nb).prev = b2_id;
     return n_id + 1;
-  }
+  } 
 
   // ── Phase 1: Shard resolution ──
 
