@@ -16,7 +16,6 @@
 #include "../../core/distance.hpp"
 #include "../../core/epsilon_inverse.hpp"
 #include "../../core/frame_of.hpp"
-#include "../../core/intersects.hpp"
 #include "../../core/ray_bv_check.hpp"
 #include "../../core/polygons.hpp"
 #include "../../core/ray.hpp"
@@ -29,6 +28,7 @@
 #include "../tree_search/search.hpp"
 
 namespace tf::spatial {
+
 template <typename Policy0, typename Policy1, typename LabelType, typename F>
 auto classify_point(const tf::point_like<3, Policy0> &_point,
                     const tf::polygons<Policy1> &polygons,
@@ -51,21 +51,30 @@ auto classify_point(const tf::point_like<3, Policy0> &_point,
   tf::ray<real_type, 3> ray;
   ray.origin = point;
   tf::vector<real_type, 3> ray_inv_dir;
-  //
+
   auto is_on_edge = [](const auto &polygon, const auto &pt) {
     auto size = polygon.size();
+    real_type min_edge2 = std::numeric_limits<real_type>::max();
     auto curr = size - 1;
+    for (decltype(curr) next = 0; next < size; curr = next++)
+      min_edge2 =
+          std::min(min_edge2, tf::distance2(polygon[curr], polygon[next]));
+    auto thresh = tf::epsilon2<real_type> * min_edge2;
+    curr = size - 1;
     for (decltype(curr) next = 0; next < size; curr = next++) {
       if (tf::distance2(
               tf::make_segment_between_points(polygon[curr], polygon[next]),
-              pt) < tf::epsilon2<real_type>)
+              pt) < thresh)
         return true;
     }
     return false;
   };
-  //
+
   bool failed = true;
+  int retries = 0;
   while (failed) {
+    if (++retries > 100)
+      return tf::containment::outside;
     failed = false;
     buffer.clear();
     ray.direction = tf::random_vector<real_type, 3>();
@@ -87,8 +96,6 @@ auto classify_point(const tf::point_like<3, Policy0> &_point,
           auto res = tf::ray_hit(ray, polygon);
           if (!res)
             return false;
-          if (res.t < tf::epsilon<real_type>)
-            return false;  // skip self-hit at origin
           if (is_on_edge(polygon, res.point)) {
             failed = true;
             return true;
@@ -142,22 +149,31 @@ auto classify_point(const tf::point_like<3, Policy0> &_point,
   tf::ray<real_type, 3> ray;
   ray.origin = point;
   tf::vector<real_type, 3> ray_inv_dir;
-  //
+
   auto is_on_edge = [](const auto &polygon, const auto &pt) {
     auto size = polygon.size();
+    real_type min_edge2 = std::numeric_limits<real_type>::max();
     auto curr = size - 1;
+    for (decltype(curr) next = 0; next < size; curr = next++)
+      min_edge2 =
+          std::min(min_edge2, tf::distance2(polygon[curr], polygon[next]));
+    auto thresh = tf::epsilon2<real_type> * min_edge2;
+    curr = size - 1;
     for (decltype(curr) next = 0; next < size; curr = next++) {
       if (tf::distance2(
               tf::make_segment_between_points(polygon[curr], polygon[next]),
-              pt) < tf::epsilon2<real_type>)
+              pt) < thresh)
         return true;
     }
     return false;
   };
-  //
+
   bool failed = true;
   int count = 0;
+  int retries = 0;
   while (failed) {
+    if (++retries > 100)
+      return tf::containment::outside;
     failed = false;
     count = 0;
     ray.direction = tf::random_vector<real_type, 3>();
@@ -177,8 +193,6 @@ auto classify_point(const tf::point_like<3, Policy0> &_point,
           auto res = tf::ray_hit(ray, polygon);
           if (!res)
             return false;
-          if (res.t < tf::epsilon<real_type>)
-            return false;  // skip self-hit at origin
           if (is_on_edge(polygon, res.point)) {
             failed = true;
             return true;

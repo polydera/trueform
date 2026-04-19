@@ -152,51 +152,77 @@ public:
     if (subranges.size() == 0)
       return build_tag_offsets(1);
 
-    for (const auto &subrange : subranges) {
-      if (subrange.size() < 2)
-        continue;
-      auto r0 = subrange[0];
-      auto r1 = subrange[1];
-      if (r0.target.id > r1.target.id)
-        std::swap(r0, r1);
-      auto object = r0.object;
-      auto face = polygons.faces()[object];
-      auto n = static_cast<Index>(face.size());
-      auto e0 = static_cast<Index>(r0.target.id);
-      auto e1 = static_cast<Index>(r1.target.id);
-      auto c0 = vertex_t{intersect::graph::vertex_source::created,
-                         r0.id,
-                         {short(e0), tf::topo_type::edge}};
-      auto c1 = vertex_t{intersect::graph::vertex_source::created,
-                         r1.id,
-                         {short(e1), tf::topo_type::edge}};
-      auto ov = [&](Index ei) {
-        return vertex_t{intersect::graph::vertex_source::original,
-                        Index(face[ei]),
-                        {short(ei), tf::topo_type::vertex}};
-      };
+    struct local_t {
+      tf::buffer<Index> offsets;
+      tf::buffer<vertex_t> vertices;
+      tf::buffer<desc_t> descs;
+    };
 
-      // Loop 1: c0 → vertices (e0+1..e1) → c1
-      _loops.offsets_buffer().push_back(
-          static_cast<Index>(_loops.data_buffer().size()));
-      _loops.data_buffer().push_back(c0);
-      for (Index i = tf::circular_increment(e0, n);
-           i != tf::circular_increment(e1, n); i = tf::circular_increment(i, n))
-        _loops.data_buffer().push_back(ov(i));
-      _loops.data_buffer().push_back(c1);
-      _descriptors.push_back({0, object});
+    auto faces = polygons.faces();
 
-      // Loop 2: c1 → vertices (e1+1..e0) → c0
-      _loops.offsets_buffer().push_back(
-          static_cast<Index>(_loops.data_buffer().size()));
-      _loops.data_buffer().push_back(c1);
-      for (Index i = tf::circular_increment(e1, n);
-           i != tf::circular_increment(e0, n); i = tf::circular_increment(i, n))
-        _loops.data_buffer().push_back(ov(i));
-      _loops.data_buffer().push_back(c0);
-      _descriptors.push_back({0, object});
-    }
+    auto task = [&](auto &&range, local_t &local) {
+      for (const auto &subrange : range) {
+        if (subrange.size() < 2)
+          continue;
+        auto r0 = subrange[0];
+        auto r1 = subrange[1];
+        if (r0.target.id > r1.target.id)
+          std::swap(r0, r1);
+        auto object = r0.object;
+        auto face = faces[object];
+        auto n = static_cast<Index>(face.size());
+        auto e0 = static_cast<Index>(r0.target.id);
+        auto e1 = static_cast<Index>(r1.target.id);
+        auto c0 = vertex_t{intersect::graph::vertex_source::created,
+                           r0.id,
+                           {short(e0), tf::topo_type::edge}};
+        auto c1 = vertex_t{intersect::graph::vertex_source::created,
+                           r1.id,
+                           {short(e1), tf::topo_type::edge}};
+        auto ov = [&](Index ei) {
+          return vertex_t{intersect::graph::vertex_source::original,
+                          Index(face[ei]),
+                          {short(ei), tf::topo_type::vertex}};
+        };
 
+        // Loop 1: c0 → vertices (e0+1..e1) → c1
+        local.offsets.push_back(
+            static_cast<Index>(local.vertices.size()));
+        local.vertices.push_back(c0);
+        for (Index i = tf::circular_increment(e0, n);
+             i != tf::circular_increment(e1, n);
+             i = tf::circular_increment(i, n))
+          local.vertices.push_back(ov(i));
+        local.vertices.push_back(c1);
+        local.descs.push_back({0, object});
+
+        // Loop 2: c1 → vertices (e1+1..e0) → c0
+        local.offsets.push_back(
+            static_cast<Index>(local.vertices.size()));
+        local.vertices.push_back(c1);
+        for (Index i = tf::circular_increment(e1, n);
+             i != tf::circular_increment(e0, n);
+             i = tf::circular_increment(i, n))
+          local.vertices.push_back(ov(i));
+        local.vertices.push_back(c0);
+        local.descs.push_back({0, object});
+      }
+    };
+
+    auto agg = [&](const local_t &local, const tf::none_t &) {
+      if (local.offsets.size() == 0)
+        return;
+      auto offset = static_cast<Index>(_loops.data_buffer().size());
+      auto old_off = _loops.offsets_buffer().size();
+      _loops.offsets_buffer().reallocate(old_off + local.offsets.size());
+      for (std::size_t i = 0; i < local.offsets.size(); ++i)
+        _loops.offsets_buffer()[old_off + i] = local.offsets[i] + offset;
+      tf::core::append(local.vertices, _loops.data_buffer());
+      tf::core::append(local.descs, _descriptors);
+    };
+
+    tf::blocked_reduce_sequenced_aggregate(subranges, tf::none, local_t{},
+                                           task, agg);
     if (_loops.offsets_buffer().size())
       _loops.offsets_buffer().push_back(
           static_cast<Index>(_loops.data_buffer().size()));
