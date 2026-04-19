@@ -22,6 +22,9 @@
 #include "cut/embedded_isocurves-tf.hpp"
 #include "cut/embedded_self_intersection_curves-igl.hpp"
 #include "cut/embedded_self_intersection_curves-tf.hpp"
+#include "cut/polygon_arrangements-cgal.hpp"
+#include "cut/polygon_arrangements-igl.hpp"
+#include "cut/polygon_arrangements-tf.hpp"
 #ifdef HAVE_VTK
 #include "cut/embedded_isocurves-vtk.hpp"
 #endif
@@ -137,22 +140,33 @@ auto open_benchmark_output_file(const std::string &benchmark_name)
 int main(int argc, char *argv[]) {
   // Register all benchmarks
   std::vector<benchmark_info> benchmarks = {
-      // Cut module (7 benchmarks)
+      // Benchmarks to re-run (exact kernel + new polygon arrangements)
       {"cut-boolean-tf", benchmark::run_boolean_tf_benchmark, 10},
       {"cut-boolean-cgal", benchmark::run_boolean_cgal_benchmark, 10},
       {"cut-boolean-igl", benchmark::run_boolean_igl_benchmark, 10},
-      {"cut-embedded_self_intersection_curves-tf",
-       benchmark::run_embedded_self_intersection_curves_tf_benchmark, 10},
-      {"cut-embedded_self_intersection_curves-igl",
-       benchmark::run_embedded_self_intersection_curves_igl_benchmark, 10},
+      {"cut-polygon_arrangements-tf",
+       benchmark::run_polygon_arrangements_tf_benchmark, 10},
+      {"cut-polygon_arrangements-cgal",
+       benchmark::run_polygon_arrangements_cgal_benchmark, 10},
+      {"cut-polygon_arrangements-igl",
+       benchmark::run_polygon_arrangements_igl_benchmark, 10},
+      // {"cut-embedded_self_intersection_curves-tf",
+      //  benchmark::run_embedded_self_intersection_curves_tf_benchmark, 10},
+      // {"cut-embedded_self_intersection_curves-igl",
+      //  benchmark::run_embedded_self_intersection_curves_igl_benchmark, 10},
+      {"intersect-mesh_mesh_curves-tf",
+       benchmark::run_mesh_mesh_curves_tf_benchmark, 10},
+      {"intersect-mesh_mesh_curves-cgal",
+       benchmark::run_mesh_mesh_curves_cgal_benchmark, 10},
+
+      // Commented out — no changes, skip for now
+      /*
       {"cut-embedded_isocurves-tf",
        benchmark::run_embedded_isocurves_tf_benchmark, 10},
 #ifdef HAVE_VTK
       {"cut-embedded_isocurves-vtk",
        benchmark::run_embedded_isocurves_vtk_benchmark, 10},
 #endif
-
-      // Topology module (8 benchmarks)
       {"topology-connected_components-cgal",
        benchmark::run_connected_components_cgal_benchmark, 10},
       {"topology-connected_components-tf",
@@ -171,17 +185,6 @@ int main(int argc, char *argv[]) {
       {"topology-boundary_paths-vtk",
        benchmark::run_boundary_paths_vtk_benchmark, 10},
 #endif
-
-      // Intersect module (6 benchmarks)
-      {"intersect-mesh_mesh_curves-tf",
-       benchmark::run_mesh_mesh_curves_tf_benchmark, 10},
-      {"intersect-mesh_mesh_curves-cgal",
-       benchmark::run_mesh_mesh_curves_cgal_benchmark, 10},
-      // too slow
-/*#ifdef HAVE_VTK*/
-/*      {"intersect-mesh_mesh_curves-vtk",*/
-/*       benchmark::run_mesh_mesh_curves_vtk_benchmark, 10},*/
-/*#endif*/
       {"intersect-isocontours-tf", benchmark::run_isocontours_tf_benchmark, 10},
       {"intersect-isocontours-igl", benchmark::run_isocontours_igl_benchmark,
        10},
@@ -189,7 +192,6 @@ int main(int argc, char *argv[]) {
       {"intersect-isocontours-vtk", benchmark::run_isocontours_vtk_benchmark,
        10},
 #endif
-      // Spatial module (11 benchmarks)
       {"spatial-point_cloud-build_tree-tf",
        benchmark::run_point_cloud_build_tree_tf_benchmark, 10},
       {"spatial-point_cloud-build_tree-nanoflann",
@@ -210,12 +212,11 @@ int main(int argc, char *argv[]) {
        benchmark::run_polygons_to_polygons_closest_point_fcl_benchmark, 1000},
       {"spatial-mod_tree-update-tf",
        benchmark::run_mod_tree_update_tf_benchmark, 10},
-
-      // Remesh module
       {"remesh-decimation-tf", benchmark::run_decimation_tf_benchmark, 10},
       {"remesh-decimation-cgal", benchmark::run_decimation_cgal_benchmark, 10},
       {"remesh-isotropic_remeshing-tf", benchmark::run_isotropic_remeshing_tf_benchmark, 10},
       {"remesh-isotropic_remeshing-cgal", benchmark::run_isotropic_remeshing_cgal_benchmark, 10},
+      */
   };
 
   // Simple CLI: run all benchmarks with default mesh paths and samples

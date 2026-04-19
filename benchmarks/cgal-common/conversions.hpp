@@ -9,6 +9,7 @@
 #pragma once
 
 #include <trueform/trueform.hpp>
+#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/Surface_mesh.h>
 
@@ -19,8 +20,7 @@ using Kernel = CGAL::Simple_cartesian<float>;
 using Point_3 = Kernel::Point_3;
 using Surface_mesh = CGAL::Surface_mesh<Point_3>;
 
-
-using Kernel_d = CGAL::Simple_cartesian<double>;
+using Kernel_d = CGAL::Exact_predicates_inexact_constructions_kernel;
 using Point_3_d = Kernel_d::Point_3;
 using Surface_mesh_d = CGAL::Surface_mesh<Point_3_d>;
 

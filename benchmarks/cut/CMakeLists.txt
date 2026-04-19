@@ -35,6 +35,27 @@ target_link_libraries(cut-embedded_self_intersection_curves-igl-impl benchmark_i
 add_executable(cut-embedded_self_intersection_curves-igl embedded_self_intersection_curves-igl.cpp)
 target_link_libraries(cut-embedded_self_intersection_curves-igl cut-embedded_self_intersection_curves-igl-impl)
 
+# TrueForm polygon arrangements
+add_library(cut-polygon_arrangements-tf-impl OBJECT polygon_arrangements-tf-impl.cpp)
+target_link_libraries(cut-polygon_arrangements-tf-impl benchmark_common)
+
+add_executable(cut-polygon_arrangements-tf polygon_arrangements-tf.cpp)
+target_link_libraries(cut-polygon_arrangements-tf cut-polygon_arrangements-tf-impl)
+
+# CGAL polygon arrangements (autorefine_triangle_soup)
+add_library(cut-polygon_arrangements-cgal-impl OBJECT polygon_arrangements-cgal-impl.cpp)
+target_link_libraries(cut-polygon_arrangements-cgal-impl benchmark_cgal_common)
+
+add_executable(cut-polygon_arrangements-cgal polygon_arrangements-cgal.cpp)
+target_link_libraries(cut-polygon_arrangements-cgal cut-polygon_arrangements-cgal-impl)
+
+# libigl polygon arrangements (remesh_self_intersections)
+add_library(cut-polygon_arrangements-igl-impl OBJECT polygon_arrangements-igl-impl.cpp)
+target_link_libraries(cut-polygon_arrangements-igl-impl benchmark_igl_common igl_copyleft::cgal)
+
+add_executable(cut-polygon_arrangements-igl polygon_arrangements-igl.cpp)
+target_link_libraries(cut-polygon_arrangements-igl cut-polygon_arrangements-igl-impl)
+
 # TrueForm embedded isocurves
 add_library(cut-embedded_isocurves-tf-impl OBJECT embedded_isocurves-tf-impl.cpp)
 target_link_libraries(cut-embedded_isocurves-tf-impl benchmark_common)

@@ -5,15 +5,17 @@ import data from "../../../benchmarks/boolean.json";
 
 const x = (_: any, i: number) => i;
 const y = [
+  (d: any) => d.meshlib / d.tf,
   (d: any) => d.cgal / d.tf,
   (d: any) => d.igl / d.tf,
 ];
-const color = (_: any, i: number) => ["#fdff4e", "#ff6b6b"][i];
+const color = (_: any, i: number) => ["#6baaff", "#fdff4e", "#ff6b6b"][i];
 
 const round = (n: number) => Math.round(n * 10) / 10;
 const triggers = {
   [GroupedBar.selectors.bar]: (d: any) => `<div class="flex flex-col gap-0.5">
     <div class="font-medium text-lg">2 × ${numKM(d.polygons)} polygons</div>
+    <div><span class="text-[#6baaff]">vs MeshLib:</span> ${round(d.meshlib / d.tf)}×</div>
     <div><span class="text-[#fdff4e]">vs CGAL:</span> ${round(d.cgal / d.tf)}×</div>
     <div><span class="text-[#ff6b6b]">vs libigl:</span> ${round(d.igl / d.tf)}×</div>
   </div>`,
@@ -25,6 +27,10 @@ const triggers = {
       Boolean Operations (Speedup)
     </h2>
     <div class="flex gap-4 items-center justify-center flex-wrap">
+      <div class="flex gap-1.5 items-center">
+        <div class="size-3 bg-[#6baaff] rounded"></div>
+        <span class="text-sm">vs MeshLib</span>
+      </div>
       <div class="flex gap-1.5 items-center">
         <div class="size-3 bg-[#fdff4e] rounded"></div>
         <span class="text-sm">vs</span>

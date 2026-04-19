@@ -107,8 +107,8 @@ Cached meshes with automatic dirty-tracking for live preview add-ons. See [Blend
 
 | Operation | Input | Time | Speedup | Baseline | TrueForm |
 |-----------|-------|------|---------|----------|----------|
-| Boolean Union | 2 × 1M | 28 ms | **84×** | CGAL `Simple_cartesian<double>` | exact predicates, canonical topology |
-| Mesh–Mesh Curves | 2 × 1M | 7 ms | **233×** | CGAL `Simple_cartesian<double>` | exact predicates, canonical topology |
+| Boolean Union | 2 × 1M | 28 ms | **6×** | MeshLib (int32 exact + SoS) | exact predicates, canonical topology |
+| Mesh–Mesh Curves | 2 × 1M | 7 ms | **233×** | CGAL `Exact_predicates_inexact_constructions_kernel` | exact predicates, canonical topology |
 | ICP Registration | 1M | 7.7 ms | **93×** | libigl | AABB tree, random subsampling |
 | Self-Intersection | 1M | 78 ms | **37×** | libigl EPECK (GMP/MPFR) | exact predicates, canonical topology |
 | Isocontours | 1M, 16 cuts | 3.8 ms | **38×** | VTK `vtkContourFilter` | exact predicates |

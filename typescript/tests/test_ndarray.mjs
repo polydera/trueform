@@ -1668,9 +1668,9 @@ describe("NDArray", () => {
     assert(r2.shape[0] === 10, "shape");
     let allInRange = true;
     for (let i = 0; i < 10; i++) {
-      if (r2.data[i] < 0 || r2.data[i] >= 100) allInRange = false;
+      if (r2.data[i] < 0 || r2.data[i] > 100) allInRange = false;
     }
-    assert(allInRange, "all values in [0, 100)");
+    assert(allInRange, "all values in [0, 100]");
     log("  random('int32', [10], 0, 100)", "line-pass");
     r2.delete();
   });

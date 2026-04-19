@@ -336,6 +336,9 @@ set(ALL_BENCHMARK_IMPLS
     cut-boolean-igl-impl
     cut-embedded_self_intersection_curves-tf-impl
     cut-embedded_self_intersection_curves-igl-impl
+    cut-polygon_arrangements-tf-impl
+    cut-polygon_arrangements-cgal-impl
+    cut-polygon_arrangements-igl-impl
     cut-embedded_isocurves-tf-impl
 
     # Topology module
@@ -449,6 +452,9 @@ set(BENCHMARK_TARGETS
     cut-boolean-igl
     cut-embedded_self_intersection_curves-tf
     cut-embedded_self_intersection_curves-igl
+    cut-polygon_arrangements-tf
+    cut-polygon_arrangements-cgal
+    cut-polygon_arrangements-igl
     cut-embedded_isocurves-tf
     geometry-principal_curvatures-tf
     geometry-principal_curvatures-igl
@@ -494,6 +500,7 @@ if(OpenMP_CXX_FOUND)
         intersect-isocontours-igl
         cut-boolean-igl
         cut-embedded_self_intersection_curves-igl
+        cut-polygon_arrangements-igl
         geometry-principal_curvatures-igl
         geometry-point_normals-igl
         geometry-icp_registration-igl
