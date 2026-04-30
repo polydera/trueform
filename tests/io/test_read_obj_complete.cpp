@@ -105,7 +105,7 @@ TEST_CASE("dedup: face indices reference correct positions",
   REQUIRE(got.count({0, 7, 0}) == 1);
 }
 
-TEST_CASE("dedup: texture seam — same position, different vt, splits vertex",
+TEST_CASE("dedup: texture seam - same position, different vt, splits vertex",
           "[io][read_obj][complete][dedup]") {
   // v=1 used twice with different UVs: (vt=1) then (vt=2).
   auto p = temp_path(".obj");
@@ -144,7 +144,7 @@ TEST_CASE("dedup: texture seam — same position, different vt, splits vertex",
   REQUIRE(uvs_at_origin.count({0.5f, 0.5f}) == 1);
 }
 
-TEST_CASE("dedup: sharp edge — same position, different vn, splits vertex",
+TEST_CASE("dedup: sharp edge - same position, different vn, splits vertex",
           "[io][read_obj][complete][dedup]") {
   auto p = temp_path(".obj");
   cleanup g{p};
