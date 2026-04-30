@@ -2,6 +2,7 @@ add_executable(trueform_io_tests
   test_read_stl.cpp
   test_write_stl.cpp
   test_read_obj.cpp
+  test_read_obj_complete.cpp
   test_write_obj.cpp
 )
 

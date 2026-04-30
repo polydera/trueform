@@ -11,7 +11,9 @@
 * Author: Žiga Sajovic
 */
 #pragma once
+#include "../core/complete.hpp"
 #include "../core/polygons_buffer.hpp"
+#include "./obj_file.hpp"
 #include "./obj_reader.hpp"
 
 namespace tf {
@@ -115,5 +117,51 @@ auto read_obj(tf::range<char *, tf::dynamic_size> data)
 template <std::size_t Ngon>
 auto read_obj(tf::range<char *, tf::dynamic_size> data) {
   return read_obj<int, Ngon>(data);
+}
+
+/// @ingroup io
+/// @brief Read OBJ file with all attributes (positions, normals, textures,
+/// groups, objects).
+///
+/// `points`, `normals` and `textures` are aligned `[0, n_pts)`. A position
+/// with two distinct normals or texture coords in the source becomes two
+/// distinct vertices.
+///
+/// All-or-nothing per attribute: the first `f` line locks the format mode
+/// (`v`, `v/vt`, `v//vn`, `v/vt/vn`); inconsistent face refs return an
+/// empty `obj_file`.
+///
+/// @tparam Index The index type (defaults to int).
+/// @param file_path Path to the OBJ file.
+/// @return @ref tf::obj_file, or empty on error.
+template <typename Index = int>
+auto read_obj(std::string_view file_path, tf::complete_t)
+    -> tf::obj_file<Index> {
+  tf::obj_file<Index> out;
+  tf::io::obj_reader reader;
+  if (!reader.read(file_path, out))
+    return {};
+  return out;
+}
+
+/// @ingroup io
+/// @brief Read complete OBJ from a memory buffer.
+/// @overload
+template <typename Index = int>
+auto read_obj(tf::range<const char *, tf::dynamic_size> data, tf::complete_t)
+    -> tf::obj_file<Index> {
+  tf::obj_file<Index> out;
+  tf::io::obj_reader reader;
+  if (!reader.read(data, out))
+    return {};
+  return out;
+}
+
+template <typename Index = int>
+auto read_obj(tf::range<char *, tf::dynamic_size> data, tf::complete_t)
+    -> tf::obj_file<Index> {
+  return read_obj<Index>(
+      tf::make_range(static_cast<const char *>(data.begin()), data.size()),
+      tf::complete);
 }
 } // namespace tf

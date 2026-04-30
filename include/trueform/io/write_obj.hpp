@@ -17,8 +17,10 @@
 #include "../core/polygons.hpp"
 #include "../core/transformed.hpp"
 #include "../core/views/enumerate.hpp"
+#include "./banner.hpp"
 #include "./float_to_chars.hpp"
 #include <charconv>
+#include <cstring>
 #include <fstream>
 #include <string>
 
@@ -111,7 +113,9 @@ auto write_obj_to_buffer(const tf::polygons<Policy> &polygons)
 
   // ========== Convert sizes to offsets (in-place prefix sum) ==========
 
-  point_offsets[0] = 0;
+  // Reserve room for the leading "# trueform ...\n" banner line.
+  const std::size_t banner_size = std::strlen(io::trueform_banner) + 3; // "# " + banner + "\n"
+  point_offsets[0] = banner_size;
   for (std::size_t i = 1; i <= num_points; ++i) {
     point_offsets[i] += point_offsets[i - 1];
   }
@@ -127,6 +131,17 @@ auto write_obj_to_buffer(const tf::polygons<Policy> &polygons)
 
   tf::buffer<Byte> output;
   output.allocate(total_size);
+
+  // Write banner: "# trueform - ...\n"
+  {
+    char *ptr = reinterpret_cast<char *>(output.data());
+    *ptr++ = '#';
+    *ptr++ = ' ';
+    auto blen = std::strlen(io::trueform_banner);
+    std::memcpy(ptr, io::trueform_banner, blen);
+    ptr += blen;
+    *ptr = '\n';
+  }
 
   // ========== PASS 2: Write in parallel ==========
 

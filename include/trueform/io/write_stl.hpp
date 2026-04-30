@@ -19,6 +19,8 @@
 #include "../core/static_size.hpp"
 #include "../core/transformed.hpp"
 #include "../core/views/zip.hpp"
+#include "./banner.hpp"
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
@@ -82,8 +84,10 @@ auto write_stl_to_buffer(const tf::polygons<Policy> &polygons)
   tf::buffer<Byte> output;
   output.allocate(total_size);
 
-  // 80-byte zero header
+  // 80-byte header: trueform producer banner, zero-padded
   std::memset(output.data(), 0, 80);
+  auto banner_len = std::strlen(io::trueform_banner);
+  std::memcpy(output.data(), io::trueform_banner, std::min(banner_len, std::size_t(80)));
   // 4-byte triangle count (little-endian)
   std::memcpy(output.data() + 80, &triangle_count, 4);
 
@@ -180,6 +184,8 @@ auto write_stl(const tf::polygons<Policy> &polygons, std::string filename)
     if (!file) return false;
 
     char header[80] = {};
+    auto banner_len = std::strlen(io::trueform_banner);
+    std::memcpy(header, io::trueform_banner, std::min(banner_len, std::size_t(80)));
     file.write(header, 80);
     if (!file) return false;
 
