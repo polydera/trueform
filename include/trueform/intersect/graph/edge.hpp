@@ -12,6 +12,8 @@
  */
 #pragma once
 
+#include <cstdint>
+
 namespace tf::intersect::graph {
 
 template <typename Index> struct edge {
@@ -22,6 +24,8 @@ template <typename Index> struct edge {
   Index point_0;
   Index point_1;
   Index id; // canonical group ID
+  std::int16_t ordinal;     // base-loop position of start vertex; -1 if interior
+  std::int16_t sub_ordinal; // parametric order along parent base-loop segment; -1 if interior
 };
 
 } // namespace tf::intersect::graph

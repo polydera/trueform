@@ -600,14 +600,14 @@ TEST_CASE("3 mesh: 2 identical + 1 crossing - 4 VV + 2 EF", "[exact][nmesh]") {
   CHECK(c.ee == 0);
   CHECK(c.vf == 0);
   CHECK(c.ef == 2);
-  // Self: concatenated identical quads have separate vertices,
-  // so each independently intersects the crossing quad → 4 EF not 2
+  // Self: coincident intersection points across the two identical quads
+  // share one ID after geometric dedup → matches between (4 VV, 2 EF).
   auto s = count_self_primitives_n(forms, 3);
   CHECK(s.vv == 4);
   CHECK(s.ve == 0);
   CHECK(s.ee == 0);
   CHECK(s.vf == 0);
-  CHECK(s.ef == 4);
+  CHECK(s.ef == 2);
 }
 
 // =============================================================================

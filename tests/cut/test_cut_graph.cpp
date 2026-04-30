@@ -9,6 +9,8 @@
  */
 
 #include <catch2/catch_test_macros.hpp>
+#include <map>
+#include <set>
 #include <trueform/core/algorithm/parallel_for_each.hpp>
 #include <trueform/core/polygons_buffer.hpp>
 #include <trueform/core/views/mapped_range.hpp>
@@ -92,6 +94,67 @@ auto sorted_edges(const tf::cut_graph<Index> &cg)
   return result;
 }
 
+/// Topology check: edges form `n_cycles` disjoint simple cycles, each of
+/// length `cycle_len`, totalling `n_cycles * cycle_len` distinct vertices.
+inline auto edges_form_cycles(
+    const std::vector<std::array<Index, 2>> &edges, int n_cycles,
+    int cycle_len) -> bool {
+  if (int(edges.size()) != n_cycles * cycle_len)
+    return false;
+  std::map<Index, std::vector<Index>> adj;
+  std::set<Index> verts;
+  for (auto &e : edges) {
+    adj[e[0]].push_back(e[1]);
+    adj[e[1]].push_back(e[0]);
+    verts.insert(e[0]);
+    verts.insert(e[1]);
+  }
+  if (int(verts.size()) != n_cycles * cycle_len)
+    return false;
+  for (auto &[v, ns] : adj)
+    if (ns.size() != 2)
+      return false;
+  // Walk components from each unvisited vertex
+  std::set<Index> visited;
+  int cycles_found = 0;
+  for (auto v : verts) {
+    if (visited.count(v))
+      continue;
+    Index prev = -1, cur = v;
+    int len = 0;
+    while (true) {
+      visited.insert(cur);
+      ++len;
+      auto &ns = adj[cur];
+      Index next = (ns[0] != prev) ? ns[0] : ns[1];
+      if (next == v && len >= 2)
+        break;
+      prev = cur;
+      cur = next;
+      if (len > cycle_len)
+        return false;
+    }
+    if (len != cycle_len)
+      return false;
+    ++cycles_found;
+  }
+  return cycles_found == n_cycles;
+}
+
+/// Topology check: edges form `n` disjoint segments (each is a single
+/// edge between two unique vertices, no shared vertices).
+inline auto edges_form_disjoint_segments(
+    const std::vector<std::array<Index, 2>> &edges, int n) -> bool {
+  if (int(edges.size()) != n)
+    return false;
+  std::set<Index> verts;
+  for (auto &e : edges) {
+    verts.insert(e[0]);
+    verts.insert(e[1]);
+  }
+  return int(verts.size()) == 2 * n;
+}
+
 template <typename Pairs>
 auto sorted_coplanar(const Pairs &pairs)
     -> std::vector<std::array<Index, 3>> {
@@ -134,8 +197,7 @@ TEST_CASE("Stacked cubes same size", "[cut_graph]") {
 
 
   auto ie = sorted_edges(cg);
-  CHECK(ie.size() == 4);
-  CHECK(ie == std::vector<std::array<Index, 2>>{{0,1},{0,3},{1,2},{2,3}});
+  CHECK(edges_form_cycles(ie, 1, 4));
 }
 
 TEST_CASE("Small cube on large cube", "[cut_graph]") {
@@ -157,8 +219,7 @@ TEST_CASE("Small cube on large cube", "[cut_graph]") {
 
 
   auto ie = sorted_edges(cg);
-  CHECK(ie.size() == 4);
-  CHECK(ie == std::vector<std::array<Index, 2>>{{0,1},{0,3},{1,2},{2,3}});
+  CHECK(edges_form_cycles(ie, 1, 4));
 }
 
 TEST_CASE("Long box over short box", "[cut_graph]") {
@@ -178,8 +239,7 @@ TEST_CASE("Long box over short box", "[cut_graph]") {
 
 
   auto ie = sorted_edges(cg);
-  CHECK(ie.size() == 4);
-  CHECK(ie == std::vector<std::array<Index, 2>>{{0,1},{0,3},{1,2},{2,3}});
+  CHECK(edges_form_cycles(ie, 1, 4));
 }
 
 TEST_CASE("Coplanar quad grids 2x1 over 3x1", "[cut_graph]") {
@@ -206,8 +266,7 @@ TEST_CASE("Coplanar quad grids 2x1 over 3x1", "[cut_graph]") {
 
 
   auto ie = sorted_edges(cg);
-  CHECK(ie.size() == 2);
-  CHECK(ie == std::vector<std::array<Index, 2>>{{4,7},{6,9}});
+  CHECK(edges_form_disjoint_segments(ie, 2));
 }
 
 TEST_CASE("Tube on quad (2 quads high)", "[cut_graph]") {
@@ -233,8 +292,7 @@ TEST_CASE("Tube on quad (2 quads high)", "[cut_graph]") {
 
 
   auto ie = sorted_edges(cg);
-  CHECK(ie.size() == 4);
-  CHECK(ie == std::vector<std::array<Index, 2>>{{0,1},{0,3},{1,2},{2,3}});
+  CHECK(edges_form_cycles(ie, 1, 4));
 }
 
 TEST_CASE("Split tube on quad (3 meshes)", "[cut_graph]") {
@@ -263,8 +321,7 @@ TEST_CASE("Split tube on quad (3 meshes)", "[cut_graph]") {
 
 
   auto ie = sorted_edges(cg);
-  CHECK(ie.size() == 4);
-  CHECK(ie == std::vector<std::array<Index, 2>>{{0,1},{0,3},{1,2},{2,3}});
+  CHECK(edges_form_cycles(ie, 1, 4));
 }
 
 TEST_CASE("Tube penetrating quad", "[cut_graph]") {
@@ -288,8 +345,7 @@ TEST_CASE("Tube penetrating quad", "[cut_graph]") {
 
 
   auto ie = sorted_edges(cg);
-  CHECK(ie.size() == 4);
-  CHECK(ie == std::vector<std::array<Index, 2>>{{0,1},{0,2},{1,3},{2,3}});
+  CHECK(edges_form_cycles(ie, 1, 4));
 }
 
 // ── Box mesh pipeline helper ──────────────────────────────────────

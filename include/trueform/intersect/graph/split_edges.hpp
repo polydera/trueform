@@ -13,21 +13,25 @@
 #pragma once
 
 #include "../../core/algorithm/block_reduce_sequenced_aggregate.hpp"
-#include "../../core/algorithm/parallel_iota.hpp"
 #include "../../core/algorithm/compute_offsets.hpp"
+#include "../../core/algorithm/parallel_iota.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/none.hpp"
 #include "../../core/offset_block_buffer.hpp"
 #include "../../core/point.hpp"
 #include "../../core/reallocate.hpp"
 #include "../../core/views/offset_block_range.hpp"
+#include "../../core/views/zip.hpp"
 #include "../../exact/meta.hpp"
+#include "./clean_loop.hpp"
 #include "./crossing_record.hpp"
 #include "./edge.hpp"
+#include "./vertex.hpp"
 #include "tbb/parallel_sort.h"
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 
 namespace tf::intersect::graph {
 
@@ -41,8 +45,9 @@ template <typename Index, typename Int, typename GetPoint>
 auto split_edges(tf::buffer<edge_split_entry<Index>> &entries,
                  Index crossing_base,
                  const tf::buffer<tf::point<Int, 3>> &crossing_points,
-                 tf::offset_block_buffer<Index, edge<Index>> &edge_defs,
+                 tf::buffer<edge<Index>> &edge_data,
                  tf::offset_block_buffer<Index, Index> &edges,
+                 tf::offset_block_buffer<Index, vertex<Index>> &loops,
                  const GetPoint &get_point,
                  tf::buffer<std::array<Index, 2>> &merge_pairs) -> void {
   using T1 = typename tf::exact::meta<Int>::T1;
@@ -67,8 +72,9 @@ auto split_edges(tf::buffer<edge_split_entry<Index>> &entries,
   for (std::size_t si = 0; si < num_split_edges; ++si)
     split_group_eid[si] = split_groups.begin()[si][0].edge_id;
 
-  auto &edge_data = edge_defs.data_buffer();
+  auto loops_range = tf::make_range(loops);
   tf::buffer<edge<Index>> new_edge_data;
+  tf::buffer<vertex<Index>> new_loop_data;
 
   // Snapshot the old per-face edge lists for iteration
   auto old_edges = tf::make_range(edges);
@@ -77,11 +83,17 @@ auto split_edges(tf::buffer<edge_split_entry<Index>> &entries,
   tf::buffer<Index> new_edges_offsets;
   new_edges_offsets.allocate(edges.size() + 1);
   new_edges_offsets[0] = 0;
+  tf::buffer<Index> new_loops_offsets;
+  new_loops_offsets.allocate(loops.size() + 1);
+  new_loops_offsets[0] = 0;
   std::size_t face_i = 1;
+  std::size_t loop_i = 1;
 
   struct local_t {
     tf::buffer<edge<Index>> new_edges;
     tf::buffer<Index> counts;
+    tf::buffer<vertex<Index>> dirty;
+    tf::buffer<Index> loop_counts;
     tf::buffer<std::array<Index, 2>> merges;
     tf::buffer<split_point<Index, Int>> work;
   };
@@ -89,10 +101,13 @@ auto split_edges(tf::buffer<edge_split_entry<Index>> &entries,
   auto task = [&](auto &&range, local_t &local) {
     auto get_point_f = get_point;
     local.counts.allocate(range.size());
+    local.loop_counts.allocate(range.size());
     auto cit = local.counts.begin();
+    auto lit = local.loop_counts.begin();
 
-    for (const auto &face_edges : range) {
+    for (const auto &[face_edges, base_loop] : range) {
       auto old_size = local.new_edges.size();
+      auto old_dirty = local.dirty.size();
 
       for (auto inst_idx : face_edges) {
         auto &e = edge_data[inst_idx];
@@ -114,6 +129,7 @@ auto split_edges(tf::buffer<edge_split_entry<Index>> &entries,
         auto p1 = get_point_f(-1, e.point_1);
         T1 dx = T1(p1[0]) - p0[0], dy = T1(p1[1]) - p0[1],
            dz = T1(p1[2]) - p0[2];
+        T2 t_max = T2(dx) * T2(dx) + T2(dy) * T2(dy) + T2(dz) * T2(dz);
 
         local.work.clear();
         for (auto &entry : group) {
@@ -146,37 +162,73 @@ auto split_edges(tf::buffer<edge_split_entry<Index>> &entries,
             local.work.begin(), local.work.end(),
             [](const auto &a, const auto &b) { return a.t == b.t; }));
 
-        // Emit sub-edges: walk split points from e.point_0 to e.point_1
-        Index prev = e.point_0;
-        for (auto &s : local.work) {
-          local.new_edges.push_back({e.tag, e.tag_other, e.object,
-                                     e.object_other, prev, s.point_id, 0});
-          prev = s.point_id;
+        // Trim split points at edge endpoints; identify them with
+        // e.point_0 / e.point_1 directly so merges always happen.
+        auto begin = local.work.begin();
+        auto end = local.work.end();
+        while (begin != end && begin->t == 0) {
+          if (begin->point_id != e.point_0)
+            local.merges.push_back({e.point_0, begin->point_id});
+          ++begin;
         }
-        local.new_edges.push_back(
-            {e.tag, e.tag_other, e.object, e.object_other, prev, e.point_1, 0});
+        while (begin != end && (end - 1)->t == t_max) {
+          --end;
+          if (end->point_id != e.point_1)
+            local.merges.push_back({e.point_1, end->point_id});
+        }
+
+        // Emit sub-edges: walk split points from e.point_0 to e.point_1.
+        // Sub-edges inherit parent's ordinal. sub_ordinal increments in
+        // t-order, locally per parent split (interior parents stay -1).
+        Index prev = e.point_0;
+        std::int16_t sub_ord = 0;
+        auto next_sub = [&]() -> std::int16_t {
+          return e.ordinal < 0 ? std::int16_t(-1) : sub_ord++;
+        };
+        for (auto it = begin; it != end; ++it) {
+          local.new_edges.push_back({e.tag, e.tag_other, e.object,
+                                     e.object_other, prev, it->point_id, 0,
+                                     e.ordinal, next_sub()});
+          prev = it->point_id;
+        }
+        local.new_edges.push_back({e.tag, e.tag_other, e.object, e.object_other,
+                                   prev, e.point_1, 0, e.ordinal, next_sub()});
       }
 
+      auto part_it = std::partition(
+          local.new_edges.begin() + old_size, local.new_edges.end(),
+          [](const auto &edge) { return edge.ordinal == -1; });
+      auto base_edges = tf::make_range(part_it, local.new_edges.end());
+      build_dirty_loop<Index>(base_edges, base_loop, local.dirty);
+      local.new_edges.erase_till_end(part_it);
       *cit++ = static_cast<Index>(local.new_edges.size() - old_size);
+      *lit++ = static_cast<Index>(local.dirty.size() - old_dirty);
     }
   };
 
   auto agg = [&](const local_t &local, const tf::none_t &) {
     tf::core::append(local.new_edges, new_edge_data);
+    tf::core::append(local.dirty, new_loop_data);
     tf::core::append(local.merges, merge_pairs);
     for (auto count : local.counts) {
       new_edges_offsets[face_i] = new_edges_offsets[face_i - 1] + count;
       ++face_i;
     }
+    for (auto count : local.loop_counts) {
+      new_loops_offsets[loop_i] = new_loops_offsets[loop_i - 1] + count;
+      ++loop_i;
+    }
   };
 
-  tf::blocked_reduce_sequenced_aggregate(old_edges, tf::none, local_t{}, task,
-                                         agg);
+  tf::blocked_reduce_sequenced_aggregate(tf::zip(old_edges, loops_range),
+                                         tf::none, local_t{}, task, agg);
 
   // Install new buffers, build identity _edges indices
-  edge_defs.data_buffer() = std::move(new_edge_data);
+  edge_data = std::move(new_edge_data);
   edges.offsets_buffer() = std::move(new_edges_offsets);
-  auto total = edge_defs.data_buffer().size();
+  loops.data_buffer() = std::move(new_loop_data);
+  loops.offsets_buffer() = std::move(new_loops_offsets);
+  auto total = edge_data.size();
   edges.data_buffer().allocate(total);
   tf::parallel_iota(edges.data_buffer(), 0);
 }

@@ -20,6 +20,7 @@
 #include "./vertex.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <utility>
 
 namespace tf::intersect::graph {
@@ -40,7 +41,7 @@ auto on_same_boundary_edge(const Target &t0, const Target &t1, Index face_size)
 template <typename Index, typename Loop>
 auto emit_boundary_sub_edges(const Loop &loop, Index start_id, Index end_id,
                              short tag, short tag_other, Index object,
-                             Index object_other, tf::buffer<edge<Index>> &buf)
+                             Index object_other, tf::buffer<edge<Index>> &buf, bool emit_ordinal = false)
     -> bool {
   auto n = loop.size();
   std::size_t pos = n;
@@ -53,20 +54,26 @@ auto emit_boundary_sub_edges(const Loop &loop, Index start_id, Index end_id,
   if (pos == n)
     return false;
 
+  auto ord = [&](std::size_t p) -> std::int16_t {
+    return emit_ordinal ? static_cast<std::int16_t>(p) : std::int16_t(-1);
+  };
+  auto sub = [&]() -> std::int16_t {
+    return emit_ordinal ? std::int16_t(0) : std::int16_t(-1);
+  };
   Index prev = start_id;
+  std::size_t prev_pos = pos;
   pos = (pos + 1) % n;
   for (std::size_t step = 0; step < n - 1; ++step) {
     auto cur = loop[pos].id;
     if (loop[pos].source == vertex_source::created && cur == end_id) {
-      if (prev == start_id)
-        return false;
       buf.push_back({tag, tag_other, object, object_other, prev, cur,
-                     static_cast<Index>(buf.size())});
+                     static_cast<Index>(buf.size()), ord(prev_pos), sub()});
       return true;
     }
     buf.push_back({tag, tag_other, object, object_other, prev, cur,
-                   static_cast<Index>(buf.size())});
+                   static_cast<Index>(buf.size()), ord(prev_pos), sub()});
     prev = cur;
+    prev_pos = pos;
     pos = (pos + 1) % n;
   }
   return false;
@@ -81,7 +88,8 @@ template <typename Index, typename Target, typename Loop>
 auto try_expand_boundary(const Loop &loop, const Target &t0, const Target &t1,
                          Index face_size, Index id0, Index id1, short tag,
                          short tag_other, Index object, Index object_other,
-                         tf::buffer<edge<Index>> &buf) -> bool {
+                         tf::buffer<edge<Index>> &buf,
+                         bool emit_ordinal = false) -> bool {
   if (!on_same_boundary_edge(t0, t1, face_size))
     return false;
 
@@ -124,7 +132,8 @@ auto try_expand_boundary(const Loop &loop, const Target &t0, const Target &t1,
   }
 
   return emit_boundary_sub_edges<Index>(loop, start_id, end_id, tag, tag_other,
-                                        object, object_other, buf);
+                                        object, object_other, buf,
+                                        emit_ordinal);
 }
 
 /// Find loop index for a (tag, object) pair via binary search on subranges.
@@ -150,15 +159,26 @@ auto find_loop_index(const AllSubranges &subranges, Index tag, Index object)
 template <typename Index, typename Record, typename AllLoops,
           typename AllSubranges, typename ApplyToFace>
 auto emit_edge(const Record &r0, const Record &r1, Index face_size,
-               const AllLoops &all_loops, const AllSubranges &all_subranges,
+               std::size_t this_loop_idx, const AllLoops &all_loops,
+               const AllSubranges &all_subranges,
                const ApplyToFace &apply_to_face, tf::buffer<edge<Index>> &buf)
     -> void {
   auto tag = short(r0.tag);
   auto tag_other = short(r0.tag_other);
 
-  // Edge on our own boundary → skip. The base loop already has these points.
-  if (on_same_boundary_edge(r0.target, r1.target, face_size))
+  // Zero-length: same vertex ID after geometric identification
+  if (r0.id == r1.id)
     return;
+
+  // Edge on OUR own boundary → walk our loop and emit tagged sub-edges
+  // (ordinal = position of start vertex in our base loop).
+  if (on_same_boundary_edge(r0.target, r1.target, face_size)) {
+    try_expand_boundary<Index>(all_loops[this_loop_idx], r0.target, r1.target,
+                               face_size, r0.id, r1.id, tag, tag_other,
+                               r0.object, r0.object_other, buf,
+                               /*emit_ordinal=*/true);
+    return;
+  }
 
   if (r0.target_other.label != tf::topo_type::face &&
       r1.target_other.label != tf::topo_type::face) {
@@ -179,30 +199,7 @@ auto emit_edge(const Record &r0, const Record &r1, Index face_size,
   }
 
   buf.push_back({tag, tag_other, r0.object, r0.object_other, r0.id, r1.id,
-                 static_cast<Index>(buf.size())});
+                 static_cast<Index>(buf.size()), std::int16_t(-1),
+                 std::int16_t(-1)});
 }
-
-/// Extract edges for a subrange, expanding boundary edges using base loops.
-template <typename Index, typename Subrange, typename AllLoops,
-          typename AllSubranges, typename ApplyToFace>
-auto extract_edges_with_expansion(const Subrange &subrange, Index face_size,
-                                  std::size_t this_loop_idx,
-                                  const AllLoops &all_loops,
-                                  const AllSubranges &all_subranges,
-                                  const ApplyToFace &apply_to_face,
-                                  tf::buffer<edge<Index>> &buf) -> void {
-  auto it = subrange.begin();
-  auto end = subrange.end();
-  while (it != end) {
-    auto group_begin = it;
-    it = std::find_if_not(it + 1, end, [&](const auto &r) {
-      return r.tag_other == group_begin->tag_other &&
-             r.object_other == group_begin->object_other;
-    });
-    if (it - group_begin == 2)
-      emit_edge<Index>(group_begin[0], group_begin[1], face_size, this_loop_idx,
-                       all_loops, all_subranges, apply_to_face, buf);
-  }
-}
-
 } // namespace tf::intersect::graph

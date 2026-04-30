@@ -32,7 +32,8 @@ public:
   template <typename Subrange, typename AllLoops, typename AllSubranges,
             typename ApplyToFace>
   auto extract(const Subrange &subrange, Index face_size,
-               const AllLoops &all_loops, const AllSubranges &all_subranges,
+               std::size_t this_loop_idx, const AllLoops &all_loops,
+               const AllSubranges &all_subranges,
                const ApplyToFace &apply_to_face,
                tf::buffer<edge<Index>> &buf) -> void {
     auto it = subrange.begin();
@@ -46,14 +47,16 @@ public:
       auto n = it - group_begin;
       if (n == 2) {
         emit_edge<Index>(group_begin[0], group_begin[1], face_size,
-                         all_loops, all_subranges, apply_to_face, buf);
+                         this_loop_idx, all_loops, all_subranges,
+                         apply_to_face, buf);
       } else if (n > 2) {
         apply_to_face(
             group_begin->tag_other, group_begin->object_other,
             [&](const auto &other_face) {
               Index other_size = other_face.size();
               extract_coplanar(group_begin, it, other_size, face_size,
-                               all_loops, all_subranges, apply_to_face, buf);
+                               this_loop_idx, all_loops, all_subranges,
+                               apply_to_face, buf);
             });
       }
     }
@@ -73,7 +76,8 @@ private:
   template <typename Iterator, typename AllLoops, typename AllSubranges,
             typename ApplyToFace>
   auto extract_coplanar(Iterator begin, Iterator end, Index other_poly_size,
-                        Index face_size, const AllLoops &all_loops,
+                        Index face_size, std::size_t this_loop_idx,
+                        const AllLoops &all_loops,
                         const AllSubranges &all_subranges,
                         const ApplyToFace &apply_to_face,
                         tf::buffer<edge<Index>> &buf) -> void {
@@ -112,8 +116,8 @@ private:
         continue;
       auto &r0 = *(begin + group_begin_w->rec_idx);
       auto &r1 = *(begin + (group_begin_w + 1)->rec_idx);
-      emit_edge<Index>(r0, r1, face_size, all_loops, all_subranges,
-                       apply_to_face, buf);
+      emit_edge<Index>(r0, r1, face_size, this_loop_idx, all_loops,
+                       all_subranges, apply_to_face, buf);
     }
   }
 

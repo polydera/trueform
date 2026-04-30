@@ -24,7 +24,7 @@
 #include "../topology/policy/manifold_edge_link.hpp"
 #include "./exact/coplanar_primitives.hpp"
 #include "./exact/crossing_edges_vs_face.hpp"
-#include "./exact/dedup_vertex_points.hpp"
+#include "./exact/dedup_coincident_points.hpp"
 #include "./exact/duplicate_tagged_intersection.hpp"
 #include "./exact/face_plane_info.hpp"
 #include "./exact/tagged_intersections.hpp"
@@ -275,6 +275,8 @@ private:
       offset += v.size();
     }
 
+    tf::intersect::dedup_coincident_points(raw, points);
+
     base_t::_intersection_points = std::move(points);
     tf::generic_generate(raw, base_t::_intersections,
                          std::forward<Duplicator>(duplicator));
@@ -371,10 +373,7 @@ private:
       return base_t::finalize(Index(1));
 
     auto raw = merge_local_intersections(l_intersections);
-    tf::intersect::dedup_vertex_points(
-        raw, points, [&](Index, Index object, Index local_id) -> Index {
-          return Index(form.faces()[object][local_id]);
-        });
+    tf::intersect::dedup_coincident_points(raw, points);
 
     base_t::_intersection_points = std::move(points);
 

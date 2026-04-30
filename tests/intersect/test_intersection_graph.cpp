@@ -227,8 +227,10 @@ TEST_CASE("VV same-position endpoints", "[graph][crossing]") {
   IG ig;
   build_graph<3>(meshes, ibp, ig);
 
-  CHECK(ibp.intersection_points().size() == 6);
-  CHECK(ig.point_remap().size() > 0);
+  // Coincident endpoints of cutA and cutB share IDs after geometric dedup,
+  // so no late-stage merge is needed and point_remap stays empty.
+  CHECK(ibp.intersection_points().size() == 5);
+  CHECK(ig.point_remap().size() == 0);
   CHECK(ig.edge_groups().size() == 2);
   CHECK(all_groups_have_n_instances(ig, 2));
   CHECK(collect_edge_points(ig).size() == 3);
@@ -248,8 +250,9 @@ TEST_CASE("Multiple EE (3 crossings at origin)", "[graph][crossing]") {
   IG ig;
   build_graph<4>(meshes, ibp, ig);
 
-  CHECK(ibp.intersection_points().size() == 12);
-  CHECK(ig.point_remap().size() > 0);
+  // Geometric dedup collapses 3 cut-pair endpoints at (0,0,±1) → 8 unique.
+  CHECK(ibp.intersection_points().size() == 8);
+  CHECK(ig.point_remap().size() > 0);  // EE crossings at origin still merge
   CHECK(ig.edge_groups().size() == 8);
 
   auto [n_orig_ee3, n_cross_ee3] = count_point_classes(ig, ibp);

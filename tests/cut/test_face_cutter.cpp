@@ -122,7 +122,7 @@ TEST_CASE("Single edge split (fast path)", "[face_cutter]") {
                      {200, 100, 0}},
                     {0, 1, 2, 3}};
   auto faces = run(geo, {V(0), V(1), C(5), V(2), V(3), C(4)},
-                   {{0, 1, 0, 0, 4, 5, 0}});
+                   {{0, 1, 0, 0, 4, 5, 0, std::int16_t(-1), std::int16_t(-1)}});
   auto expected = canonical_faces({
       {V(0), V(1), C(5), C(4)},
       {C(5), V(2), V(3), C(4)},
@@ -139,7 +139,7 @@ TEST_CASE("Single edge interior (cut)", "[face_cutter]") {
                      {100, 100, 0}},
                     {0, 1, 2, 3}};
   auto faces = run(geo, {V(0), C(4), V(1), V(2), V(3)},
-                   {{0, 1, 0, 0, 4, 5, 0}});
+                   {{0, 1, 0, 0, 4, 5, 0, std::int16_t(-1), std::int16_t(-1)}});
   auto expected = canonical_faces({
       {V(0), C(4), C(5), C(4), V(1), V(2), V(3)},
   });
@@ -157,7 +157,8 @@ TEST_CASE("Two parallel edges (3 strips)", "[face_cutter]") {
                      {200, 140, 0}},
                     {0, 1, 2, 3}};
   auto faces = run(geo, {V(0), V(1), C(5), C(7), V(2), V(3), C(6), C(4)},
-                   {{0, 1, 0, 0, 4, 5, 0}, {0, 2, 0, 0, 6, 7, 1}});
+                   {{0, 1, 0, 0, 4, 5, 0, std::int16_t(-1), std::int16_t(-1)},
+                    {0, 2, 0, 0, 6, 7, 1, std::int16_t(-1), std::int16_t(-1)}});
   auto expected = canonical_faces({
       {V(0), V(1), C(5), C(4)},
       {C(4), C(5), C(7), C(6)},
@@ -177,10 +178,10 @@ TEST_CASE("Interior loop (hole)", "[face_cutter]") {
                      {80, 100, 0}},
                     {0, 1, 2, 3}};
   auto faces = run(geo, {V(0), V(1), V(2), V(3)},
-                   {{0, 1, 0, 0, 4, 5, 0},
-                    {0, 1, 0, 0, 5, 6, 1},
-                    {0, 1, 0, 0, 6, 7, 2},
-                    {0, 1, 0, 0, 7, 4, 3}});
+                   {{0, 1, 0, 0, 4, 5, 0, std::int16_t(-1), std::int16_t(-1)},
+                    {0, 1, 0, 0, 5, 6, 1, std::int16_t(-1), std::int16_t(-1)},
+                    {0, 1, 0, 0, 6, 7, 2, std::int16_t(-1), std::int16_t(-1)},
+                    {0, 1, 0, 0, 7, 4, 3, std::int16_t(-1), std::int16_t(-1)}});
   auto expected = canonical_faces({
       {V(0), V(1), V(2), V(3), C(4), C(5), C(6), C(7), C(4), V(3)},
       {C(7), C(6), C(5), C(4)},

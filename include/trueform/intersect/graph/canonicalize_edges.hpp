@@ -34,8 +34,10 @@ auto canonicalize_edges(
     tf::offset_block_buffer<Index, edge<Index>> &edge_defs,
     tf::offset_block_buffer<Index, Index> &edges) -> void {
   auto &data = edge_defs.data_buffer();
-  if (data.size() == 0)
+  if (data.size() == 0) {
+    edge_defs.offsets_buffer().clear();
     return;
+  }
 
   tf::parallel_for_each(tf::enumerate(data), [](auto pair) {
     auto &&[i, e] = pair;
