@@ -562,6 +562,10 @@ private:
       Index next_id = _nodes[owner_id].next;
       Index opp_id = _nodes[owner_id].prev;
 
+      auto saved_owner = _nodes[owner_id];
+      auto saved_next = _nodes[next_id];
+      auto saved_opp = _nodes[opp_id];
+
       Index n_id = static_cast<Index>(_nodes.size());
       _nodes.push_back({n_id, first_pt, Index(-1), Index(-1),
                          Index(-1), Index(-1), 0, Index(-1), Index(-1)});
@@ -575,6 +579,11 @@ private:
       _nodes[opp_id].next = owner_id;
       resolve_triangle(n_id);
 
+      // Restore state before second split
+      _nodes[owner_id] = saved_owner;
+      _nodes[next_id] = saved_next;
+      _nodes[opp_id] = saved_opp;
+
       // Reuse n_node for last_pt in sub-triangle 2: (n_node=last, next, opp)
       _nodes[n_id].pt_id = last_pt;
       _nodes[n_id].run_first = Index(-1);
@@ -586,6 +595,11 @@ private:
       _nodes[opp_id].prev = next_id;
       _nodes[opp_id].next = n_id;
       resolve_triangle(next_id);
+
+      // Final restore
+      _nodes[owner_id] = saved_owner;
+      _nodes[next_id] = saved_next;
+      _nodes[opp_id] = saved_opp;
     };
 
     if (has_run(_nodes[a_id])) {
@@ -724,10 +738,8 @@ private:
         triangulate(pts, other);
         return Index(-1);
       }
-      emit_triangle(prev(cv).pt_id, cv.pt_id, next(cv).pt_id);
+      emit_ear(cv);
       auto nc = cv.next;
-      prev(cv).next = nc;
-      _nodes[nc].prev = cv.prev;
       if (c == start)
         start = nc;
       c = nc;

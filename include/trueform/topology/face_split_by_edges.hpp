@@ -13,18 +13,12 @@
 #pragma once
 #include "../core/coordinate_type.hpp"
 #include "../core/faces.hpp"
-#include "../core/intersects.hpp"
 #include "../core/points.hpp"
-#include "../core/polygons.hpp"
 #include "../core/views/blocked_range.hpp"
-#include "../core/views/enumerate.hpp"
 #include "../core/views/mapped_range.hpp"
-#include "../exact/classify.hpp"
 #include "../exact/meta.hpp"
 #include "../exact/pt_converter.hpp"
 #include "../exact/signed_area.hpp"
-#include "../spatial/aabb_tree.hpp"
-#include "../spatial/search.hpp"
 #include "./face_hole_relations.hpp"
 #include "./face_splitting_paths.hpp"
 #include "./planar_graph_regions.hpp"
@@ -86,11 +80,7 @@ public:
     _pgr.clear();
     _spaths.clear();
     _fhr.clear();
-    _tree.clear();
-    _base_loops_vertices.clear();
-    _base_loops_offsets.clear();
     _work_edges.clear();
-    _non_crossing_in_base_loop.clear();
     _faces.clear();
     _holes.clear();
     _signed_areas.clear();
@@ -104,15 +94,29 @@ private:
     return tf::exact::signed_area_2x(tf::make_polygon(loop, points));
   }
 
-  template <typename Range>
-  auto divide_base_loop_with_crossing_paths(const Range &base_loop) {
+  auto all_loops() const {
+    return tf::make_offset_block_range(_offsets, _vertices);
+  }
+
+  /// Emit a single loop as a face into the output buffers.
+  template <typename Range, typename Policy>
+  auto emit_face(const Range &loop, const tf::points<Policy> &points) {
+    auto a = area_of(loop, points);
+    auto id = Index(_signed_areas.size());
+    _signed_areas.push_back(a);
+    _offsets.push_back(_vertices.size());
+    std::copy(loop.begin(), loop.end(), std::back_inserter(_vertices));
+    _faces.push_back(id);
+  }
+
+  /// Divide base loop by crossing paths and emit each sub-region as a face.
+  /// Used when there are no non-crossing paths.
+  template <typename Range, typename Policy>
+  auto emit_crossing_faces(const Range &base_loop,
+                           const tf::points<Policy> &points) {
     const auto &crossings = _spaths.crossing_paths();
     if (!crossings.size()) {
-      _base_loops_offsets.push_back(0);
-      _base_loops_vertices.allocate(base_loop.size());
-      std::copy(base_loop.begin(), base_loop.end(),
-                _base_loops_vertices.begin());
-      _base_loops_offsets.push_back(_base_loops_vertices.size());
+      emit_face(base_loop, points);
       return;
     }
     const auto &descriptors = _spaths.crossing_path_descriptors();
@@ -128,7 +132,7 @@ private:
     Index n_crossings = crossings.size();
     Index last = n_crossings - 1;
     for (Index i = -1; i < Index(crossings.size()); ++i) {
-      _base_loops_offsets.push_back(_base_loops_vertices.size());
+      _offsets.push_back(_vertices.size());
       auto [path, start, end] = get(i);
       // nested crossings
       if (i != last && descriptors[i + 1].end <= end) {
@@ -137,9 +141,9 @@ private:
         while (current != end) {
           std::copy(base_loop.begin() + current,
                     base_loop.begin() + descriptors[next].start,
-                    std::back_inserter(_base_loops_vertices));
+                    std::back_inserter(_vertices));
           std::copy(crossings[next].begin(), crossings[next].end() - 1,
-                    std::back_inserter(_base_loops_vertices));
+                    std::back_inserter(_vertices));
           current = descriptors[next].end;
           next = std::find_if(descriptors.begin() + next + 1, descriptors.end(),
                               [&, outer_end = end](const auto &d) {
@@ -151,76 +155,23 @@ private:
           }
         }
         std::copy(base_loop.begin() + current, base_loop.begin() + end,
-                  std::back_inserter(_base_loops_vertices));
+                  std::back_inserter(_vertices));
         std::reverse_copy(path.begin() + 1, path.end(),
-                          std::back_inserter(_base_loops_vertices));
+                          std::back_inserter(_vertices));
       } else {
         std::copy(base_loop.begin() + start, base_loop.begin() + end,
-                  std::back_inserter(_base_loops_vertices));
+                  std::back_inserter(_vertices));
         std::reverse_copy(path.begin() + 1, path.end(),
-                          std::back_inserter(_base_loops_vertices));
+                          std::back_inserter(_vertices));
       }
+      // Compute area for this sub-loop and register as face
+      auto loop_begin = _vertices.begin() + _offsets.back();
+      auto loop_range = tf::make_range(loop_begin, _vertices.end());
+      auto a = area_of(loop_range, points);
+      auto id = Index(_signed_areas.size());
+      _signed_areas.push_back(a);
+      _faces.push_back(id);
     }
-    if (_base_loops_vertices.size())
-      _base_loops_offsets.push_back(_base_loops_vertices.size());
-  }
-
-  auto base_loops() const {
-    return tf::make_offset_block_range(_base_loops_offsets,
-                                       _base_loops_vertices);
-  }
-
-  auto all_loops() const {
-    return tf::make_offset_block_range(_offsets, _vertices);
-  }
-
-  template <typename Policy>
-  auto assign_base_loop_to_non_crossings(const tf::points<Policy> &points) {
-    auto polygons = tf::make_polygons(base_loops(), points);
-    _tree.build(polygons, tf::config_tree(4, 4));
-    _non_crossing_in_base_loop.allocate(_spaths.non_crossing_paths().size());
-    for (auto &&[path, in_base_loop] :
-         tf::zip(_spaths.non_crossing_paths(), _non_crossing_in_base_loop)) {
-      in_base_loop = -1;
-      auto &&pt = points[path[1]];
-      tf::point<Int, 2> qpt = {pt[0], pt[1]};
-      tf::search(_tree, tf::intersects_f(qpt),
-                 [&, &in_base_loop = in_base_loop](Index b_id) {
-                   if (tf::exact::classify(qpt, polygons[b_id]) !=
-                       tf::containment::outside) {
-                     in_base_loop = b_id;
-                     return true;
-                   }
-                   return false;
-                 });
-    }
-  }
-
-  template <typename Range>
-  auto fill_for_base_loop(Index i, const Range &base_loop) {
-    _work_edges.clear();
-    for (auto [path, b_i] :
-         tf::zip(_spaths.non_crossing_paths(), _non_crossing_in_base_loop)) {
-      if (i == b_i) {
-        for (auto [a, b] : tf::make_slide_range<2>(path)) {
-          _work_edges.push_back(a);
-          _work_edges.push_back(b);
-          _work_edges.push_back(b);
-          _work_edges.push_back(a);
-        }
-      }
-    }
-    if (!_work_edges.size())
-      return false;
-    Index size = base_loop.size();
-    Index prev = size - 1;
-    for (Index i = 0; i < size; prev = i++) {
-      _work_edges.push_back(base_loop[prev]);
-      _work_edges.push_back(base_loop[i]);
-      _work_edges.push_back(base_loop[i]);
-      _work_edges.push_back(base_loop[prev]);
-    }
-    return true;
   }
 
   template <typename Policy>
@@ -237,7 +188,7 @@ private:
       }
       ++count;
     }
-    // emit all except exterior
+    // emit all except exterior as faces
     count = 0;
     for (const auto &region : _pgr) {
       if (min_id == count++) {
@@ -248,31 +199,42 @@ private:
       _signed_areas.push_back(a);
       _offsets.push_back(_vertices.size());
       std::copy(region.begin(), region.end(), std::back_inserter(_vertices));
-      if (a > 0)
-        _faces.push_back(id);
-      else
-        _holes.push_back(id);
+      _faces.push_back(id);
     }
   }
 
-  template <typename Policy>
-  auto process_non_crossings(const tf::points<Policy> &points) {
-    assign_base_loop_to_non_crossings(points);
-    for (auto [i, base_loop] : tf::enumerate(base_loops())) {
-      if (fill_for_base_loop(i, base_loop)) {
-        _pgr.build(tf::make_edges(tf::make_blocked_range<2>(_work_edges)),
-                   points);
-        copy_from_planar_regions(points);
-      } else {
-        auto a = area_of(base_loop, points);
-        auto id = Index(_signed_areas.size());
-        _signed_areas.push_back(a);
-        _offsets.push_back(_vertices.size());
-        std::copy(base_loop.begin(), base_loop.end(),
-                  std::back_inserter(_vertices));
-        _faces.push_back(id);
-      }
+  /// Build work_edges from all crossing + non-crossing paths + base loop.
+  template <typename Range>
+  auto fill_edges_for_graph_regions(const Range &face) {
+    _work_edges.clear();
+    auto add_paths = [&](const auto &paths) {
+      for (const auto &path : paths)
+        for (auto [a, b] : tf::make_slide_range<2>(path)) {
+          _work_edges.push_back(a);
+          _work_edges.push_back(b);
+          _work_edges.push_back(b);
+          _work_edges.push_back(a);
+        }
+    };
+    add_paths(_spaths.crossing_paths());
+    add_paths(_spaths.non_crossing_paths());
+    Index size = face.size();
+    Index prev = size - 1;
+    for (Index i = 0; i < size; prev = i++) {
+      _work_edges.push_back(face[prev]);
+      _work_edges.push_back(face[i]);
+      _work_edges.push_back(face[i]);
+      _work_edges.push_back(face[prev]);
     }
+  }
+
+  /// Run planar_graph_regions on all edges (crossings + non-crossings + base loop).
+  template <typename Range, typename Policy>
+  auto emit_as_graph_regions(const Range &face,
+                             const tf::points<Policy> &points) {
+    fill_edges_for_graph_regions(face);
+    _pgr.build(tf::make_edges(tf::make_blocked_range<2>(_work_edges)), points);
+    copy_from_planar_regions(points);
   }
 
   auto process_cuts() {
@@ -311,18 +273,10 @@ private:
 
   template <typename Range, typename Policy>
   auto process_paths(const Range &base_loop, const tf::points<Policy> &points) {
-    divide_base_loop_with_crossing_paths(base_loop);
     if (_spaths.non_crossing_paths().size()) {
-      process_non_crossings(points);
+      emit_as_graph_regions(base_loop, points);
     } else {
-      for (const auto &bl : base_loops()) {
-        auto a = area_of(bl, points);
-        auto id = Index(_signed_areas.size());
-        _signed_areas.push_back(a);
-        _offsets.push_back(_vertices.size());
-        std::copy(bl.begin(), bl.end(), std::back_inserter(_vertices));
-        _faces.push_back(id);
-      }
+      emit_crossing_faces(base_loop, points);
     }
     process_cuts();
     process_loop_paths(points);
@@ -341,11 +295,7 @@ private:
   tf::planar_graph_regions<Index, Int> _pgr;
   tf::face_splitting_paths<Index, Int> _spaths;
   tf::face_hole_relations<Index, Int> _fhr;
-  tf::aabb_tree<Index, Int, 2> _tree;
-  tf::buffer<Index> _base_loops_vertices;
-  tf::buffer<Index> _base_loops_offsets;
   tf::buffer<Index> _work_edges;
-  tf::buffer<Index> _non_crossing_in_base_loop;
   tf::buffer<Index> _faces;
   tf::buffer<Index> _holes;
   tf::buffer<T2> _signed_areas;

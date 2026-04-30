@@ -20,6 +20,7 @@
 #include "../exact/pt_converter.hpp"
 #include "../core/algorithm/parallel_for_each.hpp"
 #include "../core/views/sequence_range.hpp"
+#include "../exact/incircle.hpp"
 #include "./face_edge_neighbors.hpp"
 #include "./face_membership.hpp"
 
@@ -165,25 +166,8 @@ private:
   template <typename PointsPolicy>
   auto in_circle(const tf::points<PointsPolicy> &points,
                  Index ia, Index ib, Index ic, Index id) const -> T2 {
-    auto &&a = points[ia];
-    auto &&b = points[ib];
-    auto &&c = points[ic];
-    auto &&d = points[id];
-
-    T1 adx = T1(a[0]) - T1(d[0]);
-    T1 ady = T1(a[1]) - T1(d[1]);
-    T1 bdx = T1(b[0]) - T1(d[0]);
-    T1 bdy = T1(b[1]) - T1(d[1]);
-    T1 cdx = T1(c[0]) - T1(d[0]);
-    T1 cdy = T1(c[1]) - T1(d[1]);
-
-    T2 alift = T2(adx) * T2(adx) + T2(ady) * T2(ady);
-    T2 blift = T2(bdx) * T2(bdx) + T2(bdy) * T2(bdy);
-    T2 clift = T2(cdx) * T2(cdx) + T2(cdy) * T2(cdy);
-
-    return alift * (T2(bdx) * T2(cdy) - T2(bdy) * T2(cdx)) +
-           blift * (T2(cdx) * T2(ady) - T2(cdy) * T2(adx)) +
-           clift * (T2(adx) * T2(bdy) - T2(ady) * T2(bdx));
+    return tf::exact::incircle<Int>(points[ia], points[ib], points[ic],
+                                    points[id]);
   }
 
   // ── Lawson flip loop (stack-based) ──
