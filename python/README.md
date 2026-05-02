@@ -1,8 +1,10 @@
-# trueform
+# trueform — NumPy for Geometry
 
-Real-time geometric processing on NumPy arrays. Enriched NumPy arrays with support for vectorized spatial queries. Arrangements, booleans, registration, remeshing — at interactive speed on million-polygon meshes. Exact and robust to non-manifold flaps and pipeline artifacts. NumPy in, NumPy out.
+Fast and exact mesh booleans, spatial queries, arrangements, registration, and remeshing on NumPy arrays. NumPy in, NumPy out.
 
-**[Documentation](https://trueform.polydera.com/py/getting-started)** | **[Live Examples](https://trueform.polydera.com/live-examples/boolean)**
+**[Read the article: The STL for Geometry](https://polydera.com/algorithms/the-stl-for-geometry)** — What the STL philosophy of separating algorithms from data looks like when applied to geometry.
+
+**[polydera.com/trueform](https://polydera.com/trueform)** | **[Documentation](https://trueform.polydera.com/py/getting-started)** | **[▶ Try it live](https://trueform.polydera.com/live-examples/boolean)**
 
 ## Installation
 

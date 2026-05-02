@@ -1,10 +1,10 @@
-# trueform
+# trueform — The STL for Geometry
 
-Real-time geometric processing. Easy to use, robust on real-world data.
+Fast and exact mesh booleans, spatial queries, arrangements, registration, and remeshing. Composable algorithms on your data — zero-copy views, reusable spatial trees, first-class topology. Header-only C++17, parallel via oneTBB.
 
-Arrangements, booleans, registration, remeshing and queries — at interactive speed on million-polygon meshes. Exact and robust to non-manifold flaps and pipeline artifacts. Header-only C++17, parallel via oneTBB.
+**[Read the article: The STL for Geometry](https://polydera.com/algorithms/the-stl-for-geometry)** — What the STL philosophy of separating algorithms from data looks like when applied to geometry.
 
-**[Documentation](https://trueform.polydera.com/cpp/getting-started)** | **[Live Examples](https://trueform.polydera.com/live-examples/boolean)**
+**[polydera.com/trueform](https://polydera.com/trueform)** | **[Documentation](https://trueform.polydera.com/cpp/getting-started)** | **[▶ Try it live](https://trueform.polydera.com/live-examples/boolean)**
 
 ## Installation
 

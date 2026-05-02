@@ -1,4 +1,4 @@
-# trueform
+# trueform — The STL for Geometry
 
 [![Tests](https://github.com/polydera/trueform/actions/workflows/tests.yml/badge.svg)](https://github.com/polydera/trueform/actions/workflows/tests.yml)
 [![Docs](https://github.com/polydera/trueform/actions/workflows/generate-docs.yml/badge.svg)](https://github.com/polydera/trueform/actions/workflows/generate-docs.yml)
@@ -6,13 +6,11 @@
 [![PyPI](https://img.shields.io/pypi/v/trueform)](https://pypi.org/project/trueform/)
 [![npm](https://img.shields.io/npm/v/@polydera/trueform)](https://www.npmjs.com/package/@polydera/trueform)
 
-Real-time geometric processing. Easy to use, robust on real-world data.
+Fast and exact mesh booleans, spatial queries, arrangements, registration, and remeshing. Composable algorithms on your data — zero-copy views, reusable spatial trees, first-class topology. Header-only C++17 with Python and TypeScript bindings.
 
-Arrangements, booleans, registration, remeshing and queries — at interactive speed on million-polygon meshes. Exact and robust to non-manifold flaps and pipeline artifacts. One engine across C++, Python, and TypeScript.
+**[Read the article: The STL for Geometry](https://polydera.com/algorithms/the-stl-for-geometry)** — What the STL philosophy of separating algorithms from data looks like when applied to geometry.
 
-**[▶ Try it live](https://trueform.polydera.com/live-examples/boolean)** — Interactive mesh booleans, collisions, isobands and more. No install needed. 
-
-**[Documentation and Tutorials](https://trueform.polydera.com)** — Arrangements, booleans, remeshing, registration, topology — step by step.
+**[polydera.com/trueform](https://polydera.com/trueform)** | **[Documentation](https://trueform.polydera.com)** | **[▶ Try it live](https://trueform.polydera.com/live-examples/boolean)**
 
 ## Installation
 

@@ -17,7 +17,7 @@ class TrueformConan(ConanFile):
     license = "PolyForm Noncommercial License 1.0.0"
     url = "https://github.com/polydera/trueform"
     homepage = "https://trueform.polydera.com"
-    description = "Real-time geometric processing. Easy to use, robust on real-world data."
+    description = "Fast and exact mesh booleans, spatial queries, arrangements, registration, and remeshing. Header-only C++17."
     topics = ("geometry", "mesh", "computational-geometry", "mesh-processing",
               "mesh-boolean", "collision-detection", "csg", "header-only")
 

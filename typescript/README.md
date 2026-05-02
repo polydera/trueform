@@ -1,8 +1,10 @@
-# @polydera/trueform
+# @polydera/trueform — Native Geometry Processing for the Web
 
-Real-time geometric processing in TypeScript. WASM-backed NDArrays with vectorized numerical operations and spatial queries. Arrangements, booleans, registration, remeshing — at native speed in the browser and Node.js. Exact and robust to non-manifold flaps and pipeline artifacts.
+Fast and exact mesh booleans, spatial queries, arrangements, registration, and remeshing — at native speed in the browser and Node.js. WASM-backed NDArrays, sync and async.
 
-**[Documentation](https://trueform.polydera.com/ts/getting-started)** | **[Live Examples](https://trueform.polydera.com/live-examples/boolean)**
+**[Read the article: The STL for Geometry](https://polydera.com/algorithms/the-stl-for-geometry)** — What the STL philosophy of separating algorithms from data looks like when applied to geometry.
+
+**[polydera.com/trueform](https://polydera.com/trueform)** | **[Documentation](https://trueform.polydera.com/ts/getting-started)** | **[▶ Try it live](https://trueform.polydera.com/live-examples/boolean)**
 
 ## Installation
 

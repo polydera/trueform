@@ -7,7 +7,7 @@ build-backend = "scikit_build_core.build"
 [project]
 name = "trueform"
 dynamic = ["version"]
-description = "Real-time geometric processing on NumPy arrays. Easy to use, robust on real-world data."
+description = "Fast and exact mesh booleans, spatial queries, arrangements, registration, and remeshing on NumPy arrays. NumPy in, NumPy out."
 readme = "python/README.md"
 requires-python = ">=3.9"
 license = { file = "LICENSE.noncommercial" }

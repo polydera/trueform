@@ -1,7 +1,7 @@
 ---
 seo:
-  title: trueform — Real-time geometric processing
-  description: Geometry library for real-time arrangements, booleans, registration, remeshing and queries. One engine across C++, Python, and TypeScript.
+  title: trueform — The STL for Geometry
+  description: Fast and exact mesh booleans, spatial queries, arrangements, registration, and remeshing. Composable C++ engine with Python and TypeScript bindings.
 ---
 
 ::u-page-hero{class="dark:bg-gradient-to-b from-neutral-900 to-neutral-950"}
@@ -12,10 +12,10 @@ orientation: horizontal
 :hero-background
 
 #title
-Real-time [geometric processing]{.text-primary}
+The [STL]{.text-primary} for [Geometry]{.text-primary}
 
 #description
-Arrangements, booleans, registration, remeshing and queries — at interactive speed on million-polygon meshes. Exact and robust to non-manifold flaps and pipeline artifacts. One engine across C++, Python, and TypeScript.
+Fast and exact mesh booleans, spatial queries, arrangements, registration, and remeshing. Composable algorithms on your data. One engine across C++, Python, and TypeScript.
 
 #links
   :::u-button
@@ -173,7 +173,7 @@ Integrations
   title: Python
   to: /py/getting-started
   ---
-  Real-time geometric processing in your Python workflow. Enriched NumPy arrays with vectorized spatial queries, mesh booleans, and topology. NumPy in, NumPy out.
+  NumPy for geometry. Fast and exact mesh booleans, spatial queries, and topology. NumPy in, NumPy out.
   :::
 
   :::card
@@ -182,7 +182,7 @@ Integrations
   title: TypeScript
   to: /ts/getting-started
   ---
-  Real-time geometric processing in the browser and Node.js. WASM-backed NDArrays with vectorized numerical and geometric queries.
+  Native geometry processing for the web. Fast and exact mesh booleans, spatial queries, and topology in the browser and Node.js.
   :::
 
   :::card
