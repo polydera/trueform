@@ -47,7 +47,8 @@ void classify_missing_by_signed_distance(
     const GetCreatedPoint &get_created_point) {
   using vertex_t = intersect::graph::vertex<Index>;
   using source = intersect::graph::vertex_source;
-  using real_type = tf::coordinate_type<Policy0>;
+  using point_type = std::decay_t<decltype(get_created_point(Index(0)))>;
+  using real_type = tf::coordinate_type<Policy0, point_type>;
 
   bool any = false;
   for (auto &&c : counts)
@@ -134,7 +135,8 @@ void classify_missing_by_containment(
     const GetCreatedPoint &get_created_point) {
   using vertex_t = intersect::graph::vertex<Index>;
   using source = intersect::graph::vertex_source;
-  using real_type = tf::coordinate_type<Policy0>;
+  using point_type = std::decay_t<decltype(get_created_point(Index(0)))>;
+  using real_type = tf::coordinate_type<Policy0, point_type>;
 
   bool any = false;
   for (auto &&c : counts)

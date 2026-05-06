@@ -31,14 +31,18 @@ namespace tf::cut {
 ///   [graph intersection points (deconverted) | original segment points]
 ///
 /// Edge labels: for each output edge, the index of the original edge.
-template <typename Index, std::size_t Dims, typename Int, typename RealType,
-          typename Policy>
+template <typename OutputCoordinateType = tf::none_t, typename Index,
+          std::size_t Dims, typename Int, typename RealType, typename Policy>
 auto make_segment_arrangements(
     const tf::intersect::segment_intersection_graph<Index, Dims, Int> &sig,
     const tf::segments<Policy> &segments,
-    const tf::exact::pt_converter<Int, RealType, Dims> &conv)
-    -> std::pair<tf::segments_buffer<Index, RealType, Dims>,
-                 tf::buffer<Index>> {
+    const tf::exact::pt_converter<Int, RealType, Dims> &conv) {
+  using InputReal = tf::coordinate_type<Policy>;
+  using RealOut =
+      std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
+                         InputReal, OutputCoordinateType>;
+  static_assert(std::is_floating_point_v<RealOut>,
+                "OutputCoordinateType must be a floating-point type");
 
   tf::buffer<bool> original_e_mask;
   original_e_mask.allocate(segments.edges().size());
@@ -88,7 +92,7 @@ auto make_segment_arrangements(
   auto total_e = e_im.kept_ids().size() + sig.flat_sub_edges().size();
 
   // Build output points: [deconverted graph pts | original segment pts]
-  tf::segments_buffer<Index, RealType, Dims> out;
+  tf::segments_buffer<Index, RealOut, Dims> out;
   out.points_buffer().allocate(total_pts);
   tf::parallel_copy(tf::make_indirect_range(v_im.kept_ids(), segments.points()),
                     tf::take(out.points(), v_im.kept_ids().size()));
@@ -117,7 +121,7 @@ auto make_segment_arrangements(
       e = origin;
   });
 
-  return {std::move(out), std::move(origins)};
+  return std::make_pair(std::move(out), std::move(origins));
 }
 
 } // namespace tf::cut

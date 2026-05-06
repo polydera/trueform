@@ -13,6 +13,7 @@
 #pragma once
 #include "../core/algorithm/parallel_copy.hpp"
 #include "../core/curves_buffer.hpp"
+#include "../exact/resolve_int_type.hpp"
 #include "../topology/connect_edges_to_paths.hpp"
 #include "./construct/make_polygon_arrangements.hpp"
 #include "./dispatch/build_self_pipeline.hpp"
@@ -31,18 +32,21 @@ namespace tf {
 /// @param _polygons The input @ref tf::polygons (or tagged form).
 /// @param mode The intersection mode flags.
 /// @return Tuple of (@ref tf::polygons_buffer, face labels).
-template <typename Int = tf::exact::int32, typename Policy>
+template <typename Int = tf::none_t,
+          typename OutputCoordinateType = tf::none_t, typename Policy>
 auto make_polygon_arrangements(
     const tf::polygons<Policy> &_polygons,
     tf::intersect_mode mode = tf::intersect_mode::primitives |
                               tf::intersect_mode::resolve_contours) {
   return cut::dispatch::self_boolean(_polygons, [mode](const auto &p) {
     using Index = std::decay_t<decltype(p.faces()[0][0])>;
-    using RealType = tf::coordinate_type<std::decay_t<decltype(p)>>;
+    using InputReal = tf::coordinate_type<std::decay_t<decltype(p)>>;
+    using ResolvedInt = tf::exact::resolve_int_type<Int, InputReal>;
     auto [iwp, ig, fc, cg] =
-        cut::dispatch::build_self_pipeline<Index, RealType, Int>(p, mode);
+        cut::dispatch::build_self_pipeline<Index, double, ResolvedInt>(p, mode);
     auto [mesh, face_labels, map_data] =
-        tf::cut::make_polygon_arrangements(p, ig, fc, iwp.converter());
+        tf::cut::make_polygon_arrangements<OutputCoordinateType>(
+            p, ig, fc, iwp.converter());
     return std::make_pair(std::move(mesh), std::move(face_labels));
   });
 }
@@ -50,10 +54,11 @@ auto make_polygon_arrangements(
 /// @ingroup cut_boolean
 /// @brief Split a single mesh at self-intersection curves with curve output.
 /// @overload
-template <typename Int = tf::exact::int32, typename Policy>
+template <typename Int = tf::none_t,
+          typename OutputCoordinateType = tf::none_t, typename Policy>
 auto make_polygon_arrangements(const tf::polygons<Policy> &_polygons,
                                tf::return_curves_t) {
-  return make_polygon_arrangements<Int>(
+  return make_polygon_arrangements<Int, OutputCoordinateType>(
       _polygons, tf::intersect_mode::primitives |
                      tf::intersect_mode::resolve_contours,
       tf::return_curves);
@@ -62,23 +67,29 @@ auto make_polygon_arrangements(const tf::polygons<Policy> &_polygons,
 /// @ingroup cut_boolean
 /// @brief Split a single mesh at self-intersection curves with curve output.
 /// @overload
-template <typename Int = tf::exact::int32, typename Policy>
+template <typename Int = tf::none_t,
+          typename OutputCoordinateType = tf::none_t, typename Policy>
 auto make_polygon_arrangements(const tf::polygons<Policy> &_polygons,
                                tf::intersect_mode mode,
                                tf::return_curves_t) {
   return cut::dispatch::self_boolean(_polygons, [mode](const auto &p) {
     using Index = std::decay_t<decltype(p.faces()[0][0])>;
-    using RealType = tf::coordinate_type<std::decay_t<decltype(p)>>;
+    using InputReal = tf::coordinate_type<std::decay_t<decltype(p)>>;
+    using ResolvedInt = tf::exact::resolve_int_type<Int, InputReal>;
+    using RealOut =
+        std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
+                           InputReal, OutputCoordinateType>;
     auto [iwp, ig, fc, cg] =
-        cut::dispatch::build_self_pipeline<Index, RealType, Int>(p, mode);
+        cut::dispatch::build_self_pipeline<Index, double, ResolvedInt>(p, mode);
     auto [mesh, face_labels, map_data] =
-        tf::cut::make_polygon_arrangements(p, ig, fc, iwp.converter());
+        tf::cut::make_polygon_arrangements<OutputCoordinateType>(
+            p, ig, fc, iwp.converter());
 
     auto paths =
         tf::connect_edges_to_paths(tf::make_edges(cg.intersection_edges()));
     auto &conv = iwp.converter();
     auto ipts = ig.points();
-    tf::curves_buffer<Index, RealType, 3> cb;
+    tf::curves_buffer<Index, RealOut, 3> cb;
     cb.paths_buffer() = std::move(paths);
     cb.points_buffer().allocate(ipts.size());
     tf::parallel_copy(

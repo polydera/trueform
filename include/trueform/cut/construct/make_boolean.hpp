@@ -45,9 +45,9 @@ namespace tf::cut {
 /// Runs the full pipeline: classification → partition → vertex remapping →
 /// triangulation → mesh assembly. Returns (mesh, labels) or
 /// (mesh, labels, stitch_index_maps) when MakeMaps is true.
-template <typename LabelType, typename Index, typename Policy0,
-          typename Policy1, typename RealType, typename Int,
-          bool MakeMaps = false>
+template <typename LabelType, typename OutputCoordinateType = tf::none_t,
+          typename Index, typename Policy0, typename Policy1,
+          typename RealType, typename Int, bool MakeMaps = false>
 auto make_boolean(
     const tf::polygons<Policy0> &polygons0,
     const tf::polygons<Policy1> &polygons1,
@@ -57,6 +57,12 @@ auto make_boolean(
     std::array<tf::arrangement_class, 2> classes,
     const tf::boolean_config &config,
     std::integral_constant<bool, MakeMaps> = {}) {
+  using InputReal = tf::coordinate_type<Policy0, Policy1>;
+  using RealOut =
+      std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
+                         InputReal, OutputCoordinateType>;
+  static_assert(std::is_floating_point_v<RealOut>,
+                "OutputCoordinateType must be a floating-point type");
   auto ipts = ig.points();
 
   // 1. Classification → include/exclude labels
@@ -188,7 +194,7 @@ auto make_boolean(
   // 7. Build points: selected originals per mesh + selected created
   auto total_pts =
       map_data.total_original_points + map_data.total_created_points;
-  tf::points_buffer<RealType, 3> pts_buf;
+  tf::points_buffer<RealOut, 3> pts_buf;
   pts_buf.allocate(total_pts);
 
   {
@@ -307,8 +313,9 @@ auto make_boolean(
 }
 
 /// Convenience overload: make_boolean without index maps.
-template <typename LabelType, typename Index, typename Policy0,
-          typename Policy1, typename RealType, typename Int>
+template <typename LabelType, typename OutputCoordinateType = tf::none_t,
+          typename Index, typename Policy0, typename Policy1,
+          typename RealType, typename Int>
 auto make_boolean(
     const tf::polygons<Policy0> &polygons0,
     const tf::polygons<Policy1> &polygons1,
@@ -317,9 +324,9 @@ auto make_boolean(
     const tf::exact::vertex_converter<Int, RealType, 3> &converter,
     std::array<tf::arrangement_class, 2> classes,
     const tf::boolean_config &config, tf::return_index_map_t) {
-  return make_boolean<LabelType>(polygons0, polygons1, ig, fc, cg,
-                                        converter, classes, config,
-                                        std::true_type{});
+  return make_boolean<LabelType, OutputCoordinateType>(
+      polygons0, polygons1, ig, fc, cg, converter, classes, config,
+      std::true_type{});
 }
 
 } // namespace tf::cut

@@ -35,8 +35,9 @@
 
 namespace tf::cut {
 
-template <typename LabelType, typename Index, typename Policy0,
-          typename Policy1, typename RealType, typename Int>
+template <typename LabelType, typename OutputCoordinateType = tf::none_t,
+          typename Index, typename Policy0, typename Policy1,
+          typename RealType, typename Int>
 auto make_boolean_pair(const tf::polygons<Policy0> &polygons0,
                        const tf::polygons<Policy1> &polygons1,
                        const tf::intersection_graph<Index, Int> &ig,
@@ -45,6 +46,12 @@ auto make_boolean_pair(const tf::polygons<Policy0> &polygons0,
                        const tf::exact::vertex_converter<Int, RealType, 3> &converter,
                        std::array<tf::arrangement_class, 2> classes,
                        const tf::boolean_config &config) {
+  using InputReal = tf::coordinate_type<Policy0, Policy1>;
+  using RealOut =
+      std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
+                         InputReal, OutputCoordinateType>;
+  static_assert(std::is_floating_point_v<RealOut>,
+                "OutputCoordinateType must be a floating-point type");
   auto ipts = ig.points();
 
   auto cls_labels = tf::cut::make_classification_labels<LabelType>(
@@ -157,7 +164,7 @@ auto make_boolean_pair(const tf::polygons<Policy0> &polygons0,
 
     auto n_orig = static_cast<Index>(map_data.original_ids[tag].size());
     auto n_created = map_data.created_counts[tag];
-    tf::points_buffer<RealType, 3> pts_buf;
+    tf::points_buffer<RealOut, 3> pts_buf;
     pts_buf.allocate(n_orig + n_created);
 
     auto frame = tf::frame_of(polygons);

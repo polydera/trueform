@@ -75,6 +75,10 @@ public:
       for (const auto &[desc, loop, edges] : range) {
         if (desc.tag == Index(-1))
           continue;
+        // Skip base loops with fewer than 3 distinct vertices: nothing can
+        // be triangulated and emitting them would yield degenerate faces.
+        if (loop.size() < 3)
+          continue;
         auto get_point = [&, &desc =
                                  desc](const vertex_t &v) -> tf::point<Int, 3> {
           if (v.source == intersect::graph::vertex_source::created)

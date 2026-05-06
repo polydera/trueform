@@ -23,12 +23,15 @@
 #include "../spatial/aabb_from.hpp"
 #include "../spatial/policy/tree.hpp"
 #include "./int32.hpp"
+#include "./pt_converter_identity.hpp"
 #include <cmath>
 #include <limits>
+#include <type_traits>
 
 namespace tf::exact {
 
-template <typename IntT, typename RealT, std::size_t Dims> struct pt_converter {
+template <typename IntT, typename RealT, std::size_t Dims>
+struct pt_converter_real {
   RealT scale;
   tf::point<RealT, Dims> offset;
 
@@ -50,11 +53,20 @@ template <typename IntT, typename RealT, std::size_t Dims> struct pt_converter {
   }
 };
 
+template <typename IntT, typename RealT, std::size_t Dims>
+struct pt_converter
+    : std::conditional_t<std::is_integral_v<RealT>,
+                         pt_converter_identity<IntT, RealT, Dims>,
+                         pt_converter_real<IntT, RealT, Dims>> {};
+
 template <typename IntT = int32, typename RealT = tf::none_t, std::size_t Dims,
           typename Policy>
 auto make_pt_converter(const tf::aabb_like<Dims, Policy> &aabb) {
   if constexpr (std::is_same_v<RealT, tf::none_t>) {
     return make_pt_converter<IntT, tf::coordinate_type<Policy>>(aabb);
+  } else if constexpr (std::is_integral_v<RealT>) {
+    (void)aabb;
+    return pt_converter<IntT, RealT, Dims>{};
   } else {
     auto center = aabb.center();
     auto diag = aabb.diagonal();
@@ -69,7 +81,7 @@ auto make_pt_converter(const tf::aabb_like<Dims, Policy> &aabb) {
         static_cast<RealT>(std::numeric_limits<IntT>::max());
     auto scale = max_extent > 0 ? cRangeIntMax / max_extent : RealT(1);
 
-    return pt_converter<IntT, RealT, Dims>{scale, center};
+    return pt_converter<IntT, RealT, Dims>{{scale, center}};
   }
 }
 

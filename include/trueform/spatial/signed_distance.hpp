@@ -58,7 +58,7 @@ auto signed_distance(const tf::polygons<Policy0> &polygons,
     return tf::core::make_polygons(x.faces(),
                                    x.points().template as<double>());
   });
-  tf::point<double, 3> point = _point;;
+  tf::point<double, 3> point = _point;
 
   auto proj = tf::neighbor_search(dpolygons, point);
   if (!proj)

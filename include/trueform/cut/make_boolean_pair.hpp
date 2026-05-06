@@ -13,6 +13,7 @@
 #pragma once
 #include "../core/algorithm/parallel_copy.hpp"
 #include "../core/curves_buffer.hpp"
+#include "../exact/resolve_int_type.hpp"
 #include "../topology/connect_edges_to_paths.hpp"
 #include "./boolean_config.hpp"
 #include "./boolean_op.hpp"
@@ -40,7 +41,9 @@ namespace tf {
 /// tf::polygons_buffer).
 ///
 /// @see tf::make_boolean for combined boolean results.
-template <typename Int = tf::exact::int32, typename Policy0, typename Policy1>
+template <typename Int = tf::none_t,
+          typename OutputCoordinateType = tf::none_t, typename Policy0,
+          typename Policy1>
 auto make_boolean_pair(const tf::polygons<Policy0> &_polygons0,
                        const tf::polygons<Policy1> &_polygons1,
                        tf::boolean_op op, tf::boolean_config config = {}) {
@@ -49,12 +52,14 @@ auto make_boolean_pair(const tf::polygons<Policy0> &_polygons0,
         using Index =
             std::common_type_t<typename std::decay_t<decltype(p0)>::index_type,
                                typename std::decay_t<decltype(p1)>::index_type>;
-        using RealType = tf::coordinate_type<std::decay_t<decltype(p0)>,
-                                             std::decay_t<decltype(p1)>>;
+        using InputReal =
+            tf::coordinate_type<std::decay_t<decltype(p0)>,
+                                std::decay_t<decltype(p1)>>;
+        using ResolvedInt = tf::exact::resolve_int_type<Int, InputReal>;
         auto [ibp, ig, fc, cg] =
-            cut::dispatch::build_exact_pipeline<Index, RealType, Int>(
+            cut::dispatch::build_exact_pipeline<Index, double, ResolvedInt>(
                 p0, p1, tf::intersect_mode::primitives);
-        return tf::cut::make_boolean_pair<int>(
+        return tf::cut::make_boolean_pair<int, OutputCoordinateType>(
             p0, p1, ig, fc, cg, ibp.converter(),
             tf::cut::make_boolean_op_spec(op), config);
       });
@@ -63,7 +68,9 @@ auto make_boolean_pair(const tf::polygons<Policy0> &_polygons0,
 /// @ingroup cut_boolean
 /// @brief Perform boolean operations returning both halves with curve output.
 /// @overload
-template <typename Int = tf::exact::int32, typename Policy0, typename Policy1>
+template <typename Int = tf::none_t,
+          typename OutputCoordinateType = tf::none_t, typename Policy0,
+          typename Policy1>
 auto make_boolean_pair(const tf::polygons<Policy0> &_polygons0,
                        const tf::polygons<Policy1> &_polygons1,
                        tf::boolean_op op, tf::return_curves_t,
@@ -73,13 +80,18 @@ auto make_boolean_pair(const tf::polygons<Policy0> &_polygons0,
         using Index =
             std::common_type_t<typename std::decay_t<decltype(p0)>::index_type,
                                typename std::decay_t<decltype(p1)>::index_type>;
-        using RealType = tf::coordinate_type<std::decay_t<decltype(p0)>,
-                                             std::decay_t<decltype(p1)>>;
+        using InputReal =
+            tf::coordinate_type<std::decay_t<decltype(p0)>,
+                                std::decay_t<decltype(p1)>>;
+        using ResolvedInt = tf::exact::resolve_int_type<Int, InputReal>;
+        using RealOut =
+            std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
+                               InputReal, OutputCoordinateType>;
         auto [ibp, ig, fc, cg] =
-            cut::dispatch::build_exact_pipeline<Index, RealType, Int>(
+            cut::dispatch::build_exact_pipeline<Index, double, ResolvedInt>(
                 p0, p1, tf::intersect_mode::primitives);
         auto [left, right, fl_left, fl_right] =
-            tf::cut::make_boolean_pair<int>(
+            tf::cut::make_boolean_pair<int, OutputCoordinateType>(
                 p0, p1, ig, fc, cg, ibp.converter(),
                 tf::cut::make_boolean_op_spec(op), config);
 
@@ -87,7 +99,7 @@ auto make_boolean_pair(const tf::polygons<Policy0> &_polygons0,
             tf::connect_edges_to_paths(tf::make_edges(cg.intersection_edges()));
         auto &conv = ibp.converter();
         auto ipts = ig.points();
-        tf::curves_buffer<Index, RealType, 3> cb;
+        tf::curves_buffer<Index, RealOut, 3> cb;
         cb.paths_buffer() = std::move(paths);
         cb.points_buffer().allocate(ipts.size());
         tf::parallel_copy(

@@ -28,12 +28,19 @@
 
 namespace tf::cut {
 
-template <typename Index, typename Policy, typename RealType, typename Int>
+template <typename OutputCoordinateType = tf::none_t, typename Index,
+          typename Policy, typename RealType, typename Int>
 auto make_polygon_arrangements(
     const tf::polygons<Policy> &polygons,
     const tf::intersection_graph<Index, Int> &ig,
     const tf::face_cuts<Index, Int> &fc,
     const tf::exact::vertex_converter<Int, RealType, 3> &converter) {
+  using InputReal = tf::coordinate_type<Policy>;
+  using RealOut =
+      std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
+                         InputReal, OutputCoordinateType>;
+  static_assert(std::is_floating_point_v<RealOut>,
+                "OutputCoordinateType must be a floating-point type");
   auto ipts = ig.points();
   auto map_data = tf::cut::make_embed_map_data(fc, polygons, Index(0));
 
@@ -82,7 +89,7 @@ auto make_polygon_arrangements(
       std::make_pair(tf::make_range(triangles), tf::direction::forward));
 
   auto n_created = static_cast<Index>(ipts.size());
-  tf::points_buffer<RealType, 3> pts_buf;
+  tf::points_buffer<RealOut, 3> pts_buf;
   pts_buf.allocate(map_data.n_original_points + n_created);
 
   auto frame = tf::frame_of(polygons);

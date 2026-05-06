@@ -67,9 +67,10 @@ public:
     return tf::make_range(_sub_edges.data_buffer());
   }
 
-  template <typename RealType, typename Policy>
-  auto build(const tf::intersections_within_segments<Index, RealType, Dims> &si,
-             const tf::segments<Policy> &segments) {
+  template <typename RealType, typename SiInt, typename Policy>
+  auto build(
+      const tf::intersections_within_segments<Index, RealType, Dims, SiInt> &si,
+      const tf::segments<Policy> &segments) {
     auto groups = si.intersections();
     auto seg_edges = segments.edges();
     auto seg_points = segments.points();

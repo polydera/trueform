@@ -16,6 +16,7 @@
 #include "../cut/cut_graph.hpp"
 #include "../cut/dispatch/self_boolean.hpp"
 #include "../cut/face_cuts.hpp"
+#include "../exact/resolve_int_type.hpp"
 #include "../topology/connect_edges_to_paths.hpp"
 #include "./graph/intersection_graph.hpp"
 #include "./intersect_mode.hpp"
@@ -30,19 +31,20 @@ auto self_intersection_curves(const tf::polygons<Policy> &p,
                               tf::intersect_mode mode) {
   using Index = std::decay_t<decltype(p.faces()[0][0])>;
   using RealType = tf::coordinate_type<Policy>;
+  using ResolvedInt = tf::exact::resolve_int_type<Int, RealType>;
 
-  tf::intersections_within_polygons<Index, RealType, Int> iwp;
+  tf::intersections_within_polygons<Index, RealType, ResolvedInt> iwp;
   iwp.build(p, mode);
 
   auto &conv = iwp.converter();
   auto apply_to_face = [&](int, Index object, const auto &f) {
     f(p.faces()[object]);
   };
-  auto get_mesh_point = [&](int, Index id) -> tf::point<Int, 3> {
+  auto get_mesh_point = [&](int, Index id) -> tf::point<ResolvedInt, 3> {
     return conv.convert(p.points()[id]);
   };
 
-  tf::intersection_graph<Index, Int> ig;
+  tf::intersection_graph<Index, ResolvedInt> ig;
   ig.build(iwp, apply_to_face, get_mesh_point, mode);
 
   auto paths = [&]() {
@@ -53,7 +55,7 @@ auto self_intersection_curves(const tf::polygons<Policy> &p,
           });
       return tf::connect_edges_to_paths(tf::make_edges(edge_pairs));
     } else {
-      tf::face_cuts<Index, Int> fc;
+      tf::face_cuts<Index, ResolvedInt> fc;
       fc.build(ig, apply_to_face, get_mesh_point);
 
       tf::cut_graph<Index> cg;
@@ -88,7 +90,7 @@ auto self_intersection_curves(const tf::polygons<Policy> &p,
 /// @param mode The intersection mode (sos or primitives).
 /// @return A @ref tf::curves_buffer containing connected self-intersection
 /// curves.
-template <typename Int = tf::exact::int32, typename Policy>
+template <typename Int = tf::none_t, typename Policy>
 auto make_self_intersection_curves(
     const tf::polygons<Policy> &_polygons,
     tf::intersect_mode mode = tf::intersect_mode::sos |

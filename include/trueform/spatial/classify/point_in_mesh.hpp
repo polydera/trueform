@@ -57,8 +57,8 @@ auto classify_point(const tf::point_like<3, Policy0> &_point,
     real_type min_edge2 = std::numeric_limits<real_type>::max();
     auto curr = size - 1;
     for (decltype(curr) next = 0; next < size; curr = next++)
-      min_edge2 =
-          std::min(min_edge2, tf::distance2(polygon[curr], polygon[next]));
+      min_edge2 = std::min<real_type>(
+          min_edge2, tf::distance2(polygon[curr], polygon[next]));
     auto thresh = tf::epsilon2<real_type> * min_edge2;
     curr = size - 1;
     for (decltype(curr) next = 0; next < size; curr = next++) {
@@ -155,8 +155,8 @@ auto classify_point(const tf::point_like<3, Policy0> &_point,
     real_type min_edge2 = std::numeric_limits<real_type>::max();
     auto curr = size - 1;
     for (decltype(curr) next = 0; next < size; curr = next++)
-      min_edge2 =
-          std::min(min_edge2, tf::distance2(polygon[curr], polygon[next]));
+      min_edge2 = std::min<real_type>(
+          min_edge2, tf::distance2(polygon[curr], polygon[next]));
     auto thresh = tf::epsilon2<real_type> * min_edge2;
     curr = size - 1;
     for (decltype(curr) next = 0; next < size; curr = next++) {

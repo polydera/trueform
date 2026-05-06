@@ -12,7 +12,6 @@
  */
 #pragma once
 #include "../../core/none.hpp"
-#include "../../core/polygons.hpp"
 #include "../../core/small_vector.hpp"
 #include "../../core/views/mapped_range.hpp"
 #include "../../core/views/zip.hpp"

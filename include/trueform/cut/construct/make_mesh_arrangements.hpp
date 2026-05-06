@@ -31,11 +31,18 @@ namespace tf::cut {
 ///
 /// Takes the intersection graph, face cuts, and a range of polygon forms.
 /// Returns (mesh, tag_labels, face_labels, map_data).
-template <typename Index, typename FormsRange, typename RealType, typename Int>
+template <typename OutputCoordinateType = tf::none_t, typename Index,
+          typename FormsRange, typename RealType, typename Int>
 auto make_mesh_arrangements(
     const tf::intersection_graph<Index, Int> &ig,
     const tf::face_cuts<Index, Int> &fc, const FormsRange &forms,
     const tf::exact::vertex_converter<Int, RealType, 3> &converter) {
+  using InputReal = tf::coordinate_type<decltype(forms[0])>;
+  using RealOut =
+      std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
+                         InputReal, OutputCoordinateType>;
+  static_assert(std::is_floating_point_v<RealOut>,
+                "OutputCoordinateType must be a floating-point type");
   auto n_meshes = static_cast<Index>(forms.size());
   auto apply_to_polygons = [&](Index tag, const auto &f) { f(forms[tag]); };
 
@@ -99,7 +106,7 @@ auto make_mesh_arrangements(
   // 5. Build points (parallel per mesh + intersection points)
   auto total_pts =
       map_data.total_original_points + static_cast<Index>(ig.points().size());
-  tf::points_buffer<RealType, 3> pts_buf;
+  tf::points_buffer<RealOut, 3> pts_buf;
   pts_buf.allocate(total_pts);
 
   {
@@ -161,13 +168,19 @@ auto make_mesh_arrangements(
 }
 
 /// 2-mesh overload: different policy types.
-template <typename Index, typename Policy0, typename Policy1, typename RealType,
-          typename Int>
+template <typename OutputCoordinateType = tf::none_t, typename Index,
+          typename Policy0, typename Policy1, typename RealType, typename Int>
 auto make_mesh_arrangements(
     const tf::intersection_graph<Index, Int> &ig,
     const tf::face_cuts<Index, Int> &fc, const tf::polygons<Policy0> &form0,
     const tf::polygons<Policy1> &form1,
     const tf::exact::vertex_converter<Int, RealType, 3> &converter) {
+  using InputReal = tf::coordinate_type<Policy0, Policy1>;
+  using RealOut =
+      std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
+                         InputReal, OutputCoordinateType>;
+  static_assert(std::is_floating_point_v<RealOut>,
+                "OutputCoordinateType must be a floating-point type");
   auto apply_to_polygons = [&](Index tag, const auto &f) {
     if (tag == 0)
       f(form0);
@@ -249,7 +262,7 @@ auto make_mesh_arrangements(
 
   auto total_pts =
       map_data.total_original_points + static_cast<Index>(ig.points().size());
-  tf::points_buffer<RealType, 3> pts_buf;
+  tf::points_buffer<RealOut, 3> pts_buf;
   pts_buf.allocate(total_pts);
 
   {
