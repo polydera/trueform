@@ -32,10 +32,10 @@ namespace tf::remesh {
 /// checks to every surviving face. Template bools select checks
 /// at compile time — disabled checks have zero cost.
 ///
-/// NormalFlip uses a two-phase accumulated approach (MeshLib-style):
-/// flipped faces are collected, then only rejected if their new normal
-/// opposes the average new-surface normal. This is more permissive
-/// than a strict per-face flip test.
+/// NormalFlip uses a two-phase accumulated approach: flipped faces
+/// are collected, then only rejected if their new normal opposes the
+/// average new-surface normal. This is more permissive than a strict
+/// per-face flip test.
 ///
 /// @tparam NormalFlip  Reject if a flipped face opposes the average normal.
 /// @tparam AspectRatio Reject if worst aspect ratio increases.
@@ -247,7 +247,7 @@ auto is_collapse_allowed(const tf::half_edges<Index> &he,
 /// max edge length.
 ///
 /// @tparam AspectRatioT Pass a Real value to enable the aspect ratio
-///                      check (used as floor for max old AR, MeshLib-style).
+///                      check (used as floor for max old AR).
 ///                      Default tf::none disables the check.
 /// @tparam EdgeLengthT  Pass a Real value to enable the edge length
 ///                      check (used as floor for max old edge²).
@@ -345,7 +345,9 @@ auto is_collapse_allowed_dihedral(
     return true;
 
   constexpr Real max_area_ratio = Real(1e8);
-  constexpr Real cos2_1deg = Real(0.99969541);
+  // Reject when adjacent new-face normals are within 10° of antiparallel
+  // (i.e. surface dihedral < 10° — the near-fold zone). cos²(10°) ≈ 0.9698.
+  constexpr Real cos2_fold_tol = Real(0.9698463);
 
   Real max_old_ar = Real(0);
   if constexpr (AspectRatio)
@@ -369,7 +371,7 @@ auto is_collapse_allowed_dihedral(
       return false;
 
     Real d = tf::dot(n1, n2);
-    if (d <= Real(0) && d * d > cos2_1deg * l1 * l2)
+    if (d <= Real(0) && d * d > cos2_fold_tol * l1 * l2)
       return false;
 
     if constexpr (AspectRatio) {
