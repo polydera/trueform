@@ -54,6 +54,13 @@ private:
   };
 
 public:
+  auto clear() {
+    _points.clear();
+    _point_remap.clear();
+    _origin_edges.clear();
+    _sub_edges.clear();
+  }
+
   auto points() const { return tf::make_range(_points); }
   auto point_remap() const { return tf::make_range(_point_remap); }
   auto origin_edges() const { return tf::make_range(_origin_edges); }
@@ -71,6 +78,8 @@ public:
   auto build(
       const tf::intersections_within_segments<Index, RealType, Dims, SiInt> &si,
       const tf::segments<Policy> &segments) {
+    clear();
+
     auto groups = si.intersections();
     auto seg_edges = segments.edges();
     auto seg_points = segments.points();
