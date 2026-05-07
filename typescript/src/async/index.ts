@@ -46,6 +46,7 @@ export {
   labelConnectedComponents, connectedComponents,
   consistentlyOriented,
   computeFaceMembership, computeManifoldEdgeLink, computeFaceLink, computeVertexLink,
+  cdt,
 } from "../topology/async";
 export { cleaned } from "../clean/async";
 export {

@@ -39,7 +39,9 @@ namespace tf {
 /// @param _polygons1 The second mesh @ref tf::polygons (or tagged form).
 /// @param mode The intersection mode (sos or primitives).
 /// @return A @ref tf::curves_buffer containing connected intersection curves.
-template <typename Int = tf::none_t, typename Policy0, typename Policy1>
+template <typename Int = tf::none_t,
+          typename OutputCoordinateType = tf::none_t, typename Policy0,
+          typename Policy1>
 auto make_intersection_curves(
     const tf::polygons<Policy0> &_polygons0,
     const tf::polygons<Policy1> &_polygons1,
@@ -49,11 +51,16 @@ auto make_intersection_curves(
         using Index =
             std::common_type_t<typename std::decay_t<decltype(p0)>::index_type,
                                typename std::decay_t<decltype(p1)>::index_type>;
-        using RealType = tf::coordinate_type<std::decay_t<decltype(p0)>,
-                                             std::decay_t<decltype(p1)>>;
-        using ResolvedInt = tf::exact::resolve_int_type<Int, RealType>;
+        using InputReal = tf::coordinate_type<std::decay_t<decltype(p0)>,
+                                              std::decay_t<decltype(p1)>>;
+        using ResolvedInt = tf::exact::resolve_int_type<Int, InputReal>;
+        using RealOut =
+            std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
+                               InputReal, OutputCoordinateType>;
+        static_assert(std::is_floating_point_v<RealOut>,
+                      "OutputCoordinateType must be a floating-point type");
 
-        tf::intersections_between_polygons<Index, RealType, ResolvedInt> ibp;
+        tf::intersections_between_polygons<Index, double, ResolvedInt> ibp;
         ibp.build(p0, p1, mode);
 
         auto &conv = ibp.converter();
@@ -96,7 +103,7 @@ auto make_intersection_curves(
         }();
 
         auto ipts = ig.points();
-        tf::curves_buffer<Index, RealType, 3> cb;
+        tf::curves_buffer<Index, RealOut, 3> cb;
         cb.paths_buffer() = std::move(paths);
         cb.points_buffer().allocate(ipts.size());
         tf::parallel_copy(
@@ -109,13 +116,18 @@ auto make_intersection_curves(
 
 namespace intersect {
 
-template <typename Int, typename FormsRange>
+template <typename Int, typename OutputCoordinateType, typename FormsRange>
 auto intersection_curves_n(const FormsRange &forms, tf::intersect_mode mode) {
   using Index = std::decay_t<decltype(forms[0].faces()[0][0])>;
-  using RealType = tf::coordinate_type<decltype(forms[0])>;
-  using ResolvedInt = tf::exact::resolve_int_type<Int, RealType>;
+  using InputReal = tf::coordinate_type<decltype(forms[0])>;
+  using ResolvedInt = tf::exact::resolve_int_type<Int, InputReal>;
+  using RealOut =
+      std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
+                         InputReal, OutputCoordinateType>;
+  static_assert(std::is_floating_point_v<RealOut>,
+                "OutputCoordinateType must be a floating-point type");
 
-  tf::intersections_between_polygons<Index, RealType, ResolvedInt> ibp;
+  tf::intersections_between_polygons<Index, double, ResolvedInt> ibp;
   ibp.build(forms, mode);
 
   auto &conv = ibp.converter();
@@ -150,7 +162,7 @@ auto intersection_curves_n(const FormsRange &forms, tf::intersect_mode mode) {
   }();
 
   auto ipts = ig.points();
-  tf::curves_buffer<Index, RealType, 3> cb;
+  tf::curves_buffer<Index, RealOut, 3> cb;
   cb.paths_buffer() = std::move(paths);
   cb.points_buffer().allocate(ipts.size());
   tf::parallel_copy(
@@ -172,13 +184,15 @@ auto intersection_curves_n(const FormsRange &forms, tf::intersect_mode mode) {
 /// @param _forms The input meshes.
 /// @param mode The intersection mode (sos or primitives).
 /// @return A @ref tf::curves_buffer containing connected intersection curves.
-template <typename Int = tf::none_t, typename Range>
+template <typename Int = tf::none_t,
+          typename OutputCoordinateType = tf::none_t, typename Range>
 auto make_intersection_curves(
     const Range &_forms,
     tf::intersect_mode mode = tf::intersect_mode::sos |
                               tf::intersect_mode::resolve_crossing_contours) {
   return cut::dispatch::arrangement(_forms, [mode](const auto &forms) {
-    return intersect::intersection_curves_n<Int>(forms, mode);
+    return intersect::intersection_curves_n<Int, OutputCoordinateType>(forms,
+                                                                       mode);
   });
 }
 

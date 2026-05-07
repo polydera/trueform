@@ -12,9 +12,15 @@
  */
 
 import { native } from "../native";
-import { NDArray, type NDArrayInt32 } from "../ndarray/NDArray";
+import {
+  NDArray,
+  type NDArrayInt32,
+  type NDArrayFloat32,
+  type NDArrayBool,
+} from "../ndarray/NDArray";
 import { OffsetBlockedBuffer } from "../ndarray/OffsetBlockedBuffer";
 import { Mesh } from "../form/Mesh";
+import { IndexMap } from "../core/IndexMap";
 
 // ============ Boolean queries ============
 
@@ -119,4 +125,97 @@ export function connectedComponents(m: Mesh, type: ComponentType): ConnectedComp
 /** Return a new mesh with consistently oriented faces (via manifold edge voting). */
 export function consistentlyOriented(m: Mesh): Mesh {
   return new Mesh(native().consistently_oriented(m._handle));
+}
+
+// ============ Constrained Delaunay triangulation ============
+
+/** 2D triangulation: triangle indices + vertex coordinates. */
+export interface CdtResult {
+  /** [K, 3] int32 triangle indices into `points`. */
+  faces: NDArrayInt32;
+  /** [M, 2] float32 vertex coordinates. */
+  points: NDArrayFloat32;
+}
+
+/** 2D triangulation + the input-to-output point index map. */
+export interface CdtResultWithMap extends CdtResult {
+  /** Maps input-point indices (size = N) to output-point indices.
+   *  `f[i] === f.size` (sentinel) means input point `i` fell on a
+   *  triangle dropped by the parity filter; `keptIds[k] === f.size`
+   *  marks output slots that are synthetic intersection vertices
+   *  created during constraint arrangement. */
+  indexMap: IndexMap;
+}
+
+/** Optional second-argument shape for `cdt`. */
+export interface CdtOptions {
+  /** [M, 2] int32 array of constraint edges. */
+  edges?: NDArrayInt32;
+  /** [M] bool array marking which constraints are region boundaries
+   *  (default: all true). Non-boundary constrained edges are preserved
+   *  but do not flip the parity used by the interior filter — useful
+   *  for feature lines or polygon diagonals that should appear as
+   *  edges without splitting the interior. */
+  edgeMask?: NDArrayBool;
+}
+
+/** Constrained Delaunay triangulation (interior triangles only). */
+export function cdt(
+  points: NDArrayFloat32,
+  options?: CdtOptions,
+): CdtResult;
+
+/** Constrained Delaunay triangulation, additionally returning the
+ *  input-point-to-output-point index map. */
+export function cdt(
+  points: NDArrayFloat32,
+  options: CdtOptions & { returnIndexMap: true },
+): CdtResultWithMap;
+
+export function cdt(
+  points: NDArrayFloat32,
+  options: CdtOptions & { returnIndexMap?: boolean } = {},
+): CdtResult | CdtResultWithMap {
+  const wantMap = options.returnIndexMap === true;
+  const edges = options.edges;
+  const mask = options.edgeMask;
+
+  const wrap = (raw: any): CdtResult => ({
+    faces: new NDArray(raw.faces, "int32"),
+    points: new NDArray(raw.points, "float32"),
+  });
+  const wrapWithMap = (raw: any): CdtResultWithMap => ({
+    faces: new NDArray(raw.faces, "int32"),
+    points: new NDArray(raw.points, "float32"),
+    indexMap: new IndexMap(raw.indexMap),
+  });
+
+  if (!edges) {
+    if (wantMap) {
+      return wrapWithMap(native().make_cdt_with_maps(points._handle));
+    }
+    return wrap(native().make_cdt(points._handle));
+  }
+
+  if (mask) {
+    if (wantMap) {
+      return wrapWithMap(
+        native().make_cdt_edges_masked_with_maps(
+          points._handle, edges._handle, mask._handle,
+        ),
+      );
+    }
+    return wrap(
+      native().make_cdt_edges_masked(
+        points._handle, edges._handle, mask._handle,
+      ),
+    );
+  }
+
+  if (wantMap) {
+    return wrapWithMap(
+      native().make_cdt_edges_with_maps(points._handle, edges._handle),
+    );
+  }
+  return wrap(native().make_cdt_edges(points._handle, edges._handle));
 }

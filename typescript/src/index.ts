@@ -131,8 +131,12 @@ export {
   boundaryPaths, kRings, neighborhoods, connectEdgesToPaths,
   labelConnectedComponents, connectedComponents,
   consistentlyOriented,
+  cdt,
 } from "./topology/sync";
-export type { ConnectedComponentsResult, ComponentType } from "./topology/sync";
+export type {
+  ConnectedComponentsResult, ComponentType,
+  CdtResult, CdtResultWithMap, CdtOptions,
+} from "./topology/sync";
 
 // Clean
 export { cleaned } from "./clean/sync";

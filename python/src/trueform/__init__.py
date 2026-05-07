@@ -24,7 +24,7 @@ from ._intersect import isocontours, intersection_curves, self_intersection_curv
 from ._cut import isobands, boolean_union, boolean_intersection, boolean_difference, embedded_self_intersection_curves, embedded_intersection_curves, mesh_arrangements, polygon_arrangements
 from ._clean import cleaned
 from ._reindex import reindex_by_ids, reindex_by_mask, reindex_by_ids_on_points, reindex_by_mask_on_points, split_into_components, concatenated
-from ._topology import label_connected_components, cell_membership, manifold_edge_link, face_link, vertex_link_edges, vertex_link_faces, k_rings, neighborhoods, boundary_edges, boundary_paths, boundary_curves, non_manifold_edges, orient_faces_consistently, connect_edges_to_paths, is_closed, is_open, is_manifold, is_non_manifold
+from ._topology import cdt, label_connected_components, cell_membership, manifold_edge_link, face_link, vertex_link_edges, vertex_link_faces, k_rings, neighborhoods, boundary_edges, boundary_paths, boundary_curves, non_manifold_edges, orient_faces_consistently, connect_edges_to_paths, is_closed, is_open, is_manifold, is_non_manifold
 from ._spatial import neighbor_search, gather_intersecting_ids, gather_ids_within_distance
 from ._core.transformed import transformed
 from ._geometry import fit_rigid_alignment, fit_obb_alignment, fit_knn_alignment, fit_icp_alignment, chamfer_error, triangulated
@@ -69,6 +69,7 @@ __all__ = [
     'reindex_by_mask_on_points',
     'split_into_components',
     'concatenated',
+    'cdt',
     'label_connected_components',
     'cell_membership',
     'manifold_edge_link',

@@ -23,6 +23,7 @@ await import("./test_point_cloud.mjs");
 await import("./test_registration.mjs");
 await import("./test_remesh.mjs");
 await import("./test_topology.mjs");
+await import("./test_cdt.mjs");
 await import("./test_reindex.mjs");
 await import("./test_transformations.mjs");
 await import("./test_clean.mjs");

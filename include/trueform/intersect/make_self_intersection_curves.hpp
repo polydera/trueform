@@ -26,14 +26,19 @@ namespace tf {
 
 namespace intersect {
 
-template <typename Int, typename Policy>
+template <typename Int, typename OutputCoordinateType, typename Policy>
 auto self_intersection_curves(const tf::polygons<Policy> &p,
                               tf::intersect_mode mode) {
   using Index = std::decay_t<decltype(p.faces()[0][0])>;
-  using RealType = tf::coordinate_type<Policy>;
-  using ResolvedInt = tf::exact::resolve_int_type<Int, RealType>;
+  using InputReal = tf::coordinate_type<Policy>;
+  using ResolvedInt = tf::exact::resolve_int_type<Int, InputReal>;
+  using RealOut =
+      std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
+                         InputReal, OutputCoordinateType>;
+  static_assert(std::is_floating_point_v<RealOut>,
+                "OutputCoordinateType must be a floating-point type");
 
-  tf::intersections_within_polygons<Index, RealType, ResolvedInt> iwp;
+  tf::intersections_within_polygons<Index, double, ResolvedInt> iwp;
   iwp.build(p, mode);
 
   auto &conv = iwp.converter();
@@ -67,7 +72,7 @@ auto self_intersection_curves(const tf::polygons<Policy> &p,
   }();
 
   auto ipts = ig.points();
-  tf::curves_buffer<Index, RealType, 3> cb;
+  tf::curves_buffer<Index, RealOut, 3> cb;
   cb.paths_buffer() = std::move(paths);
   cb.points_buffer().allocate(ipts.size());
   tf::parallel_copy(
@@ -90,13 +95,15 @@ auto self_intersection_curves(const tf::polygons<Policy> &p,
 /// @param mode The intersection mode (sos or primitives).
 /// @return A @ref tf::curves_buffer containing connected self-intersection
 /// curves.
-template <typename Int = tf::none_t, typename Policy>
+template <typename Int = tf::none_t,
+          typename OutputCoordinateType = tf::none_t, typename Policy>
 auto make_self_intersection_curves(
     const tf::polygons<Policy> &_polygons,
     tf::intersect_mode mode = tf::intersect_mode::sos |
                               tf::intersect_mode::resolve_contours) {
   return cut::dispatch::self_boolean(_polygons, [mode](const auto &p) {
-    return intersect::self_intersection_curves<Int>(p, mode);
+    return intersect::self_intersection_curves<Int, OutputCoordinateType>(
+        p, mode);
   });
 }
 

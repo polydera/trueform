@@ -21,6 +21,7 @@ auto register_topology(nanobind::module_ &m) -> void;
 
 // Forward declarations for topology module registration (internal)
 auto register_topology_label_connected_components(nanobind::module_ &m) -> void;
+auto register_topology_make_cdt(nanobind::module_ &m) -> void;
 auto register_topology_compute_cell_membership(nanobind::module_ &m) -> void;
 auto register_topology_compute_manifold_edge_link(nanobind::module_ &m) -> void;
 auto register_topology_compute_face_link(nanobind::module_ &m) -> void;

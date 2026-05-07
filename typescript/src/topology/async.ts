@@ -12,10 +12,22 @@
  */
 
 import { native, dispatcher } from "../native";
-import { NDArray, type NDArrayInt32 } from "../ndarray/NDArray";
+import {
+  NDArray,
+  type NDArrayInt32,
+  type NDArrayFloat32,
+  type NDArrayBool,
+} from "../ndarray/NDArray";
 import { OffsetBlockedBuffer } from "../ndarray/OffsetBlockedBuffer";
 import { Mesh } from "../form/Mesh";
-import type { ConnectedComponentsResult, ComponentType } from "./sync";
+import { IndexMap } from "../core/IndexMap";
+import type {
+  ConnectedComponentsResult,
+  ComponentType,
+  CdtResult,
+  CdtResultWithMap,
+  CdtOptions,
+} from "./sync";
 
 function wrapComponentsResult(raw: any): ConnectedComponentsResult {
   return { labels: new NDArray(raw.labels, "int32"), nComponents: raw.nComponents };
@@ -151,4 +163,80 @@ export async function computeFaceLink(m: Mesh): Promise<OffsetBlockedBuffer> {
 export async function computeVertexLink(m: Mesh): Promise<OffsetBlockedBuffer> {
   await dispatcher().run(() => native().dispatch_ensure(m._handle, 6));
   return m.vertexLink;
+}
+
+// ============ Constrained Delaunay triangulation ============
+
+/** Constrained Delaunay triangulation, off the main thread. */
+export async function cdt(
+  points: NDArrayFloat32,
+  options?: CdtOptions,
+): Promise<CdtResult>;
+
+/** Constrained Delaunay triangulation + index map, off the main thread. */
+export async function cdt(
+  points: NDArrayFloat32,
+  options: CdtOptions & { returnIndexMap: true },
+): Promise<CdtResultWithMap>;
+
+export async function cdt(
+  points: NDArrayFloat32,
+  options: CdtOptions & { returnIndexMap?: boolean } = {},
+): Promise<CdtResult | CdtResultWithMap> {
+  const wantMap = options.returnIndexMap === true;
+  const edges = options.edges;
+  const mask = options.edgeMask;
+
+  const wrap = (raw: any): CdtResult => ({
+    faces: new NDArray(raw.faces, "int32"),
+    points: new NDArray(raw.points, "float32"),
+  });
+  const wrapWithMap = (raw: any): CdtResultWithMap => ({
+    faces: new NDArray(raw.faces, "int32"),
+    points: new NDArray(raw.points, "float32"),
+    indexMap: new IndexMap(raw.indexMap),
+  });
+
+  if (!edges) {
+    if (wantMap) {
+      return dispatcher().run(
+        () => native().dispatch_make_cdt_with_maps(points._handle),
+        wrapWithMap,
+      );
+    }
+    return dispatcher().run(
+      () => native().dispatch_make_cdt(points._handle),
+      wrap,
+    );
+  }
+
+  if (mask) {
+    if (wantMap) {
+      return dispatcher().run(
+        () => native().dispatch_make_cdt_edges_masked_with_maps(
+          points._handle, edges._handle, mask._handle,
+        ),
+        wrapWithMap,
+      );
+    }
+    return dispatcher().run(
+      () => native().dispatch_make_cdt_edges_masked(
+        points._handle, edges._handle, mask._handle,
+      ),
+      wrap,
+    );
+  }
+
+  if (wantMap) {
+    return dispatcher().run(
+      () => native().dispatch_make_cdt_edges_with_maps(
+        points._handle, edges._handle,
+      ),
+      wrapWithMap,
+    );
+  }
+  return dispatcher().run(
+    () => native().dispatch_make_cdt_edges(points._handle, edges._handle),
+    wrap,
+  );
 }

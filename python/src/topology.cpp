@@ -21,6 +21,7 @@ auto register_topology(nanobind::module_ &m) -> void {
 
   // Register topology components to submodule
   register_topology_label_connected_components(topology_module);
+  register_topology_make_cdt(topology_module);
   register_topology_compute_cell_membership(topology_module);
   register_topology_compute_manifold_edge_link(topology_module);
   register_topology_compute_face_link(topology_module);

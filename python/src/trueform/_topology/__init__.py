@@ -7,6 +7,7 @@ Commercial licensing available via info@polydera.com.
 https://github.com/polydera/trueform
 """
 
+from .cdt import cdt
 from .label_connected_components import label_connected_components
 from .cell_membership import cell_membership
 from .manifold_edge_link import manifold_edge_link
@@ -24,6 +25,7 @@ from .is_closed import is_closed, is_open
 from .is_manifold import is_manifold, is_non_manifold
 
 __all__ = [
+    'cdt',
     'label_connected_components',
     'cell_membership',
     'manifold_edge_link',

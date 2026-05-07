@@ -55,6 +55,7 @@ add_executable(trueform_wasm
     cpp/src/clean/clean.cpp
     cpp/src/reindex/reindex.cpp
     cpp/src/topology/topology.cpp
+    cpp/src/topology/cdt.cpp
     cpp/src/remesh/remesh.cpp
 )
 target_include_directories(trueform_wasm PRIVATE

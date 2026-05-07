@@ -11,6 +11,7 @@ set(MODULE_TOPOLOGY_SOURCES
   ${CMAKE_CURRENT_LIST_DIR}/is_closed.cpp
   ${CMAKE_CURRENT_LIST_DIR}/is_manifold.cpp
   ${CMAKE_CURRENT_LIST_DIR}/label_connected_components.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/make_cdt.cpp
   ${CMAKE_CURRENT_LIST_DIR}/make_k_rings.cpp
   ${CMAKE_CURRENT_LIST_DIR}/make_neighborhoods.cpp
   ${CMAKE_CURRENT_LIST_DIR}/non_manifold_edges.cpp
