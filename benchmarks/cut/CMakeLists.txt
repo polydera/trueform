@@ -21,6 +21,13 @@ target_link_libraries(cut-boolean-igl-impl benchmark_igl_common igl_copyleft::cg
 add_executable(cut-boolean-igl boolean-igl.cpp)
 target_link_libraries(cut-boolean-igl cut-boolean-igl-impl)
 
+# Geogram boolean
+add_library(cut-boolean-geogram-impl OBJECT boolean-geogram-impl.cpp)
+target_link_libraries(cut-boolean-geogram-impl benchmark_geogram_common)
+
+add_executable(cut-boolean-geogram boolean-geogram.cpp)
+target_link_libraries(cut-boolean-geogram cut-boolean-geogram-impl)
+
 # TrueForm embedded self-intersection curves
 add_library(cut-embedded_self_intersection_curves-tf-impl OBJECT embedded_self_intersection_curves-tf-impl.cpp)
 target_link_libraries(cut-embedded_self_intersection_curves-tf-impl benchmark_common)

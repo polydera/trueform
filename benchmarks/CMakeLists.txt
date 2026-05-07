@@ -232,6 +232,29 @@ set(LIBIGL_WITH_OPENMP ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(libigl)
 message(STATUS "    libigl: Ready")
 
+# Geogram
+message(STATUS "  - Geogram v1.9.4")
+FetchContent_Declare(
+    geogram
+    GIT_REPOSITORY https://github.com/BrunoLevy/geogram.git
+    GIT_TAG        v1.9.4
+)
+set(GEOGRAM_LIB_ONLY      ON  CACHE BOOL "" FORCE)
+set(GEOGRAM_WITH_GRAPHICS OFF CACHE BOOL "" FORCE)
+set(GEOGRAM_WITH_LUA      OFF CACHE BOOL "" FORCE)
+set(GEOGRAM_WITH_HLBFGS   OFF CACHE BOOL "" FORCE)
+set(GEOGRAM_WITH_TETGEN   OFF CACHE BOOL "" FORCE)
+set(GEOGRAM_WITH_TRIANGLE OFF CACHE BOOL "" FORCE)
+set(GEOGRAM_WITH_EXPLORAGRAM OFF CACHE BOOL "" FORCE)
+set(GEOGRAM_WITH_TBB      ON  CACHE BOOL "" FORCE)
+
+FetchContent_GetProperties(geogram)
+if(NOT geogram_POPULATED)
+    FetchContent_Populate(geogram)
+    add_subdirectory(${geogram_SOURCE_DIR} ${geogram_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
+message(STATUS "    Geogram: Ready (FetchContent)")
+
 # VTK
 message(STATUS "  - VTK (optional)")
 find_package(VTK QUIET)
@@ -292,6 +315,9 @@ add_subdirectory(coal-common)
 message(STATUS "  - igl-common (libigl conversions)")
 add_subdirectory(igl-common)
 
+message(STATUS "  - geogram-common (Geogram conversions)")
+add_subdirectory(geogram-common)
+
 if(HAVE_VTK)
     message(STATUS "  - vtk-common (VTK conversions)")
     add_subdirectory(vtk-common)
@@ -334,6 +360,7 @@ set(ALL_BENCHMARK_IMPLS
     cut-boolean-tf-impl
     cut-boolean-cgal-impl
     cut-boolean-igl-impl
+    cut-boolean-geogram-impl
     cut-embedded_self_intersection_curves-tf-impl
     cut-embedded_self_intersection_curves-igl-impl
     cut-polygon_arrangements-tf-impl
@@ -450,6 +477,7 @@ set(BENCHMARK_TARGETS
     cut-boolean-tf
     cut-boolean-cgal
     cut-boolean-igl
+    cut-boolean-geogram
     cut-embedded_self_intersection_curves-tf
     cut-embedded_self_intersection_curves-igl
     cut-polygon_arrangements-tf
