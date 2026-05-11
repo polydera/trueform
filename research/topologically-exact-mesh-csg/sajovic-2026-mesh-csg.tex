@@ -1,0 +1,184 @@
+\documentclass[10pt,twocolumn]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+\usepackage[letterpaper,margin=1in,columnsep=0.3in]{geometry}
+\setlength{\parindent}{1em}
+\setlength{\parskip}{0pt}
+
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tikz}
+\usepackage{tikz-3dplot}
+\usetikzlibrary{calc}
+
+\definecolor{tfteal}{HTML}{00D5BE}
+\definecolor{tfrose}{HTML}{C8467A}
+\definecolor{tfink}{HTML}{1F2937}
+
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[hidelinks]{hyperref}
+\hypersetup{
+  pdftitle={Topologically exact predicates, local arrangements and graphs for mesh CSG},
+  pdfauthor={\v{Z}iga Sajovic},
+}
+
+\title{Topologically exact predicates, local arrangements\\
+       and graphs for mesh CSG}
+\author{%
+  \v{Z}iga Sajovic\\
+  \small Polydera\\
+  \small \texttt{ziga.sajovic@polydera.com}
+}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Mesh CSG underlies geomodeling, CAD, scientific simulation, and graphics. Pipelines are robust and recently interactive, but unconditional trust is impossible: CSG output crosses the floating-point boundary in both directions, and topology is the only invariant that survives. The honest goal is twofold: guarantee what can be guaranteed, mitigate what cannot.
+
+We present a pipeline that addresses both. Topologically exact predicates over a bounded integer kernel preserve five canonical intersection types (VV, VE, VF, EE, EF) without simulation of simplicity. The arrangement is two-stage and parallel: pairwise primitive intersections classified by these predicates, then independent per-face 2D arrangements coupled by face-pair triplet identity. Every stage is a graph problem on a graph we never explicitly construct; contracting and exploiting these implicit structures bounds work to the reduced graph and delivers interactive performance. A weighted-majority aggregation across the reduced graph --- per component for orientation, per domain for inside/outside --- mitigates noisy input. Non-manifold flaps, T-junctions, and isolated edges flow through first-class.
+
+The implementation delivers robust mesh CSG at interactive speeds in C\texttt{++}, Python, and TypeScript.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+Mesh CSG --- arrangements of triangulated surfaces and the booleans that select among them --- underlies geomodeling, CAD, scientific simulation, and graphics. Three decades of work have produced robust pipelines. Recent ones are interactive. None is unconditionally trustworthy, and none can be. CSG is never the entire pipeline. Its input arrives from upstream operations; its output flows downstream. The floating-point boundary reintroduces inconsistency in both directions. The honest goal is twofold. Guarantee what can be guaranteed. Mitigate what cannot, by exploiting the consistency constraints topology imposes on the noise. Mesh CSG hides three distinct constraints.
+
+\subsection{Three constraints}
+\label{sec:hardness}
+
+\textbf{Geometric exactness} is the established layer: predicates must return the exact mathematical sign of a polynomial, not a floating-point answer that depends on the order of summation \cite{Levy2025}. Several arithmetic kernels solve this --- arithmetic expansions \cite{Shewchuk1997}, indirect predicates \cite{Attene2020}, multi-precision floats \cite{Levy2025}, bounded-width integer planes \cite{Trettner2022}. Trueform uses a fixed integer ladder.
+
+\textbf{The illusion of closed systems.} An arrangement or boolean is never the whole pipeline. Mesh CSG is a step in something larger --- a model on its way to finite-element analysis, rendering, mesh editing, or export. Recent exact systems are exact within their own representation, but the user has to leave that representation. Materialising the result back to IEEE double can introduce new intersections that were not in the exact result \cite{Levy2025}. EMBER acknowledges this in its own limitations, noting that iterated CSG within its representation is exact, but interfacing the floating-point world requires snap rounding which may re-introduce tiny self-intersections \cite{Trettner2022}. The same boundary works in reverse: inputs come from upstream tools that have already crossed it, so a CSG operation never receives truly clean input either. Closed systems are an illusion in any pipeline larger than CSG itself. The only invariant that survives this boundary is topology.
+
+\textbf{Topological exactness} means preserving the topology the input encodes. Locally, this is the contacts the user deliberately specified --- coincident vertices, on-edge points, coplanar faces. Globally, it is the structure those contacts implicitly form: manifold-edge connected components, chains of non-manifold edges, paths along which a radial sort must be consistent. Treating these as first-class data means accepting non-manifold input as it comes --- flaps, T-junctions, isolated edges. The local form is what we guarantee; the global form is the consistency constraint we exploit to mitigate noise. Simulation of Simplicity \cite{EdelsbrunnerMucke1990} discards the local intent outright by perturbing every degeneracy away --- a box divided by an internal rectangle whose edges rest on cube faces (Figure~\ref{fig:sos_box_divider}) may resolve as no intersection, partial contact, or the full rectangle, depending on the perturbation order. Preservation alone is not enough either. Methods that build wedges edge-by-edge around a non-manifold edge \cite{BohmRunge2025} preserve local topology yet treat each edge in isolation. A single degenerate incident triangle then has an ambiguous angular position in the radial sort. The bad pairing propagates outward, misclassifying valid neighbours. Aggregating across the connected component is the mitigation --- the component's consistency is the global constraint topology imposes.
+
+\begin{figure}[t]
+  \centering
+  \input{diagrams/box_rectangle_split.tex}
+  \caption{Mesh arrangements often divide a volume into regions of interest. When those regions are cut parametrically, primitives end up coplanar by construction --- as here, where a box is split into sub-domains $D_1, D_2$ by an internal rectangle $R$ whose vertices sit at midpoints of cube edges (four VE intersections). Simulation of simplicity resolves these coplanar contacts arbitrarily, and therefore does not reliably produce correct domains.}
+  \label{fig:sos_box_divider}
+\end{figure}
+
+\subsection{Contributions}
+\label{sec:contributions}
+
+
+\begin{figure*}[t]
+  \centering
+  \input{diagrams/arrangement_pipeline.tex}
+  \caption{Two-stage local arrangement on face $A$, which meets faces $B$, $C$, $D$. \emph{Left}: 3D configuration with three intersection edges and six boundary vertices on $A$. \emph{Middle}: those edges in $A$'s local plane, each named by the face pair that produced it (\texttt{(A,B)}, \texttt{(A,C)}, \texttt{(A,D)}). \emph{Right}: the planar arrangement --- seven segments, two crossings, each crossing named by its face-pair triplet (\texttt{\{A,B,D\}}, \texttt{\{A,C,D\}}); points computed independently from different face slices unify without coordinate comparison.}
+  \label{fig:arrangement_pipeline}
+\end{figure*}
+
+We make five contributions:
+
+\begin{enumerate}
+\item \textbf{Topologically exact predicates over a bounded integer kernel.}
+This is the guarantee half. Local topological intent --- the coincident vertices, on-edge points, and coplanar contacts the user specified --- is preserved exactly through five canonical intersection types (VV, VE, VF, EE, EF), classified by exact integer predicates in a single bounded-precision kernel (Section~\ref{sec:predicates}). Classification is decided by the zero-pattern of \texttt{orient3d} signs across a fan triangulation of the polygon, distinguishing real polygon edges from internal fan diagonals, \emph{before} any point is constructed. The five-type discipline preserves what Simulation of Simplicity \cite{EdelsbrunnerMucke1990} discards.
+
+\item \textbf{A two-stage local arrangement.}
+The arrangement is built without constructing a global structure. Stage one computes pairwise intersections in parallel, naming points by their originating face-pair triplets. Stage two computes independent 2D segment-arrangements inside each face's local plane. The two stages are coupled only through this triplet identity: constructed points computed independently from different face slices unify without coordinate comparison. The same code path handles two-mesh, $N$-mesh, and polygon-soup self-arrangement with no special casing. Per-face decomposition cascades into a four-tier complexity ladder by constraint topology, from $O(1)$ to $O(n \log n)$.
+
+\item \textbf{Implicit graph structures.}
+Every stage of the pipeline is a graph problem (Section~\ref{sec:graphs}) --- from the per-face planar arrangements of~(2) up to the global classification graph. The graphs encode the global form of topology --- the consistency constraints --- without being explicitly constructed; they live in flat array layouts (offsets, dense ranks, adjacency tables, equivalence maps), and structural questions are answered by index lookup. Before solving, each stage contracts the graph: manifold-edge connected components, canonical edge groups, and face-pair triplets collapse many elements into one node. The expensive work runs on this reduced graph, which is always small relative to the input mesh, and any auxiliary structure the stage builds is bounded by the same reduced size. Per-node results broadcast back to elements by index. Coplanar-face overlap, edge-instance dedup, and constructed-point identity all fall out of layouts the pipeline already maintains, with no auxiliary index. And because the graph is implicit rather than half-edge --- which would require each edge to have exactly two faces --- non-manifold flaps, T-junctions, and isolated edges flow through without preprocessing. L\'evy~\cite{Levy2025} advocates \emph{exploiting the combinatorics as much as possible}; we sharpen the principle by treating every stage as a graph problem and exploiting its combinatorial structure.
+
+\item \textbf{Robust aggregation on the reduced graph.}
+Per-component / per-domain aggregation is the pipeline's recurring tool for robust labels (Section~\ref{sec:aggregation}). Each wedge observation at a non-manifold edge is computed exactly by \texttt{orient3d}. Observations are aggregated by weighted-majority vote across the topological unit they belong to --- a component for orientation, a domain for inside/outside classification. Ambiguous local observations are skipped; the faces involved still belong to their component topologically and inherit the label. Domains without seeds fall back to ray-casting. Using exact wedge observations as seeds throughout sidesteps the per-patch tangency handling that ray-casting requires \cite{Cherchi2022}.
+
+\item \textbf{A library for interactive exact CSG in C\texttt{++}, Python, and the browser.}
+A single header-only C\texttt{++} library exposes the pipeline through Python (nanobind) and TypeScript (WebAssembly) bindings (Section~\ref{sec:implementation}). The same exact kernel runs on x86, ARM, and in the browser, at interactive speeds. The codebase is freely available for academic and research use \cite{trueform2025}. No prior topologically-exact CSG library is interactive in the browser.
+\end{enumerate}
+
+\subsection{Related work}
+\label{sec:related}
+
+\textbf{Geometric exactness.} The arithmetic-kernel literature has converged on a small set of approaches. Shewchuk's adaptive floating-point expansions \cite{Shewchuk1997} compute a predicate's sign exactly by accumulating non-overlapping FP components, refining only when the filter cascade fails. FPG \cite{MeyerPion2008} generates such filtered predicates from polynomial expressions. CGAL's lazy rationals \cite{CGAL2023} offer the same exactness through arbitrary-precision evaluation. Indirect predicates \cite{Attene2020} take a different route: they store constructed points as recipes (line-plane intersections, triple-plane intersections) and fold them into the predicate's polynomial. The FA mesh arrangement \cite{Cherchi2020} is built on this. EMBER's plane-based representation \cite{Trettner2022,NehringWirxel2021} uses fixed-width 256-bit integer arithmetic with no filter cascade. L\'evy's recent CSG pipeline \cite{Levy2025} carries two kernels in parallel: Shewchuk expansions for the easy cases, GMP multiprecision for the hard ones. Interval arithmetic \cite{Bronnimann1998} provides the cheap filter all of these depend on.
+
+\textbf{Open systems and the float boundary.} Once exact coordinates materialise to floating point, new intersections may appear. 3D snap rounding \cite{DevillersLazardLenhart2018} formalises the problem and gives an algorithm; Valque \cite{Valque2019} pushes it toward practical implementation. Geometric rounding for meshes generalises the same problem class \cite{MilenkovicSacks2019}. Cherchi's mesh arrangement applies an iterated cast-to-float heuristic to mitigate the damage \cite{Cherchi2020}. EMBER explicitly acknowledges that interfacing the floating-point world reintroduces tiny self-intersections \cite{Trettner2022}. None of these approaches claim to remove the boundary --- they minimise its damage.
+
+\textbf{Topology.} Mesh arrangements compute the global structure that classification consumes. Zhou's pipeline \cite{Zhou2016} uses CGAL exact predicates and topological flooding. Cherchi 2020 \cite{Cherchi2020} replaces this with indirect predicates and ear-cut triangulation; the interactive 2022 variant \cite{Cherchi2022} keeps the arrangement and uses a per-patch ray cast. L\'evy \cite{Levy2025} builds the Weiler 3-map \cite{Weiler1985} in the language of combinatorial maps \cite{Lienhardt1988}, then floods bit-vectors of operand membership through it. Bohm and Runge \cite{BohmRunge2025} extract domains from non-manifold meshes by per-edge angular sort and wedge construction --- a 3D generalisation of plane-graph region extraction \cite{JiangBunke1993}. Generalized winding numbers \cite{JacobsonKavanSorkine2013} provide an orthogonal path to inside/outside that tolerates non-manifold input.
+
+\textbf{Application context.} Mesh CSG drives demanding workflows in geomodelling \cite{Caumon2003,Pellerin2017}, interactive mechanical modelling \cite{Tymms2016}, and CSG for fabrication \cite{Garg2016}. All share the same constraint from \S\ref{sec:hardness}: CSG output is consumed by another stage in floating point, and that stage cannot tolerate topology drift.
+
+\subsection{Algorithm overview}
+\label{sec:overview}
+
+The pipeline is a single forward pass with no global mesh data structure (Figure~\ref{fig:arrangement_pipeline}). Stage one intersects every candidate face pair and emits per-face intersection records (Section~\ref{sec:predicates},~\ref{sec:arrangement}). Stage two arranges each cut face's records independently in its local plane; closed inner loops are patched into the regions that contain them (Section~\ref{sec:arrangement}). Edge adjacency is built only for the new cut sub-faces; non-intersected original faces reuse the input mesh's manifold-edge link directly. Together they form the implicit reduced graph that classification operates on (Section~\ref{sec:aggregation}).
+
+Classification proceeds in three Bayesian aggregation steps. First, each component is oriented by weighted-majority flip across its faces. Second, exact radial sort at each non-manifold edge yields wedge merge pairs; duplicated faces from coplanar intersections naturally land adjacent in the sort and collapse. Union-find then runs on the reduced graph and groups fragment-sides into volumetric domains. Its vertices are the manifold-edge components of the implicit arrangement --- never materialised as a mesh. The result is the combinatorial structure L\'evy~\cite{Levy2025} extracts from a Weiler 3-map. Third, each non-manifold edge path within a domain yields wedge inside/outside seeds; weighted-majority aggregation over those seeds labels the domain. Ray-casting is reserved for domains carrying no seeds. Ambiguous wedge observations at any step are skipped; the faces involved still belong to their component and inherit its label.
+
+The boolean operator selects domains by their classifications. The final mesh is assembled only at the end: selected uncut original faces pass through directly, and selected cut sub-faces are triangulated into the output.
+
+
+\section{The algorithm}
+\label{sec:algorithm}
+
+\subsection{Topologically exact predicates on convex polygons}
+\label{sec:predicates}
+
+\subsubsection*{The bounded integer ladder}
+
+\subsubsection*{Five canonical configurations: VV, VE, VF, EE, EF}
+
+\subsubsection*{Classification by \texttt{orient3d} zero-pattern on a fan triangulation}
+
+\subsubsection*{Decoupling classification from construction}
+
+\subsection{Two-stage local arrangement}
+\label{sec:arrangement}
+
+\subsubsection*{Pairwise primitive intersections}
+
+\subsubsection*{Identity across faces via face-pair triplets}
+
+\subsubsection*{Per-face 2D arrangement and cascading specialisation}
+
+\subsection{Implicit graph structures}
+\label{sec:graphs}
+
+\subsubsection*{Combinatorics over geometry, at every stage}
+
+\subsubsection*{The reduced graph: manifold-edge components as nodes}
+
+\subsubsection*{Exact polar sort and region walk}
+
+\subsubsection*{Combinatorial equivalence to the Weiler 3-map}
+
+\subsection{Bayesian aggregation on the reduced graph}
+\label{sec:aggregation}
+
+\subsubsection*{The three aggregation steps}
+
+\subsubsection*{Component orientation by weighted-majority flip}
+
+\subsubsection*{Domain extraction by radial sort and union-find}
+
+\subsubsection*{Per-domain classification by wedge seeds}
+
+\subsubsection*{Skip-and-inherit; ray-cast fallback for orphan domains}
+
+\subsection{Implementation}
+\label{sec:implementation}
+
+\section{Results}
+\label{sec:results}
+
+\section{Conclusions}
+\label{sec:conclusions}
+
+\section*{Acknowledgements}
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}

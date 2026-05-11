@@ -240,14 +240,12 @@ If you use trueform in your work, please cite:
 
 ```bibtex
 @software{trueform2025,
-    title={trueform: Real-time Geometric Processing},
+    title={trueform: the STL for Geometry},
     author={Sajovic, {\v{Z}}iga and {et al.}},
-    organization={XLAB d.o.o.},
+    organization={Polydera},
     year={2025},
     url={https://github.com/polydera/trueform}
 }
 ```
 
 ---
-
-**Developed by [XLAB Medical](https://xlab.si)**

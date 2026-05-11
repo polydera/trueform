@@ -1,0 +1,11 @@
+$pdf_mode      = 1;
+$out_dir       = 'build';
+$aux_dir       = 'build';
+$bibtex_use    = 2;
+$pdflatex      = 'pdflatex -interaction=errorstopmode -synctex=1 -shell-escape %O %S';
+$bibtex        = 'bibtex %O %B';
+
+$ENV{'BIBINPUTS'} = '.:./build:' . ($ENV{'BIBINPUTS'} // '');
+$ENV{'TEXINPUTS'} = '.:./build:' . ($ENV{'TEXINPUTS'} // '');
+
+$max_repeat = 5;

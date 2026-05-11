@@ -1,0 +1,144 @@
+\def\sclI{0.7}
+\def\sclF{0.9}
+\def\panelw{5.2}
+\def\panelh{4.4}
+\def\panelgap{0.55}
+
+\newcommand{\iso}[3]{({((#1) - (#2)) * 0.866 * \sclI}, {((#3) - ((#1) + (#2)) * 0.5) * \sclI})}
+
+\begin{tikzpicture}[font=\sffamily\footnotesize, x=1cm, y=1cm]
+
+  % =====================================================================
+  % PANEL 1 -- 3D configuration
+  % =====================================================================
+  \begin{scope}[shift={(0,0)}]
+    \filldraw[fill=black!3, draw=black!20, line width=0.4pt, rounded corners=3pt]
+      (-\panelw/2, -\panelh/2) rectangle (\panelw/2, \panelh/2);
+
+    % Quad D (back, dimmest)
+    \fill[tfteal, opacity=0.10]
+      \iso{-2}{0.3}{-1.3} -- \iso{2}{0.3}{-1.3} -- \iso{2}{0.3}{1.3} -- \iso{-2}{0.3}{1.3} -- cycle;
+    \draw[tfteal, line width=0.5pt, opacity=0.55]
+      \iso{-2}{0.3}{-1.3} -- \iso{2}{0.3}{-1.3} -- \iso{2}{0.3}{1.3} -- \iso{-2}{0.3}{1.3} -- cycle;
+
+    % Quad B
+    \fill[tfteal, opacity=0.13]
+      \iso{-0.8}{-2}{-1.3} -- \iso{-0.8}{2}{-1.3} -- \iso{-0.8}{2}{1.3} -- \iso{-0.8}{-2}{1.3} -- cycle;
+    \draw[tfteal, line width=0.5pt, opacity=0.65]
+      \iso{-0.8}{-2}{-1.3} -- \iso{-0.8}{2}{-1.3} -- \iso{-0.8}{2}{1.3} -- \iso{-0.8}{-2}{1.3} -- cycle;
+
+    % Quad C
+    \fill[tfteal, opacity=0.13]
+      \iso{0.8}{-2}{-1.3} -- \iso{0.8}{2}{-1.3} -- \iso{0.8}{2}{1.3} -- \iso{0.8}{-2}{1.3} -- cycle;
+    \draw[tfteal, line width=0.5pt, opacity=0.65]
+      \iso{0.8}{-2}{-1.3} -- \iso{0.8}{2}{-1.3} -- \iso{0.8}{2}{1.3} -- \iso{0.8}{-2}{1.3} -- cycle;
+
+    % Quad A (front, most opaque)
+    \fill[tfteal, opacity=0.20]
+      \iso{-2}{-2}{0} -- \iso{-2}{2}{0} -- \iso{2}{2}{0} -- \iso{2}{-2}{0} -- cycle;
+    \draw[tfteal, line width=0.7pt, opacity=0.85]
+      \iso{-2}{-2}{0} -- \iso{-2}{2}{0} -- \iso{2}{2}{0} -- \iso{2}{-2}{0} -- cycle;
+
+    % Intersection edges on A
+    \draw[tfrose, line width=1pt, opacity=0.95] \iso{-0.8}{-2}{0} -- \iso{-0.8}{2}{0};
+    \draw[tfrose, line width=1pt, opacity=0.95] \iso{0.8}{-2}{0}  -- \iso{0.8}{2}{0};
+    \draw[tfrose, line width=1pt, opacity=0.85] \iso{-2}{0.3}{0}  -- \iso{2}{0.3}{0};
+
+    % Boundary vertices
+    \fill[tfteal] \iso{-0.8}{-2}{0} circle [radius=1.4pt];
+    \fill[tfteal] \iso{-0.8}{2}{0}  circle [radius=1.4pt];
+    \fill[tfteal] \iso{0.8}{-2}{0}  circle [radius=1.4pt];
+    \fill[tfteal] \iso{0.8}{2}{0}   circle [radius=1.4pt];
+    \fill[tfteal] \iso{-2}{0.3}{0}  circle [radius=1.4pt];
+    \fill[tfteal] \iso{2}{0.3}{0}   circle [radius=1.4pt];
+
+    % Quad labels — anchored at the front/top corners of each quad
+    \node[text=black!75, font=\sffamily\small\bfseries, anchor=south east]
+      at \iso{2.1}{-2}{0.3} {$A$};
+    \node[text=black!55, font=\sffamily\small\bfseries\itshape, anchor=north west]
+      at \iso{-0.8}{-2}{1.3} {$B$};
+    \node[text=black!55, font=\sffamily\small\bfseries\itshape, anchor=south west]
+      at \iso{0.8}{-2}{1.3} {$C$};
+    \node[text=black!55, font=\sffamily\small\bfseries\itshape, anchor=south east]
+      at \iso{-2}{0.3}{1.3} {$D$};
+
+  \end{scope}
+
+  % =====================================================================
+  % PANEL 2 -- edges on face A
+  % =====================================================================
+  \begin{scope}[shift={(\panelw + \panelgap, 0)}]
+    \filldraw[fill=black!3, draw=black!20, line width=0.4pt, rounded corners=3pt]
+      (-\panelw/2, -\panelh/2) rectangle (\panelw/2, \panelh/2);
+
+    % Face A as a square (scaled to sclF)
+    \fill[tfteal, opacity=0.08] (-2*\sclF, -2*\sclF) rectangle (2*\sclF, 2*\sclF);
+    \draw[tfteal, line width=0.7pt, opacity=0.75] (-2*\sclF, -2*\sclF) rectangle (2*\sclF, 2*\sclF);
+
+    % 3 edges
+    \draw[tfrose, line width=1pt, opacity=0.95] (-0.8*\sclF, -2*\sclF) -- (-0.8*\sclF, 2*\sclF);
+    \draw[tfrose, line width=1pt, opacity=0.95] ( 0.8*\sclF, -2*\sclF) -- ( 0.8*\sclF, 2*\sclF);
+    \draw[tfrose, line width=1pt, opacity=0.85] (-2*\sclF,  0.3*\sclF) -- (2*\sclF,  0.3*\sclF);
+
+    % 6 boundary vertices
+    \fill[tfteal] (-0.8*\sclF, -2*\sclF)  circle [radius=1.6pt];
+    \fill[tfteal] (-0.8*\sclF,  2*\sclF)  circle [radius=1.6pt];
+    \fill[tfteal] ( 0.8*\sclF, -2*\sclF)  circle [radius=1.6pt];
+    \fill[tfteal] ( 0.8*\sclF,  2*\sclF)  circle [radius=1.6pt];
+    \fill[tfteal] (-2*\sclF,    0.3*\sclF) circle [radius=1.6pt];
+    \fill[tfteal] ( 2*\sclF,    0.3*\sclF) circle [radius=1.6pt];
+
+    % Edge labels (black/dark) — placed by the edges they mark
+    \node[text=black!70, font=\sffamily\scriptsize\ttfamily]
+      at (-\sclF - 0.4, \sclF) {(A,B)};
+    \node[text=black!70, font=\sffamily\scriptsize\ttfamily]
+      at ( \sclF + 0.4, \sclF) {(A,C)};
+    \node[text=black!70, font=\sffamily\scriptsize\ttfamily, anchor=south]
+      at (0, 0.3*\sclF + 0.08) {(A,D)};
+  \end{scope}
+
+  % =====================================================================
+  % PANEL 3 -- intersection graph
+  % =====================================================================
+  \begin{scope}[shift={(2*\panelw + 2*\panelgap, 0)}]
+    \filldraw[fill=black!3, draw=black!20, line width=0.4pt, rounded corners=3pt]
+      (-\panelw/2, -\panelh/2) rectangle (\panelw/2, \panelh/2);
+
+    % Faded face boundary
+    \fill[tfteal, opacity=0.04] (-2*\sclF, -2*\sclF) rectangle (2*\sclF, 2*\sclF);
+    \draw[tfteal, line width=0.4pt, opacity=0.30] (-2*\sclF, -2*\sclF) rectangle (2*\sclF, 2*\sclF);
+
+    % B: 2 segments (split at y=0.3)
+    \draw[tfrose, line width=0.9pt, opacity=0.70] (-0.8*\sclF, -2*\sclF)  -- (-0.8*\sclF, 0.3*\sclF);
+    \draw[tfrose, line width=0.9pt, opacity=0.70] (-0.8*\sclF,  0.3*\sclF) -- (-0.8*\sclF, 2*\sclF);
+
+    % C: 2 segments
+    \draw[tfrose, line width=0.9pt, opacity=0.70] ( 0.8*\sclF, -2*\sclF)  -- ( 0.8*\sclF, 0.3*\sclF);
+    \draw[tfrose, line width=0.9pt, opacity=0.70] ( 0.8*\sclF,  0.3*\sclF) -- ( 0.8*\sclF, 2*\sclF);
+
+    % D: 3 segments (split at x=-0.8 and x=0.8)
+    \draw[tfrose, line width=0.9pt, opacity=0.60] (-2*\sclF,    0.3*\sclF) -- (-0.8*\sclF, 0.3*\sclF);
+    \draw[tfrose, line width=0.9pt, opacity=0.60] (-0.8*\sclF,  0.3*\sclF) -- ( 0.8*\sclF, 0.3*\sclF);
+    \draw[tfrose, line width=0.9pt, opacity=0.60] ( 0.8*\sclF,  0.3*\sclF) -- ( 2*\sclF,   0.3*\sclF);
+
+    % Endpoints (faded teal)
+    \fill[tfteal, opacity=0.50] (-0.8*\sclF, -2*\sclF)  circle [radius=1.1pt];
+    \fill[tfteal, opacity=0.50] (-0.8*\sclF,  2*\sclF)  circle [radius=1.1pt];
+    \fill[tfteal, opacity=0.50] ( 0.8*\sclF, -2*\sclF)  circle [radius=1.1pt];
+    \fill[tfteal, opacity=0.50] ( 0.8*\sclF,  2*\sclF)  circle [radius=1.1pt];
+    \fill[tfteal, opacity=0.50] (-2*\sclF,    0.3*\sclF) circle [radius=1.1pt];
+    \fill[tfteal, opacity=0.50] ( 2*\sclF,    0.3*\sclF) circle [radius=1.1pt];
+
+    % Crossings (rose, prominent)
+    \fill[tfrose] (-0.8*\sclF, 0.3*\sclF) circle [radius=2pt];
+    \fill[tfrose] ( 0.8*\sclF, 0.3*\sclF) circle [radius=2pt];
+
+    % Triplet labels (black, near each crossing)
+    \node[text=black!75, font=\sffamily\scriptsize\ttfamily\bfseries, anchor=south east]
+      at (-0.8*\sclF - 0.04, 0.3*\sclF + 0.05) {\{A,B,D\}};
+    \node[text=black!75, font=\sffamily\scriptsize\ttfamily\bfseries, anchor=south west]
+      at ( 0.8*\sclF + 0.04, 0.3*\sclF + 0.05) {\{A,C,D\}};
+
+  \end{scope}
+
+\end{tikzpicture}

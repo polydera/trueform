@@ -1,0 +1,1203 @@
+% Bibliography for: Topologically exact predicates, local arrangements and graphs for mesh CSG
+%
+% Entries grounded in the reference lists of:
+%   Lévy 2025, Cherchi 2020, Cherchi 2022, Trettner 2022 (EMBER),
+%   Attene 2020, Bohm & Runge 2025, plus FAMBA / STL article context.
+%
+% Sections:
+%   1. Direct comparison papers (full notes in references/)
+%   2. Foundational predicates & arithmetic kernels
+%   3. Snap rounding and rounding-related repair
+%   4. Mesh arrangements, co-refinement, related pipelines
+%   5. Boolean operators (prior art)
+%   6. Topological data structures
+%   7. Triangulation (CDT, ear-cut, tri-tri)
+%   8. Inside/outside, winding, classification
+%   9. Mesh repair / cleaning
+%  10. Library architecture & C++ generic programming
+%  11. Geometry libraries / engines
+%  12. Datasets and benchmarks
+%  13. Adjacent applications (cited as motivation by prior art)
+
+% =============================================================================
+% 1. DIRECT COMPARISON PAPERS
+% =============================================================================
+
+@article{Levy2025,
+  author    = {L{\'e}vy, Bruno},
+  title     = {Exact predicates, exact constructions and combinatorics for mesh {CSG}},
+  journal   = {arXiv preprint},
+  volume    = {arXiv:2405.12949v2},
+  year      = {2025},
+  doi       = {10.48550/arXiv.2405.12949},
+  url       = {https://arxiv.org/abs/2405.12949},
+}
+
+@article{Cherchi2020,
+  author    = {Cherchi, Gianmarco and Livesu, Marco and Scateni, Riccardo and Attene, Marco},
+  title     = {Fast and Robust Mesh Arrangements using Floating-Point Arithmetic},
+  journal   = {ACM Transactions on Graphics},
+  volume    = {39},
+  number    = {6},
+  pages     = {Article 250},
+  year      = {2020},
+  publisher = {ACM},
+  doi       = {10.1145/3414685.3417818},
+  note      = {SIGGRAPH Asia 2020},
+}
+
+@article{Cherchi2022,
+  author    = {Cherchi, Gianmarco and Pellacini, Fabio and Attene, Marco and Livesu, Marco},
+  title     = {Interactive and Robust Mesh Booleans},
+  journal   = {ACM Transactions on Graphics},
+  volume    = {41},
+  number    = {6},
+  pages     = {Article 214},
+  year      = {2022},
+  publisher = {ACM},
+  doi       = {10.1145/3550454.3555460},
+  note      = {SIGGRAPH Asia 2022},
+}
+
+@article{Trettner2022,
+  author    = {Trettner, Philip and Nehring-Wirxel, Julius and Kobbelt, Leif},
+  title     = {{EMBER}: Exact Mesh Booleans via Efficient and Robust Local Arrangements},
+  journal   = {ACM Transactions on Graphics},
+  volume    = {41},
+  number    = {4},
+  pages     = {Article 39},
+  year      = {2022},
+  publisher = {ACM},
+  doi       = {10.1145/3528223.3530181},
+  note      = {SIGGRAPH 2022},
+}
+
+@article{Attene2020,
+  author    = {Attene, Marco},
+  title     = {Indirect predicates for geometric constructions},
+  journal   = {Computer-Aided Design},
+  volume    = {126},
+  pages     = {Article 102856},
+  year      = {2020},
+  doi       = {10.1016/j.cad.2020.102856},
+}
+
+@article{BohmRunge2025,
+  author    = {Bohm, Sebastian and Runge, Erich},
+  title     = {Fast algorithm for extracting domains and regions from three-dimensional triangular surface meshes},
+  journal   = {Computer-Aided Design},
+  volume    = {180},
+  pages     = {Article 103824},
+  year      = {2025},
+  doi       = {10.1016/j.cad.2024.103824},
+}
+
+% =============================================================================
+% 2. FOUNDATIONAL PREDICATES & ARITHMETIC KERNELS
+% =============================================================================
+
+@article{Shewchuk1997,
+  author    = {Shewchuk, Jonathan Richard},
+  title     = {Adaptive Precision Floating-Point Arithmetic and Fast Robust Geometric Predicates},
+  journal   = {Discrete \& Computational Geometry},
+  volume    = {18},
+  number    = {3},
+  pages     = {305--363},
+  year      = {1997},
+  doi       = {10.1007/PL00009321},
+}
+
+@inproceedings{Shewchuk1996Predicates,
+  author    = {Shewchuk, Jonathan Richard},
+  title     = {Robust Adaptive Floating-Point Geometric Predicates},
+  booktitle = {Proceedings of the Twelfth Annual Symposium on Computational Geometry (SoCG '96)},
+  pages     = {141--150},
+  year      = {1996},
+  publisher = {ACM},
+  doi       = {10.1145/237218.237337},
+}
+
+@article{EdelsbrunnerMucke1990,
+  author    = {Edelsbrunner, Herbert and M{\"u}cke, Ernst Peter},
+  title     = {Simulation of Simplicity: A Technique to Cope with Degenerate Cases in Geometric Algorithms},
+  journal   = {ACM Transactions on Graphics},
+  volume    = {9},
+  number    = {1},
+  pages     = {66--104},
+  year      = {1990},
+  doi       = {10.1145/77635.77639},
+}
+
+@inproceedings{MeyerPion2008,
+  author    = {Meyer, Andreas and Pion, Sylvain},
+  title     = {{FPG}: A Code Generator for Fast and Certified Geometric Predicates},
+  booktitle = {Real Numbers and Computers},
+  pages     = {47--60},
+  year      = {2008},
+  address   = {Santiago de Compostela, Spain},
+  url       = {https://inria.hal.science/inria-00344297},
+}
+
+@article{Levy2016PCK,
+  author    = {L{\'e}vy, Bruno},
+  title     = {Robustness and efficiency of geometric programs: The {Predicate} {Construction} {Kit}},
+  journal   = {Computer-Aided Design},
+  volume    = {72},
+  pages     = {3--12},
+  year      = {2016},
+  doi       = {10.1016/j.cad.2015.10.004},
+}
+
+@inproceedings{DevillersPion2003,
+  author    = {Devillers, Olivier and Pion, Sylvain},
+  title     = {Efficient exact geometric predicates for {Delaunay} triangulations},
+  booktitle = {Proceedings of the 5th Workshop on Algorithm Engineering and Experiments (ALENEX)},
+  pages     = {37--44},
+  year      = {2003},
+  publisher = {SIAM},
+}
+
+@inproceedings{Bronnimann1998,
+  author    = {Br{\"o}nnimann, Herv{\'e} and Burnikel, Christoph and Pion, Sylvain},
+  title     = {Interval Arithmetic Yields Efficient Dynamic Filters for Computational Geometry},
+  booktitle = {Proceedings of the Fourteenth Annual Symposium on Computational Geometry (SCG '98)},
+  pages     = {165--174},
+  year      = {1998},
+  publisher = {ACM},
+  doi       = {10.1145/276884.276903},
+}
+
+@article{FortuneVanWyk1993,
+  author    = {Fortune, Steven and Van Wyk, Christopher J.},
+  title     = {Efficient Exact Arithmetic for Computational Geometry},
+  booktitle = {Proceedings of the Ninth Annual Symposium on Computational Geometry (SCG '93)},
+  pages     = {163--172},
+  year      = {1993},
+  publisher = {ACM},
+  doi       = {10.1145/160985.161015},
+}
+
+@article{FortuneVanWyk1996,
+  author    = {Fortune, Steven and Van Wyk, Christopher J.},
+  title     = {Static analysis yields efficient exact integer arithmetic for computational geometry},
+  journal   = {ACM Transactions on Graphics},
+  volume    = {15},
+  number    = {3},
+  pages     = {223--248},
+  year      = {1996},
+  doi       = {10.1145/231731.231735},
+}
+
+@article{Fousse2007MPFR,
+  author    = {Fousse, Laurent and Hanrot, Guillaume and Lef{\`e}vre, Vincent and P{\'e}lissier, Patrick and Zimmermann, Paul},
+  title     = {{MPFR}: A Multiple-precision Binary Floating-point Library with Correct Rounding},
+  journal   = {ACM Transactions on Mathematical Software},
+  volume    = {33},
+  number    = {2},
+  pages     = {Article 13},
+  year      = {2007},
+  doi       = {10.1145/1236463.1236468},
+}
+
+@article{Joldes2016,
+  author    = {Joldes, Mioara and Marty, Olivier and Muller, Jean-Michel and Popescu, Valentina},
+  title     = {Arithmetic algorithms for extended precision using floating-point expansions},
+  journal   = {IEEE Transactions on Computers},
+  volume    = {65},
+  number    = {4},
+  pages     = {1197--1210},
+  year      = {2016},
+  doi       = {10.1109/TC.2015.2479623},
+}
+
+@article{PionFabri2011,
+  author    = {Pion, Sylvain and Fabri, Andreas},
+  title     = {A generic lazy evaluation scheme for exact geometric computations},
+  journal   = {Science of Computer Programming},
+  volume    = {76},
+  number    = {4},
+  pages     = {307--323},
+  year      = {2011},
+  doi       = {10.1016/j.scico.2009.09.003},
+  note      = {Special issue on library-centric software design (LCSD 2006)},
+}
+
+@inproceedings{Kettner2004,
+  author    = {Kettner, Lutz and Mehlhorn, Kurt and Pion, Sylvain and Schirra, Stefan and Yap, Chee-Keng},
+  title     = {Classroom examples of robustness problems in geometric computations},
+  booktitle = {Algorithms -- ESA 2004},
+  series    = {LNCS},
+  volume    = {3221},
+  pages     = {702--713},
+  publisher = {Springer},
+  year      = {2004},
+  doi       = {10.1007/978-3-540-30140-0\_62},
+}
+
+@article{LiPionYap2005,
+  author    = {Li, Chen and Pion, Sylvain and Yap, Chee-Keng},
+  title     = {Recent progress in exact geometric computation},
+  journal   = {Journal of Logic and Algebraic Programming},
+  volume    = {64},
+  number    = {1},
+  pages     = {85--111},
+  year      = {2005},
+  doi       = {10.1016/j.jlap.2004.07.006},
+}
+
+@article{DevillersPreparata1998,
+  author    = {Devillers, Olivier and Preparata, Franco P.},
+  title     = {A Probabilistic Analysis of the Power of Arithmetic Filters},
+  journal   = {Discrete \& Computational Geometry},
+  volume    = {20},
+  number    = {4},
+  pages     = {523--547},
+  year      = {1998},
+  doi       = {10.1007/PL00009400},
+}
+
+@article{NehringWirxel2021,
+  author    = {Nehring-Wirxel, Julius and Trettner, Philip and Kobbelt, Leif},
+  title     = {Fast Exact Booleans for Iterated {CSG} using Octree-Embedded {BSP}s},
+  journal   = {Computer-Aided Design},
+  volume    = {135},
+  pages     = {Article 103015},
+  year      = {2021},
+  doi       = {10.1016/j.cad.2021.103015},
+}
+
+@misc{GMP,
+  author    = {Granlund, Torbj{\"o}rn and {The GMP development team}},
+  title     = {{GNU MP}: The {GNU} Multiple Precision Arithmetic Library},
+  year      = {2024},
+  url       = {https://gmplib.org/},
+}
+
+% =============================================================================
+% 3. SNAP ROUNDING AND ROUNDING-RELATED REPAIR
+% =============================================================================
+
+@inproceedings{DevillersLazardLenhart2018,
+  author    = {Devillers, Olivier and Lazard, Sylvain and Lenhart, William J.},
+  title     = {3{D} Snap Rounding},
+  booktitle = {34th International Symposium on Computational Geometry (SoCG 2018)},
+  series    = {LIPIcs},
+  volume    = {99},
+  pages     = {30:1--30:14},
+  publisher = {Schloss Dagstuhl-Leibniz-Zentrum f{\"u}r Informatik},
+  year      = {2018},
+  doi       = {10.4230/LIPIcs.SoCG.2018.30},
+}
+
+@mastersthesis{Valque2019,
+  author    = {Valque, Leo},
+  title     = {3{D} Snap Rounding},
+  school    = {Universit{\'e} de Lyon},
+  year      = {2019},
+  url       = {https://inria.hal.science/hal-02393625},
+}
+
+@article{MilenkovicSacks2019,
+  author    = {Milenkovi{\'c}, Victor and Sacks, Elisha},
+  title     = {Geometric rounding and feature separation in meshes},
+  journal   = {Computer-Aided Design},
+  volume    = {108},
+  pages     = {12--18},
+  year      = {2019},
+  doi       = {10.1016/j.cad.2018.10.001},
+}
+
+@inproceedings{HausnerDodgson2006,
+  author    = {Hausner, Julian Smith and Dodgson, Neil},
+  title     = {A Topologically Robust Boolean Algorithm Using Approximate Arithmetic},
+  booktitle = {Proceedings of the 22nd European Workshop on Computational Geometry},
+  year      = {2006},
+}
+
+@article{Fortune1999,
+  author    = {Fortune, Steven},
+  title     = {Vertex-rounding a three-dimensional polyhedral subdivision},
+  journal   = {Discrete \& Computational Geometry},
+  volume    = {22},
+  number    = {4},
+  pages     = {593--618},
+  year      = {1999},
+  doi       = {10.1007/PL00009480},
+}
+
+% =============================================================================
+% 4. MESH ARRANGEMENTS, CO-REFINEMENT, RELATED PIPELINES
+% =============================================================================
+
+@article{Zhou2016,
+  author    = {Zhou, Qingnan and Grinspun, Eitan and Zorin, Denis and Jacobson, Alec},
+  title     = {Mesh Arrangements for Solid Geometry},
+  journal   = {ACM Transactions on Graphics},
+  volume    = {35},
+  number    = {4},
+  pages     = {Article 39},
+  year      = {2016},
+  publisher = {ACM},
+  doi       = {10.1145/2897824.2925901},
+  note      = {SIGGRAPH 2016},
+}
+
+@manual{CGALCorefinement,
+  author    = {Loriot, S{\'e}bastien and Rouxel-Labb{\'e}, Mael and Tournois, Jane and Yaz, Ilker O.},
+  title     = {Polygon Mesh Processing -- Corefinement and Boolean Operations},
+  publisher = {{CGAL} Editorial Board},
+  edition   = {5.5.2},
+  year      = {2023},
+  url       = {https://doc.cgal.org/5.5.2/Manual/packages.html\#PkgPolygonMeshProcessing},
+}
+
+@article{Magalhaes2020,
+  author    = {de Magalh{\~a}es, Salles Viana Gomes and Franklin, W. Randolph and Andrade, Marcus Vinicius Alvim},
+  title     = {An Efficient and Exact Parallel Algorithm for Intersecting Large 3-{D} Triangular Meshes Using Arithmetic Filters},
+  journal   = {Computer-Aided Design},
+  volume    = {120},
+  pages     = {Article 102801},
+  year      = {2020},
+  doi       = {10.1016/j.cad.2019.102801},
+}
+
+@inproceedings{Magalhaes2017,
+  author    = {de Magalh{\~a}es, Salles Viana Gomes and Franklin, W. Randolph and Andrade, Marcus Vinicius Alvim},
+  title     = {A fast exact parallel 3{D} mesh intersection algorithm using only orientation predicates},
+  booktitle = {Proceedings of the 25th ACM SIGSPATIAL International Conference on Advances in Geographic Information Systems},
+  year      = {2017},
+  doi       = {10.1145/3139958.3139963},
+}
+
+@article{Sheng2017,
+  author    = {Sheng, Bin and Liu, Bowen and Ping, Li and Hongbo, Pu and Lizhuang, Ma and Wu, Enhua},
+  title     = {Accelerated robust {Boolean} operations based on hybrid representations},
+  journal   = {Computer Aided Geometric Design},
+  volume    = {62},
+  pages     = {133--153},
+  year      = {2017},
+  doi       = {10.1016/j.cagd.2017.06.004},
+}
+
+% =============================================================================
+% 5. BOOLEAN OPERATORS — PRIOR ART
+% =============================================================================
+
+@inproceedings{BernsteinFussell2009,
+  author    = {Bernstein, Gilbert and Fussell, Donald},
+  title     = {Fast, Exact, Linear Booleans},
+  booktitle = {Proceedings of the Symposium on Geometry Processing (SGP '09)},
+  pages     = {1269--1278},
+  publisher = {Eurographics Association},
+  year      = {2009},
+  doi       = {10.1111/j.1467-8659.2009.01504.x},
+}
+
+@misc{Bernstein2013Cork,
+  author    = {Bernstein, Gilbert},
+  title     = {Cork {Boolean} Library},
+  year      = {2013},
+  url       = {https://github.com/gilbo/cork},
+}
+
+@article{Barki2015,
+  author    = {Barki, Hichem and Guennebaud, Ga{\"e}l and Foufou, Sebti},
+  title     = {Exact, robust, and efficient regularized {Booleans} on general 3{D} meshes},
+  journal   = {Computers and Mathematics with Applications},
+  volume    = {70},
+  number    = {6},
+  pages     = {1235--1254},
+  year      = {2015},
+  doi       = {10.1016/j.camwa.2015.06.016},
+}
+
+@article{Campen2010Intersections,
+  author    = {Campen, Marcel and Kobbelt, Leif},
+  title     = {Exact and Robust (Self-)Intersections for Polygonal Meshes},
+  journal   = {Computer Graphics Forum},
+  volume    = {29},
+  number    = {2},
+  pages     = {397--406},
+  year      = {2010},
+  doi       = {10.1111/j.1467-8659.2009.01609.x},
+}
+
+@article{Campen2010Boundary,
+  author    = {Campen, Marcel and Kobbelt, Leif},
+  title     = {Polygonal Boundary Evaluation of {Minkowski} Sums and Swept Volumes},
+  journal   = {Computer Graphics Forum},
+  volume    = {29},
+  number    = {5},
+  pages     = {1613--1622},
+  year      = {2010},
+  doi       = {10.1111/j.1467-8659.2010.01770.x},
+}
+
+@article{Pavic2010Hybrid,
+  author    = {Pavi{\'c}, Darko and Campen, Marcel and Kobbelt, Leif},
+  title     = {Hybrid booleans},
+  journal   = {Computer Graphics Forum},
+  volume    = {29},
+  number    = {1},
+  pages     = {75--87},
+  year      = {2010},
+  doi       = {10.1111/j.1467-8659.2009.01545.x},
+}
+
+@inproceedings{NaylorAmanatidesThibault1990,
+  author    = {Naylor, Bruce and Amanatides, John and Thibault, William},
+  title     = {Merging {BSP} trees yields polyhedral set operations},
+  booktitle = {Proceedings of SIGGRAPH '90},
+  series    = {ACM SIGGRAPH Computer Graphics},
+  volume    = {24},
+  number    = {4},
+  pages     = {115--124},
+  year      = {1990},
+  doi       = {10.1145/97879.97894},
+}
+
+@article{Granados2007,
+  author    = {Hachenberger, Peter and Kettner, Lutz and Mehlhorn, Kurt},
+  title     = {Boolean operations on 3{D} selective {Nef} complexes: Data structure, algorithms, optimized implementation and experiments},
+  journal   = {Computational Geometry},
+  volume    = {38},
+  number    = {1--2},
+  pages     = {64--99},
+  year      = {2007},
+  doi       = {10.1016/j.comgeo.2006.11.001},
+}
+
+@book{Nef1978,
+  author    = {Nef, Walter},
+  title     = {Beitr{\"a}ge zur {Theorie} der {Polyeder}},
+  publisher = {Herbert Lang},
+  address   = {Bern},
+  year      = {1978},
+}
+
+@techreport{Douze2017QuickCSG,
+  author    = {Douze, Matthijs and Franco, Jean-S{\'e}bastien and Raffin, Bruno},
+  title     = {{QuickCSG}: Arbitrary and Faster Boolean Combinations of N Solids},
+  institution = {INRIA},
+  number    = {RR-8687},
+  year      = {2015},
+  url       = {https://inria.hal.science/hal-01121419},
+}
+
+@article{XuKeyser2013,
+  author    = {Xu, Songgang and Keyser, John M.},
+  title     = {Fast and Robust {Booleans} on Polyhedra},
+  journal   = {Computer-Aided Design},
+  volume    = {45},
+  number    = {2},
+  pages     = {529--544},
+  year      = {2013},
+  doi       = {10.1016/j.cad.2012.10.036},
+}
+
+@article{Schifko2010,
+  author    = {Schifko, Martin and J{\"u}ttler, Bert and Kornberger, Bernhard},
+  title     = {Industrial application of exact boolean operations for meshes},
+  booktitle = {Proceedings of the 26th Spring Conference on Computer Graphics (SCCG '10)},
+  pages     = {165--172},
+  year      = {2010},
+  doi       = {10.1145/1925059.1925087},
+}
+
+@article{Mei2013,
+  author    = {Mei, Gang and Tipper, John C.},
+  title     = {Simple and robust boolean operations for triangulated surfaces},
+  journal   = {arXiv preprint},
+  volume    = {arXiv:1308.4434},
+  year      = {2013},
+  url       = {https://arxiv.org/abs/1308.4434},
+}
+
+@article{ChenChenLu2022,
+  author    = {Chen, Shouxin and Chen, Ming and Lu, Shenglian},
+  title     = {A Real Time Visual {Boolean} Operation on Triangular Mesh Models},
+  journal   = {The Visual Computer},
+  year      = {2022},
+}
+
+% =============================================================================
+% 6. TOPOLOGICAL DATA STRUCTURES
+% =============================================================================
+
+@article{Weiler1985,
+  author    = {Weiler, Kevin},
+  title     = {Edge-Based Data Structures for Solid Modeling in Curved-Surface Environments},
+  journal   = {IEEE Computer Graphics and Applications},
+  volume    = {5},
+  number    = {1},
+  pages     = {21--40},
+  year      = {1985},
+  doi       = {10.1109/MCG.1985.276271},
+}
+
+@incollection{Weiler1988,
+  author    = {Weiler, Kevin},
+  title     = {The radial edge structure: a topological representation for non-manifold geometric boundary modeling},
+  booktitle = {Geometric modeling for {CAD} applications},
+  editor    = {Wozny, M. J. and McLaughlin, H. W.},
+  publisher = {Elsevier},
+  pages     = {3--36},
+  year      = {1988},
+}
+
+@inproceedings{Lienhardt1988,
+  author    = {Lienhardt, Pascal},
+  title     = {Extension of the Notion of Map and Subdivisions of a Three-Dimensional Space},
+  booktitle = {STACS 88, 5th Annual Symposium on Theoretical Aspects of Computer Science},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {294},
+  pages     = {301--311},
+  publisher = {Springer},
+  year      = {1988},
+  doi       = {10.1007/BFb0035854},
+}
+
+@article{Lienhardt1994,
+  author    = {Lienhardt, Pascal},
+  title     = {N-dimensional generalized combinatorial maps and cellular quasi-manifolds},
+  journal   = {International Journal of Computational Geometry \& Applications},
+  volume    = {4},
+  number    = {3},
+  pages     = {275--324},
+  year      = {1994},
+  doi       = {10.1142/S0218195994000173},
+}
+
+@article{BertrandDufourd1994,
+  author    = {Bertrand, Yves and Dufourd, Jean-Fran{\c{c}}ois},
+  title     = {Algebraic Specification of a 3-{D} Modeler Based on Hypermaps},
+  journal   = {CVGIP: Graphical Models and Image Processing},
+  volume    = {56},
+  number    = {1},
+  pages     = {29--60},
+  year      = {1994},
+  doi       = {10.1006/cgip.1994.1004},
+}
+
+@inproceedings{Kraemer2007,
+  author    = {Kraemer, Pierre and Untereiner, Lucas and Jund, Thomas and Thery, Sylvain and Bechmann, Dominique},
+  title     = {Multiresolution half-edges},
+  booktitle = {Proceedings of the 23rd Spring Conference on Computer Graphics (SCCG '07)},
+  pages     = {99--106},
+  year      = {2007},
+  doi       = {10.1145/2614348.2614386},
+}
+
+@article{Tarjan1972,
+  author    = {Tarjan, Robert},
+  title     = {Depth-first search and linear graph algorithms},
+  journal   = {SIAM Journal on Computing},
+  volume    = {1},
+  number    = {2},
+  pages     = {146--160},
+  year      = {1972},
+  doi       = {10.1137/0201010},
+}
+
+% =============================================================================
+% 7. TRIANGULATION (CDT, EAR-CUT, TRI-TRI)
+% =============================================================================
+
+@article{Livesu2022Earcut,
+  author    = {Livesu, Marco and Cherchi, Gianmarco and Scateni, Riccardo and Attene, Marco},
+  title     = {Deterministic Linear Time Constrained Triangulation Using Simplified Earcut},
+  journal   = {IEEE Transactions on Visualization and Computer Graphics},
+  volume    = {28},
+  number    = {12},
+  pages     = {5172--5177},
+  year      = {2022},
+  doi       = {10.1109/TVCG.2021.3070046},
+}
+
+@incollection{Shewchuk1996Triangle,
+  author    = {Shewchuk, Jonathan Richard},
+  title     = {Triangle: Engineering a 2{D} Quality Mesh Generator and {Delaunay} Triangulator},
+  booktitle = {Applied Computational Geometry: Towards Geometric Engineering},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {1148},
+  publisher = {Springer},
+  pages     = {203--222},
+  year      = {1996},
+  doi       = {10.1007/BFb0014497},
+}
+
+@article{ShewchukBrown2015,
+  author    = {Shewchuk, Jonathan Richard and Brown, Brielli C.},
+  title     = {Fast segment insertion and incremental construction of constrained {Delaunay} triangulations},
+  journal   = {Computational Geometry},
+  volume    = {48},
+  number    = {8},
+  pages     = {554--574},
+  year      = {2015},
+  doi       = {10.1016/j.comgeo.2015.04.006},
+}
+
+@misc{Eberly2008,
+  author    = {Eberly, David},
+  title     = {Triangulation by Ear Clipping},
+  publisher = {Geometric Tools, LLC},
+  year      = {2008},
+  url       = {https://www.geometrictools.com/Documentation/TriangulationByEarClipping.pdf},
+}
+
+@article{Diazzi2023CDT,
+  author    = {Diazzi, Lorenzo and Panozzo, Daniele and Vaxman, Amir and Attene, Marco},
+  title     = {Constrained {Delaunay} Tetrahedrization: A Robust and Practical Approach},
+  journal   = {ACM Transactions on Graphics},
+  volume    = {42},
+  number    = {6},
+  pages     = {Article 161},
+  year      = {2023},
+  doi       = {10.1145/3618352},
+}
+
+@article{DiazziAttene2021,
+  author    = {Diazzi, Lorenzo and Attene, Marco},
+  title     = {Convex polyhedral meshing for robust solid modeling},
+  journal   = {ACM Transactions on Graphics},
+  volume    = {40},
+  number    = {6},
+  year      = {2021},
+  doi       = {10.1145/3478513.3480564},
+}
+
+@article{Si2015TetGen,
+  author    = {Si, Hang},
+  title     = {{TetGen}, a {Delaunay}-based quality tetrahedral mesh generator},
+  journal   = {ACM Transactions on Mathematical Software},
+  volume    = {41},
+  number    = {2},
+  pages     = {Article 11},
+  year      = {2015},
+  doi       = {10.1145/2629697},
+}
+
+@article{GuigueDevillers2003,
+  author    = {Guigue, Philippe and Devillers, Olivier},
+  title     = {Fast and Robust Triangle-Triangle Overlap Test using Orientation Predicates},
+  journal   = {Journal of Graphics Tools},
+  volume    = {8},
+  number    = {1},
+  pages     = {25--32},
+  year      = {2003},
+  doi       = {10.1080/10867651.2003.10487580},
+}
+
+@techreport{DevillersGuigue2002,
+  author    = {Devillers, Olivier and Guigue, Philippe},
+  title     = {Faster Triangle-Triangle Intersection Tests},
+  institution = {INRIA},
+  number    = {RR-4488},
+  year      = {2002},
+  url       = {https://inria.hal.science/inria-00072100},
+}
+
+@article{MollerTrumbore1997,
+  author    = {M{\"o}ller, Tomas and Trumbore, Ben},
+  title     = {Fast, minimum storage ray-triangle intersection},
+  journal   = {Journal of Graphics Tools},
+  volume    = {2},
+  number    = {1},
+  pages     = {21--28},
+  year      = {1997},
+  doi       = {10.1080/10867651.1997.10487468},
+}
+
+@article{Sloan1992,
+  author    = {Sloan, Scott W.},
+  title     = {A fast algorithm for generating constrained {Delaunay} triangulations},
+  journal   = {Computers \& Structures},
+  volume    = {47},
+  number    = {3},
+  pages     = {441--450},
+  year      = {1993},
+  doi       = {10.1016/0045-7949(93)90239-A},
+}
+
+% =============================================================================
+% 8. INSIDE/OUTSIDE, WINDING, CLASSIFICATION
+% =============================================================================
+
+@article{JacobsonKavanSorkine2013,
+  author    = {Jacobson, Alec and Kavan, Ladislav and Sorkine-Hornung, Olga},
+  title     = {Robust inside-outside segmentation using generalized winding numbers},
+  journal   = {ACM Transactions on Graphics},
+  volume    = {32},
+  number    = {4},
+  pages     = {Article 33},
+  year      = {2013},
+  doi       = {10.1145/2461912.2461916},
+}
+
+@article{Barill2018,
+  author    = {Barill, Gavin and Dickson, Neil G. and Schmidt, Ryan and Levin, David I. W. and Jacobson, Alec},
+  title     = {Fast winding numbers for soups and clouds},
+  journal   = {ACM Transactions on Graphics},
+  volume    = {37},
+  number    = {4},
+  pages     = {Article 43},
+  year      = {2018},
+  doi       = {10.1145/3197517.3201337},
+}
+
+@article{Wang2020Envelope,
+  author    = {Wang, Bolun and Schneider, Teseo and Hu, Yixin and Attene, Marco and Panozzo, Daniele},
+  title     = {Exact and Efficient Polyhedral Envelope Containment Check},
+  journal   = {ACM Transactions on Graphics},
+  volume    = {39},
+  number    = {4},
+  pages     = {Article 114},
+  year      = {2020},
+  doi       = {10.1145/3386569.3392375},
+}
+
+% =============================================================================
+% 9. MESH REPAIR / CLEANING
+% =============================================================================
+
+@article{Attene2014Repair,
+  author    = {Attene, Marco},
+  title     = {Direct repair of self-intersecting meshes},
+  journal   = {Graphical Models},
+  volume    = {76},
+  number    = {6},
+  pages     = {658--668},
+  year      = {2014},
+  doi       = {10.1016/j.gmod.2014.09.002},
+}
+
+@article{Attene2018Repair,
+  author    = {Attene, Marco},
+  title     = {As-exact-as-possible repair of unprintable {STL} files},
+  journal   = {Rapid Prototyping Journal},
+  volume    = {24},
+  number    = {5},
+  pages     = {855--864},
+  year      = {2018},
+  doi       = {10.1108/RPJ-11-2016-0185},
+}
+
+@article{Attene2017ImatiSTL,
+  author    = {Attene, Marco},
+  title     = {{ImatiSTL} -- Fast and Reliable Mesh Processing with a Hybrid Kernel},
+  journal   = {Transactions on Computational Science XXIX},
+  series    = {LNCS},
+  pages     = {86--96},
+  year      = {2017},
+  doi       = {10.1007/978-3-662-54563-8\_5},
+}
+
+@article{Attene2013Repair,
+  author    = {Attene, Marco and Campen, Marcel and Kobbelt, Leif},
+  title     = {Polygon mesh repairing: An application perspective},
+  journal   = {ACM Computing Surveys},
+  volume    = {45},
+  number    = {2},
+  pages     = {Article 15},
+  year      = {2013},
+  doi       = {10.1145/2431211.2431214},
+}
+
+@article{BischoffKobbelt2005,
+  author    = {Bischoff, Stephan and Kobbelt, Leif},
+  title     = {Structure Preserving {CAD} Model Repair},
+  journal   = {Computer Graphics Forum},
+  volume    = {24},
+  number    = {3},
+  pages     = {527--536},
+  year      = {2005},
+  doi       = {10.1111/j.1467-8659.2005.00878.x},
+}
+
+@article{SugiharaIri1990,
+  author    = {Sugihara, Kokichi and Iri, Masao},
+  title     = {A Solid Modelling System Free from Topological Inconsistency},
+  journal   = {Journal of Information Processing},
+  volume    = {12},
+  number    = {4},
+  pages     = {380--393},
+  year      = {1990},
+}
+
+% =============================================================================
+% 10. LIBRARY ARCHITECTURE & C++ GENERIC PROGRAMMING
+% =============================================================================
+
+@techreport{StepanovLee1995,
+  author    = {Stepanov, Alexander and Lee, Meng},
+  title     = {The Standard Template Library},
+  institution = {Hewlett-Packard Laboratories},
+  number    = {HPL-94-34},
+  year      = {1995},
+}
+
+@book{Alexandrescu2001,
+  author    = {Alexandrescu, Andrei},
+  title     = {Modern {C++} Design: Generic Programming and Design Patterns Applied},
+  publisher = {Addison-Wesley},
+  year      = {2001},
+  isbn      = {0-201-70431-5},
+}
+
+@book{Knuth1997,
+  author    = {Knuth, Donald E.},
+  title     = {The Art of Computer Programming, Volume 2: Seminumerical Algorithms},
+  publisher = {Addison-Wesley},
+  year      = {1997},
+  edition   = {3rd},
+  isbn      = {0-201-89684-2},
+}
+
+% =============================================================================
+% 11. GEOMETRY LIBRARIES & ENGINES
+% =============================================================================
+
+@misc{trueform2025,
+  author       = {Sajovic, {\v{Z}}iga and others},
+  title        = {{trueform}: the {STL} for Geometry},
+  howpublished = {Polydera},
+  year         = {2025},
+  url          = {https://github.com/polydera/trueform},
+}
+
+@misc{libigl,
+  author    = {Jacobson, Alec and Panozzo, Daniele and others},
+  title     = {{libigl}: A simple {C++} geometry processing library},
+  year      = {2018},
+  url       = {https://libigl.github.io/},
+}
+
+@manual{CGAL2023,
+  author    = {{The CGAL Project}},
+  title     = {{CGAL} User and Reference Manual},
+  publisher = {{CGAL} Editorial Board},
+  edition   = {5.5.2},
+  year      = {2023},
+  url       = {https://doc.cgal.org/5.5.2/Manual/packages.html},
+}
+
+@misc{Manifold,
+  author    = {Lalish, Emmett},
+  title     = {{Manifold}: a library dedicated to creating and operating on manifold triangle meshes},
+  year      = {2023},
+  url       = {https://github.com/elalish/manifold},
+}
+
+@incollection{Livesu2019Cinolib,
+  author    = {Livesu, Marco},
+  title     = {{cinolib}: A Generic Programming Header Only {C++} Library for Processing Polygonal and Polyhedral Meshes},
+  booktitle = {Transactions on Computational Science XXXIV},
+  series    = {LNCS},
+  volume    = {11820},
+  pages     = {64--76},
+  publisher = {Springer},
+  year      = {2019},
+  doi       = {10.1007/978-3-662-59958-7\_4},
+}
+
+@misc{MeshLib,
+  author    = {{MeshInspector}},
+  title     = {{MeshLib}: 3{D} processing library},
+  year      = {2024},
+  url       = {https://meshlib.io/},
+}
+
+@misc{Geogram,
+  author    = {L{\'e}vy, Bruno},
+  title     = {{Geogram}: a library of geometric algorithms},
+  year      = {2024},
+  url       = {https://github.com/BrunoLevy/geogram},
+}
+
+@misc{LevyGraphite2022,
+  author    = {L{\'e}vy, Bruno},
+  title     = {{Graphite}},
+  year      = {2022},
+  url       = {https://github.com/BrunoLevy/GraphiteThree},
+}
+
+@misc{TBB,
+  author    = {{Intel Corporation}},
+  title     = {{oneTBB}: oneAPI Threading Building Blocks},
+  year      = {2024},
+  url       = {https://github.com/oneapi-src/oneTBB},
+}
+
+@misc{Blender,
+  author    = {{Blender Online Community}},
+  title     = {Blender -- a 3{D} modelling and rendering package},
+  organization = {Blender Foundation},
+  year      = {2024},
+  url       = {https://www.blender.org/},
+}
+
+@misc{MayaDoc,
+  author    = {{Autodesk}},
+  title     = {{Autodesk} {Maya} Reference Manual},
+  year      = {2020},
+  url       = {https://help.autodesk.com/view/MAYAUL/2020/ENU/},
+}
+
+% =============================================================================
+% 12. DATASETS & BENCHMARKS
+% =============================================================================
+
+@article{Thingi10K,
+  author    = {Zhou, Qingnan and Jacobson, Alec},
+  title     = {{Thingi10K}: A Dataset of 10,000 3{D}-Printing Models},
+  journal   = {arXiv preprint},
+  volume    = {arXiv:1605.04797},
+  year      = {2016},
+  url       = {https://arxiv.org/abs/1605.04797},
+}
+
+@article{TetWild2018,
+  author    = {Hu, Yixin and Zhou, Qingnan and Gao, Xifeng and Jacobson, Alec and Zorin, Denis and Panozzo, Daniele},
+  title     = {Tetrahedral Meshing in the Wild},
+  journal   = {ACM Transactions on Graphics},
+  volume    = {37},
+  number    = {4},
+  pages     = {Article 60},
+  year      = {2018},
+  doi       = {10.1145/3197517.3201353},
+}
+
+@article{FastTetWild2020,
+  author    = {Hu, Yixin and Schneider, Teseo and Wang, Bolun and Zorin, Denis and Panozzo, Daniele},
+  title     = {Fast Tetrahedral Meshing in the Wild},
+  journal   = {ACM Transactions on Graphics},
+  volume    = {39},
+  number    = {4},
+  pages     = {Article 117},
+  year      = {2020},
+  doi       = {10.1145/3386569.3392385},
+}
+
+@misc{OpenSCAD,
+  author    = {Wolf, Claire and {OpenSCAD contributors}},
+  title     = {{OpenSCAD}: The Programmers Solid {3D} CAD Modeller},
+  year      = {2010},
+  url       = {https://openscad.org/},
+}
+
+@misc{thingiCSG,
+  author    = {L{\'e}vy, Bruno},
+  title     = {{thingiCSG}: A collection of {CSG} trees in {OpenSCAD} format},
+  year      = {2024},
+  url       = {https://github.com/BrunoLevy/thingiCSG},
+}
+
+@misc{Thingiverse,
+  title     = {{Thingiverse}: Digital Designs for Physical Objects},
+  year      = {2024},
+  url       = {https://www.thingiverse.com/},
+}
+
+% =============================================================================
+% 13. ADJACENT APPLICATIONS (cited as motivation by prior art)
+% =============================================================================
+
+@inproceedings{Caumon2003,
+  author    = {Caumon, Guillaume and Sword, Charles H. and Mallet, Jean-Laurent},
+  title     = {Constrained modifications of non-manifold {B}-reps},
+  booktitle = {Proceedings of the 8th ACM Symposium on Solid Modeling and Applications (SM '03)},
+  pages     = {310--315},
+  year      = {2003},
+  doi       = {10.1145/781606.781657},
+}
+
+@article{Pellerin2017,
+  author    = {Pellerin, Jeanne and Botella, Arnaud and Bonneau, Fran{\c{c}}ois and Mazuyer, Antoine and Chauvin, Benjamin and L{\'e}vy, Bruno and Caumon, Guillaume},
+  title     = {{RINGMesh}: A programming library for developing mesh-based geomodeling applications},
+  journal   = {Computers \& Geosciences},
+  volume    = {104},
+  pages     = {93--100},
+  year      = {2017},
+  doi       = {10.1016/j.cageo.2017.03.005},
+}
+
+@book{Mallet2002,
+  author    = {Mallet, Jean-Laurent},
+  title     = {Geomodeling},
+  publisher = {Oxford University Press},
+  year      = {2002},
+  isbn      = {0-19-514460-0},
+}
+
+@article{Legentil2022,
+  author    = {Legentil, Capucine and Pellerin, Jeanne and Cupillard, Paul and Froehly, Algiane and Caumon, Guillaume},
+  title     = {Boolean operations between volumes on conformal mesh: Local insertion in a 2{D} mesh and its impact on seismic wave simulation},
+  journal   = {Computers \& Geosciences},
+  volume    = {159},
+  pages     = {Article 105013},
+  year      = {2022},
+  doi       = {10.1016/j.cageo.2022.105013},
+}
+
+@article{Lyon2016HexEx,
+  author    = {Lyon, Max and Bommes, David and Kobbelt, Leif},
+  title     = {{HexEx}: Robust Hexahedral Mesh Extraction},
+  journal   = {ACM Transactions on Graphics},
+  volume    = {35},
+  number    = {4},
+  pages     = {Article 123},
+  year      = {2016},
+  doi       = {10.1145/2897824.2925976},
+}
+
+@article{Garg2016,
+  author    = {Garg, Akash and Jacobson, Alec and Grinspun, Eitan},
+  title     = {Computational design of reconfigurables},
+  journal   = {ACM Transactions on Graphics},
+  volume    = {35},
+  number    = {4},
+  pages     = {Article 90},
+  year      = {2016},
+  doi       = {10.1145/2897824.2925935},
+}
+
+@article{Yao2017,
+  author    = {Yao, Jiaxian and Kaufman, Danny M. and Gingold, Yotam and Agrawala, Maneesh},
+  title     = {Interactive design and stability analysis of decorative joinery for furniture},
+  journal   = {ACM Transactions on Graphics},
+  volume    = {36},
+  number    = {2},
+  pages     = {Article 20},
+  year      = {2017},
+  doi       = {10.1145/3054740},
+}
+
+@article{Sellan2019,
+  author    = {Sell{\'a}n, Silvia and Cheng, Herng Yi and Ma, Yuming and Dembowski, Mitchell and Jacobson, Alec},
+  title     = {Solid Geometry Processing on Deconstructed Domains},
+  journal   = {Computer Graphics Forum},
+  volume    = {38},
+  number    = {1},
+  pages     = {77--90},
+  year      = {2019},
+  doi       = {10.1111/cgf.13592},
+}
+
+@article{Sellan2021,
+  author    = {Sell{\'a}n, Silvia and Aigerman, Noam and Jacobson, Alec},
+  title     = {Swept volumes via spacetime numerical continuation},
+  journal   = {ACM Transactions on Graphics},
+  volume    = {40},
+  number    = {4},
+  pages     = {Article 49},
+  year      = {2021},
+  doi       = {10.1145/3450626.3459780},
+}
+
+@article{SawhneyCrane2020,
+  author    = {Sawhney, Rohan and Crane, Keenan},
+  title     = {{Monte} {Carlo} Geometry Processing: A Grid-Free Approach to {PDE}-Based Methods on Volumetric Domains},
+  journal   = {ACM Transactions on Graphics},
+  volume    = {39},
+  number    = {4},
+  pages     = {Article 123},
+  year      = {2020},
+  doi       = {10.1145/3386569.3392374},
+}
+
+@article{Tymms2016,
+  author    = {Tymms, Christopher and Grinspun, Eitan and Zorin, Denis},
+  title     = {Interactive modeling of mechanical objects},
+  journal   = {Computer Graphics Forum},
+  volume    = {35},
+  number    = {7},
+  pages     = {145--155},
+  year      = {2016},
+  doi       = {10.1111/cgf.13013},
+}
+
+@article{Mahmoud2021RXMesh,
+  author    = {Mahmoud, Ahmed H. and Porumbescu, Serban D. and Owens, John D.},
+  title     = {{RXMesh}: A {GPU} mesh data structure},
+  journal   = {ACM Transactions on Graphics},
+  volume    = {40},
+  number    = {4},
+  pages     = {Article 104},
+  year      = {2021},
+  doi       = {10.1145/3450626.3459747},
+}
+
+@article{Marot2019,
+  author    = {Marot, C{\'e}lestin and Pellerin, Jeanne and Remacle, Jean-Fran{\c{c}}ois},
+  title     = {One machine, one minute, three billion tetrahedra},
+  journal   = {International Journal for Numerical Methods in Engineering},
+  volume    = {117},
+  number    = {9},
+  pages     = {967--990},
+  year      = {2019},
+  doi       = {10.1002/nme.5987},
+}
+
+@article{Pasko1999HyperFun,
+  author    = {Pasko, Alexander and Adzhiev, Valery and Cartwright, Andrew and Fausett, Eric and Ossipov, Andrei and Savchenko, Vladimir},
+  title     = {{HyperFun} project: a framework for collaborative multidimensional {F}-rep modeling},
+  booktitle = {ACM SIGGRAPH 1999 Workshop on Implicit Surfaces},
+  pages     = {59--69},
+  year      = {1999},
+}
+
+@article{Wyvill1999,
+  author    = {Wyvill, Brian and Guy, Andrew and Galin, Eric},
+  title     = {Extending the {CSG} tree. {Warping}, blending and boolean operations in an implicit surface modeling system},
+  journal   = {Computer Graphics Forum},
+  volume    = {18},
+  number    = {2},
+  pages     = {149--158},
+  year      = {1999},
+  doi       = {10.1111/1467-8659.00365},
+}
+
+@article{Du2022,
+  author    = {Du, Xingyi and Zhou, Qingnan and Aigerman, Noam and Tao, Yifan},
+  title     = {Robust Computation of Implicit Surface Networks for Piecewise Linear Functions},
+  journal   = {ACM Transactions on Graphics},
+  volume    = {41},
+  number    = {4},
+  pages     = {Article 41},
+  year      = {2022},
+  doi       = {10.1145/3528223.3530176},
+}
+
+% Bohm-Runge predecessors (2D / planar region extraction)
+
+@article{JiangBunke1993,
+  author    = {Jiang, Xiaoyi and Bunke, Horst},
+  title     = {An optimal algorithm for extracting the regions of a plane graph},
+  journal   = {Pattern Recognition Letters},
+  volume    = {14},
+  number    = {7},
+  pages     = {553--558},
+  year      = {1993},
+  doi       = {10.1016/0167-8655(93)90104-1},
+}
+
+@article{FanChang1991,
+  author    = {Fan, Kuo-Chin and Chang, Chau-Yu},
+  title     = {Surface extraction from line drawings of a polyhedron},
+  journal   = {Pattern Recognition Letters},
+  volume    = {12},
+  number    = {10},
+  pages     = {627--633},
+  year      = {1991},
+  doi       = {10.1016/0167-8655(91)90017-G},
+}
+
+@article{Yip2024,
+  author    = {Yip, Mark and Stahl, Annette and Schellewald, Christian},
+  title     = {Robust hole-detection in triangular meshes irrespective of the presence of singular vertices},
+  journal   = {Computer-Aided Design},
+  volume    = {170},
+  pages     = {Article 103696},
+  year      = {2024},
+  doi       = {10.1016/j.cad.2024.103696},
+}
