@@ -40,10 +40,10 @@ auto half_edge_to_collapse(const tf::half_edges<Index> &he,
 /// Returns the half-edge whose start vertex will survive and whose
 /// end vertex will be removed. Prefers keeping the more constrained vertex:
 /// boundary > corner > crease > regular.
-template <typename Index>
+template <typename Index, typename Features>
 auto half_edge_to_collapse(const tf::half_edges<Index> &he,
                            tf::edge_handle<Index> eh,
-                           const feature_mask &mask)
+                           const Features &features)
     -> tf::half_edge_handle<Index> {
   auto heh0 = he.half_edge_handle(tf::unsafe, eh, false);
   auto v0 = he.start_vertex_handle(tf::unsafe, heh0).id();
@@ -52,7 +52,7 @@ auto half_edge_to_collapse(const tf::half_edges<Index> &he,
     return he.opposite(tf::unsafe, heh0);
   if (he.is_boundary_vertex(v0) && !he.is_boundary_vertex(v1))
     return heh0;
-  if (mask.vertex_type(v1) > mask.vertex_type(v0))
+  if (features.vertex_type(v1) > features.vertex_type(v0))
     return he.opposite(tf::unsafe, heh0);
   return heh0;
 }

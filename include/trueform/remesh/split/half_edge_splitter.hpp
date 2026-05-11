@@ -43,19 +43,35 @@ public:
              bool preserve_boundary) -> Index {
     clear();
     Index n_original_half_edges = Index(he.half_edges_buffer().size());
+    Index n_original_pts = Index(point_data.size());
     compute_edge_into_split_point_map(point_data, he, handler,
                                       preserve_boundary);
     _previous_boundary_edge.allocate(he.half_edges_buffer().size() / 2);
     Index n_polys = build_half_edges_from_map(
-        he, he.face_half_edge_handles(), Index(point_data.size()));
+        he, he.face_half_edge_handles(), n_original_pts);
     write_computed_halfedges(he);
     if (!preserve_boundary)
       relink_boundary_edges(he, n_original_half_edges);
+    build_parent_edge_for_new(n_original_pts);
     return n_polys;
   }
 
   auto created_point_data() const -> const tf::points_buffer<Real, Dims> & {
     return _point_data;
+  }
+
+  /// @brief Per-new-face parent face id, in the order new face ids were
+  /// assigned. `parent_face_for_new()[k]` is the parent of new face
+  /// `n_original_polys + k`.
+  auto parent_face_for_new() const -> const tf::buffer<Index> & {
+    return _parent_face_for_new;
+  }
+
+  /// @brief Per-new-edge parent edge id, in the order new edge ids were
+  /// assigned. `parent_edge_for_new()[k]` is the parent of new edge
+  /// `n_original_edges + k`.
+  auto parent_edge_for_new() const -> const tf::buffer<Index> & {
+    return _parent_edge_for_new;
   }
 
   auto clear() -> void {
@@ -64,6 +80,8 @@ public:
     _edge_to_point_map.clear();
     _point_data.clear();
     _previous_boundary_edge.clear();
+    _parent_face_for_new.clear();
+    _parent_edge_for_new.clear();
   }
 
 private:
@@ -128,10 +146,12 @@ private:
                                  const FaceRange &face_half_edges,
                                  Index n_original_pts) -> Index {
     _outer_half_edges.allocate(Index(_point_data.size()) * 2);
+    _parent_face_for_new.clear();
 
     struct local_data {
       tf::buffer<he_t> inner_hes;
       tf::buffer<Index> edge_ids;
+      tf::buffer<Index> parent_faces;  // parent face id per new face
       Index polygon_offset = 0;
       Index half_edge_offset = 0;
     };
@@ -139,6 +159,7 @@ private:
       tf::half_edges<Index> &he;
       tf::buffer<he_t> &outer_half_edges;
       tf::buffer<he_t> &inner_half_edges;
+      tf::buffer<Index> &parent_face_for_new;
       Index polygon_offset = 0;
       Index inner_half_edge_offset = 0;
       Index n_original_half_edges;
@@ -151,6 +172,7 @@ private:
     aggregate_data agg{he,
                        _outer_half_edges,
                        _inner_half_edges,
+                       _parent_face_for_new,
                        0,
                        0,
                        n_original_half_edges,
@@ -164,6 +186,7 @@ private:
             if (!heh.is_valid())
               continue;
             this->process_triangle(heh, he, local.inner_hes, local.edge_ids,
+                             local.parent_faces,
                              n_original_half_edges, local.half_edge_offset,
                              local.polygon_offset, n_original_polys,
                              n_original_pts);
@@ -195,11 +218,32 @@ private:
             if (hp->face >= agg.n_original_polys)
               hp->face += agg.polygon_offset;
           }
+          // Append local parent_faces (matches the order in which new
+          // face ids are issued globally, given the polygon_offset
+          // rebasing happens in this same reduce call).
+          for (std::size_t j = 0; j < local.parent_faces.size(); ++j)
+            agg.parent_face_for_new.push_back(local.parent_faces[j]);
           agg.polygon_offset += local.polygon_offset;
           agg.inner_half_edge_offset += local.half_edge_offset;
         });
 
     return agg.polygon_offset + n_original_polys;
+  }
+
+  auto build_parent_edge_for_new(Index n_original_pts) -> void {
+    Index n_outer = Index(_outer_half_edges.size() / 2);
+    Index n_inner = Index(_inner_half_edges.size() / 2);
+    _parent_edge_for_new.clear();
+    _parent_edge_for_new.allocate(n_outer + n_inner);
+    tf::parallel_fill(tf::make_range(_parent_edge_for_new), Index(-1));
+    Index n_orig_edges = Index(_edge_to_point_map.size());
+    tf::parallel_for_each(tf::make_sequence_range(n_orig_edges),
+                          [&, n_original_pts](Index e) {
+      Index v = _edge_to_point_map[e];
+      if (v == _clean_tag)
+        return;
+      _parent_edge_for_new[v - n_original_pts] = e;
+    });
   }
 
   // --- Phase 3: write computed half-edges to main buffer ---
@@ -421,6 +465,7 @@ private:
   auto process_triangle(half_edge_handle_t heh, tf::half_edges<Index> &he,
                         InnerBuf &interior_hes,
                         tf::buffer<Index> &all_ids,
+                        tf::buffer<Index> &parent_faces,
                         Index n_original_half_edges,
                         Index &current_hes_offset,
                         Index &current_polygon_offset,
@@ -464,12 +509,17 @@ private:
       h2.face = face_id;
     };
 
-    // First sub-triangle reuses the original face
-    process_subtriangle(3, he.half_edge(triangle[0]).face);
-    // Remaining sub-triangles get new face IDs
-    for (int t = 1; t < tess[0]; ++t)
+    // Capture the parent face id once (constant across all sub-triangles
+    // of this parent).
+    Index parent_face = he.half_edge(triangle[0]).face;
+    // First sub-triangle reuses the original face — no propagation needed.
+    process_subtriangle(3, parent_face);
+    // Remaining sub-triangles get new face ids — record parent for each.
+    for (int t = 1; t < tess[0]; ++t) {
+      parent_faces.push_back(parent_face);
       process_subtriangle(3 + t * 3,
                           n_original_polys + current_polygon_offset++);
+    }
   }
 
   // --- Static helpers ---
@@ -513,6 +563,8 @@ private:
   tf::points_buffer<Real, Dims> _point_data;
   tf::buffer<Index> _edge_to_point_map;
   tf::buffer<Index> _previous_boundary_edge;
+  tf::buffer<Index> _parent_face_for_new;  // length = n_new_faces
+  tf::buffer<Index> _parent_edge_for_new;  // length = n_new_edges (= n_midpoints)
 };
 
 } // namespace remesh

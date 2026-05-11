@@ -14,26 +14,26 @@
 
 #include "../core/coordinate_type.hpp"
 #include "../core/frame_of.hpp"
+#include "../core/none.hpp"
 #include "../core/transformed.hpp"
 #include "./collapse_checker.hpp"
 #include "./collapse_edges.hpp"
 #include "./collapse_handler.hpp"
+#include "./feature_handler.hpp"
 #include "./length_collapse_config.hpp"
+#include "./preserve_regions.hpp"
 
-namespace tf {
+#include <type_traits>
+#include <utility>
 
-// ---------------------------------------------------------------------------
-// Exhaustion mode — collapse all edges shorter than min_len
-// ---------------------------------------------------------------------------
+namespace tf::remesh {
 
-/// @ingroup remesh
-/// @brief Collapse edges shorter than min_len.
-template <typename Index, typename PointsPolicy>
+template <typename Index, typename PointsPolicy, typename Regions>
 auto collapse_short_edges(
     tf::half_edges<Index> &he, tf::points<PointsPolicy> &points,
     tf::coordinate_type<PointsPolicy> min_len,
-    const tf::length_collapse_config<tf::coordinate_type<PointsPolicy>>
-        &config = {}) -> Index {
+    const tf::length_collapse_config<tf::coordinate_type<PointsPolicy>> &config,
+    Regions regions) -> std::pair<Index, feature_handler<Index>> {
   using Real = tf::coordinate_type<PointsPolicy>;
   Real min2 = min_len * min_len;
   Real max2 = config.max_length * config.max_length;
@@ -49,32 +49,39 @@ auto collapse_short_edges(
   };
 
   auto checker = tf::make_collapse_checker<Real>(config.max_aspect_ratio, max2);
-  auto handler =
-      tf::make_collapse_handler<Real>(score, checker, config);
-  return tf::collapse_edges(he, points, handler);
+
+  feature_handler<Index> features;
+  if constexpr (std::is_same_v<Regions, tf::none_t>) {
+    if (config.feature_angle.value >= 0)
+      features.init(he, points, config.feature_angle);
+  } else {
+    if (config.feature_angle.value >= 0)
+      features.init(he, points, config.feature_angle, regions.face_regions);
+    else
+      features.init_regions(he, points, regions.face_regions);
+  }
+
+  auto handler = tf::make_collapse_handler<Real>(score, checker,
+                                                  features.as_view(), config);
+  Index n = tf::collapse_edges(he, points, handler);
+  return {n, std::move(features)};
 }
 
-template <typename Index, typename PointsPolicy>
+template <typename Index, typename PointsPolicy, typename Regions>
 auto collapse_short_edges(
     tf::half_edges<Index> &he, tf::points<PointsPolicy> &&points,
     tf::coordinate_type<PointsPolicy> min_len,
-    const tf::length_collapse_config<tf::coordinate_type<PointsPolicy>>
-        &config) -> Index {
-  return tf::collapse_short_edges(he, points, min_len, config);
+    const tf::length_collapse_config<tf::coordinate_type<PointsPolicy>> &config,
+    Regions regions) -> std::pair<Index, feature_handler<Index>> {
+  return tf::remesh::collapse_short_edges(he, points, min_len, config, regions);
 }
 
-// ---------------------------------------------------------------------------
-// Target mode — collapse shortest edges until target face count is reached
-// ---------------------------------------------------------------------------
-
-/// @ingroup remesh
-/// @brief Collapse short edges to reach a target face count.
-template <typename Index, typename PointsPolicy>
+template <typename Index, typename PointsPolicy, typename Regions>
 auto collapse_short_edges(
     tf::half_edges<Index> &he, tf::points<PointsPolicy> &points,
     Index target_faces,
-    const tf::length_collapse_config<tf::coordinate_type<PointsPolicy>>
-        &config = {}) -> Index {
+    const tf::length_collapse_config<tf::coordinate_type<PointsPolicy>> &config,
+    Regions regions) -> std::pair<Index, feature_handler<Index>> {
   using Real = tf::coordinate_type<PointsPolicy>;
   Real max2 = config.max_length * config.max_length;
 
@@ -87,9 +94,106 @@ auto collapse_short_edges(
   };
 
   auto checker = tf::make_collapse_checker<Real>(config.max_aspect_ratio, max2);
-  auto handler =
-      tf::make_collapse_handler<Real>(score, checker, config);
-  return tf::collapse_edges(he, points, handler, target_faces);
+
+  feature_handler<Index> features;
+  if constexpr (std::is_same_v<Regions, tf::none_t>) {
+    if (config.feature_angle.value >= 0)
+      features.init(he, points, config.feature_angle);
+  } else {
+    if (config.feature_angle.value >= 0)
+      features.init(he, points, config.feature_angle, regions.face_regions);
+    else
+      features.init_regions(he, points, regions.face_regions);
+  }
+
+  auto handler = tf::make_collapse_handler<Real>(score, checker,
+                                                  features.as_view(), config);
+  Index n = tf::collapse_edges(he, points, handler, target_faces);
+  return {n, std::move(features)};
+}
+
+template <typename Index, typename PointsPolicy, typename Regions>
+auto collapse_short_edges(
+    tf::half_edges<Index> &he, tf::points<PointsPolicy> &&points,
+    Index target_faces,
+    const tf::length_collapse_config<tf::coordinate_type<PointsPolicy>> &config,
+    Regions regions) -> std::pair<Index, feature_handler<Index>> {
+  return tf::remesh::collapse_short_edges(he, points, target_faces, config,
+                                          regions);
+}
+
+} // namespace tf::remesh
+
+namespace tf {
+
+// ---------------------------------------------------------------------------
+// Exhaustion mode — collapse all edges shorter than min_len
+// ---------------------------------------------------------------------------
+
+template <typename Index, typename PointsPolicy>
+auto collapse_short_edges(
+    tf::half_edges<Index> &he, tf::points<PointsPolicy> &points,
+    tf::coordinate_type<PointsPolicy> min_len,
+    const tf::length_collapse_config<tf::coordinate_type<PointsPolicy>>
+        &config = {}) -> Index {
+  return tf::remesh::collapse_short_edges(he, points, min_len,
+                                                     config, tf::none)
+      .first;
+}
+
+template <typename Index, typename PointsPolicy, typename Range>
+auto collapse_short_edges(
+    tf::half_edges<Index> &he, tf::points<PointsPolicy> &points,
+    tf::coordinate_type<PointsPolicy> min_len,
+    const tf::length_collapse_config<tf::coordinate_type<PointsPolicy>> &config,
+    tf::preserve_regions_t<Range> regions) -> tf::buffer<Index> {
+  auto [_, features] = tf::remesh::collapse_short_edges(
+      he, points, min_len, config, regions);
+  return std::move(features.face_labels);
+}
+
+template <typename Index, typename PointsPolicy>
+auto collapse_short_edges(
+    tf::half_edges<Index> &he, tf::points<PointsPolicy> &&points,
+    tf::coordinate_type<PointsPolicy> min_len,
+    const tf::length_collapse_config<tf::coordinate_type<PointsPolicy>>
+        &config) -> Index {
+  return tf::collapse_short_edges(he, points, min_len, config);
+}
+
+template <typename Index, typename PointsPolicy, typename Range>
+auto collapse_short_edges(
+    tf::half_edges<Index> &he, tf::points<PointsPolicy> &&points,
+    tf::coordinate_type<PointsPolicy> min_len,
+    const tf::length_collapse_config<tf::coordinate_type<PointsPolicy>> &config,
+    tf::preserve_regions_t<Range> regions) -> tf::buffer<Index> {
+  return tf::collapse_short_edges(he, points, min_len, config, regions);
+}
+
+// ---------------------------------------------------------------------------
+// Target mode — collapse shortest edges until target face count is reached
+// ---------------------------------------------------------------------------
+
+template <typename Index, typename PointsPolicy>
+auto collapse_short_edges(
+    tf::half_edges<Index> &he, tf::points<PointsPolicy> &points,
+    Index target_faces,
+    const tf::length_collapse_config<tf::coordinate_type<PointsPolicy>>
+        &config = {}) -> Index {
+  return tf::remesh::collapse_short_edges(he, points, target_faces,
+                                                    config, tf::none)
+      .first;
+}
+
+template <typename Index, typename PointsPolicy, typename Range>
+auto collapse_short_edges(
+    tf::half_edges<Index> &he, tf::points<PointsPolicy> &points,
+    Index target_faces,
+    const tf::length_collapse_config<tf::coordinate_type<PointsPolicy>> &config,
+    tf::preserve_regions_t<Range> regions) -> tf::buffer<Index> {
+  auto [_, features] = tf::remesh::collapse_short_edges(
+      he, points, target_faces, config, regions);
+  return std::move(features.face_labels);
 }
 
 template <typename Index, typename PointsPolicy>
@@ -99,6 +203,15 @@ auto collapse_short_edges(
     const tf::length_collapse_config<tf::coordinate_type<PointsPolicy>>
         &config) -> Index {
   return tf::collapse_short_edges(he, points, target_faces, config);
+}
+
+template <typename Index, typename PointsPolicy, typename Range>
+auto collapse_short_edges(
+    tf::half_edges<Index> &he, tf::points<PointsPolicy> &&points,
+    Index target_faces,
+    const tf::length_collapse_config<tf::coordinate_type<PointsPolicy>> &config,
+    tf::preserve_regions_t<Range> regions) -> tf::buffer<Index> {
+  return tf::collapse_short_edges(he, points, target_faces, config, regions);
 }
 
 } // namespace tf

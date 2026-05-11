@@ -28,11 +28,11 @@ namespace tf {
 template <typename Real>
 struct length_collapse_config : collapse_config<Real> {
   Real max_length = std::numeric_limits<Real>::max();
-  Real max_aspect_ratio = Real(40);
+  Real max_aspect_ratio = Real(-1);
 
   length_collapse_config(
       Real max_length = std::numeric_limits<Real>::max(),
-      Real max_aspect_ratio = Real(40), bool preserve_boundary = true,
+      Real max_aspect_ratio = Real(-1), bool preserve_boundary = true,
       bool use_quadric = true, bool parallel = true,
       tf::rad<Real> feature_angle = tf::rad<Real>(Real(-1)),
       Real feature_weight = Real(100), double stabilizer = 1e-6)

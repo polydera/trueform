@@ -27,11 +27,12 @@ namespace tf {
 /// Iterates until the handler reports no more edges to split or
 /// max_iterations is reached.
 template <typename Index, typename Real, std::size_t Dims,
-          typename FramePolicy, typename ScoreFn>
+          typename FramePolicy, typename ScoreFn, typename Tracker>
 auto split_edges(tf::half_edges<Index> &he,
                  tf::points_buffer<Real, Dims> &points,
                  const tf::frame_like<Dims, FramePolicy> &frame,
-                 const tf::split_handler<Real, ScoreFn> &handler) -> Index {
+                 const tf::split_handler<Real, ScoreFn, Tracker> &handler)
+    -> Index {
   tf::remesh::half_edge_splitter<Index, Real, Dims> splitter;
   Index total_split = 0;
   int iter = 0;
@@ -49,16 +50,20 @@ auto split_edges(tf::half_edges<Index> &he,
         tf::make_range(created.data_buffer()),
         tf::drop(tf::make_range(points.data_buffer()), old_n * Dims));
     he.rebuild_handles(n_faces, Index(points.size()));
+    handler.on_split_done(he, splitter.parent_face_for_new(),
+                          splitter.parent_edge_for_new());
   }
   return total_split;
 }
 
 /// @brief Split edges using a split_handler.
 /// @overload
-template <typename Index, typename Real, std::size_t Dims, typename ScoreFn>
+template <typename Index, typename Real, std::size_t Dims, typename ScoreFn,
+          typename Tracker>
 auto split_edges(tf::half_edges<Index> &he,
                  tf::points_buffer<Real, Dims> &points,
-                 const tf::split_handler<Real, ScoreFn> &handler) -> Index {
+                 const tf::split_handler<Real, ScoreFn, Tracker> &handler)
+    -> Index {
   return tf::split_edges(he, points, tf::identity_frame<Real, Dims>{},
                          handler);
 }

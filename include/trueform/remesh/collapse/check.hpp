@@ -58,8 +58,11 @@ auto is_collapse_allowed(const tf::half_edges<Index> &he,
   auto frame = tf::frame_of(points);
 
   Real max_old_ar = Real(0);
-  if constexpr (!std::is_same_v<AspectRatioT, tf::none_t>)
+  bool ar_active = false;
+  if constexpr (!std::is_same_v<AspectRatioT, tf::none_t>) {
     max_old_ar = Real(max_aspect_ratio);
+    ar_active = max_old_ar >= Real(0);
+  }
   Real max_new_ar = 0;
   Real max_old_e2 = 0, max_new_e2 = 0;
 
@@ -104,19 +107,23 @@ auto is_collapse_allowed(const tf::half_edges<Index> &he,
           }
 
           if constexpr (AspectRatio) {
-            auto ec = points[b] - points[a];
-            Real ec2 = tf::dot(ec, ec);
+            if (ar_active) {
+              auto ec = points[b] - points[a];
+              Real ec2 = tf::dot(ec, ec);
 
-            Real old_a2 = old_n.length2();
-            if (old_a2 > 0) {
-              Real old_me2 = std::max({tf::dot(ea, ea), tf::dot(eb, eb), ec2});
-              max_old_ar = std::max(max_old_ar, old_me2 / old_a2);
-            }
+              Real old_a2 = old_n.length2();
+              if (old_a2 > 0) {
+                Real old_me2 =
+                    std::max({tf::dot(ea, ea), tf::dot(eb, eb), ec2});
+                max_old_ar = std::max(max_old_ar, old_me2 / old_a2);
+              }
 
-            Real new_a2 = new_n.length2();
-            if (new_a2 > 0) {
-              Real new_me2 = std::max({tf::dot(fa, fa), tf::dot(fb, fb), ec2});
-              max_new_ar = std::max(max_new_ar, new_me2 / new_a2);
+              Real new_a2 = new_n.length2();
+              if (new_a2 > 0) {
+                Real new_me2 =
+                    std::max({tf::dot(fa, fa), tf::dot(fb, fb), ec2});
+                max_new_ar = std::max(max_new_ar, new_me2 / new_a2);
+              }
             }
           }
         }
@@ -173,19 +180,23 @@ auto is_collapse_allowed(const tf::half_edges<Index> &he,
           }
 
           if constexpr (AspectRatio) {
-            auto ec = points[b] - points[a];
-            Real ec2 = tf::dot(ec, ec);
+            if (ar_active) {
+              auto ec = points[b] - points[a];
+              Real ec2 = tf::dot(ec, ec);
 
-            Real old_a2 = old_n.length2();
-            if (old_a2 > 0) {
-              Real old_me2 = std::max({tf::dot(ea, ea), tf::dot(eb, eb), ec2});
-              max_old_ar = std::max(max_old_ar, old_me2 / old_a2);
-            }
+              Real old_a2 = old_n.length2();
+              if (old_a2 > 0) {
+                Real old_me2 =
+                    std::max({tf::dot(ea, ea), tf::dot(eb, eb), ec2});
+                max_old_ar = std::max(max_old_ar, old_me2 / old_a2);
+              }
 
-            Real new_a2 = new_n.length2();
-            if (new_a2 > 0) {
-              Real new_me2 = std::max({tf::dot(fa, fa), tf::dot(fb, fb), ec2});
-              max_new_ar = std::max(max_new_ar, new_me2 / new_a2);
+              Real new_a2 = new_n.length2();
+              if (new_a2 > 0) {
+                Real new_me2 =
+                    std::max({tf::dot(fa, fa), tf::dot(fb, fb), ec2});
+                max_new_ar = std::max(max_new_ar, new_me2 / new_a2);
+              }
             }
           }
         }
@@ -224,7 +235,7 @@ auto is_collapse_allowed(const tf::half_edges<Index> &he,
   }
 
   if constexpr (AspectRatio) {
-    if (max_new_ar > max_old_ar)
+    if (ar_active && max_new_ar > max_old_ar)
       return false;
   }
 
@@ -350,8 +361,11 @@ auto is_collapse_allowed_dihedral(
   constexpr Real cos2_fold_tol = Real(0.9698463);
 
   Real max_old_ar = Real(0);
-  if constexpr (AspectRatio)
+  bool ar_active = false;
+  if constexpr (AspectRatio) {
     max_old_ar = Real(max_aspect_ratio);
+    ar_active = max_old_ar >= Real(0);
+  }
   Real max_new_ar = 0;
 
   for (int i = 0; i < link_size; ++i) {
@@ -375,6 +389,8 @@ auto is_collapse_allowed_dihedral(
       return false;
 
     if constexpr (AspectRatio) {
+      if (!ar_active)
+        continue;
       // New face (pt, link[i], link[nxt])
       if (l2 > 0) {
         auto fc = points[link[nxt]] - points[link[i]];
@@ -402,7 +418,7 @@ auto is_collapse_allowed_dihedral(
   }
 
   if constexpr (AspectRatio) {
-    if (max_new_ar > max_old_ar)
+    if (ar_active && max_new_ar > max_old_ar)
       return false;
   }
 

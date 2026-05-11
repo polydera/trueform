@@ -69,6 +69,69 @@ auto recompute_vertex_types(const tf::half_edges<Index> &he, feature_mask &mask)
   });
 }
 
+/// @ingroup remesh
+/// @brief Upgrade bent crease vertices to corner.
+///
+/// A "crease" vertex (2 feature edges) lies on a straight feature curve.
+/// If the two feature edges meet at an angle (a bend), the vertex is
+/// geometrically a corner even though only 2 features meet. This pass
+/// detects bends and reclassifies them, preventing collapse / relaxation
+/// from destroying region-boundary corners on flat surfaces.
+///
+/// @param bend_threshold Minimum bend (deviation from straight) to qualify
+///   as a corner.
+template <typename Index, typename PointsPolicy>
+auto harden_bent_creases(const tf::half_edges<Index> &he,
+                         const tf::points<PointsPolicy> &points,
+                         feature_mask &mask,
+                         tf::rad<tf::coordinate_type<PointsPolicy>>
+                             bend_threshold) -> void {
+  using Real = tf::coordinate_type<PointsPolicy>;
+  Index n_verts = Index(mask.vertices.size());
+  Real cos_thresh = std::cos(Real(bend_threshold.value));
+  tf::parallel_for_each(tf::make_sequence_range(n_verts), [&](Index v) {
+    if (mask.vertices[v] != vertex_feature_type::crease)
+      return;
+    auto vhe = he.vertex_half_edge_handles()[v];
+    if (!vhe.is_valid())
+      return;
+    Index n_a = Index(-1);
+    Index n_b = Index(-1);
+    auto cur = vhe;
+    do {
+      auto eid = he.edge_handle(tf::unsafe, cur).id();
+      if (mask.edges[eid]) {
+        Index n = he.end_vertex_handle(tf::unsafe, cur).id();
+        if (n_a == Index(-1))
+          n_a = n;
+        else if (n_b == Index(-1))
+          n_b = n;
+      }
+      cur = he.rotated(cur);
+      if (!cur.is_valid())
+        break;
+    } while (cur != vhe);
+    if (n_a == Index(-1) || n_b == Index(-1))
+      return;
+    auto pv = points[v];
+    auto pa = points[n_a];
+    auto pb = points[n_b];
+    Real ax = Real(pa[0]) - Real(pv[0]);
+    Real ay = Real(pa[1]) - Real(pv[1]);
+    Real az = Real(pa[2]) - Real(pv[2]);
+    Real bx = Real(pb[0]) - Real(pv[0]);
+    Real by = Real(pb[1]) - Real(pv[1]);
+    Real bz = Real(pb[2]) - Real(pv[2]);
+    Real la = std::sqrt(ax * ax + ay * ay + az * az);
+    Real lb = std::sqrt(bx * bx + by * by + bz * bz);
+    if (la <= Real(0) || lb <= Real(0))
+      return;
+    Real dot = (ax * bx + ay * by + az * bz) / (la * lb);
+    if (dot > -cos_thresh)
+      mask.vertices[v] = vertex_feature_type::corner;
+  });
+}
+
 } // namespace tf::remesh
 
 namespace tf {

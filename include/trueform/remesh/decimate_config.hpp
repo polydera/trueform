@@ -23,16 +23,15 @@ namespace tf {
 /// convenience API (decimate). Defaults to stabilizer = 1e-3.
 ///
 /// @tparam Real The scalar type.
-template <typename Real>
-struct decimate_config : collapse_config<Real> {
-  Real max_aspect_ratio = Real(40);
+template <typename Real> struct decimate_config : collapse_config<Real> {
+  Real max_aspect_ratio = Real(-1);
 
-  decimate_config(Real max_aspect_ratio = 40, bool preserve_boundary = true,
-                  bool parallel = true,
+  decimate_config(Real max_aspect_ratio = Real(-1),
+                  bool preserve_boundary = true, bool parallel = true,
                   tf::rad<Real> feature_angle = tf::rad<Real>(Real(-1)),
                   Real feature_weight = Real(100), double stabilizer = 1e-3)
-      : collapse_config<Real>{preserve_boundary, true, parallel, feature_angle,
-                              feature_weight, stabilizer},
+      : collapse_config<Real>{preserve_boundary, true,           parallel,
+                              feature_angle,     feature_weight, stabilizer},
         max_aspect_ratio(max_aspect_ratio) {}
 };
 

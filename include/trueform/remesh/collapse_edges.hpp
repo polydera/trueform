@@ -23,10 +23,11 @@ namespace tf {
 /// @ingroup remesh
 /// @brief Collapse edges to exhaustion using a collapse_handler.
 template <typename Index, typename PointsPolicy, typename Real,
-          typename ScoreFn, typename AllowedFn>
+          typename ScoreFn, typename AllowedFn, typename FeatureHandler>
 auto collapse_edges(
     tf::half_edges<Index> &he, tf::points<PointsPolicy> &points,
-    tf::collapse_handler<Real, ScoreFn, AllowedFn> &handler) -> Index {
+    tf::collapse_handler<Real, ScoreFn, AllowedFn, FeatureHandler> &handler)
+    -> Index {
   handler.init(he, points);
   if (handler.parallel())
     return tf::remesh::collapse_to_exhaustion_parallel<1024>(he, points,
@@ -37,10 +38,10 @@ auto collapse_edges(
 /// @ingroup remesh
 /// @brief Collapse edges to a target face count using a collapse_handler.
 template <typename Index, typename PointsPolicy, typename Real,
-          typename ScoreFn, typename AllowedFn>
+          typename ScoreFn, typename AllowedFn, typename FeatureHandler>
 auto collapse_edges(
     tf::half_edges<Index> &he, tf::points<PointsPolicy> &points,
-    tf::collapse_handler<Real, ScoreFn, AllowedFn> &handler,
+    tf::collapse_handler<Real, ScoreFn, AllowedFn, FeatureHandler> &handler,
     Index target_faces) -> Index {
   handler.init(he, points);
   Index current_faces = he.number_of_faces();

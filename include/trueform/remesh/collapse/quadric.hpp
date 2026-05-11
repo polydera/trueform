@@ -260,13 +260,13 @@ auto compute_vertex_quadrics(const tf::half_edges<Index> &he,
 ///
 /// @param mask Feature mask. If empty, equivalent to the base overload.
 /// @param feature_weight Penalty multiplier for feature quadrics.
-template <typename Index, typename PointsPolicy>
+template <typename Index, typename PointsPolicy, typename Features>
 auto compute_vertex_quadrics(const tf::half_edges<Index> &he,
                              const tf::points<PointsPolicy> &points,
-                             const tf::remesh::feature_mask &mask,
+                             const Features &features,
                              double feature_weight)
     -> tf::buffer<quadric> {
-  if (mask.empty())
+  if (features.empty())
     return compute_vertex_quadrics(he, points);
 
   Index n_faces = Index(he.face_half_edge_handles().size());
@@ -357,7 +357,7 @@ auto compute_vertex_quadrics(const tf::half_edges<Index> &he,
           // Check if this edge is a feature edge
           if (w > 0) {
             auto eid = he.edge_handle(tf::unsafe, cur).id();
-            if (mask.is_feature(eid)) {
+            if (features.is_feature(eid)) {
               auto opp = he.opposite(tf::unsafe, cur);
               if (he.is_simple(tf::unsafe, cur) &&
                   he.is_simple(tf::unsafe, opp)) {

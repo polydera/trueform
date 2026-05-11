@@ -258,7 +258,7 @@ private:
     }
   }
 
-  auto compute_new_capacity(std::size_t added_elements) {
+  auto compute_new_capacity(std::size_t added_elements) const {
     return size() + std::max(size(), added_elements);
   }
 

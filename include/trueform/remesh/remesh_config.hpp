@@ -30,8 +30,8 @@ template <typename Real> struct remesh_config : collapse_config<Real> {
   /// Number of tangential relaxation iterations per outer iteration.
   int relaxation_iters = 3;
 
-  /// Maximum aspect ratio allowed after a collapse.
-  /// Set negative to disable the check.
+  /// Maximum aspect ratio allowed after a collapse. Negative disables the
+  /// check.
   Real max_aspect_ratio = Real(-1);
 
   /// Damping factor for tangential relaxation in (0, 1].
