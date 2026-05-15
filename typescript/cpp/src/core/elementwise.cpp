@@ -1555,14 +1555,26 @@ EMSCRIPTEN_BINDINGS(trueform_elementwise) {
                        &sync_cast<std::int8_t, int>);
   emscripten::function("cast_int8_to_float32",
                        &sync_cast<std::int8_t, float>);
+  emscripten::function("cast_int8_to_float64",
+                       &sync_cast<std::int8_t, double>);
   emscripten::function("cast_int32_to_float32",
                        &sync_cast<int, float>);
   emscripten::function("cast_int32_to_int8",
                        &sync_cast<int, std::int8_t>);
+  emscripten::function("cast_int32_to_float64",
+                       &sync_cast<int, double>);
   emscripten::function("cast_float32_to_int32",
                        &sync_cast<float, int>);
   emscripten::function("cast_float32_to_int8",
                        &sync_cast<float, std::int8_t>);
+  emscripten::function("cast_float32_to_float64",
+                       &sync_cast<float, double>);
+  emscripten::function("cast_float64_to_int8",
+                       &sync_cast<double, std::int8_t>);
+  emscripten::function("cast_float64_to_int32",
+                       &sync_cast<double, int>);
+  emscripten::function("cast_float64_to_float32",
+                       &sync_cast<double, float>);
 
   // ==========================================================================
   // Assign

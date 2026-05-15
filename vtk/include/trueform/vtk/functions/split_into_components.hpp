@@ -11,6 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
+#include <trueform/core/buffer.hpp>
 #include <trueform/vtk/core/polydata.hpp>
 #include <vector>
 #include <vtkPolyData.h>
@@ -37,7 +38,7 @@ namespace tf::vtk {
 /// }
 /// @endcode
 auto split_into_components(vtkPolyData *input)
-    -> std::pair<std::vector<vtkSmartPointer<polydata>>, std::vector<vtkIdType>>;
+    -> std::pair<std::vector<vtkSmartPointer<polydata>>, tf::buffer<vtkIdType>>;
 
 /// @brief Split a polydata by a named cell data array.
 ///
@@ -45,6 +46,6 @@ auto split_into_components(vtkPolyData *input)
 /// @param array_name Name of the vtkIdType cell data array to split by.
 /// @return Pair of (vector of polydata, vector of labels).
 auto split_into_components(vtkPolyData *input, const char *array_name)
-    -> std::pair<std::vector<vtkSmartPointer<polydata>>, std::vector<vtkIdType>>;
+    -> std::pair<std::vector<vtkSmartPointer<polydata>>, tf::buffer<vtkIdType>>;
 
 } // namespace tf::vtk

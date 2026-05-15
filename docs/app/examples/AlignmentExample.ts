@@ -3,7 +3,7 @@ import { centerAndScale, pickMesh } from "@/utils/utils";
 import * as THREE from "three";
 import { ArcballControls } from "three/addons/controls/ArcballControls.js";
 
-type TF = typeof import("@/examples/trueform/index.js");
+type TF = typeof import("@polydera/trueform");
 
 export type InteractionMode = "move" | "rotate";
 

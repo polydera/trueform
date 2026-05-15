@@ -540,3 +540,271 @@ describe("Reindex", () => {
   });
 
 });
+
+describe("Reindex (float64)", () => {
+
+  // ==========================================================================
+  test("reindexedByMask (float64)", () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10, { dtype: "float64" });
+    const nf = sphere.numberOfFaces;
+
+    const maskData = new Int8Array(nf);
+    for (let i = 0; i < Math.floor(nf / 2); i++) maskData[i] = 1;
+    const mask = tf.ndarray(maskData, [nf]);
+
+    const filtered = tf.reindexedByMask(sphere, mask);
+    assert(filtered.dtype === "float64", "result dtype is float64");
+    assert(filtered.numberOfFaces === Math.floor(nf / 2),
+      `expected ${Math.floor(nf / 2)} faces, got ${filtered.numberOfFaces}`);
+    assert(filtered.numberOfPoints > 0, "filtered should have > 0 points");
+    log(`  reindexedByMask (f64): ${nf} → ${filtered.numberOfFaces} faces`, "line-pass");
+
+    filtered.delete();
+    mask.delete();
+    sphere.delete();
+  });
+
+  // ==========================================================================
+  test("reindexedByMask with returnIndexMap (float64)", () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10, { dtype: "float64" });
+    const nf = sphere.numberOfFaces;
+
+    const maskData = new Int8Array(nf);
+    for (let i = 0; i < Math.floor(nf / 2); i++) maskData[i] = 1;
+    const mask = tf.ndarray(maskData, [nf]);
+
+    const result = tf.reindexedByMask(sphere, mask, { returnIndexMap: true });
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.mesh.numberOfFaces === Math.floor(nf / 2),
+      `expected ${Math.floor(nf / 2)} faces, got ${result.mesh.numberOfFaces}`);
+    assert(result.faceMap.keptIds.shape[0] === result.mesh.numberOfFaces,
+      "faceMap.keptIds length matches");
+    assert(result.pointMap.keptIds.shape[0] === result.mesh.numberOfPoints,
+      "pointMap.keptIds length matches");
+    log(`  reindexedByMask + maps (f64): ${result.faceMap.keptIds.shape[0]} kept`, "line-pass");
+
+    result.pointMap.delete();
+    result.faceMap.delete();
+    result.mesh.delete();
+    mask.delete();
+    sphere.delete();
+  });
+
+  // ==========================================================================
+  test("reindexedByIds (float64)", () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10, { dtype: "float64" });
+
+    const ids = tf.ndarray(new Int32Array([0, 1, 2, 3, 4]), [5]);
+    const filtered = tf.reindexedByIds(sphere, ids);
+    assert(filtered.dtype === "float64", "result dtype is float64");
+    assert(filtered.numberOfFaces === 5, `expected 5 faces, got ${filtered.numberOfFaces}`);
+    log(`  reindexedByIds (f64): 5 faces`, "line-pass");
+
+    filtered.delete();
+    ids.delete();
+    sphere.delete();
+  });
+
+  // ==========================================================================
+  test("reindexedByMaskOnPoints (float64)", () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10, { dtype: "float64" });
+    const np = sphere.numberOfPoints;
+
+    const maskData = new Int8Array(np);
+    for (let i = 0; i < Math.floor(np / 2); i++) maskData[i] = 1;
+    const mask = tf.ndarray(maskData, [np]);
+
+    const filtered = tf.reindexedByMaskOnPoints(sphere, mask);
+    assert(filtered.dtype === "float64", "result dtype is float64");
+    assert(filtered.numberOfFaces > 0, "should have some faces");
+    log(`  reindexedByMaskOnPoints (f64): ${filtered.numberOfFaces} faces`, "line-pass");
+
+    filtered.delete();
+    mask.delete();
+    sphere.delete();
+  });
+
+  // ==========================================================================
+  test("reindexedByIdsOnPoints (float64)", () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10, { dtype: "float64" });
+
+    const idsArr = new Int32Array(20);
+    for (let i = 0; i < 20; i++) idsArr[i] = i;
+    const ids = tf.ndarray(idsArr, [20]);
+
+    const filtered = tf.reindexedByIdsOnPoints(sphere, ids);
+    assert(filtered.dtype === "float64", "result dtype is float64");
+    assert(filtered.numberOfFaces > 0, "should have some faces");
+    log(`  reindexedByIdsOnPoints (f64): ${filtered.numberOfFaces} faces`, "line-pass");
+
+    filtered.delete();
+    ids.delete();
+    sphere.delete();
+  });
+
+  // ==========================================================================
+  test("reindexed (apply index maps, float64)", () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10, { dtype: "float64" });
+    const nf = sphere.numberOfFaces;
+
+    const maskData = new Int8Array(nf);
+    for (let i = 0; i < Math.floor(nf / 2); i++) maskData[i] = 1;
+    const mask = tf.ndarray(maskData, [nf]);
+    const r1 = tf.reindexedByMask(sphere, mask, { returnIndexMap: true });
+
+    const r2 = tf.reindexed(sphere, r1.faceMap, r1.pointMap);
+    assert(r2.dtype === "float64", "reindexed result dtype is float64");
+    assert(r2.numberOfFaces === r1.mesh.numberOfFaces,
+      `expected ${r1.mesh.numberOfFaces} faces, got ${r2.numberOfFaces}`);
+    log(`  reindexed (f64): ${r2.numberOfFaces} faces`, "line-pass");
+
+    r2.delete();
+    r1.pointMap.delete();
+    r1.faceMap.delete();
+    r1.mesh.delete();
+    mask.delete();
+    sphere.delete();
+  });
+
+  // ==========================================================================
+  test("concatenateMeshes (float64)", () => {
+    const tf = getTf();
+    const s1 = tf.sphereMesh(1.0, 8, 8, { dtype: "float64" });
+    const s2 = tf.sphereMesh(0.5, 6, 6, { dtype: "float64" });
+
+    const combined = tf.concatenateMeshes(s1, s2);
+    assert(combined.dtype === "float64", "result dtype is float64");
+    assert(combined.numberOfFaces === s1.numberOfFaces + s2.numberOfFaces,
+      `expected ${s1.numberOfFaces + s2.numberOfFaces} faces, got ${combined.numberOfFaces}`);
+    log(`  concatenateMeshes (f64): ${combined.numberOfFaces} faces`, "line-pass");
+
+    combined.delete();
+    s2.delete();
+    s1.delete();
+  });
+
+  // ==========================================================================
+  test("splitIntoComponents (float64)", () => {
+    const tf = getTf();
+    const s1 = tf.sphereMesh(1.0, 8, 8, { dtype: "float64" });
+    const s2 = tf.sphereMesh(0.5, 6, 6, { dtype: "float64" });
+    const combined = tf.concatenateMeshes(s1, s2);
+
+    const cc = tf.connectedComponents(combined, "edge");
+    assert(cc.nComponents === 2, `expected 2 components, got ${cc.nComponents}`);
+
+    const split = tf.splitIntoComponents(combined, cc.labels);
+    assert(split.components.length === 2, `expected 2 components, got ${split.components.length}`);
+    for (const c of split.components)
+      assert(c.dtype === "float64", "component dtype is float64");
+
+    const totalFaces = split.components[0].numberOfFaces + split.components[1].numberOfFaces;
+    assert(totalFaces === combined.numberOfFaces,
+      `component faces ${totalFaces} != combined ${combined.numberOfFaces}`);
+    log(`  splitIntoComponents (f64): ${split.components.length} components`, "line-pass");
+
+    for (const c of split.components) c.delete();
+    split.labels.delete();
+    cc.labels.delete();
+    combined.delete();
+    s2.delete();
+    s1.delete();
+  });
+
+  // ==========================================================================
+  test("async: reindexedByMask (float64)", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10, { dtype: "float64" });
+    const nf = sphere.numberOfFaces;
+
+    const maskData = new Int8Array(nf);
+    for (let i = 0; i < Math.floor(nf / 2); i++) maskData[i] = 1;
+    const mask = tf.ndarray(maskData, [nf]);
+
+    const filtered = await tf.async.reindexedByMask(sphere, mask);
+    assert(filtered.dtype === "float64", "result dtype is float64");
+    assert(filtered.numberOfFaces === Math.floor(nf / 2),
+      `expected ${Math.floor(nf / 2)} faces, got ${filtered.numberOfFaces}`);
+    log(`  async reindexedByMask (f64): ${filtered.numberOfFaces} faces`, "line-pass");
+
+    filtered.delete();
+    mask.delete();
+    sphere.delete();
+  });
+
+  // ==========================================================================
+  test("async: concatenateMeshes (float64)", async () => {
+    const tf = getTf();
+    const s1 = tf.sphereMesh(1.0, 8, 8, { dtype: "float64" });
+    const s2 = tf.sphereMesh(0.5, 6, 6, { dtype: "float64" });
+
+    const combined = await tf.async.concatenateMeshes(s1, s2);
+    assert(combined.dtype === "float64", "result dtype is float64");
+    assert(combined.numberOfFaces === s1.numberOfFaces + s2.numberOfFaces,
+      `expected ${s1.numberOfFaces + s2.numberOfFaces} faces, got ${combined.numberOfFaces}`);
+    log(`  async concatenateMeshes (f64): ${combined.numberOfFaces} faces`, "line-pass");
+
+    combined.delete();
+    s2.delete();
+    s1.delete();
+  });
+
+  // ==========================================================================
+  test("async: splitIntoComponents (float64)", async () => {
+    const tf = getTf();
+    const s1 = tf.sphereMesh(1.0, 8, 8, { dtype: "float64" });
+    const s2 = tf.sphereMesh(0.5, 6, 6, { dtype: "float64" });
+    const combined = tf.concatenateMeshes(s1, s2);
+
+    const cc = tf.connectedComponents(combined, "edge");
+    const split = await tf.async.splitIntoComponents(combined, cc.labels);
+    assert(split.components.length === 2, `expected 2 components, got ${split.components.length}`);
+    for (const c of split.components)
+      assert(c.dtype === "float64", "component dtype is float64");
+    log(`  async splitIntoComponents (f64): ${split.components.length} components`, "line-pass");
+
+    for (const c of split.components) c.delete();
+    split.labels.delete();
+    cc.labels.delete();
+    combined.delete();
+    s2.delete();
+    s1.delete();
+  });
+
+});
+
+describe("Reindex (dtype mismatch)", () => {
+
+  test("concatenateMeshes dtype mismatch throws", () => {
+    const tf = getTf();
+    const s0 = tf.sphereMesh(1, 8, 8);
+    const s1 = tf.sphereMesh(1, 8, 8, { dtype: "float64" });
+    let threw = false;
+    try { tf.concatenateMeshes(s0, s1); } catch (e) {
+      if (/dtype mismatch/.test(e.message)) threw = true;
+    }
+    assert(threw, "expected dtype mismatch error");
+    log(`  concatenateMeshes dtype mismatch throws`, "line-pass");
+    s1.delete(); s0.delete();
+  });
+
+  test("async: concatenateMeshes dtype mismatch throws", async () => {
+    const tf = getTf();
+    const s0 = tf.sphereMesh(1, 8, 8);
+    const s1 = tf.sphereMesh(1, 8, 8, { dtype: "float64" });
+    let threw = false;
+    try { await tf.async.concatenateMeshes(s0, s1); } catch (e) {
+      if (/dtype mismatch/.test(e.message)) threw = true;
+    }
+    assert(threw, "expected dtype mismatch error");
+    log(`  async concatenateMeshes dtype mismatch throws`, "line-pass");
+    s1.delete(); s0.delete();
+  });
+
+});

@@ -15,8 +15,9 @@ import { native, dispatcher } from "../native";
 import { Mesh } from "../form/Mesh";
 import { PointCloud } from "../form/PointCloud";
 import { Primitive, PrimitiveType, Ray } from "../primitive/Primitive";
-import { NDArray, NDArrayFloat32, NDArrayBool } from "../ndarray/NDArray";
+import { NDArray, NDArrayFloat32, NDArrayFloat64, NDArrayBool } from "../ndarray/NDArray";
 import { full } from "../ndarray/factories";
+import { assertSameDtype } from "../internal/dtype";
 import type {
   Form,
   ClosestPointResult, ClosestPointBatchResult,
@@ -67,75 +68,75 @@ function ffSuffix(a: Form, b: Form): string {
 // Result wrappers
 // ============================================================================
 
-function wrapClosestPoint(raw: any): ClosestPointResult {
+function wrapClosestPoint(raw: any, dtype: string): ClosestPointResult {
   return {
-    point: new NDArray(raw.point, "float32"),
+    point: new NDArray(raw.point, dtype) as NDArrayFloat32 | NDArrayFloat64,
     distance2: raw.distance2,
   };
 }
 
-function wrapClosestPointBatch(raw: any): ClosestPointBatchResult {
+function wrapClosestPointBatch(raw: any, dtype: string): ClosestPointBatchResult {
   return {
-    points: new NDArray(raw.points, "float32"),
-    distances: new NDArray(raw.distances, "float32"),
+    points: new NDArray(raw.points, dtype) as NDArrayFloat32 | NDArrayFloat64,
+    distances: new NDArray(raw.distances, dtype) as NDArrayFloat32 | NDArrayFloat64,
   };
 }
 
-function wrapClosestPointPair(raw: any): ClosestPointPairResult {
+function wrapClosestPointPair(raw: any, dtype: string): ClosestPointPairResult {
   return {
-    point0: new NDArray(raw.point0, "float32"),
-    point1: new NDArray(raw.point1, "float32"),
+    point0: new NDArray(raw.point0, dtype) as NDArrayFloat32 | NDArrayFloat64,
+    point1: new NDArray(raw.point1, dtype) as NDArrayFloat32 | NDArrayFloat64,
     distance2: raw.distance2,
   };
 }
 
-function wrapClosestPointPairBatch(raw: any): ClosestPointPairBatchResult {
+function wrapClosestPointPairBatch(raw: any, dtype: string): ClosestPointPairBatchResult {
   return {
-    points0: new NDArray(raw.points0, "float32"),
-    points1: new NDArray(raw.points1, "float32"),
-    distances: new NDArray(raw.distances, "float32"),
+    points0: new NDArray(raw.points0, dtype) as NDArrayFloat32 | NDArrayFloat64,
+    points1: new NDArray(raw.points1, dtype) as NDArrayFloat32 | NDArrayFloat64,
+    distances: new NDArray(raw.distances, dtype) as NDArrayFloat32 | NDArrayFloat64,
   };
 }
 
-function wrapNeighbor(raw: any): NeighborResult {
+function wrapNeighbor(raw: any, dtype: string): NeighborResult {
   return {
     elementId: raw.elementId,
-    point: new NDArray(raw.point, "float32"),
+    point: new NDArray(raw.point, dtype) as NDArrayFloat32 | NDArrayFloat64,
     distance2: raw.distance2,
   };
 }
 
-function wrapNeighborBatch(raw: any): NeighborBatchResult {
+function wrapNeighborBatch(raw: any, dtype: string): NeighborBatchResult {
   return {
     elementIds: new NDArray(raw.elementIds, "int32"),
-    points: new NDArray(raw.points, "float32"),
-    distances: new NDArray(raw.distances, "float32"),
+    points: new NDArray(raw.points, dtype) as NDArrayFloat32 | NDArrayFloat64,
+    distances: new NDArray(raw.distances, dtype) as NDArrayFloat32 | NDArrayFloat64,
   };
 }
 
-function wrapNeighborPair(raw: any): NeighborPairResult {
+function wrapNeighborPair(raw: any, dtype: string): NeighborPairResult {
   return {
     elementId0: raw.elementId0,
     elementId1: raw.elementId1,
-    point0: new NDArray(raw.point0, "float32"),
-    point1: new NDArray(raw.point1, "float32"),
+    point0: new NDArray(raw.point0, dtype) as NDArrayFloat32 | NDArrayFloat64,
+    point1: new NDArray(raw.point1, dtype) as NDArrayFloat32 | NDArrayFloat64,
     distance2: raw.distance2,
   };
 }
 
-function wrapNeighborKnn(raw: any): NeighborKnnResult {
+function wrapNeighborKnn(raw: any, dtype: string): NeighborKnnResult {
   return {
     elementIds: new NDArray(raw.elementIds, "int32"),
-    points: new NDArray(raw.points, "float32"),
-    distances: new NDArray(raw.distances, "float32"),
+    points: new NDArray(raw.points, dtype) as NDArrayFloat32 | NDArrayFloat64,
+    distances: new NDArray(raw.distances, dtype) as NDArrayFloat32 | NDArrayFloat64,
   };
 }
 
-function wrapNeighborKnnBatch(raw: any): NeighborKnnBatchResult {
+function wrapNeighborKnnBatch(raw: any, dtype: string): NeighborKnnBatchResult {
   return {
     elementIds: new NDArray(raw.elementIds, "int32"),
-    points: new NDArray(raw.points, "float32"),
-    distances: new NDArray(raw.distances, "float32"),
+    points: new NDArray(raw.points, dtype) as NDArrayFloat32 | NDArrayFloat64,
+    distances: new NDArray(raw.distances, dtype) as NDArrayFloat32 | NDArrayFloat64,
     counts: new NDArray(raw.counts, "int32"),
   };
 }
@@ -147,38 +148,57 @@ function wrapNeighborKnnBatch(raw: any): NeighborKnnBatchResult {
 /** Squared distance between two primitives, off the main thread. */
 export async function distance2(
   a: Primitive, b: Primitive,
-): Promise<number | NDArrayFloat32>;
+): Promise<number | NDArrayFloat32 | NDArrayFloat64>;
 /** Squared distance from a form to a primitive, off the main thread. */
 export async function distance2(
   form: Form, prim: Primitive,
-): Promise<number | NDArrayFloat32>;
+): Promise<number | NDArrayFloat32 | NDArrayFloat64>;
 /** Squared distance between two forms, off the main thread. */
 export async function distance2(a: Form, b: Form): Promise<number>;
 export async function distance2(
   a: Primitive | Form, b: Primitive | Form,
-): Promise<number | NDArrayFloat32> {
+): Promise<number | NDArrayFloat32 | NDArrayFloat64> {
   if ((a instanceof Mesh || a instanceof PointCloud) &&
       (b instanceof Mesh || b instanceof PointCloud)) {
+    assertSameDtype([a, b], ["form 0", "form 1"]);
     return dispatcher().run(
-      () => native()["dispatch_distance2_ff" + ffSuffix(a, b)](a._handle, b._handle),
+      () => native()[`dispatch_distance2_ff${ffSuffix(a, b)}_${a.dtype}`](
+        a._handle, b._handle,
+      ),
     );
   }
   if (a instanceof Mesh || a instanceof PointCloud) {
     const p = b as Primitive;
+    const ph = a.dtype === "float32" ? p._handle : p.as("float64")._handle;
+    const dtype = a.dtype;
     return dispatcher().run(
-      () => native()["dispatch_distance2_fp" + fpSuffix(a)](
-        a._handle, p._handle, primType(p),
+      () => native()[`dispatch_distance2_fp${fpSuffix(a)}_${dtype}`](
+        a._handle, ph, primType(p),
       ),
-      (raw) => typeof raw === "number" ? raw : new NDArray(raw, "float32"),
+      (raw) => {
+        if (typeof raw === "number") return raw;
+        return dtype === "float32"
+          ? (new NDArray(raw, "float32") as NDArrayFloat32)
+          : (new NDArray(raw, "float64") as NDArrayFloat64);
+      },
     );
   }
   const pa = a as Primitive;
   const pb = b as Primitive;
+  const dt: "float32" | "float64" =
+    (pa.dtype === "float64" || pb.dtype === "float64") ? "float64" : "float32";
+  const ah = pa.dtype === dt ? pa._handle : pa.as(dt)._handle;
+  const bh = pb.dtype === dt ? pb._handle : pb.as(dt)._handle;
   return dispatcher().run(
-    () => native().dispatch_distance2_pp(
-      pa._handle, primType(pa), pb._handle, primType(pb),
+    () => native()[`dispatch_distance2_pp_${dt}`](
+      ah, primType(pa), bh, primType(pb),
     ),
-    (raw) => typeof raw === "number" ? raw : new NDArray(raw, "float32"),
+    (raw) => {
+      if (typeof raw === "number") return raw;
+      return dt === "float32"
+        ? (new NDArray(raw, "float32") as NDArrayFloat32)
+        : (new NDArray(raw, "float64") as NDArrayFloat64);
+    },
   );
 }
 
@@ -189,38 +209,57 @@ export async function distance2(
 /** Distance between two primitives (signed for plane-point), off the main thread. */
 export async function distance(
   a: Primitive, b: Primitive,
-): Promise<number | NDArrayFloat32>;
+): Promise<number | NDArrayFloat32 | NDArrayFloat64>;
 /** Distance from a form to a primitive, off the main thread. */
 export async function distance(
   form: Form, prim: Primitive,
-): Promise<number | NDArrayFloat32>;
+): Promise<number | NDArrayFloat32 | NDArrayFloat64>;
 /** Distance between two forms, off the main thread. */
 export async function distance(a: Form, b: Form): Promise<number>;
 export async function distance(
   a: Primitive | Form, b: Primitive | Form,
-): Promise<number | NDArrayFloat32> {
+): Promise<number | NDArrayFloat32 | NDArrayFloat64> {
   if ((a instanceof Mesh || a instanceof PointCloud) &&
       (b instanceof Mesh || b instanceof PointCloud)) {
+    assertSameDtype([a, b], ["form 0", "form 1"]);
     return dispatcher().run(
-      () => native()["dispatch_distance_ff" + ffSuffix(a, b)](a._handle, b._handle),
+      () => native()[`dispatch_distance_ff${ffSuffix(a, b)}_${a.dtype}`](
+        a._handle, b._handle,
+      ),
     );
   }
   if (a instanceof Mesh || a instanceof PointCloud) {
     const p = b as Primitive;
+    const ph = a.dtype === "float32" ? p._handle : p.as("float64")._handle;
+    const dtype = a.dtype;
     return dispatcher().run(
-      () => native()["dispatch_distance_fp" + fpSuffix(a)](
-        a._handle, p._handle, primType(p),
+      () => native()[`dispatch_distance_fp${fpSuffix(a)}_${dtype}`](
+        a._handle, ph, primType(p),
       ),
-      (raw) => typeof raw === "number" ? raw : new NDArray(raw, "float32"),
+      (raw) => {
+        if (typeof raw === "number") return raw;
+        return dtype === "float32"
+          ? (new NDArray(raw, "float32") as NDArrayFloat32)
+          : (new NDArray(raw, "float64") as NDArrayFloat64);
+      },
     );
   }
   const pa = a as Primitive;
   const pb = b as Primitive;
+  const dt: "float32" | "float64" =
+    (pa.dtype === "float64" || pb.dtype === "float64") ? "float64" : "float32";
+  const ah = pa.dtype === dt ? pa._handle : pa.as(dt)._handle;
+  const bh = pb.dtype === dt ? pb._handle : pb.as(dt)._handle;
   return dispatcher().run(
-    () => native().dispatch_distance_pp(
-      pa._handle, primType(pa), pb._handle, primType(pb),
+    () => native()[`dispatch_distance_pp_${dt}`](
+      ah, primType(pa), bh, primType(pb),
     ),
-    (raw) => typeof raw === "number" ? raw : new NDArray(raw, "float32"),
+    (raw) => {
+      if (typeof raw === "number") return raw;
+      return dt === "float32"
+        ? (new NDArray(raw, "float32") as NDArrayFloat32)
+        : (new NDArray(raw, "float64") as NDArrayFloat64);
+    },
   );
 }
 
@@ -233,11 +272,15 @@ export async function closestPoint(
   a: Primitive, b: Primitive,
 ): Promise<ClosestPointResult | ClosestPointBatchResult> {
   const isBatch = a.isBatch || b.isBatch;
+  const dt: "float32" | "float64" =
+    (a.dtype === "float64" || b.dtype === "float64") ? "float64" : "float32";
+  const ah = a.dtype === dt ? a._handle : a.as(dt)._handle;
+  const bh = b.dtype === dt ? b._handle : b.as(dt)._handle;
   return dispatcher().run(
-    () => native().dispatch_closest_metric_point(
-      a._handle, primType(a), b._handle, primType(b),
+    () => native()[`dispatch_closest_metric_point_${dt}`](
+      ah, primType(a), bh, primType(b),
     ),
-    (raw) => isBatch ? wrapClosestPointBatch(raw) : wrapClosestPoint(raw),
+    (raw) => isBatch ? wrapClosestPointBatch(raw, dt) : wrapClosestPoint(raw, dt),
   );
 }
 
@@ -250,11 +293,15 @@ export async function closestPointPair(
   a: Primitive, b: Primitive,
 ): Promise<ClosestPointPairResult | ClosestPointPairBatchResult> {
   const isBatch = a.isBatch || b.isBatch;
+  const dt: "float32" | "float64" =
+    (a.dtype === "float64" || b.dtype === "float64") ? "float64" : "float32";
+  const ah = a.dtype === dt ? a._handle : a.as(dt)._handle;
+  const bh = b.dtype === dt ? b._handle : b.as(dt)._handle;
   return dispatcher().run(
-    () => native().dispatch_closest_metric_point_pair(
-      a._handle, primType(a), b._handle, primType(b),
+    () => native()[`dispatch_closest_metric_point_pair_${dt}`](
+      ah, primType(a), bh, primType(b),
     ),
-    (raw) => isBatch ? wrapClosestPointPairBatch(raw) : wrapClosestPointPair(raw),
+    (raw) => isBatch ? wrapClosestPointPairBatch(raw, dt) : wrapClosestPointPair(raw, dt),
   );
 }
 
@@ -283,33 +330,37 @@ export async function neighborSearch(
 
   // FF — form × form
   if (bOrQuery instanceof Mesh || bOrQuery instanceof PointCloud) {
+    assertSameDtype([a, bOrQuery], ["form 0", "form 1"]);
+    const dtype = a.dtype;
     return dispatcher().run(
-      () => native()["dispatch_neighbor_search_ff" + ffSuffix(a, bOrQuery)](
+      () => native()[`dispatch_neighbor_search_ff${ffSuffix(a, bOrQuery)}_${dtype}`](
         a._handle, bOrQuery._handle, radius,
       ),
-      wrapNeighborPair,
+      (raw) => wrapNeighborPair(raw, dtype),
     );
   }
 
-  // FP with k-NN
+  // FP — primitive query (basic or k-NN)
   const q = bOrQuery;
+  const dtype = a.dtype;
+  const qh = dtype === "float32" ? q._handle : q.as("float64")._handle;
+
   if (opts && "k" in opts) {
     const isBatch = q.isBatch;
     return dispatcher().run(
-      () => native()["dispatch_neighbor_search_fp_knn" + fpSuffix(a)](
-        a._handle, q._handle, primType(q), opts.k, radius,
+      () => native()[`dispatch_neighbor_search_fp_knn${fpSuffix(a)}_${dtype}`](
+        a._handle, qh, primType(q), opts.k, radius,
       ),
-      (raw) => isBatch ? wrapNeighborKnnBatch(raw) : wrapNeighborKnn(raw),
+      (raw) => isBatch ? wrapNeighborKnnBatch(raw, dtype) : wrapNeighborKnn(raw, dtype),
     );
   }
 
-  // FP — basic neighbor search
   const isBatch = q.isBatch;
   return dispatcher().run(
-    () => native()["dispatch_neighbor_search_fp" + fpSuffix(a)](
-      a._handle, q._handle, primType(q), radius,
+    () => native()[`dispatch_neighbor_search_fp${fpSuffix(a)}_${dtype}`](
+      a._handle, qh, primType(q), radius,
     ),
-    (raw) => isBatch ? wrapNeighborBatch(raw) : wrapNeighbor(raw),
+    (raw) => isBatch ? wrapNeighborBatch(raw, dtype) : wrapNeighbor(raw, dtype),
   );
 }
 
@@ -332,24 +383,32 @@ export async function intersects(
 ): Promise<boolean | NDArrayBool> {
   if ((a instanceof Mesh || a instanceof PointCloud) &&
       (b instanceof Mesh || b instanceof PointCloud)) {
+    assertSameDtype([a, b], ["form 0", "form 1"]);
     return dispatcher().run(
-      () => native()["dispatch_intersects_ff" + ffSuffix(a, b)](a._handle, b._handle),
+      () => native()[`dispatch_intersects_ff${ffSuffix(a, b)}_${a.dtype}`](
+        a._handle, b._handle,
+      ),
     );
   }
   if (a instanceof Mesh || a instanceof PointCloud) {
     const p = b as Primitive;
+    const ph = a.dtype === "float32" ? p._handle : p.as("float64")._handle;
     return dispatcher().run(
-      () => native()["dispatch_intersects_fp" + fpSuffix(a)](
-        a._handle, p._handle, primType(p),
+      () => native()[`dispatch_intersects_fp${fpSuffix(a)}_${a.dtype}`](
+        a._handle, ph, primType(p),
       ),
       (raw) => typeof raw === "boolean" ? raw : new NDArray(raw, "bool"),
     );
   }
   const pa = a as Primitive;
   const pb = b as Primitive;
+  const dt: "float32" | "float64" =
+    (pa.dtype === "float64" || pb.dtype === "float64") ? "float64" : "float32";
+  const ah = pa.dtype === dt ? pa._handle : pa.as(dt)._handle;
+  const bh = pb.dtype === dt ? pb._handle : pb.as(dt)._handle;
   return dispatcher().run(
-    () => native().dispatch_intersects_pp(
-      pa._handle, primType(pa), pb._handle, primType(pb),
+    () => native()[`dispatch_intersects_pp_${dt}`](
+      ah, primType(pa), bh, primType(pb),
     ),
     (raw) => typeof raw === "boolean" ? raw : new NDArray(raw, "bool"),
   );
@@ -376,63 +435,95 @@ export async function rayCast(
 
   if (!bothScalar) {
     const n = ray.count;
-    const minH = (minT instanceof NDArray ? minT : full("float32", [n], minT as number))._handle;
-    const maxH = (maxT instanceof NDArray ? maxT : full("float32", [n], maxT as number))._handle;
 
     if (target instanceof Mesh || target instanceof PointCloud) {
-      const fn = isPC(target) ? "dispatch_ray_cast_f_pc_rc" : "dispatch_ray_cast_f_rc";
+      const dtype = target.dtype;
+      const rayH = dtype === "float32" ? ray._handle : ray.as("float64")._handle;
+      const minArr = minT instanceof NDArray
+        ? (minT.dtype === dtype ? minT : minT.as(dtype))
+        : full(dtype, [n], minT as number);
+      const maxArr = maxT instanceof NDArray
+        ? (maxT.dtype === dtype ? maxT : maxT.as(dtype))
+        : full(dtype, [n], maxT as number);
+      const fn = isPC(target)
+        ? `dispatch_ray_cast_f_pc_rc_${dtype}`
+        : `dispatch_ray_cast_f_rc_${dtype}`;
       return dispatcher().run(
-        () => native()[fn](ray._handle, target._handle, minH, maxH),
+        () => native()[fn](rayH, target._handle, minArr._handle, maxArr._handle),
         (raw) => {
           if (raw.hit !== undefined) return raw as RayCastResult;
           return {
             hits: new NDArray(raw.hits, "bool"),
-            ts: new NDArray(raw.ts, "float32"),
+            ts: new NDArray(raw.ts, dtype) as NDArrayFloat32 | NDArrayFloat64,
             elementIds: new NDArray(raw.elementIds, "int32"),
           };
         },
       );
     }
+    const dt: "float32" | "float64" =
+      (ray.dtype === "float64" || (target as Primitive).dtype === "float64")
+        ? "float64" : "float32";
+    const rH = ray.dtype === dt ? ray._handle : ray.as(dt)._handle;
+    const tH = (target as Primitive).dtype === dt
+      ? (target as Primitive)._handle
+      : (target as Primitive).as(dt)._handle;
+    const minArr = minT instanceof NDArray
+      ? (minT.dtype === dt ? minT : minT.as(dt))
+      : full(dt, [n], minT as number);
+    const maxArr = maxT instanceof NDArray
+      ? (maxT.dtype === dt ? maxT : maxT.as(dt))
+      : full(dt, [n], maxT as number);
     return dispatcher().run(
-      () => native().dispatch_ray_cast_p_rc(
-        ray._handle, target._handle, primType(target), minH, maxH,
+      () => native()[`dispatch_ray_cast_p_rc_${dt}`](
+        rH, tH, primType(target as Primitive), minArr._handle, maxArr._handle,
       ),
       (raw) => {
         if (raw.hit !== undefined) return raw as RayCastResult;
         return {
           hits: new NDArray(raw.hits, "bool"),
-          ts: new NDArray(raw.ts, "float32"),
-        };
+          ts: new NDArray(raw.ts, dt) as NDArrayFloat32 | NDArrayFloat64,
+        } as RayCastPrimBatchResult;
       },
     );
   }
 
   if (target instanceof Mesh || target instanceof PointCloud) {
-    const fn = isPC(target) ? "dispatch_ray_cast_f_pc" : "dispatch_ray_cast_f";
+    const dtype = target.dtype;
+    const rayH = dtype === "float32" ? ray._handle : ray.as("float64")._handle;
+    const fn = isPC(target)
+      ? `dispatch_ray_cast_f_pc_${dtype}`
+      : `dispatch_ray_cast_f_${dtype}`;
     return dispatcher().run(
       () => native()[fn](
-        ray._handle, target._handle, minT, maxT,
+        rayH, target._handle, minT, maxT,
       ),
       (raw) => {
         if (raw.hit !== undefined) return raw as RayCastResult;
         return {
           hits: new NDArray(raw.hits, "bool"),
-          ts: new NDArray(raw.ts, "float32"),
+          ts: new NDArray(raw.ts, dtype) as NDArrayFloat32 | NDArrayFloat64,
           elementIds: new NDArray(raw.elementIds, "int32"),
         };
       },
     );
   }
+  const dt: "float32" | "float64" =
+    (ray.dtype === "float64" || (target as Primitive).dtype === "float64")
+      ? "float64" : "float32";
+  const rH = ray.dtype === dt ? ray._handle : ray.as(dt)._handle;
+  const tH = (target as Primitive).dtype === dt
+    ? (target as Primitive)._handle
+    : (target as Primitive).as(dt)._handle;
   return dispatcher().run(
-    () => native().dispatch_ray_cast_p(
-      ray._handle, target._handle, primType(target), minT as number, maxT as number,
+    () => native()[`dispatch_ray_cast_p_${dt}`](
+      rH, tH, primType(target as Primitive), minT as number, maxT as number,
     ),
     (raw) => {
       if (raw.hit !== undefined) return raw as RayCastResult;
       return {
         hits: new NDArray(raw.hits, "bool"),
-        ts: new NDArray(raw.ts, "float32"),
-      };
+        ts: new NDArray(raw.ts, dt) as NDArrayFloat32 | NDArrayFloat64,
+      } as RayCastPrimBatchResult;
     },
   );
 }

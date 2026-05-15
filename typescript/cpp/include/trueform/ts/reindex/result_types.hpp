@@ -21,13 +21,13 @@ namespace tf {
 namespace ts {
 
 struct reindexed_mesh_result {
-  wasm_mesh mesh;
+  wasm_mesh<float> mesh;
   wasm_index_map face_map;
   wasm_index_map point_map;
 };
 
 struct split_components_result {
-  std::vector<wasm_mesh> components;
+  std::vector<wasm_mesh<float>> components;
   wasm_ndarray<std::int32_t> labels;
 };
 

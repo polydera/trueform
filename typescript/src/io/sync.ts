@@ -13,18 +13,20 @@
 
 import { native } from "../native";
 import { Mesh } from "../form/Mesh";
-import { NDArray, NDArrayInt8, NDArrayInt32, NDArrayFloat32 } from "../ndarray/NDArray";
+import { NDArray, NDArrayInt8, NDArrayInt32, NDArrayFloat32, NDArrayFloat64 } from "../ndarray/NDArray";
 import { OffsetBlockedBuffer } from "../ndarray/OffsetBlockedBuffer";
 import { triangulate } from "../geometry/sync";
 import type { MeshLike } from "../form/MeshLike";
 
-/** Read an STL file (binary or ASCII) into a triangle mesh. */
+/** Read an STL file (binary or ASCII) into a triangle mesh.
+ *  STL coordinates are float32 by format spec. */
 export function readStl(data: ArrayBuffer | Uint8Array): Mesh {
   const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
-  return new Mesh(native().read_stl_buffer(bytes));
+  return new Mesh(native().read_stl_buffer(bytes), "float32");
 }
 
-/** Read raw STL data as faces and points without creating a Mesh. */
+/** Read raw STL data as faces and points without creating a Mesh.
+ *  STL coordinates are float32 by format spec. */
 export function readStlData(data: ArrayBuffer | Uint8Array): MeshLike {
   const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
   const raw = native().read_stl_buffer(bytes);
@@ -38,40 +40,59 @@ export function readStlData(data: ArrayBuffer | Uint8Array): MeshLike {
 export interface ReadObjOptions {
   /** Read all polygon sizes and auto-triangulate. Default: false (triangles only). */
   dynamic?: boolean;
+  /** Coordinate precision. Default: "float32". */
+  dtype?: "float32" | "float64";
 }
 
 /** Read an OBJ file into a triangle mesh. */
 export function readObj(data: ArrayBuffer | Uint8Array, opts?: ReadObjOptions): Mesh {
   const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
+  const dtype = opts?.dtype ?? "float32";
   if (opts?.dynamic) {
-    return triangulate(readObjData(bytes, { dynamic: true }));
+    return triangulate(readObjData(bytes, { dynamic: true, dtype }));
   }
-  return new Mesh(native().read_obj_buffer(bytes));
+  const raw = dtype === "float64"
+    ? native().read_obj_buffer_float64(bytes)
+    : native().read_obj_buffer(bytes);
+  return new Mesh(raw, dtype);
 }
 
 /** Read raw OBJ data as faces and points without creating a Mesh. */
 export function readObjData(data: ArrayBuffer | Uint8Array, opts?: ReadObjOptions): MeshLike {
   const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
+  const dtype = opts?.dtype ?? "float32";
   if (opts?.dynamic) {
-    const raw = native().read_obj_buffer_data(bytes);
+    const raw = dtype === "float64"
+      ? native().read_obj_buffer_data_float64(bytes)
+      : native().read_obj_buffer_data(bytes);
     return {
       faces: new OffsetBlockedBuffer(raw.faces),
-      points: new NDArray(raw.points, "float32"),
+      points: new NDArray(raw.points, dtype) as NDArrayFloat32 | NDArrayFloat64,
     };
   }
-  const raw = native().read_obj_buffer(bytes);
+  const raw = dtype === "float64"
+    ? native().read_obj_buffer_float64(bytes)
+    : native().read_obj_buffer(bytes);
   const faces: NDArrayInt32 = new NDArray(raw.faces(), "int32");
-  const points: NDArrayFloat32 = new NDArray(raw.points(), "float32");
+  const points = new NDArray(raw.points(), dtype) as NDArrayFloat32 | NDArrayFloat64;
   raw.delete();
   return { faces, points };
 }
 
-/** Serialize a mesh to binary STL format. */
+/** Serialize a mesh to binary STL format. STL output is float32 by spec
+ *  (float64 mesh coordinates are downcast). */
 export function writeStl(mesh: Mesh): NDArrayInt8 {
-  return new NDArray(native().write_stl_buffer(mesh._handle), "int8");
+  const raw = mesh.dtype === "float64"
+    ? native().write_stl_buffer_float64(mesh._handle)
+    : native().write_stl_buffer(mesh._handle);
+  return new NDArray(raw, "int8");
 }
 
-/** Serialize a mesh to ASCII OBJ format. */
+/** Serialize a mesh to ASCII OBJ format. Precision follows the mesh dtype:
+ *  float32 emits %.9g, float64 emits %.17g for exact round-trip. */
 export function writeObj(mesh: Mesh): NDArrayInt8 {
-  return new NDArray(native().write_obj_buffer(mesh._handle), "int8");
+  const raw = mesh.dtype === "float64"
+    ? native().write_obj_buffer_float64(mesh._handle)
+    : native().write_obj_buffer(mesh._handle);
+  return new NDArray(raw, "int8");
 }

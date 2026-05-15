@@ -217,3 +217,119 @@ describe("readStlData / readObjData", () => {
   });
 
 });
+
+describe("I/O float64", () => {
+
+  test("readObj({ dtype: 'float64' }) produces float64 mesh", () => {
+    const tf = getTf();
+    const mesh = tf.sphereMesh(1, 8, 8, { dtype: "float64" });
+    const buf = toBytes(tf, mesh, (m) => tf.writeObj(m));
+
+    const m2 = tf.readObj(buf, { dtype: "float64" });
+    assert(m2.dtype === "float64", `read mesh dtype: ${m2.dtype}`);
+    assert(m2.points.dtype === "float64", `points dtype: ${m2.points.dtype}`);
+    assert(m2.numberOfFaces === mesh.numberOfFaces,
+      `faces: ${m2.numberOfFaces} === ${mesh.numberOfFaces}`);
+    log(`  float64 OBJ roundtrip: ${mesh.numberOfFaces} faces`, "line-pass");
+
+    m2.delete(); mesh.delete();
+  });
+
+  test("readObj() defaults to float32 when no dtype given", () => {
+    const tf = getTf();
+    const mesh = tf.sphereMesh(1, 8, 8);
+    const buf = toBytes(tf, mesh, (m) => tf.writeObj(m));
+
+    const m2 = tf.readObj(buf);
+    assert(m2.dtype === "float32", `default dtype: ${m2.dtype}`);
+    log(`  default OBJ read dtype = float32`, "line-pass");
+
+    m2.delete(); mesh.delete();
+  });
+
+  test("writeObj(float64) emits %.17g precision", () => {
+    const tf = getTf();
+    const mesh = tf.sphereMesh(1, 8, 8, { dtype: "float64" });
+    const objBytes = tf.writeObj(mesh);
+
+    // Convert to string and look for a long decimal — float32 %.9g would top
+    // out around 9 significant digits, float64 %.17g goes to 17.
+    const buf = new Uint8Array(objBytes.data.length);
+    for (let i = 0; i < buf.length; i++) buf[i] = objBytes.data[i];
+    const text = new TextDecoder().decode(buf);
+    // Find at least one numeric token with > 9 significant digits.
+    const longFloat = /\b\d\.\d{10,}\b/.test(text);
+    assert(longFloat, `expected high-precision floats in OBJ output`);
+    log(`  float64 OBJ emits long decimals`, "line-pass");
+
+    objBytes.delete(); mesh.delete();
+  });
+
+  test("writeStl accepts float64 mesh (STL output is float32 by spec)", () => {
+    const tf = getTf();
+    const mesh = tf.sphereMesh(1, 8, 8, { dtype: "float64" });
+    const stlBytes = tf.writeStl(mesh);
+
+    assert(stlBytes.length > 0, `STL bytes: ${stlBytes.length}`);
+    // Roundtrip: STL read always yields float32
+    const buf = new Uint8Array(stlBytes.data.length);
+    for (let i = 0; i < buf.length; i++) buf[i] = stlBytes.data[i];
+    const m2 = tf.readStl(buf.buffer);
+    assert(m2.dtype === "float32", `STL read dtype: ${m2.dtype}`);
+    assert(m2.numberOfFaces === mesh.numberOfFaces,
+      `faces: ${m2.numberOfFaces} === ${mesh.numberOfFaces}`);
+    log(`  float64 → STL → float32 mesh: ${mesh.numberOfFaces} faces`, "line-pass");
+
+    m2.delete(); stlBytes.delete(); mesh.delete();
+  });
+
+  test("readObjData({ dtype: 'float64' }) returns float64 points", () => {
+    const tf = getTf();
+    const mesh = tf.sphereMesh(1, 8, 8, { dtype: "float64" });
+    const buf = toBytes(tf, mesh, (m) => tf.writeObj(m));
+
+    const data = tf.readObjData(buf, { dtype: "float64" });
+    assert(data.points.dtype === "float64", `points dtype: ${data.points.dtype}`);
+    assert(data.faces.dtype === "int32", `faces dtype: ${data.faces.dtype}`);
+    log(`  readObjData float64: points.dtype=${data.points.dtype}`, "line-pass");
+
+    data.faces.delete(); data.points.delete(); mesh.delete();
+  });
+
+  test("async: readObj({ dtype: 'float64' }) roundtrip", async () => {
+    const tf = getTf();
+    const mesh = tf.sphereMesh(1, 8, 8, { dtype: "float64" });
+    const buf = toBytes(tf, mesh, (m) => tf.writeObj(m));
+
+    const m2 = await tf.async.readObj(buf, { dtype: "float64" });
+    assert(m2.dtype === "float64", `async read dtype: ${m2.dtype}`);
+    assert(m2.numberOfFaces === mesh.numberOfFaces,
+      `faces: ${m2.numberOfFaces} === ${mesh.numberOfFaces}`);
+    log(`  async float64 OBJ roundtrip: ${mesh.numberOfFaces} faces`, "line-pass");
+
+    m2.delete(); mesh.delete();
+  });
+
+  test("async: writeObj(float64) returns bytes", async () => {
+    const tf = getTf();
+    const mesh = tf.sphereMesh(1, 8, 8, { dtype: "float64" });
+    const objBytes = await tf.async.writeObj(mesh);
+
+    assert(objBytes.length > 0, `OBJ bytes: ${objBytes.length}`);
+    log(`  async writeObj float64: ${objBytes.length} bytes`, "line-pass");
+
+    objBytes.delete(); mesh.delete();
+  });
+
+  test("async: writeStl(float64) returns bytes", async () => {
+    const tf = getTf();
+    const mesh = tf.sphereMesh(1, 8, 8, { dtype: "float64" });
+    const stlBytes = await tf.async.writeStl(mesh);
+
+    assert(stlBytes.length > 0, `STL bytes: ${stlBytes.length}`);
+    log(`  async writeStl float64: ${stlBytes.length} bytes`, "line-pass");
+
+    stlBytes.delete(); mesh.delete();
+  });
+
+});

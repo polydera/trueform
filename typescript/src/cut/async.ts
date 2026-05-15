@@ -12,10 +12,12 @@
  */
 
 import { native, dispatcher } from "../native";
-import { NDArray, NDArrayFloat32 } from "../ndarray/NDArray";
+import { NDArray, NDArrayFloat32, NDArrayFloat64 } from "../ndarray/NDArray";
+import type { FloatDtype } from "../ndarray/dtype";
 import { Mesh } from "../form/Mesh";
 import { Curves } from "../form/Curves";
 import { IntersectOpts, buildMode } from "../intersect/sync";
+import { assertSameDtype } from "../internal/dtype";
 
 import type {
   LabeledCutResult,
@@ -30,84 +32,98 @@ import type {
   PolygonArrangementResultWithCurves,
 } from "./sync";
 
-function wrapLabeled(raw: any): LabeledCutResult {
+function wrapLabeled(raw: any, dt: "float32" | "float64"): LabeledCutResult {
   return {
-    mesh: new Mesh(raw.mesh),
+    mesh: new Mesh(raw.mesh, dt),
     labels: new NDArray(raw.labels, "int8"),
     faceLabels: new NDArray(raw.faceLabels, "int32"),
   };
 }
 
-function wrapLabeledWithCurves(raw: any): LabeledCutResultWithCurves {
+function wrapLabeledWithCurves(
+  raw: any, dt: "float32" | "float64",
+): LabeledCutResultWithCurves {
   return {
-    mesh: new Mesh(raw.mesh),
+    mesh: new Mesh(raw.mesh, dt),
     labels: new NDArray(raw.labels, "int8"),
     faceLabels: new NDArray(raw.faceLabels, "int32"),
-    curves: new Curves(raw.curves),
+    curves: new Curves(raw.curves, dt),
   };
 }
 
-function wrapIsobands(raw: any): IsobandsResult {
+function wrapIsobands(raw: any, dt: FloatDtype): IsobandsResult {
   return {
-    mesh: new Mesh(raw.mesh),
+    mesh: new Mesh(raw.mesh, dt),
     labels: new NDArray(raw.labels, "int32"),
     faceLabels: new NDArray(raw.faceLabels, "int32"),
   };
 }
 
-function wrapIsobandsWithCurves(raw: any): IsobandsResultWithCurves {
+function wrapIsobandsWithCurves(
+  raw: any, dt: FloatDtype,
+): IsobandsResultWithCurves {
   return {
-    mesh: new Mesh(raw.mesh),
+    mesh: new Mesh(raw.mesh, dt),
     labels: new NDArray(raw.labels, "int32"),
     faceLabels: new NDArray(raw.faceLabels, "int32"),
-    curves: new Curves(raw.curves),
+    curves: new Curves(raw.curves, dt),
   };
 }
 
-function wrapCut(raw: any): CutResult {
+function wrapCut(raw: any, dt: "float32" | "float64"): CutResult {
   return {
-    mesh: new Mesh(raw.mesh),
+    mesh: new Mesh(raw.mesh, dt),
     faceLabels: new NDArray(raw.faceLabels, "int32"),
   };
 }
 
-function wrapCutWithCurves(raw: any): CutResultWithCurves {
+function wrapCutWithCurves(
+  raw: any, dt: "float32" | "float64",
+): CutResultWithCurves {
   return {
-    mesh: new Mesh(raw.mesh),
+    mesh: new Mesh(raw.mesh, dt),
     faceLabels: new NDArray(raw.faceLabels, "int32"),
-    curves: new Curves(raw.curves),
+    curves: new Curves(raw.curves, dt),
   };
 }
 
-function wrapArrangement(raw: any): MeshArrangementResult {
+function wrapArrangement(
+  raw: any, dt: "float32" | "float64",
+): MeshArrangementResult {
   return {
-    mesh: new Mesh(raw.mesh),
+    mesh: new Mesh(raw.mesh, dt),
     tagLabels: new NDArray(raw.tagLabels, "int32"),
     faceLabels: new NDArray(raw.faceLabels, "int32"),
   };
 }
 
-function wrapArrangementWithCurves(raw: any): MeshArrangementResultWithCurves {
+function wrapArrangementWithCurves(
+  raw: any, dt: "float32" | "float64",
+): MeshArrangementResultWithCurves {
   return {
-    mesh: new Mesh(raw.mesh),
+    mesh: new Mesh(raw.mesh, dt),
     tagLabels: new NDArray(raw.tagLabels, "int32"),
     faceLabels: new NDArray(raw.faceLabels, "int32"),
-    curves: new Curves(raw.curves),
+    curves: new Curves(raw.curves, dt),
   };
 }
 
-function wrapPolygonArrangement(raw: any): PolygonArrangementResult {
+function wrapPolygonArrangement(
+  raw: any, dt: "float32" | "float64",
+): PolygonArrangementResult {
   return {
-    mesh: new Mesh(raw.mesh),
+    mesh: new Mesh(raw.mesh, dt),
     faceLabels: new NDArray(raw.faceLabels, "int32"),
   };
 }
 
-function wrapPolygonArrangementWithCurves(raw: any): PolygonArrangementResultWithCurves {
+function wrapPolygonArrangementWithCurves(
+  raw: any, dt: "float32" | "float64",
+): PolygonArrangementResultWithCurves {
   return {
-    mesh: new Mesh(raw.mesh),
+    mesh: new Mesh(raw.mesh, dt),
     faceLabels: new NDArray(raw.faceLabels, "int32"),
-    curves: new Curves(raw.curves),
+    curves: new Curves(raw.curves, dt),
   };
 }
 
@@ -124,15 +140,17 @@ export async function booleanUnion(
 export async function booleanUnion(
   m0: Mesh, m1: Mesh, opts?: { returnCurves?: true },
 ): Promise<LabeledCutResult | LabeledCutResultWithCurves> {
+  assertSameDtype([m0, m1], ["mesh0", "mesh1"]);
+  const dt = m0.dtype;
   if (opts?.returnCurves) {
     return dispatcher().run(
-      () => native().dispatch_boolean_union_with_curves(m0._handle, m1._handle),
-      (raw) => wrapLabeledWithCurves(raw),
+      () => native()[`dispatch_boolean_union_with_curves_${dt}`](m0._handle, m1._handle),
+      (raw) => wrapLabeledWithCurves(raw, dt),
     );
   }
   return dispatcher().run(
-    () => native().dispatch_boolean_union(m0._handle, m1._handle),
-    (raw) => wrapLabeled(raw),
+    () => native()[`dispatch_boolean_union_${dt}`](m0._handle, m1._handle),
+    (raw) => wrapLabeled(raw, dt),
   );
 }
 
@@ -145,15 +163,17 @@ export async function booleanIntersection(
 export async function booleanIntersection(
   m0: Mesh, m1: Mesh, opts?: { returnCurves?: true },
 ): Promise<LabeledCutResult | LabeledCutResultWithCurves> {
+  assertSameDtype([m0, m1], ["mesh0", "mesh1"]);
+  const dt = m0.dtype;
   if (opts?.returnCurves) {
     return dispatcher().run(
-      () => native().dispatch_boolean_intersection_with_curves(m0._handle, m1._handle),
-      (raw) => wrapLabeledWithCurves(raw),
+      () => native()[`dispatch_boolean_intersection_with_curves_${dt}`](m0._handle, m1._handle),
+      (raw) => wrapLabeledWithCurves(raw, dt),
     );
   }
   return dispatcher().run(
-    () => native().dispatch_boolean_intersection(m0._handle, m1._handle),
-    (raw) => wrapLabeled(raw),
+    () => native()[`dispatch_boolean_intersection_${dt}`](m0._handle, m1._handle),
+    (raw) => wrapLabeled(raw, dt),
   );
 }
 
@@ -166,15 +186,17 @@ export async function booleanDifference(
 export async function booleanDifference(
   m0: Mesh, m1: Mesh, opts?: { returnCurves?: true },
 ): Promise<LabeledCutResult | LabeledCutResultWithCurves> {
+  assertSameDtype([m0, m1], ["mesh0", "mesh1"]);
+  const dt = m0.dtype;
   if (opts?.returnCurves) {
     return dispatcher().run(
-      () => native().dispatch_boolean_difference_with_curves(m0._handle, m1._handle),
-      (raw) => wrapLabeledWithCurves(raw),
+      () => native()[`dispatch_boolean_difference_with_curves_${dt}`](m0._handle, m1._handle),
+      (raw) => wrapLabeledWithCurves(raw, dt),
     );
   }
   return dispatcher().run(
-    () => native().dispatch_boolean_difference(m0._handle, m1._handle),
-    (raw) => wrapLabeled(raw),
+    () => native()[`dispatch_boolean_difference_${dt}`](m0._handle, m1._handle),
+    (raw) => wrapLabeled(raw, dt),
   );
 }
 
@@ -183,45 +205,52 @@ export async function booleanDifference(
 // ============================================================================
 
 export async function isobands(
-  mesh: Mesh, scalars: NDArrayFloat32, cutValues: Float32Array,
+  mesh: Mesh, scalars: NDArrayFloat32 | NDArrayFloat64,
+  cutValues: Float32Array | Float64Array | number[],
   opts?: { selectedBands?: number[] },
 ): Promise<IsobandsResult>;
 export async function isobands(
-  mesh: Mesh, scalars: NDArrayFloat32, cutValues: Float32Array,
+  mesh: Mesh, scalars: NDArrayFloat32 | NDArrayFloat64,
+  cutValues: Float32Array | Float64Array | number[],
   opts: { returnCurves: true, selectedBands?: number[] },
 ): Promise<IsobandsResultWithCurves>;
 export async function isobands(
-  mesh: Mesh, scalars: NDArrayFloat32, cutValues: Float32Array,
+  mesh: Mesh, scalars: NDArrayFloat32 | NDArrayFloat64,
+  cutValues: Float32Array | Float64Array | number[],
   opts?: { returnCurves?: true, selectedBands?: number[] },
 ): Promise<IsobandsResult | IsobandsResultWithCurves> {
+  assertSameDtype([mesh, scalars], ["mesh", "scalars"]);
+  const dt = mesh.dtype as FloatDtype;
   const sb = opts?.selectedBands;
   if (opts?.returnCurves) {
     if (sb) {
       return dispatcher().run(
-        () => native().dispatch_isobands_with_curves_selected(
+        () => native()[`dispatch_isobands_with_curves_selected_${dt}`](
           mesh._handle, scalars._handle, cutValues, sb,
         ),
-        (raw) => wrapIsobandsWithCurves(raw),
+        (raw) => wrapIsobandsWithCurves(raw, dt),
       );
     }
     return dispatcher().run(
-      () => native().dispatch_isobands_with_curves(
+      () => native()[`dispatch_isobands_with_curves_${dt}`](
         mesh._handle, scalars._handle, cutValues,
       ),
-      (raw) => wrapIsobandsWithCurves(raw),
+      (raw) => wrapIsobandsWithCurves(raw, dt),
     );
   }
   if (sb) {
     return dispatcher().run(
-      () => native().dispatch_isobands_selected(
+      () => native()[`dispatch_isobands_selected_${dt}`](
         mesh._handle, scalars._handle, cutValues, sb,
       ),
-      (raw) => wrapIsobands(raw),
+      (raw) => wrapIsobands(raw, dt),
     );
   }
   return dispatcher().run(
-    () => native().dispatch_isobands(mesh._handle, scalars._handle, cutValues),
-    (raw) => wrapIsobands(raw),
+    () => native()[`dispatch_isobands_${dt}`](
+      mesh._handle, scalars._handle, cutValues,
+    ),
+    (raw) => wrapIsobands(raw, dt),
   );
 }
 
@@ -238,20 +267,22 @@ export async function embeddedIntersectionCurves(
 export async function embeddedIntersectionCurves(
   m0: Mesh, m1: Mesh, opts?: IntersectOpts & { returnCurves?: true },
 ): Promise<CutResult | CutResultWithCurves> {
+  assertSameDtype([m0, m1], ["mesh0", "mesh1"]);
+  const dt = m0.dtype;
   const mode = buildMode(opts, "primitives", false, false);
   if (opts?.returnCurves) {
     return dispatcher().run(
-      () => native().dispatch_embedded_intersection_curves_with_curves(
+      () => native()[`dispatch_embedded_intersection_curves_with_curves_${dt}`](
         m0._handle, m1._handle, mode,
       ),
-      (raw) => wrapCutWithCurves(raw),
+      (raw) => wrapCutWithCurves(raw, dt),
     );
   }
   return dispatcher().run(
-    () => native().dispatch_embedded_intersection_curves(
+    () => native()[`dispatch_embedded_intersection_curves_${dt}`](
       m0._handle, m1._handle, mode,
     ),
-    (raw) => wrapCut(raw),
+    (raw) => wrapCut(raw, dt),
   );
 }
 
@@ -268,18 +299,23 @@ export async function meshArrangements(
 export async function meshArrangements(
   meshes: Mesh[], opts?: IntersectOpts & { returnCurves?: true },
 ): Promise<MeshArrangementResult | MeshArrangementResultWithCurves> {
+  assertSameDtype(
+    meshes,
+    meshes.map((_, i) => `meshes[${i}]`),
+  );
+  const dt = meshes[0].dtype;
   const rc = opts?.resolveCrossings ?? (meshes.length > 2);
   const mode = buildMode(opts, "primitives", rc, false);
   const handles = meshes.map(m => m._handle);
   if (opts?.returnCurves) {
     return dispatcher().run(
-      () => native().dispatch_mesh_arrangements_with_curves(handles, mode),
-      (raw) => wrapArrangementWithCurves(raw),
+      () => native()[`dispatch_mesh_arrangements_with_curves_${dt}`](handles, mode),
+      (raw) => wrapArrangementWithCurves(raw, dt),
     );
   }
   return dispatcher().run(
-    () => native().dispatch_mesh_arrangements(handles, mode),
-    (raw) => wrapArrangement(raw),
+    () => native()[`dispatch_mesh_arrangements_${dt}`](handles, mode),
+    (raw) => wrapArrangement(raw, dt),
   );
 }
 
@@ -296,20 +332,21 @@ export async function embeddedSelfIntersectionCurves(
 export async function embeddedSelfIntersectionCurves(
   mesh: Mesh, opts?: IntersectOpts & { returnCurves?: true },
 ): Promise<CutResult | CutResultWithCurves> {
+  const dt = mesh.dtype;
   const mode = buildMode(opts, "primitives", true, true);
   if (opts?.returnCurves) {
     return dispatcher().run(
-      () => native().dispatch_embedded_self_intersection_curves_with_curves(
-        mesh._handle, mode,
-      ),
-      (raw) => wrapCutWithCurves(raw),
+      () => native()[
+        `dispatch_embedded_self_intersection_curves_with_curves_${dt}`
+      ](mesh._handle, mode),
+      (raw) => wrapCutWithCurves(raw, dt),
     );
   }
   return dispatcher().run(
-    () => native().dispatch_embedded_self_intersection_curves(
+    () => native()[`dispatch_embedded_self_intersection_curves_${dt}`](
       mesh._handle, mode,
     ),
-    (raw) => wrapCut(raw),
+    (raw) => wrapCut(raw, dt),
   );
 }
 
@@ -326,17 +363,18 @@ export async function polygonArrangements(
 export async function polygonArrangements(
   mesh: Mesh, opts?: IntersectOpts & { returnCurves?: true },
 ): Promise<PolygonArrangementResult | PolygonArrangementResultWithCurves> {
+  const dt = mesh.dtype;
   const mode = buildMode(opts, "primitives", true, true);
   if (opts?.returnCurves) {
     return dispatcher().run(
-      () => native().dispatch_polygon_arrangements_with_curves(
+      () => native()[`dispatch_polygon_arrangements_with_curves_${dt}`](
         mesh._handle, mode,
       ),
-      (raw) => wrapPolygonArrangementWithCurves(raw),
+      (raw) => wrapPolygonArrangementWithCurves(raw, dt),
     );
   }
   return dispatcher().run(
-    () => native().dispatch_polygon_arrangements(mesh._handle, mode),
-    (raw) => wrapPolygonArrangement(raw),
+    () => native()[`dispatch_polygon_arrangements_${dt}`](mesh._handle, mode),
+    (raw) => wrapPolygonArrangement(raw, dt),
   );
 }

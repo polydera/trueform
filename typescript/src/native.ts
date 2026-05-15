@@ -24,7 +24,7 @@ let _initPromise: Promise<void> | null = null;
 export async function init(): Promise<void> {
   if (!_initPromise) {
     _initPromise = (async () => {
-      const createModule = (await import("./trueform_wasm.js" as any))
+      const createModule = (await import("./trueform_wasm.js"))
         .default;
       const m = await createModule();
       _native = m;

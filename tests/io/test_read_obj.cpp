@@ -365,3 +365,66 @@ TEST_CASE("read_obj dynamic nonexistent file", "[io][read_obj]") {
     REQUIRE(result.faces().size() == 0);
     REQUIRE(result.points().size() == 0);
 }
+
+// =============================================================================
+// Double-precision (float64) reads
+// =============================================================================
+
+TEST_CASE("read_obj<int, double> preserves double precision", "[io][read_obj][float64]") {
+    // 1.0000000000000002 is the next representable double after 1.0;
+    // it cannot be represented exactly as a float32.
+    auto path = temp_obj_path();
+    {
+        std::ofstream f(path);
+        f << "v 1.0000000000000002 2.0000000000000004 3.0000000000000007\n";
+        f << "v 1 0 0\n";
+        f << "v 0 1 0\n";
+        f << "f 1 2 3\n";
+    }
+    TempFileCleanup cleanup{path};
+
+    auto polygons = tf::read_obj<int, double>(path.string());
+    REQUIRE(polygons.points().size() == 3);
+
+    auto p0 = polygons.points().front();
+    REQUIRE(p0[0] == 1.0000000000000002);
+    REQUIRE(p0[1] == 2.0000000000000004);
+    REQUIRE(p0[2] == 3.0000000000000007);
+}
+
+TEST_CASE("read_obj<int, 3, double> fixed Ngon preserves double precision",
+          "[io][read_obj][float64]") {
+    auto path = temp_obj_path();
+    {
+        std::ofstream f(path);
+        f << "v 1.0000000000000002 0 0\n";
+        f << "v 0 1 0\n";
+        f << "v 0 0 1\n";
+        f << "f 1 2 3\n";
+    }
+    TempFileCleanup cleanup{path};
+
+    auto polygons = tf::read_obj<int, 3, double>(path.string());
+    static_assert(std::is_same_v<decltype(polygons),
+                                 tf::polygons_buffer<int, double, 3, 3>>);
+    REQUIRE(polygons.points().size() == 3);
+    REQUIRE(polygons.points().front()[0] == 1.0000000000000002);
+}
+
+TEST_CASE("read_obj<3, int, double> Ngon-first preserves double precision",
+          "[io][read_obj][float64]") {
+    auto path = temp_obj_path();
+    {
+        std::ofstream f(path);
+        f << "v 1.0000000000000002 0 0\n";
+        f << "v 0 1 0\n";
+        f << "v 0 0 1\n";
+        f << "f 1 2 3\n";
+    }
+    TempFileCleanup cleanup{path};
+
+    auto polygons = tf::read_obj<3, int, double>(path.string());
+    static_assert(std::is_same_v<decltype(polygons),
+                                 tf::polygons_buffer<int, double, 3, 3>>);
+    REQUIRE(polygons.points().front()[0] == 1.0000000000000002);
+}

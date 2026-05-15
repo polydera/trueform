@@ -47,10 +47,11 @@ namespace ts {
 /// Multiple wasm_mesh handles can share the same mesh_data via shared_ptr —
 /// that is how cache state is shared across copies (e.g. async lambda
 /// captures).
+template <typename Real>
 class mesh_data {
   wasm_ndarray<int> _faces;            // [F, 3]
-  wasm_ndarray<float> _points;         // [V, 3]
-  wasm_ndarray<float> _transformation; // [4, 4] — empty when no transform
+  wasm_ndarray<Real> _points;          // [V, 3]
+  wasm_ndarray<Real> _transformation;  // [4, 4] — empty when no transform
 
   // Topology cache (stored as wasm types, not C++ structs)
   wasm_offset_blocked_buffer<int, int> _fm;
@@ -59,15 +60,15 @@ class mesh_data {
   wasm_offset_blocked_buffer<int, int> _vl;
 
   // Normals cache
-  wasm_ndarray<float> _normals;       // [F, 3]
-  wasm_ndarray<float> _point_normals; // [V, 3]
+  wasm_ndarray<Real> _normals;       // [F, 3]
+  wasm_ndarray<Real> _point_normals; // [V, 3]
 
   // Half-edge cache
   std::shared_ptr<tf::half_edges<int>> _he;
   uint32_t _he_gen = 0;
 
   // Spatial tree cache
-  std::shared_ptr<tf::aabb_tree<int, float, 3>> _tree;
+  std::shared_ptr<tf::aabb_tree<int, Real, 3>> _tree;
   uint32_t _tree_faces_gen = 0;
   uint32_t _tree_points_gen = 0;
 
@@ -89,7 +90,7 @@ public:
   // -- Data access (returns copy with shared ownership) --
 
   auto faces() const -> wasm_ndarray<int> { return _faces; }
-  auto points() const -> wasm_ndarray<float> { return _points; }
+  auto points() const -> wasm_ndarray<Real> { return _points; }
 
   auto number_of_faces() const -> int {
     return _faces.is_valid() ? _faces.raw_shape()[0] : 0;
@@ -105,7 +106,7 @@ public:
     ++_faces_gen;
   }
 
-  auto set_points(wasm_ndarray<float> points) -> void {
+  auto set_points(wasm_ndarray<Real> points) -> void {
     _points = std::move(points);
     ++_points_gen;
   }
@@ -119,10 +120,10 @@ public:
     ++_faces_gen;
   }
 
-  auto assign_points(tf::buffer<float> &&buf) -> void {
+  auto assign_points(tf::buffer<Real> &&buf) -> void {
     auto len = buf.size();
-    _points = wasm_ndarray<float>::from_buffer(std::move(buf),
-                                               {static_cast<int>(len / 3), 3});
+    _points = wasm_ndarray<Real>::from_buffer(std::move(buf),
+                                              {static_cast<int>(len / 3), 3});
     ++_points_gen;
   }
 
@@ -130,21 +131,21 @@ public:
 
   auto has_transformation() const -> bool { return _transformation.is_valid(); }
 
-  auto transformation() const -> wasm_ndarray<float> { return _transformation; }
+  auto transformation() const -> wasm_ndarray<Real> { return _transformation; }
 
-  auto transformation_view() const -> tf::transformation_view<float, 3> {
+  auto transformation_view() const -> tf::transformation_view<Real, 3> {
     return tf::make_transformation_view<3>(
-        const_cast<float *>(_transformation.raw_data()));
+        const_cast<Real *>(_transformation.raw_data()));
   }
 
-  auto set_transformation(const wasm_ndarray<float> &t) -> void {
+  auto set_transformation(const wasm_ndarray<Real> &t) -> void {
     _transformation = t;
   }
   auto clear_transformation() -> void { _transformation.destroy(); }
 
   // -- Spatial tree (lazy build, cached) --
 
-  auto tree() -> const tf::aabb_tree<int, float, 3> & {
+  auto tree() -> const tf::aabb_tree<int, Real, 3> & {
     ensure_tree();
     return *_tree;
   }
@@ -189,17 +190,17 @@ public:
 
   // -- Normals access (lazy build, returns copy of cached wasm type) --
 
-  auto normals() -> wasm_ndarray<float>;
-  auto point_normals() -> wasm_ndarray<float>;
+  auto normals() -> wasm_ndarray<Real>;
+  auto point_normals() -> wasm_ndarray<Real>;
 
   // -- Normals setters (bypass lazy build, mark as fresh) --
 
-  auto set_normals(wasm_ndarray<float> n) -> void {
+  auto set_normals(wasm_ndarray<Real> n) -> void {
     _normals = std::move(n);
     _normals_faces_gen = _faces_gen;
     _normals_points_gen = _points_gen;
   }
-  auto set_point_normals(wasm_ndarray<float> pn) -> void {
+  auto set_point_normals(wasm_ndarray<Real> pn) -> void {
     _point_normals = std::move(pn);
     _point_normals_faces_gen = _faces_gen;
     _point_normals_points_gen = _points_gen;
@@ -337,6 +338,9 @@ private:
   auto ensure_normals() -> void;
   auto ensure_point_normals() -> void;
 };
+
+extern template class mesh_data<float>;
+extern template class mesh_data<double>;
 
 } // namespace ts
 } // namespace tf

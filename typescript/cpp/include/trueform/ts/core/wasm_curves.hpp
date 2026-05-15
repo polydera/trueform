@@ -26,15 +26,16 @@ namespace ts {
 ///
 /// Holds path indices (offset-blocked) and point coordinates as wasm types.
 /// Each accessor returns a copy with shared ownership.
+template <typename Real>
 class wasm_curves {
   wasm_offset_blocked_buffer<int, int> _paths;
-  wasm_ndarray<float> _points;
+  wasm_ndarray<Real> _points;
 
 public:
   wasm_curves() = default;
 
   auto paths() -> wasm_offset_blocked_buffer<int, int> { return _paths; }
-  auto points() -> wasm_ndarray<float> { return _points; }
+  auto points() -> wasm_ndarray<Real> { return _points; }
   auto size() const -> int { return _paths.size(); }
 
   auto destroy() -> void {
@@ -59,7 +60,7 @@ public:
   // -- Construction from JS-side ndarrays --
 
   static auto create(wasm_offset_blocked_buffer<int, int> paths,
-                     wasm_ndarray<float> points) -> wasm_curves {
+                     wasm_ndarray<Real> points) -> wasm_curves {
     wasm_curves wc;
     wc._paths = std::move(paths);
     wc._points = std::move(points);
@@ -68,13 +69,13 @@ public:
 
   // -- Construction from C++ curves_buffer --
 
-  static auto from_curves_buffer(tf::curves_buffer<int, float, 3> &&cb)
+  static auto from_curves_buffer(tf::curves_buffer<int, Real, 3> &&cb)
       -> wasm_curves {
     auto num_pts = cb.points_buffer().size();
     wasm_curves wc;
     wc._paths = wasm_offset_blocked_buffer<int, int>::from_buffer(
         std::move(cb.paths_buffer()));
-    wc._points = wasm_ndarray<float>::from_buffer(
+    wc._points = wasm_ndarray<Real>::from_buffer(
         std::move(cb.points_buffer().data_buffer()),
         {static_cast<int>(num_pts), 3});
     return wc;

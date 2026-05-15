@@ -23,7 +23,11 @@ export {
 } from "./primitive";
 
 // NDArray + typed aliases
-export { NDArray, NDArrayInt8, NDArrayInt32, NDArrayFloat32, NDArrayBool } from "./ndarray/NDArray";
+export { NDArray, NDArrayInt8, NDArrayInt32, NDArrayFloat32, NDArrayFloat64, NDArrayBool } from "./ndarray/NDArray";
+export type {
+  Dtype, NumericDtype, FloatDtype, OrderedDtype,
+  RandomDtype, RangeDtype, FullDtype, DtypeToArray,
+} from "./ndarray/dtype";
 export { OffsetBlockedBuffer, offsetBlockedBuffer } from "./ndarray/OffsetBlockedBuffer";
 export { IndexMap } from "./core/IndexMap";
 export { Mesh } from "./form/Mesh";

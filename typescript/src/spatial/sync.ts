@@ -15,8 +15,9 @@ import { native } from "../native";
 import { Mesh } from "../form/Mesh";
 import { PointCloud } from "../form/PointCloud";
 import { Primitive, PrimitiveType, Ray } from "../primitive/Primitive";
-import { NDArray, NDArrayFloat32, NDArrayBool, NDArrayInt32 } from "../ndarray/NDArray";
+import { NDArray, NDArrayFloat32, NDArrayFloat64, NDArrayBool, NDArrayInt32 } from "../ndarray/NDArray";
 import { full } from "../ndarray/factories";
+import { assertSameDtype } from "../internal/dtype";
 
 // ============================================================================
 // Form type — Mesh or PointCloud
@@ -58,7 +59,7 @@ function primType(p: Primitive): number {
 /** Result of closest-point query (single). */
 export interface ClosestPointResult {
   /** Closest point on B to A. */
-  point: NDArrayFloat32;
+  point: NDArrayFloat32 | NDArrayFloat64;
   /** Squared distance. */
   distance2: number;
 }
@@ -66,17 +67,17 @@ export interface ClosestPointResult {
 /** Result of closest-point query (batch). */
 export interface ClosestPointBatchResult {
   /** Closest points [N, 3]. */
-  points: NDArrayFloat32;
+  points: NDArrayFloat32 | NDArrayFloat64;
   /** Squared distances [N]. */
-  distances: NDArrayFloat32;
+  distances: NDArrayFloat32 | NDArrayFloat64;
 }
 
 /** Result of closest-point-pair query (single). */
 export interface ClosestPointPairResult {
   /** Closest point on A. */
-  point0: NDArrayFloat32;
+  point0: NDArrayFloat32 | NDArrayFloat64;
   /** Closest point on B. */
-  point1: NDArrayFloat32;
+  point1: NDArrayFloat32 | NDArrayFloat64;
   /** Squared distance. */
   distance2: number;
 }
@@ -84,11 +85,11 @@ export interface ClosestPointPairResult {
 /** Result of closest-point-pair query (batch). */
 export interface ClosestPointPairBatchResult {
   /** Closest points on A [N, 3]. */
-  points0: NDArrayFloat32;
+  points0: NDArrayFloat32 | NDArrayFloat64;
   /** Closest points on B [N, 3]. */
-  points1: NDArrayFloat32;
+  points1: NDArrayFloat32 | NDArrayFloat64;
   /** Squared distances [N]. */
-  distances: NDArrayFloat32;
+  distances: NDArrayFloat32 | NDArrayFloat64;
 }
 
 /** Result of neighbor search (form × prim). */
@@ -96,7 +97,7 @@ export interface NeighborResult {
   /** Index of the closest element in the form. */
   elementId: number;
   /** Closest point on the form. */
-  point: NDArrayFloat32;
+  point: NDArrayFloat32 | NDArrayFloat64;
   /** Squared distance. */
   distance2: number;
 }
@@ -106,9 +107,9 @@ export interface NeighborBatchResult {
   /** Element indices [N]. */
   elementIds: NDArrayInt32;
   /** Closest points on the form [N, 3]. */
-  points: NDArrayFloat32;
+  points: NDArrayFloat32 | NDArrayFloat64;
   /** Squared distances [N]. */
-  distances: NDArrayFloat32;
+  distances: NDArrayFloat32 | NDArrayFloat64;
 }
 
 /** Result of neighbor search (form × form). */
@@ -118,9 +119,9 @@ export interface NeighborPairResult {
   /** Index of the closest element on form 1. */
   elementId1: number;
   /** Closest point on form 0. */
-  point0: NDArrayFloat32;
+  point0: NDArrayFloat32 | NDArrayFloat64;
   /** Closest point on form 1. */
-  point1: NDArrayFloat32;
+  point1: NDArrayFloat32 | NDArrayFloat64;
   /** Squared distance. */
   distance2: number;
 }
@@ -130,9 +131,9 @@ export interface NeighborKnnResult {
   /** Element indices [count]. */
   elementIds: NDArrayInt32;
   /** Closest points on the form [count, 3]. */
-  points: NDArrayFloat32;
+  points: NDArrayFloat32 | NDArrayFloat64;
   /** Squared distances [count]. */
-  distances: NDArrayFloat32;
+  distances: NDArrayFloat32 | NDArrayFloat64;
 }
 
 /** Result of k-NN neighbor search (batch query). */
@@ -140,9 +141,9 @@ export interface NeighborKnnBatchResult {
   /** Element indices [N, k] padded with -1. */
   elementIds: NDArrayInt32;
   /** Closest points on the form [N, k, 3]. */
-  points: NDArrayFloat32;
+  points: NDArrayFloat32 | NDArrayFloat64;
   /** Squared distances [N, k]. */
-  distances: NDArrayFloat32;
+  distances: NDArrayFloat32 | NDArrayFloat64;
   /** Actual count per query [N]. */
   counts: NDArrayInt32;
 }
@@ -176,7 +177,7 @@ export interface RayCastPrimBatchResult {
   /** Hit flags [N]. */
   hits: NDArrayBool;
   /** Ray parameters [N]. */
-  ts: NDArrayFloat32;
+  ts: NDArrayFloat32 | NDArrayFloat64;
 }
 
 /** Result of ray cast against a form (batch). */
@@ -184,92 +185,92 @@ export interface RayCastFormBatchResult {
   /** Hit flags [N]. */
   hits: NDArrayBool;
   /** Ray parameters [N]. */
-  ts: NDArrayFloat32;
+  ts: NDArrayFloat32 | NDArrayFloat64;
   /** Element indices [N]. */
   elementIds: NDArrayInt32;
 }
 
 /** Options for ray cast queries. */
 export interface RayCastOptions {
-  /** Minimum ray parameter. Scalar applies to all rays; NDArrayFloat32 [N] for per-ray bounds. Default: 0. */
-  minT?: number | NDArrayFloat32;
-  /** Maximum ray parameter. Scalar applies to all rays; NDArrayFloat32 [N] for per-ray bounds. Default: Infinity. */
-  maxT?: number | NDArrayFloat32;
+  /** Minimum ray parameter. Scalar applies to all rays; NDArray [N] for per-ray bounds. Default: 0. */
+  minT?: number | NDArrayFloat32 | NDArrayFloat64;
+  /** Maximum ray parameter. Scalar applies to all rays; NDArray [N] for per-ray bounds. Default: Infinity. */
+  maxT?: number | NDArrayFloat32 | NDArrayFloat64;
 }
 
 // ============================================================================
 // Result wrappers
 // ============================================================================
 
-function wrapClosestPoint(raw: any): ClosestPointResult {
+function wrapClosestPoint(raw: any, dtype: string): ClosestPointResult {
   return {
-    point: new NDArray(raw.point, "float32"),
+    point: new NDArray(raw.point, dtype) as NDArrayFloat32 | NDArrayFloat64,
     distance2: raw.distance2,
   };
 }
 
-function wrapClosestPointBatch(raw: any): ClosestPointBatchResult {
+function wrapClosestPointBatch(raw: any, dtype: string): ClosestPointBatchResult {
   return {
-    points: new NDArray(raw.points, "float32"),
-    distances: new NDArray(raw.distances, "float32"),
+    points: new NDArray(raw.points, dtype) as NDArrayFloat32 | NDArrayFloat64,
+    distances: new NDArray(raw.distances, dtype) as NDArrayFloat32 | NDArrayFloat64,
   };
 }
 
-function wrapClosestPointPair(raw: any): ClosestPointPairResult {
+function wrapClosestPointPair(raw: any, dtype: string): ClosestPointPairResult {
   return {
-    point0: new NDArray(raw.point0, "float32"),
-    point1: new NDArray(raw.point1, "float32"),
+    point0: new NDArray(raw.point0, dtype) as NDArrayFloat32 | NDArrayFloat64,
+    point1: new NDArray(raw.point1, dtype) as NDArrayFloat32 | NDArrayFloat64,
     distance2: raw.distance2,
   };
 }
 
-function wrapClosestPointPairBatch(raw: any): ClosestPointPairBatchResult {
+function wrapClosestPointPairBatch(raw: any, dtype: string): ClosestPointPairBatchResult {
   return {
-    points0: new NDArray(raw.points0, "float32"),
-    points1: new NDArray(raw.points1, "float32"),
-    distances: new NDArray(raw.distances, "float32"),
+    points0: new NDArray(raw.points0, dtype) as NDArrayFloat32 | NDArrayFloat64,
+    points1: new NDArray(raw.points1, dtype) as NDArrayFloat32 | NDArrayFloat64,
+    distances: new NDArray(raw.distances, dtype) as NDArrayFloat32 | NDArrayFloat64,
   };
 }
 
-function wrapNeighbor(raw: any): NeighborResult {
+function wrapNeighbor(raw: any, dtype: string): NeighborResult {
   return {
     elementId: raw.elementId,
-    point: new NDArray(raw.point, "float32"),
+    point: new NDArray(raw.point, dtype) as NDArrayFloat32 | NDArrayFloat64,
     distance2: raw.distance2,
   };
 }
 
-function wrapNeighborBatch(raw: any): NeighborBatchResult {
+function wrapNeighborBatch(raw: any, dtype: string): NeighborBatchResult {
   return {
     elementIds: new NDArray(raw.elementIds, "int32"),
-    points: new NDArray(raw.points, "float32"),
-    distances: new NDArray(raw.distances, "float32"),
+    points: new NDArray(raw.points, dtype) as NDArrayFloat32 | NDArrayFloat64,
+    distances: new NDArray(raw.distances, dtype) as NDArrayFloat32 | NDArrayFloat64,
   };
 }
 
-function wrapNeighborPair(raw: any): NeighborPairResult {
+function wrapNeighborPair(raw: any, dtype: string): NeighborPairResult {
   return {
     elementId0: raw.elementId0,
     elementId1: raw.elementId1,
-    point0: new NDArray(raw.point0, "float32"),
-    point1: new NDArray(raw.point1, "float32"),
+    point0: new NDArray(raw.point0, dtype) as NDArrayFloat32 | NDArrayFloat64,
+    point1: new NDArray(raw.point1, dtype) as NDArrayFloat32 | NDArrayFloat64,
     distance2: raw.distance2,
   };
 }
 
-function wrapNeighborKnn(raw: any): NeighborKnnResult {
+function wrapNeighborKnn(raw: any, dtype: string): NeighborKnnResult {
   return {
     elementIds: new NDArray(raw.elementIds, "int32"),
-    points: new NDArray(raw.points, "float32"),
-    distances: new NDArray(raw.distances, "float32"),
+    points: new NDArray(raw.points, dtype) as NDArrayFloat32 | NDArrayFloat64,
+    distances: new NDArray(raw.distances, dtype) as NDArrayFloat32 | NDArrayFloat64,
   };
 }
 
-function wrapNeighborKnnBatch(raw: any): NeighborKnnBatchResult {
+function wrapNeighborKnnBatch(raw: any, dtype: string): NeighborKnnBatchResult {
   return {
     elementIds: new NDArray(raw.elementIds, "int32"),
-    points: new NDArray(raw.points, "float32"),
-    distances: new NDArray(raw.distances, "float32"),
+    points: new NDArray(raw.points, dtype) as NDArrayFloat32 | NDArrayFloat64,
+    distances: new NDArray(raw.distances, dtype) as NDArrayFloat32 | NDArrayFloat64,
     counts: new NDArray(raw.counts, "int32"),
   };
 }
@@ -294,33 +295,47 @@ function ffSuffix(a: Form, b: Form): string {
 /** Squared distance between two primitives. */
 export function distance2(
   a: Primitive, b: Primitive,
-): number | NDArrayFloat32;
+): number | NDArrayFloat32 | NDArrayFloat64;
 /** Squared distance from a form to a primitive. */
 export function distance2(
   form: Form, prim: Primitive,
-): number | NDArrayFloat32;
+): number | NDArrayFloat32 | NDArrayFloat64;
 /** Squared distance between two forms. */
 export function distance2(a: Form, b: Form): number;
 export function distance2(
   a: Primitive | Form, b: Primitive | Form,
-): number | NDArrayFloat32 {
+): number | NDArrayFloat32 | NDArrayFloat64 {
   if ((a instanceof Mesh || a instanceof PointCloud) &&
       (b instanceof Mesh || b instanceof PointCloud)) {
-    return native()["distance2_ff" + ffSuffix(a, b)](a._handle, b._handle);
+    assertSameDtype([a, b], ["form 0", "form 1"]);
+    return native()[`distance2_ff${ffSuffix(a, b)}_${a.dtype}`](
+      a._handle, b._handle,
+    );
   }
   if (a instanceof Mesh || a instanceof PointCloud) {
     const p = b as Primitive;
-    const raw = native()["distance2_fp" + fpSuffix(a)](
-      a._handle, p._handle, primType(p),
+    const ph = a.dtype === "float32" ? p._handle : p.as("float64")._handle;
+    const raw = native()[`distance2_fp${fpSuffix(a)}_${a.dtype}`](
+      a._handle, ph, primType(p),
     );
-    return typeof raw === "number" ? raw : new NDArray(raw, "float32");
+    if (typeof raw === "number") return raw;
+    return a.dtype === "float32"
+      ? (new NDArray(raw, "float32") as NDArrayFloat32)
+      : (new NDArray(raw, "float64") as NDArrayFloat64);
   }
   const pa = a as Primitive;
   const pb = b as Primitive;
-  const raw = native().distance2_pp(
-    pa._handle, primType(pa), pb._handle, primType(pb),
+  const dt: "float32" | "float64" =
+    (pa.dtype === "float64" || pb.dtype === "float64") ? "float64" : "float32";
+  const ah = pa.dtype === dt ? pa._handle : pa.as(dt)._handle;
+  const bh = pb.dtype === dt ? pb._handle : pb.as(dt)._handle;
+  const raw = native()[`distance2_pp_${dt}`](
+    ah, primType(pa), bh, primType(pb),
   );
-  return typeof raw === "number" ? raw : new NDArray(raw, "float32");
+  if (typeof raw === "number") return raw;
+  return dt === "float32"
+    ? (new NDArray(raw, "float32") as NDArrayFloat32)
+    : (new NDArray(raw, "float64") as NDArrayFloat64);
 }
 
 // ============================================================================
@@ -330,33 +345,47 @@ export function distance2(
 /** Distance between two primitives (signed for plane-point). */
 export function distance(
   a: Primitive, b: Primitive,
-): number | NDArrayFloat32;
+): number | NDArrayFloat32 | NDArrayFloat64;
 /** Distance from a form to a primitive. */
 export function distance(
   form: Form, prim: Primitive,
-): number | NDArrayFloat32;
+): number | NDArrayFloat32 | NDArrayFloat64;
 /** Distance between two forms. */
 export function distance(a: Form, b: Form): number;
 export function distance(
   a: Primitive | Form, b: Primitive | Form,
-): number | NDArrayFloat32 {
+): number | NDArrayFloat32 | NDArrayFloat64 {
   if ((a instanceof Mesh || a instanceof PointCloud) &&
       (b instanceof Mesh || b instanceof PointCloud)) {
-    return native()["distance_ff" + ffSuffix(a, b)](a._handle, b._handle);
+    assertSameDtype([a, b], ["form 0", "form 1"]);
+    return native()[`distance_ff${ffSuffix(a, b)}_${a.dtype}`](
+      a._handle, b._handle,
+    );
   }
   if (a instanceof Mesh || a instanceof PointCloud) {
     const p = b as Primitive;
-    const raw = native()["distance_fp" + fpSuffix(a)](
-      a._handle, p._handle, primType(p),
+    const ph = a.dtype === "float32" ? p._handle : p.as("float64")._handle;
+    const raw = native()[`distance_fp${fpSuffix(a)}_${a.dtype}`](
+      a._handle, ph, primType(p),
     );
-    return typeof raw === "number" ? raw : new NDArray(raw, "float32");
+    if (typeof raw === "number") return raw;
+    return a.dtype === "float32"
+      ? (new NDArray(raw, "float32") as NDArrayFloat32)
+      : (new NDArray(raw, "float64") as NDArrayFloat64);
   }
   const pa = a as Primitive;
   const pb = b as Primitive;
-  const raw = native().distance_pp(
-    pa._handle, primType(pa), pb._handle, primType(pb),
+  const dt: "float32" | "float64" =
+    (pa.dtype === "float64" || pb.dtype === "float64") ? "float64" : "float32";
+  const ah = pa.dtype === dt ? pa._handle : pa.as(dt)._handle;
+  const bh = pb.dtype === dt ? pb._handle : pb.as(dt)._handle;
+  const raw = native()[`distance_pp_${dt}`](
+    ah, primType(pa), bh, primType(pb),
   );
-  return typeof raw === "number" ? raw : new NDArray(raw, "float32");
+  if (typeof raw === "number") return raw;
+  return dt === "float32"
+    ? (new NDArray(raw, "float32") as NDArrayFloat32)
+    : (new NDArray(raw, "float64") as NDArrayFloat64);
 }
 
 // ============================================================================
@@ -367,11 +396,15 @@ export function distance(
 export function closestPoint(
   a: Primitive, b: Primitive,
 ): ClosestPointResult | ClosestPointBatchResult {
-  const raw = native().closest_metric_point(
-    a._handle, primType(a), b._handle, primType(b),
+  const dt: "float32" | "float64" =
+    (a.dtype === "float64" || b.dtype === "float64") ? "float64" : "float32";
+  const ah = a.dtype === dt ? a._handle : a.as(dt)._handle;
+  const bh = b.dtype === dt ? b._handle : b.as(dt)._handle;
+  const raw = native()[`closest_metric_point_${dt}`](
+    ah, primType(a), bh, primType(b),
   );
-  if (a.isBatch || b.isBatch) return wrapClosestPointBatch(raw);
-  return wrapClosestPoint(raw);
+  if (a.isBatch || b.isBatch) return wrapClosestPointBatch(raw, dt);
+  return wrapClosestPoint(raw, dt);
 }
 
 // ============================================================================
@@ -382,11 +415,15 @@ export function closestPoint(
 export function closestPointPair(
   a: Primitive, b: Primitive,
 ): ClosestPointPairResult | ClosestPointPairBatchResult {
-  const raw = native().closest_metric_point_pair(
-    a._handle, primType(a), b._handle, primType(b),
+  const dt: "float32" | "float64" =
+    (a.dtype === "float64" || b.dtype === "float64") ? "float64" : "float32";
+  const ah = a.dtype === dt ? a._handle : a.as(dt)._handle;
+  const bh = b.dtype === dt ? b._handle : b.as(dt)._handle;
+  const raw = native()[`closest_metric_point_pair_${dt}`](
+    ah, primType(a), bh, primType(b),
   );
-  if (a.isBatch || b.isBatch) return wrapClosestPointPairBatch(raw);
-  return wrapClosestPointPair(raw);
+  if (a.isBatch || b.isBatch) return wrapClosestPointPairBatch(raw, dt);
+  return wrapClosestPointPair(raw, dt);
 }
 
 // ============================================================================
@@ -414,29 +451,34 @@ export function neighborSearch(
 
   // FF — form × form
   if (bOrQuery instanceof Mesh || bOrQuery instanceof PointCloud) {
+    assertSameDtype([a, bOrQuery], ["form 0", "form 1"]);
+    const dtype = a.dtype;
     return wrapNeighborPair(
-      native()["neighbor_search_ff" + ffSuffix(a, bOrQuery)](
+      native()[`neighbor_search_ff${ffSuffix(a, bOrQuery)}_${dtype}`](
         a._handle, bOrQuery._handle, radius,
       ),
+      dtype,
     );
   }
 
-  // FP with k-NN
+  // FP — primitive query (basic or k-NN)
   const q = bOrQuery;
+  const dtype = a.dtype;
+  const qh = dtype === "float32" ? q._handle : q.as("float64")._handle;
+
   if (opts && "k" in opts) {
-    const raw = native()["neighbor_search_fp_knn" + fpSuffix(a)](
-      a._handle, q._handle, primType(q), opts.k, radius,
+    const raw = native()[`neighbor_search_fp_knn${fpSuffix(a)}_${dtype}`](
+      a._handle, qh, primType(q), opts.k, radius,
     );
-    if (q.isBatch) return wrapNeighborKnnBatch(raw);
-    return wrapNeighborKnn(raw);
+    if (q.isBatch) return wrapNeighborKnnBatch(raw, dtype);
+    return wrapNeighborKnn(raw, dtype);
   }
 
-  // FP — basic neighbor search
-  const raw = native()["neighbor_search_fp" + fpSuffix(a)](
-    a._handle, q._handle, primType(q), radius,
+  const raw = native()[`neighbor_search_fp${fpSuffix(a)}_${dtype}`](
+    a._handle, qh, primType(q), radius,
   );
-  if (q.isBatch) return wrapNeighborBatch(raw);
-  return wrapNeighbor(raw);
+  if (q.isBatch) return wrapNeighborBatch(raw, dtype);
+  return wrapNeighbor(raw, dtype);
 }
 
 // ============================================================================
@@ -458,19 +500,27 @@ export function intersects(
 ): boolean | NDArrayBool {
   if ((a instanceof Mesh || a instanceof PointCloud) &&
       (b instanceof Mesh || b instanceof PointCloud)) {
-    return native()["intersects_ff" + ffSuffix(a, b)](a._handle, b._handle);
+    assertSameDtype([a, b], ["form 0", "form 1"]);
+    return native()[`intersects_ff${ffSuffix(a, b)}_${a.dtype}`](
+      a._handle, b._handle,
+    );
   }
   if (a instanceof Mesh || a instanceof PointCloud) {
     const p = b as Primitive;
-    const raw = native()["intersects_fp" + fpSuffix(a)](
-      a._handle, p._handle, primType(p),
+    const ph = a.dtype === "float32" ? p._handle : p.as("float64")._handle;
+    const raw = native()[`intersects_fp${fpSuffix(a)}_${a.dtype}`](
+      a._handle, ph, primType(p),
     );
     return typeof raw === "boolean" ? raw : new NDArray(raw, "bool");
   }
   const pa = a as Primitive;
   const pb = b as Primitive;
-  const raw = native().intersects_pp(
-    pa._handle, primType(pa), pb._handle, primType(pb),
+  const dt: "float32" | "float64" =
+    (pa.dtype === "float64" || pb.dtype === "float64") ? "float64" : "float32";
+  const ah = pa.dtype === dt ? pa._handle : pa.as(dt)._handle;
+  const bh = pb.dtype === dt ? pb._handle : pb.as(dt)._handle;
+  const raw = native()[`intersects_pp_${dt}`](
+    ah, primType(pa), bh, primType(pb),
   );
   return typeof raw === "boolean" ? raw : new NDArray(raw, "bool");
 }
@@ -496,47 +546,77 @@ export function rayCast(
 
   if (!bothScalar) {
     const n = ray.count;
-    const minH = (minT instanceof NDArray ? minT : full("float32", [n], minT as number))._handle;
-    const maxH = (maxT instanceof NDArray ? maxT : full("float32", [n], maxT as number))._handle;
 
     if (target instanceof Mesh || target instanceof PointCloud) {
-      const fn = isPC(target) ? "ray_cast_f_pc_rc" : "ray_cast_f_rc";
-      const raw = native()[fn](ray._handle, target._handle, minH, maxH);
+      const dtype = target.dtype;
+      const rayH = dtype === "float32" ? ray._handle : ray.as("float64")._handle;
+      const minArr = minT instanceof NDArray
+        ? (minT.dtype === dtype ? minT : minT.as(dtype))
+        : full(dtype, [n], minT as number);
+      const maxArr = maxT instanceof NDArray
+        ? (maxT.dtype === dtype ? maxT : maxT.as(dtype))
+        : full(dtype, [n], maxT as number);
+      const fn = isPC(target)
+        ? `ray_cast_f_pc_rc_${dtype}`
+        : `ray_cast_f_rc_${dtype}`;
+      const raw = native()[fn](rayH, target._handle, minArr._handle, maxArr._handle);
       if (raw.hit !== undefined) return raw as RayCastResult;
       return {
         hits: new NDArray(raw.hits, "bool"),
-        ts: new NDArray(raw.ts, "float32"),
+        ts: new NDArray(raw.ts, dtype) as NDArrayFloat32 | NDArrayFloat64,
         elementIds: new NDArray(raw.elementIds, "int32"),
       };
     }
-    const raw = native().ray_cast_p_rc(
-      ray._handle, target._handle, primType(target), minH, maxH,
+    const dt: "float32" | "float64" =
+      (ray.dtype === "float64" || (target as Primitive).dtype === "float64")
+        ? "float64" : "float32";
+    const rH = ray.dtype === dt ? ray._handle : ray.as(dt)._handle;
+    const tH = (target as Primitive).dtype === dt
+      ? (target as Primitive)._handle
+      : (target as Primitive).as(dt)._handle;
+    const minArr = minT instanceof NDArray
+      ? (minT.dtype === dt ? minT : minT.as(dt))
+      : full(dt, [n], minT as number);
+    const maxArr = maxT instanceof NDArray
+      ? (maxT.dtype === dt ? maxT : maxT.as(dt))
+      : full(dt, [n], maxT as number);
+    const raw = native()[`ray_cast_p_rc_${dt}`](
+      rH, tH, primType(target as Primitive), minArr._handle, maxArr._handle,
     );
     if (raw.hit !== undefined) return raw as RayCastResult;
     return {
       hits: new NDArray(raw.hits, "bool"),
-      ts: new NDArray(raw.ts, "float32"),
-    };
+      ts: new NDArray(raw.ts, dt) as NDArrayFloat32 | NDArrayFloat64,
+    } as RayCastPrimBatchResult;
   }
 
   if (target instanceof Mesh || target instanceof PointCloud) {
-    const fn = isPC(target) ? "ray_cast_f_pc" : "ray_cast_f";
+    const dtype = target.dtype;
+    const rayH = dtype === "float32" ? ray._handle : ray.as("float64")._handle;
+    const fn = isPC(target) ? `ray_cast_f_pc_${dtype}` : `ray_cast_f_${dtype}`;
     const raw = native()[fn](
-      ray._handle, target._handle, minT, maxT,
+      rayH, target._handle, minT, maxT,
     );
     if (raw.hit !== undefined) return raw as RayCastResult;
     return {
       hits: new NDArray(raw.hits, "bool"),
-      ts: new NDArray(raw.ts, "float32"),
+      ts: new NDArray(raw.ts, dtype) as NDArrayFloat32 | NDArrayFloat64,
       elementIds: new NDArray(raw.elementIds, "int32"),
     };
   }
-  const raw = native().ray_cast_p(
-    ray._handle, target._handle, primType(target), minT as number, maxT as number,
+  const dt: "float32" | "float64" =
+    (ray.dtype === "float64" || (target as Primitive).dtype === "float64")
+      ? "float64" : "float32";
+  const rH = ray.dtype === dt ? ray._handle : ray.as(dt)._handle;
+  const tH = (target as Primitive).dtype === dt
+    ? (target as Primitive)._handle
+    : (target as Primitive).as(dt)._handle;
+  const raw = native()[`ray_cast_p_${dt}`](
+    rH, tH, primType(target as Primitive), minT as number, maxT as number,
   );
   if (raw.hit !== undefined) return raw as RayCastResult;
   return {
     hits: new NDArray(raw.hits, "bool"),
-    ts: new NDArray(raw.ts, "float32"),
-  };
+    ts: new NDArray(raw.ts, dt) as NDArrayFloat32 | NDArrayFloat64,
+  } as RayCastPrimBatchResult;
 }

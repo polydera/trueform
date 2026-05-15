@@ -70,18 +70,15 @@ auto write_obj_to_buffer(const tf::polygons<Policy> &polygons)
         char temp[128];
         std::size_t size = 2; // "v "
 
-        char *end = io::float_to_chars(temp, temp + 64,
-                                        static_cast<float>(transformed_pt[0]));
+        char *end = io::scalar_to_chars(temp, temp + 64, transformed_pt[0]);
         size += end - temp;
         size += 1; // " "
 
-        end = io::float_to_chars(temp, temp + 64,
-                                 static_cast<float>(transformed_pt[1]));
+        end = io::scalar_to_chars(temp, temp + 64, transformed_pt[1]);
         size += end - temp;
         size += 1; // " "
 
-        end = io::float_to_chars(temp, temp + 64,
-                                 static_cast<float>(transformed_pt[2]));
+        end = io::scalar_to_chars(temp, temp + 64, transformed_pt[2]);
         size += end - temp;
         size += 1; // "\n"
 
@@ -156,16 +153,13 @@ auto write_obj_to_buffer(const tf::polygons<Policy> &polygons)
         *ptr++ = 'v';
         *ptr++ = ' ';
 
-        ptr = io::float_to_chars(ptr, ptr + 64,
-                                 static_cast<float>(transformed_pt[0]));
+        ptr = io::scalar_to_chars(ptr, ptr + 64, transformed_pt[0]);
         *ptr++ = ' ';
 
-        ptr = io::float_to_chars(ptr, ptr + 64,
-                                 static_cast<float>(transformed_pt[1]));
+        ptr = io::scalar_to_chars(ptr, ptr + 64, transformed_pt[1]);
         *ptr++ = ' ';
 
-        ptr = io::float_to_chars(ptr, ptr + 64,
-                                 static_cast<float>(transformed_pt[2]));
+        ptr = io::scalar_to_chars(ptr, ptr + 64, transformed_pt[2]);
         *ptr++ = '\n';
       },
       tf::checked);

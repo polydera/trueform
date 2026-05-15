@@ -2,7 +2,7 @@ import { fitCameraToAllMeshesFromZPlane, createScene, type SceneBundle } from "@
 import { centerAndScale, CurveRenderer, RollingAverage } from "@/utils/utils";
 import * as THREE from "three";
 
-type TF = typeof import("@/examples/trueform/index.js");
+type TF = typeof import("@polydera/trueform");
 
 export class CrossSectionExample {
   private tf: TF;

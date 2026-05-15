@@ -20,17 +20,17 @@ namespace {
 
 using namespace tf::ts;
 
-auto async_ensure_pc(wasm_point_cloud &pc) -> promise_t {
+auto async_ensure_pc(wasm_point_cloud<float> &pc) -> promise_t {
   return promise([h = pc]() -> int {
-    auto &handle = const_cast<wasm_point_cloud &>(h);
+    auto &handle = const_cast<wasm_point_cloud<float> &>(h);
     (void)handle.tree();
     return 0;
   });
 }
 
-auto async_ensure(wasm_mesh &m, int what) -> promise_t {
+auto async_ensure(wasm_mesh<float> &m, int what) -> promise_t {
   return promise([h = m, what]() -> int {
-    auto &mesh = const_cast<wasm_mesh &>(h);
+    auto &mesh = const_cast<wasm_mesh<float> &>(h);
     switch (what) {
     case 0: (void)mesh.tree();              break;
     case 1: (void)mesh.normals();           break;

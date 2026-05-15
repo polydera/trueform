@@ -17,128 +17,112 @@
 
 namespace tf::py {
 
+namespace {
+
+constexpr const char *kFixedDoc =
+    "Read an OBJ file and return (faces, points) tuple.\n\n"
+    "Parameters\n"
+    "----------\n"
+    "filename : str\n"
+    "    Path to the OBJ file\n";
+
+constexpr const char *kDynamicDoc =
+    "Read an OBJ file with dynamic polygon sizes.\n\n"
+    "Parameters\n"
+    "----------\n"
+    "filename : str\n"
+    "    Path to the OBJ file\n";
+
+} // namespace
+
 auto register_io_read_obj(nanobind::module_ &m) -> void {
-  // Register int32 triangles variant
+  // ---- Fixed-size (triangles and quads), float32 ----
   m.def(
-      "read_obj_int3",
+      "read_obj_int3float3d",
       [](const std::string &filename) {
-        return read_obj_impl<int, 3>(filename);
+        return read_obj_impl<int, float, 3>(filename);
       },
-      nanobind::arg("filename"),
-      "Read an OBJ file and return (faces, points) tuple with int32 indices "
-      "and triangular faces.\n\n"
-      "Parameters\n"
-      "----------\n"
-      "filename : str\n"
-      "    Path to the OBJ file\n\n"
-      "Returns\n"
-      "-------\n"
-      "faces : ndarray of shape (num_faces, 3) and dtype int32\n"
-      "    Face indices into the points array\n"
-      "points : ndarray of shape (num_points, 3) and dtype float32\n"
-      "    3D coordinates of mesh vertices");
+      nanobind::arg("filename"), kFixedDoc);
 
-  // Register int32 quads variant
   m.def(
-      "read_obj_int4",
+      "read_obj_int4float3d",
       [](const std::string &filename) {
-        return read_obj_impl<int, 4>(filename);
+        return read_obj_impl<int, float, 4>(filename);
       },
-      nanobind::arg("filename"),
-      "Read an OBJ file and return (faces, points) tuple with int32 indices "
-      "and quad faces.\n\n"
-      "Parameters\n"
-      "----------\n"
-      "filename : str\n"
-      "    Path to the OBJ file\n\n"
-      "Returns\n"
-      "-------\n"
-      "faces : ndarray of shape (num_faces, 4) and dtype int32\n"
-      "    Face indices into the points array\n"
-      "points : ndarray of shape (num_points, 3) and dtype float32\n"
-      "    3D coordinates of mesh vertices");
+      nanobind::arg("filename"), kFixedDoc);
 
-  // Register int64 triangles variant
   m.def(
-      "read_obj_int643",
+      "read_obj_int643float3d",
       [](const std::string &filename) {
-        return read_obj_impl<int64_t, 3>(filename);
+        return read_obj_impl<int64_t, float, 3>(filename);
       },
-      nanobind::arg("filename"),
-      "Read an OBJ file and return (faces, points) tuple with int64 indices "
-      "and triangular faces.\n\n"
-      "Parameters\n"
-      "----------\n"
-      "filename : str\n"
-      "    Path to the OBJ file\n\n"
-      "Returns\n"
-      "-------\n"
-      "faces : ndarray of shape (num_faces, 3) and dtype int64\n"
-      "    Face indices into the points array\n"
-      "points : ndarray of shape (num_points, 3) and dtype float32\n"
-      "    3D coordinates of mesh vertices");
+      nanobind::arg("filename"), kFixedDoc);
 
-  // Register int64 quads variant
   m.def(
-      "read_obj_int644",
+      "read_obj_int644float3d",
       [](const std::string &filename) {
-        return read_obj_impl<int64_t, 4>(filename);
+        return read_obj_impl<int64_t, float, 4>(filename);
       },
-      nanobind::arg("filename"),
-      "Read an OBJ file and return (faces, points) tuple with int64 indices "
-      "and quad faces.\n\n"
-      "Parameters\n"
-      "----------\n"
-      "filename : str\n"
-      "    Path to the OBJ file\n\n"
-      "Returns\n"
-      "-------\n"
-      "faces : ndarray of shape (num_faces, 4) and dtype int64\n"
-      "    Face indices into the points array\n"
-      "points : ndarray of shape (num_points, 3) and dtype float32\n"
-      "    3D coordinates of mesh vertices");
+      nanobind::arg("filename"), kFixedDoc);
 
-  // Register int32 dynamic variant
+  // ---- Fixed-size (triangles and quads), float64 ----
   m.def(
-      "read_obj_dynamic_int",
+      "read_obj_int3double3d",
       [](const std::string &filename) {
-        return read_obj_dynamic_impl<int>(filename);
+        return read_obj_impl<int, double, 3>(filename);
       },
-      nanobind::arg("filename"),
-      "Read an OBJ file with dynamic polygon sizes and int32 indices.\n\n"
-      "Parameters\n"
-      "----------\n"
-      "filename : str\n"
-      "    Path to the OBJ file\n\n"
-      "Returns\n"
-      "-------\n"
-      "offsets : ndarray of shape (num_faces + 1,) and dtype int32\n"
-      "    Block boundaries for variable-length faces\n"
-      "data : ndarray of shape (total_indices,) and dtype int32\n"
-      "    Packed face indices\n"
-      "points : ndarray of shape (num_points, 3) and dtype float32\n"
-      "    3D coordinates of mesh vertices");
+      nanobind::arg("filename"), kFixedDoc);
 
-  // Register int64 dynamic variant
   m.def(
-      "read_obj_dynamic_int64",
+      "read_obj_int4double3d",
       [](const std::string &filename) {
-        return read_obj_dynamic_impl<int64_t>(filename);
+        return read_obj_impl<int, double, 4>(filename);
       },
-      nanobind::arg("filename"),
-      "Read an OBJ file with dynamic polygon sizes and int64 indices.\n\n"
-      "Parameters\n"
-      "----------\n"
-      "filename : str\n"
-      "    Path to the OBJ file\n\n"
-      "Returns\n"
-      "-------\n"
-      "offsets : ndarray of shape (num_faces + 1,) and dtype int64\n"
-      "    Block boundaries for variable-length faces\n"
-      "data : ndarray of shape (total_indices,) and dtype int64\n"
-      "    Packed face indices\n"
-      "points : ndarray of shape (num_points, 3) and dtype float32\n"
-      "    3D coordinates of mesh vertices");
+      nanobind::arg("filename"), kFixedDoc);
+
+  m.def(
+      "read_obj_int643double3d",
+      [](const std::string &filename) {
+        return read_obj_impl<int64_t, double, 3>(filename);
+      },
+      nanobind::arg("filename"), kFixedDoc);
+
+  m.def(
+      "read_obj_int644double3d",
+      [](const std::string &filename) {
+        return read_obj_impl<int64_t, double, 4>(filename);
+      },
+      nanobind::arg("filename"), kFixedDoc);
+
+  // ---- Dynamic polygon sizes, float32 ----
+  m.def(
+      "read_obj_intdynfloat3d",
+      [](const std::string &filename) {
+        return read_obj_dynamic_impl<int, float>(filename);
+      },
+      nanobind::arg("filename"), kDynamicDoc);
+
+  m.def(
+      "read_obj_int64dynfloat3d",
+      [](const std::string &filename) {
+        return read_obj_dynamic_impl<int64_t, float>(filename);
+      },
+      nanobind::arg("filename"), kDynamicDoc);
+
+  // ---- Dynamic polygon sizes, float64 ----
+  m.def(
+      "read_obj_intdyndouble3d",
+      [](const std::string &filename) {
+        return read_obj_dynamic_impl<int, double>(filename);
+      },
+      nanobind::arg("filename"), kDynamicDoc);
+
+  m.def(
+      "read_obj_int64dyndouble3d",
+      [](const std::string &filename) {
+        return read_obj_dynamic_impl<int64_t, double>(filename);
+      },
+      nanobind::arg("filename"), kDynamicDoc);
 }
 
 } // namespace tf::py

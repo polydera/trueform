@@ -30,39 +30,25 @@ auto parse_shape(emscripten::val js_shape) -> tf::small_vector<int, 3> {
   return shape;
 }
 
-auto random_float32(emscripten::val js_shape, float lo,
-                    float hi) -> wasm_ndarray<float> {
+template <typename T>
+auto random_impl(emscripten::val js_shape, T lo, T hi) -> wasm_ndarray<T> {
   auto shape = parse_shape(js_shape);
   int total = 1;
   for (auto s : shape)
     total *= s;
-  tf::buffer<float> buf;
+  tf::buffer<T> buf;
   buf.allocate(total);
-  float *dst = buf.data();
+  T *dst = buf.data();
   tf::parallel_for_each(
       tf::make_sequence_range(total),
       [=](int i) { dst[i] = tf::random(lo, hi); }, tf::checked);
-  return wasm_ndarray<float>::from_buffer(std::move(buf), shape);
-}
-
-auto random_int32(emscripten::val js_shape, int lo,
-                  int hi) -> wasm_ndarray<int> {
-  auto shape = parse_shape(js_shape);
-  int total = 1;
-  for (auto s : shape)
-    total *= s;
-  tf::buffer<int> buf;
-  buf.allocate(total);
-  int *dst = buf.data();
-  tf::parallel_for_each(
-      tf::make_sequence_range(total),
-      [=](int i) { dst[i] = tf::random(lo, hi); }, tf::checked);
-  return wasm_ndarray<int>::from_buffer(std::move(buf), shape);
+  return wasm_ndarray<T>::from_buffer(std::move(buf), shape);
 }
 
 } // namespace
 
 EMSCRIPTEN_BINDINGS(trueform_random) {
-  emscripten::function("random_float32", &random_float32);
-  emscripten::function("random_int32", &random_int32);
+  emscripten::function("random_float32", &random_impl<float>);
+  emscripten::function("random_float64", &random_impl<double>);
+  emscripten::function("random_int32", &random_impl<int>);
 }

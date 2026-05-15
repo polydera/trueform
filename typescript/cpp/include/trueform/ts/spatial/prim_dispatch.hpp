@@ -44,42 +44,50 @@ enum class prim_type : int {
 };
 
 // ============================================================================
-// Single-element adapters: raw float* → C++ primitive view
+// Single-element adapters: raw Real* → C++ primitive view
 // ============================================================================
 
-inline auto as_point(const float *ptr) { return tf::make_point_view<3>(ptr); }
+template <typename Real>
+inline auto as_point(const Real *ptr) { return tf::make_point_view<3>(ptr); }
 
-inline auto as_segment(const float *ptr) {
+template <typename Real>
+inline auto as_segment(const Real *ptr) {
   return tf::make_segment_between_points(tf::make_point_view<3>(ptr),
                                          tf::make_point_view<3>(ptr + 3));
 }
 
-inline auto as_triangle(const float *ptr) {
+template <typename Real>
+inline auto as_triangle(const Real *ptr) {
   return tf::make_polygon<3>(tf::make_points<3>(tf::make_range(ptr, 9)));
 }
 
-inline auto as_ray(const float *ptr) {
+template <typename Real>
+inline auto as_ray(const Real *ptr) {
   return tf::make_ray_like(tf::make_point_view<3>(ptr),
                            tf::make_vector_view<3>(ptr + 3));
 }
 
-inline auto as_line(const float *ptr) {
+template <typename Real>
+inline auto as_line(const Real *ptr) {
   return tf::make_line_like(tf::make_point_view<3>(ptr),
                             tf::make_vector_view<3>(ptr + 3));
 }
 
-inline auto as_plane(const float *ptr) {
+template <typename Real>
+inline auto as_plane(const Real *ptr) {
   return tf::make_plane_like(tf::make_unit_vector_view(
                                  tf::unsafe, tf::make_vector_view<3>(ptr)),
                              *(ptr + 3));
 }
 
-inline auto as_aabb(const float *ptr) {
+template <typename Real>
+inline auto as_aabb(const Real *ptr) {
   return tf::make_aabb_like(tf::make_point_view<3>(ptr),
                             tf::make_point_view<3>(ptr + 3));
 }
 
-inline auto as_polygon(const float *ptr, int n_verts) {
+template <typename Real>
+inline auto as_polygon(const Real *ptr, int n_verts) {
   return tf::make_polygon(
       tf::make_points<3>(tf::make_range(ptr, n_verts * 3)));
 }
@@ -123,7 +131,8 @@ inline int single_ndim(prim_type t) {
 }
 
 /// Number of vertices for polygon-type primitives from shape.
-inline int poly_verts(const wasm_ndarray<float> &arr, prim_type t) {
+template <typename Real>
+inline int poly_verts(const wasm_ndarray<Real> &arr, prim_type t) {
   if (t == prim_type::polygon) {
     // shape is [V, 3] for single or [N, V, 3] for batch
     auto &s = arr.raw_shape();
@@ -134,15 +143,18 @@ inline int poly_verts(const wasm_ndarray<float> &arr, prim_type t) {
   return 0;
 }
 
-inline bool is_batch(const wasm_ndarray<float> &arr, prim_type t) {
+template <typename Real>
+inline bool is_batch(const wasm_ndarray<Real> &arr, prim_type t) {
   return arr.ndim() > single_ndim(t);
 }
 
-inline int batch_count(const wasm_ndarray<float> &arr, prim_type t) {
+template <typename Real>
+inline int batch_count(const wasm_ndarray<Real> &arr, prim_type t) {
   return is_batch(arr, t) ? arr.raw_shape()[0] : 1;
 }
 
-inline int stride_of(const wasm_ndarray<float> &arr, prim_type t) {
+template <typename Real>
+inline int stride_of(const wasm_ndarray<Real> &arr, prim_type t) {
   return prim_stride(t, poly_verts(arr, t));
 }
 
@@ -150,8 +162,8 @@ inline int stride_of(const wasm_ndarray<float> &arr, prim_type t) {
 // Single dispatch: call fn(prim) for one wasm_ndarray element
 // ============================================================================
 
-template <typename Fn>
-auto dispatch_single(Fn &&fn, const float *ptr, prim_type t, int n_verts = 0)
+template <typename Real, typename Fn>
+auto dispatch_single(Fn &&fn, const Real *ptr, prim_type t, int n_verts = 0)
     -> decltype(fn(as_point(ptr))) {
   switch (t) {
   case prim_type::point:
@@ -177,8 +189,8 @@ auto dispatch_single(Fn &&fn, const float *ptr, prim_type t, int n_verts = 0)
 // Pair dispatch: call fn(primA, primB)
 // ============================================================================
 
-template <typename Fn>
-auto dispatch_pair(Fn &&fn, const float *a, prim_type ta, const float *b,
+template <typename Real, typename Fn>
+auto dispatch_pair(Fn &&fn, const Real *a, prim_type ta, const Real *b,
                    prim_type tb, int verts_a = 0, int verts_b = 0)
     -> decltype(fn(as_point(a), as_point(b))) {
   return dispatch_single(

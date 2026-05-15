@@ -33,10 +33,10 @@ namespace tf {
 /// `face_groups[i]` / `face_objects[i]` index into `group_names` /
 /// `object_names`. They are empty when the file has no `g` / `o`
 /// directives.
-template <typename Index = int> struct obj_file {
-  tf::polygons_buffer<Index, float, 3, tf::dynamic_size> polygons;
-  tf::unit_vectors_buffer<float, 3> normals;
-  tf::vectors_buffer<float, 2> textures;
+template <typename Index = int, typename Real = float> struct obj_file {
+  tf::polygons_buffer<Index, Real, 3, tf::dynamic_size> polygons;
+  tf::unit_vectors_buffer<Real, 3> normals;
+  tf::vectors_buffer<Real, 2> textures;
   tf::buffer<Index> face_groups;
   std::vector<std::string> group_names;
   tf::buffer<Index> face_objects;

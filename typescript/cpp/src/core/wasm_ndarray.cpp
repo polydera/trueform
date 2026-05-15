@@ -927,23 +927,22 @@ static auto arange(T start, T stop, T step) -> tf::ts::wasm_ndarray<T> {
   return tf::ts::wasm_ndarray<T>::from_buffer(std::move(buf), std::move(shape));
 }
 
-static auto linspace(float start, float stop, int n)
-    -> tf::ts::wasm_ndarray<float> {
+template <typename T>
+static auto linspace(T start, T stop, int n) -> tf::ts::wasm_ndarray<T> {
   auto len = static_cast<std::size_t>(n);
-  tf::buffer<float> buf;
+  tf::buffer<T> buf;
   buf.allocate(len);
   auto *out = buf.data();
   if (n == 1) {
     out[0] = start;
   } else {
-    auto step = (stop - start) / static_cast<float>(n - 1);
+    auto step = (stop - start) / static_cast<T>(n - 1);
     for (std::size_t i = 0; i < len; ++i)
-      out[i] = start + static_cast<float>(i) * step;
+      out[i] = start + static_cast<T>(i) * step;
   }
   tf::small_vector<int, 3> shape;
   shape.push_back(n);
-  return tf::ts::wasm_ndarray<float>::from_buffer(std::move(buf),
-                                                   std::move(shape));
+  return tf::ts::wasm_ndarray<T>::from_buffer(std::move(buf), std::move(shape));
 }
 
 // ============================================================================
@@ -1069,137 +1068,180 @@ EMSCRIPTEN_BINDINGS(trueform_buffers) {
       .function("is_valid", &tf::ts::wasm_ndarray<float>::is_valid)
       .function("shallow_copy", &tf::ts::wasm_ndarray<float>::shallow_copy);
 
+  emscripten::class_<tf::ts::wasm_ndarray<double>>("NativeFloat64NDArray")
+      .class_function("from_js", &tf::ts::wasm_ndarray<double>::from_js)
+      .function("data", &tf::ts::wasm_ndarray<double>::data)
+      .function("size", &tf::ts::wasm_ndarray<double>::size)
+      .function("ndim", &tf::ts::wasm_ndarray<double>::ndim)
+      .function("shape", &tf::ts::wasm_ndarray<double>::shape)
+      .function("shape_at", &tf::ts::wasm_ndarray<double>::shape_at)
+      .function("set_shape", &tf::ts::wasm_ndarray<double>::set_shape)
+      .function("row", &tf::ts::wasm_ndarray<double>::row)
+      .function("slice", &tf::ts::wasm_ndarray<double>::slice)
+      .function("destroy", &tf::ts::wasm_ndarray<double>::destroy)
+      .function("is_valid", &tf::ts::wasm_ndarray<double>::is_valid)
+      .function("shallow_copy", &tf::ts::wasm_ndarray<double>::shallow_copy);
+
   // --- stack ---
   emscripten::function("stack_float32", &stack<float>);
+  emscripten::function("stack_float64", &stack<double>);
   emscripten::function("stack_int32", &stack<int>);
   emscripten::function("stack_int8", &stack<std::int8_t>);
 
   // --- concatenate ---
   emscripten::function("concatenate_float32", &concatenate<float>);
+  emscripten::function("concatenate_float64", &concatenate<double>);
   emscripten::function("concatenate_int32", &concatenate<int>);
   emscripten::function("concatenate_int8", &concatenate<std::int8_t>);
 
   // --- tile ---
   emscripten::function("tile_float32", &tile<float>);
+  emscripten::function("tile_float64", &tile<double>);
   emscripten::function("tile_int32", &tile<int>);
   emscripten::function("tile_int8", &tile<std::int8_t>);
 
   // --- take ---
   emscripten::function("take_float32", &take<float>);
+  emscripten::function("take_float64", &take<double>);
   emscripten::function("take_int32", &take<int>);
   emscripten::function("take_int8", &take<std::int8_t>);
 
   // --- multi_take ---
   emscripten::function("multi_take_float32", &multi_take<float>);
+  emscripten::function("multi_take_float64", &multi_take<double>);
   emscripten::function("multi_take_int32", &multi_take<int>);
   emscripten::function("multi_take_int8", &multi_take<std::int8_t>);
 
   // --- take_along_axis ---
   emscripten::function("take_along_axis_float32", &take_along_axis<float>);
+  emscripten::function("take_along_axis_float64", &take_along_axis<double>);
   emscripten::function("take_along_axis_int32", &take_along_axis<int>);
   emscripten::function("take_along_axis_int8", &take_along_axis<std::int8_t>);
 
   // --- argsort ---
   emscripten::function("argsort_float32", &argsort<float>);
+  emscripten::function("argsort_float64", &argsort<double>);
   emscripten::function("argsort_int32", &argsort<int>);
   emscripten::function("argsort_int8", &argsort<std::int8_t>);
 
   // --- sort ---
   emscripten::function("sort_float32", &sort_copy<float>);
+  emscripten::function("sort_float64", &sort_copy<double>);
   emscripten::function("sort_int32", &sort_copy<int>);
   emscripten::function("sort_int8", &sort_copy<std::int8_t>);
 
   // --- sort_inplace ---
   emscripten::function("sort_inplace_float32", &sort_inplace<float>);
+  emscripten::function("sort_inplace_float64", &sort_inplace<double>);
   emscripten::function("sort_inplace_int32", &sort_inplace<int>);
   emscripten::function("sort_inplace_int8", &sort_inplace<std::int8_t>);
 
   // --- async sort ---
   emscripten::function("dispatch_sort_float32", &async_sort<float>);
+  emscripten::function("dispatch_sort_float64", &async_sort<double>);
   emscripten::function("dispatch_sort_int32", &async_sort<int>);
   emscripten::function("dispatch_sort_int8", &async_sort<std::int8_t>);
 
   // --- async sort_inplace ---
   emscripten::function("dispatch_sort_inplace_float32", &async_sort_inplace<float>);
+  emscripten::function("dispatch_sort_inplace_float64", &async_sort_inplace<double>);
   emscripten::function("dispatch_sort_inplace_int32", &async_sort_inplace<int>);
   emscripten::function("dispatch_sort_inplace_int8", &async_sort_inplace<std::int8_t>);
 
   // --- async argsort ---
   emscripten::function("dispatch_argsort_float32", &async_argsort<float>);
+  emscripten::function("dispatch_argsort_float64", &async_argsort<double>);
   emscripten::function("dispatch_argsort_int32", &async_argsort<int>);
   emscripten::function("dispatch_argsort_int8", &async_argsort<std::int8_t>);
 
   // --- unique ---
   emscripten::function("unique_float32", &unique<float>);
+  emscripten::function("unique_float64", &unique<double>);
   emscripten::function("unique_int32", &unique<int>);
   emscripten::function("unique_int8", &unique<std::int8_t>);
   emscripten::function("dispatch_unique_float32", &async_unique<float>);
+  emscripten::function("dispatch_unique_float64", &async_unique<double>);
   emscripten::function("dispatch_unique_int32", &async_unique<int>);
   emscripten::function("dispatch_unique_int8", &async_unique<std::int8_t>);
 
   // --- set_union ---
   emscripten::function("set_union_float32", &set_union<float>);
+  emscripten::function("set_union_float64", &set_union<double>);
   emscripten::function("set_union_int32", &set_union<int>);
   emscripten::function("set_union_int8", &set_union<std::int8_t>);
   emscripten::function("dispatch_set_union_float32", &async_set_union<float>);
+  emscripten::function("dispatch_set_union_float64", &async_set_union<double>);
   emscripten::function("dispatch_set_union_int32", &async_set_union<int>);
   emscripten::function("dispatch_set_union_int8", &async_set_union<std::int8_t>);
 
   // --- set_intersection ---
   emscripten::function("set_intersection_float32", &set_intersection<float>);
+  emscripten::function("set_intersection_float64", &set_intersection<double>);
   emscripten::function("set_intersection_int32", &set_intersection<int>);
   emscripten::function("set_intersection_int8", &set_intersection<std::int8_t>);
   emscripten::function("dispatch_set_intersection_float32", &async_set_intersection<float>);
+  emscripten::function("dispatch_set_intersection_float64", &async_set_intersection<double>);
   emscripten::function("dispatch_set_intersection_int32", &async_set_intersection<int>);
   emscripten::function("dispatch_set_intersection_int8", &async_set_intersection<std::int8_t>);
 
   // --- set_difference ---
   emscripten::function("set_difference_float32", &set_difference<float>);
+  emscripten::function("set_difference_float64", &set_difference<double>);
   emscripten::function("set_difference_int32", &set_difference<int>);
   emscripten::function("set_difference_int8", &set_difference<std::int8_t>);
   emscripten::function("dispatch_set_difference_float32", &async_set_difference<float>);
+  emscripten::function("dispatch_set_difference_float64", &async_set_difference<double>);
   emscripten::function("dispatch_set_difference_int32", &async_set_difference<int>);
   emscripten::function("dispatch_set_difference_int8", &async_set_difference<std::int8_t>);
 
   // --- boolean_index ---
   emscripten::function("boolean_index_float32", &boolean_index<float>);
+  emscripten::function("boolean_index_float64", &boolean_index<double>);
   emscripten::function("boolean_index_int32", &boolean_index<int>);
   emscripten::function("boolean_index_int8", &boolean_index<std::int8_t>);
 
   // --- where ---
   emscripten::function("where_float32", &where<float>);
+  emscripten::function("where_float64", &where<double>);
   emscripten::function("where_int32", &where<int>);
   emscripten::function("where_int8", &where<std::int8_t>);
 
   // --- transpose ---
   emscripten::function("transpose_float32", &transpose<float>);
+  emscripten::function("transpose_float64", &transpose<double>);
   emscripten::function("transpose_int32", &transpose<int>);
   emscripten::function("transpose_int8", &transpose<std::int8_t>);
 
   // --- zeros ---
   emscripten::function("zeros_float32", &zeros<float>);
+  emscripten::function("zeros_float64", &zeros<double>);
   emscripten::function("zeros_int32", &zeros<int>);
   emscripten::function("zeros_int8", &zeros<std::int8_t>);
 
   // --- ones ---
   emscripten::function("ones_float32", &ones<float>);
+  emscripten::function("ones_float64", &ones<double>);
   emscripten::function("ones_int32", &ones<int>);
   emscripten::function("ones_int8", &ones<std::int8_t>);
 
   // --- full ---
   emscripten::function("full_float32", &full<float>);
+  emscripten::function("full_float64", &full<double>);
   emscripten::function("full_int32", &full<int>);
   emscripten::function("full_int8", &full<std::int8_t>);
 
   // --- arange ---
   emscripten::function("arange_float32", &arange<float>);
+  emscripten::function("arange_float64", &arange<double>);
   emscripten::function("arange_int32", &arange<int>);
 
   // --- linspace ---
-  emscripten::function("linspace_float32", &linspace);
+  emscripten::function("linspace_float32", &linspace<float>);
+  emscripten::function("linspace_float64", &linspace<double>);
 
   // --- clone ---
   emscripten::function("clone_float32", &clone<float>);
+  emscripten::function("clone_float64", &clone<double>);
   emscripten::function("clone_int32", &clone<int>);
   emscripten::function("clone_int8", &clone<std::int8_t>);
 }

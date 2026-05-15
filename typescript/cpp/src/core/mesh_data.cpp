@@ -25,11 +25,12 @@ namespace ts {
 
 // -- Spatial tree --
 
-auto mesh_data::ensure_tree() -> void {
+template <typename Real>
+auto mesh_data<Real>::ensure_tree() -> void {
   if (_tree && _tree_faces_gen == _faces_gen &&
       _tree_points_gen == _points_gen)
     return;
-  _tree = std::make_shared<tf::aabb_tree<int, float, 3>>(
+  _tree = std::make_shared<tf::aabb_tree<int, Real, 3>>(
       polygons_range(), tf::config_tree(4, 4));
   _tree_faces_gen = _faces_gen;
   _tree_points_gen = _points_gen;
@@ -37,7 +38,8 @@ auto mesh_data::ensure_tree() -> void {
 
 // -- Half-edge access --
 
-auto mesh_data::ensure_half_edges() -> void {
+template <typename Real>
+auto mesh_data<Real>::ensure_half_edges() -> void {
   if (_he && _he_gen == _faces_gen)
     return;
   ensure_face_membership();
@@ -48,41 +50,48 @@ auto mesh_data::ensure_half_edges() -> void {
 
 // -- Topology access --
 
-auto mesh_data::face_membership() -> wasm_offset_blocked_buffer<int, int> {
+template <typename Real>
+auto mesh_data<Real>::face_membership() -> wasm_offset_blocked_buffer<int, int> {
   ensure_face_membership();
   return _fm;
 }
 
-auto mesh_data::manifold_edge_link() -> wasm_ndarray<int> {
+template <typename Real>
+auto mesh_data<Real>::manifold_edge_link() -> wasm_ndarray<int> {
   ensure_manifold_edge_link();
   return _mel;
 }
 
-auto mesh_data::face_link() -> wasm_offset_blocked_buffer<int, int> {
+template <typename Real>
+auto mesh_data<Real>::face_link() -> wasm_offset_blocked_buffer<int, int> {
   ensure_face_link();
   return _fl;
 }
 
-auto mesh_data::vertex_link() -> wasm_offset_blocked_buffer<int, int> {
+template <typename Real>
+auto mesh_data<Real>::vertex_link() -> wasm_offset_blocked_buffer<int, int> {
   ensure_vertex_link();
   return _vl;
 }
 
 // -- Normals access --
 
-auto mesh_data::normals() -> wasm_ndarray<float> {
+template <typename Real>
+auto mesh_data<Real>::normals() -> wasm_ndarray<Real> {
   ensure_normals();
   return _normals;
 }
 
-auto mesh_data::point_normals() -> wasm_ndarray<float> {
+template <typename Real>
+auto mesh_data<Real>::point_normals() -> wasm_ndarray<Real> {
   ensure_point_normals();
   return _point_normals;
 }
 
 // -- Private build methods --
 
-auto mesh_data::ensure_face_membership() -> void {
+template <typename Real>
+auto mesh_data<Real>::ensure_face_membership() -> void {
   if (_fm.is_valid() && _fm_gen == _faces_gen)
     return;
   tf::face_membership<int> fm;
@@ -92,7 +101,8 @@ auto mesh_data::ensure_face_membership() -> void {
   _fm_gen = _faces_gen;
 }
 
-auto mesh_data::ensure_manifold_edge_link() -> void {
+template <typename Real>
+auto mesh_data<Real>::ensure_manifold_edge_link() -> void {
   if (_mel.is_valid() && _mel_gen == _faces_gen)
     return;
 
@@ -113,7 +123,8 @@ auto mesh_data::ensure_manifold_edge_link() -> void {
   _mel_gen = _faces_gen;
 }
 
-auto mesh_data::ensure_face_link() -> void {
+template <typename Real>
+auto mesh_data<Real>::ensure_face_link() -> void {
   if (_fl.is_valid() && _fl_gen == _faces_gen)
     return;
 
@@ -127,7 +138,8 @@ auto mesh_data::ensure_face_link() -> void {
   _fl_gen = _faces_gen;
 }
 
-auto mesh_data::ensure_vertex_link() -> void {
+template <typename Real>
+auto mesh_data<Real>::ensure_vertex_link() -> void {
   if (_vl.is_valid() && _vl_gen == _faces_gen)
     return;
 
@@ -141,18 +153,20 @@ auto mesh_data::ensure_vertex_link() -> void {
   _vl_gen = _faces_gen;
 }
 
-auto mesh_data::ensure_normals() -> void {
+template <typename Real>
+auto mesh_data<Real>::ensure_normals() -> void {
   if (_normals.is_valid() && _normals_faces_gen == _faces_gen &&
       _normals_points_gen == _points_gen)
     return;
   auto nrm = tf::compute_normals(polygons_range());
-  _normals = wasm_ndarray<float>::from_buffer(std::move(nrm.data_buffer()),
-                                              {number_of_faces(), 3});
+  _normals = wasm_ndarray<Real>::from_buffer(std::move(nrm.data_buffer()),
+                                             {number_of_faces(), 3});
   _normals_faces_gen = _faces_gen;
   _normals_points_gen = _points_gen;
 }
 
-auto mesh_data::ensure_point_normals() -> void {
+template <typename Real>
+auto mesh_data<Real>::ensure_point_normals() -> void {
   if (_point_normals.is_valid() && _point_normals_faces_gen == _faces_gen &&
       _point_normals_points_gen == _points_gen)
     return;
@@ -167,11 +181,14 @@ auto mesh_data::ensure_point_normals() -> void {
       polygons_range() | tf::tag(fm) | tf::tag_normals(normals_view);
 
   auto pn = tf::compute_point_normals(tagged);
-  _point_normals = wasm_ndarray<float>::from_buffer(
+  _point_normals = wasm_ndarray<Real>::from_buffer(
       std::move(pn.data_buffer()), {number_of_points(), 3});
   _point_normals_faces_gen = _faces_gen;
   _point_normals_points_gen = _points_gen;
 }
+
+template class mesh_data<float>;
+template class mesh_data<double>;
 
 } // namespace ts
 } // namespace tf

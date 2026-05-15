@@ -20,8 +20,9 @@ import type { DecimateOptions, RemeshOptions } from "./sync";
 export async function decimated(m: Mesh, targetProportion: number, opts?: DecimateOptions): Promise<Mesh> {
   const fa = opts?.featureAngle != null && opts.featureAngle >= 0
     ? opts.featureAngle * Math.PI / 180 : -1;
+  const dt = m.dtype;
   return dispatcher().run(
-    () => native().dispatch_decimated(
+    () => native()[`dispatch_decimated_${dt}`](
       m._handle,
       targetProportion,
       opts?.maxAspectRatio ?? 40,
@@ -31,7 +32,7 @@ export async function decimated(m: Mesh, targetProportion: number, opts?: Decima
       fa,
       opts?.featureWeight ?? 100,
     ),
-    (raw) => new Mesh(raw),
+    (raw) => new Mesh(raw, dt),
   );
 }
 
@@ -39,8 +40,9 @@ export async function decimated(m: Mesh, targetProportion: number, opts?: Decima
 export async function isotropicRemeshed(m: Mesh, targetLength: number, opts?: RemeshOptions): Promise<Mesh> {
   const fa = opts?.featureAngle != null && opts.featureAngle >= 0
     ? opts.featureAngle * Math.PI / 180 : -1;
+  const dt = m.dtype;
   return dispatcher().run(
-    () => native().dispatch_isotropic_remeshed(
+    () => native()[`dispatch_isotropic_remeshed_${dt}`](
       m._handle,
       targetLength,
       opts?.iterations ?? 3,
@@ -53,6 +55,6 @@ export async function isotropicRemeshed(m: Mesh, targetLength: number, opts?: Re
       fa,
       opts?.featureWeight ?? 100,
     ),
-    (raw) => new Mesh(raw),
+    (raw) => new Mesh(raw, dt),
   );
 }

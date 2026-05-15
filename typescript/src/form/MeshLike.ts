@@ -11,7 +11,7 @@
  * Author: Žiga Sajovic
  */
 
-import { NDArrayInt32, NDArrayFloat32 } from "../ndarray/NDArray";
+import { NDArrayInt32, NDArrayFloat32, NDArrayFloat64 } from "../ndarray/NDArray";
 import { OffsetBlockedBuffer } from "../ndarray/OffsetBlockedBuffer";
 
 /** Duck type for mesh-like objects with faces and points. */
@@ -19,5 +19,5 @@ export interface MeshLike {
   /** Face indices: fixed-size (NDArrayInt32 [F, N]) or variable-size (OffsetBlockedBuffer). */
   faces: NDArrayInt32 | OffsetBlockedBuffer;
   /** Vertex coordinates [V, 3]. */
-  points: NDArrayFloat32;
+  points: NDArrayFloat32 | NDArrayFloat64;
 }

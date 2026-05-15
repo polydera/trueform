@@ -21,8 +21,14 @@
  * The C++ side stores a type-erased converter per context, so one generic
  * `retrieve` embind function serves all return types.
  */
-const _isNode = typeof (globalThis as any).process !== "undefined" &&
-  (globalThis as any).process?.versions?.node != null;
+interface NodeProcessLike {
+  versions?: { node?: string };
+}
+interface GlobalWithProcess {
+  process?: NodeProcessLike;
+}
+const _isNode = typeof (globalThis as GlobalWithProcess).process !== "undefined" &&
+  (globalThis as GlobalWithProcess).process?.versions?.node != null;
 
 export class AsyncDispatcher {
   private _memory: WebAssembly.Memory;

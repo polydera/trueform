@@ -13,6 +13,7 @@
 
 import { registry } from "../internal/registry";
 import { native } from "../native";
+import type { Dtype, DtypeToArray } from "./dtype";
 
 export interface NativeNDArray<T = any> {
   data(): T;
@@ -48,7 +49,7 @@ function nativeDtype(dtype: string): string {
 export class NDArray<T = any> {
   /** @internal */
   readonly _handle: NativeNDArray<T>;
-  /** Runtime type discriminator: "int8", "int32", "float32", or "bool". */
+  /** Runtime type discriminator: "int8", "int32", "float32", "float64", or "bool". */
   readonly dtype: string;
 
   /** @internal */
@@ -58,7 +59,7 @@ export class NDArray<T = any> {
     registry.register(this, { handle });
   }
 
-  /** Typed array view into the WASM heap (Float32Array, Int32Array, or Int8Array). */
+  /** Typed array view into the WASM heap (Float32Array, Float64Array, Int32Array, or Int8Array). */
   get data(): T {
     return this._handle.data();
   }
@@ -91,7 +92,7 @@ export class NDArray<T = any> {
   /** Get element at index `i`. Returns a number for 1D, or a row view for nD. */
   get(i: number): number | NDArray<T> {
     if (this.ndim === 1) {
-      return (this.data as any)[i];
+      return (this.data as unknown as ArrayLike<number>)[i];
     }
     return this.row(i);
   }
@@ -122,11 +123,8 @@ export class NDArray<T = any> {
   // ============ Type casting ============
 
   /** Cast to a different dtype. Same-storage casts (int8 ↔ bool) are zero-copy. */
-  as(dtype: "float32"): NDArrayFloat32;
-  as(dtype: "int32"): NDArrayInt32;
-  as(dtype: "int8"): NDArrayInt8;
-  as(dtype: "bool"): NDArrayBool;
-  as(dtype: string): NDArray {
+  as<D extends Dtype>(dtype: D): DtypeToArray<D>;
+  as(dtype: Dtype): NDArray {
     const srcNative = nativeDtype(this.dtype);
     const dstNative = nativeDtype(dtype);
     if (srcNative === dstNative) {
@@ -688,5 +686,7 @@ export type NDArrayInt8 = NDArray<Int8Array>;
 export type NDArrayInt32 = NDArray<Int32Array>;
 /** WASM-resident float32 NDArray. */
 export type NDArrayFloat32 = NDArray<Float32Array>;
+/** WASM-resident float64 NDArray. */
+export type NDArrayFloat64 = NDArray<Float64Array>;
 /** WASM-resident boolean NDArray (int8 storage, 0/1 values). */
 export type NDArrayBool = NDArray<Int8Array>;

@@ -56,7 +56,8 @@ export interface RemeshOptions {
 export function decimated(m: Mesh, targetProportion: number, opts?: DecimateOptions): Mesh {
   const fa = opts?.featureAngle != null && opts.featureAngle >= 0
     ? opts.featureAngle * Math.PI / 180 : -1;
-  return new Mesh(native().decimated(
+  const dt = m.dtype;
+  return new Mesh(native()[`decimated_${dt}`](
     m._handle,
     targetProportion,
     opts?.maxAspectRatio ?? 40,
@@ -65,14 +66,15 @@ export function decimated(m: Mesh, targetProportion: number, opts?: DecimateOpti
     opts?.parallel ?? true,
     fa,
     opts?.featureWeight ?? 100,
-  ));
+  ), dt);
 }
 
 /** Isotropic remesh to uniform target edge length. Returns a new Mesh. */
 export function isotropicRemeshed(m: Mesh, targetLength: number, opts?: RemeshOptions): Mesh {
   const fa = opts?.featureAngle != null && opts.featureAngle >= 0
     ? opts.featureAngle * Math.PI / 180 : -1;
-  return new Mesh(native().isotropic_remeshed(
+  const dt = m.dtype;
+  return new Mesh(native()[`isotropic_remeshed_${dt}`](
     m._handle,
     targetLength,
     opts?.iterations ?? 3,
@@ -84,5 +86,5 @@ export function isotropicRemeshed(m: Mesh, targetLength: number, opts?: RemeshOp
     opts?.parallel ?? true,
     fa,
     opts?.featureWeight ?? 100,
-  ));
+  ), dt);
 }

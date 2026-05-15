@@ -19,20 +19,25 @@ export type PrimitiveType =
   | "ray" | "line" | "plane" | "aabb" | "polygon";
 
 /**
- * A WASM-resident geometric primitive backed by an NDArray<Float32Array>.
+ * A WASM-resident geometric primitive backed by an NDArray.
  *
  * The `type` field discriminates between primitive kinds.
+ * The `dtype` field selects coordinate precision ("float32" or "float64").
  * Dimensionality (2D/3D) is inferred from shape.
  * Shape encodes single vs batch:
  * - Single point: shape [3]
  * - Batch of N points: shape [N, 3]
  */
-export class Primitive extends NDArray<Float32Array> {
+export class Primitive extends NDArray {
   readonly type: PrimitiveType;
 
   /** @internal */
-  constructor(handle: NativeNDArray<Float32Array>, type: PrimitiveType) {
-    super(handle, "float32");
+  constructor(
+    handle: NativeNDArray<any>,
+    type: PrimitiveType,
+    dtype: "float32" | "float64",
+  ) {
+    super(handle, dtype);
     this.type = type;
   }
 
@@ -52,7 +57,11 @@ export class Primitive extends NDArray<Float32Array> {
       if (i !== 0) throw new RangeError("Single primitive, index must be 0");
       return this;
     }
-    return new Primitive(this._handle.row(i), this.type);
+    return new Primitive(
+      this._handle.row(i),
+      this.type,
+      this.dtype as "float32" | "float64",
+    );
   }
 }
 

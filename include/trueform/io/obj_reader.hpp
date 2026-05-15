@@ -29,6 +29,7 @@
 #include <fstream>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 namespace tf::io {
@@ -77,18 +78,19 @@ public:
   }
 
   // Complete-mode: positions + normals + textures + groups + objects.
-  template <typename Index>
-  auto read(std::string_view path, tf::obj_file<Index> &out) -> bool {
+  template <typename Index, typename RealT>
+  auto read(std::string_view path, tf::obj_file<Index, RealT> &out) -> bool {
     tf::buffer<char> file_data;
     if (!_load_file(path, file_data))
       return false;
-    return _read_complete<Index>(file_data.begin(), file_data.end(), out);
+    return _read_complete<Index, RealT>(file_data.begin(), file_data.end(),
+                                        out);
   }
 
-  template <typename Index>
+  template <typename Index, typename RealT>
   auto read(tf::range<const char *, tf::dynamic_size> data,
-            tf::obj_file<Index> &out) -> bool {
-    return _read_complete<Index>(data.begin(), data.end(), out);
+            tf::obj_file<Index, RealT> &out) -> bool {
+    return _read_complete<Index, RealT>(data.begin(), data.end(), out);
   }
 
 private:
@@ -129,17 +131,16 @@ private:
 
       if (p[0] == 'v' && p + 1 < end && (p[1] == ' ' || p[1] == '\t')) {
         p += 2;
-        float x{}, y{}, z{};
-        if (!_parse_three_floats(p, end, x, y, z)) {
+        RealT x{}, y{}, z{};
+        if (!_parse_three_scalars(p, end, x, y, z)) {
           out_points.clear();
           out_faces.clear();
           return false;
         }
         if constexpr (Dims == 3)
-          out_points.emplace_back(static_cast<RealT>(x), static_cast<RealT>(y),
-                                  static_cast<RealT>(z));
+          out_points.emplace_back(x, y, z);
         else
-          out_points.emplace_back(static_cast<RealT>(x), static_cast<RealT>(y));
+          out_points.emplace_back(x, y);
         p = _skip_line(p, end);
       } else if (p[0] == 'f' && p + 1 < end && (p[1] == ' ' || p[1] == '\t')) {
         p += 2;
@@ -206,14 +207,13 @@ private:
 
       if (p[0] == 'v' && p + 1 < end && (p[1] == ' ' || p[1] == '\t')) {
         p += 2;
-        float x{}, y{}, z{};
-        if (!_parse_three_floats(p, end, x, y, z))
+        RealT x{}, y{}, z{};
+        if (!_parse_three_scalars(p, end, x, y, z))
           return false;
         if constexpr (Dims == 3)
-          out_points.emplace_back(static_cast<RealT>(x), static_cast<RealT>(y),
-                                  static_cast<RealT>(z));
+          out_points.emplace_back(x, y, z);
         else
-          out_points.emplace_back(static_cast<RealT>(x), static_cast<RealT>(y));
+          out_points.emplace_back(x, y);
         p = _skip_line(p, end);
       } else if (p[0] == 'f' && p + 1 < end && (p[1] == ' ' || p[1] == '\t')) {
         p += 2;
@@ -314,14 +314,16 @@ private:
     return {start, static_cast<std::size_t>(p - start)};
   }
 
-  template <typename Index>
+  template <typename Index, typename RealT>
   static auto _read_complete(const char *p, const char *end,
-                             tf::obj_file<Index> &out) -> bool {
-    out = tf::obj_file<Index>{};
+                             tf::obj_file<Index, RealT> &out) -> bool {
+    static_assert(std::is_floating_point_v<RealT>,
+                  "obj_reader requires a floating-point Real type");
+    out = tf::obj_file<Index, RealT>{};
 
-    tf::buffer<tf::point<float, 3>> lib_v;
-    tf::buffer<tf::point<float, 2>> lib_vt;
-    tf::buffer<tf::point<float, 3>> lib_vn;
+    tf::buffer<tf::point<RealT, 3>> lib_v;
+    tf::buffer<tf::point<RealT, 2>> lib_vt;
+    tf::buffer<tf::point<RealT, 3>> lib_vn;
 
     tf::buffer<std::array<int, 3>> flat_triplets;
     tf::buffer<Index> face_offsets; // size = n_faces + 1
@@ -346,24 +348,24 @@ private:
       char c0 = p[0];
       if (c0 == 'v' && p + 1 < end && (p[1] == ' ' || p[1] == '\t')) {
         p += 2;
-        float x{}, y{}, z{};
-        if (!_parse_three_floats(p, end, x, y, z))
+        RealT x{}, y{}, z{};
+        if (!_parse_three_scalars(p, end, x, y, z))
           return false;
         lib_v.emplace_back(x, y, z);
         p = _skip_line(p, end);
       } else if (c0 == 'v' && p + 2 < end && p[1] == 't' &&
                  (p[2] == ' ' || p[2] == '\t')) {
         p += 3;
-        float u{}, v{};
-        if (!_parse_two_floats(p, end, u, v))
+        RealT u{}, v{};
+        if (!_parse_two_scalars(p, end, u, v))
           return false;
         lib_vt.emplace_back(u, v);
         p = _skip_line(p, end);
       } else if (c0 == 'v' && p + 2 < end && p[1] == 'n' &&
                  (p[2] == ' ' || p[2] == '\t')) {
         p += 3;
-        float x{}, y{}, z{};
-        if (!_parse_three_floats(p, end, x, y, z))
+        RealT x{}, y{}, z{};
+        if (!_parse_three_scalars(p, end, x, y, z))
           return false;
         lib_vn.emplace_back(x, y, z);
         p = _skip_line(p, end);
@@ -514,8 +516,9 @@ private:
     return true;
   }
 
-  static auto _parse_two_floats(const char *&p, const char *end, float &u,
-                                float &v) -> bool {
+  template <typename Scalar>
+  static auto _parse_two_scalars(const char *&p, const char *end, Scalar &u,
+                                 Scalar &v) -> bool {
     p = _skip_ws(p, end);
     auto r = tf::external::fast_float::from_chars(p, end, u);
     if (r.ec != std::errc{})
@@ -530,8 +533,9 @@ private:
   }
 
   // ---------- Parse helpers ----------
-  static auto _parse_three_floats(const char *&p, const char *end, float &x,
-                                  float &y, float &z) -> bool {
+  template <typename Scalar>
+  static auto _parse_three_scalars(const char *&p, const char *end, Scalar &x,
+                                   Scalar &y, Scalar &z) -> bool {
     p = _skip_ws(p, end);
     auto r = tf::external::fast_float::from_chars(p, end, x);
     if (r.ec != std::errc{})

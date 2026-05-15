@@ -12,10 +12,14 @@
  */
 
 import { native } from "../native";
-import { NDArray, NDArrayInt8, NDArrayInt32, NDArrayFloat32 } from "../ndarray/NDArray";
+import {
+  NDArray, NDArrayInt8, NDArrayInt32, NDArrayFloat32, NDArrayFloat64,
+} from "../ndarray/NDArray";
+import type { FloatDtype } from "../ndarray/dtype";
 import { Mesh } from "../form/Mesh";
 import { Curves } from "../form/Curves";
 import { IntersectOpts, buildMode } from "../intersect/sync";
+import { assertSameDtype } from "../internal/dtype";
 
 /** Result of a boolean operation. */
 export interface LabeledCutResult {
@@ -79,52 +83,58 @@ export interface CutResultWithCurves {
   curves: Curves;
 }
 
-function wrapLabeled(raw: any): LabeledCutResult {
+function wrapLabeled(raw: any, dt: "float32" | "float64"): LabeledCutResult {
   return {
-    mesh: new Mesh(raw.mesh),
+    mesh: new Mesh(raw.mesh, dt),
     labels: new NDArray(raw.labels, "int8"),
     faceLabels: new NDArray(raw.faceLabels, "int32"),
   };
 }
 
-function wrapLabeledWithCurves(raw: any): LabeledCutResultWithCurves {
+function wrapLabeledWithCurves(
+  raw: any, dt: "float32" | "float64",
+): LabeledCutResultWithCurves {
   return {
-    mesh: new Mesh(raw.mesh),
+    mesh: new Mesh(raw.mesh, dt),
     labels: new NDArray(raw.labels, "int8"),
     faceLabels: new NDArray(raw.faceLabels, "int32"),
-    curves: new Curves(raw.curves),
+    curves: new Curves(raw.curves, dt),
   };
 }
 
-function wrapIsobands(raw: any): IsobandsResult {
+function wrapIsobands(raw: any, dt: FloatDtype): IsobandsResult {
   return {
-    mesh: new Mesh(raw.mesh),
+    mesh: new Mesh(raw.mesh, dt),
     labels: new NDArray(raw.labels, "int32"),
     faceLabels: new NDArray(raw.faceLabels, "int32"),
   };
 }
 
-function wrapIsobandsWithCurves(raw: any): IsobandsResultWithCurves {
+function wrapIsobandsWithCurves(
+  raw: any, dt: FloatDtype,
+): IsobandsResultWithCurves {
   return {
-    mesh: new Mesh(raw.mesh),
+    mesh: new Mesh(raw.mesh, dt),
     labels: new NDArray(raw.labels, "int32"),
     faceLabels: new NDArray(raw.faceLabels, "int32"),
-    curves: new Curves(raw.curves),
+    curves: new Curves(raw.curves, dt),
   };
 }
 
-function wrapCut(raw: any): CutResult {
+function wrapCut(raw: any, dt: "float32" | "float64"): CutResult {
   return {
-    mesh: new Mesh(raw.mesh),
+    mesh: new Mesh(raw.mesh, dt),
     faceLabels: new NDArray(raw.faceLabels, "int32"),
   };
 }
 
-function wrapCutWithCurves(raw: any): CutResultWithCurves {
+function wrapCutWithCurves(
+  raw: any, dt: "float32" | "float64",
+): CutResultWithCurves {
   return {
-    mesh: new Mesh(raw.mesh),
+    mesh: new Mesh(raw.mesh, dt),
     faceLabels: new NDArray(raw.faceLabels, "int32"),
-    curves: new Curves(raw.curves),
+    curves: new Curves(raw.curves, dt),
   };
 }
 
@@ -140,12 +150,16 @@ export function booleanUnion(
 export function booleanUnion(
   m0: Mesh, m1: Mesh, opts?: { returnCurves: true },
 ): LabeledCutResult | LabeledCutResultWithCurves {
+  assertSameDtype([m0, m1], ["mesh0", "mesh1"]);
+  const dt = m0.dtype;
   if (opts?.returnCurves) {
     return wrapLabeledWithCurves(
-      native().boolean_union_with_curves(m0._handle, m1._handle),
+      native()[`boolean_union_with_curves_${dt}`](m0._handle, m1._handle), dt,
     );
   }
-  return wrapLabeled(native().boolean_union(m0._handle, m1._handle));
+  return wrapLabeled(
+    native()[`boolean_union_${dt}`](m0._handle, m1._handle), dt,
+  );
 }
 
 /** Boolean intersection of two meshes. Result is the volume covered by both. */
@@ -156,12 +170,16 @@ export function booleanIntersection(
 export function booleanIntersection(
   m0: Mesh, m1: Mesh, opts?: { returnCurves: true },
 ): LabeledCutResult | LabeledCutResultWithCurves {
+  assertSameDtype([m0, m1], ["mesh0", "mesh1"]);
+  const dt = m0.dtype;
   if (opts?.returnCurves) {
     return wrapLabeledWithCurves(
-      native().boolean_intersection_with_curves(m0._handle, m1._handle),
+      native()[`boolean_intersection_with_curves_${dt}`](m0._handle, m1._handle), dt,
     );
   }
-  return wrapLabeled(native().boolean_intersection(m0._handle, m1._handle));
+  return wrapLabeled(
+    native()[`boolean_intersection_${dt}`](m0._handle, m1._handle), dt,
+  );
 }
 
 /** Boolean difference: m0 minus m1. Result is m0 with m1 subtracted. */
@@ -172,12 +190,16 @@ export function booleanDifference(
 export function booleanDifference(
   m0: Mesh, m1: Mesh, opts?: { returnCurves: true },
 ): LabeledCutResult | LabeledCutResultWithCurves {
+  assertSameDtype([m0, m1], ["mesh0", "mesh1"]);
+  const dt = m0.dtype;
   if (opts?.returnCurves) {
     return wrapLabeledWithCurves(
-      native().boolean_difference_with_curves(m0._handle, m1._handle),
+      native()[`boolean_difference_with_curves_${dt}`](m0._handle, m1._handle), dt,
     );
   }
-  return wrapLabeled(native().boolean_difference(m0._handle, m1._handle));
+  return wrapLabeled(
+    native()[`boolean_difference_${dt}`](m0._handle, m1._handle), dt,
+  );
 }
 
 // ============================================================================
@@ -188,48 +210,61 @@ export function booleanDifference(
  * Slice a mesh by scalar field isocontours into band regions.
  *
  * @param mesh - Input mesh
- * @param scalars - Per-vertex scalar values [V]
+ * @param scalars - Per-vertex scalar values [V] (must share mesh dtype)
  * @param cutValues - Isocontour thresholds. N values create N+1 bands.
  * @param opts.selectedBands - Band indices to keep (0-indexed)
  * @param opts.returnCurves - If true, include isocontour polylines
  */
 export function isobands(
-  mesh: Mesh, scalars: NDArrayFloat32, cutValues: Float32Array,
+  mesh: Mesh, scalars: NDArrayFloat32 | NDArrayFloat64,
+  cutValues: Float32Array | Float64Array | number[],
 ): IsobandsResult;
 export function isobands(
-  mesh: Mesh, scalars: NDArrayFloat32, cutValues: Float32Array,
+  mesh: Mesh, scalars: NDArrayFloat32 | NDArrayFloat64,
+  cutValues: Float32Array | Float64Array | number[],
   opts: { returnCurves: true },
 ): IsobandsResultWithCurves;
 export function isobands(
-  mesh: Mesh, scalars: NDArrayFloat32, cutValues: Float32Array,
+  mesh: Mesh, scalars: NDArrayFloat32 | NDArrayFloat64,
+  cutValues: Float32Array | Float64Array | number[],
   opts: { selectedBands: number[] },
 ): IsobandsResult;
 export function isobands(
-  mesh: Mesh, scalars: NDArrayFloat32, cutValues: Float32Array,
+  mesh: Mesh, scalars: NDArrayFloat32 | NDArrayFloat64,
+  cutValues: Float32Array | Float64Array | number[],
   opts: { selectedBands: number[], returnCurves: true },
 ): IsobandsResultWithCurves;
 export function isobands(
-  mesh: Mesh, scalars: NDArrayFloat32, cutValues: Float32Array,
+  mesh: Mesh, scalars: NDArrayFloat32 | NDArrayFloat64,
+  cutValues: Float32Array | Float64Array | number[],
   opts?: { returnCurves?: boolean, selectedBands?: number[] },
 ): IsobandsResult | IsobandsResultWithCurves {
+  assertSameDtype([mesh, scalars], ["mesh", "scalars"]);
+  const dt = mesh.dtype as FloatDtype;
   const sb = opts?.selectedBands;
   if (opts?.returnCurves) {
     if (sb) {
       return wrapIsobandsWithCurves(
-        native().isobands_with_curves_selected(mesh._handle, scalars._handle, cutValues, sb),
+        native()[`isobands_with_curves_selected_${dt}`](
+          mesh._handle, scalars._handle, cutValues, sb,
+        ), dt,
       );
     }
     return wrapIsobandsWithCurves(
-      native().isobands_with_curves(mesh._handle, scalars._handle, cutValues),
+      native()[`isobands_with_curves_${dt}`](
+        mesh._handle, scalars._handle, cutValues,
+      ), dt,
     );
   }
   if (sb) {
     return wrapIsobands(
-      native().isobands_selected(mesh._handle, scalars._handle, cutValues, sb),
+      native()[`isobands_selected_${dt}`](
+        mesh._handle, scalars._handle, cutValues, sb,
+      ), dt,
     );
   }
   return wrapIsobands(
-    native().isobands(mesh._handle, scalars._handle, cutValues),
+    native()[`isobands_${dt}`](mesh._handle, scalars._handle, cutValues), dt,
   );
 }
 
@@ -248,16 +283,20 @@ export function embeddedIntersectionCurves(
 export function embeddedIntersectionCurves(
   m0: Mesh, m1: Mesh, opts?: IntersectOpts & { returnCurves?: true },
 ): CutResult | CutResultWithCurves {
+  assertSameDtype([m0, m1], ["mesh0", "mesh1"]);
+  const dt = m0.dtype;
   const mode = buildMode(opts, "primitives", false, false);
   if (opts?.returnCurves) {
     return wrapCutWithCurves(
-      native().embedded_intersection_curves_with_curves(
+      native()[`embedded_intersection_curves_with_curves_${dt}`](
         m0._handle, m1._handle, mode,
-      ),
+      ), dt,
     );
   }
   return wrapCut(
-    native().embedded_intersection_curves(m0._handle, m1._handle, mode),
+    native()[`embedded_intersection_curves_${dt}`](
+      m0._handle, m1._handle, mode,
+    ), dt,
   );
 }
 
@@ -287,20 +326,24 @@ export interface MeshArrangementResultWithCurves {
   curves: Curves;
 }
 
-function wrapArrangement(raw: any): MeshArrangementResult {
+function wrapArrangement(
+  raw: any, dt: "float32" | "float64",
+): MeshArrangementResult {
   return {
-    mesh: new Mesh(raw.mesh),
+    mesh: new Mesh(raw.mesh, dt),
     tagLabels: new NDArray(raw.tagLabels, "int32"),
     faceLabels: new NDArray(raw.faceLabels, "int32"),
   };
 }
 
-function wrapArrangementWithCurves(raw: any): MeshArrangementResultWithCurves {
+function wrapArrangementWithCurves(
+  raw: any, dt: "float32" | "float64",
+): MeshArrangementResultWithCurves {
   return {
-    mesh: new Mesh(raw.mesh),
+    mesh: new Mesh(raw.mesh, dt),
     tagLabels: new NDArray(raw.tagLabels, "int32"),
     faceLabels: new NDArray(raw.faceLabels, "int32"),
-    curves: new Curves(raw.curves),
+    curves: new Curves(raw.curves, dt),
   };
 }
 
@@ -320,15 +363,22 @@ export function meshArrangements(
 export function meshArrangements(
   meshes: Mesh[], opts?: IntersectOpts & { returnCurves?: true },
 ): MeshArrangementResult | MeshArrangementResultWithCurves {
+  assertSameDtype(
+    meshes,
+    meshes.map((_, i) => `meshes[${i}]`),
+  );
+  const dt = meshes[0].dtype;
   const rc = opts?.resolveCrossings ?? (meshes.length > 2);
   const mode = buildMode(opts, "primitives", rc, false);
   const handles = meshes.map(m => m._handle);
   if (opts?.returnCurves) {
     return wrapArrangementWithCurves(
-      native().mesh_arrangements_with_curves(handles, mode),
+      native()[`mesh_arrangements_with_curves_${dt}`](handles, mode), dt,
     );
   }
-  return wrapArrangement(native().mesh_arrangements(handles, mode));
+  return wrapArrangement(
+    native()[`mesh_arrangements_${dt}`](handles, mode), dt,
+  );
 }
 
 // ============================================================================
@@ -346,14 +396,18 @@ export function embeddedSelfIntersectionCurves(
 export function embeddedSelfIntersectionCurves(
   mesh: Mesh, opts?: IntersectOpts & { returnCurves?: true },
 ): CutResult | CutResultWithCurves {
+  const dt = mesh.dtype;
   const mode = buildMode(opts, "primitives", true, true);
   if (opts?.returnCurves) {
     return wrapCutWithCurves(
-      native().embedded_self_intersection_curves_with_curves(mesh._handle, mode),
+      native()[`embedded_self_intersection_curves_with_curves_${dt}`](
+        mesh._handle, mode,
+      ), dt,
     );
   }
   return wrapCut(
-    native().embedded_self_intersection_curves(mesh._handle, mode),
+    native()[`embedded_self_intersection_curves_${dt}`](mesh._handle, mode),
+    dt,
   );
 }
 
@@ -379,18 +433,22 @@ export interface PolygonArrangementResultWithCurves {
   curves: Curves;
 }
 
-function wrapPolygonArrangement(raw: any): PolygonArrangementResult {
+function wrapPolygonArrangement(
+  raw: any, dt: "float32" | "float64",
+): PolygonArrangementResult {
   return {
-    mesh: new Mesh(raw.mesh),
+    mesh: new Mesh(raw.mesh, dt),
     faceLabels: new NDArray(raw.faceLabels, "int32"),
   };
 }
 
-function wrapPolygonArrangementWithCurves(raw: any): PolygonArrangementResultWithCurves {
+function wrapPolygonArrangementWithCurves(
+  raw: any, dt: "float32" | "float64",
+): PolygonArrangementResultWithCurves {
   return {
-    mesh: new Mesh(raw.mesh),
+    mesh: new Mesh(raw.mesh, dt),
     faceLabels: new NDArray(raw.faceLabels, "int32"),
-    curves: new Curves(raw.curves),
+    curves: new Curves(raw.curves, dt),
   };
 }
 
@@ -410,13 +468,15 @@ export function polygonArrangements(
 export function polygonArrangements(
   mesh: Mesh, opts?: IntersectOpts & { returnCurves?: true },
 ): PolygonArrangementResult | PolygonArrangementResultWithCurves {
+  const dt = mesh.dtype;
   const mode = buildMode(opts, "primitives", true, true);
   if (opts?.returnCurves) {
     return wrapPolygonArrangementWithCurves(
-      native().polygon_arrangements_with_curves(mesh._handle, mode),
+      native()[`polygon_arrangements_with_curves_${dt}`](mesh._handle, mode),
+      dt,
     );
   }
   return wrapPolygonArrangement(
-    native().polygon_arrangements(mesh._handle, mode),
+    native()[`polygon_arrangements_${dt}`](mesh._handle, mode), dt,
   );
 }

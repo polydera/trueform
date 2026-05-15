@@ -8,12 +8,34 @@ describe("PointCloud", () => {
     const pts = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]);
     const pc = tf.pointCloud(pts);
 
+    assert(pc.dtype === "float32", `expected dtype float32, got ${pc.dtype}`);
     assert(pc.numberOfPoints === 3, `expected 3 points, got ${pc.numberOfPoints}`);
     log(`  pointCloud(Float32Array) → ${pc.numberOfPoints} points`, "line-pass");
 
     const p = pc.points;
+    assert(p.dtype === "float32", `expected points dtype float32, got ${p.dtype}`);
     assert(p.shape[0] === 3 && p.shape[1] === 3, `points shape: [${p.shape}]`);
     log("  points shape [3, 3]", "line-pass");
+
+    p.delete();
+    pc.delete();
+  });
+
+  // ==========================================================================
+  test("pointCloud from Float64Array (float64)", () => {
+    const tf = getTf();
+    const pts = new Float64Array([0, 0, 0, 1, 0, 0, 0, 1, 0]);
+    const pc = tf.pointCloud(pts);
+
+    assert(pc.dtype === "float64", `expected dtype float64, got ${pc.dtype}`);
+    assert(pc.numberOfPoints === 3, `expected 3 points, got ${pc.numberOfPoints}`);
+    log(`  pointCloud(Float64Array) → ${pc.numberOfPoints} points`, "line-pass");
+
+    const p = pc.points;
+    assert(p.dtype === "float64", `expected points dtype float64, got ${p.dtype}`);
+    assert(p.data instanceof Float64Array, "points data should be Float64Array");
+    assert(p.shape[0] === 3 && p.shape[1] === 3, `points shape: [${p.shape}]`);
+    log("  points shape [3, 3] (float64)", "line-pass");
 
     p.delete();
     pc.delete();
@@ -25,8 +47,23 @@ describe("PointCloud", () => {
     const pts = tf.ndarray(new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]), [3, 3]);
     const pc = tf.pointCloud(pts);
 
+    assert(pc.dtype === "float32", `expected dtype float32, got ${pc.dtype}`);
     assert(pc.numberOfPoints === 3, `expected 3 points, got ${pc.numberOfPoints}`);
     log(`  pointCloud(NDArray) → ${pc.numberOfPoints} points`, "line-pass");
+
+    pts.delete();
+    pc.delete();
+  });
+
+  // ==========================================================================
+  test("pointCloud from NDArray (float64)", () => {
+    const tf = getTf();
+    const pts = tf.ndarray(new Float64Array([0, 0, 0, 1, 0, 0, 0, 1, 0]), [3, 3]);
+    const pc = tf.pointCloud(pts);
+
+    assert(pc.dtype === "float64", `expected dtype float64, got ${pc.dtype}`);
+    assert(pc.numberOfPoints === 3, `expected 3 points, got ${pc.numberOfPoints}`);
+    log(`  pointCloud(NDArray float64) → ${pc.numberOfPoints} points`, "line-pass");
 
     pts.delete();
     pc.delete();
@@ -153,6 +190,7 @@ describe("PointCloud", () => {
     pc.transformation = t;
 
     const view = pc.shallowCopy();
+    assert(view.dtype === "float32", "shallow copy preserves dtype");
     assert(view.numberOfPoints === pc.numberOfPoints,
       "shallow copy has same point count");
     assert(view.transformation === null,
@@ -161,6 +199,84 @@ describe("PointCloud", () => {
 
     t.delete();
     view.delete();
+    pc.delete();
+  });
+
+  // ==========================================================================
+  test("shallowCopy shares data (float64)", () => {
+    const tf = getTf();
+    const pc = tf.pointCloud(new Float64Array([0, 0, 0, 1, 0, 0, 0, 1, 0]));
+    assert(pc.dtype === "float64", "source dtype is float64");
+
+    const t = tf.ndarray(new Float64Array([
+      1, 0, 0, 1, 0, 1, 0, 2, 0, 0, 1, 3, 0, 0, 0, 1,
+    ]), [4, 4]);
+    pc.transformation = t;
+
+    const view = pc.shallowCopy();
+    assert(view.dtype === "float64", "shallow copy preserves float64 dtype");
+    assert(view.numberOfPoints === pc.numberOfPoints,
+      "shallow copy has same point count");
+    assert(view.transformation === null,
+      "shallow copy has no transformation");
+    const vp = view.points;
+    assert(vp.dtype === "float64", "shallow copy points dtype is float64");
+    assert(vp.data instanceof Float64Array, "shallow copy points data is Float64Array");
+    log("  shallowCopy preserves float64 dtype", "line-pass");
+
+    vp.delete();
+    t.delete();
+    view.delete();
+    pc.delete();
+  });
+
+  // ==========================================================================
+  test("Independent handle ownership (float64)", () => {
+    const tf = getTf();
+    const pts = new Float64Array([0, 0, 0, 1, 0, 0, 0, 1, 0]);
+    const pc = tf.pointCloud(pts);
+
+    const ph = pc.points;
+    assert(ph.dtype === "float64", "points dtype is float64");
+
+    pc.delete();
+
+    assert(ph.data.length === 9, "points data still accessible after pc.delete()");
+    assert(ph.data instanceof Float64Array, "points data is Float64Array after pc delete");
+    log("  handles survive pc.delete() (float64)", "line-pass");
+
+    ph.delete();
+  });
+
+  // ==========================================================================
+  test("transformation setter/getter (float64)", () => {
+    const tf = getTf();
+    const pc = tf.pointCloud(new Float64Array([0, 0, 0, 1, 0, 0, 0, 1, 0]));
+    assert(pc.dtype === "float64", "pc dtype is float64");
+
+    assert(pc.transformation === null, "expected no transformation initially");
+
+    const t = tf.ndarray(new Float64Array([
+      1, 0, 0, 1,
+      0, 1, 0, 2,
+      0, 0, 1, 3,
+      0, 0, 0, 1,
+    ]), [4, 4]);
+    pc.transformation = t;
+
+    const tBack = pc.transformation;
+    assert(tBack !== null, "expected transformation after set");
+    assert(tBack.dtype === "float64", "transformation dtype is float64");
+    assert(tBack.shape[0] === 4 && tBack.shape[1] === 4,
+      `transformation shape: [${tBack.shape}]`);
+    log("  transformation set/get OK (float64)", "line-pass");
+
+    pc.transformation = null;
+    assert(pc.transformation === null, "expected null after clear");
+    log("  transformation clear OK (float64)", "line-pass");
+
+    tBack.delete();
+    t.delete();
     pc.delete();
   });
 

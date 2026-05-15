@@ -577,3 +577,619 @@ describe("3-sphere arrangement consistency (async)", () => {
   });
 
 });
+
+// ============================================================================
+// Float64 mirror tests
+// ============================================================================
+
+function twoSpheresFloat64() {
+  const tf = getTf();
+  const s0 = tf.sphereMesh(1, 16, 16, { dtype: "float64" });
+  const s1 = tf.sphereMesh(1, 16, 16, { dtype: "float64" });
+  // prettier-ignore
+  s1.transformation = tf.ndarray(new Float64Array([
+    1, 0, 0, 1,
+    0, 1, 0, 0,
+    0, 0, 1, 0,
+    0, 0, 0, 1,
+  ]), [4, 4]);
+  return { tf, s0, s1 };
+}
+
+describe("Boolean operations (float64)", () => {
+
+  test("booleanUnion (float64)", () => {
+    const { tf, s0, s1 } = twoSpheresFloat64();
+    const result = tf.booleanUnion(s0, s1);
+
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.mesh.numberOfFaces > 0, "has faces");
+    assert(result.labels.length === result.mesh.numberOfFaces,
+      `labels length ${result.labels.length} matches faces ${result.mesh.numberOfFaces}`);
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log(`  union (f64): ${result.mesh.numberOfFaces} faces`, "line-pass");
+
+    result.faceLabels.delete(); result.labels.delete(); result.mesh.delete();
+    s1.delete(); s0.delete();
+  });
+
+  test("booleanUnion with curves (float64)", () => {
+    const { tf, s0, s1 } = twoSpheresFloat64();
+    const result = tf.booleanUnion(s0, s1, { returnCurves: true });
+
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.curves.dtype === "float64", "result curves dtype is float64");
+    assert(result.mesh.numberOfFaces > 0, "has faces");
+    assert(result.labels.length === result.mesh.numberOfFaces, "labels match");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    assert(result.curves !== undefined, "has curves");
+    assert(result.curves.length > 0, `curves count: ${result.curves.length}`);
+    log(`  union with curves (f64): ${result.curves.length} curves`, "line-pass");
+
+    result.curves.delete(); result.faceLabels.delete(); result.labels.delete(); result.mesh.delete();
+    s1.delete(); s0.delete();
+  });
+
+  test("booleanIntersection (float64)", () => {
+    const { tf, s0, s1 } = twoSpheresFloat64();
+    const result = tf.booleanIntersection(s0, s1);
+
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.mesh.numberOfFaces > 0, "has faces");
+    assert(result.labels.length === result.mesh.numberOfFaces, "labels match");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log(`  intersection (f64): ${result.mesh.numberOfFaces} faces`, "line-pass");
+
+    result.faceLabels.delete(); result.labels.delete(); result.mesh.delete();
+    s1.delete(); s0.delete();
+  });
+
+  test("booleanIntersection with curves (float64)", () => {
+    const { tf, s0, s1 } = twoSpheresFloat64();
+    const result = tf.booleanIntersection(s0, s1, { returnCurves: true });
+
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.curves.dtype === "float64", "result curves dtype is float64");
+    assert(result.curves !== undefined, "has curves");
+    assert(result.curves.length > 0, "curves non-empty");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log(`  intersection with curves (f64): ${result.curves.length} curves`, "line-pass");
+
+    result.curves.delete(); result.faceLabels.delete(); result.labels.delete(); result.mesh.delete();
+    s1.delete(); s0.delete();
+  });
+
+  test("booleanDifference (float64)", () => {
+    const { tf, s0, s1 } = twoSpheresFloat64();
+    const result = tf.booleanDifference(s0, s1);
+
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.mesh.numberOfFaces > 0, "has faces");
+    assert(result.labels.length === result.mesh.numberOfFaces, "labels match");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log(`  difference (f64): ${result.mesh.numberOfFaces} faces`, "line-pass");
+
+    result.faceLabels.delete(); result.labels.delete(); result.mesh.delete();
+    s1.delete(); s0.delete();
+  });
+
+  test("booleanDifference with curves (float64)", () => {
+    const { tf, s0, s1 } = twoSpheresFloat64();
+    const result = tf.booleanDifference(s0, s1, { returnCurves: true });
+
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.curves.dtype === "float64", "result curves dtype is float64");
+    assert(result.curves !== undefined, "has curves");
+    assert(result.curves.length > 0, "curves non-empty");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log(`  difference with curves (f64): ${result.curves.length} curves`, "line-pass");
+
+    result.curves.delete(); result.faceLabels.delete(); result.labels.delete(); result.mesh.delete();
+    s1.delete(); s0.delete();
+  });
+
+  test("async: booleanUnion (float64)", async () => {
+    const { tf, s0, s1 } = twoSpheresFloat64();
+    const result = await tf.async.booleanUnion(s0, s1);
+
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.mesh.numberOfFaces > 0, "has faces");
+    assert(result.labels.length === result.mesh.numberOfFaces,
+      `labels length ${result.labels.length} matches faces ${result.mesh.numberOfFaces}`);
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log(`  async union (f64): ${result.mesh.numberOfFaces} faces`, "line-pass");
+
+    result.faceLabels.delete(); result.labels.delete(); result.mesh.delete();
+    s1.delete(); s0.delete();
+  });
+
+  test("async: booleanIntersection (float64)", async () => {
+    const { tf, s0, s1 } = twoSpheresFloat64();
+    const result = await tf.async.booleanIntersection(s0, s1);
+
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.mesh.numberOfFaces > 0, "has faces");
+    assert(result.labels.length === result.mesh.numberOfFaces, "labels match");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log(`  async intersection (f64): ${result.mesh.numberOfFaces} faces`, "line-pass");
+
+    result.faceLabels.delete(); result.labels.delete(); result.mesh.delete();
+    s1.delete(); s0.delete();
+  });
+
+  test("async: booleanDifference (float64)", async () => {
+    const { tf, s0, s1 } = twoSpheresFloat64();
+    const result = await tf.async.booleanDifference(s0, s1);
+
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.mesh.numberOfFaces > 0, "has faces");
+    assert(result.labels.length === result.mesh.numberOfFaces, "labels match");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log(`  async difference (f64): ${result.mesh.numberOfFaces} faces`, "line-pass");
+
+    result.faceLabels.delete(); result.labels.delete(); result.mesh.delete();
+    s1.delete(); s0.delete();
+  });
+
+});
+
+describe("Boolean operations (dtype mismatch)", () => {
+
+  test("booleanUnion dtype mismatch throws", () => {
+    const tf = getTf();
+    const s0 = tf.sphereMesh(1, 8, 8);
+    const s1 = tf.sphereMesh(1, 8, 8, { dtype: "float64" });
+    let threw = false;
+    try { tf.booleanUnion(s0, s1); } catch (e) {
+      if (/dtype mismatch/.test(e.message)) threw = true;
+    }
+    assert(threw, "expected dtype mismatch error");
+    log(`  booleanUnion dtype mismatch throws`, "line-pass");
+    s1.delete(); s0.delete();
+  });
+
+  test("booleanIntersection dtype mismatch throws", () => {
+    const tf = getTf();
+    const s0 = tf.sphereMesh(1, 8, 8);
+    const s1 = tf.sphereMesh(1, 8, 8, { dtype: "float64" });
+    let threw = false;
+    try { tf.booleanIntersection(s0, s1); } catch (e) {
+      if (/dtype mismatch/.test(e.message)) threw = true;
+    }
+    assert(threw, "expected dtype mismatch error");
+    log(`  booleanIntersection dtype mismatch throws`, "line-pass");
+    s1.delete(); s0.delete();
+  });
+
+  test("booleanDifference dtype mismatch throws", () => {
+    const tf = getTf();
+    const s0 = tf.sphereMesh(1, 8, 8);
+    const s1 = tf.sphereMesh(1, 8, 8, { dtype: "float64" });
+    let threw = false;
+    try { tf.booleanDifference(s0, s1); } catch (e) {
+      if (/dtype mismatch/.test(e.message)) threw = true;
+    }
+    assert(threw, "expected dtype mismatch error");
+    log(`  booleanDifference dtype mismatch throws`, "line-pass");
+    s1.delete(); s0.delete();
+  });
+
+  test("async: booleanUnion dtype mismatch throws", async () => {
+    const tf = getTf();
+    const s0 = tf.sphereMesh(1, 8, 8);
+    const s1 = tf.sphereMesh(1, 8, 8, { dtype: "float64" });
+    let threw = false;
+    try { await tf.async.booleanUnion(s0, s1); } catch (e) {
+      if (/dtype mismatch/.test(e.message)) threw = true;
+    }
+    assert(threw, "expected dtype mismatch error");
+    log(`  async booleanUnion dtype mismatch throws`, "line-pass");
+    s1.delete(); s0.delete();
+  });
+
+});
+
+describe("Mesh arrangements (float64)", () => {
+
+  test("meshArrangements([m0, m1]) (float64)", () => {
+    const { tf, s0, s1 } = twoSpheresFloat64();
+    const result = tf.meshArrangements([s0, s1]);
+
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.mesh.numberOfFaces > 0, "has faces");
+    assert(result.tagLabels.length === result.mesh.numberOfFaces, "tagLabels match");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log(`  meshArrangements (f64): ${result.mesh.numberOfFaces} faces`, "line-pass");
+
+    result.faceLabels.delete(); result.tagLabels.delete(); result.mesh.delete();
+    s1.delete(); s0.delete();
+  });
+
+  test("meshArrangements with curves (float64)", () => {
+    const { tf, s0, s1 } = twoSpheresFloat64();
+    const result = tf.meshArrangements([s0, s1], { returnCurves: true });
+
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.curves.dtype === "float64", "result curves dtype is float64");
+    assert(result.mesh.numberOfFaces > 0, "has faces");
+    assert(result.curves !== undefined, "has curves");
+    assert(result.curves.length > 0, `curves count: ${result.curves.length}`);
+    log(`  meshArrangements with curves (f64): ${result.curves.length} curves`, "line-pass");
+
+    result.curves.delete(); result.faceLabels.delete(); result.tagLabels.delete();
+    result.mesh.delete(); s1.delete(); s0.delete();
+  });
+
+  test("async: meshArrangements([m0, m1]) (float64)", async () => {
+    const { tf, s0, s1 } = twoSpheresFloat64();
+    const result = await tf.async.meshArrangements([s0, s1]);
+
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.mesh.numberOfFaces > 0, "has faces");
+    assert(result.tagLabels.length === result.mesh.numberOfFaces, "tagLabels match");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log(`  async meshArrangements (f64): ${result.mesh.numberOfFaces} faces`, "line-pass");
+
+    result.faceLabels.delete(); result.tagLabels.delete(); result.mesh.delete();
+    s1.delete(); s0.delete();
+  });
+
+  test("async: meshArrangements with curves (float64)", async () => {
+    const { tf, s0, s1 } = twoSpheresFloat64();
+    const result = await tf.async.meshArrangements([s0, s1], { returnCurves: true });
+
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.curves.dtype === "float64", "result curves dtype is float64");
+    assert(result.mesh.numberOfFaces > 0, "has faces");
+    assert(result.curves !== undefined, "has curves");
+    assert(result.curves.length > 0, `curves count: ${result.curves.length}`);
+    log(`  async meshArrangements with curves (f64): ${result.curves.length} curves`, "line-pass");
+
+    result.curves.delete(); result.faceLabels.delete(); result.tagLabels.delete();
+    result.mesh.delete(); s1.delete(); s0.delete();
+  });
+
+});
+
+describe("Mesh arrangements (dtype mismatch)", () => {
+
+  test("meshArrangements dtype mismatch throws", () => {
+    const tf = getTf();
+    const s0 = tf.sphereMesh(1, 8, 8);
+    const s1 = tf.sphereMesh(1, 8, 8, { dtype: "float64" });
+    let threw = false;
+    try { tf.meshArrangements([s0, s1]); } catch (e) {
+      if (/dtype mismatch/.test(e.message)) threw = true;
+    }
+    assert(threw, "expected dtype mismatch error");
+    log(`  meshArrangements dtype mismatch throws`, "line-pass");
+    s1.delete(); s0.delete();
+  });
+
+  test("async: meshArrangements dtype mismatch throws", async () => {
+    const tf = getTf();
+    const s0 = tf.sphereMesh(1, 8, 8);
+    const s1 = tf.sphereMesh(1, 8, 8, { dtype: "float64" });
+    let threw = false;
+    try { await tf.async.meshArrangements([s0, s1]); } catch (e) {
+      if (/dtype mismatch/.test(e.message)) threw = true;
+    }
+    assert(threw, "expected dtype mismatch error");
+    log(`  async meshArrangements dtype mismatch throws`, "line-pass");
+    s1.delete(); s0.delete();
+  });
+
+});
+
+describe("Polygon arrangements (float64)", () => {
+
+  test("polygonArrangements (no SI) (float64)", () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1, 8, 8, { dtype: "float64" });
+    const result = tf.polygonArrangements(sphere);
+
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.mesh.numberOfFaces === sphere.numberOfFaces,
+      "no self-intersection → same face count");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log("  polygonArrangements (no SI) (f64)", "line-pass");
+
+    result.faceLabels.delete(); result.mesh.delete(); sphere.delete();
+  });
+
+  test("polygonArrangements with curves (no SI) (float64)", () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1, 8, 8, { dtype: "float64" });
+    const result = tf.polygonArrangements(sphere, { returnCurves: true });
+
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.curves.dtype === "float64", "result curves dtype is float64");
+    assert(result.mesh.numberOfFaces === sphere.numberOfFaces, "same face count");
+    assert(result.curves !== undefined, "has curves");
+    assert(result.curves.length === 0, "no SI curves");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log("  polygonArrangements with curves (no SI) (f64)", "line-pass");
+
+    result.curves.delete(); result.faceLabels.delete(); result.mesh.delete();
+    sphere.delete();
+  });
+
+  test("async: polygonArrangements (no SI) (float64)", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1, 8, 8, { dtype: "float64" });
+    const result = await tf.async.polygonArrangements(sphere);
+
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.mesh.numberOfFaces === sphere.numberOfFaces,
+      "no self-intersection → same face count");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log("  async polygonArrangements (no SI) (f64)", "line-pass");
+
+    result.faceLabels.delete(); result.mesh.delete(); sphere.delete();
+  });
+
+  test("async: polygonArrangements with curves (no SI) (float64)", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1, 8, 8, { dtype: "float64" });
+    const result = await tf.async.polygonArrangements(sphere, { returnCurves: true });
+
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.curves.dtype === "float64", "result curves dtype is float64");
+    assert(result.mesh.numberOfFaces === sphere.numberOfFaces, "same face count");
+    assert(result.curves !== undefined, "has curves");
+    assert(result.curves.length === 0, "no SI curves");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log("  async polygonArrangements with curves (no SI) (f64)", "line-pass");
+
+    result.curves.delete(); result.faceLabels.delete(); result.mesh.delete();
+    sphere.delete();
+  });
+
+});
+
+describe("Isobands (float64)", () => {
+
+  test("isobands basic (float64)", () => {
+    const tf = getTf();
+    const plane = tf.planeMesh(4, 4, 20, 20, { dtype: "float64" });
+    const scalars = plane.points.take(null, 0); // x-coords as scalar field
+    const cutValues = new Float64Array([-1, 0, 1]);
+
+    const result = tf.isobands(plane, scalars, cutValues);
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.mesh.numberOfFaces > 0, "has faces");
+    assert(result.labels.length === result.mesh.numberOfFaces, "labels match faces");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log(`  isobands (f64): ${result.mesh.numberOfFaces} faces`, "line-pass");
+
+    result.faceLabels.delete(); result.labels.delete(); result.mesh.delete();
+    scalars.delete(); plane.delete();
+  });
+
+  test("isobands with curves (float64)", () => {
+    const tf = getTf();
+    const plane = tf.planeMesh(4, 4, 20, 20, { dtype: "float64" });
+    const scalars = plane.points.take(null, 0);
+    const cutValues = new Float64Array([-1, 0, 1]);
+
+    const result = tf.isobands(plane, scalars, cutValues, { returnCurves: true });
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.curves.dtype === "float64", "result curves dtype is float64");
+    assert(result.mesh.numberOfFaces > 0, "has faces");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    assert(result.curves !== undefined, "has curves");
+    assert(result.curves.length > 0, `curves count: ${result.curves.length}`);
+    log(`  isobands with curves (f64): ${result.curves.length} curves`, "line-pass");
+
+    result.curves.delete(); result.faceLabels.delete(); result.labels.delete(); result.mesh.delete();
+    scalars.delete(); plane.delete();
+  });
+
+  test("isobands with selectedBands (float64)", () => {
+    const tf = getTf();
+    const plane = tf.planeMesh(4, 4, 20, 20, { dtype: "float64" });
+    const scalars = plane.points.take(null, 0);
+    const cutValues = new Float64Array([-1, 0, 1]);
+
+    const result = tf.isobands(plane, scalars, cutValues, { selectedBands: [1] });
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.mesh.numberOfFaces > 0, "has faces");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log(`  isobands selectedBands (f64): ${result.mesh.numberOfFaces} faces`, "line-pass");
+
+    result.faceLabels.delete(); result.labels.delete(); result.mesh.delete();
+    scalars.delete(); plane.delete();
+  });
+
+  test("isobands with selectedBands + curves (float64)", () => {
+    const tf = getTf();
+    const plane = tf.planeMesh(4, 4, 20, 20, { dtype: "float64" });
+    const scalars = plane.points.take(null, 0);
+    const cutValues = new Float64Array([-1, 0, 1]);
+
+    const result = tf.isobands(plane, scalars, cutValues, {
+      selectedBands: [1],
+      returnCurves: true,
+    });
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.curves.dtype === "float64", "result curves dtype is float64");
+    assert(result.mesh.numberOfFaces > 0, "has faces");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    assert(result.curves !== undefined, "has curves");
+    log("  isobands selectedBands + curves (f64)", "line-pass");
+
+    result.curves.delete(); result.faceLabels.delete(); result.labels.delete(); result.mesh.delete();
+    scalars.delete(); plane.delete();
+  });
+
+  test("async: isobands (float64)", async () => {
+    const tf = getTf();
+    const plane = tf.planeMesh(4, 4, 20, 20, { dtype: "float64" });
+    const scalars = plane.points.take(null, 0);
+    const cutValues = new Float64Array([-1, 0, 1]);
+
+    const result = await tf.async.isobands(plane, scalars, cutValues);
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.mesh.numberOfFaces > 0, "has faces");
+    assert(result.labels.length === result.mesh.numberOfFaces, "labels match faces");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log(`  async isobands (f64): ${result.mesh.numberOfFaces} faces`, "line-pass");
+
+    result.faceLabels.delete(); result.labels.delete(); result.mesh.delete();
+    scalars.delete(); plane.delete();
+  });
+
+});
+
+describe("Isobands (dtype mismatch)", () => {
+
+  test("isobands dtype mismatch throws", () => {
+    const tf = getTf();
+    const plane = tf.planeMesh(4, 4, 20, 20);
+    const scalars64 = tf.zeros("float64", [plane.points.shape[0]]);
+    const cutValues = new Float32Array([-1, 0, 1]);
+    let threw = false;
+    try { tf.isobands(plane, scalars64, cutValues); } catch (e) {
+      if (/dtype mismatch/.test(e.message)) threw = true;
+    }
+    assert(threw, "expected dtype mismatch error");
+    log(`  isobands dtype mismatch throws`, "line-pass");
+    scalars64.delete(); plane.delete();
+  });
+
+  test("async: isobands dtype mismatch throws", async () => {
+    const tf = getTf();
+    const plane = tf.planeMesh(4, 4, 20, 20);
+    const scalars64 = tf.zeros("float64", [plane.points.shape[0]]);
+    const cutValues = new Float32Array([-1, 0, 1]);
+    let threw = false;
+    try { await tf.async.isobands(plane, scalars64, cutValues); } catch (e) {
+      if (/dtype mismatch/.test(e.message)) threw = true;
+    }
+    assert(threw, "expected dtype mismatch error");
+    log(`  async isobands dtype mismatch throws`, "line-pass");
+    scalars64.delete(); plane.delete();
+  });
+
+});
+
+describe("Embedded curves (float64)", () => {
+
+  test("embeddedIntersectionCurves (float64)", () => {
+    const { tf, s0, s1 } = twoSpheresFloat64();
+    const result = tf.embeddedIntersectionCurves(s0, s1);
+
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.mesh.numberOfFaces >= s0.numberOfFaces,
+      "embedded mesh has at least as many faces");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log(`  embedded (f64): ${result.mesh.numberOfFaces} faces`, "line-pass");
+
+    result.faceLabels.delete(); result.mesh.delete(); s1.delete(); s0.delete();
+  });
+
+  test("embeddedIntersectionCurves with curves (float64)", () => {
+    const { tf, s0, s1 } = twoSpheresFloat64();
+    const result = tf.embeddedIntersectionCurves(s0, s1, { returnCurves: true });
+
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.curves.dtype === "float64", "result curves dtype is float64");
+    assert(result.mesh.numberOfFaces > 0, "has faces");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    assert(result.curves !== undefined, "has curves");
+    assert(result.curves.length > 0, "curves non-empty");
+    log(`  embedded with curves (f64): ${result.curves.length} curves`, "line-pass");
+
+    result.curves.delete(); result.faceLabels.delete(); result.mesh.delete();
+    s1.delete(); s0.delete();
+  });
+
+  test("embeddedSelfIntersectionCurves (float64)", () => {
+    const tf = getTf();
+    // A sphere has no self-intersections, so result = same mesh
+    const sphere = tf.sphereMesh(1, 8, 8, { dtype: "float64" });
+    const result = tf.embeddedSelfIntersectionCurves(sphere);
+
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.mesh.numberOfFaces === sphere.numberOfFaces,
+      "no self-intersection → same face count");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log("  embeddedSelfIntersection (no SI) (f64)", "line-pass");
+
+    result.faceLabels.delete(); result.mesh.delete(); sphere.delete();
+  });
+
+  test("embeddedSelfIntersectionCurves with curves (float64)", () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1, 8, 8, { dtype: "float64" });
+    const result = tf.embeddedSelfIntersectionCurves(sphere, { returnCurves: true });
+
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.curves.dtype === "float64", "result curves dtype is float64");
+    assert(result.mesh.numberOfFaces === sphere.numberOfFaces, "same face count");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    assert(result.curves !== undefined, "has curves");
+    assert(result.curves.length === 0, "no SI curves");
+    log("  embeddedSelfIntersection with curves (no SI) (f64)", "line-pass");
+
+    result.curves.delete(); result.faceLabels.delete(); result.mesh.delete(); sphere.delete();
+  });
+
+  test("async: embeddedIntersectionCurves (float64)", async () => {
+    const { tf, s0, s1 } = twoSpheresFloat64();
+    const result = await tf.async.embeddedIntersectionCurves(s0, s1);
+
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.mesh.numberOfFaces >= s0.numberOfFaces,
+      "embedded mesh has at least as many faces");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log(`  async embedded (f64): ${result.mesh.numberOfFaces} faces`, "line-pass");
+
+    result.faceLabels.delete(); result.mesh.delete(); s1.delete(); s0.delete();
+  });
+
+  test("async: embeddedSelfIntersectionCurves (float64)", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1, 8, 8, { dtype: "float64" });
+    const result = await tf.async.embeddedSelfIntersectionCurves(sphere);
+
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.mesh.numberOfFaces === sphere.numberOfFaces,
+      "no self-intersection → same face count");
+    assert(result.faceLabels.length === result.mesh.numberOfFaces, "faceLabels match");
+    log("  async embeddedSelfIntersection (no SI) (f64)", "line-pass");
+
+    result.faceLabels.delete(); result.mesh.delete(); sphere.delete();
+  });
+
+});
+
+describe("Embedded curves (dtype mismatch)", () => {
+
+  test("embeddedIntersectionCurves dtype mismatch throws", () => {
+    const tf = getTf();
+    const s0 = tf.sphereMesh(1, 8, 8);
+    const s1 = tf.sphereMesh(1, 8, 8, { dtype: "float64" });
+    let threw = false;
+    try { tf.embeddedIntersectionCurves(s0, s1); } catch (e) {
+      if (/dtype mismatch/.test(e.message)) threw = true;
+    }
+    assert(threw, "expected dtype mismatch error");
+    log(`  embeddedIntersectionCurves dtype mismatch throws`, "line-pass");
+    s1.delete(); s0.delete();
+  });
+
+  test("async: embeddedIntersectionCurves dtype mismatch throws", async () => {
+    const tf = getTf();
+    const s0 = tf.sphereMesh(1, 8, 8);
+    const s1 = tf.sphereMesh(1, 8, 8, { dtype: "float64" });
+    let threw = false;
+    try { await tf.async.embeddedIntersectionCurves(s0, s1); } catch (e) {
+      if (/dtype mismatch/.test(e.message)) threw = true;
+    }
+    assert(threw, "expected dtype mismatch error");
+    log(`  async embeddedIntersectionCurves dtype mismatch throws`, "line-pass");
+    s1.delete(); s0.delete();
+  });
+
+});

@@ -21,22 +21,23 @@ namespace ts {
 
 /// @brief WASM-resident triangle mesh handle.
 ///
-/// Thin wrapper holding a std::shared_ptr<mesh_data>. All methods forward
-/// to the inner data. Default copy = shared_ptr copy, so handle copies
-/// share the same underlying data and any lazily built caches (tree,
-/// normals, topology). This is what makes async lambda captures work:
-/// `[m = m, ...]` copies the handle, the worker writes caches into the
-/// shared mesh_data, and the JS-visible original sees them.
+/// Thin wrapper holding a std::shared_ptr<mesh_data<Real>>. All methods
+/// forward to the inner data. Default copy = shared_ptr copy, so handle
+/// copies share the same underlying data and any lazily built caches
+/// (tree, normals, topology). This is what makes async lambda captures
+/// work: `[m = m, ...]` copies the handle, the worker writes caches into
+/// the shared mesh_data, and the JS-visible original sees them.
 ///
 /// shallow_copy() forks the data (new mesh_data, member-wise copy —
 /// internal storage still shared via wasm_ndarray's shared_ptr) and
 /// clears the transformation, so callers can pose the same geometry
 /// independently.
+template <typename Real>
 class wasm_mesh {
-  std::shared_ptr<mesh_data> _data;
+  std::shared_ptr<mesh_data<Real>> _data;
 
 public:
-  wasm_mesh() : _data(std::make_shared<mesh_data>()) {}
+  wasm_mesh() : _data(std::make_shared<mesh_data<Real>>()) {}
   wasm_mesh(const wasm_mesh &) = default;
   wasm_mesh(wasm_mesh &&) = default;
   auto operator=(const wasm_mesh &) -> wasm_mesh & = default;
@@ -44,7 +45,7 @@ public:
 
   // -- Factories --
 
-  static auto create(wasm_ndarray<int> faces, wasm_ndarray<float> points)
+  static auto create(wasm_ndarray<int> faces, wasm_ndarray<Real> points)
       -> wasm_mesh {
     wasm_mesh m;
     m._data->set_faces(std::move(faces));
@@ -52,7 +53,7 @@ public:
     return m;
   }
 
-  static auto from_buffers(tf::buffer<int> &&faces, tf::buffer<float> &&points)
+  static auto from_buffers(tf::buffer<int> &&faces, tf::buffer<Real> &&points)
       -> wasm_mesh {
     wasm_mesh m;
     m._data->assign_faces(std::move(faces));
@@ -60,7 +61,7 @@ public:
     return m;
   }
 
-  static auto from_polygons_buffer(tf::polygons_buffer<int, float, 3, 3> &&poly)
+  static auto from_polygons_buffer(tf::polygons_buffer<int, Real, 3, 3> &&poly)
       -> wasm_mesh {
     return from_buffers(std::move(poly.faces_buffer().data_buffer()),
                         std::move(poly.points_buffer().data_buffer()));
@@ -69,7 +70,7 @@ public:
   // -- Data access --
 
   auto faces() const -> wasm_ndarray<int> { return _data->faces(); }
-  auto points() const -> wasm_ndarray<float> { return _data->points(); }
+  auto points() const -> wasm_ndarray<Real> { return _data->points(); }
 
   auto number_of_faces() const -> int { return _data->number_of_faces(); }
   auto number_of_points() const -> int { return _data->number_of_points(); }
@@ -79,27 +80,27 @@ public:
   auto set_faces(wasm_ndarray<int> faces) -> void {
     _data->set_faces(std::move(faces));
   }
-  auto set_points(wasm_ndarray<float> points) -> void {
+  auto set_points(wasm_ndarray<Real> points) -> void {
     _data->set_points(std::move(points));
   }
 
   // -- Transformation --
 
   auto has_transformation() const -> bool { return _data->has_transformation(); }
-  auto transformation() const -> wasm_ndarray<float> {
+  auto transformation() const -> wasm_ndarray<Real> {
     return _data->transformation();
   }
-  auto transformation_view() const -> tf::transformation_view<float, 3> {
+  auto transformation_view() const -> tf::transformation_view<Real, 3> {
     return _data->transformation_view();
   }
-  auto set_transformation(const wasm_ndarray<float> &t) -> void {
+  auto set_transformation(const wasm_ndarray<Real> &t) -> void {
     _data->set_transformation(t);
   }
   auto clear_transformation() -> void { _data->clear_transformation(); }
 
   // -- Lazy-build accessors (non-const: trigger ensure internally) --
 
-  auto tree() -> const tf::aabb_tree<int, float, 3> & { return _data->tree(); }
+  auto tree() -> const tf::aabb_tree<int, Real, 3> & { return _data->tree(); }
   auto half_edges() -> tf::half_edges<int> & { return _data->half_edges(); }
 
   // Void variant for JS / embind (the const-ref tree() can't cross to JS).
@@ -117,8 +118,8 @@ public:
   auto vertex_link() -> wasm_offset_blocked_buffer<int, int> {
     return _data->vertex_link();
   }
-  auto normals() -> wasm_ndarray<float> { return _data->normals(); }
-  auto point_normals() -> wasm_ndarray<float> { return _data->point_normals(); }
+  auto normals() -> wasm_ndarray<Real> { return _data->normals(); }
+  auto point_normals() -> wasm_ndarray<Real> { return _data->point_normals(); }
 
   // -- Setters (bypass lazy build) --
 
@@ -134,10 +135,10 @@ public:
   auto set_manifold_edge_link(wasm_ndarray<int> mel) -> void {
     _data->set_manifold_edge_link(std::move(mel));
   }
-  auto set_normals(wasm_ndarray<float> n) -> void {
+  auto set_normals(wasm_ndarray<Real> n) -> void {
     _data->set_normals(std::move(n));
   }
-  auto set_point_normals(wasm_ndarray<float> pn) -> void {
+  auto set_point_normals(wasm_ndarray<Real> pn) -> void {
     _data->set_point_normals(std::move(pn));
   }
   auto set_half_edges(tf::half_edges<int> &&he) -> void {

@@ -1,0 +1,302 @@
+/*
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
+#pragma once
+
+#include "trueform/core/algorithm/parallel_for_each.hpp"
+#include "trueform/core/intersects.hpp"
+#include "trueform/core/views/sequence_range.hpp"
+#include "trueform/spatial/intersects.hpp"
+#include "trueform/ts/core/promise.hpp"
+#include "trueform/ts/core/wasm_mesh.hpp"
+#include "trueform/ts/core/wasm_ndarray.hpp"
+#include "trueform/ts/core/wasm_point_cloud.hpp"
+#include "trueform/ts/spatial/prim_dispatch.hpp"
+#include <emscripten/bind.h>
+#include <cstdint>
+
+namespace tf {
+namespace ts {
+
+// ============================================================================
+// PP helpers (prim × prim)
+// ============================================================================
+
+template <typename Real>
+inline auto pp_single(const Real *a, prim_type ta, const Real *b, prim_type tb,
+                      int va, int vb) -> bool {
+  return dispatch_pair(
+      [](const auto &pa, const auto &pb) -> bool {
+        return tf::intersects(pa, pb);
+      },
+      a, ta, b, tb, va, vb);
+}
+
+template <typename Real>
+inline auto pp_batch(wasm_ndarray<Real> &a, prim_type ta, wasm_ndarray<Real> &b,
+                     prim_type tb) -> wasm_ndarray<std::int8_t> {
+  int va = poly_verts(a, ta);
+  int vb = poly_verts(b, tb);
+  int sa = stride_of(a, ta);
+  int sb = stride_of(b, tb);
+  bool ba = is_batch(a, ta);
+  bool bb = is_batch(b, tb);
+  int n = ba ? batch_count(a, ta) : batch_count(b, tb);
+  int stride_a = ba ? sa : 0;
+  int stride_b = bb ? sb : 0;
+
+  const Real *pa = a.raw_data();
+  const Real *pb = b.raw_data();
+
+  tf::buffer<std::int8_t> out;
+  out.allocate(n);
+  std::int8_t *dst = out.data();
+
+  auto compute = [=](int i) {
+    dst[i] = pp_single<Real>(pa + i * stride_a, ta, pb + i * stride_b, tb, va,
+                             vb)
+                 ? 1
+                 : 0;
+  };
+
+  if (n >= 1000)
+    tf::parallel_for_each(tf::make_sequence_range(n), compute);
+  else
+    for (int i = 0; i < n; ++i)
+      compute(i);
+
+  return wasm_ndarray<std::int8_t>::from_buffer(std::move(out), {n});
+}
+
+// ============================================================================
+// FP helpers (form × prim) — templated on FormT
+// ============================================================================
+
+template <typename Real, typename FormT>
+inline auto fp_single(FormT &m, const Real *b, prim_type tb, int vb) -> bool {
+  return m.with_form([&](const auto &form) -> bool {
+    return dispatch_single(
+        [&](const auto &pb) -> bool { return tf::intersects(form, pb); }, b, tb,
+        vb);
+  });
+}
+
+template <typename Real, typename FormT>
+inline auto fp_batch(FormT &m, wasm_ndarray<Real> &b, prim_type tb)
+    -> wasm_ndarray<std::int8_t> {
+  int vb = poly_verts(b, tb);
+  int sb = stride_of(b, tb);
+  int n = batch_count(b, tb);
+  const Real *pb = b.raw_data();
+
+  tf::buffer<std::int8_t> out;
+  out.allocate(n);
+  std::int8_t *dst = out.data();
+
+  m.with_form([&](const auto &form) {
+    auto compute = [&](int i) {
+      dst[i] = dispatch_single(
+                   [&](const auto &prim) -> bool {
+                     return tf::intersects(form, prim);
+                   },
+                   pb + i * sb, tb, vb)
+                   ? 1
+                   : 0;
+    };
+    if (n >= 100)
+      tf::parallel_for_each(tf::make_sequence_range(n), compute);
+    else
+      for (int i = 0; i < n; ++i)
+        compute(i);
+  });
+
+  return wasm_ndarray<std::int8_t>::from_buffer(std::move(out), {n});
+}
+
+// ============================================================================
+// FF helper (form × form) — templated on F0, F1
+// ============================================================================
+
+template <typename F0, typename F1>
+inline auto ff_compute(F0 &m0, F1 &m1) -> bool {
+  return m0.with_form([&](const auto &form0) -> bool {
+    return m1.with_form([&](const auto &form1) -> bool {
+      return tf::intersects(form0, form1);
+    });
+  });
+}
+
+// ============================================================================
+// Sync FP dispatch — template on Real and FormT
+// ============================================================================
+
+template <typename Real, typename FormT>
+inline auto sync_fp(FormT &m, wasm_ndarray<Real> &b, int tb_int)
+    -> emscripten::val {
+  auto tb = static_cast<prim_type>(tb_int);
+  if (!is_batch(b, tb))
+    return emscripten::val(
+        fp_single<Real>(m, b.raw_data(), tb, poly_verts(b, tb)));
+  return emscripten::val(fp_batch<Real>(m, b, tb));
+}
+
+// ============================================================================
+// Sync entry points
+// ============================================================================
+
+template <typename Real>
+inline auto sync_intersects_pp(wasm_ndarray<Real> &a, int ta_int,
+                               wasm_ndarray<Real> &b, int tb_int)
+    -> emscripten::val {
+  auto ta = static_cast<prim_type>(ta_int);
+  auto tb = static_cast<prim_type>(tb_int);
+  if (!is_batch(a, ta) && !is_batch(b, tb))
+    return emscripten::val(pp_single<Real>(a.raw_data(), ta, b.raw_data(), tb,
+                                           poly_verts(a, ta),
+                                           poly_verts(b, tb)));
+  return emscripten::val(pp_batch<Real>(a, ta, b, tb));
+}
+
+template <typename Real>
+inline auto sync_intersects_fp(wasm_mesh<Real> &m, wasm_ndarray<Real> &b,
+                               int tb) -> emscripten::val {
+  return sync_fp<Real>(m, b, tb);
+}
+
+template <typename Real>
+inline auto sync_intersects_fp_pc(wasm_point_cloud<Real> &m,
+                                  wasm_ndarray<Real> &b, int tb)
+    -> emscripten::val {
+  return sync_fp<Real>(m, b, tb);
+}
+
+template <typename Real>
+inline auto sync_intersects_ff(wasm_mesh<Real> &m0, wasm_mesh<Real> &m1)
+    -> bool {
+  return ff_compute(m0, m1);
+}
+
+template <typename Real>
+inline auto sync_intersects_ff_mp(wasm_mesh<Real> &m0,
+                                  wasm_point_cloud<Real> &m1) -> bool {
+  return ff_compute(m0, m1);
+}
+
+template <typename Real>
+inline auto sync_intersects_ff_pm(wasm_point_cloud<Real> &m0,
+                                  wasm_mesh<Real> &m1) -> bool {
+  return ff_compute(m0, m1);
+}
+
+template <typename Real>
+inline auto sync_intersects_ff_pc(wasm_point_cloud<Real> &m0,
+                                  wasm_point_cloud<Real> &m1) -> bool {
+  return ff_compute(m0, m1);
+}
+
+// ============================================================================
+// Async FP dispatch — template on Real and FormT
+// ============================================================================
+
+template <typename Real, typename FormT>
+inline auto async_fp(FormT &m, wasm_ndarray<Real> &b, int tb_int)
+    -> promise_t {
+  auto tb = static_cast<prim_type>(tb_int);
+
+  if (!is_batch(b, tb)) {
+    int vb = poly_verts(b, tb);
+    return promise([m = m, b = b, tb, vb]() -> bool {
+      return fp_single<Real>(const_cast<FormT &>(m),
+                             const_cast<wasm_ndarray<Real> &>(b).raw_data(),
+                             tb, vb);
+    });
+  }
+
+  return promise([m = m, b = b, tb]() -> wasm_ndarray<std::int8_t> {
+    return fp_batch<Real>(const_cast<FormT &>(m),
+                          const_cast<wasm_ndarray<Real> &>(b), tb);
+  });
+}
+
+// ============================================================================
+// Async entry points
+// ============================================================================
+
+template <typename Real>
+inline auto async_intersects_pp(wasm_ndarray<Real> &a, int ta_int,
+                                wasm_ndarray<Real> &b, int tb_int)
+    -> promise_t {
+  auto ta = static_cast<prim_type>(ta_int);
+  auto tb = static_cast<prim_type>(tb_int);
+
+  if (!is_batch(a, ta) && !is_batch(b, tb)) {
+    int va = poly_verts(a, ta);
+    int vb = poly_verts(b, tb);
+    return promise([a = a, b = b, ta, tb, va, vb]() -> bool {
+      return pp_single<Real>(
+          const_cast<wasm_ndarray<Real> &>(a).raw_data(), ta,
+          const_cast<wasm_ndarray<Real> &>(b).raw_data(), tb, va, vb);
+    });
+  }
+
+  return promise([a = a, b = b, ta, tb]() -> wasm_ndarray<std::int8_t> {
+    return pp_batch<Real>(const_cast<wasm_ndarray<Real> &>(a), ta,
+                          const_cast<wasm_ndarray<Real> &>(b), tb);
+  });
+}
+
+template <typename Real>
+inline auto async_intersects_fp(wasm_mesh<Real> &m, wasm_ndarray<Real> &b,
+                                int tb) -> promise_t {
+  return async_fp<Real>(m, b, tb);
+}
+
+template <typename Real>
+inline auto async_intersects_fp_pc(wasm_point_cloud<Real> &m,
+                                   wasm_ndarray<Real> &b, int tb)
+    -> promise_t {
+  return async_fp<Real>(m, b, tb);
+}
+
+template <typename F0, typename F1>
+inline auto async_ff(F0 &m0, F1 &m1) -> promise_t {
+  return promise([a = m0, b = m1]() -> bool {
+    return ff_compute(const_cast<F0 &>(a), const_cast<F1 &>(b));
+  });
+}
+
+template <typename Real>
+inline auto async_intersects_ff(wasm_mesh<Real> &m0, wasm_mesh<Real> &m1)
+    -> promise_t {
+  return async_ff(m0, m1);
+}
+
+template <typename Real>
+inline auto async_intersects_ff_mp(wasm_mesh<Real> &m0,
+                                   wasm_point_cloud<Real> &m1) -> promise_t {
+  return async_ff(m0, m1);
+}
+
+template <typename Real>
+inline auto async_intersects_ff_pm(wasm_point_cloud<Real> &m0,
+                                   wasm_mesh<Real> &m1) -> promise_t {
+  return async_ff(m0, m1);
+}
+
+template <typename Real>
+inline auto async_intersects_ff_pc(wasm_point_cloud<Real> &m0,
+                                   wasm_point_cloud<Real> &m1) -> promise_t {
+  return async_ff(m0, m1);
+}
+
+} // namespace ts
+} // namespace tf

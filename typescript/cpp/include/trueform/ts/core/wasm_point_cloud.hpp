@@ -21,18 +21,20 @@ namespace ts {
 
 /// @brief WASM-resident point cloud handle.
 ///
-/// Thin wrapper holding a std::shared_ptr<point_cloud_data>. All methods
-/// forward to the inner data. Default copy = shared_ptr copy, so handle
-/// copies share the same underlying data and any lazily built caches.
+/// Thin wrapper holding a std::shared_ptr<point_cloud_data<Real>>. All
+/// methods forward to the inner data. Default copy = shared_ptr copy, so
+/// handle copies share the same underlying data and any lazily built
+/// caches.
 ///
 /// shallow_copy() forks the data (new point_cloud_data, member-wise
 /// copied — internal storage still shared via shared_ptr) and clears the
 /// transformation, so callers can pose the same geometry independently.
+template <typename Real>
 class wasm_point_cloud {
-  std::shared_ptr<point_cloud_data> _data;
+  std::shared_ptr<point_cloud_data<Real>> _data;
 
 public:
-  wasm_point_cloud() : _data(std::make_shared<point_cloud_data>()) {}
+  wasm_point_cloud() : _data(std::make_shared<point_cloud_data<Real>>()) {}
   wasm_point_cloud(const wasm_point_cloud &) = default;
   wasm_point_cloud(wasm_point_cloud &&) = default;
   auto operator=(const wasm_point_cloud &) -> wasm_point_cloud & = default;
@@ -40,7 +42,7 @@ public:
 
   // -- Factory --
 
-  static auto create(wasm_ndarray<float> points) -> wasm_point_cloud {
+  static auto create(wasm_ndarray<Real> points) -> wasm_point_cloud {
     wasm_point_cloud pc;
     pc._data->set_points(std::move(points));
     return pc;
@@ -48,17 +50,19 @@ public:
 
   // -- Data access --
 
-  auto points() const -> wasm_ndarray<float> { return _data->points(); }
+  auto points() const -> wasm_ndarray<Real> { return _data->points(); }
 
   auto number_of_points() const -> int { return _data->number_of_points(); }
 
-  auto set_points(wasm_ndarray<float> points) -> void {
+  auto set_points(wasm_ndarray<Real> points) -> void {
     _data->set_points(std::move(points));
   }
 
   // -- Spatial tree (lazy build, cached) --
 
-  auto tree() -> const tf::aabb_tree<int, float, 3> & { return _data->tree(); }
+  auto tree() -> const tf::aabb_tree<int, Real, 3> & {
+    return _data->tree();
+  }
 
   // Void variant for JS / embind (the const-ref tree() can't cross to JS).
   auto build_tree() -> void { (void)_data->tree(); }
@@ -79,11 +83,11 @@ public:
 
   // -- Normals (settable only) --
 
-  auto normals() const -> wasm_ndarray<float> { return _data->normals(); }
+  auto normals() const -> wasm_ndarray<Real> { return _data->normals(); }
 
   auto has_normals() const -> bool { return _data->has_normals(); }
 
-  auto set_normals(wasm_ndarray<float> n) -> void {
+  auto set_normals(wasm_ndarray<Real> n) -> void {
     _data->set_normals(std::move(n));
   }
 
@@ -93,15 +97,15 @@ public:
     return _data->has_transformation();
   }
 
-  auto transformation() const -> wasm_ndarray<float> {
+  auto transformation() const -> wasm_ndarray<Real> {
     return _data->transformation();
   }
 
-  auto transformation_view() const -> tf::transformation_view<float, 3> {
+  auto transformation_view() const -> tf::transformation_view<Real, 3> {
     return _data->transformation_view();
   }
 
-  auto set_transformation(const wasm_ndarray<float> &t) -> void {
+  auto set_transformation(const wasm_ndarray<Real> &t) -> void {
     _data->set_transformation(t);
   }
 

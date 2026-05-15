@@ -19,7 +19,7 @@ namespace tf {
 namespace ts {
 
 struct cleaned_mesh_result {
-  wasm_mesh mesh;
+  wasm_mesh<float> mesh;
   wasm_index_map face_map;
   wasm_index_map point_map;
 };

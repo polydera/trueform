@@ -50,14 +50,11 @@ auto split_into_components_impl(
   };
   std::vector<decltype(make_pair(0))> cs;
   cs.reserve(components.size());
-  int *ls = new int[c_labels.size()];
-  for (std::size_t i = 0; i < components.size(); ++i) {
+  for (std::size_t i = 0; i < components.size(); ++i)
     cs.push_back(make_pair(i));
-    ls[i] = c_labels[i];
-  }
 
   return nanobind::make_tuple(std::move(cs),
-                              make_numpy_array(ls, {c_labels.size()}));
+                              make_numpy_array(std::move(c_labels)));
 }
 
 // =============================================================================
@@ -97,14 +94,11 @@ auto split_into_components_impl_dynamic(
 
   std::vector<decltype(make_pair(0))> cs;
   cs.reserve(components.size());
-  int *ls = new int[c_labels.size()];
-  for (std::size_t i = 0; i < components.size(); ++i) {
+  for (std::size_t i = 0; i < components.size(); ++i)
     cs.push_back(make_pair(i));
-    ls[i] = c_labels[i];
-  }
 
   return nanobind::make_tuple(std::move(cs),
-                              make_numpy_array(ls, {c_labels.size()}));
+                              make_numpy_array(std::move(c_labels)));
 }
 
 } // namespace tf::py

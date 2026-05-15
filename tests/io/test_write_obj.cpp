@@ -271,3 +271,34 @@ TEST_CASE("write_obj_to_buffer produces valid data", "[io][write_obj]") {
     REQUIRE(content.find("v ") != std::string::npos);
     REQUIRE(content.find("f ") != std::string::npos);
 }
+
+// =============================================================================
+// Double-precision (float64) round-trip
+// =============================================================================
+
+TEST_CASE("write_obj + read_obj double-precision round-trip", "[io][write_obj][float64]") {
+    // Coordinates that cannot be represented exactly as float32.
+    tf::polygons_buffer<int, double, 3, 3> mesh;
+    mesh.points_buffer().push_back({1.0000000000000002, 0.0, 0.0});
+    mesh.points_buffer().push_back({0.0, 2.0000000000000004, 0.0});
+    mesh.points_buffer().push_back({0.0, 0.0, 3.0000000000000007});
+    mesh.faces_buffer().push_back({0, 1, 2});
+
+    auto path = temp_obj_path();
+    TempFileCleanup cleanup{path};
+    REQUIRE(tf::write_obj(mesh.polygons(), path.string()));
+
+    auto mesh_read = tf::read_obj<int, 3, double>(path.string());
+    REQUIRE(mesh_read.points().size() == 3);
+
+    auto p0 = mesh_read.points().front();
+    REQUIRE(p0[0] == 1.0000000000000002);
+    REQUIRE(p0[1] == 0.0);
+    REQUIRE(p0[2] == 0.0);
+
+    auto p1 = mesh_read.points()[1];
+    REQUIRE(p1[1] == 2.0000000000000004);
+
+    auto p2 = mesh_read.points()[2];
+    REQUIRE(p2[2] == 3.0000000000000007);
+}

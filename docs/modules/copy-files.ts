@@ -40,15 +40,6 @@ export default defineNuxtModule({
         await copyFile(file, destPath);
       }
 
-      // Copy trueform SDK
-      const tfDistDir = "../typescript/dist";
-      const tfFiles = ["index.js", "index.js.map", "index.d.ts", "index.d.ts.map", "trueform_wasm.js", "trueform_wasm.wasm"];
-      await mkdir("app/examples/trueform", { recursive: true });
-      for (const f of tfFiles) {
-        await copyFile(join(tfDistDir, f), join("app/examples/trueform", f));
-      }
-      await copyFile(join(tfDistDir, "trueform_wasm.wasm"), "public/trueform_wasm.wasm");
-
       // Copy STL meshes from benchmarks (excluding 750k, 1M - too large for Nuxt)
       const stlFiles = [
         "dragon-50k.stl",

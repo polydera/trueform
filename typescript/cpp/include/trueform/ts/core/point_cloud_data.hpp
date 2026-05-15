@@ -34,17 +34,18 @@ namespace ts {
 /// async lambda captures).
 ///
 /// ensure_tree() is private; access via the tree() accessor.
+template <typename Real>
 class point_cloud_data {
-  wasm_ndarray<float> _points;         // [V, 3]
-  wasm_ndarray<float> _transformation; // [4, 4] — empty when no transform
+  wasm_ndarray<Real> _points;         // [V, 3]
+  wasm_ndarray<Real> _transformation; // [4, 4] — empty when no transform
 
   // Spatial tree cache
-  std::shared_ptr<tf::aabb_tree<int, float, 3>> _tree;
+  std::shared_ptr<tf::aabb_tree<int, Real, 3>> _tree;
   uint32_t _tree_gen = 0;
 
   // Settable structures (no auto-compute)
   wasm_offset_blocked_buffer<int, int> _vl;
-  wasm_ndarray<float> _normals; // [V, 3]
+  wasm_ndarray<Real> _normals; // [V, 3]
 
   // Generation counter
   uint32_t _points_gen = 1; // starts at 1 so tree is initially stale
@@ -54,7 +55,7 @@ public:
 
   // -- Data access --
 
-  auto points() const -> wasm_ndarray<float> { return _points; }
+  auto points() const -> wasm_ndarray<Real> { return _points; }
 
   auto number_of_points() const -> int {
     return _points.is_valid() ? _points.raw_shape()[0] : 0;
@@ -62,14 +63,14 @@ public:
 
   // -- Data mutation --
 
-  auto set_points(wasm_ndarray<float> points) -> void {
+  auto set_points(wasm_ndarray<Real> points) -> void {
     _points = std::move(points);
     ++_points_gen;
   }
 
   // -- Spatial tree (lazy build, cached) --
 
-  auto tree() -> const tf::aabb_tree<int, float, 3> & {
+  auto tree() -> const tf::aabb_tree<int, Real, 3> & {
     ensure_tree();
     return *_tree;
   }
@@ -92,11 +93,11 @@ public:
 
   // -- Normals (settable only) --
 
-  auto normals() const -> wasm_ndarray<float> { return _normals; }
+  auto normals() const -> wasm_ndarray<Real> { return _normals; }
 
   auto has_normals() const -> bool { return _normals.is_valid(); }
 
-  auto set_normals(wasm_ndarray<float> n) -> void { _normals = std::move(n); }
+  auto set_normals(wasm_ndarray<Real> n) -> void { _normals = std::move(n); }
 
   // -- Transformation --
 
@@ -104,16 +105,16 @@ public:
     return _transformation.is_valid();
   }
 
-  auto transformation() const -> wasm_ndarray<float> {
+  auto transformation() const -> wasm_ndarray<Real> {
     return _transformation;
   }
 
-  auto transformation_view() const -> tf::transformation_view<float, 3> {
+  auto transformation_view() const -> tf::transformation_view<Real, 3> {
     return tf::make_transformation_view<3>(
-        const_cast<float *>(_transformation.raw_data()));
+        const_cast<Real *>(_transformation.raw_data()));
   }
 
-  auto set_transformation(const wasm_ndarray<float> &t) -> void {
+  auto set_transformation(const wasm_ndarray<Real> &t) -> void {
     _transformation = t;
   }
   auto clear_transformation() -> void { _transformation.destroy(); }
@@ -161,7 +162,7 @@ private:
   auto ensure_tree() -> void {
     if (_tree && _tree_gen == _points_gen)
       return;
-    _tree = std::make_shared<tf::aabb_tree<int, float, 3>>(
+    _tree = std::make_shared<tf::aabb_tree<int, Real, 3>>(
         points_range(), tf::config_tree(4, 4));
     _tree_gen = _points_gen;
   }

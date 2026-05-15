@@ -15,6 +15,7 @@ import { native } from "../native";
 import { Mesh } from "../form/Mesh";
 import { IndexMap } from "../core/IndexMap";
 import { Primitive, type Triangle, type Point } from "../primitive";
+import type { FloatDtype } from "../ndarray/dtype";
 
 export interface CleanedMeshResult {
   mesh: Mesh;
@@ -57,32 +58,39 @@ export function cleaned(
 
   // Triangle soup → Mesh
   if (input instanceof Primitive && input.type === "triangle") {
-    return new Mesh(native().cleaned_polygon_soup(input._handle, tol));
+    const dt = input.dtype as FloatDtype;
+    return new Mesh(
+      native()[`cleaned_polygon_soup_${dt}`](input._handle, tol),
+      dt,
+    );
   }
 
   // Mesh → Mesh (optionally with index maps)
   if (input instanceof Mesh) {
+    const dt = input.dtype as FloatDtype;
     if (wantMaps) {
-      const raw = native().cleaned_mesh_with_maps(input._handle, tol);
+      const raw = native()[`cleaned_mesh_with_maps_${dt}`](input._handle, tol);
       return {
-        mesh: new Mesh(raw.mesh),
+        mesh: new Mesh(raw.mesh, dt),
         faceMap: new IndexMap(raw.faceMap),
         pointMap: new IndexMap(raw.pointMap),
       };
     }
-    return new Mesh(native().cleaned_mesh(input._handle, tol));
+    return new Mesh(native()[`cleaned_mesh_${dt}`](input._handle, tol), dt);
   }
 
   // Point batch → Point (optionally with index map)
+  const dt = input.dtype as FloatDtype;
   if (wantMaps) {
-    const raw = native().cleaned_points_with_map(input._handle, tol);
+    const raw = native()[`cleaned_points_with_map_${dt}`](input._handle, tol);
     return {
-      points: new Primitive(raw.points, "point") as Point,
+      points: new Primitive(raw.points, "point", dt) as Point,
       pointMap: new IndexMap(raw.pointMap),
     };
   }
   return new Primitive(
-    native().cleaned_points(input._handle, tol),
+    native()[`cleaned_points_${dt}`](input._handle, tol),
     "point",
+    dt,
   ) as Point;
 }

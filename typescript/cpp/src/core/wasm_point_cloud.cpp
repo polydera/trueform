@@ -13,28 +13,41 @@
 
 #include "trueform/ts/core/wasm_point_cloud.hpp"
 #include <emscripten/bind.h>
+#include <string>
+
+namespace {
+
+template <typename Real>
+auto register_wasm_point_cloud_bindings(const std::string &class_name) -> void {
+  using pc_t = tf::ts::wasm_point_cloud<Real>;
+  emscripten::class_<pc_t>(class_name.c_str())
+      .template constructor<>()
+      .class_function("create", &pc_t::create)
+      .function("points", &pc_t::points)
+      .function("number_of_points", &pc_t::number_of_points)
+      .function("set_points", &pc_t::set_points)
+      .function("vertex_link", &pc_t::vertex_link)
+      .function("has_vertex_link", &pc_t::has_vertex_link)
+      .function("set_vertex_link", &pc_t::set_vertex_link)
+      .function("normals", &pc_t::normals)
+      .function("has_normals", &pc_t::has_normals)
+      .function("set_normals", &pc_t::set_normals)
+      .function("shallow_copy", &pc_t::shallow_copy)
+      .function("has_transformation", &pc_t::has_transformation)
+      .function("transformation", &pc_t::transformation)
+      .function("set_transformation", &pc_t::set_transformation)
+      .function("clear_transformation", &pc_t::clear_transformation)
+      .function("build_tree", &pc_t::build_tree)
+      .function("destroy", &pc_t::destroy)
+      .function("is_valid", &pc_t::is_valid)
+      // -- Cache state inspectors (diagnostic) --
+      .function("is_tree_built", &pc_t::is_tree_built)
+      .function("is_tree_fresh", &pc_t::is_tree_fresh);
+}
+
+} // namespace
 
 EMSCRIPTEN_BINDINGS(trueform_point_cloud) {
-  emscripten::class_<tf::ts::wasm_point_cloud>("NativePointCloud")
-      .class_function("create", &tf::ts::wasm_point_cloud::create)
-      .function("points", &tf::ts::wasm_point_cloud::points)
-      .function("number_of_points", &tf::ts::wasm_point_cloud::number_of_points)
-      .function("set_points", &tf::ts::wasm_point_cloud::set_points)
-      .function("vertex_link", &tf::ts::wasm_point_cloud::vertex_link)
-      .function("has_vertex_link", &tf::ts::wasm_point_cloud::has_vertex_link)
-      .function("set_vertex_link", &tf::ts::wasm_point_cloud::set_vertex_link)
-      .function("normals", &tf::ts::wasm_point_cloud::normals)
-      .function("has_normals", &tf::ts::wasm_point_cloud::has_normals)
-      .function("set_normals", &tf::ts::wasm_point_cloud::set_normals)
-      .function("shallow_copy", &tf::ts::wasm_point_cloud::shallow_copy)
-      .function("has_transformation", &tf::ts::wasm_point_cloud::has_transformation)
-      .function("transformation", &tf::ts::wasm_point_cloud::transformation)
-      .function("set_transformation", &tf::ts::wasm_point_cloud::set_transformation)
-      .function("clear_transformation", &tf::ts::wasm_point_cloud::clear_transformation)
-      .function("build_tree", &tf::ts::wasm_point_cloud::build_tree)
-      .function("destroy", &tf::ts::wasm_point_cloud::destroy)
-      .function("is_valid", &tf::ts::wasm_point_cloud::is_valid)
-      // -- Cache state inspectors (diagnostic) --
-      .function("is_tree_built", &tf::ts::wasm_point_cloud::is_tree_built)
-      .function("is_tree_fresh", &tf::ts::wasm_point_cloud::is_tree_fresh);
+  register_wasm_point_cloud_bindings<float>("NativeFloat32PointCloud");
+  register_wasm_point_cloud_bindings<double>("NativeFloat64PointCloud");
 }

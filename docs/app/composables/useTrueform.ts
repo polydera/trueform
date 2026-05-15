@@ -5,7 +5,7 @@ export function useTrueform() {
   const load = async () => {
     if (_tf) return _tf;
     if (!_promise) {
-      _promise = import("@/examples/trueform/index.js");
+      _promise = import("@polydera/trueform");
     }
     try {
       _tf = await _promise;

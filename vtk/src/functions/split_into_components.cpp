@@ -21,7 +21,7 @@
 namespace tf::vtk {
 
 auto split_into_components(vtkPolyData *input, const char *array_name)
-    -> std::pair<std::vector<vtkSmartPointer<polydata>>, std::vector<vtkIdType>> {
+    -> std::pair<std::vector<vtkSmartPointer<polydata>>, tf::buffer<vtkIdType>> {
   if (!input) {
     return {};
   }
@@ -52,7 +52,7 @@ auto split_into_components(vtkPolyData *input, const char *array_name)
 }
 
 auto split_into_components(vtkPolyData *input)
-    -> std::pair<std::vector<vtkSmartPointer<polydata>>, std::vector<vtkIdType>> {
+    -> std::pair<std::vector<vtkSmartPointer<polydata>>, tf::buffer<vtkIdType>> {
   if (!input || !input->GetCellData()->GetScalars()) {
     return {};
   }

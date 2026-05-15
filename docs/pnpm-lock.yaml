@@ -45,6 +45,9 @@ importers:
       '@nuxtjs/sitemap':
         specifier: ^8.0.14
         version: 8.0.14(@nuxt/schema@4.4.4)(magicast@0.5.2)(nuxt@4.4.4(@babel/core@7.29.0)(@babel/plugin-syntax-jsx@7.28.6(@babel/core@7.29.0))(@parcel/watcher@2.5.6)(@types/node@25.6.0)(@vue/compiler-sfc@3.5.33)(better-sqlite3@12.9.0)(cac@6.7.14)(db0@0.3.4(better-sqlite3@12.9.0))(eslint@10.2.1(jiti@2.6.1))(ioredis@5.10.1)(lightningcss@1.32.0)(magicast@0.5.2)(optionator@0.9.4)(rollup-plugin-visualizer@7.0.1(rollup@4.60.2))(rollup@4.60.2)(srvx@0.11.15)(terser@5.46.2)(typescript@6.0.3)(vite@7.3.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(yaml@2.8.3))(vue-tsc@3.2.7(typescript@6.0.3))(yaml@2.8.3))(vite@7.3.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(yaml@2.8.3))(vue@3.5.33(typescript@6.0.3))(zod@3.25.76)
+      '@polydera/trueform':
+        specifier: ^0.8.9
+        version: 0.8.9
       '@takumi-rs/core':
         specifier: ^1.1.2
         version: 1.1.2(react@19.2.5)
@@ -2047,6 +2050,10 @@ packages:
 
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
+
+  '@polydera/trueform@0.8.9':
+    resolution: {integrity: sha512-LBDDDRfzP1HW9blsht/zDPV8pea9oe9pvi80xNA637V+Xcscy8+CWAsMLuTBQzNEpiPP/q+3jIi6tl6hQZlnVg==}
+    engines: {node: '>=18'}
 
   '@poppinss/colors@4.1.6':
     resolution: {integrity: sha512-H9xkIdFswbS8n1d6vmRd8+c10t2Qe+rZITbbDHHkQixH5+2x1FDGmi/0K+WgWiqQFKPSlIYB7jlH6Kpfn6Fleg==}
@@ -9496,6 +9503,8 @@ snapshots:
     optional: true
 
   '@polka/url@1.0.0-next.29': {}
+
+  '@polydera/trueform@0.8.9': {}
 
   '@poppinss/colors@4.1.6':
     dependencies:

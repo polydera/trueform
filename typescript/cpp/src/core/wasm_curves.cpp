@@ -13,13 +13,26 @@
 
 #include "trueform/ts/core/wasm_curves.hpp"
 #include <emscripten/bind.h>
+#include <string>
+
+namespace {
+
+template <typename Real>
+auto register_wasm_curves_bindings(const std::string &class_name) -> void {
+  using curves_t = tf::ts::wasm_curves<Real>;
+  emscripten::class_<curves_t>(class_name.c_str())
+      .template constructor<>()
+      .class_function("create", &curves_t::create)
+      .function("paths", &curves_t::paths)
+      .function("points", &curves_t::points)
+      .function("size", &curves_t::size)
+      .function("destroy", &curves_t::destroy)
+      .function("is_valid", &curves_t::is_valid);
+}
+
+} // namespace
 
 EMSCRIPTEN_BINDINGS(trueform_curves) {
-  emscripten::class_<tf::ts::wasm_curves>("NativeCurves")
-      .class_function("create", &tf::ts::wasm_curves::create)
-      .function("paths", &tf::ts::wasm_curves::paths)
-      .function("points", &tf::ts::wasm_curves::points)
-      .function("size", &tf::ts::wasm_curves::size)
-      .function("destroy", &tf::ts::wasm_curves::destroy)
-      .function("is_valid", &tf::ts::wasm_curves::is_valid);
+  register_wasm_curves_bindings<float>("NativeFloat32Curves");
+  register_wasm_curves_bindings<double>("NativeFloat64Curves");
 }

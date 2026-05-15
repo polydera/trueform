@@ -15,6 +15,7 @@ import { native, dispatcher } from "../native";
 import { Mesh } from "../form/Mesh";
 import { IndexMap } from "../core/IndexMap";
 import { Primitive, type Triangle, type Point } from "../primitive";
+import type { FloatDtype } from "../ndarray/dtype";
 import type { CleanedMeshResult, CleanedPointsResult } from "./sync";
 
 /** Clean a polygon soup (batch) into an indexed Mesh, off the main thread. */
@@ -56,42 +57,47 @@ export async function cleaned(
 
   // Triangle soup → Mesh
   if (input instanceof Primitive && input.type === "triangle") {
+    const dt = input.dtype as FloatDtype;
     return dispatcher().run(
-      () => native().dispatch_cleaned_polygon_soup(input._handle, tol),
-      (raw) => new Mesh(raw),
+      () => native()[`dispatch_cleaned_polygon_soup_${dt}`](input._handle, tol),
+      (raw) => new Mesh(raw, dt),
     );
   }
 
   // Mesh → Mesh (optionally with index maps)
   if (input instanceof Mesh) {
+    const dt = input.dtype as FloatDtype;
     if (wantMaps) {
       return dispatcher().run(
-        () => native().dispatch_cleaned_mesh_with_maps(input._handle, tol),
+        () =>
+          native()[`dispatch_cleaned_mesh_with_maps_${dt}`](input._handle, tol),
         (raw) => ({
-          mesh: new Mesh(raw.mesh),
+          mesh: new Mesh(raw.mesh, dt),
           faceMap: new IndexMap(raw.faceMap),
           pointMap: new IndexMap(raw.pointMap),
         }),
       );
     }
     return dispatcher().run(
-      () => native().dispatch_cleaned_mesh(input._handle, tol),
-      (raw) => new Mesh(raw),
+      () => native()[`dispatch_cleaned_mesh_${dt}`](input._handle, tol),
+      (raw) => new Mesh(raw, dt),
     );
   }
 
   // Point batch → Point (optionally with index map)
+  const dt = input.dtype as FloatDtype;
   if (wantMaps) {
     return dispatcher().run(
-      () => native().dispatch_cleaned_points_with_map(input._handle, tol),
+      () =>
+        native()[`dispatch_cleaned_points_with_map_${dt}`](input._handle, tol),
       (raw) => ({
-        points: new Primitive(raw.points, "point") as Point,
+        points: new Primitive(raw.points, "point", dt) as Point,
         pointMap: new IndexMap(raw.pointMap),
       }),
     );
   }
   return dispatcher().run(
-    () => native().dispatch_cleaned_points(input._handle, tol),
-    (raw) => new Primitive(raw, "point") as Point,
+    () => native()[`dispatch_cleaned_points_${dt}`](input._handle, tol),
+    (raw) => new Primitive(raw, "point", dt) as Point,
   );
 }

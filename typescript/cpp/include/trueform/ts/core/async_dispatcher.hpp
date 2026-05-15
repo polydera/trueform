@@ -50,53 +50,46 @@ struct async_context {
 ///   1. `dispatch_*(args)` — allocates context, queues TBB work, returns slot
 ///   2. `retrieve(slot)` — returns result as emscripten::val, frees context
 class async_dispatcher {
-  tbb::concurrent_hash_map<uintptr_t, std::unique_ptr<async_context>> _tasks;
+  // shared (not unique) so the worker lambda co-owns the context: retrieve
+  // can erase between the worker's atomic_store and atomic_notify without
+  // freeing memory the worker still touches.
+  tbb::concurrent_hash_map<uintptr_t, std::shared_ptr<async_context>> _tasks;
   tbb::task_group _group;
 
 public:
-  /// Allocates an async_context, dispatches `fn` to TBB, returns the address
-  /// of the status field (for JS `Atomics.waitAsync`).
-  ///
-  /// The return type of `fn` is deduced at compile time. A converter is stored
-  /// in the context that knows how to cast `std::any` → `emscripten::val`
-  /// for that specific type.
   template <typename F> auto dispatch(F &&fn) -> uintptr_t {
     using R = std::invoke_result_t<std::decay_t<F>>;
 
-    auto ctx = std::make_unique<async_context>();
+    auto ctx = std::make_shared<async_context>();
     ctx->converter = [](std::any &&r) -> emscripten::val {
       return emscripten::val(std::any_cast<R>(std::move(r)));
     };
 
-    auto *raw = ctx.get();
-    auto ptr = reinterpret_cast<uintptr_t>(&raw->status);
+    auto ptr = reinterpret_cast<uintptr_t>(&ctx->status);
 
     typename decltype(_tasks)::accessor acc;
     _tasks.insert(acc, ptr);
-    acc->second = std::move(ctx);
+    acc->second = ctx;
     acc.release();
 
-    _group.run([raw, f = std::forward<F>(fn)]() {
+    _group.run([ctx, f = std::forward<F>(fn)]() {
       try {
-        raw->result = f();
-        __atomic_store_n(&raw->status, 1, __ATOMIC_RELEASE);
+        ctx->result = f();
+        __atomic_store_n(&ctx->status, 1, __ATOMIC_RELEASE);
       } catch (...) {
-        __atomic_store_n(&raw->status, -1, __ATOMIC_RELEASE);
+        __atomic_store_n(&ctx->status, -1, __ATOMIC_RELEASE);
       }
-      __builtin_wasm_memory_atomic_notify(&raw->status, 1);
+      __builtin_wasm_memory_atomic_notify(&ctx->status, 1);
     });
 
     return ptr;
   }
 
-  /// Returns the result as `emscripten::val` and frees the context.
-  /// Only call after status == 1 (JS side checks via Atomics.load).
-  /// Uses the stored converter — no per-type retrieve functions needed.
   auto retrieve(uintptr_t ptr) -> emscripten::val {
     typename decltype(_tasks)::accessor acc;
     _tasks.find(acc, ptr);
     auto val = acc->second->converter(std::move(acc->second->result));
-    _tasks.erase(acc); // unique_ptr deletes context
+    _tasks.erase(acc);
     return val;
   }
 

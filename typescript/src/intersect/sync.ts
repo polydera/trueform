@@ -12,9 +12,11 @@
  */
 
 import { native } from "../native";
+import { assertSameDtype } from "../internal/dtype";
 import { Mesh } from "../form/Mesh";
 import { Curves } from "../form/Curves";
-import { NDArrayFloat32 } from "../ndarray/NDArray";
+import { NDArrayFloat32, NDArrayFloat64 } from "../ndarray/NDArray";
+import type { FloatDtype } from "../ndarray/dtype";
 
 /** Options for controlling intersection computation. */
 export interface IntersectOpts {
@@ -58,16 +60,29 @@ export function intersectionCurves(
   opts?: IntersectOpts,
 ): Curves {
   if (Array.isArray(m0OrMeshes)) {
+    if (m0OrMeshes.length === 0) {
+      throw new Error("intersectionCurves: empty mesh array");
+    }
+    assertSameDtype(
+      m0OrMeshes,
+      m0OrMeshes.map((_, i) => `meshes[${i}]`),
+    );
+    const dt = m0OrMeshes[0].dtype as FloatDtype;
     const o = m1OrOpts as IntersectOpts | undefined;
     const rc = o?.resolveCrossings ?? (m0OrMeshes.length > 2);
     const mode = buildMode(o, "sos", rc, false);
     const handles = m0OrMeshes.map(m => m._handle);
-    return new Curves(native().intersection_curves_list(handles, mode));
+    return new Curves(
+      native()[`intersection_curves_list_${dt}`](handles, mode), dt,
+    );
   }
   const m1 = m1OrOpts as Mesh;
+  assertSameDtype([m0OrMeshes, m1], ["mesh0", "mesh1"]);
+  const dt = m0OrMeshes.dtype as FloatDtype;
   const mode = buildMode(opts, "sos", false, false);
   return new Curves(
-    native().intersection_curves(m0OrMeshes._handle, m1._handle, mode),
+    native()[`intersection_curves_${dt}`](m0OrMeshes._handle, m1._handle, mode),
+    dt,
   );
 }
 
@@ -75,22 +90,30 @@ export function intersectionCurves(
 export function selfIntersectionCurves(
   mesh: Mesh, opts?: IntersectOpts,
 ): Curves {
+  const dt = mesh.dtype as FloatDtype;
   const mode = buildMode(opts, "sos", true, true);
   return new Curves(
-    native().self_intersection_curves(mesh._handle, mode),
+    native()[`self_intersection_curves_${dt}`](mesh._handle, mode), dt,
   );
 }
 
 /** Extract isocontour curves from a scalar field at one or more thresholds. */
 export function isocontours(
-  mesh: Mesh, scalars: NDArrayFloat32, threshold: number | Float32Array,
+  mesh: Mesh, scalars: NDArrayFloat32 | NDArrayFloat64,
+  threshold: number | Float32Array | Float64Array | number[],
 ): Curves {
+  assertSameDtype([mesh, scalars], ["mesh", "scalars"]);
+  const dt = mesh.dtype as FloatDtype;
   if (typeof threshold === "number") {
     return new Curves(
-      native().isocontours(mesh._handle, scalars._handle, threshold),
+      native()[`isocontours_${dt}`](mesh._handle, scalars._handle, threshold),
+      dt,
     );
   }
   return new Curves(
-    native().isocontours_multi(mesh._handle, scalars._handle, threshold),
+    native()[`isocontours_multi_${dt}`](
+      mesh._handle, scalars._handle, threshold,
+    ),
+    dt,
   );
 }

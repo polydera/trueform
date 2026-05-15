@@ -9,6 +9,7 @@ import { tests, log, setTf } from "./harness.mjs";
 // ============================================================================
 
 await import("./test_ndarray.mjs");
+await import("./test_ndarray_float64.mjs");
 await import("./test_primitives.mjs");
 await import("./test_mesh.mjs");
 await import("./test_io.mjs");

@@ -756,3 +756,391 @@ describe("buildTree", () => {
   });
 
 });
+
+// ============================================================================
+// float64 dispatch
+// ============================================================================
+
+function applyTransform64(pts, T) {
+  // pts: Float64Array [N*3], T: Float64Array [16] (row-major 4x4)
+  const n = pts.length / 3;
+  const out = new Float64Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const x = pts[i * 3], y = pts[i * 3 + 1], z = pts[i * 3 + 2];
+    out[i * 3]     = T[0] * x + T[1] * y + T[2]  * z + T[3];
+    out[i * 3 + 1] = T[4] * x + T[5] * y + T[6]  * z + T[7];
+    out[i * 3 + 2] = T[8] * x + T[9] * y + T[10] * z + T[11];
+  }
+  return out;
+}
+
+function rotTransZ64(angleDeg, tx, ty, tz) {
+  const a = angleDeg * Math.PI / 180;
+  const c = Math.cos(a), s = Math.sin(a);
+  return new Float64Array([
+    c, -s,  0, tx,
+    s,  c,  0, ty,
+    0,  0,  1, tz,
+    0,  0,  0,  1,
+  ]);
+}
+
+describe("Registration (float64)", () => {
+
+  test("chamferError (float64): identical clouds → ~0", () => {
+    const tf = getTf();
+    const pts = new Float64Array([0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1]);
+    const src = tf.pointCloud(pts);
+    const tgt = tf.pointCloud(new Float64Array(pts));
+    assert(src.dtype === "float64" && tgt.dtype === "float64", "both float64");
+
+    const err = tf.chamferError(src, tgt);
+    assert(typeof err === "number", "returns number");
+    assert(err < 1e-10, `expected ~0, got ${err}`);
+    log(`  f64 chamferError = ${err}`, "line-pass");
+
+    src.delete(); tgt.delete();
+  });
+
+  test("chamferError (float64): known offset", () => {
+    const tf = getTf();
+    const pts0 = new Float64Array([
+      0,0,0, 1,0,0, 0,1,0, 0,0,1,
+      1,1,0, 1,0,1, 0,1,1, 1,1,1,
+    ]);
+    const pts1 = new Float64Array(pts0.length);
+    for (let i = 0; i < pts0.length; i += 3) {
+      pts1[i] = pts0[i] + 1;
+      pts1[i+1] = pts0[i+1];
+      pts1[i+2] = pts0[i+2];
+    }
+
+    const src = tf.pointCloud(pts0);
+    const tgt = tf.pointCloud(pts1);
+    assert(src.dtype === "float64" && tgt.dtype === "float64", "both float64");
+
+    const err = tf.chamferError(src, tgt);
+    approx(err, 0.5, "f64 chamfer error", 1e-10);
+    log(`  f64 chamferError = ${err} (expected 0.5)`, "line-pass");
+
+    src.delete(); tgt.delete();
+  });
+
+  test("fitRigidAlignment (float64): rotation + translation", () => {
+    const tf = getTf();
+    const pts0 = new Float64Array([
+      0,0,0, 1,0,0, 0,1,0, 0,0,1, 1,1,1,
+    ]);
+    const Ttrue = rotTransZ64(45, 10, -5, 3);
+    const pts1 = applyTransform64(pts0, Ttrue);
+
+    const src = tf.pointCloud(pts0);
+    const tgt = tf.pointCloud(pts1);
+    assert(src.dtype === "float64" && tgt.dtype === "float64", "both float64");
+
+    const T = tf.fitRigidAlignment(src, tgt);
+    assert(T.dtype === "float64", `expected T dtype float64, got ${T.dtype}`);
+    assert(T.shape[0] === 4 && T.shape[1] === 4, `expected [4,4], got [${T.shape}]`);
+    const d = T.data;
+    assert(d instanceof Float64Array, `expected Float64Array, got ${d.constructor.name}`);
+
+    const aligned = applyTransform64(pts0, d);
+    for (let i = 0; i < pts1.length; i++) {
+      assert(Math.abs(aligned[i] - pts1[i]) < 1e-7,
+        `point mismatch at ${i}: ${aligned[i]} vs ${pts1[i]}`);
+    }
+    log("  f64 rigid: rot(45)+trans recovered", "line-pass");
+
+    T.delete(); src.delete(); tgt.delete();
+  });
+
+  test("fitIcpAlignment (float64): small translation converges", () => {
+    const tf = getTf();
+    const pts0 = new Float64Array(randomPoints(200, 42));
+    const pts1 = new Float64Array(pts0.length);
+    for (let i = 0; i < pts0.length; i += 3) {
+      pts1[i]   = pts0[i]   + 0.1;
+      pts1[i+1] = pts0[i+1] + 0.05;
+      pts1[i+2] = pts0[i+2] + 0.1;
+    }
+
+    const src = tf.pointCloud(pts0);
+    const tgt = tf.pointCloud(pts1);
+    assert(src.dtype === "float64" && tgt.dtype === "float64", "both float64");
+
+    const T = tf.fitIcpAlignment(src, tgt, { maxIterations: 50 });
+    assert(T.dtype === "float64", `expected T dtype float64, got ${T.dtype}`);
+    assert(T.shape[0] === 4 && T.shape[1] === 4, `expected [4,4], got [${T.shape}]`);
+    const d = T.data;
+    assert(d instanceof Float64Array, `expected Float64Array, got ${d.constructor.name}`);
+
+    const aligned = applyTransform64(pts0, d);
+    const alignedPC = tf.pointCloud(aligned);
+    const err = tf.chamferError(alignedPC, tgt);
+    assert(err < 0.01, `f64 ICP should converge, got error ${err}`);
+    log(`  f64 ICP chamfer = ${err.toFixed(8)}`, "line-pass");
+
+    T.delete(); alignedPC.delete(); src.delete(); tgt.delete();
+  });
+
+  test("fitIcpAlignment (float64) with normals", () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 20, 20, { dtype: "float64" });
+    const target = tf.PointCloud.fromMesh(sphere);
+    assert(target.dtype === "float64", `expected target dtype float64, got ${target.dtype}`);
+
+    const srcPts = sphere.points;
+    const Ttrue = rotTransZ64(10, 0.1, 0.1, 0.05);
+    const srcTransformed = applyTransform64(srcPts.data, Ttrue);
+    const source = tf.pointCloud(srcTransformed);
+    assert(source.dtype === "float64", `expected source dtype float64, got ${source.dtype}`);
+
+    const T = tf.fitIcpAlignment(source, target, { maxIterations: 50 });
+    assert(T.dtype === "float64", `expected T dtype float64, got ${T.dtype}`);
+    assert(T.shape[0] === 4 && T.shape[1] === 4, `expected [4,4], got [${T.shape}]`);
+    const d = T.data;
+    assert(d instanceof Float64Array, `expected Float64Array, got ${d.constructor.name}`);
+
+    const aligned = applyTransform64(srcTransformed, d);
+    const alignedPC = tf.pointCloud(aligned);
+    const err = tf.chamferError(alignedPC, target);
+    assert(err < 0.05, `f64 p2plane ICP should converge, got error ${err}`);
+    log(`  f64 p2plane chamfer = ${err.toFixed(8)}`, "line-pass");
+
+    T.delete();
+    alignedPC.delete();
+    source.delete();
+    target.delete();
+    srcPts.delete();
+    sphere.delete();
+  });
+
+  test("fitObbAlignment (float64): translation (elongated box)", () => {
+    const tf = getTf();
+    const ptsF32 = elongatedBox(200, 4, 2, 1, 123);
+    const pts0 = new Float64Array(ptsF32);
+    const pts1 = new Float64Array(pts0.length);
+    for (let i = 0; i < pts0.length; i += 3) {
+      pts1[i]   = pts0[i]   + 3;
+      pts1[i+1] = pts0[i+1] + 5;
+      pts1[i+2] = pts0[i+2] - 2;
+    }
+
+    const src = tf.pointCloud(pts0);
+    const tgt = tf.pointCloud(pts1);
+    assert(src.dtype === "float64" && tgt.dtype === "float64", "both float64");
+
+    const T = tf.fitObbAlignment(src, tgt);
+    assert(T.dtype === "float64", `expected T dtype float64, got ${T.dtype}`);
+    assert(T.shape[0] === 4 && T.shape[1] === 4, `shape [${T.shape}]`);
+    const d = T.data;
+    assert(d instanceof Float64Array, `expected Float64Array, got ${d.constructor.name}`);
+
+    const aligned = applyTransform64(pts0, d);
+    const alignedPC = tf.pointCloud(aligned);
+    const err = tf.chamferError(alignedPC, tgt);
+    assert(err < 0.5, `f64 OBB alignment error too high: ${err}`);
+    log(`  f64 OBB chamfer = ${err.toFixed(6)}`, "line-pass");
+
+    T.delete(); alignedPC.delete(); src.delete(); tgt.delete();
+  });
+
+  test("async: chamferError (float64)", async () => {
+    const tf = getTf();
+    const pts0 = new Float64Array([
+      0,0,0, 1,0,0, 0,1,0, 0,0,1,
+      1,1,0, 1,0,1, 0,1,1, 1,1,1,
+    ]);
+    const pts1 = new Float64Array(pts0.length);
+    for (let i = 0; i < pts0.length; i += 3) {
+      pts1[i] = pts0[i] + 1;
+      pts1[i+1] = pts0[i+1];
+      pts1[i+2] = pts0[i+2];
+    }
+
+    const src = tf.pointCloud(pts0);
+    const tgt = tf.pointCloud(pts1);
+    const err = await tf.async.chamferError(src, tgt);
+    approx(err, 0.5, "async f64 chamferError", 1e-10);
+    log(`  async f64 chamferError = ${err}`, "line-pass");
+
+    src.delete(); tgt.delete();
+  });
+
+  test("async: fitRigidAlignment (float64)", async () => {
+    const tf = getTf();
+    const pts0 = new Float64Array([
+      0,0,0, 1,0,0, 0,1,0, 0,0,1, 1,1,1,
+    ]);
+    const Ttrue = rotTransZ64(45, 10, -5, 3);
+    const pts1 = applyTransform64(pts0, Ttrue);
+
+    const src = tf.pointCloud(pts0);
+    const tgt = tf.pointCloud(pts1);
+    const T = await tf.async.fitRigidAlignment(src, tgt);
+    assert(T.dtype === "float64", `expected T dtype float64, got ${T.dtype}`);
+    const d = T.data;
+    assert(d instanceof Float64Array, `expected Float64Array, got ${d.constructor.name}`);
+
+    const aligned = applyTransform64(pts0, d);
+    for (let i = 0; i < pts1.length; i++) {
+      assert(Math.abs(aligned[i] - pts1[i]) < 1e-7,
+        `point mismatch at ${i}: ${aligned[i]} vs ${pts1[i]}`);
+    }
+    log("  async f64 rigid: rot(45)+trans recovered", "line-pass");
+
+    T.delete(); src.delete(); tgt.delete();
+  });
+
+  test("async: fitIcpAlignment (float64)", async () => {
+    const tf = getTf();
+    const pts0 = new Float64Array(randomPoints(200, 42));
+    const pts1 = new Float64Array(pts0.length);
+    for (let i = 0; i < pts0.length; i += 3) {
+      pts1[i]   = pts0[i]   + 0.1;
+      pts1[i+1] = pts0[i+1] + 0.05;
+      pts1[i+2] = pts0[i+2] + 0.1;
+    }
+
+    const src = tf.pointCloud(pts0);
+    const tgt = tf.pointCloud(pts1);
+    const T = await tf.async.fitIcpAlignment(src, tgt, { maxIterations: 50 });
+    assert(T.dtype === "float64", `expected T dtype float64, got ${T.dtype}`);
+    const d = T.data;
+    assert(d instanceof Float64Array, `expected Float64Array, got ${d.constructor.name}`);
+
+    const aligned = applyTransform64(pts0, d);
+    const alignedPC = tf.pointCloud(aligned);
+    const err = tf.chamferError(alignedPC, tgt);
+    assert(err < 0.01, `async f64 ICP should converge, got error ${err}`);
+    log(`  async f64 ICP chamfer = ${err.toFixed(8)}`, "line-pass");
+
+    T.delete(); alignedPC.delete(); src.delete(); tgt.delete();
+  });
+
+  test("async: fitObbAlignment (float64)", async () => {
+    const tf = getTf();
+    const ptsF32 = elongatedBox(200, 4, 2, 1, 123);
+    const pts0 = new Float64Array(ptsF32);
+    const pts1 = new Float64Array(pts0.length);
+    for (let i = 0; i < pts0.length; i += 3) {
+      pts1[i]   = pts0[i]   + 3;
+      pts1[i+1] = pts0[i+1] + 5;
+      pts1[i+2] = pts0[i+2] - 2;
+    }
+
+    const src = tf.pointCloud(pts0);
+    const tgt = tf.pointCloud(pts1);
+    const T = await tf.async.fitObbAlignment(src, tgt);
+    assert(T.dtype === "float64", `expected T dtype float64, got ${T.dtype}`);
+    const d = T.data;
+    assert(d instanceof Float64Array, `expected Float64Array, got ${d.constructor.name}`);
+
+    const aligned = applyTransform64(pts0, d);
+    const alignedPC = tf.pointCloud(aligned);
+    const err = tf.chamferError(alignedPC, tgt);
+    assert(err < 0.5, `async f64 OBB error too high: ${err}`);
+    log(`  async f64 OBB chamfer = ${err.toFixed(6)}`, "line-pass");
+
+    T.delete(); alignedPC.delete(); src.delete(); tgt.delete();
+  });
+
+});
+
+// ============================================================================
+// dtype mismatch
+// ============================================================================
+
+describe("Registration (dtype mismatch)", () => {
+
+  test("chamferError dtype mismatch throws", () => {
+    const tf = getTf();
+    const ptsF32 = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]);
+    const ptsF64 = new Float64Array([0, 0, 0, 1, 0, 0, 0, 1, 0]);
+    const src = tf.pointCloud(ptsF32);
+    const tgt = tf.pointCloud(ptsF64);
+    let threw = false;
+    try { tf.chamferError(src, tgt); } catch (e) {
+      if (/dtype mismatch/.test(e.message)) threw = true;
+    }
+    assert(threw, "expected dtype mismatch error");
+    log(`  chamferError dtype mismatch throws`, "line-pass");
+    src.delete(); tgt.delete();
+  });
+
+  test("fitRigidAlignment dtype mismatch throws", () => {
+    const tf = getTf();
+    const ptsF32 = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0]);
+    const ptsF64 = new Float64Array([0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0]);
+    const src = tf.pointCloud(ptsF32);
+    const tgt = tf.pointCloud(ptsF64);
+    let threw = false;
+    try { tf.fitRigidAlignment(src, tgt); } catch (e) {
+      if (/dtype mismatch/.test(e.message)) threw = true;
+    }
+    assert(threw, "expected dtype mismatch error");
+    log(`  fitRigidAlignment dtype mismatch throws`, "line-pass");
+    src.delete(); tgt.delete();
+  });
+
+  test("fitIcpAlignment dtype mismatch throws", () => {
+    const tf = getTf();
+    const ptsF32 = new Float32Array(randomPoints(50, 7));
+    const ptsF64 = new Float64Array(ptsF32);
+    const src = tf.pointCloud(ptsF32);
+    const tgt = tf.pointCloud(ptsF64);
+    let threw = false;
+    try { tf.fitIcpAlignment(src, tgt); } catch (e) {
+      if (/dtype mismatch/.test(e.message)) threw = true;
+    }
+    assert(threw, "expected dtype mismatch error");
+    log(`  fitIcpAlignment dtype mismatch throws`, "line-pass");
+    src.delete(); tgt.delete();
+  });
+
+  test("fitObbAlignment dtype mismatch throws", () => {
+    const tf = getTf();
+    const ptsF32 = elongatedBox(50, 4, 2, 1, 3);
+    const ptsF64 = new Float64Array(ptsF32);
+    const src = tf.pointCloud(ptsF32);
+    const tgt = tf.pointCloud(ptsF64);
+    let threw = false;
+    try { tf.fitObbAlignment(src, tgt); } catch (e) {
+      if (/dtype mismatch/.test(e.message)) threw = true;
+    }
+    assert(threw, "expected dtype mismatch error");
+    log(`  fitObbAlignment dtype mismatch throws`, "line-pass");
+    src.delete(); tgt.delete();
+  });
+
+  test("async chamferError dtype mismatch throws", async () => {
+    const tf = getTf();
+    const ptsF32 = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]);
+    const ptsF64 = new Float64Array(ptsF32);
+    const src = tf.pointCloud(ptsF32);
+    const tgt = tf.pointCloud(ptsF64);
+    let threw = false;
+    try { await tf.async.chamferError(src, tgt); } catch (e) {
+      if (/dtype mismatch/.test(e.message)) threw = true;
+    }
+    assert(threw, "expected dtype mismatch error");
+    log(`  async chamferError dtype mismatch throws`, "line-pass");
+    src.delete(); tgt.delete();
+  });
+
+  test("async fitIcpAlignment dtype mismatch throws", async () => {
+    const tf = getTf();
+    const ptsF32 = new Float32Array(randomPoints(50, 7));
+    const ptsF64 = new Float64Array(ptsF32);
+    const src = tf.pointCloud(ptsF32);
+    const tgt = tf.pointCloud(ptsF64);
+    let threw = false;
+    try { await tf.async.fitIcpAlignment(src, tgt); } catch (e) {
+      if (/dtype mismatch/.test(e.message)) threw = true;
+    }
+    assert(threw, "expected dtype mismatch error");
+    log(`  async fitIcpAlignment dtype mismatch throws`, "line-pass");
+    src.delete(); tgt.delete();
+  });
+
+});

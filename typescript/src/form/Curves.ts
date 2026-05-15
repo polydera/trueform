@@ -12,16 +12,27 @@
  */
 
 import { registry } from "../internal/registry";
-import { NDArray, NDArrayFloat32 } from "../ndarray/NDArray";
+import { NDArray, NativeNDArray, NDArrayFloat32, NDArrayFloat64 } from "../ndarray/NDArray";
 import { OffsetBlockedBuffer, NativeOffsetBlockedIntBuffer } from "../ndarray/OffsetBlockedBuffer";
+
+type NativePointNDArray = NativeNDArray<Float32Array> | NativeNDArray<Float64Array>;
 
 interface NativeCurves {
   paths(): NativeOffsetBlockedIntBuffer;
-  points(): any;
+  points(): NativePointNDArray;
   size(): number;
   destroy(): void;
   is_valid(): boolean;
   delete(): void;
+}
+
+function wrapPointArray(
+  handle: NativePointNDArray,
+  dtype: "float32" | "float64",
+): NDArrayFloat32 | NDArrayFloat64 {
+  return dtype === "float64"
+    ? new NDArray<Float64Array>(handle as NativeNDArray<Float64Array>, "float64")
+    : new NDArray<Float32Array>(handle as NativeNDArray<Float32Array>, "float32");
 }
 
 /**
@@ -33,10 +44,13 @@ interface NativeCurves {
 export class Curves {
   /** @internal */
   readonly _handle: NativeCurves;
+  /** Runtime type discriminator for curve point coordinates: "float32" or "float64". */
+  readonly dtype: "float32" | "float64";
 
   /** @internal */
-  constructor(handle: NativeCurves) {
+  constructor(handle: NativeCurves, dtype: "float32" | "float64") {
     this._handle = handle;
+    this.dtype = dtype;
     registry.register(this, { handle });
   }
 
@@ -45,9 +59,9 @@ export class Curves {
     return new OffsetBlockedBuffer(this._handle.paths());
   }
 
-  /** Curve point coordinates as NDArrayFloat32 [V, 3]. */
-  get points(): NDArrayFloat32 {
-    return new NDArray(this._handle.points(), "float32");
+  /** Curve point coordinates as NDArray [V, 3] with matching dtype. */
+  get points(): NDArrayFloat32 | NDArrayFloat64 {
+    return wrapPointArray(this._handle.points(), this.dtype);
   }
 
   /** Number of paths. */

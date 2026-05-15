@@ -123,6 +123,9 @@ export default defineNuxtConfig({
     },
     build: {
       sourcemap: false,
+      commonjsOptions: {
+        exclude: [/trueform/],
+      },
     },
     optimizeDeps: {
       include: [
@@ -133,7 +136,9 @@ export default defineNuxtConfig({
         '@unovis/vue',
         '@unovis/ts',
       ],
+      exclude: ['@polydera/trueform'],
     },
+    assetsInclude: ['**/*.wasm'],
   },
 
   llms: {

@@ -11,8 +11,12 @@
  * Author: Žiga Sajovic
  */
 
-export { NDArray, NDArrayInt8, NDArrayInt32, NDArrayFloat32, NDArrayBool } from "./NDArray";
+export { NDArray, NDArrayInt8, NDArrayInt32, NDArrayFloat32, NDArrayFloat64, NDArrayBool } from "./NDArray";
 export type { NativeNDArray } from "./NDArray";
+export type {
+  Dtype, NumericDtype, FloatDtype, OrderedDtype,
+  RandomDtype, RangeDtype, FullDtype, DtypeToArray,
+} from "./dtype";
 export { OffsetBlockedBuffer } from "./OffsetBlockedBuffer";
 export {
   ndarray, random, stack, concatenate, tile,

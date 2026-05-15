@@ -143,3 +143,159 @@ describe("Clean", () => {
   });
 
 });
+
+// ============================================================================
+// Float64 mirror tests
+// ============================================================================
+
+function meshWithDuplicateVertexFloat64() {
+  return {
+    faces: new Int32Array([
+      0, 1, 2,
+      3, 1, 2,
+    ]),
+    points: new Float64Array([
+      0, 0, 0,
+      1, 0, 0,
+      0.5, 1, 0,
+      0, 0, 0,
+    ]),
+  };
+}
+
+describe("Clean (float64)", () => {
+
+  test("cleaned(mesh) — exact duplicates (float64)", () => {
+    const tf = getTf();
+    const { faces, points } = meshWithDuplicateVertexFloat64();
+    const m = tf.mesh(faces, points);
+    const clean = tf.cleaned(m);
+
+    assert(m.dtype === "float64", "mesh dtype is float64");
+    assert(clean.dtype === "float64", "result mesh dtype is float64");
+    assert(clean.numberOfPoints <= m.numberOfPoints,
+      `expected fewer points: ${clean.numberOfPoints} <= ${m.numberOfPoints}`);
+    assert(clean.numberOfFaces === 1, `expected 1 face (duplicate removed), got ${clean.numberOfFaces}`);
+    log(`  cleaned (f64): ${m.numberOfPoints} → ${clean.numberOfPoints} points`, "line-pass");
+
+    clean.delete(); m.delete();
+  });
+
+  test("cleaned(mesh, tolerance) (float64)", () => {
+    const tf = getTf();
+    const { faces, points } = meshWithDuplicateVertexFloat64();
+    const m = tf.mesh(faces, points);
+    const clean = tf.cleaned(m, 1e-12);
+
+    assert(clean.dtype === "float64", "result mesh dtype is float64");
+    assert(clean.numberOfPoints <= m.numberOfPoints, "fewer or equal points");
+    log("  cleaned(mesh, 1e-12) (f64)", "line-pass");
+
+    clean.delete(); m.delete();
+  });
+
+  test("cleaned(mesh, { returnIndexMap: true }) (float64)", () => {
+    const tf = getTf();
+    const { faces, points } = meshWithDuplicateVertexFloat64();
+    const m = tf.mesh(faces, points);
+    const result = tf.cleaned(m, { returnIndexMap: true });
+
+    assert(result.mesh !== undefined, "has mesh");
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.faceMap !== undefined, "has faceMap");
+    assert(result.pointMap !== undefined, "has pointMap");
+
+    const fm = result.faceMap;
+    assert(fm.f.length === m.numberOfFaces, `f length: ${fm.f.length}`);
+    assert(fm.keptIds.length <= m.numberOfFaces, "keptIds <= original");
+    log(`  faceMap (f64): f[${fm.f.length}], keptIds[${fm.keptIds.length}]`, "line-pass");
+
+    const pm = result.pointMap;
+    assert(pm.f.length === m.numberOfPoints, `f length: ${pm.f.length}`);
+    assert(pm.keptIds.length <= m.numberOfPoints, "keptIds <= original");
+    log(`  pointMap (f64): f[${pm.f.length}], keptIds[${pm.keptIds.length}]`, "line-pass");
+
+    fm.delete(); pm.delete(); result.mesh.delete(); m.delete();
+  });
+
+  test("cleaned(mesh, { returnIndexMap: true, tolerance }) (float64)", () => {
+    const tf = getTf();
+    const { faces, points } = meshWithDuplicateVertexFloat64();
+    const m = tf.mesh(faces, points);
+    const result = tf.cleaned(m, { returnIndexMap: true, tolerance: 1e-12 });
+
+    assert(result.mesh !== undefined, "has mesh");
+    assert(result.mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(result.faceMap !== undefined, "has faceMap");
+    assert(result.pointMap !== undefined, "has pointMap");
+    log("  cleaned(mesh, { returnIndexMap, tolerance }) (f64)", "line-pass");
+
+    result.faceMap.delete(); result.pointMap.delete();
+    result.mesh.delete(); m.delete();
+  });
+
+  test("cleaned(points) — exact duplicates (float64)", () => {
+    const tf = getTf();
+    const pts = tf.point(new Float64Array([
+      0,0,0, 1,0,0, 0,0,0, 2,0,0,
+    ]), 3);
+
+    assert(pts.dtype === "float64", "input dtype is float64");
+    const clean = tf.cleaned(pts);
+    assert(clean.dtype === "float64", "result dtype is float64");
+    assert(clean.count <= pts.count,
+      `expected fewer points: ${clean.count} <= ${pts.count}`);
+    log(`  cleaned(points) (f64): ${pts.count} → ${clean.count}`, "line-pass");
+
+    clean.delete(); pts.delete();
+  });
+
+  test("cleaned(points, { returnIndexMap: true }) (float64)", () => {
+    const tf = getTf();
+    const pts = tf.point(new Float64Array([
+      0,0,0, 1,0,0, 0,0,0, 2,0,0,
+    ]), 3);
+
+    const result = tf.cleaned(pts, { returnIndexMap: true });
+    assert(result.points !== undefined, "has points");
+    assert(result.points.dtype === "float64", "result points dtype is float64");
+    assert(result.pointMap !== undefined, "has pointMap");
+    assert(result.pointMap.keptIds.length <= 4, "keptIds <= 4");
+    log("  cleaned(points, { returnIndexMap }) (f64)", "line-pass");
+
+    result.pointMap.delete(); result.points.delete(); pts.delete();
+  });
+
+  test("cleaned(triangleSoup) → Mesh (float64)", () => {
+    const tf = getTf();
+    const soup = tf.triangle(new Float64Array([
+      0,0,0, 1,0,0, 0.5,1,0,
+      1,0,0, 0,0,0, 0.5,-1,0,
+    ]), 3);
+
+    assert(soup.dtype === "float64", "soup dtype is float64");
+    const mesh = tf.cleaned(soup);
+    assert(mesh.dtype === "float64", "result mesh dtype is float64");
+    assert(mesh.numberOfFaces === 2, `expected 2 faces, got ${mesh.numberOfFaces}`);
+    assert(mesh.numberOfPoints <= 6, `expected <= 6 points, got ${mesh.numberOfPoints}`);
+    log(`  cleaned(soup) (f64): ${mesh.numberOfFaces} faces, ${mesh.numberOfPoints} points`, "line-pass");
+
+    mesh.delete(); soup.delete();
+  });
+
+  test("async: cleaned (float64)", async () => {
+    const tf = getTf();
+    const { faces, points } = meshWithDuplicateVertexFloat64();
+    const m = tf.mesh(faces, points);
+    const clean = await tf.async.cleaned(m);
+
+    assert(clean.dtype === "float64", "result mesh dtype is float64");
+    assert(clean.numberOfPoints <= m.numberOfPoints,
+      `expected fewer points: ${clean.numberOfPoints} <= ${m.numberOfPoints}`);
+    assert(clean.numberOfFaces === 1, `expected 1 face (duplicate removed), got ${clean.numberOfFaces}`);
+    log(`  async cleaned (f64): ${m.numberOfPoints} → ${clean.numberOfPoints} points`, "line-pass");
+
+    clean.delete(); m.delete();
+  });
+
+});

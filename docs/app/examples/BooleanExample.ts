@@ -3,7 +3,7 @@ import { centerAndScale, pickMesh, randomTransformation, RollingAverage, CurveRe
 import * as THREE from "three";
 import { ArcballControls } from "three/addons/controls/ArcballControls.js";
 
-type TF = typeof import("@/examples/trueform/index.js");
+type TF = typeof import("@polydera/trueform");
 
 export class BooleanExample {
   private tf: TF;

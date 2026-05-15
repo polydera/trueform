@@ -15,7 +15,12 @@ from .._core import OffsetBlockedArray
 from .._dispatch import InputMeta, build_suffix
 
 
-def read_obj(filename: str, ngon: Optional[int] = None, index_dtype: Union[type, np.dtype] = np.int32):
+def read_obj(
+    filename: str,
+    ngon: Optional[int] = None,
+    index_dtype: Union[type, np.dtype] = np.int32,
+    dtype: Union[type, np.dtype] = np.float32,
+):
     """
     Read an OBJ file and return mesh data as numpy arrays.
 
@@ -31,6 +36,9 @@ def read_obj(filename: str, ngon: Optional[int] = None, index_dtype: Union[type,
           of shape ``(num_faces, ngon)``.
     index_dtype : dtype, optional
         Data type for face indices. Must be np.int32 or np.int64. Default is np.int32.
+    dtype : dtype, optional
+        Coordinate dtype for points. Must be np.float32 or np.float64.
+        Default is np.float32.
 
     Returns
     -------
@@ -39,14 +47,14 @@ def read_obj(filename: str, ngon: Optional[int] = None, index_dtype: Union[type,
     faces : OffsetBlockedArray
         Variable-length face indices. Each block contains the vertex indices
         for one face.
-    points : ndarray of shape (num_points, 3) and dtype float32
+    points : ndarray of shape (num_points, 3) and dtype ``dtype``
         3D coordinates of mesh vertices.
 
     When ``ngon`` is 3 or 4 (fixed):
 
     faces : ndarray of shape (num_faces, ngon) with dtype specified by index_dtype
         Face indices into the points array.
-    points : ndarray of shape (num_points, 3) and dtype float32
+    points : ndarray of shape (num_points, 3) and dtype ``dtype``
         3D coordinates of mesh vertices.
 
     Examples
@@ -60,27 +68,28 @@ def read_obj(filename: str, ngon: Optional[int] = None, index_dtype: Union[type,
     >>> faces, points = tf.read_obj("model.obj", ngon=3)
     >>> print(f"Faces shape: {faces.shape}")  # (N, 3)
     >>>
-    >>> # Read quad mesh with int64 indices
-    >>> faces, points = tf.read_obj("quad_model.obj", ngon=4, index_dtype=np.int64)
-    >>> print(f"Faces shape: {faces.shape}")  # (N, 4)
+    >>> # Read quad mesh with int64 indices and double-precision points
+    >>> faces, points = tf.read_obj("quad_model.obj", ngon=4,
+    ...                              index_dtype=np.int64, dtype=np.float64)
     """
-    # Normalize dtype
-    if isinstance(index_dtype, type):
-        index_dtype = np.dtype(index_dtype)
-    elif not isinstance(index_dtype, np.dtype):
-        index_dtype = np.dtype(index_dtype)
+    # Normalize dtypes
+    index_dtype = np.dtype(index_dtype)
+    dtype = np.dtype(dtype)
 
-    # Validate index_dtype
     if index_dtype not in (np.dtype(np.int32), np.dtype(np.int64)):
         raise ValueError(
             f"index_dtype must be np.int32 or np.int64, got {index_dtype}"
         )
-
-    index_str = 'int' if index_dtype == np.int32 else 'int64'
+    if dtype not in (np.dtype(np.float32), np.dtype(np.float64)):
+        raise ValueError(
+            f"dtype must be np.float32 or np.float64, got {dtype}"
+        )
 
     # Dynamic read (default)
     if ngon is None:
-        func = getattr(_trueform.io, f"read_obj_dynamic_{index_str}")
+        meta = InputMeta(index_dtype, dtype, 'dyn', 3)
+        suffix = build_suffix(meta)
+        func = getattr(_trueform.io, f"read_obj_{suffix}")
         offsets, data, points = func(filename)
         return OffsetBlockedArray(offsets, data), points
 
@@ -88,7 +97,8 @@ def read_obj(filename: str, ngon: Optional[int] = None, index_dtype: Union[type,
     if ngon not in (3, 4):
         raise ValueError(f"ngon must be 3, 4, or None, got {ngon}")
 
-    suffix = f"{index_str}{ngon}"
+    meta = InputMeta(index_dtype, dtype, str(ngon), 3)
+    suffix = build_suffix(meta)
     func = getattr(_trueform.io, f"read_obj_{suffix}")
     return func(filename)
 

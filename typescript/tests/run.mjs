@@ -7,6 +7,7 @@ import { tests, setTf } from "./harness.mjs";
 
 // Import test modules (same as runner.mjs, minus browser-only ones)
 await import("./test_ndarray.mjs");
+await import("./test_ndarray_float64.mjs");
 await import("./test_primitives.mjs");
 await import("./test_mesh.mjs");
 await import("./test_spatial.mjs");
@@ -26,6 +27,7 @@ await import("./test_clean.mjs");
 await import("./test_cut.mjs");
 await import("./test_intersect.mjs");
 await import("./test_io_roundtrip.mjs");
+await import("./test_dtype_dispatch.mjs");
 
 // Load WASM module
 const tf = await import("../dist/index.js");

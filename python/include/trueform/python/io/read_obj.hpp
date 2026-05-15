@@ -22,29 +22,28 @@ namespace tf::py {
 
 /// @brief Template implementation for read_obj
 /// @tparam Index The index type (int or int64_t)
+/// @tparam RealT The point coordinate type (float or double)
 /// @tparam Ngon The number of vertices per face (3 or 4)
 /// @param filename Path to OBJ file
 /// @return Tuple of (faces, points) as numpy arrays
-template <typename Index, std::size_t Ngon>
+template <typename Index, typename RealT, std::size_t Ngon>
 auto read_obj_impl(const std::string &filename) {
-  // Read OBJ file using C++ function
-  auto polys = tf::read_obj<Index, Ngon>(filename);
+  auto polys = tf::read_obj<Index, Ngon, RealT>(filename);
 
-  // Use the new make_numpy_array overloads for clean extraction
   auto faces = make_numpy_array(std::move(polys.faces_buffer()));
   auto points = make_numpy_array(std::move(polys.points_buffer()));
 
-  // Return as tuple
   return nanobind::make_tuple(faces, points);
 }
 
 /// @brief Template implementation for read_obj with dynamic polygon sizes
 /// @tparam Index The index type (int or int64_t)
+/// @tparam RealT The point coordinate type (float or double)
 /// @param filename Path to OBJ file
 /// @return Tuple of (offsets, data, points) as numpy arrays
-template <typename Index>
+template <typename Index, typename RealT>
 auto read_obj_dynamic_impl(const std::string &filename) {
-  auto polys = tf::read_obj<Index>(filename);
+  auto polys = tf::read_obj<Index, RealT>(filename);
 
   auto [offsets, data] = make_numpy_array(std::move(polys.faces_buffer()));
   auto points = make_numpy_array(std::move(polys.points_buffer()));

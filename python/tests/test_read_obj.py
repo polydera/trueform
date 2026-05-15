@@ -11,8 +11,9 @@ import numpy as np
 import trueform as tf
 import tempfile
 
-# Parametrize index dtypes and ngons
+# Parametrize index dtypes, point dtypes, and ngons
 INDEX_DTYPES = [np.int32, np.int64]
+POINT_DTYPES = [np.float32, np.float64]
 NGONS = [3, 4]
 
 
@@ -108,14 +109,17 @@ def create_cube_obj(filename, ngon):
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("point_dtype", POINT_DTYPES)
 @pytest.mark.parametrize("ngon", NGONS)
-def test_read_obj_simple(index_dtype, ngon):
+def test_read_obj_simple(index_dtype, point_dtype, ngon):
     """Test reading a simple OBJ with one face"""
     with tempfile.TemporaryDirectory() as tmpdir:
         obj_file = os.path.join(tmpdir, "test.obj")
         create_simple_obj(obj_file, ngon)
 
-        faces, points = tf.read_obj(obj_file, ngon=ngon, index_dtype=index_dtype)
+        faces, points = tf.read_obj(
+            obj_file, ngon=ngon, index_dtype=index_dtype, dtype=point_dtype
+        )
 
         # Check shapes
         assert faces.shape[1] == ngon, f"Faces should have {ngon} columns"
@@ -123,7 +127,7 @@ def test_read_obj_simple(index_dtype, ngon):
 
         # Check dtypes
         assert faces.dtype == index_dtype, f"Faces should be {index_dtype}"
-        assert points.dtype == np.float32, "Points should be float32"
+        assert points.dtype == point_dtype, f"Points should be {point_dtype}"
 
         # Check that we have at least one face
         assert faces.shape[0] >= 1, "Should have at least one face"
@@ -137,18 +141,21 @@ def test_read_obj_simple(index_dtype, ngon):
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("point_dtype", POINT_DTYPES)
 @pytest.mark.parametrize("ngon", NGONS)
-def test_read_obj_cube(index_dtype, ngon):
+def test_read_obj_cube(index_dtype, point_dtype, ngon):
     """Test reading a cube OBJ"""
     with tempfile.TemporaryDirectory() as tmpdir:
         obj_file = os.path.join(tmpdir, "cube.obj")
         create_cube_obj(obj_file, ngon)
 
-        faces, points = tf.read_obj(obj_file, ngon=ngon, index_dtype=index_dtype)
+        faces, points = tf.read_obj(
+            obj_file, ngon=ngon, index_dtype=index_dtype, dtype=point_dtype
+        )
 
         # Check dtypes
         assert faces.dtype == index_dtype, f"Faces should be {index_dtype}"
-        assert points.dtype == np.float32, "Points should be float32"
+        assert points.dtype == point_dtype, f"Points should be {point_dtype}"
 
         # Cube has 8 vertices
         assert points.shape[0] == 8, f"Cube should have 8 points, got {points.shape[0]}"
@@ -278,6 +285,34 @@ f 1 2 3
         assert points.shape[0] == 3, "Should have 3 points"
 
 
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_read_obj_double_precision_preserved(index_dtype):
+    """A double-precision-only coordinate must round-trip through read_obj."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        obj_file = os.path.join(tmpdir, "precision.obj")
+        # 1.0000000000000002 is the smallest double > 1.0; float32 cannot represent it.
+        with open(obj_file, "w") as f:
+            f.write("v 1.0000000000000002 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n")
+
+        faces, points = tf.read_obj(
+            obj_file, ngon=3, index_dtype=index_dtype, dtype=np.float64
+        )
+
+        assert points.dtype == np.float64
+        # The exact double value survived; a float32 read would collapse to 1.0.
+        assert points[0, 0] != 1.0
+        assert points[0, 0] == np.float64(1.0000000000000002)
+
+
+def test_read_obj_invalid_dtype_real():
+    """dtype must be float32 or float64."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        obj_file = os.path.join(tmpdir, "test.obj")
+        create_simple_triangle_obj(obj_file)
+        with pytest.raises(ValueError, match="dtype must be"):
+            tf.read_obj(obj_file, ngon=3, dtype=np.int32)
+
+
 def test_read_obj_invalid_ngon():
     """Test that invalid ngon raises error"""
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -320,17 +355,21 @@ f 1 2 5 3
 
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
-def test_read_obj_dynamic_default(index_dtype):
+@pytest.mark.parametrize("point_dtype", POINT_DTYPES)
+def test_read_obj_dynamic_default(index_dtype, point_dtype):
     """Test that default read (ngon=None) returns OffsetBlockedArray"""
     with tempfile.TemporaryDirectory() as tmpdir:
         obj_file = os.path.join(tmpdir, "test.obj")
         create_simple_triangle_obj(obj_file)
 
-        faces, points = tf.read_obj(obj_file, index_dtype=index_dtype)
+        faces, points = tf.read_obj(
+            obj_file, index_dtype=index_dtype, dtype=point_dtype
+        )
 
         assert isinstance(faces, tf.OffsetBlockedArray), \
             f"Expected OffsetBlockedArray, got {type(faces)}"
         assert isinstance(points, np.ndarray)
+        assert points.dtype == point_dtype
         assert len(faces) == 1
         assert points.shape == (3, 3)
 

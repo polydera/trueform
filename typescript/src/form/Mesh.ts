@@ -12,22 +12,33 @@
  */
 
 import { registry } from "../internal/registry";
-import { NDArray, NativeNDArray, NDArrayInt32, NDArrayFloat32 } from "../ndarray/NDArray";
+import { NDArray, NativeNDArray, NDArrayInt32, NDArrayFloat32, NDArrayFloat64 } from "../ndarray/NDArray";
 import { OffsetBlockedBuffer, NativeOffsetBlockedIntBuffer } from "../ndarray/OffsetBlockedBuffer";
 import { ndarray } from "../ndarray/factories";
 
+type NativePointNDArray = NativeNDArray<Float32Array> | NativeNDArray<Float64Array>;
+
+function wrapPointArray(
+  handle: NativePointNDArray,
+  dtype: "float32" | "float64",
+): NDArrayFloat32 | NDArrayFloat64 {
+  return dtype === "float64"
+    ? new NDArray<Float64Array>(handle as NativeNDArray<Float64Array>, "float64")
+    : new NDArray<Float32Array>(handle as NativeNDArray<Float32Array>, "float32");
+}
+
 interface NativeMesh {
   faces(): NativeNDArray<Int32Array>;
-  points(): NativeNDArray<Float32Array>;
+  points(): NativePointNDArray;
   number_of_faces(): number;
   number_of_points(): number;
   set_faces(faces: NativeNDArray<Int32Array>): void;
-  set_points(points: NativeNDArray<Float32Array>): void;
+  set_points(points: NativePointNDArray): void;
   shallow_copy(): NativeMesh;
   build_tree(): void;
   has_transformation(): boolean;
-  transformation(): NativeNDArray<Float32Array>;
-  set_transformation(t: NativeNDArray<Float32Array>): void;
+  transformation(): NativePointNDArray;
+  set_transformation(t: NativePointNDArray): void;
   clear_transformation(): void;
   face_membership(): NativeOffsetBlockedIntBuffer;
   manifold_edge_link(): NativeNDArray<Int32Array>;
@@ -37,10 +48,10 @@ interface NativeMesh {
   set_vertex_link(vl: NativeOffsetBlockedIntBuffer): void;
   set_face_link(fl: NativeOffsetBlockedIntBuffer): void;
   set_manifold_edge_link(mel: NativeNDArray<Int32Array>): void;
-  normals(): NativeNDArray<Float32Array>;
-  point_normals(): NativeNDArray<Float32Array>;
-  set_normals(n: NativeNDArray<Float32Array>): void;
-  set_point_normals(pn: NativeNDArray<Float32Array>): void;
+  normals(): NativePointNDArray;
+  point_normals(): NativePointNDArray;
+  set_normals(n: NativePointNDArray): void;
+  set_point_normals(pn: NativePointNDArray): void;
   destroy(): void;
   is_valid(): boolean;
   delete(): void;
@@ -61,10 +72,13 @@ interface NativeMesh {
 export class Mesh {
   /** @internal */
   readonly _handle: NativeMesh;
+  /** Runtime type discriminator for vertex coordinates: "float32" or "float64". */
+  readonly dtype: "float32" | "float64";
 
   /** @internal */
-  constructor(handle: NativeMesh) {
+  constructor(handle: NativeMesh, dtype: "float32" | "float64") {
     this._handle = handle;
+    this.dtype = dtype;
     registry.register(this, { handle });
   }
 
@@ -82,17 +96,20 @@ export class Mesh {
     }
   }
 
-  /** Vertex coordinates as NDArrayFloat32 [V, 3]. */
-  get points(): NDArrayFloat32 {
-    return new NDArray(this._handle.points(), "float32");
+  /** Vertex coordinates as NDArray [V, 3] with matching dtype. */
+  get points(): NDArrayFloat32 | NDArrayFloat64 {
+    return wrapPointArray(this._handle.points(), this.dtype);
   }
 
-  /** Replace vertex coordinates. Accepts NDArray or Float32Array. */
-  set points(p: NDArrayFloat32 | Float32Array) {
+  /** Replace vertex coordinates. Accepts NDArray or typed array matching the mesh dtype. */
+  set points(p: NDArrayFloat32 | NDArrayFloat64 | Float32Array | Float64Array) {
     if (p instanceof NDArray) {
       this._handle.set_points(p._handle);
     } else {
-      this._handle.set_points(ndarray(p, [p.length / 3, 3])._handle);
+      const arr: NDArrayFloat32 | NDArrayFloat64 = p instanceof Float64Array
+        ? ndarray(p, [p.length / 3, 3])
+        : ndarray(p, [p.length / 3, 3]);
+      this._handle.set_points(arr._handle);
     }
   }
 
@@ -106,20 +123,23 @@ export class Mesh {
     return this._handle.number_of_points();
   }
 
-  /** 4x4 transformation matrix as NDArrayFloat32 [4,4], or null if none. */
-  get transformation(): NDArrayFloat32 | null {
+  /** 4x4 transformation matrix as NDArray [4,4] with matching dtype, or null if none. */
+  get transformation(): NDArrayFloat32 | NDArrayFloat64 | null {
     if (!this._handle.has_transformation()) return null;
-    return new NDArray(this._handle.transformation(), "float32");
+    return wrapPointArray(this._handle.transformation(), this.dtype);
   }
 
   /** Set a 4x4 transformation matrix, or null to clear. */
-  set transformation(t: NDArrayFloat32 | Float32Array | null) {
+  set transformation(t: NDArrayFloat32 | NDArrayFloat64 | Float32Array | Float64Array | null) {
     if (t === null) {
       this._handle.clear_transformation();
     } else if (t instanceof NDArray) {
       this._handle.set_transformation(t._handle);
     } else {
-      this._handle.set_transformation(ndarray(t, [4, 4])._handle);
+      const arr: NDArrayFloat32 | NDArrayFloat64 = t instanceof Float64Array
+        ? ndarray(t, [4, 4])
+        : ndarray(t, [4, 4]);
+      this._handle.set_transformation(arr._handle);
     }
   }
 
@@ -129,7 +149,7 @@ export class Mesh {
    * copy can take a different pose.
    */
   shallowCopy(): Mesh {
-    return new Mesh(this._handle.shallow_copy());
+    return new Mesh(this._handle.shallow_copy(), this.dtype);
   }
 
   /**
@@ -183,23 +203,23 @@ export class Mesh {
     this._handle.set_vertex_link(vl._handle);
   }
 
-  /** Face normals as NDArrayFloat32 [F, 3]. Lazily computed and cached. */
-  get normals(): NDArrayFloat32 {
-    return new NDArray(this._handle.normals(), "float32");
+  /** Face normals as NDArray [F, 3] with matching dtype. Lazily computed and cached. */
+  get normals(): NDArrayFloat32 | NDArrayFloat64 {
+    return wrapPointArray(this._handle.normals(), this.dtype);
   }
 
   /** Set precomputed face normals (bypasses lazy computation). */
-  set normals(n: NDArrayFloat32) {
+  set normals(n: NDArrayFloat32 | NDArrayFloat64) {
     this._handle.set_normals(n._handle);
   }
 
-  /** Vertex normals as NDArrayFloat32 [V, 3]. Lazily computed and cached. */
-  get pointNormals(): NDArrayFloat32 {
-    return new NDArray(this._handle.point_normals(), "float32");
+  /** Vertex normals as NDArray [V, 3] with matching dtype. Lazily computed and cached. */
+  get pointNormals(): NDArrayFloat32 | NDArrayFloat64 {
+    return wrapPointArray(this._handle.point_normals(), this.dtype);
   }
 
   /** Set precomputed vertex normals (bypasses lazy computation). */
-  set pointNormals(pn: NDArrayFloat32) {
+  set pointNormals(pn: NDArrayFloat32 | NDArrayFloat64) {
     this._handle.set_point_normals(pn._handle);
   }
 

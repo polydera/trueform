@@ -1645,10 +1645,10 @@ describe("NDArray", () => {
   test("ndarray from number[]", () => {
     const tf = getTf();
     const a = tf.ndarray([1, 2, 3]);
-    assert(a.dtype === "float32", `dtype: ${a.dtype}`);
+    assert(a.dtype === "float64", `dtype: ${a.dtype}`);
     assert(a.shape[0] === 3, "shape");
     approx(a.data[0], 1);
-    log("  ndarray([1,2,3]) → float32", "line-pass");
+    log("  ndarray([1,2,3]) → float64", "line-pass");
     a.delete();
   });
 
@@ -1692,6 +1692,24 @@ describe("NDArray", () => {
   });
 
   // ==========================================================================
+  test("row accessor (float64)", () => {
+    const tf = getTf();
+    const m = tf.ndarray(new Float32Array([1,2,3, 4,5,6]), [2, 3]).as("float64");
+    assert(m.dtype === "float64", `dtype: ${m.dtype}`);
+    const row0 = m.row(0);
+    assert(row0.dtype === "float64", `row dtype: ${row0.dtype}`);
+    assert(row0.shape[0] === 3, `row shape: ${row0.shape}`);
+    approx(row0.data[0], 1); approx(row0.data[2], 3);
+    log("  .row(0) float64", "line-pass");
+
+    const row1 = m.row(1);
+    approx(row1.data[0], 4);
+    log("  .row(1) float64", "line-pass");
+
+    row1.delete(); row0.delete(); m.delete();
+  });
+
+  // ==========================================================================
   test("slice", () => {
     const tf = getTf();
     const a = tf.ndarray(new Float32Array([1,2,3,4,5,6,7,8,9]), [3, 3]);
@@ -1704,6 +1722,25 @@ describe("NDArray", () => {
     assert(s2.shape[0] === 1 && s2.shape[1] === 3, "slice [0,1)");
     approx(s2.data[0], 1);
     log("  .slice(0, 1)", "line-pass");
+
+    s2.delete(); s.delete(); a.delete();
+  });
+
+  // ==========================================================================
+  test("slice (float64)", () => {
+    const tf = getTf();
+    const a = tf.ndarray(new Float32Array([1,2,3,4,5,6,7,8,9]), [3, 3]).as("float64");
+    assert(a.dtype === "float64", `dtype: ${a.dtype}`);
+    const s = a.slice(1, 3);
+    assert(s.dtype === "float64", `slice dtype: ${s.dtype}`);
+    assert(s.shape[0] === 2 && s.shape[1] === 3, `slice shape: [${s.shape}]`);
+    approx(s.data[0], 4); approx(s.data[3], 7);
+    log("  .slice(1, 3) float64", "line-pass");
+
+    const s2 = a.slice(0, 1);
+    assert(s2.shape[0] === 1 && s2.shape[1] === 3, "slice [0,1)");
+    approx(s2.data[0], 1);
+    log("  .slice(0, 1) float64", "line-pass");
 
     s2.delete(); s.delete(); a.delete();
   });
@@ -1750,6 +1787,28 @@ describe("NDArray", () => {
     assert(ff.dtype === "float32", `dtype: ${ff.dtype}`);
     approx(ff.data[0], 4);
     log("  .as('float32')", "line-pass");
+    ff.delete(); ii.delete();
+  });
+
+  // ==========================================================================
+  test("as (type cast) (float64)", () => {
+    const tf = getTf();
+
+    // float64 → int32
+    const f = tf.ndarray(new Float64Array([1.5, 2.7, 3.1]), [3]);
+    assert(f.dtype === "float64", `dtype: ${f.dtype}`);
+    const i = f.as("int32");
+    assert(i.dtype === "int32", `dtype: ${i.dtype}`);
+    assert(i.data[0] === 1, "truncated to 1");
+    log("  .as('int32') from float64", "line-pass");
+    i.delete(); f.delete();
+
+    // int32 → float64
+    const ii = tf.ndarray(new Int32Array([4, 5, 6]), [3]);
+    const ff = ii.as("float64");
+    assert(ff.dtype === "float64", `dtype: ${ff.dtype}`);
+    approx(ff.data[0], 4);
+    log("  .as('float64') from int32", "line-pass");
     ff.delete(); ii.delete();
   });
 
@@ -1842,6 +1901,351 @@ describe("NDArray", () => {
     assert(zi.dtype === "int32" && zi.data[0] === 0, "zeros int32");
     log("  zeros('int32', [3])", "line-pass");
     zi.delete();
+  });
+
+  // ==========================================================================
+  test("creation (float64)", () => {
+    const tf = getTf();
+
+    const z = tf.zeros("float64", [2, 3]);
+    assert(z.dtype === "float64", `zeros dtype: ${z.dtype}`);
+    assert(z.shape[0] === 2 && z.shape[1] === 3 && z.length === 6, "zeros shape");
+    for (let i = 0; i < 6; i++) assert(z.data[i] === 0, `data[${i}]=${z.data[i]}`);
+    log("  zeros float64", "line-pass");
+    z.delete();
+
+    const o = tf.ones("float64", [4]);
+    assert(o.dtype === "float64", `ones dtype: ${o.dtype}`);
+    for (let i = 0; i < 4; i++) assert(o.data[i] === 1, `data[${i}]=${o.data[i]}`);
+    log("  ones float64", "line-pass");
+    o.delete();
+
+    const f = tf.full("float64", [3], 7.5);
+    assert(f.dtype === "float64", `full dtype: ${f.dtype}`);
+    for (let i = 0; i < 3; i++) assert(f.data[i] === 7.5, `data[${i}]=${f.data[i]}`);
+    log("  full float64", "line-pass");
+    f.delete();
+
+    const ar = tf.arange("float64", 0, 5);
+    assert(ar.dtype === "float64", `arange dtype: ${ar.dtype}`);
+    assert(ar.shape[0] === 5);
+    for (let i = 0; i < 5; i++) assert(ar.data[i] === i, `data[${i}]=${ar.data[i]}`);
+    log("  arange float64", "line-pass");
+    ar.delete();
+
+    const ars = tf.arange("float64", 0, 1, 0.25);
+    assert(ars.dtype === "float64", `arange step dtype: ${ars.dtype}`);
+    assert(ars.shape[0] === 4);
+    assert(ars.data[1] === 0.25); assert(ars.data[2] === 0.5);
+    log("  arange with step float64", "line-pass");
+    ars.delete();
+
+    const ls = tf.linspace(0, 1, 5);
+    assert(ls.dtype === "float64", `linspace dtype: ${ls.dtype}`);
+    assert(ls.data[0] === 0); assert(ls.data[2] === 0.5); assert(ls.data[4] === 1);
+    log("  linspace float64", "line-pass");
+    ls.delete();
+  });
+
+  // ==========================================================================
+  test("stack & concatenate (float64)", () => {
+    const tf = getTf();
+
+    // stack axis=0
+    const s1a = tf.ndarray(new Float64Array([1, 2, 3]), [3]);
+    const s1b = tf.ndarray(new Float64Array([4, 5, 6]), [3]);
+    const s1 = tf.stack([s1a, s1b]);
+    assert(s1.dtype === "float64", `stack dtype: ${s1.dtype}`);
+    assert(s1.ndim === 2 && s1.shape[0] === 2 && s1.shape[1] === 3, "stack shape");
+    assert(s1.data[0] === 1); assert(s1.data[3] === 4);
+    log("  stack axis=0 float64", "line-pass");
+    s1.delete(); s1b.delete(); s1a.delete();
+
+    // stack axis=1 2D
+    const s2a = tf.ndarray(new Float64Array([1,2,3,4,5,6]), [2,3]);
+    const s2b = tf.ndarray(new Float64Array([7,8,9,10,11,12]), [2,3]);
+    const s2 = tf.stack([s2a, s2b], 1);
+    assert(s2.dtype === "float64", `stack 2D dtype: ${s2.dtype}`);
+    assert(s2.ndim === 3 && s2.shape[0] === 2 && s2.shape[1] === 2 && s2.shape[2] === 3, "stack shape");
+    assert(s2.data[0] === 1); assert(s2.data[3] === 7);
+    log("  stack axis=1 (2D) float64", "line-pass");
+    s2.delete(); s2b.delete(); s2a.delete();
+
+    // concatenate 1D
+    const c1a = tf.ndarray(new Float64Array([1, 2, 3]), [3]);
+    const c1b = tf.ndarray(new Float64Array([4, 5]), [2]);
+    const c1 = tf.concatenate([c1a, c1b]);
+    assert(c1.dtype === "float64", `concat dtype: ${c1.dtype}`);
+    assert(c1.shape[0] === 5, "concat shape");
+    assert(c1.data[3] === 4);
+    log("  concatenate 1D float64", "line-pass");
+    c1.delete(); c1b.delete(); c1a.delete();
+
+    // concatenate 2D axis=1
+    const c3a = tf.ndarray(new Float64Array([1,2,3,4]), [2,2]);
+    const c3b = tf.ndarray(new Float64Array([5,6]), [2,1]);
+    const c3 = tf.concatenate([c3a, c3b], 1);
+    assert(c3.dtype === "float64", `concat 2D dtype: ${c3.dtype}`);
+    assert(c3.shape[0] === 2 && c3.shape[1] === 3, "concat axis=1 shape");
+    assert(c3.data[2] === 5); assert(c3.data[5] === 6);
+    log("  concatenate 2D axis=1 float64", "line-pass");
+    c3.delete(); c3b.delete(); c3a.delete();
+  });
+
+  // ==========================================================================
+  test("tile (float64)", () => {
+    const tf = getTf();
+
+    // 1D scalar reps
+    const t1 = tf.tile(tf.ndarray(new Float64Array([1, 2, 3]), [3]), 3);
+    assert(t1.dtype === "float64", `tile dtype: ${t1.dtype}`);
+    assert(t1.shape[0] === 9, "tile 1D shape");
+    assert(t1.data[0] === 1); assert(t1.data[3] === 1); assert(t1.data[6] === 1);
+    log("  tile 1D x3 float64", "line-pass");
+    t1.delete();
+
+    // 1D with leading axis
+    const t2 = tf.tile(tf.ndarray(new Float64Array([1, 2, 3]), [3]), [4, 1]);
+    assert(t2.dtype === "float64", `tile 2D dtype: ${t2.dtype}`);
+    assert(t2.ndim === 2 && t2.shape[0] === 4 && t2.shape[1] === 3, "tile leading shape");
+    for (let r = 0; r < 4; r++) assert(t2.data[r * 3] === 1);
+    log("  tile [3] x [4,1] float64", "line-pass");
+    t2.delete();
+  });
+
+  // ==========================================================================
+  test("indexing (float64)", () => {
+    const tf = getTf();
+
+    // take 1D
+    const g1 = tf.ndarray(new Float64Array([10, 20, 30, 40, 50]), [5]);
+    const gi = tf.ndarray(new Int32Array([4, 1, 0]), [3]);
+    const gr = g1.take(gi);
+    assert(gr.dtype === "float64", `take dtype: ${gr.dtype}`);
+    assert(gr.shape[0] === 3, "take shape");
+    assert(gr.data[0] === 50); assert(gr.data[1] === 20); assert(gr.data[2] === 10);
+    log("  take 1D float64", "line-pass");
+    gr.delete(); gi.delete(); g1.delete();
+
+    // booleanIndex
+    const b1 = tf.ndarray(new Float64Array([10, 20, 30, 40]), [4]);
+    const bm = tf.ndarray(new Int8Array([1, 0, 1, 0]), [4]).as("bool");
+    const br = b1.booleanIndex(bm);
+    assert(br.dtype === "float64", `booleanIndex dtype: ${br.dtype}`);
+    assert(br.shape[0] === 2, "booleanIndex shape");
+    assert(br.data[0] === 10); assert(br.data[1] === 30);
+    log("  booleanIndex float64", "line-pass");
+    br.delete(); bm.delete(); b1.delete();
+
+    // where
+    const wc = tf.ndarray(new Int8Array([1, 0, 1, 0]), [4]).as("bool");
+    const wx = tf.ndarray(new Float64Array([1, 2, 3, 4]), [4]);
+    const wy = tf.ndarray(new Float64Array([10, 20, 30, 40]), [4]);
+    const wr = tf.where(wc, wx, wy);
+    assert(wr.dtype === "float64", `where dtype: ${wr.dtype}`);
+    assert(wr.data[0] === 1 && wr.data[1] === 20 && wr.data[2] === 3 && wr.data[3] === 40);
+    log("  where float64", "line-pass");
+    wr.delete(); wy.delete(); wx.delete(); wc.delete();
+
+    // takeAlongAxis
+    const taa1 = tf.ndarray(new Float64Array([10,20,30, 40,50,60]), [2, 3]);
+    const taai = tf.ndarray(new Int32Array([2, 0]), [2, 1]);
+    const taar = taa1.takeAlongAxis(taai, 1);
+    assert(taar.dtype === "float64", `takeAlongAxis dtype: ${taar.dtype}`);
+    assert(taar.shape[0] === 2 && taar.shape[1] === 1, "takeAlongAxis shape");
+    assert(taar.data[0] === 30); assert(taar.data[1] === 40);
+    log("  takeAlongAxis float64", "line-pass");
+    taar.delete(); taai.delete(); taa1.delete();
+  });
+
+  // ==========================================================================
+  test("sort & argsort (float64)", () => {
+    const tf = getTf();
+
+    // sort 1D
+    const s1 = tf.ndarray(new Float64Array([3, 1, 4, 1, 5, 9, 2, 6]), [8]);
+    const s1r = tf.sort(s1);
+    assert(s1r.dtype === "float64", `sort dtype: ${s1r.dtype}`);
+    assert(s1r.shape[0] === 8, "sort 1D shape");
+    assert(s1r.data[0] === 1); assert(s1r.data[1] === 1); assert(s1r.data[2] === 2);
+    assert(s1r.data[3] === 3); assert(s1r.data[7] === 9);
+    assert(s1.data[0] === 3, "original unchanged");
+    log("  sort 1D float64", "line-pass");
+    s1r.delete(); s1.delete();
+
+    // sort 2D — lexicographic row sort
+    const s2 = tf.ndarray(new Float64Array([
+      3, 1,
+      1, 2,
+      1, 0,
+      2, 5,
+    ]), [4, 2]);
+    const s2r = tf.sort(s2);
+    assert(s2r.dtype === "float64", `sort 2D dtype: ${s2r.dtype}`);
+    assert(s2r.data[0] === 1 && s2r.data[1] === 0);
+    assert(s2r.data[2] === 1 && s2r.data[3] === 2);
+    assert(s2r.data[4] === 2 && s2r.data[5] === 5);
+    assert(s2r.data[6] === 3 && s2r.data[7] === 1);
+    log("  sort 2D lexicographic float64", "line-pass");
+    s2r.delete(); s2.delete();
+
+    // sort_ in-place
+    const s3 = tf.ndarray(new Float64Array([5, 2, 8, 1]), [4]);
+    tf.sort_(s3);
+    assert(s3.dtype === "float64", `sort_ dtype: ${s3.dtype}`);
+    assert(s3.data[0] === 1 && s3.data[1] === 2 && s3.data[2] === 5 && s3.data[3] === 8);
+    log("  sort_ in-place float64", "line-pass");
+    s3.delete();
+
+    // argsort 1D
+    const a1 = tf.ndarray(new Float64Array([30, 10, 20]), [3]);
+    const a1r = tf.argsort(a1);
+    assert(a1r.dtype === "int32", `argsort dtype: ${a1r.dtype}`);
+    assert(a1r.data[0] === 1 && a1r.data[1] === 2 && a1r.data[2] === 0, "argsort values");
+    log("  argsort 1D float64", "line-pass");
+    a1r.delete(); a1.delete();
+
+    // argsort + take roundtrip = sort
+    const rt = tf.ndarray(new Float64Array([5, 2, 8, 1, 3]), [5]);
+    const perm = tf.argsort(rt);
+    const sorted = tf.take(rt, perm);
+    assert(sorted.dtype === "float64", `sorted dtype: ${sorted.dtype}`);
+    assert(sorted.data[0] === 1 && sorted.data[1] === 2 && sorted.data[2] === 3);
+    assert(sorted.data[3] === 5 && sorted.data[4] === 8);
+    log("  argsort + take = sort float64", "line-pass");
+    sorted.delete(); perm.delete(); rt.delete();
+  });
+
+  // ==========================================================================
+  test("set operations (float64)", () => {
+    const tf = getTf();
+
+    // unique 1D
+    const u1 = tf.ndarray(new Float64Array([1, 1, 2, 3, 3, 3, 5]), [7]);
+    const u1r = tf.unique(u1);
+    assert(u1r.dtype === "float64", `unique dtype: ${u1r.dtype}`);
+    assert(u1r.shape[0] === 4, "unique 1D shape");
+    assert(u1r.data[0] === 1 && u1r.data[1] === 2);
+    assert(u1r.data[2] === 3 && u1r.data[3] === 5);
+    log("  unique 1D float64", "line-pass");
+    u1r.delete(); u1.delete();
+
+    // unique 2D — duplicate rows
+    const u2 = tf.ndarray(new Float64Array([
+      1, 2,
+      1, 2,
+      3, 4,
+      3, 4,
+      5, 6,
+    ]), [5, 2]);
+    const u2r = tf.unique(u2);
+    assert(u2r.dtype === "float64", `unique 2D dtype: ${u2r.dtype}`);
+    assert(u2r.shape[0] === 3 && u2r.shape[1] === 2, "unique 2D shape");
+    assert(u2r.data[0] === 1 && u2r.data[1] === 2);
+    assert(u2r.data[2] === 3 && u2r.data[3] === 4);
+    assert(u2r.data[4] === 5 && u2r.data[5] === 6);
+    log("  unique 2D float64", "line-pass");
+    u2r.delete(); u2.delete();
+
+    // setUnion 1D
+    const su1a = tf.ndarray(new Float64Array([1, 3, 5, 7]), [4]);
+    const su1b = tf.ndarray(new Float64Array([2, 3, 6, 7]), [4]);
+    const su1r = tf.setUnion(su1a, su1b);
+    assert(su1r.dtype === "float64", `setUnion dtype: ${su1r.dtype}`);
+    assert(su1r.shape[0] === 6, "setUnion shape");
+    assert(su1r.data[0] === 1 && su1r.data[1] === 2 && su1r.data[2] === 3);
+    assert(su1r.data[3] === 5 && su1r.data[4] === 6 && su1r.data[5] === 7);
+    log("  setUnion 1D float64", "line-pass");
+    su1r.delete(); su1b.delete(); su1a.delete();
+
+    // setIntersection 1D
+    const si1a = tf.ndarray(new Float64Array([1, 2, 3, 5, 7]), [5]);
+    const si1b = tf.ndarray(new Float64Array([2, 3, 6, 7, 8]), [5]);
+    const si1r = tf.setIntersection(si1a, si1b);
+    assert(si1r.dtype === "float64", `setIntersection dtype: ${si1r.dtype}`);
+    assert(si1r.shape[0] === 3, "setIntersection shape");
+    assert(si1r.data[0] === 2 && si1r.data[1] === 3 && si1r.data[2] === 7);
+    log("  setIntersection 1D float64", "line-pass");
+    si1r.delete(); si1b.delete(); si1a.delete();
+
+    // setDifference 1D
+    const sd1a = tf.ndarray(new Float64Array([1, 2, 3, 5, 7]), [5]);
+    const sd1b = tf.ndarray(new Float64Array([2, 3, 6]), [3]);
+    const sd1r = tf.setDifference(sd1a, sd1b);
+    assert(sd1r.dtype === "float64", `setDifference dtype: ${sd1r.dtype}`);
+    assert(sd1r.shape[0] === 3, "setDifference shape");
+    assert(sd1r.data[0] === 1 && sd1r.data[1] === 5 && sd1r.data[2] === 7);
+    log("  setDifference 1D float64", "line-pass");
+    sd1r.delete(); sd1b.delete(); sd1a.delete();
+
+    // unique 2D float64 — row-wise dedup (sorted rows)
+    const u2d = tf.ndarray(new Float64Array([1,2, 1,2, 3,4, 5,6, 5,6]), [5, 2]);
+    const u2dr = tf.unique(u2d);
+    assert(u2dr.dtype === "float64", `unique 2D row dtype: ${u2dr.dtype}`);
+    assert(u2dr.shape[0] === 3 && u2dr.shape[1] === 2);
+    assert(u2dr.data[0] === 1 && u2dr.data[1] === 2);
+    assert(u2dr.data[2] === 3 && u2dr.data[3] === 4);
+    assert(u2dr.data[4] === 5 && u2dr.data[5] === 6);
+    log("  unique 2D row-wise float64", "line-pass");
+    u2dr.delete(); u2d.delete();
+  });
+
+  // ==========================================================================
+  test("eye (float64)", () => {
+    const tf = getTf();
+
+    // 3x3 float64
+    const e1 = tf.eye("float64", 3);
+    assert(e1.dtype === "float64", `eye dtype: ${e1.dtype}`);
+    assert(e1.shape[0] === 3 && e1.shape[1] === 3, "eye shape");
+    assert(e1.data[0] === 1 && e1.data[1] === 0 && e1.data[2] === 0);
+    assert(e1.data[3] === 0 && e1.data[4] === 1 && e1.data[5] === 0);
+    assert(e1.data[6] === 0 && e1.data[7] === 0 && e1.data[8] === 1);
+    log("  eye float64 3x3", "line-pass");
+    e1.delete();
+
+    // 1x1
+    const e3 = tf.eye("float64", 1);
+    assert(e3.dtype === "float64", `eye 1x1 dtype: ${e3.dtype}`);
+    assert(e3.shape[0] === 1 && e3.shape[1] === 1, "eye 1x1 shape");
+    assert(e3.data[0] === 1);
+    log("  eye 1x1 float64", "line-pass");
+    e3.delete();
+  });
+
+  // ==========================================================================
+  test("arange(dtype, stop) shorthand (float64)", () => {
+    const tf = getTf();
+
+    const rf = tf.arange("float64", 3);
+    assert(rf.dtype === "float64", `arange shorthand dtype: ${rf.dtype}`);
+    assert(rf.shape[0] === 3, `expected 3 elements, got ${rf.shape[0]}`);
+    assert(rf.data[0] === 0); assert(rf.data[2] === 2);
+    log("  arange('float64', 3) → [0,1,2]", "line-pass");
+    rf.delete();
+  });
+
+  // ==========================================================================
+  test("random (float64)", () => {
+    const tf = getTf();
+
+    const r1 = tf.random("float64", [3, 3]);
+    assert(r1.dtype === "float64", `dtype: ${r1.dtype}`);
+    assert(r1.shape[0] === 3 && r1.shape[1] === 3, "shape");
+    assert(r1.length === 9, "length");
+    log("  random('float64', [3,3])", "line-pass");
+    r1.delete();
+
+    const r2 = tf.random("float64", [10], -5, 5);
+    assert(r2.dtype === "float64", `dtype: ${r2.dtype}`);
+    assert(r2.shape[0] === 10, "shape");
+    let allInRange = true;
+    for (let i = 0; i < 10; i++) {
+      if (r2.data[i] < -5 || r2.data[i] >= 5) allInRange = false;
+    }
+    assert(allInRange, "all values in [-5, 5)");
+    log("  random('float64', [10], -5, 5)", "line-pass");
+    r2.delete();
   });
 
 });
