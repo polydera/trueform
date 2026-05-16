@@ -11,31 +11,35 @@
  * Author: Žiga Sajovic
  */
 #pragma once
-#include "../core/algorithm/circular_increment.hpp"
-#include "../core/algorithm/generic_generate.hpp"
 #include "../core/algorithm/make_equivalence_class_map.hpp"
+#include "../core/algorithm/parallel_fill.hpp"
 #include "../core/algorithm/parallel_for_each.hpp"
-#include "../core/array_hash.hpp"
+#include "../core/checked.hpp"
 #include "../core/buffer.hpp"
 #include "../core/complete.hpp"
-#include "../core/hash_set.hpp"
-#include "../core/views/enumerate.hpp"
-#include "../core/views/sequence_range.hpp"
+#include "../core/views/indirect_range.hpp"
+#include "../core/views/offset_block_range.hpp"
 #include "../exact/int64.hpp"
-#include "../exact/meta.hpp"
-#include "../exact/orient3d.hpp"
 #include "../exact/pt_converter.hpp"
-#include "./connected_component_labels.hpp"
-#include "./directed_edge_id_in_face.hpp"
+#include "./domain_config.hpp"
+#include "./domains/apply_majority_perm.hpp"
+#include "./domains/build_domain_of_side.hpp"
+#include "./domains/canonicalize_nm_edges.hpp"
+#include "./domains/compute_domain_volumes.hpp"
+#include "./domains/compute_majority_rep.hpp"
+#include "./domains/compute_volume_contributions_per_fragment.hpp"
+#include "./domains/emit_boundary_merges.hpp"
+#include "./domains/emit_domain_merges.hpp"
+#include "./domains/filter_face_blocks.hpp"
+#include "./domains/lift_to_domain_labels.hpp"
+#include "./domains/make_bundle_labels.hpp"
+#include "./domains/make_nesting_merges.hpp"
 #include "./make_face_membership.hpp"
 #include "./make_manifold_edge_connected_component_labels.hpp"
 #include "./make_manifold_edge_link.hpp"
 #include "./non_manifold_edges.hpp"
 #include "./policy/face_membership.hpp"
 #include "./policy/manifold_edge_link.hpp"
-#include <array>
-#include <utility>
-
 namespace tf {
 
 /// @ingroup topology_components
@@ -43,14 +47,13 @@ namespace tf {
 ///
 /// A non-manifold surface mesh bounds multiple 3D regions ("domains").
 /// Each face has two sides; each side bounds one domain. Returns a
-/// @ref tf::connected_component_labels with `labels` of size
-/// `2 * n_faces` (entry `2*f + s` is the domain id on side `s` of face
-/// `f`) and `n_components` set to the total number of domains.
-///
-/// Algorithm: reformulation of Bohm & Runge 2025 (Computer-Aided Design
-/// 180, art. 103824). Manifold-edge connected components are domain
-/// fragments by construction; non-manifold edges decide how fragments
-/// glue into domains via an angular sort using exact predicates.
+/// @ref tf::domain_labels with one 2-block per face: `labels[f][0]` is
+/// the domain id on the face's stored-orientation side, `labels[f][1]`
+/// is the domain on the reversed side; `n_domains` is the total number
+/// of distinct domains. Under
+/// @ref tf::domain_config::ignore_open_fragments, faces in MEL
+/// components carrying boundary edges are excluded from the partition
+/// and carry the sentinel label `n_domains`.
 ///
 /// @pre Faces must be consistently oriented within each manifold-edge
 ///      connected component (e.g. arrangement output, or call
@@ -64,25 +67,55 @@ namespace tf {
 ///         `tf::exact::int64`.
 /// @tparam Policy The polygons policy.
 /// @param polygons The polygons range.
+/// @param config @ref tf::domain_config flag set selecting open-fragment
+///        handling and other behaviour.
 template <typename Int = tf::exact::int64, typename Policy>
-auto make_domain_labels(const tf::polygons<Policy> &polygons) {
+auto make_domain_labels(const tf::polygons<Policy> &polygons,
+                        tf::domain_config config = tf::domain_config::none) {
   using Index = std::decay_t<decltype(polygons.faces()[0][0])>;
 
   if constexpr (!tf::has_face_membership_policy<Policy>) {
     auto fm = tf::make_face_membership(polygons);
-    return make_domain_labels<Int>(polygons | tf::tag(fm));
+    return make_domain_labels<Int>(polygons | tf::tag(fm), config);
   } else if constexpr (!tf::has_manifold_edge_link_policy<Policy>) {
     auto mel = tf::make_manifold_edge_link(polygons);
-    return make_domain_labels<Int>(polygons | tf::tag(mel));
+    return make_domain_labels<Int>(polygons | tf::tag(mel), config);
   } else {
     auto fragment_labels =
         tf::make_manifold_edge_connected_component_labels(polygons);
     auto [nm_edges, nm_edge_faces] =
         tf::make_non_manifold_edges(polygons, tf::complete);
 
-    // Build a get_point(v) callable. If the input mesh is already in
-    // int coordinates, this is the identity (no roundtrip). Otherwise
-    // we build a float→int converter from the AABB. Same pattern as
+    tf::buffer<std::array<Index, 2>> merges;
+    tf::topology::domains::emit_boundary_merges(polygons, fragment_labels,
+                                                merges);
+
+    Index anchor_side = Index(-1);
+
+    // Mode 1: filter open-component faces out of nm_edge_faces and
+    // route all open components into one garbage equivalence class via
+    // synthetic (anchor_side, 2c) connectors.
+    if ((config & tf::domain_config::ignore_open_fragments) &&
+        merges.size() > 0) {
+      tf::buffer<char> open_component_mask;
+      open_component_mask.allocate(fragment_labels.n_components);
+      tf::parallel_fill(open_component_mask, char(0));
+      tf::parallel_for_each(merges, [&](const auto &pair) {
+        open_component_mask[pair[0] / 2] = char(1);
+      });
+      auto face_exclude_mask = tf::make_indirect_range(
+          fragment_labels.labels, open_component_mask);
+      nm_edge_faces = tf::topology::domains::filter_face_blocks(
+          nm_edge_faces, face_exclude_mask);
+
+      anchor_side = merges[0][0];
+      auto n_open = merges.size();
+      for (decltype(n_open) i = 1; i < n_open; ++i)
+        merges.push_back({anchor_side, merges[i][0]});
+    }
+
+    // Float coords go through make_pt_converter (AABB-scaled to ~99%
+    // of int_max); integer coords are identity-mapped. Same pattern as
     // hole_patcher / planar_graph_regions.
     auto get_point = [&]() {
       using CoordT = tf::coordinate_type<Policy>;
@@ -99,179 +132,90 @@ auto make_domain_labels(const tf::polygons<Policy> &polygons) {
       }
     }();
 
-    /// CCW angular comparator around directed edge axis (i -> j) with
-    /// a chosen pivot vertex. Uses exact orient3d_value only; mirrors
-    /// the 2D polar-sort pattern in tf::planar_graph_regions.
-    auto cmp_around_edge = [&](Index i, Index j, Index pivot) {
-      using T1 = typename tf::exact::meta<Int>::T1;
-      using T2 = typename tf::exact::meta<Int>::T2;
+    tf::buffer<Index> id_sorted_labels;
+    id_sorted_labels.allocate(nm_edge_faces.data_buffer().size());
+    tf::buffer<double> debug_areas;
+    debug_areas.allocate(nm_edge_faces.data_buffer().size());
+    tf::buffer<char> is_valid;
+    is_valid.allocate(nm_edges.size());
+    tf::parallel_fill(is_valid, char(0));
+    // skip_reason: 0=valid, 1=K<2, 2=no third vertex, 3=collinear third
+    tf::buffer<char> skip_reason;
+    skip_reason.allocate(nm_edges.size());
+    tf::parallel_fill(skip_reason, char(0));
+    auto id_sorted_view = tf::make_offset_block_range(
+        nm_edge_faces.offsets_buffer(), id_sorted_labels);
+    auto areas_view = tf::make_offset_block_range(
+        nm_edge_faces.offsets_buffer(), debug_areas);
+    auto labels_indirect = tf::make_indirect_range(nm_edge_faces.data_buffer(),
+                                                   fragment_labels.labels);
+    auto labels_view = tf::make_offset_block_range(
+        nm_edge_faces.offsets_buffer(), labels_indirect);
 
-      auto pi = get_point(i);
-      auto pj = get_point(j);
-      auto pp = get_point(pivot);
+    tf::topology::domains::canonicalize_nm_edges<Int>(
+        polygons, fragment_labels, nm_edges, nm_edge_faces, id_sorted_view,
+        areas_view, labels_view, is_valid, skip_reason, get_point);
 
-      // Normal of pivot face (defines the 0° plane and direction)
-      auto normal = [](const auto& p1, const auto& p2, const auto& p3) {
-        T1 u0 = T1(p2[0]) - p1[0], u1 = T1(p2[1]) - p1[1], u2 = T1(p2[2]) - p1[2];
-        T1 v0 = T1(p3[0]) - p1[0], v1 = T1(p3[1]) - p1[1], v2 = T1(p3[2]) - p1[2];
-        return std::array<T2, 3>{
-          T2(u1)*v2 - T2(u2)*v1,
-          T2(u2)*v0 - T2(u0)*v2,
-          T2(u0)*v1 - T2(u1)*v0
-        };
-      };
-      auto np = normal(pi, pj, pp);
+    auto majority_rep = tf::topology::domains::compute_majority_rep(
+        Index(nm_edges.size()), is_valid, id_sorted_view, labels_view);
 
-      return [=, &get_point](Index a, Index b) -> bool {
-        if (a == pivot) return b != pivot;
-        if (b == pivot) return false;
+    tf::topology::domains::apply_majority_perm(nm_edge_faces, labels_view,
+                                               is_valid, majority_rep);
 
-        auto pa = get_point(a);
-        auto pb = get_point(b);
+    tf::buffer<std::array<Index, 2>> bundle_merges;
+    tf::topology::domains::emit_domain_merges(polygons, fragment_labels,
+                                              nm_edges, nm_edge_faces,
+                                              is_valid, merges, bundle_merges);
 
-        auto sign = [](T2 v) -> int { return (v > 0) ? 1 : (v < 0) ? -1 : 0; };
-
-        // y is orientation relative to pivot plane
-        int ya = sign(tf::exact::orient3d_value<Int>(pi, pj, pp, pa));
-        int yb = sign(tf::exact::orient3d_value<Int>(pi, pj, pp, pb));
-
-        // x is "same side of edge" check for coplanar faces
-        auto half = [&](int y, const auto& pk) -> bool {
-          if (y != 0) return y > 0;
-          auto nk = normal(pi, pj, pk);
-          // Dot product of normals sign. Since collinear, any non-zero component works.
-          for (int d = 0; d < 3; ++d) {
-            if (np[d] != 0) return (nk[d] > 0) == (np[d] > 0);
-          }
-          return true;
-        };
-
-        bool ha = half(ya, pa);
-        bool hb = half(yb, pb);
-        if (ha != hb) return ha > hb;
-
-        // Relative orientation
-        int s = sign(tf::exact::orient3d_value<Int>(pi, pj, pa, pb));
-        if (s != 0) return s > 0;
-
-        return a < b;
-      };
-    };
-
-    // Per-NM-edge: sort incident faces CCW, walk cyclically, emit
-    // fragment-side merge pairs.
-    //
-    // NOTE: input is assumed clean — no duplicate (coincident,
-    // same-winding) triangles. Duplicates will produce extra trivial
-    // 1-face domains in the output (one per orphaned fragment-side
-    // node). Clean the mesh upstream if you want a domain count that
-    // matches the underlying surface.
-    struct local_state_t {
-      std::vector<std::pair<Index, Index>> entries;
-      tf::hash_set<std::array<Index, 2>, tf::array_hash<Index, 2>> seen;
-    };
-    tf::buffer<std::array<Index, 2>> merges;
-    tf::generic_generate(
-        tf::enumerate(nm_edges), merges, local_state_t{},
-        [&, &nm_edge_faces = nm_edge_faces](const auto &pair, auto &out_buffer,
-                                            local_state_t &state) {
-          const auto &[k, edge] = pair;
-          Index i = edge[0];
-          Index j = edge[1];
-          auto incident = nm_edge_faces[k];
-
-          state.entries.clear();
-          using T1 = typename tf::exact::meta<Int>::T1;
-          using T2 = typename tf::exact::meta<Int>::T2;
-          auto pi = get_point(i);
-          auto pj = get_point(j);
-          T1 e0 = T1(pj[0]) - pi[0], e1 = T1(pj[1]) - pi[1],
-             e2 = T1(pj[2]) - pi[2];
-          bool degenerate = false;
-          for (auto face_id : incident) {
-            const auto &face = polygons.faces()[face_id];
-            Index third = Index(-1);
-            for (auto v : face)
-              if (v != i && v != j) {
-                third = v;
-                break;
-              }
-            if (third == Index(-1)) {
-              degenerate = true;
-              break;
-            }
-            auto pk = get_point(third);
-            T1 v0 = T1(pk[0]) - pi[0], v1 = T1(pk[1]) - pi[1],
-               v2 = T1(pk[2]) - pi[2];
-            T2 c0 = T2(e1) * v2 - T2(e2) * v1;
-            T2 c1 = T2(e2) * v0 - T2(e0) * v2;
-            T2 c2 = T2(e0) * v1 - T2(e1) * v0;
-            if (c0 == 0 && c1 == 0 && c2 == 0) {
-              degenerate = true;
-              break;
-            }
-            state.entries.push_back({face_id, third});
-          }
-          if (degenerate)
-            return;
-
-          Index K = Index(state.entries.size());
-          if (K < 2)
-            return;
-
-          Index pivot_v = state.entries[0].second;
-          auto cmp = cmp_around_edge(i, j, pivot_v);
-          std::sort(state.entries.begin(), state.entries.end(),
-                    [&cmp](const auto &a, const auto &b) {
-                      return cmp(a.second, b.second);
-                    });
-
-          for (Index r = 0; r < K; ++r) {
-            Index Fa = state.entries[r].first;
-            Index Fb = state.entries[tf::circular_increment(r, K)].first;
-            const auto &face_a = polygons.faces()[Fa];
-            const auto &face_b = polygons.faces()[Fb];
-
-            // Side that has oriented edge (i, j) is Side 0.
-            // Moving CCW from A to B: merge A's CCW side (0) with B's CW side (1).
-            Index sa = tf::directed_edge_id_in_face(i, j, face_a) ==
-                               Index(face_a.size())
-                           ? 1
-                           : 0;
-            Index sb = tf::directed_edge_id_in_face(i, j, face_b) ==
-                               Index(face_b.size())
-                           ? 1
-                           : 0;
-            sb ^= 1;
-
-            Index node_a = 2 * fragment_labels.labels[Fa] + sa;
-            Index node_b = 2 * fragment_labels.labels[Fb] + sb;
-            std::array<Index, 2> p = {std::min(node_a, node_b),
-                                      std::max(node_a, node_b)};
-            if (state.seen.insert(p).second)
-              out_buffer.push_back(p);
-          }
-        });
-
-    // Union-find on the fragment-side graph: each connected component
-    // is one domain.
     tf::buffer<Index> domain_of_side;
-    domain_of_side.allocate(2 * fragment_labels.n_components);
-    auto n_domains =
-        tf::make_dense_equivalence_class_map(merges, domain_of_side);
+    auto n_domains = tf::topology::domains::build_domain_of_side(
+        merges, fragment_labels.n_components, domain_of_side);
 
-    // Lift to per-face per-side labels: labels[2f + s] = domain on
-    // side s of face f.
-    Index n_faces = Index(polygons.size());
-    tf::connected_component_labels<Index> out;
-    out.labels.allocate(2 * n_faces);
-    out.n_components = Index(n_domains);
-    tf::parallel_for_each(tf::make_sequence_range(n_faces), [&](Index f) {
-      Index frag = fragment_labels.labels[f];
-      out.labels[2 * f + 0] = domain_of_side[2 * frag + 0];
-      out.labels[2 * f + 1] = domain_of_side[2 * frag + 1];
-    });
-    return out;
+    auto bundle_labels = tf::topology::domains::make_bundle_labels(
+        bundle_merges, fragment_labels.n_components);
+
+    auto volume_contributions =
+        tf::topology::domains::compute_volume_contributions_per_fragment(
+            polygons, fragment_labels);
+
+    auto domain_volumes = tf::topology::domains::compute_domain_volumes(
+        volume_contributions, domain_of_side, n_domains);
+
+    Index removed_domain =
+        anchor_side >= Index(0) ? domain_of_side[anchor_side] : Index(-1);
+    tf::buffer<std::array<Index, 2>> nesting_merges;
+    Index root_anchor = tf::topology::domains::make_nesting_merges<Int>(
+        polygons, fragment_labels, bundle_labels, domain_of_side,
+        domain_volumes, get_point, nesting_merges, removed_domain);
+
+    // exclude_outer_shell: lump the universe into the sentinel
+    // equivalence class. Adopt the universe as removed_domain if Mode 1
+    // didn't already establish one.
+    if ((config & tf::domain_config::exclude_outer_shell) &&
+        root_anchor >= Index(0)) {
+      if (removed_domain >= Index(0) && removed_domain != root_anchor) {
+        nesting_merges.push_back(
+            {std::min(root_anchor, removed_domain),
+             std::max(root_anchor, removed_domain)});
+      } else if (removed_domain < Index(0)) {
+        removed_domain = root_anchor;
+      }
+    }
+
+    if (nesting_merges.size() > 0) {
+      tf::buffer<Index> domain_remap;
+      domain_remap.allocate(n_domains);
+      n_domains = Index(tf::make_dense_equivalence_class_map(nesting_merges,
+                                                             domain_remap));
+      tf::parallel_for_each(
+          domain_of_side, [&](Index &d) { d = domain_remap[d]; }, tf::checked);
+      if (removed_domain >= Index(0))
+        removed_domain = domain_remap[removed_domain];
+    }
+
+    return tf::topology::domains::lift_to_domain_labels(
+        domain_of_side, n_domains, fragment_labels, Index(polygons.size()),
+        removed_domain);
   }
 }
 
