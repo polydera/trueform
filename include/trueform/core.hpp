@@ -167,10 +167,14 @@
 #include "./core/stitch_index_maps.hpp"           // IWYU pragma: export
 #include "./core/svd_of_symmetric.hpp"            // IWYU pragma: export
 #include "./core/tick_tock.hpp"                   // IWYU pragma: export
+#include "./core/transform.hpp"                   // IWYU pragma: export
 #include "./core/transformation.hpp"              // IWYU pragma: export
 #include "./core/transformation_like.hpp"         // IWYU pragma: export
 #include "./core/transformation_view.hpp"         // IWYU pragma: export
 #include "./core/transformed.hpp"                 // IWYU pragma: export
+#include "./core/transformed_forms.hpp"           // IWYU pragma: export
+#include "./core/translate.hpp"                   // IWYU pragma: export
+#include "./core/translated_forms.hpp"            // IWYU pragma: export
 #include "./core/tuple.hpp"                       // IWYU pragma: export
 #include "./core/tuple_hash.hpp"                  // IWYU pragma: export
 #include "./core/unit_vector.hpp"                 // IWYU pragma: export

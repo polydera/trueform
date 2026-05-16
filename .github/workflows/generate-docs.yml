@@ -31,13 +31,6 @@ jobs:
           path: docs/wasm-examples/build/dist
           retention-days: 7
 
-      - name: Upload TypeScript SDK artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ts-sdk-build
-          path: typescript/dist
-          retention-days: 7
-
   build:
     runs-on: ubuntu-latest
     needs: build-wasm
@@ -51,12 +44,6 @@ jobs:
         with:
           name: wasm-build
           path: docs/wasm-examples/build/dist
-
-      - name: Download TypeScript SDK artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: ts-sdk-build
-          path: typescript/dist
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
