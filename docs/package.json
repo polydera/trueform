@@ -58,7 +58,8 @@
       "serialize-javascript": "^7.0.5",
       "micromatch>picomatch": "2.3.2",
       "remark-mdc>yaml": "2.8.3",
-      "fast-xml-parser>fast-xml-builder": ">=1.1.7"
+      "fast-xml-parser>fast-xml-builder": ">=1.1.7",
+      "striptags": "^4.0.0-alpha.4"
     },
     "ignoredBuiltDependencies": [
       "@parcel/watcher",

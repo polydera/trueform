@@ -323,12 +323,12 @@ body {
   box-shadow: inset 0 0 0 1px var(--teal-faint) !important;
 }
 
-.docs-page-body :where(.group, [class*="card"]) {
+.docs-page-body :where([class*="card"]) {
   border-color: var(--panel-border);
   transition: border-color 180ms ease;
 }
 
-.docs-page-body :where(.group, [class*="card"]):hover {
+.docs-page-body :where([class*="card"]):hover {
   border-color: color-mix(in srgb, var(--teal) 42%, transparent);
 }
 

@@ -27,7 +27,7 @@ const positionClass = computed(() =>
 
 <template>
   <div
-    class="z-10 rounded-lg bg-neutral-100/10 shadow-lg backdrop-blur flex flex-col gap-0.5 md:gap-2"
+    class="z-10 rounded-lg bg-[var(--panel-bg)] border border-[var(--panel-border)] shadow-lg backdrop-blur flex flex-col gap-0.5 md:gap-2"
     :class="[alignmentClass, containerWidthClass, positionClass]"
   >
     <div v-if="title" class="flex justify-between items-start gap-3 w-full">

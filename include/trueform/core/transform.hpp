@@ -32,8 +32,8 @@ namespace tf {
 ///      composed at read time, so mutating the underlying points would
 ///      silently apply the transform twice.
 template <typename Policy, std::size_t Dims, typename U>
-void transform(tf::points<Policy> &view,
-               const tf::transformation_like<Dims, U> &t) {
+auto transform(tf::points<Policy> &view,
+               const tf::transformation_like<Dims, U> &t) -> void {
   static_assert(!tf::has_frame_policy<Policy>,
                 "tf::transform: view must not carry a frame policy.");
   tf::parallel_for_each(
@@ -43,8 +43,8 @@ void transform(tf::points<Policy> &view,
 /// @ingroup core_primitives
 /// @overload
 template <typename Policy, std::size_t Dims, typename U>
-void transform(tf::points<Policy> &&view,
-               const tf::transformation_like<Dims, U> &t) {
+auto transform(tf::points<Policy> &&view,
+               const tf::transformation_like<Dims, U> &t) -> void {
   static_assert(!tf::has_frame_policy<Policy>,
                 "tf::transform: view must not carry a frame policy.");
   tf::transform(view, t);
@@ -53,8 +53,8 @@ void transform(tf::points<Policy> &&view,
 /// @ingroup core_primitives
 /// @overload
 template <typename Policy, std::size_t Dims, typename U>
-void transform(tf::polygons<Policy> &view,
-               const tf::transformation_like<Dims, U> &t) {
+auto transform(tf::polygons<Policy> &view,
+               const tf::transformation_like<Dims, U> &t) -> void {
   static_assert(!tf::has_frame_policy<Policy>,
                 "tf::transform: view must not carry a frame policy.");
   tf::transform(view.points(), t);
@@ -63,8 +63,8 @@ void transform(tf::polygons<Policy> &view,
 /// @ingroup core_primitives
 /// @overload
 template <typename Policy, std::size_t Dims, typename U>
-void transform(tf::polygons<Policy> &&view,
-               const tf::transformation_like<Dims, U> &t) {
+auto transform(tf::polygons<Policy> &&view,
+               const tf::transformation_like<Dims, U> &t) -> void {
   static_assert(!tf::has_frame_policy<Policy>,
                 "tf::transform: view must not carry a frame policy.");
   tf::transform(view.points(), t);
@@ -73,8 +73,8 @@ void transform(tf::polygons<Policy> &&view,
 /// @ingroup core_primitives
 /// @overload
 template <typename Policy, std::size_t Dims, typename U>
-void transform(tf::segments<Policy> &view,
-               const tf::transformation_like<Dims, U> &t) {
+auto transform(tf::segments<Policy> &view,
+               const tf::transformation_like<Dims, U> &t) -> void {
   static_assert(!tf::has_frame_policy<Policy>,
                 "tf::transform: view must not carry a frame policy.");
   tf::transform(view.points(), t);
@@ -83,8 +83,8 @@ void transform(tf::segments<Policy> &view,
 /// @ingroup core_primitives
 /// @overload
 template <typename Policy, std::size_t Dims, typename U>
-void transform(tf::segments<Policy> &&view,
-               const tf::transformation_like<Dims, U> &t) {
+auto transform(tf::segments<Policy> &&view,
+               const tf::transformation_like<Dims, U> &t) -> void {
   static_assert(!tf::has_frame_policy<Policy>,
                 "tf::transform: view must not carry a frame policy.");
   tf::transform(view.points(), t);
@@ -93,48 +93,48 @@ void transform(tf::segments<Policy> &&view,
 /// @ingroup core_primitives
 /// @overload
 template <typename Policy, std::size_t Dims, typename U>
-void transform(tf::points<Policy> &view,
-               const tf::frame_like<Dims, U> &frame) {
+auto transform(tf::points<Policy> &view,
+               const tf::frame_like<Dims, U> &frame) -> void {
   tf::transform(view, frame.transformation());
 }
 
 /// @ingroup core_primitives
 /// @overload
 template <typename Policy, std::size_t Dims, typename U>
-void transform(tf::points<Policy> &&view,
-               const tf::frame_like<Dims, U> &frame) {
+auto transform(tf::points<Policy> &&view,
+               const tf::frame_like<Dims, U> &frame) -> void {
   tf::transform(view, frame.transformation());
 }
 
 /// @ingroup core_primitives
 /// @overload
 template <typename Policy, std::size_t Dims, typename U>
-void transform(tf::polygons<Policy> &view,
-               const tf::frame_like<Dims, U> &frame) {
+auto transform(tf::polygons<Policy> &view,
+               const tf::frame_like<Dims, U> &frame) -> void {
   tf::transform(view, frame.transformation());
 }
 
 /// @ingroup core_primitives
 /// @overload
 template <typename Policy, std::size_t Dims, typename U>
-void transform(tf::polygons<Policy> &&view,
-               const tf::frame_like<Dims, U> &frame) {
+auto transform(tf::polygons<Policy> &&view,
+               const tf::frame_like<Dims, U> &frame) -> void {
   tf::transform(view, frame.transformation());
 }
 
 /// @ingroup core_primitives
 /// @overload
 template <typename Policy, std::size_t Dims, typename U>
-void transform(tf::segments<Policy> &view,
-               const tf::frame_like<Dims, U> &frame) {
+auto transform(tf::segments<Policy> &view,
+               const tf::frame_like<Dims, U> &frame) -> void {
   tf::transform(view, frame.transformation());
 }
 
 /// @ingroup core_primitives
 /// @overload
 template <typename Policy, std::size_t Dims, typename U>
-void transform(tf::segments<Policy> &&view,
-               const tf::frame_like<Dims, U> &frame) {
+auto transform(tf::segments<Policy> &&view,
+               const tf::frame_like<Dims, U> &frame) -> void {
   tf::transform(view, frame.transformation());
 }
 

@@ -31,8 +31,8 @@ namespace tf {
 ///      composed at read time, so mutating the underlying points would
 ///      silently apply the translation twice.
 template <typename Policy, std::size_t Dims, typename T>
-void translate(tf::points<Policy> &view,
-               const tf::vector_like<Dims, T> &v) {
+auto translate(tf::points<Policy> &view,
+               const tf::vector_like<Dims, T> &v) -> void {
   static_assert(!tf::has_frame_policy<Policy>,
                 "tf::translate: view must not carry a frame policy.");
   tf::parallel_for_each(
@@ -42,40 +42,40 @@ void translate(tf::points<Policy> &view,
 /// @ingroup core_primitives
 /// @overload
 template <typename Policy, std::size_t Dims, typename T>
-void translate(tf::points<Policy> &&view,
-               const tf::vector_like<Dims, T> &v) {
+auto translate(tf::points<Policy> &&view,
+               const tf::vector_like<Dims, T> &v) -> void {
   tf::translate(view, v);
 }
 
 /// @ingroup core_primitives
 /// @overload
 template <typename Policy, std::size_t Dims, typename T>
-void translate(tf::polygons<Policy> &view,
-               const tf::vector_like<Dims, T> &v) {
+auto translate(tf::polygons<Policy> &view,
+               const tf::vector_like<Dims, T> &v) -> void {
   tf::translate(view.points(), v);
 }
 
 /// @ingroup core_primitives
 /// @overload
 template <typename Policy, std::size_t Dims, typename T>
-void translate(tf::polygons<Policy> &&view,
-               const tf::vector_like<Dims, T> &v) {
+auto translate(tf::polygons<Policy> &&view,
+               const tf::vector_like<Dims, T> &v) -> void {
   tf::translate(view.points(), v);
 }
 
 /// @ingroup core_primitives
 /// @overload
 template <typename Policy, std::size_t Dims, typename T>
-void translate(tf::segments<Policy> &view,
-               const tf::vector_like<Dims, T> &v) {
+auto translate(tf::segments<Policy> &view,
+               const tf::vector_like<Dims, T> &v) -> void {
   tf::translate(view.points(), v);
 }
 
 /// @ingroup core_primitives
 /// @overload
 template <typename Policy, std::size_t Dims, typename T>
-void translate(tf::segments<Policy> &&view,
-               const tf::vector_like<Dims, T> &v) {
+auto translate(tf::segments<Policy> &&view,
+               const tf::vector_like<Dims, T> &v) -> void {
   tf::translate(view.points(), v);
 }
 

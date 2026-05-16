@@ -14,6 +14,7 @@ overrides:
   micromatch>picomatch: 2.3.2
   remark-mdc>yaml: 2.8.3
   fast-xml-parser>fast-xml-builder: '>=1.1.7'
+  striptags: ^4.0.0-alpha.4
 
 importers:
 
@@ -6615,8 +6616,8 @@ packages:
   strip-literal@3.1.0:
     resolution: {integrity: sha512-8r3mkIM/2+PpjHoOtiAW8Rg3jJLHaV7xPwG+YRGrv6FP0wwk/toTpATxWYOW0BKdWwl82VT2tFYi5DlROa0Mxg==}
 
-  striptags@3.2.0:
-    resolution: {integrity: sha512-g45ZOGzHDMe2bdYMdIvdAfCQkCTDMGBazSw1ypMowwGIee7ZQ5dU0rBJ8Jqgl+jAKIv4dbeE1jscZq9wid1Tkw==}
+  striptags@4.0.0-alpha.4:
+    resolution: {integrity: sha512-/0jWyVWhpg9ciRHfjKYBpMHXct/HrFRfsR2HU77nGPbc8SPcVSIHZlZR/0TG3MyPq2C+HiHuwx8BlbcdI/cNbw==}
 
   strnum@2.3.0:
     resolution: {integrity: sha512-ums3KNd42PGyx5xaoVTO1mjU1bH3NpY4vsrVlnv9PNGqQj8wd7rJ6nEypLrJ7z5vxK5RP0yMLo6J/Gsm62DI5Q==}
@@ -10438,7 +10439,7 @@ snapshots:
       geojson: 0.5.0
       leaflet: 1.7.1
       maplibre-gl: 2.4.0
-      striptags: 3.2.0
+      striptags: 4.0.0-alpha.4
       supercluster: 7.1.5
       three: 0.135.0
       throttle-debounce: 5.0.2
@@ -14996,7 +14997,7 @@ snapshots:
     dependencies:
       js-tokens: 9.0.1
 
-  striptags@3.2.0: {}
+  striptags@4.0.0-alpha.4: {}
 
   strnum@2.3.0: {}
 
