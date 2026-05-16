@@ -25,7 +25,7 @@ namespace tf::vtk {
 /// and returns a vector of separate polydata objects, one per unique label.
 ///
 /// @param input vtkPolyData with vtkIdType cell scalars as labels.
-/// @return Pair of (vector of polydata, vector of labels).
+/// @return Pair of (vector of polydata, buffer of labels).
 ///
 /// @code
 /// vtkNew<tf::vtk::connected_components> cc;
@@ -44,7 +44,7 @@ auto split_into_components(vtkPolyData *input)
 ///
 /// @param input vtkPolyData with cell data.
 /// @param array_name Name of the vtkIdType cell data array to split by.
-/// @return Pair of (vector of polydata, vector of labels).
+/// @return Pair of (vector of polydata, buffer of labels).
 auto split_into_components(vtkPolyData *input, const char *array_name)
     -> std::pair<std::vector<vtkSmartPointer<polydata>>, tf::buffer<vtkIdType>>;
 

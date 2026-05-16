@@ -27,6 +27,7 @@
 #include "../core/views/mapped_range.hpp"
 #include "../core/views/offset_block_range.hpp"
 #include "../core/views/zip.hpp"
+#include "../topology/connected_component_labels.hpp"
 #include "tbb/parallel_sort.h"
 
 namespace tf {
@@ -217,5 +218,13 @@ auto split_into_components(const tf::segments<Policy> &segments,
                            const Range &labels) {
   using Index = std::decay_t<decltype(segments.edges()[0][0])>;
   return reindex::split_into_components_segments<Index>(segments, labels);
+}
+
+/// @ingroup reindex
+/// @brief Split polygons by @ref tf::connected_component_labels.
+template <typename Policy, typename L>
+auto split_into_components(const tf::polygons<Policy> &polygons,
+                           const tf::connected_component_labels<L> &cc) {
+  return tf::split_into_components(polygons, cc.labels);
 }
 } // namespace tf

@@ -28,5 +28,6 @@
 #include "./reindex/return_index_map.hpp"      // IWYU pragma: export
 #include "./reindex/segments.hpp"              // IWYU pragma: export
 #include "./reindex/split_into_components.hpp" // IWYU pragma: export
+#include "./reindex/split_into_domains.hpp"    // IWYU pragma: export
 #include "./reindex/unit_vectors.hpp"          // IWYU pragma: export
 #include "./reindex/vectors.hpp"               // IWYU pragma: export
