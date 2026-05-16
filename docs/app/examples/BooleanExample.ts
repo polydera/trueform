@@ -86,20 +86,22 @@ export class BooleanExample {
     this.tfMeshes = [this.dragon, this.sphere];
 
     // ── Two renderers + scenes ───────────────────────────────────────────
-    const bgColor1 = isDarkMode ? 0x1e1e1e : 0xfafafa;
-    const bgColor2 = isDarkMode ? 0x262626 : 0xf5f5f5;
+    const bgColor1 = getBrandBackground(0);
+    const bgColor2 = getBrandBackground(1);
 
-    this.renderer1 = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer1 = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     this.renderer1.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer1.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer1.toneMappingExposure = 1.0;
+    this.renderer1.setClearColor(0x000000, 0.0);
     container.appendChild(this.renderer1.domElement);
     this.sceneBundle1 = createScene(this.renderer1, { backgroundColor: bgColor1, enableFog: false });
 
-    this.renderer2 = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer2 = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     this.renderer2.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer2.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer2.toneMappingExposure = 1.0;
+    this.renderer2.setClearColor(0x000000, 0.0);
     container2.appendChild(this.renderer2.domElement);
     this.sceneBundle2 = createScene(this.renderer2, { backgroundColor: bgColor2, enableFog: false });
 
@@ -558,8 +560,8 @@ export class BooleanExample {
   }
 
   public applyTheme(isDark: boolean) {
-    this.sceneBundle1.scene.background = new THREE.Color(isDark ? 0x1e1e1e : 0xfafafa);
-    this.sceneBundle2.scene.background = new THREE.Color(isDark ? 0x262626 : 0xf5f5f5);
+    this.sceneBundle1.scene.background = null;
+    this.sceneBundle2.scene.background = null;
 
     const matcapUrl = isDark
       ? "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/635D52_A9BCC0_B1AEA0_819598.png"

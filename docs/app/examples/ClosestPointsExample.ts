@@ -84,11 +84,11 @@ export class ClosestPointsExample {
     this.tfMeshes = [mesh0, mesh1];
 
     // Three.js setup
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     container.appendChild(this.renderer.domElement);
 
     this.sceneBundle = createScene(this.renderer, {
-      backgroundColor: isDarkMode ? 0x1e1e1e : 0xfafafa,
+      backgroundColor: getBrandBackground(),
       enableFog: false,
     });
 
@@ -426,7 +426,7 @@ export class ClosestPointsExample {
   }
 
   public applyTheme(isDark: boolean) {
-    this.sceneBundle.scene.background = new THREE.Color(isDark ? 0x1e1e1e : 0xfafafa);
+    this.sceneBundle.scene.background = null;
     const matcapUrl = isDark
       ? "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/635D52_A9BCC0_B1AEA0_819598.png"
       : "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/2D2D2F_C6C2C5_727176_94949B.png";

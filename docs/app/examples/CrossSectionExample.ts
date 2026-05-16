@@ -44,11 +44,11 @@ export class CrossSectionExample {
     this.computeScalars();
 
     // Three.js setup
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     container.appendChild(this.renderer.domElement);
 
     this.sceneBundle = createScene(this.renderer, {
-      backgroundColor: isDarkMode ? 0x1e1e1e : 0xfafafa,
+      backgroundColor: getBrandBackground(),
       enableFog: false,
     });
 
@@ -238,7 +238,7 @@ export class CrossSectionExample {
   }
 
   public applyTheme(isDark: boolean) {
-    this.sceneBundle.scene.background = new THREE.Color(isDark ? 0x1e1e1e : 0xfafafa);
+    this.sceneBundle.scene.background = null;
 
     const matcapUrl = isDark
       ? "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/635D52_A9BCC0_B1AEA0_819598.png"

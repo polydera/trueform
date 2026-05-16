@@ -49,7 +49,7 @@ async function copyPage() {
 </script>
 
 <template>
-  <div class="inline-flex -space-x-px rounded-md shadow-sm">
+  <div class="brand-page-links">
     <UDropdownMenu
       :items="items"
       :content="{
@@ -61,7 +61,7 @@ async function copyPage() {
         content: 'w-48',
       }"
     >
-      <UButton label="Copy page" color="neutral" variant="outline">
+      <UButton label="Copy page" color="neutral" variant="outline" class="brand-page-links__button">
         <template #trailing>
           <div class="flex items-center gap-0.5">
             <UIcon name="i-lucide-copy" />
@@ -73,3 +73,15 @@ async function copyPage() {
     </UDropdownMenu>
   </div>
 </template>
+
+<style scoped>
+.brand-page-links {
+  display: inline-flex;
+  border-radius: var(--ui-radius);
+  box-shadow: 0 0 0 1px var(--rose-faint);
+}
+
+.brand-page-links__button {
+  background: var(--rose-ghost);
+}
+</style>

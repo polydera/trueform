@@ -179,7 +179,7 @@ watch(isDark, (dark) => {
       <div
         ref="threejsContainer2"
         id="threejsContainer2"
-        class="h-full flex-1 min-h-0 w-screen md:w-full"
+        class="h-full flex-1 min-h-0 w-screen md:w-full bg-black/20"
       ></div>
     </template>
   </ExampleLayout>

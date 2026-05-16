@@ -16,8 +16,16 @@ const showLibPicker = computed(() => {
 </script>
 
 <template>
-  <UHeader :ui="{ center: 'flex-1' }" :to="header?.to || '/'">
-    <UContentSearchButton v-if="header?.search" :collapsed="false" class="w-full" />
+  <UHeader
+    class="brand-header"
+    :ui="{ root: 'brand-header__root', container: 'brand-header__container', center: 'flex-1' }"
+    :to="header?.to || '/'"
+  >
+    <UContentSearchButton
+      v-if="header?.search"
+      :collapsed="false"
+      class="brand-search w-full"
+    />
 
     <template v-if="header?.logo?.dark || header?.logo?.light || header?.title" #title>
       <UColorModeImage
@@ -34,14 +42,14 @@ const showLibPicker = computed(() => {
     </template>
 
     <template v-else #left>
-      <NuxtLink :to="header?.to || '/'" class="flex items-center gap-1">
-        <NuxtImg src="/tf.png" class="w-auto h-6 shrink-0" />
-        <h1 class="text-2xl font-bold">trueform</h1>
+      <NuxtLink :to="header?.to || '/'" class="brand-header__logo">
+        <NuxtImg src="/tf.png" class="brand-header__mark" />
+        <span class="brand-header__word">trueform</span>
       </NuxtLink>
     </template>
 
     <template #right>
-      <UContentSearchButton v-if="header?.search" class="lg:hidden" />
+      <UContentSearchButton v-if="header?.search" class="brand-search-mobile lg:hidden" />
 
       <UColorModeButton v-if="header?.colorMode" />
 
@@ -58,7 +66,46 @@ const showLibPicker = computed(() => {
 
     <template #body>
       <LibPicker v-if="showLibPicker && isMobile" class="mb-4" />
-      <UContentNavigation highlight :navigation="navigation" />
+      <UContentNavigation class="brand-mobile-nav" highlight :navigation="navigation" />
     </template>
   </UHeader>
 </template>
+
+<style scoped>
+.brand-header {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  border-bottom: 1px solid var(--panel-border);
+  background: rgba(12, 21, 19, 0.78);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.brand-header__logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.brand-header__mark {
+  width: auto;
+  height: 1.45rem;
+  filter: drop-shadow(0 0 14px var(--teal-faint));
+}
+
+.brand-header__word {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.brand-mobile-nav {
+  border: 1px solid var(--panel-border);
+  border-radius: var(--ui-radius);
+  background: var(--panel-bg);
+  padding: 0.75rem;
+}
+</style>

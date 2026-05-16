@@ -8,12 +8,13 @@ const navigation = inject<Ref<ContentNavigationItem[]>>('navigation')
 </script>
 
 <template>
-  <UContainer>
-    <UPage>
+  <UContainer class="docs-container">
+    <UPage class="docs-shell">
       <template #left>
-        <UPageAside>
+        <UPageAside class="docs-aside">
           <LibPicker v-if="!isMobile" class="mb-5" />
           <UContentNavigation
+            class="docs-nav"
             highlight
             :navigation="navigation"
           />
@@ -24,3 +25,24 @@ const navigation = inject<Ref<ContentNavigationItem[]>>('navigation')
     </UPage>
   </UContainer>
 </template>
+
+<style scoped>
+.docs-container {
+  position: relative;
+  z-index: 1;
+  padding-top: 1.5rem;
+}
+
+.docs-shell {
+  gap: 1.5rem;
+}
+
+.docs-aside {
+  border-right: 1px solid var(--panel-border);
+  padding-right: 1.25rem;
+}
+
+.docs-nav {
+  font-size: 0.9rem;
+}
+</style>

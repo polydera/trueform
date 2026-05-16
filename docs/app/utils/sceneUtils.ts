@@ -1,6 +1,24 @@
 import * as THREE from "three";
 import { ArcballControls } from "three/addons/controls/ArcballControls.js";
 
+const DARK_BG_FALLBACK = [0x0c1513, 0x121f1d, 0x192a27];
+const LIGHT_BG_FALLBACK = [0xfafafa, 0xf5f5f5, 0xefefef];
+
+export function getBrandBackground(level: 0 | 1 | 2 = 1): number {
+    const isDark =
+        typeof document === "undefined" ||
+        !document.documentElement.classList.contains("light");
+    if (typeof window !== "undefined" && typeof document !== "undefined") {
+        const raw = getComputedStyle(document.documentElement)
+            .getPropertyValue(`--bg-${level}`)
+            .trim();
+        if (raw.startsWith("#") && (raw.length === 7 || raw.length === 4)) {
+            return new THREE.Color(raw).getHex();
+        }
+    }
+    return (isDark ? DARK_BG_FALLBACK : LIGHT_BG_FALLBACK)[level];
+}
+
 export interface SceneConfig {
     backgroundColor?: number;
     enableFog?: boolean;
@@ -34,9 +52,8 @@ export function createScene(
     renderer: THREE.WebGLRenderer,
     config: SceneConfig = {}
 ): SceneBundle {
-    // Default configuration
     const {
-        backgroundColor = 0x202020,
+        backgroundColor = getBrandBackground(),
         enableFog = true,
         fogNear = 80,
         fogFar = 450,
@@ -57,15 +74,11 @@ export function createScene(
         enableShadows = true
     } = config;
 
-    // Create scene
     const scene = new THREE.Scene();
-    const background = new THREE.Color(backgroundColor);
-    scene.background = background;
-    if (enableFog) {
-        scene.fog = new THREE.Fog(background.clone(), fogNear, fogFar);
-    } else {
-        scene.fog = null;
-    }
+    scene.background = null;
+    scene.fog = enableFog
+        ? new THREE.Fog(new THREE.Color(backgroundColor), fogNear, fogFar)
+        : null;
 
     // Create camera
     const camera = new THREE.PerspectiveCamera(

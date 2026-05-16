@@ -6,7 +6,7 @@ export default defineAppConfig({
     },
     footer: {
       slots: {
-        root: "border-t border-default",
+        root: "border-t border-default bg-transparent",
         left: "text-sm text-muted",
       },
     },
@@ -20,7 +20,7 @@ export default defineAppConfig({
       slots: {
         base: 'cursor-pointer',
       },
-    }
+    },
   },
   seo: {
     siteName: "trueform",
@@ -34,7 +34,7 @@ export default defineAppConfig({
       dark: "",
     },
     search: true,
-    colorMode: true,
+    colorMode: false,
     links: [
       {
         icon: "i-simple-icons-github",

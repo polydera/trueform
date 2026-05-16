@@ -80,7 +80,7 @@ export abstract class ThreejsBase implements IThreejsBase {
     this.isDarkMode = isDarkMode;
 
     // Setup first renderer
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -102,11 +102,12 @@ export abstract class ThreejsBase implements IThreejsBase {
 
     // Setup second renderer if container2 is provided
     if (container2) {
-      this.renderer2 = new THREE.WebGLRenderer({ antialias: true });
+      this.renderer2 = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       this.renderer2.setPixelRatio(window.devicePixelRatio);
       this.renderer2.outputColorSpace = THREE.SRGBColorSpace;
       this.renderer2.toneMapping = THREE.ACESFilmicToneMapping;
       this.renderer2.toneMappingExposure = 1.0;
+      this.renderer2.setClearColor(0x000000, 0.0);
       const rect2 = container2.getBoundingClientRect();
       this.renderer2.setSize(rect2.width, rect2.height);
       this.renderer2.shadowMap.enabled = true;
@@ -561,22 +562,19 @@ export abstract class ThreejsBase implements IThreejsBase {
     });
   }
 
-  private setSceneBackground(bundle: SceneBundle, renderer: THREE.WebGLRenderer, color: number) {
-    bundle.scene.background = new THREE.Color(color);
-    if (bundle.scene.fog) {
-      bundle.scene.fog.color.set(color);
-    }
-    renderer.setClearColor(color, 1);
+  private setSceneBackground(bundle: SceneBundle, renderer: THREE.WebGLRenderer, fogColor: number) {
+    bundle.scene.background = null;
+    bundle.scene.fog?.color.set(fogColor);
+    renderer.setClearColor(0x000000, 0.0);
   }
 
   public applyTheme(isDark: boolean) {
     this.isDarkMode = isDark;
-    const primaryBg = isDark ? 0x1e1e1e : 0xfafafa;
-    const secondaryBg = isDark ? 0x262626 : 0xf5f5f5;
+    const fogColor = getBrandBackground();
 
-    this.setSceneBackground(this.sceneBundle1, this.renderer, primaryBg);
+    this.setSceneBackground(this.sceneBundle1, this.renderer, fogColor);
     if (this.renderer2 && this.sceneBundle2) {
-      this.setSceneBackground(this.sceneBundle2, this.renderer2, secondaryBg);
+      this.setSceneBackground(this.sceneBundle2, this.renderer2, fogColor);
     }
 
     // Update instanced mesh materials

@@ -1,18 +1,22 @@
-\documentclass[10pt,twocolumn]{article}
+\documentclass{egpubl}
+\JournalSubmission
 
 \usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
-\usepackage{lmodern}
-\usepackage{microtype}
+\usepackage{mathptmx} % Times-like Adobe substitute; replace with dfadobe for camera-ready
 
-\usepackage[letterpaper,margin=1in,columnsep=0.3in]{geometry}
-\setlength{\parindent}{1em}
-\setlength{\parskip}{0pt}
+\usepackage{cite}
+\BibtexOrBiblatex
+\electronicVersion
+\PrintedOrElectronic
+\ifpdf \usepackage[pdftex]{graphicx} \pdfcompresslevel=9
+\else \usepackage[dvips]{graphicx} \fi
+\usepackage{egweblnk}
 
-\usepackage{amsmath,amssymb,amsthm}
-\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
 \usepackage{booktabs}
 \usepackage{array}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 \usepackage{tikz}
 \usepackage{tikz-3dplot}
 \usetikzlibrary{calc}
@@ -21,21 +25,18 @@
 \definecolor{tfrose}{HTML}{C8467A}
 \definecolor{tfink}{HTML}{1F2937}
 
-\usepackage[numbers,sort&compress]{natbib}
-\usepackage[hidelinks]{hyperref}
-\hypersetup{
-  pdftitle={Exact predicates, implicit graphs, and aggregated uncertainty in mesh CSG},
-  pdfauthor={\v{Z}iga Sajovic},
-}
+\title[Uncertainty-aware mesh CSG]%
+      {Exact predicates, implicit graphs,\\
+       and uncertainty-aware mesh CSG}
 
-\title{Exact predicates, implicit graphs,\\
-       and aggregated uncertainty in mesh CSG}
-\author{%
-  \v{Z}iga Sajovic\\
-  \small Polydera\\
-  \small \texttt{ziga.sajovic@polydera.com}
+\author[\v{Z}. Sajovic]
+{\parbox{\textwidth}{\centering \v{Z}iga Sajovic$^{1}$
+        }
+        \\
+{\parbox{\textwidth}{\centering $^1$Polydera, \texttt{ziga.sajovic@polydera.com}
+       }
 }
-\date{}
+}
 
 
 \begin{document}
@@ -44,9 +45,22 @@
 \begin{abstract}
 Mesh CSG pipelines are becoming robust and recently interactive, but unconditional trust is impossible: CSG output crosses the floating-point boundary in both directions, and topology is the only invariant that survives. The pragmatic goal is twofold: guarantee what can be guaranteed, absorb what cannot.
 
-Our pipeline is structured by three layers, each a graph problem on graphs we never explicitly construct. Per-face local exactness --- integer-kernel predicates classify pairwise intersections into five canonical types (VV, VE, VF, EE, EF) without simulation of simplicity; each cut face's 2D arrangement is exact in its own plane. Identity propagation across faces --- all points created along an intersection edge are registered, by edge identity, on every face that contains that edge. Aggregated uncertainty --- when 3D decisions span faces, endpoint materialisation can perturb individual predicates. We exploit the consistency imposed by topological units to absorb local uncertainties: component orientation, relation merge, domain inside/outside.
+Our pipeline is structured by three layers, each a graph problem on graphs we never explicitly construct. Per-face local exactness --- integer-kernel predicates classify pairwise intersections into five canonical types (VV, VE, VF, EE, EF) without simulation of simplicity; each cut face's 2D arrangement is exact in its own plane. Identity propagation across faces --- all points created along an intersection edge are registered, by edge identity, on every face that contains that edge. Aggregated uncertainty --- when 3D decisions span faces, endpoint materialisation can perturb individual predicates. We exploit the consistency imposed by topological units to absorb local uncertainties: component orientation, relation merge, domain extraction and classification.
 
-  The \emph{trueform} implementation delivers robust mesh CSG at interactive speeds in C\texttt{++}, Python, and TypeScript.
+The \emph{trueform} implementation delivers robust mesh CSG at interactive speeds in C\texttt{++}, Python, and TypeScript.
+%-------------------------------------------------------------------------
+%  ACM CCS 2012 (placeholder --- to be refined with final categories)
+\begin{CCSXML}
+<ccs2012>
+<concept>
+<concept_id>10010147.10010371.10010396.10010402</concept_id>
+<concept_desc>Computing methodologies~Mesh geometry models</concept_desc>
+<concept_significance>500</concept_significance>
+</concept>
+</ccs2012>
+\end{CCSXML}
+\ccsdesc[500]{Computing methodologies~Mesh geometry models}
+\printccsdesc
 \end{abstract}
 
 \section{Introduction}
@@ -59,9 +73,9 @@ Mesh CSG --- arrangements of triangulated surfaces and the booleans that select 
 
 \textbf{Geometric exactness is local.} Predicates must return the exact mathematical sign of a polynomial, not a floating-point answer that depends on the order of summation~\cite{Levy2025}. In a single face's plane, on a bounded integer grid, this is cheap: \texttt{orient3d} and its relatives reduce to fixed-width integer arithmetic with no filter cascade. Several kernels make the same per-call guarantee by different means --- arithmetic expansions~\cite{Shewchuk1997}, indirect predicates~\cite{Attene2020}, multi-precision floats~\cite{Levy2025}, bounded-width integer planes~\cite{Trettner2022}. Extending that exactness from per-call to chained constructions is also possible: materialised intersection points live across face planes, and the arithmetic must follow them --- expansions can reach tens of thousands of components in degenerate cases~\cite{Levy2025}, and fixed-width ladders must widen at each composition or change representation. The cost is real but bounded.
 
-\textbf{The illusion of closed systems.} An arrangement or boolean is never the whole pipeline. Mesh CSG is a step in something larger --- a model on its way to finite-element analysis, mesh editing, or export. Recent systems are exact within their own representation, but use-cases rarely stay within it for more than one operation. Materialising the result back to IEEE double can introduce new intersections that were not in the exact result~\cite{Levy2025}. EMBER acknowledges this in its own limitations, noting that iterated CSG within its representation is exact, but interfacing the floating-point world requires snap rounding which may re-introduce tiny self-intersections~\cite{Trettner2022}. The same boundary works in reverse: inputs come from upstream tools that have already crossed it, so a CSG operation never receives truly clean input either. Pushing precision arbitrarily high inside the system does not change this --- uncertainty re-enters at the boundary regardless of how it was held inside. The pragmatic response is to absorb it within the pipeline, using the structure topology imposes. The only invariant that survives this boundary, in either direction, is topology.
+\textbf{Topology survives the float boundary.} An arrangement or boolean is never the whole pipeline. Mesh CSG is a step in something larger --- a model on its way to finite-element analysis, mesh editing, or export. Several recent systems are exact within their own representation: EMBER's bounded-width plane kernel~\cite{Trettner2022} guarantees iterated CSG at interactive rates without leaving its representation; L\'evy's pipeline~\cite{Levy2025} carries arithmetic expansions and a multiprecision fallback to keep the same guarantee. These are remarkable results within their exact universe. But use-cases rarely stay within that universe for more than one operation. The moment exact coordinates materialise back to IEEE double, new intersections may appear that were not in the exact result: EMBER's snap-rounding step at the float boundary makes this concrete~\cite{Trettner2022}, and L\'evy reports the same phenomenon~\cite{Levy2025}. The boundary works in reverse too: inputs come from upstream tools that have already crossed it, so a CSG operation never receives truly clean input either. Pushing precision arbitrarily high inside the system does not change this --- uncertainty re-enters at the boundary regardless of how it was held inside. The pragmatic response, taken here, is to absorb it within the pipeline, using the structure topology imposes. The only invariant that survives this boundary, in either direction, is topology.
 
-\textbf{Topological constraints absorb uncertainty.} Topology plays two roles. Locally, it is what we guarantee: the contacts the user deliberately specified --- coincident vertices, on-edge points, coplanar faces --- preserved exactly through classification. Globally, it is the structure those contacts implicitly form: manifold-edge connected components, chains of non-manifold edges, paths along which a radial sort must be consistent, domains bounded by selected faces. The local form is what we preserve; the global form is the consistency engine we use to absorb the residual uncertainty the boundary inevitably leaves behind. Treating both as first-class data means accepting non-manifold input as it comes --- flaps, T-junctions, isolated edges --- not as exceptions to be cleaned up before processing. Simulation of Simplicity~\cite{EdelsbrunnerMucke1990} is excluded outright on this ground --- its perturbation strategy is not topologically exact (Figure~\ref{fig:sos_box_divider}). Preserving the local form alone is not enough either. Methods that build wedges edge-by-edge around a non-manifold edge~\cite{BohmRunge2025} preserve local topology yet treat each edge in isolation. The radial sort along such a chain has two failure modes the per-edge view cannot absorb. A single degenerate incident triangle has an ambiguous angular position. And the materialised intersection points the pipeline carries can shift an \texttt{orient3d} wedge enough that a handful of edges in the chain land on the wrong side of a comparison. The bad pairings propagate outward to misclassify valid neighbours. Aggregating observations across the topological unit they belong to --- a component for orientation, a relation for merging, a domain for inside/outside --- is the mitigation. The unit's consistency is the global constraint that pins down the local noise.
+\textbf{Topological constraints absorb uncertainty.} Topology plays two roles. Locally, it is what we guarantee: the contacts the user deliberately specified --- coincident vertices, on-edge points, coplanar faces --- preserved exactly through classification. Globally, it is the structure those contacts implicitly form: manifold-edge connected components, chains of non-manifold edges, paths along which a radial sort must be consistent, domains bounded by selected faces. The local form is what we preserve; the global form is the consistency engine we use to absorb the residual uncertainty the boundary inevitably leaves behind. Treating both as first-class data means accepting non-manifold input as it comes --- flaps, T-junctions, isolated edges --- not as exceptions to be cleaned up before processing. Simulation of Simplicity~\cite{EdelsbrunnerMucke1990} is excluded outright on this ground --- its perturbation strategy is not topologically exact (Figure~\ref{fig:sos_box_divider}). Preserving the local form alone is not enough either. Methods that build wedges edge-by-edge around a non-manifold edge~\cite{BohmRunge2025} preserve local topology yet treat each edge in isolation. The radial sort along such a chain has two failure modes the per-edge view cannot absorb. A single degenerate incident triangle has an ambiguous angular position. And the materialised intersection points the pipeline carries can shift an \texttt{orient3d} wedge enough that a handful of edges in the chain land on the wrong side of a comparison. The bad pairings propagate outward to misclassify valid neighbours. Aggregating observations across the topological unit they belong to --- a component for orientation, a relation for merging, a domain for classification --- is the mitigation. The unit's consistency is the global constraint that pins down the local noise.
 
 \begin{figure}[t]
   \centering
@@ -94,7 +108,7 @@ The arrangement is built without constructing a global structure (Section~\ref{s
 Every stage of the pipeline is a graph problem on graphs that are never explicitly constructed (Section~\ref{sec:graphs}). Flat array layouts (offsets, dense ranks, adjacency tables, equivalence maps) indexed by lookup carry the global consistency constraints topology imposes. Nodes of the reduced graph are manifold-edge connected components of intersected and non-intersected regions of the input mesh; coplanar contact regions become a single component by construction, absorbing the separate scar-removal pass L\'evy performs~\cite{Levy2025}. Non-manifold flaps, T-junctions, and isolated edges flow through first-class. The reduced graph carries the combinatorial information of L\'evy's Weiler 3-map~\cite{Weiler1985} with no half-edge structure to maintain. L\'evy~\cite{Levy2025} advocates exploiting the combinatorics; we sharpen the principle by treating every stage as a graph problem on implicit graphs.
 
 \item \textbf{Aggregated uncertainty across topological units.}
-When 3D decisions span faces, the materialised intersection points the pipeline carries can perturb individual \texttt{orient3d} wedge comparisons. Aggregation absorbs the local noise at each topological unit (Section~\ref{sec:aggregation}): components vote on orientation, relations between components vote on merging into domains, and domains vote on inside/outside. All three are weighted-majority votes over exact \texttt{orient3d} observations, sidestepping the per-patch tangency handling that ray-casting requires~\cite{Cherchi2022}. Ambiguous local observations are skipped; the faces involved still belong to their component topologically and inherit the label. Domains carrying no seeds fall back to ray-casting.
+When 3D decisions span faces, the materialised intersection points the pipeline carries can perturb individual \texttt{orient3d} wedge comparisons. Aggregation absorbs the local noise at each topological unit (Section~\ref{sec:aggregation}): components vote on orientation, relations between components --- equivalence classes of radial permutations, not spatial chains --- vote on merging into domains, and domains vote on inside/outside. The combinatorial framing avoids ambiguities introduced by non-manifold flaps across spatial chains. All three are weighted-majority votes over exact \texttt{orient3d} observations, sidestepping the per-patch tangency handling that float ray-casting requires~\cite{Cherchi2022}. The few residual geometric tests --- nesting between geometrically disjoint bundles, fallback for domains carrying no combinatorial seed --- run as exact SoS-perturbed segment-casts on the same integer kernel. Ambiguous local observations are skipped; the faces involved still belong to their component topologically and inherit the label.
 
 \item \textbf{A library for interactive exact CSG in C\texttt{++}, Python, and the browser.}
 A single header-only C\texttt{++} library exposes the pipeline through Python (nanobind) and TypeScript (WebAssembly) bindings (Section~\ref{sec:implementation}). The same exact kernel runs on x86, ARM, and in the browser, at interactive speeds. The codebase is freely available for academic and research use~\cite{trueform2025}. To our knowledge, no prior CSG library is interactive in the browser.
@@ -103,9 +117,9 @@ A single header-only C\texttt{++} library exposes the pipeline through Python (n
 \subsection{Related work}
 \label{sec:related}
 
-\textbf{Geometric exactness.} The arithmetic-kernel literature has converged on a small set of approaches. Shewchuk's adaptive floating-point expansions~\cite{Shewchuk1997} compute a predicate's sign exactly by accumulating non-overlapping FP components, refining only when the filter cascade fails. FPG~\cite{MeyerPion2008} generates such filtered predicates from polynomial expressions. CGAL's lazy rationals~\cite{CGAL2023} offer the same exactness through arbitrary-precision evaluation. Indirect predicates~\cite{Attene2020} take a different route: they store constructed points as recipes (line-plane intersections, triple-plane intersections) and fold them into the predicate's polynomial. The FA mesh arrangement~\cite{Cherchi2020} is built on this. EMBER's plane-based representation~\cite{Trettner2022,NehringWirxel2021} uses fixed-width 256-bit integer arithmetic with no filter cascade. L\'evy's recent CSG pipeline~\cite{Levy2025} carries two kernels in parallel: Shewchuk expansions for the easy cases, GMP multiprecision for the hard ones. Interval arithmetic~\cite{Bronnimann1998} provides the cheap filter all of these depend on. Trueform sits between Attene and EMBER: a fixed three-width integer ladder (T0$\to$T1$\to$T2), no dynamic allocation, no fallback kernel.
+\textbf{Geometric exactness.} The arithmetic-kernel literature has converged on a small set of approaches. Shewchuk's adaptive floating-point expansions~\cite{Shewchuk1997} compute a predicate's sign exactly by accumulating non-overlapping FP components, refining only when the filter cascade fails. FPG~\cite{MeyerPion2008} generates such filtered predicates from polynomial expressions. CGAL's lazy rationals~\cite{CGAL2023} offer the same exactness through arbitrary-precision evaluation. Indirect predicates~\cite{Attene2020} take a different route: they store constructed points as recipes (line-plane intersections, triple-plane intersections) and fold them into the predicate's polynomial. The FA mesh arrangement~\cite{Cherchi2020} is built on this. EMBER's plane-based representation~\cite{Trettner2022,NehringWirxel2021} uses fixed-width 256-bit integer arithmetic with no filter cascade, delivering exact CSG at interactive rates. L\'evy's recent CSG pipeline~\cite{Levy2025} carries two kernels in parallel: Shewchuk expansions for the easy cases, GMP multiprecision for the hard ones. Interval arithmetic~\cite{Bronnimann1998} provides the cheap filter all of these depend on. Trueform sits between Attene and EMBER: a fixed three-width integer ladder (T0$\to$T1$\to$T2), no dynamic allocation, no fallback kernel.
 
-\textbf{Open systems and the float boundary.} Once exact coordinates materialise to floating point, new intersections may appear. 3D snap rounding~\cite{DevillersLazardLenhart2018} formalises the problem and gives an algorithm; Valque~\cite{Valque2019} pushes it toward practical implementation. Geometric rounding for meshes generalises the same problem class~\cite{MilenkovicSacks2019}. Cherchi's mesh arrangement applies an iterated cast-to-float heuristic to mitigate the damage~\cite{Cherchi2020}. EMBER explicitly acknowledges that interfacing the floating-point world reintroduces tiny self-intersections~\cite{Trettner2022}. None of these approaches claim to remove the boundary --- they minimise its damage. Trueform accepts the boundary as given and routes uncertainty into topological aggregation.
+\textbf{Open systems and the float boundary.} Once exact coordinates materialise to floating point, new intersections may appear. 3D snap rounding~\cite{DevillersLazardLenhart2018} formalises the problem and gives an algorithm; Valque~\cite{Valque2019} pushes it toward practical implementation. Geometric rounding for meshes generalises the same problem class~\cite{MilenkovicSacks2019}. Cherchi's mesh arrangement applies an iterated cast-to-float heuristic to mitigate the damage~\cite{Cherchi2020}. EMBER's snap-rounding step at the float boundary~\cite{Trettner2022} and L\'evy's reported re-intersections after coordinate materialisation~\cite{Levy2025} both confirm that the boundary is intrinsic to the use case, not a defect of any particular kernel. None of these approaches claim to remove the boundary --- they minimise its damage. Trueform accepts the boundary as given and routes uncertainty into topological aggregation.
 
 \textbf{Topology.} Mesh arrangements compute the global structure that classification consumes. Zhou's pipeline~\cite{Zhou2016} uses CGAL exact predicates and topological flooding. Cherchi 2020~\cite{Cherchi2020} replaces this with indirect predicates and ear-cut triangulation; the interactive 2022 variant~\cite{Cherchi2022} keeps the arrangement and uses a per-patch ray cast. L\'evy~\cite{Levy2025} builds the Weiler 3-map~\cite{Weiler1985} in the language of combinatorial maps~\cite{Lienhardt1988}, then floods bit-vectors of operand membership through it. Bohm and Runge~\cite{BohmRunge2025} extract domains from non-manifold meshes by per-edge angular sort and wedge construction --- a 3D generalisation of plane-graph region extraction~\cite{JiangBunke1993}. Generalized winding numbers~\cite{JacobsonKavanSorkine2013} provide an orthogonal path to inside/outside that tolerates non-manifold input. Simulation of Simplicity~\cite{EdelsbrunnerMucke1990} sidesteps the global construction by symbolic perturbation; it is the topology-discarding baseline of \S\ref{sec:observations}.
 
@@ -114,9 +128,11 @@ A single header-only C\texttt{++} library exposes the pipeline through Python (n
 \subsection{Algorithm overview}
 \label{sec:overview}
 
-The pipeline is a single forward pass. Stage one intersects every candidate face pair and emits per-face intersection records (Section~\ref{sec:predicates},~\ref{sec:arrangement}). Stage two arranges each cut face's records independently in its local plane; closed inner loops are patched into the regions that contain them (Section~\ref{sec:arrangement}). Edge adjacency is built only for the new cut sub-faces; non-intersected original faces reuse the input mesh's manifold-edge link directly. Together they form the implicit reduced graph that classification operates on.
+The pipeline is a single forward pass.
 
-Classification proceeds in three aggregation steps (Section~\ref{sec:aggregation}). First, each component aggregates orientation-flip votes across its faces. Second, each pair of components related by a chain of non-manifold edges aggregates wedge merge votes along the chain; union-find then propagates the merge decisions on the reduced graph to yield volumetric domains. Third, each domain aggregates wedge inside/outside seeds drawn along its non-manifold edge paths. All three are weighted-majority votes over exact \texttt{orient3d} observations; ambiguous observations are skipped, with faces inheriting their component's label. Domains carrying no seeds fall back to ray-casting.
+\textbf{Arrangement.} Stage one intersects every candidate face pair and emits per-face intersection records (Section~\ref{sec:predicates},~\ref{sec:arrangement}). Stage two arranges each cut face's records independently in its local plane; closed inner loops are patched into the regions that contain them (Section~\ref{sec:arrangement}). Edge adjacency is built only for the new cut sub-faces; non-intersected original faces reuse the input mesh's manifold-edge link directly. Together they form the implicit reduced graph that subsequent steps operate on.
+
+\textbf{Domain extraction and classification} (Section~\ref{sec:aggregation}). Each component aggregates orientation-flip votes across its faces. Each relation between components aggregates wedge merge votes; union-find then propagates the merge decisions on the reduced graph to yield the domain partition. Each domain then aggregates inside/outside wedge seeds drawn from the component relations (Section~\ref{sec:classification}). All votes are weighted-majority over exact \texttt{orient3d} observations; ambiguous observations are skipped, with faces inheriting their unit's label. Domains carrying no seeds fall back to exact SoS-perturbed segment-casting on the integer kernel.
 
 The boolean operator selects domains by their classifications. The final mesh is assembled only at the end: selected uncut original faces pass through directly, and selected cut sub-faces are triangulated into the output.
 
@@ -141,7 +157,26 @@ v_2 &= \mathrm{orient3d}(A_{t+1}, A_{t+2}, D, E),\\
 v_3 &= \mathrm{orient3d}(A_0,     A_{t+2}, D, E).
 \end{aligned}
 \]
-The zero-pattern decides the type. No zeros and a sign disagreement on the polygon edge: \texttt{EF}. One zero on a real polygon edge: \texttt{VE} (or \texttt{EE} when both segment ends sit on the same edge). Two zeros at a shared fan vertex: \texttt{VV}. Fan diagonals --- the edges $A_0 A_{t+1}$ for $t > 0$ and $A_0 A_{t+2}$ for $t + 3 < n$ --- are not real polygon edges. A zero on one of them is geometrically real but topologically a fan-interior point, classified as \texttt{EF}, never as \texttt{VE}. The real-edge predicate $(v_1 = 0 \land t = 0) \lor (v_2 = 0) \lor (v_3 = 0 \land t + 3 = n)$ is the only place the fan triangulation leaks structural information; the rest is rotation-symmetric.
+The zero-pattern decides the type (Table~\ref{tab:fan_zero_patterns}). No zeros and a sign disagreement on the fan triangle: \texttt{EF} (the segment crosses the face's interior). One zero on a real polygon edge: \texttt{EE} (the segment crosses a real edge at an interior point of both). Two zeros at a shared fan vertex: \texttt{VE} (the segment passes through a face vertex). Fan diagonals --- the edges $A_0 A_{t+1}$ for $t > 0$ and $A_0 A_{t+2}$ for $t + 3 < n$ --- are not real polygon edges. A zero on one of them is geometrically real but topologically a fan-interior point, classified as \texttt{EF}, never as \texttt{EE}. The real-edge predicate $(v_1 = 0 \land t = 0) \lor (v_2 = 0) \lor (v_3 = 0 \land t + 3 = n)$ is the only place the fan triangulation leaks structural information; the rest is rotation-symmetric.
+
+\begin{table}[t]
+\centering
+\caption{Fan-triangle zero-pattern decision tree for the crossing-edge routine. On-plane primitives and vertex-in-face containment are handled by separate routines.}
+\label{tab:fan_zero_patterns}
+\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}lr@{}}
+\toprule
+Pattern & Type \\
+\midrule
+No zeros, $s_1 = s_2 \ne s_3$  & \texttt{EF} \\
+One zero on a real edge        & \texttt{EE} \\
+One zero on a fan diagonal     & \texttt{EF} \\
+Two zeros (face vertex)        & \texttt{VE} \\
+\midrule
+On-plane primitives            & \texttt{VV}, \texttt{VE}, \texttt{EE} \\
+Vertex-in-face                 & \texttt{VF} \\
+\bottomrule
+\end{tabular*}
+\end{table}
 
 Two complementary routines run over this decomposition. The first processes edges that strictly cross the opposing plane, emitting \texttt{EF}, \texttt{EE}, or \texttt{VE} from the fan zero-pattern above. The second processes on-plane primitives --- any vertex whose plane-side sign is zero --- and emits \texttt{VV}, coplanar \texttt{VE}, or coplanar \texttt{EE}. A third routine emits \texttt{VF}. The three are not mutually exclusive: for a pair where some vertices cross and some touch the plane, all three may fire. The partition into types is still exact --- every real contact is emitted once, from one routine.
 
@@ -188,26 +223,90 @@ Closed paths and dangling cut paths are patched into the regions that contain th
 \subsection{Implicit graph structures}
 \label{sec:graphs}
 
-\subsubsection*{Combinatorics over geometry, at every stage}
+Every stage of the pipeline is a graph problem on graphs that are never explicitly constructed (Section~\ref{sec:contributions}); the next three subsections define the implicit graph that domain extraction and classification operate on (Section~\ref{sec:aggregation}).
 
-\subsubsection*{The reduced graph: manifold-edge components as nodes}
+Two implementation primitives appear throughout: connected-component labelling and a dense equivalence-class mapping that replaces pointer-based union-find. Below we use ``union-find'' generically for the latter; their low-level implementations are not material to the CSG algorithm.\footnote{Available as \texttt{tf::label\_connected\_components} and \texttt{tf::make\_dense\_equivalence\_class\_map} in the trueform implementation.}
 
-\subsubsection*{Exact radial sort and region walk}
+\subsubsection*{The reduced graph: components as nodes}
 
-\subsubsection*{Combinatorial equivalence to the Weiler 3-map}
+Domain extraction and classification (Section~\ref{sec:aggregation}) operate on manifold-edge connected components (MEL components) of the full arrangement. Running an MEL flood-fill directly on the whole arrangement would work but throws away the structure already built --- uncut faces inherit the input mesh's manifold-edge link, and cut sub-loops carry the per-face cut graph from stage two of the arrangement (Section~\ref{sec:arrangement}). We compute on the two sets separately and join.
 
-\subsection{Aggregation across topological units}
+\textbf{Non-intersected MEL components} flood-fill through the input manifold-edge link with intersected faces masked out. \textbf{Intersected MEL components} flood-fill through the per-face cut graph, in which coincident sub-loops from coplanar contacts are collapsed to a single face. The collapse means coplanar overlaps end up in one intersected component automatically. A union-find then joins the two sets across the cut/uncut interface: each cut sub-loop edge on the original face boundary contributes a pair with its uncut neighbour through the input manifold-edge link, and the dense equivalence-class map collapses the pairs. The result is the MEL components of the full arrangement. Components are not materialised as explicit data structures: we keep two label arrays --- one over original faces, one over cut sub-loops --- each entry holding its MEL-component id, queried by lookup.
+
+The \textbf{reduced graph} has these MEL components as nodes. Edges between nodes are the non-manifold edges shared by their faces in the arrangement --- the relations of the next subsection. Within each component, winding is consistent: the per-face side map (stored-orientation side, reversed side) is globally coherent without an orientation flood.
+
+\subsubsection*{Component relations and the radial permutation}
+
+Around the directed axis of a non-manifold edge $e$, the incident faces have a well-defined cyclic order; listing them in this order yields a cyclic sequence $\rho_e$ of MEL-component labels. The initial choice of axis direction is arbitrary, and reversing it reverses $\rho_e$. The \textbf{canonical permutation} of $e$ is the unique linear realisation of $\rho_e$ obtained by: (i) starting at the entry whose label is smallest; (ii) traversing in the direction that produces the lex-smaller of the two resulting sequences --- which fixes both the canonical sequence and the canonical axis direction. The cyclic order in $\rho_e$ is computed by exact \texttt{orient3d} on the integer kernel (Section~\ref{sec:predicates}). Two canonical permutations are \textbf{equivalent} when they sort to the same sequence. Edges with an incident face whose third vertex is collinear with the edge axis on the integer grid (a degenerate sliver) admit no comparator and are flagged invalid. They contribute no observation to the merging vote (Section~\ref{sec:aggregation}); the components they touch participate through their other non-manifold edges.
+
+A \textbf{relation between components} is an equivalence class of non-manifold edges under canonical-permutation equivalence. Within a relation, multiple canonical permutations may be observed --- the merging vote of Section~\ref{sec:aggregation} aggregates over this distribution. L\'evy organises the relation spatially as a \textbf{radial polyline} \cite{Levy2025} --- a chain of non-manifold edges contiguous in space sharing the same patch set --- and runs the radial sort once per chain. This is correct on closed-manifold input. Non-manifold flaps --- open MEL components attached to the middle of a polyline --- cut the chain into spatially disconnected sub-chains that nevertheless belong to the same relation. Our combinatorial framing pools them: edges in one equivalence class are voted on as one relation, regardless of how many spatial chains they sit on.
+
+\textbf{Computing the equivalence classes.} For each non-manifold edge we store two contiguous blocks: the incident face IDs in canonical-permutation order, and the corresponding MEL-component labels in sorted form. These form two flat arrays of length equal to the total incident-face count, indexed by an offsets array of length equal to the number of non-manifold edges. A single argsort over the sorted-label array groups non-manifold edges into contiguous equivalence classes.
+
+In applications like geomodelling, an arrangement mixes closed primitives (volumes, intrusions) with partial cuts, fault surfaces, and probe geometry. Open patches sometimes form valid domain separators (a fault that fully cuts the model) and sometimes are intrusion artifacts: a half-inserted patch sits inside an otherwise closed body without splitting it, leaving a non-manifold fin in the domain's boundary. The application chooses the policy.
+
+\textbf{Mode 1} treats MEL components carrying boundary edges as artifacts: the offending components are masked out of the reduced graph. An intrusion with a half-inserted patch returns to a single closed manifold domain --- the fin is gone. \textbf{Mode 2} treats them as meaningful: we add the relation between the component and its reverse side at the pre-merge of Section~\ref{sec:aggregation}, joining the domains adjacent to the open mesh. The intrusion's interior stays a single non-manifold domain that includes the fin as part of its boundary --- useful as a barrier in simulation or other downstream processing.\footnote{Selectable in the trueform implementation via the \texttt{tf::domain\_config} flag set: \texttt{tf::domain\_config::ignore\_open\_fragments} for Mode 1, omitted for Mode 2 (the default).}
+
+\subsubsection*{Equivalence to the Weiler 3-map}
+
+The Weiler 3-map \cite{Weiler1985,Levy2025} stores three per-dart links over a duplicated triangle set: $\sigma_1$ within a triangle, $\alpha_2$ across an edge within the same sheet, $\alpha_3$ across the same edge in the twin sheet. We carry the same content without storage: $\sigma_1$ in each face's vertex order, $\alpha_2$ in the manifold-edge link and cut graph (Sections~\ref{sec:predicates},~\ref{sec:arrangement}), $\alpha_3$ as the cyclic adjacency at each non-manifold edge derived from its canonical permutation. The Weiler bundle around a non-manifold edge is a relation between components; the 3D connected component $\langle\sigma_1, \alpha_2, \alpha_3\rangle$ is an equivalence class under our merge pairs.
+
+\subsection{Domain extraction}
 \label{sec:aggregation}
 
-\subsubsection*{The three aggregation steps}
+The pipeline of Section~\ref{sec:graphs} groups non-manifold edges into equivalence classes by canonical permutation. Each class votes on its canonical permutation and emits fragment-side merge pairs; cross-bundle nesting (below) emits additional domain-id merge pairs that close the case of geometrically disjoint bundles. A dense equivalence-class map consumes the combined merge buffer, assigning one \textbf{domain id} per fragment-side. The final per-face per-side labels follow by lookup in one parallel pass: $\text{labels}[f][s] = \text{domain\_of}[2c + s]$ for face $f$ in MEL component $c$. The whole pipeline operates on the reduced graph (buffers proportional to the number of MEL components), not on per-face data.
 
-\subsubsection*{Component orientation by weighted-majority flip}
+\subsubsection*{The relation-merge vote}
 
-\subsubsection*{Domain extraction by radial sort and union-find}
+\textbf{Distribution.} Offsets over the argsort of Section~\ref{sec:graphs} demarcate each equivalence class as a parallel slice. Within each slice we sort by canonical permutation and count runs of identical permutation. The run lengths form the distribution of canonical permutations within the relation.
 
-\subsubsection*{Per-domain classification by wedge seeds}
+\textbf{Vote.} The relation's canonical permutation is the longest run --- the majority. One linear walk per slice tracks the longest run seen so far and its representative non-manifold edge (Algorithm~\ref{alg:vote}). Figure~\ref{fig:relation_majority_vote} illustrates the vote on a polyline whose edges fall into two relations.
 
-\subsubsection*{Skip-and-inherit; ray-cast fallback for orphan domains}
+\begin{figure}[t]
+\centering
+\input{diagrams/relation_majority_vote.tex}
+\caption{An intersection polyline along which five MEL components meet, bounding a domain. Four of its five non-manifold edges are incident to $c_1, \ldots, c_4$ alone and form the relation $\sigma_1 = (c_1, c_2, c_3, c_4)$; the remaining edge is incident to a fifth component $c_5$ contributed by a non-manifold fin from a half-inserted open operand, and forms a separate relation $\sigma_2 = (c_1, c_2, c_3, c_4, c_5)$. Each relation votes its own canonical permutation. One $\sigma_1$ observation is flipped by a perturbation (red arrow); the majority $\hat\sigma$ recovers the correct one. Under Mode 1, the fin is masked out, $c_5$ disappears, and all five edges fall into the single relation $\sigma_1$.}
+\label{fig:relation_majority_vote}
+\end{figure}
+
+\begin{algorithm}[t]
+\caption{Per-relation canonical-permutation vote}
+\label{alg:vote}
+\begin{algorithmic}[1]
+\Require \texttt{edge\_order}, argsorted by (equivalence-class key, canonical permutation)
+\Require \texttt{class\_offsets}, slice boundaries per equivalence class
+\Ensure \texttt{rel\_perm}[$c$], voted canonical permutation per class $c$
+\For{each class slice $[b, e)$ in \texttt{class\_offsets} \textbf{in parallel}}
+  \State $\textit{longest}, \textit{longest\_rep} \gets 1,\, \texttt{edge\_order}[b]$
+  \State $\textit{current}, \textit{current\_rep} \gets 1,\, \texttt{edge\_order}[b]$
+  \For{$i \in [b+1, e)$}
+    \If{$\textrm{perm}(\texttt{edge\_order}[i]) = \textrm{perm}(\texttt{edge\_order}[i-1])$}
+      \State $\textit{current} \gets \textit{current} + 1$
+    \Else
+      \If{$\textit{current} > \textit{longest}$}
+        \State $\textit{longest}, \textit{longest\_rep} \gets \textit{current}, \textit{current\_rep}$
+      \EndIf
+      \State $\textit{current}, \textit{current\_rep} \gets 1,\, \texttt{edge\_order}[i]$
+    \EndIf
+  \EndFor
+  \If{$\textit{current} > \textit{longest}$}
+    \State $\textit{longest}, \textit{longest\_rep} \gets \textit{current}, \textit{current\_rep}$
+  \EndIf
+  \State $\texttt{rel\_perm}[c] \gets \textrm{perm}(\textit{longest\_rep})$
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{Merge pairs.} Each equivalence class emits merge pairs from its voted canonical permutation: at every pair of cyclic-adjacent positions, the two fragment-sides bounding the wedge between them are joined into one pair. A fragment-side is encoded as $(\text{component id}, \text{side bit})$, the side bit selecting between the stored-orientation side and its reverse. Mode-2 MEL components carrying boundary edges (Section~\ref{sec:graphs}) contribute one extra pair $(c, 0) \leftrightarrow (c, 1)$.
+
+\subsubsection*{Cross-bundle nesting}
+
+Relation merges close every chain of components linked by non-manifold edges; what they don't close is the gap between geometrically disjoint bundles --- a small closed mesh floating inside a larger one, the case L\'evy calls ``internal-boundary''~\cite{Levy2025}. We resolve it on the reduced graph by the same ray-cast principle L\'evy applies on the Weiler 3-map.
+
+A 3D-connected \textbf{bundle} is the equivalence class of MEL components under shared non-manifold edges, computed by feeding the cyclic-adjacent NM-edge pairs (dropped to component-only granularity) into the same dense equivalence-class map that built domain ids. Per-domain signed Gauss volumes follow by scatter from per-MEL-component integer-exact contributions; each bundle's \textbf{outer-environment domain} is its most-negative-volume incident domain. We cast an SoS-perturbed segment from any vertex of the inner bundle to a fixed far point past the global bbox, testing against every face whose bundle differs from the inner one. Each hit registers in both adjacent domains, excluding shell domains. The seed's physical domain is the closest odd-parity bounded domain; merging the bundle's outer-environment into it appends to the same union-find buffer that drives the lift to per-face labels. The per-domain parity walks all enclosing domains in one pass, correctly identifying the innermost containing region when the outer bundle has multiple interior domains (e.g.\ a cube split by an internal plane) --- a case L\'evy's per-operand setup does not encounter because operands are individually closed.
+
+\subsection{Classification}
+\label{sec:classification}
 
 \subsection{Implementation}
 \label{sec:implementation}
@@ -220,7 +319,8 @@ Closed paths and dangling cut paths are patched into the regions that contain th
 
 \section*{Acknowledgements}
 
-\bibliographystyle{plainnat}
+
+\bibliographystyle{eg-alpha-doi}
 \bibliography{references}
 
 \end{document}

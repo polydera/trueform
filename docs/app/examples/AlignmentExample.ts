@@ -110,8 +110,8 @@ export class AlignmentExample {
     identityMat.delete();
 
     // ── Renderer setup ─────────────────────────────────────────────────
-    const bgColor = isDarkMode ? 0x1e1e1e : 0xfafafa;
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    const bgColor = getBrandBackground();
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
@@ -509,7 +509,7 @@ export class AlignmentExample {
   }
 
   public applyTheme(isDark: boolean) {
-    this.sceneBundle.scene.background = new THREE.Color(isDark ? 0x1e1e1e : 0xfafafa);
+    this.sceneBundle.scene.background = null;
 
     const matcapUrl = isDark
       ? "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/635D52_A9BCC0_B1AEA0_819598.png"

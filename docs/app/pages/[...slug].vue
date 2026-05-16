@@ -77,8 +77,8 @@ useSchemaOrg([
 </script>
 
 <template>
-  <UPage v-if="page">
-    <UPageHeader :title="page.title" :description="page.description" :headline="headline">
+  <UPage v-if="page" class="docs-page">
+    <UPageHeader class="docs-page-header" :title="page.title" :description="page.description" :headline="headline">
       <template #links>
         <UButton v-for="(link, index) in page.links" :key="index" v-bind="link" />
 
@@ -86,7 +86,7 @@ useSchemaOrg([
       </template>
     </UPageHeader>
 
-    <UPageBody>
+    <UPageBody class="docs-page-body branded-prose">
       <ContentRenderer v-if="page" :value="page" />
 
       <USeparator v-if="surround?.length" />
@@ -95,7 +95,33 @@ useSchemaOrg([
     </UPageBody>
 
     <template v-if="page?.body?.toc?.links?.length" #right>
-      <UContentToc :title="toc?.title" :links="page.body?.toc?.links"> </UContentToc>
+      <UContentToc class="docs-toc" :title="toc?.title" :links="page.body?.toc?.links"> </UContentToc>
     </template>
   </UPage>
 </template>
+
+<style scoped>
+.docs-page-header {
+  position: relative;
+  border-bottom: 1px solid var(--panel-border);
+  padding-bottom: 1.5rem;
+}
+
+.docs-page-header::before {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 7rem;
+  height: 1px;
+  content: "";
+  background: linear-gradient(90deg, var(--teal), var(--rose));
+}
+
+.docs-page-body {
+  max-width: 52rem;
+}
+
+.docs-toc {
+  border-left: 1px solid var(--rose-faint);
+}
+</style>

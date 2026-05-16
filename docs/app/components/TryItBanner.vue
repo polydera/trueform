@@ -15,9 +15,9 @@ const props = withDefaults(
 
 <template>
   <UCard
-    variant="subtle"
+    class="try-it-banner"
     :ui="{
-      root: 'ring-primary/25 bg-primary/10 hover:bg-elevated/50 cursor-pointer transition-colors',
+      root: 'ring-primary/25 cursor-pointer transition-colors',
       body: 'p-4 sm:p-4 flex items-center justify-between gap-2',
     }"
     @click="navigateTo(props.to)"
@@ -29,3 +29,14 @@ const props = withDefaults(
     <UIcon name="i-lucide-play" class="size-8 text-primary shrink-0" />
   </UCard>
 </template>
+
+<style scoped>
+.try-it-banner {
+  border: 1px solid var(--teal-faint);
+  background: linear-gradient(135deg, var(--teal-ghost), var(--rose-ghost));
+}
+
+.try-it-banner:hover {
+  border-color: var(--teal-dim);
+}
+</style>
