@@ -10,6 +10,7 @@ set(MODULE_GEOMETRY_SOURCES
   ${CMAKE_CURRENT_LIST_DIR}/fit_rigid_alignment.cpp
   ${CMAKE_CURRENT_LIST_DIR}/laplacian_smoothed.cpp
   ${CMAKE_CURRENT_LIST_DIR}/make_mesh_primitives.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/make_tube_mesh.cpp
   ${CMAKE_CURRENT_LIST_DIR}/measurements.cpp
   ${CMAKE_CURRENT_LIST_DIR}/taubin_smoothed.cpp
   ${CMAKE_CURRENT_LIST_DIR}/triangulated.cpp

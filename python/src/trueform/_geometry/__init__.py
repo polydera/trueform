@@ -24,6 +24,7 @@ from .make_mesh_primitives import (
     make_box_mesh,
     make_plane_mesh,
 )
+from .make_tube_mesh import make_tube_mesh
 from .measurements import signed_volume, volume, area, mean_edge_length
 from .laplacian_smoothed import laplacian_smoothed
 from .taubin_smoothed import taubin_smoothed
@@ -44,6 +45,7 @@ __all__ = [
     "make_cylinder_mesh",
     "make_box_mesh",
     "make_plane_mesh",
+    "make_tube_mesh",
     "signed_volume",
     "volume",
     "area",

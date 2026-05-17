@@ -34,6 +34,8 @@ void register_ensure_positive_orientation(nanobind::module_ &m);
 
 void register_make_mesh_primitives(nanobind::module_ &m);
 
+void register_make_tube_mesh(nanobind::module_ &m);
+
 void register_measurements(nanobind::module_ &m);
 
 void register_laplacian_smoothed(nanobind::module_ &m);
