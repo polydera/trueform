@@ -22,7 +22,7 @@
     "@nuxt/ui": "^4.7.1",
     "@nuxtjs/robots": "^6.0.8",
     "@nuxtjs/sitemap": "^8.0.15",
-    "@polydera/trueform": "^0.8.9",
+    "@polydera/trueform": "^0.9.0",
     "@takumi-rs/core": "^1.1.2",
     "@takumi-rs/wasm": "^1.1.2",
     "@unovis/ts": "^1.6.5",
