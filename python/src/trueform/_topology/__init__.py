@@ -23,6 +23,7 @@ from .orient_faces_consistently import orient_faces_consistently
 from .connect_edges_to_paths import connect_edges_to_paths
 from .is_closed import is_closed, is_open
 from .is_manifold import is_manifold, is_non_manifold
+from .domain_labels import domain_labels
 
 __all__ = [
     'cdt',
@@ -44,4 +45,5 @@ __all__ = [
     'is_open',
     'is_manifold',
     'is_non_manifold',
+    'domain_labels',
 ]

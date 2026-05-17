@@ -17,7 +17,10 @@ import { NDArray, type NDArrayInt32, type NDArrayBool } from "../ndarray/NDArray
 import type { FloatDtype } from "../ndarray/dtype";
 import { IndexMap } from "../core/IndexMap";
 import { assertSameDtype } from "../internal/dtype";
-import type { ReindexedMeshResult, SplitResult } from "./sync";
+import type {
+  ReindexedMeshResult, SplitResult,
+  DomainLabelsInput, SplitDomainsResult,
+} from "./sync";
 
 // ============================================================================
 // reindexed
@@ -259,6 +262,27 @@ export async function splitIntoComponents(
   return dispatcher().run(
     () => native()[`dispatch_split_into_components_${dt}`](
       m._handle, safeLabels._handle,
+    ),
+    (raw) => {
+      const comps: Mesh[] = [];
+      for (let i = 0; i < raw.components.size(); i++)
+        comps.push(new Mesh(raw.components.get(i), dt));
+      return { components: comps, labels: new NDArray(raw.labels, "int32") };
+    },
+  );
+}
+
+// ============================================================================
+// splitIntoDomains
+// ============================================================================
+
+export async function splitIntoDomains(
+  m: Mesh, dl: DomainLabelsInput,
+): Promise<SplitDomainsResult> {
+  const dt = m.dtype as FloatDtype;
+  return dispatcher().run(
+    () => native()[`dispatch_split_into_domains_${dt}`](
+      m._handle, dl.labels._handle, dl.nDomains,
     ),
     (raw) => {
       const comps: Mesh[] = [];

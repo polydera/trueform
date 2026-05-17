@@ -226,3 +226,64 @@ export function cdt(
     native()[`make_cdt_edges_${dt}`](points._handle, edges._handle),
   );
 }
+
+// ============ Volumetric domains ============
+
+const _DC_EXCLUDE_OUTER_SHELL = 1;
+const _DC_IGNORE_OPEN_FRAGMENTS = 2;
+
+/** @internal — also used by the async wrapper. */
+export function _buildDomainConfig(opts?: DomainLabelsOptions): number {
+  let c = 0;
+  if (opts?.excludeOuterShell) c |= _DC_EXCLUDE_OUTER_SHELL;
+  if (opts?.ignoreOpenFragments) c |= _DC_IGNORE_OPEN_FRAGMENTS;
+  return c;
+}
+
+/** Options for {@link domainLabels}. */
+export interface DomainLabelsOptions {
+  /**
+   * Drop face-sides bounding open fragments (faces in MEL components
+   * carrying boundary edges) by parking them at the sentinel label
+   * `nDomains`.
+   */
+  ignoreOpenFragments?: boolean;
+  /**
+   * Fold the unbounded universe domain into the same sentinel, so only
+   * bounded interior domains receive ids.
+   */
+  excludeOuterShell?: boolean;
+}
+
+/** Per-face per-side volumetric domain labels for a 3D polygon mesh. */
+export interface DomainLabelsResult {
+  /** Shape `(nFaces, 2)`, int32. `labels[f, 0]` = domain on stored-normal side. */
+  labels: NDArrayInt32;
+  /** Number of distinct bounded domains. */
+  nDomains: number;
+  /**
+   * Label carried by outer-shell sides. Equals `nDomains` under
+   * `excludeOuterShell`; otherwise no face-side carries this label.
+   */
+  outerShellLabel: number;
+}
+
+function _wrapDomainLabels(raw: any): DomainLabelsResult {
+  return {
+    labels: new NDArray(raw.labels, "int32"),
+    nDomains: raw.nDomains,
+    outerShellLabel: raw.outerShellLabel,
+  };
+}
+
+/**
+ * Compute per-face per-side volumetric domain labels for a 3D polygon mesh.
+ *
+ * A non-manifold surface mesh bounds multiple 3D regions ("domains"). This
+ * partitions space into volumetric components and returns one label per
+ * face per side.
+ */
+export function domainLabels(m: Mesh, opts?: DomainLabelsOptions): DomainLabelsResult {
+  const cfg = _buildDomainConfig(opts);
+  return _wrapDomainLabels(native()[`make_domain_labels_${m.dtype}`](m._handle, cfg));
+}

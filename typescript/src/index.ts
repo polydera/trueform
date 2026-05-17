@@ -136,10 +136,12 @@ export {
   labelConnectedComponents, connectedComponents,
   consistentlyOriented,
   cdt,
+  domainLabels,
 } from "./topology/sync";
 export type {
   ConnectedComponentsResult, ComponentType,
   CdtResult, CdtResultWithMap, CdtOptions,
+  DomainLabelsResult, DomainLabelsOptions,
 } from "./topology/sync";
 
 // Clean
@@ -150,9 +152,12 @@ export type { CleanedMeshResult, CleanedPointsResult } from "./clean/sync";
 export {
   reindexed, reindexedByMask, reindexedByIds,
   reindexedByMaskOnPoints, reindexedByIdsOnPoints,
-  concatenateMeshes, splitIntoComponents,
+  concatenateMeshes, splitIntoComponents, splitIntoDomains,
 } from "./reindex/sync";
-export type { ReindexedMeshResult, SplitResult } from "./reindex/sync";
+export type {
+  ReindexedMeshResult, SplitResult,
+  SplitDomainsResult, DomainLabelsInput,
+} from "./reindex/sync";
 
 // Remesh operations
 export { decimated, isotropicRemeshed } from "./remesh/sync";

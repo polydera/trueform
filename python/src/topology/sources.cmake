@@ -8,6 +8,15 @@ set(MODULE_TOPOLOGY_SOURCES
   ${CMAKE_CURRENT_LIST_DIR}/compute_manifold_edge_link.cpp
   ${CMAKE_CURRENT_LIST_DIR}/compute_vertex_link.cpp
   ${CMAKE_CURRENT_LIST_DIR}/connect_edges_to_paths.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/domain_labels.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/domain_labels_int3float3d.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/domain_labels_int3double3d.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/domain_labels_int643float3d.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/domain_labels_int643double3d.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/domain_labels_intdynfloat3d.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/domain_labels_intdyndouble3d.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/domain_labels_int64dynfloat3d.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/domain_labels_int64dyndouble3d.cpp
   ${CMAKE_CURRENT_LIST_DIR}/is_closed.cpp
   ${CMAKE_CURRENT_LIST_DIR}/is_manifold.cpp
   ${CMAKE_CURRENT_LIST_DIR}/label_connected_components.cpp

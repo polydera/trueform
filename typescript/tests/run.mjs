@@ -25,6 +25,7 @@ await import("./test_reindex.mjs");
 await import("./test_transformations.mjs");
 await import("./test_clean.mjs");
 await import("./test_cut.mjs");
+await import("./test_domains.mjs");
 await import("./test_intersect.mjs");
 await import("./test_io_roundtrip.mjs");
 await import("./test_dtype_dispatch.mjs");

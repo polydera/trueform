@@ -23,6 +23,7 @@ auto register_reindex(nanobind::module_ &m) -> void {
   register_reindex_reindex_by_ids(reindex_module);
   register_reindex_reindex_by_mask(reindex_module);
   register_reindex_split_into_components(reindex_module);
+  register_reindex_split_into_domains(reindex_module);
 }
 
 } // namespace tf::py

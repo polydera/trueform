@@ -93,7 +93,7 @@ auto make_nesting_merges(const Polygons &polygons,
   Index n_faces = Index(polygons.faces().size());
   Index n_points = Index(polygons.points().size());
 
-  if (n_bundles <= Index(1))
+  if (n_bundles == Index(0))
     return Index(-1);
 
   tf::buffer<Index> outer_env;
@@ -114,6 +114,9 @@ auto make_nesting_merges(const Polygons &polygons,
       }
     }
   }
+
+  if (n_bundles == Index(1))
+    return (outer_env[0] == removed_domain) ? Index(-1) : outer_env[0];
 
   // A face-side landing on a shell domain contributes no hit: only
   // bounded interior domains are tracked. Shells = per-bundle outer-env

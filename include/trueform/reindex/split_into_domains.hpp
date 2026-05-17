@@ -101,21 +101,32 @@ auto split_into_domains_polygons(const tf::polygons<Policy> &polygons,
     }
 
     auto &data = out.faces_buffer().data_buffer();
-    tf::parallel_for_each(tf::enumerate(comp_ids), [&](auto pair) {
-      auto &&[i, elem_id] = pair;
-      bool reverse = (elem_id & Index(1)) == Index(0);
-      auto face = polygons.faces()[elem_id / 2];
-      auto n_v = face.size();
-      Index write_at;
-      if constexpr (N == tf::dynamic_size)
-        write_at = out.faces_buffer().offsets_buffer()[i];
-      else
-        write_at = Index(N) * Index(i);
-      for (decltype(n_v) k = 0; k < n_v; ++k) {
-        auto src_idx = reverse ? (n_v - 1 - k) : k;
-        data[write_at + k] = point_map[face[src_idx]] - point_sentinel;
-      }
-    });
+    if constexpr (N == tf::dynamic_size) {
+      auto &offs = out.faces_buffer().offsets_buffer();
+      tf::parallel_for_each(tf::enumerate(comp_ids), [&](auto pair) {
+        auto &&[i, elem_id] = pair;
+        bool reverse = (elem_id & Index(1)) == Index(0);
+        auto face = polygons.faces()[elem_id / 2];
+        auto n_v = face.size();
+        Index write_at = offs[i];
+        for (decltype(n_v) k = 0; k < n_v; ++k) {
+          auto src_idx = reverse ? (n_v - 1 - k) : k;
+          data[write_at + k] = point_map[face[src_idx]] - point_sentinel;
+        }
+      });
+    } else {
+      tf::parallel_for_each(tf::enumerate(comp_ids), [&](auto pair) {
+        auto &&[i, elem_id] = pair;
+        bool reverse = (elem_id & Index(1)) == Index(0);
+        auto face = polygons.faces()[elem_id / 2];
+        auto n_v = face.size();
+        Index write_at = Index(N) * Index(i);
+        for (decltype(n_v) k = 0; k < n_v; ++k) {
+          auto src_idx = reverse ? (n_v - 1 - k) : k;
+          data[write_at + k] = point_map[face[src_idx]] - point_sentinel;
+        }
+      });
+    }
 
     out.points_buffer().allocate(pt_ids.size());
     tf::parallel_copy(tf::make_indirect_range(pt_ids, polygons.points()),

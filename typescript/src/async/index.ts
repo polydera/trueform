@@ -12,7 +12,8 @@
  */
 
 export {
-  sum, min, max, mean, norm, sort, sort_, argsort, atan2,
+  sum, min, max, mean, norm, argmin, argmax, any, all,
+  sort, sort_, argsort, atan2,
   unique, setUnion, setIntersection, setDifference,
   bincount, histogram,
 } from "../ndarray/async";
@@ -47,12 +48,13 @@ export {
   consistentlyOriented,
   computeFaceMembership, computeManifoldEdgeLink, computeFaceLink, computeVertexLink,
   cdt,
+  domainLabels,
 } from "../topology/async";
 export { cleaned } from "../clean/async";
 export {
   reindexed, reindexedByMask, reindexedByIds,
   reindexedByMaskOnPoints, reindexedByIdsOnPoints,
-  concatenateMeshes, splitIntoComponents,
+  concatenateMeshes, splitIntoComponents, splitIntoDomains,
 } from "../reindex/async";
 export { decimated, isotropicRemeshed } from "../remesh/async";
 export { obbFrom } from "../primitive/async";

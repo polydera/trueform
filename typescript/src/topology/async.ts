@@ -28,7 +28,10 @@ import type {
   CdtResult,
   CdtResultWithMap,
   CdtOptions,
+  DomainLabelsOptions,
+  DomainLabelsResult,
 } from "./sync";
+import { _buildDomainConfig } from "./sync";
 
 function wrapComponentsResult(raw: any): ConnectedComponentsResult {
   return { labels: new NDArray(raw.labels, "int32"), nComponents: raw.nComponents };
@@ -243,5 +246,21 @@ export async function cdt(
       points._handle, edges._handle,
     ),
     wrap,
+  );
+}
+
+// ============ Volumetric domains ============
+
+export async function domainLabels(
+  m: Mesh, opts?: DomainLabelsOptions,
+): Promise<DomainLabelsResult> {
+  const cfg = _buildDomainConfig(opts);
+  return dispatcher().run(
+    () => native()[`dispatch_make_domain_labels_${m.dtype}`](m._handle, cfg),
+    (raw) => ({
+      labels: new NDArray(raw.labels, "int32"),
+      nDomains: raw.nDomains,
+      outerShellLabel: raw.outerShellLabel,
+    }),
   );
 }

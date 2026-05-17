@@ -1,0 +1,29 @@
+/*
+* Copyright (c) 2025 XLAB
+* All rights reserved.
+*
+* This file is part of trueform (trueform.polydera.com)
+*
+* Licensed for noncommercial use under the PolyForm Noncommercial
+* License 1.0.0.
+* Commercial licensing available via info@polydera.com.
+*
+* Author: Žiga Sajovic
+*/
+#include "trueform/python/topology/domain_labels_impl.hpp"
+
+namespace tf::py {
+
+auto register_topology_domain_labels_int3float3d(nanobind::module_ &m) -> void {
+  using namespace nanobind;
+  m.def(
+      "domain_labels_int3float3d",
+      [](ndarray<numpy, const int, shape<-1, 3>> indices,
+         ndarray<numpy, const float, shape<-1, 3>> points, int config) {
+        return impl::domain_labels_impl<int, 3, float, 3>(indices, points,
+                                                          config);
+      },
+      arg("indices"), arg("points"), arg("config"));
+}
+
+} // namespace tf::py

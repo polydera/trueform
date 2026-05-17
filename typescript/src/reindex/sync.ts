@@ -17,6 +17,7 @@ import { NDArray, type NDArrayInt32, type NDArrayBool } from "../ndarray/NDArray
 import type { FloatDtype } from "../ndarray/dtype";
 import { IndexMap } from "../core/IndexMap";
 import { assertSameDtype } from "../internal/dtype";
+import type { DomainLabelsResult } from "../topology/sync";
 
 /** Result of reindexing a mesh with returnIndexMap: true. */
 export interface ReindexedMeshResult {
@@ -236,4 +237,41 @@ export function splitIntoComponents(m: Mesh, labels: NDArrayInt32): SplitResult 
     components: comps,
     labels: new NDArray(raw.labels, "int32"),
   };
+}
+
+// ============================================================================
+// splitIntoDomains — per-side split keyed by domainLabels output
+// ============================================================================
+
+/**
+ * Minimum information needed by {@link splitIntoDomains}.  The full
+ * {@link DomainLabelsResult} returned by `tf.domainLabels` is assignable to
+ * this — `outerShellLabel` is accepted but not consumed.
+ */
+export type DomainLabelsInput =
+  Pick<DomainLabelsResult, "labels" | "nDomains">;
+
+/** Result of {@link splitIntoDomains}: one watertight outward-oriented submesh per domain. */
+export interface SplitDomainsResult {
+  components: Mesh[];
+  labels: NDArrayInt32;
+}
+
+/**
+ * Split a 3D polygon mesh into per-domain watertight submeshes.  Each face
+ * contributes one emission per side bound to a real domain; sentinel-bound
+ * sides are dropped, and side-0 emissions reverse winding so every output
+ * submesh has outward-of-domain normals.
+ */
+export function splitIntoDomains(
+  m: Mesh, dl: DomainLabelsInput,
+): SplitDomainsResult {
+  const dt = m.dtype as FloatDtype;
+  const raw = native()[`split_into_domains_${dt}`](
+    m._handle, dl.labels._handle, dl.nDomains,
+  );
+  const comps: Mesh[] = [];
+  for (let i = 0; i < raw.components.size(); i++)
+    comps.push(new Mesh(raw.components.get(i), dt));
+  return { components: comps, labels: new NDArray(raw.labels, "int32") };
 }

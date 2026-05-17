@@ -12,6 +12,7 @@ from .reindex_by_mask import reindex_by_mask
 from .reindex_by_ids_on_points import reindex_by_ids_on_points
 from .reindex_by_mask_on_points import reindex_by_mask_on_points
 from .split_into_components import split_into_components
+from .split_into_domains import split_into_domains
 from .concatenated import concatenated
 
 __all__ = [
@@ -20,5 +21,6 @@ __all__ = [
     'reindex_by_ids_on_points',
     'reindex_by_mask_on_points',
     'split_into_components',
+    'split_into_domains',
     'concatenated'
 ]

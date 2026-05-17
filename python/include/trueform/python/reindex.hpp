@@ -23,5 +23,6 @@ auto register_reindex(nanobind::module_ &m) -> void;
 auto register_reindex_reindex_by_ids(nanobind::module_ &m) -> void;
 auto register_reindex_reindex_by_mask(nanobind::module_ &m) -> void;
 auto register_reindex_split_into_components(nanobind::module_ &m) -> void;
+auto register_reindex_split_into_domains(nanobind::module_ &m) -> void;
 
 } // namespace tf::py

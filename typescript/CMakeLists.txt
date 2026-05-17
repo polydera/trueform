@@ -77,10 +77,14 @@ add_executable(trueform_wasm
     cpp/src/clean/clean_float64.cpp
     cpp/src/reindex/reindex_float32.cpp
     cpp/src/reindex/reindex_float64.cpp
+    cpp/src/reindex/split_into_domains_float32.cpp
+    cpp/src/reindex/split_into_domains_float64.cpp
     cpp/src/topology/topology_float32.cpp
     cpp/src/topology/topology_float64.cpp
     cpp/src/topology/cdt_float32.cpp
     cpp/src/topology/cdt_float64.cpp
+    cpp/src/topology/make_domain_labels_float32.cpp
+    cpp/src/topology/make_domain_labels_float64.cpp
     cpp/src/remesh/remesh_float32.cpp
     cpp/src/remesh/remesh_float64.cpp
 )
