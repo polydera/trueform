@@ -314,7 +314,7 @@ export function distance2(
   }
   if (a instanceof Mesh || a instanceof PointCloud) {
     const p = b as Primitive;
-    const ph = a.dtype === "float32" ? p._handle : p.as("float64")._handle;
+    const ph = p.dtype === a.dtype ? p._handle : p.as(a.dtype)._handle;
     const raw = native()[`distance2_fp${fpSuffix(a)}_${a.dtype}`](
       a._handle, ph, primType(p),
     );
@@ -364,7 +364,7 @@ export function distance(
   }
   if (a instanceof Mesh || a instanceof PointCloud) {
     const p = b as Primitive;
-    const ph = a.dtype === "float32" ? p._handle : p.as("float64")._handle;
+    const ph = p.dtype === a.dtype ? p._handle : p.as(a.dtype)._handle;
     const raw = native()[`distance_fp${fpSuffix(a)}_${a.dtype}`](
       a._handle, ph, primType(p),
     );
@@ -464,7 +464,7 @@ export function neighborSearch(
   // FP — primitive query (basic or k-NN)
   const q = bOrQuery;
   const dtype = a.dtype;
-  const qh = dtype === "float32" ? q._handle : q.as("float64")._handle;
+  const qh = q.dtype === dtype ? q._handle : q.as(dtype)._handle;
 
   if (opts && "k" in opts) {
     const raw = native()[`neighbor_search_fp_knn${fpSuffix(a)}_${dtype}`](
@@ -507,7 +507,7 @@ export function intersects(
   }
   if (a instanceof Mesh || a instanceof PointCloud) {
     const p = b as Primitive;
-    const ph = a.dtype === "float32" ? p._handle : p.as("float64")._handle;
+    const ph = p.dtype === a.dtype ? p._handle : p.as(a.dtype)._handle;
     const raw = native()[`intersects_fp${fpSuffix(a)}_${a.dtype}`](
       a._handle, ph, primType(p),
     );
@@ -549,7 +549,7 @@ export function rayCast(
 
     if (target instanceof Mesh || target instanceof PointCloud) {
       const dtype = target.dtype;
-      const rayH = dtype === "float32" ? ray._handle : ray.as("float64")._handle;
+      const rayH = ray.dtype === dtype ? ray._handle : ray.as(dtype)._handle;
       const minArr = minT instanceof NDArray
         ? (minT.dtype === dtype ? minT : minT.as(dtype))
         : full(dtype, [n], minT as number);
@@ -592,7 +592,7 @@ export function rayCast(
 
   if (target instanceof Mesh || target instanceof PointCloud) {
     const dtype = target.dtype;
-    const rayH = dtype === "float32" ? ray._handle : ray.as("float64")._handle;
+    const rayH = ray.dtype === dtype ? ray._handle : ray.as(dtype)._handle;
     const fn = isPC(target) ? `ray_cast_f_pc_${dtype}` : `ray_cast_f_${dtype}`;
     const raw = native()[fn](
       rayH, target._handle, minT, maxT,

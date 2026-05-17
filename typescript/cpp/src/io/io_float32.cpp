@@ -29,15 +29,16 @@ EMSCRIPTEN_BINDINGS(trueform_io_float32) {
   emscripten::function("read_stl_buffer", &sync_read_stl_buffer);
   emscripten::function("dispatch_read_stl_buffer", &async_read_stl_buffer);
 
-  // OBJ read (float32 — default-spelled functions for backward compatibility)
-  emscripten::function("read_obj", &sync_read_obj<Real>);
-  emscripten::function("dispatch_read_obj", &async_read_obj<Real>);
-  emscripten::function("read_obj_buffer", &sync_read_obj_buffer<Real>);
-  emscripten::function("dispatch_read_obj_buffer",
+  // OBJ read (float32)
+  emscripten::function("read_obj_float32", &sync_read_obj<Real>);
+  emscripten::function("dispatch_read_obj_float32", &async_read_obj<Real>);
+  emscripten::function("read_obj_buffer_float32",
+                       &sync_read_obj_buffer<Real>);
+  emscripten::function("dispatch_read_obj_buffer_float32",
                        &async_read_obj_buffer<Real>);
-  emscripten::function("read_obj_buffer_data",
+  emscripten::function("read_obj_buffer_data_float32",
                        &sync_read_obj_buffer_data<Real>);
-  emscripten::function("dispatch_read_obj_buffer_data",
+  emscripten::function("dispatch_read_obj_buffer_data_float32",
                        &async_read_obj_buffer_data<Real>);
 
   // STL write (float32 input)
@@ -46,7 +47,8 @@ EMSCRIPTEN_BINDINGS(trueform_io_float32) {
                        &async_write_stl_buffer<Real>);
 
   // OBJ write (float32 input)
-  emscripten::function("write_obj_buffer", &sync_write_obj_buffer<Real>);
-  emscripten::function("dispatch_write_obj_buffer",
+  emscripten::function("write_obj_buffer_float32",
+                       &sync_write_obj_buffer<Real>);
+  emscripten::function("dispatch_write_obj_buffer_float32",
                        &async_write_obj_buffer<Real>);
 }

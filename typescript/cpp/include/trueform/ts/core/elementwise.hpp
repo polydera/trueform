@@ -479,12 +479,14 @@ auto abs_inplace(wasm_ndarray<T> &a) -> void {
   detail::unary_op_inplace(a, [](T v) -> T { return v < 0 ? -v : v; });
 }
 
-inline auto sqrt(const wasm_ndarray<float> &a) -> wasm_ndarray<float> {
-  return detail::unary_op(a, [](float v) -> float { return tf::sqrt(v); });
+template <typename T>
+auto sqrt(const wasm_ndarray<T> &a) -> wasm_ndarray<T> {
+  return detail::unary_op(a, [](T v) -> T { return tf::sqrt(v); });
 }
 
-inline auto sqrt_inplace(wasm_ndarray<float> &a) -> void {
-  detail::unary_op_inplace(a, [](float v) -> float { return tf::sqrt(v); });
+template <typename T>
+auto sqrt_inplace(wasm_ndarray<T> &a) -> void {
+  detail::unary_op_inplace(a, [](T v) -> T { return tf::sqrt(v); });
 }
 
 // ============================================================================
@@ -709,122 +711,149 @@ auto assign_masked_array(wasm_ndarray<T> &target,
 }
 
 // ============================================================================
-// Math functions (float32 only)
+// Math functions
 // ============================================================================
 
-inline auto sin(const wasm_ndarray<float> &a) -> wasm_ndarray<float> {
-  return detail::unary_op(a, [](float v) -> float { return std::sin(v); });
+template <typename T>
+auto sin(const wasm_ndarray<T> &a) -> wasm_ndarray<T> {
+  return detail::unary_op(a, [](T v) -> T { return std::sin(v); });
 }
 
-inline auto sin_inplace(wasm_ndarray<float> &a) -> void {
-  detail::unary_op_inplace(a, [](float v) -> float { return std::sin(v); });
+template <typename T>
+auto sin_inplace(wasm_ndarray<T> &a) -> void {
+  detail::unary_op_inplace(a, [](T v) -> T { return std::sin(v); });
 }
 
-inline auto cos(const wasm_ndarray<float> &a) -> wasm_ndarray<float> {
-  return detail::unary_op(a, [](float v) -> float { return std::cos(v); });
+template <typename T>
+auto cos(const wasm_ndarray<T> &a) -> wasm_ndarray<T> {
+  return detail::unary_op(a, [](T v) -> T { return std::cos(v); });
 }
 
-inline auto cos_inplace(wasm_ndarray<float> &a) -> void {
-  detail::unary_op_inplace(a, [](float v) -> float { return std::cos(v); });
+template <typename T>
+auto cos_inplace(wasm_ndarray<T> &a) -> void {
+  detail::unary_op_inplace(a, [](T v) -> T { return std::cos(v); });
 }
 
-inline auto tan(const wasm_ndarray<float> &a) -> wasm_ndarray<float> {
-  return detail::unary_op(a, [](float v) -> float { return std::tan(v); });
+template <typename T>
+auto tan(const wasm_ndarray<T> &a) -> wasm_ndarray<T> {
+  return detail::unary_op(a, [](T v) -> T { return std::tan(v); });
 }
 
-inline auto tan_inplace(wasm_ndarray<float> &a) -> void {
-  detail::unary_op_inplace(a, [](float v) -> float { return std::tan(v); });
+template <typename T>
+auto tan_inplace(wasm_ndarray<T> &a) -> void {
+  detail::unary_op_inplace(a, [](T v) -> T { return std::tan(v); });
 }
 
-inline auto asin(const wasm_ndarray<float> &a) -> wasm_ndarray<float> {
-  return detail::unary_op(a, [](float v) -> float { return std::asin(v); });
+template <typename T>
+auto asin(const wasm_ndarray<T> &a) -> wasm_ndarray<T> {
+  return detail::unary_op(a, [](T v) -> T { return std::asin(v); });
 }
 
-inline auto asin_inplace(wasm_ndarray<float> &a) -> void {
-  detail::unary_op_inplace(a, [](float v) -> float { return std::asin(v); });
+template <typename T>
+auto asin_inplace(wasm_ndarray<T> &a) -> void {
+  detail::unary_op_inplace(a, [](T v) -> T { return std::asin(v); });
 }
 
-inline auto acos(const wasm_ndarray<float> &a) -> wasm_ndarray<float> {
-  return detail::unary_op(a, [](float v) -> float { return std::acos(v); });
+template <typename T>
+auto acos(const wasm_ndarray<T> &a) -> wasm_ndarray<T> {
+  return detail::unary_op(a, [](T v) -> T { return std::acos(v); });
 }
 
-inline auto acos_inplace(wasm_ndarray<float> &a) -> void {
-  detail::unary_op_inplace(a, [](float v) -> float { return std::acos(v); });
+template <typename T>
+auto acos_inplace(wasm_ndarray<T> &a) -> void {
+  detail::unary_op_inplace(a, [](T v) -> T { return std::acos(v); });
 }
 
-inline auto atan(const wasm_ndarray<float> &a) -> wasm_ndarray<float> {
-  return detail::unary_op(a, [](float v) -> float { return std::atan(v); });
+template <typename T>
+auto atan(const wasm_ndarray<T> &a) -> wasm_ndarray<T> {
+  return detail::unary_op(a, [](T v) -> T { return std::atan(v); });
 }
 
-inline auto atan_inplace(wasm_ndarray<float> &a) -> void {
-  detail::unary_op_inplace(a, [](float v) -> float { return std::atan(v); });
+template <typename T>
+auto atan_inplace(wasm_ndarray<T> &a) -> void {
+  detail::unary_op_inplace(a, [](T v) -> T { return std::atan(v); });
 }
 
-inline auto exp(const wasm_ndarray<float> &a) -> wasm_ndarray<float> {
-  return detail::unary_op(a, [](float v) -> float { return std::exp(v); });
+template <typename T>
+auto exp(const wasm_ndarray<T> &a) -> wasm_ndarray<T> {
+  return detail::unary_op(a, [](T v) -> T { return std::exp(v); });
 }
 
-inline auto exp_inplace(wasm_ndarray<float> &a) -> void {
-  detail::unary_op_inplace(a, [](float v) -> float { return std::exp(v); });
+template <typename T>
+auto exp_inplace(wasm_ndarray<T> &a) -> void {
+  detail::unary_op_inplace(a, [](T v) -> T { return std::exp(v); });
 }
 
-inline auto log(const wasm_ndarray<float> &a) -> wasm_ndarray<float> {
-  return detail::unary_op(a, [](float v) -> float { return std::log(v); });
+template <typename T>
+auto log(const wasm_ndarray<T> &a) -> wasm_ndarray<T> {
+  return detail::unary_op(a, [](T v) -> T { return std::log(v); });
 }
 
-inline auto log_inplace(wasm_ndarray<float> &a) -> void {
-  detail::unary_op_inplace(a, [](float v) -> float { return std::log(v); });
+template <typename T>
+auto log_inplace(wasm_ndarray<T> &a) -> void {
+  detail::unary_op_inplace(a, [](T v) -> T { return std::log(v); });
 }
 
-inline auto log2(const wasm_ndarray<float> &a) -> wasm_ndarray<float> {
-  return detail::unary_op(a, [](float v) -> float { return std::log2(v); });
+template <typename T>
+auto log2(const wasm_ndarray<T> &a) -> wasm_ndarray<T> {
+  return detail::unary_op(a, [](T v) -> T { return std::log2(v); });
 }
 
-inline auto log2_inplace(wasm_ndarray<float> &a) -> void {
-  detail::unary_op_inplace(a, [](float v) -> float { return std::log2(v); });
+template <typename T>
+auto log2_inplace(wasm_ndarray<T> &a) -> void {
+  detail::unary_op_inplace(a, [](T v) -> T { return std::log2(v); });
 }
 
-inline auto log10(const wasm_ndarray<float> &a) -> wasm_ndarray<float> {
-  return detail::unary_op(a, [](float v) -> float { return std::log10(v); });
+template <typename T>
+auto log10(const wasm_ndarray<T> &a) -> wasm_ndarray<T> {
+  return detail::unary_op(a, [](T v) -> T { return std::log10(v); });
 }
 
-inline auto log10_inplace(wasm_ndarray<float> &a) -> void {
-  detail::unary_op_inplace(a, [](float v) -> float { return std::log10(v); });
+template <typename T>
+auto log10_inplace(wasm_ndarray<T> &a) -> void {
+  detail::unary_op_inplace(a, [](T v) -> T { return std::log10(v); });
 }
 
-inline auto floor(const wasm_ndarray<float> &a) -> wasm_ndarray<float> {
-  return detail::unary_op(a, [](float v) -> float { return std::floor(v); });
+template <typename T>
+auto floor(const wasm_ndarray<T> &a) -> wasm_ndarray<T> {
+  return detail::unary_op(a, [](T v) -> T { return std::floor(v); });
 }
 
-inline auto floor_inplace(wasm_ndarray<float> &a) -> void {
-  detail::unary_op_inplace(a, [](float v) -> float { return std::floor(v); });
+template <typename T>
+auto floor_inplace(wasm_ndarray<T> &a) -> void {
+  detail::unary_op_inplace(a, [](T v) -> T { return std::floor(v); });
 }
 
-inline auto ceil(const wasm_ndarray<float> &a) -> wasm_ndarray<float> {
-  return detail::unary_op(a, [](float v) -> float { return std::ceil(v); });
+template <typename T>
+auto ceil(const wasm_ndarray<T> &a) -> wasm_ndarray<T> {
+  return detail::unary_op(a, [](T v) -> T { return std::ceil(v); });
 }
 
-inline auto ceil_inplace(wasm_ndarray<float> &a) -> void {
-  detail::unary_op_inplace(a, [](float v) -> float { return std::ceil(v); });
+template <typename T>
+auto ceil_inplace(wasm_ndarray<T> &a) -> void {
+  detail::unary_op_inplace(a, [](T v) -> T { return std::ceil(v); });
 }
 
-inline auto round(const wasm_ndarray<float> &a) -> wasm_ndarray<float> {
-  return detail::unary_op(a, [](float v) -> float { return std::round(v); });
+template <typename T>
+auto round(const wasm_ndarray<T> &a) -> wasm_ndarray<T> {
+  return detail::unary_op(a, [](T v) -> T { return std::round(v); });
 }
 
-inline auto round_inplace(wasm_ndarray<float> &a) -> void {
-  detail::unary_op_inplace(a, [](float v) -> float { return std::round(v); });
+template <typename T>
+auto round_inplace(wasm_ndarray<T> &a) -> void {
+  detail::unary_op_inplace(a, [](T v) -> T { return std::round(v); });
 }
 
-inline auto pow(const wasm_ndarray<float> &a, float exponent)
-    -> wasm_ndarray<float> {
+template <typename T>
+auto pow(const wasm_ndarray<T> &a, T exponent) -> wasm_ndarray<T> {
   return detail::unary_op(
-      a, [exponent](float v) -> float { return std::pow(v, exponent); });
+      a, [exponent](T v) -> T { return std::pow(v, exponent); });
 }
 
-inline auto pow_inplace(wasm_ndarray<float> &a, float exponent) -> void {
+template <typename T>
+auto pow_inplace(wasm_ndarray<T> &a, T exponent) -> void {
   detail::unary_op_inplace(
-      a, [exponent](float v) -> float { return std::pow(v, exponent); });
+      a, [exponent](T v) -> T { return std::pow(v, exponent); });
 }
 
 // ============================================================================
@@ -1305,13 +1334,14 @@ auto cross(const wasm_ndarray<T> &a, const wasm_ndarray<T> &b)
 }
 
 // ============================================================================
-// atan2 (float32 only, broadcasts)
+// atan2 (broadcasts)
 // ============================================================================
 
-inline auto atan2(const wasm_ndarray<float> &y, const wasm_ndarray<float> &x)
-    -> wasm_ndarray<float> {
+template <typename T>
+auto atan2(const wasm_ndarray<T> &y, const wasm_ndarray<T> &x)
+    -> wasm_ndarray<T> {
   return elementwise(y, x,
-      [](float a, float b) -> float { return std::atan2(a, b); });
+      [](T a, T b) -> T { return std::atan2(a, b); });
 }
 
 // ============================================================================

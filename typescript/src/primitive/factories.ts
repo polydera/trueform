@@ -505,27 +505,28 @@ export function aabb(
   return makePrimitive(data, [2, dims], "aabb", dt) as AABB;
 }
 
-/** Oriented bounding box result. */
+/** Oriented bounding box result (dtype follows the input). */
 export interface OBB {
   /** Corner origin point [3]. */
-  origin: NDArrayFloat32;
+  origin: NDArray;
   /** Orthonormal axes, each row is a unit vector [3, 3]. */
-  axes: NDArrayFloat32;
+  axes: NDArray;
   /** Full extents along each axis [3]. */
-  extent: NDArrayFloat32;
+  extent: NDArray;
 }
 
 /** Compute the oriented bounding box of points or a mesh. */
-export function obbFrom(input: NDArrayFloat32): OBB;
-export function obbFrom(input: { points: NDArrayFloat32 }): OBB;
-export function obbFrom(input: NDArrayFloat32 | { points: NDArrayFloat32 }): OBB {
+export function obbFrom(input: NDArray): OBB;
+export function obbFrom(input: { points: NDArray }): OBB;
+export function obbFrom(input: NDArray | { points: NDArray }): OBB {
   const pts = input instanceof NDArray ? input : input.points;
-  const safe = pts.dtype === "float32" ? pts : pts.as("float32");
-  const raw = native().obb_from(safe._handle);
+  const dt = pts.dtype === "float64" ? "float64" : "float32";
+  const safe = pts.dtype === dt ? pts : pts.as(dt);
+  const raw = native()[`obb_from_${dt}`](safe._handle);
   return {
-    origin: new NDArray(raw.origin, "float32"),
-    axes: new NDArray(raw.axes, "float32"),
-    extent: new NDArray(raw.extent, "float32"),
+    origin: new NDArray(raw.origin, dt),
+    axes: new NDArray(raw.axes, dt),
+    extent: new NDArray(raw.extent, dt),
   };
 }
 

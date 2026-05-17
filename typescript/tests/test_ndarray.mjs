@@ -573,16 +573,80 @@ describe("NDArray", () => {
     const ints = tf.ndarray(new Int32Array([0,1,2,3,4,5]), [2,3]);
 
     approx(await tf.async.sum(floats), 49.5, "async sum");
-    log("  async sum", "line-pass");
+    approx(await tf.async.min(floats), 1.5, "async min");
+    approx(await tf.async.max(floats), 9.5, "async max");
+    log("  async sum/min/max", "line-pass");
     approx(await tf.async.mean(ints), 2.5, "async mean");
-    log("  async mean", "line-pass");
+    approx(await tf.async.norm(tf.ndarray(new Float32Array([3, 4]), [2])), 5, "async norm");
+    log("  async mean/norm", "line-pass");
 
     const asum1 = await tf.async.sum(floats, 1);
     approx(asum1.data[0], 7.5); approx(asum1.data[2], 25.5);
     log("  async sum axis=1", "line-pass");
     asum1.delete();
 
+    const a4 = tf.ndarray(new Float32Array([3, 1, 5, 2]), [4]);
+    assert(await tf.async.argmin(a4) === 1, "async argmin");
+    assert(await tf.async.argmax(a4) === 2, "async argmax");
+    log("  async argmin/argmax", "line-pass");
+    a4.delete();
+
+    const ab1 = tf.ndarray(new Int8Array([0, 0, 1, 0]), [4]).as("bool");
+    const ab2 = tf.ndarray(new Int8Array([0, 0, 0, 0]), [4]).as("bool");
+    assert(await tf.async.any(ab1) === 1 && await tf.async.any(ab2) === 0, "async any");
+    assert(await tf.async.all(ab1) === 0, "async all");
+    log("  async any/all", "line-pass");
+    ab2.delete(); ab1.delete();
+
     ints.delete(); floats.delete();
+  });
+
+  // ==========================================================================
+  test("ndarray ops (async)", async () => {
+    const tf = getTf();
+
+    const a = tf.ndarray(new Float32Array([3, 1, 4, 1, 5, 9, 2, 6]), [8]);
+    const sorted = await tf.async.sort(a);
+    assert(sorted.data[0] === 1 && sorted.data[7] === 9, "async sort");
+    log("  async sort", "line-pass");
+    sorted.delete();
+
+    const idx = await tf.async.argsort(a);
+    assert(idx.data[0] === 1 || idx.data[0] === 3, "async argsort");
+    log("  async argsort", "line-pass");
+    idx.delete();
+
+    const inplace = tf.ndarray(new Float32Array([3, 1, 2]), [3]);
+    await tf.async.sort_(inplace);
+    assert(inplace.data[0] === 1 && inplace.data[2] === 3, "async sort_");
+    log("  async sort_", "line-pass");
+    inplace.delete();
+
+    const uIn = tf.ndarray(new Float32Array([1, 1, 2, 3, 3, 3, 5]), [7]);
+    const u = await tf.async.unique(uIn);
+    assert(u.length === 4, `async unique length=${u.length}`);
+    log("  async unique", "line-pass");
+    u.delete(); uIn.delete();
+
+    const s1 = tf.ndarray(new Int32Array([1, 2, 3, 4]), [4]);
+    const s2 = tf.ndarray(new Int32Array([3, 4, 5, 6]), [4]);
+    const uni = await tf.async.setUnion(s1, s2);
+    const inter = await tf.async.setIntersection(s1, s2);
+    const diff = await tf.async.setDifference(s1, s2);
+    assert(uni.length === 6 && inter.length === 2 && diff.length === 2,
+      `set ops: u=${uni.length} i=${inter.length} d=${diff.length}`);
+    log("  async setUnion/Intersection/Difference", "line-pass");
+    uni.delete(); inter.delete(); diff.delete(); s1.delete(); s2.delete();
+
+    const y = tf.ndarray(new Float32Array([1, 0, -1]), [3]);
+    const x = tf.ndarray(new Float32Array([0, 1, 0]), [3]);
+    const at = await tf.async.atan2(y, x);
+    approx(at.data[0], Math.PI / 2, "async atan2[0]");
+    approx(at.data[1], 0, "async atan2[1]");
+    log("  async atan2", "line-pass");
+    at.delete(); y.delete(); x.delete();
+
+    a.delete();
   });
 
   // ==========================================================================

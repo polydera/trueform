@@ -28,11 +28,16 @@ function nd(dtype: string): string {
   return dtype === "bool" ? "int8" : dtype;
 }
 
+function floatDtype(dtype: string): string {
+  return dtype === "float64" ? "float64" : "float32";
+}
+
 export async function sum(
   arr: NDArray,
   axis: number = -1,
 ): Promise<number | NDArray> {
-  const outDtype = arr.dtype === "float32" ? "float32" : "int32";
+  const outDtype = arr.dtype === "float32" || arr.dtype === "float64"
+    ? arr.dtype : "int32";
   return dispatcher().run(
     () => native()[`dispatch_sum_${nd(arr.dtype)}`](arr._handle, axis),
     (raw) => wrapResult(raw, outDtype),
@@ -65,7 +70,7 @@ export async function mean(
 ): Promise<number | NDArray> {
   return dispatcher().run(
     () => native()[`dispatch_mean_${nd(arr.dtype)}`](arr._handle, axis),
-    (raw) => wrapResult(raw, "float32"),
+    (raw) => wrapResult(raw, floatDtype(arr.dtype)),
   );
 }
 
@@ -75,14 +80,14 @@ export async function norm(
 ): Promise<number | NDArray> {
   return dispatcher().run(
     () => native()[`dispatch_norm_${nd(arr.dtype)}`](arr._handle, axis),
-    (raw) => wrapResult(raw, "float32"),
+    (raw) => wrapResult(raw, floatDtype(arr.dtype)),
   );
 }
 
 export async function atan2(y: NDArray, x: NDArray): Promise<NDArray> {
   return dispatcher().run(
-    () => native().dispatch_atan2_float32(y._handle, x._handle),
-    (raw) => new NDArray(raw, "float32"),
+    () => native()[`dispatch_atan2_${y.dtype}`](y._handle, x._handle),
+    (raw) => new NDArray(raw, y.dtype),
   );
 }
 

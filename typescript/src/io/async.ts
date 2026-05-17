@@ -52,9 +52,7 @@ export async function readObj(data: ArrayBuffer | Uint8Array, opts?: ReadObjOpti
     return triangulate(await readObjData(bytes, { dynamic: true, dtype }));
   }
   return dispatcher().run(
-    () => dtype === "float64"
-      ? native().dispatch_read_obj_buffer_float64(bytes)
-      : native().dispatch_read_obj_buffer(bytes),
+    () => native()[`dispatch_read_obj_buffer_${dtype}`](bytes),
     (raw) => new Mesh(raw, dtype),
   );
 }
@@ -65,9 +63,7 @@ export async function readObjData(data: ArrayBuffer | Uint8Array, opts?: ReadObj
   const dtype = opts?.dtype ?? "float32";
   if (opts?.dynamic) {
     return dispatcher().run(
-      () => dtype === "float64"
-        ? native().dispatch_read_obj_buffer_data_float64(bytes)
-        : native().dispatch_read_obj_buffer_data(bytes),
+      () => native()[`dispatch_read_obj_buffer_data_${dtype}`](bytes),
       (raw): MeshLike => ({
         faces: new OffsetBlockedBuffer(raw.faces),
         points: new NDArray(raw.points, dtype) as NDArrayFloat32 | NDArrayFloat64,
@@ -75,9 +71,7 @@ export async function readObjData(data: ArrayBuffer | Uint8Array, opts?: ReadObj
     );
   }
   return dispatcher().run(
-    () => dtype === "float64"
-      ? native().dispatch_read_obj_buffer_float64(bytes)
-      : native().dispatch_read_obj_buffer(bytes),
+    () => native()[`dispatch_read_obj_buffer_${dtype}`](bytes),
     (raw): MeshLike => {
       const faces: NDArrayInt32 = new NDArray(raw.faces(), "int32");
       const points = new NDArray(raw.points(), dtype) as NDArrayFloat32 | NDArrayFloat64;
@@ -102,9 +96,7 @@ export async function writeStl(mesh: Mesh): Promise<NDArrayInt8> {
  *  the mesh dtype: float32 emits %.9g, float64 emits %.17g for exact round-trip. */
 export async function writeObj(mesh: Mesh): Promise<NDArrayInt8> {
   return dispatcher().run(
-    () => mesh.dtype === "float64"
-      ? native().dispatch_write_obj_buffer_float64(mesh._handle)
-      : native().dispatch_write_obj_buffer(mesh._handle),
+    () => native()[`dispatch_write_obj_buffer_${mesh.dtype}`](mesh._handle),
     (raw) => new NDArray(raw, "int8"),
   );
 }

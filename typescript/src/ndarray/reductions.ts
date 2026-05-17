@@ -23,10 +23,15 @@ function nd(dtype: string): string {
   return dtype === "bool" ? "int8" : dtype;
 }
 
+function floatDtype(dtype: string): string {
+  return dtype === "float64" ? "float64" : "float32";
+}
+
 /** Sum of elements. Without axis: scalar. With axis: reduced NDArray. */
 export function sum(arr: NDArray, axis: number = -1): number | NDArray {
-  const outDtype = arr.dtype === "float32" ? "float32" : "int32";
-  return wrapResult(native()[`sum_${nd(arr.dtype)}`](arr._handle, axis), outDtype);
+  const out = arr.dtype === "float32" || arr.dtype === "float64"
+    ? arr.dtype : "int32";
+  return wrapResult(native()[`sum_${nd(arr.dtype)}`](arr._handle, axis), out);
 }
 
 /** Minimum value. Without axis: scalar. With axis: reduced NDArray. */
@@ -39,14 +44,18 @@ export function max(arr: NDArray, axis: number = -1): number | NDArray {
   return wrapResult(native()[`max_${nd(arr.dtype)}`](arr._handle, axis), arr.dtype);
 }
 
-/** Arithmetic mean. Without axis: scalar. With axis: reduced NDArray (float32). */
+/** Arithmetic mean. Without axis: scalar. With axis: reduced NDArray (float). */
 export function mean(arr: NDArray, axis: number = -1): number | NDArray {
-  return wrapResult(native()[`mean_${nd(arr.dtype)}`](arr._handle, axis), "float32");
+  return wrapResult(
+    native()[`mean_${nd(arr.dtype)}`](arr._handle, axis), floatDtype(arr.dtype),
+  );
 }
 
-/** L2 norm. Without axis: scalar. With axis: per-slice norms (float32). */
+/** L2 norm. Without axis: scalar. With axis: per-slice norms (float). */
 export function norm(arr: NDArray, axis: number = -1): number | NDArray {
-  return wrapResult(native()[`norm_${nd(arr.dtype)}`](arr._handle, axis), "float32");
+  return wrapResult(
+    native()[`norm_${nd(arr.dtype)}`](arr._handle, axis), floatDtype(arr.dtype),
+  );
 }
 
 /** Index of minimum value. Without axis: flat index. With axis: per-slice indices. */

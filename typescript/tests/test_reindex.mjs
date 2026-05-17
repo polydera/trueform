@@ -160,6 +160,28 @@ describe("Reindex", () => {
   });
 
   // ==========================================================================
+  test("reindexed async (mesh)", async () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.0, 10, 10);
+    const nf = sphere.numberOfFaces;
+    const maskData = new Int8Array(nf);
+    for (let i = 0; i < Math.floor(nf / 2); i++) maskData[i] = 1;
+    const mask = tf.ndarray(maskData, [nf]);
+    const r1 = tf.reindexedByMask(sphere, mask, { returnIndexMap: true });
+
+    const r2 = await tf.async.reindexed(sphere, r1.faceMap, r1.pointMap);
+    assert(r2.numberOfFaces === r1.mesh.numberOfFaces,
+      `async reindexed faces=${r2.numberOfFaces}`);
+    assert(r2.numberOfPoints === r1.mesh.numberOfPoints,
+      `async reindexed points=${r2.numberOfPoints}`);
+    log(`  async reindexed: ${r2.numberOfFaces} faces, ${r2.numberOfPoints} points`, "line-pass");
+
+    r2.delete();
+    r1.pointMap.delete(); r1.faceMap.delete(); r1.mesh.delete();
+    mask.delete(); sphere.delete();
+  });
+
+  // ==========================================================================
   test("reindexed (NDArray — gather by keptIds)", () => {
     const tf = getTf();
     const sphere = tf.sphereMesh(1.0, 10, 10);

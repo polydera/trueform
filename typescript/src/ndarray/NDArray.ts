@@ -142,7 +142,8 @@ export class NDArray<T = any> {
   sum(axis?: number): number | NDArray {
     const a = axis ?? -1;
     const nd = nativeDtype(this.dtype);
-    const outDtype = this.dtype === "float32" ? "float32" : "int32";
+    const outDtype = this.dtype === "float32" || this.dtype === "float64"
+      ? this.dtype : "int32";
     const raw = native()[`sum_${nd}`](this._handle, a);
     return typeof raw === "number" ? raw : new NDArray(raw, outDtype);
   }
@@ -163,20 +164,22 @@ export class NDArray<T = any> {
     return typeof raw === "number" ? raw : new NDArray(raw, this.dtype);
   }
 
-  /** Arithmetic mean. Without axis: scalar. With axis: reduced NDArray (float32). */
+  /** Arithmetic mean. Without axis: scalar. With axis: reduced NDArray (float). */
   mean(axis?: number): number | NDArray {
     const a = axis ?? -1;
     const nd = nativeDtype(this.dtype);
+    const outDtype = this.dtype === "float64" ? "float64" : "float32";
     const raw = native()[`mean_${nd}`](this._handle, a);
-    return typeof raw === "number" ? raw : new NDArray(raw, "float32");
+    return typeof raw === "number" ? raw : new NDArray(raw, outDtype);
   }
 
-  /** L2 norm. Without axis: scalar. With axis: per-slice norms (float32). */
+  /** L2 norm. Without axis: scalar. With axis: per-slice norms (float). */
   norm(axis?: number): number | NDArray {
     const a = axis ?? -1;
     const nd = nativeDtype(this.dtype);
+    const outDtype = this.dtype === "float64" ? "float64" : "float32";
     const raw = native()[`norm_${nd}`](this._handle, a);
-    return typeof raw === "number" ? raw : new NDArray(raw, "float32");
+    return typeof raw === "number" ? raw : new NDArray(raw, outDtype);
   }
 
   // ============ Element-wise (copy) ============

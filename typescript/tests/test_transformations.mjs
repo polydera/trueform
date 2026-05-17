@@ -172,6 +172,34 @@ describe("Transformations", () => {
   });
 
   // ==========================================================================
+  test("inverted float64 (dispatches inverted_float64)", () => {
+    const tf = getTf();
+    const c = Math.cos(Math.PI / 6);
+    const s = Math.sin(Math.PI / 6);
+    const m = tf.ndarray(new Float64Array([
+       c, 0, s, 1.5,
+       0, 1, 0, 2.5,
+      -s, 0, c, 3.5,
+       0, 0, 0, 1,
+    ]), [4, 4]);
+
+    const inv = tf.inverted(m);
+    assert(inv.dtype === "float64", `inverted dtype=${inv.dtype}`);
+    assert(inv.shape[0] === 4 && inv.shape[1] === 4, "4x4");
+
+    const id = m.matMul(inv);
+    const d = id.data;
+    for (let i = 0; i < 4; i++)
+      for (let j = 0; j < 4; j++) {
+        const expected = i === j ? 1 : 0;
+        approx(d[i * 4 + j], expected, `I[${i},${j}]`, 1e-12);
+      }
+    log("  inverted 4x4 float64: M * M^-1 ≈ I (1e-12)", "line-pass");
+
+    id.delete(); inv.delete(); m.delete();
+  });
+
+  // ==========================================================================
   test("inverted throws on invalid shape", () => {
     const tf = getTf();
     const m = tf.ndarray(new Float32Array(4), [2, 2]);

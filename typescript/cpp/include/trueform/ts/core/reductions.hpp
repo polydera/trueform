@@ -175,6 +175,10 @@ auto max(const wasm_ndarray<T> &arr, int axis) -> wasm_ndarray<T> {
 // mean
 // ============================================================================
 
+template <typename T>
+using float_result_t =
+    std::conditional_t<std::is_same_v<T, double>, double, float>;
+
 template <typename T> auto mean(const wasm_ndarray<T> &arr) -> double {
   auto r = arr.make_range();
   double s;
@@ -190,7 +194,9 @@ template <typename T> auto mean(const wasm_ndarray<T> &arr) -> double {
 }
 
 template <typename T>
-auto mean(const wasm_ndarray<T> &arr, int axis) -> wasm_ndarray<float> {
+auto mean(const wasm_ndarray<T> &arr, int axis)
+    -> wasm_ndarray<float_result_t<T>> {
+  using R = float_result_t<T>;
   auto [outer, reduce, inner] =
       detail::axis_strides(arr.raw_shape(), axis);
   auto rshape = detail::remove_axis(arr.raw_shape(), axis);
@@ -198,7 +204,7 @@ auto mean(const wasm_ndarray<T> &arr, int axis) -> wasm_ndarray<float> {
   auto *data = arr.raw_data();
   auto inv = 1.0 / static_cast<double>(reduce);
 
-  tf::buffer<float> buf;
+  tf::buffer<R> buf;
   buf.allocate(result_len);
   auto *out = buf.data();
 
@@ -209,7 +215,7 @@ auto mean(const wasm_ndarray<T> &arr, int axis) -> wasm_ndarray<float> {
       double acc = 0.0;
       for (int r = 0; r < reduce; ++r)
         acc += static_cast<double>(data[o * reduce * inner + r * inner + i]);
-      out[idx] = static_cast<float>(acc * inv);
+      out[idx] = static_cast<R>(acc * inv);
     }
   } else if (inner == 1) {
     auto flat =
@@ -221,7 +227,7 @@ auto mean(const wasm_ndarray<T> &arr, int axis) -> wasm_ndarray<float> {
       double acc = 0.0;
       for (auto e : row)
         acc += static_cast<double>(e);
-      return static_cast<float>(acc * inv);
+      return static_cast<R>(acc * inv);
     }, tf::checked);
   } else {
     auto seq = tf::make_sequence_range(static_cast<int>(result_len));
@@ -232,18 +238,19 @@ auto mean(const wasm_ndarray<T> &arr, int axis) -> wasm_ndarray<float> {
       double acc = 0.0;
       for (int r = 0; r < reduce; ++r)
         acc += static_cast<double>(data[o * reduce * inner + r * inner + i]);
-      out[idx] = static_cast<float>(acc * inv);
+      out[idx] = static_cast<R>(acc * inv);
     }, tf::checked);
   }
 
-  return wasm_ndarray<float>::from_buffer(std::move(buf), std::move(rshape));
+  return wasm_ndarray<R>::from_buffer(std::move(buf), std::move(rshape));
 }
 
 // ============================================================================
 // norm (L2)
 // ============================================================================
 
-template <typename T> auto norm(const wasm_ndarray<T> &arr) -> float {
+template <typename T> auto norm(const wasm_ndarray<T> &arr) -> float_result_t<T> {
+  using R = float_result_t<T>;
   auto *data = arr.raw_data();
   auto len = arr.length();
   double s;
@@ -258,18 +265,20 @@ template <typename T> auto norm(const wasm_ndarray<T> &arr) -> float {
     });
     s = tf::reduce(squared, std::plus<>{}, 0.0, tf::checked);
   }
-  return static_cast<float>(std::sqrt(s));
+  return static_cast<R>(std::sqrt(s));
 }
 
 template <typename T>
-auto norm(const wasm_ndarray<T> &arr, int axis) -> wasm_ndarray<float> {
+auto norm(const wasm_ndarray<T> &arr, int axis)
+    -> wasm_ndarray<float_result_t<T>> {
+  using R = float_result_t<T>;
   auto [outer, reduce, inner] =
       detail::axis_strides(arr.raw_shape(), axis);
   auto rshape = detail::remove_axis(arr.raw_shape(), axis);
   auto result_len = static_cast<std::size_t>(outer) * inner;
   auto *data = arr.raw_data();
 
-  tf::buffer<float> buf;
+  tf::buffer<R> buf;
   buf.allocate(result_len);
   auto *out = buf.data();
 
@@ -282,7 +291,7 @@ auto norm(const wasm_ndarray<T> &arr, int axis) -> wasm_ndarray<float> {
         double v = static_cast<double>(data[o * reduce * inner + r * inner + i]);
         acc += v * v;
       }
-      out[idx] = static_cast<float>(std::sqrt(acc));
+      out[idx] = static_cast<R>(std::sqrt(acc));
     }
   } else if (inner == 1) {
     auto flat =
@@ -294,7 +303,7 @@ auto norm(const wasm_ndarray<T> &arr, int axis) -> wasm_ndarray<float> {
       double acc = 0.0;
       for (auto e : row)
         acc += static_cast<double>(e) * static_cast<double>(e);
-      return static_cast<float>(std::sqrt(acc));
+      return static_cast<R>(std::sqrt(acc));
     }, tf::checked);
   } else {
     auto seq = tf::make_sequence_range(static_cast<int>(result_len));
@@ -307,11 +316,11 @@ auto norm(const wasm_ndarray<T> &arr, int axis) -> wasm_ndarray<float> {
         double v = static_cast<double>(data[o * reduce * inner + r * inner + i]);
         acc += v * v;
       }
-      out[idx] = static_cast<float>(std::sqrt(acc));
+      out[idx] = static_cast<R>(std::sqrt(acc));
     }, tf::checked);
   }
 
-  return wasm_ndarray<float>::from_buffer(std::move(buf), std::move(rshape));
+  return wasm_ndarray<R>::from_buffer(std::move(buf), std::move(rshape));
 }
 
 // ============================================================================

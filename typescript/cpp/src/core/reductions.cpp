@@ -145,9 +145,10 @@ static auto async_max(tf::ts::wasm_ndarray<T> &arr, int axis)
 template <typename T>
 static auto async_mean(tf::ts::wasm_ndarray<T> &arr, int axis)
     -> tf::ts::promise_t {
+  using R = tf::ts::float_result_t<T>;
   if (axis == -1)
     return tf::ts::promise([a = arr]() -> double { return tf::ts::mean(a); });
-  return tf::ts::promise([a = arr, axis]() -> tf::ts::wasm_ndarray<float> {
+  return tf::ts::promise([a = arr, axis]() -> tf::ts::wasm_ndarray<R> {
     return tf::ts::mean(a, axis);
   });
 }
@@ -171,9 +172,10 @@ static auto sync_norm(tf::ts::wasm_ndarray<T> &arr, int axis)
 template <typename T>
 static auto async_norm(tf::ts::wasm_ndarray<T> &arr, int axis)
     -> tf::ts::promise_t {
+  using R = tf::ts::float_result_t<T>;
   if (axis == -1)
-    return tf::ts::promise([a = arr]() -> float { return tf::ts::norm(a); });
-  return tf::ts::promise([a = arr, axis]() -> tf::ts::wasm_ndarray<float> {
+    return tf::ts::promise([a = arr]() -> R { return tf::ts::norm(a); });
+  return tf::ts::promise([a = arr, axis]() -> tf::ts::wasm_ndarray<R> {
     return tf::ts::norm(a, axis);
   });
 }
@@ -352,16 +354,21 @@ static auto async_all(tf::ts::wasm_ndarray<std::int8_t> &arr, int axis)
 EMSCRIPTEN_BINDINGS(trueform_reductions) {
   // Sync
   emscripten::function("sum_float32", &sync_sum<float>);
+  emscripten::function("sum_float64", &sync_sum<double>);
   emscripten::function("sum_int32", &sync_sum<int>);
   emscripten::function("min_float32", &sync_min<float>);
+  emscripten::function("min_float64", &sync_min<double>);
   emscripten::function("min_int32", &sync_min<int>);
   emscripten::function("max_float32", &sync_max<float>);
+  emscripten::function("max_float64", &sync_max<double>);
   emscripten::function("max_int32", &sync_max<int>);
   emscripten::function("mean_float32", &sync_mean<float>);
+  emscripten::function("mean_float64", &sync_mean<double>);
   emscripten::function("mean_int32", &sync_mean<int>);
 
   // Sync — norm
   emscripten::function("norm_float32", &sync_norm<float>);
+  emscripten::function("norm_float64", &sync_norm<double>);
   emscripten::function("norm_int32", &sync_norm<int>);
 
   // Sync — int8
@@ -373,16 +380,21 @@ EMSCRIPTEN_BINDINGS(trueform_reductions) {
 
   // Async dispatch
   emscripten::function("dispatch_sum_float32", &async_sum<float>);
+  emscripten::function("dispatch_sum_float64", &async_sum<double>);
   emscripten::function("dispatch_sum_int32", &async_sum<int>);
   emscripten::function("dispatch_min_float32", &async_min<float>);
+  emscripten::function("dispatch_min_float64", &async_min<double>);
   emscripten::function("dispatch_min_int32", &async_min<int>);
   emscripten::function("dispatch_max_float32", &async_max<float>);
+  emscripten::function("dispatch_max_float64", &async_max<double>);
   emscripten::function("dispatch_max_int32", &async_max<int>);
   emscripten::function("dispatch_mean_float32", &async_mean<float>);
+  emscripten::function("dispatch_mean_float64", &async_mean<double>);
   emscripten::function("dispatch_mean_int32", &async_mean<int>);
 
   // Async dispatch — norm
   emscripten::function("dispatch_norm_float32", &async_norm<float>);
+  emscripten::function("dispatch_norm_float64", &async_norm<double>);
   emscripten::function("dispatch_norm_int32", &async_norm<int>);
 
   // Async dispatch — int8
@@ -394,9 +406,11 @@ EMSCRIPTEN_BINDINGS(trueform_reductions) {
 
   // Sync — argmin / argmax
   emscripten::function("argmin_float32", &sync_argmin<float>);
+  emscripten::function("argmin_float64", &sync_argmin<double>);
   emscripten::function("argmin_int32", &sync_argmin<int>);
   emscripten::function("argmin_int8", &sync_argmin<std::int8_t>);
   emscripten::function("argmax_float32", &sync_argmax<float>);
+  emscripten::function("argmax_float64", &sync_argmax<double>);
   emscripten::function("argmax_int32", &sync_argmax<int>);
   emscripten::function("argmax_int8", &sync_argmax<std::int8_t>);
 
@@ -406,9 +420,11 @@ EMSCRIPTEN_BINDINGS(trueform_reductions) {
 
   // Async dispatch — argmin / argmax
   emscripten::function("dispatch_argmin_float32", &async_argmin<float>);
+  emscripten::function("dispatch_argmin_float64", &async_argmin<double>);
   emscripten::function("dispatch_argmin_int32", &async_argmin<int>);
   emscripten::function("dispatch_argmin_int8", &async_argmin<std::int8_t>);
   emscripten::function("dispatch_argmax_float32", &async_argmax<float>);
+  emscripten::function("dispatch_argmax_float64", &async_argmax<double>);
   emscripten::function("dispatch_argmax_int32", &async_argmax<int>);
   emscripten::function("dispatch_argmax_int8", &async_argmax<std::int8_t>);
 

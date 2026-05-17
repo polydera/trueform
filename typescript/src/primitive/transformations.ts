@@ -119,22 +119,23 @@ export function makeRotation(
 /**
  * Invert an affine transformation matrix.
  *
- * Supports 4x4 (3D affine) and 3x3 (2D affine) matrices.
- * Inversion is computed in double precision regardless of input dtype.
+ * Supports 4x4 (3D affine) and 3x3 (2D affine) matrices. Output dtype
+ * matches input (float32 in / float32 out, float64 in / float64 out).
  *
  * @param m The 4x4 or 3x3 transformation matrix.
- * @returns The inverted matrix with the same shape.
+ * @returns The inverted matrix with the same shape and dtype.
  * @throws If the matrix is not 4x4 or 3x3.
  */
-export function inverted(m: NDArrayFloat32): NDArrayFloat32 {
+export function inverted(m: NDArray): NDArray {
   if (m.shape.length !== 2 || m.shape[0] !== m.shape[1] ||
       (m.shape[0] !== 4 && m.shape[0] !== 3)) {
     throw new Error(
       `inverted: expected 4x4 or 3x3 matrix, got [${m.shape.join(", ")}]`,
     );
   }
-  const safe = m.dtype === "float32" ? m : m.as("float32");
-  return new NDArray(native().inverted_float32(safe._handle), "float32");
+  const dt = m.dtype === "float64" ? "float64" : "float32";
+  const safe = m.dtype === dt ? m : m.as(dt);
+  return new NDArray(native()[`inverted_${dt}`](safe._handle), dt);
 }
 
 /**

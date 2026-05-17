@@ -532,6 +532,34 @@ describe("Primitive factories (other overloads)", () => {
     points.delete();
   });
 
+  test("obbFrom float64 mesh", () => {
+    const tf = getTf();
+    const sphere = tf.sphereMesh(1.5, 16, 16, { dtype: "float64" });
+    const obb = tf.obbFrom(sphere);
+    assert(obb.origin.dtype === "float64", `origin dtype=${obb.origin.dtype}`);
+    assert(obb.axes.dtype === "float64", `axes dtype=${obb.axes.dtype}`);
+    assert(obb.extent.dtype === "float64", `extent dtype=${obb.extent.dtype}`);
+    const e = Array.from(obb.extent.data).sort((a, b) => a - b);
+    for (const v of e) assert(Math.abs(v - 3.0) < 0.1, `extent ~3.0 (diameter), got ${v}`);
+    log("  obbFrom(sphere f64) → float64 in/out", "line-pass");
+    obb.extent.delete(); obb.axes.delete(); obb.origin.delete();
+    sphere.delete();
+  });
+
+  test("obbFrom async (float32 + float64)", async () => {
+    const tf = getTf();
+    const s32 = tf.sphereMesh(1.0, 16, 16);
+    const s64 = tf.sphereMesh(1.0, 16, 16, { dtype: "float64" });
+    const o32 = await tf.async.obbFrom(s32);
+    const o64 = await tf.async.obbFrom(s64);
+    assert(o32.extent.dtype === "float32", `async f32 dtype=${o32.extent.dtype}`);
+    assert(o64.extent.dtype === "float64", `async f64 dtype=${o64.extent.dtype}`);
+    log("  async obbFrom dispatch preserves dtype", "line-pass");
+    o32.extent.delete(); o32.axes.delete(); o32.origin.delete();
+    o64.extent.delete(); o64.axes.delete(); o64.origin.delete();
+    s32.delete(); s64.delete();
+  });
+
   // ---------- polygon ----------
   test("polygon from Point[]", () => {
     const tf = getTf();

@@ -50,16 +50,20 @@ useSchemaOrg([
 ]);
 
 provide("navigation", navigation);
+
+const showCornerMarks = computed(() => !route.path.startsWith("/live-examples"));
 </script>
 
 <template>
   <UApp>
     <div class="site-shell">
       <div class="site-grid" />
-      <span class="corner-mark corner-mark--tl" />
-      <span class="corner-mark corner-mark--tr" />
-      <span class="corner-mark corner-mark--bl" />
-      <span class="corner-mark corner-mark--br" />
+      <template v-if="showCornerMarks">
+        <span class="corner-mark corner-mark--tl" />
+        <span class="corner-mark corner-mark--tr" />
+        <span class="corner-mark corner-mark--bl" />
+        <span class="corner-mark corner-mark--br" />
+      </template>
 
       <div class="site-layer">
         <NuxtLoadingIndicator />
