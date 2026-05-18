@@ -1,12 +1,18 @@
 import { build } from "esbuild";
 import { execSync } from "node:child_process";
-import { copyFileSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
 const buildDir = resolve(root, process.env.TF_WASM_BUILD_DIR || "build-wasm");
+const distDir = resolve(__dirname, "dist");
+
+// CMake's MAKE_DIRECTORY only runs at configure time. If dist was wiped
+// after configure (e.g. between builds), the wasm link step would fail with
+// "directory does not exist" because emcc writes its output here.
+mkdirSync(distDir, { recursive: true });
 
 // -- WASM build (emcmake + cmake) --
 if (!existsSync(resolve(buildDir, "CMakeCache.txt"))) {

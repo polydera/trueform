@@ -533,8 +533,10 @@ export async function rayCast(
 /** Build the spatial AABB tree off the main thread. Cached on the mesh or point cloud. */
 export async function buildTree(m: Mesh | PointCloud): Promise<void> {
   if (m instanceof Mesh) {
-    await dispatcher().run(() => native().dispatch_ensure(m._handle, 0));
+    const fn = native()[`dispatch_ensure_${m.dtype}`];
+    await dispatcher().run(() => fn(m._handle, 0));
   } else {
-    await dispatcher().run(() => native().dispatch_ensure_pc(m._handle));
+    const fn = native()[`dispatch_ensure_pc_${m.dtype}`];
+    await dispatcher().run(() => fn(m._handle));
   }
 }

@@ -267,6 +267,246 @@ describe("Async spatial queries leave tree built on forms", () => {
 
 });
 
+// ============================================================================
+// Same precompute matrix on float64 Mesh / PointCloud. dispatch_ensure and
+// dispatch_ensure_pc need float64 variants registered on the C++ side, plus
+// dtype branching in the TS wrappers. These tests currently fail with
+// "Expected NativeFloat32Mesh" until that's in place.
+// ============================================================================
+
+function twoTrianglesF64() {
+  return {
+    faces: new Int32Array([0, 1, 2, 0, 3, 1]),
+    points: new Float64Array([
+      0, 0, 0,
+      1, 0, 0,
+      0.5, 1, 0,
+      0.5, -1, 0,
+    ]),
+  };
+}
+
+describe("Async precompute populates the original mesh (float64)", () => {
+
+  test("async.buildTree (float64)", async () => {
+    const tf = getTf();
+    const m = tf.boxMesh(2, 2, 2, undefined, undefined, undefined, { dtype: "float64" });
+    assert(m.dtype === "float64", "sanity: mesh dtype is float64");
+    assert(!m._handle.is_tree_built(), "fresh: tree not built");
+
+    await tf.async.buildTree(m);
+
+    assert(m._handle.is_tree_built() && m._handle.is_tree_fresh(),
+      "after async.buildTree (float64): tree built + fresh on original");
+    log("  async.buildTree (float64) → built + fresh on original", "line-pass");
+    m.delete();
+  });
+
+  test("async.computeNormals (float64)", async () => {
+    const tf = getTf();
+    const m = tf.boxMesh(2, 2, 2, undefined, undefined, undefined, { dtype: "float64" });
+    assert(!m._handle.is_normals_built(), "fresh: normals not built");
+
+    const n = await tf.async.computeNormals(m);
+    assert(m._handle.is_normals_built() && m._handle.is_normals_fresh(),
+      "after async.computeNormals (float64): built + fresh on original");
+    assert(n.shape[0] === m.numberOfFaces, "returned normals have correct shape");
+    n.delete();
+    log("  async.computeNormals (float64) → built + fresh on original", "line-pass");
+    m.delete();
+  });
+
+  test("async.computePointNormals (float64)", async () => {
+    const tf = getTf();
+    const m = tf.boxMesh(2, 2, 2, undefined, undefined, undefined, { dtype: "float64" });
+    assert(!m._handle.is_point_normals_built(), "fresh: point_normals not built");
+
+    const pn = await tf.async.computePointNormals(m);
+    assert(m._handle.is_point_normals_built() &&
+           m._handle.is_point_normals_fresh(),
+      "after async.computePointNormals (float64): built + fresh on original");
+    assert(pn.shape[0] === m.numberOfPoints,
+      "returned point_normals have correct shape");
+    pn.delete();
+    log("  async.computePointNormals (float64) → built + fresh on original", "line-pass");
+    m.delete();
+  });
+
+  test("async.computeFaceMembership (float64)", async () => {
+    const tf = getTf();
+    const m = tf.boxMesh(2, 2, 2, undefined, undefined, undefined, { dtype: "float64" });
+    assert(!m._handle.is_face_membership_built(),
+      "fresh: face_membership not built");
+
+    const fm = await tf.async.computeFaceMembership(m);
+    assert(m._handle.is_face_membership_built() &&
+           m._handle.is_face_membership_fresh(),
+      "after async.computeFaceMembership (float64): built + fresh on original");
+    fm.delete();
+    log("  async.computeFaceMembership (float64) → built + fresh on original", "line-pass");
+    m.delete();
+  });
+
+  test("async.computeManifoldEdgeLink (float64)", async () => {
+    const tf = getTf();
+    const m = tf.boxMesh(2, 2, 2, undefined, undefined, undefined, { dtype: "float64" });
+    assert(!m._handle.is_manifold_edge_link_built(),
+      "fresh: manifold_edge_link not built");
+
+    const mel = await tf.async.computeManifoldEdgeLink(m);
+    assert(m._handle.is_manifold_edge_link_built() &&
+           m._handle.is_manifold_edge_link_fresh(),
+      "after async.computeManifoldEdgeLink (float64): built + fresh on original");
+    mel.delete();
+    log("  async.computeManifoldEdgeLink (float64) → built + fresh on original", "line-pass");
+    m.delete();
+  });
+
+  test("async.computeFaceLink (float64)", async () => {
+    const tf = getTf();
+    const m = tf.boxMesh(2, 2, 2, undefined, undefined, undefined, { dtype: "float64" });
+    assert(!m._handle.is_face_link_built(), "fresh: face_link not built");
+
+    const fl = await tf.async.computeFaceLink(m);
+    assert(m._handle.is_face_link_built() && m._handle.is_face_link_fresh(),
+      "after async.computeFaceLink (float64): built + fresh on original");
+    fl.delete();
+    log("  async.computeFaceLink (float64) → built + fresh on original", "line-pass");
+    m.delete();
+  });
+
+  test("async.computeVertexLink (float64)", async () => {
+    const tf = getTf();
+    const m = tf.boxMesh(2, 2, 2, undefined, undefined, undefined, { dtype: "float64" });
+    assert(!m._handle.is_vertex_link_built(), "fresh: vertex_link not built");
+
+    const vl = await tf.async.computeVertexLink(m);
+    assert(m._handle.is_vertex_link_built() && m._handle.is_vertex_link_fresh(),
+      "after async.computeVertexLink (float64): built + fresh on original");
+    vl.delete();
+    log("  async.computeVertexLink (float64) → built + fresh on original", "line-pass");
+    m.delete();
+  });
+
+});
+
+describe("Mesh sync lazy accessors on float64", () => {
+  // The Mesh getters call C++ wasm_mesh<double> methods directly. These are
+  // separate from dispatch_ensure: if Float64Mesh embind registers the
+  // methods, sync access works regardless of async wiring. Lock the contract
+  // so a future binding regression is caught.
+
+  test("mesh.normals (float64) builds + has correct shape", () => {
+    const tf = getTf();
+    const m = tf.boxMesh(2, 2, 2, undefined, undefined, undefined, { dtype: "float64" });
+    const n = m.normals;
+    assert(n.dtype === "float64", `normals dtype ${n.dtype}`);
+    assert(n.shape[0] === m.numberOfFaces, "normals shape matches face count");
+    assert(m._handle.is_normals_built() && m._handle.is_normals_fresh(),
+      "normals built + fresh after sync access");
+    log("  mesh.normals (float64) → built + fresh", "line-pass");
+    n.delete(); m.delete();
+  });
+
+  test("mesh.pointNormals (float64) builds + has correct shape", () => {
+    const tf = getTf();
+    const m = tf.boxMesh(2, 2, 2, undefined, undefined, undefined, { dtype: "float64" });
+    const pn = m.pointNormals;
+    assert(pn.dtype === "float64", `pointNormals dtype ${pn.dtype}`);
+    assert(pn.shape[0] === m.numberOfPoints, "pointNormals shape matches point count");
+    assert(m._handle.is_point_normals_built() && m._handle.is_point_normals_fresh(),
+      "pointNormals built + fresh after sync access");
+    log("  mesh.pointNormals (float64) → built + fresh", "line-pass");
+    pn.delete(); m.delete();
+  });
+
+  test("mesh.faceMembership (float64) builds", () => {
+    const tf = getTf();
+    const m = tf.boxMesh(2, 2, 2, undefined, undefined, undefined, { dtype: "float64" });
+    const fm = m.faceMembership;
+    assert(m._handle.is_face_membership_built() && m._handle.is_face_membership_fresh(),
+      "faceMembership built + fresh after sync access");
+    log("  mesh.faceMembership (float64) → built + fresh", "line-pass");
+    fm.delete(); m.delete();
+  });
+
+  test("mesh.manifoldEdgeLink (float64) builds", () => {
+    const tf = getTf();
+    const m = tf.boxMesh(2, 2, 2, undefined, undefined, undefined, { dtype: "float64" });
+    const mel = m.manifoldEdgeLink;
+    assert(m._handle.is_manifold_edge_link_built() && m._handle.is_manifold_edge_link_fresh(),
+      "manifoldEdgeLink built + fresh after sync access");
+    log("  mesh.manifoldEdgeLink (float64) → built + fresh", "line-pass");
+    mel.delete(); m.delete();
+  });
+
+  test("mesh.faceLink (float64) builds", () => {
+    const tf = getTf();
+    const m = tf.boxMesh(2, 2, 2, undefined, undefined, undefined, { dtype: "float64" });
+    const fl = m.faceLink;
+    assert(m._handle.is_face_link_built() && m._handle.is_face_link_fresh(),
+      "faceLink built + fresh after sync access");
+    log("  mesh.faceLink (float64) → built + fresh", "line-pass");
+    fl.delete(); m.delete();
+  });
+
+  test("mesh.vertexLink (float64) builds", () => {
+    const tf = getTf();
+    const m = tf.boxMesh(2, 2, 2, undefined, undefined, undefined, { dtype: "float64" });
+    const vl = m.vertexLink;
+    assert(m._handle.is_vertex_link_built() && m._handle.is_vertex_link_fresh(),
+      "vertexLink built + fresh after sync access");
+    log("  mesh.vertexLink (float64) → built + fresh", "line-pass");
+    vl.delete(); m.delete();
+  });
+
+  test("mesh.buildTree (float64) builds tree", () => {
+    const tf = getTf();
+    const m = tf.boxMesh(2, 2, 2, undefined, undefined, undefined, { dtype: "float64" });
+    assert(!m._handle.is_tree_built(), "fresh: tree not built");
+    m.buildTree();
+    assert(m._handle.is_tree_built() && m._handle.is_tree_fresh(),
+      "tree built + fresh after sync mesh.buildTree()");
+    log("  mesh.buildTree (float64) → built + fresh", "line-pass");
+    m.delete();
+  });
+
+});
+
+describe("PointCloud sync lazy accessors on float64", () => {
+
+  test("pointCloud.buildTree (float64) builds tree", () => {
+    const tf = getTf();
+    const pc = tf.pointCloud(new Float64Array([0,0,0, 1,0,0, 0,1,0, 1,1,0]));
+    assert(pc.dtype === "float64", "sanity: pc dtype is float64");
+    assert(!pc._handle.is_tree_built(), "fresh pc: tree not built");
+    pc.buildTree();
+    assert(pc._handle.is_tree_built() && pc._handle.is_tree_fresh(),
+      "tree built + fresh after sync pc.buildTree()");
+    log("  pointCloud.buildTree (float64) → built + fresh", "line-pass");
+    pc.delete();
+  });
+
+});
+
+describe("Async precompute populates the original PointCloud (float64)", () => {
+
+  test("async.buildTree on PointCloud (float64)", async () => {
+    const tf = getTf();
+    const pc = tf.pointCloud(new Float64Array([0,0,0, 1,0,0, 0,1,0, 1,1,0]));
+    assert(pc.dtype === "float64", "sanity: pc dtype is float64");
+    assert(!pc._handle.is_tree_built(), "fresh pc: tree not built");
+
+    await tf.async.buildTree(pc);
+
+    assert(pc._handle.is_tree_built() && pc._handle.is_tree_fresh(),
+      "after async.buildTree(pc, float64): built + fresh on original");
+    log("  async.buildTree(pc, float64) → built + fresh on original", "line-pass");
+    pc.delete();
+  });
+
+});
+
 describe("Async registration leaves tree built on target point cloud", () => {
 
   test("async.fitIcpAlignment → target tree built+fresh", async () => {

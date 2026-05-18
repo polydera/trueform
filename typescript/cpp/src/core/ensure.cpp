@@ -20,17 +20,19 @@ namespace {
 
 using namespace tf::ts;
 
-auto async_ensure_pc(wasm_point_cloud<float> &pc) -> promise_t {
+template <typename Real>
+auto async_ensure_pc(wasm_point_cloud<Real> &pc) -> promise_t {
   return promise([h = pc]() -> int {
-    auto &handle = const_cast<wasm_point_cloud<float> &>(h);
+    auto &handle = const_cast<wasm_point_cloud<Real> &>(h);
     (void)handle.tree();
     return 0;
   });
 }
 
-auto async_ensure(wasm_mesh<float> &m, int what) -> promise_t {
+template <typename Real>
+auto async_ensure(wasm_mesh<Real> &m, int what) -> promise_t {
   return promise([h = m, what]() -> int {
-    auto &mesh = const_cast<wasm_mesh<float> &>(h);
+    auto &mesh = const_cast<wasm_mesh<Real> &>(h);
     switch (what) {
     case 0: (void)mesh.tree();              break;
     case 1: (void)mesh.normals();           break;
@@ -48,6 +50,8 @@ auto async_ensure(wasm_mesh<float> &m, int what) -> promise_t {
 } // namespace
 
 EMSCRIPTEN_BINDINGS(trueform_ensure) {
-  emscripten::function("dispatch_ensure", &async_ensure);
-  emscripten::function("dispatch_ensure_pc", &async_ensure_pc);
+  emscripten::function("dispatch_ensure_float32",    &async_ensure<float>);
+  emscripten::function("dispatch_ensure_float64",    &async_ensure<double>);
+  emscripten::function("dispatch_ensure_pc_float32", &async_ensure_pc<float>);
+  emscripten::function("dispatch_ensure_pc_float64", &async_ensure_pc<double>);
 }
