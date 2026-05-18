@@ -47,6 +47,7 @@ add_vtk_example(remeshing)
 add_vtk_example(decimate_with_feature_edges)
 add_vtk_example(tubes)
 add_vtk_example(sharp_edges)
+add_vtk_example(domains)
 
 # Target to build all examples
 add_custom_target(trueform_vtk_examples DEPENDS
