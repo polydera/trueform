@@ -46,10 +46,10 @@ execSync("npx tsc", { stdio: "inherit", cwd: __dirname });
 // -- Bundle (esbuild) --
 console.log("Bundling...");
 await build({
-  entryPoints: ["src/index.ts"],
+  entryPoints: ["src/index.ts", "src/manual.ts"],
   bundle: true,
   format: "esm",
-  outfile: "dist/index.js",
+  outdir: "dist",
   sourcemap: true,
   external: ["./trueform_wasm.js"],
 });

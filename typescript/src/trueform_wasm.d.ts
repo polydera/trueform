@@ -16,5 +16,5 @@
 // surface is intentionally untyped at this boundary — `native()` returns
 // a loosely-typed handle that the higher-level wrappers consume.
 
-declare const createModule: () => Promise<any>;
+declare const createModule: (moduleArg?: Record<string, unknown>) => Promise<any>;
 export default createModule;

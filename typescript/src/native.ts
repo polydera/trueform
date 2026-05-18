@@ -17,16 +17,31 @@ let _native: any = null;
 let _dispatcher: AsyncDispatcher | null = null;
 let _initPromise: Promise<void> | null = null;
 
+export interface InitOptions {
+  /** Override URL (or Blob URL) for trueform_wasm.wasm. */
+  wasmUrl?: string;
+  /** Override URL (or Blob URL) for trueform_wasm.js, used by the pthread worker. */
+  workerUrl?: string;
+}
+
 /**
  * Initialize the WASM module. Must be called (and awaited) once before
  * using any WASM-backed function. Subsequent calls return immediately.
  */
-export async function init(): Promise<void> {
+export async function init(opts?: InitOptions): Promise<void> {
   if (!_initPromise) {
     _initPromise = (async () => {
       const createModule = (await import("./trueform_wasm.js"))
         .default;
-      const m = await createModule();
+      const moduleOpts: Record<string, unknown> = {};
+      if (opts?.wasmUrl) {
+        moduleOpts.locateFile = (p: string) =>
+          p.endsWith(".wasm") ? opts.wasmUrl! : p;
+      }
+      if (opts?.workerUrl) {
+        moduleOpts.mainScriptUrlOrBlob = opts.workerUrl;
+      }
+      const m = await createModule(moduleOpts);
       _native = m;
       _dispatcher = new AsyncDispatcher(m.wasmMemory, m.retrieve);
       // Warm up TBB thread pool via async round-trip
