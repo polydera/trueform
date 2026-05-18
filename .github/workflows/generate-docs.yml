@@ -67,6 +67,10 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=8192
 
+      - name: Strip bundled trueform_wasm (loaded from CDN at runtime)
+        working-directory: docs
+        run: find dist/_nuxt -name 'trueform_wasm*.wasm' -delete
+
       - name: Upload docs artifacts
         uses: actions/upload-artifact@v4
         with:

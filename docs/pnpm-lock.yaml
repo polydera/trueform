@@ -48,8 +48,8 @@ importers:
         specifier: ^8.0.15
         version: 8.0.15(@nuxt/schema@4.4.5)(magicast@0.5.3)(nuxt@4.4.5(@babel/core@7.29.0)(@babel/plugin-syntax-jsx@7.28.6(@babel/core@7.29.0))(@parcel/watcher@2.5.6)(@types/node@25.8.0)(@vue/compiler-sfc@3.5.34)(better-sqlite3@12.10.0)(cac@6.7.14)(db0@0.3.4(better-sqlite3@12.10.0))(eslint@10.4.0(jiti@2.7.0))(ioredis@5.10.1)(lightningcss@1.32.0)(magicast@0.5.3)(optionator@0.9.4)(rollup-plugin-visualizer@7.0.1(rollup@4.60.4))(rollup@4.60.4)(srvx@0.11.15)(terser@5.47.1)(typescript@6.0.3)(vite@7.3.3(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.47.1)(yaml@2.9.0))(vue-tsc@3.2.9(typescript@6.0.3))(yaml@2.9.0))(vite@7.3.3(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.47.1)(yaml@2.9.0))(vue@3.5.34(typescript@6.0.3))(zod@3.25.76)
       '@polydera/trueform':
-        specifier: ^0.9.0
-        version: 0.9.0
+        specifier: ^0.9.1
+        version: 0.9.1
       '@takumi-rs/core':
         specifier: ^1.1.2
         version: 1.1.2(react@19.2.5)
@@ -1946,8 +1946,8 @@ packages:
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
 
-  '@polydera/trueform@0.9.0':
-    resolution: {integrity: sha512-RAzSpdAxcrZS2H9krEhB1j/eoHcG/o1vi38hU1QXEj6kvUqnQBPjymXujQYeQGxiQY9AXomc9qra950PdD9ySw==}
+  '@polydera/trueform@0.9.1':
+    resolution: {integrity: sha512-Td4oOKeNO0BjWWDwtNhmdLlVnnBsPNefFKlYqZMcyvc4Tu94yIEKNp1LPw7vjfJCaeB3Icjnz7D+zI3u2W03+w==}
     engines: {node: '>=18'}
 
   '@poppinss/colors@4.1.6':
@@ -9354,7 +9354,7 @@ snapshots:
 
   '@polka/url@1.0.0-next.29': {}
 
-  '@polydera/trueform@0.9.0': {}
+  '@polydera/trueform@0.9.1': {}
 
   '@poppinss/colors@4.1.6':
     dependencies:

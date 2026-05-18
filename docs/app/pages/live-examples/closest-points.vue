@@ -90,7 +90,8 @@ const loadThreejs = async () => {
   }
 };
 
-watch(meshSize, () => loadThreejs(), { immediate: true });
+onMounted(() => loadThreejs());
+watch(meshSize, () => loadThreejs());
 
 onBeforeUnmount(() => {
   tearDownRequested = true;

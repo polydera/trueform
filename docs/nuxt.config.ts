@@ -1,5 +1,20 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+const trueformPkg = JSON.parse(
+  readFileSync(
+    fileURLToPath(new URL("./node_modules/@polydera/trueform/package.json", import.meta.url)),
+    "utf-8",
+  ),
+);
+
 export default defineNuxtConfig({
+  runtimeConfig: {
+    public: {
+      trueformVersion: trueformPkg.version as string,
+    },
+  },
   modules: [
     "@nuxt/eslint",
     "@nuxt/image",

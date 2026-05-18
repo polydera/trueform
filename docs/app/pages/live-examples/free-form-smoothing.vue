@@ -111,15 +111,13 @@ const badge = computed(() => ({
   polygons: polygonLabel.value,
 }));
 
-watch(
-  meshSize,
-  () => {
-    radiusPercent.value = 5.0;
-    lambda.value = 0.3;
-    loadThreejs();
-  },
-  { immediate: true },
-);
+const resetAndLoad = () => {
+  radiusPercent.value = 5.0;
+  lambda.value = 0.3;
+  loadThreejs();
+};
+onMounted(() => resetAndLoad());
+watch(meshSize, () => resetAndLoad());
 
 onBeforeUnmount(() => {
   tearDownRequested = true;

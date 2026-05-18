@@ -113,7 +113,8 @@ const loadThreejs = async () => {
   }
 };
 
-watch(meshSize, () => loadThreejs(), { immediate: true });
+onMounted(() => loadThreejs());
+watch(meshSize, () => loadThreejs());
 watch(sphereSizeSteps, (value, oldValue) => {
   if (!exampleClass) return;
   if (isSyncingSphereSize.value) {
