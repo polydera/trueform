@@ -9,7 +9,24 @@ const trueformPkg = JSON.parse(
   ),
 );
 
+const umamiWebsiteId = process.env.NUXT_PUBLIC_UMAMI_WEBSITE_ID;
+const isDevServer = process.env.NODE_ENV === "development";
+
 export default defineNuxtConfig({
+  app: {
+    head: {
+      script: !isDevServer && umamiWebsiteId
+        ? [
+            {
+              src: "https://cloud.umami.is/script.js",
+              defer: true,
+              "data-website-id": umamiWebsiteId,
+            },
+          ]
+        : [],
+    },
+  },
+
   runtimeConfig: {
     public: {
       trueformVersion: trueformPkg.version as string,

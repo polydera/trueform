@@ -16,13 +16,13 @@
     "@iconify-json/lucide": "^1.2.107",
     "@iconify-json/simple-icons": "^1.2.82",
     "@iconify-json/vscode-icons": "^1.2.49",
-    "@nuxt/content": "^3.13.0",
+    "@nuxt/content": "^3.14.0",
     "@nuxt/fonts": "0.14.0",
     "@nuxt/image": "^2.0.0",
     "@nuxt/ui": "^4.7.1",
     "@nuxtjs/robots": "^6.0.8",
     "@nuxtjs/sitemap": "^8.0.15",
-    "@polydera/trueform": "^0.9.1",
+    "@polydera/trueform": "^0.9.2",
     "@takumi-rs/core": "^1.1.2",
     "@takumi-rs/wasm": "^1.1.2",
     "@unovis/ts": "^1.6.5",
@@ -30,7 +30,7 @@
     "better-sqlite3": "^12.10.0",
     "fast-glob": "^3.3.3",
     "katex": "^0.16.46",
-    "nuxt": "^4.4.5",
+    "nuxt": "^4.4.6",
     "nuxt-llms": "0.2.0",
     "nuxt-og-image": "^6.5.0",
     "nuxt-schema-org": "^6.0.4",
@@ -39,11 +39,12 @@
   },
   "devDependencies": {
     "@nuxt/eslint": "^1.15.2",
+    "@shikijs/engine-oniguruma": "4.0.2",
     "@types/three": "^0.184.1",
     "eslint": "^10.4.0",
     "typescript": "^6.0.3",
     "vue-tsc": "^3.2.9",
-    "wrangler": "^4.92.0"
+    "wrangler": "^4.93.1"
   },
   "resolutions": {
     "unimport": "4.1.1"
@@ -59,7 +60,8 @@
       "micromatch>picomatch": "2.3.2",
       "remark-mdc>yaml": "2.8.3",
       "fast-xml-parser>fast-xml-builder": ">=1.1.7",
-      "striptags": "^4.0.0-alpha.4"
+      "striptags": "^4.0.0-alpha.4",
+      "ws": ">=8.20.1"
     },
     "ignoredBuiltDependencies": [
       "@parcel/watcher",

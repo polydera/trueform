@@ -66,6 +66,7 @@ jobs:
         run: pnpm build
         env:
           NODE_OPTIONS: --max-old-space-size=8192
+          NUXT_PUBLIC_UMAMI_WEBSITE_ID: ${{ secrets.NUXT_PUBLIC_UMAMI_WEBSITE_ID }}
 
       - name: Strip bundled trueform_wasm (loaded from CDN at runtime)
         working-directory: docs
