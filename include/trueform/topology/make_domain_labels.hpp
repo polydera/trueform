@@ -32,6 +32,7 @@
 #include "./domains/lift_to_domain_labels.hpp"
 #include "./domains/make_bundle_labels.hpp"
 #include "./domains/make_nesting_merges.hpp"
+#include "./edge_path_connector.hpp"
 #include "./make_face_membership.hpp"
 #include "./make_manifold_edge_connected_component_labels.hpp"
 #include "../exact/resolve_int_type.hpp"
@@ -89,6 +90,26 @@ auto make_domain_labels(const tf::polygons<Policy> &polygons,
     auto [nm_edges, nm_edge_faces] =
         tf::make_non_manifold_edges(polygons, tf::complete);
 
+    // Path id + per-path edge-axis alignment anchors sa within a chain,
+    // so canonical-permutation buckets do not pool across polylines.
+    tf::edge_path_connector<Index, Index> epc;
+    epc.build(tf::make_edges(nm_edges));
+    tf::buffer<Index> edge_path_id;
+    edge_path_id.allocate(nm_edges.size());
+    tf::parallel_for_each(
+        tf::enumerate(tf::zip(epc.paths(), epc.directions())),
+        [&edge_path_id, &nm_edges = nm_edges](auto t) {
+          auto &&[path_idx, pd] = t;
+          auto &&[path, dirs] = pd;
+          for (std::size_t pos = 0; pos < path.size(); ++pos) {
+            Index e_id = path[pos];
+            edge_path_id[e_id] = static_cast<Index>(path_idx);
+            if (!dirs[pos])
+              std::swap(nm_edges[e_id][0], nm_edges[e_id][1]);
+          }
+        },
+        tf::checked);
+
     tf::buffer<std::array<Index, 2>> merges;
     tf::topology::domains::emit_boundary_merges(polygons, fragment_labels,
                                                 merges);
@@ -140,19 +161,11 @@ auto make_domain_labels(const tf::polygons<Policy> &polygons,
 
     tf::buffer<Index> id_sorted_labels;
     id_sorted_labels.allocate(nm_edge_faces.data_buffer().size());
-    tf::buffer<double> debug_areas;
-    debug_areas.allocate(nm_edge_faces.data_buffer().size());
     tf::buffer<char> is_valid;
     is_valid.allocate(nm_edges.size());
     tf::parallel_fill(is_valid, char(0));
-    // skip_reason: 0=valid, 1=K<2, 2=no third vertex, 3=collinear third
-    tf::buffer<char> skip_reason;
-    skip_reason.allocate(nm_edges.size());
-    tf::parallel_fill(skip_reason, char(0));
     auto id_sorted_view = tf::make_offset_block_range(
         nm_edge_faces.offsets_buffer(), id_sorted_labels);
-    auto areas_view = tf::make_offset_block_range(
-        nm_edge_faces.offsets_buffer(), debug_areas);
     auto labels_indirect = tf::make_indirect_range(nm_edge_faces.data_buffer(),
                                                    fragment_labels.labels);
     auto labels_view = tf::make_offset_block_range(
@@ -160,10 +173,11 @@ auto make_domain_labels(const tf::polygons<Policy> &polygons,
 
     tf::topology::domains::canonicalize_nm_edges<ResolvedInt>(
         polygons, fragment_labels, nm_edges, nm_edge_faces, id_sorted_view,
-        areas_view, labels_view, is_valid, skip_reason, get_point);
+        labels_view, is_valid, get_point);
 
     auto reps = tf::topology::domains::compute_majority_rep(
-        Index(nm_edges.size()), is_valid, id_sorted_view, labels_view);
+        Index(nm_edges.size()), is_valid, edge_path_id, id_sorted_view,
+        labels_view);
 
     tf::buffer<std::array<Index, 2>> bundle_merges;
     tf::topology::domains::emit_domain_merges(polygons, fragment_labels,

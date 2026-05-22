@@ -32,6 +32,7 @@ namespace tf::topology::domains {
 /// emit_domain_merges should iterate this buffer directly.
 template <typename Index, typename IdSortedView, typename LabelsView>
 auto compute_majority_rep(Index n_edges, const tf::buffer<char> &is_valid,
+                          const tf::buffer<Index> &edge_path_id,
                           const IdSortedView &id_sorted_view,
                           const LabelsView &labels_view)
     -> tf::buffer<Index> {
@@ -44,6 +45,8 @@ auto compute_majority_rep(Index n_edges, const tf::buffer<char> &is_valid,
           return is_valid[a] > is_valid[b];
         if (!is_valid[a])
           return a < b;
+        if (edge_path_id[a] != edge_path_id[b])
+          return edge_path_id[a] < edge_path_id[b];
         auto sa = id_sorted_view[a];
         auto sb = id_sorted_view[b];
         if (!std::equal(sa.begin(), sa.end(), sb.begin(), sb.end()))
@@ -62,6 +65,8 @@ auto compute_majority_rep(Index n_edges, const tf::buffer<char> &is_valid,
                           return false;
                         if (!is_valid[a])
                           return true;
+                        if (edge_path_id[a] != edge_path_id[b])
+                          return false;
                         auto sa = id_sorted_view[a];
                         auto sb = id_sorted_view[b];
                         return std::equal(sa.begin(), sa.end(), sb.begin(),
