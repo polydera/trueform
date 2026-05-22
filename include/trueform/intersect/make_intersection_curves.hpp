@@ -54,13 +54,19 @@ auto make_intersection_curves(
         using InputReal = tf::coordinate_type<std::decay_t<decltype(p0)>,
                                               std::decay_t<decltype(p1)>>;
         using ResolvedInt = tf::exact::resolve_int_type<Int, InputReal>;
+        using PipelineReal =
+            std::conditional_t<std::is_integral_v<InputReal>, InputReal, double>;
         using RealOut =
             std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
                                InputReal, OutputCoordinateType>;
-        static_assert(std::is_floating_point_v<RealOut>,
-                      "OutputCoordinateType must be a floating-point type");
+        static_assert(std::is_floating_point_v<RealOut> ||
+                          std::is_integral_v<RealOut>,
+                      "Output coordinate type must be floating-point or integral");
+        static_assert(!std::is_integral_v<InputReal> ||
+                          !std::is_floating_point_v<RealOut>,
+                      "Integer input cannot produce floating-point output");
 
-        tf::intersections_between_polygons<Index, double, ResolvedInt> ibp;
+        tf::intersections_between_polygons<Index, PipelineReal, ResolvedInt> ibp;
         ibp.build(p0, p1, mode);
 
         auto &conv = ibp.converter();
@@ -106,11 +112,22 @@ auto make_intersection_curves(
         tf::curves_buffer<Index, RealOut, 3> cb;
         cb.paths_buffer() = std::move(paths);
         cb.points_buffer().allocate(ipts.size());
-        tf::parallel_copy(
-            tf::make_points(tf::make_mapped_range(
-                ipts, [&conv](const auto &pt) { return conv.deconvert(pt); })),
-            cb.points());
-        return cb;
+        if constexpr (std::is_integral_v<RealOut>) {
+          tf::parallel_copy(tf::make_points(ipts), cb.points());
+        } else {
+          tf::parallel_copy(
+              tf::make_points(tf::make_mapped_range(
+                  ipts,
+                  [&conv](const auto &pt) { return conv.deconvert(pt); })),
+              cb.points());
+        }
+        if constexpr (!std::is_integral_v<InputReal> &&
+                      std::is_integral_v<RealOut>) {
+          auto conv_copy = ibp.converter();
+          return std::make_tuple(std::move(cb), std::move(conv_copy));
+        } else {
+          return cb;
+        }
       });
 }
 
@@ -121,13 +138,19 @@ auto intersection_curves_n(const FormsRange &forms, tf::intersect_mode mode) {
   using Index = std::decay_t<decltype(forms[0].faces()[0][0])>;
   using InputReal = tf::coordinate_type<decltype(forms[0])>;
   using ResolvedInt = tf::exact::resolve_int_type<Int, InputReal>;
+  using PipelineReal =
+      std::conditional_t<std::is_integral_v<InputReal>, InputReal, double>;
   using RealOut =
       std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
                          InputReal, OutputCoordinateType>;
-  static_assert(std::is_floating_point_v<RealOut>,
-                "OutputCoordinateType must be a floating-point type");
+  static_assert(std::is_floating_point_v<RealOut> ||
+                    std::is_integral_v<RealOut>,
+                "Output coordinate type must be floating-point or integral");
+  static_assert(!std::is_integral_v<InputReal> ||
+                    !std::is_floating_point_v<RealOut>,
+                "Integer input cannot produce floating-point output");
 
-  tf::intersections_between_polygons<Index, double, ResolvedInt> ibp;
+  tf::intersections_between_polygons<Index, PipelineReal, ResolvedInt> ibp;
   ibp.build(forms, mode);
 
   auto &conv = ibp.converter();
@@ -165,11 +188,21 @@ auto intersection_curves_n(const FormsRange &forms, tf::intersect_mode mode) {
   tf::curves_buffer<Index, RealOut, 3> cb;
   cb.paths_buffer() = std::move(paths);
   cb.points_buffer().allocate(ipts.size());
-  tf::parallel_copy(
-      tf::make_points(tf::make_mapped_range(
-          ipts, [&conv](const auto &pt) { return conv.deconvert(pt); })),
-      cb.points());
-  return cb;
+  if constexpr (std::is_integral_v<RealOut>) {
+    tf::parallel_copy(tf::make_points(ipts), cb.points());
+  } else {
+    tf::parallel_copy(
+        tf::make_points(tf::make_mapped_range(
+            ipts, [&conv](const auto &pt) { return conv.deconvert(pt); })),
+        cb.points());
+  }
+  if constexpr (!std::is_integral_v<InputReal> &&
+                std::is_integral_v<RealOut>) {
+    auto conv_copy = ibp.converter();
+    return std::make_tuple(std::move(cb), std::move(conv_copy));
+  } else {
+    return cb;
+  }
 }
 
 } // namespace intersect

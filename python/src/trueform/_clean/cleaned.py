@@ -20,7 +20,10 @@ from .._dispatch import InputMeta, build_suffix
 def cleaned(
     data: Union[np.ndarray, Tuple[np.ndarray, np.ndarray], Mesh, EdgeMesh, PointCloud],
     tolerance: Optional[float] = None,
-    return_index_map: bool = False
+    return_index_map: bool = False,
+    *,
+    remove_duplicate_primitives: bool = True,
+    remove_unreferenced_points: bool = True,
 ) -> Union[
     np.ndarray,  # just points
     Tuple[np.ndarray, np.ndarray],  # (connectivity, points) or (points, index_map)
@@ -53,6 +56,11 @@ def cleaned(
     return_index_map : bool, optional
         If True, return index maps for attribute reindexing (default: False).
         Not supported for polygon/segment soups.
+    remove_duplicate_primitives : bool, keyword-only, default True
+        Remove duplicate faces (polygons) or edges (segments). For points,
+        duplicate vertices are always removed.
+    remove_unreferenced_points : bool, keyword-only, default True
+        Drop vertices that no surviving face or edge references.
 
     Returns
     -------
@@ -114,6 +122,9 @@ def cleaned(
     ... )
     >>> # Reindex face attributes: new_face_attrs = old_face_attrs[kept_faces]
     >>> # Reindex point attributes: new_point_attrs = old_point_attrs[kept_points]
+    >>>
+    >>> # Keep duplicate faces in the result (e.g. for arrangements pre-merge)
+    >>> mesh_kept = tf.cleaned(mesh, remove_duplicate_primitives=False)
     """
     # Validate tolerance
     if tolerance is not None and tolerance < 0.0:
@@ -124,13 +135,19 @@ def cleaned(
 
     # Dispatch to appropriate handler
     if kind == 'points':
-        return _clean_points(arrays, meta, tolerance, return_index_map)
+        return _clean_points(arrays, meta, tolerance, return_index_map,
+                             remove_duplicate_primitives,
+                             remove_unreferenced_points)
     elif kind == 'indexed':
-        return _clean_indexed(arrays, meta, tolerance, return_index_map)
+        return _clean_indexed(arrays, meta, tolerance, return_index_map,
+                              remove_duplicate_primitives,
+                              remove_unreferenced_points)
     elif kind == 'soup':
         if return_index_map:
             raise ValueError("return_index_map is not supported for polygon soups")
-        return _clean_soup(arrays, meta, tolerance)
+        return _clean_soup(arrays, meta, tolerance,
+                           remove_duplicate_primitives,
+                           remove_unreferenced_points)
 
 
 def _extract_cleaned_input(data: Any) -> Tuple[str, tuple, Dict]:
@@ -307,21 +324,29 @@ def _extract_array_input(data: np.ndarray) -> Tuple[str, tuple, Dict]:
     })
 
 
-def _clean_points(arrays: tuple, meta: Dict, tolerance: Optional[float], return_index_map: bool):
+def _clean_points(arrays: tuple, meta: Dict, tolerance: Optional[float],
+                  return_index_map: bool,
+                  remove_duplicate_primitives: bool,
+                  remove_unreferenced_points: bool):
     """Clean points array."""
     points = arrays[0]
     suffix = build_suffix(InputMeta(None, meta['real_dtype'], None, meta['dims']))
     func_name = f"cleaned_points_with_maps_{suffix}"
 
     cpp_func = getattr(_trueform.clean, func_name)
-    result, point_map = cpp_func(points, tolerance)
+    result, point_map = cpp_func(points, tolerance,
+                                 remove_duplicate_primitives,
+                                 remove_unreferenced_points)
 
     if return_index_map:
         return (result, point_map)
     return result
 
 
-def _clean_indexed(arrays: tuple, meta: Dict, tolerance: Optional[float], return_index_map: bool):
+def _clean_indexed(arrays: tuple, meta: Dict, tolerance: Optional[float],
+                   return_index_map: bool,
+                   remove_duplicate_primitives: bool,
+                   remove_unreferenced_points: bool):
     """Clean indexed geometry (Mesh, EdgeMesh, or tuple)."""
     indices, points = arrays
     suffix = build_suffix(InputMeta(meta['index_dtype'], meta['real_dtype'], meta['V'], meta['dims']))
@@ -332,18 +357,24 @@ def _clean_indexed(arrays: tuple, meta: Dict, tolerance: Optional[float], return
     if meta['is_dynamic']:
         # Dynamic mesh - indices is OffsetBlockedArray
         ((offsets, data), result_points), face_map, point_map = cpp_func(
-            indices._wrapper, points, tolerance
+            indices._wrapper, points, tolerance,
+            remove_duplicate_primitives, remove_unreferenced_points,
         )
         result = (OffsetBlockedArray(offsets, data), result_points)
     else:
-        result, face_map, point_map = cpp_func(indices, points, tolerance)
+        result, face_map, point_map = cpp_func(
+            indices, points, tolerance,
+            remove_duplicate_primitives, remove_unreferenced_points,
+        )
 
     if return_index_map:
         return (result, face_map, point_map)
     return result
 
 
-def _clean_soup(arrays: tuple, meta: Dict, tolerance: Optional[float]):
+def _clean_soup(arrays: tuple, meta: Dict, tolerance: Optional[float],
+                remove_duplicate_primitives: bool,
+                remove_unreferenced_points: bool):
     """Clean polygon/segment soup."""
     soup = arrays[0]
     # Soups have no index_dtype, just ngon (V as string), real, dims
@@ -351,4 +382,5 @@ def _clean_soup(arrays: tuple, meta: Dict, tolerance: Optional[float]):
     func_name = f"cleaned_soup_{suffix}"
 
     cpp_func = getattr(_trueform.clean, func_name)
-    return cpp_func(soup, tolerance)
+    return cpp_func(soup, tolerance, remove_duplicate_primitives,
+                    remove_unreferenced_points)

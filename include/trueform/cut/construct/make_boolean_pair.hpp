@@ -50,8 +50,12 @@ auto make_boolean_pair(const tf::polygons<Policy0> &polygons0,
   using RealOut =
       std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
                          InputReal, OutputCoordinateType>;
-  static_assert(std::is_floating_point_v<RealOut>,
-                "OutputCoordinateType must be a floating-point type");
+  static_assert(std::is_floating_point_v<RealOut> ||
+                    std::is_integral_v<RealOut>,
+                "Output coordinate type must be floating-point or integral");
+  static_assert(!std::is_integral_v<InputReal> ||
+                    !std::is_floating_point_v<RealOut>,
+                "Integer input cannot produce floating-point output");
   auto ipts = ig.points();
 
   auto cls_labels = tf::cut::make_classification_labels<LabelType>(
@@ -168,21 +172,38 @@ auto make_boolean_pair(const tf::polygons<Policy0> &polygons0,
     pts_buf.allocate(n_orig + n_created);
 
     auto frame = tf::frame_of(polygons);
-    tf::parallel_copy(
-        tf::make_points(tf::make_indirect_range(
-            map_data.original_ids[tag],
-            tf::make_mapped_range(
-                polygons.points(),
-                [frame](auto pt) { return tf::transformed(pt, frame); }))),
-        tf::take(pts_buf, n_orig));
+    if constexpr (std::is_integral_v<RealOut>) {
+      tf::parallel_copy(
+          tf::make_points(tf::make_indirect_range(
+              map_data.original_ids[tag],
+              tf::make_mapped_range(polygons.points(),
+                                    [frame, &converter](auto pt) {
+                                      return converter.convert(
+                                          tf::transformed(pt, frame));
+                                    }))),
+          tf::take(pts_buf, n_orig));
+      tf::parallel_copy(
+          tf::make_points(tf::make_mapped_range(
+              map_data.created_ids[tag],
+              [&ipts](Index id) { return ipts[id]; })),
+          tf::drop(pts_buf, n_orig));
+    } else {
+      tf::parallel_copy(
+          tf::make_points(tf::make_indirect_range(
+              map_data.original_ids[tag],
+              tf::make_mapped_range(
+                  polygons.points(),
+                  [frame](auto pt) { return tf::transformed(pt, frame); }))),
+          tf::take(pts_buf, n_orig));
 
-    tf::parallel_copy(
-        tf::make_points(tf::make_mapped_range(
-            map_data.created_ids[tag],
-            [&converter, &ipts](Index id) {
-              return converter.deconvert(ipts[id]);
-            })),
-        tf::drop(pts_buf, n_orig));
+      tf::parallel_copy(
+          tf::make_points(tf::make_mapped_range(
+              map_data.created_ids[tag],
+              [&converter, &ipts](Index id) {
+                return converter.deconvert(ipts[id]);
+              })),
+          tf::drop(pts_buf, n_orig));
+    }
 
     tf::buffer<Index> face_labels;
     face_labels.allocate(faces.size());

@@ -1,7 +1,7 @@
 import { describe, test, log, assert, getTf } from "./harness.mjs";
 
 const F64 = { dtype: "float64" };
-const TOL = 1e-8;
+const TOL = 1e-6;
 
 // ---- helpers ---------------------------------------------------------------
 

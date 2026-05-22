@@ -229,6 +229,189 @@ TEMPLATE_TEST_CASE("clean_polygons_box_mesh", "[clean][clean_polygons]",
 }
 
 // =============================================================================
+// clean_polygons_keep_duplicate_faces_when_disabled
+// =============================================================================
+
+TEMPLATE_TEST_CASE("clean_polygons_keep_duplicate_faces_when_disabled",
+    "[clean][clean_polygons][config]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    // Mesh combines three things at once so the test exercises each pass
+    // independently:
+    //   - a duplicate vertex (point 3 == point 0) -> must be merged
+    //     (vertex dedup always runs)
+    //   - an unreferenced vertex (point 4) -> must be removed
+    //     (remove_unreferenced_points = true)
+    //   - two faces that become identical after vertex dedup -> must be KEPT
+    //     (remove_duplicate_primitives = false)
+    tf::polygons_buffer<index_t, real_t, 3, 3> input;
+    input.points_buffer().emplace_back(real_t(0), real_t(0), real_t(0));  // 0
+    input.points_buffer().emplace_back(real_t(1), real_t(0), real_t(0));  // 1
+    input.points_buffer().emplace_back(real_t(0), real_t(1), real_t(0));  // 2
+    input.points_buffer().emplace_back(real_t(0), real_t(0), real_t(0));  // 3 == 0
+    input.points_buffer().emplace_back(real_t(7), real_t(7), real_t(7));  // 4 unref
+    input.faces_buffer().emplace_back(0, 1, 2);
+    input.faces_buffer().emplace_back(3, 1, 2);  // (0,1,2) after dedup -- duplicate
+
+    // remove_duplicate_primitives = false: duplicate face stays, but
+    // vertex dedup + unref pruning still execute.
+    auto cfg = tf::clean_config(real_t(0), /*remove_dup=*/false,
+                                /*remove_unref=*/true);
+    auto out = tf::cleaned(input.polygons(), cfg);
+
+    // Vertex dedup merged 0/3; unref-prune removed 4 -> 3 unique points.
+    REQUIRE(out.points().size() == 3);
+    // Both faces kept.
+    REQUIRE(out.faces().size() == 2);
+
+    // Both faces must reference the surviving triple -- the index of the
+    // duplicate-point representative is whatever vertex dedup picked, so
+    // assert by surviving coordinates rather than by raw index.
+    auto coord_set = [&](auto face) {
+        std::array<std::array<real_t, 3>, 3> v{};
+        for (std::size_t i = 0; i < 3; ++i) {
+            auto p = out.points()[face[i]];
+            v[i] = {p[0], p[1], p[2]};
+        }
+        std::sort(v.begin(), v.end());
+        return v;
+    };
+    auto expected = coord_set(out.faces()[0]);
+    REQUIRE(coord_set(out.faces()[1]) == expected);
+
+    // All point indices in faces are in range.
+    for (auto face : out.faces())
+        for (auto v : face) {
+            REQUIRE(v >= 0);
+            REQUIRE(static_cast<std::size_t>(v) < out.points().size());
+        }
+
+    // Every output point is referenced by at least one face (no
+    // unreferenced survivors despite the input having one).
+    std::vector<bool> referenced(out.points().size(), false);
+    for (auto face : out.faces())
+        for (auto v : face)
+            referenced[v] = true;
+    for (bool r : referenced) REQUIRE(r);
+
+    // The unreferenced input point (7,7,7) must not appear anywhere in the
+    // output.
+    for (auto p : out.points()) {
+        bool is_unref = p[0] == real_t(7) && p[1] == real_t(7) &&
+                        p[2] == real_t(7);
+        REQUIRE_FALSE(is_unref);
+    }
+
+    // Index-map variant: maps consistent with the kept mesh.
+    auto [out_im, face_im, point_im] =
+        tf::cleaned(input.polygons(), cfg, tf::return_index_map);
+    REQUIRE(out_im.faces().size() == 2);
+    REQUIRE(out_im.points().size() == 3);
+    REQUIRE(face_im.kept_ids().size() == 2);
+    for (std::size_t i = 0; i < face_im.kept_ids().size(); ++i)
+        REQUIRE(face_im.f()[face_im.kept_ids()[i]] == index_t(i));
+    // point_im round-trip for survivors.
+    REQUIRE(point_im.kept_ids().size() == 3);
+    for (std::size_t i = 0; i < point_im.kept_ids().size(); ++i)
+        REQUIRE(point_im.f()[point_im.kept_ids()[i]] == index_t(i));
+    // Duplicate vertex 3 must map to the same output index as vertex 0.
+    REQUIRE(point_im.f()[0] == point_im.f()[3]);
+    // Unreferenced vertex 4 must map to the standard sentinel (f.size()).
+    REQUIRE(point_im.f()[4] == static_cast<index_t>(point_im.f().size()));
+}
+
+// =============================================================================
+// clean_polygons_keep_unreferenced_points_when_disabled
+// =============================================================================
+
+TEMPLATE_TEST_CASE("clean_polygons_keep_unreferenced_points_when_disabled",
+    "[clean][clean_polygons][config]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    // Mesh combines three things so each independent pass is exercised:
+    //   - a duplicate vertex (point 3 == point 0) -> must be merged
+    //   - two faces that become identical after vertex dedup -> must be
+    //     dropped (remove_duplicate_primitives = true)
+    //   - an unreferenced vertex (point 4) -> must be KEPT
+    //     (remove_unreferenced_points = false)
+    tf::polygons_buffer<index_t, real_t, 3, 3> input;
+    input.points_buffer().emplace_back(real_t(0), real_t(0), real_t(0));  // 0
+    input.points_buffer().emplace_back(real_t(1), real_t(0), real_t(0));  // 1
+    input.points_buffer().emplace_back(real_t(0), real_t(1), real_t(0));  // 2
+    input.points_buffer().emplace_back(real_t(0), real_t(0), real_t(0));  // 3 == 0
+    input.points_buffer().emplace_back(real_t(7), real_t(7), real_t(7));  // 4 unref
+    input.faces_buffer().emplace_back(0, 1, 2);
+    input.faces_buffer().emplace_back(3, 1, 2);  // (0,1,2) after dedup -- duplicate
+
+    // remove_unreferenced_points = false: point 4 stays; the other passes
+    // (vertex dedup, face dedup) still execute.
+    auto cfg = tf::clean_config(real_t(0), /*remove_dup=*/true,
+                                /*remove_unref=*/false);
+    auto out = tf::cleaned(input.polygons(), cfg);
+
+    // Vertex dedup merged 0/3, so 4 unique survivors total (3 referenced + 1
+    // unreferenced kept).
+    REQUIRE(out.points().size() == 4);
+    // Face dedup removed the duplicate.
+    REQUIRE(out.faces().size() == 1);
+
+    // The unreferenced point (7,7,7) must still appear in the output.
+    bool found_unref = false;
+    for (auto p : out.points())
+        if (p[0] == real_t(7) && p[1] == real_t(7) && p[2] == real_t(7))
+            found_unref = true;
+    REQUIRE(found_unref);
+
+    // Face indices are all valid (< point count).
+    auto face = out.faces()[0];
+    for (auto v : face) {
+        REQUIRE(v >= 0);
+        REQUIRE(static_cast<std::size_t>(v) < out.points().size());
+    }
+
+    // Face's three vertices must correspond to coords (0,0,0), (1,0,0),
+    // (0,1,0) -- in any order.
+    std::array<std::array<real_t, 3>, 3> got{};
+    for (std::size_t i = 0; i < 3; ++i) {
+        auto p = out.points()[face[i]];
+        got[i] = {p[0], p[1], p[2]};
+    }
+    std::sort(got.begin(), got.end());
+    std::array<std::array<real_t, 3>, 3> expected = {{
+        {real_t(0), real_t(0), real_t(0)},
+        {real_t(0), real_t(1), real_t(0)},
+        {real_t(1), real_t(0), real_t(0)},
+    }};
+    std::sort(expected.begin(), expected.end());
+    REQUIRE(got == expected);
+
+    // Index-map variant: map consistent with the kept mesh.
+    auto [out_im, face_im, point_im] =
+        tf::cleaned(input.polygons(), cfg, tf::return_index_map);
+    REQUIRE(out_im.points().size() == 4);
+    REQUIRE(out_im.faces().size() == 1);
+    REQUIRE(face_im.kept_ids().size() == 1);
+    REQUIRE(face_im.f()[0] == index_t(0));
+    // Second input face dropped -> standard sentinel (f.size()).
+    REQUIRE(face_im.f()[1] == static_cast<index_t>(face_im.f().size()));
+    REQUIRE(point_im.kept_ids().size() == 4);
+    for (std::size_t i = 0; i < point_im.kept_ids().size(); ++i)
+        REQUIRE(point_im.f()[point_im.kept_ids()[i]] == index_t(i));
+    // Duplicate vertex 3 still folded into 0.
+    REQUIRE(point_im.f()[0] == point_im.f()[3]);
+    // Unreferenced vertex 4 survives.
+    REQUIRE(point_im.f()[4] < static_cast<index_t>(out_im.points().size()));
+}
+
+// =============================================================================
 // clean_polygons_empty
 // =============================================================================
 
@@ -990,7 +1173,7 @@ TEMPLATE_TEST_CASE("clean_polygons_dynamic_soup_tri_quad_pentagon", "[clean][cle
 
     auto result = tf::cleaned(input.polygons());
 
-    // No duplicates — everything unchanged
+    // No duplicates -- everything unchanged
     REQUIRE(result.points().size() == 12);
     REQUIRE(result.faces().size() == 3);
 

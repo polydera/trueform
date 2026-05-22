@@ -881,6 +881,44 @@ def test_cleaned_invalid_type():
 
 
 # ==============================================================================
+# Clean config: keyword-only flags
+# ==============================================================================
+
+
+def test_cleaned_keep_duplicate_faces_when_disabled():
+    """remove_duplicate_primitives=False keeps duplicate faces in the output."""
+    faces = np.array([[0, 1, 2], [0, 1, 2]], dtype=np.int32)
+    points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float32)
+
+    # Default removes the duplicate face.
+    f_default, p_default = tf.cleaned((faces, points))
+    assert f_default.shape[0] == 1
+    assert p_default.shape[0] == 3
+
+    # Disabled keeps both faces.
+    f_kept, p_kept = tf.cleaned((faces, points), remove_duplicate_primitives=False)
+    assert f_kept.shape[0] == 2
+    assert p_kept.shape[0] == 3
+
+
+def test_cleaned_keep_unreferenced_points_when_disabled():
+    """remove_unreferenced_points=False keeps vertices unused by any face."""
+    faces = np.array([[0, 1, 2]], dtype=np.int32)
+    points = np.array(
+        [[0, 0, 0], [1, 0, 0], [0, 1, 0], [99, 99, 99]], dtype=np.float32
+    )
+
+    # Default drops the unreferenced vertex.
+    f_default, p_default = tf.cleaned((faces, points))
+    assert p_default.shape[0] == 3
+
+    # Disabled keeps it.
+    f_kept, p_kept = tf.cleaned((faces, points), remove_unreferenced_points=False)
+    assert p_kept.shape[0] == 4
+    assert f_kept.shape[0] == 1
+
+
+# ==============================================================================
 # Main runner
 # ==============================================================================
 

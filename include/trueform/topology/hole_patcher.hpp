@@ -21,7 +21,7 @@
 #include "../core/views/mapped_range.hpp"
 #include "../exact/meta.hpp"
 #include "../exact/orient2d.hpp"
-#include "../exact/pt_converter.hpp"
+#include "../exact_coordinate_converter.hpp"
 #include "../exact/segments_cross.hpp"
 #include <algorithm>
 #include <limits>
@@ -55,7 +55,7 @@ public:
     if constexpr (std::is_integral_v<coord_t>) {
       build_impl(loop, holes, points);
     } else {
-      auto conv = tf::exact::make_pt_converter<Int>(points);
+      auto conv = tf::make_exact_coordinate_converter<Int>(points);
       auto int_pts = tf::make_points(tf::make_mapped_range(
           points, [&](const auto &pt) { return conv(pt); }));
       build_impl(loop, holes, int_pts);

@@ -51,6 +51,14 @@ struct pt_converter_real {
       out[i] = static_cast<RealT>(ip[i]) / scale + offset[i];
     return out;
   }
+
+  auto convert_tolerance(RealT tol) const -> IntT {
+    return static_cast<IntT>(std::round(tol * scale));
+  }
+
+  auto deconvert_tolerance(IntT tol) const -> RealT {
+    return static_cast<RealT>(tol) / scale;
+  }
 };
 
 template <typename IntT, typename RealT, std::size_t Dims>

@@ -19,10 +19,8 @@
 #include "../core/complete.hpp"
 #include "../core/views/indirect_range.hpp"
 #include "../core/views/offset_block_range.hpp"
-#include "../exact/int64.hpp"
-#include "../exact/pt_converter.hpp"
+#include "../exact_coordinate_converter.hpp"
 #include "./domain_config.hpp"
-#include "./domains/apply_majority_perm.hpp"
 #include "./domains/build_domain_of_side.hpp"
 #include "./domains/canonicalize_nm_edges.hpp"
 #include "./domains/compute_domain_volumes.hpp"
@@ -36,6 +34,7 @@
 #include "./domains/make_nesting_merges.hpp"
 #include "./make_face_membership.hpp"
 #include "./make_manifold_edge_connected_component_labels.hpp"
+#include "../exact/resolve_int_type.hpp"
 #include "./make_manifold_edge_link.hpp"
 #include "./non_manifold_edges.hpp"
 #include "./policy/face_membership.hpp"
@@ -62,17 +61,21 @@ namespace tf {
 ///      consistent winding makes it coherent across a fragment without
 ///      an explicit orientation flood.
 ///
-/// @tparam Int Exact integer type for the angular comparator. Predicate
-///         intermediates use `tf::exact::meta<Int>`. Default
-///         `tf::exact::int64`.
+/// @tparam Int Exact integer type for the angular comparator. Default
+///         `tf::none_t` → resolved to int32 for float coords, int64 for
+///         double coords, identity for integer coords (via
+///         `tf::exact::resolve_int_type`). Predicate intermediates use
+///         `tf::exact::meta<ResolvedInt>`.
 /// @tparam Policy The polygons policy.
 /// @param polygons The polygons range.
 /// @param config @ref tf::domain_config flag set selecting open-fragment
 ///        handling and other behaviour.
-template <typename Int = tf::exact::int64, typename Policy>
+template <typename Int = tf::none_t, typename Policy>
 auto make_domain_labels(const tf::polygons<Policy> &polygons,
                         tf::domain_config config = tf::domain_config::none) {
   using Index = std::decay_t<decltype(polygons.faces()[0][0])>;
+  using CoordType = tf::coordinate_type<Policy>;
+  using ResolvedInt = tf::exact::resolve_int_type<Int, CoordType>;
 
   if constexpr (!tf::has_face_membership_policy<Policy>) {
     auto fm = tf::make_face_membership(polygons);
@@ -120,13 +123,16 @@ auto make_domain_labels(const tf::polygons<Policy> &polygons,
     auto get_point = [&]() {
       using CoordT = tf::coordinate_type<Policy>;
       if constexpr (std::is_integral_v<CoordT>) {
-        return [&polygons](Index v) -> tf::point<Int, 3> {
+        return [&polygons](Index v) -> tf::point<ResolvedInt, 3> {
           auto p = polygons.points()[v];
-          return tf::point<Int, 3>{Int(p[0]), Int(p[1]), Int(p[2])};
+          return tf::point<ResolvedInt, 3>{ResolvedInt(p[0]),
+                                           ResolvedInt(p[1]),
+                                           ResolvedInt(p[2])};
         };
       } else {
-        auto conv = tf::exact::make_pt_converter<Int>(polygons);
-        return [conv, &polygons](Index v) -> tf::point<Int, 3> {
+        auto conv =
+            tf::make_exact_coordinate_converter<ResolvedInt>(polygons);
+        return [conv, &polygons](Index v) -> tf::point<ResolvedInt, 3> {
           return conv(polygons.points()[v]);
         };
       }
@@ -152,20 +158,17 @@ auto make_domain_labels(const tf::polygons<Policy> &polygons,
     auto labels_view = tf::make_offset_block_range(
         nm_edge_faces.offsets_buffer(), labels_indirect);
 
-    tf::topology::domains::canonicalize_nm_edges<Int>(
+    tf::topology::domains::canonicalize_nm_edges<ResolvedInt>(
         polygons, fragment_labels, nm_edges, nm_edge_faces, id_sorted_view,
         areas_view, labels_view, is_valid, skip_reason, get_point);
 
-    auto majority_rep = tf::topology::domains::compute_majority_rep(
+    auto reps = tf::topology::domains::compute_majority_rep(
         Index(nm_edges.size()), is_valid, id_sorted_view, labels_view);
-
-    tf::topology::domains::apply_majority_perm(nm_edge_faces, labels_view,
-                                               is_valid, majority_rep);
 
     tf::buffer<std::array<Index, 2>> bundle_merges;
     tf::topology::domains::emit_domain_merges(polygons, fragment_labels,
-                                              nm_edges, nm_edge_faces,
-                                              is_valid, merges, bundle_merges);
+                                              nm_edges, nm_edge_faces, reps,
+                                              merges, bundle_merges);
 
     tf::buffer<Index> domain_of_side;
     auto n_domains = tf::topology::domains::build_domain_of_side(
@@ -184,7 +187,7 @@ auto make_domain_labels(const tf::polygons<Policy> &polygons,
     Index removed_domain =
         anchor_side >= Index(0) ? domain_of_side[anchor_side] : Index(-1);
     tf::buffer<std::array<Index, 2>> nesting_merges;
-    Index root_anchor = tf::topology::domains::make_nesting_merges<Int>(
+    Index root_anchor = tf::topology::domains::make_nesting_merges<ResolvedInt>(
         polygons, fragment_labels, bundle_labels, domain_of_side,
         domain_volumes, get_point, nesting_merges, removed_domain);
 

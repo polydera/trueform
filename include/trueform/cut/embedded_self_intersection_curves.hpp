@@ -34,12 +34,24 @@ auto embedded_self_intersection_curves(
     using Index = std::decay_t<decltype(p.faces()[0][0])>;
     using InputReal = tf::coordinate_type<std::decay_t<decltype(p)>>;
     using ResolvedInt = tf::exact::resolve_int_type<Int, InputReal>;
+    using PipelineReal =
+        std::conditional_t<std::is_integral_v<InputReal>, InputReal, double>;
+    using RealOut =
+        std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
+                           InputReal, OutputCoordinateType>;
     auto [iwp, ig, fc, cg] =
-        cut::dispatch::build_self_pipeline<Index, double, ResolvedInt>(p, mode);
+        cut::dispatch::build_self_pipeline<Index, PipelineReal, ResolvedInt>(
+            p, mode);
     auto [res, fl] =
         tf::cut::embedded_intersection_curves<Index, OutputCoordinateType>(
             p, ig, fc, iwp.converter(), Index(0));
-    return std::make_tuple(std::move(res), std::move(fl));
+    if constexpr (!std::is_integral_v<InputReal> &&
+                  std::is_integral_v<RealOut>) {
+      auto conv = iwp.converter();
+      return std::make_tuple(std::move(res), std::move(fl), std::move(conv));
+    } else {
+      return std::make_tuple(std::move(res), std::move(fl));
+    }
   });
 }
 
@@ -68,11 +80,14 @@ auto embedded_self_intersection_curves(const tf::polygons<Policy> &_polygons,
     using Index = std::decay_t<decltype(p.faces()[0][0])>;
     using InputReal = tf::coordinate_type<std::decay_t<decltype(p)>>;
     using ResolvedInt = tf::exact::resolve_int_type<Int, InputReal>;
+    using PipelineReal =
+        std::conditional_t<std::is_integral_v<InputReal>, InputReal, double>;
     using RealOut =
         std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
                            InputReal, OutputCoordinateType>;
     auto [iwp, ig, fc, cg] =
-        cut::dispatch::build_self_pipeline<Index, double, ResolvedInt>(p, mode);
+        cut::dispatch::build_self_pipeline<Index, PipelineReal, ResolvedInt>(
+            p, mode);
     auto [res, fl] =
         tf::cut::embedded_intersection_curves<Index, OutputCoordinateType>(
             p, ig, fc, iwp.converter(), Index(0));
@@ -84,11 +99,22 @@ auto embedded_self_intersection_curves(const tf::polygons<Policy> &_polygons,
     tf::curves_buffer<Index, RealOut, 3> cb;
     cb.paths_buffer() = std::move(paths);
     cb.points_buffer().allocate(ipts.size());
-    tf::parallel_copy(
-        tf::make_points(tf::make_mapped_range(
-            ipts, [&conv](const auto &pt) { return conv.deconvert(pt); })),
-        cb.points());
-    return std::make_tuple(std::move(res), std::move(fl), std::move(cb));
+    if constexpr (std::is_integral_v<RealOut>) {
+      tf::parallel_copy(tf::make_points(ipts), cb.points());
+    } else {
+      tf::parallel_copy(
+          tf::make_points(tf::make_mapped_range(
+              ipts, [&conv](const auto &pt) { return conv.deconvert(pt); })),
+          cb.points());
+    }
+    if constexpr (!std::is_integral_v<InputReal> &&
+                  std::is_integral_v<RealOut>) {
+      auto conv_copy = iwp.converter();
+      return std::make_tuple(std::move(res), std::move(fl), std::move(cb),
+                             std::move(conv_copy));
+    } else {
+      return std::make_tuple(std::move(res), std::move(fl), std::move(cb));
+    }
   });
 }
 

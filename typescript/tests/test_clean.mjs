@@ -299,3 +299,54 @@ describe("Clean (float64)", () => {
   });
 
 });
+
+describe("Clean (config)", () => {
+
+  test("cleaned(mesh, { removeDuplicatePrimitives: false }) keeps duplicate faces", () => {
+    const tf = getTf();
+    const faces = new Int32Array([0, 1, 2, 0, 1, 2]);  // duplicate face
+    const points = new Float32Array([
+      0, 0, 0,
+      1, 0, 0,
+      0, 1, 0,
+    ]);
+    const m = tf.mesh(faces, points);
+
+    const cleanDefault = tf.cleaned(m);
+    assert(cleanDefault.numberOfFaces === 1,
+      `default: expected 1 face, got ${cleanDefault.numberOfFaces}`);
+
+    const cleanKept = tf.cleaned(m, { removeDuplicatePrimitives: false });
+    assert(cleanKept.numberOfFaces === 2,
+      `removeDup=false: expected 2 faces, got ${cleanKept.numberOfFaces}`);
+    log(`  cleaned removeDuplicatePrimitives=false: 2 faces kept`, "line-pass");
+
+    cleanDefault.delete(); cleanKept.delete(); m.delete();
+  });
+
+  test("cleaned(mesh, { removeUnreferencedPoints: false }) keeps unreferenced points", () => {
+    const tf = getTf();
+    const faces = new Int32Array([0, 1, 2]);
+    const points = new Float32Array([
+      0, 0, 0,
+      1, 0, 0,
+      0, 1, 0,
+      99, 99, 99,  // unreferenced
+    ]);
+    const m = tf.mesh(faces, points);
+
+    const cleanDefault = tf.cleaned(m);
+    assert(cleanDefault.numberOfPoints === 3,
+      `default: expected 3 points, got ${cleanDefault.numberOfPoints}`);
+
+    const cleanKept = tf.cleaned(m, { removeUnreferencedPoints: false });
+    assert(cleanKept.numberOfPoints === 4,
+      `removeUnref=false: expected 4 points, got ${cleanKept.numberOfPoints}`);
+    assert(cleanKept.numberOfFaces === 1,
+      `removeUnref=false: expected 1 face, got ${cleanKept.numberOfFaces}`);
+    log(`  cleaned removeUnreferencedPoints=false: 4 points kept`, "line-pass");
+
+    cleanDefault.delete(); cleanKept.delete(); m.delete();
+  });
+
+});

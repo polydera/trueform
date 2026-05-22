@@ -34,6 +34,14 @@ struct pt_converter_identity {
       out[i] = static_cast<RealT>(ip[i]);
     return out;
   }
+
+  auto convert_tolerance(RealT tol) const -> IntT {
+    return static_cast<IntT>(tol);
+  }
+
+  auto deconvert_tolerance(IntT tol) const -> RealT {
+    return static_cast<RealT>(tol);
+  }
 };
 
 } // namespace tf::exact

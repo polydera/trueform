@@ -24,12 +24,24 @@
 
 namespace tf::py {
 
+template <typename RealT>
+inline auto make_clean_cfg(std::optional<RealT> tolerance,
+                           bool remove_duplicate_primitives,
+                           bool remove_unreferenced_points)
+    -> tf::clean_config_t<RealT> {
+  return {tolerance.value_or(RealT(0)), remove_duplicate_primitives,
+          remove_unreferenced_points};
+}
+
+// Points cleaning — `clean_config_t` does not apply (points are the
+// primitive). Bools are accepted for API uniformity but ignored.
 template <typename Index, typename RealT, std::size_t Dims>
 auto cleaned_impl(
     nanobind::ndarray<nanobind::numpy, const RealT, nanobind::shape<-1, Dims>>
         points,
-    std::optional<RealT> tolerance, tf::return_index_map_t) {
-  // Create points range from numpy array
+    std::optional<RealT> tolerance,
+    bool /*remove_duplicate_primitives*/,
+    bool /*remove_unreferenced_points*/, tf::return_index_map_t) {
   std::size_t num_points = points.shape(0);
   auto points_range =
       tf::make_points<Dims>(tf::make_range(points.data(), num_points * Dims));
@@ -43,12 +55,15 @@ auto cleaned_impl(
                               make_numpy_array(std::move(maps)));
 }
 
+// Soup cleaning — no `clean_config_t` overload exists. Bools accepted for
+// API uniformity but ignored.
 template <typename Index, typename RealT, std::size_t V, std::size_t Dims>
 auto cleaned_impl(nanobind::ndarray<nanobind::numpy, const RealT,
                                     nanobind::shape<-1, V, Dims>>
                       points,
-                  std::optional<RealT> tolerance) {
-  // Create points range from numpy array
+                  std::optional<RealT> tolerance,
+                  bool /*remove_duplicate_primitives*/,
+                  bool /*remove_unreferenced_points*/) {
   std::size_t num_points = points.shape(0) * V;
   auto points_range = tf::make_blocked_range<V>(
       tf::make_points<Dims>(tf::make_range(points.data(), num_points * Dims)));
@@ -70,7 +85,8 @@ auto cleaned_impl(
         indices,
     nanobind::ndarray<nanobind::numpy, const RealT, nanobind::shape<-1, Dims>>
         points,
-    std::optional<RealT> tolerance, tf::return_index_map_t) {
+    std::optional<RealT> tolerance, bool remove_duplicate_primitives,
+    bool remove_unreferenced_points, tf::return_index_map_t) {
   // Create points range from numpy array
   std::size_t num_points = points.shape(0);
   auto points_range =
@@ -84,13 +100,10 @@ auto cleaned_impl(
     else
       return tf::make_polygons(indices_range, points_range);
   }();
-  auto [res, i_map, p_map] = [&] {
-    if (tolerance)
-      return tf::cleaned<Index>(primitive_range, *tolerance,
-                                tf::return_index_map);
-    else
-      return tf::cleaned<Index>(primitive_range, tf::return_index_map);
-  }();
+  auto cfg = make_clean_cfg(tolerance, remove_duplicate_primitives,
+                            remove_unreferenced_points);
+  auto [res, i_map, p_map] =
+      tf::cleaned<Index>(primitive_range, cfg, tf::return_index_map);
   return nanobind::make_tuple(make_numpy_array(std::move(res)),
                               make_numpy_array(std::move(i_map)),
                               make_numpy_array(std::move(p_map)));
@@ -102,20 +115,18 @@ auto cleaned_impl_dynamic(
     const offset_blocked_array_wrapper<Index, Index> &indices,
     nanobind::ndarray<nanobind::numpy, const RealT, nanobind::shape<-1, Dims>>
         points,
-    std::optional<RealT> tolerance, tf::return_index_map_t) {
+    std::optional<RealT> tolerance, bool remove_duplicate_primitives,
+    bool remove_unreferenced_points, tf::return_index_map_t) {
   // Create points range from numpy array
   std::size_t num_points = points.shape(0);
   auto points_range =
       tf::make_points<Dims>(tf::make_range(points.data(), num_points * Dims));
   auto indices_range = indices.make_range();
   auto primitive_range = tf::make_polygons(indices_range, points_range);
-  auto [res, i_map, p_map] = [&] {
-    if (tolerance)
-      return tf::cleaned<Index>(primitive_range, *tolerance,
-                                tf::return_index_map);
-    else
-      return tf::cleaned<Index>(primitive_range, tf::return_index_map);
-  }();
+  auto cfg = make_clean_cfg(tolerance, remove_duplicate_primitives,
+                            remove_unreferenced_points);
+  auto [res, i_map, p_map] =
+      tf::cleaned<Index>(primitive_range, cfg, tf::return_index_map);
   return nanobind::make_tuple(make_numpy_array(std::move(res)),
                               make_numpy_array(std::move(i_map)),
                               make_numpy_array(std::move(p_map)));

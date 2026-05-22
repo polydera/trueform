@@ -12,8 +12,7 @@
  */
 #pragma once
 #include "../../core/algorithm/compute_offsets.hpp"
-#include "../../core/algorithm/parallel_fill.hpp"
-#include "../../core/algorithm/parallel_for_each.hpp"
+#include "../../core/algorithm/generic_generate.hpp"
 #include "../../core/algorithm/parallel_iota.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/views/offset_block_range.hpp"
@@ -23,26 +22,14 @@
 namespace tf::topology::domains {
 
 /// @ingroup topology_components
-/// @brief Phases B+C: per NM-edge set (edges sharing the same incident
-/// fragment-label multiset), find the majority canonical radial perm
-/// and back-feed a representative edge id for every member.
+/// @brief Per NM-edge set (edges sharing the same incident fragment-label
+/// multiset), find the majority canonical radial perm and emit ONE
+/// representative edge id per set.
 ///
-/// Pipeline:
-///   B1. Argsort edges by (set-canonical key, radial-canonical key).
-///       Invalid edges sink to the back.
-///   B2. `compute_offsets` over the sorted order, splitting on the
-///       set-canonical key, yields one contiguous run per set.
-///   C.  For each set, linear-walk the sorted run; the longest
-///       consecutive run of identical radial-canonical perms wins.
-///       Every edge in the set is tagged with that winner's id.
-///
-/// @param n_edges Number of NM edges.
-/// @param is_valid Per-edge validity flag from Pass 1.
-/// @param id_sorted_view Per-edge set-canonical key (sorted multiset).
-/// @param labels_view Per-edge radial-canonical perm (rotated min-first,
-///        lex-direction picked).
-/// @return Per-edge majority representative edge id (`Index(-1)` for
-///         invalid edges).
+/// Returns a compact buffer of unique rep edge ids (one per valid set).
+/// Reps are in their post-canonicalize_nm_edges state (Class A/B,
+/// internally consistent (face_block, axis) pair). Downstream
+/// emit_domain_merges should iterate this buffer directly.
 template <typename Index, typename IdSortedView, typename LabelsView>
 auto compute_majority_rep(Index n_edges, const tf::buffer<char> &is_valid,
                           const IdSortedView &id_sorted_view,
@@ -82,11 +69,8 @@ auto compute_majority_rep(Index n_edges, const tf::buffer<char> &is_valid,
                       });
   auto sets = tf::make_offset_block_range(set_offsets, edge_order);
 
-  tf::buffer<Index> majority_rep;
-  majority_rep.allocate(n_edges);
-  tf::parallel_fill(majority_rep, Index(-1));
-
-  tf::parallel_for_each(sets, [&](auto set) {
+  tf::buffer<Index> reps;
+  tf::generic_generate(sets, reps, [&](auto set, auto &out) {
     if (set.size() == 0)
       return;
     Index first = set.begin()[0];
@@ -118,12 +102,10 @@ auto compute_majority_rep(Index n_edges, const tf::buffer<char> &is_valid,
       best_count = current_count;
       best_rep = current_rep;
     }
-
-    for (auto k : set)
-      majority_rep[k] = best_rep;
+    out.push_back(best_rep);
   });
 
-  return majority_rep;
+  return reps;
 }
 
 } // namespace tf::topology::domains

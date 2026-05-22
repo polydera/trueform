@@ -41,8 +41,12 @@ auto make_mesh_arrangements(
   using RealOut =
       std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
                          InputReal, OutputCoordinateType>;
-  static_assert(std::is_floating_point_v<RealOut>,
-                "OutputCoordinateType must be a floating-point type");
+  static_assert(std::is_floating_point_v<RealOut> ||
+                    std::is_integral_v<RealOut>,
+                "Output coordinate type must be floating-point or integral");
+  static_assert(!std::is_integral_v<InputReal> ||
+                    !std::is_floating_point_v<RealOut>,
+                "Integer input cannot produce floating-point output");
   auto n_meshes = static_cast<Index>(forms.size());
   auto apply_to_polygons = [&](Index tag, const auto &f) { f(forms[tag]); };
 
@@ -116,21 +120,39 @@ auto make_mesh_arrangements(
     for (Index t = 0; t < n_meshes; ++t) {
       tg.run([&, t] {
         auto frame = tf::frame_of(forms[t]);
-        tf::parallel_copy(
-            tf::make_points(tf::make_indirect_range(
-                map_data.original_ids[t],
-                tf::make_mapped_range(
-                    forms[t].points(),
-                    [frame](auto pt) { return tf::transformed(pt, frame); }))),
-            pts_range[t]);
+        if constexpr (std::is_integral_v<RealOut>) {
+          tf::parallel_copy(
+              tf::make_points(tf::make_indirect_range(
+                  map_data.original_ids[t],
+                  tf::make_mapped_range(
+                      forms[t].points(),
+                      [frame, &converter](auto pt) {
+                        return converter.convert(tf::transformed(pt, frame));
+                      }))),
+              pts_range[t]);
+        } else {
+          tf::parallel_copy(
+              tf::make_points(tf::make_indirect_range(
+                  map_data.original_ids[t],
+                  tf::make_mapped_range(
+                      forms[t].points(),
+                      [frame](auto pt) { return tf::transformed(pt, frame); }))),
+              pts_range[t]);
+        }
       });
     }
     tg.run([&] {
       auto ipts = ig.points();
-      tf::parallel_copy(
-          tf::make_points(tf::make_mapped_range(
-              ipts, [&converter](auto pt) { return converter.deconvert(pt); })),
-          tf::drop(pts_buf, map_data.total_original_points));
+      if constexpr (std::is_integral_v<RealOut>) {
+        tf::parallel_copy(tf::make_points(ipts),
+                          tf::drop(pts_buf, map_data.total_original_points));
+      } else {
+        tf::parallel_copy(
+            tf::make_points(tf::make_mapped_range(
+                ipts,
+                [&converter](auto pt) { return converter.deconvert(pt); })),
+            tf::drop(pts_buf, map_data.total_original_points));
+      }
     });
     tg.wait();
   }
@@ -179,8 +201,12 @@ auto make_mesh_arrangements(
   using RealOut =
       std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
                          InputReal, OutputCoordinateType>;
-  static_assert(std::is_floating_point_v<RealOut>,
-                "OutputCoordinateType must be a floating-point type");
+  static_assert(std::is_floating_point_v<RealOut> ||
+                    std::is_integral_v<RealOut>,
+                "Output coordinate type must be floating-point or integral");
+  static_assert(!std::is_integral_v<InputReal> ||
+                    !std::is_floating_point_v<RealOut>,
+                "Integer input cannot produce floating-point output");
   auto apply_to_polygons = [&](Index tag, const auto &f) {
     if (tag == 0)
       f(form0);
@@ -271,30 +297,60 @@ auto make_mesh_arrangements(
     tbb::task_group tg;
     tg.run([&] {
       auto frame = tf::frame_of(form0);
-      tf::parallel_copy(
-          tf::make_points(tf::make_indirect_range(
-              map_data.original_ids[0],
-              tf::make_mapped_range(
-                  form0.points(),
-                  [frame](auto pt) { return tf::transformed(pt, frame); }))),
-          pts_range[0]);
+      if constexpr (std::is_integral_v<RealOut>) {
+        tf::parallel_copy(
+            tf::make_points(tf::make_indirect_range(
+                map_data.original_ids[0],
+                tf::make_mapped_range(
+                    form0.points(),
+                    [frame, &converter](auto pt) {
+                      return converter.convert(tf::transformed(pt, frame));
+                    }))),
+            pts_range[0]);
+      } else {
+        tf::parallel_copy(
+            tf::make_points(tf::make_indirect_range(
+                map_data.original_ids[0],
+                tf::make_mapped_range(
+                    form0.points(),
+                    [frame](auto pt) { return tf::transformed(pt, frame); }))),
+            pts_range[0]);
+      }
     });
     tg.run([&] {
       auto frame = tf::frame_of(form1);
-      tf::parallel_copy(
-          tf::make_points(tf::make_indirect_range(
-              map_data.original_ids[1],
-              tf::make_mapped_range(
-                  form1.points(),
-                  [frame](auto pt) { return tf::transformed(pt, frame); }))),
-          pts_range[1]);
+      if constexpr (std::is_integral_v<RealOut>) {
+        tf::parallel_copy(
+            tf::make_points(tf::make_indirect_range(
+                map_data.original_ids[1],
+                tf::make_mapped_range(
+                    form1.points(),
+                    [frame, &converter](auto pt) {
+                      return converter.convert(tf::transformed(pt, frame));
+                    }))),
+            pts_range[1]);
+      } else {
+        tf::parallel_copy(
+            tf::make_points(tf::make_indirect_range(
+                map_data.original_ids[1],
+                tf::make_mapped_range(
+                    form1.points(),
+                    [frame](auto pt) { return tf::transformed(pt, frame); }))),
+            pts_range[1]);
+      }
     });
     tg.run([&] {
       auto ipts = ig.points();
-      tf::parallel_copy(
-          tf::make_points(tf::make_mapped_range(
-              ipts, [&converter](auto pt) { return converter.deconvert(pt); })),
-          tf::drop(pts_buf, map_data.total_original_points));
+      if constexpr (std::is_integral_v<RealOut>) {
+        tf::parallel_copy(tf::make_points(ipts),
+                          tf::drop(pts_buf, map_data.total_original_points));
+      } else {
+        tf::parallel_copy(
+            tf::make_points(tf::make_mapped_range(
+                ipts,
+                [&converter](auto pt) { return converter.deconvert(pt); })),
+            tf::drop(pts_buf, map_data.total_original_points));
+      }
     });
     tg.wait();
   }

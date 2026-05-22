@@ -22,7 +22,8 @@ namespace tf::exact {
 namespace detail {
 
 template <typename CoordType> struct default_int_for {
-  using type = int32;
+  using type = std::conditional_t<std::is_integral_v<CoordType>, CoordType,
+                                  int32>;
 };
 template <> struct default_int_for<float> {
   using type = int32;

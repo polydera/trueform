@@ -18,7 +18,7 @@
 #include "../core/views/mapped_range.hpp"
 #include "../core/views/sequence_range.hpp"
 #include "../exact/meta.hpp"
-#include "../exact/pt_converter.hpp"
+#include "../exact_coordinate_converter.hpp"
 #include "../exact/signed_area.hpp"
 #include <algorithm>
 #include <utility>
@@ -91,7 +91,7 @@ public:
     if constexpr (std::is_integral_v<coord_t>) {
       return run(ids, points);
     } else {
-      auto conv = tf::exact::make_pt_converter<Int>(points);
+      auto conv = tf::make_exact_coordinate_converter<Int>(points);
       auto int_pts = tf::make_points(tf::make_mapped_range(
           points, [&](const auto &pt) { return conv(pt); }));
       return run(ids, int_pts);

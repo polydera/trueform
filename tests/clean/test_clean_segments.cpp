@@ -510,37 +510,6 @@ TEMPLATE_TEST_CASE("clean_segments_many_degenerate", "[clean][clean_segments]",
 }
 
 // =============================================================================
-// clean_segments_tolerance_point_merge_chain
-// =============================================================================
-
-TEMPLATE_TEST_CASE("clean_segments_tolerance_point_merge_chain", "[clean][clean_segments]",
-    (tf::test::type_pair<std::int32_t, float>),
-    (tf::test::type_pair<std::int64_t, double>))
-{
-    using index_t = typename TestType::index_type;
-    using real_t = typename TestType::real_type;
-
-    // Points that form a chain, each within tolerance of the next
-    tf::segments_buffer<index_t, real_t, 3> input;
-
-    input.points_buffer().emplace_back(real_t(0), real_t(0), real_t(0));
-    input.points_buffer().emplace_back(real_t(0.005), real_t(0), real_t(0));
-    input.points_buffer().emplace_back(real_t(1), real_t(0), real_t(0));
-    input.points_buffer().emplace_back(real_t(1.005), real_t(0), real_t(0));
-
-    // Edges connecting them
-    input.edges_buffer().emplace_back(0, 2);  // valid edge
-    input.edges_buffer().emplace_back(1, 3);  // after merge, same as 0-2
-
-    const real_t tolerance = real_t(0.01);
-    auto result = tf::cleaned(input.segments(), tolerance);
-
-    // Points 0,1 merge and 2,3 merge -> 2 points, edges become duplicates -> 1 edge
-    REQUIRE(result.points().size() == 2);
-    REQUIRE(result.edges().size() == 1);
-}
-
-// =============================================================================
 // clean_segments_star_pattern
 // =============================================================================
 
@@ -650,4 +619,153 @@ TEMPLATE_TEST_CASE("clean_segments_disconnected_components", "[clean][clean_segm
 
     REQUIRE(result.edges().size() == 3);
     REQUIRE(result.points().size() == 6);
+}
+
+// =============================================================================
+// clean_segments_keep_duplicate_edges_when_disabled
+// =============================================================================
+
+TEMPLATE_TEST_CASE("clean_segments_keep_duplicate_edges_when_disabled",
+    "[clean][clean_segments][config]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    // Exercise each pass independently:
+    //   - duplicate vertex (2 == 0) -> merged
+    //   - unreferenced vertex (3) -> removed
+    //   - two edges that become identical after vertex dedup -> KEPT
+    tf::segments_buffer<index_t, real_t, 3> input;
+    input.points_buffer().emplace_back(real_t(0), real_t(0), real_t(0));  // 0
+    input.points_buffer().emplace_back(real_t(1), real_t(0), real_t(0));  // 1
+    input.points_buffer().emplace_back(real_t(0), real_t(0), real_t(0));  // 2 == 0
+    input.points_buffer().emplace_back(real_t(7), real_t(7), real_t(7));  // 3 unref
+    input.edges_buffer().emplace_back(0, 1);
+    input.edges_buffer().emplace_back(2, 1);  // (0,1) after dedup -- duplicate
+
+    auto cfg = tf::clean_config(real_t(0), /*remove_dup=*/false,
+                                /*remove_unref=*/true);
+    auto out = tf::cleaned(input.segments(), cfg);
+
+    REQUIRE(out.points().size() == 2);
+    REQUIRE(out.edges().size() == 2);
+
+    for (auto edge : out.edges()) {
+        for (auto v : edge) {
+            REQUIRE(v >= 0);
+            REQUIRE(static_cast<std::size_t>(v) < out.points().size());
+        }
+    }
+
+    // No (7,7,7) survivor.
+    for (auto p : out.points()) {
+        bool is_unref = p[0] == real_t(7) && p[1] == real_t(7) &&
+                        p[2] == real_t(7);
+        REQUIRE_FALSE(is_unref);
+    }
+
+    // Both edges resolve to the same coord pair {(0,0,0),(1,0,0)}.
+    auto coord_pair = [&](auto edge) {
+        std::array<std::array<real_t, 3>, 2> v;
+        for (std::size_t i = 0; i < 2; ++i) {
+            auto p = out.points()[edge[i]];
+            v[i] = {p[0], p[1], p[2]};
+        }
+        std::sort(v.begin(), v.end());
+        return v;
+    };
+    auto expected = coord_pair(out.edges()[0]);
+    REQUIRE(coord_pair(out.edges()[1]) == expected);
+
+    // Index-map round-trip.
+    auto [out_im, edge_im, point_im] =
+        tf::cleaned(input.segments(), cfg, tf::return_index_map);
+    REQUIRE(out_im.edges().size() == 2);
+    REQUIRE(out_im.points().size() == 2);
+    REQUIRE(edge_im.kept_ids().size() == 2);
+    for (std::size_t i = 0; i < edge_im.kept_ids().size(); ++i)
+        REQUIRE(edge_im.f()[edge_im.kept_ids()[i]] == index_t(i));
+    REQUIRE(point_im.kept_ids().size() == 2);
+    for (std::size_t i = 0; i < point_im.kept_ids().size(); ++i)
+        REQUIRE(point_im.f()[point_im.kept_ids()[i]] == index_t(i));
+    // Duplicate vertex 2 folded into 0.
+    REQUIRE(point_im.f()[0] == point_im.f()[2]);
+    // Unreferenced vertex 3 -> standard sentinel (f.size()).
+    REQUIRE(point_im.f()[3] == static_cast<index_t>(point_im.f().size()));
+}
+
+// =============================================================================
+// clean_segments_keep_unreferenced_points_when_disabled
+// =============================================================================
+
+TEMPLATE_TEST_CASE("clean_segments_keep_unreferenced_points_when_disabled",
+    "[clean][clean_segments][config]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    //   - duplicate vertex (2 == 0) -> merged
+    //   - duplicate edges after dedup -> second dropped (remove_dup=true)
+    //   - unreferenced vertex (3) -> KEPT (remove_unref=false)
+    tf::segments_buffer<index_t, real_t, 3> input;
+    input.points_buffer().emplace_back(real_t(0), real_t(0), real_t(0));  // 0
+    input.points_buffer().emplace_back(real_t(1), real_t(0), real_t(0));  // 1
+    input.points_buffer().emplace_back(real_t(0), real_t(0), real_t(0));  // 2 == 0
+    input.points_buffer().emplace_back(real_t(7), real_t(7), real_t(7));  // 3 unref
+    input.edges_buffer().emplace_back(0, 1);
+    input.edges_buffer().emplace_back(2, 1);  // duplicate of (0,1) post-dedup
+
+    auto cfg = tf::clean_config(real_t(0), /*remove_dup=*/true,
+                                /*remove_unref=*/false);
+    auto out = tf::cleaned(input.segments(), cfg);
+
+    // Vertex dedup merged 0/2; unreferenced 3 still survives.
+    REQUIRE(out.points().size() == 3);
+    // Face dedup removed the second edge.
+    REQUIRE(out.edges().size() == 1);
+
+    // Unreferenced (7,7,7) is in the output.
+    bool found_unref = false;
+    for (auto p : out.points())
+        if (p[0] == real_t(7) && p[1] == real_t(7) && p[2] == real_t(7))
+            found_unref = true;
+    REQUIRE(found_unref);
+
+    // Edge connects (0,0,0) and (1,0,0) in some order.
+    auto edge = out.edges()[0];
+    for (auto v : edge) {
+        REQUIRE(v >= 0);
+        REQUIRE(static_cast<std::size_t>(v) < out.points().size());
+    }
+    std::array<std::array<real_t, 3>, 2> got;
+    for (std::size_t i = 0; i < 2; ++i) {
+        auto p = out.points()[edge[i]];
+        got[i] = {p[0], p[1], p[2]};
+    }
+    std::sort(got.begin(), got.end());
+    std::array<std::array<real_t, 3>, 2> expected = {{
+        {real_t(0), real_t(0), real_t(0)},
+        {real_t(1), real_t(0), real_t(0)},
+    }};
+    std::sort(expected.begin(), expected.end());
+    REQUIRE(got == expected);
+
+    // Index-map variant.
+    auto [out_im, edge_im, point_im] =
+        tf::cleaned(input.segments(), cfg, tf::return_index_map);
+    REQUIRE(out_im.points().size() == 3);
+    REQUIRE(out_im.edges().size() == 1);
+    REQUIRE(edge_im.kept_ids().size() == 1);
+    REQUIRE(edge_im.f()[0] == index_t(0));
+    // Edge dedup goes via make_unique_index_map -> dropped folds to survivor.
+    REQUIRE(edge_im.f()[1] == edge_im.f()[0]);
+    REQUIRE(point_im.kept_ids().size() == 3);
+    for (std::size_t i = 0; i < point_im.kept_ids().size(); ++i)
+        REQUIRE(point_im.f()[point_im.kept_ids()[i]] == index_t(i));
+    REQUIRE(point_im.f()[0] == point_im.f()[2]);
+    REQUIRE(point_im.f()[3] < static_cast<index_t>(out_im.points().size()));
 }

@@ -14,6 +14,7 @@
 #include "../reindex/points.hpp"
 #include "../reindex/return_index_map.hpp"
 #include "./index_map/points.hpp"
+#include "./snap_view.hpp"
 
 namespace tf {
 
@@ -36,7 +37,9 @@ template <typename Index = int, typename Policy>
 auto cleaned(const tf::points<Policy> &points,
              tf::coordinate_type<Policy> tolerance, tf::return_index_map_t) {
   auto im = tf::make_clean_index_map<Index>(points, tolerance);
-  auto out = tf::reindexed(points, im);
+  auto out = tf::clean::with_snapped_points(
+      points, tolerance,
+      [&](const auto &pts) { return tf::reindexed(pts, im); });
   return std::make_pair(std::move(out), std::move(im));
 }
 
@@ -57,8 +60,9 @@ template <typename Index = int, typename Policy>
 auto cleaned(const tf::points<Policy> &points,
              tf::coordinate_type<Policy> tolerance) {
   auto im = tf::make_clean_index_map<Index>(points, tolerance);
-  auto out = tf::reindexed(points, im);
-  return out;
+  return tf::clean::with_snapped_points(
+      points, tolerance,
+      [&](const auto &pts) { return tf::reindexed(pts, im); });
 }
 
 /// @ingroup clean

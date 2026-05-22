@@ -20,6 +20,7 @@
 #include "../../core/views/drop.hpp"
 #include "../../core/views/take.hpp"
 #include "../../core/views/zip.hpp"
+#include "../../exact_coordinate_converter.hpp"
 #include "../../intersect/exact/segment_intersection_graph.hpp"
 #include "../../intersect/graph/vertex.hpp"
 
@@ -36,13 +37,17 @@ template <typename OutputCoordinateType = tf::none_t, typename Index,
 auto make_segment_arrangements(
     const tf::intersect::segment_intersection_graph<Index, Dims, Int> &sig,
     const tf::segments<Policy> &segments,
-    const tf::exact::pt_converter<Int, RealType, Dims> &conv) {
+    const tf::exact_coordinate_converter<Int, RealType, Dims> &conv) {
   using InputReal = tf::coordinate_type<Policy>;
   using RealOut =
       std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
                          InputReal, OutputCoordinateType>;
-  static_assert(std::is_floating_point_v<RealOut>,
-                "OutputCoordinateType must be a floating-point type");
+  static_assert(std::is_floating_point_v<RealOut> ||
+                    std::is_integral_v<RealOut>,
+                "Output coordinate type must be floating-point or integral");
+  static_assert(!std::is_integral_v<InputReal> ||
+                    !std::is_floating_point_v<RealOut>,
+                "Integer input cannot produce floating-point output");
 
   tf::buffer<bool> original_e_mask;
   original_e_mask.allocate(segments.edges().size());
@@ -91,16 +96,26 @@ auto make_segment_arrangements(
   auto total_pts = v_im.kept_ids().size() + sig.points().size();
   auto total_e = e_im.kept_ids().size() + sig.flat_sub_edges().size();
 
-  // Build output points: [deconverted graph pts | original segment pts]
+  // Build output points: [kept originals | created intersection pts]
   tf::segments_buffer<Index, RealOut, Dims> out;
   out.points_buffer().allocate(total_pts);
-  tf::parallel_copy(tf::make_indirect_range(v_im.kept_ids(), segments.points()),
-                    tf::take(out.points(), v_im.kept_ids().size()));
-
-  tf::parallel_copy(
-      tf::make_mapped_range(sig.points(),
-                            [&](auto pt) { return conv.deconvert(pt); }),
-      tf::drop(out.points(), v_im.kept_ids().size()));
+  if constexpr (std::is_integral_v<RealOut>) {
+    tf::parallel_copy(
+        tf::make_mapped_range(
+            tf::make_indirect_range(v_im.kept_ids(), segments.points()),
+            [&](auto pt) { return conv(pt); }),
+        tf::take(out.points(), v_im.kept_ids().size()));
+    tf::parallel_copy(sig.points(),
+                      tf::drop(out.points(), v_im.kept_ids().size()));
+  } else {
+    tf::parallel_copy(
+        tf::make_indirect_range(v_im.kept_ids(), segments.points()),
+        tf::take(out.points(), v_im.kept_ids().size()));
+    tf::parallel_copy(
+        tf::make_mapped_range(sig.points(),
+                              [&](auto pt) { return conv.deconvert(pt); }),
+        tf::drop(out.points(), v_im.kept_ids().size()));
+  }
 
   out.edges_buffer().allocate(total_e);
   tf::parallel_copy(mapped_edges, tf::take(out.edges(), mapped_edges.size()));

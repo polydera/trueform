@@ -16,7 +16,6 @@
 #include "../../core/array_hash.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/hash_set.hpp"
-#include "../../core/views/enumerate.hpp"
 #include "../directed_edge_id_in_face.hpp"
 #include "tbb/parallel_sort.h"
 #include <algorithm>
@@ -25,26 +24,24 @@
 namespace tf::topology::domains {
 
 /// @ingroup topology_components
-/// @brief For each valid NM edge, walk its incident faces cyclically in
-/// the canonical (majority) order written by Phase D, and emit:
+/// @brief For each representative NM edge, walk its incident faces
+/// cyclically and emit:
 ///   1. one fragment-side merge pair per cyclic-adjacent face pair to
 ///      `merges` (drives the domain partition);
 ///   2. one fragment-only merge pair per cyclic-adjacent face pair to
-///      `bundle_merges` (drives the 3D-connected-component / bundle
-///      partition).
+///      `bundle_merges` (drives the 3D-connected-component partition).
 ///
-/// The fragment-side merge encodes "these two fragment-sides bound the
-/// same volumetric wedge". The fragment-only merge encodes "these two
-/// fragments touch at this non-manifold edge", which is the union-find
-/// primitive for 3D-connected bundles.
-///
-/// Both buffers receive unordered `{min, max}` pairs.
+/// `reps` is the compact list of unique rep edge ids returned by
+/// `compute_majority_rep`. All edges in a multiset bucket are
+/// structurally equivalent under the canonical (face_block, axis)
+/// pairing that `canonicalize_nm_edges` establishes, so the rep alone
+/// contributes the canonical merges for that bucket.
 template <typename Polygons, typename FragLabels, typename Edges,
           typename Faces, typename Index>
 void emit_domain_merges(const Polygons &polygons,
                         const FragLabels &fragment_labels,
                         const Edges &nm_edges, const Faces &nm_edge_faces,
-                        const tf::buffer<char> &is_valid,
+                        const tf::buffer<Index> &reps,
                         tf::buffer<std::array<Index, 2>> &merges,
                         tf::buffer<std::array<Index, 2>> &bundle_merges) {
   struct local_state_t {
@@ -52,14 +49,12 @@ void emit_domain_merges(const Polygons &polygons,
     tf::hash_set<std::array<Index, 2>, tf::array_hash<Index, 2>> bundle_seen;
   };
   tf::generic_generate(
-      tf::enumerate(nm_edges), std::tie(merges, bundle_merges), local_state_t{},
-      [&](const auto &pair, auto &out_buffers, local_state_t &state) {
-        const auto &[k, edge] = pair;
-        if (!is_valid[k])
-          return;
+      reps, std::tie(merges, bundle_merges), local_state_t{},
+      [&](Index rep, auto &out_buffers, local_state_t &state) {
+        auto edge = nm_edges[rep];
         Index i = edge[0];
         Index j = edge[1];
-        auto face_block = nm_edge_faces[k];
+        auto face_block = nm_edge_faces[rep];
         Index K = Index(face_block.size());
 
         auto &out_merges = std::get<0>(out_buffers);

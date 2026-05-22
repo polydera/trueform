@@ -13,7 +13,7 @@
 #pragma once
 #include "../core/polygon.hpp"
 #include "../exact/meta.hpp"
-#include "../exact/pt_converter.hpp"
+#include "../exact_coordinate_converter.hpp"
 #include "../exact/signed_area.hpp"
 #include "./face_paths_extractor.hpp"
 
@@ -35,7 +35,7 @@ public:
     if constexpr (std::is_integral_v<coord_t>) {
       build_impl(base_loop, edges, points);
     } else {
-      auto conv = tf::exact::make_pt_converter<Int>(points);
+      auto conv = tf::make_exact_coordinate_converter<Int>(points);
       auto int_pts = tf::make_points(tf::make_mapped_range(
           points, [&](const auto &pt) { return conv(pt); }));
       build_impl(base_loop, edges, int_pts);

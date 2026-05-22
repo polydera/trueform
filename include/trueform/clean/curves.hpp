@@ -19,6 +19,7 @@
 #include "../reindex/segments.hpp"
 #include "../topology/connect_edges_to_paths.hpp"
 #include "./index_map/segments.hpp"
+#include "./snap_view.hpp"
 
 namespace tf {
 namespace clean::detail {
@@ -93,7 +94,13 @@ auto cleaned(const tf::curves<Policy> &curves,
     // Clean the segments
     auto [edge_im, point_im] =
         tf::make_clean_index_map<Index>(segments, tolerance);
-    auto cleaned_segments = tf::reindexed(segments, edge_im, point_im);
+    auto cleaned_segments = tf::clean::with_snapped_points(
+        curves.points(), tolerance,
+        [&, &edge_im = edge_im, &point_im = point_im](const auto &pts) {
+          return tf::reindexed(
+              tf::make_segments(tf::make_edges(edges_buf), pts), edge_im,
+              point_im);
+        });
 
     // Reconnect edges to paths
     auto paths = tf::connect_edges_to_paths(cleaned_segments.edges());

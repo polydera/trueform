@@ -11,7 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include "../core/algorithm/block_reduce_sequenced_aggregate.hpp"
+#include "../core/algorithm/block_reduce.hpp"
 #include "../core/algorithm/generic_generate.hpp"
 #include "../core/blocked_buffer.hpp"
 #include "../core/complete.hpp"
@@ -117,7 +117,7 @@ auto make_non_manifold_edges(const tf::faces<Policy> &faces,
     tf::small_vector<Index, 10> neighbors;
   };
   Index offset = 0;
-  tf::blocked_reduce_sequenced_aggregate(
+  tf::blocked_reduce(
       tf::enumerate(faces),
       std::tie(out.first, out.second), local_t{},
       [&fm, &faces](const auto &range, local_t &local) {

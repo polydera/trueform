@@ -42,12 +42,26 @@ auto make_polygon_arrangements(
     using Index = std::decay_t<decltype(p.faces()[0][0])>;
     using InputReal = tf::coordinate_type<std::decay_t<decltype(p)>>;
     using ResolvedInt = tf::exact::resolve_int_type<Int, InputReal>;
+    using PipelineReal =
+        std::conditional_t<std::is_integral_v<InputReal>, InputReal, double>;
+    using RealOut =
+        std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
+                           InputReal, OutputCoordinateType>;
     auto [iwp, ig, fc, cg] =
-        cut::dispatch::build_self_pipeline<Index, double, ResolvedInt>(p, mode);
+        cut::dispatch::build_self_pipeline<Index, PipelineReal, ResolvedInt>(
+            p, mode);
     auto [mesh, face_labels, map_data] =
         tf::cut::make_polygon_arrangements<OutputCoordinateType>(
             p, ig, fc, iwp.converter());
-    return std::make_pair(std::move(mesh), std::move(face_labels));
+
+    if constexpr (!std::is_integral_v<InputReal> &&
+                  std::is_integral_v<RealOut>) {
+      auto conv = iwp.converter();
+      return std::make_tuple(std::move(mesh), std::move(face_labels),
+                             std::move(conv));
+    } else {
+      return std::make_pair(std::move(mesh), std::move(face_labels));
+    }
   });
 }
 
@@ -76,11 +90,14 @@ auto make_polygon_arrangements(const tf::polygons<Policy> &_polygons,
     using Index = std::decay_t<decltype(p.faces()[0][0])>;
     using InputReal = tf::coordinate_type<std::decay_t<decltype(p)>>;
     using ResolvedInt = tf::exact::resolve_int_type<Int, InputReal>;
+    using PipelineReal =
+        std::conditional_t<std::is_integral_v<InputReal>, InputReal, double>;
     using RealOut =
         std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
                            InputReal, OutputCoordinateType>;
     auto [iwp, ig, fc, cg] =
-        cut::dispatch::build_self_pipeline<Index, double, ResolvedInt>(p, mode);
+        cut::dispatch::build_self_pipeline<Index, PipelineReal, ResolvedInt>(
+            p, mode);
     auto [mesh, face_labels, map_data] =
         tf::cut::make_polygon_arrangements<OutputCoordinateType>(
             p, ig, fc, iwp.converter());
@@ -92,13 +109,24 @@ auto make_polygon_arrangements(const tf::polygons<Policy> &_polygons,
     tf::curves_buffer<Index, RealOut, 3> cb;
     cb.paths_buffer() = std::move(paths);
     cb.points_buffer().allocate(ipts.size());
-    tf::parallel_copy(
-        tf::make_points(tf::make_mapped_range(
-            ipts, [&conv](const auto &pt) { return conv.deconvert(pt); })),
-        cb.points());
+    if constexpr (std::is_integral_v<RealOut>) {
+      tf::parallel_copy(tf::make_points(ipts), cb.points());
+    } else {
+      tf::parallel_copy(
+          tf::make_points(tf::make_mapped_range(
+              ipts, [&conv](const auto &pt) { return conv.deconvert(pt); })),
+          cb.points());
+    }
 
-    return std::make_tuple(std::move(mesh), std::move(face_labels),
-                           std::move(cb));
+    if constexpr (!std::is_integral_v<InputReal> &&
+                  std::is_integral_v<RealOut>) {
+      auto conv_copy = iwp.converter();
+      return std::make_tuple(std::move(mesh), std::move(face_labels),
+                             std::move(cb), std::move(conv_copy));
+    } else {
+      return std::make_tuple(std::move(mesh), std::move(face_labels),
+                             std::move(cb));
+    }
   });
 }
 

@@ -28,7 +28,7 @@
 #include "../exact/incircle.hpp"
 #include "../exact/int32.hpp"
 #include "../exact/orient2d.hpp"
-#include "../exact/pt_converter.hpp"
+#include "../exact_coordinate_converter.hpp"
 #include "../intersect/exact/segment_intersection_graph.hpp"
 #include "../intersect/graph/vertex.hpp"
 #include "../intersect/intersections_within_segments.hpp"
@@ -202,7 +202,7 @@ public:
              const IsBoundaryRange &is_boundary) -> bool {
     clear();
 
-    _converter = tf::exact::make_pt_converter<Int, Coord>(pts);
+    _converter = tf::make_exact_coordinate_converter<Int, Coord>(pts);
 
     auto int_pts = tf::make_points(tf::make_mapped_range(
         pts, [this](const auto &p) { return _converter(p); }));
@@ -1041,7 +1041,7 @@ private:
   Index _last_edge{k_none};
   Index _n_triangles{0};
 
-  tf::exact::pt_converter<Int, Coord, 2> _converter;
+  tf::exact_coordinate_converter<Int, Coord, 2> _converter;
   tf::buffer<Index> _region_labels;
   tf::index_map_buffer<Index> _index_map;
 };

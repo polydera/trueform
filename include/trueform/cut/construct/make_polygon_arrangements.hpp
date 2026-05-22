@@ -39,8 +39,12 @@ auto make_polygon_arrangements(
   using RealOut =
       std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
                          InputReal, OutputCoordinateType>;
-  static_assert(std::is_floating_point_v<RealOut>,
-                "OutputCoordinateType must be a floating-point type");
+  static_assert(std::is_floating_point_v<RealOut> ||
+                    std::is_integral_v<RealOut>,
+                "Output coordinate type must be floating-point or integral");
+  static_assert(!std::is_integral_v<InputReal> ||
+                    !std::is_floating_point_v<RealOut>,
+                "Integer input cannot produce floating-point output");
   auto ipts = ig.points();
   auto map_data = tf::cut::make_embed_map_data(fc, polygons, Index(0));
 
@@ -93,19 +97,31 @@ auto make_polygon_arrangements(
   pts_buf.allocate(map_data.n_original_points + n_created);
 
   auto frame = tf::frame_of(polygons);
-  tf::parallel_copy(
-      tf::make_points(tf::make_indirect_range(
-          map_data.original_ids, tf::make_mapped_range(polygons.points(),
-                                                       [frame](auto pt) {
-                                                         return tf::transformed(
-                                                             pt, frame);
-                                                       }))),
-      tf::take(pts_buf, map_data.n_original_points));
-
-  tf::parallel_copy(
-      tf::make_points(tf::make_mapped_range(
-          ipts, [&converter](auto pt) { return converter.deconvert(pt); })),
-      tf::drop(pts_buf, map_data.n_original_points));
+  if constexpr (std::is_integral_v<RealOut>) {
+    tf::parallel_copy(
+        tf::make_points(tf::make_indirect_range(
+            map_data.original_ids,
+            tf::make_mapped_range(polygons.points(),
+                                  [frame, &converter](auto pt) {
+                                    return converter.convert(
+                                        tf::transformed(pt, frame));
+                                  }))),
+        tf::take(pts_buf, map_data.n_original_points));
+    tf::parallel_copy(tf::make_points(ipts),
+                      tf::drop(pts_buf, map_data.n_original_points));
+  } else {
+    tf::parallel_copy(
+        tf::make_points(tf::make_indirect_range(
+            map_data.original_ids,
+            tf::make_mapped_range(
+                polygons.points(),
+                [frame](auto pt) { return tf::transformed(pt, frame); }))),
+        tf::take(pts_buf, map_data.n_original_points));
+    tf::parallel_copy(
+        tf::make_points(tf::make_mapped_range(
+            ipts, [&converter](auto pt) { return converter.deconvert(pt); })),
+        tf::drop(pts_buf, map_data.n_original_points));
+  }
 
   // Face labels: uncut → original face ID, triangulated → desc.object
   auto n_uncut = static_cast<Index>(map_data.uncut_face_ids.size());

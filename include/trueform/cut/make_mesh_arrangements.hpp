@@ -45,14 +45,25 @@ auto make_mesh_arrangements(
             tf::coordinate_type<std::decay_t<decltype(p0)>,
                                 std::decay_t<decltype(p1)>>;
         using ResolvedInt = tf::exact::resolve_int_type<Int, InputReal>;
-        auto [ibp, ig, fc, cg] =
-            cut::dispatch::build_exact_pipeline<Index, double, ResolvedInt>(
-                p0, p1, mode);
+        using PipelineReal =
+            std::conditional_t<std::is_integral_v<InputReal>, InputReal, double>;
+        using RealOut =
+            std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
+                               InputReal, OutputCoordinateType>;
+        auto [ibp, ig, fc, cg] = cut::dispatch::build_exact_pipeline<
+            Index, PipelineReal, ResolvedInt>(p0, p1, mode);
         auto [mesh, tag_labels, face_labels, map_data] =
             tf::cut::make_mesh_arrangements<OutputCoordinateType>(
                 ig, fc, p0, p1, ibp.converter());
-        return std::make_tuple(std::move(mesh), std::move(tag_labels),
-                               std::move(face_labels));
+        if constexpr (!std::is_integral_v<InputReal> &&
+                      std::is_integral_v<RealOut>) {
+          auto conv = ibp.converter();
+          return std::make_tuple(std::move(mesh), std::move(tag_labels),
+                                 std::move(face_labels), std::move(conv));
+        } else {
+          return std::make_tuple(std::move(mesh), std::move(tag_labels),
+                                 std::move(face_labels));
+        }
       });
 }
 
@@ -73,12 +84,13 @@ auto make_mesh_arrangements(const tf::polygons<Policy0> &_polygons0,
             tf::coordinate_type<std::decay_t<decltype(p0)>,
                                 std::decay_t<decltype(p1)>>;
         using ResolvedInt = tf::exact::resolve_int_type<Int, InputReal>;
+        using PipelineReal =
+            std::conditional_t<std::is_integral_v<InputReal>, InputReal, double>;
         using RealOut =
             std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
                                InputReal, OutputCoordinateType>;
-        auto [ibp, ig, fc, cg] =
-            cut::dispatch::build_exact_pipeline<Index, double, ResolvedInt>(
-                p0, p1, mode);
+        auto [ibp, ig, fc, cg] = cut::dispatch::build_exact_pipeline<
+            Index, PipelineReal, ResolvedInt>(p0, p1, mode);
         auto [mesh, tag_labels, face_labels, map_data] =
             tf::cut::make_mesh_arrangements<OutputCoordinateType>(
                 ig, fc, p0, p1, ibp.converter());
@@ -90,13 +102,26 @@ auto make_mesh_arrangements(const tf::polygons<Policy0> &_polygons0,
         tf::curves_buffer<Index, RealOut, 3> cb;
         cb.paths_buffer() = std::move(paths);
         cb.points_buffer().allocate(ipts.size());
-        tf::parallel_copy(
-            tf::make_points(tf::make_mapped_range(
-                ipts, [&conv](const auto &pt) { return conv.deconvert(pt); })),
-            cb.points());
+        if constexpr (std::is_integral_v<RealOut>) {
+          tf::parallel_copy(tf::make_points(ipts), cb.points());
+        } else {
+          tf::parallel_copy(
+              tf::make_points(tf::make_mapped_range(
+                  ipts,
+                  [&conv](const auto &pt) { return conv.deconvert(pt); })),
+              cb.points());
+        }
 
-        return std::make_tuple(std::move(mesh), std::move(tag_labels),
-                               std::move(face_labels), std::move(cb));
+        if constexpr (!std::is_integral_v<InputReal> &&
+                      std::is_integral_v<RealOut>) {
+          auto conv_copy = ibp.converter();
+          return std::make_tuple(std::move(mesh), std::move(tag_labels),
+                                 std::move(face_labels), std::move(cb),
+                                 std::move(conv_copy));
+        } else {
+          return std::make_tuple(std::move(mesh), std::move(tag_labels),
+                                 std::move(face_labels), std::move(cb));
+        }
       });
 }
 
@@ -123,14 +148,20 @@ auto mesh_arrangements_n(const FormsRange &forms, tf::intersect_mode mode) {
   using RealOut =
       std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
                          InputReal, OutputCoordinateType>;
-  static_assert(std::is_floating_point_v<RealOut>,
-                "OutputCoordinateType must be a floating-point type");
+  static_assert(std::is_floating_point_v<RealOut> ||
+                    std::is_integral_v<RealOut>,
+                "Output coordinate type must be floating-point or integral");
+  static_assert(!std::is_integral_v<InputReal> ||
+                    !std::is_floating_point_v<RealOut>,
+                "Integer input cannot produce floating-point output");
+  using PipelineReal =
+      std::conditional_t<std::is_integral_v<InputReal>, InputReal, double>;
 
-  // Internal converter is parameterised on double — keeps deconverted
-  // intermediates at full precision regardless of input. Output points
-  // buffer is allocated at RealOut and the implicit point<double> ↔
-  // point<RealOut> conversion handles the materialisation.
-  tf::intersections_between_polygons<Index, double, ResolvedInt> ibp;
+  // Internal converter is parameterised on PipelineReal: double for
+  // floating-point input (keeps deconverted intermediates at full
+  // precision), or the integral input type itself (yields an identity
+  // converter, no rescale). Output points buffer is allocated at RealOut.
+  tf::intersections_between_polygons<Index, PipelineReal, ResolvedInt> ibp;
   ibp.build(forms, mode);
 
   auto &conv = ibp.converter();
@@ -151,8 +182,15 @@ auto mesh_arrangements_n(const FormsRange &forms, tf::intersect_mode mode) {
   auto [mesh, tag_labels, face_labels, map_data] =
       tf::cut::make_mesh_arrangements<RealOut>(ig, fc, forms, conv);
 
-  return std::make_tuple(std::move(mesh), std::move(tag_labels),
-                         std::move(face_labels));
+  if constexpr (!std::is_integral_v<InputReal> &&
+                std::is_integral_v<RealOut>) {
+    auto conv_copy = ibp.converter();
+    return std::make_tuple(std::move(mesh), std::move(tag_labels),
+                           std::move(face_labels), std::move(conv_copy));
+  } else {
+    return std::make_tuple(std::move(mesh), std::move(tag_labels),
+                           std::move(face_labels));
+  }
 }
 
 template <typename Int, typename OutputCoordinateType, typename FormsRange>
@@ -164,10 +202,16 @@ auto mesh_arrangements_n_curves(const FormsRange &forms,
   using RealOut =
       std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
                          InputReal, OutputCoordinateType>;
-  static_assert(std::is_floating_point_v<RealOut>,
-                "OutputCoordinateType must be a floating-point type");
+  static_assert(std::is_floating_point_v<RealOut> ||
+                    std::is_integral_v<RealOut>,
+                "Output coordinate type must be floating-point or integral");
+  static_assert(!std::is_integral_v<InputReal> ||
+                    !std::is_floating_point_v<RealOut>,
+                "Integer input cannot produce floating-point output");
+  using PipelineReal =
+      std::conditional_t<std::is_integral_v<InputReal>, InputReal, double>;
 
-  tf::intersections_between_polygons<Index, double, ResolvedInt> ibp;
+  tf::intersections_between_polygons<Index, PipelineReal, ResolvedInt> ibp;
   ibp.build(forms, mode);
 
   auto &conv = ibp.converter();
@@ -207,13 +251,25 @@ auto mesh_arrangements_n_curves(const FormsRange &forms,
   cb.paths_buffer() = std::move(paths);
   auto ipts = ig.points();
   cb.points_buffer().allocate(ipts.size());
-  tf::parallel_copy(
-      tf::make_points(tf::make_mapped_range(
-          ipts, [&conv](const auto &pt) { return conv.deconvert(pt); })),
-      cb.points());
+  if constexpr (std::is_integral_v<RealOut>) {
+    tf::parallel_copy(tf::make_points(ipts), cb.points());
+  } else {
+    tf::parallel_copy(
+        tf::make_points(tf::make_mapped_range(
+            ipts, [&conv](const auto &pt) { return conv.deconvert(pt); })),
+        cb.points());
+  }
 
-  return std::make_tuple(std::move(mesh), std::move(tag_labels),
-                         std::move(face_labels), std::move(cb));
+  if constexpr (!std::is_integral_v<InputReal> &&
+                std::is_integral_v<RealOut>) {
+    auto conv_copy = ibp.converter();
+    return std::make_tuple(std::move(mesh), std::move(tag_labels),
+                           std::move(face_labels), std::move(cb),
+                           std::move(conv_copy));
+  } else {
+    return std::make_tuple(std::move(mesh), std::move(tag_labels),
+                           std::move(face_labels), std::move(cb));
+  }
 }
 
 } // namespace cut

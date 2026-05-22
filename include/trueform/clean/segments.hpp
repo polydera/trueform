@@ -15,7 +15,9 @@
 #include "../core/none.hpp"
 #include "../reindex/return_index_map.hpp"
 #include "../reindex/segments.hpp"
+#include "./config.hpp"
 #include "./index_map/segments.hpp"
+#include "./snap_view.hpp"
 #include "./soup/segments.hpp"
 
 namespace tf {
@@ -51,7 +53,40 @@ auto cleaned(const tf::segments<Policy> &segments,
   } else {
     auto [edge_im, point_im] =
         tf::make_clean_index_map<Index>(segments, tolerance);
-    return tf::reindexed(segments, edge_im, point_im);
+    return tf::clean::with_snapped_points(
+        segments.points(), tolerance,
+        [&, &edge_im = edge_im, &point_im = point_im](const auto &pts) {
+          return tf::reindexed(tf::make_segments(segments.edges(), pts),
+                               edge_im, point_im);
+        });
+  }
+}
+
+/// @ingroup clean
+/// @brief Remove duplicate/degenerate segments with a clean config.
+/// @overload
+template <typename Index = tf::none_t, typename Policy, typename Tolerance>
+auto cleaned(const tf::segments<Policy> &segments,
+             const tf::clean_config_t<Tolerance> &cfg) {
+  if constexpr (std::is_same_v<Index, tf::none_t> && tf::is_soup<Policy>) {
+    return cleaned<int>(segments, cfg);
+  } else if constexpr (std::is_same_v<Index, tf::none_t>) {
+    using ActualIndex = std::decay_t<decltype(segments.edges()[0][0])>;
+    return cleaned<ActualIndex>(segments, cfg);
+  } else if constexpr (tf::is_soup<Policy>) {
+    tf::clean::segment_soup<Index, tf::coordinate_type<Policy>,
+                            tf::coordinate_dims_v<Policy>>
+        out;
+    out.build(segments, cfg.tolerance);
+    return out;
+  } else {
+    auto [edge_im, point_im] = tf::make_clean_index_map<Index>(segments, cfg);
+    return tf::clean::with_snapped_points(
+        segments.points(), cfg.tolerance,
+        [&, &edge_im = edge_im, &point_im = point_im](const auto &pts) {
+          return tf::reindexed(tf::make_segments(segments.edges(), pts),
+                               edge_im, point_im);
+        });
   }
 }
 
@@ -91,9 +126,35 @@ auto cleaned(const tf::segments<Policy> &segments,
                          std::decay_t<decltype(segments.edges()[0][0])>, Index>;
   auto [edge_im, point_im] =
       tf::make_clean_index_map<ActualIndex>(segments, tolerance);
-  auto out =
-      tf::reindexed(tf::make_segments(segments.edges(), segments.points()),
-                    edge_im, point_im);
+  auto out = tf::clean::with_snapped_points(
+      segments.points(), tolerance,
+      [&, &edge_im = edge_im, &point_im = point_im](const auto &pts) {
+        return tf::reindexed(tf::make_segments(segments.edges(), pts),
+                             edge_im, point_im);
+      });
+  return std::make_tuple(std::move(out), std::move(edge_im),
+                         std::move(point_im));
+}
+
+/// @ingroup clean
+/// @brief Remove duplicate/degenerate segments with config and return index maps.
+/// @overload
+template <typename Index = tf::none_t, typename Policy, typename Tolerance>
+auto cleaned(const tf::segments<Policy> &segments,
+             const tf::clean_config_t<Tolerance> &cfg,
+             tf::return_index_map_t) {
+  static_assert(!tf::is_soup<Policy>, "Soups cannot return index maps.");
+  using ActualIndex =
+      std::conditional_t<std::is_same_v<Index, tf::none_t>,
+                         std::decay_t<decltype(segments.edges()[0][0])>, Index>;
+  auto [edge_im, point_im] =
+      tf::make_clean_index_map<ActualIndex>(segments, cfg);
+  auto out = tf::clean::with_snapped_points(
+      segments.points(), cfg.tolerance,
+      [&, &edge_im = edge_im, &point_im = point_im](const auto &pts) {
+        return tf::reindexed(tf::make_segments(segments.edges(), pts),
+                             edge_im, point_im);
+      });
   return std::make_tuple(std::move(out), std::move(edge_im),
                          std::move(point_im));
 }

@@ -24,16 +24,31 @@ auto segment_arrangements_impl(const Segments &segments) {
   using Index = std::decay_t<decltype(segments.edges()[0][0])>;
   using InputReal = tf::coordinate_type<Segments>;
   using ResolvedInt = tf::exact::resolve_int_type<Int, InputReal>;
+  using PipelineReal =
+      std::conditional_t<std::is_integral_v<InputReal>, InputReal, double>;
+  using RealOut =
+      std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
+                         InputReal, OutputCoordinateType>;
   constexpr auto Dims = tf::coordinate_dims_v<Segments>;
 
-  tf::intersections_within_segments<Index, double, Dims, ResolvedInt> si;
+  tf::intersections_within_segments<Index, PipelineReal, Dims, ResolvedInt> si;
   si.build(segments);
 
   tf::intersect::segment_intersection_graph<Index, Dims, ResolvedInt> sig;
   sig.build(si, segments);
 
-  return tf::cut::make_segment_arrangements<OutputCoordinateType>(
+  auto result = tf::cut::make_segment_arrangements<OutputCoordinateType>(
       sig, segments, si.converter());
+
+  if constexpr (!std::is_integral_v<InputReal> &&
+                std::is_integral_v<RealOut>) {
+    auto conv = si.converter();
+    return std::tuple_cat(std::make_tuple(std::move(result.first),
+                                          std::move(result.second)),
+                          std::make_tuple(std::move(conv)));
+  } else {
+    return result;
+  }
 }
 
 } // namespace cut::impl

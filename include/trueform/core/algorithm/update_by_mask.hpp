@@ -38,7 +38,7 @@ template <typename Index, typename Range0>
 auto update_by_mask(tf::index_map_buffer<Index> &im, const Range0 &mask) {
   tf::buffer<Index> map;
   map.allocate(im.kept_ids().size());
-  auto none = Index(im.kept_ids().size());
+  auto none = Index(im.f().size());
   auto it = tf::keep_by_mask_and_make_map(im.kept_ids(), mask, map, none);
   if (it == im.kept_ids().end())
     return;

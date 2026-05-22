@@ -11,14 +11,13 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include "../../core/algorithm/make_equivalence_class_index_map.hpp"
 #include "../../core/algorithm/make_unique_index_map.hpp"
-#include "../../core/distance.hpp"
+#include "../../core/coordinate_dims.hpp"
 #include "../../core/index_map.hpp"
 #include "../../core/points.hpp"
-#include "../../spatial/aabb_tree.hpp"
-#include "../../spatial/gather_self_ids.hpp"
-#include "../../spatial/policy/tree.hpp"
+#include "../../exact/resolve_int_type.hpp"
+#include "../../exact/snap.hpp"
+#include <array>
 
 namespace tf {
 
@@ -49,23 +48,21 @@ auto make_clean_index_map(const tf::points<Policy> &points,
                           tf::index_map_buffer<Index> &im) {
   if (!points.size())
     return;
+  using Real = tf::coordinate_type<Policy>;
   if (tolerance == 0)
     return make_clean_index_map(points, im);
-  if constexpr (tf::has_tree_policy<Policy>) {
-    tf::buffer<std::array<Index, 2>> ids;
-    tf::gather_self_ids(
-        points,
-        [d2 = tolerance * tolerance](const auto &x, const auto &y) {
-          return distance2(x, y) <= d2;
-        },
-        std::back_inserter(ids));
-    tf::make_dense_equivalence_class_index_map(ids, points.size(), im);
-  } else {
-    constexpr std::size_t dims = tf::static_size_v<decltype(points[0])>;
-    tf::aabb_tree<Index, tf::coordinate_type<Policy>, dims> tree;
-    tree.build(points, tf::config_tree(4, 4));
-    return make_clean_index_map(points | tf::tag(tree), tolerance, im);
-  }
+
+  using SnapInt = tf::exact::resolve_int_type<tf::none_t, Real>;
+  auto snap = [tolerance](const auto &p) {
+    constexpr std::size_t Dims = tf::coordinate_dims_v<Policy>;
+    std::array<SnapInt, Dims> q;
+    for (std::size_t d = 0; d < Dims; ++d)
+      q[d] = static_cast<SnapInt>(tf::exact::snap_key(Real(p[d]), tolerance));
+    return q;
+  };
+  auto eq = [&](const auto &a, const auto &b) { return snap(a) == snap(b); };
+  auto less = [&](const auto &a, const auto &b) { return snap(a) < snap(b); };
+  tf::make_unique_index_map(points, im, eq, less);
 }
 
 /// @ingroup clean

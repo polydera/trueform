@@ -17,7 +17,7 @@
 #include "../core/points.hpp"
 #include "../core/views/mapped_range.hpp"
 #include "../exact/meta.hpp"
-#include "../exact/pt_converter.hpp"
+#include "../exact_coordinate_converter.hpp"
 #include "../core/algorithm/parallel_for_each.hpp"
 #include "../core/views/sequence_range.hpp"
 #include "../exact/incircle.hpp"
@@ -93,7 +93,7 @@ public:
     if constexpr (std::is_integral_v<coord_t>) {
       return run(faces, points, is_constrained);
     } else {
-      auto conv = tf::exact::make_pt_converter<Int>(points);
+      auto conv = tf::make_exact_coordinate_converter<Int>(points);
       auto int_pts = tf::make_points(tf::make_mapped_range(
           points, [&](const auto &pt) { return conv(pt); }));
       return run(faces, int_pts, is_constrained);

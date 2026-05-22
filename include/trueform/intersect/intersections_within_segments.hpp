@@ -17,7 +17,7 @@
 #include "../core/local_buffer.hpp"
 #include "../core/views/offset_block_range.hpp"
 #include "../exact/projection_axes.hpp"
-#include "../exact/pt_converter.hpp"
+#include "../exact_coordinate_converter.hpp"
 #include "../exact/segment_intersect.hpp"
 #include "../spatial/search_self.hpp"
 #include "../topology/policy/edge_membership.hpp"
@@ -43,7 +43,7 @@ class intersections_within_segments {
 
 public:
   auto converter() const
-      -> const tf::exact::pt_converter<Int, RealType, Dims> & {
+      -> const tf::exact_coordinate_converter<Int, RealType, Dims> & {
     return _converter;
   }
 
@@ -68,7 +68,7 @@ public:
     static_assert(tf::coordinate_dims_v<Policy> == Dims,
                   "Dimension mismatch between segments and class template");
     clear();
-    _converter = tf::exact::make_pt_converter<Int, RealType>(segments);
+    _converter = tf::make_exact_coordinate_converter<Int, RealType>(segments);
 
     auto [raw_intersections, raw_points] = generate_intersections(segments);
 
@@ -293,7 +293,7 @@ private:
     }
   }
 
-  tf::exact::pt_converter<Int, RealType, Dims> _converter;
+  tf::exact_coordinate_converter<Int, RealType, Dims> _converter;
   tf::buffer<Index> _intersections_offsets;
   tf::buffer<tf::intersect::intersection<Index>> _intersections;
   tf::buffer<tf::point<Int, Dims>> _intersection_points;

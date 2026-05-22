@@ -23,7 +23,7 @@
 #include "../../core/views/take.hpp"
 #include "../../core/views/zip.hpp"
 #include "../../exact/projection_axes.hpp"
-#include "../../exact/pt_converter.hpp"
+#include "../../exact_coordinate_converter.hpp"
 #include "../../intersect/graph/vertex.hpp"
 #include "../../intersect/types/simple_intersections.hpp"
 #include "../face_cuts.hpp"
@@ -55,7 +55,7 @@ auto embedded_isocurves(
     return (v.source == source::created) ? (n_orig + v.id) : v.id;
   };
 
-  auto conv = tf::exact::make_pt_converter(polygons);
+  auto conv = tf::make_exact_coordinate_converter(polygons);
   auto ipts = si.intersection_points();
 
   auto make_projector = [&](const auto &desc) {
