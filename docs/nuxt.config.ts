@@ -20,6 +20,7 @@ export default defineNuxtConfig({
             {
               src: "https://cloud.umami.is/script.js",
               defer: true,
+              crossorigin: "anonymous",
               "data-website-id": umamiWebsiteId,
             },
           ]
