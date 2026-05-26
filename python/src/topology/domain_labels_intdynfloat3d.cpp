@@ -17,13 +17,13 @@ namespace tf::py {
 auto register_topology_domain_labels_intdynfloat3d(nanobind::module_ &m)
     -> void {
   using namespace nanobind;
-  m.def("domain_labels_intdynfloat3d",
-        [](const offset_blocked_array_wrapper<int, int> &indices,
-           ndarray<numpy, const float, shape<-1, 3>> points, int config) {
-          return impl::domain_labels_impl_dynamic<int, float, 3>(indices, points,
-                                                                 config);
-        },
-        arg("indices"), arg("points"), arg("config"));
+  m.def(
+      "domain_labels_intdynfloat3d",
+      [](mesh_wrapper<int, float, dynamic_size, 3> &mesh, int config) {
+        return impl::domain_labels_impl<int, dynamic_size, float, 3>(mesh,
+                                                                     config);
+      },
+      arg("mesh"), arg("config"));
 }
 
 } // namespace tf::py

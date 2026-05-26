@@ -166,6 +166,7 @@
 #include "./core/static_size.hpp"                 // IWYU pragma: export
 #include "./core/stitch_index_maps.hpp"           // IWYU pragma: export
 #include "./core/svd_of_symmetric.hpp"            // IWYU pragma: export
+#include "./core/tagged_sidedness.hpp"            // IWYU pragma: export
 #include "./core/tick_tock.hpp"                   // IWYU pragma: export
 #include "./core/transform.hpp"                   // IWYU pragma: export
 #include "./core/transformation.hpp"              // IWYU pragma: export

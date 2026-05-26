@@ -18,12 +18,10 @@ auto register_topology_domain_labels_int3float3d(nanobind::module_ &m) -> void {
   using namespace nanobind;
   m.def(
       "domain_labels_int3float3d",
-      [](ndarray<numpy, const int, shape<-1, 3>> indices,
-         ndarray<numpy, const float, shape<-1, 3>> points, int config) {
-        return impl::domain_labels_impl<int, 3, float, 3>(indices, points,
-                                                          config);
+      [](mesh_wrapper<int, float, 3, 3> &mesh, int config) {
+        return impl::domain_labels_impl<int, 3, float, 3>(mesh, config);
       },
-      arg("indices"), arg("points"), arg("config"));
+      arg("mesh"), arg("config"));
 }
 
 } // namespace tf::py

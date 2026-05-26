@@ -21,8 +21,10 @@
 
 #pragma once
 
-#include "./policy/edge_membership.hpp"    // IWYU pragma: export
-#include "./policy/face_link.hpp"          // IWYU pragma: export
-#include "./policy/face_membership.hpp"    // IWYU pragma: export
-#include "./policy/manifold_edge_link.hpp" // IWYU pragma: export
-#include "./policy/vertex_link.hpp"        // IWYU pragma: export
+#include "./policy/connected_component_labels.hpp" // IWYU pragma: export
+#include "./policy/edge_membership.hpp"            // IWYU pragma: export
+#include "./policy/face_link.hpp"                  // IWYU pragma: export
+#include "./policy/face_membership.hpp"            // IWYU pragma: export
+#include "./policy/manifold_edge_link.hpp"         // IWYU pragma: export
+#include "./policy/non_manifold_edge_fans.hpp"     // IWYU pragma: export
+#include "./policy/vertex_link.hpp"                // IWYU pragma: export

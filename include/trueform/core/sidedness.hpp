@@ -23,10 +23,13 @@ namespace tf {
 /// - `on_positive_side`: Above a plane or right of a 2D line/segment
 /// - `on_negative_side`: Below a plane or left of a 2D line/segment
 /// - `on_boundary`: Coplanar or collinear with the primitive
+/// - `none`: Selection-only sentinel meaning "no contact / no entry";
+///           not produced by any classification predicate
 enum class sidedness {
   on_positive_side = 0,
   on_negative_side = 1,
-  on_boundary = 2
+  on_boundary = 2,
+  none = 3
 };
 
 } // namespace tf

@@ -16,7 +16,6 @@
 #include "../core/algorithm/parallel_for_each.hpp"
 #include "../core/checked.hpp"
 #include "../core/buffer.hpp"
-#include "../core/complete.hpp"
 #include "../core/views/indirect_range.hpp"
 #include "../core/views/offset_block_range.hpp"
 #include "../exact_coordinate_converter.hpp"
@@ -37,7 +36,8 @@
 #include "./make_manifold_edge_connected_component_labels.hpp"
 #include "../exact/resolve_int_type.hpp"
 #include "./make_manifold_edge_link.hpp"
-#include "./non_manifold_edges.hpp"
+#include "./make_non_manifold_edge_fans.hpp"
+#include "./policy/connected_component_labels.hpp"
 #include "./policy/face_membership.hpp"
 #include "./policy/manifold_edge_link.hpp"
 namespace tf {
@@ -85,10 +85,14 @@ auto make_domain_labels(const tf::polygons<Policy> &polygons,
     auto mel = tf::make_manifold_edge_link(polygons);
     return make_domain_labels<Int>(polygons | tf::tag(mel), config);
   } else {
-    auto fragment_labels =
-        tf::make_manifold_edge_connected_component_labels(polygons);
-    auto [nm_edges, nm_edge_faces] =
-        tf::make_non_manifold_edges(polygons, tf::complete);
+    auto fragment_labels = [&]() {
+      if constexpr (tf::has_connected_component_labels_policy<Policy>) {
+        return polygons.connected_component_labels();
+      } else {
+        return tf::make_manifold_edge_connected_component_labels(polygons);
+      }
+    }();
+    auto [nm_edges, nm_edge_faces] = tf::make_non_manifold_edge_fans(polygons);
 
     // Path id + per-path edge-axis alignment anchors sa within a chain,
     // so canonical-permutation buckets do not pool across polylines.

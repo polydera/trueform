@@ -81,8 +81,5 @@ def domain_labels(
     )
     cpp_func = getattr(_trueform.topology, f"domain_labels_{suffix}")
 
-    faces_arg = mesh._wrapper.faces_array() if mesh.is_dynamic else mesh.faces
-    flat_labels, n_domains, outer_shell_label = cpp_func(
-        faces_arg, mesh.points, config
-    )
+    flat_labels, n_domains, outer_shell_label = cpp_func(mesh._wrapper, config)
     return flat_labels.reshape(-1, 2), int(n_domains), int(outer_shell_label)

@@ -23,6 +23,15 @@ set(MODULE_TOPOLOGY_SOURCES
   ${CMAKE_CURRENT_LIST_DIR}/make_cdt.cpp
   ${CMAKE_CURRENT_LIST_DIR}/make_k_rings.cpp
   ${CMAKE_CURRENT_LIST_DIR}/make_neighborhoods.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/make_sidedness_relations.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/make_sidedness_relations_int3float3d.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/make_sidedness_relations_int3double3d.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/make_sidedness_relations_int643float3d.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/make_sidedness_relations_int643double3d.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/make_sidedness_relations_intdynfloat3d.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/make_sidedness_relations_intdyndouble3d.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/make_sidedness_relations_int64dynfloat3d.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/make_sidedness_relations_int64dyndouble3d.cpp
   ${CMAKE_CURRENT_LIST_DIR}/non_manifold_edges.cpp
   ${CMAKE_CURRENT_LIST_DIR}/orient_faces_consistently.cpp
   ${CMAKE_CURRENT_LIST_DIR}/orient_faces_consistently_double2d.cpp
