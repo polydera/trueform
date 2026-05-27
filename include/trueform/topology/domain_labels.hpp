@@ -22,12 +22,16 @@ namespace tf {
 ///
 /// Storage: `labels` is a @ref tf::blocked_buffer with block size 2,
 /// one block per face. For face `f`:
-///   - `labels[f][0]` = domain id on the face's side 0
-///     (the side that contains the face's directed edges in their
-///     stored orientation — equivalently, the side reached by going
-///     CCW around an edge from the face).
-///   - `labels[f][1]` = domain id on the face's side 1 (reversed
-///     side; CW around the same edge).
+///   - `labels[f][0]` = domain id of the bounded region that contains
+///     `f` as a boundary face with REVERSED winding (equivalently, the
+///     side that `f`'s stored normal points INTO).
+///   - `labels[f][1]` = domain id of the bounded region that contains
+///     `f` as a boundary face with FORWARD winding (equivalently, the
+///     side that `f`'s stored normal points AWAY FROM).
+///
+/// @ref tf::split_into_domains uses this convention to emit watertight
+/// outward-oriented submeshes: side-0 emissions reverse the stored
+/// winding, side-1 emissions keep it.
 ///
 /// @tparam LabelType The integer type for domain labels.
 template <typename LabelType> struct domain_labels {

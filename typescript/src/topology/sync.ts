@@ -257,7 +257,13 @@ export interface DomainLabelsOptions {
 
 /** Per-face per-side volumetric domain labels for a 3D polygon mesh. */
 export interface DomainLabelsResult {
-  /** Shape `(nFaces, 2)`, int32. `labels[f, 0]` = domain on stored-normal side. */
+  /**
+   * Shape `(nFaces, 2)`, int32. `labels[f, 0]` is the domain containing face
+   * `f` with REVERSED winding (the side `f`'s stored normal points INTO);
+   * `labels[f, 1]` is the domain containing it with FORWARD winding (the side
+   * the stored normal points AWAY FROM). `splitIntoDomains` reverses side-0
+   * emissions and keeps side-1 emissions to produce outward-oriented submeshes.
+   */
   labels: NDArrayInt32;
   /** Number of distinct bounded domains. */
   nDomains: number;

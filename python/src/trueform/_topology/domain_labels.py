@@ -49,8 +49,14 @@ def domain_labels(
     -------
     labels : np.ndarray
         Shape (n_faces, 2), dtype matching the input face indices.
-        ``labels[f, 0]`` = domain id on the stored-normal side of face ``f``;
-        ``labels[f, 1]`` = domain id on the reversed side.
+        ``labels[f, 0]`` = domain id of the bounded region that contains
+        face ``f`` with REVERSED winding (the side that f's stored normal
+        points INTO).
+        ``labels[f, 1]`` = domain id of the bounded region that contains
+        face ``f`` with FORWARD winding (the side that f's stored normal
+        points AWAY FROM).
+        ``split_into_domains`` reverses side-0 emissions and keeps side-1
+        emissions to produce outward-oriented submeshes.
     n_domains : int
         Number of distinct bounded domains.
     outer_shell_label : int
