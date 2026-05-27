@@ -14,7 +14,9 @@
 
 #include "../../core/frame_of.hpp"
 #include "../../core/transformed.hpp"
+#include "../../intersect/exact/make_kernel.hpp"
 #include "../../intersect/graph/intersection_graph.hpp"
+#include "../../intersect/intersect_config.hpp"
 #include "../../intersect/intersections_between_polygons.hpp"
 #include "../cut_graph.hpp"
 #include "../face_cuts.hpp"
@@ -25,9 +27,9 @@ template <typename Index, typename RealType, typename Int, typename Policy0,
           typename Policy1>
 auto build_exact_pipeline(const tf::polygons<Policy0> &p0,
                           const tf::polygons<Policy1> &p1,
-                          tf::intersect_mode mode) {
+                          tf::intersect_config config) {
   tf::intersections_between_polygons<Index, RealType, Int> ibp;
-  ibp.build(p0, p1, mode);
+  ibp.build(p0, p1, config);
 
   auto &conv = ibp.converter();
   auto apply_to_face = [&](int tag, Index object, const auto &f) {
@@ -44,7 +46,8 @@ auto build_exact_pipeline(const tf::polygons<Policy0> &p0,
   };
 
   tf::intersection_graph<Index, Int> ig;
-  ig.build(ibp, apply_to_face, get_mesh_point, mode);
+  ig.build(ibp, apply_to_face, get_mesh_point, config.mode,
+           tf::exact::make_kernel(conv, config.tolerance));
 
   tf::face_cuts<Index, Int> fc;
   fc.build(ig, apply_to_face, get_mesh_point);

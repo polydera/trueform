@@ -12,6 +12,7 @@
  */
 #pragma once
 
+#include "trueform/intersect/intersect_config.hpp"
 #include "trueform/intersect/intersect_mode.hpp"
 #include "trueform/intersect/make_intersection_curves.hpp"
 #include "trueform/intersect/make_isocurves.hpp"
@@ -32,7 +33,7 @@ namespace ts {
 
 template <typename Real>
 auto sync_intersection_curves(wasm_mesh<Real> &m0, wasm_mesh<Real> &m1,
-                              int mode) -> wasm_curves<Real> {
+                              int mode, double tolerance) -> wasm_curves<Real> {
   bool has0 = m0.has_transformation();
   bool has1 = m1.has_transformation();
   auto fm0 = m0.face_membership_range();
@@ -43,7 +44,7 @@ auto sync_intersection_curves(wasm_mesh<Real> &m0, wasm_mesh<Real> &m1,
     auto cb = tf::make_intersection_curves(
         poly0 | tf::tag(m0.tree()) | tf::tag(fm0) | tf::tag(mel0),
         poly1 | tf::tag(m1.tree()) | tf::tag(fm1) | tf::tag(mel1),
-        static_cast<tf::intersect_mode>(mode));
+        tf::intersect_config{static_cast<tf::intersect_mode>(mode), tolerance});
     return wasm_curves<Real>::from_curves_buffer(std::move(cb));
   };
   if (has0 && has1)
@@ -63,11 +64,11 @@ auto sync_intersection_curves(wasm_mesh<Real> &m0, wasm_mesh<Real> &m1,
 
 template <typename Real>
 auto async_intersection_curves(wasm_mesh<Real> &m0, wasm_mesh<Real> &m1,
-                               int mode) -> promise_t {
-  return promise([a = m0, b = m1, mode]() -> wasm_curves<Real> {
+                               int mode, double tolerance) -> promise_t {
+  return promise([a = m0, b = m1, mode, tolerance]() -> wasm_curves<Real> {
     return sync_intersection_curves<Real>(
         const_cast<wasm_mesh<Real> &>(a),
-        const_cast<wasm_mesh<Real> &>(b), mode);
+        const_cast<wasm_mesh<Real> &>(b), mode, tolerance);
   });
 }
 
@@ -88,16 +89,16 @@ auto extract_meshes(emscripten::val js_meshes) -> std::vector<wasm_mesh<Real>> {
 
 template <typename Real>
 auto intersection_curves_list_impl(std::vector<wasm_mesh<Real>> &meshes,
-                                   int mode) -> wasm_curves<Real> {
+                                   int mode, double tolerance) -> wasm_curves<Real> {
   auto mesh_range = tf::make_range(meshes);
   bool any_transformed = false;
   for (auto &m : meshes)
     if (m.has_transformation())
       any_transformed = true;
 
-  auto run = [mode](const auto &forms) -> wasm_curves<Real> {
+  auto run = [mode, tolerance](const auto &forms) -> wasm_curves<Real> {
     auto cb = tf::make_intersection_curves(
-        forms, static_cast<tf::intersect_mode>(mode));
+        forms, tf::intersect_config{static_cast<tf::intersect_mode>(mode), tolerance});
     return wasm_curves<Real>::from_curves_buffer(std::move(cb));
   };
 
@@ -124,19 +125,19 @@ auto intersection_curves_list_impl(std::vector<wasm_mesh<Real>> &meshes,
 }
 
 template <typename Real>
-auto sync_intersection_curves_list(emscripten::val js_meshes, int mode)
+auto sync_intersection_curves_list(emscripten::val js_meshes, int mode, double tolerance)
     -> wasm_curves<Real> {
   auto meshes = extract_meshes<Real>(js_meshes);
-  return intersection_curves_list_impl<Real>(meshes, mode);
+  return intersection_curves_list_impl<Real>(meshes, mode, tolerance);
 }
 
 template <typename Real>
-auto async_intersection_curves_list(emscripten::val js_meshes, int mode)
+auto async_intersection_curves_list(emscripten::val js_meshes, int mode, double tolerance)
     -> promise_t {
   auto meshes = extract_meshes<Real>(js_meshes);
-  return promise([ms = std::move(meshes), mode]() -> wasm_curves<Real> {
+  return promise([ms = std::move(meshes), mode, tolerance]() -> wasm_curves<Real> {
     auto &meshes = const_cast<std::vector<wasm_mesh<Real>> &>(ms);
-    return intersection_curves_list_impl<Real>(meshes, mode);
+    return intersection_curves_list_impl<Real>(meshes, mode, tolerance);
   });
 }
 
@@ -145,22 +146,22 @@ auto async_intersection_curves_list(emscripten::val js_meshes, int mode)
 // ============================================================================
 
 template <typename Real>
-auto sync_self_intersection_curves(wasm_mesh<Real> &m, int mode)
+auto sync_self_intersection_curves(wasm_mesh<Real> &m, int mode, double tolerance)
     -> wasm_curves<Real> {
   auto fm = m.face_membership_range();
   auto mel = m.manifold_edge_link_range();
   auto cb = tf::make_self_intersection_curves(
       m.polygons_range() | tf::tag(m.tree()) | tf::tag(fm) | tf::tag(mel),
-      static_cast<tf::intersect_mode>(mode));
+      tf::intersect_config{static_cast<tf::intersect_mode>(mode), tolerance});
   return wasm_curves<Real>::from_curves_buffer(std::move(cb));
 }
 
 template <typename Real>
-auto async_self_intersection_curves(wasm_mesh<Real> &m, int mode)
+auto async_self_intersection_curves(wasm_mesh<Real> &m, int mode, double tolerance)
     -> promise_t {
-  return promise([a = m, mode]() -> wasm_curves<Real> {
+  return promise([a = m, mode, tolerance]() -> wasm_curves<Real> {
     return sync_self_intersection_curves<Real>(
-        const_cast<wasm_mesh<Real> &>(a), mode);
+        const_cast<wasm_mesh<Real> &>(a), mode, tolerance);
   });
 }
 

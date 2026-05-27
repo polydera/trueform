@@ -18,8 +18,9 @@
 #include "../cut/face_cuts.hpp"
 #include "../exact/resolve_int_type.hpp"
 #include "../topology/connect_edges_to_paths.hpp"
+#include "./exact/make_kernel.hpp"
 #include "./graph/intersection_graph.hpp"
-#include "./intersect_mode.hpp"
+#include "./intersect_config.hpp"
 #include "./intersections_within_polygons.hpp"
 
 namespace tf {
@@ -28,7 +29,7 @@ namespace intersect {
 
 template <typename Int, typename OutputCoordinateType, typename Policy>
 auto self_intersection_curves(const tf::polygons<Policy> &p,
-                              tf::intersect_mode mode) {
+                              tf::intersect_config config) {
   using Index = std::decay_t<decltype(p.faces()[0][0])>;
   using InputReal = tf::coordinate_type<Policy>;
   using ResolvedInt = tf::exact::resolve_int_type<Int, InputReal>;
@@ -45,7 +46,7 @@ auto self_intersection_curves(const tf::polygons<Policy> &p,
                 "Integer input cannot produce floating-point output");
 
   tf::intersections_within_polygons<Index, PipelineReal, ResolvedInt> iwp;
-  iwp.build(p, mode);
+  iwp.build(p, config);
 
   auto &conv = iwp.converter();
   auto apply_to_face = [&](int, Index object, const auto &f) {
@@ -56,10 +57,11 @@ auto self_intersection_curves(const tf::polygons<Policy> &p,
   };
 
   tf::intersection_graph<Index, ResolvedInt> ig;
-  ig.build(iwp, apply_to_face, get_mesh_point, mode);
+  ig.build(iwp, apply_to_face, get_mesh_point, config.mode,
+           tf::exact::make_kernel(conv, config.tolerance));
 
   auto paths = [&]() {
-    if (mode & tf::intersect_mode::sos) {
+    if (config.mode & tf::intersect_mode::sos) {
       auto edge_pairs = tf::make_mapped_range(
           ig.edge_groups(), [](const auto &group) -> std::array<Index, 2> {
             return {group[0].point_0, group[0].point_1};
@@ -115,11 +117,11 @@ template <typename Int = tf::none_t,
           typename OutputCoordinateType = tf::none_t, typename Policy>
 auto make_self_intersection_curves(
     const tf::polygons<Policy> &_polygons,
-    tf::intersect_mode mode = tf::intersect_mode::sos |
-                              tf::intersect_mode::resolve_contours) {
-  return cut::dispatch::self_boolean(_polygons, [mode](const auto &p) {
+    tf::intersect_config config = {tf::intersect_mode::sos |
+                                   tf::intersect_mode::resolve_contours}) {
+  return cut::dispatch::self_boolean(_polygons, [config](const auto &p) {
     return intersect::self_intersection_curves<Int, OutputCoordinateType>(
-        p, mode);
+        p, config);
   });
 }
 

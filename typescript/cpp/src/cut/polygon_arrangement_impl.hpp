@@ -44,25 +44,25 @@ template <typename Real> struct polygon_arrangement_result_with_curves_t {
 // ============================================================================
 
 template <typename Real>
-auto sync_polygon_arrangements(wasm_mesh<Real> &m, int mode)
+auto sync_polygon_arrangements(wasm_mesh<Real> &m, int mode, double tolerance)
     -> polygon_arrangement_result_t<Real> {
   auto fm = m.face_membership_range();
   auto mel = m.manifold_edge_link_range();
   auto [mesh, face_labels] = tf::make_polygon_arrangements(
       m.polygons_range() | tf::tag(m.tree()) | tf::tag(fm) | tf::tag(mel),
-      static_cast<tf::intersect_mode>(mode));
+      tf::intersect_config{static_cast<tf::intersect_mode>(mode), tolerance});
   return {wasm_mesh<Real>::from_polygons_buffer(std::move(mesh)),
           wasm_ndarray<std::int32_t>::from_buffer(std::move(face_labels))};
 }
 
 template <typename Real>
-auto sync_polygon_arrangements_with_curves(wasm_mesh<Real> &m, int mode)
+auto sync_polygon_arrangements_with_curves(wasm_mesh<Real> &m, int mode, double tolerance)
     -> polygon_arrangement_result_with_curves_t<Real> {
   auto fm = m.face_membership_range();
   auto mel = m.manifold_edge_link_range();
   auto [mesh, face_labels, curves] = tf::make_polygon_arrangements(
       m.polygons_range() | tf::tag(m.tree()) | tf::tag(fm) | tf::tag(mel),
-      static_cast<tf::intersect_mode>(mode), tf::return_curves);
+      tf::intersect_config{static_cast<tf::intersect_mode>(mode), tolerance}, tf::return_curves);
   return {wasm_mesh<Real>::from_polygons_buffer(std::move(mesh)),
           wasm_ndarray<std::int32_t>::from_buffer(std::move(face_labels)),
           wasm_curves<Real>::from_curves_buffer(std::move(curves))};
@@ -74,20 +74,20 @@ auto sync_polygon_arrangements_with_curves(wasm_mesh<Real> &m, int mode)
 // ============================================================================
 
 template <typename Real>
-auto async_polygon_arrangements(wasm_mesh<Real> &m, int mode) -> promise_t {
-  return promise([a = m, mode]() -> polygon_arrangement_result_t<Real> {
+auto async_polygon_arrangements(wasm_mesh<Real> &m, int mode, double tolerance) -> promise_t {
+  return promise([a = m, mode, tolerance]() -> polygon_arrangement_result_t<Real> {
     return sync_polygon_arrangements<Real>(const_cast<wasm_mesh<Real> &>(a),
-                                           mode);
+                                           mode, tolerance);
   });
 }
 
 template <typename Real>
-auto async_polygon_arrangements_with_curves(wasm_mesh<Real> &m, int mode)
+auto async_polygon_arrangements_with_curves(wasm_mesh<Real> &m, int mode, double tolerance)
     -> promise_t {
   return promise(
-      [a = m, mode]() -> polygon_arrangement_result_with_curves_t<Real> {
+      [a = m, mode, tolerance]() -> polygon_arrangement_result_with_curves_t<Real> {
         return sync_polygon_arrangements_with_curves<Real>(
-            const_cast<wasm_mesh<Real> &>(a), mode);
+            const_cast<wasm_mesh<Real> &>(a), mode, tolerance);
       });
 }
 

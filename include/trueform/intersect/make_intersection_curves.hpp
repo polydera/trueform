@@ -21,8 +21,9 @@
 #include "../cut/face_cuts.hpp"
 #include "../exact/resolve_int_type.hpp"
 #include "../topology/connect_edges_to_paths.hpp"
+#include "./exact/make_kernel.hpp"
 #include "./graph/intersection_graph.hpp"
-#include "./intersect_mode.hpp"
+#include "./intersect_config.hpp"
 #include "./intersections_between_polygons.hpp"
 
 namespace tf {
@@ -45,9 +46,9 @@ template <typename Int = tf::none_t,
 auto make_intersection_curves(
     const tf::polygons<Policy0> &_polygons0,
     const tf::polygons<Policy1> &_polygons1,
-    tf::intersect_mode mode = tf::intersect_mode::sos) {
+    tf::intersect_config config = {tf::intersect_mode::sos}) {
   return cut::dispatch::boolean(
-      _polygons0, _polygons1, [mode](const auto &p0, const auto &p1) {
+      _polygons0, _polygons1, [config](const auto &p0, const auto &p1) {
         using Index =
             std::common_type_t<typename std::decay_t<decltype(p0)>::index_type,
                                typename std::decay_t<decltype(p1)>::index_type>;
@@ -67,7 +68,7 @@ auto make_intersection_curves(
                       "Integer input cannot produce floating-point output");
 
         tf::intersections_between_polygons<Index, PipelineReal, ResolvedInt> ibp;
-        ibp.build(p0, p1, mode);
+        ibp.build(p0, p1, config);
 
         auto &conv = ibp.converter();
         auto apply_to_face = [&](int tag, Index object, const auto &f) {
@@ -86,10 +87,11 @@ auto make_intersection_curves(
         };
 
         tf::intersection_graph<Index, ResolvedInt> ig;
-        ig.build(ibp, apply_to_face, get_mesh_point, mode);
+        ig.build(ibp, apply_to_face, get_mesh_point, config.mode,
+                 tf::exact::make_kernel(conv, config.tolerance));
 
         auto paths = [&]() {
-          if (mode & tf::intersect_mode::sos) {
+          if (config.mode & tf::intersect_mode::sos) {
             auto edge_pairs = tf::make_mapped_range(
                 ig.edge_groups(),
                 [](const auto &group) -> std::array<Index, 2> {
@@ -134,7 +136,7 @@ auto make_intersection_curves(
 namespace intersect {
 
 template <typename Int, typename OutputCoordinateType, typename FormsRange>
-auto intersection_curves_n(const FormsRange &forms, tf::intersect_mode mode) {
+auto intersection_curves_n(const FormsRange &forms, tf::intersect_config config) {
   using Index = std::decay_t<decltype(forms[0].faces()[0][0])>;
   using InputReal = tf::coordinate_type<decltype(forms[0])>;
   using ResolvedInt = tf::exact::resolve_int_type<Int, InputReal>;
@@ -151,7 +153,7 @@ auto intersection_curves_n(const FormsRange &forms, tf::intersect_mode mode) {
                 "Integer input cannot produce floating-point output");
 
   tf::intersections_between_polygons<Index, PipelineReal, ResolvedInt> ibp;
-  ibp.build(forms, mode);
+  ibp.build(forms, config);
 
   auto &conv = ibp.converter();
   auto apply_to_face = [&](int tag, Index object, const auto &f) {
@@ -163,10 +165,11 @@ auto intersection_curves_n(const FormsRange &forms, tf::intersect_mode mode) {
   };
 
   tf::intersection_graph<Index, ResolvedInt> ig;
-  ig.build(ibp, apply_to_face, get_mesh_point, mode);
+  ig.build(ibp, apply_to_face, get_mesh_point, config.mode,
+           tf::exact::make_kernel(conv, config.tolerance));
 
   auto paths = [&]() {
-    if (mode & tf::intersect_mode::sos) {
+    if (config.mode & tf::intersect_mode::sos) {
       auto edge_pairs = tf::make_mapped_range(
           ig.edge_groups(), [](const auto &group) -> std::array<Index, 2> {
             return {group[0].point_0, group[0].point_1};
@@ -221,11 +224,11 @@ template <typename Int = tf::none_t,
           typename OutputCoordinateType = tf::none_t, typename Range>
 auto make_intersection_curves(
     const Range &_forms,
-    tf::intersect_mode mode = tf::intersect_mode::sos |
-                              tf::intersect_mode::resolve_crossing_contours) {
-  return cut::dispatch::arrangement(_forms, [mode](const auto &forms) {
+    tf::intersect_config config = {tf::intersect_mode::sos |
+                                   tf::intersect_mode::resolve_crossing_contours}) {
+  return cut::dispatch::arrangement(_forms, [config](const auto &forms) {
     return intersect::intersection_curves_n<Int, OutputCoordinateType>(forms,
-                                                                       mode);
+                                                                       config);
   });
 }
 

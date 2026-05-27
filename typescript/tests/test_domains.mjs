@@ -156,6 +156,56 @@ describe("Domain extraction (cross-runtime correctness)", () => {
     ], "case 7");
   });
 
+  // -----------------------------------------------------------------
+  // Tolerance: cube + inward-offset plane (mirrors the C++ test
+  // mesh_arrangements_tolerance_box_plane in
+  // tests/cut/test_mesh_arrangements.cpp).
+  // -----------------------------------------------------------------
+
+  /** Run pipeline with explicit tolerance and return sorted per-domain volumes. */
+  function tolDomainVolumes(meshes, tolerance) {
+    const tf = getTf();
+    const arr = tf.meshArrangements(meshes, { tolerance });
+    const cleaned = tf.cleaned(arr.mesh, Math.max(tolerance, 1e-6));
+    const dl = tf.domainLabels(cleaned, { ignoreOpenFragments: true });
+    const split = tf.splitIntoDomains(cleaned, dl);
+    const vols = split.components.map((sub) => tf.signedVolume(sub));
+    vols.sort((a, b) => a - b);
+
+    for (const sub of split.components) sub.delete();
+    split.labels.delete();
+    dl.labels.delete();
+    cleaned.delete();
+    arr.faceLabels.delete();
+    arr.tagLabels.delete();
+    arr.mesh.delete();
+    return vols;
+  }
+
+  test("tolerance >> gap: plane snaps onto cube, splits into 2 halves", () => {
+    const tf = getTf();
+    const gap = 1e-4;
+    const planeSize = 2 * (0.5 - gap);
+    const cube = tf.boxMesh(1, 1, 1, undefined, undefined, undefined, F64);
+    const plane = tf.planeMesh(planeSize, planeSize, 1, 1, F64);
+    const got = tolDomainVolumes([cube, plane], 1e-3);
+    cube.delete(); plane.delete();
+    // outer shell (-1) + upper half (+0.5) + lower half (+0.5)
+    assertVolumesMatch(got, [-1.0, 0.5, 0.5], "tol >> gap");
+  });
+
+  test("tolerance = 0: plane stays detached, cube remains whole", () => {
+    const tf = getTf();
+    const gap = 1e-4;
+    const planeSize = 2 * (0.5 - gap);
+    const cube = tf.boxMesh(1, 1, 1, undefined, undefined, undefined, F64);
+    const plane = tf.planeMesh(planeSize, planeSize, 1, 1, F64);
+    const got = tolDomainVolumes([cube, plane], 0.0);
+    cube.delete(); plane.delete();
+    // outer shell (-1) + cube interior (+1); plane fin dropped by ignoreOpenFragments
+    assertVolumesMatch(got, [-1.0, 1.0], "tol = 0");
+  });
+
 });
 
 describe("Domain extraction (async dispatch)", () => {

@@ -24,6 +24,7 @@ def polygon_arrangements(
     *,
     return_curves: bool = False,
     mode: str = "primitives",
+    tolerance: float = 0.0,
     resolve_crossings: bool = True,
     resolve_self_crossings: bool = True
 ):
@@ -41,6 +42,8 @@ def polygon_arrangements(
         If True, also return self-intersection curves.
     mode : str, default "primitives"
         Intersection mode. "sos" or "primitives".
+    tolerance : float, default 0.0
+        World-coordinate distance band for predicate tolerance (0 = exact).
     resolve_crossings : bool, default True
         Resolve crossings between different contours on the same face.
     resolve_self_crossings : bool, default True
@@ -99,7 +102,7 @@ def polygon_arrangements(
         (result_faces, result_points), face_labels, \
             ((paths_offsets, paths_data), curve_points) = getattr(
                 _trueform.cut, func_name
-            )(mesh._wrapper, mode_int)
+            )(mesh._wrapper, mode_int, tolerance)
         if result_is_dynamic:
             result_faces = OffsetBlockedArray(result_faces[0], result_faces[1])
         paths = OffsetBlockedArray(paths_offsets, paths_data)
@@ -109,7 +112,7 @@ def polygon_arrangements(
         func_name = f"polygon_arrangements_{suffix}"
         (result_faces, result_points), face_labels = getattr(
             _trueform.cut, func_name
-        )(mesh._wrapper, mode_int)
+        )(mesh._wrapper, mode_int, tolerance)
         if result_is_dynamic:
             result_faces = OffsetBlockedArray(result_faces[0], result_faces[1])
         return (result_faces, result_points), face_labels

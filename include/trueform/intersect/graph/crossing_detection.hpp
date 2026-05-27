@@ -23,6 +23,7 @@
 #include "../../exact/projection_axes.hpp"
 #include "../../exact/segment_intersect.hpp"
 #include "../../exact/vertex.hpp"
+#include "../exact/predicate_kernel.hpp"
 #include "../../spatial/aabb_tree.hpp"
 #include "../../spatial/search_self.hpp"
 #include "../intersect_mode.hpp"
@@ -34,17 +35,16 @@
 
 namespace tf::intersect::graph {
 
-/// Test one pair of edges for intersection.
-///
-/// ea, eb are the specific edge instances (with correct per-face context).
-/// eid_a, eid_b are canonical group IDs (from edge.id), used in records.
-template <typename Index, typename GetPoint>
+/// Test one pair of edges for intersection. `ea`, `eb` are the edge
+/// instances; `eid_a`, `eid_b` are canonical group IDs (`edge.id`) used
+/// in the records.
+template <typename Index, typename GetPoint, typename Int>
 auto test_edge_pair(const edge<Index> &ea, const edge<Index> &eb, Index eid_a,
                     Index eid_b, int ax0, int ax1, const GetPoint &get_point,
-                    tf::buffer<crossing_record<Index>> &out) -> void {
+                    tf::buffer<crossing_record<Index>> &out,
+                    const tf::exact::predicate_kernel<Int> &kernel) -> void {
   auto pa0 = get_point(-1, ea.point_0);
   auto pa1 = get_point(-1, ea.point_1);
-  using Int = tf::coordinate_type<decltype(pa0)>;
   if (pa0[0] == pa1[0] && pa0[1] == pa1[1] && pa0[2] == pa1[2])
     return;
   auto pb0 = get_point(-1, eb.point_0);
@@ -57,7 +57,8 @@ auto test_edge_pair(const edge<Index> &ea, const edge<Index> &eb, Index eid_a,
   tf::exact::vertex<Index, Int> va0{ea.point_0, pa0}, va1{ea.point_1, pa1};
   tf::exact::vertex<Index, Int> vb0{eb.point_0, pb0}, vb1{eb.point_1, pb1};
 
-  auto hits = tf::exact::classify_segments(va0, va1, vb0, vb1, ax0, ax1);
+  auto hits =
+      tf::exact::classify_segments(va0, va1, vb0, vb1, ax0, ax1, kernel);
   if (!hits)
     return;
 
@@ -121,12 +122,14 @@ auto has_a_single_contour(const Index *edge_ids, std::size_t k,
 ///
 /// edge_ids are instance indices into edge_data (the flat buffer).
 /// Canonical group IDs come from edge.id.
-template <typename Index, typename GetPoint>
+template <typename Index, typename GetPoint, typename Int>
 auto detect_crossings_brute(const Index *edge_ids, std::size_t k,
                             const tf::buffer<edge<Index>> &edge_data, int ax0,
                             int ax1, const GetPoint &get_point,
                             tf::buffer<crossing_record<Index>> &out,
-                            tf::intersect_mode mode) -> void {
+                            tf::intersect_mode mode,
+                            const tf::exact::predicate_kernel<Int> &kernel)
+    -> void {
   if (!(mode & tf::intersect_mode::resolve_self_crossing_contours) &&
       has_a_single_contour(edge_ids, k, edge_data))
     return;
@@ -137,7 +140,8 @@ auto detect_crossings_brute(const Index *edge_ids, std::size_t k,
       if (ea.tag_other == eb.tag_other &&
           !(mode & tf::intersect_mode::resolve_self_crossing_contours))
         continue;
-      test_edge_pair<Index>(ea, eb, ea.id, eb.id, ax0, ax1, get_point, out);
+      test_edge_pair<Index>(ea, eb, ea.id, eb.id, ax0, ax1, get_point, out,
+                            kernel);
     }
   }
 }
@@ -153,7 +157,9 @@ auto detect_crossings_tree(const Index *edge_ids, std::size_t k,
                            tf::points_buffer<Int, 2> &pts_2d,
                            tf::buffer<int> &edge_pairs,
                            tf::aabb_tree<int, Int, 2> &tree,
-                           tf::intersect_mode mode) -> void {
+                           tf::intersect_mode mode,
+                           const tf::exact::predicate_kernel<Int> &kernel)
+    -> void {
   if (!(mode & tf::intersect_mode::resolve_self_crossing_contours) &&
       has_a_single_contour(edge_ids, k, edge_data))
     return;
@@ -180,7 +186,8 @@ auto detect_crossings_tree(const Index *edge_ids, std::size_t k,
         if (ea.tag_other == eb.tag_other &&
             !(mode & tf::intersect_mode::resolve_self_crossing_contours))
           return;
-        test_edge_pair<Index>(ea, eb, ea.id, eb.id, ax0, ax1, get_point, out);
+        test_edge_pair<Index>(ea, eb, ea.id, eb.id, ax0, ax1, get_point, out,
+                              kernel);
       },
       /*parallelism_depth=*/0);
 }
@@ -190,13 +197,14 @@ auto detect_crossings_tree(const Index *edge_ids, std::size_t k,
 /// _edges stores instance indices into _edge_defs.data_buffer().
 /// Each instance carries its own (tag, tag_other) for correct triple
 /// construction even with duplicate triangles.
-template <typename Index, typename ApplyToFace, typename GetPoint>
+template <typename Index, typename ApplyToFace, typename GetPoint, typename Int>
 auto gather_crossing_records(
     const tf::offset_block_buffer<Index, Index> &edges,
     const tf::offset_block_buffer<Index, edge<Index>> &edge_defs,
     const ApplyToFace &apply_to_face, const GetPoint &get_point,
-    tf::intersect_mode mode) -> tf::buffer<crossing_record<Index>> {
-  using Int = tf::coordinate_type<decltype(get_point(-1, 0))>;
+    tf::intersect_mode mode,
+    const tf::exact::predicate_kernel<Int> &kernel)
+    -> tf::buffer<crossing_record<Index>> {
   struct local_t {
     tf::buffer<crossing_record<Index>> records;
     tf::points_buffer<Int, 2> pts_2d;
@@ -224,11 +232,13 @@ auto gather_crossing_records(
 
         if (k <= 8)
           detect_crossings_brute<Index>(face_edges.begin(), k, edge_data, ax0,
-                                        ax1, get_point_f, local.records, mode);
+                                        ax1, get_point_f, local.records, mode,
+                                        kernel);
         else
           detect_crossings_tree<Index>(
               face_edges.begin(), k, edge_data, ax0, ax1, get_point_f,
-              local.records, local.pts_2d, local.edge_pairs, local.tree, mode);
+              local.records, local.pts_2d, local.edge_pairs, local.tree, mode,
+              kernel);
       });
     }
   };

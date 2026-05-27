@@ -30,7 +30,8 @@ template <typename Index0, typename RealT, std::size_t Ngon0, std::size_t Dims,
 auto intersection_curves(
     mesh_wrapper<Index0, RealT, Ngon0, Dims> &form_wrapper0,
     mesh_wrapper<Index1, RealT, Ngon1, Dims> &form_wrapper1,
-    tf::intersect_mode mode = tf::intersect_mode::sos) {
+    tf::intersect_mode mode = tf::intersect_mode::sos,
+    double tolerance = 0.0) {
   bool has0 = form_wrapper0.has_transformation();
   bool has1 = form_wrapper1.has_transformation();
   auto form0 = form_wrapper0.make_primitive_range() |
@@ -41,8 +42,9 @@ auto intersection_curves(
                tf::tag(form_wrapper1.manifold_edge_link()) |
                tf::tag(form_wrapper1.face_membership()) |
                tf::tag(form_wrapper1.tree());
-  auto make_return = [mode](auto &&form0, auto &&form1) {
-    auto curves = tf::make_intersection_curves(form0, form1, mode);
+  tf::intersect_config cfg{mode, tolerance};
+  auto make_return = [cfg](auto &&form0, auto &&form1) {
+    auto curves = tf::make_intersection_curves(form0, form1, cfg);
     auto [paths, c_points] = make_numpy_array(std::move(curves));
     return nanobind::make_tuple(nanobind::make_tuple(paths.first, paths.second),
                                 std::move(c_points));
@@ -66,14 +68,16 @@ auto intersection_curves(
 template <typename Index, typename RealT, std::size_t Ngon, std::size_t Dims>
 auto intersection_curves(
     std::vector<mesh_wrapper<Index, RealT, Ngon, Dims>> &wrappers,
-    tf::intersect_mode mode = tf::intersect_mode::sos) {
+    tf::intersect_mode mode = tf::intersect_mode::sos,
+    double tolerance = 0.0) {
   bool any_transformed = false;
   for (auto &w : wrappers)
     if (w.has_transformation())
       any_transformed = true;
 
-  auto run = [mode](const auto &forms) {
-    auto curves = tf::make_intersection_curves(forms, mode);
+  tf::intersect_config cfg{mode, tolerance};
+  auto run = [cfg](const auto &forms) {
+    auto curves = tf::make_intersection_curves(forms, cfg);
     auto [paths, c_points] = make_numpy_array(std::move(curves));
     return nanobind::make_tuple(nanobind::make_tuple(paths.first, paths.second),
                                 std::move(c_points));

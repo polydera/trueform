@@ -20,33 +20,33 @@ auto register_embedded_self_intersection_curves_int643float3d(nanobind::module_ 
 
   // Without curves
   m.def("embedded_self_intersection_curves_mesh_int643float3d",
-        [](mesh_wrapper<int64_t, float, 3, 3> &mesh, int mode) {
-          return embedded_self_intersection_curves(mesh, mode);
+        [](mesh_wrapper<int64_t, float, 3, 3> &mesh, int mode, double tolerance) {
+          return embedded_self_intersection_curves(mesh, mode, tolerance);
         },
-        nanobind::arg("mesh"), nanobind::arg("mode"));
+        nanobind::arg("mesh"), nanobind::arg("mode"), nanobind::arg("tolerance") = 0.0);
 
   // With curves
   m.def("embedded_self_intersection_curves_curves_mesh_int643float3d",
-        [](mesh_wrapper<int64_t, float, 3, 3> &mesh, int mode) {
-          return embedded_self_intersection_curves(mesh, mode, tf::return_curves);
+        [](mesh_wrapper<int64_t, float, 3, 3> &mesh, int mode, double tolerance) {
+          return embedded_self_intersection_curves(mesh, mode, tolerance, tf::return_curves);
         },
-        nanobind::arg("mesh"), nanobind::arg("mode"));
+        nanobind::arg("mesh"), nanobind::arg("mode"), nanobind::arg("tolerance") = 0.0);
 
   // int64, dynamic, float32, 3D
 
   // Without curves
   m.def("embedded_self_intersection_curves_mesh_int64dynfloat3d",
-        [](mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh, int mode) {
-          return embedded_self_intersection_curves(mesh, mode);
+        [](mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh, int mode, double tolerance) {
+          return embedded_self_intersection_curves(mesh, mode, tolerance);
         },
-        nanobind::arg("mesh"), nanobind::arg("mode"));
+        nanobind::arg("mesh"), nanobind::arg("mode"), nanobind::arg("tolerance") = 0.0);
 
   // With curves
   m.def("embedded_self_intersection_curves_curves_mesh_int64dynfloat3d",
-        [](mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh, int mode) {
-          return embedded_self_intersection_curves(mesh, mode, tf::return_curves);
+        [](mesh_wrapper<int64_t, float, dynamic_size, 3> &mesh, int mode, double tolerance) {
+          return embedded_self_intersection_curves(mesh, mode, tolerance, tf::return_curves);
         },
-        nanobind::arg("mesh"), nanobind::arg("mode"));
+        nanobind::arg("mesh"), nanobind::arg("mode"), nanobind::arg("tolerance") = 0.0);
 }
 
 } // namespace tf::py

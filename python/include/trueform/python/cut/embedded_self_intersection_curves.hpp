@@ -24,13 +24,15 @@
 namespace tf::py {
 template <typename Index0, typename RealT, std::size_t Ngon0, std::size_t Dims>
 auto embedded_self_intersection_curves(
-    mesh_wrapper<Index0, RealT, Ngon0, Dims> &form_wrapper, int mode) {
+    mesh_wrapper<Index0, RealT, Ngon0, Dims> &form_wrapper, int mode,
+    double tolerance) {
   auto form0 = form_wrapper.make_primitive_range() |
                tf::tag(form_wrapper.manifold_edge_link()) |
                tf::tag(form_wrapper.face_membership()) |
                tf::tag(form_wrapper.tree());
   auto [result_mesh, face_labels] = tf::embedded_self_intersection_curves(
-      form0, static_cast<tf::intersect_mode>(mode));
+      form0,
+      tf::intersect_config{static_cast<tf::intersect_mode>(mode), tolerance});
   return nanobind::make_tuple(make_numpy_array(std::move(result_mesh)),
                               make_numpy_array(std::move(face_labels)));
 }
@@ -38,13 +40,15 @@ auto embedded_self_intersection_curves(
 template <typename Index0, typename RealT, std::size_t Ngon0, std::size_t Dims>
 auto embedded_self_intersection_curves(
     mesh_wrapper<Index0, RealT, Ngon0, Dims> &form_wrapper, int mode,
-    tf::return_curves_t) {
+    double tolerance, tf::return_curves_t) {
   auto form0 = form_wrapper.make_primitive_range() |
                tf::tag(form_wrapper.manifold_edge_link()) |
                tf::tag(form_wrapper.face_membership()) |
                tf::tag(form_wrapper.tree());
   auto [polygons, face_labels, curves] = tf::embedded_self_intersection_curves(
-      form0, static_cast<tf::intersect_mode>(mode), tf::return_curves);
+      form0,
+      tf::intersect_config{static_cast<tf::intersect_mode>(mode), tolerance},
+      tf::return_curves);
   auto mesh_pair = make_numpy_array(std::move(polygons));
   auto face_labels_array = make_numpy_array(std::move(face_labels));
   auto [paths, c_points] = make_numpy_array(std::move(curves));

@@ -12,9 +12,12 @@
  */
 
 #include <algorithm>
+#include <array>
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_template_test_macros.hpp>
 #include <set>
+#include <vector>
 #include <trueform/trueform.hpp>
 #include "type_traits.hpp"
 
@@ -182,4 +185,90 @@ TEST_CASE("mesh_arrangements_box_cylinder_sphere", "[arrangements]") {
 
   // Closed inputs - closed output (the earcut coincident-vertex fix)
   REQUIRE(tf::make_boundary_edges(mesh.polygons()).size() == 0);
+}
+
+TEST_CASE("mesh_arrangements_tolerance_box_plane", "[arrangements][tolerance]") {
+  // Unit cube [-0.5, +0.5]^3 (volume = 1), with a planar quad at z = 0
+  // whose corners sit a small `gap` INSIDE the cube walls. With sufficient
+  // tolerance, the plane snaps onto the cube faces and splits the cube
+  // into two halves of volume 0.5 each. With zero tolerance, the plane
+  // stays a detached fin and the cube remains a single closed region.
+  using index_t = int;
+  using real_t = float;
+
+  const real_t gap = real_t(1e-4);
+  const real_t half_extent = real_t(0.5) - gap;
+
+  auto cube = tf::make_box_mesh<index_t>(real_t(1), real_t(1), real_t(1));
+
+  tf::polygons_buffer<index_t, real_t, 3, 3> plane;
+  plane.points_buffer().allocate(4);
+  plane.faces_buffer().allocate(2);
+  plane.points_buffer()[0] =
+      tf::point<real_t, 3>{-half_extent, -half_extent, real_t(0)};
+  plane.points_buffer()[1] =
+      tf::point<real_t, 3>{+half_extent, -half_extent, real_t(0)};
+  plane.points_buffer()[2] =
+      tf::point<real_t, 3>{+half_extent, +half_extent, real_t(0)};
+  plane.points_buffer()[3] =
+      tf::point<real_t, 3>{-half_extent, +half_extent, real_t(0)};
+  plane.faces_buffer()[0] = std::array<index_t, 3>{0, 1, 2};
+  plane.faces_buffer()[1] = std::array<index_t, 3>{0, 2, 3};
+
+  const std::array forms{cube.polygons(), plane.polygons()};
+
+  SECTION("tolerance >> gap: plane snaps to cube, splits into 2 halves") {
+    const double tol = 1e-3;  // tol >> gap (= 1e-4)
+
+    auto [mesh, tag_labels, face_labels] = tf::make_mesh_arrangements(
+        tf::make_range(forms.begin(), forms.end()),
+        tf::intersect_config{tf::intersect_mode::primitives, tol});
+
+    auto cleaned = tf::cleaned(mesh.polygons(), real_t(tol));
+    tf::orient_faces_consistently(cleaned.polygons());
+    auto labels = tf::make_domain_labels(
+        cleaned.polygons(), tf::domain_config::ignore_open_fragments);
+
+    // outer + upper half + lower half
+    REQUIRE(labels.n_domains == 3);
+
+    auto [domain_meshes, domain_ids] =
+        tf::split_into_domains(cleaned.polygons(), labels);
+    REQUIRE(domain_meshes.size() == 3);
+
+    std::vector<double> volumes;
+    for (auto &dm : domain_meshes)
+      volumes.push_back(double(tf::signed_volume(dm.polygons())));
+    std::sort(volumes.begin(), volumes.end());
+
+    // outer (cube surface with inward normals) → -1; two inner halves → +0.5 each
+    REQUIRE(volumes[0] == Catch::Approx(-1.0).margin(0.01));
+    REQUIRE(volumes[1] == Catch::Approx(+0.5).margin(0.01));
+    REQUIRE(volumes[2] == Catch::Approx(+0.5).margin(0.01));
+  }
+
+  SECTION("tolerance = 0: plane stays detached, cube remains whole") {
+    auto [mesh, tag_labels, face_labels] = tf::make_mesh_arrangements(
+        tf::make_range(forms.begin(), forms.end()),
+        tf::intersect_config{tf::intersect_mode::primitives, 0.0});
+
+    tf::orient_faces_consistently(mesh.polygons());
+    auto labels = tf::make_domain_labels(
+        mesh.polygons(), tf::domain_config::ignore_open_fragments);
+
+    // outer + cube interior (plane fin discarded by ignore_open_fragments)
+    REQUIRE(labels.n_domains == 2);
+
+    auto [domain_meshes, domain_ids] =
+        tf::split_into_domains(mesh.polygons(), labels);
+    REQUIRE(domain_meshes.size() == 2);
+
+    std::vector<double> volumes;
+    for (auto &dm : domain_meshes)
+      volumes.push_back(double(tf::signed_volume(dm.polygons())));
+    std::sort(volumes.begin(), volumes.end());
+
+    REQUIRE(volumes[0] == Catch::Approx(-1.0).margin(0.01));
+    REQUIRE(volumes[1] == Catch::Approx(+1.0).margin(0.01));
+  }
 }

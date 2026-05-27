@@ -23,6 +23,7 @@ def self_intersection_curves(
     mesh: Mesh,
     *,
     mode: str = "sos",
+    tolerance: float = 0.0,
     resolve_crossings: bool = True,
     resolve_self_crossings: bool = True
 ) -> Tuple[OffsetBlockedArray, np.ndarray]:
@@ -36,6 +37,8 @@ def self_intersection_curves(
     mode : str, default "sos"
         Intersection mode. "sos" = SoS (fast), "primitives" = handles
         shared edges/vertices.
+    tolerance : float, default 0.0
+        World-coordinate distance band for predicate tolerance (0 = exact).
     resolve_crossings : bool, default True
         Resolve crossings between different contours on the same face.
     resolve_self_crossings : bool, default True
@@ -75,7 +78,7 @@ def self_intersection_curves(
 
     func_name = f"self_intersection_curves_mesh_{suffix}"
     (paths_offsets, paths_data), points = getattr(_trueform.intersect, func_name)(
-        mesh._wrapper, m
+        mesh._wrapper, m, tolerance
     )
 
     return OffsetBlockedArray(paths_offsets, paths_data), points

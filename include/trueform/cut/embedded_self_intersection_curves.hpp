@@ -14,6 +14,7 @@
 #include "../core/algorithm/parallel_copy.hpp"
 #include "../core/curves_buffer.hpp"
 #include "../exact/resolve_int_type.hpp"
+#include "../intersect/intersect_config.hpp"
 #include "../topology/connect_edges_to_paths.hpp"
 #include "./construct/embedded_intersection_curves.hpp"
 #include "./dispatch/build_self_pipeline.hpp"
@@ -28,9 +29,9 @@ template <typename Int = tf::none_t,
           typename OutputCoordinateType = tf::none_t, typename Policy>
 auto embedded_self_intersection_curves(
     const tf::polygons<Policy> &_polygons,
-    tf::intersect_mode mode = tf::intersect_mode::primitives |
-                              tf::intersect_mode::resolve_contours) {
-  return cut::dispatch::self_boolean(_polygons, [mode](const auto &p) {
+    tf::intersect_config config = {tf::intersect_mode::primitives |
+                                   tf::intersect_mode::resolve_contours}) {
+  return cut::dispatch::self_boolean(_polygons, [config](const auto &p) {
     using Index = std::decay_t<decltype(p.faces()[0][0])>;
     using InputReal = tf::coordinate_type<std::decay_t<decltype(p)>>;
     using ResolvedInt = tf::exact::resolve_int_type<Int, InputReal>;
@@ -41,7 +42,7 @@ auto embedded_self_intersection_curves(
                            InputReal, OutputCoordinateType>;
     auto [iwp, ig, fc, cg] =
         cut::dispatch::build_self_pipeline<Index, PipelineReal, ResolvedInt>(
-            p, mode);
+            p, config);
     auto [res, fl] =
         tf::cut::embedded_intersection_curves<Index, OutputCoordinateType>(
             p, ig, fc, iwp.converter(), Index(0));
@@ -63,8 +64,9 @@ template <typename Int = tf::none_t,
 auto embedded_self_intersection_curves(const tf::polygons<Policy> &_polygons,
                                        tf::return_curves_t) {
   return embedded_self_intersection_curves<Int, OutputCoordinateType>(
-      _polygons, tf::intersect_mode::primitives |
-                     tf::intersect_mode::resolve_contours,
+      _polygons,
+      tf::intersect_config{tf::intersect_mode::primitives |
+                           tf::intersect_mode::resolve_contours},
       tf::return_curves);
 }
 
@@ -74,9 +76,9 @@ auto embedded_self_intersection_curves(const tf::polygons<Policy> &_polygons,
 template <typename Int = tf::none_t,
           typename OutputCoordinateType = tf::none_t, typename Policy>
 auto embedded_self_intersection_curves(const tf::polygons<Policy> &_polygons,
-                                       tf::intersect_mode mode,
+                                       tf::intersect_config config,
                                        tf::return_curves_t) {
-  return cut::dispatch::self_boolean(_polygons, [mode](const auto &p) {
+  return cut::dispatch::self_boolean(_polygons, [config](const auto &p) {
     using Index = std::decay_t<decltype(p.faces()[0][0])>;
     using InputReal = tf::coordinate_type<std::decay_t<decltype(p)>>;
     using ResolvedInt = tf::exact::resolve_int_type<Int, InputReal>;
@@ -87,7 +89,7 @@ auto embedded_self_intersection_curves(const tf::polygons<Policy> &_polygons,
                            InputReal, OutputCoordinateType>;
     auto [iwp, ig, fc, cg] =
         cut::dispatch::build_self_pipeline<Index, PipelineReal, ResolvedInt>(
-            p, mode);
+            p, config);
     auto [res, fl] =
         tf::cut::embedded_intersection_curves<Index, OutputCoordinateType>(
             p, ig, fc, iwp.converter(), Index(0));

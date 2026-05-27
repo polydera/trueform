@@ -68,10 +68,10 @@ auto make_tube_mesh(const tf::curve<3, CurvePolicy> &curve, RealT radius,
   tbb::task_group tg;
 
   // Ring vertices (parallel)
-  tg.run([&] {
+  tg.run([&, &normals = normals, &binormals = binormals] {
     tf::parallel_for_each(
         tf::make_sequence_range(ring_count),
-        [&](std::size_t i) {
+        [&, &normals = normals, &binormals = binormals](std::size_t i) {
           auto pt = curve[i];
           auto &&ni = normals[i];
           auto &&bi = binormals[i];

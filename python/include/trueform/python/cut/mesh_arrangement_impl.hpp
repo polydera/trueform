@@ -25,15 +25,17 @@ namespace tf::py {
 
 template <typename Index, typename RealT, std::size_t Ngon, std::size_t Dims>
 auto mesh_arrangements(
-    std::vector<mesh_wrapper<Index, RealT, Ngon, Dims>> &wrappers, int mode) {
+    std::vector<mesh_wrapper<Index, RealT, Ngon, Dims>> &wrappers, int mode,
+    double tolerance) {
   bool any_transformed = false;
   for (auto &w : wrappers)
     if (w.has_transformation())
       any_transformed = true;
 
-  auto run = [mode](const auto &forms) {
+  auto run = [mode, tolerance](const auto &forms) {
     auto [mesh, tag_labels, face_labels] = tf::make_mesh_arrangements(
-        forms, static_cast<tf::intersect_mode>(mode));
+        forms,
+        tf::intersect_config{static_cast<tf::intersect_mode>(mode), tolerance});
     return nanobind::make_tuple(make_numpy_array(std::move(mesh)),
                                 make_numpy_array(std::move(tag_labels)),
                                 make_numpy_array(std::move(face_labels)));
@@ -67,16 +69,19 @@ auto mesh_arrangements(
 template <typename Index, typename RealT, std::size_t Ngon, std::size_t Dims>
 auto mesh_arrangements(
     std::vector<mesh_wrapper<Index, RealT, Ngon, Dims>> &wrappers, int mode,
-    tf::return_curves_t) {
+    double tolerance, tf::return_curves_t) {
   bool any_transformed = false;
   for (auto &w : wrappers)
     if (w.has_transformation())
       any_transformed = true;
 
-  auto run = [mode](const auto &forms) {
+  auto run = [mode, tolerance](const auto &forms) {
     auto [mesh, tag_labels, face_labels, curves] =
         tf::make_mesh_arrangements(
-            forms, static_cast<tf::intersect_mode>(mode), tf::return_curves);
+            forms,
+            tf::intersect_config{static_cast<tf::intersect_mode>(mode),
+                                 tolerance},
+            tf::return_curves);
     auto mesh_pair = make_numpy_array(std::move(mesh));
     auto tag_array = make_numpy_array(std::move(tag_labels));
     auto face_array = make_numpy_array(std::move(face_labels));

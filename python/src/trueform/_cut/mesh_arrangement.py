@@ -25,6 +25,7 @@ def mesh_arrangements(
     *,
     return_curves: bool = False,
     mode: str = "primitives",
+    tolerance: float = 0.0,
     resolve_crossings: bool = None,
     resolve_self_crossings: bool = False
 ):
@@ -43,6 +44,8 @@ def mesh_arrangements(
         If True, also return intersection curves.
     mode : str, default "primitives"
         Intersection mode. "sos" or "primitives".
+    tolerance : float, default 0.0
+        World-coordinate distance band for predicate tolerance (0 = exact).
     resolve_crossings : bool, optional
         Resolve crossings between different contours on the same face.
         Default: False for 2 meshes, True for 3+ meshes.
@@ -138,7 +141,7 @@ def mesh_arrangements(
         (result_faces, result_points), tag_labels, face_labels, \
             ((paths_offsets, paths_data), curve_points) = getattr(
                 _trueform.cut, func_name
-            )(wrappers, mode_int)
+            )(wrappers, mode_int, tolerance)
         if result_is_dynamic:
             result_faces = OffsetBlockedArray(result_faces[0], result_faces[1])
         paths = OffsetBlockedArray(paths_offsets, paths_data)
@@ -148,7 +151,7 @@ def mesh_arrangements(
         func_name = f"mesh_arrangements_{suffix}"
         (result_faces, result_points), tag_labels, face_labels = getattr(
             _trueform.cut, func_name
-        )(wrappers, mode_int)
+        )(wrappers, mode_int, tolerance)
         if result_is_dynamic:
             result_faces = OffsetBlockedArray(result_faces[0], result_faces[1])
         return (result_faces, result_points), tag_labels, face_labels

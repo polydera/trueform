@@ -99,6 +99,7 @@
 #include "./core/hash_map.hpp"                    // IWYU pragma: export
 #include "./core/hash_set.hpp"                    // IWYU pragma: export
 #include "./core/index_hash_map.hpp"              // IWYU pragma: export
+#include "./core/inflated_aabb.hpp"               // IWYU pragma: export
 #include "./core/intersect_status.hpp"            // IWYU pragma: export
 #include "./core/intersects.hpp"                  // IWYU pragma: export
 #include "./core/interval.hpp"                    // IWYU pragma: export

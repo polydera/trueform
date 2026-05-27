@@ -40,5 +40,13 @@ target_compile_options(alignment PRIVATE
   $<$<CXX_COMPILER_ID:MSVC>:/W3 /bigobj /wd4244 /wd4267 /wd4458 /wd4701>
 )
 
+# Arrangements example
+add_executable(arrangements src/arrangements.cpp)
+target_link_libraries(arrangements PRIVATE tf::trueform)
+target_compile_options(arrangements PRIVATE
+  $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Wpedantic>
+  $<$<CXX_COMPILER_ID:MSVC>:/W3 /bigobj /wd4244 /wd4267 /wd4458 /wd4701>
+)
+
 # Collect all example targets
-add_custom_target(trueform_examples DEPENDS mesh_assembly alignment)
+add_custom_target(trueform_examples DEPENDS mesh_assembly alignment arrangements)

@@ -12,8 +12,10 @@
  */
 #pragma once
 
-#include "../../intersect/intersections_within_polygons.hpp"
+#include "../../intersect/exact/make_kernel.hpp"
 #include "../../intersect/graph/intersection_graph.hpp"
+#include "../../intersect/intersect_config.hpp"
+#include "../../intersect/intersections_within_polygons.hpp"
 #include "../cut_graph.hpp"
 #include "../face_cuts.hpp"
 
@@ -21,9 +23,9 @@ namespace tf::cut::dispatch {
 
 template <typename Index, typename RealType, typename Int, typename Policy>
 auto build_self_pipeline(const tf::polygons<Policy> &p,
-                         tf::intersect_mode mode) {
+                         tf::intersect_config config) {
   tf::intersections_within_polygons<Index, RealType, Int> iwp;
-  iwp.build(p, mode);
+  iwp.build(p, config);
 
   auto &conv = iwp.converter();
   auto apply_to_face = [&](int, Index object, const auto &f) {
@@ -34,7 +36,8 @@ auto build_self_pipeline(const tf::polygons<Policy> &p,
   };
 
   tf::intersection_graph<Index, Int> ig;
-  ig.build(iwp, apply_to_face, get_mesh_point, mode);
+  ig.build(iwp, apply_to_face, get_mesh_point, config.mode,
+           tf::exact::make_kernel(conv, config.tolerance));
 
   tf::face_cuts<Index, Int> fc;
   fc.build(ig, apply_to_face, get_mesh_point);

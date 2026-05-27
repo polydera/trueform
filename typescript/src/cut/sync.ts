@@ -18,7 +18,7 @@ import {
 import type { FloatDtype } from "../ndarray/dtype";
 import { Mesh } from "../form/Mesh";
 import { Curves } from "../form/Curves";
-import { IntersectOpts, buildMode } from "../intersect/sync";
+import { IntersectOpts, buildMode, getTolerance } from "../intersect/sync";
 import { assertSameDtype } from "../internal/dtype";
 
 /** Result of a boolean operation. */
@@ -286,16 +286,17 @@ export function embeddedIntersectionCurves(
   assertSameDtype([m0, m1], ["mesh0", "mesh1"]);
   const dt = m0.dtype;
   const mode = buildMode(opts, "primitives", false, false);
+  const tolerance = getTolerance(opts);
   if (opts?.returnCurves) {
     return wrapCutWithCurves(
       native()[`embedded_intersection_curves_with_curves_${dt}`](
-        m0._handle, m1._handle, mode,
+        m0._handle, m1._handle, mode, tolerance,
       ), dt,
     );
   }
   return wrapCut(
     native()[`embedded_intersection_curves_${dt}`](
-      m0._handle, m1._handle, mode,
+      m0._handle, m1._handle, mode, tolerance,
     ), dt,
   );
 }
@@ -370,14 +371,15 @@ export function meshArrangements(
   const dt = meshes[0].dtype;
   const rc = opts?.resolveCrossings ?? (meshes.length > 2);
   const mode = buildMode(opts, "primitives", rc, false);
+  const tolerance = getTolerance(opts);
   const handles = meshes.map(m => m._handle);
   if (opts?.returnCurves) {
     return wrapArrangementWithCurves(
-      native()[`mesh_arrangements_with_curves_${dt}`](handles, mode), dt,
+      native()[`mesh_arrangements_with_curves_${dt}`](handles, mode, tolerance), dt,
     );
   }
   return wrapArrangement(
-    native()[`mesh_arrangements_${dt}`](handles, mode), dt,
+    native()[`mesh_arrangements_${dt}`](handles, mode, tolerance), dt,
   );
 }
 
@@ -398,15 +400,16 @@ export function embeddedSelfIntersectionCurves(
 ): CutResult | CutResultWithCurves {
   const dt = mesh.dtype;
   const mode = buildMode(opts, "primitives", true, true);
+  const tolerance = getTolerance(opts);
   if (opts?.returnCurves) {
     return wrapCutWithCurves(
       native()[`embedded_self_intersection_curves_with_curves_${dt}`](
-        mesh._handle, mode,
+        mesh._handle, mode, tolerance,
       ), dt,
     );
   }
   return wrapCut(
-    native()[`embedded_self_intersection_curves_${dt}`](mesh._handle, mode),
+    native()[`embedded_self_intersection_curves_${dt}`](mesh._handle, mode, tolerance),
     dt,
   );
 }
@@ -470,13 +473,14 @@ export function polygonArrangements(
 ): PolygonArrangementResult | PolygonArrangementResultWithCurves {
   const dt = mesh.dtype;
   const mode = buildMode(opts, "primitives", true, true);
+  const tolerance = getTolerance(opts);
   if (opts?.returnCurves) {
     return wrapPolygonArrangementWithCurves(
-      native()[`polygon_arrangements_with_curves_${dt}`](mesh._handle, mode),
+      native()[`polygon_arrangements_with_curves_${dt}`](mesh._handle, mode, tolerance),
       dt,
     );
   }
   return wrapPolygonArrangement(
-    native()[`polygon_arrangements_${dt}`](mesh._handle, mode), dt,
+    native()[`polygon_arrangements_${dt}`](mesh._handle, mode, tolerance), dt,
   );
 }

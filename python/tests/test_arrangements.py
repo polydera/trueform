@@ -315,6 +315,74 @@ def test_all_sources_same_point_count(index_dtype, dtype, mesh_type):
 
 
 # ==============================================================================
+# Tolerance: cube + inward-offset plane (mirrors the C++ test
+# mesh_arrangements_tolerance_box_plane in tests/cut/test_mesh_arrangements.cpp).
+# ==============================================================================
+
+def test_mesh_arrangements_tolerance_box_plane():
+    """Cube [-0.5,0.5]^3 with a plane at z=0 whose corners sit `gap`
+    INSIDE the cube walls. With tolerance >> gap the plane snaps onto
+    the cube faces and splits the cube into two halves (3 domains:
+    outer + upper + lower). With tolerance=0 the plane stays a
+    detached fin and the cube remains whole (2 domains: outer + cube).
+    """
+    gap = 1e-4
+    half_extent = 0.5 - gap
+
+    cube_faces, cube_points = tf.make_box_mesh(1.0, 1.0, 1.0)
+    cube = prepare_mesh(tf.Mesh(cube_faces, cube_points))
+
+    plane_points = np.array([
+        [-half_extent, -half_extent, 0.0],
+        [+half_extent, -half_extent, 0.0],
+        [+half_extent, +half_extent, 0.0],
+        [-half_extent, +half_extent, 0.0],
+    ], dtype=cube_points.dtype)
+    plane_faces = np.array([[0, 1, 2], [0, 2, 3]], dtype=cube_faces.dtype)
+    plane = prepare_mesh(tf.Mesh(plane_faces, plane_points))
+
+    # --- Case 1: tolerance >> gap → 3 domains, inner halves of volume 0.5
+    tol = 1e-3
+    (faces, points), _, _ = tf.mesh_arrangements([cube, plane], tolerance=tol)
+
+    cleaned_faces, cleaned_points = tf.cleaned((faces, points), tol)
+    new_faces = tf.orient_faces_consistently((cleaned_faces, cleaned_points))
+    oriented = tf.Mesh(new_faces, cleaned_points)
+
+    dl = tf.domain_labels(oriented, ignore_open_fragments=True)
+    n_domains = dl[1]
+    assert n_domains == 3, (
+        f"tol >> gap: expected 3 domains (outer + 2 halves), got {n_domains}")
+
+    comps, _ = tf.split_into_domains(oriented, dl)
+    volumes = sorted(tf.signed_volume(c) for c in comps)
+    assert abs(volumes[0] - (-1.0)) < 0.01, \
+        f"outer shell volume: expected -1.0, got {volumes[0]}"
+    assert abs(volumes[1] - 0.5) < 0.01, \
+        f"lower half volume: expected 0.5, got {volumes[1]}"
+    assert abs(volumes[2] - 0.5) < 0.01, \
+        f"upper half volume: expected 0.5, got {volumes[2]}"
+
+    # --- Case 2: tolerance = 0 → 2 domains, single cube interior of volume 1
+    (faces, points), _, _ = tf.mesh_arrangements([cube, plane], tolerance=0.0)
+
+    new_faces = tf.orient_faces_consistently((faces, points))
+    oriented = tf.Mesh(new_faces, points)
+
+    dl = tf.domain_labels(oriented, ignore_open_fragments=True)
+    n_domains = dl[1]
+    assert n_domains == 2, (
+        f"tol = 0: expected 2 domains (outer + cube), got {n_domains}")
+
+    comps, _ = tf.split_into_domains(oriented, dl)
+    volumes = sorted(tf.signed_volume(c) for c in comps)
+    assert abs(volumes[0] - (-1.0)) < 0.01, \
+        f"outer shell volume: expected -1.0, got {volumes[0]}"
+    assert abs(volumes[1] - 1.0) < 0.01, \
+        f"cube interior volume: expected 1.0, got {volumes[1]}"
+
+
+# ==============================================================================
 
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-v"]))

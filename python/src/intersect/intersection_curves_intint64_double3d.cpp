@@ -19,39 +19,39 @@ auto register_intersection_curves_intint64_double3d(nanobind::module_ &m) -> voi
 
   m.def("intersection_curves_mesh_mesh_intint6433double3d",
         [](mesh_wrapper<int, double, 3, 3> &mesh0,
-           mesh_wrapper<int64_t, double, 3, 3> &mesh1, int mode) {
+           mesh_wrapper<int64_t, double, 3, 3> &mesh1, int mode, double tolerance) {
           return intersection_curves(mesh0, mesh1,
-                                     static_cast<tf::intersect_mode>(mode));
+                                     static_cast<tf::intersect_mode>(mode), tolerance);
         },
         nanobind::arg("mesh0"), nanobind::arg("mesh1"),
-        nanobind::arg("mode") = 0);
+        nanobind::arg("mode") = 0, nanobind::arg("tolerance") = 0.0);
 
   m.def("intersection_curves_mesh_mesh_intint643dyndouble3d",
         [](mesh_wrapper<int, double, 3, 3> &mesh0,
-           mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh1, int mode) {
+           mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh1, int mode, double tolerance) {
           return intersection_curves(mesh0, mesh1,
-                                     static_cast<tf::intersect_mode>(mode));
+                                     static_cast<tf::intersect_mode>(mode), tolerance);
         },
         nanobind::arg("mesh0"), nanobind::arg("mesh1"),
-        nanobind::arg("mode") = 0);
+        nanobind::arg("mode") = 0, nanobind::arg("tolerance") = 0.0);
 
   m.def("intersection_curves_mesh_mesh_intint64dyn3double3d",
         [](mesh_wrapper<int, double, dynamic_size, 3> &mesh0,
-           mesh_wrapper<int64_t, double, 3, 3> &mesh1, int mode) {
+           mesh_wrapper<int64_t, double, 3, 3> &mesh1, int mode, double tolerance) {
           return intersection_curves(mesh0, mesh1,
-                                     static_cast<tf::intersect_mode>(mode));
+                                     static_cast<tf::intersect_mode>(mode), tolerance);
         },
         nanobind::arg("mesh0"), nanobind::arg("mesh1"),
-        nanobind::arg("mode") = 0);
+        nanobind::arg("mode") = 0, nanobind::arg("tolerance") = 0.0);
 
   m.def("intersection_curves_mesh_mesh_intint64dyndyndouble3d",
         [](mesh_wrapper<int, double, dynamic_size, 3> &mesh0,
-           mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh1, int mode) {
+           mesh_wrapper<int64_t, double, dynamic_size, 3> &mesh1, int mode, double tolerance) {
           return intersection_curves(mesh0, mesh1,
-                                     static_cast<tf::intersect_mode>(mode));
+                                     static_cast<tf::intersect_mode>(mode), tolerance);
         },
         nanobind::arg("mesh0"), nanobind::arg("mesh1"),
-        nanobind::arg("mode") = 0);
+        nanobind::arg("mode") = 0, nanobind::arg("tolerance") = 0.0);
 }
 
 } // namespace tf::py

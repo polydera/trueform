@@ -22,6 +22,8 @@ import type { FloatDtype } from "../ndarray/dtype";
 export interface IntersectOpts {
   /** Intersection mode: "sos" (fast) or "primitives" (handles shared geometry). */
   mode?: "sos" | "primitives";
+  /** World-coordinate distance band for predicate tolerance (0 = exact). */
+  tolerance?: number;
   /** Resolve crossings between different contours on the same face. */
   resolveCrossings?: boolean;
   /** Resolve self-crossings within a single contour. */
@@ -42,6 +44,10 @@ export function buildMode(
   if (opts?.resolveCrossings ?? defaultResolveCrossings) m |= RESOLVE_CROSSINGS;
   if (opts?.resolveSelfCrossings ?? defaultResolveSelfCrossings) m |= RESOLVE_SELF_CROSSINGS;
   return m;
+}
+
+export function getTolerance(opts: IntersectOpts | undefined): number {
+  return opts?.tolerance ?? 0.0;
 }
 
 /** Compute intersection curves between two meshes. */
@@ -71,17 +77,19 @@ export function intersectionCurves(
     const o = m1OrOpts as IntersectOpts | undefined;
     const rc = o?.resolveCrossings ?? (m0OrMeshes.length > 2);
     const mode = buildMode(o, "sos", rc, false);
+    const tolerance = getTolerance(o);
     const handles = m0OrMeshes.map(m => m._handle);
     return new Curves(
-      native()[`intersection_curves_list_${dt}`](handles, mode), dt,
+      native()[`intersection_curves_list_${dt}`](handles, mode, tolerance), dt,
     );
   }
   const m1 = m1OrOpts as Mesh;
   assertSameDtype([m0OrMeshes, m1], ["mesh0", "mesh1"]);
   const dt = m0OrMeshes.dtype as FloatDtype;
   const mode = buildMode(opts, "sos", false, false);
+  const tolerance = getTolerance(opts);
   return new Curves(
-    native()[`intersection_curves_${dt}`](m0OrMeshes._handle, m1._handle, mode),
+    native()[`intersection_curves_${dt}`](m0OrMeshes._handle, m1._handle, mode, tolerance),
     dt,
   );
 }
@@ -92,8 +100,9 @@ export function selfIntersectionCurves(
 ): Curves {
   const dt = mesh.dtype as FloatDtype;
   const mode = buildMode(opts, "sos", true, true);
+  const tolerance = getTolerance(opts);
   return new Curves(
-    native()[`self_intersection_curves_${dt}`](mesh._handle, mode), dt,
+    native()[`self_intersection_curves_${dt}`](mesh._handle, mode, tolerance), dt,
   );
 }
 

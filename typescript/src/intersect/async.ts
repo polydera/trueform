@@ -17,7 +17,7 @@ import { Mesh } from "../form/Mesh";
 import { Curves } from "../form/Curves";
 import { NDArrayFloat32, NDArrayFloat64 } from "../ndarray/NDArray";
 import type { FloatDtype } from "../ndarray/dtype";
-import { IntersectOpts, buildMode } from "./sync";
+import { IntersectOpts, buildMode, getTolerance } from "./sync";
 
 /** Compute intersection curves between two meshes, off the main thread. */
 export async function intersectionCurves(
@@ -44,9 +44,10 @@ export async function intersectionCurves(
     const o = m1OrOpts as IntersectOpts | undefined;
     const rc = o?.resolveCrossings ?? (m0OrMeshes.length > 2);
     const mode = buildMode(o, "sos", rc, false);
+    const tolerance = getTolerance(o);
     const handles = m0OrMeshes.map(m => m._handle);
     return dispatcher().run(
-      () => native()[`dispatch_intersection_curves_list_${dt}`](handles, mode),
+      () => native()[`dispatch_intersection_curves_list_${dt}`](handles, mode, tolerance),
       (raw) => new Curves(raw, dt),
     );
   }
@@ -54,9 +55,10 @@ export async function intersectionCurves(
   assertSameDtype([m0OrMeshes, m1], ["mesh0", "mesh1"]);
   const dt = m0OrMeshes.dtype as FloatDtype;
   const mode = buildMode(opts, "sos", false, false);
+  const tolerance = getTolerance(opts);
   return dispatcher().run(
     () => native()[`dispatch_intersection_curves_${dt}`](
-      m0OrMeshes._handle, m1._handle, mode,
+      m0OrMeshes._handle, m1._handle, mode, tolerance,
     ),
     (raw) => new Curves(raw, dt),
   );
@@ -68,9 +70,10 @@ export async function selfIntersectionCurves(
 ): Promise<Curves> {
   const dt = mesh.dtype as FloatDtype;
   const mode = buildMode(opts, "sos", true, true);
+  const tolerance = getTolerance(opts);
   return dispatcher().run(
     () => native()[`dispatch_self_intersection_curves_${dt}`](
-      mesh._handle, mode,
+      mesh._handle, mode, tolerance,
     ),
     (raw) => new Curves(raw, dt),
   );

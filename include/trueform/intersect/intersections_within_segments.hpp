@@ -13,17 +13,21 @@
 #pragma once
 #include "../core/algorithm/compute_offsets.hpp"
 #include "../core/algorithm/generic_generate.hpp"
+#include "../core/inflated_aabb.hpp"
 #include "../core/intersects.hpp"
 #include "../core/local_buffer.hpp"
 #include "../core/views/offset_block_range.hpp"
 #include "../exact/projection_axes.hpp"
-#include "../exact_coordinate_converter.hpp"
 #include "../exact/segment_intersect.hpp"
+#include "../exact_coordinate_converter.hpp"
 #include "../spatial/search_self.hpp"
 #include "../topology/policy/edge_membership.hpp"
 #include "./exact/dedup_segment_vertex_points.hpp"
 #include "./exact/duplicate_intersection.hpp"
 #include "./exact/intersection.hpp"
+#include "./exact/make_kernel.hpp"
+#include "./exact/predicate_kernel.hpp"
+#include "./intersect_config.hpp"
 #include "tbb/parallel_sort.h"
 
 namespace tf {
@@ -61,7 +65,9 @@ public:
     _intersections.clear();
   }
 
-  template <typename Policy> auto build(const tf::segments<Policy> &segments) {
+  template <typename Policy>
+  auto build(const tf::segments<Policy> &segments,
+             tf::intersect_config config = {}) {
     static_assert(tf::has_tree_policy<Policy>, "Use: segments | tf::tag(tree)");
     static_assert(tf::has_edge_membership_policy<Policy>,
                   "Use: segments | tf::tag(edge_membership)");
@@ -70,7 +76,8 @@ public:
     clear();
     _converter = tf::make_exact_coordinate_converter<Int, RealType>(segments);
 
-    auto [raw_intersections, raw_points] = generate_intersections(segments);
+    auto [raw_intersections, raw_points] = generate_intersections(
+        segments, tf::exact::make_kernel(_converter, config.tolerance));
 
     if (raw_points.size() == 0) {
       finalize(Index(0));
@@ -116,32 +123,37 @@ private:
   }
 
   template <typename Policy>
-  auto generate_intersections(const tf::segments<Policy> &segments) {
+  auto generate_intersections(const tf::segments<Policy> &segments,
+                              const tf::exact::predicate_kernel<Int> &kernel) {
     if (segments.size() < 1000)
-      return generate_intersections_impl(segments, 0);
+      return generate_intersections_impl(segments, 0, kernel);
     else
-      return generate_intersections_impl(segments, 6);
+      return generate_intersections_impl(segments, 6, kernel);
   }
 
   template <typename Policy>
-  auto generate_intersections_impl(const tf::segments<Policy> &segments,
-                                   int parallelism_depth) {
+  auto generate_intersections_impl(
+      const tf::segments<Policy> &segments, int parallelism_depth,
+      const tf::exact::predicate_kernel<Int> &kernel) {
     tf::local_buffer<tf::intersect::intersection<Index>> l_intersections;
     tf::local_buffer<tf::point<Int, Dims>> l_points;
     l_intersections.reserve_all(1000);
     l_points.reserve_all(1000);
 
     auto &conv = _converter;
+    auto pad = kernel.tolerance_int();
 
     tf::search_self(
         segments,
         [&](const auto &bv0, const auto &bv1) {
-          return tf::intersects(tf::make_aabb(conv(bv0.min), conv(bv0.max)),
-                                tf::make_aabb(conv(bv1.min), conv(bv1.max)));
+          return tf::intersects(
+              tf::make_aabb(conv(bv0.min), conv(bv0.max)),
+              tf::inflated_aabb(
+                  tf::make_aabb(conv(bv1.min), conv(bv1.max)), pad));
         },
         [&](const auto &seg0, const auto &seg1) {
           intersect_pair(seg0, seg1, segments.edge_membership(),
-                         *l_intersections, *l_points);
+                         *l_intersections, *l_points, kernel);
         },
         parallelism_depth);
 
@@ -201,7 +213,8 @@ private:
   template <typename Seg0, typename Seg1, typename EM>
   auto intersect_pair(const Seg0 &seg0, const Seg1 &seg1, const EM &em,
                       tf::buffer<tf::intersect::intersection<Index>> &ints,
-                      tf::buffer<tf::point<Int, Dims>> &pts) const {
+                      tf::buffer<tf::point<Int, Dims>> &pts,
+                      const tf::exact::predicate_kernel<Int> &kernel) const {
     auto id0 = Index(seg0.id());
     auto id1 = Index(seg1.id());
 
@@ -217,7 +230,8 @@ private:
 
     auto [ax0, ax1] = get_axes(a0, a1, b0, b1);
 
-    auto result = tf::exact::classify_segments(a0, a1, b0, b1, ax0, ax1);
+    auto result =
+        tf::exact::classify_segments(a0, a1, b0, b1, ax0, ax1, kernel);
     if (!result)
       return;
 

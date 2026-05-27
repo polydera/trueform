@@ -13,6 +13,7 @@
 #pragma once
 #include "../core/algorithm/circular_increment.hpp"
 #include "../core/algorithm/generic_generate.hpp"
+#include "../core/inflated_aabb.hpp"
 #include "../core/intersects.hpp"
 #include "../core/local_buffer.hpp"
 #include "../core/polygons.hpp"
@@ -28,9 +29,11 @@
 #include "./exact/crossing_edges_vs_face.hpp"
 #include "./exact/dedup_coincident_points.hpp"
 #include "./exact/duplicate_tagged_intersection.hpp"
+#include "./exact/make_kernel.hpp"
+#include "./exact/predicate_kernel.hpp"
 #include "./exact/tagged_intersections.hpp"
 #include "./exact/vertex_face.hpp"
-#include "./intersect_mode.hpp"
+#include "./intersect_config.hpp"
 #include "tbb/task_group.h"
 
 namespace tf {
@@ -53,7 +56,7 @@ public:
   template <typename Policy0, typename Policy1>
   auto build(const tf::polygons<Policy0> &form0,
              const tf::polygons<Policy1> &form1,
-             tf::intersect_mode mode = tf::intersect_mode::primitives) {
+             tf::intersect_config config = {}) {
     static_assert(tf::has_tree_policy<Policy0>, "Use polygons | tf::tag(tree)");
     static_assert(tf::has_tree_policy<Policy1>, "Use polygons | tf::tag(tree)");
     static_assert(tf::has_manifold_edge_link_policy<Policy0>,
@@ -68,20 +71,19 @@ public:
     base_t::clear();
     _converter = tf::exact::make_vertex_converter<Int, RealType>(form0, form1);
 
-    if (mode & tf::intersect_mode::primitives)
-      build_primitives(form0, form1);
+    if (config.mode & tf::intersect_mode::primitives)
+      build_primitives(form0, form1, tf::exact::make_kernel(_converter, config.tolerance));
     else
       build_sos(form0, form1);
   }
 
   template <typename Iterator, std::size_t N>
-  auto build(tf::range<Iterator, N> forms,
-             tf::intersect_mode mode = tf::intersect_mode::primitives) {
+  auto build(tf::range<Iterator, N> forms, tf::intersect_config config = {}) {
     base_t::clear();
     _converter = tf::exact::make_vertex_converter<Int, RealType>(forms);
 
-    if (mode & tf::intersect_mode::primitives)
-      build_primitives(forms);
+    if (config.mode & tf::intersect_mode::primitives)
+      build_primitives(forms, tf::exact::make_kernel(_converter, config.tolerance));
     else
       build_sos(forms);
   }
@@ -104,7 +106,8 @@ private:
 
   template <typename Policy0, typename Policy1>
   auto build_primitives(const tf::polygons<Policy0> &form0,
-                        const tf::polygons<Policy1> &form1) {
+                        const tf::polygons<Policy1> &form1,
+                        const tf::exact::predicate_kernel<Int> &kernel = {}) {
     tf::local_buffer<intersection_t> l_intersections;
     tf::local_buffer<tf::exact::pt3<Int>> l_points;
     tf::local_buffer<tf::exact::vertex<Index, Int>> l_face_verts0;
@@ -113,7 +116,7 @@ private:
     l_points.reserve_all(1000);
 
     primitives_intersect_pair(form0, form1, 0, 1, l_intersections, l_points,
-                              l_face_verts0, l_face_verts1);
+                              l_face_verts0, l_face_verts1, kernel);
 
     auto points = l_points.to_buffer();
     if (points.size() == 0)
@@ -151,7 +154,8 @@ private:
   }
 
   template <typename Iterator, std::size_t N>
-  auto build_primitives(tf::range<Iterator, N> forms) {
+  auto build_primitives(tf::range<Iterator, N> forms,
+                        const tf::exact::predicate_kernel<Int> &kernel = {}) {
     tf::local_buffer<intersection_t> l_intersections;
     tf::local_buffer<tf::exact::pt3<Int>> l_points;
     tf::local_buffer<tf::exact::vertex<Index, Int>> l_face_verts0;
@@ -166,7 +170,7 @@ private:
         tg.run([&, i, j]() {
           primitives_intersect_pair(forms[i], forms[j], int(i), int(j),
                                     l_intersections, l_points, l_face_verts0,
-                                    l_face_verts1);
+                                    l_face_verts1, kernel);
         });
     tg.wait();
 
@@ -345,7 +349,8 @@ private:
                           const FM0 &fm0, const FM1 &fm1, const Conv &conv,
                           tf::buffer<tf::exact::vertex<Index, Int>> &face_buf0,
                           tf::buffer<tf::exact::vertex<Index, Int>> &face_buf1,
-                          Ints &ints, Pts &pts) {
+                          Ints &ints, Pts &pts,
+                          const tf::exact::predicate_kernel<Int> &kernel = {}) {
     auto face0_id = Index(poly0.id());
     auto face1_id = Index(poly1.id());
 
@@ -406,20 +411,20 @@ private:
     bool both_crossing = (mask0 & has_crossing) == has_crossing &&
                          (mask1 & has_crossing) == has_crossing;
     if ((mask0 & has_crossing) == has_crossing)
-      tf::exact::crossing_edges_vs_face(face_buf0, n0, face_buf1, n1, signs0,
-                                        tag0, tag1, face0_id, face1_id, is_rep0,
-                                        is_rep1, ints, pts, both_crossing);
+      tf::exact::crossing_edges_vs_face(
+          face_buf0, n0, face_buf1, n1, signs0, tag0, tag1, face0_id, face1_id,
+          is_rep0, is_rep1, ints, pts, both_crossing, kernel);
     if ((mask1 & has_crossing) == has_crossing)
-      tf::exact::crossing_edges_vs_face(face_buf1, n1, face_buf0, n0, signs1,
-                                        tag1, tag0, face1_id, face0_id, is_rep1,
-                                        is_rep0, ints, pts, both_crossing);
+      tf::exact::crossing_edges_vs_face(
+          face_buf1, n1, face_buf0, n0, signs1, tag1, tag0, face1_id, face0_id,
+          is_rep1, is_rep0, ints, pts, both_crossing, kernel);
     if (!any_zero)
       return;
 
     // VV / coplanar-VE / coplanar-EE
     tf::exact::coplanar_primitives(face_buf0, n0, face_buf1, n1, signs0, signs1,
                                    tag0, tag1, face0_id, face1_id, is_rep0,
-                                   is_rep1, plane0, plane1, ints, pts);
+                                   is_rep1, plane0, plane1, ints, pts, kernel);
 
     // VF (both directions)
     auto vrep0 = [&](std::size_t i) {
@@ -429,33 +434,40 @@ private:
       return Index(fm1[Index(poly1.indices()[j])].front()) == face1_id;
     };
     tf::exact::vertex_face(face_buf0, n0, face_buf1, n1, signs0, tag0, tag1,
-                           face0_id, face1_id, vrep0, plane1, ints, pts);
+                           face0_id, face1_id, vrep0, plane1, ints, pts,
+                           kernel);
     tf::exact::vertex_face(face_buf1, n1, face_buf0, n0, signs1, tag1, tag0,
-                           face1_id, face0_id, vrep1, plane0, ints, pts);
+                           face1_id, face0_id, vrep1, plane0, ints, pts,
+                           kernel);
   }
 
-  /// Run primitives pairwise intersection between two tagged polygons.
+  /// Pairwise primitives intersection. `form1`'s AABB is inflated by the
+  /// kernel's tolerance so pairs within the band survive the prefilter.
   template <typename Policy0, typename Policy1>
   auto primitives_intersect_pair(
       const tf::polygons<Policy0> &form0, const tf::polygons<Policy1> &form1,
       int tag0, int tag1, tf::local_buffer<intersection_t> &l_ints,
       tf::local_buffer<tf::exact::pt3<Int>> &l_pts,
       tf::local_buffer<tf::exact::vertex<Index, Int>> &l_fb0,
-      tf::local_buffer<tf::exact::vertex<Index, Int>> &l_fb1) {
+      tf::local_buffer<tf::exact::vertex<Index, Int>> &l_fb1,
+      const tf::exact::predicate_kernel<Int> &kernel = {}) {
     auto &conv = _converter;
+    auto pad = kernel.tolerance_int();
     tf::search(
         form0, form1,
         [&](const auto &bv0, const auto &bv1) {
           return tf::intersects(
               tf::make_aabb(conv.convert(bv0.min), conv.convert(bv0.max)),
-              tf::make_aabb(conv.convert(bv1.min), conv.convert(bv1.max)));
+              tf::inflated_aabb(
+                  tf::make_aabb(conv.convert(bv1.min), conv.convert(bv1.max)),
+                  pad));
         },
         [&](const auto &poly0, const auto &poly1) {
           primitives_polygon_pair(
               poly0, poly1, tag0, tag1, form0.manifold_edge_link(),
               form1.manifold_edge_link(), form0.face_membership(),
               form1.face_membership(), _converter, *l_fb0, *l_fb1, *l_ints,
-              *l_pts);
+              *l_pts, kernel);
         });
   }
 

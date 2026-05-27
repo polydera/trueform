@@ -35,6 +35,7 @@ def intersection_curves(
     mesh1: Mesh = None,
     *,
     mode: str = "sos",
+    tolerance: float = 0.0,
     resolve_crossings: bool = None,
     resolve_self_crossings: bool = False
 ) -> Tuple[OffsetBlockedArray, np.ndarray]:
@@ -55,6 +56,8 @@ def intersection_curves(
     mode : str, default "sos"
         Intersection mode. "sos" = SoS (fast), "primitives" = handles
         shared edges/vertices.
+    tolerance : float, default 0.0
+        World-coordinate distance band for predicate tolerance (0 = exact).
     resolve_crossings : bool, optional
         Resolve crossings between different contours on the same face.
         Default: False for 2-mesh, True for N-mesh.
@@ -72,7 +75,7 @@ def intersection_curves(
     if isinstance(meshes_or_mesh0, (list, tuple)):
         rc = resolve_crossings if resolve_crossings is not None else True
         m = _build_mode(mode, rc, resolve_self_crossings)
-        return _intersection_curves_list(meshes_or_mesh0, mode=m)
+        return _intersection_curves_list(meshes_or_mesh0, mode=m, tolerance=tolerance)
     else:
         if mesh1 is None:
             raise ValueError(
@@ -80,10 +83,10 @@ def intersection_curves(
             )
         rc = resolve_crossings if resolve_crossings is not None else False
         m = _build_mode(mode, rc, resolve_self_crossings)
-        return _intersection_curves_pair(meshes_or_mesh0, mesh1, mode=m)
+        return _intersection_curves_pair(meshes_or_mesh0, mesh1, mode=m, tolerance=tolerance)
 
 
-def _intersection_curves_pair(mesh0: Mesh, mesh1: Mesh, *, mode: int) -> Tuple[OffsetBlockedArray, np.ndarray]:
+def _intersection_curves_pair(mesh0: Mesh, mesh1: Mesh, *, mode: int, tolerance: float) -> Tuple[OffsetBlockedArray, np.ndarray]:
     if not isinstance(mesh0, Mesh):
         raise TypeError(
             f"mesh0 must be a Mesh object, got {type(mesh0).__name__}. "
@@ -115,12 +118,12 @@ def _intersection_curves_pair(mesh0: Mesh, mesh1: Mesh, *, mode: int) -> Tuple[O
 
     func_name = f"intersection_curves_mesh_mesh_{suffix}"
     (paths_offsets, paths_data), points = getattr(_trueform.intersect, func_name)(
-        mesh0._wrapper, mesh1._wrapper, mode
+        mesh0._wrapper, mesh1._wrapper, mode, tolerance
     )
     return OffsetBlockedArray(paths_offsets, paths_data), points
 
 
-def _intersection_curves_list(meshes: list, *, mode: int) -> Tuple[OffsetBlockedArray, np.ndarray]:
+def _intersection_curves_list(meshes: list, *, mode: int, tolerance: float) -> Tuple[OffsetBlockedArray, np.ndarray]:
     if len(meshes) < 2:
         raise ValueError("intersection_curves requires at least 2 meshes")
 
@@ -154,6 +157,6 @@ def _intersection_curves_list(meshes: list, *, mode: int) -> Tuple[OffsetBlocked
 
     func_name = f"intersection_curves_list_{suffix}"
     (paths_offsets, paths_data), points = getattr(_trueform.intersect, func_name)(
-        wrappers, mode
+        wrappers, mode, tolerance
     )
     return OffsetBlockedArray(paths_offsets, paths_data), points

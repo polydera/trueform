@@ -19,6 +19,7 @@
 #include "../../exact/segment_plane_intersect.hpp"
 #include "../../exact/vertex.hpp"
 #include "./emit_record.hpp"
+#include "./predicate_kernel.hpp"
 
 namespace tf::exact {
 
@@ -30,10 +31,11 @@ namespace tf::exact {
 ///   v2 = orient3d(A[t+1], A[t+2], D, E)  — always real edge (t+1)
 ///   v3 = orient3d(A[0],   A[t+2], D, E)  — real edge iff t==n-3
 ///
-/// Classification is fully determined by exact orient3d values.
-/// segment_plane_intersect is only used to compute the point coordinates.
+/// The bound for each `vN` is the skew-line distance bound between the
+/// fan edge and the test segment (D, E).
 template <typename Index, typename Int, typename EdgeIsRep, typename FaceIsRep,
-          typename Intersections, typename Pts>
+          typename Intersections, typename Pts,
+          typename Kernel = tf::exact::predicate_kernel<Int>>
 void crossing_edges_vs_face(
     const tf::buffer<tf::exact::vertex<Index, Int>> &edge_verts,
     std::size_t n_edge,
@@ -41,7 +43,8 @@ void crossing_edges_vs_face(
     std::size_t n_face, const tf::small_vector<int, 16> &edge_signs,
     int edge_tag, int face_tag, Index edge_face_id, Index face_id,
     const EdgeIsRep &edge_is_rep, const FaceIsRep &face_is_rep,
-    Intersections &intersections, Pts &pts, bool both_crossing) {
+    Intersections &intersections, Pts &pts, bool both_crossing,
+    const Kernel &kernel = {}) {
   for (std::size_t i = 0; i < n_edge; ++i) {
     if (!edge_is_rep(i).second)
       continue;
@@ -59,11 +62,22 @@ void crossing_edges_vs_face(
       auto v3 =
           orient3d_value(face_verts[0].pt, face_verts[t + 2].pt, D.pt, E.pt);
 
-      int n_zero = (v1 == 0) + (v2 == 0) + (v3 == 0);
+      auto b1 = kernel.orient3d_skew_bound(face_verts[0].pt,
+                                           face_verts[t + 1].pt, D.pt, E.pt);
+      auto b2 = kernel.orient3d_skew_bound(face_verts[t + 1].pt,
+                                           face_verts[t + 2].pt, D.pt, E.pt);
+      auto b3 = kernel.orient3d_skew_bound(face_verts[0].pt,
+                                           face_verts[t + 2].pt, D.pt, E.pt);
+
+      int s1 = kernel.sign(v1, b1);
+      int s2 = kernel.sign(v2, b2);
+      int s3 = kernel.sign(v3, b3);
+
+      int n_zero = (s1 == 0) + (s2 == 0) + (s3 == 0);
 
       if (n_zero == 0) {
-        bool s1 = v1 > 0, s2 = v2 > 0, s3 = v3 > 0;
-        if (s1 == s2 && s2 != s3) {
+        bool p1 = s1 > 0, p2 = s2 > 0, p3 = s3 > 0;
+        if (p1 == p2 && p2 != p3) {
           auto P =
               *segment_plane_intersect(face_verts[0].pt, face_verts[t + 1].pt,
                                        face_verts[t + 2].pt, D, E);
@@ -79,9 +93,9 @@ void crossing_edges_vs_face(
         continue;
 
       if (n_zero == 2) {
-        std::size_t k = (v1 == 0 && v2 == 0)   ? t + 1
-                        : (v1 == 0 && v3 == 0) ? 0
-                                               : /* v2==0 && v3==0 */ t + 2;
+        std::size_t k = (s1 == 0 && s2 == 0)   ? t + 1
+                        : (s1 == 0 && s3 == 0) ? 0
+                                               : /* s2==0 && s3==0 */ t + 2;
         if (face_is_rep(k).first)
           emit_record(edge_tag, face_tag, edge_face_id, face_id,
                       {Index(i), tf::topo_type::edge},
@@ -92,10 +106,10 @@ void crossing_edges_vs_face(
       }
 
       // n_zero == 1: check containment on the other two edges
-      bool s1 = v1 > 0, s2 = v2 > 0, s3 = v3 > 0;
-      bool contained = (v1 == 0)   ? (s2 != s3)
-                       : (v2 == 0) ? (s1 != s3)
-                                   : (s1 == s2); // v3==0
+      bool p1 = s1 > 0, p2 = s2 > 0, p3 = s3 > 0;
+      bool contained = (s1 == 0)   ? (p2 != p3)
+                       : (s2 == 0) ? (p1 != p3)
+                                   : (p1 == p2); // s3==0
       if (!contained)
         continue;
 
@@ -105,10 +119,10 @@ void crossing_edges_vs_face(
       bool v1_real = (t == 0);
       bool v3_real = (t + 3 == n_face);
       bool on_real_edge =
-          (v1 == 0 && v1_real) || (v2 == 0) || (v3 == 0 && v3_real);
+          (s1 == 0 && v1_real) || (s2 == 0) || (s3 == 0 && v3_real);
 
       if (on_real_edge) {
-        std::size_t edge_k = (v2 == 0) ? t + 1 : (v1 == 0) ? 0 : n_face - 1;
+        std::size_t edge_k = (s2 == 0) ? t + 1 : (s1 == 0) ? 0 : n_face - 1;
         bool erep = edge_is_rep(i).second;
         bool ferep = face_is_rep(edge_k).second;
         if (erep && ferep && (!both_crossing || edge_tag < face_tag))
@@ -129,7 +143,8 @@ void crossing_edges_vs_face(
 /// Self-intersection variant: uses face ID ordering for EE dedup
 /// instead of tag ordering (since both tags are equal).
 template <typename Index, typename Int, typename EdgeIsRep, typename FaceIsRep,
-          typename Intersections, typename Pts>
+          typename Intersections, typename Pts,
+          typename Kernel = tf::exact::predicate_kernel<Int>>
 void crossing_edges_vs_face_self(
     const tf::buffer<tf::exact::vertex<Index, Int>> &edge_verts,
     std::size_t n_edge,
@@ -137,7 +152,8 @@ void crossing_edges_vs_face_self(
     std::size_t n_face, const tf::small_vector<int, 16> &edge_signs,
     int edge_tag, int face_tag, Index edge_face_id, Index face_id,
     const EdgeIsRep &edge_is_rep, const FaceIsRep &face_is_rep,
-    Intersections &intersections, Pts &pts, bool both_crossing) {
+    Intersections &intersections, Pts &pts, bool both_crossing,
+    const Kernel &kernel = {}) {
   for (std::size_t i = 0; i < n_edge; ++i) {
     if (!edge_is_rep(i).second)
       continue;
@@ -155,11 +171,22 @@ void crossing_edges_vs_face_self(
       auto v3 =
           orient3d_value(face_verts[0].pt, face_verts[t + 2].pt, D.pt, E.pt);
 
-      int n_zero = (v1 == 0) + (v2 == 0) + (v3 == 0);
+      auto b1 = kernel.orient3d_skew_bound(face_verts[0].pt,
+                                           face_verts[t + 1].pt, D.pt, E.pt);
+      auto b2 = kernel.orient3d_skew_bound(face_verts[t + 1].pt,
+                                           face_verts[t + 2].pt, D.pt, E.pt);
+      auto b3 = kernel.orient3d_skew_bound(face_verts[0].pt,
+                                           face_verts[t + 2].pt, D.pt, E.pt);
+
+      int s1 = kernel.sign(v1, b1);
+      int s2 = kernel.sign(v2, b2);
+      int s3 = kernel.sign(v3, b3);
+
+      int n_zero = (s1 == 0) + (s2 == 0) + (s3 == 0);
 
       if (n_zero == 0) {
-        bool s1 = v1 > 0, s2 = v2 > 0, s3 = v3 > 0;
-        if (s1 == s2 && s2 != s3) {
+        bool p1 = s1 > 0, p2 = s2 > 0, p3 = s3 > 0;
+        if (p1 == p2 && p2 != p3) {
           auto P =
               *segment_plane_intersect(face_verts[0].pt, face_verts[t + 1].pt,
                                        face_verts[t + 2].pt, D, E);
@@ -175,9 +202,9 @@ void crossing_edges_vs_face_self(
         continue;
 
       if (n_zero == 2) {
-        std::size_t k = (v1 == 0 && v2 == 0)   ? t + 1
-                        : (v1 == 0 && v3 == 0) ? 0
-                                               : /* v2==0 && v3==0 */ t + 2;
+        std::size_t k = (s1 == 0 && s2 == 0)   ? t + 1
+                        : (s1 == 0 && s3 == 0) ? 0
+                                               : /* s2==0 && s3==0 */ t + 2;
         if (face_is_rep(k).first)
           emit_record(edge_tag, face_tag, edge_face_id, face_id,
                       {Index(i), tf::topo_type::edge},
@@ -187,10 +214,10 @@ void crossing_edges_vs_face_self(
         continue;
       }
 
-      bool s1 = v1 > 0, s2 = v2 > 0, s3 = v3 > 0;
-      bool contained = (v1 == 0)   ? (s2 != s3)
-                       : (v2 == 0) ? (s1 != s3)
-                                   : (s1 == s2);
+      bool p1 = s1 > 0, p2 = s2 > 0, p3 = s3 > 0;
+      bool contained = (s1 == 0)   ? (p2 != p3)
+                       : (s2 == 0) ? (p1 != p3)
+                                   : (p1 == p2);
       if (!contained)
         continue;
 
@@ -200,10 +227,10 @@ void crossing_edges_vs_face_self(
       bool v1_real = (t == 0);
       bool v3_real = (t + 3 == n_face);
       bool on_real_edge =
-          (v1 == 0 && v1_real) || (v2 == 0) || (v3 == 0 && v3_real);
+          (s1 == 0 && v1_real) || (s2 == 0) || (s3 == 0 && v3_real);
 
       if (on_real_edge) {
-        std::size_t edge_k = (v2 == 0) ? t + 1 : (v1 == 0) ? 0 : n_face - 1;
+        std::size_t edge_k = (s2 == 0) ? t + 1 : (s1 == 0) ? 0 : n_face - 1;
         bool erep = edge_is_rep(i).second;
         bool ferep = face_is_rep(edge_k).second;
         if (erep && ferep && (!both_crossing || edge_face_id < face_id))

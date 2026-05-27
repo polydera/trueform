@@ -13,6 +13,7 @@
 #pragma once
 #include "../core/algorithm/circular_increment.hpp"
 #include "../core/algorithm/generic_generate.hpp"
+#include "../core/inflated_aabb.hpp"
 #include "../core/intersects.hpp"
 #include "../core/local_buffer.hpp"
 #include "../core/small_vector.hpp"
@@ -27,9 +28,11 @@
 #include "./exact/dedup_coincident_points.hpp"
 #include "./exact/duplicate_tagged_intersection.hpp"
 #include "./exact/face_plane_info.hpp"
+#include "./exact/make_kernel.hpp"
+#include "./exact/predicate_kernel.hpp"
 #include "./exact/tagged_intersections.hpp"
 #include "./exact/vertex_face.hpp"
-#include "./intersect_mode.hpp"
+#include "./intersect_config.hpp"
 
 namespace tf {
 
@@ -45,7 +48,7 @@ public:
 
   template <typename Policy>
   auto build(const tf::polygons<Policy> &form,
-             tf::intersect_mode mode = tf::intersect_mode::primitives) {
+             tf::intersect_config config = {}) {
     static_assert(tf::has_tree_policy<Policy>, "Use polygons | tf::tag(tree)");
     static_assert(tf::has_manifold_edge_link_policy<Policy>,
                   "Use polygons | tf::tag(manifold_edge_link)");
@@ -55,13 +58,14 @@ public:
     base_t::clear();
     _converter = tf::exact::make_vertex_converter<Int, RealType>(form);
 
-    if (mode & tf::intersect_mode::primitives)
-      build_primitives(form);
+    if (config.mode & tf::intersect_mode::primitives)
+      build_primitives(form, tf::exact::make_kernel(_converter, config.tolerance));
     else
       build_sos(form);
   }
 
 private:
+
   template <typename Indices0, typename Indices1>
   static auto compute_shared_masks(const Indices0 &ids0, const Indices1 &ids1,
                                    tf::buffer<bool> &s0, tf::buffer<bool> &s1) {
@@ -153,7 +157,8 @@ private:
                           tf::buffer<tf::exact::vertex<Index, Int>> &face_buf0,
                           tf::buffer<tf::exact::vertex<Index, Int>> &face_buf1,
                           Ints &ints, Pts &pts, const tf::buffer<bool> &shared0,
-                          const tf::buffer<bool> &shared1) {
+                          const tf::buffer<bool> &shared1,
+                          const tf::exact::predicate_kernel<Int> &kernel = {}) {
     auto face0_id = Index(poly0.id());
     auto face1_id = Index(poly1.id());
 
@@ -228,18 +233,18 @@ private:
     if ((mask0 & has_crossing) == has_crossing)
       tf::exact::crossing_edges_vs_face_self(
           face_buf0, n0, face_buf1, n1, signs0, tag0, tag1, face0_id, face1_id,
-          is_rep0, is_rep1, ints, pts, both_crossing);
+          is_rep0, is_rep1, ints, pts, both_crossing, kernel);
     if ((mask1 & has_crossing) == has_crossing)
       tf::exact::crossing_edges_vs_face_self(
           face_buf1, n1, face_buf0, n0, signs1, tag1, tag0, face1_id, face0_id,
-          is_rep1, is_rep0, ints, pts, both_crossing);
+          is_rep1, is_rep0, ints, pts, both_crossing, kernel);
     if (!any_zero)
       return;
 
     tf::exact::coplanar_primitives(face_buf0, n0, face_buf1, n1, signs0, signs1,
                                    tag0, tag1, face0_id, face1_id, is_rep0,
                                    is_rep1, plane0, plane1, shared0_f,
-                                   shared1_f, ints, pts);
+                                   shared1_f, ints, pts, kernel);
 
     auto vrep0 = [&](std::size_t i) {
       return Index(fm[poly0.indices()[i]].front()) == face0_id;
@@ -249,10 +254,10 @@ private:
     };
     tf::exact::vertex_face(face_buf0, n0, face_buf1, n1, signs0, tag0, tag1,
                            face0_id, face1_id, vrep0, shared0_f, plane1, ints,
-                           pts);
+                           pts, kernel);
     tf::exact::vertex_face(face_buf1, n1, face_buf0, n0, signs1, tag1, tag0,
                            face1_id, face0_id, vrep1, shared1_f, plane0, ints,
-                           pts);
+                           pts, kernel);
   }
 
   template <typename Duplicator>
@@ -338,7 +343,8 @@ private:
   }
 
   template <typename Policy>
-  auto build_primitives(const tf::polygons<Policy> &form) {
+  auto build_primitives(const tf::polygons<Policy> &form,
+                        const tf::exact::predicate_kernel<Int> &kernel = {}) {
     tf::local_buffer<intersection_t> l_intersections;
     tf::local_buffer<tf::exact::pt3<Int>> l_points;
     tf::local_buffer<tf::exact::vertex<Index, Int>> l_face_verts0;
@@ -349,12 +355,15 @@ private:
     l_points.reserve_all(1000);
 
     auto &conv = _converter;
+    auto pad = kernel.tolerance_int();
     tf::search_self(
         form,
         [&](const auto &bv0, const auto &bv1) {
           return tf::intersects(
               tf::make_aabb(conv.convert(bv0.min), conv.convert(bv0.max)),
-              tf::make_aabb(conv.convert(bv1.min), conv.convert(bv1.max)));
+              tf::inflated_aabb(
+                  tf::make_aabb(conv.convert(bv1.min), conv.convert(bv1.max)),
+                  pad));
         },
         [&](const auto &poly0, const auto &poly1) {
           auto &shared0 = *l_shared0;
@@ -365,7 +374,8 @@ private:
           primitives_polygon_pair(
               poly0, poly1, 0, 0, form.manifold_edge_link(),
               form.face_membership(), _converter, *l_face_verts0,
-              *l_face_verts1, *l_intersections, *l_points, shared0, shared1);
+              *l_face_verts1, *l_intersections, *l_points, shared0, shared1,
+              kernel);
         });
 
     auto points = l_points.to_buffer();
