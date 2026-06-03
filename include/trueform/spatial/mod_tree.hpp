@@ -95,7 +95,7 @@ public:
    */
   template <typename Range>
   auto build(const Range &objects, tree_config config) -> void {
-    return build<spatial::nth_element_t>(objects, config);
+    return build<spatial::pdq_t>(objects, config);
   }
 
   /**
@@ -236,7 +236,7 @@ private:
     tf::parallel_copy(delta_ids_buffer(), delta_tree_buffer().ids_buffer());
 
     // Build delta tree using the shared primitive_aabbs and pre-set global ids
-    spatial::build_tree_nodes_with_aabbs<spatial::nth_element_t>(
+    spatial::build_tree_nodes_with_aabbs<spatial::pdq_t>(
         delta_tree_buffer(),
         tf::make_indirect_range(delta_ids_buffer(), objects),
         base_t::primitive_aabbs_buffer(), config, /*use_ids=*/true);
@@ -266,7 +266,7 @@ private:
 
     // Build delta tree using the shared primitive_aabbs and pre-set global ids
     // (aabbs were already recomputed by update_main_tree)
-    spatial::build_tree_nodes_with_aabbs<spatial::nth_element_t>(
+    spatial::build_tree_nodes_with_aabbs<spatial::pdq_t>(
         delta_tree_buffer(),
         tf::make_indirect_range(delta_ids_buffer(), objects),
         base_t::primitive_aabbs_buffer(), config, /*use_ids=*/true);

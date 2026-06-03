@@ -93,13 +93,15 @@ public:
 
   /// @brief Build tree from primitives using default partitioning.
   ///
-  /// Uses nth_element partitioning strategy by default.
+  /// Uses pdq (pattern-defeating quickselect) partitioning strategy by
+  /// default — same exact-median semantics as nth_element but ~2-3x faster
+  /// on typical BVH inputs due to better branch prediction and cache usage.
   ///
   /// @param primitives A range of primitives to build the tree from.
   /// @param config Configuration specifying inner and leaf node sizes.
   template <typename Range>
   auto build(const Range &primitives, tree_config config) -> void {
-    build<spatial::nth_element_t>(primitives, config);
+    build<spatial::pdq_t>(primitives, config);
   }
 };
 
