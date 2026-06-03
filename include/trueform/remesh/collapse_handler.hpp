@@ -32,7 +32,7 @@ struct collapse_handler {
   AllowedFn _allowed;
   tf::buffer<tf::remesh::quadric> _quadrics;
   tf::collapse_config<Real> _config;
-  [[no_unique_address]] FeatureHandler _features;
+  FeatureHandler _features;
 
   collapse_handler(ScoreFn score, AllowedFn allowed,
                    const tf::collapse_config<Real> &config = {},

@@ -40,7 +40,7 @@ struct split_handler {
   ScoreFn _score;
   bool _preserve_boundary = true;
   int _max_iterations = 3;
-  [[no_unique_address]] Tracker _tracker;
+  Tracker _tracker;
 
   split_handler(ScoreFn score, bool preserve_boundary = true,
                 int max_iterations = 3, Tracker tracker = {})

@@ -28,6 +28,8 @@ using mesh_t = tf::polygons_buffer<Index, Real, 3, 3>;
 
 namespace {
 
+constexpr double pi = tf::pi<double>;
+
 auto translated(mesh_t m, Real dx, Real dy, Real dz) -> mesh_t {
   auto &pts = m.points_buffer();
   for (std::size_t i = 0; i < pts.size(); ++i) {
@@ -230,7 +232,7 @@ TEST_CASE("csg_graph: outer sphere with two disjoint inner cubes",
 
   auto graph = tf::make_csg_graph(tf::make_range(forms));
 
-  const double vol_outer = (4.0 / 3.0) * M_PI * 125.0;
+  const double vol_outer = (4.0 / 3.0) * pi * 125.0;
   const double vol_two_cubes = 2.0 * std::pow(1.5, 3);
   const double tol = 3.0;
 
@@ -286,10 +288,10 @@ TEST_CASE("csg_graph: four-deep concentric shells",
 
   auto graph = tf::make_csg_graph(tf::make_range(forms));
 
-  const double vol_a = (4.0 / 3.0) * M_PI * 64.0;
-  const double vol_b = (4.0 / 3.0) * M_PI * 27.0;
-  const double vol_c = (4.0 / 3.0) * M_PI * 8.0;
-  const double vol_d = (4.0 / 3.0) * M_PI * 1.0;
+  const double vol_a = (4.0 / 3.0) * pi * 64.0;
+  const double vol_b = (4.0 / 3.0) * pi * 27.0;
+  const double vol_c = (4.0 / 3.0) * pi * 8.0;
+  const double vol_d = (4.0 / 3.0) * pi * 1.0;
   const double tol = 2.5;
 
   using Catch::Matchers::WithinAbs;
@@ -348,9 +350,9 @@ TEST_CASE("csg_graph: three concentric spheres (universe -> A -> B -> C)",
 
   auto graph = tf::make_csg_graph(tf::make_range(forms));
 
-  const double vol_a = (4.0 / 3.0) * M_PI * 125.0;
-  const double vol_b = (4.0 / 3.0) * M_PI * 27.0;
-  const double vol_c = (4.0 / 3.0) * M_PI * 1.0;
+  const double vol_a = (4.0 / 3.0) * pi * 125.0;
+  const double vol_b = (4.0 / 3.0) * pi * 27.0;
+  const double vol_c = (4.0 / 3.0) * pi * 1.0;
   const double tol = 2.5;
 
   using Catch::Matchers::WithinAbs;
@@ -454,8 +456,8 @@ TEST_CASE("csg_graph: nested-without-contact small sphere inside large sphere",
 
   auto graph = tf::make_csg_graph(tf::make_range(forms));
 
-  const double vol_a = (4.0 / 3.0) * M_PI * 27.0;
-  const double vol_b = (4.0 / 3.0) * M_PI * 1.0;
+  const double vol_a = (4.0 / 3.0) * pi * 27.0;
+  const double vol_b = (4.0 / 3.0) * pi * 1.0;
   const double tol = 1.0; // tessellation discretization on coarse spheres
 
   using Catch::Matchers::WithinAbs;
@@ -518,7 +520,7 @@ TEST_CASE("csg_graph: two-bundle form (two disjoint cubes) vs overlapping sphere
   auto graph = tf::make_csg_graph(tf::make_range(forms));
 
   const double vol_a = 16.0;
-  const double vol_b = (4.0 / 3.0) * M_PI * std::pow(double(r), 3);
+  const double vol_b = (4.0 / 3.0) * pi * std::pow(double(r), 3);
   const double tol = 0.15;
 
   using Catch::Matchers::WithinAbs;

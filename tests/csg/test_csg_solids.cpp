@@ -37,7 +37,7 @@
 
 namespace {
 
-constexpr double pi = 3.14159265358979323846;
+constexpr double pi = tf::pi<double>;
 
 template <typename Real> auto identity_frame() -> tf::frame<Real, 3> {
   return tf::make_frame(
