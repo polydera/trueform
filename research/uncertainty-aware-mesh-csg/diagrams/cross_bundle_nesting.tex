@@ -1,0 +1,62 @@
+\def\panelw{7.8}
+\def\panelh{5.2}
+
+\definecolor{aFace}{HTML}{97F4EB}
+\definecolor{aEdge}{HTML}{0D665C}
+\definecolor{bFace}{HTML}{F3B6CE}
+\definecolor{bEdge}{HTML}{8E2B53}
+\definecolor{tfink}{HTML}{1F2937}
+\definecolor{tfgrey}{HTML}{9CA3AF}
+\definecolor{tfbg}{HTML}{F3F4F6}
+
+\begin{tikzpicture}[font=\sffamily\footnotesize, x=1cm, y=1cm]
+
+  % --- panel ----------------------------------------------------------------
+  \filldraw[fill=tfbg, draw=black!20, line width=0.4pt, rounded corners=3pt]
+    (-\panelw/2, -\panelh/2) rectangle (\panelw/2, \panelh/2);
+
+  % --- bundle A's outer-environment is the exterior: the free anchor --------
+  \node[text=tfink, font=\scriptsize] at (0,2.28)
+    {$A$'s outside \,(the exterior)};
+  \node[text=tfgrey, font=\scriptsize\itshape] at (0,1.92)
+    {outermost region $\Rightarrow$ seeds free, $b = \mathbf{0}$};
+
+  % --- bundle bounding box (B); A obviously overlaps it ---------------------
+  \draw[tfgrey, dashed, line width=0.4pt] (-2.44,-0.68) rectangle (-0.76,0.68);
+
+  % --- domains: fill A (D1), then B (D2) ------------------------------------
+  \fill[aFace, fill opacity=0.45] (-1.2,-0.15) ellipse (1.85 and 1.40);
+  \fill[bFace, fill opacity=0.60] (-1.6,0.00) ellipse (0.82 and 0.66);
+  \draw[aEdge, line width=1.0pt, draw opacity=0.85] (-1.2,-0.15) ellipse (1.85 and 1.40);
+  \draw[bEdge, line width=1.0pt, draw opacity=0.90] (-1.6,0.00) ellipse (0.82 and 0.66);
+  \node[text=aEdge, font=\scriptsize] at (-0.10,1.20) {$A$};
+  \node[text=bEdge, font=\scriptsize] at (-1.60,0.44) {$B$};
+
+  % --- bundle B's outer-environment (set by the ray) and the flood result ---
+  \node[text=tfink, font=\scriptsize] at (-1.60,-0.05) {$\{A,B\}$};
+  \node[text=tfink, font=\scriptsize] at (-1.20,-0.90) {$B$'s outside $= \{A\}$};
+  \node[text=tfgrey, font=\scriptsize\itshape] at (-1.20,-1.20) {from the ray};
+
+  % --- the ray: from a vertex of B, crossing A once, to a far point ---------
+  \coordinate (seed) at (-0.76,0.00);
+  \coordinate (xA)   at (0.64,0.00);
+  \coordinate (far)  at (3.25,0.00);
+  \draw[tfink, line width=0.8pt, ->] (seed) -- (far);
+  \fill[tfink] (seed) circle (0.05);
+  \node[text=tfink, font=\scriptsize, anchor=south west] at (-0.70,0.08) {seed};
+  \draw[aEdge, line width=1.1pt] ($(xA)+(-0.09,-0.16)$) -- ($(xA)+(0.09,0.16)$);
+  \draw[aEdge, line width=1.1pt] ($(xA)+(0.09,-0.16)$) -- ($(xA)+(-0.09,0.16)$);
+  \node[text=tfgrey, font=\scriptsize\itshape, align=center] at (2.95,-0.46)
+    {far point\\(past bbox)};
+
+  % --- a form whose bbox is disjoint from the bundle's: skipped, no ray -----
+  \node[text=tfgrey, font=\scriptsize\itshape, align=center] at (2.78,-1.08)
+    {skipped:\\bbox disjoint};
+  \begin{scope}[shift={(2.78,-1.92)}]
+    \draw[tfgrey, dashed, line width=0.4pt] (-0.60,-0.42) rectangle (0.60,0.42);
+    \fill[black!10] (0,0) ellipse (0.42 and 0.30);
+    \draw[black!40, line width=0.8pt] (0,0) ellipse (0.42 and 0.30);
+    \node[text=black!55, font=\scriptsize] at (0,0) {$C$};
+  \end{scope}
+
+\end{tikzpicture}

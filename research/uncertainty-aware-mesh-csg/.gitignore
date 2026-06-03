@@ -8,3 +8,6 @@ build/
 *.out
 *.synctex.gz
 *.toc
+*.brf
+*.lbl
+sajovic-2026-mesh-csg.pdf

@@ -4,6 +4,7 @@
 \definecolor{cFour}{HTML}{8E6BBE}
 \definecolor{cFive}{HTML}{E45756}
 \definecolor{tfgrey}{HTML}{9CA3AF}
+\definecolor{tfsoft}{HTML}{F3F4F6}
 
 \newcommand{\wedgeobs}[6]{%
   % #1 x, #2 y, #3 scale, #4 label, #5 swapped flag, #6 subtitle
@@ -44,6 +45,10 @@
 
 \resizebox{\columnwidth}{!}{%
 \begin{tikzpicture}[font=\rmfamily\footnotesize]
+
+  % Panel background.
+  \filldraw[fill=tfsoft, draw=black!20, line width=0.4pt, rounded corners=3pt]
+    (-5.45,-2.75) rectangle (5.45,3.55);
 
   % Top row: four observations of equivalence class (c_1, c_2, c_3, c_4).
   \wedgeobs{-4.20}{1.95}{1.0}{}{0}{}
