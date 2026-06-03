@@ -33,6 +33,14 @@ Read these for the engineering standards and patterns you MUST follow:
 - Header layout: copyright, `#pragma once`, includes (IWYU), namespace, doxygen, implementation
 - `.clang-format`: BasedOnStyle: LLVM
 
+### Comments
+- Default to no comment. Only add one when the WHY is non-obvious — a hidden constraint, a subtle invariant, a workaround. "If removing it wouldn't confuse a future reader, don't write it."
+- Never restate WHAT the code does. Well-named identifiers carry that meaning.
+- One short line max for inline. No multi-paragraph blocks. Doxygen briefs are one sentence; extended detail only when the WHY needs it.
+- No fossil references ("used by X", "added for the Y flow", "this used to be Z"). History belongs in commit messages.
+- No structural scaffolding (`// ---- Step 1: ... ----`). If a function needs that to be readable, split it.
+- Don't add docstrings/comments to code you didn't change.
+
 ### Memory
 - No raw `new`/`delete`. Use `tf::buffer<T>` (trivially destructible only), `tf::small_vector<T, N>`.
 - Sentinel-based maps: allocate `buffer[n]`, fill with sentinel, write-once per key, clear by walking used entries.
@@ -44,7 +52,6 @@ Read these for the engineering standards and patterns you MUST follow:
 
 ### What NOT to Do
 - Don't add unnecessary abstractions. Three similar lines > premature helper function.
-- Don't add docstrings/comments to code you didn't change.
 - Don't add error handling for scenarios that can't happen.
 - Don't use hash maps for integer-keyed lookups.
 

@@ -11,7 +11,7 @@
  * Author: Žiga Sajovic
  */
 #pragma once
-#include "../../core/algorithm/block_reduce_sequenced_aggregate.hpp"
+#include "../../core/algorithm/block_reduce.hpp"
 #include "../../core/algorithm/generic_generate.hpp"
 #include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/buffer.hpp"
@@ -155,7 +155,7 @@ auto make_nesting_merges(const Polygons &polygons,
   // in the typical case).
   tf::small_vector<bbox_t, 8> bbox_proto(n_bundles, init_bbox);
 
-  tf::blocked_reduce_sequenced_aggregate(
+  tf::blocked_reduce(
       tf::enumerate(polygons.faces()), bboxes, bbox_proto,
       [&](auto &&block, tf::small_vector<bbox_t, 8> &local) {
         for (const auto &pair : block) {

@@ -1,4 +1,5 @@
 add_executable(trueform_cut_tests
+  test_arrangement_graph.cpp
   test_boolean.cpp
   test_boolean_pair.cpp
   test_cut_graph.cpp

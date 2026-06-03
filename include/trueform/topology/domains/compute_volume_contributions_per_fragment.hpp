@@ -11,7 +11,7 @@
  * Author: Žiga Sajovic
  */
 #pragma once
-#include "../../core/algorithm/block_reduce_sequenced_aggregate.hpp"
+#include "../../core/algorithm/block_reduce.hpp"
 #include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/cross.hpp"
@@ -53,7 +53,7 @@ namespace tf::topology::domains {
 ///   reference (translation-invariant, improves cancellation), summed
 ///   into a per-fragment `double` accumulator.
 ///
-/// The aggregation pattern is `tf::blocked_reduce_sequenced_aggregate`
+/// The aggregation pattern is `tf::blocked_reduce`
 /// with a per-task per-fragment buffer; no atomics.
 ///
 /// @param polygons The polygons range.
@@ -79,7 +79,7 @@ auto compute_volume_contributions_per_fragment(
     prototype.allocate(fragment_labels.n_components);
     tf::parallel_fill(prototype, AccumT(0));
 
-    tf::blocked_reduce_sequenced_aggregate(
+    tf::blocked_reduce(
         tf::enumerate(polygons), result, prototype,
         [&](auto &&block, tf::buffer<AccumT> &local) {
           for (const auto &pair : block) {
@@ -120,7 +120,7 @@ auto compute_volume_contributions_per_fragment(
     prototype.allocate(fragment_labels.n_components);
     tf::parallel_fill(prototype, 0.0);
 
-    tf::blocked_reduce_sequenced_aggregate(
+    tf::blocked_reduce(
         tf::enumerate(polygons), result, prototype,
         [&](auto &&block, tf::buffer<double> &local) {
           for (const auto &pair : block) {

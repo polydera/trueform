@@ -50,7 +50,7 @@ namespace tf::vtk {
 /// @endcode
 class polydata : public vtkPolyData {
 public:
-  vtkTypeMacro(polydata, vtkPolyData);
+  vtkTypeMacro(polydata, vtkPolyData)
   static auto New() -> polydata *;
 
   /// @brief Retrieve polydata from information vector.

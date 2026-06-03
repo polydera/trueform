@@ -24,9 +24,9 @@
 #include "../../topology/label_connected_components.hpp"
 #include "../../topology/make_applier.hpp"
 #include "../../topology/policy/manifold_edge_link.hpp"
-#include "../../topology/topo_type.hpp"
 #include "../cut_graph.hpp"
 #include "../face_cuts.hpp"
+#include "../resolve_face_edge.hpp"
 #include "./partition_labels.hpp"
 #include "tbb/parallel_invoke.h"
 #include "tbb/parallel_sort.h"
@@ -147,13 +147,17 @@ auto merge_labels(tf::connected_component_labels<LabelType> &&sc,
       tf::hash_set<std::array<LabelType, 2>, tf::array_hash<LabelType, 2>>{},
       [&, offset](auto tup, auto &buffer, auto &set) {
         auto &&[own_label, d, edge_conn, loop] = tup;
-        for (auto &&[nghs, v] : tf::zip(edge_conn, loop)) {
-          if (nghs.size() != 0)
+        const auto face_size = polygons.faces()[d.object].size();
+        const auto n = loop.size();
+        for (std::size_t i = 0; i < n; ++i) {
+          if (edge_conn[i].size() != 0)
             continue;
-          if (v.sub_id.label != tf::topo_type::vertex &&
-              v.sub_id.label != tf::topo_type::edge)
+          const auto next = tf::circular_increment(i, n);
+          const auto eidx = tf::cut::resolve_face_edge(
+              loop[i].sub_id, loop[next].sub_id, face_size);
+          if (!eidx)
             continue;
-          auto mel = polygons.manifold_edge_link()[d.object][v.sub_id.id];
+          auto mel = polygons.manifold_edge_link()[d.object][*eidx];
           if (!mel.is_simple())
             continue;
           auto ngh_poly = mel.face_peer;

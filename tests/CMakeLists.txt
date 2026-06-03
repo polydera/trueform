@@ -19,6 +19,7 @@ add_subdirectory(spatial)
 add_subdirectory(geometry)
 add_subdirectory(intersect)
 add_subdirectory(cut)
+add_subdirectory(csg)
 add_subdirectory(exact)
 add_subdirectory(clean)
 add_subdirectory(reindex)
@@ -33,6 +34,7 @@ add_custom_target(trueform_tests DEPENDS
   trueform_geometry_tests
   trueform_intersect_tests
   trueform_cut_tests
+  trueform_csg_tests
   trueform_exact_tests
   trueform_clean_tests
   trueform_reindex_tests

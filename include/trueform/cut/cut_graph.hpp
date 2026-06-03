@@ -20,6 +20,7 @@
 #include "../core/array_hash.hpp"
 #include "../core/buffer.hpp"
 #include "../core/hash_set.hpp"
+#include "../core/views/mapped_range.hpp"
 #include "../intersect/graph/intersection_graph.hpp"
 #include "../intersect/graph/vertex.hpp"
 #include "../topology/compare_faces.hpp"
@@ -175,6 +176,21 @@ private:
     auto descs = fc.descriptors();
     auto loops = fc.loops();
 
+    // Vertex equality is (source, id) — IDs are per-form for originals.
+    // Wrap each vertex with an effective tag (created → -1, original →
+    // form tag) so cross-tag comparison distinguishes same-id originals
+    // from different forms.
+    using vt = tf::intersect::graph::vertex<Index>;
+    using key_t = std::pair<Index, vt>;
+    auto with_tag = [](const auto &loop, Index tag) {
+      return tf::make_mapped_range(loop, [tag](const vt &v) -> key_t {
+        const Index eff =
+            (v.source == tf::intersect::graph::vertex_source::created)
+                ? Index(-1) : tag;
+        return key_t{eff, v};
+      });
+    };
+
     tf::generic_generate(
         tf::enumerate(tf::zip(loops, connectivity_per_face_edge(fc))),
         _coplanar_pairs, [&](const auto &item, auto &out) {
@@ -192,7 +208,9 @@ private:
               if (descs[nj].tag == descs[li].tag)
                 continue;
             }
-            int cmp = tf::compare_faces(loop, loops[nj]);
+            int cmp = tf::compare_faces(
+                with_tag(loop, descs[Index(li)].tag),
+                with_tag(loops[nj], descs[nj].tag));
             if (cmp != 0)
               out.push_back({Index(li), nj, cmp < 0});
           }
