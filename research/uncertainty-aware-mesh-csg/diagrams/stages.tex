@@ -1,0 +1,44 @@
+% Stage breakdown of the arrangement build on the Fibonacci bunny swarm
+% (csg_stages_bench, stages.csv), best-of-5. Each bar is one N, normalised
+% to 100% of that N's build time; the absolute build total is printed above.
+% Five phases map to the algorithm sections:
+%   intersection  ibp        -- broadphase + pairwise face records (Sec 3.2/i)
+%   arrangement   ig+fc      -- edge graph + per-face planar arrangement (3.2/ii)
+%   graph         ag         -- implicit graph structures (3.3)
+%   partition     desc+inc   -- domain partition vote (3.4)
+%   classification vol+seed+prop -- inclusion bits / domain volumes (3.5)
+\begin{tikzpicture}
+\begin{axis}[
+  ybar stacked,
+  bar width=20pt,
+  width=\columnwidth, height=6.3cm,
+  ymin=0, ymax=110,
+  ytick={0,20,40,60,80,100},
+  enlarge x limits=0.12,
+  symbolic x coords={25,50,100,200,400,500},
+  xtick=data,
+  xlabel={number of bunny operands $N$},
+  ylabel={share of build time (\%)},
+  tick label style={font=\footnotesize},
+  label style={font=\footnotesize},
+  legend cell align=left,
+  legend columns=3,
+  legend style={font=\footnotesize, draw=black!20,
+                at={(0.5,1.03)}, anchor=south,
+                /tikz/every even column/.append style={column sep=1.0em}},
+]
+\addplot[fill=tfink,  draw=white] coordinates {(25,65.77)(50,64.15)(100,62.28)(200,61.25)(400,57.62)(500,53.68)};
+\addplot[fill=cOne,   draw=white] coordinates {(25,10.60)(50,11.30)(100,11.56)(200,11.66)(400,11.35)(500,10.57)};
+\addplot[fill=cThree, draw=white] coordinates {(25,11.60)(50,11.47)(100,11.86)(200,10.98)(400, 9.87)(500, 9.19)};
+\addplot[fill=cFour,  draw=white] coordinates {(25, 6.48)(50, 5.87)(100, 5.91)(200, 5.13)(400, 4.85)(500, 4.10)};
+\addplot[fill=cTwo,   draw=white] coordinates {(25, 5.56)(50, 7.21)(100, 8.38)(200,10.99)(400,16.32)(500,22.46)};
+\legend{intersection, arrangement, graph, partition, classification}
+% absolute build totals above each bar
+\node[font=\scriptsize, anchor=south] at (axis cs:25,100)  {$92$\,ms};
+\node[font=\scriptsize, anchor=south] at (axis cs:50,100)  {$158$\,ms};
+\node[font=\scriptsize, anchor=south] at (axis cs:100,100) {$283$\,ms};
+\node[font=\scriptsize, anchor=south] at (axis cs:200,100) {$562$\,ms};
+\node[font=\scriptsize, anchor=south] at (axis cs:400,100) {$1.28$\,s};
+\node[font=\scriptsize, anchor=south] at (axis cs:500,100) {$1.79$\,s};
+\end{axis}
+\end{tikzpicture}

@@ -1,0 +1,89 @@
+% Two UV spheres (32x32), one offset by d; offset swept (sphere_offset.csv).
+% Two-row strip: per-edge (top) vs relation vote (bottom). Green = relation
+% partitioned correctly, red = per-edge mispartition. Per-edge breaks at the
+% vertex-ring offsets d = 2cos(pi k/32) (ticks below); the vote is unbroken.
+\definecolor{cVote}{HTML}{0D665C}
+\definecolor{cEdge}{HTML}{D9534F}
+\begin{tikzpicture}
+\begin{axis}[
+  width=\columnwidth, height=3.3cm,
+  xmin=-0.36, xmax=2.5, ymin=0.2, ymax=2.08,
+  axis y line=none,
+  axis x line=bottom, x axis line style={black!55, shorten >=0pt},
+  xlabel={sphere offset $d$ (radius $=1$)},
+  xtick={0,0.39,0.77,1.11,1.41,2}, xticklabels={0,,,,,2},
+  enlarge x limits=false,
+  tick label style={font=\footnotesize}, label style={font=\footnotesize},
+  clip=false,
+]
+% vertex-ring offsets (faint guides through both rows)
+\draw[black!25, dashed, very thin] (axis cs:0.39,0.55) -- (axis cs:0.39,1.95);
+\draw[black!25, dashed, very thin] (axis cs:0.77,0.55) -- (axis cs:0.77,1.95);
+\draw[black!25, dashed, very thin] (axis cs:1.11,0.55) -- (axis cs:1.11,1.95);
+\draw[black!25, dashed, very thin] (axis cs:1.41,0.55) -- (axis cs:1.41,1.95);
+% per-edge row: green base + red failure bands
+\fill[cVote!30] (axis cs:0,1.25) rectangle (axis cs:2,1.85);
+\fill[cEdge] (axis cs:0.194,1.25) rectangle (axis cs:0.207,1.85);
+\fill[cEdge] (axis cs:0.213,1.25) rectangle (axis cs:0.227,1.85);
+\fill[cEdge] (axis cs:0.224,1.25) rectangle (axis cs:0.237,1.85);
+\fill[cEdge] (axis cs:0.233,1.25) rectangle (axis cs:0.246,1.85);
+\fill[cEdge] (axis cs:0.243,1.25) rectangle (axis cs:0.257,1.85);
+\fill[cEdge] (axis cs:0.254,1.25) rectangle (axis cs:0.267,1.85);
+\fill[cEdge] (axis cs:0.264,1.25) rectangle (axis cs:0.277,1.85);
+\fill[cEdge] (axis cs:0.274,1.25) rectangle (axis cs:0.287,1.85);
+\fill[cEdge] (axis cs:0.283,1.25) rectangle (axis cs:0.296,1.85);
+\fill[cEdge] (axis cs:0.293,1.25) rectangle (axis cs:0.306,1.85);
+\fill[cEdge] (axis cs:0.303,1.25) rectangle (axis cs:0.317,1.85);
+\fill[cEdge] (axis cs:0.314,1.25) rectangle (axis cs:0.327,1.85);
+\fill[cEdge] (axis cs:0.324,1.25) rectangle (axis cs:0.337,1.85);
+\fill[cEdge] (axis cs:0.334,1.25) rectangle (axis cs:0.347,1.85);
+\fill[cEdge] (axis cs:0.343,1.25) rectangle (axis cs:0.356,1.85);
+\fill[cEdge] (axis cs:0.353,1.25) rectangle (axis cs:0.366,1.85);
+\fill[cEdge] (axis cs:0.363,1.25) rectangle (axis cs:0.377,1.85);
+\fill[cEdge] (axis cs:0.373,1.25) rectangle (axis cs:0.387,1.85);
+\fill[cEdge] (axis cs:0.394,1.25) rectangle (axis cs:0.407,1.85);
+\fill[cEdge] (axis cs:0.403,1.25) rectangle (axis cs:0.416,1.85);
+\fill[cEdge] (axis cs:0.413,1.25) rectangle (axis cs:0.426,1.85);
+\fill[cEdge] (axis cs:0.433,1.25) rectangle (axis cs:0.447,1.85);
+\fill[cEdge] (axis cs:0.454,1.25) rectangle (axis cs:0.467,1.85);
+\fill[cEdge] (axis cs:0.483,1.25) rectangle (axis cs:0.496,1.85);
+\fill[cEdge] (axis cs:0.514,1.25) rectangle (axis cs:0.526,1.85);
+\fill[cEdge] (axis cs:0.524,1.25) rectangle (axis cs:0.536,1.85);
+\fill[cEdge] (axis cs:0.554,1.25) rectangle (axis cs:0.567,1.85);
+\fill[cEdge] (axis cs:0.564,1.25) rectangle (axis cs:0.576,1.85);
+\fill[cEdge] (axis cs:0.814,1.25) rectangle (axis cs:0.826,1.85);
+\fill[cEdge] (axis cs:0.844,1.25) rectangle (axis cs:0.856,1.85);
+\fill[cEdge] (axis cs:0.874,1.25) rectangle (axis cs:0.886,1.85);
+\fill[cEdge] (axis cs:0.884,1.25) rectangle (axis cs:0.896,1.85);
+\fill[cEdge] (axis cs:0.904,1.25) rectangle (axis cs:0.916,1.85);
+\fill[cEdge] (axis cs:0.914,1.25) rectangle (axis cs:0.926,1.85);
+\fill[cEdge] (axis cs:0.944,1.25) rectangle (axis cs:0.956,1.85);
+\fill[cEdge] (axis cs:0.954,1.25) rectangle (axis cs:0.966,1.85);
+\fill[cEdge] (axis cs:0.984,1.25) rectangle (axis cs:0.996,1.85);
+\fill[cEdge] (axis cs:1.024,1.25) rectangle (axis cs:1.036,1.85);
+\fill[cEdge] (axis cs:1.034,1.25) rectangle (axis cs:1.046,1.85);
+\fill[cEdge] (axis cs:1.064,1.25) rectangle (axis cs:1.077,1.85);
+\fill[cEdge] (axis cs:1.114,1.25) rectangle (axis cs:1.127,1.85);
+\fill[cEdge] (axis cs:1.123,1.25) rectangle (axis cs:1.136,1.85);
+\fill[cEdge] (axis cs:1.153,1.25) rectangle (axis cs:1.166,1.85);
+\fill[cEdge] (axis cs:1.224,1.25) rectangle (axis cs:1.236,1.85);
+\fill[cEdge] (axis cs:1.264,1.25) rectangle (axis cs:1.276,1.85);
+\fill[cEdge] (axis cs:1.284,1.25) rectangle (axis cs:1.296,1.85);
+\fill[cEdge] (axis cs:1.413,1.25) rectangle (axis cs:1.426,1.85);
+\fill[cEdge] (axis cs:1.764,1.25) rectangle (axis cs:1.776,1.85);
+\fill[cEdge] (axis cs:1.774,1.25) rectangle (axis cs:1.786,1.85);
+\fill[cEdge] (axis cs:1.844,1.25) rectangle (axis cs:1.857,1.85);
+\fill[cEdge] (axis cs:1.913,1.25) rectangle (axis cs:1.926,1.85);
+\fill[cEdge] (axis cs:1.923,1.25) rectangle (axis cs:1.936,1.85);\draw[black!40, line width=0.4pt] (axis cs:0,1.25) rectangle (axis cs:2,1.85);
+% vote row: unbroken green
+\fill[cVote!30] (axis cs:0,0.55) rectangle (axis cs:2,1.15);
+\draw[black!40, line width=0.4pt] (axis cs:0,0.55) rectangle (axis cs:2,1.15);
+% row labels
+\node[anchor=east, font=\footnotesize, text=tfink] at (axis cs:-0.02,1.55) {per-edge};
+\node[anchor=east, font=\footnotesize, text=tfink] at (axis cs:-0.02,0.85) {vote};
+% counts
+\node[anchor=west, font=\scriptsize, text=cEdge] at (axis cs:2.02,1.55) {$52/191$ fail};
+\node[anchor=west, font=\scriptsize, text=cVote] at (axis cs:2.02,0.85) {$0/191$};
+\node[anchor=south, font=\scriptsize, text=black!50] at (axis cs:0.77,1.95) {vertex-ring offsets};
+\end{axis}
+\end{tikzpicture}

@@ -1,5 +1,6 @@
 add_executable(trueform_exact_tests
   test_classify_wedge.cpp
+  test_int128_msvc.cpp
   test_int256.cpp
   test_segment_hits_aabb.cpp
 )

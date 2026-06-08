@@ -17,7 +17,7 @@
 
   % --- bundle A's outer-environment is the exterior: the free anchor --------
   \node[text=tfink, font=\scriptsize] at (0,2.28)
-    {$A$'s outside \,(the exterior)};
+    {$P$'s outside \,(the exterior)};
   \node[text=tfgrey, font=\scriptsize\itshape] at (0,1.92)
     {outermost region $\Rightarrow$ seeds free, $b = \mathbf{0}$};
 
@@ -29,12 +29,12 @@
   \fill[bFace, fill opacity=0.60] (-1.6,0.00) ellipse (0.82 and 0.66);
   \draw[aEdge, line width=1.0pt, draw opacity=0.85] (-1.2,-0.15) ellipse (1.85 and 1.40);
   \draw[bEdge, line width=1.0pt, draw opacity=0.90] (-1.6,0.00) ellipse (0.82 and 0.66);
-  \node[text=aEdge, font=\scriptsize] at (-0.10,1.20) {$A$};
-  \node[text=bEdge, font=\scriptsize] at (-1.60,0.44) {$B$};
+  \node[text=aEdge, font=\scriptsize] at (-0.10,1.20) {$P$};
+  \node[text=bEdge, font=\scriptsize] at (-1.60,0.44) {$Q$};
 
-  % --- bundle B's outer-environment (set by the ray) and the flood result ---
-  \node[text=tfink, font=\scriptsize] at (-1.60,-0.05) {$\{A,B\}$};
-  \node[text=tfink, font=\scriptsize] at (-1.20,-0.90) {$B$'s outside $= \{A\}$};
+  % --- component Q's outer-environment (set by the ray) and the flood result ---
+  \node[text=tfink, font=\scriptsize] at (-1.60,-0.05) {$\{P,Q\}$};
+  \node[text=tfink, font=\scriptsize] at (-1.20,-0.90) {$Q$'s outside $= \{P\}$};
   \node[text=tfgrey, font=\scriptsize\itshape] at (-1.20,-1.20) {from the ray};
 
   % --- the ray: from a vertex of B, crossing A once, to a far point ---------
@@ -56,7 +56,7 @@
     \draw[tfgrey, dashed, line width=0.4pt] (-0.60,-0.42) rectangle (0.60,0.42);
     \fill[black!10] (0,0) ellipse (0.42 and 0.30);
     \draw[black!40, line width=0.8pt] (0,0) ellipse (0.42 and 0.30);
-    \node[text=black!55, font=\scriptsize] at (0,0) {$C$};
+    \node[text=black!55, font=\scriptsize] at (0,0) {$R$};
   \end{scope}
 
 \end{tikzpicture}

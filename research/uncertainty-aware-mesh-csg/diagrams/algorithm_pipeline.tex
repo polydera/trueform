@@ -1,0 +1,166 @@
+% Whole-algorithm overview. Two phases, grouped: BUILD (one pass over the
+% operand set, six stages) feeds EXTRACT (one boolean expression -> one
+% mesh, repeated). Each stage box carries a schematic glyph, the structure
+% it produces, and its section. Single-word titles + wrapped descriptors
+% keep every label inside its box.
+\begin{tikzpicture}[font=\sffamily\footnotesize, x=1cm, y=1cm,
+                    >=stealth, line join=round]
+
+  \def\bw{2.4}    % build-box width
+  \def\bh{2.95}   % build-box height
+  \def\dx{2.92}   % centre-to-centre spacing
+  \def\cx{7.3}    % row centre (2.5*\dx)
+  \def\tw{2.05}   % text wrap width inside a box
+
+  % ---- stage-box macro: #1 x-centre  #2 title  #3 produces  #4 sec
+  \newcommand{\stage}[4]{
+    \begin{scope}[shift={(#1,0)}]
+      \filldraw[fill=white, draw=black!25, line width=0.5pt, rounded corners=3pt]
+        (-\bw/2,-\bh/2) rectangle (\bw/2,\bh/2);
+      \node[anchor=north, text=tfink, font=\sffamily\small\bfseries]
+        at (0,\bh/2-0.10) {#2};
+      \node[anchor=base, text=black!60, font=\sffamily\scriptsize,
+            align=center, text width=\tw cm] at (0,-\bh/2+0.46) {#3};
+      \node[anchor=south, text=black!42, font=\sffamily\scriptsize\itshape]
+        at (0,-\bh/2+0.07) {#4};
+    \end{scope}}
+
+  % =====================================================================
+  % BUILD container (drawn first, behind the boxes) + header tab
+  % =====================================================================
+  \def\ctop{2.18}
+  \def\cbot{-1.78}
+  % equal side margins: boxes span [-1.2, 15.8]; 0.35 padding each side
+  \filldraw[fill=tfteal!4, draw=tfteal!45, line width=0.6pt, rounded corners=5pt]
+    (-1.55,\cbot) rectangle (16.15,\ctop);
+  \node[anchor=west, text=tfteal!75!black, font=\sffamily\footnotesize\bfseries]
+    at (-1.40,\ctop-0.30) {BUILD};
+  \node[anchor=west, text=black!50, font=\sffamily\footnotesize]
+    at (-0.42,\ctop-0.30) {once per operand set};
+
+  % forward arrows between the six stages
+  \foreach \i in {0,...,4} {
+    \draw[->, black!45, line width=0.9pt]
+      ({\i*\dx+\bw/2},0) -- ({(\i+1)*\dx-\bw/2},0);
+  }
+
+  % the six build stages
+  \stage{0}{Operands}{$N$ tagged meshes}{input}
+  \stage{\dx}{Intersection}{pairwise records}{\S\ref{sec:predicates}--\ref{sec:arrangement}}
+  \stage{2*\dx}{Arrangement}{per-face 2D cuts}{\S\ref{sec:arrangement}}
+  \stage{3*\dx}{Graph}{reduced graph}{\S\ref{sec:graphs}}
+  \stage{4*\dx}{Partition}{voted domains}{\S\ref{sec:aggregation}}
+  \stage{5*\dx}{Classification}{inclusion bits}{\S\ref{sec:classification}}
+
+  % =====================================================================
+  % GLYPHS  (centred a little above box middle, clear of the title)
+  % =====================================================================
+  \def\gy{0.28}
+
+  % 1. Operands -- two overlapping blobs
+  \begin{scope}[shift={(0,\gy)}]
+    \fill[tfteal,opacity=0.20] (-0.28,0) circle [radius=0.40];
+    \draw[tfteal,opacity=0.75,line width=0.6pt] (-0.28,0) circle [radius=0.40];
+    \fill[tfteal,opacity=0.20] (0.28,0) circle [radius=0.40];
+    \draw[tfteal,opacity=0.75,line width=0.6pt] (0.28,0) circle [radius=0.40];
+  \end{scope}
+
+  % 2. Intersection -- two crossing faces, rose segment + dots
+  \begin{scope}[shift={(\dx,\gy)}]
+    \fill[tfteal,opacity=0.12] (-0.52,-0.28) -- (0.52,-0.28) -- (0.28,0.40) -- (-0.76,0.40) -- cycle;
+    \draw[tfteal,opacity=0.70,line width=0.5pt] (-0.52,-0.28) -- (0.52,-0.28) -- (0.28,0.40) -- (-0.76,0.40) -- cycle;
+    \fill[tfteal,opacity=0.12] (-0.28,-0.40) -- (0.76,-0.40) -- (0.52,0.28) -- (-0.52,0.28) -- cycle;
+    \draw[tfteal,opacity=0.70,line width=0.5pt] (-0.28,-0.40) -- (0.76,-0.40) -- (0.52,0.28) -- (-0.52,0.28) -- cycle;
+    \draw[tfrose,line width=1pt] (-0.50,0.0) -- (0.50,0.0);
+    \fill[tfrose] (-0.50,0.0) circle [radius=1.5pt];
+    \fill[tfrose] (0.50,0.0) circle [radius=1.5pt];
+  \end{scope}
+
+  % 3. Arrangement -- one face cut by 3 segments, 2 crossings
+  \begin{scope}[shift={(2*\dx,\gy)}]
+    \fill[tfteal,opacity=0.07] (-0.58,-0.46) rectangle (0.58,0.46);
+    \draw[tfteal,opacity=0.55,line width=0.5pt] (-0.58,-0.46) rectangle (0.58,0.46);
+    \draw[tfrose,line width=0.8pt] (-0.20,-0.46) -- (-0.20,0.46);
+    \draw[tfrose,line width=0.8pt] ( 0.20,-0.46) -- ( 0.20,0.46);
+    \draw[tfrose,line width=0.7pt] (-0.58,0.11) -- (0.58,0.11);
+    \fill[tfrose] (-0.20,0.11) circle [radius=1.5pt];
+    \fill[tfrose] ( 0.20,0.11) circle [radius=1.5pt];
+  \end{scope}
+
+  % 4. Graph -- 4 nodes, edges
+  \begin{scope}[shift={(3*\dx,\gy)}]
+    \coordinate (n1) at (-0.42,0.28);
+    \coordinate (n2) at (0.42,0.34);
+    \coordinate (n3) at (-0.28,-0.32);
+    \coordinate (n4) at (0.38,-0.28);
+    \draw[black!45,line width=0.7pt] (n1)--(n2) (n1)--(n3) (n3)--(n4) (n2)--(n4) (n1)--(n4);
+    \foreach \n in {n1,n2,n3,n4} \fill[tfteal,opacity=0.85] (\n) circle [radius=2.3pt];
+  \end{scope}
+
+  % 5. Partition -- region split into 3 colours
+  \begin{scope}[shift={(4*\dx,\gy)}]
+    \fill[cOne,opacity=0.55]  (-0.56,-0.42) rectangle (-0.06,0.42);
+    \fill[cThree,opacity=0.55] (-0.06,-0.42) rectangle (0.28,0.42);
+    \fill[cFive,opacity=0.55]  (0.28,-0.42) rectangle (0.56,0.42);
+    \draw[black!30,line width=0.5pt] (-0.56,-0.42) rectangle (0.56,0.42);
+    \draw[black!30,line width=0.5pt] (-0.06,-0.42)--(-0.06,0.42);
+    \draw[black!30,line width=0.5pt] (0.28,-0.42)--(0.28,0.42);
+  \end{scope}
+
+  % 6. Classification -- domains carrying bitvectors
+  \begin{scope}[shift={(5*\dx,\gy)}]
+    \node[font=\sffamily\scriptsize\ttfamily, text=cOne]  at (0,0.30) {1 0 1};
+    \node[font=\sffamily\scriptsize\ttfamily, text=cThree] at (0,0.0)  {1 1 0};
+    \node[font=\sffamily\scriptsize\ttfamily, text=cFive]  at (0,-0.30) {0 0 1};
+  \end{scope}
+
+  % =====================================================================
+  % connector  BUILD -> EXTRACT
+  % =====================================================================
+  \draw[->, tfteal!60!black, line width=1.3pt]
+    (\cx,\cbot) -- (\cx,-2.55);
+
+  % =====================================================================
+  % EXTRACT box (centred) + symmetric fan to three booleans
+  % =====================================================================
+  \def\ecy{-3.55}
+  \def\ebw{3.4}
+  \def\ebh{2.0}
+  \begin{scope}[shift={(\cx,\ecy)}]
+    \filldraw[fill=tfsoft, draw=black!30, line width=0.6pt, rounded corners=4pt]
+      (-\ebw/2,-\ebh/2) rectangle (\ebw/2,\ebh/2);
+    \node[anchor=north, text=tfink, font=\sffamily\small\bfseries]
+      at (0,\ebh/2-0.10) {Extraction};
+    \node[anchor=south, text=black!60, font=\sffamily\scriptsize] at (0,-\ebh/2+0.34)
+      {boolean expression $\to$ mesh};
+    \node[anchor=south, text=black!42, font=\sffamily\scriptsize\itshape]
+      at (0,-\ebh/2+0.08) {\S\ref{sec:selection}};
+    % glyph: select-from-domains
+    \fill[cOne,opacity=0.5]  (-0.62,0.05) rectangle (-0.16,0.52);
+    \fill[cThree,opacity=0.5](-0.16,0.05) rectangle (0.18,0.52);
+    \fill[cFive,opacity=0.5] (0.18,0.05) rectangle (0.46,0.52);
+    \draw[tfink,line width=0.9pt] (-0.62,0.05) rectangle (0.46,0.52);
+  \end{scope}
+
+  % EXTRACT header tab (left, mirrors BUILD)
+  \node[anchor=east, text=black!55, font=\sffamily\footnotesize\bfseries]
+    at (\cx-\ebw/2-0.45,\ecy+0.45) {EXTRACT};
+  \node[anchor=east, text=black!50, font=\sffamily\footnotesize]
+    at (\cx-\ebw/2-0.45,\ecy+0.08) {per boolean};
+  \node[anchor=east, text=black!50, font=\sffamily\footnotesize]
+    at (\cx-\ebw/2-0.45,\ecy-0.29) {expression};
+
+  % symmetric fan to three boolean outputs -- orthogonal bus (stub, bus, drops)
+  \def\fy{-5.75}
+  \def\busy{-4.98}
+  \draw[black!45, line width=0.9pt] (\cx,{\ecy-\ebh/2}) -- (\cx,\busy);
+  \draw[black!45, line width=0.9pt] (\cx-3.1,\busy) -- (\cx+3.1,\busy);
+  \foreach \dxk/\sym/\lbl in {-3.1/\cup/union, 0/-/difference, 3.1/\cap/intersection} {
+    \draw[->, black!45, line width=0.9pt]
+      ({\cx+\dxk},\busy) -- ({\cx+\dxk},{\fy+0.34});
+    \node[draw=black!30, fill=white, rounded corners=3pt, inner sep=3pt,
+          font=\sffamily\footnotesize, text=tfink]
+      at ({\cx+\dxk},\fy) {$\sym$\;\lbl};
+  }
+
+\end{tikzpicture}
