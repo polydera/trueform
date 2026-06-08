@@ -31,7 +31,7 @@ from ._geometry import fit_rigid_alignment, fit_obb_alignment, fit_knn_alignment
 from ._geometry import normals, point_normals, principal_curvatures, shape_index, ensure_positive_orientation
 from ._geometry import make_sphere_mesh, make_cylinder_mesh, make_box_mesh, make_plane_mesh, make_tube_mesh
 from ._geometry import signed_volume, volume, area, mean_edge_length, laplacian_smoothed, taubin_smoothed
-from ._remesh import decimated, isotropic_remeshed
+from ._remesh import decimated, isotropic_remeshed, simplified
 
 # IO functions
 from ._io import read_stl, write_stl, read_obj, write_obj
@@ -121,6 +121,7 @@ __all__ = [
     # Remesh
     'decimated',
     'isotropic_remeshed',
+    'simplified',
     # IO
     'read_stl',
     'write_stl',

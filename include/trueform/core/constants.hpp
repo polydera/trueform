@@ -36,6 +36,36 @@ template <> struct two_pi_v<double> {
   static constexpr auto make() -> double { return 6.28318530717958647692; }
 };
 
+template <typename T> struct sqrt_3_v {
+  static_assert(std::is_floating_point_v<T>, "Not supported");
+};
+template <> struct sqrt_3_v<float> {
+  static constexpr auto make() -> float { return 1.73205080756887729353f; }
+};
+template <> struct sqrt_3_v<double> {
+  static constexpr auto make() -> double { return 1.73205080756887729353; }
+};
+
+template <typename T> struct inv_sqrt_3_v {
+  static_assert(std::is_floating_point_v<T>, "Not supported");
+};
+template <> struct inv_sqrt_3_v<float> {
+  static constexpr auto make() -> float { return 0.57735026918962576451f; }
+};
+template <> struct inv_sqrt_3_v<double> {
+  static constexpr auto make() -> double { return 0.57735026918962576451; }
+};
+
+template <typename T> struct two_over_sqrt_3_v {
+  static_assert(std::is_floating_point_v<T>, "Not supported");
+};
+template <> struct two_over_sqrt_3_v<float> {
+  static constexpr auto make() -> float { return 1.15470053837925152902f; }
+};
+template <> struct two_over_sqrt_3_v<double> {
+  static constexpr auto make() -> double { return 1.15470053837925152902; }
+};
+
 } // namespace core
 
 /// @ingroup core
@@ -55,5 +85,22 @@ template <typename T> inline constexpr T pi = core::pi_v<T>::make();
 ///
 /// @tparam T The floating-point type (float or double).
 template <typename T> inline constexpr T two_pi = core::two_pi_v<T>::make();
+
+/// @ingroup core
+/// @brief Square root of 3 for floating-point types.
+/// @tparam T The floating-point type (float or double).
+template <typename T> inline constexpr T sqrt_3 = core::sqrt_3_v<T>::make();
+
+/// @ingroup core
+/// @brief Inverse square root of 3 (1/sqrt(3)) for floating-point types.
+/// @tparam T The floating-point type (float or double).
+template <typename T>
+inline constexpr T inv_sqrt_3 = core::inv_sqrt_3_v<T>::make();
+
+/// @ingroup core
+/// @brief 2/sqrt(3) for floating-point types.
+/// @tparam T The floating-point type (float or double).
+template <typename T>
+inline constexpr T two_over_sqrt_3 = core::two_over_sqrt_3_v<T>::make();
 
 } // namespace tf

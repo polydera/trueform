@@ -22,10 +22,10 @@
 
 namespace tf::remesh {
 
-template <typename Index>
+template <typename Index, typename Label = Index>
 struct feature_handler {
   feature_mask mask;
-  tf::buffer<Index> face_labels;
+  tf::buffer<Label> face_labels;
 
   auto empty() const -> bool { return mask.empty(); }
   auto has_regions() const -> bool { return face_labels.size() != 0; }
@@ -38,7 +38,7 @@ struct feature_handler {
   auto is_collapse_forbidden(std::size_t e, std::size_t v) const -> bool {
     return mask.is_collapse_forbidden(e, v);
   }
-  auto face_label(std::size_t f) const -> Index { return face_labels[f]; }
+  auto face_label(std::size_t f) const -> Label { return face_labels[f]; }
 
   /// Build the mask from a dihedral feature angle.
   template <typename PointsPolicy>
@@ -110,9 +110,12 @@ struct feature_handler {
                                     tf::deg<Real>(Real(30)));
   }
 
-  template <typename FaceRange, typename EdgeRange>
-  auto update(const tf::half_edges<Index> &he, FaceRange parent_face_for_new,
+  template <typename PointsPolicy, typename FaceRange, typename EdgeRange>
+  auto update(const tf::half_edges<Index> &he,
+              const tf::points<PointsPolicy> &points,
+              FaceRange parent_face_for_new,
               EdgeRange parent_edge_for_new) -> void {
+    using Real = tf::coordinate_type<PointsPolicy>;
     if (face_labels.size() != 0 && parent_face_for_new.size() != 0) {
       auto n0 = face_labels.size();
       face_labels.reallocate(n0 + parent_face_for_new.size());
@@ -134,6 +137,13 @@ struct feature_handler {
             });
       }
       tf::remesh::recompute_vertex_types(he, mask);
+      // recompute_vertex_types classifies purely by feature-edge count, which
+      // demotes a bent in-plane corner (only 2 feature edges) back to a crease.
+      // Re-harden so such corners survive the collapse pass that follows a
+      // split -- a crease can be collapsed along its feature edge, a corner
+      // cannot.
+      tf::remesh::harden_bent_creases(he, points, mask,
+                                      tf::deg<Real>(Real(30)));
     }
   }
 
@@ -145,7 +155,7 @@ struct feature_handler {
     mask.compact(edge_im, vert_im);
     if (face_labels.size() == 0)
       return;
-    tf::buffer<Index> new_labels;
+    tf::buffer<Label> new_labels;
     new_labels.allocate(face_im.kept_ids().size());
     tf::parallel_copy(
         tf::make_indirect_range(face_im.kept_ids(),
@@ -157,10 +167,11 @@ struct feature_handler {
   struct view {
     feature_handler *_h;
 
-    template <typename FaceRange, typename EdgeRange>
-    auto update(const tf::half_edges<Index> &he, FaceRange pf,
+    template <typename PointsPolicy, typename FaceRange, typename EdgeRange>
+    auto update(const tf::half_edges<Index> &he,
+                const tf::points<PointsPolicy> &points, FaceRange pf,
                 EdgeRange pe) const -> void {
-      _h->update(he, pf, pe);
+      _h->update(he, points, pf, pe);
     }
 
     auto empty() const -> bool { return _h->empty(); }
@@ -174,7 +185,7 @@ struct feature_handler {
     auto is_collapse_forbidden(std::size_t e, std::size_t v) const -> bool {
       return _h->is_collapse_forbidden(e, v);
     }
-    auto face_label(std::size_t f) const -> Index {
+    auto face_label(std::size_t f) const -> Label {
       return _h->face_label(f);
     }
   };

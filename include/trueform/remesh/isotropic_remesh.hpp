@@ -23,9 +23,11 @@
 #include "./collapse_edges.hpp"
 #include "./collapse_handler.hpp"
 #include "./feature_handler.hpp"
+#include "./improve_triangulation.hpp"
 #include "./optimize_valence.hpp"
 #include "./preserve_regions.hpp"
-#include "./remesh_config.hpp"
+#include "./regions/region_label.hpp"
+#include "./isotropic_remesh_config.hpp"
 #include "./split_edges.hpp"
 #include "./split_handler.hpp"
 #include "./tangential_relaxation.hpp"
@@ -44,8 +46,10 @@ template <typename Index, typename Real, std::size_t Dims,
 auto isotropic_remesh(tf::half_edges<Index> &he,
                       tf::points_buffer<Real, Dims> &points,
                       const tf::frame_like<Dims, FramePolicy> &frame,
-                      const tf::remesh_config<Real> &config,
-                      Regions regions) -> feature_handler<Index> {
+                      const tf::isotropic_remesh_config<Real> &config,
+                      Regions regions)
+    -> feature_handler<Index, tf::remesh::region_label_t<Regions, Index>> {
+  using Label = tf::remesh::region_label_t<Regions, Index>;
   Real high = Real(4) / 3 * config.target_length;
   Real low = Real(4) / 5 * config.target_length;
   Real high2 = high * high;
@@ -59,9 +63,9 @@ auto isotropic_remesh(tf::half_edges<Index> &he,
                .length2() /
            low2;
   };
-  auto checker = tf::make_collapse_checker<Real>(config.max_aspect_ratio, high2);
+  auto checker = tf::make_collapse_checker<Real>(config.min_quality, high2, config.check_normals);
 
-  feature_handler<Index> features;
+  feature_handler<Index, Label> features;
   if constexpr (std::is_same_v<Regions, tf::none_t>) {
     if (config.feature_angle.value >= 0)
       features.init(he, points.points(), config.feature_angle);
@@ -100,19 +104,19 @@ auto isotropic_remesh(tf::half_edges<Index> &he,
     auto [face_im, vert_im, edge_im] = he.compact();
     points = tf::reindexed(points.points(), vert_im);
 
-    auto deviation = tf::remesh::compute_valence_deviations(he);
-
+    // One {flip, relax} round; the outer loop provides the repetition. old_pos
+    // is reused across all iterations.
+    tf::improve_config<Real> icfg{1, config.relaxation_iters, config.lambda,
+                                  config.check_normals,
+                                  tf::flip_objective::valence};
     if (!features.empty()) {
       features.compact(face_im, edge_im, vert_im);
       features.recompute(he, points.points(), config.feature_angle);
-      tf::remesh::optimize_valence(he, deviation, features.mask, 1);
-      tf::remesh::tangential_relaxation(he, points.points(), old_pos,
-                                        features.mask,
-                                        config.relaxation_iters, config.lambda);
+      tf::remesh::improve_triangulation(he, points.points(), features.mask,
+                                        old_pos, icfg);
     } else {
-      tf::remesh::optimize_valence(he, deviation, 1);
-      tf::remesh::tangential_relaxation(he, points.points(), old_pos,
-                                        config.relaxation_iters, config.lambda);
+      tf::remesh::improve_triangulation(he, points.points(), tf::none, old_pos,
+                                        icfg);
     }
   }
   return features;
@@ -128,7 +132,7 @@ template <typename Index, typename Real, std::size_t Dims, typename FramePolicy>
 auto isotropic_remesh(tf::half_edges<Index> &he,
                       tf::points_buffer<Real, Dims> &points,
                       const tf::frame_like<Dims, FramePolicy> &frame,
-                      const tf::remesh_config<Real> &config) -> void {
+                      const tf::isotropic_remesh_config<Real> &config) -> void {
   tf::remesh::isotropic_remesh(he, points, frame, config, tf::none);
 }
 
@@ -140,9 +144,15 @@ template <typename Index, typename Real, std::size_t Dims,
 auto isotropic_remesh(tf::half_edges<Index> &he,
                       tf::points_buffer<Real, Dims> &points,
                       const tf::frame_like<Dims, FramePolicy> &frame,
-                      const tf::remesh_config<Real> &config,
+                      const tf::isotropic_remesh_config<Real> &config,
                       tf::preserve_regions_t<Range> regions)
-    -> tf::buffer<Index> {
+    -> tf::buffer<typename Range::value_type> {
+  using Label = typename Range::value_type;
+  // Empty range carries no labels: run the non-region path, return empty labels.
+  if (regions.face_regions.size() == 0) {
+    tf::isotropic_remesh(he, points, frame, config);
+    return tf::buffer<Label>{};
+  }
   auto features =
       tf::remesh::isotropic_remesh(he, points, frame, config, regions);
   return std::move(features.face_labels);
@@ -154,7 +164,7 @@ auto isotropic_remesh(tf::half_edges<Index> &he,
 template <typename Index, typename Real, std::size_t Dims>
 auto isotropic_remesh(tf::half_edges<Index> &he,
                       tf::points_buffer<Real, Dims> &points,
-                      const tf::remesh_config<Real> &config) -> void {
+                      const tf::isotropic_remesh_config<Real> &config) -> void {
   tf::isotropic_remesh(he, points, tf::identity_frame<Real, Dims>{}, config);
 }
 
@@ -164,9 +174,9 @@ auto isotropic_remesh(tf::half_edges<Index> &he,
 template <typename Index, typename Real, std::size_t Dims, typename Range>
 auto isotropic_remesh(tf::half_edges<Index> &he,
                       tf::points_buffer<Real, Dims> &points,
-                      const tf::remesh_config<Real> &config,
+                      const tf::isotropic_remesh_config<Real> &config,
                       tf::preserve_regions_t<Range> regions)
-    -> tf::buffer<Index> {
+    -> tf::buffer<typename Range::value_type> {
   return tf::isotropic_remesh(he, points, tf::identity_frame<Real, Dims>{},
                               config, regions);
 }
@@ -176,7 +186,7 @@ template <typename Index, typename Real, std::size_t Dims>
 auto isotropic_remesh(tf::half_edges<Index> &he,
                       tf::points_buffer<Real, Dims> &points, Real target_length)
     -> void {
-  tf::isotropic_remesh(he, points, tf::make_remesh_config(target_length));
+  tf::isotropic_remesh(he, points, tf::make_isotropic_remesh_config(target_length));
 }
 
 /// @brief Region-preserving overload with just target edge length.
@@ -184,16 +194,16 @@ template <typename Index, typename Real, std::size_t Dims, typename Range>
 auto isotropic_remesh(tf::half_edges<Index> &he,
                       tf::points_buffer<Real, Dims> &points, Real target_length,
                       tf::preserve_regions_t<Range> regions)
-    -> tf::buffer<Index> {
+    -> tf::buffer<typename Range::value_type> {
   return tf::isotropic_remesh(he, points,
-                              tf::make_remesh_config(target_length), regions);
+                              tf::make_isotropic_remesh_config(target_length), regions);
 }
 
 /// @brief Overload taking const points, returns a new points buffer.
 template <typename Index, typename PointsPolicy>
 auto isotropic_remesh(
     tf::half_edges<Index> &he, const tf::points<PointsPolicy> &points,
-    const tf::remesh_config<tf::coordinate_type<PointsPolicy>> &config)
+    const tf::isotropic_remesh_config<tf::coordinate_type<PointsPolicy>> &config)
     -> tf::points_buffer<tf::coordinate_type<PointsPolicy>,
                          tf::coordinate_dims_v<PointsPolicy>> {
   using Real = tf::coordinate_type<PointsPolicy>;
@@ -211,11 +221,11 @@ auto isotropic_remesh(
 template <typename Index, typename PointsPolicy, typename Range>
 auto isotropic_remesh(
     tf::half_edges<Index> &he, const tf::points<PointsPolicy> &points,
-    const tf::remesh_config<tf::coordinate_type<PointsPolicy>> &config,
+    const tf::isotropic_remesh_config<tf::coordinate_type<PointsPolicy>> &config,
     tf::preserve_regions_t<Range> regions)
     -> std::pair<tf::points_buffer<tf::coordinate_type<PointsPolicy>,
                                    tf::coordinate_dims_v<PointsPolicy>>,
-                 tf::buffer<Index>> {
+                 tf::buffer<typename Range::value_type>> {
   using Real = tf::coordinate_type<PointsPolicy>;
   constexpr std::size_t Dims = tf::coordinate_dims_v<PointsPolicy>;
   auto frame = tf::frame_of(points);
@@ -234,7 +244,7 @@ auto isotropic_remesh(tf::half_edges<Index> &he,
     -> tf::points_buffer<tf::coordinate_type<PointsPolicy>,
                          tf::coordinate_dims_v<PointsPolicy>> {
   return tf::isotropic_remesh(he, points,
-                              tf::make_remesh_config(target_length));
+                              tf::make_isotropic_remesh_config(target_length));
 }
 
 /// @brief Region-preserving overload taking const points with just target
@@ -246,9 +256,9 @@ auto isotropic_remesh(tf::half_edges<Index> &he,
                       tf::preserve_regions_t<Range> regions)
     -> std::pair<tf::points_buffer<tf::coordinate_type<PointsPolicy>,
                                    tf::coordinate_dims_v<PointsPolicy>>,
-                 tf::buffer<Index>> {
+                 tf::buffer<typename Range::value_type>> {
   return tf::isotropic_remesh(
-      he, points, tf::make_remesh_config(target_length), regions);
+      he, points, tf::make_isotropic_remesh_config(target_length), regions);
 }
 
 } // namespace tf

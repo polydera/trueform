@@ -167,8 +167,8 @@ export type {
 } from "./reindex/sync";
 
 // Remesh operations
-export { decimated, isotropicRemeshed } from "./remesh/sync";
-export type { DecimateOptions, RemeshOptions } from "./remesh/sync";
+export { decimated, isotropicRemeshed, simplified } from "./remesh/sync";
+export type { DecimateOptions, RemeshOptions, SimplifyOptions } from "./remesh/sync";
 
 // Async namespace
 export * as async from "./async";

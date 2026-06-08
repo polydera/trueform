@@ -20,7 +20,7 @@
 namespace tf::vtk {
 
 auto isotropic_remeshed(polydata *input,
-                        const tf::remesh_config<float> &config)
+                        const tf::isotropic_remesh_config<float> &config)
     -> vtkSmartPointer<polydata> {
   if (!input || input->GetNumberOfPolys() == 0) {
     return nullptr;
@@ -39,11 +39,11 @@ auto isotropic_remeshed(polydata *input,
 
 auto isotropic_remeshed(polydata *input, float target_length)
     -> vtkSmartPointer<polydata> {
-  return isotropic_remeshed(input, tf::remesh_config<float>{target_length});
+  return isotropic_remeshed(input, tf::isotropic_remesh_config<float>{target_length});
 }
 
 auto isotropic_remeshed(std::pair<polydata *, vtkMatrix4x4 *> input,
-                        const tf::remesh_config<float> &config)
+                        const tf::isotropic_remesh_config<float> &config)
     -> vtkSmartPointer<polydata> {
   auto [mesh, matrix] = input;
   if (!mesh || mesh->GetNumberOfPolys() == 0) {
@@ -67,7 +67,7 @@ auto isotropic_remeshed(std::pair<polydata *, vtkMatrix4x4 *> input,
 auto isotropic_remeshed(std::pair<polydata *, vtkMatrix4x4 *> input,
                         float target_length)
     -> vtkSmartPointer<polydata> {
-  return isotropic_remeshed(input, tf::remesh_config<float>{target_length});
+  return isotropic_remeshed(input, tf::isotropic_remesh_config<float>{target_length});
 }
 
 } // namespace tf::vtk

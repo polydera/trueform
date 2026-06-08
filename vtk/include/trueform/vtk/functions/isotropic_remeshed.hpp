@@ -11,7 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include <trueform/remesh/remesh_config.hpp>
+#include <trueform/remesh/isotropic_remesh_config.hpp>
 #include <utility>
 #include <vtkSmartPointer.h>
 
@@ -26,7 +26,7 @@ class polydata;
 /// @param config Remeshing configuration.
 /// @return A new polydata with the remeshed mesh and cached half-edges.
 auto isotropic_remeshed(polydata *input,
-                        const tf::remesh_config<float> &config)
+                        const tf::isotropic_remesh_config<float> &config)
     -> vtkSmartPointer<polydata>;
 
 /// @brief Isotropic remeshing with target edge length.
@@ -41,7 +41,7 @@ auto isotropic_remeshed(polydata *input, float target_length)
 /// @param config Remeshing configuration.
 /// @return A new polydata with the remeshed mesh and cached half-edges.
 auto isotropic_remeshed(std::pair<polydata *, vtkMatrix4x4 *> input,
-                        const tf::remesh_config<float> &config)
+                        const tf::isotropic_remesh_config<float> &config)
     -> vtkSmartPointer<polydata>;
 
 /// @brief Isotropic remeshing with a transformation frame.

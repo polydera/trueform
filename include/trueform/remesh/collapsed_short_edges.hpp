@@ -114,6 +114,14 @@ auto collapsed_short_edges(
   static_assert(tf::static_size_v<std::decay_t<decltype(polygons.faces()[0])>> ==
                 3);
 
+  // An empty range carries no labels: run the non-region path and return an
+  // empty face_labels buffer of the mesh index type. The region machinery is
+  // never entered.
+  if (regions.face_regions.size() == 0) {
+    auto [mesh, he] = collapsed_short_edges(polygons, min_len, config);
+    return std::tuple{std::move(mesh), std::move(he), tf::buffer<typename Range::value_type>{}};
+  }
+
   if constexpr (!tf::has_half_edges_policy<Policy>) {
     tf::half_edges<Index> he(polygons);
     return collapsed_short_edges(polygons | tf::tag(he), min_len, config,
@@ -169,6 +177,16 @@ auto collapsed_short_edges(
   constexpr auto Dims = tf::coordinate_dims_v<Policy>;
   static_assert(tf::static_size_v<std::decay_t<decltype(polygons.faces()[0])>> ==
                 3);
+
+  // An empty range carries no labels: run the non-region path and return an
+  // empty face_labels buffer of the mesh index type. The region machinery is
+  // never entered.
+  if (regions.face_regions.size() == 0) {
+    auto [mesh, he, fim, vim] =
+        collapsed_short_edges(polygons, min_len, config, tf::return_index_map);
+    return std::tuple{std::move(mesh), std::move(he), std::move(fim),
+                      std::move(vim), tf::buffer<typename Range::value_type>{}};
+  }
 
   if constexpr (!tf::has_half_edges_policy<Policy>) {
     tf::half_edges<Index> he(polygons);

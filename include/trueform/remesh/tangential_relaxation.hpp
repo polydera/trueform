@@ -61,6 +61,12 @@ auto tangential_relaxation(
         return;
       if (he.is_boundary_vertex(v))
         return;
+      // A non-manifold vertex belongs to several fans; the 1-ring walk
+      // (he.rotated) only spins through one of them, so its Laplacian
+      // barycenter is computed from a partial neighborhood. There is no
+      // well-defined one-ring to smooth over — leave it fixed.
+      if (he.is_non_manifold_vertex(v))
+        return;
 
       // Walk 1-ring: accumulate neighbor barycenter and vertex normal
       tf::vector<double, tf::coordinate_dims_v<PointsPolicy>> bary = tf::zero;
@@ -140,6 +146,12 @@ auto tangential_relaxation(
       if (!vhe.is_valid())
         return;
       if (he.is_boundary_vertex(v))
+        return;
+      // A non-manifold vertex belongs to several fans; the 1-ring walk
+      // (he.rotated) only spins through one of them, so its Laplacian
+      // barycenter is computed from a partial neighborhood. There is no
+      // well-defined one-ring to smooth over — leave it fixed.
+      if (he.is_non_manifold_vertex(v))
         return;
       if (mask.vertex_type(v) != vertex_feature_type::regular)
         return;

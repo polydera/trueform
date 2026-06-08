@@ -12,7 +12,7 @@
 #include <trueform/core/angle.hpp>
 #include <trueform/geometry/make_box_mesh.hpp>
 #include <trueform/remesh/decimate_config.hpp>
-#include <trueform/remesh/remesh_config.hpp>
+#include <trueform/remesh/isotropic_remesh_config.hpp>
 #include <trueform/vtk/core.hpp>
 #include <trueform/vtk/core/make_vtk_polydata.hpp>
 #include <trueform/vtk/core/polydata.hpp>
@@ -75,14 +75,14 @@ int main() {
   dec_cfg.parallel = false;
   dec_cfg.feature_angle = tf::deg(30.f);
   dec_cfg.feature_weight = 100;
-  dec_cfg.max_aspect_ratio = -1;
+  dec_cfg.min_quality = -1;
 
   auto vtk_dec = tf::vtk::decimated(vtk_original.Get(), 0.1f, dec_cfg);
   auto n_dec = vtk_dec->GetNumberOfPolys();
   std::cout << "decimated: " << n_dec << " faces\n";
 
   // Isotropic remesh without quadric
-  tf::remesh_config<float> rem_cfg_no_q{0.8f};
+  tf::isotropic_remesh_config<float> rem_cfg_no_q{0.8f};
   rem_cfg_no_q.use_quadric = false;
   rem_cfg_no_q.feature_angle = tf::deg(30.f);
   rem_cfg_no_q.feature_weight = 100;
@@ -93,7 +93,7 @@ int main() {
   std::cout << "remesh (no quadric): " << n_rem_no_q << " faces\n";
 
   // Isotropic remesh with quadric
-  tf::remesh_config<float> rem_cfg_q{0.8f};
+  tf::isotropic_remesh_config<float> rem_cfg_q{0.8f};
   rem_cfg_q.use_quadric = true;
   rem_cfg_q.feature_angle = tf::deg(30.f);
   rem_cfg_q.feature_weight = 100;

@@ -20,6 +20,7 @@ auto register_remesh(nanobind::module_ &m) -> void {
 
   register_decimated(remesh_module);
   register_isotropic_remeshed(remesh_module);
+  register_simplified(remesh_module);
 }
 
 } // namespace tf::py

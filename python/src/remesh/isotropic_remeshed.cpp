@@ -14,7 +14,9 @@
 #include "trueform/python/remesh/isotropic_remeshed_impl.hpp"
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
+#include <nanobind/stl/optional.h>
 #include <nanobind/stl/pair.h>
+#include <optional>
 
 namespace tf::py {
 
@@ -25,73 +27,81 @@ auto register_isotropic_remeshed(nanobind::module_ &m) -> void {
   m.def(
       "isotropic_remeshed_int3float3d",
       [](mesh_wrapper<int, float, 3, 3> &wrapper, float target_length,
-         int iterations, int relaxation_iters, float max_aspect_ratio,
+         int iterations, int relaxation_iters, float min_quality,
          float lambda, bool preserve_boundary, bool use_quadric,
-         bool parallel, double feature_angle, float feature_weight) {
+         bool parallel, double feature_angle, float feature_weight,
+         std::optional<ndarray<numpy, const int, shape<-1>>> regions) {
         return isotropic_remeshed_impl<int, float>(
             wrapper, target_length, iterations, relaxation_iters,
-            max_aspect_ratio, lambda, preserve_boundary, use_quadric, parallel,
-            feature_angle, feature_weight);
+            min_quality, lambda, preserve_boundary, use_quadric, parallel,
+            feature_angle, feature_weight, regions);
       },
       arg("mesh"), arg("target_length"), arg("iterations") = 3,
-      arg("relaxation_iters") = 3, arg("max_aspect_ratio") = -1.f,
+      arg("relaxation_iters") = 3, arg("min_quality") = 0.3f,
       arg("lambda_") = 0.5f, arg("preserve_boundary") = true,
       arg("use_quadric") = false, arg("parallel") = true,
-      arg("feature_angle") = -1.0, arg("feature_weight") = 100.f);
+      arg("feature_angle") = -1.0, arg("feature_weight") = 100.f,
+      arg("preserve_regions") = nanobind::none());
 
   // int32, float64, 3D
   m.def(
       "isotropic_remeshed_int3double3d",
       [](mesh_wrapper<int, double, 3, 3> &wrapper, double target_length,
-         int iterations, int relaxation_iters, double max_aspect_ratio,
+         int iterations, int relaxation_iters, double min_quality,
          double lambda, bool preserve_boundary, bool use_quadric,
-         bool parallel, double feature_angle, double feature_weight) {
+         bool parallel, double feature_angle, double feature_weight,
+         std::optional<ndarray<numpy, const int, shape<-1>>> regions) {
         return isotropic_remeshed_impl<int, double>(
             wrapper, target_length, iterations, relaxation_iters,
-            max_aspect_ratio, lambda, preserve_boundary, use_quadric, parallel,
-            feature_angle, feature_weight);
+            min_quality, lambda, preserve_boundary, use_quadric, parallel,
+            feature_angle, feature_weight, regions);
       },
       arg("mesh"), arg("target_length"), arg("iterations") = 3,
-      arg("relaxation_iters") = 3, arg("max_aspect_ratio") = -1.0,
+      arg("relaxation_iters") = 3, arg("min_quality") = 0.3,
       arg("lambda_") = 0.5, arg("preserve_boundary") = true,
       arg("use_quadric") = false, arg("parallel") = true,
-      arg("feature_angle") = -1.0, arg("feature_weight") = 100.0);
+      arg("feature_angle") = -1.0, arg("feature_weight") = 100.0,
+      arg("preserve_regions") = nanobind::none());
 
   // int64, float32, 3D
   m.def(
       "isotropic_remeshed_int643float3d",
       [](mesh_wrapper<int64_t, float, 3, 3> &wrapper, float target_length,
-         int iterations, int relaxation_iters, float max_aspect_ratio,
+         int iterations, int relaxation_iters, float min_quality,
          float lambda, bool preserve_boundary, bool use_quadric,
-         bool parallel, double feature_angle, float feature_weight) {
+         bool parallel, double feature_angle, float feature_weight,
+         std::optional<ndarray<numpy, const int, shape<-1>>> regions) {
         return isotropic_remeshed_impl<int64_t, float>(
             wrapper, target_length, iterations, relaxation_iters,
-            max_aspect_ratio, lambda, preserve_boundary, use_quadric, parallel,
-            feature_angle, feature_weight);
+            min_quality, lambda, preserve_boundary, use_quadric, parallel,
+            feature_angle, feature_weight, regions);
       },
       arg("mesh"), arg("target_length"), arg("iterations") = 3,
-      arg("relaxation_iters") = 3, arg("max_aspect_ratio") = -1.f,
+      arg("relaxation_iters") = 3, arg("min_quality") = 0.3f,
       arg("lambda_") = 0.5f, arg("preserve_boundary") = true,
       arg("use_quadric") = false, arg("parallel") = true,
-      arg("feature_angle") = -1.0, arg("feature_weight") = 100.f);
+      arg("feature_angle") = -1.0, arg("feature_weight") = 100.f,
+      arg("preserve_regions") = nanobind::none());
 
   // int64, float64, 3D
   m.def(
       "isotropic_remeshed_int643double3d",
       [](mesh_wrapper<int64_t, double, 3, 3> &wrapper, double target_length,
-         int iterations, int relaxation_iters, double max_aspect_ratio,
+         int iterations, int relaxation_iters, double min_quality,
          double lambda, bool preserve_boundary, bool use_quadric,
-         bool parallel, double feature_angle, double feature_weight) {
+         bool parallel, double feature_angle, double feature_weight,
+         std::optional<ndarray<numpy, const int, shape<-1>>> regions) {
         return isotropic_remeshed_impl<int64_t, double>(
             wrapper, target_length, iterations, relaxation_iters,
-            max_aspect_ratio, lambda, preserve_boundary, use_quadric, parallel,
-            feature_angle, feature_weight);
+            min_quality, lambda, preserve_boundary, use_quadric, parallel,
+            feature_angle, feature_weight, regions);
       },
       arg("mesh"), arg("target_length"), arg("iterations") = 3,
-      arg("relaxation_iters") = 3, arg("max_aspect_ratio") = -1.0,
+      arg("relaxation_iters") = 3, arg("min_quality") = 0.3,
       arg("lambda_") = 0.5, arg("preserve_boundary") = true,
       arg("use_quadric") = false, arg("parallel") = true,
-      arg("feature_angle") = -1.0, arg("feature_weight") = 100.0);
+      arg("feature_angle") = -1.0, arg("feature_weight") = 100.0,
+      arg("preserve_regions") = nanobind::none());
 }
 
 } // namespace tf::py

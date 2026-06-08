@@ -3,4 +3,5 @@
 set(MODULE_REMESH_SOURCES
   ${CMAKE_CURRENT_LIST_DIR}/decimated.cpp
   ${CMAKE_CURRENT_LIST_DIR}/isotropic_remeshed.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/simplified.cpp
 )

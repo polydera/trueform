@@ -50,7 +50,7 @@ auto split_edges(tf::half_edges<Index> &he,
         tf::make_range(created.data_buffer()),
         tf::drop(tf::make_range(points.data_buffer()), old_n * Dims));
     he.rebuild_handles(n_faces, Index(points.size()));
-    handler.on_split_done(he, splitter.parent_face_for_new(),
+    handler.on_split_done(he, points.points(), splitter.parent_face_for_new(),
                           splitter.parent_edge_for_new());
   }
   return total_split;

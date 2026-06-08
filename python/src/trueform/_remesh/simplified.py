@@ -1,5 +1,5 @@
 """
-Quadric error decimation
+Error-budget mesh simplification
 
 Copyright (c) 2025 Žiga Sajovic, XLAB
 Licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0.
@@ -15,11 +15,15 @@ from .._spatial import Mesh
 from .._dispatch import extract_meta, build_suffix
 
 
-def decimated(
+def simplified(
     data: Union[Mesh, Tuple[np.ndarray, np.ndarray]],
-    target_proportion: float,
     *,
-    min_quality: float = -1.0,
+    error_rel: float = 0.002,
+    optimize_iterations: int = 3,
+    iterations: int = 1,
+    relaxation_iters: int = 3,
+    lambda_: float = 0.5,
+    min_quality: float = 0.3,
     preserve_boundary: bool = True,
     stabilizer: float = 1e-3,
     parallel: bool = True,
@@ -29,21 +33,38 @@ def decimated(
 ) -> Union[Tuple[np.ndarray, np.ndarray],
            Tuple[np.ndarray, np.ndarray, np.ndarray]]:
     """
-    Decimate a triangle mesh using quadric error metrics.
+    Simplify a triangle mesh to an error budget using quadric error metrics.
 
-    Reduces the face count to approximately target_proportion of the original.
+    Every edge whose quadric error is within ``error_rel`` times the mesh
+    bounding-box diagonal is collapsed, cheapest first, to exhaustion. Unlike
+    decimation there is no target face count: flat regions collapse for almost
+    no error while curved detail and feature edges survive.
 
     Parameters
     ----------
     data : Mesh or (faces, points) tuple
         Triangle mesh (ngon=3, 3D).
-    target_proportion : float
-        Target face count as a fraction of the original (0.0 to 1.0).
+    error_rel : float, optional
+        Error budget as a fraction of the mesh bounding-box diagonal. An edge
+        is collapsed when its quadric error is <= error_rel * diagonal.
+        Default is 0.002.
+    optimize_iterations : int, optional
+        Quality cleanup after each collapse: this many rounds of min-angle edge
+        flip and tangential relaxation (feature/region/boundary-aware). 0 is a
+        pure error-budget collapse with no flips. Default is 3.
+    iterations : int, optional
+        Outer collapse rounds. 1 is a single collapse + cleanup (plain
+        simplify). >1 re-collapses after each cleanup -- the flip pass unblocks
+        collapses the quality guard had stopped, removing more (an iterated
+        remesh), at the cost of more deviation from the original. Default is 1.
+    relaxation_iters : int, optional
+        Tangential relaxation passes per cleanup round. Default is 3.
+    lambda_ : float, optional
+        Damping factor for tangential relaxation in (0, 1]. Default is 0.5.
     min_quality : float, optional
         Worst triangle quality allowed after a collapse, in [0, 1] (1 =
-        equilateral, ->0 = sliver). Negative disables the check (default), 0
-        never worsens the worst surrounding triangle, >0 is a quality floor.
-        Default is -1.0.
+        equilateral, ->0 = sliver). Negative disables the check, 0 never worsens
+        the worst surrounding triangle, >0 is a quality floor. Default is 0.3.
     preserve_boundary : bool, optional
         If True, boundary edges are never collapsed. Default is True.
     stabilizer : float, optional
@@ -65,9 +86,9 @@ def decimated(
     Returns
     -------
     faces : np.ndarray of shape (N, 3)
-        Face indices of the decimated mesh.
+        Face indices of the simplified mesh.
     points : np.ndarray of shape (M, dims)
-        Vertex positions of the decimated mesh.
+        Vertex positions of the simplified mesh.
     labels : np.ndarray of shape (N,), int32
         Per-face region labels of the output mesh. Returned only when
         ``preserve_regions`` is given.
@@ -76,9 +97,9 @@ def decimated(
     --------
     >>> import trueform as tf
     >>> mesh = tf.Mesh(*tf.read_stl("model.stl"))
-    >>> faces, points = tf.decimated(mesh, 0.5)
-    >>> faces, points = tf.decimated(mesh, 0.5, feature_angle=30)
-    >>> faces, points, labels = tf.decimated(mesh, 0.5, preserve_regions=region_labels)
+    >>> faces, points = tf.simplified(mesh)
+    >>> faces, points = tf.simplified(mesh, error_rel=0.01, feature_angle=30)
+    >>> faces, points, labels = tf.simplified(mesh, preserve_regions=region_labels)
     """
 
     if isinstance(data, tuple) and len(data) == 2:
@@ -92,17 +113,17 @@ def decimated(
 
     if data.ngon != 3:
         raise ValueError(
-            f"Decimation requires triangle meshes (ngon=3), got ngon={data.ngon}"
+            f"Simplification requires triangle meshes (ngon=3), got ngon={data.ngon}"
         )
 
     if data.dims != 3:
         raise ValueError(
-            f"Decimation requires 3D meshes, got {data.dims}D"
+            f"Simplification requires 3D meshes, got {data.dims}D"
         )
 
     meta = extract_meta(data)
     suffix = build_suffix(meta)
-    func_name = f"decimated_{suffix}"
+    func_name = f"simplified_{suffix}"
     cpp_func = getattr(_trueform.remesh, func_name)
 
     fa = math.radians(feature_angle) if feature_angle >= 0 else -1.0
@@ -119,12 +140,16 @@ def decimated(
 
     return cpp_func(
         data._wrapper,
-        target_proportion,
+        error_rel,
+        optimize_iterations,
         min_quality,
         preserve_boundary,
         stabilizer,
         parallel,
         fa,
         feature_weight,
+        iterations,
+        relaxation_iters,
+        lambda_,
         regions
     )

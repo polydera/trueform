@@ -56,5 +56,5 @@ export {
   reindexedByMaskOnPoints, reindexedByIdsOnPoints,
   concatenateMeshes, splitIntoComponents, splitIntoDomains,
 } from "../reindex/async";
-export { decimated, isotropicRemeshed } from "../remesh/async";
+export { decimated, isotropicRemeshed, simplified } from "../remesh/async";
 export { obbFrom } from "../primitive/async";

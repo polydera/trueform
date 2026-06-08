@@ -9,3 +9,4 @@ https://github.com/polydera/trueform
 
 from .decimated import decimated
 from .isotropic_remeshed import isotropic_remeshed
+from .simplified import simplified

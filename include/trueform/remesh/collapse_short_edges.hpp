@@ -22,6 +22,7 @@
 #include "./feature_handler.hpp"
 #include "./length_collapse_config.hpp"
 #include "./preserve_regions.hpp"
+#include "./regions/region_label.hpp"
 
 #include <type_traits>
 #include <utility>
@@ -33,8 +34,11 @@ auto collapse_short_edges(
     tf::half_edges<Index> &he, tf::points<PointsPolicy> &points,
     tf::coordinate_type<PointsPolicy> min_len,
     const tf::length_collapse_config<tf::coordinate_type<PointsPolicy>> &config,
-    Regions regions) -> std::pair<Index, feature_handler<Index>> {
+    Regions regions)
+    -> std::pair<Index,
+                 feature_handler<Index, tf::remesh::region_label_t<Regions, Index>>> {
   using Real = tf::coordinate_type<PointsPolicy>;
+  using Label = tf::remesh::region_label_t<Regions, Index>;
   Real min2 = min_len * min_len;
   Real max2 = config.max_length * config.max_length;
 
@@ -48,9 +52,9 @@ auto collapse_short_edges(
     return len2 / min2;
   };
 
-  auto checker = tf::make_collapse_checker<Real>(config.max_aspect_ratio, max2);
+  auto checker = tf::make_collapse_checker<Real>(config.min_quality, max2, config.check_normals);
 
-  feature_handler<Index> features;
+  feature_handler<Index, Label> features;
   if constexpr (std::is_same_v<Regions, tf::none_t>) {
     if (config.feature_angle.value >= 0)
       features.init(he, points, config.feature_angle);
@@ -72,7 +76,9 @@ auto collapse_short_edges(
     tf::half_edges<Index> &he, tf::points<PointsPolicy> &&points,
     tf::coordinate_type<PointsPolicy> min_len,
     const tf::length_collapse_config<tf::coordinate_type<PointsPolicy>> &config,
-    Regions regions) -> std::pair<Index, feature_handler<Index>> {
+    Regions regions)
+    -> std::pair<Index,
+                 feature_handler<Index, tf::remesh::region_label_t<Regions, Index>>> {
   return tf::remesh::collapse_short_edges(he, points, min_len, config, regions);
 }
 
@@ -81,8 +87,11 @@ auto collapse_short_edges(
     tf::half_edges<Index> &he, tf::points<PointsPolicy> &points,
     Index target_faces,
     const tf::length_collapse_config<tf::coordinate_type<PointsPolicy>> &config,
-    Regions regions) -> std::pair<Index, feature_handler<Index>> {
+    Regions regions)
+    -> std::pair<Index,
+                 feature_handler<Index, tf::remesh::region_label_t<Regions, Index>>> {
   using Real = tf::coordinate_type<PointsPolicy>;
+  using Label = tf::remesh::region_label_t<Regions, Index>;
   Real max2 = config.max_length * config.max_length;
 
   auto score = [](const auto &he, const auto &points, auto heh,
@@ -93,9 +102,9 @@ auto collapse_short_edges(
         .length2();
   };
 
-  auto checker = tf::make_collapse_checker<Real>(config.max_aspect_ratio, max2);
+  auto checker = tf::make_collapse_checker<Real>(config.min_quality, max2, config.check_normals);
 
-  feature_handler<Index> features;
+  feature_handler<Index, Label> features;
   if constexpr (std::is_same_v<Regions, tf::none_t>) {
     if (config.feature_angle.value >= 0)
       features.init(he, points, config.feature_angle);
@@ -117,7 +126,9 @@ auto collapse_short_edges(
     tf::half_edges<Index> &he, tf::points<PointsPolicy> &&points,
     Index target_faces,
     const tf::length_collapse_config<tf::coordinate_type<PointsPolicy>> &config,
-    Regions regions) -> std::pair<Index, feature_handler<Index>> {
+    Regions regions)
+    -> std::pair<Index,
+                 feature_handler<Index, tf::remesh::region_label_t<Regions, Index>>> {
   return tf::remesh::collapse_short_edges(he, points, target_faces, config,
                                           regions);
 }
@@ -146,7 +157,14 @@ auto collapse_short_edges(
     tf::half_edges<Index> &he, tf::points<PointsPolicy> &points,
     tf::coordinate_type<PointsPolicy> min_len,
     const tf::length_collapse_config<tf::coordinate_type<PointsPolicy>> &config,
-    tf::preserve_regions_t<Range> regions) -> tf::buffer<Index> {
+    tf::preserve_regions_t<Range> regions)
+    -> tf::buffer<typename Range::value_type> {
+  using Label = typename Range::value_type;
+  // Empty range carries no labels: run the non-region path, return empty labels.
+  if (regions.face_regions.size() == 0) {
+    tf::collapse_short_edges(he, points, min_len, config);
+    return tf::buffer<Label>{};
+  }
   auto [_, features] = tf::remesh::collapse_short_edges(
       he, points, min_len, config, regions);
   return std::move(features.face_labels);
@@ -166,7 +184,8 @@ auto collapse_short_edges(
     tf::half_edges<Index> &he, tf::points<PointsPolicy> &&points,
     tf::coordinate_type<PointsPolicy> min_len,
     const tf::length_collapse_config<tf::coordinate_type<PointsPolicy>> &config,
-    tf::preserve_regions_t<Range> regions) -> tf::buffer<Index> {
+    tf::preserve_regions_t<Range> regions)
+    -> tf::buffer<typename Range::value_type> {
   return tf::collapse_short_edges(he, points, min_len, config, regions);
 }
 
@@ -190,7 +209,14 @@ auto collapse_short_edges(
     tf::half_edges<Index> &he, tf::points<PointsPolicy> &points,
     Index target_faces,
     const tf::length_collapse_config<tf::coordinate_type<PointsPolicy>> &config,
-    tf::preserve_regions_t<Range> regions) -> tf::buffer<Index> {
+    tf::preserve_regions_t<Range> regions)
+    -> tf::buffer<typename Range::value_type> {
+  using Label = typename Range::value_type;
+  // Empty range carries no labels: run the non-region path, return empty labels.
+  if (regions.face_regions.size() == 0) {
+    tf::collapse_short_edges(he, points, target_faces, config);
+    return tf::buffer<Label>{};
+  }
   auto [_, features] = tf::remesh::collapse_short_edges(
       he, points, target_faces, config, regions);
   return std::move(features.face_labels);
@@ -210,7 +236,8 @@ auto collapse_short_edges(
     tf::half_edges<Index> &he, tf::points<PointsPolicy> &&points,
     Index target_faces,
     const tf::length_collapse_config<tf::coordinate_type<PointsPolicy>> &config,
-    tf::preserve_regions_t<Range> regions) -> tf::buffer<Index> {
+    tf::preserve_regions_t<Range> regions)
+    -> tf::buffer<typename Range::value_type> {
   return tf::collapse_short_edges(he, points, target_faces, config, regions);
 }
 

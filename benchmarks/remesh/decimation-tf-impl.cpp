@@ -19,7 +19,7 @@ int run_decimation_tf_benchmark(
   out << "polygons,ratio,time_ms\n";
 
   tf::decimate_config<float> config;
-  config.max_aspect_ratio = -1;
+  config.min_quality = -1;
 
   // All mesh sizes at ratio 0.5
   for (const auto &path : mesh_paths) {

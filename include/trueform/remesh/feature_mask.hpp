@@ -86,6 +86,10 @@ struct feature_mask {
   template <typename Range0, typename Range1, typename Range2, typename Range3>
   auto compact(const tf::index_map<Range0, Range1> &edge_im,
                const tf::index_map<Range2, Range3> &vert_im) -> void {
+    // An uninitialized mask (no feature angle, no regions) has nothing to
+    // remap -- gathering through the index maps would read a null buffer.
+    if (empty())
+      return;
     tf::buffer<bool> new_edges;
     new_edges.allocate(edge_im.kept_ids().size());
     tf::parallel_copy(

@@ -75,12 +75,14 @@ struct split_handler {
                coord_t(0.5);
   }
 
-  template <typename Index, typename FaceBuf, typename EdgeBuf>
+  template <typename Index, typename PointsPolicy, typename FaceBuf,
+            typename EdgeBuf>
   auto on_split_done(const tf::half_edges<Index> &he,
+                     const tf::points<PointsPolicy> &points,
                      const FaceBuf &parent_face_for_new,
                      const EdgeBuf &parent_edge_for_new) const -> void {
     if constexpr (!std::is_same_v<Tracker, tf::none_t>)
-      _tracker.update(he, parent_face_for_new, parent_edge_for_new);
+      _tracker.update(he, points, parent_face_for_new, parent_edge_for_new);
   }
 };
 

@@ -83,16 +83,26 @@ auto collapse_to_exhaustion(tf::half_edges<Index> &he,
       scores[eid] = err;
   });
 
+  // Largest score among candidate edges, plus whether any candidate exists.
+  // Gating the early-out on "no candidates" (not "global_max <= 0") is what
+  // lets a perfectly FLAT region decimate: there every collapse error is
+  // exactly 0, so global_max stays 0 even though all edges are collapsible.
   Real global_max = 0;
+  bool any_candidate = false;
   for (auto eid : edge_ids)
-    if (scores[eid] < max_score && scores[eid] > global_max)
-      global_max = scores[eid];
+    if (scores[eid] < max_score) {
+      any_candidate = true;
+      if (scores[eid] > global_max)
+        global_max = scores[eid];
+    }
 
-  if (global_max <= 0)
+  if (!any_candidate)
     return 0;
 
   Real sqrt_max = tf::sqrt(global_max);
   Real bucket_width = (sqrt_max * Real(1.001)) / N_BUCKETS;
+  // All-zero scores (global_max == 0) -> bucket_width 0; any positive width is
+  // equivalent since every edge maps to bucket 0 (the floor). Use 1.
   if (bucket_width <= 0)
     bucket_width = 1;
   Real inv_bucket_width = Real(1) / bucket_width;

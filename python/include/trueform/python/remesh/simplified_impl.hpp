@@ -18,16 +18,17 @@
 #include <nanobind/ndarray.h>
 #include <optional>
 #include <trueform/core/angle.hpp>
-#include <trueform/remesh/decimated.hpp>
+#include <trueform/remesh/simplified.hpp>
 #include <trueform/core.hpp>
 
 namespace tf::py {
 
 template <typename Index, typename RealT>
-auto decimated_impl(
-    mesh_wrapper<Index, RealT, 3, 3> &wrapper, RealT target_proportion,
-    RealT min_quality, bool preserve_boundary, double stabilizer, bool parallel,
-    double feature_angle, RealT feature_weight,
+auto simplified_impl(
+    mesh_wrapper<Index, RealT, 3, 3> &wrapper, RealT error_rel,
+    int optimize_iterations, RealT min_quality, bool preserve_boundary,
+    double stabilizer, bool parallel, double feature_angle, RealT feature_weight,
+    int iterations, int relaxation_iters, RealT lambda,
     std::optional<
         nanobind::ndarray<nanobind::numpy, const int, nanobind::shape<-1>>>
         regions) {
@@ -37,7 +38,12 @@ auto decimated_impl(
   he.build(polys.faces(), fm);
   auto tagged = polys | tf::tag(fm) | tf::tag(he);
 
-  tf::decimate_config<RealT> config;
+  tf::simplify_config<RealT> config;
+  config.error_rel = error_rel;
+  config.optimize_iterations = optimize_iterations;
+  config.iterations = iterations;
+  config.relaxation_iters = relaxation_iters;
+  config.lambda = lambda;
   config.min_quality = min_quality;
   config.preserve_boundary = preserve_boundary;
   config.stabilizer = stabilizer;
@@ -50,13 +56,13 @@ auto decimated_impl(
       auto r = tf::make_range(static_cast<const int *>(regions->data()),
                               regions->size());
       auto [result, result_he, labels] =
-          tf::decimated(form, target_proportion, config, tf::preserve_regions(r));
+          tf::simplified(form, config, tf::preserve_regions(r));
       (void)result_he;
       auto fp = make_numpy_array(std::move(result));
       return nanobind::make_tuple(fp.first, fp.second,
                                   make_numpy_array(std::move(labels)));
     }
-    auto [result, result_he] = tf::decimated(form, target_proportion, config);
+    auto [result, result_he] = tf::simplified(form, config);
     (void)result_he;
     auto fp = make_numpy_array(std::move(result));
     return nanobind::make_tuple(fp.first, fp.second);

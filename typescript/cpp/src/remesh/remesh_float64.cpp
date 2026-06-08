@@ -18,11 +18,17 @@ EMSCRIPTEN_BINDINGS(trueform_remesh_float64) {
   using Real = double;
   using namespace tf::ts;
 
+  emscripten::value_object<remesh_result_t<Real>>("RemeshResultFloat64")
+      .field("mesh", &remesh_result_t<Real>::mesh)
+      .field("regions", &remesh_result_t<Real>::regions);
+
   emscripten::function("decimated_float64", &sync_decimated<Real>);
   emscripten::function("isotropic_remeshed_float64",
                        &sync_isotropic_remeshed<Real>);
+  emscripten::function("simplified_float64", &sync_simplified<Real>);
 
   emscripten::function("dispatch_decimated_float64", &async_decimated<Real>);
   emscripten::function("dispatch_isotropic_remeshed_float64",
                        &async_isotropic_remeshed<Real>);
+  emscripten::function("dispatch_simplified_float64", &async_simplified<Real>);
 }

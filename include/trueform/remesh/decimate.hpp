@@ -20,6 +20,7 @@
 #include "./decimate_config.hpp"
 #include "./feature_handler.hpp"
 #include "./preserve_regions.hpp"
+#include "./regions/region_label.hpp"
 
 #include <type_traits>
 
@@ -30,8 +31,11 @@ auto decimate(tf::half_edges<Index> &he, tf::points<PointsPolicy> &points,
               tf::coordinate_type<PointsPolicy> target_proportion,
               const tf::decimate_config<tf::coordinate_type<PointsPolicy>>
                   &config,
-              Regions regions) -> std::pair<Index, feature_handler<Index>> {
+              Regions regions)
+    -> std::pair<Index,
+                 feature_handler<Index, tf::remesh::region_label_t<Regions, Index>>> {
   using Real = tf::coordinate_type<PointsPolicy>;
+  using Label = tf::remesh::region_label_t<Regions, Index>;
   Index target_faces = Index(he.number_of_faces() * target_proportion);
 
   auto score = [](const auto &he, const auto &points, auto heh,
@@ -40,9 +44,9 @@ auto decimate(tf::half_edges<Index> &he, tf::points<PointsPolicy> &points,
         handler._quadrics, points, he, heh, handler._config.stabilizer);
   };
 
-  auto checker = tf::make_collapse_checker<Real>(config.max_aspect_ratio);
+  auto checker = tf::make_collapse_checker<Real>(config.min_quality, tf::none, config.check_normals);
 
-  feature_handler<Index> features;
+  feature_handler<Index, Label> features;
   if constexpr (std::is_same_v<Regions, tf::none_t>) {
     if (config.feature_angle.value >= 0)
       features.init(he, points, config.feature_angle);
@@ -65,7 +69,9 @@ auto decimate(tf::half_edges<Index> &he, tf::points<PointsPolicy> &&points,
               tf::coordinate_type<PointsPolicy> target_proportion,
               const tf::decimate_config<tf::coordinate_type<PointsPolicy>>
                   &config,
-              Regions regions) -> std::pair<Index, feature_handler<Index>> {
+              Regions regions)
+    -> std::pair<Index,
+                 feature_handler<Index, tf::remesh::region_label_t<Regions, Index>>> {
   return tf::remesh::decimate(he, points, target_proportion, config, regions);
 }
 
@@ -93,7 +99,14 @@ auto decimate(tf::half_edges<Index> &he, tf::points<PointsPolicy> &points,
               tf::coordinate_type<PointsPolicy> target_proportion,
               const tf::decimate_config<tf::coordinate_type<PointsPolicy>>
                   &config,
-              tf::preserve_regions_t<Range> regions) -> tf::buffer<Index> {
+              tf::preserve_regions_t<Range> regions)
+    -> tf::buffer<typename Range::value_type> {
+  using Label = typename Range::value_type;
+  // Empty range carries no labels: run the non-region path, return empty labels.
+  if (regions.face_regions.size() == 0) {
+    tf::decimate(he, points, target_proportion, config);
+    return tf::buffer<Label>{};
+  }
   auto [_, features] =
       tf::remesh::decimate(he, points, target_proportion, config, regions);
   return std::move(features.face_labels);
@@ -113,7 +126,8 @@ auto decimate(tf::half_edges<Index> &he, tf::points<PointsPolicy> &&points,
               tf::coordinate_type<PointsPolicy> target_proportion,
               const tf::decimate_config<tf::coordinate_type<PointsPolicy>>
                   &config,
-              tf::preserve_regions_t<Range> regions) -> tf::buffer<Index> {
+              tf::preserve_regions_t<Range> regions)
+    -> tf::buffer<typename Range::value_type> {
   return tf::decimate(he, points, target_proportion, config, regions);
 }
 

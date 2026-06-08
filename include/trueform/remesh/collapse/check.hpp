@@ -15,6 +15,7 @@
 #include <limits>
 #include <type_traits>
 
+#include "../../core/constants.hpp"
 #include "../../core/cross.hpp"
 #include "../../core/dot.hpp"
 #include "../../core/frame_of.hpp"
@@ -38,32 +39,37 @@ namespace tf::remesh {
 /// per-face flip test.
 ///
 /// @tparam NormalFlip  Reject if a flipped face opposes the average normal.
-/// @tparam AspectRatio Reject if worst aspect ratio increases.
+/// @tparam MinQuality  Reject if worst triangle quality drops below
+///                     min(min_quality, worst old quality). See
+///                     is_collapse_allowed_dihedral for the [0,1] semantics.
 /// @tparam EdgeLength  Reject if longest ring edge increases (or exceeds
 ///                     max_edge_length_sq when > 0).
 template <bool NormalFlip = true, typename Index, typename PointsPolicy,
-          typename Real, typename AspectRatioT = tf::none_t,
+          typename Real, typename MinQualityT = tf::none_t,
           typename EdgeLengthT = tf::none_t>
 auto is_collapse_allowed(const tf::half_edges<Index> &he,
                          const tf::points<PointsPolicy> &points,
                          tf::half_edge_handle<Index> heh,
                          const tf::point<Real, 3> &pt,
-                         AspectRatioT max_aspect_ratio = tf::none,
+                         MinQualityT min_quality = tf::none,
                          EdgeLengthT max_edge_length_sq = tf::none) -> bool {
-  constexpr bool AspectRatio = !std::is_same_v<AspectRatioT, tf::none_t>;
+  constexpr bool Quality = !std::is_same_v<MinQualityT, tf::none_t>;
   constexpr bool EdgeLength = !std::is_same_v<EdgeLengthT, tf::none_t>;
   auto v0 = he.start_vertex_handle(tf::unsafe, heh).id();
   auto v1 = he.end_vertex_handle(tf::unsafe, heh).id();
 
   auto frame = tf::frame_of(points);
 
-  Real max_old_ar = Real(0);
-  bool ar_active = false;
-  if constexpr (!std::is_same_v<AspectRatioT, tf::none_t>) {
-    max_old_ar = Real(max_aspect_ratio);
-    ar_active = max_old_ar >= Real(0);
+  const Real kq = tf::two_over_sqrt_3<Real>;
+  Real min_old_q = std::numeric_limits<Real>::max();
+  Real min_new_q = std::numeric_limits<Real>::max();
+  bool q_active = false;
+  Real floor_q = Real(0);
+  if constexpr (Quality) {
+    Real mq = Real(min_quality);
+    q_active = mq >= Real(0);
+    floor_q = (mq == Real(0)) ? std::numeric_limits<Real>::max() : mq;
   }
-  Real max_new_ar = 0;
   Real max_old_e2 = 0, max_new_e2 = 0;
 
   // Accumulated normal flip state
@@ -87,7 +93,7 @@ auto is_collapse_allowed(const tf::half_edges<Index> &he,
         auto fa = points[a] - pt;
         auto fb = points[b] - pt;
 
-        if constexpr (NormalFlip || AspectRatio) {
+        if constexpr (NormalFlip || Quality) {
           auto old_n = tf::cross(ea, eb);
           auto new_n = tf::cross(fa, fb);
 
@@ -106,23 +112,23 @@ auto is_collapse_allowed(const tf::half_edges<Index> &he,
             }
           }
 
-          if constexpr (AspectRatio) {
-            if (ar_active) {
+          if constexpr (Quality) {
+            if (q_active) {
               auto ec = points[b] - points[a];
               Real ec2 = tf::dot(ec, ec);
 
               Real old_a2 = old_n.length2();
-              if (old_a2 > 0) {
-                Real old_me2 =
-                    std::max({tf::dot(ea, ea), tf::dot(eb, eb), ec2});
-                max_old_ar = std::max(max_old_ar, old_me2 / old_a2);
+              Real old_me2 = std::max({tf::dot(ea, ea), tf::dot(eb, eb), ec2});
+              if (old_me2 > 0) {
+                Real qo = kq * std::sqrt(std::max(old_a2, Real(0))) / old_me2;
+                min_old_q = std::min(min_old_q, qo);
               }
 
               Real new_a2 = new_n.length2();
-              if (new_a2 > 0) {
-                Real new_me2 =
-                    std::max({tf::dot(fa, fa), tf::dot(fb, fb), ec2});
-                max_new_ar = std::max(max_new_ar, new_me2 / new_a2);
+              Real new_me2 = std::max({tf::dot(fa, fa), tf::dot(fb, fb), ec2});
+              if (new_me2 > 0) {
+                Real qn = kq * std::sqrt(std::max(new_a2, Real(0))) / new_me2;
+                min_new_q = std::min(min_new_q, qn);
               }
             }
           }
@@ -160,7 +166,7 @@ auto is_collapse_allowed(const tf::half_edges<Index> &he,
         auto fa = points[a] - pt;
         auto fb = points[b] - pt;
 
-        if constexpr (NormalFlip || AspectRatio) {
+        if constexpr (NormalFlip || Quality) {
           auto old_n = tf::cross(ea, eb);
           auto new_n = tf::cross(fa, fb);
 
@@ -179,23 +185,23 @@ auto is_collapse_allowed(const tf::half_edges<Index> &he,
             }
           }
 
-          if constexpr (AspectRatio) {
-            if (ar_active) {
+          if constexpr (Quality) {
+            if (q_active) {
               auto ec = points[b] - points[a];
               Real ec2 = tf::dot(ec, ec);
 
               Real old_a2 = old_n.length2();
-              if (old_a2 > 0) {
-                Real old_me2 =
-                    std::max({tf::dot(ea, ea), tf::dot(eb, eb), ec2});
-                max_old_ar = std::max(max_old_ar, old_me2 / old_a2);
+              Real old_me2 = std::max({tf::dot(ea, ea), tf::dot(eb, eb), ec2});
+              if (old_me2 > 0) {
+                Real qo = kq * std::sqrt(std::max(old_a2, Real(0))) / old_me2;
+                min_old_q = std::min(min_old_q, qo);
               }
 
               Real new_a2 = new_n.length2();
-              if (new_a2 > 0) {
-                Real new_me2 =
-                    std::max({tf::dot(fa, fa), tf::dot(fb, fb), ec2});
-                max_new_ar = std::max(max_new_ar, new_me2 / new_a2);
+              Real new_me2 = std::max({tf::dot(fa, fa), tf::dot(fb, fb), ec2});
+              if (new_me2 > 0) {
+                Real qn = kq * std::sqrt(std::max(new_a2, Real(0))) / new_me2;
+                min_new_q = std::min(min_new_q, qn);
               }
             }
           }
@@ -234,8 +240,8 @@ auto is_collapse_allowed(const tf::half_edges<Index> &he,
     }
   }
 
-  if constexpr (AspectRatio) {
-    if (ar_active && max_new_ar > max_old_ar)
+  if constexpr (Quality) {
+    if (q_active && min_new_q < std::min(floor_q, min_old_q))
       return false;
   }
 
@@ -257,21 +263,34 @@ auto is_collapse_allowed(const tf::half_edges<Index> &he,
 /// sharp dihedral creases. Optionally enforces aspect ratio and
 /// max edge length.
 ///
-/// @tparam AspectRatioT Pass a Real value to enable the aspect ratio
-///                      check (used as floor for max old AR).
-///                      Default tf::none disables the check.
+/// @param check_normals When true, additionally reject the collapse if ANY
+///                      surviving face's normal inverts (its post-collapse
+///                      normal opposes its pre-collapse normal, dot <= 0). This
+///                      is CGAL's Bounded_normal_change guard. Unlike the
+///                      dihedral test (adjacent NEW faces vs each other), this
+///                      compares each face's OLD vs NEW normal, so it catches a
+///                      COHERENT inversion of a whole 1-ring fan that the
+///                      dihedral test misses. Runtime flag, default false.
+/// @tparam MinQualityT  Pass a Real value to enable the triangle-quality
+///                      check. The value is min_quality in [0,1] (1 =
+///                      equilateral, ->0 = sliver): a collapse is allowed iff
+///                      the worst NEW quality >= min(min_quality, worst OLD
+///                      quality). So 0 = never worsen, >0 = quality floor (that
+///                      still permits matching an already-worse ring, and always
+///                      permits an improvement), <0 disables. Default tf::none
+///                      disables the check.
 /// @tparam EdgeLengthT  Pass a Real value to enable the edge length
 ///                      check (used as floor for max old edge²).
 ///                      Default tf::none disables the check.
 template <typename Index, typename PointsPolicy, typename Real,
-          typename AspectRatioT = tf::none_t,
-          typename EdgeLengthT = tf::none_t>
+          typename MinQualityT = tf::none_t, typename EdgeLengthT = tf::none_t>
 auto is_collapse_allowed_dihedral(
     const tf::half_edges<Index> &he, const tf::points<PointsPolicy> &points,
     tf::half_edge_handle<Index> heh, const tf::point<Real, 3> &pt,
-    AspectRatioT max_aspect_ratio = tf::none,
-    EdgeLengthT max_edge_length_sq = tf::none) -> bool {
-  constexpr bool AspectRatio = !std::is_same_v<AspectRatioT, tf::none_t>;
+    MinQualityT min_quality = tf::none,
+    EdgeLengthT max_edge_length_sq = tf::none,
+    bool check_normals = false) -> bool {
+  constexpr bool Quality = !std::is_same_v<MinQualityT, tf::none_t>;
   constexpr bool EdgeLength = !std::is_same_v<EdgeLengthT, tf::none_t>;
   auto v0 = he.start_vertex_handle(tf::unsafe, heh).id();
   auto v1 = he.end_vertex_handle(tf::unsafe, heh).id();
@@ -360,13 +379,19 @@ auto is_collapse_allowed_dihedral(
   // (i.e. surface dihedral < 10° — the near-fold zone). cos²(10°) ≈ 0.9698.
   constexpr Real cos2_fold_tol = Real(0.9698463);
 
-  Real max_old_ar = Real(0);
-  bool ar_active = false;
-  if constexpr (AspectRatio) {
-    max_old_ar = Real(max_aspect_ratio);
-    ar_active = max_old_ar >= Real(0);
+  // Triangle quality q = (2/sqrt3) * (2*area) / max_edge^2 in (0,1] (1 =
+  // equilateral). Allow iff worst NEW q >= min(floor_q, worst OLD q):
+  //   min_quality < 0 -> disabled; == 0 -> never worsen; > 0 -> quality floor.
+  const Real kq = tf::two_over_sqrt_3<Real>;
+  Real min_old_q = std::numeric_limits<Real>::max();
+  Real min_new_q = std::numeric_limits<Real>::max();
+  bool q_active = false;
+  Real floor_q = Real(0);
+  if constexpr (Quality) {
+    Real mq = Real(min_quality);
+    q_active = mq >= Real(0);
+    floor_q = (mq == Real(0)) ? std::numeric_limits<Real>::max() : mq;
   }
-  Real max_new_ar = 0;
 
   for (int i = 0; i < link_size; ++i) {
     int prv = (i + link_size - 1) % link_size;
@@ -388,17 +413,36 @@ auto is_collapse_allowed_dihedral(
     if (d <= Real(0) && d * d > cos2_fold_tol * l1 * l2)
       return false;
 
-    if constexpr (AspectRatio) {
-      if (!ar_active)
+    if (check_normals) {
+      // Per-face old-vs-new normal (CGAL Bounded_normal_change). The new face is
+      // (pt, link[i], link[nxt]) with normal n2; its OLD form is
+      // (center, link[i], link[nxt]) where center is the original ring owner --
+      // a real old face only when both link vertices come from the same ring.
+      bool i_in_v0 = i < v0_link_end;
+      bool nxt_in_v0 = nxt < v0_link_end;
+      if (i_in_v0 == nxt_in_v0) {
+        auto center = i_in_v0 ? v0 : v1;
+        auto oa = points[link[i]] - points[center];
+        auto ob = points[link[nxt]] - points[center];
+        if (tf::dot(tf::cross(oa, ob), n2) <= Real(0))
+          return false; // face normal inverts
+      }
+    }
+
+    if constexpr (Quality) {
+      if (!q_active)
         continue;
-      // New face (pt, link[i], link[nxt])
-      if (l2 > 0) {
+      // New face (pt, link[i], link[nxt]) quality (lower = worse).
+      {
         auto fc = points[link[nxt]] - points[link[i]];
         Real new_me2 =
             std::max({tf::dot(e02, e02), tf::dot(e03, e03), tf::dot(fc, fc)});
-        max_new_ar = std::max(max_new_ar, new_me2 / l2);
+        if (new_me2 > 0) {
+          Real qn = kq * std::sqrt(std::max(l2, Real(0))) / new_me2;
+          min_new_q = std::min(min_new_q, qn);
+        }
       }
-      // Old face — only when both vertices in same ring
+      // Old face quality — only when both vertices in same ring.
       bool i_in_v0 = i < v0_link_end;
       bool nxt_in_v0 = nxt < v0_link_end;
       if (i_in_v0 == nxt_in_v0) {
@@ -407,22 +451,80 @@ auto is_collapse_allowed_dihedral(
         auto ob = points[link[nxt]] - points[center];
         auto old_n = tf::cross(oa, ob);
         Real old_a2 = old_n.length2();
-        if (old_a2 > 0) {
-          auto oc = points[link[nxt]] - points[link[i]];
-          Real old_me2 =
-              std::max({tf::dot(oa, oa), tf::dot(ob, ob), tf::dot(oc, oc)});
-          max_old_ar = std::max(max_old_ar, old_me2 / old_a2);
+        auto oc = points[link[nxt]] - points[link[i]];
+        Real old_me2 =
+            std::max({tf::dot(oa, oa), tf::dot(ob, ob), tf::dot(oc, oc)});
+        if (old_me2 > 0) {
+          Real qo = kq * std::sqrt(std::max(old_a2, Real(0))) / old_me2;
+          min_old_q = std::min(min_old_q, qo);
         }
       }
     }
   }
 
-  if constexpr (AspectRatio) {
-    if (ar_active && max_new_ar > max_old_ar)
+  if constexpr (Quality) {
+    // Allow iff the worst new quality is no lower than min(floor_q, worst old).
+    // Improvement always passes; floor_q = +inf (min_quality == 0) -> never
+    // worsen; otherwise a quality floor that still permits matching an
+    // already-worse ring.
+    if (q_active && min_new_q < std::min(floor_q, min_old_q))
       return false;
   }
 
   return true;
+}
+
+/// @ingroup remesh
+/// @brief Strict per-face normal-flip guard for an edge collapse.
+///
+/// Rejects the collapse if ANY surviving face incident to either endpoint
+/// inverts -- its post-collapse normal opposes its pre-collapse normal
+/// (dot <= 0). This is stricter than the two guards above and catches a case
+/// neither does: a COHERENT inversion of a whole 1-ring fan, where every face
+/// flips consistently. is_collapse_allowed's NormalFlip only rejects flipped
+/// faces that oppose the AVERAGE new normal (a coherent flip agrees with its
+/// own average), and is_collapse_allowed_dihedral only checks ADJACENT new
+/// faces against each other (a coherent flip keeps them mutually consistent).
+/// Use this when surface orientation must be preserved exactly (e.g. without
+/// back-projection, where a collapse can fold a fan onto the wrong side).
+///
+/// Mirrors the 1-ring traversal of is_collapse_allowed; the two faces sharing
+/// the collapsed edge are skipped (they are removed).
+template <typename Index, typename PointsPolicy, typename Real>
+auto is_collapse_normal_preserving(const tf::half_edges<Index> &he,
+                                   const tf::points<PointsPolicy> &points,
+                                   tf::half_edge_handle<Index> heh,
+                                   const tf::point<Real, 3> &pt) -> bool {
+  auto v0 = he.start_vertex_handle(tf::unsafe, heh).id();
+  auto v1 = he.end_vertex_handle(tf::unsafe, heh).id();
+
+  // Faces (center, a, b) in `center`'s 1-ring; `other` is the far endpoint,
+  // whose two shared faces (b == other) are the removed ones and are skipped.
+  auto ring_ok = [&](tf::half_edge_handle<Index> outgoing, Index center,
+                     Index other) -> bool {
+    auto cur = he.rotated(outgoing);
+    if (!cur.is_valid())
+      return true; // open fan -> boundary handled elsewhere
+    while (cur != outgoing) {
+      auto a = he.end_vertex_handle(tf::unsafe, cur).id();
+      auto b = he.end_vertex_handle(tf::unsafe, he.next(tf::unsafe, cur)).id();
+      if (b != other) {
+        auto ea = points[a] - points[center];
+        auto eb = points[b] - points[center];
+        auto fa = points[a] - pt;
+        auto fb = points[b] - pt;
+        if (tf::dot(tf::cross(ea, eb), tf::cross(fa, fb)) <= Real(0))
+          return false; // this face inverts
+      }
+      cur = he.rotated(cur);
+      if (!cur.is_valid())
+        return true;
+    }
+    return true;
+  };
+
+  return ring_ok(heh, v0, v1) &&
+         ring_ok(he.opposite(tf::unsafe, heh), v1, v0);
 }
 
 } // namespace tf::remesh
