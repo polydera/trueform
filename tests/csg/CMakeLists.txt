@@ -3,6 +3,7 @@ add_executable(trueform_csg_tests
   test_expression_fuzz.cpp
   test_csg_graph.cpp
   test_csg_solids.cpp
+  test_csg_sheets.cpp
 )
 
 target_link_libraries(trueform_csg_tests PRIVATE trueform_test_common)

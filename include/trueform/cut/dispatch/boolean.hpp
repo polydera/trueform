@@ -49,7 +49,7 @@ auto make_missing_structures(const tf::polygons<Policy> &polygons) {
     tf::face_membership<Index> fm;
     tf::manifold_edge_link<Index, FaceSize> mel;
     tbb::parallel_invoke(
-        [&] { tree.build(polygons, tf::config_tree(4, 4)); },
+        [&] { tree.build(polygons, tf::config_tree(4, 12)); },
         [&] {
           fm.build(polygons);
           mel.build(polygons.faces(), fm);
@@ -57,7 +57,7 @@ auto make_missing_structures(const tf::polygons<Policy> &polygons) {
     return std::make_tuple(std::move(fm), std::move(mel), std::move(tree));
   } else if constexpr (!tf::has_tree_policy<Policy>) {
     tf::aabb_tree<Index, CoordType, Dims> tree;
-    tree.build(polygons, tf::config_tree(4, 4));
+    tree.build(polygons, tf::config_tree(4, 12));
     return std::make_tuple(std::move(tree));
   } else {
     // Only MEL missing

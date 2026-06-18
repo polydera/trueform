@@ -11,6 +11,7 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../../core/algorithm/compute_offsets.hpp"
 #include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
@@ -26,9 +27,13 @@
 #include "../../exact/vertex_converter.hpp"
 #include "../../intersect/graph/intersection_graph.hpp"
 #include "../../intersect/graph/vertex.hpp"
+#include "../../core/views/offset_block_range.hpp"
 #include "../../spatial/search.hpp"
+#include "tbb/parallel_sort.h"
 #include "./compute_bundle_aabbs.hpp"
+#include "./winding_side.hpp"
 #include <algorithm>
+#include <vector>
 #include <cstdint>
 #include <limits>
 
@@ -44,6 +49,13 @@ namespace tf::csg::graph {
 /// AABB trees (`tf::search` with exact `segment_hits_aabb` at every
 /// BV node, exact `triangle_segment_intersect_point_sos` at leaves);
 /// per-form parity goes into `inc.bits[outer_env(bi)]`.
+///
+/// Sheet forms (`is_sheet_tag`) are side-classified instead: the AABB
+/// prefilter is skipped (a bundle is above or below a sheet even
+/// without overlap) and the bit is the sign of the generalized winding
+/// number (@ref tf::csg::graph::winding_side) — set when the seed is
+/// behind the sheet's normal. One batched pass per sheet over its
+/// triangles classifies all bundles needing it.
 template <typename Forms, typename Index, typename Int, typename Real,
           std::size_t Dims, typename VolT>
 auto seed_inclusion_bits(
@@ -53,7 +65,8 @@ auto seed_inclusion_bits(
     const tf::face_cuts<Index, Int> &fc,
     const tf::intersection_graph<Index, Int> &ig, const Forms &tagged_forms,
     const tf::exact::vertex_converter<Int, Real, Dims> &conv,
-    const tf::buffer<VolT> &domain_volumes) -> tf::buffer<Index> {
+    const tf::buffer<VolT> &domain_volumes,
+    const tf::buffer<char> &is_sheet_tag = {}) -> tf::buffer<Index> {
   using ag_t = tf::arrangement_graph<Index>;
   using vertex_t = tf::intersect::graph::vertex<Index>;
   using source = tf::intersect::graph::vertex_source;
@@ -196,9 +209,16 @@ auto seed_inclusion_bits(
            a.min[2] <= b.max[2] && b.min[2] <= a.max[2];
   };
 
+  auto sheet_tag = [&](Index t) -> bool {
+    return t < Index(is_sheet_tag.size()) && is_sheet_tag[t];
+  };
+
   // Skip whole forms whose tags are in bi's own bundle (binary search
-  // on the ascending-sorted `desc.bundle_to_tags[bi]`).
+  // on the ascending-sorted `desc.bundle_to_tags[bi]`). Sheets are
+  // never AABB-skipped (a bundle has a side even without overlap) and
+  // collect into their own per-sheet batches.
   tf::buffer<std::array<Index, 2>> candidates;
+  tf::buffer<std::array<Index, 2>> sheet_pairs;
   for (Index bi = Index(0); bi < n_bundles; ++bi) {
     if (outer_env[bi] == null_seed)
       continue;
@@ -208,7 +228,9 @@ auto seed_inclusion_bits(
     for (Index t = Index(0); t < n_tags; ++t) {
       if (std::binary_search(own_tags.begin(), own_tags.end(), t))
         continue;
-      if (aabbs_overlap(bboxes[bi], form_bv[t]))
+      if (sheet_tag(t))
+        sheet_pairs.push_back({bi, t});
+      else if (aabbs_overlap(bboxes[bi], form_bv[t]))
         candidates.push_back({bi, t});
     }
   }
@@ -218,13 +240,49 @@ auto seed_inclusion_bits(
                   static_cast<std::size_t>(n_tags));
   tf::parallel_fill(parity, char(0));
 
+  // Sheet batches: sort the (bundle, sheet) pairs by sheet and group
+  // by offsets; one winding pass per group classifies every bundle that
+  // needs that sheet. Groups run in parallel and each pass is itself
+  // parallel over the sheet's triangles. Writes are disjoint: group `t`
+  // only touches parity column `t`.
+  if (sheet_pairs.size() > 0) {
+    tbb::parallel_sort(sheet_pairs.begin(), sheet_pairs.end(),
+                       [](const auto &a, const auto &b) {
+                         if (a[1] != b[1])
+                           return a[1] < b[1];
+                         return a[0] < b[0];
+                       });
+    tf::buffer<Index> sheet_offsets;
+    sheet_offsets.reserve(sheet_pairs.size() + 1);
+    tf::compute_offsets(
+        sheet_pairs, std::back_inserter(sheet_offsets), Index(0),
+        [](const auto &a, const auto &b) { return a[1] == b[1]; });
+    auto groups =
+        tf::make_offset_block_range(sheet_offsets, tf::make_range(sheet_pairs));
+    tf::parallel_for_each(groups, [&](auto group) {
+      const Index t = group[0][1];
+      tf::buffer<IntPt> queries;
+      queries.allocate(group.size());
+      for (std::size_t j = 0; j < group.size(); ++j)
+        queries[j] = seed_pt[group[j][0]];
+      auto bits =
+          winding_side(tagged_forms[t], queries,
+                       [&](const auto &world) { return conv.convert(world); });
+      for (std::size_t j = 0; j < bits.size(); ++j)
+        parity[static_cast<std::size_t>(group[j][0]) *
+                   static_cast<std::size_t>(n_tags) +
+               static_cast<std::size_t>(t)] = bits[j];
+    });
+  }
+
   tf::parallel_for_each(candidates, [&](const auto &pair) {
     const Index bi = pair[0];
     const Index t = pair[1];
     const IntPt seed_pt_b = seed_pt[bi];
+    char p = 0;
+
     EVert seed_v{seed_id_base + bi, seed_pt_b};
     EVert far_v{far_id, far_pt};
-    char p = 0;
 
     auto labels = ag.polygon_labels(t);
 

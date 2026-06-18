@@ -13,7 +13,6 @@
 #pragma once
 #include "../core/none.hpp"
 #include "./csg_graph.hpp"
-#include "./expression/compile.hpp"
 #include "./expression/compiled_expr.hpp"
 #include "./expression/expr.hpp"
 #include "./graph/compute_chosen_sides.hpp"

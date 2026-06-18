@@ -19,6 +19,7 @@
 #include "../core/views/mapped_range.hpp"
 #include "../core/views/zip.hpp"
 #include "../cut/arrangement_graph.hpp"
+#include "../cut/arrangements/anchor_sheet_sides.hpp"
 #include "../cut/arrangements/arrangement_descriptor.hpp"
 #include "../cut/arrangements/compute_domain_inclusions.hpp"
 #include "../cut/arrangements/make_arrangement_descriptor.hpp"
@@ -81,8 +82,10 @@ public:
   csg_graph(Forms forms, tf::small_vector<Structs, 10> structs,
             tf::intersect_config config =
                 {tf::intersect_mode::primitives |
-                 tf::intersect_mode::resolve_crossing_contours})
-      : _forms(std::move(forms)), _structs(std::move(structs)) {
+                 tf::intersect_mode::resolve_crossing_contours},
+            tf::buffer<char> is_sheet = {})
+      : _forms(std::move(forms)), _structs(std::move(structs)),
+        _is_sheet(std::move(is_sheet)) {
     auto tagged = this->forms();
     _ibp.build(tagged, config);
     auto &conv = _ibp.converter();
@@ -111,14 +114,18 @@ public:
     };
 
     _desc = tf::cut::make_arrangement_descriptor<resolved_int_type>(
-        _ag, _fc, get_point, apply_to_face);
+        _ag, _fc, get_point, apply_to_face, _is_sheet);
     _inc = tf::cut::compute_domain_inclusions(_ag, _fc, _desc);
     auto volumes = tf::csg::graph::compute_arrangement_domain_volumes(
         tagged, _ag, _fc, _desc, get_point);
     auto seeds = tf::csg::graph::seed_inclusion_bits(
-        _inc, _desc, _ag, _fc, _ig, tagged, conv, volumes);
+        _inc, _desc, _ag, _fc, _ig, tagged, conv, volumes, _is_sheet);
     tf::cut::propagate_inclusion_bits(_inc, _desc, _ag, _fc, seeds);
+    tf::cut::anchor_sheet_sides(_inc, _desc, _is_sheet);
   }
+
+  /// @brief Per-form sheet mask (empty when no sheets were declared).
+  auto is_sheet() const -> const tf::buffer<char> & { return _is_sheet; }
 
   /// @brief Return the tagged forms view. If `Structs == none_t`,
   ///        returns the user's forms unchanged. Otherwise builds the
@@ -163,6 +170,7 @@ public:
 private:
   Forms _forms;
   tf::small_vector<Structs, 10> _structs;
+  tf::buffer<char> _is_sheet;
   tf::intersections_between_polygons<index_type, pipeline_real_type,
                                      resolved_int_type>
       _ibp;

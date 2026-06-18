@@ -20,6 +20,7 @@
 #include "../../core/views/enumerate.hpp"
 #include "../../core/views/indirect_range.hpp"
 #include "../../core/views/offset_block_range.hpp"
+#include "../../core/views/sequence_range.hpp"
 #include "../../core/views/zip.hpp"
 #include "../../intersect/graph/vertex.hpp"
 #include "../../topology/edge_path_connector.hpp"
@@ -77,23 +78,67 @@ template <typename Index> struct arrangement_vertex_hash {
 /// @tparam GetPoint Callable `(vertex_t v, Index tag) ->
 ///                  tf::point<Int, 3>`. Provides per-tag context for
 ///                  resolving original-source vertex positions.
+///
+/// @param is_sheet_tag Per-form sheet mask (may be empty: no sheets).
+///        Open components of sheet forms are exempt from the Mode-2
+///        self-merge: a sheet's fragments always separate their two
+///        sides, realising the virtual extension of an open cutter.
 template <typename Int, typename Index, typename Index1, typename GetPoint,
           typename ApplyToFace>
 auto make_arrangement_descriptor(const tf::arrangement_graph<Index> &ag,
                                  const tf::face_cuts<Index, Index1> &fc,
-                                 GetPoint get_point, ApplyToFace apply_to_face)
+                                 GetPoint get_point, ApplyToFace apply_to_face,
+                                 const tf::buffer<char> &is_sheet_tag = {})
     -> arrangement_descriptor<Index> {
   using vertex_t = typename tf::cut::non_manifold_edge_fans<Index>::vertex_t;
+  using ag_t = tf::arrangement_graph<Index>;
 
   arrangement_descriptor<Index> out;
   const Index n_components = ag.n_components();
 
+  // Components of sheet forms never self-merge; mark them before
+  // compute_bundle_tag_index runs. Only sheet geometry is touched.
+  tf::buffer<char> sheet_component;
+  if (is_sheet_tag.size() > 0) {
+    sheet_component.allocate(static_cast<std::size_t>(n_components));
+    tf::parallel_fill(sheet_component, char(0));
+    auto loop_labels = ag.loop_labels();
+    auto descs = fc.descriptors();
+    tf::parallel_for_each(
+        tf::make_sequence_range(static_cast<Index>(loop_labels.size())),
+        [&](Index l) {
+          const Index t = descs[l].tag;
+          if (t < Index(0) || t >= Index(is_sheet_tag.size()) ||
+              !is_sheet_tag[t])
+            return;
+          const Index c = loop_labels[l];
+          if (c != ag_t::none_label)
+            sheet_component[c] = char(1);
+        });
+    const Index n_tags = ag.n_tags();
+    for (Index t = Index(0); t < n_tags; ++t) {
+      if (t >= Index(is_sheet_tag.size()) || !is_sheet_tag[t])
+        continue;
+      auto labels = ag.polygon_labels(t);
+      tf::parallel_for_each(
+          tf::make_sequence_range(static_cast<Index>(labels.size())),
+          [&](Index f) {
+            const Index c = labels[f];
+            if (c != ag_t::none_label)
+              sheet_component[c] = char(1);
+          });
+    }
+  }
+  auto is_sheet_component = [&](Index c) -> bool {
+    return sheet_component.size() > 0 && sheet_component[c];
+  };
+
   // Mode-2 self-merge: open components emit `(2c, 2c+1)` so their
-  // two sides collapse into one domain.
+  // two sides collapse into one domain. Sheet components are exempt.
   auto open_mask = ag.open_component_mask();
   auto emit_open_merges = [&](tf::buffer<std::array<Index, 2>> &merges) {
     for (Index c = Index(0); c < n_components; ++c)
-      if (open_mask[c])
+      if (open_mask[c] && !is_sheet_component(c))
         merges.push_back({Index(2 * c), Index(2 * c + 1)});
   };
 
