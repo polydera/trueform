@@ -128,6 +128,13 @@ public:
     return static_cast<T>(_lo);
   }
 
+  // Full 128-bit value as double via 64-bit limb split (the integral
+  // operator above only keeps the low limb). Native __int128 on clang/gcc
+  // converts directly; this matches it for the MSVC fallback class.
+  explicit operator double() const noexcept {
+    return double(_hi) * 18446744073709551616.0 /* 2^64 */ + double(_lo);
+  }
+
   constexpr explicit operator bool() const noexcept {
     return (_lo | _hi) != 0;
   }
@@ -372,6 +379,17 @@ public:
   template <typename T, std::enable_if_t<std::is_integral_v<T>, int> = 0>
   constexpr explicit operator T() const noexcept {
     return static_cast<T>(_lo);
+  }
+
+  // Full signed 128-bit value as double: negate to the magnitude (exact
+  // two's-complement negate), limb-split, restore the sign. Matches native
+  // __int128's conversion used on clang/gcc.
+  explicit operator double() const noexcept {
+    if ((_hi >> 63) != 0) {
+      const int128 m = -*this;
+      return -(double(m._hi) * 18446744073709551616.0 /* 2^64 */ + double(m._lo));
+    }
+    return double(_hi) * 18446744073709551616.0 + double(_lo);
   }
 
   constexpr explicit operator bool() const noexcept {

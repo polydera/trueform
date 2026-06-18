@@ -236,6 +236,19 @@ public:
   [[nodiscard]] constexpr auto lo() const noexcept -> limb_type { return _lo; }
   [[nodiscard]] constexpr auto hi() const noexcept -> limb_type { return _hi; }
 
+  // Full signed 256-bit value as double: split into two uint128 limbs (each
+  // converted via uint128's operator double()), scaled by 2^128; negate to the
+  // magnitude first and restore the sign.
+  explicit operator double() const noexcept {
+    constexpr double k_2pow128 =
+        18446744073709551616.0 * 18446744073709551616.0; // (2^64)^2
+    if (is_negative()) {
+      const int256 m = -*this;
+      return -(double(m.hi()) * k_2pow128 + double(m.lo()));
+    }
+    return double(hi()) * k_2pow128 + double(lo());
+  }
+
   friend constexpr auto operator==(const int256 &a, const int256 &b) noexcept
       -> bool {
     return a._lo == b._lo && a._hi == b._hi;
