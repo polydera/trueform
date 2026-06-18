@@ -142,4 +142,26 @@ auto orient3d_sign(const std::array<vertex<Index, Int>, 4> &vs) -> int {
   return (val > 0) ? 1 : (val < 0) ? -1 : 0;
 }
 
+/// Supporting plane (a, b, c) with its precomputed normal, for testing many
+/// points against one plane: orient3d(a, b, c, d) == N . (d - a) with
+/// N = (b - a) x (c - a) independent of d. Reusing N over a batch of d avoids
+/// recomputing the cross product per point.
+template <typename Int> struct orient3d_plane {
+  pt3<Int> base;
+  std::array<typename meta<Int>::T2, 3> normal;
+};
+
+/// Exact sign of orient3d(plane.{a,b,c}, d) == sign(N . (d - base)).
+template <typename Int>
+auto orient3d_plane_sign(const orient3d_plane<Int> &plane, const pt3<Int> &d)
+    -> int {
+  using T1 = typename meta<Int>::T1;
+  using T2 = typename meta<Int>::T2;
+  T1 wx = T1(d[0]) - plane.base[0], wy = T1(d[1]) - plane.base[1],
+     wz = T1(d[2]) - plane.base[2];
+  T2 v = plane.normal[0] * T2(wx) + plane.normal[1] * T2(wy) +
+         plane.normal[2] * T2(wz);
+  return (v > 0) ? 1 : (v < 0) ? -1 : 0;
+}
+
 } // namespace tf::exact

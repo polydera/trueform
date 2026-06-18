@@ -13,14 +13,12 @@
 #pragma once
 #include "../core/algorithm/circular_increment.hpp"
 #include "../core/algorithm/generic_generate.hpp"
-#include "../core/inflated_aabb.hpp"
 #include "../core/intersects.hpp"
-#include "../core/local_buffer.hpp"
+#include "../core/local_value.hpp"
 #include "../core/small_vector.hpp"
 #include "../exact/triangle_segment_intersection.hpp"
 #include "../exact/vertex.hpp"
 #include "../exact/vertex_converter.hpp"
-#include "../spatial/search_self.hpp"
 #include "../topology/policy/face_membership.hpp"
 #include "../topology/policy/manifold_edge_link.hpp"
 #include "./exact/coplanar_primitives.hpp"
@@ -32,6 +30,7 @@
 #include "./exact/predicate_kernel.hpp"
 #include "./exact/tagged_intersections.hpp"
 #include "./exact/vertex_face.hpp"
+#include "./impl/face_pair_search.hpp"
 #include "./intersect_config.hpp"
 
 namespace tf {
@@ -87,22 +86,12 @@ private:
     return false;
   }
 
-  template <typename Poly, typename Conv>
-  static auto convert_face(const Poly &poly, int tag, const Conv &conv,
-                           tf::buffer<tf::exact::vertex<Index, Int>> &out) {
-    auto n = poly.size();
-    out.reallocate(n);
-    for (decltype(n) k = 0; k < n; ++k)
-      out[k] = conv(tag, poly.indices()[k], poly[k]);
-  }
-
-  static auto
-  edge_vs_convex_face_sos(const tf::buffer<tf::exact::vertex<Index, Int>> &face,
-                          const tf::exact::vertex<Index, Int> &v0,
-                          const tf::exact::vertex<Index, Int> &v1)
+  static auto edge_vs_convex_face_sos(tf::exact::vertex_range<Index, Int> face,
+                                      const tf::exact::vertex<Index, Int> &v0,
+                                      const tf::exact::vertex<Index, Int> &v1)
       -> std::optional<tf::exact::pt3<Int>> {
     auto n = face.size();
-    for (decltype(n) t = 0; t + 2 < n; ++t) {
+    for (std::size_t t = 0; t + 2 < n; ++t) {
       if (auto pt = tf::exact::triangle_segment_intersect_point_sos(
               std::array<tf::exact::vertex<Index, Int>, 5>{
                   face[0], face[t + 1], face[t + 2], v0, v1}))
@@ -111,65 +100,94 @@ private:
     return std::nullopt;
   }
 
-  template <typename EdgePoly, typename FacePoly, typename EdgeIsRep,
-            typename Conv, typename Ints, typename Pts>
-  static auto
-  edges_vs_face_sos(const EdgePoly &edge_poly, const FacePoly &face_poly,
-                    int edge_tag, int face_tag, const EdgeIsRep &edge_is_rep,
-                    const Conv &conv,
-                    tf::buffer<tf::exact::vertex<Index, Int>> &face_buf,
-                    Ints &ints, Pts &pts, const tf::buffer<bool> &shared) {
-    auto edge_id = Index(edge_poly.id());
-    auto face_id = Index(face_poly.id());
-
-    convert_face(face_poly, face_tag, conv, face_buf);
-
-    auto n = edge_poly.size();
-    for (decltype(n) j = 0; j < n; ++j) {
+  /// Edges of one prepped self face vs the other's face; skips edges with a
+  /// shared endpoint (a shared edge does not self-intersect).
+  template <typename EdgeIsRep, typename Ints, typename Pts>
+  static auto edges_vs_face_sos(tf::exact::vertex_range<Index, Int> edge_verts,
+                                Index edge_id,
+                                tf::exact::vertex_range<Index, Int> face_verts,
+                                Index face_id, const EdgeIsRep &edge_is_rep,
+                                const tf::buffer<bool> &shared, Ints &ints,
+                                Pts &pts) {
+    auto n = edge_verts.size();
+    for (std::size_t j = 0; j < n; ++j) {
       auto next_j = tf::circular_increment(j, n);
       if (shared[j] || shared[next_j])
         continue;
       if (!edge_is_rep(j))
         continue;
-      auto v0 = conv(edge_tag, edge_poly.indices()[j], edge_poly[j]);
-      auto v1 = conv(edge_tag, edge_poly.indices()[next_j], edge_poly[next_j]);
-
-      if (auto pt = edge_vs_convex_face_sos(face_buf, v0, v1)) {
+      if (auto pt = edge_vs_convex_face_sos(face_verts, edge_verts[j],
+                                            edge_verts[next_j])) {
         Index id = pts.size();
         pts.push_back(*pt);
-        ints.push_back({Index(edge_tag),
-                        Index(face_tag),
-                        edge_id,
-                        face_id,
+        ints.push_back({Index(0), Index(0), edge_id, face_id,
                         {Index(j), tf::topo_type::edge},
-                        {face_id, tf::topo_type::face},
-                        id});
+                        {face_id, tf::topo_type::face}, id});
       }
     }
   }
 
+  template <typename Form, typename MEL>
+  static void
+  self_sos_process(tf::intersect::face_pair_workspace<Index, Int> &ws,
+                   bool is_self, const Form &form, const MEL &mel) {
+    auto n0 = ws.n0();
+    auto n1 = ws.n1();
+    for (std::size_t i = 0; i < n0; ++i)
+      for (std::size_t j = (i + 1) * is_self; j < n1; ++j) {
+        if (!tf::intersects(ws.ibox0[i], ws.ibox1[j]))
+          continue;
+        auto id0 = Index(ws.ids0[i]);
+        auto id1 = Index(ws.ids1[j]);
+        compute_shared_masks(form[ws.ids0[i]].indices(),
+                             form[ws.ids1[j]].indices(), ws.shared0, ws.shared1);
+        if (has_shared_edge(ws.shared0))
+          continue;
+        auto erep0 = [&](std::size_t e) {
+          return mel[id0][e].is_representative(id0);
+        };
+        auto erep1 = [&](std::size_t e) {
+          return mel[id1][e].is_representative(id1);
+        };
+        edges_vs_face_sos(ws.face0(i), id0, ws.face1(j), id1, erep0, ws.shared0,
+                          ws.intersections, ws.points);
+        edges_vs_face_sos(ws.face1(j), id1, ws.face0(i), id0, erep1, ws.shared1,
+                          ws.intersections, ws.points);
+      }
+  }
+
+  template <typename Policy>
+  auto run_self_sos_pair(
+      const tf::polygons<Policy> &form,
+      tf::local_value<tf::intersect::face_pair_workspace<Index, Int>> &ws) {
+    auto &&mel = form.manifold_edge_link();
+    tf::intersect::search_face_pairs_self(
+        form, _converter, Int(0), ws,
+        [&](tf::intersect::face_pair_workspace<Index, Int> &w, bool is_self) {
+          self_sos_process(w, is_self, form, mel);
+        });
+  }
+
+  /// Self pair test over two prepped faces (ranges + cached planes + shared
+  /// masks). Shared-aware masks, `_self` crossing dedup, both-sided reject.
   template <typename Poly0, typename Poly1, typename MEL, typename FM,
-            typename Conv, typename Ints, typename Pts>
-  static auto
-  primitives_polygon_pair(const Poly0 &poly0, const Poly1 &poly1, int tag0,
-                          int tag1, const MEL &mel, const FM &fm,
-                          const Conv &conv,
-                          tf::buffer<tf::exact::vertex<Index, Int>> &face_buf0,
-                          tf::buffer<tf::exact::vertex<Index, Int>> &face_buf1,
-                          Ints &ints, Pts &pts, const tf::buffer<bool> &shared0,
-                          const tf::buffer<bool> &shared1,
-                          const tf::exact::predicate_kernel<Int> &kernel = {}) {
+            typename Ints, typename Pts>
+  static auto within_polygon_pair_prepped(
+      const Poly0 &poly0, const Poly1 &poly1, const MEL &mel, const FM &fm,
+      tf::exact::vertex_range<Index, Int> face_buf0,
+      const tf::exact::face_plane<Int> &fp0,
+      tf::exact::vertex_range<Index, Int> face_buf1,
+      const tf::exact::face_plane<Int> &fp1, const tf::buffer<bool> &shared0,
+      const tf::buffer<bool> &shared1, Ints &ints, Pts &pts,
+      const tf::exact::predicate_kernel<Int> &kernel = {}) {
     auto face0_id = Index(poly0.id());
     auto face1_id = Index(poly1.id());
-
-    convert_face(poly0, tag0, conv, face_buf0);
-    convert_face(poly1, tag1, conv, face_buf1);
 
     auto n0 = face_buf0.size();
     auto n1 = face_buf1.size();
 
-    auto plane0 = tf::exact::compute_face_plane(face_buf0);
-    auto plane1 = tf::exact::compute_face_plane(face_buf1);
+    const auto &plane0 = fp0.info;
+    const auto &plane1 = fp1.info;
 
     constexpr int has_negative = 1 << 0;
     constexpr int has_zero = 1 << 1;
@@ -183,9 +201,7 @@ private:
     int mask0_ns = 0, mask1_ns = 0;
     if (plane1.valid)
       for (decltype(n0) i = 0; i < n0; ++i) {
-        signs0[i] = orient3d_sign(std::array<tf::exact::vertex<Index, Int>, 4>{
-            face_buf1[plane1.i0], face_buf1[plane1.i1], face_buf1[plane1.i2],
-            face_buf0[i]});
+        signs0[i] = tf::exact::orient3d_plane_sign(fp1.plane, face_buf0[i].pt);
         auto bit = 1 << (signs0[i] + 1);
         mask0 |= bit;
         if (!shared0[i])
@@ -193,9 +209,7 @@ private:
       }
     if (plane0.valid)
       for (decltype(n1) j = 0; j < n1; ++j) {
-        signs1[j] = orient3d_sign(std::array<tf::exact::vertex<Index, Int>, 4>{
-            face_buf0[plane0.i0], face_buf0[plane0.i1], face_buf0[plane0.i2],
-            face_buf1[j]});
+        signs1[j] = tf::exact::orient3d_plane_sign(fp0.plane, face_buf1[j].pt);
         auto bit = 1 << (signs1[j] + 1);
         mask1 |= bit;
         if (!shared1[j])
@@ -232,19 +246,19 @@ private:
                          (mask1 & has_crossing) == has_crossing;
     if ((mask0 & has_crossing) == has_crossing)
       tf::exact::crossing_edges_vs_face_self(
-          face_buf0, n0, face_buf1, n1, signs0, tag0, tag1, face0_id, face1_id,
+          face_buf0, n0, face_buf1, n1, signs0, 0, 0, face0_id, face1_id,
           is_rep0, is_rep1, ints, pts, both_crossing, kernel);
     if ((mask1 & has_crossing) == has_crossing)
       tf::exact::crossing_edges_vs_face_self(
-          face_buf1, n1, face_buf0, n0, signs1, tag1, tag0, face1_id, face0_id,
+          face_buf1, n1, face_buf0, n0, signs1, 0, 0, face1_id, face0_id,
           is_rep1, is_rep0, ints, pts, both_crossing, kernel);
     if (!any_zero)
       return;
 
     tf::exact::coplanar_primitives(face_buf0, n0, face_buf1, n1, signs0, signs1,
-                                   tag0, tag1, face0_id, face1_id, is_rep0,
-                                   is_rep1, plane0, plane1, shared0_f,
-                                   shared1_f, ints, pts, kernel);
+                                   0, 0, face0_id, face1_id, is_rep0, is_rep1,
+                                   plane0, plane1, shared0_f, shared1_f, ints,
+                                   pts, kernel);
 
     auto vrep0 = [&](std::size_t i) {
       return Index(fm[poly0.indices()[i]].front()) == face0_id;
@@ -252,166 +266,94 @@ private:
     auto vrep1 = [&](std::size_t j) {
       return Index(fm[poly1.indices()[j]].front()) == face1_id;
     };
-    tf::exact::vertex_face(face_buf0, n0, face_buf1, n1, signs0, tag0, tag1,
-                           face0_id, face1_id, vrep0, shared0_f, plane1, ints,
-                           pts, kernel);
-    tf::exact::vertex_face(face_buf1, n1, face_buf0, n0, signs1, tag1, tag0,
-                           face1_id, face0_id, vrep1, shared1_f, plane0, ints,
-                           pts, kernel);
+    tf::exact::vertex_face(face_buf0, n0, face_buf1, n1, signs0, 0, 0, face0_id,
+                           face1_id, vrep0, shared0_f, plane1, ints, pts,
+                           kernel);
+    tf::exact::vertex_face(face_buf1, n1, face_buf0, n0, signs1, 0, 0, face1_id,
+                           face0_id, vrep1, shared1_f, plane0, ints, pts,
+                           kernel);
+  }
+
+  /// Per-leaf-pair self primitives logic; on the diagonal leaf (`is_self`) the
+  /// inner loop skips the self-pair and each unordered pair's mirror.
+  template <typename Form, typename MEL, typename FM>
+  static void self_process(tf::intersect::face_pair_workspace<Index, Int> &ws,
+                           bool is_self, const Form &form, const MEL &mel,
+                           const FM &fm,
+                           const tf::exact::predicate_kernel<Int> &kernel) {
+    auto n0 = ws.n0();
+    auto n1 = ws.n1();
+    ws.fp0.allocate(n0);
+    for (std::size_t i = 0; i < n0; ++i)
+      ws.fp0[i] = tf::exact::make_face_plane(ws.face0(i));
+    ws.fp1.allocate(n1);
+    for (std::size_t j = 0; j < n1; ++j)
+      ws.fp1[j] = tf::exact::make_face_plane(ws.face1(j));
+    for (std::size_t i = 0; i < n0; ++i)
+      for (std::size_t j = (i + 1) * is_self; j < n1; ++j) {
+        if (!tf::intersects(ws.ibox0[i], ws.ibox1[j]))
+          continue;
+        auto poly0 = tf::tag_id(Index(ws.ids0[i]), form[ws.ids0[i]]);
+        auto poly1 = tf::tag_id(Index(ws.ids1[j]), form[ws.ids1[j]]);
+        compute_shared_masks(poly0.indices(), poly1.indices(), ws.shared0,
+                             ws.shared1);
+        within_polygon_pair_prepped(poly0, poly1, mel, fm, ws.face0(i),
+                                    ws.fp0[i], ws.face1(j), ws.fp1[j],
+                                    ws.shared0, ws.shared1, ws.intersections,
+                                    ws.points, kernel);
+      }
+  }
+
+  template <typename Policy>
+  auto run_self_pair(
+      const tf::polygons<Policy> &form,
+      const tf::exact::predicate_kernel<Int> &kernel,
+      tf::local_value<tf::intersect::face_pair_workspace<Index, Int>> &ws) {
+    auto &&mel = form.manifold_edge_link();
+    auto &&fm = form.face_membership();
+    tf::intersect::search_face_pairs_self(
+        form, _converter, kernel.tolerance_int(), ws,
+        [&](tf::intersect::face_pair_workspace<Index, Int> &w, bool is_self) {
+          self_process(w, is_self, form, mel, fm, kernel);
+        });
   }
 
   template <typename Duplicator>
-  auto finalize_sos_build(tf::local_buffer<intersection_t> &l_intersections,
-                          tf::local_buffer<tf::exact::pt3<Int>> &l_points,
-                          Duplicator &&duplicator) {
-    auto points = l_points.to_buffer();
-    if (points.size() == 0)
-      return base_t::finalize(1);
-
+  auto finalize_build(
+      tf::local_value<tf::intersect::face_pair_workspace<Index, Int>> &ws,
+      Duplicator &&duplicator) {
     tf::buffer<intersection_t> raw;
-    raw.allocate(l_intersections.total_size());
-    std::size_t offset = 0;
-    auto it = raw.begin();
-    for (const auto &v : l_intersections.buffers()) {
-      for (auto e : v) {
-        e.id += offset;
-        *it++ = e;
-      }
-      offset += v.size();
-    }
-
+    tf::buffer<tf::exact::pt3<Int>> points;
+    tf::intersect::merge_face_pair_workspaces(ws, raw, points);
+    if (points.size() == 0)
+      return base_t::finalize(Index(1));
     tf::intersect::dedup_coincident_points(raw, points);
-
     base_t::_intersection_points = std::move(points);
     tf::generic_generate(raw, base_t::_intersections,
                          std::forward<Duplicator>(duplicator));
-    base_t::finalize(1);
+    base_t::finalize(Index(1));
   }
 
   template <typename Policy> auto build_sos(const tf::polygons<Policy> &form) {
-    tf::local_buffer<intersection_t> l_intersections;
-    tf::local_buffer<tf::exact::pt3<Int>> l_points;
-    tf::local_buffer<tf::exact::vertex<Index, Int>> l_face_verts;
-    tf::local_buffer<bool> l_shared0;
-    tf::local_buffer<bool> l_shared1;
-    l_intersections.reserve_all(1000);
-    l_points.reserve_all(1000);
-
-    auto &conv = _converter;
-    tf::search_self(
-        form,
-        [&](const auto &bv0, const auto &bv1) {
-          return tf::intersects(
-              tf::make_aabb(conv.convert(bv0.min), conv.convert(bv0.max)),
-              tf::make_aabb(conv.convert(bv1.min), conv.convert(bv1.max)));
-        },
-        [&](const auto &poly0, const auto &poly1) {
-          auto &shared0 = *l_shared0;
-          auto &shared1 = *l_shared1;
-          compute_shared_masks(poly0.indices(), poly1.indices(), shared0,
-                               shared1);
-
-          if (has_shared_edge(shared0))
-            return;
-
-          auto &ints = *l_intersections;
-          auto &pts = *l_points;
-          auto &face_buf = *l_face_verts;
-          auto &&mel = form.manifold_edge_link();
-          auto id0 = Index(poly0.id()), id1 = Index(poly1.id());
-
-          auto erep0 = [&](std::size_t j) {
-            return mel[id0][j].is_representative(id0);
-          };
-          auto erep1 = [&](std::size_t j) {
-            return mel[id1][j].is_representative(id1);
-          };
-
-          edges_vs_face_sos(poly0, poly1, 0, 0, erep0, _converter, face_buf,
-                            ints, pts, shared0);
-          edges_vs_face_sos(poly1, poly0, 0, 0, erep1, _converter, face_buf,
-                            ints, pts, shared1);
-        });
-
-    auto self_duplicator = [&](auto rec, auto &buffer) {
+    tf::local_value<tf::intersect::face_pair_workspace<Index, Int>> ws;
+    run_self_sos_pair(form, ws);
+    finalize_build(ws, [&](auto rec, auto &buffer) {
       tf::intersect::duplicate_intersection_self(
           form.faces(), form.face_membership(), form.manifold_edge_link(), rec,
           buffer);
-    };
-
-    finalize_sos_build(l_intersections, l_points, self_duplicator);
+    });
   }
 
   template <typename Policy>
   auto build_primitives(const tf::polygons<Policy> &form,
                         const tf::exact::predicate_kernel<Int> &kernel = {}) {
-    tf::local_buffer<intersection_t> l_intersections;
-    tf::local_buffer<tf::exact::pt3<Int>> l_points;
-    tf::local_buffer<tf::exact::vertex<Index, Int>> l_face_verts0;
-    tf::local_buffer<tf::exact::vertex<Index, Int>> l_face_verts1;
-    tf::local_buffer<bool> l_shared0;
-    tf::local_buffer<bool> l_shared1;
-    l_intersections.reserve_all(1000);
-    l_points.reserve_all(1000);
-
-    auto &conv = _converter;
-    auto pad = kernel.tolerance_int();
-    tf::search_self(
-        form,
-        [&](const auto &bv0, const auto &bv1) {
-          return tf::intersects(
-              tf::make_aabb(conv.convert(bv0.min), conv.convert(bv0.max)),
-              tf::inflated_aabb(
-                  tf::make_aabb(conv.convert(bv1.min), conv.convert(bv1.max)),
-                  pad));
-        },
-        [&](const auto &poly0, const auto &poly1) {
-          auto &shared0 = *l_shared0;
-          auto &shared1 = *l_shared1;
-          compute_shared_masks(poly0.indices(), poly1.indices(), shared0,
-                               shared1);
-
-          primitives_polygon_pair(
-              poly0, poly1, 0, 0, form.manifold_edge_link(),
-              form.face_membership(), _converter, *l_face_verts0,
-              *l_face_verts1, *l_intersections, *l_points, shared0, shared1,
-              kernel);
-        });
-
-    auto points = l_points.to_buffer();
-    if (points.size() == 0)
-      return base_t::finalize(Index(1));
-
-    auto raw = merge_local_intersections(l_intersections);
-    tf::intersect::dedup_coincident_points(raw, points);
-
-    base_t::_intersection_points = std::move(points);
-
-    auto self_duplicator = [&](auto rec, auto &buffer) {
+    tf::local_value<tf::intersect::face_pair_workspace<Index, Int>> ws;
+    run_self_pair(form, kernel, ws);
+    finalize_build(ws, [&](auto rec, auto &buffer) {
       tf::intersect::duplicate_intersection_self(
           form.faces(), form.face_membership(), form.manifold_edge_link(), rec,
           buffer);
-    };
-    tf::generic_generate(raw, base_t::_intersections, self_duplicator);
-    base_t::finalize(Index(1));
-  }
-
-  // Reuse from intersections_between_polygons — these are static/shared
-  static auto
-  merge_local_intersections(tf::local_buffer<intersection_t> &l_ints)
-      -> tf::buffer<intersection_t> {
-    tf::buffer<intersection_t> out;
-    out.allocate(l_ints.total_size());
-    std::size_t offset = 0;
-    auto it = out.begin();
-    for (const auto &v : l_ints.buffers()) {
-      for (auto e : v) {
-        e.id += offset;
-        *it++ = e;
-      }
-      offset += v.size();
-    }
-    return out;
+    });
   }
 
   tf::exact::vertex_converter<Int, RealType, Dims> _converter;

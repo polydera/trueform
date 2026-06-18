@@ -17,6 +17,8 @@
 #include <trueform/core/views/zip.hpp>
 #include <trueform/intersect/intersections_between_polygons.hpp>
 #include <trueform/intersect/graph/intersection_graph.hpp>
+#include <trueform/intersect/graph/crossing_classification.hpp>
+#include <trueform/intersect/graph/crossing_points.hpp>
 #include <trueform/spatial/aabb_tree.hpp>
 #include <trueform/topology/make_face_membership.hpp>
 #include <trueform/topology/make_manifold_edge_link.hpp>
@@ -536,4 +538,137 @@ TEST_CASE("Shared edge: VV one side, VE other", "[graph][shared]") {
   CHECK(count_unique_groups(ig, 2) == 1);
   CHECK(check_face_edge_tags(ig, ibp));
   CHECK(check_no_consecutive_duplicates(ig));
+}
+
+// =============================================================================
+// EE crossing identity: coplanar packs must NOT over-merge; generic junctions
+// must still merge by triple. (Regression: coplanar EE over-merge.)
+// =============================================================================
+namespace {
+using rec_t = tf::intersect::graph::crossing_record<int>;
+using fid = tf::intersect::graph::face_id<int>;
+
+struct edge_spec {
+  std::array<int, 2> pts;   // endpoint ids
+  std::array<fid, 2> faces; // the face pair the edge came from
+  bool from_coplanar = false;
+};
+
+// Build edge_defs with one canonical edge per spec, each a 1-element group.
+auto make_edge_defs(const std::array<edge_spec, 3> &specs)
+    -> tf::offset_block_buffer<int, tf::intersect::graph::edge<int>> {
+  tf::offset_block_buffer<int, tf::intersect::graph::edge<int>> defs;
+  for (int i = 0; i < 3; ++i) {
+    tf::intersect::graph::edge<int> e{};
+    e.tag = specs[i].faces[0].tag;
+    e.object = specs[i].faces[0].object;
+    e.tag_other = specs[i].faces[1].tag;
+    e.object_other = specs[i].faces[1].object;
+    e.point_0 = specs[i].pts[0];
+    e.point_1 = specs[i].pts[1];
+    e.id = i;
+    e.from_coplanar = specs[i].from_coplanar;
+    defs.push_back({e});
+  }
+  return defs;
+}
+
+// Count distinct EE crossing points produced by the real sort+group path.
+auto count_ee_points(
+    std::vector<rec_t> records,
+    const tf::offset_block_buffer<int, tf::intersect::graph::edge<int>> &defs,
+    const tf::points_buffer<int, 3> &pts) -> std::size_t {
+  tf::buffer<rec_t> buf;
+  for (auto &r : records)
+    buf.push_back(r);
+  tf::intersect::graph::sort_crossing_records<int>(buf);
+  auto [ee, ve, vv] = tf::intersect::graph::find_type_ranges<int>(buf);
+  (void)ve;
+  (void)vv;
+  auto get_point = [&](int, int id) {
+    auto p = pts[id];
+    return tf::point<int, 3>{p[0], p[1], p[2]};
+  };
+  tf::buffer<tf::point<int, 3>> crossing_points;
+  auto offs = tf::intersect::graph::compute_ee_crossing_points<int>(
+      ee, defs, get_point, crossing_points);
+  return offs.size() > 0 ? offs.size() - 1 : 0;
+}
+
+auto make_ee(int a, int b, const std::array<fid, 3> &triple) -> rec_t {
+  rec_t r{};
+  r.edge_a = a;
+  r.edge_b = b;
+  r.triple = triple;
+  r.type = rec_t::ee;
+  return r;
+}
+} // namespace
+
+TEST_CASE("coplanar pack: two crossings on one triple stay distinct",
+          "[intersection_graph][coplanar]") {
+  // Faces A={0,0}, B={1,0} coplanar; D={2,0} transversal. The A/B contact
+  // spans two canonical edges c0 (x=2) and c1 (x=6); edge 2 (A,D) is the
+  // x-axis crossing both: two distinct points, one triple {A,B,D}.
+  fid A{0, 0}, B{1, 0}, D{2, 0};
+  tf::points_buffer<int, 3> pts;
+  pts.emplace_back(2, -1, 0); // 0  c0
+  pts.emplace_back(2, 1, 0);  // 1
+  pts.emplace_back(6, -1, 0); // 2  c1
+  pts.emplace_back(6, 1, 0);  // 3
+  pts.emplace_back(0, 0, 0);  // 4  transversal (A,D)
+  pts.emplace_back(10, 0, 0); // 5
+  auto defs = make_edge_defs({{{{{0, 1}}, {{A, B}}, true},
+                               {{{2, 3}}, {{A, B}}, true},
+                               {{{4, 5}}, {{A, D}}}}});
+
+  std::array<fid, 3> triple = {A, B, D};
+  REQUIRE(count_ee_points({make_ee(0, 2, triple), make_ee(1, 2, triple)}, defs,
+                          pts) == 2);
+}
+
+TEST_CASE("generic junction: three edge-pairs on one triple still merge",
+          "[intersection_graph][coplanar]") {
+  // Faces A, B, C meet at a point. The junction is observed once per face,
+  // each time as a different canonical-edge pair over three edges from three
+  // DISTINCT face pairs -> must stay one point.
+  fid A{0, 0}, B{1, 0}, C{2, 0};
+  tf::points_buffer<int, 3> pts;
+  pts.emplace_back(-5, 0, 0);  // 0  e_AB
+  pts.emplace_back(5, 0, 0);   // 1
+  pts.emplace_back(0, -5, 0);  // 2  e_AC
+  pts.emplace_back(0, 5, 0);   // 3
+  pts.emplace_back(-5, -5, 0); // 4  e_BC
+  pts.emplace_back(5, 5, 0);   // 5
+  auto defs = make_edge_defs({{{{{0, 1}}, {{A, B}}},
+                               {{{2, 3}}, {{A, C}}},
+                               {{{4, 5}}, {{B, C}}}}});
+
+  std::array<fid, 3> triple = {A, B, C};
+  REQUIRE(count_ee_points({make_ee(0, 1, triple), make_ee(0, 2, triple),
+                           make_ee(1, 2, triple)},
+                          defs, pts) == 1);
+}
+
+TEST_CASE("junction through one contact edge still merges by triple",
+          "[intersection_graph][coplanar]") {
+  // One stamped contact edge c (A/B coplanar), crossed near-identically by
+  // e_AD (seen on face A) and e_BD (seen on face B): same junction, two
+  // edge-pair observations, one triple. A single stamped edge is not a pack
+  // -> the triple must still unify them into one point.
+  fid A{0, 0}, B{1, 0}, D{2, 0};
+  tf::points_buffer<int, 3> pts;
+  pts.emplace_back(2, -3, 0); // 0  c (contact edge)
+  pts.emplace_back(2, 3, 0);  // 1
+  pts.emplace_back(0, 0, 0);  // 2  e_AD
+  pts.emplace_back(8, 0, 0);  // 3
+  pts.emplace_back(0, 1, 0);  // 4  e_BD (slightly different chord)
+  pts.emplace_back(8, -1, 0); // 5
+  auto defs = make_edge_defs({{{{{0, 1}}, {{A, B}}, true},
+                               {{{2, 3}}, {{A, D}}},
+                               {{{4, 5}}, {{B, D}}}}});
+
+  std::array<fid, 3> triple = {A, B, D};
+  REQUIRE(count_ee_points({make_ee(0, 1, triple), make_ee(0, 2, triple)}, defs,
+                          pts) == 1);
 }

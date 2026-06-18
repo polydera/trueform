@@ -20,6 +20,7 @@
 #include "./vertex.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <utility>
 
@@ -36,42 +37,57 @@ auto on_same_boundary_edge(const Target &t0, const Target &t1, Index face_size)
   return tf::is_on_same_edge(t0, t1, face_size);
 }
 
-/// Walk a loop forward from start_id to end_id, emitting sub-edges.
-/// Returns true if intermediates were found and sub-edges emitted.
+/// `{ordinal, sub_ordinal}` for the sub-edge `(a, b)` iff `a` and `b` are
+/// consecutive created vertices of `loop` — i.e. the sub-edge is a
+/// base-loop edge. The earlier of the two in loop order is the start, so
+/// `ordinal` is its position (mirroring the edge-edge case of
+/// @ref try_expand_boundary). Otherwise `{-1, -1}` (interior).
 template <typename Index, typename Loop>
+auto base_loop_edge_ordinal(const Loop &loop, Index a, Index b)
+    -> std::array<std::int16_t, 2> {
+  const std::size_t m = loop.size();
+  for (std::size_t i = 0; i < m; ++i) {
+    if (loop[i].source != vertex_source::created || loop[i].id != a)
+      continue;
+    const std::size_t nxt = (i + 1) % m;
+    const std::size_t prv = (i + m - 1) % m;
+    if (loop[nxt].source == vertex_source::created && loop[nxt].id == b)
+      return {static_cast<std::int16_t>(i), std::int16_t(0)};
+    if (loop[prv].source == vertex_source::created && loop[prv].id == b)
+      return {static_cast<std::int16_t>(prv), std::int16_t(0)};
+    break;
+  }
+  return {std::int16_t(-1), std::int16_t(-1)};
+}
+
+/// Walk `loop` forward from `start_id` to `end_id`, emitting one sub-edge
+/// per step. `stamp(prev, cur, prev_pos)` returns the emitted edge's
+/// `{ordinal, sub_ordinal}`. Returns true once `end_id` is reached.
+template <typename Index, typename Loop, typename Stamp>
 auto emit_boundary_sub_edges(const Loop &loop, Index start_id, Index end_id,
                              short tag, short tag_other, Index object,
-                             Index object_other, tf::buffer<edge<Index>> &buf, bool emit_ordinal = false)
-    -> bool {
+                             Index object_other, tf::buffer<edge<Index>> &buf,
+                             const Stamp &stamp) -> bool {
   auto n = loop.size();
   std::size_t pos = n;
-  for (std::size_t i = 0; i < n; ++i) {
+  for (std::size_t i = 0; i < n; ++i)
     if (loop[i].source == vertex_source::created && loop[i].id == start_id) {
       pos = i;
       break;
     }
-  }
   if (pos == n)
     return false;
 
-  auto ord = [&](std::size_t p) -> std::int16_t {
-    return emit_ordinal ? static_cast<std::int16_t>(p) : std::int16_t(-1);
-  };
-  auto sub = [&]() -> std::int16_t {
-    return emit_ordinal ? std::int16_t(0) : std::int16_t(-1);
-  };
   Index prev = start_id;
   std::size_t prev_pos = pos;
   pos = (pos + 1) % n;
   for (std::size_t step = 0; step < n - 1; ++step) {
     auto cur = loop[pos].id;
-    if (loop[pos].source == vertex_source::created && cur == end_id) {
-      buf.push_back({tag, tag_other, object, object_other, prev, cur,
-                     static_cast<Index>(buf.size()), ord(prev_pos), sub()});
-      return true;
-    }
+    auto stamped = stamp(prev, cur, prev_pos);
     buf.push_back({tag, tag_other, object, object_other, prev, cur,
-                   static_cast<Index>(buf.size()), ord(prev_pos), sub()});
+                   static_cast<Index>(buf.size()), stamped[0], stamped[1]});
+    if (loop[pos].source == vertex_source::created && cur == end_id)
+      return true;
     prev = cur;
     prev_pos = pos;
     pos = (pos + 1) % n;
@@ -79,21 +95,20 @@ auto emit_boundary_sub_edges(const Loop &loop, Index start_id, Index end_id,
   return false;
 }
 
-/// Determine walk direction and expand boundary if intermediates exist.
+/// Resolve the forward walk direction for a contact on `loop`'s boundary.
 ///
-/// For two targets on the same boundary edge, determines the forward
-/// direction (following the face winding) and walks the loop to find
-/// intermediate intersection points.
+/// For two targets on the same boundary edge, picks `start_id`/`end_id`
+/// so that walking the loop forward follows the face winding. Returns
+/// false (no walk) when the targets are not on the same boundary edge.
 template <typename Index, typename Target, typename Loop>
-auto try_expand_boundary(const Loop &loop, const Target &t0, const Target &t1,
-                         Index face_size, Index id0, Index id1, short tag,
-                         short tag_other, Index object, Index object_other,
-                         tf::buffer<edge<Index>> &buf,
-                         bool emit_ordinal = false) -> bool {
+auto resolve_boundary_walk(const Loop &loop, const Target &t0, const Target &t1,
+                           Index face_size, Index id0, Index id1,
+                           Index &start_id, Index &end_id) -> bool {
   if (!on_same_boundary_edge(t0, t1, face_size))
     return false;
 
-  auto start_id = id0, end_id = id1;
+  start_id = id0;
+  end_id = id1;
 
   auto v = tf::topo_type::vertex;
   auto e = tf::topo_type::edge;
@@ -130,10 +145,25 @@ auto try_expand_boundary(const Loop &loop, const Target &t0, const Target &t1,
       end_id = vert_rec_id;
     }
   }
+  return true;
+}
 
+/// Expand a contact lying on `loop`'s boundary into per-edge sub-edges.
+///
+/// Resolves the forward direction, then walks `loop`, emitting each
+/// sub-edge with `stamp(prev, cur, prev_pos) -> {ordinal, sub_ordinal}`.
+template <typename Index, typename Target, typename Loop, typename Stamp>
+auto try_expand_boundary(const Loop &loop, const Target &t0, const Target &t1,
+                         Index face_size, Index id0, Index id1, short tag,
+                         short tag_other, Index object, Index object_other,
+                         tf::buffer<edge<Index>> &buf, const Stamp &stamp)
+    -> bool {
+  Index start_id, end_id;
+  if (!resolve_boundary_walk(loop, t0, t1, face_size, id0, id1, start_id,
+                             end_id))
+    return false;
   return emit_boundary_sub_edges<Index>(loop, start_id, end_id, tag, tag_other,
-                                        object, object_other, buf,
-                                        emit_ordinal);
+                                        object, object_other, buf, stamp);
 }
 
 /// Find loop index for a (tag, object) pair via binary search on subranges.
@@ -170,16 +200,27 @@ auto emit_edge(const Record &r0, const Record &r1, Index face_size,
   if (r0.id == r1.id)
     return;
 
-  // Edge on OUR own boundary → walk our loop and emit tagged sub-edges
-  // (ordinal = position of start vertex in our base loop).
+  // Stamps the sub-edge's ordinal from its position in OUR base loop, so
+  // any piece lying on our boundary folds in instead of becoming a chord.
+  auto our_loop_stamp = [&](Index a, Index b,
+                            std::size_t) -> std::array<std::int16_t, 2> {
+    return base_loop_edge_ordinal<Index>(all_loops[this_loop_idx], a, b);
+  };
+
+  // Edge on OUR own boundary → walk our loop, ordinal = walk position.
   if (on_same_boundary_edge(r0.target, r1.target, face_size)) {
-    try_expand_boundary<Index>(all_loops[this_loop_idx], r0.target, r1.target,
-                               face_size, r0.id, r1.id, tag, tag_other,
-                               r0.object, r0.object_other, buf,
-                               /*emit_ordinal=*/true);
+    try_expand_boundary<Index>(
+        all_loops[this_loop_idx], r0.target, r1.target, face_size, r0.id, r1.id,
+        tag, tag_other, r0.object, r0.object_other, buf,
+        [](Index, Index, std::size_t p) -> std::array<std::int16_t, 2> {
+          return {static_cast<std::int16_t>(p), std::int16_t(0)};
+        });
     return;
   }
 
+  // Edge on the OTHER face's boundary → walk the other's loop for its
+  // subdivision, but stamp each sub-edge against OUR loop: pieces that
+  // also lie on our boundary get a real ordinal, the rest stay interior.
   if (r0.target_other.label != tf::topo_type::face &&
       r1.target_other.label != tf::topo_type::face) {
     bool expanded = false;
@@ -191,15 +232,18 @@ auto emit_edge(const Record &r0, const Record &r1, Index face_size,
         if (idx != std::size_t(-1))
           expanded = try_expand_boundary<Index>(
               all_loops[idx], r0.target_other, r1.target_other, other_size,
-              r0.id, r1.id, tag, tag_other, r0.object, r0.object_other, buf);
+              r0.id, r1.id, tag, tag_other, r0.object, r0.object_other, buf,
+              our_loop_stamp);
       }
     });
     if (expanded)
       return;
   }
 
+  // Interior cut — but still fold it if it happens to be a base-loop edge.
+  auto ord = base_loop_edge_ordinal<Index>(all_loops[this_loop_idx], r0.id,
+                                           r1.id);
   buf.push_back({tag, tag_other, r0.object, r0.object_other, r0.id, r1.id,
-                 static_cast<Index>(buf.size()), std::int16_t(-1),
-                 std::int16_t(-1)});
+                 static_cast<Index>(buf.size()), ord[0], ord[1]});
 }
 } // namespace tf::intersect::graph

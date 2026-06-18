@@ -12,8 +12,8 @@
  */
 #pragma once
 
-#include "../../core/buffer.hpp"
 #include "../../exact/meta.hpp"
+#include "../../exact/orient3d.hpp"
 #include "../../exact/vertex.hpp"
 
 namespace tf::exact {
@@ -26,10 +26,19 @@ struct face_plane_info {
   bool valid;
 };
 
-/// Find 3 non-collinear vertices and compute 2D projection axes.
+/// face_plane_info plus the signed supporting-plane normal (an orient3d_plane),
+/// both derived from the single cross product the plane search already computes
+/// — so the reject's sign mask reuses it instead of recomputing the cross.
+template <typename Int> struct face_plane {
+  face_plane_info info;
+  orient3d_plane<Int> plane;
+};
+
+/// Find 3 non-collinear vertices, the 2D projection axes, and the signed
+/// supporting-plane normal — all from one cross product, so the reject's sign
+/// mask reuses it instead of recomputing the cross.
 template <typename Index, typename Int>
-auto compute_face_plane(const tf::buffer<vertex<Index, Int>> &face)
-    -> face_plane_info {
+auto make_face_plane(vertex_range<Index, Int> face) -> face_plane<Int> {
   using T1 = typename meta<Int>::T1;
   using T2 = typename meta<Int>::T2;
   auto n = face.size();
@@ -39,7 +48,7 @@ auto compute_face_plane(const tf::buffer<vertex<Index, Int>> &face)
          face[id1].pt[2] == face[id0].pt[2])
     ++id1;
   if (id1 >= n)
-    return {0, 1, 0, 0, 0, false};
+    return {{0, 1, 0, 0, 0, false}, {}};
   T1 e0x = T1(face[id1].pt[0]) - T1(face[id0].pt[0]);
   T1 e0y = T1(face[id1].pt[1]) - T1(face[id0].pt[1]);
   T1 e0z = T1(face[id1].pt[2]) - T1(face[id0].pt[2]);
@@ -56,18 +65,14 @@ auto compute_face_plane(const tf::buffer<vertex<Index, Int>> &face)
       break;
   }
   if (id2 >= n)
-    return {0, 1, 0, 0, 0, false};
-  if (nx < 0)
-    nx = -nx;
-  if (ny < 0)
-    ny = -ny;
-  if (nz < 0)
-    nz = -nz;
-  if (nz >= nx && nz >= ny)
-    return {0, 1, id0, id1, id2, true};
-  if (ny >= nx)
-    return {0, 2, id0, id1, id2, true};
-  return {1, 2, id0, id1, id2, true};
+    return {{0, 1, 0, 0, 0, false}, {}};
+  orient3d_plane<Int> plane{face[id0].pt, {nx, ny, nz}};
+  T2 ax = nx < 0 ? -nx : nx, ay = ny < 0 ? -ny : ny, az = nz < 0 ? -nz : nz;
+  face_plane_info info =
+      (az >= ax && az >= ay) ? face_plane_info{0, 1, id0, id1, id2, true}
+      : (ay >= ax)           ? face_plane_info{0, 2, id0, id1, id2, true}
+                             : face_plane_info{1, 2, id0, id1, id2, true};
+  return {info, plane};
 }
 
 } // namespace tf::exact

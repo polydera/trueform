@@ -82,6 +82,7 @@ private:
                         const ApplyToFace &apply_to_face,
                         tf::buffer<edge<Index>> &buf) -> void {
     _work.clear();
+    auto cp_start = buf.size();
 
     Index idx = 0;
     for (auto it = begin; it != end; ++it, ++idx) {
@@ -119,6 +120,12 @@ private:
       emit_edge<Index>(r0, r1, face_size, this_loop_idx, all_loops,
                        all_subranges, apply_to_face, buf);
     }
+
+    // Coplanarity is known here, at emission: every edge this n>2 group
+    // produced is a polygon-of-contact edge. The EE identity uses the stamp
+    // to spot triples spanned by multiple contact edges.
+    for (std::size_t i = cp_start; i < buf.size(); ++i)
+      buf[i].from_coplanar = true;
   }
 
   tf::buffer<coplanar_entry> _work;

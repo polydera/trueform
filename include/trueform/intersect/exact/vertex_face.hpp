@@ -13,7 +13,6 @@
 #pragma once
 
 #include "../../core/algorithm/circular_increment.hpp"
-#include "../../core/buffer.hpp"
 #include "../../core/small_vector.hpp"
 #include "../../exact/orient2d.hpp"
 #include "../../exact/vertex.hpp"
@@ -31,9 +30,9 @@ namespace tf::exact {
 template <typename Index, typename Int, typename SourceVRep,
           typename SourceShared, typename Intersections, typename Pts,
           typename Kernel = tf::exact::predicate_kernel<Int>>
-void vertex_face(const tf::buffer<tf::exact::vertex<Index, Int>> &source_verts,
+void vertex_face(tf::exact::vertex_range<Index, Int> source_verts,
                  std::size_t n_source,
-                 const tf::buffer<tf::exact::vertex<Index, Int>> &target_verts,
+                 tf::exact::vertex_range<Index, Int> target_verts,
                  std::size_t n_target,
                  const tf::small_vector<int, 16> &source_signs,
                  int source_tag, int target_tag, Index source_face_id,
@@ -76,9 +75,9 @@ void vertex_face(const tf::buffer<tf::exact::vertex<Index, Int>> &source_verts,
 template <typename Index, typename Int, typename SourceVRep,
           typename Intersections, typename Pts,
           typename Kernel = tf::exact::predicate_kernel<Int>>
-void vertex_face(const tf::buffer<tf::exact::vertex<Index, Int>> &source_verts,
+void vertex_face(tf::exact::vertex_range<Index, Int> source_verts,
                  std::size_t n_source,
-                 const tf::buffer<tf::exact::vertex<Index, Int>> &target_verts,
+                 tf::exact::vertex_range<Index, Int> target_verts,
                  std::size_t n_target,
                  const tf::small_vector<int, 16> &source_signs,
                  int source_tag, int target_tag, Index source_face_id,

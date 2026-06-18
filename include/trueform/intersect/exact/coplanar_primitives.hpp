@@ -13,7 +13,6 @@
 #pragma once
 
 #include "../../core/algorithm/circular_increment.hpp"
-#include "../../core/buffer.hpp"
 #include "../../core/small_vector.hpp"
 #include "../../exact/coplanar_edge_edge_point.hpp"
 #include "../../exact/segments_cross.hpp"
@@ -34,8 +33,8 @@ template <typename Index, typename Int, typename IsRep0, typename IsRep1,
           typename Pts,
           typename Kernel = tf::exact::predicate_kernel<Int>>
 void coplanar_primitives(
-    const tf::buffer<tf::exact::vertex<Index, Int>> &face0, std::size_t n0,
-    const tf::buffer<tf::exact::vertex<Index, Int>> &face1, std::size_t n1,
+    tf::exact::vertex_range<Index, Int> face0, std::size_t n0,
+    tf::exact::vertex_range<Index, Int> face1, std::size_t n1,
     const tf::small_vector<int, 16> &signs0,
     const tf::small_vector<int, 16> &signs1, int tag0, int tag1, Index face0_id,
     Index face1_id, const IsRep0 &is_rep0, const IsRep1 &is_rep1,
@@ -125,8 +124,8 @@ template <typename Index, typename Int, typename IsRep0, typename IsRep1,
           typename Intersections, typename Pts,
           typename Kernel = tf::exact::predicate_kernel<Int>>
 void coplanar_primitives(
-    const tf::buffer<tf::exact::vertex<Index, Int>> &face0, std::size_t n0,
-    const tf::buffer<tf::exact::vertex<Index, Int>> &face1, std::size_t n1,
+    tf::exact::vertex_range<Index, Int> face0, std::size_t n0,
+    tf::exact::vertex_range<Index, Int> face1, std::size_t n1,
     const tf::small_vector<int, 16> &signs0,
     const tf::small_vector<int, 16> &signs1, int tag0, int tag1, Index face0_id,
     Index face1_id, const IsRep0 &is_rep0, const IsRep1 &is_rep1,

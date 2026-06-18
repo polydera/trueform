@@ -26,6 +26,7 @@
 #include "./clean_loop.hpp"
 #include "./crossing_record.hpp"
 #include "./edge.hpp"
+#include "./edges.hpp"
 #include "./vertex.hpp"
 #include "tbb/parallel_sort.h"
 
@@ -131,6 +132,23 @@ auto split_edges(tf::buffer<edge_split_entry<Index>> &entries,
            dz = T1(p1[2]) - p0[2];
         T2 t_max = T2(dx) * T2(dx) + T2(dy) * T2(dy) + T2(dz) * T2(dz);
 
+        // Two split points whose integer coordinates differ by at most a sub-ulp
+        // (squared distance <= ulp2) are the same physical point separated only
+        // by construction rounding. sub_ulp() reports that; such points are fused
+        // (one kept, the other routed to merge_pairs for the global remap) so no
+        // degenerate sub-ulp edge survives into the rebuilt loop.
+        const T2 ulp2 = T2(8);
+        auto coord = [&](Index pid) {
+          return (pid >= crossing_base) ? crossing_points[pid - crossing_base]
+                                        : get_point_f(-1, pid);
+        };
+        auto sub_ulp = [&](Index a, Index b) -> bool {
+          auto pa = coord(a), pb = coord(b);
+          T1 ex = T1(pa[0]) - pb[0], ey = T1(pa[1]) - pb[1],
+             ez = T1(pa[2]) - pb[2];
+          return T2(ex) * ex + T2(ey) * ey + T2(ez) * ez <= ulp2;
+        };
+
         local.work.clear();
         for (auto &entry : group) {
           auto pid = entry.point_id;
@@ -149,29 +167,44 @@ auto split_edges(tf::buffer<edge_split_entry<Index>> &entries,
                     return a.point_id < b.point_id;
                   });
 
-        // Detect same-t merge pairs before dedup
-        for (std::size_t i = 1; i < local.work.size(); ++i) {
-          if (local.work[i].t == local.work[i - 1].t &&
-              local.work[i].point_id != local.work[i - 1].point_id)
-            local.merges.push_back(
-                {local.work[i - 1].point_id, local.work[i].point_id});
+        // Cluster coincident split points and compact in one pass. A point joins
+        // the current cluster iff it shares the anchor's exact t or lies within a
+        // sub-ulp of the anchor (the cluster's kept point, smallest (t,id) by the
+        // sort); the anchor is kept and the rest route to merge_pairs for the
+        // global remap. Comparing against the anchor rather than the previous
+        // point bounds each cluster to one sub-ulp, so consecutive kept points
+        // are never sub-ulp-close and no degenerate edge survives.
+        if (local.work.size()) {
+          std::size_t w = 0; // write head = current cluster anchor
+          for (std::size_t i = 1; i < std::size_t(local.work.size()); ++i) {
+            if (local.work[i].point_id == local.work[w].point_id)
+              continue; // exact duplicate of the anchor
+            if (local.work[i].t == local.work[w].t ||
+                sub_ulp(local.work[w].point_id, local.work[i].point_id)) {
+              local.merges.push_back(
+                  {local.work[w].point_id, local.work[i].point_id});
+              continue; // fused into the anchor
+            }
+            if (++w != i)
+              local.work[w] = local.work[i]; // new cluster anchor
+          }
+          local.work.erase_till_end(local.work.begin() + (w + 1));
         }
 
-        // Dedup by t (keeps smallest point_id due to sort order)
-        local.work.erase_till_end(std::unique(
-            local.work.begin(), local.work.end(),
-            [](const auto &a, const auto &b) { return a.t == b.t; }));
-
-        // Trim split points at edge endpoints; identify them with
-        // e.point_0 / e.point_1 directly so merges always happen.
+        // Trim split points at (or within a sub-ulp of) the edge endpoints;
+        // identify them with e.point_0 / e.point_1 directly so the crossing is
+        // recorded as an edge-vertex incidence rather than a tiny edge.
         auto begin = local.work.begin();
         auto end = local.work.end();
-        while (begin != end && begin->t == 0) {
+        while (begin != end &&
+               (begin->t == 0 || sub_ulp(begin->point_id, e.point_0))) {
           if (begin->point_id != e.point_0)
             local.merges.push_back({e.point_0, begin->point_id});
           ++begin;
         }
-        while (begin != end && (end - 1)->t == t_max) {
+        while (begin != end &&
+               ((end - 1)->t == t_max ||
+                sub_ulp((end - 1)->point_id, e.point_1))) {
           --end;
           if (end->point_id != e.point_1)
             local.merges.push_back({e.point_1, end->point_id});
@@ -201,6 +234,26 @@ auto split_edges(tf::buffer<edge_split_entry<Index>> &entries,
       auto base_edges = tf::make_range(part_it, local.new_edges.end());
       build_dirty_loop<Index>(base_edges, base_loop, local.dirty);
       local.new_edges.erase_till_end(part_it);
+
+      // Reconcile interior sub-edges against the REBUILT loop. A split point can
+      // land on the boundary (it's also a split entry of a boundary edge, so
+      // build_dirty_loop inserts it into the loop); the interior parent's
+      // sub-edge to it then connects two now-consecutive base-loop vertices but
+      // kept the parent's ordinal -1. base_loop_edge_ordinal ran at build_edges,
+      // before the point existed, so the partition missed it. Re-check here and
+      // drop these — their segment is already part of the loop.
+      {
+        auto dloop = tf::make_range(local.dirty.begin() + old_dirty,
+                                    local.dirty.end());
+        auto ne = std::remove_if(
+            local.new_edges.begin() + old_size, local.new_edges.end(),
+            [&](const auto &ed) {
+              auto o = base_loop_edge_ordinal<Index>(dloop, ed.point_0,
+                                                     ed.point_1);
+              return o[0] != -1;
+            });
+        local.new_edges.erase_till_end(ne);
+      }
       *cit++ = static_cast<Index>(local.new_edges.size() - old_size);
       *lit++ = static_cast<Index>(local.dirty.size() - old_dirty);
     }

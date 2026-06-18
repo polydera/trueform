@@ -23,7 +23,9 @@
 namespace tf::intersect::graph {
 
 /// Sort crossing records by (type, type-specific key).
-/// EE sorted by triple, VE by (edge, point), VV by (point_a, point_b).
+/// EE sorted by (triple, edge pair) — the pair tiebreak keeps coplanar-pack
+/// subgroups contiguous and makes the group representative deterministic.
+/// VE by (edge, point), VV by (point_a, point_b).
 template <typename Index>
 auto sort_crossing_records(tf::buffer<crossing_record<Index>> &records)
     -> void {
@@ -32,8 +34,11 @@ auto sort_crossing_records(tf::buffer<crossing_record<Index>> &records)
       [](const crossing_record<Index> &a, const crossing_record<Index> &b) {
         if (a.type != b.type)
           return a.type < b.type;
-        if (a.type == crossing_record<Index>::ee)
-          return a.triple < b.triple;
+        if (a.type == crossing_record<Index>::ee) {
+          if (a.triple != b.triple)
+            return a.triple < b.triple;
+          return std::tie(a.edge_a, a.edge_b) < std::tie(b.edge_a, b.edge_b);
+        }
         if (a.type == crossing_record<Index>::ve)
           return std::tie(a.edge_a, a.point_a) < std::tie(b.edge_a, b.point_a);
         return std::tie(a.point_a, a.point_b) < std::tie(b.point_a, b.point_b);

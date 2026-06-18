@@ -13,7 +13,6 @@
 #pragma once
 
 #include "../../core/algorithm/circular_increment.hpp"
-#include "../../core/buffer.hpp"
 #include "../../core/small_vector.hpp"
 #include "../../exact/orient3d.hpp"
 #include "../../exact/segment_plane_intersect.hpp"
@@ -37,14 +36,12 @@ template <typename Index, typename Int, typename EdgeIsRep, typename FaceIsRep,
           typename Intersections, typename Pts,
           typename Kernel = tf::exact::predicate_kernel<Int>>
 void crossing_edges_vs_face(
-    const tf::buffer<tf::exact::vertex<Index, Int>> &edge_verts,
-    std::size_t n_edge,
-    const tf::buffer<tf::exact::vertex<Index, Int>> &face_verts,
-    std::size_t n_face, const tf::small_vector<int, 16> &edge_signs,
-    int edge_tag, int face_tag, Index edge_face_id, Index face_id,
-    const EdgeIsRep &edge_is_rep, const FaceIsRep &face_is_rep,
-    Intersections &intersections, Pts &pts, bool both_crossing,
-    const Kernel &kernel = {}) {
+    tf::exact::vertex_range<Index, Int> edge_verts, std::size_t n_edge,
+    tf::exact::vertex_range<Index, Int> face_verts, std::size_t n_face,
+    const tf::small_vector<int, 16> &edge_signs, int edge_tag, int face_tag,
+    Index edge_face_id, Index face_id, const EdgeIsRep &edge_is_rep,
+    const FaceIsRep &face_is_rep, Intersections &intersections, Pts &pts,
+    bool both_crossing, const Kernel &kernel = {}) {
   for (std::size_t i = 0; i < n_edge; ++i) {
     if (!edge_is_rep(i).second)
       continue;
@@ -146,14 +143,12 @@ template <typename Index, typename Int, typename EdgeIsRep, typename FaceIsRep,
           typename Intersections, typename Pts,
           typename Kernel = tf::exact::predicate_kernel<Int>>
 void crossing_edges_vs_face_self(
-    const tf::buffer<tf::exact::vertex<Index, Int>> &edge_verts,
-    std::size_t n_edge,
-    const tf::buffer<tf::exact::vertex<Index, Int>> &face_verts,
-    std::size_t n_face, const tf::small_vector<int, 16> &edge_signs,
-    int edge_tag, int face_tag, Index edge_face_id, Index face_id,
-    const EdgeIsRep &edge_is_rep, const FaceIsRep &face_is_rep,
-    Intersections &intersections, Pts &pts, bool both_crossing,
-    const Kernel &kernel = {}) {
+    tf::exact::vertex_range<Index, Int> edge_verts, std::size_t n_edge,
+    tf::exact::vertex_range<Index, Int> face_verts, std::size_t n_face,
+    const tf::small_vector<int, 16> &edge_signs, int edge_tag, int face_tag,
+    Index edge_face_id, Index face_id, const EdgeIsRep &edge_is_rep,
+    const FaceIsRep &face_is_rep, Intersections &intersections, Pts &pts,
+    bool both_crossing, const Kernel &kernel = {}) {
   for (std::size_t i = 0; i < n_edge; ++i) {
     if (!edge_is_rep(i).second)
       continue;

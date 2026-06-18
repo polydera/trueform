@@ -300,39 +300,42 @@ private:
     for (Index i = crossing_base; i < total_size; ++i)
       _crossing_point_ids.push_back(i);
 
+    // Materialise points, remapping through merge classes only when there
+    // are merges.
     if (merge_pairs.size() == 0) {
       _points.allocate(total_size);
       tf::parallel_copy(ipts, tf::take(_points, crossing_base));
       tf::parallel_copy(crossing_points, tf::drop(_points, crossing_base));
-      intersect::graph::canonicalize_edges(_edge_defs, _edges);
-      return;
+    } else {
+      _point_remap.allocate(total_size);
+      auto n_classes =
+          tf::make_dense_equivalence_class_map(merge_pairs, _point_remap);
+
+      auto all_coords = tf::make_mapped_range(
+          tf::make_sequence_range(total_size),
+          [&](Index i) -> tf::point<Int, 3> {
+            return i < crossing_base ? ipts[i]
+                                     : crossing_points[i - crossing_base];
+          });
+      _points.allocate(n_classes);
+      tf::parallel_copy(all_coords,
+                        tf::make_indirect_range(_point_remap, _points));
+
+      tf::parallel_for_each(_edge_defs.data_buffer(), [&](auto &e) {
+        e.point_0 = _point_remap[e.point_0];
+        e.point_1 = _point_remap[e.point_1];
+      });
+      tf::parallel_for_each(_loops.data_buffer(), [&](auto &v) {
+        if (v.source == intersect::graph::vertex_source::created)
+          v.id = _point_remap[v.id];
+      });
     }
 
-    _point_remap.allocate(total_size);
-    auto n_classes =
-        tf::make_dense_equivalence_class_map(merge_pairs, _point_remap);
-
-    auto all_coords = tf::make_mapped_range(
-        tf::make_sequence_range(total_size), [&](Index i) -> tf::point<Int, 3> {
-          return i < crossing_base ? ipts[i]
-                                   : crossing_points[i - crossing_base];
-        });
-    _points.allocate(n_classes);
-    tf::parallel_copy(all_coords,
-                      tf::make_indirect_range(_point_remap, _points));
-
-    tf::parallel_for_each(_edge_defs.data_buffer(), [&](auto &e) {
-      e.point_0 = _point_remap[e.point_0];
-      e.point_1 = _point_remap[e.point_1];
-    });
-    tf::parallel_for_each(_loops.data_buffer(), [&](auto &v) {
-      if (v.source == intersect::graph::vertex_source::created)
-        v.id = _point_remap[v.id];
-    });
+    // Finalise once: split_edges rebuilt the loops (inserting boundary
+    // points), so they must be cleaned and re-canonicalised whether or not
+    // any merge happened.
     intersect::graph::clean_loops(_loops);
-
     intersect::graph::canonicalize_edges(_edge_defs, _edges);
-
     collect_crossing_point_ids();
   }
 

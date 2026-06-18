@@ -13,6 +13,7 @@
 #pragma once
 
 #include "../core/point.hpp"
+#include "../core/range.hpp"
 
 namespace tf::exact {
 
@@ -27,5 +28,8 @@ template <typename Index, typename Int> struct vertex {
   Index id;
   pt3<Int> pt;
 };
+
+template <typename Index, typename Int>
+using vertex_range = tf::range<const vertex<Index, Int> *, tf::dynamic_size>;
 
 } // namespace tf::exact
