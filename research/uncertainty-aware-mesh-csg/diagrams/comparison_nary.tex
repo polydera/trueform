@@ -10,25 +10,28 @@
   ylabel={median runtime relative to trueform ($\times$)},
   xtick={4,16,64}, xticklabels={4,16,64},
   xmin=3.5, xmax=72,
-  ymin=0.6, ymax=756,
+  ymin=0.6, ymax=972,
   grid=both, grid style={black!8},
   tick label style={font=\footnotesize},
   label style={font=\footnotesize},
   legend cell align=left,
-  legend columns=2,
+  legend columns=3,
   legend style={font=\footnotesize, draw=black!20,
                 at={(0.5,1.03)}, anchor=south,
-                /tikz/every even column/.append style={column sep=2.2em}},
+                /tikz/every even column/.append style={column sep=1.2em}},
 ]
-% trueform is the implicit 1x baseline (y-axis is relative to it); not in the legend
-\addplot[tfink, dashed, line width=1.0pt, forget plot] coordinates {(4,1)(64,1)};
-\addplot[cThree, mark=*, mark size=1.5pt, line width=1.3pt] coordinates {(4,9.36)(16,11.1)(64,11.1)};
+% trueform: the 1x baseline (dashed), first legend entry -> 6 entries, 3x2
+\addplot[tfink, dashed, line width=1.0pt] coordinates {(4,1)(64,1)};
+\addlegendentry{trueform}
+\addplot[cThree, mark=*, mark size=1.5pt, line width=1.3pt] coordinates {(4,11.7)(16,14.3)(64,14.3)};
 \addlegendentry{Manifold}
-\addplot[cTwo, mark=*, mark size=1.5pt, line width=1.3pt] coordinates {(4,40.7)(16,53.7)(64,34)};
+\addplot[cTwo, mark=*, mark size=1.5pt, line width=1.3pt] coordinates {(4,51)(16,69.2)(64,43.7)};
 \addlegendentry{Cherchi}
-\addplot[cOne, mark=*, mark size=1.5pt, line width=1.3pt] coordinates {(4,30.8)(16,35.6)(64,107)};
+\addplot[cOne, mark=*, mark size=1.5pt, line width=1.3pt] coordinates {(4,38.6)(16,45.9)(64,138)};
 \addlegendentry{MeshLib}
-\addplot[cFive, mark=*, mark size=1.5pt, line width=1.3pt] coordinates {(4,90.4)(16,165)(64,504)};
+\addplot[cFive, mark=*, mark size=1.5pt, line width=1.3pt] coordinates {(4,113)(16,213)(64,648)};
 \addlegendentry{Geogram}
+\addplot[cSix, dashed, mark=*, mark options={solid}, mark size=1.5pt, line width=1.3pt] coordinates {(4,10.1)(16,14.3)(64,13.9)};
+\addlegendentry{EMBER}
 \end{axis}
 \end{tikzpicture}

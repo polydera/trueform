@@ -1,0 +1,15 @@
+% Pairwise-boolean median wall-clock, geometric-mean slowdown vs trueform, and
+% validity (watertight + manifold) per library, over the 1000-pair corpus.
+\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}lrrr@{}}
+\toprule
+library & median (ms) & geomean $\times$ & valid \\
+\midrule
+trueform & $15.7$   & $1.0\times$   & $1000/1000$ \\
+MeshLib  & $86.4$   & $5.5\times$   & $999/1000$  \\
+Manifold & $118.0$  & $7.6\times$   & $1000/1000$ \\
+EMBER    & $143.8$  & $10.4\times$  & $961/1000$  \\
+Cherchi  & $416.9$  & $28.8\times$  & $999/1000$  \\
+CGAL     & $493.6$  & $32.1\times$  & $998/1000$  \\
+Geogram  & $1644.3$ & $100.4\times$ & $974/1000$  \\
+\bottomrule
+\end{tabular*}

@@ -1,0 +1,37 @@
+% Middle panel of the sheets figure: the declaration and the three
+% stratum expressions, colour-keyed to the rendered slabs. A tikz
+% fragment drawn into the parent picture's current scope; the parent
+% defines \sheetw (the panel side length).
+\definecolor{strSand}{rgb}{0.72, 0.57, 0.30}
+\definecolor{strMoss}{rgb}{0.33, 0.52, 0.24}
+\definecolor{strClay}{rgb}{0.55, 0.36, 0.26}
+\filldraw[fill=black!3, draw=black!20, line width=0.4pt, rounded corners=6pt]
+  (0,0) rectangle (\sheetw,\sheetw);
+
+\node[anchor=west, align=left, text=black!75, font=\sffamily\small]
+  at (0.08\sheetw, 0.82\sheetw) {
+  $M$: box $\cup$ spheres \hfill (volumes)\\[2pt]
+  $T$, $B$: horizons \hfill (\textbf{sheets})
+};
+
+\draw[black!20, line width=0.4pt]
+  (0.08\sheetw, 0.70\sheetw) -- (0.92\sheetw, 0.70\sheetw);
+
+\node[anchor=west, text=strSand, font=\sffamily\small\bfseries]
+  at (0.08\sheetw, 0.585\sheetw)
+  {upper $\;=\; M - T$};
+\node[anchor=west, text=strMoss, font=\sffamily\small\bfseries]
+  at (0.08\sheetw, 0.465\sheetw)
+  {between $\;=\; (M \wedge T) - B$};
+\node[anchor=west, text=strClay, font=\sffamily\small\bfseries]
+  at (0.08\sheetw, 0.345\sheetw)
+  {lower $\;=\; M \wedge B$};
+
+\draw[black!20, line width=0.4pt]
+  (0.08\sheetw, 0.23\sheetw) -- (0.92\sheetw, 0.23\sheetw);
+
+\node[anchor=west, align=left, text=black!55, font=\sffamily\footnotesize]
+  at (0.08\sheetw, 0.125\sheetw) {
+  for a sheet, $\wedge$ selects behind its\\
+  normal (below), $-$ in front (above)
+};

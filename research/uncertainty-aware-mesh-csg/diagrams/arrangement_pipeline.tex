@@ -1,8 +1,8 @@
-\def\sclI{0.7}
-\def\sclF{0.9}
-\def\panelw{5.2}
-\def\panelh{4.4}
-\def\panelgap{0.55}
+\def\sclI{0.52}
+\def\sclF{0.72}
+\def\panelw{4.0}
+\def\panelh{3.8}
+\def\panelgap{0.45}
 
 \newcommand{\iso}[3]{({((#1) - (#2)) * 0.866 * \sclI}, {((#3) - ((#1) + (#2)) * 0.5) * \sclI})}
 
@@ -88,17 +88,17 @@
     \fill[tfteal] (-2*\sclF,    0.3*\sclF) circle [radius=1.6pt];
     \fill[tfteal] ( 2*\sclF,    0.3*\sclF) circle [radius=1.6pt];
 
-    % Edge labels (black/dark) — placed by the edges they mark
-    \node[text=black!70, font=\sffamily\scriptsize\ttfamily]
-      at (-\sclF - 0.4, \sclF) {(A,B)};
-    \node[text=black!70, font=\sffamily\scriptsize\ttfamily]
-      at ( \sclF + 0.4, \sclF) {(A,C)};
-    \node[text=black!70, font=\sffamily\scriptsize\ttfamily, anchor=south]
-      at (0, 0.3*\sclF + 0.08) {(A,D)};
+    % Edge labels (canonical edge ids, named by endpoints)
+    \node[text=black!70, font=\sffamily\scriptsize, anchor=east]
+      at (-0.8*\sclF - 0.12, \sclF) {$e_0$};
+    \node[text=black!70, font=\sffamily\scriptsize, anchor=west]
+      at ( 0.8*\sclF + 0.12, \sclF) {$e_1$};
+    \node[text=black!70, font=\sffamily\scriptsize, anchor=south]
+      at (0, 0.3*\sclF + 0.08) {$e_2$};
   \end{scope}
 
   % =====================================================================
-  % PANEL 3 -- intersection graph
+  % PANEL 3 -- intersection graph (crossings named by face triple)
   % =====================================================================
   \begin{scope}[shift={(2*\panelw + 2*\panelgap, 0)}]
     \filldraw[fill=black!3, draw=black!20, line width=0.4pt, rounded corners=3pt]
@@ -133,11 +133,62 @@
     \fill[tfrose] (-0.8*\sclF, 0.3*\sclF) circle [radius=2pt];
     \fill[tfrose] ( 0.8*\sclF, 0.3*\sclF) circle [radius=2pt];
 
-    % Triplet labels (black, near each crossing)
-    \node[text=black!75, font=\sffamily\scriptsize\ttfamily\bfseries, anchor=south east]
-      at (-0.8*\sclF - 0.04, 0.3*\sclF + 0.05) {\{A,B,D\}};
-    \node[text=black!75, font=\sffamily\scriptsize\ttfamily\bfseries, anchor=south west]
-      at ( 0.8*\sclF + 0.04, 0.3*\sclF + 0.05) {\{A,C,D\}};
+    % Crossing labels (face triples, near each crossing)
+    \node[text=black!75, font=\sffamily\scriptsize\bfseries, anchor=south east]
+      at (-0.8*\sclF + 0.06, 0.3*\sclF + 0.05) {$\{A, B, D\}$};
+    \node[text=black!75, font=\sffamily\scriptsize\bfseries, anchor=south west]
+      at ( 0.8*\sclF - 0.06, 0.3*\sclF + 0.05) {$\{A, C, D\}$};
+
+  \end{scope}
+
+  % =====================================================================
+  % PANEL 4 -- the coplanar exception (B coplanar with A)
+  % =====================================================================
+  \begin{scope}[shift={(3*\panelw + 3*\panelgap, 0)}]
+    \filldraw[fill=black!3, draw=black!20, line width=0.4pt, rounded corners=3pt]
+      (-\panelw/2, -\panelh/2) rectangle (\panelw/2, \panelh/2);
+
+    % Face A
+    \fill[tfteal, opacity=0.08] (-2*\sclF, -2*\sclF) rectangle (2*\sclF, 2*\sclF);
+    \draw[tfteal, line width=0.7pt, opacity=0.75] (-2*\sclF, -2*\sclF) rectangle (2*\sclF, 2*\sclF);
+
+    % B coplanar with A: its footprint on A, bounded by the contact edges
+    \fill[tfteal, opacity=0.12] (-0.8*\sclF, -2*\sclF) rectangle (0.8*\sclF, 2*\sclF);
+    \node[text=black!55, font=\sffamily\small\bfseries\itshape, anchor=south]
+      at (0, 2*\sclF + 0.05) {$B$};
+
+    % Contact edges (boundary of the polygon-of-contact, one face pair)
+    \draw[tfrose, line width=1pt, opacity=0.95] (-0.8*\sclF, -2*\sclF) -- (-0.8*\sclF, 2*\sclF);
+    \draw[tfrose, line width=1pt, opacity=0.95] ( 0.8*\sclF, -2*\sclF) -- ( 0.8*\sclF, 2*\sclF);
+
+    % Transversal edge (A, D)
+    \draw[tfrose, line width=1pt, opacity=0.85] (-2*\sclF,  0.3*\sclF) -- (2*\sclF,  0.3*\sclF);
+
+    % Boundary vertices
+    \fill[tfteal] (-0.8*\sclF, -2*\sclF)  circle [radius=1.6pt];
+    \fill[tfteal] (-0.8*\sclF,  2*\sclF)  circle [radius=1.6pt];
+    \fill[tfteal] ( 0.8*\sclF, -2*\sclF)  circle [radius=1.6pt];
+    \fill[tfteal] ( 0.8*\sclF,  2*\sclF)  circle [radius=1.6pt];
+    \fill[tfteal] (-2*\sclF,    0.3*\sclF) circle [radius=1.6pt];
+    \fill[tfteal] ( 2*\sclF,    0.3*\sclF) circle [radius=1.6pt];
+
+    % Edge labels
+    \node[text=black!70, font=\sffamily\scriptsize, anchor=east]
+      at (-0.8*\sclF - 0.12, -\sclF) {$e_0$};
+    \node[text=black!70, font=\sffamily\scriptsize, anchor=west]
+      at ( 0.8*\sclF + 0.12, -\sclF) {$e_1$};
+    \node[text=black!70, font=\sffamily\scriptsize, anchor=north]
+      at (0, 0.3*\sclF - 0.10) {$e_2$};
+
+    % Crossings (rose, prominent)
+    \fill[tfrose] (-0.8*\sclF, 0.3*\sclF) circle [radius=2pt];
+    \fill[tfrose] ( 0.8*\sclF, 0.3*\sclF) circle [radius=2pt];
+
+    % Crossing labels (refined by canonical edge pair)
+    \node[text=black!75, font=\sffamily\scriptsize\bfseries, anchor=south east]
+      at (-0.8*\sclF - 0.04, 0.3*\sclF + 0.05) {$(e_0, e_2)$};
+    \node[text=black!75, font=\sffamily\scriptsize\bfseries, anchor=south west]
+      at ( 0.8*\sclF + 0.04, 0.3*\sclF + 0.05) {$(e_1, e_2)$};
 
   \end{scope}
 
