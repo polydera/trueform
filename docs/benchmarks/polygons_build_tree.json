@@ -1,7 +1,7 @@
 [
   {
     "polygons": 58298,
-    "tf_aabb": 0.60,
+    "tf_aabb": 0.496,
     "tf_obb": 2.53,
     "tf_obbrss": 3.77,
     "cgal": 10.66,
@@ -14,7 +14,7 @@
   },
   {
     "polygons": 141966,
-    "tf_aabb": 1.50,
+    "tf_aabb": 1.236,
     "tf_obb": 5.62,
     "tf_obbrss": 8.29,
     "cgal": 27.52,
@@ -27,7 +27,7 @@
   },
   {
     "polygons": 244026,
-    "tf_aabb": 2.14,
+    "tf_aabb": 1.872,
     "tf_obb": 8.71,
     "tf_obbrss": 12.69,
     "cgal": 50.03,
@@ -40,7 +40,7 @@
   },
   {
     "polygons": 480868,
-    "tf_aabb": 4.77,
+    "tf_aabb": 3.73,
     "tf_obb": 18.69,
     "tf_obbrss": 32.17,
     "cgal": 104.72,
@@ -53,7 +53,7 @@
   },
   {
     "polygons": 722980,
-    "tf_aabb": 6.44,
+    "tf_aabb": 5.222,
     "tf_obb": 24.68,
     "tf_obbrss": 41.47,
     "cgal": 164.31,
@@ -66,7 +66,7 @@
   },
   {
     "polygons": 1025766,
-    "tf_aabb": 9.43,
+    "tf_aabb": 7.414,
     "tf_obb": 37.33,
     "tf_obbrss": 59.26,
     "cgal": 238.27,
