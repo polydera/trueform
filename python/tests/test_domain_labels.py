@@ -29,8 +29,11 @@ def test_domain_labels_box_default(index_dtype, real_dtype):
 
     # Closed cube: 1 bounded interior + 1 outer shell = 2 domains.
     assert n_domains == 2
-    # No flag set → no side carries the sentinel label (== n_domains).
-    assert outer_shell_label == n_domains
+    # Include mode: outer_shell_label is the index of the outer-shell
+    # (unbounded) domain — a real label in range that faces carry, not
+    # the out-of-range sentinel.
+    assert 0 <= outer_shell_label < n_domains
+    assert (labels == outer_shell_label).any()
     assert labels.shape == (mesh.faces.shape[0], 2)
     assert labels.dtype == index_dtype
     assert (labels >= 0).all() and (labels < n_domains).all()
@@ -84,7 +87,8 @@ def test_domain_labels_dynamic_box(index_dtype, real_dtype):
         (faces_dyn, points),
     )
     assert n_domains == 2
-    assert outer_shell_label == n_domains
+    assert 0 <= outer_shell_label < n_domains
+    assert (labels == outer_shell_label).any()
     assert labels.shape == (faces.shape[0], 2)
     assert labels.dtype == index_dtype
 

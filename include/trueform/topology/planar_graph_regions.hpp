@@ -62,6 +62,10 @@ public:
     walk_regions(directed_edges);
   }
 
+  /// Per-vertex outgoing-edge adjacency, sorted CCW by polar angle. Each entry
+  /// is an index into the directed edge list passed to build.
+  auto edge_membership() const -> const auto & { return _em; }
+
   auto clear() {
     base_t::clear();
     _em.clear();

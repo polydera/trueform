@@ -76,6 +76,13 @@ public:
     return _spaths;
   }
 
+  /// The directed edge soup fed to planar_graph_regions, and the raw regions
+  /// it traced (before the exterior is discarded).
+  auto work_edges() const { return tf::make_range(_work_edges); }
+  auto planar_regions() const -> const tf::planar_graph_regions<Index, Int> & {
+    return _pgr;
+  }
+
   auto clear() {
     _pgr.clear();
     _spaths.clear();

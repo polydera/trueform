@@ -40,9 +40,11 @@ template <typename LabelType> struct domain_labels {
   tf::blocked_buffer<LabelType, 2> labels;
   /// @brief Total number of distinct volumetric domains.
   LabelType n_domains;
-  /// @brief Label carried by outer-shell sides. Equals `n_domains`
-  /// (the sentinel) under @ref tf::domain_config::exclude_outer_shell;
-  /// otherwise no sides carry this label.
+  /// @brief The outer-shell (unbounded universe) domain. Under
+  /// @ref tf::domain_config::exclude_outer_shell its sides are folded to
+  /// the sentinel `n_domains` (one past the valid range), and this
+  /// equals `n_domains`. Otherwise it is the index of the outer-shell
+  /// domain in `[0, n_domains)`, or `-1` if there is no unbounded domain.
   LabelType outer_shell_label;
 };
 } // namespace tf

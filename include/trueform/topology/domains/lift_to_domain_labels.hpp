@@ -40,16 +40,32 @@ namespace tf::topology::domains {
 ///        `label == n_domains - 1` (one past the new compacted range)
 ///        and all other domain ids are compacted into
 ///        `[0, n_domains - 1)`. Default `-1` skips compaction.
+/// @param outer_shell_domain Index of the outer-shell (unbounded
+///        universe) domain, already remapped. Used only when
+///        `excluded_domain < 0` (the outer shell is kept), where it
+///        becomes `outer_shell_label`; ignored otherwise, since the
+///        excluded path reports the sentinel instead. Default `-1`.
 /// @return @ref tf::domain_labels with `n_faces` 2-blocks of per-side
 ///         domain ids.
 template <typename Index, typename FragLabels>
 auto lift_to_domain_labels(tf::buffer<Index> &domain_of_side, Index n_domains,
                            const FragLabels &fragment_labels, Index n_faces,
-                           Index excluded_domain = Index(-1))
+                           Index excluded_domain = Index(-1),
+                           Index outer_shell_domain = Index(-1))
     -> tf::domain_labels<Index> {
   if (excluded_domain >= 0) {
     Index garbage_id = excluded_domain;
     Index sentinel = n_domains - 1;
+    // The outer-shell domain rides the same compaction as every side:
+    // folded to the sentinel when it *is* the excluded domain (i.e.
+    // exclude_outer_shell removed the universe), otherwise shifted down
+    // past the removed slot. When some *other* domain is excluded (a fin
+    // garbage class under ignore_open_fragments), the universe stays a
+    // real domain and we report its shifted index.
+    if (outer_shell_domain == garbage_id)
+      outer_shell_domain = sentinel;
+    else if (outer_shell_domain > garbage_id)
+      outer_shell_domain -= 1;
     tf::parallel_for_each(
         domain_of_side,
         [&](Index &d) {
@@ -65,7 +81,10 @@ auto lift_to_domain_labels(tf::buffer<Index> &domain_of_side, Index n_domains,
   tf::domain_labels<Index> out;
   out.labels.allocate(n_faces);
   out.n_domains = n_domains;
-  out.outer_shell_label = n_domains;
+  // exclude_outer_shell: the universe was the excluded domain, so this is
+  // the sentinel `n_domains` (one past the range). Otherwise it is the
+  // index of the outer-shell domain in `[0, n_domains)`, or `-1` if none.
+  out.outer_shell_label = outer_shell_domain;
   auto &flat = out.labels.data_buffer();
   tf::parallel_for_each(tf::make_sequence_range(n_faces), [&](Index f) {
     Index frag = fragment_labels.labels[f];

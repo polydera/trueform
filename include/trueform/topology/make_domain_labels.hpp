@@ -232,11 +232,13 @@ auto make_domain_labels(const tf::polygons<Policy> &polygons,
           domain_of_side, [&](Index &d) { d = domain_remap[d]; }, tf::checked);
       if (removed_domain >= Index(0))
         removed_domain = domain_remap[removed_domain];
+      if (root_anchor >= Index(0))
+        root_anchor = domain_remap[root_anchor];
     }
 
     return tf::topology::domains::lift_to_domain_labels(
         domain_of_side, n_domains, fragment_labels, Index(polygons.size()),
-        removed_domain);
+        removed_domain, root_anchor);
   }
 }
 

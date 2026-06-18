@@ -59,6 +59,7 @@
 #include "./topology/components/finder.hpp"          // IWYU pragma: export
 #include "./topology/connect_edges_to_paths.hpp"     // IWYU pragma: export
 #include "./topology/compute_unique_faces_mask.hpp"  // IWYU pragma: export
+#include "./topology/compute_unduplicated_faces_mask.hpp" // IWYU pragma: export
 #include "./topology/connected_component_labels.hpp" // IWYU pragma: export
 #include "./topology/domain_labels.hpp"              // IWYU pragma: export
 #include "./topology/constrained_delaunay_triangulator.hpp" // IWYU pragma: export
