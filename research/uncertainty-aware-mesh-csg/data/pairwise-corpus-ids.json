@@ -1,0 +1,11008 @@
+{
+ "benchmark": "pairwise and in-browser mesh booleans",
+ "source": "Thingi10K",
+ "note": "one boolean per pair; thingi_id is the Thingi10K file ID, faces the triangle count of that operand as used",
+ "n_pairs": 1000,
+ "pairs": [
+  {
+   "pair": 0,
+   "a": {
+    "thingi_id": 82183,
+    "faces": 127816
+   },
+   "b": {
+    "thingi_id": 551021,
+    "faces": 348128
+   }
+  },
+  {
+   "pair": 1,
+   "a": {
+    "thingi_id": 372055,
+    "faces": 479744
+   },
+   "b": {
+    "thingi_id": 472043,
+    "faces": 129714
+   }
+  },
+  {
+   "pair": 2,
+   "a": {
+    "thingi_id": 551075,
+    "faces": 153456
+   },
+   "b": {
+    "thingi_id": 518079,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 3,
+   "a": {
+    "thingi_id": 471988,
+    "faces": 109296
+   },
+   "b": {
+    "thingi_id": 522979,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 4,
+   "a": {
+    "thingi_id": 368149,
+    "faces": 122656
+   },
+   "b": {
+    "thingi_id": 331105,
+    "faces": 271354
+   }
+  },
+  {
+   "pair": 5,
+   "a": {
+    "thingi_id": 63785,
+    "faces": 345996
+   },
+   "b": {
+    "thingi_id": 54725,
+    "faces": 138380
+   }
+  },
+  {
+   "pair": 6,
+   "a": {
+    "thingi_id": 548875,
+    "faces": 133414
+   },
+   "b": {
+    "thingi_id": 1411687,
+    "faces": 200000
+   }
+  },
+  {
+   "pair": 7,
+   "a": {
+    "thingi_id": 472046,
+    "faces": 127710
+   },
+   "b": {
+    "thingi_id": 548865,
+    "faces": 140574
+   }
+  },
+  {
+   "pair": 8,
+   "a": {
+    "thingi_id": 1063860,
+    "faces": 226730
+   },
+   "b": {
+    "thingi_id": 82663,
+    "faces": 104148
+   }
+  },
+  {
+   "pair": 9,
+   "a": {
+    "thingi_id": 97686,
+    "faces": 243518
+   },
+   "b": {
+    "thingi_id": 82394,
+    "faces": 114510
+   }
+  },
+  {
+   "pair": 10,
+   "a": {
+    "thingi_id": 169526,
+    "faces": 129712
+   },
+   "b": {
+    "thingi_id": 518038,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 11,
+   "a": {
+    "thingi_id": 313444,
+    "faces": 221416
+   },
+   "b": {
+    "thingi_id": 87687,
+    "faces": 341866
+   }
+  },
+  {
+   "pair": 12,
+   "a": {
+    "thingi_id": 65904,
+    "faces": 157726
+   },
+   "b": {
+    "thingi_id": 958469,
+    "faces": 265424
+   }
+  },
+  {
+   "pair": 13,
+   "a": {
+    "thingi_id": 1411699,
+    "faces": 116252
+   },
+   "b": {
+    "thingi_id": 461115,
+    "faces": 821952
+   }
+  },
+  {
+   "pair": 14,
+   "a": {
+    "thingi_id": 99275,
+    "faces": 134206
+   },
+   "b": {
+    "thingi_id": 472077,
+    "faces": 119306
+   }
+  },
+  {
+   "pair": 15,
+   "a": {
+    "thingi_id": 132448,
+    "faces": 171742
+   },
+   "b": {
+    "thingi_id": 518032,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 16,
+   "a": {
+    "thingi_id": 119830,
+    "faces": 130040
+   },
+   "b": {
+    "thingi_id": 65942,
+    "faces": 754688
+   }
+  },
+  {
+   "pair": 17,
+   "a": {
+    "thingi_id": 472820,
+    "faces": 124874
+   },
+   "b": {
+    "thingi_id": 1717685,
+    "faces": 792898
+   }
+  },
+  {
+   "pair": 18,
+   "a": {
+    "thingi_id": 135066,
+    "faces": 123020
+   },
+   "b": {
+    "thingi_id": 133079,
+    "faces": 262560
+   }
+  },
+  {
+   "pair": 19,
+   "a": {
+    "thingi_id": 518034,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 167109,
+    "faces": 141486
+   }
+  },
+  {
+   "pair": 20,
+   "a": {
+    "thingi_id": 65904,
+    "faces": 157726
+   },
+   "b": {
+    "thingi_id": 1411699,
+    "faces": 116252
+   }
+  },
+  {
+   "pair": 21,
+   "a": {
+    "thingi_id": 488051,
+    "faces": 464898
+   },
+   "b": {
+    "thingi_id": 119829,
+    "faces": 126756
+   }
+  },
+  {
+   "pair": 22,
+   "a": {
+    "thingi_id": 76475,
+    "faces": 224704
+   },
+   "b": {
+    "thingi_id": 461112,
+    "faces": 805376
+   }
+  },
+  {
+   "pair": 23,
+   "a": {
+    "thingi_id": 623171,
+    "faces": 109346
+   },
+   "b": {
+    "thingi_id": 518032,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 24,
+   "a": {
+    "thingi_id": 815485,
+    "faces": 509802
+   },
+   "b": {
+    "thingi_id": 119830,
+    "faces": 130040
+   }
+  },
+  {
+   "pair": 25,
+   "a": {
+    "thingi_id": 472054,
+    "faces": 117656
+   },
+   "b": {
+    "thingi_id": 518092,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 26,
+   "a": {
+    "thingi_id": 461110,
+    "faces": 146656
+   },
+   "b": {
+    "thingi_id": 815474,
+    "faces": 123416
+   }
+  },
+  {
+   "pair": 27,
+   "a": {
+    "thingi_id": 76477,
+    "faces": 222836
+   },
+   "b": {
+    "thingi_id": 838000,
+    "faces": 109522
+   }
+  },
+  {
+   "pair": 28,
+   "a": {
+    "thingi_id": 623171,
+    "faces": 109346
+   },
+   "b": {
+    "thingi_id": 221686,
+    "faces": 182690
+   }
+  },
+  {
+   "pair": 29,
+   "a": {
+    "thingi_id": 425601,
+    "faces": 102978
+   },
+   "b": {
+    "thingi_id": 252632,
+    "faces": 455232
+   }
+  },
+  {
+   "pair": 30,
+   "a": {
+    "thingi_id": 151360,
+    "faces": 464306
+   },
+   "b": {
+    "thingi_id": 518089,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 31,
+   "a": {
+    "thingi_id": 399563,
+    "faces": 100376
+   },
+   "b": {
+    "thingi_id": 472022,
+    "faces": 130126
+   }
+  },
+  {
+   "pair": 32,
+   "a": {
+    "thingi_id": 474822,
+    "faces": 112060
+   },
+   "b": {
+    "thingi_id": 72947,
+    "faces": 100368
+   }
+  },
+  {
+   "pair": 33,
+   "a": {
+    "thingi_id": 472022,
+    "faces": 130126
+   },
+   "b": {
+    "thingi_id": 471989,
+    "faces": 142994
+   }
+  },
+  {
+   "pair": 34,
+   "a": {
+    "thingi_id": 472022,
+    "faces": 130126
+   },
+   "b": {
+    "thingi_id": 848343,
+    "faces": 241154
+   }
+  },
+  {
+   "pair": 35,
+   "a": {
+    "thingi_id": 804297,
+    "faces": 161822
+   },
+   "b": {
+    "thingi_id": 518080,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 36,
+   "a": {
+    "thingi_id": 76391,
+    "faces": 144546
+   },
+   "b": {
+    "thingi_id": 375065,
+    "faces": 242390
+   }
+  },
+  {
+   "pair": 37,
+   "a": {
+    "thingi_id": 815483,
+    "faces": 363862
+   },
+   "b": {
+    "thingi_id": 83416,
+    "faces": 226080
+   }
+  },
+  {
+   "pair": 38,
+   "a": {
+    "thingi_id": 518035,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 623171,
+    "faces": 109346
+   }
+  },
+  {
+   "pair": 39,
+   "a": {
+    "thingi_id": 623171,
+    "faces": 109346
+   },
+   "b": {
+    "thingi_id": 76475,
+    "faces": 224704
+   }
+  },
+  {
+   "pair": 40,
+   "a": {
+    "thingi_id": 252640,
+    "faces": 455232
+   },
+   "b": {
+    "thingi_id": 686056,
+    "faces": 231664
+   }
+  },
+  {
+   "pair": 41,
+   "a": {
+    "thingi_id": 488048,
+    "faces": 276432
+   },
+   "b": {
+    "thingi_id": 548875,
+    "faces": 133414
+   }
+  },
+  {
+   "pair": 42,
+   "a": {
+    "thingi_id": 82536,
+    "faces": 144024
+   },
+   "b": {
+    "thingi_id": 601645,
+    "faces": 189994
+   }
+  },
+  {
+   "pair": 43,
+   "a": {
+    "thingi_id": 518085,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 518086,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 44,
+   "a": {
+    "thingi_id": 838001,
+    "faces": 128664
+   },
+   "b": {
+    "thingi_id": 518035,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 45,
+   "a": {
+    "thingi_id": 848343,
+    "faces": 241154
+   },
+   "b": {
+    "thingi_id": 958469,
+    "faces": 265424
+   }
+  },
+  {
+   "pair": 46,
+   "a": {
+    "thingi_id": 763718,
+    "faces": 218776
+   },
+   "b": {
+    "thingi_id": 844209,
+    "faces": 239034
+   }
+  },
+  {
+   "pair": 47,
+   "a": {
+    "thingi_id": 815481,
+    "faces": 182040
+   },
+   "b": {
+    "thingi_id": 461115,
+    "faces": 821952
+   }
+  },
+  {
+   "pair": 48,
+   "a": {
+    "thingi_id": 169526,
+    "faces": 129712
+   },
+   "b": {
+    "thingi_id": 551075,
+    "faces": 153456
+   }
+  },
+  {
+   "pair": 49,
+   "a": {
+    "thingi_id": 368149,
+    "faces": 122656
+   },
+   "b": {
+    "thingi_id": 837999,
+    "faces": 132406
+   }
+  },
+  {
+   "pair": 50,
+   "a": {
+    "thingi_id": 472052,
+    "faces": 132308
+   },
+   "b": {
+    "thingi_id": 99272,
+    "faces": 134238
+   }
+  },
+  {
+   "pair": 51,
+   "a": {
+    "thingi_id": 688367,
+    "faces": 276300
+   },
+   "b": {
+    "thingi_id": 471990,
+    "faces": 103860
+   }
+  },
+  {
+   "pair": 52,
+   "a": {
+    "thingi_id": 101337,
+    "faces": 177312
+   },
+   "b": {
+    "thingi_id": 54725,
+    "faces": 138380
+   }
+  },
+  {
+   "pair": 53,
+   "a": {
+    "thingi_id": 87689,
+    "faces": 256412
+   },
+   "b": {
+    "thingi_id": 66480,
+    "faces": 181504
+   }
+  },
+  {
+   "pair": 54,
+   "a": {
+    "thingi_id": 59333,
+    "faces": 196608
+   },
+   "b": {
+    "thingi_id": 399563,
+    "faces": 100376
+   }
+  },
+  {
+   "pair": 55,
+   "a": {
+    "thingi_id": 688367,
+    "faces": 276300
+   },
+   "b": {
+    "thingi_id": 151376,
+    "faces": 464306
+   }
+  },
+  {
+   "pair": 56,
+   "a": {
+    "thingi_id": 76477,
+    "faces": 222836
+   },
+   "b": {
+    "thingi_id": 472052,
+    "faces": 132308
+   }
+  },
+  {
+   "pair": 57,
+   "a": {
+    "thingi_id": 133078,
+    "faces": 259320
+   },
+   "b": {
+    "thingi_id": 252614,
+    "faces": 118656
+   }
+  },
+  {
+   "pair": 58,
+   "a": {
+    "thingi_id": 472054,
+    "faces": 117656
+   },
+   "b": {
+    "thingi_id": 99269,
+    "faces": 287716
+   }
+  },
+  {
+   "pair": 59,
+   "a": {
+    "thingi_id": 518084,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 958469,
+    "faces": 265424
+   }
+  },
+  {
+   "pair": 60,
+   "a": {
+    "thingi_id": 488048,
+    "faces": 276432
+   },
+   "b": {
+    "thingi_id": 399562,
+    "faces": 115248
+   }
+  },
+  {
+   "pair": 61,
+   "a": {
+    "thingi_id": 313444,
+    "faces": 221416
+   },
+   "b": {
+    "thingi_id": 82183,
+    "faces": 127816
+   }
+  },
+  {
+   "pair": 62,
+   "a": {
+    "thingi_id": 66480,
+    "faces": 181504
+   },
+   "b": {
+    "thingi_id": 87689,
+    "faces": 256412
+   }
+  },
+  {
+   "pair": 63,
+   "a": {
+    "thingi_id": 99275,
+    "faces": 134206
+   },
+   "b": {
+    "thingi_id": 844209,
+    "faces": 239034
+   }
+  },
+  {
+   "pair": 64,
+   "a": {
+    "thingi_id": 238639,
+    "faces": 259172
+   },
+   "b": {
+    "thingi_id": 68215,
+    "faces": 115616
+   }
+  },
+  {
+   "pair": 65,
+   "a": {
+    "thingi_id": 762601,
+    "faces": 154802
+   },
+   "b": {
+    "thingi_id": 76391,
+    "faces": 144546
+   }
+  },
+  {
+   "pair": 66,
+   "a": {
+    "thingi_id": 1706475,
+    "faces": 339306
+   },
+   "b": {
+    "thingi_id": 838000,
+    "faces": 109522
+   }
+  },
+  {
+   "pair": 67,
+   "a": {
+    "thingi_id": 99270,
+    "faces": 134142
+   },
+   "b": {
+    "thingi_id": 63785,
+    "faces": 345996
+   }
+  },
+  {
+   "pair": 68,
+   "a": {
+    "thingi_id": 252640,
+    "faces": 455232
+   },
+   "b": {
+    "thingi_id": 372056,
+    "faces": 498974
+   }
+  },
+  {
+   "pair": 69,
+   "a": {
+    "thingi_id": 518038,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 471988,
+    "faces": 109296
+   }
+  },
+  {
+   "pair": 70,
+   "a": {
+    "thingi_id": 425601,
+    "faces": 102978
+   },
+   "b": {
+    "thingi_id": 331105,
+    "faces": 271354
+   }
+  },
+  {
+   "pair": 71,
+   "a": {
+    "thingi_id": 518088,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 354371,
+    "faces": 257936
+   }
+  },
+  {
+   "pair": 72,
+   "a": {
+    "thingi_id": 804297,
+    "faces": 161822
+   },
+   "b": {
+    "thingi_id": 472077,
+    "faces": 119306
+   }
+  },
+  {
+   "pair": 73,
+   "a": {
+    "thingi_id": 762595,
+    "faces": 145418
+   },
+   "b": {
+    "thingi_id": 838000,
+    "faces": 109522
+   }
+  },
+  {
+   "pair": 74,
+   "a": {
+    "thingi_id": 425601,
+    "faces": 102978
+   },
+   "b": {
+    "thingi_id": 763718,
+    "faces": 218776
+   }
+  },
+  {
+   "pair": 75,
+   "a": {
+    "thingi_id": 82392,
+    "faces": 194596
+   },
+   "b": {
+    "thingi_id": 59333,
+    "faces": 196608
+   }
+  },
+  {
+   "pair": 76,
+   "a": {
+    "thingi_id": 838000,
+    "faces": 109522
+   },
+   "b": {
+    "thingi_id": 82392,
+    "faces": 194596
+   }
+  },
+  {
+   "pair": 77,
+   "a": {
+    "thingi_id": 815485,
+    "faces": 509802
+   },
+   "b": {
+    "thingi_id": 82392,
+    "faces": 194596
+   }
+  },
+  {
+   "pair": 78,
+   "a": {
+    "thingi_id": 762601,
+    "faces": 154802
+   },
+   "b": {
+    "thingi_id": 623170,
+    "faces": 109346
+   }
+  },
+  {
+   "pair": 79,
+   "a": {
+    "thingi_id": 87690,
+    "faces": 256418
+   },
+   "b": {
+    "thingi_id": 1706475,
+    "faces": 339306
+   }
+  },
+  {
+   "pair": 80,
+   "a": {
+    "thingi_id": 518031,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 518091,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 81,
+   "a": {
+    "thingi_id": 518095,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 827773,
+    "faces": 204406
+   }
+  },
+  {
+   "pair": 82,
+   "a": {
+    "thingi_id": 88053,
+    "faces": 153840
+   },
+   "b": {
+    "thingi_id": 461111,
+    "faces": 153248
+   }
+  },
+  {
+   "pair": 83,
+   "a": {
+    "thingi_id": 815485,
+    "faces": 509802
+   },
+   "b": {
+    "thingi_id": 518087,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 84,
+   "a": {
+    "thingi_id": 601646,
+    "faces": 231938
+   },
+   "b": {
+    "thingi_id": 518092,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 85,
+   "a": {
+    "thingi_id": 87689,
+    "faces": 256412
+   },
+   "b": {
+    "thingi_id": 518085,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 86,
+   "a": {
+    "thingi_id": 461109,
+    "faces": 156064
+   },
+   "b": {
+    "thingi_id": 252614,
+    "faces": 118656
+   }
+  },
+  {
+   "pair": 87,
+   "a": {
+    "thingi_id": 425601,
+    "faces": 102978
+   },
+   "b": {
+    "thingi_id": 518085,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 88,
+   "a": {
+    "thingi_id": 133079,
+    "faces": 262560
+   },
+   "b": {
+    "thingi_id": 688367,
+    "faces": 276300
+   }
+  },
+  {
+   "pair": 89,
+   "a": {
+    "thingi_id": 815485,
+    "faces": 509802
+   },
+   "b": {
+    "thingi_id": 848343,
+    "faces": 241154
+   }
+  },
+  {
+   "pair": 90,
+   "a": {
+    "thingi_id": 518086,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 518082,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 91,
+   "a": {
+    "thingi_id": 167109,
+    "faces": 141486
+   },
+   "b": {
+    "thingi_id": 78481,
+    "faces": 596736
+   }
+  },
+  {
+   "pair": 92,
+   "a": {
+    "thingi_id": 1063866,
+    "faces": 176752
+   },
+   "b": {
+    "thingi_id": 518034,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 93,
+   "a": {
+    "thingi_id": 353686,
+    "faces": 173894
+   },
+   "b": {
+    "thingi_id": 958469,
+    "faces": 265424
+   }
+  },
+  {
+   "pair": 94,
+   "a": {
+    "thingi_id": 461110,
+    "faces": 146656
+   },
+   "b": {
+    "thingi_id": 82394,
+    "faces": 114510
+   }
+  },
+  {
+   "pair": 95,
+   "a": {
+    "thingi_id": 167113,
+    "faces": 198684
+   },
+   "b": {
+    "thingi_id": 496673,
+    "faces": 103580
+   }
+  },
+  {
+   "pair": 96,
+   "a": {
+    "thingi_id": 838000,
+    "faces": 109522
+   },
+   "b": {
+    "thingi_id": 132448,
+    "faces": 171742
+   }
+  },
+  {
+   "pair": 97,
+   "a": {
+    "thingi_id": 601644,
+    "faces": 189994
+   },
+   "b": {
+    "thingi_id": 518094,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 98,
+   "a": {
+    "thingi_id": 86164,
+    "faces": 188984
+   },
+   "b": {
+    "thingi_id": 804297,
+    "faces": 161822
+   }
+  },
+  {
+   "pair": 99,
+   "a": {
+    "thingi_id": 56630,
+    "faces": 122880
+   },
+   "b": {
+    "thingi_id": 461109,
+    "faces": 156064
+   }
+  },
+  {
+   "pair": 100,
+   "a": {
+    "thingi_id": 844209,
+    "faces": 239034
+   },
+   "b": {
+    "thingi_id": 518083,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 101,
+   "a": {
+    "thingi_id": 461115,
+    "faces": 821952
+   },
+   "b": {
+    "thingi_id": 133079,
+    "faces": 262560
+   }
+  },
+  {
+   "pair": 102,
+   "a": {
+    "thingi_id": 425600,
+    "faces": 103290
+   },
+   "b": {
+    "thingi_id": 68215,
+    "faces": 115616
+   }
+  },
+  {
+   "pair": 103,
+   "a": {
+    "thingi_id": 518093,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 844209,
+    "faces": 239034
+   }
+  },
+  {
+   "pair": 104,
+   "a": {
+    "thingi_id": 762595,
+    "faces": 145418
+   },
+   "b": {
+    "thingi_id": 518031,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 105,
+   "a": {
+    "thingi_id": 167064,
+    "faces": 110064
+   },
+   "b": {
+    "thingi_id": 1717684,
+    "faces": 350328
+   }
+  },
+  {
+   "pair": 106,
+   "a": {
+    "thingi_id": 399564,
+    "faces": 138264
+   },
+   "b": {
+    "thingi_id": 496673,
+    "faces": 103580
+   }
+  },
+  {
+   "pair": 107,
+   "a": {
+    "thingi_id": 551021,
+    "faces": 348128
+   },
+   "b": {
+    "thingi_id": 763718,
+    "faces": 218776
+   }
+  },
+  {
+   "pair": 108,
+   "a": {
+    "thingi_id": 119829,
+    "faces": 126756
+   },
+   "b": {
+    "thingi_id": 399562,
+    "faces": 115248
+   }
+  },
+  {
+   "pair": 109,
+   "a": {
+    "thingi_id": 99267,
+    "faces": 106776
+   },
+   "b": {
+    "thingi_id": 133078,
+    "faces": 259320
+   }
+  },
+  {
+   "pair": 110,
+   "a": {
+    "thingi_id": 97686,
+    "faces": 243518
+   },
+   "b": {
+    "thingi_id": 252632,
+    "faces": 455232
+   }
+  },
+  {
+   "pair": 111,
+   "a": {
+    "thingi_id": 623171,
+    "faces": 109346
+   },
+   "b": {
+    "thingi_id": 601644,
+    "faces": 189994
+   }
+  },
+  {
+   "pair": 112,
+   "a": {
+    "thingi_id": 375065,
+    "faces": 242390
+   },
+   "b": {
+    "thingi_id": 354371,
+    "faces": 257936
+   }
+  },
+  {
+   "pair": 113,
+   "a": {
+    "thingi_id": 518033,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 96132,
+    "faces": 118994
+   }
+  },
+  {
+   "pair": 114,
+   "a": {
+    "thingi_id": 366248,
+    "faces": 108656
+   },
+   "b": {
+    "thingi_id": 399563,
+    "faces": 100376
+   }
+  },
+  {
+   "pair": 115,
+   "a": {
+    "thingi_id": 366248,
+    "faces": 108656
+   },
+   "b": {
+    "thingi_id": 496673,
+    "faces": 103580
+   }
+  },
+  {
+   "pair": 116,
+   "a": {
+    "thingi_id": 518038,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 441709,
+    "faces": 102680
+   }
+  },
+  {
+   "pair": 117,
+   "a": {
+    "thingi_id": 815481,
+    "faces": 182040
+   },
+   "b": {
+    "thingi_id": 351479,
+    "faces": 159910
+   }
+  },
+  {
+   "pair": 118,
+   "a": {
+    "thingi_id": 82392,
+    "faces": 194596
+   },
+   "b": {
+    "thingi_id": 368149,
+    "faces": 122656
+   }
+  },
+  {
+   "pair": 119,
+   "a": {
+    "thingi_id": 135062,
+    "faces": 132468
+   },
+   "b": {
+    "thingi_id": 167113,
+    "faces": 198684
+   }
+  },
+  {
+   "pair": 120,
+   "a": {
+    "thingi_id": 97686,
+    "faces": 243518
+   },
+   "b": {
+    "thingi_id": 488051,
+    "faces": 464898
+   }
+  },
+  {
+   "pair": 121,
+   "a": {
+    "thingi_id": 472173,
+    "faces": 111642
+   },
+   "b": {
+    "thingi_id": 960066,
+    "faces": 172918
+   }
+  },
+  {
+   "pair": 122,
+   "a": {
+    "thingi_id": 169526,
+    "faces": 129712
+   },
+   "b": {
+    "thingi_id": 762584,
+    "faces": 163142
+   }
+  },
+  {
+   "pair": 123,
+   "a": {
+    "thingi_id": 82663,
+    "faces": 104148
+   },
+   "b": {
+    "thingi_id": 472077,
+    "faces": 119306
+   }
+  },
+  {
+   "pair": 124,
+   "a": {
+    "thingi_id": 1088281,
+    "faces": 731862
+   },
+   "b": {
+    "thingi_id": 68215,
+    "faces": 115616
+   }
+  },
+  {
+   "pair": 125,
+   "a": {
+    "thingi_id": 623172,
+    "faces": 109346
+   },
+   "b": {
+    "thingi_id": 99272,
+    "faces": 134238
+   }
+  },
+  {
+   "pair": 126,
+   "a": {
+    "thingi_id": 461109,
+    "faces": 156064
+   },
+   "b": {
+    "thingi_id": 99275,
+    "faces": 134206
+   }
+  },
+  {
+   "pair": 127,
+   "a": {
+    "thingi_id": 472054,
+    "faces": 117656
+   },
+   "b": {
+    "thingi_id": 551021,
+    "faces": 348128
+   }
+  },
+  {
+   "pair": 128,
+   "a": {
+    "thingi_id": 518085,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 135066,
+    "faces": 123020
+   }
+  },
+  {
+   "pair": 129,
+   "a": {
+    "thingi_id": 82394,
+    "faces": 114510
+   },
+   "b": {
+    "thingi_id": 518038,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 130,
+   "a": {
+    "thingi_id": 119830,
+    "faces": 130040
+   },
+   "b": {
+    "thingi_id": 313444,
+    "faces": 221416
+   }
+  },
+  {
+   "pair": 131,
+   "a": {
+    "thingi_id": 623172,
+    "faces": 109346
+   },
+   "b": {
+    "thingi_id": 56630,
+    "faces": 122880
+   }
+  },
+  {
+   "pair": 132,
+   "a": {
+    "thingi_id": 252632,
+    "faces": 455232
+   },
+   "b": {
+    "thingi_id": 82392,
+    "faces": 194596
+   }
+  },
+  {
+   "pair": 133,
+   "a": {
+    "thingi_id": 99267,
+    "faces": 106776
+   },
+   "b": {
+    "thingi_id": 354371,
+    "faces": 257936
+   }
+  },
+  {
+   "pair": 134,
+   "a": {
+    "thingi_id": 94059,
+    "faces": 230744
+   },
+   "b": {
+    "thingi_id": 518039,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 135,
+   "a": {
+    "thingi_id": 88053,
+    "faces": 153840
+   },
+   "b": {
+    "thingi_id": 94059,
+    "faces": 230744
+   }
+  },
+  {
+   "pair": 136,
+   "a": {
+    "thingi_id": 54725,
+    "faces": 138380
+   },
+   "b": {
+    "thingi_id": 472043,
+    "faces": 129714
+   }
+  },
+  {
+   "pair": 137,
+   "a": {
+    "thingi_id": 86164,
+    "faces": 188984
+   },
+   "b": {
+    "thingi_id": 1150177,
+    "faces": 292564
+   }
+  },
+  {
+   "pair": 138,
+   "a": {
+    "thingi_id": 425601,
+    "faces": 102978
+   },
+   "b": {
+    "thingi_id": 518037,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 139,
+   "a": {
+    "thingi_id": 87688,
+    "faces": 256428
+   },
+   "b": {
+    "thingi_id": 1150177,
+    "faces": 292564
+   }
+  },
+  {
+   "pair": 140,
+   "a": {
+    "thingi_id": 1411699,
+    "faces": 116252
+   },
+   "b": {
+    "thingi_id": 763718,
+    "faces": 218776
+   }
+  },
+  {
+   "pair": 141,
+   "a": {
+    "thingi_id": 461115,
+    "faces": 821952
+   },
+   "b": {
+    "thingi_id": 1150177,
+    "faces": 292564
+   }
+  },
+  {
+   "pair": 142,
+   "a": {
+    "thingi_id": 366248,
+    "faces": 108656
+   },
+   "b": {
+    "thingi_id": 167113,
+    "faces": 198684
+   }
+  },
+  {
+   "pair": 143,
+   "a": {
+    "thingi_id": 472022,
+    "faces": 130126
+   },
+   "b": {
+    "thingi_id": 331105,
+    "faces": 271354
+   }
+  },
+  {
+   "pair": 144,
+   "a": {
+    "thingi_id": 399563,
+    "faces": 100376
+   },
+   "b": {
+    "thingi_id": 99269,
+    "faces": 287716
+   }
+  },
+  {
+   "pair": 145,
+   "a": {
+    "thingi_id": 119830,
+    "faces": 130040
+   },
+   "b": {
+    "thingi_id": 1255206,
+    "faces": 938940
+   }
+  },
+  {
+   "pair": 146,
+   "a": {
+    "thingi_id": 623170,
+    "faces": 109346
+   },
+   "b": {
+    "thingi_id": 92116,
+    "faces": 119616
+   }
+  },
+  {
+   "pair": 147,
+   "a": {
+    "thingi_id": 274379,
+    "faces": 191204
+   },
+   "b": {
+    "thingi_id": 76477,
+    "faces": 222836
+   }
+  },
+  {
+   "pair": 148,
+   "a": {
+    "thingi_id": 474822,
+    "faces": 112060
+   },
+   "b": {
+    "thingi_id": 838003,
+    "faces": 132638
+   }
+  },
+  {
+   "pair": 149,
+   "a": {
+    "thingi_id": 372055,
+    "faces": 479744
+   },
+   "b": {
+    "thingi_id": 548865,
+    "faces": 140574
+   }
+  },
+  {
+   "pair": 150,
+   "a": {
+    "thingi_id": 793565,
+    "faces": 320978
+   },
+   "b": {
+    "thingi_id": 82663,
+    "faces": 104148
+   }
+  },
+  {
+   "pair": 151,
+   "a": {
+    "thingi_id": 399563,
+    "faces": 100376
+   },
+   "b": {
+    "thingi_id": 151360,
+    "faces": 464306
+   }
+  },
+  {
+   "pair": 152,
+   "a": {
+    "thingi_id": 1063863,
+    "faces": 168258
+   },
+   "b": {
+    "thingi_id": 99270,
+    "faces": 134142
+   }
+  },
+  {
+   "pair": 153,
+   "a": {
+    "thingi_id": 56630,
+    "faces": 122880
+   },
+   "b": {
+    "thingi_id": 623172,
+    "faces": 109346
+   }
+  },
+  {
+   "pair": 154,
+   "a": {
+    "thingi_id": 1717684,
+    "faces": 350328
+   },
+   "b": {
+    "thingi_id": 100831,
+    "faces": 135648
+   }
+  },
+  {
+   "pair": 155,
+   "a": {
+    "thingi_id": 119829,
+    "faces": 126756
+   },
+   "b": {
+    "thingi_id": 762586,
+    "faces": 175524
+   }
+  },
+  {
+   "pair": 156,
+   "a": {
+    "thingi_id": 65904,
+    "faces": 157726
+   },
+   "b": {
+    "thingi_id": 518088,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 157,
+   "a": {
+    "thingi_id": 1411687,
+    "faces": 200000
+   },
+   "b": {
+    "thingi_id": 132448,
+    "faces": 171742
+   }
+  },
+  {
+   "pair": 158,
+   "a": {
+    "thingi_id": 99267,
+    "faces": 106776
+   },
+   "b": {
+    "thingi_id": 135062,
+    "faces": 132468
+   }
+  },
+  {
+   "pair": 159,
+   "a": {
+    "thingi_id": 398259,
+    "faces": 587688
+   },
+   "b": {
+    "thingi_id": 1411699,
+    "faces": 116252
+   }
+  },
+  {
+   "pair": 160,
+   "a": {
+    "thingi_id": 601645,
+    "faces": 189994
+   },
+   "b": {
+    "thingi_id": 815474,
+    "faces": 123416
+   }
+  },
+  {
+   "pair": 161,
+   "a": {
+    "thingi_id": 221686,
+    "faces": 182690
+   },
+   "b": {
+    "thingi_id": 960066,
+    "faces": 172918
+   }
+  },
+  {
+   "pair": 162,
+   "a": {
+    "thingi_id": 518095,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 472054,
+    "faces": 117656
+   }
+  },
+  {
+   "pair": 163,
+   "a": {
+    "thingi_id": 1706475,
+    "faces": 339306
+   },
+   "b": {
+    "thingi_id": 82536,
+    "faces": 144024
+   }
+  },
+  {
+   "pair": 164,
+   "a": {
+    "thingi_id": 331105,
+    "faces": 271354
+   },
+   "b": {
+    "thingi_id": 372055,
+    "faces": 479744
+   }
+  },
+  {
+   "pair": 165,
+   "a": {
+    "thingi_id": 82664,
+    "faces": 104488
+   },
+   "b": {
+    "thingi_id": 399564,
+    "faces": 138264
+   }
+  },
+  {
+   "pair": 166,
+   "a": {
+    "thingi_id": 472139,
+    "faces": 111404
+   },
+   "b": {
+    "thingi_id": 1356652,
+    "faces": 185576
+   }
+  },
+  {
+   "pair": 167,
+   "a": {
+    "thingi_id": 366248,
+    "faces": 108656
+   },
+   "b": {
+    "thingi_id": 1150177,
+    "faces": 292564
+   }
+  },
+  {
+   "pair": 168,
+   "a": {
+    "thingi_id": 472820,
+    "faces": 124874
+   },
+   "b": {
+    "thingi_id": 960066,
+    "faces": 172918
+   }
+  },
+  {
+   "pair": 169,
+   "a": {
+    "thingi_id": 56630,
+    "faces": 122880
+   },
+   "b": {
+    "thingi_id": 399566,
+    "faces": 191706
+   }
+  },
+  {
+   "pair": 170,
+   "a": {
+    "thingi_id": 548875,
+    "faces": 133414
+   },
+   "b": {
+    "thingi_id": 496673,
+    "faces": 103580
+   }
+  },
+  {
+   "pair": 171,
+   "a": {
+    "thingi_id": 87690,
+    "faces": 256418
+   },
+   "b": {
+    "thingi_id": 59197,
+    "faces": 786432
+   }
+  },
+  {
+   "pair": 172,
+   "a": {
+    "thingi_id": 518029,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 518083,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 173,
+   "a": {
+    "thingi_id": 398259,
+    "faces": 587688
+   },
+   "b": {
+    "thingi_id": 518087,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 174,
+   "a": {
+    "thingi_id": 354371,
+    "faces": 257936
+   },
+   "b": {
+    "thingi_id": 838001,
+    "faces": 128664
+   }
+  },
+  {
+   "pair": 175,
+   "a": {
+    "thingi_id": 384373,
+    "faces": 126446
+   },
+   "b": {
+    "thingi_id": 461115,
+    "faces": 821952
+   }
+  },
+  {
+   "pair": 176,
+   "a": {
+    "thingi_id": 72947,
+    "faces": 100368
+   },
+   "b": {
+    "thingi_id": 815484,
+    "faces": 679866
+   }
+  },
+  {
+   "pair": 177,
+   "a": {
+    "thingi_id": 472069,
+    "faces": 122490
+   },
+   "b": {
+    "thingi_id": 518037,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 178,
+   "a": {
+    "thingi_id": 87690,
+    "faces": 256418
+   },
+   "b": {
+    "thingi_id": 87687,
+    "faces": 341866
+   }
+  },
+  {
+   "pair": 179,
+   "a": {
+    "thingi_id": 518031,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 472043,
+    "faces": 129714
+   }
+  },
+  {
+   "pair": 180,
+   "a": {
+    "thingi_id": 471989,
+    "faces": 142994
+   },
+   "b": {
+    "thingi_id": 1396899,
+    "faces": 135314
+   }
+  },
+  {
+   "pair": 181,
+   "a": {
+    "thingi_id": 441710,
+    "faces": 116374
+   },
+   "b": {
+    "thingi_id": 518094,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 182,
+   "a": {
+    "thingi_id": 331105,
+    "faces": 271354
+   },
+   "b": {
+    "thingi_id": 1335002,
+    "faces": 187740
+   }
+  },
+  {
+   "pair": 183,
+   "a": {
+    "thingi_id": 551074,
+    "faces": 204202
+   },
+   "b": {
+    "thingi_id": 1150177,
+    "faces": 292564
+   }
+  },
+  {
+   "pair": 184,
+   "a": {
+    "thingi_id": 399564,
+    "faces": 138264
+   },
+   "b": {
+    "thingi_id": 472046,
+    "faces": 127710
+   }
+  },
+  {
+   "pair": 185,
+   "a": {
+    "thingi_id": 518090,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 99272,
+    "faces": 134238
+   }
+  },
+  {
+   "pair": 186,
+   "a": {
+    "thingi_id": 763718,
+    "faces": 218776
+   },
+   "b": {
+    "thingi_id": 1063866,
+    "faces": 176752
+   }
+  },
+  {
+   "pair": 187,
+   "a": {
+    "thingi_id": 1255206,
+    "faces": 938940
+   },
+   "b": {
+    "thingi_id": 1172870,
+    "faces": 370480
+   }
+  },
+  {
+   "pair": 188,
+   "a": {
+    "thingi_id": 151376,
+    "faces": 464306
+   },
+   "b": {
+    "thingi_id": 623170,
+    "faces": 109346
+   }
+  },
+  {
+   "pair": 189,
+   "a": {
+    "thingi_id": 1411700,
+    "faces": 350000
+   },
+   "b": {
+    "thingi_id": 488051,
+    "faces": 464898
+   }
+  },
+  {
+   "pair": 190,
+   "a": {
+    "thingi_id": 472045,
+    "faces": 133012
+   },
+   "b": {
+    "thingi_id": 488051,
+    "faces": 464898
+   }
+  },
+  {
+   "pair": 191,
+   "a": {
+    "thingi_id": 101337,
+    "faces": 177312
+   },
+   "b": {
+    "thingi_id": 837999,
+    "faces": 132406
+   }
+  },
+  {
+   "pair": 192,
+   "a": {
+    "thingi_id": 99272,
+    "faces": 134238
+   },
+   "b": {
+    "thingi_id": 1335002,
+    "faces": 187740
+   }
+  },
+  {
+   "pair": 193,
+   "a": {
+    "thingi_id": 94059,
+    "faces": 230744
+   },
+   "b": {
+    "thingi_id": 76475,
+    "faces": 224704
+   }
+  },
+  {
+   "pair": 194,
+   "a": {
+    "thingi_id": 548871,
+    "faces": 133382
+   },
+   "b": {
+    "thingi_id": 1063860,
+    "faces": 226730
+   }
+  },
+  {
+   "pair": 195,
+   "a": {
+    "thingi_id": 688366,
+    "faces": 178512
+   },
+   "b": {
+    "thingi_id": 472051,
+    "faces": 122682
+   }
+  },
+  {
+   "pair": 196,
+   "a": {
+    "thingi_id": 398259,
+    "faces": 587688
+   },
+   "b": {
+    "thingi_id": 519507,
+    "faces": 101724
+   }
+  },
+  {
+   "pair": 197,
+   "a": {
+    "thingi_id": 316358,
+    "faces": 208216
+   },
+   "b": {
+    "thingi_id": 99275,
+    "faces": 134206
+   }
+  },
+  {
+   "pair": 198,
+   "a": {
+    "thingi_id": 518092,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 387222,
+    "faces": 252342
+   }
+  },
+  {
+   "pair": 199,
+   "a": {
+    "thingi_id": 470186,
+    "faces": 124878
+   },
+   "b": {
+    "thingi_id": 472054,
+    "faces": 117656
+   }
+  },
+  {
+   "pair": 200,
+   "a": {
+    "thingi_id": 789796,
+    "faces": 169380
+   },
+   "b": {
+    "thingi_id": 76477,
+    "faces": 222836
+   }
+  },
+  {
+   "pair": 201,
+   "a": {
+    "thingi_id": 815481,
+    "faces": 182040
+   },
+   "b": {
+    "thingi_id": 133078,
+    "faces": 259320
+   }
+  },
+  {
+   "pair": 202,
+   "a": {
+    "thingi_id": 1255206,
+    "faces": 938940
+   },
+   "b": {
+    "thingi_id": 133078,
+    "faces": 259320
+   }
+  },
+  {
+   "pair": 203,
+   "a": {
+    "thingi_id": 1717684,
+    "faces": 350328
+   },
+   "b": {
+    "thingi_id": 960066,
+    "faces": 172918
+   }
+  },
+  {
+   "pair": 204,
+   "a": {
+    "thingi_id": 548875,
+    "faces": 133414
+   },
+   "b": {
+    "thingi_id": 815485,
+    "faces": 509802
+   }
+  },
+  {
+   "pair": 205,
+   "a": {
+    "thingi_id": 441708,
+    "faces": 112402
+   },
+   "b": {
+    "thingi_id": 838001,
+    "faces": 128664
+   }
+  },
+  {
+   "pair": 206,
+   "a": {
+    "thingi_id": 76475,
+    "faces": 224704
+   },
+   "b": {
+    "thingi_id": 837999,
+    "faces": 132406
+   }
+  },
+  {
+   "pair": 207,
+   "a": {
+    "thingi_id": 518081,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 461115,
+    "faces": 821952
+   }
+  },
+  {
+   "pair": 208,
+   "a": {
+    "thingi_id": 551074,
+    "faces": 204202
+   },
+   "b": {
+    "thingi_id": 169526,
+    "faces": 129712
+   }
+  },
+  {
+   "pair": 209,
+   "a": {
+    "thingi_id": 518083,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 519507,
+    "faces": 101724
+   }
+  },
+  {
+   "pair": 210,
+   "a": {
+    "thingi_id": 238639,
+    "faces": 259172
+   },
+   "b": {
+    "thingi_id": 1063860,
+    "faces": 226730
+   }
+  },
+  {
+   "pair": 211,
+   "a": {
+    "thingi_id": 804294,
+    "faces": 235126
+   },
+   "b": {
+    "thingi_id": 518038,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 212,
+   "a": {
+    "thingi_id": 601645,
+    "faces": 189994
+   },
+   "b": {
+    "thingi_id": 815481,
+    "faces": 182040
+   }
+  },
+  {
+   "pair": 213,
+   "a": {
+    "thingi_id": 88053,
+    "faces": 153840
+   },
+   "b": {
+    "thingi_id": 1063866,
+    "faces": 176752
+   }
+  },
+  {
+   "pair": 214,
+   "a": {
+    "thingi_id": 551075,
+    "faces": 153456
+   },
+   "b": {
+    "thingi_id": 87688,
+    "faces": 256428
+   }
+  },
+  {
+   "pair": 215,
+   "a": {
+    "thingi_id": 518088,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 119829,
+    "faces": 126756
+   }
+  },
+  {
+   "pair": 216,
+   "a": {
+    "thingi_id": 827773,
+    "faces": 204406
+   },
+   "b": {
+    "thingi_id": 688366,
+    "faces": 178512
+   }
+  },
+  {
+   "pair": 217,
+   "a": {
+    "thingi_id": 99267,
+    "faces": 106776
+   },
+   "b": {
+    "thingi_id": 1088281,
+    "faces": 731862
+   }
+  },
+  {
+   "pair": 218,
+   "a": {
+    "thingi_id": 133078,
+    "faces": 259320
+   },
+   "b": {
+    "thingi_id": 83416,
+    "faces": 226080
+   }
+  },
+  {
+   "pair": 219,
+   "a": {
+    "thingi_id": 366248,
+    "faces": 108656
+   },
+   "b": {
+    "thingi_id": 472046,
+    "faces": 127710
+   }
+  },
+  {
+   "pair": 220,
+   "a": {
+    "thingi_id": 518036,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 623170,
+    "faces": 109346
+   }
+  },
+  {
+   "pair": 221,
+   "a": {
+    "thingi_id": 472077,
+    "faces": 119306
+   },
+   "b": {
+    "thingi_id": 1396899,
+    "faces": 135314
+   }
+  },
+  {
+   "pair": 222,
+   "a": {
+    "thingi_id": 252640,
+    "faces": 455232
+   },
+   "b": {
+    "thingi_id": 601647,
+    "faces": 231938
+   }
+  },
+  {
+   "pair": 223,
+   "a": {
+    "thingi_id": 87690,
+    "faces": 256418
+   },
+   "b": {
+    "thingi_id": 331105,
+    "faces": 271354
+   }
+  },
+  {
+   "pair": 224,
+   "a": {
+    "thingi_id": 238639,
+    "faces": 259172
+   },
+   "b": {
+    "thingi_id": 441710,
+    "faces": 116374
+   }
+  },
+  {
+   "pair": 225,
+   "a": {
+    "thingi_id": 623171,
+    "faces": 109346
+   },
+   "b": {
+    "thingi_id": 472139,
+    "faces": 111404
+   }
+  },
+  {
+   "pair": 226,
+   "a": {
+    "thingi_id": 167109,
+    "faces": 141486
+   },
+   "b": {
+    "thingi_id": 54725,
+    "faces": 138380
+   }
+  },
+  {
+   "pair": 227,
+   "a": {
+    "thingi_id": 518090,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 82394,
+    "faces": 114510
+   }
+  },
+  {
+   "pair": 228,
+   "a": {
+    "thingi_id": 804294,
+    "faces": 235126
+   },
+   "b": {
+    "thingi_id": 472054,
+    "faces": 117656
+   }
+  },
+  {
+   "pair": 229,
+   "a": {
+    "thingi_id": 99269,
+    "faces": 287716
+   },
+   "b": {
+    "thingi_id": 167109,
+    "faces": 141486
+   }
+  },
+  {
+   "pair": 230,
+   "a": {
+    "thingi_id": 518034,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 472139,
+    "faces": 111404
+   }
+  },
+  {
+   "pair": 231,
+   "a": {
+    "thingi_id": 804297,
+    "faces": 161822
+   },
+   "b": {
+    "thingi_id": 472820,
+    "faces": 124874
+   }
+  },
+  {
+   "pair": 232,
+   "a": {
+    "thingi_id": 92116,
+    "faces": 119616
+   },
+   "b": {
+    "thingi_id": 518031,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 233,
+   "a": {
+    "thingi_id": 257178,
+    "faces": 255508
+   },
+   "b": {
+    "thingi_id": 221686,
+    "faces": 182690
+   }
+  },
+  {
+   "pair": 234,
+   "a": {
+    "thingi_id": 472043,
+    "faces": 129714
+   },
+   "b": {
+    "thingi_id": 133078,
+    "faces": 259320
+   }
+  },
+  {
+   "pair": 235,
+   "a": {
+    "thingi_id": 87689,
+    "faces": 256412
+   },
+   "b": {
+    "thingi_id": 366253,
+    "faces": 102382
+   }
+  },
+  {
+   "pair": 236,
+   "a": {
+    "thingi_id": 838001,
+    "faces": 128664
+   },
+   "b": {
+    "thingi_id": 815483,
+    "faces": 363862
+   }
+  },
+  {
+   "pair": 237,
+   "a": {
+    "thingi_id": 99272,
+    "faces": 134238
+   },
+   "b": {
+    "thingi_id": 518091,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 238,
+   "a": {
+    "thingi_id": 331105,
+    "faces": 271354
+   },
+   "b": {
+    "thingi_id": 548875,
+    "faces": 133414
+   }
+  },
+  {
+   "pair": 239,
+   "a": {
+    "thingi_id": 789796,
+    "faces": 169380
+   },
+   "b": {
+    "thingi_id": 472077,
+    "faces": 119306
+   }
+  },
+  {
+   "pair": 240,
+   "a": {
+    "thingi_id": 1717684,
+    "faces": 350328
+   },
+   "b": {
+    "thingi_id": 252640,
+    "faces": 455232
+   }
+  },
+  {
+   "pair": 241,
+   "a": {
+    "thingi_id": 1063863,
+    "faces": 168258
+   },
+   "b": {
+    "thingi_id": 763718,
+    "faces": 218776
+   }
+  },
+  {
+   "pair": 242,
+   "a": {
+    "thingi_id": 1396899,
+    "faces": 135314
+   },
+   "b": {
+    "thingi_id": 461112,
+    "faces": 805376
+   }
+  },
+  {
+   "pair": 243,
+   "a": {
+    "thingi_id": 167064,
+    "faces": 110064
+   },
+   "b": {
+    "thingi_id": 375065,
+    "faces": 242390
+   }
+  },
+  {
+   "pair": 244,
+   "a": {
+    "thingi_id": 167109,
+    "faces": 141486
+   },
+   "b": {
+    "thingi_id": 461109,
+    "faces": 156064
+   }
+  },
+  {
+   "pair": 245,
+   "a": {
+    "thingi_id": 87690,
+    "faces": 256418
+   },
+   "b": {
+    "thingi_id": 72947,
+    "faces": 100368
+   }
+  },
+  {
+   "pair": 246,
+   "a": {
+    "thingi_id": 518034,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 399563,
+    "faces": 100376
+   }
+  },
+  {
+   "pair": 247,
+   "a": {
+    "thingi_id": 65904,
+    "faces": 157726
+   },
+   "b": {
+    "thingi_id": 518086,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 248,
+   "a": {
+    "thingi_id": 518085,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 1063866,
+    "faces": 176752
+   }
+  },
+  {
+   "pair": 249,
+   "a": {
+    "thingi_id": 88053,
+    "faces": 153840
+   },
+   "b": {
+    "thingi_id": 804297,
+    "faces": 161822
+   }
+  },
+  {
+   "pair": 250,
+   "a": {
+    "thingi_id": 82664,
+    "faces": 104488
+   },
+   "b": {
+    "thingi_id": 132448,
+    "faces": 171742
+   }
+  },
+  {
+   "pair": 251,
+   "a": {
+    "thingi_id": 762586,
+    "faces": 175524
+   },
+   "b": {
+    "thingi_id": 63785,
+    "faces": 345996
+   }
+  },
+  {
+   "pair": 252,
+   "a": {
+    "thingi_id": 815484,
+    "faces": 679866
+   },
+   "b": {
+    "thingi_id": 763718,
+    "faces": 218776
+   }
+  },
+  {
+   "pair": 253,
+   "a": {
+    "thingi_id": 796150,
+    "faces": 126080
+   },
+   "b": {
+    "thingi_id": 518033,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 254,
+   "a": {
+    "thingi_id": 762595,
+    "faces": 145418
+   },
+   "b": {
+    "thingi_id": 623172,
+    "faces": 109346
+   }
+  },
+  {
+   "pair": 255,
+   "a": {
+    "thingi_id": 461110,
+    "faces": 146656
+   },
+   "b": {
+    "thingi_id": 274379,
+    "faces": 191204
+   }
+  },
+  {
+   "pair": 256,
+   "a": {
+    "thingi_id": 94059,
+    "faces": 230744
+   },
+   "b": {
+    "thingi_id": 518087,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 257,
+   "a": {
+    "thingi_id": 169526,
+    "faces": 129712
+   },
+   "b": {
+    "thingi_id": 76391,
+    "faces": 144546
+   }
+  },
+  {
+   "pair": 258,
+   "a": {
+    "thingi_id": 762595,
+    "faces": 145418
+   },
+   "b": {
+    "thingi_id": 1706466,
+    "faces": 140124
+   }
+  },
+  {
+   "pair": 259,
+   "a": {
+    "thingi_id": 548875,
+    "faces": 133414
+   },
+   "b": {
+    "thingi_id": 472043,
+    "faces": 129714
+   }
+  },
+  {
+   "pair": 260,
+   "a": {
+    "thingi_id": 960066,
+    "faces": 172918
+   },
+   "b": {
+    "thingi_id": 212138,
+    "faces": 111022
+   }
+  },
+  {
+   "pair": 261,
+   "a": {
+    "thingi_id": 763718,
+    "faces": 218776
+   },
+   "b": {
+    "thingi_id": 488051,
+    "faces": 464898
+   }
+  },
+  {
+   "pair": 262,
+   "a": {
+    "thingi_id": 838000,
+    "faces": 109522
+   },
+   "b": {
+    "thingi_id": 399563,
+    "faces": 100376
+   }
+  },
+  {
+   "pair": 263,
+   "a": {
+    "thingi_id": 252640,
+    "faces": 455232
+   },
+   "b": {
+    "thingi_id": 471990,
+    "faces": 103860
+   }
+  },
+  {
+   "pair": 264,
+   "a": {
+    "thingi_id": 76477,
+    "faces": 222836
+   },
+   "b": {
+    "thingi_id": 252614,
+    "faces": 118656
+   }
+  },
+  {
+   "pair": 265,
+   "a": {
+    "thingi_id": 601646,
+    "faces": 231938
+   },
+   "b": {
+    "thingi_id": 762595,
+    "faces": 145418
+   }
+  },
+  {
+   "pair": 266,
+   "a": {
+    "thingi_id": 221686,
+    "faces": 182690
+   },
+   "b": {
+    "thingi_id": 793565,
+    "faces": 320978
+   }
+  },
+  {
+   "pair": 267,
+   "a": {
+    "thingi_id": 441709,
+    "faces": 102680
+   },
+   "b": {
+    "thingi_id": 518091,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 268,
+   "a": {
+    "thingi_id": 59333,
+    "faces": 196608
+   },
+   "b": {
+    "thingi_id": 472139,
+    "faces": 111404
+   }
+  },
+  {
+   "pair": 269,
+   "a": {
+    "thingi_id": 518088,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 99270,
+    "faces": 134142
+   }
+  },
+  {
+   "pair": 270,
+   "a": {
+    "thingi_id": 82536,
+    "faces": 144024
+   },
+   "b": {
+    "thingi_id": 471990,
+    "faces": 103860
+   }
+  },
+  {
+   "pair": 271,
+   "a": {
+    "thingi_id": 65942,
+    "faces": 754688
+   },
+   "b": {
+    "thingi_id": 76391,
+    "faces": 144546
+   }
+  },
+  {
+   "pair": 272,
+   "a": {
+    "thingi_id": 354371,
+    "faces": 257936
+   },
+   "b": {
+    "thingi_id": 66480,
+    "faces": 181504
+   }
+  },
+  {
+   "pair": 273,
+   "a": {
+    "thingi_id": 63785,
+    "faces": 345996
+   },
+   "b": {
+    "thingi_id": 99275,
+    "faces": 134206
+   }
+  },
+  {
+   "pair": 274,
+   "a": {
+    "thingi_id": 441708,
+    "faces": 112402
+   },
+   "b": {
+    "thingi_id": 252632,
+    "faces": 455232
+   }
+  },
+  {
+   "pair": 275,
+   "a": {
+    "thingi_id": 804294,
+    "faces": 235126
+   },
+   "b": {
+    "thingi_id": 83416,
+    "faces": 226080
+   }
+  },
+  {
+   "pair": 276,
+   "a": {
+    "thingi_id": 119830,
+    "faces": 130040
+   },
+   "b": {
+    "thingi_id": 1063863,
+    "faces": 168258
+   }
+  },
+  {
+   "pair": 277,
+   "a": {
+    "thingi_id": 688366,
+    "faces": 178512
+   },
+   "b": {
+    "thingi_id": 212138,
+    "faces": 111022
+   }
+  },
+  {
+   "pair": 278,
+   "a": {
+    "thingi_id": 441709,
+    "faces": 102680
+   },
+   "b": {
+    "thingi_id": 133078,
+    "faces": 259320
+   }
+  },
+  {
+   "pair": 279,
+   "a": {
+    "thingi_id": 221686,
+    "faces": 182690
+   },
+   "b": {
+    "thingi_id": 1356652,
+    "faces": 185576
+   }
+  },
+  {
+   "pair": 280,
+   "a": {
+    "thingi_id": 82663,
+    "faces": 104148
+   },
+   "b": {
+    "thingi_id": 1255206,
+    "faces": 938940
+   }
+  },
+  {
+   "pair": 281,
+   "a": {
+    "thingi_id": 441709,
+    "faces": 102680
+   },
+   "b": {
+    "thingi_id": 68215,
+    "faces": 115616
+   }
+  },
+  {
+   "pair": 282,
+   "a": {
+    "thingi_id": 372055,
+    "faces": 479744
+   },
+   "b": {
+    "thingi_id": 1411700,
+    "faces": 350000
+   }
+  },
+  {
+   "pair": 283,
+   "a": {
+    "thingi_id": 399562,
+    "faces": 115248
+   },
+   "b": {
+    "thingi_id": 472077,
+    "faces": 119306
+   }
+  },
+  {
+   "pair": 284,
+   "a": {
+    "thingi_id": 59333,
+    "faces": 196608
+   },
+   "b": {
+    "thingi_id": 548871,
+    "faces": 133382
+   }
+  },
+  {
+   "pair": 285,
+   "a": {
+    "thingi_id": 838000,
+    "faces": 109522
+   },
+   "b": {
+    "thingi_id": 518083,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 286,
+   "a": {
+    "thingi_id": 793565,
+    "faces": 320978
+   },
+   "b": {
+    "thingi_id": 815481,
+    "faces": 182040
+   }
+  },
+  {
+   "pair": 287,
+   "a": {
+    "thingi_id": 1397588,
+    "faces": 115676
+   },
+   "b": {
+    "thingi_id": 375065,
+    "faces": 242390
+   }
+  },
+  {
+   "pair": 288,
+   "a": {
+    "thingi_id": 518093,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 135062,
+    "faces": 132468
+   }
+  },
+  {
+   "pair": 289,
+   "a": {
+    "thingi_id": 63785,
+    "faces": 345996
+   },
+   "b": {
+    "thingi_id": 1717685,
+    "faces": 792898
+   }
+  },
+  {
+   "pair": 290,
+   "a": {
+    "thingi_id": 518094,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 472052,
+    "faces": 132308
+   }
+  },
+  {
+   "pair": 291,
+   "a": {
+    "thingi_id": 66480,
+    "faces": 181504
+   },
+   "b": {
+    "thingi_id": 1063860,
+    "faces": 226730
+   }
+  },
+  {
+   "pair": 292,
+   "a": {
+    "thingi_id": 87688,
+    "faces": 256428
+   },
+   "b": {
+    "thingi_id": 1063860,
+    "faces": 226730
+   }
+  },
+  {
+   "pair": 293,
+   "a": {
+    "thingi_id": 844209,
+    "faces": 239034
+   },
+   "b": {
+    "thingi_id": 82392,
+    "faces": 194596
+   }
+  },
+  {
+   "pair": 294,
+   "a": {
+    "thingi_id": 470186,
+    "faces": 124878
+   },
+   "b": {
+    "thingi_id": 82392,
+    "faces": 194596
+   }
+  },
+  {
+   "pair": 295,
+   "a": {
+    "thingi_id": 472046,
+    "faces": 127710
+   },
+   "b": {
+    "thingi_id": 133078,
+    "faces": 259320
+   }
+  },
+  {
+   "pair": 296,
+   "a": {
+    "thingi_id": 399566,
+    "faces": 191706
+   },
+   "b": {
+    "thingi_id": 99275,
+    "faces": 134206
+   }
+  },
+  {
+   "pair": 297,
+   "a": {
+    "thingi_id": 252614,
+    "faces": 118656
+   },
+   "b": {
+    "thingi_id": 518036,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 298,
+   "a": {
+    "thingi_id": 425601,
+    "faces": 102978
+   },
+   "b": {
+    "thingi_id": 78481,
+    "faces": 596736
+   }
+  },
+  {
+   "pair": 299,
+   "a": {
+    "thingi_id": 270940,
+    "faces": 126202
+   },
+   "b": {
+    "thingi_id": 366253,
+    "faces": 102382
+   }
+  },
+  {
+   "pair": 300,
+   "a": {
+    "thingi_id": 472051,
+    "faces": 122682
+   },
+   "b": {
+    "thingi_id": 96132,
+    "faces": 118994
+   }
+  },
+  {
+   "pair": 301,
+   "a": {
+    "thingi_id": 837999,
+    "faces": 132406
+   },
+   "b": {
+    "thingi_id": 167113,
+    "faces": 198684
+   }
+  },
+  {
+   "pair": 302,
+   "a": {
+    "thingi_id": 796150,
+    "faces": 126080
+   },
+   "b": {
+    "thingi_id": 82663,
+    "faces": 104148
+   }
+  },
+  {
+   "pair": 303,
+   "a": {
+    "thingi_id": 92116,
+    "faces": 119616
+   },
+   "b": {
+    "thingi_id": 101337,
+    "faces": 177312
+   }
+  },
+  {
+   "pair": 304,
+   "a": {
+    "thingi_id": 796150,
+    "faces": 126080
+   },
+   "b": {
+    "thingi_id": 399564,
+    "faces": 138264
+   }
+  },
+  {
+   "pair": 305,
+   "a": {
+    "thingi_id": 366253,
+    "faces": 102382
+   },
+   "b": {
+    "thingi_id": 461111,
+    "faces": 153248
+   }
+  },
+  {
+   "pair": 306,
+   "a": {
+    "thingi_id": 99275,
+    "faces": 134206
+   },
+   "b": {
+    "thingi_id": 331105,
+    "faces": 271354
+   }
+  },
+  {
+   "pair": 307,
+   "a": {
+    "thingi_id": 82392,
+    "faces": 194596
+   },
+   "b": {
+    "thingi_id": 82663,
+    "faces": 104148
+   }
+  },
+  {
+   "pair": 308,
+   "a": {
+    "thingi_id": 838003,
+    "faces": 132638
+   },
+   "b": {
+    "thingi_id": 76477,
+    "faces": 222836
+   }
+  },
+  {
+   "pair": 309,
+   "a": {
+    "thingi_id": 76477,
+    "faces": 222836
+   },
+   "b": {
+    "thingi_id": 470186,
+    "faces": 124878
+   }
+  },
+  {
+   "pair": 310,
+   "a": {
+    "thingi_id": 461112,
+    "faces": 805376
+   },
+   "b": {
+    "thingi_id": 238639,
+    "faces": 259172
+   }
+  },
+  {
+   "pair": 311,
+   "a": {
+    "thingi_id": 518084,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 763718,
+    "faces": 218776
+   }
+  },
+  {
+   "pair": 312,
+   "a": {
+    "thingi_id": 331105,
+    "faces": 271354
+   },
+   "b": {
+    "thingi_id": 87689,
+    "faces": 256412
+   }
+  },
+  {
+   "pair": 313,
+   "a": {
+    "thingi_id": 1063863,
+    "faces": 168258
+   },
+   "b": {
+    "thingi_id": 353686,
+    "faces": 173894
+   }
+  },
+  {
+   "pair": 314,
+   "a": {
+    "thingi_id": 518090,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 1088281,
+    "faces": 731862
+   }
+  },
+  {
+   "pair": 315,
+   "a": {
+    "thingi_id": 522979,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 688367,
+    "faces": 276300
+   }
+  },
+  {
+   "pair": 316,
+   "a": {
+    "thingi_id": 838003,
+    "faces": 132638
+   },
+   "b": {
+    "thingi_id": 472077,
+    "faces": 119306
+   }
+  },
+  {
+   "pair": 317,
+   "a": {
+    "thingi_id": 488048,
+    "faces": 276432
+   },
+   "b": {
+    "thingi_id": 252632,
+    "faces": 455232
+   }
+  },
+  {
+   "pair": 318,
+   "a": {
+    "thingi_id": 804294,
+    "faces": 235126
+   },
+   "b": {
+    "thingi_id": 1717685,
+    "faces": 792898
+   }
+  },
+  {
+   "pair": 319,
+   "a": {
+    "thingi_id": 99275,
+    "faces": 134206
+   },
+   "b": {
+    "thingi_id": 66480,
+    "faces": 181504
+   }
+  },
+  {
+   "pair": 320,
+   "a": {
+    "thingi_id": 1411687,
+    "faces": 200000
+   },
+   "b": {
+    "thingi_id": 472045,
+    "faces": 133012
+   }
+  },
+  {
+   "pair": 321,
+   "a": {
+    "thingi_id": 461110,
+    "faces": 146656
+   },
+   "b": {
+    "thingi_id": 827773,
+    "faces": 204406
+   }
+  },
+  {
+   "pair": 322,
+   "a": {
+    "thingi_id": 601645,
+    "faces": 189994
+   },
+   "b": {
+    "thingi_id": 1356652,
+    "faces": 185576
+   }
+  },
+  {
+   "pair": 323,
+   "a": {
+    "thingi_id": 1172870,
+    "faces": 370480
+   },
+   "b": {
+    "thingi_id": 78481,
+    "faces": 596736
+   }
+  },
+  {
+   "pair": 324,
+   "a": {
+    "thingi_id": 119829,
+    "faces": 126756
+   },
+   "b": {
+    "thingi_id": 441708,
+    "faces": 112402
+   }
+  },
+  {
+   "pair": 325,
+   "a": {
+    "thingi_id": 472173,
+    "faces": 111642
+   },
+   "b": {
+    "thingi_id": 474822,
+    "faces": 112060
+   }
+  },
+  {
+   "pair": 326,
+   "a": {
+    "thingi_id": 518079,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 135062,
+    "faces": 132468
+   }
+  },
+  {
+   "pair": 327,
+   "a": {
+    "thingi_id": 518034,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 425601,
+    "faces": 102978
+   }
+  },
+  {
+   "pair": 328,
+   "a": {
+    "thingi_id": 82394,
+    "faces": 114510
+   },
+   "b": {
+    "thingi_id": 1063860,
+    "faces": 226730
+   }
+  },
+  {
+   "pair": 329,
+   "a": {
+    "thingi_id": 518039,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 100831,
+    "faces": 135648
+   }
+  },
+  {
+   "pair": 330,
+   "a": {
+    "thingi_id": 101337,
+    "faces": 177312
+   },
+   "b": {
+    "thingi_id": 838000,
+    "faces": 109522
+   }
+  },
+  {
+   "pair": 331,
+   "a": {
+    "thingi_id": 551074,
+    "faces": 204202
+   },
+   "b": {
+    "thingi_id": 472051,
+    "faces": 122682
+   }
+  },
+  {
+   "pair": 332,
+   "a": {
+    "thingi_id": 1717684,
+    "faces": 350328
+   },
+   "b": {
+    "thingi_id": 87690,
+    "faces": 256418
+   }
+  },
+  {
+   "pair": 333,
+   "a": {
+    "thingi_id": 66480,
+    "faces": 181504
+   },
+   "b": {
+    "thingi_id": 132448,
+    "faces": 171742
+   }
+  },
+  {
+   "pair": 334,
+   "a": {
+    "thingi_id": 316358,
+    "faces": 208216
+   },
+   "b": {
+    "thingi_id": 82664,
+    "faces": 104488
+   }
+  },
+  {
+   "pair": 335,
+   "a": {
+    "thingi_id": 1706475,
+    "faces": 339306
+   },
+   "b": {
+    "thingi_id": 1258096,
+    "faces": 683776
+   }
+  },
+  {
+   "pair": 336,
+   "a": {
+    "thingi_id": 82394,
+    "faces": 114510
+   },
+   "b": {
+    "thingi_id": 1706466,
+    "faces": 140124
+   }
+  },
+  {
+   "pair": 337,
+   "a": {
+    "thingi_id": 548875,
+    "faces": 133414
+   },
+   "b": {
+    "thingi_id": 815474,
+    "faces": 123416
+   }
+  },
+  {
+   "pair": 338,
+   "a": {
+    "thingi_id": 804297,
+    "faces": 161822
+   },
+   "b": {
+    "thingi_id": 551021,
+    "faces": 348128
+   }
+  },
+  {
+   "pair": 339,
+   "a": {
+    "thingi_id": 1411700,
+    "faces": 350000
+   },
+   "b": {
+    "thingi_id": 518033,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 340,
+   "a": {
+    "thingi_id": 623171,
+    "faces": 109346
+   },
+   "b": {
+    "thingi_id": 76477,
+    "faces": 222836
+   }
+  },
+  {
+   "pair": 341,
+   "a": {
+    "thingi_id": 804294,
+    "faces": 235126
+   },
+   "b": {
+    "thingi_id": 518095,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 342,
+   "a": {
+    "thingi_id": 518090,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 518085,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 343,
+   "a": {
+    "thingi_id": 425600,
+    "faces": 103290
+   },
+   "b": {
+    "thingi_id": 65942,
+    "faces": 754688
+   }
+  },
+  {
+   "pair": 344,
+   "a": {
+    "thingi_id": 844209,
+    "faces": 239034
+   },
+   "b": {
+    "thingi_id": 623172,
+    "faces": 109346
+   }
+  },
+  {
+   "pair": 345,
+   "a": {
+    "thingi_id": 441709,
+    "faces": 102680
+   },
+   "b": {
+    "thingi_id": 167109,
+    "faces": 141486
+   }
+  },
+  {
+   "pair": 346,
+   "a": {
+    "thingi_id": 366253,
+    "faces": 102382
+   },
+   "b": {
+    "thingi_id": 1150177,
+    "faces": 292564
+   }
+  },
+  {
+   "pair": 347,
+   "a": {
+    "thingi_id": 1063866,
+    "faces": 176752
+   },
+   "b": {
+    "thingi_id": 518037,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 348,
+   "a": {
+    "thingi_id": 425600,
+    "faces": 103290
+   },
+   "b": {
+    "thingi_id": 252632,
+    "faces": 455232
+   }
+  },
+  {
+   "pair": 349,
+   "a": {
+    "thingi_id": 399567,
+    "faces": 130336
+   },
+   "b": {
+    "thingi_id": 762601,
+    "faces": 154802
+   }
+  },
+  {
+   "pair": 350,
+   "a": {
+    "thingi_id": 87688,
+    "faces": 256428
+   },
+   "b": {
+    "thingi_id": 815474,
+    "faces": 123416
+   }
+  },
+  {
+   "pair": 351,
+   "a": {
+    "thingi_id": 518093,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 804297,
+    "faces": 161822
+   }
+  },
+  {
+   "pair": 352,
+   "a": {
+    "thingi_id": 461111,
+    "faces": 153248
+   },
+   "b": {
+    "thingi_id": 399562,
+    "faces": 115248
+   }
+  },
+  {
+   "pair": 353,
+   "a": {
+    "thingi_id": 441709,
+    "faces": 102680
+   },
+   "b": {
+    "thingi_id": 133079,
+    "faces": 262560
+   }
+  },
+  {
+   "pair": 354,
+   "a": {
+    "thingi_id": 472022,
+    "faces": 130126
+   },
+   "b": {
+    "thingi_id": 472046,
+    "faces": 127710
+   }
+  },
+  {
+   "pair": 355,
+   "a": {
+    "thingi_id": 815474,
+    "faces": 123416
+   },
+   "b": {
+    "thingi_id": 472139,
+    "faces": 111404
+   }
+  },
+  {
+   "pair": 356,
+   "a": {
+    "thingi_id": 518034,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 441708,
+    "faces": 112402
+   }
+  },
+  {
+   "pair": 357,
+   "a": {
+    "thingi_id": 518038,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 86164,
+    "faces": 188984
+   }
+  },
+  {
+   "pair": 358,
+   "a": {
+    "thingi_id": 99275,
+    "faces": 134206
+   },
+   "b": {
+    "thingi_id": 518079,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 359,
+   "a": {
+    "thingi_id": 65904,
+    "faces": 157726
+   },
+   "b": {
+    "thingi_id": 518029,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 360,
+   "a": {
+    "thingi_id": 688366,
+    "faces": 178512
+   },
+   "b": {
+    "thingi_id": 375065,
+    "faces": 242390
+   }
+  },
+  {
+   "pair": 361,
+   "a": {
+    "thingi_id": 76391,
+    "faces": 144546
+   },
+   "b": {
+    "thingi_id": 1150177,
+    "faces": 292564
+   }
+  },
+  {
+   "pair": 362,
+   "a": {
+    "thingi_id": 212138,
+    "faces": 111022
+   },
+   "b": {
+    "thingi_id": 548875,
+    "faces": 133414
+   }
+  },
+  {
+   "pair": 363,
+   "a": {
+    "thingi_id": 354371,
+    "faces": 257936
+   },
+   "b": {
+    "thingi_id": 387222,
+    "faces": 252342
+   }
+  },
+  {
+   "pair": 364,
+   "a": {
+    "thingi_id": 82663,
+    "faces": 104148
+   },
+   "b": {
+    "thingi_id": 76477,
+    "faces": 222836
+   }
+  },
+  {
+   "pair": 365,
+   "a": {
+    "thingi_id": 425600,
+    "faces": 103290
+   },
+   "b": {
+    "thingi_id": 518085,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 366,
+   "a": {
+    "thingi_id": 274379,
+    "faces": 191204
+   },
+   "b": {
+    "thingi_id": 87690,
+    "faces": 256418
+   }
+  },
+  {
+   "pair": 367,
+   "a": {
+    "thingi_id": 331105,
+    "faces": 271354
+   },
+   "b": {
+    "thingi_id": 135062,
+    "faces": 132468
+   }
+  },
+  {
+   "pair": 368,
+   "a": {
+    "thingi_id": 958469,
+    "faces": 265424
+   },
+   "b": {
+    "thingi_id": 844209,
+    "faces": 239034
+   }
+  },
+  {
+   "pair": 369,
+   "a": {
+    "thingi_id": 518079,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 331105,
+    "faces": 271354
+   }
+  },
+  {
+   "pair": 370,
+   "a": {
+    "thingi_id": 94059,
+    "faces": 230744
+   },
+   "b": {
+    "thingi_id": 1172870,
+    "faces": 370480
+   }
+  },
+  {
+   "pair": 371,
+   "a": {
+    "thingi_id": 496673,
+    "faces": 103580
+   },
+   "b": {
+    "thingi_id": 518089,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 372,
+   "a": {
+    "thingi_id": 1706466,
+    "faces": 140124
+   },
+   "b": {
+    "thingi_id": 65904,
+    "faces": 157726
+   }
+  },
+  {
+   "pair": 373,
+   "a": {
+    "thingi_id": 518038,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 472046,
+    "faces": 127710
+   }
+  },
+  {
+   "pair": 374,
+   "a": {
+    "thingi_id": 425601,
+    "faces": 102978
+   },
+   "b": {
+    "thingi_id": 1172870,
+    "faces": 370480
+   }
+  },
+  {
+   "pair": 375,
+   "a": {
+    "thingi_id": 789796,
+    "faces": 169380
+   },
+   "b": {
+    "thingi_id": 601647,
+    "faces": 231938
+   }
+  },
+  {
+   "pair": 376,
+   "a": {
+    "thingi_id": 94059,
+    "faces": 230744
+   },
+   "b": {
+    "thingi_id": 548875,
+    "faces": 133414
+   }
+  },
+  {
+   "pair": 377,
+   "a": {
+    "thingi_id": 252640,
+    "faces": 455232
+   },
+   "b": {
+    "thingi_id": 87688,
+    "faces": 256428
+   }
+  },
+  {
+   "pair": 378,
+   "a": {
+    "thingi_id": 1150177,
+    "faces": 292564
+   },
+   "b": {
+    "thingi_id": 375065,
+    "faces": 242390
+   }
+  },
+  {
+   "pair": 379,
+   "a": {
+    "thingi_id": 252614,
+    "faces": 118656
+   },
+   "b": {
+    "thingi_id": 86164,
+    "faces": 188984
+   }
+  },
+  {
+   "pair": 380,
+   "a": {
+    "thingi_id": 65942,
+    "faces": 754688
+   },
+   "b": {
+    "thingi_id": 274379,
+    "faces": 191204
+   }
+  },
+  {
+   "pair": 381,
+   "a": {
+    "thingi_id": 366253,
+    "faces": 102382
+   },
+   "b": {
+    "thingi_id": 1335002,
+    "faces": 187740
+   }
+  },
+  {
+   "pair": 382,
+   "a": {
+    "thingi_id": 688366,
+    "faces": 178512
+   },
+   "b": {
+    "thingi_id": 99269,
+    "faces": 287716
+   }
+  },
+  {
+   "pair": 383,
+   "a": {
+    "thingi_id": 686056,
+    "faces": 231664
+   },
+   "b": {
+    "thingi_id": 838000,
+    "faces": 109522
+   }
+  },
+  {
+   "pair": 384,
+   "a": {
+    "thingi_id": 518085,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 441709,
+    "faces": 102680
+   }
+  },
+  {
+   "pair": 385,
+   "a": {
+    "thingi_id": 151376,
+    "faces": 464306
+   },
+   "b": {
+    "thingi_id": 518033,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 386,
+   "a": {
+    "thingi_id": 518090,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 119829,
+    "faces": 126756
+   }
+  },
+  {
+   "pair": 387,
+   "a": {
+    "thingi_id": 488051,
+    "faces": 464898
+   },
+   "b": {
+    "thingi_id": 238639,
+    "faces": 259172
+   }
+  },
+  {
+   "pair": 388,
+   "a": {
+    "thingi_id": 351479,
+    "faces": 159910
+   },
+   "b": {
+    "thingi_id": 804294,
+    "faces": 235126
+   }
+  },
+  {
+   "pair": 389,
+   "a": {
+    "thingi_id": 56630,
+    "faces": 122880
+   },
+   "b": {
+    "thingi_id": 804294,
+    "faces": 235126
+   }
+  },
+  {
+   "pair": 390,
+   "a": {
+    "thingi_id": 1150177,
+    "faces": 292564
+   },
+   "b": {
+    "thingi_id": 151376,
+    "faces": 464306
+   }
+  },
+  {
+   "pair": 391,
+   "a": {
+    "thingi_id": 848343,
+    "faces": 241154
+   },
+   "b": {
+    "thingi_id": 59333,
+    "faces": 196608
+   }
+  },
+  {
+   "pair": 392,
+   "a": {
+    "thingi_id": 461111,
+    "faces": 153248
+   },
+   "b": {
+    "thingi_id": 100831,
+    "faces": 135648
+   }
+  },
+  {
+   "pair": 393,
+   "a": {
+    "thingi_id": 488051,
+    "faces": 464898
+   },
+   "b": {
+    "thingi_id": 441709,
+    "faces": 102680
+   }
+  },
+  {
+   "pair": 394,
+   "a": {
+    "thingi_id": 601645,
+    "faces": 189994
+   },
+   "b": {
+    "thingi_id": 461111,
+    "faces": 153248
+   }
+  },
+  {
+   "pair": 395,
+   "a": {
+    "thingi_id": 461112,
+    "faces": 805376
+   },
+   "b": {
+    "thingi_id": 78481,
+    "faces": 596736
+   }
+  },
+  {
+   "pair": 396,
+   "a": {
+    "thingi_id": 82183,
+    "faces": 127816
+   },
+   "b": {
+    "thingi_id": 548865,
+    "faces": 140574
+   }
+  },
+  {
+   "pair": 397,
+   "a": {
+    "thingi_id": 87688,
+    "faces": 256428
+   },
+   "b": {
+    "thingi_id": 518093,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 398,
+   "a": {
+    "thingi_id": 1255206,
+    "faces": 938940
+   },
+   "b": {
+    "thingi_id": 519507,
+    "faces": 101724
+   }
+  },
+  {
+   "pair": 399,
+   "a": {
+    "thingi_id": 78481,
+    "faces": 596736
+   },
+   "b": {
+    "thingi_id": 472077,
+    "faces": 119306
+   }
+  },
+  {
+   "pair": 400,
+   "a": {
+    "thingi_id": 66480,
+    "faces": 181504
+   },
+   "b": {
+    "thingi_id": 470186,
+    "faces": 124878
+   }
+  },
+  {
+   "pair": 401,
+   "a": {
+    "thingi_id": 316358,
+    "faces": 208216
+   },
+   "b": {
+    "thingi_id": 82664,
+    "faces": 104488
+   }
+  },
+  {
+   "pair": 402,
+   "a": {
+    "thingi_id": 59197,
+    "faces": 786432
+   },
+   "b": {
+    "thingi_id": 425600,
+    "faces": 103290
+   }
+  },
+  {
+   "pair": 403,
+   "a": {
+    "thingi_id": 99270,
+    "faces": 134142
+   },
+   "b": {
+    "thingi_id": 472054,
+    "faces": 117656
+   }
+  },
+  {
+   "pair": 404,
+   "a": {
+    "thingi_id": 375065,
+    "faces": 242390
+   },
+   "b": {
+    "thingi_id": 1397588,
+    "faces": 115676
+   }
+  },
+  {
+   "pair": 405,
+   "a": {
+    "thingi_id": 838000,
+    "faces": 109522
+   },
+   "b": {
+    "thingi_id": 548871,
+    "faces": 133382
+   }
+  },
+  {
+   "pair": 406,
+   "a": {
+    "thingi_id": 425601,
+    "faces": 102978
+   },
+   "b": {
+    "thingi_id": 82183,
+    "faces": 127816
+   }
+  },
+  {
+   "pair": 407,
+   "a": {
+    "thingi_id": 387222,
+    "faces": 252342
+   },
+   "b": {
+    "thingi_id": 375065,
+    "faces": 242390
+   }
+  },
+  {
+   "pair": 408,
+   "a": {
+    "thingi_id": 470186,
+    "faces": 124878
+   },
+   "b": {
+    "thingi_id": 68215,
+    "faces": 115616
+   }
+  },
+  {
+   "pair": 409,
+   "a": {
+    "thingi_id": 461110,
+    "faces": 146656
+   },
+   "b": {
+    "thingi_id": 496673,
+    "faces": 103580
+   }
+  },
+  {
+   "pair": 410,
+   "a": {
+    "thingi_id": 472173,
+    "faces": 111642
+   },
+   "b": {
+    "thingi_id": 686056,
+    "faces": 231664
+   }
+  },
+  {
+   "pair": 411,
+   "a": {
+    "thingi_id": 793565,
+    "faces": 320978
+   },
+   "b": {
+    "thingi_id": 59333,
+    "faces": 196608
+   }
+  },
+  {
+   "pair": 412,
+   "a": {
+    "thingi_id": 793565,
+    "faces": 320978
+   },
+   "b": {
+    "thingi_id": 518083,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 413,
+   "a": {
+    "thingi_id": 815485,
+    "faces": 509802
+   },
+   "b": {
+    "thingi_id": 135066,
+    "faces": 123020
+   }
+  },
+  {
+   "pair": 414,
+   "a": {
+    "thingi_id": 827773,
+    "faces": 204406
+   },
+   "b": {
+    "thingi_id": 96132,
+    "faces": 118994
+   }
+  },
+  {
+   "pair": 415,
+   "a": {
+    "thingi_id": 399563,
+    "faces": 100376
+   },
+   "b": {
+    "thingi_id": 601646,
+    "faces": 231938
+   }
+  },
+  {
+   "pair": 416,
+   "a": {
+    "thingi_id": 958469,
+    "faces": 265424
+   },
+   "b": {
+    "thingi_id": 960066,
+    "faces": 172918
+   }
+  },
+  {
+   "pair": 417,
+   "a": {
+    "thingi_id": 471989,
+    "faces": 142994
+   },
+   "b": {
+    "thingi_id": 151376,
+    "faces": 464306
+   }
+  },
+  {
+   "pair": 418,
+   "a": {
+    "thingi_id": 815481,
+    "faces": 182040
+   },
+   "b": {
+    "thingi_id": 68215,
+    "faces": 115616
+   }
+  },
+  {
+   "pair": 419,
+   "a": {
+    "thingi_id": 815481,
+    "faces": 182040
+   },
+   "b": {
+    "thingi_id": 548865,
+    "faces": 140574
+   }
+  },
+  {
+   "pair": 420,
+   "a": {
+    "thingi_id": 815474,
+    "faces": 123416
+   },
+   "b": {
+    "thingi_id": 472052,
+    "faces": 132308
+   }
+  },
+  {
+   "pair": 421,
+   "a": {
+    "thingi_id": 366253,
+    "faces": 102382
+   },
+   "b": {
+    "thingi_id": 63785,
+    "faces": 345996
+   }
+  },
+  {
+   "pair": 422,
+   "a": {
+    "thingi_id": 815483,
+    "faces": 363862
+   },
+   "b": {
+    "thingi_id": 518095,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 423,
+   "a": {
+    "thingi_id": 958469,
+    "faces": 265424
+   },
+   "b": {
+    "thingi_id": 804294,
+    "faces": 235126
+   }
+  },
+  {
+   "pair": 424,
+   "a": {
+    "thingi_id": 815481,
+    "faces": 182040
+   },
+   "b": {
+    "thingi_id": 96132,
+    "faces": 118994
+   }
+  },
+  {
+   "pair": 425,
+   "a": {
+    "thingi_id": 518091,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 518035,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 426,
+   "a": {
+    "thingi_id": 167113,
+    "faces": 198684
+   },
+   "b": {
+    "thingi_id": 384373,
+    "faces": 126446
+   }
+  },
+  {
+   "pair": 427,
+   "a": {
+    "thingi_id": 472820,
+    "faces": 124874
+   },
+   "b": {
+    "thingi_id": 472052,
+    "faces": 132308
+   }
+  },
+  {
+   "pair": 428,
+   "a": {
+    "thingi_id": 92116,
+    "faces": 119616
+   },
+   "b": {
+    "thingi_id": 762601,
+    "faces": 154802
+   }
+  },
+  {
+   "pair": 429,
+   "a": {
+    "thingi_id": 470186,
+    "faces": 124878
+   },
+   "b": {
+    "thingi_id": 815481,
+    "faces": 182040
+   }
+  },
+  {
+   "pair": 430,
+   "a": {
+    "thingi_id": 837999,
+    "faces": 132406
+   },
+   "b": {
+    "thingi_id": 133079,
+    "faces": 262560
+   }
+  },
+  {
+   "pair": 431,
+   "a": {
+    "thingi_id": 133079,
+    "faces": 262560
+   },
+   "b": {
+    "thingi_id": 518035,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 432,
+   "a": {
+    "thingi_id": 838003,
+    "faces": 132638
+   },
+   "b": {
+    "thingi_id": 1411700,
+    "faces": 350000
+   }
+  },
+  {
+   "pair": 433,
+   "a": {
+    "thingi_id": 1255206,
+    "faces": 938940
+   },
+   "b": {
+    "thingi_id": 551075,
+    "faces": 153456
+   }
+  },
+  {
+   "pair": 434,
+   "a": {
+    "thingi_id": 518085,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 470186,
+    "faces": 124878
+   }
+  },
+  {
+   "pair": 435,
+   "a": {
+    "thingi_id": 548871,
+    "faces": 133382
+   },
+   "b": {
+    "thingi_id": 471988,
+    "faces": 109296
+   }
+  },
+  {
+   "pair": 436,
+   "a": {
+    "thingi_id": 316358,
+    "faces": 208216
+   },
+   "b": {
+    "thingi_id": 470186,
+    "faces": 124878
+   }
+  },
+  {
+   "pair": 437,
+   "a": {
+    "thingi_id": 848343,
+    "faces": 241154
+   },
+   "b": {
+    "thingi_id": 804297,
+    "faces": 161822
+   }
+  },
+  {
+   "pair": 438,
+   "a": {
+    "thingi_id": 815481,
+    "faces": 182040
+   },
+   "b": {
+    "thingi_id": 762595,
+    "faces": 145418
+   }
+  },
+  {
+   "pair": 439,
+   "a": {
+    "thingi_id": 472173,
+    "faces": 111642
+   },
+   "b": {
+    "thingi_id": 1063860,
+    "faces": 226730
+   }
+  },
+  {
+   "pair": 440,
+   "a": {
+    "thingi_id": 472069,
+    "faces": 122490
+   },
+   "b": {
+    "thingi_id": 65942,
+    "faces": 754688
+   }
+  },
+  {
+   "pair": 441,
+   "a": {
+    "thingi_id": 470186,
+    "faces": 124878
+   },
+   "b": {
+    "thingi_id": 274379,
+    "faces": 191204
+   }
+  },
+  {
+   "pair": 442,
+   "a": {
+    "thingi_id": 623171,
+    "faces": 109346
+   },
+   "b": {
+    "thingi_id": 82394,
+    "faces": 114510
+   }
+  },
+  {
+   "pair": 443,
+   "a": {
+    "thingi_id": 472820,
+    "faces": 124874
+   },
+   "b": {
+    "thingi_id": 518088,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 444,
+   "a": {
+    "thingi_id": 471989,
+    "faces": 142994
+   },
+   "b": {
+    "thingi_id": 132448,
+    "faces": 171742
+   }
+  },
+  {
+   "pair": 445,
+   "a": {
+    "thingi_id": 68215,
+    "faces": 115616
+   },
+   "b": {
+    "thingi_id": 63785,
+    "faces": 345996
+   }
+  },
+  {
+   "pair": 446,
+   "a": {
+    "thingi_id": 66480,
+    "faces": 181504
+   },
+   "b": {
+    "thingi_id": 1706475,
+    "faces": 339306
+   }
+  },
+  {
+   "pair": 447,
+   "a": {
+    "thingi_id": 763718,
+    "faces": 218776
+   },
+   "b": {
+    "thingi_id": 1258096,
+    "faces": 683776
+   }
+  },
+  {
+   "pair": 448,
+   "a": {
+    "thingi_id": 212138,
+    "faces": 111022
+   },
+   "b": {
+    "thingi_id": 461115,
+    "faces": 821952
+   }
+  },
+  {
+   "pair": 449,
+   "a": {
+    "thingi_id": 518035,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 313444,
+    "faces": 221416
+   }
+  },
+  {
+   "pair": 450,
+   "a": {
+    "thingi_id": 518088,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 375065,
+    "faces": 242390
+   }
+  },
+  {
+   "pair": 451,
+   "a": {
+    "thingi_id": 133078,
+    "faces": 259320
+   },
+   "b": {
+    "thingi_id": 398259,
+    "faces": 587688
+   }
+  },
+  {
+   "pair": 452,
+   "a": {
+    "thingi_id": 65942,
+    "faces": 754688
+   },
+   "b": {
+    "thingi_id": 133079,
+    "faces": 262560
+   }
+  },
+  {
+   "pair": 453,
+   "a": {
+    "thingi_id": 399567,
+    "faces": 130336
+   },
+   "b": {
+    "thingi_id": 688367,
+    "faces": 276300
+   }
+  },
+  {
+   "pair": 454,
+   "a": {
+    "thingi_id": 518029,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 472051,
+    "faces": 122682
+   }
+  },
+  {
+   "pair": 455,
+   "a": {
+    "thingi_id": 1396899,
+    "faces": 135314
+   },
+   "b": {
+    "thingi_id": 441710,
+    "faces": 116374
+   }
+  },
+  {
+   "pair": 456,
+   "a": {
+    "thingi_id": 1172870,
+    "faces": 370480
+   },
+   "b": {
+    "thingi_id": 838000,
+    "faces": 109522
+   }
+  },
+  {
+   "pair": 457,
+   "a": {
+    "thingi_id": 601644,
+    "faces": 189994
+   },
+   "b": {
+    "thingi_id": 472046,
+    "faces": 127710
+   }
+  },
+  {
+   "pair": 458,
+   "a": {
+    "thingi_id": 518088,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 844209,
+    "faces": 239034
+   }
+  },
+  {
+   "pair": 459,
+   "a": {
+    "thingi_id": 472052,
+    "faces": 132308
+   },
+   "b": {
+    "thingi_id": 87687,
+    "faces": 341866
+   }
+  },
+  {
+   "pair": 460,
+   "a": {
+    "thingi_id": 472051,
+    "faces": 122682
+   },
+   "b": {
+    "thingi_id": 398259,
+    "faces": 587688
+   }
+  },
+  {
+   "pair": 461,
+   "a": {
+    "thingi_id": 99272,
+    "faces": 134238
+   },
+   "b": {
+    "thingi_id": 688367,
+    "faces": 276300
+   }
+  },
+  {
+   "pair": 462,
+   "a": {
+    "thingi_id": 252614,
+    "faces": 118656
+   },
+   "b": {
+    "thingi_id": 78481,
+    "faces": 596736
+   }
+  },
+  {
+   "pair": 463,
+   "a": {
+    "thingi_id": 518093,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 472069,
+    "faces": 122490
+   }
+  },
+  {
+   "pair": 464,
+   "a": {
+    "thingi_id": 762595,
+    "faces": 145418
+   },
+   "b": {
+    "thingi_id": 54725,
+    "faces": 138380
+   }
+  },
+  {
+   "pair": 465,
+   "a": {
+    "thingi_id": 238639,
+    "faces": 259172
+   },
+   "b": {
+    "thingi_id": 838001,
+    "faces": 128664
+   }
+  },
+  {
+   "pair": 466,
+   "a": {
+    "thingi_id": 472054,
+    "faces": 117656
+   },
+   "b": {
+    "thingi_id": 763718,
+    "faces": 218776
+   }
+  },
+  {
+   "pair": 467,
+   "a": {
+    "thingi_id": 86164,
+    "faces": 188984
+   },
+   "b": {
+    "thingi_id": 815474,
+    "faces": 123416
+   }
+  },
+  {
+   "pair": 468,
+   "a": {
+    "thingi_id": 789796,
+    "faces": 169380
+   },
+   "b": {
+    "thingi_id": 86164,
+    "faces": 188984
+   }
+  },
+  {
+   "pair": 469,
+   "a": {
+    "thingi_id": 518080,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 848343,
+    "faces": 241154
+   }
+  },
+  {
+   "pair": 470,
+   "a": {
+    "thingi_id": 366248,
+    "faces": 108656
+   },
+   "b": {
+    "thingi_id": 313444,
+    "faces": 221416
+   }
+  },
+  {
+   "pair": 471,
+   "a": {
+    "thingi_id": 94059,
+    "faces": 230744
+   },
+   "b": {
+    "thingi_id": 518031,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 472,
+   "a": {
+    "thingi_id": 76477,
+    "faces": 222836
+   },
+   "b": {
+    "thingi_id": 99275,
+    "faces": 134206
+   }
+  },
+  {
+   "pair": 473,
+   "a": {
+    "thingi_id": 151360,
+    "faces": 464306
+   },
+   "b": {
+    "thingi_id": 1172870,
+    "faces": 370480
+   }
+  },
+  {
+   "pair": 474,
+   "a": {
+    "thingi_id": 1335002,
+    "faces": 187740
+   },
+   "b": {
+    "thingi_id": 815483,
+    "faces": 363862
+   }
+  },
+  {
+   "pair": 475,
+   "a": {
+    "thingi_id": 518084,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 551075,
+    "faces": 153456
+   }
+  },
+  {
+   "pair": 476,
+   "a": {
+    "thingi_id": 441708,
+    "faces": 112402
+   },
+   "b": {
+    "thingi_id": 548875,
+    "faces": 133414
+   }
+  },
+  {
+   "pair": 477,
+   "a": {
+    "thingi_id": 518030,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 100831,
+    "faces": 135648
+   }
+  },
+  {
+   "pair": 478,
+   "a": {
+    "thingi_id": 815474,
+    "faces": 123416
+   },
+   "b": {
+    "thingi_id": 518083,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 479,
+   "a": {
+    "thingi_id": 472046,
+    "faces": 127710
+   },
+   "b": {
+    "thingi_id": 76391,
+    "faces": 144546
+   }
+  },
+  {
+   "pair": 480,
+   "a": {
+    "thingi_id": 425600,
+    "faces": 103290
+   },
+   "b": {
+    "thingi_id": 441708,
+    "faces": 112402
+   }
+  },
+  {
+   "pair": 481,
+   "a": {
+    "thingi_id": 837999,
+    "faces": 132406
+   },
+   "b": {
+    "thingi_id": 65942,
+    "faces": 754688
+   }
+  },
+  {
+   "pair": 482,
+   "a": {
+    "thingi_id": 804297,
+    "faces": 161822
+   },
+   "b": {
+    "thingi_id": 551075,
+    "faces": 153456
+   }
+  },
+  {
+   "pair": 483,
+   "a": {
+    "thingi_id": 135062,
+    "faces": 132468
+   },
+   "b": {
+    "thingi_id": 762584,
+    "faces": 163142
+   }
+  },
+  {
+   "pair": 484,
+   "a": {
+    "thingi_id": 551021,
+    "faces": 348128
+   },
+   "b": {
+    "thingi_id": 119830,
+    "faces": 130040
+   }
+  },
+  {
+   "pair": 485,
+   "a": {
+    "thingi_id": 472054,
+    "faces": 117656
+   },
+   "b": {
+    "thingi_id": 518037,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 486,
+   "a": {
+    "thingi_id": 815485,
+    "faces": 509802
+   },
+   "b": {
+    "thingi_id": 1172870,
+    "faces": 370480
+   }
+  },
+  {
+   "pair": 487,
+   "a": {
+    "thingi_id": 518092,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 1397588,
+    "faces": 115676
+   }
+  },
+  {
+   "pair": 488,
+   "a": {
+    "thingi_id": 1411699,
+    "faces": 116252
+   },
+   "b": {
+    "thingi_id": 87687,
+    "faces": 341866
+   }
+  },
+  {
+   "pair": 489,
+   "a": {
+    "thingi_id": 518037,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 59197,
+    "faces": 786432
+   }
+  },
+  {
+   "pair": 490,
+   "a": {
+    "thingi_id": 796150,
+    "faces": 126080
+   },
+   "b": {
+    "thingi_id": 686056,
+    "faces": 231664
+   }
+  },
+  {
+   "pair": 491,
+   "a": {
+    "thingi_id": 331105,
+    "faces": 271354
+   },
+   "b": {
+    "thingi_id": 375065,
+    "faces": 242390
+   }
+  },
+  {
+   "pair": 492,
+   "a": {
+    "thingi_id": 1088281,
+    "faces": 731862
+   },
+   "b": {
+    "thingi_id": 461110,
+    "faces": 146656
+   }
+  },
+  {
+   "pair": 493,
+   "a": {
+    "thingi_id": 97686,
+    "faces": 243518
+   },
+   "b": {
+    "thingi_id": 212138,
+    "faces": 111022
+   }
+  },
+  {
+   "pair": 494,
+   "a": {
+    "thingi_id": 1411700,
+    "faces": 350000
+   },
+   "b": {
+    "thingi_id": 518095,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 495,
+   "a": {
+    "thingi_id": 372056,
+    "faces": 498974
+   },
+   "b": {
+    "thingi_id": 399563,
+    "faces": 100376
+   }
+  },
+  {
+   "pair": 496,
+   "a": {
+    "thingi_id": 518031,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 472022,
+    "faces": 130126
+   }
+  },
+  {
+   "pair": 497,
+   "a": {
+    "thingi_id": 472045,
+    "faces": 133012
+   },
+   "b": {
+    "thingi_id": 96132,
+    "faces": 118994
+   }
+  },
+  {
+   "pair": 498,
+   "a": {
+    "thingi_id": 238639,
+    "faces": 259172
+   },
+   "b": {
+    "thingi_id": 76477,
+    "faces": 222836
+   }
+  },
+  {
+   "pair": 499,
+   "a": {
+    "thingi_id": 82536,
+    "faces": 144024
+   },
+   "b": {
+    "thingi_id": 762584,
+    "faces": 163142
+   }
+  },
+  {
+   "pair": 500,
+   "a": {
+    "thingi_id": 1063866,
+    "faces": 176752
+   },
+   "b": {
+    "thingi_id": 169526,
+    "faces": 129712
+   }
+  },
+  {
+   "pair": 501,
+   "a": {
+    "thingi_id": 270940,
+    "faces": 126202
+   },
+   "b": {
+    "thingi_id": 623170,
+    "faces": 109346
+   }
+  },
+  {
+   "pair": 502,
+   "a": {
+    "thingi_id": 518088,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 518087,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 503,
+   "a": {
+    "thingi_id": 470186,
+    "faces": 124878
+   },
+   "b": {
+    "thingi_id": 101337,
+    "faces": 177312
+   }
+  },
+  {
+   "pair": 504,
+   "a": {
+    "thingi_id": 623172,
+    "faces": 109346
+   },
+   "b": {
+    "thingi_id": 425601,
+    "faces": 102978
+   }
+  },
+  {
+   "pair": 505,
+   "a": {
+    "thingi_id": 135062,
+    "faces": 132468
+   },
+   "b": {
+    "thingi_id": 97686,
+    "faces": 243518
+   }
+  },
+  {
+   "pair": 506,
+   "a": {
+    "thingi_id": 99267,
+    "faces": 106776
+   },
+   "b": {
+    "thingi_id": 461109,
+    "faces": 156064
+   }
+  },
+  {
+   "pair": 507,
+   "a": {
+    "thingi_id": 472077,
+    "faces": 119306
+   },
+   "b": {
+    "thingi_id": 59333,
+    "faces": 196608
+   }
+  },
+  {
+   "pair": 508,
+   "a": {
+    "thingi_id": 827773,
+    "faces": 204406
+   },
+   "b": {
+    "thingi_id": 59333,
+    "faces": 196608
+   }
+  },
+  {
+   "pair": 509,
+   "a": {
+    "thingi_id": 151360,
+    "faces": 464306
+   },
+   "b": {
+    "thingi_id": 472139,
+    "faces": 111404
+   }
+  },
+  {
+   "pair": 510,
+   "a": {
+    "thingi_id": 488048,
+    "faces": 276432
+   },
+   "b": {
+    "thingi_id": 100831,
+    "faces": 135648
+   }
+  },
+  {
+   "pair": 511,
+   "a": {
+    "thingi_id": 461110,
+    "faces": 146656
+   },
+   "b": {
+    "thingi_id": 399567,
+    "faces": 130336
+   }
+  },
+  {
+   "pair": 512,
+   "a": {
+    "thingi_id": 368149,
+    "faces": 122656
+   },
+   "b": {
+    "thingi_id": 76475,
+    "faces": 224704
+   }
+  },
+  {
+   "pair": 513,
+   "a": {
+    "thingi_id": 88053,
+    "faces": 153840
+   },
+   "b": {
+    "thingi_id": 425600,
+    "faces": 103290
+   }
+  },
+  {
+   "pair": 514,
+   "a": {
+    "thingi_id": 99270,
+    "faces": 134142
+   },
+   "b": {
+    "thingi_id": 76475,
+    "faces": 224704
+   }
+  },
+  {
+   "pair": 515,
+   "a": {
+    "thingi_id": 837999,
+    "faces": 132406
+   },
+   "b": {
+    "thingi_id": 1172870,
+    "faces": 370480
+   }
+  },
+  {
+   "pair": 516,
+   "a": {
+    "thingi_id": 518039,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 601645,
+    "faces": 189994
+   }
+  },
+  {
+   "pair": 517,
+   "a": {
+    "thingi_id": 54725,
+    "faces": 138380
+   },
+   "b": {
+    "thingi_id": 368149,
+    "faces": 122656
+   }
+  },
+  {
+   "pair": 518,
+   "a": {
+    "thingi_id": 518095,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 1411699,
+    "faces": 116252
+   }
+  },
+  {
+   "pair": 519,
+   "a": {
+    "thingi_id": 518082,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 82392,
+    "faces": 194596
+   }
+  },
+  {
+   "pair": 520,
+   "a": {
+    "thingi_id": 399566,
+    "faces": 191706
+   },
+   "b": {
+    "thingi_id": 551075,
+    "faces": 153456
+   }
+  },
+  {
+   "pair": 521,
+   "a": {
+    "thingi_id": 257178,
+    "faces": 255508
+   },
+   "b": {
+    "thingi_id": 815474,
+    "faces": 123416
+   }
+  },
+  {
+   "pair": 522,
+   "a": {
+    "thingi_id": 86164,
+    "faces": 188984
+   },
+   "b": {
+    "thingi_id": 518083,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 523,
+   "a": {
+    "thingi_id": 601646,
+    "faces": 231938
+   },
+   "b": {
+    "thingi_id": 1255206,
+    "faces": 938940
+   }
+  },
+  {
+   "pair": 524,
+   "a": {
+    "thingi_id": 518091,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 83416,
+    "faces": 226080
+   }
+  },
+  {
+   "pair": 525,
+   "a": {
+    "thingi_id": 815484,
+    "faces": 679866
+   },
+   "b": {
+    "thingi_id": 132448,
+    "faces": 171742
+   }
+  },
+  {
+   "pair": 526,
+   "a": {
+    "thingi_id": 960066,
+    "faces": 172918
+   },
+   "b": {
+    "thingi_id": 351479,
+    "faces": 159910
+   }
+  },
+  {
+   "pair": 527,
+   "a": {
+    "thingi_id": 472820,
+    "faces": 124874
+   },
+   "b": {
+    "thingi_id": 472043,
+    "faces": 129714
+   }
+  },
+  {
+   "pair": 528,
+   "a": {
+    "thingi_id": 472077,
+    "faces": 119306
+   },
+   "b": {
+    "thingi_id": 838001,
+    "faces": 128664
+   }
+  },
+  {
+   "pair": 529,
+   "a": {
+    "thingi_id": 94059,
+    "faces": 230744
+   },
+   "b": {
+    "thingi_id": 518079,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 530,
+   "a": {
+    "thingi_id": 101337,
+    "faces": 177312
+   },
+   "b": {
+    "thingi_id": 133079,
+    "faces": 262560
+   }
+  },
+  {
+   "pair": 531,
+   "a": {
+    "thingi_id": 461115,
+    "faces": 821952
+   },
+   "b": {
+    "thingi_id": 399562,
+    "faces": 115248
+   }
+  },
+  {
+   "pair": 532,
+   "a": {
+    "thingi_id": 65942,
+    "faces": 754688
+   },
+   "b": {
+    "thingi_id": 518080,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 533,
+   "a": {
+    "thingi_id": 518081,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 461112,
+    "faces": 805376
+   }
+  },
+  {
+   "pair": 534,
+   "a": {
+    "thingi_id": 551021,
+    "faces": 348128
+   },
+   "b": {
+    "thingi_id": 441710,
+    "faces": 116374
+   }
+  },
+  {
+   "pair": 535,
+   "a": {
+    "thingi_id": 351479,
+    "faces": 159910
+   },
+   "b": {
+    "thingi_id": 99272,
+    "faces": 134238
+   }
+  },
+  {
+   "pair": 536,
+   "a": {
+    "thingi_id": 366248,
+    "faces": 108656
+   },
+   "b": {
+    "thingi_id": 1255206,
+    "faces": 938940
+   }
+  },
+  {
+   "pair": 537,
+   "a": {
+    "thingi_id": 167064,
+    "faces": 110064
+   },
+   "b": {
+    "thingi_id": 601644,
+    "faces": 189994
+   }
+  },
+  {
+   "pair": 538,
+   "a": {
+    "thingi_id": 351479,
+    "faces": 159910
+   },
+   "b": {
+    "thingi_id": 472069,
+    "faces": 122490
+   }
+  },
+  {
+   "pair": 539,
+   "a": {
+    "thingi_id": 399562,
+    "faces": 115248
+   },
+   "b": {
+    "thingi_id": 518094,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 540,
+   "a": {
+    "thingi_id": 252640,
+    "faces": 455232
+   },
+   "b": {
+    "thingi_id": 56630,
+    "faces": 122880
+   }
+  },
+  {
+   "pair": 541,
+   "a": {
+    "thingi_id": 472045,
+    "faces": 133012
+   },
+   "b": {
+    "thingi_id": 353686,
+    "faces": 173894
+   }
+  },
+  {
+   "pair": 542,
+   "a": {
+    "thingi_id": 252640,
+    "faces": 455232
+   },
+   "b": {
+    "thingi_id": 623170,
+    "faces": 109346
+   }
+  },
+  {
+   "pair": 543,
+   "a": {
+    "thingi_id": 76475,
+    "faces": 224704
+   },
+   "b": {
+    "thingi_id": 488048,
+    "faces": 276432
+   }
+  },
+  {
+   "pair": 544,
+   "a": {
+    "thingi_id": 815483,
+    "faces": 363862
+   },
+   "b": {
+    "thingi_id": 368149,
+    "faces": 122656
+   }
+  },
+  {
+   "pair": 545,
+   "a": {
+    "thingi_id": 551021,
+    "faces": 348128
+   },
+   "b": {
+    "thingi_id": 72947,
+    "faces": 100368
+   }
+  },
+  {
+   "pair": 546,
+   "a": {
+    "thingi_id": 472046,
+    "faces": 127710
+   },
+   "b": {
+    "thingi_id": 99272,
+    "faces": 134238
+   }
+  },
+  {
+   "pair": 547,
+   "a": {
+    "thingi_id": 762601,
+    "faces": 154802
+   },
+   "b": {
+    "thingi_id": 221686,
+    "faces": 182690
+   }
+  },
+  {
+   "pair": 548,
+   "a": {
+    "thingi_id": 97686,
+    "faces": 243518
+   },
+   "b": {
+    "thingi_id": 441710,
+    "faces": 116374
+   }
+  },
+  {
+   "pair": 549,
+   "a": {
+    "thingi_id": 762586,
+    "faces": 175524
+   },
+   "b": {
+    "thingi_id": 796150,
+    "faces": 126080
+   }
+  },
+  {
+   "pair": 550,
+   "a": {
+    "thingi_id": 789796,
+    "faces": 169380
+   },
+   "b": {
+    "thingi_id": 221686,
+    "faces": 182690
+   }
+  },
+  {
+   "pair": 551,
+   "a": {
+    "thingi_id": 169526,
+    "faces": 129712
+   },
+   "b": {
+    "thingi_id": 461112,
+    "faces": 805376
+   }
+  },
+  {
+   "pair": 552,
+   "a": {
+    "thingi_id": 82663,
+    "faces": 104148
+   },
+   "b": {
+    "thingi_id": 135062,
+    "faces": 132468
+   }
+  },
+  {
+   "pair": 553,
+   "a": {
+    "thingi_id": 461111,
+    "faces": 153248
+   },
+   "b": {
+    "thingi_id": 274379,
+    "faces": 191204
+   }
+  },
+  {
+   "pair": 554,
+   "a": {
+    "thingi_id": 1717684,
+    "faces": 350328
+   },
+   "b": {
+    "thingi_id": 1411700,
+    "faces": 350000
+   }
+  },
+  {
+   "pair": 555,
+   "a": {
+    "thingi_id": 119829,
+    "faces": 126756
+   },
+   "b": {
+    "thingi_id": 518092,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 556,
+   "a": {
+    "thingi_id": 472051,
+    "faces": 122682
+   },
+   "b": {
+    "thingi_id": 1255206,
+    "faces": 938940
+   }
+  },
+  {
+   "pair": 557,
+   "a": {
+    "thingi_id": 99275,
+    "faces": 134206
+   },
+   "b": {
+    "thingi_id": 96132,
+    "faces": 118994
+   }
+  },
+  {
+   "pair": 558,
+   "a": {
+    "thingi_id": 472173,
+    "faces": 111642
+   },
+   "b": {
+    "thingi_id": 518037,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 559,
+   "a": {
+    "thingi_id": 1396899,
+    "faces": 135314
+   },
+   "b": {
+    "thingi_id": 132448,
+    "faces": 171742
+   }
+  },
+  {
+   "pair": 560,
+   "a": {
+    "thingi_id": 441708,
+    "faces": 112402
+   },
+   "b": {
+    "thingi_id": 518079,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 561,
+   "a": {
+    "thingi_id": 252632,
+    "faces": 455232
+   },
+   "b": {
+    "thingi_id": 471988,
+    "faces": 109296
+   }
+  },
+  {
+   "pair": 562,
+   "a": {
+    "thingi_id": 366248,
+    "faces": 108656
+   },
+   "b": {
+    "thingi_id": 99275,
+    "faces": 134206
+   }
+  },
+  {
+   "pair": 563,
+   "a": {
+    "thingi_id": 551074,
+    "faces": 204202
+   },
+   "b": {
+    "thingi_id": 99275,
+    "faces": 134206
+   }
+  },
+  {
+   "pair": 564,
+   "a": {
+    "thingi_id": 518085,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 96132,
+    "faces": 118994
+   }
+  },
+  {
+   "pair": 565,
+   "a": {
+    "thingi_id": 59197,
+    "faces": 786432
+   },
+   "b": {
+    "thingi_id": 133079,
+    "faces": 262560
+   }
+  },
+  {
+   "pair": 566,
+   "a": {
+    "thingi_id": 1335002,
+    "faces": 187740
+   },
+   "b": {
+    "thingi_id": 518084,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 567,
+   "a": {
+    "thingi_id": 762601,
+    "faces": 154802
+   },
+   "b": {
+    "thingi_id": 789796,
+    "faces": 169380
+   }
+  },
+  {
+   "pair": 568,
+   "a": {
+    "thingi_id": 354371,
+    "faces": 257936
+   },
+   "b": {
+    "thingi_id": 167113,
+    "faces": 198684
+   }
+  },
+  {
+   "pair": 569,
+   "a": {
+    "thingi_id": 815484,
+    "faces": 679866
+   },
+   "b": {
+    "thingi_id": 1088281,
+    "faces": 731862
+   }
+  },
+  {
+   "pair": 570,
+   "a": {
+    "thingi_id": 461111,
+    "faces": 153248
+   },
+   "b": {
+    "thingi_id": 96132,
+    "faces": 118994
+   }
+  },
+  {
+   "pair": 571,
+   "a": {
+    "thingi_id": 270940,
+    "faces": 126202
+   },
+   "b": {
+    "thingi_id": 471990,
+    "faces": 103860
+   }
+  },
+  {
+   "pair": 572,
+   "a": {
+    "thingi_id": 66480,
+    "faces": 181504
+   },
+   "b": {
+    "thingi_id": 59333,
+    "faces": 196608
+   }
+  },
+  {
+   "pair": 573,
+   "a": {
+    "thingi_id": 472069,
+    "faces": 122490
+   },
+   "b": {
+    "thingi_id": 99275,
+    "faces": 134206
+   }
+  },
+  {
+   "pair": 574,
+   "a": {
+    "thingi_id": 838000,
+    "faces": 109522
+   },
+   "b": {
+    "thingi_id": 1411699,
+    "faces": 116252
+   }
+  },
+  {
+   "pair": 575,
+   "a": {
+    "thingi_id": 238639,
+    "faces": 259172
+   },
+   "b": {
+    "thingi_id": 815481,
+    "faces": 182040
+   }
+  },
+  {
+   "pair": 576,
+   "a": {
+    "thingi_id": 132448,
+    "faces": 171742
+   },
+   "b": {
+    "thingi_id": 518038,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 577,
+   "a": {
+    "thingi_id": 167113,
+    "faces": 198684
+   },
+   "b": {
+    "thingi_id": 1063866,
+    "faces": 176752
+   }
+  },
+  {
+   "pair": 578,
+   "a": {
+    "thingi_id": 763718,
+    "faces": 218776
+   },
+   "b": {
+    "thingi_id": 815481,
+    "faces": 182040
+   }
+  },
+  {
+   "pair": 579,
+   "a": {
+    "thingi_id": 518083,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 65904,
+    "faces": 157726
+   }
+  },
+  {
+   "pair": 580,
+   "a": {
+    "thingi_id": 82664,
+    "faces": 104488
+   },
+   "b": {
+    "thingi_id": 522979,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 581,
+   "a": {
+    "thingi_id": 472043,
+    "faces": 129714
+   },
+   "b": {
+    "thingi_id": 518031,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 582,
+   "a": {
+    "thingi_id": 1706466,
+    "faces": 140124
+   },
+   "b": {
+    "thingi_id": 1258096,
+    "faces": 683776
+   }
+  },
+  {
+   "pair": 583,
+   "a": {
+    "thingi_id": 76391,
+    "faces": 144546
+   },
+   "b": {
+    "thingi_id": 135062,
+    "faces": 132468
+   }
+  },
+  {
+   "pair": 584,
+   "a": {
+    "thingi_id": 763718,
+    "faces": 218776
+   },
+   "b": {
+    "thingi_id": 518094,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 585,
+   "a": {
+    "thingi_id": 99275,
+    "faces": 134206
+   },
+   "b": {
+    "thingi_id": 472077,
+    "faces": 119306
+   }
+  },
+  {
+   "pair": 586,
+   "a": {
+    "thingi_id": 366255,
+    "faces": 102300
+   },
+   "b": {
+    "thingi_id": 1396899,
+    "faces": 135314
+   }
+  },
+  {
+   "pair": 587,
+   "a": {
+    "thingi_id": 1063863,
+    "faces": 168258
+   },
+   "b": {
+    "thingi_id": 548865,
+    "faces": 140574
+   }
+  },
+  {
+   "pair": 588,
+   "a": {
+    "thingi_id": 762595,
+    "faces": 145418
+   },
+   "b": {
+    "thingi_id": 135062,
+    "faces": 132468
+   }
+  },
+  {
+   "pair": 589,
+   "a": {
+    "thingi_id": 54725,
+    "faces": 138380
+   },
+   "b": {
+    "thingi_id": 1335002,
+    "faces": 187740
+   }
+  },
+  {
+   "pair": 590,
+   "a": {
+    "thingi_id": 83416,
+    "faces": 226080
+   },
+   "b": {
+    "thingi_id": 68215,
+    "faces": 115616
+   }
+  },
+  {
+   "pair": 591,
+   "a": {
+    "thingi_id": 518090,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 135066,
+    "faces": 123020
+   }
+  },
+  {
+   "pair": 592,
+   "a": {
+    "thingi_id": 99270,
+    "faces": 134142
+   },
+   "b": {
+    "thingi_id": 518031,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 593,
+   "a": {
+    "thingi_id": 59333,
+    "faces": 196608
+   },
+   "b": {
+    "thingi_id": 472054,
+    "faces": 117656
+   }
+  },
+  {
+   "pair": 594,
+   "a": {
+    "thingi_id": 518030,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 252614,
+    "faces": 118656
+   }
+  },
+  {
+   "pair": 595,
+   "a": {
+    "thingi_id": 133079,
+    "faces": 262560
+   },
+   "b": {
+    "thingi_id": 471988,
+    "faces": 109296
+   }
+  },
+  {
+   "pair": 596,
+   "a": {
+    "thingi_id": 366248,
+    "faces": 108656
+   },
+   "b": {
+    "thingi_id": 1335002,
+    "faces": 187740
+   }
+  },
+  {
+   "pair": 597,
+   "a": {
+    "thingi_id": 351479,
+    "faces": 159910
+   },
+   "b": {
+    "thingi_id": 518084,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 598,
+   "a": {
+    "thingi_id": 99270,
+    "faces": 134142
+   },
+   "b": {
+    "thingi_id": 762601,
+    "faces": 154802
+   }
+  },
+  {
+   "pair": 599,
+   "a": {
+    "thingi_id": 548875,
+    "faces": 133414
+   },
+   "b": {
+    "thingi_id": 257178,
+    "faces": 255508
+   }
+  },
+  {
+   "pair": 600,
+   "a": {
+    "thingi_id": 472077,
+    "faces": 119306
+   },
+   "b": {
+    "thingi_id": 837999,
+    "faces": 132406
+   }
+  },
+  {
+   "pair": 601,
+   "a": {
+    "thingi_id": 474822,
+    "faces": 112060
+   },
+   "b": {
+    "thingi_id": 518092,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 602,
+   "a": {
+    "thingi_id": 68215,
+    "faces": 115616
+   },
+   "b": {
+    "thingi_id": 762601,
+    "faces": 154802
+   }
+  },
+  {
+   "pair": 603,
+   "a": {
+    "thingi_id": 63785,
+    "faces": 345996
+   },
+   "b": {
+    "thingi_id": 99270,
+    "faces": 134142
+   }
+  },
+  {
+   "pair": 604,
+   "a": {
+    "thingi_id": 82183,
+    "faces": 127816
+   },
+   "b": {
+    "thingi_id": 1088281,
+    "faces": 731862
+   }
+  },
+  {
+   "pair": 605,
+   "a": {
+    "thingi_id": 399567,
+    "faces": 130336
+   },
+   "b": {
+    "thingi_id": 68215,
+    "faces": 115616
+   }
+  },
+  {
+   "pair": 606,
+   "a": {
+    "thingi_id": 99272,
+    "faces": 134238
+   },
+   "b": {
+    "thingi_id": 623171,
+    "faces": 109346
+   }
+  },
+  {
+   "pair": 607,
+   "a": {
+    "thingi_id": 133078,
+    "faces": 259320
+   },
+   "b": {
+    "thingi_id": 87690,
+    "faces": 256418
+   }
+  },
+  {
+   "pair": 608,
+   "a": {
+    "thingi_id": 135066,
+    "faces": 123020
+   },
+   "b": {
+    "thingi_id": 472052,
+    "faces": 132308
+   }
+  },
+  {
+   "pair": 609,
+   "a": {
+    "thingi_id": 471988,
+    "faces": 109296
+   },
+   "b": {
+    "thingi_id": 815484,
+    "faces": 679866
+   }
+  },
+  {
+   "pair": 610,
+   "a": {
+    "thingi_id": 151360,
+    "faces": 464306
+   },
+   "b": {
+    "thingi_id": 804294,
+    "faces": 235126
+   }
+  },
+  {
+   "pair": 611,
+   "a": {
+    "thingi_id": 425600,
+    "faces": 103290
+   },
+   "b": {
+    "thingi_id": 762595,
+    "faces": 145418
+   }
+  },
+  {
+   "pair": 612,
+   "a": {
+    "thingi_id": 99270,
+    "faces": 134142
+   },
+   "b": {
+    "thingi_id": 76475,
+    "faces": 224704
+   }
+  },
+  {
+   "pair": 613,
+   "a": {
+    "thingi_id": 472022,
+    "faces": 130126
+   },
+   "b": {
+    "thingi_id": 441708,
+    "faces": 112402
+   }
+  },
+  {
+   "pair": 614,
+   "a": {
+    "thingi_id": 601645,
+    "faces": 189994
+   },
+   "b": {
+    "thingi_id": 274379,
+    "faces": 191204
+   }
+  },
+  {
+   "pair": 615,
+   "a": {
+    "thingi_id": 762601,
+    "faces": 154802
+   },
+   "b": {
+    "thingi_id": 1063863,
+    "faces": 168258
+   }
+  },
+  {
+   "pair": 616,
+   "a": {
+    "thingi_id": 762586,
+    "faces": 175524
+   },
+   "b": {
+    "thingi_id": 1411700,
+    "faces": 350000
+   }
+  },
+  {
+   "pair": 617,
+   "a": {
+    "thingi_id": 76477,
+    "faces": 222836
+   },
+   "b": {
+    "thingi_id": 472052,
+    "faces": 132308
+   }
+  },
+  {
+   "pair": 618,
+   "a": {
+    "thingi_id": 551021,
+    "faces": 348128
+   },
+   "b": {
+    "thingi_id": 87687,
+    "faces": 341866
+   }
+  },
+  {
+   "pair": 619,
+   "a": {
+    "thingi_id": 804294,
+    "faces": 235126
+   },
+   "b": {
+    "thingi_id": 151360,
+    "faces": 464306
+   }
+  },
+  {
+   "pair": 620,
+   "a": {
+    "thingi_id": 63785,
+    "faces": 345996
+   },
+   "b": {
+    "thingi_id": 133078,
+    "faces": 259320
+   }
+  },
+  {
+   "pair": 621,
+   "a": {
+    "thingi_id": 522979,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 368149,
+    "faces": 122656
+   }
+  },
+  {
+   "pair": 622,
+   "a": {
+    "thingi_id": 601644,
+    "faces": 189994
+   },
+   "b": {
+    "thingi_id": 87689,
+    "faces": 256412
+   }
+  },
+  {
+   "pair": 623,
+   "a": {
+    "thingi_id": 518079,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 65904,
+    "faces": 157726
+   }
+  },
+  {
+   "pair": 624,
+   "a": {
+    "thingi_id": 518092,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 472077,
+    "faces": 119306
+   }
+  },
+  {
+   "pair": 625,
+   "a": {
+    "thingi_id": 472051,
+    "faces": 122682
+   },
+   "b": {
+    "thingi_id": 398259,
+    "faces": 587688
+   }
+  },
+  {
+   "pair": 626,
+   "a": {
+    "thingi_id": 815483,
+    "faces": 363862
+   },
+   "b": {
+    "thingi_id": 838001,
+    "faces": 128664
+   }
+  },
+  {
+   "pair": 627,
+   "a": {
+    "thingi_id": 518037,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 470186,
+    "faces": 124878
+   }
+  },
+  {
+   "pair": 628,
+   "a": {
+    "thingi_id": 518032,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 372056,
+    "faces": 498974
+   }
+  },
+  {
+   "pair": 629,
+   "a": {
+    "thingi_id": 366255,
+    "faces": 102300
+   },
+   "b": {
+    "thingi_id": 518031,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 630,
+   "a": {
+    "thingi_id": 518085,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 815484,
+    "faces": 679866
+   }
+  },
+  {
+   "pair": 631,
+   "a": {
+    "thingi_id": 441709,
+    "faces": 102680
+   },
+   "b": {
+    "thingi_id": 76477,
+    "faces": 222836
+   }
+  },
+  {
+   "pair": 632,
+   "a": {
+    "thingi_id": 796150,
+    "faces": 126080
+   },
+   "b": {
+    "thingi_id": 804294,
+    "faces": 235126
+   }
+  },
+  {
+   "pair": 633,
+   "a": {
+    "thingi_id": 815484,
+    "faces": 679866
+   },
+   "b": {
+    "thingi_id": 472173,
+    "faces": 111642
+   }
+  },
+  {
+   "pair": 634,
+   "a": {
+    "thingi_id": 472054,
+    "faces": 117656
+   },
+   "b": {
+    "thingi_id": 1411700,
+    "faces": 350000
+   }
+  },
+  {
+   "pair": 635,
+   "a": {
+    "thingi_id": 688366,
+    "faces": 178512
+   },
+   "b": {
+    "thingi_id": 1258096,
+    "faces": 683776
+   }
+  },
+  {
+   "pair": 636,
+   "a": {
+    "thingi_id": 252632,
+    "faces": 455232
+   },
+   "b": {
+    "thingi_id": 789796,
+    "faces": 169380
+   }
+  },
+  {
+   "pair": 637,
+   "a": {
+    "thingi_id": 82663,
+    "faces": 104148
+   },
+   "b": {
+    "thingi_id": 399566,
+    "faces": 191706
+   }
+  },
+  {
+   "pair": 638,
+   "a": {
+    "thingi_id": 1063866,
+    "faces": 176752
+   },
+   "b": {
+    "thingi_id": 252640,
+    "faces": 455232
+   }
+  },
+  {
+   "pair": 639,
+   "a": {
+    "thingi_id": 87690,
+    "faces": 256418
+   },
+   "b": {
+    "thingi_id": 65904,
+    "faces": 157726
+   }
+  },
+  {
+   "pair": 640,
+   "a": {
+    "thingi_id": 686056,
+    "faces": 231664
+   },
+   "b": {
+    "thingi_id": 518035,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 641,
+   "a": {
+    "thingi_id": 838001,
+    "faces": 128664
+   },
+   "b": {
+    "thingi_id": 551021,
+    "faces": 348128
+   }
+  },
+  {
+   "pair": 642,
+   "a": {
+    "thingi_id": 848343,
+    "faces": 241154
+   },
+   "b": {
+    "thingi_id": 958469,
+    "faces": 265424
+   }
+  },
+  {
+   "pair": 643,
+   "a": {
+    "thingi_id": 316358,
+    "faces": 208216
+   },
+   "b": {
+    "thingi_id": 1335002,
+    "faces": 187740
+   }
+  },
+  {
+   "pair": 644,
+   "a": {
+    "thingi_id": 399562,
+    "faces": 115248
+   },
+   "b": {
+    "thingi_id": 82664,
+    "faces": 104488
+   }
+  },
+  {
+   "pair": 645,
+   "a": {
+    "thingi_id": 518090,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 518030,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 646,
+   "a": {
+    "thingi_id": 548865,
+    "faces": 140574
+   },
+   "b": {
+    "thingi_id": 425601,
+    "faces": 102978
+   }
+  },
+  {
+   "pair": 647,
+   "a": {
+    "thingi_id": 1411687,
+    "faces": 200000
+   },
+   "b": {
+    "thingi_id": 518030,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 648,
+   "a": {
+    "thingi_id": 762584,
+    "faces": 163142
+   },
+   "b": {
+    "thingi_id": 366253,
+    "faces": 102382
+   }
+  },
+  {
+   "pair": 649,
+   "a": {
+    "thingi_id": 59197,
+    "faces": 786432
+   },
+   "b": {
+    "thingi_id": 1335002,
+    "faces": 187740
+   }
+  },
+  {
+   "pair": 650,
+   "a": {
+    "thingi_id": 66480,
+    "faces": 181504
+   },
+   "b": {
+    "thingi_id": 82394,
+    "faces": 114510
+   }
+  },
+  {
+   "pair": 651,
+   "a": {
+    "thingi_id": 472022,
+    "faces": 130126
+   },
+   "b": {
+    "thingi_id": 1255206,
+    "faces": 938940
+   }
+  },
+  {
+   "pair": 652,
+   "a": {
+    "thingi_id": 425601,
+    "faces": 102978
+   },
+   "b": {
+    "thingi_id": 960066,
+    "faces": 172918
+   }
+  },
+  {
+   "pair": 653,
+   "a": {
+    "thingi_id": 59197,
+    "faces": 786432
+   },
+   "b": {
+    "thingi_id": 848343,
+    "faces": 241154
+   }
+  },
+  {
+   "pair": 654,
+   "a": {
+    "thingi_id": 313444,
+    "faces": 221416
+   },
+   "b": {
+    "thingi_id": 316358,
+    "faces": 208216
+   }
+  },
+  {
+   "pair": 655,
+   "a": {
+    "thingi_id": 518032,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 1411687,
+    "faces": 200000
+   }
+  },
+  {
+   "pair": 656,
+   "a": {
+    "thingi_id": 1396899,
+    "faces": 135314
+   },
+   "b": {
+    "thingi_id": 601647,
+    "faces": 231938
+   }
+  },
+  {
+   "pair": 657,
+   "a": {
+    "thingi_id": 83416,
+    "faces": 226080
+   },
+   "b": {
+    "thingi_id": 518086,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 658,
+   "a": {
+    "thingi_id": 518088,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 441709,
+    "faces": 102680
+   }
+  },
+  {
+   "pair": 659,
+   "a": {
+    "thingi_id": 1411699,
+    "faces": 116252
+   },
+   "b": {
+    "thingi_id": 518037,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 660,
+   "a": {
+    "thingi_id": 135066,
+    "faces": 123020
+   },
+   "b": {
+    "thingi_id": 518091,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 661,
+   "a": {
+    "thingi_id": 88053,
+    "faces": 153840
+   },
+   "b": {
+    "thingi_id": 837999,
+    "faces": 132406
+   }
+  },
+  {
+   "pair": 662,
+   "a": {
+    "thingi_id": 68215,
+    "faces": 115616
+   },
+   "b": {
+    "thingi_id": 960066,
+    "faces": 172918
+   }
+  },
+  {
+   "pair": 663,
+   "a": {
+    "thingi_id": 472139,
+    "faces": 111404
+   },
+   "b": {
+    "thingi_id": 99267,
+    "faces": 106776
+   }
+  },
+  {
+   "pair": 664,
+   "a": {
+    "thingi_id": 519507,
+    "faces": 101724
+   },
+   "b": {
+    "thingi_id": 151376,
+    "faces": 464306
+   }
+  },
+  {
+   "pair": 665,
+   "a": {
+    "thingi_id": 1706466,
+    "faces": 140124
+   },
+   "b": {
+    "thingi_id": 425601,
+    "faces": 102978
+   }
+  },
+  {
+   "pair": 666,
+   "a": {
+    "thingi_id": 472043,
+    "faces": 129714
+   },
+   "b": {
+    "thingi_id": 96132,
+    "faces": 118994
+   }
+  },
+  {
+   "pair": 667,
+   "a": {
+    "thingi_id": 100831,
+    "faces": 135648
+   },
+   "b": {
+    "thingi_id": 762586,
+    "faces": 175524
+   }
+  },
+  {
+   "pair": 668,
+   "a": {
+    "thingi_id": 167064,
+    "faces": 110064
+   },
+   "b": {
+    "thingi_id": 78481,
+    "faces": 596736
+   }
+  },
+  {
+   "pair": 669,
+   "a": {
+    "thingi_id": 686056,
+    "faces": 231664
+   },
+   "b": {
+    "thingi_id": 425601,
+    "faces": 102978
+   }
+  },
+  {
+   "pair": 670,
+   "a": {
+    "thingi_id": 96132,
+    "faces": 118994
+   },
+   "b": {
+    "thingi_id": 257178,
+    "faces": 255508
+   }
+  },
+  {
+   "pair": 671,
+   "a": {
+    "thingi_id": 461109,
+    "faces": 156064
+   },
+   "b": {
+    "thingi_id": 221686,
+    "faces": 182690
+   }
+  },
+  {
+   "pair": 672,
+   "a": {
+    "thingi_id": 518037,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 1717685,
+    "faces": 792898
+   }
+  },
+  {
+   "pair": 673,
+   "a": {
+    "thingi_id": 548865,
+    "faces": 140574
+   },
+   "b": {
+    "thingi_id": 384373,
+    "faces": 126446
+   }
+  },
+  {
+   "pair": 674,
+   "a": {
+    "thingi_id": 518029,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 958469,
+    "faces": 265424
+   }
+  },
+  {
+   "pair": 675,
+   "a": {
+    "thingi_id": 518034,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 441709,
+    "faces": 102680
+   }
+  },
+  {
+   "pair": 676,
+   "a": {
+    "thingi_id": 518079,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 366253,
+    "faces": 102382
+   }
+  },
+  {
+   "pair": 677,
+   "a": {
+    "thingi_id": 1397588,
+    "faces": 115676
+   },
+   "b": {
+    "thingi_id": 1706475,
+    "faces": 339306
+   }
+  },
+  {
+   "pair": 678,
+   "a": {
+    "thingi_id": 623170,
+    "faces": 109346
+   },
+   "b": {
+    "thingi_id": 518079,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 679,
+   "a": {
+    "thingi_id": 518088,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 87690,
+    "faces": 256418
+   }
+  },
+  {
+   "pair": 680,
+   "a": {
+    "thingi_id": 86164,
+    "faces": 188984
+   },
+   "b": {
+    "thingi_id": 399566,
+    "faces": 191706
+   }
+  },
+  {
+   "pair": 681,
+   "a": {
+    "thingi_id": 83416,
+    "faces": 226080
+   },
+   "b": {
+    "thingi_id": 399564,
+    "faces": 138264
+   }
+  },
+  {
+   "pair": 682,
+   "a": {
+    "thingi_id": 472043,
+    "faces": 129714
+   },
+   "b": {
+    "thingi_id": 789796,
+    "faces": 169380
+   }
+  },
+  {
+   "pair": 683,
+   "a": {
+    "thingi_id": 366253,
+    "faces": 102382
+   },
+   "b": {
+    "thingi_id": 518086,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 684,
+   "a": {
+    "thingi_id": 82394,
+    "faces": 114510
+   },
+   "b": {
+    "thingi_id": 1063863,
+    "faces": 168258
+   }
+  },
+  {
+   "pair": 685,
+   "a": {
+    "thingi_id": 960066,
+    "faces": 172918
+   },
+   "b": {
+    "thingi_id": 99275,
+    "faces": 134206
+   }
+  },
+  {
+   "pair": 686,
+   "a": {
+    "thingi_id": 133079,
+    "faces": 262560
+   },
+   "b": {
+    "thingi_id": 65942,
+    "faces": 754688
+   }
+  },
+  {
+   "pair": 687,
+   "a": {
+    "thingi_id": 461111,
+    "faces": 153248
+   },
+   "b": {
+    "thingi_id": 1150177,
+    "faces": 292564
+   }
+  },
+  {
+   "pair": 688,
+   "a": {
+    "thingi_id": 87689,
+    "faces": 256412
+   },
+   "b": {
+    "thingi_id": 848343,
+    "faces": 241154
+   }
+  },
+  {
+   "pair": 689,
+   "a": {
+    "thingi_id": 99270,
+    "faces": 134142
+   },
+   "b": {
+    "thingi_id": 169526,
+    "faces": 129712
+   }
+  },
+  {
+   "pair": 690,
+   "a": {
+    "thingi_id": 472046,
+    "faces": 127710
+   },
+   "b": {
+    "thingi_id": 135062,
+    "faces": 132468
+   }
+  },
+  {
+   "pair": 691,
+   "a": {
+    "thingi_id": 551075,
+    "faces": 153456
+   },
+   "b": {
+    "thingi_id": 100831,
+    "faces": 135648
+   }
+  },
+  {
+   "pair": 692,
+   "a": {
+    "thingi_id": 82392,
+    "faces": 194596
+   },
+   "b": {
+    "thingi_id": 135062,
+    "faces": 132468
+   }
+  },
+  {
+   "pair": 693,
+   "a": {
+    "thingi_id": 425600,
+    "faces": 103290
+   },
+   "b": {
+    "thingi_id": 92116,
+    "faces": 119616
+   }
+  },
+  {
+   "pair": 694,
+   "a": {
+    "thingi_id": 623170,
+    "faces": 109346
+   },
+   "b": {
+    "thingi_id": 548875,
+    "faces": 133414
+   }
+  },
+  {
+   "pair": 695,
+   "a": {
+    "thingi_id": 686056,
+    "faces": 231664
+   },
+   "b": {
+    "thingi_id": 1258096,
+    "faces": 683776
+   }
+  },
+  {
+   "pair": 696,
+   "a": {
+    "thingi_id": 167113,
+    "faces": 198684
+   },
+   "b": {
+    "thingi_id": 551021,
+    "faces": 348128
+   }
+  },
+  {
+   "pair": 697,
+   "a": {
+    "thingi_id": 133079,
+    "faces": 262560
+   },
+   "b": {
+    "thingi_id": 56630,
+    "faces": 122880
+   }
+  },
+  {
+   "pair": 698,
+   "a": {
+    "thingi_id": 474822,
+    "faces": 112060
+   },
+   "b": {
+    "thingi_id": 56630,
+    "faces": 122880
+   }
+  },
+  {
+   "pair": 699,
+   "a": {
+    "thingi_id": 87687,
+    "faces": 341866
+   },
+   "b": {
+    "thingi_id": 815481,
+    "faces": 182040
+   }
+  },
+  {
+   "pair": 700,
+   "a": {
+    "thingi_id": 76477,
+    "faces": 222836
+   },
+   "b": {
+    "thingi_id": 472054,
+    "faces": 117656
+   }
+  },
+  {
+   "pair": 701,
+   "a": {
+    "thingi_id": 958469,
+    "faces": 265424
+   },
+   "b": {
+    "thingi_id": 488051,
+    "faces": 464898
+   }
+  },
+  {
+   "pair": 702,
+   "a": {
+    "thingi_id": 167109,
+    "faces": 141486
+   },
+   "b": {
+    "thingi_id": 82394,
+    "faces": 114510
+   }
+  },
+  {
+   "pair": 703,
+   "a": {
+    "thingi_id": 135062,
+    "faces": 132468
+   },
+   "b": {
+    "thingi_id": 461115,
+    "faces": 821952
+   }
+  },
+  {
+   "pair": 704,
+   "a": {
+    "thingi_id": 1255206,
+    "faces": 938940
+   },
+   "b": {
+    "thingi_id": 518082,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 705,
+   "a": {
+    "thingi_id": 472045,
+    "faces": 133012
+   },
+   "b": {
+    "thingi_id": 372056,
+    "faces": 498974
+   }
+  },
+  {
+   "pair": 706,
+   "a": {
+    "thingi_id": 167109,
+    "faces": 141486
+   },
+   "b": {
+    "thingi_id": 82664,
+    "faces": 104488
+   }
+  },
+  {
+   "pair": 707,
+   "a": {
+    "thingi_id": 518085,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 844209,
+    "faces": 239034
+   }
+  },
+  {
+   "pair": 708,
+   "a": {
+    "thingi_id": 815481,
+    "faces": 182040
+   },
+   "b": {
+    "thingi_id": 1717684,
+    "faces": 350328
+   }
+  },
+  {
+   "pair": 709,
+   "a": {
+    "thingi_id": 99270,
+    "faces": 134142
+   },
+   "b": {
+    "thingi_id": 762584,
+    "faces": 163142
+   }
+  },
+  {
+   "pair": 710,
+   "a": {
+    "thingi_id": 488048,
+    "faces": 276432
+   },
+   "b": {
+    "thingi_id": 815474,
+    "faces": 123416
+   }
+  },
+  {
+   "pair": 711,
+   "a": {
+    "thingi_id": 838003,
+    "faces": 132638
+   },
+   "b": {
+    "thingi_id": 132448,
+    "faces": 171742
+   }
+  },
+  {
+   "pair": 712,
+   "a": {
+    "thingi_id": 601647,
+    "faces": 231938
+   },
+   "b": {
+    "thingi_id": 472046,
+    "faces": 127710
+   }
+  },
+  {
+   "pair": 713,
+   "a": {
+    "thingi_id": 82536,
+    "faces": 144024
+   },
+   "b": {
+    "thingi_id": 472046,
+    "faces": 127710
+   }
+  },
+  {
+   "pair": 714,
+   "a": {
+    "thingi_id": 1706466,
+    "faces": 140124
+   },
+   "b": {
+    "thingi_id": 252632,
+    "faces": 455232
+   }
+  },
+  {
+   "pair": 715,
+   "a": {
+    "thingi_id": 471990,
+    "faces": 103860
+   },
+   "b": {
+    "thingi_id": 518090,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 716,
+   "a": {
+    "thingi_id": 1172870,
+    "faces": 370480
+   },
+   "b": {
+    "thingi_id": 601644,
+    "faces": 189994
+   }
+  },
+  {
+   "pair": 717,
+   "a": {
+    "thingi_id": 441709,
+    "faces": 102680
+   },
+   "b": {
+    "thingi_id": 425601,
+    "faces": 102978
+   }
+  },
+  {
+   "pair": 718,
+   "a": {
+    "thingi_id": 518033,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 399562,
+    "faces": 115248
+   }
+  },
+  {
+   "pair": 719,
+   "a": {
+    "thingi_id": 1717684,
+    "faces": 350328
+   },
+   "b": {
+    "thingi_id": 353686,
+    "faces": 173894
+   }
+  },
+  {
+   "pair": 720,
+   "a": {
+    "thingi_id": 238639,
+    "faces": 259172
+   },
+   "b": {
+    "thingi_id": 1150177,
+    "faces": 292564
+   }
+  },
+  {
+   "pair": 721,
+   "a": {
+    "thingi_id": 518093,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 472077,
+    "faces": 119306
+   }
+  },
+  {
+   "pair": 722,
+   "a": {
+    "thingi_id": 762584,
+    "faces": 163142
+   },
+   "b": {
+    "thingi_id": 960066,
+    "faces": 172918
+   }
+  },
+  {
+   "pair": 723,
+   "a": {
+    "thingi_id": 92116,
+    "faces": 119616
+   },
+   "b": {
+    "thingi_id": 135062,
+    "faces": 132468
+   }
+  },
+  {
+   "pair": 724,
+   "a": {
+    "thingi_id": 518084,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 151376,
+    "faces": 464306
+   }
+  },
+  {
+   "pair": 725,
+   "a": {
+    "thingi_id": 518029,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 601645,
+    "faces": 189994
+   }
+  },
+  {
+   "pair": 726,
+   "a": {
+    "thingi_id": 133078,
+    "faces": 259320
+   },
+   "b": {
+    "thingi_id": 399562,
+    "faces": 115248
+   }
+  },
+  {
+   "pair": 727,
+   "a": {
+    "thingi_id": 133079,
+    "faces": 262560
+   },
+   "b": {
+    "thingi_id": 99267,
+    "faces": 106776
+   }
+  },
+  {
+   "pair": 728,
+   "a": {
+    "thingi_id": 472043,
+    "faces": 129714
+   },
+   "b": {
+    "thingi_id": 762584,
+    "faces": 163142
+   }
+  },
+  {
+   "pair": 729,
+   "a": {
+    "thingi_id": 827773,
+    "faces": 204406
+   },
+   "b": {
+    "thingi_id": 518084,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 730,
+   "a": {
+    "thingi_id": 518032,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 461111,
+    "faces": 153248
+   }
+  },
+  {
+   "pair": 731,
+   "a": {
+    "thingi_id": 399564,
+    "faces": 138264
+   },
+   "b": {
+    "thingi_id": 221686,
+    "faces": 182690
+   }
+  },
+  {
+   "pair": 732,
+   "a": {
+    "thingi_id": 796150,
+    "faces": 126080
+   },
+   "b": {
+    "thingi_id": 257178,
+    "faces": 255508
+   }
+  },
+  {
+   "pair": 733,
+   "a": {
+    "thingi_id": 368149,
+    "faces": 122656
+   },
+   "b": {
+    "thingi_id": 257178,
+    "faces": 255508
+   }
+  },
+  {
+   "pair": 734,
+   "a": {
+    "thingi_id": 99269,
+    "faces": 287716
+   },
+   "b": {
+    "thingi_id": 68380,
+    "faces": 104640
+   }
+  },
+  {
+   "pair": 735,
+   "a": {
+    "thingi_id": 151376,
+    "faces": 464306
+   },
+   "b": {
+    "thingi_id": 815484,
+    "faces": 679866
+   }
+  },
+  {
+   "pair": 736,
+   "a": {
+    "thingi_id": 518086,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 601644,
+    "faces": 189994
+   }
+  },
+  {
+   "pair": 737,
+   "a": {
+    "thingi_id": 1335002,
+    "faces": 187740
+   },
+   "b": {
+    "thingi_id": 56630,
+    "faces": 122880
+   }
+  },
+  {
+   "pair": 738,
+   "a": {
+    "thingi_id": 815481,
+    "faces": 182040
+   },
+   "b": {
+    "thingi_id": 518091,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 739,
+   "a": {
+    "thingi_id": 1258096,
+    "faces": 683776
+   },
+   "b": {
+    "thingi_id": 96132,
+    "faces": 118994
+   }
+  },
+  {
+   "pair": 740,
+   "a": {
+    "thingi_id": 461112,
+    "faces": 805376
+   },
+   "b": {
+    "thingi_id": 472069,
+    "faces": 122490
+   }
+  },
+  {
+   "pair": 741,
+   "a": {
+    "thingi_id": 59333,
+    "faces": 196608
+   },
+   "b": {
+    "thingi_id": 796150,
+    "faces": 126080
+   }
+  },
+  {
+   "pair": 742,
+   "a": {
+    "thingi_id": 472022,
+    "faces": 130126
+   },
+   "b": {
+    "thingi_id": 793565,
+    "faces": 320978
+   }
+  },
+  {
+   "pair": 743,
+   "a": {
+    "thingi_id": 353686,
+    "faces": 173894
+   },
+   "b": {
+    "thingi_id": 518033,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 744,
+   "a": {
+    "thingi_id": 518093,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 472052,
+    "faces": 132308
+   }
+  },
+  {
+   "pair": 745,
+   "a": {
+    "thingi_id": 1411700,
+    "faces": 350000
+   },
+   "b": {
+    "thingi_id": 54725,
+    "faces": 138380
+   }
+  },
+  {
+   "pair": 746,
+   "a": {
+    "thingi_id": 331105,
+    "faces": 271354
+   },
+   "b": {
+    "thingi_id": 59333,
+    "faces": 196608
+   }
+  },
+  {
+   "pair": 747,
+   "a": {
+    "thingi_id": 257178,
+    "faces": 255508
+   },
+   "b": {
+    "thingi_id": 848343,
+    "faces": 241154
+   }
+  },
+  {
+   "pair": 748,
+   "a": {
+    "thingi_id": 167064,
+    "faces": 110064
+   },
+   "b": {
+    "thingi_id": 623172,
+    "faces": 109346
+   }
+  },
+  {
+   "pair": 749,
+   "a": {
+    "thingi_id": 1706466,
+    "faces": 140124
+   },
+   "b": {
+    "thingi_id": 270940,
+    "faces": 126202
+   }
+  },
+  {
+   "pair": 750,
+   "a": {
+    "thingi_id": 1356652,
+    "faces": 185576
+   },
+   "b": {
+    "thingi_id": 815474,
+    "faces": 123416
+   }
+  },
+  {
+   "pair": 751,
+   "a": {
+    "thingi_id": 518088,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 1255206,
+    "faces": 938940
+   }
+  },
+  {
+   "pair": 752,
+   "a": {
+    "thingi_id": 425601,
+    "faces": 102978
+   },
+   "b": {
+    "thingi_id": 99272,
+    "faces": 134238
+   }
+  },
+  {
+   "pair": 753,
+   "a": {
+    "thingi_id": 958469,
+    "faces": 265424
+   },
+   "b": {
+    "thingi_id": 518031,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 754,
+   "a": {
+    "thingi_id": 518084,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 353686,
+    "faces": 173894
+   }
+  },
+  {
+   "pair": 755,
+   "a": {
+    "thingi_id": 762601,
+    "faces": 154802
+   },
+   "b": {
+    "thingi_id": 623170,
+    "faces": 109346
+   }
+  },
+  {
+   "pair": 756,
+   "a": {
+    "thingi_id": 99275,
+    "faces": 134206
+   },
+   "b": {
+    "thingi_id": 762586,
+    "faces": 175524
+   }
+  },
+  {
+   "pair": 757,
+   "a": {
+    "thingi_id": 601646,
+    "faces": 231938
+   },
+   "b": {
+    "thingi_id": 518032,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 758,
+   "a": {
+    "thingi_id": 221686,
+    "faces": 182690
+   },
+   "b": {
+    "thingi_id": 815474,
+    "faces": 123416
+   }
+  },
+  {
+   "pair": 759,
+   "a": {
+    "thingi_id": 844209,
+    "faces": 239034
+   },
+   "b": {
+    "thingi_id": 59333,
+    "faces": 196608
+   }
+  },
+  {
+   "pair": 760,
+   "a": {
+    "thingi_id": 518039,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 518088,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 761,
+   "a": {
+    "thingi_id": 472820,
+    "faces": 124874
+   },
+   "b": {
+    "thingi_id": 518029,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 762,
+   "a": {
+    "thingi_id": 518031,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 1717684,
+    "faces": 350328
+   }
+  },
+  {
+   "pair": 763,
+   "a": {
+    "thingi_id": 518084,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 763718,
+    "faces": 218776
+   }
+  },
+  {
+   "pair": 764,
+   "a": {
+    "thingi_id": 461115,
+    "faces": 821952
+   },
+   "b": {
+    "thingi_id": 827773,
+    "faces": 204406
+   }
+  },
+  {
+   "pair": 765,
+   "a": {
+    "thingi_id": 551074,
+    "faces": 204202
+   },
+   "b": {
+    "thingi_id": 56630,
+    "faces": 122880
+   }
+  },
+  {
+   "pair": 766,
+   "a": {
+    "thingi_id": 88053,
+    "faces": 153840
+   },
+   "b": {
+    "thingi_id": 518033,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 767,
+   "a": {
+    "thingi_id": 518035,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 82394,
+    "faces": 114510
+   }
+  },
+  {
+   "pair": 768,
+   "a": {
+    "thingi_id": 601645,
+    "faces": 189994
+   },
+   "b": {
+    "thingi_id": 399564,
+    "faces": 138264
+   }
+  },
+  {
+   "pair": 769,
+   "a": {
+    "thingi_id": 399563,
+    "faces": 100376
+   },
+   "b": {
+    "thingi_id": 518079,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 770,
+   "a": {
+    "thingi_id": 399564,
+    "faces": 138264
+   },
+   "b": {
+    "thingi_id": 354371,
+    "faces": 257936
+   }
+  },
+  {
+   "pair": 771,
+   "a": {
+    "thingi_id": 1063863,
+    "faces": 168258
+   },
+   "b": {
+    "thingi_id": 1258096,
+    "faces": 683776
+   }
+  },
+  {
+   "pair": 772,
+   "a": {
+    "thingi_id": 522979,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 83416,
+    "faces": 226080
+   }
+  },
+  {
+   "pair": 773,
+   "a": {
+    "thingi_id": 212138,
+    "faces": 111022
+   },
+   "b": {
+    "thingi_id": 167109,
+    "faces": 141486
+   }
+  },
+  {
+   "pair": 774,
+   "a": {
+    "thingi_id": 838000,
+    "faces": 109522
+   },
+   "b": {
+    "thingi_id": 518084,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 775,
+   "a": {
+    "thingi_id": 252614,
+    "faces": 118656
+   },
+   "b": {
+    "thingi_id": 94059,
+    "faces": 230744
+   }
+  },
+  {
+   "pair": 776,
+   "a": {
+    "thingi_id": 1396899,
+    "faces": 135314
+   },
+   "b": {
+    "thingi_id": 827773,
+    "faces": 204406
+   }
+  },
+  {
+   "pair": 777,
+   "a": {
+    "thingi_id": 133078,
+    "faces": 259320
+   },
+   "b": {
+    "thingi_id": 548865,
+    "faces": 140574
+   }
+  },
+  {
+   "pair": 778,
+   "a": {
+    "thingi_id": 518037,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 399563,
+    "faces": 100376
+   }
+  },
+  {
+   "pair": 779,
+   "a": {
+    "thingi_id": 72947,
+    "faces": 100368
+   },
+   "b": {
+    "thingi_id": 960066,
+    "faces": 172918
+   }
+  },
+  {
+   "pair": 780,
+   "a": {
+    "thingi_id": 384373,
+    "faces": 126446
+   },
+   "b": {
+    "thingi_id": 101337,
+    "faces": 177312
+   }
+  },
+  {
+   "pair": 781,
+   "a": {
+    "thingi_id": 387222,
+    "faces": 252342
+   },
+   "b": {
+    "thingi_id": 837999,
+    "faces": 132406
+   }
+  },
+  {
+   "pair": 782,
+   "a": {
+    "thingi_id": 518038,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 518085,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 783,
+   "a": {
+    "thingi_id": 313444,
+    "faces": 221416
+   },
+   "b": {
+    "thingi_id": 1717685,
+    "faces": 792898
+   }
+  },
+  {
+   "pair": 784,
+   "a": {
+    "thingi_id": 99269,
+    "faces": 287716
+   },
+   "b": {
+    "thingi_id": 518084,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 785,
+   "a": {
+    "thingi_id": 399566,
+    "faces": 191706
+   },
+   "b": {
+    "thingi_id": 353686,
+    "faces": 173894
+   }
+  },
+  {
+   "pair": 786,
+   "a": {
+    "thingi_id": 99275,
+    "faces": 134206
+   },
+   "b": {
+    "thingi_id": 86164,
+    "faces": 188984
+   }
+  },
+  {
+   "pair": 787,
+   "a": {
+    "thingi_id": 789796,
+    "faces": 169380
+   },
+   "b": {
+    "thingi_id": 461109,
+    "faces": 156064
+   }
+  },
+  {
+   "pair": 788,
+   "a": {
+    "thingi_id": 601645,
+    "faces": 189994
+   },
+   "b": {
+    "thingi_id": 1335002,
+    "faces": 187740
+   }
+  },
+  {
+   "pair": 789,
+   "a": {
+    "thingi_id": 119830,
+    "faces": 130040
+   },
+   "b": {
+    "thingi_id": 97686,
+    "faces": 243518
+   }
+  },
+  {
+   "pair": 790,
+   "a": {
+    "thingi_id": 384373,
+    "faces": 126446
+   },
+   "b": {
+    "thingi_id": 815483,
+    "faces": 363862
+   }
+  },
+  {
+   "pair": 791,
+   "a": {
+    "thingi_id": 518087,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 1063863,
+    "faces": 168258
+   }
+  },
+  {
+   "pair": 792,
+   "a": {
+    "thingi_id": 99269,
+    "faces": 287716
+   },
+   "b": {
+    "thingi_id": 1396899,
+    "faces": 135314
+   }
+  },
+  {
+   "pair": 793,
+   "a": {
+    "thingi_id": 82536,
+    "faces": 144024
+   },
+   "b": {
+    "thingi_id": 762584,
+    "faces": 163142
+   }
+  },
+  {
+   "pair": 794,
+   "a": {
+    "thingi_id": 518031,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 789796,
+    "faces": 169380
+   }
+  },
+  {
+   "pair": 795,
+   "a": {
+    "thingi_id": 1411700,
+    "faces": 350000
+   },
+   "b": {
+    "thingi_id": 63785,
+    "faces": 345996
+   }
+  },
+  {
+   "pair": 796,
+   "a": {
+    "thingi_id": 375065,
+    "faces": 242390
+   },
+   "b": {
+    "thingi_id": 518037,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 797,
+   "a": {
+    "thingi_id": 472173,
+    "faces": 111642
+   },
+   "b": {
+    "thingi_id": 815481,
+    "faces": 182040
+   }
+  },
+  {
+   "pair": 798,
+   "a": {
+    "thingi_id": 488051,
+    "faces": 464898
+   },
+   "b": {
+    "thingi_id": 518095,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 799,
+   "a": {
+    "thingi_id": 87688,
+    "faces": 256428
+   },
+   "b": {
+    "thingi_id": 151376,
+    "faces": 464306
+   }
+  },
+  {
+   "pair": 800,
+   "a": {
+    "thingi_id": 471989,
+    "faces": 142994
+   },
+   "b": {
+    "thingi_id": 169526,
+    "faces": 129712
+   }
+  },
+  {
+   "pair": 801,
+   "a": {
+    "thingi_id": 87687,
+    "faces": 341866
+   },
+   "b": {
+    "thingi_id": 472022,
+    "faces": 130126
+   }
+  },
+  {
+   "pair": 802,
+   "a": {
+    "thingi_id": 56630,
+    "faces": 122880
+   },
+   "b": {
+    "thingi_id": 838000,
+    "faces": 109522
+   }
+  },
+  {
+   "pair": 803,
+   "a": {
+    "thingi_id": 87688,
+    "faces": 256428
+   },
+   "b": {
+    "thingi_id": 1717684,
+    "faces": 350328
+   }
+  },
+  {
+   "pair": 804,
+   "a": {
+    "thingi_id": 119829,
+    "faces": 126756
+   },
+   "b": {
+    "thingi_id": 815485,
+    "faces": 509802
+   }
+  },
+  {
+   "pair": 805,
+   "a": {
+    "thingi_id": 119830,
+    "faces": 130040
+   },
+   "b": {
+    "thingi_id": 838003,
+    "faces": 132638
+   }
+  },
+  {
+   "pair": 806,
+   "a": {
+    "thingi_id": 796150,
+    "faces": 126080
+   },
+   "b": {
+    "thingi_id": 472077,
+    "faces": 119306
+   }
+  },
+  {
+   "pair": 807,
+   "a": {
+    "thingi_id": 548875,
+    "faces": 133414
+   },
+   "b": {
+    "thingi_id": 762586,
+    "faces": 175524
+   }
+  },
+  {
+   "pair": 808,
+   "a": {
+    "thingi_id": 1063860,
+    "faces": 226730
+   },
+   "b": {
+    "thingi_id": 461112,
+    "faces": 805376
+   }
+  },
+  {
+   "pair": 809,
+   "a": {
+    "thingi_id": 815481,
+    "faces": 182040
+   },
+   "b": {
+    "thingi_id": 518035,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 810,
+   "a": {
+    "thingi_id": 815481,
+    "faces": 182040
+   },
+   "b": {
+    "thingi_id": 372055,
+    "faces": 479744
+   }
+  },
+  {
+   "pair": 811,
+   "a": {
+    "thingi_id": 1335002,
+    "faces": 187740
+   },
+   "b": {
+    "thingi_id": 368149,
+    "faces": 122656
+   }
+  },
+  {
+   "pair": 812,
+   "a": {
+    "thingi_id": 518032,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 548865,
+    "faces": 140574
+   }
+  },
+  {
+   "pair": 813,
+   "a": {
+    "thingi_id": 518089,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 133078,
+    "faces": 259320
+   }
+  },
+  {
+   "pair": 814,
+   "a": {
+    "thingi_id": 99267,
+    "faces": 106776
+   },
+   "b": {
+    "thingi_id": 257178,
+    "faces": 255508
+   }
+  },
+  {
+   "pair": 815,
+   "a": {
+    "thingi_id": 838000,
+    "faces": 109522
+   },
+   "b": {
+    "thingi_id": 804297,
+    "faces": 161822
+   }
+  },
+  {
+   "pair": 816,
+   "a": {
+    "thingi_id": 762584,
+    "faces": 163142
+   },
+   "b": {
+    "thingi_id": 100831,
+    "faces": 135648
+   }
+  },
+  {
+   "pair": 817,
+   "a": {
+    "thingi_id": 518095,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 518033,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 818,
+   "a": {
+    "thingi_id": 83416,
+    "faces": 226080
+   },
+   "b": {
+    "thingi_id": 518036,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 819,
+   "a": {
+    "thingi_id": 366255,
+    "faces": 102300
+   },
+   "b": {
+    "thingi_id": 257178,
+    "faces": 255508
+   }
+  },
+  {
+   "pair": 820,
+   "a": {
+    "thingi_id": 82664,
+    "faces": 104488
+   },
+   "b": {
+    "thingi_id": 119829,
+    "faces": 126756
+   }
+  },
+  {
+   "pair": 821,
+   "a": {
+    "thingi_id": 518079,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 848343,
+    "faces": 241154
+   }
+  },
+  {
+   "pair": 822,
+   "a": {
+    "thingi_id": 82663,
+    "faces": 104148
+   },
+   "b": {
+    "thingi_id": 270940,
+    "faces": 126202
+   }
+  },
+  {
+   "pair": 823,
+   "a": {
+    "thingi_id": 399563,
+    "faces": 100376
+   },
+   "b": {
+    "thingi_id": 167064,
+    "faces": 110064
+   }
+  },
+  {
+   "pair": 824,
+   "a": {
+    "thingi_id": 518087,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 133078,
+    "faces": 259320
+   }
+  },
+  {
+   "pair": 825,
+   "a": {
+    "thingi_id": 461115,
+    "faces": 821952
+   },
+   "b": {
+    "thingi_id": 522979,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 826,
+   "a": {
+    "thingi_id": 518091,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 82392,
+    "faces": 194596
+   }
+  },
+  {
+   "pair": 827,
+   "a": {
+    "thingi_id": 425600,
+    "faces": 103290
+   },
+   "b": {
+    "thingi_id": 88053,
+    "faces": 153840
+   }
+  },
+  {
+   "pair": 828,
+   "a": {
+    "thingi_id": 82392,
+    "faces": 194596
+   },
+   "b": {
+    "thingi_id": 132448,
+    "faces": 171742
+   }
+  },
+  {
+   "pair": 829,
+   "a": {
+    "thingi_id": 101337,
+    "faces": 177312
+   },
+   "b": {
+    "thingi_id": 518079,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 830,
+   "a": {
+    "thingi_id": 87689,
+    "faces": 256412
+   },
+   "b": {
+    "thingi_id": 837999,
+    "faces": 132406
+   }
+  },
+  {
+   "pair": 831,
+   "a": {
+    "thingi_id": 368149,
+    "faces": 122656
+   },
+   "b": {
+    "thingi_id": 815484,
+    "faces": 679866
+   }
+  },
+  {
+   "pair": 832,
+   "a": {
+    "thingi_id": 368149,
+    "faces": 122656
+   },
+   "b": {
+    "thingi_id": 83416,
+    "faces": 226080
+   }
+  },
+  {
+   "pair": 833,
+   "a": {
+    "thingi_id": 519507,
+    "faces": 101724
+   },
+   "b": {
+    "thingi_id": 441708,
+    "faces": 112402
+   }
+  },
+  {
+   "pair": 834,
+   "a": {
+    "thingi_id": 372056,
+    "faces": 498974
+   },
+   "b": {
+    "thingi_id": 548875,
+    "faces": 133414
+   }
+  },
+  {
+   "pair": 835,
+   "a": {
+    "thingi_id": 1411700,
+    "faces": 350000
+   },
+   "b": {
+    "thingi_id": 688366,
+    "faces": 178512
+   }
+  },
+  {
+   "pair": 836,
+   "a": {
+    "thingi_id": 815483,
+    "faces": 363862
+   },
+   "b": {
+    "thingi_id": 815484,
+    "faces": 679866
+   }
+  },
+  {
+   "pair": 837,
+   "a": {
+    "thingi_id": 133079,
+    "faces": 262560
+   },
+   "b": {
+    "thingi_id": 441708,
+    "faces": 112402
+   }
+  },
+  {
+   "pair": 838,
+   "a": {
+    "thingi_id": 518094,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 496673,
+    "faces": 103580
+   }
+  },
+  {
+   "pair": 839,
+   "a": {
+    "thingi_id": 518090,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 372055,
+    "faces": 479744
+   }
+  },
+  {
+   "pair": 840,
+   "a": {
+    "thingi_id": 762584,
+    "faces": 163142
+   },
+   "b": {
+    "thingi_id": 472022,
+    "faces": 130126
+   }
+  },
+  {
+   "pair": 841,
+   "a": {
+    "thingi_id": 82394,
+    "faces": 114510
+   },
+   "b": {
+    "thingi_id": 461111,
+    "faces": 153248
+   }
+  },
+  {
+   "pair": 842,
+   "a": {
+    "thingi_id": 496673,
+    "faces": 103580
+   },
+   "b": {
+    "thingi_id": 518089,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 843,
+   "a": {
+    "thingi_id": 54725,
+    "faces": 138380
+   },
+   "b": {
+    "thingi_id": 472820,
+    "faces": 124874
+   }
+  },
+  {
+   "pair": 844,
+   "a": {
+    "thingi_id": 601646,
+    "faces": 231938
+   },
+   "b": {
+    "thingi_id": 1356652,
+    "faces": 185576
+   }
+  },
+  {
+   "pair": 845,
+   "a": {
+    "thingi_id": 688367,
+    "faces": 276300
+   },
+   "b": {
+    "thingi_id": 472077,
+    "faces": 119306
+   }
+  },
+  {
+   "pair": 846,
+   "a": {
+    "thingi_id": 133079,
+    "faces": 262560
+   },
+   "b": {
+    "thingi_id": 548871,
+    "faces": 133382
+   }
+  },
+  {
+   "pair": 847,
+   "a": {
+    "thingi_id": 1063860,
+    "faces": 226730
+   },
+   "b": {
+    "thingi_id": 518030,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 848,
+   "a": {
+    "thingi_id": 1411687,
+    "faces": 200000
+   },
+   "b": {
+    "thingi_id": 133078,
+    "faces": 259320
+   }
+  },
+  {
+   "pair": 849,
+   "a": {
+    "thingi_id": 472077,
+    "faces": 119306
+   },
+   "b": {
+    "thingi_id": 68380,
+    "faces": 104640
+   }
+  },
+  {
+   "pair": 850,
+   "a": {
+    "thingi_id": 212138,
+    "faces": 111022
+   },
+   "b": {
+    "thingi_id": 252640,
+    "faces": 455232
+   }
+  },
+  {
+   "pair": 851,
+   "a": {
+    "thingi_id": 472022,
+    "faces": 130126
+   },
+   "b": {
+    "thingi_id": 94059,
+    "faces": 230744
+   }
+  },
+  {
+   "pair": 852,
+   "a": {
+    "thingi_id": 623170,
+    "faces": 109346
+   },
+   "b": {
+    "thingi_id": 518031,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 853,
+   "a": {
+    "thingi_id": 1717685,
+    "faces": 792898
+   },
+   "b": {
+    "thingi_id": 398259,
+    "faces": 587688
+   }
+  },
+  {
+   "pair": 854,
+   "a": {
+    "thingi_id": 789796,
+    "faces": 169380
+   },
+   "b": {
+    "thingi_id": 1150177,
+    "faces": 292564
+   }
+  },
+  {
+   "pair": 855,
+   "a": {
+    "thingi_id": 472046,
+    "faces": 127710
+   },
+   "b": {
+    "thingi_id": 518087,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 856,
+   "a": {
+    "thingi_id": 92116,
+    "faces": 119616
+   },
+   "b": {
+    "thingi_id": 522979,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 857,
+   "a": {
+    "thingi_id": 1258096,
+    "faces": 683776
+   },
+   "b": {
+    "thingi_id": 1396899,
+    "faces": 135314
+   }
+  },
+  {
+   "pair": 858,
+   "a": {
+    "thingi_id": 471989,
+    "faces": 142994
+   },
+   "b": {
+    "thingi_id": 1150177,
+    "faces": 292564
+   }
+  },
+  {
+   "pair": 859,
+   "a": {
+    "thingi_id": 425600,
+    "faces": 103290
+   },
+   "b": {
+    "thingi_id": 472052,
+    "faces": 132308
+   }
+  },
+  {
+   "pair": 860,
+   "a": {
+    "thingi_id": 838001,
+    "faces": 128664
+   },
+   "b": {
+    "thingi_id": 82536,
+    "faces": 144024
+   }
+  },
+  {
+   "pair": 861,
+   "a": {
+    "thingi_id": 387222,
+    "faces": 252342
+   },
+   "b": {
+    "thingi_id": 601644,
+    "faces": 189994
+   }
+  },
+  {
+   "pair": 862,
+   "a": {
+    "thingi_id": 472054,
+    "faces": 117656
+   },
+   "b": {
+    "thingi_id": 87688,
+    "faces": 256428
+   }
+  },
+  {
+   "pair": 863,
+   "a": {
+    "thingi_id": 548865,
+    "faces": 140574
+   },
+   "b": {
+    "thingi_id": 425601,
+    "faces": 102978
+   }
+  },
+  {
+   "pair": 864,
+   "a": {
+    "thingi_id": 848343,
+    "faces": 241154
+   },
+   "b": {
+    "thingi_id": 82536,
+    "faces": 144024
+   }
+  },
+  {
+   "pair": 865,
+   "a": {
+    "thingi_id": 68380,
+    "faces": 104640
+   },
+   "b": {
+    "thingi_id": 762586,
+    "faces": 175524
+   }
+  },
+  {
+   "pair": 866,
+   "a": {
+    "thingi_id": 1063866,
+    "faces": 176752
+   },
+   "b": {
+    "thingi_id": 815485,
+    "faces": 509802
+   }
+  },
+  {
+   "pair": 867,
+   "a": {
+    "thingi_id": 384373,
+    "faces": 126446
+   },
+   "b": {
+    "thingi_id": 518087,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 868,
+   "a": {
+    "thingi_id": 472046,
+    "faces": 127710
+   },
+   "b": {
+    "thingi_id": 827773,
+    "faces": 204406
+   }
+  },
+  {
+   "pair": 869,
+   "a": {
+    "thingi_id": 960066,
+    "faces": 172918
+   },
+   "b": {
+    "thingi_id": 1172870,
+    "faces": 370480
+   }
+  },
+  {
+   "pair": 870,
+   "a": {
+    "thingi_id": 472022,
+    "faces": 130126
+   },
+   "b": {
+    "thingi_id": 100831,
+    "faces": 135648
+   }
+  },
+  {
+   "pair": 871,
+   "a": {
+    "thingi_id": 65904,
+    "faces": 157726
+   },
+   "b": {
+    "thingi_id": 762584,
+    "faces": 163142
+   }
+  },
+  {
+   "pair": 872,
+   "a": {
+    "thingi_id": 366248,
+    "faces": 108656
+   },
+   "b": {
+    "thingi_id": 313444,
+    "faces": 221416
+   }
+  },
+  {
+   "pair": 873,
+   "a": {
+    "thingi_id": 518030,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 601646,
+    "faces": 231938
+   }
+  },
+  {
+   "pair": 874,
+   "a": {
+    "thingi_id": 472077,
+    "faces": 119306
+   },
+   "b": {
+    "thingi_id": 238639,
+    "faces": 259172
+   }
+  },
+  {
+   "pair": 875,
+   "a": {
+    "thingi_id": 87687,
+    "faces": 341866
+   },
+   "b": {
+    "thingi_id": 838003,
+    "faces": 132638
+   }
+  },
+  {
+   "pair": 876,
+   "a": {
+    "thingi_id": 688366,
+    "faces": 178512
+   },
+   "b": {
+    "thingi_id": 82183,
+    "faces": 127816
+   }
+  },
+  {
+   "pair": 877,
+   "a": {
+    "thingi_id": 1063860,
+    "faces": 226730
+   },
+   "b": {
+    "thingi_id": 87687,
+    "faces": 341866
+   }
+  },
+  {
+   "pair": 878,
+   "a": {
+    "thingi_id": 488051,
+    "faces": 464898
+   },
+   "b": {
+    "thingi_id": 252640,
+    "faces": 455232
+   }
+  },
+  {
+   "pair": 879,
+   "a": {
+    "thingi_id": 837999,
+    "faces": 132406
+   },
+   "b": {
+    "thingi_id": 623170,
+    "faces": 109346
+   }
+  },
+  {
+   "pair": 880,
+   "a": {
+    "thingi_id": 496673,
+    "faces": 103580
+   },
+   "b": {
+    "thingi_id": 1063863,
+    "faces": 168258
+   }
+  },
+  {
+   "pair": 881,
+   "a": {
+    "thingi_id": 82536,
+    "faces": 144024
+   },
+   "b": {
+    "thingi_id": 518083,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 882,
+   "a": {
+    "thingi_id": 99267,
+    "faces": 106776
+   },
+   "b": {
+    "thingi_id": 366253,
+    "faces": 102382
+   }
+  },
+  {
+   "pair": 883,
+   "a": {
+    "thingi_id": 472051,
+    "faces": 122682
+   },
+   "b": {
+    "thingi_id": 78481,
+    "faces": 596736
+   }
+  },
+  {
+   "pair": 884,
+   "a": {
+    "thingi_id": 399567,
+    "faces": 130336
+   },
+   "b": {
+    "thingi_id": 551075,
+    "faces": 153456
+   }
+  },
+  {
+   "pair": 885,
+   "a": {
+    "thingi_id": 601644,
+    "faces": 189994
+   },
+   "b": {
+    "thingi_id": 518081,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 886,
+   "a": {
+    "thingi_id": 101337,
+    "faces": 177312
+   },
+   "b": {
+    "thingi_id": 837999,
+    "faces": 132406
+   }
+  },
+  {
+   "pair": 887,
+   "a": {
+    "thingi_id": 252614,
+    "faces": 118656
+   },
+   "b": {
+    "thingi_id": 548865,
+    "faces": 140574
+   }
+  },
+  {
+   "pair": 888,
+   "a": {
+    "thingi_id": 212138,
+    "faces": 111022
+   },
+   "b": {
+    "thingi_id": 56630,
+    "faces": 122880
+   }
+  },
+  {
+   "pair": 889,
+   "a": {
+    "thingi_id": 1396899,
+    "faces": 135314
+   },
+   "b": {
+    "thingi_id": 82394,
+    "faces": 114510
+   }
+  },
+  {
+   "pair": 890,
+   "a": {
+    "thingi_id": 78481,
+    "faces": 596736
+   },
+   "b": {
+    "thingi_id": 601647,
+    "faces": 231938
+   }
+  },
+  {
+   "pair": 891,
+   "a": {
+    "thingi_id": 848343,
+    "faces": 241154
+   },
+   "b": {
+    "thingi_id": 252632,
+    "faces": 455232
+   }
+  },
+  {
+   "pair": 892,
+   "a": {
+    "thingi_id": 623170,
+    "faces": 109346
+   },
+   "b": {
+    "thingi_id": 471989,
+    "faces": 142994
+   }
+  },
+  {
+   "pair": 893,
+   "a": {
+    "thingi_id": 167109,
+    "faces": 141486
+   },
+   "b": {
+    "thingi_id": 518091,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 894,
+   "a": {
+    "thingi_id": 474822,
+    "faces": 112060
+   },
+   "b": {
+    "thingi_id": 331105,
+    "faces": 271354
+   }
+  },
+  {
+   "pair": 895,
+   "a": {
+    "thingi_id": 135066,
+    "faces": 123020
+   },
+   "b": {
+    "thingi_id": 212138,
+    "faces": 111022
+   }
+  },
+  {
+   "pair": 896,
+   "a": {
+    "thingi_id": 472077,
+    "faces": 119306
+   },
+   "b": {
+    "thingi_id": 838001,
+    "faces": 128664
+   }
+  },
+  {
+   "pair": 897,
+   "a": {
+    "thingi_id": 353686,
+    "faces": 173894
+   },
+   "b": {
+    "thingi_id": 59197,
+    "faces": 786432
+   }
+  },
+  {
+   "pair": 898,
+   "a": {
+    "thingi_id": 169526,
+    "faces": 129712
+   },
+   "b": {
+    "thingi_id": 399563,
+    "faces": 100376
+   }
+  },
+  {
+   "pair": 899,
+   "a": {
+    "thingi_id": 94059,
+    "faces": 230744
+   },
+   "b": {
+    "thingi_id": 92116,
+    "faces": 119616
+   }
+  },
+  {
+   "pair": 900,
+   "a": {
+    "thingi_id": 815484,
+    "faces": 679866
+   },
+   "b": {
+    "thingi_id": 623170,
+    "faces": 109346
+   }
+  },
+  {
+   "pair": 901,
+   "a": {
+    "thingi_id": 518093,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 76477,
+    "faces": 222836
+   }
+  },
+  {
+   "pair": 902,
+   "a": {
+    "thingi_id": 366255,
+    "faces": 102300
+   },
+   "b": {
+    "thingi_id": 82183,
+    "faces": 127816
+   }
+  },
+  {
+   "pair": 903,
+   "a": {
+    "thingi_id": 548871,
+    "faces": 133382
+   },
+   "b": {
+    "thingi_id": 82663,
+    "faces": 104148
+   }
+  },
+  {
+   "pair": 904,
+   "a": {
+    "thingi_id": 56630,
+    "faces": 122880
+   },
+   "b": {
+    "thingi_id": 151360,
+    "faces": 464306
+   }
+  },
+  {
+   "pair": 905,
+   "a": {
+    "thingi_id": 99270,
+    "faces": 134142
+   },
+   "b": {
+    "thingi_id": 151360,
+    "faces": 464306
+   }
+  },
+  {
+   "pair": 906,
+   "a": {
+    "thingi_id": 472069,
+    "faces": 122490
+   },
+   "b": {
+    "thingi_id": 804297,
+    "faces": 161822
+   }
+  },
+  {
+   "pair": 907,
+   "a": {
+    "thingi_id": 472051,
+    "faces": 122682
+   },
+   "b": {
+    "thingi_id": 472820,
+    "faces": 124874
+   }
+  },
+  {
+   "pair": 908,
+   "a": {
+    "thingi_id": 354371,
+    "faces": 257936
+   },
+   "b": {
+    "thingi_id": 844209,
+    "faces": 239034
+   }
+  },
+  {
+   "pair": 909,
+   "a": {
+    "thingi_id": 472022,
+    "faces": 130126
+   },
+   "b": {
+    "thingi_id": 238639,
+    "faces": 259172
+   }
+  },
+  {
+   "pair": 910,
+   "a": {
+    "thingi_id": 238639,
+    "faces": 259172
+   },
+   "b": {
+    "thingi_id": 688367,
+    "faces": 276300
+   }
+  },
+  {
+   "pair": 911,
+   "a": {
+    "thingi_id": 518036,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 518095,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 912,
+   "a": {
+    "thingi_id": 472820,
+    "faces": 124874
+   },
+   "b": {
+    "thingi_id": 472046,
+    "faces": 127710
+   }
+  },
+  {
+   "pair": 913,
+   "a": {
+    "thingi_id": 461110,
+    "faces": 146656
+   },
+   "b": {
+    "thingi_id": 601646,
+    "faces": 231938
+   }
+  },
+  {
+   "pair": 914,
+   "a": {
+    "thingi_id": 518082,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 167109,
+    "faces": 141486
+   }
+  },
+  {
+   "pair": 915,
+   "a": {
+    "thingi_id": 59333,
+    "faces": 196608
+   },
+   "b": {
+    "thingi_id": 488048,
+    "faces": 276432
+   }
+  },
+  {
+   "pair": 916,
+   "a": {
+    "thingi_id": 99275,
+    "faces": 134206
+   },
+   "b": {
+    "thingi_id": 838000,
+    "faces": 109522
+   }
+  },
+  {
+   "pair": 917,
+   "a": {
+    "thingi_id": 1717684,
+    "faces": 350328
+   },
+   "b": {
+    "thingi_id": 82536,
+    "faces": 144024
+   }
+  },
+  {
+   "pair": 918,
+   "a": {
+    "thingi_id": 366248,
+    "faces": 108656
+   },
+   "b": {
+    "thingi_id": 351479,
+    "faces": 159910
+   }
+  },
+  {
+   "pair": 919,
+   "a": {
+    "thingi_id": 94059,
+    "faces": 230744
+   },
+   "b": {
+    "thingi_id": 65942,
+    "faces": 754688
+   }
+  },
+  {
+   "pair": 920,
+   "a": {
+    "thingi_id": 366255,
+    "faces": 102300
+   },
+   "b": {
+    "thingi_id": 1717684,
+    "faces": 350328
+   }
+  },
+  {
+   "pair": 921,
+   "a": {
+    "thingi_id": 472054,
+    "faces": 117656
+   },
+   "b": {
+    "thingi_id": 63785,
+    "faces": 345996
+   }
+  },
+  {
+   "pair": 922,
+   "a": {
+    "thingi_id": 399562,
+    "faces": 115248
+   },
+   "b": {
+    "thingi_id": 399567,
+    "faces": 130336
+   }
+  },
+  {
+   "pair": 923,
+   "a": {
+    "thingi_id": 212138,
+    "faces": 111022
+   },
+   "b": {
+    "thingi_id": 686056,
+    "faces": 231664
+   }
+  },
+  {
+   "pair": 924,
+   "a": {
+    "thingi_id": 551075,
+    "faces": 153456
+   },
+   "b": {
+    "thingi_id": 59333,
+    "faces": 196608
+   }
+  },
+  {
+   "pair": 925,
+   "a": {
+    "thingi_id": 331105,
+    "faces": 271354
+   },
+   "b": {
+    "thingi_id": 762601,
+    "faces": 154802
+   }
+  },
+  {
+   "pair": 926,
+   "a": {
+    "thingi_id": 518030,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 97686,
+    "faces": 243518
+   }
+  },
+  {
+   "pair": 927,
+   "a": {
+    "thingi_id": 1411699,
+    "faces": 116252
+   },
+   "b": {
+    "thingi_id": 270940,
+    "faces": 126202
+   }
+  },
+  {
+   "pair": 928,
+   "a": {
+    "thingi_id": 441709,
+    "faces": 102680
+   },
+   "b": {
+    "thingi_id": 518032,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 929,
+   "a": {
+    "thingi_id": 601646,
+    "faces": 231938
+   },
+   "b": {
+    "thingi_id": 87690,
+    "faces": 256418
+   }
+  },
+  {
+   "pair": 930,
+   "a": {
+    "thingi_id": 518033,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 518080,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 931,
+   "a": {
+    "thingi_id": 601647,
+    "faces": 231938
+   },
+   "b": {
+    "thingi_id": 72947,
+    "faces": 100368
+   }
+  },
+  {
+   "pair": 932,
+   "a": {
+    "thingi_id": 461109,
+    "faces": 156064
+   },
+   "b": {
+    "thingi_id": 65904,
+    "faces": 157726
+   }
+  },
+  {
+   "pair": 933,
+   "a": {
+    "thingi_id": 399563,
+    "faces": 100376
+   },
+   "b": {
+    "thingi_id": 804294,
+    "faces": 235126
+   }
+  },
+  {
+   "pair": 934,
+   "a": {
+    "thingi_id": 59197,
+    "faces": 786432
+   },
+   "b": {
+    "thingi_id": 366255,
+    "faces": 102300
+   }
+  },
+  {
+   "pair": 935,
+   "a": {
+    "thingi_id": 1411699,
+    "faces": 116252
+   },
+   "b": {
+    "thingi_id": 132448,
+    "faces": 171742
+   }
+  },
+  {
+   "pair": 936,
+   "a": {
+    "thingi_id": 1335002,
+    "faces": 187740
+   },
+   "b": {
+    "thingi_id": 425601,
+    "faces": 102978
+   }
+  },
+  {
+   "pair": 937,
+   "a": {
+    "thingi_id": 551075,
+    "faces": 153456
+   },
+   "b": {
+    "thingi_id": 518080,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 938,
+   "a": {
+    "thingi_id": 518091,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 99275,
+    "faces": 134206
+   }
+  },
+  {
+   "pair": 939,
+   "a": {
+    "thingi_id": 1063866,
+    "faces": 176752
+   },
+   "b": {
+    "thingi_id": 133078,
+    "faces": 259320
+   }
+  },
+  {
+   "pair": 940,
+   "a": {
+    "thingi_id": 56630,
+    "faces": 122880
+   },
+   "b": {
+    "thingi_id": 372055,
+    "faces": 479744
+   }
+  },
+  {
+   "pair": 941,
+   "a": {
+    "thingi_id": 601645,
+    "faces": 189994
+   },
+   "b": {
+    "thingi_id": 796150,
+    "faces": 126080
+   }
+  },
+  {
+   "pair": 942,
+   "a": {
+    "thingi_id": 518031,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 366253,
+    "faces": 102382
+   }
+  },
+  {
+   "pair": 943,
+   "a": {
+    "thingi_id": 960066,
+    "faces": 172918
+   },
+   "b": {
+    "thingi_id": 65942,
+    "faces": 754688
+   }
+  },
+  {
+   "pair": 944,
+   "a": {
+    "thingi_id": 88053,
+    "faces": 153840
+   },
+   "b": {
+    "thingi_id": 257178,
+    "faces": 255508
+   }
+  },
+  {
+   "pair": 945,
+   "a": {
+    "thingi_id": 471989,
+    "faces": 142994
+   },
+   "b": {
+    "thingi_id": 471990,
+    "faces": 103860
+   }
+  },
+  {
+   "pair": 946,
+   "a": {
+    "thingi_id": 601647,
+    "faces": 231938
+   },
+   "b": {
+    "thingi_id": 76477,
+    "faces": 222836
+   }
+  },
+  {
+   "pair": 947,
+   "a": {
+    "thingi_id": 474822,
+    "faces": 112060
+   },
+   "b": {
+    "thingi_id": 1063860,
+    "faces": 226730
+   }
+  },
+  {
+   "pair": 948,
+   "a": {
+    "thingi_id": 96132,
+    "faces": 118994
+   },
+   "b": {
+    "thingi_id": 1706475,
+    "faces": 339306
+   }
+  },
+  {
+   "pair": 949,
+   "a": {
+    "thingi_id": 518079,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 518085,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 950,
+   "a": {
+    "thingi_id": 518080,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 100831,
+    "faces": 135648
+   }
+  },
+  {
+   "pair": 951,
+   "a": {
+    "thingi_id": 518032,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 88053,
+    "faces": 153840
+   }
+  },
+  {
+   "pair": 952,
+   "a": {
+    "thingi_id": 99267,
+    "faces": 106776
+   },
+   "b": {
+    "thingi_id": 518030,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 953,
+   "a": {
+    "thingi_id": 623171,
+    "faces": 109346
+   },
+   "b": {
+    "thingi_id": 623170,
+    "faces": 109346
+   }
+  },
+  {
+   "pair": 954,
+   "a": {
+    "thingi_id": 101337,
+    "faces": 177312
+   },
+   "b": {
+    "thingi_id": 398259,
+    "faces": 587688
+   }
+  },
+  {
+   "pair": 955,
+   "a": {
+    "thingi_id": 958469,
+    "faces": 265424
+   },
+   "b": {
+    "thingi_id": 472046,
+    "faces": 127710
+   }
+  },
+  {
+   "pair": 956,
+   "a": {
+    "thingi_id": 518084,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 518090,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 957,
+   "a": {
+    "thingi_id": 366253,
+    "faces": 102382
+   },
+   "b": {
+    "thingi_id": 762584,
+    "faces": 163142
+   }
+  },
+  {
+   "pair": 958,
+   "a": {
+    "thingi_id": 101337,
+    "faces": 177312
+   },
+   "b": {
+    "thingi_id": 1063863,
+    "faces": 168258
+   }
+  },
+  {
+   "pair": 959,
+   "a": {
+    "thingi_id": 375065,
+    "faces": 242390
+   },
+   "b": {
+    "thingi_id": 518087,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 960,
+   "a": {
+    "thingi_id": 472069,
+    "faces": 122490
+   },
+   "b": {
+    "thingi_id": 838001,
+    "faces": 128664
+   }
+  },
+  {
+   "pair": 961,
+   "a": {
+    "thingi_id": 461111,
+    "faces": 153248
+   },
+   "b": {
+    "thingi_id": 518093,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 962,
+   "a": {
+    "thingi_id": 167109,
+    "faces": 141486
+   },
+   "b": {
+    "thingi_id": 518092,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 963,
+   "a": {
+    "thingi_id": 151376,
+    "faces": 464306
+   },
+   "b": {
+    "thingi_id": 804297,
+    "faces": 161822
+   }
+  },
+  {
+   "pair": 964,
+   "a": {
+    "thingi_id": 548871,
+    "faces": 133382
+   },
+   "b": {
+    "thingi_id": 815481,
+    "faces": 182040
+   }
+  },
+  {
+   "pair": 965,
+   "a": {
+    "thingi_id": 387222,
+    "faces": 252342
+   },
+   "b": {
+    "thingi_id": 88053,
+    "faces": 153840
+   }
+  },
+  {
+   "pair": 966,
+   "a": {
+    "thingi_id": 167109,
+    "faces": 141486
+   },
+   "b": {
+    "thingi_id": 1396899,
+    "faces": 135314
+   }
+  },
+  {
+   "pair": 967,
+   "a": {
+    "thingi_id": 135066,
+    "faces": 123020
+   },
+   "b": {
+    "thingi_id": 167064,
+    "faces": 110064
+   }
+  },
+  {
+   "pair": 968,
+   "a": {
+    "thingi_id": 518039,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 519507,
+    "faces": 101724
+   }
+  },
+  {
+   "pair": 969,
+   "a": {
+    "thingi_id": 472077,
+    "faces": 119306
+   },
+   "b": {
+    "thingi_id": 82183,
+    "faces": 127816
+   }
+  },
+  {
+   "pair": 970,
+   "a": {
+    "thingi_id": 686056,
+    "faces": 231664
+   },
+   "b": {
+    "thingi_id": 518081,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 971,
+   "a": {
+    "thingi_id": 551075,
+    "faces": 153456
+   },
+   "b": {
+    "thingi_id": 1150177,
+    "faces": 292564
+   }
+  },
+  {
+   "pair": 972,
+   "a": {
+    "thingi_id": 68215,
+    "faces": 115616
+   },
+   "b": {
+    "thingi_id": 815483,
+    "faces": 363862
+   }
+  },
+  {
+   "pair": 973,
+   "a": {
+    "thingi_id": 151376,
+    "faces": 464306
+   },
+   "b": {
+    "thingi_id": 815483,
+    "faces": 363862
+   }
+  },
+  {
+   "pair": 974,
+   "a": {
+    "thingi_id": 82183,
+    "faces": 127816
+   },
+   "b": {
+    "thingi_id": 518029,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 975,
+   "a": {
+    "thingi_id": 1063863,
+    "faces": 168258
+   },
+   "b": {
+    "thingi_id": 65942,
+    "faces": 754688
+   }
+  },
+  {
+   "pair": 976,
+   "a": {
+    "thingi_id": 169526,
+    "faces": 129712
+   },
+   "b": {
+    "thingi_id": 522979,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 977,
+   "a": {
+    "thingi_id": 76391,
+    "faces": 144546
+   },
+   "b": {
+    "thingi_id": 827773,
+    "faces": 204406
+   }
+  },
+  {
+   "pair": 978,
+   "a": {
+    "thingi_id": 56630,
+    "faces": 122880
+   },
+   "b": {
+    "thingi_id": 68380,
+    "faces": 104640
+   }
+  },
+  {
+   "pair": 979,
+   "a": {
+    "thingi_id": 601645,
+    "faces": 189994
+   },
+   "b": {
+    "thingi_id": 212138,
+    "faces": 111022
+   }
+  },
+  {
+   "pair": 980,
+   "a": {
+    "thingi_id": 522979,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 601647,
+    "faces": 231938
+   }
+  },
+  {
+   "pair": 981,
+   "a": {
+    "thingi_id": 461109,
+    "faces": 156064
+   },
+   "b": {
+    "thingi_id": 815485,
+    "faces": 509802
+   }
+  },
+  {
+   "pair": 982,
+   "a": {
+    "thingi_id": 366248,
+    "faces": 108656
+   },
+   "b": {
+    "thingi_id": 252640,
+    "faces": 455232
+   }
+  },
+  {
+   "pair": 983,
+   "a": {
+    "thingi_id": 316358,
+    "faces": 208216
+   },
+   "b": {
+    "thingi_id": 518082,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 984,
+   "a": {
+    "thingi_id": 472043,
+    "faces": 129714
+   },
+   "b": {
+    "thingi_id": 488051,
+    "faces": 464898
+   }
+  },
+  {
+   "pair": 985,
+   "a": {
+    "thingi_id": 76391,
+    "faces": 144546
+   },
+   "b": {
+    "thingi_id": 88053,
+    "faces": 153840
+   }
+  },
+  {
+   "pair": 986,
+   "a": {
+    "thingi_id": 461109,
+    "faces": 156064
+   },
+   "b": {
+    "thingi_id": 518093,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 987,
+   "a": {
+    "thingi_id": 169526,
+    "faces": 129712
+   },
+   "b": {
+    "thingi_id": 1396899,
+    "faces": 135314
+   }
+  },
+  {
+   "pair": 988,
+   "a": {
+    "thingi_id": 54725,
+    "faces": 138380
+   },
+   "b": {
+    "thingi_id": 252614,
+    "faces": 118656
+   }
+  },
+  {
+   "pair": 989,
+   "a": {
+    "thingi_id": 133078,
+    "faces": 259320
+   },
+   "b": {
+    "thingi_id": 366253,
+    "faces": 102382
+   }
+  },
+  {
+   "pair": 990,
+   "a": {
+    "thingi_id": 1717685,
+    "faces": 792898
+   },
+   "b": {
+    "thingi_id": 518083,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 991,
+   "a": {
+    "thingi_id": 461109,
+    "faces": 156064
+   },
+   "b": {
+    "thingi_id": 522979,
+    "faces": 619008
+   }
+  },
+  {
+   "pair": 992,
+   "a": {
+    "thingi_id": 87690,
+    "faces": 256418
+   },
+   "b": {
+    "thingi_id": 387222,
+    "faces": 252342
+   }
+  },
+  {
+   "pair": 993,
+   "a": {
+    "thingi_id": 441710,
+    "faces": 116374
+   },
+   "b": {
+    "thingi_id": 838000,
+    "faces": 109522
+   }
+  },
+  {
+   "pair": 994,
+   "a": {
+    "thingi_id": 796150,
+    "faces": 126080
+   },
+   "b": {
+    "thingi_id": 472022,
+    "faces": 130126
+   }
+  },
+  {
+   "pair": 995,
+   "a": {
+    "thingi_id": 99275,
+    "faces": 134206
+   },
+   "b": {
+    "thingi_id": 59197,
+    "faces": 786432
+   }
+  },
+  {
+   "pair": 996,
+   "a": {
+    "thingi_id": 804297,
+    "faces": 161822
+   },
+   "b": {
+    "thingi_id": 551075,
+    "faces": 153456
+   }
+  },
+  {
+   "pair": 997,
+   "a": {
+    "thingi_id": 763718,
+    "faces": 218776
+   },
+   "b": {
+    "thingi_id": 461115,
+    "faces": 821952
+   }
+  },
+  {
+   "pair": 998,
+   "a": {
+    "thingi_id": 518079,
+    "faces": 619008
+   },
+   "b": {
+    "thingi_id": 151360,
+    "faces": 464306
+   }
+  },
+  {
+   "pair": 999,
+   "a": {
+    "thingi_id": 1335002,
+    "faces": 187740
+   },
+   "b": {
+    "thingi_id": 472077,
+    "faces": 119306
+   }
+  }
+ ]
+}
