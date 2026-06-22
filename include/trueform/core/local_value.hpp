@@ -12,6 +12,7 @@
 */
 #pragma once
 #include "./cache_aligned_slot.hpp"
+#include "./memory.hpp"
 #include "./views/mapped_range.hpp"
 #include "tbb/task_arena.h" // For tbb::this_task_arena
 #include <vector>           // For std::vector
@@ -123,7 +124,7 @@ private:
   /// @brief Returns a const reference to the current thread's local value.
   auto local() const -> const T & { return _values[get_id()].value; }
 
-  std::vector<core::cache_aligned_slot<T>> _values;
+  tf::core::std_vector<core::cache_aligned_slot<T>> _values;
 };
 
 } // namespace tf

@@ -10,8 +10,10 @@
 *
 * Author: Žiga Sajovic
 */
+#include <trueform/core/memory.hpp>
 #include <trueform/vtk/core/make_vtk_normals.hpp>
 #include <trueform/vtk/core/make_normals.hpp>
+#include <type_traits>
 #include <vtkFloatArray.h>
 
 namespace tf::vtk {
@@ -33,11 +35,13 @@ auto make_vtk_normals(tf::unit_vectors_buffer<float, 3> &&normals)
     -> vtkSmartPointer<vtkFloatArray> {
   auto n = normals.size();
   auto *ptr = normals.data_buffer().release();
+  using ElemT = std::remove_pointer_t<decltype(ptr)>;
 
   auto arr = vtkSmartPointer<vtkFloatArray>::New();
   arr->SetNumberOfComponents(3);
   arr->SetArray(ptr, static_cast<vtkIdType>(3 * n), 0,
-                vtkAbstractArray::VTK_DATA_ARRAY_DELETE);
+                vtkAbstractArray::VTK_DATA_ARRAY_USER_DEFINED);
+  arr->SetArrayFreeFunction(&tf::deallocate<ElemT>);
 
   return arr;
 }

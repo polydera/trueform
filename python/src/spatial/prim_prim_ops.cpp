@@ -24,6 +24,7 @@
 #include <trueform/core/closest_metric_point_pair.hpp>
 #include <trueform/core/distance.hpp>
 #include <trueform/core/intersects.hpp>
+#include <trueform/core/memory.hpp>
 #include <trueform/core/ray_cast.hpp>
 #include <trueform/core/ray_config.hpp>
 #include <trueform/core/views/sequence_range.hpp>
@@ -267,8 +268,8 @@ auto register_prim_prim_ops_impl(nanobind::module_ &m, const char *suffix)
               },
               a, b);
 
-          auto *pt0_data = new RealT[Dims];
-          auto *pt1_data = new RealT[Dims];
+          auto *pt0_data = tf::allocate<RealT>(Dims);
+          auto *pt1_data = tf::allocate<RealT>(Dims);
           for (std::size_t j = 0; j < Dims; ++j) {
             pt0_data[j] = r.first[j];
             pt1_data[j] = r.second[j];

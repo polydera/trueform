@@ -18,6 +18,7 @@
 #include <trueform/core/algorithm/parallel_for_each.hpp>
 #include <trueform/core/area.hpp>
 #include <trueform/core/buffer.hpp>
+#include <trueform/core/memory.hpp>
 #include <trueform/core/normal.hpp>
 #include <trueform/core/views/sequence_range.hpp>
 #include <trueform/geometry/compute_normals.hpp>
@@ -102,14 +103,14 @@ auto register_prim_geometry_ops_impl(nanobind::module_ &m, const char *suffix)
             if (type == prim_type::triangle) {
               auto poly = make_triangle(a);
               auto n = tf::make_normal(poly[0], poly[1], poly[2]);
-              auto *data = new RealT[3];
+              auto *data = tf::allocate<RealT>(3);
               for (std::size_t j = 0; j < 3; ++j)
                 data[j] = n[j];
               return nb::cast(make_numpy_array<nb::shape<3>>(data, {3}));
             } else {
               auto poly = make_polygon(a);
               auto n = tf::make_normal(poly[0], poly[1], poly[2]);
-              auto *data = new RealT[3];
+              auto *data = tf::allocate<RealT>(3);
               for (std::size_t j = 0; j < 3; ++j)
                 data[j] = n[j];
               return nb::cast(make_numpy_array<nb::shape<3>>(data, {3}));

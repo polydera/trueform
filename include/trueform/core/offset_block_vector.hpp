@@ -28,7 +28,8 @@ namespace tf {
 template <typename Index, typename T> class offset_block_vector {
 public:
   using iterator = decltype(views::make_offset_block_begin(
-      std::declval<tf::buffer<Index> &>(), std::declval<std::vector<T> &>()));
+      std::declval<tf::buffer<Index> &>(),
+      std::declval<std::vector<T> &>()));
   using const_iterator = decltype(views::make_offset_block_begin(
       std::declval<const tf::buffer<Index> &>(),
       std::declval<const std::vector<T> &>()));

@@ -16,6 +16,7 @@
 #include "../../core/blocked_buffer.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/frame_of.hpp"
+#include "../../core/memory.hpp"
 #include "../../core/points_buffer.hpp"
 #include "../../core/polygons_buffer.hpp"
 #include "../../core/transformed.hpp"
@@ -105,8 +106,8 @@ auto make_csg_mesh(const tf::arrangement_graph<Index> &ag,
 
   // tri_data[t][L], tri_origins[t][L]: triangulation output per
   // (form, label). L = 0 reverse, L = 1 forward.
-  std::vector<std::array<tf::buffer<Index>, 2>> tri_data(n_tags);
-  std::vector<std::array<tf::buffer<Index>, 2>> tri_origins(n_tags);
+  tf::core::std_vector<std::array<tf::buffer<Index>, 2>> tri_data(n_tags);
+  tf::core::std_vector<std::array<tf::buffer<Index>, 2>> tri_origins(n_tags);
 
   {
     tbb::task_group tg;

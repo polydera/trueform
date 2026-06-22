@@ -116,6 +116,7 @@
 #include "./core/make_rotation.hpp"               // IWYU pragma: export
 #include "./core/max_edge_length.hpp"             // IWYU pragma: export
 #include "./core/mean_edge_length.hpp"            // IWYU pragma: export
+#include "./core/memory.hpp"                      // IWYU pragma: export
 #include "./core/metric_point.hpp"                // IWYU pragma: export
 #include "./core/metric_point_pair.hpp"           // IWYU pragma: export
 #include "./core/min_edge_length.hpp"             // IWYU pragma: export

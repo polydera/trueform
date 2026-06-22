@@ -10,7 +10,9 @@
 *
 * Author: Žiga Sajovic
 */
+#include <trueform/core/memory.hpp>
 #include <trueform/vtk/core/make_vtk_cells.hpp>
+#include <type_traits>
 
 namespace tf::vtk {
 
@@ -45,16 +47,20 @@ auto make_vtk_cells(tf::offset_block_buffer<vtkIdType, vtkIdType> &&faces)
   auto n_conn = faces.data_buffer().size();
   auto *offsets_ptr = faces.offsets_buffer().release();
   auto *conn_ptr = faces.data_buffer().release();
+  using OffsetsT = std::remove_pointer_t<decltype(offsets_ptr)>;
+  using ConnT = std::remove_pointer_t<decltype(conn_ptr)>;
 
   auto offsets_arr = vtkSmartPointer<vtkIdTypeArray>::New();
   offsets_arr->SetNumberOfComponents(1);
   offsets_arr->SetArray(offsets_ptr, static_cast<vtkIdType>(n_offsets), 0,
-                        vtkAbstractArray::VTK_DATA_ARRAY_DELETE);
+                        vtkAbstractArray::VTK_DATA_ARRAY_USER_DEFINED);
+  offsets_arr->SetArrayFreeFunction(&tf::deallocate<OffsetsT>);
 
   auto conn_arr = vtkSmartPointer<vtkIdTypeArray>::New();
   conn_arr->SetNumberOfComponents(1);
   conn_arr->SetArray(conn_ptr, static_cast<vtkIdType>(n_conn), 0,
-                     vtkAbstractArray::VTK_DATA_ARRAY_DELETE);
+                     vtkAbstractArray::VTK_DATA_ARRAY_USER_DEFINED);
+  conn_arr->SetArrayFreeFunction(&tf::deallocate<ConnT>);
 
   cells->SetData(offsets_arr, conn_arr);
   return cells;

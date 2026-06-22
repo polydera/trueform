@@ -34,6 +34,7 @@
 #include <trueform/core/distance.hpp>
 #include <trueform/spatial/distance.hpp>
 #include <trueform/core/intersects.hpp>
+#include <trueform/core/memory.hpp>
 #include <trueform/core/sphere.hpp>
 #include <trueform/core/views/sequence_range.hpp>
 #include <cstdint>
@@ -459,8 +460,8 @@ auto register_form_prim_ops(nanobind::module_ &m, const char *form_name,
         tf::parallel_fill(ids, static_cast<Index>(-1));
 
         auto run = [&](const auto &form) {
-          std::vector<nn_t> state_buf;
-          auto compute = [&](int i, std::vector<nn_t> &buf) {
+          tf::core::std_vector<nn_t> state_buf;
+          auto compute = [&](int i, tf::core::std_vector<nn_t> &buf) {
             buf.resize(k);
             auto knn =
                 tf::make_nearest_neighbors(buf.data(), k, r);

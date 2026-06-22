@@ -10,8 +10,10 @@
  *
  * Author: Žiga Sajovic
  */
+#include <trueform/core/memory.hpp>
 #include <trueform/vtk/core/make_points.hpp>
 #include <trueform/vtk/core/make_vtk_points.hpp>
+#include <type_traits>
 #include <vtkFloatArray.h>
 #include <vtkPoints.h>
 
@@ -37,11 +39,13 @@ auto make_vtk_points(tf::points_buffer<float, 3> &&points)
     -> vtkSmartPointer<vtkPoints> {
   auto n = points.size();
   auto *ptr = points.data_buffer().release();
+  using ElemT = std::remove_pointer_t<decltype(ptr)>;
 
   auto arr = vtkSmartPointer<vtkFloatArray>::New();
   arr->SetNumberOfComponents(3);
   arr->SetArray(ptr, static_cast<vtkIdType>(3 * n), 0,
-                vtkAbstractArray::VTK_DATA_ARRAY_DELETE);
+                vtkAbstractArray::VTK_DATA_ARRAY_USER_DEFINED);
+  arr->SetArrayFreeFunction(&tf::deallocate<ElemT>);
 
   auto vtk_points = vtkSmartPointer<vtkPoints>::New();
   vtk_points->SetData(arr);

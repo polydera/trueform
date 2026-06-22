@@ -21,6 +21,7 @@
 #include <trueform/core/distance.hpp>
 #include <trueform/core/frame.hpp>
 #include <trueform/core/intersects.hpp>
+#include <trueform/core/memory.hpp>
 #include <trueform/core/policy/frame.hpp>
 #include <trueform/python/util/make_numpy_array.hpp>
 #include <trueform/core/form.hpp>
@@ -41,7 +42,7 @@ auto form_form_gather_ids(FormWrapper0 &form_wrapper0,
   using Index1 = typename std::decay_t<decltype(form_wrapper1.tree())>::index_type;
   using CommonIndex = std::common_type_t<Index0, Index1>;
 
-  std::vector<std::pair<Index0, Index1>> buffer;
+  tf::core::std_vector<std::pair<Index0, Index1>> buffer;
 
   bool has0 = form_wrapper0.has_transformation();
   bool has1 = form_wrapper1.has_transformation();
@@ -113,7 +114,7 @@ auto form_form_gather_ids(FormWrapper0 &form_wrapper0,
   CommonIndex *data = nullptr;
 
   if (n > 0) {
-    data = new CommonIndex[n * 2];
+    data = tf::allocate<CommonIndex>(n * 2);
     for (size_t i = 0; i < n; ++i) {
       data[i * 2] = static_cast<CommonIndex>(buffer[i].first);
       data[i * 2 + 1] = static_cast<CommonIndex>(buffer[i].second);

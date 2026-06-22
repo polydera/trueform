@@ -13,8 +13,8 @@
 #pragma once
 #include "./buffer.hpp"
 #include "./cache_aligned_slot.hpp"
+#include "./memory.hpp"
 #include "./views/mapped_range.hpp"
-#include "tbb/cache_aligned_allocator.h"
 #include "tbb/task_arena.h"
 #include <vector>
 
@@ -163,10 +163,7 @@ private:
     return _buffers[tbb::this_task_arena::current_thread_index()].value;
   }
 
-  std::vector<
-      core::cache_aligned_slot<tf::buffer<T>>,
-      tbb::cache_aligned_allocator<core::cache_aligned_slot<tf::buffer<T>>>>
-      _buffers;
+  tf::core::std_vector<core::cache_aligned_slot<tf::buffer<T>>> _buffers;
 };
 
 } // namespace tf

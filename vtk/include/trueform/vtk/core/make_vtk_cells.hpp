@@ -12,6 +12,8 @@
 */
 #pragma once
 #include <trueform/core.hpp>
+#include <trueform/core/memory.hpp>
+#include <type_traits>
 #include <vtkCellArray.h>
 #include <vtkIdTypeArray.h>
 #include <vtkSmartPointer.h>
@@ -68,10 +70,12 @@ auto make_vtk_cells(tf::blocked_buffer<vtkIdType, V> &&faces)
                      });
 
   auto *conn_ptr = faces.data_buffer().release();
+  using ConnT = std::remove_pointer_t<decltype(conn_ptr)>;
   auto conn_arr = vtkSmartPointer<vtkIdTypeArray>::New();
   conn_arr->SetNumberOfComponents(1);
   conn_arr->SetArray(conn_ptr, static_cast<vtkIdType>(V * n), 0,
-                     vtkAbstractArray::VTK_DATA_ARRAY_DELETE);
+                     vtkAbstractArray::VTK_DATA_ARRAY_USER_DEFINED);
+  conn_arr->SetArrayFreeFunction(&tf::deallocate<ConnT>);
   cells->SetData(offsets, conn_arr);
 
   return cells;

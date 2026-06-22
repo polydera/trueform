@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  This package ships the operator new/delete allocation backend (mimalloc OFF):
+  TF_WITH_MIMALLOC is intentionally not defined, so trueform's headers compile
+  against the standard aligned allocator and the package needs no mimalloc
+  dependency. To opt into the mimalloc backend, link your own MI_OVERRIDE=OFF
+  mimalloc and define TF_WITH_MIMALLOC for your compilation.
+-->
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <TrueformIncludePath>$(MSBuildThisFileDirectory)include</TrueformIncludePath>

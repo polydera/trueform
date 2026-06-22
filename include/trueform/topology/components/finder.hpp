@@ -16,6 +16,7 @@
 #include "../../core/buffer.hpp"
 #include "../../core/hash_set.hpp"
 #include "../../core/local_buffer.hpp"
+#include "../../core/memory.hpp"
 #include "../../core/views/constant.hpp"
 #include "../../core/views/zip.hpp"
 #include "tbb/task_group.h"
@@ -139,12 +140,19 @@ private:
 
   auto initialize(std::size_t size) {
     _n_labels = size;
-    _work_labels_ptr.reset(new std::atomic<label_t>[size]);
-    tf::parallel_for_each(work_labels_range(),
-                       [](auto &x) { x.store(-1, std::memory_order_relaxed); });
+    _work_labels_ptr.reset(tf::allocate<std::atomic<label_t>>(size));
+    // placement-new: tf::allocate returns raw storage, not live atomics
+    tf::parallel_for_each(work_labels_range(), [](auto &x) {
+      ::new (static_cast<void *>(&x)) std::atomic<label_t>(-1);
+    });
   }
 
-  std::unique_ptr<std::atomic<label_t>[]> _work_labels_ptr;
+  struct work_labels_deleter {
+    auto operator()(void *p) const noexcept -> void {
+      tf::deallocate<std::atomic<label_t>>(p);
+    }
+  };
+  std::unique_ptr<std::atomic<label_t>[], work_labels_deleter> _work_labels_ptr;
   std::size_t _n_labels;
   tf::buffer<label_t> _label_map;
 };

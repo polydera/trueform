@@ -20,6 +20,7 @@
 #include <trueform/core/buffer.hpp>
 #include <trueform/core/curves_buffer.hpp>
 #include <trueform/core/index_map.hpp>
+#include <trueform/core/memory.hpp>
 #include <trueform/core/offset_block_buffer.hpp>
 #include <trueform/core/points_buffer.hpp>
 #include <trueform/core/polygons_buffer.hpp>
@@ -156,7 +157,7 @@ template <std::size_t Dims, typename Policy>
 auto make_numpy_array(const tf::transformation_like<Dims, Policy> &trans) {
   using T = typename Policy::coordinate_type;
   constexpr std::size_t N = Dims + 1;
-  T *data = new T[N * N];
+  T *data = tf::allocate<T>(N * N);
   for (std::size_t i = 0; i < Dims; ++i)
     for (std::size_t j = 0; j < N; ++j)
       data[i * N + j] = trans(i, j);

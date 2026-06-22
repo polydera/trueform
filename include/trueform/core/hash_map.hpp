@@ -12,7 +12,10 @@
 */
 #pragma once
 #include "./external/hash_map.hpp"
+#include "./memory.hpp"
 namespace tf {
-template <typename T0, typename T1, typename... Ts>
-using hash_map = ska2::flat_hash_map<T0, T1, Ts...>;
+template <typename T0, typename T1, typename Hash = std::hash<T0>,
+          typename Equal = std::equal_to<T0>,
+          typename Alloc = tf::allocator<std::pair<T0, T1>>>
+using hash_map = ska2::flat_hash_map<T0, T1, Hash, Equal, Alloc>;
 }

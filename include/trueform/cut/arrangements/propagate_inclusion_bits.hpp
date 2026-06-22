@@ -21,7 +21,6 @@
 #include "./arrangement_descriptor.hpp"
 #include "./compute_domain_inclusions.hpp"
 #include <cstdint>
-#include <queue>
 
 namespace tf::cut {
 
@@ -129,19 +128,19 @@ auto propagate_inclusion_bits(
   visited.allocate(static_cast<std::size_t>(n_domains));
   tf::parallel_fill(visited, char(0));
 
-  std::queue<Index> q;
+  tf::buffer<Index> q;
+  std::size_t head = 0;
   for (auto s : seeds) {
     if (s < Index(0) || s >= n_domains)
       continue;
     if (visited[s])
       continue;
     visited[s] = char(1);
-    q.push(s);
+    q.push_back(s);
   }
 
-  while (!q.empty()) {
-    const Index d = q.front();
-    q.pop();
+  while (head < q.size()) {
+    const Index d = q[head++];
     const Index lo = in_offsets[d];
     const Index hi = in_offsets[d + 1];
     for (Index k = lo; k < hi; ++k) {
@@ -156,7 +155,7 @@ auto propagate_inclusion_bits(
             inc.bits[static_cast<std::size_t>(d) * words_per_domain + w] ^
             B[static_cast<std::size_t>(c) * words_per_domain + w];
       visited[d_other] = char(1);
-      q.push(d_other);
+      q.push_back(d_other);
     }
   }
 }

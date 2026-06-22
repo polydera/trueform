@@ -12,6 +12,7 @@
 */
 #pragma once
 #include "./cache_aligned_slot.hpp"
+#include "./memory.hpp"
 #include "./views/mapped_range.hpp"
 #include "tbb/task_arena.h"
 #include <vector>
@@ -148,7 +149,7 @@ private:
     return total;
   }
 
-  std::vector<core::cache_aligned_slot<std::vector<T>>> _vectors;
+  tf::core::std_vector<core::cache_aligned_slot<std::vector<T>>> _vectors;
 };
 
 } // namespace tf

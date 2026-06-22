@@ -20,8 +20,10 @@
 #include <trueform/core/coordinate_dims.hpp>
 #include <trueform/core/coordinate_type.hpp>
 #include <trueform/core/frame.hpp>
+#include <trueform/core/memory.hpp>
 #include <trueform/core/policy/frame.hpp>
 #include <trueform/core/form.hpp>
+#include <trueform/python/util/make_capsule.hpp>
 #include <trueform/spatial/policy/tree.hpp>
 #include <trueform/spatial/neighbor_search.hpp>
 
@@ -50,12 +52,10 @@ auto form_form_neighbor_search(FormWrapper0 &form_wrapper0,
       return std::nullopt;
     auto make_point = [](const auto &pt) {
       // Allocate numpy array
-      RealT *data = new RealT[Dims_t::value];
+      RealT *data = tf::allocate<RealT>(Dims_t::value);
       std::copy(pt.begin(), pt.end(), data);
 
-      // Create ndarray with ownership via capsule
-      auto capsule = nanobind::capsule(
-          data, [](void *p) noexcept { delete[] static_cast<RealT *>(p); });
+      auto capsule = make_capsule(data);
 
       ndarray_t arr(data, {Dims_t::value}, capsule);
       return arr;

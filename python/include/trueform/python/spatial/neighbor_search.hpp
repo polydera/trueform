@@ -19,6 +19,8 @@
 #include <optional>
 #include <trueform/core/frame.hpp>
 #include <trueform/core/form.hpp>
+#include <trueform/core/memory.hpp>
+#include <trueform/python/util/make_capsule.hpp>
 #include <trueform/spatial/nearest_neighbor.hpp>
 #include <trueform/spatial/policy/tree.hpp>
 #include <trueform/spatial/neighbor_search.hpp>
@@ -39,13 +41,11 @@ auto neighbor_search(FormWrapper &form_wrapper, const Primitive &query,
     if (!e)
       return std::nullopt;
     // Allocate numpy array
-    RealT *data = new RealT[Dims];
+    RealT *data = tf::allocate<RealT>(Dims);
     const auto &pt = e.info.point;
     std::copy(pt.begin(), pt.end(), data);
 
-    // Create ndarray with ownership via capsule
-    auto capsule = nanobind::capsule(
-        data, [](void *p) noexcept { delete[] static_cast<RealT *>(p); });
+    auto capsule = make_capsule(data);
 
     ndarray_t arr(data, {Dims}, capsule);
     return result_t{e.element, e.info.metric, arr};
@@ -80,7 +80,7 @@ auto neighbor_search(FormWrapper &from_wrapper, const Primitive &query, int k,
   if (radius)
     r = *radius;
 
-  std::vector<tf::nearest_neighbor<Index, RealT, Dims>> knn_buffer(k);
+  tf::core::std_vector<tf::nearest_neighbor<Index, RealT, Dims>> knn_buffer(k);
   auto knn = tf::make_nearest_neighbors(knn_buffer.begin(), k, r);
 
   if (from_wrapper.has_transformation()) {
@@ -97,13 +97,11 @@ auto neighbor_search(FormWrapper &from_wrapper, const Primitive &query, int k,
   results.reserve(knn.size());
   for (const auto &e : knn) {
     // Allocate numpy array
-    RealT *data = new RealT[Dims];
+    RealT *data = tf::allocate<RealT>(Dims);
     const auto &pt = e.info.point;
     std::copy(pt.begin(), pt.end(), data);
 
-    // Create ndarray with ownership via capsule
-    auto capsule = nanobind::capsule(
-        data, [](void *p) noexcept { delete[] static_cast<RealT *>(p); });
+    auto capsule = make_capsule(data);
 
     ndarray_t arr(data, {Dims}, capsule);
     results.emplace_back(e.element, e.info.metric, arr);

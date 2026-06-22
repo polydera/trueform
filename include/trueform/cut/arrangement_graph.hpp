@@ -21,6 +21,7 @@
 #include "../core/buffer.hpp"
 #include "../core/hash_map.hpp"
 #include "../core/hash_set.hpp"
+#include "../core/memory.hpp"
 #include "../core/range.hpp"
 #include "../core/small_vector.hpp"
 #include "../core/views/enumerate.hpp"
@@ -268,7 +269,7 @@ private:
     auto tag_offs = fc.tag_offsets();
     auto n_tags = tag_offs.size() - 1;
 
-    std::vector<tf::hash_map<Index, Index>> maps(n_tags);
+    tf::core::std_vector<tf::hash_map<Index, Index>> maps(n_tags);
     auto tag_loops = tf::make_offset_block_range(tag_offs, fc.loops());
     tf::parallel_for_each(tf::enumerate(tag_loops), [&](auto pair) {
       auto &&[tag, loops] = pair;

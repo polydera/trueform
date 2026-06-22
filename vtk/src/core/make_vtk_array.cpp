@@ -10,7 +10,9 @@
 *
 * Author: Žiga Sajovic
 */
+#include <trueform/core/memory.hpp>
 #include <trueform/vtk/core/make_vtk_array.hpp>
+#include <type_traits>
 #include <vtkFloatArray.h>
 #include <vtkIdTypeArray.h>
 #include <vtkIntArray.h>
@@ -31,11 +33,13 @@ auto make_vtk_array(tf::buffer<std::int8_t> &&buffer)
     -> vtkSmartPointer<vtkSignedCharArray> {
   auto n = buffer.size();
   auto *ptr = buffer.release();
+  using ElemT = std::remove_pointer_t<decltype(ptr)>;
 
   auto arr = vtkSmartPointer<vtkSignedCharArray>::New();
   arr->SetNumberOfComponents(1);
   arr->SetArray(ptr, static_cast<vtkIdType>(n), 0,
-                vtkAbstractArray::VTK_DATA_ARRAY_DELETE);
+                vtkAbstractArray::VTK_DATA_ARRAY_USER_DEFINED);
+  arr->SetArrayFreeFunction(&tf::deallocate<ElemT>);
   return arr;
 }
 
@@ -52,11 +56,13 @@ auto make_vtk_array(tf::buffer<int> &&buffer)
     -> vtkSmartPointer<vtkIntArray> {
   auto n = buffer.size();
   auto *ptr = buffer.release();
+  using ElemT = std::remove_pointer_t<decltype(ptr)>;
 
   auto arr = vtkSmartPointer<vtkIntArray>::New();
   arr->SetNumberOfComponents(1);
   arr->SetArray(ptr, static_cast<vtkIdType>(n), 0,
-                vtkAbstractArray::VTK_DATA_ARRAY_DELETE);
+                vtkAbstractArray::VTK_DATA_ARRAY_USER_DEFINED);
+  arr->SetArrayFreeFunction(&tf::deallocate<ElemT>);
   return arr;
 }
 
@@ -73,11 +79,13 @@ auto make_vtk_array(tf::buffer<vtkIdType> &&buffer)
     -> vtkSmartPointer<vtkIdTypeArray> {
   auto n = buffer.size();
   auto *ptr = buffer.release();
+  using ElemT = std::remove_pointer_t<decltype(ptr)>;
 
   auto arr = vtkSmartPointer<vtkIdTypeArray>::New();
   arr->SetNumberOfComponents(1);
   arr->SetArray(ptr, static_cast<vtkIdType>(n), 0,
-                vtkAbstractArray::VTK_DATA_ARRAY_DELETE);
+                vtkAbstractArray::VTK_DATA_ARRAY_USER_DEFINED);
+  arr->SetArrayFreeFunction(&tf::deallocate<ElemT>);
   return arr;
 }
 
@@ -94,11 +102,13 @@ auto make_vtk_array(tf::buffer<float> &&buffer)
     -> vtkSmartPointer<vtkFloatArray> {
   auto n = buffer.size();
   auto *ptr = buffer.release();
+  using ElemT = std::remove_pointer_t<decltype(ptr)>;
 
   auto arr = vtkSmartPointer<vtkFloatArray>::New();
   arr->SetNumberOfComponents(1);
   arr->SetArray(ptr, static_cast<vtkIdType>(n), 0,
-                vtkAbstractArray::VTK_DATA_ARRAY_DELETE);
+                vtkAbstractArray::VTK_DATA_ARRAY_USER_DEFINED);
+  arr->SetArrayFreeFunction(&tf::deallocate<ElemT>);
   return arr;
 }
 
@@ -119,11 +129,13 @@ auto make_vtk_array(tf::unit_vectors_buffer<float, 3> &&buffer)
     -> vtkSmartPointer<vtkFloatArray> {
   auto n = buffer.size();
   auto *ptr = buffer.data_buffer().release();
+  using ElemT = std::remove_pointer_t<decltype(ptr)>;
 
   auto arr = vtkSmartPointer<vtkFloatArray>::New();
   arr->SetNumberOfComponents(3);
   arr->SetArray(ptr, static_cast<vtkIdType>(3 * n), 0,
-                vtkAbstractArray::VTK_DATA_ARRAY_DELETE);
+                vtkAbstractArray::VTK_DATA_ARRAY_USER_DEFINED);
+  arr->SetArrayFreeFunction(&tf::deallocate<ElemT>);
 
   return arr;
 }

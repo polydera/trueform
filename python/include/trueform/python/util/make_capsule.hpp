@@ -14,6 +14,7 @@
 #pragma once
 
 #include <nanobind/nanobind.h>
+#include <trueform/core/memory.hpp>
 
 namespace tf::py::impl {
 
@@ -33,8 +34,7 @@ template <typename T> auto make_capsule(T *data) -> nanobind::capsule {
   if (!data)
     return impl::make_empty_capsule();
   else
-    return nanobind::capsule(
-        data, [](void *p) noexcept { delete[] static_cast<T *>(p); });
+    return nanobind::capsule(data, &tf::deallocate<T>);
 }
 
 } // namespace tf::py
