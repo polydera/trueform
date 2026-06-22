@@ -30,7 +30,7 @@
     "better-sqlite3": "^12.10.0",
     "fast-glob": "^3.3.3",
     "katex": "^0.16.47",
-    "nuxt": "^4.4.6",
+    "nuxt": "^4.4.7",
     "nuxt-llms": "0.2.0",
     "nuxt-og-image": "^6.5.1",
     "nuxt-schema-org": "^6.0.4",
@@ -52,7 +52,7 @@
   "pnpm": {
     "overrides": {
       "unimport": "4.1.1",
-      "@mapbox/node-pre-gyp>tar": "7.5.13",
+      "@mapbox/node-pre-gyp>tar": "7.5.16",
       "node-forge": "^1.4.0",
       "devalue": "^5.8.1",
       "socket.io-parser": "^4.2.6",
@@ -61,7 +61,14 @@
       "remark-mdc>yaml": "2.8.3",
       "fast-xml-parser>fast-xml-builder": ">=1.1.7",
       "striptags": "^4.0.0-alpha.4",
-      "ws": ">=8.20.1"
+      "ws": ">=8.21.0",
+      "shell-quote": ">=1.8.4",
+      "vite": ">=7.3.5",
+      "undici": ">=7.28.0",
+      "launch-editor": ">=2.14.1",
+      "js-yaml": ">=4.2.0",
+      "esbuild": ">=0.28.1",
+      "@babel/core": ">=7.29.6"
     },
     "ignoredBuiltDependencies": [
       "@parcel/watcher",
