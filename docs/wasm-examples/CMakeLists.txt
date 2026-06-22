@@ -15,6 +15,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# mimalloc comes from Emscripten (-sMALLOC=mimalloc); a second copy collides on mi_*.
+set(TF_USE_MIMALLOC OFF CACHE BOOL "" FORCE)
+
 add_subdirectory(../../ trueform)
 
 option(DIST_DIR "Directory to place built WebAssembly artifacts." ${CMAKE_CURRENT_SOURCE_DIR}/dist)
