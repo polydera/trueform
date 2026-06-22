@@ -47,6 +47,18 @@ option(TF_BUILD_VTK_INTEGRATION   "Build trueform VTK integration." OFF)
 option(TF_ENABLE_ASAN             "Enable Address Sanitizer" OFF)
 option(TF_USE_SYSTEM_LIBS         "Use system installed libraries where possible." ON)
 option(TF_ENABLE_IPO              "Enable Interprocedural Optimization (LTO)." OFF)
+# mimalloc backend. One master switch + one acquisition sub-option:
+#   TF_USE_MIMALLOC        master on/off. OFF => operator new/delete backend,
+#                          no dependency, no TF_WITH_MIMALLOC define, no link.
+#                          (auto-forced OFF under ASan and TypeScript, below.)
+#   TF_USE_SYSTEM_MIMALLOC find the user's mimalloc (must be MI_OVERRIDE=OFF)
+#                          instead of fetching+vendoring our own. Only meaningful
+#                          when TF_USE_MIMALLOC is ON.
+# Everything downstream (define, link, fetch/find, license, installed-config
+# dependency) is gated on TF_USE_MIMALLOC, so -DTF_USE_MIMALLOC=OFF disables it
+# end to end (e.g. the NuGet build, which ships the operator-new backend).
+option(TF_USE_MIMALLOC            "Use mimalloc as the internal allocation backend (explicit, no global override)." ON)
+option(TF_USE_SYSTEM_MIMALLOC     "find_package the user's own mimalloc (must be MI_OVERRIDE=OFF) instead of fetching+vendoring our own." OFF)
 
 # 2. Dependent options
 ## TF_BUILD_VTK_EXAMPLES: Build VTK examples only if VTK integration is enabled.
@@ -81,6 +93,9 @@ set(TF_TBB_VERSION "2022.3.0" CACHE STRING
 set(TF_NANOBIND_VERSION "2.0.0" CACHE STRING
         "Version of nanobind to fetch for Python builds.")
 
+set(TF_MIMALLOC_VERSION "3.3.2" CACHE STRING
+        "Version (git tag without 'v') of mimalloc to fetch when not found on the system.")
+
 # ==============================================================================
 # Compiler Flags
 # ==============================================================================
@@ -92,6 +107,17 @@ if(TF_ENABLE_ASAN)
   message(STATUS "trueform: Address Sanitizer enabled.")
   add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
   add_link_options(-fsanitize=address)
+endif()
+
+if(TF_ENABLE_ASAN AND TF_USE_MIMALLOC)
+  message(STATUS "TF_ENABLE_ASAN ON: forcing TF_USE_MIMALLOC OFF.")
+  set(TF_USE_MIMALLOC OFF CACHE BOOL "" FORCE)
+endif()
+
+if(TF_BUILD_TYPESCRIPT AND TF_USE_MIMALLOC)
+  # wasm gets mimalloc via Emscripten -sMALLOC=mimalloc; a second copy collides on mi_*.
+  message(STATUS "TF_BUILD_TYPESCRIPT ON: forcing TF_USE_MIMALLOC OFF (Emscripten provides mimalloc).")
+  set(TF_USE_MIMALLOC OFF CACHE BOOL "" FORCE)
 endif()
 
 if(TF_ENABLE_IPO)
@@ -117,6 +143,12 @@ include(cmake/ThirdParty.cmake)
 
 # Linkage & Includes
 target_link_libraries(trueform INTERFACE TBB::tbb)
+target_compile_features(trueform INTERFACE cxx_std_17)
+
+if(TF_USE_MIMALLOC)
+  target_compile_definitions(trueform INTERFACE TF_WITH_MIMALLOC)
+  target_link_libraries(trueform INTERFACE mimalloc-static)
+endif()
 
 target_include_directories(trueform INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -200,6 +232,13 @@ install(
         ${CMAKE_CURRENT_LIST_DIR}/licenses/LICENSE.TBB
         DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/licenses
 )
+
+if(TF_USE_MIMALLOC AND NOT TF_USE_SYSTEM_MIMALLOC)
+  install(
+          FILES ${CMAKE_CURRENT_LIST_DIR}/licenses/LICENSE.mimalloc
+          DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/licenses
+  )
+endif()
 
 if(TF_BUILD_PYTHON)
   install(

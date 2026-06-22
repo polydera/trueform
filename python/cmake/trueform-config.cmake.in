@@ -1,0 +1,52 @@
+# trueform-config.cmake
+# Self-contained CMake configuration for pip-installed trueform
+#
+# Usage:
+#   execute_process(
+#     COMMAND "${Python_EXECUTABLE}" -c "import trueform; print(trueform.get_cmake_dir())"
+#     OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE trueform_ROOT)
+#   find_package(trueform CONFIG REQUIRED)
+#   target_link_libraries(mytarget PRIVATE tf::trueform)
+
+include_guard(GLOBAL)
+
+# Compute package root (one level up from cmake/)
+get_filename_component(TF_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+get_filename_component(TF_DIR "${TF_DIR}" PATH)
+set(TF_DIR ${TF_DIR} CACHE INTERNAL "")
+
+include(CMakeFindDependencyMacro)
+
+# TBB is required - must be installed on the system
+find_dependency(TBB CONFIG REQUIRED)
+
+# These headers are a convenience copy of the header-only library, independent of
+# how _trueform.so was built (its mimalloc is baked into the .so and irrelevant
+# here). The default backend is operator new/delete, like the NuGet package, so
+# find_package(trueform) needs only TBB.
+#
+# Opt into the mimalloc backend with -DTF_WITH_MIMALLOC=ON and point CMake at your
+# own compiled mimalloc via -Dmimalloc_ROOT=<dir containing mimalloc-config.cmake>.
+# It MUST be built MI_OVERRIDE=OFF (a global-override build crashes when
+# static-linked). When opted in the dependency is REQUIRED: a missing or wrong
+# mimalloc_ROOT is a hard configure error, never a silent fallback to operator new.
+option(TF_WITH_MIMALLOC "Use the mimalloc allocation backend (supply mimalloc_ROOT)." OFF)
+
+if(TF_WITH_MIMALLOC)
+  find_dependency(mimalloc CONFIG REQUIRED)
+endif()
+
+# Create the interface target
+if (NOT TARGET tf::trueform)
+  add_library(tf::trueform INTERFACE IMPORTED)
+  set_target_properties(tf::trueform PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${TF_DIR}/include"
+    INTERFACE_LINK_LIBRARIES "TBB::tbb"
+    INTERFACE_COMPILE_FEATURES "cxx_std_17"
+  )
+endif()
+
+if(TF_WITH_MIMALLOC)
+  set_property(TARGET tf::trueform APPEND PROPERTY INTERFACE_LINK_LIBRARIES mimalloc-static)
+  set_property(TARGET tf::trueform APPEND PROPERTY INTERFACE_COMPILE_DEFINITIONS TF_WITH_MIMALLOC)
+endif()

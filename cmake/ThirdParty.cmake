@@ -42,6 +42,31 @@ else()
 endif()
 
 # ------------------------------------------------------------------------------
+# Dependency: mimalloc (internal allocation backend; explicit mi_* use)
+# Vendor our own MI_OVERRIDE=OFF build by default (system builds are usually
+# MI_OVERRIDE=ON and crash when static-linked); TF_USE_SYSTEM_MIMALLOC opts in.
+# ------------------------------------------------------------------------------
+if(TF_USE_MIMALLOC)
+  if(TF_USE_SYSTEM_MIMALLOC)
+    find_package(mimalloc CONFIG REQUIRED)
+  else()
+    set(CPM_USE_LOCAL_PACKAGES OFF)   # always fetch our own MI_OVERRIDE=OFF build
+    CPMAddPackage(
+      NAME                mimalloc
+      GITHUB_REPOSITORY   microsoft/mimalloc
+      GIT_TAG             v${TF_MIMALLOC_VERSION}
+      OPTIONS
+      "MI_OVERRIDE OFF"
+      "MI_BUILD_SHARED OFF"
+      "MI_BUILD_STATIC ON"
+      "MI_BUILD_OBJECT OFF"
+      "MI_BUILD_TESTS OFF"
+    )
+    set(CPM_USE_LOCAL_PACKAGES ${TF_USE_SYSTEM_LIBS})
+  endif()
+endif()
+
+# ------------------------------------------------------------------------------
 # Dependency: Nanobind (Python Bindings)
 # ------------------------------------------------------------------------------
 if(TF_BUILD_PYTHON)

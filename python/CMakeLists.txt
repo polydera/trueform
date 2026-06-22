@@ -172,11 +172,24 @@ install(
         DESTINATION trueform/include
 )
 
-# Install CMake config for find_package(trueform) support
+# Generate CMake config and install for find_package(trueform) against the
+# copied header-only library (operator-new backend, independent of _trueform.so).
+configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/trueform-config.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/trueform-config.cmake"
+        @ONLY
+)
 install(
-        FILES "${CMAKE_CURRENT_SOURCE_DIR}/cmake/trueform-config.cmake"
+        FILES "${CMAKE_CURRENT_BINARY_DIR}/trueform-config.cmake"
         DESTINATION trueform/cmake_config
 )
+
+if(TF_USE_MIMALLOC AND NOT TF_USE_SYSTEM_MIMALLOC)
+  install(
+          FILES "${CMAKE_CURRENT_SOURCE_DIR}/../licenses/LICENSE.mimalloc"
+          DESTINATION trueform/licenses
+  )
+endif()
 
 # Install Conan test_package for conan create verification
 install(
