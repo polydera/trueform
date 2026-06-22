@@ -11,6 +11,7 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../intersect/build_intersect_structures.hpp"
 #include "../spatial/mesh.hpp"
 #include "../util/make_numpy_array.hpp"
 #include <nanobind/nanobind.h>
@@ -27,6 +28,7 @@ auto boolean(mesh_wrapper<Index0, RealT, Ngon0, Dims> &form_wrapper0,
              tf::boolean_op op) {
   bool has0 = form_wrapper0.has_transformation();
   bool has1 = form_wrapper1.has_transformation();
+  build_intersect_structures(form_wrapper0, form_wrapper1);
   auto form0 = form_wrapper0.make_primitive_range() |
                tf::tag(form_wrapper0.manifold_edge_link()) |
                tf::tag(form_wrapper0.face_membership()) |
@@ -66,6 +68,7 @@ auto boolean(mesh_wrapper<Index0, RealT, Ngon0, Dims> &form_wrapper0,
              tf::boolean_op op, tf::return_curves_t) {
   bool has0 = form_wrapper0.has_transformation();
   bool has1 = form_wrapper1.has_transformation();
+  build_intersect_structures(form_wrapper0, form_wrapper1);
   auto form0 = form_wrapper0.make_primitive_range() |
                tf::tag(form_wrapper0.manifold_edge_link()) |
                tf::tag(form_wrapper0.face_membership()) |

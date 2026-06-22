@@ -13,6 +13,7 @@
 #pragma once
 
 #include "trueform/cut/make_polygon_arrangements.hpp"
+#include "trueform/ts/core/build_intersect_structures.hpp"
 #include "trueform/ts/core/promise.hpp"
 #include "trueform/ts/core/wasm_curves.hpp"
 #include "trueform/ts/core/wasm_mesh.hpp"
@@ -46,6 +47,7 @@ template <typename Real> struct polygon_arrangement_result_with_curves_t {
 template <typename Real>
 auto sync_polygon_arrangements(wasm_mesh<Real> &m, int mode, double tolerance)
     -> polygon_arrangement_result_t<Real> {
+  build_intersect_structures(m);
   auto fm = m.face_membership_range();
   auto mel = m.manifold_edge_link_range();
   auto [mesh, face_labels] = tf::make_polygon_arrangements(
@@ -58,6 +60,7 @@ auto sync_polygon_arrangements(wasm_mesh<Real> &m, int mode, double tolerance)
 template <typename Real>
 auto sync_polygon_arrangements_with_curves(wasm_mesh<Real> &m, int mode, double tolerance)
     -> polygon_arrangement_result_with_curves_t<Real> {
+  build_intersect_structures(m);
   auto fm = m.face_membership_range();
   auto mel = m.manifold_edge_link_range();
   auto [mesh, face_labels, curves] = tf::make_polygon_arrangements(

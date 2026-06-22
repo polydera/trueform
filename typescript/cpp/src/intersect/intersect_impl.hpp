@@ -17,6 +17,7 @@
 #include "trueform/intersect/make_intersection_curves.hpp"
 #include "trueform/intersect/make_isocurves.hpp"
 #include "trueform/intersect/make_self_intersection_curves.hpp"
+#include "trueform/ts/core/build_intersect_structures.hpp"
 #include "trueform/ts/core/promise.hpp"
 #include "trueform/ts/core/wasm_curves.hpp"
 #include "trueform/ts/core/wasm_mesh.hpp"
@@ -36,6 +37,7 @@ auto sync_intersection_curves(wasm_mesh<Real> &m0, wasm_mesh<Real> &m1,
                               int mode, double tolerance) -> wasm_curves<Real> {
   bool has0 = m0.has_transformation();
   bool has1 = m1.has_transformation();
+  build_intersect_structures(m0, m1);
   auto fm0 = m0.face_membership_range();
   auto mel0 = m0.manifold_edge_link_range();
   auto fm1 = m1.face_membership_range();
@@ -90,6 +92,7 @@ auto extract_meshes(emscripten::val js_meshes) -> std::vector<wasm_mesh<Real>> {
 template <typename Real>
 auto intersection_curves_list_impl(std::vector<wasm_mesh<Real>> &meshes,
                                    int mode, double tolerance) -> wasm_curves<Real> {
+  build_intersect_structures_all(meshes);
   auto mesh_range = tf::make_range(meshes);
   bool any_transformed = false;
   for (auto &m : meshes)
@@ -148,6 +151,7 @@ auto async_intersection_curves_list(emscripten::val js_meshes, int mode, double 
 template <typename Real>
 auto sync_self_intersection_curves(wasm_mesh<Real> &m, int mode, double tolerance)
     -> wasm_curves<Real> {
+  build_intersect_structures(m);
   auto fm = m.face_membership_range();
   auto mel = m.manifold_edge_link_range();
   auto cb = tf::make_self_intersection_curves(

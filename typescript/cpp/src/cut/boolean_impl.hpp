@@ -13,6 +13,7 @@
 #pragma once
 
 #include "trueform/cut/make_boolean.hpp"
+#include "trueform/ts/core/build_intersect_structures.hpp"
 #include "trueform/ts/core/promise.hpp"
 #include "trueform/ts/core/wasm_curves.hpp"
 #include "trueform/ts/core/wasm_mesh.hpp"
@@ -51,6 +52,7 @@ auto sync_boolean(wasm_mesh<Real> &m0, wasm_mesh<Real> &m1,
                   tf::boolean_op op) -> labeled_cut_result_t<Real> {
   bool has0 = m0.has_transformation();
   bool has1 = m1.has_transformation();
+  build_intersect_structures(m0, m1);
   auto fm0 = m0.face_membership_range();
   auto mel0 = m0.manifold_edge_link_range();
   auto fm1 = m1.face_membership_range();
@@ -86,6 +88,7 @@ auto sync_boolean_with_curves(wasm_mesh<Real> &m0, wasm_mesh<Real> &m1,
     -> labeled_cut_result_with_curves_t<Real> {
   bool has0 = m0.has_transformation();
   bool has1 = m1.has_transformation();
+  build_intersect_structures(m0, m1);
   auto fm0 = m0.face_membership_range();
   auto mel0 = m0.manifold_edge_link_range();
   auto fm1 = m1.face_membership_range();

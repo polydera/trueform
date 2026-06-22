@@ -14,6 +14,7 @@
 
 #include "../core/offset_blocked_array.hpp"
 #include <memory>
+#include <optional>
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
 #include <trueform/core/offset_block_buffer.hpp>
@@ -205,6 +206,60 @@ public:
     return *_manifold_edge_link_array;
   }
 
+  // Two-phase build: pure-C++ compute (safe on a TBB worker, no Python) plus a
+  // numpy commit that must run on the GIL-holding calling thread.
+  auto compute_face_membership_if_missing()
+      -> std::optional<tf::face_membership<Index>> {
+    if (_face_membership_array && !_face_membership_modified)
+      return std::nullopt;
+    tf::face_membership<Index> fm;
+    fm.build(make_primitive_range());
+    return fm;
+  }
+
+  auto commit_face_membership(tf::face_membership<Index> &&fm) -> void {
+    auto [offsets, data] = make_numpy_array(std::move(fm));
+    if (!_face_membership_array) {
+      _face_membership_array =
+          std::make_unique<tf::py::offset_blocked_array_wrapper<Index, Index>>(
+              offsets, data);
+    } else {
+      _face_membership_array->set_arrays(offsets, data);
+    }
+    _face_membership_modified = false;
+  }
+
+  auto compute_manifold_edge_link_if_missing(
+      const std::optional<tf::face_membership<Index>> &fresh_fm)
+      -> std::optional<tf::blocked_buffer<Index, Ngon>> {
+    if (_manifold_edge_link_array && !_manifold_edge_link_modified)
+      return std::nullopt;
+    const Index *data_fcs = static_cast<const Index *>(_faces_array.data());
+    std::size_t count_fcs = _faces_array.shape(0) * Ngon;
+    auto faces =
+        tf::make_blocked_range<Ngon>(tf::make_range(data_fcs, count_fcs));
+    tf::blocked_buffer<Index, Ngon> buff;
+    buff.allocate(faces.size());
+    if (fresh_fm)
+      tf::topology::compute_manifold_edge_link<Index>(faces, *fresh_fm, buff);
+    else
+      tf::topology::compute_manifold_edge_link<Index>(
+          faces,
+          tf::make_face_membership_like(_face_membership_array->make_range()),
+          buff);
+    return buff;
+  }
+
+  auto commit_manifold_edge_link(tf::blocked_buffer<Index, Ngon> &&buff)
+      -> void {
+    if (!_manifold_edge_link_array)
+      _manifold_edge_link_array =
+          std::make_unique<nanobind::ndarray<nanobind::numpy, Index,
+                                             nanobind::shape<-1, Ngon>>>();
+    *_manifold_edge_link_array = make_numpy_array(std::move(buff));
+    _manifold_edge_link_modified = false;
+  }
+
   auto normals_array() -> const
       nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>> & {
     build_normals();
@@ -331,7 +386,7 @@ private:
       _tree = std::make_unique<tf::aabb_tree<Index, RealT, Dims>>();
     }
     auto polys = make_primitive_range();
-    *_tree = tf::aabb_tree<Index, RealT, Dims>(polys, tf::config_tree(4, 4));
+    *_tree = tf::aabb_tree<Index, RealT, Dims>(polys, tf::config_tree(4, 12));
     _tree_modified = false;
   }
 
@@ -663,6 +718,71 @@ public:
     return *_manifold_edge_link_array;
   }
 
+  // Two-phase build: pure-C++ compute (safe on a TBB worker, no Python) plus a
+  // numpy commit that must run on the GIL-holding calling thread.
+  auto compute_face_membership_if_missing()
+      -> std::optional<tf::face_membership<Index>> {
+    if (_face_membership_array && !_face_membership_modified)
+      return std::nullopt;
+    tf::face_membership<Index> fm;
+    fm.build(make_primitive_range());
+    return fm;
+  }
+
+  auto commit_face_membership(tf::face_membership<Index> &&fm) -> void {
+    auto [offsets, data] = make_numpy_array(std::move(fm));
+    if (!_face_membership_array) {
+      _face_membership_array =
+          std::make_unique<tf::py::offset_blocked_array_wrapper<Index, Index>>(
+              offsets, data);
+    } else {
+      _face_membership_array->set_arrays(offsets, data);
+    }
+    _face_membership_modified = false;
+  }
+
+  auto compute_manifold_edge_link_if_missing(
+      const std::optional<tf::face_membership<Index>> &fresh_fm)
+      -> std::optional<tf::offset_block_buffer<Index, Index>> {
+    if (_manifold_edge_link_array && !_manifold_edge_link_modified)
+      return std::nullopt;
+    auto faces = _faces_array->make_range();
+
+    // Allocate buffer with same structure as faces (offsets are identical)
+    tf::offset_block_buffer<Index, Index> buff;
+    buff.offsets_buffer().allocate(_faces_array->offsets_array().size());
+    buff.data_buffer().allocate(_faces_array->data_array().size());
+
+    // Copy offsets from faces
+    const Index *faces_offsets =
+        static_cast<const Index *>(_faces_array->offsets_array().data());
+    tf::parallel_copy(
+        tf::make_range(faces_offsets, _faces_array->offsets_array().size()),
+        buff.offsets_buffer());
+
+    if (fresh_fm)
+      tf::topology::compute_manifold_edge_link<Index>(faces, *fresh_fm, buff);
+    else
+      tf::topology::compute_manifold_edge_link<Index>(
+          faces,
+          tf::make_face_membership_like(_face_membership_array->make_range()),
+          buff);
+    return buff;
+  }
+
+  auto commit_manifold_edge_link(tf::offset_block_buffer<Index, Index> &&buff)
+      -> void {
+    auto [offsets, data] = make_numpy_array(std::move(buff));
+    if (!_manifold_edge_link_array) {
+      _manifold_edge_link_array =
+          std::make_unique<tf::py::offset_blocked_array_wrapper<Index, Index>>(
+              offsets, data);
+    } else {
+      _manifold_edge_link_array->set_arrays(offsets, data);
+    }
+    _manifold_edge_link_modified = false;
+  }
+
   auto normals_array() -> const
       nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>> & {
     build_normals();
@@ -795,7 +915,7 @@ private:
       _tree = std::make_unique<tf::aabb_tree<Index, RealT, Dims>>();
     }
     auto polys = make_primitive_range();
-    *_tree = tf::aabb_tree<Index, RealT, Dims>(polys, tf::config_tree(4, 4));
+    *_tree = tf::aabb_tree<Index, RealT, Dims>(polys, tf::config_tree(4, 12));
     _tree_modified = false;
   }
 

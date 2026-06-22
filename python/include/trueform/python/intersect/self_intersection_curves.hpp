@@ -11,6 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
+#include "./build_intersect_structures.hpp"
 #include "../spatial/mesh.hpp"
 #include "../util/make_numpy_array.hpp"
 #include <nanobind/nanobind.h>
@@ -27,6 +28,7 @@ auto self_intersection_curves(
     mesh_wrapper<Index0, RealT, Ngon0, Dims> &form_wrapper,
     tf::intersect_mode mode = tf::intersect_mode::sos,
     double tolerance = 0.0) {
+  build_intersect_structures(form_wrapper);
   auto form0 = form_wrapper.make_primitive_range() |
                tf::tag(form_wrapper.manifold_edge_link()) |
                tf::tag(form_wrapper.face_membership()) |

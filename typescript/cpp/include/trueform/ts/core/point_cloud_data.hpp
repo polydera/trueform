@@ -163,7 +163,7 @@ private:
     if (_tree && _tree_gen == _points_gen)
       return;
     _tree = std::make_shared<tf::aabb_tree<int, Real, 3>>(
-        points_range(), tf::config_tree(4, 4));
+        points_range(), tf::config_tree(4, 12));
     _tree_gen = _points_gen;
   }
 };

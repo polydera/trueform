@@ -31,7 +31,7 @@ auto mesh_data<Real>::ensure_tree() -> void {
       _tree_points_gen == _points_gen)
     return;
   _tree = std::make_shared<tf::aabb_tree<int, Real, 3>>(
-      polygons_range(), tf::config_tree(4, 4));
+      polygons_range(), tf::config_tree(4, 12));
   _tree_faces_gen = _faces_gen;
   _tree_points_gen = _points_gen;
 }

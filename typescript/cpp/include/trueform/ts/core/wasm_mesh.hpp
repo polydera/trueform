@@ -105,6 +105,12 @@ public:
 
   // Void variant for JS / embind (the const-ref tree() can't cross to JS).
   auto build_tree() -> void { (void)_data->tree(); }
+  auto build_face_membership() -> void { (void)_data->face_membership_range(); }
+  auto build_manifold_edge_link() -> void {
+    (void)_data->manifold_edge_link_range();
+  }
+
+  auto same_data(const wasm_mesh &o) const -> bool { return _data == o._data; }
 
   auto face_membership() -> wasm_offset_blocked_buffer<int, int> {
     return _data->face_membership();

@@ -11,6 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
+#include "../intersect/build_intersect_structures.hpp"
 #include "../spatial/mesh.hpp"
 #include "../util/make_numpy_array.hpp"
 #include <nanobind/nanobind.h>
@@ -31,6 +32,8 @@ auto mesh_arrangements(
   for (auto &w : wrappers)
     if (w.has_transformation())
       any_transformed = true;
+
+  build_intersect_structures_all(wrappers);
 
   auto run = [mode, tolerance](const auto &forms) {
     auto [mesh, tag_labels, face_labels] = tf::make_mesh_arrangements(
@@ -74,6 +77,8 @@ auto mesh_arrangements(
   for (auto &w : wrappers)
     if (w.has_transformation())
       any_transformed = true;
+
+  build_intersect_structures_all(wrappers);
 
   auto run = [mode, tolerance](const auto &forms) {
     auto [mesh, tag_labels, face_labels, curves] =

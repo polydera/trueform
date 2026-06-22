@@ -13,6 +13,7 @@
 #pragma once
 
 #include "trueform/cut/make_mesh_arrangements.hpp"
+#include "trueform/ts/core/build_intersect_structures.hpp"
 #include "trueform/ts/core/promise.hpp"
 #include "trueform/ts/core/wasm_curves.hpp"
 #include "trueform/ts/core/wasm_mesh.hpp"
@@ -68,6 +69,7 @@ auto extract_meshes(emscripten::val js_meshes) -> std::vector<wasm_mesh<Real>> {
 template <typename Real, typename MeshRange>
 auto run_arrangement(MeshRange &meshes, int mode, double tolerance)
     -> arrangement_result_t<Real> {
+  build_intersect_structures_all(meshes);
   auto mesh_range = tf::make_range(meshes);
   bool any_transformed = false;
   for (auto &m : meshes)
@@ -108,6 +110,7 @@ auto run_arrangement(MeshRange &meshes, int mode, double tolerance)
 template <typename Real, typename MeshRange>
 auto run_arrangement_with_curves(MeshRange &meshes, int mode, double tolerance)
     -> arrangement_result_with_curves_t<Real> {
+  build_intersect_structures_all(meshes);
   auto mesh_range = tf::make_range(meshes);
   bool any_transformed = false;
   for (auto &m : meshes)

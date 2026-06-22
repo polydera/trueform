@@ -102,6 +102,21 @@ public:
     return _data->manifold_edge_link_array();
   }
 
+  auto compute_face_membership_if_missing() {
+    return _data->compute_face_membership_if_missing();
+  }
+  auto commit_face_membership(tf::face_membership<Index> &&fm) -> void {
+    _data->commit_face_membership(std::move(fm));
+  }
+  template <typename FmOpt>
+  auto compute_manifold_edge_link_if_missing(const FmOpt &fm) {
+    return _data->compute_manifold_edge_link_if_missing(fm);
+  }
+  template <typename MelBuf>
+  auto commit_manifold_edge_link(MelBuf &&buf) -> void {
+    _data->commit_manifold_edge_link(std::move(buf));
+  }
+
   auto normals_array()
       -> const nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>> & {
     return _data->normals_array();
@@ -285,6 +300,21 @@ public:
   auto manifold_edge_link_array()
       -> const tf::py::offset_blocked_array_wrapper<Index, Index> & {
     return _data->manifold_edge_link_array();
+  }
+
+  auto compute_face_membership_if_missing() {
+    return _data->compute_face_membership_if_missing();
+  }
+  auto commit_face_membership(tf::face_membership<Index> &&fm) -> void {
+    _data->commit_face_membership(std::move(fm));
+  }
+  template <typename FmOpt>
+  auto compute_manifold_edge_link_if_missing(const FmOpt &fm) {
+    return _data->compute_manifold_edge_link_if_missing(fm);
+  }
+  template <typename MelBuf>
+  auto commit_manifold_edge_link(MelBuf &&buf) -> void {
+    _data->commit_manifold_edge_link(std::move(buf));
   }
 
   auto normals_array()
