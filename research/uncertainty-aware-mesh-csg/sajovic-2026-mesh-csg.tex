@@ -661,7 +661,7 @@ Figure~\ref{fig:comparison-nary} reports each method's median operation time rel
 
 The same pipeline runs client-side in the WebAssembly build (Section~\ref{sec:results-performance}). We measure it against the two booleans deployed for the browser: Manifold~\cite{Manifold}, whose WebAssembly build is a common in-browser solid-modeling kernel, and three-bvh-csg~\cite{ThreeBvhCsg}, the BVH-based CSG evaluator for three.js. Each is built and run as shipped. We run the pairwise corpus of Section~\ref{sec:results-scaling} ($100$k--$1$M triangles per operand), one boolean per pair, in Chrome~$148$ on the same Apple M4 Max, and grade every output with the oracle of Section~\ref{sec:results-scaling}.
 
-Figure~\ref{fig:comparison-browser} and Table~\ref{tab:browser} report the per-operation wall-clock and validity. Our method is fastest; at the geometric mean it runs $10.0\times$ faster than Manifold and $32.9\times$ faster than three-bvh-csg. Running in WebAssembly rather than native costs our method about $1.7\times$ ($15.7$\,ms native to $27.4$\,ms in the browser on the same corpus) and Manifold a similar factor, so the desktop ranking carries over and the exact pipeline stays interactive client-side. In fact, our method in the browser is faster than any prior art runs natively: its $27.4$\,ms median sits below MeshLib's native median ($86$\,ms), the fastest of the prior methods, and an order of magnitude or more under the exact-construction engines. Validity separates them further. Our method and Manifold are watertight and manifold on all $1000$ pairs; three-bvh-csg on only $22$. On the desktop the invalid results had the right enclosing solid, with only their topology corrupted by the floating-point merge; here the solid itself is wrong --- three-bvh-csg returns an open mesh, not a closed one, on the other $978$ pairs.
+Figure~\ref{fig:comparison-browser} and Table~\ref{tab:browser} report the per-operation wall-clock and validity. Our method is fastest; at the geometric mean it runs $12.6\times$ faster than Manifold and $41.2\times$ faster than three-bvh-csg. Running in WebAssembly rather than native costs our method about $1.4\times$ ($15.7$\,ms native to $21.9$\,ms in the browser on the same corpus), so the desktop ranking carries over and the exact pipeline stays interactive client-side. In fact, our method in the browser is faster than any prior art runs natively: its $21.9$\,ms median sits below MeshLib's native median ($86$\,ms), the fastest of the prior methods, and an order of magnitude or more under the exact-construction engines. Validity separates them further. Our method and Manifold are watertight and manifold on all $1000$ pairs; three-bvh-csg on only $22$. On the desktop the invalid results had the right enclosing solid, with only their topology corrupted by the floating-point merge; here the solid itself is wrong --- three-bvh-csg returns an open mesh, not a closed one, on the other $978$ pairs.
 
 \begin{figure}[t]
   \centering
@@ -679,9 +679,9 @@ Figure~\ref{fig:comparison-browser} and Table~\ref{tab:browser} report the per-o
 \toprule
 library & median (ms) & geomean $\times$ & valid \\
 \midrule
-trueform      & $27.4$  & $1.0\times$   & $1000/1000$ \\
-Manifold      & $303.4$ & $10.0\times$  & $1000/1000$ \\
-three-bvh-csg & $978$   & $32.9\times$  & $22/1000$   \\
+trueform      & $21.9$  & $1.0\times$   & $1000/1000$ \\
+Manifold      & $303.4$ & $12.6\times$  & $1000/1000$ \\
+three-bvh-csg & $978$   & $41.2\times$  & $22/1000$   \\
 \bottomrule
 \end{tabular*}
 \end{table}
