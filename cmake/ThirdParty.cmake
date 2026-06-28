@@ -51,6 +51,11 @@ if(TF_USE_MIMALLOC)
     find_package(mimalloc CONFIG REQUIRED)
   else()
     set(CPM_USE_LOCAL_PACKAGES OFF)   # always fetch our own MI_OVERRIDE=OFF build
+    # dlopen-safe TLS for the Python wheel; without it Linux faults on import
+    # ("static TLS block"). Unix-only, no-op on Win/macOS. Defaults OFF.
+    if(TF_BUILD_PYTHON)
+      set(MI_LOCAL_DYNAMIC_TLS ON CACHE BOOL "" FORCE)
+    endif()
     CPMAddPackage(
       NAME                mimalloc
       GITHUB_REPOSITORY   microsoft/mimalloc
