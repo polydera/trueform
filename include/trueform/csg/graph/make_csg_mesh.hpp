@@ -39,7 +39,6 @@
 #include <array>
 #include <cstdint>
 #include <type_traits>
-#include <vector>
 
 namespace tf::csg::graph {
 
@@ -47,10 +46,11 @@ namespace tf::csg::graph {
 /// @brief Build a CSG result mesh from the implicit N-form
 ///        arrangement and a precomputed `chosen_sides` selection.
 ///
-/// Assumes all input forms are triangulated (faces have 3 vertices).
-/// Output: triangulated `polygons_buffer<Index, RealOut, 3, 3>`
-/// whose boundary is the solid of the boolean expression that
-/// produced `chosen_sides`.
+/// Uncut faces keep their input arity; only cut loops are triangulated.
+/// The output `polygons_buffer` type follows the input: an all-triangle
+/// input stays a static `blocked<3>`; any other (quad / n-gon / mixed)
+/// input materialises a dynamic-size buffer. Its boundary is the solid of
+/// the boolean expression that produced `chosen_sides`.
 template <typename OutputCoordinateType = tf::none_t, typename FormsRange,
           typename Index, typename Int, typename RealType>
 auto make_csg_mesh(const tf::arrangement_graph<Index> &ag,
@@ -141,58 +141,19 @@ auto make_csg_mesh(const tf::arrangement_graph<Index> &ag,
                 })));
   };
 
-  // ---- Stage 5: concatenate face streams with directions. -----------
-  //
-  // Per form, four streams: uncut-fwd, uncut-rev, tri-fwd, tri-rev.
-  // Total triangles in output = sum over (t, kind) of stream sizes.
-  Index total_tris = 0;
-  for (Index t = 0; t < n_tags; ++t) {
-    total_tris += static_cast<Index>(pids[t].polygons[1].size());
-    total_tris += static_cast<Index>(pids[t].polygons[0].size());
-    total_tris += static_cast<Index>(tri_data[t][1].size() / 3);
-    total_tris += static_cast<Index>(tri_data[t][0].size() / 3);
-  }
-
-  tf::blocked_buffer<Index, 3> face_buf;
-  face_buf.data_buffer().allocate(3 * static_cast<std::size_t>(total_tris));
-
+  // ---- Stage 6: points buffer (shared by both output-arity paths). --
   const Index total_pts =
       map_data.total_original_points + map_data.total_created_points;
   tf::points_buffer<RealOut, 3> pts_buf;
   pts_buf.allocate(total_pts);
-
-  {
-    tbb::task_group tg;
-
-    // ---- Stage 5: face streams. ------------------------------------
-    Index offset = 0;
-    auto copy_stream = [&](auto &&src, Index size, bool reverse) {
-      auto dst = tf::slice(face_buf, offset, offset + size);
-      if (reverse) {
-        tg.run([src, dst] {
-          tf::parallel_copy_blocked_reverse(src, dst);
-        });
-      } else {
-        tg.run([src, dst] { tf::parallel_copy(src, dst); });
-      }
-      offset += size;
-    };
-    for (Index t = 0; t < n_tags; ++t) {
-      copy_stream(mapped_uncut_faces(t, 1),
-                  static_cast<Index>(pids[t].polygons[1].size()), false);
-      copy_stream(mapped_uncut_faces(t, 0),
-                  static_cast<Index>(pids[t].polygons[0].size()), true);
-      copy_stream(tf::make_blocked_range<3>(tf::make_range(tri_data[t][1])),
-                  static_cast<Index>(tri_data[t][1].size() / 3), false);
-      copy_stream(tf::make_blocked_range<3>(tf::make_range(tri_data[t][0])),
-                  static_cast<Index>(tri_data[t][0].size() / 3), true);
-    }
-
-    // ---- Stage 6: points buffer. -----------------------------------
+  auto emit_points = [&](tbb::task_group &tg) {
+    // `pts_range` is a view; capture it BY VALUE in each task — the tasks
+    // outlive this lambda (they run at the caller's tg.wait()), so a
+    // by-reference capture of this local would dangle.
     auto pts_range =
         tf::make_offset_block_range(map_data.original_offsets, pts_buf);
     for (Index t = 0; t < n_tags; ++t) {
-      tg.run([&, t] {
+      tg.run([&, t, pts_range] {
         auto frame = tf::frame_of(forms[t]);
         if constexpr (std::is_integral_v<RealOut>) {
           tf::parallel_copy(
@@ -226,17 +187,102 @@ auto make_csg_mesh(const tf::arrangement_graph<Index> &ag,
         tf::parallel_copy(
             tf::make_points(tf::make_mapped_range(
                 map_data.created_ids,
-                [&conv, &ipts](Index id) {
-                  return conv.deconvert(ipts[id]);
-                })),
+                [&conv, &ipts](Index id) { return conv.deconvert(ipts[id]); })),
             tf::drop(pts_buf, map_data.total_original_points));
       }
     });
+  };
 
-    tg.wait();
+  // ---- Stage 5: assemble output faces. Uncut faces keep their own arity;
+  // only cut loops are triangles. Per form the four streams stay (uncut-fwd,
+  // uncut-rev, tri-fwd, tri-rev); side-0 streams are reversed. The output
+  // buffer type follows the input arity: all-triangle input stays a fast
+  // `blocked<3>`; a non-triangle (or mixed) input materialises a dynamic
+  // offset-block so each face keeps its vertex count. -----------------------
+  constexpr std::size_t N_in = tf::static_size_v<decltype(forms[0].faces()[0])>;
+
+  // Stream descriptor: (forward src, size, reverse?) emitted in output order.
+  auto for_each_stream = [&](auto &&fn) {
+    for (Index t = 0; t < n_tags; ++t) {
+      fn(mapped_uncut_faces(t, 1),
+         static_cast<Index>(pids[t].polygons[1].size()), false);
+      fn(mapped_uncut_faces(t, 0),
+         static_cast<Index>(pids[t].polygons[0].size()), true);
+      fn(tf::make_blocked_range<3>(tf::make_range(tri_data[t][1])),
+         static_cast<Index>(tri_data[t][1].size() / 3), false);
+      fn(tf::make_blocked_range<3>(tf::make_range(tri_data[t][0])),
+         static_cast<Index>(tri_data[t][0].size() / 3), true);
+    }
+  };
+
+  if constexpr (N_in == 3) {
+    // Fast path: every face is a triangle, so the output is a `blocked<3>`.
+    Index total_faces = 0;
+    for_each_stream([&](auto &&, Index size, bool) { total_faces += size; });
+    tf::blocked_buffer<Index, 3> face_buf;
+    face_buf.data_buffer().allocate(3 * static_cast<std::size_t>(total_faces));
+    {
+      tbb::task_group tg;
+      Index offset = 0;
+      for_each_stream([&](auto &&src, Index size, bool reverse) {
+        auto dst = tf::slice(face_buf, offset, offset + size);
+        if (reverse)
+          tg.run([src, dst] { tf::parallel_copy_blocked_reverse(src, dst); });
+        else
+          tg.run([src, dst] { tf::parallel_copy(src, dst); });
+        offset += size;
+      });
+      emit_points(tg);
+      tg.wait();
+    }
+    return tf::make_polygons_buffer(std::move(face_buf), std::move(pts_buf));
+  } else {
+    // General path: uncut faces keep their arity, cut loops are triangles, so
+    // the output is a dynamic offset-block. Build per-face offsets in stream
+    // order, then copy each stream into its face slice (reversed for side 0).
+    Index n_faces = 0;
+    for_each_stream([&](auto &&, Index size, bool) { n_faces += size; });
+    tf::buffer<Index> offs;
+    offs.allocate(static_cast<std::size_t>(n_faces) + 1);
+    offs[0] = 0;
+    {
+      // Write each face's vertex count into its offset slot, per stream in
+      // parallel (streams own disjoint face ranges, so no contention); a
+      // serial prefix sum then turns the counts into offsets.
+      tbb::task_group tg;
+      Index fbase = 0;
+      for_each_stream([&](auto &&src, Index size, bool) {
+        tg.run([src, fbase, &offs] {
+          Index i = fbase;
+          for (auto &&face : src)
+            offs[++i] = static_cast<Index>(face.size());
+        });
+        fbase += size;
+      });
+      tg.wait();
+    }
+    for (Index i = 0; i < n_faces; ++i)
+      offs[i + 1] += offs[i];
+    tf::offset_block_buffer<Index, Index> face_buf;
+    face_buf.offsets_buffer() = std::move(offs);
+    face_buf.data_buffer().allocate(
+        static_cast<std::size_t>(face_buf.offsets_buffer().back()));
+    {
+      tbb::task_group tg;
+      Index offset = 0;
+      for_each_stream([&](auto &&src, Index size, bool reverse) {
+        auto dst = tf::slice(face_buf, offset, offset + size);
+        if (reverse)
+          tg.run([src, dst] { tf::parallel_copy_blocked_reverse(src, dst); });
+        else
+          tg.run([src, dst] { tf::parallel_copy_blocked(src, dst); });
+        offset += size;
+      });
+      emit_points(tg);
+      tg.wait();
+    }
+    return tf::make_polygons_buffer(std::move(face_buf), std::move(pts_buf));
   }
-
-  return tf::make_polygons_buffer(std::move(face_buf), std::move(pts_buf));
 }
 
 } // namespace tf::csg::graph

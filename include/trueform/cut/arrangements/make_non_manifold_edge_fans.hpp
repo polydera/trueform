@@ -80,7 +80,29 @@ auto make_non_manifold_edge_fans(const tf::arrangement_graph<Index> &ag,
   tf::blocked_reduce(
       tf::enumerate(tf::zip(loops, conn)), std::tie(out.edges, out.faces),
       local_t{},
-      [](const auto &range, local_t &local) {
+      [&loops](const auto &range, local_t &local) {
+        // How many times the undirected edge {a,b} traverses loop `lp`.
+        // 1 for a normal edge; 2 for the two walls of a slit — an open cut
+        // whose free tip ends inside the region, so the loop runs in along
+        // one wall and back along the other, carrying {a,b} twice. The
+        // self-excluding connectivity drops that second incidence, which is
+        // the "one loop too few" that folds a solid's two sides together.
+        auto edge_mult = [](const auto &lp, const vertex_t &a,
+                            const vertex_t &b) -> Index {
+          const Index m = static_cast<Index>(lp.size());
+          Index c = 0, q = m - 1;
+          for (Index j = 0; j < m; q = j++)
+            if ((lp[q] == a && lp[j] == b) || (lp[q] == b && lp[j] == a))
+              ++c;
+          return c;
+        };
+        // The two walls share one geometric edge; emit only from the
+        // "forward" one (a < b under (id, source)) so it yields one fan.
+        auto is_forward = [](const vertex_t &a, const vertex_t &b) {
+          return a.id != b.id
+                     ? a.id < b.id
+                     : static_cast<int>(a.source) < static_cast<int>(b.source);
+        };
         for (const auto &outer : range) {
           const auto &[loop_id_z, pair] = outer;
           const auto loop_id = static_cast<Index>(loop_id_z);
@@ -92,28 +114,78 @@ auto make_non_manifold_edge_fans(const tf::arrangement_graph<Index> &ag,
           if (edge_conn.size() == 0)
             continue;
           const Index size = static_cast<Index>(loop.size());
+          // A simple region loop visits every vertex once. A loop that carries
+          // an edge twice — a slit (open cut, free tip inside) OR a bridge edge
+          // that patches a hole into the loop — necessarily revisits a vertex.
+          // So unless some vertex repeats, no edge can be doubled and we take
+          // the exact original path with no per-edge counting.
+          bool maybe_doubled = false;
+          for (Index x = 0; x < size && !maybe_doubled; ++x)
+            for (Index y = x + 1; y < size; ++y)
+              if (loop[x] == loop[y]) {
+                maybe_doubled = true;
+                break;
+              }
           Index prev = size - 1;
           for (Index i = 0; i < size; prev = i++) {
             const auto &neighbours = edge_conn[prev];
-            // NM means K > 2 incident faces — i.e. the loop has > 1
-            // peers at this edge. Size 1 is a normal manifold edge.
-            if (neighbours.size() < 2)
+            const auto &va = loop[prev];
+            const auto &vb = loop[i];
+            // Total faces incident to this geometric edge = this loop's own
+            // incidences + the self-EXCLUDED peers from the connectivity.
+            // `self_mult` is 2 where this loop carries the edge twice — the two
+            // walls of a slit, or the two sides of a bridge edge — which
+            // `neighbours` never lists (it is the same loop); 1 otherwise.
+            // Counting (not a flank test) is required: a bridge's endpoints are
+            // ordinary vertices, not a flanked tip. Non-manifold means 3+
+            // incident faces — a doubled edge (self_mult 2) with even a single
+            // extra attached face (neighbours 1) is non-manifold.
+            const Index self_mult =
+                maybe_doubled ? edge_mult(loop, va, vb) : Index(1);
+            const Index total_incidences =
+                self_mult + static_cast<Index>(neighbours.size());
+            if (total_incidences < 3)
               continue;
-            bool is_rep = true;
+            // A slit's two walls are the same loop — emit the forward one.
+            if (self_mult >= 2 && !is_forward(va, vb))
+              continue;
+            // A slit wall always emits (only it knows its loop is doubled).
+            // A normal slot emits if it is the smallest-id member AND no
+            // neighbour is a slit wall here — a slit neighbour carries the
+            // extra incidence this slot cannot see, so it must emit instead.
+            if (self_mult < 2) {
+              bool is_rep = true;
+              for (auto n : neighbours)
+                if (n < loop_id) {
+                  is_rep = false;
+                  break;
+                }
+              if (!is_rep)
+                continue;
+              bool slit_neighbour = false;
+              for (auto n : neighbours)
+                if (edge_mult(loops[n], va, vb) >= 2) {
+                  slit_neighbour = true;
+                  break;
+                }
+              if (slit_neighbour)
+                continue;
+            }
+            local.edges.data_buffer().push_back(va);
+            local.edges.data_buffer().push_back(vb);
+            Index fan = 0;
+            for (Index k = 0; k < self_mult; ++k) {
+              local.faces_data.push_back(loop_id);
+              ++fan;
+            }
             for (auto n : neighbours) {
-              if (n < loop_id) {
-                is_rep = false;
-                break;
+              const Index nm = edge_mult(loops[n], va, vb);
+              for (Index k = 0; k < (nm > 0 ? nm : Index(1)); ++k) {
+                local.faces_data.push_back(n);
+                ++fan;
               }
             }
-            if (!is_rep)
-              continue;
-            local.edges.data_buffer().push_back(loop[prev]);
-            local.edges.data_buffer().push_back(loop[i]);
-            local.sizes.push_back(Index(neighbours.size() + 1));
-            local.faces_data.push_back(loop_id);
-            for (auto n : neighbours)
-              local.faces_data.push_back(n);
+            local.sizes.push_back(fan);
           }
         }
       },

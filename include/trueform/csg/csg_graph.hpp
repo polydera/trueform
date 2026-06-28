@@ -33,6 +33,7 @@
 #include "../intersect/intersections_between_polygons.hpp"
 #include "./graph/compute_arrangement_domain_volumes.hpp"
 #include "./graph/seed_inclusion_bits.hpp"
+#include <array>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -119,7 +120,8 @@ public:
     auto volumes = tf::csg::graph::compute_arrangement_domain_volumes(
         tagged, _ag, _fc, _desc, get_point);
     auto seeds = tf::csg::graph::seed_inclusion_bits(
-        _inc, _desc, _ag, _fc, _ig, tagged, conv, volumes, _is_sheet);
+        _inc, _desc, _ag, _fc, _ig, tagged, conv, volumes,
+        _domain_nesting_merges, _is_sheet);
     tf::cut::propagate_inclusion_bits(_inc, _desc, _ag, _fc, seeds);
     tf::cut::anchor_sheet_sides(_inc, _desc, _is_sheet);
   }
@@ -167,6 +169,14 @@ public:
   }
   auto inclusion() const -> const tf::cut::domain_inclusions & { return _inc; }
 
+  /// @brief `domain_of_side` merge pairs that repair contact-free nested
+  /// shells (from the seeding cast). Consumed by `make_csg_domains`;
+  /// irrelevant to the boolean mesh read. Empty when no nesting.
+  auto domain_nesting_merges() const
+      -> const tf::buffer<std::array<index_type, 2>> & {
+    return _domain_nesting_merges;
+  }
+
 private:
   Forms _forms;
   tf::small_vector<Structs, 10> _structs;
@@ -179,6 +189,7 @@ private:
   tf::arrangement_graph<index_type> _ag;
   tf::cut::arrangement_descriptor<index_type> _desc;
   tf::cut::domain_inclusions _inc;
+  tf::buffer<std::array<index_type, 2>> _domain_nesting_merges;
 };
 
 } // namespace tf

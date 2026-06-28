@@ -1,0 +1,537 @@
+/**
+ * @file test_csg_domains.cpp
+ * @brief Per-domain CSG extraction: read the N-ary csg_graph as
+ *        watertight per-domain cells.
+ *
+ * Copyright (c) 2026 Ziga Sajovic, XLAB
+ */
+
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <trueform/core/signed_volume.hpp>
+#include <trueform/csg.hpp>
+#include <trueform/csg/expression/operators.hpp>
+#include <trueform/csg/graph/compute_domain_partition.hpp>
+#include <trueform/topology/domain_config.hpp>
+#include <trueform/topology/is_closed.hpp>
+#include <trueform/topology/is_manifold.hpp>
+#include <trueform/trueform.hpp>
+
+#include <cmath>
+#include <cstdio>
+
+#include <algorithm>
+#include <array>
+#include <cstdint>
+#include <utility>
+#include <vector>
+
+namespace {
+
+using Index = int;
+using Real = double;
+using mesh_t = tf::polygons_buffer<Index, Real, 3, 3>;
+
+auto frame0() {
+  return tf::make_frame(
+      tf::make_transformation_from_translation(tf::vector<Real, 3>{0, 0, 0}));
+}
+
+auto frame_at(Real x, Real y, Real z) {
+  return tf::make_frame(
+      tf::make_transformation_from_translation(tf::vector<Real, 3>{x, y, z}));
+}
+
+using frame_t = decltype(frame0());
+using form_t = decltype(std::declval<mesh_t &>().polygons() |
+                        tf::tag(std::declval<frame_t>()));
+
+template <typename Cells> auto sorted_volumes(const Cells &cells) {
+  std::vector<Real> v;
+  v.reserve(cells.size());
+  for (auto &c : cells)
+    v.push_back(std::abs(tf::signed_volume(c.polygons())));
+  std::sort(v.begin(), v.end());
+  return v;
+}
+
+template <typename CellsA, typename CellsB>
+void print_and_check_parity(const char *name, const CellsA &cells,
+                            const CellsB &ocells) {
+  auto v1 = sorted_volumes(cells);
+  auto v2 = sorted_volumes(ocells);
+
+  std::printf("[parity] %s\n", name);
+  std::printf("  csg    count=%zu volumes=", cells.size());
+  for (auto x : v1)
+    std::printf("%.6f ", x);
+  std::printf("\n  oracle count=%zu volumes=", ocells.size());
+  for (auto x : v2)
+    std::printf("%.6f ", x);
+  std::printf("\n");
+
+  REQUIRE(cells.size() == ocells.size());
+  REQUIRE(v1.size() == v2.size());
+  for (std::size_t i = 0; i < v1.size(); ++i)
+    REQUIRE_THAT(v1[i], Catch::Matchers::WithinRel(v2[i], Real(0.02)));
+
+  for (auto &c : cells) {
+    REQUIRE(tf::is_closed(c.polygons()));
+    REQUIRE(tf::is_manifold(c.polygons()));
+  }
+  for (auto &c : ocells) {
+    REQUIRE(tf::is_closed(c.polygons()));
+    REQUIRE(tf::is_manifold(c.polygons()));
+  }
+}
+
+} // namespace
+
+TEST_CASE("compute_domain_partition keeps a label per kept domain side",
+          "[domains]") {
+  auto sf = tf::make_sphere_mesh<Index>(Real(1), 24, 24);
+  auto pf = tf::make_plane_mesh<Index>(Real(3), Real(3));
+  auto sphere = sf.polygons() | tf::tag(frame0());
+  auto plane = pf.polygons() | tf::tag(frame0());
+  std::vector<form_t> forms{sphere, plane};
+  auto graph =
+      tf::make_csg_graph(tf::make_range(forms), tf::make_range(std::array<int, 1>{1}));
+
+  auto inc = graph.inclusion();
+  auto blocks = inc.make_range();
+  tf::buffer<bool> keep;
+  keep.allocate(blocks.size());
+  for (std::size_t d = 0; d < blocks.size(); ++d) {
+    std::uint32_t any = 0;
+    for (auto w : blocks[d])
+      any |= w;
+    keep[d] = any != 0;
+  }
+
+  auto part = tf::csg::graph::compute_domain_partition(graph.descriptor(), keep);
+
+  std::size_t n_keep = 0;
+  for (std::size_t d = 0; d < keep.size(); ++d)
+    n_keep += keep[d];
+  REQUIRE(part.n_kept == static_cast<Index>(n_keep));
+
+  // The two bounded sphere cells (upper/lower hemisphere) carry the
+  // sphere's operand bit (bit 0); the sheet also tags the open half-space
+  // behind its normal, so the raw non-zero keep rule retains that too. The
+  // bounded-only filter lives in the emission (Task 2), not here.
+  std::size_t n_bounded = 0;
+  for (std::size_t d = 0; d < blocks.size(); ++d)
+    if ((blocks[d][0] & 0x1u) != 0)
+      ++n_bounded;
+  REQUIRE(n_bounded == 2);
+
+  // dense_of_domain is a valid remap: kept -> [0,n_kept), dropped -> -1.
+  for (std::size_t d = 0; d < keep.size(); ++d) {
+    if (keep[d])
+      REQUIRE(part.dense_of_domain[d] >= 0);
+    else
+      REQUIRE(part.dense_of_domain[d] == Index(-1));
+  }
+}
+
+TEST_CASE("make_csg_domains splits a plane-cut sphere into two cells",
+          "[domains]") {
+  auto sf = tf::make_sphere_mesh<Index>(Real(1), 32, 32);
+  auto pf = tf::make_plane_mesh<Index>(Real(3), Real(3));
+  auto sphere = sf.polygons() | tf::tag(frame0());
+  auto plane = pf.polygons() | tf::tag(frame0());
+  std::vector<form_t> forms{sphere, plane};
+  auto graph = tf::make_csg_graph(tf::make_range(forms));
+
+  auto [cells, ids] = tf::make_csg_domains(graph);
+
+  REQUIRE(cells.size() == 2);
+  REQUIRE(ids.size() == 2);
+
+  Real total_volume = 0;
+  for (auto &cell : cells) {
+    auto polys = cell.polygons();
+    REQUIRE(tf::is_closed(polys));
+    REQUIRE(tf::is_manifold(polys));
+    total_volume += std::abs(tf::signed_volume(polys));
+  }
+
+  const Real ball = Real(4) / Real(3) * tf::pi<Real>;
+  REQUIRE(std::abs(total_volume - ball) < Real(0.02) * ball);
+}
+
+TEST_CASE("make_csg_domains default config fuses sheet open halves",
+          "[domains]") {
+  // Headline change: under the default config (exclude_outer_shell |
+  // ignore_open_fragments) the sheet's two open halves are merged into
+  // the universe and dropped, leaving exactly the two closed hemispheres.
+  auto sf = tf::make_sphere_mesh<Index>(Real(1), 32, 32);
+  auto pf = tf::make_plane_mesh<Index>(Real(3), Real(3));
+  auto sphere = sf.polygons() | tf::tag(frame0());
+  auto plane = pf.polygons() | tf::tag(frame0());
+  std::vector<form_t> forms{sphere, plane};
+  auto graph = tf::make_csg_graph(tf::make_range(forms),
+                                  tf::make_range(std::array<int, 1>{1}));
+
+  auto [cells, ids] = tf::make_csg_domains(graph);
+
+  REQUIRE(cells.size() == 2);
+  REQUIRE(ids.size() == 2);
+
+  int n_closed = 0;
+  int n_open = 0;
+  Real total_volume = 0;
+  for (auto &cell : cells) {
+    auto polys = cell.polygons();
+    if (tf::is_closed(polys))
+      ++n_closed;
+    else
+      ++n_open;
+    REQUIRE(tf::is_manifold(polys));
+    total_volume += std::abs(tf::signed_volume(polys));
+  }
+  REQUIRE(n_closed == 2);
+  REQUIRE(n_open == 0);
+
+  const Real ball = Real(4) / Real(3) * tf::pi<Real>;
+  REQUIRE(std::abs(total_volume - ball) < Real(0.02) * ball);
+}
+
+TEST_CASE("make_csg_domains filters domains without merging them",
+          "[domains]") {
+  auto sf = tf::make_sphere_mesh<Index>(Real(1), 32, 32);
+  auto pf = tf::make_plane_mesh<Index>(Real(3), Real(3));
+  auto sphere = sf.polygons() | tf::tag(frame0());
+  auto plane = pf.polygons() | tf::tag(frame0());
+  std::vector<form_t> forms{sphere, plane};
+  auto graph = tf::make_csg_graph(tf::make_range(forms));
+
+  auto [cells, ids] = tf::make_csg_domains(graph, tf::csg::op(0));
+
+  REQUIRE(cells.size() == 2);
+  for (auto &cell : cells)
+    REQUIRE(tf::is_closed(cell.polygons()));
+}
+
+TEST_CASE("make_csg_domains filter still selects hemispheres for a sheet",
+          "[domains]") {
+  // Sheet graph, default config + op(0): open halves fused away, only the
+  // two closed sphere-interior hemispheres survive the filter.
+  auto sf = tf::make_sphere_mesh<Index>(Real(1), 32, 32);
+  auto pf = tf::make_plane_mesh<Index>(Real(3), Real(3));
+  auto sphere = sf.polygons() | tf::tag(frame0());
+  auto plane = pf.polygons() | tf::tag(frame0());
+  std::vector<form_t> forms{sphere, plane};
+  auto graph = tf::make_csg_graph(tf::make_range(forms),
+                                  tf::make_range(std::array<int, 1>{1}));
+
+  auto [cells, ids] = tf::make_csg_domains(graph, tf::csg::op(0));
+
+  REQUIRE(cells.size() == 2);
+  for (auto &cell : cells)
+    REQUIRE(tf::is_closed(cell.polygons()));
+}
+
+TEST_CASE("make_csg_domains recovers the outer domain when not excluded",
+          "[domains]") {
+  // Sheet graph; opens merged (ignore_open_fragments) but the universe is
+  // NOT excluded, so ~op(0) & ~op(1) selects the outside. Observed: 1 cell
+  // (id 0), closed + manifold, signed_volume = -4.152 (inward-facing outer
+  // shell of the [-1.5,1.5]^2 sheet box with the sphere carved out).
+  auto sf = tf::make_sphere_mesh<Index>(Real(1), 32, 32);
+  auto pf = tf::make_plane_mesh<Index>(Real(3), Real(3));
+  auto sphere = sf.polygons() | tf::tag(frame0());
+  auto plane = pf.polygons() | tf::tag(frame0());
+  std::vector<form_t> forms{sphere, plane};
+  auto graph = tf::make_csg_graph(tf::make_range(forms),
+                                  tf::make_range(std::array<int, 1>{1}));
+
+  auto [cells, ids] = tf::make_csg_domains(
+      graph, ~tf::csg::op(0) & ~tf::csg::op(1),
+      tf::domain_config::ignore_open_fragments);
+
+  REQUIRE(cells.size() >= 1);
+  bool found_outer = false;
+  for (auto &cell : cells)
+    if (tf::signed_volume(cell.polygons()) < Real(0))
+      found_outer = true;
+  REQUIRE(found_outer);
+}
+
+TEST_CASE("make_csg_domains raw config emits every arrangement domain",
+          "[domains]") {
+  // config = none: no open merge, no universe drop. Observed for the sheet
+  // graph: 4 domains (2 closed hemispheres + 2 open sheet halves).
+  auto sf = tf::make_sphere_mesh<Index>(Real(1), 32, 32);
+  auto pf = tf::make_plane_mesh<Index>(Real(3), Real(3));
+  auto sphere = sf.polygons() | tf::tag(frame0());
+  auto plane = pf.polygons() | tf::tag(frame0());
+  std::vector<form_t> forms{sphere, plane};
+  auto graph = tf::make_csg_graph(tf::make_range(forms),
+                                  tf::make_range(std::array<int, 1>{1}));
+
+  auto [cells, ids] = tf::make_csg_domains(graph, tf::domain_config::none);
+
+  REQUIRE(cells.size() == 4);
+  REQUIRE(ids.size() == 4);
+
+  int n_closed = 0;
+  int n_open = 0;
+  for (auto &cell : cells) {
+    if (tf::is_closed(cell.polygons()))
+      ++n_closed;
+    else
+      ++n_open;
+  }
+  REQUIRE(n_closed == 2);
+  REQUIRE(n_open == 2);
+}
+
+TEST_CASE("make_csg_domains matches materialized split: two spheres",
+          "[domains][parity]") {
+  auto af = tf::make_sphere_mesh<Index>(Real(1), 32, 32);
+  auto bf = tf::make_sphere_mesh<Index>(Real(1), 32, 32);
+  auto a = af.polygons() | tf::tag(frame0());
+  auto b = bf.polygons() | tf::tag(frame_at(Real(1), 0, 0));
+  std::vector<form_t> forms{a, b};
+
+  auto graph = tf::make_csg_graph(tf::make_range(forms));
+  auto [cells, ids] = tf::make_csg_domains(graph);
+
+  auto [arr_mesh, tag_labels, face_labels] = tf::make_mesh_arrangements(a, b);
+  auto clean = tf::cleaned(arr_mesh.polygons(), Real(1e-6));
+  auto dl = tf::make_domain_labels(clean.polygons(),
+                                   tf::domain_config::exclude_outer_shell |
+                                       tf::domain_config::ignore_open_fragments);
+  auto [ocells, oids] = tf::split_into_domains(clean.polygons(), dl);
+
+  print_and_check_parity("two overlapping spheres", cells, ocells);
+  REQUIRE(cells.size() == 3);
+}
+
+TEST_CASE("make_csg_domains matches materialized split: sphere + plane sheet",
+          "[domains][parity]") {
+  auto sf = tf::make_sphere_mesh<Index>(Real(1), 32, 32);
+  auto pf = tf::make_plane_mesh<Index>(Real(3), Real(3));
+  auto sphere = sf.polygons() | tf::tag(frame0());
+  auto plane = pf.polygons() | tf::tag(frame0());
+  std::vector<form_t> forms{sphere, plane};
+
+  auto graph = tf::make_csg_graph(tf::make_range(forms),
+                                  tf::make_range(std::array<int, 1>{1}));
+  auto [cells, ids] = tf::make_csg_domains(graph);
+
+  auto [arr_mesh, tag_labels, face_labels] =
+      tf::make_mesh_arrangements(sphere, plane);
+  auto clean = tf::cleaned(arr_mesh.polygons(), Real(1e-6));
+  auto dl = tf::make_domain_labels(clean.polygons(),
+                                   tf::domain_config::exclude_outer_shell |
+                                       tf::domain_config::ignore_open_fragments);
+  auto [ocells, oids] = tf::split_into_domains(clean.polygons(), dl);
+
+  print_and_check_parity("sphere + plane sheet", cells, ocells);
+  REQUIRE(cells.size() == 2);
+}
+
+TEST_CASE("make_csg_domains matches materialized split: nested spheres",
+          "[domains][parity]") {
+  auto of = tf::make_sphere_mesh<Index>(Real(2), 32, 32);
+  auto inf = tf::make_sphere_mesh<Index>(Real(1), 32, 32);
+  auto outer = of.polygons() | tf::tag(frame0());
+  auto inner = inf.polygons() | tf::tag(frame0());
+  std::vector<form_t> forms{outer, inner};
+
+  auto graph = tf::make_csg_graph(tf::make_range(forms));
+  auto [cells, ids] = tf::make_csg_domains(graph);
+
+  auto [arr_mesh, tag_labels, face_labels] =
+      tf::make_mesh_arrangements(outer, inner);
+  auto clean = tf::cleaned(arr_mesh.polygons(), Real(1e-6));
+  auto dl = tf::make_domain_labels(clean.polygons(),
+                                   tf::domain_config::exclude_outer_shell |
+                                       tf::domain_config::ignore_open_fragments);
+  auto [ocells, oids] = tf::split_into_domains(clean.polygons(), dl);
+
+  // Contact-free nested shells: the seeding-cast nesting merge
+  // (seed_inclusion_bits nesting merge) fuses the false shell split, so the implicit
+  // path now matches the materialized oracle - inner ball + shell.
+  print_and_check_parity("nested spheres", cells, ocells);
+  REQUIRE(cells.size() == 2);
+}
+
+namespace {
+
+// Oracle for an N-form scene: merge the same tagged forms, clean, label
+// domains under the default config, split into per-domain cells.
+template <typename Range> auto oracle_domains(const Range &forms) {
+  auto [arr_mesh, tag_labels, face_labels] = tf::make_mesh_arrangements(forms);
+  auto clean = tf::cleaned(arr_mesh.polygons(), Real(1e-6));
+  auto dl = tf::make_domain_labels(clean.polygons(),
+                                   tf::domain_config::exclude_outer_shell |
+                                       tf::domain_config::ignore_open_fragments);
+  return tf::split_into_domains(clean.polygons(), dl);
+}
+
+auto sphere_form(Real r, frame_t frame, std::vector<mesh_t> &storage) {
+  storage.push_back(tf::make_sphere_mesh<Index>(r, 32, 32));
+  return storage.back().polygons() | tf::tag(frame);
+}
+
+} // namespace
+
+TEST_CASE("nesting: 3-level concentric spheres", "[domains][nesting]") {
+  std::vector<mesh_t> storage;
+  storage.reserve(3);
+  std::vector<form_t> forms;
+  forms.push_back(sphere_form(Real(3), frame0(), storage));
+  forms.push_back(sphere_form(Real(2), frame0(), storage));
+  forms.push_back(sphere_form(Real(1), frame0(), storage));
+
+  auto graph = tf::make_csg_graph(tf::make_range(forms));
+  auto [cells, ids] = tf::make_csg_domains(graph);
+  auto [ocells, oids] = oracle_domains(tf::make_range(forms));
+
+  print_and_check_parity("3-level concentric", cells, ocells);
+  REQUIRE(cells.size() == 3);
+}
+
+TEST_CASE("nesting: off-center fully nested sphere", "[domains][nesting]") {
+  std::vector<mesh_t> storage;
+  storage.reserve(2);
+  std::vector<form_t> forms;
+  forms.push_back(sphere_form(Real(3), frame0(), storage));
+  forms.push_back(sphere_form(Real(1), frame_at(Real(1.2), 0, 0), storage));
+
+  auto graph = tf::make_csg_graph(tf::make_range(forms));
+  auto [cells, ids] = tf::make_csg_domains(graph);
+  auto [ocells, oids] = oracle_domains(tf::make_range(forms));
+
+  print_and_check_parity("off-center nested", cells, ocells);
+  REQUIRE(cells.size() == 2);
+}
+
+TEST_CASE("nesting: two sibling spheres in one parent", "[domains][nesting]") {
+  std::vector<mesh_t> storage;
+  storage.reserve(3);
+  std::vector<form_t> forms;
+  forms.push_back(sphere_form(Real(3), frame0(), storage));
+  forms.push_back(sphere_form(Real(0.6), frame_at(Real(1.5), 0, 0), storage));
+  forms.push_back(sphere_form(Real(0.6), frame_at(Real(-1.5), 0, 0), storage));
+
+  auto graph = tf::make_csg_graph(tf::make_range(forms));
+  auto [cells, ids] = tf::make_csg_domains(graph);
+  auto [ocells, oids] = oracle_domains(tf::make_range(forms));
+
+  print_and_check_parity("two siblings in parent", cells, ocells);
+  REQUIRE(cells.size() == 3);
+}
+
+TEST_CASE("nesting: nested plus intersecting mix", "[domains][nesting]") {
+  std::vector<mesh_t> storage;
+  storage.reserve(3);
+  std::vector<form_t> forms;
+  forms.push_back(sphere_form(Real(3), frame0(), storage));
+  forms.push_back(sphere_form(Real(1), frame0(), storage));
+  forms.push_back(sphere_form(Real(2.5), frame_at(Real(2.5), 0, 0), storage));
+
+  auto graph = tf::make_csg_graph(tf::make_range(forms));
+  auto [cells, ids] = tf::make_csg_domains(graph);
+  auto [ocells, oids] = oracle_domains(tf::make_range(forms));
+
+  print_and_check_parity("nested + intersecting", cells, ocells);
+}
+
+TEST_CASE("nesting: deep 4-level concentric chain", "[domains][nesting]") {
+  std::vector<mesh_t> storage;
+  storage.reserve(4);
+  std::vector<form_t> forms;
+  forms.push_back(sphere_form(Real(4), frame0(), storage));
+  forms.push_back(sphere_form(Real(3), frame0(), storage));
+  forms.push_back(sphere_form(Real(2), frame0(), storage));
+  forms.push_back(sphere_form(Real(1), frame0(), storage));
+
+  auto graph = tf::make_csg_graph(tf::make_range(forms));
+  auto [cells, ids] = tf::make_csg_domains(graph);
+  auto [ocells, oids] = oracle_domains(tf::make_range(forms));
+
+  print_and_check_parity("4-level concentric", cells, ocells);
+  REQUIRE(cells.size() == 4);
+}
+
+// Regression: an open cut whose free edge ends inside a closed volume makes a
+// slit - the cut region runs in along one wall and back along the other,
+// folding both walls into one edge incidence. Before the slit-aware
+// non-manifold-edge fan builder (tf::cut::make_non_manifold_edge_fans), that
+// lost incidence collapsed the sphere's interior and exterior into a single
+// domain: the union came out empty / open. This pins the fixed behaviour.
+TEST_CASE("make_csg_domains: open partial wall (slit) does not collapse",
+          "[domains][slit]") {
+  auto sf = tf::make_sphere_mesh<Index>(Real(1), 32, 32);
+  auto pf = tf::make_plane_mesh<Index>(Real(2), Real(4)); // partial wall
+  auto sphere = sf.polygons() | tf::tag(frame0());
+  auto plane = pf.polygons() | tf::tag(frame_at(-1, 0, 0)); // free edge inside
+  std::vector<form_t> forms{sphere, plane};
+  auto graph = tf::make_csg_graph(tf::make_range(forms));
+
+  // The union solid must stay the watertight sphere, not collapse to empty.
+  auto u =
+      tf::make_csg_mesh(graph, tf::csg::any_of(tf::make_sequence_range(0, 2)));
+  REQUIRE(tf::is_closed(u.polygons()));
+  REQUIRE(tf::is_manifold(u.polygons()));
+  const Real ball = Real(4) / Real(3) * tf::pi<Real>;
+  const Real vol = std::abs(tf::signed_volume(u.polygons()));
+  REQUIRE(std::abs(vol - ball) < Real(0.03) * ball);
+
+  // The wall divides the interior: keeping open fragments yields >= 2 cells
+  // (it was a single collapsed cell before the fix).
+  auto [cells, ids] =
+      tf::make_csg_domains(graph, tf::domain_config::ignore_open_fragments);
+  REQUIRE(cells.size() >= 2);
+}
+
+// make_intersection_curves walks region-loop edges and emits the cross-tag
+// seam network; two overlapping spheres meet along exactly one closed circle.
+TEST_CASE("make_intersection_curves: two spheres meet on one closed loop",
+          "[intersection_curves]") {
+  auto af = tf::make_sphere_mesh<Index>(Real(1), 24, 24);
+  auto bf = tf::make_sphere_mesh<Index>(Real(1), 24, 24);
+  auto a = af.polygons() | tf::tag(frame0());
+  auto b = bf.polygons() | tf::tag(frame_at(Real(0.8), 0, 0));
+  std::vector<form_t> forms{a, b};
+  auto graph = tf::make_csg_graph(tf::make_range(forms));
+
+  auto curves = tf::make_intersection_curves(graph);
+  std::size_t n_paths = 0, n_pts = 0;
+  for (auto &&path : curves.paths()) {
+    ++n_paths;
+    n_pts += path.size();
+  }
+  REQUIRE(n_paths == 1); // a single intersection circle
+  REQUIRE(n_pts > 3);    // a real polyline, not a degenerate point
+}
+
+// Bridged / patched-hole region: a cylinder drilled through the interior of a
+// single (large) box face leaves that face an annulus - a hole inside the
+// face boundary. The planar arrangement represents that as ONE loop with a
+// bridge edge joining the hole to the outer boundary, so the bridge edge is
+// carried twice. Its endpoints are ordinary vertices (not a flanked free tip
+// like a slit), so the non-manifold-edge fan builder must *count* a loop's
+// edge incidences, not flank-test for a tip. This pins clean handling of
+// holed face regions through the boolean.
+TEST_CASE("make_csg_mesh: cylinder drilled through a box face (bridged hole)",
+          "[domains][bridge]") {
+  auto bf = tf::make_box_mesh<Index>(Real(4), Real(4), Real(4));
+  auto cf = tf::make_cylinder_mesh<Index>(Real(0.5), Real(6), 32);
+  auto box = bf.polygons() | tf::tag(frame0());
+  auto cyl = cf.polygons() | tf::tag(frame_at(1, -1, 0)); // offset into one face
+  std::vector<form_t> forms{box, cyl};
+  auto graph = tf::make_csg_graph(tf::make_range(forms));
+
+  auto drilled = tf::make_csg_mesh(graph, tf::csg::op(0) & ~tf::csg::op(1));
+  REQUIRE(tf::is_closed(drilled.polygons()));
+  REQUIRE(tf::is_manifold(drilled.polygons()));
+  // box (4^3 = 64) minus a cylinder bored straight through (pi r^2 * 4).
+  const Real expect = Real(64) - tf::pi<Real> * Real(0.25) * Real(4);
+  const Real vol = std::abs(tf::signed_volume(drilled.polygons()));
+  REQUIRE(std::abs(vol - expect) < Real(0.1)); // 32-segment facet tolerance
+}

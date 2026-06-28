@@ -12,9 +12,11 @@
  */
 #pragma once
 #include "../../core/algorithm/compute_offsets.hpp"
+#include "../../core/algorithm/generic_generate.hpp"
 #include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
+#include "../../exact/meta.hpp"
 #include "../../core/frame_of.hpp"
 #include "../../core/transformed.hpp"
 #include "../../cut/arrangement_graph.hpp"
@@ -40,22 +42,28 @@
 namespace tf::csg::graph {
 
 /// @ingroup csg
-/// @brief Pick BFS seeds and raycast-seed per-bundle outer-env bits.
+/// @brief Seed per-bundle outer-env inclusion bits AND per-bundle nesting
+///        merges from a single per-bundle raycast (one walk, two reductions).
 ///
-/// Each bundle's outer-shell is the most-negative-volume incident
-/// domain (same formula as `make_nesting_merges`). The globally
-/// most-negative outer-shell is `null_seed`, anchored at zero bits.
-/// Other bundles are segment-cast to a far point against per-form
-/// AABB trees (`tf::search` with exact `segment_hits_aabb` at every
-/// BV node, exact `triangle_segment_intersect_point_sos` at leaves);
-/// per-form parity goes into `inc.bits[outer_env(bi)]`.
+/// Each disconnected bundle's seed is segment-cast to a far point against
+/// per-form AABB trees (`tf::search` with exact `segment_hits_aabb` at
+/// every BV node, exact `triangle_segment_intersect_point_sos` at leaves).
+/// That cast is reduced two ways:
+///   1. **bits** — per-form parity into `inc.bits[outer_env(bi)]`. Each
+///      bundle's outer-shell is the most-negative-volume incident domain;
+///      the globally most-negative is `null_seed`, anchored at zero bits.
+///   2. **nesting** (`out_nesting_merges`) — from each hit's two adjacent
+///      domains + squared seed-distance, the closest odd-parity domain is
+///      the seed's physical container; `(outer_env[bi], that_domain)` is
+///      emitted as a `domain_of_side` merge that repairs the false split
+///      the arrangement leaves between two contact-free nested shells (the
+///      implicit-arrangement analogue of
+///      @ref tf::topology::domains::make_nesting_merges). No extra cast.
 ///
-/// Sheet forms (`is_sheet_tag`) are side-classified instead: the AABB
-/// prefilter is skipped (a bundle is above or below a sheet even
-/// without overlap) and the bit is the sign of the generalized winding
-/// number (@ref tf::csg::graph::winding_side) — set when the seed is
-/// behind the sheet's normal. One batched pass per sheet over its
-/// triangles classifies all bundles needing it.
+/// Sheet forms (`is_sheet_tag`) are side-classified via the generalized
+/// winding number (@ref tf::csg::graph::winding_side) instead of raycast;
+/// they never enclose, so they contribute no nesting merge. Single-bundle
+/// inputs return before any nesting work.
 template <typename Forms, typename Index, typename Int, typename Real,
           std::size_t Dims, typename VolT>
 auto seed_inclusion_bits(
@@ -66,12 +74,29 @@ auto seed_inclusion_bits(
     const tf::intersection_graph<Index, Int> &ig, const Forms &tagged_forms,
     const tf::exact::vertex_converter<Int, Real, Dims> &conv,
     const tf::buffer<VolT> &domain_volumes,
+    tf::buffer<std::array<Index, 2>> &out_nesting_merges,
     const tf::buffer<char> &is_sheet_tag = {}) -> tf::buffer<Index> {
   using ag_t = tf::arrangement_graph<Index>;
   using vertex_t = tf::intersect::graph::vertex<Index>;
   using source = tf::intersect::graph::vertex_source;
   using IntPt = tf::exact::pt3<Int>;
   using EVert = tf::exact::vertex<Index, Int>;
+  using T1 = typename tf::exact::meta<Int>::T1;
+  using T2 = typename tf::exact::meta<Int>::T2;
+  struct hit_t {
+    Index b_inner;
+    Index domain;
+    T2 dist_sq;
+    auto operator<(const hit_t &o) const -> bool {
+      if (b_inner != o.b_inner)
+        return b_inner < o.b_inner;
+      if (domain != o.domain)
+        return domain < o.domain;
+      return dist_sq < o.dist_sq;
+    }
+  };
+
+  out_nesting_merges.clear();
 
   const Index n_bundles = desc.n_bundles;
   const Index n_components = ag.n_components();
@@ -116,6 +141,16 @@ auto seed_inclusion_bits(
 
   if (n_bundles == Index(1))
     return seeds;
+
+  // Nesting: a hit landing on a shell domain (some bundle's outer-env)
+  // contributes no parity; only bounded interior domains are tracked.
+  // Below the single-bundle early-out, so the bits-only path pays nothing.
+  tf::buffer<char> is_shell;
+  is_shell.allocate(static_cast<std::size_t>(n_domains));
+  tf::parallel_fill(is_shell, char(0));
+  for (Index b = Index(0); b < n_bundles; ++b)
+    if (outer_env[b] >= Index(0))
+      is_shell[outer_env[b]] = char(1);
 
   // SoS id partition: originals [0, n_orig_total), createds
   // [n_orig_total, +n_created), per-bundle seeds above, far point last.
@@ -275,54 +310,78 @@ auto seed_inclusion_bits(
     });
   }
 
-  tf::parallel_for_each(candidates, [&](const auto &pair) {
-    const Index bi = pair[0];
-    const Index t = pair[1];
-    const IntPt seed_pt_b = seed_pt[bi];
-    char p = 0;
+  // Same cast as `seed_inclusion_bits`, reduced two ways: per-form
+  // parity (the bits, side-written below, unchanged) AND nesting hits
+  // (each hit's two adjacent bounded domains + squared seed-distance).
+  // No extra rays: the hit point comes from the one intersection test
+  // the bits path already runs.
+  tf::buffer<hit_t> nesting_hits;
+  tf::generic_generate(
+      tf::make_range(candidates), nesting_hits,
+      [&](const auto &pair, tf::buffer<hit_t> &out) {
+        const Index bi = pair[0];
+        const Index t = pair[1];
+        const IntPt seed_pt_b = seed_pt[bi];
+        char p = 0;
 
-    EVert seed_v{seed_id_base + bi, seed_pt_b};
-    EVert far_v{far_id, far_pt};
+        EVert seed_v{seed_id_base + bi, seed_pt_b};
+        EVert far_v{far_id, far_pt};
 
-    auto labels = ag.polygon_labels(t);
+        auto labels = ag.polygon_labels(t);
 
-    tf::search(
-        tagged_forms[t],
-        [&](const auto &world_float_bv) -> bool {
-          auto lo = conv.convert(world_float_bv.min);
-          auto hi = conv.convert(world_float_bv.max);
-          return tf::exact::segment_hits_aabb(seed_pt_b, far_pt, lo, hi);
-        },
-        [&](const auto &tagged_poly) -> bool {
-          const Index face_id = Index(tagged_poly.id());
-          const Index c = labels[face_id];
-          if (c != ag_t::none_label) {
-            // Open patch (Mode-2 self-merged): d0 == d1, no transition.
-            const Index d0 = desc.domain_of_side[2 * c + 0];
-            const Index d1 = desc.domain_of_side[2 * c + 1];
-            if (d0 == d1)
+        tf::search(
+            tagged_forms[t],
+            [&](const auto &world_float_bv) -> bool {
+              auto lo = conv.convert(world_float_bv.min);
+              auto hi = conv.convert(world_float_bv.max);
+              return tf::exact::segment_hits_aabb(seed_pt_b, far_pt, lo, hi);
+            },
+            [&](const auto &tagged_poly) -> bool {
+              const Index face_id = Index(tagged_poly.id());
+              const Index c = labels[face_id];
+              Index d0 = Index(-1), d1 = Index(-1);
+              bool emit = false;
+              if (c != ag_t::none_label) {
+                // Open patch (Mode-2 self-merged): d0 == d1, no transition.
+                d0 = desc.domain_of_side[2 * c + 0];
+                d1 = desc.domain_of_side[2 * c + 1];
+                if (d0 == d1)
+                  return false;
+                emit = true;
+              }
+              auto face = tagged_forms[t].faces()[face_id];
+              const auto n_fv = face.size();
+              if (n_fv < 3)
+                return false;
+              auto v0 = get_original_vertex(Index(face[0]), t);
+              for (std::size_t i = 1; i + 1 < n_fv; ++i) {
+                auto va = get_original_vertex(Index(face[i]), t);
+                auto vb = get_original_vertex(Index(face[i + 1]), t);
+                std::array<EVert, 5> ts{v0, va, vb, seed_v, far_v};
+                if (auto hit_opt =
+                        tf::exact::triangle_segment_intersect_point_sos(ts)) {
+                  p ^= char(1);
+                  if (emit) {
+                    auto hit = *hit_opt;
+                    const T1 dx = T1(hit[0]) - T1(seed_pt_b[0]);
+                    const T1 dy = T1(hit[1]) - T1(seed_pt_b[1]);
+                    const T1 dz = T1(hit[2]) - T1(seed_pt_b[2]);
+                    const T2 dist_sq =
+                        T2(dx) * T2(dx) + T2(dy) * T2(dy) + T2(dz) * T2(dz);
+                    if (!is_shell[d0])
+                      out.push_back({bi, d0, dist_sq});
+                    if (!is_shell[d1])
+                      out.push_back({bi, d1, dist_sq});
+                  }
+                  break;
+                }
+              }
               return false;
-          }
-          auto face = tagged_forms[t].faces()[face_id];
-          const auto n_fv = face.size();
-          if (n_fv < 3)
-            return false;
-          auto v0 = get_original_vertex(Index(face[0]), t);
-          for (std::size_t i = 1; i + 1 < n_fv; ++i) {
-            auto va = get_original_vertex(Index(face[i]), t);
-            auto vb = get_original_vertex(Index(face[i + 1]), t);
-            std::array<EVert, 5> ts{v0, va, vb, seed_v, far_v};
-            if (tf::exact::triangle_segment_intersect_point_sos(ts)) {
-              p ^= char(1);
-              break;
-            }
-          }
-          return false;
-        });
+            });
 
-    parity[static_cast<std::size_t>(bi) * static_cast<std::size_t>(n_tags) +
-           static_cast<std::size_t>(t)] = p;
-  });
+        parity[static_cast<std::size_t>(bi) * static_cast<std::size_t>(n_tags) +
+               static_cast<std::size_t>(t)] = p;
+      });
 
   // Bundles sharing an outer-env hit the same row; the first zeros it,
   // the rest OR in. Under the per-tag invariant their parity rows are
@@ -354,6 +413,49 @@ auto seed_inclusion_bits(
           std::uint32_t(1) << (static_cast<unsigned>(t) % 32u);
     }
     record_seed(outer_env[bi]);
+  }
+
+  // ---- Nesting reduction over the hits the cast already produced. ----
+  // Per (bundle, domain): odd hit-parity ⇒ the domain encloses the seed;
+  // among those the closest is the seed's physical domain. Merge it with
+  // the bundle's outer-env to fuse the contact-free nested shell.
+  tbb::parallel_sort(nesting_hits.begin(), nesting_hits.end());
+
+  tf::buffer<Index> chosen_target;
+  chosen_target.allocate(static_cast<std::size_t>(n_bundles));
+  tf::parallel_fill(chosen_target, Index(-1));
+  tf::buffer<T2> best_dist_sq; // read only where chosen_target[bi] != -1
+  best_dist_sq.allocate(static_cast<std::size_t>(n_bundles));
+
+  for (auto it = nesting_hits.begin(); it != nesting_hits.end();) {
+    const Index bi = it->b_inner;
+    const Index d = it->domain;
+    auto group_end = it;
+    std::size_t cnt = 0;
+    while (group_end != nesting_hits.end() && group_end->b_inner == bi &&
+           group_end->domain == d) {
+      ++cnt;
+      ++group_end;
+    }
+    const T2 closest = it->dist_sq; // groups are sorted by dist_sq
+    if ((cnt & 1u) == 1u) {
+      if (chosen_target[bi] == Index(-1) || closest < best_dist_sq[bi]) {
+        best_dist_sq[bi] = closest;
+        chosen_target[bi] = d;
+      }
+    }
+    it = group_end;
+  }
+
+  for (Index bi = Index(0); bi < n_bundles; ++bi) {
+    const Index d_out = chosen_target[bi];
+    if (d_out == Index(-1))
+      continue;
+    const Index d_in = outer_env[bi];
+    if (d_in == Index(-1) || d_in == d_out)
+      continue;
+    out_nesting_merges.push_back(
+        {std::min(d_in, d_out), std::max(d_in, d_out)});
   }
 
   return seeds;

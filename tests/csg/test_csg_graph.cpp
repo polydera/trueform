@@ -315,7 +315,7 @@ TEST_CASE("csg_graph: four-deep concentric shells",
     check(tf::make_csg_mesh(graph, tf::csg::difference(2, 3)),
           vol_c - vol_d, tol);
   }
-  SECTION("A ∩ D = D") {
+  SECTION("A & D = D") {
     check(tf::make_csg_mesh(graph, tf::csg::intersection(0, 3)), vol_d, tol);
   }
   SECTION("any_of(A, B, C, D) = A") {
@@ -364,11 +364,11 @@ TEST_CASE("csg_graph: three concentric spheres (universe -> A -> B -> C)",
                  WithinAbs(expected, t));
   };
 
-  SECTION("A ∪ B ∪ C = A") {
+  SECTION("A | B | C = A") {
     check(tf::make_csg_mesh(graph, tf::csg::merge(0, tf::csg::merge(1, 2))),
           vol_a, tol);
   }
-  SECTION("A ∩ B ∩ C = C") {
+  SECTION("A & B & C = C") {
     check(tf::make_csg_mesh(
               graph, tf::csg::intersection(0, tf::csg::intersection(1, 2))),
           vol_c, tol);
@@ -381,7 +381,7 @@ TEST_CASE("csg_graph: three concentric spheres (universe -> A -> B -> C)",
     check(tf::make_csg_mesh(graph, tf::csg::difference(1, 2)),
           vol_b - vol_c, tol);
   }
-  SECTION("symmetric_difference A xor C = (A \\ C) since C ⊂ A") {
+  SECTION("symmetric_difference A xor C = (A \\ C) since C subset A") {
     check(tf::make_csg_mesh(graph, tf::csg::difference(0, 2)),
           vol_a - vol_c, tol);
   }
