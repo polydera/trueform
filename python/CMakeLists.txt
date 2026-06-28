@@ -101,6 +101,21 @@ else()
   target_compile_options(_trueform PRIVATE -Wall -Wextra -Wpedantic -Wno-nested-anon-types -Wno-zero-length-array)
 endif()
 
+# x86 wheels target the AVX2 + FMA (Haswell, 2013) baseline - the lib's SIMD
+# paths (core/config/math.hpp) light up there. This makes the wheel REQUIRE an
+# AVX2 CPU (it will fault on older ones; there is no runtime fallback). The
+# flag-support probe self-skips where the flag is rejected - e.g. ARM
+# (macOS arm64), which uses NEON.
+if(MSVC)
+  target_compile_options(_trueform PRIVATE /arch:AVX2)
+else()
+  include(CheckCXXCompilerFlag)
+  check_cxx_compiler_flag("-mavx2" TF_HAS_MAVX2)
+  if(TF_HAS_MAVX2)
+    target_compile_options(_trueform PRIVATE -mavx2 -mfma)
+  endif()
+endif()
+
 # 7. Output Directory Layout
 # ------------------------------------------------------------------------------
 # We want the compiled module (.so/.pyd) to sit inside the 'trueform' package folder
