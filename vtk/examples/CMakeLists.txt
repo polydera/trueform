@@ -48,6 +48,7 @@ add_vtk_example(decimate_with_feature_edges)
 add_vtk_example(tubes)
 add_vtk_example(sharp_edges)
 add_vtk_example(domains)
+add_vtk_example(csg_fracture)
 
 # Target to build all examples
 add_custom_target(trueform_vtk_examples DEPENDS
@@ -66,4 +67,6 @@ add_custom_target(trueform_vtk_examples DEPENDS
   vtk_example_decimate_with_feature_edges
   vtk_example_tubes
   vtk_example_sharp_edges
+  vtk_example_domains
+  vtk_example_csg_fracture
 )
