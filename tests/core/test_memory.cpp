@@ -14,6 +14,7 @@
 #include <trueform/core/hash_map.hpp>
 #include <trueform/core/hash_set.hpp>
 #include <trueform/core/memory.hpp>
+#include <trueform/core/small_vector.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <cstdint>
 #include <numeric>
@@ -63,6 +64,35 @@ TEST_CASE("buffer::release yields a tf::deallocate-owned pointer", "[memory]") {
   int *raw = b.release();
   REQUIRE(raw[255] == 255);
   tf::deallocate<int>(raw);
+}
+
+TEST_CASE("small_vector grows through the tf seam", "[memory]") {
+  // POD path: spill past inline capacity many times.
+  tf::small_vector<int, 4> v;
+  for (int i = 0; i < 1000; ++i)
+    v.push_back(i);
+  REQUIRE(v.size() == 1000);
+  REQUIRE(v.front() == 0);
+  REQUIRE(v.back() == 999);
+
+  // Non-POD path: a type with a non-trivial move/dtor.
+  struct boxed {
+    std::unique_ptr<int> p;
+    boxed() : p(nullptr) {}
+    explicit boxed(int x) : p(new int(x)) {}
+  };
+  tf::small_vector<boxed, 2> b;
+  for (int i = 0; i < 200; ++i)
+    b.emplace_back(i);
+  REQUIRE(b.size() == 200);
+  REQUIRE(*b[199].p == 199);
+
+  // Over-aligned POD spilling to the heap stays aligned.
+  struct alignas(64) wide { double d[8]; };
+  tf::small_vector<wide, 1> w;
+  for (int i = 0; i < 64; ++i)
+    w.push_back(wide{});
+  REQUIRE(reinterpret_cast<std::uintptr_t>(w.data()) % 64 == 0);
 }
 
 TEST_CASE("tf::allocate honors over-alignment", "[memory]") {

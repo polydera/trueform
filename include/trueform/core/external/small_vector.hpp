@@ -22,6 +22,8 @@
 #include <iterator>
 #include <memory>
 
+#include "../memory.hpp"
+
 // LLVM Macros
 #define LLVM_VECSMALL_NODISCARD
 #define LLVM_VECSMALL_ATTRIBUTE_ALWAYS_INLINE inline
@@ -66,10 +68,6 @@ protected:
   SmallVectorBase(void *FirstEl, size_t Size)
       : BeginX(FirstEl), EndX(FirstEl), CapacityX((char *)FirstEl + Size) {}
 
-  /// This is an implementation of the grow() method which only works
-  /// on POD-like data types and is out of line to reduce code duplication.
-  void grow_pod(void *FirstEl, size_t MinSizeInBytes, size_t TSize);
-
 public:
   /// This returns size()*sizeof(T).
   size_t size_in_bytes() const { return size_t((char *)EndX - (char *)BeginX); }
@@ -95,17 +93,18 @@ private:
   // Allocate raw space for N elements of type T.  If T has a ctor or dtor, we
   // don't want it to be automatically run, so we need to represent the space as
   // something else.  Use an array of char of sufficient alignment.
-  ////////////typedef tf::external::llvm_vecsmall::AlignedCharArrayUnion<T> U;
-  typedef typename std::aligned_union<1, T>::type U;
+  //
+  // A plain alignas'd char buffer rather than std::aligned_union, which is
+  // deprecated in C++23 and which MSVC hard-errors on for extended alignments
+  // (alignof(T) > alignof(max_align_t)). Same size and alignment.
+  struct alignas(alignof(T)) U {
+    char buf[sizeof(T)];
+  };
   U FirstEl;
   // Space after 'FirstEl' is clobbered, do not add any instance vars after it.
 
 protected:
   SmallVectorTemplateCommon(size_t Size) : SmallVectorBase(&FirstEl, Size) {}
-
-  void grow_pod(size_t MinSizeInBytes, size_t TSize) {
-    SmallVectorBase::grow_pod(&FirstEl, MinSizeInBytes, TSize);
-  }
 
   /// Return true if this is a smallvector which has not had dynamic
   /// memory allocated for it.
@@ -265,7 +264,7 @@ void SmallVectorTemplateBase<T, isPodLike>::grow(size_t MinSize) {
       tf::external::llvm_vecsmall::detail::NextPowerOf2(CurCapacity + 2));
   if (NewCapacity < MinSize)
     NewCapacity = MinSize;
-  T *NewElts = static_cast<T *>(malloc(NewCapacity * sizeof(T)));
+  T *NewElts = tf::allocate<T>(NewCapacity);
 
   // Move the elements over.
   this->uninitialized_move(this->begin(), this->end(), NewElts);
@@ -275,7 +274,7 @@ void SmallVectorTemplateBase<T, isPodLike>::grow(size_t MinSize) {
 
   // If this wasn't grown from the inline copy, deallocate the old space.
   if (!this->isSmall())
-    free(this->begin());
+    tf::deallocate<T>(this->begin());
 
   this->setEnd(NewElts + CurSize);
   this->BeginX = NewElts;
@@ -324,9 +323,21 @@ protected:
   }
 
   /// Double the size of the allocated memory, guaranteeing space for at
-  /// least one more element or MinSize if specified.
+  /// least one more element or MinSize if specified. Routed through the
+  /// tf allocation seam; POD elements are relocated with a flat memcpy.
   void grow(size_t MinSize = 0) {
-    this->grow_pod(MinSize * sizeof(T), sizeof(T));
+    size_t CurSize = this->size();
+    size_t NewCapacity = 2 * this->capacity() + 1; // always grow
+    if (NewCapacity < MinSize)
+      NewCapacity = MinSize;
+    T *NewElts = tf::allocate<T>(NewCapacity);
+    if (CurSize)
+      memcpy(NewElts, this->begin(), CurSize * sizeof(T));
+    if (!this->isSmall())
+      tf::deallocate<T>(this->begin());
+    this->setEnd(NewElts + CurSize);
+    this->BeginX = NewElts;
+    this->CapacityX = this->begin() + NewCapacity;
   }
 
 public:
@@ -365,7 +376,7 @@ public:
 
     // If this wasn't grown from the inline copy, deallocate the old space.
     if (!this->isSmall())
-      free(this->begin());
+      tf::deallocate<T>(this->begin());
   }
 
   void clear() {
@@ -790,7 +801,7 @@ SmallVectorImpl<T> &SmallVectorImpl<T>::operator=(SmallVectorImpl<T> &&RHS) {
   if (!RHS.isSmall()) {
     this->destroy_range(this->begin(), this->end());
     if (!this->isSmall())
-      free(this->begin());
+      tf::deallocate<T>(this->begin());
     this->BeginX = RHS.BeginX;
     this->EndX = RHS.EndX;
     this->CapacityX = RHS.CapacityX;
@@ -951,38 +962,6 @@ inline void swap(tf::external::llvm_vecsmall::SmallVector<T, N> &LHS,
   LHS.swap(RHS);
 }
 } // namespace std
-
-namespace tf {
-namespace external {
-namespace llvm_vecsmall {
-/// grow_pod - This is an implementation of the grow() method which only works
-/// on POD-like datatypes and is out of line to reduce code duplication.
-inline void SmallVectorBase::grow_pod(void *FirstEl, size_t MinSizeInBytes,
-                                      size_t TSize) {
-  size_t CurSizeBytes = size_in_bytes();
-  size_t NewCapacityInBytes = 2 * capacity_in_bytes() + TSize; // Always grow.
-  if (NewCapacityInBytes < MinSizeInBytes)
-    NewCapacityInBytes = MinSizeInBytes;
-
-  void *NewElts;
-  if (BeginX == FirstEl) {
-    NewElts = malloc(NewCapacityInBytes);
-
-    // Copy the elements over.  No need to run dtors on PODs.
-    memcpy(NewElts, this->BeginX, CurSizeBytes);
-  } else {
-    // If this wasn't grown from the inline copy, grow the allocated space.
-    NewElts = realloc(this->BeginX, NewCapacityInBytes);
-  }
-  assert(NewElts && "Out of memory");
-
-  this->EndX = (char *)NewElts + CurSizeBytes;
-  this->BeginX = NewElts;
-  this->CapacityX = (char *)this->BeginX + NewCapacityInBytes;
-}
-} // namespace llvm_vecsmall
-} // namespace external
-} // namespace tf
 
 #undef LLVM_VECSMALL_NODISCARD
 #undef LLVM_VECSMALL_ATTRIBUTE_ALWAYS_INLINE
