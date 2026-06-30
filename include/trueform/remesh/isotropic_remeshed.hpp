@@ -12,50 +12,38 @@
  */
 #pragma once
 
-#include "../core/algorithm/parallel_copy.hpp"
 #include "../core/frame_of.hpp"
-#include "../core/polygons_buffer.hpp"
-#include "../core/static_size.hpp"
-#include "../topology/policy/half_edges.hpp"
+#include "../reindex/return_index_map.hpp"
 #include "./isotropic_remesh.hpp"
 #include "./preserve_regions.hpp"
+#include "./protect_vertices.hpp"
+#include "./wrapper_helpers.hpp"
+
+#include <tuple>
+#include <utility>
 
 namespace tf {
 
+// tf::isotropic_remeshed builds a half-edge structure and forwards to the
+// in-place driver tf::isotropic_remesh (frame-aware), then assembles the mesh.
+// Optional outputs come in the order their tags were passed (regions,
+// protection, map):
+//
+//   mesh, half_edges, [face_labels], [protection_mask], [vertex_map]
+//
+// The vertex_map is VERTICES ONLY (splits + flips rewrite faces). See
+// tf::isotropic_remesh for the per-axis semantics.
+
+// ---- plain ----------------------------------------------------------------
+
 template <typename Policy>
-auto isotropic_remeshed(const tf::polygons<Policy> &polygons,
-                        const tf::isotropic_remesh_config<tf::coordinate_type<Policy>>
-                            &config) {
-  using Index = std::decay_t<decltype(polygons.faces()[0][0])>;
-  using Real = tf::coordinate_type<Policy>;
-  constexpr auto Dims = tf::coordinate_dims_v<Policy>;
-  static_assert(tf::static_size_v<std::decay_t<decltype(polygons.faces()[0])>> ==
-                3);
-
-  if constexpr (!tf::has_half_edges_policy<Policy>) {
-    tf::half_edges<Index> he(polygons);
-    return isotropic_remeshed(polygons | tf::tag(he), config);
-  } else {
-    auto &he_view = polygons.half_edges();
-    tf::half_edges<Index> he;
-    auto hd = he_view.half_edges_data();
-    he.half_edges_buffer().allocate(hd.size());
-    tf::parallel_copy(hd, tf::make_range(he.half_edges_buffer()));
-    he.rebuild_handles(he_view.n_faces(), he_view.n_vertices());
-
-    auto frame = tf::frame_of(polygons);
-
-    tf::points_buffer<Real, Dims> points;
-    points.allocate(polygons.points().size());
-    tf::parallel_copy(polygons.points(), points.points());
-
-    tf::isotropic_remesh(he, points, frame, config);
-
-    tf::polygons_buffer<Index, Real, Dims, 3> mesh;
-    mesh.faces_buffer() = tf::make_faces_buffer(he);
-    mesh.points_buffer() = std::move(points);
-    return std::pair{std::move(mesh), std::move(he)};
-  }
+auto isotropic_remeshed(
+    const tf::polygons<Policy> &polygons,
+    const tf::isotropic_remesh_config<tf::coordinate_type<Policy>> &config) {
+  auto [he, points] = tf::remesh::extract_he_points(polygons);
+  tf::isotropic_remesh(he, points, tf::frame_of(polygons), config);
+  auto mesh = tf::remesh::make_mesh(he, std::move(points));
+  return std::pair{std::move(mesh), std::move(he)};
 }
 
 template <typename Policy>
@@ -65,57 +53,177 @@ auto isotropic_remeshed(const tf::polygons<Policy> &polygons,
                             tf::make_isotropic_remesh_config(target_length));
 }
 
-template <typename Policy, typename Range>
+// ---- vertex map -> (mesh, he, vertex_map) ---------------------------------
+
+template <typename Policy>
+auto isotropic_remeshed(
+    const tf::polygons<Policy> &polygons,
+    const tf::isotropic_remesh_config<tf::coordinate_type<Policy>> &config,
+    tf::return_index_map_t) {
+  auto [he, points] = tf::remesh::extract_he_points(polygons);
+  auto vmap = tf::isotropic_remesh(he, points, tf::frame_of(polygons), config,
+                                   tf::return_index_map);
+  auto mesh = tf::remesh::make_mesh(he, std::move(points));
+  return std::tuple{std::move(mesh), std::move(he), std::move(vmap)};
+}
+
+template <typename Policy>
 auto isotropic_remeshed(const tf::polygons<Policy> &polygons,
-                        const tf::isotropic_remesh_config<tf::coordinate_type<Policy>>
-                            &config,
-                        tf::preserve_regions_t<Range> regions) {
-  using Index = std::decay_t<decltype(polygons.faces()[0][0])>;
-  using Real = tf::coordinate_type<Policy>;
-  constexpr auto Dims = tf::coordinate_dims_v<Policy>;
-  static_assert(tf::static_size_v<std::decay_t<decltype(polygons.faces()[0])>> ==
-                3);
+                        tf::coordinate_type<Policy> target_length,
+                        tf::return_index_map_t) {
+  return isotropic_remeshed(polygons,
+                            tf::make_isotropic_remesh_config(target_length),
+                            tf::return_index_map);
+}
 
-  // An empty range carries no labels: run the non-region path and return an
-  // empty face_labels buffer of the mesh index type. The region machinery is
-  // never entered.
-  if (regions.face_regions.size() == 0) {
-    auto [mesh, he] = isotropic_remeshed(polygons, config);
-    return std::tuple{std::move(mesh), std::move(he), tf::buffer<typename Range::value_type>{}};
-  }
+// ---- protect -> (mesh, he, protection_mask) -------------------------------
 
-  if constexpr (!tf::has_half_edges_policy<Policy>) {
-    tf::half_edges<Index> he(polygons);
-    return isotropic_remeshed(polygons | tf::tag(he), config, regions);
-  } else {
-    auto &he_view = polygons.half_edges();
-    tf::half_edges<Index> he;
-    auto hd = he_view.half_edges_data();
-    he.half_edges_buffer().allocate(hd.size());
-    tf::parallel_copy(hd, tf::make_range(he.half_edges_buffer()));
-    he.rebuild_handles(he_view.n_faces(), he_view.n_vertices());
+template <typename Policy, typename Mask>
+auto isotropic_remeshed(
+    const tf::polygons<Policy> &polygons,
+    const tf::isotropic_remesh_config<tf::coordinate_type<Policy>> &config,
+    tf::protect_vertices_t<Mask> protection) {
+  auto [he, points] = tf::remesh::extract_he_points(polygons);
+  auto prot = tf::isotropic_remesh(he, points, tf::frame_of(polygons), config,
+                                   protection);
+  auto mesh = tf::remesh::make_mesh(he, std::move(points));
+  return std::tuple{std::move(mesh), std::move(he), std::move(prot)};
+}
 
-    auto frame = tf::frame_of(polygons);
+template <typename Policy, typename Mask>
+auto isotropic_remeshed(const tf::polygons<Policy> &polygons,
+                        tf::coordinate_type<Policy> target_length,
+                        tf::protect_vertices_t<Mask> protection) {
+  return isotropic_remeshed(
+      polygons, tf::make_isotropic_remesh_config(target_length), protection);
+}
 
-    tf::points_buffer<Real, Dims> points;
-    points.allocate(polygons.points().size());
-    tf::parallel_copy(polygons.points(), points.points());
+// ---- protect + map -> (mesh, he, protection_mask, vertex_map) --------------
 
-    auto labels = tf::isotropic_remesh(he, points, frame, config, regions);
+template <typename Policy, typename Mask>
+auto isotropic_remeshed(
+    const tf::polygons<Policy> &polygons,
+    const tf::isotropic_remesh_config<tf::coordinate_type<Policy>> &config,
+    tf::protect_vertices_t<Mask> protection, tf::return_index_map_t) {
+  auto [he, points] = tf::remesh::extract_he_points(polygons);
+  auto [prot, vmap] = tf::isotropic_remesh(
+      he, points, tf::frame_of(polygons), config, protection,
+      tf::return_index_map);
+  auto mesh = tf::remesh::make_mesh(he, std::move(points));
+  return std::tuple{std::move(mesh), std::move(he), std::move(prot),
+                    std::move(vmap)};
+}
 
-    tf::polygons_buffer<Index, Real, Dims, 3> mesh;
-    mesh.faces_buffer() = tf::make_faces_buffer(he);
-    mesh.points_buffer() = std::move(points);
-    return std::tuple{std::move(mesh), std::move(he), std::move(labels)};
-  }
+template <typename Policy, typename Mask>
+auto isotropic_remeshed(const tf::polygons<Policy> &polygons,
+                        tf::coordinate_type<Policy> target_length,
+                        tf::protect_vertices_t<Mask> protection,
+                        tf::return_index_map_t) {
+  return isotropic_remeshed(polygons,
+                            tf::make_isotropic_remesh_config(target_length),
+                            protection, tf::return_index_map);
+}
+
+// ---- regions -> (mesh, he, face_labels) -----------------------------------
+
+template <typename Policy, typename Range>
+auto isotropic_remeshed(
+    const tf::polygons<Policy> &polygons,
+    const tf::isotropic_remesh_config<tf::coordinate_type<Policy>> &config,
+    tf::preserve_regions_t<Range> regions) {
+  auto [he, points] = tf::remesh::extract_he_points(polygons);
+  auto labels =
+      tf::isotropic_remesh(he, points, tf::frame_of(polygons), config, regions);
+  auto mesh = tf::remesh::make_mesh(he, std::move(points));
+  return std::tuple{std::move(mesh), std::move(he), std::move(labels)};
 }
 
 template <typename Policy, typename Range>
 auto isotropic_remeshed(const tf::polygons<Policy> &polygons,
                         tf::coordinate_type<Policy> target_length,
                         tf::preserve_regions_t<Range> regions) {
+  return isotropic_remeshed(
+      polygons, tf::make_isotropic_remesh_config(target_length), regions);
+}
+
+// ---- regions + map -> (mesh, he, face_labels, vertex_map) ------------------
+
+template <typename Policy, typename Range>
+auto isotropic_remeshed(
+    const tf::polygons<Policy> &polygons,
+    const tf::isotropic_remesh_config<tf::coordinate_type<Policy>> &config,
+    tf::preserve_regions_t<Range> regions, tf::return_index_map_t) {
+  auto [he, points] = tf::remesh::extract_he_points(polygons);
+  auto [labels, vmap] = tf::isotropic_remesh(
+      he, points, tf::frame_of(polygons), config, regions, tf::return_index_map);
+  auto mesh = tf::remesh::make_mesh(he, std::move(points));
+  return std::tuple{std::move(mesh), std::move(he), std::move(labels),
+                    std::move(vmap)};
+}
+
+template <typename Policy, typename Range>
+auto isotropic_remeshed(const tf::polygons<Policy> &polygons,
+                        tf::coordinate_type<Policy> target_length,
+                        tf::preserve_regions_t<Range> regions,
+                        tf::return_index_map_t) {
   return isotropic_remeshed(polygons,
-                            tf::make_isotropic_remesh_config(target_length), regions);
+                            tf::make_isotropic_remesh_config(target_length),
+                            regions, tf::return_index_map);
+}
+
+// ---- regions + protect -> (mesh, he, face_labels, protection_mask) --------
+
+template <typename Policy, typename Range, typename Mask>
+auto isotropic_remeshed(
+    const tf::polygons<Policy> &polygons,
+    const tf::isotropic_remesh_config<tf::coordinate_type<Policy>> &config,
+    tf::preserve_regions_t<Range> regions,
+    tf::protect_vertices_t<Mask> protection) {
+  auto [he, points] = tf::remesh::extract_he_points(polygons);
+  auto [labels, prot] = tf::isotropic_remesh(he, points, tf::frame_of(polygons),
+                                             config, regions, protection);
+  auto mesh = tf::remesh::make_mesh(he, std::move(points));
+  return std::tuple{std::move(mesh), std::move(he), std::move(labels),
+                    std::move(prot)};
+}
+
+template <typename Policy, typename Range, typename Mask>
+auto isotropic_remeshed(const tf::polygons<Policy> &polygons,
+                        tf::coordinate_type<Policy> target_length,
+                        tf::preserve_regions_t<Range> regions,
+                        tf::protect_vertices_t<Mask> protection) {
+  return isotropic_remeshed(polygons,
+                            tf::make_isotropic_remesh_config(target_length),
+                            regions, protection);
+}
+
+// ---- regions + protect + map
+//        -> (mesh, he, face_labels, protection_mask, vertex_map) ------------
+
+template <typename Policy, typename Range, typename Mask>
+auto isotropic_remeshed(
+    const tf::polygons<Policy> &polygons,
+    const tf::isotropic_remesh_config<tf::coordinate_type<Policy>> &config,
+    tf::preserve_regions_t<Range> regions,
+    tf::protect_vertices_t<Mask> protection, tf::return_index_map_t) {
+  auto [he, points] = tf::remesh::extract_he_points(polygons);
+  auto [labels, prot, vmap] =
+      tf::isotropic_remesh(he, points, tf::frame_of(polygons), config, regions,
+                           protection, tf::return_index_map);
+  auto mesh = tf::remesh::make_mesh(he, std::move(points));
+  return std::tuple{std::move(mesh), std::move(he), std::move(labels),
+                    std::move(prot), std::move(vmap)};
+}
+
+template <typename Policy, typename Range, typename Mask>
+auto isotropic_remeshed(const tf::polygons<Policy> &polygons,
+                        tf::coordinate_type<Policy> target_length,
+                        tf::preserve_regions_t<Range> regions,
+                        tf::protect_vertices_t<Mask> protection,
+                        tf::return_index_map_t) {
+  return isotropic_remeshed(polygons,
+                            tf::make_isotropic_remesh_config(target_length),
+                            regions, protection, tf::return_index_map);
 }
 
 } // namespace tf

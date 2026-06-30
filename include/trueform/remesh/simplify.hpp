@@ -17,10 +17,13 @@
 #include "../core/coordinate_type.hpp"
 #include "../core/none.hpp"
 #include "../core/points_buffer.hpp"
+#include "../reindex/return_index_map.hpp"
 #include "./error_remesh.hpp"
 #include "./preserve_regions.hpp"
+#include "./protect_vertices.hpp"
 #include "./simplify_config.hpp"
 
+#include <tuple>
 #include <utility>
 
 namespace tf::remesh {
@@ -32,14 +35,16 @@ namespace tf::remesh {
 /// after each cleanup. Returns the feature_handler (its face_labels are the
 /// post-op per-face region labels for the preserve_regions case). Regions is
 /// tf::none_t or tf::preserve_regions_t<...>.
-template <typename Index, typename Real, std::size_t Dims, typename Regions>
+template <typename Index, typename Real, std::size_t Dims, typename Regions,
+          typename Protection, typename ReturnMap>
 auto simplify(tf::half_edges<Index> &he, tf::points_buffer<Real, Dims> &points,
-              const tf::simplify_config<Real> &config, Regions regions)
-    -> feature_handler<Index, tf::remesh::region_label_t<Regions, Index>> {
-  return tf::remesh::error_remesh(he, points, config.error_rel,
-                                  config.iterations, config.optimize_iterations,
-                                  config, config.feature_angle, config.lambda,
-                                  config.relaxation_iters, regions);
+              const tf::simplify_config<Real> &config, Regions regions,
+              Protection protection, ReturnMap rm)
+    -> remesh_result<Index, tf::remesh::region_label_t<Regions, Index>> {
+  return tf::remesh::error_remesh(
+      he, points, config.error_rel, config.iterations, config.optimize_iterations,
+      config, config.feature_angle, config.lambda, config.relaxation_iters,
+      regions, protection, rm);
 }
 
 } // namespace tf::remesh
@@ -56,7 +61,7 @@ template <typename Index, typename Real, std::size_t Dims>
 auto simplify(tf::half_edges<Index> &he, tf::points_buffer<Real, Dims> &points,
               const tf::simplify_config<Real> &config =
                   tf::simplify_config<Real>{}) -> void {
-  tf::remesh::simplify(he, points, config, tf::none);
+  tf::remesh::simplify(he, points, config, tf::none, tf::none, tf::none);
 }
 
 /// @ingroup remesh
@@ -73,8 +78,113 @@ auto simplify(tf::half_edges<Index> &he, tf::points_buffer<Real, Dims> &points,
     tf::simplify(he, points, config);
     return tf::buffer<Label>{};
   }
-  auto features = tf::remesh::simplify(he, points, config, regions);
-  return std::move(features.face_labels);
+  auto res = tf::remesh::simplify(he, points, config, regions, tf::none,
+                                  tf::none);
+  return std::move(res.features.face_labels);
+}
+
+/// @ingroup remesh
+/// @brief In-place simplify returning the original->new vertex index map
+/// (vertices only).
+template <typename Index, typename Real, std::size_t Dims>
+auto simplify(tf::half_edges<Index> &he, tf::points_buffer<Real, Dims> &points,
+              const tf::simplify_config<Real> &config, tf::return_index_map_t)
+    -> tf::index_map_buffer<Index> {
+  auto res = tf::remesh::simplify(he, points, config, tf::none, tf::none,
+                                  tf::return_index_map);
+  return std::move(res.vertex_map);
+}
+
+/// @ingroup remesh
+/// @brief In-place simplify with pinned vertices; returns the new per-output-
+/// vertex protection mask (empty if the input mask is empty).
+template <typename Index, typename Real, std::size_t Dims, typename Mask>
+auto simplify(tf::half_edges<Index> &he, tf::points_buffer<Real, Dims> &points,
+              const tf::simplify_config<Real> &config,
+              tf::protect_vertices_t<Mask> protection) -> tf::buffer<bool> {
+  auto res = tf::remesh::simplify(he, points, config, tf::none, protection,
+                                  tf::none);
+  return std::move(res.features.protected_vertices);
+}
+
+/// @ingroup remesh
+/// @brief In-place vertex-protecting simplify + the vertex map. Returns
+/// (protection_mask, vertex_map).
+template <typename Index, typename Real, std::size_t Dims, typename Mask>
+auto simplify(tf::half_edges<Index> &he, tf::points_buffer<Real, Dims> &points,
+              const tf::simplify_config<Real> &config,
+              tf::protect_vertices_t<Mask> protection, tf::return_index_map_t)
+    -> std::pair<tf::buffer<bool>, tf::index_map_buffer<Index>> {
+  auto res = tf::remesh::simplify(he, points, config, tf::none, protection,
+                                  tf::return_index_map);
+  return {std::move(res.features.protected_vertices), std::move(res.vertex_map)};
+}
+
+/// @ingroup remesh
+/// @brief In-place region-preserving simplify + the vertex map. Returns
+/// (face_labels, vertex_map).
+template <typename Index, typename Real, std::size_t Dims, typename Range>
+auto simplify(tf::half_edges<Index> &he, tf::points_buffer<Real, Dims> &points,
+              const tf::simplify_config<Real> &config,
+              tf::preserve_regions_t<Range> regions, tf::return_index_map_t)
+    -> std::pair<tf::buffer<typename Range::value_type>,
+                 tf::index_map_buffer<Index>> {
+  using Label = typename Range::value_type;
+  if (regions.face_regions.size() == 0) {
+    auto res = tf::remesh::simplify(he, points, config, tf::none, tf::none,
+                                    tf::return_index_map);
+    return {tf::buffer<Label>{}, std::move(res.vertex_map)};
+  }
+  auto res = tf::remesh::simplify(he, points, config, regions, tf::none,
+                                  tf::return_index_map);
+  return {std::move(res.features.face_labels), std::move(res.vertex_map)};
+}
+
+/// @ingroup remesh
+/// @brief In-place region-preserving, vertex-protecting simplify. Returns
+/// (face_labels, protection_mask).
+template <typename Index, typename Real, std::size_t Dims, typename Range,
+          typename Mask>
+auto simplify(tf::half_edges<Index> &he, tf::points_buffer<Real, Dims> &points,
+              const tf::simplify_config<Real> &config,
+              tf::preserve_regions_t<Range> regions,
+              tf::protect_vertices_t<Mask> protection)
+    -> std::pair<tf::buffer<typename Range::value_type>, tf::buffer<bool>> {
+  using Label = typename Range::value_type;
+  if (regions.face_regions.size() == 0) {
+    auto res = tf::remesh::simplify(he, points, config, tf::none, protection,
+                                    tf::none);
+    return {tf::buffer<Label>{}, std::move(res.features.protected_vertices)};
+  }
+  auto res = tf::remesh::simplify(he, points, config, regions, protection,
+                                  tf::none);
+  return {std::move(res.features.face_labels),
+          std::move(res.features.protected_vertices)};
+}
+
+/// @ingroup remesh
+/// @brief In-place region-preserving, vertex-protecting simplify + the vertex
+/// map. Returns (face_labels, protection_mask, vertex_map).
+template <typename Index, typename Real, std::size_t Dims, typename Range,
+          typename Mask>
+auto simplify(tf::half_edges<Index> &he, tf::points_buffer<Real, Dims> &points,
+              const tf::simplify_config<Real> &config,
+              tf::preserve_regions_t<Range> regions,
+              tf::protect_vertices_t<Mask> protection, tf::return_index_map_t)
+    -> std::tuple<tf::buffer<typename Range::value_type>, tf::buffer<bool>,
+                  tf::index_map_buffer<Index>> {
+  using Label = typename Range::value_type;
+  if (regions.face_regions.size() == 0) {
+    auto res = tf::remesh::simplify(he, points, config, tf::none, protection,
+                                    tf::return_index_map);
+    return {tf::buffer<Label>{}, std::move(res.features.protected_vertices),
+            std::move(res.vertex_map)};
+  }
+  auto res = tf::remesh::simplify(he, points, config, regions, protection,
+                                  tf::return_index_map);
+  return {std::move(res.features.face_labels),
+          std::move(res.features.protected_vertices),
+          std::move(res.vertex_map)};
 }
 
 /// @ingroup remesh

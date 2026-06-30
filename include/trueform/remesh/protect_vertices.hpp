@@ -17,14 +17,14 @@
 namespace tf {
 
 template <typename Range>
-struct preserve_regions_t {
-  Range face_regions;
+struct protect_vertices_t {
+  Range vertex_mask;
 };
 
 template <typename R>
-auto preserve_regions(R &&r) {
+auto protect_vertices(R &&r) {
   auto wrapped = tf::make_range(static_cast<R &&>(r));
-  return preserve_regions_t<decltype(wrapped)>{wrapped};
+  return protect_vertices_t<decltype(wrapped)>{wrapped};
 }
 
 } // namespace tf

@@ -12,84 +12,63 @@
  */
 #pragma once
 
-#include "../core/algorithm/parallel_copy.hpp"
 #include "../core/frame_of.hpp"
-#include "../core/polygons_buffer.hpp"
-#include "../core/static_size.hpp"
-#include "../reindex/points.hpp"
 #include "../reindex/return_index_map.hpp"
-#include "../topology/policy/half_edges.hpp"
 #include "./collapse_short_edges.hpp"
 #include "./preserve_regions.hpp"
+#include "./protect_vertices.hpp"
+#include "./wrapper_helpers.hpp"
 
+#include <tuple>
 #include <utility>
 
 namespace tf {
 
-/// @brief Collapse short edges and return index maps (face + vertex).
+// tf::collapsed_short_edges builds a half-edge structure and forwards to the
+// in-place driver tf::collapse_short_edges (frame-aware), then assembles the
+// mesh. Optional outputs come in the order their tags were passed (regions,
+// protection, map):
+//
+//   mesh, half_edges, [face_labels], [protection_mask], [face_map, vertex_map]
+//
+// Length collapse is pure collapse, so BOTH index maps are exact.
+
+// ---- plain ----------------------------------------------------------------
+
 template <typename Policy>
 auto collapsed_short_edges(
-    const tf::polygons<Policy> &polygons,
-    tf::coordinate_type<Policy> min_len,
-    const tf::length_collapse_config<tf::coordinate_type<Policy>> &config,
-    tf::return_index_map_t) {
-  using Index = std::decay_t<decltype(polygons.faces()[0][0])>;
-  using Real = tf::coordinate_type<Policy>;
-  constexpr auto Dims = tf::coordinate_dims_v<Policy>;
-  static_assert(tf::static_size_v<std::decay_t<decltype(polygons.faces()[0])>> ==
-                3);
-
-  if constexpr (!tf::has_half_edges_policy<Policy>) {
-    tf::half_edges<Index> he(polygons);
-    return collapsed_short_edges(polygons | tf::tag(he), min_len, config,
-                                 tf::return_index_map);
-  } else {
-    auto &he_view = polygons.half_edges();
-    tf::half_edges<Index> he;
-    auto hd = he_view.half_edges_data();
-    he.half_edges_buffer().allocate(hd.size());
-    tf::parallel_copy(hd, tf::make_range(he.half_edges_buffer()));
-    he.rebuild_handles(he_view.n_faces(), he_view.n_vertices());
-
-    auto frame = tf::frame_of(polygons);
-
-    tf::points_buffer<Real, Dims> points;
-    points.allocate(polygons.points().size());
-    tf::parallel_copy(polygons.points(), points.points());
-
-    auto tagged = points.points() | tf::tag(frame);
-    tf::collapse_short_edges(he, tagged, min_len, config);
-    auto [fim, vim, eim] = he.compact();
-
-    tf::polygons_buffer<Index, Real, Dims, 3> mesh;
-    mesh.faces_buffer() = tf::make_faces_buffer(he);
-    mesh.points_buffer() = tf::reindexed(points.points(), vim);
-    return std::tuple{std::move(mesh), std::move(he), std::move(fim),
-                      std::move(vim)};
-  }
-}
-
-/// @brief Collapse short edges with config.
-template <typename Policy>
-auto collapsed_short_edges(
-    const tf::polygons<Policy> &polygons,
-    tf::coordinate_type<Policy> min_len,
+    const tf::polygons<Policy> &polygons, tf::coordinate_type<Policy> min_len,
     const tf::length_collapse_config<tf::coordinate_type<Policy>> &config) {
-  auto [mesh, he, fim, vim] =
-      collapsed_short_edges(polygons, min_len, config, tf::return_index_map);
+  auto [he, points] = tf::remesh::extract_he_points(polygons);
+  tf::collapse_short_edges(he, points, tf::frame_of(polygons), min_len, config);
+  auto mesh = tf::remesh::make_mesh(he, std::move(points));
   return std::pair{std::move(mesh), std::move(he)};
 }
 
-/// @brief Collapse short edges with default config.
 template <typename Policy>
 auto collapsed_short_edges(const tf::polygons<Policy> &polygons,
                            tf::coordinate_type<Policy> min_len) {
   using Real = tf::coordinate_type<Policy>;
-  return collapsed_short_edges(
-      polygons, min_len, tf::length_collapse_config<Real>{});
+  return collapsed_short_edges(polygons, min_len,
+                               tf::length_collapse_config<Real>{});
 }
 
-/// @brief Collapse short edges with default config, return index maps.
+// ---- index maps -> (mesh, he, face_map, vertex_map) -----------------------
+
+template <typename Policy>
+auto collapsed_short_edges(
+    const tf::polygons<Policy> &polygons, tf::coordinate_type<Policy> min_len,
+    const tf::length_collapse_config<tf::coordinate_type<Policy>> &config,
+    tf::return_index_map_t) {
+  auto [he, points] = tf::remesh::extract_he_points(polygons);
+  auto [fim, vim] = tf::collapse_short_edges(he, points, tf::frame_of(polygons),
+                                             min_len, config,
+                                             tf::return_index_map);
+  auto mesh = tf::remesh::make_mesh(he, std::move(points));
+  return std::tuple{std::move(mesh), std::move(he), std::move(fim),
+                    std::move(vim)};
+}
+
 template <typename Policy>
 auto collapsed_short_edges(const tf::polygons<Policy> &polygons,
                            tf::coordinate_type<Policy> min_len,
@@ -100,136 +79,162 @@ auto collapsed_short_edges(const tf::polygons<Policy> &polygons,
                                tf::return_index_map);
 }
 
-/// @brief Region-preserving collapse short edges. Returns
-/// (mesh, he, face_labels).
-template <typename Policy, typename Range>
+// ---- protect -> (mesh, he, protection_mask) -------------------------------
+
+template <typename Policy, typename Mask>
 auto collapsed_short_edges(
-    const tf::polygons<Policy> &polygons,
-    tf::coordinate_type<Policy> min_len,
+    const tf::polygons<Policy> &polygons, tf::coordinate_type<Policy> min_len,
     const tf::length_collapse_config<tf::coordinate_type<Policy>> &config,
-    tf::preserve_regions_t<Range> regions) {
-  using Index = std::decay_t<decltype(polygons.faces()[0][0])>;
-  using Real = tf::coordinate_type<Policy>;
-  constexpr auto Dims = tf::coordinate_dims_v<Policy>;
-  static_assert(tf::static_size_v<std::decay_t<decltype(polygons.faces()[0])>> ==
-                3);
-
-  // An empty range carries no labels: run the non-region path and return an
-  // empty face_labels buffer of the mesh index type. The region machinery is
-  // never entered.
-  if (regions.face_regions.size() == 0) {
-    auto [mesh, he] = collapsed_short_edges(polygons, min_len, config);
-    return std::tuple{std::move(mesh), std::move(he), tf::buffer<typename Range::value_type>{}};
-  }
-
-  if constexpr (!tf::has_half_edges_policy<Policy>) {
-    tf::half_edges<Index> he(polygons);
-    return collapsed_short_edges(polygons | tf::tag(he), min_len, config,
-                                 regions);
-  } else {
-    auto &he_view = polygons.half_edges();
-    tf::half_edges<Index> he;
-    auto hd = he_view.half_edges_data();
-    he.half_edges_buffer().allocate(hd.size());
-    tf::parallel_copy(hd, tf::make_range(he.half_edges_buffer()));
-    he.rebuild_handles(he_view.n_faces(), he_view.n_vertices());
-
-    auto frame = tf::frame_of(polygons);
-    tf::points_buffer<Real, Dims> points;
-    points.allocate(polygons.points().size());
-    tf::parallel_copy(polygons.points(), points.points());
-
-    auto tagged = points.points() | tf::tag(frame);
-    auto [_, features] = tf::remesh::collapse_short_edges(
-        he, tagged, min_len, config, regions);
-    auto [fim, vim, eim] = he.compact();
-    features.compact(fim, eim, vim);
-
-    tf::polygons_buffer<Index, Real, Dims, 3> mesh;
-    mesh.faces_buffer() = tf::make_faces_buffer(he);
-    mesh.points_buffer() = tf::reindexed(points.points(), vim);
-    return std::tuple{std::move(mesh), std::move(he),
-                      std::move(features.face_labels)};
-  }
+    tf::protect_vertices_t<Mask> protection) {
+  auto [he, points] = tf::remesh::extract_he_points(polygons);
+  auto prot = tf::collapse_short_edges(he, points, tf::frame_of(polygons),
+                                       min_len, config, protection);
+  auto mesh = tf::remesh::make_mesh(he, std::move(points));
+  return std::tuple{std::move(mesh), std::move(he), std::move(prot)};
 }
 
-/// @brief Region-preserving collapse short edges with default config.
+template <typename Policy, typename Mask>
+auto collapsed_short_edges(const tf::polygons<Policy> &polygons,
+                           tf::coordinate_type<Policy> min_len,
+                           tf::protect_vertices_t<Mask> protection) {
+  using Real = tf::coordinate_type<Policy>;
+  return collapsed_short_edges(polygons, min_len,
+                               tf::length_collapse_config<Real>{}, protection);
+}
+
+// ---- protect + maps -> (mesh, he, protection_mask, face_map, vertex_map) ---
+
+template <typename Policy, typename Mask>
+auto collapsed_short_edges(
+    const tf::polygons<Policy> &polygons, tf::coordinate_type<Policy> min_len,
+    const tf::length_collapse_config<tf::coordinate_type<Policy>> &config,
+    tf::protect_vertices_t<Mask> protection, tf::return_index_map_t) {
+  auto [he, points] = tf::remesh::extract_he_points(polygons);
+  auto [prot, fim, vim] =
+      tf::collapse_short_edges(he, points, tf::frame_of(polygons), min_len,
+                               config, protection, tf::return_index_map);
+  auto mesh = tf::remesh::make_mesh(he, std::move(points));
+  return std::tuple{std::move(mesh), std::move(he), std::move(prot),
+                    std::move(fim), std::move(vim)};
+}
+
+template <typename Policy, typename Mask>
+auto collapsed_short_edges(const tf::polygons<Policy> &polygons,
+                           tf::coordinate_type<Policy> min_len,
+                           tf::protect_vertices_t<Mask> protection,
+                           tf::return_index_map_t) {
+  using Real = tf::coordinate_type<Policy>;
+  return collapsed_short_edges(polygons, min_len,
+                               tf::length_collapse_config<Real>{}, protection,
+                               tf::return_index_map);
+}
+
+// ---- regions -> (mesh, he, face_labels) -----------------------------------
+
+template <typename Policy, typename Range>
+auto collapsed_short_edges(
+    const tf::polygons<Policy> &polygons, tf::coordinate_type<Policy> min_len,
+    const tf::length_collapse_config<tf::coordinate_type<Policy>> &config,
+    tf::preserve_regions_t<Range> regions) {
+  auto [he, points] = tf::remesh::extract_he_points(polygons);
+  auto labels = tf::collapse_short_edges(he, points, tf::frame_of(polygons),
+                                         min_len, config, regions);
+  auto mesh = tf::remesh::make_mesh(he, std::move(points));
+  return std::tuple{std::move(mesh), std::move(he), std::move(labels)};
+}
+
 template <typename Policy, typename Range>
 auto collapsed_short_edges(const tf::polygons<Policy> &polygons,
                            tf::coordinate_type<Policy> min_len,
                            tf::preserve_regions_t<Range> regions) {
   using Real = tf::coordinate_type<Policy>;
-  return collapsed_short_edges(
-      polygons, min_len, tf::length_collapse_config<Real>{}, regions);
+  return collapsed_short_edges(polygons, min_len,
+                               tf::length_collapse_config<Real>{}, regions);
 }
 
-/// @brief Region-preserving collapse short edges with index maps. Returns
-/// (mesh, he, face_im, vert_im, face_labels).
+// ---- regions + maps -> (mesh, he, face_labels, face_map, vertex_map) -------
+
 template <typename Policy, typename Range>
 auto collapsed_short_edges(
-    const tf::polygons<Policy> &polygons,
-    tf::coordinate_type<Policy> min_len,
+    const tf::polygons<Policy> &polygons, tf::coordinate_type<Policy> min_len,
     const tf::length_collapse_config<tf::coordinate_type<Policy>> &config,
-    tf::preserve_regions_t<Range> regions,
-    tf::return_index_map_t) {
-  using Index = std::decay_t<decltype(polygons.faces()[0][0])>;
-  using Real = tf::coordinate_type<Policy>;
-  constexpr auto Dims = tf::coordinate_dims_v<Policy>;
-  static_assert(tf::static_size_v<std::decay_t<decltype(polygons.faces()[0])>> ==
-                3);
-
-  // An empty range carries no labels: run the non-region path and return an
-  // empty face_labels buffer of the mesh index type. The region machinery is
-  // never entered.
-  if (regions.face_regions.size() == 0) {
-    auto [mesh, he, fim, vim] =
-        collapsed_short_edges(polygons, min_len, config, tf::return_index_map);
-    return std::tuple{std::move(mesh), std::move(he), std::move(fim),
-                      std::move(vim), tf::buffer<typename Range::value_type>{}};
-  }
-
-  if constexpr (!tf::has_half_edges_policy<Policy>) {
-    tf::half_edges<Index> he(polygons);
-    return collapsed_short_edges(polygons | tf::tag(he), min_len, config,
-                                 regions, tf::return_index_map);
-  } else {
-    auto &he_view = polygons.half_edges();
-    tf::half_edges<Index> he;
-    auto hd = he_view.half_edges_data();
-    he.half_edges_buffer().allocate(hd.size());
-    tf::parallel_copy(hd, tf::make_range(he.half_edges_buffer()));
-    he.rebuild_handles(he_view.n_faces(), he_view.n_vertices());
-
-    auto frame = tf::frame_of(polygons);
-    tf::points_buffer<Real, Dims> points;
-    points.allocate(polygons.points().size());
-    tf::parallel_copy(polygons.points(), points.points());
-
-    auto tagged = points.points() | tf::tag(frame);
-    auto [_, features] = tf::remesh::collapse_short_edges(
-        he, tagged, min_len, config, regions);
-    auto [fim, vim, eim] = he.compact();
-    features.compact(fim, eim, vim);
-
-    tf::polygons_buffer<Index, Real, Dims, 3> mesh;
-    mesh.faces_buffer() = tf::make_faces_buffer(he);
-    mesh.points_buffer() = tf::reindexed(points.points(), vim);
-    return std::tuple{std::move(mesh), std::move(he), std::move(fim),
-                      std::move(vim), std::move(features.face_labels)};
-  }
+    tf::preserve_regions_t<Range> regions, tf::return_index_map_t) {
+  auto [he, points] = tf::remesh::extract_he_points(polygons);
+  auto [labels, fim, vim] =
+      tf::collapse_short_edges(he, points, tf::frame_of(polygons), min_len,
+                               config, regions, tf::return_index_map);
+  auto mesh = tf::remesh::make_mesh(he, std::move(points));
+  return std::tuple{std::move(mesh), std::move(he), std::move(labels),
+                    std::move(fim), std::move(vim)};
 }
 
-/// @brief Region-preserving collapse short edges with default config and
-/// index maps.
 template <typename Policy, typename Range>
 auto collapsed_short_edges(const tf::polygons<Policy> &polygons,
                            tf::coordinate_type<Policy> min_len,
                            tf::preserve_regions_t<Range> regions,
                            tf::return_index_map_t) {
   using Real = tf::coordinate_type<Policy>;
-  return collapsed_short_edges(
-      polygons, min_len, tf::length_collapse_config<Real>{}, regions,
-      tf::return_index_map);
+  return collapsed_short_edges(polygons, min_len,
+                               tf::length_collapse_config<Real>{}, regions,
+                               tf::return_index_map);
+}
+
+// ---- regions + protect -> (mesh, he, face_labels, protection_mask) --------
+
+template <typename Policy, typename Range, typename Mask>
+auto collapsed_short_edges(
+    const tf::polygons<Policy> &polygons, tf::coordinate_type<Policy> min_len,
+    const tf::length_collapse_config<tf::coordinate_type<Policy>> &config,
+    tf::preserve_regions_t<Range> regions,
+    tf::protect_vertices_t<Mask> protection) {
+  auto [he, points] = tf::remesh::extract_he_points(polygons);
+  auto [labels, prot] = tf::collapse_short_edges(
+      he, points, tf::frame_of(polygons), min_len, config, regions, protection);
+  auto mesh = tf::remesh::make_mesh(he, std::move(points));
+  return std::tuple{std::move(mesh), std::move(he), std::move(labels),
+                    std::move(prot)};
+}
+
+template <typename Policy, typename Range, typename Mask>
+auto collapsed_short_edges(const tf::polygons<Policy> &polygons,
+                           tf::coordinate_type<Policy> min_len,
+                           tf::preserve_regions_t<Range> regions,
+                           tf::protect_vertices_t<Mask> protection) {
+  using Real = tf::coordinate_type<Policy>;
+  return collapsed_short_edges(polygons, min_len,
+                               tf::length_collapse_config<Real>{}, regions,
+                               protection);
+}
+
+// ---- regions + protect + maps
+//        -> (mesh, he, face_labels, protection_mask, face_map, vertex_map) --
+
+template <typename Policy, typename Range, typename Mask>
+auto collapsed_short_edges(
+    const tf::polygons<Policy> &polygons, tf::coordinate_type<Policy> min_len,
+    const tf::length_collapse_config<tf::coordinate_type<Policy>> &config,
+    tf::preserve_regions_t<Range> regions,
+    tf::protect_vertices_t<Mask> protection, tf::return_index_map_t) {
+  auto [he, points] = tf::remesh::extract_he_points(polygons);
+  auto [labels, prot, fim, vim] =
+      tf::collapse_short_edges(he, points, tf::frame_of(polygons), min_len,
+                               config, regions, protection,
+                               tf::return_index_map);
+  auto mesh = tf::remesh::make_mesh(he, std::move(points));
+  return std::tuple{std::move(mesh), std::move(he), std::move(labels),
+                    std::move(prot), std::move(fim), std::move(vim)};
+}
+
+template <typename Policy, typename Range, typename Mask>
+auto collapsed_short_edges(const tf::polygons<Policy> &polygons,
+                           tf::coordinate_type<Policy> min_len,
+                           tf::preserve_regions_t<Range> regions,
+                           tf::protect_vertices_t<Mask> protection,
+                           tf::return_index_map_t) {
+  using Real = tf::coordinate_type<Policy>;
+  return collapsed_short_edges(polygons, min_len,
+                               tf::length_collapse_config<Real>{}, regions,
+                               protection, tf::return_index_map);
 }
 
 } // namespace tf

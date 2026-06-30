@@ -13,9 +13,12 @@
 #pragma once
 
 #include "../core/aabb_from.hpp"
+#include "../core/algorithm/compose_index_maps.hpp"
 #include "../core/algorithm/parallel_for_each.hpp"
+#include "../core/algorithm/parallel_iota.hpp"
 #include "../core/coordinate_dims.hpp"
 #include "../core/coordinate_type.hpp"
+#include "../core/index_map.hpp"
 #include "../core/none.hpp"
 #include "../core/points_buffer.hpp"
 #include "../core/views/sequence_range.hpp"
@@ -65,25 +68,31 @@ auto error_collapse(tf::half_edges<Index> &he, tf::points<PointsPolicy> &points,
 /// mask, run optimize_iterations rounds of min-angle flip + relaxation. The
 /// bbox-centering shift and the error diagonal are hoisted out of the loop, so
 /// the budget is anchored to the original mesh size for every iteration.
-/// Returns the feature_handler (its face_labels are the post-remesh per-face
-/// region labels for the preserve_regions case). No index maps -- the flip pass
-/// makes original->final face maps meaningless; preserve_regions carries
-/// per-face data instead.
+///
+/// Returns @ref remesh_result: the feature_handler (its face_labels are
+/// the post-remesh per-face region labels for the preserve_regions case) and,
+/// when ReturnMap is requested, the original->final vertex index map composed
+/// across every pass.
 ///
 /// @tparam Regions tf::none_t or tf::preserve_regions_t<...>.
-template <typename Index, typename Real, std::size_t Dims, typename Regions>
+/// @tparam Protection tf::none_t or tf::protect_vertices_t<...>.
+/// @tparam ReturnMap tf::none_t or tf::return_index_map_t.
+template <typename Index, typename Real, std::size_t Dims, typename Regions,
+          typename Protection, typename ReturnMap>
 auto error_remesh(tf::half_edges<Index> &he,
                   tf::points_buffer<Real, Dims> &points, Real error_rel,
                   int iterations, int optimize_iterations,
                   const tf::collapse_guard_config<Real> &cfg,
                   tf::rad<Real> feature_angle, Real lambda, int relaxation_iters,
-                  Regions regions)
-    -> feature_handler<Index, tf::remesh::region_label_t<Regions, Index>> {
+                  Regions regions, Protection protection, ReturnMap)
+    -> remesh_result<Index, tf::remesh::region_label_t<Regions, Index>> {
   using Label = tf::remesh::region_label_t<Regions, Index>;
+  constexpr bool want_map = !std::is_same_v<ReturnMap, tf::none_t>;
+  auto n0 = Index(points.size());
   auto bb = tf::aabb_from(points.points());
   Real diag = (bb.max - bb.min).length();
   if (diag <= Real(0))
-    return feature_handler<Index, Label>{};
+    return remesh_result<Index, Label>{};
   Real inv_eps = Real(1) / (error_rel * diag);
 
   // Center on bbox-min once (quadric numerical stability at large coordinates);
@@ -99,16 +108,13 @@ auto error_remesh(tf::half_edges<Index> &he,
   };
   shift(Real(-1));
 
-  feature_handler<Index, Label> features; // built once, reused throughout
-  if constexpr (std::is_same_v<Regions, tf::none_t>) {
-    if (feature_angle.value >= 0)
-      features.init(he, points.points(), feature_angle);
-  } else {
-    if (feature_angle.value >= 0)
-      features.init(he, points.points(), feature_angle, regions.face_regions);
-    else
-      features.init_regions(he, points.points(), regions.face_regions);
-  }
+  // Built once, reused throughout (protection re-applied by every recompute).
+  auto features = tf::remesh::build_feature_handler(
+      he, points.points(), feature_angle, regions, protection);
+
+  // Composed original->current vertex map, folded one pass at a time.
+  tf::index_map_buffer<Index> vmap;
+  bool vmap_seeded = false;
 
   tf::points_buffer<double, Dims> old_pos;
   for (int i = 0; i < iterations; ++i) {
@@ -122,6 +128,14 @@ auto error_remesh(tf::half_edges<Index> &he,
       features.compact(face_im, edge_im, vert_im);
       features.recompute(he, points.points(), feature_angle);
     }
+    if constexpr (want_map) {
+      // vert_im maps this pass's old->new ids; fold it into the running map.
+      if (!vmap_seeded) {
+        vmap = std::move(vert_im);
+        vmap_seeded = true;
+      } else
+        vmap = tf::compose_index_maps(vmap, vert_im);
+    }
     tf::improve_config<Real> icfg{optimize_iterations, relaxation_iters, lambda,
                                   cfg.check_normals,
                                   tf::flip_objective::min_angle};
@@ -134,7 +148,18 @@ auto error_remesh(tf::half_edges<Index> &he,
   }
 
   shift(Real(1));
-  return features;
+
+  if constexpr (want_map) {
+    // No pass ran (iterations == 0): the vertex set is unchanged, so the map is
+    // the identity over the original vertices.
+    if (!vmap_seeded) {
+      vmap.f().allocate(n0);
+      vmap.kept_ids().allocate(n0);
+      tf::parallel_iota(tf::make_range(vmap.f()), Index(0));
+      tf::parallel_iota(tf::make_range(vmap.kept_ids()), Index(0));
+    }
+  }
+  return remesh_result<Index, Label>{std::move(features), std::move(vmap)};
 }
 
 } // namespace tf::remesh
