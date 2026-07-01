@@ -463,3 +463,28 @@ auto function_name(const tf::polygons<Policy> &polygons) {
 9. **Don't add error handling for scenarios that can't happen.** Trust internal code. Only validate at system boundaries.
 
 10. **Don't use `if constexpr` without `tf::none_t`.** The pattern is: default template parameter `= tf::none_t`, then `if constexpr (std::is_same_v<T, tf::none_t>)` to trigger deduction.
+
+---
+
+## 10. Portability (MSVC)
+
+The library is developed on clang/AppleClang but must build on MSVC (Windows CI). These are compiler-specific traps that clang accepts silently and only fail on Windows — so they can't be caught by building locally. Treat them as hard rules.
+
+1. **No local `constexpr` variable odr-used inside a lambda body.** MSVC rejects it. Keep a `constexpr` local to `if constexpr` statements only, or hoist it to a runtime local before the lambda. Template non-type parameters (e.g. `bool WantLabels`) are fine — they're constants from the enclosing template, not captured.
+   ```cpp
+   constexpr std::size_t N = ...;
+   auto f = [&] { use(N); };        // BAD on MSVC (odr-uses constexpr local N)
+   const std::size_t n = N;
+   auto g = [&] { use(n); };        // OK — runtime local
+   ```
+
+2. **Capture structured-binding names via an explicit init-capture.** Pre-C++20 MSVC can't capture a structured binding through a default `[&]`/`[=]`. Rebind it in the capture list (or bind to a plain local first):
+   ```cpp
+   auto [a, b] = f();
+   auto h = [&] { use(a); };        // BAD on MSVC (captures a structured binding)
+   auto k = [&, &a = a] { use(a); }; // OK — explicit init-capture
+   ```
+
+3. **ASCII-only in Catch2 `TEST_CASE` / `SECTION` names.** ctest's test-name parsing chokes on non-ASCII (`→`, `×`, `°`, accented letters) on Windows. Keep registered test names ASCII; UTF-8 is fine in comments and code.
+
+4. **No `M_PI` / `M_*` math macros.** They need `_USE_MATH_DEFINES` before `<cmath>` on MSVC. Use `tf::pi<T>` and the other `tf::` constants.

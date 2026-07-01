@@ -578,3 +578,181 @@ TEST_CASE("csg_graph: two-cube booleans against closed-form volume",
     check_solid(m, 7.0);
   }
 }
+
+TEST_CASE("make_csg_mesh return_source_ids: per-face tag + face provenance",
+          "[csg][graph][source_ids]") {
+  // Two unit cubes (side = 2) overlapping by 1x1x1, as above.
+  auto a = tf::make_box_mesh<Index>(Real(2), Real(2), Real(2));
+  auto b = translated(tf::make_box_mesh<Index>(Real(2), Real(2), Real(2)),
+                       Real(1), Real(1), Real(1));
+
+  auto frame_id = tf::make_frame(
+      tf::make_transformation_from_translation(tf::vector<Real, 3>{0, 0, 0}));
+  using form_t = decltype(a.polygons() | tf::tag(frame_id));
+  std::vector<form_t> forms;
+  forms.reserve(2);
+  forms.push_back(a.polygons() | tf::tag(frame_id));
+  forms.push_back(b.polygons() | tf::tag(frame_id));
+
+  auto graph = tf::make_csg_graph(tf::make_range(forms));
+
+  auto plain = tf::make_csg_mesh(graph, tf::csg::merge(0, 1));
+  auto [mesh, tag_labels, face_labels] =
+      tf::make_csg_mesh(graph, tf::csg::merge(0, 1), tf::return_source_ids);
+
+  // The mesh matches the plain build; labels run parallel to output faces.
+  REQUIRE(mesh.faces().size() == plain.faces().size());
+  REQUIRE(std::size_t(tag_labels.size()) == mesh.faces().size());
+  REQUIRE(std::size_t(face_labels.size()) == mesh.faces().size());
+
+  bool saw0 = false, saw1 = false;
+  for (std::size_t f = 0; f < mesh.faces().size(); ++f) {
+    auto t = tag_labels[f];
+    REQUIRE((t == Index(0) || t == Index(1)));
+    saw0 = saw0 || (t == Index(0));
+    saw1 = saw1 || (t == Index(1));
+    // face_labels is an original face id within form t.
+    auto fl = face_labels[f];
+    REQUIRE(fl >= Index(0));
+    REQUIRE(std::size_t(fl) < forms[std::size_t(t)].faces().size());
+    // Order-independent correctness: the output face lies in the plane of
+    // its claimed source face -- uncut faces are identical, cut faces are
+    // triangulated within the source face's plane. (Frame is identity here.)
+    auto src_plane = tf::make_plane(forms[std::size_t(t)][std::size_t(fl)]);
+    for (auto v : mesh.polygons()[f]) {
+      auto d = double(tf::distance(src_plane, v));
+      REQUIRE(d < 1e-3);
+      REQUIRE(d > -1e-3);
+    }
+  }
+  // A union of two overlapping boxes keeps faces from both operands.
+  REQUIRE(saw0);
+  REQUIRE(saw1);
+}
+
+TEST_CASE("make_csg_mesh(graph): full arrangement matches make_mesh_arrangements",
+          "[csg][graph][arrangement]") {
+  // No expression -> the full arrangement surface, reusing the graph's
+  // already-built intersection graph / face cuts (no pipeline rerun). Must
+  // match the standalone make_mesh_arrangements pipeline face-for-face.
+  auto a = tf::make_box_mesh<Index>(Real(2), Real(2), Real(2));
+  auto b = translated(tf::make_box_mesh<Index>(Real(2), Real(2), Real(2)),
+                       Real(1), Real(1), Real(1));
+
+  auto frame_id = tf::make_frame(
+      tf::make_transformation_from_translation(tf::vector<Real, 3>{0, 0, 0}));
+  using form_t = decltype(a.polygons() | tf::tag(frame_id));
+  std::vector<form_t> forms;
+  forms.reserve(2);
+  forms.push_back(a.polygons() | tf::tag(frame_id));
+  forms.push_back(b.polygons() | tf::tag(frame_id));
+
+  // Reference: the standalone arrangement pipeline.
+  auto [ref_mesh, ref_tags, ref_faces] =
+      tf::make_mesh_arrangements(tf::make_range(forms));
+
+  // Graph path: same ig / fc, only the mesh is materialised.
+  auto graph = tf::make_csg_graph(tf::make_range(forms));
+  auto arr = tf::make_csg_mesh(graph);
+
+  REQUIRE(arr.faces().size() == ref_mesh.faces().size());
+  REQUIRE(arr.points().size() == ref_mesh.points().size());
+  REQUIRE(arr.faces().size() > 0);
+
+  // Provenance overload: labels parallel to faces, valid, both operands seen.
+  auto [arr2, tag_labels, face_labels] =
+      tf::make_csg_mesh(graph, tf::return_source_ids);
+  REQUIRE(arr2.faces().size() == arr.faces().size());
+  REQUIRE(std::size_t(tag_labels.size()) == arr2.faces().size());
+  REQUIRE(std::size_t(face_labels.size()) == arr2.faces().size());
+
+  bool saw0 = false, saw1 = false;
+  for (std::size_t f = 0; f < arr2.faces().size(); ++f) {
+    auto t = tag_labels[f];
+    REQUIRE((t == Index(0) || t == Index(1)));
+    saw0 = saw0 || (t == Index(0));
+    saw1 = saw1 || (t == Index(1));
+    auto fl = face_labels[f];
+    REQUIRE(fl >= Index(0));
+    REQUIRE(std::size_t(fl) < forms[std::size_t(t)].faces().size());
+  }
+  REQUIRE(saw0);
+  REQUIRE(saw1);
+}
+
+TEST_CASE("make_csg_mesh return_index_map: point/face maps round-trip",
+          "[csg][graph][index_map]") {
+  auto a = tf::make_box_mesh<Index>(Real(2), Real(2), Real(2));
+  auto b = translated(tf::make_box_mesh<Index>(Real(2), Real(2), Real(2)),
+                       Real(1), Real(1), Real(1));
+
+  auto frame_id = tf::make_frame(
+      tf::make_transformation_from_translation(tf::vector<Real, 3>{0, 0, 0}));
+  using form_t = decltype(a.polygons() | tf::tag(frame_id));
+  std::vector<form_t> forms;
+  forms.reserve(2);
+  forms.push_back(a.polygons() | tf::tag(frame_id));
+  forms.push_back(b.polygons() | tf::tag(frame_id));
+  auto graph = tf::make_csg_graph(tf::make_range(forms));
+
+  auto check_map = [&](const auto &mesh, const auto &imap) {
+    REQUIRE(std::size_t(imap.n_output_points) == mesh.points().size());
+    REQUIRE(std::size_t(imap.face_tag_labels.size()) == mesh.faces().size());
+    REQUIRE(std::size_t(imap.face_labels.size()) == mesh.faces().size());
+    REQUIRE(std::size_t(imap.point_tag_labels.size()) == mesh.points().size());
+    REQUIRE(std::size_t(imap.point_labels.size()) == mesh.points().size());
+
+    // Face maps: valid (input form, input face).
+    for (std::size_t f = 0; f < mesh.faces().size(); ++f) {
+      auto t = imap.face_tag_labels[f];
+      REQUIRE((t >= Index(0) && std::size_t(t) < forms.size()));
+      REQUIRE(std::size_t(imap.face_labels[f]) <
+              forms[std::size_t(t)].faces().size());
+    }
+
+    // Point inverse: kept originals map to a valid input point; created
+    // intersection points carry the end sentinel.
+    for (Index o = Index(0); o < imap.n_output_points; ++o) {
+      if (o < imap.n_original_points) {
+        auto t = imap.point_tag_labels[std::size_t(o)];
+        REQUIRE((t >= Index(0) && std::size_t(t) < forms.size()));
+        REQUIRE(std::size_t(imap.point_labels[std::size_t(o)]) <
+                forms[std::size_t(t)].points().size());
+      } else {
+        // Created point: tag axis ends at n_tags, point axis at n_output_points.
+        REQUIRE(imap.point_tag_labels[std::size_t(o)] == imap.n_tags);
+        REQUIRE(imap.point_labels[std::size_t(o)] == imap.n_output_points);
+      }
+    }
+
+    // Forward/inverse round-trip: point_f[t][p] -> o, and the inverse at o
+    // maps back to exactly (t, p). Input points dropped by a boolean carry the
+    // end sentinel and are skipped.
+    for (std::size_t t = 0; t < forms.size(); ++t) {
+      auto blk = imap.point_f[t];
+      REQUIRE(std::size_t(blk.size()) == forms[t].points().size());
+      for (std::size_t p = 0; p < std::size_t(blk.size()); ++p) {
+        auto o = blk[p];
+        if (o != imap.n_output_points) {
+          REQUIRE(o >= Index(0));
+          REQUIRE(o < imap.n_output_points);
+          REQUIRE(imap.point_tag_labels[std::size_t(o)] == Index(t));
+          REQUIRE(imap.point_labels[std::size_t(o)] == Index(p));
+        }
+      }
+    }
+  };
+
+  SECTION("full arrangement (no expression)") {
+    auto [mesh, imap] = tf::make_csg_mesh(graph, tf::return_index_map);
+    check_map(mesh, imap);
+  }
+
+  SECTION("boolean expression") {
+    auto plain = tf::make_csg_mesh(graph, tf::csg::merge(0, 1));
+    auto [mesh, imap] =
+        tf::make_csg_mesh(graph, tf::csg::merge(0, 1), tf::return_index_map);
+    REQUIRE(mesh.faces().size() == plain.faces().size());
+    check_map(mesh, imap);
+  }
+}

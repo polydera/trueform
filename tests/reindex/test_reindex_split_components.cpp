@@ -371,3 +371,60 @@ TEMPLATE_TEST_CASE("split_components_empty_input", "[reindex][split_components][
     REQUIRE(components.size() == 0);
     REQUIRE(comp_labels.size() == 0);
 }
+
+// =============================================================================
+// split_components return_source_ids: provenance, ordering, no empty component
+// =============================================================================
+
+TEMPLATE_TEST_CASE("split_components_source_ids",
+    "[reindex][split_components][source_ids]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    // 4 faces. Non-contiguous, out-of-order labels: the absent values between
+    // 5 and 10 must NOT create empty components; faces regroup by sorted label
+    // then ascending id.
+    auto input = tf::test::create_larger_triangle_polygons_3d<index_t, real_t>();
+    auto labels = make_labels<index_t>({10, 5, 10, 5});
+
+    auto [comps, comp_labels, source] =
+        tf::split_into_components(input.polygons(), labels, tf::return_source_ids);
+
+    REQUIRE(comps.size() == 2);                 // only the present labels {5,10}
+    REQUIRE(source.size() == comps.size());     // blocks parallel to meshes
+    REQUIRE(comp_labels.size() == comps.size());
+
+    const auto n_faces = index_t(input.polygons().faces().size());
+    std::size_t total = 0;
+    for (std::size_t c = 0; c < comps.size(); ++c) {
+        auto block = source[c];
+        REQUIRE(block.size() > 0);              // no empty component
+        REQUIRE(std::size_t(block.size()) == comps[c].faces().size());
+        const auto lbl = comp_labels[c];
+        index_t prev = index_t(-1);
+        for (auto f : block) {
+            REQUIRE(f >= index_t(0));
+            REQUIRE(f < n_faces);
+            REQUIRE(labels[f] == lbl);          // source face carries the label
+            REQUIRE(f > prev);                  // ascending id (tie-break order)
+            prev = f;
+            ++total;
+        }
+    }
+    REQUIRE(total == std::size_t(n_faces));     // partition: each face once
+
+    // Concrete grouping: label 5 -> faces {1,3}; label 10 -> faces {0,2}.
+    REQUIRE(comp_labels[0] == index_t(5));
+    REQUIRE(comp_labels[1] == index_t(10));
+
+    // Empty input yields zero source blocks.
+    tf::polygons_buffer<index_t, real_t, 3, 3> empty;
+    tf::buffer<index_t> no_labels;
+    auto [ec, el, es] =
+        tf::split_into_components(empty.polygons(), no_labels, tf::return_source_ids);
+    REQUIRE(ec.size() == 0);
+    REQUIRE(es.size() == 0);
+}

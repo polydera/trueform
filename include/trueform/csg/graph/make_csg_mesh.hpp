@@ -13,6 +13,7 @@
 #pragma once
 #include "../../core/algorithm/parallel_copy.hpp"
 #include "../../core/algorithm/parallel_copy_blocked.hpp"
+#include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/blocked_buffer.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/frame_of.hpp"
@@ -27,6 +28,7 @@
 #include "../../core/views/mapped_range.hpp"
 #include "../../core/views/offset_block_range.hpp"
 #include "../../core/views/slice.hpp"
+#include "../../core/views/take.hpp"
 #include "../../core/views/zip.hpp"
 #include "../../cut/construct/triangulate_arrangement_cuts.hpp"
 #include "../../cut/face_cuts.hpp"
@@ -38,6 +40,7 @@
 #include "tbb/task_group.h"
 #include <array>
 #include <cstdint>
+#include <tuple>
 #include <type_traits>
 
 namespace tf::csg::graph {
@@ -51,8 +54,8 @@ namespace tf::csg::graph {
 /// input stays a static `blocked<3>`; any other (quad / n-gon / mixed)
 /// input materialises a dynamic-size buffer. Its boundary is the solid of
 /// the boolean expression that produced `chosen_sides`.
-template <typename OutputCoordinateType = tf::none_t, typename FormsRange,
-          typename Index, typename Int, typename RealType>
+template <typename OutputCoordinateType = tf::none_t, bool WantLabels = false,
+          typename FormsRange, typename Index, typename Int, typename RealType>
 auto make_csg_mesh(const tf::arrangement_graph<Index> &ag,
                    const tf::face_cuts<Index, Int> &fc,
                    const tf::intersection_graph<Index, Int> &ig,
@@ -124,6 +127,41 @@ auto make_csg_mesh(const tf::arrangement_graph<Index> &ag,
       }
     }
     tg.wait();
+  }
+
+  // ---- Optional provenance: per output face, tag_labels (which input form)
+  // and face_labels (original face id within that form). Built here from the
+  // partition/triangulation results already in hand, in the SAME stream order
+  // the mesh is assembled below (per form t: uncut fwd, uncut rev, tri fwd,
+  // tri rev). Winding reversal on side-0 streams flips vertices within a face,
+  // not the face order, so the labels ignore it. --------------------------
+  tf::buffer<Index> tag_labels;
+  tf::buffer<Index> face_labels;
+  if constexpr (WantLabels) {
+    Index total_faces = 0;
+    for (Index t = 0; t < n_tags; ++t)
+      total_faces += static_cast<Index>(pids[t].polygons[1].size()) +
+                     static_cast<Index>(pids[t].polygons[0].size()) +
+                     static_cast<Index>(tri_data[t][1].size() / 3) +
+                     static_cast<Index>(tri_data[t][0].size() / 3);
+    tag_labels.allocate(static_cast<std::size_t>(total_faces));
+    face_labels.allocate(static_cast<std::size_t>(total_faces));
+    Index off = 0;
+    auto emit = [&](Index t, const auto &origins, Index size) {
+      tf::parallel_fill(tf::take(tf::drop(tag_labels, off), size), t);
+      tf::parallel_copy(origins, tf::take(tf::drop(face_labels, off), size));
+      off += size;
+    };
+    for (Index t = 0; t < n_tags; ++t) {
+      emit(t, pids[t].polygons[1],
+           static_cast<Index>(pids[t].polygons[1].size()));
+      emit(t, pids[t].polygons[0],
+           static_cast<Index>(pids[t].polygons[0].size()));
+      emit(t, tf::make_range(tri_origins[t][1]),
+           static_cast<Index>(tri_data[t][1].size() / 3));
+      emit(t, tf::make_range(tri_origins[t][0]),
+           static_cast<Index>(tri_data[t][0].size() / 3));
+    }
   }
 
   // ---- Stage 4: per-form remapped face range view. ------------------
@@ -235,7 +273,12 @@ auto make_csg_mesh(const tf::arrangement_graph<Index> &ag,
       emit_points(tg);
       tg.wait();
     }
-    return tf::make_polygons_buffer(std::move(face_buf), std::move(pts_buf));
+    auto mesh = tf::make_polygons_buffer(std::move(face_buf), std::move(pts_buf));
+    if constexpr (WantLabels)
+      return std::make_tuple(std::move(mesh), std::move(tag_labels),
+                             std::move(face_labels), std::move(map_data));
+    else
+      return mesh;
   } else {
     // General path: uncut faces keep their arity, cut loops are triangles, so
     // the output is a dynamic offset-block. Build per-face offsets in stream
@@ -281,7 +324,12 @@ auto make_csg_mesh(const tf::arrangement_graph<Index> &ag,
       emit_points(tg);
       tg.wait();
     }
-    return tf::make_polygons_buffer(std::move(face_buf), std::move(pts_buf));
+    auto mesh = tf::make_polygons_buffer(std::move(face_buf), std::move(pts_buf));
+    if constexpr (WantLabels)
+      return std::make_tuple(std::move(mesh), std::move(tag_labels),
+                             std::move(face_labels), std::move(map_data));
+    else
+      return mesh;
   }
 }
 

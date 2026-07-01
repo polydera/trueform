@@ -271,6 +271,103 @@ TEST_CASE("mesh_arrangements_tolerance_box_plane", "[arrangements][tolerance]") 
     REQUIRE(volumes[0] == Catch::Approx(-1.0).margin(0.01));
     REQUIRE(volumes[1] == Catch::Approx(+1.0).margin(0.01));
   }
+
+  SECTION("return_source_ids drops the garbage class, stays aligned") {
+    // tol = 0: the plane is a detached fin. ignore_open_fragments routes its
+    // faces into the sentinel/garbage class, which `take(n_domains)` trims.
+    // This exercises the offsets.reallocate(n_components + 1) trailing-block
+    // drop in the source buffer.
+    auto [mesh, tag_labels, face_labels] = tf::make_mesh_arrangements(
+        tf::make_range(forms.begin(), forms.end()),
+        tf::intersect_config{tf::intersect_mode::primitives, 0.0});
+
+    tf::orient_faces_consistently(mesh.polygons());
+    auto labels = tf::make_domain_labels(
+        mesh.polygons(), tf::domain_config::ignore_open_fragments);
+    REQUIRE(labels.n_domains == 2);
+
+    auto [domain_meshes, domain_ids, source] = tf::split_into_domains(
+        mesh.polygons(), labels, tf::return_source_ids);
+
+    // Garbage block is gone: source has exactly the kept domains, no empty
+    // or stray trailing block.
+    REQUIRE(domain_meshes.size() == 2);
+    REQUIRE(source.size() == domain_meshes.size());
+    REQUIRE(domain_ids.size() == domain_meshes.size());
+
+    const auto n_faces = index_t(mesh.polygons().faces().size());
+    for (std::size_t c = 0; c < domain_meshes.size(); ++c) {
+      auto block = source[c];
+      REQUIRE(std::size_t(block.size()) ==
+              domain_meshes[c].polygons().faces().size());
+      const auto dom = domain_ids[c];
+      for (auto f : block) {
+        REQUIRE(f >= index_t(0));
+        REQUIRE(f < n_faces);
+        // Bounds this domain, and is a cube face (tag 0) -- never a
+        // garbage-collected plane-fin face (tag 1).
+        auto sides = labels.labels[f];
+        REQUIRE((sides[0] == dom || sides[1] == dom));
+        REQUIRE(tag_labels[f] == 0);
+      }
+    }
+  }
+}
+
+TEST_CASE("split_into_domains return_source_ids (box provenance)",
+          "[arrangements][domains][source_ids]") {
+  using index_t = int;
+  using real_t = float;
+
+  auto box = tf::make_box_mesh<index_t>(real_t(1), real_t(1), real_t(1));
+  tf::orient_faces_consistently(box.polygons());
+
+  auto labels = tf::make_domain_labels(box.polygons());
+  // A closed box bounds two domains: the interior and the outer shell.
+  REQUIRE(labels.n_domains == 2);
+
+  auto [meshes, domain_ids, source] =
+      tf::split_into_domains(box.polygons(), labels, tf::return_source_ids);
+
+  // Source blocks run parallel to the meshes; no empty trailing block.
+  REQUIRE(source.size() == meshes.size());
+  REQUIRE(domain_ids.size() == meshes.size());
+
+  const auto n_faces = index_t(box.polygons().faces().size());
+  for (std::size_t c = 0; c < meshes.size(); ++c) {
+    auto block = source[c];
+    // One source face id per emitted face, in emitted-face order.
+    REQUIRE(std::size_t(block.size()) == meshes[c].polygons().faces().size());
+    const auto dom = domain_ids[c];
+    for (auto f : block) {
+      REQUIRE(f >= index_t(0));
+      REQUIRE(f < n_faces);
+      // Original face f bounds this domain on at least one of its two sides.
+      auto sides = labels.labels[f];
+      REQUIRE((sides[0] == dom || sides[1] == dom));
+    }
+  }
+
+  // The plain overload is unchanged and agrees on meshes/labels.
+  auto [meshes2, domain_ids2] = tf::split_into_domains(box.polygons(), labels);
+  REQUIRE(meshes2.size() == meshes.size());
+  REQUIRE(domain_ids2.size() == domain_ids.size());
+}
+
+TEST_CASE("split_into_domains return_source_ids (empty input)",
+          "[arrangements][domains][source_ids]") {
+  // No faces: offsets is empty, so the source-buffer trim must not reallocate
+  // to size 1 and read an uninitialized offset. Everything comes back empty.
+  using index_t = int;
+  using real_t = float;
+  tf::polygons_buffer<index_t, real_t, 3, 3> empty;
+  auto labels = tf::make_domain_labels(empty.polygons());
+
+  auto [meshes, domain_ids, source] =
+      tf::split_into_domains(empty.polygons(), labels, tf::return_source_ids);
+  REQUIRE(meshes.size() == 0);
+  REQUIRE(domain_ids.size() == 0);
+  REQUIRE(source.size() == 0);
 }
 
 // ---------------------------------------------------------------------------

@@ -14,6 +14,7 @@
 
 #include "./clean.hpp"     // IWYU pragma: export
 #include "./core.hpp"      // IWYU pragma: export
+#include "./csg.hpp"       // IWYU pragma: export
 #include "./cut.hpp"       // IWYU pragma: export
 #include "./geometry.hpp"  // IWYU pragma: export
 #include "./intersect.hpp" // IWYU pragma: export

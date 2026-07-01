@@ -64,9 +64,10 @@ auto mesh_arrangements_pair_worker(const P0 &p0, const P1 &p1,
                                                             ibp.converter());
 
   if constexpr (want_imap) {
+    const auto n_original_faces = map_data.total_original_faces;
     auto imap = tf::cut::make_mesh_arrangement_index_map(
         std::move(map_data), std::move(tag_labels), std::move(face_labels),
-        static_cast<Index>(mesh.points_buffer().size()));
+        n_original_faces, static_cast<Index>(mesh.points_buffer().size()));
     if constexpr (with_conv)
       return std::make_tuple(std::move(mesh), std::move(imap), ibp.converter());
     else
@@ -154,9 +155,10 @@ auto mesh_arrangements_n(const FormsRange &forms, tf::intersect_config config) {
       tf::cut::make_mesh_arrangements<RealOut>(ig, fc, forms, conv);
 
   if constexpr (want_imap) {
+    const auto n_original_faces = map_data.total_original_faces;
     auto imap = make_mesh_arrangement_index_map(
         std::move(map_data), std::move(tag_labels), std::move(face_labels),
-        static_cast<Index>(mesh.points_buffer().size()));
+        n_original_faces, static_cast<Index>(mesh.points_buffer().size()));
     if constexpr (with_conv)
       return std::make_tuple(std::move(mesh), std::move(imap), ibp.converter());
     else

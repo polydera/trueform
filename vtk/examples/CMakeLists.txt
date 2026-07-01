@@ -48,6 +48,7 @@ add_vtk_example(decimate_with_feature_edges)
 add_vtk_example(tubes)
 add_vtk_example(sharp_edges)
 add_vtk_example(domains)
+add_vtk_example(csg_domains)
 add_vtk_example(csg_fracture)
 
 # Target to build all examples

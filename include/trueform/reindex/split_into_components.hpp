@@ -16,6 +16,7 @@
 #include "../core/algorithm/parallel_copy_blocked.hpp"
 #include "../core/algorithm/parallel_fill.hpp"
 #include "../core/algorithm/parallel_iota.hpp"
+#include "../core/offset_block_buffer.hpp"
 #include "../core/polygons.hpp"
 #include "../core/polygons_buffer.hpp"
 #include "../core/segments.hpp"
@@ -28,7 +29,9 @@
 #include "../core/views/offset_block_range.hpp"
 #include "../core/views/zip.hpp"
 #include "../topology/connected_component_labels.hpp"
+#include "./return_source_ids.hpp"
 #include "tbb/parallel_sort.h"
+#include <tuple>
 
 namespace tf {
 
@@ -53,8 +56,12 @@ auto split_into_components_polygons(const tf::polygons<Policy> &polygons,
   tf::buffer<Index> ids;
   ids.allocate(n_elements);
   tf::parallel_iota(ids, Index(0));
-  tbb::parallel_sort(ids.begin(), ids.end(),
-                     [&](auto a, auto b) { return labels[a] < labels[b]; });
+  // Total order: tie-break equal-label elements by id so per-component element
+  // order (and thus the emitted faces/edges and source ids) is reproducible,
+  // not left to parallel_sort's unstable tie handling.
+  tbb::parallel_sort(ids.begin(), ids.end(), [&](auto a, auto b) {
+    return labels[a] != labels[b] ? labels[a] < labels[b] : a < b;
+  });
   tf::buffer<Index> offsets;
   tf::compute_offsets(ids, std::back_inserter(offsets), Index(0),
                       [&](auto a, auto b) { return labels[a] == labels[b]; });
@@ -114,7 +121,14 @@ auto split_into_components_polygons(const tf::polygons<Policy> &polygons,
                       out.points_buffer());
     point_sentinel = current;
   }
-  return std::make_pair(std::move(out_v), std::move(out_labels));
+  // Source element ids per component, parallel to out_v. No sentinel/garbage
+  // class and no `take` (unlike domains), so `offsets` is already exactly
+  // n_components + 1 entries -- move it directly, no trim, no halving.
+  tf::offset_block_buffer<Index, Index> source;
+  source.offsets_buffer() = std::move(offsets);
+  source.data_buffer() = std::move(ids);
+  return std::make_tuple(std::move(out_v), std::move(out_labels),
+                         std::move(source));
 }
 
 /// Segment-specialised split. Same sentinel-based remap strategy as the
@@ -132,8 +146,12 @@ auto split_into_components_segments(const tf::segments<Policy> &segments,
   tf::buffer<Index> ids;
   ids.allocate(n_elements);
   tf::parallel_iota(ids, Index(0));
-  tbb::parallel_sort(ids.begin(), ids.end(),
-                     [&](auto a, auto b) { return labels[a] < labels[b]; });
+  // Total order: tie-break equal-label elements by id so per-component element
+  // order (and thus the emitted faces/edges and source ids) is reproducible,
+  // not left to parallel_sort's unstable tie handling.
+  tbb::parallel_sort(ids.begin(), ids.end(), [&](auto a, auto b) {
+    return labels[a] != labels[b] ? labels[a] < labels[b] : a < b;
+  });
   tf::buffer<Index> offsets;
   tf::compute_offsets(ids, std::back_inserter(offsets), Index(0),
                       [&](auto a, auto b) { return labels[a] == labels[b]; });
@@ -177,7 +195,14 @@ auto split_into_components_segments(const tf::segments<Policy> &segments,
                       out.points_buffer());
     point_sentinel = current;
   }
-  return std::make_pair(std::move(out_v), std::move(out_labels));
+  // Source element ids per component, parallel to out_v. No sentinel/garbage
+  // class and no `take` (unlike domains), so `offsets` is already exactly
+  // n_components + 1 entries -- move it directly, no trim, no halving.
+  tf::offset_block_buffer<Index, Index> source;
+  source.offsets_buffer() = std::move(offsets);
+  source.data_buffer() = std::move(ids);
+  return std::make_tuple(std::move(out_v), std::move(out_labels),
+                         std::move(source));
 }
 
 } // namespace reindex
@@ -199,6 +224,27 @@ template <typename Policy, typename Range>
 auto split_into_components(const tf::polygons<Policy> &polygons,
                            const Range &labels) {
   using Index = std::decay_t<decltype(polygons.faces()[0][0])>;
+  auto [out_v, out_labels, source] =
+      reindex::split_into_components_polygons<Index>(polygons, labels);
+  (void)source;
+  return std::make_pair(std::move(out_v), std::move(out_labels));
+}
+
+/// @ingroup reindex
+/// @brief Split polygons into labeled components, additionally returning the
+///        source face ids per component.
+///
+/// `source` is an @ref tf::offset_block_buffer whose blocks run parallel to the
+/// returned meshes: `source[c][k]` is the original face id of mesh `c`'s face
+/// `k`. Each face belongs to exactly one component, so its id appears once.
+///
+/// @return Tuple of (vector of @ref tf::polygons_buffer, vector of labels,
+///         @ref tf::offset_block_buffer of source face ids per component).
+template <typename Policy, typename Range>
+auto split_into_components(const tf::polygons<Policy> &polygons,
+                           const Range &labels, tf::return_source_ids_t) {
+  using Index = std::decay_t<decltype(polygons.faces()[0][0])>;
+  // Component ids are already element ids -- no side doubling, no halving.
   return reindex::split_into_components_polygons<Index>(polygons, labels);
 }
 
@@ -217,6 +263,23 @@ template <typename Policy, typename Range>
 auto split_into_components(const tf::segments<Policy> &segments,
                            const Range &labels) {
   using Index = std::decay_t<decltype(segments.edges()[0][0])>;
+  auto [out_v, out_labels, source] =
+      reindex::split_into_components_segments<Index>(segments, labels);
+  (void)source;
+  return std::make_pair(std::move(out_v), std::move(out_labels));
+}
+
+/// @ingroup reindex
+/// @brief Split segments into labeled components, additionally returning the
+///        source edge ids per component.
+///
+/// `source[c][k]` is the original edge id of component `c`'s edge `k`.
+/// @return Tuple of (vector of @ref tf::segments_buffer, vector of labels,
+///         @ref tf::offset_block_buffer of source edge ids per component).
+template <typename Policy, typename Range>
+auto split_into_components(const tf::segments<Policy> &segments,
+                           const Range &labels, tf::return_source_ids_t) {
+  using Index = std::decay_t<decltype(segments.edges()[0][0])>;
   return reindex::split_into_components_segments<Index>(segments, labels);
 }
 
@@ -226,5 +289,15 @@ template <typename Policy, typename L>
 auto split_into_components(const tf::polygons<Policy> &polygons,
                            const tf::connected_component_labels<L> &cc) {
   return tf::split_into_components(polygons, cc.labels);
+}
+
+/// @ingroup reindex
+/// @brief Split polygons by @ref tf::connected_component_labels, additionally
+///        returning the source face ids per component.
+template <typename Policy, typename L>
+auto split_into_components(const tf::polygons<Policy> &polygons,
+                           const tf::connected_component_labels<L> &cc,
+                           tf::return_source_ids_t) {
+  return tf::split_into_components(polygons, cc.labels, tf::return_source_ids);
 }
 } // namespace tf

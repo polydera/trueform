@@ -28,7 +28,9 @@
 #include "../../core/views/offset_block_range.hpp"
 #include "../../core/views/slice.hpp"
 #include "../../core/views/zip.hpp"
+#include "../../cut/construct/make_arrangement_point_inverse.hpp"
 #include "../../cut/face_cuts.hpp"
+#include "../csg_domains_index_map.hpp"
 #include "../../exact/projection_axes.hpp"
 #include "../../topology/delaunay_triangulator.hpp"
 #include "../../exact/vertex_converter.hpp"
@@ -40,6 +42,7 @@
 #include "tbb/task_group.h"
 #include <array>
 #include <iterator>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -68,8 +71,9 @@ namespace tf::csg::graph {
 ///
 /// @return `{ cells, ids }`: `cells[k]` is the mesh of dense domain `k`,
 ///         `ids[k]` the original (pre-dense) domain id.
-template <typename OutputCoordinateType = tf::none_t, typename FormsRange,
-          typename Index, typename Int, typename RealType>
+template <typename OutputCoordinateType = tf::none_t, bool WantLabels = false,
+          bool WantPointMap = false, typename FormsRange, typename Index,
+          typename Int, typename RealType>
 auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
                       const tf::face_cuts<Index, Int> &fc,
                       const tf::intersection_graph<Index, Int> &ig,
@@ -203,15 +207,66 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
   auto loop_labels_all = ag.loop_labels();
   std::vector<out_t> cells(static_cast<std::size_t>(n_kept));
 
+  // Optional per-cell provenance: tag_blocks[k][j] = the input form of cell
+  // k's face j, face_blocks[k][j] = the original face id within that form.
+  // Blocks run parallel to `cells`. Filled by build_provenance under
+  // WantLabels, which gathers a per-soup-face (tag, origin) stream through the
+  // same sorted permutation the cells are emitted in.
+  tf::offset_block_buffer<Index, Index> tag_blocks;
+  tf::offset_block_buffer<Index, Index> face_blocks;
+  [[maybe_unused]] auto build_provenance =
+      [&](const tf::buffer<Index> &tag_soup, const tf::buffer<Index> &orig_soup,
+          const tf::buffer<Index> &perm, const tf::buffer<Index> &off) {
+        const std::size_t n = perm.size();
+        tag_blocks.data_buffer().allocate(n);
+        face_blocks.data_buffer().allocate(n);
+        for (std::size_t i = 0; i < n; ++i) {
+          const Index p = perm[i];
+          tag_blocks.data_buffer()[i] = tag_soup[static_cast<std::size_t>(p)];
+          face_blocks.data_buffer()[i] = orig_soup[static_cast<std::size_t>(p)];
+        }
+        tag_blocks.offsets_buffer().allocate(off.size());
+        face_blocks.offsets_buffer().allocate(off.size());
+        for (std::size_t i = 0; i < off.size(); ++i) {
+          tag_blocks.offsets_buffer()[i] = off[i];
+          face_blocks.offsets_buffer()[i] = off[i];
+        }
+      };
+
+  // Optional per-cell point provenance (WantPointMap). Build the global point
+  // inverse once (the same one make_mesh_arrangement_index_map builds), then
+  // the emit loops gather it through each cell's local->global point list as
+  // the points are deduplicated -- no extra buffer, no second pass. `gpt_tag`
+  // /`gpt_label`: global pts_buf point -> (form, input point); created carry
+  // the end sentinels. Both block-data buffers grow in lockstep, so a single
+  // `cell_pt_off` offset array serves both.
+  tf::offset_block_buffer<Index, Index> point_tag_blocks;
+  tf::offset_block_buffer<Index, Index> point_blocks;
+  tf::buffer<Index> gpt_tag;
+  tf::buffer<Index> gpt_label;
+  tf::buffer<Index> cell_pt_off;
+  if constexpr (WantPointMap) {
+    tf::cut::make_arrangement_point_inverse(map_data, total_pts, gpt_tag,
+                                            gpt_label);
+    cell_pt_off.reserve(static_cast<std::size_t>(n_kept) + 1);
+    cell_pt_off.push_back(Index(0));
+    point_tag_blocks.data_buffer().reserve(static_cast<std::size_t>(total_pts));
+    point_blocks.data_buffer().reserve(static_cast<std::size_t>(total_pts));
+  }
+
   if constexpr (N_in == 3) {
   tf::core::std_vector<tf::buffer<std::array<Index, 3>>> soup_t(n_tags);
   tf::core::std_vector<tf::buffer<Index>> dom_t(n_tags);
+  tf::core::std_vector<tf::buffer<Index>> tag_t(n_tags);
+  tf::core::std_vector<tf::buffer<Index>> orig_t(n_tags);
   {
     tbb::task_group tg;
     for (Index t = 0; t < n_tags; ++t)
       tg.run([&, t] {
         auto &tris = soup_t[t];
         auto &doms = dom_t[t];
+        [[maybe_unused]] auto &tags = tag_t[t];
+        [[maybe_unused]] auto &origs = orig_t[t];
         auto poly_labels = ag.polygon_labels(t);
         auto faces_t = all_mapped_faces(t);
 
@@ -229,10 +284,18 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
           if (d_fwd >= 0) {
             tris.push_back(std::array<Index, 3>{gf[0], gf[1], gf[2]});
             doms.push_back(d_fwd);
+            if constexpr (WantLabels) {
+              tags.push_back(t);
+              origs.push_back(f);
+            }
           }
           if (d_rev >= 0) {
             tris.push_back(std::array<Index, 3>{gf[2], gf[1], gf[0]});
             doms.push_back(d_rev);
+            if constexpr (WantLabels) {
+              tags.push_back(t);
+              origs.push_back(f);
+            }
           }
         }
 
@@ -268,10 +331,18 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
             if (d_fwd >= 0) {
               tris.push_back(std::array<Index, 3>{g0, g1, g2});
               doms.push_back(d_fwd);
+              if constexpr (WantLabels) {
+                tags.push_back(desc.tag);
+                origs.push_back(desc.object);
+              }
             }
             if (d_rev >= 0) {
               tris.push_back(std::array<Index, 3>{g2, g1, g0});
               doms.push_back(d_rev);
+              if constexpr (WantLabels) {
+                tags.push_back(desc.tag);
+                origs.push_back(desc.object);
+              }
             }
           }
         }
@@ -291,6 +362,12 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
   soup.allocate(static_cast<std::size_t>(n_tris));
   tf::buffer<Index> dom;
   dom.allocate(static_cast<std::size_t>(n_tris));
+  tf::buffer<Index> tag_soup;
+  tf::buffer<Index> orig_soup;
+  if constexpr (WantLabels) {
+    tag_soup.allocate(static_cast<std::size_t>(n_tris));
+    orig_soup.allocate(static_cast<std::size_t>(n_tris));
+  }
   {
     tbb::task_group tg;
     for (Index t = 0; t < n_tags; ++t)
@@ -299,6 +376,12 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
                           tf::slice(soup, tag_off[t], tag_off[t + 1]));
         tf::parallel_copy(tf::make_range(dom_t[t]),
                           tf::slice(dom, tag_off[t], tag_off[t + 1]));
+        if constexpr (WantLabels) {
+          tf::parallel_copy(tf::make_range(tag_t[t]),
+                            tf::slice(tag_soup, tag_off[t], tag_off[t + 1]));
+          tf::parallel_copy(tf::make_range(orig_t[t]),
+                            tf::slice(orig_soup, tag_off[t], tag_off[t + 1]));
+        }
       });
     tg.wait();
   }
@@ -355,8 +438,21 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
     out.points_buffer().allocate(pt_ids.size());
     tf::parallel_copy(tf::make_indirect_range(pt_ids, pts_buf.points()),
                       out.points());
+    if constexpr (WantPointMap) {
+      const Index base = static_cast<Index>(point_blocks.data_buffer().size());
+      const std::size_t grown = static_cast<std::size_t>(base) + pt_ids.size();
+      point_tag_blocks.data_buffer().reallocate(grown);
+      point_blocks.data_buffer().reallocate(grown);
+      tf::parallel_copy(tf::make_indirect_range(pt_ids, gpt_tag),
+                        tf::drop(point_tag_blocks.data_buffer(), base));
+      tf::parallel_copy(tf::make_indirect_range(pt_ids, gpt_label),
+                        tf::drop(point_blocks.data_buffer(), base));
+      cell_pt_off.push_back(static_cast<Index>(grown));
+    }
     point_sentinel = current;
   }
+  if constexpr (WantLabels)
+    build_provenance(tag_soup, orig_soup, tri_ids, offsets);
   } else {
     // ---- Dynamic-arity path (non-triangle input). Build a (face, domain)
     // soup where uncut faces keep their arity and cut loops are triangles,
@@ -365,6 +461,8 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
     // parallelism as the triangle path. -------------------------------------
     tf::core::std_vector<tf::offset_block_buffer<Index, Index>> soup_t(n_tags);
     tf::core::std_vector<tf::buffer<Index>> dom_t(n_tags);
+    tf::core::std_vector<tf::buffer<Index>> tag_t(n_tags);
+    tf::core::std_vector<tf::buffer<Index>> orig_t(n_tags);
     {
       auto descriptors = fc.descriptors();
       auto loops_all = fc.loops();
@@ -373,14 +471,21 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
         tg.run([&, t] {
           auto &sp = soup_t[t];
           auto &dm = dom_t[t];
+          [[maybe_unused]] auto &tags = tag_t[t];
+          [[maybe_unused]] auto &origs = orig_t[t];
           tf::small_vector<Index, 16> tmp;
-          auto push = [&](auto &&face, Index d, bool reverse) {
+          auto push = [&](auto &&face, Index d, bool reverse, Index tag,
+                          Index origin) {
             tmp.clear();
             const Index n = static_cast<Index>(face.size());
             for (Index i = 0; i < n; ++i)
               tmp.push_back(face[reverse ? n - 1 - i : i]);
             sp.push_back(tf::make_range(tmp));
             dm.push_back(d);
+            if constexpr (WantLabels) {
+              tags.push_back(tag);
+              origs.push_back(origin);
+            }
           };
           tf::small_vector<tf::point<Int, 2>, 10> pts;
           tf::delaunay_triangulator<Index, Int> tri;
@@ -396,9 +501,9 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
               continue;
             auto gf = faces_t[f];
             if (d_fwd >= 0)
-              push(gf, d_fwd, false);
+              push(gf, d_fwd, false, t, f);
             if (d_rev >= 0)
-              push(gf, d_rev, true);
+              push(gf, d_rev, true, t, f);
           }
           const Index lo = fc.tag_offsets()[t];
           const Index hi = fc.tag_offsets()[t + 1];
@@ -424,9 +529,9 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
                                            map_vertex(desc.tag, loop[idx[j + 1]]),
                                            map_vertex(desc.tag, loop[idx[j + 2]])};
               if (d_fwd >= 0)
-                push(tf::make_range(g), d_fwd, false);
+                push(tf::make_range(g), d_fwd, false, desc.tag, desc.object);
               if (d_rev >= 0)
-                push(tf::make_range(g), d_rev, true);
+                push(tf::make_range(g), d_rev, true, desc.tag, desc.object);
             }
           }
         });
@@ -451,6 +556,12 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
     soup.offsets_buffer()[0] = 0;
     tf::buffer<Index> dom;
     dom.allocate(static_cast<std::size_t>(total_faces));
+    tf::buffer<Index> tag_soup;
+    tf::buffer<Index> orig_soup;
+    if constexpr (WantLabels) {
+      tag_soup.allocate(static_cast<std::size_t>(total_faces));
+      orig_soup.allocate(static_cast<std::size_t>(total_faces));
+    }
     {
       tbb::task_group tg;
       for (Index t = 0; t < n_tags; ++t)
@@ -460,6 +571,13 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
               tf::slice(soup.data_buffer(), data_off[t], data_off[t + 1]));
           tf::parallel_copy(tf::make_range(dom_t[t]),
                             tf::slice(dom, face_off[t], face_off[t + 1]));
+          if constexpr (WantLabels) {
+            tf::parallel_copy(tf::make_range(tag_t[t]),
+                              tf::slice(tag_soup, face_off[t], face_off[t + 1]));
+            tf::parallel_copy(
+                tf::make_range(orig_t[t]),
+                tf::slice(orig_soup, face_off[t], face_off[t + 1]));
+          }
           const auto &lo = soup_t[t].offsets_buffer();
           const Index base = data_off[t], fbase = face_off[t];
           for (Index fi = 0; fi < static_cast<Index>(soup_t[t].size()); ++fi)
@@ -519,8 +637,23 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
       out.points_buffer().allocate(pt_ids.size());
       tf::parallel_copy(tf::make_indirect_range(pt_ids, pts_buf.points()),
                         out.points());
+      if constexpr (WantPointMap) {
+        const Index base =
+            static_cast<Index>(point_blocks.data_buffer().size());
+        const std::size_t grown =
+            static_cast<std::size_t>(base) + pt_ids.size();
+        point_tag_blocks.data_buffer().reallocate(grown);
+        point_blocks.data_buffer().reallocate(grown);
+        tf::parallel_copy(tf::make_indirect_range(pt_ids, gpt_tag),
+                          tf::drop(point_tag_blocks.data_buffer(), base));
+        tf::parallel_copy(tf::make_indirect_range(pt_ids, gpt_label),
+                          tf::drop(point_blocks.data_buffer(), base));
+        cell_pt_off.push_back(static_cast<Index>(grown));
+      }
       point_sentinel = current;
     }
+    if constexpr (WantLabels)
+      build_provenance(tag_soup, orig_soup, face_ids, offsets);
   }
 
   // ids[k] = original domain whose dense_of_domain == k.
@@ -532,7 +665,29 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
       ids[dense] = d;
   }
 
-  return std::make_pair(std::move(cells), std::move(ids));
+  if constexpr (WantPointMap) {
+    // Both block-data buffers grew in lockstep during emit, so cell_pt_off is
+    // their shared offset layout: move it into one, copy it into the other.
+    point_tag_blocks.offsets_buffer().allocate(cell_pt_off.size());
+    tf::parallel_copy(tf::make_range(cell_pt_off),
+                      tf::make_range(point_tag_blocks.offsets_buffer()));
+    point_blocks.offsets_buffer() = std::move(cell_pt_off);
+
+    tf::csg_domains_index_map<Index> imap;
+    imap.face_tag_blocks = std::move(tag_blocks);
+    imap.face_blocks = std::move(face_blocks);
+    imap.point_tag_blocks = std::move(point_tag_blocks);
+    imap.point_blocks = std::move(point_blocks);
+    imap.n_original_points = map_data.total_original_points;
+    imap.n_tags = n_tags;
+    imap.n_output_points = total_pts;
+    return std::make_tuple(std::move(cells), std::move(ids), std::move(imap));
+  } else if constexpr (WantLabels) {
+    return std::make_tuple(std::move(cells), std::move(ids),
+                           std::move(tag_blocks), std::move(face_blocks));
+  } else {
+    return std::make_pair(std::move(cells), std::move(ids));
+  }
 }
 
 } // namespace tf::csg::graph

@@ -12,12 +12,12 @@
  */
 #pragma once
 
-#include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "../mesh_arrangement_index_map.hpp"
 #include "./arrangement_map_data.hpp"
+#include "./make_arrangement_point_inverse.hpp"
 
 namespace tf::cut {
 
@@ -32,37 +32,31 @@ namespace tf::cut {
 ///
 /// point inverse (point_labels / point_tag_labels): scattered output-indexed
 /// with an `end`-sentinel tail for created points.
+///
+/// Takes the shared @ref arrangement_point_map_data base (bound from either
+/// `arrangement_map_data` or the CSG `partition_map_data`), plus the face
+/// count separately — the base carries only the point axis.
 template <typename Index>
-auto make_mesh_arrangement_index_map(arrangement_map_data<Index> &&d,
+auto make_mesh_arrangement_index_map(arrangement_point_map_data<Index> &&d,
                                      tf::buffer<Index> &&tag_labels,
                                      tf::buffer<Index> &&face_labels,
+                                     Index n_original_faces,
                                      Index n_output_points)
     -> tf::mesh_arrangement_index_map<Index> {
   tf::mesh_arrangement_index_map<Index> out;
   const Index n = d.n_meshes;
   out.n_original_points = d.total_original_points;
-  out.n_original_faces = d.total_original_faces;
+  out.n_original_faces = n_original_faces;
+  out.n_tags = n;
   out.n_output_points = n_output_points;
   out.face_tag_labels = std::move(tag_labels);
   out.face_labels = std::move(face_labels);
 
-  // point inverse, output-indexed, with end-sentinel tail.
-  out.point_tag_labels.allocate(static_cast<std::size_t>(n_output_points));
-  out.point_labels.allocate(static_cast<std::size_t>(n_output_points));
-  tf::parallel_fill(out.point_tag_labels, n_output_points);
-  tf::parallel_fill(out.point_labels, n_output_points);
-  for (Index t = 0; t < n; ++t) {
-    const Index base = d.original_offsets[t];
-    const auto &ids = d.original_ids[t];
-    tf::parallel_for_each(
-        tf::make_sequence_range(Index(0), static_cast<Index>(ids.size())),
-        [&](Index k) {
-          const Index o = base + k;
-          out.point_tag_labels[o] = t;
-          out.point_labels[o] = ids[k];
-        },
-        tf::checked);
-  }
+  // point inverse, output-indexed, with the per-axis end-sentinel tail for
+  // created points (tag ends at n_tags, id at n_output_points).
+  tf::cut::make_arrangement_point_inverse(d, n_output_points,
+                                          out.point_tag_labels,
+                                          out.point_labels);
 
   // forward: original_map values are local (0-based per mesh); original_offsets
   // is each mesh's global output start. point_offsets already blocks

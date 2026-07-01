@@ -535,3 +535,176 @@ TEST_CASE("make_csg_mesh: cylinder drilled through a box face (bridged hole)",
   const Real vol = std::abs(tf::signed_volume(drilled.polygons()));
   REQUIRE(std::abs(vol - expect) < Real(0.1)); // 32-segment facet tolerance
 }
+
+TEST_CASE("make_csg_domains return_source_ids: per-cell tag + face provenance",
+          "[domains][source_ids]") {
+  // Two overlapping cubes (side 2, offset by 1,1,1) -> three solid cells.
+  auto af = tf::make_box_mesh<Index>(Real(2), Real(2), Real(2));
+  auto bf = tf::make_box_mesh<Index>(Real(2), Real(2), Real(2));
+  for (std::size_t i = 0; i < bf.points_buffer().size(); ++i) {
+    auto p = bf.points_buffer()[i];
+    bf.points_buffer()[i] =
+        tf::point<Real, 3>{p[0] + Real(1), p[1] + Real(1), p[2] + Real(1)};
+  }
+  auto a = af.polygons() | tf::tag(frame0());
+  auto b = bf.polygons() | tf::tag(frame0());
+  std::vector<form_t> forms{a, b};
+  auto graph = tf::make_csg_graph(tf::make_range(forms));
+
+  auto [cells0, ids0] = tf::make_csg_domains(graph);
+  auto [cells, ids, tag_blocks, face_blocks] =
+      tf::make_csg_domains(graph, tf::return_source_ids);
+
+  // Provenance blocks run parallel to cells; the cells match the plain build.
+  REQUIRE(cells.size() == cells0.size());
+  REQUIRE(std::size_t(tag_blocks.size()) == cells.size());
+  REQUIRE(std::size_t(face_blocks.size()) == cells.size());
+
+  bool saw0 = false, saw1 = false;
+  for (std::size_t c = 0; c < cells.size(); ++c) {
+    auto tblk = tag_blocks[c];
+    auto fblk = face_blocks[c];
+    // One (tag, face) per cell face.
+    REQUIRE(std::size_t(tblk.size()) == cells[c].polygons().faces().size());
+    REQUIRE(std::size_t(fblk.size()) == cells[c].polygons().faces().size());
+    for (std::size_t j = 0; j < std::size_t(tblk.size()); ++j) {
+      auto t = tblk[j];
+      auto fl = fblk[j];
+      REQUIRE((t == Index(0) || t == Index(1)));
+      saw0 = saw0 || (t == Index(0));
+      saw1 = saw1 || (t == Index(1));
+      REQUIRE(fl >= Index(0));
+      REQUIRE(std::size_t(fl) < forms[std::size_t(t)].faces().size());
+      // Order-independent correctness: cell face j lies in the plane of its
+      // claimed source face (frame is identity here).
+      auto src_plane = tf::make_plane(forms[std::size_t(t)][std::size_t(fl)]);
+      for (auto v : cells[c].polygons()[j]) {
+        auto d = double(tf::distance(src_plane, v));
+        REQUIRE(d < 1e-3);
+        REQUIRE(d > -1e-3);
+      }
+    }
+  }
+  // Three cells over two overlapping cubes use faces from both operands.
+  REQUIRE(saw0);
+  REQUIRE(saw1);
+}
+
+TEST_CASE("make_csg_domains return_source_ids: dynamic-arity (quad) provenance",
+          "[domains][source_ids]") {
+  // Quad-cube input exercises the dynamic (non-triangle) cell path: uncut
+  // faces stay quads, cut faces become triangles.
+  using qmesh_t = tf::polygons_buffer<Index, Real, 3, 4>;
+  auto quad_cube = [](Real s, Real ox, Real oy, Real oz) {
+    qmesh_t m;
+    m.points_buffer().allocate(8);
+    Index idx = 0;
+    for (int z = 0; z < 2; ++z)
+      for (int y = 0; y < 2; ++y)
+        for (int x = 0; x < 2; ++x)
+          m.points_buffer()[std::size_t(idx++)] = tf::point<Real, 3>{
+              ox + Real(x) * s, oy + Real(y) * s, oz + Real(z) * s};
+    // Outward-oriented quad faces (vertex bits: x=1, y=2, z=4).
+    const std::array<std::array<Index, 4>, 6> faces = {{{0, 2, 3, 1},
+                                                        {4, 5, 7, 6},
+                                                        {0, 1, 5, 4},
+                                                        {2, 6, 7, 3},
+                                                        {0, 4, 6, 2},
+                                                        {1, 3, 7, 5}}};
+    m.faces_buffer().allocate(6);
+    for (std::size_t i = 0; i < 6; ++i)
+      m.faces_buffer()[i] = faces[i];
+    return m;
+  };
+  auto af = quad_cube(Real(2), 0, 0, 0);
+  auto bf = quad_cube(Real(2), Real(1), Real(1), Real(1));
+  using qform_t = decltype(af.polygons() | tf::tag(frame0()));
+  std::vector<qform_t> forms{af.polygons() | tf::tag(frame0()),
+                             bf.polygons() | tf::tag(frame0())};
+  auto qgraph = tf::make_csg_graph(tf::make_range(forms));
+
+  auto [cells, ids, tag_blocks, face_blocks] =
+      tf::make_csg_domains(qgraph, tf::return_source_ids);
+
+  REQUIRE(cells.size() >= std::size_t(1));
+  REQUIRE(std::size_t(tag_blocks.size()) == cells.size());
+  REQUIRE(std::size_t(face_blocks.size()) == cells.size());
+  for (std::size_t c = 0; c < cells.size(); ++c) {
+    auto tblk = tag_blocks[c];
+    auto fblk = face_blocks[c];
+    REQUIRE(std::size_t(tblk.size()) == cells[c].polygons().faces().size());
+    REQUIRE(std::size_t(fblk.size()) == cells[c].polygons().faces().size());
+    for (std::size_t j = 0; j < std::size_t(tblk.size()); ++j) {
+      auto t = tblk[j];
+      auto fl = fblk[j];
+      REQUIRE((t == Index(0) || t == Index(1)));
+      REQUIRE(fl >= Index(0));
+      REQUIRE(std::size_t(fl) < forms[std::size_t(t)].faces().size());
+      auto src_plane = tf::make_plane(forms[std::size_t(t)][std::size_t(fl)]);
+      for (auto v : cells[c].polygons()[j]) {
+        auto d = double(tf::distance(src_plane, v));
+        REQUIRE(d < 1e-3);
+        REQUIRE(d > -1e-3);
+      }
+    }
+  }
+}
+
+TEST_CASE("make_csg_domains return_index_map: per-cell point + face maps",
+          "[domains][index_map]") {
+  // Two overlapping cubes -> three cells; verify the per-cell index map.
+  auto af = tf::make_box_mesh<Index>(Real(2), Real(2), Real(2));
+  auto bf = tf::make_box_mesh<Index>(Real(2), Real(2), Real(2));
+  for (std::size_t i = 0; i < bf.points_buffer().size(); ++i) {
+    auto p = bf.points_buffer()[i];
+    bf.points_buffer()[i] =
+        tf::point<Real, 3>{p[0] + Real(1), p[1] + Real(1), p[2] + Real(1)};
+  }
+  std::vector<form_t> forms{af.polygons() | tf::tag(frame0()),
+                            bf.polygons() | tf::tag(frame0())};
+  auto graph = tf::make_csg_graph(tf::make_range(forms));
+
+  auto [cells, ids, imap] = tf::make_csg_domains(graph, tf::return_index_map);
+
+  REQUIRE(imap.n_tags == Index(forms.size()));
+  REQUIRE(std::size_t(imap.face_tag_blocks.size()) == cells.size());
+  REQUIRE(std::size_t(imap.face_blocks.size()) == cells.size());
+  REQUIRE(std::size_t(imap.point_tag_blocks.size()) == cells.size());
+  REQUIRE(std::size_t(imap.point_blocks.size()) == cells.size());
+
+  for (std::size_t k = 0; k < cells.size(); ++k) {
+    auto polys = cells[k].polygons();
+
+    // Face maps parallel to cell faces; each a valid (form, face).
+    auto ftag = imap.face_tag_blocks[k];
+    auto fid = imap.face_blocks[k];
+    REQUIRE(std::size_t(ftag.size()) == polys.faces().size());
+    REQUIRE(std::size_t(fid.size()) == polys.faces().size());
+    for (std::size_t j = 0; j < std::size_t(ftag.size()); ++j) {
+      REQUIRE((ftag[j] >= Index(0) && std::size_t(ftag[j]) < forms.size()));
+      REQUIRE(std::size_t(fid[j]) < forms[std::size_t(ftag[j])].faces().size());
+    }
+
+    // Point maps parallel to cell points. A kept original must equal its
+    // claimed input point (identity frame); a created point carries both
+    // end sentinels.
+    auto ptag = imap.point_tag_blocks[k];
+    auto pid = imap.point_blocks[k];
+    REQUIRE(std::size_t(ptag.size()) == polys.points().size());
+    REQUIRE(std::size_t(pid.size()) == polys.points().size());
+    for (std::size_t p = 0; p < std::size_t(ptag.size()); ++p) {
+      if (ptag[p] == imap.n_tags) {
+        REQUIRE(pid[p] == imap.n_output_points);
+        continue;
+      }
+      REQUIRE((ptag[p] >= Index(0) && std::size_t(ptag[p]) < forms.size()));
+      REQUIRE(std::size_t(pid[p]) <
+              forms[std::size_t(ptag[p])].points().size());
+      auto cp = polys.points()[p];
+      auto ip = forms[std::size_t(ptag[p])].points()[std::size_t(pid[p])];
+      REQUIRE(std::abs(double(cp[0]) - double(ip[0])) < 1e-9);
+      REQUIRE(std::abs(double(cp[1]) - double(ip[1])) < 1e-9);
+      REQUIRE(std::abs(double(cp[2]) - double(ip[2])) < 1e-9);
+    }
+  }
+}
