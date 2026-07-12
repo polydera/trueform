@@ -20,8 +20,13 @@ template <typename Derived, typename Iterator, typename DereferncePolicy,
 struct forward_mapped_crtp
     : protected iter::dereference_policy<DereferncePolicy> {
 private:
+  // Uses the iterator's declared reference type instead of dereferencing
+  // in the decltype: MSVC 14.34 miscompiles `*declval<It>()` when It's
+  // operator* is itself a decltype(auto) CRTP member (bogus C2102,
+  // instantiation-order dependent).
   template <typename It, typename DP, bool> struct reference_helper {
-    using type = decltype(std::declval<DP>()(*std::declval<It>()));
+    using type = decltype(std::declval<DP>()(
+        std::declval<typename iterator_traits<It>::reference>()));
   };
 
   template <typename It, typename DP> struct reference_helper<It, DP, true> {

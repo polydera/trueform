@@ -5,6 +5,7 @@ add_executable(trueform_core_tests
   test_least_squares_parallel.cpp
   test_memory.cpp
   test_ray_cast.cpp
+  test_blocked_buffer.cpp
   test_ranges.cpp
   test_transformed.cpp
 )

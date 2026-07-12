@@ -12,6 +12,7 @@
  */
 #pragma once
 #include "../checked.hpp"
+#include "../grain.hpp"
 #include "tbb/parallel_for.h"
 
 namespace tf {
@@ -38,6 +39,39 @@ auto parallel_for_each(Range &&r, Func &&f) -> void {
   using Iterator = decltype(first);
   tbb::parallel_for(
       tbb::blocked_range<Iterator>(first, last),
+      [f = static_cast<Func &&>(f)](const tbb::blocked_range<Iterator> &range) {
+        for (Iterator it = range.begin(); it != range.end(); ++it) {
+          if constexpr (std::is_integral<Iterator>::value)
+            f(it);
+          else
+            f(*it);
+        }
+      });
+}
+
+/// @ingroup core_algorithms
+/// @brief Applies a function to each element in parallel with a minimum
+/// chunk size.
+///
+/// Like @ref parallel_for_each, but the range is never split below
+/// `grain.value` elements per task, so each task keeps a run of
+/// consecutive elements (bounded scheduling overhead, cache locality
+/// across neighboring elements).
+///
+/// @tparam Range A range type supporting `begin()` and `end()`.
+/// @tparam Func A callable taking a reference to an element of the range.
+/// @param r The range to iterate over.
+/// @param f The function to apply to each element.
+/// @param grain Minimum number of consecutive elements per task.
+///
+/// @see @ref parallel_for_each
+template <typename Range, typename Func>
+auto parallel_for_each(Range &&r, Func &&f, tf::grain_t grain) -> void {
+  auto first = r.begin();
+  auto last = r.end();
+  using Iterator = decltype(first);
+  tbb::parallel_for(
+      tbb::blocked_range<Iterator>(first, last, grain.value),
       [f = static_cast<Func &&>(f)](const tbb::blocked_range<Iterator> &range) {
         for (Iterator it = range.begin(); it != range.end(); ++it) {
           if constexpr (std::is_integral<Iterator>::value)

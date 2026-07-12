@@ -96,6 +96,7 @@
 #include "./core/frame_like.hpp"                  // IWYU pragma: export
 #include "./core/frame_of.hpp"                    // IWYU pragma: export
 #include "./core/frame_ptr.hpp"                   // IWYU pragma: export
+#include "./core/grain.hpp"                       // IWYU pragma: export
 #include "./core/hash_map.hpp"                    // IWYU pragma: export
 #include "./core/hash_set.hpp"                    // IWYU pragma: export
 #include "./core/index_hash_map.hpp"              // IWYU pragma: export
