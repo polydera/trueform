@@ -16,7 +16,6 @@
 #include "../../core/algorithm/parallel_for.hpp"
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
-#include "../../core/small_vector.hpp"
 #include "../../core/views/zip.hpp"
 #include "../../intersect/graph/vertex.hpp"
 #include "../../intersect/types/simple_intersections.hpp"
@@ -27,28 +26,42 @@
 namespace tf::cut {
 
 /// Classify cut face loops by scalar band.
-/// For each loop, counts original vertices per category (majority vote).
+/// A loop lies strictly inside one band, so its first original vertex not
+/// sitting on a cut value decides. A loop without one is bounded by cut
+/// chords and on-cut vertices alone; its band is the highest bounding cut
+/// index.
 template <typename LabelType, typename Index, typename Int,
-          typename GetCategory>
+          typename GetCategory, typename GetOnCut, typename GetCreatedCut>
 auto make_cut_scalar_labels(const tf::face_cuts<Index, Int> &fc,
                             const GetCategory &get_category,
-                            std::size_t n_categories) {
+                            const GetOnCut &get_on_cut,
+                            const GetCreatedCut &get_created_cut) {
   auto loops = fc.loops();
   tf::buffer<LabelType> out;
   out.allocate(loops.size());
   tf::parallel_for(
       tf::zip(loops, out),
       [&](auto begin, auto end) {
-        tf::small_vector<LabelType, 20> counts;
         for (auto &&[loop, label] : tf::make_range(begin, end)) {
-          counts.clear();
-          counts.resize(n_categories);
+          bool decided = false;
           for (const auto &v : loop) {
-            if (v.source == tf::intersect::graph::vertex_source::original)
-              counts[get_category(v.id)]++;
+            if (v.source == tf::intersect::graph::vertex_source::original &&
+                !get_on_cut(v.id)) {
+              label = get_category(v.id);
+              decided = true;
+              break;
+            }
           }
-          label =
-              std::max_element(counts.begin(), counts.end()) - counts.begin();
+          if (decided)
+            continue;
+          LabelType band = 0;
+          for (const auto &v : loop)
+            band = std::max(
+                band,
+                v.source == tf::intersect::graph::vertex_source::created
+                    ? LabelType(get_created_cut(v.id))
+                    : LabelType(get_category(v.id)));
+          label = band;
         }
       },
       tf::checked);
@@ -56,7 +69,9 @@ auto make_cut_scalar_labels(const tf::face_cuts<Index, Int> &fc,
 }
 
 /// Classify uncut surface faces by scalar band.
-/// Cut faces get label -1, uncut faces get category of first vertex.
+/// Cut faces get label -1. An uncut face takes its maximum vertex category:
+/// a vertex sitting exactly on a cut value reports the band below, while
+/// the face interior lies in the band above.
 template <typename LabelType, typename Index, typename Policy, typename RealT,
           std::size_t Dims, typename GetCategory>
 auto make_surface_scalar_labels(
@@ -73,8 +88,11 @@ auto make_surface_scalar_labels(
       tf::zip(out, polygons.faces()),
       [&](auto pair) {
         auto &&[label, face] = pair;
-        if (label != -1)
-          label = get_category(face[0]);
+        if (label == -1)
+          return;
+        label = get_category(face[0]);
+        for (std::size_t i = 1; i < std::size_t(face.size()); ++i)
+          label = std::max(label, LabelType(get_category(face[i])));
       },
       tf::checked);
   return out;
@@ -98,6 +116,13 @@ auto make_scalar_labels(
                cut_values.begin();
   });
   auto get_category = [&](auto x) { return categories[x]; };
+  auto get_on_cut = [&](auto x) {
+    auto category = categories[x];
+    return std::size_t(category) < cut_values.size() &&
+           scalars[x] == cut_values[category];
+  };
+  auto point_cuts = si.intersection_point_cuts();
+  auto get_created_cut = [&](auto x) { return point_cuts[x]; };
 
   tf::cut::partition_labels<LabelType> lbls;
   lbls.n_components = cut_values.size() + 1;
@@ -109,7 +134,7 @@ auto make_scalar_labels(
       },
       [&] {
         lbls.cut_labels = make_cut_scalar_labels<LabelType, Index>(
-            fc, get_category, cut_values.size() + 1);
+            fc, get_category, get_on_cut, get_created_cut);
       });
   return lbls;
 }

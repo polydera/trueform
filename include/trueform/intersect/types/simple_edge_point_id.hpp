@@ -19,24 +19,25 @@ namespace tf::intersect {
 template <typename Index> struct simple_edge_point_id {
   Index vertex_id0;
   Index vertex_id1;
+  Index cut;
   Index point_id;
   simple_edge_point_id() = default;
-  simple_edge_point_id(Index pt0, Index pt1, Index point_id)
+  simple_edge_point_id(Index pt0, Index pt1, Index cut, Index point_id)
       : vertex_id0{std::min(pt0, pt1)}, vertex_id1{std::max(pt0, pt1)},
-        point_id{point_id} {}
+        cut{cut}, point_id{point_id} {}
 
   friend auto operator<(const simple_edge_point_id &e0,
                         const simple_edge_point_id &e1) -> bool {
     return std::make_tuple(e0.vertex_id0 == e0.vertex_id1, e0.vertex_id0,
-                           e0.vertex_id1) <
+                           e0.vertex_id1, e0.cut) <
            std::make_tuple(e1.vertex_id0 == e1.vertex_id1, e1.vertex_id0,
-                           e1.vertex_id1);
+                           e1.vertex_id1, e1.cut);
   }
 
   friend auto operator==(const simple_edge_point_id &e0,
                          const simple_edge_point_id &e1) -> bool {
-    return std::make_pair(e0.vertex_id0, e0.vertex_id1) ==
-           std::make_pair(e1.vertex_id0, e1.vertex_id1);
+    return std::make_tuple(e0.vertex_id0, e0.vertex_id1, e0.cut) ==
+           std::make_tuple(e1.vertex_id0, e1.vertex_id1, e1.cut);
   }
 };
 } // namespace tf::intersect

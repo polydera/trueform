@@ -35,7 +35,6 @@
 #include "./intersect/intersections_within_polygons.hpp"  // IWYU pragma: export
 #include "./intersect/intersections_within_segments.hpp"  // IWYU pragma: export
 #include "./intersect/make_intersection_curves.hpp"       // IWYU pragma: export
-#include "./intersect/make_intersection_edges.hpp"        // IWYU pragma: export
 #include "./intersect/make_isocurves.hpp"                 // IWYU pragma: export
 #include "./intersect/make_self_intersection_curves.hpp"  // IWYU pragma: export
 #include "./intersect/scalar_field_intersections.hpp"     // IWYU pragma: export

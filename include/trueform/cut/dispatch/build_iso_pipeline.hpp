@@ -29,6 +29,7 @@ auto build_iso_pipeline(const tf::polygons<Policy> &polygons,
   std::copy(cut_values.begin(), cut_values.end(),
             std::back_inserter(cut_vals));
   std::sort(cut_vals.begin(), cut_vals.end());
+  cut_vals.erase_till_end(std::unique(cut_vals.begin(), cut_vals.end()));
 
   tf::scalar_field_intersections<Index, tf::coordinate_type<Policy>,
                                  tf::coordinate_dims_v<Policy>>

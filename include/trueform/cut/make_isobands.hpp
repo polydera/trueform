@@ -78,7 +78,7 @@ auto make_isobands(const tf::polygons<Policy> &polygons, const Range0 &scalars,
     auto [res_polygons, labels, face_labels, created_ids] =
         tf::cut::make_isobands<Index>(polygons, sfi, fc, pids, selected_bands);
 
-    auto ie = tf::make_intersection_edges(sfi);
+    auto ie = tf::make_intersection_edges(sfi, polygons.faces());
     auto all_segments =
         tf::make_segments(tf::make_edges(ie), sfi.intersection_points());
     auto filtered_segments =

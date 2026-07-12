@@ -26,6 +26,7 @@ class simple_intersections {
 public:
   auto clear() {
     _points.clear();
+    _point_cuts.clear();
     _intersections.clear();
     _intersections_offsets.clear();
     _vertex_points_offset = 0;
@@ -36,6 +37,8 @@ public:
   }
 
   auto intersection_points() const { return tf::make_range(_points); }
+
+  auto intersection_point_cuts() const { return tf::make_range(_point_cuts); }
 
   auto created_intersection_points() const {
     return tf::make_range(_points.begin(),
@@ -64,19 +67,22 @@ private:
     auto end = edge_point_ids.end();
     Index current_id = 0;
     new_points.push_back(_points[iter->point_id]);
+    _point_cuts.clear();
+    _point_cuts.reserve(_points.size());
+    _point_cuts.push_back(iter->cut);
     id_map[iter->point_id] = current_id;
     auto check_with = iter;
-    _vertex_points_offset = 0;
+    _vertex_points_offset = (iter->vertex_id0 != iter->vertex_id1);
     while (++iter != end) {
       if (!(*check_with == *iter)) {
         ++current_id;
         _vertex_points_offset += (iter->vertex_id0 != iter->vertex_id1);
         check_with = iter;
         new_points.push_back(_points[iter->point_id]);
+        _point_cuts.push_back(iter->cut);
       }
       id_map[iter->point_id] = current_id;
     }
-    ++_vertex_points_offset;
     tf::parallel_for_each(_intersections, [&](auto &intersection) {
       intersection.id = id_map[intersection.id];
     });
@@ -105,6 +111,7 @@ protected:
   tf::buffer<simple_intersection<Index>> _intersections;
   tf::buffer<Index> _intersections_offsets;
   tf::buffer<tf::point<RealType, Dims>> _points;
+  tf::buffer<Index> _point_cuts;
   Index _vertex_points_offset = 0;
 };
 } // namespace tf::intersect

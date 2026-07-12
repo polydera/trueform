@@ -41,7 +41,7 @@ auto make_isocontours(const tf::polygons<Policy> &polygons,
                                  tf::coordinate_dims_v<Policy>>
       sfi;
   sfi.build(polygons, scalars, cut_value);
-  auto ie = tf::make_intersection_edges(sfi);
+  auto ie = tf::make_intersection_edges(sfi, polygons.faces());
   auto paths = tf::connect_edges_to_paths(tf::make_edges(ie));
   tf::curves_buffer<Index, tf::coordinate_type<Policy>,
                     tf::coordinate_dims_v<Policy>>
@@ -70,12 +70,14 @@ auto make_isocontours(const tf::polygons<Policy> &polygons,
   std::copy(cut_values.begin(), cut_values.end(),
             std::back_inserter(cut_values_));
   std::sort(cut_values_.begin(), cut_values_.end());
+  cut_values_.erase(std::unique(cut_values_.begin(), cut_values_.end()),
+                    cut_values_.end());
   using Index = std::decay_t<decltype(polygons.faces()[0][0])>;
   tf::scalar_field_intersections<Index, tf::coordinate_type<Policy>,
                                  tf::coordinate_dims_v<Policy>>
       sfi;
   sfi.build_many(polygons, scalars, cut_values_);
-  auto ie = tf::make_intersection_edges(sfi);
+  auto ie = tf::make_intersection_edges(sfi, polygons.faces());
   auto paths = tf::connect_edges_to_paths(tf::make_edges(ie));
   tf::curves_buffer<Index, tf::coordinate_type<Policy>,
                     tf::coordinate_dims_v<Policy>>

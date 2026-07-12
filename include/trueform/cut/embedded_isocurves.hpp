@@ -75,7 +75,7 @@ auto embedded_isocurves(const tf::polygons<Policy> &polygons,
     auto [res_polygons, labels, face_labels] =
         tf::cut::embedded_isocurves<Index>(polygons, sfi, fc, pids);
 
-    auto ie = tf::make_intersection_edges(sfi);
+    auto ie = tf::make_intersection_edges(sfi, polygons.faces());
     auto paths = tf::connect_edges_to_paths(tf::make_edges(ie));
     tf::curves_buffer<Index, tf::coordinate_type<Policy>,
                       tf::coordinate_dims_v<Policy>>

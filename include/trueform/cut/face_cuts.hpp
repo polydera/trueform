@@ -13,15 +13,19 @@
 #pragma once
 
 #include "../core/algorithm/block_reduce_sequenced_aggregate.hpp"
-#include "../core/algorithm/circular_increment.hpp"
 #include "../core/buffer.hpp"
 #include "../core/none.hpp"
 #include "../core/offset_block_buffer.hpp"
+#include "../core/views/slice.hpp"
 #include "../exact/projection_axes.hpp"
+#include "../exact_coordinate_converter.hpp"
+#include "../intersect/for_each_cut_chord.hpp"
 #include "../intersect/graph/face_descriptor.hpp"
 #include "../intersect/graph/intersection_graph.hpp"
+#include "../intersect/graph/loop.hpp"
 #include "../intersect/types/simple_intersections.hpp"
 #include "./face_cutter.hpp"
+#include <algorithm>
 
 namespace tf {
 
@@ -146,7 +150,9 @@ public:
   }
 
   /// Build from simple_intersections (isocurves/isobands).
-  /// Single tag, exactly 2 intersection records per face.
+  /// Single tag; each face is split by all of its cut chords at once. The
+  /// base loop mirrors intersection_graph: edge hits are inserted in
+  /// parametric order, a vertex hit takes the original vertex's place.
   template <typename Policy, typename RealT, std::size_t Dims>
   auto build(const tf::polygons<Policy> &polygons,
              const tf::intersect::simple_intersections<Index, RealT, Dims> &si)
@@ -156,60 +162,67 @@ public:
     if (subranges.size() == 0)
       return build_tag_offsets(1);
 
+    auto conv = tf::make_exact_coordinate_converter(polygons);
+    auto ipts = si.intersection_points();
+    auto pts = polygons.points();
+    auto faces = polygons.faces();
+    auto get_point = [&](Index tag, Index id) -> tf::point<Int, 3> {
+      return tag == -1 ? conv(ipts[id]) : conv(pts[id]);
+    };
+    auto get_flat_id = [](const auto &) { return Index(0); };
+
     struct local_t {
       tf::buffer<Index> offsets;
       tf::buffer<vertex_t> vertices;
       tf::buffer<desc_t> descs;
+      tf::buffer<intersect::graph::loop_node<Index, Int>> work;
+      tf::buffer<vertex_t> loop;
+      tf::buffer<std::array<Index, 2>> edge_buf;
+      tf::face_cutter<Index, Int> cutter;
     };
-
-    auto faces = polygons.faces();
 
     auto task = [&](auto &&range, local_t &local) {
       for (const auto &subrange : range) {
-        if (subrange.size() < 2)
-          continue;
-        auto r0 = subrange[0];
-        auto r1 = subrange[1];
-        if (r0.target.id > r1.target.id)
-          std::swap(r0, r1);
-        auto object = r0.object;
+        auto object = subrange[0].object;
         auto face = faces[object];
         auto n = static_cast<Index>(face.size());
-        auto e0 = static_cast<Index>(r0.target.id);
-        auto e1 = static_cast<Index>(r1.target.id);
-        auto c0 = vertex_t{intersect::graph::vertex_source::created,
-                           r0.id,
-                           {short(e0), tf::topo_type::edge}};
-        auto c1 = vertex_t{intersect::graph::vertex_source::created,
-                           r1.id,
-                           {short(e1), tf::topo_type::edge}};
-        auto ov = [&](Index ei) {
-          return vertex_t{intersect::graph::vertex_source::original,
-                          Index(face[ei]),
-                          {short(ei), tf::topo_type::vertex}};
+
+        local.loop.clear();
+        intersect::graph::extract_loop(subrange, face, Index(0), get_point,
+                                       get_flat_id, local.work, local.loop);
+
+        local.edge_buf.clear();
+        for (std::size_t i = 0; i < subrange.size();) {
+          std::size_t j = i + 1;
+          while (j < subrange.size() && subrange[j].cut == subrange[i].cut)
+            ++j;
+          // chords along a boundary edge cut nothing
+          tf::intersect::for_each_cut_chord(
+              tf::slice(subrange, i, j), n, ipts,
+              [&](Index id0, Index id1, bool on_boundary) {
+                if (!on_boundary)
+                  local.edge_buf.push_back(
+                      {std::min(id0, id1), std::max(id0, id1)});
+              });
+          i = j;
+        }
+
+        auto fp = polygons[object];
+        auto axes = tf::exact::projection_axes(conv(fp[0]), conv(fp[1]),
+                                               conv(fp[2]));
+        auto get_projected_point =
+            [&, axes](const vertex_t &v) -> tf::point<Int, 2> {
+          auto pt = (v.source == intersect::graph::vertex_source::original)
+                        ? conv(pts[v.id])
+                        : conv(ipts[v.id]);
+          return {pt[axes.first], pt[axes.second]};
         };
 
-        // Loop 1: c0 → vertices (e0+1..e1) → c1
-        local.offsets.push_back(
-            static_cast<Index>(local.vertices.size()));
-        local.vertices.push_back(c0);
-        for (Index i = tf::circular_increment(e0, n);
-             i != tf::circular_increment(e1, n);
-             i = tf::circular_increment(i, n))
-          local.vertices.push_back(ov(i));
-        local.vertices.push_back(c1);
-        local.descs.push_back({0, object});
-
-        // Loop 2: c1 → vertices (e1+1..e0) → c0
-        local.offsets.push_back(
-            static_cast<Index>(local.vertices.size()));
-        local.vertices.push_back(c1);
-        for (Index i = tf::circular_increment(e1, n);
-             i != tf::circular_increment(e0, n);
-             i = tf::circular_increment(i, n))
-          local.vertices.push_back(ov(i));
-        local.vertices.push_back(c0);
-        local.descs.push_back({0, object});
+        auto n_loops = local.cutter.build(
+            tf::make_range(local.loop), tf::make_range(local.edge_buf),
+            get_projected_point, local.offsets, local.vertices);
+        for (Index i = 0; i < n_loops; ++i)
+          local.descs.push_back({0, object});
       }
     };
 
