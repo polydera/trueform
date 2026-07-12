@@ -11,7 +11,9 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../core/algorithm/parallel_for_each.hpp"
 #include "../core/none.hpp"
+#include "../core/views/enumerate.hpp"
 #include "../reindex/return_index_map.hpp"
 #include "../reindex/return_source_ids.hpp"
 #include "../topology/domain_config.hpp"
@@ -55,9 +57,31 @@ auto make_csg_domains_impl(const tf::csg_graph<Forms, Structs, Int> &graph,
       graph.domain_nesting_merges(), config, E);
   auto part = tf::csg::graph::compute_domain_partition(
       membership.domain_of_side, membership.n_components, membership.keep);
-  return tf::csg::graph::make_csg_domains<RealOut, WantLabels, WantPointMap>(
-      graph.arrangement(), graph.face_cuts(), graph.intersection_graph(),
-      graph.forms(), part, graph.converter());
+  auto result =
+      tf::csg::graph::make_csg_domains<RealOut, WantLabels, WantPointMap>(
+          graph.arrangement(), graph.face_cuts(), graph.created_points(),
+          graph.forms(), part, graph.converter(), graph.loop_triangulations());
+  if constexpr (WantPointMap) {
+    // ids[k] is the coarse domain id; unpack its representative's operand
+    // bits into the cell-major inclusion matrix.
+    const auto &ids = std::get<1>(result);
+    auto &imap = std::get<2>(result);
+    const std::size_t n_ops = graph.forms().size();
+    const std::size_t words = membership.words_per_domain;
+    imap.inclusion = tf::blocked_buffer<bool, tf::dynamic_size>(n_ops);
+    imap.inclusion.allocate(ids.size());
+    auto *cell_bits = imap.inclusion.data_buffer().data();
+    tf::parallel_for_each(
+        tf::enumerate(tf::make_range(ids)), [&](auto pair) {
+          const auto &[k, id] = pair;
+          const std::size_t base = static_cast<std::size_t>(id) * words;
+          auto *row = cell_bits + std::size_t(k) * n_ops;
+          for (std::size_t i = 0; i < n_ops; ++i)
+            row[i] =
+                ((membership.rep_bits[base + i / 32] >> (i % 32)) & 1u) != 0;
+        });
+  }
+  return result;
 }
 
 } // namespace detail

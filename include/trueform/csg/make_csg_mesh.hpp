@@ -51,11 +51,10 @@ auto make_csg_mesh(const tf::csg_graph<Forms, Structs, Int> &graph,
   auto membership = tf::csg::graph::evaluate_per_domain(graph.inclusion(), E);
   auto chosen =
       tf::csg::graph::compute_chosen_sides(graph.descriptor(), membership);
-  return tf::csg::graph::make_csg_mesh<RealOut>(graph.arrangement(),
-                                           graph.face_cuts(),
-                                           graph.intersection_graph(),
-                                           graph.forms(), chosen,
-                                           graph.converter());
+  return tf::csg::graph::make_csg_mesh<RealOut>(
+      graph.arrangement(), graph.face_cuts(), graph.created_points(),
+      graph.forms(), chosen, graph.converter(),
+      graph.loop_triangulations());
 }
 
 /// @ingroup csg
@@ -82,8 +81,9 @@ auto make_csg_mesh(const tf::csg_graph<Forms, Structs, Int> &graph,
       tf::csg::graph::compute_chosen_sides(graph.descriptor(), membership);
   auto [mesh, tag_labels, face_labels, map_data] =
       tf::csg::graph::make_csg_mesh<RealOut, /*WantLabels=*/true>(
-          graph.arrangement(), graph.face_cuts(), graph.intersection_graph(),
-          graph.forms(), chosen, graph.converter());
+          graph.arrangement(), graph.face_cuts(), graph.created_points(),
+          graph.forms(), chosen, graph.converter(),
+          graph.loop_triangulations());
   (void)map_data;
   return std::make_tuple(std::move(mesh), std::move(tag_labels),
                          std::move(face_labels));
@@ -114,8 +114,9 @@ auto make_csg_mesh(const tf::csg_graph<Forms, Structs, Int> &graph,
       tf::csg::graph::compute_chosen_sides(graph.descriptor(), membership);
   auto [mesh, tag_labels, face_labels, map_data] =
       tf::csg::graph::make_csg_mesh<RealOut, /*WantLabels=*/true>(
-          graph.arrangement(), graph.face_cuts(), graph.intersection_graph(),
-          graph.forms(), chosen, graph.converter());
+          graph.arrangement(), graph.face_cuts(), graph.created_points(),
+          graph.forms(), chosen, graph.converter(),
+          graph.loop_triangulations());
   // The CSG face stream is not uncut-prefix ordered, so n_original_faces has
   // no boundary meaning here; the per-face (tag, face) maps carry provenance.
   const Index n_out = static_cast<Index>(mesh.points_buffer().size());

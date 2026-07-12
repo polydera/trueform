@@ -142,6 +142,17 @@ TEST_CASE("csg_graph: two cubes stacked face-to-face (cross-tag coplanar)",
   SECTION("difference(A, B) = A") {
     check(tf::make_csg_mesh(graph, tf::csg::difference(0, 1)), 1.0, 1e-3);
   }
+  SECTION("triangulation-only overloads (default intersect config)") {
+    auto g0 = tf::make_csg_graph(tf::make_range(forms),
+                                 tf::triangulation_type::refined_cdt);
+    check(tf::make_csg_mesh(g0, tf::csg::merge(0, 1)), 2.0, 1e-3);
+
+    const int *none = nullptr;
+    auto g1 = tf::make_csg_graph(tf::make_range(forms),
+                                 tf::make_range(none, none),
+                                 tf::triangulation_type::cdt);
+    check(tf::make_csg_mesh(g1, tf::csg::merge(0, 1)), 2.0, 1e-3);
+  }
 }
 
 TEST_CASE("csg_graph: A - B - C with two disjoint small spheres inside A",

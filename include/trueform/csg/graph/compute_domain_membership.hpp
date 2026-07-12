@@ -34,6 +34,8 @@ template <typename Index> struct domain_membership {
   tf::buffer<bool> keep;            // size n_coarse
   tf::buffer<Index> coarse_of_fine; // size n_domains (fine)
   Index n_coarse = 0;
+  tf::buffer<std::uint32_t> rep_bits; // n_coarse * words_per_domain
+  std::size_t words_per_domain = 0;
   Index n_components = 0;
 };
 
@@ -112,8 +114,9 @@ auto compute_domain_membership(
   auto blocks = inc.make_range();
   const std::size_t words = inc.words_per_domain;
 
-  tf::buffer<std::uint32_t> rep_bits;
+  auto &rep_bits = out.rep_bits;
   rep_bits.allocate(static_cast<std::size_t>(n_coarse) * words);
+  out.words_per_domain = words;
   for (auto &w : rep_bits)
     w = 0;
   tf::buffer<bool> is_outer;

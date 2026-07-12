@@ -172,6 +172,33 @@ TEST_CASE("sheets: closed mesh as sheet is a no-op", "[csg][sheets]") {
 }
 
 // ============================================================================
+// A floater behind the sheet that nothing encloses joins the outside: its
+// envelope must not survive enumeration as an inverted shell.
+// ============================================================================
+TEST_CASE("sheets: un-enclosed behind-side floater leaves no pseudo-domain",
+          "[csg][sheets]") {
+  auto straddle = tf::make_sphere_mesh<Index>(Real(1), 32, 32);
+  auto below = tf::make_sphere_mesh<Index>(Real(0.5), 32, 32);
+  tf::ensure_positive_orientation(straddle.polygons());
+  tf::ensure_positive_orientation(below.polygons());
+  auto plane = tf::make_plane_mesh<Index>(Real(4), Real(4));
+
+  std::vector<form_t> forms;
+  forms.push_back(straddle.polygons() | tf::tag(frame_at(0, 0, 0)));
+  forms.push_back(below.polygons() | tf::tag(frame_at(0, 0, -2)));
+  forms.push_back(plane.polygons() | tf::tag(frame_at(0, 0, 0)));
+  graph_holder<1> holder(std::move(forms), {2});
+
+  auto [cells, ids] = tf::make_csg_domains(holder.graph);
+  REQUIRE(cells.size() == 3); // two halves + the floater
+  for (auto &cell : cells) {
+    REQUIRE(cell.polygons().size() > 0);
+    REQUIRE(tf::is_closed(cell.polygons()));
+    REQUIRE(double(tf::signed_volume(cell.polygons())) > 0.0);
+  }
+}
+
+// ============================================================================
 // Disconnected volumes classify by side of the sheet.
 // ============================================================================
 TEST_CASE("sheets: floating volumes know their side", "[csg][sheets]") {
@@ -240,4 +267,127 @@ TEST_CASE("sheets: cut of an intersection", "[csg][sheets]") {
       graph, tf::csg::difference(tf::csg::intersection(0, 1), 2));
   check_closed_solid(upper, 2.0, 1e-9);
   REQUIRE(centroid_z(upper) > 0.0);
+}
+
+// ============================================================================
+// Without a sheet declaration an open plane is inert: volume semantics
+// fuse open fragments away, so it neither cuts nor contains.
+// ============================================================================
+TEST_CASE("sheets: undeclared open plane is inert", "[csg][sheets]") {
+  auto sphere = tf::make_sphere_mesh<Index>(Real(1), 48, 48);
+  tf::ensure_positive_orientation(sphere.polygons());
+  auto plane = tf::make_plane_mesh<Index>(Real(6), Real(6));
+  const double full = double(tf::signed_volume(sphere.polygons()));
+
+  std::vector<form_t> forms;
+  forms.push_back(sphere.polygons() | tf::tag(frame_at(0, 0, 0)));
+  forms.push_back(plane.polygons() | tf::tag(frame_at(0, 0, 0)));
+  auto graph = tf::make_csg_graph(tf::make_range(forms));
+
+  check_closed_solid(tf::make_csg_mesh(graph, tf::csg::difference(0, 1)),
+                     full, 1e-9);
+  REQUIRE(tf::make_csg_mesh(graph, tf::csg::intersection(0, 1)).size() == 0);
+}
+
+namespace {
+
+auto area_of(const mesh_t &m) -> double {
+  double a = 0;
+  auto polys = m.polygons();
+  for (std::size_t f = 0; f < polys.size(); ++f) {
+    auto poly = polys[f];
+    tf::vector<Real, 3> e0 = poly[1] - poly[0];
+    tf::vector<Real, 3> e1 = poly[2] - poly[0];
+    a += double(tf::cross(e0, e1).length()) / 2;
+  }
+  return a;
+}
+
+} // namespace
+
+// ============================================================================
+// op(sheet) is the half-space behind the sheet's normal, used
+// volumetrically: sheet-led expressions select regions, and the mesh is
+// that region's boundary — closed when bounded, honestly open when not.
+// ============================================================================
+TEST_CASE("sheets: sheet-led expressions are volumetric half-spaces",
+          "[csg][sheets]") {
+  auto sphere = tf::make_sphere_mesh<Index>(Real(1), 96, 96);
+  tf::ensure_positive_orientation(sphere.polygons());
+  auto plane = tf::make_plane_mesh<Index>(Real(6), Real(6));
+  const double full = double(tf::signed_volume(sphere.polygons()));
+
+  std::vector<form_t> forms;
+  forms.push_back(sphere.polygons() | tf::tag(frame_at(0, 0, 0)));
+  forms.push_back(plane.polygons() | tf::tag(frame_at(0, 0, 0)));
+  graph_holder<1> holder(std::move(forms), {1});
+  auto &graph = holder.graph;
+
+  SECTION("plane & sphere = lower half-ball: hemisphere + cap disc") {
+    auto m = tf::make_csg_mesh(graph, tf::csg::intersection(1, 0));
+    check_closed_solid(m, full / 2, 0.01 * full);
+    REQUIRE(centroid_z(m) < 0.0);
+    REQUIRE_THAT(area_of(m),
+                 Catch::Matchers::WithinAbs(3 * pi, 0.01 * 3 * pi));
+  }
+  SECTION("plane - sphere = boundary of the unbounded region below") {
+    auto m = tf::make_csg_mesh(graph, tf::csg::difference(1, 0));
+    REQUIRE(m.size() > 0);
+    REQUIRE_FALSE(tf::is_closed(m.polygons()));
+    // punctured plane (36 - pi) + hemisphere wall (2 pi)
+    REQUIRE_THAT(area_of(m),
+                 Catch::Matchers::WithinAbs(36 + pi, 0.01 * (36 + pi)));
+  }
+}
+
+// ============================================================================
+// A composite expression over disconnected volumes: the sheet halves the
+// straddling sphere while whole floaters keep or lose membership by
+// side, each output piece closed on its own.
+// ============================================================================
+TEST_CASE("sheets: composite cut of disconnected volumes", "[csg][sheets]") {
+  auto straddle = tf::make_sphere_mesh<Index>(Real(1), 48, 48);
+  auto above = tf::make_sphere_mesh<Index>(Real(0.5), 48, 48);
+  auto below = tf::make_sphere_mesh<Index>(Real(0.5), 48, 48);
+  for (auto *s : {&straddle, &above, &below})
+    tf::ensure_positive_orientation(s->polygons());
+  auto plane = tf::make_plane_mesh<Index>(Real(6), Real(6));
+  const double full = double(tf::signed_volume(straddle.polygons()));
+  const double small = double(tf::signed_volume(above.polygons()));
+
+  std::vector<form_t> forms;
+  forms.push_back(straddle.polygons() | tf::tag(frame_at(0, 0, 0)));
+  forms.push_back(above.polygons() | tf::tag(frame_at(0, 0, 2)));
+  forms.push_back(below.polygons() | tf::tag(frame_at(0, 0, -2)));
+  forms.push_back(plane.polygons() | tf::tag(frame_at(0, 0, 0)));
+  graph_holder<1> holder(std::move(forms), {3});
+  auto &graph = holder.graph;
+
+  auto solids = tf::csg::merge(tf::csg::merge(0, 1), 2);
+  auto check_two_pieces = [&](const mesh_t &m, double sign) {
+    REQUIRE_THAT(volume_of(m), Catch::Matchers::WithinAbs(
+                                   full / 2 + small, 0.01 * full));
+    auto [labels, n] = tf::make_manifold_edge_connected_component_labels(
+        m.polygons());
+    REQUIRE(n == Index(2));
+    auto [pieces, ids] = tf::split_into_components(m.polygons(), labels);
+    for (auto &piece : pieces) {
+      REQUIRE(tf::is_closed(piece.polygons()));
+      REQUIRE(tf::is_manifold(piece.polygons()));
+      REQUIRE(sign * centroid_z(piece) > 0.0);
+      const double v = volume_of(piece);
+      const bool is_half = std::abs(v - full / 2) < 0.01 * full;
+      const bool is_floater = std::abs(v - small) < 0.01 * small;
+      REQUIRE((is_half || is_floater));
+    }
+  };
+
+  SECTION("difference keeps upper half + above floater") {
+    check_two_pieces(
+        tf::make_csg_mesh(graph, tf::csg::difference(solids, 3)), +1.0);
+  }
+  SECTION("intersection keeps lower half + below floater") {
+    check_two_pieces(
+        tf::make_csg_mesh(graph, tf::csg::intersection(solids, 3)), -1.0);
+  }
 }

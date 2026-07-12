@@ -11,12 +11,18 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "./graph/loop_triangulations.hpp"
+#include "../topology/triangulation_type.hpp"
+#include "../core/algorithm/parallel_copy.hpp"
+#include "../core/algorithm/parallel_for_each.hpp"
+#include "../core/buffer.hpp"
 #include "../core/frame_of.hpp"
 #include "../core/none.hpp"
 #include "../core/point.hpp"
 #include "../core/small_vector.hpp"
 #include "../core/transformed.hpp"
 #include "../core/views/mapped_range.hpp"
+#include "../core/views/sequence_range.hpp"
 #include "../core/views/zip.hpp"
 #include "../cut/arrangement_graph.hpp"
 #include "../cut/arrangements/anchor_sheet_sides.hpp"
@@ -53,6 +59,11 @@ namespace tf {
 /// @ref tf::cut::dispatch::arrangement does. `forms()` rebuilds the
 /// tagged view on demand by mapping over `(forms, structs)`.
 ///
+/// The graph also owns the per-loop triangulation store (see
+/// @ref tf::csg::graph::loop_triangulations) and the unified
+/// created-points table the extractions read; `tri` selects the store
+/// flavour (see @ref tf::triangulation_type).
+///
 /// Template parameters:
 /// - `Forms`, `Structs` — deduced from the constructor.
 /// - `Int` — exact-integer override (defaulted to `tf::none_t`,
@@ -84,7 +95,8 @@ public:
             tf::intersect_config config =
                 {tf::intersect_mode::primitives |
                  tf::intersect_mode::resolve_crossing_contours},
-            tf::buffer<char> is_sheet = {})
+            tf::buffer<char> is_sheet = {},
+            tf::triangulation_type tri = tf::triangulation_type::cdt)
       : _forms(std::move(forms)), _structs(std::move(structs)),
         _is_sheet(std::move(is_sheet)) {
     auto tagged = this->forms();
@@ -124,6 +136,40 @@ public:
         _domain_nesting_merges, _is_sheet);
     tf::cut::propagate_inclusion_bits(_inc, _desc, _ag, _fc, seeds);
     tf::cut::anchor_sheet_sides(_inc, _desc, _is_sheet);
+
+    tf::buffer<tf::point<resolved_int_type, 3>> extra;
+    if (tri == tf::triangulation_type::refined_cdt)
+      _tris.build_refined(_ag, _fc, _ig, tagged, conv, extra);
+    else
+      _tris.build_stock(_ag, _fc, _ig, tagged, conv);
+    auto ig_pts = _ig.points();
+    _created_points.allocate(std::size_t(ig_pts.size()) + extra.size());
+    tf::parallel_for_each(
+        tf::make_sequence_range(std::size_t(ig_pts.size())),
+        [&](std::size_t i) { _created_points[i] = ig_pts[index_type(i)]; });
+    tf::parallel_copy(tf::make_range(extra),
+                      tf::make_range(_created_points.begin() +
+                                         std::size_t(ig_pts.size()),
+                                     _created_points.end()));
+  }
+
+  /// @brief Pre-computed per-loop triangulation store (triangle corners are
+  ///        loop vertices; folded coplanar-stack loops alias their
+  ///        representative's range). Read by the csg extractions.
+  auto loop_triangulations() const
+      -> const tf::csg::graph::loop_triangulations<index_type,
+                                                   resolved_int_type> & {
+    return _tris;
+  }
+
+  /// @brief Unified created-points table (int lattice): the intersection
+  ///        graph's points followed by any refinement-added points (splits,
+  ///        then steiner). Created vertex ids index this buffer directly;
+  ///        provenance of ids past the intersection graph's lives on
+  ///        @ref loop_triangulations (`created_origin`).
+  auto created_points() const
+      -> const tf::buffer<tf::point<resolved_int_type, 3>> & {
+    return _created_points;
   }
 
   /// @brief Per-form sheet mask (empty when no sheets were declared).
@@ -187,6 +233,8 @@ private:
   tf::intersection_graph<index_type, resolved_int_type> _ig;
   tf::face_cuts<index_type, resolved_int_type> _fc;
   tf::arrangement_graph<index_type> _ag;
+  tf::csg::graph::loop_triangulations<index_type, resolved_int_type> _tris;
+  tf::buffer<tf::point<resolved_int_type, 3>> _created_points;
   tf::cut::arrangement_descriptor<index_type> _desc;
   tf::cut::domain_inclusions _inc;
   tf::buffer<std::array<index_type, 2>> _domain_nesting_merges;

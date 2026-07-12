@@ -57,7 +57,9 @@ template <typename Int = tf::none_t, typename Forms, typename Iter,
 auto make_csg_graph(Forms in_forms, tf::range<Iter, N> sheets,
                      tf::intersect_config config =
                          {tf::intersect_mode::primitives |
-                          tf::intersect_mode::resolve_crossing_contours}) {
+                          tf::intersect_mode::resolve_crossing_contours},
+                     tf::triangulation_type tri =
+                         tf::triangulation_type::cdt) {
   auto forms = tf::make_range(in_forms);
   using S = decltype(tf::cut::dispatch::make_missing_structures(forms[0]));
 
@@ -72,7 +74,7 @@ auto make_csg_graph(Forms in_forms, tf::range<Iter, N> sheets,
   if constexpr (std::is_same_v<S, tf::none_t>) {
     return tf::csg_graph<Forms, S, Int>(std::move(forms),
                                           tf::small_vector<S, 10>{}, config,
-                                          std::move(is_sheet));
+                                          std::move(is_sheet), tri);
   } else {
     const auto n = forms.size();
     tf::small_vector<S, 10> structs(n);
@@ -84,7 +86,7 @@ auto make_csg_graph(Forms in_forms, tf::range<Iter, N> sheets,
     tg.wait();
     return tf::csg_graph<Forms, S, Int>(std::move(forms),
                                           std::move(structs), config,
-                                          std::move(is_sheet));
+                                          std::move(is_sheet), tri);
   }
 }
 
@@ -94,10 +96,34 @@ template <typename Int = tf::none_t, typename Forms>
 auto make_csg_graph(Forms in_forms,
                      tf::intersect_config config =
                          {tf::intersect_mode::primitives |
-                          tf::intersect_mode::resolve_crossing_contours}) {
+                          tf::intersect_mode::resolve_crossing_contours},
+                     tf::triangulation_type tri =
+                         tf::triangulation_type::cdt) {
   const int *none = nullptr;
   return make_csg_graph<Int>(std::move(in_forms), tf::make_range(none, none),
-                             config);
+                             config, tri);
+}
+
+/// @ingroup csg
+/// @brief Triangulation-only overload: default intersect config.
+template <typename Int = tf::none_t, typename Forms, typename Iter,
+          std::size_t N>
+auto make_csg_graph(Forms in_forms, tf::range<Iter, N> sheets,
+                     tf::triangulation_type tri) {
+  return make_csg_graph<Int>(std::move(in_forms), sheets,
+                             {tf::intersect_mode::primitives |
+                              tf::intersect_mode::resolve_crossing_contours},
+                             tri);
+}
+
+/// @ingroup csg
+/// @brief Triangulation-only overload: no sheets, default intersect config.
+template <typename Int = tf::none_t, typename Forms>
+auto make_csg_graph(Forms in_forms, tf::triangulation_type tri) {
+  return make_csg_graph<Int>(std::move(in_forms),
+                             {tf::intersect_mode::primitives |
+                              tf::intersect_mode::resolve_crossing_contours},
+                             tri);
 }
 
 } // namespace tf

@@ -448,11 +448,14 @@ auto seed_inclusion_bits(
   }
 
   for (Index bi = Index(0); bi < n_bundles; ++bi) {
-    const Index d_out = chosen_target[bi];
-    if (d_out == Index(-1))
-      continue;
     const Index d_in = outer_env[bi];
-    if (d_in == Index(-1) || d_in == d_out)
+    if (d_in == Index(-1))
+      continue;
+    // No enclosing domain means the bundle's envelope reaches infinity:
+    // it is the global outside, whatever bits side-anchoring gave it.
+    const Index d_out =
+        chosen_target[bi] == Index(-1) ? null_seed : chosen_target[bi];
+    if (d_in == d_out)
       continue;
     out_nesting_merges.push_back(
         {std::min(d_in, d_out), std::max(d_in, d_out)});

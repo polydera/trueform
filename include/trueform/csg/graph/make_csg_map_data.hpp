@@ -33,15 +33,23 @@ namespace tf::csg::graph {
 /// and we need vertex discovery to cover **every** label (direction
 /// only matters at emission time, not at vertex discovery).
 ///
-/// Pass 1 (cut loops) is sequential across forms because the
-/// `created_map` is shared globally. Pass 2 (uncut polygons) is
-/// parallel per form.
-template <typename Index, typename Int, typename ApplyToPolygons>
+/// Vertex discovery walks the store's pre-triangulated streams — loop
+/// triangles and conforming-face triangles — instead of the loop cycles,
+/// so refinement-added created points (splits / steiner) enter the global
+/// vertex space alongside the intersection points. `n_created_points` is
+/// the size of the graph's unified created-points buffer.
+///
+/// Pass 1 (cut loops + conforming faces) is sequential across forms
+/// because the `created_map` is shared globally. Pass 2 (uncut polygons)
+/// is parallel per form.
+template <typename Index, typename Int, typename ApplyToPolygons,
+          typename Store>
 auto make_csg_map_data(const tf::face_cuts<Index, Int> &fc,
                        Index n_created_points,
                        const tf::small_vector<tf::cut::partition_ids<Index>, 4>
                            &pids,
-                       const ApplyToPolygons &apply_to_polygons)
+                       const ApplyToPolygons &apply_to_polygons,
+                       const Store &store)
     -> tf::cut::partition_map_data<Index> {
   auto n_meshes = static_cast<Index>(pids.size());
   tf::cut::partition_map_data<Index> d;
@@ -69,9 +77,6 @@ auto make_csg_map_data(const tf::face_cuts<Index, Int> &fc,
   d.created_ids.reserve(n_created_points);
   Index create_current = 0;
 
-  auto loops_per_tag =
-      tf::make_offset_block_range(fc.tag_offsets(), fc.loops());
-
   // Pass 1: cut-loop vertex discovery. Sequential across forms — the
   // created_map is shared globally, so created-vertex bookkeeping must
   // not race.
@@ -80,26 +85,47 @@ auto make_csg_map_data(const tf::face_cuts<Index, Int> &fc,
     auto &curr = d.original_offsets[t + 1];
     const auto off = d.point_offsets[t];
 
+    auto mark = [&](const auto &v) {
+      if (v.source == tf::intersect::graph::vertex_source::original) {
+        auto flat = off + v.id;
+        if (d.original_map[flat] == sentinel_orig) {
+          d.original_map[flat] = curr++;
+          ids.push_back(v.id);
+        }
+      } else {
+        if (d.created_map[v.id] == sentinel_created) {
+          d.created_map[v.id] = create_current++;
+          d.created_ids.push_back(v.id);
+        }
+      }
+    };
     const auto &cut_ids = pids[t].cut_faces;
     const Index n_labels = static_cast<Index>(cut_ids.size());
     for (Index label = 0; label < n_labels; ++label) {
-      for (auto loop :
-           tf::make_indirect_range(cut_ids[label], loops_per_tag[t])) {
-        for (const auto &v : loop) {
-          if (v.source == tf::intersect::graph::vertex_source::original) {
-            auto flat = off + v.id;
-            if (d.original_map[flat] == sentinel_orig) {
-              d.original_map[flat] = curr++;
-              ids.push_back(v.id);
-            }
-          } else {
-            if (d.created_map[v.id] == sentinel_created) {
-              d.created_map[v.id] = create_current++;
-              d.created_ids.push_back(v.id);
-            }
-          }
+      for (auto lid : cut_ids[label]) {
+        const Index gli = fc.tag_offsets()[t] + lid;
+        for (const auto &tri : store.loop_tris(gli)) {
+          for (const auto &v : tri)
+            mark(v);
         }
       }
+    }
+    // conforming uncut faces of this tag: their triangles carry
+    // refinement-added created ids (splits / steiner); their original
+    // corners are covered by pass 2
+    {
+      const auto &poly_ids = pids[t].polygons;
+      for (Index label = 0; label < Index(poly_ids.size()); ++label)
+        for (auto f : poly_ids[label]) {
+          Index ci = store.conf_index(t, Index(f));
+          if (ci < 0)
+            continue;
+          for (Index j = store.conf_tri_offsets[std::size_t(ci)];
+               j < store.conf_tri_offsets[std::size_t(ci) + 1]; ++j)
+            for (const auto &v : store.conf_tris[std::size_t(j)])
+              if (v.source == tf::intersect::graph::vertex_source::created)
+                mark(v);
+        }
     }
   }
 

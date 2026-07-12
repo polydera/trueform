@@ -650,6 +650,45 @@ TEST_CASE("make_csg_domains return_source_ids: dynamic-arity (quad) provenance",
   }
 }
 
+TEST_CASE("make_csg_domains: coincident-plane cubes emit no phantom domains",
+          "[domains][subulp]") {
+  // Two 2x2x2 cubes offset by 1 in x share the y=+-1 and z=+-1 planes, and
+  // a knife plane bisects everything at z=0. Rim corners lying exactly in
+  // a coincident wall plane construct the same triple point through
+  // several primitive pairs; without the sub-ulp record fuse the twins
+  // survive as 2-vertex sliver loops whose private domains emit empty
+  // cells. Expect exactly the 6 real cells, each closed with volume 2.
+  auto c0 = tf::make_box_mesh<Index>(Real(2), Real(2), Real(2));
+  auto c1 = tf::make_box_mesh<Index>(Real(2), Real(2), Real(2));
+  auto plane = tf::make_plane_mesh<Index>(Real(4), Real(4));
+
+  auto f0 = tf::make_frame(tf::make_transformation_from_translation(
+      tf::vector<Real, 3>{Real(-0.5), 0, 0}));
+  auto f1 = tf::make_frame(tf::make_transformation_from_translation(
+      tf::vector<Real, 3>{Real(0.5), 0, 0}));
+  std::vector<form_t> forms{c0.polygons() | tf::tag(f0),
+                            c1.polygons() | tf::tag(f1),
+                            plane.polygons() | tf::tag(frame0())};
+
+  for (bool with_sheet : {true, false}) {
+    DYNAMIC_SECTION((with_sheet ? "knife as sheet" : "knife as volume")) {
+      std::array<int, 1> sheets{2};
+      auto graph = with_sheet
+                       ? tf::make_csg_graph(tf::make_range(forms),
+                                            tf::make_range(sheets))
+                       : tf::make_csg_graph(tf::make_range(forms));
+      auto [cells, ids] = tf::make_csg_domains(graph);
+      REQUIRE(cells.size() == 6);
+      for (auto &cell : cells) {
+        REQUIRE(cell.polygons().size() > 0);
+        REQUIRE(tf::is_closed(cell.polygons()));
+        REQUIRE_THAT(std::abs(double(tf::signed_volume(cell.polygons()))),
+                     Catch::Matchers::WithinAbs(2.0, 1e-3));
+      }
+    }
+  }
+}
+
 TEST_CASE("make_csg_domains return_index_map: per-cell point + face maps",
           "[domains][index_map]") {
   // Two overlapping cubes -> three cells; verify the per-cell index map.
@@ -706,5 +745,24 @@ TEST_CASE("make_csg_domains return_index_map: per-cell point + face maps",
       REQUIRE(std::abs(double(cp[1]) - double(ip[1])) < 1e-9);
       REQUIRE(std::abs(double(cp[2]) - double(ip[2])) < 1e-9);
     }
+  }
+
+  // Inclusion matrix: one row per cell, one column per form; each column
+  // must agree with the expression-filtered query (ids are stable across
+  // queries on one graph + config).
+  REQUIRE(imap.inclusion.block_size() == forms.size());
+  REQUIRE(std::size_t(imap.inclusion.size()) == cells.size());
+  const auto &inc = imap.inclusion;
+  auto [a_cells, a_ids] = tf::make_csg_domains(graph, tf::csg::op(0));
+  auto [b_cells, b_ids] = tf::make_csg_domains(graph, tf::csg::op(1));
+  auto has = [](const auto &dom_ids, Index id) {
+    for (auto v : dom_ids)
+      if (v == id)
+        return true;
+    return false;
+  };
+  for (std::size_t k = 0; k < cells.size(); ++k) {
+    REQUIRE((inc[k][0] != 0) == has(a_ids, ids[k]));
+    REQUIRE((inc[k][1] != 0) == has(b_ids, ids[k]));
   }
 }

@@ -12,7 +12,9 @@
  */
 #pragma once
 
+#include "../core/blocked_buffer.hpp"
 #include "../core/offset_block_buffer.hpp"
+#include <cstdint>
 
 namespace tf {
 
@@ -51,6 +53,10 @@ template <typename Index> struct csg_domains_index_map {
   Index n_tags = 0;
   /// total global arrangement points; the point-id axis `end` sentinel value
   Index n_output_points = 0;
+  /// Per-cell operand inclusion, block size `n_tags`: `inclusion[k][i]`
+  /// is true iff cell `k` lies inside form `i` (for a sheet: behind the
+  /// sheet's normal).
+  tf::blocked_buffer<bool, tf::dynamic_size> inclusion;
 };
 
 } // namespace tf

@@ -5,6 +5,7 @@ add_executable(trueform_csg_tests
   test_csg_solids.cpp
   test_csg_sheets.cpp
   test_csg_domains.cpp
+  test_triangulated_csg.cpp
 )
 
 target_link_libraries(trueform_csg_tests PRIVATE trueform_test_common)
