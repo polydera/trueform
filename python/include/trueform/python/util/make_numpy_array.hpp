@@ -100,6 +100,20 @@ auto make_numpy_array(tf::blocked_buffer<T, BlockSize> &&blocked_buf) {
 }
 
 /**
+ * Create a numpy array from a runtime-block-size tf::blocked_buffer by
+ * taking ownership. Extracts (num_blocks, block_size) shaped array.
+ */
+template <typename T>
+auto make_numpy_array(
+    tf::blocked_buffer<T, tf::dynamic_size> &&blocked_buf) {
+  auto num_blocks = blocked_buf.size();
+  auto block_size = blocked_buf.block_size();
+  return make_numpy_array<nanobind::shape<-1, -1>>(
+      std::move(blocked_buf.data_buffer()),
+      {static_cast<size_t>(num_blocks), block_size});
+}
+
+/**
  * Create a numpy array from tf::points_buffer by taking ownership
  * Extracts (num_points, Dims) shaped array
  */

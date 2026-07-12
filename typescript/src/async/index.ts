@@ -18,6 +18,7 @@ export {
   bincount, histogram,
 } from "../ndarray/async";
 export { readStl, readObj, writeStl, writeObj } from "../io/async";
+export { csgGraph, csgMesh, csgDomains, csgIntersectionCurves } from "../csg/async";
 export {
   booleanUnion, booleanIntersection, booleanDifference,
   isobands,

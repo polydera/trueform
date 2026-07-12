@@ -30,6 +30,7 @@ set(BINDING_TOP_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/clean.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/csg.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/cut.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/geometry.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/intersect.cpp
@@ -43,6 +44,7 @@ set(BINDING_TOP_SOURCES
 # Per-module binding sources
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/clean/sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/core/sources.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/csg/sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/cut/sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/geometry/sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/intersect/sources.cmake)
@@ -57,6 +59,7 @@ set(BINDING_SOURCES
   ${BINDING_TOP_SOURCES}
   ${MODULE_CLEAN_SOURCES}
   ${MODULE_CORE_SOURCES}
+  ${MODULE_CSG_SOURCES}
   ${MODULE_CUT_SOURCES}
   ${MODULE_GEOMETRY_SOURCES}
   ${MODULE_INTERSECT_SOURCES}

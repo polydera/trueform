@@ -14,6 +14,7 @@
 #include <nanobind/nanobind.h>
 #include "trueform/python/clean.hpp"
 #include "trueform/python/core.hpp"
+#include "trueform/python/csg.hpp"
 #include "trueform/python/cut.hpp"
 #include "trueform/python/geometry.hpp"
 #include "trueform/python/intersect.hpp"
@@ -35,6 +36,7 @@ NB_MODULE(_trueform, m) {
   // Register all modules
   tf::py::register_clean(m);
   tf::py::register_core(m);
+  tf::py::register_csg(m);
   tf::py::register_cut(m);
   tf::py::register_geometry_module(m);
   tf::py::register_intersect(m);

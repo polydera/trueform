@@ -84,6 +84,12 @@ export {
 } from "./ndarray/math";
 
 // IO
+export { csgGraph, CsgGraph, Expr, op } from "./csg/sync";
+export type {
+  CsgGraphOptions, CsgDomainsOptions,
+  CsgMeshLabeledResult, CsgMeshIndexMapResult,
+  CsgDomainsResult, CsgDomainsLabeledResult, CsgDomainsIndexMapResult,
+} from "./csg/sync";
 export { readStl, readStlData, readObj, readObjData, writeStl, writeObj } from "./io/sync";
 export type { ReadObjOptions } from "./io/sync";
 

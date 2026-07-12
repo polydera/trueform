@@ -33,7 +33,9 @@ add_executable(trueform_wasm
     cpp/src/core/ensure.cpp
     cpp/src/io/io_float32.cpp
     cpp/src/io/io_float64.cpp
-    cpp/src/cut/boolean_float32.cpp
+    cpp/src/csg/csg_graph_float32.cpp
+  cpp/src/csg/csg_graph_float64.cpp
+  cpp/src/cut/boolean_float32.cpp
     cpp/src/cut/boolean_float64.cpp
     cpp/src/cut/mesh_arrangement_float32.cpp
     cpp/src/cut/mesh_arrangement_float64.cpp

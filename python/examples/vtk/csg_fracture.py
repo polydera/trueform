@@ -2,11 +2,12 @@
 Cellular fracture: one arrangement of a closed mesh + a grid of axis-aligned
 cutting planes, split into its volumetric box cells, coloured and optionally
 exploded. Showcases volumetric-domain extraction (not a boolean) from a single
-build.
+build: tf.CsgGraph builds the arrangement once, and the interior cells are
+read directly as the domains inside operand 0 — graph.domains(tf.op(0)).
 
   python csg_fracture.py MESH [cuts] [explode] [--all] [--png]
 
-  MESH        path to a closed surface mesh (stl / obj / ply)
+  MESH        path to a closed surface mesh (stl / obj)
   cuts        number of axis-aligned cuts per axis              [default 12]
   explode     outward cell displacement, fraction of extent     [default 0.0]
   --all       render every domain, skipping the interior filter
@@ -14,11 +15,9 @@ build.
 
 Interactive controls: drag orbit, scroll zoom, 'c' print camera, 'q' quit.
 """
-from collections import defaultdict, deque
 import os
 import numpy as np
 import vtk
-from vtk.util.numpy_support import vtk_to_numpy
 import trueform as tf
 from util import numpy_to_polydata, create_parser
 
@@ -55,29 +54,18 @@ def cell_color(i):
     return tuple(int(hx[k:k + 2], 16) / 255 for k in (0, 2, 4))
 
 
-def read_surface(path):
-    ext = path.rsplit(".", 1)[-1].lower()
-    reader = {"stl": vtk.vtkSTLReader, "obj": vtk.vtkOBJReader,
-              "ply": vtk.vtkPLYReader}.get(ext)
-    if reader is None:
-        raise SystemExit(f"unsupported mesh format: .{ext} (use stl/obj/ply)")
-    r = reader(); r.SetFileName(path)
-    return r
-
-
-def load_watertight(path):
-    r = read_surface(path)
-    cl = vtk.vtkCleanPolyData(); cl.SetInputConnection(r.GetOutputPort())
-    fh = vtk.vtkFillHolesFilter(); fh.SetInputConnection(cl.GetOutputPort())
-    fh.SetHoleSize(1e9)
-    nrm = vtk.vtkPolyDataNormals(); nrm.SetInputConnection(fh.GetOutputPort())
-    nrm.ConsistencyOn(); nrm.AutoOrientNormalsOn()
-    tr = vtk.vtkTriangleFilter(); tr.SetInputConnection(nrm.GetOutputPort())
-    tr.Update()
-    pd = tr.GetOutput()
-    pts = vtk_to_numpy(pd.GetPoints().GetData()).astype(DT)
-    conn = vtk_to_numpy(pd.GetPolys().GetConnectivityArray()).astype(IDT)
-    faces = conn.reshape(-1, 3)
+def load_closed(path):
+    ext = os.path.splitext(path)[1].lower()
+    if ext == ".stl":
+        faces, pts = tf.read_stl(path, index_dtype=IDT)
+    elif ext == ".obj":
+        faces, pts = tf.read_obj(path, ngon=3, dtype=DT, index_dtype=IDT)
+    else:
+        raise SystemExit(f"unsupported mesh extension '{ext}' (use .stl or .obj)")
+    faces, pts = tf.cleaned((faces, pts.astype(DT)), tolerance=1e-6)
+    if not tf.is_closed(tf.Mesh(faces, pts)):
+        raise SystemExit(f"{os.path.basename(path)} is not watertight; "
+                         "'inside the solid' is undefined on an open surface")
     # normalise to unit max-extent, centred at the origin
     c = (pts.min(0) + pts.max(0)) / 2
     ext = (pts.max(0) - pts.min(0)).max()
@@ -115,36 +103,6 @@ def make_planes(bp, n):
     return planes
 
 
-def interior_cells(labels, n_dom, ctag):
-    """Domain ids of cells inside the solid (tag 0), via a graph walk.
-
-    Seeds are the interior side of every solid face (labels[:,1]); the solid's
-    outward normal points away from it, so that side is inside. Edges cross
-    PLANE faces only -- a cutting plane's face exists only where it slices the
-    solid (the outside part is an open fin, already dropped), so it always
-    joins two interior cells. Solid faces are walls, never crossed. The flood
-    therefore stays inside yet reaches fully-interior cells that touch no solid
-    face, while exterior plane-wedges remain unreachable.
-    """
-    valid = lambda d: (d >= 0) & (d < n_dom)
-    seed_ids = labels[ctag == 0, 1]
-    seeds = np.unique(seed_ids[valid(seed_ids)]).tolist()
-
-    a, b = labels[ctag != 0, 0], labels[ctag != 0, 1]
-    m = valid(a) & valid(b)
-    adj = defaultdict(set)
-    for x, y in zip(a[m].tolist(), b[m].tolist()):
-        adj[x].add(y); adj[y].add(x)
-
-    keep = set(int(s) for s in seeds)
-    dq = deque(keep)
-    while dq:
-        for v in adj[dq.popleft()]:
-            if v not in keep:
-                keep.add(v); dq.append(v)
-    return keep, len(seeds)
-
-
 def set_camera(ren, win, cam):
     if CAM:
         cam.SetPosition(*CAM["pos"]); cam.SetFocalPoint(*CAM["foc"])
@@ -174,37 +132,29 @@ def main():
                         help="render offscreen to /tmp/fracture.png")
     args = parser.parse_args()
 
-    sf, sp = load_watertight(args.mesh)
+    sf, sp = load_closed(args.mesh)
     name = os.path.basename(args.mesh)
     print(f"{name}: {len(sf)} tris, bbox {sp.min(0)} .. {sp.max(0)}")
 
     meshes = [tf.Mesh(sf, sp)] + make_planes(sp, args.cuts)
 
-    (af, ap), tag, _f = tf.mesh_arrangements(meshes)
-    tag = np.asarray(tag)
-    (af, ap), (_ff, kept_faces), _pm = tf.cleaned(
-        (af, ap), tolerance=1e-6, return_index_map=True)
-    ctag = tag[np.asarray(kept_faces)]   # source-mesh tag per cleaned face
-    arr = tf.Mesh(af, ap)
-    # exclude_outer_shell drops the exterior domain; ignore_open_fragments
-    # drops the open cutting-plane fins. What remains: bounded interior cells.
-    labels, n_dom, _outer = tf.domain_labels(
-        arr, ignore_open_fragments=True, exclude_outer_shell=True)
-    comps, comp_labels = tf.split_into_domains(arr, (labels, n_dom))
-    comp_labels = np.asarray(comp_labels)
-    print(f"total bounded domains (n_dom): {n_dom}")
-
-    keep, n_seeds = interior_cells(labels, n_dom, ctag)
-    print(f"interior cells via graph walk: {len(keep)} (seeds {n_seeds})")
+    # One build; every query after this reuses it.
+    graph = tf.CsgGraph(meshes)
+    if args.all_domains:
+        domains, _ids = graph.domains()
+    else:
+        # a cell is interior iff it lies inside operand 0 (the solid)
+        domains, _ids = graph.domains(tf.op(0))
+    print(f"cells: {len(domains)}" + ("  (ALL)" if args.all_domains else
+                                      "  (interior of solid)"))
 
     scen = sp.mean(0)
     cells = []
-    for (cf, cp), lbl in zip(comps, comp_labels):
+    for cf, cp in domains:
         cp = np.asarray(cp, DT); cf = np.asarray(cf)
         if len(cp) == 0 or len(cf) < 1: continue
-        if not args.all_domains and int(lbl) not in keep: continue
         cells.append((cf, cp + args.explode * (cp.mean(0) - scen)))
-    print(f"rendered domains: {len(cells)}" + ("  (ALL)" if args.all_domains else ""))
+    print(f"rendered domains: {len(cells)}")
 
     ren = vtk.vtkRenderer(); ren.SetBackground(1, 1, 1)
     if not args.png:
