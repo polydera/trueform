@@ -36,7 +36,6 @@
 #include "./face_descriptor.hpp"
 #include "./loop.hpp"
 #include "./split_edges.hpp"
-#include "./strip_base_loop_edges.hpp"
 #include "./vertex.hpp"
 
 namespace tf {
@@ -117,11 +116,113 @@ public:
         _tag_offsets.size() < (3 + 1)) {
       _points.allocate(ipts.size());
       tf::parallel_copy(ipts, tf::make_range(_points));
-      intersect::graph::strip_base_loop_edges(_edge_defs.data_buffer(), _edges);
-      intersect::graph::canonicalize_edges(_edge_defs, _edges);
     } else
       detect_and_split_crossings(ipts, apply_to_face, get_point, mode, kernel);
+    _finalize_edges();
   }
+
+  /// The single finalize: loops cleaned once, ordinals derived from the
+  /// final loops, boundary-coincident edges compacted away once, canonical
+  /// ids assigned once. Runs at the end of every build path.
+  auto _finalize_edges() -> void {
+    intersect::graph::clean_loops(_loops);
+    _restamp_boundary_ordinals();
+    bool any_boundary = false;
+    for (const auto &e : _edge_defs.data_buffer())
+      if (e.ordinal != -1) {
+        any_boundary = true;
+        break;
+      }
+    if (any_boundary) {
+      tf::buffer<intersect::graph::edge<Index>> new_edge_data;
+      tf::buffer<Index> new_offsets;
+      new_offsets.allocate(_edges.offsets_buffer().size());
+      new_offsets[0] = 0;
+      std::size_t fi = 1;
+      for (auto face_edges : tf::make_range(_edges)) {
+        for (auto inst : face_edges) {
+          const auto &e = _edge_defs.data_buffer()[inst];
+          if (e.ordinal == -1)
+            new_edge_data.push_back(e);
+        }
+        new_offsets[fi++] = static_cast<Index>(new_edge_data.size());
+      }
+      _edge_defs.data_buffer() = std::move(new_edge_data);
+      _edge_defs.offsets_buffer() = new_offsets;
+      _edges.offsets_buffer() = std::move(new_offsets);
+      _edges.data_buffer().allocate(_edge_defs.data_buffer().size());
+      tf::parallel_iota(_edges.data_buffer(), 0);
+    }
+    intersect::graph::canonicalize_edges(_edge_defs, _edges);
+  }
+
+  /// Ordinals derived from the final loops. Point-class merges can move
+  /// a vertex onto the boundary after emission and splitting, turning an
+  /// interior chord piece into a duplicate of a base-loop segment; every
+  /// earlier stamp ran before identity was final. An edge whose endpoints
+  /// are consecutive in its face's loop is boundary (stamped with the
+  /// loop position, flipped to the loop's direction); anything else is
+  /// interior.
+  auto _restamp_boundary_ordinals() -> void {
+    auto loops = tf::make_range(_loops);
+    auto edge_blocks = tf::make_range(_edges);
+    struct seg_t {
+      Index a, b;
+      std::int16_t ord;
+      Index want0;
+    };
+    struct local_t {
+      tf::small_vector<seg_t, 16> segs;
+    };
+    tf::parallel_for_each(
+        tf::make_sequence_range(loops.size()),
+        [&](std::size_t li, local_t &local) {
+          auto face_edges = edge_blocks[li];
+          if (face_edges.size() == 0)
+            return;
+          auto loop = loops[li];
+          const std::size_t n = loop.size();
+          auto &segs = local.segs;
+          segs.clear();
+          for (std::size_t i = 0; i < n; ++i) {
+            const auto &va = loop[i];
+            const auto &vb = loop[(i + 1) % n];
+            if (va.source != intersect::graph::vertex_source::created ||
+                vb.source != intersect::graph::vertex_source::created)
+              continue;
+            if (va.id == vb.id)
+              continue;
+            segs.push_back({std::min(va.id, vb.id), std::max(va.id, vb.id),
+                            std::int16_t(i), va.id});
+          }
+          std::sort(segs.begin(), segs.end(),
+                    [](const seg_t &x, const seg_t &y) {
+                      return std::make_pair(x.a, x.b) <
+                             std::make_pair(y.a, y.b);
+                    });
+          for (auto inst : face_edges) {
+            auto &e = _edge_defs.data_buffer()[inst];
+            const Index a = std::min(e.point_0, e.point_1);
+            const Index b = std::max(e.point_0, e.point_1);
+            auto it = std::lower_bound(
+                segs.begin(), segs.end(), std::make_pair(a, b),
+                [](const seg_t &sg, const std::pair<Index, Index> &k) {
+                  return std::make_pair(sg.a, sg.b) < k;
+                });
+            if (it == segs.end() || it->a != a || it->b != b) {
+              e.ordinal = -1;
+              e.sub_ordinal = -1;
+            } else {
+              e.ordinal = it->ord;
+              e.sub_ordinal = 0;
+              if (e.point_0 != it->want0)
+                std::swap(e.point_0, e.point_1);
+            }
+          }
+        },
+        local_t{});
+  }
+
 
 private:
   template <typename Subranges, typename ApplyToFace, typename GetPoint,
@@ -261,8 +362,6 @@ private:
     if (records.size() == 0) {
       _points.allocate(n_ipts);
       tf::parallel_copy(ipts, tf::make_range(_points));
-      intersect::graph::strip_base_loop_edges(_edge_defs.data_buffer(), _edges);
-      intersect::graph::canonicalize_edges(_edge_defs, _edges);
       return;
     }
 
@@ -290,8 +389,6 @@ private:
       intersect::graph::split_edges(entries, crossing_base, crossing_points,
                                     _edge_defs.data_buffer(), _edges, _loops,
                                     get_point, merge_pairs);
-    } else {
-      intersect::graph::strip_base_loop_edges(_edge_defs.data_buffer(), _edges);
     }
 
     auto total_size =
@@ -331,11 +428,6 @@ private:
       });
     }
 
-    // Finalise once: split_edges rebuilt the loops (inserting boundary
-    // points), so they must be cleaned and re-canonicalised whether or not
-    // any merge happened.
-    intersect::graph::clean_loops(_loops);
-    intersect::graph::canonicalize_edges(_edge_defs, _edges);
     collect_crossing_point_ids();
   }
 

@@ -235,25 +235,9 @@ auto split_edges(tf::buffer<edge_split_entry<Index>> &entries,
       build_dirty_loop<Index>(base_edges, base_loop, local.dirty);
       local.new_edges.erase_till_end(part_it);
 
-      // Reconcile interior sub-edges against the REBUILT loop. A split point can
-      // land on the boundary (it's also a split entry of a boundary edge, so
-      // build_dirty_loop inserts it into the loop); the interior parent's
-      // sub-edge to it then connects two now-consecutive base-loop vertices but
-      // kept the parent's ordinal -1. base_loop_edge_ordinal ran at build_edges,
-      // before the point existed, so the partition missed it. Re-check here and
-      // drop these — their segment is already part of the loop.
-      {
-        auto dloop = tf::make_range(local.dirty.begin() + old_dirty,
-                                    local.dirty.end());
-        auto ne = std::remove_if(
-            local.new_edges.begin() + old_size, local.new_edges.end(),
-            [&](const auto &ed) {
-              auto o = base_loop_edge_ordinal<Index>(dloop, ed.point_0,
-                                                     ed.point_1);
-              return o[0] != -1;
-            });
-        local.new_edges.erase_till_end(ne);
-      }
+      // Interior sub-edges that became boundary-coincident (split points
+      // landing on the loop, point-class merges) are erased by the final
+      // ordinal re-derivation at the end of the build.
       *cit++ = static_cast<Index>(local.new_edges.size() - old_size);
       *lit++ = static_cast<Index>(local.dirty.size() - old_dirty);
     }
