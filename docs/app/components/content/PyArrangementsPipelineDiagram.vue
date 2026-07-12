@@ -4,166 +4,107 @@
 <template>
   <div class="py-arrangements-pipeline-diagram my-8 flex flex-col items-center">
     <div class="diagram-box">
-      <svg viewBox="0 0 540 940" class="w-full">
+      <svg viewBox="0 0 540 880" class="w-full">
         <defs>
           <marker id="pyap-arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
             <polygon points="0 0, 10 3.5, 0 7" fill="currentColor" />
           </marker>
         </defs>
 
-        <!-- Stage 1: Inputs -->
+        <!-- Inputs -->
         <g transform="translate(270, 30)">
           <text x="0" y="-10" class="stage-label" text-anchor="middle">Inputs</text>
           <rect x="-240" y="0" width="480" height="74" rx="10" class="stage-box stage-container" />
-
           <g transform="translate(-220, 14)">
             <rect x="0" y="0" width="140" height="48" rx="6" class="stage-box stage-enriched" />
-            <text x="70" y="20" class="code-tiny" text-anchor="middle">
-              <tspan class="syn-var">cube0</tspan>
-            </text>
-            <text x="70" y="38" class="code-tiny" text-anchor="middle">
-              <tspan class="syn-type">closed</tspan>
-              <tspan opacity="0.55"> · tag </tspan>
-              <tspan class="syn-num">0</tspan>
-            </text>
+            <text x="70" y="20" class="code-tiny" text-anchor="middle"><tspan class="syn-var">straddle</tspan></text>
+            <text x="70" y="38" class="code-tiny" text-anchor="middle"><tspan class="syn-type">closed</tspan><tspan opacity="0.55"> · op </tspan><tspan class="syn-num">0</tspan></text>
           </g>
-
           <g transform="translate(-70, 14)">
             <rect x="0" y="0" width="140" height="48" rx="6" class="stage-box stage-enriched" />
-            <text x="70" y="20" class="code-tiny" text-anchor="middle">
-              <tspan class="syn-var">cube1</tspan>
-            </text>
-            <text x="70" y="38" class="code-tiny" text-anchor="middle">
-              <tspan class="syn-type">closed</tspan>
-              <tspan opacity="0.55"> · tag </tspan>
-              <tspan class="syn-num">1</tspan>
-            </text>
+            <text x="70" y="20" class="code-tiny" text-anchor="middle"><tspan class="syn-var">floaters</tspan></text>
+            <text x="70" y="38" class="code-tiny" text-anchor="middle"><tspan class="syn-type">closed</tspan><tspan opacity="0.55"> · ops </tspan><tspan class="syn-num">1,2</tspan></text>
           </g>
-
           <g transform="translate(80, 14)">
             <rect x="0" y="0" width="140" height="48" rx="6" class="stage-box stage-enriched" />
-            <text x="70" y="20" class="code-tiny" text-anchor="middle">
-              <tspan class="syn-var">knife</tspan>
-            </text>
-            <text x="70" y="38" class="code-tiny" text-anchor="middle">
-              <tspan class="syn-type">open plane</tspan>
-              <tspan opacity="0.55"> · tag </tspan>
-              <tspan class="syn-num">2</tspan>
-            </text>
+            <text x="70" y="20" class="code-tiny" text-anchor="middle"><tspan class="syn-var">knife</tspan></text>
+            <text x="70" y="38" class="code-tiny" text-anchor="middle"><tspan class="syn-type">sheet</tspan><tspan opacity="0.55"> · op </tspan><tspan class="syn-num">3</tspan></text>
           </g>
         </g>
 
-        <!-- Arrow 1 -->
         <path d="M 270 110 L 270 163" class="arrow-line" marker-end="url(#pyap-arrow)" />
         <text x="278" y="143" class="step-label">
-          <tspan class="syn-ns">tf</tspan><tspan>.</tspan><tspan class="syn-fn">mesh_arrangements</tspan>
+          <tspan class="syn-ns">tf</tspan><tspan>.</tspan><tspan class="syn-fn">CsgGraph</tspan><tspan>([...], </tspan><tspan class="syn-var">sheets</tspan><tspan>=[</tspan><tspan class="syn-num">3</tspan><tspan>])</tspan>
         </text>
 
-        <!-- Stage 2: Arrangement -->
+        <!-- One build -->
         <g transform="translate(270, 195)">
-          <text x="0" y="-10" class="stage-label" text-anchor="middle">Arrangement</text>
-          <rect x="-240" y="0" width="480" height="62" rx="8" class="stage-box" />
+          <text x="0" y="-10" class="stage-label" text-anchor="middle">CSG graph — built once, queried three ways</text>
+          <rect x="-240" y="0" width="480" height="52" rx="8" class="stage-box" />
           <text x="-225" y="22" class="code-tiny">
-            <tspan class="syn-var">arr</tspan>
-            <tspan opacity="0.55"> — merged mesh, every face split at every intersection</tspan>
+            <tspan class="syn-var">graph</tspan>
+            <tspan opacity="0.55"> — arrangement + domain classification</tspan>
           </text>
-          <text x="-225" y="42" class="code-tiny">
-            <tspan class="syn-var">tag_labels</tspan><tspan opacity="0.55">[f] · </tspan><tspan class="syn-var">face_labels</tspan><tspan opacity="0.55">[f]</tspan>
-          </text>
+          <text x="-225" y="40" class="code-tiny" opacity="0.55">every query below reuses this build</text>
         </g>
 
-        <!-- Arrow 2 -->
-        <path d="M 270 263 L 270 316" class="arrow-line" marker-end="url(#pyap-arrow)" />
-        <text x="278" y="296" class="step-label">
-          <tspan class="syn-ns">tf</tspan><tspan>.</tspan><tspan class="syn-fn">cleaned</tspan>
-          <tspan opacity="0.55">  +  </tspan>
-          <tspan class="syn-var">tag_labels</tspan><tspan>[</tspan><tspan class="syn-var">kept_faces</tspan><tspan>]</tspan>
+        <!-- Path 1: boolean mesh -->
+        <path d="M 270 253 L 270 306" class="arrow-line" marker-end="url(#pyap-arrow)" />
+        <text x="278" y="286" class="step-label">
+          <tspan class="syn-var">graph</tspan><tspan>.</tspan><tspan class="syn-fn">mesh</tspan><tspan>(</tspan><tspan class="syn-var">solids</tspan><tspan> - </tspan><tspan class="syn-fn">op</tspan><tspan>(</tspan><tspan class="syn-num">3</tspan><tspan>))</tspan>
         </text>
-
-        <!-- Stage 3: Cleaned -->
-        <g transform="translate(270, 348)">
-          <text x="0" y="-10" class="stage-label" text-anchor="middle">Cleaned + reindexed tags</text>
-          <rect x="-240" y="0" width="480" height="62" rx="8" class="stage-box" />
+        <g transform="translate(270, 338)">
+          <text x="0" y="-10" class="stage-label" text-anchor="middle">Path 1 — boolean mesh</text>
+          <rect x="-240" y="0" width="480" height="52" rx="8" class="stage-box stage-enriched" />
           <text x="-225" y="22" class="code-tiny">
-            <tspan class="syn-var">arr</tspan>
-            <tspan opacity="0.55"> — merged vertices, dropped degenerate &amp; duplicate faces</tspan>
+            <tspan class="syn-var">above_mesh</tspan><tspan opacity="0.55"> / </tspan><tspan class="syn-var">below_mesh</tspan>
+            <tspan opacity="0.55"> — one closed, capped mesh per side</tspan>
           </text>
-          <text x="-225" y="42" class="code-tiny">
-            <tspan class="syn-var">tag_labels</tspan><tspan opacity="0.55"> aligned to surviving faces via </tspan><tspan class="syn-var">kept_faces</tspan>
-          </text>
+          <text x="-225" y="40" class="code-tiny" opacity="0.55">when the sides are all you need</text>
         </g>
 
-        <!-- Arrow 3 -->
-        <path d="M 270 416 L 270 469" class="arrow-line" marker-end="url(#pyap-arrow)" />
-        <text x="278" y="449" class="step-label">
-          <tspan class="syn-ns">tf</tspan><tspan>.</tspan><tspan class="syn-fn">domain_labels</tspan>
+        <!-- Path 2: domains by expression -->
+        <path d="M 270 396 L 270 449" class="arrow-line" marker-end="url(#pyap-arrow)" />
+        <text x="278" y="429" class="step-label">
+          <tspan class="syn-var">graph</tspan><tspan>.</tspan><tspan class="syn-fn">domains</tspan><tspan>(</tspan><tspan class="syn-var">solids</tspan><tspan> - </tspan><tspan class="syn-fn">op</tspan><tspan>(</tspan><tspan class="syn-num">3</tspan><tspan>))</tspan>
         </text>
-
-        <!-- Stage 4: Domain labels -->
-        <g transform="translate(270, 501)">
-          <text x="0" y="-10" class="stage-label" text-anchor="middle">Domain labels</text>
-          <rect x="-240" y="0" width="480" height="100" rx="8" class="stage-box" />
+        <g transform="translate(270, 481)">
+          <text x="0" y="-10" class="stage-label" text-anchor="middle">Path 2 — domains by expression</text>
+          <rect x="-240" y="0" width="480" height="52" rx="8" class="stage-box stage-enriched" />
           <text x="-225" y="22" class="code-tiny">
-            <tspan class="syn-var">labels_2d</tspan><tspan>[</tspan><tspan class="syn-var">f</tspan><tspan>, </tspan><tspan class="syn-num">0</tspan><tspan>]</tspan>
-            <tspan opacity="0.55"> — domain containing f with </tspan>
-            <tspan class="syn-type">reversed winding</tspan>
+            <tspan class="syn-var">cells</tspan><tspan opacity="0.55"> — the selected volumes, individually watertight</tspan>
           </text>
-          <text x="-225" y="42" class="code-tiny">
-            <tspan class="syn-var">labels_2d</tspan><tspan>[</tspan><tspan class="syn-var">f</tspan><tspan>, </tspan><tspan class="syn-num">1</tspan><tspan>]</tspan>
-            <tspan opacity="0.55"> — domain containing f with </tspan>
-            <tspan class="syn-type">forward winding</tspan>
-          </text>
-          <text x="-225" y="62" class="code-tiny">
-            <tspan class="syn-var">n_domains</tspan>
-            <tspan opacity="0.55"> — count of bounded interior regions</tspan>
-          </text>
-          <text x="-225" y="82" class="code-tiny" opacity="0.55">
-            flags: <tspan class="syn-var">ignore_open_fragments</tspan><tspan>=</tspan><tspan class="syn-num">True</tspan>, <tspan class="syn-var">exclude_outer_shell</tspan><tspan>=</tspan><tspan class="syn-num">True</tspan>
-          </text>
+          <text x="-225" y="40" class="code-tiny" opacity="0.55">ids stable across queries on one graph</text>
         </g>
 
-        <!-- Arrow 4 -->
-        <path d="M 270 607 L 270 660" class="arrow-line" marker-end="url(#pyap-arrow)" />
-        <text x="278" y="640" class="step-label">
-          <tspan class="syn-ns">tf</tspan><tspan>.</tspan><tspan class="syn-fn">split_into_domains</tspan>
+        <!-- Path 3: domains by hand -->
+        <path d="M 270 539 L 270 592" class="arrow-line" marker-end="url(#pyap-arrow)" />
+        <text x="278" y="572" class="step-label">
+          <tspan class="syn-var">graph</tspan><tspan>.</tspan><tspan class="syn-fn">domains</tspan><tspan>(</tspan><tspan class="syn-var">return_index_map</tspan><tspan>=</tspan><tspan class="syn-num">True</tspan><tspan>)</tspan>
         </text>
-
-        <!-- Stage 5: Volumes -->
-        <g transform="translate(270, 692)">
-          <text x="0" y="-10" class="stage-label" text-anchor="middle">Volumes</text>
-          <rect x="-240" y="0" width="480" height="80" rx="8" class="stage-box stage-enriched" />
+        <g transform="translate(270, 624)">
+          <text x="0" y="-10" class="stage-label" text-anchor="middle">Path 3 — domains by hand</text>
+          <rect x="-240" y="0" width="480" height="72" rx="8" class="stage-box stage-enriched" />
           <text x="-225" y="22" class="code-tiny">
-            <tspan class="syn-var">volumes</tspan><tspan>[</tspan><tspan class="syn-var">i</tspan><tspan>]</tspan>
-            <tspan opacity="0.55"> — closed · manifold · outward-oriented submesh</tspan>
+            <tspan class="syn-var">cells</tspan><tspan opacity="0.55">, </tspan><tspan class="syn-var">ids</tspan><tspan opacity="0.55">, </tspan><tspan class="syn-var">imap</tspan><tspan>.</tspan><tspan class="syn-var">inclusion</tspan>
+            <tspan opacity="0.55"> — (n_cells, n_ops) bool</tspan>
           </text>
-          <text x="-225" y="42" class="code-tiny">
-            <tspan class="syn-var">comp_labels</tspan><tspan>[</tspan><tspan class="syn-var">i</tspan><tspan>]</tspan>
-            <tspan opacity="0.55"> — domain id of </tspan>
-            <tspan class="syn-var">volumes</tspan><tspan>[</tspan><tspan class="syn-var">i</tspan><tspan>]</tspan>
-          </text>
-          <text x="-225" y="62" class="code-tiny" opacity="0.55">
-            side-0 emissions reverse the winding · side-1 emissions keep it
-          </text>
+          <text x="-225" y="42" class="code-tiny" opacity="0.55">every cell classified against every operand</text>
+          <text x="-225" y="60" class="code-tiny" opacity="0.55">sheet column = behind the sheet's normal</text>
         </g>
 
-        <!-- Arrow 5 -->
-        <path d="M 270 778 L 270 831" class="arrow-line" marker-end="url(#pyap-arrow)" />
-        <text x="278" y="811" class="step-label">
-          <tspan class="syn-fn">np.unique</tspan>(<tspan class="syn-var">labels_2d</tspan>[<tspan class="syn-var">knife</tspan>, <tspan class="syn-num">0</tspan><tspan>/</tspan><tspan class="syn-num">1</tspan>])
+        <path d="M 270 702 L 270 755" class="arrow-line" marker-end="url(#pyap-arrow)" />
+        <text x="278" y="735" class="step-label">
+          <tspan class="syn-var">below</tspan><tspan> = </tspan><tspan class="syn-var">imap</tspan><tspan>.</tspan><tspan class="syn-var">inclusion</tspan><tspan>[:, </tspan><tspan class="syn-num">3</tspan><tspan>]</tspan>
         </text>
-
-        <!-- Stage 6: Side selection -->
-        <g transform="translate(270, 863)">
-          <text x="0" y="-10" class="stage-label" text-anchor="middle">Signed side of the knife</text>
-          <rect x="-240" y="0" width="480" height="62" rx="8" class="stage-box stage-enriched" />
+        <g transform="translate(270, 787)">
+          <text x="0" y="-10" class="stage-label" text-anchor="middle">Selection is a mask</text>
+          <rect x="-240" y="0" width="480" height="52" rx="8" class="stage-box stage-enriched" />
           <text x="-225" y="22" class="code-tiny">
-            <tspan class="syn-var">above_ids</tspan>
-            <tspan opacity="0.55"> — domains receiving the knife with reversed winding</tspan>
+            <tspan class="syn-var">above</tspan><tspan> = ~</tspan><tspan class="syn-var">below</tspan>
+            <tspan opacity="0.55"> — any boolean combination, no new query</tspan>
           </text>
-          <text x="-225" y="42" class="code-tiny">
-            <tspan class="syn-var">below_ids</tspan>
-            <tspan opacity="0.55"> — domains receiving the knife with forward winding</tspan>
-          </text>
+          <text x="-225" y="40" class="code-tiny" opacity="0.55">same cells as the path-2 expressions, by stable ids</text>
         </g>
       </svg>
     </div>

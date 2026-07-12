@@ -452,15 +452,35 @@ tf::parallel_for_each(range, func);              // always parallel
 tf::parallel_for_each(range, func, tf::checked);  // sequential if size < 1000
 ```
 
-### 7.4 Per-Task State
+### 7.4 Local State in Parallel Work
+
+**The rule: never construct scratch containers inside a per-element
+lambda.** A `small_vector`/`buffer` built per element allocates and
+destroys once per element; every parallel primitive has a form that
+gives you per-chunk (per-TBB-task) local state constructed once and
+reused across the chunk's elements. Pick by what the loop produces:
+
+| Need | Primitive | Local state |
+|--|--|--|
+| Side effects only, scratch needed | `parallel_for_each(r, f, State{})` | `f(elem, state)`; `state` copied once per chunk — clear and reuse it per element |
+| Variable-length output per element | `generic_generate(r, out, f)` | `f(elem, buffer)`; per-chunk buffer, results spliced in element order |
+| Offsets + data blocks per element | `generate_offset_blocks(r, offsets, data, f)` | same shape, emits offset-block structure |
+| Reduce to one result, order irrelevant | `block_reduce(r, init, local, task, agg)` | `local_t` per chunk, `agg` merges |
+| Emission must be deterministic / ordered | `block_reduce_sequenced_aggregate(r, init, local_t{}, task, agg)` | `task(chunk_range, local)` fills locals in parallel; `agg(local, ...)` runs sequenced in range order — the determinism-gate workhorse |
+| Callback API with no state slot (`tf::search`, ray casts, dual-tree traversal) | `local_buffer<T>` / `local_vector<T>` / `local_value<T>` | one slot per TBB thread (cache-aligned), merge via `to_buffer()`. LAST RESORT: every algorithm above threads local state through — use these only when the API gives the callback no way to receive it |
 
 ```cpp
-tf::parallel_for_each(range, [](auto& element, auto& state) {
-    // state is a per-task COPY
-}, initial_state);
+struct local_t { tf::small_vector<seg_t, 16> segs; };
+tf::parallel_for_each(range, [&](auto &elem, local_t &local) {
+    local.segs.clear();   // reuse capacity across the chunk
+    ...
+}, local_t{});
 ```
 
-Each TBB task gets its own copy of `state`, enabling accumulation without locks.
+The pipeline builders (`build_loops`, `split_edges`,
+`strip_base_loop_edges`) are the reference pattern: a `local_t` struct
+of reusable buffers + `block_reduce_sequenced_aggregate` when output
+order matters.
 
 ### 7.5 Grouping Utilities
 

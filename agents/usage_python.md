@@ -274,6 +274,22 @@ pairs = tf.gather_intersecting_ids(mesh_a, mesh_b)    # (M, 2) ID pairs
     mesh, scalars, cut_values, return_curves=True, selected_bands=[1, 3])
 ```
 
+### CSG graph: build once, query many (N-ary)
+
+```python
+graph = tf.CsgGraph([a, b, c], sheets=[2], triangulation="refined_cdt")
+
+faces, points = graph.mesh(tf.op(0) - tf.op(1))       # any expression: | & - ~
+full = graph.mesh()                                    # full arrangement mesh
+(f, p), tags, fl = graph.mesh(tf.op(0) | 1, return_source_ids=True)
+(f, p), imap = graph.mesh(tf.op(0) - 1, return_index_map=True)
+
+cells, ids = graph.domains()                           # every kept domain
+paths, curve_points = graph.intersection_curves()
+graph.forms; graph.sheets; graph.created_points        # remembered state
+```
+
+
 ---
 
 ## 5. Topology

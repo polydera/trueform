@@ -12,8 +12,14 @@ Read these for the engineering standards and patterns you MUST follow:
 - @agents/cpp_engineering_philosophy.md — Parallelism, range composition, sentinel maps, naming, memory discipline
 - @agents/cpp_core_architecture.md — Type system, view/buffer split, policy composition, parallel algorithms
 - @agents/feature_lifecycle.md — End-to-end checklist for adding a feature across all languages
+- @agents/working_method.md — How work is orchestrated: debugging discipline, measurement, determinism, landing
 
 ## Critical Rules
+
+### Portability (MANDATORY before landing any C++)
+- Run `python3 python/tools/portability_scan.py` from the repo root and land only on a clean run. It enforces the MSVC hard rules from @agents/cpp_engineering_philosophy.md section 10 — clang accepts every one of these silently; they only fail on Windows.
+- Never use compiler intrinsics (`__int128`, `__builtin_*`); `tf::exact` owns wide integers (`int128`, `int256`, `meta<Int>::T1/T2`) portably.
+- No local `constexpr` odr-used in a lambda; no structured-binding names through default `[&]`/`[=]` captures; ASCII-only test names; `tf::pi<T>` not `M_PI`.
 
 ### Parallelism
 - **Parallel by default.** Use `tf::parallel_for_each`, `tf::parallel_copy`, `tf::parallel_fill`, `tf::parallel_iota` — NEVER `std::copy`, `std::fill`, `std::iota`, or raw loops for bulk operations.
@@ -41,6 +47,21 @@ Read these for the engineering standards and patterns you MUST follow:
 - No structural scaffolding (`// ---- Step 1: ... ----`). If a function needs that to be readable, split it.
 - Don't add docstrings/comments to code you didn't change.
 
+### Determinism
+- Same input → byte-identical output. Parallel emission goes through
+  sequenced aggregation (`blocked_reduce_sequenced_aggregate`); sort
+  comparators break ties by index, never by thread timing.
+
+### Performance levers (things to TRY — measure on the real workload, keep only wins)
+- Code that may run inside TBB workers: size-gate its internal parallel
+  primitives (serial under ~2k elements; see `tf::cdt_impl::fill_auto`/
+  `iota_auto`/`sort_auto`). Nested parallel dispatch on tiny inputs costs
+  more than the work.
+- Structures rebuilt many times: per-build locals become member scratch,
+  `clear()` keeps capacity — repeated small builds go allocation-free.
+- Structural wins first (locality, ordering, one-pass); predicates and
+  micro-filters last.
+
 ### Memory
 - No raw `new`/`delete`. Use `tf::buffer<T>` (trivially destructible only), `tf::small_vector<T, N>`.
 - Sentinel-based maps: allocate `buffer[n]`, fill with sentinel, write-once per key, clear by walking used entries.
@@ -54,6 +75,21 @@ Read these for the engineering standards and patterns you MUST follow:
 - Don't add unnecessary abstractions. Three similar lines > premature helper function.
 - Don't add error handling for scenarios that can't happen.
 - Don't use hash maps for integer-keyed lookups.
+
+## Build & Test
+
+```bash
+# configure once (out-of-tree; tests OFF by default)
+cmake -B build-tests -DCMAKE_BUILD_TYPE=Release -DTF_BUILD_TESTS=ON
+# build — ALWAYS parallel
+cmake --build build-tests --target trueform_<module>_tests --parallel 16
+# run (Catch2 binaries, one per module)
+./build-tests/tests/<module>/trueform_<module>_tests
+```
+
+Suites: clean, core, csg, cut, exact, geometry, intersect, io, reindex,
+remesh, spatial, topology. Run every suite whose module you touched;
+run all of them before landing a lib change.
 
 ## When Adding a Feature
 Follow the checklist in @agents/feature_lifecycle.md:

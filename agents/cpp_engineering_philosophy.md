@@ -470,7 +470,7 @@ auto function_name(const tf::polygons<Policy> &polygons) {
 
 The library is developed on clang/AppleClang but must build on MSVC (Windows CI). These are compiler-specific traps that clang accepts silently and only fail on Windows — so they can't be caught by building locally. Treat them as hard rules.
 
-1. **No local `constexpr` variable odr-used inside a lambda body.** MSVC rejects it. Keep a `constexpr` local to `if constexpr` statements only, or hoist it to a runtime local before the lambda. Template non-type parameters (e.g. `bool WantLabels`) are fine — they're constants from the enclosing template, not captured.
+1. **No local `constexpr` variable referenced inside a lambda body -- ANY reference, `if constexpr` conditions included.** MSVC rejects it ("read of a variable outside its lifetime"); proven 2026-07 on `tangential_relaxation.hpp` where the only use was `if constexpr (HasMask)` inside the lambda. Declare the `constexpr` *inside* the lambda body that uses it (preferred -- it stays a constant and there is nothing to capture), or hoist it to a runtime local before the lambda when several scopes share it. Template non-type parameters (e.g. `bool WantLabels`) are fine — they're constants from the enclosing template, not captured.
    ```cpp
    constexpr std::size_t N = ...;
    auto f = [&] { use(N); };        // BAD on MSVC (odr-uses constexpr local N)

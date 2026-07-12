@@ -303,6 +303,21 @@ const { mesh, labels, faceLabels, curves } = tf.isobands(mesh, scalars, cutValue
 });
 ```
 
+### CSG graph: build once, query many (N-ary)
+
+```typescript
+const graph = tf.csgGraph([a, b, c], { triangulation: "refinedCdt" });
+// or off-thread: await tf.async.csgGraph([a, b, c])
+
+const diff = graph.mesh(tf.op(0).sub(tf.op(1)));       // .or/.and/.sub/.not
+const full = graph.mesh();                              // full arrangement mesh
+const lab  = graph.mesh(tf.op(0).or(1), { returnSourceIds: true });
+const doms = graph.domains({ returnIndexMap: true });   // opts in the expr slot
+const seams = graph.intersectionCurves();
+graph.delete();                                         // explicit lifetime
+```
+
+
 ---
 
 ## 7. Mesh Analysis

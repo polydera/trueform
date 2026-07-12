@@ -195,6 +195,23 @@ Many algorithms require a tree, face_membership, or manifold_edge_link. If you d
 // SLOW: boolean rebuilds tree + fm + mel internally for each call
 auto [r1, l1, f1] = tf::make_boolean(poly0, poly1, tf::boolean_op::merge);
 auto [r2, l2, f2] = tf::make_boolean(poly0, poly2, tf::boolean_op::merge);
+```
+
+### CSG graph: build once, query many (N-ary)
+
+```cpp
+// One arrangement of N operands; every expression after is a cheap query.
+auto graph = tf::make_csg_graph(forms);   // forms: range of tagged polygons
+// optional: sheets range, intersect_config, tf::triangulation_type::refined_cdt
+
+auto diff  = tf::make_csg_mesh(graph, tf::csg::op(0) - tf::csg::op(1));
+auto full  = tf::make_csg_mesh(graph);    // full arrangement mesh, no selection
+auto [m, tags, faces] = tf::make_csg_mesh(
+    graph, tf::csg::op(0) | tf::csg::op(1), tf::return_source_ids);
+
+auto [cells, ids] = tf::make_csg_domains(graph);        // every kept domain
+auto seams = tf::make_intersection_curves(graph);        // cross-tag polylines
+
 
 // FAST: build once, reuse across multiple operations
 tf::aabb_tree<int, float, 3> tree0(poly0, tf::config_tree(4, 4));

@@ -11,6 +11,7 @@ You are a senior engineer adding Python bindings for trueform. You understand th
 Read these for the binding patterns and dispatch system:
 - @agents/python_layer.md — Nanobind patterns, dtype dispatch, numpy interop, wrapper layer
 - @agents/feature_lifecycle.md — End-to-end checklist for adding a feature
+- @agents/working_method.md — How work is orchestrated: debugging discipline, measurement, determinism, landing
 
 ## Binding Pattern
 
@@ -114,3 +115,32 @@ if swapped: labels = 1 - labels
 - Search `python/src/cut/boolean*.cpp` for the canonical binding example
 - Search `python/src/trueform/_cut/boolean.py` for the canonical wrapper example
 - Search `python/include/trueform/python/util/make_numpy_array.hpp` for array return patterns
+
+## Stateful class bindings
+
+For an opaque stateful object (reference: `CsgGraph`,
+`python/include/trueform/python/csg/csg_graph_impl.hpp`): bind
+`nb::class_` per type combo; store the input `mesh_wrapper`s by value so
+their `nb::ndarray` members keep numpy alive; keep the Python facade's
+queryable state (input objects, config) on the Python side. Wide returns
+= frozen dataclasses. In package code import the extension as
+`from .. import _trueform`.
+
+## Build & Test
+
+```bash
+# dev build (out-of-tree; nanobind module + copied .py package)
+cmake -B build_python -DCMAKE_BUILD_TYPE=Release -DTF_BUILD_PYTHON=ON
+cmake --build build_python --target _trueform trueform_copy_python_files --parallel 16
+# package build (from repo root, pyproject.toml)
+pip wheel . -w dist        # or: pip install .
+
+# tests — the interpreter MUST match the one CMake resolved
+# (CMakeCache.txt -> Python_EXECUTABLE; a mismatch fails with a
+# misleading "circular import: cannot import _trueform")
+PYTHONPATH=build_python/python/src <matching-python> python/tests/run_tests.py
+PYTHONPATH=build_python/python/src <matching-python> python/tests/test_<feature>.py   # single file
+```
+
+Tests live in `python/tests/test_*.py`, one file per feature, pytest
+inside (`__main__` runs `pytest.main`).

@@ -295,3 +295,29 @@ All `reindexed_*` functions have `return_index_map` variants.
 | `write_obj(polygons, path)` | `bool` | ASCII OBJ (parallel two-pass write) |
 
 Memory buffer variants accept `range<const char*, dynamic_size>` for in-memory parsing.
+
+## 11. csg/
+
+Build one arrangement of N operands, answer arbitrarily many boolean
+expressions against it. This supersedes chained `make_boolean` calls for
+anything N-ary or multi-query.
+
+| Function | Return | Description |
+|----------|--------|-------------|
+| `make_csg_graph(forms[, sheets], config, tf::triangulation_type)` | `csg_graph<...>` | The build: arrangement + inclusion classification + per-loop triangulation store + unified created-points table |
+| `tf::csg::op(i)` | `csg::expr` | Expression leaf; combine with `\|`, `&`, `-`, `~` |
+| `make_csg_mesh(graph, expr)` | `polygons_buffer` | Boolean result mesh; overloads: no-expr (full arrangement mesh), `tf::return_source_ids` (+ tag/face labels), `tf::return_index_map` (+ `mesh_arrangement_index_map`) |
+| `make_csg_domains(graph[, expr][, domain_config])` | `(cells, ids)` | One watertight mesh per kept domain; same `return_source_ids` / `return_index_map` overload set (`csg_domains_index_map`) |
+| `make_intersection_curves(graph)` | `curves_buffer` | Cross-tag seam polylines read off the graph (coincident walls excluded) |
+
+`tf::triangulation_type{cdt, refined_cdt}` selects the cut-surface store:
+plain constrained Delaunay per cut loop, or Ruppert quality refinement
+with boundary splits negotiated through shared dyadic records (watertight
+by ids across loops). Sheets (`is_sheet` operands) cut volumes through
+the same algebra without enclosing one.
+
+Topology additions backing this: `constrained_delaunay_triangulator`
+(incremental Bowyer–Watson/BRIO core, exact int predicates, region-parity
+labels, preserved or arranged constraint modes), `cdt_refiner`
+(Ruppert refinement with recorded dyadic constraint splits),
+`triangulation_type`, `make_cdt(..., split_constraints)`.

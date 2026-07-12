@@ -11,6 +11,7 @@ You are a senior engineer adding TypeScript bindings for trueform. You understan
 Read these for the binding patterns and thread-safety rules:
 - @agents/typescript_layer.md — WASM bindings, thread safety, async dispatcher, sync/async wrapper patterns
 - @agents/feature_lifecycle.md — End-to-end checklist for adding a feature
+- @agents/working_method.md — How work is orchestrated: debugging discipline, measurement, determinism, landing
 
 ## WASM Thread-Safety Rules (CRITICAL)
 
@@ -230,3 +231,28 @@ A bare `-> float` return on the lambda will silently downcast double results.
 - Search `typescript/cpp/src/` for binding examples
 - Search `typescript/src/` for wrapper patterns
 - The `cut/boolean_impl.hpp` + `cut/boolean_float{32,64}.cpp` triple is the canonical example of the per-real split
+
+## Stateful class bindings
+
+Second reference handle beside `wasm_mesh`: `wasm_csg_graph`
+(`typescript/cpp/src/csg/csg_graph_impl.hpp`) — shared_ptr two-layer
+handle whose `data_t` owns the input mesh handles and any identity
+objects that tagged views point into; `const` query methods so async
+captures need no `const_cast`; TS class holds user-facing state and
+registers with the FinalizationRegistry. For optional-expression APIs use
+the options-in-the-expression-slot discrimination (`splitExprArgs`),
+never a `null` placeholder.
+
+## Build & Test
+
+```bash
+cd typescript
+npm run build         # = node build.mjs: emcmake cmake -> trueform_wasm -> tsc -> esbuild
+npm run typecheck     # tsc --noEmit
+node tests/run.mjs    # full suite (register new test files here)
+node tests/test_<module>.mjs   # via run.mjs only — tests need the harness + built dist
+```
+
+Tests live in `typescript/tests/test_*.mjs` (describe/test/assert
+harness, manual `.delete()` on every result). The WASM build step is the
+slow one; `tsc` errors surface in the same `npm run build` run.

@@ -272,6 +272,26 @@ export * as async from './async';  // tf.async.booleanUnion(...)
 
 ---
 
+## Stateful graph bindings (the sealed-engine pattern)
+
+For expensive-build objects queried many times (canonical example:
+`CsgGraph`), mirror `wasm_mesh`'s two-layer handle:
+
+- `wasm_csg_graph<Real>` (`typescript/cpp/src/csg/csg_graph_impl.hpp`) is
+  a `shared_ptr<data_t>` handle; `data_t` owns the input `wasm_mesh`
+  handles (refcount keeps them alive), an identity transformation for
+  untransformed forms (views must not dangle), the tagged forms, and the
+  `tf::csg_graph`. Handle copies — including async lambda captures — share
+  one build.
+- Query methods are `const`, so async captures (`[g = g, ...]`) call
+  straight through with no `const_cast`.
+- The TS `CsgGraph` class holds forms/sheets/config as its own fields,
+  registers with the `FinalizationRegistry`, and exposes
+  `.delete()`/`[Symbol.dispose]` like `Mesh`.
+- Optional-expression ergonomics: options are accepted in the expression
+  slot and discriminated at runtime (`splitExprArgs`, the `cleaned()`
+  idiom) — never a `null` placeholder.
+
 ## 3. Testing Patterns
 
 ```javascript

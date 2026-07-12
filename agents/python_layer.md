@@ -230,6 +230,25 @@ from ._remesh import isotropic_remesh, decimate
 
 ---
 
+## Stateful graph bindings (the sealed-engine pattern)
+
+For expensive-build objects queried many times (canonical example:
+`CsgGraph`), bind an opaque wrapper class and keep all user-facing state
+on the Python side:
+
+- C++ `csg_graph_wrapper<Index, Real>` (`python/include/trueform/python/
+  csg/csg_graph_impl.hpp`) stores the input `std::vector<mesh_wrapper>`
+  by value — the wrappers' stored `nb::ndarray` members keep numpy alive,
+  no `keep_alive` policies needed — plus the tagged forms and the
+  `tf::csg_graph` built over them. Structures reuse
+  `build_intersect_structures_all` (parallel per-mesh, cache-aware).
+- The Python facade (`_csg/csg_graph.py`) remembers the forms list,
+  sheets, and config as its own members; only evaluation methods and
+  `created_points` call into C++. Wide returns use frozen dataclasses
+  (`MeshIndexMap`, `DomainsIndexMap`).
+- Import the extension in package code as `from .. import _trueform`
+  (a bare `import _trueform` does not resolve).
+
 ## 3. Testing Patterns
 
 ### pytest with parametrize

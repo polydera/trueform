@@ -1,149 +1,122 @@
-// Working with arrangements: domains, selection, and signed cuts.
+// Booleans and domains from one csg_graph build.
 //
-// Builds two overlapping cubes and a bisecting plane, computes the
-// arrangement, partitions it into watertight bounded domains, and uses
-// the plane's winding to split the resulting volumes into "above" and
-// "below" sets.
+// One scene -- a sphere straddling a knife plane declared a sheet, plus
+// two floaters that touch nothing -- queried three ways: the sides as
+// boolean meshes, the volumes individually via expression-selected
+// domains, and the same selection by hand from the inclusion matrix.
+//
+// Mirrors python/examples/arrangements.py on the Python side.
 
 #include <trueform/trueform.hpp>
 
-#include <algorithm>
+#include <array>
 #include <iostream>
 #include <string>
+#include <vector>
 
 int main() {
   using Index = int;
   using Real = float;
 
   // -------------------------------------------------------------------
-  // 1. Geometry: two overlapping cubes (closed) and a bisecting plane
-  //    (open). Cube 0 sits at x=-0.5, cube 1 at x=+0.5, plane lies on
-  //    z=0 with stored normal +Z.
+  // 1. Geometry: a sphere straddling z=0, one floater above, one below,
+  //    and a 4x4 knife plane on z=0 with stored normal +Z.
   // -------------------------------------------------------------------
-  auto cube0 = tf::make_box_mesh<Index>(Real(2), Real(2), Real(2));
-  auto cube1 = tf::make_box_mesh<Index>(Real(2), Real(2), Real(2));
+  auto straddle = tf::make_sphere_mesh<Index>(Real(1), 32, 32);
+  auto above_s = tf::make_sphere_mesh<Index>(Real(0.5), 32, 32);
+  auto below_s = tf::make_sphere_mesh<Index>(Real(0.5), 32, 32);
   auto plane = tf::make_plane_mesh<Index>(Real(4), Real(4));
 
-  auto f0 = tf::make_frame(tf::make_transformation_from_translation(
-      tf::vector<Real, 3>{Real(-0.5), Real(0), Real(0)}));
-  auto f1 = tf::make_frame(tf::make_transformation_from_translation(
-      tf::vector<Real, 3>{Real(0.5), Real(0), Real(0)}));
   auto fid = tf::make_frame(tf::make_transformation_from_translation(
       tf::vector<Real, 3>{Real(0), Real(0), Real(0)}));
+  auto fa = tf::make_frame(tf::make_transformation_from_translation(
+      tf::vector<Real, 3>{Real(0), Real(0), Real(2)}));
+  auto fb = tf::make_frame(tf::make_transformation_from_translation(
+      tf::vector<Real, 3>{Real(0), Real(0), Real(-2)}));
 
-  auto p0 = cube0.polygons() | tf::tag(f0);   // tag 0
-  auto p1 = cube1.polygons() | tf::tag(f1);   // tag 1
-  auto p_knife = plane.polygons() | tf::tag(fid);  // tag 2 (the knife)
+  auto p0 = straddle.polygons() | tf::tag(fid);  // op 0: straddles
+  auto p1 = above_s.polygons() | tf::tag(fa);    // op 1: floats above
+  auto p2 = below_s.polygons() | tf::tag(fb);    // op 2: floats below
+  auto p_knife = plane.polygons() | tf::tag(fid);  // op 3: the knife
 
-  decltype(p0) forms[] = {p0, p1, p_knife};
-
-  // -------------------------------------------------------------------
-  // 2. Arrangement: split every face at every intersection and merge
-  //    into a single triangle mesh. tag_labels[f] records which input
-  //    operand face f came from (0, 1, or 2 here).
-  // -------------------------------------------------------------------
-  auto [arr_raw, tag_labels_raw, face_labels_raw] =
-      tf::make_mesh_arrangements(tf::make_range(forms, forms + 3));
-
-  std::cout << "=== Arrangement ===" << std::endl;
-  std::cout << "Faces:  " << arr_raw.faces().size() << std::endl;
-  std::cout << "Points: " << arr_raw.points().size() << std::endl;
+  std::vector<decltype(p0)> forms{p0, p1, p2, p_knife};
 
   // -------------------------------------------------------------------
-  // 3. Clean coincident vertices. The per-face tag_labels array goes
-  //    stale when cleaning drops duplicate faces, so we reindex it
-  //    through the face index map (kept_ids gives the surviving old
-  //    ids in new order).
+  // 2. One build. Declaring the plane a sheet makes operand 3 an
+  //    oriented separator: its bit means "behind the sheet's normal"
+  //    (-Z here), so the knife cuts volumes without enclosing one.
   // -------------------------------------------------------------------
-  auto [arr, face_im, point_im] =
-      tf::cleaned(arr_raw.polygons(), tf::epsilon<Real>, tf::return_index_map);
-  auto tag_labels = tf::reindexed(tf::make_range(tag_labels_raw), face_im);
-
-  std::cout << "\n=== Cleaned ===" << std::endl;
-  std::cout << "Faces:  " << arr.faces().size() << std::endl;
-  std::cout << "Points: " << arr.points().size() << std::endl;
+  std::array<int, 1> sheets{3};
+  auto graph =
+      tf::make_csg_graph(tf::make_range(forms), tf::make_range(sheets));
+  auto solids = tf::csg::merge(tf::csg::merge(0, 1), 2);
 
   // -------------------------------------------------------------------
-  // 4. Domain labels. ignore_open_fragments parks the plane's open
-  //    outer ring at the sentinel; exclude_outer_shell folds the
-  //    unbounded universe into the same sentinel. What remains is the
-  //    bounded interior domains.
+  // 3. The boolean path: one mesh per side. Each comes back closed --
+  //    the straddler's half capped by the knife, the floater whole --
+  //    as disjoint pieces of a single mesh.
   // -------------------------------------------------------------------
-  auto dl = tf::make_domain_labels(arr.polygons(),
-                                   tf::domain_config::ignore_open_fragments |
-                                   tf::domain_config::exclude_outer_shell);
-  std::cout << "\n=== Domain labels ===" << std::endl;
-  std::cout << "Bounded domains: " << dl.n_domains << std::endl;
+  auto above_mesh = tf::make_csg_mesh(graph, tf::csg::difference(solids, 3));
+  auto below_mesh =
+      tf::make_csg_mesh(graph, tf::csg::intersection(solids, 3));
+  std::cout << "=== Boolean meshes ===" << std::endl;
+  std::cout << "  solids - knife: vol="
+            << tf::signed_volume(above_mesh.polygons())
+            << " closed=" << tf::is_closed(above_mesh.polygons())
+            << std::endl;
+  std::cout << "  solids & knife: vol="
+            << tf::signed_volume(below_mesh.polygons())
+            << " closed=" << tf::is_closed(below_mesh.polygons())
+            << std::endl;
 
   // -------------------------------------------------------------------
-  // 5. Split into per-domain watertight outward-oriented submeshes.
-  //    comp_labels[i] is the domain id of volumes[i].
+  // 4. Domains by expression: the same volumes, individually.
   // -------------------------------------------------------------------
-  auto [volumes, comp_labels] = tf::split_into_domains(arr.polygons(), dl);
-  std::cout << "Volumes extracted: " << volumes.size() << std::endl;
+  auto [above_cells, above_ids] =
+      tf::make_csg_domains(graph, tf::csg::difference(solids, 3));
+  auto [below_cells, below_ids] =
+      tf::make_csg_domains(graph, tf::csg::intersection(solids, 3));
+  std::cout << "\n=== Domains by expression ===" << std::endl;
+  std::cout << "  above: " << above_cells.size() << " cells" << std::endl;
+  std::cout << "  below: " << below_cells.size() << " cells" << std::endl;
 
   // -------------------------------------------------------------------
-  // 6. Split the volumes by signed side of the knife.
-  //
-  //    labels[f, 0] = domain containing face f with reversed winding
-  //                   (the side f's stored normal points INTO).
-  //    labels[f, 1] = domain containing face f with forward winding.
-  //
-  //    The knife has tag 2 with stored normal +Z, so slot 0 yields the
-  //    "above" domain and slot 1 yields the "below" domain. Across all
-  //    interior knife faces we collect the unique domain ids — there
-  //    can be multiple per side when the knife cuts through several
-  //    closed regions (here: cube0-only, intersection, cube1-only).
+  // 5. Domains by hand: extract everything once, select by mask. The
+  //    knife's column is 3; behind its +Z normal = below.
   // -------------------------------------------------------------------
-  tf::buffer<Index> above_ids, below_ids;
-  tf::generic_generate(
-      tf::zip(tag_labels, dl.labels), std::tie(above_ids, below_ids),
-      [&](auto elem, auto &buffers) {
-        auto [tag, sides] = elem;
-        if (tag != Index(2)) return;
-        auto above = sides[0];
-        auto below = sides[1];
-        if (above >= dl.n_domains || below >= dl.n_domains) return;
-        auto &[ab, be] = buffers;
-        if (std::find(ab.begin(), ab.end(), above) == ab.end())
-          ab.push_back(above);
-        if (std::find(be.begin(), be.end(), below) == be.end())
-          be.push_back(below);
-      });
-  auto sort_unique = [](tf::buffer<Index> &b) {
-    tbb::parallel_sort(b.begin(), b.end());
-    b.erase_till_end(std::unique(b.begin(), b.end()));
-  };
-  sort_unique(above_ids);
-  sort_unique(below_ids);
-
-  std::cout << "\n=== Signed side of the knife ===" << std::endl;
-  std::cout << "Above (+normal): " << above_ids.size() << " volumes" << std::endl;
-  std::cout << "Below (-normal): " << below_ids.size() << " volumes" << std::endl;
+  auto [cells, ids, imap] =
+      tf::make_csg_domains(graph, tf::return_index_map);
+  tf::buffer<char> below;
+  below.allocate(cells.size());
+  std::size_t n_below = 0;
+  for (std::size_t k = 0; k < cells.size(); ++k) {
+    below[k] = imap.inclusion[k][3] ? char(1) : char(0);
+    n_below += static_cast<std::size_t>(below[k]);
+  }
+  std::cout << "\n=== Domains by hand ===" << std::endl;
+  std::cout << "  " << cells.size() << " cells; above "
+            << cells.size() - n_below << ", below " << n_below << std::endl;
 
   // -------------------------------------------------------------------
-  // 7. Write each side's volumes to disk for visualisation.
+  // 6. Write and verify. Each cell is closed and manifold by
+  //    construction.
   // -------------------------------------------------------------------
-  tf::buffer<Index> domain_to_idx;
-  domain_to_idx.allocate_and_initialize(
-      static_cast<std::size_t>(dl.n_domains), Index(-1));
-  tf::invert_map_with_nones(comp_labels, domain_to_idx, Index(-1));
-
-  auto write_side = [&, &vols = volumes](const tf::buffer<Index> &ids,
-                                          const char *prefix) {
-    for (std::size_t k = 0; k < ids.size(); ++k) {
-      auto v_idx = domain_to_idx[static_cast<std::size_t>(ids[k])];
-      const auto &vol = vols[static_cast<std::size_t>(v_idx)];
-      auto fname = std::string(prefix) + "_" + std::to_string(k) + ".stl";
-      tf::write_stl(vol.polygons(), fname);
-      std::cout << "  wrote " << fname << " (faces=" << vol.faces().size()
-                << ", closed=" << tf::is_closed(vol.polygons())
-                << ", manifold=" << tf::is_manifold(vol.polygons()) << ")"
+  auto write_side = [&, &cs = cells](bool want_below, const char *prefix) {
+    std::size_t k = 0;
+    for (std::size_t i = 0; i < cs.size(); ++i) {
+      if (bool(below[i]) != want_below)
+        continue;
+      const auto &cell = cs[i];
+      auto fname = std::string(prefix) + "_" + std::to_string(k++) + ".stl";
+      tf::write_stl(cell.polygons(), fname);
+      std::cout << "  wrote " << fname << " (faces=" << cell.faces().size()
+                << ", closed=" << tf::is_closed(cell.polygons())
+                << ", manifold=" << tf::is_manifold(cell.polygons()) << ")"
                 << std::endl;
     }
   };
-  write_side(above_ids, "above");
-  write_side(below_ids, "below");
+  write_side(false, "above");
+  write_side(true, "below");
 
   return 0;
 }
