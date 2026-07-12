@@ -67,8 +67,12 @@ auto ray_cast(const tf::tree_like<TreePolicy> &tree,
           std::copy(nexts.begin(), nexts.end(), std::back_inserter(stack));
         }
       } else {
-        for (const auto &id : tf::make_range(ids.begin() + data[0], data[1]))
-          max_t = result.update(id, intersect_f(ray, id));
+        for (const auto &id :
+             tf::make_range(ids.begin() + data[0], data[1])) {
+          auto info = intersect_f(ray, id);
+          if (info)
+            max_t = result.update(id, info);
+        }
       }
     }
   }

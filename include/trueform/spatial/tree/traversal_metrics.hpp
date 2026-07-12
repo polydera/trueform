@@ -18,6 +18,9 @@
 #include "../../core/obbrss_like.hpp"
 #include "../../core/rss_from.hpp"
 #include "../../core/rss_like.hpp"
+#include <algorithm>
+#include <array>
+#include <limits>
 #include <utility>
 
 namespace tf::spatial {
@@ -36,9 +39,30 @@ namespace tf::spatial {
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto traversal_metrics(const tf::aabb_like<Dims, Policy0> &a,
                        const tf::aabb_like<Dims, Policy1> &b) {
-  auto min_d2 = tf::distance2(a, b);
-  auto max_d2 = std::max((a.min - b.min).length2(), (a.max - b.max).length2());
-  return std::make_pair(min_d2, max_d2);
+  using T = tf::coordinate_type<Policy0, Policy1>;
+  // max_d2 is MINMAXDIST^2 (Corral et al.), the pruning upper bound. Each
+  // candidate is summed directly from non-negative terms: subtractive forms
+  // cancel in floating point and can round the bound below min_d2.
+  std::array<T, Dims> near2{};
+  std::array<T, Dims> far2{};
+  T min_d2 = T{};
+  for (std::size_t i = 0; i < Dims; ++i) {
+    const T near_i =
+        std::max(std::max(T(a.min[i] - b.max[i]), T(b.min[i] - a.max[i])), T{});
+    const T far_i = std::max(T(a.max[i] - b.min[i]), T(b.max[i] - a.min[i]));
+    near2[i] = near_i * near_i;
+    far2[i] = far_i * far_i;
+    min_d2 += near2[i];
+  }
+  T max_d2 = std::numeric_limits<T>::max();
+  for (std::size_t k = 0; k < Dims; ++k) {
+    T cand = near2[k];
+    for (std::size_t i = 0; i < Dims; ++i)
+      if (i != k)
+        cand += far2[i];
+    max_d2 = std::min(max_d2, cand);
+  }
+  return std::make_pair(min_d2, std::max(max_d2, min_d2));
 }
 
 // ============================================================================
@@ -54,14 +78,22 @@ auto traversal_metrics(const tf::rss_like<Dims, Policy0> &rss0,
   static_assert(Dims == 2 || Dims == 3,
                 "traversal_metrics(rss) is implemented for 2D and 3D only.");
 
+  using T = tf::coordinate_type<Policy0, Policy1>;
   auto min_d2 = tf::distance2(rss0, rss1);
-
-  // Use the dimension-generic center() method
-  auto center0 = rss0.center();
-  auto center1 = rss1.center();
-  auto max_d2 = std::max(min_d2, (center1 - center0).length2());
-
-  return std::make_pair(min_d2, max_d2);
+  // max_d2: enclosing-sphere upper bound. Each RSS lies in a sphere about its
+  // center of radius (half rectangle diagonal + sweep radius), so no pair
+  // exceeds the centers' distance plus the two radii -- sound, and cheap.
+  auto enclosing_radius = [](const auto &rss) {
+    using CT = typename std::decay_t<decltype(rss)>::coordinate_type;
+    CT diagonal2 = CT{};
+    for (std::size_t j = 0; j + 1 < Dims; ++j)
+      diagonal2 += rss.length[j] * rss.length[j];
+    return tf::sqrt(diagonal2) * CT(0.5) + rss.radius;
+  };
+  const T md = tf::sqrt((rss1.center() - rss0.center()).length2()) +
+               T(enclosing_radius(rss0)) + T(enclosing_radius(rss1));
+  // sqrt/square rounding can dip md^2 below min_d2 for degenerate pairs
+  return std::make_pair(min_d2, std::max(md * md, min_d2));
 }
 
 /// @brief Compute traversal metrics for dual-tree queries.
