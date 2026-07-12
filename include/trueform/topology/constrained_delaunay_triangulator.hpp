@@ -35,22 +35,40 @@
 #include "../spatial/aabb_tree.hpp"
 #include "../spatial/tree_config.hpp"
 #include "./edge_membership.hpp"
+#include "./detail/size_adaptive.hpp"
 #include "./topo_type.hpp"
 #include <array>
 #include <cstdint>
+#include <algorithm>
+#include <numeric>
+
+#include <tbb/parallel_for.h>
+#include <tbb/parallel_sort.h>
 
 namespace tf {
+
 
 /// @ingroup topology
 /// @brief Constrained Delaunay triangulation of 2D point sets.
 ///
 /// Builds an exact-predicate Delaunay triangulation of the cleaned input
-/// points, arranges intersecting constraint edges, recovers the constraints,
-/// and labels the resulting planar regions.
+/// points, recovers the constraints, and labels the resulting planar
+/// regions. The core is incremental Bowyer-Watson-style insertion in BRIO
+/// order (randomized rounds of Hilbert-sorted points) with a remembering
+/// point-location walk and apex-routed Lawson flips -- O(N log N) even
+/// on structured near-cocircular inputs. Tiny inputs (< 64 points) insert in index
+/// order and run every internal primitive serially, so repeated small
+/// builds from parallel workers are allocation-free after warm-up.
 ///
-/// Input points are converted to `Int`, cleaned once after constraint
-/// arrangement, and exposed through `points()`. Constraint intersections may
-/// therefore introduce additional output points.
+/// Two constraint modes: `split_constraints = true` arranges intersecting
+/// constraint edges (intersections may introduce additional output
+/// points); `split_constraints = false` preserves constraints verbatim and
+/// fails the build if they cross. Repeated boundary marking of one edge
+/// TOGGLES its region-separation parity (a zero-width slit crosses the
+/// boundary twice, i.e. not at all).
+///
+/// Input points are converted to `Int`, welded exactly, and exposed
+/// through `points()`.
 ///
 /// @tparam Index The index type.
 /// @tparam Coord The input coordinate type. Also the type returned by
@@ -90,7 +108,7 @@ class constrained_delaunay_triangulator {
 
 public:
   auto clear() -> void {
-    _points = tf::points_buffer<Int, 2>{};
+    _points.clear();
     _edges.clear();
     _v_first_edge.clear();
     _flip_stack.clear();
@@ -116,7 +134,15 @@ public:
     _region_labels.clear();
     _index_map.f().clear();
     _index_map.kept_ids().clear();
+    _insert_order.clear();
+    _locate_hint = k_none;
+    _n_real = Index(0);
   }
+
+  /// @brief Number of real (non-super) output points. The super-triangle
+  /// vertices occupy the three trailing slots of `points()` and are not
+  /// referenced by any emitted face.
+  auto n_real() const -> Index { return _n_real; }
 
   /// @brief Output points indexed by `make_faces()`.
   ///
@@ -129,19 +155,45 @@ public:
         _points, [this](const auto &p) { return _converter.deconvert(p); }));
   }
 
+  auto n_triangles() const -> Index { return _n_triangles; }
+
+  /// @brief Visit faces with full adjacency straight off the DCEL:
+  /// f(i, v0, v1, v2, label, nbrs, cons): nbrs[k] is the face index
+  /// across edge (vk, vk+1) or -1, cons[k] whether that edge is
+  /// constrained. Face ids and order match make_faces/region_labels.
+  /// Valid after build; assumes no super vertices (dual-path build).
+  template <typename F> auto for_each_face_adjacency(F &&f) const -> void {
+    auto nbr = [&](Index e) -> Index {
+      return _scratch_tri_of_edge[std::size_t(opp(e))];
+    };
+    auto con = [&](Index e) -> bool { return _edges[e].constrained != 0; };
+    for (Index i = 0; i < Index(_scratch_first_edge.size()); ++i) {
+      Index e0 = _scratch_first_edge[std::size_t(i)];
+      Index e1 = prev_e(opp(e0));
+      Index e2 = prev_e(opp(e1));
+      f(i, _edges[e0].vertex, _edges[e1].vertex, _edges[e2].vertex,
+        _region_labels[std::size_t(i)],
+        std::array<Index, 3>{nbr(e0), nbr(e1), nbr(e2)},
+        std::array<bool, 3>{con(e0), con(e1), con(e2)});
+    }
+  }
+
   /// @brief Build and return triangles of the constrained triangulation.
   auto make_faces() const -> tf::blocked_buffer<Index, 3> {
+    // With no region-boundary constraints the labels are all zero, so face
+    // order carries no meaning and extraction can go wide (order-free).
+    if (!has_region_boundary_constraints())
+      return make_faces_parallel();
+
     tf::blocked_buffer<Index, 3> out;
     out.reserve(static_cast<std::size_t>(_n_triangles));
 
     auto n_he = static_cast<Index>(_edges.size());
 
-    tf::buffer<bool> checked;
-    checked.allocate(n_he);
-    tf::parallel_fill(checked, false);
-
+    // an ascending scan meets each face first through its minimum
+    // half-edge id, so emitting there needs no visited marks
     for (Index e0 = 0; e0 < n_he; ++e0) {
-      if (checked[e0] || _edges[e0].boundary)
+      if (_edges[e0].boundary)
         continue;
 
       Index e1 = prev_e(opp(e0));
@@ -153,11 +205,16 @@ public:
       if (_edges[e1].boundary || _edges[e2].boundary)
         continue;
 
-      checked[e0] = true;
-      checked[e1] = true;
-      checked[e2] = true;
+      if (e1 < e0 || e2 < e0)
+        continue;
 
-      out.push_back({_edges[e0].vertex, _edges[e1].vertex, _edges[e2].vertex});
+      Index v0 = _edges[e0].vertex;
+      Index v1 = _edges[e1].vertex;
+      Index v2 = _edges[e2].vertex;
+      if (v0 >= _n_real || v1 >= _n_real || v2 >= _n_real)
+        continue; // triangle incident to a super vertex — outside the real hull
+
+      out.push_back({v0, v1, v2});
     }
 
     return out;
@@ -199,23 +256,27 @@ public:
             typename IsBoundaryRange>
   auto build(const tf::points<PointsPolicy> &pts,
              const tf::edges<EdgesPolicy> &edges,
-             const IsBoundaryRange &is_boundary) -> bool {
+             const IsBoundaryRange &is_boundary,
+             bool split_constraints = true) -> bool {
     clear();
-
     _converter = tf::make_exact_coordinate_converter<Int, Coord>(pts);
 
-    auto int_pts = tf::make_points(tf::make_mapped_range(
-        pts, [this](const auto &p) { return _converter(p); }));
+    if (split_constraints) {
+      auto int_pts = tf::make_points(tf::make_mapped_range(
+          pts, [this](const auto &p) { return _converter(p); }));
 
-    make_arranged_constraints(edges, is_boundary, int_pts);
+      make_arranged_constraints(edges, is_boundary, int_pts);
+    } else if (!make_preserved_constraints(pts, edges, is_boundary)) {
+      return false;
+    }
 
     auto n = static_cast<Index>(_points.size());
+    _n_real = n; // no super vertices in the dual-path build
     if (n < 3)
       return true;
 
     _v_first_edge.allocate(n);
-    tf::parallel_fill(_v_first_edge, k_none);
-
+    topology::detail::fill_auto(_v_first_edge, k_none);
     _edges.reserve(static_cast<std::size_t>(6 * n));
     _flip_stack.reserve(static_cast<std::size_t>(6 * n));
 
@@ -240,8 +301,10 @@ public:
 
   template <typename PointsPolicy, typename EdgesPolicy>
   auto build(const tf::points<PointsPolicy> &pts,
-             const tf::edges<EdgesPolicy> &edges) -> bool {
-    return build(pts, edges, tf::make_constant_range(true, edges.size()));
+             const tf::edges<EdgesPolicy> &edges,
+             bool split_constraints = true) -> bool {
+    return build(pts, edges, tf::make_constant_range(true, edges.size()),
+                 split_constraints);
   }
 
 private:
@@ -281,33 +344,105 @@ private:
     return im;
   }
 
+  auto has_region_boundary_constraints() const -> bool {
+    for (auto b : _final_is_boundary)
+      if (b)
+        return true;
+    return false;
+  }
+
+  // Order-free triangle extraction: a face is emitted from its minimum
+  // half-edge. Chunked count + prefix + write, no per-face push_back.
+  auto make_faces_parallel() const -> tf::blocked_buffer<Index, 3> {
+    tf::blocked_buffer<Index, 3> out;
+    auto n_he = static_cast<Index>(_edges.size());
+    if (n_he == 0)
+      return out;
+
+    auto canonical = [this](Index e0) -> bool {
+      if (_edges[e0].boundary)
+        return false;
+      Index e1 = prev_e(opp(e0));
+      Index e2 = prev_e(opp(e1));
+      if (e1 == k_none || e2 == k_none || e1 < e0 || e2 < e0)
+        return false;
+      if (_edges[e1].boundary || _edges[e2].boundary)
+        return false;
+      return _edges[e0].vertex < _n_real && _edges[e1].vertex < _n_real &&
+             _edges[e2].vertex < _n_real;
+    };
+
+    const Index chunk = 1 << 14;
+    Index n_chunks = (n_he + chunk - 1) / chunk;
+    tf::buffer<Index> counts;
+    counts.allocate(static_cast<std::size_t>(n_chunks));
+    tbb::parallel_for(
+        tbb::blocked_range<Index>(Index(0), n_chunks),
+        [&](const tbb::blocked_range<Index> &r) {
+          for (Index c = r.begin(); c != r.end(); ++c) {
+            Index end = std::min<Index>(n_he, (c + 1) * chunk);
+            Index count = 0;
+            for (Index e = c * chunk; e < end; ++e)
+              count += canonical(e) ? Index(1) : Index(0);
+            counts[c] = count;
+          }
+        });
+
+    Index total = 0;
+    for (Index c = 0; c < n_chunks; ++c) {
+      Index t = counts[c];
+      counts[c] = total;
+      total += t;
+    }
+
+    out.allocate(static_cast<std::size_t>(total));
+    Index *base = out.data_buffer().data();
+    tbb::parallel_for(
+        tbb::blocked_range<Index>(Index(0), n_chunks),
+        [&](const tbb::blocked_range<Index> &r) {
+          for (Index c = r.begin(); c != r.end(); ++c) {
+            Index end = std::min<Index>(n_he, (c + 1) * chunk);
+            Index *w = base + std::size_t(3) * counts[c];
+            for (Index e0 = c * chunk; e0 < end; ++e0) {
+              if (!canonical(e0))
+                continue;
+              Index e1 = prev_e(opp(e0));
+              Index e2 = prev_e(opp(e1));
+              *w++ = _edges[e0].vertex;
+              *w++ = _edges[e1].vertex;
+              *w++ = _edges[e2].vertex;
+            }
+          }
+        });
+
+    return out;
+  }
+
   auto compute_region_labels() -> void {
     _region_labels.clear();
     auto n_he = static_cast<Index>(_edges.size());
     if (n_he == 0)
       return;
 
-    tf::buffer<Index> tri_of_edge;
+    auto &tri_of_edge = _scratch_tri_of_edge;
+    tri_of_edge.clear();
     tri_of_edge.allocate(n_he);
-    tf::parallel_fill(tri_of_edge, k_none);
+    topology::detail::fill_auto(tri_of_edge, k_none);
 
-    tf::buffer<Index> first_edge_of_tri;
+    auto &first_edge_of_tri = _scratch_first_edge;
+    first_edge_of_tri.clear();
     first_edge_of_tri.reserve(static_cast<std::size_t>(_n_triangles));
-    tf::buffer<bool> checked;
-    checked.allocate(n_he);
-    tf::parallel_fill(checked, false);
 
     for (Index e0 = 0; e0 < n_he; ++e0) {
-      if (checked[e0] || _edges[e0].boundary) {
-        if (_edges[e0].boundary)
-          checked[e0] = true;
+      if (_edges[e0].boundary)
         continue;
-      }
 
       Index e1 = prev_e(opp(e0));
       Index e2 = prev_e(opp(e1));
       if (e1 == k_none || e2 == k_none || _edges[e1].boundary ||
           _edges[e2].boundary)
+        continue;
+      if (e1 < e0 || e2 < e0)
         continue;
 
       Index tri = static_cast<Index>(first_edge_of_tri.size());
@@ -315,15 +450,18 @@ private:
       tri_of_edge[e0] = tri;
       tri_of_edge[e1] = tri;
       tri_of_edge[e2] = tri;
-      checked[e0] = true;
-      checked[e1] = true;
-      checked[e2] = true;
     }
 
-    _region_labels.allocate(first_edge_of_tri.size());
-    tf::parallel_fill(_region_labels, k_none);
     if (first_edge_of_tri.size() == 0)
       return;
+
+    // Parity flood over ALL triangles (real + super). The super triangles are
+    // the "outside" region: seeding from a super-triangle boundary edge gives
+    // them parity 0, and crossing a region-boundary constraint toggles parity.
+    auto &parity = _scratch_parity;
+    parity.clear();
+    parity.allocate(first_edge_of_tri.size());
+    topology::detail::fill_auto(parity, k_none);
 
     Index start_tri = k_none;
     Index start_edge = k_none;
@@ -343,9 +481,10 @@ private:
       return _edges[e].constrained == k_boundary_constrained;
     };
 
-    tf::buffer<Index> stack;
+    auto &stack = _scratch_stack;
+    stack.clear();
     stack.push_back(start_tri);
-    _region_labels[start_tri] =
+    parity[start_tri] =
         start_edge != k_none && is_region_boundary(start_edge) ? Index(1)
                                                                : Index(0);
 
@@ -359,14 +498,85 @@ private:
 
       for (Index e : tri_edges) {
         Index neighbor = tri_of_edge[opp(e)];
-        if (neighbor == k_none || _region_labels[neighbor] != k_none)
+        if (neighbor == k_none || parity[neighbor] != k_none)
           continue;
 
-        _region_labels[neighbor] =
-            _region_labels[tri] ^ (is_region_boundary(e) ? Index(1) : Index(0));
+        parity[neighbor] =
+            parity[tri] ^ (is_region_boundary(e) ? Index(1) : Index(0));
         stack.push_back(neighbor);
       }
     }
+
+    // Emit labels for the REAL triangles only, in the exact order
+    // `make_faces` visits them (both are the ascending min-edge-id scan),
+    // so `region_labels()[i]` matches face `i`.
+    _region_labels.reserve(first_edge_of_tri.size());
+    for (Index t = 0; t < static_cast<Index>(first_edge_of_tri.size());
+         ++t) {
+      Index e0 = first_edge_of_tri[std::size_t(t)];
+      Index e1 = prev_e(opp(e0));
+      Index e2 = prev_e(opp(e1));
+      if (origin(e0) >= _n_real || origin(e1) >= _n_real ||
+          origin(e2) >= _n_real)
+        continue;
+      _region_labels.push_back(parity[std::size_t(t)]);
+    }
+  }
+
+  // Preserved-constraints preparation: lex-sort + exact-weld the converted
+  // points and pass the constraints through verbatim. Fills the same state
+  // make_arranged_constraints does.
+  template <typename PointsPolicy, typename EdgesPolicy,
+            typename IsBoundaryRange>
+  auto make_preserved_constraints(const tf::points<PointsPolicy> &pts,
+                                  const tf::edges<EdgesPolicy> &edges,
+                                  const IsBoundaryRange &is_boundary) -> bool {
+    auto n_input = static_cast<Index>(pts.size());
+    auto &converted = _scratch_pts;
+    converted.clear();
+    converted.allocate(n_input);
+    if (std::size_t(n_input) < topology::detail::k_serial_cutoff)
+      for (Index i = 0; i < n_input; ++i)
+        converted.points()[i] = _converter(pts[i]);
+    else
+      tf::parallel_for_each(tf::make_sequence_range(n_input), [&](Index i) {
+        converted.points()[i] = _converter(pts[i]);
+      });
+
+    auto &order = _scratch_order;
+    order.clear();
+    order.allocate(n_input);
+    topology::detail::iota_auto(order, Index(0));
+    topology::detail::sort_auto(order.begin(), order.end(), [&](Index a, Index b) {
+      const auto &pa = converted.points()[a];
+      const auto &pb = converted.points()[b];
+      return pa[0] < pb[0] || (pa[0] == pb[0] && pa[1] < pb[1]);
+    });
+
+    _index_map.f().allocate(n_input);
+    for (Index i = 0; i < n_input; ++i) {
+      auto p = converted.points()[order[i]];
+      if (i == 0 || p[0] != _points.points()[_points.size() - 1][0] ||
+          p[1] != _points.points()[_points.size() - 1][1]) {
+        _index_map.kept_ids().push_back(order[i]);
+        _points.push_back(p);
+      }
+      _index_map.f()[order[i]] = Index(_points.size() - 1);
+    }
+
+    auto n_edges = static_cast<Index>(edges.size());
+    _final_constraint_edges.reserve(n_edges);
+    _final_is_boundary.reserve(n_edges);
+    auto ib = is_boundary.begin();
+    for (Index i = 0; i < n_edges; ++i, ++ib) {
+      Index a = _index_map.f()[edges[i][0]];
+      Index b = _index_map.f()[edges[i][1]];
+      if (a == b)
+        return false; // degenerate constraint: coincident endpoints
+      _final_constraint_edges.push_back({a, b});
+      _final_is_boundary.push_back(*ib ? 1 : 0);
+    }
+    return true;
   }
 
   template <typename EdgesPolicy, typename IsBoundaryRange,
@@ -597,17 +807,368 @@ private:
   auto next_boundary(Index e) const -> Index { return next_e(opp(e)); }
   auto prev_boundary(Index e) const -> Index { return opp(prev_e(e)); }
 
+  // Incremental Delaunay over the real points (no super vertices). BRIO
+  // insertion keeps point location and the flip cascade local, so flip
+  // counts stay O(1) amortized even on near-cocircular inputs.
+  //
+  // Phase A: insert in index order until the first non-degenerate triangle
+  // exists (a collinear prefix has no face to walk from).
+  //
+  // Phase B: insert the rest in Hilbert order via point-location walk +
+  // interior split; points outside the current hull reuse the hull-fan
+  // `insert_vertex`, seeded at the boundary edge `locate` returns so the fan
+  // walk is local (O(1) amortized) rather than a full hull traversal.
   auto build_delaunay(Index n) -> bool {
     Index e10 = create_edge(Index(1), Index(0), k_none, k_none,
                             /*boundary=*/true);
-
     mark_initial_boundary_edge(e10);
     _last_edge = e10;
 
-    for (Index i = 2; i < n; ++i)
+    Index i = 2;
+    for (; i < n && _n_triangles == 0; ++i)
       insert_vertex(i);
 
+    if (i >= n)
+      return true;
+
+    build_morton_order(i, n);
+    _locate_hint = find_any_interior_edge();
+
+    for (Index k = 0; k < static_cast<Index>(_insert_order.size()); ++k) {
+      insert_incremental(_insert_order[k]);
+    }
+
     return true;
+  }
+
+  // Hilbert-curve index of a point on a 2^k x 2^k grid (k = k_order_bits).
+  // Hilbert order has far better locality than Morton (Z-order) — consecutive
+  // points stay spatially adjacent even for curve-like inputs, which keeps the
+  // per-insertion flip cascade local (O(1) amortized instead of super-linear).
+  static constexpr std::uint32_t k_order_bits = 21;
+  static auto hilbert_code(std::uint32_t x, std::uint32_t y) -> std::uint64_t {
+    std::uint64_t d = 0;
+    for (std::uint32_t s = k_order_bits; s-- > 0;) {
+      std::uint32_t rx = (x >> s) & 1u;
+      std::uint32_t ry = (y >> s) & 1u;
+      d += static_cast<std::uint64_t>((3u * rx) ^ ry) << (2u * s);
+      // Rotate the quadrant so the curve stays continuous.
+      if (ry == 0u) {
+        if (rx == 1u) {
+          std::uint32_t m = (1u << k_order_bits) - 1u;
+          x = m - x;
+          y = m - y;
+        }
+        std::uint32_t t = x;
+        x = y;
+        y = t;
+      }
+    }
+    return d;
+  }
+
+  // Fills `_insert_order` with the point indices [begin, end), sorted by the
+  // Morton code of their (shifted, range-reduced) coordinates.
+  auto build_morton_order(Index begin, Index end) -> void {
+    auto min_x = _points[begin][0];
+    auto min_y = _points[begin][1];
+    auto max_x = min_x;
+    auto max_y = min_y;
+    for (Index i = begin; i < end; ++i) {
+      auto p = _points[i];
+      min_x = p[0] < min_x ? p[0] : min_x;
+      min_y = p[1] < min_y ? p[1] : min_y;
+      max_x = p[0] > max_x ? p[0] : max_x;
+      max_y = p[1] > max_y ? p[1] : max_y;
+    }
+    // Reduce each axis to 21 bits so the interleave fits in 64 bits. Widen to
+    // 64-bit before subtracting: converter-range int coords span the full
+    // int32 range, so an int32 difference would overflow.
+    auto span_x = static_cast<std::uint64_t>(static_cast<std::int64_t>(max_x) -
+                                             static_cast<std::int64_t>(min_x));
+    auto span_y = static_cast<std::uint64_t>(static_cast<std::int64_t>(max_y) -
+                                             static_cast<std::int64_t>(min_y));
+    auto span = span_x > span_y ? span_x : span_y;
+    std::uint32_t shift = 0;
+    while ((span >> shift) > 0x1fffffULL)
+      ++shift;
+
+    Index n = end - begin;
+    _insert_order.allocate(static_cast<std::size_t>(n));
+    // tiny inputs: any insertion order is O(1)-local for the remembering
+    // walk; the shuffle + Hilbert coding would cost more than they save
+    if (n < Index(64)) {
+      for (Index k = 0; k < n; ++k)
+        _insert_order[static_cast<std::size_t>(k)] = begin + k;
+      return;
+    }
+    auto &keys = _scratch_keys;
+    keys.clear();
+    keys.allocate(static_cast<std::size_t>(n));
+    auto fill_keys = [&](Index k_lo, Index k_hi) {
+      for (Index k = k_lo; k != k_hi; ++k) {
+        auto p = _points[begin + k];
+        auto x = static_cast<std::uint32_t>(
+            static_cast<std::uint64_t>(static_cast<std::int64_t>(p[0]) -
+                                       static_cast<std::int64_t>(min_x)) >>
+            shift);
+        auto y = static_cast<std::uint32_t>(
+            static_cast<std::uint64_t>(static_cast<std::int64_t>(p[1]) -
+                                       static_cast<std::int64_t>(min_y)) >>
+            shift);
+        _insert_order[static_cast<std::size_t>(k)] = begin + k;
+        keys[static_cast<std::size_t>(k)] = hilbert_code(x, y);
+      }
+    };
+    if (std::size_t(n) < topology::detail::k_serial_cutoff)
+      fill_keys(Index(0), n);
+    else
+      tbb::parallel_for(tbb::blocked_range<Index>(Index(0), n),
+                        [&](const tbb::blocked_range<Index> &r) {
+                          fill_keys(r.begin(), r.end());
+                        });
+
+    // Biased Randomized Insertion Order (BRIO), matching CGAL's spatial_sort:
+    // a random shuffle, then a multiscale recursion that Hilbert-sorts rounds
+    // of geometrically increasing size (ratio 0.25). This inserts points in
+    // randomized rounds of increasing density — each round well spread over the
+    // domain — which makes incremental Delaunay O(N log N). Pure Hilbert order
+    // alone is super-linear on structured inputs like a convex curve.
+    Index *ord = &_insert_order[0];
+    const std::uint64_t *key = &keys[0];
+
+    std::uint64_t s =
+        0x9e3779b97f4a7c15ULL ^ (static_cast<std::uint64_t>(n) + 1u) *
+                                    0xff51afd7ed558ccdULL;
+    auto next_rand = [&]() {
+      s ^= s >> 33;
+      s *= 0xff51afd7ed558ccdULL;
+      s ^= s >> 33;
+      return s;
+    };
+    for (Index k = n - 1; k > 0; --k) {
+      Index j = static_cast<Index>(next_rand() % static_cast<std::uint64_t>(k + 1));
+      std::swap(ord[k], ord[j]);
+    }
+
+    brio_sort(ord, key, begin, Index(0), n);
+  }
+
+  // Multiscale Hilbert sort (the BRIO recursion). Keeps the last 25% of the
+  // range as its own Hilbert-sorted round, recursing on the first 75%.
+  auto brio_sort(Index *ord, const std::uint64_t *key, Index begin, Index lo,
+                 Index hi) const -> void {
+    auto cmp = [&](Index a, Index b) {
+      // total order: tie-break equal Hilbert keys by index, so parallel
+      // sort is deterministic (timing-independent) on duplicate cells
+      auto ka = key[a - begin], kb = key[b - begin];
+      return ka != kb ? ka < kb : a < b;
+    };
+    Index size = hi - lo;
+    Index mid = lo;
+    if (size >= 16) {
+      mid = lo + (size * Index(3)) / Index(4);
+      brio_sort(ord, key, begin, lo, mid);
+    }
+    // Hilbert-sort this round [mid, hi). Rounds are disjoint, so each sort is
+    // independent; the largest rounds dominate and go parallel.
+    if (hi - mid > Index(4096))
+      tbb::parallel_sort(ord + mid, ord + hi, cmp);
+    else
+      std::sort(ord + mid, ord + hi, cmp);
+  }
+
+
+  auto find_any_interior_edge() const -> Index {
+    auto n_he = static_cast<Index>(_edges.size());
+    for (Index e = 0; e < n_he; ++e)
+      if (!_edges[e].boundary)
+        return e;
+    return k_none;
+  }
+
+  enum class locate_kind { interior, boundary_edge, exterior };
+  struct locate_result {
+    locate_kind kind;
+    Index he;
+  };
+
+  // Walks the triangulation from the current hint to the face containing `p`.
+  //   interior      — `he` is a half-edge of the containing face. `p` is
+  //                    strictly inside, or on an interior edge (handled by the
+  //                    split: the degenerate triangle is removed by the flip).
+  //   boundary_edge — `p` lies on the hull edge `he` (a boundary half-edge).
+  //   exterior      — `p` is outside the hull, beyond boundary half-edge `he`.
+  // Remembering walk. The face cycle (e0, prev(opp(e0)), ...) is CW, so `p`
+  // lies in the face of `e0` iff it is not strictly left of any face edge;
+  // after crossing an edge, `p` is on the entered edge's right by
+  // construction, so each subsequent face costs at most two orientation tests
+  // instead of re-orienting the face.
+  auto locate(Index p) -> locate_result {
+    Index e0 = _locate_hint;
+    if (e0 == k_none || _edges[e0].boundary)
+      e0 = find_any_interior_edge();
+
+    int s0 = orient2d_sign(origin(e0), target(e0), p);
+    if (s0 > 0) {
+      if (_edges[opp(e0)].boundary)
+        return {locate_kind::exterior, opp(e0)};
+      e0 = opp(e0);
+      s0 = -1;
+    }
+
+    auto n_he = static_cast<Index>(_edges.size());
+    for (Index guard = 0; guard <= n_he; ++guard) {
+      Index e1 = prev_e(opp(e0));
+      Index e2 = prev_e(opp(e1));
+
+      // Fixed (e1, e2) preference: decision-for-decision identical to the
+      // reference walk, whose e0 test only ever fires on the first face.
+      Index fa = e1;
+      Index fb = e2;
+
+      int sa = orient2d_sign(origin(fa), target(fa), p);
+      if (sa > 0) {
+        if (_edges[opp(fa)].boundary)
+          return {locate_kind::exterior, opp(fa)};
+        e0 = opp(fa);
+        s0 = -1;
+        continue;
+      }
+
+      int sb = orient2d_sign(origin(fb), target(fb), p);
+      if (sb > 0) {
+        if (_edges[opp(fb)].boundary)
+          return {locate_kind::exterior, opp(fb)};
+        e0 = opp(fb);
+        s0 = -1;
+        continue;
+      }
+
+      if (s0 == 0 || sa == 0 || sb == 0) {
+        Index fe[3] = {e0, fa, fb};
+        int fs[3] = {s0, sa, sb};
+        for (int k = 0; k < 3; ++k) {
+          if (fs[k] == 0 && point_between_on_dominant_axis(origin(fe[k]),
+                                                           target(fe[k]), p)) {
+            if (_edges[opp(fe[k])].boundary)
+              return {locate_kind::boundary_edge, opp(fe[k])};
+            // interior on-edge: the interior split below degenerates one
+            // triangle which the Delaunay flip immediately repairs.
+            return {locate_kind::interior, e0};
+          }
+        }
+      }
+
+      return {locate_kind::interior, e0};
+    }
+
+    return {locate_kind::interior, e0};
+  }
+
+  auto insert_incremental(Index p) -> void {
+    locate_result loc = locate(p);
+    switch (loc.kind) {
+    case locate_kind::interior:
+      split_triangle(p, loc.he);
+      break;
+    case locate_kind::boundary_edge:
+      split_boundary_edge(p, loc.he);
+      break;
+    case locate_kind::exterior:
+      // Seed the hull-fan walk so it starts on a half-edge visible from p.
+      // insert_vertex's _last_edge is an interior half-edge whose opp is the
+      // boundary edge and which satisfies is_visible(e) > 0; that is exactly
+      // the interior twin of the boundary edge p crossed (loc.he). Seeding
+      // with the boundary half-edge itself has the wrong sign and would drop
+      // into the collinear branch.
+      _last_edge = opp(loc.he);
+      insert_vertex(p);
+      // Propagate the location hint to an edge incident to the just-inserted
+      // point, so the next (Hilbert-adjacent) point's locate walk starts
+      // nearby — O(1) amortized instead of walking from a stale hint. Without
+      // this, an all-exterior input (a convex curve) degrades to O(N) walks.
+      _locate_hint = _last_edge;
+      break;
+    }
+  }
+
+  // Inserts `p` strictly inside the face whose first half-edge is `f0`,
+  // splitting one triangle into three. Reuses the existing flip machinery to
+  // restore the Delaunay property afterwards.
+  //
+  // Face half-edges f0:A->B, f1:B->C, f2:C->A (origins A,B,C). The three new
+  // spokes are p->A, p->B, p->C; the three original face edges become the
+  // outer edges opposite p and are pushed onto the flip stack.
+  auto split_triangle(Index p, Index f0) -> void {
+    Index f1 = prev_e(opp(f0));
+    Index f2 = prev_e(opp(f1));
+
+    Index A = origin(f0);
+    Index B = origin(f1);
+    Index C = origin(f2);
+
+    // p-ring order p->A, p->B, p->C chained via after_p; the per-vertex
+    // anchor is the outgoing face edge (next_e(f_{i+1}) == opp(f_i)).
+    Index ea = create_edge(p, A, k_none, f0, /*boundary=*/false);
+    Index eb = create_edge(p, B, ea, f1, /*boundary=*/false);
+    create_edge(p, C, eb, f2, /*boundary=*/false);
+
+    add_to_flip_stack(f0, p);
+    add_to_flip_stack(f1, p);
+    add_to_flip_stack(f2, p);
+
+    _n_triangles += Index(2);
+    _locate_hint = ea;
+
+    delaunay_flip();
+  }
+
+  // Inserts `p`, which lies on the hull boundary half-edge `eb` (u->v), into
+  // the single adjacent interior triangle (v,u,w). Splits the boundary edge
+  // u-v into u-p and p-v (both boundary) and adds the spoke p-w. The two outer
+  // edges u-w and w-v are pushed onto the flip stack.
+  auto split_boundary_edge(Index p, Index eb) -> void {
+    Index gi = opp(eb);
+    Index u = origin(eb);
+    Index v = origin(gi);
+
+    Index n1 = prev_e(eb);      // u->w
+    Index n2 = prev_e(opp(n1)); // w->v
+    Index w = target(n1);
+
+    unlink_edge(eb);
+
+    // p's ring must be ordered p->u, p->w, p->v (so next_e(p->u)=p->w,
+    // next_e(p->w)=p->v), which is required by the face_next bookkeeping of
+    // the two new triangles (p,u,w) and (v,p,w). Create the edges in that
+    // order, chaining each new spoke after the previous one in p's ring.
+
+    // u-p edge reuses the freed (eb,gi) slot: u->p boundary, p->u interior;
+    // p->u starts p's ring, u->p inserted after n1=u->w in u's ring.
+    Index up = create_edge_reusing(u, p, n1, k_none, eb);
+    Index pu = opp(up);
+    _edges[up].boundary = true;
+    _edges[up].delaunay = true;
+
+    // p-w spoke: interior. p->w after p->u in p's ring; w->p inserted just
+    // before opp(n1)=w->u in w's ring, i.e. after n2.
+    Index pw = create_edge(p, w, pu, n2, /*boundary=*/false);
+
+    // p-v edge: p->v boundary, v->p interior. p->v after p->w in p's ring;
+    // v->p inserted just before opp(n2)=v->w in v's ring.
+    Index pv = create_edge(p, v, pw, prev_e(opp(n2)), /*boundary=*/false);
+    _edges[pv].boundary = true;
+    _edges[pv].delaunay = true;
+
+    add_to_flip_stack(n1, p);
+    add_to_flip_stack(n2, p);
+
+    _last_edge = up;
+    _locate_hint = pw;
+    _n_triangles += Index(1);
+
+    delaunay_flip();
   }
 
   auto insert_vertex(Index p) -> void {
@@ -714,7 +1275,7 @@ private:
       if (other0 == other1)
         continue;
 
-      if (tf::exact::incircle(pt(v0), pt(v1), pt(other1), pt(other0)) > 0) {
+      if (in_circle_sign(v0, v1, other1, other0) > 0) {
         Index opposite_vertex = check.opposite_vertex;
 
         flip_edge(e01);
@@ -795,13 +1356,18 @@ private:
   // constraint cannot overwrite a boundary one when two input
   // constraints share the same edge.
   auto mark_constrained(Index e, bool is_boundary) -> void {
-    auto kind = is_boundary ? k_boundary_constrained : k_constrained;
-    auto upgrade = [&](Index he) {
-      if (_edges[he].constrained < kind)
-        _edges[he].constrained = kind;
+    // repeated boundary marking TOGGLES region separation: a zero-width
+    // slit crosses the boundary twice, i.e. not at all
+    auto apply = [&](Index he) {
+      auto &c = _edges[he].constrained;
+      if (is_boundary)
+        c = (c == k_boundary_constrained) ? k_constrained
+                                          : k_boundary_constrained;
+      else if (c == k_unconstrained)
+        c = k_constrained;
     };
-    upgrade(e);
-    upgrade(opp(e));
+    apply(e);
+    apply(opp(e));
     _edges[e].delaunay = true;
     _edges[opp(e)].delaunay = true;
   }
@@ -1009,10 +1575,37 @@ private:
                           static_cast<Int>(_points[i][1]));
   }
 
+  // Filtered orient2d, same shape as the filtered in_circle_sign: double
+  // determinant with a Shewchuk error bound, exact int fallback, and the
+  // diff-fits-in-2^53 guard for large (int64) coordinates. Uses the exact
+  // formula (b-a)x(c-a) so the float and exact paths share a sign convention.
   auto orient2d_sign(Index ia, Index ib, Index ic) const -> int {
-    auto det = tf::exact::orient2d(pt(ia), pt(ib), pt(ic));
+    return tf::exact::orient2d_sign(pt(ia), pt(ib), pt(ic));
+  }
 
-    return (det > 0) ? 1 : (det < 0) ? -1 : 0;
+  auto is_super(Index v) const -> bool { return v >= _n_real; }
+
+  // In-circle test (> 0 == d strictly inside circumcircle of CCW a,b,c) with
+  // the super vertices treated as a single point at infinity:
+  //   - an infinite d is never inside a finite circle;
+  //   - a circle through one infinite + two finite points degenerates to the
+  //     line through the two finite points, so the test reduces to the
+  //     orientation of those two (kept in cyclic order) and d.
+  // Concrete super coordinates are still used for orientation/location, but
+  // never for the empty-circle test — for near-collinear integer points the
+  // circumradius grows like span^3, so no finite coordinate could sit outside
+  // it, which is exactly why the infinite vertex must be symbolic here.
+  // Filtered in-circle: a double-precision determinant with a Shewchuk
+  // semi-static error bound, falling back to the exact int128 predicate only
+  // when the float result is too close to zero to trust. Exact-equivalent.
+  //
+  // The filter is only applied when the coordinate differences are exactly
+  // representable in a double (|diff| < 2^53). For int32 grids that always
+  // holds (diffs ~2^32); for int64 grids it may not, and we then go straight
+  // to the exact predicate — so large scaled coordinates never give a wrong
+  // sign.
+  auto in_circle_sign(Index a, Index b, Index c, Index d) const -> int {
+    return tf::exact::incircle_sign(pt(a), pt(b), pt(c), pt(d));
   }
 
   tf::points_buffer<Int, 2> _points;
@@ -1044,6 +1637,24 @@ private:
   tf::exact_coordinate_converter<Int, Coord, 2> _converter;
   tf::buffer<Index> _region_labels;
   tf::index_map_buffer<Index> _index_map;
+
+  // per-build scratch: reused across builds, never freed
+  tf::buffer<std::uint64_t> _scratch_keys;
+  tf::points_buffer<Int, 2> _scratch_pts;
+  tf::buffer<Index> _scratch_order;
+  tf::buffer<Index> _scratch_tri_of_edge;
+  tf::buffer<Index> _scratch_first_edge;
+  tf::buffer<Index> _scratch_parity;
+  tf::buffer<Index> _scratch_stack;
+
+  tf::buffer<Index> _insert_order;
+  Index _locate_hint{k_none};
+
+  Index _n_real{0};
+  Coord _bbox_center_x{0};
+  Coord _bbox_center_y{0};
+  Coord _bbox_half{0};
+
 };
 
 } // namespace tf

@@ -39,6 +39,16 @@ auto distance2(const pt2<Int> &a, const pt2<Int> &b) ->
   return T2(dx) * dx + T2(dy) * dy;
 }
 
+/// Exact orient2d sign for 2D points. Direct wide-integer evaluation:
+/// measured faster than a floating-point filter on both int32 and int64
+/// lattices.
+template <typename Int>
+auto orient2d_sign(const pt2<Int> &a, const pt2<Int> &b, const pt2<Int> &c)
+    -> int {
+  auto det = orient2d(a, b, c);
+  return (det > 0) ? 1 : (det < 0) ? -1 : 0;
+}
+
 /// Exact orient2d sign for 3 vertices projected to 2D via axes (ax0, ax1).
 /// Returns -1, 0, or +1.
 template <typename Index, typename Int>

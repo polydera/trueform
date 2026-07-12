@@ -41,6 +41,10 @@ namespace tf {
 /// of a constrained edge); without edges, the full convex hull
 /// triangulation is returned.
 ///
+/// `split_constraints = true` arranges crossing constraint edges
+/// (intersections add output points); `false` preserves constraints
+/// verbatim and yields an empty result if they cross or degenerate.
+///
 /// @tparam Index The index type (auto-deduced from edges if not specified).
 /// @tparam Int The exact-arithmetic integer type. Pass `tf::none_t`
 ///   (default) to auto-resolve to int32 for float input or int64 for
@@ -50,16 +54,17 @@ namespace tf {
 template <typename Index = tf::none_t, typename Int = tf::none_t,
           typename PointsPolicy, typename EdgesPolicy>
 auto make_cdt(const tf::points<PointsPolicy> &pts,
-              const tf::edges<EdgesPolicy> &edges) {
+              const tf::edges<EdgesPolicy> &edges,
+              bool split_constraints = true) {
   if constexpr (std::is_same_v<Index, tf::none_t>) {
     using ActualIndex = std::decay_t<decltype(edges[0][0])>;
-    return make_cdt<ActualIndex, Int>(pts, edges);
+    return make_cdt<ActualIndex, Int>(pts, edges, split_constraints);
   } else {
     using coord_t = tf::coordinate_type<PointsPolicy>;
     using ResolvedInt = tf::exact::resolve_int_type<Int, coord_t>;
 
     tf::constrained_delaunay_triangulator<Index, coord_t, ResolvedInt> cdt;
-    cdt.build(pts, edges);
+    cdt.build(pts, edges, split_constraints);
 
     auto faces = cdt.make_faces();
     auto cdt_polys = tf::make_polygons(faces, cdt.converted_points());
@@ -92,16 +97,18 @@ auto make_cdt(const tf::points<PointsPolicy> &pts) {
 template <typename Index = tf::none_t, typename Int = tf::none_t,
           typename PointsPolicy, typename EdgesPolicy>
 auto make_cdt(const tf::points<PointsPolicy> &pts,
-              const tf::edges<EdgesPolicy> &edges, tf::return_index_map_t) {
+              const tf::edges<EdgesPolicy> &edges, tf::return_index_map_t,
+              bool split_constraints = true) {
   if constexpr (std::is_same_v<Index, tf::none_t>) {
     using ActualIndex = std::decay_t<decltype(edges[0][0])>;
-    return make_cdt<ActualIndex, Int>(pts, edges, tf::return_index_map);
+    return make_cdt<ActualIndex, Int>(pts, edges, tf::return_index_map,
+                                      split_constraints);
   } else {
     using coord_t = tf::coordinate_type<PointsPolicy>;
     using ResolvedInt = tf::exact::resolve_int_type<Int, coord_t>;
 
     tf::constrained_delaunay_triangulator<Index, coord_t, ResolvedInt> cdt;
-    cdt.build(pts, edges);
+    cdt.build(pts, edges, split_constraints);
 
     auto faces = cdt.make_faces();
     auto cdt_polys = tf::make_polygons(faces, cdt.converted_points());
@@ -129,19 +136,23 @@ auto make_cdt(const tf::points<PointsPolicy> &pts,
 /// of any region wall).
 template <typename Index = tf::none_t, typename Int = tf::none_t,
           typename PointsPolicy, typename EdgesPolicy,
-          typename IsBoundaryRange>
+          typename IsBoundaryRange,
+          typename = std::enable_if_t<
+              !std::is_same_v<std::decay_t<IsBoundaryRange>, bool>>>
 auto make_cdt(const tf::points<PointsPolicy> &pts,
               const tf::edges<EdgesPolicy> &edges,
-              const IsBoundaryRange &is_boundary) {
+              const IsBoundaryRange &is_boundary,
+              bool split_constraints = true) {
   if constexpr (std::is_same_v<Index, tf::none_t>) {
     using ActualIndex = std::decay_t<decltype(edges[0][0])>;
-    return make_cdt<ActualIndex, Int>(pts, edges, is_boundary);
+    return make_cdt<ActualIndex, Int>(pts, edges, is_boundary,
+                                      split_constraints);
   } else {
     using coord_t = tf::coordinate_type<PointsPolicy>;
     using ResolvedInt = tf::exact::resolve_int_type<Int, coord_t>;
 
     tf::constrained_delaunay_triangulator<Index, coord_t, ResolvedInt> cdt;
-    cdt.build(pts, edges, is_boundary);
+    cdt.build(pts, edges, is_boundary, split_constraints);
 
     auto faces = cdt.make_faces();
     auto cdt_polys = tf::make_polygons(faces, cdt.converted_points());
@@ -159,17 +170,19 @@ template <typename Index = tf::none_t, typename Int = tf::none_t,
           typename IsBoundaryRange>
 auto make_cdt(const tf::points<PointsPolicy> &pts,
               const tf::edges<EdgesPolicy> &edges,
-              const IsBoundaryRange &is_boundary, tf::return_index_map_t) {
+              const IsBoundaryRange &is_boundary, tf::return_index_map_t,
+              bool split_constraints = true) {
   if constexpr (std::is_same_v<Index, tf::none_t>) {
     using ActualIndex = std::decay_t<decltype(edges[0][0])>;
     return make_cdt<ActualIndex, Int>(pts, edges, is_boundary,
-                                      tf::return_index_map);
+                                      tf::return_index_map,
+                                      split_constraints);
   } else {
     using coord_t = tf::coordinate_type<PointsPolicy>;
     using ResolvedInt = tf::exact::resolve_int_type<Int, coord_t>;
 
     tf::constrained_delaunay_triangulator<Index, coord_t, ResolvedInt> cdt;
-    cdt.build(pts, edges, is_boundary);
+    cdt.build(pts, edges, is_boundary, split_constraints);
 
     auto faces = cdt.make_faces();
     auto cdt_polys = tf::make_polygons(faces, cdt.converted_points());

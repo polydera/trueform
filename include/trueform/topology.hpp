@@ -62,10 +62,13 @@
 #include "./topology/compute_unduplicated_faces_mask.hpp" // IWYU pragma: export
 #include "./topology/connected_component_labels.hpp" // IWYU pragma: export
 #include "./topology/domain_labels.hpp"              // IWYU pragma: export
+#include "./topology/cdt_refine_config.hpp"           // IWYU pragma: export
+#include "./topology/cdt_refiner.hpp"                 // IWYU pragma: export
 #include "./topology/constrained_delaunay_triangulator.hpp" // IWYU pragma: export
 #include "./topology/delaunay_flipper.hpp"            // IWYU pragma: export
 #include "./topology/delaunay_triangulator.hpp"      // IWYU pragma: export
 #include "./topology/make_cdt.hpp"                   // IWYU pragma: export
+#include "./topology/triangulation_type.hpp"        // IWYU pragma: export
 #include "./topology/ear_cutter.hpp"                 // IWYU pragma: export
 #include "./topology/connectivity_type.hpp"          // IWYU pragma: export
 #include "./topology/directed_edge_id_in_face.hpp"   // IWYU pragma: export
