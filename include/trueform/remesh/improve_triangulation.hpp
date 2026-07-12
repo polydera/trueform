@@ -70,15 +70,18 @@ auto improve_triangulation(
           tf::remesh::optimize_valence(he, deviation, 1);
       }
     } else {
-      tf::remesh::flip_min_angle(he, points, mask, 1, angle_floor);
+      tf::remesh::flip_min_angle(he, points, mask, 1, angle_floor,
+                                  config.max_deviation);
     }
 
     if constexpr (HasMask)
       tf::remesh::tangential_relaxation(he, points, old_pos, mask,
-                                        config.relaxation_iters, config.lambda);
+                                        config.relaxation_iters, config.lambda,
+                                        config.max_deviation);
     else
       tf::remesh::tangential_relaxation(he, points, old_pos,
-                                        config.relaxation_iters, config.lambda);
+                                        config.relaxation_iters, config.lambda,
+                                        config.max_deviation);
   }
 }
 

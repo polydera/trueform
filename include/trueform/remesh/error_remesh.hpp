@@ -138,7 +138,8 @@ auto error_remesh(tf::half_edges<Index> &he,
     }
     tf::improve_config<Real> icfg{optimize_iterations, relaxation_iters, lambda,
                                   cfg.check_normals,
-                                  tf::flip_objective::min_angle};
+                                  tf::flip_objective::min_angle,
+                                  error_rel * diag};
     if (!features.empty())
       tf::remesh::improve_triangulation(he, points.points(), features.mask,
                                         old_pos, icfg);

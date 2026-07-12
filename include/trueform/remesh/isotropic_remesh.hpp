@@ -26,7 +26,6 @@
 #include "./collapse_handler.hpp"
 #include "./feature_handler.hpp"
 #include "./improve_triangulation.hpp"
-#include "./optimize_valence.hpp"
 #include "../reindex/return_index_map.hpp"
 #include "./preserve_regions.hpp"
 #include "./protect_vertices.hpp"
@@ -34,8 +33,6 @@
 #include "./isotropic_remesh_config.hpp"
 #include "./split_edges.hpp"
 #include "./split_handler.hpp"
-#include "./tangential_relaxation.hpp"
-#include "./valence_deviation.hpp"
 
 #include <tuple>
 #include <type_traits>

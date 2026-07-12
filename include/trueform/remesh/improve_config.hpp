@@ -45,6 +45,17 @@ template <typename Real> struct improve_config {
 
   /// What the flip pass optimizes.
   flip_objective flip = flip_objective::valence;
+
+  /// When > 0, each tangential relaxation PASS bounds its move so the
+  /// surface displacement of that pass stays within max_deviation (move
+  /// length capped at max_deviation * L_min / h, where h is the 1-ring's
+  /// height over the tangent plane), and min-angle flips reject when the
+  /// old/new diagonal skew distance exceeds it. This is a PER-PASS bound:
+  /// drift accumulates across passes and the total deviation from the
+  /// original surface can reach a small multiple of max_deviation.
+  /// Error-budgeted pipelines (tf::simplify, tf::remesh) set this to
+  /// error_rel * diagonal; 0 disables the caps.
+  Real max_deviation = Real(0);
 };
 
 } // namespace tf

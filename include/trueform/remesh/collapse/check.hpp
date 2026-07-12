@@ -270,7 +270,11 @@ auto is_collapse_allowed(const tf::half_edges<Index> &he,
 ///                      dihedral test (adjacent NEW faces vs each other), this
 ///                      compares each face's OLD vs NEW normal, so it catches a
 ///                      COHERENT inversion of a whole 1-ring fan that the
-///                      dihedral test misses. Runtime flag, default false.
+///                      dihedral test misses. An old face too degenerate for
+///                      its own normal to be meaningful defers to the
+///                      aggregate of the ring's old normals; a new face whose
+///                      orientation sign is below the determinable floor is
+///                      rejected. Runtime flag, default false.
 /// @tparam MinQualityT  Pass a Real value to enable the triangle-quality
 ///                      check. The value is min_quality in [0,1] (1 =
 ///                      equilateral, ->0 = sliver): a collapse is allowed iff
@@ -309,11 +313,15 @@ auto is_collapse_allowed_dihedral(
   }
   Real max_new_e2 = 0;
 
+  // A ring walk that hits an invalid handle (boundary or non-manifold fan)
+  // cannot be inspected -- reject conservatively. The permissive "can't
+  // check, allow" alternative lets collapses at exactly the irregular spots
+  // (e.g. along a non-manifold imprint curve) go through ungated.
   // v0's ring
   {
     auto cur = he.rotated(heh);
     if (!cur.is_valid())
-      return true;
+      return false;
     while (cur != heh) {
       if (link_size >= 128)
         return false;
@@ -329,7 +337,7 @@ auto is_collapse_allowed_dihedral(
       link[link_size++] = v;
       cur = he.rotated(cur);
       if (!cur.is_valid())
-        return true;
+        return false;
     }
   }
 
@@ -339,10 +347,10 @@ auto is_collapse_allowed_dihedral(
   {
     auto skip = he.rotated(he.opposite(tf::unsafe, heh));
     if (!skip.is_valid())
-      return true;
+      return false;
     auto cur = he.rotated(skip);
     if (!cur.is_valid())
-      return true;
+      return false;
     auto opp = he.opposite(tf::unsafe, heh);
     while (cur != opp) {
       if (link_size >= 128)
@@ -359,7 +367,7 @@ auto is_collapse_allowed_dihedral(
       link[link_size++] = v;
       cur = he.rotated(cur);
       if (!cur.is_valid())
-        return true;
+        return false;
     }
   }
 
@@ -374,43 +382,70 @@ auto is_collapse_allowed_dihedral(
   if (link_size < 3)
     return true;
 
-  constexpr Real max_area_ratio = Real(1e8);
+  // The whole geometric loop runs in double regardless of the point type:
+  // near-degenerate faces have sub-ulp float areas, so their float
+  // orientation signs are noise (the fold/normal tests become coin flips).
+  constexpr double max_area_ratio = 1e8;
   // Reject when adjacent new-face normals are within 10° of antiparallel
   // (i.e. surface dihedral < 10° — the near-fold zone). cos²(10°) ≈ 0.9698.
-  constexpr Real cos2_fold_tol = Real(0.9698463);
+  constexpr double cos2_fold_tol = 0.9698463;
 
   // Triangle quality q = (2/sqrt3) * (2*area) / max_edge^2 in (0,1] (1 =
   // equilateral). Allow iff worst NEW q >= min(floor_q, worst OLD q):
   //   min_quality < 0 -> disabled; == 0 -> never worsen; > 0 -> quality floor.
-  const Real kq = tf::two_over_sqrt_3<Real>;
-  Real min_old_q = std::numeric_limits<Real>::max();
-  Real min_new_q = std::numeric_limits<Real>::max();
+  const double kq = tf::two_over_sqrt_3<double>;
+  double min_old_q = std::numeric_limits<double>::max();
+  double min_new_q = std::numeric_limits<double>::max();
   bool q_active = false;
-  Real floor_q = Real(0);
+  double floor_q = 0;
   if constexpr (Quality) {
-    Real mq = Real(min_quality);
-    q_active = mq >= Real(0);
-    floor_q = (mq == Real(0)) ? std::numeric_limits<Real>::max() : mq;
+    double mq = double(min_quality);
+    q_active = mq >= 0;
+    floor_q = (mq == 0) ? std::numeric_limits<double>::max() : mq;
   }
+
+  auto dvec = [&](const auto &a, const auto &b) {
+    return tf::vector<double, 3>{double(a[0]) - double(b[0]),
+                                 double(a[1]) - double(b[1]),
+                                 double(a[2]) - double(b[2])};
+  };
+
+  // Aggregate of the link's old-face normals: the substitute reference for
+  // old faces too degenerate to vouch for themselves. Built lazily -- the
+  // degenerate-old-face path is rare and the aggregate costs a full ring.
+  tf::vector<double, 3> old_ref = tf::zero;
+  bool old_ref_built = false;
+  auto build_old_ref = [&]() {
+    for (int i = 0; i < link_size; ++i) {
+      int nxt = (i + 1) % link_size;
+      bool i_in_v0 = i < v0_link_end;
+      if (i_in_v0 != (nxt < v0_link_end))
+        continue;
+      auto center = i_in_v0 ? v0 : v1;
+      old_ref += tf::cross(dvec(points[link[i]], points[center]),
+                           dvec(points[link[nxt]], points[center]));
+    }
+    old_ref_built = true;
+  };
 
   for (int i = 0; i < link_size; ++i) {
     int prv = (i + link_size - 1) % link_size;
     int nxt = (i + 1) % link_size;
 
-    auto e01 = points[link[prv]] - pt;
-    auto e02 = points[link[i]] - pt;
+    auto e01 = dvec(points[link[prv]], pt);
+    auto e02 = dvec(points[link[i]], pt);
     auto n1 = tf::cross(e01, e02);
 
-    auto e03 = points[link[nxt]] - pt;
+    auto e03 = dvec(points[link[nxt]], pt);
     auto n2 = tf::cross(e02, e03);
 
-    Real l1 = n1.length2();
-    Real l2 = n2.length2();
+    double l1 = n1.length2();
+    double l2 = n2.length2();
     if (std::max(l1, l2) >= max_area_ratio * std::min(l1, l2))
       return false;
 
-    Real d = tf::dot(n1, n2);
-    if (d <= Real(0) && d * d > cos2_fold_tol * l1 * l2)
+    double d = tf::dot(n1, n2);
+    if (d <= 0 && d * d > cos2_fold_tol * l1 * l2)
       return false;
 
     if (check_normals) {
@@ -418,13 +453,22 @@ auto is_collapse_allowed_dihedral(
       // (pt, link[i], link[nxt]) with normal n2; its OLD form is
       // (center, link[i], link[nxt]) where center is the original ring owner --
       // a real old face only when both link vertices come from the same ring.
+      // A new face below the determinable floor has a noise sign: reject. A
+      // degenerate old face's normal is noise too: the aggregate substitutes.
+      if (l2 <= 1e-24 * tf::dot(e02, e02) * tf::dot(e03, e03))
+        return false;
       bool i_in_v0 = i < v0_link_end;
       bool nxt_in_v0 = nxt < v0_link_end;
       if (i_in_v0 == nxt_in_v0) {
         auto center = i_in_v0 ? v0 : v1;
-        auto oa = points[link[i]] - points[center];
-        auto ob = points[link[nxt]] - points[center];
-        if (tf::dot(tf::cross(oa, ob), n2) <= Real(0))
+        auto oa = dvec(points[link[i]], points[center]);
+        auto ob = dvec(points[link[nxt]], points[center]);
+        auto old_n = tf::cross(oa, ob);
+        bool healthy =
+            tf::dot(old_n, old_n) > 1e-14 * tf::dot(oa, oa) * tf::dot(ob, ob);
+        if (!healthy && !old_ref_built)
+          build_old_ref();
+        if (tf::dot(healthy ? old_n : old_ref, n2) <= 0)
           return false; // face normal inverts
       }
     }
@@ -434,11 +478,11 @@ auto is_collapse_allowed_dihedral(
         continue;
       // New face (pt, link[i], link[nxt]) quality (lower = worse).
       {
-        auto fc = points[link[nxt]] - points[link[i]];
-        Real new_me2 =
+        auto fc = dvec(points[link[nxt]], points[link[i]]);
+        double new_me2 =
             std::max({tf::dot(e02, e02), tf::dot(e03, e03), tf::dot(fc, fc)});
         if (new_me2 > 0) {
-          Real qn = kq * std::sqrt(std::max(l2, Real(0))) / new_me2;
+          double qn = kq * tf::sqrt(std::max(l2, 0.0)) / new_me2;
           min_new_q = std::min(min_new_q, qn);
         }
       }
@@ -447,15 +491,15 @@ auto is_collapse_allowed_dihedral(
       bool nxt_in_v0 = nxt < v0_link_end;
       if (i_in_v0 == nxt_in_v0) {
         auto center = i_in_v0 ? v0 : v1;
-        auto oa = points[link[i]] - points[center];
-        auto ob = points[link[nxt]] - points[center];
+        auto oa = dvec(points[link[i]], points[center]);
+        auto ob = dvec(points[link[nxt]], points[center]);
         auto old_n = tf::cross(oa, ob);
-        Real old_a2 = old_n.length2();
-        auto oc = points[link[nxt]] - points[link[i]];
-        Real old_me2 =
+        double old_a2 = old_n.length2();
+        auto oc = dvec(points[link[nxt]], points[link[i]]);
+        double old_me2 =
             std::max({tf::dot(oa, oa), tf::dot(ob, ob), tf::dot(oc, oc)});
         if (old_me2 > 0) {
-          Real qo = kq * std::sqrt(std::max(old_a2, Real(0))) / old_me2;
+          double qo = kq * tf::sqrt(std::max(old_a2, 0.0)) / old_me2;
           min_old_q = std::min(min_old_q, qo);
         }
       }

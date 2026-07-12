@@ -43,7 +43,9 @@ template <typename PointsPolicy, typename Index>
 inline auto flip_keeps_orientation(const tf::points<PointsPolicy> &points,
                                    Index va0, Index va1, Index va2, Index vb2)
     -> bool {
-  using Real = tf::coordinate_type<PointsPolicy>;
+  // double regardless of the point type: near-degenerate triangles have
+  // sub-ulp float areas and their float orientation sign is noise
+  using Real = double;
   auto P = [&](Index v) {
     auto p = points[v];
     return tf::point<Real, 3>{Real(p[0]), Real(p[1]), Real(p[2])};

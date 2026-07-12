@@ -13,6 +13,7 @@
 #pragma once
 
 #include <cmath>
+#include <limits>
 #include <type_traits>
 
 #include "../core/coordinate_type.hpp"
@@ -63,11 +64,15 @@ inline auto tri_min_angle(const tf::point<Real, 3> &A,
 ///
 /// @param mask  feature_mask (skip feature edges/floor near feature vertices) or
 ///              tf::none (no features).
+/// @param max_deviation  When > 0, reject flips that displace the surface by
+///              more than this: the displacement of a flip is the skew
+///              distance between the old and new diagonal.
 template <typename Index, typename PointsPolicy, typename MaskOrNone>
 auto flip_min_angle(tf::half_edges<Index> &he,
                     const tf::points<PointsPolicy> &points,
                     const MaskOrNone &mask, int iterations,
-                    tf::rad<tf::coordinate_type<PointsPolicy>> angle_floor)
+                    tf::rad<tf::coordinate_type<PointsPolicy>> angle_floor,
+                    tf::coordinate_type<PointsPolicy> max_deviation = 0)
     -> Index {
   using Real = tf::coordinate_type<PointsPolicy>;
   constexpr bool HasMask = !std::is_same_v<MaskOrNone, tf::none_t>;
@@ -97,19 +102,30 @@ auto flip_min_angle(tf::half_edges<Index> &he,
 
       auto P = [&](Index v) {
         auto p = points[v];
-        return tf::point<Real, 3>{Real(p[0]), Real(p[1]), Real(p[2])};
+        return tf::point<double, 3>{double(p[0]), double(p[1]), double(p[2])};
       };
       auto pa0 = P(va0), pa1 = P(va1), pa2 = P(va2), pb2 = P(vb2);
 
       // Old triangles (va0,va1,va2) and (va1,va0,vb2); after flip (va2,vb2,va1)
       // and (vb2,va2,va0).
-      Real min_before = std::min(detail::tri_min_angle(pa0, pa1, pa2),
-                                 detail::tri_min_angle(pa1, pa0, pb2));
-      Real min_after = std::min(detail::tri_min_angle(pa2, pb2, pa1),
-                                detail::tri_min_angle(pb2, pa2, pa0));
+      double min_before = std::min(detail::tri_min_angle(pa0, pa1, pa2),
+                                   detail::tri_min_angle(pa1, pa0, pb2));
+      double min_after = std::min(detail::tri_min_angle(pa2, pb2, pa1),
+                                  detail::tri_min_angle(pb2, pa2, pa0));
 
-      if (min_after <= min_before + margin)
+      if (min_after <= min_before + double(margin))
         continue;
+      if (max_deviation > 0) {
+        auto d0 = pa1 - pa0;
+        auto d1 = pb2 - pa2;
+        auto n = tf::cross(d0, d1);
+        double n2 = tf::dot(n, n);
+        double gap = n2 < 1e-30
+                         ? std::numeric_limits<double>::max()
+                         : std::abs(tf::dot(pa2 - pa0, n)) / tf::sqrt(n2);
+        if (gap > double(max_deviation))
+          continue;
+      }
       if (!detail::flip_keeps_orientation(points, va0, va1, va2, vb2))
         continue; // would fold the surface
 
