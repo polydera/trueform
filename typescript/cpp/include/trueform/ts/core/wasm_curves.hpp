@@ -38,6 +38,9 @@ public:
   auto points() -> wasm_ndarray<Real> { return _points; }
   auto size() const -> int { return _paths.size(); }
 
+  /// New handle over the same paths and points storage.
+  auto shallow_copy() const -> wasm_curves { return *this; }
+
   auto destroy() -> void {
     _paths.destroy();
     _points.destroy();

@@ -129,18 +129,19 @@ export class Mesh {
     return wrapPointArray(this._handle.transformation(), this.dtype);
   }
 
-  /** Set a 4x4 transformation matrix, or null to clear. */
+  /** Set a 4x4 transformation matrix, or null to clear. A matrix of the
+   * other float dtype is converted to the mesh's dtype. */
   set transformation(t: NDArrayFloat32 | NDArrayFloat64 | Float32Array | Float64Array | null) {
     if (t === null) {
       this._handle.clear_transformation();
-    } else if (t instanceof NDArray) {
-      this._handle.set_transformation(t._handle);
-    } else {
-      const arr: NDArrayFloat32 | NDArrayFloat64 = t instanceof Float64Array
-        ? ndarray(t, [4, 4])
-        : ndarray(t, [4, 4]);
-      this._handle.set_transformation(arr._handle);
+      return;
     }
+    const arr =
+      t instanceof NDArray ? t
+      : t instanceof Float64Array ? ndarray(t, [4, 4])
+      : ndarray(t, [4, 4]);
+    const safe = arr.dtype === this.dtype ? arr : arr.as(this.dtype);
+    this._handle.set_transformation(safe._handle);
   }
 
   /**

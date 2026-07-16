@@ -332,4 +332,44 @@ describe("I/O float64", () => {
     stlBytes.delete(); mesh.delete();
   });
 
+  test("writes apply the mesh transformation (sync == async)", async () => {
+    const tf = getTf();
+    for (const dtype of ["float32", "float64"]) {
+      const mesh = tf.sphereMesh(1, 8, 8, { dtype });
+      mesh.transformation = tf.makeTranslation(10, 0, 0);
+
+      const syncStl = tf.writeStl(mesh);
+      const asyncStl = await tf.async.writeStl(mesh);
+      assert(syncStl.length === asyncStl.length,
+             `stl length sync ${syncStl.length} == async ${asyncStl.length}`);
+      const a = syncStl.data, b = asyncStl.data;
+      let same = true;
+      for (let i = 0; i < a.length; ++i)
+        if (a[i] !== b[i]) { same = false; break; }
+      assert(same, `stl bytes identical (${dtype})`);
+
+      // the translated sphere's re-read x-range must sit around 10
+      const rm = tf.readStl(syncStl.data);
+      const pts = rm.points.data;
+      let minX = Infinity;
+      for (let i = 0; i < pts.length; i += 3) minX = Math.min(minX, pts[i]);
+      assert(minX > 8, `matrix applied: min x ${minX} > 8 (${dtype})`);
+      rm.delete();
+
+      const syncObj = tf.writeObj(mesh);
+      const asyncObj = await tf.async.writeObj(mesh);
+      let sameObj = syncObj.length === asyncObj.length;
+      if (sameObj) {
+        const c = syncObj.data, d = asyncObj.data;
+        for (let i = 0; i < c.length; ++i)
+          if (c[i] !== d[i]) { sameObj = false; break; }
+      }
+      assert(sameObj, `obj bytes identical (${dtype})`);
+
+      log(`  transformed write sync==async (${dtype})`, "line-pass");
+      syncStl.delete(); asyncStl.delete(); syncObj.delete(); asyncObj.delete();
+      mesh.delete();
+    }
+  });
+
 });

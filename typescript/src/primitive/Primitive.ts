@@ -63,6 +63,19 @@ export class Primitive extends NDArray {
       this.dtype as "float32" | "float64",
     );
   }
+
+  /**
+   * Shallow copy: a new Primitive over the same WASM buffer, with the
+   * same shape, offset, and primitive type. Values are shared;
+   * metadata is independent afterwards.
+   */
+  shallowCopy(): Primitive {
+    return new Primitive(
+      this._handle.shallow_copy(),
+      this.type,
+      this.dtype as "float32" | "float64",
+    );
+  }
 }
 
 function singleNdim(type: PrimitiveType): number {

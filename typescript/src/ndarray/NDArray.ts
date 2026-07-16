@@ -670,6 +670,16 @@ export class NDArray<T = any> {
     return new NDArray<T>(native()[`clone_${nd}`](this._handle), this.dtype);
   }
 
+  /**
+   * Shallow copy: a new handle over the same WASM buffer, with the
+   * same shape and offset. Values are shared — in-place mutations are
+   * visible through both handles — while shape metadata is independent
+   * afterwards. Contrast clone(), which copies the data.
+   */
+  shallowCopy(): NDArray<T> {
+    return new NDArray<T>(this._handle.shallow_copy(), this.dtype);
+  }
+
   // ============ Lifecycle ============
 
   /** Free WASM memory. Called automatically by GC via FinalizationRegistry. */

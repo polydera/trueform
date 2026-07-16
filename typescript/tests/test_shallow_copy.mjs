@@ -787,3 +787,105 @@ describe("PointCloud shallowCopy: mutation isolation + cache invalidation", () =
   });
 
 });
+
+describe("NDArray shallowCopy: shared buffer, independent metadata", () => {
+
+  test("values shared, shape independent", () => {
+    const tf = getTf();
+    const a = tf.ndarray(new Float32Array([1, 2, 3, 4, 5, 6]), [2, 3]);
+    const c = a.shallowCopy();
+
+    assert(c.shape.length === 2 && c.shape[0] === 2 && c.shape[1] === 3,
+      `copy keeps shape, got [${c.shape}]`);
+
+    // in-place mutation through the copy is visible in the original
+    c.data[0] = 42;
+    assert(a.data[0] === 42, "buffer is shared");
+
+    // reshaping the copy leaves the original's shape untouched
+    const flat = c.reshape([6]);
+    assert(a.shape.length === 2, "original shape independent");
+    assert(flat.data[5] === 6, "reshaped view sees same data");
+    flat.delete();
+
+    // a copy is a distinct handle, not an alias: the original deletes
+    // first and the copy stays valid over the shared storage
+    a.delete();
+    assert(c.data[0] === 42 && c.data[5] === 6,
+      "copy valid after original deleted");
+    assert(c.shape[0] === 2 && c.shape[1] === 3,
+      "copy metadata valid after original deleted");
+
+    log("  ndarray shallowCopy: shared values, independent lifetime", "line-pass");
+    c.delete();
+  });
+
+  test("clone stays deep by contrast", () => {
+    const tf = getTf();
+    const a = tf.ndarray(new Float32Array([1, 2, 3]), [3]);
+    const deep = a.clone();
+    deep.data[0] = 99;
+    assert(a.data[0] === 1, "clone does not share the buffer");
+    deep.delete();
+    a.delete();
+  });
+
+});
+
+describe("Primitive shallowCopy: preserves type", () => {
+
+  test("point copy is a point over the same buffer", () => {
+    const tf = getTf();
+    const p = tf.point(1, 2, 3);
+    const c = p.shallowCopy();
+
+    assert(c.type === "point", `type preserved, got ${c.type}`);
+    assert(c.shape.length === p.shape.length, "shape preserved");
+
+    c.data[0] = 7;
+    assert(p.data[0] === 7, "buffer is shared");
+
+    // original deletes first; the copy stays valid over shared storage
+    p.delete();
+    assert(c.data[0] === 7 && c.data[2] === 3,
+      "copy valid after original deleted");
+
+    log("  primitive shallowCopy: type + buffer + lifetime", "line-pass");
+    c.delete();
+  });
+
+});
+
+describe("Curves shallowCopy: shared buffers, independent lifetime", () => {
+
+  test("copy shares paths and points; deletes independently", () => {
+    const tf = getTf();
+    const s0 = tf.sphereMesh(1, 16, 16);
+    const s1 = tf.sphereMesh(1, 16, 16);
+    s1.transformation = tf.makeTranslation(0.8, 0, 0);
+    const curves = tf.intersectionCurves(s0, s1);
+    assert(curves.length > 0, "fixture produces curves");
+
+    const c = curves.shallowCopy();
+    assert(c.length === curves.length, "same path count");
+
+    const p0 = curves.points;
+    const p1 = c.points;
+    assert(p0.shape[0] === p1.shape[0], "same point count");
+    assert(p0.data[0] === p1.data[0], "same point data");
+    p0.delete();
+    p1.delete();
+
+    // original deletes first; the copy stays valid over shared storage
+    curves.delete();
+    const p2 = c.points;
+    assert(p2.shape[0] > 0, "copy valid after original deleted");
+    p2.delete();
+
+    log("  curves shallowCopy: shared storage, refcounted lifetime", "line-pass");
+    c.delete();
+    s0.delete();
+    s1.delete();
+  });
+
+});

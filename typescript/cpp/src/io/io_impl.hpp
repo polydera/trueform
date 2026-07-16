@@ -166,7 +166,9 @@ auto sync_write_stl_buffer(wasm_mesh<Real> &m) -> wasm_ndarray<std::int8_t> {
 
 template <typename Real>
 auto async_write_stl_buffer(wasm_mesh<Real> &m) -> promise_t {
-  auto mesh = m.shallow_copy();
+  // handle copy, not shallow_copy: the copy must keep the transformation
+  // (shallow_copy clears it) and the worker only reads
+  auto mesh = m;
   return promise([mesh]() {
     return sync_write_stl_buffer<Real>(const_cast<wasm_mesh<Real> &>(mesh));
   });
@@ -193,7 +195,9 @@ auto sync_write_obj_buffer(wasm_mesh<Real> &m) -> wasm_ndarray<std::int8_t> {
 
 template <typename Real>
 auto async_write_obj_buffer(wasm_mesh<Real> &m) -> promise_t {
-  auto mesh = m.shallow_copy();
+  // handle copy, not shallow_copy: the copy must keep the transformation
+  // (shallow_copy clears it) and the worker only reads
+  auto mesh = m;
   return promise([mesh]() {
     return sync_write_obj_buffer<Real>(const_cast<wasm_mesh<Real> &>(mesh));
   });

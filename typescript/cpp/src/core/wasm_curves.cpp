@@ -26,6 +26,7 @@ auto register_wasm_curves_bindings(const std::string &class_name) -> void {
       .function("paths", &curves_t::paths)
       .function("points", &curves_t::points)
       .function("size", &curves_t::size)
+      .function("shallow_copy", &curves_t::shallow_copy)
       .function("destroy", &curves_t::destroy)
       .function("is_valid", &curves_t::is_valid);
 }

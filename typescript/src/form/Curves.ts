@@ -21,6 +21,7 @@ interface NativeCurves {
   paths(): NativeOffsetBlockedIntBuffer;
   points(): NativePointNDArray;
   size(): number;
+  shallow_copy(): NativeCurves;
   destroy(): void;
   is_valid(): boolean;
   delete(): void;
@@ -67,6 +68,15 @@ export class Curves {
   /** Number of paths. */
   get length(): number {
     return this._handle.size();
+  }
+
+  /**
+   * Shallow copy: a new handle sharing the same paths and points
+   * buffers. Both copies delete independently; the storage frees when
+   * the last handle drops.
+   */
+  shallowCopy(): Curves {
+    return new Curves(this._handle.shallow_copy(), this.dtype);
   }
 
   delete(): void {

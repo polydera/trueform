@@ -84,9 +84,9 @@ export {
 } from "./ndarray/math";
 
 // IO
-export { csgGraph, CsgGraph, Expr, op } from "./csg/sync";
+export { csgGraph, CsgGraph, Expr, op, outerShell } from "./csg/sync";
 export type {
-  CsgGraphOptions, CsgDomainsOptions,
+  CsgGraphOptions, CsgDomainsOptions, OuterShellOptions,
   CsgMeshLabeledResult, CsgMeshIndexMapResult,
   CsgDomainsResult, CsgDomainsLabeledResult, CsgDomainsIndexMapResult,
 } from "./csg/sync";
