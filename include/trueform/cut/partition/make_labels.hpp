@@ -35,12 +35,14 @@
 namespace tf::cut {
 
 /// Label connected components of uncut surface faces.
-/// Faces that appear in descriptors are masked out; remaining faces
-/// are flood-filled through manifold_edge_link.
+/// Faces that appear in descriptors are masked out, as are the cut
+/// faces the cutter consumed whole (see @ref tf::face_cuts::deleted);
+/// remaining faces are flood-filled through manifold_edge_link.
 template <typename Index, typename LabelType, typename Policy,
-          typename Descriptors>
+          typename Descriptors, typename DeletedObjects>
 auto make_surface_component_labels2(const tf::polygons<Policy> &polygons,
                                    const Descriptors &descriptors,
+                                   const DeletedObjects &deleted_objects,
                                    Index expected_components = 2) {
   static_assert(tf::has_manifold_edge_link_policy<Policy>,
                 "Use polygons | tf::tag(manifold_edge_link)");
@@ -52,6 +54,10 @@ auto make_surface_component_labels2(const tf::polygons<Policy> &polygons,
   tf::parallel_for_each(descriptors, [&](const auto &desc) {
     mask[desc.object] = false;
     cl.labels[desc.object] = -1;
+  });
+  tf::parallel_for_each(deleted_objects, [&](const Index &object) {
+    mask[object] = false;
+    cl.labels[object] = -1;
   });
   cl.n_components = tf::label_connected_components_masked(
       cl.labels, mask, tf::make_applier(polygons.manifold_edge_link()),
@@ -212,12 +218,12 @@ auto make_partition_labels(const tf::polygons<Policy0> &form0,
   tbb::parallel_invoke(
       [&] { cut_cls = make_cut_component_labels<LabelType>(fc, cg); },
       [&] {
-        sc0 = make_surface_component_labels2<Index, LabelType>(form0,
-                                                              descs_per_tag[0]);
+        sc0 = make_surface_component_labels2<Index, LabelType>(
+            form0, descs_per_tag[0], fc.deleted(0));
       },
       [&] {
-        sc1 = make_surface_component_labels2<Index, LabelType>(form1,
-                                                              descs_per_tag[1]);
+        sc1 = make_surface_component_labels2<Index, LabelType>(
+            form1, descs_per_tag[1], fc.deleted(1));
       });
 
   tf::small_vector<tf::cut::partition_labels<LabelType>, 4> result;
@@ -261,7 +267,7 @@ auto make_partition_labels(tf::range<Iterator, N> forms,
   for (std::size_t t = 0; t < n_tags; ++t)
     tg.run([&, t] {
       scs[t] = make_surface_component_labels2<Index, LabelType>(
-          forms[t], descs_per_tag[t]);
+          forms[t], descs_per_tag[t], fc.deleted(Index(t)));
     });
   tg.wait();
 

@@ -40,6 +40,13 @@ template <typename Index> struct non_manifold_edge_fans {
   using vertex_t = tf::intersect::graph::vertex<Index>;
   tf::blocked_buffer<vertex_t, 2> edges;
   tf::offset_block_buffer<Index, Index> faces;
+  /// Per fan entry (parallel to `faces.data_buffer()`): 1 iff that
+  /// occurrence traverses the fan's edge as `(edges[i][0] ->
+  /// edges[i][1])`. A slit loop appears twice with opposite bits — the
+  /// direction is assigned per occurrence at build time (the loop
+  /// connection structure defines it), never re-derived from the loop,
+  /// where a bridge makes the per-loop question unanswerable.
+  tf::buffer<char> dirs;
 };
 
 /// @ingroup cut
@@ -75,11 +82,12 @@ auto make_non_manifold_edge_fans(const tf::arrangement_graph<Index> &ag,
     tf::blocked_buffer<vertex_t, 2> edges;
     tf::buffer<Index> sizes;
     tf::buffer<Index> faces_data;
+    tf::buffer<char> dirs;
   };
   Index offset = 0;
   tf::blocked_reduce(
-      tf::enumerate(tf::zip(loops, conn)), std::tie(out.edges, out.faces),
-      local_t{},
+      tf::enumerate(tf::zip(loops, conn)),
+      std::tie(out.edges, out.faces, out.dirs), local_t{},
       [&loops](const auto &range, local_t &local) {
         // How many times the undirected edge {a,b} traverses loop `lp`.
         // 1 for a normal edge; 2 for the two walls of a slit — an open cut
@@ -93,6 +101,16 @@ auto make_non_manifold_edge_fans(const tf::arrangement_graph<Index> &ag,
           Index c = 0, q = m - 1;
           for (Index j = 0; j < m; q = j++)
             if ((lp[q] == a && lp[j] == b) || (lp[q] == b && lp[j] == a))
+              ++c;
+          return c;
+        };
+        // Directed count of (a -> b) traversals only.
+        auto edge_mult_fwd = [](const auto &lp, const vertex_t &a,
+                                const vertex_t &b) -> Index {
+          const Index m = static_cast<Index>(lp.size());
+          Index c = 0, q = m - 1;
+          for (Index j = 0; j < m; q = j++)
+            if (lp[q] == a && lp[j] == b)
               ++c;
           return c;
         };
@@ -174,14 +192,28 @@ auto make_non_manifold_edge_fans(const tf::arrangement_graph<Index> &ag,
             local.edges.data_buffer().push_back(va);
             local.edges.data_buffer().push_back(vb);
             Index fan = 0;
+            // Occurrence directions: forward passes first, then the
+            // backward ones. The emitting slot traverses (va -> vb), so
+            // the self loop always has at least one forward pass.
+            const Index self_fwd =
+                self_mult >= 2 ? edge_mult_fwd(loop, va, vb) : Index(1);
             for (Index k = 0; k < self_mult; ++k) {
               local.faces_data.push_back(loop_id);
+              local.dirs.push_back(char(k < self_fwd));
               ++fan;
             }
             for (auto n : neighbours) {
               const Index nm = edge_mult(loops[n], va, vb);
-              for (Index k = 0; k < (nm > 0 ? nm : Index(1)); ++k) {
+              if (nm == 0) {
                 local.faces_data.push_back(n);
+                local.dirs.push_back(char(1));
+                ++fan;
+                continue;
+              }
+              const Index nf = edge_mult_fwd(loops[n], va, vb);
+              for (Index k = 0; k < nm; ++k) {
+                local.faces_data.push_back(n);
+                local.dirs.push_back(char(k < nf));
                 ++fan;
               }
             }
@@ -191,13 +223,15 @@ auto make_non_manifold_edge_fans(const tf::arrangement_graph<Index> &ag,
       },
       [&offset](const local_t &local,
                 std::tuple<tf::blocked_buffer<vertex_t, 2> &,
-                           tf::offset_block_buffer<Index, Index> &>
+                           tf::offset_block_buffer<Index, Index> &,
+                           tf::buffer<char> &>
                     result) {
-        auto &[edges, faces_blocks] = result;
+        auto &[edges, faces_blocks, dirs] = result;
         if (!local.sizes.size())
           return;
         tf::core::append(local.edges, edges);
         tf::core::append(local.faces_data, faces_blocks.data_buffer());
+        tf::core::append(local.dirs, dirs);
         for (auto sz : local.sizes) {
           faces_blocks.offsets_buffer().push_back(offset);
           offset += sz;

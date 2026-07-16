@@ -34,9 +34,9 @@ namespace tf::cut {
 ///      `bundle_merges` (drives the 3D-connected-component partition).
 ///
 /// Graph-native counterpart to
-/// @ref tf::topology::domains::emit_domain_merges. Side detection uses
-/// the directed-edge search over `vertex_t` (the loop's native vertex
-/// type); component labels come from @ref tf::arrangement_graph.
+/// @ref tf::topology::domains::emit_domain_merges. Sides come from the
+/// fan's per-occurrence direction bits; component labels come from
+/// @ref tf::arrangement_graph.
 template <typename Index, typename Index1>
 void emit_domain_merges(
     const tf::arrangement_graph<Index> &ag,
@@ -50,50 +50,34 @@ void emit_domain_merges(
   auto loops = fc.loops();
   auto loop_labels = ag.loop_labels();
 
-  // Local variant of tf::directed_edge_id_in_face for vertex_t faces.
-  // Returns the slot index (Index) of the directed edge (v0 -> v1) in
-  // the face, or face.size() if absent.
-  auto directed_edge_id = [](const vertex_t &v0, const vertex_t &v1,
-                              const auto &face) -> Index {
-    Index size = Index(face.size());
-    Index prev = size - 1;
-    for (Index i = 0; i < size; prev = i++) {
-      if (char(face[prev] == v0) & char(face[i] == v1))
-        return prev;
-    }
-    return size;
-  };
-
   struct local_state_t {
     tf::hash_set<std::array<Index, 2>, tf::array_hash<Index, 2>> seen;
     tf::hash_set<std::array<Index, 2>, tf::array_hash<Index, 2>> bundle_seen;
   };
 
+  auto dirs_view = tf::make_offset_block_range(fans.faces.offsets_buffer(),
+                                               tf::make_range(fans.dirs));
+
   tf::generic_generate(
       reps, std::tie(merges, bundle_merges), local_state_t{},
       [&](Index rep, auto &out_buffers, local_state_t &state) {
-        auto edge = fans.edges[rep];
-        const vertex_t vi = edge[0];
-        const vertex_t vj = edge[1];
         auto face_block = fans.faces[rep];
+        auto dir_block = dirs_view[rep];
         Index K = Index(face_block.size());
 
         auto &out_merges = std::get<0>(out_buffers);
         auto &out_bundles = std::get<1>(out_buffers);
 
         for (Index r = 0; r < K; ++r) {
+          Index rn = tf::circular_increment(r, K);
           Index Fa = face_block[r];
-          Index Fb = face_block[tf::circular_increment(r, K)];
-          const auto &face_a = loops[Fa];
-          const auto &face_b = loops[Fb];
+          Index Fb = face_block[rn];
 
-          Index sa = directed_edge_id(vi, vj, face_a) == Index(face_a.size())
-                         ? 1
-                         : 0;
-          Index sb = directed_edge_id(vi, vj, face_b) == Index(face_b.size())
-                         ? 1
-                         : 0;
-          sb ^= 1;
+          // Sides come from the occurrence's own traversal direction —
+          // a slit loop's two fan entries take opposite sides, which a
+          // per-loop containment test cannot express.
+          Index sa = dir_block[r] ? Index(0) : Index(1);
+          Index sb = (dir_block[rn] ? Index(0) : Index(1)) ^ Index(1);
 
           Index frag_a = loop_labels[Fa];
           Index frag_b = loop_labels[Fb];

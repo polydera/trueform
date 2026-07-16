@@ -180,13 +180,20 @@ auto make_arrangement_descriptor(const tf::arrangement_graph<Index> &ag,
   edge_path_id.allocate(static_cast<std::size_t>(n_nm_edges));
   tf::parallel_for_each(
       tf::enumerate(tf::zip(epc.paths(), epc.directions())),
-      [&edge_path_id, &edges = out.fans.edges](auto t) {
+      [&edge_path_id, &fans = out.fans](auto t) {
         auto &&[path_idx, pd] = t;
-        auto &&[path, dirs] = pd;
-        for (auto &&[e_id, fwd] : tf::zip(path, dirs)) {
+        auto &&[path, path_dirs] = pd;
+        for (auto &&[e_id, fwd] : tf::zip(path, path_dirs)) {
           edge_path_id[e_id] = static_cast<Index>(path_idx);
-          if (!fwd)
-            std::swap(edges[e_id][0], edges[e_id][1]);
+          if (!fwd) {
+            std::swap(fans.edges[e_id][0], fans.edges[e_id][1]);
+            // Occurrence directions are relative to the edge as stored;
+            // flipping the edge flips every occurrence.
+            auto o0 = fans.faces.offsets_buffer()[e_id];
+            auto o1 = fans.faces.offsets_buffer()[e_id + 1];
+            for (auto k = o0; k < o1; ++k)
+              fans.dirs[k] ^= char(1);
+          }
         }
       },
       tf::checked);
@@ -206,9 +213,11 @@ auto make_arrangement_descriptor(const tf::arrangement_graph<Index> &ag,
   auto labels_view = tf::make_offset_block_range(
       out.fans.faces.offsets_buffer(), labels_indirect);
 
+  auto dirs_view = tf::make_offset_block_range(
+      out.fans.faces.offsets_buffer(), tf::make_range(out.fans.dirs));
   tf::cut::canonicalize_nm_edges<Int>(ag, fc, out.fans.edges, out.fans.faces,
-                                       id_sorted_view, labels_view, is_valid,
-                                       get_point, apply_to_face);
+                                       dirs_view, id_sorted_view, labels_view,
+                                       is_valid, get_point, apply_to_face);
 
   // ---- 4. One rep per (path_id, set-key) bucket. --------------------
   out.reps = tf::cut::compute_majority_rep(Index(n_nm_edges), is_valid,

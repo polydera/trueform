@@ -23,6 +23,7 @@
 #include "./domains/build_domain_of_side.hpp"
 #include "./domains/canonicalize_nm_edges.hpp"
 #include "./domains/compute_domain_volumes.hpp"
+#include "./domains/compute_face_stacks.hpp"
 #include "./domains/compute_majority_rep.hpp"
 #include "./domains/compute_volume_contributions_per_fragment.hpp"
 #include "./domains/emit_boundary_merges.hpp"
@@ -31,12 +32,14 @@
 #include "./domains/lift_to_domain_labels.hpp"
 #include "./domains/make_bundle_labels.hpp"
 #include "./domains/make_nesting_merges.hpp"
+#include "./domains/resolve_face_stacks.hpp"
 #include "./edge_path_connector.hpp"
 #include "./make_face_membership.hpp"
 #include "./make_manifold_edge_connected_component_labels.hpp"
 #include "../exact/resolve_int_type.hpp"
 #include "./make_manifold_edge_link.hpp"
 #include "./make_non_manifold_edge_fans.hpp"
+#include "./orient_faces_consistently.hpp"
 #include "./policy/connected_component_labels.hpp"
 #include "./policy/face_membership.hpp"
 #include "./policy/manifold_edge_link.hpp"
@@ -71,7 +74,8 @@ namespace tf {
 /// @param polygons The polygons range.
 /// @param config @ref tf::domain_config flag set selecting open-fragment
 ///        handling and other behaviour.
-template <typename Int = tf::none_t, typename Policy>
+template <typename Int = tf::none_t, bool ResolveStacks = true,
+          typename Policy>
 auto make_domain_labels(const tf::polygons<Policy> &polygons,
                         tf::domain_config config = tf::domain_config::none) {
   using Index = std::decay_t<decltype(polygons.faces()[0][0])>;
@@ -80,11 +84,27 @@ auto make_domain_labels(const tf::polygons<Policy> &polygons,
 
   if constexpr (!tf::has_face_membership_policy<Policy>) {
     auto fm = tf::make_face_membership(polygons);
-    return make_domain_labels<Int>(polygons | tf::tag(fm), config);
+    return make_domain_labels<Int, ResolveStacks>(polygons | tf::tag(fm),
+                                                  config);
   } else if constexpr (!tf::has_manifold_edge_link_policy<Policy>) {
     auto mel = tf::make_manifold_edge_link(polygons);
-    return make_domain_labels<Int>(polygons | tf::tag(mel), config);
+    return make_domain_labels<Int, ResolveStacks>(polygons | tf::tag(mel),
+                                                  config);
   } else {
+    // Stacked duplicate faces (same vertex-id cycle, either winding)
+    // resolve like the csg path's coplanar dedup: one copy per stack
+    // survives, its labels lift onto the stack, dead copies take the
+    // sentinel pair.
+    if constexpr (ResolveStacks) {
+      tf::buffer<Index> survivor_of;
+      if (tf::topology::domains::compute_face_stacks<Index>(
+              polygons.faces(), polygons.face_membership(), survivor_of)) {
+        return tf::topology::domains::resolve_face_stacks(
+            polygons, survivor_of, [&](const auto &sub_polygons) {
+              return make_domain_labels<Int, false>(sub_polygons, config);
+            });
+      }
+    }
     auto fragment_labels = [&]() {
       if constexpr (tf::has_connected_component_labels_policy<Policy>) {
         return polygons.connected_component_labels();

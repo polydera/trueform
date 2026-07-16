@@ -14,6 +14,7 @@ add_executable(trueform_topology_tests
   test_ear_cutter.cpp
   test_delaunay_triangulator.cpp
   test_cdt_refiner.cpp
+  test_domain_labels.cpp
 )
 
 target_link_libraries(trueform_topology_tests PRIVATE trueform_test_common)
