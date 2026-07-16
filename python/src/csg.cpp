@@ -21,6 +21,10 @@ auto register_csg(nanobind::module_ &m) -> void {
   register_csg_graph_int3double3d(csg);
   register_csg_graph_int643float3d(csg);
   register_csg_graph_int643double3d(csg);
+  register_outer_shell_int3float3d(csg);
+  register_outer_shell_int3double3d(csg);
+  register_outer_shell_int643float3d(csg);
+  register_outer_shell_int643double3d(csg);
 }
 
 } // namespace tf::py

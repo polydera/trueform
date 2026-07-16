@@ -1,0 +1,57 @@
+/*
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
+#pragma once
+
+#include "trueform/csg/make_outer_shell.hpp"
+#include "trueform/ts/core/build_intersect_structures.hpp"
+#include "trueform/ts/core/promise.hpp"
+#include "trueform/ts/core/wasm_mesh.hpp"
+
+namespace tf {
+namespace ts {
+
+// ============================================================================
+// Sync entry point — tag the polygons with the cached tree / topology and
+// dispatch to the trueform outer-shell repair pipeline. The intersect
+// config stays at the library default; only the domain flags are exposed.
+// ============================================================================
+
+template <typename Real>
+auto sync_outer_shell(wasm_mesh<Real> &m, int domain_flags)
+    -> wasm_mesh<Real> {
+  build_intersect_structures(m);
+  auto fm = m.face_membership_range();
+  auto mel = m.manifold_edge_link_range();
+  auto shell = tf::make_outer_shell(
+      m.polygons_range() | tf::tag(m.tree()) | tf::tag(fm) | tf::tag(mel),
+      tf::intersect_config{tf::intersect_mode::primitives |
+                           tf::intersect_mode::resolve_contours},
+      static_cast<tf::domain_config>(domain_flags));
+  return wasm_mesh<Real>::from_polygons_buffer(std::move(shell));
+}
+
+// ============================================================================
+// Async — capture the handle by copy (shared_ptr refcount++) and run the
+// sync path on the worker thread.
+// ============================================================================
+
+template <typename Real>
+auto async_outer_shell(wasm_mesh<Real> &m, int domain_flags) -> promise_t {
+  return promise([a = m, domain_flags]() -> wasm_mesh<Real> {
+    return sync_outer_shell<Real>(const_cast<wasm_mesh<Real> &>(a),
+                                  domain_flags);
+  });
+}
+
+} // namespace ts
+} // namespace tf

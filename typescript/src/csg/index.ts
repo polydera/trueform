@@ -11,9 +11,9 @@
  * Author: Žiga Sajovic
  */
 
-export { csgGraph, CsgGraph, Expr, op } from "./sync";
+export { csgGraph, CsgGraph, Expr, op, outerShell } from "./sync";
 export type {
-  CsgGraphOptions, CsgDomainsOptions,
+  CsgGraphOptions, CsgDomainsOptions, OuterShellOptions,
   CsgMeshLabeledResult, CsgMeshIndexMapResult,
   CsgDomainsResult, CsgDomainsLabeledResult, CsgDomainsIndexMapResult,
 } from "./sync";

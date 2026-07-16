@@ -34,6 +34,13 @@ export interface CsgGraphOptions {
   /** Resolve crossings between contours on one face (default true). */
   resolveCrossings?: boolean;
   /**
+   * Also intersect each operand with itself — required when an operand
+   * can self-overlap, e.g. meshes concatenated into one operand. Domain
+   * extraction then classifies the overlap pockets structurally; boolean
+   * expressions still require solid, non-self-overlapping operands.
+   */
+  within?: boolean;
+  /**
    * Cut-surface triangulation: "cdt" (plain constrained Delaunay per cut
    * loop, default) or "refinedCdt" (quality refinement of the cut surface;
    * shared boundaries stay watertight by construction).
@@ -115,6 +122,7 @@ export interface CsgDomainsIndexMapResult extends CsgDomainsResult {
 
 const MODE_MAP = { sos: 1, primitives: 2 } as const;
 const RESOLVE_CROSSINGS = 4;
+const WITHIN = 24; // self_intersections | resolve_self_crossing_contours
 const TRIANGULATION_MAP = { cdt: 0, refinedCdt: 1 } as const;
 const EXCLUDE_OUTER_SHELL = 1;
 const IGNORE_OPEN_FRAGMENTS = 2;
@@ -131,6 +139,7 @@ export function buildCsgConfig(meshes: Mesh[], opts?: CsgGraphOptions) {
   }
   let mode: number = MODE_MAP[opts?.mode ?? "primitives"];
   if (opts?.resolveCrossings ?? true) mode |= RESOLVE_CROSSINGS;
+  if (opts?.within) mode |= WITHIN;
   return {
     sheets,
     mode,
@@ -396,6 +405,41 @@ export class CsgGraph {
   [Symbol.dispose](): void {
     this.delete();
   }
+}
+
+// ============================================================================
+// Outer shell
+// ============================================================================
+
+/** Options for {@link outerShell}. */
+export interface OuterShellOptions {
+  /**
+   * Mask open fragments (surface pieces carrying boundary edges) out of
+   * the region formation instead of letting them partition (default false).
+   */
+  ignoreOpenFragments?: boolean;
+}
+
+/** @internal — also used by the async wrapper. */
+export function buildOuterShellConfig(opts?: OuterShellOptions): number {
+  return opts?.ignoreOpenFragments ? IGNORE_OPEN_FRAGMENTS : 0;
+}
+
+/**
+ * Repair a mesh to its outer shell: the boundary of the union of
+ * everything it encloses.
+ *
+ * Splits the mesh at its self-intersection curves, labels the volumetric
+ * domains, and keeps only the faces bounding the unbounded outside,
+ * oriented outward. Internal structure — overlap membranes between
+ * interpenetrating parts, faces buried inside the solid, enclosed
+ * cavities — is removed. The result is free of self-intersections and
+ * suitable as a boolean or csg-graph operand.
+ */
+export function outerShell(mesh: Mesh, opts?: OuterShellOptions): Mesh {
+  const dt = mesh.dtype;
+  const cfg = buildOuterShellConfig(opts);
+  return new Mesh(native()[`outer_shell_${dt}`](mesh._handle, cfg), dt);
 }
 
 // ============================================================================

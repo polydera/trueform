@@ -23,8 +23,10 @@ import {
   CsgDomainsResult,
   CsgDomainsLabeledResult,
   CsgDomainsIndexMapResult,
+  OuterShellOptions,
   buildCsgConfig,
   buildDomainsConfig,
+  buildOuterShellConfig,
   splitExprArgs,
   wrapCsgMeshLabeled,
   wrapCsgMeshIndexMap,
@@ -166,5 +168,20 @@ export async function csgDomains(
   return dispatcher().run(
     () => native()[`dispatch_csg_domains_${dt}`](graph._handle, program, cfg),
     (raw) => wrapCsgDomains(raw, dt),
+  );
+}
+
+/**
+ * Repair a mesh to its outer shell on a worker: the boundary of the union
+ * of everything it encloses. Same semantics as the sync `outerShell`.
+ */
+export async function outerShell(
+  mesh: Mesh, opts?: OuterShellOptions,
+): Promise<Mesh> {
+  const dt = mesh.dtype;
+  const cfg = buildOuterShellConfig(opts);
+  return dispatcher().run(
+    () => native()[`dispatch_outer_shell_${dt}`](mesh._handle, cfg),
+    (raw) => new Mesh(raw, dt),
   );
 }

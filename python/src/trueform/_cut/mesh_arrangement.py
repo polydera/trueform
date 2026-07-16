@@ -18,6 +18,7 @@ from .._dispatch import extract_meta, build_suffix
 _MODE_MAP = {"sos": 1, "primitives": 2}
 _RESOLVE_CROSSINGS = 4
 _RESOLVE_SELF_CROSSINGS = 8
+_SELF_INTERSECTIONS = 16
 
 
 def mesh_arrangements(
@@ -27,7 +28,8 @@ def mesh_arrangements(
     mode: str = "primitives",
     tolerance: float = 0.0,
     resolve_crossings: bool = None,
-    resolve_self_crossings: bool = False
+    resolve_self_crossings: bool = False,
+    within: bool = False
 ):
     """
     Compute mesh arrangement from N meshes.
@@ -51,6 +53,9 @@ def mesh_arrangements(
         Default: False for 2 meshes, True for 3+ meshes.
     resolve_self_crossings : bool, default False
         Resolve self-crossings within a single contour.
+    within : bool, default False
+        Also intersect each mesh with itself. Required when a mesh can
+        self-overlap, e.g. meshes concatenated into one input.
 
     Returns
     -------
@@ -131,6 +136,8 @@ def mesh_arrangements(
         mode_int |= _RESOLVE_CROSSINGS
     if resolve_self_crossings:
         mode_int |= _RESOLVE_SELF_CROSSINGS
+    if within:
+        mode_int |= _SELF_INTERSECTIONS | _RESOLVE_SELF_CROSSINGS
 
     # Extract wrappers
     wrappers = [m._wrapper for m in meshes]

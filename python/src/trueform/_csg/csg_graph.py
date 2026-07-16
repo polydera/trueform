@@ -19,6 +19,7 @@ from .index_maps import DomainsIndexMap, MeshIndexMap
 _MODE_MAP = {"sos": 1, "primitives": 2}
 _RESOLVE_CROSSINGS = 4
 _RESOLVE_SELF_CROSSINGS = 8
+_WITHIN = 24  # self_intersections | resolve_self_crossing_contours
 
 _TRIANGULATION_MAP = {"cdt": 0, "refined_cdt": 1}
 
@@ -49,6 +50,12 @@ class CsgGraph:
         World-coordinate distance band for predicate tolerance (0 = exact).
     resolve_crossings : bool, default True
         Resolve crossings between different contours on the same face.
+    within : bool, default False
+        Also intersect each operand with itself. Required when an operand
+        can self-overlap, e.g. meshes concatenated into one operand;
+        ``domains()`` then classifies the overlap pockets structurally.
+        Boolean expressions still require solid, non-self-overlapping
+        operands.
     triangulation : str, default "cdt"
         Cut-surface triangulation: "cdt" (plain constrained Delaunay per
         cut loop) or "refined_cdt" (quality refinement of the cut
@@ -69,6 +76,7 @@ class CsgGraph:
         mode: str = "primitives",
         tolerance: float = 0.0,
         resolve_crossings: bool = True,
+        within: bool = False,
         triangulation: str = "cdt",
     ):
         if len(meshes) < 2:
@@ -107,12 +115,15 @@ class CsgGraph:
         mode_int = _MODE_MAP[mode]
         if resolve_crossings:
             mode_int |= _RESOLVE_CROSSINGS
+        if within:
+            mode_int |= _WITHIN
 
         self._forms = list(meshes)
         self._sheets = tuple(sheet_list)
         self._mode = mode
         self._tolerance = tolerance
         self._resolve_crossings = resolve_crossings
+        self._within = within
         self._triangulation = triangulation
         self._created_points = None
 

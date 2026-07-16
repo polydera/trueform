@@ -9,5 +9,7 @@ https://github.com/polydera/trueform
 from .csg_graph import CsgGraph
 from .expr import Expr, op
 from .index_maps import DomainsIndexMap, MeshIndexMap
+from .outer_shell import outer_shell
 
-__all__ = ["CsgGraph", "DomainsIndexMap", "Expr", "MeshIndexMap", "op"]
+__all__ = ["CsgGraph", "DomainsIndexMap", "Expr", "MeshIndexMap", "op",
+           "outer_shell"]

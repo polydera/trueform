@@ -249,3 +249,70 @@ describe("csg: async", () => {
     graph.delete(); syncGraph.delete(); a.delete(); b.delete();
   });
 });
+
+// ============================================================================
+// Outer shell
+// ============================================================================
+
+function twoOverlappingSpheres(dtype) {
+  const tf = getTf();
+  const opts = { dtype };
+  const s0 = tf.sphereMesh(1, 16, 16, opts);
+  const s1 = tf.sphereMesh(1, 16, 16, opts);
+  // makeTranslation emits float32; the setter converts to the mesh dtype.
+  s1.transformation = tf.makeTranslation(1, 0, 0);
+  const merged = tf.concatenateMeshes([s0, s1]);
+  return { tf, s0, s1, merged };
+}
+
+for (const dtype of ["float32", "float64"]) {
+  describe(`csg: outerShell (${dtype})`, () => {
+    test("repairs two overlapping spheres into a closed shell", () => {
+      const { tf, s0, s1, merged } = twoOverlappingSpheres(dtype);
+
+      const shell = tf.outerShell(merged);
+      assert(shell.dtype === dtype, "dtype preserved");
+      assert(shell.numberOfFaces > 0, "has faces");
+      assert(tf.isClosed(shell), "shell is closed");
+      const be = tf.boundaryEdges(shell);
+      assert(be.shape[0] === 0, `0 boundary edges, got ${be.shape[0]}`);
+      be.delete();
+      const nm = tf.nonManifoldEdges(shell);
+      assert(nm.shape[0] === 0, `0 non-manifold edges, got ${nm.shape[0]}`);
+      nm.delete();
+
+      const vShell = vol(shell);
+      const vSphere = vol(s0);
+      assert(vShell > vSphere + TOL,
+        `shell volume ${vShell} exceeds single sphere ${vSphere}`);
+      const ref = tf.booleanUnion(s0, s1);
+      assert(Math.abs(vShell - vol(ref.mesh)) < 10 * TOL,
+        `matches union volume: ${vShell} vs ${vol(ref.mesh)}`);
+      log(`  shell: ${shell.numberOfFaces} faces, volume ${vShell.toFixed(4)}`,
+        "line-pass");
+
+      ref.mesh.delete(); ref.labels.delete(); ref.faceLabels.delete();
+      shell.delete(); merged.delete(); s1.delete(); s0.delete();
+    });
+
+    test("ignoreOpenFragments accepted", () => {
+      const { tf, s0, s1, merged } = twoOverlappingSpheres(dtype);
+      const shell = tf.outerShell(merged, { ignoreOpenFragments: true });
+      assert(tf.isClosed(shell), "shell is closed");
+      shell.delete(); merged.delete(); s1.delete(); s0.delete();
+    });
+  });
+}
+
+describe("csg: outerShell (async)", () => {
+  test("async matches sync", async () => {
+    const { tf, s0, s1, merged } = twoOverlappingSpheres("float32");
+    const shellSync = tf.outerShell(merged);
+    const shellAsync = await tf.async.outerShell(merged);
+    assert(tf.isClosed(shellAsync), "async shell is closed");
+    assert(Math.abs(vol(shellAsync) - vol(shellSync)) < TOL,
+      "async volume matches sync");
+    shellAsync.delete(); shellSync.delete();
+    merged.delete(); s1.delete(); s0.delete();
+  });
+});

@@ -586,13 +586,8 @@ function twoSpheresFloat64() {
   const tf = getTf();
   const s0 = tf.sphereMesh(1, 16, 16, { dtype: "float64" });
   const s1 = tf.sphereMesh(1, 16, 16, { dtype: "float64" });
-  // prettier-ignore
-  s1.transformation = tf.ndarray(new Float64Array([
-    1, 0, 0, 1,
-    0, 1, 0, 0,
-    0, 0, 1, 0,
-    0, 0, 0, 1,
-  ]), [4, 4]);
+  // makeTranslation emits float32; the setter converts to the mesh dtype.
+  s1.transformation = tf.makeTranslation(1, 0, 0);
   return { tf, s0, s1 };
 }
 

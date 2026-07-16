@@ -28,11 +28,17 @@ export interface IntersectOpts {
   resolveCrossings?: boolean;
   /** Resolve self-crossings within a single contour. */
   resolveSelfCrossings?: boolean;
+  /**
+   * Also intersect each mesh with itself — required when a mesh can
+   * self-overlap, e.g. meshes concatenated into one operand.
+   */
+  within?: boolean;
 }
 
 const MODE_MAP: Record<string, number> = { sos: 1, primitives: 2 };
 const RESOLVE_CROSSINGS = 4;
 const RESOLVE_SELF_CROSSINGS = 8;
+const SELF_INTERSECTIONS = 16;
 
 export function buildMode(
   opts: IntersectOpts | undefined,
@@ -43,6 +49,7 @@ export function buildMode(
   let m = MODE_MAP[opts?.mode ?? defaultMode];
   if (opts?.resolveCrossings ?? defaultResolveCrossings) m |= RESOLVE_CROSSINGS;
   if (opts?.resolveSelfCrossings ?? defaultResolveSelfCrossings) m |= RESOLVE_SELF_CROSSINGS;
+  if (opts?.within) m |= SELF_INTERSECTIONS | RESOLVE_SELF_CROSSINGS;
   return m;
 }
 
