@@ -1,4 +1,5 @@
 add_executable(trueform_exact_tests
+  test_dot_sign.cpp
   test_classify_wedge.cpp
   test_int128_msvc.cpp
   test_int256.cpp
