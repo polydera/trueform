@@ -12,14 +12,17 @@
  */
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <trueform/core/polygons_buffer.hpp>
+#include <trueform/cut/make_polygon_arrangements.hpp>
+#include <trueform/intersect/intersect_mode.hpp>
 #include <trueform/intersect/intersections_between_polygons.hpp>
 #include <trueform/intersect/intersections_within_polygons.hpp>
-#include <trueform/intersect/intersect_mode.hpp>
 #include <trueform/reindex/concatenated.hpp>
 #include <trueform/spatial/aabb_tree.hpp>
 #include <trueform/topology/make_face_membership.hpp>
 #include <trueform/topology/make_manifold_edge_link.hpp>
+#include <cmath>
 #include <set>
 
 using Index = int;
@@ -924,7 +927,8 @@ TEST_CASE("Self: shared edge, coplanar same coords - VV", "[exact][self]") {
       {{{0,0,0}}, {{1,0,0}}, {{0.5f,1,0}}, {{0.5f,1,0}}},
       {{{0,1,2}}, {{0,1,3}}});
   auto c = count_within(mesh);
-  CHECK(c.vv == 1);
+  // apex VV + the two shared-edge endpoints (contact-region corners)
+  CHECK(c.vv == 3);
   CHECK(c.ve == 0);
   CHECK(c.ee == 0);
   CHECK(c.vf == 0);
@@ -936,7 +940,8 @@ TEST_CASE("Self: shared edge, coplanar inside face - VF", "[exact][self]") {
       {{{0,0,0}}, {{1,0,0}}, {{0.5f,1,0}}, {{0.3f,0.3f,0}}},
       {{{0,1,2}}, {{0,1,3}}});
   auto c = count_within(mesh);
-  CHECK(c.vv == 0);
+  // shared-edge endpoints are contact-region corners of the coplanar fold
+  CHECK(c.vv == 2);
   CHECK(c.ve == 0);
   CHECK(c.ee == 0);
   CHECK(c.vf == 1);
@@ -948,7 +953,8 @@ TEST_CASE("Self: shared edge, coplanar on edge - VE", "[exact][self]") {
       {{{0,0,0}}, {{1,0,0}}, {{0.5f,1,0}}, {{0.25f,0.5f,0}}},
       {{{0,1,2}}, {{0,1,3}}});
   auto c = count_within(mesh);
-  CHECK(c.vv == 0);
+  // shared-edge endpoints are contact-region corners of the coplanar fold
+  CHECK(c.vv == 2);
   CHECK(c.ve == 1);
   CHECK(c.ee == 0);
   CHECK(c.vf == 0);
@@ -960,9 +966,76 @@ TEST_CASE("Self: shared edge, coplanar EE crossing", "[exact][self]") {
       {{{0,0,0}}, {{1,0,0}}, {{0.5f,1,0}}, {{1.5f,0.5f,0}}},
       {{{0,1,2}}, {{0,1,3}}});
   auto c = count_within(mesh);
-  CHECK(c.vv == 0);
+  // shared-edge endpoints are contact-region corners of the coplanar fold
+  CHECK(c.vv == 2);
   CHECK(c.ve == 0);
   CHECK(c.ee == 1);
   CHECK(c.vf == 0);
   CHECK(c.ef == 0);
+}
+
+TEST_CASE("Coplanar group with a rewritten transversal copy stays exact",
+          "[exact][coplanar]") {
+  // A is coplanar with B (stamped records); C folds out of plane and
+  // shares an edge with B that lies inside A. The (A, C) records are
+  // rewritten across the shared edge into the flagged (A, B) group with
+  // their flags cleared — the any-of coplanar routing must still cut A
+  // along exactly the overlap boundary: every arrangement edge interior
+  // to A lies on B's boundary.
+  tf::polygons_buffer<Index, float, 3, 3> mesh;
+  auto &pts = mesh.points_buffer();
+  pts.allocate(7);
+  pts[0] = tf::point<float, 3>{0.f, 0.f, 0.f};
+  pts[1] = tf::point<float, 3>{6.f, 0.f, 0.f};
+  pts[2] = tf::point<float, 3>{0.f, 6.f, 0.f};
+  pts[3] = tf::point<float, 3>{1.f, 1.f, 0.f};
+  pts[4] = tf::point<float, 3>{3.f, 1.f, 0.f};
+  pts[5] = tf::point<float, 3>{1.f, 3.f, 0.f};
+  pts[6] = tf::point<float, 3>{2.f, 1.f, -2.f};
+  mesh.faces_buffer().emplace_back(0, 1, 2); // A
+  mesh.faces_buffer().emplace_back(3, 4, 5); // B, inside A, coplanar
+  mesh.faces_buffer().emplace_back(4, 3, 6); // C, folded down off B's edge
+
+  auto [arranged, labels] = tf::make_polygon_arrangements(mesh.polygons());
+
+  auto near = [](float a, float b) { return std::abs(a - b) < 1e-4f; };
+  auto on_a_boundary = [&](const auto &p) {
+    return near(p[1], 0.f) || near(p[0], 0.f) || near(p[0] + p[1], 6.f);
+  };
+  auto on_b_boundary = [&](const auto &p) {
+    bool e0 = near(p[1], 1.f) && p[0] > 1.f - 1e-4f && p[0] < 3.f + 1e-4f;
+    bool e1 = near(p[0], 1.f) && p[1] > 1.f - 1e-4f && p[1] < 3.f + 1e-4f;
+    bool e2 = near(p[0] + p[1], 4.f) && p[0] > 1.f - 1e-4f &&
+              p[1] > 1.f - 1e-4f;
+    return e0 || e1 || e2;
+  };
+
+  auto apts = arranged.polygons().points();
+  double area_a = 0;
+  for (std::size_t f = 0; f < arranged.polygons().size(); ++f) {
+    if (labels[f] != 0) // descendants of A only
+      continue;
+    auto face = arranged.polygons().faces()[f];
+    // accumulate area of A's pieces
+    auto p0 = apts[face[0]];
+    auto p1 = apts[face[1]];
+    auto p2 = apts[face[2]];
+    area_a += 0.5 * std::abs(double(p1[0] - p0[0]) * double(p2[1] - p0[1]) -
+                             double(p1[1] - p0[1]) * double(p2[0] - p0[0]));
+    // every edge of an A piece with BOTH endpoints off A's boundary
+    // must lie on B's boundary — no stray chords from the mixed group
+    for (int e = 0; e < 3; ++e) {
+      auto q0 = apts[face[e]];
+      auto q1 = apts[face[(e + 1) % 3]];
+      auto mid = tf::point<float, 3>{(q0[0] + q1[0]) / 2, (q0[1] + q1[1]) / 2,
+                                     (q0[2] + q1[2]) / 2};
+      if (!on_a_boundary(q0) && !on_a_boundary(q1)) {
+        REQUIRE(on_b_boundary(q0));
+        REQUIRE(on_b_boundary(q1));
+        REQUIRE(on_b_boundary(mid));
+      }
+    }
+  }
+  // A's pieces tile A exactly
+  REQUIRE_THAT(area_a, Catch::Matchers::WithinAbs(18.0, 1e-3));
 }

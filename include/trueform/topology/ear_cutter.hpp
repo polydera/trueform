@@ -60,7 +60,16 @@ namespace tf {
 ///      vertices into a linked list on their predecessor node.
 ///      Uses on_segment betweenness to stop at shard turnarounds.
 ///      Runs are fan-expanded on ear emission.
-///   3. Find a valid diagonal and split (last resort).
+///   3. Resolve pinches -- a point the ring visits twice,
+///      non-adjacently, with both would-be cycles of positive area
+///      (a weakly-simple polygon: two lobes meeting at a point, e.g.
+///      chained holes spliced at a shared vertex). The pair is not a
+///      diagonal -- nothing is inserted; the ring is relinked into
+///      two cycles, each keeping one occurrence. Separation is
+///      exhausted across all resulting cycles before cutting resumes.
+///      Keyhole bridges fail the positive-area gate (their split-off
+///      cycle is the hole, wound negative) and stay whole.
+///   4. Find a valid diagonal and split (last resort).
 ///
 /// When an ear has runs on multiple edges, the last point of one run
 /// is re-inserted and the polygon is split via diagonal, distributing
@@ -80,6 +89,8 @@ public:
     _nodes.clear();
     _triangles.clear();
     _removed.clear();
+    _pinch_cycles.clear();
+    _in_pinch = false;
     _hashing = false;
     _min_x = _max_x = _min_y = _max_y = 0;
     _z_shift = 0;
@@ -747,6 +758,86 @@ private:
     return start;
   }
 
+  // ── Pinch separation (last-chance fallback on a stuck ring) ──
+
+  /// Signed area (2x) of the cycle that would run from `from` up to,
+  /// but not including, `to` if the ring were separated there.
+  template <typename Pts>
+  auto cycle_area(const Pts &pts, Index from, Index to) const -> T2 {
+    T2 acc = 0;
+    for (Index c = _nodes[from].next; _nodes[c].next != to;
+         c = _nodes[c].next)
+      acc += area(pts, _nodes[from], _nodes[c], next(_nodes[c]));
+    return acc;
+  }
+
+  /// Relink the ring into two cycles at a doubly-visited point.
+  /// No nodes or edges are added; each cycle keeps one occurrence.
+  /// Runs stay valid: only the prev links of a and b change, and the
+  /// replacement predecessors hold the same coordinates.
+  auto separate(Index a_id, Index b_id) -> void {
+    Index pa = _nodes[a_id].prev;
+    Index pb = _nodes[b_id].prev;
+    _nodes[pb].next = a_id;
+    _nodes[a_id].prev = pb;
+    _nodes[pa].next = b_id;
+    _nodes[b_id].prev = pa;
+  }
+
+  /// On a stuck ring, separate every coincident non-adjacent pair
+  /// whose two would-be cycles both keep positive area (a pinch: two
+  /// lobes meeting at a doubly-visited point, e.g. chained holes
+  /// spliced at a shared vertex). Separation is exhausted across all
+  /// resulting cycles BEFORE any cutting resumes — resuming early
+  /// lets ears eat through a remaining pinch and strand degenerate
+  /// residue. The pair is not a diagonal: nothing is inserted.
+  /// Keyhole bridges fail the sign gate (their split-off cycle is the
+  /// hole, wound negative) and stay whole. Returns true if a pinch
+  /// was separated; the pieces' results fold into `completed`.
+  template <typename Pts>
+  auto resolve_pinches(const Pts &pts, Index start, bool &completed)
+      -> bool {
+    // Pieces cut after exhaustion are pinch-free by construction:
+    // shards and collinear runs create no coincidences, and split
+    // copies are adjacent, which the scan excludes. A nested stall
+    // must not rebuild the worklist mid-iteration.
+    if (_in_pinch)
+      return false;
+    _pinch_cycles.clear();
+    _pinch_cycles.push_back(start);
+    bool any = false;
+    for (std::size_t w = 0; w < _pinch_cycles.size(); ++w) {
+      for (bool again = true; again;) {
+        again = false;
+        const Index start_w = _pinch_cycles[w];
+        Index a_id = start_w;
+        do {
+          for (Index b_id = _nodes[_nodes[a_id].next].next;
+               b_id != _nodes[a_id].prev && !again;
+               b_id = _nodes[b_id].next) {
+            if (pts[_nodes[b_id].pt_id] != pts[_nodes[a_id].pt_id])
+              continue;
+            if (cycle_area(pts, a_id, b_id) > 0 &&
+                cycle_area(pts, b_id, a_id) > 0) {
+              separate(a_id, b_id);
+              _pinch_cycles[w] = a_id;
+              _pinch_cycles.push_back(b_id);
+              any = again = true;
+            }
+          }
+          a_id = _nodes[a_id].next;
+        } while (a_id != start_w && !again);
+      }
+    }
+    if (!any)
+      return false;
+    _in_pinch = true;
+    for (std::size_t k = 0; k < _pinch_cycles.size(); ++k)
+      completed &= earcut(pts, _pinch_cycles[k]);
+    _in_pinch = false;
+    return true;
+  }
+
   // ── Collinear run removal (called when earcut gets stuck) ──
 
   template <typename Pts>
@@ -834,7 +925,10 @@ private:
             break;
           }
         }
-        // 3. Diagonal split as last resort
+        // 3. Pinches (doubly-visited points → separate the lobes)
+        if (resolve_pinches(pts, shard_result, completed))
+          break;
+        // 4. Diagonal split as last resort
         completed &= split_earcut(pts, shard_result);
         break;
       }
@@ -882,8 +976,10 @@ private:
   tf::buffer<node_t> _nodes;
   tf::buffer<Index> _triangles;
   tf::buffer<removed_node_t> _removed;
+  tf::buffer<Index> _pinch_cycles; // stall fallback: cycle worklist
   Int _min_x = 0, _max_x = 0, _min_y = 0, _max_y = 0;
   int _z_shift = 0;
+  bool _in_pinch = false;
   bool _hashing = false;
 };
 

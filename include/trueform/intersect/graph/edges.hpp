@@ -63,6 +63,13 @@ auto base_loop_edge_ordinal(const Loop &loop, Index a, Index b)
 /// Walk `loop` forward from `start_id` to `end_id`, emitting one sub-edge
 /// per step. `stamp(prev, cur, prev_pos)` returns the emitted edge's
 /// `{ordinal, sub_ordinal}`. Returns true once `end_id` is reached.
+///
+/// Either endpoint may be missing from the loop: clean_loop snips
+/// antenna spikes without rewriting the records that reference the
+/// snipped point. A failed walk must leave no trace — the emitted
+/// sub-edges would carry ORIGINAL vertex ids, which downstream stages
+/// dereference as intersection-point ids — so the buffer rolls back and
+/// the caller degrades the contact to a direct chord.
 template <typename Index, typename Loop, typename Stamp>
 auto emit_boundary_sub_edges(const Loop &loop, Index start_id, Index end_id,
                              short tag, short tag_other, Index object,
@@ -70,28 +77,43 @@ auto emit_boundary_sub_edges(const Loop &loop, Index start_id, Index end_id,
                              const Stamp &stamp) -> bool {
   auto n = loop.size();
   std::size_t pos = n;
-  for (std::size_t i = 0; i < n; ++i)
-    if (loop[i].source == vertex_source::created && loop[i].id == start_id) {
+  bool end_present = false;
+  for (std::size_t i = 0; i < n; ++i) {
+    if (loop[i].source != vertex_source::created)
+      continue;
+    if (pos == n && loop[i].id == start_id)
       pos = i;
+    if (loop[i].id == end_id)
+      end_present = true;
+    if (pos != n && end_present)
       break;
-    }
-  if (pos == n)
+  }
+  if (pos == n || !end_present)
     return false;
 
+  auto rollback = buf.size();
   Index prev = start_id;
   std::size_t prev_pos = pos;
   pos = (pos + 1) % n;
   for (std::size_t step = 0; step < n - 1; ++step) {
+    // The legitimate walk stays on one base edge, where only created
+    // points lie between the two contacts. Hitting an original corner
+    // means the on-edge occurrence of end_id was snipped and only a
+    // far pinch occurrence remains — walking on would reach it around
+    // the loop, emitting mesh-vertex ids as intersection points.
+    if (loop[pos].source != vertex_source::created)
+      break;
     auto cur = loop[pos].id;
     auto stamped = stamp(prev, cur, prev_pos);
     buf.push_back({tag, tag_other, object, object_other, prev, cur,
                    static_cast<Index>(buf.size()), stamped[0], stamped[1]});
-    if (loop[pos].source == vertex_source::created && cur == end_id)
+    if (cur == end_id)
       return true;
     prev = cur;
     prev_pos = pos;
     pos = (pos + 1) % n;
   }
+  buf.erase_till_end(buf.begin() + rollback);
   return false;
 }
 
@@ -171,15 +193,15 @@ template <typename Index, typename AllSubranges>
 auto find_loop_index(const AllSubranges &subranges, Index tag, Index object)
     -> std::size_t {
   auto key = std::make_pair(tag, object);
-  auto it =
-      std::lower_bound(subranges.begin(), subranges.end(), key,
-                       [](const auto &sr, const auto &k) {
-                         return std::make_pair(sr[0].tag, sr[0].object) < k;
-                       });
+  auto it = std::lower_bound(
+      subranges.begin(), subranges.end(), key,
+      [](const auto &sr, const auto &k) {
+        return std::make_pair(Index(sr[0].tag), Index(sr[0].object)) < k;
+      });
   if (it == subranges.end())
     return std::size_t(-1);
   auto &&sr = *it;
-  if (std::make_pair(sr[0].tag, sr[0].object) != key)
+  if (std::make_pair(Index(sr[0].tag), Index(sr[0].object)) != key)
     return std::size_t(-1);
   return static_cast<std::size_t>(it - subranges.begin());
 }
@@ -208,14 +230,17 @@ auto emit_edge(const Record &r0, const Record &r1, Index face_size,
   };
 
   // Edge on OUR own boundary → walk our loop, ordinal = walk position.
+  // A failed walk (endpoint snipped from the loop by clean_loop) falls
+  // through to the direct chord below.
   if (on_same_boundary_edge(r0.target, r1.target, face_size)) {
-    try_expand_boundary<Index>(
+    bool expanded = try_expand_boundary<Index>(
         all_loops[this_loop_idx], r0.target, r1.target, face_size, r0.id, r1.id,
         tag, tag_other, r0.object, r0.object_other, buf,
         [](Index, Index, std::size_t p) -> std::array<std::int16_t, 2> {
           return {static_cast<std::int16_t>(p), std::int16_t(0)};
         });
-    return;
+    if (expanded)
+      return;
   }
 
   // Edge on the OTHER face's boundary → walk the other's loop for its
@@ -229,11 +254,12 @@ auto emit_edge(const Record &r0, const Record &r1, Index face_size,
       if (on_same_boundary_edge(r0.target_other, r1.target_other, other_size)) {
         auto idx = find_loop_index<Index>(all_subranges, r0.tag_other,
                                           r0.object_other);
-        if (idx != std::size_t(-1))
+        if (idx != std::size_t(-1)) {
           expanded = try_expand_boundary<Index>(
               all_loops[idx], r0.target_other, r1.target_other, other_size,
               r0.id, r1.id, tag, tag_other, r0.object, r0.object_other, buf,
               our_loop_stamp);
+        }
       }
     });
     if (expanded)

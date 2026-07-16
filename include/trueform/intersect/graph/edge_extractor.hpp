@@ -13,7 +13,9 @@
 #pragma once
 
 #include "../../core/buffer.hpp"
+#include "../../core/small_vector.hpp"
 #include "../../topology/topo_type.hpp"
+#include "../exact/tagged_intersection.hpp"
 #include "./edge.hpp"
 #include "./edges.hpp"
 
@@ -23,9 +25,12 @@ namespace tf::intersect::graph {
 
 /// Extracts intersection edges from a face's intersection records.
 ///
-/// Handles n==2 (standard pair), n>2 coplanar (group by target_other edge),
-/// and all-VV skip (shared vertices). Holds reusable scratch buffers to
-/// avoid allocations in the hot path.
+/// Routing is decided from call-time exact facts carried topologically —
+/// never from computed coordinates. A group with any coplanar-flagged
+/// record is a coplanar contact region; a group holding shared-vertex
+/// records (both targets resolve to the same original vertex — delivered
+/// by the duplicator to every self pair with contact) is a transversal
+/// chord through that vertex; the rest routes by intersection count.
 template <typename Index> class edge_extractor {
 public:
   /// Extract edges for one face's intersection subrange.
@@ -45,6 +50,29 @@ public:
                r.object_other == group_begin->object_other;
       });
       auto n = it - group_begin;
+      bool coplanar_pair = false;
+      for (auto q = group_begin; q != it; ++q)
+        if (q->flags & tf::intersect::coplanar_pair_flag) {
+          coplanar_pair = true;
+          break;
+        }
+      if (coplanar_pair) {
+        apply_to_face(
+            group_begin->tag_other, group_begin->object_other,
+            [&](const auto &other_face) {
+              Index other_size = other_face.size();
+              extract_coplanar(group_begin, it, other_size, face_size,
+                               this_loop_idx, all_loops, all_subranges,
+                               apply_to_face, buf);
+            });
+        continue;
+      }
+      bool routed = false;
+      if (group_begin->tag == group_begin->tag_other)
+        routed = extract_shared(group_begin, it, face_size, this_loop_idx,
+                                all_loops, all_subranges, apply_to_face, buf);
+      if (routed)
+        continue;
       if (n == 2) {
         emit_edge<Index>(group_begin[0], group_begin[1], face_size,
                          this_loop_idx, all_loops, all_subranges,
@@ -60,6 +88,66 @@ public:
             });
       }
     }
+  }
+
+  /// Route a transversal self-pair group holding shared-vertex records:
+  /// the shared vertex pairs with each ordinary record (fold chord,
+  /// corner-crossing chain); vertex-only groups are tangential contacts
+  /// and stay silent. Returns false when the group has no shared-vertex
+  /// records (caller falls back to count-based routing). Assumes
+  /// convex faces: only then is the chord through the shared vertex the
+  /// whole transversal intersection.
+  template <typename Iterator, typename AllLoops, typename AllSubranges,
+            typename ApplyToFace>
+  auto extract_shared(Iterator group_begin, Iterator group_end,
+                      Index face_size, std::size_t this_loop_idx,
+                      const AllLoops &all_loops,
+                      const AllSubranges &all_subranges,
+                      const ApplyToFace &apply_to_face,
+                      tf::buffer<edge<Index>> &buf) -> bool {
+    bool vv_possible = false;
+    for (auto q = group_begin; q != group_end; ++q)
+      if (q->target.label == tf::topo_type::vertex &&
+          q->target_other.label == tf::topo_type::vertex) {
+        vv_possible = true;
+        break;
+      }
+    if (!vv_possible)
+      return false;
+    bool handled = false;
+    apply_to_face(group_begin->tag, group_begin->object, [&](const auto &face) {
+      apply_to_face(
+          group_begin->tag_other, group_begin->object_other,
+          [&](const auto &other_face) {
+            using rec_t = std::decay_t<decltype(*group_begin)>;
+            tf::small_vector<const rec_t *, 8> shared_recs, ordinary_recs;
+            auto seen = [](auto &v, Index id) {
+              for (auto *r : v)
+                if (Index(r->id) == id)
+                  return true;
+              return false;
+            };
+            for (auto q = group_begin; q != group_end; ++q) {
+              bool shared_vv =
+                  q->target.label == tf::topo_type::vertex &&
+                  q->target_other.label == tf::topo_type::vertex &&
+                  Index(face[q->target.id]) ==
+                      Index(other_face[q->target_other.id]);
+              auto &bucket = shared_vv ? shared_recs : ordinary_recs;
+              if (!seen(bucket, Index(q->id)))
+                bucket.push_back(&*q);
+            }
+            if (shared_recs.size() == 0)
+              return;
+            handled = true;
+            for (auto *ord : ordinary_recs)
+              // convex faces only: at most one shared vertex carries a
+              // transversal chord, so the first shared record is the pair
+              emit_edge<Index>(*ord, *shared_recs[0], face_size, this_loop_idx,
+                               all_loops, all_subranges, apply_to_face, buf);
+          });
+    });
+    return handled;
   }
 
 private:
@@ -101,10 +189,22 @@ private:
     if (_work.size() < 2)
       return;
 
+    // rec_idx tie-break: group membership (exactly-2 emits) must not
+    // depend on the parallel gather's record order.
     std::sort(_work.begin(), _work.end(),
               [](const auto &a, const auto &b) {
-                return a.edge_id < b.edge_id;
+                return std::make_pair(a.edge_id, a.rec_idx) <
+                       std::make_pair(b.edge_id, b.rec_idx);
               });
+    // Multiple deliveries of the same shared vertex reach a pair once
+    // per source record; identical (edge, point) entries are one
+    // contact, not two.
+    _work.erase_till_end(std::unique(
+        _work.begin(), _work.end(), [&](const auto &a, const auto &b) {
+          return a.edge_id == b.edge_id &&
+                 Index((begin + a.rec_idx)->id) ==
+                     Index((begin + b.rec_idx)->id);
+        }));
 
     auto wit = _work.begin();
     auto wend = _work.end();

@@ -37,6 +37,10 @@
 #include "./loop.hpp"
 #include "./split_edges.hpp"
 #include "./vertex.hpp"
+#include "tbb/parallel_sort.h"
+
+#include <algorithm>
+#include <array>
 
 namespace tf {
 
@@ -81,6 +85,8 @@ public:
     _edges.clear();
     _edge_defs.clear();
     _point_remap.clear();
+    _snip_merges.clear();
+    _snip_dropped.clear();
   }
 
   /// Build loops, edges, canonicalize, and resolve crossings.
@@ -114,8 +120,7 @@ public:
     intersect::graph::canonicalize_edges(_edge_defs, _edges);
     if (!(mode & tf::intersect_mode::resolve_self_crossing_contours) &&
         _tag_offsets.size() < (3 + 1)) {
-      _points.allocate(ipts.size());
-      tf::parallel_copy(ipts, tf::make_range(_points));
+      _materialize_plain(ipts);
     } else
       detect_and_split_crossings(ipts, apply_to_face, get_point, mode, kernel);
     _finalize_edges();
@@ -127,13 +132,17 @@ public:
   auto _finalize_edges() -> void {
     intersect::graph::clean_loops(_loops);
     _restamp_boundary_ordinals();
-    bool any_boundary = false;
+    // Dead edges compact away: boundary-coincident pieces (ordinal
+    // stamped) and zero-length edges — point-class merges can fuse an
+    // edge's endpoints after emission, and a one-point edge cuts
+    // nothing.
+    bool any_dead = false;
     for (const auto &e : _edge_defs.data_buffer())
-      if (e.ordinal != -1) {
-        any_boundary = true;
+      if (e.ordinal != -1 || e.point_0 == e.point_1) {
+        any_dead = true;
         break;
       }
-    if (any_boundary) {
+    if (any_dead) {
       tf::buffer<intersect::graph::edge<Index>> new_edge_data;
       tf::buffer<Index> new_offsets;
       new_offsets.allocate(_edges.offsets_buffer().size());
@@ -142,7 +151,7 @@ public:
       for (auto face_edges : tf::make_range(_edges)) {
         for (auto inst : face_edges) {
           const auto &e = _edge_defs.data_buffer()[inst];
-          if (e.ordinal == -1)
+          if (e.ordinal == -1 && e.point_0 != e.point_1)
             new_edge_data.push_back(e);
         }
         new_offsets[fi++] = static_cast<Index>(new_edge_data.size());
@@ -223,7 +232,6 @@ public:
         local_t{});
   }
 
-
 private:
   template <typename Subranges, typename ApplyToFace, typename GetPoint,
             typename GetFlatId>
@@ -242,6 +250,7 @@ private:
       tf::buffer<intersect::graph::vertex<Index>> data;
       tf::buffer<intersect::graph::loop_node<Index, Int>> work;
       tf::buffer<intersect::graph::face_descriptor<Index>> descs;
+      tf::buffer<std::array<Index, 2>> snips;
     };
 
     auto task = [&](auto &&range, local_t &local) {
@@ -252,7 +261,7 @@ private:
       auto sit = local.sizes.begin();
       for (const auto &subrange : range) {
         auto old_size = local.data.size();
-        auto tag = subrange[0].tag;
+        Index tag = subrange[0].tag;
         auto object = subrange[0].object;
         local.dirty.clear();
         apply_to_face_f(tag, object, [&](const auto &face) {
@@ -260,7 +269,8 @@ private:
                                          get_flat_id_f, local.work,
                                          local.dirty);
         });
-        intersect::graph::clean_loop<Index>(local.dirty, local.data);
+        intersect::graph::clean_loop<Index>(local.dirty, local.data,
+                                            &local.snips);
         local.descs.push_back({tag, object});
         *sit++ = static_cast<Index>(local.data.size() - old_size);
       }
@@ -269,6 +279,7 @@ private:
     auto agg = [&](const local_t &local, const tf::none_t &) {
       tf::core::append(local.data, _loops.data_buffer());
       tf::core::append(local.descs, _descriptors);
+      tf::core::append(local.snips, _snip_merges);
       for (auto sz : local.sizes) {
         _loops.offsets_buffer()[loop_i] =
             _loops.offsets_buffer()[loop_i - 1] + sz;
@@ -278,6 +289,21 @@ private:
 
     tf::blocked_reduce_sequenced_aggregate(subranges, tf::none, local_t{}, task,
                                            agg);
+
+    if (_snip_merges.size() != 0) {
+      _snip_dropped.reserve(_snip_merges.size());
+      for (const auto &p : _snip_merges)
+        _snip_dropped.push_back(p[0]);
+      tbb::parallel_sort(_snip_dropped.begin(), _snip_dropped.end());
+      _snip_dropped.erase_till_end(
+          std::unique(_snip_dropped.begin(), _snip_dropped.end()));
+      for (auto &p : _snip_merges)
+        if (p[1] < p[0])
+          std::swap(p[0], p[1]);
+      tbb::parallel_sort(_snip_merges.begin(), _snip_merges.end());
+      _snip_merges.erase_till_end(
+          std::unique(_snip_merges.begin(), _snip_merges.end()));
+    }
   }
 
   template <typename Subranges, typename ApplyToFace>
@@ -350,8 +376,7 @@ private:
       const GetPoint &get_point, tf::intersect_mode mode,
       const tf::exact::predicate_kernel<Int> &kernel) -> void {
     if (_edges.size() == 0) {
-      _points.allocate(ipts.size());
-      tf::parallel_copy(ipts, tf::make_range(_points));
+      _materialize_plain(ipts);
       return;
     }
 
@@ -360,8 +385,7 @@ private:
     auto records = intersect::graph::gather_crossing_records<Index>(
         _edges, _edge_defs, apply_to_face, get_point, mode, kernel);
     if (records.size() == 0) {
-      _points.allocate(n_ipts);
-      tf::parallel_copy(ipts, tf::make_range(_points));
+      _materialize_plain(ipts);
       return;
     }
 
@@ -382,6 +406,10 @@ private:
       _crossing_point_ids.push_back(p[0]);
       _crossing_point_ids.push_back(p[1]);
     }
+
+    // Snip merges join the same machinery; they are not crossings, so
+    // they stay out of _crossing_point_ids.
+    tf::core::append(_snip_merges, merge_pairs);
 
     auto entries = intersect::graph::collect_split_entries<Index>(
         ee_range, ee_offsets, ve_range, crossing_base);
@@ -426,9 +454,64 @@ private:
         if (v.source == intersect::graph::vertex_source::created)
           v.id = _point_remap[v.id];
       });
+      _write_snip_survivor_coords(
+          [&](Index i) -> tf::point<Int, 3> { return ipts[i]; });
     }
 
     collect_crossing_point_ids();
+  }
+
+  /// Deterministic class coordinates for snip merges: unlike VV merges,
+  /// the merged points are NOT coincident, so the racy indirect copy must
+  /// be overridden with the surviving point's position.
+  template <typename Coords>
+  auto _write_snip_survivor_coords(const Coords &coords) -> void {
+    auto dropped = [&](Index x) {
+      return std::binary_search(_snip_dropped.begin(), _snip_dropped.end(), x);
+    };
+    auto pts = _points.points();
+    for (const auto &p : _snip_merges) {
+      // Chained snips (a pair's survivor dropped by another loop's snip)
+      // must not write a dropped tip's coordinates: only the pair holding
+      // the class's true survivor writes. When two survivors merge through
+      // a shared tip, the sorted pair order makes the last write the
+      // deterministic pick.
+      Index s;
+      if (!dropped(p[0]))
+        s = p[0];
+      else if (!dropped(p[1]))
+        s = p[1];
+      else
+        continue;
+      pts[_point_remap[s]] = coords(s);
+    }
+  }
+
+  /// Points materialization for build paths that skip crossing detection:
+  /// snip merges must still collapse dropped ids or record references
+  /// dangle.
+  template <typename IPoints>
+  auto _materialize_plain(const IPoints &ipts) -> void {
+    if (_snip_merges.size() == 0) {
+      _points.allocate(ipts.size());
+      tf::parallel_copy(ipts, tf::make_range(_points));
+      return;
+    }
+    _point_remap.allocate(ipts.size());
+    auto n_classes =
+        tf::make_dense_equivalence_class_map(_snip_merges, _point_remap);
+    _points.allocate(n_classes);
+    tf::parallel_copy(ipts, tf::make_indirect_range(_point_remap, _points));
+    _write_snip_survivor_coords(
+        [&](Index i) -> tf::point<Int, 3> { return ipts[i]; });
+    tf::parallel_for_each(_edge_defs.data_buffer(), [&](auto &e) {
+      e.point_0 = _point_remap[e.point_0];
+      e.point_1 = _point_remap[e.point_1];
+    });
+    tf::parallel_for_each(_loops.data_buffer(), [&](auto &v) {
+      if (v.source == intersect::graph::vertex_source::created)
+        v.id = _point_remap[v.id];
+    });
   }
 
   auto collect_crossing_point_ids() -> void {
@@ -450,6 +533,12 @@ private:
   tf::offset_block_buffer<Index, Index> _edges;
   tf::offset_block_buffer<Index, intersect::graph::edge<Index>> _edge_defs;
   tf::buffer<Index> _point_remap;
+  // clean_loop antenna snips: (min, max) merge pairs seeded into the VV
+  // point-merge, plus the dropped side so the class keeps the survivor's
+  // coordinates. A snipped point stays referenced by records; without the
+  // merge those references dangle.
+  tf::buffer<std::array<Index, 2>> _snip_merges;
+  tf::buffer<Index> _snip_dropped;
 };
 
 } // namespace tf

@@ -21,6 +21,7 @@
 #include "./vertex.hpp"
 
 #include <algorithm>
+#include <array>
 
 namespace tf::intersect::graph {
 
@@ -65,11 +66,23 @@ auto build_dirty_loop(const Range &base_edges, const Loop &base_loop,
 /// - remove consecutive duplicates
 /// - snip antennas: (X, A, X) → (X)
 /// Handles wrap-around. Appends cleaned vertices to result.
+///
+/// A snipped A may still be referenced by intersection records; `snips`
+/// (when given) receives one `{dropped, survivor}` pair per created-A
+/// snip so the caller can merge the dropped id into the surviving one
+/// globally. Pairs are role-ordered; the caller canonicalizes.
 template <typename Index, typename Range>
-auto clean_loop(const Range &dirty, tf::buffer<vertex<Index>> &result) -> void {
+auto clean_loop(const Range &dirty, tf::buffer<vertex<Index>> &result,
+                tf::buffer<std::array<Index, 2>> *snips = nullptr) -> void {
   using vertex_t = vertex<Index>;
   auto eq = [](const vertex_t &a, const vertex_t &b) {
     return a.id == b.id && a.source == b.source;
+  };
+  auto note_snip = [&](const vertex_t &dropped, const vertex_t &survivor) {
+    if (snips && dropped.source == vertex_source::created &&
+        survivor.source == vertex_source::created &&
+        dropped.id != survivor.id)
+      snips->push_back({dropped.id, survivor.id});
   };
 
   auto start = result.size();
@@ -86,6 +99,7 @@ auto clean_loop(const Range &dirty, tf::buffer<vertex<Index>> &result) -> void {
       continue;
     // antenna: just-pushed equals two back → pop A, drop incoming X
     if (result.size() - start >= 2 && eq(result[result.size() - 2], v)) {
+      note_snip(result.back(), v);
       result.pop_back();
       continue;
     }
@@ -104,6 +118,7 @@ auto clean_loop(const Range &dirty, tf::buffer<vertex<Index>> &result) -> void {
     } else if (sz() >= 3) {
       // (back, front, front+1) = (X, A, X) → drop front A and back X
       if (eq(result.back(), result[start + 1])) {
+        note_snip(result[start], result[start + 1]);
         // erase front (A)
         for (std::size_t j = start; j + 1 < result.size(); ++j)
           result[j] = result[j + 1];
@@ -113,6 +128,7 @@ auto clean_loop(const Range &dirty, tf::buffer<vertex<Index>> &result) -> void {
       }
       // (back-2, back-1, front) = (X, A, X) → drop back A and back X
       else if (eq(result[result.size() - 2], result[start])) {
+        note_snip(result.back(), result[start]);
         result.pop_back();
         result.pop_back();
         changed = true;

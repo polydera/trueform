@@ -21,6 +21,8 @@
 #include "../../topology/vertex_id_in_face.hpp"
 #include "./tagged_intersection.hpp"
 
+#include <array>
+
 namespace tf::intersect {
 
 namespace impl {
@@ -80,8 +82,73 @@ auto duplicate_intersection_impl(const Faces0 &faces0, const FE0 &fe0,
                                  const FE1 &fe1, const MEL1 &mel1,
                                  tagged_intersection<Index> rec,
                                  tf::buffer<tagged_intersection<Index>> &out,
-                                 bool is_self) {
+                                 bool is_self, Index sentinel_base = 0) {
+  const Index orig_object = rec.object;
+  const Index orig_object_other = rec.object_other;
+  tf::small_vector<std::array<Index, 2>, 16> pairs_done;
+
+  // Any record delivered to a self pair whose faces share vertices
+  // delivers those vertices too: the shared vertex lies on the pair's
+  // intersection (it is in both faces), and it is the chord endpoint the
+  // shared-mask suppression never records. Pure id scan — no geometry.
+  // The id is a sentinel (sentinel_base + global vertex id) resolved to a
+  // point after the generate pass, upstream of dedup.
+  auto deliver_shared_vertices = [&](const tagged_intersection<Index> &r) {
+    if (!is_self || sentinel_base == 0 || r.object == r.object_other)
+      return;
+    for (const auto &p : pairs_done)
+      if (p[0] == r.object && p[1] == r.object_other)
+        return;
+    pairs_done.push_back({r.object, r.object_other});
+    auto &&f0 = faces0[r.object];
+    auto &&f1 = faces1[r.object_other];
+    Index n0 = Index(f0.size());
+    Index n1 = Index(f1.size());
+    for (Index i = 0; i < n0; ++i)
+      for (Index j = 0; j < n1; ++j) {
+        if (Index(f0[i]) != Index(f1[j]))
+          continue;
+        // The record fans across the vertex's whole face fan (one copy
+        // per incident face, anchored to the contact pair) — the same
+        // identity synchronization ordinary vertex-target records get
+        // from the fan expansion: every incident loop substitutes the
+        // corner with the SAME created point, so cut and uncut faces
+        // agree on the vertex's identity. Fan copies landing in
+        // non-contact groups are vertex-only and stay silent.
+        const Index vid = Index(f0[i]);
+        for (auto g : fe0[vid]) {
+          const Index partner =
+              Index(g) == r.object ? r.object_other : r.object;
+          if (Index(g) == partner)
+            continue;
+          tagged_intersection<Index> v;
+          v.tag = r.tag;
+          v.tag_other = r.tag_other;
+          v.object = Index(g);
+          v.object_other = partner;
+          v.target = {tf::vertex_id_in_face<Index>(vid, faces0[g]),
+                      tf::topo_type::vertex};
+          v.target_other =
+              {tf::vertex_id_in_face<Index>(vid, faces0[partner]),
+               tf::topo_type::vertex};
+          v.id = sentinel_base + vid;
+          v.flags = 0;
+          out.push_back(v);
+          std::swap(v.tag, v.tag_other);
+          std::swap(v.object, v.object_other);
+          std::swap(v.target, v.target_other);
+          out.push_back(v);
+        }
+        break;
+      }
+  };
+
   auto push_both = [&](tagged_intersection<Index> r) {
+    // A set coplanar flag describes the emitting pair; clear it on copies
+    // rewritten to another pair.
+    if (r.object != orig_object || r.object_other != orig_object_other)
+      r.flags = 0;
+    deliver_shared_vertices(r);
     out.push_back(r);
     std::swap(r.tag, r.tag_other);
     std::swap(r.object, r.object_other);
@@ -150,13 +217,16 @@ auto duplicate_intersection(const Faces0 &faces0, const FE0 &fe0,
 }
 
 /// Self-intersection duplicate_intersection (is_self = true).
+/// `sentinel_base` (= point count before duplication) keys the sentinel
+/// ids of delivered shared-vertex records.
 template <typename Index, typename Faces, typename FE, typename MEL>
 auto duplicate_intersection_self(const Faces &faces, const FE &fe,
                                  const MEL &mel,
                                  tagged_intersection<Index> rec,
-                                 tf::buffer<tagged_intersection<Index>> &out) {
+                                 tf::buffer<tagged_intersection<Index>> &out,
+                                 Index sentinel_base = 0) {
   impl::duplicate_intersection_impl(faces, fe, mel, faces, fe, mel, rec, out,
-                                    true);
+                                    true, sentinel_base);
 }
 
 /// Returns a duplicator callable for use with `tf::generic_generate`.

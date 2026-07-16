@@ -46,10 +46,24 @@ public:
   auto descriptors() const { return tf::make_range(_descriptors); }
   auto tag_offsets() const { return tf::make_range(_tag_offsets); }
 
+  /// Cut-and-consumed faces of form `tag`: faces whose records produced
+  /// no loops (the base loop degenerated below a triangle after vertex
+  /// identification). They are cut faces with no surviving geometry —
+  /// consumers deciding cut/uncut must treat them as cut, never as
+  /// untouched originals.
+  auto deleted(Index tag) const {
+    return tf::slice(tf::make_range(_deleted),
+                     std::size_t(_deleted_offsets[std::size_t(tag)]),
+                     std::size_t(_deleted_offsets[std::size_t(tag) + 1]));
+  }
+  auto deleted_offsets() const { return tf::make_range(_deleted_offsets); }
+
   auto clear() {
     _loops.clear();
     _descriptors.clear();
     _tag_offsets.clear();
+    _deleted.clear();
+    _deleted_offsets.clear();
   }
 
   template <typename ApplyToFace, typename GetMeshPoint>
@@ -62,13 +76,17 @@ public:
     auto all_edges = ig.edges();
     auto pts = ig.points();
     auto n = descs.size();
-    if (n == 0)
+    if (n == 0) {
+      tf::buffer<desc_t> no_deleted;
+      build_deleted(no_deleted, ig.tag_offsets().size() - 1);
       return build_tag_offsets(ig.tag_offsets().size() - 1);
+    }
 
     struct local_t {
       tf::buffer<Index> offsets;
       tf::buffer<vertex_t> vertices;
       tf::buffer<desc_t> descs;
+      tf::buffer<desc_t> deleted;
       tf::buffer<std::array<Index, 2>> edge_buf;
       tf::face_cutter<Index, Int> cutter;
     };
@@ -79,10 +97,14 @@ public:
       for (const auto &[desc, loop, edges] : range) {
         if (desc.tag == Index(-1))
           continue;
-        // Skip base loops with fewer than 3 distinct vertices: nothing can
-        // be triangulated and emitting them would yield degenerate faces.
-        if (loop.size() < 3)
+        // A base loop below a triangle carries no geometry — vertex
+        // identification collapsed the face. The face is still CUT: its
+        // descriptor goes to the deleted store so no consumer re-emits
+        // the original.
+        if (loop.size() < 3) {
+          local.deleted.push_back(desc);
           continue;
+        }
         auto get_point = [&, &desc =
                                  desc](const vertex_t &v) -> tf::point<Int, 3> {
           if (v.source == intersect::graph::vertex_source::created)
@@ -122,13 +144,17 @@ public:
               auto n_loops = local.cutter.build(
                   loop, tf::make_range(local.edge_buf), get_projected_point,
                   local.offsets, local.vertices);
+              if (n_loops == 0)
+                local.deleted.push_back(desc);
               for (Index i = 0; i < n_loops; ++i)
                 local.descs.push_back(desc);
             });
       }
     };
 
+    tf::buffer<desc_t> deleted_descs;
     auto agg = [&](const local_t &local, const tf::none_t &) {
+      tf::core::append(local.deleted, deleted_descs);
       if (local.offsets.size() == 0)
         return;
       auto offset = static_cast<Index>(_loops.data_buffer().size());
@@ -147,6 +173,7 @@ public:
           static_cast<Index>(_loops.data_buffer().size()));
 
     build_tag_offsets(ig.tag_offsets().size() - 1);
+    build_deleted(deleted_descs, ig.tag_offsets().size() - 1);
   }
 
   /// Build from simple_intersections (isocurves/isobands).
@@ -159,6 +186,8 @@ public:
       -> void {
     clear();
     auto subranges = si.intersections();
+    tf::buffer<desc_t> no_deleted;
+    build_deleted(no_deleted, 1);
     if (subranges.size() == 0)
       return build_tag_offsets(1);
 
@@ -247,6 +276,30 @@ public:
   }
 
 private:
+  /// Group the consumed faces' descriptors per tag, mirroring the loop
+  /// grouping: `_deleted` holds object ids, `_deleted_offsets` the
+  /// per-tag blocks.
+  auto build_deleted(tf::buffer<desc_t> &deleted_descs, std::size_t n_tags) {
+    std::sort(deleted_descs.begin(), deleted_descs.end(),
+              [](const desc_t &a, const desc_t &b) {
+                if (a.tag != b.tag)
+                  return a.tag < b.tag;
+                return a.object < b.object;
+              });
+    _deleted.allocate(deleted_descs.size());
+    for (std::size_t i = 0; i < deleted_descs.size(); ++i)
+      _deleted[i] = deleted_descs[i].object;
+    _deleted_offsets.allocate(n_tags + 1);
+    _deleted_offsets[0] = 0;
+    Index g = 0;
+    for (std::size_t t = 0; t < n_tags; ++t) {
+      while (g < static_cast<Index>(deleted_descs.size()) &&
+             deleted_descs[g].tag == static_cast<Index>(t))
+        ++g;
+      _deleted_offsets[t + 1] = g;
+    }
+  }
+
   auto build_tag_offsets(std::size_t n_tags) {
     auto n = _descriptors.size();
     if (n == 0) {
@@ -268,6 +321,8 @@ private:
   tf::offset_block_buffer<Index, vertex_t> _loops;
   tf::buffer<desc_t> _descriptors;
   tf::buffer<Index> _tag_offsets;
+  tf::buffer<Index> _deleted;
+  tf::buffer<Index> _deleted_offsets;
 };
 
 } // namespace tf

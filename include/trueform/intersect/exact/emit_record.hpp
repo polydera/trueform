@@ -25,7 +25,7 @@ auto emit_record(int tag, int tag_other, Index object, Index object_other,
                  Pts &pts) {
   Index id = pts.size();
   pts.push_back(point);
-  intersections.push_back({Index(tag), Index(tag_other), object, object_other,
+  intersections.push_back({short(tag), short(tag_other), object, object_other,
                            target, target_other, id});
 }
 

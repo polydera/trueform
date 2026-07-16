@@ -74,6 +74,13 @@ public:
   }
 
 private:
+  /// A vertex of the hole absent from the candidate face, or
+  /// `not_same = false` when the lockstep walk matches throughout —
+  /// the hole is that face's reversal (an interior cycle against its
+  /// island face). Planar-graph connectivity guarantees every hole is
+  /// vertex-disjoint from its true parent's walk (a component sharing
+  /// a vertex with a loop is absorbed into that loop's own walk), so
+  /// the parent always yields a classifiable vertex here.
   template <typename Policy0, typename Policy1>
   auto find_first_non_equal_vertex(const tf::faces<Policy0> &faces,
                                    const tf::faces<Policy1> &holes,

@@ -41,6 +41,20 @@ auto clean(const std::vector<vertex_t> &dirty) -> std::vector<Index> {
 // created ids print as ~id (bitwise not) to distinguish sources
 auto ids(std::initializer_list<Index> l) -> std::vector<Index> { return l; }
 
+auto clean_with_snips(const std::vector<vertex_t> &dirty,
+                      tf::buffer<std::array<Index, 2>> &snips)
+    -> std::vector<Index> {
+  tf::buffer<vertex_t> in;
+  for (auto &v : dirty)
+    in.push_back(v);
+  tf::buffer<vertex_t> out;
+  tf::intersect::graph::clean_loop<Index>(tf::make_range(in), out, &snips);
+  std::vector<Index> ids;
+  for (auto &v : out)
+    ids.push_back(v.source == vsrc::vertex_source::created ? ~v.id : v.id);
+  return ids;
+}
+
 } // namespace
 
 TEST_CASE("clean_loop: already clean loop is unchanged",
@@ -142,4 +156,42 @@ TEST_CASE("clean_loops: batch over offset blocks", "[intersect][clean_loop]") {
   REQUIRE(loops[0][0].id == 0);
   REQUIRE(loops[0][2].id == 2);
   REQUIRE(loops[1][0].id == 3);
+}
+
+TEST_CASE("clean_loop: snip pairs report (dropped, survivor) for "
+          "created-created antennas",
+          "[intersect][clean_loop]") {
+  tf::buffer<std::array<Index, 2>> snips;
+  // (o0, c1, c2, c1) — antenna tip c2 flanked by c1: dropped=c2,
+  // survivor=c1.
+  auto r = clean_with_snips({orig(0), created(1), created(2), created(1)},
+                            snips);
+  REQUIRE(r == ids({0, ~1}));
+  REQUIRE(snips.size() == 1);
+  REQUIRE(snips[0][0] == 2);
+  REQUIRE(snips[0][1] == 1);
+}
+
+TEST_CASE("clean_loop: created-original antennas report no snip pair",
+          "[intersect][clean_loop]") {
+  tf::buffer<std::array<Index, 2>> snips;
+  // (o0, o1, c2, o1) — tip c2 flanked by original 1: snipped, but the
+  // merge partner is original, so no pair is recorded.
+  auto r = clean_with_snips({orig(0), orig(1), created(2), orig(1)}, snips);
+  REQUIRE(r == ids({0, 1}));
+  REQUIRE(snips.size() == 0);
+}
+
+TEST_CASE("clean_loop: wrap-seam snip reports the pair",
+          "[intersect][clean_loop]") {
+  tf::buffer<std::array<Index, 2>> snips;
+  // Antenna (c2, c1, c2) spanning the wrap seam: tip c1 flanked by c2.
+  auto r = clean_with_snips(
+      {created(1), created(2), orig(0), orig(3), orig(4), created(2)}, snips);
+  REQUIRE(snips.size() == 1);
+  REQUIRE(snips[0][0] == 1);
+  REQUIRE(snips[0][1] == 2);
+  // the spike is gone: no c1 remains
+  for (auto id : r)
+    REQUIRE(id != ~1);
 }

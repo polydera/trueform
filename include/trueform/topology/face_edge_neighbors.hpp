@@ -55,17 +55,46 @@ auto face_edge_neighbors(std::integral_constant<std::size_t, N>,
   const auto &range1 = blink[v1];
   auto it1 = range1.begin();
   auto end1 = range1.end();
-  // intersection on sorted ranges
+  // Intersection on sorted ranges. A pinched face (a vertex it visits
+  // twice) appears twice in both memberships, so the same candidate can
+  // match repeatedly. The emission multiplicity must equal the number
+  // of times the face actually holds the edge: a slit traversing the
+  // edge twice is a neighbour twice, a lobe pinch that merely revisits
+  // the endpoints is a neighbour once. Duplicate hits are adjacent in
+  // the sorted ranges, so the full recount runs only when one shows.
+  Index prev = face_id;
+  Index emitted = 0;
+  Index count = 0;
+  bool full_count = false;
   while ((it0 != end0) & (it1 != end1)) {
     if (*it0 > *it1)
       ++it0;
     else {
       if (char(Index(*it0) != face_id) & char(!(*it1 > *it0))) {
-        const auto &face1 = faces[*it1];
-        Index size = face1.size();
-        Index edge_id = tf::edge_id_in_face(v0, v1, face1);
-        if (edge_id != size && apply(*it0++))
-          return;
+        Index cand = Index(*it0);
+        const auto &face1 = faces[cand];
+        Index size = Index(face1.size());
+        if (cand != prev) {
+          prev = cand;
+          emitted = 0;
+          full_count = false;
+          count =
+              Index(tf::edge_id_in_face(v0, v1, face1) != std::size_t(size));
+        } else if (!full_count) {
+          full_count = true;
+          Index c = 0;
+          Index p = size - 1;
+          for (Index i = 0; i < size; p = i++)
+            c += Index((char(face1[p] == v0) & char(face1[i] == v1)) |
+                       (char(face1[p] == v1) & char(face1[i] == v0)));
+          count = c;
+        }
+        if (emitted < count) {
+          ++emitted;
+          if (apply(cand))
+            return;
+        }
+        ++it0;
       }
       ++it1;
     }

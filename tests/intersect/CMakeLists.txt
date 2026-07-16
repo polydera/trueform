@@ -3,6 +3,7 @@ add_executable(trueform_intersect_tests
   test_self_intersection.cpp
   test_isocontours.cpp
   test_exact_intersections.cpp
+  test_boundary_walk.cpp
   test_clean_loop.cpp
   test_intersection_graph.cpp
 )

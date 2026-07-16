@@ -11,6 +11,7 @@
  */
 
 #include <catch2/catch_test_macros.hpp>
+#include <trueform/core/constants.hpp>
 #include <trueform/core/points_buffer.hpp>
 #include <trueform/exact/int128.hpp>
 #include <trueform/exact/signed_area.hpp>
@@ -260,6 +261,45 @@ TEST_CASE("5 consecutive collinear points (float)", "[ear_cutter]") {
   check_all_rotations(ids, pts);
 }
 
+TEST_CASE("Pinch: two lobes at a doubly-visited identity", "[ear_cutter]") {
+  // butterfly: identity 0 visited at positions 0 and 3; each lobe is a
+  // positive-area triangle. The ear at either lobe is blocked by the
+  // twin occurrence, so the pinch separation must fire.
+  auto pts = make_pts({{20, 20}, {40, 10}, {40, 30}, {0, 30}, {0, 10}});
+  std::vector<int> ids = {0, 1, 2, 0, 3, 4};
+  check_all_rotations_exact(ids, pts);
+  tf::ear_cutter<int> ec;
+  CHECK(ec.build(ids, pts.points()));
+  CHECK(ec.indices_buffer().size() == 6);
+}
+
+TEST_CASE("Pinch: three lobes at one identity", "[ear_cutter]") {
+  auto pts = make_pts(
+      {{0, 0}, {10, -5}, {10, 5}, {5, 10}, {-5, 10}, {-10, 5}, {-10, -5}});
+  std::vector<int> ids = {0, 1, 2, 0, 3, 4, 0, 5, 6};
+  check_all_rotations_exact(ids, pts);
+  tf::ear_cutter<int> ec;
+  CHECK(ec.build(ids, pts.points()));
+  CHECK(ec.indices_buffer().size() == 9);
+}
+
+TEST_CASE("Keyhole bridge with duplicate identities stays whole",
+          "[ear_cutter]") {
+  // square with a CW hole keyholed at corner 0 — identities 0 and 4
+  // each appear twice, but every separation there produces a negative
+  // cycle (the hole): the sign gate must keep the ring whole.
+  auto pts = make_pts({{0, 0},
+                       {60, 0},
+                       {60, 60},
+                       {0, 60},
+                       {20, 20},
+                       {20, 40},
+                       {40, 40},
+                       {40, 20}});
+  std::vector<int> ids = {0, 4, 5, 6, 7, 4, 0, 1, 2, 3};
+  check_all_rotations_exact(ids, pts);
+}
+
 TEST_CASE("Coincident vertex pairs from arrangement", "[ear_cutter]") {
   // 7-vertex polygon from cylinder/sphere intersection (fc loop 249).
   // Two pairs of coincident 2D points: pt2==pt3, pt4==pt5.
@@ -272,4 +312,40 @@ TEST_CASE("Coincident vertex pairs from arrangement", "[ear_cutter]") {
                         {470228476, 34280776}});
   std::vector<int> ids = {0, 1, 2, 3, 4, 5, 6};
   check_all_rotations_exact(ids, pts);
+}
+
+TEST_CASE("Pinch: separation under z-order hashing (large ring)",
+          "[ear_cutter]") {
+  // two large positive lobes joined at one doubly-visited identity;
+  // more than 80 vertices turns the hashed ear path on, so the
+  // separation and the per-piece re-index run under z-order hashing
+  std::vector<std::array<int32_t, 2>> data;
+  data.push_back({0, 0});
+  const double pi = tf::pi<double>;
+  const int k_arc = 43;
+  for (int k = 1; k <= k_arc; ++k) { // circle centred (1000,0) through P
+    double th = pi + 2.0 * pi * k / (k_arc + 1);
+    data.push_back({int32_t(1000 + std::lround(1000 * std::cos(th))),
+                    int32_t(std::lround(1000 * std::sin(th)))});
+  }
+  std::size_t second_p = data.size();
+  data.push_back({0, 0}); // the twin occurrence of P
+  for (int k = 1; k <= k_arc; ++k) { // circle centred (-1000,0) through P
+    double th = 2.0 * pi * k / (k_arc + 1);
+    data.push_back({int32_t(-1000 + std::lround(1000 * std::cos(th))),
+                    int32_t(std::lround(1000 * std::sin(th)))});
+  }
+  auto pts = make_pts(data);
+  std::vector<int> ids(data.size());
+  for (std::size_t i = 0; i < ids.size(); ++i)
+    ids[i] = int(i);
+  ids[second_p] = 0;
+
+  REQUIRE(ids.size() > 80);
+  tf::ear_cutter<int> ec;
+  CHECK(ec.build(ids, pts.points()));
+  CHECK(verify_distinct(ec.indices_buffer()));
+  CHECK(verify_all_present(ids, ec.indices_buffer()));
+  CHECK(verify_edges(ids, ec.indices_buffer()));
+  CHECK(verify_area(ids, ec.indices_buffer(), pts));
 }

@@ -13,18 +13,34 @@
 #pragma once
 
 #include "../../topology/topo_id.hpp"
+#include <cstdint>
 #include <tuple>
 
 namespace tf::intersect {
 
+/// Record flag: set on every record a pair call emits when the pair is
+/// exactly coplanar (all vertex signs zero, both ways). Decided once, at
+/// the call, on original exact coordinates; the duplicator clears it on
+/// copies whose (object, object_other) it rewrites, so a set flag always
+/// describes the pair the record sits in.
+inline constexpr std::uint8_t coplanar_pair_flag = 1;
+
 template <typename Index> struct tagged_intersection {
-  Index tag;
-  Index tag_other;
+  // Form indices; 16 bits keep the record at 36 bytes with the flags
+  // byte included — the pairwise stages are memory-bound over these
+  // buffers. Hard ceiling: 32767 forms (construction narrows with
+  // short(tag), which wraps beyond that).
+  std::int16_t tag;
+  std::int16_t tag_other;
   Index object;
   Index object_other;
   tf::topo_id<Index> target;
   tf::topo_id<Index> target_other;
   Index id;
+  /// Pair-call metadata; excluded from ordering and identity below —
+  /// consumers reduce it per group (any-of), so relative order of
+  /// equal-tuple records with differing flags cannot matter.
+  std::uint8_t flags = 0;
 
   auto key() const { return std::make_tuple(tag, object); }
 

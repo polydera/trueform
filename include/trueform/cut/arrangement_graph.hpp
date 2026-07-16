@@ -344,6 +344,11 @@ private:
   /// because every member detects the same smallest representative).
   /// Each loop writes only its own bit, so no contention.
   ///
+  /// Keep-one presumes every pack member is real geometry: the face
+  /// cutter emits each planar cell exactly once per face (interior
+  /// chord cycles are holes, never inverted duplicate faces), so a
+  /// same-face opposite-winding pack cannot reach this point.
+  ///
   /// Pre-conditions:
   ///   - @ref _compute_loop_connectivity has been run.
   ///
@@ -377,6 +382,8 @@ private:
     };
 
     auto conn = connectivity_per_face_edge();
+    dead_mask.allocate(static_cast<std::size_t>(n_loops));
+    tf::parallel_fill(dead_mask, false);
     tf::generic_generate(
         tf::enumerate(tf::zip(loops, conn)), _coplanar_pairs,
         [&](const auto &item, auto &out) {
@@ -405,8 +412,6 @@ private:
     tbb::parallel_sort(_coplanar_pairs.begin(), _coplanar_pairs.end());
 
     // Fill dead_mask: each pair's [1] = dead.
-    dead_mask.allocate(static_cast<std::size_t>(n_loops));
-    tf::parallel_fill(dead_mask, false);
     tf::parallel_for_each(_coplanar_pairs, [&](const auto &p) {
       dead_mask[p[1]] = true;
     });
@@ -610,9 +615,9 @@ private:
 
     tbb::task_group tg;
     for (Index t = 0; t < n_tags; ++t) {
-      tg.run([this, t, &forms, &descs_per_tag, &n_surface_per_tag] {
+      tg.run([this, t, &forms, &descs_per_tag, &fc, &n_surface_per_tag] {
         auto cl = tf::cut::make_surface_component_labels2<Index, label_type>(
-            forms[t], descs_per_tag[t]);
+            forms[t], descs_per_tag[t], fc.deleted(t));
         n_surface_per_tag[t] = cl.n_components;
         _polygon_labels[static_cast<std::size_t>(t)] = std::move(cl.labels);
       });

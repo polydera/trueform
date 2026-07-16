@@ -195,7 +195,15 @@ private:
       }
       ++count;
     }
-    // emit all except exterior as faces
+    // Emit the rest: positive regions are faces, everything else is a
+    // hole. A NEGATIVE region that is not the exterior is the outer walk
+    // of an interior chord cycle — a hole in its surrounding region (the
+    // nesting pass places it); emitting it as a face would duplicate the
+    // cycle's cell with inverted winding. A ZERO-AREA region is a slit
+    // walk (an isolated chord tree walked out-and-back, or the sandwich
+    // between duplicate chains) — the same shape cut paths emit: a
+    // zero-area hole, so the triangulation imprints its edges. As a face
+    // it would triangulate to nothing and lose the constraints.
     count = 0;
     for (const auto &region : _pgr) {
       if (min_id == count++) {
@@ -206,7 +214,10 @@ private:
       _signed_areas.push_back(a);
       _offsets.push_back(_vertices.size());
       std::copy(region.begin(), region.end(), std::back_inserter(_vertices));
-      _faces.push_back(id);
+      if (a > 0)
+        _faces.push_back(id);
+      else
+        _holes.push_back(id);
     }
   }
 
