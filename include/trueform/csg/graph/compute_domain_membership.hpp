@@ -16,7 +16,7 @@
 #include "../../cut/arrangements/arrangement_descriptor.hpp"
 #include "../../cut/arrangements/compute_domain_inclusions.hpp"
 #include "../../topology/domain_config.hpp"
-#include <algorithm>
+#include "./union_find.hpp"
 #include <array>
 #include <cstdint>
 
@@ -50,44 +50,36 @@ template <typename Index> struct domain_membership {
 /// bits are those of an all-zero fine constituent if one exists (the
 /// universe / outer shell), else its single bounded constituent;
 /// `keep[coarse] = E(rep_bits) && !(exclude_outer_shell && is_outer)`.
+///
+/// `universe_fine` >= 0 selects the STRUCTURAL read (one-form graphs):
+/// the inclusion bits of a self arrangement are winding parity, which
+/// misreads double-covered pockets as outside. With the volume-argmin
+/// universe passed in, `is_outer` is that domain alone and every other
+/// coarse domain carries the honest "enclosed by form 0" bit.
 template <typename Index, typename OpenMask, typename Expr>
 auto compute_domain_membership(
     const tf::cut::arrangement_descriptor<Index> &desc,
     const tf::cut::domain_inclusions &inc, const OpenMask &open_mask,
     const tf::buffer<std::array<Index, 2>> &nesting_merges,
-    tf::domain_config config, Expr E) -> domain_membership<Index> {
+    tf::domain_config config, Expr E, Index universe_fine = Index(-1))
+    -> domain_membership<Index> {
   domain_membership<Index> out;
   const Index n_domains = desc.n_domains;
   out.n_components = static_cast<Index>(desc.bundle_of_component.size());
 
-  tf::buffer<Index> parent;
-  parent.allocate(static_cast<std::size_t>(n_domains));
-  for (Index d = 0; d < n_domains; ++d)
-    parent[d] = d;
-
-  auto find = [&](Index x) -> Index {
-    while (parent[x] != x) {
-      parent[x] = parent[parent[x]];
-      x = parent[x];
-    }
-    return x;
-  };
-  auto unite = [&](Index a, Index b) {
-    Index ra = find(a), rb = find(b);
-    if (ra != rb)
-      parent[std::min(ra, rb)] = std::max(ra, rb), parent[std::max(ra, rb)] =
-                                                        std::min(ra, rb);
-  };
+  tf::csg::graph::union_find<Index> uf;
+  uf.reset(static_cast<std::size_t>(n_domains));
 
   // Nesting merges repair the false split between contact-free nested
   // shells; always applied (a correct-partition fix, not a policy).
   for (const auto &m : nesting_merges)
-    unite(m[0], m[1]);
+    uf.unite(m[0], m[1]);
 
   if (config & tf::domain_config::ignore_open_fragments) {
     for (Index c = 0; c < out.n_components; ++c)
       if (open_mask[c])
-        unite(desc.domain_of_side[2 * c + 0], desc.domain_of_side[2 * c + 1]);
+        uf.unite(desc.domain_of_side[2 * c + 0],
+                 desc.domain_of_side[2 * c + 1]);
   }
 
   out.coarse_of_fine.allocate(static_cast<std::size_t>(n_domains));
@@ -97,7 +89,7 @@ auto compute_domain_membership(
     dense_of_root[d] = Index(-1);
   Index n_coarse = 0;
   for (Index d = 0; d < n_domains; ++d) {
-    const Index r = find(d);
+    const Index r = uf.find(d);
     if (dense_of_root[r] < 0)
       dense_of_root[r] = n_coarse++;
     out.coarse_of_fine[d] = dense_of_root[r];
@@ -128,26 +120,35 @@ auto compute_domain_membership(
   for (Index k = 0; k < n_coarse; ++k)
     rep_is_outer[k] = false;
 
-  for (Index d = 0; d < n_domains; ++d) {
-    const Index k = out.coarse_of_fine[d];
-    std::uint32_t any = 0;
-    for (auto w : blocks[d])
-      any |= w;
-    const bool zero = (any == 0);
-    if (zero)
-      is_outer[k] = true;
-    // Adopt an all-zero constituent's (zero) bits as the representative;
-    // otherwise adopt the first bounded constituent if no zero seen yet.
-    if (zero && !rep_is_outer[k]) {
-      rep_is_outer[k] = true;
-      std::size_t base = static_cast<std::size_t>(k) * words;
-      for (std::size_t w = 0; w < words; ++w)
-        rep_bits[base + w] = 0;
-    } else if (!zero && !rep_is_outer[k]) {
-      std::size_t base = static_cast<std::size_t>(k) * words;
-      std::size_t src = static_cast<std::size_t>(d) * words;
-      for (std::size_t w = 0; w < words; ++w)
-        rep_bits[base + w] = inc.bits[src + w];
+  if (universe_fine >= 0) {
+    const Index uk = out.coarse_of_fine[universe_fine];
+    for (Index k = 0; k < n_coarse; ++k) {
+      is_outer[k] = k == uk;
+      if (k != uk)
+        rep_bits[static_cast<std::size_t>(k) * words] = 1u;
+    }
+  } else {
+    for (Index d = 0; d < n_domains; ++d) {
+      const Index k = out.coarse_of_fine[d];
+      std::uint32_t any = 0;
+      for (auto w : blocks[d])
+        any |= w;
+      const bool zero = (any == 0);
+      if (zero)
+        is_outer[k] = true;
+      // Adopt an all-zero constituent's (zero) bits as the representative;
+      // otherwise adopt the first bounded constituent if no zero seen yet.
+      if (zero && !rep_is_outer[k]) {
+        rep_is_outer[k] = true;
+        std::size_t base = static_cast<std::size_t>(k) * words;
+        for (std::size_t w = 0; w < words; ++w)
+          rep_bits[base + w] = 0;
+      } else if (!zero && !rep_is_outer[k]) {
+        std::size_t base = static_cast<std::size_t>(k) * words;
+        std::size_t src = static_cast<std::size_t>(d) * words;
+        for (std::size_t w = 0; w < words; ++w)
+          rep_bits[base + w] = inc.bits[src + w];
+      }
     }
   }
 

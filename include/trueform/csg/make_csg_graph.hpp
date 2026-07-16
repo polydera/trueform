@@ -20,6 +20,7 @@
 #include "../intersect/intersect_config.hpp"
 #include "./csg_graph.hpp"
 #include "tbb/task_group.h"
+#include <array>
 #include <type_traits>
 #include <utility>
 
@@ -102,6 +103,32 @@ auto make_csg_graph(Forms in_forms,
   const int *none = nullptr;
   return make_csg_graph<Int>(std::move(in_forms), tf::make_range(none, none),
                              config, tri);
+}
+
+/// @ingroup csg
+/// @brief Single-form overload: the graph is the form's self
+///        arrangement (@ref tf::intersect_mode::within is implied).
+///        The structural reads apply — @ref tf::make_outer_shell and
+///        @ref tf::make_csg_domains; boolean expressions need two
+///        operands.
+template <typename Int = tf::none_t, typename Policy>
+auto make_csg_graph(const tf::polygons<Policy> &form,
+                    tf::intersect_config config =
+                        {tf::intersect_mode::primitives |
+                         tf::intersect_mode::resolve_crossing_contours},
+                    tf::triangulation_type tri =
+                        tf::triangulation_type::cdt) {
+  using S = decltype(tf::cut::dispatch::make_missing_structures(form));
+  std::array<tf::polygons<Policy>, 1> forms = {form};
+  if constexpr (std::is_same_v<S, tf::none_t>) {
+    return tf::csg_graph<std::array<tf::polygons<Policy>, 1>, S, Int>(
+        std::move(forms), tf::small_vector<S, 10>{}, config, {}, tri);
+  } else {
+    tf::small_vector<S, 10> structs(1);
+    structs[0] = tf::cut::dispatch::make_missing_structures(forms[0]);
+    return tf::csg_graph<std::array<tf::polygons<Policy>, 1>, S, Int>(
+        std::move(forms), std::move(structs), config, {}, tri);
+  }
 }
 
 /// @ingroup csg

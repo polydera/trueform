@@ -34,6 +34,11 @@ namespace tf {
 /// One-stop user entry: compiles the expression, evaluates per
 /// domain, picks per-component sides, and triangulates the boundary.
 ///
+/// @pre The graph holds two or more forms. Expressions combine forms;
+///      a one-form graph is a self arrangement — read it with
+///      @ref tf::make_outer_shell / @ref tf::make_csg_domains (the
+///      expression-less arrangement overloads below remain valid).
+///
 /// @tparam OutputCoordinateType Output coordinate type. Defaults to
 ///         @c tf::none_t, which resolves to the graph's
 ///         @c input_real_type (the input forms' coordinate type).

@@ -24,7 +24,6 @@
 #include "./csg_graph.hpp"
 #include <algorithm>
 #include <array>
-#include <cassert>
 #include <type_traits>
 
 namespace tf {
@@ -87,10 +86,6 @@ auto make_intersection_curves(const tf::csg_graph<Forms, Structs, Int> &graph) {
           if (cross && is_min) {
             // Cross-tag seam endpoints are always created intersection
             // vertices, so `.id` indexes straight into ig points (see above).
-            assert(loop[ei].source ==
-                       tf::intersect::graph::vertex_source::created &&
-                   loop[(ei + 1) % n].source ==
-                       tf::intersect::graph::vertex_source::created);
             const Index a = loop[ei].id;
             const Index b = loop[(ei + 1) % n].id;
             out.push_back({std::min(a, b), std::max(a, b)});

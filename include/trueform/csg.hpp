@@ -26,3 +26,4 @@
 #include "./csg/make_csg_graph.hpp"   // IWYU pragma: export
 #include "./csg/make_csg_mesh.hpp"    // IWYU pragma: export
 #include "./csg/make_intersection_curves.hpp" // IWYU pragma: export
+#include "./csg/make_outer_shell.hpp"         // IWYU pragma: export

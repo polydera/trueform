@@ -22,6 +22,7 @@
 #include "./graph/compute_domain_membership.hpp"
 #include "./graph/compute_domain_partition.hpp"
 #include "./graph/make_csg_domains.hpp"
+#include "./graph/structural_membership.hpp"
 #include "./expression.hpp"
 #include <type_traits>
 
@@ -51,10 +52,22 @@ auto make_csg_domains_impl(const tf::csg_graph<Forms, Structs, Int> &graph,
       std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
                          InputReal, OutputCoordinateType>;
 
+  using Index = typename tf::csg_graph<Forms, Structs, Int>::index_type;
+  // Within-builds read structurally: parity bits misread the
+  // double-covered pockets of a self arrangement, whether the graph is
+  // one self-arranged form or N forms of which some self-overlap. The
+  // volume argmin seeds the universe; the nesting merges applied inside
+  // the membership's union-find lift it to the full universe CLASS (all
+  // contact-free exteriors — disjoint or nested components), and every
+  // coarse domain outside that class is an interior cell.
+  Index universe_fine =
+      graph.with_self()
+          ? Index(tf::csg::graph::find_universe_domain(graph.domain_volumes()))
+          : Index(-1);
   auto membership = tf::csg::graph::compute_domain_membership(
       graph.descriptor(), graph.inclusion(),
       graph.arrangement().open_component_mask(),
-      graph.domain_nesting_merges(), config, E);
+      graph.domain_nesting_merges(), config, E, universe_fine);
   auto part = tf::csg::graph::compute_domain_partition(
       membership.domain_of_side, membership.n_components, membership.keep);
   auto result =

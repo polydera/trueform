@@ -766,3 +766,104 @@ TEST_CASE("make_csg_domains return_index_map: per-cell point + face maps",
     REQUIRE((inc[k][1] != 0) == has(b_ids, ids[k]));
   }
 }
+
+namespace {
+
+auto sphere_at(Real cx, Real cy, Real cz, Real r = Real(1)) -> mesh_t {
+  mesh_t m = tf::make_sphere_mesh<Index>(r, 32, 32);
+  tf::ensure_positive_orientation(m.polygons());
+  auto &p = m.points_buffer();
+  for (std::size_t i = 0; i < p.size(); ++i) {
+    auto q = p[i];
+    p[i] = tf::point<Real, 3>{q[0] + cx, q[1] + cy, q[2] + cz};
+  }
+  return m;
+}
+
+constexpr auto within_config = tf::intersect_config{
+    tf::intersect_mode::primitives |
+    tf::intersect_mode::resolve_crossing_contours |
+    tf::intersect_mode::within};
+
+template <typename VolsA, typename VolsB>
+void require_same_volumes(const VolsA &a, const VolsB &b) {
+  REQUIRE(a.size() == b.size());
+  for (std::size_t i = 0; i < a.size(); ++i)
+    REQUIRE_THAT(a[i], Catch::Matchers::WithinRel(b[i], 1e-9));
+}
+
+} // namespace
+
+TEST_CASE("make_csg_domains within: concatenated operand matches separate "
+          "operands",
+          "[domains][within]") {
+  // Three mutually intersecting spheres. Reference: three operands.
+  // Test: two of them concatenated into ONE self-overlapping operand,
+  // arranged against the third with the within bit. The double-covered
+  // pocket (inside both B and C, outside A) must survive the parity read.
+  auto A = sphere_at(0, 0, 0);
+  auto B = sphere_at(Real(0.9), 0, 0);
+  auto C = sphere_at(Real(0.45), Real(0.8), 0);
+
+  std::vector<form_t> three{A.polygons() | tf::tag(frame0()),
+                            B.polygons() | tf::tag(frame0()),
+                            C.polygons() | tf::tag(frame0())};
+  auto g3 = tf::make_csg_graph(tf::make_range(three));
+  auto [cells3, ids3] = tf::make_csg_domains(g3);
+  auto v3 = sorted_volumes(cells3);
+  REQUIRE(cells3.size() == 7);
+
+  auto bc = tf::concatenated(B.polygons(), C.polygons());
+  std::vector<form_t> two{bc.polygons() | tf::tag(frame0()),
+                          A.polygons() | tf::tag(frame0())};
+  auto g2 = tf::make_csg_graph(tf::make_range(two), within_config);
+  auto [cells2, ids2] = tf::make_csg_domains(g2);
+  auto v2 = sorted_volumes(cells2);
+
+  require_same_volumes(v3, v2);
+}
+
+TEST_CASE("make_csg_domains within: flag on clean operands changes nothing",
+          "[domains][within]") {
+  // No self-overlap anywhere: the within bit must not change the cells.
+  auto A = sphere_at(0, 0, 0);
+  auto B = sphere_at(Real(1), 0, 0);
+
+  std::vector<form_t> forms{A.polygons() | tf::tag(frame0()),
+                            B.polygons() | tf::tag(frame0())};
+  auto g_plain = tf::make_csg_graph(tf::make_range(forms));
+  auto [cells_p, ids_p] = tf::make_csg_domains(g_plain);
+
+  auto g_within = tf::make_csg_graph(tf::make_range(forms), within_config);
+  auto [cells_w, ids_w] = tf::make_csg_domains(g_within);
+
+  REQUIRE(cells_p.size() == 3);
+  require_same_volumes(sorted_volumes(cells_p), sorted_volumes(cells_w));
+}
+
+TEST_CASE("make_csg_domains within: nested pair concatenated into one "
+          "operand keeps the cavity",
+          "[domains][within][nesting]") {
+  // Hollow operand: outer + inner sphere concatenated (nested, no
+  // crossing), plus a far disjoint sphere as the second operand.
+  // Reference: the same three as separate operands.
+  auto outer = sphere_at(0, 0, 0);
+  auto inner = sphere_at(0, 0, 0, Real(0.5));
+  auto far_sphere = sphere_at(Real(5), 0, 0);
+
+  std::vector<form_t> three{outer.polygons() | tf::tag(frame0()),
+                            inner.polygons() | tf::tag(frame0()),
+                            far_sphere.polygons() | tf::tag(frame0())};
+  auto g3 = tf::make_csg_graph(tf::make_range(three));
+  auto [cells3, ids3] = tf::make_csg_domains(g3);
+  auto v3 = sorted_volumes(cells3);
+  REQUIRE(cells3.size() == 3);
+
+  auto oi = tf::concatenated(outer.polygons(), inner.polygons());
+  std::vector<form_t> two{oi.polygons() | tf::tag(frame0()),
+                          far_sphere.polygons() | tf::tag(frame0())};
+  auto g2 = tf::make_csg_graph(tf::make_range(two), within_config);
+  auto [cells2, ids2] = tf::make_csg_domains(g2);
+
+  require_same_volumes(v3, sorted_volumes(cells2));
+}

@@ -36,7 +36,7 @@
 #include "../intersect/exact/make_kernel.hpp"
 #include "../intersect/graph/intersection_graph.hpp"
 #include "../intersect/intersect_config.hpp"
-#include "../intersect/intersections_between_polygons.hpp"
+#include "../intersect/polygon_intersections.hpp"
 #include "./graph/compute_arrangement_domain_volumes.hpp"
 #include "./graph/seed_inclusion_bits.hpp"
 #include <array>
@@ -76,6 +76,9 @@ namespace tf {
 /// Output coordinate type is not on the graph — materialisation
 /// happens in @ref tf::make_csg_mesh, which takes its own
 /// `OutputCoordinateType` parameter.
+///
+/// @pre A one-form graph's form is a volume, not a declared sheet — a
+///      lone sheet is a cutter with nothing to cut.
 template <typename Forms, typename Structs, typename Int = tf::none_t>
 class csg_graph {
 public:
@@ -100,8 +103,14 @@ public:
       : _forms(std::move(forms)), _structs(std::move(structs)),
         _is_sheet(std::move(is_sheet)) {
     auto tagged = this->forms();
-    _ibp.build(tagged, config);
-    auto &conv = _ibp.converter();
+    // One form has no pairs: the graph IS the self arrangement, so the
+    // build runs within (and thereby self-contour resolution). A lone
+    // sheet is undefined — sheets cut volumes (see the class @pre).
+    if (tagged.size() == 1)
+      config.mode = config.mode | tf::intersect_mode::within;
+    _with_self = bool(config.mode & tf::intersect_mode::self_intersections);
+    _intersections.build(tagged, config);
+    auto &conv = _intersections.converter();
 
     auto apply_to_face = [&tagged](int tag, index_type object, const auto &f) {
       f(tagged[tag].faces()[object]);
@@ -113,7 +122,7 @@ public:
           tf::transformed(tagged[tag].points()[id], tf::frame_of(tagged[tag])));
     };
 
-    _ig.build(_ibp, apply_to_face, get_mesh_point, config.mode,
+    _ig.build(_intersections, apply_to_face, get_mesh_point, config.mode,
               tf::exact::make_kernel(conv, config.tolerance));
     _fc.build(_ig, apply_to_face, get_mesh_point);
     _ag.build(_ig, _fc, tagged);
@@ -129,10 +138,10 @@ public:
     _desc = tf::cut::make_arrangement_descriptor<resolved_int_type>(
         _ag, _fc, get_point, apply_to_face, _is_sheet);
     _inc = tf::cut::compute_domain_inclusions(_ag, _fc, _desc);
-    auto volumes = tf::csg::graph::compute_arrangement_domain_volumes(
+    _domain_volumes = tf::csg::graph::compute_arrangement_domain_volumes(
         tagged, _ag, _fc, _desc, get_point);
     auto seeds = tf::csg::graph::seed_inclusion_bits(
-        _inc, _desc, _ag, _fc, _ig, tagged, conv, volumes,
+        _inc, _desc, _ag, _fc, _ig, tagged, conv, _domain_volumes,
         _domain_nesting_merges, _is_sheet);
     tf::cut::propagate_inclusion_bits(_inc, _desc, _ag, _fc, seeds);
     tf::cut::anchor_sheet_sides(_inc, _desc, _is_sheet);
@@ -175,6 +184,11 @@ public:
   /// @brief Per-form sheet mask (empty when no sheets were declared).
   auto is_sheet() const -> const tf::buffer<char> & { return _is_sheet; }
 
+  /// True when the build carried @ref tf::intersect_mode::within —
+  /// operands may self-overlap, so parity bits cannot be trusted for
+  /// domain extraction (see @ref tf::make_csg_domains).
+  auto with_self() const -> bool { return _with_self; }
+
   /// @brief Return the tagged forms view. If `Structs == none_t`,
   ///        returns the user's forms unchanged. Otherwise builds the
   ///        same `mapped_range(zip(_forms, _structs))` shape that
@@ -196,7 +210,7 @@ public:
 
   auto converter() const -> const
       tf::exact::vertex_converter<resolved_int_type, pipeline_real_type, 3> & {
-    return _ibp.converter();
+    return _intersections.converter();
   }
   auto intersection_graph() const
       -> const tf::intersection_graph<index_type, resolved_int_type> & {
@@ -215,6 +229,14 @@ public:
   }
   auto inclusion() const -> const tf::cut::domain_inclusions & { return _inc; }
 
+  /// @brief Exact signed volume (2x, lattice units) per arrangement
+  /// domain — the seeder's oracle. The most negative entry is the
+  /// unbounded universe.
+  auto domain_volumes() const
+      -> const tf::buffer<typename tf::exact::meta<resolved_int_type>::T2> & {
+    return _domain_volumes;
+  }
+
   /// @brief `domain_of_side` merge pairs that repair contact-free nested
   /// shells (from the seeding cast). Consumed by `make_csg_domains`;
   /// irrelevant to the boolean mesh read. Empty when no nesting.
@@ -227,9 +249,10 @@ private:
   Forms _forms;
   tf::small_vector<Structs, 10> _structs;
   tf::buffer<char> _is_sheet;
-  tf::intersections_between_polygons<index_type, pipeline_real_type,
-                                     resolved_int_type>
-      _ibp;
+  bool _with_self = false;
+  tf::polygon_intersections<index_type, pipeline_real_type,
+                            resolved_int_type>
+      _intersections;
   tf::intersection_graph<index_type, resolved_int_type> _ig;
   tf::face_cuts<index_type, resolved_int_type> _fc;
   tf::arrangement_graph<index_type> _ag;
@@ -237,6 +260,7 @@ private:
   tf::buffer<tf::point<resolved_int_type, 3>> _created_points;
   tf::cut::arrangement_descriptor<index_type> _desc;
   tf::cut::domain_inclusions _inc;
+  tf::buffer<typename tf::exact::meta<resolved_int_type>::T2> _domain_volumes;
   tf::buffer<std::array<index_type, 2>> _domain_nesting_merges;
 };
 

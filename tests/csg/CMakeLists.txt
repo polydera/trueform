@@ -5,6 +5,7 @@ add_executable(trueform_csg_tests
   test_csg_solids.cpp
   test_csg_sheets.cpp
   test_csg_domains.cpp
+  test_make_outer_shell.cpp
   test_triangulated_csg.cpp
 )
 

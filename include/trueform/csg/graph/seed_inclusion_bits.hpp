@@ -33,9 +33,9 @@
 #include "../../spatial/search.hpp"
 #include "tbb/parallel_sort.h"
 #include "./compute_bundle_aabbs.hpp"
+#include "./structural_membership.hpp"
 #include "./winding_side.hpp"
 #include <algorithm>
-#include <vector>
 #include <cstdint>
 #include <limits>
 
@@ -109,10 +109,7 @@ auto seed_inclusion_bits(
       n_components == Index(0))
     return seeds;
 
-  Index null_seed = Index(0);
-  for (Index d = Index(1); d < n_domains; ++d)
-    if (domain_volumes[d] < domain_volumes[null_seed])
-      null_seed = d;
+  Index null_seed = Index(find_universe_domain(domain_volumes));
 
   tf::buffer<Index> outer_env;
   outer_env.allocate(static_cast<std::size_t>(n_bundles));
@@ -248,12 +245,18 @@ auto seed_inclusion_bits(
     return t < Index(is_sheet_tag.size()) && is_sheet_tag[t];
   };
 
-  // Skip whole forms whose tags are in bi's own bundle (binary search
-  // on the ascending-sorted `desc.bundle_to_tags[bi]`). Sheets are
-  // never AABB-skipped (a bundle has a side even without overlap) and
-  // collect into their own per-sheet batches.
+  // A bundle casts against every non-sheet tag's tree — INCLUDING its
+  // own tags: another bundle of the same form both encloses (a form
+  // with disjoint nested pieces; the whole mesh when n_tags == 1) and
+  // counts toward that form's winding parity. The cast callback skips
+  // faces of the casting bundle itself (the seed sits on them; their
+  // parity belongs to side anchoring, not the ray). Sheets are never
+  // AABB-skipped (a bundle has a side even without overlap), collect
+  // into per-sheet batches, and own-bundle sheets are skipped whole —
+  // a sheet does not enclose.
   tf::buffer<std::array<Index, 2>> candidates;
   tf::buffer<std::array<Index, 2>> sheet_pairs;
+  bool any_own_candidate = false;
   for (Index bi = Index(0); bi < n_bundles; ++bi) {
     if (outer_env[bi] == null_seed)
       continue;
@@ -261,12 +264,42 @@ auto seed_inclusion_bits(
       continue;
     auto own_tags = desc.bundle_to_tags[bi];
     for (Index t = Index(0); t < n_tags; ++t) {
-      if (std::binary_search(own_tags.begin(), own_tags.end(), t))
-        continue;
-      if (sheet_tag(t))
-        sheet_pairs.push_back({bi, t});
-      else if (aabbs_overlap(bboxes[bi], form_bv[t]))
+      const bool own =
+          std::binary_search(own_tags.begin(), own_tags.end(), t);
+      if (sheet_tag(t)) {
+        if (!own)
+          sheet_pairs.push_back({bi, t});
+      } else if (aabbs_overlap(bboxes[bi], form_bv[t])) {
         candidates.push_back({bi, t});
+        any_own_candidate = any_own_candidate || own;
+      }
+    }
+  }
+
+  // A casting bundle must not parity-count its own surface (the seed
+  // sits on it; its parity belongs to side anchoring). Uncut own faces
+  // are skipped by component label in the cast callback; a CUT face
+  // carries `none_label` there, so its bundle comes from its loops —
+  // every piece of a face lies on one original surface, hence one
+  // bundle. Built only when a bundle casts against one of its own tags.
+  tf::buffer<Index> cut_face_offsets;
+  tf::buffer<Index> cut_face_bundle;
+  if (any_own_candidate) {
+    cut_face_offsets.push_back(Index(0));
+    for (Index t = Index(0); t < n_tags; ++t)
+      cut_face_offsets.push_back(cut_face_offsets[std::size_t(t)] +
+                                 Index(tagged_forms[t].faces().size()));
+    cut_face_bundle.allocate(
+        static_cast<std::size_t>(cut_face_offsets[std::size_t(n_tags)]));
+    tf::parallel_fill(cut_face_bundle, Index(-1));
+    for (std::size_t l = 0; l < n_loops; ++l) {
+      const Index c = loop_labels[l];
+      if (c == ag_t::none_label)
+        continue;
+      const auto d = descs[l];
+      cut_face_bundle[static_cast<std::size_t>(
+          cut_face_offsets[std::size_t(d.tag)] + d.object)] =
+          desc.bundle_of_component[c];
     }
   }
 
@@ -342,12 +375,19 @@ auto seed_inclusion_bits(
               Index d0 = Index(-1), d1 = Index(-1);
               bool emit = false;
               if (c != ag_t::none_label) {
+                if (desc.bundle_of_component[c] == bi)
+                  return false;
                 // Open patch (Mode-2 self-merged): d0 == d1, no transition.
                 d0 = desc.domain_of_side[2 * c + 0];
                 d1 = desc.domain_of_side[2 * c + 1];
                 if (d0 == d1)
                   return false;
                 emit = true;
+              } else if (cut_face_bundle.size() > 0 &&
+                         cut_face_bundle[static_cast<std::size_t>(
+                             cut_face_offsets[std::size_t(t)] + face_id)] ==
+                             bi) {
+                return false;
               }
               auto face = tagged_forms[t].faces()[face_id];
               const auto n_fv = face.size();

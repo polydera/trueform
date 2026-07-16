@@ -341,6 +341,8 @@ template <typename Index, typename Int> struct loop_triangulations {
   tf::buffer<std::array<Index, 2>> conf_keys; // sorted (tag, face)
   tf::buffer<Index> conf_tri_offsets;
   tf::buffer<std::array<vertex_t, 3>> conf_tris;
+  // loops whose triangulation reported an incomplete cover
+  Index n_failed = 0;
 
   auto loop_tris(Index li) const {
     auto r = ranges[std::size_t(li)];
@@ -399,6 +401,7 @@ template <typename Index, typename Int> struct loop_triangulations {
       tf::small_vector<tf::point<Int, 2>, 10> pts;
       tf::buffer<std::array<vertex_t, 3>> out;
       tf::buffer<Index> counts;
+      Index fails = 0;
     };
     auto task = [&](auto &&range, local_t &local) {
       constexpr Index k_none_label =
@@ -426,7 +429,8 @@ template <typename Index, typename Int> struct loop_triangulations {
             local.pts.push_back({pt[axes.first], pt[axes.second]});
           }
           local.tri.clear();
-          local.tri.build(tf::make_points(local.pts));
+          const bool tri_ok = local.tri.build(tf::make_points(local.pts));
+          local.fails += Index(!tri_ok);
           const auto &idx = local.tri.indices_buffer();
           for (std::size_t j = 0; j + 3 <= idx.size(); j += 3)
             local.out.push_back({loop[idx[j]], loop[idx[j + 1]],
@@ -436,9 +440,11 @@ template <typename Index, typename Int> struct loop_triangulations {
       }
     };
     tf::buffer<Index> counts;
+    n_failed = 0;
     auto agg = [&](const local_t &local, const tf::none_t &) {
       tf::core::append(local.out, tris);
       tf::core::append(local.counts, counts);
+      n_failed += local.fails;
     };
     tf::blocked_reduce_sequenced_aggregate(
         tf::zip(tf::make_sequence_range(n_loops), descs, loops), tf::none,
