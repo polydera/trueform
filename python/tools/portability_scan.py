@@ -63,7 +63,14 @@ for f in sources:
         if not m or "static" in ln:
             continue
         name = m.group(1)
-        window = "\n".join(lines[i + 1:i + 80])
+        # window: to the end of the enclosing (namespace-level) function —
+        # the next closing brace at column 0 — not a fixed line count
+        end = min(i + 400, len(lines))
+        for j in range(i + 1, min(i + 400, len(lines))):
+            if lines[j].startswith("}"):
+                end = j
+                break
+        window = "\n".join(lines[i + 1:end])
         # negative lookbehind: subscripts follow an identifier, ')' or
         # ']'; capture lists do not
         for lm in re.finditer(r"(?<![\w\)\]&])\[[^\]\n]*\][^{;]*\{", window):

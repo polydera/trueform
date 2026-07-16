@@ -15,8 +15,9 @@
 // make_domain_labels + split_into_domains path used by domains.cpp.
 //
 // Usage:
-//   csg_domains <dir>           # load every .obj from <dir>
-//   csg_domains a.obj b.obj ... # load specific files
+//   csg_domains <dir>                 # load every .obj from <dir>
+//   csg_domains a.obj b.obj ...       # load specific files
+//   csg_domains --tri=refined <dir>   # refined-cdt store (default: cdt)
 //
 // Pipeline:
 //   read_obj per file -> triangulated -> cleaned -> make_csg_graph ->
@@ -55,6 +56,7 @@
 using Index = int;
 using Real = double;
 using Mesh = tf::polygons_buffer<Index, Real, 3, 3>;
+using MeshVec = std::vector<Mesh, tf::allocator<Mesh>>;
 
 // Weld tolerance applied to each input mesh on load. Matches domains.cpp.
 constexpr Real WELD_TOLERANCE = 1e-6;
@@ -90,10 +92,11 @@ auto mesh_color(Index i) -> std::array<double, 3> {
 // -----------------------------------------------------------------------------
 // argv -> list of .obj paths (single directory, or explicit list of files)
 // -----------------------------------------------------------------------------
-auto collect_obj_paths(int argc, char *argv[]) -> std::vector<std::string> {
+auto collect_obj_paths(const std::vector<std::string> &args)
+    -> std::vector<std::string> {
   std::vector<std::string> paths;
-  if (argc == 2) {
-    std::filesystem::path p(argv[1]);
+  if (args.size() == 1) {
+    std::filesystem::path p(args[0]);
     if (std::filesystem::is_directory(p)) {
       for (auto &entry : std::filesystem::directory_iterator(p))
         if (entry.path().extension() == ".obj")
@@ -102,9 +105,7 @@ auto collect_obj_paths(int argc, char *argv[]) -> std::vector<std::string> {
       return paths;
     }
   }
-  for (int i = 1; i < argc; ++i)
-    paths.emplace_back(argv[i]);
-  return paths;
+  return args;
 }
 
 // -----------------------------------------------------------------------------
@@ -112,7 +113,7 @@ auto collect_obj_paths(int argc, char *argv[]) -> std::vector<std::string> {
 // to vtkPolyData only happens at display time.
 // -----------------------------------------------------------------------------
 struct PipelineResult {
-  std::vector<Mesh> components;
+  MeshVec components;
   tf::buffer<Index> comp_labels;
 };
 
@@ -137,7 +138,7 @@ auto load_meshes(const std::vector<std::string> &paths, Real tolerance)
 }
 
 // Order cells by max-Z descending (top -> bottom).
-auto sort_for_display(std::vector<Mesh> &components,
+auto sort_for_display(MeshVec &components,
                       tf::buffer<Index> &comp_labels) -> void {
   if (components.empty())
     return;
@@ -152,7 +153,7 @@ auto sort_for_display(std::vector<Mesh> &components,
   std::sort(order.begin(), order.end(),
             [&](Index a, Index b) { return max_z[a] > max_z[b]; });
 
-  std::vector<Mesh> reordered;
+  MeshVec reordered;
   reordered.reserve(components.size());
   tf::buffer<Index> reordered_labels;
   reordered_labels.allocate(components.size());
@@ -164,7 +165,8 @@ auto sort_for_display(std::vector<Mesh> &components,
   comp_labels = std::move(reordered_labels);
 }
 
-auto build_pipeline(const std::vector<std::string> &paths) -> PipelineResult {
+auto build_pipeline(const std::vector<std::string> &paths,
+                    tf::triangulation_type tri) -> PipelineResult {
   auto meshes = load_meshes(paths, WELD_TOLERANCE);
 
   std::vector<decltype(meshes[0].polygons())> forms;
@@ -172,9 +174,11 @@ auto build_pipeline(const std::vector<std::string> &paths) -> PipelineResult {
   for (auto &m : meshes)
     forms.push_back(m.polygons());
 
-  std::printf("running make_csg_graph on %zu meshes...\n", forms.size());
+  std::printf("running make_csg_graph on %zu meshes (%s)...\n", forms.size(),
+              tri == tf::triangulation_type::refined_cdt ? "refined_cdt"
+                                                         : "cdt");
   tf::tick();
-  auto graph = tf::make_csg_graph(tf::make_range(forms));
+  auto graph = tf::make_csg_graph(tf::make_range(forms), tri);
   tf::tock("graph:");
 
   std::printf("running make_csg_domains...\n");
@@ -266,14 +270,27 @@ vtkStandardNewMacro(domain_cycle_interactor);
 // Main
 // -----------------------------------------------------------------------------
 int main(int argc, char *argv[]) {
-  auto paths = collect_obj_paths(argc, argv);
+  auto tri = tf::triangulation_type::cdt;
+  std::vector<std::string> args;
+  for (int i = 1; i < argc; ++i) {
+    std::string a = argv[i];
+    if (a == "--tri=refined" || a == "--refined")
+      tri = tf::triangulation_type::refined_cdt;
+    else if (a == "--tri=cdt")
+      tri = tf::triangulation_type::cdt;
+    else
+      args.push_back(std::move(a));
+  }
+  auto paths = collect_obj_paths(args);
   if (paths.empty()) {
-    std::fprintf(stderr, "Usage:\n  %s <dir>\n  %s a.obj b.obj ...\n", argv[0],
-                 argv[0]);
+    std::fprintf(stderr,
+                 "Usage:\n  %s [--tri=cdt|--tri=refined] <dir>\n  %s "
+                 "[--tri=refined] a.obj b.obj ...\n",
+                 argv[0], argv[0]);
     return 1;
   }
 
-  auto pr = build_pipeline(paths);
+  auto pr = build_pipeline(paths, tri);
   if (pr.components.empty()) {
     std::fprintf(stderr, "no domains extracted\n");
     return 1;
