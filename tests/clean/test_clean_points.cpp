@@ -430,3 +430,38 @@ TEMPLATE_TEST_CASE("clean_points_index_map_consistency", "[clean][clean_points]"
         }
     }
 }
+
+// =============================================================================
+// clean_points_keeps_smallest_id_representative
+// =============================================================================
+
+TEMPLATE_TEST_CASE("clean_points_keeps_smallest_id_representative", "[clean][clean_points]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using real_t = typename TestType::real_type;
+
+    using index_t = typename TestType::index_type;
+
+    // Each duplicate group's representative in the index map must be the
+    // group's smallest original id, regardless of thread count -- the
+    // dedup sort tiebreaks on index.
+    tf::points_buffer<real_t, 3> input;
+    input.emplace_back(real_t(0), real_t(0), real_t(0));  // group a, rep
+    input.emplace_back(real_t(1), real_t(0), real_t(0));  // group b, rep
+    input.emplace_back(real_t(0), real_t(0), real_t(0));  // group a
+    input.emplace_back(real_t(1), real_t(0), real_t(0));  // group b
+    input.emplace_back(real_t(0), real_t(0), real_t(0));  // group a
+
+    auto [result, index_map] =
+        tf::cleaned<index_t>(input.points(), tf::return_index_map);
+
+    REQUIRE(result.size() == 2);
+    REQUIRE(index_map.kept_ids().size() == 2);
+    // Representatives are the smallest ids of their groups: 0 and 1.
+    REQUIRE(index_map.kept_ids()[index_map.f()[0]] == index_t(0));
+    REQUIRE(index_map.kept_ids()[index_map.f()[1]] == index_t(1));
+    REQUIRE(index_map.f()[2] == index_map.f()[0]);
+    REQUIRE(index_map.f()[3] == index_map.f()[1]);
+    REQUIRE(index_map.f()[4] == index_map.f()[0]);
+}

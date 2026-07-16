@@ -22,7 +22,9 @@ namespace tf {
 /// @brief Create index map for unique elements.
 ///
 /// Builds a mapping where duplicate elements map to the same ID.
-/// Uses parallel sort for efficiency on large data.
+/// Uses parallel sort for efficiency on large data. Ties are broken by
+/// original index, so each duplicate group's representative is its
+/// smallest original id --- deterministic across runs and thread counts.
 ///
 /// @tparam Range The input data range type.
 /// @tparam Index The index type.
@@ -41,7 +43,11 @@ auto make_unique_index_map(const Range &data, tf::index_map_buffer<Index> &im,
   im.kept_ids().allocate(data.size());
   tf::parallel_iota(im.kept_ids(), 0);
   tbb::parallel_sort(im.kept_ids(), [&](const auto &x0, const auto &x1) {
-    return less_f(data[x0], data[x1]);
+    if (less_f(data[x0], data[x1]))
+      return true;
+    if (less_f(data[x1], data[x0]))
+      return false;
+    return x0 < x1;
   });
 
   im.f().allocate(data.size());
@@ -68,7 +74,9 @@ auto make_unique_index_map(const Range &data, tf::index_map_buffer<Index> &im,
 /// @brief Create index map and compact data to unique elements.
 ///
 /// Similar to make_unique_index_map but also removes duplicates
-/// from the input data range in-place.
+/// from the input data range in-place. Ties are broken by original
+/// index, so each duplicate group keeps its smallest original id's
+/// element --- deterministic across runs and thread counts.
 ///
 /// @tparam Range The input data range type.
 /// @tparam Index The index type.
@@ -91,7 +99,11 @@ auto make_unique_and_index_map(Range &data, tf::index_map_buffer<Index> &im,
   tbb::parallel_sort(zipped_data.begin(), zipped_data.end(),
                      [&](const auto &x0, const auto &x1) {
                        using std::get;
-                       return less_f(get<0>(x0), get<0>(x1));
+                       if (less_f(get<0>(x0), get<0>(x1)))
+                         return true;
+                       if (less_f(get<0>(x1), get<0>(x0)))
+                         return false;
+                       return get<1>(x0) < get<1>(x1);
                      });
 
   im.f().allocate(data.size());
