@@ -23,6 +23,7 @@
 
 #include <array>
 #include <type_traits>
+#include <utility>
 
 namespace tf::cut {
 
@@ -49,10 +50,11 @@ namespace impl {
 /// (size, edge) key groups every stack; within an equal run the stored
 /// anchor aligns both loops at the shared edge and one element-wise
 /// walk is the exact verdict, its direction mismatch the winding flag.
-/// `Scope` selects which pairs qualify (@ref coplanar_scope). Loops are
-/// assumed simple: a loop traversing its minimal edge more than once
-/// can anchor at a different occurrence than its twin and miss the
-/// pair — the same single-anchor limitation as @ref tf::compare_faces.
+/// `Scope` selects which pairs qualify (@ref coplanar_scope). A
+/// non-simple loop (a hole patched into the boundary) can traverse its
+/// minimal edge more than once; the stored anchor is only the fast
+/// path, and on a mismatch the walk retries at every other occurrence
+/// of the edge in the partner.
 template <coplanar_scope Scope, typename Index, typename Int>
 auto make_coplanar_loop_pairs(const tf::face_cuts<Index, Int> &fc)
     -> tf::buffer<coplanar_loop_pair<Index>> {
@@ -153,28 +155,52 @@ auto make_coplanar_loop_pairs(const tf::face_cuts<Index, Int> &fc)
 
   // Anchored verification: equal keys share the minimal edge, so both
   // loops align at their stored positions — one element-wise walk,
-  // forward against forward or forward against backward, no search.
+  // forward against forward or forward against backward. A non-simple
+  // loop can traverse the minimal edge more than once and the stored
+  // anchors can then align the wrong copies, so a failed walk retries
+  // at the partner's other occurrences of the edge.
   auto coincident = [&](Index la, Index lb) -> int {
     auto x = loops[la];
     auto y = loops[lb];
     const Index m = static_cast<Index>(x.size());
     const Index tx = static_cast<Index>(descs[la].tag);
     const Index ty = static_cast<Index>(descs[lb].tag);
-    const Index px = anchors[la][0], py = anchors[lb][0];
-    const bool opposing = anchors[la][1] != anchors[lb][1];
-    for (Index k = 0; k < m; ++k) {
-      const Index ix = px + k >= m ? px + k - m : px + k;
-      Index iy;
-      if (!opposing)
-        iy = py + k >= m ? py + k - m : py + k;
-      else {
-        const Index r = py + 1 - k;
-        iy = r < 0 ? r + m : (r >= m ? r - m : r);
+    const Index px = anchors[la][0];
+    const bool fx = bool(anchors[la][1]);
+    auto walk = [&](Index py, bool opposing) -> bool {
+      for (Index k = 0; k < m; ++k) {
+        const Index ix = px + k >= m ? px + k - m : px + k;
+        Index iy;
+        if (!opposing)
+          iy = py + k >= m ? py + k - m : py + k;
+        else {
+          const Index r = py + 1 - k;
+          iy = r < 0 ? r + m : (r >= m ? r - m : r);
+        }
+        if (vkey(x[ix], tx) != vkey(y[iy], ty))
+          return false;
       }
-      if (vkey(x[ix], tx) != vkey(y[iy], ty))
-        return 0;
+      return true;
+    };
+    const Index py0 = anchors[lb][0];
+    const bool opp0 = fx != bool(anchors[lb][1]);
+    if (walk(py0, opp0))
+      return opp0 ? -1 : 1;
+    for (Index j = 0; j < m; ++j) {
+      if (j == py0)
+        continue;
+      vkey_t a = vkey(y[j], ty);
+      vkey_t b = vkey(y[j + 1 == m ? Index(0) : j + 1], ty);
+      const bool fwd = a < b;
+      if (!fwd)
+        std::swap(a, b);
+      if (a != keys[la].u || b != keys[la].v)
+        continue;
+      const bool opp = fx != fwd;
+      if (walk(j, opp))
+        return opp ? -1 : 1;
     }
-    return opposing ? -1 : 1;
+    return 0;
   };
 
   // Pairwise within each equal-key run: runs are coincident stacks

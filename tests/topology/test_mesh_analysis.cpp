@@ -478,3 +478,31 @@ TEMPLATE_TEST_CASE("is_closed_brute_force_verification", "[topology][analysis]",
     // Compare with is_closed
     REQUIRE(tf::is_closed(mesh.polygons()) == !has_boundary);
 }
+
+TEST_CASE("compare_faces: keyhole cycles align at every anchor occurrence",
+          "[topology][analysis]") {
+  // A hole patched into a face boundary repeats its bridge vertices; the
+  // comparison must find the alignment no matter which rotation stores
+  // the cycle (single-anchor at the first occurrence used to miss 14 of
+  // these 98 ordered checks).
+  std::vector<int> base{1, 2, 9, 3, 4, 9, 5};
+  const int n = int(base.size());
+  auto rot_of = [&](const std::vector<int> &v, int r) {
+    std::vector<int> out;
+    for (int i = 0; i < n; ++i)
+      out.push_back(v[(i + r) % n]);
+    return out;
+  };
+  std::vector<int> rev(base.rbegin(), base.rend());
+  for (int i = 0; i < n; ++i)
+    for (int j = 0; j < n; ++j) {
+      auto a = rot_of(base, i);
+      REQUIRE(tf::compare_faces(tf::make_range(a),
+                                tf::make_range(rot_of(base, j))) == 1);
+      REQUIRE(tf::compare_faces(tf::make_range(a),
+                                tf::make_range(rot_of(rev, j))) == -1);
+    }
+  // and a genuinely different cycle sharing the repeated vertex stays 0
+  std::vector<int> other{1, 2, 9, 4, 3, 9, 5};
+  REQUIRE(tf::compare_faces(tf::make_range(base), tf::make_range(other)) == 0);
+}

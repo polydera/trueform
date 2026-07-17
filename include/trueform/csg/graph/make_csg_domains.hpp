@@ -12,6 +12,7 @@
  */
 #pragma once
 #include "./loop_triangulations.hpp"
+#include "./reverse_side_labels.hpp"
 #include "./make_csg_map_data.hpp"
 #include "../../core/algorithm/compute_offsets.hpp"
 #include "../../core/algorithm/parallel_copy.hpp"
@@ -191,6 +192,12 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
   // cut loop's stored triangles go to both kept sides. (One task per form —
   // never per (form, domain).) ---------------------------------------------
   using ag_t = tf::arrangement_graph<Index>;
+
+  // Coincident faces always cut, so loops cover every stack (see
+  // make_reverse_side_labels for the attribution rule).
+  [[maybe_unused]] tf::buffer<std::array<Index, 2>> rev_label;
+  if constexpr (WantLabels)
+    rev_label = make_reverse_side_labels(ag, fc);
   const auto &side_label = part.side_label;
   auto loop_labels_all = ag.loop_labels();
   tf::core::std_vector<out_t> cells(static_cast<std::size_t>(n_kept));
@@ -347,8 +354,8 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
               tris.push_back(std::array<Index, 3>{g2, g1, g0});
               doms.push_back(d_rev);
               if constexpr (WantLabels) {
-                tags.push_back(desc.tag);
-                origs.push_back(desc.object);
+                tags.push_back(rev_label[li][0]);
+                origs.push_back(rev_label[li][1]);
               }
             }
           }
@@ -544,8 +551,14 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
                                            map_vertex(desc.tag, tr[2])};
               if (d_fwd >= 0)
                 push(tf::make_range(g), d_fwd, false, desc.tag, desc.object);
-              if (d_rev >= 0)
-                push(tf::make_range(g), d_rev, true, desc.tag, desc.object);
+              if (d_rev >= 0) {
+                // rev_label is empty without WantLabels -- don't index it
+                if constexpr (WantLabels)
+                  push(tf::make_range(g), d_rev, true, rev_label[li][0],
+                       rev_label[li][1]);
+                else
+                  push(tf::make_range(g), d_rev, true, desc.tag, desc.object);
+              }
             }
           }
         });

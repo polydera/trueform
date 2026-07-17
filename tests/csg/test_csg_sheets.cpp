@@ -61,6 +61,26 @@ auto volume_of(const mesh_t &m) -> double {
   return m.size() ? double(tf::signed_volume(m.polygons())) : 0.0;
 }
 
+// z=0 wall tag of a cell: -2 = no wall faces, -1 = mixed tags, else
+// the single tag every wall face carries
+template <typename TagOfFace>
+auto wall_tag_of(const mesh_t &cell, const TagOfFace &tag_of_face) -> Index {
+  auto pts = cell.polygons().points();
+  auto faces = cell.faces();
+  Index lone = -2;
+  for (std::size_t f = 0; f < faces.size(); ++f) {
+    auto face = faces[f];
+    bool wall = true;
+    for (int j = 0; j < 3; ++j)
+      wall = wall && std::abs(double(pts[face[j]][2])) < 1e-12;
+    if (!wall)
+      continue;
+    const Index t = tag_of_face(f);
+    lone = lone == -2 || lone == t ? t : Index(-1);
+  }
+  return lone;
+}
+
 auto centroid_z(const mesh_t &m) -> double {
   double z = 0;
   std::size_t n = 0;
@@ -523,4 +543,99 @@ TEST_CASE("sheets: reversed single sheet anchors behind its own normal",
   REQUIRE_THAT(std::abs(double(tf::signed_volume(sel[0].polygons()))),
                Catch::Matchers::WithinAbs(4.0, 1e-9));
   REQUIRE(centroid_z(sel[0]) > 0.0);
+}
+
+TEST_CASE("sheets: stack provenance follows orientation",
+          "[csg][sheets][provenance]") {
+  // Each half's wall is attributed to the sheet wound OUT of it: the +z
+  // sheet below, the reversed sheet above. A same-orientation pair is
+  // ambiguous per side, so the smallest tag carries both walls.
+  auto boxq = tf::make_box_mesh<Index>(Real(2), Real(2), Real(2));
+  mesh_t box = tf::triangulated(boxq.polygons());
+  auto planeq = tf::make_plane_mesh<Index>(Real(4), Real(4)); // z=0, +z
+  mesh_t plane = tf::triangulated(planeq.polygons());
+  mesh_t plane_rev = reversed_copy(plane);
+
+  SECTION("opposing pair splits the attribution") {
+    std::vector<form_t> forms;
+    forms.push_back(box.polygons() | tf::tag(frame_at(0, 0, 0)));
+    forms.push_back(plane.polygons() | tf::tag(frame_at(0, 0, 0)));
+    forms.push_back(plane_rev.polygons() | tf::tag(frame_at(0, 0, 0)));
+    graph_holder<2> holder(std::move(forms), {1, 2});
+    auto [cells, ids, imap] =
+        tf::make_csg_domains(holder.graph, tf::return_index_map);
+    REQUIRE(cells.size() == 2);
+    for (std::size_t k = 0; k < cells.size(); ++k) {
+      const Index t = wall_tag_of(
+          cells[k],
+          [&imap = imap, k](std::size_t f) { return imap.face_tag_blocks[k][f]; });
+      REQUIRE(t == (centroid_z(cells[k]) < 0 ? Index(1) : Index(2)));
+    }
+    // the source-ids variant rides the same labels
+    auto [scells, sids, tag_blocks, face_blocks] =
+        tf::make_csg_domains(holder.graph, tf::return_source_ids);
+    REQUIRE(scells.size() == 2);
+    for (std::size_t k = 0; k < scells.size(); ++k) {
+      const Index t = wall_tag_of(
+          scells[k],
+          [&tag_blocks = tag_blocks, k](std::size_t f) { return tag_blocks[k][f]; });
+      REQUIRE(t == (centroid_z(scells[k]) < 0 ? Index(1) : Index(2)));
+    }
+  }
+
+  SECTION("same-orientation pair collapses to the smallest tag") {
+    std::vector<form_t> forms;
+    forms.push_back(box.polygons() | tf::tag(frame_at(0, 0, 0)));
+    forms.push_back(plane.polygons() | tf::tag(frame_at(0, 0, 0)));
+    forms.push_back(plane.polygons() | tf::tag(frame_at(0, 0, 0)));
+    graph_holder<2> holder(std::move(forms), {1, 2});
+    auto [cells, ids, imap] =
+        tf::make_csg_domains(holder.graph, tf::return_index_map);
+    REQUIRE(cells.size() == 2);
+    for (std::size_t k = 0; k < cells.size(); ++k) {
+      const Index t = wall_tag_of(
+          cells[k],
+          [&imap = imap, k](std::size_t f) { return imap.face_tag_blocks[k][f]; });
+      REQUIRE(t == Index(1));
+    }
+  }
+}
+
+TEST_CASE("sheets: hole-cut coincident sheets keep sealed, attributed walls",
+          "[csg][sheets][provenance]") {
+  // A cylinder through the box AND both coincident opposing sheets: the
+  // sheet faces around the hole carry non-simple (bridged) loops, the
+  // exact shape a patched-in hole produces. Every domain must stay
+  // closed and each z=0 wall (annulus and inner disk alike) must come
+  // from the sheet wound out of its domain.
+  auto boxq = tf::make_box_mesh<Index>(Real(2), Real(2), Real(2));
+  mesh_t box = tf::triangulated(boxq.polygons());
+  auto cylq = tf::make_cylinder_mesh<Index>(Real(0.5), Real(3), 24);
+  mesh_t cyl = tf::triangulated(cylq.polygons());
+  auto planeq = tf::make_plane_mesh<Index>(Real(4), Real(4));
+  mesh_t plane = tf::triangulated(planeq.polygons());
+  mesh_t plane_rev = reversed_copy(plane);
+
+  std::vector<form_t> forms;
+  forms.push_back(box.polygons() | tf::tag(frame_at(0, 0, 0)));
+  forms.push_back(cyl.polygons() | tf::tag(frame_at(0, 0, 0)));
+  forms.push_back(plane.polygons() | tf::tag(frame_at(0, 0, 0)));
+  forms.push_back(plane_rev.polygons() | tf::tag(frame_at(0, 0, 0)));
+  graph_holder<2> holder(std::move(forms), {2, 3});
+  auto [cells, ids, imap] =
+      tf::make_csg_domains(holder.graph, tf::return_index_map);
+  REQUIRE(cells.size() == 6);
+
+  int walled = 0;
+  for (std::size_t k = 0; k < cells.size(); ++k) {
+    REQUIRE(tf::is_closed(cells[k].polygons()));
+    const Index t = wall_tag_of(
+        cells[k],
+          [&imap = imap, k](std::size_t f) { return imap.face_tag_blocks[k][f]; });
+    if (t == -2)
+      continue; // cylinder stub outside the box: no z=0 wall
+    ++walled;
+    REQUIRE(t == (centroid_z(cells[k]) < 0 ? Index(2) : Index(3)));
+  }
+  REQUIRE(walled == 4);
 }

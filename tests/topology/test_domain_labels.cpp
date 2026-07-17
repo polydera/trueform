@@ -49,13 +49,14 @@ TEST_CASE("domain labels: arrangement stacks resolve to two cells",
   }
 }
 
-TEST_CASE("domain labels: retained duplicate wall emits no pillow cell",
-          "[topology][domains][stacks]") {
-  using index_t = std::int32_t;
-  using real_t = double;
-  // two unit boxes sharing the wall at x=0.5; the wall stored TWICE
-  // with opposite windings and identical cycles
-  tf::polygons_buffer<index_t, real_t, 3, 3> m;
+namespace {
+
+// two unit boxes sharing the wall at x=0.5; the wall stored TWICE with
+// opposite windings and identical cycles. Faces 0-19 are the hulls
+// (10 quads x 2 tris), 20/21 the +x-wound wall (out of the left box),
+// 22/23 the -x-wound duplicate (out of the right box).
+auto make_two_box_stack() {
+  tf::polygons_buffer<std::int32_t, double, 3, 3> m;
   auto &pts = m.points_buffer();
   pts.emplace_back(-0.5, -0.5, -0.5); // 0
   pts.emplace_back(-0.5, 0.5, -0.5);  // 1
@@ -85,7 +86,15 @@ TEST_CASE("domain labels: retained duplicate wall emits no pillow cell",
   quad(6, 7, 11, 10);
   quad(7, 4, 8, 11);
   quad(4, 5, 6, 7); // wall, wound +x
-  quad(4, 7, 6, 5); // wall duplicate, wound -x, same cycles reversed
+  quad(4, 7, 6, 5); // wall duplicate, wound -x
+  return m;
+}
+
+} // namespace
+
+TEST_CASE("domain labels: retained duplicate wall emits no pillow cell",
+          "[topology][domains][stacks]") {
+  auto m = make_two_box_stack();
 
   auto dl = tf::make_domain_labels(m.polygons(),
                                    tf::domain_config::exclude_outer_shell);
@@ -136,5 +145,37 @@ TEST_CASE("make_domain_labels: reversed coincident wall stack seals",
     REQUIRE(tf::is_manifold(c.polygons()));
     REQUIRE_THAT(std::abs(double(tf::signed_volume(c.polygons()))),
                  Catch::Matchers::WithinAbs(4.0, 1e-9));
+  }
+}
+
+TEST_CASE("domain labels: opposing stack members serve their own side",
+          "[topology][domains][stacks][provenance]") {
+  using index_t = std::int32_t;
+  auto m = make_two_box_stack();
+
+  auto dl = tf::make_domain_labels(m.polygons(),
+                                   tf::domain_config::exclude_outer_shell);
+  auto [cells, ids, src] =
+      tf::split_into_domains(m.polygons(), dl, tf::return_source_ids);
+  REQUIRE(cells.size() == 2);
+
+  // each wall face is emitted exactly once, into the box it is wound
+  // out of: +x copy (faces 20, 21) left, -x copy (22, 23) right
+  for (std::size_t k = 0; k < cells.size(); ++k) {
+    auto cpts = cells[k].polygons().points();
+    double cx = 0;
+    for (auto p : cpts)
+      cx += double(p[0]);
+    cx /= double(cpts.size());
+    const bool left = cx < 0.5;
+    int n_wall = 0;
+    for (std::size_t j = 0; j < cells[k].faces().size(); ++j) {
+      const index_t s = src[k][j];
+      if (s < 20)
+        continue;
+      ++n_wall;
+      REQUIRE((left ? s < 22 : s >= 22));
+    }
+    REQUIRE(n_wall == 2);
   }
 }

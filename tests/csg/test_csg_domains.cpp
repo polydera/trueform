@@ -623,6 +623,13 @@ TEST_CASE("make_csg_domains return_source_ids: dynamic-arity (quad) provenance",
                              bf.polygons() | tf::tag(frame0())};
   auto qgraph = tf::make_csg_graph(tf::make_range(forms));
 
+  // plain call first: the dynamic emit must not touch the (empty)
+  // provenance machinery when no labels are requested
+  {
+    auto [pcells, pids] = tf::make_csg_domains(qgraph);
+    REQUIRE(pcells.size() >= std::size_t(1));
+  }
+
   auto [cells, ids, tag_blocks, face_blocks] =
       tf::make_csg_domains(qgraph, tf::return_source_ids);
 
@@ -866,4 +873,41 @@ TEST_CASE("make_csg_domains within: nested pair concatenated into one "
   auto [cells2, ids2] = tf::make_csg_domains(g2);
 
   require_same_volumes(v3, sorted_volumes(cells2));
+}
+
+TEST_CASE("one-form graph: nested spheres in a single soup keep cavity and "
+          "outer shell",
+          "[domains][nesting][within]") {
+  // Everything concatenated into ONE operand: two hollow spheres (outer
+  // + inner, and a translated copy). Nesting resolves purely by
+  // containment casts -- there are no intersection records at all --
+  // and the universe must be exactly the two outer spheres reversed.
+  auto outer_a = sphere_at(0, 0, 0);
+  auto inner_a = sphere_at(0, 0, 0, Real(0.5));
+  auto outer_b = sphere_at(Real(3), 0, 0);
+  auto inner_b = sphere_at(Real(3), 0, 0, Real(0.5));
+  const double vo = double(tf::signed_volume(outer_a.polygons()));
+  const double vi = double(tf::signed_volume(inner_a.polygons()));
+
+  auto ab = tf::concatenated(outer_a.polygons(), inner_a.polygons());
+  auto abc = tf::concatenated(ab.polygons(), outer_b.polygons());
+  auto soup = tf::concatenated(abc.polygons(), inner_b.polygons());
+  auto graph = tf::make_csg_graph(soup.polygons());
+
+  auto [cells, ids] = tf::make_csg_domains(graph);
+  std::vector<double> want{vi, vi, vo - vi, vo - vi};
+  require_same_volumes(want, sorted_volumes(cells));
+
+  // raw keeps the universe: ONE domain bounded by both outer spheres
+  // reversed, SIGNED volume exactly -2 * vo (sorted_volumes above takes
+  // abs, so check the universe sign directly)
+  auto [raw, raw_ids] =
+      tf::make_csg_domains(graph, tf::domain_config::none);
+  REQUIRE(raw.size() == 5);
+  double universe = 0;
+  for (auto &c : raw)
+    universe = std::min(universe, double(tf::signed_volume(c.polygons())));
+  REQUIRE_THAT(universe, Catch::Matchers::WithinRel(-2 * vo, 1e-9));
+  std::vector<double> want_raw{vi, vi, vo - vi, vo - vi, 2 * vo};
+  require_same_volumes(want_raw, sorted_volumes(raw));
 }

@@ -27,6 +27,10 @@ namespace tf {
 ///
 /// Faces are cyclic sequences. {0,1,2} and {1,2,0} are aligned (+1).
 /// {0,1,2} and {0,2,1} are opposing (-1).
+///
+/// O(N x occurrences of face[0] in neighbor) — linear for simple
+/// faces; only non-simple faces (repeated bridge vertices) pay the
+/// extra anchors.
 template <typename Face1, typename Face2>
 auto compare_faces(const Face1 &face, const Face2 &neighbor) -> int {
   constexpr auto N1 = tf::static_size_v<Face1>;
@@ -52,35 +56,30 @@ auto compare_faces(const Face1 &face, const Face2 &neighbor) -> int {
     if (static_cast<decltype(N)>(neighbor.size()) != N)
       return 0;
 
-    // Find face[0] in neighbor
-    auto start = N;
+    // A non-simple face (a hole patched into the boundary) repeats its
+    // bridge vertices, so face[0] can occur in `neighbor` more than
+    // once and only one occurrence aligns — every occurrence is an
+    // anchor candidate.
     for (decltype(N) i = 0; i < N; ++i) {
-      if (neighbor[i] == face[0]) {
-        start = i;
-        break;
-      }
+      if (neighbor[i] != face[0])
+        continue;
+      bool aligned = true;
+      for (decltype(N) k = 1; k < N; ++k)
+        if (face[k] != neighbor[(i + k) % N]) {
+          aligned = false;
+          break;
+        }
+      if (aligned)
+        return 1;
+      bool opposing = true;
+      for (decltype(N) k = 1; k < N; ++k)
+        if (face[k] != neighbor[(i + N - k) % N]) {
+          opposing = false;
+          break;
+        }
+      if (opposing)
+        return -1;
     }
-    if (start == N)
-      return 0;
-
-    // Check forward (aligned)
-    if (neighbor[(start + 1) % N] == face[1]) {
-      for (decltype(N) k = 2; k < N; ++k) {
-        if (face[k] != neighbor[(start + k) % N])
-          return 0;
-      }
-      return 1;
-    }
-
-    // Check backward (opposing)
-    if (neighbor[(start + N - 1) % N] == face[1]) {
-      for (decltype(N) k = 2; k < N; ++k) {
-        if (face[k] != neighbor[(start + N - k) % N])
-          return 0;
-      }
-      return -1;
-    }
-
     return 0;
   }
 }
