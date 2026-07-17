@@ -30,7 +30,9 @@ export interface IntersectOpts {
   resolveSelfCrossings?: boolean;
   /**
    * Also intersect each mesh with itself — required when a mesh can
-   * self-overlap, e.g. meshes concatenated into one operand.
+   * self-overlap, e.g. meshes concatenated into one operand. Honored
+   * by arrangement and boolean builds only; intersectionCurves ignores
+   * it — use selfIntersectionCurves for a mesh against itself.
    */
   within?: boolean;
 }
@@ -83,7 +85,7 @@ export function intersectionCurves(
     const dt = m0OrMeshes[0].dtype as FloatDtype;
     const o = m1OrOpts as IntersectOpts | undefined;
     const rc = o?.resolveCrossings ?? (m0OrMeshes.length > 2);
-    const mode = buildMode(o, "sos", rc, false);
+    const mode = buildMode(o && { ...o, within: false }, "sos", rc, false);
     const tolerance = getTolerance(o);
     const handles = m0OrMeshes.map(m => m._handle);
     return new Curves(
@@ -93,7 +95,7 @@ export function intersectionCurves(
   const m1 = m1OrOpts as Mesh;
   assertSameDtype([m0OrMeshes, m1], ["mesh0", "mesh1"]);
   const dt = m0OrMeshes.dtype as FloatDtype;
-  const mode = buildMode(opts, "sos", false, false);
+  const mode = buildMode(opts && { ...opts, within: false }, "sos", false, false);
   const tolerance = getTolerance(opts);
   return new Curves(
     native()[`intersection_curves_${dt}`](m0OrMeshes._handle, m1._handle, mode, tolerance),
