@@ -19,6 +19,7 @@
 #include "./algorithm/compute_offsets.hpp"
 #include "./algorithm/generate_offset_blocks.hpp"
 #include "./algorithm/generic_generate.hpp"
+#include "./algorithm/sequenced_generate.hpp"
 #include "./algorithm/ids_to_index_map.hpp"
 #include "./algorithm/make_equivalence_class_index_map.hpp"
 #include "./algorithm/make_equivalence_class_map.hpp"
