@@ -398,7 +398,10 @@ TEMPLATE_TEST_CASE("make_outer_shell: twin vertex with degenerate sliver "
   // splits the star into a seam
   auto sf = tf::make_sphere_mesh<index_t>(real_t(1), 24, 24);
   tf::ensure_positive_orientation(sf.polygons());
-  auto twin_src = sf.points_buffer()[10];
+  // materialize: [] yields a view, and push_back may reallocate under it
+  const tf::point<real_t, 3> twin_src{sf.points_buffer()[10][0],
+                                      sf.points_buffer()[10][1],
+                                      sf.points_buffer()[10][2]};
   const index_t twin = index_t(sf.points_buffer().size());
   sf.points_buffer().push_back(twin_src);
   // rewire part of vertex 10's fan to the twin id

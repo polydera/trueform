@@ -101,3 +101,40 @@ TEST_CASE("domain labels: retained duplicate wall emits no pillow cell",
                  Catch::Matchers::WithinRel(1.0, 1e-9));
   }
 }
+
+TEST_CASE("make_domain_labels: reversed coincident wall stack seals",
+          "[domains][stacks]") {
+  // A box cut by a sheet and its winding-reversed coincident copy,
+  // through the mesh path with duplicate faces kept: the stack
+  // resolution pairs the identical twins and the wall seals into two
+  // closed halves.
+  using index_t = std::int32_t;
+  using real_t = double;
+  using mesh3_t = tf::polygons_buffer<index_t, real_t, 3, 3>;
+  mesh3_t box = tf::triangulated(
+      tf::make_box_mesh<index_t, real_t>(real_t(2), real_t(2), real_t(2))
+          .polygons());
+  tf::ensure_positive_orientation(box.polygons());
+  mesh3_t plane = tf::triangulated(
+      tf::make_plane_mesh<index_t, real_t>(real_t(4), real_t(4)).polygons());
+  mesh3_t plane_rev = plane;
+  for (auto &&face : plane_rev.faces_buffer())
+    std::swap(face[0], face[2]);
+
+  std::vector<decltype(box.polygons())> forms{
+      box.polygons(), plane.polygons(), plane_rev.polygons()};
+  auto arr = tf::make_mesh_arrangements(tf::make_range(forms));
+  auto clean = tf::cleaned(std::get<0>(arr).polygons(),
+                           tf::clean_config(real_t(1e-9), false, true));
+  auto dl = tf::make_domain_labels(
+      clean.polygons(), tf::domain_config::exclude_outer_shell |
+                            tf::domain_config::ignore_open_fragments);
+  auto [cells, ids] = tf::split_into_domains(clean.polygons(), dl);
+  REQUIRE(cells.size() == 2);
+  for (auto &c : cells) {
+    REQUIRE(tf::is_closed(c.polygons()));
+    REQUIRE(tf::is_manifold(c.polygons()));
+    REQUIRE_THAT(std::abs(double(tf::signed_volume(c.polygons()))),
+                 Catch::Matchers::WithinAbs(4.0, 1e-9));
+  }
+}

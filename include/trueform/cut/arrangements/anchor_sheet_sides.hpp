@@ -17,6 +17,7 @@
 #include "../../core/views/sequence_range.hpp"
 #include "./arrangement_descriptor.hpp"
 #include "./compute_domain_inclusions.hpp"
+#include <array>
 #include <cstdint>
 
 namespace tf::cut {
@@ -33,10 +34,20 @@ namespace tf::cut {
 /// not, flip that tag's bit across the region. Regions without
 /// fragments of the tag (disconnected bundles) keep their seeded
 /// value.
+///
+/// A sheet coplanar-folded into another component's wall has no
+/// component of its own to anchor from — and its seeded value comes
+/// from a winding query evaluated exactly ON the shared wall, which is
+/// degenerate. `sheet_folds` supplies those anchors: each entry
+/// `(component, sheet tag, reversed)` anchors the tag to the carrying
+/// component's behind side, mirrored when the folded winding opposes
+/// the survivor's. Own-tag fragments anchor first; a fold only decides
+/// a (region, sheet) no live fragment already decided.
 template <typename Index>
-auto anchor_sheet_sides(tf::cut::domain_inclusions &inc,
-                        const arrangement_descriptor<Index> &desc,
-                        const tf::buffer<char> &is_sheet_tag) -> void {
+auto anchor_sheet_sides(
+    tf::cut::domain_inclusions &inc, const arrangement_descriptor<Index> &desc,
+    const tf::buffer<char> &is_sheet_tag,
+    const tf::buffer<std::array<Index, 3>> &sheet_folds = {}) -> void {
   if (is_sheet_tag.size() == 0)
     return;
   const Index n_components =
@@ -81,29 +92,37 @@ auto anchor_sheet_sides(tf::cut::domain_inclusions &inc,
                    static_cast<std::size_t>(n_sheets));
   tf::parallel_fill(decided, char(0));
 
-  for (Index c = Index(0); c < n_components; ++c) {
-    const Index t = desc.tag_of_component[c];
+  // Anchor sheet `t` through component `c`: `reversed` mirrors the
+  // behind side when the folded winding opposes the carrying wall's.
+  auto anchor = [&](Index c, Index t, Index reversed) {
     if (t < Index(0) || t >= Index(is_sheet_tag.size()) || !is_sheet_tag[t])
-      continue;
+      return;
     const Index d0 = desc.domain_of_side[2 * c];
     const Index d1 = desc.domain_of_side[2 * c + 1];
     if (d0 == d1)
-      continue;
+      return;
     const Index r = find(d0);
     const std::size_t slot =
         static_cast<std::size_t>(r) * static_cast<std::size_t>(n_sheets) +
         static_cast<std::size_t>(sheet_ordinal[t]);
     if (decided[slot])
-      continue;
+      return;
     decided[slot] = char(1);
+    const Index behind = reversed ? d0 : d1;
     const std::size_t word = static_cast<std::size_t>(t) / 32u;
     const std::uint32_t mask = std::uint32_t(1)
                                << (static_cast<unsigned>(t) % 32u);
-    const bool interior_set =
-        (inc.bits[static_cast<std::size_t>(d1) * words + word] & mask) != 0u;
-    if (!interior_set)
+    const bool behind_set =
+        (inc.bits[static_cast<std::size_t>(behind) * words + word] & mask) !=
+        0u;
+    if (!behind_set)
       flip_mask[static_cast<std::size_t>(r) * words + word] |= mask;
-  }
+  };
+
+  for (Index c = Index(0); c < n_components; ++c)
+    anchor(c, desc.tag_of_component[c], Index(0));
+  for (const auto &f : sheet_folds)
+    anchor(f[0], f[1], f[2]);
 
   // Flatten roots first so the apply pass reads `region` without
   // mutating it.

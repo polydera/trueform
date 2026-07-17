@@ -391,3 +391,136 @@ TEST_CASE("sheets: composite cut of disconnected volumes", "[csg][sheets]") {
         tf::make_csg_mesh(graph, tf::csg::intersection(solids, 3)), -1.0);
   }
 }
+
+// ============================================================================
+// Coincident duplicate sheets: the outside must stay excluded.
+// ============================================================================
+
+namespace {
+
+auto reversed_copy(const mesh_t &m) -> mesh_t {
+  mesh_t r = m;
+  for (auto &&face : r.faces_buffer())
+    std::swap(face[0], face[2]);
+  return r;
+}
+
+} // namespace
+
+TEST_CASE("sheets: coincident duplicate sheet keeps the outside excluded",
+          "[csg][sheets]") {
+  // Two coincident copies of the cutting plane. With opposite windings
+  // they tile space ("everything is behind one of them"), so the
+  // universe cannot be detected as the all-false row unless fusing a
+  // sheet's dangling halves also clears that sheet's bit. Either
+  // winding must give exactly the two box halves.
+  auto boxq = tf::make_box_mesh<Index>(Real(2), Real(2), Real(2)); // vol 8
+  mesh_t box = tf::triangulated(boxq.polygons());
+  auto planeq = tf::make_plane_mesh<Index>(Real(4), Real(4)); // z=0, +z
+  mesh_t plane = tf::triangulated(planeq.polygons());
+  mesh_t plane_rev = reversed_copy(plane);
+
+  auto check_halves = [&](mesh_t &second_sheet) {
+    std::vector<form_t> forms;
+    forms.push_back(box.polygons() | tf::tag(frame_at(0, 0, 0)));
+    forms.push_back(plane.polygons() | tf::tag(frame_at(0, 0, 0)));
+    forms.push_back(second_sheet.polygons() | tf::tag(frame_at(0, 0, 0)));
+    graph_holder<2> holder(std::move(forms), {1, 2});
+    auto [cells, ids] = tf::make_csg_domains(holder.graph);
+    REQUIRE(cells.size() == 2);
+    for (auto &c : cells) {
+      REQUIRE(tf::is_closed(c.polygons()));
+      REQUIRE_THAT(std::abs(double(tf::signed_volume(c.polygons()))),
+                   Catch::Matchers::WithinAbs(4.0, 1e-9));
+    }
+  };
+
+  SECTION("same-orientation copy") { check_halves(plane); }
+  SECTION("reversed copy") { check_halves(plane_rev); }
+}
+
+TEST_CASE("sheets: reversed coincident sheet keeps its own orientation",
+          "[csg][sheets]") {
+  // The duplicate is folded into the survivor's wall, but its bit must
+  // still mean "behind ITS declared normal": with the copy reversed,
+  // op(1) and op(2) select opposite halves.
+  auto boxq = tf::make_box_mesh<Index>(Real(2), Real(2), Real(2));
+  mesh_t box = tf::triangulated(boxq.polygons());
+  auto planeq = tf::make_plane_mesh<Index>(Real(4), Real(4)); // z=0, +z
+  mesh_t plane = tf::triangulated(planeq.polygons());
+  mesh_t plane_rev = reversed_copy(plane);
+
+  std::vector<form_t> forms;
+  forms.push_back(box.polygons() | tf::tag(frame_at(0, 0, 0)));
+  forms.push_back(plane.polygons() | tf::tag(frame_at(0, 0, 0)));
+  forms.push_back(plane_rev.polygons() | tf::tag(frame_at(0, 0, 0)));
+  graph_holder<2> holder(std::move(forms), {1, 2});
+
+  auto centroid_of_selection = [&](const tf::csg::expr &e) {
+    auto [cells, ids] = tf::make_csg_domains(holder.graph, e);
+    REQUIRE(cells.size() == 1);
+    REQUIRE_THAT(std::abs(double(tf::signed_volume(cells[0].polygons()))),
+                 Catch::Matchers::WithinAbs(4.0, 1e-9));
+    return centroid_z(cells[0]);
+  };
+
+  // Behind sheet 1 (+z normal) is below; behind the reversed copy is above.
+  REQUIRE(centroid_of_selection(tf::csg::op(0) & tf::csg::op(1)) < 0.0);
+  REQUIRE(centroid_of_selection(tf::csg::op(0) & tf::csg::op(2)) > 0.0);
+}
+
+TEST_CASE("sheets: three coincident sheets with mixed windings",
+          "[csg][sheets]") {
+  // Star-shaped folds: every dead loop folds onto one survivor with its
+  // own reversed flag, so each tag anchors independently and the fused
+  // outside clears all three bits.
+  auto boxq = tf::make_box_mesh<Index>(Real(2), Real(2), Real(2));
+  mesh_t box = tf::triangulated(boxq.polygons());
+  auto planeq = tf::make_plane_mesh<Index>(Real(4), Real(4)); // z=0, +z
+  mesh_t plane = tf::triangulated(planeq.polygons());
+  mesh_t plane_rev = reversed_copy(plane);
+
+  std::vector<form_t> forms;
+  forms.push_back(box.polygons() | tf::tag(frame_at(0, 0, 0)));
+  forms.push_back(plane.polygons() | tf::tag(frame_at(0, 0, 0)));
+  forms.push_back(plane_rev.polygons() | tf::tag(frame_at(0, 0, 0)));
+  forms.push_back(plane.polygons() | tf::tag(frame_at(0, 0, 0)));
+  graph_holder<3> holder(std::move(forms), {1, 2, 3});
+
+  auto [cells, ids] = tf::make_csg_domains(holder.graph);
+  REQUIRE(cells.size() == 2);
+
+  auto half_behind = [&](int op_id) {
+    auto [sel, sel_ids] =
+        tf::make_csg_domains(holder.graph, tf::csg::op(0) & tf::csg::op(op_id));
+    REQUIRE(sel.size() == 1);
+    return centroid_z(sel[0]);
+  };
+  REQUIRE(half_behind(1) < 0.0); // behind +z normal = below
+  REQUIRE(half_behind(2) > 0.0); // reversed copy: behind = above
+  REQUIRE(half_behind(3) < 0.0); // forward copy: below again
+}
+
+TEST_CASE("sheets: reversed single sheet anchors behind its own normal",
+          "[csg][sheets]") {
+  auto boxq = tf::make_box_mesh<Index>(Real(2), Real(2), Real(2));
+  mesh_t box = tf::triangulated(boxq.polygons());
+  auto planeq = tf::make_plane_mesh<Index>(Real(4), Real(4)); // z=0, +z
+  mesh_t plane_rev = reversed_copy(tf::triangulated(planeq.polygons()));
+
+  std::vector<form_t> forms;
+  forms.push_back(box.polygons() | tf::tag(frame_at(0, 0, 0)));
+  forms.push_back(plane_rev.polygons() | tf::tag(frame_at(0, 0, 0)));
+  graph_holder<1> holder(std::move(forms), {1});
+
+  auto [cells, ids] = tf::make_csg_domains(holder.graph);
+  REQUIRE(cells.size() == 2);
+
+  // Normal points -z, so behind the sheet is the upper half.
+  auto [sel, sel_ids] =
+      tf::make_csg_domains(holder.graph, tf::csg::op(0) & tf::csg::op(1));
+  REQUIRE(sel.size() == 1);
+  REQUIRE_THAT(std::abs(double(tf::signed_volume(sel[0].polygons()))),
+               Catch::Matchers::WithinAbs(4.0, 1e-9));
+  REQUIRE(centroid_z(sel[0]) > 0.0);
+}

@@ -17,7 +17,6 @@
 #include "../../core/buffer.hpp"
 #include "../../core/hash_set.hpp"
 #include "../arrangement_graph.hpp"
-#include "../face_cuts.hpp"
 #include "./make_non_manifold_edge_fans.hpp"
 #include "tbb/parallel_sort.h"
 #include <algorithm>
@@ -37,17 +36,13 @@ namespace tf::cut {
 /// @ref tf::topology::domains::emit_domain_merges. Sides come from the
 /// fan's per-occurrence direction bits; component labels come from
 /// @ref tf::arrangement_graph.
-template <typename Index, typename Index1>
+template <typename Index>
 void emit_domain_merges(
     const tf::arrangement_graph<Index> &ag,
-    const tf::face_cuts<Index, Index1> &fc,
     const tf::cut::non_manifold_edge_fans<Index> &fans,
     const tf::buffer<Index> &reps,
     tf::buffer<std::array<Index, 2>> &merges,
     tf::buffer<std::array<Index, 2>> &bundle_merges) {
-  using vertex_t = typename tf::cut::non_manifold_edge_fans<Index>::vertex_t;
-
-  auto loops = fc.loops();
   auto loop_labels = ag.loop_labels();
 
   struct local_state_t {

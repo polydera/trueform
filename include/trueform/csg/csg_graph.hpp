@@ -144,7 +144,26 @@ public:
         _inc, _desc, _ag, _fc, _ig, tagged, conv, _domain_volumes,
         _domain_nesting_merges, _is_sheet);
     tf::cut::propagate_inclusion_bits(_inc, _desc, _ag, _fc, seeds);
-    tf::cut::anchor_sheet_sides(_inc, _desc, _is_sheet);
+    // Sheets coplanar-folded into another wall have no fragments of
+    // their own to anchor from, and their winding seeds are degenerate
+    // (evaluated exactly on the shared wall): anchor them through the
+    // carrying component, mirrored by the fold's reversed flag.
+    {
+      auto loop_labels = _ag.loop_labels();
+      auto descs = _fc.descriptors();
+      for (const auto &p : _ag.coplanar_pairs()) {
+        // Pairs form the full clique of a coincident stack, so a dead
+        // loop also appears as a "survivor"; the direct (live, dead)
+        // pair always exists — skip the dead-survivor ones.
+        const auto c = index_type(loop_labels[p[0]]);
+        if (c == decltype(_ag)::none_label)
+          continue;
+        const auto t = index_type(descs[p[1]].tag);
+        if (t < index_type(_is_sheet.size()) && _is_sheet[t])
+          _sheet_folds.push_back({c, t, p[2]});
+      }
+    }
+    tf::cut::anchor_sheet_sides(_inc, _desc, _is_sheet, _sheet_folds);
 
     tf::buffer<tf::point<resolved_int_type, 3>> extra;
     if (tri == tf::triangulation_type::refined_cdt)
@@ -188,6 +207,13 @@ public:
   /// operands may self-overlap, so parity bits cannot be trusted for
   /// domain extraction (see @ref tf::make_csg_domains).
   auto with_self() const -> bool { return _with_self; }
+
+  /// Sheets coplanar-folded into another component's wall:
+  /// `(component, sheet tag, reversed)` per fold.
+  auto sheet_folds() const
+      -> const tf::buffer<std::array<index_type, 3>> & {
+    return _sheet_folds;
+  }
 
   /// @brief Return the tagged forms view. If `Structs == none_t`,
   ///        returns the user's forms unchanged. Otherwise builds the
@@ -249,6 +275,7 @@ private:
   Forms _forms;
   tf::small_vector<Structs, 10> _structs;
   tf::buffer<char> _is_sheet;
+  tf::buffer<std::array<index_type, 3>> _sheet_folds;
   bool _with_self = false;
   tf::polygon_intersections<index_type, pipeline_real_type,
                             resolved_int_type>

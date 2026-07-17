@@ -61,7 +61,9 @@ auto compute_domain_membership(
     const tf::cut::arrangement_descriptor<Index> &desc,
     const tf::cut::domain_inclusions &inc, const OpenMask &open_mask,
     const tf::buffer<std::array<Index, 2>> &nesting_merges,
-    tf::domain_config config, Expr E, Index universe_fine = Index(-1))
+    tf::domain_config config, Expr E, Index universe_fine = Index(-1),
+    const tf::buffer<char> &is_sheet_tag = {},
+    const tf::buffer<std::array<Index, 3>> &sheet_folds = {})
     -> domain_membership<Index> {
   domain_membership<Index> out;
   const Index n_domains = desc.n_domains;
@@ -75,11 +77,27 @@ auto compute_domain_membership(
   for (const auto &m : nesting_merges)
     uf.unite(m[0], m[1]);
 
+  // Fusing an open component's sides erases the partition that gave
+  // "behind" its meaning for every sheet in that wall: the component's
+  // own tag and the folds (a dropped duplicate has no component of its
+  // own to fuse). Their bits clear from the fused representative below.
+  tf::buffer<std::array<Index, 2>> sheet_fuses; // (fine domain, sheet tag)
   if (config & tf::domain_config::ignore_open_fragments) {
-    for (Index c = 0; c < out.n_components; ++c)
-      if (open_mask[c])
-        uf.unite(desc.domain_of_side[2 * c + 0],
-                 desc.domain_of_side[2 * c + 1]);
+    tf::buffer<bool> fused;
+    fused.allocate(static_cast<std::size_t>(out.n_components));
+    for (Index c = 0; c < out.n_components; ++c) {
+      fused[c] = bool(open_mask[c]);
+      if (!fused[c])
+        continue;
+      uf.unite(desc.domain_of_side[2 * c + 0],
+               desc.domain_of_side[2 * c + 1]);
+      const Index t = desc.tag_of_component[c];
+      if (t >= 0 && t < Index(is_sheet_tag.size()) && is_sheet_tag[t])
+        sheet_fuses.push_back({desc.domain_of_side[2 * c + 0], t});
+    }
+    for (const auto &f : sheet_folds)
+      if (fused[f[0]])
+        sheet_fuses.push_back({desc.domain_of_side[2 * f[0] + 0], f[1]});
   }
 
   out.coarse_of_fine.allocate(static_cast<std::size_t>(n_domains));
@@ -103,7 +121,6 @@ auto compute_domain_membership(
         (d >= 0 && d < n_domains) ? out.coarse_of_fine[d] : Index(-1);
   }
 
-  auto blocks = inc.make_range();
   const std::size_t words = inc.words_per_domain;
 
   auto &rep_bits = out.rep_bits;
@@ -115,10 +132,6 @@ auto compute_domain_membership(
   is_outer.allocate(static_cast<std::size_t>(n_coarse));
   for (Index k = 0; k < n_coarse; ++k)
     is_outer[k] = false;
-  tf::buffer<bool> rep_is_outer;
-  rep_is_outer.allocate(static_cast<std::size_t>(n_coarse));
-  for (Index k = 0; k < n_coarse; ++k)
-    rep_is_outer[k] = false;
 
   if (universe_fine >= 0) {
     const Index uk = out.coarse_of_fine[universe_fine];
@@ -128,27 +141,32 @@ auto compute_domain_membership(
         rep_bits[static_cast<std::size_t>(k) * words] = 1u;
     }
   } else {
+    // Representative = OR of constituent bits, minus the bits of sheets
+    // whose open fuse formed the class. Classes are bits-homogeneous
+    // outside fused sheet columns (nesting merges unite copies of one
+    // physical region; open fuses only flip the fused sheet's own bit),
+    // so this reproduces the constituent bits on volume-only input and
+    // the universe reads all-zero again once its fused sheet halves
+    // stop meaning "behind".
     for (Index d = 0; d < n_domains; ++d) {
-      const Index k = out.coarse_of_fine[d];
+      const std::size_t base =
+          static_cast<std::size_t>(out.coarse_of_fine[d]) * words;
+      const std::size_t src = static_cast<std::size_t>(d) * words;
+      for (std::size_t w = 0; w < words; ++w)
+        rep_bits[base + w] |= inc.bits[src + w];
+    }
+    for (const auto &f : sheet_fuses) {
+      const std::size_t base =
+          static_cast<std::size_t>(out.coarse_of_fine[f[0]]) * words;
+      rep_bits[base + static_cast<std::size_t>(f[1]) / 32] &=
+          ~(std::uint32_t(1) << (static_cast<std::size_t>(f[1]) % 32));
+    }
+    for (Index k = 0; k < n_coarse; ++k) {
       std::uint32_t any = 0;
-      for (auto w : blocks[d])
-        any |= w;
-      const bool zero = (any == 0);
-      if (zero)
-        is_outer[k] = true;
-      // Adopt an all-zero constituent's (zero) bits as the representative;
-      // otherwise adopt the first bounded constituent if no zero seen yet.
-      if (zero && !rep_is_outer[k]) {
-        rep_is_outer[k] = true;
-        std::size_t base = static_cast<std::size_t>(k) * words;
-        for (std::size_t w = 0; w < words; ++w)
-          rep_bits[base + w] = 0;
-      } else if (!zero && !rep_is_outer[k]) {
-        std::size_t base = static_cast<std::size_t>(k) * words;
-        std::size_t src = static_cast<std::size_t>(d) * words;
-        for (std::size_t w = 0; w < words; ++w)
-          rep_bits[base + w] = inc.bits[src + w];
-      }
+      const std::size_t base = static_cast<std::size_t>(k) * words;
+      for (std::size_t w = 0; w < words; ++w)
+        any |= rep_bits[base + w];
+      is_outer[k] = (any == 0);
     }
   }
 

@@ -227,7 +227,7 @@ auto make_arrangement_descriptor(const tf::arrangement_graph<Index> &ag,
   // ---- 5. Wedge-radial merges + open-component boundary self-merges. ---
   tf::buffer<std::array<Index, 2>> merges;
   tf::buffer<std::array<Index, 2>> bundle_merges;
-  tf::cut::emit_domain_merges(ag, fc, out.fans, out.reps, merges,
+  tf::cut::emit_domain_merges(ag, out.fans, out.reps, merges,
                                bundle_merges);
   emit_open_merges(merges);
 
