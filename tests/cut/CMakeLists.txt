@@ -2,6 +2,7 @@ add_executable(trueform_cut_tests
   test_arrangement_graph.cpp
   test_boolean.cpp
   test_boolean_pair.cpp
+  test_coplanar_loop_pairs.cpp
   test_cut_graph.cpp
   test_cut_graph_self.cpp
   test_embedded_intersection_curves.cpp

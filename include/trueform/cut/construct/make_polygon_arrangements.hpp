@@ -24,6 +24,7 @@
 #include "../../intersect/graph/intersection_graph.hpp"
 #include "../face_cuts.hpp"
 #include "./make_arrangement_map_data.hpp"
+#include "../make_coplanar_loop_pairs.hpp"
 #include "./triangulate_arrangement_cuts.hpp"
 
 namespace tf::cut {
@@ -48,11 +49,6 @@ auto make_polygon_arrangements(
   auto ipts = ig.points();
   auto map_data = tf::cut::make_embed_map_data(fc, polygons, Index(0));
 
-  auto descs_per_tag =
-      tf::make_offset_block_range(fc.tag_offsets(), fc.descriptors());
-  auto loops_per_tag =
-      tf::make_offset_block_range(fc.tag_offsets(), fc.loops());
-
   auto make_projector = [&](const auto &desc) {
     auto object = desc.object;
     auto face = polygons.faces()[object];
@@ -76,10 +72,15 @@ auto make_polygon_arrangements(
 
   auto map_vertex = [&](auto, const auto &v) { return map_data.map_vertex(v); };
 
+  // Coincident stacks triangulate once: dead loops re-emit the
+  // survivor's triangulation, winding-flipped when opposing.
+  auto fold_of = tf::cut::make_loop_fold_map(
+      tf::cut::make_coplanar_loop_pairs_all(fc), fc.loops().size());
+
   tf::buffer<Index> tri_data;
   tf::buffer<Index> tri_origins;
   tf::cut::triangulate_partition_cuts<Int>(
-      tf::zip(descs_per_tag[0], loops_per_tag[0]), make_projector, map_vertex,
+      fc.descriptors(), fc.loops(), make_projector, map_vertex, fold_of,
       tri_data, tri_origins);
 
   auto triangles = tf::make_blocked_range<3>(tf::make_range(tri_data));

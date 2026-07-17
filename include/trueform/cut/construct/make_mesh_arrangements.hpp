@@ -23,6 +23,7 @@
 #include "../../intersect/graph/intersection_graph.hpp"
 #include "../face_cuts.hpp"
 #include "./make_arrangement_map_data.hpp"
+#include "../make_coplanar_loop_pairs.hpp"
 #include "./triangulate_arrangement_cuts.hpp"
 
 namespace tf::cut {
@@ -82,9 +83,14 @@ auto make_mesh_arrangements(
     };
   };
 
+  // Coincident stacks triangulate once: dead loops re-emit the
+  // survivor's triangulation, winding-flipped when opposing.
+  auto fold_of = tf::cut::make_loop_fold_map(
+      tf::cut::make_coplanar_loop_pairs_all(fc), fc.loops().size());
   tf::cut::triangulate_arrangement_cuts<Int>(
-      tf::zip(fc.descriptors(), fc.loops()), make_projector, map_data, tri_data,
-      tri_tags, tri_origins);
+      fc.descriptors(), fc.loops(), make_projector,
+      [&](auto tag, const auto &v) { return map_data.map_vertex(tag, v); },
+      fold_of, tri_data, tri_tags, tri_origins);
 
   auto triangles = tf::make_blocked_range<3>(tf::make_range(tri_data));
 
@@ -256,9 +262,14 @@ auto make_mesh_arrangements(
     };
   };
 
+  // Coincident stacks triangulate once: dead loops re-emit the
+  // survivor's triangulation, winding-flipped when opposing.
+  auto fold_of = tf::cut::make_loop_fold_map(
+      tf::cut::make_coplanar_loop_pairs_all(fc), fc.loops().size());
   tf::cut::triangulate_arrangement_cuts<Int>(
-      tf::zip(fc.descriptors(), fc.loops()), make_projector, map_data, tri_data,
-      tri_tags, tri_origins);
+      fc.descriptors(), fc.loops(), make_projector,
+      [&](auto tag, const auto &v) { return map_data.map_vertex(tag, v); },
+      fold_of, tri_data, tri_tags, tri_origins);
 
   auto triangles = tf::make_blocked_range<3>(tf::make_range(tri_data));
 
