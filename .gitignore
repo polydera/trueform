@@ -42,3 +42,5 @@ typescript/LICENSE.noncommercial
 typescript/package-lock.json
 typescript/dist/*
 node_modules/
+PROPOSAL_CSG_BINDINGS.md
+docs/superpowers/
