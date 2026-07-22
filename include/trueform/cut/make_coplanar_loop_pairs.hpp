@@ -15,12 +15,15 @@
 #include "../core/algorithm/parallel_for_each.hpp"
 #include "../core/algorithm/parallel_iota.hpp"
 #include "../core/buffer.hpp"
+#include "../core/none.hpp"
 #include "../core/views/sequence_range.hpp"
 #include "../intersect/graph/vertex.hpp"
 #include "./face_cuts.hpp"
+#include "./face_regions.hpp"
 
 #include "tbb/parallel_sort.h"
 
+#include <algorithm>
 #include <array>
 #include <type_traits>
 #include <utility>
@@ -45,6 +48,21 @@ enum class coplanar_scope {
 
 namespace impl {
 
+/// Hole walks the caller's structure attaches to its loops (@ref
+/// tf::face_regions): boundary coincidence alone is not identity there,
+/// the hole sets must coincide too. Callers without holes pass
+/// `tf::none` instead.
+template <typename LoopHoles, typename Holes> struct hole_context {
+  LoopHoles loop_holes;
+  Holes holes;
+};
+
+template <typename LoopHoles, typename Holes>
+auto make_hole_context(LoopHoles loop_holes, Holes holes)
+    -> hole_context<LoopHoles, Holes> {
+  return {loop_holes, holes};
+}
+
 /// Detect coincident loops by minimal-canonical-edge key: coincident
 /// loops share every edge, hence the minimal one, so an argsort on the
 /// (size, edge) key groups every stack; within an equal run the stored
@@ -54,9 +72,12 @@ namespace impl {
 /// non-simple loop (a hole patched into the boundary) can traverse its
 /// minimal edge more than once; the stored anchor is only the fast
 /// path, and on a mismatch the walk retries at every other occurrence
-/// of the edge in the partner.
-template <coplanar_scope Scope, typename Index, typename Int>
-auto make_coplanar_loop_pairs(const tf::face_cuts<Index, Int> &fc)
+/// of the edge in the partner. With a @ref hole_context a matched
+/// boundary additionally requires coincident hole sets; `tf::none`
+/// skips the confirmation.
+template <coplanar_scope Scope, typename Index, typename Structure,
+          typename HoleContext>
+auto make_coplanar_loop_pairs(const Structure &fc, const HoleContext &hole_ctx)
     -> tf::buffer<coplanar_loop_pair<Index>> {
   using vt = tf::intersect::graph::vertex<Index>;
   using source = tf::intersect::graph::vertex_source;
@@ -153,6 +174,51 @@ auto make_coplanar_loop_pairs(const tf::face_cuts<Index, Int> &fc)
     return x < y;
   });
 
+  // Hole confirmation: keys are winding-canonical, so a sorted multiset
+  // of per-hole minimal-edge keys coincides exactly when the hole sets
+  // do — under either boundary winding. Separate scratch from the
+  // boundary keys/anchors arrays, which stay live for the pairing scan.
+  tf::buffer<ekey_t> hole_keys_a, hole_keys_b;
+  auto holes_coincident = [&](Index la, Index lb) -> bool {
+    if constexpr (!std::is_same_v<HoleContext, tf::none_t>) {
+      auto ha = hole_ctx.loop_holes[la];
+      auto hb = hole_ctx.loop_holes[lb];
+      if (ha.size() != hb.size())
+        return false;
+      if (ha.size() == 0)
+        return true;
+      auto hole_key = [&](const auto &hole, Index tag) -> ekey_t {
+        const Index m = static_cast<Index>(hole.size());
+        ekey_t best{};
+        for (Index i = 0; i < m; ++i) {
+          vkey_t a = vkey(hole[i], tag);
+          vkey_t b = vkey(hole[i + 1 == m ? Index(0) : i + 1], tag);
+          if (b < a)
+            std::swap(a, b);
+          const ekey_t e{a, b, m};
+          if (i == 0 || e < best)
+            best = e;
+        }
+        return best;
+      };
+      const Index ta = static_cast<Index>(descs[la].tag);
+      const Index tb = static_cast<Index>(descs[lb].tag);
+      auto hs = hole_ctx.holes;
+      hole_keys_a.clear();
+      hole_keys_b.clear();
+      for (auto h : ha)
+        hole_keys_a.push_back(hole_key(hs[h], ta));
+      for (auto h : hb)
+        hole_keys_b.push_back(hole_key(hs[h], tb));
+      std::sort(hole_keys_a.begin(), hole_keys_a.end());
+      std::sort(hole_keys_b.begin(), hole_keys_b.end());
+      return std::equal(hole_keys_a.begin(), hole_keys_a.end(),
+                        hole_keys_b.begin());
+    } else {
+      return true;
+    }
+  };
+
   // Anchored verification: equal keys share the minimal edge, so both
   // loops align at their stored positions — one element-wise walk,
   // forward against forward or forward against backward. A non-simple
@@ -184,7 +250,7 @@ auto make_coplanar_loop_pairs(const tf::face_cuts<Index, Int> &fc)
     };
     const Index py0 = anchors[lb][0];
     const bool opp0 = fx != bool(anchors[lb][1]);
-    if (walk(py0, opp0))
+    if (walk(py0, opp0) && holes_coincident(la, lb))
       return opp0 ? -1 : 1;
     for (Index j = 0; j < m; ++j) {
       if (j == py0)
@@ -197,7 +263,7 @@ auto make_coplanar_loop_pairs(const tf::face_cuts<Index, Int> &fc)
       if (a != keys[la].u || b != keys[la].v)
         continue;
       const bool opp = fx != fwd;
-      if (walk(j, opp))
+      if (walk(j, opp) && holes_coincident(la, lb))
         return opp ? -1 : 1;
     }
     return 0;
@@ -240,7 +306,19 @@ auto make_coplanar_loop_pairs(const tf::face_cuts<Index, Int> &fc)
 template <typename Index, typename Int>
 auto make_coplanar_loop_pairs(const tf::face_cuts<Index, Int> &fc)
     -> tf::buffer<coplanar_loop_pair<Index>> {
-  return impl::make_coplanar_loop_pairs<coplanar_scope::between_forms>(fc);
+  return impl::make_coplanar_loop_pairs<coplanar_scope::between_forms, Index>(
+      fc, tf::none);
+}
+
+/// @ingroup cut
+/// @brief Coincident region pairs across forms; a matched boundary must
+///        also carry a coincident hole set.
+/// @overload
+template <typename Index, typename Int>
+auto make_coplanar_loop_pairs(const tf::face_regions<Index, Int> &fr)
+    -> tf::buffer<coplanar_loop_pair<Index>> {
+  return impl::make_coplanar_loop_pairs<coplanar_scope::between_forms, Index>(
+      fr, impl::make_hole_context(fr.loop_holes(), fr.holes()));
 }
 
 /// @ingroup cut
@@ -249,7 +327,18 @@ auto make_coplanar_loop_pairs(const tf::face_cuts<Index, Int> &fc)
 template <typename Index, typename Int>
 auto make_coplanar_loop_pairs_self(const tf::face_cuts<Index, Int> &fc)
     -> tf::buffer<coplanar_loop_pair<Index>> {
-  return impl::make_coplanar_loop_pairs<coplanar_scope::within_form>(fc);
+  return impl::make_coplanar_loop_pairs<coplanar_scope::within_form, Index>(
+      fc, tf::none);
+}
+
+/// @ingroup cut
+/// @brief Coincident region pairs within one form.
+/// @overload
+template <typename Index, typename Int>
+auto make_coplanar_loop_pairs_self(const tf::face_regions<Index, Int> &fr)
+    -> tf::buffer<coplanar_loop_pair<Index>> {
+  return impl::make_coplanar_loop_pairs<coplanar_scope::within_form, Index>(
+      fr, impl::make_hole_context(fr.loop_holes(), fr.holes()));
 }
 
 /// @ingroup cut
@@ -262,7 +351,18 @@ auto make_coplanar_loop_pairs_self(const tf::face_cuts<Index, Int> &fc)
 template <typename Index, typename Int>
 auto make_coplanar_loop_pairs_all(const tf::face_cuts<Index, Int> &fc)
     -> tf::buffer<coplanar_loop_pair<Index>> {
-  return impl::make_coplanar_loop_pairs<coplanar_scope::all>(fc);
+  return impl::make_coplanar_loop_pairs<coplanar_scope::all, Index>(fc,
+                                                                    tf::none);
+}
+
+/// @ingroup cut
+/// @brief Coincident region pairs of any two distinct regions.
+/// @overload
+template <typename Index, typename Int>
+auto make_coplanar_loop_pairs_all(const tf::face_regions<Index, Int> &fr)
+    -> tf::buffer<coplanar_loop_pair<Index>> {
+  return impl::make_coplanar_loop_pairs<coplanar_scope::all, Index>(
+      fr, impl::make_hole_context(fr.loop_holes(), fr.holes()));
 }
 
 /// @ingroup cut

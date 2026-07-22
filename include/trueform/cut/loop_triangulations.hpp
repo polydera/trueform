@@ -11,76 +11,56 @@
  * Author: Žiga Sajovic
  */
 #pragma once
-#include "../../core/algorithm/block_reduce_sequenced_aggregate.hpp"
-#include "../../core/algorithm/parallel_copy.hpp"
-#include "../../core/algorithm/parallel_fill.hpp"
-#include "../../core/algorithm/parallel_for_each.hpp"
-#include "../../core/buffer.hpp"
-#include "../../core/edges.hpp"
-#include "../../core/frame_of.hpp"
-#include "../../core/none.hpp"
-#include "../../core/point.hpp"
-#include "../../core/points_buffer.hpp"
-#include "../../core/range.hpp"
-#include "../../core/reallocate.hpp"
-#include "../../core/small_vector.hpp"
-#include "../../core/transformed.hpp"
-#include "../../core/views/constant.hpp"
-#include "../../core/views/points.hpp"
-#include "../../core/views/sequence_range.hpp"
-#include "../../core/views/zip.hpp"
-#include "../../cut/arrangement_graph.hpp"
-#include "../../exact/projection_axes.hpp"
-#include "../../intersect/graph/vertex.hpp"
-#include "../../topology/cdt_refiner.hpp"
-#include "../../topology/constrained_delaunay_triangulator.hpp"
-#include "../../topology/delaunay_triangulator.hpp"
+#include "../core/algorithm/block_reduce_sequenced_aggregate.hpp"
+#include "../core/algorithm/parallel_copy.hpp"
+#include "../core/algorithm/parallel_fill.hpp"
+#include "../core/algorithm/parallel_for_each.hpp"
+#include "../core/buffer.hpp"
+#include "../core/edges.hpp"
+#include "../core/frame_of.hpp"
+#include "../core/none.hpp"
+#include "../core/point.hpp"
+#include "../core/points_buffer.hpp"
+#include "../core/range.hpp"
+#include "../core/small_vector.hpp"
+#include "../core/transformed.hpp"
+#include "../core/views/constant.hpp"
+#include "../core/views/sequence_range.hpp"
+#include "../core/views/zip.hpp"
+#include "../cut/loop_connectivity.hpp"
+#include "../exact/projection_axes.hpp"
+#include "../intersect/graph/vertex.hpp"
+#include "../topology/cdt_refiner.hpp"
+#include "../topology/constrained_delaunay_triangulator.hpp"
+#include "./refine_sizing.hpp"
 #include "tbb/parallel_sort.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
 #include <utility>
-#include <vector>
 
-namespace tf::csg {
-
-/// @ingroup csg
-/// @brief Flavour of the graph's per-loop triangulation store: `stock`
-///        is the plain per-loop Delaunay, `refined` runs quality
-///        refinement (Ruppert) over the cut surface.
-
-} // namespace tf::csg
-
-namespace tf::csg::graph {
+namespace tf::cut {
 
 namespace detail {
 
-inline constexpr double k_lip = 1.0;  // sizing Lipschitz constant
-inline constexpr double k_beta = 1.5; // edge-length term relax factor
-inline constexpr double k_size = 1.5; // split when len > k_size * h
-inline constexpr std::size_t k_lfs_cap = 2048; // O(n^2) lfs guard
-
-// dyadic params live in a 256-unit edge space; depth cap 6 <=> params are
-// multiples of 4
-
-/// Canonical physical-vertex key: created points are tag-independent
-/// (bit 62), originals are (tag << 32) | id.
+/// Physical-vertex identity, the house convention: `{-1, created id}`
+/// for created points (tag-independent), `{tag, original id}` otherwise.
 template <typename Index, typename V>
-inline auto vkey(Index tag, const V &v) -> std::int64_t {
+inline auto pkey(Index tag, const V &v) -> std::array<Index, 2> {
   return v.source == tf::intersect::graph::vertex_source::created
-             ? (std::int64_t(1) << 62) | std::int64_t(v.id)
-             : (std::int64_t(tag) << 32) | std::int64_t(v.id);
+             ? std::array<Index, 2>{Index(-1), v.id}
+             : std::array<Index, 2>{tag, v.id};
 }
 template <typename Index>
-inline auto vkey_orig(Index tag, Index id) -> std::int64_t {
-  return (std::int64_t(tag) << 32) | std::int64_t(id);
+inline auto pkey_orig(Index tag, Index id) -> std::array<Index, 2> {
+  return {tag, id};
 }
 
 /// One dyadic split on a physical edge; param measured from the min-key
 /// endpoint in the 256-unit space.
-struct split_rec {
-  std::int64_t ka, kb;
+template <typename Index> struct split_rec {
+  std::array<Index, 2> ka, kb;
   std::uint8_t num, depth;
   auto param() const -> std::uint32_t {
     return std::uint32_t(num) << (8 - depth);
@@ -104,112 +84,6 @@ template <typename Index> constexpr auto split_ref(Index s) -> Index {
 }
 template <typename Index> constexpr auto steiner_ref(Index t) -> Index {
   return -(2 * t) - 2;
-}
-
-inline auto seg_dist(const std::array<double, 2> &p,
-                     const std::array<double, 2> &a,
-                     const std::array<double, 2> &b) -> double {
-  double dx = b[0] - a[0], dy = b[1] - a[1];
-  double l2 = dx * dx + dy * dy;
-  double t = 0;
-  if (l2 > 0)
-    t = std::clamp(((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2, 0.0, 1.0);
-  double qx = a[0] + t * dx - p[0], qy = a[1] + t * dy - p[1];
-  return std::sqrt(qx * qx + qy * qy);
-}
-
-/// Sizing field on a closed cycle of 2D points: min adjacent edge length,
-/// optionally min distance to non-adjacent segments (lfs proxy), then cyclic
-/// Lipschitz smoothing in both directions.
-template <typename Pts>
-inline auto cycle_sizing(const Pts &pts, bool with_lfs,
-                         tf::buffer<double> &h, tf::buffer<double> &elen)
-    -> void {
-  const std::size_t n = pts.size();
-  elen.allocate(n);
-  for (std::size_t i = 0; i < n; ++i) {
-    const auto &a = pts[i];
-    const auto &b = pts[(i + 1) % n];
-    elen[i] = std::hypot(b[0] - a[0], b[1] - a[1]);
-  }
-  h.allocate(n);
-  for (std::size_t i = 0; i < n; ++i)
-    h[i] = k_beta * std::min(elen[i], elen[(i + n - 1) % n]);
-  if (with_lfs && n <= k_lfs_cap) {
-    for (std::size_t i = 0; i < n; ++i) {
-      std::size_t prev = (i + n - 1) % n;
-      for (std::size_t j = 0; j < n; ++j) {
-        if (j == i || j == prev)
-          continue;
-        double d = seg_dist(pts[i], pts[j], pts[(j + 1) % n]);
-        if (d > 0)
-          h[i] = std::min(h[i], d);
-      }
-    }
-  }
-  for (int pass = 0; pass < 2; ++pass) {
-    for (std::size_t i = 0; i < n; ++i) {
-      std::size_t j = (i + 1) % n;
-      h[j] = std::min(h[j], h[i] + k_lip * elen[i]);
-    }
-    for (std::size_t i = n; i-- > 0;) {
-      std::size_t j = (i + n - 1) % n;
-      h[j] = std::min(h[j], h[i] + k_lip * elen[j]);
-    }
-  }
-}
-
-/// Recursive dyadic splitting of param interval [pa, pb] (256-unit space);
-/// sizing = min(linear interpolation, true lfs at the midpoint via LfsAt).
-/// Alignment guards keep every emitted param a multiple of 4 (depth <= 6)
-/// even on unioned trees.
-template <typename Emit, typename LfsAt>
-inline auto dyadic_split(std::uint32_t pa, std::uint32_t pb,
-                         const std::array<double, 2> &xa,
-                         const std::array<double, 2> &xb, double ha, double hb,
-                         Emit &&emit, LfsAt &&lfs_at) -> void {
-  if (pb - pa <= 4)
-    return;
-  std::uint32_t pm = (pa + pb) / 2;
-  if (pm & 3)
-    return;
-  std::array<double, 2> xm{0.5 * (xa[0] + xb[0]), 0.5 * (xa[1] + xb[1])};
-  double len = std::hypot(xb[0] - xa[0], xb[1] - xa[1]);
-  double hm = std::min(0.5 * (ha + hb), lfs_at(xm));
-  if (len <= k_size * hm)
-    return;
-  emit(pm);
-  dyadic_split(pa, pm, xa, xm, ha, hm, emit, lfs_at);
-  dyadic_split(pm, pb, xm, xb, hm, hb, emit, lfs_at);
-}
-
-/// param (256-space, multiple of 4) -> (odd num, depth <= 6)
-inline auto param_to_rec(std::uint32_t p)
-    -> std::pair<std::uint8_t, std::uint8_t> {
-  int depth = 8;
-  while (depth > 0 && (p & 1) == 0) {
-    p >>= 1;
-    --depth;
-  }
-  return {std::uint8_t(p), std::uint8_t(depth)};
-}
-
-/// Lift a 2D point back onto the face plane (int lattice).
-template <typename Int>
-inline auto lift3(Int x, Int y, int af, int as, const double nd[3],
-                  const double ad[3]) -> tf::point<Int, 3> {
-  tf::point<Int, 3> p{};
-  p[std::size_t(af)] = Int(x);
-  p[std::size_t(as)] = Int(y);
-  int drop = 3 - af - as;
-  double z = ad[std::size_t(drop)];
-  if (nd[drop] != 0) {
-    double s2 = nd[std::size_t(af)] * (double(x) - ad[std::size_t(af)]) +
-                nd[std::size_t(as)] * (double(y) - ad[std::size_t(as)]);
-    z = ad[std::size_t(drop)] - s2 / nd[drop];
-  }
-  p[std::size_t(drop)] = Int(std::llround(z));
-  return p;
 }
 
 template <typename Index, typename Int> struct emit_scratch {
@@ -333,10 +207,11 @@ template <typename Index, typename Int> struct loop_triangulations {
   // created ids below the watermark belong to the intersection graph;
   // at or above they index the provenance tables at id - n_ig_created
   Index n_ig_created = 0;
-  // provenance per extra created point: kind 0 = split (parent = vkey
-  // pair), kind 1 = steiner (parent = {tag, face})
+  // provenance per extra created point: kind 0 = split (parent = the
+  // physical edge, a pair of identities), kind 1 = steiner (parent =
+  // {{tag, face}, {-1, -1}})
   tf::buffer<char> extra_kind;
-  tf::buffer<std::array<std::int64_t, 2>> extra_parent;
+  tf::buffer<std::array<std::array<Index, 2>, 2>> extra_parent;
   // conforming uncut faces
   tf::buffer<std::array<Index, 2>> conf_keys; // sorted (tag, face)
   tf::buffer<Index> conf_tri_offsets;
@@ -361,11 +236,11 @@ template <typename Index, typename Int> struct loop_triangulations {
   /// Created ids below `n_ig_created` are the intersection graph's own
   /// points (its provenance applies) — do not pass them here. At or above,
   /// the id indexes the provenance tables at `created_id - n_ig_created`.
-  /// Returns `{kind, parent}`: kind 0 = split, parent = the canonical vkey
-  /// pair of the parent physical edge; kind 1 = steiner, parent =
-  /// `{tag, face}`.
+  /// Returns `{kind, parent}`: kind 0 = split, parent = the two
+  /// endpoint identities of the parent physical edge; kind 1 = steiner,
+  /// parent = `{{tag, face}, {-1, -1}}`.
   auto created_origin(Index created_id) const
-      -> std::pair<char, std::array<std::int64_t, 2>> {
+      -> std::pair<char, std::array<std::array<Index, 2>, 2>> {
     auto k = std::size_t(created_id - n_ig_created);
     return {extra_kind[k], extra_parent[k]};
   }
@@ -375,7 +250,12 @@ template <typename Index, typename Int> struct loop_triangulations {
   /// representative's range; `rev` marks reversed winding.
   template <typename AG> auto apply_stack_aliases(const AG &ag) -> void {
     tf::parallel_fill(rev, char(0));
+    // Cliques include (dead, dead) triples; only the direct
+    // (live survivor, dead) pair carries the winding relative to the
+    // triangles actually aliased.
     for (const auto &cp : ag.coplanar_pairs()) { // (survivor, dead, reversed)
+      if (ag.dead_loops()[std::size_t(cp[0])])
+        continue;
       ranges[std::size_t(cp[1])] = ranges[std::size_t(cp[0])];
       rev[std::size_t(cp[1])] = char(cp[2]);
     }
@@ -389,27 +269,26 @@ template <typename Index, typename Int> struct loop_triangulations {
                    const Forms &forms, const Converter &conv) -> void {
     auto descs = fc.descriptors();
     auto loops = fc.loops();
-    auto loop_labels = ag.loop_labels();
-    const std::size_t n_loops = std::size_t(loops.size());
+        const std::size_t n_loops = std::size_t(loops.size());
     n_ig_created = Index(ig.points().size());
     ranges.allocate(n_loops);
     rev.allocate(n_loops);
     auto ipts = ig.points();
 
     struct local_t {
-      tf::delaunay_triangulator<Index, Int> tri;
+      tf::constrained_delaunay_triangulator<Index, Int, Int> tri;
       tf::small_vector<tf::point<Int, 2>, 10> pts;
+      tf::small_vector<Index, 24> cons;
+      tf::buffer<Index> rep;
       tf::buffer<std::array<vertex_t, 3>> out;
       tf::buffer<Index> counts;
       Index fails = 0;
     };
     auto task = [&](auto &&range, local_t &local) {
-      constexpr Index k_none_label =
-          tf::arrangement_graph<Index>::none_label;
       for (auto &&[li_z, desc, loop] : range) {
         std::size_t before = local.out.size();
         if (desc.tag != Index(-1) && loop.size() >= 3 &&
-            loop_labels[Index(li_z)] != k_none_label) {
+            !ag.dead_loops()[std::size_t(li_z)]) {
           const Index tag = desc.tag;
           auto face = forms[std::size_t(tag)].faces()[desc.object];
           auto get_pt = [&, tag](Index vid) -> tf::point<Int, 3> {
@@ -428,13 +307,95 @@ template <typename Index, typename Int> struct loop_triangulations {
                     : get_pt(v.id);
             local.pts.push_back({pt[axes.first], pt[axes.second]});
           }
+          // Loop chords as region-boundary constraints, no ear cutting:
+          // exact-equal projections weld (doubled bridge vertices), a
+          // doubled edge toggles to a non-separating imprint, and the
+          // interior is the parity-odd region. Winding follows the
+          // loop's projected orientation.
+          using T1 = typename tf::exact::meta<Int>::T1;
+          using T2 = typename tf::exact::meta<Int>::T2;
+          local.cons.clear();
+          T2 area2(0);
+          {
+            const Index m = Index(local.pts.size());
+            for (Index i = 0, j = m - 1; i < m; j = i++) {
+              const auto &p = local.pts[std::size_t(j)];
+              const auto &q = local.pts[std::size_t(i)];
+              area2 += T2(T1(p[0]) * T1(q[1]) - T1(q[0]) * T1(p[1]));
+              if (p[0] == q[0] && p[1] == q[1])
+                continue;
+              local.cons.push_back(j);
+              local.cons.push_back(i);
+            }
+          }
+          auto edges = tf::make_edges(tf::make_blocked_range<2>(
+              tf::make_range(local.cons.data(), local.cons.size())));
           local.tri.clear();
-          const bool tri_ok = local.tri.build(tf::make_points(local.pts));
+          bool tri_ok = local.tri.build(
+              tf::make_points(local.pts), edges,
+              tf::make_constant_range(true, edges.size()),
+              /*split_constraints=*/false);
+          if (tri_ok) {
+            // Welds are rare: with none, f() is a bijection and the
+            // identity is unambiguous. Otherwise pick the canonical
+            // representative per welded vertex — the smallest identity
+            // pair — so callers sharing the identity space (stack
+            // members, reversed windings) pick the same survivor
+            // regardless of input order.
+            const auto &fmap = local.tri.index_map().f();
+            const Index n_final = Index(local.tri.points().size());
+            const bool welded = std::size_t(n_final) != loop.size();
+            local.rep.clear();
+            if (welded) {
+              local.rep.allocate(std::size_t(n_final));
+              std::fill(local.rep.begin(), local.rep.end(), Index(-1));
+              for (Index i = 0; i < Index(loop.size()); ++i) {
+                const Index fin = fmap[std::size_t(i)];
+                if (fin < 0 || n_final <= fin) {
+                  tri_ok = false;
+                  break;
+                }
+                auto &r = local.rep[std::size_t(fin)];
+                if (r == Index(-1) ||
+                    detail::pkey(tag, loop[std::size_t(i)]) <
+                        detail::pkey(tag, loop[std::size_t(r)]))
+                  r = i;
+              }
+            }
+            if (tri_ok) {
+              auto cdt_faces = local.tri.make_faces();
+              auto labels = local.tri.region_labels();
+              const bool flip = T2(0) < area2;
+              std::size_t fi = 0;
+              const auto &kept = local.tri.index_map().kept_ids();
+              for (auto ftri : cdt_faces) {
+                if ((labels[fi++] & 1) == 0)
+                  continue;
+                const Index r0 =
+                    welded ? local.rep[std::size_t(ftri[0])] : kept[ftri[0]];
+                const Index r1 =
+                    welded ? local.rep[std::size_t(ftri[1])] : kept[ftri[1]];
+                const Index r2 =
+                    welded ? local.rep[std::size_t(ftri[2])] : kept[ftri[2]];
+                if (r0 == Index(-1) || r1 == Index(-1) || r2 == Index(-1)) {
+                  tri_ok = false;
+                  break;
+                }
+                if (flip)
+                  local.out.push_back({loop[std::size_t(r0)],
+                                       loop[std::size_t(r2)],
+                                       loop[std::size_t(r1)]});
+                else
+                  local.out.push_back({loop[std::size_t(r0)],
+                                       loop[std::size_t(r1)],
+                                       loop[std::size_t(r2)]});
+              }
+            }
+          }
+          if (!tri_ok)
+            local.out.erase_till_end(local.out.begin() +
+                                     std::ptrdiff_t(before));
           local.fails += Index(!tri_ok);
-          const auto &idx = local.tri.indices_buffer();
-          for (std::size_t j = 0; j + 3 <= idx.size(); j += 3)
-            local.out.push_back({loop[idx[j]], loop[idx[j + 1]],
-                                 loop[idx[j + 2]]});
         }
         local.counts.push_back(Index(local.out.size() - before));
       }
@@ -481,8 +442,18 @@ template <typename Index, typename Int> struct loop_triangulations {
   auto build_refined(const AG &ag, const FC &fc, const IG &ig,
                      const Forms &forms, const Converter &conv,
                      tf::buffer<tf::point<Int, 3>> &extra_created) -> void {
-    auto conn = ag.connectivity_per_face_edge();
-    auto loop_labels = ag.loop_labels();
+    // The conforming-ring propagation walks loop adjacency; refined
+    // mode builds it locally (the arrangement tier carries only the
+    // coplanar stacks).
+    tf::loop_connectivity<Index> conn_own;
+    {
+      tf::buffer<Index> point_counts;
+      point_counts.allocate(std::size_t(forms.size()));
+      for (std::size_t t = 0; t < std::size_t(forms.size()); ++t)
+        point_counts[t] = static_cast<Index>(forms[t].points().size());
+      conn_own.build(ig, fc, ag.dead_loops(), tf::make_range(point_counts));
+    }
+    auto conn = conn_own.connectivity_per_face_edge();
     auto ipts = ig.points();
     auto descs = fc.descriptors();
     auto loops = fc.loops();
@@ -525,7 +496,7 @@ template <typename Index, typename Int> struct loop_triangulations {
     };
 
     // -------------- pass 1: Ruppert discovery + interior harvest (parallel)
-    tf::buffer<detail::split_rec> all_splits;
+    tf::buffer<detail::split_rec<Index>> all_splits;
     tf::buffer<bool> bailed;
     bailed.allocate(n_loops);
     tf::parallel_fill(bailed, false);
@@ -538,7 +509,7 @@ template <typename Index, typename Int> struct loop_triangulations {
         tf::points_buffer<Int, 2> rpts;
         tf::buffer<Index> flat;
         tf::buffer<bool> splittable;
-        tf::buffer<detail::split_rec> recs;
+        tf::buffer<detail::split_rec<Index>> recs;
         tf::buffer<tf::point<Int, 3>> steiner;
         tf::buffer<Index> steiner_counts; // one per visited loop
         tf::buffer<char> bail_flags;      // one per visited loop
@@ -546,14 +517,12 @@ template <typename Index, typename Int> struct loop_triangulations {
       };
       std::size_t bailed_fill_pos = 0;
       auto task = [&](auto &&range, local_t &local) {
-        constexpr Index k_none_label =
-            tf::arrangement_graph<Index>::none_label;
         for (auto &&[li_z, desc, loop] : range) {
           const std::size_t li = std::size_t(li_z);
           std::size_t steiner_before = local.steiner.size();
           char bail = 0;
           if (desc.tag != Index(-1) && loop.size() >= 3 &&
-              loop_labels[Index(li)] != k_none_label) {
+              !ag.dead_loops()[li]) {
             auto axes = project_setup(desc.tag, desc.object);
             auto conn_row = conn[Index(li)];
             auto &rf = local.rf;
@@ -595,8 +564,8 @@ template <typename Index, typename Int> struct loop_triangulations {
               for (std::size_t j = 0; j < n; ++j) {
                 if (recs[j].size() == 0)
                   continue;
-                auto ka = detail::vkey(desc.tag, loop[j]);
-                auto kb = detail::vkey(desc.tag, loop[(j + 1) % n]);
+                auto ka = detail::pkey(desc.tag, loop[j]);
+                auto kb = detail::pkey(desc.tag, loop[(j + 1) % n]);
                 bool fwd = ka < kb;
                 for (const auto &sr : recs[j]) {
                   std::uint8_t num = sr.numerator;
@@ -661,25 +630,26 @@ template <typename Index, typename Int> struct loop_triangulations {
     // --------------------------------------------------- union with veto:
     // bailed loops veto every split on their boundary — their cycle is
     // emitted whole, so consuming a split anywhere else would T-junction
-    tf::buffer<std::array<std::int64_t, 2>> veto;
+    tf::buffer<std::array<std::array<Index, 2>, 2>> veto;
     for (std::size_t li = 0; li < n_loops; ++li) {
       if (!bailed[li])
         continue;
       auto desc = descs[li];
       auto loop = loops[li];
       for (std::size_t j = 0; j < loop.size(); ++j) {
-        auto ka = detail::vkey(desc.tag, loop[j]);
-        auto kb = detail::vkey(desc.tag, loop[(j + 1) % loop.size()]);
+        auto ka = detail::pkey(desc.tag, loop[j]);
+        auto kb = detail::pkey(desc.tag, loop[(j + 1) % loop.size()]);
         veto.push_back({std::min(ka, kb), std::max(ka, kb)});
       }
     }
     tbb::parallel_sort(veto.begin(), veto.end());
-    auto vetoed = [&](std::int64_t a, std::int64_t b) {
-      std::array<std::int64_t, 2> k{a, b};
+    auto vetoed = [&](const std::array<Index, 2> &a,
+                      const std::array<Index, 2> &b) {
+      std::array<std::array<Index, 2>, 2> k{a, b};
       return std::binary_search(veto.begin(), veto.end(), k);
     };
-    tf::buffer<detail::split_rec> splits;
-    tf::buffer<std::array<std::int64_t, 2>> split_keys;
+    tf::buffer<detail::split_rec<Index>> splits;
+    tf::buffer<std::array<std::array<Index, 2>, 2>> split_keys;
     tf::buffer<Index> split_off;
     tf::buffer<Index> scan_pos;
     tf::buffer<Index> head_pos;
@@ -755,9 +725,10 @@ template <typename Index, typename Int> struct loop_triangulations {
       split_off[std::size_t(n_keys)] = n_kept;
     };
     rebuild_union();
-    auto splits_of = [&](std::int64_t a,
-                         std::int64_t b) -> std::pair<Index, Index> {
-      std::array<std::int64_t, 2> k{std::min(a, b), std::max(a, b)};
+    auto splits_of = [&](const std::array<Index, 2> &a,
+                         const std::array<Index, 2> &b)
+        -> std::pair<Index, Index> {
+      std::array<std::array<Index, 2>, 2> k{std::min(a, b), std::max(a, b)};
       auto it = std::lower_bound(split_keys.begin(), split_keys.end(), k);
       if (it == split_keys.end() || !((*it)[0] == k[0] && (*it)[1] == k[1]))
         return {0, 0};
@@ -781,23 +752,25 @@ template <typename Index, typename Int> struct loop_triangulations {
             true;
 
     tf::buffer<std::array<Index, 2>> conf;
-    tf::buffer<std::array<std::int64_t, 2>> ring_keys;
+    tf::buffer<std::array<std::array<Index, 2>, 2>> ring_keys;
     // keys == nullptr: full scan of the union. keys != nullptr: only faces
     // adjacent to those keys can have changed since the last ring -- their
     // records are a superset refresh, the union dedups the rest
     auto discover_conf =
-        [&](const tf::buffer<std::array<std::int64_t, 2>> *keys = nullptr) {
+        [&](const tf::buffer<std::array<std::array<Index, 2>, 2>> *keys =
+                nullptr) {
       conf.clear();
       const auto &scan = keys ? *keys : split_keys;
-      auto emit_key = [&](const std::array<std::int64_t, 2> &key,
+      auto emit_key = [&](const std::array<std::array<Index, 2>, 2> &key,
                           tf::buffer<std::array<Index, 2>> &out) {
-        auto ka = key[0], kb = key[1];
-        if ((ka >> 62) || (kb >> 62))
+        const auto &ka = key[0];
+        const auto &kb = key[1];
+        if (ka[0] == Index(-1) || kb[0] == Index(-1))
+          return; // created endpoint: not an original mesh edge
+        Index tag = ka[0];
+        if (kb[0] != tag)
           return;
-        Index tag = Index(ka >> 32);
-        if (Index(kb >> 32) != tag)
-          return;
-        Index u = Index(ka & 0xffffffff), v = Index(kb & 0xffffffff);
+        Index u = ka[1], v = kb[1];
         const auto &form = forms[std::size_t(tag)];
         for (auto f_id : form.face_membership()[u]) {
           if (cut_mask[std::size_t(tag)][std::size_t(f_id)])
@@ -844,7 +817,7 @@ template <typename Index, typename Int> struct loop_triangulations {
         tf::buffer<double> fh, felen;
         tf::buffer<std::size_t> fedge;
         tf::buffer<std::uint32_t> fparams;
-        tf::buffer<detail::split_rec> recs;
+        tf::buffer<detail::split_rec<Index>> recs;
       };
       for (int ring = 0; ring < 4; ++ring) {
         discover_conf(ring == 0 ? nullptr : &ring_keys);
@@ -868,8 +841,8 @@ template <typename Index, typename Int> struct loop_triangulations {
               local.fpts.push_back(xu);
               local.fedge.push_back(std::size_t(e));
               local.fparams.push_back(0);
-              auto ka = detail::vkey_orig(tag, u);
-              auto kb = detail::vkey_orig(tag, v);
+              auto ka = detail::pkey_orig(tag, u);
+              auto kb = detail::pkey_orig(tag, v);
               auto [s0, s1] = splits_of(ka, kb);
               bool fwd = ka < kb;
               for (Index k = 0; k < s1 - s0; ++k) {
@@ -901,8 +874,8 @@ template <typename Index, typename Int> struct loop_triangulations {
                   (in != 0 && local.fedge[in] == e) ? local.fparams[in]
                                                     : 256u;
               Index u = Index(face[e]), v = Index(face[(e + 1) % 3]);
-              auto ka = detail::vkey_orig(tag, u);
-              auto kb = detail::vkey_orig(tag, v);
+              auto ka = detail::pkey_orig(tag, u);
+              auto kb = detail::pkey_orig(tag, v);
               bool fwd = ka < kb;
               detail::dyadic_split(
                   pa, pb, local.fpts[i], local.fpts[in], local.fh[i],
@@ -939,13 +912,13 @@ template <typename Index, typename Int> struct loop_triangulations {
     // ----------------------------------- split point materialization: 3D
     // int dyadic interpolation, computed ONCE per unique split so every
     // consumer emits the identical lattice point (watertight by ids)
-    auto key_pt3 = [&](std::int64_t k) -> tf::point<Int, 3> {
-      if (k >> 62)
-        return ipts[Index(k & 0xffffffff)];
-      return get_mesh_point(Index(k >> 32), Index(k & 0xffffffff));
+    auto key_pt3 = [&](const std::array<Index, 2> &k) -> tf::point<Int, 3> {
+      if (k[0] == Index(-1))
+        return ipts[k[1]];
+      return get_mesh_point(k[0], k[1]);
     };
     tf::buffer<tf::point<Int, 3>> split_pts;
-    tf::buffer<std::array<std::int64_t, 2>> split_parents;
+    tf::buffer<std::array<std::array<Index, 2>, 2>> split_parents;
     split_pts.allocate(splits.size());
     split_parents.allocate(splits.size());
     tf::parallel_for_each(
@@ -977,22 +950,20 @@ template <typename Index, typename Int> struct loop_triangulations {
         std::size_t fans = 0;
       };
       auto task = [&](auto &&range, local_t &local) {
-        constexpr Index k_none_label =
-            tf::arrangement_graph<Index>::none_label;
         for (auto &&[li_z, desc, loop] : range) {
           const std::size_t li = std::size_t(li_z);
           std::size_t before = local.tris.size();
           if (desc.tag != Index(-1) && loop.size() >= 3 &&
-              loop_labels[Index(li)] != k_none_label) {
+              !ag.dead_loops()[li]) {
             auto axes = project_setup(desc.tag, desc.object);
             local.lp3.clear();
             local.lref.clear();
             for (std::size_t i = 0; i < loop.size(); ++i) {
               local.lp3.push_back(get_pt3(desc.tag, loop[i]));
               local.lref.push_back(Index(i));
-              auto ka = detail::vkey(desc.tag, loop[i]);
+              auto ka = detail::pkey(desc.tag, loop[i]);
               auto kb =
-                  detail::vkey(desc.tag, loop[(i + 1) % loop.size()]);
+                  detail::pkey(desc.tag, loop[(i + 1) % loop.size()]);
               auto [s0, s1] = splits_of(ka, kb);
               bool fwd = ka < kb;
               for (Index k = 0; k < s1 - s0; ++k) {
@@ -1060,8 +1031,8 @@ template <typename Index, typename Int> struct loop_triangulations {
             Index u = Index(face[e]), v = Index(face[(e + 1) % 3]);
             local.lp3.push_back(get_mesh_point(tag, u));
             local.lref.push_back(Index(e));
-            auto ka = detail::vkey_orig(tag, u);
-            auto kb = detail::vkey_orig(tag, v);
+            auto ka = detail::pkey_orig(tag, u);
+            auto kb = detail::pkey_orig(tag, v);
             auto [s0, s1] = splits_of(ka, kb);
             bool fwd = ka < kb;
             for (Index k = 0; k < s1 - s0; ++k) {
@@ -1131,7 +1102,8 @@ template <typename Index, typename Int> struct loop_triangulations {
                sid < loop_steiner_off[li + 1]; ++sid) {
             extra_kind[std::size_t(n_splits + sid)] = 1;
             extra_parent[std::size_t(n_splits + sid)] = {
-                std::int64_t(desc.tag), std::int64_t(desc.object)};
+                std::array<Index, 2>{desc.tag, desc.object},
+                std::array<Index, 2>{Index(-1), Index(-1)}};
           }
         });
     // conforming-face steiner parents (ids beyond the loop steiner) are
@@ -1193,7 +1165,9 @@ template <typename Index, typename Int> struct loop_triangulations {
               if (r < 0 && (-r - 1) % 2 == 1) {
                 std::size_t sid = std::size_t(n_splits + ((-r - 1) - 1) / 2);
                 extra_kind[sid] = 1;
-                extra_parent[sid] = {std::int64_t(tag), std::int64_t(f_id)};
+                extra_parent[sid] = {std::array<Index, 2>{tag, f_id},
+                                     std::array<Index, 2>{Index(-1),
+                                                          Index(-1)}};
               }
             }
           }
@@ -1201,4 +1175,4 @@ template <typename Index, typename Int> struct loop_triangulations {
   }
 };
 
-} // namespace tf::csg::graph
+} // namespace tf::cut

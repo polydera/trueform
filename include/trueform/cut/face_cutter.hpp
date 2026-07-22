@@ -60,6 +60,59 @@ public:
     return build_generic(loop, edge_defs, get_point, offsets, vertices);
   }
 
+  /// Structure-emitting build: region boundary walks plus hole walks,
+  /// no hole patching. Per emitted loop one entry in `lh_offsets`
+  /// points into `lh_ids`, whose ids index the
+  /// (`hole_offsets`, `hole_vertices`) pool. Fast paths emit hole-free
+  /// loops. Returns the number of emitted loops.
+  template <typename Loop, typename EdgeDefs, typename GetPoint>
+  auto build_regions(const Loop &loop, const EdgeDefs &edge_defs,
+                     const GetPoint &get_point, tf::buffer<Index> &offsets,
+                     tf::buffer<vertex_t> &vertices,
+                     tf::buffer<Index> &hole_offsets,
+                     tf::buffer<vertex_t> &hole_vertices,
+                     tf::buffer<Index> &lh_offsets, tf::buffer<Index> &lh_ids)
+      -> Index {
+    if (edge_defs.size() == 0) {
+      emit_loop(loop, offsets, vertices);
+      lh_offsets.push_back(static_cast<Index>(lh_ids.size()));
+      return 1;
+    }
+
+    if (edge_defs.size() == 1) {
+      auto &&e = edge_defs[0];
+      auto [p0, p1] = find_pair_in_loop(loop, e[0], e[1]);
+      if (p0 >= 0 && p1 >= 0) {
+        split_at(loop, p0, p1, offsets, vertices);
+        lh_offsets.push_back(static_cast<Index>(lh_ids.size()));
+        lh_offsets.push_back(static_cast<Index>(lh_ids.size()));
+        return 2;
+      }
+    }
+
+    prepare_and_split(loop, edge_defs, get_point);
+
+    if (_fs.faces().size() == 0) {
+      write_face(_base_loop, offsets, vertices);
+      lh_offsets.push_back(static_cast<Index>(lh_ids.size()));
+      return 1;
+    }
+
+    const bool with_holes = _fs.holes().size() != 0;
+    Index k = 0;
+    for (const auto &face : _fs.faces()) {
+      write_face(face, offsets, vertices);
+      lh_offsets.push_back(static_cast<Index>(lh_ids.size()));
+      if (with_holes)
+        for (auto h : _fs.holes_for_faces()[std::size_t(k)]) {
+          lh_ids.push_back(static_cast<Index>(hole_offsets.size()));
+          write_face(_fs.holes()[h], hole_offsets, hole_vertices);
+        }
+      ++k;
+    }
+    return static_cast<Index>(_fs.faces().size());
+  }
+
   auto splitter() const -> const tf::face_split_by_edges<Index, Int> & {
     return _fs;
   }
@@ -120,9 +173,8 @@ private:
   }
 
   template <typename Loop, typename EdgeDefs, typename GetPoint>
-  auto build_generic(const Loop &loop, const EdgeDefs &edge_defs,
-                     const GetPoint &get_point, tf::buffer<Index> &offsets,
-                     tf::buffer<vertex_t> &vertices) -> Index {
+  auto prepare_and_split(const Loop &loop, const EdgeDefs &edge_defs,
+                         const GetPoint &get_point) -> void {
     _ihm.clear();
     _base_loop.clear();
     _edges.clear();
@@ -163,6 +215,13 @@ private:
 
     _fs.build(_base_loop, tf::make_edges(tf::make_blocked_range<2>(_edges)),
               tf::make_points(_points));
+  }
+
+  template <typename Loop, typename EdgeDefs, typename GetPoint>
+  auto build_generic(const Loop &loop, const EdgeDefs &edge_defs,
+                     const GetPoint &get_point, tf::buffer<Index> &offsets,
+                     tf::buffer<vertex_t> &vertices) -> Index {
+    prepare_and_split(loop, edge_defs, get_point);
 
     if (_fs.faces().size() == 0) {
       write_face(_base_loop, offsets, vertices);
