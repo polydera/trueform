@@ -109,8 +109,8 @@ void coplanar_primitives(
         pt2<Int> p1j = {face1[j].pt[ax0], face1[j].pt[ax1]};
         pt2<Int> p1nj = {face1[nj].pt[ax0], face1[nj].pt[ax1]};
         if (tf::exact::segments_cross(p0i, p0ni, p1j, p1nj, kernel)) {
-          auto pt = coplanar_edge_edge_point(face0[i], face0[ni], face1[j],
-                                             face1[nj], ax0, ax1);
+          auto pt = kernel.edge_edge_point(face0[i], face0[ni], face1[j],
+                                           face1[nj], ax0, ax1);
           emit_record(tag0, tag1, face0_id, face1_id,
                       {Index(i), tf::topo_type::edge},
                       {Index(j), tf::topo_type::edge}, pt, intersections, pts);

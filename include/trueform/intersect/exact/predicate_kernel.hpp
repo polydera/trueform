@@ -12,7 +12,9 @@
  */
 #pragma once
 
+#include "../../exact/coplanar_edge_edge_point.hpp"
 #include "../../exact/distance_bounds.hpp"
+#include "../../exact/edge_edge_closest_point.hpp"
 #include "../../exact/meta.hpp"
 #include "../../exact/orient2d.hpp"
 #include "../../exact/orient3d.hpp"
@@ -152,6 +154,57 @@ public:
       return a[0] == b[0] && a[1] == b[1];
     return tf::exact::vv_within(
         a, b, typename tf::exact::meta<Int>::T2(_tolerance_int2));
+  }
+
+  /// Contact point of two edges. Exact: the projected-crossing
+  /// interpolation. Tolerated: the closest-approach point — a
+  /// band-declared "coplanar" pair may be skew, where the projected
+  /// crossing sits at an arbitrary parameter of the near-parallel
+  /// corridor (gap up to tol/sin); the closest approach is within the
+  /// band by the predicate that fired, and coincides with the crossing
+  /// when the segments truly cross.
+  template <typename Index>
+  auto edge_edge_point(const tf::exact::vertex<Index, Int> &a0,
+                       const tf::exact::vertex<Index, Int> &a1,
+                       const tf::exact::vertex<Index, Int> &b0,
+                       const tf::exact::vertex<Index, Int> &b1, int ax0,
+                       int ax1) const -> tf::exact::pt3<Int> {
+    if (!_is_tolerated)
+      return tf::exact::coplanar_edge_edge_point(a0, a1, b0, b1, ax0, ax1);
+    return tf::exact::edge_edge_closest_point(a0.pt, a1.pt, b0.pt, b1.pt);
+  }
+
+  /// Transversal flavor: in the exact regime the correct point is the
+  /// already-computed plane crossing (exact zero ⇒ it lies on the face
+  /// edge's line); the tolerated regime replaces it with the
+  /// closest-approach point of the two edges.
+  template <typename Index>
+  auto edge_edge_point(const tf::exact::vertex<Index, Int> &a0,
+                       const tf::exact::vertex<Index, Int> &a1,
+                       const tf::exact::vertex<Index, Int> &b0,
+                       const tf::exact::vertex<Index, Int> &b1,
+                       const tf::exact::pt3<Int> &plane_crossing) const
+      -> tf::exact::pt3<Int> {
+    if (!_is_tolerated)
+      return plane_crossing;
+    return tf::exact::edge_edge_closest_point(a0.pt, a1.pt, b0.pt, b1.pt);
+  }
+
+  /// Do two edges actually come within the tolerance of each other?
+  /// The band predicates over-accept for near-parallel pairs (bound
+  /// scales with 1/sin); this is the well-conditioned confirmation.
+  /// Exact regime: trust the exact zero that got the caller here.
+  template <typename Index>
+  auto edge_contact(const tf::exact::vertex<Index, Int> &a0,
+                    const tf::exact::vertex<Index, Int> &a1,
+                    const tf::exact::vertex<Index, Int> &b0,
+                    const tf::exact::vertex<Index, Int> &b1) const -> bool {
+    if (!_is_tolerated)
+      return true;
+    auto p = tf::exact::edge_edge_closest_point(a0.pt, a1.pt, b0.pt, b1.pt);
+    auto q = tf::exact::segment_closest_point(b0.pt, b1.pt, p);
+    return tf::exact::vv_within(
+        p, q, typename tf::exact::meta<Int>::T2(_tolerance_int2));
   }
 
 private:

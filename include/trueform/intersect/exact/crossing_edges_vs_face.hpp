@@ -118,15 +118,29 @@ void crossing_edges_vs_face(
       bool on_real_edge =
           (s1 == 0 && v1_real) || (s2 == 0) || (s3 == 0 && v3_real);
 
+      std::size_t edge_k = 0;
+      std::size_t nk = 0;
       if (on_real_edge) {
-        std::size_t edge_k = (s2 == 0) ? t + 1 : (s1 == 0) ? 0 : n_face - 1;
+        edge_k = (s2 == 0) ? t + 1 : (s1 == 0) ? 0 : n_face - 1;
+        nk = tf::circular_increment(edge_k, n_face);
+        // The band bound inflates with 1/sin for near-parallel pairs, so
+        // a zero sign can fire with the pierce point far from the face
+        // edge. Confirm real proximity; otherwise the crossing is an
+        // interior one and takes the face-target emit below.
+        if (!kernel.edge_contact(face_verts[edge_k], face_verts[nk], D, E))
+          on_real_edge = false;
+      }
+      if (on_real_edge) {
         bool erep = edge_is_rep(i).second;
         bool ferep = face_is_rep(edge_k).second;
-        if (erep && ferep && (!both_crossing || edge_tag < face_tag))
+        if (erep && ferep && (!both_crossing || edge_tag < face_tag)) {
+          auto Q = kernel.edge_edge_point(face_verts[edge_k], face_verts[nk],
+                                          D, E, P);
           emit_record(edge_tag, face_tag, edge_face_id, face_id,
                       {Index(i), tf::topo_type::edge},
-                      {Index(edge_k), tf::topo_type::edge}, P, intersections,
+                      {Index(edge_k), tf::topo_type::edge}, Q, intersections,
                       pts);
+        }
       } else {
         emit_record(edge_tag, face_tag, edge_face_id, face_id,
                     {Index(i), tf::topo_type::edge},
@@ -224,15 +238,29 @@ void crossing_edges_vs_face_self(
       bool on_real_edge =
           (s1 == 0 && v1_real) || (s2 == 0) || (s3 == 0 && v3_real);
 
+      std::size_t edge_k = 0;
+      std::size_t nk = 0;
       if (on_real_edge) {
-        std::size_t edge_k = (s2 == 0) ? t + 1 : (s1 == 0) ? 0 : n_face - 1;
+        edge_k = (s2 == 0) ? t + 1 : (s1 == 0) ? 0 : n_face - 1;
+        nk = tf::circular_increment(edge_k, n_face);
+        // The band bound inflates with 1/sin for near-parallel pairs, so
+        // a zero sign can fire with the pierce point far from the face
+        // edge. Confirm real proximity; otherwise the crossing is an
+        // interior one and takes the face-target emit below.
+        if (!kernel.edge_contact(face_verts[edge_k], face_verts[nk], D, E))
+          on_real_edge = false;
+      }
+      if (on_real_edge) {
         bool erep = edge_is_rep(i).second;
         bool ferep = face_is_rep(edge_k).second;
-        if (erep && ferep && (!both_crossing || edge_face_id < face_id))
+        if (erep && ferep && (!both_crossing || edge_face_id < face_id)) {
+          auto Q = kernel.edge_edge_point(face_verts[edge_k], face_verts[nk],
+                                          D, E, P);
           emit_record(edge_tag, face_tag, edge_face_id, face_id,
                       {Index(i), tf::topo_type::edge},
-                      {Index(edge_k), tf::topo_type::edge}, P, intersections,
+                      {Index(edge_k), tf::topo_type::edge}, Q, intersections,
                       pts);
+        }
       } else {
         emit_record(edge_tag, face_tag, edge_face_id, face_id,
                     {Index(i), tf::topo_type::edge},

@@ -13,9 +13,10 @@
 #pragma once
 #include "../core/algorithm/parallel_copy.hpp"
 #include "../core/curves_buffer.hpp"
-#include "../cut/cut_graph.hpp"
 #include "../cut/dispatch/self_boolean.hpp"
-#include "../cut/face_cuts.hpp"
+#include "../core/algorithm/parallel_transform.hpp"
+#include "../core/buffer.hpp"
+#include "../cut/construct/extract_intersection_curves.hpp"
 #include "../exact/resolve_int_type.hpp"
 #include "../topology/connect_edges_to_paths.hpp"
 #include "./exact/make_kernel.hpp"
@@ -60,36 +61,25 @@ auto self_intersection_curves(const tf::polygons<Policy> &p,
   ig.build(iwp, apply_to_face, get_mesh_point, config.mode,
            tf::exact::make_kernel(conv, config.tolerance));
 
-  auto paths = [&]() {
-    if (config.mode & tf::intersect_mode::sos) {
-      auto edge_pairs = tf::make_mapped_range(
-          ig.edge_groups(), [](const auto &group) -> std::array<Index, 2> {
-            return {group[0].point_0, group[0].point_1};
-          });
-      return tf::connect_edges_to_paths(tf::make_edges(edge_pairs));
-    } else {
-      tf::face_cuts<Index, ResolvedInt> fc;
-      fc.build(ig, apply_to_face, get_mesh_point);
-
-      tf::cut_graph<Index> cg;
-      cg.build(fc, ig, p);
-
-      return tf::connect_edges_to_paths(
-          tf::make_edges(cg.intersection_edges()));
-    }
-  }();
-
-  auto ipts = ig.points();
   tf::curves_buffer<Index, RealOut, 3> cb;
-  cb.paths_buffer() = std::move(paths);
-  cb.points_buffer().allocate(ipts.size());
-  if constexpr (std::is_integral_v<RealOut>) {
-    tf::parallel_copy(tf::make_points(ipts), cb.points());
+  if (config.mode & tf::intersect_mode::sos) {
+    tf::buffer<std::array<Index, 2>> sos_edges;
+    sos_edges.allocate(std::size_t(ig.edge_groups().size()));
+    tf::parallel_transform(
+        ig.edge_groups(), tf::make_range(sos_edges),
+        [](const auto &group) -> std::array<Index, 2> {
+          return {group[0].point_0, group[0].point_1};
+        });
+    cb = tf::cut::curves_from_seam_edges<RealOut, Index>(sos_edges,
+                                                         ig.points(), conv);
   } else {
-    tf::parallel_copy(
-        tf::make_points(tf::make_mapped_range(
-            ipts, [&conv](const auto &pt) { return conv.deconvert(pt); })),
-        cb.points());
+    // regions, their coplanar collapse, and the seam scan — a single
+    // tag, so the non-manifold rule finds the self seams
+    tf::buffer<Index> point_counts;
+    point_counts.allocate(1);
+    point_counts[0] = static_cast<Index>(p.points().size());
+    cb = tf::cut::make_region_curves<RealOut, Index>(
+        ig, apply_to_face, get_mesh_point, tf::make_range(point_counts), conv);
   }
   if constexpr (!std::is_integral_v<InputReal> &&
                 std::is_integral_v<RealOut>) {

@@ -117,13 +117,101 @@ public:
     };
     build_loops(subranges, apply_to_face, get_point, get_flat_id);
     build_edges(subranges, apply_to_face);
+    const bool resolving =
+        (mode & tf::intersect_mode::resolve_self_crossing_contours) ||
+        _tag_offsets.size() >= (3 + 1);
+    if (resolving && kernel.is_tolerated())
+      _include_boundary_chords();
     intersect::graph::canonicalize_edges(_edge_defs, _edges);
-    if (!(mode & tf::intersect_mode::resolve_self_crossing_contours) &&
-        _tag_offsets.size() < (3 + 1)) {
+    if (!resolving) {
       _materialize_plain(ipts);
     } else
       detect_and_split_crossings(ipts, apply_to_face, get_point, mode, kernel);
     _finalize_edges();
+  }
+
+  /// Tolerance welds insert created vertices into base loops whose
+  /// flanking chords are otherwise invisible to crossing detection (no
+  /// record segment spans them). Emit every created–created consecutive
+  /// loop chord not already present as a stamped boundary edge, so the
+  /// crossing pass tests the emitted boundary like any other segment.
+  /// Both faces adjacent to the original edge carry identical welded
+  /// vertices (edge-targeted records are duplicated), so the two chord
+  /// instances canonicalize into one group and splits stay symmetric.
+  /// Boundary-coincident edges are compacted back into the loops by
+  /// _finalize_edges, exactly as for walk-emitted boundary sub-edges.
+  auto _include_boundary_chords() -> void {
+    auto &defs_raw = _edge_defs.data_buffer();
+    auto &inst_raw = _edges.data_buffer();
+    auto &offs = _edges.offsets_buffer();
+    const auto n_faces = offs.size() - 1;
+
+    tf::buffer<intersect::graph::edge<Index>> extra;
+    tf::buffer<Index> extra_counts;
+    extra_counts.allocate(n_faces);
+    tf::buffer<std::array<Index, 2>> present;
+
+    for (std::size_t f = 0; f < n_faces; ++f) {
+      const auto begin = std::size_t(offs[f]);
+      const auto end = std::size_t(offs[f + 1]);
+      const auto old_extra = extra.size();
+      auto &&loop = _loops[f];
+      const auto m = loop.size();
+      if (m != 0 && end != begin) {
+        present.clear();
+        for (std::size_t e = begin; e < end; ++e) {
+          const auto &d = defs_raw[std::size_t(inst_raw[e])];
+          present.push_back({std::min(d.point_0, d.point_1),
+                             std::max(d.point_0, d.point_1)});
+        }
+        std::sort(present.begin(), present.end());
+        const auto tag = _descriptors[f].tag;
+        const auto object = _descriptors[f].object;
+        for (std::size_t i = 0, j = m - 1; i < m; j = i++) {
+          const auto &a = loop[j];
+          const auto &b = loop[i];
+          if (a.source != intersect::graph::vertex_source::created ||
+              b.source != intersect::graph::vertex_source::created ||
+              a.id == b.id)
+            continue;
+          std::array<Index, 2> key{std::min(a.id, b.id),
+                                   std::max(a.id, b.id)};
+          if (std::binary_search(present.begin(), present.end(), key))
+            continue;
+          extra.push_back({short(tag), short(tag), object, object, a.id,
+                           b.id, Index(0), static_cast<std::int16_t>(j),
+                           std::int16_t(0)});
+        }
+      }
+      extra_counts[f] = static_cast<Index>(extra.size() - old_extra);
+    }
+    if (extra.size() == 0)
+      return;
+
+    tf::buffer<intersect::graph::edge<Index>> new_defs;
+    tf::buffer<Index> new_inst;
+    tf::buffer<Index> new_offs;
+    new_defs.allocate(defs_raw.size() + extra.size());
+    new_inst.allocate(inst_raw.size() + extra.size());
+    new_offs.allocate(offs.size());
+    new_offs[0] = 0;
+    std::size_t w = 0;
+    std::size_t x = 0;
+    for (std::size_t f = 0; f < n_faces; ++f) {
+      for (std::size_t e = std::size_t(offs[f]); e < std::size_t(offs[f + 1]);
+           ++e)
+        new_defs[w++] = defs_raw[std::size_t(inst_raw[e])];
+      for (Index k = 0; k < extra_counts[f]; ++k)
+        new_defs[w++] = extra[x++];
+      new_offs[f + 1] = static_cast<Index>(w);
+    }
+    for (std::size_t e = 0; e < new_defs.size(); ++e) {
+      new_defs[e].id = static_cast<Index>(e);
+      new_inst[e] = static_cast<Index>(e);
+    }
+    defs_raw = std::move(new_defs);
+    inst_raw = std::move(new_inst);
+    offs = std::move(new_offs);
   }
 
   /// The single finalize: loops cleaned once, ordinals derived from the
