@@ -88,6 +88,10 @@ public:
   auto retrieve(uintptr_t ptr) -> emscripten::val {
     typename decltype(_tasks)::accessor acc;
     _tasks.find(acc, ptr);
+    if (__atomic_load_n(&acc->second->status, __ATOMIC_ACQUIRE) == -1) {
+      _tasks.erase(acc);
+      return emscripten::val::undefined();
+    }
     auto val = acc->second->converter(std::move(acc->second->result));
     _tasks.erase(acc);
     return val;

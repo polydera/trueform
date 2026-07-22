@@ -70,6 +70,7 @@ export class AsyncDispatcher {
     // Check for error
     const status = Atomics.load(view, 0);
     if (status === -1) {
+      this._retrieve(slot);
       throw new Error("Async operation failed");
     }
 
@@ -80,8 +81,8 @@ export class AsyncDispatcher {
 
   /**
    * Like run(), but polls with Atomics.load + setTimeout instead of
-   * Atomics.waitAsync. Works in environments where waitAsync is unavailable
-   * (e.g. Node.js). Used for thread pool initialization.
+   * Atomics.waitAsync. Available as a fallback for environments where
+   * waitAsync cannot be used.
    */
   async poll<T>(
     dispatch: () => number,
@@ -96,6 +97,7 @@ export class AsyncDispatcher {
 
     const status = Atomics.load(view, 0);
     if (status === -1) {
+      this._retrieve(slot);
       throw new Error("Async operation failed");
     }
 
