@@ -1,324 +1,315 @@
-# Python Layer Analysis
+# Python/Nanobind Boundary Contract
 
-The Python layer exposes trueform via nanobind with numpy interop, dtype-based dispatch, and parametrized type instantiations.
+> **Task-specific authority.** Read this after `working_method.md`,
+> `cpp_performance_philosophy.md`, and `cpp_execution_patterns.md` when changing
+> Python, nanobind, NumPy ownership, or Python-facing dispatch. This document
+> defines boundary invariants. Binding instantiation layouts vary; inspect the
+> nearest current feature and every owning CMake manifest before adding files.
 
----
+The Python layer validates and normalizes Python values, retains NumPy storage,
+selects concrete native instantiations, and converts native result buffers back
+to NumPy. It does not own an alternate geometry implementation.
 
-## Architecture
+## Boundary model
 
-```
-Python API (tf.boolean_union, tf.Mesh, tf.PointCloud)
-    ↓ dispatch via build_suffix()
-Python Wrapper (_cut/boolean.py, _spatial/mesh.py)
-    ↓ getattr(_trueform.cut, f"boolean_mesh_mesh_{suffix}")
-Nanobind C++ Bindings (python/src/cut/boolean_intint33float3d.cpp)
-    ↓ calls template implementation
-C++ Core (include/trueform/cut/make_boolean.hpp)
-```
+Inputs normally follow this path:
 
----
-
-## 1. Nanobind Binding Layer (`python/src/`)
-
-### 1.1 Module Structure
-
-```cpp
-NB_MODULE(_trueform, m) {
-    tf::py::register_core(m);
-    tf::py::register_spatial_module(m);
-    tf::py::register_cut(m);
-    tf::py::register_geometry_module(m);
-    tf::py::register_topology(m);
-    tf::py::register_intersect(m);
-    tf::py::register_remesh(m);
-    tf::py::register_clean(m);
-    tf::py::register_reindex(m);
-    tf::py::register_io(m);
-}
+```text
+Python facade validates dtype/shape and makes data C-contiguous
+-> nanobind wrapper stores ndarray handles by value
+-> Trueform ranges point directly into Python-owned NumPy memory
+-> synchronous native call performs the computation
 ```
 
-Each `register_*` creates a submodule: `_trueform.cut`, `_trueform.spatial`, etc.
+Native outputs normally follow the opposite ownership path:
 
-### 1.2 Template Instantiation Pattern
-
-C++ templates must be instantiated concretely for Python. Each type combination gets its own `.cpp` file:
-
-```cpp
-// python/src/cut/boolean_intint33float3d.cpp
-m.def("boolean_mesh_mesh_intint33float3d",
-    [](mesh_wrapper<int, float, 3, 3> &mesh0,
-       mesh_wrapper<int, float, 3, 3> &mesh1, int op) {
-        return boolean(mesh0, mesh1, int_to_boolean_op(op));
-    },
-    nanobind::arg("mesh0"), nanobind::arg("mesh1"), nanobind::arg("op"));
+```text
+Trueform owning buffer
+-> `buffer.release()` transfers its allocation
+-> nanobind capsule owns the pointer and calls `tf::deallocate<T>`
+-> NumPy ndarray uses the capsule as its base owner
 ```
 
-**Naming convention**: `{operation}_{index0}{index1}{ngon0}{ngon1}{real}{dims}d`
-- `intint33float3d` = int32×int32, triangles×triangles, float32, 3D
-- `intint3dynfloat3d` = int32×int32, triangles×dynamic, float32, 3D
-- `int64int6433double3d` = int64×int64, tri×tri, double, 3D
+Inputs are usually zero-copy borrowed storage with retained Python ownership.
+Outputs are usually zero-copy ownership transfers from Trueform to NumPy. Do
+not collapse those two distinct lifetime models into “NumPy views C++ memory.”
 
-Each file registers overloads for the relevant type combinations (fixed/dynamic ngon variants, with/without curves, etc.).
+## 1. Input arrays and range construction
 
-### 1.3 Wrapper Types
+Wrappers such as `mesh_data_wrapper`, `point_cloud_data_wrapper`,
+`primitive_wrapper`, and `offset_blocked_array_wrapper` store
+`nanobind::ndarray` objects by value. Those ndarray handles retain the Python
+owner for as long as the native wrapper needs its data.
 
-**`mesh_wrapper<Index, RealT, Ngon, Dims>`** (`python/include/trueform/python/spatial/mesh.hpp`):
-- Holds `shared_ptr<mesh_data_wrapper>` with numpy-backed faces + points
-- Lazy construction: `build_tree()`, `build_face_membership()`, `build_manifold_edge_link()`
-- Access: `.tree()`, `.face_membership()`, `.manifold_edge_link()`
-- Transformation support: `.transformation()`, `.set_transformation(mat)`
+The C++ wrapper then creates semantic ranges directly over `.data()`:
 
-**`offset_blocked_array_wrapper<IndexT, ValueT>`** (`python/include/trueform/python/core/offset_blocked_array.hpp`):
-- Wraps two numpy arrays (offsets + data) as C++ `offset_block_range` view
-- Validates: first offset = 0, last offset = data size
-- Zero-copy: creates `tf::make_offset_block_range()` view directly into numpy memory
+- points become `points` ranges;
+- fixed faces become fixed blocked ranges;
+- dynamic faces become offset-block ranges;
+- primitive batches retain their primitive type, stride, and batch carrier.
 
-### 1.4 Array Return Pattern
+No native algorithm should retain a naked pointer beyond the lifetime of the
+wrapper/ndarray handle that owns it.
 
-C++ results are moved into numpy arrays with zero-copy ownership transfer:
+### Contiguity is a boundary invariant
 
-```cpp
-template <typename T>
-auto make_numpy_array(tf::buffer<T> &&buffer) {
-    T *data = buffer.release();              // Take raw pointer
-    auto capsule = make_capsule<T>(data);    // Wrap in PyCapsule for dealloc
-    return nanobind::ndarray<nanobind::numpy, T, nanobind::shape<-1>>(
-        data, {buffer.size()}, capsule);     // Numpy owns via capsule
-}
+Much of the native layer interprets an ndarray pointer as flat contiguous data.
+The Python facade must therefore normalize accepted arrays before constructing
+the wrapper. `Mesh` and `PointCloud` use the validation helpers in
+`python/src/trueform/_spatial/_validation.py`; primitive wrappers request
+`nanobind::c_contig` where appropriate.
+
+For every new input carrier:
+
+1. validate rank, shape, dtype, and compatible dimensions;
+2. make it C-contiguous once at the Python boundary if linear native access is
+   required;
+3. store the normalized array in the Python facade and/or native wrapper;
+4. build ranges over that retained array;
+5. test a non-contiguous input when the public API promises to accept one.
+
+Do not silently add inner-loop stride handling to core geometry merely to avoid
+one boundary normalization.
+
+## 2. Offset-blocked NumPy data
+
+`OffsetBlockedArray` and `offset_blocked_array_wrapper` preserve the C++
+offset-block model as two flat arrays:
+
+```text
+offsets: [0, ..., data.size]
+data:    packed block contents
 ```
 
-Specialized overloads for `polygons_buffer` (returns faces+points tuple), `curves_buffer` (returns paths+points tuple), `offset_block_buffer` (returns offsets+data tuple).
+The native wrapper stores both ndarray handles and constructs an
+`offset_block_range` over them. The Python `__getitem__` returns a NumPy slice
+view into packed data.
 
-### 1.5 Boolean Implementation
+Required invariants at native entry:
 
-```cpp
-template <typename ...Types>
-auto boolean(mesh_wrapper<...> &form_wrapper0, mesh_wrapper<...> &form_wrapper1,
-             tf::boolean_op op) {
-    // Build tagged forms with tree, face_membership, manifold_edge_link
-    auto form0 = form_wrapper0.make_primitive_range()
-        | tf::tag(form_wrapper0.manifold_edge_link())
-        | tf::tag(form_wrapper0.face_membership())
-        | tf::tag(form_wrapper0.tree());
+- offsets and data use supported integer dtypes;
+- their dtypes match when the concrete native wrapper requires that;
+- both arrays are one-dimensional and contiguous for linear pointer access;
+- the first offset is zero;
+- the last offset equals packed data length;
+- block order retains its C++ carrier meaning.
 
-    // Call C++ algorithm
-    auto [result_mesh, labels, face_labels] = tf::make_boolean(form0, form1, op);
+One-dimensional shape validation does not imply contiguity. Normalize offsets
+and data explicitly in the Python facade before constructing the native wrapper;
+the native range walks `.data()` linearly.
 
-    // Convert to numpy
-    return nanobind::make_tuple(
-        make_numpy_array(std::move(result_mesh)),
-        make_numpy_array(std::move(labels)),
-        make_numpy_array(std::move(face_labels)));
-}
+Do not convert offset-blocked data to `list[np.ndarray]` before native work.
+That loses flat ownership, random-access offsets, and the same implicit join key
+used by the core execution pipeline.
+
+## 3. Native result ownership
+
+`python/include/trueform/python/util/make_numpy_array.hpp` is the standard
+ownership boundary for native buffers.
+
+For a moved `tf::buffer<T>` it:
+
+1. calls `release()` to obtain the allocation;
+2. creates a capsule with `make_capsule`;
+3. constructs a shaped NumPy ndarray using that capsule as owner.
+
+`make_capsule` deallocates with `tf::deallocate<T>`, matching Trueform's
+allocator. Empty arrays use the shared empty-capsule path rather than inventing
+an invalid non-null element.
+
+Overloads preserve structural shape for blocked buffers, points, polygons,
+segments, curves, offset blocks, and index maps. Use those overloads rather
+than manually reconstructing shapes or copying element-by-element.
+
+A new allocation/copy is appropriate when the requested Python value is not an
+owning Trueform buffer, such as materializing a transformation matrix from a
+view. Make that ownership transition explicit.
+
+Never expose a NumPy array over a temporary buffer or stack allocation. Never
+pair a Trueform allocation with Python's default/free allocator.
+
+## 4. Stateful forms and shared views
+
+`mesh_wrapper` and `point_cloud_wrapper` hold shared native data objects. The
+data object retains input ndarrays and lazy caches; transformation state is
+local to the outer wrapper.
+
+`shared_view()` therefore means:
+
+- shared geometry arrays and shared cached structures;
+- a separate outer wrapper;
+- no inherited transformation until the caller sets one.
+
+This is not a deep copy. It is the Python equivalent of multiple transformed
+views over one geometry/cache authority.
+
+Mesh setters reassign the stored ndarray and mark dependent caches modified.
+In-place writes through a previously exposed NumPy array cannot automatically
+signal native cache invalidation. Code that exposes or consumes mutable arrays
+must establish an explicit mutation contract; do not assume cache freshness can
+be inferred from the pointer.
+
+When adding a cached structure, define:
+
+- which source arrays invalidate it;
+- which other caches it depends on;
+- who owns its returned NumPy storage;
+- whether a shared view observes the same cache slot;
+- how reassignment and in-place mutation are handled and tested.
+
+## 5. Python concurrency model
+
+The Python API is synchronous. There is no TypeScript-style promise dispatcher.
+A call enters nanobind, performs native work, converts the result, and returns
+to Python only after completion.
+
+The binding currently does not install a general `gil_scoped_release` or
+nanobind release-GIL call guard. The calling Python thread retains the GIL while
+the native operation runs. This does not prevent oneTBB workers from executing
+pure C++; it does prevent those workers from using the Python C API.
+
+The rule is strict:
+
+- the calling/GIL-owning thread may create nanobind objects, NumPy arrays,
+  capsules, tuples, lists, and exceptions;
+- TBB workers may access retained array memory and pure C++ structures;
+- TBB workers must not construct or mutate Python/nanobind objects;
+- no worker may decref a last Python owner as an incidental side effect.
+
+Do not add `gil_scoped_release` mechanically. First prove that every reachable
+native path, lazy cache build, destructor, error path, and callback is free of
+Python API access for the entire released interval.
+
+## 6. Compute first, commit second
+
+`python/include/trueform/python/intersect/build_intersect_structures.hpp`
+shows the binding-specific phase pattern.
+
+For two or many meshes it:
+
+1. computes trees and missing intersection structures into pure C++ results,
+   using `tbb::parallel_invoke` or a `tbb::task_group` across meshes;
+2. waits for every native computation;
+3. commits results serially on the calling thread by converting buffers to
+   NumPy and assigning wrapper cache slots.
+
+`mesh_data_wrapper::compute_face_membership_if_missing` and
+`compute_manifold_edge_link_if_missing` return optional native structures.
+Their matching `commit_*` methods perform `make_numpy_array` and mutate the
+nanobind-owned cache state.
+
+This separation is not ceremony. It is how Python object creation stays off
+TBB workers while expensive independent work still runs concurrently.
+
+Use the same shape whenever a Python binding wants parallel precomputation:
+
+```text
+prepare retained native views on the calling thread
+-> compute pure C++ values in parallel
+-> barrier
+-> create/assign Python objects on the GIL-owning thread
 ```
 
-Handles 4 transformation cases (has0×has1) via `if/else` branching with frame tagging.
+Do not put a mutex around NumPy construction and call it worker-safe.
 
----
+## 7. Dispatch to concrete native types
 
-## 2. Python Wrapper Layer (`python/src/trueform/`)
+Python facades use runtime metadata to select compile-time C++ instantiations.
+The common path is:
 
-### 2.1 Dispatch System
-
-The core pattern: extract metadata from inputs → build C++ function name suffix → call via `getattr`.
-
-**Metadata extraction** (`_dispatch/meta.py`):
-```python
-class InputMeta(NamedTuple):
-    index_dtype: Optional[np.dtype]
-    real_dtype: np.dtype
-    ngon: Optional[str]        # '3', 'dyn', or None
-    dims: int
-    form_name: Optional[str]   # "mesh", "edge_mesh", "point_cloud"
-
-def extract_meta(data) -> InputMeta:
-    if isinstance(data, Mesh):
-        return InputMeta(index_dtype=..., real_dtype=..., ngon='dyn' if dynamic else str(ngon), ...)
+```text
+validate public objects
+-> `extract_meta`
+-> canonicalize supported operand order
+-> build the registered suffix
+-> `getattr(_trueform.<module>, name)`
+-> pass native wrappers
+-> restore public result semantics if operands were swapped
 ```
 
-**Suffix building** (`_dispatch/suffix.py`):
-```python
-def dtype_str(dtype):
-    return {np.int32: 'int', np.int64: 'int64', np.float32: 'float', np.float64: 'double'}[dtype]
+`canonicalize_index_order` avoids duplicating symmetric index-type
+instantiations. Swapping inputs is not semantically free: boolean labels and
+other source-directed outputs must be corrected afterward.
 
-def build_suffix(meta) -> str:
-    # "int3float3d" for Mesh(int32, float32, tri, 3D)
-    parts = [dtype_str(idx), str(ngon), dtype_str(real), f"{dims}d"]
-    return "".join(filter(None, parts))
+Dispatch naming is an implementation boundary, not a public algorithm. Keep
+suffix construction centralized. Do not scatter dtype string concatenation or
+duplicate validation in every facade.
 
-def build_suffix_pair(meta0, meta1) -> str:
-    # "intint33float3d" for two int32/float32/tri/3D meshes
-```
+Concrete registration layouts differ by module. Some use explicit files for
+type combinations, some macros or shared implementations. Inspect the module's
+registration source and CMake lists; do not generate a remembered matrix that
+the public API does not support.
 
-**Index order canonicalization** (`_dispatch/canonicalize.py`):
-```python
-def canonicalize_index_order(form0, form1):
-    # C++ implements: int×int, int×int64, int64×int64
-    # Swap int64×int32 → int32×int64, return swap flag
-    if idx0 == np.int64 and idx1 == np.int32:
-        return form1, form0, True
-    return form0, form1, False
-```
+## 8. Sealed native engines
 
-### 2.2 Mesh Class (`_spatial/mesh.py`)
+Long-lived expensive structures such as the Python `CsgGraph` use an opaque
+native wrapper rather than exporting their internal ranges.
 
-**Dispatch tables**:
-```python
-_FIXED_SIZE_WRAPPERS = {
-    ("Int", "Float", 3, 2): MeshWrapperIntFloat32D,
-    ("Int", "Float", 3, 3): MeshWrapperIntFloat33D,
-    ("Int", "Double", 3, 3): MeshWrapperIntDouble33D,
-    # ... additional combos for other index/real/ngon/dims types
-}
-```
+`csg_graph_wrapper` owns:
 
-**Constructor**:
-```python
-class Mesh:
-    def __init__(self, faces, points, transformation=None):
-        # Determine real_type from points.dtype (float32 → "Float", float64 → "Double")
-        # Determine index_type from faces.dtype (int32 → "Int", int64 → "Int64")
-        # Look up wrapper class from dispatch table
-        # Create wrapper: self._wrapper = wrapper_class(faces, points)
-```
+- mesh wrappers by value, whose ndarray fields retain NumPy inputs;
+- tagged forms built over those wrappers;
+- the native `tf::csg_graph` that refers to those forms.
 
-Supports both fixed-size faces (numpy 2D array) and dynamic-size faces (`OffsetBlockedArray`).
+The member order and lifetime chain are structural: wrappers outlive forms,
+and forms outlive the graph views built over them. The Python facade may retain
+user-facing forms/configuration, but native topology and query state stay in
+the sealed engine.
 
-### 2.3 Boolean Wrapper (`_cut/boolean.py`)
+Wide outputs move native buffers through `make_numpy_array`. Python expression
+syntax crosses as a compact validated program and is decoded once natively; it
+does not reproduce graph evaluation in Python.
 
-```python
-def boolean_union(mesh0: Mesh, mesh1: Mesh, return_curves=False):
-    return _boolean_impl(mesh0, mesh1, _OP_UNION, return_curves)
+Use this pattern when construction is expensive and queries reuse native
+structure. Do not expose borrowed internal ranges whose owners Python cannot
+keep ordered correctly.
 
-def _boolean_impl(mesh0, mesh1, op, return_curves):
-    # 1. Validate inputs (both Mesh, both 3D, dtypes match)
-    # 2. Canonicalize index order (int64×int32 → swap)
-    # 3. Build suffix: "intint33float3d"
-    # 4. Call: getattr(_trueform.cut, f"boolean_mesh_mesh_{suffix}")(wrapper0, wrapper1, op)
-    # 5. If swapped: flip labels (0↔1)
-    # 6. Wrap dynamic results in OffsetBlockedArray
-    # 7. Return ((faces, points), labels, face_labels) ± curves
-```
+## 9. Adding or changing a binding
 
-### 2.4 OffsetBlockedArray (`_core/offset_blocked_array.py`)
+Inspect a neighboring operation with the same carriers and dtype matrix.
 
-Wraps variable-length blocked data (dynamic polygons, curve paths):
-```python
-class OffsetBlockedArray:
-    def __init__(self, offsets: np.ndarray, data: np.ndarray):
-        self._wrapper = OffsetBlockedArrayWrapper(offsets, data)
-        self.offsets = offsets
-        self.data = data
+Required sequence:
 
-    def __len__(self): return len(self.offsets) - 1
-    def __getitem__(self, i): return self.data[self.offsets[i]:self.offsets[i+1]]
-```
+1. Keep geometry/topology semantics in the C++ core.
+2. Normalize Python inputs once and retain every borrowed ndarray owner.
+3. Build semantic ranges over contiguous retained memory.
+4. Dispatch to the supported concrete native instantiation.
+5. Keep parallel worker phases free of Python/nanobind operations.
+6. Move owning native outputs through `make_numpy_array` and its structural
+   overloads.
+7. Preserve labels, offsets, index maps, and carrier ordering exactly.
+8. Export through the current Python package surface.
+9. Test supported dtype/dimension/arity combinations, invalid boundary inputs,
+   ownership after source deletion, shared-view cache behavior, and
+   non-contiguous inputs where supported.
 
-### 2.5 Public API (`__init__.py`)
+Do not add one file per type combination unless the current module actually
+uses that layout. Update all owning manifests for any new source.
 
-Exports organized by domain:
-```python
-from ._spatial import Mesh, PointCloud, EdgeMesh
-from ._cut import boolean_union, boolean_intersection, boolean_difference, isobands
-from ._geometry import normals, triangulated, fit_icp_alignment, chamfer_error
-from ._topology import label_connected_components, boundary_edges, boundary_paths
-from ._io import read_stl, write_stl, read_obj, write_obj
-from ._clean import cleaned
-from ._reindex import split_into_components, concatenated
-from ._remesh import isotropic_remesh, decimate
-```
+## 10. Review checklist
 
----
+- Does every native pointer have a retained ndarray owner?
+- Are all linearly accessed arrays contiguous before native entry?
+- Are offsets and packed data preserved rather than expanded into Python lists?
+- Does each native output transfer ownership with the matching allocator?
+- Can any NumPy array outlive the storage it views?
+- Are cache invalidation rules explicit for reassignment and in-place mutation?
+- Do shared views intentionally share geometry/cache state?
+- Is every TBB worker path free of Python and nanobind operations?
+- Are Python object creation and cache commits after a worker barrier?
+- Does canonical operand swapping restore directed result semantics?
+- Does the registration matrix match the public dtype promise?
+- Are sealed engine members ordered so every borrowed range outlives its use?
 
-## Stateful graph bindings (the sealed-engine pattern)
+## Reference map
 
-For expensive-build objects queried many times (canonical example:
-`CsgGraph`), bind an opaque wrapper class and keep all user-facing state
-on the Python side:
-
-- C++ `csg_graph_wrapper<Index, Real>` (`python/include/trueform/python/
-  csg/csg_graph_impl.hpp`) stores the input `std::vector<mesh_wrapper>`
-  by value — the wrappers' stored `nb::ndarray` members keep numpy alive,
-  no `keep_alive` policies needed — plus the tagged forms and the
-  `tf::csg_graph` built over them. Structures reuse
-  `build_intersect_structures_all` (parallel per-mesh, cache-aware).
-- The Python facade (`_csg/csg_graph.py`) remembers the forms list,
-  sheets, and config as its own members; only evaluation methods and
-  `created_points` call into C++. Wide returns use frozen dataclasses
-  (`MeshIndexMap`, `DomainsIndexMap`).
-- Import the extension in package code as `from .. import _trueform`
-  (a bare `import _trueform` does not resolve).
-
-## 3. Testing Patterns
-
-### pytest with parametrize
-```python
-REAL_DTYPES = [np.float32, np.float64]
-INDEX_DTYPES = [np.int32, np.int64]
-
-@pytest.mark.parametrize("dtype", REAL_DTYPES)
-@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
-def test_boolean_union(dtype, index_dtype):
-    mesh0 = create_sphere(dtype, index_dtype)
-    mesh1 = create_sphere(dtype, index_dtype, offset=[1, 0, 0])
-    result = tf.boolean_union(mesh0, mesh1)
-    assert result[0][0].shape[1] == 3  # faces are triangles
-```
-
-### Mesh creator factories
-```python
-def create_3d_triangle_mesh(index_dtype, real_dtype):
-    faces = np.array([[0, 1, 2]], dtype=index_dtype)
-    points = np.array([[0,0,0], [1,0,0], [0.5,1,0]], dtype=real_dtype)
-    return tf.Mesh(faces, points)
-
-MESH_CREATORS = {
-    (3, 'triangle'): create_3d_triangle_mesh,
-    (3, 'dynamic'): create_3d_dynamic_mesh,
-}
-```
-
-### numpy assertion helpers
-```python
-np.testing.assert_array_equal(faces, expected_faces)
-np.testing.assert_allclose(points, expected_points, atol=1e-6)
-assert np.isclose(distance, 1.0)
-```
-
----
-
-## 4. Blender Integration
-
-**Docs**: `docs/content/py/4.blender/`
-
-**Plugin**: `python/examples/bpy-plugin/` — Blender add-on with:
-- `core.py`: `BlenderMesh` class with dirty-tracking (modifications detected, caches invalidated)
-- `tools/boolean.py`: Boolean ops integrated into Blender UI
-- `tools/curves.py`: Intersection curve visualization
-
-The Blender integration wraps trueform's Mesh class with automatic conversion from/to Blender mesh data, and caches spatial structures across Blender operations.
-
----
-
-## 5. Build Pipeline
-
-```
-python/CMakeLists.txt
-    → nanobind_add_module(_trueform ...)  → .so/.pyd
-    → Links against tf::trueform
-    → Output: python/build/src/trueform/_trueform.so
-
-pip wheel . -w dist  → trueform-*.whl
-pytest python/tests  → run test suite
-```
-
----
-
-## 6. Key Design Principles
-
-1. **Runtime dispatch**: Python resolves C++ overloads at call time via `getattr(_trueform.module, func_name)`
-2. **Type safety at boundaries**: Validate dtypes, dimensions, and compatibility before dispatching to C++
-3. **Canonical ordering**: int64×int32 automatically swapped to int32×int64 with label fixup
-4. **Zero-copy where possible**: numpy arrays are views into C++ buffers (via PyCapsule ownership)
-5. **Lazy structure building**: tree, face_membership built on demand, not at construction
-6. **Comprehensive parametrized tests**: Every operation tested across all dtype combinations
+- Array ownership transfer: `python/include/trueform/python/util/make_numpy_array.hpp`
+- Capsule deleter: `python/include/trueform/python/util/make_capsule.hpp`
+- Offset blocks: `python/include/trueform/python/core/offset_blocked_array.hpp`
+- Python offset facade: `python/src/trueform/_core/offset_blocked_array.py`
+- Mesh handle: `python/include/trueform/python/spatial/mesh.hpp`
+- Mesh data/caches: `python/include/trueform/python/spatial/mesh_data.hpp`
+- Parallel compute/serial commit: `python/include/trueform/python/intersect/build_intersect_structures.hpp`
+- Primitive ownership: `python/include/trueform/python/core/primitive_wrapper.hpp`
+- Runtime dispatch: `python/src/trueform/_dispatch/`
+- Sealed CSG engine: `python/include/trueform/python/csg/csg_graph_impl.hpp`

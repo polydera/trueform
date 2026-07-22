@@ -20,7 +20,7 @@ namespace tf {
 /// @brief Parallel blocked reduction with custom local and global aggregation.
 ///
 /// Divides the input range into blocks, processes each block in parallel
-/// using the `task` function to accumulate into a local result, then
+/// using the `task` function to accumulate into a block-local result, then
 /// aggregates all local results into the global result using `aggregate`.
 ///
 /// The aggregation happens sequentially to ensure thread-safe access
@@ -28,12 +28,12 @@ namespace tf {
 ///
 /// @tparam Range The input range type.
 /// @tparam Result The global result type.
-/// @tparam LocalResult The thread-local result type.
+/// @tparam LocalResult The block-local result type, copied once per work block.
 /// @tparam F0 Block processing function: `void(block_range, LocalResult&)`.
 /// @tparam F1 Aggregation function: `void(const LocalResult&, Result&)`.
 /// @param data The input range to reduce.
 /// @param result The global result (accumulated into).
-/// @param local_result Template for thread-local storage.
+/// @param local_result Template copied to initialize each block-local result.
 /// @param task Function to process each block.
 /// @param aggregate Function to merge local into global result.
 /// @param n_blocks Number of blocks (default: 5x hardware concurrency).

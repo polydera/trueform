@@ -1,6 +1,8 @@
 # Python Usage Patterns
 
-How to USE trueform from Python. Every pattern below is from the official documentation.
+> **Lookup only.** This file describes public Python usage, not binding or core
+> implementation strategy. Verify names against the current package and read
+> `python_layer.md` before changing bindings.
 
 ```python
 import trueform as tf

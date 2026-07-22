@@ -1,9 +1,9 @@
 # Working Method
 
-How work happens on this codebase: how Žiga directs, and how the agent
-works through him. Read this before any pattern doc. The performance
-laws live in `cpp_performance_philosophy.md`; this is the method that
-produces them.
+How work happens on this codebase: how Žiga directs, how an agent investigates
+mechanisms, and what counts as proof. Read this before the design laws in
+`cpp_performance_philosophy.md` and the concrete phase shapes in
+`cpp_execution_patterns.md`.
 
 ## 1. Taking direction — the most important section
 
@@ -55,11 +55,30 @@ produces them.
   carrier guaranteed by construction BEFORE debugging what broke —
   the missing invariant is usually on that list.
 
+### Investigating performance-critical code
+
+- Do not summarize a module and call that understanding. Trace a complete
+  producer-to-consumer path, including the functions that allocate, group,
+  rebase, compact, or expose its data.
+- Identify the carrier at every phase and write down when it changes: records
+  to sorted groups, faces to loops, loops to regions, regions to triangles.
+- Find the owning buffers and the non-owning ranges separately. Determine which
+  offsets or index maps preserve identity between them.
+- Mark every barrier: discovery, sort, offset computation, sequenced aggregate,
+  identity materialization, substitution, and final copy.
+- Ask what conventional structure the phase shape replaces: a hash table,
+  synchronized append, nested container, repeated clear, random lookup, or
+  recomputation.
+- Read thresholds and fast paths as design evidence. Do not "simplify" them
+  into one generic path without measurements on the real workload.
+
 ## 3. Testing — what counts as proof
 
-- DETERMINISTIC ONLY during correctness work: raw inputs, no RNG, same
-  input → byte-identical output (sequenced aggregation; ties broken by
-  index, never thread timing).
+- DETERMINISTIC OR CANONICALIZABLE during correctness work: raw inputs, no RNG,
+  and the same input must produce semantically identical public output.
+  Require byte identity where ordering is contractual; canonical-sort or compare
+  sets/maps where unordered aggregation is deliberately part of the algorithm.
+  Never let thread timing change carrier identity or externally meaningful ties.
 - Validate the ORACLE before trusting red/green. A gate that passes
   for the wrong reason is worse than none: assertions quantified over
   possibly-empty sets pass vacuously; |area| sums are winding-blind
@@ -108,8 +127,9 @@ produces them.
 
 ## 6. The design philosophy that makes it work
 
-The performance laws are in `cpp_performance_philosophy.md`. The
-method-side counterparts:
+The performance laws are in `cpp_performance_philosophy.md`; their concrete
+implementations are in `cpp_execution_patterns.md`. The method-side
+counterparts:
 
 - Ask of every design question: "where is this decided, and can it be
   decided earlier, structurally?" Correctness by construction beats

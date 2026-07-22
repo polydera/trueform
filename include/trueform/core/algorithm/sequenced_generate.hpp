@@ -51,10 +51,10 @@ auto sequenced_generate(const Range &r, tf::buffer<T> &buffer,
 }
 
 /// @ingroup core_algorithms
-/// @brief Ordered generate with thread-local state for each block.
+/// @brief Ordered generate with reusable block-local state.
 ///
-/// Provides a thread-local state object to each worker, useful for
-/// avoiding repeated allocations of temporary work buffers.
+/// Provides one state object to each sequential work block, useful for avoiding
+/// repeated allocation inside the block's per-element loop.
 template <typename Range, typename T, typename State, typename F>
 auto sequenced_generate(const Range &r, tf::buffer<T> &buffer,
                         State local_state, const F &generator) {
@@ -106,7 +106,7 @@ auto sequenced_generate(const Range &r, std::tuple<tf::buffer<Ts> &...> buffers,
 }
 
 /// @ingroup core_algorithms
-/// @brief Ordered generate into multiple buffers with thread-local state.
+/// @brief Ordered generate into multiple buffers with reusable block-local state.
 template <typename Range, typename... Ts, typename State, typename F>
 auto sequenced_generate(const Range &r, std::tuple<tf::buffer<Ts> &...> buffers,
                         State local_state, const F &generator) {

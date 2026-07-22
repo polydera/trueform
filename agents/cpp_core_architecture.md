@@ -1,6 +1,9 @@
-# C++ Core Architecture
+# C++ Core Primitive Reference
 
-The `core/` module is the foundation of trueform. Every other module builds on its type system, memory model, range abstractions, policy composition, and parallel algorithms. This document is the definitive reference.
+The `core/` module supplies Trueform's type system, memory model, range
+abstractions, policies, and parallel primitives. This is a factual lookup
+reference, not the authority for algorithm design. Read
+`cpp_performance_philosophy.md` and `cpp_execution_patterns.md` first.
 
 ---
 
@@ -216,7 +219,7 @@ template <typename T> class buffer {
 - **`blocked_buffer<T, BlockSize>`** — flat `buffer<T>` accessed as fixed-size blocks. Iteration yields `range<T*, BlockSize>` views. Used for triangles (BlockSize=3), edges (BlockSize=2).
 - **`offset_block_buffer<Index, T>`** — variable-length blocks via `buffer<Index>` offsets + `buffer<T>` data. Used for variable-size polygons, curve paths.
 
-### 4.3 Thread-Local Storage
+### 4.3 Arena-Local Storage — Traversal Escape Hatch
 
 **Files**: `core/local_buffer.hpp`, `core/local_value.hpp`, `core/local_vector.hpp`, `core/cache_aligned_slot.hpp`
 
@@ -232,6 +235,11 @@ template <typename T> struct alignas(128) cache_aligned_slot {
 **`local_value<T>`**: One `T` per thread. Methods: `*local_val` (dereference to thread-local T), `aggregate(BinaryOp)` (combine all threads), `reset(val)`.
 
 128-byte alignment prevents false sharing — each thread's slot is on a separate cache line.
+
+These types are not the default parallel-state model. Use them for irregular
+callback/task traversal, especially tree search, when the traversal cannot
+provide a stable block or a local-state argument. Partitionable work should
+carry state through `parallel_for_each`, generation, or reduction primitives.
 
 ### 4.4 `small_vector<T, N>`
 
@@ -424,7 +432,11 @@ If `T` has a frame policy, `frame_of` returns it. Otherwise returns identity. `t
 
 ### 7.1 Philosophy
 
-**Parallel by default.** Every bulk operation uses TBB unless the workload is trivially small. The threshold is 1000 elements — below that, sequential fallback avoids TBB overhead.
+**Use the parallel vocabulary at the correct grain.** Unchecked primitives enter
+their TBB implementation. Overloads taking `tf::checked` use the primitive's
+small-workload serial fallback; for the primitives below that cutoff is
+currently 1000 elements. Call sites still choose whether this generic cutoff is
+appropriate for their actual kernel.
 
 ### 7.2 Algorithm Vocabulary
 
@@ -448,7 +460,7 @@ static constexpr checked_t checked;
 Passed as extra argument to enable small-workload fallback:
 
 ```cpp
-tf::parallel_for_each(range, func);              // always parallel
+tf::parallel_for_each(range, func);              // enter TBB path
 tf::parallel_for_each(range, func, tf::checked);  // sequential if size < 1000
 ```
 
@@ -463,10 +475,11 @@ reused across the chunk's elements. Pick by what the loop produces:
 | Need | Primitive | Local state |
 |--|--|--|
 | Side effects only, scratch needed | `parallel_for_each(r, f, State{})` | `f(elem, state)`; `state` copied once per chunk — clear and reuse it per element |
-| Variable-length output per element | `generic_generate(r, out, f)` | `f(elem, buffer)`; per-chunk buffer, results spliced in element order |
+| Variable-length output, order irrelevant | `generic_generate(r, out, f)` | `f(elem, buffer)`; per-chunk buffer, aggregate order unspecified |
+| Variable-length output, input order required | `sequenced_generate(r, out, f)` | per-chunk buffer, appended in input-block order |
 | Offsets + data blocks per element | `generate_offset_blocks(r, offsets, data, f)` | same shape, emits offset-block structure |
-| Reduce to one result, order irrelevant | `block_reduce(r, init, local, task, agg)` | `local_t` per chunk, `agg` merges |
-| Emission must be deterministic / ordered | `block_reduce_sequenced_aggregate(r, init, local_t{}, task, agg)` | `task(chunk_range, local)` fills locals in parallel; `agg(local, ...)` runs sequenced in range order — the determinism-gate workhorse |
+| Reduce to one result, order irrelevant | `blocked_reduce(r, init, local, task, agg)` | `local_t` per chunk, `agg` merges |
+| Aggregation order creates structure | `blocked_reduce_sequenced_aggregate(r, init, local_t{}, task, agg)` | `task(chunk_range, local)` fills locals in parallel; `agg(local, ...)` runs in input-block order to preserve jagged alignment, construct offsets, or rebase correlated outputs |
 | Callback API with no state slot (`tf::search`, ray casts, dual-tree traversal) | `local_buffer<T>` / `local_vector<T>` / `local_value<T>` | one slot per TBB thread (cache-aligned), merge via `to_buffer()`. LAST RESORT: every algorithm above threads local state through — use these only when the API gives the callback no way to receive it |
 
 ```cpp
@@ -478,9 +491,11 @@ tf::parallel_for_each(range, [&](auto &elem, local_t &local) {
 ```
 
 The pipeline builders (`build_loops`, `split_edges`,
-`strip_base_loop_edges`) are the reference pattern: a `local_t` struct
-of reusable buffers + `block_reduce_sequenced_aggregate` when output
-order matters.
+`strip_base_loop_edges`) are the reference pattern: a `local_t` struct of
+reusable buffers plus `blocked_reduce_sequenced_aggregate` when input position is
+the identity of the output block. The primitive is not only a determinism gate;
+ordered aggregation preserves implicit joins between jagged carriers and can
+eliminate later sorting or lookup.
 
 ### 7.5 Grouping Utilities
 
@@ -566,27 +581,3 @@ forms → intersections_between_polygons → intersection_graph
   `cut/classification/`). Consumers: `make_csg_mesh` (boolean
   expressions), `make_csg_domains`, `make_outer_shell`,
   `make_intersection_curves(csg_graph)`.
-
-### The reads
-
-- `make_mesh_arrangements` / `make_polygon_arrangements` — worker over
-  the graph + the construct extractors; the graph is the type authority
-  (`index_type`, `input_real_type`) and its form view carries the
-  structures consumers need.
-- `tf::make_intersection_curves(arrangement_graph)`
-  (`cut/make_intersection_curves.hpp`) — curves are a REGION read: the
-  seam scan over the collapsed connectivity (cross-tag between tags,
-  non-manifold within one, coincident-overlap contact borders in both).
-  No triangulation is built to answer it; the standalone
-  `make_intersection_curves(a, b)` primitives path rides the same read
-  via `cut::make_region_curves`.
-
-### The legacy perimeter
-
-`make_boolean` / `make_boolean_pair` and the `cut/construct/` boolean
-stack (with `face_cuts` + `cut_graph`) are the PRE-graph path — still
-exported, correct, and deliberately untouched; the long-term shape is a
-wrapper over `make_csg_graph` + `make_csg_mesh` (Žiga's call, later).
-`embedded_intersection_curves` also still reads `face_cuts`. Do NOT
-mistake `cut_graph` for the pipeline hub — the hub is
-`arrangement_graph`.

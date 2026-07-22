@@ -810,7 +810,7 @@ template <typename Index, typename Int> struct loop_triangulations {
     {
       // rings run sequentially (deepen-only convergence), but WITHIN a
       // ring every conforming face emits its demands independently --
-      // parallel with thread-local scratch, ordered aggregation keeps
+      // parallel with block-local scratch, ordered aggregation keeps
       // the record stream deterministic
       struct ring_local_t {
         tf::buffer<std::array<double, 2>> fpts;

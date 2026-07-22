@@ -21,8 +21,8 @@ namespace tf {
 /// @brief Generate variable-length output from each input element in parallel.
 ///
 /// Processes each element of the input range and allows the generator
-/// to push variable amounts of data to the output buffer. Thread-local
-/// buffers are used internally and merged after parallel processing.
+/// to push variable amounts of data to the output buffer. Block-local buffers
+/// are used internally and merged after parallel processing.
 ///
 /// @tparam Range The input range type.
 /// @tparam T The output buffer element type.
@@ -49,10 +49,10 @@ auto generic_generate(const Range &r, tf::buffer<T> &buffer,
 }
 
 /// @ingroup core_algorithms
-/// @brief Generate with thread-local state for each block.
+/// @brief Generate with reusable block-local state.
 ///
-/// Provides a thread-local state object to each worker, useful for
-/// avoiding repeated allocations of temporary work buffers.
+/// Provides one state object to each sequential work block, useful for avoiding
+/// repeated allocation inside the block's per-element loop.
 template <typename Range, typename T, typename State, typename F>
 auto generic_generate(const Range &r, tf::buffer<T> &buffer, State local_state,
                       const F &generator) {
@@ -104,7 +104,7 @@ auto generic_generate(const Range &r, std::tuple<tf::buffer<Ts> &...> buffers,
 }
 
 /// @ingroup core_algorithms
-/// @brief Generate into multiple buffers with thread-local state.
+/// @brief Generate into multiple buffers with reusable block-local state.
 template <typename Range, typename... Ts, typename State, typename F>
 auto generic_generate(const Range &r, std::tuple<tf::buffer<Ts> &...> buffers,
                       State local_state, const F &generator) {

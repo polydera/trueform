@@ -85,8 +85,8 @@ auto parallel_for_each(Range &&r, Func &&f, tf::grain_t grain) -> void {
 /// @ingroup core_algorithms
 /// @brief Applies a function to each element with per-task state.
 ///
-/// Each parallel task receives a copy of `state`, enabling thread-local
-/// accumulation or context.
+/// Each parallel task receives a copy of `state`, enabling reusable block-local
+/// scratch or accumulation.
 ///
 /// @tparam Range A range type supporting `begin()` and `end()`.
 /// @tparam Func A callable taking an element reference and state.

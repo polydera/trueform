@@ -1,645 +1,638 @@
-# C++ Usage Patterns
+# Using Trueform from C++
 
-How to USE trueform from C++. Every pattern below is from the official documentation.
+> **Caller-facing guide.** Read this when writing examples, applications,
+> bindings, or public documentation that consumes Trueform. It explains how to
+> compose the public API. It is not an implementation-performance guide; for
+> core algorithm work read `cpp_performance_philosophy.md` and
+> `cpp_execution_patterns.md`.
 
----
+The full public reference lives in `docs/content/cpp/2.modules/`. In particular,
+`01.core.md` defines the type, view, buffer, and policy vocabulary used by every
+other module.
 
-## 1. Primitives
+## 1. The caller model
 
-### Creating Primitives
+Trueform is built around five ideas:
 
-```cpp
-// Points
-tf::point<float, 3> pt{1.f, 2.f, 3.f};
-auto pt = tf::make_point(1.f, 2.f, 3.f);       // deduced: point<float, 3>
+1. Geometry is expressed with typed primitives, not anonymous numeric arrays.
+2. Caller-owned storage is exposed as zero-copy semantic views.
+3. Owning buffers appear at materialization and result boundaries.
+4. Policies attach reusable capabilities to views.
+5. Algorithms consume the richest capabilities already present and build
+   missing ones only for convenience.
 
-// Views from existing data
-float buf[3]{1.f, 2.f, 3.f};
-auto pview = tf::make_point_view(buf);            // deduces size
-auto pview = tf::make_point_view<3>(&buf[0]);     // explicit size
+The normal high-performance calling pattern is:
 
-// Vectors
-tf::vector<float, 3> v{1.f, 2.f, 3.f};
-auto v = tf::make_vector(1.f, 2.f, 3.f);
-
-// Unit vectors (normalizes automatically)
-auto uv = tf::make_unit_vector(1.f, 0.f, 0.f);
-auto uv = tf::normalized(v);
-auto uv = tf::make_unit_vector(tf::unsafe, v);    // skip normalization
-
-// Segments
-auto seg = tf::make_segment_between_points(pt0, pt1);
-auto seg = tf::make_segment(ids, points);          // indirect via indices
-auto [p0, p1] = seg;
-
-// Polygons
-auto poly = tf::make_polygon(range_of_points);
-auto poly = tf::make_polygon(face_ids, points);    // indirect via indices
-auto [id0, id1, id2] = poly.indices();
-
-// Lines and Rays
-auto line = tf::make_line(origin, direction);
-auto ray = tf::make_ray_between_points(start, end);
-auto pt_on_line = line(2.5f);  // parametric evaluation
-
-// Planes
-auto plane = tf::make_plane(pt0, pt1, pt2);        // from 3 points
-auto plane = tf::make_plane(normal, point);         // from normal + point
-
-// AABB
-auto aabb = tf::make_aabb(min_pt, max_pt);
-auto aabb = tf::aabb_from(polygons);                // from any geometry
-
-// Conversions
-tf::point<double, 3> dpt = pt;                     // implicit float→double
-auto fpt = dpt.as<float>();                         // explicit
-tf::point<float, 3> zpt = tf::zero;                // zero initialization
+```text
+own stable geometry storage
+-> create points/faces/polygons views
+-> precompute reusable structures in dependency order
+-> tag every structure the planned pipeline consumes
+-> create lazy transformed instances when needed
+-> call algorithms on the tagged forms
+-> retain returned buffers, labels, and index maps
 ```
 
-### Structured Bindings
+Plain one-shot calls are valid. Repeated work should not repeatedly ask the
+convenience layer to rediscover the same tree, topology, normals, or half-edges.
 
-All primitives support destructuring:
+## 2. Includes and public namespace
+
+Include everything:
+
+```cpp
+#include <trueform/trueform.hpp>
+```
+
+Or include module umbrellas:
+
+```cpp
+#include <trueform/core.hpp>
+#include <trueform/spatial.hpp>
+#include <trueform/topology.hpp>
+#include <trueform/cut.hpp>
+```
+
+Most public symbols live directly in `tf::`. The intentionally public nested
+namespaces are `tf::exact` for cut/intersection integer types and `tf::csg` for
+CSG expressions. Do not build application code on implementation namespaces.
+
+## 3. Use Trueform primitives for geometry
+
+Do not represent semantic geometry as anonymous C arrays, `std::array`, or
+tuples throughout application code. Use Trueform's owning primitive types:
+
+```cpp
+tf::point<float, 3> position{1.f, 2.f, 3.f};
+tf::vector<float, 3> direction{1.f, 0.f, 0.f};
+tf::unit_vector<float, 3> normal{direction}; // normalizes
+
+auto segment = tf::make_segment_between_points(position0, position1);
+auto ray = tf::make_ray(position, direction);
+auto plane = tf::make_plane(normal, position);
+auto box = tf::make_aabb(min_point, max_point);
+```
+
+Factories preserve semantic type while deducing scalar type and dimension:
+
+```cpp
+auto point = tf::make_point(1.f, 2.f, 3.f);
+auto vector = tf::make_vector(1.f, 0.f, 0.f);
+auto unit = tf::make_unit_vector(vector);
+auto line = tf::make_line_between_points(point0, point1);
+auto polygon = tf::make_polygon(face_ids, points);
+```
+
+The distinction is useful, not cosmetic:
+
+- point minus point produces a vector;
+- point plus vector produces a point;
+- point plus point and point-times-scalar are intentionally unavailable;
+- unit vectors normalize on construction unless `tf::unsafe` explicitly states
+  that the caller already guarantees unit length;
+- transformations treat points, vectors, normals, and planes according to their
+  geometry rather than as interchangeable numeric arrays.
+
+Structured bindings are available when coordinates or members are needed:
+
 ```cpp
 auto [x, y, z] = point;
-auto [p0, p1] = segment;
-auto [v0, v1, v2] = triangle;
+auto [a, b] = segment;
+auto [p0, p1, p2] = triangle;
 ```
 
----
+### Views at an interop boundary
 
-## 2. Ranges (Zero-Copy Views)
-
-### Making Typed Ranges from Flat Data
+Raw arrays are appropriate as external storage. Wrap them immediately in a
+typed primitive view instead of passing raw coordinate triples through the
+algorithm:
 
 ```cpp
-// Points from flat float array
-std::vector<float> raw;
-auto points = tf::make_points<3>(raw);             // range of point views
+float coordinates[3] = {1.f, 2.f, 3.f};
+auto point = tf::make_point_view(coordinates);
 
-// Points from point primitives
-std::vector<tf::point<float, 3>> owned;
-auto points = tf::make_points(owned);
+float *external = get_external_point();
+auto point3 = tf::make_point_view<3>(external);
+```
 
-// External data (zero-copy)
-float* coords = get_data();
-auto points = tf::make_points<3>(tf::make_range(coords, n * 3));
+The array owns memory; `point_view` supplies geometry. Keep the array alive and
+stable for the lifetime of the view. Copy into `tf::point<T, Dims>` when the
+primitive must own its value independently.
 
-// Faces from flat index array
-std::vector<int> raw_ids;
-auto faces = tf::make_faces<3>(raw_ids);            // triangles
-auto edges = tf::make_edges(raw_ids);               // edges (blocked by 2)
+For generic code, accept the appropriate `*_like` concept/type shape already
+used by neighboring Trueform APIs rather than falling back to `T*` plus a
+dimension argument.
 
-// Polygons from faces + points
+## 4. Storage first, semantic views second
+
+### External storage
+
+Views do not copy their backing data:
+
+```cpp
+std::vector<float> coordinates = {
+    0, 0, 0,
+    1, 0, 0,
+    0, 1, 0,
+};
+std::vector<int> indices = {0, 1, 2};
+
+auto points = tf::make_points<3>(coordinates);
+auto faces = tf::make_faces<3>(indices);
 auto polygons = tf::make_polygons(faces, points);
 ```
 
-### Block and Window Ranges
+`points`, `faces`, and `polygons` borrow the vectors. Keep the vectors alive and
+do not reallocate them while those views are in use.
+
+The same applies to views built from pointers:
 
 ```cpp
-// Fixed blocks
-auto triangles = tf::make_blocked_range<3>(raw_ids);
-auto [a, b, c] = triangles.front();
-
-// Sliding window (consecutive pairs along a path)
-auto pairs = tf::make_slide_range<2>(path_ids);
-for (auto [a, b] : pairs) { /* consecutive vertices */ }
-
-// Variable-length blocks
-auto blocks = tf::make_offset_block_range(offsets, data);
-for (auto block : blocks)
-    for (auto value : block) { /* ... */ }
+auto points = tf::make_points<3>(tf::make_range(point_ptr, n_points * 3));
+auto faces = tf::make_faces<3>(tf::make_range(face_ptr, n_faces * 3));
+auto polygons = tf::make_polygons(faces, points);
 ```
 
-### Composition
+### Owning buffers
+
+Trueform result/storage types own flat memory and expose semantic views:
 
 ```cpp
-// Indirect (gather by index)
-auto selected = tf::make_indirect_range(ids, data);  // data[ids[i]]
-
-// Block indirect (gather + remap within blocks)
-auto remapped = tf::make_block_indirect_range(faces, point_map.f());
-
-// Mapped (transform on access)
-auto doubled = tf::make_mapped_range(data, [](auto x) { return x * 2; });
-
-// Zip (parallel iteration)
-for (auto [pt, normal] : tf::zip(points, normals)) { /* ... */ }
-
-// Enumerate (index + value)
-for (auto [i, face] : tf::enumerate(faces)) { /* ... */ }
-
-// Sequence
-auto ids = tf::make_sequence_range(n);              // 0, 1, 2, ..., n-1
-
-// Slice / take / drop
-auto first_10 = tf::take(range, 10);
-auto skip_5 = tf::drop(range, 5);
-auto middle = tf::slice(range, 5, 15);
-```
-
-### Materialization
-
-```cpp
-tf::buffer<int> output;
-output.allocate(range.size());
-tf::parallel_copy(range, output);
-```
-
----
-
-## 3. Buffers (Owning Storage)
-
-```cpp
-// Points
-tf::points_buffer<float, 3> pts;
-pts.allocate(1000);
-pts.emplace_back(1.f, 2.f, 3.f);
-auto points_view = pts.points();               // non-owning view
-
-// Polygons (triangles)
 tf::polygons_buffer<int, float, 3, 3> mesh;
-mesh.faces_buffer().emplace_back(0, 1, 2);
-auto polygons = mesh.polygons();               // non-owning view
-auto faces = mesh.faces();
-auto points = mesh.points();
 
-// Dynamic polygons (mixed sizes)
-tf::polygons_buffer<int, float, 3, tf::dynamic_size> mixed;
-mixed.faces_buffer().push_back({0, 1, 2});     // triangle
-mixed.faces_buffer().push_back({3, 4, 5, 6}); // quad
-
-// Segments
-tf::segments_buffer<int, float, 3> segs;
-segs.edges_buffer().emplace_back(0, 1);
-
-// Curves
-tf::curves_buffer<int, float, 3> curves;
-curves.paths_buffer().push_back({0, 1, 2});
-
-// Raw data access
-int* face_data = mesh.faces_buffer().data_buffer().data();
-float* pt_data = mesh.points_buffer().data_buffer().data();
+auto polygons = mesh.polygons(); // borrowed combined view
+auto faces = mesh.faces();       // borrowed connectivity view
+auto points = mesh.points();     // borrowed point view
 ```
 
----
+Common duals are:
 
-## 4. Policy Composition (tag / pipe)
+| Owning type | Borrowed semantic view |
+|---|---|
+| `points_buffer` | `points()` |
+| `segments_buffer` | `segments()`, `edges()`, `points()` |
+| `polygons_buffer` | `polygons()`, `faces()`, `points()` |
+| `curves_buffer` | `curves()`, `paths()`, `points()` |
+| `blocked_buffer` | fixed-size block range |
+| `offset_block_buffer` | offset-block range |
 
-The `|` pipe operator attaches precomputed structures to geometry. This is the core pattern for performance — **pre-tag everything the algorithm needs, so it doesn't rebuild it**.
+Keep the owning result alive while using any accessor view. Moving or
+reallocating the owner may invalidate previously obtained views.
 
-### Key Principle: Pre-Tagging is Faster
+### Allocate versus append
 
-Many algorithms require a tree, face_membership, or manifold_edge_link. If you don't tag them, the algorithm builds them internally (and discards them). If you tag them, the algorithm reuses your precomputed structure.
+`tf::buffer::allocate(n)` creates `n` logical, uninitialized elements. Fill them
+by index or with an algorithm. Use `reserve(n)` when the next operation is
+`push_back`/`emplace_back`.
 
 ```cpp
-// SLOW: boolean rebuilds tree + fm + mel internally for each call
-auto [r1, l1, f1] = tf::make_boolean(poly0, poly1, tf::boolean_op::merge);
-auto [r2, l2, f2] = tf::make_boolean(poly0, poly2, tf::boolean_op::merge);
+tf::points_buffer<float, 3> points;
+points.reserve(1000);
+points.emplace_back(1.f, 2.f, 3.f);
+
+tf::buffer<float> values;
+values.allocate(1000);
+tf::parallel_fill(values, 0.f);
 ```
 
-### CSG graph: build once, query many (N-ary)
+`release()` transfers a Trueform allocation. Free it with the matching
+`tf::deallocate<T>`, never `delete[]`.
+
+## 5. Preserve the carrier and its static shape
+
+Fixed topology uses fixed blocked views:
 
 ```cpp
-// One arrangement of N operands; every expression after is a cheap query.
-auto graph = tf::make_csg_graph(forms);   // forms: range of tagged polygons
-// optional: sheets range, intersect_config, tf::triangulation_type::refined_cdt
-
-auto diff  = tf::make_csg_mesh(graph, tf::csg::op(0) - tf::csg::op(1));
-auto full  = tf::make_csg_mesh(graph);    // full arrangement mesh, no selection
-auto [m, tags, faces] = tf::make_csg_mesh(
-    graph, tf::csg::op(0) | tf::csg::op(1), tf::return_source_ids);
-
-auto [cells, ids] = tf::make_csg_domains(graph);        // every kept domain
-auto seams = tf::make_intersection_curves(graph);        // cross-tag polylines
-
-
-// FAST: build once, reuse across multiple operations
-tf::aabb_tree<int, float, 3> tree0(poly0, tf::config_tree(4, 4));
-auto fm0 = tf::make_face_membership(poly0);
-auto mel0 = tf::make_manifold_edge_link(poly0);
-auto form0 = poly0 | tf::tag(tree0) | tf::tag(fm0) | tf::tag(mel0);
-
-// Now each boolean reuses the precomputed structures
-auto [r1, l1, f1] = tf::make_boolean(form0, poly1, tf::boolean_op::merge);
-auto [r2, l2, f2] = tf::make_boolean(form0, poly2, tf::boolean_op::merge);
+auto triangle_faces = tf::make_faces<3>(triangle_ids);
+auto quad_faces = tf::make_faces<4>(quad_ids);
 ```
 
-**Check the function signature or docs to see exactly which tags a function uses.** Common ones:
-- Spatial queries: need `tf::tag(tree)`
-- Booleans: need `tf::tag(tree)`, `tf::tag(face_membership)`, `tf::tag(manifold_edge_link)`
-- Smoothing/curvature: need `tf::tag(face_membership)` or `tf::tag(vertex_link)`
+Variable topology uses offsets plus packed IDs:
 
-### Attaching Spatial Trees
+```cpp
+tf::buffer<int> offsets = {0, 3, 7};
+tf::buffer<int> data = {0, 1, 2, 3, 4, 5, 6};
+auto dynamic_faces = tf::make_faces(offsets, data);
+```
+
+Static arity propagates through Trueform ranges and selects specialized
+implementations. Do not erase triangle/fixed-block information into a dynamic
+carrier unless mixed arity is genuinely required.
+
+`points`, `segments`, and `polygons` are **forms**: their elements are
+independently queryable by spatial structures. Vectors, unit vectors, and curves
+are semantic ranges but are not spatial forms.
+
+## 6. Topology is identity, not coordinate equality
+
+Indexed polygons are connected only when faces reference the same point IDs.
+Two equal coordinates stored under different IDs are topologically distinct.
+
+```cpp
+auto soup = tf::make_polygons(tf::make_blocked_range<3>(raw_triangle_points));
+auto indexed = tf::cleaned(soup); // materializes shared point identities
+```
+
+Clean a soup when coordinate duplicates are intended to become shared vertices.
+Do not clean an already indexed mesh merely by habit: seams and deliberately
+duplicated vertices can carry real meaning.
+
+Returned topology is usually keyed by an existing carrier:
+
+- face membership: block `vertex_id -> face_ids`;
+- vertex link: block `vertex_id -> neighbor_vertex_ids`;
+- face link: block `face_id -> neighbor_face_ids`;
+- manifold edge link: one peer state per face edge;
+- connected-component labels: one label per owning face/vertex carrier;
+- domain labels: one label per face side.
+
+Keep that key space explicit. A source-face provenance label is not a connected
+component label.
+
+## 7. Policies: attach capabilities to the right carrier
+
+The pipe operator attaches compile-time capabilities:
+
+```cpp
+auto form = polygons
+    | tf::tag(tree)
+    | tf::tag(face_membership)
+    | tf::tag(manifold_edge_link)
+    | tf::tag(frame);
+```
+
+Algorithms detect those capabilities and select the reuse path.
+
+### `tag` versus `zip`
+
+- `tf::tag_normals(normals)` attaches a range-level normals carrier; the range
+  exposes `.normals()`.
+- `tf::zip_normals(normals)` additionally exposes `.normal()` on each element.
+- `tf::zip(a, b)` is lazy lockstep composition, not parallel execution. Use
+  `tf::parallel_for_each(tf::zip(a, b), ...)` for a parallel walk.
+
+```cpp
+auto points_with_normals = points | tf::zip_normals(normals);
+auto normal = points_with_normals.front().normal();
+```
+
+### Tag lifetime
+
+Spatial and topology tags borrow their owning structures. Keep the tree,
+membership, links, half-edges, and source geometry alive while the tagged form
+is used.
+
+The same policy type is idempotent and first-wins. Retagging is not a refresh or
+override operation:
+
+```cpp
+auto with_tree = polygons | tf::tag(tree0);
+auto still_tree0 = with_tree | tf::tag(tree1);
+```
+
+Build a new form when a capability must be replaced.
+
+## 8. Precompute, tag, and reuse
+
+**Pre-tag every reusable dependency the planned pipeline consumes.** Build
+dependencies in order so their builders also reuse earlier work.
+
+```cpp
+auto fm = tf::make_face_membership(polygons);
+auto with_fm = polygons | tf::tag(fm);
+
+auto mel = tf::make_manifold_edge_link(with_fm);
+auto fl = tf::make_face_link(with_fm);
+
+tf::aabb_tree<int, float, 3> tree(polygons, tf::config_tree(4, 4));
+
+auto form = with_fm
+    | tf::tag(mel)
+    | tf::tag(fl)
+    | tf::tag(tree);
+```
+
+Calling `make_manifold_edge_link(polygons)` after separately building `fm` would
+miss the reuse path and can build membership again.
+
+### Common capability sets
+
+| Planned work | Carrier and reusable capabilities |
+|---|---|
+| Polygon spatial queries | polygon form + polygon AABB tree |
+| Point search, ICP, Chamfer | points form + point AABB tree |
+| Repeated topology analysis | polygons + FM, then links/labels built from tagged FM |
+| Intersection/cut/boolean | polygon form + tree and MEL; retain/tag FM while building MEL and when other consumers use it |
+| Repeated CSG operands | the same intersection capabilities, then one reusable CSG graph |
+| Sharp edges | polygons + MEL + face normals |
+| Curvature/smoothing | vertex link on points and the required point/face normals |
+| Remeshing | triangle polygons + reusable half-edges |
+
+Check the current function documentation for the exact tags it consumes. Do not
+construct unrelated caches, but do not repeatedly invoke convenience builders
+inside a pipeline.
+
+One-shot convenience remains useful:
+
+```cpp
+auto boundary = tf::make_boundary_edges(polygons); // builds missing topology
+```
+
+Repeated work should carry the authority:
+
+```cpp
+auto boundary = tf::make_boundary_edges(with_fm);
+auto non_manifold = tf::make_non_manifold_edges(with_fm);
+auto closed = tf::is_closed(with_fm);
+```
+
+## 9. Lazy transformations and instances
+
+A tagged transformation changes how algorithms observe geometry without
+rewriting the local-coordinate buffers:
+
+```cpp
+auto base = polygons | tf::tag(tree);
+auto instance0 = base | tf::tag(frame0);
+auto instance1 = base | tf::tag(frame1);
+
+auto distance = tf::distance(instance0, instance1);
+```
+
+The local-space tree is reused for both poses. This is the normal instancing and
+moving-geometry path for spatial queries, intersections, cut, CSG, remeshing
+metrics, registration, and transformed I/O.
+
+An owning frame/transformation is copied or moved into the tag. Mutating an
+external frame afterward does not update the tagged form. Update the frame held
+by the tagged value, deliberately tag a view-backed frame, or create a new
+tagged instance.
+
+`tf::concatenated` is different: it applies tagged transformations and
+materializes new owning world-space geometry.
+
+## 10. Invalidation and updates
+
+Capabilities are valid only for the geometry and identity space from which they
+were built.
+
+| Change | Invalidated state | Action |
+|---|---|---|
+| Point coordinates change | trees, normals, planes, metric-derived structures | rebuild immutable structures or update `mod_tree` |
+| Faces/connectivity change | FM, links, half-edges, component/domain labels, polygon tree | rebuild/remap for the new carrier |
+| Cleaning/reindexing/materialization | structures keyed by old IDs | use returned maps for attributes; rebuild structures on output |
+| Only a lazy frame changes | local-space tree/topology remain valid | create/update the tagged instance |
+
+Use `tf::tree` for immutable/rebuild workflows and `tf::mod_tree` when geometry
+or topology is incrementally updated. A point tree and polygon tree are distinct
+capabilities and belong at different carrier levels.
+
+Never carry an old topology tag onto a new owning mesh just because coordinates
+appear unchanged.
+
+## 11. Results, labels, and index maps
+
+High-level algorithms normally return owning buffers. Immediately named views
+remain tied to those owners:
+
+```cpp
+auto curves = tf::make_intersection_curves(form0, form1);
+auto paths = curves.paths();
+auto curve_points = curves.points();
+```
+
+Optional policy arguments shape result tuples. Request provenance that the
+producer already knows instead of reconstructing it later:
+
+```cpp
+auto [clean_mesh, face_map, point_map] =
+    tf::cleaned(polygons, tf::return_index_map);
+
+auto clean_face_values = tf::reindexed(face_values, face_map);
+auto clean_point_values = tf::reindexed(point_values, point_map);
+```
+
+For ordinary `tf::index_map`:
+
+- `f()[old_id]` is the new ID;
+- `f().size()` is the removed sentinel;
+- `kept_ids()[new_id]` is the retained old ID;
+- merged duplicates can share one valid new ID.
+
+Cut and CSG index-map structs have richer point/face/tag axes. Respect their
+documented sentinels and boundary fields rather than assuming the basic map
+shape.
+
+Keep result meanings separate:
+
+- `tag_labels`: source operand ID;
+- `face_labels`: source face provenance;
+- connected-component labels: connectivity grouping;
+- domain labels: region on each side of a face.
+
+## 12. Choose the right module-level operation
+
+### Spatial
+
+Spatial queries operate on tree-tagged forms:
 
 ```cpp
 tf::aabb_tree<int, float, 3> tree(polygons, tf::config_tree(4, 4));
 auto form = polygons | tf::tag(tree);
 
-// Separate point tree (for point-level queries on mesh vertices)
-tf::aabb_tree<int, float, 3> pt_tree(polygons.points(), tf::config_tree(4, 4));
-auto form = tf::make_polygons(
-    polygons.faces(),
-    polygons.points() | tf::tag(pt_tree)) | tf::tag(tree);
+auto distance = tf::distance(form, query_point);
+auto nearest = tf::neighbor_search(form, query_point, radius); // linear radius
+auto hit = tf::ray_hit(ray, form, ray_config);
 ```
 
-### Attaching Topology
+Prefer `gather_ids` for bulk ID collection. Manual `search` is for custom tree
+traversal and requires thread-safe callback aggregation.
+
+### Topology
+
+Build dependency authorities once, then ask multiple questions:
 
 ```cpp
 auto fm = tf::make_face_membership(polygons);
-auto mel = tf::make_manifold_edge_link(polygons);
-auto vl = tf::make_vertex_link(polygons);
-auto form = polygons | tf::tag(fm) | tf::tag(mel) | tf::tag(tree);
+auto with_fm = polygons | tf::tag(fm);
+auto mel = tf::make_manifold_edge_link(with_fm);
+auto topology = with_fm | tf::tag(mel);
+
+auto boundaries = tf::make_boundary_paths(topology);
+auto components =
+    tf::make_manifold_edge_connected_component_labels(topology);
+auto [meshes, component_ids] =
+    tf::split_into_components(polygons, components);
 ```
 
-### Attaching Transformations
+Do not pass boolean/arrangement `face_labels` to `split_into_components` and
+describe the result as connectivity components; those labels group by source
+face.
 
-Tagging a transformation means **the geometry is transformed at query time**, not upfront. The original data stays in its local coordinate system. This is how you do collision detection with moving objects — same data, different pose each frame.
+Use `tf::triangulated_faces(polygons)` when only triangle connectivity is
+needed and points should remain shared. Use `tf::triangulated(polygons)` for a
+new owning triangle mesh.
+
+### Geometry
+
+Geometry factories and analyses return owning buffers:
 
 ```cpp
-// Static rotation: data stays local, queries see rotated geometry
-auto rotation = tf::make_rotation(tf::deg(45.f), tf::axis<2>);
-auto rotated = polygons | tf::tag(rotation);
+auto normals = tf::compute_normals(polygons);
+auto sharp = tf::make_sharp_edges(
+    polygons | tf::tag(mel) | tf::tag_normals(normals.unit_vectors()),
+    tf::deg(30.f));
+```
 
-// Dynamic pose: update the frame, queries see new position
-auto frame = tf::make_frame(tf::random_transformation<float, 3>());
-auto dynamic = polygons | tf::tag(frame);
+Registration and Chamfer search require a target point tree:
 
-// Shared views: same data + tree, different transformation per instance
+```cpp
+tf::aabb_tree<int, float, 3> target_tree(target_points,
+                                         tf::config_tree(4, 4));
+auto target = target_points | tf::tag(target_tree);
+auto delta = tf::fit_icp_alignment(source_points | tf::tag(initial), target,
+                                   config);
+auto total = tf::transformed(initial, delta);
+auto error = tf::chamfer_error(source_points | tf::tag(total), target);
+```
+
+Chamfer error is directional; compute both directions for a symmetric metric.
+Smoothing consumes a vertex link tagged on the point carrier.
+
+### Remesh
+
+High-level remesh functions require triangle polygons and return a new owning
+mesh plus resulting half-edges:
+
+```cpp
+auto triangles = tf::triangulated(polygons);
+tf::half_edges<int> he(triangles.polygons());
+
+auto [decimated, decimated_he] =
+    tf::decimated(triangles.polygons() | tf::tag(he), 0.1f);
+```
+
+Choose by stopping rule:
+
+- `decimated`: target face fraction;
+- `simplified`: geometric error budget;
+- `isotropic_remeshed`: target edge length;
+- `collapsed_short_edges`: length threshold.
+
+Set `config.parallel = false` when an outer application already parallelizes
+many meshes. Low-level overloads operating on half-edges and point buffers can
+mutate those objects in place; do not confuse them with functional high-level
+returning overloads.
+
+### Intersect, Cut, and CSG
+
+Choose the cheapest materialization that answers the question:
+
+| Need | Operation |
+|---|---|
+| Intersection polylines only | `make_intersection_curves` |
+| Curves embedded into source topology | `embedded_intersection_curves` |
+| Complete cut surface and provenance | mesh/polygon arrangements |
+| One boolean result | `make_boolean` |
+| Both open halves at the cut | `make_boolean_pair` |
+| Many expressions/domains/shells/seams over fixed operands | one `csg_graph`, many extractors |
+
+For repeated intersection/cut work, tag every operand's reusable structures:
+
+```cpp
+auto fm = tf::make_face_membership(polygons);
+auto with_fm = polygons | tf::tag(fm);
+auto mel = tf::make_manifold_edge_link(with_fm);
 tf::aabb_tree<int, float, 3> tree(polygons, tf::config_tree(4, 4));
-auto base = polygons | tf::tag(tree);
-
-auto instance_a = base | tf::tag(tf::make_rotation(tf::deg(0.f), tf::axis<2>));
-auto instance_b = base | tf::tag(tf::make_rotation(tf::deg(90.f), tf::axis<2>));
-
-// Both share the same tree and data — only the transform differs
-auto d = tf::distance(instance_a, instance_b);
+auto form = with_fm | tf::tag(mel) | tf::tag(tree);
 ```
 
-### Attaching Normals
+Boolean/CSG inclusion expects locally consistently oriented PWN inputs. Select
+`intersect_mode`, tolerance, and arrangement triangulation for the input
+semantics; do not treat configuration as a performance-only knob.
+
+Build one CSG graph for repeated extraction:
 
 ```cpp
-// Per-range normals (range has .normals())
-auto pts = tf::make_points<3>(coords) | tf::tag_normals(point_normals);
-auto n = pts.normals();
+std::array forms{form0, form1, form2};
+auto forms_range = tf::make_range(forms);
+auto graph = tf::make_csg_graph(forms_range);
 
-// Per-element zip (each element has .normal())
-auto pts = tf::make_points<3>(coords) | tf::zip_normals(point_normals);
-auto n = pts.front().normal();
-
-// Tags propagate through transformations
-auto rotated_pt = tf::transformed(tagged_point, frame);
-auto same_id = rotated_pt.id();            // copied as-is
-auto rotated_n = rotated_pt.normal();      // rotated by inverse transpose
+auto mesh = tf::make_csg_mesh(
+    graph, tf::csg::op(0) - tf::csg::merge(1, 2));
+auto full_arrangement = tf::make_csg_mesh(graph);
+auto seams = tf::make_intersection_curves(graph);
+auto [cells, ids] = tf::make_csg_domains(graph);
 ```
 
-### Tags are Idempotent
+The source buffers, forms container/range, and externally tagged structures
+must outlive the graph. Direct intersection-curve calls perform a fresh
+intersection; the graph overload reuses the stored arrangement.
 
-Applying the same tag type twice is a no-op — safe to tag unconditionally:
-```cpp
-auto tagged = polygon | tf::tag_plane();
-auto still_tagged = tagged | tf::tag_plane();  // no-op, no recomputation
-```
+### Clean and Reindex
 
----
-
-## 5. Spatial Queries
-
-All require tagged forms: `form = polygons | tf::tag(tree)`.
-
-### Distance
+Use cleaning to create or repair identity, and request maps when aligned data
+must follow:
 
 ```cpp
-auto d2 = tf::distance2(form, point);              // squared
-auto d = tf::distance(form, segment);               // euclidean
-auto d = tf::distance(form0, form1);                // form-to-form
+auto [cleaned, face_map, point_map] =
+    tf::cleaned(polygons, tolerance, tf::return_index_map);
+auto filtered = tf::reindexed_by_mask(cleaned.polygons(), face_mask);
 ```
 
-### Neighbor Search
+Soup cleaning creates indexed geometry but has no meaningful source index map.
+Curve cleaning returns only a point map because reconnecting paths changes edge
+identity.
+
+`concatenated` materializes one owning carrier and offsets indices. Mixed face
+arity produces dynamic polygons. `split_into_components` groups by the labels
+you supply; it does not infer connectivity by itself.
+
+### I/O
+
+Readers return owning buffers:
 
 ```cpp
-// Nearest (always finds one)
-auto [id, metric_pt] = tf::neighbor_search(form, point);
-auto [dist2, closest_pt] = metric_pt;
-
-// Within radius (may not find any)
-auto result = tf::neighbor_search(form, point, radius2);
-if (result) { auto [id, mp] = result; }
-
-// Form-to-form closest pair
-auto [ids, mpp] = tf::neighbor_search(form0, form1);
-auto [id0, id1] = ids;
-
-// k-NN
-std::array<tf::nearest_neighbor<int, float, 3>, 10> buf;
-auto knn = tf::make_nearest_neighbors(buf.begin(), k);
-tf::neighbor_search(form, point, knn);
-for (auto [id, mp] : knn) { /* sorted by distance */ }
+auto stl = tf::read_stl("mesh.stl");       // indexed float triangles
+auto obj = tf::read_obj("mesh.obj");       // dynamic polygons, positions
+auto complete = tf::read_obj("mesh.obj", tf::complete);
 ```
 
-### Ray Casting
-
-```cpp
-auto config = tf::make_ray_config(0.f, 100.f);
-
-auto result = tf::ray_cast(ray, form, config);
-if (result) { auto [prim_id, info] = result; /* info.t */ }
-
-auto hit = tf::ray_hit(ray, form, config);
-if (hit) { auto [prim_id, info] = hit; /* info.t, info.point */ }
-```
-
-### Intersection Tests
-
-```cpp
-bool collide = tf::intersects(form0, form1);
-bool hit = tf::intersects(form, polygon);
-```
-
-### Gathering IDs
-
-```cpp
-// Collect intersecting pairs
-std::vector<std::pair<int,int>> pairs;
-tf::gather_ids(form0, form1, tf::intersects_f, std::back_inserter(pairs));
-
-// Self-intersection pairs
-tf::gather_self_ids(form, tf::intersects_f, std::back_inserter(pairs));
-
-// Within custom predicate
-tf::gather_ids(form,
-    [&](const auto &bv) { return tf::intersects(bv, query_aabb); },
-    [&](const auto &prim) { return tf::intersects(prim, query_aabb); },
-    std::back_inserter(ids));
-```
-
-### Manual Tree Traversal
-
-```cpp
-tf::search(form,
-    [&](const auto &bv) { return tf::intersects(bv, query); },
-    [&](const auto &prim) { /* process matching primitive */ });
-
-// Dual-tree with thread-safe aggregation
-tf::local_vector<std::pair<int,int>> local;
-tf::search(form0, form1, tf::intersects_f,
-    [&](const auto &p0, const auto &p1) {
-        if (tf::intersects(p0, p1))
-            local.push_back({p0.id(), p1.id()});
-    });
-auto result = local.to_vector();
-```
-
----
-
-## 6. Topology
-
-### Connectivity Structures (build-once, query-many)
-
-```cpp
-auto fm = tf::make_face_membership(polygons);     // vertex → faces
-auto vl = tf::make_vertex_link(polygons);          // vertex → neighbor vertices
-auto fl = tf::make_face_link(polygons);            // face → neighbor faces
-auto mel = tf::make_manifold_edge_link(polygons);  // face edge → peer face
-
-// Query
-for (auto face_id : fm[vertex_id]) { /* ... */ }
-for (auto neighbor : vl[vertex_id]) { /* ... */ }
-for (auto peer : mel[face_id]) {
-    if (peer.is_boundary()) { /* ... */ }
-    if (peer.is_simple()) { /* peer.face_peer */ }
-}
-```
-
-### Mesh Analysis
-
-```cpp
-auto bedges = tf::make_boundary_edges(polygons);
-auto nmedges = tf::make_non_manifold_edges(polygons);
-bool closed = tf::is_closed(polygons);
-bool manifold = tf::is_manifold(polygons);
-int chi = tf::euler_characteristic(polygons);
-```
-
-### Connected Components
-
-```cpp
-auto cl = tf::make_manifold_edge_connected_component_labels(polygons);
-// cl.n_components, cl.labels (per-face)
-
-auto [components, comp_ids] = tf::split_into_components(polygons, cl.labels);
-```
-
-### Boundary Paths
-
-```cpp
-auto paths = tf::make_boundary_paths(polygons);
-for (auto path : paths)
-    for (auto vertex_id : path) { /* ... */ }
-```
-
-### Orientation
-
-```cpp
-tf::orient_faces_consistently(polygons);           // in-place
-tf::ensure_positive_orientation(polygons);          // outward normals
-tf::reverse_winding(faces);                         // flip all
-```
-
-### Triangulation
-
-```cpp
-tf::ear_cutter<int> ec;
-ec.build(vertex_ids, points_2d);
-for (auto face : ec.faces()) { auto [a, b, c] = face; }
-```
-
----
-
-## 7. Geometry
-
-### Mesh Generation
-
-```cpp
-auto box = tf::make_box_mesh<int>(5.f, 2.f, 5.f);
-auto sphere = tf::make_sphere_mesh<int>(3.f, 20, 20);
-auto cylinder = tf::make_cylinder_mesh<int>(2.f, 10.f, 50);
-auto plane = tf::make_plane_mesh<int>(10.f, 10.f, 20, 20);
-auto tube = tf::make_tube_mesh<int>(curve, 0.5f, 8);
-auto tubes = tf::make_tube_mesh<int>(curves, 0.5f, 8);
-```
-
-### Normals and Curvatures
-
-```cpp
-auto face_normals = tf::compute_normals(polygons);
-auto point_normals = tf::compute_point_normals(polygons);
-```
-
-### Registration
-
-```cpp
-auto transform = tf::fit_rigid_alignment(source_points, target_points);
-auto transform = tf::fit_icp_alignment(source, target, state, config);
-auto error = tf::chamfer_error(A, B);
-```
-
-### Processing
-
-```cpp
-auto triangulated = tf::triangulated(polygons);
-auto smoothed = tf::laplacian_smoothed(points, 10, 0.5f);
-auto edges = tf::make_sharp_edges(polygons, tf::deg(30.f));
-```
-
----
-
-## 8. Boolean Operations
-
-```cpp
-// Basic boolean
-auto [mesh, labels, face_labels] = tf::make_boolean(
-    poly0, poly1, tf::boolean_op::merge);
-
-// With curves
-auto [mesh, labels, face_labels, curves] = tf::make_boolean(
-    poly0, poly1, tf::boolean_op::intersection, tf::return_curves);
-
-// Mesh arrangements (N inputs)
-const std::array forms{poly0, poly1, poly2};
-auto [mesh, tag_labels, face_labels] = tf::make_mesh_arrangements(forms);
-
-// Intersection curves only
-auto curves = tf::make_intersection_curves(poly0, poly1);
-```
-
----
-
-## 9. Clean and Reindex
-
-```cpp
-auto cleaned = tf::cleaned(polygons);
-auto cleaned = tf::cleaned(polygons, tolerance);
-
-auto [components, labels] = tf::split_into_components(polygons, face_labels);
-auto merged = tf::concatenated(poly0, poly1, poly2);
-auto filtered = tf::reindexed_by_ids(polygons, face_ids);
-auto filtered = tf::reindexed_by_mask(polygons, bool_mask);
-```
-
----
-
-## 10. I/O
-
-```cpp
-auto mesh = tf::read_stl("model.stl");
-auto mesh = tf::read_obj<3>("model.obj");           // triangles
-auto mesh = tf::read_obj("model.obj");               // dynamic
-
-tf::write_stl(polygons, "output.stl");
-tf::write_obj(polygons, "output.obj");
-```
-
----
-
-## 11. Parallel Algorithms
-
-### Basic Parallel Operations
-
-```cpp
-tf::parallel_for_each(range, [](auto&& elem) { /* ... */ });
-tf::parallel_for_each(range, func, tf::checked);    // sequential if < 1000
-tf::parallel_copy(source, destination);
-tf::parallel_fill(buffer, value);
-tf::parallel_iota(buffer, 0);
-tf::parallel_transform(input, output, func);
-```
-
-### Data Generation (Performance-Critical)
-
-These are the workhorses for generating variable-length output in parallel. Use them instead of manual loops + push_back.
-
-**`generic_generate`** — parallel generation into a flat buffer. Each element produces variable-length output. Thread-local buffers are merged automatically.
-
-```cpp
-// Generate boundary edges: each face may produce 0-N edges
-tf::blocked_buffer<int, 2> boundary_edges;
-tf::generic_generate(tf::enumerate(faces), boundary_edges.data_buffer(),
-    [&](const auto &pair, auto &buffer) {
-        auto [face_id, face] = pair;
-        for (int i = 0; i < face.size(); ++i)
-            if (is_boundary(face[i], face[(i+1) % face.size()]))
-                buffer.push_back(face[i]), buffer.push_back(face[(i+1) % face.size()]);
-    });
-
-// With thread-local work buffer (reused across iterations)
-tf::generic_generate(input, output,
-    tf::small_vector<int, 10>{},  // thread-local scratch
-    [&](const auto &elem, auto &out, auto &scratch) {
-        scratch.clear();
-        process(elem, scratch);
-        for (auto v : scratch) out.push_back(v);
-    });
-
-// Into multiple buffers simultaneously
-tf::generic_generate(input, std::tie(buf_a, buf_b, buf_c),
-    [&](const auto &elem, auto &outputs) {
-        auto &[a, b, c] = outputs;
-        if (cond_a(elem)) a.push_back(...);
-        if (cond_b(elem)) b.push_back(...);
-    });
-```
-
-**`generate_offset_blocks`** — parallel generation of variable-length blocks (like offset_block_buffer). Each input produces one block of variable length.
-
-```cpp
-// Build per-vertex face adjacency
-tf::offset_block_buffer<int, int> adjacency;
-tf::generate_offset_blocks(tf::make_sequence_range(n_verts), adjacency,
-    [&](int vertex_id, auto &block) {
-        for (auto face_id : compute_neighbors(vertex_id))
-            block.push_back(face_id);
-    });
-```
-
-**`blocked_reduce`** — parallel reduce with thread-local accumulators, merged sequentially. For when you need parallel accumulation into complex structures.
-
-```cpp
-tf::buffer<intersection_t> intersections;
-tf::buffer<point<float,3>> points;
-
-tf::blocked_reduce(
-    tf::enumerate(polygons),
-    std::tie(intersections, points),                       // global output
-    std::make_tuple(tf::buffer<intersection_t>{},
-                    tf::buffer<point<float,3>>{}),         // thread-local accumulators
-    [&](const auto &block, auto &local) {                  // parallel: accumulate
-        auto &[local_ints, local_pts] = local;
-        for (auto [id, poly] : block)
-            compute(poly, local_ints, local_pts);
-    },
-    [&](const auto &local, auto &global) {                 // sequential: merge
-        auto &[li, lp] = local;
-        auto &[gi, gp] = global;
-        gi.reallocate(gi.size() + li.size());
-        std::copy(li.begin(), li.end(), gi.begin() + gi.size() - li.size());
-        // same for points...
-    });
-```
-
-**`blocked_reduce_sequenced_aggregate`** — like `blocked_reduce` but guarantees merge order matches input order. Use when output ordering must match input ordering.
-
----
-
-## 12. Transformations
-
-```cpp
-auto T = tf::make_identity_transformation<float, 3>();
-auto T = tf::make_transformation_from_translation(vector);
-auto R = tf::make_rotation(tf::deg(45.f), tf::axis<2>);
-auto R = tf::make_rotation(tf::deg(90.f), axis, pivot);
-auto R = tf::make_rotation_aligning(from_dir, to_dir);
-auto T = tf::random_transformation<float, 3>();
-
-auto pt_transformed = tf::transformed(point, frame);
-auto n_transformed = tf::transformed_normal(normal, frame);
-```
+Complete OBJ mode aligns position/normal/texture tuples and duplicates vertices
+at attribute seams. Writers accept tagged transformations and materialize them
+in the file. STL output requires 3D triangles. Check the returned success/empty
+state and use the buffer-based I/O overloads when files are not the ownership
+boundary.
+
+## 13. Caller checklist
+
+Before calling a nontrivial pipeline, verify:
+
+1. Is semantic geometry represented by Trueform primitives/views?
+2. Which object owns every buffer viewed by the input?
+3. Is the carrier a point, segment, polygon, curve, face, vertex, or domain?
+4. Is static arity preserved?
+5. Does topology share intentional point IDs?
+6. Which reusable structures does the complete pipeline consume?
+7. Were dependencies built in order and tagged on the correct carrier?
+8. Will every tagged structure outlive the call or graph?
+9. Has geometry/connectivity changed since the structures were built?
+10. Is a transformation lazy, or is world-space materialization required?
+11. Which optional output policy preserves provenance or attributes?
+12. Are labels interpreted by their real carrier rather than their name?
+13. Is the chosen operation the cheapest materialization that answers the
+    question?
+
+## Module references
+
+- Core model: `docs/content/cpp/2.modules/01.core.md`
+- Spatial: `docs/content/cpp/2.modules/02.spatial.md`
+- Topology: `docs/content/cpp/2.modules/03.topology.md`
+- Geometry: `docs/content/cpp/2.modules/04.geometry.md`
+- Remesh: `docs/content/cpp/2.modules/05.remesh.md`
+- Intersect: `docs/content/cpp/2.modules/06.intersect.md`
+- Cut: `docs/content/cpp/2.modules/07.cut.md`
+- CSG: `docs/content/cpp/2.modules/08.csg.md`
+- Clean: `docs/content/cpp/2.modules/09.clean.md`
+- Reindex: `docs/content/cpp/2.modules/10.reidx.md`
+- I/O: `docs/content/cpp/2.modules/11.io.md`

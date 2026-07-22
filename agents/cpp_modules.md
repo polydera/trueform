@@ -1,6 +1,12 @@
 # C++ Module-by-Module API Reference
 
-All modules follow the same conventions: `snake_case` naming, `build()` pattern for stateful structures, `make_*()` free functions for convenience construction, `tf::none_t` for type deduction, parallel-by-default via TBB.
+> **Lookup only.** Agents can and should grep current declarations and callers.
+> Do not infer implementation strategy from this inventory. Read
+> `cpp_performance_philosophy.md` and `cpp_execution_patterns.md` for the
+> cross-module execution style, and verify every API here against current code.
+
+Common surface conventions include `snake_case` naming, the `build()` pattern
+for stateful structures, `make_*()` factories, and `tf::none_t` deduction.
 
 ---
 
@@ -28,7 +34,7 @@ All have `build()` method + `make_*()` free function equivalents.
 | `is_manifold(polygons)` | polygons | `bool` | True if every edge shared by ≤2 faces |
 | `is_closed(polygons)` | polygons | `bool` | True if no boundary edges (watertight) |
 | `connect_edges_to_paths(edges)` | edges | `offset_block_buffer<Index, Index>` | Assemble edges into continuous paths |
-| `boundary_paths(polygons)` | polygons | `offset_block_buffer<Index, Index>` | Boundary edges assembled into paths |
+| `make_boundary_paths(polygons)` | polygons | `offset_block_buffer<Index, Index>` | Boundary edges assembled into paths |
 | `find_eulerian_paths(edges, link, ...)` | edges + link | offsets + edge IDs (output params) | Hierholzer's edge-disjoint path decomposition |
 | `label_connected_components(labels, applier)` | label buffer + neighbor callback | `int` (n_components) | Parallel union-find component labeling |
 | `make_manifold_edge_connected_component_labels(polygons)` | polygons | `connected_component_labels<Index>` | Component labeling via manifold edge adjacency |
@@ -74,7 +80,7 @@ Build: `tree.build(primitives, config_tree(inner_size, leaf_size))`
 | Function | Input | Return | Description |
 |----------|-------|--------|-------------|
 | `neighbor_search(form, query)` | form + point/segment/ray | `tree_metric_info` | Nearest primitive |
-| `neighbor_search(form, query, radius_sq)` | + radius | `tree_metric_info` | Within radius |
+| `neighbor_search(form, query, radius)` | + linear radius | `tree_metric_info` | Within radius |
 | `neighbor_search(form, query, knn)` | + k-NN container | fills knn | k-nearest neighbors |
 | `neighbor_search(form0, form1)` | two forms | `tree_metric_info_pair` | Closest pair between two meshes |
 | `distance(form, query)` | form + query | `RealT` | Euclidean distance |
@@ -261,7 +267,9 @@ All remesh operations work on mutable `half_edges<Index>` + `points_buffer` dire
 | `cleaned(points)` | points | `points_buffer` | Deduplicate points |
 | `cleaned(curves)` | curves | `curves_buffer` | Deduplicate + reconnect paths |
 
-All have `return_index_map` variants returning `(buffer, face_map, point_map)`.
+Index-map return shapes depend on the carrier: polygons and segments return
+primitive and point maps, points return a point map, curves return only a point
+map because paths reconnect, and soup cleaning has no source identity map.
 
 Low-level: `make_clean_index_map(geometry)` returns maps without applying them.
 

@@ -1,182 +1,175 @@
-# Feature Lifecycle: Adding a Feature Across All Languages
+# Public Feature Lifecycle
 
-Traced from two real features: `make_sharp_edges` and `chamfer_error`. This documents the end-to-end path and common gaps.
+Use this checklist only when adding or changing a public feature across C++,
+Python, TypeScript/WASM, tests, and documentation. It describes obligations,
+not a fixed file-per-instantiation layout. Binding layouts evolve; inspect the
+nearest current feature and every relevant build manifest before editing.
 
----
+Read first:
 
-## The Full Pipeline
+1. `working_method.md`
+2. `cpp_performance_philosophy.md`
+3. `cpp_execution_patterns.md`
+4. `documentation_architecture.md` before changing `docs/content/`
+5. `python_layer.md` and/or `typescript_layer.md` for the affected surfaces
 
-| Step | Location | Naming | Notes |
-|------|----------|--------|-------|
-| 1. C++ Header | `include/trueform/<module>/<function>.hpp` | `snake_case` | Template, policy-based |
-| 2. C++ Umbrella | `include/trueform/<module>.hpp` | `// IWYU pragma: export` | Add include line |
-| 3. C++ Test | `tests/<module>/test_<function>.cpp` | Catch2 | `TEMPLATE_TEST_CASE` for type combos |
-| 4. C++ Docs | `docs/content/cpp/2.modules/<NN>.<module>.md` | C++ examples | Signature + example |
-| 5. Python Binding Header | `python/include/trueform/python/<module>/<function>.hpp` | Template wrapper | Handles transformation dispatch |
-| 6. Python Binding C++ | `python/src/<module>/<function>_<types>.cpp` | `{func}_{idx}{ngon}{real}{dims}d` | One file per type combo |
-| 7. Python Registration | `python/src/<module>.cpp` | `register_<function>(module)` | Add to submodule |
-| 8. Python Wrapper | `python/src/trueform/_<module>/<function>.py` | `snake_case` | Dispatch via `build_suffix()` |
-| 9. Python `__init__.py` | `python/src/trueform/__init__.py` | Public export | `from ._<module> import ...` |
-| 10. Python Test | `python/tests/test_<function>.py` | pytest | `@parametrize` for type combos |
-| 11. Python Docs | `docs/content/py/2.modules/<NN>.<module>.md` | Python examples | Match C++ docs structure |
-| 12. TS Binding C++ | `typescript/cpp/src/<module>/<function>.cpp` | `EMSCRIPTEN_BINDINGS` | sync + async (dispatch_*) |
-| 13. TS Wrapper Sync | `typescript/src/<module>/sync.ts` | `camelCase` | Calls `native().<function>(...)` |
-| 14. TS Wrapper Async | `typescript/src/<module>/async.ts` | `camelCase` | `dispatcher().run(...)` |
-| 15. TS Exports | `typescript/src/manual.ts` + `typescript/src/async/index.ts` | Public export | `manual.ts` is the export surface (`index.ts` only re-exports it + auto-init); async twins export from `async/index.ts` |
-| 16. TS Test | `typescript/tests/test_<module>.mjs` | assert-based | Manual lifecycle (`.delete()`); register the file in `tests/run.mjs` |
-| 17. TS Docs | `docs/content/ts/2.modules/<NN>.<module>.md` | TS examples | Match C++ docs structure |
+## 1. Define the semantic surface
 
----
+Before creating files, write down:
 
-## Key Transformations
+- the authoritative C++ operation and carrier;
+- template dimensions and coordinate/index types actually supported;
+- whether output preserves static arity or is genuinely jagged;
+- ownership and lifetime of returned buffers/views;
+- optional policies, tags, configuration, and return-index-map variants;
+- exact naming and defaults for C++, Python, and TypeScript;
+- sync/async parity requirements;
+- the correctness oracle shared across languages.
 
-### Naming
-- C++: `make_sharp_edges` → Python: `sharp_edges` → TS: `sharpEdges`
-- C++: `chamfer_error` → Python: `chamfer_error` → TS: `chamferError`
-- Pattern: drop `make_` prefix, `snake_case` for Python, `camelCase` for TS
+Do not extend a shared semantic merely to make one binding convenient. Surface
+that design fork before implementation.
 
-### Type Parameters
-- C++ `template <typename Index, typename RealT>` → Python `_intfloat3d` suffix → TS single binding (float only)
-- C++ `rad<T>` / `deg<T>` → Python `float` (radians) → TS `number` (degrees)
-- C++ `polygons_buffer<...>` → Python `(np.ndarray, np.ndarray)` tuple → TS `Mesh` object
+## 2. C++ core
 
-### Return Types
-- C++ `blocked_buffer<Index, 2>` → Python `np.ndarray` shape `[N, 2]` → TS `NDArrayInt32`
-- C++ `std::tuple<mesh, labels, face_labels>` → Python tuple of numpy arrays → TS `LabeledCutResult` interface
+- Add the implementation under `include/trueform/<module>/`.
+- Add the public include to the module umbrella with
+  `// IWYU pragma: export` when it belongs on the public surface.
+- Follow the owning-buffer/non-owning-range split.
+- Preserve static-size information and existing policies.
+- Use the execution pattern appropriate to the work shape; do not copy the
+  surface structure of a neighboring function while changing its carrier.
+- Add Catch2 coverage under `tests/<module>/` using the existing local test
+  organization and relevant type matrix.
+- Validate the narrow C++ target before binding work.
 
-### Python Dispatch Pattern
-```python
-meta = extract_meta(mesh)
-suffix = build_suffix(meta)  # e.g., "int3float3d"
-func = getattr(_trueform.module, f"{operation}_{suffix}")
-result = func(mesh._wrapper, ...)
+## 3. Python surface
+
+Inspect the nearest current binding with the same input and output carriers.
+Python bindings use more than one instantiation layout; do not assume one `.cpp`
+per type combination.
+
+Required obligations:
+
+- Add or update the nanobind wrapper under
+  `python/include/trueform/python/<module>/` when a wrapper is needed.
+- Add instantiations or registration sources using the module's current pattern.
+- Update every source/header manifest that owns those files.
+- Register the function or type in the correct native submodule.
+- Add or update the Python facade and dtype/shape dispatch.
+- Export it from the public Python surface.
+- Preserve ndarray ownership and lifetime rules.
+- Keep TBB worker phases free of Python/nanobind operations; construct NumPy
+  results and commit Python-owned cache state on the GIL-owning thread.
+- Add pytest coverage for supported dtype/dimension/arity combinations and
+  failure behavior at the language boundary.
+- Update Python documentation when the feature is public.
+
+Naming normally drops a C++ `make_` prefix and remains `snake_case`, but verify
+the neighboring public API before introducing a new transformation.
+
+## 4. TypeScript/WASM surface
+
+Inspect the nearest current binding with the same carrier and threading model.
+Current bindings may use a shared `_impl.hpp` plus separate float32/float64
+registration translation units. Do not assume one binding `.cpp`, float-only
+support, or one universal registration shape.
+
+Required obligations:
+
+- Add or update embind implementation and dtype registrations using the current
+  module pattern.
+- Update `typescript/CMakeLists.txt` or the owning source manifest.
+- Provide the synchronous wrapper when the operation is synchronous.
+- Provide the async/dispatcher twin when the public module promises one.
+- Preserve handle ownership, ndarray lifetime, and explicit `.delete()` behavior.
+- Treat TypedArray heap views as borrowed, capture async native handles by value,
+  and keep `emscripten::val` conversion on the main-thread retrieval phase.
+- Export through the current manual and async surfaces.
+- Add tests and register them in the current test runner.
+- Update TypeScript documentation when the feature is public.
+
+Naming normally drops C++ `make_` and converts to `camelCase`. Configuration
+enums cross at one validated conversion site; do not duplicate interpretation
+between sync and async facades.
+
+## 5. Cross-language identity
+
+Bindings should expose the same computation, not approximate rewrites of it.
+
+- C++ remains the authority for geometry, topology, identity, and classification.
+- Bindings convert storage and naming; they do not rederive algorithmic facts.
+- Index maps, source IDs, tags, and optional result carriers preserve their C++
+  meaning across languages.
+- Stateful expensive-build objects remain sealed native engines. Language
+  facades own user-facing state and lifetime handles.
+- Optional flags mirror the C++ tags unless a language boundary requires a
+  documented transformation.
+
+## 6. Documentation
+
+Follow `documentation_architecture.md` rather than assuming every feature needs
+three parallel pages. Keep examples semantically aligned across languages while
+using the idiomatic public surface of each one.
+
+Document:
+
+- accepted carriers and dtypes;
+- sync/async availability;
+- ownership or disposal requirements;
+- return shapes and index-map semantics;
+- exactness/tolerance behavior that users can observe;
+- one minimal example whose assertions could fail under a broken binding.
+
+## 7. Gates
+
+Run the narrowest gate after each layer, then the complete affected stack.
+
+### C++
+
+```bash
+cmake -B build -DTF_BUILD_TESTS=ON
+cmake --build build --parallel --target trueform_tests
+ctest --test-dir build --output-on-failure
 ```
 
-### TS Sync/Async Pattern
-```typescript
-// Sync
-export function sharpEdges(m: Mesh, angleDeg: number): NDArrayInt32 {
-    return new NDArray(native().sharp_edges(m._handle, angleDeg), "int32");
-}
+### Python
 
-// Async
-export async function sharpEdges(m: Mesh, angleDeg: number): Promise<NDArrayInt32> {
-    return dispatcher().run(
-        () => native().dispatch_sharp_edges(m._handle, angleDeg),
-        (raw) => new NDArray(raw, "int32"));
-}
+Use the repository's current wheel or configured-extension flow with the same
+interpreter for build and test:
+
+```bash
+CMAKE_BUILD_PARALLEL_LEVEL=8 pip wheel . -w dist
+pip install dist/trueform-*.whl
+pytest python/tests
 ```
 
----
+### TypeScript/WASM
 
-## Coverage Gaps Found
+```bash
+cd typescript
+npm run build
+npm run typecheck
+```
 
-| Feature | C++ Header | C++ Test | Py Binding | Py Test | Py Docs | TS Binding | TS Test | TS Docs |
-|---------|-----------|----------|------------|---------|---------|------------|---------|---------|
-| `make_sharp_edges` | Yes | **NO** | **NO** | **NO** | **NO** | Yes | **NO** | Yes |
-| `chamfer_error` | Yes | Yes | Yes | Yes | Yes | Yes | **NO** | Yes |
+Run the current TypeScript test harness for the affected module as registered in
+the repository.
 
-Pattern: Python bindings lag behind TypeScript. TS tests lag behind both. C++ tests are sometimes missing for geometry utilities.
+Do not hardcode personal build directories in documentation. Verify the binary
+was rebuilt and count build errors and warnings before trusting a filtered log.
 
----
+## 8. Landing checklist
 
-## Checklist for Adding a New Feature
+- [ ] C++ public include and implementation
+- [ ] C++ correctness tests
+- [ ] Python native registration, facade, exports, and tests if exposed
+- [ ] TypeScript dtype registrations, sync/async facades, exports, and tests if exposed
+- [ ] Build manifests updated for every new source/header
+- [ ] Documentation updated according to the site architecture
+- [ ] Cross-language defaults and return semantics match
+- [ ] Output identity proven before performance comparison
+- [ ] Relevant C++, Python, and WASM builds pass from fresh artifacts
+- [ ] No transient coverage status, local path, or experiment result added to this file
 
-### C++ Core
-- [ ] Create `include/trueform/<module>/<function>.hpp`
-- [ ] Add to `include/trueform/<module>.hpp` with `// IWYU pragma: export`
-- [ ] Add Catch2 test in `tests/<module>/`
-- [ ] Add to `docs/content/cpp/2.modules/` docs
-
-### Python Binding
-- [ ] Create wrapper header: `python/include/trueform/python/<module>/<function>.hpp`
-- [ ] Create binding C++ file per type combo: `python/src/<module>/<function>_<types>.cpp`
-- [ ] Add `sources.cmake` entry for new `.cpp` files (and new headers to the module's `headers.cmake` / `HEADERS_<MOD>`)
-- [ ] Register in `python/src/<module>.cpp`
-- [ ] Create Python wrapper: `python/src/trueform/_<module>/<function>.py`
-- [ ] Export from `python/src/trueform/__init__.py`
-- [ ] Add pytest test: `python/tests/test_<function>.py` (parametrize dtypes)
-- [ ] Add to `docs/content/py/2.modules/` docs
-
-### TypeScript Binding
-- [ ] Create binding C++ file: `typescript/cpp/src/<module>/<function>.cpp`
-  - Implement `sync_<function>()` and `async_<function>()`
-  - Register in `EMSCRIPTEN_BINDINGS` block
-- [ ] Add sync wrapper: `typescript/src/<module>/sync.ts`
-- [ ] Add async wrapper: `typescript/src/<module>/async.ts`
-- [ ] Export from `typescript/src/manual.ts` (+ `src/async/index.ts` for the async twin)
-- [ ] Add test in `typescript/tests/test_<module>.mjs` and register it in `tests/run.mjs`
-- [ ] Add to `docs/content/ts/2.modules/` docs
-
-
----
-
-## Adding a NEW Module (not just a feature)
-
-The per-feature checklist assumes the module exists. A new module (e.g.
-`csg/`) additionally needs:
-
-**Python** — `python/src/<module>.cpp` with `register_<module>(m)`
-creating the submodule; forward-decl header
-`python/include/trueform/python/<module>.hpp`; `register_<module>` call in
-`python/src/main.cpp`; `include(src/<module>/sources.cmake)` +
-`${MODULE_<MOD>_SOURCES}` in `python/CMakeLists.txt`; the module's
-`headers.cmake` included and `${HEADERS_<MOD>}` aggregated in
-`python/include/headers.cmake`. Pure-python `_<module>/` packages are
-copied automatically (no CMake edit).
-
-**TypeScript** — the two `.cpp` files added to the
-`add_executable(trueform_wasm ...)` list in `typescript/CMakeLists.txt`;
-`src/<module>/{sync,async,index}.ts`; exports in `manual.ts` and
-`async/index.ts`.
-
-**Gotcha**: the Python build is pinned to one interpreter
-(`CMakeCache.txt` → `Python_EXECUTABLE`). Running tests with a different
-python gives a misleading "circular import: cannot import _trueform"
-error — match the interpreter.
-
----
-
-## Cross-Language Conventions (reference: the csg module)
-
-- **Stateful "sealed engine" bindings**: expensive-build objects
-  (e.g. `CsgGraph`) keep the native class fully opaque; the language
-  class holds the user-facing state itself (the input mesh objects, the
-  passed config) and exposes query methods. Lifetime rides the existing
-  machinery (ndarray members / shared_ptr handles + FinalizationRegistry).
-  Reference: `python/include/trueform/python/csg/csg_graph_impl.hpp`,
-  `typescript/cpp/src/csg/csg_graph_impl.hpp`, and the facades in
-  `python/src/trueform/_csg/` and `typescript/src/csg/`.
-- **Expression trees cross as a flat postfix `int` program**: `id >= 0`
-  pushes `op(id)`; `-1/-2/-3` pop two and push or/and/difference; `-4`
-  pops one and pushes complement. Python builds it with operator dunders,
-  TS with builder methods (`.or/.and/.sub/.not`); the C++ decoder is the
-  single shared definition.
-- **Flag naming mirrors the C++ tags**: `tf::return_source_ids` →
-  `return_source_ids=True` / `{ returnSourceIds: true }`;
-  `tf::return_index_map` likewise. Do not invent new names ("labels" is
-  overloaded by region/domain labels).
-- **No null placeholders in TS**: when an optional expression precedes an
-  options object, accept the options in the expression slot and
-  discriminate at runtime (`instanceof`/`typeof` — the `cleaned()` idiom;
-  see `splitExprArgs` in `typescript/src/csg/sync.ts`).
-- **Config enums cross as validated ints**: a C++ enum option (e.g.
-  `tf::triangulation_type`) crosses every boundary as an `int` and is
-  spelled per language at the facade — Python string kwarg with a
-  `_MAP` + ValueError (`triangulation="refined_cdt"`), TS string-union
-  option (`triangulation: "refinedCdt"`), `static_cast` at the single
-  C++ conversion site. Options meaningless outside one surface stay in
-  a surface-local options type, never in a shared one. Reference: the
-  csg `triangulation` plumbing, mirrored by the arrangements.
-
----
-
-## The Gate Rule
-
-A change to a C++ surface that bindings call is NOT landed until the
-binding builds and suites ran: the python extension
-(`cmake --build build_python2 --target _trueform trueform_copy_python_files`
-+ pytest) and the wasm module (`typescript: node build.mjs` + the test
-harness). Implicit conversions can keep binding code COMPILING while
-silently changing behavior — and signature changes can break extension
-builds that nothing else exercises. Both happened on the same day.
+The checklist is intentionally structural. When a neighboring implementation
+conflicts with an old remembered convention, current code and build manifests
+win.

@@ -1,79 +1,137 @@
-# The trueform Performance Philosophy
+# The Trueform Performance Philosophy
 
-Eight guiding principles. Everything else — the pattern catalog in
-`cpp_engineering_philosophy.md`, the checklists in the agent charters,
-the measured mechanics — is downstream of these. When a design choice
-is unclear, resolve it here first; when a review finds a violation,
-name the principle it violates.
+These laws explain why Trueform does not look like conventional geometry code.
+They govern design choices; concrete phase shapes and primitive selection live
+in `cpp_execution_patterns.md`.
 
-## 1. The map is latent in the data
+## 1. Data shape is part of the algorithm
 
-Identity is never imposed by bookkeeping; it already exists as an
-intrinsic canonical coordinate — a t along an edge, an identity pair, a
-dyadic key. Sort by it and identity falls out as adjacency. The shape
-is always: generate in parallel, sort in parallel, one linear sweep,
-apply in parallel. It looks like more passes; the extra passes ARE the
-fast path — each is trivially parallel and determinism is free, because
-sorted order is canonical order. The tell you're violating it: reaching
-for a hash map, a dirty-set, or an incremental re-run "to avoid extra
-passes."
+Own data once in flat buffers. Recover semantic structure through lightweight
+ranges: blocked, offset-blocked, mapped, indirect, zipped, and policy-tagged.
+Nested ownership, pointer graphs, and intermediate geometry usually destroy the
+locality and composability the algorithm needs.
 
-## 2. Transform outputs; never re-run producers
+Preserve static arity in the type and storage. Use offsets only for genuinely
+jagged data. Materialize only when an ownership boundary requires it.
 
-A changed global fact — a weld, a merge, a split — is a substitution
-over what was already computed, plus dropping what collapsed. It is
-never a reason to recompute. Recomputation is slower AND less
-deterministic than substitution.
+## 2. Manufacture the expensive grain
 
-## 3. Every fact has one authority; everyone else reads
+The useful independent work unit often does not exist in the input. Generate
+cheap records without ordering constraints, parallel-sort them by the key that
+defines shared work, compute offsets at key boundaries, then process the
+resulting contiguous groups independently.
 
-The factory owns tag-completion. The graph owns its config and its
-types. The table owns the one 3D point per identity. A second
-derivation of the same fact — even a cheap one — is a drift seed, and
-drift is how compile breaks and silent downgrades happen. Consumers
-read the authority's view; they don't re-derive, and they never carry
-geometry — they carry parameters and identities, and materialization
-happens once.
+The extra passes are the fast path. They replace synchronized insertion,
+associative lookup, scattered reads, and arbitrary task graphs with parallel
+flat passes and tight serial kernels.
 
-## 4. Work at the grain the question lives at
+## 3. Preserve carrier identity through jagged stages
 
-Curves are a region question, so no triangulation is built to answer
-them. Classification is region-grain; emission is triangle-grain.
-Forcing a question through a finer carrier wastes work; through a
-coarser one, it can't be answered. And when a campaign CHANGES grain,
-enumerate what the old carrier guaranteed by construction — those
-invariants don't port themselves.
+Offset blocks are executable structure, not just variable-length storage. Block
+index `i` can identify the same face, loop, region, edge, or component across a
+pipeline even when every stage produces a different number of elements.
 
-## 5. Topology by index; geometry best-effort
+Use `generate_offset_blocks` or a `blocked_reduce_sequenced_aggregate` whose
+aggregator constructs offsets when positional correspondence is part of the
+result. `sequenced_generate` preserves flat input order, but without offsets it
+does not preserve one jagged block per input. Ordered aggregation is valuable
+because it can preserve an implicit join, construct CSR offsets directly,
+enable rebasing, and remove later sorting or lookup.
 
-Decisions run on identities, never on coordinate comparisons —
-coordinate scans merge pinch points, which are legitimate topology.
-Where coordinates MUST decide (the CDT weld), the site is single,
-fenced, and reports globally. "Same identity ⇒ same coordinates" is an
-invariant you maintain deliberately, never one you assume.
+## 4. The map is latent in the data
 
-## 6. Correct by structure, not by defense
+Identity usually already exists as a canonical coordinate or structural key: a
+tagged flat ID, an endpoint pair, a dyadic parameter, or a sorted record key.
+Expose it instead of adding bookkeeping.
 
-Hazards are removed by shape, not guarded by checks: collapsed
-connectivity makes stack spam impossible; one-point materialization
-makes watertightness by construction; sequenced aggregation makes
-determinism structural. Where a guard is genuinely needed, its law is
-PARITY — sibling paths must skip the same things, validate the same
-staleness, freeze the same edges. An asymmetric guard is a latent bug
-in whichever path lacks it.
+The common shape is:
 
-## 7. Parallel is the default; serial must justify itself
+```text
+parallel generate
+-> parallel sort
+-> one adjacency/group sweep
+-> dense map or offsets
+-> parallel apply
+```
 
-One blessed flow: light thread-local scratch, per-block work, sequenced
-aggregation. Heavy reusable state lives thread-local; block-locals stay
-light because they travel by value. A serial loop over independent
-items is a review finding — "it's the cold path" postpones the fix, and
-cold paths become hot when the next feature lands on them.
+For repeated local work over a bounded global ID space, reuse one dense array
+with a generation or watermark. Hash maps are rare exceptions, not a peer
+representation choice.
 
-## 8. Nothing is believed until measured — and nothing is measured until outputs are proven identical
+## 5. Every fact has one authority
 
-Benchmark the real workload, both threadings, fresh binaries, best of
-N. Identity of outputs comes first, or the benchmark measures nothing.
-The bar is the wild number, not the probe. And record refuted
-hypotheses next to the code — an unrecorded refutation gets
-re-attempted.
+The producer records the facts it proves: exact identity, coplanarity, ancestry,
+split parameters, adjacency, merge evidence, and classification inputs.
+Consumers read the authoritative carrier. They do not rederive the same fact
+from coordinates or rebuild a structure that already exists upstream.
+
+Carry identities and parameters through the pipeline; materialize geometry once
+where the authority says it belongs.
+
+## 6. Transform outputs; do not rerun producers
+
+A changed global fact such as a merge, weld, compaction, or reindexing is usually
+a substitution over existing output plus removal of what collapsed. Preserve
+clean ranges, remap references, and recompute only the explicitly dirty
+frontier.
+
+Recomputation is slower and may produce a different identity history.
+
+## 7. Work at the grain where the question lives
+
+Parallelize the largest independent carrier. Inside it, keep dependent work
+serial, cache-local, and stateful. A face may be parallel while its edges are a
+tight loop; tree tasks may be parallel while leaf Cartesian products are serial;
+partitions may mutate concurrently while each topology walk remains serial.
+
+When a design changes carrier, enumerate what the old carrier guaranteed by
+construction. Those invariants do not move automatically.
+
+## 8. Partition-carried state is the default
+
+For partitionable input, state belongs to the sequential block created by the
+parallel primitive. Reuse it across that block with `parallel_for_each` state,
+`generic_generate`, `generate_offset_blocks`, or a blocked reduction.
+
+Arena-indexed `local_value`/`local_buffer` storage is an escape hatch for
+irregular callback or task traversal—principally parallel tree search—where no
+stable partition or state slot exists. It is not the blessed general flow.
+
+## 9. Correctness comes from phase structure
+
+Workers propose; one phase materializes shared identity; later phases consume
+the frozen result. Parallel walkers may create provisional components and emit
+only collision pairs; union-find collapses them after the barrier. Recovery
+runs as bounded discovery/materialization/retry waves.
+
+Remove hazards by shape rather than surrounding a mutable structure with
+defensive synchronization.
+
+## 10. Topology by identity; geometry by controlled authority
+
+Coordinate equality is not topological identity. Exact vertices carry both.
+SoS ordering uses identity, not accidental coordinate order. Shared split
+parameters let separate carriers materialize the same point consistently.
+
+Where coordinates must decide, keep the site singular, exact or certified, and
+make it report the resulting global identity fact.
+
+## 11. Serial phases are part of parallel algorithms
+
+Prefixes, adjacent sweeps, union-find, offset rebasing, small sorts, graph walks,
+bucket queues, leaf kernels, and incremental triangulation can be the fastest
+correct implementation. "Parallel by default" means the correct outer carrier,
+not every loop.
+
+Use sequenced aggregation only when order creates structure. If the next phase
+canonical-sorts the records anyway, unordered aggregation is cheaper and valid.
+
+## 12. Nothing is believed until measured
+
+First prove identical output with an oracle capable of failing under the bug
+class. Then benchmark the real workload, both threadings, from fresh binaries,
+using repeated runs.
+
+Thresholds, fast paths, direct-exact versus filtered predicates, and rare
+exceptions to the standard phase shapes are decided by measurement—not generic
+C++ or computational-geometry folklore.

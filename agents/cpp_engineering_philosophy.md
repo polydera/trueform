@@ -1,12 +1,16 @@
-# C++ Engineering Philosophy and Code Patterns
+# C++ Engineering Reference
 
-This document captures what makes trueform fast, robust, and maintainable — the engineering principles behind the code. An agent that internalizes these patterns should produce code indistinguishable from the existing codebase.
+This document contains implementation mechanics, code conventions, hot-loop
+details, and portability rules. The design authorities are
+`cpp_performance_philosophy.md` and `cpp_execution_patterns.md`; do not infer a
+new phase shape from an isolated recipe here.
 
 ---
 
-## 1. Parallelism as the Default
+## 1. Parallelism at the Correct Grain
 
-Everything is parallel unless there's a reason not to be.
+Parallelize the largest independent carrier. Small structural sweeps, prefixes,
+leaf kernels, adjacency walks, and stateful inner loops are deliberately serial.
 
 ### 1.1 The Algorithm Vocabulary
 
@@ -22,7 +26,10 @@ Everything is parallel unless there's a reason not to be.
 | `tbb::task_group` | Heterogeneous parallel tasks | Fork-join |
 | `tbb::parallel_invoke(f0, f1, ...)` | Fixed number of tasks | Fork-join |
 
-**Never** use `std::copy`, `std::fill`, `std::iota`, or raw loops for bulk operations. Always use the `tf::parallel_*` equivalents.
+Use the `tf::parallel_*` equivalents for genuinely bulk independent work.
+`std::copy`, raw loops, and small serial algorithms are correct inside
+block-local kernels, ordered aggregation, prefix/rebase phases, and below
+measured dispatch thresholds.
 
 ### 1.2 The `tf::checked` Fallback
 
@@ -75,50 +82,42 @@ for (const auto &v : loop) {
 }
 ```
 
-### 1.4 Thread-Local Aggregation (Lock-Free)
+### 1.4 Partition-Carried State
 
-When parallel tasks produce variable-length output, use `tf::local_buffer<T>`:
-
-```cpp
-tf::local_buffer<intersection_t> l_intersections;
-l_intersections.reserve_all(1000);
-
-// Inside parallel tasks:
-l_intersections.push_back({...});  // Thread-local, no lock
-
-// After barrier:
-auto merged = l_intersections.to_buffer();
-```
-
-Each thread's buffer lives in a `cache_aligned_slot` (128-byte alignment) to prevent false sharing. Merge after the barrier is a sequential copy.
-
-For scalar aggregation, use `tf::local_value<T>`:
+Variable output normally belongs to the partitioning primitive, not an
+arena-indexed container:
 
 ```cpp
-tf::local_value<int> local_count;
-// In parallel: (*local_count)++;
-int total = local_count.aggregate(std::plus<>{});
-```
+struct local_t {
+    tf::buffer<record_t> records;
+    scratch_t scratch;
+};
 
-### 1.5 Benign Race: Idempotent Bool Writes
-
-When marking which vertices/faces are "used", multiple threads can write `true` to the same location without synchronization:
-
-```cpp
-tf::buffer<bool> point_mask;
-point_mask.allocate(n_points);
-tf::parallel_fill(point_mask, false);
-
-// benign race: multiple threads may write `true` to the same byte.
-// safe because writes are idempotent and there's a barrier at loop end.
-tf::parallel_for_each(
-    tf::make_indirect_range(face_im.kept_ids(), polygons.faces()),
-    [&](auto &&face) {
-        for (auto &e : face)
-            point_mask[e] = true;
+tf::blocked_reduce(input, output, local_t{},
+    [](auto block, local_t &local) {
+        for (const auto &element : block)
+            emit(element, local.records, local.scratch);
     },
-    tf::checked);
+    append_local);
 ```
+
+Use stateful `parallel_for_each`, `generic_generate`, `sequenced_generate`,
+`generate_offset_blocks`, or a blocked reduction according to output shape.
+The local state is constructed once per task/block and reused by its serial
+inner loop.
+
+`local_buffer`, `local_vector`, and `local_value` are last-resort storage for
+irregular callback/task traversal that cannot receive block state. Parallel
+tree search is the primary case.
+
+### 1.5 Idempotence Does Not Make a Race Benign
+
+Two workers writing the same scalar location without synchronization is a C++
+data race even when both store the same value and a barrier follows. Prefer a
+phase shape that assigns each output slot to one worker: count/prefix/write,
+group by target ID, block-local marks followed by a merge, or derive the mask
+from an already unique carrier. Use atomics only when ownership cannot be
+manufactured and the irregular concurrent claim is the intended mechanism.
 
 ### 1.6 `tbb::task_group` for Heterogeneous Work
 
@@ -145,13 +144,15 @@ tg.wait();
 
 These are the core patterns for generating variable-length output in parallel. They drive performance in topology construction, intersection computation, and mesh assembly.
 
-**`tf::generic_generate(input, output, lambda)`** — Each element produces variable output. Thread-local buffers merged automatically. Use instead of manual loops + push_back.
+**`tf::generic_generate(input, output, lambda)`** — Each element produces variable output. Per-block buffers are merged in unspecified completion order. Use when a later canonical sort makes input order irrelevant.
+
+**`tf::sequenced_generate(input, output, lambda)`** — Variable output appended in input-block order. Use when flat output order itself carries positional meaning.
 
 **`tf::generate_offset_blocks(input, output, lambda)`** — Each element produces one variable-length block. Builds offset_block_buffer directly.
 
-**`tf::blocked_reduce(input, global, local_init, accumulate, merge)`** — Parallel accumulation with thread-local state. `accumulate` runs in parallel on chunks, `merge` runs sequentially to combine. Use when generating complex multi-buffer output.
+**`tf::blocked_reduce(input, global, local_init, accumulate, merge)`** — Parallel accumulation with block-local state. `accumulate` runs over sequential chunks, and `merge` runs serially in unspecified completion order.
 
-**`tf::blocked_reduce_sequenced_aggregate(...)`** — Like `blocked_reduce` but merge order matches input order. Use when output ordering must be preserved.
+**`tf::blocked_reduce_sequenced_aggregate(...)`** — Parallel block work with aggregation in input-block order. Use when order constructs offsets, preserves `input[i] -> output block[i]`, keeps correlated jagged carriers aligned, or permits direct ID rebasing. Determinism is a consequence, not its only purpose.
 
 ### 1.8 Sort-Then-Group
 
@@ -175,11 +176,8 @@ tf::compute_offsets(ids, std::back_inserter(offsets), Index(0),
 // 4. Per-group views
 auto groups = tf::make_offset_block_range(offsets, ids);
 
-// 5. Process groups in parallel
-tbb::task_group tg;
-for (auto group : groups)
-    tg.run([&, group = tf::make_range(group)] { /* ... */ });
-tg.wait();
+// 5. Process independent groups in parallel
+tf::parallel_for_each(groups, [&](auto group) { /* tight serial kernel */ });
 ```
 
 ---
@@ -436,16 +434,16 @@ auto function_name(const tf::polygons<Policy> &polygons) {
 - **`tf::buffer<T>`** for POD arrays (trivially destructible only)
 - **`tf::small_vector<T, N>`** for small bounded collections
 - **`std::vector<T>`** only for non-POD types
-- **Reserve, then push** — `buffer.reserve(n)` then `push_back()`, not `allocate(n)` + assign
-- **Allocate exact** — when size is known: `buffer.allocate(n)` then write directly
+- **Reserve, then push** — for block-local variable output whose size is not known
+- **Allocate exact** — when counts or offsets make size known, then write directly
 - **Sentinel maps over hash maps** — `buffer[n]` with sentinel for integer-keyed lookups
 
 ---
 
 ## 9. The Sort Shape — identity without associative structures
 
-The house replacement for every hash map, keyed by access pattern
-(law: `cpp_performance_philosophy.md` §1):
+The normal replacement for associative lookup, keyed by access pattern
+(see `cpp_execution_patterns.md` §7):
 
 - **Sorted flat table + `equal_range`/`lower_bound`** — global tables
   (splits by edge key, merges by from-key). Sort once, binary-search
@@ -477,13 +475,17 @@ SUBSTITUTION over already-computed output plus dropping what collapsed
 
 ## 10. Parallel-State Discipline
 
-- **`local_t` stays LIGHT.** Block-local state travels BY VALUE through
-  the flow graph (work → sequencer → aggregate); heavy members get
-  deep-copied per block. Heavy reusable scratch lives thread-local
-  (`tf::local_value` / `tf::local_buffer`); `local_t` carries a pointer.
+- **State follows the partition.** Block-local state is constructed once per
+  task and reused by the serial inner loop. It may own buffers, scratch
+  structures, and correlated outputs when that construction/copy cost is
+  appropriate per block. Do not move it to arena-local storage merely because
+  it is substantial.
+- **Arena-local state is exceptional.** Use `local_value`/`local_buffer` only
+  when irregular callback or task traversal cannot receive block state.
 - **Propose, then materialize.** Threads emit records into local
   buffers; anything that assigns ids or grows shared tables runs once,
-  serially, over the sequenced aggregate.
+  after discovery. Use a sequenced aggregate when input order preserves
+  carrier identity or enables direct offsets/rebasing.
 - **Queues over mutable structures need generation stamps.** A queued
   reference (face, slot) can alias a different entity after a rebuild;
   validate the stamp at pop and requeue through the discovery path so
@@ -532,13 +534,22 @@ SUBSTITUTION over already-computed output plus dropping what collapsed
 
 2. **Don't add unnecessary abstractions.** Three similar lines of code is better than a premature helper function.
 
-3. **Don't use raw loops for bulk operations.** Use `tf::parallel_for_each`, `tf::parallel_copy`, etc.
+3. **Don't leave large independent carriers serial.** Use the appropriate
+   parallel primitive. Tight block-local kernels, prefixes, graph walks, and
+   small measured cases remain serial.
 
-4. **Don't use `std::copy`/`std::fill`/`std::iota`.** Use `tf::parallel_copy`/`tf::parallel_fill`/`tf::parallel_iota`.
+4. **Don't use serial library algorithms for genuinely bulk independent work.**
+   `std::copy`, `std::fill`, and raw loops remain valid inside small local or
+   serial aggregation phases.
 
-5. **Don't use hash maps for integer-keyed lookups.** Use sentinel-based buffer maps.
+5. **Treat hash maps as a measured exception.** First use a dense sentinel or
+   generation map, sort/group offsets, a sorted sparse table, or tiny linear
+   storage. A bounded integer domain is directly addressable.
 
-6. **Don't use mutexes or atomics in hot paths.** Use thread-local storage (`local_buffer`, `local_value`) and merge after barriers.
+6. **Do not synchronize what phases can separate.** Prefer block-local
+   proposals, disjoint output ranges, frozen authorities, and post-barrier
+   equivalence collapse. Narrow irregular traversals may use atomics when the
+   mechanism requires concurrent claiming.
 
 7. **Don't allocate per-iteration.** Reuse buffers across loop iterations. Clear by walking used entries, not by reallocating.
 
@@ -546,7 +557,10 @@ SUBSTITUTION over already-computed output plus dropping what collapsed
 
 9. **Don't add error handling for scenarios that can't happen.** Trust internal code. Only validate at system boundaries.
 
-10. **Don't use `if constexpr` without `tf::none_t`.** The pattern is: default template parameter `= tf::none_t`, then `if constexpr (std::is_same_v<T, tf::none_t>)` to trigger deduction.
+10. **Use `tf::none_t` when absence triggers type deduction.** A default
+    template parameter of `tf::none_t` plus `if constexpr` is the standard
+    zero-cost optional-type pattern. Ordinary compile-time dispatch on policies,
+    static sizes, and traits may also use `if constexpr` directly.
 
 ---
 

@@ -1,5 +1,9 @@
 # Documentation Architecture
 
+> **Task-specific reference.** Read this when changing `docs/`. It describes the
+> public documentation site, not the agent knowledge hierarchy or C++ execution
+> strategy.
+
 Trueform's documentation is built with Nuxt Content, serving three parallel language tracks (C++, TypeScript, Python) from a single docs site at `trueform.polydera.com`.
 
 ---

@@ -1,6 +1,8 @@
 # TypeScript Usage Patterns
 
-How to USE trueform from TypeScript. Every pattern below is from the official documentation.
+> **Lookup only.** This file describes public TypeScript usage, not WASM or core
+> implementation strategy. Verify exports against the current package and read
+> `typescript_layer.md` before changing bindings.
 
 ```ts
 import * as tf from "@polydera/trueform";

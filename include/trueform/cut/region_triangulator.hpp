@@ -2344,7 +2344,7 @@ private:
   }
 
   /// Re-triangulate every live region against the current split table,
-  /// in the shape the rest of the pipeline uses: thread-local work,
+  /// in the shape the rest of the pipeline uses: block-local work,
   /// ordered aggregation. With a refiner, each region's final
   /// tessellation is the refined one — its boundary frozen (the splits
   /// are already agreed globally) and the points it inserts inside

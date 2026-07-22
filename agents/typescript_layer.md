@@ -1,426 +1,291 @@
-# TypeScript Layer Analysis
+# TypeScript/WASM Boundary Contract
 
-The TypeScript layer exposes trueform as a WASM module with typed wrappers, sync/async execution paths, zero-copy NDArray views, and lazy topology caching.
+> **Task-specific authority.** Read this after `working_method.md`,
+> `cpp_performance_philosophy.md`, and `cpp_execution_patterns.md` when changing
+> TypeScript, embind, WASM storage, or async dispatch. This document describes
+> boundary invariants. It is not a fixed file-layout recipe; inspect the nearest
+> current registration and `typescript/CMakeLists.txt` before adding sources.
 
----
+The TypeScript layer does not reimplement Trueform. It owns user-facing types,
+validation, disposal, and promise composition around native handles. Geometry,
+topology, cache construction, and bulk work remain in C++.
 
-## Architecture
+## Boundary model
 
-```
-TypeScript Wrappers (Mesh, NDArray, Curves, async namespace)
-    ↓ native().<function>(handle, ...)
-EMSCRIPTEN_BINDINGS (C++ functions registered as JS globals)
-    ↓ direct call or dispatch_* for async
-C++ Implementation (sync) or TBB Thread Pool (async)
-    ↓ Atomics.waitAsync polls for completion
-Promise resolution → unwrap to TS types
-```
-
----
-
-## 1. WASM Binding Layer (`typescript/cpp/`)
-
-### 1.1 EMSCRIPTEN_BINDINGS Pattern
-
-Every binding file follows this structure:
-
-```cpp
-EMSCRIPTEN_BINDINGS(trueform_module_name) {
-    // Result types as value_object (copied across boundary)
-    emscripten::value_object<result_t>("JSResultName")
-        .field("mesh", &result_t::mesh)
-        .field("labels", &result_t::labels);
-
-    // Sync functions (execute immediately)
-    emscripten::function("operation_name", &sync_operation);
-
-    // Async functions (dispatch to TBB pool)
-    emscripten::function("dispatch_operation_name", &async_operation);
-}
+```text
+JS TypedArray
+-> explicit copy into WASM (`wasm_ndarray::from_js`)
+-> shared native storage and semantic C++ ranges
+-> Trueform computation, possibly on TBB workers
+-> native result handles owning WASM buffers
+-> borrowed TypedArray views into the WASM heap
 ```
 
-### 1.2 Sync vs Async
+For async operations:
 
-**Sync**: Direct execution, blocks main WASM thread.
-```cpp
-auto sync_boolean_union(wasm_mesh &m0, wasm_mesh &m1) -> labeled_cut_result {
-    // compute directly, return result
-}
+```text
+main JS thread validates and creates native handles
+-> embind `dispatch_*` returns a status address
+-> worker runs only C++/WASM-safe code
+-> worker publishes completion with a WASM atomic
+-> JS waits with `Atomics.waitAsync`
+-> main JS thread calls generic `retrieve(slot)`
+-> C++ converts the stored result to `emscripten::val`
+-> TypeScript wraps returned handles
 ```
 
-**Async**: Captures by copy, returns slot address.
-```cpp
-auto async_boolean_union(wasm_mesh &m0, wasm_mesh &m1) -> promise_t {
-    return promise([a = m0, b = m1]() -> labeled_cut_result {
-        return sync_boolean_union(const_cast<wasm_mesh &>(a),
-                                  const_cast<wasm_mesh &>(b));
-    });
-}
+The worker/main-thread split is part of correctness, not presentation.
+
+## 1. WASM ndarray ownership
+
+`wasm_ndarray<T>` in
+`typescript/cpp/include/trueform/ts/core/wasm_ndarray.hpp` stores:
+
+- `std::shared_ptr<tf::buffer<T>>` for allocation ownership;
+- a logical element offset and length;
+- shape metadata local to that handle.
+
+Consequences:
+
+- `from_js(...)` allocates in WASM and copies a JS TypedArray into it.
+- `from_buffer(...)` moves an existing Trueform buffer into shared WASM-owned
+  storage without copying its elements.
+- `row(...)` and `slice(...)` are zero-copy views. They share storage and adjust
+  logical offset, length, and shape.
+- `shallow_copy()` shares storage but owns independent shape metadata.
+- `destroy()` resets that handle's shared ownership and is idempotent. Do not
+  use the handle after destroying it.
+
+### `data()` is borrowed
+
+`wasm_ndarray::data()` returns an `emscripten::typed_memory_view`. The resulting
+TypedArray points into the WASM heap; it does not own the native allocation.
+
+Therefore:
+
+- keep an owning `NDArray` or another shared native handle alive while using
+  the view;
+- do not treat a cached `.data` value as an ownership transfer;
+- reacquire `.data` after operations that may grow WASM memory rather than
+  assuming an old JavaScript view remains current;
+- use `toArray()` or an explicit TypedArray copy when independent JavaScript
+  ownership is required.
+
+This is the most important distinction at the TypeScript memory boundary:
+native handles own; TypedArray views borrow.
+
+### Range construction inside bindings
+
+`make_range()` covers the complete logical ndarray view and already includes
+its offset. Prefer it for a full linear pass.
+
+`raw_data()` also points at the logical start, not the allocation start. Use it
+for strided, broadcast, multi-array, or explicit subrange indexing where one
+semantic range cannot express the walk. Do not add the ndarray offset twice.
+
+## 2. JavaScript wrapper lifetime
+
+`NDArray`, `Mesh`, and other TypeScript wrappers register their embind handles
+with `typescript/src/internal/registry.ts`. The `FinalizationRegistry` calls
+the embind handle's `.delete()` when the JavaScript wrapper is collected.
+
+There are two distinct operations:
+
+- native `destroy()` releases the shared backing state now;
+- embind `.delete()` destroys the C++ wrapper object allocated by embind.
+
+Public `.delete()`/`Symbol.dispose` methods normally call native `destroy()`.
+The finalizer can later delete the empty embind wrapper. Shared backing buffers
+remain alive while another native handle still owns them.
+
+Do not rely on finalization for bounded resource use. Long-running applications
+must be able to dispose large native objects explicitly.
+
+When returning a child handle from a composite object, return an independently
+owning shared handle. Deleting the child must not delete the parent, and deleting
+the parent must not invalidate a child that still owns the same storage.
+
+## 3. Offset-blocked data
+
+`wasm_offset_blocked_buffer` owns two shared buffers: offsets and packed data.
+Its TypeScript wrapper exposes `NDArray` handles over those buffers. This is the
+same buffer/range duality as the C++ core:
+
+```text
+shared offsets buffer + shared data buffer
+-> offset-block range
+-> random-access jagged blocks
 ```
 
-Captures are by value (shared_ptr refcount increment). The lambda runs on a TBB worker thread. `promise_t = uintptr_t` (slot address). JS polls via `Atomics.waitAsync`.
+Preserve the offset carrier across the boundary. Do not expand jagged data into
+nested JavaScript arrays for native computation, and do not rebuild grouping in
+TypeScript when C++ already returned offsets.
 
-### 1.3 WASM Types — the 2-layer `wasm_mesh` / `wasm_point_cloud`
+## 4. Mesh handles, shared data, and caches
 
-`wasm_mesh` is a thin handle holding `std::shared_ptr<mesh_data>`.
-`mesh_data` owns the actual state: `wasm_ndarray` buffers, every lazy
-cache slot (`_tree`, `_fm`, `_mel`, `_fl`, `_vl`, `_normals`,
-`_point_normals`, `_he`), and generation counters. `ensure_*` are
-private; callers go through accessors (`m.tree()`, `m.normals()`, …)
-which trigger the build. Same pattern for `wasm_point_cloud` /
-`point_cloud_data`.
+`wasm_mesh<Real>` is a thin `std::shared_ptr<mesh_data<Real>>` handle.
+`mesh_data` owns faces, points, transformation, lazy topology/spatial caches,
+and source-generation counters.
 
-Two copy semantics:
+### Default copy
 
-1. **Default handle copy** (`wasm_mesh b = a;` / `[m = m, ...]` lambda
-   capture) copies only the `shared_ptr` — both handles point to the
-   **same** `mesh_data`. This is why async works: a worker's
-   `ensure_*` lands on the `mesh_data` the JS-side handle holds, so the
-   cache survives the await. Contract: the caller must not reassign
-   mesh data while an async op against it is pending.
+A normal C++ copy or lambda capture of `wasm_mesh` copies the outer shared
+pointer. Both handles refer to the exact same `mesh_data` object.
 
-2. **`shallow_copy()`** allocates a new `mesh_data` and copy-assigns
-   every field from the source. Buffers, cache slot values, and gens
-   all start shared via inner shared_ptrs — the two handles are
-   observationally identical — then the transformation is cleared on
-   the copy. Divergence happens only via reassignment: `set_points` /
-   `set_faces` reassigns that handle's slot and bumps its gens;
-   siblings are untouched. Stale caches on the mutated handle rebuild
-   into that handle's slot only.
+This is the async lifetime mechanism: capturing a mesh by value keeps its data
+alive, and cache construction performed by the worker is visible through the
+original JavaScript mesh after `await`.
 
-`wasm_ndarray<T>` is single-layer: `shared_ptr<tf::buffer<T>>` + offset
-+ length + shape. `from_buffer()` takes ownership, `from_js()` copies
-from a JS TypedArray, `shallow_copy()` returns a new wrapper over the
-same storage.
+### `shallow_copy()`
 
-Diagnostic inspectors on the native handle — `is_tree_built()`,
-`is_tree_fresh()`, and the per-cache equivalents — expose slot state
-for tests; not wrapped in TS. `Mesh.buildTree()` forwards to a void
-`build_tree()` on the handle (the `tree()` accessor's `const aabb_tree&`
-return can't cross embind).
+`shallow_copy()` creates a new `mesh_data` object whose member handles initially
+share their inner buffers and cache values. The transformation is cleared.
+Later `set_faces` or `set_points` reassigns only the new object's slots, advances
+its source generations, and causes its dependent cache slots to rebuild.
 
-### 1.4 Lifetime & cleanup
+Thus:
 
-Every state-owning field is `shared_ptr`-backed, so defaulted
-destructors release everything via refcount. `destroy()` is a
-"release-now" escape hatch — on the handle it's just `_data.reset()`.
+- default copy means shared object identity;
+- `shallow_copy()` means a forked slot set with initially shared storage;
+- neither means a deep copy of geometry.
 
-### 1.5 `make_range()` vs `raw_data()` — choose the right idiom
+Do not replace this with ad-hoc JavaScript cache state. Native generations are
+the authority for whether tree, topology, and normal caches are fresh.
 
-`wasm_ndarray<T>` exposes two views into its data:
+## 5. Async dispatcher state machine
 
-- `arr.make_range()` → `tf::range<T*, tf::dynamic_size>` over the view's
-  full logical data. Baked-in offset: internally it's
-  `tf::make_range(_storage->data() + _offset, _length)`.
-- `arr.raw_data()` → `T*` pointing at the view's logical start. Also
-  baked-in offset (`_storage->data() + _offset`). Use when you need a
-  pointer for arithmetic.
+The dispatcher is implemented by:
 
-Rule of thumb in binding code:
+- `typescript/src/internal/AsyncDispatcher.ts`;
+- `typescript/cpp/include/trueform/ts/core/async_dispatcher.hpp`;
+- `typescript/cpp/src/core/async_dispatcher.cpp`;
+- `typescript/cpp/include/trueform/ts/core/promise.hpp`.
 
-**Full linear iteration over a single ndarray** → always `arr.make_range()`:
-```cpp
-// ✓ Idiomatic
-auto r = arr.make_range();
-auto total = tf::reduce(r, std::plus<T>{}, T{0}, tf::checked);
-
-// ✗ Verbose manual stitch — don't do this
-auto r = tf::make_range(arr.raw_data(), arr.length());
-```
-
-**Strided / broadcast / multi-array walks** → `raw_data()` is correct. These patterns index with computed offsets (`data[o * reduce * inner + r * inner + i]`, or lockstep `ad[i] + bd[i * stride_b]`) and can't be expressed with a single range. Examples: axis reductions, element-wise ops on batches, `assign_at_ids` / `assign_mask` patterns in `elementwise.hpp`.
-
-**Sub-range of an ndarray (a contiguous chunk)** → `tf::make_range(arr.raw_data() + start, len)`. This is the exception to the first rule.
-
-**Offset safety**: `raw_data()` ALREADY applies `_offset`, so pointer-arithmetic callers don't need to re-offset. Views produced by `row()` / `slice()` work transparently — callers see view-local pointers bounded by view-local length.
-
----
-
-## 2. TypeScript Wrapper Layer (`typescript/src/`)
-
-### 2.1 Initialization (`native.ts`)
-
-```typescript
-let _native: any = null;
-let _dispatcher: AsyncDispatcher | null = null;
-
-export async function init(): Promise<void> {
-    const createModule = (await import("./trueform_wasm.js")).default;
-    _native = await createModule();
-    _dispatcher = new AsyncDispatcher(_native.wasmMemory, _native.retrieve);
-    await _dispatcher.run(() => _native.init_tbb());  // Warm up TBB
-}
-
-export function native(): any { return _native; }
-export function dispatcher(): AsyncDispatcher { return _dispatcher; }
-```
-
-Must call `tf.init()` before any operations. Singleton pattern.
-
-### 2.2 Mesh Class (`form/Mesh.ts`)
-
-```typescript
-export class Mesh {
-    readonly _handle: NativeMesh;
-
-    constructor(handle: NativeMesh) {
-        this._handle = handle;
-        registry.register(this, { handle });  // FinalizationRegistry for auto-cleanup
-    }
-
-    get faces(): NDArrayInt32 { return new NDArray(this._handle.faces(), "int32"); }
-    set faces(f: NDArrayInt32 | Int32Array) { this._handle.set_faces(f._handle); }
-
-    get points(): NDArrayFloat32 { return new NDArray(this._handle.points(), "float32"); }
-    set points(p: NDArrayFloat32 | Float32Array) { this._handle.set_points(p._handle); }
-
-    get faceMembership(): OffsetBlockedBuffer { /* lazy, cached in C++ */ }
-    get manifoldEdgeLink(): NDArrayInt32 { /* lazy, cached in C++ */ }
-
-    shallowCopy(): Mesh { return new Mesh(this._handle.shallow_copy()); }
-    buildTree(): void { this._handle.build_tree(); }
-    delete(): void { this._handle.destroy(); }
-    [Symbol.dispose](): void { this._handle.destroy(); }
-}
-```
-
-### 2.3 NDArray (`ndarray/NDArray.ts`)
-
-```typescript
-export class NDArray<T = any> {
-    readonly _handle: NativeNDArray<T>;
-    readonly dtype: string;
-
-    get data(): T { return this._handle.data(); }  // Zero-copy TypedArray view
-    get shape(): number[] { return this._handle.shape(); }
-
-    // Zero-copy operations
-    row(i: number): NDArray<T> { return new NDArray(this._handle.row(i), this.dtype); }
-    slice(start: number, end?: number): NDArray<T> { /* zero-copy */ }
-
-    // Element-wise operations (dynamic dispatch on dtype)
-    add(other: NDArray | number): NDArray<T> {
-        const nd = nativeDtype(this.dtype);
-        if (typeof other === "number")
-            return new NDArray(native()[`add_scalar_${nd}`](this._handle, other), this.dtype);
-        return new NDArray(native()[`add_${nd}`](this._handle, other._handle), this.dtype);
-    }
-
-    // Reductions: sum, min, max, norm, mean
-    // Relational: eq, lt, gt, le, ge, ne
-    // Logical: not, and, or
-    // Indexing: take, booleanIndex, argsort
-}
-```
-
-Dynamic function dispatch: `native()[`add_${dtype}`]` calls the dtype-specific C++ binding.
-
-### 2.4 Operation Wrappers
-
-**Sync** (`cut/sync.ts`):
-```typescript
-export function booleanUnion(m0: Mesh, m1: Mesh): LabeledCutResult;
-export function booleanUnion(m0: Mesh, m1: Mesh, opts: { returnCurves: true }): LabeledCutResultWithCurves;
-export function booleanUnion(m0: Mesh, m1: Mesh, opts?: any) {
-    if (opts?.returnCurves)
-        return wrapLabeledWithCurves(native().boolean_union_with_curves(m0._handle, m1._handle));
-    return wrapLabeled(native().boolean_union(m0._handle, m1._handle));
-}
-```
-
-**Async** (`cut/async.ts`):
-```typescript
-export async function booleanUnion(m0: Mesh, m1: Mesh, opts?: any) {
-    if (opts?.returnCurves)
-        return dispatcher().run(
-            () => native().dispatch_boolean_union_with_curves(m0._handle, m1._handle),
-            (raw) => wrapLabeledWithCurves(raw));
-    return dispatcher().run(
-        () => native().dispatch_boolean_union(m0._handle, m1._handle),
-        (raw) => wrapLabeled(raw));
-}
-```
-
-**Result wrapping**:
-```typescript
-function wrapLabeled(raw: any): LabeledCutResult {
-    return {
-        mesh: new Mesh(raw.mesh),
-        labels: new NDArray(raw.labels, "int8"),
-        faceLabels: new NDArray(raw.faceLabels, "int32"),
-    };
-}
-```
-
-### 2.5 Spatial Queries
-
-Primitive types mapped to integer codes for C++ dispatch:
-```typescript
-const PRIM_TYPE = { point: 0, segment: 1, triangle: 2, ray: 3, line: 4, plane: 5, aabb: 6, polygon: 7 };
-```
-
-Query functions accept any primitive type and pass the code + NDArray data to C++.
-
-### 2.6 Public API (`index.ts`)
-
-Exports both sync (default) and async namespaces:
-```typescript
-export { booleanUnion, booleanIntersection, booleanDifference } from './cut/sync';
-export { neighborSearch, distance, rayCast } from './spatial/sync';
-export * as async from './async';  // tf.async.booleanUnion(...)
-```
-
----
-
-## Stateful graph bindings (the sealed-engine pattern)
-
-For expensive-build objects queried many times (canonical example:
-`CsgGraph`), mirror `wasm_mesh`'s two-layer handle:
-
-- `wasm_csg_graph<Real>` (`typescript/cpp/src/csg/csg_graph_impl.hpp`) is
-  a `shared_ptr<data_t>` handle; `data_t` owns the input `wasm_mesh`
-  handles (refcount keeps them alive), an identity transformation for
-  untransformed forms (views must not dangle), the tagged forms, and the
-  `tf::csg_graph`. Handle copies — including async lambda captures — share
-  one build.
-- Query methods are `const`, so async captures (`[g = g, ...]`) call
-  straight through with no `const_cast`.
-- The TS `CsgGraph` class holds forms/sheets/config as its own fields,
-  registers with the `FinalizationRegistry`, and exposes
-  `.delete()`/`[Symbol.dispose]` like `Mesh`.
-- Optional-expression ergonomics: options are accepted in the expression
-  slot and discriminated at runtime (`splitExprArgs`, the `cleaned()`
-  idiom) — never a `null` placeholder.
-
-## 3. Testing Patterns
-
-```javascript
-test("booleanUnion", () => {
-    const { tf, s0, s1 } = twoSpheres();
-    const result = tf.booleanUnion(s0, s1);
-    assert(result.mesh.numberOfFaces > 0);
-    assert(result.labels.length === result.mesh.numberOfFaces);
-    result.faceLabels.delete(); result.labels.delete(); result.mesh.delete();
-    s1.delete(); s0.delete();
-});
-```
-
-**Key patterns**:
-- Manual lifecycle management: every `.delete()` call is explicit
-- Async tests use `async () => { const result = await tf.async.booleanUnion(...); }`
-- Handle ownership tests verify data survives parent deletion
-- Simple assert-based (not Jest), run via custom `runner.mjs`
-
----
-
-## 4. CRITICAL: WASM Thread-Safety Rules
-
-This section is essential for anyone adding new TS bindings. The WASM runtime has a two-thread model: **main thread** (JS/WASM linear memory) and **TBB worker threads** (C++ thread pool). Certain types CANNOT cross between them.
-
-### 4.1 What CAN Cross Threads
-
-- **`wasm_mesh` / `wasm_point_cloud`** — thin handles over
-  `shared_ptr<mesh_data>` / `shared_ptr<point_cloud_data>`. Copy = atomic
-  refcount++ on the inner data. **Both handles then share the same
-  `mesh_data`** — this is the mechanism that makes async caches land on
-  the JS-visible original (see §1.3). Safe.
-- **`wasm_ndarray<T>`** — wraps `shared_ptr<tf::buffer<T>>`. Copy is a refcount increment. Safe.
-- **POD types** (int, float, bool) — always safe.
-- **`std::vector<POD>`** — safe once copied/moved into the lambda.
-
-### 4.2 What CANNOT Cross Threads
-
-- **`emscripten::val`** — represents a JS reference. **NEVER capture in async lambdas.** Only accessible on main thread.
-- **`wasm_ndarray::data()`** — returns `emscripten::val` (typed_memory_view). Only callable from main thread.
-
-### 4.3 The Capture-by-Copy + const_cast Pattern
-
-Every async function follows this pattern:
-
-```cpp
-auto async_boolean_union(wasm_mesh &m0, wasm_mesh &m1) -> promise_t {
-    return promise([a = m0, b = m1]() -> labeled_cut_result {
-        //         ^^^^^^^^^^^^^^^^  capture by COPY (shared_ptr refcount++)
-        return sync_boolean_union(const_cast<wasm_mesh &>(a),
-                                  const_cast<wasm_mesh &>(b));
-        //                        ^^^^^^^^^^ lambda captures are const, sync expects non-const
-    });
-}
-```
-
-**Why capture by copy**: The originals are on the main thread's stack. The lambda runs on a TBB worker thread. Copying `wasm_mesh` / `wasm_ndarray` just copies shared_ptrs (atomic refcount increment), keeping the underlying data alive. Crucially for `wasm_mesh`, the copy shares the **same** `mesh_data` as the original (see §1.3), so any cache the worker builds via `m.tree()` / `m.normals()` / etc. lands on the `mesh_data` the JS-visible handle holds.
-
-**Why const_cast**: Lambda captures are const by default. The sync function takes `&` (non-const) because it may trigger lazy cache builds through accessors. `const_cast` is safe here because the only thing being mutated is the inner `mesh_data`'s cache slots, and the await contract guarantees the JS caller is not concurrently mutating the same mesh.
-
-### 4.4 The emscripten::val Extraction Pattern
-
-When a binding receives JS values (e.g., cut values as a JS array), extract them on the main thread BEFORE dispatching:
-
-```cpp
-auto async_isobands(wasm_mesh &mesh, wasm_ndarray<float> &scalars,
-                    emscripten::val js_cut_values) -> promise_t {
-    // STEP 1: Extract on main thread (emscripten::val → std::vector)
-    auto cv = extract_cut_values(js_cut_values);  // Main thread only!
-
-    // STEP 2: Capture only the extracted data
-    return promise([m = mesh, s = scalars, cv = std::move(cv)]() -> result_t {
-        // cv is now a std::vector<float> — safe on worker thread
-        // js_cut_values is NOT captured
-    });
-}
-```
-
-### 4.5 The Promise/Retrieve Mechanism
-
-```
-Main thread                          Worker thread
-───────────                          ─────────────
-dispatch(fn):
-  1. Deduce return type R
-  2. Create converter: std::any → R → emscripten::val
-  3. Allocate async_context {status, result, converter}
-  4. Dispatch fn to TBB pool ──────→ 5. fn() runs, stores result in std::any
-  6. Return &status to JS            7. Set status=1, atomic_notify
-       ↓
-  8. JS: Atomics.waitAsync(status)
-       ↓ (status becomes 1)
-  9. JS calls retrieve(slot)
- 10. converter(result) → emscripten::val  ← Conversion happens HERE (main thread)
- 11. Return JS object to Promise resolver
-```
-
-**Key**: The result struct (e.g., `labeled_cut_result`) is constructed on the worker thread from thread-safe types (wasm_mesh, wasm_ndarray). The conversion to `emscripten::val` (which creates JS objects) happens in `retrieve()` on the **main thread**.
-
-### 4.6 Rules for Adding New Async Bindings
-
-1. **Sync function first**: Write the sync version that does the actual work
-2. **Async wrapper**: Capture all inputs by copy, const_cast as needed
-3. **Extract emscripten::val BEFORE lambda**: Convert JS arrays to `std::vector<POD>` on main thread
-4. **Return C++ structs from lambda**: Members must all be wasm_* types (shared_ptr-based)
-5. **Register result types as `value_object`**: So embind knows how to convert to JS on retrieve
-6. **Register both sync and dispatch_* functions** in `EMSCRIPTEN_BINDINGS`
-
----
-
-## 5. Build Pipeline
-
-```
-typescript/CMakeLists.txt
-    → Emscripten C++ compilation with -lembind
-    → Output: trueform.wasm + trueform.js + trueform.d.ts (via --emit-tsd)
-    → TypeScript source compiled by tsc
-    → Package: @polydera/trueform on npm
-```
-
-Key flags: `-sWASM=1 -sMODULARIZE=1 -sEXPORT_ES6=1 -sPTHREAD_POOL_SIZE='navigator.hardwareConcurrency'`
-
----
-
-## 5. Key Design Principles
-
-1. **Shared ownership via shared_ptr** — all WASM types wrap shared_ptr, safe across async boundaries
-2. **Zero-copy views** — `.data` returns TypedArray into WASM heap, `.row()` and `.slice()` share buffer
-3. **Lazy topology** — generation counters track staleness, rebuild only when inputs change
-4. **Dual execution** — every operation available sync (blocking) and async (Promise-based via TBB)
-5. **Dynamic dtype dispatch** — `native()[`op_${dtype}`]` selects correct C++ binding at runtime
-6. **FinalizationRegistry** — automatic cleanup of WASM objects when TS objects are GC'd
+Each dispatch allocates a stable `async_context` containing:
+
+- aligned status: `0` pending, `1` complete, `-1` failed;
+- a type-erased `std::any` result;
+- a type-specific converter from `std::any` to `emscripten::val`.
+
+The context is inserted into a `tbb::concurrent_hash_map` and captured by
+`shared_ptr` in the worker. This map is a legitimate rare hash-table use: task
+completion and main-thread retrieval are concurrent, and the lookup key is an
+opaque context address rather than a bounded domain identity.
+
+The worker stores its result, performs a release-store to status, and issues a
+WASM atomic notification. JavaScript waits on an `Int32Array` view of status.
+Node receives a ref'd keepalive while `Atomics.waitAsync` is pending because the
+wait itself does not keep its event loop alive.
+
+One generic `retrieve(slot)` converts a successful result and erases the task
+entry. On failure it erases the entry without attempting result conversion.
+Dispatch completion alone does not erase a context, so the JavaScript bridge
+must call `retrieve(slot)` on every terminal path. Do not add one retrieval
+function per result type.
+
+## 6. Worker boundary
+
+An async worker may use:
+
+- copied scalars and enums;
+- `wasm_ndarray`, `wasm_mesh`, and other shared native handles captured by value;
+- Trueform buffers, ranges, policies, and algorithms;
+- nested oneTBB parallelism used by the core operation.
+
+An async worker must not use:
+
+- `emscripten::val`;
+- JavaScript objects, callbacks, or TypedArray methods;
+- borrowed references whose owning handle was not captured;
+- mutable state concurrently reassigned by JavaScript.
+
+Convert JavaScript values into worker-safe native values before dispatch. Convert
+the native result to `emscripten::val` only during `retrieve` on the main JS
+thread.
+
+Capture handles by value. Reference capture is a lifetime bug even when the
+public TypeScript promise appears to keep its argument in scope.
+
+## 7. Mutation contract during async work
+
+Captured shared ownership prevents deallocation; it does not make mutation
+safe. While an async operation is pending, callers must not mutate or reassign
+the same mesh/array state used by that operation.
+
+When adding an async wrapper, establish:
+
+1. which native state the worker reads or lazily builds;
+2. which handles are captured by value;
+3. whether any public setter can race the operation;
+4. whether the returned object shares input storage;
+5. whether disposal before resolution is safe because the capture owns state.
+
+If the operation cannot satisfy this contract, change the ownership/phase
+design. Do not paper over it with JavaScript-side locking.
+
+## 8. Initialization and runtime requirements
+
+`init()` in `typescript/src/native.ts` memoizes one initialization promise,
+creates the Emscripten module, installs the dispatcher from exported
+`wasmMemory` and `retrieve`, and warms the TBB pool with an async round trip.
+
+The current build enables shared memory, pthreads, and memory growth. Browser
+deployment therefore needs the environment required for `SharedArrayBuffer`
+and pthread workers, including cross-origin isolation. Custom asset locations
+must route both the `.wasm` module and the worker's main script.
+
+Do not create a second module instance or dispatcher casually. Native handles,
+status addresses, and memory views belong to the module memory that created
+them.
+
+## 9. Adding or changing a binding
+
+Inspect a neighboring operation with the same carrier, dtype matrix, result
+shape, and sync/async model. Then verify the owning CMake source list and public
+exports.
+
+Required sequence:
+
+1. Validate shapes, dtypes, enums, and optional values once at the boundary.
+2. Convert to existing native handles or copy into a `wasm_ndarray` once.
+3. Call one C++ implementation for both sync and async paths.
+4. For async, capture every input handle/value by value and return `promise_t`.
+5. Keep all `emscripten::val` work outside the worker.
+6. Move native buffers into result handles; do not element-copy them into JS.
+7. Wrap every returned native handle in the TypeScript ownership registry.
+8. Expose explicit disposal for state-owning results.
+9. Test sync/async equivalence, disposal order, shallow sharing, cache reuse, and
+   every registered dtype actually promised by the public API.
+
+Registration layouts vary. Some modules share an implementation header across
+float32/float64 translation units; others register together. Current code and
+`typescript/CMakeLists.txt` win over remembered convention.
+
+## 10. Review checklist
+
+- Does each TypedArray view have a live native owner?
+- Is `.data` treated as borrowed and reacquired after possible memory growth?
+- Are zero-copy slices represented by shared storage plus metadata?
+- Does default handle copying have the intended shared-object semantics?
+- Does `shallow_copy()` fork slots rather than deep-copy geometry?
+- Are cache freshness and invalidation native responsibilities?
+- Does every async lambda capture owning handles by value?
+- Is worker code free of `emscripten::val` and JavaScript access?
+- Is result conversion deferred to main-thread `retrieve`?
+- Is concurrent mutation forbidden or structurally prevented?
+- Are sync and async paths the same computation?
+- Are disposal and finalization both safe and independently tested?
+
+## Reference map
+
+- WASM ndarray: `typescript/cpp/include/trueform/ts/core/wasm_ndarray.hpp`
+- Offset blocks: `typescript/cpp/include/trueform/ts/core/wasm_offset_blocked_buffer.hpp`
+- Mesh handle: `typescript/cpp/include/trueform/ts/core/wasm_mesh.hpp`
+- Mesh data/cache generations: `typescript/cpp/include/trueform/ts/core/mesh_data.hpp`
+- TypeScript ndarray: `typescript/src/ndarray/NDArray.ts`
+- TypeScript mesh: `typescript/src/form/Mesh.ts`
+- Finalization: `typescript/src/internal/registry.ts`
+- Async bridge: `typescript/src/internal/AsyncDispatcher.ts`
+- Native dispatcher: `typescript/cpp/include/trueform/ts/core/async_dispatcher.hpp`
+- Initialization: `typescript/src/native.ts`
+- Runtime flags and sources: `typescript/CMakeLists.txt`

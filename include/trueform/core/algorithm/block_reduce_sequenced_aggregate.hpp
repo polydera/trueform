@@ -19,8 +19,9 @@ namespace tf {
 /// @ingroup core_algorithms
 /// @brief Parallel reduction with ordered aggregation.
 ///
-/// Performs parallel work on blocks but aggregates results in order.
-/// Useful when aggregation must be deterministic.
+/// Performs parallel work on blocks but aggregates results in input-block order.
+/// Useful when order preserves positional identity, constructs offsets, rebases
+/// correlated outputs, or is otherwise part of the result structure.
 ///
 /// @tparam Range The input range type.
 /// @tparam Result The result type.

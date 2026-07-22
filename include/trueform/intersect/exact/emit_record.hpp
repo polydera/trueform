@@ -17,7 +17,7 @@
 
 namespace tf::exact {
 
-/// Push an intersection record + point into the thread-local buffers.
+/// Push an intersection record + point into the caller's local output buffers.
 template <typename Index, typename Int, typename Intersections, typename Pts>
 auto emit_record(int tag, int tag_other, Index object, Index object_other,
                  tf::topo_id<Index> target, tf::topo_id<Index> target_other,
