@@ -24,11 +24,11 @@
 #include "../../core/views/zip.hpp"
 #include "../../intersect/graph/vertex.hpp"
 #include "../../topology/edge_path_connector.hpp"
-#include "../arrangement_graph.hpp"
-#include "../face_cuts.hpp"
+#include "../face_regions.hpp"
 #include "./arrangement_descriptor.hpp"
 #include "./build_domain_of_side.hpp"
 #include "./canonicalize_nm_edges.hpp"
+#include "./component_labels.hpp"
 #include "./compute_bundle_tag_index.hpp"
 #include "./compute_majority_rep.hpp"
 #include "./emit_domain_merges.hpp"
@@ -85,13 +85,13 @@ template <typename Index> struct arrangement_vertex_hash {
 ///        sides, realising the virtual extension of an open cutter.
 template <typename Int, typename Index, typename Index1, typename GetPoint,
           typename ApplyToFace>
-auto make_arrangement_descriptor(const tf::arrangement_graph<Index> &ag,
-                                 const tf::face_cuts<Index, Index1> &fc,
+auto make_arrangement_descriptor(const tf::cut::component_labels<Index> &ag,
+                                 const tf::face_regions<Index, Index1> &fr,
                                  GetPoint get_point, ApplyToFace apply_to_face,
                                  const tf::buffer<char> &is_sheet_tag = {})
     -> arrangement_descriptor<Index> {
   using vertex_t = typename tf::cut::non_manifold_edge_fans<Index>::vertex_t;
-  using ag_t = tf::arrangement_graph<Index>;
+  using ag_t = tf::cut::component_labels<Index>;
 
   arrangement_descriptor<Index> out;
   const Index n_components = ag.n_components();
@@ -103,7 +103,7 @@ auto make_arrangement_descriptor(const tf::arrangement_graph<Index> &ag,
     sheet_component.allocate(static_cast<std::size_t>(n_components));
     tf::parallel_fill(sheet_component, char(0));
     auto loop_labels = ag.loop_labels();
-    auto descs = fc.descriptors();
+    auto descs = fr.descriptors();
     tf::parallel_for_each(
         tf::make_sequence_range(static_cast<Index>(loop_labels.size())),
         [&](Index l) {
@@ -143,7 +143,7 @@ auto make_arrangement_descriptor(const tf::arrangement_graph<Index> &ag,
   };
 
   // ---- 1. NM edge fans from connectivity. ---------------------------
-  out.fans = tf::cut::make_non_manifold_edge_fans(ag, fc);
+  out.fans = tf::cut::make_non_manifold_edge_fans(ag.connectivity(), fr);
   const auto n_nm_edges = out.fans.edges.size();
 
   if (n_nm_edges == 0) {
@@ -165,8 +165,8 @@ auto make_arrangement_descriptor(const tf::arrangement_graph<Index> &ag,
         tf::checked);
     out.n_bundles = n_components;
     std::tie(out.tag_of_component, out.bundle_to_tags) =
-        tf::cut::compute_bundle_tag_index(ag, fc, out.bundle_of_component,
-                                            out.n_bundles);
+        tf::cut::compute_bundle_tag_index(ag, fr, out.bundle_of_component,
+                                          out.n_bundles);
     return out;
   }
 
@@ -208,41 +208,38 @@ auto make_arrangement_descriptor(const tf::arrangement_graph<Index> &ag,
 
   auto id_sorted_view = tf::make_offset_block_range(
       out.fans.faces.offsets_buffer(), id_sorted_labels);
-  auto labels_indirect = tf::make_indirect_range(
-      out.fans.faces.data_buffer(), ag.loop_labels());
+  auto labels_indirect =
+      tf::make_indirect_range(out.fans.faces.data_buffer(), ag.loop_labels());
   auto labels_view = tf::make_offset_block_range(
       out.fans.faces.offsets_buffer(), labels_indirect);
 
-  auto dirs_view = tf::make_offset_block_range(
-      out.fans.faces.offsets_buffer(), tf::make_range(out.fans.dirs));
-  tf::cut::canonicalize_nm_edges<Int>(ag, fc, out.fans.edges, out.fans.faces,
-                                       dirs_view, id_sorted_view, labels_view,
-                                       is_valid, get_point, apply_to_face);
+  auto dirs_view = tf::make_offset_block_range(out.fans.faces.offsets_buffer(),
+                                               tf::make_range(out.fans.dirs));
+  tf::cut::canonicalize_nm_edges<Int>(
+      ag.connectivity(), fr, out.fans.edges, out.fans.faces, dirs_view,
+      id_sorted_view, labels_view, is_valid, get_point, apply_to_face);
 
   // ---- 4. One rep per (path_id, set-key) bucket. --------------------
-  out.reps = tf::cut::compute_majority_rep(Index(n_nm_edges), is_valid,
-                                            edge_path_id, id_sorted_view,
-                                            labels_view);
+  out.reps = tf::cut::compute_majority_rep(
+      Index(n_nm_edges), is_valid, edge_path_id, id_sorted_view, labels_view);
 
   // ---- 5. Wedge-radial merges + open-component boundary self-merges. ---
   tf::buffer<std::array<Index, 2>> merges;
   tf::buffer<std::array<Index, 2>> bundle_merges;
-  tf::cut::emit_domain_merges(ag, out.fans, out.reps, merges,
-                               bundle_merges);
+  tf::cut::emit_domain_merges(ag, out.fans, out.reps, merges, bundle_merges);
   emit_open_merges(merges);
 
   // ---- 6. Union-find: domain_of_side + bundle_of_component. ---------
   out.n_domains =
       tf::cut::build_domain_of_side(merges, n_components, out.domain_of_side);
 
-  auto bundle_labels =
-      tf::cut::make_bundle_labels(bundle_merges, n_components);
+  auto bundle_labels = tf::cut::make_bundle_labels(bundle_merges, n_components);
   out.bundle_of_component = std::move(bundle_labels.labels);
   out.n_bundles = bundle_labels.n_components;
 
   std::tie(out.tag_of_component, out.bundle_to_tags) =
-      tf::cut::compute_bundle_tag_index(ag, fc, out.bundle_of_component,
-                                          out.n_bundles);
+      tf::cut::compute_bundle_tag_index(ag, fr, out.bundle_of_component,
+                                        out.n_bundles);
 
   return out;
 }

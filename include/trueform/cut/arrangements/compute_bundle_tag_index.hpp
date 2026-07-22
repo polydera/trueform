@@ -18,8 +18,8 @@
 #include "../../core/offset_block_buffer.hpp"
 #include "../../core/views/enumerate.hpp"
 #include "../../core/views/sequence_range.hpp"
-#include "../arrangement_graph.hpp"
-#include "../face_cuts.hpp"
+#include "./component_labels.hpp"
+#include "../face_regions.hpp"
 #include "tbb/parallel_sort.h"
 #include "tbb/task_group.h"
 #include <algorithm>
@@ -33,18 +33,18 @@ namespace tf::cut {
 ///
 /// `tag_of_component[c]` is the form tag of component `c` (or
 /// `Index(-1)` for dropped/empty). Single-valued under the per-tag CCL
-/// invariant in `arrangement_graph::_compute_loop_component_labels`.
+/// invariant in `loop_connectivity::_compute_loop_component_labels`.
 ///
 /// `bundle_to_tags[b]` is the ascending-sorted unique list of form tags
 /// whose components belong to bundle `b`. Suitable for binary-search
 /// lookups.
 template <typename Index, typename Int>
-auto compute_bundle_tag_index(const tf::arrangement_graph<Index> &ag,
-                              const tf::face_cuts<Index, Int> &fc,
+auto compute_bundle_tag_index(const tf::cut::component_labels<Index> &ag,
+                              const tf::face_regions<Index, Int> &fr,
                               const tf::buffer<Index> &bundle_of_component,
                               Index n_bundles)
     -> std::pair<tf::buffer<Index>, tf::offset_block_buffer<Index, Index>> {
-  using ag_t = tf::arrangement_graph<Index>;
+  using ag_t = tf::cut::component_labels<Index>;
   const Index n_components = ag.n_components();
 
   std::pair<tf::buffer<Index>, tf::offset_block_buffer<Index, Index>> result;
@@ -59,14 +59,14 @@ auto compute_bundle_tag_index(const tf::arrangement_graph<Index> &ag,
 
   // Fill tag_of_component from both surface sources. Concurrent writers
   // store the same value (per-tag CCL invariant), so the race is benign.
-  auto descs = fc.descriptors();
+  auto descs = fr.descriptors();
   auto loop_labels = ag.loop_labels();
   const Index n_tags = ag.n_tags();
 
   tbb::task_group tg;
   tg.run([&] {
     tf::parallel_for_each(
-        tf::make_sequence_range(static_cast<Index>(fc.loops().size())),
+        tf::make_sequence_range(static_cast<Index>(fr.loops().size())),
         [&](Index l) {
           const Index c = loop_labels[l];
           if (c == ag_t::none_label)

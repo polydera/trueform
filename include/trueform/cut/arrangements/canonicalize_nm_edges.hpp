@@ -17,8 +17,8 @@
 #include "../../core/views/zip.hpp"
 #include "../../exact/dot_sign.hpp"
 #include "../../exact/meta.hpp"
-#include "../arrangement_graph.hpp"
-#include "../face_cuts.hpp"
+#include "../loop_connectivity.hpp"
+#include "../face_regions.hpp"
 #include "./make_non_manifold_edge_fans.hpp"
 #include <algorithm>
 #include <array>
@@ -31,7 +31,7 @@ namespace tf::cut {
 ///
 /// Graph-native counterpart to
 /// @ref tf::topology::domains::canonicalize_nm_edges, operating on the
-/// implicit arrangement carried by @ref tf::arrangement_graph.
+/// implicit arrangement carried by @ref tf::loop_connectivity.
 ///
 /// For each NM edge with fan of `K` occurrences:
 ///   1. Reject `K < 2`, degenerate original faces, and fans whose
@@ -73,8 +73,8 @@ namespace tf::cut {
 template <typename Int, typename Index, typename Index1, typename Edges,
           typename Faces, typename DirsView, typename IdView,
           typename LabelsView, typename GetPoint, typename ApplyToFace>
-void canonicalize_nm_edges(const tf::arrangement_graph<Index> &,
-                           const tf::face_cuts<Index, Index1> &fc,
+void canonicalize_nm_edges(const tf::loop_connectivity<Index> &,
+                           const tf::face_regions<Index, Index1> &fr,
                            Edges &nm_edges, Faces &nm_edge_faces,
                            const DirsView &dirs_view,
                            const IdView &id_sorted_view,
@@ -86,7 +86,7 @@ void canonicalize_nm_edges(const tf::arrangement_graph<Index> &,
   using T2 = typename tf::exact::meta<Int>::T2;
   using nvec = std::array<T2, 3>;
 
-  auto descs = fc.descriptors();
+  auto descs = fr.descriptors();
 
   // Original-plane normal from the face's winding — the same T1-diff /
   // T2-cross form as tf::exact::make_face_plane.
@@ -283,6 +283,7 @@ void canonicalize_nm_edges(const tf::arrangement_graph<Index> &,
         std::sort(id_block.begin(), id_block.end());
         valid = 1;
       });
+
 }
 
 } // namespace tf::cut

@@ -19,8 +19,9 @@
 #include "../../core/views/enumerate.hpp"
 #include "../../core/views/zip.hpp"
 #include "../../intersect/graph/vertex.hpp"
-#include "../arrangement_graph.hpp"
-#include "../face_cuts.hpp"
+#include "../loop_connectivity.hpp"
+#include "../face_regions.hpp"
+#include "../../core/small_vector.hpp"
 
 namespace tf::cut {
 
@@ -51,27 +52,31 @@ template <typename Index> struct non_manifold_edge_fans {
 
 /// @ingroup cut
 /// @brief Extract non-manifold edges of an implicit N-form arrangement
-///        with their incident loop fans.
+///        with their incident REGION fans, from the raw structure.
 ///
-/// A non-manifold edge of the arrangement is any per-loop edge whose
-/// cleaned connectivity carries at least one neighbour: the loop and
-/// its neighbours form a fan of three or more incident faces across
-/// that edge.
+/// Region grain: every region contributes its boundary walk and its
+/// hole walks (canonical order — boundary first, then holes in
+/// `loop_holes()` order — matching @ref tf::loop_connectivity's edge
+/// slots). Only walk edges exist here, so a coincident interior
+/// triangulation diagonal can never form a fan — the invariant the
+/// loop grain held by construction.
 ///
-/// Representative rule: only the loop with the smallest id in the fan
-/// emits — mirrors the standard pattern from
-/// @ref tf::make_non_manifold_edge_fans on materialised polygons.
+/// A non-manifold edge is any walk edge whose cleaned connectivity
+/// carries at least one neighbour region; the region and its
+/// neighbours form a fan of three or more incident faces.
 ///
-/// Dead loops (coplanar duplicates dropped during
-/// @ref tf::arrangement_graph::build) have empty per-loop edge ranges
-/// in the graph's connectivity and are skipped here.
+/// Representative rule: only the region with the smallest id in the
+/// fan emits. Dead regions (coplanar duplicates) have empty edge
+/// ranges in the cleaned connectivity and are skipped.
 template <typename Index, typename Int>
-auto make_non_manifold_edge_fans(const tf::arrangement_graph<Index> &ag,
-                                 const tf::face_cuts<Index, Int> &fc)
+auto make_non_manifold_edge_fans(const tf::loop_connectivity<Index> &ag,
+                                 const tf::face_regions<Index, Int> &fr)
     -> non_manifold_edge_fans<Index> {
   non_manifold_edge_fans<Index> out;
 
-  auto loops = fc.loops();
+  auto loops = fr.loops();
+  auto holes = fr.holes();
+  auto loop_holes = fr.loop_holes();
   if (!loops.size())
     return out;
 
@@ -88,34 +93,40 @@ auto make_non_manifold_edge_fans(const tf::arrangement_graph<Index> &ag,
   tf::blocked_reduce(
       tf::enumerate(tf::zip(loops, conn)),
       std::tie(out.edges, out.faces, out.dirs), local_t{},
-      [&loops](const auto &range, local_t &local) {
-        // How many times the undirected edge {a,b} traverses loop `lp`.
-        // 1 for a normal edge; 2 for the two walls of a slit — an open cut
-        // whose free tip ends inside the region, so the loop runs in along
-        // one wall and back along the other, carrying {a,b} twice. The
-        // self-excluding connectivity drops that second incidence, which is
-        // the "one loop too few" that folds a solid's two sides together.
-        auto edge_mult = [](const auto &lp, const vertex_t &a,
-                            const vertex_t &b) -> Index {
-          const Index m = static_cast<Index>(lp.size());
-          Index c = 0, q = m - 1;
-          for (Index j = 0; j < m; q = j++)
-            if ((lp[q] == a && lp[j] == b) || (lp[q] == b && lp[j] == a))
-              ++c;
+      [&loops, &holes, &loop_holes](const auto &range, local_t &local) {
+        // Walks of a region, canonical order. Applied to a region id.
+        auto for_each_walk = [&](Index li, const auto &f) {
+          f(loops[li]);
+          for (auto h : loop_holes[li])
+            f(holes[h]);
+        };
+        // Undirected / directed traversal counts of {a,b} across ALL
+        // of a region's walks (the connectivity self-excludes the
+        // region, so its own doubled incidences are invisible there).
+        auto edge_mult = [&](Index li, const vertex_t &a,
+                             const vertex_t &b) -> Index {
+          Index c = 0;
+          for_each_walk(li, [&](const auto &w) {
+            const Index m = static_cast<Index>(w.size());
+            Index q = m - 1;
+            for (Index j = 0; j < m; q = j++)
+              if ((w[q] == a && w[j] == b) || (w[q] == b && w[j] == a))
+                ++c;
+          });
           return c;
         };
-        // Directed count of (a -> b) traversals only.
-        auto edge_mult_fwd = [](const auto &lp, const vertex_t &a,
-                                const vertex_t &b) -> Index {
-          const Index m = static_cast<Index>(lp.size());
-          Index c = 0, q = m - 1;
-          for (Index j = 0; j < m; q = j++)
-            if (lp[q] == a && lp[j] == b)
-              ++c;
+        auto edge_mult_fwd = [&](Index li, const vertex_t &a,
+                                 const vertex_t &b) -> Index {
+          Index c = 0;
+          for_each_walk(li, [&](const auto &w) {
+            const Index m = static_cast<Index>(w.size());
+            Index q = m - 1;
+            for (Index j = 0; j < m; q = j++)
+              if (w[q] == a && w[j] == b)
+                ++c;
+          });
           return c;
         };
-        // The two walls share one geometric edge; emit only from the
-        // "forward" one (a < b under (id, source)) so it yields one fan.
         auto is_forward = [](const vertex_t &a, const vertex_t &b) {
           return a.id != b.id
                      ? a.id < b.id
@@ -124,101 +135,98 @@ auto make_non_manifold_edge_fans(const tf::arrangement_graph<Index> &ag,
         for (const auto &outer : range) {
           const auto &[loop_id_z, pair] = outer;
           const auto loop_id = static_cast<Index>(loop_id_z);
-          const auto &[loop, edge_conn] = pair;
-          // Dead loops (coplanar duplicates) keep their raw vertex
-          // count in fc.loops(), but their cleaned connectivity is
-          // empty. Skip them; bypassing this check would read
-          // edge_conn[k] past its tail and pull garbage neighbours.
+          const auto &[loop_b, edge_conn_b] = pair;
+          const auto &loop = loop_b;
+          const auto edge_conn = edge_conn_b;
           if (edge_conn.size() == 0)
-            continue;
-          const Index size = static_cast<Index>(loop.size());
-          // A simple region loop visits every vertex once. A loop that carries
-          // an edge twice — a slit (open cut, free tip inside) OR a bridge edge
-          // that patches a hole into the loop — necessarily revisits a vertex.
-          // So unless some vertex repeats, no edge can be doubled and we take
-          // the exact original path with no per-edge counting.
+            continue; // dead region: cleaned connectivity is empty
+          // A doubled edge (slit / pinch) requires a repeated vertex
+          // somewhere among the region's walks.
           bool maybe_doubled = false;
-          for (Index x = 0; x < size && !maybe_doubled; ++x)
-            for (Index y = x + 1; y < size; ++y)
-              if (loop[x] == loop[y]) {
-                maybe_doubled = true;
-                break;
+          {
+            tf::small_vector<vertex_t, 32> seen;
+            for_each_walk(loop_id, [&](const auto &w) {
+              for (std::size_t i = 0; i < w.size() && !maybe_doubled; ++i) {
+                for (const auto &v : seen)
+                  if (v == w[i]) {
+                    maybe_doubled = true;
+                    break;
+                  }
+                if (!maybe_doubled)
+                  seen.push_back(w[i]);
               }
-          Index prev = size - 1;
-          for (Index i = 0; i < size; prev = i++) {
-            const auto &neighbours = edge_conn[prev];
-            const auto &va = loop[prev];
-            const auto &vb = loop[i];
-            // Total faces incident to this geometric edge = this loop's own
-            // incidences + the self-EXCLUDED peers from the connectivity.
-            // `self_mult` is 2 where this loop carries the edge twice — the two
-            // walls of a slit, or the two sides of a bridge edge — which
-            // `neighbours` never lists (it is the same loop); 1 otherwise.
-            // Counting (not a flank test) is required: a bridge's endpoints are
-            // ordinary vertices, not a flanked tip. Non-manifold means 3+
-            // incident faces — a doubled edge (self_mult 2) with even a single
-            // extra attached face (neighbours 1) is non-manifold.
-            const Index self_mult =
-                maybe_doubled ? edge_mult(loop, va, vb) : Index(1);
-            const Index total_incidences =
-                self_mult + static_cast<Index>(neighbours.size());
-            if (total_incidences < 3)
-              continue;
-            // A slit's two walls are the same loop — emit the forward one.
-            if (self_mult >= 2 && !is_forward(va, vb))
-              continue;
-            // A slit wall always emits (only it knows its loop is doubled).
-            // A normal slot emits if it is the smallest-id member AND no
-            // neighbour is a slit wall here — a slit neighbour carries the
-            // extra incidence this slot cannot see, so it must emit instead.
-            if (self_mult < 2) {
-              bool is_rep = true;
-              for (auto n : neighbours)
-                if (n < loop_id) {
-                  is_rep = false;
-                  break;
-                }
-              if (!is_rep)
-                continue;
-              bool slit_neighbour = false;
-              for (auto n : neighbours)
-                if (edge_mult(loops[n], va, vb) >= 2) {
-                  slit_neighbour = true;
-                  break;
-                }
-              if (slit_neighbour)
-                continue;
-            }
-            local.edges.data_buffer().push_back(va);
-            local.edges.data_buffer().push_back(vb);
-            Index fan = 0;
-            // Occurrence directions: forward passes first, then the
-            // backward ones. The emitting slot traverses (va -> vb), so
-            // the self loop always has at least one forward pass.
-            const Index self_fwd =
-                self_mult >= 2 ? edge_mult_fwd(loop, va, vb) : Index(1);
-            for (Index k = 0; k < self_mult; ++k) {
-              local.faces_data.push_back(loop_id);
-              local.dirs.push_back(char(k < self_fwd));
-              ++fan;
-            }
-            for (auto n : neighbours) {
-              const Index nm = edge_mult(loops[n], va, vb);
-              if (nm == 0) {
-                local.faces_data.push_back(n);
-                local.dirs.push_back(char(1));
-                ++fan;
-                continue;
-              }
-              const Index nf = edge_mult_fwd(loops[n], va, vb);
-              for (Index k = 0; k < nm; ++k) {
-                local.faces_data.push_back(n);
-                local.dirs.push_back(char(k < nf));
-                ++fan;
-              }
-            }
-            local.sizes.push_back(fan);
+            });
           }
+          // Edge slot within a walk follows compute_face_link_per_edge:
+          // slot j = (v[j], v[j+1]), closing edge last — i.e. slot ==
+          // prev. Walks pack region-major, so a walk's slots start at
+          // its running base.
+          Index walk_base = 0;
+          auto do_walk = [&](const auto &walk) {
+            const Index size = static_cast<Index>(walk.size());
+            Index prev = size - 1;
+            for (Index i = 0; i < size; prev = i++) {
+              const auto &neighbours = edge_conn[walk_base + prev];
+              const auto &va = walk[prev];
+              const auto &vb = walk[i];
+              const Index self_mult =
+                  maybe_doubled ? edge_mult(loop_id, va, vb) : Index(1);
+              const Index total_incidences =
+                  self_mult + static_cast<Index>(neighbours.size());
+              if (total_incidences < 3)
+                continue;
+              if (self_mult >= 2 && !is_forward(va, vb))
+                continue;
+              if (self_mult < 2) {
+                bool is_rep = true;
+                for (auto n : neighbours)
+                  if (n < loop_id) {
+                    is_rep = false;
+                    break;
+                  }
+                if (!is_rep)
+                  continue;
+                bool slit_neighbour = false;
+                for (auto n : neighbours)
+                  if (edge_mult(n, va, vb) >= 2) {
+                    slit_neighbour = true;
+                    break;
+                  }
+                if (slit_neighbour)
+                  continue;
+              }
+              local.edges.data_buffer().push_back(va);
+              local.edges.data_buffer().push_back(vb);
+              Index fan = 0;
+              const Index self_fwd =
+                  self_mult >= 2 ? edge_mult_fwd(loop_id, va, vb) : Index(1);
+              for (Index k = 0; k < self_mult; ++k) {
+                local.faces_data.push_back(loop_id);
+                local.dirs.push_back(char(k < self_fwd));
+                ++fan;
+              }
+              for (auto n : neighbours) {
+                const Index nm = edge_mult(n, va, vb);
+                if (nm == 0) {
+                  local.faces_data.push_back(n);
+                  local.dirs.push_back(char(1));
+                  ++fan;
+                  continue;
+                }
+                const Index nf = edge_mult_fwd(n, va, vb);
+                for (Index k = 0; k < nm; ++k) {
+                  local.faces_data.push_back(n);
+                  local.dirs.push_back(char(k < nf));
+                  ++fan;
+                }
+              }
+              local.sizes.push_back(fan);
+            }
+            walk_base += size;
+          };
+          do_walk(loop);
+          for (auto h : loop_holes[loop_id])
+            do_walk(holes[h]);
         }
       },
       [&offset](const local_t &local,

@@ -16,8 +16,8 @@
 #include "../../core/buffer.hpp"
 #include "../../core/range.hpp"
 #include "../../core/views/blocked_range.hpp"
-#include "../arrangement_graph.hpp"
-#include "../face_cuts.hpp"
+#include "./component_labels.hpp"
+#include "../face_regions.hpp"
 #include "./arrangement_descriptor.hpp"
 #include <algorithm>
 #include <array>
@@ -50,7 +50,7 @@ struct domain_inclusions {
 ///
 /// Walks the wedge representatives in the @ref tf::cut::arrangement_descriptor.
 /// Each representative's fan is K loops meeting at a non-manifold edge;
-/// each fan loop's component (via @ref tf::arrangement_graph::loop_labels)
+/// each fan loop's component (via @ref tf::loop_connectivity::loop_labels)
 /// has its interior-side domain in `descriptor.domain_of_side[2c + 1]`,
 /// and that domain accumulates the loop's form-tag bit.
 ///
@@ -75,8 +75,8 @@ struct domain_inclusions {
 /// by the nesting pass, deferred to Task #28.
 template <typename Index, typename Index1>
 auto compute_domain_inclusions(
-    const tf::arrangement_graph<Index> &ag,
-    const tf::face_cuts<Index, Index1> &fc,
+    const tf::cut::component_labels<Index> &ag,
+    const tf::face_regions<Index, Index1> &fr,
     const tf::cut::arrangement_descriptor<Index> &desc)
     -> domain_inclusions {
   const Index n_tags = ag.n_tags();
@@ -91,7 +91,7 @@ auto compute_domain_inclusions(
   if (n_domains == 0 || n_tags == 0)
     return out;
 
-  auto descs = fc.descriptors();
+  auto descs = fr.descriptors();
   auto loop_labels = ag.loop_labels();
   auto domain_of_side = desc.domain_of_side;
   auto coplanar_pairs = ag.coplanar_pairs();

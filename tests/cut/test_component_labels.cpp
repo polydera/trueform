@@ -1,6 +1,6 @@
 /**
- * @file test_arrangement_graph.cpp
- * @brief Hand-verifiable structural tests for tf::arrangement_graph.
+ * @file test_component_labels.cpp
+ * @brief Hand-verifiable structural tests for tf::loop_connectivity.
  *
  * Copyright (c) 2026 Ziga Sajovic, XLAB
  */
@@ -9,9 +9,11 @@
 #include <trueform/core/polygons_buffer.hpp>
 #include <trueform/core/views/mapped_range.hpp>
 #include <trueform/core/views/sequence_range.hpp>
-#include <trueform/cut/arrangement_graph.hpp>
+#include <trueform/cut/arrangements/component_labels.hpp>
 #include <trueform/cut/arrangements/make_arrangement_descriptor.hpp>
-#include <trueform/cut/face_cuts.hpp>
+#include <trueform/cut/face_regions.hpp>
+#include <trueform/cut/loop_connectivity.hpp>
+#include <trueform/cut/region_triangulator.hpp>
 #include <trueform/intersect/graph/intersection_graph.hpp>
 #include <trueform/intersect/intersections_between_polygons.hpp>
 #include <trueform/spatial/aabb_tree.hpp>
@@ -41,8 +43,9 @@ auto make_triangle(const std::array<std::array<float, 3>, 3> &pts) -> mesh_t {
 
 } // namespace
 
-TEST_CASE("arrangement_graph: two triangles sharing an edge in different planes",
-          "[arrangement_graph][cross-tag]") {
+TEST_CASE(
+    "loop_connectivity: two triangles sharing an edge in different planes",
+    "[component_labels][cross-tag]") {
   // Triangle A in XY plane, triangle B in XZ plane, sharing the edge
   // from (0,0,0) to (1,0,0). They are NOT coplanar — coplanar dedup
   // must not fuse them just because their local vertex indices
@@ -68,7 +71,7 @@ TEST_CASE("arrangement_graph: two triangles sharing an edge in different planes"
 
   tf::intersections_between_polygons<Index, float> ibp;
   ibp.build(forms_range, tf::intersect_mode::primitives |
-                          tf::intersect_mode::resolve_crossing_contours);
+                             tf::intersect_mode::resolve_crossing_contours);
 
   auto &conv = ibp.converter();
   auto apply_to_face = [&](int tag, Index object, const auto &f) {
@@ -87,10 +90,19 @@ TEST_CASE("arrangement_graph: two triangles sharing an edge in different planes"
   ig.build(ibp, apply_to_face, get_mesh_point,
            tf::intersect_mode::primitives |
                tf::intersect_mode::resolve_crossing_contours);
-  tf::face_cuts<Index> fc;
-  fc.build(ig, apply_to_face, get_mesh_point);
-  tf::arrangement_graph<Index> ag;
-  ag.build(ig, fc, forms_range);
+  tf::face_regions<Index> fr;
+  fr.build(ig, apply_to_face, get_mesh_point);
+  tf::cut::region_triangulator<Index> rt;
+  rt.build(fr, ig, forms_range, apply_to_face, get_mesh_point);
+  // the arrangement tier detects stacks; the label tier builds
+  // connectivity (cleaned with the arrangement's dead mask) + labels
+  tf::buffer<std::array<Index, 3>> pairs; // no stacks in this fixture
+  tf::buffer<char> dead;
+  dead.allocate(std::size_t(fr.loops().size()));
+  tf::parallel_fill(dead, char(0));
+  tf::cut::component_labels<Index> ag;
+  ag.build(fr, forms_range, tf::make_range(pairs), tf::make_range(dead),
+           static_cast<Index>(ig.points().size() + rt.extra_points.size()));
 
   REQUIRE(ag.n_components() == Index(2));
   CHECK(ag.coplanar_pairs().size() == 0);
@@ -98,12 +110,12 @@ TEST_CASE("arrangement_graph: two triangles sharing an edge in different planes"
   auto labels_b = ag.polygon_labels(1);
   REQUIRE(labels_a.size() == 1);
   REQUIRE(labels_b.size() == 1);
-  CHECK(labels_a[0] == tf::arrangement_graph<Index>::none_label);
-  CHECK(labels_b[0] == tf::arrangement_graph<Index>::none_label);
+  CHECK(labels_a[0] == tf::cut::component_labels<Index>::none_label);
+  CHECK(labels_b[0] == tf::cut::component_labels<Index>::none_label);
   auto ll = ag.loop_labels();
   REQUIRE(ll.size() == 2);
-  CHECK(ll[0] != tf::arrangement_graph<Index>::none_label);
-  CHECK(ll[1] != tf::arrangement_graph<Index>::none_label);
+  CHECK(ll[0] != tf::cut::component_labels<Index>::none_label);
+  CHECK(ll[1] != tf::cut::component_labels<Index>::none_label);
   CHECK(ll[0] != ll[1]);
 
   auto mask = ag.open_component_mask();
@@ -112,7 +124,7 @@ TEST_CASE("arrangement_graph: two triangles sharing an edge in different planes"
   CHECK(mask[1] == char(1));
 
   auto desc = tf::cut::make_arrangement_descriptor<std::int32_t>(
-      ag, fc, get_point, apply_to_face);
+      ag, fr, get_point, apply_to_face);
 
   REQUIRE(desc.tag_of_component.size() == 2);
   CHECK(desc.tag_of_component[0] != desc.tag_of_component[1]);

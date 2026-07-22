@@ -16,7 +16,7 @@
 #include "../../core/array_hash.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/hash_set.hpp"
-#include "../arrangement_graph.hpp"
+#include "./component_labels.hpp"
 #include "./make_non_manifold_edge_fans.hpp"
 #include "tbb/parallel_sort.h"
 #include <algorithm>
@@ -35,10 +35,10 @@ namespace tf::cut {
 /// Graph-native counterpart to
 /// @ref tf::topology::domains::emit_domain_merges. Sides come from the
 /// fan's per-occurrence direction bits; component labels come from
-/// @ref tf::arrangement_graph.
+/// @ref tf::loop_connectivity.
 template <typename Index>
 void emit_domain_merges(
-    const tf::arrangement_graph<Index> &ag,
+    const tf::cut::component_labels<Index> &ag,
     const tf::cut::non_manifold_edge_fans<Index> &fans,
     const tf::buffer<Index> &reps,
     tf::buffer<std::array<Index, 2>> &merges,

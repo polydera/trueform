@@ -16,8 +16,8 @@
 #include "../../core/buffer.hpp"
 #include "../../core/views/enumerate.hpp"
 #include "../../core/views/sequence_range.hpp"
-#include "../arrangement_graph.hpp"
-#include "../face_cuts.hpp"
+#include "./component_labels.hpp"
+#include "../face_regions.hpp"
 #include "./arrangement_descriptor.hpp"
 #include "./compute_domain_inclusions.hpp"
 #include <cstdint>
@@ -40,14 +40,14 @@ namespace tf::cut {
 /// @param desc  Arrangement descriptor (`domain_of_side`, `n_domains`,
 ///              `tag_of_component`).
 /// @param ag    Arrangement graph (`coplanar_pairs`, `loop_labels`).
-/// @param fc    Face cuts (`descriptors`).
+/// @param fr    The raw region structure (`descriptors`).
 /// @param seeds Pre-seeded domain ids — each becomes a BFS root.
 template <typename Index, typename Index1>
 auto propagate_inclusion_bits(
     tf::cut::domain_inclusions &inc,
     const tf::cut::arrangement_descriptor<Index> &desc,
-    const tf::arrangement_graph<Index> &ag,
-    const tf::face_cuts<Index, Index1> &fc,
+    const tf::cut::component_labels<Index> &ag,
+    const tf::face_regions<Index, Index1> &fr,
     const tf::buffer<Index> &seeds) -> void {
   const Index n_components = ag.n_components();
   const Index n_domains = desc.n_domains;
@@ -56,9 +56,9 @@ auto propagate_inclusion_bits(
   if (n_components == 0 || n_domains == 0 || seeds.size() == 0)
     return;
 
-  using ag_t = tf::arrangement_graph<Index>;
+  using ag_t = tf::cut::component_labels<Index>;
   auto loop_labels = ag.loop_labels();
-  auto descs = fc.descriptors();
+  auto descs = fr.descriptors();
   auto coplanar_pairs = ag.coplanar_pairs();
   auto domain_of_side_buf = desc.domain_of_side;
 
