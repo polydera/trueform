@@ -160,3 +160,23 @@ error — match the interpreter.
   options object, accept the options in the expression slot and
   discriminate at runtime (`instanceof`/`typeof` — the `cleaned()` idiom;
   see `splitExprArgs` in `typescript/src/csg/sync.ts`).
+- **Config enums cross as validated ints**: a C++ enum option (e.g.
+  `tf::triangulation_type`) crosses every boundary as an `int` and is
+  spelled per language at the facade — Python string kwarg with a
+  `_MAP` + ValueError (`triangulation="refined_cdt"`), TS string-union
+  option (`triangulation: "refinedCdt"`), `static_cast` at the single
+  C++ conversion site. Options meaningless outside one surface stay in
+  a surface-local options type, never in a shared one. Reference: the
+  csg `triangulation` plumbing, mirrored by the arrangements.
+
+---
+
+## The Gate Rule
+
+A change to a C++ surface that bindings call is NOT landed until the
+binding builds and suites ran: the python extension
+(`cmake --build build_python2 --target _trueform trueform_copy_python_files`
++ pytest) and the wasm module (`typescript: node build.mjs` + the test
+harness). Implicit conversions can keep binding code COMPILING while
+silently changing behavior — and signature changes can break extension
+builds that nothing else exercises. Both happened on the same day.

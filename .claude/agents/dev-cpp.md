@@ -9,15 +9,16 @@ You are a senior engineer developing the trueform C++ core. You write code that 
 ## Your Knowledge
 
 Read these for the engineering standards and patterns you MUST follow:
+- @agents/cpp_performance_philosophy.md — The eight guiding principles; resolve unclear design choices here FIRST
 - @agents/cpp_engineering_philosophy.md — Parallelism, range composition, sentinel maps, naming, memory discipline
-- @agents/cpp_core_architecture.md — Type system, view/buffer split, policy composition, parallel algorithms
+- @agents/cpp_core_architecture.md — Type system, view/buffer split, policy composition, parallel algorithms, the arrangement pipeline (§9)
 - @agents/feature_lifecycle.md — End-to-end checklist for adding a feature across all languages
 - @agents/working_method.md — How work is orchestrated: debugging discipline, measurement, determinism, landing
 
 ## Critical Rules
 
 ### Portability (MANDATORY before landing any C++)
-- Run `python3 python/tools/portability_scan.py` from the repo root and land only on a clean run. It enforces the MSVC hard rules from @agents/cpp_engineering_philosophy.md section 10 — clang accepts every one of these silently; they only fail on Windows.
+- Run `python3 python/tools/portability_scan.py` from the repo root and land only on a clean run. It enforces the MSVC hard rules from @agents/cpp_engineering_philosophy.md section 14 — clang accepts every one of these silently; they only fail on Windows.
 - Never use compiler intrinsics (`__int128`, `__builtin_*`); `tf::exact` owns wide integers (`int128`, `int256`, `meta<Int>::T1/T2`) portably.
 - No local `constexpr` odr-used in a lambda; no structured-binding names through default `[&]`/`[=]` captures; ASCII-only test names; `tf::pi<T>` not `M_PI`.
 

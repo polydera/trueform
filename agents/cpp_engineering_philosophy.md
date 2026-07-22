@@ -442,7 +442,91 @@ auto function_name(const tf::polygons<Policy> &polygons) {
 
 ---
 
-## 9. What NOT to Do
+## 9. The Sort Shape — identity without associative structures
+
+The house replacement for every hash map, keyed by access pattern
+(law: `cpp_performance_philosophy.md` §1):
+
+- **Sorted flat table + `equal_range`/`lower_bound`** — global tables
+  (splits by edge key, merges by from-key). Sort once, binary-search
+  always; apply transitive closure at consolidation so lookups never
+  chain.
+- **Scatter array + generation stamp** — dense bounded id space reused
+  across items without clearing.
+- **Small linear scan** — population bounded by a tiny constant
+  (originals on a face = its corners).
+- **The flat lift** for mixed id spaces: created ids keep their id,
+  originals lift by a per-tag dense base — one integer space, no
+  per-vertex remapping.
+
+The full pipeline shape: parallel generate records → `tbb::parallel_sort`
+by the canonical key → ONE sequential adjacency sweep (dedup happens
+here, before any geometry exists) → parallel materialize/apply.
+Duplicates from different producers become literally equal records and
+fuse at the sweep. Determinism is structural: sorted order is canonical
+order.
+
+**Data identity lives in parameters, not carried geometry.** A split is
+a dyadic t on its edge (numerator over 2^k); every carrier
+materializes the same lattice point from the same parameter via one
+rounding. Clamp parameters into range at registration — rounding can
+push a materialized point past an endpoint, and unclamped means
+extrapolation. A changed global fact (a weld, a merge) is a
+SUBSTITUTION over already-computed output plus dropping what collapsed
+— never a recomputation (law §2).
+
+## 10. Parallel-State Discipline
+
+- **`local_t` stays LIGHT.** Block-local state travels BY VALUE through
+  the flow graph (work → sequencer → aggregate); heavy members get
+  deep-copied per block. Heavy reusable scratch lives thread-local
+  (`tf::local_value` / `tf::local_buffer`); `local_t` carries a pointer.
+- **Propose, then materialize.** Threads emit records into local
+  buffers; anything that assigns ids or grows shared tables runs once,
+  serially, over the sequenced aggregate.
+- **Queues over mutable structures need generation stamps.** A queued
+  reference (face, slot) can alias a different entity after a rebuild;
+  validate the stamp at pop and requeue through the discovery path so
+  the fact is genuinely rediscovered.
+- **Guard parity between sibling paths.** Build and refine, stock and
+  recovery — paths over the same structure must skip the same members
+  (dead loops, frozen edges) and validate the same staleness. An
+  asymmetric guard is a latent OOB or a silent semantic drift.
+- Aggregations that append to a shared buffer other tasks read must
+  stage locally and append after the reduce — the aggregator must
+  never reallocate what a task may be reading.
+
+## 11. Hot-Loop Mechanics
+
+- `reallocate` + pointer write, never `push_back`, in tight loops.
+- Per-FACE quantities memoized per face, not recomputed per region.
+- Move bodies OUT of callbacks: the callback fetches what only it can;
+  everything else runs flat.
+- Gate clears: sweeping an empty structure per item is real cost —
+  clear only when used.
+- Fast paths stay branch-light; a per-edge lookup in the common no-hit
+  case is measurable.
+
+## 12. Benchmark Discipline
+
+- mimalloc'd bench binaries, single-threaded AND parallel (parallel is
+  the gate; single-thread parity can hide serial aggregation
+  bottlenecks), best-of-N or medians, never one run.
+- Outputs proven IDENTICAL before timing — winding-aware when
+  orientation matters (rev swap + min-rotation canon; a full sort
+  hides winding bugs).
+- Fresh binaries: `touch` probe sources before rebuilding; count build
+  errors AND warnings. Stage-by-stage structural benches beat
+  end-to-end lumps; a path env (`TF_PATH=old|new`) keeps profiles
+  clean.
+- The DYLD-injected override mimalloc is for bench BINARIES only —
+  trueform's own backend is explicit `mi_*` (`MI_OVERRIDE=OFF`), safe
+  under any host runtime; the injected override under CPython is a
+  second allocator instance and segfaults at import.
+- Record refuted hypotheses next to the code or in memory — an
+  unrecorded refutation gets re-attempted.
+
+## 13. What NOT to Do
 
 1. **Don't use type aliases in library code.** Write `tf::polygons_buffer<Index, RealT, Dims, 3>`, not `using Mesh = ...`. Full names are greppable.
 
@@ -466,7 +550,7 @@ auto function_name(const tf::polygons<Policy> &polygons) {
 
 ---
 
-## 10. Portability (MSVC)
+## 14. Portability (MSVC)
 
 The library is developed on clang/AppleClang but must build on MSVC (Windows CI). These are compiler-specific traps that clang accepts silently and only fail on Windows — so they can't be caught by building locally. Treat them as hard rules.
 

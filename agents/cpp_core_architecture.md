@@ -430,13 +430,13 @@ If `T` has a frame policy, `frame_of` returns it. Otherwise returns identity. `t
 
 | Algorithm | File | TBB Primitive | Semantics |
 |-----------|------|--------------|-----------|
-| `parallel_for_each(r, f)` | `algorithm/parallel_for_each.hpp` | `tbb::parallel_for(blocked_range)` | Apply f to each element |
-| `parallel_for(r, f)` | `algorithm/parallel_for.hpp` | `tbb::parallel_for(blocked_range)` | Apply f to subranges [begin, end) |
-| `parallel_copy(in, out)` | `algorithm/parallel_copy.hpp` | `tbb::parallel_for(blocked_range<size_t>)` | Copy elements |
-| `parallel_copy_blocked(in, out)` | `algorithm/parallel_copy_blocked.hpp` | via `parallel_for_each` | Copy per-block |
-| `parallel_fill(r, val)` | `algorithm/parallel_fill.hpp` | via `parallel_for` | Fill with value |
-| `parallel_iota(r, start)` | `algorithm/parallel_iota.hpp` | via `parallel_for` | Sequential values |
-| `parallel_transform(in, out, f)` | `algorithm/parallel_transform.hpp` | `tbb::parallel_for(blocked_range<size_t>)` | Transform elements |
+| `parallel_for_each(r, f)` | `core/algorithm/parallel_for_each.hpp` | `tbb::parallel_for(blocked_range)` | Apply f to each element |
+| `parallel_for(r, f)` | `core/algorithm/parallel_for.hpp` | `tbb::parallel_for(blocked_range)` | Apply f to subranges [begin, end) |
+| `parallel_copy(in, out)` | `core/algorithm/parallel_copy.hpp` | `tbb::parallel_for(blocked_range<size_t>)` | Copy elements |
+| `parallel_copy_blocked(in, out)` | `core/algorithm/parallel_copy_blocked.hpp` | via `parallel_for_each` | Copy per-block |
+| `parallel_fill(r, val)` | `core/algorithm/parallel_fill.hpp` | via `parallel_for` | Fill with value |
+| `parallel_iota(r, start)` | `core/algorithm/parallel_iota.hpp` | via `parallel_for` | Sequential values |
+| `parallel_transform(in, out, f)` | `core/algorithm/parallel_transform.hpp` | `tbb::parallel_for(blocked_range<size_t>)` | Transform elements |
 
 ### 7.3 The `tf::checked` Tag
 
@@ -500,6 +500,93 @@ order matters.
 
 3. **Policies compose, never copy data.** `polygons | tag(tree)` wraps the existing policy in a new layer. The points and faces stay where they are. The tree reference is added to the policy chain.
 
-4. **Parallel algorithms respect TBB grain partitioning.** Trueform does not specify explicit grain sizes — it relies on TBB's automatic partitioner. The only tuning is the 1000-element threshold for `tf::checked`.
+4. **Parallel algorithms default to TBB's automatic partitioner.** Two explicit tuning knobs exist: the 1000-element sequential fallback via `tf::checked`, and an explicit grain via `tf::grain(n)` (`core/grain.hpp`) accepted by `parallel_for_each` — use it only when measured.
 
 5. **No virtual dispatch anywhere.** All polymorphism is at compile time via templates, policies, and `if constexpr`.
+
+---
+
+## 9. The Arrangement Pipeline (`cut/` + `csg/`)
+
+Everything above is `core/`. The geometric pipeline sits on top of it,
+and its center is **`tf::arrangement_graph`** (`cut/arrangement_graph.hpp`)
+— the arrangement of a set of forms, everything below classification:
+intersections, the intersection graph, the face-region structure, the
+coplanar stacks (pairs + dead mask, detected once here), and the region
+triangulation with its unified created-points table.
+
+```
+forms → intersections_between_polygons → intersection_graph
+      → face_regions (region walks)     → coplanar stacks
+      → region_triangulator (triangle-grain stream + created points)
+      = arrangement_graph
+      + classification (descriptor, inclusions, volumes, sheets)
+      = csg_graph
+```
+
+### The pieces
+
+- **`tf::arrangement_config`** (`cut/arrangement_config.hpp`) — every
+  arrangement surface's parameter: `{intersect_config intersect,
+  triangulation_type triangulation}`, implicitly constructible from
+  either alone (and from `intersect_mode`). Default intersect =
+  `primitives | resolve_crossing_contours`.
+- **Storage policies** (`cut/dispatch/arrangement_range_policy.hpp`,
+  `arrangement_pair_policy.hpp`) — the graph's ctor takes ONLY a
+  policy. The range policy stores a homogeneous forms range + owned
+  missing structures and rebuilds tagged views via `forms()`; the pair
+  policy erases two DIFFERENT form types behind
+  `apply_to_form(tag, f)`. The `make_arrangement_graph` factories own
+  tag-completion: constexpr-branched build-only-what-is-missing
+  (mirroring `dispatch::boolean`), so a fully tagged call site
+  constructs with zero structure work.
+- **`tf::face_regions`** (`cut/face_regions.hpp`) — the raw region
+  structure: per-face region walks (boundary + holes) over intersection
+  identities. Classification is REGION-grain.
+- **`tf::cut::region_triangulator`** (`cut/region_triangulator.hpp`) —
+  owner of the exposed TRIANGLE-grain stream (`loops()` = one triangle
+  each, contiguous per tag, promoted faces after each tag's structure
+  loops) and of provenance the stream cannot carry: `merges()` (the
+  weld table + `resolve()`), `original_edge_splits()`,
+  `promoted_descriptors()`. Nothing downstream ever triangulates.
+  `triangulation_type::refined_cdt` quality-refines through the same
+  machinery (dyadic split parameters negotiated globally; boundaries
+  watertight by construction).
+- **`created_points()`** — the unified table on the exact integer
+  lattice: intersection-graph points first, then everything the
+  triangulation materialized. Created vertex ids index it directly;
+  identity = `{tag, id}` pairs with created ids past the last tag.
+- **Exact substrate** (`exact/`): `resolve_int_type` picks the lattice
+  int from the input real; `vertex_converter` converts/deconverts;
+  `make_kernel` builds the predicate kernel. Coordinates in the
+  pipeline are lattice ints; float conversion happens at the edges.
+- **`tf::csg_graph`** (`csg/csg_graph.hpp`) = an arrangement_graph plus
+  the classification tier (arrangement descriptor, domain inclusions,
+  volumes, sheet anchoring; machinery in `cut/arrangements/` and
+  `cut/classification/`). Consumers: `make_csg_mesh` (boolean
+  expressions), `make_csg_domains`, `make_outer_shell`,
+  `make_intersection_curves(csg_graph)`.
+
+### The reads
+
+- `make_mesh_arrangements` / `make_polygon_arrangements` — worker over
+  the graph + the construct extractors; the graph is the type authority
+  (`index_type`, `input_real_type`) and its form view carries the
+  structures consumers need.
+- `tf::make_intersection_curves(arrangement_graph)`
+  (`cut/make_intersection_curves.hpp`) — curves are a REGION read: the
+  seam scan over the collapsed connectivity (cross-tag between tags,
+  non-manifold within one, coincident-overlap contact borders in both).
+  No triangulation is built to answer it; the standalone
+  `make_intersection_curves(a, b)` primitives path rides the same read
+  via `cut::make_region_curves`.
+
+### The legacy perimeter
+
+`make_boolean` / `make_boolean_pair` and the `cut/construct/` boolean
+stack (with `face_cuts` + `cut_graph`) are the PRE-graph path — still
+exported, correct, and deliberately untouched; the long-term shape is a
+wrapper over `make_csg_graph` + `make_csg_mesh` (Žiga's call, later).
+`embedded_intersection_curves` also still reads `face_cuts`. Do NOT
+mistake `cut_graph` for the pipeline hub — the hub is
+`arrangement_graph`.
