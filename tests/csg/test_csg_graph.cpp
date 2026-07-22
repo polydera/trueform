@@ -77,7 +77,7 @@ TEST_CASE("csg_graph: two cubes stacked face-to-face (cross-tag coplanar)",
     // the NM edges around the dead/survivor shared face (3 alive
     // faces meet) plus the per-tag CCL invariant isolate A's top
     // from A's walls. Cube B contributes 1 component (5 alive faces).
-    REQUIRE(graph.arrangement().n_components() == Index(3));
+    REQUIRE(graph.labels().n_components() == Index(3));
     // One bundle: NM-edge wedges fuse the two cubes' bundles.
     REQUIRE(graph.descriptor().n_bundles == Index(1));
     // Three domains: universe, inside_A, inside_B.

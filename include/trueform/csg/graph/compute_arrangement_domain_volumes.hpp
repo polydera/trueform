@@ -15,9 +15,9 @@
 #include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/views/enumerate.hpp"
-#include "../../cut/arrangement_graph.hpp"
+#include "../../cut/arrangements/component_labels.hpp"
 #include "../../cut/arrangements/arrangement_descriptor.hpp"
-#include "../../cut/face_cuts.hpp"
+#include "../../cut/region_triangulator.hpp"
 #include "../../exact/determinant.hpp"
 #include "../../exact/meta.hpp"
 #include "../../intersect/graph/vertex.hpp"
@@ -32,17 +32,17 @@ namespace tf::csg::graph {
 /// @ref tf::topology::domains::compute_domain_volumes sign convention:
 /// `domain_of_side[2c + 0]` gets `-C`, `domain_of_side[2c + 1]` gets
 /// `+C`. Both surface sources are walked: uncut faces per form via
-/// `ag.polygon_labels(t)`, cut loops via `ag.loop_labels()`. Dead /
+/// `ag.polygon_labels(t)`, cut loops via `ag.triangle_labels()`. Dead /
 /// dropped components (`none_label`) are skipped.
 template <typename Forms, typename Index, typename Int, typename GetPoint>
 auto compute_arrangement_domain_volumes(
-    const Forms &tagged_forms, const tf::arrangement_graph<Index> &ag,
-    const tf::face_cuts<Index, Int> &fc,
+    const Forms &tagged_forms, const tf::cut::component_labels<Index> &ag,
+    const tf::cut::region_triangulator<Index, Int> &rt,
     const tf::cut::arrangement_descriptor<Index> &desc,
     const GetPoint &get_point)
     -> tf::buffer<typename tf::exact::meta<Int>::T2> {
   using AccumT = typename tf::exact::meta<Int>::T2;
-  using ag_t = tf::arrangement_graph<Index>;
+  using ag_t = tf::cut::component_labels<Index>;
   using vertex_t = tf::intersect::graph::vertex<Index>;
   using source = tf::intersect::graph::vertex_source;
 
@@ -114,10 +114,10 @@ auto compute_arrangement_domain_volumes(
   }
 
   // Cut loops.
-  if (fc.loops().size() > 0) {
-    auto loops = fc.loops();
-    auto descs = fc.descriptors();
-    auto loop_labels = ag.loop_labels();
+  if (rt.loops().size() > 0) {
+    auto loops = rt.loops();
+    auto descs = rt.descriptors();
+    auto loop_labels = ag.triangle_labels();
     auto prototype = fresh_prototype();
     tf::blocked_reduce(
         tf::enumerate(loops), contributions, prototype,

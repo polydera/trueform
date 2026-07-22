@@ -11,7 +11,6 @@
  * Author: Žiga Sajovic
  */
 #pragma once
-#include "./loop_triangulations.hpp"
 #include "./make_csg_map_data.hpp"
 #include "../../core/algorithm/parallel_copy.hpp"
 #include "../../core/algorithm/parallel_copy_blocked.hpp"
@@ -37,7 +36,7 @@
 #include "../../core/views/take.hpp"
 #include "../../core/views/zip.hpp"
 #include "./make_csg_partition.hpp"
-#include "../../cut/face_cuts.hpp"
+#include "../../cut/region_triangulator.hpp"
 #include "../../exact/vertex_converter.hpp"
 #include "tbb/task_group.h"
 #include <array>
@@ -51,8 +50,8 @@ namespace tf::csg::graph {
 /// @brief Build a CSG result mesh from the implicit N-form
 ///        arrangement and a precomputed `chosen_sides` selection.
 ///
-/// Cut loops and conforming uncut faces read their triangles from the
-/// graph's `store`; plain uncut faces keep their input arity. The output
+/// Cut loops are the graph's exposed triangle-grain loops — one
+/// triangle each; uncut faces keep their input arity. The output
 /// `polygons_buffer` type follows the input: an all-triangle input stays a
 /// static `blocked<3>`; any other (quad / n-gon / mixed) input materialises
 /// a dynamic-size buffer. Its boundary is the solid of the boolean
@@ -63,13 +62,12 @@ namespace tf::csg::graph {
 /// directly.
 template <typename OutputCoordinateType = tf::none_t, bool WantLabels = false,
           typename FormsRange, typename Index, typename Int, typename RealType>
-auto make_csg_mesh(const tf::arrangement_graph<Index> &ag,
-                   const tf::face_cuts<Index, Int> &fc,
+auto make_csg_mesh(const tf::cut::component_labels<Index> &ag,
+                   const tf::cut::region_triangulator<Index, Int> &rt,
                    const tf::buffer<tf::point<Int, 3>> &created_pts,
                    const FormsRange &forms,
                    const tf::buffer<std::int8_t> &chosen_sides,
-                   const tf::exact::vertex_converter<Int, RealType, 3> &conv,
-                   const loop_triangulations<Index, Int> &store) {
+                   const tf::exact::vertex_converter<Int, RealType, 3> &conv) {
   using InputReal = tf::coordinate_type<decltype(forms[0])>;
   using RealOut =
       std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
@@ -79,24 +77,9 @@ auto make_csg_mesh(const tf::arrangement_graph<Index> &ag,
   auto apply_to_polygons = [&](Index t, const auto &f) { f(forms[t]); };
 
   // ---- Stages 1 + 2: partition + vertex remap. ----------------------
-  auto pids = make_csg_partition(ag, fc, forms, chosen_sides);
-  // conforming uncut faces move to the tail of each uncut list and are
-  // emitted as triangles with the cut streams; n_plain[t][L] is the count
-  // of plain (whole) uncut faces at the front
-  tf::core::std_vector<std::array<Index, 2>> n_plain(
-      static_cast<std::size_t>(n_tags));
-  for (Index t = 0; t < n_tags; ++t)
-    for (Index L = 0; L < 2; ++L) {
-      auto ids = pids[t].polygons[L]; // mutable block view
-      auto mid = std::stable_partition(
-          ids.begin(), ids.end(),
-          [&](Index f) { return store.conf_index(t, f) < 0; });
-      n_plain[static_cast<std::size_t>(t)][static_cast<std::size_t>(L)] =
-          static_cast<Index>(mid - ids.begin());
-    }
+  auto pids = make_csg_partition(ag, rt, forms, chosen_sides);
   const Index n_created = static_cast<Index>(created_pts.size());
-  auto map_data =
-      make_csg_map_data(fc, n_created, pids, apply_to_polygons, store);
+  auto map_data = make_csg_map_data(rt, n_created, pids, apply_to_polygons);
 
   auto map_vertex = [&](auto tag, const auto &v) {
     return map_data.map_vertex(tag, v);
@@ -104,7 +87,7 @@ auto make_csg_mesh(const tf::arrangement_graph<Index> &ag,
 
   // ---- Stage 3: gather selected triangles per (form, label). --------
   auto descs_per_tag =
-      tf::make_offset_block_range(fc.tag_offsets(), fc.descriptors());
+      tf::make_offset_block_range(rt.tag_offsets(), rt.descriptors());
 
   // tri_data[t][L], tri_origins[t][L]: triangle stream per (form, label).
   // L = 0 reverse, L = 1 forward.
@@ -118,32 +101,15 @@ auto make_csg_mesh(const tf::arrangement_graph<Index> &ag,
         tg.run([&, t, L] {
           auto &tri_buf = tri_data[t][L];
           auto &origin_buf = tri_origins[t][L];
-          const Index lo = fc.tag_offsets()[t];
+          auto loops = rt.loops();
+          const Index lo = rt.tag_offsets()[t];
           for (auto lid : pids[t].cut_faces[L]) {
             const auto &desc = descs_per_tag[t][lid];
-            for (const auto &tr : store.loop_tris(lo + lid)) {
-              tri_buf.push_back(map_vertex(t, tr[0]));
-              tri_buf.push_back(map_vertex(t, tr[1]));
-              tri_buf.push_back(map_vertex(t, tr[2]));
-              origin_buf.push_back(desc.object);
-            }
-          }
-          // conforming uncut faces (tail of the uncut list) ride the same
-          // triangle stream
-          const auto &poly_ids = pids[t].polygons[L];
-          const Index np =
-              n_plain[static_cast<std::size_t>(t)][static_cast<std::size_t>(L)];
-          for (Index i = np; i < static_cast<Index>(poly_ids.size()); ++i) {
-            const Index f = poly_ids[i];
-            const Index ci = store.conf_index(t, f);
-            for (Index j = store.conf_tri_offsets[std::size_t(ci)];
-                 j < store.conf_tri_offsets[std::size_t(ci) + 1]; ++j) {
-              const auto &tr = store.conf_tris[std::size_t(j)];
-              tri_buf.push_back(map_vertex(t, tr[0]));
-              tri_buf.push_back(map_vertex(t, tr[1]));
-              tri_buf.push_back(map_vertex(t, tr[2]));
-              origin_buf.push_back(f);
-            }
+            const auto &tr = loops[lo + lid];
+            tri_buf.push_back(map_vertex(t, tr[0]));
+            tri_buf.push_back(map_vertex(t, tr[1]));
+            tri_buf.push_back(map_vertex(t, tr[2]));
+            origin_buf.push_back(desc.object);
           }
         });
       }
@@ -162,7 +128,8 @@ auto make_csg_mesh(const tf::arrangement_graph<Index> &ag,
   if constexpr (WantLabels) {
     Index total_faces = 0;
     for (Index t = 0; t < n_tags; ++t)
-      total_faces += n_plain[std::size_t(t)][1] + n_plain[std::size_t(t)][0] +
+      total_faces += static_cast<Index>(pids[t].polygons[1].size()) +
+                     static_cast<Index>(pids[t].polygons[0].size()) +
                      static_cast<Index>(tri_data[t][1].size() / 3) +
                      static_cast<Index>(tri_data[t][0].size() / 3);
     tag_labels.allocate(static_cast<std::size_t>(total_faces));
@@ -174,8 +141,10 @@ auto make_csg_mesh(const tf::arrangement_graph<Index> &ag,
       off += size;
     };
     for (Index t = 0; t < n_tags; ++t) {
-      emit(t, pids[t].polygons[1], n_plain[std::size_t(t)][1]);
-      emit(t, pids[t].polygons[0], n_plain[std::size_t(t)][0]);
+      emit(t, pids[t].polygons[1],
+           static_cast<Index>(pids[t].polygons[1].size()));
+      emit(t, pids[t].polygons[0],
+           static_cast<Index>(pids[t].polygons[0].size()));
       emit(t, tf::make_range(tri_origins[t][1]),
            static_cast<Index>(tri_data[t][1].size() / 3));
       emit(t, tf::make_range(tri_origins[t][0]),
@@ -188,8 +157,7 @@ auto make_csg_mesh(const tf::arrangement_graph<Index> &ag,
                                                     map_data.original_map);
   auto mapped_uncut_faces = [&](Index t, Index L) {
     return tf::make_indirect_range(
-        tf::take(tf::make_range(pids[t].polygons[L]),
-                 std::size_t(n_plain[std::size_t(t)][std::size_t(L)])),
+        tf::make_range(pids[t].polygons[L]),
         tf::make_block_indirect_range(
             forms[t].faces(),
             tf::make_mapped_range(
@@ -266,8 +234,10 @@ auto make_csg_mesh(const tf::arrangement_graph<Index> &ag,
   // Stream descriptor: (forward src, size, reverse?) emitted in output order.
   auto for_each_stream = [&](auto &&fn) {
     for (Index t = 0; t < n_tags; ++t) {
-      fn(mapped_uncut_faces(t, 1), n_plain[std::size_t(t)][1], false);
-      fn(mapped_uncut_faces(t, 0), n_plain[std::size_t(t)][0], true);
+      fn(mapped_uncut_faces(t, 1),
+         static_cast<Index>(pids[t].polygons[1].size()), false);
+      fn(mapped_uncut_faces(t, 0),
+         static_cast<Index>(pids[t].polygons[0].size()), true);
       fn(tf::make_blocked_range<3>(tf::make_range(tri_data[t][1])),
          static_cast<Index>(tri_data[t][1].size() / 3), false);
       fn(tf::make_blocked_range<3>(tf::make_range(tri_data[t][0])),

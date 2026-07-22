@@ -16,7 +16,7 @@
 #include "../../core/views/indirect_range.hpp"
 #include "../../core/views/offset_block_range.hpp"
 #include "../../cut/construct/arrangement_map_data.hpp"
-#include "../../cut/face_cuts.hpp"
+#include "../../cut/region_triangulator.hpp"
 #include "../../cut/partition/partition_ids.hpp"
 #include "tbb/task_group.h"
 
@@ -33,23 +33,21 @@ namespace tf::csg::graph {
 /// and we need vertex discovery to cover **every** label (direction
 /// only matters at emission time, not at vertex discovery).
 ///
-/// Vertex discovery walks the store's pre-triangulated streams — loop
-/// triangles and conforming-face triangles — instead of the loop cycles,
-/// so refinement-added created points (splits / steiner) enter the global
-/// vertex space alongside the intersection points. `n_created_points` is
-/// the size of the graph's unified created-points buffer.
+/// Vertex discovery walks the graph's exposed triangle-grain loops, so
+/// every created point the triangulation materialized (intersection,
+/// recovery split, refinement) enters the global vertex space.
+/// `n_created_points` is the size of the graph's unified created-points
+/// buffer.
 ///
-/// Pass 1 (cut loops + conforming faces) is sequential across forms
-/// because the `created_map` is shared globally. Pass 2 (uncut polygons)
-/// is parallel per form.
-template <typename Index, typename Int, typename ApplyToPolygons,
-          typename Store>
-auto make_csg_map_data(const tf::face_cuts<Index, Int> &fc,
+/// Pass 1 (cut loops) is sequential across forms because the
+/// `created_map` is shared globally. Pass 2 (uncut polygons) is
+/// parallel per form.
+template <typename Index, typename Int, typename ApplyToPolygons>
+auto make_csg_map_data(const tf::cut::region_triangulator<Index, Int> &rt,
                        Index n_created_points,
                        const tf::small_vector<tf::cut::partition_ids<Index>, 4>
                            &pids,
-                       const ApplyToPolygons &apply_to_polygons,
-                       const Store &store)
+                       const ApplyToPolygons &apply_to_polygons)
     -> tf::cut::partition_map_data<Index> {
   auto n_meshes = static_cast<Index>(pids.size());
   tf::cut::partition_map_data<Index> d;
@@ -101,31 +99,13 @@ auto make_csg_map_data(const tf::face_cuts<Index, Int> &fc,
     };
     const auto &cut_ids = pids[t].cut_faces;
     const Index n_labels = static_cast<Index>(cut_ids.size());
+    auto loops = rt.loops();
     for (Index label = 0; label < n_labels; ++label) {
       for (auto lid : cut_ids[label]) {
-        const Index gli = fc.tag_offsets()[t] + lid;
-        for (const auto &tri : store.loop_tris(gli)) {
-          for (const auto &v : tri)
-            mark(v);
-        }
+        const Index gli = rt.tag_offsets()[t] + lid;
+        for (const auto &v : loops[gli])
+          mark(v);
       }
-    }
-    // conforming uncut faces of this tag: their triangles carry
-    // refinement-added created ids (splits / steiner); their original
-    // corners are covered by pass 2
-    {
-      const auto &poly_ids = pids[t].polygons;
-      for (Index label = 0; label < Index(poly_ids.size()); ++label)
-        for (auto f : poly_ids[label]) {
-          Index ci = store.conf_index(t, Index(f));
-          if (ci < 0)
-            continue;
-          for (Index j = store.conf_tri_offsets[std::size_t(ci)];
-               j < store.conf_tri_offsets[std::size_t(ci) + 1]; ++j)
-            for (const auto &v : store.conf_tris[std::size_t(j)])
-              if (v.source == tf::intersect::graph::vertex_source::created)
-                mark(v);
-        }
     }
   }
 

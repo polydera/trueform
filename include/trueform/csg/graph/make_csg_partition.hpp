@@ -16,8 +16,8 @@
 #include "../../core/small_vector.hpp"
 #include "../../core/views/enumerate.hpp"
 #include "../../core/views/sequence_range.hpp"
-#include "../../cut/arrangement_graph.hpp"
-#include "../../cut/face_cuts.hpp"
+#include "../../cut/arrangements/component_labels.hpp"
+#include "../../cut/region_triangulator.hpp"
 #include "../../cut/partition/make_ids.hpp"
 #include "../../cut/partition/partition_ids.hpp"
 #include "../../cut/partition/partition_labels.hpp"
@@ -46,19 +46,19 @@ namespace tf::csg::graph {
 /// produced in parallel; the counting-sort inside
 /// `make_partition_ids` is also parallel internally.
 template <typename Index, typename Index1, typename FormsRange>
-auto make_csg_partition(const tf::arrangement_graph<Index> &ag,
-                        const tf::face_cuts<Index, Index1> &fc,
+auto make_csg_partition(const tf::cut::component_labels<Index> &ag,
+                        const tf::cut::region_triangulator<Index, Index1> &rt,
                         const FormsRange &forms,
                         const tf::buffer<std::int8_t> &chosen_sides)
     -> tf::small_vector<tf::cut::partition_ids<Index>, 4> {
-  using ag_t = tf::arrangement_graph<Index>;
+  using ag_t = tf::cut::component_labels<Index>;
   const Index n_tags = static_cast<Index>(forms.size());
 
   tf::small_vector<tf::cut::partition_ids<Index>, 4> result;
   result.resize(n_tags);
 
-  auto loop_labels_all = ag.loop_labels();
-  auto tag_offs = fc.tag_offsets();
+  auto loop_labels_all = ag.triangle_labels();
+  auto tag_offs = rt.tag_offsets();
 
   tbb::task_group tg;
   for (Index t = 0; t < n_tags; ++t) {
@@ -78,7 +78,7 @@ auto make_csg_partition(const tf::arrangement_graph<Index> &ag,
           },
           tf::checked);
 
-      // Cut loops in this form's slice of fc.loops() → cut labels.
+      // Cut loops in this form's slice of rt.loops() → cut labels.
       const Index loop_off = tag_offs[t];
       const Index n_loops_t = tag_offs[t + 1] - loop_off;
       labels.cut_labels.allocate(static_cast<std::size_t>(n_loops_t));
@@ -90,6 +90,19 @@ auto make_csg_partition(const tf::arrangement_graph<Index> &ag,
                 (c == ag_t::none_label) ? std::int8_t(-1) : chosen_sides[c];
           },
           tf::checked);
+      // Promoted faces: conforming triangles carry the face's surface
+      // label; the plain face is never selected (refined-path rule).
+      for (auto &&[pi, pd] : tf::enumerate(rt.promoted_descriptors())) {
+        if (pd.tag != t)
+          continue;
+        const Index c = poly_labels[pd.object];
+        labels.polygon_labels[pd.object] = std::int8_t(-1);
+        if (c == ag_t::none_label)
+          continue;
+        const auto pr = rt.promoted_range(Index(pi));
+        for (Index li = pr[0]; li < pr[1]; ++li)
+          labels.cut_labels[li - loop_off] = chosen_sides[c];
+      }
 
       result[t] = tf::cut::make_partition_ids<Index>(labels);
     });

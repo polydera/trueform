@@ -61,8 +61,8 @@ auto make_outer_shell(const tf::csg_graph<Forms, Structs, Int> &graph) {
   auto chosen =
       tf::csg::graph::compute_chosen_sides(graph.descriptor(), membership);
   return tf::csg::graph::make_csg_mesh<RealOut>(
-      graph.arrangement(), graph.face_cuts(), graph.created_points(),
-      graph.forms(), chosen, graph.converter(), graph.loop_triangulations());
+      graph.labels(), graph.triangulations(), graph.created_points(),
+      graph.forms(), chosen, graph.converter());
 }
 
 /// @ingroup csg

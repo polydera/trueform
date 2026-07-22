@@ -17,6 +17,8 @@
 #include <trueform/topology/is_manifold.hpp>
 #include <trueform/trueform.hpp>
 
+#include <set>
+
 #include <cmath>
 #include <cstdio>
 
@@ -910,4 +912,164 @@ TEST_CASE("one-form graph: nested spheres in a single soup keep cavity and "
   REQUIRE_THAT(universe, Catch::Matchers::WithinRel(-2 * vo, 1e-9));
   std::vector<double> want_raw{vi, vi, vo - vi, vo - vi, 2 * vo};
   require_same_volumes(want_raw, sorted_volumes(raw));
+}
+
+namespace {
+
+auto cube_hole_operands(bool inside)
+    -> std::pair<tf::polygons_buffer<Index, Real, 3, 3>,
+                 tf::polygons_buffer<Index, Real, 3, 3>> {
+  auto big = tf::triangulated(
+      tf::make_box_mesh<Index, Real>(Real(2), Real(2), Real(2)).polygons());
+  tf::ensure_positive_orientation(big.polygons());
+  auto small = tf::triangulated(
+      tf::make_box_mesh<Index, Real>(Real(0.4), Real(0.4), Real(0.4))
+          .polygons());
+  tf::ensure_positive_orientation(small.polygons());
+  // footprint centre (0.4, -0.4): strictly inside ONE top triangle
+  const Real z_off = inside ? Real(0.8) : Real(1.2);
+  for (auto &&p : small.points()) {
+    p[0] += Real(0.4);
+    p[1] += Real(-0.4);
+    p[2] += z_off;
+  }
+  return {std::move(big), std::move(small)};
+}
+
+auto faces_at_z(const tf::polygons_buffer<Index, Real, 3, 3> &m, Real z)
+    -> std::set<Index> {
+  std::set<Index> out;
+  auto faces = m.faces();
+  for (Index f = 0; f < Index(faces.size()); ++f) {
+    bool all = true;
+    for (int c = 0; c < 3; ++c)
+      all = all && m.points()[std::size_t(faces[f][std::size_t(c)])][2] == z;
+    if (all)
+      out.insert(f);
+  }
+  return out;
+}
+
+} // namespace
+
+TEST_CASE("cube-on-cube hole: domains, volumes, and face membership "
+          "across the route matrix",
+          "[csg][domains][hole]") {
+  // A small cube whose footprint lies strictly inside ONE triangle of
+  // the big cube's top face — the hole path. Two contacts: sitting on
+  // top (opposing coplanar) and hanging inside (aligned coplanar).
+  const double v_small_ref = 0.4 * 0.4 * 0.4;
+  for (int cfgi = 0; cfgi < 2; ++cfgi) {
+    const bool inside = cfgi == 1;
+    const double v_big_ref = inside ? 8.0 - v_small_ref : 8.0;
+    auto operands = cube_hole_operands(inside);
+    auto &big = operands.first;
+    auto &small = operands.second;
+    const Real z_contact = Real(1);
+    const auto small_contact =
+        faces_at_z(small, z_contact); // bottom (top cfg) or top (inside)
+    const auto big_top = faces_at_z(big, Real(1));
+    const Index n_big = Index(big.faces().size());
+
+    for (auto tri : {tf::triangulation_type::cdt,
+                     tf::triangulation_type::refined_cdt}) {
+      const tf::arrangement_config cfg{
+          tf::intersect_config{tf::intersect_mode::primitives |
+                               tf::intersect_mode::resolve_crossing_contours},
+          tri};
+      for (int nary = 0; nary < 2; ++nary) {
+        DYNAMIC_SECTION((inside ? "inside" : "top")
+                        << (nary ? ", csg n-ary" : ", csg concat")
+                        << ", tri=" << int(tri)) {
+          auto run = [&](auto &&graph) {
+            auto [cells, ids, imap_b] =
+                tf::make_csg_domains(graph, tf::return_index_map);
+            // structured bindings cannot be captured pre-C++20 (MSVC)
+            auto &imap = imap_b;
+            REQUIRE(cells.size() == 2);
+            std::size_t bi = 0, si = 1;
+            double v0 = std::fabs(double(tf::signed_volume(cells[0].polygons())));
+            double v1 = std::fabs(double(tf::signed_volume(cells[1].polygons())));
+            if (v0 < v1)
+              std::swap(bi, si);
+            const double vb = std::max(v0, v1), vs = std::min(v0, v1);
+            REQUIRE_THAT(vb, Catch::Matchers::WithinRel(v_big_ref, 1e-6));
+            REQUIRE_THAT(vs, Catch::Matchers::WithinRel(v_small_ref, 1e-6));
+            for (auto &c : cells) {
+              REQUIRE(tf::is_closed(c.polygons()));
+              REQUIRE(tf::is_manifold(c.polygons()));
+            }
+            // face membership: which input faces bound which domain
+            auto classify = [&](std::size_t k) {
+              std::set<Index> bigf, smallf;
+              auto ftag = imap.face_tag_blocks[k];
+              auto fid = imap.face_blocks[k];
+              for (std::size_t j = 0; j < std::size_t(ftag.size()); ++j) {
+                const bool is_big =
+                    nary ? ftag[j] == Index(0) : fid[j] < n_big;
+                if (is_big)
+                  bigf.insert(nary ? fid[j] : fid[j]);
+                else
+                  smallf.insert(nary ? fid[j] : fid[j] - n_big);
+              }
+              return std::make_pair(bigf, smallf);
+            };
+            auto cb = classify(bi);
+            auto cs = classify(si);
+            auto &big_of_big = cb.first;
+            auto &small_of_big = cb.second;
+            auto &big_of_small = cs.first;
+            auto &small_of_small = cs.second;
+            // the big domain is bounded by every big-cube face...
+            REQUIRE(big_of_big.size() == std::size_t(n_big));
+            // ...and touches the small cube only through walls at the
+            // contact plane (top cfg) or the cubby walls (inside cfg)
+            if (!inside)
+              for (auto f : small_of_big)
+                REQUIRE(small_contact.count(f) == 1);
+            // the small domain: every non-contact small face bounds it
+            for (Index f = 0; f < Index(small.faces().size()); ++f)
+              if (!small_contact.count(f))
+                REQUIRE(small_of_small.count(f) == 1);
+            // any big-cube face on the small domain lies in the top face
+            for (auto f : big_of_small)
+              REQUIRE(big_top.count(f) == 1);
+          };
+          if (nary) {
+            std::vector<decltype(big.polygons())> forms{big.polygons(),
+                                                        small.polygons()};
+            run(tf::make_csg_graph(
+                tf::make_range(forms.data(), forms.data() + forms.size()),
+                cfg));
+          } else {
+            auto soup = tf::concatenated(big.polygons(), small.polygons());
+            run(tf::make_csg_graph(soup.polygons(), cfg));
+          }
+        }
+      }
+      // arrangement routes: domain volumes through the free path
+      DYNAMIC_SECTION((inside ? "inside" : "top")
+                      << ", arrangements, tri=" << int(tri)) {
+        std::vector<decltype(big.polygons())> forms{big.polygons(),
+                                                    small.polygons()};
+        auto [m, t, f] = tf::make_mesh_arrangements(
+            tf::make_range(forms.data(), forms.data() + forms.size()), cfg);
+        auto bb = tf::aabb_from(m.polygons().points());
+        auto cl = tf::cleaned(m.polygons(), bb.diagonal().length() * 1e-9);
+        auto labels = tf::make_domain_labels(
+            cl.polygons(), tf::domain_config::ignore_open_fragments |
+                               tf::domain_config::exclude_outer_shell);
+        auto [comps, clabels] = tf::split_into_domains(cl.polygons(), labels);
+        REQUIRE(comps.size() == 2);
+        double v0 = std::fabs(double(tf::signed_volume(comps[0].polygons())));
+        double v1 = std::fabs(double(tf::signed_volume(comps[1].polygons())));
+        REQUIRE_THAT(std::max(v0, v1), Catch::Matchers::WithinRel(v_big_ref, 1e-6));
+        REQUIRE_THAT(std::min(v0, v1), Catch::Matchers::WithinRel(v_small_ref, 1e-6));
+        for (auto &c : comps) {
+          REQUIRE(tf::is_closed(c.polygons()));
+          REQUIRE(tf::is_manifold(c.polygons()));
+        }
+      }
+    }
+  }
 }

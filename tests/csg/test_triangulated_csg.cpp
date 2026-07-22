@@ -1,7 +1,7 @@
 /**
  * @file test_triangulated_csg.cpp
- * @brief Tests for the csg graph's per-loop triangulation store
- *        (tf::csg::graph::loop_triangulations) through the mesh and
+ * @brief Tests for the csg graph's region triangulation
+ *        (tf::cut::region_triangulator) through the mesh and
  *        domain extractions.
  *
  * Two-box fixtures (generic overlap, stacked full-coplanar contact,
@@ -94,8 +94,8 @@ auto extract_mesh(const Graph &g, const Forms &forms,
   auto mem = tf::csg::graph::evaluate_per_domain(g.inclusion(), E);
   auto chosen = tf::csg::graph::compute_chosen_sides(g.descriptor(), mem);
   return tf::csg::graph::make_csg_mesh<Real, false>(
-      g.arrangement(), g.face_cuts(), g.created_points(), forms, chosen,
-      g.converter(), g.loop_triangulations());
+      g.labels(), g.triangulations(), g.created_points(), forms, chosen,
+      g.converter());
 }
 
 } // namespace
@@ -124,9 +124,9 @@ TEST_CASE("triangulation store: box fixtures closed in both modes, stock "
                         tf::triangulation_type::refined_cdt}) {
         tf::csg_graph<decltype(rng), tf::none_t> graph(
             rng, {},
-            {tf::intersect_mode::primitives |
-             tf::intersect_mode::resolve_crossing_contours},
-            {}, mode);
+            {tf::intersect_config{tf::intersect_mode::primitives |
+                                  tf::intersect_mode::resolve_crossing_contours},
+             mode});
         for (const auto &[name, e] : k_exprs) {
           DYNAMIC_SECTION((mode == tf::triangulation_type::cdt
                                ? "stock "
@@ -146,14 +146,15 @@ TEST_CASE("triangulation store: box fixtures closed in both modes, stock "
         auto build = [&] {
           return tf::csg_graph<decltype(rng), tf::none_t>(
               rng, {},
-              {tf::intersect_mode::primitives |
-               tf::intersect_mode::resolve_crossing_contours},
-              {}, tf::triangulation_type::refined_cdt);
+              {tf::intersect_config{
+                   tf::intersect_mode::primitives |
+                   tf::intersect_mode::resolve_crossing_contours},
+               tf::triangulation_type::refined_cdt});
         };
         auto g0 = build();
         auto g1 = build();
-        const auto &s0 = g0.loop_triangulations();
-        const auto &s1 = g1.loop_triangulations();
+        const auto &s0 = g0.triangulations();
+        const auto &s1 = g1.triangulations();
 
         // created points (ig ++ splits ++ steiner), exact int lattice
         const auto &c0 = g0.created_points();
@@ -163,17 +164,15 @@ TEST_CASE("triangulation store: box fixtures closed in both modes, stock "
           for (int k = 0; k < 3; ++k)
             REQUIRE(c0[i][k] == c1[i][k]);
 
-        REQUIRE(s0.tris.size() == s1.tris.size());
-        for (std::size_t i = 0; i < s0.tris.size(); ++i)
+        // the exposed stream covers the raw triangles, the applied
+        // coplanar aliases and any promoted faces in one comparison
+        auto l0 = s0.loops();
+        auto l1 = s1.loops();
+        REQUIRE(l0.size() == l1.size());
+        for (std::size_t i = 0; i < std::size_t(l0.size()); ++i)
           for (int k = 0; k < 3; ++k)
-            REQUIRE(s0.tris[i][std::size_t(k)] ==
-                    s1.tris[i][std::size_t(k)]);
-
-        REQUIRE(s0.conf_tris.size() == s1.conf_tris.size());
-        for (std::size_t i = 0; i < s0.conf_tris.size(); ++i)
-          for (int k = 0; k < 3; ++k)
-            REQUIRE(s0.conf_tris[i][std::size_t(k)] ==
-                    s1.conf_tris[i][std::size_t(k)]);
+            REQUIRE(l0[Index(i)][std::size_t(k)] ==
+                    l1[Index(i)][std::size_t(k)]);
       }
     }
   }
@@ -197,13 +196,13 @@ TEST_CASE("triangulation store: WantLabels face provenance on the generic "
                     tf::triangulation_type::refined_cdt}) {
     tf::csg_graph<decltype(rng), tf::none_t> graph(
         rng, {},
-        {tf::intersect_mode::primitives |
-         tf::intersect_mode::resolve_crossing_contours},
-        {}, mode);
+        {tf::intersect_config{tf::intersect_mode::primitives |
+                              tf::intersect_mode::resolve_crossing_contours},
+         mode});
     auto E = (tf::csg::op(0) | tf::csg::op(1)).compile().evaluator();
     auto membership = tf::csg::graph::compute_domain_membership(
         graph.descriptor(), graph.inclusion(),
-        graph.arrangement().open_component_mask(),
+        graph.labels().open_component_mask(),
         graph.domain_nesting_merges(),
         tf::domain_config::exclude_outer_shell |
             tf::domain_config::ignore_open_fragments,
@@ -212,8 +211,9 @@ TEST_CASE("triangulation store: WantLabels face provenance on the generic "
         membership.domain_of_side, membership.n_components, membership.keep);
     auto [cells, ids, tag_blocks, face_blocks] =
         tf::csg::graph::make_csg_domains<Real, true, false>(
-            graph.arrangement(), graph.face_cuts(), graph.created_points(),
-            rng, part, graph.converter(), graph.loop_triangulations());
+            graph.labels(), graph.arrangement().face_regions(),
+            graph.triangulations(), graph.created_points(), rng, part,
+            graph.converter());
 
     REQUIRE(cells.size() > 0);
     REQUIRE(std::size_t(tag_blocks.size()) == cells.size());

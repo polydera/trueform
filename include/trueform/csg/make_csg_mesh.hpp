@@ -13,7 +13,7 @@
 #pragma once
 #include "../core/none.hpp"
 #include "../cut/construct/make_mesh_arrangement_index_map.hpp"
-#include "../cut/construct/make_mesh_arrangements.hpp"
+#include "../cut/make_arrangement_mesh.hpp"
 #include "../reindex/return_index_map.hpp"
 #include "../reindex/return_source_ids.hpp"
 #include "./csg_graph.hpp"
@@ -57,9 +57,8 @@ auto make_csg_mesh(const tf::csg_graph<Forms, Structs, Int> &graph,
   auto chosen =
       tf::csg::graph::compute_chosen_sides(graph.descriptor(), membership);
   return tf::csg::graph::make_csg_mesh<RealOut>(
-      graph.arrangement(), graph.face_cuts(), graph.created_points(),
-      graph.forms(), chosen, graph.converter(),
-      graph.loop_triangulations());
+      graph.labels(), graph.triangulations(), graph.created_points(),
+      graph.forms(), chosen, graph.converter());
 }
 
 /// @ingroup csg
@@ -86,9 +85,8 @@ auto make_csg_mesh(const tf::csg_graph<Forms, Structs, Int> &graph,
       tf::csg::graph::compute_chosen_sides(graph.descriptor(), membership);
   auto [mesh, tag_labels, face_labels, map_data] =
       tf::csg::graph::make_csg_mesh<RealOut, /*WantLabels=*/true>(
-          graph.arrangement(), graph.face_cuts(), graph.created_points(),
-          graph.forms(), chosen, graph.converter(),
-          graph.loop_triangulations());
+          graph.labels(), graph.triangulations(), graph.created_points(),
+          graph.forms(), chosen, graph.converter());
   (void)map_data;
   return std::make_tuple(std::move(mesh), std::move(tag_labels),
                          std::move(face_labels));
@@ -119,9 +117,8 @@ auto make_csg_mesh(const tf::csg_graph<Forms, Structs, Int> &graph,
       tf::csg::graph::compute_chosen_sides(graph.descriptor(), membership);
   auto [mesh, tag_labels, face_labels, map_data] =
       tf::csg::graph::make_csg_mesh<RealOut, /*WantLabels=*/true>(
-          graph.arrangement(), graph.face_cuts(), graph.created_points(),
-          graph.forms(), chosen, graph.converter(),
-          graph.loop_triangulations());
+          graph.labels(), graph.triangulations(), graph.created_points(),
+          graph.forms(), chosen, graph.converter());
   // The CSG face stream is not uncut-prefix ordered, so n_original_faces has
   // no boundary meaning here; the per-face (tag, face) maps carry provenance.
   const Index n_out = static_cast<Index>(mesh.points_buffer().size());
@@ -143,10 +140,7 @@ auto make_csg_mesh(const tf::csg_graph<Forms, Structs, Int> &graph,
 template <typename OutputCoordinateType = tf::none_t, typename Forms,
           typename Structs, typename Int>
 auto make_csg_mesh(const tf::csg_graph<Forms, Structs, Int> &graph) {
-  auto result = tf::cut::make_mesh_arrangements<OutputCoordinateType>(
-      graph.intersection_graph(), graph.face_cuts(), graph.forms(),
-      graph.converter());
-  return std::move(std::get<0>(result)); // mesh; drop labels + map_data
+  return tf::make_arrangement_mesh<OutputCoordinateType>(graph.arrangement());
 }
 
 /// @ingroup csg
@@ -158,12 +152,8 @@ template <typename OutputCoordinateType = tf::none_t, typename Forms,
           typename Structs, typename Int>
 auto make_csg_mesh(const tf::csg_graph<Forms, Structs, Int> &graph,
                    tf::return_source_ids_t) {
-  auto result = tf::cut::make_mesh_arrangements<OutputCoordinateType>(
-      graph.intersection_graph(), graph.face_cuts(), graph.forms(),
-      graph.converter());
-  return std::make_tuple(std::move(std::get<0>(result)),
-                         std::move(std::get<1>(result)),
-                         std::move(std::get<2>(result)));
+  return tf::make_arrangement_mesh<OutputCoordinateType>(
+      graph.arrangement(), tf::return_source_ids);
 }
 
 /// @ingroup csg
@@ -179,17 +169,8 @@ template <typename OutputCoordinateType = tf::none_t, typename Forms,
           typename Structs, typename Int>
 auto make_csg_mesh(const tf::csg_graph<Forms, Structs, Int> &graph,
                    tf::return_index_map_t) {
-  using Index = typename tf::csg_graph<Forms, Structs, Int>::index_type;
-  auto [mesh, tag_labels, face_labels, map_data] =
-      tf::cut::make_mesh_arrangements<OutputCoordinateType>(
-          graph.intersection_graph(), graph.face_cuts(), graph.forms(),
-          graph.converter());
-  const Index n_original_faces = map_data.total_original_faces;
-  const Index n_out = static_cast<Index>(mesh.points_buffer().size());
-  auto imap = tf::cut::make_mesh_arrangement_index_map(
-      std::move(map_data), std::move(tag_labels), std::move(face_labels),
-      n_original_faces, n_out);
-  return std::make_pair(std::move(mesh), std::move(imap));
+  return tf::make_arrangement_mesh<OutputCoordinateType>(
+      graph.arrangement(), tf::return_index_map);
 }
 
 } // namespace tf

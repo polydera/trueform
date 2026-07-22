@@ -19,8 +19,8 @@
 #include "../../core/views/enumerate.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "../../core/views/slice.hpp"
-#include "../../cut/arrangement_graph.hpp"
-#include "../../cut/face_cuts.hpp"
+#include "../../cut/arrangements/component_labels.hpp"
+#include "../../cut/region_triangulator.hpp"
 #include "../../cut/partition/make_ids.hpp"
 #include "../../cut/partition/partition_ids.hpp"
 #include "../../cut/partition/partition_labels.hpp"
@@ -87,12 +87,12 @@ auto concat_partition_ids(const tf::cut::partition_ids<Index> &fwd,
 /// (`side_label == -1`, i.e. self-merged flaps or non-kept domains) are
 /// dropped.
 template <typename Index, typename Index1, typename FormsRange>
-auto make_csg_domain_partition(const tf::arrangement_graph<Index> &ag,
-                               const tf::face_cuts<Index, Index1> &fc,
+auto make_csg_domain_partition(const tf::cut::component_labels<Index> &ag,
+                               const tf::cut::region_triangulator<Index, Index1> &rt,
                                const FormsRange &forms,
                                const domain_partition<Index> &part)
     -> tf::small_vector<tf::cut::partition_ids<Index>, 4> {
-  using ag_t = tf::arrangement_graph<Index>;
+  using ag_t = tf::cut::component_labels<Index>;
   const Index n_tags = static_cast<Index>(forms.size());
   const Index n_kept = part.n_kept;
   const auto &side_label = part.side_label;
@@ -100,8 +100,8 @@ auto make_csg_domain_partition(const tf::arrangement_graph<Index> &ag,
   tf::small_vector<tf::cut::partition_ids<Index>, 4> result;
   result.resize(n_tags);
 
-  auto loop_labels_all = ag.loop_labels();
-  auto tag_offs = fc.tag_offsets();
+  auto loop_labels_all = ag.triangle_labels();
+  auto tag_offs = rt.tag_offsets();
 
   auto side_to_label = [&](Index c, Index s) -> Index {
     return side_label[2 * c + s]; // dense kept id in [0, n_kept), or -1
@@ -135,6 +135,21 @@ auto make_csg_domain_partition(const tf::arrangement_graph<Index> &ag,
                   (c == ag_t::none_label) ? Index(-1) : side_to_label(c, s);
             },
             tf::checked);
+        // Promoted faces: the conforming triangle block carries the
+        // face's surface label; the plain face is never selected
+        // (refined-path conforming rule).
+        for (auto &&[pi, pd] : tf::enumerate(rt.promoted_descriptors())) {
+          if (pd.tag != t)
+            continue;
+          const Index c = poly_labels[pd.object];
+          lab.polygon_labels[pd.object] = Index(-1);
+          if (c == ag_t::none_label)
+            continue;
+          const Index v = side_to_label(c, s);
+          const auto pr = rt.promoted_range(Index(pi));
+          for (Index li = pr[0]; li < pr[1]; ++li)
+            lab.cut_labels[li - loop_off] = v;
+        }
         return tf::cut::make_partition_ids<Index>(lab);
       };
 

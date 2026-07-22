@@ -66,15 +66,16 @@ auto make_csg_domains_impl(const tf::csg_graph<Forms, Structs, Int> &graph,
           : Index(-1);
   auto membership = tf::csg::graph::compute_domain_membership(
       graph.descriptor(), graph.inclusion(),
-      graph.arrangement().open_component_mask(),
+      graph.labels().open_component_mask(),
       graph.domain_nesting_merges(), config, E, universe_fine,
       graph.is_sheet(), graph.sheet_folds());
   auto part = tf::csg::graph::compute_domain_partition(
       membership.domain_of_side, membership.n_components, membership.keep);
   auto result =
       tf::csg::graph::make_csg_domains<RealOut, WantLabels, WantPointMap>(
-          graph.arrangement(), graph.face_cuts(), graph.created_points(),
-          graph.forms(), part, graph.converter(), graph.loop_triangulations());
+          graph.labels(), graph.arrangement().face_regions(),
+          graph.triangulations(), graph.created_points(),
+          graph.forms(), part, graph.converter());
   if constexpr (WantPointMap) {
     // ids[k] is the coarse domain id; unpack its representative's operand
     // bits into the cell-major inclusion matrix.

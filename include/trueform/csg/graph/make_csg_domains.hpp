@@ -11,7 +11,6 @@
  * Author: Žiga Sajovic
  */
 #pragma once
-#include "./loop_triangulations.hpp"
 #include "./reverse_side_labels.hpp"
 #include "./make_csg_map_data.hpp"
 #include "../../core/algorithm/compute_offsets.hpp"
@@ -33,14 +32,12 @@
 #include "../../core/views/indirect_range.hpp"
 #include "../../core/views/mapped_range.hpp"
 #include "../../core/views/offset_block_range.hpp"
-#include "../../core/views/points.hpp"
 #include "../../core/views/slice.hpp"
-#include "../../core/views/zip.hpp"
 #include "../../csg/csg_domains_index_map.hpp"
 #include "./compute_domain_partition.hpp"
 #include "./make_csg_domain_partition.hpp"
 #include "../../cut/construct/make_arrangement_point_inverse.hpp"
-#include "../../cut/face_cuts.hpp"
+#include "../../cut/region_triangulator.hpp"
 #include "../../exact/vertex_converter.hpp"
 #include "tbb/parallel_sort.h"
 #include "tbb/task_group.h"
@@ -60,9 +57,9 @@ namespace tf::csg::graph {
 /// region into a single boundary), this emits one `polygons_buffer` per
 /// kept domain, keyed on the domain identity carried by `part.side_label`.
 /// Two domains that share an inclusion bitvector (e.g. a sphere cut by a
-/// plane) come out as two distinct meshes. Cut loops and conforming uncut
-/// faces read their triangles from the graph's `store`; plain uncut faces
-/// keep their input arity, so the cell type follows the input: all-triangle
+/// plane) come out as two distinct meshes. Cut loops are the graph's
+/// exposed triangle-grain loops — one triangle each; uncut faces keep
+/// their input arity, so the cell type follows the input: all-triangle
 /// input gives a fast static `blocked<3>`, any other input a dynamic-size
 /// buffer.
 ///
@@ -82,13 +79,13 @@ namespace tf::csg::graph {
 template <typename OutputCoordinateType = tf::none_t, bool WantLabels = false,
           bool WantPointMap = false, typename FormsRange, typename Index,
           typename Int, typename RealType>
-auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
-                      const tf::face_cuts<Index, Int> &fc,
-                      const tf::buffer<tf::point<Int, 3>> &created_pts,
-                      const FormsRange &forms,
-                      const domain_partition<Index> &part,
-                      const tf::exact::vertex_converter<Int, RealType, 3> &conv,
-                      const loop_triangulations<Index, Int> &store) {
+auto make_csg_domains(
+    const tf::cut::component_labels<Index> &ag,
+    const tf::face_regions<Index, Int> &fr,
+    const tf::cut::region_triangulator<Index, Int> &rt,
+    const tf::buffer<tf::point<Int, 3>> &created_pts, const FormsRange &forms,
+    const domain_partition<Index> &part,
+    const tf::exact::vertex_converter<Int, RealType, 3> &conv) {
   using InputReal = tf::coordinate_type<decltype(forms[0])>;
   using RealOut =
       std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
@@ -109,10 +106,9 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
   // `pids` is consumed only by the map-data build (it decides which faces /
   // loops contribute vertices to the global space); the soup below keys on
   // `part.side_label` directly, not on the per-label lists.
-  auto pids = make_csg_domain_partition(ag, fc, forms, part);
+  auto pids = make_csg_domain_partition(ag, rt, forms, part);
   const Index n_created = static_cast<Index>(created_pts.size());
-  auto map_data =
-      make_csg_map_data(fc, n_created, pids, apply_to_polygons, store);
+  auto map_data = make_csg_map_data(rt, n_created, pids, apply_to_polygons);
 
   auto map_vertex = [&](auto tag, const auto &v) {
     return map_data.map_vertex(tag, v);
@@ -191,15 +187,14 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
   // winding; side 0 (reverse) flips it so the cell's normals face outward. A
   // cut loop's stored triangles go to both kept sides. (One task per form —
   // never per (form, domain).) ---------------------------------------------
-  using ag_t = tf::arrangement_graph<Index>;
+  using ag_t = tf::cut::component_labels<Index>;
 
   // Coincident faces always cut, so loops cover every stack (see
   // make_reverse_side_labels for the attribution rule).
   [[maybe_unused]] tf::buffer<std::array<Index, 2>> rev_label;
   if constexpr (WantLabels)
-    rev_label = make_reverse_side_labels(ag, fc);
+    rev_label = make_reverse_side_labels(ag.coplanar_pairs(), fr);
   const auto &side_label = part.side_label;
-  auto loop_labels_all = ag.loop_labels();
   tf::core::std_vector<out_t> cells(static_cast<std::size_t>(n_kept));
 
   // Optional per-cell provenance: tag_blocks[k][j] = the input form of cell
@@ -267,7 +262,10 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
 
         // Uncut surface faces (already triangles). A cut face carries
         // none_label — its sub-loops emit it instead — so it is skipped.
-        // A conforming uncut face emits the store's triangles for it.
+        // A promoted face keeps its surface label but swaps geometry:
+        // its conforming triangle block emits instead of the plain
+        // face (the refined path's conforming-stream rule).
+        auto uncut_loops = rt.loops();
         for (Index f = 0; f < static_cast<Index>(poly_labels.size()); ++f) {
           const Index c = poly_labels[f];
           if (c == ag_t::none_label)
@@ -276,36 +274,34 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
           const Index d_rev = side_label[2 * c + 0];
           if (d_fwd < 0 && d_rev < 0)
             continue;
-          auto gf = faces_t[f];
-          {
-            Index ci = store.conf_index(Index(t), f);
-            if (ci >= 0) {
-              for (Index j = store.conf_tri_offsets[std::size_t(ci)];
-                   j < store.conf_tri_offsets[std::size_t(ci) + 1]; ++j) {
-                const auto &tr = store.conf_tris[std::size_t(j)];
-                Index g0 = map_vertex(t, tr[0]);
-                Index g1 = map_vertex(t, tr[1]);
-                Index g2 = map_vertex(t, tr[2]);
-                if (d_fwd >= 0) {
-                  tris.push_back(std::array<Index, 3>{g0, g1, g2});
-                  doms.push_back(d_fwd);
-                  if constexpr (WantLabels) {
-                    tags.push_back(t);
-                    origs.push_back(f);
-                  }
-                }
-                if (d_rev >= 0) {
-                  tris.push_back(std::array<Index, 3>{g2, g1, g0});
-                  doms.push_back(d_rev);
-                  if constexpr (WantLabels) {
-                    tags.push_back(t);
-                    origs.push_back(f);
-                  }
+          const Index pi = rt.promoted_index(t, f);
+          if (pi >= 0) {
+            const auto pr = rt.promoted_range(pi);
+            for (Index li = pr[0]; li < pr[1]; ++li) {
+              const auto &tr = uncut_loops[li];
+              const Index g0 = map_vertex(t, tr[0]);
+              const Index g1 = map_vertex(t, tr[1]);
+              const Index g2 = map_vertex(t, tr[2]);
+              if (d_fwd >= 0) {
+                tris.push_back(std::array<Index, 3>{g0, g1, g2});
+                doms.push_back(d_fwd);
+                if constexpr (WantLabels) {
+                  tags.push_back(t);
+                  origs.push_back(f);
                 }
               }
-              continue;
+              if (d_rev >= 0) {
+                tris.push_back(std::array<Index, 3>{g2, g1, g0});
+                doms.push_back(d_rev);
+                if constexpr (WantLabels) {
+                  tags.push_back(t);
+                  origs.push_back(f);
+                }
+              }
             }
+            continue;
           }
+          auto gf = faces_t[f];
           if (d_fwd >= 0) {
             tris.push_back(std::array<Index, 3>{gf[0], gf[1], gf[2]});
             doms.push_back(d_fwd);
@@ -324,21 +320,29 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
           }
         }
 
-        // Cut loops of this form: read the store's triangles, emit them to
-        // whichever of the two sides is kept.
-        auto descriptors = fc.descriptors();
-        const Index lo = fc.tag_offsets()[t];
-        const Index hi = fc.tag_offsets()[t + 1];
-        for (Index li = lo; li < hi; ++li) {
-          const Index c = loop_labels_all[li];
+        // Cut regions of this form, region-major: label / descriptor /
+        // rev attribution are per REGION; each region emits its exposed
+        // triangle block (`exposed_ranges`, blocks disjoint and in
+        // stream order). Promoted faces emit above, under their
+        // surface label — never here.
+        auto region_labels = ag.loop_labels();
+        auto region_descs = fr.descriptors();
+        auto exposed = rt.exposed_ranges();
+        auto loops = rt.loops();
+        const Index rlo = fr.tag_offsets()[t];
+        const Index rhi = fr.tag_offsets()[t + 1];
+        for (Index rg = rlo; rg < rhi; ++rg) {
+          const Index c = region_labels[rg];
           if (c == ag_t::none_label) // dead coplanar duplicate
             continue;
           const Index d_fwd = side_label[2 * c + 1];
           const Index d_rev = side_label[2 * c + 0];
           if (d_fwd < 0 && d_rev < 0)
             continue;
-          const auto &desc = descriptors[li];
-          for (const auto &tr : store.loop_tris(li)) {
+          const auto &desc = region_descs[rg];
+          const auto r = exposed[rg];
+          for (Index li = r[0]; li < r[1]; ++li) {
+            const auto &tr = loops[li];
             const Index g0 = map_vertex(desc.tag, tr[0]);
             const Index g1 = map_vertex(desc.tag, tr[1]);
             const Index g2 = map_vertex(desc.tag, tr[2]);
@@ -354,8 +358,8 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
               tris.push_back(std::array<Index, 3>{g2, g1, g0});
               doms.push_back(d_rev);
               if constexpr (WantLabels) {
-                tags.push_back(rev_label[li][0]);
-                origs.push_back(rev_label[li][1]);
+                tags.push_back(rev_label[std::size_t(rg)][0]);
+                origs.push_back(rev_label[std::size_t(rg)][1]);
               }
             }
           }
@@ -479,7 +483,6 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
     tf::core::std_vector<tf::buffer<Index>> tag_t(n_tags);
     tf::core::std_vector<tf::buffer<Index>> orig_t(n_tags);
     {
-      auto descriptors = fc.descriptors();
       tbb::task_group tg;
       for (Index t = 0; t < n_tags; ++t)
         tg.run([&, t] {
@@ -503,6 +506,7 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
           };
           auto poly_labels = ag.polygon_labels(t);
           auto faces_t = all_mapped_faces(t);
+          auto uncut_loops = rt.loops();
           for (Index f = 0; f < static_cast<Index>(poly_labels.size()); ++f) {
             const Index c = poly_labels[f];
             if (c == ag_t::none_label)
@@ -511,41 +515,47 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
             const Index d_rev = side_label[2 * c + 0];
             if (d_fwd < 0 && d_rev < 0)
               continue;
-            auto gf = faces_t[f];
-            {
-              Index ci = store.conf_index(t, f);
-              if (ci >= 0) {
-                for (Index j = store.conf_tri_offsets[std::size_t(ci)];
-                     j < store.conf_tri_offsets[std::size_t(ci) + 1]; ++j) {
-                  const auto &tr = store.conf_tris[std::size_t(j)];
-                  const std::array<Index, 3> g{map_vertex(t, tr[0]),
-                                               map_vertex(t, tr[1]),
-                                               map_vertex(t, tr[2])};
-                  if (d_fwd >= 0)
-                    push(tf::make_range(g), d_fwd, false, t, f);
-                  if (d_rev >= 0)
-                    push(tf::make_range(g), d_rev, true, t, f);
-                }
-                continue;
+            const Index pi = rt.promoted_index(t, f);
+            if (pi >= 0) {
+              // promoted: the conforming triangle block replaces the
+              // plain face, same surface label (refined-path rule)
+              const auto pr = rt.promoted_range(pi);
+              for (Index li = pr[0]; li < pr[1]; ++li) {
+                const auto &tr = uncut_loops[li];
+                const std::array<Index, 3> g{map_vertex(t, tr[0]),
+                                             map_vertex(t, tr[1]),
+                                             map_vertex(t, tr[2])};
+                if (d_fwd >= 0)
+                  push(tf::make_range(g), d_fwd, false, t, f);
+                if (d_rev >= 0)
+                  push(tf::make_range(g), d_rev, true, t, f);
               }
+              continue;
             }
+            auto gf = faces_t[f];
             if (d_fwd >= 0)
               push(gf, d_fwd, false, t, f);
             if (d_rev >= 0)
               push(gf, d_rev, true, t, f);
           }
-          const Index lo = fc.tag_offsets()[t];
-          const Index hi = fc.tag_offsets()[t + 1];
-          for (Index li = lo; li < hi; ++li) {
-            const Index c = loop_labels_all[li];
+          auto region_labels = ag.loop_labels();
+          auto region_descs = fr.descriptors();
+          auto exposed = rt.exposed_ranges();
+          auto loops = rt.loops();
+          const Index rlo = fr.tag_offsets()[t];
+          const Index rhi = fr.tag_offsets()[t + 1];
+          for (Index rg = rlo; rg < rhi; ++rg) {
+            const Index c = region_labels[rg];
             if (c == ag_t::none_label)
               continue;
             const Index d_fwd = side_label[2 * c + 1];
             const Index d_rev = side_label[2 * c + 0];
             if (d_fwd < 0 && d_rev < 0)
               continue;
-            const auto &desc = descriptors[li];
-            for (const auto &tr : store.loop_tris(li)) {
+            const auto &desc = region_descs[rg];
+            const auto r = exposed[rg];
+            for (Index li = r[0]; li < r[1]; ++li) {
+              const auto &tr = loops[li];
               const std::array<Index, 3> g{map_vertex(desc.tag, tr[0]),
                                            map_vertex(desc.tag, tr[1]),
                                            map_vertex(desc.tag, tr[2])};
@@ -554,8 +564,9 @@ auto make_csg_domains(const tf::arrangement_graph<Index> &ag,
               if (d_rev >= 0) {
                 // rev_label is empty without WantLabels -- don't index it
                 if constexpr (WantLabels)
-                  push(tf::make_range(g), d_rev, true, rev_label[li][0],
-                       rev_label[li][1]);
+                  push(tf::make_range(g), d_rev, true,
+                       rev_label[std::size_t(rg)][0],
+                       rev_label[std::size_t(rg)][1]);
                 else
                   push(tf::make_range(g), d_rev, true, desc.tag, desc.object);
               }

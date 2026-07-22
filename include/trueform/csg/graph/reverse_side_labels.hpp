@@ -14,8 +14,7 @@
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/views/enumerate.hpp"
-#include "../../cut/arrangement_graph.hpp"
-#include "../../cut/face_cuts.hpp"
+#include "../../cut/face_regions.hpp"
 #include <array>
 
 namespace tf::csg::graph {
@@ -31,14 +30,14 @@ namespace tf::csg::graph {
 /// dedup pairs — the same relation that decided loop liveness, so
 /// attribution and liveness cannot disagree.
 ///
-/// @pre `ag.coplanar_pairs()` is sorted by (smaller, larger), as the
-///      arrangement build leaves it: a survivor's pairs are contiguous
-///      and its first opposing partner is its smallest.
-template <typename Index, typename Int>
-auto make_reverse_side_labels(const tf::arrangement_graph<Index> &ag,
-                              const tf::face_cuts<Index, Int> &fc)
+/// @pre `pairs` is sorted by (smaller, larger), as the arrangement
+///      build leaves it: a survivor's pairs are contiguous and its
+///      first opposing partner is its smallest.
+template <typename Index, typename Int, typename Pairs>
+auto make_reverse_side_labels(const Pairs &pairs,
+                              const tf::face_regions<Index, Int> &fr)
     -> tf::buffer<std::array<Index, 2>> {
-  auto descriptors = fc.descriptors();
+  auto descriptors = fr.descriptors();
   tf::buffer<std::array<Index, 2>> labels;
   labels.allocate(descriptors.size());
   tf::parallel_for_each(tf::enumerate(labels), [&descriptors](auto pair) {
@@ -47,7 +46,7 @@ auto make_reverse_side_labels(const tf::arrangement_graph<Index> &ag,
     r = {static_cast<Index>(d.tag), d.object};
   });
   Index twinned = -1;
-  for (const auto &p : ag.coplanar_pairs())
+  for (const auto &p : pairs)
     if (p[2] && p[0] != twinned) {
       twinned = p[0];
       const auto &d = descriptors[p[1]];

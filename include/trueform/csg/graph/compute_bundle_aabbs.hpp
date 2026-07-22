@@ -16,15 +16,15 @@
 #include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/frame_of.hpp"
+#include "../../core/point.hpp"
 #include "../../core/transformed.hpp"
 #include "../../core/views/enumerate.hpp"
 #include "../../core/views/sequence_range.hpp"
-#include "../../cut/arrangement_graph.hpp"
+#include "../../cut/arrangements/component_labels.hpp"
 #include "../../cut/arrangements/arrangement_descriptor.hpp"
-#include "../../cut/face_cuts.hpp"
+#include "../../cut/region_triangulator.hpp"
 #include "../../exact/vertex.hpp"
 #include "../../exact/vertex_converter.hpp"
-#include "../../intersect/graph/intersection_graph.hpp"
 #include "../../intersect/graph/vertex.hpp"
 #include <limits>
 
@@ -43,13 +43,13 @@ template <typename Forms, typename Index, typename Int, typename Real,
           std::size_t Dims>
 auto compute_bundle_aabbs(
     const tf::cut::arrangement_descriptor<Index> &desc,
-    const tf::arrangement_graph<Index> &ag,
-    const tf::face_cuts<Index, Int> &fc,
-    const tf::intersection_graph<Index, Int> &ig,
+    const tf::cut::component_labels<Index> &ag,
+    const tf::cut::region_triangulator<Index, Int> &rt,
+    const tf::buffer<tf::point<Int, 3>> &created_pts,
     const Forms &tagged_forms,
     const tf::exact::vertex_converter<Int, Real, Dims> &conv)
     -> tf::buffer<tf::aabb<Int, 3>> {
-  using ag_t = tf::arrangement_graph<Index>;
+  using ag_t = tf::cut::component_labels<Index>;
   using EVert = tf::exact::vertex<Index, Int>;
   using vertex_t = tf::intersect::graph::vertex<Index>;
   using source = tf::intersect::graph::vertex_source;
@@ -83,7 +83,7 @@ auto compute_bundle_aabbs(
 
   auto get_vertex = [&](const vertex_t &v, Index tag) -> EVert {
     if (v.source == source::created)
-      return {n_orig_total + Index(v.id), ig.points()[v.id]};
+      return {n_orig_total + Index(v.id), created_pts[std::size_t(v.id)]};
     return get_original_vertex(Index(v.id), tag);
   };
 
@@ -137,9 +137,9 @@ auto compute_bundle_aabbs(
       },
       combine_bboxes);
 
-  auto loops = fc.loops();
-  auto descs = fc.descriptors();
-  auto loop_labels = ag.loop_labels();
+  auto loops = rt.loops();
+  auto descs = rt.descriptors();
+  auto loop_labels = ag.triangle_labels();
   if (loops.size() == 0)
     return bboxes;
 
