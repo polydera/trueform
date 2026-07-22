@@ -303,7 +303,7 @@ private:
             !constraint_connected(fresh, a) && !constraint_connected(fresh, b)) {
           if (encroaches(_dp[std::size_t(a)], _dp[std::size_t(b)],
                          _dp[std::size_t(fresh)]))
-            _pending.push_back((f << 2) | e);
+            _pending.push_back({f, Index(e), _t[f].stamp});
         }
         continue;
       }
@@ -509,7 +509,7 @@ private:
         continue;
       if (encroaches(_dp[std::size_t(u)], _dp[std::size_t(v)],
                      _dp[std::size_t(w)])) {
-        _pending.push_back((f << 2) | e);
+        _pending.push_back({f, Index(e), _t[f].stamp});
         any = true;
       }
     }
@@ -522,9 +522,15 @@ private:
   auto drain_one_generation() -> void {
     _generation.clear();
     std::swap(_generation, _pending);
-    for (Index packed : _generation) {
-      Index sf = packed >> 2;
-      int se = packed & 3;
+    for (const auto &req : _generation) {
+      Index sf = req.f;
+      int se = int(req.e);
+      // a rebuilt face may hold a different constraint at this slot —
+      // requeue so the encroachment is genuinely rediscovered
+      if (_t[sf].stamp != req.stamp) {
+        push_bad(sf);
+        continue;
+      }
       if (!constrained(sf, se))
         continue;
       Index u = _t[sf].v[se];
@@ -565,8 +571,8 @@ private:
       relink(v, u, m);
       split_edge(sf, se, m, s_lo, s_hi);
     }
-    for (Index packed : _pending)
-      push_bad(packed >> 2);
+    for (const auto &req : _pending)
+      push_bad(req.f);
     _pending.clear();
   }
 
@@ -644,14 +650,14 @@ private:
         if (encroaches(_dp[std::size_t(bu)], _dp[std::size_t(bv)],
                        {ccx, ccy}) &&
             splittable(host, blocked))
-          _pending.push_back((host << 2) | blocked);
+          _pending.push_back({host, Index(blocked), _t[host].stamp});
       } else {
         // Ruppert: the candidate must not encroach any constrained edge of
         // its cavity -- split the segment instead (or drop when capped)
         _cavity.clear();
         _cavity.push_back(host);
         bool encroaches_capped = false;
-        Index enc_split = k_none;
+        split_req_t enc_split{k_none, Index(0), 0};
         for (std::size_t ci = 0; ci < _cavity.size() && ci < 64; ++ci) {
           Index cf = _cavity[ci];
           for (int e = 0; e < 3; ++e) {
@@ -661,7 +667,7 @@ private:
               if (encroaches(_dp[std::size_t(cu)], _dp[std::size_t(cv)],
                              _dp[std::size_t(p)])) {
                 if (splittable(cf, e))
-                  enc_split = (cf << 2) | e;
+                  enc_split = {cf, Index(e), _t[cf].stamp};
                 else
                   encroaches_capped = true;
               }
@@ -685,10 +691,10 @@ private:
               _cavity.push_back(cg);
           }
         }
-        if (encroaches_capped || enc_split != k_none) {
+        if (encroaches_capped || enc_split.f != k_none) {
           _ip.pop_back();
           _dp.pop_back();
-          if (enc_split != k_none) {
+          if (enc_split.f != k_none) {
             _pending.push_back(enc_split);
             push_bad(f); // the split changes the neighbourhood: retry
             drain_one_generation();
@@ -872,8 +878,13 @@ private:
   tf::buffer<std::array<Index, 2>> _queue;
   tf::buffer<Index> _cavity;
   tf::buffer<Index> _lawson;
-  tf::buffer<Index> _pending;
-  tf::buffer<Index> _generation;
+  struct split_req_t {
+    Index f;
+    Index e;
+    std::uint32_t stamp;
+  };
+  tf::buffer<split_req_t> _pending;
+  tf::buffer<split_req_t> _generation;
   tf::buffer<cdt_constraint_split<Index>> _splits;
   tf::buffer<Index> _split_offsets;
   double _scale = 1;

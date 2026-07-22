@@ -349,3 +349,83 @@ TEST_CASE("Pinch: separation under z-order hashing (large ring)",
   CHECK(verify_edges(ids, ec.indices_buffer()));
   CHECK(verify_area(ids, ec.indices_buffer(), pts));
 }
+
+// The DFN slit-antenna class: zero-area antennae with NESTED folds
+// (out-back-out on one line). The triangulation is allowed to fail on
+// these until the structural CDT emit lands — but `build` must report
+// it honestly: ok == exact area conservation.
+TEST_CASE("ear_cutter reports honest completion on folded slit antennae",
+          "[ear_cutter][dfn]") {
+  using Int64 = tf::exact::int64;
+  using i128 = tf::exact::int128;
+
+  auto covered = [](const tf::buffer<int> &tris,
+                    const tf::points_buffer<int64_t, 2> &pts,
+                    const std::vector<int> &ids) -> bool {
+    i128 loop2 = 0;
+    const int n = int(ids.size());
+    for (int i = 0, j = n - 1; i < n; j = i++) {
+      auto &&pa = pts[ids[j]];
+      auto &&pb = pts[ids[i]];
+      loop2 += i128(pa[0]) * i128(pb[1]) - i128(pb[0]) * i128(pa[1]);
+    }
+    if (loop2 < 0)
+      loop2 = -loop2;
+    i128 tri2 = 0;
+    for (std::size_t i = 0; i < tris.size(); i += 3) {
+      auto &&pa = pts[tris[i]];
+      auto &&pb = pts[tris[i + 1]];
+      auto &&pc = pts[tris[i + 2]];
+      i128 a = i128(pb[0] - pa[0]) * i128(pc[1] - pa[1]) -
+               i128(pb[1] - pa[1]) * i128(pc[0] - pa[0]);
+      tri2 += a < 0 ? -a : a;
+    }
+    return tri2 == loop2;
+  };
+
+  auto run_honest = [&](const std::vector<std::array<int64_t, 2>> &data) {
+    tf::points_buffer<int64_t, 2> pts;
+    pts.allocate(data.size());
+    for (std::size_t i = 0; i < data.size(); ++i) {
+      pts[i][0] = data[i][0];
+      pts[i][1] = data[i][1];
+    }
+    std::vector<int> ids(data.size());
+    for (std::size_t i = 0; i < ids.size(); ++i)
+      ids[i] = int(i);
+    tf::ear_cutter<int, Int64> ec;
+    const bool ok = ec.build(ids, pts.points());
+    CHECK(ok == covered(ec.indices_buffer(), pts, ids));
+  };
+
+  SECTION("minimal nested fold (direct path)") {
+    run_honest({{50, 90},
+                {50, 100},
+                {0, 100},
+                {50, 0},
+                {50, 90},
+                {10, 90},
+                {40, 90},
+                {25, 90}});
+  }
+
+  SECTION("DFN box-bottom loop 0 (drop under shard recursion)") {
+    // real projected coords: nm_box + dfn_polygon arrangement, t0 o0
+    run_honest({
+      {1902320482601297664ll, -4565569158243113984ll}, {1902320482601297664ll, -2788225462433683968ll}, {1331624337820908288ll, -2788225462433683968ll},
+      {1902320482601297664ll, -2788225462433683968ll}, {1902320482601297664ll, -635995379527999616ll}, {1364363433121396992ll, -635995379527999616ll},
+      {1331624337820908288ll, -635995379527999616ll}, {1364363433121396992ll, -635995379527999616ll}, {1902320482601297664ll, -635995379527999616ll},
+      {380464096520259520ll, -635995379527999616ll}, {413203047244391680ll, -635995379527999616ll}, {1141392289560778496ll, -635995379527999616ll},
+      {413203047244391680ll, -635995379527999616ll}, {380464096520259520ll, -635995379527999616ll}, {1902320482601297664ll, -635995379527999616ll},
+      {1902320482601297664ll, 1516234564888753408ll}, {-570696144780389248ll, 3668464357880795648ll}, {-1521856386081038080ll, 3668464357880795648ll},
+      {-1114353535632814080ll, 3668464357880795648ll}, {-760928193040519040ll, 3668464357880795648ll}, {-1114353535632814080ll, 3668464357880795648ll},
+      {-1521856386081038080ll, 3668464357880795648ll}, {-570696144780389248ll, 3668464357880795648ll}, {-163193294332165440ll, 3668464357880795648ll},
+      {190232048260129760ll, 3668464357880795648ll}, {-163193294332165440ll, 3668464357880795648ll}, {-570696144780389248ll, 3668464357880795648ll},
+      {1902320482601297664ll, 1516234564888753408ll}, {1902320482601297664ll, 3668464357880795648ll}, {1739127188269132288ll, 3668464357880795648ll},
+      {1331624337820908288ll, 3668464357880795648ll}, {1739127188269132288ll, 3668464357880795648ll}, {1902320482601297664ll, 3668464357880795648ll},
+      {380464096520259520ll, 3668464357880795648ll}, {787966946968483584ll, 3668464357880795648ll}, {1141392289560778496ll, 3668464357880795648ll},
+      {787966946968483584ll, 3668464357880795648ll}, {380464096520259520ll, 3668464357880795648ll}, {1902320482601297664ll, 3668464357880795648ll},
+      {1902320482601297664ll, 4565569158243113984ll}, {-1902320482601297664ll, 4565569158243113984ll},
+    });
+  }
+}

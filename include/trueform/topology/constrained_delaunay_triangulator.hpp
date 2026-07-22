@@ -40,7 +40,6 @@
 #include <array>
 #include <cstdint>
 #include <algorithm>
-#include <numeric>
 
 #include <tbb/parallel_for.h>
 #include <tbb/parallel_sort.h>
@@ -240,6 +239,36 @@ public:
   /// Labels are parity values propagated across triangles. Crossing a
   /// constrained edge toggles the label. Computed during `build()`.
   auto region_labels() const { return tf::make_range(_region_labels); }
+
+  /// Split-constraints builds only: invoke `f(point, parents)` for
+  /// every arrangement point lying strictly inside a constraint —
+  /// `point` addresses points(), `parents` is the range of input
+  /// constraints the point is interior to (one entry = a T-junction at
+  /// an existing input vertex; duplicated constraints all appear).
+  template <typename F>
+  auto for_each_constraint_crossing(F &&f) const -> void {
+    tf::buffer<std::array<Index, 2>> per_point;
+    for (auto group : _constraint_si.intersections())
+      for (const auto &rec : group) {
+        if (rec.target.label != tf::topo_type::edge)
+          continue;
+        per_point.push_back(
+            {_constraint_sig.point_remap()[rec.id], Index(rec.object)});
+      }
+    std::sort(per_point.begin(), per_point.end());
+    const Index n_input = static_cast<Index>(_index_map.f().size());
+    tf::buffer<Index> parents;
+    for (std::size_t i = 0; i < per_point.size();) {
+      std::size_t j = i + 1;
+      while (j < per_point.size() && per_point[j][0] == per_point[i][0])
+        ++j;
+      parents.clear();
+      for (std::size_t k = i; k < j; ++k)
+        parents.push_back(per_point[k][1]);
+      f(n_input + per_point[i][0], tf::make_range(parents));
+      i = j;
+    }
+  }
 
   /// @brief Build the triangulation and recover the supplied constraints.
   ///

@@ -22,6 +22,9 @@
 #include "../exact/signed_area.hpp"
 #include <algorithm>
 #include <utility>
+#ifdef TF_EARCUT_TRACE
+#include <cstdio>
+#endif
 
 namespace tf {
 
@@ -727,8 +730,11 @@ private:
   /// Resolve geometric slits (prev and next share coordinates).
   /// Tries to find a diagonal from the shard tip and split. If no
   /// diagonal exists (outward shard), clips as degenerate ear.
+  /// Folds the recursive splits' results into `completed` — a dropped
+  /// ring inside a shard split must not report success.
   template <typename Pts>
-  auto resolve_shards(const Pts &pts, Index start) -> Index {
+  auto resolve_shards(const Pts &pts, Index start, bool &completed)
+      -> Index {
     Index c = start;
     do {
       auto &cv = _nodes[c];
@@ -744,11 +750,19 @@ private:
       }
       Index v = find_diagonal_from(pts, c);
       if (v != Index(-1)) {
+#ifdef TF_EARCUT_TRACE
+        std::printf("[earcut] shard at pt%d: diagonal to pt%d\n",
+                    int(cv.pt_id), int(_nodes[v].pt_id));
+#endif
         Index other = split_polygon(c, v);
-        triangulate(pts, c);
-        triangulate(pts, other);
+        completed &= triangulate(pts, c);
+        completed &= triangulate(pts, other);
         return Index(-1);
       }
+#ifdef TF_EARCUT_TRACE
+      std::printf("[earcut] outward shard at pt%d: degenerate ear\n",
+                  int(cv.pt_id));
+#endif
       emit_ear(cv);
       auto nc = cv.next;
       if (c == start)
@@ -874,6 +888,10 @@ private:
       while (b != prev(_nodes[a]).id) {
         if (_nodes[a].pt_id != _nodes[b].pt_id &&
             is_valid_diagonal(pts, _nodes[a], _nodes[b])) {
+#ifdef TF_EARCUT_TRACE
+          std::printf("[earcut] split diagonal pt%d - pt%d\n",
+                      int(_nodes[a].pt_id), int(_nodes[b].pt_id));
+#endif
           auto c_id = split_polygon(a, b);
           bool success = triangulate(pts, a);
           success &= triangulate(pts, c_id);
@@ -883,10 +901,27 @@ private:
       }
       a = next(_nodes[a]).id;
     } while (a != start_id);
+#ifdef TF_EARCUT_TRACE
+    std::printf("[earcut] split_earcut: NO valid diagonal, ring dropped\n");
+#endif
     return false;
   }
 
   // ── Earcut main loop ──
+
+#ifdef TF_EARCUT_TRACE
+  template <typename Pts>
+  auto trace_ring(const char *what, const Pts &pts, Index start) -> void {
+    std::printf("[earcut] %s ring:", what);
+    Index c = start;
+    do {
+      std::printf(" %d(pt%d)", int(c), int(_nodes[c].pt_id));
+      (void)pts;
+      c = _nodes[c].next;
+    } while (c != start);
+    std::printf("\n");
+  }
+#endif
 
   template <typename Pts>
   auto earcut(const Pts &pts, Index start_id, int pass = 0) -> bool {
@@ -895,41 +930,70 @@ private:
     auto end_id = start_id;
     auto current_id = start_id;
     bool completed = true;
+#ifdef TF_EARCUT_TRACE
+    trace_ring(pass ? "earcut pass1" : "earcut", pts, start_id);
+#endif
 
     while (_nodes[current_id].prev != _nodes[current_id].next) {
       auto &cur = _nodes[current_id];
       bool ear = _hashing ? is_ear_hashed(cur, pts) : is_ear(cur, pts);
       if (ear) {
+#ifdef TF_EARCUT_TRACE
+        std::printf("[earcut] ear at node %d (pt%d)\n", int(current_id),
+                    int(_nodes[current_id].pt_id));
+#endif
         emit_ear(_nodes[current_id]);
         current_id = next(next(_nodes[current_id])).id;
         end_id = current_id;
         continue;
       }
       if (next(next(next(_nodes[current_id]))).id == current_id) {
+#ifdef TF_EARCUT_TRACE
+        std::printf("[earcut] forced 3-node emit at %d -> FALSE\n",
+                    int(current_id));
+#endif
         emit_ear(_nodes[current_id]);
         return false;
       }
       current_id = next(_nodes[current_id]).id;
       if (current_id == end_id) {
+#ifdef TF_EARCUT_TRACE
+        trace_ring("STALL", pts, current_id);
+#endif
         // 1. Shards
-        Index shard_result = resolve_shards(pts, current_id);
+        Index shard_result = resolve_shards(pts, current_id, completed);
         if (shard_result == Index(-1)) {
-          completed = true;
+#ifdef TF_EARCUT_TRACE
+          std::printf("[earcut] shards resolved via split, completed=%d\n",
+                      int(completed));
+#endif
           break;
         }
         // 2. Collinear runs
         if (!pass) {
           Index new_start = remove_collinear_runs(pts, shard_result);
           if (new_start != Index(-1)) {
+#ifdef TF_EARCUT_TRACE
+            std::printf("[earcut] collinear runs removed, re-earcut\n");
+#endif
             completed &= earcut(pts, new_start, 1);
             break;
           }
         }
         // 3. Pinches (doubly-visited points → separate the lobes)
-        if (resolve_pinches(pts, shard_result, completed))
+        if (resolve_pinches(pts, shard_result, completed)) {
+#ifdef TF_EARCUT_TRACE
+          std::printf("[earcut] pinches separated, completed=%d\n",
+                      int(completed));
+#endif
           break;
+        }
         // 4. Diagonal split as last resort
         completed &= split_earcut(pts, shard_result);
+#ifdef TF_EARCUT_TRACE
+        std::printf("[earcut] split_earcut fallback -> completed=%d\n",
+                    int(completed));
+#endif
         break;
       }
     }
@@ -961,14 +1025,15 @@ private:
     if (_nodes[start].next == start || _nodes[_nodes[start].next].next == start)
       return true;
 
-    Index clean = resolve_shards(pts, start);
+    bool completed = true;
+    Index clean = resolve_shards(pts, start, completed);
     if (clean == Index(-1))
-      return true;
+      return completed;
 
     if (_nodes[clean].next == clean || _nodes[_nodes[clean].next].next == clean)
-      return true;
+      return completed;
 
-    return earcut(pts, clean);
+    return earcut(pts, clean) && completed;
   }
 
   // ── Data ──
