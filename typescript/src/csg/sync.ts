@@ -349,7 +349,8 @@ export class CsgGraph {
 
   /**
    * The intersection polylines of the arrangement — where two operand
-   * surfaces cross (coincident walls excluded).
+   * surfaces cross; a coincident (coplanar) overlap contributes its
+   * contact border while the overlap's interior stays silent.
    */
   intersectionCurves(): Curves {
     return new Curves(

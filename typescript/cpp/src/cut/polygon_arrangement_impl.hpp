@@ -13,6 +13,7 @@
 #pragma once
 
 #include "trueform/cut/make_polygon_arrangements.hpp"
+#include "trueform/topology/triangulation_type.hpp"
 #include "trueform/ts/core/build_intersect_structures.hpp"
 #include "trueform/ts/core/promise.hpp"
 #include "trueform/ts/core/wasm_curves.hpp"
@@ -45,27 +46,36 @@ template <typename Real> struct polygon_arrangement_result_with_curves_t {
 // ============================================================================
 
 template <typename Real>
-auto sync_polygon_arrangements(wasm_mesh<Real> &m, int mode, double tolerance)
+auto sync_polygon_arrangements(wasm_mesh<Real> &m, int mode, double tolerance,
+                              int triangulation)
     -> polygon_arrangement_result_t<Real> {
   build_intersect_structures(m);
   auto fm = m.face_membership_range();
   auto mel = m.manifold_edge_link_range();
   auto [mesh, face_labels] = tf::make_polygon_arrangements(
       m.polygons_range() | tf::tag(m.tree()) | tf::tag(fm) | tf::tag(mel),
-      tf::intersect_config{static_cast<tf::intersect_mode>(mode), tolerance});
+      tf::arrangement_config{
+          tf::intersect_config{static_cast<tf::intersect_mode>(mode),
+                               tolerance},
+          static_cast<tf::triangulation_type>(triangulation)});
   return {wasm_mesh<Real>::from_polygons_buffer(std::move(mesh)),
           wasm_ndarray<std::int32_t>::from_buffer(std::move(face_labels))};
 }
 
 template <typename Real>
-auto sync_polygon_arrangements_with_curves(wasm_mesh<Real> &m, int mode, double tolerance)
+auto sync_polygon_arrangements_with_curves(wasm_mesh<Real> &m, int mode,
+                                           double tolerance, int triangulation)
     -> polygon_arrangement_result_with_curves_t<Real> {
   build_intersect_structures(m);
   auto fm = m.face_membership_range();
   auto mel = m.manifold_edge_link_range();
   auto [mesh, face_labels, curves] = tf::make_polygon_arrangements(
       m.polygons_range() | tf::tag(m.tree()) | tf::tag(fm) | tf::tag(mel),
-      tf::intersect_config{static_cast<tf::intersect_mode>(mode), tolerance}, tf::return_curves);
+      tf::arrangement_config{
+          tf::intersect_config{static_cast<tf::intersect_mode>(mode),
+                               tolerance},
+          static_cast<tf::triangulation_type>(triangulation)},
+      tf::return_curves);
   return {wasm_mesh<Real>::from_polygons_buffer(std::move(mesh)),
           wasm_ndarray<std::int32_t>::from_buffer(std::move(face_labels)),
           wasm_curves<Real>::from_curves_buffer(std::move(curves))};
@@ -77,21 +87,24 @@ auto sync_polygon_arrangements_with_curves(wasm_mesh<Real> &m, int mode, double 
 // ============================================================================
 
 template <typename Real>
-auto async_polygon_arrangements(wasm_mesh<Real> &m, int mode, double tolerance) -> promise_t {
-  return promise([a = m, mode, tolerance]() -> polygon_arrangement_result_t<Real> {
+auto async_polygon_arrangements(wasm_mesh<Real> &m, int mode, double tolerance,
+                               int triangulation) -> promise_t {
+  return promise([a = m, mode, tolerance,
+                  triangulation]() -> polygon_arrangement_result_t<Real> {
     return sync_polygon_arrangements<Real>(const_cast<wasm_mesh<Real> &>(a),
-                                           mode, tolerance);
+                                           mode, tolerance, triangulation);
   });
 }
 
 template <typename Real>
-auto async_polygon_arrangements_with_curves(wasm_mesh<Real> &m, int mode, double tolerance)
+auto async_polygon_arrangements_with_curves(wasm_mesh<Real> &m, int mode,
+                                            double tolerance, int triangulation)
     -> promise_t {
-  return promise(
-      [a = m, mode, tolerance]() -> polygon_arrangement_result_with_curves_t<Real> {
-        return sync_polygon_arrangements_with_curves<Real>(
-            const_cast<wasm_mesh<Real> &>(a), mode, tolerance);
-      });
+  return promise([a = m, mode, tolerance, triangulation]()
+                     -> polygon_arrangement_result_with_curves_t<Real> {
+    return sync_polygon_arrangements_with_curves<Real>(
+        const_cast<wasm_mesh<Real> &>(a), mode, tolerance, triangulation);
+  });
 }
 
 } // namespace ts

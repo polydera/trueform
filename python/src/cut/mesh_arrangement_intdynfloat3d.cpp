@@ -19,14 +19,14 @@ auto register_mesh_arrangements_intdynfloat3d(nanobind::module_ &m) -> void {
   using W = mesh_wrapper<int, float, tf::dynamic_size, 3>;
 
   m.def("mesh_arrangements_intdynfloat3d",
-        [](std::vector<W> &meshes, int mode, double tolerance) { return mesh_arrangements(meshes, mode, tolerance); },
-        nanobind::arg("meshes"), nanobind::arg("mode"), nanobind::arg("tolerance") = 0.0);
+        [](std::vector<W> &meshes, int mode, double tolerance, int triangulation) { return mesh_arrangements(meshes, mode, tolerance, triangulation); },
+        nanobind::arg("meshes"), nanobind::arg("mode"), nanobind::arg("tolerance") = 0.0, nanobind::arg("triangulation") = 0);
 
   m.def("mesh_arrangements_curves_intdynfloat3d",
-        [](std::vector<W> &meshes, int mode, double tolerance) {
-          return mesh_arrangements(meshes, mode, tolerance, tf::return_curves);
+        [](std::vector<W> &meshes, int mode, double tolerance, int triangulation) {
+          return mesh_arrangements(meshes, mode, tolerance, triangulation, tf::return_curves);
         },
-        nanobind::arg("meshes"), nanobind::arg("mode"), nanobind::arg("tolerance") = 0.0);
+        nanobind::arg("meshes"), nanobind::arg("mode"), nanobind::arg("tolerance") = 0.0, nanobind::arg("triangulation") = 0);
 }
 
 } // namespace tf::py

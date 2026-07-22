@@ -171,6 +171,44 @@ def test_mesh_arrangements_curves_match_nonmanifold(index_dtype, dtype,
     assert nm_nep == 2, f"Expected 2 non-manifold endpoints, got {nm_nep}"
 
 
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+@pytest.mark.parametrize("triangulation", ["cdt", "refined_cdt"])
+def test_mesh_arrangements_triangulation_types(index_dtype, dtype, mesh_type,
+                                               triangulation):
+    spheres = make_three_spheres(dtype=dtype, index_dtype=index_dtype,
+                                 mesh_type=mesh_type)
+    (faces, points), tag_labels, face_labels = tf.mesh_arrangements(
+        spheres, triangulation=triangulation)
+
+    total_original = sum(get_num_faces(s.faces) for s in spheres)
+    assert get_num_faces(faces) >= total_original
+    assert set(np.unique(tag_labels)) == {0, 1, 2}
+
+    arr_mesh = tf.Mesh(faces, points)
+    arr_mesh.build_face_membership()
+    assert len(tf.boundary_paths(arr_mesh)) == 0
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_mesh_arrangements_refined_creates_more_points(index_dtype, dtype):
+    spheres = make_three_spheres(dtype=dtype, index_dtype=index_dtype)
+    (cdt_faces, cdt_points), _, _ = tf.mesh_arrangements(
+        spheres, triangulation="cdt")
+    (ref_faces, ref_points), _, _ = tf.mesh_arrangements(
+        spheres, triangulation="refined_cdt")
+    assert len(ref_points) >= len(cdt_points)
+    assert get_num_faces(ref_faces) >= get_num_faces(cdt_faces)
+
+
+def test_mesh_arrangements_bad_triangulation():
+    spheres = make_three_spheres()
+    with pytest.raises(ValueError):
+        tf.mesh_arrangements(spheres, triangulation="bogus")
+
+
 # ==============================================================================
 # polygon_arrangements
 # ==============================================================================
@@ -215,6 +253,43 @@ def test_polygon_arrangements_curves_match_nonmanifold(index_dtype, dtype,
 
     assert nm_n == 6, f"Expected 6 non-manifold paths, got {nm_n}"
     assert nm_nep == 2, f"Expected 2 non-manifold endpoints, got {nm_nep}"
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+@pytest.mark.parametrize("mesh_type", MESH_TYPES)
+@pytest.mark.parametrize("triangulation", ["cdt", "refined_cdt"])
+def test_polygon_arrangements_triangulation_types(index_dtype, dtype,
+                                                  mesh_type, triangulation):
+    spheres = make_three_spheres(dtype=dtype, index_dtype=index_dtype,
+                                 mesh_type=mesh_type)
+    merged = merge_meshes(spheres, mesh_type=mesh_type)
+
+    (faces, points), face_labels = tf.polygon_arrangements(
+        merged, triangulation=triangulation)
+    assert get_num_faces(faces) >= get_num_faces(merged.faces)
+    assert face_labels.min() >= 0
+    assert face_labels.max() < get_num_faces(merged.faces)
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_polygon_arrangements_refined_creates_more_points(index_dtype, dtype):
+    spheres = make_three_spheres(dtype=dtype, index_dtype=index_dtype)
+    merged = merge_meshes(spheres)
+    (cdt_faces, cdt_points), _ = tf.polygon_arrangements(
+        merged, triangulation="cdt")
+    (ref_faces, ref_points), _ = tf.polygon_arrangements(
+        merged, triangulation="refined_cdt")
+    assert len(ref_points) >= len(cdt_points)
+    assert get_num_faces(ref_faces) >= get_num_faces(cdt_faces)
+
+
+def test_polygon_arrangements_bad_triangulation():
+    spheres = make_three_spheres()
+    merged = merge_meshes(spheres)
+    with pytest.raises(ValueError):
+        tf.polygon_arrangements(merged, triangulation="bogus")
 
 
 # ==============================================================================

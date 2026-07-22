@@ -305,6 +305,27 @@ export function embeddedIntersectionCurves(
 // Mesh Arrangement
 // ============================================================================
 
+/**
+ * Intersection options plus the arrangement-only cut-surface triangulation
+ * choice. Triangulation is meaningless for curve/boolean queries, so it
+ * stays out of the shared {@link IntersectOpts}.
+ */
+export interface ArrangementOpts extends IntersectOpts {
+  /**
+   * Cut-surface triangulation: "cdt" (plain constrained Delaunay per cut
+   * loop, default) or "refinedCdt" (quality refinement of the cut surface;
+   * shared boundaries stay watertight by construction).
+   */
+  triangulation?: "cdt" | "refinedCdt";
+}
+
+const TRIANGULATION_MAP = { cdt: 0, refinedCdt: 1 } as const;
+
+/** @internal */
+export function getTriangulation(opts?: ArrangementOpts): number {
+  return TRIANGULATION_MAP[opts?.triangulation ?? "cdt"];
+}
+
 /** Result of mesh arrangement. */
 export interface MeshArrangementResult {
   /** The merged mesh with all faces split along intersection curves. */
@@ -356,13 +377,13 @@ function wrapArrangementWithCurves(
  */
 export function meshArrangements(meshes: Mesh[]): MeshArrangementResult;
 export function meshArrangements(
-  meshes: Mesh[], opts: IntersectOpts & { returnCurves: true },
+  meshes: Mesh[], opts: ArrangementOpts & { returnCurves: true },
 ): MeshArrangementResultWithCurves;
 export function meshArrangements(
-  meshes: Mesh[], opts: IntersectOpts,
+  meshes: Mesh[], opts: ArrangementOpts,
 ): MeshArrangementResult;
 export function meshArrangements(
-  meshes: Mesh[], opts?: IntersectOpts & { returnCurves?: true },
+  meshes: Mesh[], opts?: ArrangementOpts & { returnCurves?: true },
 ): MeshArrangementResult | MeshArrangementResultWithCurves {
   assertSameDtype(
     meshes,
@@ -372,14 +393,15 @@ export function meshArrangements(
   const rc = opts?.resolveCrossings ?? (meshes.length > 2);
   const mode = buildMode(opts, "primitives", rc, false);
   const tolerance = getTolerance(opts);
+  const triangulation = getTriangulation(opts);
   const handles = meshes.map(m => m._handle);
   if (opts?.returnCurves) {
     return wrapArrangementWithCurves(
-      native()[`mesh_arrangements_with_curves_${dt}`](handles, mode, tolerance), dt,
+      native()[`mesh_arrangements_with_curves_${dt}`](handles, mode, tolerance, triangulation), dt,
     );
   }
   return wrapArrangement(
-    native()[`mesh_arrangements_${dt}`](handles, mode, tolerance), dt,
+    native()[`mesh_arrangements_${dt}`](handles, mode, tolerance, triangulation), dt,
   );
 }
 
@@ -463,24 +485,25 @@ function wrapPolygonArrangementWithCurves(
  */
 export function polygonArrangements(mesh: Mesh): PolygonArrangementResult;
 export function polygonArrangements(
-  mesh: Mesh, opts: IntersectOpts & { returnCurves: true },
+  mesh: Mesh, opts: ArrangementOpts & { returnCurves: true },
 ): PolygonArrangementResultWithCurves;
 export function polygonArrangements(
-  mesh: Mesh, opts: IntersectOpts,
+  mesh: Mesh, opts: ArrangementOpts,
 ): PolygonArrangementResult;
 export function polygonArrangements(
-  mesh: Mesh, opts?: IntersectOpts & { returnCurves?: true },
+  mesh: Mesh, opts?: ArrangementOpts & { returnCurves?: true },
 ): PolygonArrangementResult | PolygonArrangementResultWithCurves {
   const dt = mesh.dtype;
   const mode = buildMode(opts, "primitives", true, true);
   const tolerance = getTolerance(opts);
+  const triangulation = getTriangulation(opts);
   if (opts?.returnCurves) {
     return wrapPolygonArrangementWithCurves(
-      native()[`polygon_arrangements_with_curves_${dt}`](mesh._handle, mode, tolerance),
+      native()[`polygon_arrangements_with_curves_${dt}`](mesh._handle, mode, tolerance, triangulation),
       dt,
     );
   }
   return wrapPolygonArrangement(
-    native()[`polygon_arrangements_${dt}`](mesh._handle, mode, tolerance), dt,
+    native()[`polygon_arrangements_${dt}`](mesh._handle, mode, tolerance, triangulation), dt,
   );
 }

@@ -220,10 +220,11 @@ template <typename Real> class wasm_csg_graph {
           identity(tf::make_identity_transformation<Real, 3>()),
           forms(make_forms(meshes, identity)),
           graph(tf::make_range(forms), {},
-                tf::intersect_config{static_cast<tf::intersect_mode>(mode),
-                                     tolerance},
-                make_is_sheet(sheets, meshes.size()),
-                static_cast<tf::triangulation_type>(triangulation)) {}
+                tf::arrangement_config{
+                    tf::intersect_config{static_cast<tf::intersect_mode>(mode),
+                                         tolerance},
+                    static_cast<tf::triangulation_type>(triangulation)},
+                make_is_sheet(sheets, meshes.size())) {}
   };
 
   std::shared_ptr<data_t> _data;

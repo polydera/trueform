@@ -20,14 +20,16 @@
 #include <nanobind/stl/tuple.h>
 #include <nanobind/stl/vector.h>
 #include <trueform/core/transformation.hpp>
+#include <trueform/cut/arrangement_config.hpp>
 #include <trueform/cut/make_mesh_arrangements.hpp>
+#include <trueform/topology/triangulation_type.hpp>
 
 namespace tf::py {
 
 template <typename Index, typename RealT, std::size_t Ngon, std::size_t Dims>
 auto mesh_arrangements(
     std::vector<mesh_wrapper<Index, RealT, Ngon, Dims>> &wrappers, int mode,
-    double tolerance) {
+    double tolerance, int triangulation) {
   bool any_transformed = false;
   for (auto &w : wrappers)
     if (w.has_transformation())
@@ -35,10 +37,13 @@ auto mesh_arrangements(
 
   build_intersect_structures_all(wrappers);
 
-  auto run = [mode, tolerance](const auto &forms) {
+  auto run = [mode, tolerance, triangulation](const auto &forms) {
     auto [mesh, tag_labels, face_labels] = tf::make_mesh_arrangements(
         forms,
-        tf::intersect_config{static_cast<tf::intersect_mode>(mode), tolerance});
+        tf::arrangement_config{
+            tf::intersect_config{static_cast<tf::intersect_mode>(mode),
+                                 tolerance},
+            static_cast<tf::triangulation_type>(triangulation)});
     return nanobind::make_tuple(make_numpy_array(std::move(mesh)),
                                 make_numpy_array(std::move(tag_labels)),
                                 make_numpy_array(std::move(face_labels)));
@@ -72,7 +77,7 @@ auto mesh_arrangements(
 template <typename Index, typename RealT, std::size_t Ngon, std::size_t Dims>
 auto mesh_arrangements(
     std::vector<mesh_wrapper<Index, RealT, Ngon, Dims>> &wrappers, int mode,
-    double tolerance, tf::return_curves_t) {
+    double tolerance, int triangulation, tf::return_curves_t) {
   bool any_transformed = false;
   for (auto &w : wrappers)
     if (w.has_transformation())
@@ -80,12 +85,14 @@ auto mesh_arrangements(
 
   build_intersect_structures_all(wrappers);
 
-  auto run = [mode, tolerance](const auto &forms) {
+  auto run = [mode, tolerance, triangulation](const auto &forms) {
     auto [mesh, tag_labels, face_labels, curves] =
         tf::make_mesh_arrangements(
             forms,
-            tf::intersect_config{static_cast<tf::intersect_mode>(mode),
-                                 tolerance},
+            tf::arrangement_config{
+                tf::intersect_config{static_cast<tf::intersect_mode>(mode),
+                                     tolerance},
+                static_cast<tf::triangulation_type>(triangulation)},
             tf::return_curves);
     auto mesh_pair = make_numpy_array(std::move(mesh));
     auto tag_array = make_numpy_array(std::move(tag_labels));

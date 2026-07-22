@@ -17,6 +17,7 @@ import type { FloatDtype } from "../ndarray/dtype";
 import { Mesh } from "../form/Mesh";
 import { Curves } from "../form/Curves";
 import { IntersectOpts, buildMode, getTolerance } from "../intersect/sync";
+import { ArrangementOpts, getTriangulation } from "./sync";
 import { assertSameDtype } from "../internal/dtype";
 
 import type {
@@ -292,13 +293,13 @@ export async function embeddedIntersectionCurves(
 // ============================================================================
 
 export async function meshArrangements(
-  meshes: Mesh[], opts?: IntersectOpts,
+  meshes: Mesh[], opts?: ArrangementOpts,
 ): Promise<MeshArrangementResult>;
 export async function meshArrangements(
-  meshes: Mesh[], opts: IntersectOpts & { returnCurves: true },
+  meshes: Mesh[], opts: ArrangementOpts & { returnCurves: true },
 ): Promise<MeshArrangementResultWithCurves>;
 export async function meshArrangements(
-  meshes: Mesh[], opts?: IntersectOpts & { returnCurves?: true },
+  meshes: Mesh[], opts?: ArrangementOpts & { returnCurves?: true },
 ): Promise<MeshArrangementResult | MeshArrangementResultWithCurves> {
   assertSameDtype(
     meshes,
@@ -308,15 +309,16 @@ export async function meshArrangements(
   const rc = opts?.resolveCrossings ?? (meshes.length > 2);
   const mode = buildMode(opts, "primitives", rc, false);
   const tolerance = getTolerance(opts);
+  const triangulation = getTriangulation(opts);
   const handles = meshes.map(m => m._handle);
   if (opts?.returnCurves) {
     return dispatcher().run(
-      () => native()[`dispatch_mesh_arrangements_with_curves_${dt}`](handles, mode, tolerance),
+      () => native()[`dispatch_mesh_arrangements_with_curves_${dt}`](handles, mode, tolerance, triangulation),
       (raw) => wrapArrangementWithCurves(raw, dt),
     );
   }
   return dispatcher().run(
-    () => native()[`dispatch_mesh_arrangements_${dt}`](handles, mode, tolerance),
+    () => native()[`dispatch_mesh_arrangements_${dt}`](handles, mode, tolerance, triangulation),
     (raw) => wrapArrangement(raw, dt),
   );
 }
@@ -358,27 +360,28 @@ export async function embeddedSelfIntersectionCurves(
 // ============================================================================
 
 export async function polygonArrangements(
-  mesh: Mesh, opts?: IntersectOpts,
+  mesh: Mesh, opts?: ArrangementOpts,
 ): Promise<PolygonArrangementResult>;
 export async function polygonArrangements(
-  mesh: Mesh, opts: IntersectOpts & { returnCurves: true },
+  mesh: Mesh, opts: ArrangementOpts & { returnCurves: true },
 ): Promise<PolygonArrangementResultWithCurves>;
 export async function polygonArrangements(
-  mesh: Mesh, opts?: IntersectOpts & { returnCurves?: true },
+  mesh: Mesh, opts?: ArrangementOpts & { returnCurves?: true },
 ): Promise<PolygonArrangementResult | PolygonArrangementResultWithCurves> {
   const dt = mesh.dtype;
   const mode = buildMode(opts, "primitives", true, true);
   const tolerance = getTolerance(opts);
+  const triangulation = getTriangulation(opts);
   if (opts?.returnCurves) {
     return dispatcher().run(
       () => native()[`dispatch_polygon_arrangements_with_curves_${dt}`](
-        mesh._handle, mode, tolerance,
+        mesh._handle, mode, tolerance, triangulation,
       ),
       (raw) => wrapPolygonArrangementWithCurves(raw, dt),
     );
   }
   return dispatcher().run(
-    () => native()[`dispatch_polygon_arrangements_${dt}`](mesh._handle, mode, tolerance),
+    () => native()[`dispatch_polygon_arrangements_${dt}`](mesh._handle, mode, tolerance, triangulation),
     (raw) => wrapPolygonArrangement(raw, dt),
   );
 }

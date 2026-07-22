@@ -332,6 +332,39 @@ describe("Mesh arrangements", () => {
     result.mesh.delete(); s1.delete(); s0.delete();
   });
 
+  test("meshArrangements refinedCdt: valid, more points than cdt", () => {
+    const { tf, s0, s1 } = twoSpheres();
+    const stock = tf.meshArrangements([s0, s1]);
+    const refined = tf.meshArrangements([s0, s1], { triangulation: "refinedCdt" });
+
+    assert(refined.mesh.numberOfFaces > 0, "refined has faces");
+    assert(refined.tagLabels.length === refined.mesh.numberOfFaces, "tagLabels match");
+    assert(refined.faceLabels.length === refined.mesh.numberOfFaces, "faceLabels match");
+    assert(refined.mesh.numberOfPoints >= stock.mesh.numberOfPoints,
+      `refined points ${refined.mesh.numberOfPoints} >= cdt ${stock.mesh.numberOfPoints}`);
+    log(`  meshArrangements refinedCdt: ${refined.mesh.numberOfPoints} pts vs cdt ${stock.mesh.numberOfPoints}`, "line-pass");
+
+    refined.faceLabels.delete(); refined.tagLabels.delete(); refined.mesh.delete();
+    stock.faceLabels.delete(); stock.tagLabels.delete(); stock.mesh.delete();
+    s1.delete(); s0.delete();
+  });
+
+  test("async meshArrangements refinedCdt matches sync", async () => {
+    const { tf, s0, s1 } = twoSpheres();
+    const sync = tf.meshArrangements([s0, s1], { triangulation: "refinedCdt" });
+    const asyncResult = await tf.async.meshArrangements([s0, s1], { triangulation: "refinedCdt" });
+
+    assert(asyncResult.mesh.numberOfPoints === sync.mesh.numberOfPoints,
+      "async refined points match sync");
+    assert(asyncResult.mesh.numberOfFaces === sync.mesh.numberOfFaces,
+      "async refined faces match sync");
+    log("  async meshArrangements refinedCdt matches sync", "line-pass");
+
+    asyncResult.faceLabels.delete(); asyncResult.tagLabels.delete(); asyncResult.mesh.delete();
+    sync.faceLabels.delete(); sync.tagLabels.delete(); sync.mesh.delete();
+    s1.delete(); s0.delete();
+  });
+
 });
 
 describe("Polygon arrangements", () => {
@@ -362,6 +395,42 @@ describe("Polygon arrangements", () => {
 
     result.curves.delete(); result.faceLabels.delete(); result.mesh.delete();
     sphere.delete();
+  });
+
+  test("polygonArrangements refinedCdt: valid, more points than cdt", () => {
+    const { tf, s0, s1, s2 } = threeSpheres();
+    const merged = tf.concatenateMeshes([s0, s1, s2]);
+
+    const stock = tf.polygonArrangements(merged);
+    const refined = tf.polygonArrangements(merged, { triangulation: "refinedCdt" });
+
+    assert(refined.mesh.numberOfFaces > 0, "refined has faces");
+    assert(refined.faceLabels.length === refined.mesh.numberOfFaces, "faceLabels match");
+    assert(refined.mesh.numberOfPoints >= stock.mesh.numberOfPoints,
+      `refined points ${refined.mesh.numberOfPoints} >= cdt ${stock.mesh.numberOfPoints}`);
+    log(`  polygonArrangements refinedCdt: ${refined.mesh.numberOfPoints} pts vs cdt ${stock.mesh.numberOfPoints}`, "line-pass");
+
+    refined.faceLabels.delete(); refined.mesh.delete();
+    stock.faceLabels.delete(); stock.mesh.delete();
+    merged.delete(); s2.delete(); s1.delete(); s0.delete();
+  });
+
+  test("async polygonArrangements refinedCdt matches sync", async () => {
+    const { tf, s0, s1, s2 } = threeSpheres();
+    const merged = tf.concatenateMeshes([s0, s1, s2]);
+
+    const sync = tf.polygonArrangements(merged, { triangulation: "refinedCdt" });
+    const asyncResult = await tf.async.polygonArrangements(merged, { triangulation: "refinedCdt" });
+
+    assert(asyncResult.mesh.numberOfPoints === sync.mesh.numberOfPoints,
+      "async refined points match sync");
+    assert(asyncResult.mesh.numberOfFaces === sync.mesh.numberOfFaces,
+      "async refined faces match sync");
+    log("  async polygonArrangements refinedCdt matches sync", "line-pass");
+
+    asyncResult.faceLabels.delete(); asyncResult.mesh.delete();
+    sync.faceLabels.delete(); sync.mesh.delete();
+    merged.delete(); s2.delete(); s1.delete(); s0.delete();
   });
 
 });

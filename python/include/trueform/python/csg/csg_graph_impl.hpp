@@ -24,6 +24,7 @@
 #include <trueform/core/transformation.hpp>
 #include <trueform/csg/csg_graph.hpp>
 #include <trueform/csg/expression.hpp>
+#include <trueform/cut/arrangement_config.hpp>
 #include <trueform/csg/make_csg_domains.hpp>
 #include <trueform/csg/make_csg_mesh.hpp>
 #include <trueform/csg/make_intersection_curves.hpp>
@@ -130,10 +131,11 @@ public:
                     int mode, double tolerance, int triangulation)
       : _wrappers(std::move(wrappers)), _forms(make_forms(_wrappers)),
         _graph(tf::make_range(_forms), {},
-               tf::intersect_config{static_cast<tf::intersect_mode>(mode),
-                                    tolerance},
-               make_is_sheet(sheets, _wrappers.size()),
-               static_cast<tf::triangulation_type>(triangulation)) {}
+               tf::arrangement_config{
+                   tf::intersect_config{static_cast<tf::intersect_mode>(mode),
+                                        tolerance},
+                   static_cast<tf::triangulation_type>(triangulation)},
+               make_is_sheet(sheets, _wrappers.size())) {}
 
   auto created_points() {
     const auto &created = _graph.created_points();

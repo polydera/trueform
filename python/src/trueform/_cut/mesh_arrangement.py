@@ -20,6 +20,8 @@ _RESOLVE_CROSSINGS = 4
 _RESOLVE_SELF_CROSSINGS = 8
 _SELF_INTERSECTIONS = 16
 
+_TRIANGULATION_MAP = {"cdt": 0, "refined_cdt": 1}
+
 
 def mesh_arrangements(
     meshes,
@@ -29,7 +31,8 @@ def mesh_arrangements(
     tolerance: float = 0.0,
     resolve_crossings: bool = None,
     resolve_self_crossings: bool = False,
-    within: bool = False
+    within: bool = False,
+    triangulation: str = "cdt"
 ):
     """
     Compute mesh arrangement from N meshes.
@@ -56,6 +59,11 @@ def mesh_arrangements(
     within : bool, default False
         Also intersect each mesh with itself. Required when a mesh can
         self-overlap, e.g. meshes concatenated into one input.
+    triangulation : str, default "cdt"
+        Cut-surface triangulation: "cdt" (plain constrained Delaunay per
+        cut loop) or "refined_cdt" (quality-refined triangulation of the
+        cut surface, adding Steiner points; shared boundaries stay
+        watertight by construction).
 
     Returns
     -------
@@ -130,6 +138,12 @@ def mesh_arrangements(
     # Build mode int
     if mode not in _MODE_MAP:
         raise ValueError(f"mode must be 'sos' or 'primitives', got '{mode}'")
+    if triangulation not in _TRIANGULATION_MAP:
+        raise ValueError(
+            "triangulation must be 'cdt' or 'refined_cdt', "
+            f"got '{triangulation}'"
+        )
+    triangulation_int = _TRIANGULATION_MAP[triangulation]
     mode_int = _MODE_MAP[mode]
     rc = resolve_crossings if resolve_crossings is not None else len(meshes) > 2
     if rc:
@@ -148,7 +162,7 @@ def mesh_arrangements(
         (result_faces, result_points), tag_labels, face_labels, \
             ((paths_offsets, paths_data), curve_points) = getattr(
                 _trueform.cut, func_name
-            )(wrappers, mode_int, tolerance)
+            )(wrappers, mode_int, tolerance, triangulation_int)
         if result_is_dynamic:
             result_faces = OffsetBlockedArray(result_faces[0], result_faces[1])
         paths = OffsetBlockedArray(paths_offsets, paths_data)
@@ -158,7 +172,7 @@ def mesh_arrangements(
         func_name = f"mesh_arrangements_{suffix}"
         (result_faces, result_points), tag_labels, face_labels = getattr(
             _trueform.cut, func_name
-        )(wrappers, mode_int, tolerance)
+        )(wrappers, mode_int, tolerance, triangulation_int)
         if result_is_dynamic:
             result_faces = OffsetBlockedArray(result_faces[0], result_faces[1])
         return (result_faces, result_points), tag_labels, face_labels

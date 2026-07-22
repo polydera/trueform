@@ -13,6 +13,7 @@
 #pragma once
 
 #include "trueform/cut/make_mesh_arrangements.hpp"
+#include "trueform/topology/triangulation_type.hpp"
 #include "trueform/ts/core/build_intersect_structures.hpp"
 #include "trueform/ts/core/promise.hpp"
 #include "trueform/ts/core/wasm_curves.hpp"
@@ -67,8 +68,8 @@ auto extract_meshes(emscripten::val js_meshes) -> std::vector<wasm_mesh<Real>> {
 // ============================================================================
 
 template <typename Real, typename MeshRange>
-auto run_arrangement(MeshRange &meshes, int mode, double tolerance)
-    -> arrangement_result_t<Real> {
+auto run_arrangement(MeshRange &meshes, int mode, double tolerance,
+                     int triangulation) -> arrangement_result_t<Real> {
   build_intersect_structures_all(meshes);
   auto mesh_range = tf::make_range(meshes);
   bool any_transformed = false;
@@ -76,9 +77,14 @@ auto run_arrangement(MeshRange &meshes, int mode, double tolerance)
     if (m.has_transformation())
       any_transformed = true;
 
-  auto run = [mode, tolerance](const auto &forms) -> arrangement_result_t<Real> {
+  auto run = [mode, tolerance,
+              triangulation](const auto &forms) -> arrangement_result_t<Real> {
     auto [mesh, tag_labels, face_labels] = tf::make_mesh_arrangements(
-        forms, tf::intersect_config{static_cast<tf::intersect_mode>(mode), tolerance});
+        forms,
+        tf::arrangement_config{
+            tf::intersect_config{static_cast<tf::intersect_mode>(mode),
+                                 tolerance},
+            static_cast<tf::triangulation_type>(triangulation)});
     return {wasm_mesh<Real>::from_polygons_buffer(std::move(mesh)),
             wasm_ndarray<std::int32_t>::from_buffer(std::move(tag_labels)),
             wasm_ndarray<std::int32_t>::from_buffer(std::move(face_labels))};
@@ -108,7 +114,8 @@ auto run_arrangement(MeshRange &meshes, int mode, double tolerance)
 }
 
 template <typename Real, typename MeshRange>
-auto run_arrangement_with_curves(MeshRange &meshes, int mode, double tolerance)
+auto run_arrangement_with_curves(MeshRange &meshes, int mode, double tolerance,
+                                 int triangulation)
     -> arrangement_result_with_curves_t<Real> {
   build_intersect_structures_all(meshes);
   auto mesh_range = tf::make_range(meshes);
@@ -118,10 +125,16 @@ auto run_arrangement_with_curves(MeshRange &meshes, int mode, double tolerance)
       any_transformed = true;
 
   auto run =
-      [mode, tolerance](const auto &forms) -> arrangement_result_with_curves_t<Real> {
+      [mode, tolerance, triangulation](
+          const auto &forms) -> arrangement_result_with_curves_t<Real> {
     auto [mesh, tag_labels, face_labels, curves] =
         tf::make_mesh_arrangements(
-            forms, tf::intersect_config{static_cast<tf::intersect_mode>(mode), tolerance}, tf::return_curves);
+            forms,
+            tf::arrangement_config{
+                tf::intersect_config{static_cast<tf::intersect_mode>(mode),
+                                     tolerance},
+                static_cast<tf::triangulation_type>(triangulation)},
+            tf::return_curves);
     return {wasm_mesh<Real>::from_polygons_buffer(std::move(mesh)),
             wasm_ndarray<std::int32_t>::from_buffer(std::move(tag_labels)),
             wasm_ndarray<std::int32_t>::from_buffer(std::move(face_labels)),
@@ -156,17 +169,19 @@ auto run_arrangement_with_curves(MeshRange &meshes, int mode, double tolerance)
 // ============================================================================
 
 template <typename Real>
-auto sync_mesh_arrangement(emscripten::val js_meshes, int mode, double tolerance)
-    -> arrangement_result_t<Real> {
+auto sync_mesh_arrangement(emscripten::val js_meshes, int mode, double tolerance,
+                          int triangulation) -> arrangement_result_t<Real> {
   auto meshes = extract_meshes<Real>(js_meshes);
-  return run_arrangement<Real>(meshes, mode, tolerance);
+  return run_arrangement<Real>(meshes, mode, tolerance, triangulation);
 }
 
 template <typename Real>
-auto sync_mesh_arrangement_with_curves(emscripten::val js_meshes, int mode, double tolerance)
+auto sync_mesh_arrangement_with_curves(emscripten::val js_meshes, int mode,
+                                       double tolerance, int triangulation)
     -> arrangement_result_with_curves_t<Real> {
   auto meshes = extract_meshes<Real>(js_meshes);
-  return run_arrangement_with_curves<Real>(meshes, mode, tolerance);
+  return run_arrangement_with_curves<Real>(meshes, mode, tolerance,
+                                           triangulation);
 }
 
 // ============================================================================
@@ -175,23 +190,27 @@ auto sync_mesh_arrangement_with_curves(emscripten::val js_meshes, int mode, doub
 // ============================================================================
 
 template <typename Real>
-auto async_mesh_arrangement(emscripten::val js_meshes, int mode, double tolerance) -> promise_t {
+auto async_mesh_arrangement(emscripten::val js_meshes, int mode, double tolerance,
+                           int triangulation) -> promise_t {
   auto meshes = extract_meshes<Real>(js_meshes);
-  return promise([ms = std::move(meshes), mode, tolerance]() -> arrangement_result_t<Real> {
+  return promise([ms = std::move(meshes), mode, tolerance,
+                  triangulation]() -> arrangement_result_t<Real> {
     auto &meshes = const_cast<std::vector<wasm_mesh<Real>> &>(ms);
-    return run_arrangement<Real>(meshes, mode, tolerance);
+    return run_arrangement<Real>(meshes, mode, tolerance, triangulation);
   });
 }
 
 template <typename Real>
-auto async_mesh_arrangement_with_curves(emscripten::val js_meshes, int mode, double tolerance)
+auto async_mesh_arrangement_with_curves(emscripten::val js_meshes, int mode,
+                                        double tolerance, int triangulation)
     -> promise_t {
   auto meshes = extract_meshes<Real>(js_meshes);
-  return promise(
-      [ms = std::move(meshes), mode, tolerance]() -> arrangement_result_with_curves_t<Real> {
-        auto &meshes = const_cast<std::vector<wasm_mesh<Real>> &>(ms);
-        return run_arrangement_with_curves<Real>(meshes, mode, tolerance);
-      });
+  return promise([ms = std::move(meshes), mode, tolerance,
+                  triangulation]() -> arrangement_result_with_curves_t<Real> {
+    auto &meshes = const_cast<std::vector<wasm_mesh<Real>> &>(ms);
+    return run_arrangement_with_curves<Real>(meshes, mode, tolerance,
+                                             triangulation);
+  });
 }
 
 } // namespace ts
