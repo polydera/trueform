@@ -46,9 +46,9 @@ template <typename Index> struct arrangement_point_map_data {
 /// Full remapping data including face ID maps.
 ///
 /// Extends arrangement_point_map_data with per-mesh uncut face indices
-/// and offset tables. Used by the "take all" construction path where
-/// face IDs are discovered during map building. All created vertices
-/// are used — mapped by direct offset after originals.
+/// and offset tables. Used by the full-arrangement construction path;
+/// created vertices are discovered like everything else, so only
+/// referenced ones reach the output.
 template <typename Index>
 struct arrangement_map_data : arrangement_point_map_data<Index> {
   using vertex_t = typename arrangement_point_map_data<Index>::vertex_t;
@@ -62,10 +62,16 @@ struct arrangement_map_data : arrangement_point_map_data<Index> {
   // Total uncut faces (across all meshes)
   Index total_original_faces;
 
+  // Created discovery (mark + prefix in id order): only referenced
+  // created ids get output slots — a weld-retired id is never copied.
+  tf::buffer<Index> created_map;
+  tf::buffer<Index> created_ids;
+  Index total_created_used;
+
   auto map_vertex(Index tag, const vertex_t &v) const -> Index {
     if (v.source == tf::intersect::graph::vertex_source::original)
       return this->map_original_vertex(tag, v.id);
-    return v.id + this->total_original_points;
+    return created_map[v.id] + this->total_original_points;
   }
 };
 
@@ -104,11 +110,14 @@ template <typename Index> struct embed_map_data {
   tf::buffer<Index> original_map;
   tf::buffer<Index> uncut_face_ids;
   Index n_original_points;
+  tf::buffer<Index> created_map;
+  tf::buffer<Index> created_ids;
+  Index total_created_used;
 
   auto map_vertex(const vertex_t &v) const -> Index {
     if (v.source == tf::intersect::graph::vertex_source::original)
       return original_map[v.id];
-    return v.id + n_original_points;
+    return created_map[v.id] + n_original_points;
   }
 };
 

@@ -11,15 +11,16 @@
  * Copyright (c) 2025 Ziga Sajovic, XLAB
  */
 
+#include "type_traits.hpp"
 #include <algorithm>
 #include <array>
 #include <catch2/catch_approx.hpp>
-#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_template_test_macros.hpp>
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 #include <set>
-#include <vector>
 #include <trueform/trueform.hpp>
-#include "type_traits.hpp"
+#include <vector>
 
 template <typename index_t, typename Paths>
 auto get_sorted_sizes(const Paths &paths) -> std::vector<std::size_t> {
@@ -44,8 +45,7 @@ auto count_open_endpoints(const Paths &paths) -> int {
   return static_cast<int>(eps.size());
 }
 
-template <typename Mesh>
-auto count_degenerate(const Mesh &mesh) -> int {
+template <typename Mesh> auto count_degenerate(const Mesh &mesh) -> int {
   int n = 0;
   for (auto face : mesh.faces())
     if (face[0] == face[1] || face[1] == face[2] || face[0] == face[2])
@@ -54,9 +54,8 @@ auto count_degenerate(const Mesh &mesh) -> int {
 }
 
 TEMPLATE_TEST_CASE("mesh_arrangements_3_spheres", "[arrangements]",
-    (tf::test::type_pair<std::int32_t, float>),
-    (tf::test::type_pair<std::int64_t, double>))
-{
+                   (tf::test::type_pair<std::int32_t, float>),
+                   (tf::test::type_pair<std::int64_t, double>)) {
   using index_t = typename TestType::index_type;
   using real_t = typename TestType::real_type;
 
@@ -76,9 +75,8 @@ TEMPLATE_TEST_CASE("mesh_arrangements_3_spheres", "[arrangements]",
   auto p2 = s2.polygons() | tf::tag(f2);
   decltype(p0) forms[] = {p0, p1, p2};
 
-  auto [mesh, tag_labels, face_labels, curves] =
-      tf::make_mesh_arrangements(tf::make_range(forms, forms + 3),
-                                 tf::return_curves);
+  auto [mesh, tag_labels, face_labels, curves] = tf::make_mesh_arrangements(
+      tf::make_range(forms, forms + 3), tf::return_curves);
 
   REQUIRE(count_degenerate(mesh) == 0);
 
@@ -105,9 +103,8 @@ TEMPLATE_TEST_CASE("mesh_arrangements_3_spheres", "[arrangements]",
 }
 
 TEMPLATE_TEST_CASE("mesh_arrangements_2_spheres", "[arrangements]",
-    (tf::test::type_pair<std::int32_t, float>),
-    (tf::test::type_pair<std::int64_t, double>))
-{
+                   (tf::test::type_pair<std::int32_t, float>),
+                   (tf::test::type_pair<std::int64_t, double>)) {
   using index_t = typename TestType::index_type;
   using real_t = typename TestType::real_type;
 
@@ -157,12 +154,11 @@ TEST_CASE("mesh_arrangements_box_cylinder_sphere", "[arrangements]") {
       sphere.polygons(),
   };
 
-  auto [mesh, tag_labels, face_labels, curves] =
-      tf::make_mesh_arrangements(
-          tf::make_range(forms.begin(), forms.end()),
-          tf::intersect_mode::primitives |
-              tf::intersect_mode::resolve_crossing_contours,
-          tf::return_curves);
+  auto [mesh, tag_labels, face_labels, curves] = tf::make_mesh_arrangements(
+      tf::make_range(forms.begin(), forms.end()),
+      tf::intersect_mode::primitives |
+          tf::intersect_mode::resolve_crossing_contours,
+      tf::return_curves);
 
   REQUIRE(count_degenerate(mesh) == 0);
 
@@ -187,7 +183,8 @@ TEST_CASE("mesh_arrangements_box_cylinder_sphere", "[arrangements]") {
   REQUIRE(tf::make_boundary_edges(mesh.polygons()).size() == 0);
 }
 
-TEST_CASE("mesh_arrangements_tolerance_box_plane", "[arrangements][tolerance]") {
+TEST_CASE("mesh_arrangements_tolerance_box_plane",
+          "[arrangements][tolerance]") {
   // Unit cube [-0.5, +0.5]^3 (volume = 1), with a planar quad at z = 0
   // whose corners sit a small `gap` INSIDE the cube walls. With sufficient
   // tolerance, the plane snaps onto the cube faces and splits the cube
@@ -218,7 +215,7 @@ TEST_CASE("mesh_arrangements_tolerance_box_plane", "[arrangements][tolerance]") 
   const std::array forms{cube.polygons(), plane.polygons()};
 
   SECTION("tolerance >> gap: plane snaps to cube, splits into 2 halves") {
-    const double tol = 1e-3;  // tol >> gap (= 1e-4)
+    const double tol = 1e-3; // tol >> gap (= 1e-4)
 
     auto [mesh, tag_labels, face_labels] = tf::make_mesh_arrangements(
         tf::make_range(forms.begin(), forms.end()),
@@ -241,7 +238,8 @@ TEST_CASE("mesh_arrangements_tolerance_box_plane", "[arrangements][tolerance]") 
       volumes.push_back(double(tf::signed_volume(dm.polygons())));
     std::sort(volumes.begin(), volumes.end());
 
-    // outer (cube surface with inward normals) → -1; two inner halves → +0.5 each
+    // outer (cube surface with inward normals) → -1; two inner halves → +0.5
+    // each
     REQUIRE(volumes[0] == Catch::Approx(-1.0).margin(0.01));
     REQUIRE(volumes[1] == Catch::Approx(+0.5).margin(0.01));
     REQUIRE(volumes[2] == Catch::Approx(+0.5).margin(0.01));
@@ -286,8 +284,8 @@ TEST_CASE("mesh_arrangements_tolerance_box_plane", "[arrangements][tolerance]") 
         mesh.polygons(), tf::domain_config::ignore_open_fragments);
     REQUIRE(labels.n_domains == 2);
 
-    auto [domain_meshes, domain_ids, source] = tf::split_into_domains(
-        mesh.polygons(), labels, tf::return_source_ids);
+    auto [domain_meshes, domain_ids, source] =
+        tf::split_into_domains(mesh.polygons(), labels, tf::return_source_ids);
 
     // Garbage block is gone: source has exactly the kept domains, no empty
     // or stray trailing block.
@@ -395,10 +393,14 @@ TEST_CASE("domain_outer_shell_two_spheres_two_planes",
   tf::polygons_buffer<index_t, real_t, 3, 3> plane_y;                  // y = 0
   plane_y.points_buffer().allocate(4);
   plane_y.faces_buffer().allocate(2);
-  plane_y.points_buffer()[0] = tf::point<real_t, 3>{real_t(-6), real_t(0), real_t(-6)};
-  plane_y.points_buffer()[1] = tf::point<real_t, 3>{real_t(6), real_t(0), real_t(-6)};
-  plane_y.points_buffer()[2] = tf::point<real_t, 3>{real_t(6), real_t(0), real_t(6)};
-  plane_y.points_buffer()[3] = tf::point<real_t, 3>{real_t(-6), real_t(0), real_t(6)};
+  plane_y.points_buffer()[0] =
+      tf::point<real_t, 3>{real_t(-6), real_t(0), real_t(-6)};
+  plane_y.points_buffer()[1] =
+      tf::point<real_t, 3>{real_t(6), real_t(0), real_t(-6)};
+  plane_y.points_buffer()[2] =
+      tf::point<real_t, 3>{real_t(6), real_t(0), real_t(6)};
+  plane_y.points_buffer()[3] =
+      tf::point<real_t, 3>{real_t(-6), real_t(0), real_t(6)};
   plane_y.faces_buffer()[0] = std::array<index_t, 3>{0, 1, 2};
   plane_y.faces_buffer()[1] = std::array<index_t, 3>{0, 2, 3};
 
@@ -456,4 +458,190 @@ TEST_CASE("domain_outer_shell_two_spheres_two_planes",
   check(tf::domain_config::exclude_outer_shell);
   check(tf::domain_config::exclude_outer_shell |
         tf::domain_config::ignore_open_fragments);
+}
+
+// A box divided by two coincident planes through the free path
+// (mesh_arrangements -> cleaned -> domain_labels -> split): the stack
+// yields exactly two closed half-domains, and keep-one emission follows
+// orientation — same winding: the min tag carries both sides and the
+// dead member serves none; opposite winding: each member serves exactly
+// its outward side.
+TEST_CASE("coincident plane stack divides a box (free path)",
+          "[arrangements][stack]") {
+  using Mesh = tf::polygons_buffer<int, double, 3, 3>;
+
+  const bool reverse_second = GENERATE(false, true);
+  const double tol = reverse_second ? 1e-6 : 0.0;
+
+  auto plane1 = tf::make_plane_mesh(15.0, 15.0, 1, 1);
+  auto plane2 = tf::make_plane_mesh(15.0, 15.0, 1, 1);
+  if (reverse_second)
+    tf::reverse_winding(plane2.faces());
+  auto box = tf::make_box_mesh(10.0, 10.0, 10.0, 1, 1, 1);
+
+  std::vector<Mesh> meshes{plane1, plane2, box};
+  std::vector<decltype(meshes.front().polygons())> forms;
+  for (auto &m : meshes)
+    forms.push_back(m.polygons());
+
+  const auto icfg = tf::intersect_config{
+      tf::intersect_mode::primitives |
+          tf::intersect_mode::resolve_crossing_contours |
+          tf::intersect_mode::resolve_self_crossing_contours,
+      1e-6};
+  auto [arr, tag_labels, face_labels] = tf::make_mesh_arrangements(
+      tf::make_range(forms.data(), forms.data() + forms.size()), icfg);
+  (void)face_labels;
+
+  auto [clean, face_map, point_map] = tf::cleaned(
+      arr.polygons(), tf::clean_config(tol, false, true), tf::return_index_map);
+  (void)point_map;
+  const auto ctags = tf::reindexed(
+      tf::make_range(tag_labels.data(), tag_labels.size()), face_map);
+
+  auto labels = tf::make_domain_labels(
+      clean.polygons(), tf::domain_config::ignore_open_fragments |
+                            tf::domain_config::exclude_outer_shell);
+  auto [subs, ids] = tf::split_into_domains(clean.polygons(), labels);
+  (void)ids;
+
+  REQUIRE(labels.n_domains == 2);
+  REQUIRE(subs.size() == 2);
+  for (auto &sub : subs) {
+    CHECK(tf::is_closed(sub.polygons()));
+    CHECK(std::abs(double(tf::signed_volume(sub.polygons())) - 500.0) < 1e-6);
+  }
+
+  const int sentinel = int(labels.n_domains);
+  const int outer = int(labels.outer_shell_label);
+  auto sides_of = [&](int tag) {
+    std::pair<std::set<int>, std::set<int>> io;
+    std::size_t f = 0;
+    for (auto t : ctags) {
+      if (t == tag) {
+        const int in = labels.labels[f][0];
+        const int out = labels.labels[f][1];
+        if (in != sentinel && in != outer)
+          io.first.insert(in);
+        if (out != sentinel && out != outer)
+          io.second.insert(out);
+      }
+      ++f;
+    }
+    return io;
+  };
+  auto [in0, out0] = sides_of(0);
+  auto [in1, out1] = sides_of(1);
+  if (!reverse_second) {
+    CHECK((in0.size() == 1 && out0.size() == 1 && in0 != out0));
+    CHECK((in1.empty() && out1.empty()));
+  } else {
+    CHECK((in0.empty() && in1.empty()));
+    CHECK((out0.size() == 1 && out1.size() == 1 && out0 != out1));
+  }
+}
+
+// A 3-deep coincident stack with mixed windings (up, down, up): the
+// store aliases every dead member to the live survivor's triangles, and
+// each member's winding flag must be relative to THAT survivor — not to
+// a deeper dead member of the clique.
+TEST_CASE("three-deep mixed-winding stack keeps consistent windings",
+          "[arrangements][stack]") {
+  auto plane1 = tf::make_plane_mesh(15.0, 15.0, 1, 1);
+  auto plane2 = tf::make_plane_mesh(15.0, 15.0, 1, 1);
+  auto plane3 = tf::make_plane_mesh(15.0, 15.0, 1, 1);
+  tf::reverse_winding(plane2.faces());
+  auto box = tf::make_box_mesh(10.0, 10.0, 10.0, 1, 1, 1);
+
+  std::vector<tf::polygons_buffer<int, double, 3, 3>> meshes{plane1, plane2,
+                                                             plane3, box};
+  std::vector<decltype(meshes.front().polygons())> forms;
+  for (auto &m : meshes)
+    forms.push_back(m.polygons());
+
+  const auto icfg = tf::intersect_config{
+      tf::intersect_mode::primitives |
+          tf::intersect_mode::resolve_crossing_contours |
+          tf::intersect_mode::resolve_self_crossing_contours,
+      1e-6};
+  auto [arr, tag_labels, face_labels] = tf::make_mesh_arrangements(
+      tf::make_range(forms.data(), forms.data() + forms.size()), icfg);
+  (void)face_labels;
+
+  // each member's emitted wall triangles must keep that member's own
+  // winding: planes 1 and 3 face +z, plane 2 faces -z
+  double zsum[3] = {0, 0, 0};
+  auto pts = arr.polygons().points();
+  for (std::size_t i = 0; i < arr.polygons().size(); ++i) {
+    const int t = tag_labels[i];
+    if (t > 2)
+      continue;
+    auto f = arr.polygons().faces()[i];
+    auto n = tf::cross(pts[f[1]] - pts[f[0]], pts[f[2]] - pts[f[0]]);
+    zsum[t] += double(n[2]);
+  }
+  CHECK(zsum[0] > 0);
+  CHECK(zsum[1] < 0);
+  CHECK(zsum[2] > 0);
+}
+
+TEST_CASE("refined graph materialises the refined arrangement mesh",
+          "[arrangements][refined]") {
+  auto box = tf::make_box_mesh(2.0, 2.0, 2.0, 1, 1, 1);
+  auto plane = tf::make_plane_mesh(4.0, 4.0, 1, 1);
+  std::vector<decltype(box.polygons())> forms{box.polygons(),
+                                              plane.polygons()};
+
+  auto stock = tf::make_arrangement_graph(
+      tf::make_range(forms.data(), forms.data() + forms.size()));
+  auto stock_mesh = tf::make_arrangement_mesh(stock);
+
+  auto g = tf::make_arrangement_graph(
+      tf::make_range(forms.data(), forms.data() + forms.size()),
+      tf::triangulation_type::refined_cdt);
+  auto mesh = tf::make_arrangement_mesh(g);
+
+  const int n_pts = int(mesh.points_buffer().size());
+  REQUIRE(mesh.polygons().size() > 0);
+  for (auto f : mesh.faces())
+    for (int k = 0; k < 3; ++k) {
+      CHECK(f[k] >= 0);
+      CHECK(f[k] < n_pts);
+    }
+  // the refined path is live: quality insertion adds points and
+  // triangles over the stock arrangement of the same forms
+  CHECK(mesh.points_buffer().size() > stock_mesh.points_buffer().size());
+  CHECK(mesh.polygons().size() > stock_mesh.polygons().size());
+}
+
+TEST_CASE("refined graph handles coplanar stacks (dead regions)",
+          "[arrangements][refined]") {
+  // the plane lies IN the box's top face: the shared wall is a
+  // coplanar stack, so the refined pass runs with dead regions live
+  auto box = tf::make_box_mesh(2.0, 2.0, 2.0, 1, 1, 1);
+  auto plane = tf::make_plane_mesh(4.0, 4.0, 1, 1);
+  for (auto &&p : plane.points())
+    p[2] = 1.0;
+  std::vector<decltype(box.polygons())> forms{box.polygons(),
+                                              plane.polygons()};
+
+  auto stock = tf::make_arrangement_graph(
+      tf::make_range(forms.data(), forms.data() + forms.size()));
+  REQUIRE(stock.dead_loops().size() > 0);
+  auto stock_mesh = tf::make_arrangement_mesh(stock);
+
+  auto g = tf::make_arrangement_graph(
+      tf::make_range(forms.data(), forms.data() + forms.size()),
+      tf::triangulation_type::refined_cdt);
+  auto mesh = tf::make_arrangement_mesh(g);
+
+  REQUIRE(g.triangulations().n_failed == 0);
+  const int n_pts = int(mesh.points_buffer().size());
+  REQUIRE(mesh.polygons().size() > 0);
+  for (auto f : mesh.faces())
+    for (int k = 0; k < 3; ++k) {
+      CHECK(f[k] >= 0);
+      CHECK(f[k] < n_pts);
+    }
+  CHECK(mesh.points_buffer().size() >= stock_mesh.points_buffer().size());
 }

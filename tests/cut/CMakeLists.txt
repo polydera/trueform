@@ -1,5 +1,6 @@
 add_executable(trueform_cut_tests
-  test_arrangement_graph.cpp
+  test_arrangement_curves.cpp
+  test_component_labels.cpp
   test_boolean.cpp
   test_boolean_pair.cpp
   test_coplanar_loop_pairs.cpp
@@ -8,6 +9,8 @@ add_executable(trueform_cut_tests
   test_embedded_intersection_curves.cpp
   test_face_cutter.cpp
   test_face_cuts.cpp
+  test_face_regions.cpp
+  test_region_triangulator.cpp
   test_mesh_arrangements.cpp
   test_segment_arrangements.cpp
   test_self_arrangements.cpp

@@ -45,9 +45,12 @@
 #include "./cut/embedded_intersection_curves.hpp"      // IWYU pragma: export
 #include "./cut/embedded_isocurves.hpp"                // IWYU pragma: export
 #include "./cut/embedded_self_intersection_curves.hpp" // IWYU pragma: export
+#include "./cut/make_arrangement_graph.hpp"            // IWYU pragma: export
+#include "./cut/make_arrangement_mesh.hpp"             // IWYU pragma: export
 #include "./cut/make_boolean.hpp"                      // IWYU pragma: export
 #include "./cut/make_boolean_pair.hpp"                 // IWYU pragma: export
 #include "./cut/make_isobands.hpp"                     // IWYU pragma: export
+#include "./cut/make_intersection_curves.hpp" // IWYU pragma: export
 #include "./cut/make_mesh_arrangements.hpp"            // IWYU pragma: export
 #include "./cut/make_polygon_arrangements.hpp"         // IWYU pragma: export
 #include "./cut/make_segment_arrangements.hpp"         // IWYU pragma: export

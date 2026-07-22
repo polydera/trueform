@@ -10,12 +10,15 @@
 #include <catch2/catch_test_macros.hpp>
 #include <trueform/cut/dispatch/build_exact_pipeline.hpp>
 #include <trueform/cut/dispatch/build_self_pipeline.hpp>
+#include <trueform/cut/face_regions.hpp>
 #include <trueform/cut/make_coplanar_loop_pairs.hpp>
 #include <trueform/trueform.hpp>
 
+#include <array>
 #include <map>
 #include <set>
 #include <tuple>
+#include <vector>
 
 namespace {
 
@@ -44,6 +47,65 @@ auto canonical(const Pairs &pairs) {
     s.insert({a, b, p.opposing});
   }
   return s;
+}
+
+auto make_coplanar_sheet(const std::vector<std::array<Real, 2>> &pts,
+                         const std::vector<std::array<Index, 3>> &faces)
+    -> mesh_t {
+  mesh_t m;
+  for (const auto &p : pts)
+    m.points_buffer().emplace_back(p[0], p[1], Real(0));
+  for (const auto &f : faces)
+    m.faces_buffer().emplace_back(f[0], f[1], f[2]);
+  return m;
+}
+
+struct pairs_all_t {
+  tf::face_regions<Index, tf::exact::int64> fr;
+  tf::buffer<tf::cut::coplanar_loop_pair<Index>> fc_pairs;
+  tf::buffer<tf::cut::coplanar_loop_pair<Index>> fr_pairs;
+};
+
+/// One shared ig, make_coplanar_loop_pairs_all on both structures.
+auto pairs_all_on_both(std::vector<mesh_t> meshes) -> pairs_all_t {
+  const int n = static_cast<int>(meshes.size());
+  std::vector<tf::aabb_tree<Index, Real, 3>> trees(meshes.size());
+  std::vector<tf::face_membership<Index>> fms(meshes.size());
+  std::vector<tf::manifold_edge_link<Index, 3>> mels(meshes.size());
+  for (int i = 0; i < n; ++i) {
+    trees[i] = tf::aabb_tree<Index, Real, 3>(meshes[i].polygons(),
+                                             tf::config_tree(4, 4));
+    fms[i].build(meshes[i].polygons());
+    mels[i] = tf::make_manifold_edge_link(meshes[i].polygons());
+  }
+  auto forms = tf::make_mapped_range(tf::make_sequence_range(n), [&](int i) {
+    return meshes[i].polygons() | tf::tag(trees[i]) | tf::tag(fms[i]) |
+           tf::tag(mels[i]);
+  });
+
+  const auto mode = tf::intersect_mode::primitives |
+                    tf::intersect_mode::resolve_crossing_contours;
+  tf::intersections_between_polygons<Index, Real, tf::exact::int64> ibp;
+  ibp.build(forms, mode);
+  auto &conv = ibp.converter();
+  auto apply_to_face = [&](int tag, Index object, const auto &f) {
+    f(forms[tag].faces()[object]);
+  };
+  auto get_mesh_point = [&](int tag,
+                            Index id) -> tf::point<tf::exact::int64, 3> {
+    return conv.convert(forms[tag].points()[id]);
+  };
+  tf::intersection_graph<Index, tf::exact::int64> ig;
+  ig.build(ibp, apply_to_face, get_mesh_point, mode,
+           tf::exact::make_kernel(conv, 0.0));
+
+  tf::face_cuts<Index, tf::exact::int64> fc;
+  fc.build(ig, apply_to_face, get_mesh_point);
+  pairs_all_t out;
+  out.fr.build(ig, apply_to_face, get_mesh_point);
+  out.fc_pairs = tf::cut::make_coplanar_loop_pairs_all(fc);
+  out.fr_pairs = tf::cut::make_coplanar_loop_pairs_all(out.fr);
+  return out;
 }
 
 } // namespace
@@ -190,4 +252,62 @@ TEST_CASE("fold emit: reversed coincident stack triangulates identically",
     REQUIRE(it != w1.end());
     REQUIRE(it->second * nz < 0.0); // opposite winding
   }
+}
+
+TEST_CASE("coplanar loop pairs on face_regions: nested sheet pair",
+          "[cut][coplanar]") {
+  // The small triangle carves the big one into an outer region (small
+  // walk as hole) plus an interior piece coincident with the small face.
+  auto r = pairs_all_on_both(
+      {make_coplanar_sheet({{0, 0}, {10, 0}, {0, 10}}, {{0, 1, 2}}),
+       make_coplanar_sheet({{2, 2}, {4, 2}, {2, 4}}, {{0, 1, 2}})});
+  REQUIRE(canonical(r.fc_pairs) == canonical(r.fr_pairs));
+  const std::set<std::tuple<Index, Index, bool>> expected{{1, 2, false}};
+  REQUIRE(canonical(r.fr_pairs) == expected);
+}
+
+TEST_CASE("coplanar loop pairs on face_regions: nested sheet pair, flipped "
+          "winding",
+          "[cut][coplanar]") {
+  auto r = pairs_all_on_both(
+      {make_coplanar_sheet({{0, 0}, {10, 0}, {0, 10}}, {{0, 1, 2}}),
+       make_coplanar_sheet({{2, 2}, {4, 2}, {2, 4}}, {{0, 2, 1}})});
+  REQUIRE(canonical(r.fc_pairs) == canonical(r.fr_pairs));
+  const std::set<std::tuple<Index, Index, bool>> expected{{1, 2, true}};
+  REQUIRE(canonical(r.fr_pairs) == expected);
+}
+
+TEST_CASE("coplanar loop pairs on face_regions: boundary-touching carve",
+          "[cut][coplanar]") {
+  // The small triangle leans on the big one's boundary: two hole-free
+  // regions, the carved one coincident with the small face.
+  auto r = pairs_all_on_both(
+      {make_coplanar_sheet({{0, 0}, {10, 0}, {0, 10}}, {{0, 1, 2}}),
+       make_coplanar_sheet({{0, 0}, {3, 0}, {1, 1}}, {{0, 1, 2}})});
+  REQUIRE(canonical(r.fc_pairs) == canonical(r.fr_pairs));
+  const std::set<std::tuple<Index, Index, bool>> expected{{1, 2, false}};
+  REQUIRE(canonical(r.fr_pairs) == expected);
+}
+
+TEST_CASE("coplanar loop pairs on face_regions: three nested sheets confirm "
+          "holes",
+          "[cut][coplanar]") {
+  // big > mid > small: the mid annulus on big and the mid outer region
+  // share the mid boundary AND the small hole — that pair only passes
+  // through a non-empty hole comparison. The small pieces (on big, on
+  // mid, the small face itself) form a hole-free 3-clique.
+  auto r = pairs_all_on_both(
+      {make_coplanar_sheet({{0, 0}, {20, 0}, {0, 20}}, {{0, 1, 2}}),
+       make_coplanar_sheet({{2, 2}, {12, 2}, {2, 12}}, {{0, 1, 2}}),
+       make_coplanar_sheet({{4, 4}, {6, 4}, {4, 6}}, {{0, 1, 2}})});
+  REQUIRE(canonical(r.fc_pairs) == canonical(r.fr_pairs));
+  const std::set<std::tuple<Index, Index, bool>> expected{
+      {1, 3, false}, {2, 4, false}, {2, 5, false}, {4, 5, false}};
+  REQUIRE(canonical(r.fr_pairs) == expected);
+  auto loop_holes = r.fr.loop_holes();
+  REQUIRE(loop_holes[1].size() == 1);
+  REQUIRE(loop_holes[3].size() == 1);
+  REQUIRE(loop_holes[2].size() == 0);
+  REQUIRE(loop_holes[4].size() == 0);
+  REQUIRE(loop_holes[5].size() == 0);
 }

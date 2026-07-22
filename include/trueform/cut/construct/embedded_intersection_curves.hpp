@@ -47,7 +47,8 @@ auto embedded_intersection_curves(
                     !std::is_floating_point_v<RealOut>,
                 "Integer input cannot produce floating-point output");
   auto ipts = ig.points();
-  auto map_data = tf::cut::make_embed_map_data<Index>(fc, polygons, tag);
+  auto map_data = tf::cut::make_embed_map_data<Index>(
+      fc, polygons, tag, static_cast<Index>(ipts.size()));
 
   auto descs_per_tag =
       tf::make_offset_block_range(fc.tag_offsets(), fc.descriptors());
@@ -93,9 +94,10 @@ auto embedded_intersection_curves(
       std::make_pair(tf::make_range(mapped_faces), tf::direction::forward),
       std::make_pair(tf::make_range(triangles), tf::direction::forward));
 
-  auto n_created = static_cast<Index>(ipts.size());
   tf::points_buffer<RealOut, 3> pts_buf;
-  pts_buf.allocate(map_data.n_original_points + n_created);
+  pts_buf.allocate(map_data.n_original_points + map_data.total_created_used);
+  auto gathered_created =
+      tf::make_indirect_range(tf::make_range(map_data.created_ids), ipts);
 
   auto frame = tf::frame_of(polygons);
   if constexpr (std::is_integral_v<RealOut>) {
@@ -108,7 +110,7 @@ auto embedded_intersection_curves(
                                         tf::transformed(pt, frame));
                                   }))),
         tf::take(pts_buf, map_data.n_original_points));
-    tf::parallel_copy(tf::make_points(ipts),
+    tf::parallel_copy(tf::make_points(gathered_created),
                       tf::drop(pts_buf, map_data.n_original_points));
   } else {
     tf::parallel_copy(
@@ -123,7 +125,8 @@ auto embedded_intersection_curves(
 
     tf::parallel_copy(
         tf::make_points(tf::make_mapped_range(
-            ipts, [&converter](auto pt) { return converter.deconvert(pt); })),
+            gathered_created,
+            [&converter](auto pt) { return converter.deconvert(pt); })),
         tf::drop(pts_buf, map_data.n_original_points));
   }
 
