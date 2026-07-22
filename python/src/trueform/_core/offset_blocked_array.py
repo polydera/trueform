@@ -76,6 +76,9 @@ class OffsetBlockedArray:
         if data.ndim != 1:
             raise ValueError(f"data must be 1D, got shape {data.shape}")
 
+        offsets = np.ascontiguousarray(offsets)
+        data = np.ascontiguousarray(data)
+
         # Store arrays and create C++ wrapper
         self._offsets = offsets
         self._data = data

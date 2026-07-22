@@ -15,6 +15,23 @@ INDEX_DTYPES = [np.int32, np.int64]
 
 
 # ==============================================================================
+# Constructor Tests
+# ==============================================================================
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_constructor_normalizes_noncontiguous_arrays(index_dtype):
+    offsets = np.array([0, -1, 2, -1, 5], dtype=index_dtype)[::2]
+    data = np.array([0, -1, 1, -1, 2, -1, 3, -1, 4], dtype=index_dtype)[::2]
+
+    oba = tf.OffsetBlockedArray(offsets, data)
+
+    assert oba.offsets.flags.c_contiguous
+    assert oba.data.flags.c_contiguous
+    assert np.array_equal(oba[0], [0, 1])
+    assert np.array_equal(oba[1], [2, 3, 4])
+
+
+# ==============================================================================
 # from_uniform Tests
 # ==============================================================================
 
