@@ -22,6 +22,7 @@ Then read only the task-specific reference:
 - `agents/cpp_core_architecture.md` for types, ranges, policies, and primitives.
 - `agents/cpp_engineering_philosophy.md` for implementation and portability.
 - `agents/python_layer.md` or `agents/typescript_layer.md` for bindings.
+- `agents/csg_pipeline_debugging.md` for CSG correctness investigations.
 - `agents/usage_cpp.md` for caller-facing C++ composition, ownership, tagging,
   invalidation, and choosing the right materialization level.
 - `agents/feature_lifecycle.md` for a cross-language public feature.

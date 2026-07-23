@@ -25,6 +25,7 @@ Then read only the relevant reference:
 - `agents/cpp_modules.md` for module/API lookup;
 - `agents/python_layer.md` for NumPy ownership and Python/TBB boundaries;
 - `agents/typescript_layer.md` for WASM ownership and async dispatch;
+- `agents/csg_pipeline_debugging.md` for CSG correctness investigations;
 - `agents/feature_lifecycle.md` for a public cross-language feature;
 - `agents/documentation_architecture.md` for documentation work;
 - `agents/usage_cpp.md`, `agents/usage_python.md`, or
