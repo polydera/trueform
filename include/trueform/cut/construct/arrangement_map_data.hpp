@@ -16,6 +16,8 @@
 #include "../../core/small_vector.hpp"
 #include "../../intersect/graph/vertex.hpp"
 
+#include <array>
+
 namespace tf::cut {
 
 /// Base vertex remapping data for mesh arrangement construction.
@@ -73,6 +75,12 @@ struct arrangement_map_data : arrangement_point_map_data<Index> {
       return this->map_original_vertex(tag, v.id);
     return created_map[v.id] + this->total_original_points;
   }
+
+  auto map_key(const std::array<Index, 2> &key) const -> Index {
+    if (key[0] < this->n_meshes)
+      return this->map_original_vertex(key[0], key[1]);
+    return created_map[key[1]] + this->total_original_points;
+  }
 };
 
 /// Filtered remapping data with compact created vertex mapping.
@@ -96,6 +104,12 @@ struct partition_map_data : arrangement_point_map_data<Index> {
     if (v.source == tf::intersect::graph::vertex_source::original)
       return this->map_original_vertex(tag, v.id);
     return created_map[v.id] + this->total_original_points;
+  }
+
+  auto map_key(const std::array<Index, 2> &key) const -> Index {
+    if (key[0] < this->n_meshes)
+      return this->map_original_vertex(key[0], key[1]);
+    return created_map[key[1]] + this->total_original_points;
   }
 };
 

@@ -14,12 +14,14 @@
 
 #include "../clean/points.hpp"
 #include "../core/algorithm/compose_index_maps.hpp"
+#include "../core/algorithm/generic_generate.hpp"
 #include "../core/algorithm/parallel_fill.hpp"
 #include "../core/algorithm/parallel_iota.hpp"
 #include "../core/blocked_buffer.hpp"
 #include "../core/buffer.hpp"
 #include "../core/edges.hpp"
 #include "../core/index_map.hpp"
+#include "../core/offset_block_buffer.hpp"
 #include "../core/point.hpp"
 #include "../core/points.hpp"
 #include "../core/points_buffer.hpp"
@@ -116,6 +118,7 @@ public:
     _vertices_ccw.clear();
     _retriangulation_stack.clear();
     _constraint_edges.clear();
+    _constraint_input_ids.clear();
     _arranged_constraint_edges.clear();
     _final_constraint_edges.clear();
     _input_is_boundary.clear();
@@ -128,6 +131,8 @@ public:
     _constraint_tree.clear();
     _constraint_si.clear();
     _constraint_sig.clear();
+    _constraint_crossings.clear();
+    _crossing_incidences.clear();
     _last_edge = k_none;
     _n_triangles = Index(0);
     _region_labels.clear();
@@ -233,6 +238,17 @@ public:
   /// @brief Non-const accessor to allow moving the index map out.
   auto index_map() -> tf::index_map_buffer<Index> & { return _index_map; }
 
+  /// @brief Original input constraints crossing each output point.
+  ///
+  /// Indexed by `points()` IDs. Each block contains the IDs of original
+  /// input constraints whose interiors contain that output point. Repeated
+  /// reports of the same `(point, constraint)` incidence are removed while
+  /// distinct duplicated constraints remain distinct.
+  auto constraint_crossings() const
+      -> const tf::offset_block_buffer<Index, Index> & {
+    return _constraint_crossings;
+  }
+
   /// @brief Region labels separated by constrained edges, indexed by
   /// triangle (matches the triangle order produced by `make_faces()`).
   ///
@@ -247,27 +263,10 @@ public:
   /// an existing input vertex; duplicated constraints all appear).
   template <typename F>
   auto for_each_constraint_crossing(F &&f) const -> void {
-    tf::buffer<std::array<Index, 2>> per_point;
-    for (auto group : _constraint_si.intersections())
-      for (const auto &rec : group) {
-        if (rec.target.label != tf::topo_type::edge)
-          continue;
-        per_point.push_back(
-            {_constraint_sig.point_remap()[rec.id], Index(rec.object)});
-      }
-    std::sort(per_point.begin(), per_point.end());
-    const Index n_input = static_cast<Index>(_index_map.f().size());
-    tf::buffer<Index> parents;
-    for (std::size_t i = 0; i < per_point.size();) {
-      std::size_t j = i + 1;
-      while (j < per_point.size() && per_point[j][0] == per_point[i][0])
-        ++j;
-      parents.clear();
-      for (std::size_t k = i; k < j; ++k)
-        parents.push_back(per_point[k][1]);
-      f(n_input + per_point[i][0], tf::make_range(parents));
-      i = j;
-    }
+    for (Index point = 0;
+         point < static_cast<Index>(_constraint_crossings.size()); ++point)
+      if (_constraint_crossings[point].size() != 0)
+        f(point, _constraint_crossings[point]);
   }
 
   /// @brief Build the triangulation and recover the supplied constraints.
@@ -371,6 +370,63 @@ private:
     }
 
     return im;
+  }
+
+  auto initialize_empty_constraint_crossings() -> void {
+    _constraint_crossings.data_buffer().clear();
+    _constraint_crossings.offsets_buffer().allocate(_points.size() + 1);
+    topology::detail::fill_auto(_constraint_crossings.offsets_buffer(),
+                                Index(0));
+  }
+
+  template <typename IndexMap>
+  auto finalize_constraint_crossings(const IndexMap &augmented_index_map,
+                                     Index n_input) -> void {
+    auto &incidences = _crossing_incidences;
+    incidences.clear();
+    auto emit_group = [&](const auto &group, auto &local) {
+      for (const auto &record : group) {
+        if (record.target.label != tf::topo_type::edge)
+          continue;
+        const Index sig_point = _constraint_sig.point_remap()[record.id];
+        const Index output_point =
+            augmented_index_map.f()[n_input + sig_point];
+        local.push_back(
+            {output_point, _constraint_input_ids[record.object]});
+      }
+    };
+    auto groups = _constraint_si.intersections();
+    if (groups.size() < topology::detail::k_serial_cutoff)
+      for (const auto &group : groups)
+        emit_group(group, incidences);
+    else
+      tf::generic_generate(groups, incidences, emit_group);
+
+    topology::detail::sort_auto(incidences.begin(), incidences.end());
+    incidences.erase_till_end(
+        std::unique(incidences.begin(), incidences.end()));
+
+    auto &offsets = _constraint_crossings.offsets_buffer();
+    auto &constraint_ids = _constraint_crossings.data_buffer();
+    const Index n_output = static_cast<Index>(_points.size());
+    const Index n_incidences = static_cast<Index>(incidences.size());
+    offsets.allocate(static_cast<std::size_t>(n_output) + 1);
+    constraint_ids.allocate(incidences.size());
+    tf::parallel_for_each(tf::make_sequence_range(n_incidences),
+                          [&](Index i) {
+                            constraint_ids[i] =
+                                incidences[std::size_t(i)][1];
+                          },
+                          tf::checked);
+
+    Index incidence = 0;
+    for (Index point = 0; point < n_output; ++point) {
+      offsets[point] = incidence;
+      while (incidence < n_incidences &&
+             incidences[std::size_t(incidence)][0] == point)
+        ++incidence;
+    }
+    offsets[n_output] = incidence;
   }
 
   auto has_region_boundary_constraints() const -> bool {
@@ -605,6 +661,7 @@ private:
       _final_constraint_edges.push_back({a, b});
       _final_is_boundary.push_back(*ib ? 1 : 0);
     }
+    initialize_empty_constraint_crossings();
     return true;
   }
 
@@ -616,6 +673,8 @@ private:
       -> void {
     _constraint_edges.clear();
     _constraint_edges.reserve(edges.size());
+    _constraint_input_ids.clear();
+    _constraint_input_ids.reserve(edges.size());
     _input_is_boundary.clear();
     _input_is_boundary.reserve(edges.size());
 
@@ -625,6 +684,7 @@ private:
       Index b = Index(edge[1]);
       if (a != b) {
         _constraint_edges.push_back({a, b});
+        _constraint_input_ids.push_back(i);
         _input_is_boundary.push_back(is_boundary[i] ? std::uint8_t(1)
                                                     : std::uint8_t(0));
       }
@@ -637,6 +697,7 @@ private:
       auto cleaned_pair = tf::cleaned<Index>(int_pts, tf::return_index_map);
       _points = std::move(cleaned_pair.first);
       _index_map = std::move(cleaned_pair.second);
+      initialize_empty_constraint_crossings();
       return;
     }
 
@@ -724,6 +785,7 @@ private:
     auto &aug_im = cleaned_augmented.second;
 
     auto n_input = static_cast<Index>(int_pts.size());
+    finalize_constraint_crossings(aug_im, n_input);
     _index_map = tf::compose_index_maps(
         build_original_to_arrangement_index_map(n_input), aug_im);
 
@@ -1648,6 +1710,8 @@ private:
   tf::buffer<Index> _vertices_ccw;
   tf::buffer<Index> _retriangulation_stack;
   tf::buffer<std::array<Index, 2>> _constraint_edges;
+  tf::buffer<Index> _constraint_input_ids;
+  tf::buffer<std::array<Index, 2>> _crossing_incidences;
   tf::buffer<std::array<Index, 2>> _arranged_constraint_edges;
   tf::buffer<std::array<Index, 2>> _final_constraint_edges;
   tf::buffer<std::uint8_t> _input_is_boundary;
@@ -1659,6 +1723,7 @@ private:
   tf::aabb_tree<Index, Int, 2> _constraint_tree;
   tf::intersections_within_segments<Index, Int, 2, Int> _constraint_si;
   tf::intersect::segment_intersection_graph<Index, 2, Int> _constraint_sig;
+  tf::offset_block_buffer<Index, Index> _constraint_crossings;
 
   Index _last_edge{k_none};
   Index _n_triangles{0};

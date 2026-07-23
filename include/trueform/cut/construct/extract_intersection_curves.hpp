@@ -120,11 +120,10 @@ auto extract_intersection_curves(const tf::face_regions<Index, Int> &fr,
       // walks carry pre-weld identities; two incident regions may
       // hold different members of a welded pair, so seams key through
       // the survivor
-      auto rv = rt.resolve(tag, v);
-      if (rv.source == tf::intersect::graph::vertex_source::created)
-        return rv.id;
+      const auto key = rt.resolve_key(tag, v);
+      if (key[0] == n_tags)
+        return key[1];
       Index best = Index(-1);
-      const std::array<Index, 2> key{tag, rv.id};
       for (const auto &m : rt.merges())
         if (m.to_key == key && m.from[0] == n_tags &&
             (best == Index(-1) || m.from[1] < best))
@@ -139,7 +138,7 @@ auto extract_intersection_curves(const tf::face_regions<Index, Int> &fr,
   // incidence list. The incidence is latent in the walks — sort the
   // walk edges by identity key; the group is the incidence, its
   // smallest loop the emitter.
-  auto akey = [&rt, n_tags](Index tag, const auto &v) -> std::array<Index, 2> {
+  auto akey = [&](Index tag, const auto &v) -> std::array<Index, 2> {
     if constexpr (std::is_same_v<Rt, tf::none_t>) {
       (void)rt;
       if (v.source == tf::intersect::graph::vertex_source::created)
@@ -147,10 +146,7 @@ auto extract_intersection_curves(const tf::face_regions<Index, Int> &fr,
       return {tag, v.id};
     } else {
       // welded identities must land in ONE occurrence group
-      auto rv = rt.resolve(tag, v);
-      if (rv.source == tf::intersect::graph::vertex_source::created)
-        return {n_tags, rv.id};
-      return {tag, rv.id};
+      return rt.resolve_key(tag, v);
     }
   };
   tf::buffer<std::array<Index, 5>> nm_keys;
@@ -257,14 +253,13 @@ auto extract_intersection_curves(const tf::face_regions<Index, Int> &fr,
                 rt.for_each_edge_split(
                     my_tag, walk[j], walk[(j + 1) % n],
                     [&](const auto &sv) {
-                      const auto rv = rt.resolve(my_tag, sv);
-                      if (rv.source !=
-                          tf::intersect::graph::vertex_source::created)
+                      const Index id = endpoint(my_tag, sv);
+                      if (std::make_signed_t<Index>(id) < 0)
                         return;
-                      if (rv.id != prev)
+                      if (id != prev)
                         out.push_back(
-                            {std::min(prev, rv.id), std::max(prev, rv.id)});
-                      prev = rv.id;
+                            {std::min(prev, id), std::max(prev, id)});
+                      prev = id;
                     });
                 if (prev != b)
                   out.push_back({std::min(prev, b), std::max(prev, b)});

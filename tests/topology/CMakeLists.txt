@@ -13,6 +13,7 @@ add_executable(trueform_topology_tests
   test_hole_patcher.cpp
   test_ear_cutter.cpp
   test_delaunay_triangulator.cpp
+  test_constrained_delaunay_triangulator.cpp
   test_cdt_refiner.cpp
   test_domain_labels.cpp
 )

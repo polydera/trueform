@@ -18,7 +18,11 @@
 #include "../../cut/construct/arrangement_map_data.hpp"
 #include "../../cut/region_triangulator.hpp"
 #include "../../cut/partition/partition_ids.hpp"
+#include "../../intersect/graph/vertex.hpp"
 #include "tbb/task_group.h"
+
+#include <algorithm>
+#include <array>
 
 namespace tf::csg::graph {
 
@@ -137,6 +141,58 @@ auto make_csg_map_data(const tf::cut::region_triangulator<Index, Int> &rt,
     });
   }
   tg.wait();
+
+  if (rt.merges().size() != 0) {
+    tf::parallel_fill(d.original_map, Index(0));
+    tf::parallel_fill(d.created_map, Index(0));
+
+    auto mark_key = [&](const std::array<Index, 2> &key) {
+      if (key[0] != rt.n_tags())
+        d.original_map[d.point_offsets[key[0]] + key[1]] = Index(1);
+      else
+        d.created_map[key[1]] = Index(1);
+    };
+
+    using vertex_t = tf::intersect::graph::vertex<Index>;
+    using source_t = tf::intersect::graph::vertex_source;
+    for (Index t = 0; t < n_meshes; ++t)
+      for (Index id : d.original_ids[t])
+        mark_key(rt.resolve_key(
+            t, vertex_t{source_t::original, id, {0, tf::topo_type::face}}));
+    for (Index id : d.created_ids)
+      mark_key(rt.resolve_key(
+          Index(0),
+          vertex_t{source_t::created, id, {0, tf::topo_type::face}}));
+
+    std::fill(d.original_offsets.begin(), d.original_offsets.end(), Index(0));
+    for (Index t = 0; t < n_meshes; ++t) {
+      auto &ids = d.original_ids[t];
+      ids.clear();
+      Index current = 0;
+      const Index begin = d.point_offsets[t];
+      const Index end = d.point_offsets[t + 1];
+      for (Index flat = begin; flat < end; ++flat) {
+        if (d.original_map[flat]) {
+          d.original_map[flat] = current++;
+          ids.push_back(flat - begin);
+        } else {
+          d.original_map[flat] = sentinel_orig;
+        }
+      }
+      d.original_offsets[t + 1] = current;
+    }
+
+    d.created_ids.clear();
+    create_current = 0;
+    for (Index id = 0; id < n_created_points; ++id) {
+      if (d.created_map[id]) {
+        d.created_map[id] = create_current++;
+        d.created_ids.push_back(id);
+      } else {
+        d.created_map[id] = sentinel_created;
+      }
+    }
+  }
 
   for (Index i = 0; i < n_meshes; ++i)
     d.original_offsets[i + 1] += d.original_offsets[i];

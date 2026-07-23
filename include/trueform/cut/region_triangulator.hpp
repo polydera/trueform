@@ -110,6 +110,10 @@ public:
   /// bookkeeping, and no way to emit one twice.
   auto promoted_descriptors() const { return tf::make_range(_promoted); }
 
+  /// Tag count the identity keys are built over — `resolve_key` tags
+  /// created identities with exactly this value.
+  auto n_tags() const -> Index { return _n_tags; }
+
   /// Index into the promoted list for `(tag, object)`, or -1 — the
   /// emit-time lookup of the refined path's conforming stream: a
   /// promoted face keeps its surface classification and swaps only its
@@ -610,8 +614,7 @@ public:
         for (Index k = 0; k < so[1]; ++k) {
           const Index id = n_ig_created + steiner_base + base + k;
           const vertex_t v{source::created, id, {0, tf::topo_type::face}};
-          const auto rv = resolve(Index(0), v);
-          if (rv.source == source::created && rv.id == id)
+          if (resolve_key(Index(0), v) == id_of(Index(0), v))
             _steiners.push_back({so[0], id});
         }
         base += so[1];
@@ -621,8 +624,7 @@ public:
         for (std::size_t i = 0; i < _steiners.size(); ++i) {
           const vertex_t v{source::created, _steiners[i][1],
                            {0, tf::topo_type::face}};
-          const auto rv = resolve(Index(0), v);
-          if (rv.source == source::created && rv.id == _steiners[i][1])
+          if (resolve_key(Index(0), v) == id_of(Index(0), v))
             _steiners[w++] = _steiners[i];
         }
         _steiners.erase_till_end(_steiners.begin() + std::ptrdiff_t(w));
@@ -638,8 +640,7 @@ public:
         for (Index j = 0; j < _promoted_interior_of[k]; ++j) {
           const Index id = n_ig_created + _promoted_interior_base + base + j;
           const vertex_t v{source::created, id, {0, tf::topo_type::face}};
-          const auto rv = resolve(Index(0), v);
-          if (rv.source == source::created && rv.id == id)
+          if (resolve_key(Index(0), v) == id_of(Index(0), v))
             _promoted_steiners.push_back({pd.tag, pd.object, id});
         }
         base += _promoted_interior_of[k];
@@ -649,9 +650,7 @@ public:
         for (std::size_t i = 0; i < _promoted_steiners.size(); ++i) {
           const vertex_t v{source::created, _promoted_steiners[i][2],
                            {0, tf::topo_type::face}};
-          const auto rv = resolve(Index(0), v);
-          if (rv.source == source::created &&
-              rv.id == _promoted_steiners[i][2])
+          if (resolve_key(Index(0), v) == id_of(Index(0), v))
             _promoted_steiners[w++] = _promoted_steiners[i];
         }
         _promoted_steiners.erase_till_end(_promoted_steiners.begin() +
@@ -1731,6 +1730,13 @@ private:
         for (auto h : hole_ids)
           add_walk(holes[h], false);
       }
+      const bool triangle_region =
+          !use_splits && hole_ids.size() == 0 && loop.size() == 3;
+      std::array<Index, 3> triangle_inputs{};
+      if (triangle_region)
+        for (std::size_t c = 0; c < 3; ++c)
+          triangle_inputs[c] =
+              positional ? Index(c) : local_id(loop[c]);
 
       // Refined passes re-triangulate through the refiner immediately —
       // its index map carries the weld semantics, so the internal CDT
@@ -1751,22 +1757,13 @@ private:
           sc.tri.build(tf::make_points(sc.pts), edges,
                        tf::make_constant_range(true, edges.size()),
                        /*split_constraints=*/false);
-      // A zero-area region carries no geometry: the CDT welds it down
-      // (its index map is made before the delaunay pass) and either
-      // returns clean with fewer than 3 points, or refuses on the
-      // collinear leftovers — no geometry is the right answer, not a
-      // failure. The weld report below still runs so a collapse
-      // retires its identities globally.
-      if (!built && area2 != T2(0)) {
-        ok = false;
-        return ok;
-      }
 
       // Welds are rare: with none, f() is a bijection and identity is
       // unambiguous. Otherwise the canonical representative per welded
       // vertex is the smallest identity — every caller picks the same
       // survivor regardless of input order.
       const auto &fmap = sc.tri.index_map().f();
+      const auto &kf = sc.tri.index_map().kept_ids();
       const Index n_final = Index(sc.tri.points().size());
       const bool welded = std::size_t(n_final) != n_in;
       sc.rep.clear();
@@ -1794,9 +1791,40 @@ private:
                                  vat(std::size_t(r))});
         }
       }
-      if (!built || area2 == T2(0))
+
+      // A triangular region already is its topology. Coordinate welds
+      // may collapse two corners to one canonical identity; only that
+      // topological collapse authorizes dropping it. Area never does.
+      if (triangle_region) {
+        std::array<Index, 3> final{};
+        for (std::size_t c = 0; c < 3; ++c) {
+          final[c] = fmap[std::size_t(triangle_inputs[c])];
+          if (final[c] < 0 || n_final <= final[c]) {
+            ok = false;
+            return ok;
+          }
+        }
+        if (final[0] == final[1] || final[1] == final[2] ||
+            final[0] == final[2])
+          return ok;
+        std::array<vertex_t, 3> triangle;
+        for (std::size_t c = 0; c < 3; ++c) {
+          const Index r = welded ? sc.rep[std::size_t(final[c])]
+                                 : kf[std::size_t(final[c])];
+          if (r == Index(-1)) {
+            ok = false;
+            return ok;
+          }
+          triangle[c] = vat(std::size_t(r));
+        }
+        out.push_back(triangle);
         return ok;
-      const auto &kf = sc.tri.index_map().kept_ids();
+      }
+
+      if (!built) {
+        ok = false;
+        return ok;
+      }
       auto cdt_faces = sc.tri.make_faces();
       auto labels = sc.tri.region_labels();
       const bool flip = T2(0) < area2;
@@ -1824,10 +1852,25 @@ private:
   }
 
 public:
-  /// Identity after global welds. Merges are rare, so a sorted table
-  /// with one binary search beats a dense remap over the whole point
-  /// space; the closure is applied once at consolidation, so a lookup
-  /// never chains.
+  /// Globally canonical tagged identity after welds.
+  auto resolve_key(Index tag, const vertex_t &v) const
+      -> std::array<Index, 2> {
+    auto k = id_of(tag, v);
+    if (_merge.size() == 0)
+      return k;
+    auto it = std::lower_bound(
+        _merge.begin(), _merge.end(), k,
+        [](const merge_t &m, const std::array<Index, 2> &x) {
+          return m.from < x;
+        });
+    return (it != _merge.end() && it->from == k) ? it->to_key : k;
+  }
+
+  /// Carrier-local vertex after global welds. An original vertex is
+  /// meaningful only together with its owning tag, which `vertex_t`
+  /// intentionally does not store. When the global root belongs to
+  /// another form, use the smallest class member representable by this
+  /// carrier so coincident local members still collapse to one vertex.
   auto resolve(Index tag, const vertex_t &v) const -> vertex_t {
     if (_merge.size() == 0)
       return v;
@@ -1837,7 +1880,23 @@ public:
         [](const merge_t &m, const std::array<Index, 2> &x) {
           return m.from < x;
         });
-    return (it != _merge.end() && it->from == k) ? it->to : v;
+    if (it == _merge.end() || it->from != k)
+      return v;
+    if (is_created(it->to_key) || it->to_key[0] == tag)
+      return it->to;
+
+    auto local = k;
+    for (const auto &merge : _merge) {
+      if (merge.to_key != it->to_key)
+        continue;
+      if ((is_created(merge.from) || merge.from[0] == tag) &&
+          merge.from < local)
+        local = merge.from;
+    }
+    if (local == k)
+      return v;
+    return vertex_t{is_created(local) ? source::created : source::original,
+                    local[1], {0, tf::topo_type::face}};
   }
 
   /// Walk the ordered splits along the physical edge (a, b), oriented
@@ -1890,7 +1949,10 @@ private:
                 rv.sub_id = {0, tf::topo_type::face};
               tr[std::size_t(c)] = rv;
             }
-            if (!(tr[0] == tr[1] || tr[1] == tr[2] || tr[0] == tr[2]))
+            const auto k0 = resolve_key(tag, tr[0]);
+            const auto k1 = resolve_key(tag, tr[1]);
+            const auto k2 = resolve_key(tag, tr[2]);
+            if (!(k0 == k1 || k1 == k2 || k0 == k2))
               ++kept;
           }
           counts[li] = kept;
@@ -1906,11 +1968,17 @@ private:
     out.allocate(std::size_t(acc));
     tf::parallel_for_each(
         tf::make_sequence_range(n_loops), [&](std::size_t li) {
+          const Index tag = li < n_struct
+                                ? descs[li].tag
+                                : _promoted[li - n_struct].tag;
           const auto r = ranges[li];
           Index w = new_ranges[li][0];
           for (Index t = r[0]; t < r[1]; ++t) {
             const auto &tr = tris[std::size_t(t)];
-            if (tr[0] == tr[1] || tr[1] == tr[2] || tr[0] == tr[2])
+            const auto k0 = resolve_key(tag, tr[0]);
+            const auto k1 = resolve_key(tag, tr[1]);
+            const auto k2 = resolve_key(tag, tr[2]);
+            if (k0 == k1 || k1 == k2 || k0 == k2)
               continue;
             out[std::size_t(w++)] = tr;
           }
@@ -2091,7 +2159,7 @@ private:
 
     auto touches_merge = [&](Index tag, const auto &walk) {
       for (const auto &v : walk)
-        if (id_of(tag, resolve(tag, v)) != id_of(tag, v))
+        if (resolve_key(tag, v) != id_of(tag, v))
           return true;
       return false;
     };

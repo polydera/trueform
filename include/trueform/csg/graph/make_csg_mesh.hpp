@@ -37,6 +37,7 @@
 #include "../../core/views/zip.hpp"
 #include "./make_csg_partition.hpp"
 #include "../../cut/region_triangulator.hpp"
+#include "../../intersect/graph/vertex.hpp"
 #include "../../exact/vertex_converter.hpp"
 #include "tbb/task_group.h"
 #include <array>
@@ -82,7 +83,7 @@ auto make_csg_mesh(const tf::cut::component_labels<Index> &ag,
   auto map_data = make_csg_map_data(rt, n_created, pids, apply_to_polygons);
 
   auto map_vertex = [&](auto tag, const auto &v) {
-    return map_data.map_vertex(tag, v);
+    return map_data.map_key(rt.resolve_key(tag, v));
   };
 
   // ---- Stage 3: gather selected triangles per (form, label). --------
@@ -153,8 +154,32 @@ auto make_csg_mesh(const tf::cut::component_labels<Index> &ag,
   }
 
   // ---- Stage 4: per-form remapped face range view. ------------------
-  auto original_maps = tf::make_offset_block_range(map_data.point_offsets,
-                                                    map_data.original_map);
+  tf::buffer<Index> canonical_original_map;
+  const tf::buffer<Index> *emission_original_map = &map_data.original_map;
+  if (rt.merges().size() != 0) {
+    using vertex_t = tf::intersect::graph::vertex<Index>;
+    using source_t = tf::intersect::graph::vertex_source;
+    canonical_original_map.allocate(map_data.original_map.size());
+    tf::parallel_for_each(
+        tf::make_sequence_range(n_tags), [&](Index t) {
+          const Index begin = map_data.point_offsets[t];
+          const Index end = map_data.point_offsets[t + 1];
+          tf::parallel_for_each(
+              tf::make_sequence_range(begin, end),
+              [&](Index flat) {
+                canonical_original_map[flat] =
+                    map_data.map_key(rt.resolve_key(
+                        t, vertex_t{source_t::original, flat - begin,
+                                    {0, tf::topo_type::face}})) -
+                    map_data.original_offsets[t];
+              },
+              tf::checked);
+        },
+        tf::checked);
+    emission_original_map = &canonical_original_map;
+  }
+  auto original_maps = tf::make_offset_block_range(
+      map_data.point_offsets, *emission_original_map);
   auto mapped_uncut_faces = [&](Index t, Index L) {
     return tf::make_indirect_range(
         tf::make_range(pids[t].polygons[L]),
