@@ -87,7 +87,8 @@ public:
 
   auto retrieve(uintptr_t ptr) -> emscripten::val {
     typename decltype(_tasks)::accessor acc;
-    _tasks.find(acc, ptr);
+    if (!_tasks.find(acc, ptr))
+      return emscripten::val::undefined();
     if (__atomic_load_n(&acc->second->status, __ATOMIC_ACQUIRE) == -1) {
       _tasks.erase(acc);
       return emscripten::val::undefined();
