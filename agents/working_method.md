@@ -1,149 +1,185 @@
 # Working Method
 
-How work happens on this codebase: how Žiga directs, how an agent investigates
-mechanisms, and what counts as proof. Read this before the design laws in
-`cpp_performance_philosophy.md` and the concrete phase shapes in
-`cpp_execution_patterns.md`.
+This document defines how nontrivial work is investigated, reviewed, proven,
+and landed in Trueform. It is a timeless working contract, not a record of a
+particular collaboration or debugging campaign.
 
-## 1. Taking direction — the most important section
+Read it before the design laws in `cpp_performance_philosophy.md` and the
+concrete phase shapes in `cpp_execution_patterns.md`.
 
-- Žiga's corrections are load-bearing. "wait wait" means he has seen
-  something real — STOP mid-action and listen. "chat first" means no
-  code until the design conversation has happened.
-- He argues in INVARIANTS ("same selection, only triangulation changes
-  — the result must match"). An invariant argument from him beats your
-  hypothesis stack; more than once it has overturned a wrong retraction
-  and forced the hunt that found the real bug.
-- When he asks "do you understand?" — prove it by RESTATING the design
-  in your own words, sharper than he said it. Never just agree. He
-  speaks in voice notes that ramble; the job is to extract the design
-  intent and play it back crisply. He corrects the playback.
-- His instincts about the codebase are near-oracular ("we already have
-  this in the connectivity", "the map is latent in the data"). Treat
-  them as high-prior search directions. When one fails empirically,
-  report the failure precisely, revert to green, log the open question
-  — never force his idea with a third guess, never silently drop it.
-- His designs drive the optimization work. When something must get
-  fast, the winning shape has repeatedly come from his phase-shape
-  sketches, not from conventional fixes — implement the sketch
-  faithfully before improvising.
-- He is strict and speaks harshly; that is direction, not anger. He
-  detects and hates: hedging, cushioning, flattery, essays. Verdict
-  first, evidence after, short. He says when he wants detail.
-- Admit errors immediately, specifically, without ceremony. Stating
-  both a wrong move and its correction plainly is what keeps trust.
-- Never extend shared semantics to serve a new consumer without the
-  design chat. Surface every design fork; silently patching a plan gap
-  is a violation even when the patch is correct.
+## 1. Agree on the boundary before editing
 
-## 2. Debugging — the iron discipline
+- Restate the requested invariant in precise terms. Name the carrier that owns
+  it, the public or internal semantic boundary, and what must remain unchanged.
+- Discuss every semantic change or large algorithm change before
+  implementation. Agree on stages, gates, and the next review boundary.
+- Implement one agreed stage, validate it, present the result, and stop at that
+  boundary. When commits are part of the agreed workflow, commit the accepted
+  stage before beginning the next.
+- A correction or request to stop overrides the current hypothesis immediately.
+  Stop editing, restate the corrected invariant, and resume only from the newly
+  agreed boundary.
+- An invariant argument from the principal outranks the agent's hypothesis
+  stack. "The selection is unchanged, so the result must match" is a proof
+  obligation, not an opinion; it survives any number of plausible hypotheses.
+- Treat the principal's instincts about the codebase as high-prior search
+  directions and test them first. When one fails empirically, report the
+  failure precisely, revert to green, and log the open question. Never force it
+  with another guess, and never silently drop it.
+- A hypothesis adopted from the principal is still a hypothesis. Report it as
+  a measured fact only after measuring it; repeating the description back as
+  a finding is the failure this rule exists to prevent.
+- When asked whether you understand, restate the design in your own words more
+  sharply than it was given, and let the restatement be corrected. Agreement
+  without restatement is not understanding.
+- Direction may be blunt. Bluntness is direction, not disapproval, and it never
+  licenses hedging, retreat, cushioning, or flattery. Answer with the verdict
+  and the evidence.
+- Surface every design fork. Never silently extend shared semantics, broaden an
+  authority, or add a mode merely to make a new consumer work.
+- Report verdict first, mechanism second, evidence third. Admit an error
+  directly and state the correction without ceremony.
 
-- NO FIX WITHOUT MECHANISM. He will ask "why is this a problem
-  exactly?" — if the answer is not a mechanism, the work is not done.
-  The chain is: symptom → isolated minimal repro (one polygon, exact
-  coords, layer by layer) → mechanism → root fix at the right altitude
-  → the workaround DELETED. The fix replaces the workaround; it never
-  sits on top.
-- Evidence over theorizing. When two hypotheses die, stop and
-  instrument: count it, print it, classify it, autopsy the exact
-  failing entity (face ids, vertex sources, split keys). Under input
-  variance, cross-run identity comparisons lie — classify stable
-  aggregates within one run.
-- One hypothesis per experiment. Revert anything that does not win.
-  Two guessed fixes in a row means there is no mechanism — go back.
-- When porting across grains or carriers, enumerate what the old
-  carrier guaranteed by construction BEFORE debugging what broke —
-  the missing invariant is usually on that list.
+## 2. Establish the mechanism
 
-### Investigating performance-critical code
+- No fix without a mechanism. Follow:
 
-- Do not summarize a module and call that understanding. Trace a complete
-  producer-to-consumer path, including the functions that allocate, group,
-  rebase, compact, or expose its data.
-- Identify the carrier at every phase and write down when it changes: records
-  to sorted groups, faces to loops, loops to regions, regions to triangles.
-- Find the owning buffers and the non-owning ranges separately. Determine which
-  offsets or index maps preserve identity between them.
-- Mark every barrier: discovery, sort, offset computation, sequenced aggregate,
-  identity materialization, substitution, and final copy.
-- Ask what conventional structure the phase shape replaces: a hash table,
-  synchronized append, nested container, repeated clear, random lookup, or
-  recomputation.
-- Read thresholds and fast paths as design evidence. Do not "simplify" them
-  into one generic path without measurements on the real workload.
+  ```text
+  symptom
+  -> smallest deterministic repro
+  -> first broken carrier transition
+  -> violated invariant
+  -> authoritative producer or owner
+  -> root fix
+  -> workaround removed
+  ```
 
-## 3. Testing — what counts as proof
+- Trace the complete producer-to-consumer path, including helpers that allocate,
+  group, sort, compute offsets, rebase, compact, substitute, or expose data.
+  Reading only the named entry point is not an investigation.
+- Describe a failure only in the pipeline's own stage names. Needing a stage
+  the code does not have means the model of the mechanism is wrong, not the
+  code; re-derive the model from the stages that exist before proposing
+  anything.
+- Name the carrier at every phase and record where it changes: records, faces,
+  loops, regions, components, triangles, or output blocks. Before porting work
+  to another carrier, enumerate what the old carrier guaranteed by
+  construction.
+- Separate owning buffers from non-owning ranges. Identify the offsets, block
+  positions, dense IDs, and index maps that preserve identity between stages.
+- Mark every barrier: discovery, sorting, offset computation, sequenced
+  aggregation, shared identity materialization, substitution, and final copy.
+- Identify the authoritative producer for every fact. Consumers follow its
+  identities and maps; they do not reconstruct provenance from coordinates.
+- Use one hypothesis per experiment. Revert a change that does not prove the
+  hypothesis. After two unsupported fixes, stop changing code and instrument
+  the failing entity directly.
+- A crash is evidence of a broken invariant, lifetime, or range. Find the first
+  corrupt carrier or invalid access. Do not remove or disable the mechanism
+  merely to make the crash disappear.
+- Under input variance, cross-run numeric IDs may differ. Keep the complete
+  trace in one run or compare stable ownership records and canonicalized
+  aggregates.
+- Treat thresholds, fast paths, and deliberately serial phases as design
+  evidence. Do not flatten them into one generic path without equivalent-output
+  proof and measurements on representative work.
 
-- DETERMINISTIC OR CANONICALIZABLE during correctness work: raw inputs, no RNG,
-  and the same input must produce semantically identical public output.
-  Require byte identity where ordering is contractual; canonical-sort or compare
-  sets/maps where unordered aggregation is deliberately part of the algorithm.
-  Never let thread timing change carrier identity or externally meaningful ties.
-- Validate the ORACLE before trusting red/green. A gate that passes
-  for the wrong reason is worse than none: assertions quantified over
-  possibly-empty sets pass vacuously; |area| sums are winding-blind
-  (a mirrored triangle still adds); a fixture whose premise died keeps
-  passing forever. Tests must be able to LOSE — build the assertion
-  that fails under the bug class (signed sums, count-must-grow,
-  cross-carrier set equality, no-orphans).
-- Machinery that iterates (refinement, recovery) needs iterated tests
-  — single-pass fixtures cannot see second-pass freezes.
-- Verify binaries actually rebuilt before trusting a run (grep eats
-  make errors; stale binaries lie; count errors AND warnings, never
-  `grep error` alone). Runs stay under two minutes.
-- Committed tests are synthetic only; data fixtures and probes live in
-  experimentation/, untracked but registered in its CMakeLists.
+For CSG failures, apply the more specific forward-tracing procedure in
+`csg_pipeline_debugging.md`.
 
-## 4. Landing
+## 3. Build an oracle that can fail
 
-- The library stays clean until a change is proven: prototype on
-  copies, land with the full gate battery — unit suites, the regression
-  harnesses both ways, the binding builds and their suites (a core
-  surface change once silently broke both extension builds), the
-  portability scan, zero warnings.
-- Land small, gate, then commit. The staged list is checked against
-  the commit message before every commit. experimentation/ and root
-  working docs never land. Nothing user-facing is claimed done without
-  its gate output.
-- Every landing updates its handoff or memory in the same turn —
-  context death is real; the records are how work survives it.
-- Python-patching files: assert the anchor exists and is unique before
-  replacing; a silent no-op replace once shipped stale results. Prefer
-  Edit on read files.
+- Correctness runs use deterministic inputs. Require byte identity when output
+  order is contractual; canonicalize only when unordered aggregation is an
+  intentional part of the public semantics.
+- Validate the oracle before trusting red or green. Assertions over possibly
+  empty sets, winding-blind area sums, and fixtures whose premise no longer
+  holds can pass under the exact bug they are meant to detect.
+- A new gate is proven red first: run it against the reverted or suppressed
+  mechanism and observe it fail. A gate that has never failed is a tautology
+  until shown otherwise.
+- Test the violated invariant directly: signed quantities when orientation
+  matters, required count changes, cross-carrier set equality, exact ownership
+  pairs, and absence of orphaned identities.
+- Iterative machinery needs iterative coverage. A one-pass fixture cannot prove
+  recovery, refinement, or propagation across later waves.
+- Do not turn an untested failure mode into accepted documentation by calling
+  it a sharp edge. Prove and test the boundary, or keep it recorded as
+  unresolved work.
+- Verify that the intended binary was rebuilt. Inspect the complete build
+  result and count warnings as well as errors; a filtered log and a stale binary
+  are not evidence.
+- A gate is an exact invocation, not a binary. Record the full command line
+  with the gate and run that; a probe's default arguments are not the gate.
+  Before declaring a regression against a recorded result, reproduce the
+  recorded invocation on the last-known-good state first.
+- Established local repros remain green at every relevant stage. Large,
+  proprietary, or data-specific probes stay under `experimentation/` and may be
+  standalone CMake executables rather than default CTest entries.
+- Start with the narrowest gate that exercises the changed invariant, then
+  broaden to the affected library and binding surfaces.
 
-## 5. Task division
+## 4. Preserve exact refactor behavior
 
-- Hard problems, new mechanisms, deep debugging, design: the main
-  agent, in-band — mechanism-hunting does not delegate. Mechanical,
-  well-specified work (file assembly, per-dtype binding threading,
-  survey fan-outs, review finder angles): dispatched subagents with
-  exact specs containing acceptance criteria and the gates they must
-  run themselves. Vague specs produce plausible garbage.
-- VERIFY EVERYTHING a delegate returns — re-run gates, spot-check the
-  diffs. Reviewer findings get adversarially verified before they are
-  believed; "double check what reviewers say, sometimes they get shit
-  wrong."
-- Never two writers in one file lane.
+An exact refactor preserves more than output:
 
-## 6. The design philosophy that makes it work
+- public and internal semantics;
+- carrier ordering and identity;
+- parallel and serial phase shape;
+- allocation points and allocation count;
+- retained capacity and scratch reuse;
+- ownership, view lifetime, and release timing;
+- error and refusal behavior.
 
-The performance laws are in `cpp_performance_philosophy.md`; their concrete
-implementations are in `cpp_execution_patterns.md`. The method-side
-counterparts:
+Any intended change to those properties is a separate reviewed change with its
+own proof and, when performance can move, its own measurement.
 
-- Ask of every design question: "where is this decided, and can it be
-  decided earlier, structurally?" Correctness by construction beats
-  correctness by audit.
-- The right ALTITUDE: fix the CDT, not the caller; one mechanism for
-  all consumers instead of per-consumer patches; a special case
-  layered on shared infrastructure means the fix is not deep enough.
-  He will push you there — get there first.
-- Refusal handling is recovery, never veto: machinery that can refuse
-  must have a path that clears the refusal, not a flag that hides it.
-- Performance is a requirement, not a polish. Structural wins first
-  (locality, ordering, layout); micro-optimizations last; the bar is
-  the wild number on the real workload.
+Classes own state, lifetime, invariants, and phase wiring. Reusable algorithmic
+work is expressed as free operations where its inputs and outputs can be stated
+directly. A refactor is not finished merely because a monolith was split; the
+new structure must expose coherent library operations without adding modes,
+allocations, or abstraction machinery.
 
-If you internalize one thing: Žiga is not a user to satisfy, he is a
-principal engineer to keep up with. Bring mechanisms, measurements,
-and short sentences. The rest follows.
+## 5. Land in proven stages
+
+- Keep speculative probes and task artifacts outside the library until the
+  mechanism is proven.
+- Land one coherent stage and run its agreed gates. When a commit is requested,
+  inspect the staged file list against the commit message and bank that stage
+  before proceeding.
+- A core surface change is not complete until every affected binding builds and
+  its relevant tests pass. Binding validation may be scheduled as a later
+  agreed stage, but it must not be silently omitted.
+- Do not commit transient coverage status, personal paths, generated
+  visualizations, raw dumps, or investigation handoffs unless explicitly
+  requested.
+- Keep task memory current when work spans stages or sessions. It owns open
+  hypotheses, proofs, refutations, repros, current boundaries, and commit
+  coverage.
+- Promote a lesson into an agent document only when it is a reusable law.
+  Rewrite it as a timeless invariant or work pattern; leave campaign state in
+  task memory.
+
+## 6. Delegate without splitting authority
+
+- One agent owns the mechanism, invariant, and final design judgment.
+- Delegate bounded independent surveys, mechanical file work, and orthogonal
+  review angles with explicit acceptance criteria.
+- Never assign two writers to the same file lane.
+- Verify delegated findings against the code and rerun the relevant gates.
+  Reviewer output is evidence to check, not authority by itself.
+
+## 7. Review at the right altitude
+
+Before accepting a solution, ask:
+
+1. Is the fix in the producer or owner that establishes the violated fact?
+2. Does it serve every consumer of that fact rather than patching one output?
+3. Does phase structure make the invariant true by construction?
+4. Does it preserve the carrier identities that downstream stages consume?
+5. Is recovery a real discovery/materialization/retry path rather than a flag
+   that hides refusal?
+6. Are correctness, performance, and Trueform style all preserved?
+
+A result that works but is slower, allocation-heavier, structurally foreign, or
+dependent on reconstructed geometry is not finished.

@@ -1,10 +1,10 @@
 # TypeScript/WASM Boundary Contract
 
-> **Task-specific authority.** Read this after `working_method.md`,
-> `cpp_performance_philosophy.md`, and `cpp_execution_patterns.md` when changing
-> TypeScript, embind, WASM storage, or async dispatch. This document describes
-> boundary invariants. It is not a fixed file-layout recipe; inspect the nearest
-> current registration and `typescript/CMakeLists.txt` before adding sources.
+> **Task-specific authority.** Read `AGENTS.md`, follow its **Read first** order
+> exactly, then use this document when changing TypeScript, embind, WASM
+> storage, or async dispatch. This document describes boundary invariants. It is
+> not a fixed file-layout recipe; inspect the nearest current registration and
+> `typescript/CMakeLists.txt` before adding sources.
 
 The TypeScript layer does not reimplement Trueform. It owns user-facing types,
 validation, disposal, and promise composition around native handles. Geometry,
@@ -177,11 +177,13 @@ WASM atomic notification. JavaScript waits on an `Int32Array` view of status.
 Node receives a ref'd keepalive while `Atomics.waitAsync` is pending because the
 wait itself does not keep its event loop alive.
 
-One generic `retrieve(slot)` converts a successful result and erases the task
-entry. On failure it erases the entry without attempting result conversion.
-Dispatch completion alone does not erase a context, so the JavaScript bridge
-must call `retrieve(slot)` on every terminal path. Do not add one retrieval
-function per result type.
+The retrieval contract uses one generic `retrieve(slot)` to convert a successful
+result and erase the task entry. Erasure must be exception-safe: a converter or
+bridge exception must not leave the context registered. On failure retrieval
+erases the entry without attempting result conversion. Dispatch completion
+alone does not erase a context, so the JavaScript bridge must call
+`retrieve(slot)` on every terminal path. Do not add one retrieval function per
+result type.
 
 ## 6. Worker boundary
 
@@ -272,6 +274,8 @@ float32/float64 translation units; others register together. Current code and
 - Does every async lambda capture owning handles by value?
 - Is worker code free of `emscripten::val` and JavaScript access?
 - Is result conversion deferred to main-thread `retrieve`?
+- Does every dispatched context reach `retrieve` exactly once, with
+  exception-safe erasure and failure erased without invoking its converter?
 - Is concurrent mutation forbidden or structurally prevented?
 - Are sync and async paths the same computation?
 - Are disposal and finalization both safe and independently tested?

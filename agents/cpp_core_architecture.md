@@ -2,8 +2,8 @@
 
 The `core/` module supplies Trueform's type system, memory model, range
 abstractions, policies, and parallel primitives. This is a factual lookup
-reference, not the authority for algorithm design. Read
-`cpp_performance_philosophy.md` and `cpp_execution_patterns.md` first.
+reference, not the authority for algorithm design. Read `AGENTS.md` and follow
+its **Read first** order exactly before using this reference.
 
 ---
 
@@ -236,10 +236,10 @@ template <typename T> struct alignas(128) cache_aligned_slot {
 
 128-byte alignment prevents false sharing — each thread's slot is on a separate cache line.
 
-These types are not the default parallel-state model. Use them for irregular
-callback/task traversal, especially tree search, when the traversal cannot
-provide a stable block or a local-state argument. Partitionable work should
-carry state through `parallel_for_each`, generation, or reduction primitives.
+These types are not the default parallel-state model. Use them only for
+irregular parallel tree traversal whose callback/task API cannot provide a
+stable block or local-state argument. Partitionable work carries state through
+`parallel_for_each`, generation, or reduction primitives.
 
 ### 4.4 `small_vector<T, N>`
 
@@ -434,9 +434,8 @@ If `T` has a frame policy, `frame_of` returns it. Otherwise returns identity. `t
 
 **Use the parallel vocabulary at the correct grain.** Unchecked primitives enter
 their TBB implementation. Overloads taking `tf::checked` use the primitive's
-small-workload serial fallback; for the primitives below that cutoff is
-currently 1000 elements. Call sites still choose whether this generic cutoff is
-appropriate for their actual kernel.
+small-workload serial fallback. The primitive owns that cutoff; call sites
+still choose whether range length is a sound proxy for their actual kernel.
 
 ### 7.2 Algorithm Vocabulary
 
@@ -461,7 +460,7 @@ Passed as extra argument to enable small-workload fallback:
 
 ```cpp
 tf::parallel_for_each(range, func);              // enter TBB path
-tf::parallel_for_each(range, func, tf::checked);  // sequential if size < 1000
+tf::parallel_for_each(range, func, tf::checked);  // use serial fallback when small
 ```
 
 ### 7.4 Local State in Parallel Work
@@ -480,7 +479,7 @@ reused across the chunk's elements. Pick by what the loop produces:
 | Offsets + data blocks per element | `generate_offset_blocks(r, offsets, data, f)` | same shape, emits offset-block structure |
 | Reduce to one result, order irrelevant | `blocked_reduce(r, init, local, task, agg)` | `local_t` per chunk, `agg` merges |
 | Aggregation order creates structure | `blocked_reduce_sequenced_aggregate(r, init, local_t{}, task, agg)` | `task(chunk_range, local)` fills locals in parallel; `agg(local, ...)` runs in input-block order to preserve jagged alignment, construct offsets, or rebase correlated outputs |
-| Callback API with no state slot (`tf::search`, ray casts, dual-tree traversal) | `local_buffer<T>` / `local_vector<T>` / `local_value<T>` | one slot per TBB thread (cache-aligned), merge via `to_buffer()`. LAST RESORT: every algorithm above threads local state through — use these only when the API gives the callback no way to receive it |
+| Irregular parallel tree callback with no state slot (`tf::search`, ray casts, dual-tree traversal) | `local_buffer<T>` / `local_vector<T>` / `local_value<T>` | one slot per TBB thread (cache-aligned), merge via `to_buffer()`. LAST RESORT: every partitionable algorithm above threads local state through |
 
 ```cpp
 struct local_t { tf::small_vector<seg_t, 16> segs; };
@@ -515,7 +514,10 @@ eliminate later sorting or lookup.
 
 3. **Policies compose, never copy data.** `polygons | tag(tree)` wraps the existing policy in a new layer. The points and faces stay where they are. The tree reference is added to the policy chain.
 
-4. **Parallel algorithms default to TBB's automatic partitioner.** Two explicit tuning knobs exist: the 1000-element sequential fallback via `tf::checked`, and an explicit grain via `tf::grain(n)` (`core/grain.hpp`) accepted by `parallel_for_each` — use it only when measured.
+4. **Parallel algorithms default to TBB's automatic partitioner.** Two explicit
+   tuning knobs exist: the primitive-owned serial fallback via `tf::checked`,
+   and an explicit grain via `tf::grain(n)` (`core/grain.hpp`) accepted by
+   `parallel_for_each` — use either only when the work shape justifies it.
 
 5. **No virtual dispatch anywhere.** All polymorphism is at compile time via templates, policies, and `if constexpr`.
 
@@ -558,7 +560,7 @@ forms → intersections_between_polygons → intersection_graph
 - **`tf::face_regions`** (`cut/face_regions.hpp`) — the raw region
   structure: per-face region walks (boundary + holes) over intersection
   identities. Classification is REGION-grain.
-- **`tf::cut::region_triangulator`** (`cut/region_triangulator.hpp`) —
+- **`tf::cut::region_triangulator`** (`cut/impl/region_triangulator.hpp`) —
   owner of the exposed TRIANGLE-grain stream (`loops()` = one triangle
   each, contiguous per tag, promoted faces after each tag's structure
   loops) and of provenance the stream cannot carry: `merges()` (the

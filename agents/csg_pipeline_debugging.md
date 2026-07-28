@@ -110,6 +110,64 @@ Run this check before `cleaned()`. Cleanup may hide the defect by welding points
 or removing duplicate faces; that is not proof that the CSG pipeline was
 correct.
 
+## Openness triage: read the NM-edge fans before anything else
+
+An open boolean result has exactly three possible authors: the arrangement,
+the triangulation, or the classification. Separate them before investigating
+anything, using the structure classification itself consumes —
+`csg_graph::descriptor().fans` (`tf::cut::non_manifold_edge_fans`): the
+non-manifold edges with their incident region fans.
+
+Five readings, in this order:
+
+0. **Per-face region partition.** Group regions by their source face and
+   count every walk edge. Each interior cut edge must appear exactly twice
+   (two sibling regions), and the edges appearing once must form a single
+   closed cycle — every vertex degree 2, no odd degree, no pinch. This is
+   threshold-free and it is the test that says whether the region
+   decomposition itself is sound. Do **not** substitute a total-area
+   comparison against the original flat face: quantization snaps an
+   intersection point off the face's edge line, so the regions legitimately
+   tile a slightly deformed triangle while staying watertight against the
+   neighbour sharing that same snapped point. The area form needs an
+   arbitrary threshold and will report defects that are not there.
+
+1. **Boundary conservation.** For every live region, every edge of its walks
+   (boundary walk plus hole walks) must appear as an edge of that region's
+   triangulation range. A region that loses a walk edge tears a hole against
+   whatever region shares that edge. This is the cheapest reading, it
+   localises to a named region immediately, and it settles the arrangement /
+   triangulation split on its own — run it first. A triangulator that
+   resolves crossings by rerouting a constrained edge through another vertex
+   violates it, and the violated edges are exactly the result's boundary
+   edges.
+2. **Open fragments.** `labels().open_component_mask()` must be all zero for
+   closed operands. Self-merge is a fragment property; intersecting closed
+   meshes cannot produce an open fragment, so a set bit is an arrangement
+   defect on its own.
+3. **Per-fan-region accounting.** For each boundary edge that *is* a fan
+   edge, print every region in its fan with three facts: does its walk carry
+   the edge, how many of its triangles carry the edge, and its component and
+   chosen side. Exactly two incidences should be selected and each selected
+   region should emit exactly one triangle on the edge. `in_walk=1` with
+   `tris_on_edge=0` is a triangulation fault; `in_walk=0` means the
+   connectivity fabricated the fan and the merges are wrong.
+4. **Fan parity.** Every form contributes an even number of incidences to a
+   non-manifold edge, so a fan of odd size means one incidence is missing —
+   *unless* a coplanar contact collapsed there. A collapsed wall is one
+   surface shared by two forms and legitimately contributes once. Before
+   calling an odd fan a defect, list the regions whose walk carries the edge
+   and check whether the ones the fan omits are `dead_loops()` entries paired
+   through `coplanar_pairs()`. Coplanar contacts also break vertex-degree
+   parity along the collapsed patch's boundary, so degree parity alone never
+   settles the question.
+
+Do not read a boundary edge's absence from the fan table as evidence of a
+T-junction. It only says the edge is interior to some triangulation, which a
+conservation violation produces just as readily as an unbroadcast vertex
+does. Distinguish them by testing exactly, on the lattice, whether a created
+point actually lies on the segment.
+
 ## Order of investigation
 
 Use this order for every failure:
@@ -117,13 +175,14 @@ Use this order for every failure:
 1. Reproduce at tolerance `0`.
 2. Verify the two inputs are closed and manifold.
 3. Find the first failing operation in an iterated sequence.
-4. Print the complete relevant intersection records.
-5. Follow their identities into the intersection graph.
-6. Check the corresponding face regions and region connectivity.
-7. Compare each region with its triangulation range.
-8. Check component labels, chosen sides, and selected source regions.
-9. Translate raw output IDs back through map data.
-10. State the first broken transition before proposing a fix.
+4. For an open result, run the NM-fan triage above to choose the branch.
+5. Print the complete relevant intersection records.
+6. Follow their identities into the intersection graph.
+7. Check the corresponding face regions and region connectivity.
+8. Compare each region with its triangulation range.
+9. Check component labels, chosen sides, and selected source regions.
+10. Translate raw output IDs back through map data.
+11. State the first broken transition before proposing a fix.
 
 The proof should name exact records, identities, region IDs, and source
 descriptors. Geometry is used to evaluate predicates inside the algorithms, not

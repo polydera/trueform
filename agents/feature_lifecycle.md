@@ -5,13 +5,9 @@ Python, TypeScript/WASM, tests, and documentation. It describes obligations,
 not a fixed file-per-instantiation layout. Binding layouts evolve; inspect the
 nearest current feature and every relevant build manifest before editing.
 
-Read first:
-
-1. `working_method.md`
-2. `cpp_performance_philosophy.md`
-3. `cpp_execution_patterns.md`
-4. `documentation_architecture.md` before changing `docs/content/`
-5. `python_layer.md` and/or `typescript_layer.md` for the affected surfaces
+Read `AGENTS.md` and follow its **Read first** order exactly. Then read
+`documentation_architecture.md` before changing `docs/content/`, plus
+`python_layer.md` and/or `typescript_layer.md` for the affected surfaces.
 
 ## 1. Define the semantic surface
 
@@ -122,37 +118,11 @@ Document:
 
 ## 7. Gates
 
-Run the narrowest gate after each layer, then the complete affected stack.
-
-### C++
-
-```bash
-cmake -B build -DTF_BUILD_TESTS=ON
-cmake --build build --parallel --target trueform_tests
-ctest --test-dir build --output-on-failure
-```
-
-### Python
-
-Use the repository's current wheel or configured-extension flow with the same
-interpreter for build and test:
-
-```bash
-CMAKE_BUILD_PARALLEL_LEVEL=8 pip wheel . -w dist
-pip install dist/trueform-*.whl
-pytest python/tests
-```
-
-### TypeScript/WASM
-
-```bash
-cd typescript
-npm run build
-npm run typecheck
-```
-
-Run the current TypeScript test harness for the affected module as registered in
-the repository.
+`AGENTS.md` is the single command authority. Run its narrowest relevant gate
+after each layer, then the complete affected stack. Use one fresh Python wheel
+directory and the same `python -m pip` / `python -m pytest` interpreter. For
+TypeScript/WASM, run the registered test harness as well as the build and type
+check.
 
 Do not hardcode personal build directories in documentation. Verify the binary
 was rebuilt and count build errors and warnings before trusting a filtered log.
@@ -170,6 +140,7 @@ was rebuilt and count build errors and warnings before trusting a filtered log.
 - [ ] Relevant C++, Python, and WASM builds pass from fresh artifacts
 - [ ] No transient coverage status, local path, or experiment result added to this file
 
-The checklist is intentionally structural. When a neighboring implementation
-conflicts with an old remembered convention, current code and build manifests
-win.
+The checklist is intentionally structural. Current code and build manifests
+determine registration and layout facts. Documented ownership, namespace,
+execution, and style laws still govern; surface a conflict rather than treating
+an isolated neighboring exception as precedent.

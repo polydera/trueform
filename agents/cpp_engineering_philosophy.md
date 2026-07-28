@@ -37,7 +37,12 @@ measured dispatch thresholds.
 tf::parallel_for_each(range, func, tf::checked);
 ```
 
-Sequential fallback for ranges < 1000 elements. Use `tf::checked` when the range size is unpredictable. Omit it when you know the range is large (e.g., iterating all faces of a mesh).
+Pass `tf::checked` when range length is a sound proxy for total work and the
+small-range case should stay serial. This keeps one bulk algorithm and lets the
+primitive own its serial cutoff; do not open-code a second size branch around
+the same operation. Do not apply it mechanically: a short range of large
+polygons, deep blocks, or other expensive tasks should remain parallel when
+each element costs more than the threading overhead.
 
 ### 1.3 Sentinel-Based Lazy Discovery
 
@@ -106,9 +111,8 @@ Use stateful `parallel_for_each`, `generic_generate`, `sequenced_generate`,
 The local state is constructed once per task/block and reused by its serial
 inner loop.
 
-`local_buffer`, `local_vector`, and `local_value` are last-resort storage for
-irregular callback/task traversal that cannot receive block state. Parallel
-tree search is the primary case.
+`local_buffer`, `local_vector`, and `local_value` are reserved for irregular
+parallel tree traversal whose callback/task API cannot receive block state.
 
 ### 1.5 Idempotence Does Not Make a Race Benign
 
@@ -253,6 +257,11 @@ tf::parallel_copy(range, output);
 
 `tf::static_size_v<Range>` flows through composition. If you `make_blocked_range<3>(buffer)`, the result has static size 3. `make_indirect_range(ids, data)` inherits the static size of `ids`. This enables compile-time loop unrolling and specialization.
 
+When fixed arity is part of a function's contract, express it directly in the
+parameter as `tf::range<Iterator, N>`. Do not add an `enable_if` layer around a
+generic range merely to rediscover the static size; the direct signature is
+clearer and more portable.
+
 ---
 
 ## 3. The View/Buffer Split
@@ -313,8 +322,8 @@ Zero runtime cost when features are absent. The dead branch is eliminated at com
 template <typename Index = tf::none_t, typename Policy>
 auto triangulated(const tf::polygons<Policy> &polygons) {
     if constexpr (std::is_same_v<Index, tf::none_t>) {
-        using LocalIndex = std::decay_t<decltype(polygons.faces()[0][0])>;
-        return triangulated<LocalIndex>(polygons);
+        return triangulated<
+            std::decay_t<decltype(polygons.faces()[0][0])>>(polygons);
     } else {
         // Actual implementation with concrete Index type
     }
@@ -343,6 +352,12 @@ ig.build(ibp, apply_to_face, get_mesh_point, mode);
 **Why**: Separates allocation from computation. Enables reuse (call `build()` again with different data). Enables profiling of build time. Matches TBB patterns where structures are built once and queried many times.
 
 **Accessors after build**: `.points()`, `.faces()`, `.loops()`, `.descriptors()`, etc.
+
+Classes own state, lifetime, invariants, and phase wiring. Express coherent
+reusable algorithms as free functions with ranges, buffers, policies,
+callbacks, and result carriers passed explicitly. Methods connect those
+operations and commit their results; retain algorithmic work inside the class
+only when it is inseparable from the owner's invariant.
 
 ---
 
@@ -383,18 +398,59 @@ This eliminates all geometric degeneracy in boolean operations and intersections
 - **Functions**: `snake_case` — `make_boundary_edges`, `fit_icp_alignment`
 - **Types**: `snake_case` — `polygons_buffer`, `half_edges`, `aabb_tree`
 - **Template parameters**: `Index`, `RealT`, `Int`, `Dims`, `Ngons`, `Policy`, `Range`
-- **Files**: `snake_case.hpp`, one primary function/class per file
-- **No type aliases in library code** — use full names for grepability
+- **Files**: `snake_case.hpp`, named for their primary operation or class
+- **Implementation types remain explicit** — do not introduce convenience
+  aliases that conceal concrete carrier or result types and reduce
+  grepability. Public semantic aliases and required interface or trait aliases
+  remain valid.
 - **Trailing return types**: `auto foo(...) -> ReturnType` — used consistently
 
-### 7.2 Header Layout
+### 7.2 File and Namespace Ownership
+
+**A first-level module directory holds only the module's user-facing
+interface.** Headers directly under `include/trueform/<module>/` define `tf::`
+symbols. Every symbol in a nested namespace — `tf::<module>`,
+`tf::<module>::detail` — lives in a nested directory under that module, never
+beside the public headers. A top-level module header that opens
+`namespace tf::<module>` is misplaced: either the file belongs in a nested
+directory, or its nested-namespace block must be factored into a
+nested-directory header that the public header includes. Reading the top level
+of a module directory should show the library's surface and nothing else.
+
+**Classes stay thin; the work lives in free functions.** Factor every
+self-contained step out of a class into a free function in the module's nested
+namespace, one operation per header under a nested directory. A class body is
+composition, ownership, and lifetime — not the algorithms it runs. Free
+functions are how a second owner reuses a step without inheriting the first
+owner's state, so the factoring is a reuse mechanism, not tidying. A class that
+has grown to thousands of lines is a factoring failure rather than a large
+problem: split it by operation until each header states one thing.
+
+- In ordinary modules, headers directly under `include/trueform/<module>/`
+  define that module's top-level `tf::*` surface. Nested internal headers do not
+  introduce new top-level `tf::*` symbols; they live under the module-owned
+  namespace `tf::<module>`. Further namespace nesting is an explicit domain
+  choice, not something derived mechanically from every directory component.
+- Internal owner classes live on the nested module implementation surface.
+  Public nested namespaces and organizational exceptions are explicit,
+  documented choices.
+- Keep one coherent operation family or owner type per header. Only inseparable
+  small implementation helpers share it; an independently reusable helper gets
+  its own named header.
+- `core/` is partitioned into nested directories because it is large. Its
+  established public partitions, including `core/algorithm/` and `core/views/`,
+  may still expose top-level `tf::*`; do not invent namespaces mechanically
+  from those paths or generalize the exception to internal module directories.
+
+### 7.3 Header Layout
+
+Every header opens with the repository copyright/license block, copied verbatim
+from a neighboring header in the same module — never retyped from memory and
+never omitted. The skeleton below starts after that block; a new file whose
+first line is `#pragma once` is incomplete.
 
 ```cpp
-/*
- * Copyright (c) 2025 XLAB
- * All rights reserved.
- * ...
- */
+/* ... repository copyright/license block, copied from a neighbor ... */
 #pragma once
 #include "dependency.hpp"          // IWYU: only what's needed
 
@@ -413,7 +469,7 @@ auto function_name(const tf::polygons<Policy> &polygons) {
 } // namespace tf
 ```
 
-### 7.3 Umbrella Headers
+### 7.4 Umbrella Headers
 
 ```cpp
 // geometry.hpp
@@ -422,7 +478,7 @@ auto function_name(const tf::polygons<Policy> &polygons) {
 // ...
 ```
 
-### 7.4 `.clang-format`
+### 7.5 `.clang-format`
 
 `BasedOnStyle: LLVM`
 
@@ -431,12 +487,18 @@ auto function_name(const tf::polygons<Policy> &polygons) {
 ## 8. Memory Discipline
 
 - **No raw `new`/`delete`** — ever
-- **`tf::buffer<T>`** for POD arrays (trivially destructible only)
+- **`tf::buffer<T>`** for types satisfying its uninitialized,
+  byte-relocatable storage contract
 - **`tf::small_vector<T, N>`** for small bounded collections
-- **`std::vector<T>`** only for non-POD types
+- **`std::vector<T>`** when element construction or destruction is required
 - **Reserve, then push** — for block-local variable output whose size is not known
 - **Allocate exact** — when counts or offsets make size known, then write directly
 - **Sentinel maps over hash maps** — `buffer[n]` with sentinel for integer-keyed lookups
+
+Allocation lifetime is part of data shape. An exact refactor preserves
+allocation points and count, retained capacity, scratch reuse, ownership, and
+release timing unless a separate reviewed and measured change proves another
+shape better.
 
 ---
 
@@ -480,8 +542,9 @@ SUBSTITUTION over already-computed output plus dropping what collapsed
   structures, and correlated outputs when that construction/copy cost is
   appropriate per block. Do not move it to arena-local storage merely because
   it is substantial.
-- **Arena-local state is exceptional.** Use `local_value`/`local_buffer` only
-  when irregular callback or task traversal cannot receive block state.
+- **Arena-local state is exceptional.** Use `local_value`, `local_buffer`, or
+  `local_vector` only for irregular parallel tree traversal whose callback/task
+  API cannot receive block state.
 - **Propose, then materialize.** Threads emit records into local
   buffers; anything that assigns ids or grows shared tables runs once,
   after discovery. Use a sequenced aggregate when input order preserves
@@ -511,28 +574,37 @@ SUBSTITUTION over already-computed output plus dropping what collapsed
 
 ## 12. Benchmark Discipline
 
+- Run one timed benchmark process at a time. Parallel benchmarks occupy the
+  machine; overlapping benchmark processes invalidate timing.
 - mimalloc'd bench binaries, single-threaded AND parallel (parallel is
   the gate; single-thread parity can hide serial aggregation
   bottlenecks), best-of-N or medians, never one run.
 - Outputs proven IDENTICAL before timing — winding-aware when
   orientation matters (rev swap + min-rotation canon; a full sort
   hides winding bugs).
-- Fresh binaries: `touch` probe sources before rebuilding; count build
-  errors AND warnings. Stage-by-stage structural benches beat
-  end-to-end lumps; a path env (`TF_PATH=old|new`) keeps profiles
-  clean.
+- Rebuild the requested target and verify the changed translation unit or
+  dependent target was rebuilt; count build errors AND warnings.
+  Stage-by-stage structural benchmarks beat end-to-end lumps.
 - The DYLD-injected override mimalloc is for bench BINARIES only —
   trueform's own backend is explicit `mi_*` (`MI_OVERRIDE=OFF`), safe
-  under any host runtime; the injected override under CPython is a
-  second allocator instance and segfaults at import.
-- Record refuted hypotheses next to the code or in memory — an
-  unrecorded refutation gets re-attempted.
+  under any host runtime. Do not inject that override under CPython; it
+  creates a second allocator instance in one process.
+- Record refuted hypotheses in task memory or benchmark artifacts so they are
+  not repeated. Production code and comments remain timeless.
 
 ## 13. What NOT to Do
 
-1. **Don't use type aliases in library code.** Write `tf::polygons_buffer<Index, RealT, Dims, 3>`, not `using Mesh = ...`. Full names are greppable.
+1. **Don't hide implementation carriers behind convenience aliases.** Write
+   concrete carrier and result types so repository search finds their use.
+   Public semantic aliases and required interface or trait aliases are not
+   convenience aliases.
 
-2. **Don't add unnecessary abstractions.** Three similar lines of code is better than a premature helper function.
+2. **Don't add unnecessary abstractions.** Three similar lines of code is
+   better than a premature helper function. Do not use pointer presence or
+   `nullptr` as an operation-mode selector; pointers remain valid for borrowing,
+   storage, and interop, while semantic variation uses a direct operation or an
+   explicit existing tag or policy. Do not build machinery for hypothetical
+   modes.
 
 3. **Don't leave large independent carriers serial.** Use the appropriate
    parallel primitive. Tight block-local kernels, prefixes, graph walks, and
@@ -553,7 +625,10 @@ SUBSTITUTION over already-computed output plus dropping what collapsed
 
 7. **Don't allocate per-iteration.** Reuse buffers across loop iterations. Clear by walking used entries, not by reallocating.
 
-8. **Don't add docstrings/comments to code you didn't change.** Only comment where logic isn't self-evident.
+8. **Code and comments are timeless.** Names, branches, structure, and comments
+   describe only the present mechanism and contract. Comment only a non-obvious
+   reason, invariant, ownership rule, or contract; git history and task records
+   own development and debugging narrative.
 
 9. **Don't add error handling for scenarios that can't happen.** Trust internal code. Only validate at system boundaries.
 
@@ -568,7 +643,7 @@ SUBSTITUTION over already-computed output plus dropping what collapsed
 
 The library is developed on clang/AppleClang but must build on MSVC (Windows CI). These are compiler-specific traps that clang accepts silently and only fail on Windows — so they can't be caught by building locally. Treat them as hard rules.
 
-1. **No local `constexpr` variable referenced inside a lambda body -- ANY reference, `if constexpr` conditions included.** MSVC rejects it ("read of a variable outside its lifetime"); proven 2026-07 on `tangential_relaxation.hpp` where the only use was `if constexpr (HasMask)` inside the lambda. Declare the `constexpr` *inside* the lambda body that uses it (preferred -- it stays a constant and there is nothing to capture), or hoist it to a runtime local before the lambda when several scopes share it. Template non-type parameters (e.g. `bool WantLabels`) are fine — they're constants from the enclosing template, not captured.
+1. **No local `constexpr` variable referenced inside a lambda body -- ANY reference, `if constexpr` conditions included.** MSVC rejects the captured lifetime. Declare the `constexpr` *inside* the lambda body that uses it (preferred -- it stays a constant and there is nothing to capture), or hoist it to a runtime local before the lambda when several scopes share it. Template non-type parameters (e.g. `bool WantLabels`) are fine — they're constants from the enclosing template, not captured.
    ```cpp
    constexpr std::size_t N = ...;
    auto f = [&] { use(N); };        // BAD on MSVC (odr-uses constexpr local N)

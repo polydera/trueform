@@ -8,6 +8,36 @@ is unusual, and conventional C++ advice is often slower here.
 This file is not a repository tour. It tells an agent how to reason before
 changing Trueform.
 
+## Acceptance standard
+
+Review every C++ change on three coequal axes: correctness, performance, and
+unmistakable Trueform style. A change is unfinished if it fails any one.
+
+Style here is a hard requirement, not a preference. The execution shapes in
+this contract are what produce the performance and the robustness, so code that
+passes its tests but does not look like the module it joins is not finished —
+it has to be indistinguishable from the code around it. Working code in a
+foreign shape is a defect report, not a contribution.
+
+Check your own C++ against this list before presenting it:
+
+- every new header opens with the copyright/license block copied verbatim from
+  a neighboring header, and directly includes every symbol it uses;
+- every parallel loop runs at the largest independent carrier through a house
+  primitive — the parallel width is the carrier count, never the operand, tag,
+  or form count;
+- sorts move compact records by value; they do not sort indices compared
+  through an indirect lookup into another array;
+- no fact has two producers. When a refactor turns a member into a parameter,
+  the member stays the authority and every call site passes it;
+- local state structs carried by a parallel primitive are value-initialized;
+- new work added to a hot path has a consumer and a measurement, or it does not
+  land;
+- a first-level module directory contains only the user-facing `tf::` surface —
+  anything in a nested namespace lives in a nested directory;
+- classes stay thin: each self-contained step is a free function in the
+  module's nested namespace, one operation per header.
+
 ## Read first
 
 For any nontrivial core change, read in this order:
@@ -16,11 +46,13 @@ For any nontrivial core change, read in this order:
 2. `agents/cpp_performance_philosophy.md` — the governing design laws.
 3. `agents/cpp_execution_patterns.md` — the concrete phase shapes and the
    primitives that implement them.
+4. `agents/cpp_engineering_philosophy.md` — implementation style, memory
+   discipline, and portability.
 
 Then read only the task-specific reference:
 
 - `agents/cpp_core_architecture.md` for types, ranges, policies, and primitives.
-- `agents/cpp_engineering_philosophy.md` for implementation and portability.
+- `agents/cpp_modules.md` for current module and API lookup.
 - `agents/python_layer.md` or `agents/typescript_layer.md` for bindings.
 - `agents/csg_pipeline_debugging.md` for CSG correctness investigations.
 - `agents/usage_cpp.md` for caller-facing C++ composition, ownership, tagging,
@@ -102,10 +134,17 @@ Partitionable work carries state through the partitioning primitive:
 
 Within each block, use tight serial loops and reuse local capacity.
 
-`tf::local_value`, `tf::local_buffer`, and `tf::local_vector` are escape hatches
-for irregular callback/task traversal, especially parallel tree search, where
-the API cannot expose a stable sequential partition or carry block state. They
-are not the normal variable-output mechanism.
+Pass `tf::checked` when the iterated range length is a sound proxy for total
+work and the small-range case should stay serial. It preserves one bulk
+algorithm while selecting the primitive's serial fallback; do not replace it
+with a second hand-written size branch. Do not use it mechanically: a short
+range should remain parallel when each element costs more than the threading
+overhead, as with large polygons, deep blocks, or other expensive tasks.
+
+`tf::local_value`, `tf::local_buffer`, and `tf::local_vector` are reserved for
+irregular parallel tree traversal whose callback/task API cannot expose a
+stable sequential partition or carry block state. All partitionable work
+carries state through its parallel primitive.
 
 ## Representation rules
 
@@ -140,6 +179,16 @@ are not the normal variable-output mechanism.
 - Prefix scans, adjacent sweeps, union-find, tiny sorts, leaf kernels, graph
   walks, and stateful triangulation may deliberately be serial.
 
+## Timeless code and comments
+
+- Prefer self-documenting names and structure. Do not comment code that already
+  states its purpose clearly.
+- Comments explain only a non-obvious reason, invariant, ownership rule, or
+  contract. They do not narrate the implementation.
+- Names, branches, structure, and comments describe only the present mechanism
+  and contract. Git history and task records own how code was developed,
+  replaced, benchmarked, or debugged.
+
 ## Rare mechanisms require proof
 
 Do not introduce any of the following merely because they are conventional:
@@ -168,11 +217,16 @@ rederive geometry, topology, labels, offsets, or cache state.
 - TypeScript async workers capture native handles by value, never touch
   `emscripten::val`, and convert results only during main-thread `retrieve`.
   Shared lifetime is not permission for concurrent mutation.
+- Every dispatched TypeScript context reaches retrieval and erasure on every
+  terminal path, including when result conversion throws. Failure erases the
+  context without converting an absent result.
 - Python wrappers retain input ndarrays and build ranges over their memory.
   Normalize contiguous storage at the boundary when native code walks linearly.
-- Python calls are synchronous but may use oneTBB internally. Worker phases are
-  pure C++; NumPy/nanobind construction and cache commits happen on the
-  GIL-owning calling thread after a barrier.
+- Python calls enter through nanobind and keep the GIL on the bound calling
+  thread while oneTBB may run pure C++ workers internally. NumPy/nanobind
+  construction and mutation of Python-owned wrapper or cache state happen on
+  that calling thread after a barrier. Pure native caches follow their own
+  ownership and synchronization contract.
 - Native result buffers move across language boundaries with matching ownership
   and allocators. Never expose a borrowed view without retaining its owner.
 
@@ -192,9 +246,10 @@ ctest --test-dir build --output-on-failure
 ### Python
 
 ```bash
-CMAKE_BUILD_PARALLEL_LEVEL=8 pip wheel . -w dist
-pip install dist/trueform-*.whl
-pytest python/tests
+rm -rf build/python-wheel
+CMAKE_BUILD_PARALLEL_LEVEL=8 python -m pip wheel . --no-deps -w build/python-wheel
+python -m pip install --force-reinstall --no-deps build/python-wheel/trueform-*.whl
+python -m pytest python/tests
 ```
 
 ### TypeScript/WASM
@@ -203,6 +258,7 @@ pytest python/tests
 cd typescript
 npm run build
 npm run typecheck
+node tests/run.mjs
 ```
 
 `typescript/build.mjs` configures the repository root with
@@ -216,4 +272,6 @@ cmake --build build --parallel --target benchmarks
 ```
 
 Use the narrowest relevant gate first, then broaden. Do not trust timing until
-outputs are proven identical and the binary is known to be fresh.
+outputs are proven identical and the binary is known to be fresh. Run one timed
+benchmark process at a time; fully parallel benchmarks occupy the machine, so
+overlapping processes invalidate timing.

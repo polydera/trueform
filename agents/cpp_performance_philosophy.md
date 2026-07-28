@@ -14,6 +14,10 @@ locality and composability the algorithm needs.
 Preserve static arity in the type and storage. Use offsets only for genuinely
 jagged data. Materialize only when an ownership boundary requires it.
 
+Allocation lifetime is part of data shape. Exact refactors preserve allocation
+points, retained capacity, scratch reuse, ownership, and release timing unless
+a deliberate measured change proves another shape better.
+
 ## 2. Manufacture the expensive grain
 
 The useful independent work unit often does not exist in the input. Generate
@@ -93,9 +97,10 @@ For partitionable input, state belongs to the sequential block created by the
 parallel primitive. Reuse it across that block with `parallel_for_each` state,
 `generic_generate`, `generate_offset_blocks`, or a blocked reduction.
 
-Arena-indexed `local_value`/`local_buffer` storage is an escape hatch for
-irregular callback or task traversal—principally parallel tree search—where no
-stable partition or state slot exists. It is not the blessed general flow.
+Arena-indexed `local_value`, `local_buffer`, and `local_vector` storage is
+reserved for irregular parallel tree traversal whose callback/task API has no
+stable partition or state slot. It is not a general variable-output or scratch
+mechanism.
 
 ## 9. Correctness comes from phase structure
 

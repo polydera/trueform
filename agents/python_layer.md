@@ -1,10 +1,10 @@
 # Python/Nanobind Boundary Contract
 
-> **Task-specific authority.** Read this after `working_method.md`,
-> `cpp_performance_philosophy.md`, and `cpp_execution_patterns.md` when changing
-> Python, nanobind, NumPy ownership, or Python-facing dispatch. This document
-> defines boundary invariants. Binding instantiation layouts vary; inspect the
-> nearest current feature and every owning CMake manifest before adding files.
+> **Task-specific authority.** Read `AGENTS.md`, follow its **Read first** order
+> exactly, then use this document when changing Python, nanobind, NumPy
+> ownership, or Python-facing dispatch. This document defines boundary
+> invariants. Binding instantiation layouts vary; inspect the nearest current
+> feature and every owning CMake manifest before adding files.
 
 The Python layer validates and normalizes Python values, retains NumPy storage,
 selects concrete native instantiations, and converts native result buffers back
@@ -160,13 +160,10 @@ When adding a cached structure, define:
 ## 5. Python concurrency model
 
 The Python API is synchronous. There is no TypeScript-style promise dispatcher.
-A call enters nanobind, performs native work, converts the result, and returns
-to Python only after completion.
-
-The binding currently does not install a general `gil_scoped_release` or
-nanobind release-GIL call guard. The calling Python thread retains the GIL while
-the native operation runs. This does not prevent oneTBB workers from executing
-pure C++; it does prevent those workers from using the Python C API.
+A public call enters through nanobind with the GIL held on the bound calling
+thread, performs native work, converts the result, and returns to Python only
+after completion. Trueform relies on nanobind's held-GIL call boundary; it does
+not install release guards around native operations.
 
 The rule is strict:
 
@@ -176,9 +173,9 @@ The rule is strict:
 - TBB workers must not construct or mutate Python/nanobind objects;
 - no worker may decref a last Python owner as an incidental side effect.
 
-Do not add `gil_scoped_release` mechanically. First prove that every reachable
-native path, lazy cache build, destructor, error path, and callback is free of
-Python API access for the entire released interval.
+The workers join before the nanobind call constructs Python results or mutates
+Python-owned wrapper/cache state. Do not add a manual GIL-release path; that
+would change the Python boundary contract and requires a separate design review.
 
 ## 6. Compute first, commit second
 
@@ -296,7 +293,8 @@ uses that layout. Update all owning manifests for any new source.
 - Are cache invalidation rules explicit for reassignment and in-place mutation?
 - Do shared views intentionally share geometry/cache state?
 - Is every TBB worker path free of Python and nanobind operations?
-- Are Python object creation and cache commits after a worker barrier?
+- Are Python object creation and Python-owned wrapper/cache commits after a
+  worker barrier?
 - Does canonical operand swapping restore directed result semantics?
 - Does the registration matrix match the public dtype promise?
 - Are sealed engine members ordered so every borrowed range outlives its use?

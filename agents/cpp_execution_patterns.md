@@ -121,7 +121,7 @@ Primary exemplars:
 
 - `include/trueform/intersect/graph/intersection_graph.hpp`
 - `include/trueform/cut/face_regions.hpp`
-- `include/trueform/cut/region_triangulator.hpp`
+- `include/trueform/cut/impl/region_triangulator.hpp`
 - `include/trueform/topology/structures/compute_face_membership.hpp`
 
 ## 4. Aligned jagged transformations
@@ -201,7 +201,7 @@ Primary exemplars:
 - Face-region loops, holes, and descriptors:
   `include/trueform/cut/face_regions.hpp`
 - Region triangulation and recovery output:
-  `include/trueform/cut/region_triangulator.hpp`
+  `include/trueform/cut/impl/region_triangulator.hpp`
 - Per-edge face links:
   `include/trueform/topology/structures/compute_face_link_per_edge.hpp`
 
@@ -260,9 +260,9 @@ serial inner loop.
 
 ### Irregular callback traversal
 
-Use `local_value`, `local_buffer`, or `local_vector` only when task-driven
-traversal cannot expose a stable partition or pass state through its callback.
-Parallel tree search is the primary case.
+Use `local_value`, `local_buffer`, or `local_vector` only for irregular parallel
+tree traversal whose task-driven callback cannot expose a stable partition or
+receive block state.
 
 Examples:
 
@@ -303,7 +303,7 @@ chain.
 Examples:
 
 - Region-triangulator split and merge tables:
-  `include/trueform/cut/region_triangulator.hpp`
+  `include/trueform/cut/impl/region_triangulator.hpp`
 - Sparse loop-to-hole index:
   `include/trueform/cut/face_regions.hpp`
 
@@ -416,7 +416,7 @@ Primary exemplars:
 - Intersection graph crossing splits:
   `include/trueform/intersect/graph/intersection_graph.hpp`
 - Region-triangulator refinement and recovery:
-  `include/trueform/cut/region_triangulator.hpp`
+  `include/trueform/cut/impl/region_triangulator.hpp`
 - Remesh edge splitting:
   `include/trueform/remesh/split/half_edge_splitter.hpp`
 
@@ -442,7 +442,7 @@ Primary exemplars:
 - Stitched manifold links:
   `include/trueform/topology/stitched_manifold_edge_link.hpp`
 - Region weld conformance:
-  `include/trueform/cut/region_triangulator.hpp`
+  `include/trueform/cut/impl/region_triangulator.hpp`
 - CSG inclusion and nesting evidence:
   `include/trueform/csg/graph/seed_inclusion_bits.hpp`
 
