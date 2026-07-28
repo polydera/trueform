@@ -16,6 +16,7 @@
 #include "./algorithm/block_reduce_sequenced_aggregate.hpp"
 #include "./algorithm/circular_decrement.hpp"
 #include "./algorithm/circular_increment.hpp"
+#include "./algorithm/compact_ids_and_make_map.hpp"
 #include "./algorithm/compute_offsets.hpp"
 #include "./algorithm/generate_offset_blocks.hpp"
 #include "./algorithm/generic_generate.hpp"

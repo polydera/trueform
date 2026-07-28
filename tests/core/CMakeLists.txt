@@ -1,4 +1,5 @@
 add_executable(trueform_core_tests
+  test_compact_ids_and_make_map.cpp
   test_classify.cpp
   test_closest_metric_point_pair.cpp
   test_intersects.cpp
