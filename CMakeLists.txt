@@ -250,5 +250,9 @@ endif()
 # Tests
 option(TF_BUILD_TESTS "Build test targets." OFF)
 if(TF_BUILD_TESTS)
+  # Testing must be enabled at the root for `ctest --test-dir <build>` to see
+  # the suites; enabled only in tests/, the root emits no CTestTestfile and
+  # ctest reports an empty run from a fully built tree.
+  enable_testing()
   add_subdirectory(tests)
 endif()
