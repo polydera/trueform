@@ -23,7 +23,7 @@
 #include "../../cut/arrangements/component_labels.hpp"
 #include "../../cut/arrangements/arrangement_descriptor.hpp"
 #include "../../cut/arrangements/compute_domain_inclusions.hpp"
-#include "../../cut/region_triangulator.hpp"
+#include "../../cut/impl/region_triangulator.hpp"
 #include "../../exact/segment_hits_aabb.hpp"
 #include "../../exact/triangle_segment_intersection.hpp"
 #include "../../exact/vertex.hpp"

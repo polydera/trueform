@@ -17,7 +17,7 @@
 #include "../../core/views/enumerate.hpp"
 #include "../../cut/arrangements/component_labels.hpp"
 #include "../../cut/arrangements/arrangement_descriptor.hpp"
-#include "../../cut/region_triangulator.hpp"
+#include "../../cut/impl/region_triangulator.hpp"
 #include "../../exact/determinant.hpp"
 #include "../../exact/meta.hpp"
 #include "../../intersect/graph/vertex.hpp"

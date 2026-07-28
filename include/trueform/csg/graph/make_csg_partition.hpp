@@ -17,7 +17,7 @@
 #include "../../core/views/enumerate.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "../../cut/arrangements/component_labels.hpp"
-#include "../../cut/region_triangulator.hpp"
+#include "../../cut/impl/region_triangulator.hpp"
 #include "../../cut/partition/make_ids.hpp"
 #include "../../cut/partition/partition_ids.hpp"
 #include "../../cut/partition/partition_labels.hpp"

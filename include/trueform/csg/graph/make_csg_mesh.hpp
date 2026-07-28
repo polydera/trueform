@@ -36,7 +36,7 @@
 #include "../../core/views/take.hpp"
 #include "../../core/views/zip.hpp"
 #include "./make_csg_partition.hpp"
-#include "../../cut/region_triangulator.hpp"
+#include "../../cut/impl/region_triangulator.hpp"
 #include "../../intersect/graph/vertex.hpp"
 #include "../../exact/vertex_converter.hpp"
 #include "tbb/task_group.h"

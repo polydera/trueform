@@ -22,7 +22,7 @@
 #include "../../core/views/sequence_range.hpp"
 #include "../../cut/arrangements/component_labels.hpp"
 #include "../../cut/arrangements/arrangement_descriptor.hpp"
-#include "../../cut/region_triangulator.hpp"
+#include "../../cut/impl/region_triangulator.hpp"
 #include "../../exact/vertex.hpp"
 #include "../../exact/vertex_converter.hpp"
 #include "../../intersect/graph/vertex.hpp"

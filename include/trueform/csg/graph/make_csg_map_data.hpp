@@ -16,7 +16,7 @@
 #include "../../core/views/indirect_range.hpp"
 #include "../../core/views/offset_block_range.hpp"
 #include "../../cut/construct/arrangement_map_data.hpp"
-#include "../../cut/region_triangulator.hpp"
+#include "../../cut/impl/region_triangulator.hpp"
 #include "../../cut/partition/partition_ids.hpp"
 #include "../../intersect/graph/vertex.hpp"
 #include "tbb/task_group.h"

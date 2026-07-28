@@ -40,7 +40,7 @@ auto make_intersection_curves(const tf::csg_graph<Forms, Structs, Int> &graph) {
 
   return tf::cut::make_intersection_curves<RealOut>(
       graph.arrangement(),
-      graph.labels().connectivity().connectivity_per_face_edge());
+      graph.labels().connectivity().connectivity_per_carrier_edge());
 }
 
 } // namespace tf

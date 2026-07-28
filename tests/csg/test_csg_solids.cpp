@@ -59,6 +59,10 @@ template <typename Form> struct two_forms {
       : forms(std::move(f)),
         graph(tf::make_csg_graph(tf::make_range(forms))) {}
 
+  two_forms(std::vector<Form> f, tf::arrangement_config config)
+      : forms(std::move(f)),
+        graph(tf::make_csg_graph(tf::make_range(forms), config)) {}
+
   two_forms(const two_forms &) = delete;
   two_forms &operator=(const two_forms &) = delete;
 };
@@ -73,6 +77,19 @@ auto two_form_graph(const Mesh &m0, const Mesh &m1,
   forms.push_back(m0.polygons() | tf::tag(identity_frame<Real>()));
   forms.push_back(m1.polygons() | tf::tag(f1));
   return two_forms<form_t>(std::move(forms));
+}
+
+template <typename Real, typename Mesh>
+auto two_form_graph(const Mesh &m0, const Mesh &m1,
+                    const tf::frame<Real, 3> &f1,
+                    tf::arrangement_config config) {
+  using form_t =
+      decltype(m0.polygons() | tf::tag(std::declval<tf::frame<Real, 3>>()));
+  std::vector<form_t> forms;
+  forms.reserve(2);
+  forms.push_back(m0.polygons() | tf::tag(identity_frame<Real>()));
+  forms.push_back(m1.polygons() | tf::tag(f1));
+  return two_forms<form_t>(std::move(forms), config);
 }
 
 template <typename Graph>
@@ -210,6 +227,61 @@ TEMPLATE_TEST_CASE("csg_solids: non-overlapping boxes", "[csg][solids]",
   }
   SECTION("left difference = box0") {
     check_solid(graph, tf::csg::difference(0, 1), 1.0, 0.02);
+  }
+}
+
+// ============================================================================
+// Stacked unit boxes separated by a sub-tolerance gap. The band pairs the
+// facing walls at the narrow phase, the corners weld, and the union is one
+// solid; a gap beyond the band leaves two intact solids. The failure this
+// pins: exact plane signs let the separating reject discard near-coincident
+// parallel faces while their exactly-coplanar neighbours still welded,
+// yielding a partial weld — a closed but non-manifold union in four
+// components.
+// ============================================================================
+TEMPLATE_TEST_CASE("csg_solids: stacked boxes weld across the band",
+                   "[csg][solids][tolerance]",
+                   (tf::test::type_pair<std::int32_t, float>),
+                   (tf::test::type_pair<std::int64_t, double>)) {
+  using index_t = typename TestType::index_type;
+  using real_t = typename TestType::real_type;
+
+  auto b0 = tf::make_box_mesh<index_t>(real_t(1), real_t(1), real_t(1));
+  auto b1 = tf::make_box_mesh<index_t>(real_t(1), real_t(1), real_t(1));
+  tf::ensure_positive_orientation(b0.polygons());
+  tf::ensure_positive_orientation(b1.polygons());
+
+  const double tolerance = 1e-3;
+  const auto mode = tf::intersect_mode::primitives |
+                    tf::intersect_mode::resolve_contours |
+                    tf::intersect_mode::within;
+  auto stacked = [&](real_t gap) {
+    return two_form_graph<real_t>(
+        b0, b1,
+        translation_frame<real_t>(real_t(0), real_t(0), real_t(1) + gap),
+        tf::intersect_config{mode, tolerance});
+  };
+
+  SECTION("gap inside the band unions to one solid") {
+    auto holder = stacked(real_t(0.5e-3));
+    auto m = tf::make_csg_mesh(holder.graph, tf::csg::merge(0, 1));
+    REQUIRE(tf::is_closed(m.polygons()));
+    REQUIRE(tf::is_manifold(m.polygons()));
+    // The welded corners collapse sixteen points to twelve.
+    REQUIRE(m.points().size() == 12u);
+    REQUIRE_THAT(static_cast<double>(tf::signed_volume(m.polygons())),
+                 Catch::Matchers::WithinAbs(2.0, 0.01));
+  }
+
+  SECTION("gap beyond the band stays two intact solids") {
+    auto holder = stacked(real_t(2e-3));
+    auto m = tf::make_csg_mesh(holder.graph, tf::csg::merge(0, 1));
+    REQUIRE(tf::is_closed(m.polygons()));
+    REQUIRE(tf::is_manifold(m.polygons()));
+    // The separating reject still prunes beyond the band: nothing welds.
+    REQUIRE(m.points().size() == 16u);
+    REQUIRE_THAT(static_cast<double>(tf::signed_volume(m.polygons())),
+                 Catch::Matchers::WithinAbs(2.0, 0.01));
   }
 }
 

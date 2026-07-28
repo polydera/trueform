@@ -37,7 +37,7 @@
 #include "./compute_domain_partition.hpp"
 #include "./make_csg_domain_partition.hpp"
 #include "../../cut/construct/make_arrangement_point_inverse.hpp"
-#include "../../cut/region_triangulator.hpp"
+#include "../../cut/impl/region_triangulator.hpp"
 #include "../../intersect/graph/vertex.hpp"
 #include "../../exact/vertex_converter.hpp"
 #include "tbb/parallel_sort.h"
