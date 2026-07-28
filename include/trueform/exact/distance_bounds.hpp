@@ -17,6 +17,7 @@
 #include "./int256.hpp"
 #include "./meta.hpp"
 #include "./vertex.hpp"
+#include <array>
 #include <cmath>
 
 namespace tf::exact {
@@ -68,6 +69,22 @@ auto orient3d_distance_bound(const pt3<Int> &a, const pt3<Int> &b,
   double dz = double(nz);
   double cross_mag = tf::sqrt(dx * dx + dy * dy + dz * dz);
   return detail::double_to_int<T2>(std::ceil(cross_mag * dist_tol_int));
+}
+
+/// Volume threshold for a precomputed plane normal such that
+/// `|N . (d - base)| <= bound` iff `d` is within `dist_tol_int` of the
+/// plane. Bound = `|N| * dist_tol_int`, ceil-rounded; the kernel's one-unit
+/// grace dominates the double rounding of `|N|`.
+template <typename Int>
+auto orient3d_plane_distance_bound(
+    const std::array<typename meta<Int>::T2, 3> &normal,
+    double dist_tol_int) -> typename meta<Int>::T2 {
+  using T2 = typename meta<Int>::T2;
+  double dx = double(normal[0]);
+  double dy = double(normal[1]);
+  double dz = double(normal[2]);
+  double normal_mag = tf::sqrt(dx * dx + dy * dy + dz * dz);
+  return detail::double_to_int<T2>(std::ceil(normal_mag * dist_tol_int));
 }
 
 /// Area threshold for orient2d such that `|orient2d(a, b, c)| <= bound`

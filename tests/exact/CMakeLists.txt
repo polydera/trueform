@@ -1,6 +1,11 @@
 add_executable(trueform_exact_tests
   test_dot_sign.cpp
   test_classify_wedge.cpp
+  test_dyadic_blend.cpp
+  test_dyadic_ratio.cpp
+  test_is_between_on_segment.cpp
+  test_rebase_parameter.cpp
+  test_snap_parameter_to_edge.cpp
   test_int128_msvc.cpp
   test_int256.cpp
   test_segment_hits_aabb.cpp

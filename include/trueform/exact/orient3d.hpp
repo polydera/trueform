@@ -151,16 +151,25 @@ template <typename Int> struct orient3d_plane {
   std::array<typename meta<Int>::T2, 3> normal;
 };
 
-/// Exact sign of orient3d(plane.{a,b,c}, d) == sign(N . (d - base)).
+/// Exact value of orient3d(plane.{a,b,c}, d) == N . (d - base). The value
+/// is the producer; a caller supplying a distance bound turns it into a
+/// banded sign without a second derivation.
 template <typename Int>
-auto orient3d_plane_sign(const orient3d_plane<Int> &plane, const pt3<Int> &d)
-    -> int {
+auto orient3d_plane_value(const orient3d_plane<Int> &plane, const pt3<Int> &d)
+    -> typename meta<Int>::T2 {
   using T1 = typename meta<Int>::T1;
   using T2 = typename meta<Int>::T2;
   T1 wx = T1(d[0]) - plane.base[0], wy = T1(d[1]) - plane.base[1],
      wz = T1(d[2]) - plane.base[2];
-  T2 v = plane.normal[0] * T2(wx) + plane.normal[1] * T2(wy) +
+  return plane.normal[0] * T2(wx) + plane.normal[1] * T2(wy) +
          plane.normal[2] * T2(wz);
+}
+
+/// Exact sign of orient3d(plane.{a,b,c}, d) == sign(N . (d - base)).
+template <typename Int>
+auto orient3d_plane_sign(const orient3d_plane<Int> &plane, const pt3<Int> &d)
+    -> int {
+  const auto v = orient3d_plane_value(plane, d);
   return (v > 0) ? 1 : (v < 0) ? -1 : 0;
 }
 
