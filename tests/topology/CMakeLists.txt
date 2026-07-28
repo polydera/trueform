@@ -15,6 +15,7 @@ add_executable(trueform_topology_tests
   test_delaunay_triangulator.cpp
   test_constrained_delaunay_triangulator.cpp
   test_cdt_refiner.cpp
+  test_make_cdt.cpp
   test_domain_labels.cpp
 )
 

@@ -16,6 +16,7 @@
 #include "../core/constants.hpp"
 #include "../core/edges.hpp"
 #include "../core/points.hpp"
+#include "../core/range.hpp"
 #include "../core/views/constant.hpp"
 #include "../core/views/offset_block_range.hpp"
 #include "../exact/resolve_int_type.hpp"
@@ -106,11 +107,11 @@ public:
     _ok = false;
   }
 
-  template <typename PointsPolicy, typename EdgesPolicy,
-            typename IsBoundaryRange>
+  template <typename PointsPolicy, typename EdgesPolicy, typename Iterator,
+            std::size_t N>
   auto build(const tf::points<PointsPolicy> &pts,
              const tf::edges<EdgesPolicy> &edges,
-             const IsBoundaryRange &is_boundary,
+             const tf::range<Iterator, N> &is_boundary,
              const tf::cdt_refine_config &config = {}) -> bool {
     return build(pts, edges, is_boundary,
                  tf::make_constant_range(true, edges.size()), config);
@@ -120,11 +121,12 @@ public:
   /// constraint never receives midpoint splits (it is born at the split
   /// depth cap), regardless of config.split_encroached.
   template <typename PointsPolicy, typename EdgesPolicy,
-            typename IsBoundaryRange, typename IsSplittableRange>
+            typename BoundaryIterator, std::size_t BoundaryN,
+            typename SplittableIterator, std::size_t SplittableN>
   auto build(const tf::points<PointsPolicy> &pts,
              const tf::edges<EdgesPolicy> &edges,
-             const IsBoundaryRange &is_boundary,
-             const IsSplittableRange &is_splittable,
+             const tf::range<BoundaryIterator, BoundaryN> &is_boundary,
+             const tf::range<SplittableIterator, SplittableN> &is_splittable,
              const tf::cdt_refine_config &config) -> bool {
     clear();
     _n_input_points = static_cast<Index>(pts.size());
@@ -738,9 +740,9 @@ private:
     }
   }
 
-  template <typename EdgesPolicy, typename IsSplittableRange>
+  template <typename EdgesPolicy, typename Iterator, std::size_t N>
   auto adopt(const tf::edges<EdgesPolicy> &edges,
-             const IsSplittableRange &is_splittable) -> void {
+             const tf::range<Iterator, N> &is_splittable) -> void {
     auto out = _cdt.converted_points();
     auto ints = _cdt.points();
     _ip.reserve(ints.size());

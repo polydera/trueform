@@ -18,8 +18,8 @@
 #include "../core/edges.hpp"
 #include "../core/none.hpp"
 #include "../core/points.hpp"
-#include "../core/polygons.hpp"
 #include "../core/polygons_buffer.hpp"
+#include "../core/range.hpp"
 #include "../core/views/mapped_range.hpp"
 #include "../exact/resolve_int_type.hpp"
 #include "../reindex/by_mask.hpp"
@@ -41,11 +41,16 @@ namespace tf {
 /// of a constrained edge); without edges, the full convex hull
 /// triangulation is returned.
 ///
-/// `split_constraints = true` arranges crossing constraint edges
-/// (intersections add output points); `false` preserves constraints
-/// verbatim and yields an empty result if they cross or degenerate.
+/// `split_constraints = true` resolves a crossing where the constraint walk
+/// meets it, adding an output point there. `false` preserves the constraints
+/// verbatim and returns an empty result if any two of them cross — that
+/// emptiness is the answer to "do these constraints cross", not an error. A
+/// constraint whose endpoints coincide carries no length and is dropped
+/// either way.
 ///
-/// @tparam Index The index type (auto-deduced from edges if not specified).
+/// @tparam Index The index type, deduced from `edges[0][0]` when constraint
+///   edges are given. The overloads that take no edges have nothing to deduce
+///   it from and default to `int`.
 /// @tparam Int The exact-arithmetic integer type. Pass `tf::none_t`
 ///   (default) to auto-resolve to int32 for float input or int64 for
 ///   double input.
@@ -135,13 +140,11 @@ auto make_cdt(const tf::points<PointsPolicy> &pts,
 /// preserved-but-not-boundary (held in the triangulation but not part
 /// of any region wall).
 template <typename Index = tf::none_t, typename Int = tf::none_t,
-          typename PointsPolicy, typename EdgesPolicy,
-          typename IsBoundaryRange,
-          typename = std::enable_if_t<
-              !std::is_same_v<std::decay_t<IsBoundaryRange>, bool>>>
+          typename PointsPolicy, typename EdgesPolicy, typename Iterator,
+          std::size_t N>
 auto make_cdt(const tf::points<PointsPolicy> &pts,
               const tf::edges<EdgesPolicy> &edges,
-              const IsBoundaryRange &is_boundary,
+              const tf::range<Iterator, N> &is_boundary,
               bool split_constraints = true) {
   if constexpr (std::is_same_v<Index, tf::none_t>) {
     using ActualIndex = std::decay_t<decltype(edges[0][0])>;
@@ -166,11 +169,11 @@ auto make_cdt(const tf::points<PointsPolicy> &pts,
 /// @overload
 /// @brief As above; also returns the input-to-output index map.
 template <typename Index = tf::none_t, typename Int = tf::none_t,
-          typename PointsPolicy, typename EdgesPolicy,
-          typename IsBoundaryRange>
+          typename PointsPolicy, typename EdgesPolicy, typename Iterator,
+          std::size_t N>
 auto make_cdt(const tf::points<PointsPolicy> &pts,
               const tf::edges<EdgesPolicy> &edges,
-              const IsBoundaryRange &is_boundary, tf::return_index_map_t,
+              const tf::range<Iterator, N> &is_boundary, tf::return_index_map_t,
               bool split_constraints = true) {
   if constexpr (std::is_same_v<Index, tf::none_t>) {
     using ActualIndex = std::decay_t<decltype(edges[0][0])>;
@@ -213,8 +216,12 @@ auto make_cdt(const tf::points<PointsPolicy> &pts, tf::return_index_map_t) {
 
   auto faces = cdt.make_faces();
   auto cdt_polys = tf::make_polygons(faces, cdt.converted_points());
-  return std::make_pair(tf::make_polygons_buffer(cdt_polys),
-                        std::move(cdt.index_map()));
+  auto out = tf::make_polygons_buffer(cdt_polys);
+  // A buffer with no faces keeps no points either, so a map still naming
+  // them would index past its end.
+  if (out.points_buffer().size() == 0)
+    return std::make_pair(std::move(out), tf::index_map_buffer<Index>{});
+  return std::make_pair(std::move(out), std::move(cdt.index_map()));
 }
 
 } // namespace tf
