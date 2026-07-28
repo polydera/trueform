@@ -11,18 +11,21 @@
  * Author: Žiga Sajovic
  */
 
+#include "trueform/ts/core/async_dispatcher.hpp"
 #include "trueform/ts/core/promise.hpp"
 #include <emscripten/bind.h>
 
-#include "trueform/ts/core/async_dispatcher.hpp"
+namespace {
 
-static auto retrieve(uintptr_t slot) -> emscripten::val {
+auto retrieve(uintptr_t slot) -> emscripten::val {
   return tf::ts::dispatcher.retrieve(slot);
 }
 
-static auto init_tbb() -> tf::ts::promise_t {
+auto init_tbb() -> tf::ts::promise_t {
   return tf::ts::promise([]() -> int { return 0; });
 }
+
+} // namespace
 
 EMSCRIPTEN_BINDINGS(trueform_async) {
   emscripten::function("retrieve", &retrieve);

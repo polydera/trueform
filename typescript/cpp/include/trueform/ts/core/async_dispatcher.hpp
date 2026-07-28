@@ -89,13 +89,11 @@ public:
     typename decltype(_tasks)::accessor acc;
     if (!_tasks.find(acc, ptr))
       return emscripten::val::undefined();
-    if (__atomic_load_n(&acc->second->status, __ATOMIC_ACQUIRE) == -1) {
-      _tasks.erase(acc);
-      return emscripten::val::undefined();
-    }
-    auto val = acc->second->converter(std::move(acc->second->result));
+    auto ctx = std::move(acc->second);
     _tasks.erase(acc);
-    return val;
+    if (__atomic_load_n(&ctx->status, __ATOMIC_ACQUIRE) == -1)
+      return emscripten::val::undefined();
+    return ctx->converter(std::move(ctx->result));
   }
 
   /// Waits for all pending tasks and cleans up unretrieved entries.
