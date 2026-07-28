@@ -34,8 +34,11 @@ void dedup_coincident_points(
     return;
   tf::index_map_buffer<Index> im;
   tf::make_unique_index_map(tf::make_points(points), im);
-  if (im.kept_ids().size() == points.size())
-    return; // no duplicates
+  // Applying the map unconditionally is what makes ids reproducible: the
+  // raw ids inherit the work-stealing order of the workspace merge, and
+  // the canonical order is the coordinate sort make_unique_index_map has
+  // already computed. Skipping it when there are no exact duplicates
+  // leaves the numbering thread-order dependent.
   // Compact points
   tf::buffer<tf::exact::pt3<Int>> new_pts;
   new_pts.allocate(im.kept_ids().size());

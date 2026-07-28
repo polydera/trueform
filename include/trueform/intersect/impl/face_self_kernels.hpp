@@ -108,7 +108,7 @@ auto within_polygon_pair_prepped(
     tf::exact::vertex_range<Index, Int> face_buf1,
     const tf::exact::face_plane<Int> &fp1, const tf::buffer<bool> &shared0,
     const tf::buffer<bool> &shared1, Ints &ints, Pts &pts,
-    const tf::exact::predicate_kernel<Int> &kernel = {}) {
+    const tf::exact::predicate_kernel<Int> &kernel) {
   auto face0_id = Index(poly0.id());
   auto face1_id = Index(poly1.id());
   auto n_records_before = ints.size();
@@ -129,22 +129,30 @@ auto within_polygon_pair_prepped(
   signs1.resize(n1);
   int mask0 = 0, mask1 = 0;
   int mask0_ns = 0, mask1_ns = 0;
-  if (plane1.valid)
+  // Banded signs, mirroring the pair gate: within-band vertices read as on
+  // the plane, so the rejects below certify clearance beyond the band.
+  if (plane1.valid) {
+    const auto bound1 = fp1.sign_bound;
     for (decltype(n0) i = 0; i < n0; ++i) {
-      signs0[i] = tf::exact::orient3d_plane_sign(fp1.plane, face_buf0[i].pt);
+      signs0[i] = kernel.sign(
+          tf::exact::orient3d_plane_value(fp1.plane, face_buf0[i].pt), bound1);
       auto bit = 1 << (signs0[i] + 1);
       mask0 |= bit;
       if (!shared0[i])
         mask0_ns |= bit;
     }
-  if (plane0.valid)
+  }
+  if (plane0.valid) {
+    const auto bound0 = fp0.sign_bound;
     for (decltype(n1) j = 0; j < n1; ++j) {
-      signs1[j] = tf::exact::orient3d_plane_sign(fp0.plane, face_buf1[j].pt);
+      signs1[j] = kernel.sign(
+          tf::exact::orient3d_plane_value(fp0.plane, face_buf1[j].pt), bound0);
       auto bit = 1 << (signs1[j] + 1);
       mask1 |= bit;
       if (!shared1[j])
         mask1_ns |= bit;
     }
+  }
 
   int combined = mask0 | mask1;
   if (!(combined & has_zero) && (mask0 & has_crossing) != has_crossing &&
@@ -203,8 +211,9 @@ auto within_polygon_pair_prepped(
                          face1_id, face0_id, vrep1, shared1_f, plane0, ints,
                          pts, kernel);
 
-  // A coplanar pair is known exactly here (all vertex signs zero, both
-  // ways). Stamp every record this call emitted: the extractor routes a
+  // A pair whose vertices all read zero both ways lies within the band of
+  // one plane — a coincident contact region. Stamp every record this call
+  // emitted: the extractor routes a
   // group to coplanar-region extraction iff any of its records carries
   // the flag, so classification never re-derives geometry downstream.
   if (mask0 == has_zero && mask1 == has_zero)
@@ -223,10 +232,10 @@ void self_process(face_pair_workspace<Index, Int> &ws, bool is_self,
   auto n1 = ws.n1();
   ws.fp0.allocate(n0);
   for (std::size_t i = 0; i < n0; ++i)
-    ws.fp0[i] = tf::exact::make_face_plane(ws.face0(i));
+    ws.fp0[i] = tf::exact::make_face_plane(ws.face0(i), kernel);
   ws.fp1.allocate(n1);
   for (std::size_t j = 0; j < n1; ++j)
-    ws.fp1[j] = tf::exact::make_face_plane(ws.face1(j));
+    ws.fp1[j] = tf::exact::make_face_plane(ws.face1(j), kernel);
   for (std::size_t i = 0; i < n0; ++i)
     for (std::size_t j = (i + 1) * is_self; j < n1; ++j) {
       if (!tf::intersects(ws.ibox0[i], ws.ibox1[j]))

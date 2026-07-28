@@ -14,7 +14,7 @@
 #include "../core/algorithm/generic_generate.hpp"
 #include "../core/blocked_buffer.hpp"
 #include "../core/views/slice.hpp"
-#include "./for_each_cut_chord.hpp"
+#include "impl/for_each_cut_chord.hpp"
 #include "./types/simple_intersections.hpp"
 
 namespace tf {

@@ -11,10 +11,10 @@
  * Author: Žiga Sajovic
  */
 #pragma once
-#include "../core/coordinate_dims.hpp"
-#include "../core/range.hpp"
-#include "../core/small_vector.hpp"
-#include "../topology/topo_type.hpp"
+#include "../../core/coordinate_dims.hpp"
+#include "../../core/range.hpp"
+#include "../../core/small_vector.hpp"
+#include "../../topology/topo_type.hpp"
 #include <algorithm>
 
 namespace tf::intersect {

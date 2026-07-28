@@ -20,6 +20,7 @@
 #include "../../exact/orient3d.hpp"
 #include "../../exact/vertex.hpp"
 #include "../../exact/vv_within.hpp"
+#include <array>
 
 namespace tf::exact {
 
@@ -72,6 +73,17 @@ public:
     if (!_is_tolerated)
       return typename tf::exact::meta<Int>::T2(0);
     return tf::exact::orient3d_distance_bound(a, b, c, _tolerance_double);
+  }
+
+  /// Reusable bound for a precomputed plane normal over many `d`:
+  /// `|N . (d - base)| <= bound` iff `d` is within the band of the plane.
+  auto plane_bound(
+      const std::array<typename tf::exact::meta<Int>::T2, 3> &normal) const ->
+      typename tf::exact::meta<Int>::T2 {
+    if (!_is_tolerated)
+      return typename tf::exact::meta<Int>::T2(0);
+    return tf::exact::orient3d_plane_distance_bound<Int>(normal,
+                                                         _tolerance_double);
   }
 
   /// Reusable bound for `orient2d(a, b, *)` over many `c`.

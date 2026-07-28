@@ -13,6 +13,7 @@
 #pragma once
 
 #include "../../exact/meta.hpp"
+#include "./predicate_kernel.hpp"
 #include "../../exact/orient3d.hpp"
 #include "../../exact/vertex.hpp"
 
@@ -29,16 +30,21 @@ struct face_plane_info {
 /// face_plane_info plus the signed supporting-plane normal (an orient3d_plane),
 /// both derived from the single cross product the plane search already computes
 /// — so the reject's sign mask reuses it instead of recomputing the cross.
+/// `sign_bound` is the banded-sign threshold for this plane — a per-face
+/// quantity (|N| times the tolerance) produced with the plane itself.
 template <typename Int> struct face_plane {
   face_plane_info info;
   orient3d_plane<Int> plane;
+  typename meta<Int>::T2 sign_bound = typename meta<Int>::T2(0);
 };
 
-/// Find 3 non-collinear vertices, the 2D projection axes, and the signed
-/// supporting-plane normal — all from one cross product, so the reject's sign
-/// mask reuses it instead of recomputing the cross.
+/// Find 3 non-collinear vertices, the 2D projection axes, the signed
+/// supporting-plane normal, and the banded-sign threshold — the one
+/// producer of the complete plane fact, so no call site can memoize the
+/// normal and forget the bound that derives from it.
 template <typename Index, typename Int>
-auto make_face_plane(vertex_range<Index, Int> face) -> face_plane<Int> {
+auto make_face_plane(vertex_range<Index, Int> face,
+                     const predicate_kernel<Int> &kernel) -> face_plane<Int> {
   using T1 = typename meta<Int>::T1;
   using T2 = typename meta<Int>::T2;
   auto n = face.size();
@@ -72,7 +78,7 @@ auto make_face_plane(vertex_range<Index, Int> face) -> face_plane<Int> {
       (az >= ax && az >= ay) ? face_plane_info{0, 1, id0, id1, id2, true}
       : (ay >= ax)           ? face_plane_info{0, 2, id0, id1, id2, true}
                              : face_plane_info{1, 2, id0, id1, id2, true};
-  return {info, plane};
+  return {info, plane, kernel.plane_bound(plane.normal)};
 }
 
 } // namespace tf::exact

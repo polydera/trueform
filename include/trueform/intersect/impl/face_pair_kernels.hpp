@@ -109,7 +109,7 @@ auto primitives_polygon_pair_prepped(
     const tf::exact::face_plane<Int> &fp0,
     tf::exact::vertex_range<Index, Int> face_buf1,
     const tf::exact::face_plane<Int> &fp1, Ints &ints, Pts &pts,
-    const tf::exact::predicate_kernel<Int> &kernel = {}) {
+    const tf::exact::predicate_kernel<Int> &kernel) {
   auto face0_id = Index(poly0.id());
   auto face1_id = Index(poly1.id());
 
@@ -130,30 +130,39 @@ auto primitives_polygon_pair_prepped(
   signs0.resize(n0);
   signs1.resize(n1);
   int mask0 = 0, mask1 = 0;
+  // Banded signs: a vertex within the band of the other face's plane reads
+  // as on it. The signs are the one producer of "on the plane" — the
+  // separating reject and every coplanarity guard below inherit the band
+  // from here. At tolerance 0 the bound is 0 and the sign is exact.
   if (plane1.valid) {
+    const auto bound1 = fp1.sign_bound;
     for (decltype(n0) i = 0; i < n0; ++i) {
-      signs0[i] = tf::exact::orient3d_plane_sign(fp1.plane, face_buf0[i].pt);
+      signs0[i] = kernel.sign(
+          tf::exact::orient3d_plane_value(fp1.plane, face_buf0[i].pt), bound1);
       mask0 |= 1 << (signs0[i] + 1);
     }
   }
   if (plane0.valid) {
+    const auto bound0 = fp0.sign_bound;
     for (decltype(n1) j = 0; j < n1; ++j) {
-      signs1[j] = tf::exact::orient3d_plane_sign(fp0.plane, face_buf1[j].pt);
+      signs1[j] = kernel.sign(
+          tf::exact::orient3d_plane_value(fp0.plane, face_buf1[j].pt), bound0);
       mask1 |= 1 << (signs1[j] + 1);
     }
   }
 
-  // Separating-plane reject. The both-sided form (no zero, neither face
-  // crosses the other's plane) holds under a tolerance band. The
-  // either-one-sided form prunes more but is sound only at tolerance 0: under
-  // a band a strictly-separated-but-within-band pair must still snap.
+  // Separating-plane reject. The signs are banded, so a pure one-sided
+  // mask certifies that every point of that face — which lies in its
+  // supporting plane — clears the other plane by more than the band, and
+  // both forms are sound at any tolerance: a within-band vertex reads as
+  // zero and keeps its pair.
   int combined = mask0 | mask1;
   bool both_separated = !(combined & has_zero) &&
                         (mask0 & has_crossing) != has_crossing &&
                         (mask1 & has_crossing) != has_crossing;
   bool either_strict = (mask0 == has_positive) || (mask0 == has_negative) ||
                        (mask1 == has_positive) || (mask1 == has_negative);
-  if (both_separated || (kernel.tolerance_int() == Int(0) && either_strict))
+  if (both_separated || either_strict)
     return;
 
   bool any_zero = combined & has_zero;
@@ -214,10 +223,10 @@ void primitives_process(face_pair_workspace<Index, Int> &ws, const Form0 &form0,
   auto n1 = ws.n1();
   ws.fp0.allocate(n0);
   for (std::size_t i = 0; i < n0; ++i)
-    ws.fp0[i] = tf::exact::make_face_plane(ws.face0(i));
+    ws.fp0[i] = tf::exact::make_face_plane(ws.face0(i), kernel);
   ws.fp1.allocate(n1);
   for (std::size_t j = 0; j < n1; ++j)
-    ws.fp1[j] = tf::exact::make_face_plane(ws.face1(j));
+    ws.fp1[j] = tf::exact::make_face_plane(ws.face1(j), kernel);
   for (std::size_t i = 0; i < n0; ++i)
     for (std::size_t j = 0; j < n1; ++j) {
       if (!tf::intersects(ws.ibox0[i], ws.ibox1[j]))
