@@ -104,39 +104,45 @@ auto async_make_cdt_with_maps(wasm_ndarray<Real> &points) -> promise_t {
 // ============================================================================
 
 template <typename Real>
-auto sync_make_cdt_edges(wasm_ndarray<Real> &points,
-                         wasm_ndarray<int> &edges) -> cdt_result_t<Real> {
+auto sync_make_cdt_edges(wasm_ndarray<Real> &points, wasm_ndarray<int> &edges,
+                         bool split_constraints) -> cdt_result_t<Real> {
   auto pts = tf::make_points<2>(points.make_range());
   auto eds = tf::make_edges(tf::make_blocked_range<2>(edges.make_range()));
-  return pack_cdt_result<Real>(tf::make_cdt(pts, eds));
+  return pack_cdt_result<Real>(tf::make_cdt(pts, eds, split_constraints));
 }
 
 template <typename Real>
-auto async_make_cdt_edges(wasm_ndarray<Real> &points,
-                          wasm_ndarray<int> &edges) -> promise_t {
-  return promise([a = points, b = edges]() -> cdt_result_t<Real> {
+auto async_make_cdt_edges(wasm_ndarray<Real> &points, wasm_ndarray<int> &edges,
+                          bool split_constraints) -> promise_t {
+  return promise([a = points, b = edges,
+                  split_constraints]() -> cdt_result_t<Real> {
     return sync_make_cdt_edges<Real>(const_cast<wasm_ndarray<Real> &>(a),
-                                     const_cast<wasm_ndarray<int> &>(b));
+                                     const_cast<wasm_ndarray<int> &>(b),
+                                     split_constraints);
   });
 }
 
 template <typename Real>
 auto sync_make_cdt_edges_with_maps(wasm_ndarray<Real> &points,
-                                   wasm_ndarray<int> &edges)
+                                   wasm_ndarray<int> &edges,
+                                   bool split_constraints)
     -> cdt_result_with_map_t<Real> {
   auto pts = tf::make_points<2>(points.make_range());
   auto eds = tf::make_edges(tf::make_blocked_range<2>(edges.make_range()));
-  auto [polys, im] = tf::make_cdt(pts, eds, tf::return_index_map);
+  auto [polys, im] =
+      tf::make_cdt(pts, eds, tf::return_index_map, split_constraints);
   return pack_cdt_result_with_map<Real>(std::move(polys), std::move(im));
 }
 
 template <typename Real>
 auto async_make_cdt_edges_with_maps(wasm_ndarray<Real> &points,
-                                    wasm_ndarray<int> &edges) -> promise_t {
-  return promise([a = points, b = edges]() -> cdt_result_with_map_t<Real> {
+                                    wasm_ndarray<int> &edges,
+                                    bool split_constraints) -> promise_t {
+  return promise([a = points, b = edges,
+                  split_constraints]() -> cdt_result_with_map_t<Real> {
     return sync_make_cdt_edges_with_maps<Real>(
-        const_cast<wasm_ndarray<Real> &>(a),
-        const_cast<wasm_ndarray<int> &>(b));
+        const_cast<wasm_ndarray<Real> &>(a), const_cast<wasm_ndarray<int> &>(b),
+        split_constraints);
   });
 }
 
@@ -149,51 +155,53 @@ auto async_make_cdt_edges_with_maps(wasm_ndarray<Real> &points,
 template <typename Real>
 auto sync_make_cdt_edges_masked(wasm_ndarray<Real> &points,
                                 wasm_ndarray<int> &edges,
-                                wasm_ndarray<std::int8_t> &edge_mask)
-    -> cdt_result_t<Real> {
+                                wasm_ndarray<std::int8_t> &edge_mask,
+                                bool split_constraints) -> cdt_result_t<Real> {
   auto pts = tf::make_points<2>(points.make_range());
   auto eds = tf::make_edges(tf::make_blocked_range<2>(edges.make_range()));
   auto mask = edge_mask.make_range();
-  return pack_cdt_result<Real>(tf::make_cdt(pts, eds, mask));
+  return pack_cdt_result<Real>(tf::make_cdt(pts, eds, mask, split_constraints));
 }
 
 template <typename Real>
 auto async_make_cdt_edges_masked(wasm_ndarray<Real> &points,
                                  wasm_ndarray<int> &edges,
-                                 wasm_ndarray<std::int8_t> &edge_mask)
-    -> promise_t {
-  return promise([a = points, b = edges, c = edge_mask]() -> cdt_result_t<Real> {
+                                 wasm_ndarray<std::int8_t> &edge_mask,
+                                 bool split_constraints) -> promise_t {
+  return promise([a = points, b = edges, c = edge_mask,
+                  split_constraints]() -> cdt_result_t<Real> {
     return sync_make_cdt_edges_masked<Real>(
-        const_cast<wasm_ndarray<Real> &>(a),
-        const_cast<wasm_ndarray<int> &>(b),
-        const_cast<wasm_ndarray<std::int8_t> &>(c));
+        const_cast<wasm_ndarray<Real> &>(a), const_cast<wasm_ndarray<int> &>(b),
+        const_cast<wasm_ndarray<std::int8_t> &>(c), split_constraints);
   });
 }
 
 template <typename Real>
 auto sync_make_cdt_edges_masked_with_maps(wasm_ndarray<Real> &points,
                                           wasm_ndarray<int> &edges,
-                                          wasm_ndarray<std::int8_t> &edge_mask)
+                                          wasm_ndarray<std::int8_t> &edge_mask,
+                                          bool split_constraints)
     -> cdt_result_with_map_t<Real> {
   auto pts = tf::make_points<2>(points.make_range());
   auto eds = tf::make_edges(tf::make_blocked_range<2>(edges.make_range()));
   auto mask = edge_mask.make_range();
-  auto [polys, im] = tf::make_cdt(pts, eds, mask, tf::return_index_map);
+  auto [polys, im] =
+      tf::make_cdt(pts, eds, mask, tf::return_index_map, split_constraints);
   return pack_cdt_result_with_map<Real>(std::move(polys), std::move(im));
 }
 
 template <typename Real>
 auto async_make_cdt_edges_masked_with_maps(wasm_ndarray<Real> &points,
                                            wasm_ndarray<int> &edges,
-                                           wasm_ndarray<std::int8_t> &edge_mask)
+                                           wasm_ndarray<std::int8_t> &edge_mask,
+                                           bool split_constraints)
     -> promise_t {
-  return promise(
-      [a = points, b = edges, c = edge_mask]() -> cdt_result_with_map_t<Real> {
-        return sync_make_cdt_edges_masked_with_maps<Real>(
-            const_cast<wasm_ndarray<Real> &>(a),
-            const_cast<wasm_ndarray<int> &>(b),
-            const_cast<wasm_ndarray<std::int8_t> &>(c));
-      });
+  return promise([a = points, b = edges, c = edge_mask,
+                  split_constraints]() -> cdt_result_with_map_t<Real> {
+    return sync_make_cdt_edges_masked_with_maps<Real>(
+        const_cast<wasm_ndarray<Real> &>(a), const_cast<wasm_ndarray<int> &>(b),
+        const_cast<wasm_ndarray<std::int8_t> &>(c), split_constraints);
+  });
 }
 
 } // namespace ts

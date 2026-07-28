@@ -27,6 +27,19 @@ function closingEdges(tf, nBoundary) {
   return tf.ndarray(e, [nBoundary, 2]);
 }
 
+function crossingConstraints(tf, dtype = "float32") {
+  // Unit square outline plus both diagonals — the diagonals cross at the
+  // centre, which is not an input point.
+  const Ctor = dtype === "float64" ? Float64Array : Float32Array;
+  const points = tf.ndarray(
+    new Ctor([0, 0, 1, 0, 1, 1, 0, 1]), [4, 2]);
+  const edges = tf.ndarray(new Int32Array([
+    0, 1, 1, 2, 2, 3, 3, 0,
+    0, 2, 1, 3,
+  ]), [6, 2]);
+  return { points, edges };
+}
+
 describe("CDT (constrained Delaunay)", () => {
 
   // ==========================================================================
@@ -149,6 +162,82 @@ describe("CDT (constrained Delaunay)", () => {
 
     faces.delete(); out.delete();
     edgeMask.delete(); edges.delete(); points.delete();
+  });
+
+  // ==========================================================================
+  test("cdt: crossing constraints create an intersection vertex", () => {
+    const tf = getTf();
+    const { points, edges } = crossingConstraints(tf);
+
+    const { faces, points: out } = tf.cdt(points, { edges });
+
+    assert(out.shape[0] > points.shape[0],
+           `expected the crossing to add a point: in=${points.shape[0]} ` +
+           `out=${out.shape[0]}`);
+    assert(faces.shape[0] > 0, "expected a non-empty triangulation");
+    log(`  in=${points.shape[0]} out=${out.shape[0]} ` +
+        `faces=${faces.shape[0]}`, "line-pass");
+
+    faces.delete(); out.delete(); edges.delete(); points.delete();
+  });
+
+  // ==========================================================================
+  test("cdt: splitConstraints=false is empty on crossing constraints", () => {
+    const tf = getTf();
+    const { points, edges } = crossingConstraints(tf);
+
+    const { faces, points: out } =
+      tf.cdt(points, { edges, splitConstraints: false });
+
+    assert(faces.shape[0] === 0,
+           `crossing constraints demanded verbatim should yield no faces, ` +
+           `got ${faces.shape[0]}`);
+    log("  crossing + splitConstraints:false → empty", "line-pass");
+
+    faces.delete(); out.delete(); edges.delete(); points.delete();
+  });
+
+  // ==========================================================================
+  test("cdt: splitConstraints=false matches default without crossings", () => {
+    const tf = getTf();
+    const nBoundary = 32;
+    const points = ringPoints(tf, nBoundary, 64);
+    const edges = closingEdges(tf, nBoundary);
+
+    const def = tf.cdt(points, { edges });
+    const verbatim = tf.cdt(points, { edges, splitConstraints: false });
+
+    assert(def.faces.shape[0] === verbatim.faces.shape[0],
+           `face count mismatch: default=${def.faces.shape[0]} ` +
+           `verbatim=${verbatim.faces.shape[0]}`);
+    assert(def.points.shape[0] === verbatim.points.shape[0],
+           `point count mismatch: default=${def.points.shape[0]} ` +
+           `verbatim=${verbatim.points.shape[0]}`);
+    const a = def.faces.data, b = verbatim.faces.data;
+    for (let i = 0; i < a.length; i++) {
+      assert(a[i] === b[i], `face index ${i} differs: ${a[i]} vs ${b[i]}`);
+    }
+    log(`  ${def.faces.shape[0]} triangles, default == verbatim`, "line-pass");
+
+    def.faces.delete(); def.points.delete();
+    verbatim.faces.delete(); verbatim.points.delete();
+    edges.delete(); points.delete();
+  });
+
+  // ==========================================================================
+  test("async cdt: splitConstraints=false is empty on crossings", async () => {
+    const tf = getTf();
+    const { points, edges } = crossingConstraints(tf);
+
+    const { faces, points: out } =
+      await tf.async.cdt(points, { edges, splitConstraints: false });
+
+    assert(faces.shape[0] === 0,
+           `crossing constraints demanded verbatim should yield no faces, ` +
+           `got ${faces.shape[0]}`);
+    log("  async crossing + splitConstraints:false → empty", "line-pass");
+
+    faces.delete(); out.delete(); edges.delete(); points.delete();
   });
 
   // ==========================================================================

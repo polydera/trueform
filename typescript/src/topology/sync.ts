@@ -159,6 +159,12 @@ export interface CdtOptions {
    *  for feature lines or polygon diagonals that should appear as
    *  edges without splitting the interior. */
   edgeMask?: NDArrayBool;
+  /** Resolve crossings between constraints by creating a point there
+   *  (default: true). With `false` the constraints are demanded verbatim
+   *  and the result is empty if any two of them cross — that emptiness is
+   *  the answer to "do these constraints cross", not an error. Ignored
+   *  when no `edges` are given. */
+  splitConstraints?: boolean;
 }
 
 /** Constrained Delaunay triangulation (interior triangles only). */
@@ -181,6 +187,7 @@ export function cdt(
   const wantMap = options.returnIndexMap === true;
   const edges = options.edges;
   const mask = options.edgeMask;
+  const split = options.splitConstraints !== false;
   const dt = points.dtype;
 
   const wrap = (raw: any): CdtResult => ({
@@ -204,13 +211,13 @@ export function cdt(
     if (wantMap) {
       return wrapWithMap(
         native()[`make_cdt_edges_masked_with_maps_${dt}`](
-          points._handle, edges._handle, mask._handle,
+          points._handle, edges._handle, mask._handle, split,
         ),
       );
     }
     return wrap(
       native()[`make_cdt_edges_masked_${dt}`](
-        points._handle, edges._handle, mask._handle,
+        points._handle, edges._handle, mask._handle, split,
       ),
     );
   }
@@ -218,12 +225,12 @@ export function cdt(
   if (wantMap) {
     return wrapWithMap(
       native()[`make_cdt_edges_with_maps_${dt}`](
-        points._handle, edges._handle,
+        points._handle, edges._handle, split,
       ),
     );
   }
   return wrap(
-    native()[`make_cdt_edges_${dt}`](points._handle, edges._handle),
+    native()[`make_cdt_edges_${dt}`](points._handle, edges._handle, split),
   );
 }
 

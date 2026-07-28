@@ -195,6 +195,7 @@ export async function cdt(
   const wantMap = options.returnIndexMap === true;
   const edges = options.edges;
   const mask = options.edgeMask;
+  const split = options.splitConstraints !== false;
   const dt = points.dtype;
 
   const wrap = (raw: any): CdtResult => ({
@@ -224,14 +225,14 @@ export async function cdt(
     if (wantMap) {
       return dispatcher().run(
         () => native()[`dispatch_make_cdt_edges_masked_with_maps_${dt}`](
-          points._handle, edges._handle, mask._handle,
+          points._handle, edges._handle, mask._handle, split,
         ),
         wrapWithMap,
       );
     }
     return dispatcher().run(
       () => native()[`dispatch_make_cdt_edges_masked_${dt}`](
-        points._handle, edges._handle, mask._handle,
+        points._handle, edges._handle, mask._handle, split,
       ),
       wrap,
     );
@@ -240,14 +241,14 @@ export async function cdt(
   if (wantMap) {
     return dispatcher().run(
       () => native()[`dispatch_make_cdt_edges_with_maps_${dt}`](
-        points._handle, edges._handle,
+        points._handle, edges._handle, split,
       ),
       wrapWithMap,
     );
   }
   return dispatcher().run(
     () => native()[`dispatch_make_cdt_edges_${dt}`](
-      points._handle, edges._handle,
+      points._handle, edges._handle, split,
     ),
     wrap,
   );
