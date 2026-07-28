@@ -12,14 +12,14 @@
  */
 #pragma once
 
-#include "../core/algorithm/parallel_for_each.hpp"
-#include "../core/algorithm/parallel_iota.hpp"
-#include "../core/buffer.hpp"
-#include "../core/none.hpp"
-#include "../core/views/sequence_range.hpp"
-#include "../intersect/graph/vertex.hpp"
-#include "./face_cuts.hpp"
-#include "./face_regions.hpp"
+#include "../../core/algorithm/parallel_for_each.hpp"
+#include "../../core/algorithm/parallel_iota.hpp"
+#include "../../core/buffer.hpp"
+#include "../../core/none.hpp"
+#include "../../core/views/sequence_range.hpp"
+#include "../../intersect/graph/vertex.hpp"
+#include "../face_cuts.hpp"
+#include "../face_regions.hpp"
 
 #include "tbb/parallel_sort.h"
 

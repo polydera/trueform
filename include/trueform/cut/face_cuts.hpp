@@ -19,7 +19,7 @@
 #include "../core/views/slice.hpp"
 #include "../exact/projection_axes.hpp"
 #include "../exact_coordinate_converter.hpp"
-#include "../intersect/for_each_cut_chord.hpp"
+#include "../intersect/impl/for_each_cut_chord.hpp"
 #include "../intersect/graph/face_descriptor.hpp"
 #include "../intersect/graph/intersection_graph.hpp"
 #include "../intersect/graph/loop.hpp"

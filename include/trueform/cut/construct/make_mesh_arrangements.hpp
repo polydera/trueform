@@ -23,8 +23,8 @@
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "../face_cuts.hpp"
-#include "../make_coplanar_loop_pairs.hpp"
-#include "../region_triangulator.hpp"
+#include "../arrangements/make_coplanar_loop_pairs.hpp"
+#include "../impl/region_triangulator.hpp"
 #include "./make_arrangement_map_data.hpp"
 #include "./triangulate_arrangement_cuts.hpp"
 

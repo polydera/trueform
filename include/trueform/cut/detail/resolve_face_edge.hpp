@@ -12,8 +12,8 @@
  */
 #pragma once
 
-#include "../topology/is_on_same_edge.hpp"
-#include "../topology/topo_id.hpp"
+#include "../../topology/is_on_same_edge.hpp"
+#include "../../topology/topo_id.hpp"
 #include <optional>
 
 namespace tf::cut {

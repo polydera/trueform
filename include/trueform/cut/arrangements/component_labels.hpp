@@ -27,9 +27,9 @@
 #include "../../topology/connected_component_labels.hpp"
 #include "../../topology/label_connected_components.hpp"
 #include "../face_regions.hpp"
-#include "../loop_connectivity.hpp"
+#include "../impl/loop_connectivity.hpp"
 #include "../partition/make_labels.hpp"
-#include "../resolve_face_edge.hpp"
+#include "../detail/resolve_face_edge.hpp"
 #include "tbb/parallel_invoke.h"
 #include "tbb/parallel_sort.h"
 #include "tbb/task_group.h"
@@ -41,7 +41,7 @@ namespace tf::cut {
 
 /// @ingroup cut
 /// @brief The classification label tier over a
-///        @ref tf::loop_connectivity: whole-pool cut-loop component
+///        @ref tf::cut::loop_connectivity: whole-pool cut-loop component
 ///        labels, per-form surface labels, surface↔cut bridges
 ///        compacted into one dense component id space, and the
 ///        per-component open (boundary-touching) mask.
@@ -100,11 +100,11 @@ public:
 
   auto n_tags() const -> Index { return _conn.n_tags(); }
 
-  auto connectivity_per_face_edge() const {
-    return _conn.connectivity_per_face_edge();
+  auto connectivity_per_carrier_edge() const {
+    return _conn.connectivity_per_carrier_edge();
   }
   auto coplanar_pairs() const { return tf::make_range(_coplanar_pairs); }
-  auto connectivity() const -> const tf::loop_connectivity<Index> & {
+  auto connectivity() const -> const tf::cut::loop_connectivity<Index> & {
     return _conn;
   }
 
@@ -183,7 +183,7 @@ private:
       const tf::face_regions<Index, Int> &fr) const
       -> tf::connected_component_labels<Index> {
     const auto n_loops = static_cast<Index>(fr.loops().size());
-    auto conn = _conn.connectivity_per_face_edge();
+    auto conn = _conn.connectivity_per_carrier_edge();
 
     tf::connected_component_labels<Index> result;
     result.labels.allocate(static_cast<std::size_t>(n_loops));
@@ -274,7 +274,7 @@ private:
       -> tf::buffer<std::array<Index, 2>> {
     tf::buffer<std::array<Index, 2>> bridges;
 
-    auto conn = _conn.connectivity_per_face_edge();
+    auto conn = _conn.connectivity_per_carrier_edge();
 
     tf::generic_generate(
         tf::zip(tf::make_range(_loop_labels), fr.descriptors(), conn,
@@ -412,7 +412,7 @@ private:
     tg.wait();
   }
 
-  tf::loop_connectivity<Index> _conn;
+  tf::cut::loop_connectivity<Index> _conn;
   tf::small_vector<tf::buffer<label_type>, 4> _polygon_labels;
   tf::buffer<label_type> _loop_labels;
   tf::buffer<label_type> _triangle_labels;

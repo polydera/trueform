@@ -28,8 +28,8 @@
 #include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/none.hpp"
 #include "../face_regions.hpp"
-#include "../loop_connectivity.hpp"
-#include "../make_coplanar_loop_pairs.hpp"
+#include "../impl/loop_connectivity.hpp"
+#include "../arrangements/make_coplanar_loop_pairs.hpp"
 #include <algorithm>
 #include <utility>
 #include <array>
@@ -306,12 +306,12 @@ auto make_region_curves(const tf::intersection_graph<Index, Int> &ig,
       stacked[std::size_t(cp.loop_b)] = char(1);
     }
   }
-  tf::loop_connectivity<Index> conn;
+  tf::cut::loop_connectivity<Index> conn;
   conn.build(fr, tf::make_range(dead), point_counts,
              static_cast<Index>(ig.points().size()));
   return extract_intersection_curves<RealOut, Index>(
-      fr, tf::none, conn.connectivity_per_face_edge(), tf::make_range(stacked),
-      ig.points(), conv);
+      fr, tf::none, conn.connectivity_per_carrier_edge(),
+      tf::make_range(stacked), ig.points(), conv);
 }
 
 } // namespace tf::cut

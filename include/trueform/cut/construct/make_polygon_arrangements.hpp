@@ -22,7 +22,7 @@
 #include "../../exact/vertex_converter.hpp"
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/views/sequence_range.hpp"
-#include "../region_triangulator.hpp"
+#include "../impl/region_triangulator.hpp"
 #include "./make_arrangement_map_data.hpp"
 
 namespace tf::cut {

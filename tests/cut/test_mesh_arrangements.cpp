@@ -183,6 +183,54 @@ TEST_CASE("mesh_arrangements_box_cylinder_sphere", "[arrangements]") {
   REQUIRE(tf::make_boundary_edges(mesh.polygons()).size() == 0);
 }
 
+TEST_CASE("mesh_arrangements_tolerance_parallel_sheets",
+          "[arrangements][tolerance]") {
+  // Two parallel unit quads offset by `d` along z. The box_plane case
+  // above only exercises the band inside an exact incidence (the cube's
+  // walls cross the fin's plane); here NEITHER face crosses the other's
+  // plane, so the pairing itself must honor the band: within it the sheets
+  // are one feature, beyond it two.
+  using index_t = int;
+  using real_t = float;
+
+  auto make_sheet = [](real_t z) {
+    tf::polygons_buffer<index_t, real_t, 3, 3> sheet;
+    sheet.points_buffer().allocate(4);
+    sheet.faces_buffer().allocate(2);
+    sheet.points_buffer()[0] = tf::point<real_t, 3>{real_t(0), real_t(0), z};
+    sheet.points_buffer()[1] = tf::point<real_t, 3>{real_t(1), real_t(0), z};
+    sheet.points_buffer()[2] = tf::point<real_t, 3>{real_t(1), real_t(1), z};
+    sheet.points_buffer()[3] = tf::point<real_t, 3>{real_t(0), real_t(1), z};
+    sheet.faces_buffer()[0] = std::array<index_t, 3>{0, 1, 2};
+    sheet.faces_buffer()[1] = std::array<index_t, 3>{0, 2, 3};
+    return sheet;
+  };
+  const double tolerance = 1e-3;
+  const auto mode = tf::intersect_mode::primitives |
+                    tf::intersect_mode::resolve_contours |
+                    tf::intersect_mode::within;
+  auto arrange = [&](real_t d) {
+    auto a = make_sheet(real_t(0));
+    auto b = make_sheet(d);
+    const std::array forms{a.polygons(), b.polygons()};
+    return tf::make_mesh_arrangements(
+        tf::make_range(forms.begin(), forms.end()),
+        tf::intersect_config{mode, tolerance});
+  };
+
+  SECTION("gap inside the band welds the sheets") {
+    auto [mesh, tag_labels, face_labels] = arrange(real_t(0.5e-3));
+    REQUIRE(mesh.polygons().size() == 4u);
+    REQUIRE(mesh.points().size() == 4u);
+  }
+
+  SECTION("gap beyond the band leaves two sheets") {
+    auto [mesh, tag_labels, face_labels] = arrange(real_t(2e-3));
+    REQUIRE(mesh.polygons().size() == 4u);
+    REQUIRE(mesh.points().size() == 8u);
+  }
+}
+
 TEST_CASE("mesh_arrangements_tolerance_box_plane",
           "[arrangements][tolerance]") {
   // Unit cube [-0.5, +0.5]^3 (volume = 1), with a planar quad at z = 0

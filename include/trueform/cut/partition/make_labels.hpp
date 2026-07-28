@@ -26,7 +26,7 @@
 #include "../../topology/policy/manifold_edge_link.hpp"
 #include "../cut_graph.hpp"
 #include "../face_cuts.hpp"
-#include "../resolve_face_edge.hpp"
+#include "../detail/resolve_face_edge.hpp"
 #include "./partition_labels.hpp"
 #include "tbb/parallel_invoke.h"
 #include "tbb/parallel_sort.h"

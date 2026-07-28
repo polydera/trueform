@@ -31,8 +31,8 @@
 #include "../topology/triangulation_type.hpp"
 #include "./dispatch/arrangement_range_policy.hpp"
 #include "./face_regions.hpp"
-#include "./make_coplanar_loop_pairs.hpp"
-#include "./region_triangulator.hpp"
+#include "arrangements/make_coplanar_loop_pairs.hpp"
+#include "./impl/region_triangulator.hpp"
 
 #include "tbb/parallel_sort.h"
 #include <array>
@@ -218,7 +218,7 @@ private:
     if (a_config.triangulation == tf::triangulation_type::refined_cdt) {
       tf::cdt_refine_config rc;
       rc.min_quality = 0.3f;
-      _rt.refine_applied(_fr, _ig, _policy.n_tags(), apply_form,
+      _rt.refine_applied(_fr, _ig, apply_form,
                          apply_to_face, get_mesh_point, rc,
                          tf::make_range(dead_regions),
                          tf::make_range(region_pairs));

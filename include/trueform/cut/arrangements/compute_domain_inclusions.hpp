@@ -50,7 +50,7 @@ struct domain_inclusions {
 ///
 /// Walks the wedge representatives in the @ref tf::cut::arrangement_descriptor.
 /// Each representative's fan is K loops meeting at a non-manifold edge;
-/// each fan loop's component (via @ref tf::loop_connectivity::loop_labels)
+/// each fan loop's component (via @ref tf::cut::component_labels::loop_labels)
 /// has its interior-side domain in `descriptor.domain_of_side[2c + 1]`,
 /// and that domain accumulates the loop's form-tag bit.
 ///

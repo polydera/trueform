@@ -17,7 +17,7 @@
 #include "../../core/views/zip.hpp"
 #include "../../exact/dot_sign.hpp"
 #include "../../exact/meta.hpp"
-#include "../loop_connectivity.hpp"
+#include "../impl/loop_connectivity.hpp"
 #include "../face_regions.hpp"
 #include "./make_non_manifold_edge_fans.hpp"
 #include <algorithm>
@@ -31,7 +31,7 @@ namespace tf::cut {
 ///
 /// Graph-native counterpart to
 /// @ref tf::topology::domains::canonicalize_nm_edges, operating on the
-/// implicit arrangement carried by @ref tf::loop_connectivity.
+/// implicit arrangement carried by @ref tf::cut::loop_connectivity.
 ///
 /// For each NM edge with fan of `K` occurrences:
 ///   1. Reject `K < 2`, degenerate original faces, and fans whose
@@ -73,7 +73,7 @@ namespace tf::cut {
 template <typename Int, typename Index, typename Index1, typename Edges,
           typename Faces, typename DirsView, typename IdView,
           typename LabelsView, typename GetPoint, typename ApplyToFace>
-void canonicalize_nm_edges(const tf::loop_connectivity<Index> &,
+void canonicalize_nm_edges(const tf::cut::loop_connectivity<Index> &,
                            const tf::face_regions<Index, Index1> &fr,
                            Edges &nm_edges, Faces &nm_edge_faces,
                            const DirsView &dirs_view,

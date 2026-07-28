@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <trueform/cut/face_regions.hpp>
-#include <trueform/cut/make_coplanar_loop_pairs.hpp>
-#include <trueform/cut/region_triangulator.hpp>
+#include <trueform/cut/arrangements/make_coplanar_loop_pairs.hpp>
+#include <trueform/cut/impl/region_triangulator.hpp>
 #include <trueform/exact/meta.hpp>
 #include <trueform/exact/projection_axes.hpp>
 #include <trueform/intersect/exact/make_kernel.hpp>

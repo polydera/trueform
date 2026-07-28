@@ -35,7 +35,7 @@ namespace tf::cut {
 /// Graph-native counterpart to
 /// @ref tf::topology::domains::emit_domain_merges. Sides come from the
 /// fan's per-occurrence direction bits; component labels come from
-/// @ref tf::loop_connectivity.
+/// @ref tf::cut::loop_connectivity.
 template <typename Index>
 void emit_domain_merges(
     const tf::cut::component_labels<Index> &ag,

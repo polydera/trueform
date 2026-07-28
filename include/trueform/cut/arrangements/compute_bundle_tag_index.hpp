@@ -33,7 +33,7 @@ namespace tf::cut {
 ///
 /// `tag_of_component[c]` is the form tag of component `c` (or
 /// `Index(-1)` for dropped/empty). Single-valued under the per-tag CCL
-/// invariant in `loop_connectivity::_compute_loop_component_labels`.
+/// invariant in `component_labels::_compute_loop_component_labels`.
 ///
 /// `bundle_to_tags[b]` is the ascending-sorted unique list of form tags
 /// whose components belong to bundle `b`. Suitable for binary-search

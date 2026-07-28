@@ -19,7 +19,7 @@
 #include "../../core/views/enumerate.hpp"
 #include "../../core/views/zip.hpp"
 #include "../../intersect/graph/vertex.hpp"
-#include "../loop_connectivity.hpp"
+#include "../impl/loop_connectivity.hpp"
 #include "../face_regions.hpp"
 #include "../../core/small_vector.hpp"
 
@@ -56,7 +56,7 @@ template <typename Index> struct non_manifold_edge_fans {
 ///
 /// Region grain: every region contributes its boundary walk and its
 /// hole walks (canonical order — boundary first, then holes in
-/// `loop_holes()` order — matching @ref tf::loop_connectivity's edge
+/// `loop_holes()` order — matching @ref tf::cut::loop_connectivity's edge
 /// slots). Only walk edges exist here, so a coincident interior
 /// triangulation diagonal can never form a fan — the invariant the
 /// loop grain held by construction.
@@ -69,7 +69,7 @@ template <typename Index> struct non_manifold_edge_fans {
 /// fan emits. Dead regions (coplanar duplicates) have empty edge
 /// ranges in the cleaned connectivity and are skipped.
 template <typename Index, typename Int>
-auto make_non_manifold_edge_fans(const tf::loop_connectivity<Index> &ag,
+auto make_non_manifold_edge_fans(const tf::cut::loop_connectivity<Index> &ag,
                                  const tf::face_regions<Index, Int> &fr)
     -> non_manifold_edge_fans<Index> {
   non_manifold_edge_fans<Index> out;
@@ -80,7 +80,7 @@ auto make_non_manifold_edge_fans(const tf::loop_connectivity<Index> &ag,
   if (!loops.size())
     return out;
 
-  auto conn = ag.connectivity_per_face_edge();
+  auto conn = ag.connectivity_per_carrier_edge();
 
   using vertex_t = typename non_manifold_edge_fans<Index>::vertex_t;
   struct local_t {

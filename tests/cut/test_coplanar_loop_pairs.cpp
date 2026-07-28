@@ -11,7 +11,7 @@
 #include <trueform/cut/dispatch/build_exact_pipeline.hpp>
 #include <trueform/cut/dispatch/build_self_pipeline.hpp>
 #include <trueform/cut/face_regions.hpp>
-#include <trueform/cut/make_coplanar_loop_pairs.hpp>
+#include <trueform/cut/arrangements/make_coplanar_loop_pairs.hpp>
 #include <trueform/trueform.hpp>
 
 #include <array>

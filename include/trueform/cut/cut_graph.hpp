@@ -32,7 +32,7 @@
 #include "../topology/is_on_same_edge.hpp"
 #include "../topology/structures/compute_face_link_per_edge.hpp"
 #include "./face_cuts.hpp"
-#include "./region_triangulator.hpp"
+#include "./impl/region_triangulator.hpp"
 
 #include <vector>
 

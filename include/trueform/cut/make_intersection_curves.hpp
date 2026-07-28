@@ -16,7 +16,7 @@
 #include "../core/buffer.hpp"
 #include "./arrangement_graph.hpp"
 #include "./construct/extract_intersection_curves.hpp"
-#include "./loop_connectivity.hpp"
+#include "./impl/loop_connectivity.hpp"
 #include <array>
 #include <type_traits>
 
@@ -92,12 +92,12 @@ auto make_intersection_curves(const tf::arrangement_graph<Policy, Int> &graph) {
     apply_to_form(t, [&](const auto &form) {
       point_counts[std::size_t(t)] = static_cast<Index>(form.points().size());
     });
-  tf::loop_connectivity<Index> conn;
+  tf::cut::loop_connectivity<Index> conn;
   conn.build(graph.face_regions(), graph.dead_loops(),
              tf::make_range(point_counts),
              static_cast<Index>(graph.created_points().size()));
   return cut::make_intersection_curves<Real>(
-      graph, conn.connectivity_per_face_edge());
+      graph, conn.connectivity_per_carrier_edge());
 }
 
 } // namespace tf

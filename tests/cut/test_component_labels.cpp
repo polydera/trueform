@@ -1,6 +1,6 @@
 /**
  * @file test_component_labels.cpp
- * @brief Hand-verifiable structural tests for tf::loop_connectivity.
+ * @brief Hand-verifiable structural tests for tf::cut::loop_connectivity.
  *
  * Copyright (c) 2026 Ziga Sajovic, XLAB
  */
@@ -11,14 +11,18 @@
 #include <trueform/core/views/sequence_range.hpp>
 #include <trueform/cut/arrangements/component_labels.hpp>
 #include <trueform/cut/arrangements/make_arrangement_descriptor.hpp>
+#include <trueform/cut/detail/make_connectivity_face_membership.hpp>
 #include <trueform/cut/face_regions.hpp>
-#include <trueform/cut/loop_connectivity.hpp>
-#include <trueform/cut/region_triangulator.hpp>
+#include <trueform/cut/impl/loop_connectivity.hpp>
+#include <trueform/cut/impl/region_triangulator.hpp>
 #include <trueform/intersect/graph/intersection_graph.hpp>
 #include <trueform/intersect/intersections_between_polygons.hpp>
 #include <trueform/spatial/aabb_tree.hpp>
 #include <trueform/topology/make_face_membership.hpp>
 #include <trueform/topology/make_manifold_edge_link.hpp>
+#include <trueform/topology/structures/compute_face_link_per_edge.hpp>
+
+#include <algorithm>
 
 using Index = int;
 using mesh_t = tf::polygons_buffer<int, float, 3, 3>;
@@ -42,6 +46,55 @@ auto make_triangle(const std::array<std::array<float, 3>, 3> &pts) -> mesh_t {
 }
 
 } // namespace
+
+TEST_CASE("loop_connectivity: empty state has no tags", "[component_labels]") {
+  tf::cut::loop_connectivity<Index> connectivity;
+  CHECK(connectivity.n_tags() == 0);
+  connectivity.clear();
+  CHECK(connectivity.n_tags() == 0);
+}
+
+TEST_CASE("loop_connectivity: compact IDs preserve shared-edge neighbours",
+          "[component_labels]") {
+  auto compute = [](const std::array<Index, 6> &source_ids,
+                    Index bounded_id_count, tf::buffer<Index> &offsets,
+                    tf::buffer<Index> &neighbours) {
+    tf::buffer<Index> flat_ids;
+    flat_ids.allocate(source_ids.size());
+    std::copy(source_ids.begin(), source_ids.end(), flat_ids.begin());
+    const std::array<Index, 3> face_offsets{0, 3, 6};
+    auto faces =
+        tf::make_faces(tf::make_range(face_offsets), tf::make_range(flat_ids));
+    auto membership = tf::cut::detail::make_connectivity_face_membership(
+        faces, flat_ids, bounded_id_count);
+    tf::topology::compute_face_link_per_edge(faces, membership, offsets,
+                                             neighbours);
+  };
+
+  tf::buffer<Index> dense_offsets;
+  tf::buffer<Index> dense_neighbours;
+  compute({0, 1, 2, 2, 1, 3}, 4, dense_offsets, dense_neighbours);
+
+  tf::buffer<Index> sparse_offsets;
+  tf::buffer<Index> sparse_neighbours;
+  compute({0, 1000, 2000, 2000, 1000, 3000}, 4001, sparse_offsets,
+          sparse_neighbours);
+
+  REQUIRE(dense_offsets.size() == sparse_offsets.size());
+  REQUIRE(dense_neighbours.size() == sparse_neighbours.size());
+  CHECK(std::equal(dense_offsets.begin(), dense_offsets.end(),
+                   sparse_offsets.begin()));
+  CHECK(std::equal(dense_neighbours.begin(), dense_neighbours.end(),
+                   sparse_neighbours.begin()));
+
+  auto dense_edges =
+      tf::make_offset_block_range(dense_offsets, dense_neighbours);
+  REQUIRE(dense_edges.size() == 6);
+  REQUIRE(dense_edges[1].size() == 1);
+  CHECK(dense_edges[1][0] == 1);
+  REQUIRE(dense_edges[3].size() == 1);
+  CHECK(dense_edges[3][0] == 0);
+}
 
 TEST_CASE(
     "loop_connectivity: two triangles sharing an edge in different planes",
@@ -100,9 +153,38 @@ TEST_CASE(
   tf::buffer<char> dead;
   dead.allocate(std::size_t(fr.loops().size()));
   tf::parallel_fill(dead, char(0));
+  const auto n_created =
+      static_cast<Index>(ig.points().size() + rt.extra_points.size());
+  const std::array<Index, 2> dense_point_counts{3, 3};
+  const std::array<Index, 2> sparse_point_counts{30000, 30000};
+  tf::cut::loop_connectivity<Index> dense_connectivity;
+  tf::cut::loop_connectivity<Index> sparse_connectivity;
+  dense_connectivity.build(fr, tf::make_range(dead),
+                           tf::make_range(dense_point_counts), n_created);
+  sparse_connectivity.build(fr, tf::make_range(dead),
+                            tf::make_range(sparse_point_counts), n_created);
+
+  auto dense_edges = dense_connectivity.connectivity_per_carrier_edge();
+  auto sparse_edges = sparse_connectivity.connectivity_per_carrier_edge();
+  REQUIRE(dense_edges.size() == sparse_edges.size());
+  for (std::size_t carrier_id = 0; carrier_id < dense_edges.size();
+       ++carrier_id) {
+    REQUIRE(dense_edges[carrier_id].size() == sparse_edges[carrier_id].size());
+    for (std::size_t edge_id = 0; edge_id < dense_edges[carrier_id].size();
+         ++edge_id) {
+      auto dense_neighbours = dense_edges[carrier_id][edge_id];
+      auto sparse_neighbours = sparse_edges[carrier_id][edge_id];
+      REQUIRE(dense_neighbours.size() == sparse_neighbours.size());
+      for (std::size_t neighbour_id = 0; neighbour_id < dense_neighbours.size();
+           ++neighbour_id)
+        CHECK(dense_neighbours[neighbour_id] ==
+              sparse_neighbours[neighbour_id]);
+    }
+  }
+
   tf::cut::component_labels<Index> ag;
   ag.build(fr, forms_range, tf::make_range(pairs), tf::make_range(dead),
-           static_cast<Index>(ig.points().size() + rt.extra_points.size()));
+           n_created);
 
   REQUIRE(ag.n_components() == Index(2));
   CHECK(ag.coplanar_pairs().size() == 0);
