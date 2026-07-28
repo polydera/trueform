@@ -28,16 +28,20 @@ auto register_topology_make_cdt(nanobind::module_ &m) -> void {
         arg("points"));
 
   m.def("make_cdt_float_edges", &make_cdt_edges_impl<float>, arg("points"),
-        arg("edges"), arg("edge_mask").none() = nanobind::none());
+        arg("edges"), arg("edge_mask").none() = nanobind::none(),
+        arg("split_constraints") = true);
   m.def("make_cdt_double_edges", &make_cdt_edges_impl<double>, arg("points"),
-        arg("edges"), arg("edge_mask").none() = nanobind::none());
+        arg("edges"), arg("edge_mask").none() = nanobind::none(),
+        arg("split_constraints") = true);
 
   m.def("make_cdt_float_edges_with_maps",
         &make_cdt_edges_with_maps_impl<float>, arg("points"), arg("edges"),
-        arg("edge_mask").none() = nanobind::none());
+        arg("edge_mask").none() = nanobind::none(),
+        arg("split_constraints") = true);
   m.def("make_cdt_double_edges_with_maps",
         &make_cdt_edges_with_maps_impl<double>, arg("points"), arg("edges"),
-        arg("edge_mask").none() = nanobind::none());
+        arg("edge_mask").none() = nanobind::none(),
+        arg("split_constraints") = true);
 }
 
 } // namespace tf::py

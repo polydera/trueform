@@ -54,7 +54,8 @@ auto make_cdt_edges_impl(
         edges,
     std::optional<nanobind::ndarray<nanobind::numpy, const bool,
                                     nanobind::shape<-1>>>
-        edge_mask) {
+        edge_mask,
+    bool split_constraints) {
   auto pts_range =
       tf::make_points<2>(tf::make_range(points.data(), points.shape(0) * 2));
   auto edges_range = tf::make_edges(tf::make_blocked_range<2>(
@@ -62,9 +63,11 @@ auto make_cdt_edges_impl(
 
   if (edge_mask) {
     auto mask_range = tf::make_range(edge_mask->data(), edges.shape(0));
-    return make_numpy_array(tf::make_cdt(pts_range, edges_range, mask_range));
+    return make_numpy_array(
+        tf::make_cdt(pts_range, edges_range, mask_range, split_constraints));
   }
-  return make_numpy_array(tf::make_cdt(pts_range, edges_range));
+  return make_numpy_array(
+      tf::make_cdt(pts_range, edges_range, split_constraints));
 }
 
 template <typename Coord>
@@ -75,7 +78,8 @@ auto make_cdt_edges_with_maps_impl(
         edges,
     std::optional<nanobind::ndarray<nanobind::numpy, const bool,
                                     nanobind::shape<-1>>>
-        edge_mask) {
+        edge_mask,
+    bool split_constraints) {
   auto pts_range =
       tf::make_points<2>(tf::make_range(points.data(), points.shape(0) * 2));
   auto edges_range = tf::make_edges(tf::make_blocked_range<2>(
@@ -84,12 +88,12 @@ auto make_cdt_edges_with_maps_impl(
   if (edge_mask) {
     auto mask_range = tf::make_range(edge_mask->data(), edges.shape(0));
     auto [polys, im] = tf::make_cdt(pts_range, edges_range, mask_range,
-                                    tf::return_index_map);
+                                    tf::return_index_map, split_constraints);
     return nanobind::make_tuple(make_numpy_array(std::move(polys)),
                                 make_numpy_array(std::move(im)));
   }
-  auto [polys, im] =
-      tf::make_cdt(pts_range, edges_range, tf::return_index_map);
+  auto [polys, im] = tf::make_cdt(pts_range, edges_range, tf::return_index_map,
+                                  split_constraints);
   return nanobind::make_tuple(make_numpy_array(std::move(polys)),
                               make_numpy_array(std::move(im)));
 }

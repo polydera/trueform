@@ -17,6 +17,7 @@ def cdt(
     edges: Optional[np.ndarray] = None,
     *,
     edge_mask: Optional[np.ndarray] = None,
+    split_constraints: bool = True,
     return_index_map: bool = False,
 ):
     """
@@ -26,6 +27,11 @@ def cdt(
     With `edges`, recovers each constraint as an edge of the output;
     intersecting constraints (VV / VE / EE) are split automatically and
     intersection vertices are added to the output points.
+
+    Pass `split_constraints=False` to demand the constraints verbatim.
+    The triangulation then refuses to create a point where two of them
+    cross and returns an empty result — that emptiness is the answer to
+    "do these constraints cross", not an error.
 
     Parameters
     ----------
@@ -39,6 +45,11 @@ def cdt(
         wall (parity flips when crossed during interior extraction);
         `False` marks it as preserved-but-not-boundary. Defaults to all
         `True` when omitted.
+    split_constraints : bool, optional, keyword-only
+        `True` (default) resolves a crossing between two constraints by
+        adding an output point there. `False` keeps every constraint
+        whole and returns empty `faces` and `points` if any two cross.
+        Requires `edges`.
     return_index_map : bool, optional, keyword-only
         If `True`, also returns the input-to-output point index map.
 
@@ -73,6 +84,8 @@ def cdt(
     if edges is None:
         if edge_mask is not None:
             raise ValueError("edge_mask requires edges to be provided")
+        if not split_constraints:
+            raise ValueError("split_constraints requires edges to be provided")
         if return_index_map:
             return getattr(_trueform.topology, f"make_cdt_{suffix}_with_maps")(points)
         return getattr(_trueform.topology, f"make_cdt_{suffix}")(points)
@@ -101,4 +114,4 @@ def cdt(
         func = getattr(_trueform.topology, f"make_cdt_{suffix}_edges_with_maps")
     else:
         func = getattr(_trueform.topology, f"make_cdt_{suffix}_edges")
-    return func(points, edges, edge_mask)
+    return func(points, edges, edge_mask, split_constraints)

@@ -118,6 +118,87 @@ def test_cdt_with_edges_and_index_map(dtype):
 
 
 # ==============================================================================
+# split_constraints
+# ==============================================================================
+
+def _crossing_constraints(dtype):
+    """Unit square corners; the two diagonals cross at the centre."""
+    points = np.array(
+        [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]], dtype=dtype
+    )
+    edges = np.array([[0, 2], [1, 3]], dtype=np.int32)
+    return points, edges
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_cdt_split_constraints_creates_crossing_vertex(dtype):
+    """Default split_constraints resolves the crossing by adding a point."""
+    points, edges = _crossing_constraints(dtype)
+
+    faces, out_points = tf.cdt(points, edges)
+
+    assert faces.shape[0] > 0
+    assert out_points.shape[0] > points.shape[0]
+    for corner in points:
+        assert np.any(np.all(np.isclose(out_points, corner), axis=1))
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_cdt_split_constraints_false_refuses_crossing(dtype):
+    """split_constraints=False refuses the crossing: the empty result is the
+    answer, not an error. Both faces and points come back empty."""
+    points, edges = _crossing_constraints(dtype)
+
+    faces, out_points = tf.cdt(points, edges, split_constraints=False)
+
+    assert faces.shape[0] == 0
+    assert out_points.shape[0] == 0
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_cdt_split_constraints_false_matches_default_without_crossings(dtype):
+    """Non-crossing constraints are unaffected by the flag."""
+    points, edges = _circle_outline(n_boundary=16, dtype=dtype, n_steiner=32)
+
+    faces, out_points = tf.cdt(points, edges, split_constraints=False)
+    ref_faces, ref_points = tf.cdt(points, edges)
+
+    assert faces.shape[0] > 0
+    assert np.array_equal(faces, ref_faces)
+    assert np.array_equal(out_points, ref_points)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_cdt_split_constraints_with_index_map(dtype):
+    """return_index_map accepts split_constraints and refuses the same way."""
+    points, edges = _crossing_constraints(dtype)
+
+    (faces, out_points), (f, kept_ids) = tf.cdt(
+        points, edges, split_constraints=False, return_index_map=True
+    )
+
+    assert faces.shape[0] == 0
+    assert out_points.shape[0] == 0
+    assert kept_ids.shape == (out_points.shape[0],)
+
+    (ok_faces, _), _ = tf.cdt(points, edges, return_index_map=True)
+    assert ok_faces.shape[0] > 0
+    assert f.shape == (points.shape[0],)
+
+
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_cdt_split_constraints_with_edge_mask(dtype):
+    """The flag threads through the explicit edge_mask overload too."""
+    points, edges = _crossing_constraints(dtype)
+    edge_mask = np.ones(edges.shape[0], dtype=bool)
+
+    faces, _ = tf.cdt(
+        points, edges, edge_mask=edge_mask, split_constraints=False
+    )
+    assert faces.shape[0] == 0
+
+
+# ==============================================================================
 # Error handling
 # ==============================================================================
 
@@ -137,6 +218,12 @@ def test_cdt_edge_mask_requires_edges():
     points = np.zeros((10, 2), dtype=np.float32)
     with pytest.raises(ValueError):
         tf.cdt(points, edge_mask=np.zeros(0, dtype=bool))
+
+
+def test_cdt_split_constraints_requires_edges():
+    points = np.zeros((10, 2), dtype=np.float32)
+    with pytest.raises(ValueError):
+        tf.cdt(points, split_constraints=False)
 
 
 def test_cdt_edge_mask_length_mismatch():
