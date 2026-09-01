@@ -4,11 +4,11 @@ Consolidate benchmark results by merging per-library CSV files into unified per-
 and optionally export to JSON for the documentation charts.
 
 Example:
-    results/cut/boolean-tf.csv
-    results/cut/boolean-cgal.csv
-    results/cut/boolean-igl.csv
+    results/arrangement/boolean-tf.csv
+    results/arrangement/boolean-cgal.csv
+    results/arrangement/boolean-igl.csv
 
-    -> results/cut/consolidated-boolean.csv (with 'library' column: tf, cgal, igl)
+    -> results/arrangement/consolidated-boolean.csv (with 'library' column: tf, cgal, igl)
     -> docs/benchmarks/boolean.json (pivoted wide format for charts)
 
 Consolidated files are prefixed with 'consolidated-' and are skipped in subsequent runs.
@@ -64,7 +64,7 @@ def consolidate_module(module_dir: Path, remove_originals: bool = False) -> int:
     Consolidate all CSV files in a module directory.
 
     Args:
-        module_dir: Path to module directory (e.g., results/cut/)
+        module_dir: Path to module directory (e.g., results/arrangement/)
         remove_originals: If True, remove individual library CSV files after consolidation
 
     Returns:
@@ -142,7 +142,6 @@ def consolidate_module(module_dir: Path, remove_originals: bool = False) -> int:
 JSON_OUTPUT_NAMES = {
     "boolean": "boolean",
     "embedded_isocurves": "embedded_isocurves",
-    "embedded_self_intersection_curves": "self_intersection",
     "isocontours": "isocontours",
     "mesh_mesh_curves": "mesh_mesh_curves",
     "connected_components": "connected_components",

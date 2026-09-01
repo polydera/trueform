@@ -337,8 +337,8 @@ add_subdirectory(topology EXCLUDE_FROM_ALL)
 message(STATUS "  - intersect")
 add_subdirectory(intersect EXCLUDE_FROM_ALL)
 
-message(STATUS "  - cut")
-add_subdirectory(cut EXCLUDE_FROM_ALL)
+message(STATUS "  - arrangement")
+add_subdirectory(arrangement EXCLUDE_FROM_ALL)
 
 message(STATUS "  - geometry")
 add_subdirectory(geometry EXCLUDE_FROM_ALL)
@@ -357,16 +357,14 @@ message(STATUS "Creating unified benchmark runner: run-benchmarks")
 
 set(ALL_BENCHMARK_IMPLS
     # Cut module
-    cut-boolean-tf-impl
-    cut-boolean-cgal-impl
-    cut-boolean-igl-impl
-    cut-boolean-geogram-impl
-    cut-embedded_self_intersection_curves-tf-impl
-    cut-embedded_self_intersection_curves-igl-impl
-    cut-polygon_arrangements-tf-impl
-    cut-polygon_arrangements-cgal-impl
-    cut-polygon_arrangements-igl-impl
-    cut-embedded_isocurves-tf-impl
+    arrangement-boolean-tf-impl
+    arrangement-boolean-cgal-impl
+    arrangement-boolean-igl-impl
+    arrangement-boolean-geogram-impl
+    arrangement-polygon_arrangements-tf-impl
+    arrangement-polygon_arrangements-cgal-impl
+    arrangement-polygon_arrangements-igl-impl
+    arrangement-embedded_isocurves-tf-impl
 
     # Topology module
     topology-connected_components-cgal-impl
@@ -422,7 +420,7 @@ set(ALL_BENCHMARK_IMPLS
 
 if(HAVE_VTK)
     list(APPEND ALL_BENCHMARK_IMPLS
-        cut-embedded_isocurves-vtk-impl
+        arrangement-embedded_isocurves-vtk-impl
         topology-connected_components-vtk-impl
         topology-boundary_paths-vtk-impl
         intersect-mesh_mesh_curves-vtk-impl
@@ -474,16 +472,14 @@ set(BENCHMARK_TARGETS
     intersect-mesh_mesh_curves-cgal
     intersect-isocontours-tf
     intersect-isocontours-igl
-    cut-boolean-tf
-    cut-boolean-cgal
-    cut-boolean-igl
-    cut-boolean-geogram
-    cut-embedded_self_intersection_curves-tf
-    cut-embedded_self_intersection_curves-igl
-    cut-polygon_arrangements-tf
-    cut-polygon_arrangements-cgal
-    cut-polygon_arrangements-igl
-    cut-embedded_isocurves-tf
+    arrangement-boolean-tf
+    arrangement-boolean-cgal
+    arrangement-boolean-igl
+    arrangement-boolean-geogram
+    arrangement-polygon_arrangements-tf
+    arrangement-polygon_arrangements-cgal
+    arrangement-polygon_arrangements-igl
+    arrangement-embedded_isocurves-tf
     geometry-principal_curvatures-tf
     geometry-principal_curvatures-igl
     geometry-point_normals-tf
@@ -505,7 +501,7 @@ if(HAVE_VTK)
         topology-boundary_paths-vtk
         intersect-mesh_mesh_curves-vtk
         intersect-isocontours-vtk
-        cut-embedded_isocurves-vtk
+        arrangement-embedded_isocurves-vtk
         geometry-point_normals-vtk
         geometry-icp_registration-vtk
         io-read_stl-vtk
@@ -526,9 +522,8 @@ if(OpenMP_CXX_FOUND)
         topology-connected_components-igl
         topology-boundary_paths-igl
         intersect-isocontours-igl
-        cut-boolean-igl
-        cut-embedded_self_intersection_curves-igl
-        cut-polygon_arrangements-igl
+        arrangement-boolean-igl
+        arrangement-polygon_arrangements-igl
         geometry-principal_curvatures-igl
         geometry-point_normals-igl
         geometry-icp_registration-igl

@@ -16,17 +16,15 @@
 
 // Include all benchmark headers
 // Cut module
-#include "cut/boolean-cgal.hpp"
-#include "cut/boolean-igl.hpp"
-#include "cut/boolean-tf.hpp"
-#include "cut/embedded_isocurves-tf.hpp"
-#include "cut/embedded_self_intersection_curves-igl.hpp"
-#include "cut/embedded_self_intersection_curves-tf.hpp"
-#include "cut/polygon_arrangements-cgal.hpp"
-#include "cut/polygon_arrangements-igl.hpp"
-#include "cut/polygon_arrangements-tf.hpp"
+#include "arrangement/boolean-cgal.hpp"
+#include "arrangement/boolean-igl.hpp"
+#include "arrangement/boolean-tf.hpp"
+#include "arrangement/embedded_isocurves-tf.hpp"
+#include "arrangement/polygon_arrangements-cgal.hpp"
+#include "arrangement/polygon_arrangements-igl.hpp"
+#include "arrangement/polygon_arrangements-tf.hpp"
 #ifdef HAVE_VTK
-#include "cut/embedded_isocurves-vtk.hpp"
+#include "arrangement/embedded_isocurves-vtk.hpp"
 #endif
 
 // Topology module
@@ -141,19 +139,15 @@ int main(int argc, char *argv[]) {
   // Register all benchmarks
   std::vector<benchmark_info> benchmarks = {
       // Benchmarks to re-run (exact kernel + new polygon arrangements)
-      {"cut-boolean-tf", benchmark::run_boolean_tf_benchmark, 10},
-      {"cut-boolean-cgal", benchmark::run_boolean_cgal_benchmark, 10},
-      {"cut-boolean-igl", benchmark::run_boolean_igl_benchmark, 10},
-      {"cut-polygon_arrangements-tf",
+      {"arrangement-boolean-tf", benchmark::run_boolean_tf_benchmark, 10},
+      {"arrangement-boolean-cgal", benchmark::run_boolean_cgal_benchmark, 10},
+      {"arrangement-boolean-igl", benchmark::run_boolean_igl_benchmark, 10},
+      {"arrangement-polygon_arrangements-tf",
        benchmark::run_polygon_arrangements_tf_benchmark, 10},
-      {"cut-polygon_arrangements-cgal",
+      {"arrangement-polygon_arrangements-cgal",
        benchmark::run_polygon_arrangements_cgal_benchmark, 10},
-      {"cut-polygon_arrangements-igl",
+      {"arrangement-polygon_arrangements-igl",
        benchmark::run_polygon_arrangements_igl_benchmark, 10},
-      // {"cut-embedded_self_intersection_curves-tf",
-      //  benchmark::run_embedded_self_intersection_curves_tf_benchmark, 10},
-      // {"cut-embedded_self_intersection_curves-igl",
-      //  benchmark::run_embedded_self_intersection_curves_igl_benchmark, 10},
       {"intersect-mesh_mesh_curves-tf",
        benchmark::run_mesh_mesh_curves_tf_benchmark, 10},
       {"intersect-mesh_mesh_curves-cgal",
@@ -161,10 +155,10 @@ int main(int argc, char *argv[]) {
 
       // Commented out — no changes, skip for now
       /*
-      {"cut-embedded_isocurves-tf",
+      {"arrangement-embedded_isocurves-tf",
        benchmark::run_embedded_isocurves_tf_benchmark, 10},
 #ifdef HAVE_VTK
-      {"cut-embedded_isocurves-vtk",
+      {"arrangement-embedded_isocurves-vtk",
        benchmark::run_embedded_isocurves_vtk_benchmark, 10},
 #endif
       {"topology-connected_components-cgal",
