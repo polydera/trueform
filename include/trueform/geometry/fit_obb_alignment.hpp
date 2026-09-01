@@ -31,7 +31,6 @@
 namespace tf {
 
 namespace geometry {
-namespace impl {
 
 /// @brief Generate 180° rotation candidates for 2D OBB disambiguation
 template <typename T>
@@ -53,7 +52,6 @@ auto make_obb_rotations_3d(const tf::obb<T, 3> &obb)
           tf::make_rotation(tf::deg<T>(T(180)), obb.axes[2], pivot)};
 }
 
-} // namespace impl
 } // namespace geometry
 
 /// @ingroup geometry_registration
@@ -167,9 +165,9 @@ auto fit_obb_alignment(const tf::points<Policy0> &X_,
 
     auto rotations = [&]() {
       if constexpr (tf::coordinate_dims_v<Policy0> == 2) {
-        return geometry::impl::make_obb_rotations_2d(obb1);
+        return geometry::make_obb_rotations_2d(obb1);
       } else {
-        return geometry::impl::make_obb_rotations_3d(obb1);
+        return geometry::make_obb_rotations_3d(obb1);
       }
     }();
 

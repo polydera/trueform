@@ -12,15 +12,16 @@
 */
 #pragma once
 
-#include "./clean.hpp"     // IWYU pragma: export
-#include "./core.hpp"      // IWYU pragma: export
-#include "./csg.hpp"       // IWYU pragma: export
-#include "./cut.hpp"       // IWYU pragma: export
-#include "./geometry.hpp"  // IWYU pragma: export
-#include "./intersect.hpp" // IWYU pragma: export
-#include "./io.hpp"        // IWYU pragma: export
-#include "./random.hpp"    // IWYU pragma: export
-#include "./reindex.hpp"   // IWYU pragma: export
-#include "./remesh.hpp"    // IWYU pragma: export
-#include "./spatial.hpp"   // IWYU pragma: export
-#include "./topology.hpp"  // IWYU pragma: export
+#include "./arrangement.hpp" // IWYU pragma: export
+#include "./clean.hpp"       // IWYU pragma: export
+#include "./core.hpp"        // IWYU pragma: export
+#include "./csg.hpp"         // IWYU pragma: export
+#include "./geometry.hpp"    // IWYU pragma: export
+#include "./intersect.hpp"   // IWYU pragma: export
+#include "./io.hpp"          // IWYU pragma: export
+#include "./iso.hpp"         // IWYU pragma: export
+#include "./random.hpp"      // IWYU pragma: export
+#include "./reindex.hpp"     // IWYU pragma: export
+#include "./remesh.hpp"      // IWYU pragma: export
+#include "./spatial.hpp"     // IWYU pragma: export
+#include "./topology.hpp"    // IWYU pragma: export

@@ -17,7 +17,7 @@
 #include "../core/points_buffer.hpp"
 #include "../core/policy/normals.hpp"
 #include "../core/unit_vectors_buffer.hpp"
-#include "./impl/fit_rigid_alignment_point_to_plane.hpp"
+#include "./alignment/fit_rigid_alignment_point_to_plane.hpp"
 
 #include <type_traits>
 

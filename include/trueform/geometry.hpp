@@ -59,4 +59,3 @@
 #include "./geometry/make_tube_mesh.hpp"               // IWYU pragma: export
 #include "./geometry/taubin_smoothed.hpp"              // IWYU pragma: export
 #include "./geometry/triangulated.hpp"                 // IWYU pragma: export
-#include "./geometry/triangulated_faces.hpp"           // IWYU pragma: export

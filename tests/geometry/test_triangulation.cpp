@@ -3,8 +3,7 @@
  * @brief Tests for triangulation functions
  *
  * Tests for:
- * - triangulated_faces
- * - triangulated (polygon mesh)
+ * - triangulated (polygon mesh, single polygon, refused ids, index width)
  *
  * Key verification: area preservation after triangulation using tf::area
  *
@@ -15,8 +14,15 @@
 #include <catch2/catch_template_test_macros.hpp>
 #include <trueform/trueform.hpp>
 #include "type_traits.hpp"
+#include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstddef>
+#include <cstdint>
 #include <iostream>
+#include <iterator>
+#include <type_traits>
+#include <vector>
 
 namespace {
 
@@ -112,6 +118,82 @@ auto create_mixed_mesh() -> tf::polygons_buffer<Index, Real, 3, tf::dynamic_size
     result.faces_buffer().push_back({Index(0), Index(1), Index(4), Index(2)});
 
     return result;
+}
+
+/**
+ * @brief A simple unit square beside a loop whose two edges cross
+ *
+ * Face 1 walks (3,0) -> (5,0) -> (3,1) -> (4,1): the second and fourth edges
+ * cross at a point the input never named, so the face is resolved — it states
+ * the crossing, mints the identity that names it, and holds a product over it.
+ * Face 0 is untouched beside it.
+ */
+template <typename Index, typename Real>
+auto create_quad_and_self_crossing() -> tf::polygons_buffer<Index, Real, 3, 4> {
+    tf::polygons_buffer<Index, Real, 3, 4> result;
+
+    result.points_buffer().emplace_back(Real(0), Real(0), Real(0));
+    result.points_buffer().emplace_back(Real(1), Real(0), Real(0));
+    result.points_buffer().emplace_back(Real(1), Real(1), Real(0));
+    result.points_buffer().emplace_back(Real(0), Real(1), Real(0));
+
+    result.points_buffer().emplace_back(Real(3), Real(0), Real(0));
+    result.points_buffer().emplace_back(Real(5), Real(0), Real(0));
+    result.points_buffer().emplace_back(Real(3), Real(1), Real(0));
+    result.points_buffer().emplace_back(Real(4), Real(1), Real(0));
+
+    result.faces_buffer().emplace_back(Index(0), Index(1), Index(2), Index(3));
+    result.faces_buffer().emplace_back(Index(4), Index(5), Index(6), Index(7));
+
+    return result;
+}
+
+/**
+ * @brief A hexagon whose FIRST THREE corners are collinear
+ *
+ * A polygon's tagged normal is read off its first three corners, so this face
+ * was silently absent from the mesh AND from the refusal surface. The tier
+ * scans for its supporting triple, so the carrier bounds area and states the
+ * face's whole triangulation. Shoelace area: 14.
+ */
+template <typename Index, typename Real>
+auto create_collinear_leading_run() -> tf::polygons_buffer<Index, Real, 3, 6> {
+    tf::polygons_buffer<Index, Real, 3, 6> result;
+
+    result.points_buffer().emplace_back(Real(0), Real(0), Real(0));
+    result.points_buffer().emplace_back(Real(2), Real(0), Real(0));
+    result.points_buffer().emplace_back(Real(4), Real(0), Real(0));
+    result.points_buffer().emplace_back(Real(4), Real(3), Real(0));
+    result.points_buffer().emplace_back(Real(2), Real(4), Real(0));
+    result.points_buffer().emplace_back(Real(0), Real(3), Real(0));
+
+    result.faces_buffer().emplace_back(Index(0), Index(1), Index(2), Index(3),
+                                       Index(4), Index(5));
+
+    return result;
+}
+
+/// The triangles as a canonical list. The generator's aggregate order is
+/// unspecified, so the face order is not a property either call promises.
+template <typename Faces>
+auto canonical_triangles(const Faces &faces)
+    -> std::vector<std::array<std::int64_t, 3>> {
+    std::vector<std::array<std::int64_t, 3>> out;
+    for (decltype(faces.size()) f = 0; f < faces.size(); ++f)
+        out.push_back({std::int64_t(faces[f][0]), std::int64_t(faces[f][1]),
+                       std::int64_t(faces[f][2])});
+    std::sort(out.begin(), out.end());
+    return out;
+}
+
+/// How many triangles name only corners below `bound`.
+template <typename Faces, typename Index>
+auto triangles_within(const Faces &faces, Index bound) -> int {
+    int count = 0;
+    for (decltype(faces.size()) f = 0; f < faces.size(); ++f)
+        if (faces[f][0] < bound && faces[f][1] < bound && faces[f][2] < bound)
+            ++count;
+    return count;
 }
 
 } // anonymous namespace
@@ -375,10 +457,10 @@ TEMPLATE_TEST_CASE("triangulated_indices_valid", "[geometry][triangulation]",
 }
 
 // =============================================================================
-// triangulated_faces - Just Indices
+// The requested index width
 // =============================================================================
 
-TEMPLATE_TEST_CASE("triangulated_faces_only", "[geometry][triangulation]",
+TEMPLATE_TEST_CASE("triangulated_indices_within_the_point_table", "[geometry][triangulation]",
     (tf::test::type_pair<std::int32_t, float>),
     (tf::test::type_pair<std::int64_t, double>))
 {
@@ -386,20 +468,108 @@ TEMPLATE_TEST_CASE("triangulated_faces_only", "[geometry][triangulation]",
     using real_t = typename TestType::real_type;
 
     auto quads = create_two_quads<index_t, real_t>();
-    auto tri_faces = tf::triangulated_faces(quads.polygons());
+    auto tri_mesh = tf::triangulated(quads.polygons());
 
-    // 2 quads → 4 triangles
-    REQUIRE(tri_faces.size() == 4);
+    // 2 quads → 4 triangles over the input's own six points
+    REQUIRE(tri_mesh.faces().size() == 4);
+    REQUIRE(tri_mesh.points().size() == 6);
 
-    // All indices should be valid
-    for (decltype(tri_faces.size()) i = 0; i < tri_faces.size(); ++i) {
-        REQUIRE(tri_faces[i][0] >= 0);
-        REQUIRE(tri_faces[i][1] >= 0);
-        REQUIRE(tri_faces[i][2] >= 0);
-        REQUIRE(tri_faces[i][0] < index_t(6));
-        REQUIRE(tri_faces[i][1] < index_t(6));
-        REQUIRE(tri_faces[i][2] < index_t(6));
+    for (decltype(tri_mesh.faces().size()) i = 0; i < tri_mesh.faces().size(); ++i) {
+        REQUIRE(tri_mesh.faces()[i][0] >= 0);
+        REQUIRE(tri_mesh.faces()[i][1] >= 0);
+        REQUIRE(tri_mesh.faces()[i][2] >= 0);
+        REQUIRE(tri_mesh.faces()[i][0] < index_t(6));
+        REQUIRE(tri_mesh.faces()[i][1] < index_t(6));
+        REQUIRE(tri_mesh.faces()[i][2] < index_t(6));
     }
+}
+
+TEMPLATE_TEST_CASE("triangulated_honors_the_requested_index_width", "[geometry][triangulation]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto quads = create_two_quads<index_t, real_t>();
+
+    // A corner is a position in the product's own point table, so the width it
+    // is written in is the caller's choice and the corners are the same ones.
+    auto own = tf::triangulated(quads.polygons());
+    auto wide = tf::triangulated<std::int64_t>(quads.polygons());
+    auto narrow = tf::triangulated<std::int32_t>(quads.polygons());
+
+    STATIC_REQUIRE(std::is_same_v<
+        std::decay_t<decltype(wide.faces_buffer()[0][0])>, std::int64_t>);
+    STATIC_REQUIRE(std::is_same_v<
+        std::decay_t<decltype(narrow.faces_buffer()[0][0])>, std::int32_t>);
+
+    REQUIRE(canonical_triangles(wide.faces()) == canonical_triangles(own.faces()));
+    REQUIRE(canonical_triangles(narrow.faces()) == canonical_triangles(own.faces()));
+    REQUIRE(wide.points().size() == own.points().size());
+    REQUIRE(narrow.points().size() == own.points().size());
+}
+
+// =============================================================================
+// A soup — no index type of its own, and no shared identity until it is cleaned
+// =============================================================================
+
+TEMPLATE_TEST_CASE("triangulated_soup_shares_its_vertices", "[geometry][triangulation]",
+    (float),
+    (double))
+{
+    using real_t = TestType;
+
+    // Two triangles sharing the edge (0,0,0)-(1,1,0), stated as six
+    // independent corner points: a soup names one identity once per face that
+    // carries it.
+    tf::points_buffer<real_t, 3> corners;
+    corners.emplace_back(real_t(0), real_t(0), real_t(0));
+    corners.emplace_back(real_t(1), real_t(0), real_t(0));
+    corners.emplace_back(real_t(1), real_t(1), real_t(0));
+    corners.emplace_back(real_t(0), real_t(0), real_t(0));
+    corners.emplace_back(real_t(1), real_t(1), real_t(0));
+    corners.emplace_back(real_t(0), real_t(1), real_t(0));
+
+    auto soup = tf::make_polygons(tf::make_mapped_range(
+        tf::make_blocked_range<3>(corners.points()),
+        [](auto &&block) { return tf::make_polygon(block); }));
+
+    auto own = tf::triangulated(soup);
+    auto wide = tf::triangulated<std::int64_t>(soup);
+
+    // A soup carries no index type, so the default is a fixed one and any
+    // other is the caller's naming of the output.
+    STATIC_REQUIRE(std::is_same_v<
+        std::decay_t<decltype(own.faces_buffer()[0][0])>, int>);
+    STATIC_REQUIRE(std::is_same_v<
+        std::decay_t<decltype(wide.faces_buffer()[0][0])>, std::int64_t>);
+
+    // THE CLEAN RAN: six stated corners are four points, and the two triangles
+    // name the shared pair by the same ids.
+    REQUIRE(own.faces().size() == 2);
+    REQUIRE(own.points().size() == 4);
+    REQUIRE(wide.faces().size() == 2);
+    REQUIRE(wide.points().size() == 4);
+
+    std::vector<std::int64_t> first{std::int64_t(own.faces()[0][0]),
+                                    std::int64_t(own.faces()[0][1]),
+                                    std::int64_t(own.faces()[0][2])};
+    std::vector<std::int64_t> second{std::int64_t(own.faces()[1][0]),
+                                     std::int64_t(own.faces()[1][1]),
+                                     std::int64_t(own.faces()[1][2])};
+    std::sort(first.begin(), first.end());
+    std::sort(second.begin(), second.end());
+    std::vector<std::int64_t> shared;
+    std::set_intersection(first.begin(), first.end(), second.begin(),
+                          second.end(), std::back_inserter(shared));
+    REQUIRE(shared.size() == 2);
+
+    // The two widths name the same corners over the same table.
+    REQUIRE(canonical_triangles(wide.faces()) == canonical_triangles(own.faces()));
+
+    // Two half-unit-square triangles.
+    REQUIRE(std::abs(tf::area(own.polygons()) - real_t(1)) < real_t(1e-5));
 }
 
 // =============================================================================
@@ -630,4 +800,250 @@ TEMPLATE_TEST_CASE("triangulated_triangle_mesh_unchanged", "[geometry][triangula
     // Should still have 2 triangles
     REQUIRE(tri_mesh.faces().size() == 2);
     REQUIRE(tri_mesh.points().size() == 4);
+}
+
+// =============================================================================
+// Closed Loop - A repeated closing vertex names the same loop
+// =============================================================================
+
+namespace {
+
+// L-shaped hexagon: no cyclic symmetry, so a loop read one vertex out of
+// phase triangulates into overlapping and inverted triangles.
+template <typename Real>
+auto l_hexagon_coordinates() -> std::array<std::array<Real, 2>, 6> {
+    return {std::array<Real, 2>{Real(0), Real(0)},
+            std::array<Real, 2>{Real(4), Real(0)},
+            std::array<Real, 2>{Real(4), Real(1)},
+            std::array<Real, 2>{Real(2), Real(1)},
+            std::array<Real, 2>{Real(2), Real(3)},
+            std::array<Real, 2>{Real(0), Real(3)}};
+}
+
+template <typename Mesh, typename Real>
+auto signed_triangle_area_sum(const Mesh &mesh) -> Real {
+    Real total = Real(0);
+    for (std::size_t f = 0; f < mesh.faces().size(); ++f) {
+        auto face = mesh.faces()[f];
+        auto p0 = mesh.points()[std::size_t(face[0])];
+        auto p1 = mesh.points()[std::size_t(face[1])];
+        auto p2 = mesh.points()[std::size_t(face[2])];
+        total += Real(0.5) * ((p1[0] - p0[0]) * (p2[1] - p0[1]) -
+                              (p2[0] - p0[0]) * (p1[1] - p0[1]));
+    }
+    return total;
+}
+
+} // namespace
+
+TEMPLATE_TEST_CASE("triangulated_closed_loop_matches_open_loop", "[geometry][triangulation]",
+    (float),
+    (double))
+{
+    using real_t = TestType;
+
+    auto coordinates = l_hexagon_coordinates<real_t>();
+
+    tf::points_buffer<real_t, 2> open_points;
+    for (const auto &c : coordinates)
+        open_points.emplace_back(c[0], c[1]);
+
+    tf::points_buffer<real_t, 2> closed_points;
+    for (const auto &c : coordinates)
+        closed_points.emplace_back(c[0], c[1]);
+    closed_points.emplace_back(coordinates[0][0], coordinates[0][1]);
+
+    auto open_mesh = tf::triangulated(tf::make_polygon(open_points));
+    auto closed_mesh = tf::triangulated(tf::make_polygon(closed_points));
+
+    // 6-gon -> 4 triangles either way
+    REQUIRE(open_mesh.faces().size() == 4);
+    REQUIRE(closed_mesh.faces().size() == 4);
+
+    // The repeated closing vertex names the same loop, so it must name the
+    // same triangles.
+    for (std::size_t f = 0; f < open_mesh.faces().size(); ++f)
+        for (int c = 0; c < 3; ++c)
+            REQUIRE(open_mesh.faces()[f][std::size_t(c)] ==
+                    closed_mesh.faces()[f][std::size_t(c)]);
+
+    // Every triangle carries the loop's winding, and they tile it exactly.
+    for (std::size_t f = 0; f < closed_mesh.faces().size(); ++f) {
+        auto face = closed_mesh.faces()[f];
+        auto p0 = closed_mesh.points()[std::size_t(face[0])];
+        auto p1 = closed_mesh.points()[std::size_t(face[1])];
+        auto p2 = closed_mesh.points()[std::size_t(face[2])];
+        REQUIRE(((p1[0] - p0[0]) * (p2[1] - p0[1]) -
+                 (p2[0] - p0[0]) * (p1[1] - p0[1])) > real_t(0));
+    }
+    REQUIRE(std::abs(signed_triangle_area_sum<decltype(closed_mesh), real_t>(
+                         closed_mesh) -
+                     real_t(8)) < real_t(1e-4));
+}
+
+// =============================================================================
+// return_refused - the surface names whose emptiness it was
+// =============================================================================
+
+TEMPLATE_TEST_CASE("triangulated_refused_empty_on_clean_input", "[geometry][triangulation]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto mesh = create_mixed_mesh<index_t, real_t>();
+
+    auto plain = tf::triangulated(mesh.polygons());
+    auto [tagged, refused] = tf::triangulated(mesh.polygons(), tf::return_refused);
+
+    REQUIRE(refused.size() == 0);
+    REQUIRE(tagged.faces().size() == plain.faces().size());
+    REQUIRE(canonical_triangles(tagged.faces()) ==
+            canonical_triangles(plain.faces()));
+
+    REQUIRE(tagged.points().size() == plain.points().size());
+    for (std::size_t i = 0; i < std::size_t(plain.points().size()); ++i)
+        for (std::size_t d = 0; d < 3; ++d)
+            REQUIRE(tagged.points()[i][d] == plain.points()[i][d]);
+}
+
+TEMPLATE_TEST_CASE("triangulated_resolves_the_self_crossing_face", "[geometry][triangulation]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto mesh = create_quad_and_self_crossing<index_t, real_t>();
+
+    auto plain = tf::triangulated(mesh.polygons());
+    auto [tagged, refused] = tf::triangulated(mesh.polygons(), tf::return_refused);
+
+    // A crossing loop is resolved, not dropped: nobody refuses.
+    REQUIRE(refused.size() == 0);
+
+    // The crossing stands on a point the input never named, so the face mints
+    // the identity that names it and holds a product over it.
+    REQUIRE(tagged.points().size() > mesh.points().size());
+    REQUIRE(tagged.faces().size() > 2);
+
+    // The tagged call emits exactly what the untagged one does.
+    REQUIRE(canonical_triangles(tagged.faces()) ==
+            canonical_triangles(plain.faces()));
+
+    // The simple quad beside it is untouched: its own two triangles over its
+    // own four corners, and nothing else names them alone.
+    REQUIRE(triangles_within(tagged.faces(), index_t(4)) == 2);
+}
+
+TEMPLATE_TEST_CASE("triangulated_resolves_2d", "[geometry][triangulation]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    tf::polygons_buffer<index_t, real_t, 2, 4> mesh;
+    mesh.points_buffer().emplace_back(real_t(0), real_t(0));
+    mesh.points_buffer().emplace_back(real_t(1), real_t(0));
+    mesh.points_buffer().emplace_back(real_t(1), real_t(1));
+    mesh.points_buffer().emplace_back(real_t(0), real_t(1));
+    mesh.points_buffer().emplace_back(real_t(3), real_t(0));
+    mesh.points_buffer().emplace_back(real_t(5), real_t(0));
+    mesh.points_buffer().emplace_back(real_t(3), real_t(1));
+    mesh.points_buffer().emplace_back(real_t(4), real_t(1));
+    mesh.faces_buffer().emplace_back(index_t(0), index_t(1), index_t(2), index_t(3));
+    mesh.faces_buffer().emplace_back(index_t(4), index_t(5), index_t(6), index_t(7));
+
+    auto plain = tf::triangulated(mesh.polygons());
+    auto [tagged, refused] = tf::triangulated(mesh.polygons(), tf::return_refused);
+
+    REQUIRE(refused.size() == 0);
+    REQUIRE(tagged.faces().size() > 2);
+    REQUIRE(tagged.points().size() > mesh.points().size());
+    REQUIRE(triangles_within(tagged.faces(), index_t(4)) == 2);
+    REQUIRE(canonical_triangles(tagged.faces()) ==
+            canonical_triangles(plain.faces()));
+}
+
+// =============================================================================
+// A collinear leading run — the face the float projector could not see
+// =============================================================================
+
+TEMPLATE_TEST_CASE("triangulated_collinear_leading_run", "[geometry][triangulation]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto mesh = create_collinear_leading_run<index_t, real_t>();
+
+    auto plain = tf::triangulated(mesh.polygons());
+    auto [tagged, refused] = tf::triangulated(mesh.polygons(), tf::return_refused);
+
+    // The face is neither absent nor refused: the frame is the one the
+    // carrier's own supporting triple gives it, so the carrier bounds area.
+    REQUIRE(refused.size() == 0);
+    REQUIRE(plain.faces().size() == 4);
+    REQUIRE(canonical_triangles(tagged.faces()) ==
+            canonical_triangles(plain.faces()));
+
+    // It needs no resolution, so it names the input's own points and nothing
+    // else, and its triangles tile exactly the area it bounds.
+    REQUIRE(plain.points().size() == mesh.points().size());
+    REQUIRE(triangles_within(plain.faces(), index_t(6)) == 4);
+    REQUIRE(std::abs(tf::area(plain.polygons()) - real_t(14)) < real_t(1e-4));
+}
+
+TEMPLATE_TEST_CASE("triangulated_refused_empty_on_two_quads", "[geometry][triangulation]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto quads = create_two_quads<index_t, real_t>();
+
+    auto plain = tf::triangulated(quads.polygons());
+    auto [tagged, refused] = tf::triangulated(quads.polygons(), tf::return_refused);
+
+    REQUIRE(refused.size() == 0);
+    REQUIRE(tagged.faces().size() == 4);
+    REQUIRE(tagged.points().size() == quads.points().size());
+    REQUIRE(canonical_triangles(tagged.faces()) ==
+            canonical_triangles(plain.faces()));
+}
+
+// =============================================================================
+// Shared Edges - Neighbouring faces triangulate watertight
+// =============================================================================
+
+TEMPLATE_TEST_CASE("triangulated_shared_edge_watertight", "[geometry][triangulation]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto quads = create_two_quads<index_t, real_t>();
+    auto tri_mesh = tf::triangulated(quads.polygons());
+
+    // The triangulation names no point the input did not carry.
+    REQUIRE(tri_mesh.points().size() == quads.points().size());
+
+    // The edge the two quads share is used once from each side.
+    int shared_uses = 0;
+    for (std::size_t f = 0; f < tri_mesh.faces().size(); ++f) {
+        auto face = tri_mesh.faces()[f];
+        for (int e = 0; e < 3; ++e) {
+            auto u = face[std::size_t(e)];
+            auto v = face[std::size_t((e + 1) % 3)];
+            if ((u == index_t(1) && v == index_t(2)) ||
+                (u == index_t(2) && v == index_t(1)))
+                ++shared_uses;
+        }
+    }
+    REQUIRE(shared_uses == 2);
 }

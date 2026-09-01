@@ -13,8 +13,8 @@
 #pragma once
 
 #include "../core/policy/normals.hpp"
-#include "./impl/fit_knn_alignment_point_to_plane.hpp"
-#include "./impl/fit_knn_alignment_point_to_point.hpp"
+#include "./alignment/fit_knn_alignment_point_to_plane.hpp"
+#include "./alignment/fit_knn_alignment_point_to_point.hpp"
 #include "./knn_alignment_config.hpp"
 #include "./knn_alignment_state.hpp"
 

@@ -13,8 +13,8 @@
 #pragma once
 
 #include "../core/policy/normals.hpp"
-#include "./impl/fit_rigid_alignment_point_to_plane.hpp"
-#include "./impl/fit_rigid_alignment_point_to_point.hpp"
+#include "./alignment/fit_rigid_alignment_point_to_plane.hpp"
+#include "./alignment/fit_rigid_alignment_point_to_point.hpp"
 
 namespace tf {
 
