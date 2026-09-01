@@ -27,7 +27,7 @@
     "@takumi-rs/wasm": "^2.13.4",
     "@unovis/ts": "^1.6.7",
     "@unovis/vue": "^1.6.7",
-    "better-sqlite3": "^12.11.1",
+    "better-sqlite3": "^13.0.3",
     "fast-glob": "^3.3.3",
     "katex": "^0.18.5",
     "nuxt": "^4.5.2",
@@ -42,7 +42,7 @@
     "@shikijs/engine-oniguruma": "4.4.3",
     "@types/three": "^0.185.4",
     "eslint": "^10.9.1",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vue-tsc": "^3.3.11",
     "wrangler": "^4.128.0"
   },
