@@ -60,18 +60,6 @@ def test_outer_shell_two_spheres(index_dtype, real_dtype):
 
 @pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
-def test_outer_shell_ignore_open_fragments(index_dtype, real_dtype):
-    soup = _two_spheres_soup(index_dtype, real_dtype)
-    reference = tf.signed_volume(tf.outer_shell(soup))
-    shell = tf.outer_shell(soup, ignore_open_fragments=True)
-
-    _assert_closed(shell.faces)
-    volume = tf.signed_volume(shell)
-    assert volume == pytest.approx(reference, rel=1e-4)
-
-
-@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
-@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
 def test_outer_shell_dynamic(index_dtype, real_dtype):
     soup = _two_spheres_soup(index_dtype, real_dtype, mesh_type="dynamic")
     shell = tf.outer_shell(soup)

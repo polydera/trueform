@@ -17,16 +17,14 @@ namespace tf::py {
 
 auto register_outer_shell_int3double3d(nanobind::module_ &m) -> void {
   m.def("outer_shell_int3double3d",
-        [](mesh_wrapper<int, double, 3, 3> &mesh, int domain_flags) {
-          return outer_shell(mesh, domain_flags);
-        },
-        nanobind::arg("mesh"), nanobind::arg("domain_flags") = 0);
+        [](mesh_wrapper<int, double, 3, 3> &mesh) { return outer_shell(mesh); },
+        nanobind::arg("mesh"));
 
   m.def("outer_shell_intdyndouble3d",
-        [](mesh_wrapper<int, double, dynamic_size, 3> &mesh, int domain_flags) {
-          return outer_shell(mesh, domain_flags);
+        [](mesh_wrapper<int, double, dynamic_size, 3> &mesh) {
+          return outer_shell(mesh);
         },
-        nanobind::arg("mesh"), nanobind::arg("domain_flags") = 0);
+        nanobind::arg("mesh"));
 }
 
 } // namespace tf::py

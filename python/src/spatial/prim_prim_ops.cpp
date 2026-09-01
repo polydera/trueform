@@ -226,8 +226,6 @@ auto register_prim_prim_ops_impl(nanobind::module_ &m, const char *suffix)
         tf::buffer<RealT> ts;
         ts.allocate(n);
         auto *t_dst = ts.data();
-        constexpr auto nan = std::numeric_limits<RealT>::quiet_NaN();
-
         auto compute = [&](int i) {
           auto ray_ptr = ray_pw.element_ptr(i);
           auto pts =
@@ -239,7 +237,8 @@ auto register_prim_prim_ops_impl(nanobind::module_ &m, const char *suffix)
                 auto r = tf::ray_cast(
                     ray, t_view,
                     tf::ray_config<RealT>{min_ts[i], max_ts[i]});
-                t_dst[i] = r ? static_cast<RealT>(r.t) : nan;
+                t_dst[i] = r ? static_cast<RealT>(r.t)
+                             : std::numeric_limits<RealT>::quiet_NaN();
               },
               target, i);
         };

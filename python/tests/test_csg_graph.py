@@ -317,6 +317,180 @@ def test_every_return_path():
         graph.domains(e, return_source_ids=True, return_index_map=True)
 
 
+# ==============================================================================
+# Surface selection
+# ==============================================================================
+
+def n_boundary_edges(faces):
+    edges = {}
+    for tri in np.asarray(faces):
+        for e in range(3):
+            u, v = int(tri[e]), int(tri[(e + 1) % 3])
+            key = (min(u, v), max(u, v))
+            edges[key] = edges.get(key, 0) + 1
+    return sum(1 for c in edges.values() if c == 1)
+
+
+def test_selection_standalone_is_embedded_read():
+    a = make_box((0, 0, 0))
+    b = make_box((0.4, 0.3, 0.2))
+    graph = tf.CsgGraph([a, b])
+
+    fa, pa = graph.mesh(selection=[0])
+    assert is_closed(fa)
+    assert abs(abs(signed_volume(fa, pa)) - 1.0) < 1e-5
+    # cut by B, so more faces than the input box
+    assert len(fa) > len(a.faces)
+
+    fb, pb = graph.mesh(selection=[1])
+    assert is_closed(fb)
+    assert abs(abs(signed_volume(fb, pb)) - 1.0) < 1e-5
+
+    # both surfaces = the full arrangement mesh, face for face
+    fboth, _ = graph.mesh(selection=[0, 1])
+    ffull, _ = graph.mesh()
+    assert len(fboth) == len(ffull)
+
+    # a surface read has an index-map form; nothing at all still has none
+    (fm, pm), imap = graph.mesh(selection=[0], return_index_map=True)
+    assert len(fm) == len(fa)
+    assert set(imap.face_tag_labels.tolist()) == {0}
+    with pytest.raises(RuntimeError):
+        graph.mesh(return_index_map=True)
+
+
+def test_selection_partitions_boolean_result():
+    a = make_box((0, 0, 0))
+    b = make_box((0.4, 0.3, 0.2))
+    graph = tf.CsgGraph([a, b])
+    e = tf.op(0) - tf.op(1)
+
+    full, full_points = graph.mesh(e)
+    assert is_closed(full)
+    part_a, _ = graph.mesh(e, selection=[0])
+    part_b, _ = graph.mesh(e, selection=[1])
+    # the parts partition the unrestricted result's faces...
+    assert len(part_a) + len(part_b) == len(full)
+    # ...and are individually open along the provenance seam
+    assert n_boundary_edges(part_a) > 0
+    assert n_boundary_edges(part_b) > 0
+
+    # restricting to every operand is no restriction at all
+    both, both_points = graph.mesh(e, selection=[0, 1])
+    assert len(both) == len(full)
+    assert abs(signed_volume(both, both_points) -
+               signed_volume(full, full_points)) < 1e-5
+
+    # the provenance-carrying return paths carry the restriction too
+    (lf, lp), tags, face_labels = graph.mesh(e, selection=[0],
+                                             return_source_ids=True)
+    assert len(lf) == len(part_a)
+    assert set(tags.tolist()) == {0}
+    assert len(face_labels) == len(lf)
+    (mf, mp), imap = graph.mesh(e, selection=[1], return_index_map=True)
+    assert len(mf) == len(part_b)
+    assert set(imap.face_tag_labels.tolist()) == {1}
+
+
+def test_selection_partitions_domain_walls():
+    a = make_box((0, 0, 0))
+    b = make_box((0.4, 0.3, 0.2))
+    graph = tf.CsgGraph([a, b])
+    e = tf.op(0) - tf.op(1)
+
+    cells, ids = graph.domains(e)
+    cells_a, ids_a = graph.domains(e, selection=[0])
+    cells_b, ids_b = graph.domains(e, selection=[1])
+    assert len(cells) == len(cells_a) == len(cells_b) == 1
+    # the kept domains are unchanged; only whose walls are emitted
+    assert np.array_equal(np.asarray(ids), np.asarray(ids_a))
+    assert np.array_equal(np.asarray(ids), np.asarray(ids_b))
+    assert len(cells_a[0][0]) + len(cells_b[0][0]) == len(cells[0][0])
+    assert n_boundary_edges(cells_a[0][0]) > 0
+    assert n_boundary_edges(cells_b[0][0]) > 0
+
+    # every kept domain, only operand 0's walls
+    all_a, all_ids_a = graph.domains(selection=[0])
+    all_cells, all_ids = graph.domains()
+    assert np.array_equal(np.asarray(all_ids), np.asarray(all_ids_a))
+    assert sum(len(f) for f, _ in all_a) < sum(len(f) for f, _ in all_cells)
+
+    # provenance blocks and index maps follow the restriction
+    _, _, tag_blocks, _ = graph.domains(e, selection=[0],
+                                        return_source_ids=True)
+    assert set(np.asarray(tag_blocks[0]).tolist()) == {0}
+    cells_m, _, dmap = graph.domains(e, selection=[1], return_index_map=True)
+    assert len(cells_m[0][0]) == len(cells_b[0][0])
+    assert set(np.asarray(dmap.face_tag_blocks[0]).tolist()) == {1}
+
+
+def test_selection_accepts_any_int_sequence():
+    a = make_box((0, 0, 0))
+    b = make_box((0.4, 0.3, 0.2))
+    graph = tf.CsgGraph([a, b])
+    f_list, _ = graph.mesh(selection=[0])
+    f_tuple, _ = graph.mesh(selection=(0,))
+    f_array, _ = graph.mesh(selection=np.array([0], dtype=np.int64))
+    assert np.array_equal(f_list, f_tuple)
+    assert np.array_equal(f_list, f_array)
+
+
+def test_selection_validation():
+    a = make_box((0, 0, 0))
+    b = make_box((0.4, 0.3, 0.2))
+    graph = tf.CsgGraph([a, b])
+    with pytest.raises(ValueError):
+        graph.mesh(tf.op(0), selection=[2])
+    with pytest.raises(ValueError):
+        graph.domains(selection=[-1])
+
+
+# ==============================================================================
+# Inside reads
+# ==============================================================================
+
+def test_inside_reads_a_sheet_within_a_solid():
+    plane = tf.Mesh(*tf.make_plane_mesh(2.0, 2.0, 2, 2))     # z = 0, +z
+    box = make_box((0, 0, 0))
+    graph = tf.CsgGraph([plane, box], sheets=[0])
+
+    cap, cap_points = graph.mesh(tf.op(1), inside=[0])
+    assert len(cap) == 8
+    assert n_boundary_edges(cap) == 8
+    p = np.asarray(cap_points, dtype=np.float64)
+    n = np.cross(p[cap[:, 1]] - p[cap[:, 0]], p[cap[:, 2]] - p[cap[:, 0]])
+    assert np.all(n[:, 2] > 0)                                # stored winding
+    annulus, _ = graph.mesh(~tf.op(1), inside=[0])
+    assert len(annulus) == 16
+    boundary, _ = graph.mesh(tf.op(1), selection=[0])
+    assert len(boundary) == 0                                 # both sides inside
+    empty, _ = graph.mesh(tf.op(0), inside=[0])
+    assert len(empty) == 0                                    # its own bit
+    walls, _ = graph.mesh(tf.op(0), inside=[1])
+    assert len(walls) == 14
+
+    (lf, _), tags, _ = graph.mesh(tf.op(1), inside=[0], return_source_ids=True)
+    assert len(lf) == 8 and set(tags.tolist()) == {0}
+    (mf, _), imap = graph.mesh(tf.op(1), inside=[0], return_index_map=True)
+    assert len(mf) == 8 and len(imap.face_labels) == 8
+
+
+def test_inside_validation():
+    a = make_box((0, 0, 0))
+    b = make_box((0.4, 0.3, 0.2))
+    graph = tf.CsgGraph([a, b])
+    with pytest.raises(ValueError):
+        graph.mesh(inside=[0])                               # needs an expression
+    with pytest.raises(ValueError):
+        graph.mesh(tf.op(0), selection=[1], inside=[0])      # exclusive
+    with pytest.raises(ValueError):
+        graph.mesh(tf.op(0), inside=[2])                     # range
+    with pytest.raises(TypeError):
+        graph.domains(tf.op(0), inside=[0])                  # no such read on domains
+    f, _ = graph.mesh(tf.op(0), inside=[1])
+    assert len(f) > 0                                        # B's shell inside A
+
+
 def test_intersection_curves():
     a = make_box((0, 0, 0))
     b = make_box((0.4, 0.3, 0.2))

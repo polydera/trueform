@@ -7,8 +7,7 @@ Commercial licensing available via info@polydera.com.
 https://github.com/polydera/trueform
 """
 
-from .isocontours import isocontours
 from .intersection_curves import intersection_curves
 from .self_intersection_curves import self_intersection_curves
 
-__all__ = ['isocontours', 'intersection_curves', 'self_intersection_curves']
+__all__ = ['intersection_curves', 'self_intersection_curves']

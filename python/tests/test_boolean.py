@@ -548,3 +548,66 @@ def test_rejects_mismatched_dtypes():
 
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-v"]))
+
+
+# ==============================================================================
+# Operand ordering and sheet declaration
+# ==============================================================================
+
+def _shifted_box(size, shift, index_dtype):
+    """Axis-aligned box of the given size, shifted along x."""
+    faces, points = tf.make_box_mesh(size, size, size, index_dtype=index_dtype)
+    points = np.asarray(points).copy()
+    points[:, 0] += shift
+    return prepare_mesh(tf.Mesh(np.asarray(faces, dtype=index_dtype), points))
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_difference_operand_order_survives_index_canonicalization(index_dtype):
+    """A - B stays A - B whichever index types the operands carry.
+
+    Mixed index types are dispatched by swapping the operands into an
+    implemented ordering, which reverses a difference unless the operation
+    is turned around with them.
+    """
+    # boxes are centred: big spans [-2, 2], small spans [1, 3], so they
+    # overlap in a 1x2x2 slab. A - B and B - A differ (60 against 4),
+    # which is what makes a reversed difference visible.
+    big = _shifted_box(4.0, 0.0, index_dtype)
+    small_32 = _shifted_box(2.0, 2.0, np.int32)
+    small_64 = _shifted_box(2.0, 2.0, np.int64)
+
+    expected = 4.0 ** 3 - 1.0 * 2.0 * 2.0
+    for small in (small_32, small_64):
+        (faces, points), _labels, _fl = tf.boolean_difference(big, small)
+        np.testing.assert_allclose(
+            tf.volume((faces, points)), expected, rtol=1e-4)
+
+
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_sheet_operand_cuts_without_enclosing(index_dtype):
+    """A solid cut by an open sheet gives two capped halves.
+
+    Undeclared, the plane bounds no volume and the intersection is empty;
+    declared a sheet it is an oriented separator, so intersection and
+    difference are the two halves and together they are the whole.
+    """
+    faces, points = tf.make_sphere_mesh(1.0, 16, 32, index_dtype=index_dtype)
+    sphere = prepare_mesh(tf.Mesh(np.asarray(faces, dtype=index_dtype),
+                                  np.asarray(points)))
+    pfaces, ppoints = tf.make_plane_mesh(4.0, 4.0, 4, 4,
+                                         index_dtype=index_dtype)
+    plane = prepare_mesh(tf.Mesh(np.asarray(pfaces, dtype=index_dtype),
+                                 np.asarray(ppoints)))
+
+    whole = tf.volume(tf.boolean_union(sphere, plane, sheets=[1])[0])
+
+    (empty, _pts), _l, _f = tf.boolean_intersection(sphere, plane)
+    assert len(np.asarray(empty)) == 0
+
+    lower = tf.volume(tf.boolean_intersection(sphere, plane, sheets=[1])[0])
+    upper = tf.volume(tf.boolean_difference(sphere, plane, sheets=[1])[0])
+    assert lower > 0.0 and upper > 0.0
+    np.testing.assert_allclose(lower + upper, tf.volume((faces, points)),
+                               rtol=1e-3)
+    del whole

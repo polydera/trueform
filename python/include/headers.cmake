@@ -1,25 +1,27 @@
 # Top-level binding headers
 set(BINDING_TOP_HEADERS
+  ${CMAKE_CURRENT_LIST_DIR}/trueform/python/arrangement.hpp
   ${CMAKE_CURRENT_LIST_DIR}/trueform/python/clean.hpp
   ${CMAKE_CURRENT_LIST_DIR}/trueform/python/core.hpp
   ${CMAKE_CURRENT_LIST_DIR}/trueform/python/csg.hpp
-  ${CMAKE_CURRENT_LIST_DIR}/trueform/python/cut.hpp
   ${CMAKE_CURRENT_LIST_DIR}/trueform/python/geometry.hpp
   ${CMAKE_CURRENT_LIST_DIR}/trueform/python/intersect.hpp
   ${CMAKE_CURRENT_LIST_DIR}/trueform/python/io.hpp
+  ${CMAKE_CURRENT_LIST_DIR}/trueform/python/iso.hpp
   ${CMAKE_CURRENT_LIST_DIR}/trueform/python/reindex.hpp
   ${CMAKE_CURRENT_LIST_DIR}/trueform/python/remesh.hpp
   ${CMAKE_CURRENT_LIST_DIR}/trueform/python/spatial.hpp
   ${CMAKE_CURRENT_LIST_DIR}/trueform/python/topology.hpp
 )
 
+include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/arrangement/headers.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/clean/headers.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/core/headers.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/csg/headers.cmake)
-include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/cut/headers.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/geometry/headers.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/intersect/headers.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/io/headers.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/iso/headers.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/reindex/headers.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/remesh/headers.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/spatial/headers.cmake)
@@ -28,13 +30,14 @@ include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/util/headers.cmake)
 
 set(BINDING_HEADERS
   ${BINDING_TOP_HEADERS}
+  ${HEADERS_ARRANGEMENT}
   ${HEADERS_CLEAN}
   ${HEADERS_CORE}
   ${HEADERS_CSG}
-  ${HEADERS_CUT}
   ${HEADERS_GEOMETRY}
   ${HEADERS_INTERSECT}
   ${HEADERS_IO}
+  ${HEADERS_ISO}
   ${HEADERS_REINDEX}
   ${HEADERS_REMESH}
   ${HEADERS_SPATIAL}

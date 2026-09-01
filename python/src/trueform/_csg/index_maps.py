@@ -22,7 +22,10 @@ class MeshIndexMap:
         Output point -> input mesh tag; created points carry ``n_tags``.
     point_labels : np.ndarray
         Output point -> input point id within its mesh; created points
-        carry ``n_output_points``.
+        carry ``n_output_points``. That value is not a reliable test for a
+        created point — an input id lives in its own mesh's space and may
+        reach it. Test ``point_tag_labels[o] == n_tags`` or
+        ``o >= n_original_points`` instead.
     face_tag_labels : np.ndarray
         Output face -> input mesh tag.
     face_labels : np.ndarray
@@ -30,8 +33,13 @@ class MeshIndexMap:
     point_f : OffsetBlockedArray
         Forward map: ``point_f[tag][input id]`` -> output point id
         (dropped inputs carry ``n_output_points``).
-    n_original_points, n_original_faces : int
-        Output entries below these are kept originals; at/above, created.
+    uncut_faces : np.ndarray
+        Shape ``(n_tags, 2)``: ``uncut_faces[tag]`` is the ``[begin, end)``
+        output face range of that mesh's faces that survived uncut — each
+        one still the entire input face. Every face outside those ranges
+        is a piece of a cut face.
+    n_original_points : int
+        Output points below this are kept originals; at/above, created.
     n_tags : int
         Number of input meshes; the tag-axis end sentinel.
     n_output_points : int
@@ -43,8 +51,8 @@ class MeshIndexMap:
     face_tag_labels: object
     face_labels: object
     point_f: OffsetBlockedArray
+    uncut_faces: object
     n_original_points: int
-    n_original_faces: int
     n_tags: int
     n_output_points: int
 

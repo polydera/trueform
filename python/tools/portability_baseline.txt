@@ -1,5 +1,4 @@
 include/trueform/core/centroid.hpp:124 10.1: local constexpr 'Dims' referenced in lambda
 include/trueform/geometry/compute_shape_index.hpp:55 10.1: local constexpr 'two_over_pi' referenced in lambda
 include/trueform/reindex/make_dynamic.hpp:92 10.1: local constexpr 'ngon' referenced in lambda
-include/trueform/spatial/tree/build_aabb_nodes.hpp:88 10.1: local constexpr 'n_buckets' referenced in lambda
-include/trueform/topology/stitched_manifold_edge_link.hpp:104 10.1: local constexpr 'needs_recompute' referenced in lambda
+include/trueform/spatial/tree/build_aabb_nodes.hpp:137 10.1: local constexpr 'n_buckets' referenced in lambda

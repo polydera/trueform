@@ -22,7 +22,7 @@ _RESOLVE_SELF_CROSSINGS = 8
 def self_intersection_curves(
     mesh: Mesh,
     *,
-    mode: str = "sos",
+    mode: str = "primitives",
     tolerance: float = 0.0,
     resolve_crossings: bool = True,
     resolve_self_crossings: bool = True
@@ -34,11 +34,13 @@ def self_intersection_curves(
     ----------
     mesh : Mesh
         3D mesh to check for self-intersections.
-    mode : str, default "sos"
-        Intersection mode. "sos" = SoS (fast), "primitives" = handles
-        shared edges/vertices.
+    mode : str, default "primitives"
+        Intersection mode. "primitives" classifies shared edges/vertices
+        and coplanar contacts; "sos" perturbs every contact into a
+        crossing and cannot state shared or coplanar geometry.
     tolerance : float, default 0.0
-        World-coordinate distance band for predicate tolerance (0 = exact).
+        World-coordinate distance an input vertex may move to reach the lattice
+        (0 = exact).
     resolve_crossings : bool, default True
         Resolve crossings between different contours on the same face.
     resolve_self_crossings : bool, default True

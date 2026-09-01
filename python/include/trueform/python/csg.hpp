@@ -27,4 +27,6 @@ auto register_outer_shell_int3double3d(nanobind::module_ &m) -> void;
 auto register_outer_shell_int643float3d(nanobind::module_ &m) -> void;
 auto register_outer_shell_int643double3d(nanobind::module_ &m) -> void;
 
+auto register_csg_boolean(nanobind::module_ &m) -> void;
+
 } // namespace tf::py

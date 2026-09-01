@@ -12,30 +12,30 @@ from .._core import OffsetBlockedArray
 from .._dispatch import InputMeta, build_suffix
 from .._spatial import Mesh
 
-# Mirrors the tf::domain_config C++ enum values.
-_IGNORE_OPEN_FRAGMENTS = 2
 
-
-def outer_shell(mesh: Mesh, *, ignore_open_fragments: bool = False) -> Mesh:
+def outer_shell(mesh: Mesh) -> Mesh:
     """
     Repair a mesh to its outer shell: the boundary of the union of
     everything it encloses.
 
-    Splits the mesh at its self-intersection curves, labels the volumetric
-    domains, and keeps only the faces bounding the unbounded outside,
-    oriented outward. Internal structure — overlap membranes between
-    interpenetrating parts, faces buried inside the solid, enclosed
-    cavities — is removed. The result is free of self-intersections and
-    suitable as a boolean or CsgGraph operand.
+    The mesh is read through its own CSG graph — the self arrangement plus
+    the classification tier — and only the faces bounding the unbounded
+    outside are kept, oriented outward. Internal structure — overlap
+    membranes between interpenetrating parts, faces buried inside the
+    solid, enclosed cavities — has the same domain on both sides and so
+    never reaches the boundary. Open fragments (fins, damage) are
+    self-merged by the arrangement, so they bound no volume and cannot
+    survive into the shell.
+
+    The extraction is structural: no winding bits, no expression, no
+    options. An uncut vertex reaches the output with its input coordinate
+    untouched. The result is free of self-intersections and suitable as a
+    boolean or CsgGraph operand.
 
     Parameters
     ----------
     mesh : Mesh
         3D mesh to repair (triangle or dynamic).
-    ignore_open_fragments : bool, default False
-        Mask open fragments (faces in components carrying boundary edges)
-        out of the region formation, so fins and damage do not partition
-        the enclosed volume.
 
     Returns
     -------
@@ -60,10 +60,6 @@ def outer_shell(mesh: Mesh, *, ignore_open_fragments: bool = False) -> Mesh:
             f"outer_shell only supports 3D meshes, got mesh with {mesh.dims}D"
         )
 
-    config = 0
-    if ignore_open_fragments:
-        config |= _IGNORE_OPEN_FRAGMENTS
-
     ngon = "dyn" if mesh.is_dynamic else str(mesh.ngon)
     meta = InputMeta(mesh.faces.dtype, mesh.dtype, ngon, 3)
     suffix = build_suffix(meta)
@@ -72,7 +68,7 @@ def outer_shell(mesh: Mesh, *, ignore_open_fragments: bool = False) -> Mesh:
     if func is None:
         raise TypeError(f"unsupported mesh type combination for outer_shell: {suffix}")
 
-    faces, points = func(mesh._wrapper, config)
+    faces, points = func(mesh._wrapper)
     if mesh.is_dynamic:
         faces = OffsetBlockedArray(faces[0], faces[1])
     return Mesh(faces, points)

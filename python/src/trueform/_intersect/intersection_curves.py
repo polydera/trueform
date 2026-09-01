@@ -34,7 +34,7 @@ def intersection_curves(
     meshes_or_mesh0: Union[Mesh, List[Mesh]],
     mesh1: Mesh = None,
     *,
-    mode: str = "sos",
+    mode: str = "primitives",
     tolerance: float = 0.0,
     resolve_crossings: bool = None,
     resolve_self_crossings: bool = False
@@ -53,11 +53,13 @@ def intersection_curves(
         2+ meshes for N-mesh intersection.
     mesh1 : Mesh, optional
         Second mesh. Required when meshes_or_mesh0 is a single Mesh.
-    mode : str, default "sos"
-        Intersection mode. "sos" = SoS (fast), "primitives" = handles
-        shared edges/vertices.
+    mode : str, default "primitives"
+        Intersection mode. "primitives" classifies shared edges/vertices
+        and coplanar contacts; "sos" perturbs every contact into a
+        crossing and cannot state shared or coplanar geometry.
     tolerance : float, default 0.0
-        World-coordinate distance band for predicate tolerance (0 = exact).
+        World-coordinate distance an input vertex may move to reach the lattice
+        (0 = exact).
     resolve_crossings : bool, optional
         Resolve crossings between different contours on the same face.
         Default: False for 2-mesh, True for N-mesh.

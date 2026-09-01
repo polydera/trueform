@@ -44,7 +44,11 @@ sources = [f for f in
            glob.glob("include/trueform/**/*.hpp", recursive=True) +
            glob.glob("tests/**/*.cpp", recursive=True) +
            glob.glob("tests/**/*.hpp", recursive=True) +
-           glob.glob("examples/**/*.cpp", recursive=True)
+           glob.glob("examples/**/*.cpp", recursive=True) +
+           glob.glob("python/src/**/*.cpp", recursive=True) +
+           glob.glob("python/include/**/*.hpp", recursive=True) +
+           glob.glob("vtk/**/*.cpp", recursive=True) +
+           glob.glob("vtk/**/*.hpp", recursive=True)
            if "/external/" not in f]
 
 for f in sources:
@@ -60,7 +64,7 @@ for f in sources:
     lines = s.split("\n")
     for i, ln in enumerate(lines):
         m = re.match(r"\s+constexpr\s+[\w:<>]+\s+(\w+)\s*=", ln)
-        if not m or "static" in ln:
+        if not m or re.match(r"\s*static\b", ln):
             continue
         name = m.group(1)
         # window: to the end of the enclosing (namespace-level) function —
@@ -94,6 +98,13 @@ for f in glob.glob("tests/**/*.cpp", recursive=True):
         if re.search(r"TEST_CASE|SECTION|TEMPLATE_TEST_CASE", ln):
             if any(ord(c) > 127 for c in ln):
                 bad.append(f"{f}:{i} 10.3: non-ASCII in test name")
+
+for f in sources:
+    for i, ln in enumerate(open(f, encoding="utf-8"), 1):
+        code = ln.split("//")[0]
+        if re.search(r"(?:^|[\s(,])(?:near|far)\s*[=(]", code):
+            bad.append(f"{f}:{i} 10.4: 'near'/'far' identifier "
+                       "(windows.h macro)")
 
 baseline_path = os.path.join(os.path.dirname(__file__),
                              "portability_baseline.txt")

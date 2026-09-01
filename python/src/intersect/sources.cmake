@@ -8,7 +8,6 @@ set(MODULE_INTERSECT_SOURCES
   ${CMAKE_CURRENT_LIST_DIR}/intersection_curves_intint_float3d.cpp
   ${CMAKE_CURRENT_LIST_DIR}/intersection_curves_intint64_double3d.cpp
   ${CMAKE_CURRENT_LIST_DIR}/intersection_curves_intint64_float3d.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/isocontours.cpp
   ${CMAKE_CURRENT_LIST_DIR}/self_intersection_curves.cpp
   ${CMAKE_CURRENT_LIST_DIR}/self_intersection_curves_int3double3d.cpp
   ${CMAKE_CURRENT_LIST_DIR}/self_intersection_curves_int3float3d.cpp

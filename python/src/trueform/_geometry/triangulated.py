@@ -22,6 +22,11 @@ def triangulated(
     """
     Triangulate polygons into triangles.
 
+    Each face is triangulated on its own boundary, and a shared mesh edge is
+    one identity in both faces that carry it, so faces meeting on an edge stay
+    watertight. A face whose loop crosses itself is resolved rather than
+    dropped: it states its crossing and mints the identity that names it.
+
     Parameters
     ----------
     data : np.ndarray, Mesh, or tuple
@@ -35,7 +40,9 @@ def triangulated(
     faces : np.ndarray of shape (num_triangles, 3)
         Triangle indices
     points : np.ndarray of shape (num_points, D)
-        Vertex coordinates (copied from input)
+        The input's own vertex coordinates, followed by any identity the
+        triangulation minted while resolving. A mesh no face of which needs
+        resolving mints nothing, so the table is the input's.
 
     Examples
     --------

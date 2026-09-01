@@ -11,27 +11,32 @@
 * Author: Žiga Sajovic
 */
 #pragma once
+#include "../arrangement/arrangement_builders.hpp"
 #include "../intersect/build_intersect_structures.hpp"
 #include "../spatial/mesh.hpp"
 #include "../util/make_numpy_array.hpp"
+#include "./csg_builders.hpp"
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
+#include <nanobind/stl/optional.h>
 #include <nanobind/stl/pair.h>
 #include <nanobind/stl/tuple.h>
 #include <nanobind/stl/vector.h>
 #include <trueform/core/algorithm/parallel_transform.hpp>
 #include <trueform/core/points_buffer.hpp>
-#include <trueform/core/transformation.hpp>
-#include <trueform/csg/csg_graph.hpp>
+#include <trueform/core/range.hpp>
 #include <trueform/csg/expression.hpp>
-#include <trueform/cut/arrangement_config.hpp>
+#include <trueform/csg/expression/selection.hpp>
+#include <trueform/arrangement/arrangement_config.hpp>
 #include <trueform/csg/make_csg_domains.hpp>
 #include <trueform/csg/make_csg_mesh.hpp>
 #include <trueform/csg/make_intersection_curves.hpp>
+#include <trueform/intersect/intersect_config.hpp>
 #include <trueform/topology/domain_config.hpp>
 #include <trueform/topology/triangulation_type.hpp>
 
 #include <cstdint>
+#include <optional>
 #include <stdexcept>
 #include <vector>
 
@@ -80,6 +85,31 @@ inline auto decode_expr(const std::vector<int> &program) -> tf::csg::expr {
   return std::move(stack.back());
 }
 
+// A selection crosses as the expression program, an optional list of
+// operand tags and the selection kind as an int: absent restriction =
+// every form's surface; present = only those forms' faces reach the
+// output, and an
+// empty program is no expression at all (the embedded surface read).
+// Kind 0 is the boundary read, 1 the inside read, which has no meaning
+// without a region to be inside of.
+inline auto decode_selection(const std::vector<int> &program,
+                             const std::optional<std::vector<int>> &tags,
+                             int kind) -> tf::csg::selection_t {
+  if (kind == 1) {
+    if (program.empty())
+      throw std::runtime_error("an inside read requires an expression");
+    return tf::csg::inside(tags ? *tags : std::vector<int>{},
+                           decode_expr(program));
+  }
+  if (kind != 0)
+    throw std::runtime_error("unknown csg selection kind");
+  if (!tags)
+    return tf::csg::selection_t(decode_expr(program));
+  if (program.empty())
+    return tf::csg::selection(*tags);
+  return tf::csg::selection(*tags, decode_expr(program));
+}
+
 /// The sealed engine behind the Python CsgGraph: owns the input mesh
 /// wrappers (their stored ndarrays keep numpy alive), the tagged forms
 /// over them, and the tf::csg_graph built once at construction. The
@@ -87,55 +117,28 @@ inline auto decode_expr(const std::vector<int> &program) -> tf::csg::expr {
 /// config); only evaluation methods and created_points cross here.
 template <typename Index, typename RealT> class csg_graph_wrapper {
   using wrapper_t = mesh_wrapper<Index, RealT, 3, 3>;
-
-  static auto make_form(wrapper_t &w) {
-    auto fm = w.face_membership();
-    auto mel = w.manifold_edge_link();
-    tf::transformation<RealT, 3> tv =
-        w.has_transformation()
-            ? tf::transformation<RealT, 3>(w.transformation_view())
-            : tf::make_identity_transformation<RealT, 3>();
-    return w.make_primitive_range() | tf::tag(w.tree()) | tf::tag(fm) |
-           tf::tag(mel) | tf::tag(tv);
-  }
-
-  using form_t = decltype(make_form(std::declval<wrapper_t &>()));
-  using forms_range_t =
-      decltype(tf::make_range(std::declval<std::vector<form_t> &>()));
-  using graph_t = tf::csg_graph<forms_range_t, tf::none_t>;
+  using form_type = form_t<Index, RealT, 3, 3>;
+  using forms_type = forms_range_t<Index, RealT, 3, 3>;
+  using graph_t = range_csg_graph_t<forms_type>;
 
   static auto make_forms(std::vector<wrapper_t> &wrappers)
-      -> std::vector<form_t> {
+      -> std::vector<form_type> {
     build_intersect_structures_all(wrappers);
-    std::vector<form_t> forms;
-    forms.reserve(wrappers.size());
-    for (auto &w : wrappers)
-      forms.push_back(make_form(w));
-    return forms;
-  }
-
-  static auto make_is_sheet(const std::vector<int> &sheets, std::size_t n)
-      -> tf::buffer<char> {
-    tf::buffer<char> is_sheet;
-    if (sheets.empty())
-      return is_sheet;
-    is_sheet.allocate(n);
-    std::fill(is_sheet.begin(), is_sheet.end(), char(0));
-    for (int id : sheets)
-      is_sheet[std::size_t(id)] = char(1);
-    return is_sheet;
+    return tagged_forms(wrappers);
   }
 
 public:
   csg_graph_wrapper(std::vector<wrapper_t> wrappers, std::vector<int> sheets,
                     int mode, double tolerance, int triangulation)
       : _wrappers(std::move(wrappers)), _forms(make_forms(_wrappers)),
-        _graph(tf::make_range(_forms), {},
-               tf::arrangement_config{
-                   tf::intersect_config{static_cast<tf::intersect_mode>(mode),
-                                        tolerance},
-                   static_cast<tf::triangulation_type>(triangulation)},
-               make_is_sheet(sheets, _wrappers.size())) {}
+        _graph(build_range_csg_graph(
+            tf::make_range(_forms.data(), _forms.size()),
+            tf::make_range(static_cast<const int *>(sheets.data()),
+                           sheets.size()),
+            tf::arrangement_config{
+                tf::intersect_config{static_cast<tf::intersect_mode>(mode),
+                                     tolerance},
+                static_cast<tf::triangulation_type>(triangulation)})) {}
 
   auto created_points() {
     const auto &created = _graph.created_points();
@@ -159,40 +162,48 @@ public:
         nanobind::make_tuple(paths.first, paths.second), std::move(pts));
   }
 
-  auto mesh(const std::vector<int> &program) {
-    if (program.empty()) {
+  auto mesh(const std::vector<int> &program,
+            const std::optional<std::vector<int>> &selection, int kind) {
+    if (program.empty() && !selection && kind == 0) {
       auto result = tf::make_csg_mesh(_graph);
       return make_numpy_array(std::move(result));
     }
-    auto result = tf::make_csg_mesh(_graph, decode_expr(program));
+    auto result =
+        tf::make_csg_mesh(_graph, decode_selection(program, selection, kind));
     return make_numpy_array(std::move(result));
   }
 
-  auto mesh_with_labels(const std::vector<int> &program) {
+  auto mesh_with_labels(const std::vector<int> &program,
+                        const std::optional<std::vector<int>> &selection,
+                        int kind) {
     auto pack = [](auto &&result, auto &&tag_labels, auto &&face_labels) {
       return nanobind::make_tuple(make_numpy_array(std::move(result)),
                                   make_numpy_array(std::move(tag_labels)),
                                   make_numpy_array(std::move(face_labels)));
     };
-    if (program.empty()) {
+    if (program.empty() && !selection && kind == 0) {
       auto [result, tag_labels, face_labels] =
           tf::make_csg_mesh(_graph, tf::return_source_ids);
       return pack(std::move(result), std::move(tag_labels),
                   std::move(face_labels));
     }
-    auto [result, tag_labels, face_labels] = tf::make_csg_mesh(
-        _graph, decode_expr(program), tf::return_source_ids);
+    auto [result, tag_labels, face_labels] =
+        tf::make_csg_mesh(_graph, decode_selection(program, selection, kind),
+                          tf::return_source_ids);
     return pack(std::move(result), std::move(tag_labels),
                 std::move(face_labels));
   }
 
-  auto mesh_with_index_map(const std::vector<int> &program) {
-    if (program.empty())
+  auto mesh_with_index_map(const std::vector<int> &program,
+                           const std::optional<std::vector<int>> &selection,
+                           int kind) {
+    if (program.empty() && !selection && kind == 0)
       throw std::runtime_error(
           "the full-arrangement mesh has no index-map form; pass an "
-          "expression");
-    auto [result, imap] = tf::make_csg_mesh(_graph, decode_expr(program),
-                                            tf::return_index_map);
+          "expression or a selection");
+    auto [result, imap] =
+        tf::make_csg_mesh(_graph, decode_selection(program, selection, kind),
+                          tf::return_index_map);
     auto point_f = make_numpy_array(std::move(imap.point_f));
     return nanobind::make_tuple(
         make_numpy_array(std::move(result)),
@@ -201,11 +212,13 @@ public:
         make_numpy_array(std::move(imap.face_tag_labels)),
         make_numpy_array(std::move(imap.face_labels)),
         nanobind::make_tuple(point_f.first, point_f.second),
-        imap.n_original_points, imap.n_original_faces, imap.n_tags,
-        imap.n_output_points);
+        make_numpy_array(std::move(imap.uncut_faces)),
+        imap.n_original_points, imap.n_tags, imap.n_output_points);
   }
 
-  auto domains_with_index_map(const std::vector<int> &program, int config) {
+  auto
+  domains_with_index_map(const std::vector<int> &program, int config,
+                         const std::optional<std::vector<int>> &selection) {
     auto run = [&](auto &&...expr_arg) {
       auto [cells, ids, imap] = tf::make_csg_domains(
           _graph, expr_arg..., static_cast<tf::domain_config>(config),
@@ -226,12 +239,13 @@ public:
           imap.n_tags, imap.n_output_points,
           make_numpy_array(std::move(imap.inclusion)));
     };
-    if (program.empty())
+    if (program.empty() && !selection)
       return run();
-    return run(decode_expr(program));
+    return run(decode_selection(program, selection, 0));
   }
 
-  auto domains(const std::vector<int> &program, int config) {
+  auto domains(const std::vector<int> &program, int config,
+               const std::optional<std::vector<int>> &selection) {
     auto run = [&](auto &&...expr_arg) {
       auto [cells, ids] =
           tf::make_csg_domains(_graph, expr_arg...,
@@ -242,12 +256,13 @@ public:
       return nanobind::make_tuple(std::move(out),
                                   make_numpy_array(std::move(ids)));
     };
-    if (program.empty())
+    if (program.empty() && !selection)
       return run();
-    return run(decode_expr(program));
+    return run(decode_selection(program, selection, 0));
   }
 
-  auto domains_with_labels(const std::vector<int> &program, int config) {
+  auto domains_with_labels(const std::vector<int> &program, int config,
+                           const std::optional<std::vector<int>> &selection) {
     auto run = [&](auto &&...expr_arg) {
       auto [cells, ids, tag_blocks, face_blocks] = tf::make_csg_domains(
           _graph, expr_arg..., static_cast<tf::domain_config>(config),
@@ -262,14 +277,14 @@ public:
           nanobind::make_tuple(tags.first, tags.second),
           nanobind::make_tuple(faces.first, faces.second));
     };
-    if (program.empty())
+    if (program.empty() && !selection)
       return run();
-    return run(decode_expr(program));
+    return run(decode_selection(program, selection, 0));
   }
 
 private:
   std::vector<wrapper_t> _wrappers;
-  std::vector<form_t> _forms;
+  std::vector<form_type> _forms;
   graph_t _graph;
 };
 
@@ -285,17 +300,26 @@ auto register_csg_graph(nanobind::module_ &m, const char *name) -> void {
            nanobind::arg("triangulation"))
       .def("created_points", &G::created_points)
       .def("intersection_curves", &G::intersection_curves)
-      .def("mesh", &G::mesh, nanobind::arg("program"))
+      .def("mesh", &G::mesh, nanobind::arg("program"),
+           nanobind::arg("selection").none() = nanobind::none(),
+           nanobind::arg("kind") = 0)
       .def("mesh_with_labels", &G::mesh_with_labels,
-           nanobind::arg("program"))
+           nanobind::arg("program"),
+           nanobind::arg("selection").none() = nanobind::none(),
+           nanobind::arg("kind") = 0)
       .def("mesh_with_index_map", &G::mesh_with_index_map,
-           nanobind::arg("program"))
+           nanobind::arg("program"),
+           nanobind::arg("selection").none() = nanobind::none(),
+           nanobind::arg("kind") = 0)
       .def("domains_with_index_map", &G::domains_with_index_map,
-           nanobind::arg("program"), nanobind::arg("config"))
+           nanobind::arg("program"), nanobind::arg("config"),
+           nanobind::arg("selection").none() = nanobind::none())
       .def("domains", &G::domains, nanobind::arg("program"),
-           nanobind::arg("config"))
+           nanobind::arg("config"),
+           nanobind::arg("selection").none() = nanobind::none())
       .def("domains_with_labels", &G::domains_with_labels,
-           nanobind::arg("program"), nanobind::arg("config"));
+           nanobind::arg("program"), nanobind::arg("config"),
+           nanobind::arg("selection").none() = nanobind::none());
 }
 
 } // namespace tf::py

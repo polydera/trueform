@@ -28,13 +28,14 @@ find_package(nanobind CONFIG REQUIRED)
 # Top-level binding sources (module entry points)
 set(BINDING_TOP_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/arrangement.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/clean.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/core.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/csg.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/cut.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/geometry.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/intersect.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/io.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/iso.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/reindex.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/remesh.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/spatial.cpp
@@ -42,13 +43,14 @@ set(BINDING_TOP_SOURCES
 )
 
 # Per-module binding sources
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/arrangement/sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/clean/sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/core/sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/csg/sources.cmake)
-include(${CMAKE_CURRENT_SOURCE_DIR}/src/cut/sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/geometry/sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/intersect/sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/io/sources.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/iso/sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/reindex/sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/remesh/sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/spatial/sources.cmake)
@@ -57,13 +59,14 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/src/util/sources.cmake)
 
 set(BINDING_SOURCES
   ${BINDING_TOP_SOURCES}
+  ${MODULE_ARRANGEMENT_SOURCES}
   ${MODULE_CLEAN_SOURCES}
   ${MODULE_CORE_SOURCES}
   ${MODULE_CSG_SOURCES}
-  ${MODULE_CUT_SOURCES}
   ${MODULE_GEOMETRY_SOURCES}
   ${MODULE_INTERSECT_SOURCES}
   ${MODULE_IO_SOURCES}
+  ${MODULE_ISO_SOURCES}
   ${MODULE_REINDEX_SOURCES}
   ${MODULE_REMESH_SOURCES}
   ${MODULE_SPATIAL_SOURCES}

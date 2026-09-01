@@ -286,8 +286,6 @@ auto register_form_prim_ops(nanobind::module_ &m, const char *form_name,
         ts.allocate(n);
         auto *id_dst = ids.data();
         auto *t_dst = ts.data();
-        constexpr auto nan = std::numeric_limits<RealT>::quiet_NaN();
-
         auto run = [&](const auto &form) {
           auto compute = [&](int i) {
             auto ray_ptr = ray_pw.element_ptr(i);
@@ -303,7 +301,7 @@ auto register_form_prim_ops(nanobind::module_ &m, const char *form_name,
               t_dst[i] = static_cast<RealT>(res.info.t);
             } else {
               id_dst[i] = static_cast<Index>(-1);
-              t_dst[i] = nan;
+              t_dst[i] = std::numeric_limits<RealT>::quiet_NaN();
             }
           };
           if (n >= 1000)

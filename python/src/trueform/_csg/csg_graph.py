@@ -26,6 +26,9 @@ _TRIANGULATION_MAP = {"cdt": 0, "refined_cdt": 1}
 _EXCLUDE_OUTER_SHELL = 1
 _IGNORE_OPEN_FRAGMENTS = 2
 
+_SELECTION_BOUNDARY = 0
+_SELECTION_INSIDE = 1
+
 
 class CsgGraph:
     """
@@ -47,7 +50,8 @@ class CsgGraph:
     mode : str, default "primitives"
         Intersection mode. "sos" or "primitives".
     tolerance : float, default 0.0
-        World-coordinate distance band for predicate tolerance (0 = exact).
+        World-coordinate distance an input vertex may move to reach the lattice
+        (0 = exact).
     resolve_crossings : bool, default True
         Resolve crossings between different contours on the same face.
     within : bool, default False
@@ -65,6 +69,7 @@ class CsgGraph:
     --------
     >>> graph = tf.CsgGraph([a, b, c], triangulation="refined_cdt")
     >>> faces_points = graph.mesh(tf.op(0) - tf.op(1))
+    >>> imprinted = graph.mesh(selection=[0])   # a's surface, cut by b, c
     >>> cells, ids = graph.domains()
     """
 
@@ -159,7 +164,7 @@ class CsgGraph:
 
     @property
     def tolerance(self):
-        """Predicate tolerance this graph was built with."""
+        """Input placement tolerance this graph was built with."""
         return self._tolerance
 
     @property
@@ -194,7 +199,28 @@ class CsgGraph:
         return OffsetBlockedArray(off, data), pts
 
     # -- queries ----------------------------------------------------------
-    def mesh(self, expr=None, *, return_source_ids: bool = False,
+    def _selection_tags(self, selection):
+        """Validate a surface restriction into a plain list of operands."""
+        if selection is None:
+            return None
+        tags = [int(t) for t in selection]
+        for t in tags:
+            if t < 0 or t >= len(self._forms):
+                raise ValueError(f"selection index {t} out of range")
+        return tags
+
+    def _restriction(self, selection, inside, has_expr):
+        """Validate the surface restriction into (tags or None, kind)."""
+        if selection is not None and inside is not None:
+            raise ValueError("selection and inside are exclusive")
+        if inside is None:
+            return self._selection_tags(selection), _SELECTION_BOUNDARY
+        if not has_expr:
+            raise ValueError("inside requires an expression")
+        return self._selection_tags(inside), _SELECTION_INSIDE
+
+    def mesh(self, expr=None, *, selection=None, inside=None,
+             return_source_ids: bool = False,
              return_index_map: bool = False):
         """
         The boolean result mesh for ``expr``; with no expression, the full
@@ -205,7 +231,20 @@ class CsgGraph:
         expr : Expr or int, optional
             Boolean expression over operand indices (``tf.op(0) - tf.op(1)``),
             or a single operand index. Omit for the full arrangement mesh
-            (``return_index_map`` requires an expression).
+            (``return_index_map`` requires an expression or a selection).
+        selection : sequence of int, optional
+            Restrict the emitted surface to the faces these operands
+            contributed; ``None`` (default) emits every operand's. With an
+            expression it splits one boolean result by provenance; without
+            one it is the embedded read — the named operands' surfaces cut
+            by everything, original winding, no classification.
+        inside : sequence of int, optional
+            Emit the faces these operands contributed that lie INSIDE the
+            expression's region — both sides in it — with the operand's
+            stored winding, where ``selection`` emits the faces bounding
+            it. Requires ``expr``; exclusive with ``selection``. A sheet's
+            surface inside a solid: ``graph.mesh(tf.op(solid),
+            inside=[sheet])``.
         return_source_ids : bool, default False
             Also return per-face provenance: ``tag_labels[f]`` is the input
             form of output face ``f``, ``face_labels[f]`` the original face
@@ -228,23 +267,26 @@ class CsgGraph:
                 "return_source_ids and return_index_map are exclusive; the "
                 "index map already carries the face labels")
         program = [] if expr is None else _as_expr(expr).program()
+        tags, kind = self._restriction(selection, inside, expr is not None)
         if return_index_map:
-            (mesh, ptl, pl, ftl, fl, (pf_off, pf_data), n_op, n_of, n_tags,
-             n_out) = self._wrapper.mesh_with_index_map(program)
+            (mesh, ptl, pl, ftl, fl, (pf_off, pf_data), uncut, n_op, n_tags,
+             n_out) = self._wrapper.mesh_with_index_map(program, tags, kind)
             return mesh, MeshIndexMap(
                 point_tag_labels=ptl, point_labels=pl, face_tag_labels=ftl,
                 face_labels=fl,
                 point_f=OffsetBlockedArray(pf_off, pf_data),
-                n_original_points=n_op, n_original_faces=n_of,
+                uncut_faces=uncut,
+                n_original_points=n_op,
                 n_tags=n_tags, n_output_points=n_out)
         if return_source_ids:
-            return self._wrapper.mesh_with_labels(program)
-        return self._wrapper.mesh(program)
+            return self._wrapper.mesh_with_labels(program, tags, kind)
+        return self._wrapper.mesh(program, tags, kind)
 
     def domains(
         self,
         expr=None,
         *,
+        selection=None,
         exclude_outer_shell: bool = True,
         ignore_open_fragments: bool = True,
         return_source_ids: bool = False,
@@ -258,6 +300,10 @@ class CsgGraph:
         expr : Expr or int, optional
             Restrict to domains inside the expression's selection; with no
             expression, every kept domain of the partition is returned.
+        selection : sequence of int, optional
+            Restrict each cell's walls to the faces these operands
+            contributed; ``None`` (default) emits every operand's. The kept
+            domains are unchanged — only whose surface reaches the output.
         exclude_outer_shell : bool, default True
             Drop the unbounded outside domain.
         ignore_open_fragments : bool, default True
@@ -280,6 +326,7 @@ class CsgGraph:
             Only when ``return_source_ids=True``.
         """
         program = [] if expr is None else _as_expr(expr).program()
+        tags = self._selection_tags(selection)
         config = 0
         if exclude_outer_shell:
             config |= _EXCLUDE_OUTER_SHELL
@@ -293,7 +340,7 @@ class CsgGraph:
             (cells, ids, (ft_off, ft_data), (f_off, f_data),
              (pt_off, pt_data), (p_off, p_data), n_op, n_tags, n_out,
              inclusion) = (
-                self._wrapper.domains_with_index_map(program, config)
+                self._wrapper.domains_with_index_map(program, config, tags)
             )
             return cells, ids, DomainsIndexMap(
                 face_tag_blocks=OffsetBlockedArray(ft_off, ft_data),
@@ -304,7 +351,7 @@ class CsgGraph:
                 inclusion=np.asarray(inclusion))
         if return_source_ids:
             cells, ids, (t_off, t_data), (f_off, f_data) = (
-                self._wrapper.domains_with_labels(program, config)
+                self._wrapper.domains_with_labels(program, config, tags)
             )
             return (
                 cells,
@@ -312,7 +359,7 @@ class CsgGraph:
                 OffsetBlockedArray(t_off, t_data),
                 OffsetBlockedArray(f_off, f_data),
             )
-        cells, ids = self._wrapper.domains(program, config)
+        cells, ids = self._wrapper.domains(program, config, tags)
         return cells, ids
 
     def __repr__(self):
