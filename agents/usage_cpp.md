@@ -50,11 +50,12 @@ Or include module umbrellas:
 #include <trueform/core.hpp>
 #include <trueform/spatial.hpp>
 #include <trueform/topology.hpp>
-#include <trueform/cut.hpp>
+#include <trueform/arrangement.hpp>
 ```
 
 Most public symbols live directly in `tf::`. The intentionally public nested
-namespaces are `tf::exact` for cut/intersection integer types and `tf::csg` for
+namespaces are `tf::exact` for arrangement/intersection integer types and
+`tf::csg` for
 CSG expressions. Do not build application code on implementation namespaces.
 
 ## 3. Use Trueform primitives for geometry
@@ -322,7 +323,7 @@ miss the reuse path and can build membership again.
 | Polygon spatial queries | polygon form + polygon AABB tree |
 | Point search, ICP, Chamfer | points form + point AABB tree |
 | Repeated topology analysis | polygons + FM, then links/labels built from tagged FM |
-| Intersection/cut/boolean | polygon form + tree and MEL; retain/tag FM while building MEL and when other consumers use it |
+| Intersection/arrangement/boolean | polygon form + tree and MEL; retain/tag FM while building MEL and when other consumers use it |
 | Repeated CSG operands | the same intersection capabilities, then one reusable CSG graph |
 | Sharp edges | polygons + MEL + face normals |
 | Curvature/smoothing | vertex link on points and the required point/face normals |
@@ -360,8 +361,8 @@ auto distance = tf::distance(instance0, instance1);
 ```
 
 The local-space tree is reused for both poses. This is the normal instancing and
-moving-geometry path for spatial queries, intersections, cut, CSG, remeshing
-metrics, registration, and transformed I/O.
+moving-geometry path for spatial queries, intersections, arrangements, CSG,
+remeshing metrics, registration, and transformed I/O.
 
 An owning frame/transformation is copied or moved into the tag. Mutating an
 external frame afterward does not update the tagged form. Update the frame held
@@ -419,7 +420,7 @@ For ordinary `tf::index_map`:
 - `kept_ids()[new_id]` is the retained old ID;
 - merged duplicates can share one valid new ID.
 
-Cut and CSG index-map structs have richer point/face/tag axes. Respect their
+Arrangement and CSG index-map structs have richer point/face/tag axes. Respect their
 documented sentinels and boundary fields rather than assuming the basic map
 shape.
 
@@ -469,9 +470,22 @@ Do not pass boolean/arrangement `face_labels` to `split_into_components` and
 describe the result as connectivity components; those labels group by source
 face.
 
-Use `tf::triangulated_faces(polygons)` when only triangle connectivity is
-needed and points should remain shared. Use `tf::triangulated(polygons)` for a
-new owning triangle mesh.
+Use `tf::triangulated(polygons)` for an owning triangle mesh; it returns the
+corners with the point table they index, because a resolved face mints
+identities the input's own table has no row for. It takes an indexed mesh, a
+single `tf::polygon`, or a SOUP — a soup is `tf::cleaned` to shared-vertex
+identity first, so the triangulation machinery only ever sees indexed meshes
+and a shared edge is one identity there as anywhere else.
+
+Its leading template parameter answers two questions: the width the faces are
+written in, when an input's index type is wider than the caller needs; and the
+name of the output's index type, when the input is a soup and has none (there
+it defaults to `int`, elsewhere to the input's own). `tf::return_refused` takes
+indexed meshes only — a soup's faces do not survive the clean, so it has no
+face identity to refuse.
+
+Connectivity without a mesh is the arrangement mesh tier's own product
+(`tf::arrangement::make_mesh_triangulation`), not a public entry.
 
 ### Geometry
 
@@ -524,20 +538,19 @@ many meshes. Low-level overloads operating on half-edges and point buffers can
 mutate those objects in place; do not confuse them with functional high-level
 returning overloads.
 
-### Intersect, Cut, and CSG
+### Intersect, Arrangement, and CSG
 
 Choose the cheapest materialization that answers the question:
 
 | Need | Operation |
 |---|---|
 | Intersection polylines only | `make_intersection_curves` |
-| Curves embedded into source topology | `embedded_intersection_curves` |
 | Complete cut surface and provenance | mesh/polygon arrangements |
 | One boolean result | `make_boolean` |
-| Both open halves at the cut | `make_boolean_pair` |
 | Many expressions/domains/shells/seams over fixed operands | one `csg_graph`, many extractors |
 
-For repeated intersection/cut work, tag every operand's reusable structures:
+For repeated intersection/arrangement work, tag every operand's reusable
+structures:
 
 ```cpp
 auto fm = tf::make_face_membership(polygons);
@@ -631,8 +644,9 @@ Before calling a nontrivial pipeline, verify:
 - Geometry: `docs/content/cpp/2.modules/04.geometry.md`
 - Remesh: `docs/content/cpp/2.modules/05.remesh.md`
 - Intersect: `docs/content/cpp/2.modules/06.intersect.md`
-- Cut: `docs/content/cpp/2.modules/07.cut.md`
-- CSG: `docs/content/cpp/2.modules/08.csg.md`
-- Clean: `docs/content/cpp/2.modules/09.clean.md`
-- Reindex: `docs/content/cpp/2.modules/10.reidx.md`
-- I/O: `docs/content/cpp/2.modules/11.io.md`
+- Arrangement: `docs/content/cpp/2.modules/07.arrangement.md`
+- Iso: `docs/content/cpp/2.modules/08.iso.md`
+- CSG: `docs/content/cpp/2.modules/09.csg.md`
+- Clean: `docs/content/cpp/2.modules/10.clean.md`
+- Reindex: `docs/content/cpp/2.modules/11.reidx.md`
+- I/O: `docs/content/cpp/2.modules/12.io.md`

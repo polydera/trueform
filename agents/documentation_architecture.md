@@ -17,20 +17,20 @@ docs/
 │   ├── cpp/
 │   │   ├── 1.getting-started/      # Installation, intro, live examples
 │   │   ├── 2.modules/              # Per-module API reference
-│   │   ├── 3.benchmarks/           # Per-module benchmark pages
+│   │   ├── 3.benchmarks.md         # One page: the official benchmarks link
 │   │   ├── 4.vtk/                  # VTK integration guide
 │   │   ├── 5.examples/             # Guided walkthroughs
 │   │   └── 6.about/                # Research, contributing, license
 │   ├── ts/
 │   │   ├── 1.getting-started/      # Same structure
-│   │   ├── 2.modules/              # Same 10 modules
-│   │   ├── 3.benchmarks/
+│   │   ├── 2.modules/              # Per-module API reference
+│   │   ├── 3.benchmarks.md
 │   │   ├── 4.examples/
 │   │   └── 5.about/
 │   └── py/
 │       ├── 1.getting-started/      # Same structure
-│       ├── 2.modules/              # Same 10 modules
-│       ├── 3.benchmarks/
+│       ├── 2.modules/              # Per-module API reference
+│       ├── 3.benchmarks.md
 │       ├── 4.blender/              # Blender-specific
 │       ├── 5.examples/
 │       └── 6.about/
@@ -46,7 +46,7 @@ docs/
 
 ## 2. Module Documentation Pattern
 
-Each language has a module doc per C++ module (`2.modules/01.core.md` through `<NN>.io.md`), covering the same modules but with language-appropriate API, examples, and idioms. Use `Glob` with `docs/content/cpp/2.modules/*.md` to see the current list.
+Each language has a module doc per module of its own public surface (`2.modules/01.core.md` through `<NN>.io.md`), with language-appropriate API, examples, and idioms. The tracks do not have to agree: a C++ module split or rename reaches a binding track only when that binding's surface changes with it. Use `Glob` with `docs/content/<lang>/2.modules/*.md` to see each current list.
 
 ### Frontmatter
 ```yaml
@@ -141,13 +141,17 @@ The docs use custom Vue/Nuxt components for rich content:
 
 ## 5. Benchmark Pages
 
-Each benchmark page (`3.benchmarks/`) documents:
-- Hardware: Apple M4 Max, 16 threads
-- Methodology: timing, datasets, comparison targets
-- Results: tables and/or interactive charts
-- Source code: links to benchmark source files
+Benchmarks are not documented here. Every track carries ONE page,
+`<lang>/3.benchmarks.md` — a single numbered file, so the nav item has no
+children — holding one sentence of context and a linked callout to
+[polydera.com/trueform/benchmarks](https://polydera.com/trueform/benchmarks),
+which owns the numbers, the methodology, and the hardware. Do not restore
+tables, charts, or per-module pages: a copy of a moving number is wrong the day
+after it is written.
 
-C++ has per-module benchmark pages (spatial, topology, geometry, remesh, intersect, cut, io). TS and Python have a single summary page.
+The landing page's hero carousel (`app/components/ChartCarousel.vue`) is the
+only surviving chart consumer; its five components under
+`app/components/charts/` read the five JSON tables left in `docs/benchmarks/`.
 
 ---
 

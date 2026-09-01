@@ -452,16 +452,27 @@ still choose whether range length is a sound proxy for their actual kernel.
 ### 7.3 The `tf::checked` Tag
 
 ```cpp
-struct checked_t {};
+struct checked_t {
+  unsigned long serial_below = 1000;
+  constexpr auto operator()(unsigned long n) const -> checked_t;
+};
 static constexpr checked_t checked;
 ```
 
-Passed as extra argument to enable small-workload fallback:
+Passed as extra argument to enable small-workload fallback. The tag carries its
+own cutoff, so `tf::checked(n)` states it for a call site whose per-element work
+sits far from the convention's assumption:
 
 ```cpp
-tf::parallel_for_each(range, func);              // enter TBB path
-tf::parallel_for_each(range, func, tf::checked);  // use serial fallback when small
+tf::parallel_for_each(range, func);                    // enter TBB path
+tf::parallel_for_each(range, func, tf::checked);       // serial below 1000
+tf::parallel_for_each(range, func, tf::checked(64));   // serial below 64
 ```
+
+The tag is uniform across the vocabulary: `parallel_for`, `parallel_for_each`,
+`parallel_transform`, `parallel_contains`, `reduce`, `blocked_reduce`,
+`blocked_reduce_sequenced_aggregate`, `generic_generate`, `sequenced_generate`
+and `generate_offset_blocks` all take it, each selecting its own serial kernel.
 
 ### 7.4 Local State in Parallel Work
 
@@ -515,71 +526,249 @@ eliminate later sorting or lookup.
 3. **Policies compose, never copy data.** `polygons | tag(tree)` wraps the existing policy in a new layer. The points and faces stay where they are. The tree reference is added to the policy chain.
 
 4. **Parallel algorithms default to TBB's automatic partitioner.** Two explicit
-   tuning knobs exist: the primitive-owned serial fallback via `tf::checked`,
-   and an explicit grain via `tf::grain(n)` (`core/grain.hpp`) accepted by
-   `parallel_for_each` — use either only when the work shape justifies it.
+   tuning knobs exist: the serial fallback via `tf::checked` / `tf::checked(n)`,
+   taken by the whole for/transform/reduce/generate vocabulary, and an explicit
+   minimum chunk via `tf::grain(n)` (`core/grain.hpp`), taken by
+   `parallel_for_each` alone — use either only when the work shape justifies it.
 
 5. **No virtual dispatch anywhere.** All polymorphism is at compile time via templates, policies, and `if constexpr`.
 
 ---
 
-## 9. The Arrangement Pipeline (`cut/` + `csg/`)
+## 9. The Arrangement Pipeline (`intersect/` + `arrangement/` + `csg/`)
 
 Everything above is `core/`. The geometric pipeline sits on top of it,
-and its center is **`tf::arrangement_graph`** (`cut/arrangement_graph.hpp`)
-— the arrangement of a set of forms, everything below classification:
-intersections, the intersection graph, the face-region structure, the
-coplanar stacks (pairs + dead mask, detected once here), and the region
-triangulation with its unified created-points table.
+and its center is **`tf::arrangement_graph`**
+(`arrangement/arrangement_graph.hpp`) — the arrangement of a set of
+forms, everything below classification: the intersection identity, the
+per-plane arrangement, the coplanar stacks, the cells and their fences,
+and the unified created-points table.
 
 ```
-forms → intersections_between_polygons → intersection_graph
-      → face_regions (region walks)     → coplanar stacks
-      → region_triangulator (triangle-grain stream + created points)
-      = arrangement_graph
-      + classification (descriptor, inclusions, volumes, sheets)
-      = csg_graph
+forms
+  → tf::polygon_intersections                exact intersection identity
+  → tf::intersect::graph::local_arrangement  plane graph + split/identity tables
+  → tf::arrangement::plane_arrangement       one triangulation per plane carrier,
+      over tf::arrangement::plane_world<P>   built on the prepared world
+  → cells → piece incidence → piece fences   the arrangement's own structure
+  = tf::arrangement_graph
+  + classification (components, radial fans, descriptor, domains)
+  = tf::csg_graph
 ```
+
+The graph's exposed currency is one slot per face of every form,
+contiguous per tag, an uncut face keeping its descriptor row with an
+empty triangle span; the exposed triangles follow in tag-major face
+order with their corners in the stream's vertex language.
 
 ### The pieces
 
-- **`tf::arrangement_config`** (`cut/arrangement_config.hpp`) — every
-  arrangement surface's parameter: `{intersect_config intersect,
+- **`tf::arrangement_config`** (`arrangement/arrangement_config.hpp`) —
+  every arrangement surface's parameter: `{intersect_config intersect,
   triangulation_type triangulation}`, implicitly constructible from
   either alone (and from `intersect_mode`). Default intersect =
   `primitives | resolve_crossing_contours`.
-- **Storage policies** (`cut/dispatch/arrangement_range_policy.hpp`,
+- **Storage policies** (`arrangement/policy/arrangement_range_policy.hpp`,
   `arrangement_pair_policy.hpp`) — the graph's ctor takes ONLY a
-  policy. The range policy stores a homogeneous forms range + owned
-  missing structures and rebuilds tagged views via `forms()`; the pair
-  policy erases two DIFFERENT form types behind
-  `apply_to_form(tag, f)`. The `make_arrangement_graph` factories own
-  tag-completion: constexpr-branched build-only-what-is-missing
-  (mirroring `dispatch::boolean`), so a fully tagged call site
-  constructs with zero structure work.
-- **`tf::face_regions`** (`cut/face_regions.hpp`) — the raw region
-  structure: per-face region walks (boundary + holes) over intersection
-  identities. Classification is REGION-grain.
-- **`tf::cut::region_triangulator`** (`cut/impl/region_triangulator.hpp`) —
-  owner of the exposed TRIANGLE-grain stream (`loops()` = one triangle
-  each, contiguous per tag, promoted faces after each tag's structure
-  loops) and of provenance the stream cannot carry: `merges()` (the
-  weld table + `resolve()`), `original_edge_splits()`,
-  `promoted_descriptors()`. Nothing downstream ever triangulates.
-  `triangulation_type::refined_cdt` quality-refines through the same
-  machinery (dyadic split parameters negotiated globally; boundaries
-  watertight by construction).
+  policy. `tf::arrangement::arrangement_range_policy` stores a homogeneous
+  forms range + owned missing structures and rebuilds tagged views via
+  `forms()`; `tf::arrangement::arrangement_pair_policy` erases two DIFFERENT
+  form types behind `apply_to_form(tag, f)`. The
+  `tf::make_arrangement_graph` factories own tag-completion:
+  constexpr-branched build-only-what-is-missing (mirroring
+  `dispatch::boolean`), so a fully tagged call site constructs with
+  zero structure work.
+- **`tf::polygon_intersections`**
+  (`intersect/polygon_intersections.hpp`) — the
+  intersections-between-polygons of the library and the sole producer
+  of point identity. `build` takes one form (self records implied), two
+  forms, or a range of forms; arity plus `tf::intersect_config` decide
+  between/within, and there are no alias types. A record's `id` is a
+  canonical point NAME, not a slot in a coordinate table: below
+  `n_vertex_points()` it is an original vertex (`vertex_anchor`), above
+  it an exact parameter class on an original edge (`home_edge` +
+  `exact_parameter`). No coordinate is computed or kept here.
+- **`tf::intersect::graph::local_arrangement`**
+  (`intersect/graph/local_arrangement.hpp`) — owns the intersections,
+  the `plane_graph` (planes, frames, members, face descriptors,
+  windings; same-tag coplanar faces pooled ACROSS THEIR SHARED EDGES —
+  the walk of `pool_same_tag_planes`, whose pairs and the cross-tag
+  contact rows collapse in `build_plane_ids`'s one union-find — so one
+  connected geometric plane is one identity) and the definition tables
+  the splits are applied to.
+  Its `build` orchestrates the module's free functions:
+  `detect_plane_crossings`, `close_plane_classes`,
+  `collapse_plane_identities`, `order_plane_splits`,
+  `discover_uncut_entrants`, `state_uncut_entrants`,
+  `respan_plane_defs`, `fuse_plane_defs`. The product is the post-split
+  definition table, canon-major with a rebuilt plane CSR — no splits
+  side table — plus the entrance tables (the source faces the cut world
+  never named: `entrants`, `entrant_descriptors`, `entrant_planes`,
+  `entrant_orientations`) and `merges()`, the rewrite rows the identity
+  gate absorbed. THE GATE (`collapse_plane_identities`) compares the
+  lattice position of every identity the cut world names — every
+  definition endpoint, every class, every landing (a created point
+  rounded onto its own carrier's end) and, when a band placed the
+  inputs, every original vertex — and whatever occupies one position is
+  one identity; it is the one producer of merges. THE
+  ENTRANCE LAW, one mechanism for both tiers
+  (`discover_uncut_entrants` = `discover_weld_entrants` +
+  `discover_split_entrants`, filtered only by the asking tier's own
+  "the world names this face" mask): an uncut face is emitted from the
+  source mesh verbatim and names only its own vertices and whole edges,
+  so the moment a tier retires an original vertex or splits an original
+  edge, every source face holding that feature enters the cut world,
+  found through the source mesh's vertex membership and edge link. A
+  collapsed face enters as a line carrier and emits nothing; its
+  neighbours are stitched on the survivor. `assert_promotion_is_complete`
+  states the invariant under `!NDEBUG`.
+- **THE TWO POLES AND THE WAVE'S GRAIN LAWS.** The engine serves two polar
+  policies — the LA-backed boolean world (few dense carriers, real tables)
+  and the virtual mesh world (`arrangement/mesh/`, not exported: one face is
+  one carrier, the world answers arithmetically from the polygon and
+  materializes its tables ONCE, at the barrier the first refusal or weld
+  reaches — `close_plane_lazy_round`, where the canonical extent is frozen
+  as its FIRST statement). The world's contract is stated once, by grain,
+  in `plane_world.hpp`; the wave's laws are stated once in
+  `plane_arrangement.hpp`'s class doc: a recovery round's cost is
+  proportional to the dirty set; porting routes changed groups only; AN
+  UNCHANGED GROUP STAYS THE WORLD'S, VERBATIM, FOR BOTH CARRIERS; carrier
+  lookup is the identity's own membership, built on demand
+  (`carriers_of_flat`, compile-time optional). Per-triangle classification
+  sidecars (`slot_parents`, `coplanar_of`, `stacked`) exist only under
+  `record_triangle_arrangement()`, the request the classification consumer
+  asks; a carrier whose prepared constraint set is one simple closed ring
+  of 3-4 boundary sides fans without a CDT (`find_plane_carrier_fan` — the
+  guard is the exact turn), on the boolean path too, soundly: a later
+  statement re-enters it through the wave.
+- **`tf::arrangement::plane_world<Policy>`**
+  (`arrangement/planes/plane_world.hpp`) —
+  the ONE carrier the plane arrangement's seam speaks: the tables and
+  their canonical groups, the carrier space (`n_planes`, `n_faces`,
+  `frame`, `member_count`, `member`, `plane_of_face`, `descriptor`,
+  `descriptors`, `face_orientation`), the identity space
+  (`vertex_offsets`, `face_offsets`, `n_created_points`, `point_of`,
+  `intersection_points`), the split statement a promoted side inherits
+  (`merges`, `split_roots`, `split_survivors`) and the `graph`. The
+  production policy (`tf::arrangement::plane_local_arrangement_policy`,
+  built by `tf::arrangement::make_plane_world`) BORROWS a
+  `local_arrangement`;
+  composition is compile time. ONE POLICY STATES BOTH MODES: a stock
+  build carries an EMPTY promoted extension, so its suffix branch is
+  never taken, and the promotion is a NEW VALUE of the same type built
+  by a second constructor — the extents are frozen scalars, so a reader
+  still holding the base value keeps the base extents by construction
+  and no phase order can make an extent mean two things.
+- **`tf::arrangement::plane_arrangement`**
+  (`arrangement/planes/plane_arrangement.hpp`) — one triangulation per plane
+  carrier of that prepared world. The plane's edge block IS its
+  constraint set, so a preserve-mode CDT that does not refuse ends the
+  plane's work; a refusal is rebuilt in resolve mode, its crossings and
+  landings close into identities and splits, and the wave repeats until
+  nothing new is stated (`failed()` publishes the planes still
+  refusing). THE WAVE ENTRANCE obeys the same law: a round whose
+  world-tier split lands on an original side, or whose closure retires an
+  original, is handed back unconsumed, the reached faces enter through
+  the one discovery with this tier's answered mask, and the evidence is
+  seen again against the promoted tables. A weld is an identity substitution this tier owns: a plane
+  whose rows only changed identity keeps the triangulation it has — one
+  that refused holds none, so a substitution reaching its rows puts it
+  back in the wave. Product:
+  `triangles()` (corners are FLAT identities), `slot_parents()` (per
+  slot the canonical piece, `-1` for a filler diagonal),
+  `corner_subs()`, the coplanar stacks (`coplanar_of`,
+  `coplanar_descriptors`, `stacked`), `promoted_descriptors()`, and —
+  when `record_triangle_cells()` was asked before the build —
+  `triangle_cells()`. `triangulation_type::refined_cdt` runs the same
+  machinery through `build_refined`.
+- **Cells, incidence, fences** (`arrangement/planes/`) —
+  `tf::arrangement::make_plane_arrangement_cells` numbers the recorded
+  2-cells densely across the planes;
+  `tf::arrangement::make_plane_piece_incidence`
+  states the piece <-> cell incidence from both sides. Both identity
+  spaces are dense, so counts plus one prefix build them. A cell is
+  bounded by constraints and nothing else, and a cell's boundary is
+  pieces and nothing else, so the incidence IS the adjacency a
+  component flood walks. THE FENCE LAW
+  (`tf::arrangement::make_plane_piece_fences`, the one producer of both
+  verdicts): a piece carries a FAN iff an instance states the seam
+  (`tf::intersect::graph::plane_edge_fan_flag`) or more than two LIVE
+  cell incidences meet at it. It fences without a fan when the input
+  edge is non-manifold
+  (`tf::intersect::graph::plane_edge_non_manifold_flag`) or the cells
+  it bounds differ in depth. Everything else is `crossable`.
 - **`created_points()`** — the unified table on the exact integer
-  lattice: intersection-graph points first, then everything the
-  triangulation materialized. Created vertex ids index it directly;
+  lattice: the local arrangement's points first, then everything the
+  plane arrangement materialized. Created vertex ids index it directly;
   identity = `{tag, id}` pairs with created ids past the last tag.
-- **Exact substrate** (`exact/`): `resolve_int_type` picks the lattice
-  int from the input real; `vertex_converter` converts/deconverts;
-  `make_kernel` builds the predicate kernel. Coordinates in the
-  pipeline are lattice ints; float conversion happens at the edges.
+- **Exact substrate** (`exact/`):
+  `tf::exact::resolve_int_type` picks the lattice int from the input
+  real; `tf::exact::vertex_converter` converts/deconverts. No predicate
+  carries a band — the classifiers call the exact free predicates
+  (`orient3d_sign`, `orient2d_sign`, `orient3d_plane_sign`) directly.
+  Coordinates in the pipeline are lattice ints; float conversion happens
+  at the edges.
+  `tf::exact::input_lattice` is the operands' lattice view, built ONCE at
+  the factory (`dispatch::make_graph`) over the union of the operands: the
+  shared converter, the flat vertex space, and — under a tolerance — the
+  placed table the door (`exact/door/`) computed: every original vertex
+  moved at most the band onto a lattice point of the planes its own
+  incident faces state (the meet of three, the line of two, its own
+  tangent plane, each admitted by the certificate `admits_placement`),
+  after which the pipeline runs exactly at zero on the moved mesh. At
+  tolerance zero no table exists and nothing of the door executes. The
+  door gives positions only; identity is the gate's.
+  `tf::exact::input_lattice_reader` is the ONE reader of an original's
+  position (the placed table when there is one, the converter otherwise),
+  and every tier reads originals through it.
 - **`tf::csg_graph`** (`csg/csg_graph.hpp`) = an arrangement_graph plus
-  the classification tier (arrangement descriptor, domain inclusions,
-  volumes, sheet anchoring; machinery in `cut/arrangements/` and
-  `cut/classification/`). Consumers: `make_csg_mesh` (boolean
+  the classification tier (machinery in `csg/graph/`):
+  `tf::csg::graph::triangle_component_labels` (cut CCL over the cells,
+  crossing a piece only where the fence allows; surface CCL over the
+  uncut faces through the prebuilt `manifold_edge_link`; bridged across
+  the source mesh's manifold edge), `tf::csg::graph::make_plane_radial_fans`
+  (`csg/graph/make_plane_radial_fans.hpp` — one fan per fan piece, its
+  pages radially ordered, admitted by the fence's `fan` verdict),
+  `tf::csg::graph::make_arrangement_descriptor`,
+  `make_domain_inclusions`, `compute_arrangement_domain_volumes`,
+  `seed_inclusion_bits` / `propagate_inclusion_bits`, and
+  `anchor_sheet_sides`. Consumers: `make_csg_mesh` (boolean
   expressions), `make_csg_domains`, `make_outer_shell`,
   `make_intersection_curves(csg_graph)`.
+- **`iso/`** (`tf::iso`, machinery in `iso/cut/`) — the scalar-field
+  pipeline, driven by field crossings rather than by polygon
+  intersections, reached only by `tf::embedded_isocurves` and
+  `tf::make_isobands`, and separate from the one above. Its own umbrella
+  is `trueform/iso.hpp`; `tf::make_isocontours` and
+  `tf::scalar_field_intersections` are exported there too.
+  `build_iso_cuts` composes it:
+  `tf::scalar_field_intersections` (the sole producer of field-point
+  identity, so one created point on a shared edge is one id in both
+  incident faces), a vertex category per scalar, then
+  `make_surface_scalar_labels` on the uncut faces beside `cut_iso_faces`
+  on the cut ones, and `tf::arrangement::make_partition_ids` over both.
+  The cut is the `arrangement/planes` shape with the FACE as the
+  carrier: a face's chords
+  are level sets of the field on it and never leave it, so
+  `prepare_iso_face_cut` states its boundary chain in flat identities
+  (`created ? n_original + id : id`) — the chain names each identity
+  once, so it IS the point table, its position IS the local index and
+  its edges are consecutive positions — plus the interior chords and the
+  chain's own winding. The face then splits BY STATE. A field crosses a
+  face once, so the average face carries exactly ONE chord whose ends are
+  two chain positions: `split_iso_face_chord` takes the near run and the
+  far run of the chain and fans each, and a triangle face's chain is
+  convex by construction, which is what makes the fan the whole
+  triangulation. Every other arity, a degenerate projection and any other
+  chord count decline to one `tf::constrained_delaunay_triangulator`
+  build in `cdt_region_mode::components`, which states the pieces AND
+  their triangles; `emit_iso_face_regions` then names the corners back
+  (the smaller flat id wins an output, so two faces resolve a lattice
+  coincidence alike) and drops region 0 — the hull exterior and every
+  non-convex pocket. `iso_band_of_triangles` is the one producer of a
+  piece's band for both states.
+  Product: `iso_cut_regions` (`triangles` blocked per region, `faces`,
+  `minted_points`) plus the band buffer the partition reads. Both entry
+  points read that one product through `gather_iso_band_triangles`, which
+  assembles the band-major stream by counts and one prefix into disjoint
+  ranges; the corners live in `[originals | field points | minted]`.

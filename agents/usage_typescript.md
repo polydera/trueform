@@ -294,10 +294,6 @@ const { mesh, tagLabels, faceLabels } = tf.meshArrangements([mesh0, mesh1, mesh2
 const { mesh, tagLabels, faceLabels, curves } = tf.meshArrangements(
   [mesh0, mesh1], { returnCurves: true });
 
-// Embedded intersection curves
-const { mesh, faceLabels } = tf.embeddedIntersectionCurves(mesh0, mesh1);
-const { mesh, faceLabels } = tf.embeddedSelfIntersectionCurves(mesh);
-
 // Isobands
 const { mesh, labels, faceLabels } = tf.isobands(mesh, scalars, cutValues);
 const { mesh, labels, faceLabels, curves } = tf.isobands(mesh, scalars, cutValues, {
@@ -314,6 +310,8 @@ const graph = tf.csgGraph([a, b, c], { triangulation: "refinedCdt" });
 const diff = graph.mesh(tf.op(0).sub(tf.op(1)));       // .or/.and/.sub/.not
 const full = graph.mesh();                              // full arrangement mesh
 const lab  = graph.mesh(tf.op(0).or(1), { returnSourceIds: true });
+const read = graph.mesh({ selection: [0] });            // form 0's cut surface
+const half = graph.mesh(tf.op(0).sub(1), { selection: [0] }); // its form-0 half
 const doms = graph.domains({ returnIndexMap: true });   // opts in the expr slot
 const seams = graph.intersectionCurves();
 graph.delete();                                         // explicit lifetime

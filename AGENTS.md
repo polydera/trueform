@@ -8,6 +8,35 @@ is unusual, and conventional C++ advice is often slower here.
 This file is not a repository tour. It tells an agent how to reason before
 changing Trueform.
 
+## How to think about this codebase
+
+Trueform is arrays being shuffled — sorted, partitioned, copied — and nothing
+else. A mesh does not exist. What exists is flat buffers of numbers wrapped in
+semantic views (blocked, offset-block, indirect, mapped ranges; policy-tagged
+forms) so a caller iterates polygons and topology while the implementation
+stays literal: numbers moving between arrays. Hold both sides of that duality
+deliberately — the semantic view for the user, the flat pass for the machine —
+and never let an abstract noun (a graph, a mesh, a database) become a real
+object in the design.
+
+Each component is exactly one thing and nothing more; specialization is where
+the speed comes from. The recurring move is: precompute in parallel, compute
+offsets, process in parallel. Random access is built from tickets — an index
+into another array, or a -1 sentinel for "nothing there". When a problem
+splits into states (cut/uncut, dirty/clean, failed/passed), solve each state
+on its own structure and merge the solutions, never the structures. The
+average path pays nothing for machinery only the exceptional path uses.
+
+When in doubt, ask: how would this be done by hand — take this, move it over
+there? Then find the sort, the offsets, and the tickets that make that literal
+motion fast. Do not ask how the world does it. Trueform is by now large enough
+that a similar problem has almost certainly been solved in it already; find
+that implementation and read it before designing anything. It will show how
+this class of problem reduces to a reshuffling under this philosophy: what
+gets precomputed, where the offsets fall, which tickets make the answers
+random-accessible, how the problem was divided into small specific problems
+each worth optimizing on its own, and how their answers were merged.
+
 ## Acceptance standard
 
 Review every C++ change on three coequal axes: correctness, performance, and
@@ -189,6 +218,32 @@ carries state through its parallel primitive.
   and contract. Git history and task records own how code was developed,
   replaced, benchmarked, or debugged.
 
+## Implementation by subtraction
+
+A change is not finished when the new mechanism works; it is finished
+when everything the mechanism replaced is gone. The default failure
+mode of a model-assisted change is additive: new code layered beside
+old code, adapters between them, special cases guarding the seam.
+Trueform features land by removal — when new structure subsumes old
+machinery, the old machinery is deleted in the same change, and
+consumers are simplified to the stronger invariant instead of being
+taught to tolerate both.
+
+- Before adding a mechanism, name the existing mechanism it makes
+  unnecessary. If the answer is "nothing", question the design.
+- After landing one, sweep for what it obsoleted: derivations that
+  became identities, resolutions that became no-ops, special cases the
+  new invariant makes impossible. Delete them. A "harmless"
+  belt-and-braces leftover is a second producer of a fact, and that is
+  a defect, not caution.
+- This does not conflict with porting fidelity. A port reproduces a
+  reference mechanism whole because the reference is the authority on
+  its own behavior. Subtraction acts at the architecture level: when a
+  new invariant erases the REASON a ported mechanism existed, the
+  mechanism goes with it — in the same change that erased the reason.
+- Removal is not feature loss. The features stay; the structure
+  carrying them shrinks. Remove until there is nothing left to remove.
+
 ## Rare mechanisms require proof
 
 Do not introduce any of the following merely because they are conventional:
@@ -238,10 +293,35 @@ binding. Their ownership and concurrency contracts outrank neighboring syntax.
 ### C++ tests
 
 ```bash
-cmake -B build -DTF_BUILD_TESTS=ON
+cmake -B build -DTF_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel --target trueform_tests
 ctest --test-dir build --output-on-failure
 ```
+
+### Writing tests
+
+A test never instantiates the arrangement or csg pipeline on a type of its
+own. It builds through the compiled builder tier in `tests/common/` —
+`tf::test::build_self_csg_graph`, `build_pair_csg_graph`,
+`build_range_csg_graph`, `build_self_arrangement`, `build_pair_arrangement`,
+`build_range_arrangement`, `mesh_arrangements_of`, `polygon_arrangements_of`,
+`boolean_of` — and reads through the compiled readers — `csg_mesh_of`,
+`csg_mesh_with_source_ids_of`, `csg_mesh_with_index_map_of`,
+`csg_domains_of`, `outer_shell_of`, `arrangement_mesh_of`,
+`arrangement_curves_of`. Each is compiled once per (index, real, arity)
+combination in `tests/builders/`, so a test TU carries no build kernel and
+no reader. Operands are assembled one way (`tests/common/tagged_operand.hpp`:
+the canonical tag order, the frame always present), because every
+container, tag order or arity a test invents is a new specialization of the
+whole pipeline. A public entry shape — a `std::vector` of forms, a C array,
+a pre-tagged operand, the single-form overload, a heterogeneous pair — is
+exercised once, in its suite's entry-shape test, not in every case. A new
+type combination is a new TU in `tests/builders/`, never an instantiation
+inside a test.
+
+Test targets compile at `-O1` in unity batches of four, so a helper in an
+anonymous namespace needs a name that is unique within its suite, and a
+test never depends on its own optimisation level.
 
 ### Python
 

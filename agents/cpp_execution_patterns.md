@@ -88,10 +88,10 @@ random-addressable blocks.
 
 Primary exemplars:
 
-- Intersection graph crossing grouping:
-  `include/trueform/intersect/graph/crossing_detection.hpp`
+- Plane carrier from compact `{plane, group}` records:
+  `include/trueform/intersect/graph/build_plane_csr.hpp`
 - Canonical edge instances and dense back-map:
-  `include/trueform/intersect/graph/canonicalize_edges.hpp`
+  `include/trueform/intersect/graph/canonicalize_plane_edge_defs.hpp`
 - CSG domain grouping:
   `include/trueform/csg/graph/make_csg_domains.hpp`
 - Domain/component splitting:
@@ -109,19 +109,21 @@ An offset-block structure provides more than compact jagged storage:
 - its position can be the identity shared with another carrier;
 - offsets can be rebased or copied more cheaply than rebuilding associations.
 
-This is why offsets recur through the cutting pipeline. Intersection records for
-a carrier become graph loops/edges for that carrier; those become face regions;
-those become region triangulations. Payload cardinality changes at every stage,
-but positional identity remains available without a hash join.
+This is why offsets recur through the arrangement pipeline. A face's
+intersection records become its loop and its edge definitions; the definitions
+group by canonical identity and by plane; a plane's block is the constraint set
+its triangles come out of; those triangles become cells, and the cells become
+the piece incidence a component flood walks. Payload cardinality changes at
+every stage, but positional identity remains available without a hash join.
 
 Treat offset arrays as first-class structural output. Preserve them, transform
 them, or build aligned offsets deliberately.
 
 Primary exemplars:
 
-- `include/trueform/intersect/graph/intersection_graph.hpp`
-- `include/trueform/cut/face_regions.hpp`
-- `include/trueform/cut/impl/region_triangulator.hpp`
+- `include/trueform/intersect/graph/plane_graph.hpp`
+- `include/trueform/arrangement/planes/materialize_plane_products.hpp`
+- `include/trueform/arrangement/planes/make_plane_piece_incidence.hpp`
 - `include/trueform/topology/structures/compute_face_membership.hpp`
 
 ## 4. Aligned jagged transformations
@@ -196,12 +198,12 @@ Implementation:
 
 Primary exemplars:
 
-- Intersection graph loops and edges:
-  `include/trueform/intersect/graph/intersection_graph.hpp`
-- Face-region loops, holes, and descriptors:
-  `include/trueform/cut/face_regions.hpp`
-- Region triangulation and recovery output:
-  `include/trueform/cut/impl/region_triangulator.hpp`
+- Face loops and their descriptors:
+  `include/trueform/intersect/graph/build_plane_loops.hpp`
+- Edge definitions with block-local ids rebased on append:
+  `include/trueform/intersect/graph/build_plane_edge_defs.hpp`
+- Round triangulation and its recovery evidence:
+  `include/trueform/arrangement/planes/triangulate_plane_round.hpp`
 - Per-edge face links:
   `include/trueform/topology/structures/compute_face_link_per_edge.hpp`
 
@@ -267,7 +269,7 @@ receive block state.
 Examples:
 
 - `include/trueform/intersect/polygon_intersections.hpp`
-- `include/trueform/intersect/impl/face_pair_search.hpp`
+- `include/trueform/intersect/face_pairs/face_pair_search.hpp`
 - `include/trueform/spatial/tree/local_tree_metric_result.hpp`
 
 Do not use arena-local storage merely because output is variable-length.
@@ -302,10 +304,10 @@ chain.
 
 Examples:
 
-- Region-triangulator split and merge tables:
-  `include/trueform/cut/impl/region_triangulator.hpp`
-- Sparse loop-to-hole index:
-  `include/trueform/cut/face_regions.hpp`
+- Closed identity rewrite table:
+  `include/trueform/intersect/graph/plane_identity_collapse.hpp`
+- Sparse split table keyed by edge:
+  `include/trueform/arrangement/planes/has_adjacent_split.hpp`
 
 ### Hash maps
 
@@ -351,7 +353,7 @@ Primary exemplars:
 
 - `include/trueform/core/algorithm/make_unique_index_map.hpp`
 - `include/trueform/topology/half_edges.hpp`
-- `include/trueform/intersect/graph/canonicalize_edges.hpp`
+- `include/trueform/intersect/graph/canonicalize_plane_edge_defs.hpp`
 - `include/trueform/remesh/isotropic_remesh.hpp`
 
 ## 9. Parallel over-segmentation and equivalence collapse
@@ -413,10 +415,10 @@ Primary exemplars:
 
 - Intersection finalization:
   `include/trueform/intersect/polygon_intersections.hpp`
-- Intersection graph crossing splits:
-  `include/trueform/intersect/graph/intersection_graph.hpp`
-- Region-triangulator refinement and recovery:
-  `include/trueform/cut/impl/region_triangulator.hpp`
+- Crossing statements closed into born identities:
+  `include/trueform/intersect/graph/close_plane_classes.hpp`
+- Plane arrangement recovery waves:
+  `include/trueform/arrangement/planes/advance_plane_wave.hpp`
 - Remesh edge splitting:
   `include/trueform/remesh/split/half_edge_splitter.hpp`
 
@@ -441,8 +443,8 @@ Primary exemplars:
   `include/trueform/topology/stitched_face_membership.hpp`
 - Stitched manifold links:
   `include/trueform/topology/stitched_manifold_edge_link.hpp`
-- Region weld conformance:
-  `include/trueform/cut/impl/region_triangulator.hpp`
+- Weld identity substitution:
+  `include/trueform/arrangement/planes/weld_local_plane_rows.hpp`
 - CSG inclusion and nesting evidence:
   `include/trueform/csg/graph/seed_inclusion_bits.hpp`
 

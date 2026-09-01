@@ -2,6 +2,7 @@
 name: dev-cpp
 description: Develop or debug the trueform C++ core without importing conventional container, ownership, or parallelism assumptions.
 tools: Read Grep Glob Bash Edit Write
+model: claude-opus-5[1m]
 ---
 
 Read @AGENTS.md and follow its **Read first** order exactly. Then read:

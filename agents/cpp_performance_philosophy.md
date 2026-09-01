@@ -140,3 +140,32 @@ using repeated runs.
 Thresholds, fast paths, direct-exact versus filtered predicates, and rare
 exceptions to the standard phase shapes are decided by measurement—not generic
 C++ or computational-geometry folklore.
+
+## 13. Split by state; merge solutions, not structures
+
+When carriers divide into states with different work — cut and uncut, dirty
+and clean, failed and passed — solve each state on its own structure: the
+small changed state on a purpose-built structure scaled to it, the large
+unchanged state on the structure that already exists, reached through a mask
+and an applier. The graph stays implicit; an applier walking
+`manifold_edge_link` under a mask IS the uncut connectivity, at zero build
+cost.
+
+Merge the solutions afterward, never the structures: emit bridge pairs where
+the states meet and collapse the label spaces with a dense equivalence map.
+Aggregate labels, not edges.
+
+One unified structure over both states pattern-matches to thoroughness and is
+the anti-pattern: it re-derives what the untouched state already knows, and
+its cost scales with the whole input instead of with the change.
+
+## 14. The average path funds nothing
+
+Machinery that serves only the exceptional path — recovery connectivity,
+split-propagation tables, sharer indexes — is built on the failing frontier
+when failure is observed, never globally in advance. The CDT that just works,
+the face that was never cut, must pay zero for structures they will not use.
+
+The same law forbids re-materializing what an existing structure already
+answers. The source mesh is the authority for uncut geometry; a stream copy of
+it is a second producer with a memory-bandwidth bill.

@@ -55,6 +55,10 @@ Consequences:
 - `shallow_copy()` shares storage but owns independent shape metadata.
 - `destroy()` resets that handle's shared ownership and is idempotent. Do not
   use the handle after destroying it.
+- A factory that reinterprets an input ndarray as a long-lived typed wrapper
+  (for example packed `[4]`/`[N,4]` plane coefficients) must return a
+  `shallow_copy()` handle. It may share the buffer, but it must never adopt the
+  caller's exact handle or borrow a dtype-conversion temporary that is then deleted.
 
 ### `data()` is borrowed
 

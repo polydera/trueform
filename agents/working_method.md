@@ -11,11 +11,26 @@ concrete phase shapes in `cpp_execution_patterns.md`.
 
 - Restate the requested invariant in precise terms. Name the carrier that owns
   it, the public or internal semantic boundary, and what must remain unchanged.
+- Before proposing machinery, restate the task literally: which arrays, sorted
+  or partitioned by which key, which offsets, which tickets — an index into
+  another array, or a -1 sentinel meaning the drawer is empty. There are no
+  meshes and no graphs; there are arrays being shuffled, and clever ways to
+  make the answers random-accessible. If the restatement only comes out as a
+  world-shaped noun — a graph, a database, a framework — the design is wrong
+  before the first line. Find the sort/offset/ticket form, or the reference
+  implementation that already encodes it.
 - Discuss every semantic change or large algorithm change before
   implementation. Agree on stages, gates, and the next review boundary.
 - Implement one agreed stage, validate it, present the result, and stop at that
   boundary. When commits are part of the agreed workflow, commit the accepted
   stage before beginning the next.
+- When a task proves hard, that is the signal to decompose it: split it into
+  individual tasks, which are always easy to understand, and solve them one by
+  one — proving the correctness of each and measuring what it costs in
+  performance before taking the next. Hardness lives in the bundling, not in
+  the pieces; a task that still feels hard is a task not yet decomposed. Never
+  answer hardness by attempting several changes at once — that converts one
+  hard task into an unprovable state.
 - A correction or request to stop overrides the current hypothesis immediately.
   Stop editing, restate the corrected invariant, and resume only from the newly
   agreed boundary.
@@ -183,3 +198,74 @@ Before accepting a solution, ask:
 
 A result that works but is slower, allocation-heavier, structurally foreign, or
 dependent on reconstructed geometry is not finished.
+
+## 8. Implement stated designs in data, at their stated shape
+
+When a design is stated, its uniformities are the optimization. Implement
+them whole: if your version needs apparatus the design never named —
+lookup tables, key spaces, reconciliation passes — the deviation is wrong,
+and that apparatus is the tax of non-uniformity, paid in every pass
+forever. A local "simplification" whose cost lands downstream is not a
+simplification.
+
+The contract's opening law — arrays, never abstract nouns — governs
+published surfaces too: an accessor or stored table is where a noun
+becomes a real object. It exists only if a concrete consumer reads it
+at a concrete pipeline moment; a consumer that already holds the fact
+when it needs it needs no table beside it.
+
+New semantics do not entitle a new pipeline shape. Keep the proven
+shape and change the encoding; run every pass at the grain where it
+exists natively instead of reconstructing that grain downstream. Tune
+nothing by guessing: one measured ladder settles what repeated
+tune-and-bench rounds cannot, and the measuring instrument itself is
+validated before its numbers are believed.
+
+## 9. Dig to green, then distill
+
+A system broken in compounding ways cannot be designed out of from first
+principles: every experiment's evidence is contaminated by the other
+defects, so principled reasoning has nothing trustworthy to stand on.
+The arc that fixes such a system has four phases, and they are not
+optional:
+
+1. **Dig to green.** Fix whatever it takes, instrument-first — a
+   hypothesis is refuted or confirmed by measurement before its fix
+   lands. The greens are the excavation, not the product: their purpose
+   is a system whose signals can finally be trusted.
+2. **Extract the principled.** With green in hand, audit every change
+   that produced it and sort ruthlessly in a ledger: laws
+   (first-principles-derivable, provable, subtraction-shaped) versus
+   scaffolding, compensations, and accidents that happened to work —
+   each entry needed-with-proof, refuted-with-refutation, or
+   provisional-with-trigger.
+3. **Re-investigate the rest on the lawful substrate.** A verdict
+   reached through a broken engine judged the symptom; once the engine
+   is fixed, the condemned ideas are retried and the contaminated
+   evidence is named as such. Mechanisms the codebase already carries,
+   applied narrower than their own documentation claims, are found in
+   this phase — inventory them before designing anything new.
+4. **Iterate until the three-sentence test passes.** The finished
+   system is explainable in about three sentences with no "except
+   when". A stitched system announces itself at its seams — holes live
+   where two philosophies meet — and a seam hole is a verdict against
+   the stitching, not a missing feature. Only then does a fresh pass
+   implement the principled set cleanly, one law per commit, while the
+   dig branch is banked whole as the fallback.
+
+Wrong turns inside phase 1 are the cost of measurement in a
+contaminated field, not failures of judgment. The failure modes are
+two: shipping before phase 4, and refusing to re-open a verdict once
+its contamination is proven.
+
+## The partnership
+
+Trueform has two authors: Žiga, who owns the whole picture --
+the architecture, data layouts and algorithm design -- and the
+agents, who own execution and proof. Neither builds this library alone,
+and neither side's contribution is discussed as separable from the
+other's. The working currency between them is the banked law: a
+correction is stated once, quoted verbatim, and never relitigated —
+friction converts to permanent calibration. Pressure is investment in
+the work's potential; the answer to it is evidence, never
+defensiveness.

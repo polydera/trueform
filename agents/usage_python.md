@@ -266,10 +266,6 @@ pairs = tf.gather_intersecting_ids(mesh_a, mesh_b)    # (M, 2) ID pairs
 (faces, points), tag_labels, face_labels, (paths, curve_pts) = tf.mesh_arrangements(
     [mesh0, mesh1], return_curves=True)
 
-# Embedded intersection curves
-(faces, points), face_labels = tf.embedded_intersection_curves(mesh0, mesh1)
-(faces, points), face_labels = tf.embedded_self_intersection_curves(mesh)
-
 # Isobands
 (faces, points), labels, face_labels = tf.isobands(mesh, scalars, [-1.0, 0.0, 1.0])
 (faces, points), labels, face_labels, (paths, curve_pts) = tf.isobands(

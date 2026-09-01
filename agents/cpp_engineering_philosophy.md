@@ -46,7 +46,7 @@ each element costs more than the threading overhead.
 
 ### 1.3 Sentinel-Based Lazy Discovery
 
-The most distinctive parallel pattern in trueform. Used throughout `cut/construct/`, `reindex/`, and `clean/`.
+The most distinctive parallel pattern in trueform. Used throughout `arrangement/construct/`, `reindex/`, and `clean/`.
 
 ```cpp
 // Allocate map, fill with sentinel
@@ -321,16 +321,17 @@ Zero runtime cost when features are absent. The dead branch is eliminated at com
 ```cpp
 template <typename Index = tf::none_t, typename Policy>
 auto triangulated(const tf::polygons<Policy> &polygons) {
-    if constexpr (std::is_same_v<Index, tf::none_t>) {
-        return triangulated<
-            std::decay_t<decltype(polygons.faces()[0][0])>>(polygons);
-    } else {
-        // Actual implementation with concrete Index type
-    }
+    using OutIndex = std::conditional_t<
+        std::is_same_v<Index, tf::none_t>,
+        std::decay_t<decltype(polygons.faces()[0][0])>, Index>;
+    // Actual implementation with concrete OutIndex type
 }
 ```
 
-When the user doesn't specify `Index`, the function deduces it from the input. No runtime dispatch, no virtual calls.
+When the caller doesn't specify `Index`, the request resolves to the input's
+own. No runtime dispatch, no virtual calls. Resolve the type where a default
+is a property of the input; recurse into `f<Concrete>(...)` only where the
+default is a fixed type the input cannot supply.
 
 ---
 
@@ -345,8 +346,8 @@ tree.build(polygons, tf::config_tree(4, 4));
 tf::half_edges<int> he;
 he.build(polygons);
 
-tf::intersection_graph<int, tf::exact::int32> ig;
-ig.build(ibp, apply_to_face, get_mesh_point, mode);
+tf::polygon_intersections<int, float, tf::exact::int32> ibp;
+ibp.build(form0, form1, tf::intersect_mode::primitives);
 ```
 
 **Why**: Separates allocation from computation. Enables reuse (call `build()` again with different data). Enables profiling of build time. Matches TBB patterns where structures are built once and queried many times.

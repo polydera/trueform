@@ -4,6 +4,9 @@ build-*/
 cmake-build-*/
 wheelhouse/
 
+# Local-data harnesses (fixtures live outside the test corpus)
+local_tests/
+
 # IDE
 .idea/
 .vscode/
@@ -42,5 +45,6 @@ typescript/LICENSE.noncommercial
 typescript/package-lock.json
 typescript/dist/*
 node_modules/
-PROPOSAL_CSG_BINDINGS.md
-docs/superpowers/
+tasks.md
+todo.md
+tests/Testing/
