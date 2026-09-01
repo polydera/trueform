@@ -13,7 +13,7 @@
 
 namespace {
 
-inline auto make_mask(std::initializer_list<bool> values) -> tf::buffer<bool> {
+inline auto make_on_points_mask(std::initializer_list<bool> values) -> tf::buffer<bool> {
     tf::buffer<bool> mask;
     mask.allocate(values.size());
     std::size_t i = 0;
@@ -24,7 +24,7 @@ inline auto make_mask(std::initializer_list<bool> values) -> tf::buffer<bool> {
 }
 
 template <typename Index>
-auto make_ids(std::initializer_list<Index> values) -> tf::buffer<Index> {
+auto make_on_points_ids(std::initializer_list<Index> values) -> tf::buffer<Index> {
     tf::buffer<Index> ids;
     ids.allocate(values.size());
     std::size_t i = 0;
@@ -52,7 +52,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_on_points_polygons_basic", "[reindex][on_poi
     // 4 points: 0,1,2,3
 
     // Mask that keeps points 0,1,2 but not 3
-    auto point_mask = make_mask({true, true, true, false});
+    auto point_mask = make_on_points_mask({true, true, true, false});
 
     auto result = tf::reindexed_by_mask_on_points(input.polygons(), point_mask);
 
@@ -77,7 +77,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_on_points_polygons_partial", "[reindex][on_p
     // 4 faces, 6 points
 
     // Mask that removes one point used by multiple faces
-    auto point_mask = make_mask({true, true, false, true, true, true});
+    auto point_mask = make_on_points_mask({true, true, false, true, true, true});
 
     auto result = tf::reindexed_by_mask_on_points(input.polygons(), point_mask);
 
@@ -98,7 +98,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_on_points_polygons_index_map", "[reindex][on
 
     auto input = tf::test::create_triangle_polygons_3d<index_t, real_t>();
 
-    auto point_mask = make_mask({true, true, true, false});
+    auto point_mask = make_on_points_mask({true, true, true, false});
 
     auto [result, face_im, point_im] = tf::reindexed_by_mask_on_points(input.polygons(), point_mask, tf::return_index_map);
 
@@ -161,7 +161,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_on_points_segments_basic", "[reindex][on_poi
     input.points_buffer().emplace_back(real_t(3), real_t(0), real_t(0));
 
     // Mask keeps points 0,1,2 but not 3
-    auto point_mask = make_mask({true, true, true, false});
+    auto point_mask = make_on_points_mask({true, true, true, false});
 
     auto result = tf::reindexed_by_mask_on_points(input.segments(), point_mask);
 
@@ -190,7 +190,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_on_points_segments_index_map", "[reindex][on
     input.points_buffer().emplace_back(real_t(2), real_t(0), real_t(0));
     input.points_buffer().emplace_back(real_t(3), real_t(0), real_t(0));
 
-    auto point_mask = make_mask({true, true, false, false});
+    auto point_mask = make_on_points_mask({true, true, false, false});
 
     auto [result, edge_im, point_im] = tf::reindexed_by_mask_on_points(input.segments(), point_mask, tf::return_index_map);
 
@@ -214,7 +214,7 @@ TEMPLATE_TEST_CASE("reindex_by_ids_on_points_polygons_basic", "[reindex][on_poin
     // face0=(0,1,2), face1=(1,0,3)
 
     // Keep only points 0,1,2 by ID
-    auto point_ids = make_ids<index_t>({0, 1, 2});
+    auto point_ids = make_on_points_ids<index_t>({0, 1, 2});
 
     auto result = tf::reindexed_by_ids_on_points(input.polygons(), point_ids);
 
@@ -237,7 +237,7 @@ TEMPLATE_TEST_CASE("reindex_by_ids_on_points_polygons_subset", "[reindex][on_poi
     // 4 faces, 6 points
 
     // Keep subset of points
-    auto point_ids = make_ids<index_t>({0, 1, 2});
+    auto point_ids = make_on_points_ids<index_t>({0, 1, 2});
 
     auto result = tf::reindexed_by_ids_on_points(input.polygons(), point_ids);
 
@@ -258,7 +258,7 @@ TEMPLATE_TEST_CASE("reindex_by_ids_on_points_polygons_index_map", "[reindex][on_
 
     auto input = tf::test::create_triangle_polygons_3d<index_t, real_t>();
 
-    auto point_ids = make_ids<index_t>({0, 1, 2});
+    auto point_ids = make_on_points_ids<index_t>({0, 1, 2});
 
     auto [result, face_im, point_im] = tf::reindexed_by_ids_on_points(input.polygons(), point_ids, tf::return_index_map);
 
@@ -280,7 +280,7 @@ TEMPLATE_TEST_CASE("reindex_by_ids_on_points_polygons_dynamic", "[reindex][on_po
     auto input = tf::test::create_dynamic_polygons_3d<index_t, real_t>();
 
     // Keep first 3 points
-    auto point_ids = make_ids<index_t>({0, 1, 2});
+    auto point_ids = make_on_points_ids<index_t>({0, 1, 2});
 
     auto result = tf::reindexed_by_ids_on_points(input.polygons(), point_ids);
 
@@ -309,7 +309,7 @@ TEMPLATE_TEST_CASE("reindex_by_ids_on_points_segments_basic", "[reindex][on_poin
     input.points_buffer().emplace_back(real_t(2), real_t(0), real_t(0));
     input.points_buffer().emplace_back(real_t(3), real_t(0), real_t(0));
 
-    auto point_ids = make_ids<index_t>({0, 1, 2});
+    auto point_ids = make_on_points_ids<index_t>({0, 1, 2});
 
     auto result = tf::reindexed_by_ids_on_points(input.segments(), point_ids);
 
@@ -331,7 +331,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_on_points_all_points_masked", "[reindex][on_
     auto input = tf::test::create_triangle_polygons_3d<index_t, real_t>();
 
     // All false mask
-    auto point_mask = make_mask({false, false, false, false});
+    auto point_mask = make_on_points_mask({false, false, false, false});
 
     auto result = tf::reindexed_by_mask_on_points(input.polygons(), point_mask);
 

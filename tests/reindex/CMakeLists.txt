@@ -4,6 +4,7 @@ add_executable(trueform_reindex_tests
     test_reindex_on_points.cpp
     test_reindex_concatenated.cpp
     test_reindex_split_components.cpp
+    test_split_into_domains.cpp
 )
 
 target_link_libraries(trueform_reindex_tests PRIVATE trueform_test_common)

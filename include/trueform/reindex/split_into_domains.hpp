@@ -123,6 +123,7 @@ auto split_into_domains_polygons(const tf::polygons<Policy> &polygons,
       });
     } else {
       tf::parallel_for_each(tf::enumerate(comp_ids), [&](auto pair) {
+        constexpr auto N = tf::static_size_v<decltype(polygons[0])>;
         auto &&[i, elem_id] = pair;
         bool reverse = (elem_id & Index(1)) == Index(0);
         auto face = polygons.faces()[elem_id / 2];

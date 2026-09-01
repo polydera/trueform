@@ -22,7 +22,7 @@
 #include "./snap_view.hpp"
 
 namespace tf {
-namespace clean::detail {
+namespace clean {
 
 template <typename Index, typename Policy>
 auto extract_edges_from_curves(const tf::curves<Policy> &curves) {
@@ -54,7 +54,7 @@ auto extract_edges_from_curves(const tf::curves<Policy> &curves) {
   return edges_buf;
 }
 
-} // namespace clean::detail
+} // namespace clean
 
 /// @ingroup clean
 /// @brief Remove duplicates from curves with tolerance and return index map.
@@ -78,7 +78,7 @@ auto cleaned(const tf::curves<Policy> &curves,
     using ActualIndex = std::decay_t<decltype(curves.paths()[0][0])>;
     return cleaned<ActualIndex>(curves, tolerance, tf::return_index_map);
   } else {
-    auto edges_buf = clean::detail::extract_edges_from_curves<Index>(curves);
+    auto edges_buf = clean::extract_edges_from_curves<Index>(curves);
     if (edges_buf.size() == 0) {
       tf::curves_buffer<Index, tf::coordinate_type<Policy>,
                         tf::coordinate_dims_v<Policy>>
@@ -125,7 +125,7 @@ auto cleaned(const tf::curves<Policy> &curves, tf::return_index_map_t) {
     using ActualIndex = std::decay_t<decltype(curves.paths()[0][0])>;
     return cleaned<ActualIndex>(curves, tf::return_index_map);
   } else {
-    auto edges_buf = clean::detail::extract_edges_from_curves<Index>(curves);
+    auto edges_buf = clean::extract_edges_from_curves<Index>(curves);
     if (edges_buf.size() == 0) {
       tf::curves_buffer<Index, tf::coordinate_type<Policy>,
                         tf::coordinate_dims_v<Policy>>

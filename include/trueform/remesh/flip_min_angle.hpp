@@ -16,18 +16,16 @@
 #include <limits>
 #include <type_traits>
 
+#include "../core/angle.hpp"
 #include "../core/coordinate_type.hpp"
 #include "../core/none.hpp"
 #include "../core/point.hpp"
 #include "../core/points.hpp"
-#include "../core/angle.hpp"
 #include "../topology/half_edges.hpp"
 #include "./feature_mask.hpp"
-#include "./optimize_valence.hpp" // detail::flip_keeps_orientation
+#include "./optimize_valence.hpp" // flip_keeps_orientation
 
 namespace tf::remesh {
-
-namespace detail {
 
 /// Minimum interior angle (radians) of triangle (A, B, C).
 template <typename Real>
@@ -48,8 +46,6 @@ inline auto tri_min_angle(const tf::point<Real, 3> &A,
   };
   return std::min({angle(a, b, c), angle(b, a, c), angle(c, a, b)});
 }
-
-} // namespace detail
 
 /// @ingroup remesh
 /// @brief Delaunay-style edge flips that raise the minimum angle.
@@ -108,10 +104,10 @@ auto flip_min_angle(tf::half_edges<Index> &he,
 
       // Old triangles (va0,va1,va2) and (va1,va0,vb2); after flip (va2,vb2,va1)
       // and (vb2,va2,va0).
-      double min_before = std::min(detail::tri_min_angle(pa0, pa1, pa2),
-                                   detail::tri_min_angle(pa1, pa0, pb2));
-      double min_after = std::min(detail::tri_min_angle(pa2, pb2, pa1),
-                                  detail::tri_min_angle(pb2, pa2, pa0));
+      double min_before =
+          std::min(tri_min_angle(pa0, pa1, pa2), tri_min_angle(pa1, pa0, pb2));
+      double min_after =
+          std::min(tri_min_angle(pa2, pb2, pa1), tri_min_angle(pb2, pa2, pa0));
 
       if (min_after <= min_before + double(margin))
         continue;
@@ -126,7 +122,7 @@ auto flip_min_angle(tf::half_edges<Index> &he,
         if (gap > double(max_deviation))
           continue;
       }
-      if (!detail::flip_keeps_orientation(points, va0, va1, va2, vb2))
+      if (!flip_keeps_orientation(points, va0, va1, va2, vb2))
         continue; // would fold the surface
 
       if constexpr (HasMask) {

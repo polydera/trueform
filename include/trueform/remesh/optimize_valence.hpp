@@ -30,8 +30,6 @@
 
 namespace tf::remesh {
 
-namespace detail {
-
 /// Fold guard for an edge flip. The flip turns edge (va0,va1) -- shared by the
 /// triangles (va0,va1,va2) and (va1,va0,vb2) -- into edge (va2,vb2), giving the
 /// triangles (va2,vb2,va1) and (vb2,va2,va0). Returns false if either new
@@ -130,8 +128,6 @@ auto optimize_valence_impl(tf::half_edges<Index> &he, const PointsOrNone &points
   return n_flipped;
 }
 
-} // namespace detail
-
 /// @ingroup remesh
 /// @brief Optimize vertex valence by flipping edges.
 ///
@@ -149,8 +145,7 @@ template <typename Index>
 auto optimize_valence(tf::half_edges<Index> &he,
                       tf::buffer<std::int8_t> &deviation,
                       int iterations = 1) -> Index {
-  return detail::optimize_valence_impl(he, tf::none, deviation, tf::none,
-                                       iterations);
+  return optimize_valence_impl(he, tf::none, deviation, tf::none, iterations);
 }
 
 /// @ingroup remesh
@@ -163,8 +158,7 @@ auto optimize_valence(tf::half_edges<Index> &he,
                       tf::buffer<std::int8_t> &deviation,
                       const feature_mask &mask,
                       int iterations = 1) -> Index {
-  return detail::optimize_valence_impl(he, tf::none, deviation, mask,
-                                       iterations);
+  return optimize_valence_impl(he, tf::none, deviation, mask, iterations);
 }
 
 /// @ingroup remesh
@@ -180,8 +174,7 @@ auto optimize_valence(tf::half_edges<Index> &he,
                       const tf::points<PointsPolicy> &points,
                       tf::buffer<std::int8_t> &deviation,
                       int iterations = 1) -> Index {
-  return detail::optimize_valence_impl(he, points, deviation, tf::none,
-                                       iterations);
+  return optimize_valence_impl(he, points, deviation, tf::none, iterations);
 }
 
 /// @ingroup remesh
@@ -192,7 +185,7 @@ auto optimize_valence(tf::half_edges<Index> &he,
                       tf::buffer<std::int8_t> &deviation,
                       const feature_mask &mask,
                       int iterations = 1) -> Index {
-  return detail::optimize_valence_impl(he, points, deviation, mask, iterations);
+  return optimize_valence_impl(he, points, deviation, mask, iterations);
 }
 
 } // namespace tf::remesh

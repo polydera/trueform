@@ -30,7 +30,6 @@ namespace tf {
 /// @cond INTERNAL
 namespace reindex {
 
-namespace impl {
 template <typename R0, typename R1, typename T>
 auto copy_with_transformation(const R0 &source, R1 &&destincation,
                               const T &transformation) {
@@ -44,7 +43,6 @@ auto copy_with_transformation(const R0 &source, R1 &&destincation,
                        });
   }
 }
-} // namespace impl
 
 template <typename Index, typename Policy0, typename Policy1,
           typename... Policies, typename RealT, std::size_t Dims,
@@ -76,9 +74,9 @@ auto concatenated_impl(tf::polygons_buffer<Index, RealT, Dims, Ngon> &out,
         },
         tf::checked);
 
-    impl::copy_with_transformation(polygons.points(),
-                                    tf::slice(out.points_buffer(), start_p, end_p),
-                                    tf::frame_of(polygons));
+    copy_with_transformation(polygons.points(),
+                             tf::slice(out.points_buffer(), start_p, end_p),
+                             tf::frame_of(polygons));
 
     start_p = end_p;
     start_f = end_f;
@@ -237,9 +235,9 @@ auto concatenated(const tf::segments<Policy0> &segments0,
         },
         tf::checked);
 
-    reindex::impl::copy_with_transformation(segments.points(),
-                                    tf::slice(out.points_buffer(), start_p, end_p),
-                                    tf::frame_of(segments));
+    reindex::copy_with_transformation(
+        segments.points(), tf::slice(out.points_buffer(), start_p, end_p),
+        tf::frame_of(segments));
 
     start_p = end_p;
     start_f = end_f;
@@ -280,8 +278,8 @@ auto concatenated(const tf::points<Policy0> &points0,
   auto make_copy = [&](const auto &points) {
     const std::size_t end_p = start_p + static_cast<std::size_t>(points.size());
 
-    reindex::impl::copy_with_transformation(points, tf::slice(out, start_p, end_p),
-                                            tf::frame_of(points));
+    reindex::copy_with_transformation(points, tf::slice(out, start_p, end_p),
+                                      tf::frame_of(points));
 
     start_p = end_p;
   };
@@ -321,8 +319,8 @@ auto concatenated(const tf::vectors<Policy0> &vectors0,
     const std::size_t end_p =
         start_p + static_cast<std::size_t>(vectors.size());
 
-    reindex::impl::copy_with_transformation(vectors, tf::slice(out, start_p, end_p),
-                                            tf::frame_of(vectors));
+    reindex::copy_with_transformation(vectors, tf::slice(out, start_p, end_p),
+                                      tf::frame_of(vectors));
 
     start_p = end_p;
   };
@@ -362,8 +360,9 @@ auto concatenated(const tf::unit_vectors<Policy0> &unit_vectors0,
     const std::size_t end_p =
         start_p + static_cast<std::size_t>(unit_vectors.size());
 
-    reindex::impl::copy_with_transformation(unit_vectors, tf::slice(out, start_p, end_p),
-                                            tf::frame_of(unit_vectors));
+    reindex::copy_with_transformation(unit_vectors,
+                                      tf::slice(out, start_p, end_p),
+                                      tf::frame_of(unit_vectors));
 
     start_p = end_p;
   };
@@ -401,9 +400,9 @@ auto concatenated_impl(tf::polygons_buffer<Index, RealT, Dims, Ngon> &out,
         },
         tf::checked);
 
-    impl::copy_with_transformation(
-        polygons.points(), tf::slice(out.points_buffer(), start_p, end_p),
-        tf::frame_of(polygons));
+    copy_with_transformation(polygons.points(),
+                             tf::slice(out.points_buffer(), start_p, end_p),
+                             tf::frame_of(polygons));
   };
 
   tbb::task_group tg;
@@ -520,9 +519,9 @@ auto concatenated(const tf::segments<Policy> &, const Range &r) {
         },
         tf::checked);
 
-    impl::copy_with_transformation(
-        segments.points(), tf::slice(out.points_buffer(), start_p, end_p),
-        tf::frame_of(segments));
+    copy_with_transformation(segments.points(),
+                             tf::slice(out.points_buffer(), start_p, end_p),
+                             tf::frame_of(segments));
   };
 
   tbb::task_group tg;
@@ -556,8 +555,8 @@ auto concatenated(const tf::points<Policy> &, const Range &r) {
 
   auto make_copy = [&](const auto &points, std::size_t start_p,
                        std::size_t end_p) {
-    impl::copy_with_transformation(points, tf::slice(out, start_p, end_p),
-                                   tf::frame_of(points));
+    copy_with_transformation(points, tf::slice(out, start_p, end_p),
+                             tf::frame_of(points));
   };
 
   tbb::task_group tg;
@@ -586,8 +585,8 @@ auto concatenated(const tf::vectors<Policy> &, const Range &r) {
 
   auto make_copy = [&](const auto &vectors, std::size_t start_p,
                        std::size_t end_p) {
-    impl::copy_with_transformation(vectors, tf::slice(out, start_p, end_p),
-                                   tf::frame_of(vectors));
+    copy_with_transformation(vectors, tf::slice(out, start_p, end_p),
+                             tf::frame_of(vectors));
   };
 
   tbb::task_group tg;
@@ -616,8 +615,8 @@ auto concatenated(const tf::unit_vectors<Policy> &, const Range &r) {
 
   auto make_copy = [&](const auto &unit_vectors, std::size_t start_p,
                        std::size_t end_p) {
-    impl::copy_with_transformation(unit_vectors, tf::slice(out, start_p, end_p),
-                                   tf::frame_of(unit_vectors));
+    copy_with_transformation(unit_vectors, tf::slice(out, start_p, end_p),
+                             tf::frame_of(unit_vectors));
   };
 
   tbb::task_group tg;

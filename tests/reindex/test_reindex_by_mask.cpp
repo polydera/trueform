@@ -35,7 +35,7 @@
 namespace {
 
 // Helper to create a bool mask buffer
-inline auto make_mask(std::initializer_list<bool> values) -> tf::buffer<bool> {
+inline auto make_kept_mask(std::initializer_list<bool> values) -> tf::buffer<bool> {
     tf::buffer<bool> mask;
     mask.allocate(values.size());
     std::size_t i = 0;
@@ -66,7 +66,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_points_basic", "[reindex][by_mask][points]",
     input.emplace_back(real_t(3), real_t(0), real_t(0));
 
     // Mask to keep every other point
-    auto mask = make_mask({true, false, true, false});
+    auto mask = make_kept_mask({true, false, true, false});
 
     auto result = tf::reindexed_by_mask<index_t>(input.points(), mask);
 
@@ -95,7 +95,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_points_all_false", "[reindex][by_mask][point
     input.emplace_back(real_t(2), real_t(0), real_t(0));
 
     // All false mask
-    auto mask = make_mask({false, false, false});
+    auto mask = make_kept_mask({false, false, false});
 
     auto result = tf::reindexed_by_mask<index_t>(input.points(), mask);
 
@@ -120,7 +120,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_points_all_true", "[reindex][by_mask][points
     input.emplace_back(real_t(2), real_t(0), real_t(0));
 
     // All true mask
-    auto mask = make_mask({true, true, true});
+    auto mask = make_kept_mask({true, true, true});
 
     auto result = tf::reindexed_by_mask<index_t>(input.points(), mask);
 
@@ -150,7 +150,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_points_index_map", "[reindex][by_mask][point
     input.emplace_back(real_t(2), real_t(0), real_t(0));
     input.emplace_back(real_t(3), real_t(0), real_t(0));
 
-    auto mask = make_mask({true, false, true, false});
+    auto mask = make_kept_mask({true, false, true, false});
 
     auto [result, index_map] = tf::reindexed_by_mask<index_t>(input.points(), mask, tf::return_index_map);
 
@@ -188,7 +188,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_points_single", "[reindex][by_mask][points]"
     tf::points_buffer<real_t, 3> input;
     input.emplace_back(real_t(5), real_t(6), real_t(7));
 
-    auto mask = make_mask({true});
+    auto mask = make_kept_mask({true});
 
     auto result = tf::reindexed_by_mask<index_t>(input.points(), mask);
 
@@ -215,7 +215,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_vectors_basic", "[reindex][by_mask][vectors]
     input.emplace_back(real_t(0), real_t(0), real_t(1));
     input.emplace_back(real_t(1), real_t(1), real_t(1));
 
-    auto mask = make_mask({true, false, true, false});
+    auto mask = make_kept_mask({true, false, true, false});
 
     auto result = tf::reindexed_by_mask<index_t>(input.vectors(), mask);
 
@@ -248,7 +248,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_unit_vectors_basic", "[reindex][by_mask][uni
     input.emplace_back(real_t(0), real_t(1), real_t(0));
     input.emplace_back(real_t(0), real_t(0), real_t(1));
 
-    auto mask = make_mask({false, true, true});
+    auto mask = make_kept_mask({false, true, true});
 
     auto result = tf::reindexed_by_mask<index_t>(input.unit_vectors(), mask);
 
@@ -282,7 +282,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_segments_basic", "[reindex][by_mask][segment
     input.points_buffer().emplace_back(real_t(3), real_t(0), real_t(0));
 
     // Keep first and last edge
-    auto mask = make_mask({true, false, true});
+    auto mask = make_kept_mask({true, false, true});
 
     auto result = tf::reindexed_by_mask(input.segments(), mask);
 
@@ -311,7 +311,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_segments_index_map", "[reindex][by_mask][seg
     input.points_buffer().emplace_back(real_t(2), real_t(0), real_t(0));
     input.points_buffer().emplace_back(real_t(3), real_t(0), real_t(0));
 
-    auto mask = make_mask({true, false, true});
+    auto mask = make_kept_mask({true, false, true});
 
     auto [result, edge_im, point_im] = tf::reindexed_by_mask(input.segments(), mask, tf::return_index_map);
 
@@ -348,7 +348,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_segments_point_compaction", "[reindex][by_ma
     input.points_buffer().emplace_back(real_t(3), real_t(0), real_t(0));
 
     // Keep only edge 0 (uses points 0 and 1)
-    auto mask = make_mask({true, false});
+    auto mask = make_kept_mask({true, false});
 
     auto result = tf::reindexed_by_mask(input.segments(), mask);
 
@@ -376,7 +376,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_polygons_basic", "[reindex][by_mask][polygon
     // 4 faces, 6 points
 
     // Keep faces 0 and 2
-    auto mask = make_mask({true, false, true, false});
+    auto mask = make_kept_mask({true, false, true, false});
 
     auto result = tf::reindexed_by_mask(input.polygons(), mask);
 
@@ -397,7 +397,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_polygons_index_map", "[reindex][by_mask][pol
     auto input = tf::test::create_triangle_polygons_3d<index_t, real_t>();
     // 2 faces, 4 points
 
-    auto mask = make_mask({true, false});
+    auto mask = make_kept_mask({true, false});
 
     auto [result, face_im, point_im] = tf::reindexed_by_mask(input.polygons(), mask, tf::return_index_map);
 
@@ -436,7 +436,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_polygons_point_compaction", "[reindex][by_ma
     input.points_buffer().emplace_back(real_t(10.5), real_t(1), real_t(0));
 
     // Keep only first triangle
-    auto mask = make_mask({true, false});
+    auto mask = make_kept_mask({true, false});
 
     auto result = tf::reindexed_by_mask(input.polygons(), mask);
 
@@ -464,7 +464,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_polygons_all_removed", "[reindex][by_mask][p
     auto input = tf::test::create_triangle_polygons_3d<index_t, real_t>();
 
     // All false mask
-    auto mask = make_mask({false, false});
+    auto mask = make_kept_mask({false, false});
 
     auto result = tf::reindexed_by_mask(input.polygons(), mask);
 
@@ -486,7 +486,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_polygons_dynamic_basic", "[reindex][by_mask]
     auto input = tf::test::create_dynamic_polygons_3d<index_t, real_t>();
     // 2 triangles, 4 points
 
-    auto mask = make_mask({true, false});
+    auto mask = make_kept_mask({true, false});
 
     auto result = tf::reindexed_by_mask(input.polygons(), mask);
 
@@ -508,7 +508,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_polygons_dynamic_mixed", "[reindex][by_mask]
     // 1 triangle + 1 quad = 2 faces, 5 points
 
     // Keep only the quad
-    auto mask = make_mask({false, true});
+    auto mask = make_kept_mask({false, true});
 
     auto result = tf::reindexed_by_mask(input.polygons(), mask);
 
@@ -530,7 +530,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_polygons_dynamic_index_map", "[reindex][by_m
 
     auto input = tf::test::create_mixed_polygons_3d<index_t, real_t>();
 
-    auto mask = make_mask({true, false});
+    auto mask = make_kept_mask({true, false});
 
     auto [result, face_im, point_im] = tf::reindexed_by_mask(input.polygons(), mask, tf::return_index_map);
 
@@ -565,7 +565,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_polygons_dynamic_point_compaction", "[reinde
     input.points_buffer().emplace_back(real_t(10), real_t(1), real_t(0));
 
     // Keep only the triangle
-    auto mask = make_mask({true, false});
+    auto mask = make_kept_mask({true, false});
 
     auto result = tf::reindexed_by_mask(input.polygons(), mask);
 
@@ -592,7 +592,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_range_basic", "[reindex][by_mask][range]",
     input.push_back(50);
     auto input_range = tf::make_range(input);
 
-    auto mask = make_mask({true, false, true, false, true});
+    auto mask = make_kept_mask({true, false, true, false, true});
 
     auto result = tf::reindexed_by_mask<index_t>(input_range, mask);
 
@@ -658,7 +658,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_polygons_single_face", "[reindex][by_mask][p
     input.points_buffer().emplace_back(real_t(1), real_t(0), real_t(0));
     input.points_buffer().emplace_back(real_t(0.5), real_t(1), real_t(0));
 
-    auto mask = make_mask({true});
+    auto mask = make_kept_mask({true});
 
     auto result = tf::reindexed_by_mask(input.polygons(), mask);
 
@@ -679,7 +679,7 @@ TEMPLATE_TEST_CASE("reindex_by_mask_polygons_2d", "[reindex][by_mask][polygons]"
 
     auto input = tf::test::create_triangle_polygons_2d<index_t, real_t>();
 
-    auto mask = make_mask({true, false});
+    auto mask = make_kept_mask({true, false});
 
     auto result = tf::reindexed_by_mask(input.polygons(), mask);
 

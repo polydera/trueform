@@ -14,7 +14,7 @@
 namespace {
 
 template <typename Index>
-auto make_ids(std::initializer_list<Index> values) -> tf::buffer<Index> {
+auto make_kept_ids(std::initializer_list<Index> values) -> tf::buffer<Index> {
     tf::buffer<Index> ids;
     ids.allocate(values.size());
     std::size_t i = 0;
@@ -44,7 +44,7 @@ TEMPLATE_TEST_CASE("reindex_by_ids_points_basic", "[reindex][by_ids][points]",
     input.emplace_back(real_t(3), real_t(0), real_t(0));
 
     // Extract points 0 and 2
-    auto ids = make_ids<index_t>({0, 2});
+    auto ids = make_kept_ids<index_t>({0, 2});
 
     auto result = tf::reindexed_by_ids<index_t>(input.points(), ids);
 
@@ -71,7 +71,7 @@ TEMPLATE_TEST_CASE("reindex_by_ids_points_reorder", "[reindex][by_ids][points]",
     input.emplace_back(real_t(3), real_t(0), real_t(0));
 
     // Reorder: extract in reverse order
-    auto ids = make_ids<index_t>({3, 2, 1, 0});
+    auto ids = make_kept_ids<index_t>({3, 2, 1, 0});
 
     auto result = tf::reindexed_by_ids<index_t>(input.points(), ids);
 
@@ -99,7 +99,7 @@ TEMPLATE_TEST_CASE("reindex_by_ids_points_index_map", "[reindex][by_ids][points]
     input.emplace_back(real_t(2), real_t(0), real_t(0));
     input.emplace_back(real_t(3), real_t(0), real_t(0));
 
-    auto ids = make_ids<index_t>({1, 3});
+    auto ids = make_kept_ids<index_t>({1, 3});
 
     auto [result, index_map] = tf::reindexed_by_ids<index_t>(input.points(), ids, tf::return_index_map);
 
@@ -149,7 +149,7 @@ TEMPLATE_TEST_CASE("reindex_by_ids_points_single", "[reindex][by_ids][points]",
     input.emplace_back(real_t(5), real_t(6), real_t(7));
     input.emplace_back(real_t(8), real_t(9), real_t(10));
 
-    auto ids = make_ids<index_t>({1});
+    auto ids = make_kept_ids<index_t>({1});
 
     auto result = tf::reindexed_by_ids<index_t>(input.points(), ids);
 
@@ -175,7 +175,7 @@ TEMPLATE_TEST_CASE("reindex_by_ids_vectors_basic", "[reindex][by_ids][vectors]",
     input.emplace_back(real_t(0), real_t(1), real_t(0));
     input.emplace_back(real_t(0), real_t(0), real_t(1));
 
-    auto ids = make_ids<index_t>({2, 0});
+    auto ids = make_kept_ids<index_t>({2, 0});
 
     auto result = tf::reindexed_by_ids<index_t>(input.vectors(), ids);
 
@@ -205,7 +205,7 @@ TEMPLATE_TEST_CASE("reindex_by_ids_segments_basic", "[reindex][by_ids][segments]
     input.points_buffer().emplace_back(real_t(2), real_t(0), real_t(0));
     input.points_buffer().emplace_back(real_t(3), real_t(0), real_t(0));
 
-    auto ids = make_ids<index_t>({0, 2});
+    auto ids = make_kept_ids<index_t>({0, 2});
 
     auto result = tf::reindexed_by_ids(input.segments(), ids);
 
@@ -233,7 +233,7 @@ TEMPLATE_TEST_CASE("reindex_by_ids_segments_index_map", "[reindex][by_ids][segme
     input.points_buffer().emplace_back(real_t(2), real_t(0), real_t(0));
     input.points_buffer().emplace_back(real_t(3), real_t(0), real_t(0));
 
-    auto ids = make_ids<index_t>({1});
+    auto ids = make_kept_ids<index_t>({1});
 
     auto [result, edge_im, point_im] = tf::reindexed_by_ids(input.segments(), ids, tf::return_index_map);
 
@@ -256,7 +256,7 @@ TEMPLATE_TEST_CASE("reindex_by_ids_polygons_basic", "[reindex][by_ids][polygons]
     auto input = tf::test::create_larger_triangle_polygons_3d<index_t, real_t>();
     // 4 faces
 
-    auto ids = make_ids<index_t>({0, 2});
+    auto ids = make_kept_ids<index_t>({0, 2});
 
     auto result = tf::reindexed_by_ids(input.polygons(), ids);
 
@@ -277,7 +277,7 @@ TEMPLATE_TEST_CASE("reindex_by_ids_polygons_index_map", "[reindex][by_ids][polyg
     auto input = tf::test::create_triangle_polygons_3d<index_t, real_t>();
     // 2 faces, 4 points
 
-    auto ids = make_ids<index_t>({1});
+    auto ids = make_kept_ids<index_t>({1});
 
     auto [result, face_im, point_im] = tf::reindexed_by_ids(input.polygons(), ids, tf::return_index_map);
 
@@ -310,7 +310,7 @@ TEMPLATE_TEST_CASE("reindex_by_ids_polygons_point_compaction", "[reindex][by_ids
     input.points_buffer().emplace_back(real_t(11), real_t(0), real_t(0));
     input.points_buffer().emplace_back(real_t(10.5), real_t(1), real_t(0));
 
-    auto ids = make_ids<index_t>({1});  // Keep only second triangle
+    auto ids = make_kept_ids<index_t>({1});  // Keep only second triangle
 
     auto result = tf::reindexed_by_ids(input.polygons(), ids);
 
@@ -336,7 +336,7 @@ TEMPLATE_TEST_CASE("reindex_by_ids_polygons_dynamic_basic", "[reindex][by_ids][p
 
     auto input = tf::test::create_dynamic_polygons_3d<index_t, real_t>();
 
-    auto ids = make_ids<index_t>({0});
+    auto ids = make_kept_ids<index_t>({0});
 
     auto result = tf::reindexed_by_ids(input.polygons(), ids);
 
@@ -357,7 +357,7 @@ TEMPLATE_TEST_CASE("reindex_by_ids_polygons_dynamic_mixed", "[reindex][by_ids][p
     auto input = tf::test::create_mixed_polygons_3d<index_t, real_t>();
     // 1 triangle (3 verts) + 1 quad (4 verts)
 
-    auto ids = make_ids<index_t>({1});  // Keep only the quad
+    auto ids = make_kept_ids<index_t>({1});  // Keep only the quad
 
     auto result = tf::reindexed_by_ids(input.polygons(), ids);
 
@@ -378,7 +378,7 @@ TEMPLATE_TEST_CASE("reindex_by_ids_polygons_dynamic_index_map", "[reindex][by_id
 
     auto input = tf::test::create_mixed_polygons_3d<index_t, real_t>();
 
-    auto ids = make_ids<index_t>({0, 1});  // Keep both
+    auto ids = make_kept_ids<index_t>({0, 1});  // Keep both
 
     auto [result, face_im, point_im] = tf::reindexed_by_ids(input.polygons(), ids, tf::return_index_map);
 
@@ -405,7 +405,7 @@ TEMPLATE_TEST_CASE("reindex_by_ids_range_basic", "[reindex][by_ids][range]",
     input.push_back(50);
     auto input_range = tf::make_range(input);
 
-    auto ids = make_ids<index_t>({4, 2, 0});
+    auto ids = make_kept_ids<index_t>({4, 2, 0});
 
     auto result = tf::reindexed_by_ids<index_t>(input_range, ids);
 
@@ -431,7 +431,7 @@ TEMPLATE_TEST_CASE("reindex_by_ids_unit_vectors_basic", "[reindex][by_ids][unit_
     input.emplace_back(real_t(0), real_t(1), real_t(0));
     input.emplace_back(real_t(0), real_t(0), real_t(1));
 
-    auto ids = make_ids<index_t>({1});
+    auto ids = make_kept_ids<index_t>({1});
 
     auto result = tf::reindexed_by_ids<index_t>(input.unit_vectors(), ids);
 

@@ -34,8 +34,6 @@
 
 namespace tf::remesh {
 
-namespace detail {
-
 /// Shared relaxation core: `mask` is a feature_mask (crease/corner vertices
 /// stay fixed) or tf::none.
 template <typename Index, typename PointsPolicy, typename MaskOrNone>
@@ -149,8 +147,6 @@ auto tangential_relaxation_impl(
   }
 }
 
-} // namespace detail
-
 /// @ingroup remesh
 /// @brief Tangential relaxation (Laplacian + tangent-plane projection).
 ///
@@ -171,8 +167,8 @@ auto tangential_relaxation(
     tf::points_buffer<double, tf::coordinate_dims_v<PointsPolicy>> &old_pos,
     int iterations = 1, tf::coordinate_type<PointsPolicy> lambda = 0.5,
     tf::coordinate_type<PointsPolicy> max_deviation = 0) -> void {
-  detail::tangential_relaxation_impl(he, points, old_pos, tf::none,
-                                     iterations, lambda, max_deviation);
+  tangential_relaxation_impl(he, points, old_pos, tf::none, iterations, lambda,
+                             max_deviation);
 }
 
 template <typename Index, typename PointsPolicy>
@@ -181,8 +177,8 @@ auto tangential_relaxation(
     tf::points_buffer<double, tf::coordinate_dims_v<PointsPolicy>> &old_pos,
     int iterations = 1, tf::coordinate_type<PointsPolicy> lambda = 0.5,
     tf::coordinate_type<PointsPolicy> max_deviation = 0) -> void {
-  detail::tangential_relaxation_impl(he, points, old_pos, tf::none,
-                                     iterations, lambda, max_deviation);
+  tangential_relaxation_impl(he, points, old_pos, tf::none, iterations, lambda,
+                             max_deviation);
 }
 
 /// @ingroup remesh
@@ -197,8 +193,8 @@ auto tangential_relaxation(
     const feature_mask &mask, int iterations = 1,
     tf::coordinate_type<PointsPolicy> lambda = 0.5,
     tf::coordinate_type<PointsPolicy> max_deviation = 0) -> void {
-  detail::tangential_relaxation_impl(he, points, old_pos, mask, iterations,
-                                     lambda, max_deviation);
+  tangential_relaxation_impl(he, points, old_pos, mask, iterations, lambda,
+                             max_deviation);
 }
 
 template <typename Index, typename PointsPolicy>
@@ -208,8 +204,8 @@ auto tangential_relaxation(
     const feature_mask &mask, int iterations = 1,
     tf::coordinate_type<PointsPolicy> lambda = 0.5,
     tf::coordinate_type<PointsPolicy> max_deviation = 0) -> void {
-  detail::tangential_relaxation_impl(he, points, old_pos, mask, iterations,
-                                     lambda, max_deviation);
+  tangential_relaxation_impl(he, points, old_pos, mask, iterations, lambda,
+                             max_deviation);
 }
 
 } // namespace tf::remesh
