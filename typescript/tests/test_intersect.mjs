@@ -92,49 +92,6 @@ describe("Intersection curves (N-mesh + mode)", () => {
 
 });
 
-describe("Isocontours", () => {
-
-  test("isocontours single threshold", () => {
-    const tf = getTf();
-    const plane = tf.planeMesh(4, 4, 20, 20);
-    const scalars = plane.points.take(null, 0); // x-coords as scalar field
-
-    const curves = tf.isocontours(plane, scalars, 0.0);
-    assert(curves.length > 0, `curves count: ${curves.length}`);
-    assert(curves.points.shape[1] === 3, "3D points");
-    log(`  isocontours(single): ${curves.length} curves`, "line-pass");
-
-    curves.delete(); scalars.delete(); plane.delete();
-  });
-
-  test("isocontours multiple thresholds", () => {
-    const tf = getTf();
-    const plane = tf.planeMesh(4, 4, 20, 20);
-    const scalars = plane.points.take(null, 0);
-    const thresholds = new Float32Array([-1, 0, 1]);
-
-    const curves = tf.isocontours(plane, scalars, thresholds);
-    assert(curves.length > 0, `curves count: ${curves.length}`);
-    log(`  isocontours(multi): ${curves.length} curves`, "line-pass");
-
-    curves.delete(); scalars.delete(); plane.delete();
-  });
-
-  test("async: isocontours", async () => {
-    const tf = getTf();
-    const plane = tf.planeMesh(4, 4, 20, 20);
-    const scalars = plane.points.take(null, 0);
-
-    const curves = await tf.async.isocontours(plane, scalars, 0.0);
-    assert(curves.length > 0, `curves count: ${curves.length}`);
-    assert(curves.points.shape[1] === 3, "3D points");
-    log(`  async isocontours: ${curves.length} curves`, "line-pass");
-
-    curves.delete(); scalars.delete(); plane.delete();
-  });
-
-});
-
 describe("Intersection curves (float64)", () => {
 
   test("intersectionCurves(m0, m1) (float64)", () => {
@@ -227,52 +184,6 @@ describe("Intersection curves (N-mesh + mode) (float64)", () => {
 
 });
 
-describe("Isocontours (float64)", () => {
-
-  test("isocontours single threshold (float64)", () => {
-    const tf = getTf();
-    const plane = tf.planeMesh(4, 4, 20, 20, { dtype: "float64" });
-    const scalars = plane.points.take(null, 0);
-
-    const curves = tf.isocontours(plane, scalars, 0.0);
-    assert(curves.dtype === "float64", "result curves dtype is float64");
-    assert(curves.length > 0, `curves count: ${curves.length}`);
-    assert(curves.points.shape[1] === 3, "3D points");
-    log(`  isocontours(single, f64): ${curves.length} curves`, "line-pass");
-
-    curves.delete(); scalars.delete(); plane.delete();
-  });
-
-  test("isocontours multiple thresholds (float64)", () => {
-    const tf = getTf();
-    const plane = tf.planeMesh(4, 4, 20, 20, { dtype: "float64" });
-    const scalars = plane.points.take(null, 0);
-    const thresholds = new Float64Array([-1, 0, 1]);
-
-    const curves = tf.isocontours(plane, scalars, thresholds);
-    assert(curves.dtype === "float64", "result curves dtype is float64");
-    assert(curves.length > 0, `curves count: ${curves.length}`);
-    log(`  isocontours(multi, f64): ${curves.length} curves`, "line-pass");
-
-    curves.delete(); scalars.delete(); plane.delete();
-  });
-
-  test("async: isocontours (float64)", async () => {
-    const tf = getTf();
-    const plane = tf.planeMesh(4, 4, 20, 20, { dtype: "float64" });
-    const scalars = plane.points.take(null, 0);
-
-    const curves = await tf.async.isocontours(plane, scalars, 0.0);
-    assert(curves.dtype === "float64", "result curves dtype is float64");
-    assert(curves.length > 0, `curves count: ${curves.length}`);
-    assert(curves.points.shape[1] === 3, "3D points");
-    log(`  async isocontours (f64): ${curves.length} curves`, "line-pass");
-
-    curves.delete(); scalars.delete(); plane.delete();
-  });
-
-});
-
 describe("Intersection curves (dtype mismatch)", () => {
 
   test("intersectionCurves(m0, m1) dtype mismatch throws", () => {
@@ -302,19 +213,6 @@ describe("Intersection curves (dtype mismatch)", () => {
     s2.delete(); s1.delete(); s0.delete();
   });
 
-  test("isocontours dtype mismatch throws", () => {
-    const tf = getTf();
-    const plane = tf.planeMesh(4, 4, 20, 20);
-    const scalars64 = tf.zeros("float64", [plane.points.shape[0]]);
-    let threw = false;
-    try { tf.isocontours(plane, scalars64, 0.0); } catch (e) {
-      if (/dtype mismatch/.test(e.message)) threw = true;
-    }
-    assert(threw, "expected dtype mismatch error");
-    log(`  isocontours dtype mismatch throws`, "line-pass");
-    scalars64.delete(); plane.delete();
-  });
-
   test("async: intersectionCurves(m0, m1) dtype mismatch throws", async () => {
     const tf = getTf();
     const s0 = tf.sphereMesh(1, 8, 8);
@@ -326,19 +224,6 @@ describe("Intersection curves (dtype mismatch)", () => {
     assert(threw, "expected dtype mismatch error");
     log(`  async intersectionCurves dtype mismatch throws`, "line-pass");
     s1.delete(); s0.delete();
-  });
-
-  test("async: isocontours dtype mismatch throws", async () => {
-    const tf = getTf();
-    const plane = tf.planeMesh(4, 4, 20, 20);
-    const scalars64 = tf.zeros("float64", [plane.points.shape[0]]);
-    let threw = false;
-    try { await tf.async.isocontours(plane, scalars64, 0.0); } catch (e) {
-      if (/dtype mismatch/.test(e.message)) threw = true;
-    }
-    assert(threw, "expected dtype mismatch error");
-    log(`  async isocontours dtype mismatch throws`, "line-pass");
-    scalars64.delete(); plane.delete();
   });
 
 });

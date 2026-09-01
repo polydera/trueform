@@ -14,7 +14,7 @@
 #include "./polygon_arrangement_impl.hpp"
 #include <emscripten/bind.h>
 
-EMSCRIPTEN_BINDINGS(trueform_cut_polygon_arrangement_float64) {
+EMSCRIPTEN_BINDINGS(trueform_arrangement_polygon_arrangement_float64) {
   using Real = double;
   using namespace tf::ts;
 

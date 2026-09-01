@@ -16,13 +16,16 @@
 #include "trueform/ts/core/promise.hpp"
 #include "trueform/ts/core/wasm_mesh.hpp"
 #include "trueform/ts/core/wasm_curves.hpp"
+#include "trueform/ts/core/extract_int_vector.hpp"
 #include "trueform/ts/core/wasm_ndarray.hpp"
 
 #include <trueform/core/algorithm/parallel_transform.hpp>
 #include <trueform/core/points_buffer.hpp>
 #include <trueform/core/transformation.hpp>
 #include <trueform/csg/csg_graph.hpp>
+#include <trueform/csg/make_csg_graph.hpp>
 #include <trueform/csg/expression.hpp>
+#include <trueform/csg/expression/selection.hpp>
 #include <trueform/csg/make_csg_domains.hpp>
 #include <trueform/csg/make_csg_mesh.hpp>
 #include <trueform/csg/make_intersection_curves.hpp>
@@ -83,15 +86,23 @@ inline auto decode_expr(const std::vector<int> &program) -> tf::csg::expr {
   return std::move(stack.back());
 }
 
-// emscripten::val cannot cross threads: extract on the main thread,
-// capture the resulting POD vector in async lambdas.
-inline auto extract_int_vector(emscripten::val js_array) -> std::vector<int> {
-  auto n = js_array["length"].as<int>();
-  std::vector<int> out;
-  out.reserve(std::size_t(n));
-  for (int i = 0; i < n; ++i)
-    out.push_back(js_array[i].as<int>());
-  return out;
+// A selection crosses as that program, a tag list and the selection kind
+// as an int: an empty program means no expression (the embedded surface
+// read), an empty tag list every form. Kind 0 is the boundary read, 1
+// the inside read, which has no meaning without a region to be inside of.
+inline auto decode_selection(const std::vector<int> &program,
+                             const std::vector<int> &tags, int kind)
+    -> tf::csg::selection_t {
+  if (kind == 1) {
+    if (program.empty())
+      throw std::runtime_error("an inside read requires an expression");
+    return tf::csg::inside(tags, decode_expr(program));
+  }
+  if (kind != 0)
+    throw std::runtime_error("unknown csg selection kind");
+  if (program.empty())
+    return tf::csg::selection(tags);
+  return tf::csg::selection(tags, decode_expr(program));
 }
 
 template <typename Real>
@@ -126,8 +137,8 @@ template <typename Real> struct csg_mesh_index_map_t {
   wasm_ndarray<std::int32_t> face_labels;
   wasm_ndarray<std::int32_t> point_f_offsets;
   wasm_ndarray<std::int32_t> point_f_data;
+  wasm_ndarray<std::int32_t> uncut_faces;
   int n_original_points = 0;
-  int n_original_faces = 0;
   int n_tags = 0;
   int n_output_points = 0;
 };
@@ -189,7 +200,9 @@ template <typename Real> class wasm_csg_graph {
     std::vector<form_t> forms;
     using forms_range_t =
         decltype(tf::make_range(std::declval<std::vector<form_t> &>()));
-    tf::csg_graph<forms_range_t, tf::none_t> graph;
+    using graph_t =
+        decltype(tf::make_csg_graph(std::declval<forms_range_t>()));
+    graph_t graph;
 
     static auto make_forms(std::vector<wasm_mesh<Real>> &ms,
                            tf::transformation<Real, 3> &identity)
@@ -202,29 +215,18 @@ template <typename Real> class wasm_csg_graph {
       return forms;
     }
 
-    static auto make_is_sheet(const std::vector<int> &sheets, std::size_t n)
-        -> tf::buffer<char> {
-      tf::buffer<char> is_sheet;
-      if (sheets.empty())
-        return is_sheet;
-      is_sheet.allocate(n);
-      std::fill(is_sheet.begin(), is_sheet.end(), char(0));
-      for (int id : sheets)
-        is_sheet[std::size_t(id)] = char(1);
-      return is_sheet;
-    }
-
     data_t(std::vector<wasm_mesh<Real>> ms, const std::vector<int> &sheets,
            int mode, double tolerance, int triangulation)
         : meshes(std::move(ms)),
           identity(tf::make_identity_transformation<Real, 3>()),
           forms(make_forms(meshes, identity)),
-          graph(tf::make_range(forms), {},
-                tf::arrangement_config{
-                    tf::intersect_config{static_cast<tf::intersect_mode>(mode),
-                                         tolerance},
-                    static_cast<tf::triangulation_type>(triangulation)},
-                make_is_sheet(sheets, meshes.size())) {}
+          graph(tf::make_csg_graph(
+              tf::make_range(forms),
+              tf::make_range(sheets.data(), sheets.data() + sheets.size()),
+              tf::arrangement_config{
+                  tf::intersect_config{static_cast<tf::intersect_mode>(mode),
+                                       tolerance},
+                  static_cast<tf::triangulation_type>(triangulation)})) {}
   };
 
   std::shared_ptr<data_t> _data;
@@ -274,18 +276,21 @@ public:
         tf::make_intersection_curves(_data->graph));
   }
 
-  auto mesh(const std::vector<int> &program) const -> wasm_mesh<Real> {
-    if (program.empty()) {
+  auto mesh(const std::vector<int> &program, const std::vector<int> &tags,
+            int kind) const -> wasm_mesh<Real> {
+    if (program.empty() && tags.empty() && kind == 0) {
       return wasm_mesh<Real>::from_polygons_buffer(
           tf::make_csg_mesh(_data->graph));
     }
-    auto result = tf::make_csg_mesh(_data->graph, decode_expr(program));
+    auto result =
+        tf::make_csg_mesh(_data->graph, decode_selection(program, tags, kind));
     return wasm_mesh<Real>::from_polygons_buffer(std::move(result));
   }
 
-  auto mesh_with_labels(const std::vector<int> &program) const
+  auto mesh_with_labels(const std::vector<int> &program,
+                        const std::vector<int> &tags, int kind) const
       -> csg_mesh_labeled_t<Real> {
-    if (program.empty()) {
+    if (program.empty() && tags.empty() && kind == 0) {
       auto [result, tag_labels, face_labels] =
           tf::make_csg_mesh(_data->graph, tf::return_source_ids);
       return {wasm_mesh<Real>::from_polygons_buffer(std::move(result)),
@@ -293,22 +298,24 @@ public:
               wasm_ndarray<std::int32_t>::from_buffer(
                   std::move(face_labels))};
     }
-    auto [result, tag_labels, face_labels] = tf::make_csg_mesh(
-        _data->graph, decode_expr(program), tf::return_source_ids);
+    auto [result, tag_labels, face_labels] =
+        tf::make_csg_mesh(_data->graph, decode_selection(program, tags, kind),
+                          tf::return_source_ids);
     return {wasm_mesh<Real>::from_polygons_buffer(std::move(result)),
             wasm_ndarray<std::int32_t>::from_buffer(std::move(tag_labels)),
             wasm_ndarray<std::int32_t>::from_buffer(std::move(face_labels))};
   }
 
-  auto mesh_with_index_map(const std::vector<int> &program) const
+  auto mesh_with_index_map(const std::vector<int> &program,
+                           const std::vector<int> &tags, int kind) const
       -> csg_mesh_index_map_t<Real> {
-    if (program.empty())
+    if (program.empty() && tags.empty() && kind == 0)
       throw std::runtime_error(
           "the full-arrangement mesh has no index-map form; pass an "
-          "expression");
-    auto [result, imap] = tf::make_csg_mesh(_data->graph,
-                                            decode_expr(program),
-                                            tf::return_index_map);
+          "expression or a selection");
+    auto [result, imap] = tf::make_csg_mesh(
+        _data->graph, decode_selection(program, tags, kind),
+        tf::return_index_map);
     auto [pf_off, pf_data] = blocks_to_arrays(std::move(imap.point_f));
     return {wasm_mesh<Real>::from_polygons_buffer(std::move(result)),
             wasm_ndarray<std::int32_t>::from_buffer(
@@ -321,14 +328,16 @@ public:
                 std::move(imap.face_labels)),
             std::move(pf_off),
             std::move(pf_data),
+            wasm_ndarray<std::int32_t>::from_buffer(
+                std::move(imap.uncut_faces.data_buffer()),
+                {int(imap.n_tags), 2}),
             int(imap.n_original_points),
-            int(imap.n_original_faces),
             int(imap.n_tags),
             int(imap.n_output_points)};
   }
 
-  auto domains(const std::vector<int> &program, int config) const
-      -> csg_domains_t<Real> {
+  auto domains(const std::vector<int> &program, const std::vector<int> &tags,
+               int config) const -> csg_domains_t<Real> {
     auto run = [&](auto &&...expr_arg) -> csg_domains_t<Real> {
       auto [cells, ids] =
           tf::make_csg_domains(_data->graph, expr_arg...,
@@ -341,12 +350,13 @@ public:
       return {std::move(meshes),
               wasm_ndarray<std::int32_t>::from_buffer(std::move(ids))};
     };
-    if (program.empty())
+    if (program.empty() && tags.empty())
       return run();
-    return run(decode_expr(program));
+    return run(decode_selection(program, tags, 0));
   }
 
-  auto domains_with_labels(const std::vector<int> &program, int config) const
+  auto domains_with_labels(const std::vector<int> &program,
+                           const std::vector<int> &tags, int config) const
       -> csg_domains_labeled_t<Real> {
     auto run = [&](auto &&...expr_arg) -> csg_domains_labeled_t<Real> {
       auto [cells, ids, tag_blocks, face_blocks] = tf::make_csg_domains(
@@ -364,13 +374,13 @@ public:
               std::move(t_off), std::move(t_data), std::move(f_off),
               std::move(f_data)};
     };
-    if (program.empty())
+    if (program.empty() && tags.empty())
       return run();
-    return run(decode_expr(program));
+    return run(decode_selection(program, tags, 0));
   }
 
   auto domains_with_index_map(const std::vector<int> &program,
-                              int config) const
+                              const std::vector<int> &tags, int config) const
       -> csg_domains_index_map_t<Real> {
     auto run = [&](auto &&...expr_arg) -> csg_domains_index_map_t<Real> {
       auto [cells, ids, imap] = tf::make_csg_domains(
@@ -406,9 +416,9 @@ public:
               int(imap.n_original_points), int(imap.n_tags),
               int(imap.n_output_points), std::move(inclusion)};
     };
-    if (program.empty())
+    if (program.empty() && tags.empty())
       return run();
-    return run(decode_expr(program));
+    return run(decode_selection(program, tags, 0));
   }
 };
 
@@ -426,43 +436,54 @@ auto sync_csg_graph(emscripten::val js_meshes, emscripten::val js_sheets,
 }
 
 template <typename Real>
-auto sync_csg_mesh(wasm_csg_graph<Real> &g, emscripten::val js_program)
-    -> wasm_mesh<Real> {
-  return g.mesh(extract_int_vector(js_program));
+auto sync_csg_mesh(wasm_csg_graph<Real> &g, emscripten::val js_program,
+                   emscripten::val js_tags, int kind) -> wasm_mesh<Real> {
+  return g.mesh(extract_int_vector(js_program), extract_int_vector(js_tags),
+                kind);
 }
 
 template <typename Real>
 auto sync_csg_mesh_with_labels(wasm_csg_graph<Real> &g,
-                               emscripten::val js_program)
+                               emscripten::val js_program,
+                               emscripten::val js_tags, int kind)
     -> csg_mesh_labeled_t<Real> {
-  return g.mesh_with_labels(extract_int_vector(js_program));
+  return g.mesh_with_labels(extract_int_vector(js_program),
+                            extract_int_vector(js_tags), kind);
 }
 
 template <typename Real>
 auto sync_csg_mesh_with_index_map(wasm_csg_graph<Real> &g,
-                                  emscripten::val js_program)
+                                  emscripten::val js_program,
+                                  emscripten::val js_tags, int kind)
     -> csg_mesh_index_map_t<Real> {
-  return g.mesh_with_index_map(extract_int_vector(js_program));
+  return g.mesh_with_index_map(extract_int_vector(js_program),
+                               extract_int_vector(js_tags), kind);
 }
 
 template <typename Real>
 auto sync_csg_domains(wasm_csg_graph<Real> &g, emscripten::val js_program,
-                      int config) -> csg_domains_t<Real> {
-  return g.domains(extract_int_vector(js_program), config);
+                      emscripten::val js_tags, int config)
+    -> csg_domains_t<Real> {
+  return g.domains(extract_int_vector(js_program),
+                   extract_int_vector(js_tags), config);
 }
 
 template <typename Real>
 auto sync_csg_domains_with_labels(wasm_csg_graph<Real> &g,
-                                  emscripten::val js_program, int config)
+                                  emscripten::val js_program,
+                                  emscripten::val js_tags, int config)
     -> csg_domains_labeled_t<Real> {
-  return g.domains_with_labels(extract_int_vector(js_program), config);
+  return g.domains_with_labels(extract_int_vector(js_program),
+                               extract_int_vector(js_tags), config);
 }
 
 template <typename Real>
 auto sync_csg_domains_with_index_map(wasm_csg_graph<Real> &g,
-                                     emscripten::val js_program, int config)
+                                     emscripten::val js_program,
+                                     emscripten::val js_tags, int config)
     -> csg_domains_index_map_t<Real> {
-  return g.domains_with_index_map(extract_int_vector(js_program), config);
+  return g.domains_with_index_map(extract_int_vector(js_program),
+                                  extract_int_vector(js_tags), config);
 }
 
 template <typename Real>
@@ -501,57 +522,72 @@ auto async_csg_intersection_curves(wasm_csg_graph<Real> &g) -> promise_t {
 }
 
 template <typename Real>
-auto async_csg_mesh(wasm_csg_graph<Real> &g, emscripten::val js_program)
-    -> promise_t {
+auto async_csg_mesh(wasm_csg_graph<Real> &g, emscripten::val js_program,
+                    emscripten::val js_tags, int kind) -> promise_t {
   auto program = extract_int_vector(js_program);
-  return promise(
-      [g = g, program = std::move(program)]() { return g.mesh(program); });
+  auto tags = extract_int_vector(js_tags);
+  return promise([g = g, program = std::move(program), tags = std::move(tags),
+                  kind]() { return g.mesh(program, tags, kind); });
 }
 
 template <typename Real>
 auto async_csg_mesh_with_labels(wasm_csg_graph<Real> &g,
-                                emscripten::val js_program) -> promise_t {
+                                emscripten::val js_program,
+                                emscripten::val js_tags, int kind)
+    -> promise_t {
   auto program = extract_int_vector(js_program);
-  return promise([g = g, program = std::move(program)]() {
-    return g.mesh_with_labels(program);
-  });
+  auto tags = extract_int_vector(js_tags);
+  return promise([g = g, program = std::move(program), tags = std::move(tags),
+                  kind]() { return g.mesh_with_labels(program, tags, kind); });
 }
 
 template <typename Real>
 auto async_csg_mesh_with_index_map(wasm_csg_graph<Real> &g,
-                                   emscripten::val js_program) -> promise_t {
+                                   emscripten::val js_program,
+                                   emscripten::val js_tags, int kind)
+    -> promise_t {
   auto program = extract_int_vector(js_program);
-  return promise([g = g, program = std::move(program)]() {
-    return g.mesh_with_index_map(program);
+  auto tags = extract_int_vector(js_tags);
+  return promise([g = g, program = std::move(program), tags = std::move(tags),
+                  kind]() {
+    return g.mesh_with_index_map(program, tags, kind);
   });
 }
 
 template <typename Real>
 auto async_csg_domains(wasm_csg_graph<Real> &g, emscripten::val js_program,
-                       int config) -> promise_t {
+                       emscripten::val js_tags, int config) -> promise_t {
   auto program = extract_int_vector(js_program);
-  return promise([g = g, program = std::move(program), config]() {
-    return g.domains(program, config);
+  auto tags = extract_int_vector(js_tags);
+  return promise([g = g, program = std::move(program),
+                  tags = std::move(tags), config]() {
+    return g.domains(program, tags, config);
   });
 }
 
 template <typename Real>
 auto async_csg_domains_with_labels(wasm_csg_graph<Real> &g,
-                                   emscripten::val js_program, int config)
+                                   emscripten::val js_program,
+                                   emscripten::val js_tags, int config)
     -> promise_t {
   auto program = extract_int_vector(js_program);
-  return promise([g = g, program = std::move(program), config]() {
-    return g.domains_with_labels(program, config);
+  auto tags = extract_int_vector(js_tags);
+  return promise([g = g, program = std::move(program),
+                  tags = std::move(tags), config]() {
+    return g.domains_with_labels(program, tags, config);
   });
 }
 
 template <typename Real>
 auto async_csg_domains_with_index_map(wasm_csg_graph<Real> &g,
-                                      emscripten::val js_program, int config)
+                                      emscripten::val js_program,
+                                      emscripten::val js_tags, int config)
     -> promise_t {
   auto program = extract_int_vector(js_program);
-  return promise([g = g, program = std::move(program), config]() {
-    return g.domains_with_index_map(program, config);
+  auto tags = extract_int_vector(js_tags);
+  return promise([g = g, program = std::move(program),
+                  tags = std::move(tags), config]() {
+    return g.domains_with_index_map(program, tags, config);
   });
 }
 

@@ -11,16 +11,8 @@
  * Author: Žiga Sajovic
  */
 
-export {
-  booleanUnion, booleanIntersection, booleanDifference,
-  isobands,
-  embeddedIntersectionCurves, embeddedSelfIntersectionCurves,
-  meshArrangements,
-} from "./sync";
+export { meshArrangements } from "./sync";
 export type {
-  LabeledCutResult, LabeledCutResultWithCurves,
-  IsobandsResult, IsobandsResultWithCurves,
-  CutResultWithCurves,
   MeshArrangementResult, MeshArrangementResultWithCurves,
 } from "./sync";
 export * as async from "./async";

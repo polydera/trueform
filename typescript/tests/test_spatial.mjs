@@ -1817,6 +1817,36 @@ describe("Spatial: rayCast (float64)", () => {
     rays.delete(); m.delete(); maxTs.delete();
   });
 
+  test("internal ray-cast temporaries do not consume caller bounds", () => {
+    const tf = getTf();
+    const { faces, points } = twoTrianglesF64();
+    const mesh = tf.mesh(faces, points);
+    const rays = tf.ray(new Float32Array([
+      0.5,0.5,5,  0,0,-1,
+      0.5,0.5,5,  0,0,-1,
+    ]), 2);
+    const maxTs = tf.ndarray(new Float32Array([3, 10]));
+    const prototype = Object.getPrototypeOf(maxTs);
+    const originalDelete = prototype.delete;
+    let internalDeletes = 0;
+    prototype.delete = function () {
+      internalDeletes++;
+      return originalDelete.call(this);
+    };
+
+    let result;
+    try {
+      result = tf.rayCast(rays, mesh, { minT: 0, maxT: maxTs });
+    } finally {
+      prototype.delete = originalDelete;
+    }
+
+    assert(internalDeletes === 3, `expected 3 internal disposals, got ${internalDeletes}`);
+    assert(maxTs.data[0] === 3 && maxTs.data[1] === 10, "caller maxT remains valid");
+    result.hits.delete(); result.ts.delete(); result.elementIds.delete();
+    rays.delete(); mesh.delete(); maxTs.delete();
+  });
+
   test("pointCloud rayCast (float64)", () => {
     const tf = getTf();
     const box = tf.boxMesh(2, 2, 2);
@@ -1864,6 +1894,38 @@ describe("Spatial: rayCast async (float64)", () => {
     log(`  async rayCast × mesh(f64) per-ray: hits=[${h[0]},${h[1]}]`, "line-pass");
     res.hits.delete(); res.ts.delete(); res.elementIds.delete();
     rays.delete(); m.delete(); minTs.delete(); maxTs.delete();
+  });
+
+  test("async ray-cast temporaries live through retrieval", async () => {
+    const tf = getTf();
+    const { faces, points } = twoTrianglesF64();
+    const mesh = tf.mesh(faces, points);
+    const rays = tf.ray(new Float32Array([
+      0.5,0.5,5,  0,0,-1,
+      0.5,0.5,5,  0,0,-1,
+    ]), 2);
+    const maxTs = tf.ndarray(new Float32Array([3, 10]));
+    const prototype = Object.getPrototypeOf(maxTs);
+    const originalDelete = prototype.delete;
+    let internalDeletes = 0;
+    prototype.delete = function () {
+      internalDeletes++;
+      return originalDelete.call(this);
+    };
+
+    let result;
+    try {
+      const pending = tf.async.rayCast(rays, mesh, { minT: 0, maxT: maxTs });
+      assert(internalDeletes === 0, "temporaries must remain live while dispatch is pending");
+      result = await pending;
+    } finally {
+      prototype.delete = originalDelete;
+    }
+
+    assert(internalDeletes === 3, `expected 3 internal disposals, got ${internalDeletes}`);
+    assert(maxTs.data[0] === 3 && maxTs.data[1] === 10, "caller maxT remains valid");
+    result.hits.delete(); result.ts.delete(); result.elementIds.delete();
+    rays.delete(); mesh.delete(); maxTs.delete();
   });
 
   test("async pointCloud rayCast (float64)", async () => {

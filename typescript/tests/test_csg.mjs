@@ -213,6 +213,147 @@ for (const dtype of ["float32", "float64"]) {
   });
 }
 
+for (const dtype of ["float32", "float64"]) {
+  describe(`csg: selection (${dtype})`, () => {
+    test("standalone selection is the embedded read", () => {
+      const tf = getTf();
+      const [a, b] = makeBoxes(dtype);
+      const graph = tf.csgGraph([a, b]);
+
+      const sa = graph.mesh({ selection: [0] });
+      assert(tf.isClosed(sa), "the read of a closed form stays closed");
+      assert(Math.abs(vol(sa) - 1.0) < TOL, `keeps its volume, got ${vol(sa)}`);
+      assert(sa.numberOfFaces > a.numberOfFaces, "cut by the other operand");
+
+      const both = graph.mesh({ selection: [0, 1] });
+      const full = graph.mesh();
+      assert(both.faces.shape[0] === full.faces.shape[0],
+        "both surfaces = the full arrangement mesh, face for face");
+
+      sa.delete(); both.delete(); full.delete();
+      graph.delete(); a.delete(); b.delete();
+    });
+
+    test("a boolean splits by provenance", () => {
+      const tf = getTf();
+      const [a, b] = makeBoxes(dtype);
+      const graph = tf.csgGraph([a, b]);
+      const e = tf.op(0).sub(tf.op(1));
+
+      const full = graph.mesh(e);
+      const partA = graph.mesh(e, { selection: [0] });
+      const partB = graph.mesh(e, { selection: [1] });
+      assert(partA.faces.shape[0] + partB.faces.shape[0] === full.faces.shape[0],
+        "the parts partition the result's faces");
+      const beA = tf.boundaryEdges(partA), beB = tf.boundaryEdges(partB);
+      assert(beA.shape[0] > 0 && beB.shape[0] > 0,
+        "each part is open along the provenance seam");
+      beA.delete(); beB.delete();
+
+      const all = graph.mesh(e, { selection: [0, 1] });
+      assert(all.faces.shape[0] === full.faces.shape[0],
+        "restricting to every operand is no restriction");
+      assert(Math.abs(vol(all) - vol(full)) < TOL, "and keeps the volume");
+
+      full.delete(); partA.delete(); partB.delete(); all.delete();
+      graph.delete(); a.delete(); b.delete();
+    });
+
+    test("domains split by provenance the same way", () => {
+      const tf = getTf();
+      const [a, b] = makeBoxes(dtype);
+      const graph = tf.csgGraph([a, b]);
+      const e = tf.op(0).sub(tf.op(1));
+
+      const cells = graph.domains(e);
+      const cellsA = graph.domains(e, { selection: [0] });
+      const cellsB = graph.domains(e, { selection: [1] });
+      assert(cells.meshes.length === 1, `1 kept cell, got ${cells.meshes.length}`);
+      assert(cellsA.meshes.length === 1 && cellsB.meshes.length === 1,
+        "the restriction keeps the same cells");
+      assert(cellsA.ids.data[0] === cells.ids.data[0], "same coarse domain id");
+      assert(cellsA.meshes[0].faces.shape[0] + cellsB.meshes[0].faces.shape[0] ===
+             cells.meshes[0].faces.shape[0],
+        "the cell's walls partition by contributor");
+
+      for (const r of [cells, cellsA, cellsB]) {
+        for (const m of r.meshes) m.delete();
+        r.ids.delete();
+      }
+      graph.delete(); a.delete(); b.delete();
+    });
+
+    test("selection reaches the labelled and index-map paths", () => {
+      const tf = getTf();
+      const [a, b] = makeBoxes(dtype);
+      const graph = tf.csgGraph([a, b]);
+
+      const lab = graph.mesh({ selection: [0], returnSourceIds: true });
+      const nFaces = lab.mesh.faces.shape[0];
+      assert(lab.tagLabels.shape[0] === nFaces, "labels parallel to faces");
+      const tags = lab.tagLabels.data;
+      let onlyA = true;
+      for (let i = 0; i < nFaces; ++i) if (tags[i] !== 0) onlyA = false;
+      assert(onlyA, "every emitted face came from operand 0");
+
+      const im = graph.mesh({ selection: [0], returnIndexMap: true });
+      assert(im.nTags === 2, "index map without an expression, with a selection");
+
+      let threw = false;
+      try { graph.mesh({ returnIndexMap: true }); } catch { threw = true; }
+      assert(threw, "index map with neither expression nor selection throws");
+
+      let ranged = false;
+      try { graph.mesh({ selection: [2] }); } catch { ranged = true; }
+      assert(ranged, "out-of-range selection index rejected");
+
+      lab.mesh.delete(); lab.tagLabels.delete(); lab.faceLabels.delete();
+      im.mesh.delete(); im.pointTagLabels.delete(); im.pointLabels.delete();
+      im.faceTagLabels.delete(); im.faceLabels.delete();
+      im.pointFOffsets.delete(); im.pointFData.delete();
+      graph.delete(); a.delete(); b.delete();
+    });
+
+    test("inside reads a sheet within a solid, stored winding", () => {
+      const tf = getTf();
+      const opts = { dtype };
+      const plane = tf.planeMesh(2, 2, 2, 2, opts);            // z = 0, +z
+      const box = tf.boxMesh(1, 1, 1, undefined, undefined, undefined, opts);
+      const graph = tf.csgGraph([plane, box], { sheets: [0] });
+
+      const cap = graph.mesh(tf.op(1), { inside: [0] });
+      assert(cap.faces.shape[0] === 8, `the cap, got ${cap.faces.shape[0]}`);
+      const be = tf.boundaryEdges(cap);
+      assert(be.shape[0] === 8, "open along the box's section");
+      be.delete();
+      const annulus = graph.mesh(tf.op(1).not(), { inside: [0] });
+      assert(annulus.faces.shape[0] === 16, "the annulus");
+      const boundary = graph.mesh(tf.op(1), { selection: [0] });
+      assert(boundary.faces.shape[0] === 0,
+        "both sides of the cap are inside the box");
+      const own = graph.mesh(tf.op(0), { inside: [0] });
+      assert(own.faces.shape[0] === 0,
+        "a form's own bit is never on both sides");
+      const walls = graph.mesh(tf.op(0), { inside: [1] });
+      assert(walls.faces.shape[0] === 14, "the box's walls behind the sheet");
+      const lab = graph.mesh(tf.op(1), { inside: [0], returnSourceIds: true });
+      assert(lab.tagLabels.shape[0] === 8, "provenance follows the inside read");
+
+      let threw = false;
+      try { graph.mesh({ inside: [0] }); } catch { threw = true; }
+      assert(threw, "inside requires an expression");
+      threw = false;
+      try { graph.mesh(tf.op(1), { selection: [0], inside: [0] }); } catch { threw = true; }
+      assert(threw, "selection and inside are exclusive");
+
+      cap.delete(); annulus.delete(); boundary.delete(); own.delete();
+      walls.delete();
+      lab.mesh.delete(); lab.tagLabels.delete(); lab.faceLabels.delete();
+      graph.delete(); plane.delete(); box.delete();
+    });
+  });
+}
+
 describe("csg: async", () => {
   test("async build + async queries agree with sync", async () => {
     const tf = getTf();
@@ -247,6 +388,46 @@ describe("csg: async", () => {
     for (const m of doms.meshes) m.delete();
     doms.ids.delete();
     graph.delete(); syncGraph.delete(); a.delete(); b.delete();
+  });
+
+  test("async selection agrees with sync", async () => {
+    const tf = getTf();
+    const [a, b] = makeBoxes("float32");
+    const graph = await tf.async.csgGraph([a, b]);
+    const e = tf.op(0).sub(tf.op(1));
+
+    const readA = await tf.async.csgMesh(graph, { selection: [0] });
+    assert(Math.abs(vol(readA) - 1.0) < TOL, "async embedded read keeps volume");
+    assert(tf.isClosed(readA), "async embedded read stays closed");
+
+    const partA = await tf.async.csgMesh(graph, e, { selection: [0] });
+    const syncPartA = graph.mesh(e, { selection: [0] });
+    assert(partA.faces.shape[0] === syncPartA.faces.shape[0],
+      "async restricted boolean == sync");
+
+    const domsA = await tf.async.csgDomains(graph, e, { selection: [0] });
+    const syncDomsA = graph.domains(e, { selection: [0] });
+    assert(domsA.meshes.length === syncDomsA.meshes.length,
+      "async restricted domains == sync");
+    assert(domsA.meshes[0].faces.shape[0] === syncDomsA.meshes[0].faces.shape[0],
+      "async restricted cell walls == sync");
+
+    const plane = tf.planeMesh(2, 2, 2, 2, { dtype: "float32" });
+    const box = tf.boxMesh(1, 1, 1, undefined, undefined, undefined, { dtype: "float32" });
+    const sheetGraph = await tf.async.csgGraph([plane, box], { sheets: [0] });
+    const capA = await tf.async.csgMesh(sheetGraph, tf.op(1), { inside: [0] });
+    const syncCap = sheetGraph.mesh(tf.op(1), { inside: [0] });
+    assert(capA.faces.shape[0] === syncCap.faces.shape[0],
+      "async inside read == sync");
+    capA.delete(); syncCap.delete();
+    sheetGraph.delete(); plane.delete(); box.delete();
+
+    readA.delete(); partA.delete(); syncPartA.delete();
+    for (const r of [domsA, syncDomsA]) {
+      for (const m of r.meshes) m.delete();
+      r.ids.delete();
+    }
+    graph.delete(); a.delete(); b.delete();
   });
 });
 
@@ -292,13 +473,6 @@ for (const dtype of ["float32", "float64"]) {
         "line-pass");
 
       ref.mesh.delete(); ref.labels.delete(); ref.faceLabels.delete();
-      shell.delete(); merged.delete(); s1.delete(); s0.delete();
-    });
-
-    test("ignoreOpenFragments accepted", () => {
-      const { tf, s0, s1, merged } = twoOverlappingSpheres(dtype);
-      const shell = tf.outerShell(merged, { ignoreOpenFragments: true });
-      assert(tf.isClosed(shell), "shell is closed");
       shell.delete(); merged.delete(); s1.delete(); s0.delete();
     });
   });

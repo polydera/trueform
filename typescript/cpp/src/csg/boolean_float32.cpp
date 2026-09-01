@@ -14,23 +14,23 @@
 #include "./boolean_impl.hpp"
 #include <emscripten/bind.h>
 
-EMSCRIPTEN_BINDINGS(trueform_cut_boolean_float32) {
+EMSCRIPTEN_BINDINGS(trueform_csg_boolean_float32) {
   using Real = float;
   using namespace tf::ts;
 
   // Result types
-  emscripten::value_object<labeled_cut_result_t<Real>>(
-      "LabeledCutResultFloat32")
-      .field("mesh", &labeled_cut_result_t<Real>::mesh)
-      .field("labels", &labeled_cut_result_t<Real>::labels)
-      .field("faceLabels", &labeled_cut_result_t<Real>::face_labels);
+  emscripten::value_object<labeled_boolean_result_t<Real>>(
+      "LabeledBooleanResultFloat32")
+      .field("mesh", &labeled_boolean_result_t<Real>::mesh)
+      .field("labels", &labeled_boolean_result_t<Real>::labels)
+      .field("faceLabels", &labeled_boolean_result_t<Real>::face_labels);
 
-  emscripten::value_object<labeled_cut_result_with_curves_t<Real>>(
-      "LabeledCutResultWithCurvesFloat32")
-      .field("mesh", &labeled_cut_result_with_curves_t<Real>::mesh)
-      .field("labels", &labeled_cut_result_with_curves_t<Real>::labels)
-      .field("faceLabels", &labeled_cut_result_with_curves_t<Real>::face_labels)
-      .field("curves", &labeled_cut_result_with_curves_t<Real>::curves);
+  emscripten::value_object<labeled_boolean_result_with_curves_t<Real>>(
+      "LabeledBooleanResultWithCurvesFloat32")
+      .field("mesh", &labeled_boolean_result_with_curves_t<Real>::mesh)
+      .field("labels", &labeled_boolean_result_with_curves_t<Real>::labels)
+      .field("faceLabels", &labeled_boolean_result_with_curves_t<Real>::face_labels)
+      .field("curves", &labeled_boolean_result_with_curves_t<Real>::curves);
 
   // Sync
   emscripten::function("boolean_union_float32", &sync_boolean_union<Real>);

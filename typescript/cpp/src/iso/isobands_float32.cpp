@@ -14,7 +14,7 @@
 #include "./isobands_impl.hpp"
 #include <emscripten/bind.h>
 
-EMSCRIPTEN_BINDINGS(trueform_cut_isobands_float32) {
+EMSCRIPTEN_BINDINGS(trueform_iso_isobands_float32) {
   using Real = float;
   using namespace tf::ts;
 

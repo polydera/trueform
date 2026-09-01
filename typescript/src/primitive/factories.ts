@@ -18,6 +18,7 @@ import {
   Ray, Line, Plane, AABB, Polygon,
 } from "./Primitive";
 import { NDArray, NDArrayFloat32, NDArrayFloat64 } from "../ndarray/NDArray";
+import { coerce, disposeOwned } from "../internal/owned";
 
 /** Options selecting the coordinate dtype of a primitive factory. */
 export interface PrimitiveDtypeOptions {
@@ -84,10 +85,14 @@ function stackPrimitive(
   dtype: "float32" | "float64",
 ): Primitive {
   const axis = arrays[0].ndim > 1 ? 1 : 0;
-  const casts = arrays.map((a) => a.dtype === dtype ? a : a.as(dtype));
-  const handles = casts.map((a) => a._handle);
-  const fn = dtype === "float64" ? "stack_float64" : "stack_float32";
-  return new Primitive(native()[fn](handles, axis), type, dtype);
+  const owned: NDArray[] = [];
+  try {
+    const handles = arrays.map((a) => coerce(a, dtype, owned)._handle);
+    const fn = dtype === "float64" ? "stack_float64" : "stack_float32";
+    return new Primitive(native()[fn](handles, axis), type, dtype);
+  } finally {
+    disposeOwned(owned);
+  }
 }
 
 // ============================================================================
@@ -115,8 +120,13 @@ export function point(
   if (args[0] instanceof NDArray && !(args[0] instanceof Primitive)) {
     const arr = args[0] as ArrayLike32_64;
     const dt = inferDtype(arr, dtypeOpt);
-    const src = arr.dtype === dt ? arr : arr.as(dt);
-    return new Primitive(src._handle.shallow_copy(), "point", dt) as Point;
+    const owned: NDArray[] = [];
+    try {
+      const src = coerce(arr, dt, owned);
+      return new Primitive(src._handle.shallow_copy(), "point", dt) as Point;
+    } finally {
+      disposeOwned(owned);
+    }
   }
   // point(x, y) or point(x, y, z)
   if (typeof args[0] === "number") {
@@ -159,8 +169,13 @@ export function vector(
   if (args[0] instanceof NDArray && !(args[0] instanceof Primitive)) {
     const arr = args[0] as ArrayLike32_64;
     const dt = inferDtype(arr, dtypeOpt);
-    const src = arr.dtype === dt ? arr : arr.as(dt);
-    return new Primitive(src._handle.shallow_copy(), "vector", dt) as Vector;
+    const owned: NDArray[] = [];
+    try {
+      const src = coerce(arr, dt, owned);
+      return new Primitive(src._handle.shallow_copy(), "vector", dt) as Vector;
+    } finally {
+      disposeOwned(owned);
+    }
   }
   if (typeof args[0] === "number") {
     const dt = dtypeOpt ?? "float32";
@@ -415,6 +430,8 @@ export function line(
 export function plane(normal: Vector, offset: number, opts?: PrimitiveDtypeOptions): Plane;
 /** Create a plane from normal NDArray and offset. */
 export function plane(normal: ArrayLike32_64, offset: number, opts?: PrimitiveDtypeOptions): Plane;
+/** Create a plane or batch from packed coefficients shaped [4] or [N, 4]. */
+export function plane(coefficients: ArrayLike32_64, opts?: PrimitiveDtypeOptions): Plane;
 /** Create a plane from a flat [a, b, c, d] array. */
 export function plane(data: number[] | RealArray, opts?: PrimitiveDtypeOptions): Plane;
 export function plane(
@@ -431,7 +448,22 @@ export function plane(
 
   if (normalOrData instanceof NDArray) {
     const arr = normalOrData as ArrayLike32_64;
-    const dt = dtypeOpt ?? (arr.dtype === "float64" ? "float64" : "float32");
+    const dt = inferDtype(arr, dtypeOpt);
+    if (typeof offsetOrOpts !== "number") {
+      if (!((arr.ndim === 1 && arr.shape[0] === 4)
+        || (arr.ndim === 2 && arr.shape[1] === 4))) {
+        throw new Error(
+          `plane coefficients must have shape [4] or [N,4] (got [${arr.shape.join(",")}])`,
+        );
+      }
+      const owned: NDArray[] = [];
+      try {
+        const source = coerce(arr, dt, owned);
+        return new Primitive(source._handle.shallow_copy(), "plane", dt) as Plane;
+      } finally {
+        disposeOwned(owned);
+      }
+    }
     const n = arr.data as RealArray;
     const offset = offsetOrOpts as number;
     const buf = dt === "float64"
@@ -521,13 +553,17 @@ export function obbFrom(input: { points: NDArray }): OBB;
 export function obbFrom(input: NDArray | { points: NDArray }): OBB {
   const pts = input instanceof NDArray ? input : input.points;
   const dt = pts.dtype === "float64" ? "float64" : "float32";
-  const safe = pts.dtype === dt ? pts : pts.as(dt);
-  const raw = native()[`obb_from_${dt}`](safe._handle);
-  return {
-    origin: new NDArray(raw.origin, dt),
-    axes: new NDArray(raw.axes, dt),
-    extent: new NDArray(raw.extent, dt),
-  };
+  const owned: NDArray[] = [];
+  try {
+    const raw = native()[`obb_from_${dt}`](coerce(pts, dt, owned)._handle);
+    return {
+      origin: new NDArray(raw.origin, dt),
+      axes: new NDArray(raw.axes, dt),
+      extent: new NDArray(raw.extent, dt),
+    };
+  } finally {
+    disposeOwned(owned);
+  }
 }
 
 /** Compute the axis-aligned bounding box of points, a mesh, or a point cloud. */
@@ -563,8 +599,13 @@ export function polygon(
   if (verticesOrData instanceof NDArray && !(verticesOrData instanceof Primitive)) {
     const arr = verticesOrData as ArrayLike32_64;
     const dt = inferDtype(arr, dtypeOpt);
-    const src = arr.dtype === dt ? arr : arr.as(dt);
-    return new Primitive(src._handle.shallow_copy(), "polygon", dt) as Polygon;
+    const owned: NDArray[] = [];
+    try {
+      const src = coerce(arr, dt, owned);
+      return new Primitive(src._handle.shallow_copy(), "polygon", dt) as Polygon;
+    } finally {
+      disposeOwned(owned);
+    }
   }
   if (Array.isArray(verticesOrData) && verticesOrData.length > 0
       && verticesOrData[0] instanceof Primitive) {

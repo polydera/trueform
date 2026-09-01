@@ -11,10 +11,14 @@
  * Author: Žiga Sajovic
  */
 
-export { csgGraph, CsgGraph, Expr, op, outerShell } from "./sync";
+export {
+  csgGraph, CsgGraph, Expr, op, outerShell,
+  booleanUnion, booleanIntersection, booleanDifference,
+} from "./sync";
 export type {
-  CsgGraphOptions, CsgDomainsOptions, OuterShellOptions,
+  CsgGraphOptions, CsgSelectionOptions, CsgMeshOptions, CsgDomainsOptions,
   CsgMeshLabeledResult, CsgMeshIndexMapResult,
   CsgDomainsResult, CsgDomainsLabeledResult, CsgDomainsIndexMapResult,
+  LabeledBooleanResult, LabeledBooleanResultWithCurves,
 } from "./sync";
 export * as async from "./async";

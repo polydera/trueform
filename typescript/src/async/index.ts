@@ -18,14 +18,13 @@ export {
   bincount, histogram,
 } from "../ndarray/async";
 export { readStl, readObj, writeStl, writeObj } from "../io/async";
-export { csgGraph, csgMesh, csgDomains, csgIntersectionCurves, outerShell } from "../csg/async";
 export {
+  csgGraph, csgMesh, csgDomains, csgIntersectionCurves, outerShell,
   booleanUnion, booleanIntersection, booleanDifference,
-  isobands,
-  embeddedIntersectionCurves, embeddedSelfIntersectionCurves,
-  meshArrangements, polygonArrangements,
-} from "../cut/async";
-export { intersectionCurves, selfIntersectionCurves, isocontours } from "../intersect/async";
+} from "../csg/async";
+export { meshArrangements, polygonArrangements } from "../arrangement/async";
+export { isocontours, isobands } from "../iso/async";
+export { intersectionCurves, selfIntersectionCurves } from "../intersect/async";
 export {
   distance, distance2, closestPoint, closestPointPair,
   neighborSearch, intersects, rayCast,

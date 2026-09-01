@@ -83,34 +83,36 @@ export {
   isNaN,
 } from "./ndarray/math";
 
-// IO
-export { csgGraph, CsgGraph, Expr, op, outerShell } from "./csg/sync";
+// CSG
+export {
+  csgGraph, CsgGraph, Expr, op, outerShell,
+  booleanUnion, booleanIntersection, booleanDifference,
+} from "./csg/sync";
 export type {
-  CsgGraphOptions, CsgDomainsOptions, OuterShellOptions,
+  CsgGraphOptions, CsgSelectionOptions, CsgMeshOptions, CsgDomainsOptions,
   CsgMeshLabeledResult, CsgMeshIndexMapResult,
   CsgDomainsResult, CsgDomainsLabeledResult, CsgDomainsIndexMapResult,
+  LabeledBooleanResult, LabeledBooleanResultWithCurves,
 } from "./csg/sync";
+
+// IO
 export { readStl, readStlData, readObj, readObjData, writeStl, writeObj } from "./io/sync";
 export type { ReadObjOptions } from "./io/sync";
 
-// Cut operations
-export {
-  booleanUnion, booleanIntersection, booleanDifference,
-  isobands,
-  embeddedIntersectionCurves, embeddedSelfIntersectionCurves,
-  meshArrangements, polygonArrangements,
-} from "./cut/sync";
-
-// Intersect operations
-export { intersectionCurves, selfIntersectionCurves, isocontours } from "./intersect/sync";
-export type { IntersectOpts } from "./intersect/sync";
+// Arrangement operations
+export { meshArrangements, polygonArrangements } from "./arrangement/sync";
 export type {
-  LabeledCutResult, LabeledCutResultWithCurves,
-  IsobandsResult, IsobandsResultWithCurves,
-  CutResultWithCurves,
   MeshArrangementResult, MeshArrangementResultWithCurves,
   PolygonArrangementResult, PolygonArrangementResultWithCurves,
-} from "./cut/sync";
+} from "./arrangement/sync";
+
+// Iso operations
+export { isocontours, isobands } from "./iso/sync";
+export type { IsobandsResult, IsobandsResultWithCurves } from "./iso/sync";
+
+// Intersect operations
+export { intersectionCurves, selfIntersectionCurves } from "./intersect/sync";
+export type { IntersectOpts } from "./intersect/sync";
 
 // Spatial queries
 export {

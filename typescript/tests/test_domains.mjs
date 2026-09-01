@@ -159,7 +159,7 @@ describe("Domain extraction (cross-runtime correctness)", () => {
   // -----------------------------------------------------------------
   // Tolerance: cube + inward-offset plane (mirrors the C++ test
   // mesh_arrangements_tolerance_box_plane in
-  // tests/cut/test_mesh_arrangements.cpp).
+  // tests/arrangement/test_mesh_arrangements.cpp).
   // -----------------------------------------------------------------
 
   /** Run pipeline with explicit tolerance and return sorted per-domain volumes. */
@@ -182,7 +182,7 @@ describe("Domain extraction (cross-runtime correctness)", () => {
     return vols;
   }
 
-  test("tolerance >> gap: plane snaps onto cube, splits into 2 halves", () => {
+  test("tolerance >> gap: the fin is still a fin, the cube still whole", () => {
     const tf = getTf();
     const gap = 1e-4;
     const planeSize = 2 * (0.5 - gap);
@@ -190,8 +190,10 @@ describe("Domain extraction (cross-runtime correctness)", () => {
     const plane = tf.planeMesh(planeSize, planeSize, 1, 1, F64);
     const got = tolDomainVolumes([cube, plane], 1e-3);
     cube.delete(); plane.delete();
-    // outer shell (-1) + upper half (+0.5) + lower half (+0.5)
-    assertVolumesMatch(got, [-1.0, 0.5, 0.5], "tol >> gap");
+    // A tolerance moves each vertex at most the band onto a lattice point
+    // of the planes its OWN faces state; nothing draws the plane's rim
+    // onto the cube's wall, so the fin stays a fin at every band.
+    assertVolumesMatch(got, [-1.0, 1.0], "tol >> gap");
   });
 
   test("tolerance = 0: plane stays detached, cube remains whole", () => {

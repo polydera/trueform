@@ -18,6 +18,7 @@ import { Primitive, PrimitiveType, Ray } from "../primitive/Primitive";
 import { NDArray, NDArrayFloat32, NDArrayFloat64, NDArrayBool, NDArrayInt32 } from "../ndarray/NDArray";
 import { full } from "../ndarray/factories";
 import { assertSameDtype } from "../internal/dtype";
+import { coerce, own, disposeOwned } from "../internal/owned";
 
 // ============================================================================
 // Form type — Mesh or PointCloud
@@ -312,30 +313,35 @@ export function distance2(
       a._handle, b._handle,
     );
   }
-  if (a instanceof Mesh || a instanceof PointCloud) {
-    const p = b as Primitive;
-    const ph = p.dtype === a.dtype ? p._handle : p.as(a.dtype)._handle;
-    const raw = native()[`distance2_fp${fpSuffix(a)}_${a.dtype}`](
-      a._handle, ph, primType(p),
+  const owned: NDArray[] = [];
+  try {
+    if (a instanceof Mesh || a instanceof PointCloud) {
+      const p = b as Primitive;
+      const ph = coerce(p, a.dtype, owned)._handle;
+      const raw = native()[`distance2_fp${fpSuffix(a)}_${a.dtype}`](
+        a._handle, ph, primType(p),
+      );
+      if (typeof raw === "number") return raw;
+      return a.dtype === "float32"
+        ? (new NDArray(raw, "float32") as NDArrayFloat32)
+        : (new NDArray(raw, "float64") as NDArrayFloat64);
+    }
+    const pa = a as Primitive;
+    const pb = b as Primitive;
+    const dt: "float32" | "float64" =
+      (pa.dtype === "float64" || pb.dtype === "float64") ? "float64" : "float32";
+    const ah = coerce(pa, dt, owned)._handle;
+    const bh = coerce(pb, dt, owned)._handle;
+    const raw = native()[`distance2_pp_${dt}`](
+      ah, primType(pa), bh, primType(pb),
     );
     if (typeof raw === "number") return raw;
-    return a.dtype === "float32"
+    return dt === "float32"
       ? (new NDArray(raw, "float32") as NDArrayFloat32)
       : (new NDArray(raw, "float64") as NDArrayFloat64);
+  } finally {
+    disposeOwned(owned);
   }
-  const pa = a as Primitive;
-  const pb = b as Primitive;
-  const dt: "float32" | "float64" =
-    (pa.dtype === "float64" || pb.dtype === "float64") ? "float64" : "float32";
-  const ah = pa.dtype === dt ? pa._handle : pa.as(dt)._handle;
-  const bh = pb.dtype === dt ? pb._handle : pb.as(dt)._handle;
-  const raw = native()[`distance2_pp_${dt}`](
-    ah, primType(pa), bh, primType(pb),
-  );
-  if (typeof raw === "number") return raw;
-  return dt === "float32"
-    ? (new NDArray(raw, "float32") as NDArrayFloat32)
-    : (new NDArray(raw, "float64") as NDArrayFloat64);
 }
 
 // ============================================================================
@@ -362,30 +368,35 @@ export function distance(
       a._handle, b._handle,
     );
   }
-  if (a instanceof Mesh || a instanceof PointCloud) {
-    const p = b as Primitive;
-    const ph = p.dtype === a.dtype ? p._handle : p.as(a.dtype)._handle;
-    const raw = native()[`distance_fp${fpSuffix(a)}_${a.dtype}`](
-      a._handle, ph, primType(p),
+  const owned: NDArray[] = [];
+  try {
+    if (a instanceof Mesh || a instanceof PointCloud) {
+      const p = b as Primitive;
+      const ph = coerce(p, a.dtype, owned)._handle;
+      const raw = native()[`distance_fp${fpSuffix(a)}_${a.dtype}`](
+        a._handle, ph, primType(p),
+      );
+      if (typeof raw === "number") return raw;
+      return a.dtype === "float32"
+        ? (new NDArray(raw, "float32") as NDArrayFloat32)
+        : (new NDArray(raw, "float64") as NDArrayFloat64);
+    }
+    const pa = a as Primitive;
+    const pb = b as Primitive;
+    const dt: "float32" | "float64" =
+      (pa.dtype === "float64" || pb.dtype === "float64") ? "float64" : "float32";
+    const ah = coerce(pa, dt, owned)._handle;
+    const bh = coerce(pb, dt, owned)._handle;
+    const raw = native()[`distance_pp_${dt}`](
+      ah, primType(pa), bh, primType(pb),
     );
     if (typeof raw === "number") return raw;
-    return a.dtype === "float32"
+    return dt === "float32"
       ? (new NDArray(raw, "float32") as NDArrayFloat32)
       : (new NDArray(raw, "float64") as NDArrayFloat64);
+  } finally {
+    disposeOwned(owned);
   }
-  const pa = a as Primitive;
-  const pb = b as Primitive;
-  const dt: "float32" | "float64" =
-    (pa.dtype === "float64" || pb.dtype === "float64") ? "float64" : "float32";
-  const ah = pa.dtype === dt ? pa._handle : pa.as(dt)._handle;
-  const bh = pb.dtype === dt ? pb._handle : pb.as(dt)._handle;
-  const raw = native()[`distance_pp_${dt}`](
-    ah, primType(pa), bh, primType(pb),
-  );
-  if (typeof raw === "number") return raw;
-  return dt === "float32"
-    ? (new NDArray(raw, "float32") as NDArrayFloat32)
-    : (new NDArray(raw, "float64") as NDArrayFloat64);
 }
 
 // ============================================================================
@@ -398,13 +409,18 @@ export function closestPoint(
 ): ClosestPointResult | ClosestPointBatchResult {
   const dt: "float32" | "float64" =
     (a.dtype === "float64" || b.dtype === "float64") ? "float64" : "float32";
-  const ah = a.dtype === dt ? a._handle : a.as(dt)._handle;
-  const bh = b.dtype === dt ? b._handle : b.as(dt)._handle;
-  const raw = native()[`closest_metric_point_${dt}`](
-    ah, primType(a), bh, primType(b),
-  );
-  if (a.isBatch || b.isBatch) return wrapClosestPointBatch(raw, dt);
-  return wrapClosestPoint(raw, dt);
+  const owned: NDArray[] = [];
+  try {
+    const ah = coerce(a, dt, owned)._handle;
+    const bh = coerce(b, dt, owned)._handle;
+    const raw = native()[`closest_metric_point_${dt}`](
+      ah, primType(a), bh, primType(b),
+    );
+    if (a.isBatch || b.isBatch) return wrapClosestPointBatch(raw, dt);
+    return wrapClosestPoint(raw, dt);
+  } finally {
+    disposeOwned(owned);
+  }
 }
 
 // ============================================================================
@@ -417,13 +433,18 @@ export function closestPointPair(
 ): ClosestPointPairResult | ClosestPointPairBatchResult {
   const dt: "float32" | "float64" =
     (a.dtype === "float64" || b.dtype === "float64") ? "float64" : "float32";
-  const ah = a.dtype === dt ? a._handle : a.as(dt)._handle;
-  const bh = b.dtype === dt ? b._handle : b.as(dt)._handle;
-  const raw = native()[`closest_metric_point_pair_${dt}`](
-    ah, primType(a), bh, primType(b),
-  );
-  if (a.isBatch || b.isBatch) return wrapClosestPointPairBatch(raw, dt);
-  return wrapClosestPointPair(raw, dt);
+  const owned: NDArray[] = [];
+  try {
+    const ah = coerce(a, dt, owned)._handle;
+    const bh = coerce(b, dt, owned)._handle;
+    const raw = native()[`closest_metric_point_pair_${dt}`](
+      ah, primType(a), bh, primType(b),
+    );
+    if (a.isBatch || b.isBatch) return wrapClosestPointPairBatch(raw, dt);
+    return wrapClosestPointPair(raw, dt);
+  } finally {
+    disposeOwned(owned);
+  }
 }
 
 // ============================================================================
@@ -464,21 +485,26 @@ export function neighborSearch(
   // FP — primitive query (basic or k-NN)
   const q = bOrQuery;
   const dtype = a.dtype;
-  const qh = q.dtype === dtype ? q._handle : q.as(dtype)._handle;
+  const owned: NDArray[] = [];
+  try {
+    const qh = coerce(q, dtype, owned)._handle;
 
-  if (opts && "k" in opts) {
-    const raw = native()[`neighbor_search_fp_knn${fpSuffix(a)}_${dtype}`](
-      a._handle, qh, primType(q), opts.k, radius,
+    if (opts && "k" in opts) {
+      const raw = native()[`neighbor_search_fp_knn${fpSuffix(a)}_${dtype}`](
+        a._handle, qh, primType(q), opts.k, radius,
+      );
+      if (q.isBatch) return wrapNeighborKnnBatch(raw, dtype);
+      return wrapNeighborKnn(raw, dtype);
+    }
+
+    const raw = native()[`neighbor_search_fp${fpSuffix(a)}_${dtype}`](
+      a._handle, qh, primType(q), radius,
     );
-    if (q.isBatch) return wrapNeighborKnnBatch(raw, dtype);
-    return wrapNeighborKnn(raw, dtype);
+    if (q.isBatch) return wrapNeighborBatch(raw, dtype);
+    return wrapNeighbor(raw, dtype);
+  } finally {
+    disposeOwned(owned);
   }
-
-  const raw = native()[`neighbor_search_fp${fpSuffix(a)}_${dtype}`](
-    a._handle, qh, primType(q), radius,
-  );
-  if (q.isBatch) return wrapNeighborBatch(raw, dtype);
-  return wrapNeighbor(raw, dtype);
 }
 
 // ============================================================================
@@ -505,24 +531,29 @@ export function intersects(
       a._handle, b._handle,
     );
   }
-  if (a instanceof Mesh || a instanceof PointCloud) {
-    const p = b as Primitive;
-    const ph = p.dtype === a.dtype ? p._handle : p.as(a.dtype)._handle;
-    const raw = native()[`intersects_fp${fpSuffix(a)}_${a.dtype}`](
-      a._handle, ph, primType(p),
+  const owned: NDArray[] = [];
+  try {
+    if (a instanceof Mesh || a instanceof PointCloud) {
+      const p = b as Primitive;
+      const ph = coerce(p, a.dtype, owned)._handle;
+      const raw = native()[`intersects_fp${fpSuffix(a)}_${a.dtype}`](
+        a._handle, ph, primType(p),
+      );
+      return typeof raw === "boolean" ? raw : new NDArray(raw, "bool");
+    }
+    const pa = a as Primitive;
+    const pb = b as Primitive;
+    const dt: "float32" | "float64" =
+      (pa.dtype === "float64" || pb.dtype === "float64") ? "float64" : "float32";
+    const ah = coerce(pa, dt, owned)._handle;
+    const bh = coerce(pb, dt, owned)._handle;
+    const raw = native()[`intersects_pp_${dt}`](
+      ah, primType(pa), bh, primType(pb),
     );
     return typeof raw === "boolean" ? raw : new NDArray(raw, "bool");
+  } finally {
+    disposeOwned(owned);
   }
-  const pa = a as Primitive;
-  const pb = b as Primitive;
-  const dt: "float32" | "float64" =
-    (pa.dtype === "float64" || pb.dtype === "float64") ? "float64" : "float32";
-  const ah = pa.dtype === dt ? pa._handle : pa.as(dt)._handle;
-  const bh = pb.dtype === dt ? pb._handle : pb.as(dt)._handle;
-  const raw = native()[`intersects_pp_${dt}`](
-    ah, primType(pa), bh, primType(pb),
-  );
-  return typeof raw === "boolean" ? raw : new NDArray(raw, "bool");
 }
 
 // ============================================================================
@@ -543,23 +574,64 @@ export function rayCast(
   const minT = opts?.minT ?? 0;
   const maxT = opts?.maxT ?? Infinity;
   const bothScalar = typeof minT === "number" && typeof maxT === "number";
+  const owned: NDArray[] = [];
 
-  if (!bothScalar) {
-    const n = ray.count;
+  try {
+    if (!bothScalar) {
+      const n = ray.count;
+
+      if (target instanceof Mesh || target instanceof PointCloud) {
+        const dtype = target.dtype;
+        const rayInput = coerce(ray, dtype, owned);
+        const minArr = minT instanceof NDArray
+          ? coerce(minT, dtype, owned)
+          : own(full(dtype, [n], minT as number), owned);
+        const maxArr = maxT instanceof NDArray
+          ? coerce(maxT, dtype, owned)
+          : own(full(dtype, [n], maxT as number), owned);
+        const fn = isPC(target)
+          ? `ray_cast_f_pc_rc_${dtype}`
+          : `ray_cast_f_rc_${dtype}`;
+        const raw = native()[fn](
+          rayInput._handle, target._handle, minArr._handle, maxArr._handle,
+        );
+        if (raw.hit !== undefined) return raw as RayCastResult;
+        return {
+          hits: new NDArray(raw.hits, "bool"),
+          ts: new NDArray(raw.ts, dtype) as NDArrayFloat32 | NDArrayFloat64,
+          elementIds: new NDArray(raw.elementIds, "int32"),
+        };
+      }
+      const primitive = target as Primitive;
+      const dt: "float32" | "float64" =
+        (ray.dtype === "float64" || primitive.dtype === "float64")
+          ? "float64" : "float32";
+      const rayInput = coerce(ray, dt, owned);
+      const targetInput = coerce(primitive, dt, owned);
+      const minArr = minT instanceof NDArray
+        ? coerce(minT, dt, owned)
+        : own(full(dt, [n], minT as number), owned);
+      const maxArr = maxT instanceof NDArray
+        ? coerce(maxT, dt, owned)
+        : own(full(dt, [n], maxT as number), owned);
+      const raw = native()[`ray_cast_p_rc_${dt}`](
+        rayInput._handle, targetInput._handle, primType(primitive),
+        minArr._handle, maxArr._handle,
+      );
+      if (raw.hit !== undefined) return raw as RayCastResult;
+      return {
+        hits: new NDArray(raw.hits, "bool"),
+        ts: new NDArray(raw.ts, dt) as NDArrayFloat32 | NDArrayFloat64,
+      } as RayCastPrimBatchResult;
+    }
 
     if (target instanceof Mesh || target instanceof PointCloud) {
       const dtype = target.dtype;
-      const rayH = ray.dtype === dtype ? ray._handle : ray.as(dtype)._handle;
-      const minArr = minT instanceof NDArray
-        ? (minT.dtype === dtype ? minT : minT.as(dtype))
-        : full(dtype, [n], minT as number);
-      const maxArr = maxT instanceof NDArray
-        ? (maxT.dtype === dtype ? maxT : maxT.as(dtype))
-        : full(dtype, [n], maxT as number);
-      const fn = isPC(target)
-        ? `ray_cast_f_pc_rc_${dtype}`
-        : `ray_cast_f_rc_${dtype}`;
-      const raw = native()[fn](rayH, target._handle, minArr._handle, maxArr._handle);
+      const rayInput = coerce(ray, dtype, owned);
+      const fn = isPC(target) ? `ray_cast_f_pc_${dtype}` : `ray_cast_f_${dtype}`;
+      const raw = native()[fn](
+        rayInput._handle, target._handle, minT, maxT,
+      );
       if (raw.hit !== undefined) return raw as RayCastResult;
       return {
         hits: new NDArray(raw.hits, "bool"),
@@ -567,56 +639,22 @@ export function rayCast(
         elementIds: new NDArray(raw.elementIds, "int32"),
       };
     }
+    const primitive = target as Primitive;
     const dt: "float32" | "float64" =
-      (ray.dtype === "float64" || (target as Primitive).dtype === "float64")
+      (ray.dtype === "float64" || primitive.dtype === "float64")
         ? "float64" : "float32";
-    const rH = ray.dtype === dt ? ray._handle : ray.as(dt)._handle;
-    const tH = (target as Primitive).dtype === dt
-      ? (target as Primitive)._handle
-      : (target as Primitive).as(dt)._handle;
-    const minArr = minT instanceof NDArray
-      ? (minT.dtype === dt ? minT : minT.as(dt))
-      : full(dt, [n], minT as number);
-    const maxArr = maxT instanceof NDArray
-      ? (maxT.dtype === dt ? maxT : maxT.as(dt))
-      : full(dt, [n], maxT as number);
-    const raw = native()[`ray_cast_p_rc_${dt}`](
-      rH, tH, primType(target as Primitive), minArr._handle, maxArr._handle,
+    const rayInput = coerce(ray, dt, owned);
+    const targetInput = coerce(primitive, dt, owned);
+    const raw = native()[`ray_cast_p_${dt}`](
+      rayInput._handle, targetInput._handle, primType(primitive),
+      minT as number, maxT as number,
     );
     if (raw.hit !== undefined) return raw as RayCastResult;
     return {
       hits: new NDArray(raw.hits, "bool"),
       ts: new NDArray(raw.ts, dt) as NDArrayFloat32 | NDArrayFloat64,
     } as RayCastPrimBatchResult;
+  } finally {
+    disposeOwned(owned);
   }
-
-  if (target instanceof Mesh || target instanceof PointCloud) {
-    const dtype = target.dtype;
-    const rayH = ray.dtype === dtype ? ray._handle : ray.as(dtype)._handle;
-    const fn = isPC(target) ? `ray_cast_f_pc_${dtype}` : `ray_cast_f_${dtype}`;
-    const raw = native()[fn](
-      rayH, target._handle, minT, maxT,
-    );
-    if (raw.hit !== undefined) return raw as RayCastResult;
-    return {
-      hits: new NDArray(raw.hits, "bool"),
-      ts: new NDArray(raw.ts, dtype) as NDArrayFloat32 | NDArrayFloat64,
-      elementIds: new NDArray(raw.elementIds, "int32"),
-    };
-  }
-  const dt: "float32" | "float64" =
-    (ray.dtype === "float64" || (target as Primitive).dtype === "float64")
-      ? "float64" : "float32";
-  const rH = ray.dtype === dt ? ray._handle : ray.as(dt)._handle;
-  const tH = (target as Primitive).dtype === dt
-    ? (target as Primitive)._handle
-    : (target as Primitive).as(dt)._handle;
-  const raw = native()[`ray_cast_p_${dt}`](
-    rH, tH, primType(target as Primitive), minT as number, maxT as number,
-  );
-  if (raw.hit !== undefined) return raw as RayCastResult;
-  return {
-    hits: new NDArray(raw.hits, "bool"),
-    ts: new NDArray(raw.ts, dt) as NDArrayFloat32 | NDArrayFloat64,
-  } as RayCastPrimBatchResult;
 }

@@ -11,5 +11,6 @@
  * Author: Žiga Sajovic
  */
 
-export { intersectionCurves, selfIntersectionCurves } from "./sync";
+export { isocontours, isobands } from "./sync";
+export type { IsobandsResult, IsobandsResultWithCurves } from "./sync";
 export * as async from "./async";

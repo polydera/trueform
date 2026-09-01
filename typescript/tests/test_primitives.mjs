@@ -413,6 +413,48 @@ describe("Primitive factories (other overloads)", () => {
     pl.delete(); n.delete();
   });
 
+  test("plane batch from packed NDArray coefficients", () => {
+    const tf = getTf();
+    const coefficients = tf.ndarray(new Float32Array([
+      1, 0, 0, -2,
+      0, 1, 0, 3,
+    ]), [2, 4]);
+    const planes = tf.plane(coefficients);
+
+    assert(planes.type === "plane");
+    assert(planes.isBatch === true, "should be a batch");
+    assert(planes.count === 2, `count: ${planes.count}`);
+    assert(planes.shape[0] === 2 && planes.shape[1] === 4, `shape: [${planes.shape}]`);
+
+    coefficients.delete();
+    approx(planes.data[3], -2, "first offset remains owned by planes");
+    approx(planes.data[7], 3, "second offset remains owned by planes");
+    log("  plane(ndarray[2,4]) → batch plane[2,4]", "line-pass");
+    planes.delete();
+  });
+
+  test("packed plane owns dtype conversion and rejects malformed shapes", () => {
+    const tf = getTf();
+    const coefficients = tf.ndarray(new Float32Array([0, 0, 1, -4]), [4]);
+    const plane64 = tf.plane(coefficients, { dtype: "float64" });
+
+    coefficients.delete();
+    assert(plane64.dtype === "float64", `dtype: ${plane64.dtype}`);
+    approx(plane64.data[3], -4, "converted plane remains independently owned");
+    plane64.delete();
+
+    const malformed = tf.ndarray(new Float32Array([0, 0, 1]), [3]);
+    let message = "";
+    try { tf.plane(malformed); }
+    catch (cause) { message = cause instanceof Error ? cause.message : String(cause); }
+    assert(
+      /plane coefficients must have shape \[4\] or \[N,4\]/.test(message),
+      `expected packed-plane shape rejection, got: ${message}`,
+    );
+    malformed.delete();
+    log("  packed plane validates shape and owns dtype conversion", "line-pass");
+  });
+
   test("plane from flat [a,b,c,d]", () => {
     const tf = getTf();
     const pl = tf.plane([0, 0, 1, 2]);

@@ -12,12 +12,14 @@
  */
 #pragma once
 
-#include "trueform/cut/embedded_isocurves.hpp"
-#include "trueform/cut/make_isobands.hpp"
+#include "./isocontours_impl.hpp"
+#include "trueform/iso/embedded_isocurves.hpp"
+#include "trueform/iso/make_isobands.hpp"
 #include "trueform/ts/core/promise.hpp"
 #include "trueform/ts/core/wasm_curves.hpp"
 #include "trueform/ts/core/wasm_mesh.hpp"
 #include "trueform/ts/core/wasm_ndarray.hpp"
+#include <cstddef>
 #include <cstdint>
 #include <emscripten/val.h>
 #include <vector>
@@ -45,16 +47,8 @@ template <typename Real> struct isobands_result_with_curves_t {
 
 // ============================================================================
 // Main-thread emscripten::val extraction — must run before any async dispatch.
+// The cut values are read by the isocontours tier's extractor.
 // ============================================================================
-
-template <typename Real>
-auto extract_cut_values(emscripten::val js_cut_values) -> std::vector<Real> {
-  auto n = js_cut_values["length"].as<std::size_t>();
-  std::vector<Real> cv(n);
-  for (std::size_t i = 0; i < n; ++i)
-    cv[i] = js_cut_values[i].as<Real>();
-  return cv;
-}
 
 inline auto extract_ints(emscripten::val js_arr) -> std::vector<int> {
   auto n = js_arr["length"].as<std::size_t>();

@@ -12,7 +12,7 @@
  */
 #pragma once
 
-#include "trueform/cut/make_polygon_arrangements.hpp"
+#include "trueform/arrangement/make_polygon_arrangements.hpp"
 #include "trueform/topology/triangulation_type.hpp"
 #include "trueform/ts/core/build_intersect_structures.hpp"
 #include "trueform/ts/core/promise.hpp"

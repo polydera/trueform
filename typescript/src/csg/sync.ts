@@ -12,7 +12,7 @@
  */
 
 import { native } from "../native";
-import { NDArray, NDArrayBool, NDArrayFloat32, NDArrayFloat64, NDArrayInt32 } from "../ndarray/NDArray";
+import { NDArray, NDArrayBool, NDArrayFloat32, NDArrayFloat64, NDArrayInt8, NDArrayInt32 } from "../ndarray/NDArray";
 import type { FloatDtype } from "../ndarray/dtype";
 import { Mesh } from "../form/Mesh";
 import { Curves } from "../form/Curves";
@@ -29,7 +29,7 @@ export interface CsgGraphOptions {
   sheets?: number[];
   /** Intersection mode: "sos" or "primitives" (default). */
   mode?: "sos" | "primitives";
-  /** World-coordinate predicate tolerance band (0 = exact). */
+  /** World-coordinate distance an input vertex may move to reach the lattice (0 = exact). */
   tolerance?: number;
   /** Resolve crossings between contours on one face (default true). */
   resolveCrossings?: boolean;
@@ -48,7 +48,38 @@ export interface CsgGraphOptions {
   triangulation?: "cdt" | "refinedCdt";
 }
 
-export interface CsgDomainsOptions {
+/**
+ * The surface restriction shared by every extraction: which operands'
+ * faces reach the output. Omitted (or empty) means every form's.
+ *
+ * It is orthogonal to the expression. With one, the boolean is evaluated
+ * exactly as before and the result is split by provenance — the parts of
+ * `op(0).sub(op(1))` under `[0]` and `[1]` re-weld into the solid.
+ * Without one, it is the embedded read: the named surfaces cut by every
+ * other operand, original winding, no classification.
+ *
+ * A coincident (coplanar) wall exists once, under its stack's owner tag:
+ * a selection including the owner carries it, one excluding it does not.
+ */
+export interface CsgSelectionOptions {
+  /** Operand indices whose faces are emitted (default: all). */
+  selection?: number[];
+}
+
+/**
+ * `mesh()`'s restriction. `selection` reads the named forms' share of
+ * the expression's boundary — a piece whose two sides straddle the
+ * region, wound outward from it. `inside` reads their surface lying
+ * inside the region — a piece with both sides in it, kept in the form's
+ * stored winding. The two are exclusive, and `inside` requires an
+ * expression: there is no region without one.
+ */
+export interface CsgMeshOptions extends CsgSelectionOptions {
+  /** Operand indices whose faces inside the expression's region are emitted. */
+  inside?: number[];
+}
+
+export interface CsgDomainsOptions extends CsgSelectionOptions {
   /** Drop the unbounded outside domain (default true). */
   excludeOuterShell?: boolean;
   /** Fuse open fragments instead of letting them partition (default true). */
@@ -67,7 +98,9 @@ export interface CsgMeshIndexMapResult {
   mesh: Mesh;
   /** Output point -> input mesh tag; created points carry `nTags`. */
   pointTagLabels: NDArrayInt32;
-  /** Output point -> input point id; created points carry `nOutputPoints`. */
+  /** Output point -> input point id; created points carry `nOutputPoints`.
+   *  Not a reliable created-point test — an input id may reach that value.
+   *  Use `pointTagLabels[o] === nTags` or `o >= nOriginalPoints`. */
   pointLabels: NDArrayInt32;
   /** Output face -> input mesh tag. */
   faceTagLabels: NDArrayInt32;
@@ -77,7 +110,7 @@ export interface CsgMeshIndexMapResult {
   pointFOffsets: NDArrayInt32;
   pointFData: NDArrayInt32;
   nOriginalPoints: number;
-  nOriginalFaces: number;
+  uncutFaces: NDArrayInt32;
   nTags: number;
   nOutputPoints: number;
 }
@@ -116,6 +149,28 @@ export interface CsgDomainsIndexMapResult extends CsgDomainsResult {
   inclusion: NDArrayBool;
 }
 
+/** Result of a boolean operation. */
+export interface LabeledBooleanResult {
+  /** The result mesh. */
+  mesh: Mesh;
+  /** Per-face region labels. */
+  labels: NDArrayInt8;
+  /** Per-face origin: which face in the original mesh. */
+  faceLabels: NDArrayInt32;
+}
+
+/** Result of a boolean operation with intersection curves. */
+export interface LabeledBooleanResultWithCurves {
+  /** The result mesh. */
+  mesh: Mesh;
+  /** Per-face region labels. */
+  labels: NDArrayInt8;
+  /** Per-face origin: which face in the original mesh. */
+  faceLabels: NDArrayInt32;
+  /** Intersection curves. */
+  curves: Curves;
+}
+
 // ============================================================================
 // Internal helpers (shared with async.ts)
 // ============================================================================
@@ -148,6 +203,17 @@ export function buildCsgConfig(meshes: Mesh[], opts?: CsgGraphOptions) {
   };
 }
 
+/** @internal — embind takes std::vector<int>; validate the operand ids
+ * here so a bad one is a TypeScript error rather than an out-of-range
+ * write in wasm. */
+export function toSheets(ids?: number[]): number[] {
+  if (!ids) return [];
+  for (const id of ids)
+    if (id !== 0 && id !== 1)
+      throw new Error(`sheets must contain operand ids 0 or 1, got ${id}`);
+  return ids;
+}
+
 /** @internal */
 export function buildDomainsConfig(opts?: CsgDomainsOptions): number {
   let cfg = 0;
@@ -171,6 +237,41 @@ export function splitExprArgs(
   return [undefined, exprOrOpts];
 }
 
+/** @internal — the surface restriction crosses as a plain int array
+ * alongside the expression program; empty = every form. */
+export function selectionTags(graph: CsgGraph, opts?: CsgSelectionOptions): number[] {
+  const tags = opts?.selection;
+  if (tags === undefined) return [];
+  if (!Array.isArray(tags)) {
+    throw new TypeError("selection must be an array of operand indices");
+  }
+  for (const t of tags) {
+    if (!Number.isInteger(t) || t < 0 || t >= graph.forms.length) {
+      throw new RangeError(`selection index ${t} out of range`);
+    }
+  }
+  return tags;
+}
+
+const SELECTION_BOUNDARY = 0;
+const SELECTION_INSIDE = 1;
+
+/** @internal — the `[tags, kind]` pair a mesh read crosses with. */
+export function meshRestriction(
+  graph: CsgGraph,
+  hasExpr: boolean,
+  opts?: CsgMeshOptions,
+): [number[], number] {
+  if (opts?.selection !== undefined && opts?.inside !== undefined) {
+    throw new TypeError("selection and inside are exclusive");
+  }
+  if (opts?.inside === undefined) {
+    return [selectionTags(graph, opts), SELECTION_BOUNDARY];
+  }
+  if (!hasExpr) throw new TypeError("inside requires an expression");
+  return [selectionTags(graph, { selection: opts.inside }), SELECTION_INSIDE];
+}
+
 /** @internal */
 export function wrapCsgMeshLabeled(raw: any, dt: FloatDtype): CsgMeshLabeledResult {
   return {
@@ -191,7 +292,7 @@ export function wrapCsgMeshIndexMap(raw: any, dt: FloatDtype): CsgMeshIndexMapRe
     pointFOffsets: new NDArray(raw.pointFOffsets, "int32"),
     pointFData: new NDArray(raw.pointFData, "int32"),
     nOriginalPoints: raw.nOriginalPoints,
-    nOriginalFaces: raw.nOriginalFaces,
+    uncutFaces: new NDArray(raw.uncutFaces, "int32"),
     nTags: raw.nTags,
     nOutputPoints: raw.nOutputPoints,
   };
@@ -242,6 +343,27 @@ export function wrapCsgDomainsIndexMap(raw: any, dt: FloatDtype): CsgDomainsInde
     nTags: raw.nTags,
     nOutputPoints: raw.nOutputPoints,
     inclusion: new NDArray(raw.inclusion, "bool"),
+  };
+}
+
+/** @internal */
+export function wrapLabeledBoolean(raw: any, dt: FloatDtype): LabeledBooleanResult {
+  return {
+    mesh: new Mesh(raw.mesh, dt),
+    labels: new NDArray(raw.labels, "int8"),
+    faceLabels: new NDArray(raw.faceLabels, "int32"),
+  };
+}
+
+/** @internal */
+export function wrapLabeledBooleanWithCurves(
+  raw: any, dt: FloatDtype,
+): LabeledBooleanResultWithCurves {
+  return {
+    mesh: new Mesh(raw.mesh, dt),
+    labels: new NDArray(raw.labels, "int8"),
+    faceLabels: new NDArray(raw.faceLabels, "int32"),
+    curves: new Curves(raw.curves, dt),
   };
 }
 
@@ -315,36 +437,42 @@ export class CsgGraph {
   }
 
   /**
-   * The boolean result mesh for `expr`; with no expression, the full
-   * arrangement mesh (every input face, cut at intersections).
-   * `returnIndexMap` requires an expression.
+   * The boolean result mesh for `expr`, restricted to `selection`'s
+   * surfaces or to the part of `inside`'s surfaces that lies within the
+   * expression's region; with none of them, the full arrangement mesh
+   * (every input face, cut at intersections). `returnIndexMap` requires
+   * an expression or a selection.
    */
   mesh(): Mesh;
   mesh(expr: Expr | number): Mesh;
-  mesh(opts: { returnSourceIds: true }): CsgMeshLabeledResult;
-  mesh(expr: Expr | number, opts: { returnSourceIds: true }): CsgMeshLabeledResult;
-  mesh(expr: Expr | number, opts: { returnIndexMap: true }): CsgMeshIndexMapResult;
+  mesh(opts: CsgMeshOptions & { returnSourceIds: true }): CsgMeshLabeledResult;
+  mesh(opts: { selection: number[]; returnIndexMap: true }): CsgMeshIndexMapResult;
+  mesh(opts: CsgMeshOptions): Mesh;
+  mesh(expr: Expr | number, opts: CsgMeshOptions & { returnSourceIds: true }): CsgMeshLabeledResult;
+  mesh(expr: Expr | number, opts: CsgMeshOptions & { returnIndexMap: true }): CsgMeshIndexMapResult;
+  mesh(expr: Expr | number, opts: CsgMeshOptions): Mesh;
   mesh(
-    exprOrOpts?: Expr | number | { returnSourceIds?: true; returnIndexMap?: true },
-    maybeOpts?: { returnSourceIds?: true; returnIndexMap?: true },
+    exprOrOpts?: Expr | number | (CsgMeshOptions & { returnSourceIds?: true; returnIndexMap?: true }),
+    maybeOpts?: CsgMeshOptions & { returnSourceIds?: true; returnIndexMap?: true },
   ): Mesh | CsgMeshLabeledResult | CsgMeshIndexMapResult {
     const [expr, opts] = splitExprArgs(exprOrOpts, maybeOpts);
     const program = expr === undefined ? [] : programOf(expr);
+    const [tags, kind] = meshRestriction(this, expr !== undefined, opts);
     const dt = this.dtype;
     if (opts?.returnSourceIds && opts?.returnIndexMap) {
       throw new Error("returnSourceIds and returnIndexMap are exclusive");
     }
     if (opts?.returnIndexMap) {
       return wrapCsgMeshIndexMap(
-        native()[`csg_mesh_with_index_map_${dt}`](this._handle, program), dt,
+        native()[`csg_mesh_with_index_map_${dt}`](this._handle, program, tags, kind), dt,
       );
     }
     if (opts?.returnSourceIds) {
       return wrapCsgMeshLabeled(
-        native()[`csg_mesh_with_labels_${dt}`](this._handle, program), dt,
+        native()[`csg_mesh_with_labels_${dt}`](this._handle, program, tags, kind), dt,
       );
     }
-    return new Mesh(native()[`csg_mesh_${dt}`](this._handle, program), dt);
+    return new Mesh(native()[`csg_mesh_${dt}`](this._handle, program, tags, kind), dt);
   }
 
   /**
@@ -361,8 +489,9 @@ export class CsgGraph {
 
   /**
    * Every kept volumetric domain as its own watertight mesh; with an
-   * expression, only domains inside its selection. The expression may be
-   * omitted entirely: `domains()`, `domains(opts)`, `domains(expr)`,
+   * expression, only the domains it keeps; with a `selection`, each cell
+   * carries only the named forms' walls. The expression may be omitted
+   * entirely: `domains()`, `domains(opts)`, `domains(expr)`,
    * `domains(expr, opts)` are all accepted.
    */
   domains(): CsgDomainsResult;
@@ -379,6 +508,7 @@ export class CsgGraph {
   ): CsgDomainsResult | CsgDomainsLabeledResult | CsgDomainsIndexMapResult {
     const [expr, opts] = splitExprArgs(exprOrOpts, maybeOpts);
     const program = expr === undefined ? [] : programOf(expr);
+    const tags = selectionTags(this, opts);
     const cfg = buildDomainsConfig(opts);
     const dt = this.dtype;
     if (opts?.returnSourceIds && opts?.returnIndexMap) {
@@ -386,16 +516,16 @@ export class CsgGraph {
     }
     if (opts?.returnIndexMap) {
       return wrapCsgDomainsIndexMap(
-        native()[`csg_domains_with_index_map_${dt}`](this._handle, program, cfg), dt,
+        native()[`csg_domains_with_index_map_${dt}`](this._handle, program, tags, cfg), dt,
       );
     }
     if (opts?.returnSourceIds) {
       return wrapCsgDomainsLabeled(
-        native()[`csg_domains_with_labels_${dt}`](this._handle, program, cfg), dt,
+        native()[`csg_domains_with_labels_${dt}`](this._handle, program, tags, cfg), dt,
       );
     }
     return wrapCsgDomains(
-      native()[`csg_domains_${dt}`](this._handle, program, cfg), dt,
+      native()[`csg_domains_${dt}`](this._handle, program, tags, cfg), dt,
     );
   }
 
@@ -412,20 +542,6 @@ export class CsgGraph {
 // Outer shell
 // ============================================================================
 
-/** Options for {@link outerShell}. */
-export interface OuterShellOptions {
-  /**
-   * Mask open fragments (surface pieces carrying boundary edges) out of
-   * the region formation instead of letting them partition (default false).
-   */
-  ignoreOpenFragments?: boolean;
-}
-
-/** @internal — also used by the async wrapper. */
-export function buildOuterShellConfig(opts?: OuterShellOptions): number {
-  return opts?.ignoreOpenFragments ? IGNORE_OPEN_FRAGMENTS : 0;
-}
-
 /**
  * Repair a mesh to its outer shell: the boundary of the union of
  * everything it encloses.
@@ -434,13 +550,13 @@ export function buildOuterShellConfig(opts?: OuterShellOptions): number {
  * domains, and keeps only the faces bounding the unbounded outside,
  * oriented outward. Internal structure — overlap membranes between
  * interpenetrating parts, faces buried inside the solid, enclosed
- * cavities — is removed. The result is free of self-intersections and
- * suitable as a boolean or csg-graph operand.
+ * cavities — is removed. Open fragments (fins, damage) bound no volume
+ * and never reach the boundary. The result is free of self-intersections
+ * and suitable as a boolean or csg-graph operand.
  */
-export function outerShell(mesh: Mesh, opts?: OuterShellOptions): Mesh {
+export function outerShell(mesh: Mesh): Mesh {
   const dt = mesh.dtype;
-  const cfg = buildOuterShellConfig(opts);
-  return new Mesh(native()[`outer_shell_${dt}`](mesh._handle, cfg), dt);
+  return new Mesh(native()[`outer_shell_${dt}`](mesh._handle), dt);
 }
 
 // ============================================================================
@@ -470,6 +586,82 @@ export function csgGraph(meshes: Mesh[], opts?: CsgGraphOptions): CsgGraph {
     resolveCrossings: opts?.resolveCrossings ?? true,
     triangulation: opts?.triangulation ?? "cdt",
   });
+}
+
+// ============================================================================
+// Booleans
+// ============================================================================
+
+/** Boolean union of two meshes. Result is the volume covered by either mesh. */
+export function booleanUnion(
+  m0: Mesh, m1: Mesh, opts: { returnCurves: true; sheets?: number[] },
+): LabeledBooleanResultWithCurves;
+export function booleanUnion(
+  m0: Mesh, m1: Mesh, opts?: { sheets?: number[] },
+): LabeledBooleanResult;
+export function booleanUnion(
+  m0: Mesh, m1: Mesh, opts?: { returnCurves?: true; sheets?: number[] },
+): LabeledBooleanResult | LabeledBooleanResultWithCurves {
+  assertSameDtype([m0, m1], ["mesh0", "mesh1"]);
+  const dt = m0.dtype;
+  const sheets = toSheets(opts?.sheets);
+  if (opts?.returnCurves) {
+    return wrapLabeledBooleanWithCurves(
+      native()[`boolean_union_with_curves_${dt}`](m0._handle, m1._handle, sheets),
+      dt,
+    );
+  }
+  return wrapLabeledBoolean(
+    native()[`boolean_union_${dt}`](m0._handle, m1._handle, sheets), dt,
+  );
+}
+
+/** Boolean intersection of two meshes. Result is the volume covered by both. */
+export function booleanIntersection(
+  m0: Mesh, m1: Mesh, opts: { returnCurves: true; sheets?: number[] },
+): LabeledBooleanResultWithCurves;
+export function booleanIntersection(
+  m0: Mesh, m1: Mesh, opts?: { sheets?: number[] },
+): LabeledBooleanResult;
+export function booleanIntersection(
+  m0: Mesh, m1: Mesh, opts?: { returnCurves?: true; sheets?: number[] },
+): LabeledBooleanResult | LabeledBooleanResultWithCurves {
+  assertSameDtype([m0, m1], ["mesh0", "mesh1"]);
+  const dt = m0.dtype;
+  const sheets = toSheets(opts?.sheets);
+  if (opts?.returnCurves) {
+    return wrapLabeledBooleanWithCurves(
+      native()[`boolean_intersection_with_curves_${dt}`](m0._handle, m1._handle, sheets),
+      dt,
+    );
+  }
+  return wrapLabeledBoolean(
+    native()[`boolean_intersection_${dt}`](m0._handle, m1._handle, sheets), dt,
+  );
+}
+
+/** Boolean difference: m0 minus m1. Result is m0 with m1 subtracted. */
+export function booleanDifference(
+  m0: Mesh, m1: Mesh, opts: { returnCurves: true; sheets?: number[] },
+): LabeledBooleanResultWithCurves;
+export function booleanDifference(
+  m0: Mesh, m1: Mesh, opts?: { sheets?: number[] },
+): LabeledBooleanResult;
+export function booleanDifference(
+  m0: Mesh, m1: Mesh, opts?: { returnCurves?: true; sheets?: number[] },
+): LabeledBooleanResult | LabeledBooleanResultWithCurves {
+  assertSameDtype([m0, m1], ["mesh0", "mesh1"]);
+  const dt = m0.dtype;
+  const sheets = toSheets(opts?.sheets);
+  if (opts?.returnCurves) {
+    return wrapLabeledBooleanWithCurves(
+      native()[`boolean_difference_with_curves_${dt}`](m0._handle, m1._handle, sheets),
+      dt,
+    );
+  }
+  return wrapLabeledBoolean(
+    native()[`boolean_difference_${dt}`](m0._handle, m1._handle, sheets), dt,
+  );
 }
 
 export { Expr, op } from "./expr";

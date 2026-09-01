@@ -34,19 +34,19 @@ add_executable(trueform_wasm
     cpp/src/io/io_float32.cpp
     cpp/src/io/io_float64.cpp
     cpp/src/csg/csg_graph_float32.cpp
-  cpp/src/csg/csg_graph_float64.cpp
+    cpp/src/csg/csg_graph_float64.cpp
     cpp/src/csg/outer_shell_float32.cpp
     cpp/src/csg/outer_shell_float64.cpp
-  cpp/src/cut/boolean_float32.cpp
-    cpp/src/cut/boolean_float64.cpp
-    cpp/src/cut/mesh_arrangement_float32.cpp
-    cpp/src/cut/mesh_arrangement_float64.cpp
-    cpp/src/cut/polygon_arrangement_float32.cpp
-    cpp/src/cut/polygon_arrangement_float64.cpp
-    cpp/src/cut/isobands_float32.cpp
-    cpp/src/cut/isobands_float64.cpp
-    cpp/src/cut/embedded_float32.cpp
-    cpp/src/cut/embedded_float64.cpp
+    cpp/src/csg/boolean_float32.cpp
+    cpp/src/csg/boolean_float64.cpp
+    cpp/src/arrangement/mesh_arrangement_float32.cpp
+    cpp/src/arrangement/mesh_arrangement_float64.cpp
+    cpp/src/arrangement/polygon_arrangement_float32.cpp
+    cpp/src/arrangement/polygon_arrangement_float64.cpp
+    cpp/src/iso/isobands_float32.cpp
+    cpp/src/iso/isobands_float64.cpp
+    cpp/src/iso/isocontours_float32.cpp
+    cpp/src/iso/isocontours_float64.cpp
     cpp/src/intersect/intersect_float32.cpp
     cpp/src/intersect/intersect_float64.cpp
     cpp/src/spatial/distance_float32.cpp
@@ -111,6 +111,9 @@ target_compile_options(trueform_wasm PRIVATE
 )
 target_link_options(trueform_wasm PRIVATE
   -O3
+  # release strips the name section anyway, and at our symbol count
+  # emitting it first overruns what the strip step can process
+  -Wl,--strip-all
   -pthread
   -fwasm-exceptions
   -lembind

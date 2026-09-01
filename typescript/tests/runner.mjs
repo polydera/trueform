@@ -28,8 +28,9 @@ await import("./test_cdt.mjs");
 await import("./test_reindex.mjs");
 await import("./test_transformations.mjs");
 await import("./test_clean.mjs");
-await import("./test_cut.mjs");
+await import("./test_arrangement.mjs");
 await import("./test_intersect.mjs");
+await import("./test_iso.mjs");
 await import("./test_io_roundtrip.mjs");
 
 // ============================================================================

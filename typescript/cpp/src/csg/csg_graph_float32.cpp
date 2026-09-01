@@ -38,7 +38,7 @@ EMSCRIPTEN_BINDINGS(trueform_csg_graph_float32) {
       .field("pointFData", &csg_mesh_index_map_t<Real>::point_f_data)
       .field("nOriginalPoints",
              &csg_mesh_index_map_t<Real>::n_original_points)
-      .field("nOriginalFaces", &csg_mesh_index_map_t<Real>::n_original_faces)
+      .field("uncutFaces", &csg_mesh_index_map_t<Real>::uncut_faces)
       .field("nTags", &csg_mesh_index_map_t<Real>::n_tags)
       .field("nOutputPoints", &csg_mesh_index_map_t<Real>::n_output_points);
 
