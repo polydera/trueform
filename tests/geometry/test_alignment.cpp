@@ -4,6 +4,7 @@
  *
  * Tests for:
  * - fit_rigid_alignment
+ * - fit_similarity_alignment
  * - fit_obb_alignment
  * - fit_knn_alignment
  * - fit_icp_alignment
@@ -1541,4 +1542,36 @@ TEMPLATE_TEST_CASE("fit_icp_alignment_p2plane_all_transform_combos", "[geometry]
     auto T4_total = tf::transformed(T_source, T4_delta);
     real_t chamfer4 = tf::chamfer_error(sphere.points() | tf::tag(T4_total), sphere.points() | tf::tag(tree_local) | tf::tag(T_target));
     REQUIRE(chamfer4 < real_t(0.01));
+}
+
+// =============================================================================
+// fit_similarity_alignment - Uniform scale, any point count
+// =============================================================================
+
+TEMPLATE_TEST_CASE("fit_similarity_alignment_scale", "[geometry][alignment]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using real_t = typename TestType::real_type;
+
+    // The recovered scale must not depend on the number of correspondences.
+    for (int n : {8, 642}) {
+        tf::points_buffer<real_t, 3> X, Y;
+        X.allocate(std::size_t(n));
+        Y.allocate(std::size_t(n));
+        for (int i = 0; i < n; ++i) {
+            auto a = real_t(std::sin(i * 1.7) * 3.0);
+            auto b = real_t(std::cos(i * 2.3) * 2.0);
+            auto c = real_t(std::sin(i * 0.9 + 1.0) * 4.0);
+            X[std::size_t(i)] = tf::point<real_t, 3>{a, b, c};
+            Y[std::size_t(i)] = tf::point<real_t, 3>{
+                real_t(2) * a + real_t(1), real_t(2) * b + real_t(2),
+                real_t(2) * c + real_t(3)};
+        }
+
+        auto S = tf::fit_similarity_alignment(X.points(), Y.points());
+
+        real_t rms = compute_rms_error(X.points(), Y.points(), S);
+        REQUIRE(rms < real_t(1e-3));
+    }
 }

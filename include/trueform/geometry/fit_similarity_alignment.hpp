@@ -68,9 +68,10 @@ auto fit_similarity_alignment(const tf::points<Policy0> &X_,
   auto cx_world = tf::transformed(cx, tX);
   auto cy_world = tf::transformed(cy, tY);
 
-  // Compute sum of squared distances from centroid for X
-  // trace(X'^T * X') = Σ ||x_i - cx||²
-  // This is rotation-invariant, so we can compute on plain points
+  // Mean squared distance from the centroid of X — the same 1/n
+  // normalisation cross_covariance_of applies to H, so the scale ratio
+  // below is free of the point count. Rotation-invariant, so computed on
+  // plain points.
   T sum_sq_X = T(0);
   for (const auto &x : X) {
     for (std::size_t d = 0; d < Dims; ++d) {
@@ -78,6 +79,8 @@ auto fit_similarity_alignment(const tf::points<Policy0> &X_,
       sum_sq_X += diff * diff;
     }
   }
+  const auto n_points = X.size();
+  sum_sq_X /= T(n_points + (n_points == 0));
 
   // HtH = H^T * H
   std::array<std::array<T, Dims>, Dims> HtH{};
