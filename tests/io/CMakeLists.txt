@@ -4,6 +4,7 @@ add_executable(trueform_io_tests
   test_read_obj.cpp
   test_read_obj_complete.cpp
   test_write_obj.cpp
+  test_mapped_file.cpp
 )
 
 target_link_libraries(trueform_io_tests PRIVATE trueform_test_common)

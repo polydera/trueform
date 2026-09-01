@@ -17,7 +17,7 @@
 namespace {
 
 // Helper to create a unique temporary file path
-auto temp_stl_path() -> std::filesystem::path {
+auto read_stl_temp_path() -> std::filesystem::path {
     static std::atomic<int> counter{0};
     static auto process_id = std::random_device{}();
     auto id = counter.fetch_add(1);
@@ -155,9 +155,9 @@ endsolid test
 }
 
 // RAII cleanup for temp files
-struct TempFileCleanup {
+struct read_stl_temp_file_cleanup {
     std::filesystem::path path;
-    ~TempFileCleanup() {
+    ~read_stl_temp_file_cleanup() {
         std::filesystem::remove(path);
     }
 };
@@ -173,9 +173,9 @@ TEMPLATE_TEST_CASE("read_stl simple triangle", "[io][read_stl]",
 {
     using index_t = TestType;
 
-    auto path = temp_stl_path();
+    auto path = read_stl_temp_path();
     create_simple_stl(path);
-    TempFileCleanup cleanup{path};
+    read_stl_temp_file_cleanup cleanup{path};
 
     auto polygons = tf::read_stl<index_t>(path.string());
 
@@ -205,9 +205,9 @@ TEMPLATE_TEST_CASE("read_stl cube", "[io][read_stl]",
 {
     using index_t = TestType;
 
-    auto path = temp_stl_path();
+    auto path = read_stl_temp_path();
     create_cube_stl(path);
-    TempFileCleanup cleanup{path};
+    read_stl_temp_file_cleanup cleanup{path};
 
     auto polygons = tf::read_stl<index_t>(path.string());
 
@@ -242,9 +242,9 @@ TEMPLATE_TEST_CASE("read_stl vertex deduplication", "[io][read_stl]",
 {
     using index_t = TestType;
 
-    auto path = temp_stl_path();
+    auto path = read_stl_temp_path();
     create_shared_vertices_stl(path);
-    TempFileCleanup cleanup{path};
+    read_stl_temp_file_cleanup cleanup{path};
 
     auto polygons = tf::read_stl<index_t>(path.string());
 

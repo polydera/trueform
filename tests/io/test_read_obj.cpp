@@ -24,9 +24,9 @@ auto temp_obj_path() -> std::filesystem::path {
     return std::filesystem::temp_directory_path() / name;
 }
 
-struct TempFileCleanup {
+struct read_obj_temp_file_cleanup {
     std::filesystem::path path;
-    ~TempFileCleanup() {
+    ~read_obj_temp_file_cleanup() {
         std::filesystem::remove(path);
     }
 };
@@ -152,7 +152,7 @@ TEMPLATE_TEST_CASE("read_obj<3> simple triangle", "[io][read_obj]",
 
     auto path = temp_obj_path();
     create_triangle_obj(path);
-    TempFileCleanup cleanup{path};
+    read_obj_temp_file_cleanup cleanup{path};
 
     auto polygons = tf::read_obj<index_t, 3>(path.string());
 
@@ -182,7 +182,7 @@ TEMPLATE_TEST_CASE("read_obj<3> cube", "[io][read_obj]",
 
     auto path = temp_obj_path();
     create_cube_triangles_obj(path);
-    TempFileCleanup cleanup{path};
+    read_obj_temp_file_cleanup cleanup{path};
 
     auto polygons = tf::read_obj<index_t, 3>(path.string());
 
@@ -208,7 +208,7 @@ TEMPLATE_TEST_CASE("read_obj<4> simple quad", "[io][read_obj]",
 
     auto path = temp_obj_path();
     create_quad_obj(path);
-    TempFileCleanup cleanup{path};
+    read_obj_temp_file_cleanup cleanup{path};
 
     auto polygons = tf::read_obj<index_t, 4>(path.string());
 
@@ -228,7 +228,7 @@ TEMPLATE_TEST_CASE("read_obj<4> cube quads", "[io][read_obj]",
 
     auto path = temp_obj_path();
     create_cube_quads_obj(path);
-    TempFileCleanup cleanup{path};
+    read_obj_temp_file_cleanup cleanup{path};
 
     auto polygons = tf::read_obj<index_t, 4>(path.string());
 
@@ -243,7 +243,7 @@ TEMPLATE_TEST_CASE("read_obj<4> cube quads", "[io][read_obj]",
 TEST_CASE("read_obj<3> on mixed file returns empty", "[io][read_obj]") {
     auto path = temp_obj_path();
     create_mixed_obj(path);
-    TempFileCleanup cleanup{path};
+    read_obj_temp_file_cleanup cleanup{path};
 
     auto polygons = tf::read_obj<3>(path.string());
     REQUIRE(polygons.faces().size() == 0);
@@ -260,7 +260,7 @@ TEMPLATE_TEST_CASE("read_obj dynamic - pure triangles", "[io][read_obj]",
 
     auto path = temp_obj_path();
     create_cube_triangles_obj(path);
-    TempFileCleanup cleanup{path};
+    read_obj_temp_file_cleanup cleanup{path};
 
     auto polygons = tf::read_obj<index_t>(path.string());
 
@@ -279,7 +279,7 @@ TEMPLATE_TEST_CASE("read_obj dynamic - pure quads", "[io][read_obj]",
 
     auto path = temp_obj_path();
     create_cube_quads_obj(path);
-    TempFileCleanup cleanup{path};
+    read_obj_temp_file_cleanup cleanup{path};
 
     auto polygons = tf::read_obj<index_t>(path.string());
 
@@ -298,7 +298,7 @@ TEMPLATE_TEST_CASE("read_obj dynamic - mixed polygons", "[io][read_obj]",
 
     auto path = temp_obj_path();
     create_mixed_obj(path);
-    TempFileCleanup cleanup{path};
+    read_obj_temp_file_cleanup cleanup{path};
 
     auto polygons = tf::read_obj<index_t>(path.string());
 
@@ -323,7 +323,7 @@ TEMPLATE_TEST_CASE("read_obj dynamic - mixed polygons", "[io][read_obj]",
 TEST_CASE("read_obj face formats v/vt/vn", "[io][read_obj]") {
     auto path = temp_obj_path();
     create_face_formats_obj(path);
-    TempFileCleanup cleanup{path};
+    read_obj_temp_file_cleanup cleanup{path};
 
     auto polygons = tf::read_obj<3>(path.string());
 
@@ -342,7 +342,7 @@ TEST_CASE("read_obj face formats v/vt/vn", "[io][read_obj]") {
 TEST_CASE("read_obj with comments", "[io][read_obj]") {
     auto path = temp_obj_path();
     create_comments_obj(path);
-    TempFileCleanup cleanup{path};
+    read_obj_temp_file_cleanup cleanup{path};
 
     auto polygons = tf::read_obj<3>(path.string());
 
@@ -381,7 +381,7 @@ TEST_CASE("read_obj<int, double> preserves double precision", "[io][read_obj][fl
         f << "v 0 1 0\n";
         f << "f 1 2 3\n";
     }
-    TempFileCleanup cleanup{path};
+    read_obj_temp_file_cleanup cleanup{path};
 
     auto polygons = tf::read_obj<int, double>(path.string());
     REQUIRE(polygons.points().size() == 3);
@@ -402,7 +402,7 @@ TEST_CASE("read_obj<int, 3, double> fixed Ngon preserves double precision",
         f << "v 0 0 1\n";
         f << "f 1 2 3\n";
     }
-    TempFileCleanup cleanup{path};
+    read_obj_temp_file_cleanup cleanup{path};
 
     auto polygons = tf::read_obj<int, 3, double>(path.string());
     static_assert(std::is_same_v<decltype(polygons),
@@ -421,7 +421,7 @@ TEST_CASE("read_obj<3, int, double> Ngon-first preserves double precision",
         f << "v 0 0 1\n";
         f << "f 1 2 3\n";
     }
-    TempFileCleanup cleanup{path};
+    read_obj_temp_file_cleanup cleanup{path};
 
     auto polygons = tf::read_obj<3, int, double>(path.string());
     static_assert(std::is_same_v<decltype(polygons),

@@ -16,7 +16,7 @@
 
 namespace {
 
-auto temp_stl_path() -> std::filesystem::path {
+auto write_stl_temp_path() -> std::filesystem::path {
     static std::atomic<int> counter{0};
     static auto process_id = std::random_device{}();
     auto id = counter.fetch_add(1);
@@ -24,9 +24,9 @@ auto temp_stl_path() -> std::filesystem::path {
     return std::filesystem::temp_directory_path() / name;
 }
 
-struct TempFileCleanup {
+struct write_stl_temp_file_cleanup {
     std::filesystem::path path;
-    ~TempFileCleanup() {
+    ~write_stl_temp_file_cleanup() {
         std::filesystem::remove(path);
     }
 };
@@ -82,8 +82,8 @@ TEMPLATE_TEST_CASE("write_stl simple triangle", "[io][write_stl]",
 {
     using index_t = TestType;
 
-    auto path = temp_stl_path();
-    TempFileCleanup cleanup{path};
+    auto path = write_stl_temp_path();
+    write_stl_temp_file_cleanup cleanup{path};
 
     auto mesh = make_triangle_mesh<index_t>();
 
@@ -100,8 +100,8 @@ TEMPLATE_TEST_CASE("write_stl round trip", "[io][write_stl]",
 {
     using index_t = TestType;
 
-    auto path = temp_stl_path();
-    TempFileCleanup cleanup{path};
+    auto path = write_stl_temp_path();
+    write_stl_temp_file_cleanup cleanup{path};
 
     auto mesh_orig = make_cube_mesh<index_t>();
 
