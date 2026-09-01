@@ -31,8 +31,10 @@ namespace tf {
 /// and holes. Faces are CCW-oriented regions with positive area, holes
 /// are CW-oriented regions with negative area. The embedding also computes
 /// parent-child relationships between faces and holes.
-template <typename Index, typename Int = tf::exact::int32>
-class planar_embedding {
+///
+/// @tparam Int The lattice the exact predicates run on. `build` accepts any
+///   coordinate type, so the caller states it.
+template <typename Index, typename Int> class planar_embedding {
 public:
   template <typename Policy0, typename Policy1>
   auto build(const tf::edges<Policy0> &directed_edges,

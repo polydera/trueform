@@ -12,13 +12,15 @@
 #include <trueform/core/offset_block_buffer.hpp>
 #include <trueform/core/points_buffer.hpp>
 #include <trueform/core/range.hpp>
+#include <trueform/exact/int32.hpp>
 #include <trueform/topology/hole_patcher.hpp>
 
-using Index = int;
+using hole_patcher_index_t = int;
+using hole_patcher_int_t = tf::exact::int32;
 
 namespace {
 
-auto make_pts(const std::vector<std::array<int32_t, 2>> &data)
+auto make_hole_patcher_pts(const std::vector<std::array<int32_t, 2>> &data)
     -> tf::points_buffer<int32_t, 2> {
   tf::points_buffer<int32_t, 2> pts;
   pts.allocate(data.size());
@@ -42,7 +44,9 @@ auto make_holes(const std::vector<std::vector<int>> &hole_data)
   return obb;
 }
 
-auto result_verts(const tf::hole_patcher<Index> &hp) -> std::vector<int> {
+auto result_verts(
+    const tf::hole_patcher<hole_patcher_index_t, hole_patcher_int_t> &hp)
+    -> std::vector<int> {
   std::vector<int> v;
   for (auto vid : hp.face())
     v.push_back(vid);
@@ -52,18 +56,18 @@ auto result_verts(const tf::hole_patcher<Index> &hp) -> std::vector<int> {
 } // namespace
 
 TEST_CASE("Simple hole inside face", "[hole_patcher]") {
-  auto pts = make_pts({{0, 0},
-                       {200, 0},
-                       {200, 200},
-                       {0, 200},
-                       {70, 70},
-                       {130, 70},
-                       {130, 130},
-                       {70, 130}});
+  auto pts = make_hole_patcher_pts({{0, 0},
+                                    {200, 0},
+                                    {200, 200},
+                                    {0, 200},
+                                    {70, 70},
+                                    {130, 70},
+                                    {130, 130},
+                                    {70, 130}});
   std::vector<int> face = {0, 1, 2, 3};
   auto holes_obb = make_holes({{7, 6, 5, 4}});
 
-  tf::hole_patcher<Index> hp;
+  tf::hole_patcher<hole_patcher_index_t, hole_patcher_int_t> hp;
   hp.build(tf::make_range(face), tf::make_faces(holes_obb), pts.points());
 
   CHECK(result_verts(hp) ==
@@ -71,12 +75,12 @@ TEST_CASE("Simple hole inside face", "[hole_patcher]") {
 }
 
 TEST_CASE("Hole sharing vertex with face", "[hole_patcher]") {
-  auto pts = make_pts(
+  auto pts = make_hole_patcher_pts(
       {{0, 0}, {200, 0}, {200, 200}, {0, 200}, {60, 40}, {40, 60}});
   std::vector<int> face = {0, 1, 2, 3};
   auto holes_obb = make_holes({{0, 5, 4}});
 
-  tf::hole_patcher<Index> hp;
+  tf::hole_patcher<hole_patcher_index_t, hole_patcher_int_t> hp;
   hp.build(tf::make_range(face), tf::make_faces(holes_obb), pts.points());
 
   // Splice at shared vertex 0 — no extra bridge vertices
@@ -84,22 +88,22 @@ TEST_CASE("Hole sharing vertex with face", "[hole_patcher]") {
 }
 
 TEST_CASE("Multiple holes", "[hole_patcher]") {
-  auto pts = make_pts({{0, 0},
-                       {400, 0},
-                       {400, 200},
-                       {0, 200},
-                       {50, 70},
-                       {110, 70},
-                       {110, 130},
-                       {50, 130},
-                       {200, 70},
-                       {260, 70},
-                       {260, 130},
-                       {200, 130}});
+  auto pts = make_hole_patcher_pts({{0, 0},
+                                    {400, 0},
+                                    {400, 200},
+                                    {0, 200},
+                                    {50, 70},
+                                    {110, 70},
+                                    {110, 130},
+                                    {50, 130},
+                                    {200, 70},
+                                    {260, 70},
+                                    {260, 130},
+                                    {200, 130}});
   std::vector<int> face = {0, 1, 2, 3};
   auto holes_obb = make_holes({{7, 6, 5, 4}, {11, 10, 9, 8}});
 
-  tf::hole_patcher<Index> hp;
+  tf::hole_patcher<hole_patcher_index_t, hole_patcher_int_t> hp;
   hp.build(tf::make_range(face), tf::make_faces(holes_obb), pts.points());
 
   CHECK(result_verts(hp) ==
@@ -107,12 +111,12 @@ TEST_CASE("Multiple holes", "[hole_patcher]") {
 }
 
 TEST_CASE("Degenerate cut hole (2 vertices)", "[hole_patcher]") {
-  auto pts =
-      make_pts({{0, 0}, {200, 0}, {200, 200}, {0, 200}, {100, 100}});
+  auto pts = make_hole_patcher_pts(
+      {{0, 0}, {200, 0}, {200, 200}, {0, 200}, {100, 100}});
   std::vector<int> face = {0, 1, 2, 3};
   auto holes_obb = make_holes({{0, 4}});
 
-  tf::hole_patcher<Index> hp;
+  tf::hole_patcher<hole_patcher_index_t, hole_patcher_int_t> hp;
   hp.build(tf::make_range(face), tf::make_faces(holes_obb), pts.points());
 
   // Splice at shared vertex 0
@@ -120,12 +124,12 @@ TEST_CASE("Degenerate cut hole (2 vertices)", "[hole_patcher]") {
 }
 
 TEST_CASE("Shared vertex NOT at hole leftmost", "[hole_patcher]") {
-  auto pts = make_pts(
+  auto pts = make_hole_patcher_pts(
       {{0, 0}, {200, 0}, {200, 200}, {0, 200}, {150, 50}, {170, 80}});
   std::vector<int> face = {0, 1, 2, 3};
   auto holes_obb = make_holes({{1, 5, 4}});
 
-  tf::hole_patcher<Index> hp;
+  tf::hole_patcher<hole_patcher_index_t, hole_patcher_int_t> hp;
   hp.build(tf::make_range(face), tf::make_faces(holes_obb), pts.points());
 
   // find_shared_vertex pre-scan finds shared vertex 1
@@ -133,12 +137,12 @@ TEST_CASE("Shared vertex NOT at hole leftmost", "[hole_patcher]") {
 }
 
 TEST_CASE("Hole touching face at corner vertex", "[hole_patcher]") {
-  auto pts = make_pts(
+  auto pts = make_hole_patcher_pts(
       {{0, 0}, {200, 0}, {200, 200}, {0, 200}, {160, 160}, {180, 140}});
   std::vector<int> face = {0, 1, 2, 3};
   auto holes_obb = make_holes({{2, 4, 5}});
 
-  tf::hole_patcher<Index> hp;
+  tf::hole_patcher<hole_patcher_index_t, hole_patcher_int_t> hp;
   hp.build(tf::make_range(face), tf::make_faces(holes_obb), pts.points());
 
   // Splice at shared vertex 2

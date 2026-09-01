@@ -44,7 +44,6 @@ auto make_non_simple_edges(const tf::faces<Policy> &faces,
   tf::generic_generate(
       tf::enumerate(faces),
       std::tie(boundary_edges.data_buffer(), non_manifold_edges.data_buffer()),
-      tf::small_vector<Index, 10>{},
       [&](const auto &pair, auto &buffers, auto &neighbors) {
         auto &[boundary_buf, non_manifold_buf] = buffers;
         const auto &[face_id, face] = pair;
@@ -69,7 +68,8 @@ auto make_non_simple_edges(const tf::faces<Policy> &faces,
             non_manifold_buf.push_back(face[i]);
           }
         }
-      });
+      },
+          tf::small_vector<Index, 10>{});
 
   return std::make_pair(std::move(boundary_edges), std::move(non_manifold_edges));
 }

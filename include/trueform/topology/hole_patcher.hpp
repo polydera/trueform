@@ -32,15 +32,17 @@ namespace tf {
 /// @brief Patches holes into a face to create a single contour.
 ///
 /// Given an outer loop (face boundary) and inner loops (holes), creates
-/// a single polygon by connecting holes to the outer boundary. Uses exact
-/// arithmetic for all geometric predicates. Float points are
-/// converted via pt_converter.
+/// a single polygon by connecting holes to the outer boundary. Every
+/// geometric predicate is exact on the `Int` lattice; floating-point points
+/// are converted onto it, integral ones consumed as they are.
 ///
 /// If a hole shares a vertex with the face, splices directly there
 /// (no bridge edges). Otherwise, uses a heap-based algorithm to find
 /// the nearest visible vertex.
-template <typename Index, typename Int = tf::exact::int32>
-class hole_patcher {
+///
+/// @tparam Int The lattice the exact predicates run on. `build` accepts any
+///   coordinate type, so the caller states it.
+template <typename Index, typename Int> class hole_patcher {
   using T1 = typename tf::exact::meta<Int>::T1;
   using T2 = typename tf::exact::meta<Int>::T2;
 

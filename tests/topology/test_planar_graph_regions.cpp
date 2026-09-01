@@ -14,14 +14,16 @@
 #include <trueform/core/edges.hpp>
 #include <trueform/core/points_buffer.hpp>
 #include <trueform/exact/int128.hpp>
+#include <trueform/exact/int32.hpp>
 #include <trueform/topology/planar_graph_regions.hpp>
 
-using Index = int;
+using planar_regions_index_t = int;
+using planar_regions_int_t = tf::exact::int32;
 
 namespace {
 
 // Helper: build points buffer from {x, y} pairs
-auto make_pts(const std::vector<std::array<int32_t, 2>> &data)
+auto make_planar_regions_pts(const std::vector<std::array<int32_t, 2>> &data)
     -> tf::points_buffer<int32_t, 2> {
   tf::points_buffer<int32_t, 2> pts;
   pts.allocate(data.size());
@@ -33,7 +35,8 @@ auto make_pts(const std::vector<std::array<int32_t, 2>> &data)
 }
 
 // Helper: build directed edges (both directions per undirected edge)
-auto make_directed_edges(const std::vector<std::array<int, 2>> &undirected)
+auto make_planar_regions_directed_edges(
+    const std::vector<std::array<int, 2>> &undirected)
     -> tf::blocked_buffer<int, 2> {
   tf::blocked_buffer<int, 2> buf;
   buf.allocate(undirected.size() * 2);
@@ -47,7 +50,8 @@ auto make_directed_edges(const std::vector<std::array<int, 2>> &undirected)
 }
 
 // Count regions with positive/negative signed area (int128 exact)
-auto count_regions(const tf::planar_graph_regions<Index> &pgr,
+auto count_regions(const tf::planar_graph_regions<planar_regions_index_t,
+                                                  planar_regions_int_t> &pgr,
                    const tf::points_buffer<int32_t, 2> &pts)
     -> std::pair<int, int> {
   int pos = 0, neg = 0;
@@ -69,8 +73,9 @@ auto count_regions(const tf::planar_graph_regions<Index> &pgr,
 }
 
 // Collect vertex IDs of a specific region
-auto region_verts(const tf::planar_graph_regions<Index> &pgr, std::size_t idx)
-    -> std::vector<int> {
+auto region_verts(const tf::planar_graph_regions<planar_regions_index_t,
+                                                 planar_regions_int_t> &pgr,
+                  std::size_t idx) -> std::vector<int> {
   std::vector<int> v;
   auto it = pgr.begin();
   std::advance(it, idx);
@@ -82,10 +87,11 @@ auto region_verts(const tf::planar_graph_regions<Index> &pgr, std::size_t idx)
 } // namespace
 
 TEST_CASE("Square with diagonal", "[planar_graph_regions]") {
-  auto pts = make_pts({{0, 0}, {100, 0}, {100, 100}, {0, 100}});
-  auto edges = make_directed_edges({{0, 1}, {1, 2}, {2, 3}, {3, 0}, {0, 2}});
+  auto pts = make_planar_regions_pts({{0, 0}, {100, 0}, {100, 100}, {0, 100}});
+  auto edges = make_planar_regions_directed_edges(
+      {{0, 1}, {1, 2}, {2, 3}, {3, 0}, {0, 2}});
 
-  tf::planar_graph_regions<Index> pgr;
+  tf::planar_graph_regions<planar_regions_index_t, planar_regions_int_t> pgr;
   pgr.build(tf::make_edges(edges), pts.points());
 
   auto [pos, neg] = count_regions(pgr, pts);
@@ -99,12 +105,12 @@ TEST_CASE("Square with diagonal", "[planar_graph_regions]") {
 }
 
 TEST_CASE("Square with cross (X)", "[planar_graph_regions]") {
-  auto pts =
-      make_pts({{0, 0}, {100, 0}, {100, 100}, {0, 100}, {50, 50}});
-  auto edges = make_directed_edges(
+  auto pts = make_planar_regions_pts(
+      {{0, 0}, {100, 0}, {100, 100}, {0, 100}, {50, 50}});
+  auto edges = make_planar_regions_directed_edges(
       {{0, 1}, {1, 2}, {2, 3}, {3, 0}, {0, 4}, {1, 4}, {2, 4}, {3, 4}});
 
-  tf::planar_graph_regions<Index> pgr;
+  tf::planar_graph_regions<planar_regions_index_t, planar_regions_int_t> pgr;
   pgr.build(tf::make_edges(edges), pts.points());
 
   auto [pos, neg] = count_regions(pgr, pts);
@@ -114,12 +120,12 @@ TEST_CASE("Square with cross (X)", "[planar_graph_regions]") {
 }
 
 TEST_CASE("T-junction", "[planar_graph_regions]") {
-  auto pts = make_pts(
+  auto pts = make_planar_regions_pts(
       {{0, 0}, {200, 0}, {200, 200}, {0, 200}, {0, 100}, {100, 100}});
-  auto edges = make_directed_edges(
+  auto edges = make_planar_regions_directed_edges(
       {{0, 1}, {1, 2}, {2, 3}, {3, 4}, {4, 0}, {4, 5}, {5, 1}});
 
-  tf::planar_graph_regions<Index> pgr;
+  tf::planar_graph_regions<planar_regions_index_t, planar_regions_int_t> pgr;
   pgr.build(tf::make_edges(edges), pts.points());
 
   auto [pos, neg] = count_regions(pgr, pts);
@@ -132,11 +138,12 @@ TEST_CASE("T-junction", "[planar_graph_regions]") {
 }
 
 TEST_CASE("Nearly-collinear edges", "[planar_graph_regions]") {
-  auto pts = make_pts({{0, 0}, {1000000, 0}, {500000, 1}, {500000, 2}});
-  auto edges =
-      make_directed_edges({{0, 1}, {1, 2}, {2, 3}, {3, 0}, {0, 2}});
+  auto pts =
+      make_planar_regions_pts({{0, 0}, {1000000, 0}, {500000, 1}, {500000, 2}});
+  auto edges = make_planar_regions_directed_edges(
+      {{0, 1}, {1, 2}, {2, 3}, {3, 0}, {0, 2}});
 
-  tf::planar_graph_regions<Index> pgr;
+  tf::planar_graph_regions<planar_regions_index_t, planar_regions_int_t> pgr;
   pgr.build(tf::make_edges(edges), pts.points());
 
   auto [pos, neg] = count_regions(pgr, pts);
@@ -146,12 +153,18 @@ TEST_CASE("Nearly-collinear edges", "[planar_graph_regions]") {
 }
 
 TEST_CASE("Nested squares disconnected", "[planar_graph_regions]") {
-  auto pts = make_pts({{0, 0}, {200, 0}, {200, 200}, {0, 200},
-                        {50, 50}, {150, 50}, {150, 150}, {50, 150}});
-  auto edges = make_directed_edges(
+  auto pts = make_planar_regions_pts({{0, 0},
+                                      {200, 0},
+                                      {200, 200},
+                                      {0, 200},
+                                      {50, 50},
+                                      {150, 50},
+                                      {150, 150},
+                                      {50, 150}});
+  auto edges = make_planar_regions_directed_edges(
       {{0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}});
 
-  tf::planar_graph_regions<Index> pgr;
+  tf::planar_graph_regions<planar_regions_index_t, planar_regions_int_t> pgr;
   pgr.build(tf::make_edges(edges), pts.points());
 
   auto [pos, neg] = count_regions(pgr, pts);
@@ -161,13 +174,28 @@ TEST_CASE("Nested squares disconnected", "[planar_graph_regions]") {
 }
 
 TEST_CASE("Nested squares connected", "[planar_graph_regions]") {
-  auto pts = make_pts({{0, 0}, {200, 0}, {200, 200}, {0, 200},
-                        {50, 50}, {150, 50}, {150, 150}, {50, 150}});
-  auto edges = make_directed_edges(
-      {{0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4},
-       {0, 4}, {1, 5}, {2, 6}, {3, 7}});
+  auto pts = make_planar_regions_pts({{0, 0},
+                                      {200, 0},
+                                      {200, 200},
+                                      {0, 200},
+                                      {50, 50},
+                                      {150, 50},
+                                      {150, 150},
+                                      {50, 150}});
+  auto edges = make_planar_regions_directed_edges({{0, 1},
+                                                   {1, 2},
+                                                   {2, 3},
+                                                   {3, 0},
+                                                   {4, 5},
+                                                   {5, 6},
+                                                   {6, 7},
+                                                   {7, 4},
+                                                   {0, 4},
+                                                   {1, 5},
+                                                   {2, 6},
+                                                   {3, 7}});
 
-  tf::planar_graph_regions<Index> pgr;
+  tf::planar_graph_regions<planar_regions_index_t, planar_regions_int_t> pgr;
   pgr.build(tf::make_edges(edges), pts.points());
 
   auto [pos, neg] = count_regions(pgr, pts);

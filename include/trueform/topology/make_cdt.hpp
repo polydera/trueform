@@ -12,31 +12,26 @@
  */
 #pragma once
 
-#include "../core/algorithm/compose_index_maps.hpp"
-#include "../core/buffer.hpp"
 #include "../core/coordinate_type.hpp"
 #include "../core/edges.hpp"
 #include "../core/none.hpp"
 #include "../core/points.hpp"
-#include "../core/polygons_buffer.hpp"
 #include "../core/range.hpp"
-#include "../core/views/mapped_range.hpp"
 #include "../exact/resolve_int_type.hpp"
-#include "../reindex/by_mask.hpp"
 #include "../reindex/return_index_map.hpp"
-#include "./constrained_delaunay_triangulator.hpp"
-#include <array>
+#include "./cdt/make_constrained_delaunay.hpp"
+#include "./cdt/make_unconstrained_delaunay.hpp"
+#include <cstddef>
 #include <type_traits>
-#include <utility>
 
 namespace tf {
 
 /// @ingroup topology
 /// @brief Constrained Delaunay triangulation as a one-shot helper.
 ///
-/// Returns a 2D `polygons_buffer` of the input points (lex-sorted and
-/// deduplicated, augmented with intersection vertices when constraint
-/// edges cross). With constraint edges, only triangles inside the
+/// Returns a 2D `polygons_buffer` of the exact-welded input points, augmented
+/// with intersection vertices when constraint edges cross. With constraint
+/// edges, only triangles inside the
 /// constrained outlines are returned (parity = 1 across each crossing
 /// of a constrained edge); without edges, the full convex hull
 /// triangulation is returned.
@@ -67,16 +62,9 @@ auto make_cdt(const tf::points<PointsPolicy> &pts,
   } else {
     using coord_t = tf::coordinate_type<PointsPolicy>;
     using ResolvedInt = tf::exact::resolve_int_type<Int, coord_t>;
-
-    tf::constrained_delaunay_triangulator<Index, coord_t, ResolvedInt> cdt;
-    cdt.build(pts, edges, split_constraints);
-
-    auto faces = cdt.make_faces();
-    auto cdt_polys = tf::make_polygons(faces, cdt.converted_points());
-    auto interior = tf::make_mapped_range(
-        cdt.region_labels(), [](auto x) { return x % 2 == 1; });
-
-    return tf::reindexed_by_mask<Index>(cdt_polys, interior);
+    return tf::topology::cdt::make_constrained_delaunay<false, Index, coord_t,
+                                                        ResolvedInt>(
+        pts, edges, split_constraints);
   }
 }
 
@@ -87,14 +75,8 @@ template <typename Index = int, typename Int = tf::none_t,
 auto make_cdt(const tf::points<PointsPolicy> &pts) {
   using coord_t = tf::coordinate_type<PointsPolicy>;
   using ResolvedInt = tf::exact::resolve_int_type<Int, coord_t>;
-
-  tf::constrained_delaunay_triangulator<Index, coord_t, ResolvedInt> cdt;
-  tf::buffer<std::array<Index, 2>> no_edges;
-  cdt.build(pts, tf::make_edges(tf::make_range(no_edges)));
-
-  auto faces = cdt.make_faces();
-  auto cdt_polys = tf::make_polygons(faces, cdt.converted_points());
-  return tf::make_polygons_buffer(cdt_polys);
+  return tf::topology::cdt::make_unconstrained_delaunay<false, Index, coord_t,
+                                                        ResolvedInt>(pts);
 }
 
 /// @overload
@@ -111,22 +93,9 @@ auto make_cdt(const tf::points<PointsPolicy> &pts,
   } else {
     using coord_t = tf::coordinate_type<PointsPolicy>;
     using ResolvedInt = tf::exact::resolve_int_type<Int, coord_t>;
-
-    tf::constrained_delaunay_triangulator<Index, coord_t, ResolvedInt> cdt;
-    cdt.build(pts, edges, split_constraints);
-
-    auto faces = cdt.make_faces();
-    auto cdt_polys = tf::make_polygons(faces, cdt.converted_points());
-    auto interior = tf::make_mapped_range(
-        cdt.region_labels(), [](auto x) { return x % 2 == 1; });
-
-    auto reindexed = tf::reindexed_by_mask<Index>(cdt_polys, interior,
-                                                  tf::return_index_map);
-    auto &point_im = std::get<2>(reindexed);
-    auto composed = tf::compose_index_maps(cdt.index_map(), point_im);
-
-    return std::make_pair(std::move(std::get<0>(reindexed)),
-                          std::move(composed));
+    return tf::topology::cdt::make_constrained_delaunay<true, Index, coord_t,
+                                                        ResolvedInt>(
+        pts, edges, split_constraints);
   }
 }
 
@@ -153,16 +122,9 @@ auto make_cdt(const tf::points<PointsPolicy> &pts,
   } else {
     using coord_t = tf::coordinate_type<PointsPolicy>;
     using ResolvedInt = tf::exact::resolve_int_type<Int, coord_t>;
-
-    tf::constrained_delaunay_triangulator<Index, coord_t, ResolvedInt> cdt;
-    cdt.build(pts, edges, is_boundary, split_constraints);
-
-    auto faces = cdt.make_faces();
-    auto cdt_polys = tf::make_polygons(faces, cdt.converted_points());
-    auto interior = tf::make_mapped_range(
-        cdt.region_labels(), [](auto x) { return x % 2 == 1; });
-
-    return tf::reindexed_by_mask<Index>(cdt_polys, interior);
+    return tf::topology::cdt::make_constrained_delaunay<false, Index, coord_t,
+                                                        ResolvedInt>(
+        pts, edges, is_boundary, split_constraints);
   }
 }
 
@@ -178,27 +140,13 @@ auto make_cdt(const tf::points<PointsPolicy> &pts,
   if constexpr (std::is_same_v<Index, tf::none_t>) {
     using ActualIndex = std::decay_t<decltype(edges[0][0])>;
     return make_cdt<ActualIndex, Int>(pts, edges, is_boundary,
-                                      tf::return_index_map,
-                                      split_constraints);
+                                      tf::return_index_map, split_constraints);
   } else {
     using coord_t = tf::coordinate_type<PointsPolicy>;
     using ResolvedInt = tf::exact::resolve_int_type<Int, coord_t>;
-
-    tf::constrained_delaunay_triangulator<Index, coord_t, ResolvedInt> cdt;
-    cdt.build(pts, edges, is_boundary, split_constraints);
-
-    auto faces = cdt.make_faces();
-    auto cdt_polys = tf::make_polygons(faces, cdt.converted_points());
-    auto interior = tf::make_mapped_range(
-        cdt.region_labels(), [](auto x) { return x % 2 == 1; });
-
-    auto reindexed = tf::reindexed_by_mask<Index>(cdt_polys, interior,
-                                                  tf::return_index_map);
-    auto &point_im = std::get<2>(reindexed);
-    auto composed = tf::compose_index_maps(cdt.index_map(), point_im);
-
-    return std::make_pair(std::move(std::get<0>(reindexed)),
-                          std::move(composed));
+    return tf::topology::cdt::make_constrained_delaunay<true, Index, coord_t,
+                                                        ResolvedInt>(
+        pts, edges, is_boundary, split_constraints);
   }
 }
 
@@ -209,19 +157,8 @@ template <typename Index = int, typename Int = tf::none_t,
 auto make_cdt(const tf::points<PointsPolicy> &pts, tf::return_index_map_t) {
   using coord_t = tf::coordinate_type<PointsPolicy>;
   using ResolvedInt = tf::exact::resolve_int_type<Int, coord_t>;
-
-  tf::constrained_delaunay_triangulator<Index, coord_t, ResolvedInt> cdt;
-  tf::buffer<std::array<Index, 2>> no_edges;
-  cdt.build(pts, tf::make_edges(tf::make_range(no_edges)));
-
-  auto faces = cdt.make_faces();
-  auto cdt_polys = tf::make_polygons(faces, cdt.converted_points());
-  auto out = tf::make_polygons_buffer(cdt_polys);
-  // A buffer with no faces keeps no points either, so a map still naming
-  // them would index past its end.
-  if (out.points_buffer().size() == 0)
-    return std::make_pair(std::move(out), tf::index_map_buffer<Index>{});
-  return std::make_pair(std::move(out), std::move(cdt.index_map()));
+  return tf::topology::cdt::make_unconstrained_delaunay<true, Index, coord_t,
+                                                        ResolvedInt>(pts);
 }
 
 } // namespace tf

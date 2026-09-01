@@ -34,8 +34,6 @@
 
 namespace tf::topology {
 
-namespace detail {
-
 template <typename Index>
 auto compute_half_edges_finish(tf::buffer<Index> &id_map,
                                const tf::buffer<Index> &border_ids,
@@ -108,8 +106,6 @@ auto compute_half_edges_finish(tf::buffer<Index> &id_map,
     }
   }
 }
-
-} // namespace detail
 
 /// @brief Compute the half-edge structure from faces and face membership.
 ///
@@ -319,7 +315,7 @@ auto compute_half_edges(const Faces &faces,
       aggregate);
 
   // Finish: remap next pointers and link boundary half-edges
-  detail::compute_half_edges_finish(id_map, border_ids, half_edges, fm.size());
+  compute_half_edges_finish(id_map, border_ids, half_edges, fm.size());
 }
 
 } // namespace tf::topology

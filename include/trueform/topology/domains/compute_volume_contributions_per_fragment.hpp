@@ -13,6 +13,7 @@
 #pragma once
 #include "../../core/algorithm/block_reduce.hpp"
 #include "../../core/algorithm/parallel_fill.hpp"
+#include "../../core/algorithm/sparse_block_accumulator.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/cross.hpp"
 #include "../../core/dot.hpp"
@@ -53,8 +54,14 @@ namespace tf::topology::domains {
 ///   reference (translation-invariant, improves cancellation), summed
 ///   into a per-fragment `double` accumulator.
 ///
-/// The aggregation pattern is `tf::blocked_reduce`
-/// with a per-task per-fragment buffer; no atomics.
+/// The aggregation is `tf::blocked_reduce` over a
+/// @ref tf::sparse_block_accumulator: the fragment axis is global and a block
+/// names a run of it, so a block-local dense array over every fragment would
+/// make the average block pay the whole axis to carry a handful of keys. A
+/// block that names no more than the accumulator's scan window folds each
+/// fragment exactly once, which is what keeps the FLOATING sum's per-block
+/// grouping — the cross-block order was already the reduction's own. No
+/// atomics.
 ///
 /// @param polygons The polygons range.
 /// @param fragment_labels Per-face MEL fragment labels.
@@ -65,6 +72,7 @@ template <typename Polygons, typename FragLabels>
 auto compute_volume_contributions_per_fragment(
     const Polygons &polygons, const FragLabels &fragment_labels) {
   using CoordT = tf::coordinate_type<Polygons>;
+  using Index = std::decay_t<decltype(fragment_labels.labels[0])>;
 
   if constexpr (std::is_integral_v<CoordT>) {
     using AccumT = typename tf::exact::meta<CoordT>::T2;
@@ -75,13 +83,11 @@ auto compute_volume_contributions_per_fragment(
     if (polygons.size() == 0)
       return result;
 
-    tf::buffer<AccumT> prototype;
-    prototype.allocate(fragment_labels.n_components);
-    tf::parallel_fill(prototype, AccumT(0));
-
+    using local_t = tf::sparse_block_accumulator<Index, AccumT>;
     tf::blocked_reduce(
-        tf::enumerate(polygons), result, prototype,
-        [&](auto &&block, tf::buffer<AccumT> &local) {
+        tf::enumerate(polygons), result, local_t{},
+        [&](auto &&block, local_t &local) {
+          local.clear();
           for (const auto &pair : block) {
             const auto &[f, poly] = pair;
             tf::exact::pt3<CoordT> p0{CoordT(poly[0][0]), CoordT(poly[0][1]),
@@ -96,12 +102,12 @@ auto compute_volume_contributions_per_fragment(
                                         CoordT(poly[i + 1][2])};
               sum += tf::exact::determinant_value(p0, p1, p2);
             }
-            local[fragment_labels.labels[f]] += sum;
+            local.touch(Index(fragment_labels.labels[f]), AccumT(0)) += sum;
           }
         },
-        [](const tf::buffer<AccumT> &local, tf::buffer<AccumT> &out) {
-          for (decltype(out.size()) i = 0; i < out.size(); ++i)
-            out[i] += local[i];
+        [](const local_t &local, tf::buffer<AccumT> &out) {
+          for (const auto &entry : local.entries)
+            out[entry.key] += entry.value;
         });
 
     return result;
@@ -116,13 +122,11 @@ auto compute_volume_contributions_per_fragment(
     auto frame = tf::frame_of(polygons);
     auto ref = tf::transformed(polygons.points()[0], frame);
 
-    tf::buffer<double> prototype;
-    prototype.allocate(fragment_labels.n_components);
-    tf::parallel_fill(prototype, 0.0);
-
+    using local_t = tf::sparse_block_accumulator<Index, double>;
     tf::blocked_reduce(
-        tf::enumerate(polygons), result, prototype,
-        [&](auto &&block, tf::buffer<double> &local) {
+        tf::enumerate(polygons), result, local_t{},
+        [&](auto &&block, local_t &local) {
+          local.clear();
           for (const auto &pair : block) {
             const auto &[f, poly] = pair;
             auto v0 = tf::transformed(poly[0], frame) - ref;
@@ -133,12 +137,12 @@ auto compute_volume_contributions_per_fragment(
               auto v2 = tf::transformed(poly[i + 1], frame) - ref;
               sum += double(tf::dot(v0, tf::cross(v1, v2)));
             }
-            local[fragment_labels.labels[f]] += sum;
+            local.touch(Index(fragment_labels.labels[f]), 0.0) += sum;
           }
         },
-        [](const tf::buffer<double> &local, tf::buffer<double> &out) {
-          for (decltype(out.size()) i = 0; i < out.size(); ++i)
-            out[i] += local[i];
+        [](const local_t &local, tf::buffer<double> &out) {
+          for (const auto &entry : local.entries)
+            out[entry.key] += entry.value;
         });
 
     return result;

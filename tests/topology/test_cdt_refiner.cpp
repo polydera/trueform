@@ -22,26 +22,26 @@
 #include <cmath>
 #include <vector>
 
-using Index = int;
-using Refiner = tf::cdt_refiner<Index, double, tf::exact::int64>;
+using refiner_index_t = int;
+using Refiner = tf::cdt_refiner<refiner_index_t, double, tf::exact::int64>;
 
 namespace {
 
 struct planar_input {
   std::vector<std::array<double, 2>> pts;
-  std::vector<std::array<Index, 2>> cons;
+  std::vector<std::array<refiner_index_t, 2>> cons;
 
-  auto add(double x, double y) -> Index {
+  auto add(double x, double y) -> refiner_index_t {
     pts.push_back({x, y});
-    return Index(pts.size()) - 1;
+    return refiner_index_t(pts.size()) - 1;
   }
-  auto loop(const std::vector<Index> &l) -> void {
+  auto loop(const std::vector<refiner_index_t> &l) -> void {
     for (std::size_t i = 0; i < l.size(); ++i)
       cons.push_back({l[i], l[(i + 1) % l.size()]});
   }
   auto ring(int n, double cx, double cy, double radius, double amp, int k)
       -> void {
-    std::vector<Index> l;
+    std::vector<refiner_index_t> l;
     for (int i = 0; i < n; ++i) {
       double t = 2.0 * tf::pi<double> * i / n;
       double r = radius * (1.0 + amp * std::sin(k * t));
@@ -57,7 +57,7 @@ auto run(const planar_input &in, Refiner &r,
   pts.allocate(in.pts.size());
   for (std::size_t i = 0; i < in.pts.size(); ++i)
     pts[i] = tf::point<double, 2>{in.pts[i][0], in.pts[i][1]};
-  tf::buffer<Index> flat;
+  tf::buffer<refiner_index_t> flat;
   for (auto &c : in.cons) {
     flat.push_back(c[0]);
     flat.push_back(c[1]);
@@ -102,21 +102,21 @@ auto interior(const Refiner &r) -> interior_stats {
 auto constraints_present(const planar_input &in, const Refiner &r) -> bool {
   auto faces = r.make_faces();
   auto pts = r.converted_points();
-  std::vector<std::array<Index, 2>> edges;
+  std::vector<std::array<refiner_index_t, 2>> edges;
   for (std::size_t i = 0; i < std::size_t(faces.size()); ++i) {
     auto f = faces[i];
     for (int k = 0; k < 3; ++k) {
-      Index u = f[k], v = f[(k + 1) % 3];
+      refiner_index_t u = f[k], v = f[(k + 1) % 3];
       edges.push_back({std::min(u, v), std::max(u, v)});
     }
   }
-  auto find_point = [&](double x, double y) -> Index {
+  auto find_point = [&](double x, double y) -> refiner_index_t {
     for (std::size_t i = 0; i < pts.size(); ++i)
       if (std::abs(pts[i][0] - x) < 1e-7 && std::abs(pts[i][1] - y) < 1e-7)
-        return Index(i);
-    return Index(-1);
+        return refiner_index_t(i);
+    return refiner_index_t(-1);
   };
-  auto has_edge = [&](Index u, Index v) -> bool {
+  auto has_edge = [&](refiner_index_t u, refiner_index_t v) -> bool {
     if (u > v)
       std::swap(u, v);
     for (auto &e : edges)
@@ -134,10 +134,10 @@ auto constraints_present(const planar_input &in, const Refiner &r) -> bool {
       ts.push_back(double(s.numerator) / double(1u << s.depth));
     ts.push_back(1.0);
     for (std::size_t i = 0; i + 1 < ts.size(); ++i) {
-      Index u = find_point(a[0] + ts[i] * (b[0] - a[0]),
-                           a[1] + ts[i] * (b[1] - a[1]));
-      Index v = find_point(a[0] + ts[i + 1] * (b[0] - a[0]),
-                           a[1] + ts[i + 1] * (b[1] - a[1]));
+      refiner_index_t u = find_point(a[0] + ts[i] * (b[0] - a[0]),
+                                     a[1] + ts[i] * (b[1] - a[1]));
+      refiner_index_t v = find_point(a[0] + ts[i + 1] * (b[0] - a[0]),
+                                     a[1] + ts[i + 1] * (b[1] - a[1]));
       if (u < 0 || v < 0 || !has_edge(u, v))
         return false;
     }
@@ -200,7 +200,7 @@ TEST_CASE("cdt_refiner reaches the quality floor on a wiggly region",
 TEST_CASE("cdt_refiner refines a needle fan with boundary splits",
           "[cdt_refiner]") {
   planar_input in;
-  std::vector<Index> l;
+  std::vector<refiner_index_t> l;
   for (int i = 0; i <= 25; ++i)
     l.push_back(in.add(4.0 * i, (i % 2) * 0.5));
   l.push_back(in.add(100, 60));
@@ -224,7 +224,7 @@ TEST_CASE("cdt_refiner split records are canonical dyadics", "[cdt_refiner]") {
   for (std::size_t j = 0; j < in.cons.size(); ++j) {
     double prev = 0;
     for (const auto &s : splits[j]) {
-      REQUIRE(s.edge == Index(j));
+      REQUIRE(s.edge == refiner_index_t(j));
       REQUIRE(s.numerator % 2 == 1);
       REQUIRE(s.depth >= 1);
       REQUIRE(s.depth <= 6);
@@ -288,12 +288,12 @@ TEST_CASE("cdt_refiner consumes integer coordinates exactly", "[cdt_refiner]") {
   pts.allocate(data.size());
   for (std::size_t i = 0; i < data.size(); ++i)
     pts[i] = tf::point<std::int64_t, 2>{data[i][0], data[i][1]};
-  tf::buffer<Index> flat;
+  tf::buffer<refiner_index_t> flat;
   for (int j = 0; j < 4; ++j) {
     flat.push_back(j);
     flat.push_back((j + 1) % 4);
   }
-  tf::cdt_refiner<Index, std::int64_t, tf::exact::int64> r;
+  tf::cdt_refiner<refiner_index_t, std::int64_t, tf::exact::int64> r;
   REQUIRE(r.build(pts.points(), tf::make_edges(tf::make_range(flat))));
   REQUIRE(r.n_constraint_splits() > 0);
 

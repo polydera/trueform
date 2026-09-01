@@ -14,13 +14,15 @@
 #include <trueform/core/edges.hpp>
 #include <trueform/core/points_buffer.hpp>
 #include <trueform/core/range.hpp>
+#include <trueform/exact/int32.hpp>
 #include <trueform/topology/face_split_by_edges.hpp>
 
-using Index = int;
+using face_split_index_t = int;
+using face_split_int_t = tf::exact::int32;
 
 namespace {
 
-auto make_pts(const std::vector<std::array<int32_t, 2>> &data)
+auto make_face_split_pts(const std::vector<std::array<int32_t, 2>> &data)
     -> tf::points_buffer<int32_t, 2> {
   tf::points_buffer<int32_t, 2> pts;
   pts.allocate(data.size());
@@ -42,8 +44,9 @@ auto make_undirected_edges(const std::vector<std::array<int, 2>> &edges)
   return buf;
 }
 
-auto face_verts(const tf::face_split_by_edges<Index> &fsbe, std::size_t idx)
-    -> std::vector<int> {
+auto face_verts(
+    const tf::face_split_by_edges<face_split_index_t, face_split_int_t> &fsbe,
+    std::size_t idx) -> std::vector<int> {
   std::vector<int> v;
   auto it = fsbe.faces().begin();
   std::advance(it, idx);
@@ -52,8 +55,9 @@ auto face_verts(const tf::face_split_by_edges<Index> &fsbe, std::size_t idx)
   return v;
 }
 
-auto hole_verts(const tf::face_split_by_edges<Index> &fsbe, std::size_t idx)
-    -> std::vector<int> {
+auto hole_verts(
+    const tf::face_split_by_edges<face_split_index_t, face_split_int_t> &fsbe,
+    std::size_t idx) -> std::vector<int> {
   std::vector<int> v;
   auto it = fsbe.holes().begin();
   std::advance(it, idx);
@@ -62,21 +66,25 @@ auto hole_verts(const tf::face_split_by_edges<Index> &fsbe, std::size_t idx)
   return v;
 }
 
-auto face_area(const tf::face_split_by_edges<Index> &fsbe, std::size_t idx)
-    -> long long {
+auto face_area(
+    const tf::face_split_by_edges<face_split_index_t, face_split_int_t> &fsbe,
+    std::size_t idx) -> long long {
   auto it = fsbe.face_areas().begin();
   std::advance(it, idx);
   return static_cast<long long>(*it);
 }
 
-auto hole_area(const tf::face_split_by_edges<Index> &fsbe, std::size_t idx)
-    -> long long {
+auto hole_area(
+    const tf::face_split_by_edges<face_split_index_t, face_split_int_t> &fsbe,
+    std::size_t idx) -> long long {
   auto it = fsbe.hole_areas().begin();
   std::advance(it, idx);
   return static_cast<long long>(*it);
 }
 
-auto total_area(const tf::face_split_by_edges<Index> &fsbe) -> long long {
+auto total_area(
+    const tf::face_split_by_edges<face_split_index_t, face_split_int_t> &fsbe)
+    -> long long {
   long long sum = 0;
   for (auto a : fsbe.face_areas())
     sum += static_cast<long long>(a);
@@ -85,8 +93,9 @@ auto total_area(const tf::face_split_by_edges<Index> &fsbe) -> long long {
   return sum;
 }
 
-auto edge_in_output(const tf::face_split_by_edges<Index> &fsbe, int a, int b)
-    -> bool {
+auto edge_in_output(
+    const tf::face_split_by_edges<face_split_index_t, face_split_int_t> &fsbe,
+    int a, int b) -> bool {
   auto scan = [&](auto &&loops) {
     for (auto &&loop : loops) {
       auto n = loop.size();
@@ -99,8 +108,9 @@ auto edge_in_output(const tf::face_split_by_edges<Index> &fsbe, int a, int b)
   return scan(fsbe.faces()) || scan(fsbe.holes());
 }
 
-auto hole_parent(const tf::face_split_by_edges<Index> &fsbe, int hole_id)
-    -> int {
+auto hole_parent(
+    const tf::face_split_by_edges<face_split_index_t, face_split_int_t> &fsbe,
+    int hole_id) -> int {
   int face_id = 0;
   for (auto &&holes : fsbe.holes_for_faces()) {
     for (auto h : holes)
@@ -114,11 +124,12 @@ auto hole_parent(const tf::face_split_by_edges<Index> &fsbe, int hole_id)
 } // namespace
 
 TEST_CASE("Simple crossing", "[face_split_by_edges]") {
-  auto pts = make_pts({{0, 0}, {200, 0}, {200, 200}, {0, 200}, {100, 100}});
+  auto pts =
+      make_face_split_pts({{0, 0}, {200, 0}, {200, 200}, {0, 200}, {100, 100}});
   auto edges = make_undirected_edges({{0, 4}, {4, 2}});
   std::vector<int> face = {0, 1, 2, 3};
 
-  tf::face_split_by_edges<Index> fsbe;
+  tf::face_split_by_edges<face_split_index_t, face_split_int_t> fsbe;
   fsbe.build(tf::make_range(face), tf::make_edges(edges), pts.points());
 
   CHECK(fsbe.faces().size() == 2);
@@ -131,13 +142,18 @@ TEST_CASE("Simple crossing", "[face_split_by_edges]") {
 
 TEST_CASE("Nested crossings (different start/end)",
           "[face_split_by_edges]") {
-  auto pts = make_pts({{0, 50},   {50, 0},   {150, 0},
-                       {200, 50}, {150, 100}, {50, 100},
-                       {75, 50},  {125, 50}});
+  auto pts = make_face_split_pts({{0, 50},
+                                  {50, 0},
+                                  {150, 0},
+                                  {200, 50},
+                                  {150, 100},
+                                  {50, 100},
+                                  {75, 50},
+                                  {125, 50}});
   auto edges = make_undirected_edges({{0, 6}, {6, 5}, {1, 7}, {7, 4}});
   std::vector<int> face = {0, 1, 2, 3, 4, 5};
 
-  tf::face_split_by_edges<Index> fsbe;
+  tf::face_split_by_edges<face_split_index_t, face_split_int_t> fsbe;
   fsbe.build(tf::make_range(face), tf::make_edges(edges), pts.points());
 
   CHECK(fsbe.faces().size() == 3);
@@ -151,12 +167,12 @@ TEST_CASE("Nested crossings (different start/end)",
 }
 
 TEST_CASE("Same end crossings", "[face_split_by_edges]") {
-  auto pts = make_pts(
+  auto pts = make_face_split_pts(
       {{0, 0}, {200, 0}, {200, 200}, {0, 200}, {60, 100}, {140, 100}});
   auto edges = make_undirected_edges({{0, 4}, {4, 2}, {1, 5}, {5, 2}});
   std::vector<int> face = {0, 1, 2, 3};
 
-  tf::face_split_by_edges<Index> fsbe;
+  tf::face_split_by_edges<face_split_index_t, face_split_int_t> fsbe;
   fsbe.build(tf::make_range(face), tf::make_edges(edges), pts.points());
 
   CHECK(fsbe.faces().size() == 3);
@@ -170,12 +186,12 @@ TEST_CASE("Same end crossings", "[face_split_by_edges]") {
 }
 
 TEST_CASE("Same start crossings", "[face_split_by_edges]") {
-  auto pts = make_pts(
+  auto pts = make_face_split_pts(
       {{0, 0}, {200, 0}, {200, 200}, {0, 200}, {60, 100}, {140, 100}});
   auto edges = make_undirected_edges({{0, 4}, {4, 3}, {0, 5}, {5, 2}});
   std::vector<int> face = {0, 1, 2, 3};
 
-  tf::face_split_by_edges<Index> fsbe;
+  tf::face_split_by_edges<face_split_index_t, face_split_int_t> fsbe;
   fsbe.build(tf::make_range(face), tf::make_edges(edges), pts.points());
 
   CHECK(fsbe.faces().size() == 3);
@@ -189,12 +205,12 @@ TEST_CASE("Same start crossings", "[face_split_by_edges]") {
 }
 
 TEST_CASE("Same start AND end (area ordering)", "[face_split_by_edges]") {
-  auto pts = make_pts(
+  auto pts = make_face_split_pts(
       {{0, 0}, {200, 0}, {200, 200}, {0, 200}, {100, 40}, {100, 160}});
   auto edges = make_undirected_edges({{0, 4}, {4, 2}, {0, 5}, {5, 2}});
   std::vector<int> face = {0, 1, 2, 3};
 
-  tf::face_split_by_edges<Index> fsbe;
+  tf::face_split_by_edges<face_split_index_t, face_split_int_t> fsbe;
   fsbe.build(tf::make_range(face), tf::make_edges(edges), pts.points());
 
   CHECK(fsbe.faces().size() == 3);
@@ -208,18 +224,18 @@ TEST_CASE("Same start AND end (area ordering)", "[face_split_by_edges]") {
 }
 
 TEST_CASE("Interior loop (not touching base)", "[face_split_by_edges]") {
-  auto pts = make_pts({{0, 0},
-                       {200, 0},
-                       {200, 200},
-                       {0, 200},
-                       {70, 70},
-                       {130, 70},
-                       {130, 130},
-                       {70, 130}});
+  auto pts = make_face_split_pts({{0, 0},
+                                  {200, 0},
+                                  {200, 200},
+                                  {0, 200},
+                                  {70, 70},
+                                  {130, 70},
+                                  {130, 130},
+                                  {70, 130}});
   auto edges = make_undirected_edges({{4, 5}, {5, 6}, {6, 7}, {7, 4}});
   std::vector<int> face = {0, 1, 2, 3};
 
-  tf::face_split_by_edges<Index> fsbe;
+  tf::face_split_by_edges<face_split_index_t, face_split_int_t> fsbe;
   fsbe.build(tf::make_range(face), tf::make_edges(edges), pts.points());
 
   CHECK(fsbe.faces().size() == 2);
@@ -240,12 +256,12 @@ TEST_CASE("Interior loop (not touching base)", "[face_split_by_edges]") {
 
 TEST_CASE("Loop sharing vertex with base (start==end)",
           "[face_split_by_edges]") {
-  auto pts = make_pts(
+  auto pts = make_face_split_pts(
       {{0, 0}, {200, 0}, {200, 200}, {0, 200}, {40, 40}, {80, 40}, {60, 80}});
   auto edges = make_undirected_edges({{0, 4}, {4, 5}, {5, 6}, {6, 0}});
   std::vector<int> face = {0, 1, 2, 3};
 
-  tf::face_split_by_edges<Index> fsbe;
+  tf::face_split_by_edges<face_split_index_t, face_split_int_t> fsbe;
   fsbe.build(tf::make_range(face), tf::make_edges(edges), pts.points());
 
   CHECK(fsbe.faces().size() == 2);
@@ -260,19 +276,19 @@ TEST_CASE("Loop sharing vertex with base (start==end)",
 
 TEST_CASE("Crossing + loop sharing start vertex",
           "[face_split_by_edges]") {
-  auto pts = make_pts({{0, 0},
-                       {200, 0},
-                       {200, 200},
-                       {0, 200},
-                       {30, 150},
-                       {50, 10},
-                       {80, 10},
-                       {65, 30}});
+  auto pts = make_face_split_pts({{0, 0},
+                                  {200, 0},
+                                  {200, 200},
+                                  {0, 200},
+                                  {30, 150},
+                                  {50, 10},
+                                  {80, 10},
+                                  {65, 30}});
   auto edges = make_undirected_edges(
       {{0, 4}, {4, 2}, {0, 5}, {5, 6}, {6, 7}, {7, 0}});
   std::vector<int> face = {0, 1, 2, 3};
 
-  tf::face_split_by_edges<Index> fsbe;
+  tf::face_split_by_edges<face_split_index_t, face_split_int_t> fsbe;
   fsbe.build(tf::make_range(face), tf::make_edges(edges), pts.points());
 
   CHECK(fsbe.faces().size() == 3);
@@ -297,11 +313,12 @@ TEST_CASE("Crossing + loop sharing start vertex",
 }
 
 TEST_CASE("Simple cut", "[face_split_by_edges]") {
-  auto pts = make_pts({{0, 0}, {200, 0}, {200, 200}, {0, 200}, {100, 100}});
+  auto pts =
+      make_face_split_pts({{0, 0}, {200, 0}, {200, 200}, {0, 200}, {100, 100}});
   auto edges = make_undirected_edges({{0, 4}});
   std::vector<int> face = {0, 1, 2, 3};
 
-  tf::face_split_by_edges<Index> fsbe;
+  tf::face_split_by_edges<face_split_index_t, face_split_int_t> fsbe;
   fsbe.build(tf::make_range(face), tf::make_edges(edges), pts.points());
 
   CHECK(fsbe.faces().size() == 1);
@@ -317,18 +334,18 @@ TEST_CASE("Simple cut", "[face_split_by_edges]") {
 // planar_graph_regions as an out-and-back zero-area walk — it must come
 // out as a slit hole (the cut-path shape) so its edge stays a constraint.
 TEST_CASE("Island loop with antenna slit", "[face_split_by_edges]") {
-  auto pts = make_pts({{0, 0},
-                       {200, 0},
-                       {200, 200},
-                       {0, 200},
-                       {70, 70},
-                       {130, 70},
-                       {100, 130},
-                       {100, 160}});
+  auto pts = make_face_split_pts({{0, 0},
+                                  {200, 0},
+                                  {200, 200},
+                                  {0, 200},
+                                  {70, 70},
+                                  {130, 70},
+                                  {100, 130},
+                                  {100, 160}});
   auto edges = make_undirected_edges({{4, 5}, {5, 6}, {6, 4}, {6, 7}});
   std::vector<int> face = {0, 1, 2, 3};
 
-  tf::face_split_by_edges<Index> fsbe;
+  tf::face_split_by_edges<face_split_index_t, face_split_int_t> fsbe;
   fsbe.build(tf::make_range(face), tf::make_edges(edges), pts.points());
 
   REQUIRE(fsbe.faces().size() == 2);
@@ -358,20 +375,20 @@ TEST_CASE("Island loop with antenna slit", "[face_split_by_edges]") {
 // would duplicate the cycle's cell with inverted winding (the fold-back).
 TEST_CASE("Odd-degree cycle: negative outer walk becomes hole",
           "[face_split_by_edges]") {
-  auto pts = make_pts({{0, 0},
-                       {200, 0},
-                       {200, 200},
-                       {0, 200},
-                       {70, 70},
-                       {130, 70},
-                       {100, 130},
-                       {50, 50},
-                       {160, 50}});
+  auto pts = make_face_split_pts({{0, 0},
+                                  {200, 0},
+                                  {200, 200},
+                                  {0, 200},
+                                  {70, 70},
+                                  {130, 70},
+                                  {100, 130},
+                                  {50, 50},
+                                  {160, 50}});
   auto edges = make_undirected_edges(
       {{4, 5}, {5, 6}, {6, 4}, {4, 7}, {5, 8}});
   std::vector<int> face = {0, 1, 2, 3};
 
-  tf::face_split_by_edges<Index> fsbe;
+  tf::face_split_by_edges<face_split_index_t, face_split_int_t> fsbe;
   fsbe.build(tf::make_range(face), tf::make_edges(edges), pts.points());
 
   REQUIRE(fsbe.faces().size() == 2);
@@ -398,22 +415,22 @@ TEST_CASE("Odd-degree cycle: negative outer walk becomes hole",
 // region — it must be emitted as a slit hole (cut-path shape) nested in
 // the ring, or the constraint edge vanishes from the triangulation.
 TEST_CASE("Nested cycles (island with lake)", "[face_split_by_edges]") {
-  auto pts = make_pts({{0, 0},
-                       {200, 0},
-                       {200, 200},
-                       {0, 200},
-                       {40, 40},
-                       {160, 40},
-                       {160, 160},
-                       {40, 160},
-                       {80, 80},
-                       {120, 80},
-                       {100, 120}});
+  auto pts = make_face_split_pts({{0, 0},
+                                  {200, 0},
+                                  {200, 200},
+                                  {0, 200},
+                                  {40, 40},
+                                  {160, 40},
+                                  {160, 160},
+                                  {40, 160},
+                                  {80, 80},
+                                  {120, 80},
+                                  {100, 120}});
   auto edges = make_undirected_edges(
       {{4, 5}, {5, 6}, {6, 7}, {7, 4}, {8, 9}, {9, 10}, {10, 8}, {4, 8}});
   std::vector<int> face = {0, 1, 2, 3};
 
-  tf::face_split_by_edges<Index> fsbe;
+  tf::face_split_by_edges<face_split_index_t, face_split_int_t> fsbe;
   fsbe.build(tf::make_range(face), tf::make_edges(edges), pts.points());
 
   REQUIRE(fsbe.faces().size() == 3);
@@ -455,19 +472,19 @@ TEST_CASE("Nested cycles (island with lake)", "[face_split_by_edges]") {
 // outer side of the cycle is absorbed into the surrounding walks, so no
 // negative region exists and nothing may be emitted as a hole.
 TEST_CASE("Cycle bridged to base loop", "[face_split_by_edges]") {
-  auto pts = make_pts({{0, 0},
-                       {200, 0},
-                       {200, 200},
-                       {0, 200},
-                       {80, 80},
-                       {120, 80},
-                       {100, 120},
-                       {100, 160}});
+  auto pts = make_face_split_pts({{0, 0},
+                                  {200, 0},
+                                  {200, 200},
+                                  {0, 200},
+                                  {80, 80},
+                                  {120, 80},
+                                  {100, 120},
+                                  {100, 160}});
   auto edges = make_undirected_edges(
       {{0, 4}, {4, 5}, {5, 6}, {6, 4}, {6, 7}, {5, 1}});
   std::vector<int> face = {0, 1, 2, 3};
 
-  tf::face_split_by_edges<Index> fsbe;
+  tf::face_split_by_edges<face_split_index_t, face_split_int_t> fsbe;
   fsbe.build(tf::make_range(face), tf::make_edges(edges), pts.points());
 
   CHECK(fsbe.holes().size() == 0);
@@ -490,17 +507,17 @@ TEST_CASE("Cycle bridged to base loop", "[face_split_by_edges]") {
 // inverted faces, every input edge present as a constraint.
 TEST_CASE("Zero-area sandwich between twin chains",
           "[face_split_by_edges]") {
-  auto pts = make_pts({{0, 0},
-                       {200, 0},
-                       {200, 200},
-                       {0, 200},
-                       {100, 100},
-                       {100, 100},
-                       {60, 120}});
+  auto pts = make_face_split_pts({{0, 0},
+                                  {200, 0},
+                                  {200, 200},
+                                  {0, 200},
+                                  {100, 100},
+                                  {100, 100},
+                                  {60, 120}});
   auto edges = make_undirected_edges({{0, 4}, {4, 2}, {0, 5}, {5, 2}, {4, 6}});
   std::vector<int> face = {0, 1, 2, 3};
 
-  tf::face_split_by_edges<Index> fsbe;
+  tf::face_split_by_edges<face_split_index_t, face_split_int_t> fsbe;
   fsbe.build(tf::make_range(face), tf::make_edges(edges), pts.points());
 
   CHECK(total_area(fsbe) == 80000);
@@ -517,11 +534,12 @@ TEST_CASE("Zero-area sandwich between twin chains",
 }
 
 TEST_CASE("Non-crossings (T-junction)", "[face_split_by_edges]") {
-  auto pts = make_pts({{0, 0}, {200, 0}, {200, 200}, {0, 200}, {100, 100}});
+  auto pts =
+      make_face_split_pts({{0, 0}, {200, 0}, {200, 200}, {0, 200}, {100, 100}});
   auto edges = make_undirected_edges({{0, 4}, {4, 2}, {4, 3}});
   std::vector<int> face = {0, 1, 2, 3};
 
-  tf::face_split_by_edges<Index> fsbe;
+  tf::face_split_by_edges<face_split_index_t, face_split_int_t> fsbe;
   fsbe.build(tf::make_range(face), tf::make_edges(edges), pts.points());
 
   CHECK(fsbe.faces().size() == 3);

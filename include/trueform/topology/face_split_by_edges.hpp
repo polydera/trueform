@@ -30,10 +30,13 @@ namespace tf {
 ///
 /// Given a face boundary and interior edges, classifies the resulting
 /// paths (crossings, loops, cuts, non-crossings) and extracts all sub-faces
-/// and holes. Uses exact int32 arithmetic for all geometric predicates.
-/// Float points are converted via pt_converter.
-template <typename Index, typename Int = tf::exact::int32>
-class face_split_by_edges {
+/// and holes. Every geometric predicate is exact on the `Int` lattice;
+/// floating-point points are converted onto it, integral ones consumed as
+/// they are.
+///
+/// @tparam Int The lattice the exact predicates run on. `build` accepts any
+///   coordinate type, so the caller states it.
+template <typename Index, typename Int> class face_split_by_edges {
 private:
   using T1 = typename tf::exact::meta<Int>::T1;
   using T2 = typename tf::exact::meta<Int>::T2;

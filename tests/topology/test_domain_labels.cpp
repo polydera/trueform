@@ -1,7 +1,8 @@
 /**
  * @file test_domain_labels.cpp
  * @brief tf::make_domain_labels — stacked duplicate faces resolve like
- * the csg path's keep-one.
+ * the csg path's keep-one, and the outer shell is the domain the
+ * unbounded universe occupies.
  *
  * A coincident duplicate stack (same vertex-id cycle, either winding)
  * keeps one copy; dead copies carry the sentinel pair and no extraction
@@ -17,6 +18,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <trueform/trueform.hpp>
+
+#include <array>
+#include <cstddef>
 
 TEST_CASE("domain labels: arrangement stacks resolve to two cells",
           "[topology][domains][stacks]") {
@@ -178,4 +182,96 @@ TEST_CASE("domain labels: opposing stack members serve their own side",
     }
     REQUIRE(n_wall == 2);
   }
+}
+
+// ---------------------------------------------------------------------------
+// outer_shell_label correctness. The outer shell is the domain with the
+// most-negative signed volume (tf::signed_volume). Two disjoint spheres, each
+// cut by two intersecting planes: two distinct closed bodies whose exteriors
+// merge into one outer shell, plus open plane fins outside the spheres --- so
+// every domain_config combination exercises both the merge and both flags.
+// ---------------------------------------------------------------------------
+
+TEST_CASE("domain_outer_shell_two_spheres_two_planes",
+          "[topology][domains]") {
+  using index_t = int;
+  using real_t = double;
+
+  auto s0 = tf::make_sphere_mesh<index_t>(real_t(1), 24, 24);
+  auto s1 = tf::make_sphere_mesh<index_t>(real_t(1), 24, 24);
+  auto &pts1 = s1.points_buffer();
+  for (std::size_t i = 0; i < pts1.size(); ++i)
+    pts1[i][0] += real_t(4); // s1 clear of s0
+
+  // Two intersecting planes (z = 0 and y = 0), spanning both spheres and
+  // extending past them so their parts outside the spheres are open fins.
+  auto plane_z = tf::make_plane_mesh<index_t>(real_t(12), real_t(12)); // z = 0
+  tf::polygons_buffer<index_t, real_t, 3, 3> plane_y;                  // y = 0
+  plane_y.points_buffer().allocate(4);
+  plane_y.faces_buffer().allocate(2);
+  plane_y.points_buffer()[0] =
+      tf::point<real_t, 3>{real_t(-6), real_t(0), real_t(-6)};
+  plane_y.points_buffer()[1] =
+      tf::point<real_t, 3>{real_t(6), real_t(0), real_t(-6)};
+  plane_y.points_buffer()[2] =
+      tf::point<real_t, 3>{real_t(6), real_t(0), real_t(6)};
+  plane_y.points_buffer()[3] =
+      tf::point<real_t, 3>{real_t(-6), real_t(0), real_t(6)};
+  plane_y.faces_buffer()[0] = std::array<index_t, 3>{0, 1, 2};
+  plane_y.faces_buffer()[1] = std::array<index_t, 3>{0, 2, 3};
+
+  const std::array forms{s0.polygons(), s1.polygons(), plane_z.polygons(),
+                         plane_y.polygons()};
+  auto [mesh, tag_labels, face_labels] =
+      tf::make_mesh_arrangements(tf::make_range(forms.begin(), forms.end()));
+  auto cleaned = tf::cleaned(mesh.polygons(), real_t(1e-7));
+  tf::orient_faces_consistently(cleaned.polygons());
+
+  auto check = [&](tf::domain_config config) {
+    auto labels = tf::make_domain_labels(cleaned.polygons(), config);
+    const bool exclude = (config & tf::domain_config::exclude_outer_shell);
+
+    if (exclude) {
+      // Universe folded to the sentinel one past the valid range; some
+      // face-side carries it.
+      REQUIRE(labels.outer_shell_label == labels.n_domains);
+      bool carried = false;
+      for (auto v : labels.labels.data_buffer())
+        if (index_t(v) == index_t(labels.n_domains)) {
+          carried = true;
+          break;
+        }
+      REQUIRE(carried);
+    } else {
+      // Outer shell is a real domain: the most-negative signed volume, and
+      // the two bodies' exteriors merged into exactly one negative domain.
+      REQUIRE(labels.outer_shell_label >= 0);
+      REQUIRE(labels.outer_shell_label < labels.n_domains);
+
+      auto [domain_meshes, domain_ids] =
+          tf::split_into_domains(cleaned.polygons(), labels);
+      REQUIRE(domain_meshes.size() > 0);
+
+      int n_negative = 0;
+      double min_vol = double(tf::signed_volume(domain_meshes[0].polygons()));
+      index_t outer = index_t(domain_ids[0]);
+      for (std::size_t i = 0; i < domain_meshes.size(); ++i) {
+        double v = double(tf::signed_volume(domain_meshes[i].polygons()));
+        if (v < 0.0)
+          ++n_negative;
+        if (v < min_vol) {
+          min_vol = v;
+          outer = index_t(domain_ids[i]);
+        }
+      }
+      REQUIRE(n_negative == 1);
+      REQUIRE(outer == index_t(labels.outer_shell_label));
+    }
+  };
+
+  check(tf::domain_config::none);
+  check(tf::domain_config::ignore_open_fragments);
+  check(tf::domain_config::exclude_outer_shell);
+  check(tf::domain_config::exclude_outer_shell |
+        tf::domain_config::ignore_open_fragments);
 }

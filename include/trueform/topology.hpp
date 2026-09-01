@@ -56,7 +56,6 @@
 #include "./topology/compare_faces.hpp"              // IWYU pragma: export
 #include "./topology/boundary_edges.hpp"             // IWYU pragma: export
 #include "./topology/boundary_paths.hpp"             // IWYU pragma: export
-#include "./topology/components/finder.hpp"          // IWYU pragma: export
 #include "./topology/connect_edges_to_paths.hpp"     // IWYU pragma: export
 #include "./topology/compute_unique_faces_mask.hpp"  // IWYU pragma: export
 #include "./topology/compute_unduplicated_faces_mask.hpp" // IWYU pragma: export
@@ -64,12 +63,11 @@
 #include "./topology/domain_labels.hpp"              // IWYU pragma: export
 #include "./topology/cdt_refine_config.hpp"           // IWYU pragma: export
 #include "./topology/cdt_refiner.hpp"                 // IWYU pragma: export
+#include "./topology/cdt_region_mode.hpp"             // IWYU pragma: export
 #include "./topology/constrained_delaunay_triangulator.hpp" // IWYU pragma: export
-#include "./topology/delaunay_flipper.hpp"            // IWYU pragma: export
-#include "./topology/delaunay_triangulator.hpp"      // IWYU pragma: export
+#include "./topology/unconstrained_delaunay_triangulator.hpp" // IWYU pragma: export
 #include "./topology/make_cdt.hpp"                   // IWYU pragma: export
 #include "./topology/triangulation_type.hpp"        // IWYU pragma: export
-#include "./topology/ear_cutter.hpp"                 // IWYU pragma: export
 #include "./topology/connectivity_type.hpp"          // IWYU pragma: export
 #include "./topology/directed_edge_id_in_face.hpp"   // IWYU pragma: export
 #include "./topology/directed_edge_link.hpp"         // IWYU pragma: export
@@ -84,6 +82,7 @@
 #include "./topology/face_hole_relations.hpp"        // IWYU pragma: export
 #include "./topology/face_link.hpp"                  // IWYU pragma: export
 #include "./topology/face_membership.hpp"            // IWYU pragma: export
+#include "./topology/face_split_by_edges.hpp"        // IWYU pragma: export
 #include "./topology/find_eulerian_paths.hpp"        // IWYU pragma: export
 #include "./topology/hole_patcher.hpp"               // IWYU pragma: export
 #include "./topology/is_closed.hpp"                  // IWYU pragma: export
@@ -103,6 +102,7 @@
 #include "./topology/make_manifold_edge_connected_component_labels.hpp" // IWYU pragma: export
 #include "./topology/make_manifold_edge_link.hpp"   // IWYU pragma: export
 #include "./topology/make_neighborhoods.hpp"        // IWYU pragma: export
+#include "./topology/make_sidedness_relations.hpp"  // IWYU pragma: export
 #include "./topology/make_vertex_connected_component_labels.hpp" // IWYU pragma: export
 #include "./topology/make_vertex_link.hpp"          // IWYU pragma: export
 #include "./topology/manifold_edge_link.hpp"        // IWYU pragma: export

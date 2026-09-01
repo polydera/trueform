@@ -18,7 +18,6 @@
 #include "../../core/small_vector.hpp"
 #include "../../core/views/enumerate.hpp"
 #include "../../core/views/sequence_range.hpp"
-#include "../../exact/int64.hpp"
 #include "../../exact/meta.hpp"
 #include "../../exact/triangle_segment_intersection.hpp"
 #include "../../exact/vertex.hpp"
@@ -53,9 +52,9 @@ namespace tf::topology::domains {
 ///   - **Universe merges**: bundles whose outer-env was *not* enclosed
 ///     by anyone are "roots"; all their outer-env domains merge into
 ///     one anchor (the true universe).
-template <typename Int = tf::exact::int64, typename Polygons,
-          typename FragLabels, typename BundleLabels, typename Index,
-          typename VolType, typename GetPoint>
+template <typename Int, typename Polygons, typename FragLabels,
+          typename BundleLabels, typename Index, typename VolType,
+          typename GetPoint>
 auto make_nesting_merges(const Polygons &polygons,
                          const FragLabels &fragment_labels,
                          const BundleLabels &bundle_labels,

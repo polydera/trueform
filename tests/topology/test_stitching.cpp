@@ -109,9 +109,12 @@ TEMPLATE_TEST_CASE("stitched_face_membership_box_minus_sphere", "[topology][stit
         sphere.polygons() | tf::tag(fm1) | tf::tag(mel1) | tf::tag(tree1) | tf::tag(frame),
         tf::boolean_op::left_difference, tf::return_index_map);
 
+    const index_t n_input_faces[2] = {index_t(box.size()), index_t(sphere.size())};
+    auto stitch_map = tf::make_stitch_index_map(index_maps, tf::make_range(n_input_faces, n_input_faces + 2));
+
     // Build stitched face_membership
     auto fm_stitched = tf::stitched_face_membership(
-        result.faces(), index_t(result.points().size()), fm0, fm1, index_maps);
+        result.faces(), fm0, fm1, stitch_map);
 
     // Build fresh face_membership for comparison
     tf::face_membership<index_t> fm_fresh;
@@ -163,11 +166,15 @@ TEMPLATE_TEST_CASE("stitched_manifold_edge_link_box_minus_sphere", "[topology][s
         sphere.polygons() | tf::tag(fm1) | tf::tag(mel1) | tf::tag(tree1) | tf::tag(frame),
         tf::boolean_op::left_difference, tf::return_index_map);
 
+    const index_t n_input_faces[2] = {index_t(box.size()), index_t(sphere.size())};
+    auto stitch_map = tf::make_stitch_index_map(index_maps, tf::make_range(n_input_faces, n_input_faces + 2));
+    auto dirs = tf::make_directions(tf::boolean_op::left_difference);
+
     // Build stitched structures
     auto fm_stitched = tf::stitched_face_membership(
-        result.faces(), index_t(result.points().size()), fm0, fm1, index_maps);
+        result.faces(), fm0, fm1, stitch_map);
     auto mel_stitched = tf::stitched_manifold_edge_link(
-        result.faces(), mel0, mel1, fm_stitched, index_maps);
+        result.faces(), mel0, mel1, fm_stitched, stitch_map, dirs[0], dirs[1]);
 
     // Build fresh structures for comparison
     tf::face_membership<index_t> fm_fresh;
@@ -220,9 +227,12 @@ TEMPLATE_TEST_CASE("stitched_face_membership_sphere_minus_sphere", "[topology][s
         sphere1.polygons() | tf::tag(fm1) | tf::tag(mel1) | tf::tag(tree1) | tf::tag(frame),
         tf::boolean_op::left_difference, tf::return_index_map);
 
+    const index_t n_input_faces[2] = {index_t(sphere0.size()), index_t(sphere1.size())};
+    auto stitch_map = tf::make_stitch_index_map(index_maps, tf::make_range(n_input_faces, n_input_faces + 2));
+
     // Build stitched face_membership
     auto fm_stitched = tf::stitched_face_membership(
-        result.faces(), index_t(result.points().size()), fm0, fm1, index_maps);
+        result.faces(), fm0, fm1, stitch_map);
 
     // Build fresh face_membership for comparison
     tf::face_membership<index_t> fm_fresh;
@@ -272,11 +282,15 @@ TEMPLATE_TEST_CASE("stitched_manifold_edge_link_sphere_minus_sphere", "[topology
         sphere1.polygons() | tf::tag(fm1) | tf::tag(mel1) | tf::tag(tree1) | tf::tag(frame),
         tf::boolean_op::left_difference, tf::return_index_map);
 
+    const index_t n_input_faces[2] = {index_t(sphere0.size()), index_t(sphere1.size())};
+    auto stitch_map = tf::make_stitch_index_map(index_maps, tf::make_range(n_input_faces, n_input_faces + 2));
+    auto dirs = tf::make_directions(tf::boolean_op::left_difference);
+
     // Build stitched structures
     auto fm_stitched = tf::stitched_face_membership(
-        result.faces(), index_t(result.points().size()), fm0, fm1, index_maps);
+        result.faces(), fm0, fm1, stitch_map);
     auto mel_stitched = tf::stitched_manifold_edge_link(
-        result.faces(), mel0, mel1, fm_stitched, index_maps);
+        result.faces(), mel0, mel1, fm_stitched, stitch_map, dirs[0], dirs[1]);
 
     // Build fresh structures for comparison
     tf::face_membership<index_t> fm_fresh;
@@ -328,9 +342,12 @@ TEMPLATE_TEST_CASE("stitched_face_membership_union", "[topology][stitching]",
         box2.polygons() | tf::tag(fm1) | tf::tag(mel1) | tf::tag(tree1) | tf::tag(frame),
         tf::boolean_op::merge, tf::return_index_map);
 
+    const index_t n_input_faces[2] = {index_t(box1.size()), index_t(box2.size())};
+    auto stitch_map = tf::make_stitch_index_map(index_maps, tf::make_range(n_input_faces, n_input_faces + 2));
+
     // Build stitched face_membership
     auto fm_stitched = tf::stitched_face_membership(
-        result.faces(), index_t(result.points().size()), fm0, fm1, index_maps);
+        result.faces(), fm0, fm1, stitch_map);
 
     // Build fresh face_membership for comparison
     tf::face_membership<index_t> fm_fresh;
@@ -380,11 +397,15 @@ TEMPLATE_TEST_CASE("stitched_manifold_edge_link_union", "[topology][stitching]",
         box2.polygons() | tf::tag(fm1) | tf::tag(mel1) | tf::tag(tree1) | tf::tag(frame),
         tf::boolean_op::merge, tf::return_index_map);
 
+    const index_t n_input_faces[2] = {index_t(box1.size()), index_t(box2.size())};
+    auto stitch_map = tf::make_stitch_index_map(index_maps, tf::make_range(n_input_faces, n_input_faces + 2));
+    auto dirs = tf::make_directions(tf::boolean_op::merge);
+
     // Build stitched structures
     auto fm_stitched = tf::stitched_face_membership(
-        result.faces(), index_t(result.points().size()), fm0, fm1, index_maps);
+        result.faces(), fm0, fm1, stitch_map);
     auto mel_stitched = tf::stitched_manifold_edge_link(
-        result.faces(), mel0, mel1, fm_stitched, index_maps);
+        result.faces(), mel0, mel1, fm_stitched, stitch_map, dirs[0], dirs[1]);
 
     // Build fresh structures for comparison
     tf::face_membership<index_t> fm_fresh;
@@ -436,11 +457,15 @@ TEMPLATE_TEST_CASE("stitched_structures_cylinder", "[topology][stitching]",
         sphere.polygons() | tf::tag(fm1) | tf::tag(mel1) | tf::tag(tree1) | tf::tag(frame),
         tf::boolean_op::left_difference, tf::return_index_map);
 
+    const index_t n_input_faces[2] = {index_t(cylinder.size()), index_t(sphere.size())};
+    auto stitch_map = tf::make_stitch_index_map(index_maps, tf::make_range(n_input_faces, n_input_faces + 2));
+    auto dirs = tf::make_directions(tf::boolean_op::left_difference);
+
     // Build stitched structures
     auto fm_stitched = tf::stitched_face_membership(
-        result.faces(), index_t(result.points().size()), fm0, fm1, index_maps);
+        result.faces(), fm0, fm1, stitch_map);
     auto mel_stitched = tf::stitched_manifold_edge_link(
-        result.faces(), mel0, mel1, fm_stitched, index_maps);
+        result.faces(), mel0, mel1, fm_stitched, stitch_map, dirs[0], dirs[1]);
 
     // Build fresh structures for comparison
     tf::face_membership<index_t> fm_fresh;
@@ -497,11 +522,15 @@ TEMPLATE_TEST_CASE("stitched_structures_chained_booleans", "[topology][stitching
         sphere1.polygons() | tf::tag(fm1) | tf::tag(mel1) | tf::tag(tree1) | tf::tag(frame1),
         tf::boolean_op::left_difference, tf::return_index_map);
 
+    const index_t n_input_faces1[2] = {index_t(box.size()), index_t(sphere1.size())};
+    auto stitch_map1 = tf::make_stitch_index_map(index_maps1, tf::make_range(n_input_faces1, n_input_faces1 + 2));
+    auto dirs1 = tf::make_directions(tf::boolean_op::left_difference);
+
     // Build stitched structures for first boolean
     auto fm_res1 = tf::stitched_face_membership(
-        result1.faces(), index_t(result1.points().size()), fm0, fm1, index_maps1);
+        result1.faces(), fm0, fm1, stitch_map1);
     auto mel_res1 = tf::stitched_manifold_edge_link(
-        result1.faces(), mel0, mel1, fm_res1, index_maps1);
+        result1.faces(), mel0, mel1, fm_res1, stitch_map1, dirs1[0], dirs1[1]);
 
     // Build topology for sphere2
     tf::face_membership<index_t> fm2;
@@ -523,11 +552,16 @@ TEMPLATE_TEST_CASE("stitched_structures_chained_booleans", "[topology][stitching
         sphere2.polygons() | tf::tag(fm2) | tf::tag(mel2) | tf::tag(tree2) | tf::tag(frame2),
         tf::boolean_op::left_difference, tf::return_index_map);
 
+    const index_t n_input_faces2[2] = {index_t(result1.size()), index_t(sphere2.size())};
+    auto stitch_map2 = tf::make_stitch_index_map(index_maps2, tf::make_range(n_input_faces2, n_input_faces2 + 2));
+    auto dirs2 = tf::make_directions(tf::boolean_op::left_difference);
+
     // Build stitched structures for second boolean
     auto fm_stitched = tf::stitched_face_membership(
-        result2.faces(), index_t(result2.points().size()), fm_res1, fm2, index_maps2);
+        result2.faces(), fm_res1, fm2, stitch_map2);
     auto mel_stitched = tf::stitched_manifold_edge_link(
-        result2.faces(), mel_res1, mel2, fm_stitched, index_maps2);
+        result2.faces(), mel_res1, mel2, fm_stitched, stitch_map2, dirs2[0],
+        dirs2[1]);
 
     // Build fresh structures for comparison
     tf::face_membership<index_t> fm_fresh;

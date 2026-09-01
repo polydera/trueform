@@ -41,7 +41,7 @@ auto make_non_manifold_edges(const tf::faces<Policy> &faces,
   using Index = std::decay_t<decltype(fm[0][0])>;
   tf::blocked_buffer<Index, 2> edges;
   tf::generic_generate(
-      tf::enumerate(faces), edges.data_buffer(), tf::small_vector<Index, 10>{},
+      tf::enumerate(faces), edges.data_buffer(),
       [&](const auto &pair, auto &buffer, auto &neighbors) {
         const auto &[face_id, face] = pair;
         Index size = face.size();
@@ -61,7 +61,8 @@ auto make_non_manifold_edges(const tf::faces<Policy> &faces,
             buffer.push_back(std::max(face[prev], face[i]));
           }
         }
-      });
+      },
+          tf::small_vector<Index, 10>{});
   return edges;
 }
 

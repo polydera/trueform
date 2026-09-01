@@ -11,7 +11,7 @@
 
 namespace {
 
-using Index = int;
+using make_cdt_index_t = int;
 
 auto make_points(std::initializer_list<std::array<float, 2>> values)
     -> tf::points_buffer<float, 2> {
@@ -22,11 +22,12 @@ auto make_points(std::initializer_list<std::array<float, 2>> values)
 }
 
 template <typename Polygons>
-auto has_edge(const Polygons &polys, Index a, Index b) -> bool {
+auto has_edge(const Polygons &polys, make_cdt_index_t a, make_cdt_index_t b)
+    -> bool {
   for (auto face : polys.faces())
     for (int c = 0; c < 3; ++c) {
-      const Index u = face[std::size_t(c)];
-      const Index v = face[std::size_t((c + 1) % 3)];
+      const make_cdt_index_t u = face[std::size_t(c)];
+      const make_cdt_index_t v = face[std::size_t((c + 1) % 3)];
       if ((u == a && v == b) || (u == b && v == a))
         return true;
     }
@@ -37,13 +38,17 @@ auto square() -> tf::points_buffer<float, 2> {
   return make_points({{0.f, 0.f}, {10.f, 0.f}, {10.f, 10.f}, {0.f, 10.f}});
 }
 
-const std::array<std::array<Index, 2>, 1> diagonal{std::array<Index, 2>{0, 2}};
-const std::array<std::array<Index, 2>, 2> crossing_diagonals{
-    std::array<Index, 2>{0, 2}, std::array<Index, 2>{1, 3}};
-const std::array<std::array<Index, 2>, 5> outline_and_diagonal{
-    std::array<Index, 2>{0, 1}, std::array<Index, 2>{1, 2},
-    std::array<Index, 2>{2, 3}, std::array<Index, 2>{3, 0},
-    std::array<Index, 2>{0, 2}};
+const std::array<std::array<make_cdt_index_t, 2>, 1> diagonal{
+    std::array<make_cdt_index_t, 2>{0, 2}};
+const std::array<std::array<make_cdt_index_t, 2>, 2> crossing_diagonals{
+    std::array<make_cdt_index_t, 2>{0, 2},
+    std::array<make_cdt_index_t, 2>{1, 3}};
+const std::array<std::array<make_cdt_index_t, 2>, 5> outline_and_diagonal{
+    std::array<make_cdt_index_t, 2>{0, 1},
+    std::array<make_cdt_index_t, 2>{1, 2},
+    std::array<make_cdt_index_t, 2>{2, 3},
+    std::array<make_cdt_index_t, 2>{3, 0},
+    std::array<make_cdt_index_t, 2>{0, 2}};
 const std::array<bool, 5> outline_walls_only{true, true, true, true, false};
 
 } // namespace

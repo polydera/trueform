@@ -18,8 +18,13 @@
 #include "./face_paths_extractor.hpp"
 
 namespace tf {
-template <typename Index, typename Int = tf::exact::int32>
-class face_splitting_paths {
+
+/// @ingroup topology_planar
+/// @brief Classifies the paths an edge set draws across a face loop.
+///
+/// @tparam Int The lattice the exact predicates run on. `build` accepts any
+///   coordinate type, so the caller states it.
+template <typename Index, typename Int> class face_splitting_paths {
   using T2 = typename tf::exact::meta<Int>::T2;
 
 public:

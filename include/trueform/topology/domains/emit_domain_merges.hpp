@@ -49,7 +49,7 @@ void emit_domain_merges(const Polygons &polygons,
     tf::hash_set<std::array<Index, 2>, tf::array_hash<Index, 2>> bundle_seen;
   };
   tf::generic_generate(
-      reps, std::tie(merges, bundle_merges), local_state_t{},
+      reps, std::tie(merges, bundle_merges),
       [&](Index rep, auto &out_buffers, local_state_t &state) {
         auto edge = nm_edges[rep];
         Index i = edge[0];
@@ -92,7 +92,8 @@ void emit_domain_merges(const Polygons &polygons,
               out_bundles.push_back(bp);
           }
         }
-      });
+      },
+          local_state_t{});
 
   tbb::parallel_sort(merges.begin(), merges.end());
   merges.erase_till_end(std::unique(merges.begin(), merges.end()));

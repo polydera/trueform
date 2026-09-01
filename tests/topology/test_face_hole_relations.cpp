@@ -15,14 +15,16 @@
 #include <trueform/core/offset_block_buffer.hpp>
 #include <trueform/core/points_buffer.hpp>
 #include <trueform/exact/int128.hpp>
+#include <trueform/exact/int32.hpp>
 #include <trueform/topology/face_hole_relations.hpp>
 #include <trueform/topology/planar_graph_regions.hpp>
 
-using Index = int;
+using hole_relations_index_t = int;
+using hole_relations_int_t = tf::exact::int32;
 
 namespace {
 
-auto make_pts(const std::vector<std::array<int32_t, 2>> &data)
+auto make_hole_relations_pts(const std::vector<std::array<int32_t, 2>> &data)
     -> tf::points_buffer<int32_t, 2> {
   tf::points_buffer<int32_t, 2> pts;
   pts.allocate(data.size());
@@ -33,7 +35,8 @@ auto make_pts(const std::vector<std::array<int32_t, 2>> &data)
   return pts;
 }
 
-auto make_directed_edges(const std::vector<std::array<int, 2>> &undirected)
+auto make_hole_relations_directed_edges(
+    const std::vector<std::array<int, 2>> &undirected)
     -> tf::blocked_buffer<int, 2> {
   tf::blocked_buffer<int, 2> buf;
   buf.allocate(undirected.size() * 2);
@@ -54,13 +57,14 @@ struct fhr_result {
 
 auto run_fhr(const std::vector<std::array<int32_t, 2>> &pt_data,
              const std::vector<std::array<int, 2>> &edge_data) -> fhr_result {
-  auto pts = make_pts(pt_data);
-  auto edges = make_directed_edges(edge_data);
+  auto pts = make_hole_relations_pts(pt_data);
+  auto edges = make_hole_relations_directed_edges(edge_data);
 
-  tf::planar_graph_regions<Index> pgr;
+  tf::planar_graph_regions<hole_relations_index_t, hole_relations_int_t> pgr;
   pgr.build(tf::make_edges(edges), pts.points());
 
-  tf::offset_block_buffer<Index, Index> faces_obb, holes_obb;
+  tf::offset_block_buffer<hole_relations_index_t, hole_relations_index_t>
+      faces_obb, holes_obb;
   faces_obb.offsets_buffer().push_back(0);
   holes_obb.offsets_buffer().push_back(0);
 
@@ -77,10 +81,10 @@ auto run_fhr(const std::vector<std::array<int32_t, 2>> &pt_data,
     for (auto vid : region)
       target.data_buffer().push_back(vid);
     target.offsets_buffer().push_back(
-        static_cast<Index>(target.data_buffer().size()));
+        static_cast<hole_relations_index_t>(target.data_buffer().size()));
   }
 
-  tf::face_hole_relations<Index> fhr;
+  tf::face_hole_relations<hole_relations_index_t, hole_relations_int_t> fhr;
   fhr.build(tf::make_faces(faces_obb), tf::make_faces(holes_obb),
             pts.points());
 

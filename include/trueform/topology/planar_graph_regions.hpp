@@ -30,13 +30,16 @@ namespace tf {
 ///
 /// Given directed edges and vertex positions, walks the graph to find
 /// all minimal closed loops (regions). Uses exact polar sort for
-/// edge ordering at each vertex. Float points are converted to int32 via
-/// pt_converter before ordering.
+/// edge ordering at each vertex. Floating-point points are converted to the
+/// `Int` lattice before ordering; integral ones are consumed as they are.
 ///
 /// Walk uses the cp-algorithms approach: at each vertex, find the twin
 /// of the incoming edge in the sorted adjacency, take the cyclic successor.
 /// Inner faces are CW, outer face is CCW.
-template <typename Index, typename Int = tf::exact::int32>
+///
+/// @tparam Int The lattice the exact predicates run on. `build` accepts any
+///   coordinate type, so the caller states it.
+template <typename Index, typename Int>
 class planar_graph_regions : public tf::offset_block_buffer<Index, Index> {
   using T1 = typename tf::exact::meta<Int>::T1;
   using T2 = typename tf::exact::meta<Int>::T2;

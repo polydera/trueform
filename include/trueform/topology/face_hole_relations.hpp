@@ -40,9 +40,12 @@ namespace tf {
 /// that contains a point from the hole). Uses an AABB tree for efficient
 /// spatial queries and exact orient2d for point-in-polygon.
 ///
-/// Float points are converted via pt_converter. Areas computed
-/// internally via exact signed_area_2x.
-template <typename Index, typename Int = tf::exact::int32>
+/// Floating-point points are converted to the `Int` lattice; integral ones are
+/// consumed as they are. Areas computed internally via exact signed_area_2x.
+///
+/// @tparam Int The lattice the exact predicates run on. `build` accepts any
+///   coordinate type, so the caller states it.
+template <typename Index, typename Int>
 class face_hole_relations : public tf::offset_block_buffer<Index, Index> {
   using T2 = typename tf::exact::meta<Int>::T2;
   using base_t = tf::offset_block_buffer<Index, Index>;
