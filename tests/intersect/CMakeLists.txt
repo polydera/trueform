@@ -1,12 +1,16 @@
 add_executable(trueform_intersect_tests
   test_intersection_curves.cpp
   test_self_intersection.cpp
-  test_isocontours.cpp
-  test_exact_intersections.cpp
   test_segment_intersections.cpp
   test_boundary_walk.cpp
-  test_clean_loop.cpp
-  test_intersection_graph.cpp
+  test_polygon_intersections.cpp
+  test_intersection_primitives.cpp
+  test_plane_crossings.cpp
+  test_plane_support.cpp
+  test_tolerance_contact_holes.cpp
+  test_pinched_loop_walls.cpp
+  test_plane_radial_authority.cpp
+  test_fan_delivery.cpp
 )
 
 target_link_libraries(trueform_intersect_tests PRIVATE trueform_test_common)

@@ -13,12 +13,12 @@
 #pragma once
 
 /** @defgroup intersect Intersect Module
- *  Mesh intersections, self-intersections, and scalar field isocontours.
+ *  Mesh intersections and self-intersections.
  */
 
 /** @defgroup intersect_curves Intersection Curves
  *  @ingroup intersect
- *  High-level curve extraction from mesh and scalar field intersections.
+ *  High-level curve extraction from mesh intersections.
  */
 
 /** @defgroup intersect_data Intersection Data
@@ -26,15 +26,7 @@
  *  Low-level intersection point and topology access.
  */
 
-/** @defgroup intersect_types Intersection Types
- *  @ingroup intersect
- *  Supporting types for intersection operations.
- */
-
-#include "./intersect/intersections_between_polygons.hpp" // IWYU pragma: export
-#include "./intersect/intersections_within_polygons.hpp"  // IWYU pragma: export
-#include "./intersect/intersections_within_segments.hpp"  // IWYU pragma: export
-#include "./intersect/make_intersection_curves.hpp"       // IWYU pragma: export
-#include "./intersect/make_isocurves.hpp"                 // IWYU pragma: export
-#include "./intersect/make_self_intersection_curves.hpp"  // IWYU pragma: export
-#include "./intersect/scalar_field_intersections.hpp"     // IWYU pragma: export
+#include "./intersect/intersections_within_segments.hpp" // IWYU pragma: export
+#include "./intersect/make_intersection_curves.hpp"      // IWYU pragma: export
+#include "./intersect/make_intersection_edges.hpp"       // IWYU pragma: export
+#include "./intersect/make_self_intersection_curves.hpp" // IWYU pragma: export

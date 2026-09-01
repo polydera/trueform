@@ -8,20 +8,24 @@
  * Copyright (c) 2025 Ziga Sajovic, XLAB
  */
 
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_template_test_macros.hpp>
-#include <catch2/matchers/catch_matchers_floating_point.hpp>
-#include <trueform/trueform.hpp>
-#include "type_traits.hpp"
+#include "arrangement_builders.hpp"
+#include "arrangement_readers.hpp"
 #include "mesh_generators.hpp"
+#include "tagged_operand.hpp"
+#include "type_traits.hpp"
+#include <catch2/catch_template_test_macros.hpp>
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <cmath>
+#include <trueform/trueform.hpp>
+#include <utility>
 
 // =============================================================================
 // Helper functions to create test meshes
 // =============================================================================
 
 template <typename Index, typename Real>
-auto create_three_horizontal_planes() -> tf::polygons_buffer<Index, Real, 3, 4> {
+auto curves_create_three_horizontal_planes() -> tf::polygons_buffer<Index, Real, 3, 4> {
     tf::polygons_buffer<Index, Real, 3, 4> result;
 
     // Plane at z=0: vertices 0-3
@@ -51,7 +55,7 @@ auto create_three_horizontal_planes() -> tf::polygons_buffer<Index, Real, 3, 4> 
 }
 
 template <typename Index, typename Real>
-auto create_vertical_plane_y0() -> tf::polygons_buffer<Index, Real, 3, 4> {
+auto curves_create_vertical_plane_y0() -> tf::polygons_buffer<Index, Real, 3, 4> {
     tf::polygons_buffer<Index, Real, 3, 4> result;
 
     // Vertical plane at y=0, spanning x=[-1,1], z=[-0.5, 2.5]
@@ -66,7 +70,7 @@ auto create_vertical_plane_y0() -> tf::polygons_buffer<Index, Real, 3, 4> {
 }
 
 template <typename Index, typename Real>
-auto create_horizontal_plane(Real z_height) -> tf::polygons_buffer<Index, Real, 3, 4> {
+auto curves_create_horizontal_plane(Real z_height) -> tf::polygons_buffer<Index, Real, 3, 4> {
     tf::polygons_buffer<Index, Real, 3, 4> result;
 
     result.points_buffer().emplace_back(Real(-2), Real(-2), z_height);
@@ -98,10 +102,15 @@ TEMPLATE_TEST_CASE("intersection_curves_three_planes_vs_vertical", "[intersectio
     constexpr bool dyn1 = TestType::is_dynamic1;
     constexpr bool dyn2 = TestType::is_dynamic2;
 
-    auto planes_h = tf::test::maybe_as_dynamic<dyn1>(create_three_horizontal_planes<index_t, real_t>());
-    auto plane_v = tf::test::maybe_as_dynamic<dyn2>(create_vertical_plane_y0<index_t, real_t>());
+    auto planes_h = tf::test::maybe_as_dynamic<dyn1>(curves_create_three_horizontal_planes<index_t, real_t>());
+    auto plane_v = tf::test::maybe_as_dynamic<dyn2>(curves_create_vertical_plane_y0<index_t, real_t>());
 
-    auto curves = tf::make_intersection_curves(planes_h.polygons(), plane_v.polygons());
+    auto op0 = tf::test::make_tagged_operand(std::move(planes_h));
+    auto op1 = tf::test::make_tagged_operand(std::move(plane_v));
+    auto curves =
+        tf::test::arrangement_curves_of(tf::test::build_pair_arrangement(
+            op0.form(), op1.form(),
+            tf::intersect_config{tf::intersect_mode::primitives}));
 
     // 3 intersection curves (one per horizontal plane)
     REQUIRE(curves.paths().size() == 3);
@@ -168,9 +177,14 @@ TEMPLATE_TEST_CASE("intersection_curves_sphere_vs_plane", "[intersection_curves]
     auto sphere = tf::test::maybe_as_dynamic<dyn1>(tf::make_sphere_mesh<index_t>(real_t(1), 30, 30));
 
     // Horizontal plane at z=0.5
-    auto plane = tf::test::maybe_as_dynamic<dyn2>(create_horizontal_plane<index_t, real_t>(real_t(0.5)));
+    auto plane = tf::test::maybe_as_dynamic<dyn2>(curves_create_horizontal_plane<index_t, real_t>(real_t(0.5)));
 
-    auto curves = tf::make_intersection_curves(sphere.polygons(), plane.polygons());
+    auto op0 = tf::test::make_tagged_operand(std::move(sphere));
+    auto op1 = tf::test::make_tagged_operand(std::move(plane));
+    auto curves =
+        tf::test::arrangement_curves_of(tf::test::build_pair_arrangement(
+            op0.form(), op1.form(),
+            tf::intersect_config{tf::intersect_mode::primitives}));
 
     // 1 intersection curve (closed circle)
     REQUIRE(curves.paths().size() == 1);
@@ -214,9 +228,9 @@ TEMPLATE_TEST_CASE("intersection_curves_sphere_vs_multiple_planes", "[intersecti
     auto sphere = tf::test::maybe_as_dynamic<dyn1>(tf::make_sphere_mesh<index_t>(real_t(1), 50, 50));
 
     // Three horizontal planes at z = -0.5, 0, 0.5
-    auto plane1 = create_horizontal_plane<index_t, real_t>(real_t(-0.5));
-    auto plane2 = create_horizontal_plane<index_t, real_t>(real_t(0));
-    auto plane3 = create_horizontal_plane<index_t, real_t>(real_t(0.5));
+    auto plane1 = curves_create_horizontal_plane<index_t, real_t>(real_t(-0.5));
+    auto plane2 = curves_create_horizontal_plane<index_t, real_t>(real_t(0));
+    auto plane3 = curves_create_horizontal_plane<index_t, real_t>(real_t(0.5));
 
     // Concatenate planes into single mesh
     auto planes = tf::test::maybe_as_dynamic<dyn2>(tf::concatenated(
@@ -224,7 +238,12 @@ TEMPLATE_TEST_CASE("intersection_curves_sphere_vs_multiple_planes", "[intersecti
         plane2.polygons(),
         plane3.polygons()));
 
-    auto curves = tf::make_intersection_curves(sphere.polygons(), planes.polygons());
+    auto op0 = tf::test::make_tagged_operand(std::move(sphere));
+    auto op1 = tf::test::make_tagged_operand(std::move(planes));
+    auto curves =
+        tf::test::arrangement_curves_of(tf::test::build_pair_arrangement(
+            op0.form(), op1.form(),
+            tf::intersect_config{tf::intersect_mode::primitives}));
 
     // 3 intersection curves (one per plane)
     REQUIRE(curves.paths().size() == 3);
@@ -296,7 +315,12 @@ TEMPLATE_TEST_CASE("intersection_curves_non_intersecting", "[intersection_curves
     auto box1 = tf::test::maybe_as_dynamic<dyn1>(std::move(box1_fixed));
     auto box2 = tf::test::maybe_as_dynamic<dyn2>(std::move(box2_fixed));
 
-    auto curves = tf::make_intersection_curves(box1.polygons(), box2.polygons());
+    auto op0 = tf::test::make_tagged_operand(std::move(box1));
+    auto op1 = tf::test::make_tagged_operand(std::move(box2));
+    auto curves =
+        tf::test::arrangement_curves_of(tf::test::build_pair_arrangement(
+            op0.form(), op1.form(),
+            tf::intersect_config{tf::intersect_mode::primitives}));
 
     // 0 intersection curves
     REQUIRE(curves.paths().size() == 0);
@@ -334,7 +358,12 @@ TEMPLATE_TEST_CASE("intersection_curves_overlapping_boxes", "[intersection_curve
     auto box1 = tf::test::maybe_as_dynamic<dyn1>(std::move(box1_fixed));
     auto box2 = tf::test::maybe_as_dynamic<dyn2>(std::move(box2_fixed));
 
-    auto curves = tf::make_intersection_curves(box1.polygons(), box2.polygons());
+    auto op0 = tf::test::make_tagged_operand(std::move(box1));
+    auto op1 = tf::test::make_tagged_operand(std::move(box2));
+    auto curves =
+        tf::test::arrangement_curves_of(tf::test::build_pair_arrangement(
+            op0.form(), op1.form(),
+            tf::intersect_config{tf::intersect_mode::primitives}));
 
     // Multiple intersection curves exist
     REQUIRE(curves.paths().size() > 0);
