@@ -11,8 +11,8 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include <trueform/cut/boolean_op.hpp>
-#include <trueform/cut/return_curves.hpp>
+#include <trueform/csg/boolean_op.hpp>
+#include <trueform/arrangement/return_curves.hpp>
 #include <trueform/vtk/core/polydata.hpp>
 #include <utility>
 #include <vtkMatrix4x4.h>

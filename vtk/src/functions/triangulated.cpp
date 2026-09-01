@@ -10,10 +10,14 @@
 *
 * Author: Žiga Sajovic
 */
-#include <trueform/geometry/triangulated_faces.hpp>
+#include <trueform/arrangement/mesh/materialize_mesh_triangulation.hpp>
+#include <trueform/arrangement/mesh/mesh_triangulation.hpp>
+#include <trueform/geometry/triangulation/make_triangulation_faces.hpp>
 #include <trueform/vtk/core/make_vtk_cells.hpp>
+#include <trueform/vtk/core/make_vtk_points.hpp>
 #include <trueform/vtk/core/polydata.hpp>
 #include <trueform/vtk/functions/triangulated.hpp>
+#include <utility>
 #include <vtkPointData.h>
 #include <vtkPoints.h>
 
@@ -25,16 +29,30 @@ auto triangulated(polydata *input, bool preserve_point_data)
     return nullptr;
   }
 
-  auto triangle_faces = tf::triangulated_faces(input->polygons());
+  const auto polygons = input->polygons();
+  const auto triangulation = tf::arrangement::make_mesh_triangulation(polygons);
 
   auto out = vtkSmartPointer<polydata>::New();
   out->Initialize();
 
-  // Points are unchanged - share them
-  out->SetPoints(input->GetPoints());
+  // THE POINTS ARE THE INPUT'S UNTIL A FACE IS RESOLVED. A face whose loop
+  // crosses itself is resolved rather than dropped, and it mints the identity
+  // its crossing stands on — a corner past the input's own extent names no
+  // point of the input's array, so a build that minted one owns the product's
+  // whole table and the input's point data no longer aligns with it. A build
+  // that minted none names the input's own ids: there the points are shared
+  // and their data carried across.
+  if (triangulation.created_points().size() != 0) {
+    auto mesh =
+        tf::arrangement::materialize_mesh_triangulation(triangulation, polygons);
+    out->SetPoints(make_vtk_points(std::move(mesh.points_buffer())));
+    out->SetPolys(make_vtk_cells(std::move(mesh.faces_buffer())));
+    return out;
+  }
 
-  // Set triangulated polys
-  out->SetPolys(make_vtk_cells(std::move(triangle_faces)));
+  out->SetPoints(input->GetPoints());
+  out->SetPolys(
+      make_vtk_cells(tf::geometry::make_triangulation_faces(triangulation)));
 
   if (preserve_point_data && input->GetPointData() &&
       input->GetPointData()->GetNumberOfArrays() > 0) {

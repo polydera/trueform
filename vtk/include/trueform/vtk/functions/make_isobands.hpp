@@ -11,7 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include <trueform/cut/return_curves.hpp>
+#include <trueform/arrangement/return_curves.hpp>
 #include <trueform/vtk/core/polydata.hpp>
 #include <utility>
 #include <vector>

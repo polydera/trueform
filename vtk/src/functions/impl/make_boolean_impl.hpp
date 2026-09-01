@@ -11,7 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include <trueform/cut/make_boolean.hpp>
+#include <trueform/csg/make_boolean.hpp>
 #include <trueform/vtk/core/make_vtk_array.hpp>
 #include <trueform/vtk/core/make_vtk_polydata.hpp>
 #include <trueform/vtk/functions/make_boolean.hpp>

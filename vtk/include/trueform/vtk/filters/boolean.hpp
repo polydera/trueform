@@ -11,7 +11,7 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include <trueform/cut/boolean_op.hpp>
+#include <trueform/csg/boolean_op.hpp>
 #include <vtkMatrix4x4.h>
 #include <vtkPolyDataAlgorithm.h>
 

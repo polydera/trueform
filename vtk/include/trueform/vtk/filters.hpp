@@ -25,6 +25,5 @@
 #include <trueform/vtk/filters/normals_generator.hpp>
 #include <trueform/vtk/filters/obj_reader.hpp>
 #include <trueform/vtk/filters/polygon_cleaner.hpp>
-#include <trueform/vtk/filters/self_intersection_resolver.hpp>
 #include <trueform/vtk/filters/stl_reader.hpp>
 #include <trueform/vtk/filters/triangulator.hpp>

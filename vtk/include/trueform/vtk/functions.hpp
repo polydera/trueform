@@ -32,7 +32,6 @@
 #include <trueform/vtk/functions/fit_rigid_alignment.hpp>
 #include <trueform/vtk/functions/intersects.hpp>
 #include <trueform/vtk/functions/isotropic_remeshed.hpp>
-#include <trueform/vtk/functions/embedded_intersection_curves.hpp>
 #include <trueform/vtk/functions/make_boolean.hpp>
 #include <trueform/vtk/functions/mean_edge_length.hpp>
 #include <trueform/vtk/functions/make_boundary_edges.hpp>
@@ -54,7 +53,6 @@
 #include <trueform/vtk/functions/ray_hit.hpp>
 #include <trueform/vtk/functions/read_obj.hpp>
 #include <trueform/vtk/functions/read_stl.hpp>
-#include <trueform/vtk/functions/resolved_self_intersections.hpp>
 #include <trueform/vtk/functions/signed_volume.hpp>
 #include <trueform/vtk/functions/split_into_components.hpp>
 #include <trueform/vtk/functions/taubin_smoothed.hpp>

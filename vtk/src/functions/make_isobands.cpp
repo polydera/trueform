@@ -10,7 +10,7 @@
 *
 * Author: Žiga Sajovic
 */
-#include <trueform/cut/make_isobands.hpp>
+#include <trueform/iso/make_isobands.hpp>
 #include <trueform/vtk/functions/make_isobands.hpp>
 #include <trueform/vtk/core/make_polygons.hpp>
 #include <trueform/vtk/core/make_vtk_array.hpp>

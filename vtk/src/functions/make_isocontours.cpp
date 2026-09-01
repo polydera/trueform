@@ -11,7 +11,7 @@
 * Author: Žiga Sajovic
 */
 #include <trueform/vtk/functions/make_isocontours.hpp>
-#include <trueform/intersect/make_isocurves.hpp>
+#include <trueform/iso/make_isocontours.hpp>
 #include <trueform/vtk/core/make_polygons.hpp>
 #include <trueform/vtk/core/make_vtk_polydata.hpp>
 #include <vtkFloatArray.h>

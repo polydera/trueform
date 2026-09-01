@@ -21,7 +21,6 @@ set(TRUEFORM_VTK_SOURCES
   src/filters/normals_generator.cpp
   src/filters/obj_reader.cpp
   src/filters/polygon_cleaner.cpp
-  src/filters/self_intersection_resolver.cpp
   src/filters/stl_reader.cpp
   src/filters/triangulator.cpp
   src/core/make_byte_blocks.cpp
@@ -62,10 +61,6 @@ set(TRUEFORM_VTK_SOURCES
   src/functions/fit_knn_alignment.cpp
   src/functions/fit_obb_alignment.cpp
   src/functions/fit_rigid_alignment.cpp
-  src/functions/embedded_intersection_curves_pp.cpp
-  src/functions/embedded_intersection_curves_mp.cpp
-  src/functions/embedded_intersection_curves_pm.cpp
-  src/functions/embedded_intersection_curves_mm.cpp
   src/functions/make_boolean_pp.cpp
   src/functions/make_boolean_mp.cpp
   src/functions/make_boolean_pm.cpp
@@ -93,7 +88,6 @@ set(TRUEFORM_VTK_SOURCES
   src/functions/ray_hit.cpp
   src/functions/read_obj.cpp
   src/functions/read_stl.cpp
-  src/functions/resolved_self_intersections.cpp
   src/functions/signed_volume.cpp
   src/functions/split_into_components.cpp
   src/functions/taubin_smoothed.cpp
