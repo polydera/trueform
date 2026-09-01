@@ -28,37 +28,45 @@ template <typename Index, typename Int> struct loop_node {
   Index target_id;
   tf::topo_type label;
   Index point_id;
-  Index flat_id;
   typename tf::exact::meta<Int>::T2 t;
 };
 
-/// Extract a boundary loop for one face from its intersection records.
+/// Extract a boundary loop for one face from what the fan told it.
 ///
 /// Walks the face edges in order, inserts intersection points in parametric
 /// position along each edge, and emits the loop as a sequence of vertices.
 ///
-/// @param subrange   Intersection records for this face
+/// The face's claims arrive on both of the fan's currencies — a pair
+/// record names the point at this face as well as the pair it stands on,
+/// a delivery names only the point — so the loop reads BOTH and keeps one
+/// representative per distinct (target, point), which is the same
+/// contract either currency alone was read under.
+///
+/// @param records    Pair records for this face
+/// @param deliveries Point deliveries for this face
 /// @param face       Range of vertex indices for this face
 /// @param tag        Mesh tag for this face
 /// @param get_point  (tag, id) -> point<Int, 3>; tag == -1 for intersection
-/// @param get_flat_id (record) -> flat index in intersections buffer
 /// @param work       Reusable scratch buffer
 /// @param buffer     Output vertex buffer (appended to)
-template <typename Index, typename Int, typename Subrange, typename Face,
-          typename GetPoint, typename GetFlatId>
-auto extract_loop(const Subrange &subrange, const Face &face, Index tag,
-                  const GetPoint &get_point, const GetFlatId &get_flat_id,
+template <typename Index, typename Int, typename Records, typename Deliveries,
+          typename Face, typename GetPoint>
+auto extract_loop(const Records &records, const Deliveries &deliveries,
+                  const Face &face, Index tag, const GetPoint &get_point,
                   tf::buffer<loop_node<Index, Int>> &work,
                   tf::buffer<vertex<Index>> &buffer) -> void {
   using T1 = typename tf::exact::meta<Int>::T1;
   using T2 = typename tf::exact::meta<Int>::T2;
   work.clear();
-  for (const auto &rec : subrange) {
+  const auto claim = [&](const auto &rec) {
     if (rec.target.label == tf::topo_type::face)
-      continue;
-    work.push_back(
-        {rec.target.id, rec.target.label, rec.id, get_flat_id(rec), T2(0)});
-  }
+      return;
+    work.push_back({rec.target.id, rec.target.label, rec.id, T2(0)});
+  };
+  for (const auto &rec : records)
+    claim(rec);
+  for (const auto &rec : deliveries)
+    claim(rec);
 
   std::sort(work.begin(), work.end(), [](const auto &a, const auto &b) {
     return std::make_tuple(a.target_id, a.label, a.point_id) <

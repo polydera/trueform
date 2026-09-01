@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <utility>
 
@@ -64,12 +65,12 @@ auto base_loop_edge_ordinal(const Loop &loop, Index a, Index b)
 /// per step. `stamp(prev, cur, prev_pos)` returns the emitted edge's
 /// `{ordinal, sub_ordinal}`. Returns true once `end_id` is reached.
 ///
-/// Either endpoint may be missing from the loop: clean_loop snips
-/// antenna spikes without rewriting the records that reference the
-/// snipped point. A failed walk must leave no trace — the emitted
-/// sub-edges would carry ORIGINAL vertex ids, which downstream stages
-/// dereference as intersection-point ids — so the buffer rolls back and
-/// the caller degrades the contact to a direct chord.
+/// Either endpoint may be missing from the loop: a record names a point
+/// the loop does not have to carry. A failed walk must leave no trace —
+/// the emitted sub-edges would carry ORIGINAL vertex ids, which
+/// downstream stages dereference as intersection-point ids — so the
+/// buffer rolls back and the caller degrades the contact to a direct
+/// chord.
 template <typename Index, typename Loop, typename Stamp>
 auto emit_boundary_sub_edges(const Loop &loop, Index start_id, Index end_id,
                              short tag, short tag_other, Index object,
@@ -188,88 +189,21 @@ auto try_expand_boundary(const Loop &loop, const Target &t0, const Target &t1,
                                         object, object_other, buf, stamp);
 }
 
-/// Find loop index for a (tag, object) pair via binary search on subranges.
-template <typename Index, typename AllSubranges>
-auto find_loop_index(const AllSubranges &subranges, Index tag, Index object)
+/// Find loop index for a (tag, object) pair via binary search on the face
+/// carrier's descriptors, which the deliveries left ordered by that key.
+template <typename Index, typename Descriptors>
+auto find_loop_index(const Descriptors &descriptors, Index tag, Index object)
     -> std::size_t {
   auto key = std::make_pair(tag, object);
   auto it = std::lower_bound(
-      subranges.begin(), subranges.end(), key,
-      [](const auto &sr, const auto &k) {
-        return std::make_pair(Index(sr[0].tag), Index(sr[0].object)) < k;
+      descriptors.begin(), descriptors.end(), key,
+      [](const auto &d, const auto &k) {
+        return std::make_pair(Index(d.tag), Index(d.object)) < k;
       });
-  if (it == subranges.end())
+  if (it == descriptors.end())
     return std::size_t(-1);
-  auto &&sr = *it;
-  if (std::make_pair(Index(sr[0].tag), Index(sr[0].object)) != key)
+  if (std::make_pair(Index(it->tag), Index(it->object)) != key)
     return std::size_t(-1);
-  return static_cast<std::size_t>(it - subranges.begin());
-}
-
-/// Emit an edge unless it lies on our own boundary.
-/// If it lies on the other face's boundary, expand to catch intermediates.
-template <typename Index, typename Record, typename AllLoops,
-          typename AllSubranges, typename ApplyToFace>
-auto emit_edge(const Record &r0, const Record &r1, Index face_size,
-               std::size_t this_loop_idx, const AllLoops &all_loops,
-               const AllSubranges &all_subranges,
-               const ApplyToFace &apply_to_face, tf::buffer<edge<Index>> &buf)
-    -> void {
-  auto tag = short(r0.tag);
-  auto tag_other = short(r0.tag_other);
-
-  // Zero-length: same vertex ID after geometric identification
-  if (r0.id == r1.id)
-    return;
-
-  // Stamps the sub-edge's ordinal from its position in OUR base loop, so
-  // any piece lying on our boundary folds in instead of becoming a chord.
-  auto our_loop_stamp = [&](Index a, Index b,
-                            std::size_t) -> std::array<std::int16_t, 2> {
-    return base_loop_edge_ordinal<Index>(all_loops[this_loop_idx], a, b);
-  };
-
-  // Edge on OUR own boundary → walk our loop, ordinal = walk position.
-  // A failed walk (endpoint snipped from the loop by clean_loop) falls
-  // through to the direct chord below.
-  if (on_same_boundary_edge(r0.target, r1.target, face_size)) {
-    bool expanded = try_expand_boundary<Index>(
-        all_loops[this_loop_idx], r0.target, r1.target, face_size, r0.id, r1.id,
-        tag, tag_other, r0.object, r0.object_other, buf,
-        [](Index, Index, std::size_t p) -> std::array<std::int16_t, 2> {
-          return {static_cast<std::int16_t>(p), std::int16_t(0)};
-        });
-    if (expanded)
-      return;
-  }
-
-  // Edge on the OTHER face's boundary → walk the other's loop for its
-  // subdivision, but stamp each sub-edge against OUR loop: pieces that
-  // also lie on our boundary get a real ordinal, the rest stay interior.
-  if (r0.target_other.label != tf::topo_type::face &&
-      r1.target_other.label != tf::topo_type::face) {
-    bool expanded = false;
-    apply_to_face(r0.tag_other, r0.object_other, [&](const auto &other_face) {
-      Index other_size = other_face.size();
-      if (on_same_boundary_edge(r0.target_other, r1.target_other, other_size)) {
-        auto idx = find_loop_index<Index>(all_subranges, r0.tag_other,
-                                          r0.object_other);
-        if (idx != std::size_t(-1)) {
-          expanded = try_expand_boundary<Index>(
-              all_loops[idx], r0.target_other, r1.target_other, other_size,
-              r0.id, r1.id, tag, tag_other, r0.object, r0.object_other, buf,
-              our_loop_stamp);
-        }
-      }
-    });
-    if (expanded)
-      return;
-  }
-
-  // Interior cut — but still fold it if it happens to be a base-loop edge.
-  auto ord = base_loop_edge_ordinal<Index>(all_loops[this_loop_idx], r0.id,
-                                           r1.id);
-  buf.push_back({tag, tag_other, r0.object, r0.object_other, r0.id, r1.id,
-                 static_cast<Index>(buf.size()), ord[0], ord[1]});
+  return static_cast<std::size_t>(it - descriptors.begin());
 }
 } // namespace tf::intersect::graph

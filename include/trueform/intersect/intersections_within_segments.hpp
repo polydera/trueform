@@ -13,21 +13,19 @@
 #pragma once
 #include "../core/algorithm/compute_offsets.hpp"
 #include "../core/algorithm/generic_generate.hpp"
-#include "../core/inflated_aabb.hpp"
 #include "../core/intersects.hpp"
 #include "../core/local_buffer.hpp"
+#include "../core/none.hpp"
 #include "../core/views/offset_block_range.hpp"
 #include "../exact/projection_axes.hpp"
+#include "../exact/resolve_int_type.hpp"
 #include "../exact/segment_intersect.hpp"
 #include "../exact_coordinate_converter.hpp"
 #include "../spatial/search_self.hpp"
 #include "../topology/policy/edge_membership.hpp"
-#include "./exact/dedup_segment_vertex_points.hpp"
-#include "./exact/duplicate_intersection.hpp"
-#include "./exact/intersection.hpp"
-#include "./exact/make_kernel.hpp"
-#include "./exact/predicate_kernel.hpp"
-#include "./intersect_config.hpp"
+#include "./records/duplicate_intersection.hpp"
+#include "./records/intersection.hpp"
+#include "./segments/dedup_segment_vertex_points.hpp"
 #include "tbb/parallel_sort.h"
 
 namespace tf {
@@ -35,13 +33,15 @@ namespace tf {
 /// @ingroup intersect_data
 /// @brief Exact segment intersection data.
 ///
-/// Computes all intersection points between segments using exact
-/// int32 predicates. Supports 2D and 3D segments. For 3D, projection
-/// axes are computed per pair via the dominant normal plane.
-/// Points are stored as int32 internally and deconverted to float
-/// for output.
+/// Computes all intersection points between segments using exact integer
+/// predicates. Supports 2D and 3D segments. For 3D, projection axes are
+/// computed per pair via the dominant normal plane. Points are stored on the
+/// `Int` lattice internally and deconverted to `RealType` for output.
+///
+/// `Int` defaults per `RealType` via @ref tf::exact::resolve_int_type (int32
+/// for float, int64 for double, identity for an integral `RealType`).
 template <typename Index, typename RealType, std::size_t Dims,
-          typename Int = tf::exact::int32>
+          typename Int = tf::exact::resolve_int_type<tf::none_t, RealType>>
 class intersections_within_segments {
   static_assert(Dims == 2 || Dims == 3, "Only 2D and 3D segments supported");
 
@@ -65,9 +65,7 @@ public:
     _intersections.clear();
   }
 
-  template <typename Policy>
-  auto build(const tf::segments<Policy> &segments,
-             tf::intersect_config config = {}) {
+  template <typename Policy> auto build(const tf::segments<Policy> &segments) {
     static_assert(tf::has_tree_policy<Policy>, "Use: segments | tf::tag(tree)");
     static_assert(tf::has_edge_membership_policy<Policy>,
                   "Use: segments | tf::tag(edge_membership)");
@@ -76,8 +74,7 @@ public:
     clear();
     _converter = tf::make_exact_coordinate_converter<Int, RealType>(segments);
 
-    auto [raw_intersections, raw_points] = generate_intersections(
-        segments, tf::exact::make_kernel(_converter, config.tolerance));
+    auto [raw_intersections, raw_points] = generate_intersections(segments);
 
     if (raw_points.size() == 0) {
       finalize(Index(0));
@@ -123,37 +120,32 @@ private:
   }
 
   template <typename Policy>
-  auto generate_intersections(const tf::segments<Policy> &segments,
-                              const tf::exact::predicate_kernel<Int> &kernel) {
+  auto generate_intersections(const tf::segments<Policy> &segments) {
     if (segments.size() < 1000)
-      return generate_intersections_impl(segments, 0, kernel);
+      return generate_intersections_impl(segments, 0);
     else
-      return generate_intersections_impl(segments, 6, kernel);
+      return generate_intersections_impl(segments, 6);
   }
 
   template <typename Policy>
-  auto generate_intersections_impl(
-      const tf::segments<Policy> &segments, int parallelism_depth,
-      const tf::exact::predicate_kernel<Int> &kernel) {
+  auto generate_intersections_impl(const tf::segments<Policy> &segments,
+                                   int parallelism_depth) {
     tf::local_buffer<tf::intersect::intersection<Index>> l_intersections;
     tf::local_buffer<tf::point<Int, Dims>> l_points;
     l_intersections.reserve_all(1000);
     l_points.reserve_all(1000);
 
     auto &conv = _converter;
-    auto pad = kernel.tolerance_int();
 
     tf::search_self(
         segments,
         [&](const auto &bv0, const auto &bv1) {
-          return tf::intersects(
-              tf::make_aabb(conv(bv0.min), conv(bv0.max)),
-              tf::inflated_aabb(
-                  tf::make_aabb(conv(bv1.min), conv(bv1.max)), pad));
+          return tf::intersects(tf::make_aabb(conv(bv0.min), conv(bv0.max)),
+                                tf::make_aabb(conv(bv1.min), conv(bv1.max)));
         },
         [&](const auto &seg0, const auto &seg1) {
           intersect_pair(seg0, seg1, segments.edge_membership(),
-                         *l_intersections, *l_points, kernel);
+                         *l_intersections, *l_points);
         },
         parallelism_depth);
 
@@ -213,8 +205,7 @@ private:
   template <typename Seg0, typename Seg1, typename EM>
   auto intersect_pair(const Seg0 &seg0, const Seg1 &seg1, const EM &em,
                       tf::buffer<tf::intersect::intersection<Index>> &ints,
-                      tf::buffer<tf::point<Int, Dims>> &pts,
-                      const tf::exact::predicate_kernel<Int> &kernel) const {
+                      tf::buffer<tf::point<Int, Dims>> &pts) const {
     auto id0 = Index(seg0.id());
     auto id1 = Index(seg1.id());
 
@@ -230,8 +221,7 @@ private:
 
     auto [ax0, ax1] = get_axes(a0, a1, b0, b1);
 
-    auto result =
-        tf::exact::classify_segments(a0, a1, b0, b1, ax0, ax1, kernel);
+    auto result = tf::exact::classify_segments(a0, a1, b0, b1, ax0, ax1);
     if (!result)
       return;
 

@@ -17,7 +17,6 @@
 
 namespace tf::intersect {
 
-namespace detail {
 template <typename Index, typename Policy, typename Edges>
 auto duplicate_intersection1(
     tf::intersect::intersection<Index> i,
@@ -41,7 +40,6 @@ auto duplicate_intersection1(
     }
   }
 }
-} // namespace detail
 
 template <typename Index, typename Policy, typename Edges>
 auto duplicate_intersection(
@@ -49,14 +47,14 @@ auto duplicate_intersection(
     const tf::edge_membership_like<Policy> &em, const Edges &edges,
     tf::buffer<tf::intersect::intersection<Index>> &buffer) {
   if (i.target.label == tf::topo_type::edge) {
-    detail::duplicate_intersection1(i, em, edges, buffer);
+    duplicate_intersection1(i, em, edges, buffer);
   } else if (i.target.label == tf::topo_type::vertex) {
     auto vid = Index(edges[i.object][i.target.id]);
     for (auto edge_id0 : em[vid]) {
       i.object = edge_id0;
       i.target.id =
           Index(Index(edges[edge_id0][0]) == vid ? Index(0) : Index(1));
-      detail::duplicate_intersection1(i, em, edges, buffer);
+      duplicate_intersection1(i, em, edges, buffer);
     }
   }
 }

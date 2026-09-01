@@ -26,7 +26,12 @@ template <typename Index> struct edge {
   Index id; // canonical group ID
   std::int16_t ordinal;     // base-loop position of start vertex; -1 if interior
   std::int16_t sub_ordinal; // parametric order along parent base-loop segment; -1 if interior
-  bool from_coplanar = false; // emitted from a coplanar polygon-of-contact
+  // Endpoint identity is the pair (point_tag, point): -1 = intersection
+  // point, otherwise an original vertex of that form. Record-derived
+  // edges are all-created; only tolerated base-loop chords carry
+  // originals.
+  std::int16_t point_tag_0 = -1;
+  std::int16_t point_tag_1 = -1;
 };
 
 } // namespace tf::intersect::graph

@@ -20,7 +20,7 @@
 #include "../../core/buffer.hpp"
 #include "../../core/point.hpp"
 #include "../../core/views/indirect_range.hpp"
-#include "./intersection.hpp"
+#include "../records/intersection.hpp"
 #include "tbb/parallel_sort.h"
 #include <algorithm>
 

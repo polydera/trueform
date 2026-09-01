@@ -12,20 +12,21 @@
 #include <trueform/core/range.hpp>
 #include <trueform/intersect/graph/edges.hpp>
 
-using Index = int;
-using vertex_t = tf::intersect::graph::vertex<Index>;
+using boundary_walk_index_t = int;
+using vertex_t = tf::intersect::graph::vertex<boundary_walk_index_t>;
 namespace ig = tf::intersect::graph;
 
 namespace {
 
-auto orig(Index id) -> vertex_t {
+auto orig(boundary_walk_index_t id) -> vertex_t {
   return {ig::vertex_source::original, id, {0, tf::topo_type::vertex}};
 }
-auto created(Index id) -> vertex_t {
+auto created(boundary_walk_index_t id) -> vertex_t {
   return {ig::vertex_source::created, id, {0, tf::topo_type::edge}};
 }
 
-auto stamp = [](Index, Index, std::size_t) -> std::array<std::int16_t, 2> {
+auto stamp = [](boundary_walk_index_t, boundary_walk_index_t,
+                std::size_t) -> std::array<std::int16_t, 2> {
   return {std::int16_t(-1), std::int16_t(-1)};
 };
 
@@ -36,9 +37,9 @@ TEST_CASE("emit_boundary_sub_edges: created chain on one edge walks",
   tf::buffer<vertex_t> loop;
   for (auto v : {orig(0), created(10), created(11), created(12), orig(1)})
     loop.push_back(v);
-  tf::buffer<ig::edge<Index>> buf;
-  bool ok = ig::emit_boundary_sub_edges<Index>(tf::make_range(loop), 10, 12, 0,
-                                               0, 0, 1, buf, stamp);
+  tf::buffer<ig::edge<boundary_walk_index_t>> buf;
+  bool ok = ig::emit_boundary_sub_edges<boundary_walk_index_t>(
+      tf::make_range(loop), 10, 12, 0, 0, 0, 1, buf, stamp);
   REQUIRE(ok);
   REQUIRE(buf.size() == 2);
   REQUIRE(buf[0].point_0 == 10);
@@ -57,9 +58,9 @@ TEST_CASE("emit_boundary_sub_edges: far pinch occurrence must not walk "
   for (auto v :
        {orig(0), created(10), created(11), orig(1), created(20), orig(2)})
     loop.push_back(v);
-  tf::buffer<ig::edge<Index>> buf;
-  bool ok = ig::emit_boundary_sub_edges<Index>(tf::make_range(loop), 10, 20, 0,
-                                               0, 0, 1, buf, stamp);
+  tf::buffer<ig::edge<boundary_walk_index_t>> buf;
+  bool ok = ig::emit_boundary_sub_edges<boundary_walk_index_t>(
+      tf::make_range(loop), 10, 20, 0, 0, 0, 1, buf, stamp);
   REQUIRE_FALSE(ok);
   REQUIRE(buf.size() == 0);
 }
@@ -69,9 +70,9 @@ TEST_CASE("emit_boundary_sub_edges: absent endpoint rolls back",
   tf::buffer<vertex_t> loop;
   for (auto v : {orig(0), created(10), created(11), orig(1)})
     loop.push_back(v);
-  tf::buffer<ig::edge<Index>> buf;
-  bool ok = ig::emit_boundary_sub_edges<Index>(tf::make_range(loop), 10, 99, 0,
-                                               0, 0, 1, buf, stamp);
+  tf::buffer<ig::edge<boundary_walk_index_t>> buf;
+  bool ok = ig::emit_boundary_sub_edges<boundary_walk_index_t>(
+      tf::make_range(loop), 10, 99, 0, 0, 0, 1, buf, stamp);
   REQUIRE_FALSE(ok);
   REQUIRE(buf.size() == 0);
 }
