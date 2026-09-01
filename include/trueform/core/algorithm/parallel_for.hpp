@@ -38,8 +38,8 @@ auto parallel_for(Range &&r, Func &&f) -> void {
 }
 
 template <typename Range, typename Func>
-auto parallel_for(Range &&r, Func &&f, tf::checked_t) -> void {
-  if (r.size() < 1000)
+auto parallel_for(Range &&r, Func &&f, tf::checked_t c) -> void {
+  if (std::size_t(r.size()) < c.serial_below)
     f(r.begin(), r.end());
   else
     parallel_for(r.begin(), r.end(), static_cast<Func &&>(f));

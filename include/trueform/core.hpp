@@ -131,6 +131,7 @@
 #include "./core/obbrss_from.hpp"                 // IWYU pragma: export
 #include "./core/offset_block_buffer.hpp"         // IWYU pragma: export
 #include "./core/offset_block_vector.hpp"         // IWYU pragma: export
+#include "./core/orthogonalize.hpp"               // IWYU pragma: export
 #include "./core/parallelogram_area.hpp"          // IWYU pragma: export
 #include "./core/paths.hpp"                       // IWYU pragma: export
 #include "./core/plane.hpp"                       // IWYU pragma: export
@@ -155,6 +156,8 @@
 #include "./core/ray_hit_info.hpp"                // IWYU pragma: export
 #include "./core/ray_like.hpp"                    // IWYU pragma: export
 #include "./core/reallocate.hpp"                  // IWYU pragma: export
+#include "./core/resolved_output_real.hpp"        // IWYU pragma: export
+#include "./core/return_refused.hpp"              // IWYU pragma: export
 #include "./core/rss.hpp"                         // IWYU pragma: export
 #include "./core/rss_from.hpp"                    // IWYU pragma: export
 #include "./core/segment.hpp"                     // IWYU pragma: export
@@ -167,7 +170,7 @@
 #include "./core/sphere_like.hpp"                 // IWYU pragma: export
 #include "./core/sqrt.hpp"                        // IWYU pragma: export
 #include "./core/static_size.hpp"                 // IWYU pragma: export
-#include "./core/stitch_index_maps.hpp"           // IWYU pragma: export
+#include "./core/stitch_index_map.hpp"            // IWYU pragma: export
 #include "./core/svd_of_symmetric.hpp"            // IWYU pragma: export
 #include "./core/tagged_sidedness.hpp"            // IWYU pragma: export
 #include "./core/tick_tock.hpp"                   // IWYU pragma: export

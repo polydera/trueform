@@ -15,14 +15,14 @@
 #include <thread>
 
 namespace tf {
-namespace detail {
+namespace random_engine {
 template <typename Distribution>
 auto distribution_sample(Distribution &distribution) {
   static thread_local std::mt19937 generator = std::mt19937(
       clock() + std::hash<std::thread::id>()(std::this_thread::get_id()));
   return distribution(generator);
 }
-} // namespace detail
+} // namespace random_engine
 
 /// @ingroup random
 /// @brief Generate a random value in a specified range.
@@ -39,10 +39,10 @@ auto distribution_sample(Distribution &distribution) {
 template <typename T> auto random(T from, T to) -> T {
   if constexpr (std::is_floating_point_v<T>) {
     std::uniform_real_distribution<T> distribution(from, to);
-    return detail::distribution_sample(distribution);
+    return random_engine::distribution_sample(distribution);
   } else {
     std::uniform_int_distribution<T> distribution(from, to);
-    return detail::distribution_sample(distribution);
+    return random_engine::distribution_sample(distribution);
   }
 }
 

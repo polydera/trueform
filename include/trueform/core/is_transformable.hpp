@@ -16,24 +16,20 @@
 
 namespace tf::core {
 
-namespace detail {
 template <typename, typename, typename = std::void_t<>>
-struct is_transformable : std::false_type {};
+struct has_transformed : std::false_type {};
 
 template <typename T, typename U>
-struct is_transformable<
+struct has_transformed<
     T, U,
     std::void_t<decltype(transformed(std::declval<T>(), std::declval<U>()))>>
     : std::true_type {};
 
 template <typename... Ts, typename U>
-struct is_transformable<tf::tuple<Ts...>, U>
-    : std::integral_constant<bool,
-                             (... || detail::is_transformable<Ts, U>::value)> {
-};
-} // namespace detail
+struct has_transformed<tf::tuple<Ts...>, U>
+    : std::integral_constant<bool, (... || has_transformed<Ts, U>::value)> {};
 
 template <typename T, typename U>
 inline constexpr bool is_transformable =
-    detail::is_transformable<std::decay_t<T>, U>::value;
+    has_transformed<std::decay_t<T>, U>::value;
 } // namespace tf::core

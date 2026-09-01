@@ -17,14 +17,14 @@
 namespace tf {
 
 /// @cond INTERNAL
-namespace detail {
+namespace core {
 template <typename F, typename Tuple, std::size_t... Is>
 auto apply(F &&f, std::index_sequence<Is...>, Tuple &&tuple) -> decltype(auto) {
   using std::get;
   return f(get<Is>(tuple)...);
 }
 
-} // namespace detail
+} // namespace core
 /// @endcond
 
 /// @ingroup core_algorithms
@@ -40,8 +40,8 @@ auto apply(F &&f, std::index_sequence<Is...>, Tuple &&tuple) -> decltype(auto) {
 template <typename F, typename Tuple>
 auto apply(F &&f, Tuple &&tuple) -> decltype(auto) {
   constexpr std::size_t N = std::tuple_size_v<std::decay_t<Tuple>>;
-  return detail::apply(static_cast<F &&>(f), std::make_index_sequence<N>{},
-                       static_cast<Tuple &&>(tuple));
+  return core::apply(static_cast<F &&>(f), std::make_index_sequence<N>{},
+                     static_cast<Tuple &&>(tuple));
 }
 
 /// @ingroup core_algorithms

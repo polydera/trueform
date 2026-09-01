@@ -11,9 +11,17 @@
 * Author: Žiga Sajovic
 */
 #pragma once
+#include "../cache_aligned_slot.hpp"
+#include "../checked.hpp"
+#include "../memory.hpp"
 #include "../range.hpp"
-#include "tbb/flow_graph.h"
+#include "./block_reduce_graph.hpp"
+#include <algorithm>
+#include <cstddef>
+#include <optional>
 #include <thread>
+#include <type_traits>
+#include <utility>
 namespace tf {
 
 /// @ingroup core_algorithms
@@ -56,43 +64,14 @@ auto blocked_reduce(const Range &data, Result &&result,
   step = std::max(decltype(step)(1), step);
   auto n_tasks = (data.size() + step - 1) / step;
 
-  /*
-   * We construct a dependecy graph
-   *
-   * work_0    work_1 ...    work_n
-   *   |         |             |
-   *   V         V             V
-   * aggr_0 -> aggr_1 ... -> aggr_n
-   */
-  using msg_t = tbb::flow::continue_msg;
-  using work_node_t = tbb::flow::function_node<int, LocalResult>;
-  using aggregation_node_t = tbb::flow::function_node<LocalResult, msg_t>;
-  tbb::flow::graph g{};
-
-  aggregation_node_t aggregate_node{
-      g, tbb::flow::serial,
-      [&result, &aggregate](const LocalResult &local_result) {
-        auto aggregate_f = aggregate;
-        aggregate_f(local_result, result);
-      }};
-  work_node_t work_node{
-      g, tbb::flow::unlimited, [&data, &local_result, step, task](int i) {
-        auto r = tf::make_range(
-            data.begin() + i * step,
-            data.begin() +
-                std::min(decltype(data.size())((i + 1) * step), data.size()));
-        // we copy here because a copy in the lambda member
-        // would be const
-        auto local_resultt = local_result;
-        task(r, local_resultt);
-        return local_resultt;
-      }};
-
-  tbb::flow::make_edge(work_node, aggregate_node);
-
-  for (decltype(n_tasks) i = 0; i < n_tasks; ++i)
-    work_node.try_put(int(i));
-  g.wait_for_all();
+  core::std_vector<core::cache_aligned_slot<std::optional<LocalResult>>> locals(
+      static_cast<std::size_t>(n_tasks));
+  core::reduce_call_site<Range, std::remove_reference_t<Result>, LocalResult,
+                         F0, F1>
+      call_site{&data, std::size_t(step), &local_result, locals.data(),
+                &task, &aggregate,        &result};
+  core::run_reduce_graph(&call_site, call_site.bodies(),
+                         static_cast<std::size_t>(n_tasks));
 }
 
 /// @ingroup core_algorithms
@@ -107,5 +86,36 @@ auto blocked_reduce(const Range &data, Result &&result, F0 task, F1 aggregate,
   auto local_result = result;
   return blocked_reduce(data, static_cast<Result &&>(result), local_result,
                         std::move(task), std::move(aggregate), n_blocks);
+}
+
+/// @ingroup core_algorithms
+/// @brief Checked blocked reduction: one block below the parallel entry cost.
+///
+/// The serial path is the single-block path — the task sees the whole range
+/// and the aggregate runs once — so no dependency graph is built and nothing
+/// a caller may rely on changes.
+template <typename Range, typename Result, typename LocalResult, typename F0,
+          typename F1>
+auto blocked_reduce(const Range &data, Result &&result,
+                    LocalResult local_result, F0 task, F1 aggregate,
+                    tf::checked_t c) {
+  if (std::size_t(data.size()) < c.serial_below)
+    return blocked_reduce(data, static_cast<Result &&>(result),
+                          std::move(local_result), std::move(task),
+                          std::move(aggregate), std::size_t(1));
+  return blocked_reduce(data, static_cast<Result &&>(result),
+                        std::move(local_result), std::move(task),
+                        std::move(aggregate));
+}
+
+/// @ingroup core_algorithms
+/// @brief Checked blocked reduction with the result as the local template.
+/// @overload
+template <typename Range, typename Result, typename F0, typename F1>
+auto blocked_reduce(const Range &data, Result &&result, F0 task, F1 aggregate,
+                    tf::checked_t c) {
+  auto local_result = result;
+  return blocked_reduce(data, static_cast<Result &&>(result), local_result,
+                        std::move(task), std::move(aggregate), c);
 }
 } // namespace tf

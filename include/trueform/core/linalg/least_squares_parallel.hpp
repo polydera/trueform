@@ -23,8 +23,6 @@
 
 namespace tf::linalg {
 
-namespace detail {
-
 /// @brief Non-pivoted Householder QR for TSQR local blocks.
 ///
 /// Computes A = Q*R in-place (R in upper triangle, Householder vectors below).
@@ -143,8 +141,6 @@ auto extract_R(const T *A, T *R, std::size_t rows, std::size_t cols,
   }
 }
 
-} // namespace detail
-
 /// @ingroup linalg
 /// @brief Workspace state for parallel TSQR least squares.
 ///
@@ -243,7 +239,7 @@ auto solve_least_squares_parallel(const T *A, const T *b, T *x, std::size_t rows
         }
 
         // Compute local QR in-place, get effective rank
-        std::size_t rank = detail::qr_factorize_inplace(
+        std::size_t rank = qr_factorize_inplace(
             local.block_A.data(), local.block_b.data(), block_rows, cols);
 
         if (rank == 0) {
@@ -254,8 +250,7 @@ auto solve_least_squares_parallel(const T *A, const T *b, T *x, std::size_t rows
         }
 
         // Extract R (upper cols×cols of factorized A)
-        detail::extract_R(local.block_A.data(), local.R.data(), block_rows,
-                          cols, rank);
+        extract_R(local.block_A.data(), local.R.data(), block_rows, cols, rank);
 
         // Extract Q^T b (first cols elements)
         for (std::size_t i = 0; i < cols; ++i) {

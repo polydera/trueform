@@ -12,12 +12,15 @@
  */
 #pragma once
 #include "../blocked_buffer.hpp"
+#include "../checked.hpp"
 #include "../offset_block_buffer.hpp"
 #include "../offset_block_vector.hpp"
 #include "../reallocate.hpp"
 #include "./block_reduce_sequenced_aggregate.hpp"
+#include <cstddef>
 namespace tf {
 namespace core {
+
 template <typename Range, typename Index, typename Buffer, typename F>
 auto generate_offset_blocks(
     const Range &input_data, tf::buffer<Index> &offsets, Buffer &data,
@@ -55,6 +58,28 @@ auto generate_offset_blocks(
   tf::blocked_reduce_sequenced_aggregate(input_data, std::tie(offsets, data),
                                          std::pair<tf::buffer<Index>, Buffer>{},
                                          task_f, aggregate_f, n_tasks);
+}
+
+/// @brief Checked offset-block generation: below the cutoff every block is
+/// filled straight into `data` and its offset closed on the spot — no
+/// block-local buffer, no size table, no merge copy.
+template <typename Range, typename Index, typename Buffer, typename F>
+auto generate_offset_blocks(const Range &input_data,
+                            tf::buffer<Index> &offsets, Buffer &data,
+                            const F &fill_block_f, tf::checked_t c) {
+  if (std::size_t(input_data.size()) >= c.serial_below)
+    return generate_offset_blocks(input_data, offsets, data, fill_block_f);
+  if (!input_data.size())
+    return;
+  offsets.allocate(input_data.size() + 1);
+  offsets[0] = 0;
+  const auto base = tf::core::size(data);
+  std::size_t current_i = 1;
+  for (const auto &element : input_data) {
+    fill_block_f(element, data);
+    offsets[current_i] = static_cast<Index>(tf::core::size(data) - base);
+    ++current_i;
+  }
 }
 } // namespace core
 
@@ -131,5 +156,73 @@ auto generate_offset_blocks(
     std::size_t n_tasks = std::thread::hardware_concurrency() * 5) {
   generate_offset_blocks(input_data, buff.offsets_buffer(), buff.data_vector(),
                          fill_block_f, n_tasks);
+}
+
+/// @ingroup core_algorithms
+/// @brief Checked offset-block generation: serial below the parallel entry
+///        cost, so a small carrier builds its offsets straight into place.
+template <typename Range, typename Index, typename T, typename F>
+auto generate_offset_blocks(const Range &input_data,
+                            tf::buffer<Index> &offsets, tf::buffer<T> &data,
+                            const F &fill_block_f, tf::checked_t c) {
+  return core::generate_offset_blocks(input_data, offsets, data, fill_block_f,
+                                      c);
+}
+
+/// @ingroup core_algorithms
+/// @brief Checked offset-block generation into several buffers.
+/// @overload
+template <typename Range, typename Index, typename... Buffers, typename F>
+auto generate_offset_blocks(const Range &input_data,
+                            tf::buffer<Index> &offsets,
+                            std::tuple<Buffers...> &data,
+                            const F &fill_block_f, tf::checked_t c) {
+  return core::generate_offset_blocks(input_data, offsets, data, fill_block_f,
+                                      c);
+}
+
+/// @ingroup core_algorithms
+/// @brief Checked offset-block generation into a blocked buffer.
+/// @overload
+template <typename Range, typename Index, typename T, std::size_t N, typename F>
+auto generate_offset_blocks(const Range &input_data,
+                            tf::buffer<Index> &offsets,
+                            tf::blocked_buffer<T, N> &data,
+                            const F &fill_block_f, tf::checked_t c) {
+  return core::generate_offset_blocks(input_data, offsets, data, fill_block_f,
+                                      c);
+}
+
+/// @ingroup core_algorithms
+/// @brief Checked offset-block generation into an offset_block_buffer.
+/// @overload
+template <typename Range, typename Index, typename T, typename F>
+auto generate_offset_blocks(const Range &input_data,
+                            tf::offset_block_buffer<Index, T> &buff,
+                            const F &fill_block_f, tf::checked_t c) {
+  generate_offset_blocks(input_data, buff.offsets_buffer(),
+                         buff.data_buffer(), fill_block_f, c);
+}
+
+/// @ingroup core_algorithms
+/// @brief Checked offset-block generation into a vector.
+/// @overload
+template <typename Range, typename Index, typename T, typename F>
+auto generate_offset_blocks(const Range &input_data,
+                            tf::buffer<Index> &offsets, std::vector<T> &data,
+                            const F &fill_block_f, tf::checked_t c) {
+  return core::generate_offset_blocks(input_data, offsets, data, fill_block_f,
+                                      c);
+}
+
+/// @ingroup core_algorithms
+/// @brief Checked offset-block generation into an offset_block_vector.
+/// @overload
+template <typename Range, typename Index, typename T, typename F>
+auto generate_offset_blocks(const Range &input_data,
+                            tf::offset_block_vector<Index, T> &buff,
+                            const F &fill_block_f, tf::checked_t c) {
+  generate_offset_blocks(input_data, buff.offsets_buffer(), buff.data_vector(),
+                         fill_block_f, c);
 }
 } // namespace tf

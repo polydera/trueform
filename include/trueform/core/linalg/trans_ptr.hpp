@@ -62,15 +62,13 @@ struct trans_ptr<Dims, const Policy> {
   const Policy *_policy;
 };
 
-namespace implementation {
 template <std::size_t Dims, typename Policy>
-auto is_trans_ptr(const tf::linalg::trans_ptr<Dims, Policy> *)
+auto is_trans_ptr_test(const tf::linalg::trans_ptr<Dims, Policy> *)
     -> std::true_type;
-auto is_trans_ptr(const void *) -> std::false_type;
-} // namespace implementation
+auto is_trans_ptr_test(const void *) -> std::false_type;
 
 template <typename T>
-inline constexpr bool is_trans_ptr = decltype(implementation::is_trans_ptr(
+inline constexpr bool is_trans_ptr = decltype(is_trans_ptr_test(
     static_cast<const std::decay_t<T> *>(nullptr)))::value;
 
 template <std::size_t Dims, typename Policy>

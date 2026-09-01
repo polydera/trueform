@@ -14,7 +14,7 @@
 #include "./static_size.hpp"
 #include <cstddef>
 namespace tf::core {
-namespace detail {
+namespace range_assignment {
 template <std::size_t Size, typename Policy>
 struct non_assignable_range : Policy {
   using Policy::Policy;
@@ -77,33 +77,37 @@ template <std::size_t Size, typename Policy> struct assignable_range : Policy {
     return *this;
   }
 };
-} // namespace detail
+} // namespace range_assignment
 template <std::size_t Size, typename Policy>
 using assignable_range =
     std::conditional_t<std::is_assignable_v<typename Policy::reference,
                                             typename Policy::reference>,
-                       detail::assignable_range<Size, Policy>,
-                       detail::non_assignable_range<Size, Policy>>;
+                       range_assignment::assignable_range<Size, Policy>,
+                       range_assignment::non_assignable_range<Size, Policy>>;
 } // namespace tf::core
 namespace tf {
 template <std::size_t Size, typename Policy>
-struct static_size<tf::core::detail::assignable_range<Size, Policy>>
+struct static_size<tf::core::range_assignment::assignable_range<Size, Policy>>
     : std::integral_constant<std::size_t, Size> {};
 template <std::size_t Size, typename Policy>
-struct static_size<tf::core::detail::non_assignable_range<Size, Policy>>
+struct static_size<
+    tf::core::range_assignment::non_assignable_range<Size, Policy>>
     : std::integral_constant<std::size_t, Size> {};
 } // namespace tf
 namespace std {
 template <std::size_t Size, typename Policy>
-struct tuple_size<tf::core::detail::assignable_range<Size, Policy>>
+struct tuple_size<tf::core::range_assignment::assignable_range<Size, Policy>>
     : tuple_size<Policy> {};
 template <std::size_t I, std::size_t Size, typename Policy>
-struct tuple_element<I, tf::core::detail::assignable_range<Size, Policy>>
+struct tuple_element<I,
+                     tf::core::range_assignment::assignable_range<Size, Policy>>
     : tuple_element<I, Policy> {};
 template <std::size_t Size, typename Policy>
-struct tuple_size<tf::core::detail::non_assignable_range<Size, Policy>>
+struct tuple_size<
+    tf::core::range_assignment::non_assignable_range<Size, Policy>>
     : tuple_size<Policy> {};
 template <std::size_t I, std::size_t Size, typename Policy>
-struct tuple_element<I, tf::core::detail::non_assignable_range<Size, Policy>>
+struct tuple_element<
+    I, tf::core::range_assignment::non_assignable_range<Size, Policy>>
     : tuple_element<I, Policy> {};
 } // namespace std

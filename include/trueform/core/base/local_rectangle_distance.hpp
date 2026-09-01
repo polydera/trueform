@@ -16,7 +16,7 @@
 #include <algorithm>
 #include <array>
 
-namespace tf::core::impl {
+namespace tf::core {
 
 template <typename T>
 auto segment_closest_params(T &t, T &u, T a, T b, T a_dot_b, T a_dot_t,
@@ -63,10 +63,6 @@ auto is_in_voronoi_region(T a, T b, T anorm_dot_b, T anorm_dot_t, T a_dot_b,
   }
   return false;
 }
-
-} // namespace tf::core::impl
-
-namespace tf::core {
 
 template <typename T>
 auto local_rectangle_distance2(const std::array<std::array<T, 3>, 3> &r_ab,
@@ -136,16 +132,15 @@ auto local_rectangle_distance2(const std::array<std::array<T, 3>, 3> &r_ab,
 
   if ((ua1_ux > b[0]) && (ub1_ux > a[0])) {
     if (((ua1_lx > b[0]) ||
-         impl::is_in_voronoi_region(
-             b[1], a[1], a1_dot_b0, a_a0_dot_b0 - b[0] - t_ba[0], a1_dot_b1,
-             a_a0_dot_b1 - t_ba[1], -t_ab[1] - b_a1_dot_b0)) &&
+         is_in_voronoi_region(b[1], a[1], a1_dot_b0,
+                              a_a0_dot_b0 - b[0] - t_ba[0], a1_dot_b1,
+                              a_a0_dot_b1 - t_ba[1], -t_ab[1] - b_a1_dot_b0)) &&
         ((ub1_lx > a[0]) ||
-         impl::is_in_voronoi_region(
-             a[1], b[1], a0_dot_b1, t_ab[0] + b_a0_dot_b0 - a[0], a1_dot_b1,
-             t_ab[1] + b_a1_dot_b0, t_ba[1] - a_a0_dot_b1))) {
-      impl::segment_closest_params(t, u, a[1], b[1], a1_dot_b1,
-                                   t_ab[1] + b_a1_dot_b0,
-                                   t_ba[1] - a_a0_dot_b1);
+         is_in_voronoi_region(a[1], b[1], a0_dot_b1,
+                              t_ab[0] + b_a0_dot_b0 - a[0], a1_dot_b1,
+                              t_ab[1] + b_a1_dot_b0, t_ba[1] - a_a0_dot_b1))) {
+      segment_closest_params(t, u, a[1], b[1], a1_dot_b1, t_ab[1] + b_a1_dot_b0,
+                             t_ba[1] - a_a0_dot_b1);
       d[0] = t_ab[0] + r_ab[0][0] * b[0] + r_ab[0][1] * u - a[0];
       d[1] = t_ab[1] + r_ab[1][0] * b[0] + r_ab[1][1] * u - t;
       d[2] = t_ab[2] + r_ab[2][0] * b[0] + r_ab[2][1] * u;
@@ -154,14 +149,14 @@ auto local_rectangle_distance2(const std::array<std::array<T, 3>, 3> &r_ab,
   }
 
   if ((ua1_lx < T(0)) && (lb1_ux > a[0])) {
-    if (((ua1_ux < T(0)) || impl::is_in_voronoi_region(
-                                b[1], a[1], -a1_dot_b0, t_ba[0] - a_a0_dot_b0,
-                                a1_dot_b1, a_a0_dot_b1 - t_ba[1], -t_ab[1])) &&
-        ((lb1_lx > a[0]) || impl::is_in_voronoi_region(
-                                a[1], b[1], a0_dot_b1, t_ab[0] - a[0],
-                                a1_dot_b1, t_ab[1], t_ba[1] - a_a0_dot_b1))) {
-      impl::segment_closest_params(t, u, a[1], b[1], a1_dot_b1, t_ab[1],
-                                   t_ba[1] - a_a0_dot_b1);
+    if (((ua1_ux < T(0)) ||
+         is_in_voronoi_region(b[1], a[1], -a1_dot_b0, t_ba[0] - a_a0_dot_b0,
+                              a1_dot_b1, a_a0_dot_b1 - t_ba[1], -t_ab[1])) &&
+        ((lb1_lx > a[0]) ||
+         is_in_voronoi_region(a[1], b[1], a0_dot_b1, t_ab[0] - a[0], a1_dot_b1,
+                              t_ab[1], t_ba[1] - a_a0_dot_b1))) {
+      segment_closest_params(t, u, a[1], b[1], a1_dot_b1, t_ab[1],
+                             t_ba[1] - a_a0_dot_b1);
       d[0] = t_ab[0] + r_ab[0][1] * u - a[0];
       d[1] = t_ab[1] + r_ab[1][1] * u - t;
       d[2] = t_ab[2] + r_ab[2][1] * u;
@@ -170,14 +165,14 @@ auto local_rectangle_distance2(const std::array<std::array<T, 3>, 3> &r_ab,
   }
 
   if ((la1_ux > b[0]) && (ub1_lx < T(0))) {
-    if (((la1_lx > b[0]) || impl::is_in_voronoi_region(
-                                b[1], a[1], a1_dot_b0, -t_ba[0] - b[0],
-                                a1_dot_b1, -t_ba[1], -t_ab[1] - b_a1_dot_b0)) &&
-        ((ub1_ux < T(0)) || impl::is_in_voronoi_region(
-                                a[1], b[1], -a0_dot_b1, -t_ab[0] - b_a0_dot_b0,
-                                a1_dot_b1, t_ab[1] + b_a1_dot_b0, t_ba[1]))) {
-      impl::segment_closest_params(t, u, a[1], b[1], a1_dot_b1,
-                                   t_ab[1] + b_a1_dot_b0, t_ba[1]);
+    if (((la1_lx > b[0]) ||
+         is_in_voronoi_region(b[1], a[1], a1_dot_b0, -t_ba[0] - b[0], a1_dot_b1,
+                              -t_ba[1], -t_ab[1] - b_a1_dot_b0)) &&
+        ((ub1_ux < T(0)) ||
+         is_in_voronoi_region(a[1], b[1], -a0_dot_b1, -t_ab[0] - b_a0_dot_b0,
+                              a1_dot_b1, t_ab[1] + b_a1_dot_b0, t_ba[1]))) {
+      segment_closest_params(t, u, a[1], b[1], a1_dot_b1, t_ab[1] + b_a1_dot_b0,
+                             t_ba[1]);
       d[0] = t_ab[0] + r_ab[0][0] * b[0] + r_ab[0][1] * u;
       d[1] = t_ab[1] + r_ab[1][0] * b[0] + r_ab[1][1] * u - t;
       d[2] = t_ab[2] + r_ab[2][0] * b[0] + r_ab[2][1] * u;
@@ -187,13 +182,12 @@ auto local_rectangle_distance2(const std::array<std::array<T, 3>, 3> &r_ab,
 
   if ((la1_lx < T(0)) && (lb1_lx < T(0))) {
     if (((la1_ux < T(0)) ||
-         impl::is_in_voronoi_region(b[1], a[1], -a1_dot_b0, t_ba[0], a1_dot_b1,
-                                    -t_ba[1], -t_ab[1])) &&
+         is_in_voronoi_region(b[1], a[1], -a1_dot_b0, t_ba[0], a1_dot_b1,
+                              -t_ba[1], -t_ab[1])) &&
         ((lb1_ux < T(0)) ||
-         impl::is_in_voronoi_region(a[1], b[1], -a0_dot_b1, -t_ab[0], a1_dot_b1,
-                                    t_ab[1], t_ba[1]))) {
-      impl::segment_closest_params(t, u, a[1], b[1], a1_dot_b1, t_ab[1],
-                                   t_ba[1]);
+         is_in_voronoi_region(a[1], b[1], -a0_dot_b1, -t_ab[0], a1_dot_b1,
+                              t_ab[1], t_ba[1]))) {
+      segment_closest_params(t, u, a[1], b[1], a1_dot_b1, t_ab[1], t_ba[1]);
       d[0] = t_ab[0] + r_ab[0][1] * u;
       d[1] = t_ab[1] + r_ab[1][1] * u - t;
       d[2] = t_ab[2] + r_ab[2][1] * u;
@@ -234,16 +228,15 @@ auto local_rectangle_distance2(const std::array<std::array<T, 3>, 3> &r_ab,
 
   if ((ua1_uy > b[1]) && (ub0_ux > a[0])) {
     if (((ua1_ly > b[1]) ||
-         impl::is_in_voronoi_region(
-             b[0], a[1], a1_dot_b1, a_a0_dot_b1 - t_ba[1] - b[1], a1_dot_b0,
-             a_a0_dot_b0 - t_ba[0], -t_ab[1] - b_a1_dot_b1)) &&
+         is_in_voronoi_region(b[0], a[1], a1_dot_b1,
+                              a_a0_dot_b1 - t_ba[1] - b[1], a1_dot_b0,
+                              a_a0_dot_b0 - t_ba[0], -t_ab[1] - b_a1_dot_b1)) &&
         ((ub0_lx > a[0]) ||
-         impl::is_in_voronoi_region(
-             a[1], b[0], a0_dot_b0, t_ab[0] - a[0] + b_a0_dot_b1, a1_dot_b0,
-             t_ab[1] + b_a1_dot_b1, t_ba[0] - a_a0_dot_b0))) {
-      impl::segment_closest_params(t, u, a[1], b[0], a1_dot_b0,
-                                   t_ab[1] + b_a1_dot_b1,
-                                   t_ba[0] - a_a0_dot_b0);
+         is_in_voronoi_region(a[1], b[0], a0_dot_b0,
+                              t_ab[0] - a[0] + b_a0_dot_b1, a1_dot_b0,
+                              t_ab[1] + b_a1_dot_b1, t_ba[0] - a_a0_dot_b0))) {
+      segment_closest_params(t, u, a[1], b[0], a1_dot_b0, t_ab[1] + b_a1_dot_b1,
+                             t_ba[0] - a_a0_dot_b0);
       d[0] = t_ab[0] + r_ab[0][1] * b[1] + r_ab[0][0] * u - a[0];
       d[1] = t_ab[1] + r_ab[1][1] * b[1] + r_ab[1][0] * u - t;
       d[2] = t_ab[2] + r_ab[2][1] * b[1] + r_ab[2][0] * u;
@@ -252,14 +245,14 @@ auto local_rectangle_distance2(const std::array<std::array<T, 3>, 3> &r_ab,
   }
 
   if ((ua1_ly < T(0)) && (lb0_ux > a[0])) {
-    if (((ua1_uy < T(0)) || impl::is_in_voronoi_region(
-                                b[0], a[1], -a1_dot_b1, t_ba[1] - a_a0_dot_b1,
-                                a1_dot_b0, a_a0_dot_b0 - t_ba[0], -t_ab[1])) &&
-        ((lb0_lx > a[0]) || impl::is_in_voronoi_region(
-                                a[1], b[0], a0_dot_b0, t_ab[0] - a[0],
-                                a1_dot_b0, t_ab[1], t_ba[0] - a_a0_dot_b0))) {
-      impl::segment_closest_params(t, u, a[1], b[0], a1_dot_b0, t_ab[1],
-                                   t_ba[0] - a_a0_dot_b0);
+    if (((ua1_uy < T(0)) ||
+         is_in_voronoi_region(b[0], a[1], -a1_dot_b1, t_ba[1] - a_a0_dot_b1,
+                              a1_dot_b0, a_a0_dot_b0 - t_ba[0], -t_ab[1])) &&
+        ((lb0_lx > a[0]) ||
+         is_in_voronoi_region(a[1], b[0], a0_dot_b0, t_ab[0] - a[0], a1_dot_b0,
+                              t_ab[1], t_ba[0] - a_a0_dot_b0))) {
+      segment_closest_params(t, u, a[1], b[0], a1_dot_b0, t_ab[1],
+                             t_ba[0] - a_a0_dot_b0);
       d[0] = t_ab[0] + r_ab[0][0] * u - a[0];
       d[1] = t_ab[1] + r_ab[1][0] * u - t;
       d[2] = t_ab[2] + r_ab[2][0] * u;
@@ -268,14 +261,14 @@ auto local_rectangle_distance2(const std::array<std::array<T, 3>, 3> &r_ab,
   }
 
   if ((la1_uy > b[1]) && (ub0_lx < T(0))) {
-    if (((la1_ly > b[1]) || impl::is_in_voronoi_region(
-                                b[0], a[1], a1_dot_b1, -t_ba[1] - b[1],
-                                a1_dot_b0, -t_ba[0], -t_ab[1] - b_a1_dot_b1)) &&
-        ((ub0_ux < T(0)) || impl::is_in_voronoi_region(
-                                a[1], b[0], -a0_dot_b0, -t_ab[0] - b_a0_dot_b1,
-                                a1_dot_b0, t_ab[1] + b_a1_dot_b1, t_ba[0]))) {
-      impl::segment_closest_params(t, u, a[1], b[0], a1_dot_b0,
-                                   t_ab[1] + b_a1_dot_b1, t_ba[0]);
+    if (((la1_ly > b[1]) ||
+         is_in_voronoi_region(b[0], a[1], a1_dot_b1, -t_ba[1] - b[1], a1_dot_b0,
+                              -t_ba[0], -t_ab[1] - b_a1_dot_b1)) &&
+        ((ub0_ux < T(0)) ||
+         is_in_voronoi_region(a[1], b[0], -a0_dot_b0, -t_ab[0] - b_a0_dot_b1,
+                              a1_dot_b0, t_ab[1] + b_a1_dot_b1, t_ba[0]))) {
+      segment_closest_params(t, u, a[1], b[0], a1_dot_b0, t_ab[1] + b_a1_dot_b1,
+                             t_ba[0]);
       d[0] = t_ab[0] + r_ab[0][1] * b[1] + r_ab[0][0] * u;
       d[1] = t_ab[1] + r_ab[1][1] * b[1] + r_ab[1][0] * u - t;
       d[2] = t_ab[2] + r_ab[2][1] * b[1] + r_ab[2][0] * u;
@@ -285,13 +278,12 @@ auto local_rectangle_distance2(const std::array<std::array<T, 3>, 3> &r_ab,
 
   if ((la1_ly < T(0)) && (lb0_lx < T(0))) {
     if (((la1_uy < T(0)) ||
-         impl::is_in_voronoi_region(b[0], a[1], -a1_dot_b1, t_ba[1], a1_dot_b0,
-                                    -t_ba[0], -t_ab[1])) &&
+         is_in_voronoi_region(b[0], a[1], -a1_dot_b1, t_ba[1], a1_dot_b0,
+                              -t_ba[0], -t_ab[1])) &&
         ((lb0_ux < T(0)) ||
-         impl::is_in_voronoi_region(a[1], b[0], -a0_dot_b0, -t_ab[0], a1_dot_b0,
-                                    t_ab[1], t_ba[0]))) {
-      impl::segment_closest_params(t, u, a[1], b[0], a1_dot_b0, t_ab[1],
-                                   t_ba[0]);
+         is_in_voronoi_region(a[1], b[0], -a0_dot_b0, -t_ab[0], a1_dot_b0,
+                              t_ab[1], t_ba[0]))) {
+      segment_closest_params(t, u, a[1], b[0], a1_dot_b0, t_ab[1], t_ba[0]);
       d[0] = t_ab[0] + r_ab[0][0] * u;
       d[1] = t_ab[1] + r_ab[1][0] * u - t;
       d[2] = t_ab[2] + r_ab[2][0] * u;
@@ -332,16 +324,15 @@ auto local_rectangle_distance2(const std::array<std::array<T, 3>, 3> &r_ab,
 
   if ((ua0_ux > b[0]) && (ub1_uy > a[1])) {
     if (((ua0_lx > b[0]) ||
-         impl::is_in_voronoi_region(
-             b[1], a[0], a0_dot_b0, a_a1_dot_b0 - t_ba[0] - b[0], a0_dot_b1,
-             a_a1_dot_b1 - t_ba[1], -t_ab[0] - b_a0_dot_b0)) &&
+         is_in_voronoi_region(b[1], a[0], a0_dot_b0,
+                              a_a1_dot_b0 - t_ba[0] - b[0], a0_dot_b1,
+                              a_a1_dot_b1 - t_ba[1], -t_ab[0] - b_a0_dot_b0)) &&
         ((ub1_ly > a[1]) ||
-         impl::is_in_voronoi_region(
-             a[0], b[1], a1_dot_b1, t_ab[1] - a[1] + b_a1_dot_b0, a0_dot_b1,
-             t_ab[0] + b_a0_dot_b0, t_ba[1] - a_a1_dot_b1))) {
-      impl::segment_closest_params(t, u, a[0], b[1], a0_dot_b1,
-                                   t_ab[0] + b_a0_dot_b0,
-                                   t_ba[1] - a_a1_dot_b1);
+         is_in_voronoi_region(a[0], b[1], a1_dot_b1,
+                              t_ab[1] - a[1] + b_a1_dot_b0, a0_dot_b1,
+                              t_ab[0] + b_a0_dot_b0, t_ba[1] - a_a1_dot_b1))) {
+      segment_closest_params(t, u, a[0], b[1], a0_dot_b1, t_ab[0] + b_a0_dot_b0,
+                             t_ba[1] - a_a1_dot_b1);
       d[0] = t_ab[0] + r_ab[0][0] * b[0] + r_ab[0][1] * u - t;
       d[1] = t_ab[1] + r_ab[1][0] * b[0] + r_ab[1][1] * u - a[1];
       d[2] = t_ab[2] + r_ab[2][0] * b[0] + r_ab[2][1] * u;
@@ -350,14 +341,14 @@ auto local_rectangle_distance2(const std::array<std::array<T, 3>, 3> &r_ab,
   }
 
   if ((ua0_lx < T(0)) && (lb1_uy > a[1])) {
-    if (((ua0_ux < T(0)) || impl::is_in_voronoi_region(
-                                b[1], a[0], -a0_dot_b0, t_ba[0] - a_a1_dot_b0,
-                                a0_dot_b1, a_a1_dot_b1 - t_ba[1], -t_ab[0])) &&
-        ((lb1_ly > a[1]) || impl::is_in_voronoi_region(
-                                a[0], b[1], a1_dot_b1, t_ab[1] - a[1],
-                                a0_dot_b1, t_ab[0], t_ba[1] - a_a1_dot_b1))) {
-      impl::segment_closest_params(t, u, a[0], b[1], a0_dot_b1, t_ab[0],
-                                   t_ba[1] - a_a1_dot_b1);
+    if (((ua0_ux < T(0)) ||
+         is_in_voronoi_region(b[1], a[0], -a0_dot_b0, t_ba[0] - a_a1_dot_b0,
+                              a0_dot_b1, a_a1_dot_b1 - t_ba[1], -t_ab[0])) &&
+        ((lb1_ly > a[1]) ||
+         is_in_voronoi_region(a[0], b[1], a1_dot_b1, t_ab[1] - a[1], a0_dot_b1,
+                              t_ab[0], t_ba[1] - a_a1_dot_b1))) {
+      segment_closest_params(t, u, a[0], b[1], a0_dot_b1, t_ab[0],
+                             t_ba[1] - a_a1_dot_b1);
       d[0] = t_ab[0] + r_ab[0][1] * u - t;
       d[1] = t_ab[1] + r_ab[1][1] * u - a[1];
       d[2] = t_ab[2] + r_ab[2][1] * u;
@@ -366,14 +357,14 @@ auto local_rectangle_distance2(const std::array<std::array<T, 3>, 3> &r_ab,
   }
 
   if ((la0_ux > b[0]) && (ub1_ly < T(0))) {
-    if (((la0_lx > b[0]) || impl::is_in_voronoi_region(
-                                b[1], a[0], a0_dot_b0, -b[0] - t_ba[0],
-                                a0_dot_b1, -t_ba[1], -b_a0_dot_b0 - t_ab[0])) &&
-        ((ub1_uy < T(0)) || impl::is_in_voronoi_region(
-                                a[0], b[1], -a1_dot_b1, -t_ab[1] - b_a1_dot_b0,
-                                a0_dot_b1, t_ab[0] + b_a0_dot_b0, t_ba[1]))) {
-      impl::segment_closest_params(t, u, a[0], b[1], a0_dot_b1,
-                                   t_ab[0] + b_a0_dot_b0, t_ba[1]);
+    if (((la0_lx > b[0]) ||
+         is_in_voronoi_region(b[1], a[0], a0_dot_b0, -b[0] - t_ba[0], a0_dot_b1,
+                              -t_ba[1], -b_a0_dot_b0 - t_ab[0])) &&
+        ((ub1_uy < T(0)) ||
+         is_in_voronoi_region(a[0], b[1], -a1_dot_b1, -t_ab[1] - b_a1_dot_b0,
+                              a0_dot_b1, t_ab[0] + b_a0_dot_b0, t_ba[1]))) {
+      segment_closest_params(t, u, a[0], b[1], a0_dot_b1, t_ab[0] + b_a0_dot_b0,
+                             t_ba[1]);
       d[0] = t_ab[0] + r_ab[0][0] * b[0] + r_ab[0][1] * u - t;
       d[1] = t_ab[1] + r_ab[1][0] * b[0] + r_ab[1][1] * u;
       d[2] = t_ab[2] + r_ab[2][0] * b[0] + r_ab[2][1] * u;
@@ -383,13 +374,12 @@ auto local_rectangle_distance2(const std::array<std::array<T, 3>, 3> &r_ab,
 
   if ((la0_lx < T(0)) && (lb1_ly < T(0))) {
     if (((la0_ux < T(0)) ||
-         impl::is_in_voronoi_region(b[1], a[0], -a0_dot_b0, t_ba[0], a0_dot_b1,
-                                    -t_ba[1], -t_ab[0])) &&
+         is_in_voronoi_region(b[1], a[0], -a0_dot_b0, t_ba[0], a0_dot_b1,
+                              -t_ba[1], -t_ab[0])) &&
         ((lb1_uy < T(0)) ||
-         impl::is_in_voronoi_region(a[0], b[1], -a1_dot_b1, -t_ab[1], a0_dot_b1,
-                                    t_ab[0], t_ba[1]))) {
-      impl::segment_closest_params(t, u, a[0], b[1], a0_dot_b1, t_ab[0],
-                                   t_ba[1]);
+         is_in_voronoi_region(a[0], b[1], -a1_dot_b1, -t_ab[1], a0_dot_b1,
+                              t_ab[0], t_ba[1]))) {
+      segment_closest_params(t, u, a[0], b[1], a0_dot_b1, t_ab[0], t_ba[1]);
       d[0] = t_ab[0] + r_ab[0][1] * u - t;
       d[1] = t_ab[1] + r_ab[1][1] * u;
       d[2] = t_ab[2] + r_ab[2][1] * u;
@@ -425,16 +415,15 @@ auto local_rectangle_distance2(const std::array<std::array<T, 3>, 3> &r_ab,
 
   if ((ua0_uy > b[1]) && (ub0_uy > a[1])) {
     if (((ua0_ly > b[1]) ||
-         impl::is_in_voronoi_region(
-             b[0], a[0], a0_dot_b1, a_a1_dot_b1 - t_ba[1] - b[1], a0_dot_b0,
-             a_a1_dot_b0 - t_ba[0], -t_ab[0] - b_a0_dot_b1)) &&
+         is_in_voronoi_region(b[0], a[0], a0_dot_b1,
+                              a_a1_dot_b1 - t_ba[1] - b[1], a0_dot_b0,
+                              a_a1_dot_b0 - t_ba[0], -t_ab[0] - b_a0_dot_b1)) &&
         ((ub0_ly > a[1]) ||
-         impl::is_in_voronoi_region(
-             a[0], b[0], a1_dot_b0, t_ab[1] - a[1] + b_a1_dot_b1, a0_dot_b0,
-             t_ab[0] + b_a0_dot_b1, t_ba[0] - a_a1_dot_b0))) {
-      impl::segment_closest_params(t, u, a[0], b[0], a0_dot_b0,
-                                   t_ab[0] + b_a0_dot_b1,
-                                   t_ba[0] - a_a1_dot_b0);
+         is_in_voronoi_region(a[0], b[0], a1_dot_b0,
+                              t_ab[1] - a[1] + b_a1_dot_b1, a0_dot_b0,
+                              t_ab[0] + b_a0_dot_b1, t_ba[0] - a_a1_dot_b0))) {
+      segment_closest_params(t, u, a[0], b[0], a0_dot_b0, t_ab[0] + b_a0_dot_b1,
+                             t_ba[0] - a_a1_dot_b0);
       d[0] = t_ab[0] + r_ab[0][1] * b[1] + r_ab[0][0] * u - t;
       d[1] = t_ab[1] + r_ab[1][1] * b[1] + r_ab[1][0] * u - a[1];
       d[2] = t_ab[2] + r_ab[2][1] * b[1] + r_ab[2][0] * u;
@@ -443,14 +432,14 @@ auto local_rectangle_distance2(const std::array<std::array<T, 3>, 3> &r_ab,
   }
 
   if ((ua0_ly < T(0)) && (lb0_uy > a[1])) {
-    if (((ua0_uy < T(0)) || impl::is_in_voronoi_region(
-                                b[0], a[0], -a0_dot_b1, t_ba[1] - a_a1_dot_b1,
-                                a0_dot_b0, a_a1_dot_b0 - t_ba[0], -t_ab[0])) &&
-        ((lb0_ly > a[1]) || impl::is_in_voronoi_region(
-                                a[0], b[0], a1_dot_b0, t_ab[1] - a[1],
-                                a0_dot_b0, t_ab[0], t_ba[0] - a_a1_dot_b0))) {
-      impl::segment_closest_params(t, u, a[0], b[0], a0_dot_b0, t_ab[0],
-                                   t_ba[0] - a_a1_dot_b0);
+    if (((ua0_uy < T(0)) ||
+         is_in_voronoi_region(b[0], a[0], -a0_dot_b1, t_ba[1] - a_a1_dot_b1,
+                              a0_dot_b0, a_a1_dot_b0 - t_ba[0], -t_ab[0])) &&
+        ((lb0_ly > a[1]) ||
+         is_in_voronoi_region(a[0], b[0], a1_dot_b0, t_ab[1] - a[1], a0_dot_b0,
+                              t_ab[0], t_ba[0] - a_a1_dot_b0))) {
+      segment_closest_params(t, u, a[0], b[0], a0_dot_b0, t_ab[0],
+                             t_ba[0] - a_a1_dot_b0);
       d[0] = t_ab[0] + r_ab[0][0] * u - t;
       d[1] = t_ab[1] + r_ab[1][0] * u - a[1];
       d[2] = t_ab[2] + r_ab[2][0] * u;
@@ -459,14 +448,14 @@ auto local_rectangle_distance2(const std::array<std::array<T, 3>, 3> &r_ab,
   }
 
   if ((la0_uy > b[1]) && (ub0_ly < T(0))) {
-    if (((la0_ly > b[1]) || impl::is_in_voronoi_region(
-                                b[0], a[0], a0_dot_b1, -t_ba[1] - b[1],
-                                a0_dot_b0, -t_ba[0], -t_ab[0] - b_a0_dot_b1)) &&
-        ((ub0_uy < T(0)) || impl::is_in_voronoi_region(
-                                a[0], b[0], -a1_dot_b0, -t_ab[1] - b_a1_dot_b1,
-                                a0_dot_b0, t_ab[0] + b_a0_dot_b1, t_ba[0]))) {
-      impl::segment_closest_params(t, u, a[0], b[0], a0_dot_b0,
-                                   t_ab[0] + b_a0_dot_b1, t_ba[0]);
+    if (((la0_ly > b[1]) ||
+         is_in_voronoi_region(b[0], a[0], a0_dot_b1, -t_ba[1] - b[1], a0_dot_b0,
+                              -t_ba[0], -t_ab[0] - b_a0_dot_b1)) &&
+        ((ub0_uy < T(0)) ||
+         is_in_voronoi_region(a[0], b[0], -a1_dot_b0, -t_ab[1] - b_a1_dot_b1,
+                              a0_dot_b0, t_ab[0] + b_a0_dot_b1, t_ba[0]))) {
+      segment_closest_params(t, u, a[0], b[0], a0_dot_b0, t_ab[0] + b_a0_dot_b1,
+                             t_ba[0]);
       d[0] = t_ab[0] + r_ab[0][1] * b[1] + r_ab[0][0] * u - t;
       d[1] = t_ab[1] + r_ab[1][1] * b[1] + r_ab[1][0] * u;
       d[2] = t_ab[2] + r_ab[2][1] * b[1] + r_ab[2][0] * u;
@@ -476,13 +465,12 @@ auto local_rectangle_distance2(const std::array<std::array<T, 3>, 3> &r_ab,
 
   if ((la0_ly < T(0)) && (lb0_ly < T(0))) {
     if (((la0_uy < T(0)) ||
-         impl::is_in_voronoi_region(b[0], a[0], -a0_dot_b1, t_ba[1], a0_dot_b0,
-                                    -t_ba[0], -t_ab[0])) &&
+         is_in_voronoi_region(b[0], a[0], -a0_dot_b1, t_ba[1], a0_dot_b0,
+                              -t_ba[0], -t_ab[0])) &&
         ((lb0_uy < T(0)) ||
-         impl::is_in_voronoi_region(a[0], b[0], -a1_dot_b0, -t_ab[1], a0_dot_b0,
-                                    t_ab[0], t_ba[0]))) {
-      impl::segment_closest_params(t, u, a[0], b[0], a0_dot_b0, t_ab[0],
-                                   t_ba[0]);
+         is_in_voronoi_region(a[0], b[0], -a1_dot_b0, -t_ab[1], a0_dot_b0,
+                              t_ab[0], t_ba[0]))) {
+      segment_closest_params(t, u, a[0], b[0], a0_dot_b0, t_ab[0], t_ba[0]);
       d[0] = t_ab[0] + r_ab[0][0] * u - t;
       d[1] = t_ab[1] + r_ab[1][0] * u;
       d[2] = t_ab[2] + r_ab[2][0] * u;
@@ -607,7 +595,7 @@ auto local_segment_distance2(const std::array<std::array<T, 2>, 2> &r_ab,
   T b_dot_t = -t_ab[0] * r_ab[0][0] - t_ab[1] * r_ab[1][0];  // t_ba[0] in B's frame
 
   T t, u;
-  impl::segment_closest_params(t, u, a, b, a_dot_b, a_dot_t, b_dot_t);
+  segment_closest_params(t, u, a, b, a_dot_b, a_dot_t, b_dot_t);
 
   // Closest points:
   // On A: (t, 0)

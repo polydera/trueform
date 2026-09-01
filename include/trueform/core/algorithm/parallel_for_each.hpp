@@ -128,8 +128,8 @@ auto parallel_for_each(Range &&r, Func &&f, State state) -> void {
 ///
 /// @see @ref parallel_for_each
 template <typename Range, typename Func>
-auto parallel_for_each(Range &&r, Func &&f, tf::checked_t) -> void {
-  if (r.size() < 1000) {
+auto parallel_for_each(Range &&r, Func &&f, tf::checked_t c) -> void {
+  if (std::size_t(r.size()) < c.serial_below) {
     for (auto &&e : r)
       f(e);
   } else
@@ -151,9 +151,9 @@ auto parallel_for_each(Range &&r, Func &&f, tf::checked_t) -> void {
 ///
 /// @see @ref parallel_for_each
 template <typename Range, typename Func, typename State>
-auto parallel_for_each(Range &&r, Func &&f, State state, tf::checked_t)
+auto parallel_for_each(Range &&r, Func &&f, State state, tf::checked_t c)
     -> void {
-  if (r.size() < 1000) {
+  if (std::size_t(r.size()) < c.serial_below) {
     for (auto &&e : r)
       f(e, state);
   } else

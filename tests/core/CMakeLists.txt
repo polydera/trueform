@@ -7,8 +7,10 @@ add_executable(trueform_core_tests
   test_memory.cpp
   test_ray_cast.cpp
   test_blocked_buffer.cpp
+  test_buffer.cpp
   test_ranges.cpp
   test_transformed.cpp
+  test_isolated_parallel_for_each.cpp
 )
 
 target_link_libraries(trueform_core_tests PRIVATE trueform_test_common)

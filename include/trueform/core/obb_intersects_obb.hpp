@@ -17,8 +17,6 @@
 
 namespace tf::core {
 
-namespace detail {
-
 template <typename T, typename Policy0, typename Policy1>
 auto obb_intersects_obb_2d(const tf::obb_like<2, Policy0> &obb0,
                            const tf::obb_like<2, Policy1> &obb1) -> bool {
@@ -219,8 +217,6 @@ auto obb_intersects_obb_3d(const tf::obb_like<3, Policy0> &obb0,
   return true;
 }
 
-} // namespace detail
-
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto obb_intersects_obb(const tf::obb_like<Dims, Policy0> &obb0,
                         const tf::obb_like<Dims, Policy1> &obb1) -> bool {
@@ -230,9 +226,9 @@ auto obb_intersects_obb(const tf::obb_like<Dims, Policy0> &obb0,
   using T = tf::coordinate_type<Policy0, Policy1>;
 
   if constexpr (Dims == 2) {
-    return detail::obb_intersects_obb_2d<T>(obb0, obb1);
+    return obb_intersects_obb_2d<T>(obb0, obb1);
   } else {
-    return detail::obb_intersects_obb_3d<T>(obb0, obb1);
+    return obb_intersects_obb_3d<T>(obb0, obb1);
   }
 }
 

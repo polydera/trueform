@@ -17,7 +17,7 @@
 #include <utility>
 
 namespace tf {
-namespace detail {
+namespace core {
 
 // Fetches the I-th element from each tuple and makes a group (e.g., std::tuple
 // or std::pair)
@@ -32,7 +32,7 @@ auto zip_tuples(std::index_sequence<Is...>, Tuples &&...tuples) {
   return std::make_tuple(make_group_at<Is>(std::forward<Tuples>(tuples)...)...);
 }
 
-} // namespace detail
+} // namespace core
 
 template <typename F, typename... Tuples>
 auto zip_apply(F &&f, Tuples &&...tuples) -> decltype(auto) {
@@ -43,8 +43,8 @@ auto zip_apply(F &&f, Tuples &&...tuples) -> decltype(auto) {
       (... && (std::tuple_size_v<std::remove_reference_t<Tuples>> == N)),
       "All tuples must have the same size");
 
-  auto zipped = detail::zip_tuples(std::make_index_sequence<N>{},
-                                   std::forward<Tuples>(tuples)...);
+  auto zipped = core::zip_tuples(std::make_index_sequence<N>{},
+                                 std::forward<Tuples>(tuples)...);
   return tf::apply(std::forward<F>(f), std::move(zipped));
 }
 } // namespace tf

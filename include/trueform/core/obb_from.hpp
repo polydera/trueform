@@ -24,7 +24,6 @@
 
 namespace tf {
 namespace core {
-namespace impl {
 
 template <std::size_t Dims, typename T>
 struct proj_accum {
@@ -51,8 +50,6 @@ auto merge_proj_accum(proj_accum<Dims, T> acc, const proj_accum<Dims, T> &other)
   return acc;
 }
 
-} // namespace impl
-
 template <typename Range, std::size_t Dims, typename Policy>
 auto obb_from(const Range &polygons, dispatch_t<tf::polygon<Dims, Policy>>) {
   using std::max;
@@ -75,24 +72,24 @@ auto obb_from(const Range &polygons, dispatch_t<tf::polygon<Dims, Policy>>) {
   }
 
   // 4) Project all vertices to get min/max along each axis
-  auto proj_init = impl::make_proj_accum_init<Dims, T>();
+  auto proj_init = make_proj_accum_init<Dims, T>();
 
   auto proj_acc = tf::reduce(
-      tf::make_mapped_range(polygons,
-                            [&proj_init, &centroid = centroid, &box](const auto &poly) {
-                              auto poly_acc = proj_init;
-                              for (const auto &pt : poly) {
-                                auto diff = pt - centroid;
-                                for (std::size_t i = 0; i < Dims; ++i) {
-                                  T p = tf::dot(diff, box.axes[i]);
-                                  poly_acc.min_proj[i] = min(poly_acc.min_proj[i], p);
-                                  poly_acc.max_proj[i] = max(poly_acc.max_proj[i], p);
-                                }
-                              }
-                              return poly_acc;
-                            }),
-      impl::merge_proj_accum<Dims, T>,
-      proj_init, tf::checked);
+      tf::make_mapped_range(
+          polygons,
+          [&proj_init, &centroid = centroid, &box](const auto &poly) {
+            auto poly_acc = proj_init;
+            for (const auto &pt : poly) {
+              auto diff = pt - centroid;
+              for (std::size_t i = 0; i < Dims; ++i) {
+                T p = tf::dot(diff, box.axes[i]);
+                poly_acc.min_proj[i] = min(poly_acc.min_proj[i], p);
+                poly_acc.max_proj[i] = max(poly_acc.max_proj[i], p);
+              }
+            }
+            return poly_acc;
+          }),
+      merge_proj_accum<Dims, T>, proj_init, tf::checked);
 
   // 5) Store as corner + full extents
   box.origin = centroid;
@@ -126,24 +123,24 @@ auto obb_from(const Range &segments, dispatch_t<tf::segment<Dims, Policy>>) {
   }
 
   // 4) Project all vertices to get min/max along each axis
-  auto proj_init = impl::make_proj_accum_init<Dims, T>();
+  auto proj_init = make_proj_accum_init<Dims, T>();
 
-  auto proj_acc = tf::reduce(
-      tf::make_mapped_range(segments,
-                            [&proj_init, &centroid = centroid, &box](const auto &seg) {
-                              auto seg_acc = proj_init;
-                              for (const auto &pt : seg) {
-                                auto diff = pt - centroid;
-                                for (std::size_t i = 0; i < Dims; ++i) {
-                                  T p = tf::dot(diff, box.axes[i]);
-                                  seg_acc.min_proj[i] = min(seg_acc.min_proj[i], p);
-                                  seg_acc.max_proj[i] = max(seg_acc.max_proj[i], p);
-                                }
-                              }
-                              return seg_acc;
-                            }),
-      impl::merge_proj_accum<Dims, T>,
-      proj_init, tf::checked);
+  auto proj_acc =
+      tf::reduce(tf::make_mapped_range(
+                     segments,
+                     [&proj_init, &centroid = centroid, &box](const auto &seg) {
+                       auto seg_acc = proj_init;
+                       for (const auto &pt : seg) {
+                         auto diff = pt - centroid;
+                         for (std::size_t i = 0; i < Dims; ++i) {
+                           T p = tf::dot(diff, box.axes[i]);
+                           seg_acc.min_proj[i] = min(seg_acc.min_proj[i], p);
+                           seg_acc.max_proj[i] = max(seg_acc.max_proj[i], p);
+                         }
+                       }
+                       return seg_acc;
+                     }),
+                 merge_proj_accum<Dims, T>, proj_init, tf::checked);
 
   // 5) Store as corner + full extents
   box.origin = centroid;
@@ -177,13 +174,13 @@ auto obb_from(const Range &points, dispatch_t<tf::point_like<Dims, Policy>>) {
   }
 
   // 4) Project all points to get min/max along each axis
-  auto proj_init = impl::make_proj_accum_init<Dims, T>();
+  auto proj_init = make_proj_accum_init<Dims, T>();
 
   auto proj_acc = tf::reduce(
       tf::make_mapped_range(points,
                             [&centroid = centroid, &box](const auto &pt) {
                               auto diff = pt - centroid;
-                              impl::proj_accum<Dims, T> pt_acc;
+                              proj_accum<Dims, T> pt_acc;
                               for (std::size_t i = 0; i < Dims; ++i) {
                                 T p = tf::dot(diff, box.axes[i]);
                                 pt_acc.min_proj[i] = p;
@@ -191,8 +188,7 @@ auto obb_from(const Range &points, dispatch_t<tf::point_like<Dims, Policy>>) {
                               }
                               return pt_acc;
                             }),
-      impl::merge_proj_accum<Dims, T>,
-      proj_init, tf::checked);
+      merge_proj_accum<Dims, T>, proj_init, tf::checked);
 
   // 5) Store as corner + full extents
   box.origin = centroid;

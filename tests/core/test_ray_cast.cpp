@@ -16,7 +16,7 @@
 // =============================================================================
 
 template <typename real_t>
-auto approx_equal(real_t a, real_t b, real_t tol = real_t(1e-5)) -> bool
+auto ray_cast_approx_equal(real_t a, real_t b, real_t tol = real_t(1e-5)) -> bool
 {
     return std::abs(a - b) < tol;
 }
@@ -43,11 +43,11 @@ TEMPLATE_TEST_CASE("ray_plane_3d", "[core][ray_cast]",
         );
         auto result = tf::ray_cast(ray, plane);
         REQUIRE(result);
-        REQUIRE(approx_equal(result.t, real_t(2)));
+        REQUIRE(ray_cast_approx_equal(result.t, real_t(2)));
 
         // Verify hit point
         auto hit_point = ray.origin + result.t * ray.direction;
-        REQUIRE(approx_equal(hit_point[2], real_t(0)));
+        REQUIRE(ray_cast_approx_equal(hit_point[2], real_t(0)));
     }
 
     SECTION("ray pointing away - should not hit") {
@@ -94,7 +94,7 @@ TEMPLATE_TEST_CASE("ray_polygon_2d", "[core][ray_cast]",
         );
         auto result = tf::ray_cast(ray, poly);
         REQUIRE(result);
-        REQUIRE(approx_equal(result.t, real_t(1)));
+        REQUIRE(ray_cast_approx_equal(result.t, real_t(1)));
     }
 
     SECTION("ray from right pointing away - should not hit") {
@@ -140,7 +140,7 @@ TEMPLATE_TEST_CASE("ray_polygon_3d", "[core][ray_cast]",
         );
         auto result = tf::ray_cast(ray, poly);
         REQUIRE(result);
-        REQUIRE(approx_equal(result.t, real_t(2)));
+        REQUIRE(ray_cast_approx_equal(result.t, real_t(2)));
     }
 
     SECTION("ray from above but offset (outside triangle) - should not hit") {
@@ -184,7 +184,7 @@ TEMPLATE_TEST_CASE("ray_segment_2d", "[core][ray_cast]",
         );
         auto result = tf::ray_cast(ray, segment);
         REQUIRE(result);
-        REQUIRE(approx_equal(result.t, real_t(1)));
+        REQUIRE(ray_cast_approx_equal(result.t, real_t(1)));
     }
 
     SECTION("ray from left but above segment - should not hit") {
@@ -228,7 +228,7 @@ TEMPLATE_TEST_CASE("ray_segment_3d", "[core][ray_cast]",
         );
         auto result = tf::ray_cast(ray, segment);
         REQUIRE(result);
-        REQUIRE(approx_equal(result.t, real_t(0.5)));
+        REQUIRE(ray_cast_approx_equal(result.t, real_t(0.5)));
     }
 
     SECTION("ray parallel but offset - should not hit") {
@@ -263,7 +263,7 @@ TEMPLATE_TEST_CASE("ray_line_2d", "[core][ray_cast]",
         );
         auto result = tf::ray_cast(ray, line);
         REQUIRE(result);
-        REQUIRE(approx_equal(result.t, real_t(1)));
+        REQUIRE(ray_cast_approx_equal(result.t, real_t(1)));
     }
 
     SECTION("ray parallel to line - should not hit") {
@@ -307,7 +307,7 @@ TEMPLATE_TEST_CASE("ray_line_3d", "[core][ray_cast]",
         );
         auto result = tf::ray_cast(ray, line);
         REQUIRE(result);
-        REQUIRE(approx_equal(result.t, real_t(1)));
+        REQUIRE(ray_cast_approx_equal(result.t, real_t(1)));
     }
 
     SECTION("ray skew to line - should not hit") {
@@ -342,7 +342,7 @@ TEMPLATE_TEST_CASE("ray_aabb_2d", "[core][ray_cast]",
         );
         auto result = tf::ray_cast(ray, aabb);
         REQUIRE(result);
-        REQUIRE(approx_equal(result.t, real_t(1)));
+        REQUIRE(ray_cast_approx_equal(result.t, real_t(1)));
     }
 
     SECTION("ray from right pointing away - should not hit") {
@@ -386,7 +386,7 @@ TEMPLATE_TEST_CASE("ray_aabb_3d", "[core][ray_cast]",
         );
         auto result = tf::ray_cast(ray, aabb);
         REQUIRE(result);
-        REQUIRE(approx_equal(result.t, real_t(1)));
+        REQUIRE(ray_cast_approx_equal(result.t, real_t(1)));
     }
 
     SECTION("ray from above but outside AABB - should not hit") {
@@ -437,7 +437,7 @@ TEMPLATE_TEST_CASE("ray_ray_2d", "[core][ray_cast]",
         );
         auto result = tf::ray_cast(ray1, ray2);
         REQUIRE(result);
-        REQUIRE(approx_equal(result.t, real_t(2)));
+        REQUIRE(ray_cast_approx_equal(result.t, real_t(2)));
     }
 
     SECTION("parallel rays - should not hit") {
@@ -484,7 +484,7 @@ TEMPLATE_TEST_CASE("ray_point_2d", "[core][ray_cast]",
         auto pt = tf::make_point(real_t(3), real_t(0));
         auto result = tf::ray_cast(ray, pt);
         REQUIRE(result);
-        REQUIRE(approx_equal(result.t, real_t(3)));
+        REQUIRE(ray_cast_approx_equal(result.t, real_t(3)));
     }
 
     SECTION("ray missing point") {
@@ -521,7 +521,7 @@ TEMPLATE_TEST_CASE("ray_point_3d", "[core][ray_cast]",
         auto pt = tf::make_point(real_t(0), real_t(0), real_t(5));
         auto result = tf::ray_cast(ray, pt);
         REQUIRE(result);
-        REQUIRE(approx_equal(result.t, real_t(5)));
+        REQUIRE(ray_cast_approx_equal(result.t, real_t(5)));
     }
 
     SECTION("ray missing point") {
@@ -581,7 +581,7 @@ TEMPLATE_TEST_CASE("ray_cast_with_config", "[core][ray_cast]",
         auto config = tf::make_ray_config(real_t(1), real_t(3));
         auto result = tf::ray_cast(ray, plane, config);
         REQUIRE(result);
-        REQUIRE(approx_equal(result.t, real_t(2)));
+        REQUIRE(ray_cast_approx_equal(result.t, real_t(2)));
     }
 }
 

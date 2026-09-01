@@ -91,4 +91,4 @@ struct dereference_policy
   dereference_policy(const DereferncePolicy &d) : base_t{d} {}
   dereference_policy(DereferncePolicy &&d) : base_t{std::move(d)} {}
 };
-} // namespace tf::implementation
+} // namespace tf::iter

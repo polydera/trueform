@@ -238,8 +238,8 @@ auto obbrss_from(const Range &polygons, dispatch_t<tf::polygon<Dims, Policy>>) {
         T px = tf::dot(diff, box.axes[0]);
         T py = tf::dot(diff, box.axes[1]);
         T pz = tf::dot(diff, box.axes[2]);
-        impl::update_corners(rss_minx, rss_maxx, rss_miny, rss_maxy, px, py, pz,
-                             cr, radsqr);
+        update_corners(rss_minx, rss_maxx, rss_miny, rss_maxy, px, py, pz, cr,
+                       radsqr);
       }
     }
 
@@ -471,8 +471,8 @@ auto obbrss_from(const Range &segments, dispatch_t<tf::segment<Dims, Policy>>) {
         T px = tf::dot(diff, box.axes[0]);
         T py = tf::dot(diff, box.axes[1]);
         T pz = tf::dot(diff, box.axes[2]);
-        impl::update_corners(rss_minx, rss_maxx, rss_miny, rss_maxy, px, py, pz,
-                             cr, radsqr);
+        update_corners(rss_minx, rss_maxx, rss_miny, rss_maxy, px, py, pz, cr,
+                       radsqr);
       }
     }
 
@@ -672,8 +672,8 @@ auto obbrss_from(const Range &points, dispatch_t<tf::point_like<Dims, Policy>>) 
       T px = tf::dot(diff, box.axes[0]);
       T py = tf::dot(diff, box.axes[1]);
       T pz = tf::dot(diff, box.axes[2]);
-      impl::update_corners(rss_minx, rss_maxx, rss_miny, rss_maxy, px, py, pz,
-                           cr, radsqr);
+      update_corners(rss_minx, rss_maxx, rss_miny, rss_maxy, px, py, pz, cr,
+                     radsqr);
     }
 
     // Build OBBRSS

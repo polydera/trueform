@@ -21,7 +21,7 @@
 
 namespace tf {
 
-namespace core::impl {
+namespace core {
 
 template <typename Index, typename Collection>
 auto sum_blocks_in(const Collection &coll) -> Index {
@@ -69,7 +69,7 @@ auto fill_offsets_for_sub(const SubRange &sub, tf::buffer<Index> &offsets,
   start_i = end_i;
 }
 
-} // namespace core::impl
+} // namespace core
 
 /// @ingroup core_ranges
 /// @brief Concatenate collections of blocked ranges into a single buffer.
@@ -97,9 +97,9 @@ auto concatenated_blocked_range_collections(const Range0 &r0, const Range1 &r1,
       (K0 != tf::dynamic_size) && (K0 == K1) &&
       (true && ... && (K0 == tf::static_size_v<decltype(rs.front().front())>));
 
-  const Index total_blocks =
-      core::impl::sum_blocks_in<Index>(r0) + core::impl::sum_blocks_in<Index>(r1) +
-      (Index{0} + ... + core::impl::sum_blocks_in<Index>(rs));
+  const Index total_blocks = core::sum_blocks_in<Index>(r0) +
+                             core::sum_blocks_in<Index>(r1) +
+                             (Index{0} + ... + core::sum_blocks_in<Index>(rs));
 
   if constexpr (all_same_static_size) {
     constexpr auto K = K0;
@@ -109,7 +109,7 @@ auto concatenated_blocked_range_collections(const Range0 &r0, const Range1 &r1,
     Index start = 0;
     auto copy_coll = [&](const auto &coll) {
       for (const auto &sub : coll)
-        core::impl::copy_sub_blocked<Index>(sub, out, start);
+        core::copy_sub_blocked<Index>(sub, out, start);
     };
     copy_coll(r0);
     copy_coll(r1);
@@ -127,7 +127,7 @@ auto concatenated_blocked_range_collections(const Range0 &r0, const Range1 &r1,
     Index start_i = 0;
     auto fill_coll = [&](const auto &coll) {
       for (const auto &sub : coll)
-        core::impl::fill_offsets_for_sub<Index>(sub, offsets, start_i);
+        core::fill_offsets_for_sub<Index>(sub, offsets, start_i);
     };
     fill_coll(r0);
     fill_coll(r1);
@@ -138,7 +138,7 @@ auto concatenated_blocked_range_collections(const Range0 &r0, const Range1 &r1,
     Index start = 0;
     auto copy_coll = [&](const auto &coll) {
       for (const auto &sub : coll)
-        core::impl::copy_sub_offset<Index>(sub, out, start);
+        core::copy_sub_offset<Index>(sub, out, start);
     };
     copy_coll(r0);
     copy_coll(r1);

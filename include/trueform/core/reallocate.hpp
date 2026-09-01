@@ -11,10 +11,17 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "./algorithm/parallel_copy.hpp"
+#include "./algorithm/parallel_transform.hpp"
 #include "./blocked_buffer.hpp"
 #include "./buffer.hpp"
+#include "./checked.hpp"
+#include "./offset_block_buffer.hpp"
+#include "./range.hpp"
 #include "./small_vector.hpp"
+#include "./views/drop.hpp"
 #include "./zip_apply.hpp"
+#include <cstddef>
 #include <vector>
 
 namespace tf::core {
@@ -66,6 +73,36 @@ auto append(const small_vector<T, N> &input, small_vector<T, N> &output) {
   auto old_data_size = output.size();
   reallocate(output, old_data_size + input.size());
   std::copy(input.begin(), input.end(), output.begin() + old_data_size);
+}
+
+/// @brief Appends every block of `input`, its offsets rebased onto `output`'s
+/// data (offset_block_buffer).
+template <typename Index, typename T>
+auto append(const offset_block_buffer<Index, T> &input,
+            offset_block_buffer<Index, T> &output) {
+  const auto &input_offsets = input.offsets_buffer();
+  if (input_offsets.size() == 0)
+    return;
+  auto &output_offsets = output.offsets_buffer();
+  auto &output_data = output.data_buffer();
+  const auto data_base = Index(output_data.size());
+  const auto old_offsets = output_offsets.size();
+  // an empty destination has no leading zero yet, so it takes the whole
+  // offset array and this append reduces to a copy
+  const auto shared_bound = std::size_t(old_offsets != 0);
+  reallocate(output_offsets,
+             old_offsets + input_offsets.size() - shared_bound);
+  tf::parallel_transform(
+      tf::drop(tf::make_range(input_offsets), shared_bound),
+      tf::make_range(output_offsets.begin() + std::ptrdiff_t(old_offsets),
+                     output_offsets.end()),
+      [data_base](Index offset) { return offset + data_base; }, tf::checked);
+  const auto old_data = output_data.size();
+  reallocate(output_data, old_data + input.data_buffer().size());
+  tf::parallel_copy(
+      tf::make_range(input.data_buffer()),
+      tf::make_range(output_data.begin() + std::ptrdiff_t(old_data),
+                     output_data.end()));
 }
 
 template <typename... Buffers0, typename... Buffers1>

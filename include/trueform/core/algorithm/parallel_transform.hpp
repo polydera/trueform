@@ -48,8 +48,8 @@ auto parallel_transform(const Range0 &input, Range1 &&output,
 /// Falls back to sequential execution for ranges smaller than 1000 elements.
 template <typename Range0, typename Range1, typename F>
 auto parallel_transform(const Range0 &input, Range1 &&output,
-                        const F &transform, tf::checked_t) {
-  if (input.size() < 1000) {
+                        const F &transform, tf::checked_t c) {
+  if (std::size_t(input.size()) < c.serial_below) {
     std::transform(input.begin(), input.end(), output.begin(), transform);
   } else {
     parallel_transform(input, output, transform);

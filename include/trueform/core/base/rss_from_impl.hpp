@@ -14,7 +14,7 @@
 #include "../sqrt.hpp"
 #include <algorithm>
 
-namespace tf::core::impl {
+namespace tf::core {
 
 /// Update corner bounds with a single point's projection
 template <typename T>
@@ -79,4 +79,4 @@ void update_corners(T &minx, T &maxx, T &miny, T &maxy, T px, T py, T pz, T cz,
   }
 }
 
-} // namespace tf::core::impl
+} // namespace tf::core

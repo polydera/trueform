@@ -20,11 +20,11 @@
 #include "./memory.hpp"
 
 namespace tf {
-namespace detail {
+namespace core {
 template <typename T> struct buffer_deleter {
   auto operator()(void *p) const noexcept -> void { tf::deallocate<T>(p); }
 };
-} // namespace detail
+} // namespace core
 /// @ingroup core_buffers
 /// @brief A minimal, trivially-constructible alternative to `std::vector` for
 /// POD types.
@@ -98,7 +98,7 @@ public:
       _end = _data.get() + n;
     } else {
       auto new_capacity = compute_new_capacity(n - size());
-      std::unique_ptr<T[], detail::buffer_deleter<T>> tmp{
+      std::unique_ptr<T[], core::buffer_deleter<T>> tmp{
           tf::allocate<T>(new_capacity)};
       std::swap(tmp, _data);
       _end = _data.get() + n;
@@ -117,13 +117,13 @@ public:
   /// @brief Reallocates the buffer to size `n`, filling new elements with value
   /// `t`.
   auto reallocate_and_initialize(std::size_t n, T t) {
-    if (n <= capacity()) {
+    auto _size = size();
+    if (n <= capacity())
       _end = _data.get() + n;
-    } else {
-      auto _size = size();
+    else
       append_at_end(n - _size);
+    if (n > _size)
       std::fill(_data.get() + _size, _end, std::move(t));
-    }
   }
 
   /// @brief Allocates memory for `n` elements and initializes all with value
@@ -175,8 +175,8 @@ public:
 
   /// @brief Ensures capacity for at least `n` elements.
   auto reserve(std::size_t n) {
-    auto _size = size();
-    if (n > _size) {
+    if (n > capacity()) {
+      auto _size = size();
       append_at_end(n - _size, n);
       _end = _data.get() + _size;
     }
@@ -249,7 +249,7 @@ public:
 private:
   auto append_at_end(std::size_t n, std::size_t new_capacity) {
     auto _old_size = size();
-    std::unique_ptr<T[], detail::buffer_deleter<T>> tmp{
+    std::unique_ptr<T[], core::buffer_deleter<T>> tmp{
         tf::allocate<T>(new_capacity)};
     std::memcpy(tmp.get(), _data.get(), _old_size * sizeof(T));
     std::swap(tmp, _data);
@@ -271,7 +271,7 @@ private:
     return size() + std::max(size(), added_elements);
   }
 
-  std::unique_ptr<T[], detail::buffer_deleter<T>> _data = nullptr;
+  std::unique_ptr<T[], core::buffer_deleter<T>> _data = nullptr;
   T *_end = nullptr;
   T *_capacity = nullptr;
 };

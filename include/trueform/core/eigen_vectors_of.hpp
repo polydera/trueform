@@ -18,7 +18,6 @@
 #include "./vector.hpp"
 
 namespace tf::core {
-namespace impl {
 template <typename T>
 auto extract_kernel_3x3(const std::array<std::array<T, 3>, 3> &mat,
                         tf::vector<T, 3> &representative) {
@@ -53,7 +52,6 @@ auto extract_kernel_3x3(const std::array<std::array<T, 3>, 3> &mat,
 
   return (n0 > n1) ? c0 / tf::sqrt(n0) : c1 / tf::sqrt(n1);
 }
-} // namespace impl
 
 template <typename T>
 auto eigen_vectors_of(const std::array<std::array<T, 3>, 3> &m,
@@ -124,7 +122,7 @@ auto eigen_vectors_of(const std::array<std::array<T, 3>, 3> &m,
     tmp[2][2] -= eval_k;
 
     tf::vector<T, 3> representative;
-    eigenvectors[k] = impl::extract_kernel_3x3(tmp, representative);
+    eigenvectors[k] = extract_kernel_3x3(tmp, representative);
     eigenvectors[l] = representative;
 
     // Compute eigenvector of index l
@@ -143,7 +141,7 @@ auto eigen_vectors_of(const std::array<std::array<T, 3>, 3> &m,
       tmp[2][2] -= eval_l;
 
       tf::vector<T, 3> dummy;
-      eigenvectors[l] = impl::extract_kernel_3x3(tmp, dummy);
+      eigenvectors[l] = extract_kernel_3x3(tmp, dummy);
     }
 
     // Compute last eigenvector from the other two
@@ -160,7 +158,6 @@ auto eigen_vectors_of(const std::array<std::array<T, 3>, 3> &m,
 } // namespace tf::core
 
 namespace tf::core {
-namespace impl {
 
 // 2D analogue of extract_kernel_3x3: find a normalized vector in the kernel of
 // a 2x2 matrix.
@@ -200,8 +197,6 @@ auto extract_kernel_2x2(const std::array<std::array<T, 2>, 2> &mat)
   return v / tf::sqrt(norm2);
 }
 
-} // namespace impl
-
 template <typename T>
 auto eigen_vectors_of(const std::array<std::array<T, 2>, 2> &m,
                       const std::array<T, 2> &eigenvalues) {
@@ -224,7 +219,7 @@ auto eigen_vectors_of(const std::array<std::array<T, 2>, 2> &m,
       std::array<std::array<T, 2>, 2> A = m;
       A[0][0] -= eigenvalues[0];
       A[1][1] -= eigenvalues[0];
-      eigenvectors[0] = impl::extract_kernel_2x2(A);
+      eigenvectors[0] = extract_kernel_2x2(A);
     }
 
     // Compute eigenvector for λ1
@@ -232,7 +227,7 @@ auto eigen_vectors_of(const std::array<std::array<T, 2>, 2> &m,
       std::array<std::array<T, 2>, 2> A = m;
       A[0][0] -= eigenvalues[1];
       A[1][1] -= eigenvalues[1];
-      eigenvectors[1] = impl::extract_kernel_2x2(A);
+      eigenvectors[1] = extract_kernel_2x2(A);
     }
 
     // Orthonormalize v1 against v0 to improve numerical robustness

@@ -79,4 +79,4 @@ struct zipped : Base {
 protected:
   Range _zipped;
 };
-} // namespace tf::implementation
+} // namespace tf::policy

@@ -55,8 +55,8 @@ auto reduce(const Range &r, const F &f, Val initial) {
 /// Falls back to sequential execution for ranges smaller than 1000 elements.
 /// This is useful for debugging and verification.
 template <typename Range, typename F, typename Val>
-auto reduce(const Range &r, const F &f, Val initial, tf::checked_t) {
-  if (r.size() < 1000) {
+auto reduce(const Range &r, const F &f, Val initial, tf::checked_t c) {
+  if (std::size_t(r.size()) < c.serial_below) {
     for (const auto &x : r)
       initial = f(initial, x);
     return initial;

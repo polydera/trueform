@@ -58,8 +58,8 @@ auto parallel_contains(Range &&r, Pred &&pred) -> bool {
 /// @param pred The predicate to test each element.
 /// @return `true` if any element satisfies the predicate.
 template <typename Range, typename Pred>
-auto parallel_contains(Range &&r, Pred &&pred, tf::checked_t) -> bool {
-  if (r.size() < 1000) {
+auto parallel_contains(Range &&r, Pred &&pred, tf::checked_t c) -> bool {
+  if (std::size_t(r.size()) < c.serial_below) {
     for (auto &&e : r)
       if (pred(e))
         return true;

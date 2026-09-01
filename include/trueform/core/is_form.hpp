@@ -16,18 +16,18 @@
 #include <type_traits>
 
 namespace tf {
-namespace core::impl {
+namespace core {
 
 template <std::size_t Dims, typename Policy>
 auto is_form_test(const form<Dims, Policy> *) -> std::true_type;
 auto is_form_test(const void *) -> std::false_type;
 
-} // namespace core::impl
+} // namespace core
 
 /// @ingroup core_traits
 /// @brief Check whether T is a form (polygons, points, segments, etc.).
 template <typename T>
-inline constexpr bool is_form = decltype(core::impl::is_form_test(
+inline constexpr bool is_form = decltype(core::is_form_test(
     static_cast<const std::decay_t<T> *>(nullptr)))::value;
 
 } // namespace tf

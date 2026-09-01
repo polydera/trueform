@@ -15,11 +15,17 @@
 namespace tf {
 
 /// @ingroup core
-/// @brief Tag type for checked parallel execution.
+/// @brief Tag for the primitives' serial fallback, carrying its cutoff.
 ///
-/// Pass to parallel algorithms to enable additional verification
-/// or synchronization guarantees.
-struct checked_t {};
+/// `tf::checked` selects the default; `tf::checked(n)` states the
+/// range length below which the serial path runs — for call sites
+/// whose per-element work sits far from the convention's assumption.
+struct checked_t {
+  unsigned long serial_below = 1000;
+  constexpr auto operator()(unsigned long n) const -> checked_t {
+    return {n};
+  }
+};
 
 /// @ingroup core
 /// @brief Tag instance for checked execution.

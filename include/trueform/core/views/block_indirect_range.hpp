@@ -22,7 +22,7 @@ template <typename Range> struct block_indirect_policy {
     return tf::make_indirect_range(ids, range);
   }
 };
-} // namespace implementation
+} // namespace views
 
 /// @ingroup core_ranges
 /// @brief Creates a range of indirect views into a data range based on block-wise indexing.

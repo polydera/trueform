@@ -19,7 +19,7 @@
 // =============================================================================
 
 template <typename T>
-auto approx_equal(T a, T b, T tol = T(1e-5)) -> bool {
+auto least_squares_approx_equal(T a, T b, T tol = T(1e-5)) -> bool {
   return std::abs(a - b) < tol;
 }
 
