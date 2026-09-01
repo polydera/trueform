@@ -5,6 +5,19 @@ import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
 
+/**
+ * Reads one slot of a numeric buffer. Every caller below indexes inside a
+ * length it has just checked, so a miss is a programming fault, not a data
+ * case the render path handles.
+ */
+function slot(buffer: ArrayLike<number>, index: number): number {
+  const value = buffer[index];
+  if (value === undefined) {
+    throw new RangeError(`buffer index ${index} out of range`);
+  }
+  return value;
+}
+
 // ============================================================================
 // RollingAverage — circular buffer of last N samples
 // ============================================================================
@@ -181,11 +194,11 @@ export class CurveRenderer {
 
       for (let i = 0; i < path.length; i++) {
         const idx = path[i];
-        if (idx < 0 || idx >= vertCount) continue;
+        if (idx === undefined || idx < 0 || idx >= vertCount) continue;
 
-        const x = points[idx * 3];
-        const y = points[idx * 3 + 1];
-        const z = points[idx * 3 + 2];
+        const x = slot(points, idx * 3);
+        const y = slot(points, idx * 3 + 1);
+        const z = slot(points, idx * 3 + 2);
 
         // Sphere at this vertex
         if (sphIdx < this.maxSegments) {
@@ -196,11 +209,11 @@ export class CurveRenderer {
         // Cylinder to next vertex
         if (i < path.length - 1) {
           const nextIdx = path[i + 1];
-          if (nextIdx < 0 || nextIdx >= vertCount) continue;
+          if (nextIdx === undefined || nextIdx < 0 || nextIdx >= vertCount) continue;
 
-          const nx = points[nextIdx * 3];
-          const ny = points[nextIdx * 3 + 1];
-          const nz = points[nextIdx * 3 + 2];
+          const nx = slot(points, nextIdx * 3);
+          const ny = slot(points, nextIdx * 3 + 1);
+          const nz = slot(points, nextIdx * 3 + 2);
 
           if (cylIdx < this.maxSegments) {
             this.writeCylinderMatrix(cylIdx, x, y, z, nx, ny, nz, r);
@@ -605,13 +618,12 @@ export function buffersToCurves(points: Float32Array, idBuf: Int32Array, offBuf:
   const paths = new Array(nPaths);
 
   for (let p = 0; p < nPaths; p++) {
-    const start = offBuf[p];
-    const end = offBuf[p + 1];
-    const len = Math.max(0, end - start);
+    const start = slot(offBuf, p);
+    const len = Math.max(0, slot(offBuf, p + 1) - start);
 
     const path = new Array(len);
     for (let i = 0; i < len; i++) {
-      path[i] = idBuf[start + i];
+      path[i] = slot(idBuf, start + i);
     }
     paths[p] = path;
   }
@@ -782,9 +794,9 @@ export function curvesToCurveLinesFast(
       const vi = idx[i];
       if (vi == null || vi < 0 || vi >= vertCount) continue;
       const j = 3 * vi;
-      work.ax[n] = src[j];
-      work.ay[n] = src[j + 1];
-      work.az[n] = src[j + 2];
+      work.ax[n] = slot(src, j);
+      work.ay[n] = slot(src, j + 1);
+      work.az[n] = slot(src, j + 2);
       n++;
     }
     if (n < 2) continue;
@@ -798,17 +810,17 @@ export function curvesToCurveLinesFast(
 
       let k = 0;
       if (!closed) {
-        work.bx[k] = work.ax[0];
-        work.by[k] = work.ay[0];
-        work.bz[k] = work.az[0];
+        work.bx[k] = slot(work.ax, 0);
+        work.by[k] = slot(work.ay, 0);
+        work.bz[k] = slot(work.az, 0);
         k++;
         for (let i = 0; i < n - 1; i++) {
-          const x0 = work.ax[i],
-            y0 = work.ay[i],
-            z0 = work.az[i];
-          const x1 = work.ax[i + 1],
-            y1 = work.ay[i + 1],
-            z1 = work.az[i + 1];
+          const x0 = slot(work.ax, i),
+            y0 = slot(work.ay, i),
+            z0 = slot(work.az, i);
+          const x1 = slot(work.ax, i + 1),
+            y1 = slot(work.ay, i + 1),
+            z1 = slot(work.az, i + 1);
           work.bx[k] = 0.75 * x0 + 0.25 * x1;
           work.by[k] = 0.75 * y0 + 0.25 * y1;
           work.bz[k++] = 0.75 * z0 + 0.25 * z1;
@@ -816,19 +828,19 @@ export function curvesToCurveLinesFast(
           work.by[k] = 0.25 * y0 + 0.75 * y1;
           work.bz[k++] = 0.25 * z0 + 0.75 * z1;
         }
-        work.bx[k] = work.ax[n - 1];
-        work.by[k] = work.ay[n - 1];
-        work.bz[k] = work.az[n - 1];
+        work.bx[k] = slot(work.ax, n - 1);
+        work.by[k] = slot(work.ay, n - 1);
+        work.bz[k] = slot(work.az, n - 1);
         k++;
       } else {
         for (let i = 0; i < n; i++) {
           const ni = (i + 1) % n;
-          const x0 = work.ax[i],
-            y0 = work.ay[i],
-            z0 = work.az[i];
-          const x1 = work.ax[ni],
-            y1 = work.ay[ni],
-            z1 = work.az[ni];
+          const x0 = slot(work.ax, i),
+            y0 = slot(work.ay, i),
+            z0 = slot(work.az, i);
+          const x1 = slot(work.ax, ni),
+            y1 = slot(work.ay, ni),
+            z1 = slot(work.az, ni);
           work.bx[k] = 0.75 * x0 + 0.25 * x1;
           work.by[k] = 0.75 * y0 + 0.25 * y1;
           work.bz[k++] = 0.75 * z0 + 0.25 * z1;
@@ -853,7 +865,14 @@ export function curvesToCurveLinesFast(
     // Emit this path's segments into the global flat buffer
     if (!closed) {
       for (let i = 0; i < n - 1; i++) {
-        pushSeg(work.ax[i], work.ay[i], work.az[i], work.ax[i + 1], work.ay[i + 1], work.az[i + 1]);
+        pushSeg(
+          slot(work.ax, i),
+          slot(work.ay, i),
+          slot(work.az, i),
+          slot(work.ax, i + 1),
+          slot(work.ay, i + 1),
+          slot(work.az, i + 1),
+        );
         // work.flat[w++] = work.ax[i];
         // work.flat[w++] = work.ay[i];
         // work.flat[w++] = work.az[i];
@@ -864,7 +883,14 @@ export function curvesToCurveLinesFast(
     } else {
       for (let i = 0; i < n; i++) {
         const ni = (i + 1) % n;
-        pushSeg(work.ax[i], work.ay[i], work.az[i], work.ax[ni], work.ay[ni], work.az[ni]);
+        pushSeg(
+          slot(work.ax, i),
+          slot(work.ay, i),
+          slot(work.az, i),
+          slot(work.ax, ni),
+          slot(work.ay, ni),
+          slot(work.az, ni),
+        );
         // work.flat[w++] = work.ax[i];
         // work.flat[w++] = work.ay[i];
         // work.flat[w++] = work.az[i];
@@ -889,8 +915,8 @@ export function curvesToCurveLinesFast(
     const aS = lineGeom.getAttribute("instanceStart") as THREE.InstancedBufferAttribute;
     const aE = lineGeom.getAttribute("instanceEnd") as THREE.InstancedBufferAttribute;
     function logInstance(i: number) {
-      const s = [aS.getX(i), aS.getY(i), aS.getZ(i)];
-      const e = [aE.getX(i), aE.getY(i), aE.getZ(i)];
+      const s: [number, number, number] = [aS.getX(i), aS.getY(i), aS.getZ(i)];
+      const e: [number, number, number] = [aE.getX(i), aE.getY(i), aE.getZ(i)];
       console.log(
         "inst",
         i,
@@ -915,9 +941,9 @@ export function curvesToCurveLinesFast(
         maxY = -Infinity,
         maxZ = -Infinity;
       for (let i = 0; i < usedFloats; i += 3) {
-        const x = work.flat[i],
-          y = work.flat[i + 1],
-          z = work.flat[i + 2];
+        const x = slot(work.flat, i),
+          y = slot(work.flat, i + 1),
+          z = slot(work.flat, i + 2);
         if (x < minX) minX = x;
         if (y < minY) minY = y;
         if (z < minZ) minZ = z;
@@ -934,9 +960,9 @@ export function curvesToCurveLinesFast(
       const center = box.getCenter(new THREE.Vector3());
       let r2 = 0;
       for (let i = 0; i < usedFloats; i += 3) {
-        const dx = work.flat[i] - center.x;
-        const dy = work.flat[i + 1] - center.y;
-        const dz = work.flat[i + 2] - center.z;
+        const dx = slot(work.flat, i) - center.x;
+        const dy = slot(work.flat, i + 1) - center.y;
+        const dz = slot(work.flat, i + 2) - center.z;
         const d2 = dx * dx + dy * dy + dz * dz;
         if (d2 > r2) r2 = d2;
       }
@@ -1024,6 +1050,7 @@ export function curvesToCurveLines(
     for (let i = 0; i < smooth.length - 1; i++) {
       const a = smooth[i],
         b = smooth[i + 1];
+      if (!a || !b) continue;
       linePositions.push(a.x, a.y, a.z, b.x, b.y, b.z);
     }
   }
@@ -1071,20 +1098,25 @@ export function updateBasicCurveLines(curves: CurveObj, curveObjects: any): any 
   if (!srcPoints || !paths) throw new Error("curves must have {points, paths}");
 
   // Build line segments for each polyline path
-  const linePositions = [];
+  const linePositions: number[] = [];
 
-  const getV = (i: number) => [srcPoints[3 * i], srcPoints[3 * i + 1], srcPoints[3 * i + 2]];
+  const getV = (i: number): [number, number, number] => [
+    slot(srcPoints, 3 * i),
+    slot(srcPoints, 3 * i + 1),
+    slot(srcPoints, 3 * i + 2),
+  ];
 
   for (const path of paths) {
     if (!path || path.length < 2) continue;
 
     // Create line segments between consecutive points in the path
     for (let i = 0; i < path.length - 1; i++) {
-      const p1 = getV(path[i]);
-      const p2 = getV(path[i + 1]);
+      const v1 = path[i];
+      const v2 = path[i + 1];
+      if (v1 === undefined || v2 === undefined) continue;
 
       // Add both points to create a line segment
-      linePositions.push(...p1, ...p2);
+      linePositions.push(...getV(v1), ...getV(v2));
     }
   }
 

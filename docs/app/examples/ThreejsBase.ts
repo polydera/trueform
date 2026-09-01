@@ -159,7 +159,7 @@ export abstract class ThreejsBase implements IThreejsBase {
           isSyncing = false;
         };
         const setupControlsSync = (controls1: ArcballControls, controls2: ArcballControls) => {
-          const syncEvents = ["change", "start", "end"];
+          const syncEvents = ["change", "start", "end"] as const;
 
           syncEvents.forEach((eventType) => {
             controls1.addEventListener(eventType, () => {

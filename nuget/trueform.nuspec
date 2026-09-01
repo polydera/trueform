@@ -7,6 +7,7 @@
     <authors>Polydera</authors>
     <owners>Polydera</owners>
     <readme>README.md</readme>
+    <releaseNotes>See RELEASE_NOTES.md in the package, or https://trueform.polydera.com/cpp/getting-started/release-notes</releaseNotes>
     <description>Fast and exact mesh booleans, spatial queries, arrangements, registration, and remeshing. Composable algorithms on your data — zero-copy views, reusable spatial trees, first-class topology. Header-only C++17, parallel via oneTBB.</description>
     <projectUrl>https://trueform.polydera.com</projectUrl>
     <repository type="git" url="https://github.com/polydera/trueform" />

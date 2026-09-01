@@ -27,66 +27,65 @@ const capF = renderMath("\\mathcal{F}");
 // SVG viewBox
 const VB = { x: 0, y: 60, w: 420, h: 175 };
 
-// --- Mesh geometry (unchanged) ---
+// --- Mesh geometry ---
 const gridSize = 4;
 const cellSize = 16;
 const isoX = (x: number, y: number) => (x - y) * 0.866 * cellSize;
 const isoY = (x: number, y: number) => (x + y) * 0.5 * cellSize;
 
-const cleanGridPoints: { x: number; y: number }[][] = [];
-for (let i = 0; i <= gridSize; i++) {
-  cleanGridPoints[i] = [];
-  for (let j = 0; j <= gridSize; j++) cleanGridPoints[i][j] = { x: isoX(i, j), y: isoY(i, j) };
-}
+type GridPoint = { x: number; y: number };
+type GridVertex = GridPoint & { i: number; j: number };
 
-const corruptedGridPoints: { x: number; y: number }[][] = [];
-for (let i = 0; i <= gridSize; i++) {
-  corruptedGridPoints[i] = [];
-  for (let j = 0; j <= gridSize; j++) {
-    if (i === 1 && j === 1) {
-      corruptedGridPoints[i][j] = { x: isoX(i - 0.4, j - 0.4), y: isoY(i - 0.4, j - 0.4) };
-    } else {
-      corruptedGridPoints[i][j] = { x: isoX(i, j), y: isoY(i, j) };
-    }
+const cleanPoint = (i: number, j: number): GridPoint => ({ x: isoX(i, j), y: isoY(i, j) });
+const corruptedPoint = (i: number, j: number): GridPoint =>
+  i === 1 && j === 1 ? cleanPoint(i - 0.4, j - 0.4) : cleanPoint(i, j);
+
+const gridVertices = (point: (i: number, j: number) => GridPoint) => {
+  const vertices: GridVertex[] = [];
+  for (let i = 0; i <= gridSize; i++) {
+    for (let j = 0; j <= gridSize; j++) vertices.push({ i, j, ...point(i, j) });
   }
-}
+  return vertices;
+};
 
-const generateGridPath = (points: { x: number; y: number }[][]) => {
+const generateGridPath = (point: (i: number, j: number) => GridPoint) => {
   let path = "";
   for (let i = 0; i <= gridSize; i++) {
-    path += `M ${points[i][0].x} ${points[i][0].y} `;
-    for (let j = 1; j <= gridSize; j++) path += `L ${points[i][j].x} ${points[i][j].y} `;
+    path += `M ${point(i, 0).x} ${point(i, 0).y} `;
+    for (let j = 1; j <= gridSize; j++) path += `L ${point(i, j).x} ${point(i, j).y} `;
   }
   for (let j = 0; j <= gridSize; j++) {
-    path += `M ${points[0][j].x} ${points[0][j].y} `;
-    for (let i = 1; i <= gridSize; i++) path += `L ${points[i][j].x} ${points[i][j].y} `;
+    path += `M ${point(0, j).x} ${point(0, j).y} `;
+    for (let i = 1; i <= gridSize; i++) path += `L ${point(i, j).x} ${point(i, j).y} `;
   }
   return path;
 };
 
-const cleanPath = generateGridPath(cleanGridPoints);
-const corruptedPath = generateGridPath(corruptedGridPoints);
+const cleanVertices = gridVertices(cleanPoint);
+const corruptedVertices = gridVertices(corruptedPoint);
+const cleanPath = generateGridPath(cleanPoint);
+const corruptedPath = generateGridPath(corruptedPoint);
 
 const flapHeight = 20;
 const flapTilt = -10;
-const v1 = corruptedGridPoints[2][3];
-const v2 = corruptedGridPoints[4][3];
+const v1 = corruptedPoint(2, 3);
+const v2 = corruptedPoint(4, 3);
 const v3 = { x: v2.x + flapTilt, y: v2.y - flapHeight + flapTilt * 0.5 };
 const v4 = { x: v1.x + flapTilt, y: v1.y - flapHeight * 0.85 + flapTilt * 0.5 };
 const flapPath = `M ${v1.x} ${v1.y} L ${v2.x} ${v2.y} L ${v3.x} ${v3.y} L ${v4.x} ${v4.y} Z`;
 
-const vMid = corruptedGridPoints[3][3];
+const vMid = corruptedPoint(3, 3);
 const vMidTop = { x: (v3.x + v4.x) / 2, y: (v3.y + v4.y) / 2 };
 const flapLines = `M ${vMid.x} ${vMid.y} L ${vMidTop.x} ${vMidTop.y}`;
 
 const isVertexBehindFlap = (i: number, j: number) => (i === 1 && j === 2) || (i === 2 && j === 2);
 
-const displacedVertex = corruptedGridPoints[1][1];
+const displacedVertex = corruptedPoint(1, 1);
 const displacedEdges = `
-  M ${corruptedGridPoints[0][1].x} ${corruptedGridPoints[0][1].y} L ${displacedVertex.x} ${displacedVertex.y}
-  M ${corruptedGridPoints[2][1].x} ${corruptedGridPoints[2][1].y} L ${displacedVertex.x} ${displacedVertex.y}
-  M ${corruptedGridPoints[1][0].x} ${corruptedGridPoints[1][0].y} L ${displacedVertex.x} ${displacedVertex.y}
-  M ${corruptedGridPoints[1][2].x} ${corruptedGridPoints[1][2].y} L ${displacedVertex.x} ${displacedVertex.y}
+  M ${corruptedPoint(0, 1).x} ${corruptedPoint(0, 1).y} L ${displacedVertex.x} ${displacedVertex.y}
+  M ${corruptedPoint(2, 1).x} ${corruptedPoint(2, 1).y} L ${displacedVertex.x} ${displacedVertex.y}
+  M ${corruptedPoint(1, 0).x} ${corruptedPoint(1, 0).y} L ${displacedVertex.x} ${displacedVertex.y}
+  M ${corruptedPoint(1, 2).x} ${corruptedPoint(1, 2).y} L ${displacedVertex.x} ${displacedVertex.y}
 `;
 const isDisplacedVertex = (i: number, j: number) => i === 1 && j === 1;
 
@@ -166,16 +165,14 @@ const overlay = computed(() => {
           <!-- Clean mesh (left) -->
           <g transform="translate(70, 160)">
             <path :d="cleanPath" fill="none" stroke="currentColor" stroke-width="1.2" />
-            <template v-for="i in gridSize + 1" :key="'row-' + i">
-              <template v-for="j in gridSize + 1" :key="'col-' + j">
-                <circle
-                  :cx="cleanGridPoints[i - 1][j - 1].x"
-                  :cy="cleanGridPoints[i - 1][j - 1].y"
-                  r="2.5"
-                  fill="currentColor"
-                />
-              </template>
-            </template>
+            <circle
+              v-for="v in cleanVertices"
+              :key="`${v.i}-${v.j}`"
+              :cx="v.x"
+              :cy="v.y"
+              r="2.5"
+              fill="currentColor"
+            />
           </g>
 
           <!-- Corrupted mesh (right) -->
@@ -184,17 +181,15 @@ const overlay = computed(() => {
             <path :d="displacedEdges" fill="none" class="displaced-stroke" />
             <path :d="flapPath" class="flap-fill" />
             <path :d="flapLines" class="flap-fill" fill="none" />
-            <template v-for="i in gridSize + 1" :key="'row-c-' + i">
-              <template v-for="j in gridSize + 1" :key="'col-c-' + j">
-                <circle
-                  :cx="corruptedGridPoints[i - 1][j - 1].x"
-                  :cy="corruptedGridPoints[i - 1][j - 1].y"
-                  r="2.5"
-                  :fill="isDisplacedVertex(i - 1, j - 1) ? 'rgb(20, 184, 166)' : 'currentColor'"
-                  :opacity="isVertexBehindFlap(i - 1, j - 1) ? 0.15 : 1"
-                />
-              </template>
-            </template>
+            <circle
+              v-for="v in corruptedVertices"
+              :key="`${v.i}-${v.j}`"
+              :cx="v.x"
+              :cy="v.y"
+              r="2.5"
+              :fill="isDisplacedVertex(v.i, v.j) ? 'rgb(20, 184, 166)' : 'currentColor'"
+              :opacity="isVertexBehindFlap(v.i, v.j) ? 0.15 : 1"
+            />
           </g>
 
           <!-- Bottom arrow -->

@@ -1,8 +1,8 @@
 import * as THREE from "three";
 import { ArcballControls } from "three/addons/controls/ArcballControls.js";
 
-const DARK_BG_FALLBACK = [0x0c1513, 0x121f1d, 0x192a27];
-const LIGHT_BG_FALLBACK = [0xfafafa, 0xf5f5f5, 0xefefef];
+const DARK_BG_FALLBACK: [number, number, number] = [0x0c1513, 0x121f1d, 0x192a27];
+const LIGHT_BG_FALLBACK: [number, number, number] = [0xfafafa, 0xf5f5f5, 0xefefef];
 
 export function getBrandBackground(level: 0 | 1 | 2 = 1): number {
     const isDark =
@@ -299,7 +299,7 @@ export function createBidirectionalSyncedScenes(
 
     // Setup bidirectional sync
     const setupControlsSync = (controls1: ArcballControls, controls2: ArcballControls) => {
-        const syncEvents = ['change', 'start', 'end'];
+        const syncEvents = ['change', 'start', 'end'] as const;
 
         syncEvents.forEach(eventType => {
             controls1.addEventListener(eventType, () => {

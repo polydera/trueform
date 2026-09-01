@@ -1,6 +1,7 @@
 import { fitCameraToAllMeshesFromZPlane, createScene, type SceneBundle } from "@/utils/sceneUtils";
 import { centerAndScale, pickMesh, randomTransformation, RollingAverage } from "@/utils/utils";
 import * as THREE from "three";
+import type { Mesh } from "@polydera/trueform";
 
 type TF = typeof import("@polydera/trueform");
 
@@ -60,6 +61,10 @@ export class ClosestPointsExample {
     const points = this.baseMesh.points;
     const pMin = tf.min(points, 0);
     const pMax = tf.max(points, 0);
+    // Reducing along an axis yields arrays; the scalar form is the axis-less call.
+    if (typeof pMin === "number" || typeof pMax === "number") {
+      throw new Error("axis reduction must return an array");
+    }
     const diag = pMax.sub(pMin);
     this.aabbDiag = tf.norm(diag) as number;
     pMin.delete(); pMax.delete(); diag.delete();
@@ -124,10 +129,10 @@ export class ClosestPointsExample {
 
     // Load matcap texture
     new THREE.TextureLoader().load(matcapUrl, (tex) => {
-      for (let i = 0; i < this.materials.length; i++) {
-        this.materials[i].matcap = i === 0 ? tex : tex.clone();
-        this.materials[i].needsUpdate = true;
-      }
+      this.materials.forEach((material, i) => {
+        material.matcap = i === 0 ? tex : tex.clone();
+        material.needsUpdate = true;
+      });
     });
 
     // Closest points visuals
@@ -256,11 +261,13 @@ export class ClosestPointsExample {
     const tf = this.tf;
     const otherId = draggedId === 0 ? 1 : 0;
     const t0 = performance.now();
-    if (tf.intersects(this.tfMeshes[draggedId], this.tfMeshes[otherId])) {
+    const dragged: Mesh = this.tfMeshes[draggedId];
+    const other: Mesh = this.tfMeshes[otherId];
+    if (tf.intersects(dragged, other)) {
       this.hasClosestPoints = false;
     } else {
       // neighborSearch(dragged, other) → point0 on dragged, point1 on other
-      const result = tf.neighborSearch(this.tfMeshes[draggedId], this.tfMeshes[otherId]);
+      const result = tf.neighborSearch(dragged, other);
       this.closestPtSelected.fromArray(result.point0.data as Float32Array);
       this.closestPtOther.fromArray(result.point1.data as Float32Array);
       result.point0.delete();
@@ -392,6 +399,7 @@ export class ClosestPointsExample {
 
   private syncThreeMatrix(index: number, mesh?: THREE.Mesh) {
     const target = mesh ?? this.threeMeshes[index];
+    if (!target) return;
     const mat = this.tfMeshes[index].transformation;
     if (!mat) return;
     const m = new THREE.Matrix4();
@@ -431,11 +439,11 @@ export class ClosestPointsExample {
       ? "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/635D52_A9BCC0_B1AEA0_819598.png"
       : "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/2D2D2F_C6C2C5_727176_94949B.png";
     new THREE.TextureLoader().load(matcapUrl, (tex) => {
-      for (let i = 0; i < this.materials.length; i++) {
-        if (this.materials[i].matcap) this.materials[i].matcap!.dispose();
-        this.materials[i].matcap = i === 0 ? tex : tex.clone();
-        this.materials[i].needsUpdate = true;
-      }
+      this.materials.forEach((material, i) => {
+        material.matcap?.dispose();
+        material.matcap = i === 0 ? tex : tex.clone();
+        material.needsUpdate = true;
+      });
     });
   }
 
@@ -465,8 +473,9 @@ export class ClosestPointsExample {
     this.sceneBundle.controls.dispose();
 
     // Dispose shared geometry (only once)
-    if (this.threeMeshes.length > 0) {
-      this.threeMeshes[0].geometry.dispose();
+    const [sharedGeometryOwner] = this.threeMeshes;
+    if (sharedGeometryOwner) {
+      sharedGeometryOwner.geometry.dispose();
     }
     for (const mesh of this.threeMeshes) {
       (mesh.material as THREE.Material).dispose();

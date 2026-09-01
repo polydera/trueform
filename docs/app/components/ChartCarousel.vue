@@ -25,7 +25,7 @@ watch(isHovered, (hovered) => {
   <div ref="carouselRef" class="w-full overflow-hidden relative">
     <TransitionGroup name="slide" tag="div" class="relative">
       <div v-if="currentChart === 0" key="chart-0" class="w-full">
-        <ChartsCutBooleanSpeedup />
+        <ChartsArrangementBooleanSpeedup />
       </div>
       <div v-if="currentChart === 1" key="chart-1" class="w-full">
         <ChartsSpatialPolygonsBuildAabbSpeedup />

@@ -36,7 +36,7 @@ const triggers = {
       <VisAxis
         type="x"
         label="Number of Points"
-        :tickFormat="(value: number) => numKM(data[value]?.points) || ''"
+        :tickFormat="(value: number) => data[value]?.points ? numKM(data[value].points) : ''"
         :numTicks="data?.length || 0"
       />
       <VisAxis type="y" label="Speedup Factor" />

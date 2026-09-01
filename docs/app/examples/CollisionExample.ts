@@ -96,10 +96,10 @@ export class CollisionExample {
 
     // Load matcap texture and assign to all materials
     new THREE.TextureLoader().load(matcapUrl, (tex) => {
-      for (let i = 0; i < materials.length; i++) {
-        materials[i].matcap = i === 0 ? tex : tex.clone();
-        materials[i].needsUpdate = true;
-      }
+      materials.forEach((material, i) => {
+        material.matcap = i === 0 ? tex : tex.clone();
+        material.needsUpdate = true;
+      });
     });
 
     // Fit camera
@@ -224,6 +224,7 @@ export class CollisionExample {
 
   private syncThreeMatrix(index: number, mesh?: THREE.Mesh) {
     const target = mesh ?? this.threeMeshes[index];
+    if (!target) return;
     const mat = this.tfMeshes[index].transformation;
     if (!mat) return;
     const m = new THREE.Matrix4();
@@ -234,10 +235,10 @@ export class CollisionExample {
   }
 
   private updateColors() {
-    for (let i = 0; i < this.threeMeshes.length; i++) {
-      const mat = this.threeMeshes[i].material as THREE.MeshMatcapMaterial;
+    this.threeMeshes.forEach((mesh, i) => {
+      const mat = mesh.material as THREE.MeshMatcapMaterial;
       mat.color.copy(this.colliding.has(i) ? this.collidingColor : this.normalColor);
-    }
+    });
   }
 
   public getAverageTime(): number {
@@ -254,12 +255,12 @@ export class CollisionExample {
       ? "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/635D52_A9BCC0_B1AEA0_819598.png"
       : "https://raw.githubusercontent.com/nidorx/matcaps/master/1024/2D2D2F_C6C2C5_727176_94949B.png";
     new THREE.TextureLoader().load(matcapUrl, (tex) => {
-      for (let i = 0; i < this.threeMeshes.length; i++) {
-        const mat = this.threeMeshes[i].material as THREE.MeshMatcapMaterial;
+      this.threeMeshes.forEach((mesh, i) => {
+        const mat = mesh.material as THREE.MeshMatcapMaterial;
         if (mat.matcap) mat.matcap.dispose();
         mat.matcap = i === 0 ? tex : tex.clone();
         mat.needsUpdate = true;
-      }
+      });
     });
   }
 
@@ -285,8 +286,9 @@ export class CollisionExample {
     this.cleanups = [];
     this.sceneBundle.controls.dispose();
     // Dispose shared geometry (only once)
-    if (this.threeMeshes.length > 0) {
-      this.threeMeshes[0].geometry.dispose();
+    const [sharedGeometryOwner] = this.threeMeshes;
+    if (sharedGeometryOwner) {
+      sharedGeometryOwner.geometry.dispose();
     }
     for (const mesh of this.threeMeshes) {
       (mesh.material as THREE.Material).dispose();

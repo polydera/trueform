@@ -198,7 +198,7 @@ export class IsobandsExample {
     const a = (this.planeOffset - this.scalarMin) / s;
     const k = Math.max(0, Math.min(n - 1, Math.floor(a)));
 
-    // Cut values centered on planeOffset (same logic as old C++ pipeline)
+    // Cut values centered on planeOffset
     const cutValues = new Float32Array(n);
     for (let i = 0; i < n; i++) {
       cutValues[i] = this.planeOffset + (i - k) * s;

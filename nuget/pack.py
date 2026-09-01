@@ -73,6 +73,9 @@ def main():
         # README
         zf.write(NUGET_DIR / "README.md", "README.md")
 
+        # Release notes
+        zf.write(ROOT / "RELEASE_NOTES.md", "RELEASE_NOTES.md")
+
         # Licenses
         zf.write(ROOT / "LICENSE", "LICENSE")
         zf.write(ROOT / "LICENSE.noncommercial", "LICENSE.noncommercial")

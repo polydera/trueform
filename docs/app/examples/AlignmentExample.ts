@@ -96,6 +96,10 @@ export class AlignmentExample {
       const pts = this.source.points;
       const pMin = tf.min(pts, 0);
       const pMax = tf.max(pts, 0);
+      // Reducing along an axis yields arrays; the scalar form is the axis-less call.
+      if (typeof pMin === "number" || typeof pMax === "number") {
+        throw new Error("axis reduction must return an array");
+      }
       const diff = pMax.sub(pMin);
       this.aabbDiagonal = tf.norm(diff) as number;
       pMin.delete(); pMax.delete(); diff.delete(); pts.delete();

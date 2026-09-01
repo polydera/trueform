@@ -86,7 +86,7 @@ export class ShapeHistogramExample extends ThreejsBase {
     }
 
     if (this.onHistogramUpdate) {
-      const bins = Array.from(binsView.slice(0, SHAPE_HISTOGRAM_NUM_BINS));
+      const bins = Array.from<number>(binsView.slice(0, SHAPE_HISTOGRAM_NUM_BINS));
       this.onHistogramUpdate(bins);
     }
   }
