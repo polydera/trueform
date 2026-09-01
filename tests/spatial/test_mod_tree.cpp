@@ -17,6 +17,7 @@
 #include "type_traits.hpp"
 #include <cmath>
 #include <set>
+#include <utility>
 
 // =============================================================================
 // Helper functions
@@ -223,8 +224,13 @@ TEMPLATE_TEST_CASE("mod_tree_stitched_boolean_raycast", "[mod_tree]",
         sphere.polygons() | tf::tag(fm1) | tf::tag(mel1) | tf::tag(tree1) | tf::tag(frame),
         tf::boolean_op::left_difference, tf::return_index_map);
 
+    const index_t n_input_faces[2] = {index_t(box.size()), index_t(sphere.size())};
+    auto stitch_map = tf::make_stitch_index_map(std::move(index_maps),
+                                                tf::make_range(n_input_faces, n_input_faces + 2));
+
     // Stitch the mod_tree
-    tf::stitch_mod_tree(result.polygons(), mod_tree_input, tf::none, index_maps, tf::config_tree(4, 4));
+    tf::stitch_mod_tree(result.polygons(), mod_tree_input, tf::none, stitch_map,
+                        tf::config_tree(4, 4));
 
     // Build fresh tree for comparison
     tf::aabb_tree<index_t, real_t, 3> fresh_tree(result.polygons(), tf::config_tree(4, 4));
@@ -298,8 +304,13 @@ TEMPLATE_TEST_CASE("mod_tree_stitched_boolean_neighbor_search", "[mod_tree]",
         sphere.polygons() | tf::tag(fm1) | tf::tag(mel1) | tf::tag(tree1) | tf::tag(frame),
         tf::boolean_op::left_difference, tf::return_index_map);
 
+    const index_t n_input_faces[2] = {index_t(box.size()), index_t(sphere.size())};
+    auto stitch_map = tf::make_stitch_index_map(std::move(index_maps),
+                                                tf::make_range(n_input_faces, n_input_faces + 2));
+
     // Stitch the mod_tree
-    tf::stitch_mod_tree(result.polygons(), mod_tree_input, tf::none, index_maps, tf::config_tree(4, 4));
+    tf::stitch_mod_tree(result.polygons(), mod_tree_input, tf::none, stitch_map,
+                        tf::config_tree(4, 4));
 
     // Build fresh tree for comparison
     tf::aabb_tree<index_t, real_t, 3> fresh_tree(result.polygons(), tf::config_tree(4, 4));
@@ -370,8 +381,13 @@ TEMPLATE_TEST_CASE("mod_tree_main_and_delta", "[mod_tree]",
         sphere1.polygons() | tf::tag(fm1) | tf::tag(mel1) | tf::tag(tree1) | tf::tag(frame),
         tf::boolean_op::left_difference, tf::return_index_map);
 
+    const index_t n_input_faces[2] = {index_t(sphere0.size()), index_t(sphere1.size())};
+    auto stitch_map = tf::make_stitch_index_map(std::move(index_maps),
+                                                tf::make_range(n_input_faces, n_input_faces + 2));
+
     // Stitch the mod_tree
-    tf::stitch_mod_tree(result.polygons(), mod_tree_input, tf::none, index_maps, tf::config_tree(4, 4));
+    tf::stitch_mod_tree(result.polygons(), mod_tree_input, tf::none, stitch_map,
+                        tf::config_tree(4, 4));
 
     // Access main and delta trees
     const auto& main_tree = mod_tree_input.main_tree();
@@ -460,8 +476,13 @@ TEMPLATE_TEST_CASE("mod_tree_union_boolean", "[mod_tree]",
         box2.polygons() | tf::tag(fm1) | tf::tag(mel1) | tf::tag(tree1) | tf::tag(frame),
         tf::boolean_op::merge, tf::return_index_map);
 
+    const index_t n_input_faces[2] = {index_t(box1.size()), index_t(box2.size())};
+    auto stitch_map = tf::make_stitch_index_map(std::move(index_maps),
+                                                tf::make_range(n_input_faces, n_input_faces + 2));
+
     // Stitch the mod_tree
-    tf::stitch_mod_tree(result.polygons(), mod_tree_input, tf::none, index_maps, tf::config_tree(4, 4));
+    tf::stitch_mod_tree(result.polygons(), mod_tree_input, tf::none, stitch_map,
+                        tf::config_tree(4, 4));
 
     // Build fresh tree for comparison
     tf::aabb_tree<index_t, real_t, 3> fresh_tree(result.polygons(), tf::config_tree(4, 4));
@@ -486,6 +507,67 @@ TEMPLATE_TEST_CASE("mod_tree_union_boolean", "[mod_tree]",
             REQUIRE(info_fresh);
             REQUIRE(info_stitched.element == info_fresh.element);
         }
+    }
+}
+
+// =============================================================================
+// Disjoint operands: every face is inherited, so the delta tree gets no ids
+// =============================================================================
+
+TEMPLATE_TEST_CASE("mod_tree_stitched_boolean_disjoint", "[mod_tree]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto box = tf::make_box_mesh<index_t>(real_t(2), real_t(2), real_t(2));
+    auto sphere = tf::make_sphere_mesh<index_t>(real_t(0.5), 20, 20);
+
+    tf::face_membership<index_t> fm0;
+    fm0.build(box.polygons());
+    tf::manifold_edge_link<index_t, 3> mel0;
+    mel0.build(box.faces(), fm0);
+    tf::mod_tree<index_t, tf::aabb<real_t, 3>> mod_tree_input;
+    mod_tree_input.build(box.polygons(), tf::config_tree(4, 4));
+
+    tf::face_membership<index_t> fm1;
+    fm1.build(sphere.polygons());
+    tf::manifold_edge_link<index_t, 3> mel1;
+    mel1.build(sphere.faces(), fm1);
+    tf::aabb_tree<index_t, real_t, 3> tree1(sphere.polygons(), tf::config_tree(4, 4));
+
+    // far enough away that the operands do not meet
+    auto frame = tf::make_frame(tf::make_transformation_from_translation(
+        tf::vector<real_t, 3>{real_t(10), real_t(10), real_t(10)}));
+
+    auto [result, labels, fl_, index_maps] = tf::make_boolean(
+        box.polygons() | tf::tag(fm0) | tf::tag(mel0) | tf::tag(mod_tree_input),
+        sphere.polygons() | tf::tag(fm1) | tf::tag(mel1) | tf::tag(tree1) | tf::tag(frame),
+        tf::boolean_op::left_difference, tf::return_index_map);
+
+    const index_t n_input_faces[2] = {index_t(box.size()), index_t(sphere.size())};
+    auto stitch_map = tf::make_stitch_index_map(std::move(index_maps),
+                                                tf::make_range(n_input_faces, n_input_faces + 2));
+
+    REQUIRE(stitch_map.new_faces.size() == 0);
+
+    tf::stitch_mod_tree(result.polygons(), mod_tree_input, tf::none, stitch_map,
+                        tf::config_tree(4, 4));
+
+    tf::aabb_tree<index_t, real_t, 3> fresh_tree(result.polygons(), tf::config_tree(4, 4));
+    for (std::size_t poly_id = 0; poly_id < result.size(); ++poly_id) {
+        auto poly = result.polygons()[poly_id];
+        auto centroid = tf::centroid(poly);
+        auto normal = tf::make_normal(poly);
+        auto ray = tf::make_ray(centroid + real_t(0.01) * normal, -normal);
+
+        auto info_stitched = tf::ray_cast(ray, result.polygons() | tf::tag(mod_tree_input));
+        auto info_fresh = tf::ray_cast(ray, result.polygons() | tf::tag(fresh_tree));
+
+        REQUIRE(info_stitched);
+        REQUIRE(info_fresh);
+        REQUIRE(info_stitched.element == info_fresh.element);
     }
 }
 

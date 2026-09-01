@@ -18,7 +18,7 @@
 #include "tbb/task_group.h"
 #include <utility>
 
-namespace tf::spatial::impl {
+namespace tf::spatial::traversal {
 
 template <typename Tree0, typename Tree1, typename F0, typename F1, typename T>
 struct dual_proximity_params {
@@ -291,4 +291,4 @@ auto dual_proximity(const tf::mod_tree_like<ModTreePolicy0> &mod_tree0,
   tg.wait();
 }
 
-} // namespace tf::spatial::impl
+} // namespace tf::spatial::traversal

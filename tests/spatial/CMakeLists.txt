@@ -1,4 +1,5 @@
 add_executable(trueform_spatial_tests
+  test_aabb_tree.cpp
   test_neighbor_search.cpp
   test_ray_cast.cpp
   test_intersects.cpp

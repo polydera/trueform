@@ -17,7 +17,7 @@
 #include "./dual_search.hpp"
 #include "tbb/task_group.h"
 
-namespace tf::spatial::impl {
+namespace tf::spatial::traversal {
 
 template <typename Tree, typename F, typename F1, typename F2>
 struct self_search_params {
@@ -139,4 +139,4 @@ auto self_search(const tf::mod_tree_like<TreePolicy> &mod_tree,
   return found0 || found1 || found2;
 }
 
-} // namespace tf::spatial::impl
+} // namespace tf::spatial::traversal

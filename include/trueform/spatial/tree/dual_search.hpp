@@ -15,7 +15,7 @@
 #include "../mod_tree_like.hpp"
 #include "../tree_like.hpp"
 #include "tbb/task_group.h"
-namespace tf::spatial::impl {
+namespace tf::spatial::traversal {
 
 template <typename Tree0, typename Tree1, typename F, typename F1, typename F2>
 struct dual_search_params {
@@ -190,4 +190,4 @@ auto dual_search(const tf::mod_tree_like<ModTreePolicy0> &mod_tree0,
   return found0 || found1 || found2 || found3;
 }
 
-} // namespace tf::spatial::impl
+} // namespace tf::spatial::traversal

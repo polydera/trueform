@@ -30,7 +30,7 @@ namespace tf::spatial {
 template <typename TreePolicy, typename F0, typename F1>
 auto search(const tf::tree_like<TreePolicy> &tree, const F0 &check_bv,
             const F1 &primitive_apply) -> bool {
-  return tf::spatial::impl::search(
+  return tf::spatial::traversal::search(
       tree, check_bv,
       [primitive_apply, &check_bv](const auto &r, const auto &primitive_aabbs) {
         for (const auto &id : r)
@@ -53,7 +53,7 @@ auto search(const tf::tree_like<TreePolicy> &tree, const F0 &check_bv,
 template <typename ModTreePolicy, typename F0, typename F1>
 auto search(const tf::mod_tree_like<ModTreePolicy> &tree, const F0 &check_bv,
             const F1 &primitive_apply) -> bool {
-  return tf::spatial::impl::search(
+  return tf::spatial::traversal::search(
       tree, check_bv,
       [primitive_apply, &check_bv](const auto &r, const auto &primitive_aabbs) {
         for (const auto &id : r)
@@ -77,13 +77,13 @@ template <std::size_t Dims, typename Policy, typename F0, typename F1>
 auto search(const tf::form<Dims, Policy> &form, const F0 &check_bv,
             const F1 &primitive_apply) -> bool {
   auto buff = make_buffer_for_form(form);
-  return tf::spatial::impl::search(
+  return tf::spatial::traversal::search(
       form.tree(),
       [&check_bv, &form](const auto &bv) {
         return check_bv(tf::transformed(bv, tf::frame_of(form)));
       },
       [primitive_apply, &form, &check_bv, &buff](const auto &r,
-                                                  const auto &primitive_aabbs) {
+                                                 const auto &primitive_aabbs) {
         for (const auto &id : r)
           if (check_bv(tf::transformed(primitive_aabbs[id], tf::frame_of(form)))) {
             if constexpr (std::is_same_v<decltype(primitive_apply(tf::tag_id(
@@ -114,7 +114,7 @@ auto search(const tf::tree_like<TreePolicy0> &tree0,
             const tf::tree_like<TreePolicy1> &tree1, const F0 &check_bvs,
             const F1 &primitive_apply, const F2 &abort,
             int parallelism_depth = 6) -> bool {
-  return tf::spatial::impl::dual_search(
+  return tf::spatial::traversal::dual_search(
       tree0, tree1, check_bvs,
       [primitive_apply, &check_bvs](const auto &r0, const auto &r1,
                                     const auto &aabbs0, const auto &aabbs1) {
@@ -144,7 +144,7 @@ auto search(const tf::form<Dims, Policy0> &form0,
   };
   auto buff0 = make_local_buffer_for_form(form0);
   auto buff1 = make_local_buffer_for_form(form1);
-  return tf::spatial::impl::dual_search(
+  return tf::spatial::traversal::dual_search(
       form0.tree(), form1.tree(), bv_f,
       [primitive_apply, &form0, &form1, &bv_f, &buff0,
        &buff1](const auto &r0, const auto &r1, const auto &aabbs0,

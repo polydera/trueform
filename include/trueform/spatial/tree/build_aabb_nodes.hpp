@@ -15,6 +15,7 @@
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/algorithm/partition_range_into_parts.hpp"
 #include "../../core/buffer.hpp"
+#include "../../core/empty_aabb.hpp"
 #include "../../core/views/enumerate.hpp"
 #include "../../core/largest_axis.hpp"
 #include "../../core/views/sequence_range.hpp"
@@ -23,11 +24,41 @@
 #include "./max_nodes_in_tree.hpp"
 #include "./tree_node.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstring>
+#include <limits>
 #include <type_traits>
 namespace tf::spatial {
-namespace detail {
+namespace aabb_nodes {
+
+template <typename RealT, bool Integral = std::is_integral_v<RealT>>
+struct centroid_coordinate {
+  using type = RealT;
+};
+template <typename RealT> struct centroid_coordinate<RealT, true> {
+  using type = std::make_unsigned_t<RealT>;
+};
+
+// The centroid currency. An entry carries twice a box center, one bit wider
+// than the coordinate, so the integral form is stored as that sum's
+// order-preserving unsigned image: the sign bit flipped after an unsigned
+// add. Consumers order it by unsigned compare, which is the sum's order
+// wherever the sum is representable, and difference it by unsigned
+// subtraction, in which the bias cancels. Nothing here can overflow.
+template <typename RealT>
+using centroid_coordinate_t = typename centroid_coordinate<RealT>::type;
+
+template <typename RealT>
+auto doubled_centroid(RealT lo, RealT hi) -> centroid_coordinate_t<RealT> {
+  if constexpr (std::is_integral_v<RealT>) {
+    using U = centroid_coordinate_t<RealT>;
+    constexpr U sign_bit = U(U(1) << (std::numeric_limits<U>::digits - 1));
+    return U(U(U(lo) + U(hi)) ^ sign_bit);
+  } else {
+    return lo + hi;
+  }
+}
 
 // The build partitions one packed stream: an element swaps as one cache
 // line touch, where separate id and center arrays would pay two streams
@@ -35,14 +66,14 @@ namespace detail {
 template <typename Index, typename RealT, std::size_t Dims>
 struct centroid_entry {
   Index id;
-  RealT c[Dims];
+  centroid_coordinate_t<RealT> c[Dims];
 };
 
 template <typename Index, typename RealT, std::size_t Dims>
 auto centroid_bounds(const centroid_entry<Index, RealT, Dims> *first,
                      const centroid_entry<Index, RealT, Dims> *last)
-    -> tf::aabb<RealT, Dims> {
-  tf::aabb<RealT, Dims> r;
+    -> tf::aabb<centroid_coordinate_t<RealT>, Dims> {
+  tf::aabb<centroid_coordinate_t<RealT>, Dims> r;
   for (std::size_t d = 0; d < Dims; ++d)
     r.min[d] = r.max[d] = first->c[d];
   for (auto it = first + 1; it != last; ++it)
@@ -51,6 +82,24 @@ auto centroid_bounds(const centroid_entry<Index, RealT, Dims> *first,
       r.max[d] = std::max(r.max[d], it->c[d]);
     }
   return r;
+}
+
+template <typename Key, std::size_t Dims>
+auto largest_centroid_extent_axis(const tf::aabb<Key, Dims> &bounds) -> int {
+  if constexpr (std::is_integral_v<Key>) {
+    int axis = 0;
+    Key largest = Key(bounds.max[0] - bounds.min[0]);
+    for (std::size_t d = 1; d < Dims; ++d) {
+      const Key extent = Key(bounds.max[d] - bounds.min[d]);
+      if (largest < extent) {
+        largest = extent;
+        axis = int(d);
+      }
+    }
+    return axis;
+  } else {
+    return int(tf::largest_axis(bounds.diagonal()));
+  }
 }
 
 // Above this size a node is split by one parallel histogram pass and one
@@ -81,9 +130,9 @@ inline auto partition_part_ranks(std::size_t n, int parts, std::size_t base,
 // straddle bucket's population is divided by a per-chunk quota. Returns
 // false on a degenerate key distribution (caller falls back to the serial
 // partitioner).
-template <typename Entry, typename RealT>
+template <typename Entry, typename Key>
 auto parallel_rank_split(const Entry *first, Entry *dst, std::size_t n,
-                         int axis, RealT key_lo, RealT key_hi, int parts,
+                         int axis, Key key_lo, Key key_hi, int parts,
                          std::size_t *ranks_out) -> bool {
   constexpr int n_buckets = 1024;
   constexpr int max_parts = parallel_split_max_parts;
@@ -97,14 +146,13 @@ auto parallel_rank_split(const Entry *first, Entry *dst, std::size_t n,
   if (!(key_lo < key_hi))
     return false;
 
-  // Bucket mapping per coordinate type: integer grids shift exactly (no
-  // floating point touches a grid coordinate), floats scale in double.
+  // Bucket mapping per key type: integer grids shift exactly (no floating
+  // point touches a grid coordinate), floats scale in double.
   [[maybe_unused]] double lo = 0, scale = 0;
-  [[maybe_unused]] std::make_unsigned_t<
-      std::conditional_t<std::is_integral_v<RealT>, RealT, int>>
-      u_lo = 0;
+  [[maybe_unused]] std::conditional_t<std::is_integral_v<Key>, Key, int> u_lo =
+      0;
   [[maybe_unused]] int shift = 0;
-  if constexpr (std::is_integral_v<RealT>) {
+  if constexpr (std::is_integral_v<Key>) {
     using U = decltype(u_lo);
     u_lo = U(key_lo);
     U span = U(key_hi) - u_lo;
@@ -117,8 +165,8 @@ auto parallel_rank_split(const Entry *first, Entry *dst, std::size_t n,
       return false;
     scale = double(n_buckets) / span;
   }
-  auto bucket_of = [&](RealT key) -> int {
-    if constexpr (std::is_integral_v<RealT>) {
+  auto bucket_of = [&](Key key) -> int {
+    if constexpr (std::is_integral_v<Key>) {
       using U = decltype(u_lo);
       return int((U(key) - u_lo) >> shift);
     } else {
@@ -260,6 +308,16 @@ auto build_tree_nodes(buffer<tree_node<Index, tf::aabb<RealT, Dims>>> &nodes,
                       const tf::tree_config &config) -> void {
   Index n_ids = Index(last - first);
 
+  // An empty node carries the empty box, which intersects nothing, so a
+  // query descends no further. Reached when a delta tree is built over no
+  // ids at all — every primitive was inherited by the main tree.
+  if (n_ids == 0) {
+    nodes[node_id].bv = tf::make_empty_aabb<RealT, Dims>();
+    nodes[node_id].set_data(offset, 0);
+    nodes[node_id].set_as_leaf();
+    return;
+  }
+
   // Leaf: union the primitive AABBs of this leaf's prims.
   if (n_ids <= config.leaf_size) {
     nodes[node_id].bv = aabbs[first->id];
@@ -272,7 +330,7 @@ auto build_tree_nodes(buffer<tree_node<Index, tf::aabb<RealT, Dims>>> &nodes,
 
   // Inner: split-axis from the bbox of centroids.
   auto cbb = centroid_bounds(first, last);
-  int max_axis = tf::largest_axis(cbb.diagonal());
+  int max_axis = largest_centroid_extent_axis(cbb);
   nodes[node_id].axis = max_axis;
 
   Index first_child = config.inner_size * node_id + 1;
@@ -333,7 +391,7 @@ auto build_tree_nodes_split(
   }
 
   auto cbb = centroid_bounds(first, first + n_ids);
-  int max_axis = tf::largest_axis(cbb.diagonal());
+  int max_axis = largest_centroid_extent_axis(cbb);
 
   const int parts = config.inner_size;
   std::array<std::size_t, parallel_split_max_parts - 1> ranks;
@@ -366,7 +424,7 @@ auto build_tree_nodes_split(
   nodes[node_id].set_data(first_child, Index(parts));
 }
 
-} // namespace detail
+} // namespace aabb_nodes
 
 template <typename Partitioner, typename Index, typename RealT,
           std::size_t Dims, typename Range0, typename Range1>
@@ -386,7 +444,7 @@ auto build_tree_nodes(buffer<tree_node<Index, tf::aabb<RealT, Dims>>> &nodes,
   if (!use_ids)
     ids.allocate(aabbs.size());
 
-  using entry_t = detail::centroid_entry<Index, RealT, Dims>;
+  using entry_t = aabb_nodes::centroid_entry<Index, RealT, Dims>;
   buffer<entry_t> entries;
   entries.allocate(std::size_t(n_ids));
   if (!use_ids) {
@@ -394,7 +452,8 @@ auto build_tree_nodes(buffer<tree_node<Index, tf::aabb<RealT, Dims>>> &nodes,
       auto &&[i, bb] = pair;
       auto &en = entries[i];
       en.id = Index(i);
-      for (std::size_t d = 0; d < Dims; ++d) en.c[d] = bb.min[d] + bb.max[d];
+      for (std::size_t d = 0; d < Dims; ++d)
+        en.c[d] = aabb_nodes::doubled_centroid(bb.min[d], bb.max[d]);
     }, tf::checked);
   } else {
     tf::parallel_for_each(tf::enumerate(ids), [&](auto pair) {
@@ -402,25 +461,25 @@ auto build_tree_nodes(buffer<tree_node<Index, tf::aabb<RealT, Dims>>> &nodes,
       auto const &bb = aabbs[id];
       auto &en = entries[i];
       en.id = id;
-      for (std::size_t d = 0; d < Dims; ++d) en.c[d] = bb.min[d] + bb.max[d];
+      for (std::size_t d = 0; d < Dims; ++d)
+        en.c[d] = aabb_nodes::doubled_centroid(bb.min[d], bb.max[d]);
     }, tf::checked);
   }
 
-  if (std::size_t(n_ids) >= detail::parallel_split_threshold &&
+  if (std::size_t(n_ids) >= aabb_nodes::parallel_split_threshold &&
       config.inner_size >= 2 &&
-      config.inner_size <= detail::parallel_split_max_parts) {
+      config.inner_size <= aabb_nodes::parallel_split_max_parts) {
     buffer<entry_t> entries_scratch;
     entries_scratch.allocate(std::size_t(n_ids));
-    detail::build_tree_nodes_split<Partitioner>(nodes, aabbs, entries.data(),
-                                        entries_scratch.data(),
-                                        std::size_t(n_ids), Index(0), Index(0),
-                                        ids, config);
+    aabb_nodes::build_tree_nodes_split<Partitioner>(
+        nodes, aabbs, entries.data(), entries_scratch.data(),
+        std::size_t(n_ids), Index(0), Index(0), ids, config);
     return;
   }
 
-  detail::build_tree_nodes<Partitioner>(nodes, aabbs, entries.data(),
-                                        entries.data() + n_ids, Index(0),
-                                        Index(0), config);
+  aabb_nodes::build_tree_nodes<Partitioner>(nodes, aabbs, entries.data(),
+                                            entries.data() + n_ids, Index(0),
+                                            Index(0), config);
   tf::parallel_for_each(tf::enumerate(ids), [&](auto pair) {
     auto &&[i, id] = pair;
     id = entries[i].id;

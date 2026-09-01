@@ -44,7 +44,7 @@ auto nearness_search(const tf::tree_like<TreePolicy> &tree, const F0 &bv_metric,
   using tree_metric_t =
       tf::tree_metric_info<Index, decltype(closest_point_f(Index(0)))>;
   tree_metric_result<tree_metric_t> result{std::numeric_limits<real_t>::max()};
-  impl::proximity(tree, bv_metric, closest_point_f, result);
+  traversal::proximity(tree, bv_metric, closest_point_f, result);
   return result.info;
 }
 
@@ -57,7 +57,7 @@ auto nearness_search(const tf::tree_like<TreePolicy> &tree, const F0 &bv_metric,
   using tree_metric_t =
       tf::tree_metric_info<Index, decltype(closest_point_f(Index(0)))>;
   tree_metric_result<tree_metric_t> result{radius * radius};
-  impl::proximity(tree, bv_metric, closest_point_f, result);
+  traversal::proximity(tree, bv_metric, closest_point_f, result);
   return result.info;
 }
 
@@ -66,7 +66,7 @@ auto nearness_search(const tf::tree_like<TreePolicy> &tree, const F0 &bv_metric,
                      const F1 &closest_point_f,
                      tf::nearest_neighbors<RandomIt> &knn)
     -> tf::nearest_neighbors<RandomIt> & {
-  impl::proximity(tree, bv_metric, closest_point_f, knn);
+  traversal::proximity(tree, bv_metric, closest_point_f, knn);
   return knn;
 }
 
@@ -74,7 +74,7 @@ template <typename TreePolicy, typename F0, typename F1, typename RandomIt>
 auto nearness_search(const tf::tree_like<TreePolicy> &tree, const F0 &bv_metric,
                      const F1 &closest_point_f,
                      tf::nearest_neighbors<RandomIt> &&knn) {
-  impl::proximity(tree, bv_metric, closest_point_f, knn);
+  traversal::proximity(tree, bv_metric, closest_point_f, knn);
   return knn;
 }
 
@@ -91,8 +91,8 @@ auto nearness_search(const tf::mod_tree_like<ModTreePolicy> &tree,
   using tree_metric_t =
       tf::tree_metric_info<Index, decltype(closest_point_f(Index(0)))>;
   tree_metric_result<tree_metric_t> result{std::numeric_limits<real_t>::max()};
-  impl::proximity(tree.main_tree(), bv_metric, closest_point_f, result);
-  impl::proximity(tree.delta_tree(), bv_metric, closest_point_f, result);
+  traversal::proximity(tree.main_tree(), bv_metric, closest_point_f, result);
+  traversal::proximity(tree.delta_tree(), bv_metric, closest_point_f, result);
   return result.info;
 }
 
@@ -105,8 +105,8 @@ auto nearness_search(const tf::mod_tree_like<ModTreePolicy> &tree,
   using tree_metric_t =
       tf::tree_metric_info<Index, decltype(closest_point_f(Index(0)))>;
   tree_metric_result<tree_metric_t> result{radius * radius};
-  impl::proximity(tree.main_tree(), bv_metric, closest_point_f, result);
-  impl::proximity(tree.delta_tree(), bv_metric, closest_point_f, result);
+  traversal::proximity(tree.main_tree(), bv_metric, closest_point_f, result);
+  traversal::proximity(tree.delta_tree(), bv_metric, closest_point_f, result);
   return result.info;
 }
 
@@ -115,8 +115,8 @@ auto nearness_search(const tf::mod_tree_like<ModTreePolicy> &tree,
                      const F0 &bv_metric, const F1 &closest_point_f,
                      tf::nearest_neighbors<RandomIt> &knn)
     -> tf::nearest_neighbors<RandomIt> & {
-  impl::proximity(tree.main_tree(), bv_metric, closest_point_f, knn);
-  impl::proximity(tree.delta_tree(), bv_metric, closest_point_f, knn);
+  traversal::proximity(tree.main_tree(), bv_metric, closest_point_f, knn);
+  traversal::proximity(tree.delta_tree(), bv_metric, closest_point_f, knn);
   return knn;
 }
 
@@ -124,8 +124,8 @@ template <typename ModTreePolicy, typename F0, typename F1, typename RandomIt>
 auto nearness_search(const tf::mod_tree_like<ModTreePolicy> &tree,
                      const F0 &bv_metric, const F1 &closest_point_f,
                      tf::nearest_neighbors<RandomIt> &&knn) {
-  impl::proximity(tree.main_tree(), bv_metric, closest_point_f, knn);
-  impl::proximity(tree.delta_tree(), bv_metric, closest_point_f, knn);
+  traversal::proximity(tree.main_tree(), bv_metric, closest_point_f, knn);
+  traversal::proximity(tree.delta_tree(), bv_metric, closest_point_f, knn);
   return knn;
 }
 
@@ -144,7 +144,8 @@ auto nearness_search_trees(const Tree0 &tree0, const Tree1 &tree1,
       Index0, Index1, decltype(closest_points_f(Index0(0), Index1(0)))>;
   local_tree_metric_result<tree_metric_t> result{
       std::numeric_limits<real_t>::max()};
-  impl::dual_proximity(tree0, tree1, bv_metrics_f, closest_points_f, result);
+  traversal::dual_proximity(tree0, tree1, bv_metrics_f, closest_points_f,
+                            result);
   return result.info();
 }
 
@@ -158,7 +159,8 @@ auto nearness_search_trees(const Tree0 &tree0, const Tree1 &tree1,
   using tree_metric_t = tf::tree_metric_info_pair<
       Index0, Index1, decltype(closest_points_f(Index0(0), Index1(0)))>;
   local_tree_metric_result<tree_metric_t> result{radius * radius};
-  impl::dual_proximity(tree0, tree1, bv_metrics_f, closest_points_f, result);
+  traversal::dual_proximity(tree0, tree1, bv_metrics_f, closest_points_f,
+                            result);
   return result.info();
 }
 

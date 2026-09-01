@@ -29,10 +29,10 @@ auto search_self(const tf::tree_like<TreePolicy> &tree, const F0 &check_bvs,
                  const F1 &primitive_apply, const F2 &abort,
                  int parallelism_depth = 6) -> bool {
   using Index = typename TreePolicy::index_type;
-  return tf::spatial::impl::self_search(
+  return tf::spatial::traversal::self_search(
       tree, check_bvs,
       [primitive_apply, &tree, &check_bvs](const auto &ids0, const auto &ids1,
-                                            bool is_self) {
+                                           bool is_self) {
         for (Index i0 = 0; i0 < Index(ids0.size()); ++i0) {
           auto id0 = ids0[i0];
           for (Index i1 = (i0 + 1) * is_self; i1 < Index(ids1.size()); ++i1) {
@@ -62,10 +62,10 @@ auto search_self(const tf::form<Dims, Policy> &form, const F0 &check_bvs,
     return check_bvs(tf::transformed(bv0, tf::transformation_of(form)),
                      tf::transformed(bv1, tf::transformation_of(form)));
   };
-  return tf::spatial::impl::self_search(
+  return tf::spatial::traversal::self_search(
       form.tree(), bv_f,
       [primitive_apply, &form, &bv_f](const auto &ids0, const auto &ids1,
-                                       bool is_self) {
+                                      bool is_self) {
         for (Index i0 = 0; i0 < Index(ids0.size()); ++i0) {
           auto id0 = ids0[i0];
           auto obj0 = tf::tag_id(

@@ -130,8 +130,8 @@ public:
    *
    * Used when object IDs have been remapped. This remaps main tree IDs via
    * `tree_map.f()`, prunes removed elements, and constructs the delta tree
-   * from `tree_map.dirty_ids()`. The keep_if predicate is derived from the
-   * sentinel value `f().size()`.
+   * from `tree_map.dirty_ids()`. An element is removed when `f()` maps it to
+   * `tree_map.sentinel()`.
    *
    * @tparam Range   A range of geometric objects
    * @tparam Range1  Underlying type for `tree_map.f()`
@@ -144,7 +144,7 @@ public:
   auto update(const Range &objects,
                    const tf::tree_index_map<Range1, Range2> &tree_map,
                    tree_config config) {
-    const Index sentinel = Index(tree_map.f().size());
+    const Index sentinel = Index(tree_map.sentinel());
     auto keep_if = [sentinel](Index id) { return id != sentinel; };
     // Estimate new delta size
     Index estimated_delta =

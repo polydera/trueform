@@ -11,124 +11,124 @@
 * Author: Žiga Sajovic
 */
 #pragma once
+#include "../core/algorithm/parallel_fill.hpp"
+#include "../core/algorithm/parallel_for_each.hpp"
+#include "../core/algorithm/sequenced_generate.hpp"
+#include "../core/buffer.hpp"
+#include "../core/checked.hpp"
 #include "../core/none.hpp"
 #include "../core/points.hpp"
 #include "../core/polygons.hpp"
+#include "../core/range.hpp"
 #include "../core/segments.hpp"
-#include "../core/stitch_index_maps.hpp"
-#include "../core/views/mapped_range.hpp"
+#include "../core/stitch_index_map.hpp"
 #include "../core/views/sequence_range.hpp"
 #include "./mod_tree.hpp"
+#include "./tree_index_map.hpp"
+#include <cstddef>
 
 namespace tf::spatial {
 
-/// Stitch mod_tree when it is the left operand of a boolean operation.
-/// When right is none, kept0 primitives are remapped via polygons0.f().
-/// Everything else (kept1 + dirty) is added as new, starting at polygons1_offset.
+/// Re-seat one source's mod_tree onto a merged mesh.
+///
+/// The tree keeps the primitives that survived whole, remapped through
+/// `sim.face_f[source]`; everything it cannot inherit — the other sources'
+/// primitives and every new face — enters the delta tree.
 template <typename Index, typename BV, typename Primitives>
 auto stitch_mod_tree(const Primitives &result_primitives,
-                     tf::mod_tree<Index, BV> &mod_tree0, tf::none_t,
-                     const tf::stitch_index_maps<Index> &im,
+                     tf::mod_tree<Index, BV> &tree, Index source,
+                     const tf::stitch_index_map<Index> &sim,
                      tf::tree_config config) -> void {
-  const Index n_new =
-      Index(result_primitives.size()) - im.polygons1_offset;
+  const Index n_faces = sim.n_output_faces;
+  auto forward = sim.face_f[source];
 
-  // Dirty primitives start at polygons1_offset (kept1 + dirty)
-  auto dirty_ids = tf::make_mapped_range(
-      tf::make_sequence_range(Index(0), n_new),
-      [&](Index i) { return im.polygons1_offset + i; });
+  tf::buffer<bool> inherited;
+  inherited.allocate(static_cast<std::size_t>(n_faces));
+  tf::parallel_fill(inherited, false);
+  tf::parallel_for_each(
+      forward,
+      [&](Index f) {
+        if (f != n_faces)
+          inherited[f] = true;
+      },
+      tf::checked);
 
+  tf::buffer<Index> dirty_ids;
+  tf::sequenced_generate(tf::make_sequence_range(Index(0), n_faces), dirty_ids,
+                         [&](Index f, auto &out) {
+                           if (!inherited[f])
+                             out.push_back(f);
+                         });
+
+  // face_f's values are output ids, which can reach its own length, so the
+  // removed marker has to be stated rather than derived from it.
   auto tree_map =
-      tf::make_tree_index_map(tf::make_range(im.polygons0.f()), dirty_ids);
-  mod_tree0.update(result_primitives, tree_map, config);
-}
-
-/// Stitch mod_tree when it is the right operand of a boolean operation.
-/// When left is none, kept1 primitives are remapped via polygons1.f() + offset.
-/// Everything else (kept0 + dirty) is added as new.
-template <typename Index, typename BV, typename Primitives>
-auto stitch_mod_tree(const Primitives &result_primitives, tf::none_t,
-                     tf::mod_tree<Index, BV> &mod_tree1,
-                     const tf::stitch_index_maps<Index> &im,
-                     tf::tree_config config) -> void {
-  const Index kept0 = im.polygons0.kept_ids().size();
-  const Index kept1 = im.polygons1.kept_ids().size();
-  const Index dirty_start = kept0 + kept1;
-  const Index n_dirty = Index(result_primitives.size()) - dirty_start;
-
-  // Dirty primitives: kept0 at [0, kept0) + dirty at [dirty_start, end)
-  auto dirty_ids = tf::make_mapped_range(
-      tf::make_sequence_range(Index(0), kept0 + n_dirty), [&](Index i) {
-        return i < kept0 ? i : dirty_start + (i - kept0);
-      });
-
-  const Index sentinel = Index(im.polygons1.f().size());
-
-  // polygons1.f() is 0-based, need to add offset for actual result positions
-  auto f = tf::make_mapped_range(im.polygons1.f(), [&, sentinel](Index id) {
-    return id != sentinel ? id + im.polygons1_offset : sentinel;
-  });
-
-  auto tree_map = tf::make_tree_index_map(tf::make_range(f), dirty_ids);
-  mod_tree1.update(result_primitives, tree_map, config);
+      tf::make_tree_index_map(forward, tf::make_range(dirty_ids), n_faces);
+  tree.update(result_primitives, tree_map, config);
 }
 
 } // namespace tf::spatial
 
 namespace tf {
 
-/// Stitch mod_tree for polygons (left operand).
+/// @ingroup spatial_structures
+/// @brief Stitch mod_tree for polygons (first source).
 template <typename Index, typename BV, typename Policy>
 auto stitch_mod_tree(const tf::polygons<Policy> &result,
                      tf::mod_tree<Index, BV> &mod_tree0, tf::none_t,
-                     const tf::stitch_index_maps<Index> &im,
+                     const tf::stitch_index_map<Index> &sim,
                      tf::tree_config config) -> void {
-  tf::spatial::stitch_mod_tree(result, mod_tree0, tf::none, im, config);
+  tf::spatial::stitch_mod_tree(result, mod_tree0, Index(0), sim, config);
 }
 
-/// Stitch mod_tree for polygons (right operand).
+/// @ingroup spatial_structures
+/// @brief Stitch mod_tree for polygons (second source).
 template <typename Index, typename BV, typename Policy>
 auto stitch_mod_tree(const tf::polygons<Policy> &result, tf::none_t,
                      tf::mod_tree<Index, BV> &mod_tree1,
-                     const tf::stitch_index_maps<Index> &im,
+                     const tf::stitch_index_map<Index> &sim,
                      tf::tree_config config) -> void {
-  tf::spatial::stitch_mod_tree(result, tf::none, mod_tree1, im, config);
+  tf::spatial::stitch_mod_tree(result, mod_tree1, Index(1), sim, config);
 }
 
-/// Stitch mod_tree for points (left operand).
+/// @ingroup spatial_structures
+/// @brief Stitch mod_tree for points (first source).
 template <typename Index, typename BV, typename Policy>
 auto stitch_mod_tree(const tf::points<Policy> &result,
                      tf::mod_tree<Index, BV> &mod_tree0, tf::none_t,
-                     const tf::stitch_index_maps<Index> &im,
+                     const tf::stitch_index_map<Index> &sim,
                      tf::tree_config config) -> void {
-  tf::spatial::stitch_mod_tree(result, mod_tree0, tf::none, im, config);
+  tf::spatial::stitch_mod_tree(result, mod_tree0, Index(0), sim, config);
 }
 
-/// Stitch mod_tree for points (right operand).
+/// @ingroup spatial_structures
+/// @brief Stitch mod_tree for points (second source).
 template <typename Index, typename BV, typename Policy>
 auto stitch_mod_tree(const tf::points<Policy> &result, tf::none_t,
                      tf::mod_tree<Index, BV> &mod_tree1,
-                     const tf::stitch_index_maps<Index> &im,
+                     const tf::stitch_index_map<Index> &sim,
                      tf::tree_config config) -> void {
-  tf::spatial::stitch_mod_tree(result, tf::none, mod_tree1, im, config);
+  tf::spatial::stitch_mod_tree(result, mod_tree1, Index(1), sim, config);
 }
 
-/// Stitch mod_tree for segments (left operand).
+/// @ingroup spatial_structures
+/// @brief Stitch mod_tree for segments (first source).
 template <typename Index, typename BV, typename Policy>
 auto stitch_mod_tree(const tf::segments<Policy> &result,
                      tf::mod_tree<Index, BV> &mod_tree0, tf::none_t,
-                     const tf::stitch_index_maps<Index> &im,
+                     const tf::stitch_index_map<Index> &sim,
                      tf::tree_config config) -> void {
-  tf::spatial::stitch_mod_tree(result, mod_tree0, tf::none, im, config);
+  tf::spatial::stitch_mod_tree(result, mod_tree0, Index(0), sim, config);
 }
 
-/// Stitch mod_tree for segments (right operand).
+/// @ingroup spatial_structures
+/// @brief Stitch mod_tree for segments (second source).
 template <typename Index, typename BV, typename Policy>
 auto stitch_mod_tree(const tf::segments<Policy> &result, tf::none_t,
                      tf::mod_tree<Index, BV> &mod_tree1,
-                     const tf::stitch_index_maps<Index> &im,
+                     const tf::stitch_index_map<Index> &sim,
                      tf::tree_config config) -> void {
-  tf::spatial::stitch_mod_tree(result, tf::none, mod_tree1, im, config);
+  tf::spatial::stitch_mod_tree(result, mod_tree1, Index(1), sim, config);
 }
 
 } // namespace tf

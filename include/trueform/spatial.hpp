@@ -63,6 +63,7 @@
 #include "./spatial/ray_hit.hpp"               // IWYU pragma: export
 #include "./spatial/search.hpp"                // IWYU pragma: export
 #include "./spatial/search_self.hpp"           // IWYU pragma: export
+#include "./spatial/signed_distance.hpp"       // IWYU pragma: export
 #include "./spatial/stitch_mod_tree.hpp"       // IWYU pragma: export
 #include "./spatial/tree.hpp"                  // IWYU pragma: export
 #include "./spatial/tree_config.hpp"           // IWYU pragma: export

@@ -21,7 +21,6 @@
 #include <limits>
 
 namespace tf::spatial {
-namespace detail {
 
 // Per-ray slab state, built once per traversal. The octant is baked into
 // flat-float indices of the box (min at [0, Dims), max at [Dims, 2*Dims))
@@ -76,8 +75,6 @@ template <std::size_t Dims, typename RealT> struct ray_slab {
   }
 };
 
-} // namespace detail
-
 template <typename TreePolicy, typename RayPolicy, typename Result, typename F>
 auto ray_cast(
     const tf::tree_like<TreePolicy> &tree,
@@ -95,7 +92,7 @@ auto ray_cast(
   if (!nodes.size())
     return;
 
-  detail::ray_slab<Dims, real_t> slab;
+  ray_slab<Dims, real_t> slab;
   slab.init(ray);
 
   // depth is logarithmic by the balanced build's rank splits, so the

@@ -15,7 +15,7 @@
 #include "../../core/small_vector.hpp"
 #include "../tree_like.hpp"
 
-namespace tf::spatial::impl {
+namespace tf::spatial::traversal {
 
 template <typename TreePolicy, typename F0, typename F1, typename Result>
 auto proximity(const tf::tree_like<TreePolicy> &tree, const F0 &bv_metric_f,
@@ -76,4 +76,4 @@ auto proximity(const tf::tree_like<TreePolicy> &tree, const F0 &bv_metric_f,
   }
 }
 
-} // namespace tf::spatial::impl
+} // namespace tf::spatial::traversal
