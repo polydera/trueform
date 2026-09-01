@@ -19,11 +19,13 @@
  *  mesh (@ref tf::make_csg_mesh).
  */
 
-#include "./csg/csg_graph.hpp"      // IWYU pragma: export
-#include "./csg/expression.hpp"     // IWYU pragma: export
-#include "./csg/graph.hpp"          // IWYU pragma: export
-#include "./csg/make_csg_domains.hpp" // IWYU pragma: export
-#include "./csg/make_csg_graph.hpp"   // IWYU pragma: export
-#include "./csg/make_csg_mesh.hpp"    // IWYU pragma: export
+#include "./csg/arrangement_class.hpp" // IWYU pragma: export
+#include "./csg/boolean_op.hpp"        // IWYU pragma: export
+#include "./csg/csg_graph.hpp"         // IWYU pragma: export
+#include "./csg/expression.hpp"        // IWYU pragma: export
+#include "./csg/make_boolean.hpp"      // IWYU pragma: export
+#include "./csg/make_csg_domains.hpp"  // IWYU pragma: export
+#include "./csg/make_csg_graph.hpp"    // IWYU pragma: export
+#include "./csg/make_csg_mesh.hpp"     // IWYU pragma: export
 #include "./csg/make_intersection_curves.hpp" // IWYU pragma: export
 #include "./csg/make_outer_shell.hpp"         // IWYU pragma: export

@@ -11,16 +11,15 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../arrangement/construct/make_mesh_arrangement_index_map.hpp"
+#include "../arrangement/make_arrangement_mesh.hpp"
 #include "../core/none.hpp"
-#include "../cut/construct/make_mesh_arrangement_index_map.hpp"
-#include "../cut/make_arrangement_mesh.hpp"
+#include "../core/resolved_output_real.hpp"
 #include "../reindex/return_index_map.hpp"
 #include "../reindex/return_source_ids.hpp"
 #include "./csg_graph.hpp"
-#include "./expression/compiled_expr.hpp"
-#include "./expression/expr.hpp"
-#include "./graph/compute_chosen_sides.hpp"
-#include "./graph/evaluate_per_domain.hpp"
+#include "./expression/selection.hpp"
+#include "./graph/chosen_sides_for.hpp"
 #include "./graph/make_csg_mesh.hpp"
 #include <tuple>
 #include <type_traits>
@@ -28,11 +27,22 @@
 namespace tf {
 
 /// @ingroup csg
-/// @brief Build the CSG result mesh for a boolean `e` evaluated
-///        against `graph`.
+/// @brief Build the CSG result mesh for a selection evaluated against
+///        `graph` — a boolean expression, a surface read, or a boolean
+///        restricted to the surfaces that contributed.
 ///
-/// One-stop user entry: compiles the expression, evaluates per
-/// domain, picks per-component sides, and triangulates the boundary.
+/// One-stop user entry. A plain @ref tf::csg::expr converts implicitly
+/// (every form's surface, the boolean's classification); the
+/// @ref tf::csg::selection factory names the forms — a braced list or
+/// range alone is the embedded read (their surfaces cut by everything,
+/// original winding), and paired with an expression it restricts the
+/// boolean's result to the faces those forms contributed, so one result
+/// splits by provenance.
+///
+/// @ref tf::csg::inside names the same forms and expression as the other
+/// read of them: the surfaces lying INSIDE the expression's region —
+/// both sides of a piece in it — emitted with the form's stored winding.
+/// Every overload below accepts either kind.
 ///
 /// @pre The graph holds two or more forms. Expressions combine forms;
 ///      a one-form graph is a self arrangement — read it with
@@ -42,23 +52,19 @@ namespace tf {
 /// @tparam OutputCoordinateType Output coordinate type. Defaults to
 ///         @c tf::none_t, which resolves to the graph's
 ///         @c input_real_type (the input forms' coordinate type).
-template <typename OutputCoordinateType = tf::none_t, typename Forms,
-          typename Structs, typename Int>
-auto make_csg_mesh(const tf::csg_graph<Forms, Structs, Int> &graph,
-                   const tf::csg::expr &e) {
+template <typename OutputCoordinateType = tf::none_t, typename Policy,
+          typename Int, template <typename, typename> class Arrangement>
+auto make_csg_mesh(const tf::csg_graph<Policy, Int, Arrangement> &graph,
+                   const tf::csg::selection_t &s) {
   using InputReal =
-      typename tf::csg_graph<Forms, Structs, Int>::input_real_type;
-  using RealOut =
-      std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
-                         InputReal, OutputCoordinateType>;
+      typename tf::csg_graph<Policy, Int, Arrangement>::input_real_type;
+  using RealOut = tf::resolved_output_real_t<OutputCoordinateType, InputReal>;
 
-  auto E = e.compile().evaluator();
-  auto membership = tf::csg::graph::evaluate_per_domain(graph.inclusion(), E);
-  auto chosen =
-      tf::csg::graph::compute_chosen_sides(graph.descriptor(), membership);
-  return tf::csg::graph::make_csg_mesh<RealOut>(
-      graph.labels(), graph.triangulations(), graph.created_points(),
-      graph.forms(), chosen, graph.converter());
+  auto chosen = tf::csg::graph::chosen_sides_for(graph, s);
+  return tf::csg::graph::make_csg_mesh<
+      RealOut, tf::csg_graph<Policy, Int, Arrangement>::face_static_size>(
+      graph.arrangement(), graph.labels(), chosen,
+      s.mask(graph.arrangement().n_tags()));
 }
 
 /// @ingroup csg
@@ -69,25 +75,22 @@ auto make_csg_mesh(const tf::csg_graph<Forms, Structs, Int> &graph,
 ///        @ref tf::make_mesh_arrangements.
 ///
 /// @return Tuple of (@ref tf::polygons_buffer, tag_labels, face_labels).
-template <typename OutputCoordinateType = tf::none_t, typename Forms,
-          typename Structs, typename Int>
-auto make_csg_mesh(const tf::csg_graph<Forms, Structs, Int> &graph,
-                   const tf::csg::expr &e, tf::return_source_ids_t) {
+template <typename OutputCoordinateType = tf::none_t, typename Policy,
+          typename Int, template <typename, typename> class Arrangement>
+auto make_csg_mesh(const tf::csg_graph<Policy, Int, Arrangement> &graph,
+                   const tf::csg::selection_t &s, tf::return_source_ids_t) {
   using InputReal =
-      typename tf::csg_graph<Forms, Structs, Int>::input_real_type;
-  using RealOut =
-      std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
-                         InputReal, OutputCoordinateType>;
+      typename tf::csg_graph<Policy, Int, Arrangement>::input_real_type;
+  using RealOut = tf::resolved_output_real_t<OutputCoordinateType, InputReal>;
 
-  auto E = e.compile().evaluator();
-  auto membership = tf::csg::graph::evaluate_per_domain(graph.inclusion(), E);
-  auto chosen =
-      tf::csg::graph::compute_chosen_sides(graph.descriptor(), membership);
-  auto [mesh, tag_labels, face_labels, map_data] =
-      tf::csg::graph::make_csg_mesh<RealOut, /*WantLabels=*/true>(
-          graph.labels(), graph.triangulations(), graph.created_points(),
-          graph.forms(), chosen, graph.converter());
+  auto chosen = tf::csg::graph::chosen_sides_for(graph, s);
+  auto [mesh, tag_labels, face_labels, uncut_faces, map_data] =
+      tf::csg::graph::make_csg_mesh<
+          RealOut, tf::csg_graph<Policy, Int, Arrangement>::face_static_size,
+          /*WantLabels=*/true>(graph.arrangement(), graph.labels(), chosen,
+                               s.mask(graph.arrangement().n_tags()));
   (void)map_data;
+  (void)uncut_faces;
   return std::make_tuple(std::move(mesh), std::move(tag_labels),
                          std::move(face_labels));
 }
@@ -100,31 +103,25 @@ auto make_csg_mesh(const tf::csg_graph<Forms, Structs, Int> &graph,
 /// input element) inverse for points and faces, the input -> output forward
 /// point map, and the `end` sentinel for created intersection points and for
 /// input points that no surviving face kept.
-template <typename OutputCoordinateType = tf::none_t, typename Forms,
-          typename Structs, typename Int>
-auto make_csg_mesh(const tf::csg_graph<Forms, Structs, Int> &graph,
-                   const tf::csg::expr &e, tf::return_index_map_t) {
-  using Index = typename tf::csg_graph<Forms, Structs, Int>::index_type;
+template <typename OutputCoordinateType = tf::none_t, typename Policy,
+          typename Int, template <typename, typename> class Arrangement>
+auto make_csg_mesh(const tf::csg_graph<Policy, Int, Arrangement> &graph,
+                   const tf::csg::selection_t &s, tf::return_index_map_t) {
+  using Index = typename tf::csg_graph<Policy, Int, Arrangement>::index_type;
   using InputReal =
-      typename tf::csg_graph<Forms, Structs, Int>::input_real_type;
-  using RealOut =
-      std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
-                         InputReal, OutputCoordinateType>;
+      typename tf::csg_graph<Policy, Int, Arrangement>::input_real_type;
+  using RealOut = tf::resolved_output_real_t<OutputCoordinateType, InputReal>;
 
-  auto E = e.compile().evaluator();
-  auto membership = tf::csg::graph::evaluate_per_domain(graph.inclusion(), E);
-  auto chosen =
-      tf::csg::graph::compute_chosen_sides(graph.descriptor(), membership);
-  auto [mesh, tag_labels, face_labels, map_data] =
-      tf::csg::graph::make_csg_mesh<RealOut, /*WantLabels=*/true>(
-          graph.labels(), graph.triangulations(), graph.created_points(),
-          graph.forms(), chosen, graph.converter());
-  // The CSG face stream is not uncut-prefix ordered, so n_original_faces has
-  // no boundary meaning here; the per-face (tag, face) maps carry provenance.
+  auto chosen = tf::csg::graph::chosen_sides_for(graph, s);
+  auto [mesh, tag_labels, face_labels, uncut_faces, map_data] =
+      tf::csg::graph::make_csg_mesh<
+          RealOut, tf::csg_graph<Policy, Int, Arrangement>::face_static_size,
+          /*WantLabels=*/true>(graph.arrangement(), graph.labels(), chosen,
+                               s.mask(graph.arrangement().n_tags()));
   const Index n_out = static_cast<Index>(mesh.points_buffer().size());
-  auto imap = tf::cut::make_mesh_arrangement_index_map(
+  auto imap = tf::arrangement::make_mesh_arrangement_index_map(
       std::move(map_data), std::move(tag_labels), std::move(face_labels),
-      Index(0), n_out);
+      std::move(uncut_faces), n_out);
   return std::make_pair(std::move(mesh), std::move(imap));
 }
 
@@ -137,9 +134,9 @@ auto make_csg_mesh(const tf::csg_graph<Forms, Structs, Int> &graph,
 /// the intersection graph and face cuts the graph already holds, so only the
 /// mesh is materialised — the intersection pipeline is not re-run. Mirrors
 /// how @ref tf::make_csg_domains with no expression returns every domain.
-template <typename OutputCoordinateType = tf::none_t, typename Forms,
-          typename Structs, typename Int>
-auto make_csg_mesh(const tf::csg_graph<Forms, Structs, Int> &graph) {
+template <typename OutputCoordinateType = tf::none_t, typename Policy,
+          typename Int, template <typename, typename> class Arrangement>
+auto make_csg_mesh(const tf::csg_graph<Policy, Int, Arrangement> &graph) {
   return tf::make_arrangement_mesh<OutputCoordinateType>(graph.arrangement());
 }
 
@@ -148,9 +145,9 @@ auto make_csg_mesh(const tf::csg_graph<Forms, Structs, Int> &graph) {
 ///        which input form, `face_labels[f]` = original face id within it.
 ///
 /// @return Tuple of (@ref tf::polygons_buffer, tag_labels, face_labels).
-template <typename OutputCoordinateType = tf::none_t, typename Forms,
-          typename Structs, typename Int>
-auto make_csg_mesh(const tf::csg_graph<Forms, Structs, Int> &graph,
+template <typename OutputCoordinateType = tf::none_t, typename Policy,
+          typename Int, template <typename, typename> class Arrangement>
+auto make_csg_mesh(const tf::csg_graph<Policy, Int, Arrangement> &graph,
                    tf::return_source_ids_t) {
   return tf::make_arrangement_mesh<OutputCoordinateType>(
       graph.arrangement(), tf::return_source_ids);
@@ -165,9 +162,9 @@ auto make_csg_mesh(const tf::csg_graph<Forms, Structs, Int> &graph,
 /// output forward map (`point_f`). Created intersection points carry the
 /// `end` sentinel (no input origin). Same contract as
 /// @ref tf::make_mesh_arrangements with @ref tf::return_index_map.
-template <typename OutputCoordinateType = tf::none_t, typename Forms,
-          typename Structs, typename Int>
-auto make_csg_mesh(const tf::csg_graph<Forms, Structs, Int> &graph,
+template <typename OutputCoordinateType = tf::none_t, typename Policy,
+          typename Int, template <typename, typename> class Arrangement>
+auto make_csg_mesh(const tf::csg_graph<Policy, Int, Arrangement> &graph,
                    tf::return_index_map_t) {
   return tf::make_arrangement_mesh<OutputCoordinateType>(
       graph.arrangement(), tf::return_index_map);

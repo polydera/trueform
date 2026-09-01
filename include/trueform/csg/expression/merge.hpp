@@ -17,7 +17,7 @@
 
 namespace tf::csg {
 
-/// @ingroup csg
+/// @ingroup csg_expression
 /// @brief Union over the arguments (`tf::csg::merge` matches the
 ///        naming of @ref tf::boolean_op::merge).
 ///
@@ -25,8 +25,7 @@ namespace tf::csg {
 /// arguments are forwarded as-is.
 template <typename... Args>
 auto merge(Args &&...args) -> expr {
-  return expr{expr::kind::merge,
-              detail::make_children(std::forward<Args>(args)...)};
+  return expr{expr::kind::merge, make_children(std::forward<Args>(args)...)};
 }
 
 } // namespace tf::csg

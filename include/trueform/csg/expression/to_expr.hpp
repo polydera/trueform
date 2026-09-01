@@ -15,9 +15,9 @@
 #include <type_traits>
 #include <utility>
 
-namespace tf::csg::detail {
+namespace tf::csg {
 
-/// @ingroup csg
+/// @ingroup csg_expression
 /// @brief Promote any argument to an @ref expr: integral types are
 ///        wrapped as leaves; everything else is forwarded as-is
 ///        (so existing @ref expr values pass through unchanged).
@@ -29,4 +29,4 @@ auto to_expr(T &&x) -> expr {
     return expr{std::forward<T>(x)};
 }
 
-} // namespace tf::csg::detail
+} // namespace tf::csg

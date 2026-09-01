@@ -16,9 +16,9 @@
 #include <utility>
 #include <vector>
 
-namespace tf::csg::detail {
+namespace tf::csg {
 
-/// @ingroup csg
+/// @ingroup csg_expression
 /// @brief Variadic helper: convert each argument to an @ref expr
 ///        (integral → leaf, expr → expr) and collect them in a
 ///        size-reserved vector.
@@ -30,4 +30,4 @@ auto make_children(Args &&...args) -> std::vector<expr> {
   return children;
 }
 
-} // namespace tf::csg::detail
+} // namespace tf::csg

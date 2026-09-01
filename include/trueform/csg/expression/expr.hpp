@@ -20,7 +20,7 @@ namespace tf::csg {
 
 class compiled_expr;
 
-/// @ingroup csg
+/// @ingroup csg_expression
 /// @brief Runtime boolean expression over operand bits.
 ///
 /// An @ref expr is either a *leaf* (an operand id `i` representing

@@ -14,13 +14,13 @@
 #include "./compiled_expr.hpp"
 #include <cstdint>
 
-namespace tf::csg::detail {
+namespace tf::csg {
 
-/// @ingroup csg
+/// @ingroup csg_expression
 /// @brief Word/bit decomposition of a single operand id.
 inline auto make_word_mask(int operand_id) -> compiled_expr::word_mask {
   return {operand_id / 32,
           std::uint32_t(1) << (static_cast<unsigned>(operand_id) % 32u)};
 }
 
-} // namespace tf::csg::detail
+} // namespace tf::csg

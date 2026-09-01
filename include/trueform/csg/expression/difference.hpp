@@ -17,15 +17,14 @@
 
 namespace tf::csg {
 
-/// @ingroup csg
+/// @ingroup csg_expression
 /// @brief `lhs \ rhs`. Equivalent to `intersection(lhs,
 ///        complement(rhs))` but evaluates without materialising the
 ///        complement.
 template <typename Lhs, typename Rhs>
 auto difference(Lhs &&lhs, Rhs &&rhs) -> expr {
   return expr{expr::kind::difference,
-              detail::make_children(std::forward<Lhs>(lhs),
-                                     std::forward<Rhs>(rhs))};
+              make_children(std::forward<Lhs>(lhs), std::forward<Rhs>(rhs))};
 }
 
 } // namespace tf::csg

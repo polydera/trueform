@@ -18,7 +18,7 @@
 
 namespace tf::csg {
 
-/// @ingroup csg
+/// @ingroup csg_expression
 /// @brief Compiled boolean expression.
 ///
 /// Flat-buffer representation (mirrors @ref tf::tree): one

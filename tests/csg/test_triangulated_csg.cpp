@@ -1,7 +1,7 @@
 /**
  * @file test_triangulated_csg.cpp
- * @brief Tests for the csg graph's region triangulation
- *        (tf::cut::region_triangulator) through the mesh and
+ * @brief Tests for the csg graph's triangulation store — the
+ *        arrangement's exposed triangle stream — through the mesh and
  *        domain extractions.
  *
  * Two-box fixtures (generic overlap, stacked full-coplanar contact,
@@ -18,12 +18,17 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include <trueform/csg.hpp>
+#include <trueform/csg/expression/selection_kind.hpp>
 #include <trueform/csg/graph/compute_chosen_sides.hpp>
 #include <trueform/csg/graph/compute_domain_membership.hpp>
 #include <trueform/csg/graph/compute_domain_partition.hpp>
 #include <trueform/csg/graph/evaluate_per_domain.hpp>
 #include <trueform/topology/is_closed.hpp>
 #include <trueform/trueform.hpp>
+
+#include "csg_builders.hpp"
+#include "csg_readers.hpp"
+#include "tagged_operand.hpp"
 
 #include <tbb/parallel_invoke.h>
 
@@ -34,13 +39,13 @@
 
 using Index = int;
 using Real = float;
-using mesh_t = tf::polygons_buffer<Index, Real, 3, 3>;
+using triangulated_mesh_t = tf::polygons_buffer<Index, Real, 3, 3>;
 
 namespace {
 
 auto make_box(Real x0, Real y0, Real z0, Real x1, Real y1, Real z1)
-    -> mesh_t {
-  mesh_t m;
+    -> triangulated_mesh_t {
+  triangulated_mesh_t m;
   Real xs[2] = {x0, x1}, ys[2] = {y0, y1}, zs[2] = {z0, z1};
   for (int k = 0; k < 8; ++k)
     m.points_buffer().emplace_back(xs[k & 1], ys[(k >> 1) & 1],
@@ -55,7 +60,7 @@ auto make_box(Real x0, Real y0, Real z0, Real x1, Real y1, Real z1)
 
 // second operand per fixture case: 0 generic overlap, 1 stacked
 // full-coplanar contact, 2 small box stacked on big (partial coplanar)
-auto make_second_box(int cs) -> mesh_t {
+auto make_second_box(int cs) -> triangulated_mesh_t {
   if (cs == 1)
     return make_box(0.f, 0.f, 1.f, 1.f, 1.f, 2.f);
   if (cs == 2)
@@ -63,39 +68,20 @@ auto make_second_box(int cs) -> mesh_t {
   return make_box(0.37f, 0.41f, 0.53f, 1.37f, 1.41f, 1.53f);
 }
 
-struct op_t {
-  mesh_t mesh;
-  tf::face_membership<Index> fm;
-  tf::manifold_edge_link<Index, 3> mel;
-  tf::aabb_tree<Index, Real, 3> tree;
-  explicit op_t(mesh_t m) : mesh(std::move(m)) {
-    auto pr = mesh.polygons();
-    tbb::parallel_invoke([&] { tree.build(pr, tf::config_tree(4, 12)); },
-                         [&] {
-                           fm.build(pr);
-                           mel.build(pr.faces(), fm);
-                         });
-  }
-};
-
-auto tag_of(const op_t &op) {
-  return op.mesh.polygons() | tf::tag(op.fm) | tf::tag(op.mel) |
-         tf::tag(op.tree);
-}
+using op_t = tf::test::tagged_operand<Index, Real>;
 
 const std::vector<std::pair<std::string, tf::csg::expr>> k_exprs = {
     {"union", tf::csg::op(0) | tf::csg::op(1)},
     {"intersection", tf::csg::op(0) & tf::csg::op(1)}};
 
-template <typename Graph, typename Forms>
-auto extract_mesh(const Graph &g, const Forms &forms,
-                  const tf::csg::expr &e) {
+template <typename Graph>
+auto extract_mesh(const Graph &g, const tf::csg::expr &e) {
   auto E = e.compile().evaluator();
   auto mem = tf::csg::graph::evaluate_per_domain(g.inclusion(), E);
-  auto chosen = tf::csg::graph::compute_chosen_sides(g.descriptor(), mem);
-  return tf::csg::graph::make_csg_mesh<Real, false>(
-      g.labels(), g.triangulations(), g.created_points(), forms, chosen,
-      g.converter());
+  auto chosen = tf::csg::graph::compute_chosen_sides(
+      g.descriptor(), mem, tf::csg::selection_kind::boundary);
+  return tf::csg::graph::make_csg_mesh<Real, 3, false, Index>(
+      g.arrangement(), g.labels(), chosen);
 }
 
 } // namespace
@@ -105,37 +91,34 @@ TEST_CASE("triangulation store: box fixtures closed in both modes, stock "
           "[csg][graph][store]") {
   for (int cs = 0; cs < 3; ++cs) {
     DYNAMIC_SECTION("fixture case " << cs) {
-      std::deque<op_t> ops;
+      std::vector<op_t> ops;
+      ops.reserve(2);
       ops.emplace_back(make_box(0.f, 0.f, 0.f, 1.f, 1.f, 1.f));
       ops.emplace_back(make_second_box(cs));
-
-      auto identity =
-          tf::make_frame(tf::make_identity_transformation<Real, 3>());
-      using form_t = decltype(tag_of(ops[0]) | tf::tag(identity));
-      std::vector<form_t> forms;
-      for (auto &op : ops)
-        forms.push_back(tag_of(op) | tf::tag(identity));
-      auto rng = tf::make_range(forms);
+      auto forms = tf::test::tagged_forms(ops);
+      auto rng = tf::test::forms_range(forms);
 
       // dispatcher path (default = stock triangulation store)
-      auto ref_graph = tf::make_csg_graph(rng);
+      auto ref_graph =
+          tf::test::build_range_csg_graph(rng, tf::test::no_sheets(), {});
 
       for (auto mode : {tf::triangulation_type::cdt,
                         tf::triangulation_type::refined_cdt}) {
-        tf::csg_graph<decltype(rng), tf::none_t> graph(
-            rng, {},
-            {tf::intersect_config{tf::intersect_mode::primitives |
-                                  tf::intersect_mode::resolve_crossing_contours},
+        auto graph = tf::test::build_range_csg_graph(
+            rng, tf::test::no_sheets(),
+            {tf::intersect_config{
+                 tf::intersect_mode::primitives |
+                 tf::intersect_mode::resolve_crossing_contours},
              mode});
         for (const auto &[name, e] : k_exprs) {
           DYNAMIC_SECTION((mode == tf::triangulation_type::cdt
                                ? "stock "
                                : "refined ")
                           << name) {
-            auto m = extract_mesh(graph, rng, e);
+            auto m = extract_mesh(graph, e);
             REQUIRE(tf::is_closed(m.polygons()));
             if (mode == tf::triangulation_type::cdt) {
-              auto ref = tf::make_csg_mesh(ref_graph, e);
+              auto ref = tf::test::csg_mesh_of(ref_graph, e);
               REQUIRE(m.polygons().size() == ref.polygons().size());
             }
           }
@@ -144,8 +127,8 @@ TEST_CASE("triangulation store: box fixtures closed in both modes, stock "
 
       SECTION("refined store is deterministic across builds") {
         auto build = [&] {
-          return tf::csg_graph<decltype(rng), tf::none_t>(
-              rng, {},
+          return tf::test::build_range_csg_graph(
+              rng, tf::test::no_sheets(),
               {tf::intersect_config{
                    tf::intersect_mode::primitives |
                    tf::intersect_mode::resolve_crossing_contours},
@@ -153,9 +136,6 @@ TEST_CASE("triangulation store: box fixtures closed in both modes, stock "
         };
         auto g0 = build();
         auto g1 = build();
-        const auto &s0 = g0.triangulations();
-        const auto &s1 = g1.triangulations();
-
         // created points (ig ++ splits ++ steiner), exact int lattice
         const auto &c0 = g0.created_points();
         const auto &c1 = g1.created_points();
@@ -166,8 +146,8 @@ TEST_CASE("triangulation store: box fixtures closed in both modes, stock "
 
         // the exposed stream covers the raw triangles, the applied
         // coplanar aliases and any promoted faces in one comparison
-        auto l0 = s0.loops();
-        auto l1 = s1.loops();
+        auto l0 = g0.arrangement().global().exposed_tris();
+        auto l1 = g1.arrangement().global().exposed_tris();
         REQUIRE(l0.size() == l1.size());
         for (std::size_t i = 0; i < std::size_t(l0.size()); ++i)
           for (int k = 0; k < 3; ++k)
@@ -181,21 +161,17 @@ TEST_CASE("triangulation store: box fixtures closed in both modes, stock "
 TEST_CASE("triangulation store: WantLabels face provenance on the generic "
           "fixture",
           "[csg][graph][store][source_ids]") {
-  std::deque<op_t> ops;
+  std::vector<op_t> ops;
+  ops.reserve(2);
   ops.emplace_back(make_box(0.f, 0.f, 0.f, 1.f, 1.f, 1.f));
   ops.emplace_back(make_second_box(0));
-
-  auto identity = tf::make_frame(tf::make_identity_transformation<Real, 3>());
-  using form_t = decltype(tag_of(ops[0]) | tf::tag(identity));
-  std::vector<form_t> forms;
-  for (auto &op : ops)
-    forms.push_back(tag_of(op) | tf::tag(identity));
-  auto rng = tf::make_range(forms);
+  auto forms = tf::test::tagged_forms(ops);
+  auto rng = tf::test::forms_range(forms);
 
   for (auto mode : {tf::triangulation_type::cdt,
                     tf::triangulation_type::refined_cdt}) {
-    tf::csg_graph<decltype(rng), tf::none_t> graph(
-        rng, {},
+    auto graph = tf::test::build_range_csg_graph(
+        rng, tf::test::no_sheets(),
         {tf::intersect_config{tf::intersect_mode::primitives |
                               tf::intersect_mode::resolve_crossing_contours},
          mode});
@@ -210,10 +186,8 @@ TEST_CASE("triangulation store: WantLabels face provenance on the generic "
     auto part = tf::csg::graph::compute_domain_partition(
         membership.domain_of_side, membership.n_components, membership.keep);
     auto [cells, ids, tag_blocks, face_blocks] =
-        tf::csg::graph::make_csg_domains<Real, true, false>(
-            graph.labels(), graph.arrangement().face_regions(),
-            graph.triangulations(), graph.created_points(), rng, part,
-            graph.converter());
+        tf::csg::graph::make_csg_domains<Real, 3, true, false, Index>(
+            graph.arrangement(), graph.labels(), part);
 
     REQUIRE(cells.size() > 0);
     REQUIRE(std::size_t(tag_blocks.size()) == cells.size());

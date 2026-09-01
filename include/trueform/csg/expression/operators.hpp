@@ -20,7 +20,7 @@
 
 namespace tf::csg {
 
-/// @ingroup csg
+/// @ingroup csg_expression
 /// @brief Leaf factory — same as `expr{i}` but reads as code.
 ///
 /// @code
@@ -28,25 +28,25 @@ namespace tf::csg {
 /// @endcode
 inline auto op(int i) -> expr { return expr{i}; }
 
-/// @ingroup csg
+/// @ingroup csg_expression
 /// @brief Union (`a | b` == `merge(a, b)`).
 inline auto operator|(expr a, expr b) -> expr {
   return merge(std::move(a), std::move(b));
 }
 
-/// @ingroup csg
+/// @ingroup csg_expression
 /// @brief Intersection (`a & b` == `intersection(a, b)`).
 inline auto operator&(expr a, expr b) -> expr {
   return intersection(std::move(a), std::move(b));
 }
 
-/// @ingroup csg
+/// @ingroup csg_expression
 /// @brief Difference (`a - b` == `difference(a, b)`).
 inline auto operator-(expr a, expr b) -> expr {
   return difference(std::move(a), std::move(b));
 }
 
-/// @ingroup csg
+/// @ingroup csg_expression
 /// @brief Complement (`~a` == `complement(a)`).
 inline auto operator~(expr a) -> expr { return complement(std::move(a)); }
 

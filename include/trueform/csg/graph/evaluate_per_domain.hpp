@@ -14,11 +14,11 @@
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/views/enumerate.hpp"
-#include "../../cut/arrangements/compute_domain_inclusions.hpp"
+#include "./domain_inclusions.hpp"
 
 namespace tf::csg::graph {
 
-/// @ingroup csg
+/// @ingroup csg_graph_internals
 /// @brief Apply a boolean expression to each domain's inclusion
 ///        bitvector.
 ///
@@ -30,7 +30,7 @@ namespace tf::csg::graph {
 /// `n_tags <= 32`, the block is a single `uint32_t` word; bit `i`
 /// represents "this domain is inside form `i`".
 template <typename Expr>
-auto evaluate_per_domain(const tf::cut::domain_inclusions &inc, Expr E)
+auto evaluate_per_domain(const tf::csg::graph::domain_inclusions &inc, Expr E)
     -> tf::buffer<bool> {
   auto blocks = inc.make_range();
   tf::buffer<bool> result;

@@ -17,12 +17,11 @@
 
 namespace tf::csg {
 
-/// @ingroup csg
+/// @ingroup csg_expression
 /// @brief Logical NOT of the argument.
 template <typename X>
 auto complement(X &&x) -> expr {
-  return expr{expr::kind::complement,
-              detail::make_children(std::forward<X>(x))};
+  return expr{expr::kind::complement, make_children(std::forward<X>(x))};
 }
 
 } // namespace tf::csg

@@ -17,7 +17,7 @@
 
 namespace tf::csg {
 
-/// @ingroup csg
+/// @ingroup csg_expression
 /// @brief Intersection over the arguments.
 ///
 /// Integral arguments are auto-promoted to leaves; @ref expr
@@ -25,7 +25,7 @@ namespace tf::csg {
 template <typename... Args>
 auto intersection(Args &&...args) -> expr {
   return expr{expr::kind::intersection,
-              detail::make_children(std::forward<Args>(args)...)};
+              make_children(std::forward<Args>(args)...)};
 }
 
 } // namespace tf::csg

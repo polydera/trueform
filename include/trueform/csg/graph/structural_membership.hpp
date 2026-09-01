@@ -18,7 +18,7 @@
 
 namespace tf::csg::graph {
 
-/// @ingroup csg
+/// @ingroup csg_graph_internals
 /// @brief The unbounded universe: the domain with the most negative
 ///        exact signed volume (the seeder's null-seed rule).
 ///
@@ -32,7 +32,7 @@ auto find_universe_domain(const Volumes &volumes) -> std::size_t {
   return universe;
 }
 
-/// @ingroup csg
+/// @ingroup csg_graph_internals
 /// @brief Fine-domain membership of the structural outer read: false
 ///        exactly on the universe CLASS.
 ///

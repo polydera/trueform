@@ -14,12 +14,13 @@
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/views/sequence_range.hpp"
-#include "../../cut/arrangements/arrangement_descriptor.hpp"
+#include "./arrangement_descriptor.hpp"
+#include <cstddef>
 #include <cstdint>
 
 namespace tf::csg::graph {
 
-/// @ingroup csg
+/// @ingroup csg_graph_internals
 /// @brief Per component-side dense kept-domain label, driving per-domain
 ///        emission (one output mesh per kept domain).
 ///
@@ -41,9 +42,9 @@ template <typename Index> struct domain_partition {
 ///             derived from `bundle_of_component`).
 /// @param keep Per-domain keep flag (`keep.size() == n_domains`).
 template <typename Index>
-auto compute_domain_partition(const tf::cut::arrangement_descriptor<Index> &desc,
-                              const tf::buffer<bool> &keep)
-    -> domain_partition<Index> {
+auto compute_domain_partition(
+    const tf::csg::graph::arrangement_descriptor<Index> &desc,
+    const tf::buffer<bool> &keep) -> domain_partition<Index> {
   domain_partition<Index> out;
   const Index n_domains = static_cast<Index>(keep.size());
   out.dense_of_domain.allocate(static_cast<std::size_t>(n_domains));

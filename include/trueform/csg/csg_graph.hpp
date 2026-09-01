@@ -11,23 +11,22 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../arrangement/arrangement_graph.hpp"
 #include "../core/buffer.hpp"
 #include "../core/frame_of.hpp"
 #include "../core/none.hpp"
 #include "../core/point.hpp"
-#include "../core/small_vector.hpp"
 #include "../core/transformed.hpp"
-#include "../cut/arrangement_graph.hpp"
-#include "../cut/arrangements/anchor_sheet_sides.hpp"
-#include "../cut/arrangements/arrangement_descriptor.hpp"
-#include "../cut/arrangements/component_labels.hpp"
-#include "../cut/arrangements/compute_domain_inclusions.hpp"
-#include "../cut/arrangements/make_arrangement_descriptor.hpp"
-#include "../cut/arrangements/propagate_inclusion_bits.hpp"
-#include "../cut/arrangement_config.hpp"
+#include "./graph/anchor_sheet_sides.hpp"
+#include "./graph/arrangement_descriptor.hpp"
 #include "./graph/compute_arrangement_domain_volumes.hpp"
+#include "./graph/domain_inclusions.hpp"
+#include "./graph/make_arrangement_descriptor.hpp"
+#include "./graph/propagate_inclusion_bits.hpp"
 #include "./graph/seed_inclusion_bits.hpp"
+#include "./graph/triangle_component_labels.hpp"
 #include <array>
+#include <cstddef>
 #include <utility>
 
 namespace tf {
@@ -41,10 +40,13 @@ namespace tf {
 /// calls (one per boolean expression).
 ///
 /// Template parameters:
-/// - `Forms`, `Structs` — deduced from the constructor.
+/// - `Policy` — the arrangement storage policy (homogeneous range or
+///   heterogeneous pair), exactly as on @ref tf::arrangement_graph.
 /// - `Int` — exact-integer override (defaulted to `tf::none_t`,
 ///   resolved via @ref tf::exact::resolve_int_type from the form's
 ///   coordinate type).
+/// - `Arrangement` — the arrangement class template the classification
+///   tier sits on; the factory that built the arrangement fixes it.
 ///
 /// Output coordinate type is not on the graph — materialisation
 /// happens in @ref tf::make_csg_mesh, which takes its own
@@ -52,104 +54,93 @@ namespace tf {
 ///
 /// @pre A one-form graph's form is a volume, not a declared sheet — a
 ///      lone sheet is a cutter with nothing to cut.
-template <typename Forms, typename Structs, typename Int = tf::none_t>
+template <typename Policy, typename Int = tf::none_t,
+          template <typename, typename> class Arrangement =
+              tf::arrangement_graph>
 class csg_graph {
 public:
-  using arrangement_type = tf::arrangement_graph<
-      tf::cut::arrangement_range_policy<Forms, Structs>, Int>;
-  using forms_type = Forms;
-  using structs_type = Structs;
+  using arrangement_type = Arrangement<Policy, Int>;
+  using policy_type = Policy;
   using index_type = typename arrangement_type::index_type;
   using input_real_type = typename arrangement_type::input_real_type;
   using resolved_int_type = typename arrangement_type::resolved_int_type;
   using pipeline_real_type = typename arrangement_type::pipeline_real_type;
+  static constexpr std::size_t face_static_size =
+      arrangement_type::face_static_size;
 
-  csg_graph(Forms forms, tf::small_vector<Structs, 10> structs,
-            tf::arrangement_config config = {}, tf::buffer<char> is_sheet = {})
-      : _is_sheet(std::move(is_sheet)),
-        _arr(tf::cut::arrangement_range_policy<Forms, Structs>(
-                 std::move(forms), std::move(structs)),
-             config) {
-    auto tagged = _arr.forms();
+  /// Takes the arrangement already built — every operand shape reaches
+  /// it through @ref tf::make_arrangement_graph, which is the one place
+  /// that completes a form's missing structures.
+  csg_graph(arrangement_type arr, tf::buffer<char> is_sheet = {})
+      : _is_sheet(std::move(is_sheet)), _arr(std::move(arr)) {
+    auto apply_form = _arr.apply_to_form();
     auto &conv = _arr.converter();
-    const auto &rt = _arr.triangulations();
-    const auto &created_pts = _arr.created_points();
-    _labels.build(_arr.face_regions(), tagged, _arr.coplanar_pairs(),
-                  _arr.dead_loops(),
-                  index_type(created_pts.size()));
-    _labels.bind_exposed(rt.exposed_ranges(), rt.loops().size());
-    const auto &ag = _labels;
+    _labels.build(_arr, apply_form);
 
-    auto apply_to_face = [&tagged](int tag, index_type object, const auto &f) {
-      f(tagged[tag].faces()[object]);
+    auto apply_to_face = [apply_form](int tag, index_type object,
+                                      const auto &f) {
+      apply_form(index_type(tag),
+                 [&](const auto &form) { f(form.faces()[object]); });
     };
-    auto get_mesh_point =
-        [&tagged, &conv](int tag,
-                         index_type id) -> tf::point<resolved_int_type, 3> {
-      return conv.convert(
-          tf::transformed(tagged[tag].points()[id], tf::frame_of(tagged[tag])));
-    };
-    auto get_point = [&created_pts, &get_mesh_point](
-                         const auto &v,
-                         index_type tag) -> tf::point<resolved_int_type, 3> {
-      if (v.source == tf::intersect::graph::vertex_source::created)
-        return created_pts[std::size_t(v.id)];
-      return get_mesh_point(int(tag), v.id);
-    };
+    // the arrangement's own reader, never a second one: where an
+    // original vertex stands is stated once, above both tiers
+    auto get_mesh_point = _arr.lattice().reader(apply_form);
 
-    _desc = tf::cut::make_arrangement_descriptor<resolved_int_type>(
-        ag, _arr.face_regions(), get_point, apply_to_face, _is_sheet);
-    _inc = tf::cut::compute_domain_inclusions(ag, _arr.face_regions(), _desc);
-    _domain_volumes = tf::csg::graph::compute_arrangement_domain_volumes(
-        tagged, ag, rt, _desc, get_point);
-    auto seeds = tf::csg::graph::seed_inclusion_bits(
-        _inc, _desc, ag, rt, created_pts, tagged, conv, _domain_volumes,
-        _domain_nesting_merges, _is_sheet);
-    tf::cut::propagate_inclusion_bits(_inc, _desc, ag, _arr.face_regions(), seeds);
+    _desc = tf::csg::graph::make_arrangement_descriptor<resolved_int_type>(
+        _arr, _labels, get_mesh_point, apply_to_face, _is_sheet);
+    _inc = tf::csg::graph::make_domain_inclusions(_arr.n_tags(),
+                                                  _desc.n_domains);
+    _domain_volumes =
+        tf::csg::graph::compute_arrangement_domain_volumes<index_type,
+                                                           resolved_int_type>(
+            _arr, _labels, _desc, apply_form, get_mesh_point);
+    auto seeds = tf::csg::graph::seed_inclusion_bits<index_type,
+                                                     resolved_int_type>(
+        _inc, _desc, _arr, _labels, apply_form, conv, get_mesh_point,
+        _domain_volumes, _domain_nesting_merges, _is_sheet);
+    tf::csg::graph::propagate_inclusion_bits(_inc, _desc, _arr, _labels, seeds);
     // Sheets coplanar-folded into another wall have no fragments of
     // their own to anchor from, and their winding seeds are degenerate
     // (evaluated exactly on the shared wall): anchor them through the
     // carrying component, mirrored by the fold's reversed flag.
     {
-      auto loop_labels = ag.loop_labels();
-      auto descs = _arr.face_regions().descriptors();
-      for (const auto &p : ag.coplanar_pairs()) {
-        // Pairs form the full clique of a coincident stack, so a dead
-        // region also appears as a "survivor"; the direct (live, dead)
-        // pair always exists — skip the dead-survivor ones. A survivor
-        // can clique with several same-tag dead regions; the
-        // consecutive-duplicate guard keeps one entry per fold.
-        const auto c = index_type(loop_labels[p[0]]);
-        if (c == tf::cut::component_labels<index_type>::none_label)
+      auto triangle_labels = _labels.triangle_labels();
+      auto triangle_tags = _arr.triangle_tags();
+      for (const auto &triple : _arr.coplanar_triples()) {
+        const auto c = index_type(triangle_labels[triple.survivor]);
+        if (c ==
+            tf::csg::graph::triangle_component_labels<index_type>::none_label)
           continue;
-        const auto t = index_type(descs[p[1]].tag);
+        const auto t = triangle_tags[triple.dead];
         if (t < index_type(_is_sheet.size()) && _is_sheet[t]) {
-          const std::array<index_type, 3> fold{c, t, p[2]};
+          // A survivor can stack with several same-tag dead triangles;
+          // the consecutive-duplicate guard keeps one entry per fold.
+          const std::array<index_type, 3> fold{c, t,
+                                               index_type(triple.opposing)};
           if (_sheet_folds.size() == 0 ||
               _sheet_folds[_sheet_folds.size() - 1] != fold)
             _sheet_folds.push_back(fold);
         }
       }
     }
-    tf::cut::anchor_sheet_sides(_inc, _desc, _is_sheet, _sheet_folds);
+    tf::csg::graph::anchor_sheet_sides(_inc, _desc, _is_sheet, _sheet_folds);
   }
 
   /// @brief The arrangement this graph classifies.
   auto arrangement() const -> const arrangement_type & { return _arr; }
 
+  /// @brief The arrangement carriers that hold no product — see
+  ///        @ref tf::arrangement_graph::failed. Empty means this
+  ///        classification stands on a complete arrangement.
+  auto failed() const { return _arr.failed(); }
+
   /// @brief The classification label tier over the arrangement.
-  auto labels() const -> const tf::cut::component_labels<index_type> & {
+  auto labels() const
+      -> const tf::csg::graph::triangle_component_labels<index_type> & {
     return _labels;
   }
 
-  auto forms() const { return _arr.forms(); }
   auto converter() const -> decltype(auto) { return _arr.converter(); }
-  auto intersection_graph() const -> decltype(auto) {
-    return _arr.intersection_graph();
-  }
-  auto triangulations() const -> decltype(auto) {
-    return _arr.triangulations();
-  }
   auto created_points() const -> decltype(auto) {
     return _arr.created_points();
   }
@@ -165,10 +156,12 @@ public:
   }
 
   auto descriptor() const
-      -> const tf::cut::arrangement_descriptor<index_type> & {
+      -> const tf::csg::graph::arrangement_descriptor<index_type> & {
     return _desc;
   }
-  auto inclusion() const -> const tf::cut::domain_inclusions & { return _inc; }
+  auto inclusion() const -> const tf::csg::graph::domain_inclusions & {
+    return _inc;
+  }
 
   /// @brief Exact signed volume (2x, lattice units) per arrangement
   /// domain — the seeder's oracle. The most negative entry is the
@@ -189,10 +182,10 @@ public:
 private:
   tf::buffer<char> _is_sheet;
   arrangement_type _arr;
-  tf::cut::component_labels<index_type> _labels;
+  tf::csg::graph::triangle_component_labels<index_type> _labels;
   tf::buffer<std::array<index_type, 3>> _sheet_folds;
-  tf::cut::arrangement_descriptor<index_type> _desc;
-  tf::cut::domain_inclusions _inc;
+  tf::csg::graph::arrangement_descriptor<index_type> _desc;
+  tf::csg::graph::domain_inclusions _inc;
   tf::buffer<typename tf::exact::meta<resolved_int_type>::T2> _domain_volumes;
   tf::buffer<std::array<index_type, 2>> _domain_nesting_merges;
 };

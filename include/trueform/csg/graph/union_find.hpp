@@ -17,7 +17,7 @@
 
 namespace tf::csg::graph {
 
-/// @ingroup csg
+/// @ingroup csg_graph_internals
 /// @brief Union-find over dense ids with path halving and union by
 ///        minimum root: the root of every set is its smallest element,
 ///        so `find` is canonical regardless of merge order.

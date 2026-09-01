@@ -13,9 +13,7 @@
 #pragma once
 #include "../../core/algorithm/block_reduce.hpp"
 #include "../../core/buffer.hpp"
-#include "../../core/frame_of.hpp"
 #include "../../core/none.hpp"
-#include "../../core/transformed.hpp"
 #include "../../exact/meta.hpp"
 #include "../../exact/vertex.hpp"
 
@@ -24,7 +22,7 @@
 
 namespace tf::csg::graph {
 
-/// @ingroup csg
+/// @ingroup csg_graph_internals
 /// @brief Side of a sheet for a batch of query points, by generalized
 ///        winding number.
 ///
@@ -37,12 +35,13 @@ namespace tf::csg::graph {
 ///
 /// @param form    The sheet form (faces + points, frame respected).
 /// @param queries Query points in exact pipeline coordinates.
-/// @param convert `(world_float_point) -> pt3<Int>` (the converter).
+/// @param read_point `(vertex id) -> pt3<Int>` — where the sheet's own
+///        vertices stand, which is the placed position once a door ran.
 /// @return One char per query: 1 behind the sheet's normal, else 0.
-template <typename Form, typename Int, typename Convert>
+template <typename Form, typename Int, typename ReadPoint>
 auto winding_side(const Form &form,
                   const tf::buffer<tf::exact::pt3<Int>> &queries,
-                  const Convert &convert) -> tf::buffer<char> {
+                  const ReadPoint &read_point) -> tf::buffer<char> {
   const std::size_t m = queries.size();
   tf::buffer<char> side;
   side.allocate(m);
@@ -54,10 +53,8 @@ auto winding_side(const Form &form,
   for (std::size_t j = 0; j < m; ++j)
     total[j] = 0.0;
 
-  auto frame = tf::frame_of(form);
-  auto points = form.points();
   auto exact_point = [&](auto id) -> tf::exact::pt3<Int> {
-    return convert(tf::transformed(points[id], frame));
+    return read_point(id);
   };
 
   struct local_t {

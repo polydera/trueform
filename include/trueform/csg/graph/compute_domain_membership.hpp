@@ -12,30 +12,30 @@
  */
 #pragma once
 #include "../../core/buffer.hpp"
-#include "../../core/views/blocked_range.hpp"
-#include "../../cut/arrangements/arrangement_descriptor.hpp"
-#include "../../cut/arrangements/compute_domain_inclusions.hpp"
 #include "../../topology/domain_config.hpp"
+#include "./arrangement_descriptor.hpp"
+#include "./domain_inclusions.hpp"
 #include "./union_find.hpp"
 #include <array>
+#include <cstddef>
 #include <cstdint>
 
 namespace tf::csg::graph {
 
-/// @ingroup csg
+/// @ingroup csg_graph_internals
 /// @brief Coarsened domain partition input for @ref compute_domain_partition.
 ///
 /// `domain_of_side` is the (possibly open-merge-coarsened) per-side domain
 /// id, size `2 * n_components`. `keep` is the per-coarse-domain keep flag,
 /// size `n_coarse`. `coarse_of_fine[d]` maps each fine descriptor domain to
-/// its coarse id (identity when `ignore_open_fragments` is off).
+/// its coarse id (identity when `ignore_open_fragments` is off). `rep` holds
+/// each coarse domain's representative bits, one block per coarse domain.
 template <typename Index> struct domain_membership {
   tf::buffer<Index> domain_of_side; // size 2*n_components, coarse ids
   tf::buffer<bool> keep;            // size n_coarse
   tf::buffer<Index> coarse_of_fine; // size n_domains (fine)
   Index n_coarse = 0;
-  tf::buffer<std::uint32_t> rep_bits; // n_coarse * words_per_domain
-  std::size_t words_per_domain = 0;
+  tf::csg::graph::domain_inclusions rep;
   Index n_components = 0;
 };
 
@@ -49,7 +49,7 @@ template <typename Index> struct domain_membership {
 /// opens, a real merge for sheet opens). A coarse domain's representative
 /// bits are those of an all-zero fine constituent if one exists (the
 /// universe / outer shell), else its single bounded constituent;
-/// `keep[coarse] = E(rep_bits) && !(exclude_outer_shell && is_outer)`.
+/// `keep[coarse] = E(rep) && !(exclude_outer_shell && is_outer)`.
 ///
 /// `universe_fine` >= 0 selects the STRUCTURAL read (one-form graphs):
 /// the inclusion bits of a self arrangement are winding parity, which
@@ -58,8 +58,8 @@ template <typename Index> struct domain_membership {
 /// coarse domain carries the honest "enclosed by form 0" bit.
 template <typename Index, typename OpenMask, typename Expr>
 auto compute_domain_membership(
-    const tf::cut::arrangement_descriptor<Index> &desc,
-    const tf::cut::domain_inclusions &inc, const OpenMask &open_mask,
+    const tf::csg::graph::arrangement_descriptor<Index> &desc,
+    const tf::csg::graph::domain_inclusions &inc, const OpenMask &open_mask,
     const tf::buffer<std::array<Index, 2>> &nesting_merges,
     tf::domain_config config, Expr E, Index universe_fine = Index(-1),
     const tf::buffer<char> &is_sheet_tag = {},
@@ -123,10 +123,10 @@ auto compute_domain_membership(
 
   const std::size_t words = inc.words_per_domain;
 
-  auto &rep_bits = out.rep_bits;
-  rep_bits.allocate(static_cast<std::size_t>(n_coarse) * words);
-  out.words_per_domain = words;
-  for (auto &w : rep_bits)
+  auto &rep = out.rep;
+  rep.words_per_domain = words;
+  rep.bits.allocate(static_cast<std::size_t>(n_coarse) * words);
+  for (auto &w : rep.bits)
     w = 0;
   tf::buffer<bool> is_outer;
   is_outer.allocate(static_cast<std::size_t>(n_coarse));
@@ -138,7 +138,7 @@ auto compute_domain_membership(
     for (Index k = 0; k < n_coarse; ++k) {
       is_outer[k] = k == uk;
       if (k != uk)
-        rep_bits[static_cast<std::size_t>(k) * words] = 1u;
+        rep.set(static_cast<std::size_t>(k), 0);
     }
   } else {
     // Representative = OR of constituent bits, minus the bits of sheets
@@ -153,24 +153,21 @@ auto compute_domain_membership(
           static_cast<std::size_t>(out.coarse_of_fine[d]) * words;
       const std::size_t src = static_cast<std::size_t>(d) * words;
       for (std::size_t w = 0; w < words; ++w)
-        rep_bits[base + w] |= inc.bits[src + w];
+        rep.bits[base + w] |= inc.bits[src + w];
     }
-    for (const auto &f : sheet_fuses) {
-      const std::size_t base =
-          static_cast<std::size_t>(out.coarse_of_fine[f[0]]) * words;
-      rep_bits[base + static_cast<std::size_t>(f[1]) / 32] &=
-          ~(std::uint32_t(1) << (static_cast<std::size_t>(f[1]) % 32));
-    }
+    for (const auto &f : sheet_fuses)
+      rep.clear(static_cast<std::size_t>(out.coarse_of_fine[f[0]]),
+                static_cast<std::size_t>(f[1]));
     for (Index k = 0; k < n_coarse; ++k) {
       std::uint32_t any = 0;
       const std::size_t base = static_cast<std::size_t>(k) * words;
       for (std::size_t w = 0; w < words; ++w)
-        any |= rep_bits[base + w];
+        any |= rep.bits[base + w];
       is_outer[k] = (any == 0);
     }
   }
 
-  auto rep_blocks = tf::make_blocked_range(tf::make_range(rep_bits), words);
+  auto rep_blocks = rep.make_range();
   out.keep.allocate(static_cast<std::size_t>(n_coarse));
   for (Index k = 0; k < n_coarse; ++k) {
     const bool excluded =

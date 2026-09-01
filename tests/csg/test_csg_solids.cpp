@@ -1,17 +1,18 @@
 /**
  * @file test_csg_solids.cpp
- * @brief CSG ports of the closed-mesh boolean scenarios in
- *        tests/cut/test_boolean.cpp.
+ * @brief The closed-mesh boolean scenarios, answered by the csg_graph
+ *        engine.
  *
  * Each scenario is run through the N-form csg_graph / make_csg_mesh
  * pipeline (build the graph once, extract each operation), and checked
- * for the same engine-agnostic invariants the boolean tests assert:
- * closed, manifold, and signed volume against the closed-form value.
+ * for engine-agnostic invariants: closed, manifold, and signed volume
+ * against the closed-form value.
  *
- * make_boolean is intentionally not referenced, so these survive the
- * eventual removal of the pairwise path. Face/point counts are not
- * checked: csg may triangulate cut regions differently from the old
- * engine, which was never a correctness property.
+ * make_boolean is not referenced here; tests/csg/test_boolean.cpp owns the
+ * pairwise wrapper. Face and point counts are asserted only where they are
+ * an identity — where nothing intersects, no triangulation choice can move
+ * them. Wherever a cut region is triangulated the count is an engine detail,
+ * never a correctness property.
  *
  * boolean_op -> expression:
  *   merge            -> csg::merge(0, 1)
@@ -30,14 +31,19 @@
 #include <trueform/topology/is_manifold.hpp>
 #include <trueform/trueform.hpp>
 
+#include "csg_builders.hpp"
+#include "csg_readers.hpp"
+#include "tagged_operand.hpp"
+
 #include "type_traits.hpp"
 
 #include <cmath>
+#include <utility>
 #include <vector>
 
 namespace {
 
-constexpr double pi = tf::pi<double>;
+constexpr double solids_pi = tf::pi<double>;
 
 template <typename Real> auto identity_frame() -> tf::frame<Real, 3> {
   return tf::make_frame(
@@ -50,18 +56,22 @@ template <typename Real> auto translation_frame(Real x, Real y, Real z)
       tf::make_transformation_from_translation(tf::vector<Real, 3>{x, y, z}));
 }
 
-template <typename Form> struct two_forms {
-  std::vector<Form> forms;
-  decltype(tf::make_csg_graph(
-      tf::make_range(std::declval<std::vector<Form> &>()))) graph;
+template <typename Operand> struct two_forms {
+  using form_type = decltype(std::declval<Operand &>().form());
 
-  explicit two_forms(std::vector<Form> f)
-      : forms(std::move(f)),
-        graph(tf::make_csg_graph(tf::make_range(forms))) {}
+  std::vector<Operand> operands;
+  std::vector<form_type> forms;
+  decltype(tf::test::build_range_csg_graph(
+      tf::test::forms_range(std::declval<std::vector<form_type> &>()),
+      tf::test::no_sheets(), tf::arrangement_config{})) graph;
 
-  two_forms(std::vector<Form> f, tf::arrangement_config config)
-      : forms(std::move(f)),
-        graph(tf::make_csg_graph(tf::make_range(forms), config)) {}
+  two_forms(std::vector<Operand> ops, tf::arrangement_config config)
+      : operands(std::move(ops)), forms(tf::test::tagged_forms(operands)),
+        graph(tf::test::build_range_csg_graph(tf::test::forms_range(forms),
+                                              tf::test::no_sheets(), config)) {}
+
+  explicit two_forms(std::vector<Operand> ops)
+      : two_forms(std::move(ops), tf::arrangement_config{}) {}
 
   two_forms(const two_forms &) = delete;
   two_forms &operator=(const two_forms &) = delete;
@@ -69,41 +79,30 @@ template <typename Form> struct two_forms {
 
 template <typename Real, typename Mesh>
 auto two_form_graph(const Mesh &m0, const Mesh &m1,
-                    const tf::frame<Real, 3> &f1) {
-  using form_t =
-      decltype(m0.polygons() | tf::tag(std::declval<tf::frame<Real, 3>>()));
-  std::vector<form_t> forms;
-  forms.reserve(2);
-  forms.push_back(m0.polygons() | tf::tag(identity_frame<Real>()));
-  forms.push_back(m1.polygons() | tf::tag(f1));
-  return two_forms<form_t>(std::move(forms));
-}
-
-template <typename Real, typename Mesh>
-auto two_form_graph(const Mesh &m0, const Mesh &m1,
                     const tf::frame<Real, 3> &f1,
-                    tf::arrangement_config config) {
-  using form_t =
-      decltype(m0.polygons() | tf::tag(std::declval<tf::frame<Real, 3>>()));
-  std::vector<form_t> forms;
-  forms.reserve(2);
-  forms.push_back(m0.polygons() | tf::tag(identity_frame<Real>()));
-  forms.push_back(m1.polygons() | tf::tag(f1));
-  return two_forms<form_t>(std::move(forms), config);
+                    tf::arrangement_config config = {}) {
+  using operand_t = decltype(tf::test::make_tagged_operand(m0));
+  std::vector<operand_t> operands;
+  operands.reserve(2);
+  operands.push_back(tf::test::make_tagged_operand(m0));
+  operands.push_back(tf::test::make_tagged_operand(
+      m1, tf::transformation<Real, 3>(f1.transformation())));
+  return two_forms<operand_t>(std::move(operands), config);
 }
 
 template <typename Graph>
-void check_solid(Graph &graph, const tf::csg::expr &e, double expected,
-                 double tol) {
-  auto m = tf::make_csg_mesh(graph, e);
+auto solids_check_solid(Graph &graph, const tf::csg::expr &e, double expected,
+                        double tol) {
+  auto m = tf::test::csg_mesh_of(graph, e);
   REQUIRE(tf::is_closed(m.polygons()));
   REQUIRE(tf::is_manifold(m.polygons()));
   REQUIRE_THAT(static_cast<double>(tf::signed_volume(m.polygons())),
                Catch::Matchers::WithinAbs(expected, tol));
+  return m;
 }
 
 template <typename Graph> void check_empty(Graph &graph, const tf::csg::expr &e) {
-  auto m = tf::make_csg_mesh(graph, e);
+  auto m = tf::test::csg_mesh_of(graph, e);
   REQUIRE(m.polygons().size() == 0);
 }
 
@@ -133,7 +132,8 @@ TEMPLATE_TEST_CASE("csg_solids: bicylinder intersection", "[csg][solids]",
 
   // Steinmetz solid volume = 16 r^3 / 3.
   double expected = 16.0 * std::pow(double(radius), 3) / 3.0;
-  check_solid(graph, tf::csg::intersection(0, 1), expected, expected * 0.01);
+  solids_check_solid(graph, tf::csg::intersection(0, 1), expected,
+                     expected * 0.01);
 }
 
 // ============================================================================
@@ -151,20 +151,28 @@ TEMPLATE_TEST_CASE("csg_solids: nested spheres", "[csg][solids]",
   tf::ensure_positive_orientation(outer.polygons());
   tf::ensure_positive_orientation(inner.polygons());
 
-  double vo = (4.0 / 3.0) * pi * std::pow(double(outer_r), 3);
-  double vi = (4.0 / 3.0) * pi * std::pow(double(inner_r), 3);
+  double vo = (4.0 / 3.0) * solids_pi * std::pow(double(outer_r), 3);
+  double vi = (4.0 / 3.0) * solids_pi * std::pow(double(inner_r), 3);
 
   auto holder = two_form_graph<real_t>(outer, inner, identity_frame<real_t>());
   auto &graph = holder.graph;
 
   SECTION("union = outer") {
-    check_solid(graph, tf::csg::merge(0, 1), vo, vo * 0.01);
+    auto m = solids_check_solid(graph, tf::csg::merge(0, 1), vo, vo * 0.01);
+    // Nothing intersects, so nothing is cut: the union re-emits the outer
+    // operand's faces and drops the enclosed inner operand whole.
+    REQUIRE(m.polygons().size() == outer.polygons().size());
   }
   SECTION("difference = hollow shell") {
-    check_solid(graph, tf::csg::difference(0, 1), vo - vi, (vo - vi) * 0.01);
+    auto m = solids_check_solid(graph, tf::csg::difference(0, 1), vo - vi,
+                                (vo - vi) * 0.01);
+    // Same reason, both shells kept: the outer operand's faces plus the
+    // inner operand's, reversed into the cavity.
+    REQUIRE(m.polygons().size() ==
+            outer.polygons().size() + inner.polygons().size());
   }
   SECTION("intersection = inner") {
-    check_solid(graph, tf::csg::intersection(0, 1), vi, vi * 0.01);
+    solids_check_solid(graph, tf::csg::intersection(0, 1), vi, vi * 0.01);
   }
 }
 
@@ -188,16 +196,16 @@ TEMPLATE_TEST_CASE("csg_solids: overlapping boxes", "[csg][solids]",
 
   const double overlap = 0.5, box = 1.0, tol = 0.02;
   SECTION("union") {
-    check_solid(graph, tf::csg::merge(0, 1), 2 * box - overlap, tol);
+    solids_check_solid(graph, tf::csg::merge(0, 1), 2 * box - overlap, tol);
   }
   SECTION("intersection") {
-    check_solid(graph, tf::csg::intersection(0, 1), overlap, tol);
+    solids_check_solid(graph, tf::csg::intersection(0, 1), overlap, tol);
   }
   SECTION("left difference") {
-    check_solid(graph, tf::csg::difference(0, 1), box - overlap, tol);
+    solids_check_solid(graph, tf::csg::difference(0, 1), box - overlap, tol);
   }
   SECTION("right difference") {
-    check_solid(graph, tf::csg::difference(1, 0), box - overlap, tol);
+    solids_check_solid(graph, tf::csg::difference(1, 0), box - overlap, tol);
   }
 }
 
@@ -220,13 +228,13 @@ TEMPLATE_TEST_CASE("csg_solids: non-overlapping boxes", "[csg][solids]",
   auto &graph = holder.graph;
 
   SECTION("union = sum") {
-    check_solid(graph, tf::csg::merge(0, 1), 2.0, 0.02);
+    solids_check_solid(graph, tf::csg::merge(0, 1), 2.0, 0.02);
   }
   SECTION("intersection = empty") {
     check_empty(graph, tf::csg::intersection(0, 1));
   }
   SECTION("left difference = box0") {
-    check_solid(graph, tf::csg::difference(0, 1), 1.0, 0.02);
+    solids_check_solid(graph, tf::csg::difference(0, 1), 1.0, 0.02);
   }
 }
 
@@ -264,7 +272,7 @@ TEMPLATE_TEST_CASE("csg_solids: stacked boxes weld across the band",
 
   SECTION("gap inside the band unions to one solid") {
     auto holder = stacked(real_t(0.5e-3));
-    auto m = tf::make_csg_mesh(holder.graph, tf::csg::merge(0, 1));
+    auto m = tf::test::csg_mesh_of(holder.graph, tf::csg::merge(0, 1));
     REQUIRE(tf::is_closed(m.polygons()));
     REQUIRE(tf::is_manifold(m.polygons()));
     // The welded corners collapse sixteen points to twelve.
@@ -275,7 +283,7 @@ TEMPLATE_TEST_CASE("csg_solids: stacked boxes weld across the band",
 
   SECTION("gap beyond the band stays two intact solids") {
     auto holder = stacked(real_t(2e-3));
-    auto m = tf::make_csg_mesh(holder.graph, tf::csg::merge(0, 1));
+    auto m = tf::test::csg_mesh_of(holder.graph, tf::csg::merge(0, 1));
     REQUIRE(tf::is_closed(m.polygons()));
     REQUIRE(tf::is_manifold(m.polygons()));
     // The separating reject still prunes beyond the band: nothing welds.
@@ -300,22 +308,24 @@ TEMPLATE_TEST_CASE("csg_solids: overlapping spheres", "[csg][solids]",
   tf::ensure_positive_orientation(s0.polygons());
   tf::ensure_positive_orientation(s1.polygons());
 
-  double sv = (4.0 / 3.0) * pi * std::pow(double(radius), 3);
+  double sv = (4.0 / 3.0) * solids_pi * std::pow(double(radius), 3);
   double h = 2.0 * double(radius) - double(sep);
-  double lens = (pi * h * h / 12.0) * (6.0 * double(radius) - h);
+  double lens = (solids_pi * h * h / 12.0) * (6.0 * double(radius) - h);
 
   auto f1 = translation_frame<real_t>(sep, real_t(0), real_t(0));
   auto holder = two_form_graph<real_t>(s0, s1, f1);
   auto &graph = holder.graph;
 
   SECTION("union = 2*sphere - lens") {
-    check_solid(graph, tf::csg::merge(0, 1), 2 * sv - lens, (2 * sv - lens) * 0.02);
+    solids_check_solid(graph, tf::csg::merge(0, 1), 2 * sv - lens,
+                       (2 * sv - lens) * 0.02);
   }
   SECTION("intersection = lens") {
-    check_solid(graph, tf::csg::intersection(0, 1), lens, lens * 0.02);
+    solids_check_solid(graph, tf::csg::intersection(0, 1), lens, lens * 0.02);
   }
   SECTION("left difference = sphere - lens") {
-    check_solid(graph, tf::csg::difference(0, 1), sv - lens, (sv - lens) * 0.02);
+    solids_check_solid(graph, tf::csg::difference(0, 1), sv - lens,
+                       (sv - lens) * 0.02);
   }
 }
 
@@ -344,21 +354,21 @@ TEMPLATE_TEST_CASE("csg_solids: multi-component vs inner sphere",
   auto inner = tf::make_sphere_mesh<index_t>(inner_r, 40, 40);
   tf::ensure_positive_orientation(inner.polygons());
 
-  double vo = (4.0 / 3.0) * pi * std::pow(double(outer_r), 3);
-  double vi = (4.0 / 3.0) * pi * std::pow(double(inner_r), 3);
+  double vo = (4.0 / 3.0) * solids_pi * std::pow(double(outer_r), 3);
+  double vi = (4.0 / 3.0) * solids_pi * std::pow(double(inner_r), 3);
 
   auto holder =
       two_form_graph<real_t>(two_spheres, inner, identity_frame<real_t>());
   auto &graph = holder.graph;
 
   SECTION("union = two outer spheres") {
-    check_solid(graph, tf::csg::merge(0, 1), 2 * vo, (2 * vo) * 0.02);
+    solids_check_solid(graph, tf::csg::merge(0, 1), 2 * vo, (2 * vo) * 0.02);
   }
   SECTION("left difference = (outer - inner) + outer") {
-    check_solid(graph, tf::csg::difference(0, 1), (vo - vi) + vo,
-                ((vo - vi) + vo) * 0.02);
+    solids_check_solid(graph, tf::csg::difference(0, 1), (vo - vi) + vo,
+                       ((vo - vi) + vo) * 0.02);
   }
   SECTION("intersection = inner") {
-    check_solid(graph, tf::csg::intersection(0, 1), vi, vi * 0.02);
+    solids_check_solid(graph, tf::csg::intersection(0, 1), vi, vi * 0.02);
   }
 }

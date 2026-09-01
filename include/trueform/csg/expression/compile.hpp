@@ -26,16 +26,15 @@ namespace tf::csg {
 inline auto expr::compile() const -> compiled_expr {
   switch (_kind) {
   case kind::leaf:
-    return compiled_expr::make_leaf_cluster_any(
-        {detail::make_word_mask(_operand_id)});
+    return compiled_expr::make_leaf_cluster_any({make_word_mask(_operand_id)});
   case kind::merge:
-    return detail::compile_cluster_node(
-        _children, &compiled_expr::make_leaf_cluster_any,
-        compiled_expr::kind::merge);
+    return compile_cluster_node(_children,
+                                &compiled_expr::make_leaf_cluster_any,
+                                compiled_expr::kind::merge);
   case kind::intersection:
-    return detail::compile_cluster_node(
-        _children, &compiled_expr::make_leaf_cluster_all,
-        compiled_expr::kind::intersection);
+    return compile_cluster_node(_children,
+                                &compiled_expr::make_leaf_cluster_all,
+                                compiled_expr::kind::intersection);
   case kind::difference: {
     // Empty difference matches the walker's semantics (false).
     if (_children.empty())

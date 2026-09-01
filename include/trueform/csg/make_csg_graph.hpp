@@ -11,26 +11,47 @@
  * Author: Žiga Sajovic
  */
 #pragma once
-#include "../core/algorithm/parallel_fill.hpp"
-#include "../core/buffer.hpp"
+#include "../arrangement/arrangement_config.hpp"
+#include "../arrangement/make_arrangement_graph.hpp"
 #include "../core/none.hpp"
 #include "../core/range.hpp"
-#include "../core/small_vector.hpp"
-#include "../cut/dispatch/boolean.hpp"
-#include "../cut/arrangement_config.hpp"
 #include "./csg_graph.hpp"
-#include "tbb/task_group.h"
-#include <array>
-#include <type_traits>
+#include "./graph/make_sheet_mask.hpp"
 #include <utility>
 
 namespace tf {
 
+/// @cond INTERNAL
+namespace csg {
+
+/// The classification tier over an arrangement — the only thing
+/// @ref tf::make_csg_graph adds. Which operand shape produced the
+/// arrangement is already settled by then.
+template <typename Int, template <typename, typename> class Arrangement,
+          typename Policy, typename Iter, std::size_t N>
+auto csg_graph_over(Arrangement<Policy, Int> arr, tf::range<Iter, N> sheets) {
+  auto mask = tf::csg::graph::make_sheet_mask(sheets, arr.n_tags());
+  return tf::csg_graph<Policy, Int, Arrangement>(std::move(arr),
+                                                 std::move(mask));
+}
+
+inline auto no_sheets() {
+  const int *none = nullptr;
+  return tf::make_range(none, none);
+}
+
+} // namespace csg
+/// @endcond
+
 /// @ingroup csg
-/// @brief Build a @ref tf::csg_graph for `forms`, auto-tagging any
-///        missing structures (manifold-edge link, face membership,
-///        AABB tree, frame) in parallel. Returns by value; the graph
-///        owns everything it needs to extract meshes.
+/// @brief Build a @ref tf::csg_graph for `forms` — the arrangement of
+///        @ref tf::make_arrangement_graph plus the classification tier
+///        (descriptor, domain inclusions, volumes, sheet anchoring).
+///
+/// Structure completion, operand-shape dispatch and the arrangement
+/// build all belong to @ref tf::make_arrangement_graph; this adds
+/// classification and the sheet declaration, nothing else. Returns by
+/// value; the graph owns everything it needs to extract meshes.
 ///
 /// `sheets` lists form indices to treat as sheets: oriented separators
 /// rather than volumes. A sheet's fragments always divide their two
@@ -57,42 +78,15 @@ template <typename Int = tf::none_t, typename Forms, typename Iter,
           std::size_t N>
 auto make_csg_graph(Forms in_forms, tf::range<Iter, N> sheets,
                     tf::arrangement_config config = {}) {
-  auto forms = tf::make_range(in_forms);
-  using S = decltype(tf::cut::dispatch::make_missing_structures(forms[0]));
-
-  tf::buffer<char> is_sheet;
-  if (sheets.size() > 0) {
-    is_sheet.allocate(forms.size());
-    tf::parallel_fill(is_sheet, char(0));
-    for (auto id : sheets)
-      is_sheet[static_cast<std::size_t>(id)] = char(1);
-  }
-
-  if constexpr (std::is_same_v<S, tf::none_t>) {
-    return tf::csg_graph<Forms, S, Int>(std::move(forms),
-                                        tf::small_vector<S, 10>{}, config,
-                                        std::move(is_sheet));
-  } else {
-    const auto n = forms.size();
-    tf::small_vector<S, 10> structs(n);
-    tbb::task_group tg;
-    for (std::size_t i = 0; i < n; ++i)
-      tg.run([&, i] {
-        structs[i] = tf::cut::dispatch::make_missing_structures(forms[i]);
-      });
-    tg.wait();
-    return tf::csg_graph<Forms, S, Int>(std::move(forms), std::move(structs),
-                                        config, std::move(is_sheet));
-  }
+  return csg::csg_graph_over<Int>(
+      tf::make_arrangement_graph<Int>(std::move(in_forms), config), sheets);
 }
 
 /// @ingroup csg
 /// @brief No-sheets overload: every form is a volume.
 template <typename Int = tf::none_t, typename Forms>
 auto make_csg_graph(Forms in_forms, tf::arrangement_config config = {}) {
-  const int *none = nullptr;
-  return make_csg_graph<Int>(std::move(in_forms), tf::make_range(none, none),
-                             config);
+  return make_csg_graph<Int>(std::move(in_forms), csg::no_sheets(), config);
 }
 
 /// @ingroup csg
@@ -104,17 +98,32 @@ auto make_csg_graph(Forms in_forms, tf::arrangement_config config = {}) {
 template <typename Int = tf::none_t, typename Policy>
 auto make_csg_graph(const tf::polygons<Policy> &form,
                     tf::arrangement_config config = {}) {
-  using S = decltype(tf::cut::dispatch::make_missing_structures(form));
-  std::array<tf::polygons<Policy>, 1> forms = {form};
-  if constexpr (std::is_same_v<S, tf::none_t>) {
-    return tf::csg_graph<std::array<tf::polygons<Policy>, 1>, S, Int>(
-        std::move(forms), tf::small_vector<S, 10>{}, config, {});
-  } else {
-    tf::small_vector<S, 10> structs(1);
-    structs[0] = tf::cut::dispatch::make_missing_structures(forms[0]);
-    return tf::csg_graph<std::array<tf::polygons<Policy>, 1>, S, Int>(
-        std::move(forms), std::move(structs), config, {});
-  }
+  return csg::csg_graph_over<Int>(tf::make_arrangement_graph<Int>(form, config),
+                                  csg::no_sheets());
+}
+
+/// @ingroup csg
+/// @brief Two-form overload — the forms may be DIFFERENT types; the
+///        pair policy erases the difference behind
+///        `apply_to_form(tag, f)`, so operand 0 is `form0` and operand
+///        1 is `form1` in every expression built against this graph.
+template <typename Int = tf::none_t, typename Policy0, typename Policy1,
+          typename Iter, std::size_t N>
+auto make_csg_graph(const tf::polygons<Policy0> &form0,
+                    const tf::polygons<Policy1> &form1,
+                    tf::range<Iter, N> sheets,
+                    tf::arrangement_config config = {}) {
+  return csg::csg_graph_over<Int>(
+      tf::make_arrangement_graph<Int>(form0, form1, config), sheets);
+}
+
+/// @ingroup csg
+/// @brief Two-form overload, both operands volumes.
+template <typename Int = tf::none_t, typename Policy0, typename Policy1>
+auto make_csg_graph(const tf::polygons<Policy0> &form0,
+                    const tf::polygons<Policy1> &form1,
+                    tf::arrangement_config config = {}) {
+  return make_csg_graph<Int>(form0, form1, csg::no_sheets(), config);
 }
 
 } // namespace tf

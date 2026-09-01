@@ -13,6 +13,7 @@
 #pragma once
 #include "../core/algorithm/parallel_for_each.hpp"
 #include "../core/none.hpp"
+#include "../core/resolved_output_real.hpp"
 #include "../core/views/enumerate.hpp"
 #include "../reindex/return_index_map.hpp"
 #include "../reindex/return_source_ids.hpp"
@@ -29,7 +30,7 @@
 namespace tf {
 
 /// @cond INTERNAL
-namespace detail {
+namespace csg {
 
 /// Default flag set for @ref tf::make_csg_domains: drop the universe and
 /// fuse open fragments into it.
@@ -42,17 +43,17 @@ inline constexpr tf::domain_config csg_domains_default_config =
 /// additionally returns per-cell (tag, face) provenance blocks; `WantPointMap`
 /// bundles those plus per-cell point provenance into a csg_domains_index_map.
 template <typename OutputCoordinateType, bool WantLabels = false,
-          bool WantPointMap = false, typename Forms, typename Structs,
-          typename Int, typename Expr>
-auto make_csg_domains_impl(const tf::csg_graph<Forms, Structs, Int> &graph,
-                           Expr E, tf::domain_config config) {
+          bool WantPointMap = false, typename Policy, typename Int,
+          template <typename, typename> class Arrangement, typename Expr,
+          typename TagMask = tf::none_t>
+auto make_csg_domains_impl(const tf::csg_graph<Policy, Int, Arrangement> &graph,
+                           Expr E, tf::domain_config config,
+                           const TagMask &tag_mask = {}) {
   using InputReal =
-      typename tf::csg_graph<Forms, Structs, Int>::input_real_type;
-  using RealOut =
-      std::conditional_t<std::is_same_v<OutputCoordinateType, tf::none_t>,
-                         InputReal, OutputCoordinateType>;
+      typename tf::csg_graph<Policy, Int, Arrangement>::input_real_type;
+  using RealOut = tf::resolved_output_real_t<OutputCoordinateType, InputReal>;
 
-  using Index = typename tf::csg_graph<Forms, Structs, Int>::index_type;
+  using Index = typename tf::csg_graph<Policy, Int, Arrangement>::index_type;
   // Within-builds read structurally: parity bits misread the
   // double-covered pockets of a self arrangement, whether the graph is
   // one self-arranged form or N forms of which some self-overlap. The
@@ -71,35 +72,31 @@ auto make_csg_domains_impl(const tf::csg_graph<Forms, Structs, Int> &graph,
       graph.is_sheet(), graph.sheet_folds());
   auto part = tf::csg::graph::compute_domain_partition(
       membership.domain_of_side, membership.n_components, membership.keep);
-  auto result =
-      tf::csg::graph::make_csg_domains<RealOut, WantLabels, WantPointMap>(
-          graph.labels(), graph.arrangement().face_regions(),
-          graph.triangulations(), graph.created_points(),
-          graph.forms(), part, graph.converter());
+  auto result = tf::csg::graph::make_csg_domains<
+      RealOut, tf::csg_graph<Policy, Int, Arrangement>::face_static_size,
+      WantLabels, WantPointMap, Index>(graph.arrangement(), graph.labels(),
+                                       part, tag_mask);
   if constexpr (WantPointMap) {
     // ids[k] is the coarse domain id; unpack its representative's operand
     // bits into the cell-major inclusion matrix.
     const auto &ids = std::get<1>(result);
     auto &imap = std::get<2>(result);
-    const std::size_t n_ops = graph.forms().size();
-    const std::size_t words = membership.words_per_domain;
+    const std::size_t n_ops = std::size_t(graph.arrangement().n_tags());
     imap.inclusion = tf::blocked_buffer<bool, tf::dynamic_size>(n_ops);
     imap.inclusion.allocate(ids.size());
     auto *cell_bits = imap.inclusion.data_buffer().data();
     tf::parallel_for_each(
         tf::enumerate(tf::make_range(ids)), [&](auto pair) {
           const auto &[k, id] = pair;
-          const std::size_t base = static_cast<std::size_t>(id) * words;
           auto *row = cell_bits + std::size_t(k) * n_ops;
           for (std::size_t i = 0; i < n_ops; ++i)
-            row[i] =
-                ((membership.rep_bits[base + i / 32] >> (i % 32)) & 1u) != 0;
+            row[i] = membership.rep.test(static_cast<std::size_t>(id), i);
         });
   }
   return result;
 }
 
-} // namespace detail
+} // namespace csg
 /// @endcond
 
 /// @ingroup csg
@@ -122,46 +119,56 @@ auto make_csg_domains_impl(const tf::csg_graph<Forms, Structs, Int> &graph,
 ///
 /// `config` defaults to `exclude_outer_shell | ignore_open_fragments`.
 ///
+/// @pre `s.kind() == tf::csg::selection_kind::boundary`. A cell is a
+///      domain's boundary, and a surface lying inside a domain is on no
+///      cell's boundary, so an @ref tf::csg::inside selection has no
+///      meaning here.
 /// @tparam OutputCoordinateType Output coordinate type. Defaults to
 ///         @c tf::none_t, resolving to the input forms' coordinate type.
 /// @return `{ cells, ids }`: one mesh per kept domain; `ids[k]` is the
 ///         COARSE domain id of cell `k`.
-template <typename OutputCoordinateType = tf::none_t, typename Forms,
-          typename Structs, typename Int>
-auto make_csg_domains(const tf::csg_graph<Forms, Structs, Int> &graph,
-                      const tf::csg::expr &e, tf::domain_config config) {
-  auto E = e.compile().evaluator();
-  return detail::make_csg_domains_impl<OutputCoordinateType>(graph, E, config);
+template <typename OutputCoordinateType = tf::none_t, typename Policy,
+          typename Int, template <typename, typename> class Arrangement>
+auto make_csg_domains(const tf::csg_graph<Policy, Int, Arrangement> &graph,
+                      const tf::csg::selection_t &s, tf::domain_config config) {
+  auto mask = s.mask(graph.arrangement().n_tags());
+  if (s.has_expression()) {
+    auto E = s.expression().compile().evaluator();
+    return csg::make_csg_domains_impl<OutputCoordinateType>(graph, E, config,
+                                                            mask);
+  }
+  return csg::make_csg_domains_impl<OutputCoordinateType>(
+      graph, [](const auto &) { return true; }, config, mask);
 }
 
 /// @ingroup csg
 /// @brief Filter overload with the default flag set
 ///        (`exclude_outer_shell | ignore_open_fragments`).
-template <typename OutputCoordinateType = tf::none_t, typename Forms,
-          typename Structs, typename Int>
-auto make_csg_domains(const tf::csg_graph<Forms, Structs, Int> &graph,
-                      const tf::csg::expr &e) {
+template <typename OutputCoordinateType = tf::none_t, typename Policy,
+          typename Int, template <typename, typename> class Arrangement>
+auto make_csg_domains(const tf::csg_graph<Policy, Int, Arrangement> &graph,
+                      const tf::csg::selection_t &s) {
   return make_csg_domains<OutputCoordinateType>(
-      graph, e, detail::csg_domains_default_config);
+      graph, s, csg::csg_domains_default_config);
 }
 
 /// @ingroup csg
 /// @brief Select-all overload, explicit `config`.
-template <typename OutputCoordinateType = tf::none_t, typename Forms,
-          typename Structs, typename Int>
-auto make_csg_domains(const tf::csg_graph<Forms, Structs, Int> &graph,
+template <typename OutputCoordinateType = tf::none_t, typename Policy,
+          typename Int, template <typename, typename> class Arrangement>
+auto make_csg_domains(const tf::csg_graph<Policy, Int, Arrangement> &graph,
                       tf::domain_config config) {
-  return detail::make_csg_domains_impl<OutputCoordinateType>(
+  return csg::make_csg_domains_impl<OutputCoordinateType>(
       graph, [](const auto &) { return true; }, config);
 }
 
 /// @ingroup csg
 /// @brief Select-all overload with the default flag set.
-template <typename OutputCoordinateType = tf::none_t, typename Forms,
-          typename Structs, typename Int>
-auto make_csg_domains(const tf::csg_graph<Forms, Structs, Int> &graph) {
+template <typename OutputCoordinateType = tf::none_t, typename Policy,
+          typename Int, template <typename, typename> class Arrangement>
+auto make_csg_domains(const tf::csg_graph<Policy, Int, Arrangement> &graph) {
   return make_csg_domains<OutputCoordinateType>(
-      graph, detail::csg_domains_default_config);
+      graph, csg::csg_domains_default_config);
 }
 
 // ---- return_source_ids overloads: additionally return per-cell provenance
@@ -173,45 +180,50 @@ auto make_csg_domains(const tf::csg_graph<Forms, Structs, Int> &graph) {
 /// @ingroup csg
 /// @brief Filter overload with explicit `config`, returning per-cell
 ///        (tag, face) provenance.
-template <typename OutputCoordinateType = tf::none_t, typename Forms,
-          typename Structs, typename Int>
-auto make_csg_domains(const tf::csg_graph<Forms, Structs, Int> &graph,
-                      const tf::csg::expr &e, tf::domain_config config,
+template <typename OutputCoordinateType = tf::none_t, typename Policy,
+          typename Int, template <typename, typename> class Arrangement>
+auto make_csg_domains(const tf::csg_graph<Policy, Int, Arrangement> &graph,
+                      const tf::csg::selection_t &s, tf::domain_config config,
                       tf::return_source_ids_t) {
-  auto E = e.compile().evaluator();
-  return detail::make_csg_domains_impl<OutputCoordinateType, true>(graph, E,
-                                                                   config);
+  auto mask = s.mask(graph.arrangement().n_tags());
+  if (s.has_expression()) {
+    auto E = s.expression().compile().evaluator();
+    return csg::make_csg_domains_impl<OutputCoordinateType, true>(graph, E,
+                                                                  config, mask);
+  }
+  return csg::make_csg_domains_impl<OutputCoordinateType, true>(
+      graph, [](const auto &) { return true; }, config, mask);
 }
 
 /// @ingroup csg
 /// @brief Filter overload (default flags), returning per-cell provenance.
-template <typename OutputCoordinateType = tf::none_t, typename Forms,
-          typename Structs, typename Int>
-auto make_csg_domains(const tf::csg_graph<Forms, Structs, Int> &graph,
-                      const tf::csg::expr &e, tf::return_source_ids_t) {
+template <typename OutputCoordinateType = tf::none_t, typename Policy,
+          typename Int, template <typename, typename> class Arrangement>
+auto make_csg_domains(const tf::csg_graph<Policy, Int, Arrangement> &graph,
+                      const tf::csg::selection_t &s, tf::return_source_ids_t) {
   return make_csg_domains<OutputCoordinateType>(
-      graph, e, detail::csg_domains_default_config, tf::return_source_ids);
+      graph, s, csg::csg_domains_default_config, tf::return_source_ids);
 }
 
 /// @ingroup csg
 /// @brief Select-all overload with explicit `config`, returning per-cell
 ///        provenance.
-template <typename OutputCoordinateType = tf::none_t, typename Forms,
-          typename Structs, typename Int>
-auto make_csg_domains(const tf::csg_graph<Forms, Structs, Int> &graph,
+template <typename OutputCoordinateType = tf::none_t, typename Policy,
+          typename Int, template <typename, typename> class Arrangement>
+auto make_csg_domains(const tf::csg_graph<Policy, Int, Arrangement> &graph,
                       tf::domain_config config, tf::return_source_ids_t) {
-  return detail::make_csg_domains_impl<OutputCoordinateType, true>(
+  return csg::make_csg_domains_impl<OutputCoordinateType, true>(
       graph, [](const auto &) { return true; }, config);
 }
 
 /// @ingroup csg
 /// @brief Select-all overload (default flags), returning per-cell provenance.
-template <typename OutputCoordinateType = tf::none_t, typename Forms,
-          typename Structs, typename Int>
-auto make_csg_domains(const tf::csg_graph<Forms, Structs, Int> &graph,
+template <typename OutputCoordinateType = tf::none_t, typename Policy,
+          typename Int, template <typename, typename> class Arrangement>
+auto make_csg_domains(const tf::csg_graph<Policy, Int, Arrangement> &graph,
                       tf::return_source_ids_t) {
   return make_csg_domains<OutputCoordinateType>(
-      graph, detail::csg_domains_default_config, tf::return_source_ids);
+      graph, csg::csg_domains_default_config, tf::return_source_ids);
 }
 
 // ---- return_index_map overloads: bundle the per-cell (tag, face) and
@@ -221,47 +233,52 @@ auto make_csg_domains(const tf::csg_graph<Forms, Structs, Int> &graph,
 /// @ingroup csg
 /// @brief Filter overload with explicit `config`, returning a
 ///        @ref tf::csg_domains_index_map.
-template <typename OutputCoordinateType = tf::none_t, typename Forms,
-          typename Structs, typename Int>
-auto make_csg_domains(const tf::csg_graph<Forms, Structs, Int> &graph,
-                      const tf::csg::expr &e, tf::domain_config config,
+template <typename OutputCoordinateType = tf::none_t, typename Policy,
+          typename Int, template <typename, typename> class Arrangement>
+auto make_csg_domains(const tf::csg_graph<Policy, Int, Arrangement> &graph,
+                      const tf::csg::selection_t &s, tf::domain_config config,
                       tf::return_index_map_t) {
-  auto E = e.compile().evaluator();
-  return detail::make_csg_domains_impl<OutputCoordinateType, true, true>(
-      graph, E, config);
+  auto mask = s.mask(graph.arrangement().n_tags());
+  if (s.has_expression()) {
+    auto E = s.expression().compile().evaluator();
+    return csg::make_csg_domains_impl<OutputCoordinateType, true, true>(
+        graph, E, config, mask);
+  }
+  return csg::make_csg_domains_impl<OutputCoordinateType, true, true>(
+      graph, [](const auto &) { return true; }, config, mask);
 }
 
 /// @ingroup csg
 /// @brief Filter overload (default flags), returning a
 ///        @ref tf::csg_domains_index_map.
-template <typename OutputCoordinateType = tf::none_t, typename Forms,
-          typename Structs, typename Int>
-auto make_csg_domains(const tf::csg_graph<Forms, Structs, Int> &graph,
-                      const tf::csg::expr &e, tf::return_index_map_t) {
+template <typename OutputCoordinateType = tf::none_t, typename Policy,
+          typename Int, template <typename, typename> class Arrangement>
+auto make_csg_domains(const tf::csg_graph<Policy, Int, Arrangement> &graph,
+                      const tf::csg::selection_t &s, tf::return_index_map_t) {
   return make_csg_domains<OutputCoordinateType>(
-      graph, e, detail::csg_domains_default_config, tf::return_index_map);
+      graph, s, csg::csg_domains_default_config, tf::return_index_map);
 }
 
 /// @ingroup csg
 /// @brief Select-all overload with explicit `config`, returning a
 ///        @ref tf::csg_domains_index_map.
-template <typename OutputCoordinateType = tf::none_t, typename Forms,
-          typename Structs, typename Int>
-auto make_csg_domains(const tf::csg_graph<Forms, Structs, Int> &graph,
+template <typename OutputCoordinateType = tf::none_t, typename Policy,
+          typename Int, template <typename, typename> class Arrangement>
+auto make_csg_domains(const tf::csg_graph<Policy, Int, Arrangement> &graph,
                       tf::domain_config config, tf::return_index_map_t) {
-  return detail::make_csg_domains_impl<OutputCoordinateType, true, true>(
+  return csg::make_csg_domains_impl<OutputCoordinateType, true, true>(
       graph, [](const auto &) { return true; }, config);
 }
 
 /// @ingroup csg
 /// @brief Select-all overload (default flags), returning a
 ///        @ref tf::csg_domains_index_map.
-template <typename OutputCoordinateType = tf::none_t, typename Forms,
-          typename Structs, typename Int>
-auto make_csg_domains(const tf::csg_graph<Forms, Structs, Int> &graph,
+template <typename OutputCoordinateType = tf::none_t, typename Policy,
+          typename Int, template <typename, typename> class Arrangement>
+auto make_csg_domains(const tf::csg_graph<Policy, Int, Arrangement> &graph,
                       tf::return_index_map_t) {
   return make_csg_domains<OutputCoordinateType>(
-      graph, detail::csg_domains_default_config, tf::return_index_map);
+      graph, csg::csg_domains_default_config, tf::return_index_map);
 }
 
 } // namespace tf

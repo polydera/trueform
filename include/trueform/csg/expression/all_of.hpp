@@ -19,9 +19,9 @@
 
 namespace tf::csg {
 
-/// @ingroup csg
+/// @ingroup csg_expression
 /// @brief n-ary `intersection` over a range. Each element is
-///        promoted via @ref detail::to_expr — integral elements
+///        promoted via @ref to_expr — integral elements
 ///        become leaves, @ref expr values pass through.
 ///
 /// `Range` must expose `.size()` (`tf::range`, `std::vector`,
@@ -31,11 +31,11 @@ auto all_of(Range &&items) -> expr {
   std::vector<expr> children;
   children.reserve(items.size());
   for (auto &&x : items)
-    children.emplace_back(detail::to_expr(std::forward<decltype(x)>(x)));
+    children.emplace_back(to_expr(std::forward<decltype(x)>(x)));
   return expr{expr::kind::intersection, std::move(children)};
 }
 
-/// @ingroup csg
+/// @ingroup csg_expression
 /// @brief @ref all_of overload accepting a braced `{...}` literal.
 ///        Lets users write `all_of({1, 2, 3})` directly — template
 ///        argument deduction can't otherwise deduce a range type
@@ -45,7 +45,7 @@ auto all_of(std::initializer_list<T> items) -> expr {
   std::vector<expr> children;
   children.reserve(items.size());
   for (const auto &x : items)
-    children.emplace_back(detail::to_expr(x));
+    children.emplace_back(to_expr(x));
   return expr{expr::kind::intersection, std::move(children)};
 }
 

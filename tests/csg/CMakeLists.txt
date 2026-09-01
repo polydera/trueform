@@ -1,11 +1,15 @@
 add_executable(trueform_csg_tests
+  test_boolean.cpp
   test_expression.cpp
   test_expression_fuzz.cpp
   test_csg_graph.cpp
   test_csg_solids.cpp
   test_csg_sheets.cpp
+  test_csg_refusal_recovery.cpp
   test_csg_domains.cpp
+  test_csg_tolerance_ladder.cpp
   test_make_outer_shell.cpp
+  test_selection.cpp
   test_triangulated_csg.cpp
 )
 

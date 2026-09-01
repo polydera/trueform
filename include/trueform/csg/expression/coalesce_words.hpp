@@ -15,9 +15,9 @@
 #include <algorithm>
 #include <vector>
 
-namespace tf::csg::detail {
+namespace tf::csg {
 
-/// @ingroup csg
+/// @ingroup csg_expression
 /// @brief Group `word_mask` entries by word index, OR'ing same-word
 ///        masks. Output is sorted ascending by word index.
 inline auto coalesce_words(std::vector<compiled_expr::word_mask> v)
@@ -35,4 +35,4 @@ inline auto coalesce_words(std::vector<compiled_expr::word_mask> v)
   return out;
 }
 
-} // namespace tf::csg::detail
+} // namespace tf::csg

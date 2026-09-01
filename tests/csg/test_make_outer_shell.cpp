@@ -7,11 +7,14 @@
  * unbounded outside, oriented outward. Scenarios: interpenetrating
  * shells (the spine-screw failure shape) checked against the pairwise
  * boolean union, clean passthrough, inward-oriented input re-oriented
- * outward, and nested-cavity removal.
+ * outward, nested-cavity removal, and integer-coordinate output.
  *
  * Copyright (c) 2026 Ziga Sajovic, XLAB
  */
 
+#include "csg_builders.hpp"
+#include "csg_readers.hpp"
+#include "tagged_operand.hpp"
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
@@ -22,7 +25,10 @@
 
 #include "type_traits.hpp"
 
+#include <algorithm>
+#include <array>
 #include <utility>
+#include <vector>
 
 namespace {
 
@@ -35,7 +41,12 @@ template <typename Real> auto translation_frame(Real x, Real y, Real z)
 template <typename Polygons> void check_watertight(const Polygons &polygons) {
   REQUIRE(tf::is_closed(polygons));
   REQUIRE(tf::is_manifold(polygons));
-  auto curves = tf::make_self_intersection_curves(polygons);
+  // crossing oracle: primitives on a deconverted (float-output) mesh states
+  // the seam's twin contacts as curves — an output-rounding property of the
+  // float output, not a self-crossing
+  auto curves = tf::make_self_intersection_curves(
+      polygons, tf::intersect_config{tf::intersect_mode::sos |
+                                     tf::intersect_mode::resolve_contours});
   REQUIRE(curves.size() == 0);
 }
 
@@ -86,6 +97,37 @@ TEMPLATE_TEST_CASE("make_outer_shell: clean solid passes through",
                Catch::Matchers::WithinRel(expected, 1e-6));
 }
 
+TEMPLATE_TEST_CASE("make_outer_shell: an uncut vertex keeps its input "
+                   "coordinate",
+                   "[csg][outer_shell]",
+                   (tf::test::type_pair<std::int32_t, double>)) {
+  using index_t = typename TestType::index_type;
+  using real_t = typename TestType::real_type;
+
+  // The shell is read off the csg graph, which materialises only created
+  // points from the lattice; an original vertex reaches the output
+  // untouched. Running the whole result through the lattice and
+  // deconverting it back would move 174 of this sphere's 994 vertices by
+  // one ulp.
+  auto sf = tf::make_sphere_mesh<index_t>(real_t(1), 32, 32);
+  tf::ensure_positive_orientation(sf.polygons());
+
+  auto shell = tf::make_outer_shell(sf.polygons());
+
+  // A clean solid is uncut: the shell's point set IS the input's, up to
+  // the order the output stream discovered it.
+  REQUIRE(shell.points_buffer().size() == sf.points_buffer().size());
+  auto collect = [](const auto &buffer) {
+    std::vector<std::array<real_t, 3>> out;
+    out.reserve(buffer.size());
+    for (auto p : buffer)
+      out.push_back({real_t(p[0]), real_t(p[1]), real_t(p[2])});
+    std::sort(out.begin(), out.end());
+    return out;
+  };
+  REQUIRE(collect(shell.points_buffer()) == collect(sf.points_buffer()));
+}
+
 TEMPLATE_TEST_CASE("make_outer_shell: inward-oriented input comes out outward",
                    "[csg][outer_shell]",
                    (tf::test::type_pair<std::int32_t, double>)) {
@@ -119,22 +161,17 @@ TEMPLATE_TEST_CASE("make_outer_shell: open fragment noise is dropped",
   tf::ensure_positive_orientation(sf.polygons());
   auto expected = static_cast<double>(tf::signed_volume(sf.polygons()));
 
-  // An open patch piercing the sphere surface: junk that must not
-  // survive into the shell under either open-fragment mode.
+  // An open patch piercing the sphere surface: junk the arrangement's
+  // self-merge makes non-separating, so it never reaches the shell.
   auto patch = tf::triangulated(
       tf::make_plane_mesh<index_t>(real_t(3), real_t(3)).polygons());
   auto soup = tf::concatenated(sf.polygons(), patch.polygons());
 
-  auto default_config =
-      tf::intersect_config{tf::intersect_mode::primitives |
-                           tf::intersect_mode::resolve_contours};
-  for (auto flags : {tf::domain_config::none,
-                     tf::domain_config::ignore_open_fragments}) {
-    auto shell = tf::make_outer_shell(soup.polygons(), default_config, flags);
-    check_watertight(shell.polygons());
-    REQUIRE_THAT(static_cast<double>(tf::signed_volume(shell.polygons())),
-                 Catch::Matchers::WithinRel(expected, 1e-6));
-  }
+  auto shell = tf::make_outer_shell(soup.polygons());
+
+  check_watertight(shell.polygons());
+  REQUIRE_THAT(static_cast<double>(tf::signed_volume(shell.polygons())),
+               Catch::Matchers::WithinRel(expected, 1e-6));
 }
 
 TEMPLATE_TEST_CASE("make_outer_shell: nested cavity is removed",
@@ -158,6 +195,47 @@ TEMPLATE_TEST_CASE("make_outer_shell: nested cavity is removed",
                Catch::Matchers::WithinRel(expected, 1e-6));
 }
 
+TEMPLATE_TEST_CASE("make_outer_shell: integer output stays on the lattice",
+                   "[csg][outer_shell]",
+                   (tf::test::type_pair<std::int32_t, double>),
+                   (tf::test::type_pair<std::int64_t, double>)) {
+  using index_t = typename TestType::index_type;
+  using real_t = typename TestType::real_type;
+  // the lattice the arrangement runs on for this input scalar
+  using lattice_t = tf::exact::resolve_int_type<tf::none_t, real_t>;
+
+  auto box = tf::make_box_mesh<index_t>(real_t(1), real_t(1), real_t(1));
+  tf::ensure_positive_orientation(box.polygons());
+  auto frame = translation_frame(real_t(0.5), real_t(0.5), real_t(0.5));
+  auto soup = tf::concatenated(box.polygons(), box.polygons() | tf::tag(frame));
+
+  auto shell = tf::make_outer_shell(soup.polygons());
+  check_watertight(shell.polygons());
+  auto expected = static_cast<double>(tf::signed_volume(shell.polygons()));
+
+  auto [int_shell, converter] =
+      tf::make_outer_shell<tf::none_t, lattice_t>(soup.polygons());
+
+  REQUIRE(int_shell.polygons().size() > 0);
+  REQUIRE(tf::is_closed(int_shell.polygons()));
+  REQUIRE(tf::is_manifold(int_shell.polygons()));
+  REQUIRE(int_shell.polygons().size() == shell.polygons().size());
+  REQUIRE(int_shell.points_buffer().size() == shell.points_buffer().size());
+
+  // the returned converter is the one that produced the lattice, so
+  // deconverting the integer shell reproduces the float overload's mesh
+  tf::polygons_buffer<index_t, real_t, 3, 3> back;
+  for (auto p : int_shell.points_buffer())
+    back.points_buffer().push_back(
+        converter.deconvert(tf::point<lattice_t, 3>{p[0], p[1], p[2]}));
+  for (auto face : int_shell.faces_buffer())
+    back.faces_buffer().emplace_back(face[0], face[1], face[2]);
+
+  check_watertight(back.polygons());
+  REQUIRE_THAT(static_cast<double>(tf::signed_volume(back.polygons())),
+               Catch::Matchers::WithinRel(expected, 1e-9));
+}
+
 TEMPLATE_TEST_CASE("make_outer_shell: one-form csg graph matches the mesh path",
                    "[csg][outer_shell][graph]",
                    (tf::test::type_pair<std::int32_t, double>),
@@ -174,9 +252,9 @@ TEMPLATE_TEST_CASE("make_outer_shell: one-form csg graph matches the mesh path",
   auto expected = static_cast<double>(tf::signed_volume(mesh_path.polygons()));
 
   // The graph IS the self arrangement: one form, no expression.
-  std::array<decltype(soup.polygons()), 1> forms = {soup.polygons()};
-  auto graph = tf::make_csg_graph(tf::make_range(forms));
-  auto shell = tf::make_outer_shell(graph);
+  auto soup_operand = tf::test::make_tagged_operand(soup);
+  auto graph = tf::test::build_self_csg_graph(soup_operand.form(), {});
+  auto shell = tf::test::outer_shell_of(graph);
 
   check_watertight(shell.polygons());
   REQUIRE_THAT(static_cast<double>(tf::signed_volume(shell.polygons())),
@@ -195,8 +273,9 @@ TEMPLATE_TEST_CASE("make_outer_shell: one-form graph, clean solid passes "
   auto expected = static_cast<double>(tf::signed_volume(sf.polygons()));
 
   // single-form overload: no range wrap
-  auto graph = tf::make_csg_graph(sf.polygons());
-  auto shell = tf::make_outer_shell(graph);
+  auto sf_operand = tf::test::make_tagged_operand(sf);
+  auto graph = tf::test::build_self_csg_graph(sf_operand.form(), {});
+  auto shell = tf::test::outer_shell_of(graph);
 
   check_watertight(shell.polygons());
   REQUIRE(shell.polygons().size() == sf.polygons().size());
@@ -216,9 +295,9 @@ TEMPLATE_TEST_CASE("csg domains: one-form graph decomposes the self "
   auto frame = translation_frame(real_t(0.8), real_t(0), real_t(0));
   auto soup = tf::concatenated(sf.polygons(), sf.polygons() | tf::tag(frame));
 
-  std::array<decltype(soup.polygons()), 1> forms = {soup.polygons()};
-  auto graph = tf::make_csg_graph(tf::make_range(forms));
-  auto [domains, ids] = tf::make_csg_domains(graph);
+  auto soup_operand = tf::test::make_tagged_operand(soup);
+  auto graph = tf::test::build_self_csg_graph(soup_operand.form(), {});
+  auto [domains, ids] = tf::test::csg_domains_of(graph);
 
   // two interpenetrating spheres: lens + two crescents
   REQUIRE(ids.size() == 3);
@@ -228,7 +307,7 @@ TEMPLATE_TEST_CASE("csg domains: one-form graph decomposes the self "
     total += static_cast<double>(tf::signed_volume(d.polygons()));
   }
   // cells tile the enclosed union: total == outer shell volume
-  auto shell = tf::make_outer_shell(graph);
+  auto shell = tf::test::outer_shell_of(graph);
   REQUIRE_THAT(total,
                Catch::Matchers::WithinRel(
                    static_cast<double>(tf::signed_volume(shell.polygons())),
@@ -247,9 +326,9 @@ TEMPLATE_TEST_CASE("make_outer_shell: one-form graph, disjoint components",
   auto soup = tf::concatenated(sf.polygons(), sf.polygons() | tf::tag(frame));
   auto expected = 2.0 * static_cast<double>(tf::signed_volume(sf.polygons()));
 
-  std::array<decltype(soup.polygons()), 1> forms = {soup.polygons()};
-  auto graph = tf::make_csg_graph(tf::make_range(forms));
-  auto shell = tf::make_outer_shell(graph);
+  auto soup_operand = tf::test::make_tagged_operand(soup);
+  auto graph = tf::test::build_self_csg_graph(soup_operand.form(), {});
+  auto shell = tf::test::outer_shell_of(graph);
 
   // BOTH disjoint shells must survive: the universe is one region but
   // several fine domains, related only through the nesting merges.
@@ -257,7 +336,7 @@ TEMPLATE_TEST_CASE("make_outer_shell: one-form graph, disjoint components",
   REQUIRE_THAT(static_cast<double>(tf::signed_volume(shell.polygons())),
                Catch::Matchers::WithinRel(expected, 1e-6));
 
-  auto [domains, ids] = tf::make_csg_domains(graph);
+  auto [domains, ids] = tf::test::csg_domains_of(graph);
   REQUIRE(ids.size() == 2);
 }
 
@@ -275,9 +354,9 @@ TEMPLATE_TEST_CASE("make_outer_shell: one-form graph, nested contact-free "
   auto soup = tf::concatenated(outer.polygons(), inner.polygons());
   auto expected = static_cast<double>(tf::signed_volume(outer.polygons()));
 
-  std::array<decltype(soup.polygons()), 1> forms = {soup.polygons()};
-  auto graph = tf::make_csg_graph(tf::make_range(forms));
-  auto shell = tf::make_outer_shell(graph);
+  auto soup_operand = tf::test::make_tagged_operand(soup);
+  auto graph = tf::test::build_self_csg_graph(soup_operand.form(), {});
+  auto shell = tf::test::outer_shell_of(graph);
 
   // The inner shell is enclosed: only the outer wall bounds the union.
   // Requires the inner bundle's nesting cast against its own tag.
@@ -287,7 +366,7 @@ TEMPLATE_TEST_CASE("make_outer_shell: one-form graph, nested contact-free "
                Catch::Matchers::WithinRel(expected, 1e-6));
 
   // cells: the gap (outer minus ball, with its cavity wall) + the ball
-  auto [domains, ids] = tf::make_csg_domains(graph);
+  auto [domains, ids] = tf::test::csg_domains_of(graph);
   REQUIRE(ids.size() == 2);
   double total = 0;
   for (auto &d : domains) {
@@ -315,9 +394,9 @@ TEMPLATE_TEST_CASE("make_outer_shell: one-form graph, nested pair plus a "
   auto expected =
       2.0 * static_cast<double>(tf::signed_volume(outer.polygons()));
 
-  std::array<decltype(soup.polygons()), 1> forms = {soup.polygons()};
-  auto graph = tf::make_csg_graph(tf::make_range(forms));
-  auto shell = tf::make_outer_shell(graph);
+  auto soup_operand = tf::test::make_tagged_operand(soup);
+  auto graph = tf::test::build_self_csg_graph(soup_operand.form(), {});
+  auto shell = tf::test::outer_shell_of(graph);
 
   // One nesting merge (inner's outside -> the gap) coexists with an
   // un-merged universe root (the free shell's outside): the membership
@@ -328,7 +407,7 @@ TEMPLATE_TEST_CASE("make_outer_shell: one-form graph, nested pair plus a "
                Catch::Matchers::WithinRel(expected, 1e-6));
 
   // cells: the gap, the ball, the free shell's interior
-  auto [domains, ids] = tf::make_csg_domains(graph);
+  auto [domains, ids] = tf::test::csg_domains_of(graph);
   REQUIRE(ids.size() == 3);
   double total = 0;
   for (auto &d : domains) {
@@ -358,9 +437,9 @@ TEMPLATE_TEST_CASE("make_outer_shell: self-intersecting bundle nested in a "
   auto soup = tf::concatenated(blob.polygons(), big.polygons());
   auto expected = static_cast<double>(tf::signed_volume(big.polygons()));
 
-  std::array<decltype(soup.polygons()), 1> forms = {soup.polygons()};
-  auto graph = tf::make_csg_graph(tf::make_range(forms));
-  auto shell = tf::make_outer_shell(graph);
+  auto soup_operand = tf::test::make_tagged_operand(soup);
+  auto graph = tf::test::build_self_csg_graph(soup_operand.form(), {});
+  auto shell = tf::test::outer_shell_of(graph);
 
   // Only the enclosing wall bounds the union; the blob is interior.
   check_watertight(shell.polygons());
@@ -373,7 +452,7 @@ TEMPLATE_TEST_CASE("make_outer_shell: self-intersecting bundle nested in a "
   // deconversion (the global lattice is scaled by the enclosing shell),
   // so interior cells check closed + manifold + tiling, not residual
   // self-intersections.
-  auto [domains, ids] = tf::make_csg_domains(graph);
+  auto [domains, ids] = tf::test::csg_domains_of(graph);
   REQUIRE(ids.size() == 4);
   double total = 0;
   for (auto &d : domains) {
@@ -422,8 +501,9 @@ TEMPLATE_TEST_CASE("make_outer_shell: twin vertex with degenerate sliver "
   auto soup =
       tf::concatenated(sf.polygons(), other.polygons() | tf::tag(frame));
 
-  auto graph = tf::make_csg_graph(soup.polygons());
-  auto shell = tf::make_outer_shell(graph);
+  auto soup_operand = tf::test::make_tagged_operand(soup);
+  auto graph = tf::test::build_self_csg_graph(soup_operand.form(), {});
+  auto shell = tf::test::outer_shell_of(graph);
   REQUIRE(tf::is_closed(shell.polygons()));
   REQUIRE(tf::is_manifold(shell.polygons()));
   auto curves = tf::make_self_intersection_curves(shell.polygons());
@@ -451,9 +531,9 @@ TEMPLATE_TEST_CASE("make_outer_shell: one-form graph drops open-fragment "
   patch.faces_buffer().emplace_back(0, 1, 2);
   auto soup = tf::concatenated(sf.polygons(), patch.polygons());
 
-  std::array<decltype(soup.polygons()), 1> forms = {soup.polygons()};
-  auto graph = tf::make_csg_graph(tf::make_range(forms));
-  auto shell = tf::make_outer_shell(graph);
+  auto soup_operand = tf::test::make_tagged_operand(soup);
+  auto graph = tf::test::build_self_csg_graph(soup_operand.form(), {});
+  auto shell = tf::test::outer_shell_of(graph);
 
   check_watertight(shell.polygons());
   REQUIRE(shell.polygons().size() == sf.polygons().size());
@@ -481,9 +561,9 @@ TEMPLATE_TEST_CASE("make_outer_shell: one-form graph normalizes inward "
   }
   REQUIRE(static_cast<double>(tf::signed_volume(inward.polygons())) < 0);
 
-  std::array<decltype(inward.polygons()), 1> forms = {inward.polygons()};
-  auto graph = tf::make_csg_graph(tf::make_range(forms));
-  auto shell = tf::make_outer_shell(graph);
+  auto inward_operand = tf::test::make_tagged_operand(inward);
+  auto graph = tf::test::build_self_csg_graph(inward_operand.form(), {});
+  auto shell = tf::test::outer_shell_of(graph);
 
   // volumes flip sign with the winding AND the side, so the universe
   // argmin is orientation-free and the chosen-side emit normalizes
@@ -511,9 +591,9 @@ TEMPLATE_TEST_CASE("make_outer_shell: one-form graph, mixed orientations "
       tf::concatenated(sf.polygons(), inward.polygons() | tf::tag(frame));
   auto expected = 2.0 * static_cast<double>(tf::signed_volume(sf.polygons()));
 
-  std::array<decltype(soup.polygons()), 1> forms = {soup.polygons()};
-  auto graph = tf::make_csg_graph(tf::make_range(forms));
-  auto shell = tf::make_outer_shell(graph);
+  auto soup_operand = tf::test::make_tagged_operand(soup);
+  auto graph = tf::test::build_self_csg_graph(soup_operand.form(), {});
+  auto shell = tf::test::outer_shell_of(graph);
 
   check_watertight(shell.polygons());
   REQUIRE_THAT(static_cast<double>(tf::signed_volume(shell.polygons())),

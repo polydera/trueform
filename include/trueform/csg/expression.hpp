@@ -32,4 +32,6 @@
 #include "./expression/make_word_mask.hpp"       // IWYU pragma: export
 #include "./expression/merge.hpp"                // IWYU pragma: export
 #include "./expression/operators.hpp"            // IWYU pragma: export
+#include "./expression/selection.hpp"            // IWYU pragma: export
+#include "./expression/selection_kind.hpp"       // IWYU pragma: export
 #include "./expression/to_expr.hpp"              // IWYU pragma: export

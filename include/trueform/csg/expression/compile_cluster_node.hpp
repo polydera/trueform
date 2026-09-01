@@ -18,9 +18,9 @@
 #include <utility>
 #include <vector>
 
-namespace tf::csg::detail {
+namespace tf::csg {
 
-/// @ingroup csg
+/// @ingroup csg_expression
 /// @brief Compile a `merge` / `intersection` node by batching leaf
 ///        children into a single @ref tf::csg::compiled_expr
 ///        leaf-cluster and recursively compiling the rest.
@@ -68,4 +68,4 @@ auto compile_cluster_node(const std::vector<expr> &children,
   return compiled_expr::make_intersection(std::move(non_leaves));
 }
 
-} // namespace tf::csg::detail
+} // namespace tf::csg

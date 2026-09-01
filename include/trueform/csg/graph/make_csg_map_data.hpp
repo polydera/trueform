@@ -11,50 +11,46 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../../arrangement/construct/arrangement_map_data.hpp"
+#include "../../arrangement/partition/partition_ids.hpp"
 #include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/small_vector.hpp"
 #include "../../core/views/indirect_range.hpp"
-#include "../../core/views/offset_block_range.hpp"
-#include "../../cut/construct/arrangement_map_data.hpp"
-#include "../../cut/impl/region_triangulator.hpp"
-#include "../../cut/partition/partition_ids.hpp"
 #include "../../intersect/graph/vertex.hpp"
 #include "tbb/task_group.h"
 
 #include <algorithm>
-#include <array>
 
 namespace tf::csg::graph {
 
-/// @ingroup csg
-/// @brief Build a vertex-remap @ref tf::cut::partition_map_data
+/// @ingroup csg_graph_internals
+/// @brief Build a vertex-remap @ref tf::arrangement::arrangement_point_map_data
 ///        covering ALL labels of every form's
-///        @ref tf::cut::partition_ids in one pass.
+///        @ref tf::arrangement::partition_ids in one pass.
 ///
-/// Variant of @ref tf::cut::make_partition_map_data tailored for the
-/// CSG output case, where each form's `partition_ids` carries
-/// **multiple labels** (here: `0` = reverse-emit, `1` = forward-emit)
-/// and we need vertex discovery to cover **every** label (direction
-/// only matters at emission time, not at vertex discovery).
+/// Each form's `partition_ids` carries **multiple labels** (here: `0` =
+/// reverse-emit, `1` = forward-emit) and vertex discovery covers **every**
+/// label: direction only matters at emission time.
 ///
-/// Vertex discovery walks the graph's exposed triangle-grain loops, so
+/// Vertex discovery walks the arrangement's exposed triangle stream, so
 /// every created point the triangulation materialized (intersection,
 /// recovery split, refinement) enters the global vertex space.
-/// `n_created_points` is the size of the graph's unified created-points
-/// buffer.
 ///
 /// Pass 1 (cut loops) is sequential across forms because the
 /// `created_map` is shared globally. Pass 2 (uncut polygons) is
 /// parallel per form.
-template <typename Index, typename Int, typename ApplyToPolygons>
-auto make_csg_map_data(const tf::cut::region_triangulator<Index, Int> &rt,
-                       Index n_created_points,
-                       const tf::small_vector<tf::cut::partition_ids<Index>, 4>
-                           &pids,
-                       const ApplyToPolygons &apply_to_polygons)
-    -> tf::cut::partition_map_data<Index> {
+template <typename Index, typename Arrangement, typename ApplyToPolygons>
+auto make_csg_map_data(
+    const Arrangement &arrangement,
+    const tf::small_vector<tf::arrangement::partition_ids<Index>, 4> &pids,
+    const ApplyToPolygons &apply_to_polygons)
+    -> tf::arrangement::arrangement_point_map_data<Index> {
+  const Index n_created_points =
+      static_cast<Index>(arrangement.created_points().size());
+  auto tris = arrangement.global().exposed_tris();
+  auto tag_offsets = arrangement.global().tag_offsets();
   auto n_meshes = static_cast<Index>(pids.size());
-  tf::cut::partition_map_data<Index> d;
+  tf::arrangement::arrangement_point_map_data<Index> d;
   d.n_meshes = n_meshes;
   d.original_ids.resize(n_meshes);
   d.point_offsets.allocate(n_meshes + 1);
@@ -89,10 +85,10 @@ auto make_csg_map_data(const tf::cut::region_triangulator<Index, Int> &rt,
 
     auto mark = [&](const auto &v) {
       if (v.source == tf::intersect::graph::vertex_source::original) {
-        auto flat = off + v.id;
-        if (d.original_map[flat] == sentinel_orig) {
-          d.original_map[flat] = curr++;
-          ids.push_back(v.id);
+        // The stream states originals FLAT.
+        if (d.original_map[v.id] == sentinel_orig) {
+          d.original_map[v.id] = curr++;
+          ids.push_back(v.id - off);
         }
       } else {
         if (d.created_map[v.id] == sentinel_created) {
@@ -103,14 +99,10 @@ auto make_csg_map_data(const tf::cut::region_triangulator<Index, Int> &rt,
     };
     const auto &cut_ids = pids[t].cut_faces;
     const Index n_labels = static_cast<Index>(cut_ids.size());
-    auto loops = rt.loops();
-    for (Index label = 0; label < n_labels; ++label) {
-      for (auto lid : cut_ids[label]) {
-        const Index gli = rt.tag_offsets()[t] + lid;
-        for (const auto &v : loops[gli])
+    for (Index label = 0; label < n_labels; ++label)
+      for (auto lid : cut_ids[label])
+        for (const auto &v : tris[tag_offsets[t] + lid])
           mark(v);
-      }
-    }
   }
 
   // Pass 2: uncut polygons. Parallel per form — only original
@@ -141,58 +133,6 @@ auto make_csg_map_data(const tf::cut::region_triangulator<Index, Int> &rt,
     });
   }
   tg.wait();
-
-  if (rt.merges().size() != 0) {
-    tf::parallel_fill(d.original_map, Index(0));
-    tf::parallel_fill(d.created_map, Index(0));
-
-    auto mark_key = [&](const std::array<Index, 2> &key) {
-      if (key[0] != rt.n_tags())
-        d.original_map[d.point_offsets[key[0]] + key[1]] = Index(1);
-      else
-        d.created_map[key[1]] = Index(1);
-    };
-
-    using vertex_t = tf::intersect::graph::vertex<Index>;
-    using source_t = tf::intersect::graph::vertex_source;
-    for (Index t = 0; t < n_meshes; ++t)
-      for (Index id : d.original_ids[t])
-        mark_key(rt.resolve_key(
-            t, vertex_t{source_t::original, id, {0, tf::topo_type::face}}));
-    for (Index id : d.created_ids)
-      mark_key(rt.resolve_key(
-          Index(0),
-          vertex_t{source_t::created, id, {0, tf::topo_type::face}}));
-
-    std::fill(d.original_offsets.begin(), d.original_offsets.end(), Index(0));
-    for (Index t = 0; t < n_meshes; ++t) {
-      auto &ids = d.original_ids[t];
-      ids.clear();
-      Index current = 0;
-      const Index begin = d.point_offsets[t];
-      const Index end = d.point_offsets[t + 1];
-      for (Index flat = begin; flat < end; ++flat) {
-        if (d.original_map[flat]) {
-          d.original_map[flat] = current++;
-          ids.push_back(flat - begin);
-        } else {
-          d.original_map[flat] = sentinel_orig;
-        }
-      }
-      d.original_offsets[t + 1] = current;
-    }
-
-    d.created_ids.clear();
-    create_current = 0;
-    for (Index id = 0; id < n_created_points; ++id) {
-      if (d.created_map[id]) {
-        d.created_map[id] = create_current++;
-        d.created_ids.push_back(id);
-      } else {
-        d.created_map[id] = sentinel_created;
-      }
-    }
-  }
 
   for (Index i = 0; i < n_meshes; ++i)
     d.original_offsets[i + 1] += d.original_offsets[i];

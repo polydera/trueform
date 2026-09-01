@@ -11,36 +11,36 @@
  * Author: Žiga Sajovic
  */
 #pragma once
-#include "../cut/make_intersection_curves.hpp"
+#include "../arrangement/make_intersection_curves.hpp"
+#include "../core/none.hpp"
+#include "../core/resolved_output_real.hpp"
 #include "./csg_graph.hpp"
+#include <type_traits>
 
 namespace tf {
 
 /// @ingroup csg
 /// @brief The intersection-curve network of an N-form CSG arrangement.
 ///
-/// An intersection edge is a region walk edge that has a neighbour of
-/// a different form tag — i.e. where two surfaces cross. Endpoints are
-/// created intersection vertices, whose `vertex_t.id` indexes straight
-/// into `created_points()`. The edges are connected into polylines via
-/// @ref tf::connect_edges_to_paths.
+/// An intersection edge is a constraint edge of the exposed triangle
+/// stream whose incidences do not all carry one tag — i.e. where two
+/// surfaces cross. Endpoints are created intersection vertices, whose
+/// `vertex_t.id` indexes straight into `created_points()`. The edges are
+/// connected into polylines via @ref tf::connect_edges_to_paths.
 ///
 /// A coincident (coplanar) overlap contributes its contact border; the
-/// overlap's interior stays silent (the duplicate walks are collapsed
-/// out of the connectivity).
-///
-/// Forwards to the arrangement read with the collapsed connectivity
-/// the classification already built.
+/// overlap's interior stays silent.
 ///
 /// @return A @ref tf::curves_buffer of the intersection polylines.
-template <typename Forms, typename Structs, typename Int>
-auto make_intersection_curves(const tf::csg_graph<Forms, Structs, Int> &graph) {
-  using graph_t = tf::csg_graph<Forms, Structs, Int>;
-  using RealOut = typename graph_t::input_real_type;
+template <typename OutputCoordinateType = tf::none_t, typename Policy,
+          typename Int, template <typename, typename> class Arrangement>
+auto make_intersection_curves(
+    const tf::csg_graph<Policy, Int, Arrangement> &graph) {
+  using graph_t = tf::csg_graph<Policy, Int, Arrangement>;
+  using InputReal = typename graph_t::input_real_type;
+  using RealOut = tf::resolved_output_real_t<OutputCoordinateType, InputReal>;
 
-  return tf::cut::make_intersection_curves<RealOut>(
-      graph.arrangement(),
-      graph.labels().connectivity().connectivity_per_carrier_edge());
+  return tf::make_intersection_curves<RealOut>(graph.arrangement());
 }
 
 } // namespace tf
