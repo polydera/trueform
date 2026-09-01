@@ -21,12 +21,13 @@
 #include <trueform/exact/snap_parameter_to_edge.hpp>
 #include <trueform/exact/vertex.hpp>
 
+#include <cstddef>
 #include <limits>
 
 namespace {
 
 template <typename Int>
-auto maximum_parameter() -> typename tf::exact::meta<Int>::param_type {
+auto snap_maximum_parameter() -> typename tf::exact::meta<Int>::param_type {
   return typename tf::exact::meta<Int>::param_type(1)
          << tf::exact::meta<Int>::param_bits;
 }
@@ -89,7 +90,7 @@ TEMPLATE_TEST_CASE("snap_parameter_to_edge collapses an edge with no interior",
                    tf::exact::int64) {
   using Int = TestType;
   using param_t = typename tf::exact::meta<Int>::param_type;
-  const auto maximum = maximum_parameter<Int>();
+  const auto maximum = snap_maximum_parameter<Int>();
   const tf::exact::pt3<Int> a{Int(-11), Int(4), Int(9)};
   const tf::exact::pt3<Int> b{Int(-10), Int(4), Int(9)};
 
@@ -115,7 +116,7 @@ TEMPLATE_TEST_CASE("snap_parameter_to_edge rounds onto the nearest step",
   using Int = TestType;
   using param_t = typename tf::exact::meta<Int>::param_type;
   constexpr int coordinate_bits = tf::exact::meta<Int>::coordinate_bits;
-  const auto maximum = maximum_parameter<Int>();
+  const auto maximum = snap_maximum_parameter<Int>();
   const tf::exact::pt3<Int> a{Int(0), Int(0), Int(0)};
   const tf::exact::pt3<Int> b{Int(Int(1) << (coordinate_bits - 1)), Int(0),
                               Int(0)};
@@ -229,7 +230,7 @@ TEMPLATE_TEST_CASE("snap_parameter_to_edge lands an interior position on an "
   using Int = TestType;
   using param_t = typename tf::exact::meta<Int>::param_type;
   constexpr int coordinate_bits = tf::exact::meta<Int>::coordinate_bits;
-  const auto maximum = maximum_parameter<Int>();
+  const auto maximum = snap_maximum_parameter<Int>();
   const tf::exact::pt3<Int> a{Int(-3), Int(7), Int(0)};
   const tf::exact::pt3<Int> b{Int(-3), Int(7),
                               Int(Int(1) << (coordinate_bits / 2))};
@@ -296,3 +297,4 @@ TEST_CASE("edge_parameter_step_bits follows the lattice it is asked about",
                         1)));
   CHECK(tf::exact::int64(narrow) != wide);
 }
+

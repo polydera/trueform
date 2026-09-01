@@ -23,7 +23,7 @@
 namespace {
 
 template <typename Int>
-auto maximum_parameter() -> typename tf::exact::meta<Int>::param_type {
+auto blend_maximum_parameter() -> typename tf::exact::meta<Int>::param_type {
   return typename tf::exact::meta<Int>::param_type(1)
          << tf::exact::meta<Int>::param_bits;
 }
@@ -34,7 +34,7 @@ TEMPLATE_TEST_CASE("dyadic_blend endpoints are exact", "[exact][dyadic_blend]",
                    tf::exact::int32, tf::exact::int64) {
   using Int = TestType;
   using param_t = typename tf::exact::meta<Int>::param_type;
-  const auto maximum = maximum_parameter<Int>();
+  const auto maximum = blend_maximum_parameter<Int>();
   const Int samples[] = {Int(0),
                          Int(1),
                          Int(-1),
@@ -56,7 +56,7 @@ TEMPLATE_TEST_CASE("dyadic_blend rounds half away from zero",
                    tf::exact::int64) {
   using Int = TestType;
   using param_t = typename tf::exact::meta<Int>::param_type;
-  const param_t half = maximum_parameter<Int>() / param_t(2);
+  const param_t half = blend_maximum_parameter<Int>() / param_t(2);
 
   // exact midpoints 0.5, -0.5, 0.5, -0.5, -1.5, 1.5
   CHECK(tf::exact::dyadic_blend(Int(0), Int(1), half) == Int(1));
@@ -72,7 +72,7 @@ TEMPLATE_TEST_CASE("dyadic_blend is symmetric about zero",
                    tf::exact::int64) {
   using Int = TestType;
   using param_t = typename tf::exact::meta<Int>::param_type;
-  const auto maximum = maximum_parameter<Int>();
+  const auto maximum = blend_maximum_parameter<Int>();
   const Int extent = std::numeric_limits<Int>::max();
   const Int samples[] = {Int(0), Int(1), Int(-1), Int(13), Int(-97), extent,
                          Int(-extent)};
@@ -105,7 +105,7 @@ TEMPLATE_TEST_CASE("dyadic_blend places a split from either end of the edge",
                    tf::exact::int64) {
   using Int = TestType;
   using param_t = typename tf::exact::meta<Int>::param_type;
-  const auto maximum = maximum_parameter<Int>();
+  const auto maximum = blend_maximum_parameter<Int>();
   const Int a = Int(-123457);
   const Int b = std::numeric_limits<Int>::max();
   const param_t parameters[] = {param_t(0),
@@ -128,7 +128,7 @@ TEMPLATE_TEST_CASE("dyadic_blend has headroom at the widest lattice span",
                    tf::exact::int64) {
   using Int = TestType;
   using param_t = typename tf::exact::meta<Int>::param_type;
-  const auto maximum = maximum_parameter<Int>();
+  const auto maximum = blend_maximum_parameter<Int>();
   const param_t quarter = maximum / param_t(4);
   const Int lattice_min = std::numeric_limits<Int>::min();
   const Int lattice_max = std::numeric_limits<Int>::max();

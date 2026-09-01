@@ -12,9 +12,9 @@
  */
 #pragma once
 
+#include "./bits/twos_complement.hpp"
 #include "./meta.hpp"
 #include "./vertex.hpp"
-#include <cstddef>
 
 namespace tf::exact {
 
@@ -57,6 +57,24 @@ auto edge_parameter_step_bits(const tf::exact::pt3<Int> &a,
 }
 
 /// @ingroup exact
+/// @brief `parameter` rounded to the nearest multiple of `2^step_bits`.
+///
+/// The one producer of a split's rounding. A caller that snaps a run of
+/// positions on one edge asks @ref tf::exact::edge_parameter_step_bits for
+/// the step once and states it here, since the step is the edge's.
+template <typename Int>
+auto snap_parameter_to_step(typename tf::exact::meta<Int>::param_type parameter,
+                            int step_bits) ->
+    typename tf::exact::meta<Int>::param_type {
+  using param_t = typename tf::exact::meta<Int>::param_type;
+  if (step_bits <= 0)
+    return parameter;
+  const unsigned bits = unsigned(step_bits);
+  const param_t half = param_t(1) << (bits - 1u);
+  return tf::exact::bits::align_down(parameter + half, bits);
+}
+
+/// @ingroup exact
 /// @brief `parameter` rounded to the nearest step of @ref
 ///        tf::exact::edge_parameter_step_bits.
 template <typename Int>
@@ -64,12 +82,8 @@ auto snap_parameter_to_edge(typename tf::exact::meta<Int>::param_type parameter,
                             const tf::exact::pt3<Int> &a,
                             const tf::exact::pt3<Int> &b) ->
     typename tf::exact::meta<Int>::param_type {
-  using param_t = typename tf::exact::meta<Int>::param_type;
-  const int step_bits = tf::exact::edge_parameter_step_bits<Int>(a, b);
-  if (step_bits <= 0)
-    return parameter;
-  const param_t half = param_t(1) << (step_bits - 1);
-  return ((parameter + half) >> step_bits) << step_bits;
+  return tf::exact::snap_parameter_to_step<Int>(
+      parameter, tf::exact::edge_parameter_step_bits<Int>(a, b));
 }
 
 } // namespace tf::exact

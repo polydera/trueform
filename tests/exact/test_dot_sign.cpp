@@ -14,7 +14,7 @@
 using tf::exact::int256;
 
 namespace {
-auto pow2(unsigned e) -> int256 { return int256(1) << e; }
+auto dot_pow2(unsigned e) -> int256 { return int256(1) << e; }
 } // namespace
 
 TEST_CASE("dot_sign: in-range products match plain arithmetic",
@@ -31,14 +31,16 @@ TEST_CASE("dot_sign: products past the type width keep the exact sign",
           "[exact][dot_sign]") {
   // a . b = 2^250 * 2^120 - (2^250 - 1) * 2^120 = 2^120 > 0, but each
   // term wraps mod 2^256 under plain multiplication.
-  std::array<int256, 3> a{pow2(250), -(pow2(250) - int256(1)), int256(0)};
-  std::array<int256, 3> b{pow2(120), pow2(120), int256(0)};
+  std::array<int256, 3> a{dot_pow2(250), -(dot_pow2(250) - int256(1)),
+                          int256(0)};
+  std::array<int256, 3> b{dot_pow2(120), dot_pow2(120), int256(0)};
   REQUIRE(tf::exact::dot_sign(a, b) == 1);
   // flip one operand: exact value -2^120
-  std::array<int256, 3> a2{-(pow2(250)), pow2(250) - int256(1), int256(0)};
+  std::array<int256, 3> a2{-(dot_pow2(250)), dot_pow2(250) - int256(1),
+                           int256(0)};
   REQUIRE(tf::exact::dot_sign(a2, b) == -1);
   // exact cancellation across huge terms
-  std::array<int256, 3> a3{pow2(250), -pow2(250), int256(0)};
+  std::array<int256, 3> a3{dot_pow2(250), -dot_pow2(250), int256(0)};
   REQUIRE(tf::exact::dot_sign(a3, b) == 0);
 }
 

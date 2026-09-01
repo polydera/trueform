@@ -18,7 +18,6 @@
 #include "./core/polygons.hpp"
 #include "./core/range.hpp"
 #include "./core/segments.hpp"
-#include "./exact/int32.hpp"
 #include "./exact/pt_converter.hpp"
 
 namespace tf {
@@ -27,12 +26,16 @@ namespace tf {
 /// @brief Conversion of point coordinates to an exact integer grid that
 ///        fills the full int range (~0.99 * max for the target int type).
 ///        Identity for integer input.
+///
+/// Every factory below leaves `IntT` and `RealT` unstated by default: the
+/// coordinate type comes from the input, and the lattice from that coordinate
+/// type via @ref tf::exact::resolve_int_type.
 template <typename IntT, typename RealT, std::size_t Dims>
 using exact_coordinate_converter = tf::exact::pt_converter<IntT, RealT, Dims>;
 
 /// @ingroup exact_coordinate_converter
 /// @brief Build a converter from an AABB.
-template <typename IntT = tf::exact::int32, typename RealT = tf::none_t,
+template <typename IntT = tf::none_t, typename RealT = tf::none_t,
           std::size_t Dims, typename Policy>
 auto make_exact_coordinate_converter(const tf::aabb_like<Dims, Policy> &aabb) {
   return tf::exact::make_pt_converter<IntT, RealT>(aabb);
@@ -40,7 +43,7 @@ auto make_exact_coordinate_converter(const tf::aabb_like<Dims, Policy> &aabb) {
 
 /// @ingroup exact_coordinate_converter
 /// @brief Build a converter from a points range.
-template <typename IntT = tf::exact::int32, typename RealT = tf::none_t,
+template <typename IntT = tf::none_t, typename RealT = tf::none_t,
           typename Policy>
 auto make_exact_coordinate_converter(const tf::points<Policy> &pts) {
   return tf::exact::make_pt_converter<IntT, RealT>(pts);
@@ -48,7 +51,7 @@ auto make_exact_coordinate_converter(const tf::points<Policy> &pts) {
 
 /// @ingroup exact_coordinate_converter
 /// @brief Build a converter from a polygons range.
-template <typename IntT = tf::exact::int32, typename RealT = tf::none_t,
+template <typename IntT = tf::none_t, typename RealT = tf::none_t,
           typename Policy>
 auto make_exact_coordinate_converter(const tf::polygons<Policy> &form) {
   return tf::exact::make_pt_converter<IntT, RealT>(form);
@@ -56,7 +59,7 @@ auto make_exact_coordinate_converter(const tf::polygons<Policy> &form) {
 
 /// @ingroup exact_coordinate_converter
 /// @brief Build a converter from a segments range.
-template <typename IntT = tf::exact::int32, typename RealT = tf::none_t,
+template <typename IntT = tf::none_t, typename RealT = tf::none_t,
           typename Policy>
 auto make_exact_coordinate_converter(const tf::segments<Policy> &form) {
   return tf::exact::make_pt_converter<IntT, RealT>(form);
@@ -64,7 +67,7 @@ auto make_exact_coordinate_converter(const tf::segments<Policy> &form) {
 
 /// @ingroup exact_coordinate_converter
 /// @brief Build a converter spanning two polygon forms.
-template <typename IntT = tf::exact::int32, typename RealT = tf::none_t,
+template <typename IntT = tf::none_t, typename RealT = tf::none_t,
           typename Policy0, typename Policy1>
 auto make_exact_coordinate_converter(const tf::polygons<Policy0> &form0,
                                      const tf::polygons<Policy1> &form1) {
@@ -73,7 +76,7 @@ auto make_exact_coordinate_converter(const tf::polygons<Policy0> &form0,
 
 /// @ingroup exact_coordinate_converter
 /// @brief Build a converter spanning a range of forms.
-template <typename IntT = tf::exact::int32, typename RealT = tf::none_t,
+template <typename IntT = tf::none_t, typename RealT = tf::none_t,
           typename Iterator, std::size_t N>
 auto make_exact_coordinate_converter(tf::range<Iterator, N> forms) {
   return tf::exact::make_pt_converter<IntT, RealT>(forms);

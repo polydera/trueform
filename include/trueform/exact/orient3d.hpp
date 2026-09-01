@@ -136,10 +136,16 @@ auto orient3d_value(const pt3<Int> &a, const pt3<Int> &b, const pt3<Int> &c,
 }
 
 /// Exact orient3d sign (no SoS). Returns -1, 0, or +1.
+template <typename Int>
+auto orient3d_sign(const pt3<Int> &a, const pt3<Int> &b, const pt3<Int> &c,
+                   const pt3<Int> &d) -> int {
+  auto val = orient3d_value(a, b, c, d);
+  return (val > 0) ? 1 : (val < 0) ? -1 : 0;
+}
+
 template <typename Index, typename Int>
 auto orient3d_sign(const std::array<vertex<Index, Int>, 4> &vs) -> int {
-  auto val = orient3d_value(vs[0].pt, vs[1].pt, vs[2].pt, vs[3].pt);
-  return (val > 0) ? 1 : (val < 0) ? -1 : 0;
+  return orient3d_sign(vs[0].pt, vs[1].pt, vs[2].pt, vs[3].pt);
 }
 
 /// Supporting plane (a, b, c) with its precomputed normal, for testing many
@@ -152,8 +158,8 @@ template <typename Int> struct orient3d_plane {
 };
 
 /// Exact value of orient3d(plane.{a,b,c}, d) == N . (d - base). The value
-/// is the producer; a caller supplying a distance bound turns it into a
-/// banded sign without a second derivation.
+/// is the producer; a caller that needs the crossing's parameter along its
+/// edge reads it instead of deriving the quantity a second time.
 template <typename Int>
 auto orient3d_plane_value(const orient3d_plane<Int> &plane, const pt3<Int> &d)
     -> typename meta<Int>::T2 {

@@ -21,7 +21,7 @@
 namespace {
 
 template <typename Int>
-auto maximum_parameter() -> typename tf::exact::meta<Int>::param_type {
+auto rebase_maximum_parameter() -> typename tf::exact::meta<Int>::param_type {
   return typename tf::exact::meta<Int>::param_type(1)
          << tf::exact::meta<Int>::param_bits;
 }
@@ -34,7 +34,7 @@ TEMPLATE_TEST_CASE("rebase_parameter is the identity on the whole parent",
   using Int = TestType;
   using param_t = typename tf::exact::meta<Int>::param_type;
   using T2 = typename tf::exact::meta<Int>::T2;
-  const auto maximum = maximum_parameter<Int>();
+  const auto maximum = rebase_maximum_parameter<Int>();
   const param_t locals[] = {param_t(0),
                             param_t(1),
                             maximum / param_t(3),
@@ -54,7 +54,7 @@ TEMPLATE_TEST_CASE("rebase_parameter reverses a backwards parent",
   using Int = TestType;
   using param_t = typename tf::exact::meta<Int>::param_type;
   using T2 = typename tf::exact::meta<Int>::T2;
-  const auto maximum = maximum_parameter<Int>();
+  const auto maximum = rebase_maximum_parameter<Int>();
   const param_t locals[] = {param_t(0),
                             param_t(1),
                             maximum / param_t(3),
@@ -74,7 +74,7 @@ TEMPLATE_TEST_CASE("rebase_parameter places a piece's own ends exactly",
   using Int = TestType;
   using param_t = typename tf::exact::meta<Int>::param_type;
   using T2 = typename tf::exact::meta<Int>::T2;
-  const auto maximum = maximum_parameter<Int>();
+  const auto maximum = rebase_maximum_parameter<Int>();
   const param_t eighth = maximum / param_t(8);
   const param_t local_maximum = param_t(1) << 20;
   const T2 denominator = T2(local_maximum);
@@ -112,7 +112,7 @@ TEMPLATE_TEST_CASE("rebase_parameter rounds half away from zero",
   using Int = TestType;
   using param_t = typename tf::exact::meta<Int>::param_type;
   using T2 = typename tf::exact::meta<Int>::T2;
-  const auto maximum = maximum_parameter<Int>();
+  const auto maximum = rebase_maximum_parameter<Int>();
   const param_t half = maximum / param_t(2);
 
   // One unit on a piece covering the parent's first half is half a unit of
@@ -129,7 +129,7 @@ TEMPLATE_TEST_CASE("rebase_parameter propagates the not-a-parameter sentinel",
   using Int = TestType;
   using param_t = typename tf::exact::meta<Int>::param_type;
   using T2 = typename tf::exact::meta<Int>::T2;
-  const auto maximum = maximum_parameter<Int>();
+  const auto maximum = rebase_maximum_parameter<Int>();
 
   CHECK(tf::exact::rebase_parameter<Int>(param_t(-1), param_t(0), maximum,
                                          T2(maximum)) == param_t(-1));

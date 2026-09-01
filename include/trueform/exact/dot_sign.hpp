@@ -12,6 +12,8 @@
  */
 #pragma once
 
+#include "./bits/twos_complement.hpp"
+
 #include <array>
 
 namespace tf::exact {
@@ -38,16 +40,16 @@ auto dot_sign(const std::array<T, 3> &a, const std::array<T, 3> &b) -> int {
   T s_hi = T(0); // scale 2^h
   T s_lo = T(0); // scale 1, kept in [0, 2^h)
   for (int c = 0; c < 3; ++c) {
-    const T hi = a[c] >> h;
-    const T rem = a[c] - (hi << h); // [0, 2^h)
-    const T p = rem * b[c];         // |p| < 2^(2h-1), in range
-    const T pc = p >> h;
-    s_lo = s_lo + (p - (pc << h));
-    const T cl = s_lo >> h;
-    s_lo = s_lo - (cl << h);
+    const T hi = bits::shift_right(a[c], h);
+    const T rem = a[c] - bits::shift_left(hi, h); // [0, 2^h)
+    const T p = rem * b[c];                       // |p| < 2^(2h-1), in range
+    const T pc = bits::shift_right(p, h);
+    s_lo = s_lo + (p - bits::shift_left(pc, h));
+    const T cl = bits::shift_right(s_lo, h);
+    s_lo = s_lo - bits::shift_left(cl, h);
     const T t = hi * b[c] + pc + cl; // |t| < 2^(2h-2) + small, in range
     const T prev = s_hi;
-    s_hi = s_hi + t;
+    s_hi = bits::wrapping_add(s_hi, t);
     if ((prev < T(0)) == (t < T(0)) && (s_hi < T(0)) != (prev < T(0)))
       ovf = ovf + (prev < T(0) ? T(-1) : T(1));
   }

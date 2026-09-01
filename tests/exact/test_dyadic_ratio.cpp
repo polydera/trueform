@@ -25,7 +25,8 @@
 namespace {
 
 template <typename Int>
-auto maximum_parameter() -> typename tf::exact::meta<Int>::param_type {
+auto dyadic_ratio_maximum_parameter() ->
+    typename tf::exact::meta<Int>::param_type {
   return typename tf::exact::meta<Int>::param_type(1)
          << tf::exact::meta<Int>::param_bits;
 }
@@ -75,7 +76,7 @@ TEMPLATE_TEST_CASE("dyadic_ratio clamps to the endpoints",
   using Int = TestType;
   using param_t = typename tf::exact::meta<Int>::param_type;
   using T2 = typename tf::exact::meta<Int>::T2;
-  const auto maximum = maximum_parameter<Int>();
+  const auto maximum = dyadic_ratio_maximum_parameter<Int>();
   const T2 denominator(1000);
 
   CHECK(tf::exact::dyadic_ratio<Int>(T2(0), denominator) == param_t(0));
@@ -95,7 +96,7 @@ TEMPLATE_TEST_CASE("dyadic_ratio is exact on dyadic fractions",
   using Int = TestType;
   using param_t = typename tf::exact::meta<Int>::param_type;
   using T2 = typename tf::exact::meta<Int>::T2;
-  const auto maximum = maximum_parameter<Int>();
+  const auto maximum = dyadic_ratio_maximum_parameter<Int>();
 
   CHECK(tf::exact::dyadic_ratio<Int>(T2(1), T2(2)) == maximum / param_t(2));
   CHECK(tf::exact::dyadic_ratio<Int>(T2(1), T2(4)) == maximum / param_t(4));
@@ -112,7 +113,7 @@ TEMPLATE_TEST_CASE("dyadic_ratio rounds a sub-quantum position onto an endpoint"
   using Int = TestType;
   using param_t = typename tf::exact::meta<Int>::param_type;
   using T2 = typename tf::exact::meta<Int>::T2;
-  const auto maximum = maximum_parameter<Int>();
+  const auto maximum = dyadic_ratio_maximum_parameter<Int>();
   const T2 scale = T2(maximum);
 
   // Denominators of 2^(param_bits + 1) put the numerator exactly half a
@@ -129,7 +130,7 @@ TEMPLATE_TEST_CASE("dyadic_ratio recovers the parameter of an exact blend",
                    tf::exact::int64) {
   using Int = TestType;
   using param_t = typename tf::exact::meta<Int>::param_type;
-  const auto maximum = maximum_parameter<Int>();
+  const auto maximum = dyadic_ratio_maximum_parameter<Int>();
   // Coordinates that are multiples of 32 make every blend at a multiple of
   // maximum / 32 land on the lattice with no rounding at all, so the
   // recovered parameter is the one the point was placed from.
@@ -152,7 +153,7 @@ TEMPLATE_TEST_CASE("dyadic_ratio round trip holds the endpoints and the chord",
                    tf::exact::int64) {
   using Int = TestType;
   using param_t = typename tf::exact::meta<Int>::param_type;
-  const auto maximum = maximum_parameter<Int>();
+  const auto maximum = dyadic_ratio_maximum_parameter<Int>();
   const tf::exact::pt3<Int> a{Int(-7), Int(13), Int(-1000003)};
   const tf::exact::pt3<Int> b{Int(73741823), Int(999999), Int(771)};
 
@@ -181,7 +182,7 @@ TEMPLATE_TEST_CASE("dyadic_ratio has headroom at the widest squared length",
   using Int = TestType;
   using param_t = typename tf::exact::meta<Int>::param_type;
   using T2 = typename tf::exact::meta<Int>::T2;
-  const auto maximum = maximum_parameter<Int>();
+  const auto maximum = dyadic_ratio_maximum_parameter<Int>();
   const T2 scale = T2(maximum);
   const T2 denominator = widest_squared_length<Int>();
 

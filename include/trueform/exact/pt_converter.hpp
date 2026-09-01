@@ -22,8 +22,8 @@
 #include "../core/transformed.hpp"
 #include "../spatial/aabb_from.hpp"
 #include "../spatial/policy/tree.hpp"
-#include "./int32.hpp"
 #include "./pt_converter_identity.hpp"
+#include "./resolve_int_type.hpp"
 #include <cmath>
 #include <limits>
 #include <type_traits>
@@ -67,11 +67,16 @@ struct pt_converter
                          pt_converter_identity<IntT, RealT, Dims>,
                          pt_converter_real<IntT, RealT, Dims>> {};
 
-template <typename IntT = int32, typename RealT = tf::none_t, std::size_t Dims,
-          typename Policy>
+/// The whole family funnels here, so this is where an unstated `RealT` and an
+/// unstated `IntT` are decided: the coordinate type first, then the lattice
+/// that type calls for.
+template <typename IntT = tf::none_t, typename RealT = tf::none_t,
+          std::size_t Dims, typename Policy>
 auto make_pt_converter(const tf::aabb_like<Dims, Policy> &aabb) {
   if constexpr (std::is_same_v<RealT, tf::none_t>) {
     return make_pt_converter<IntT, tf::coordinate_type<Policy>>(aabb);
+  } else if constexpr (std::is_same_v<IntT, tf::none_t>) {
+    return make_pt_converter<resolve_int_type<tf::none_t, RealT>, RealT>(aabb);
   } else if constexpr (std::is_integral_v<RealT>) {
     (void)aabb;
     return pt_converter<IntT, RealT, Dims>{};
@@ -93,7 +98,8 @@ auto make_pt_converter(const tf::aabb_like<Dims, Policy> &aabb) {
   }
 }
 
-template <typename IntT = int32, typename RealT = tf::none_t, typename Policy>
+template <typename IntT = tf::none_t, typename RealT = tf::none_t,
+          typename Policy>
 auto make_pt_converter(const tf::points<Policy> &pts) {
   auto make_aabb = [](const auto &form) {
     using P = std::decay_t<decltype(form)>;
@@ -105,7 +111,8 @@ auto make_pt_converter(const tf::points<Policy> &pts) {
   return make_pt_converter<IntT, RealT>(make_aabb(pts));
 }
 
-template <typename IntT = int32, typename RealT = tf::none_t, typename Policy>
+template <typename IntT = tf::none_t, typename RealT = tf::none_t,
+          typename Policy>
 auto make_pt_converter(const tf::polygons<Policy> &form) {
   auto make_aabb = [](const auto &form) {
     using P = std::decay_t<decltype(form)>;
@@ -117,7 +124,8 @@ auto make_pt_converter(const tf::polygons<Policy> &form) {
   return make_pt_converter<IntT, RealT>(make_aabb(form));
 }
 
-template <typename IntT = int32, typename RealT = tf::none_t, typename Policy>
+template <typename IntT = tf::none_t, typename RealT = tf::none_t,
+          typename Policy>
 auto make_pt_converter(const tf::segments<Policy> &form) {
   auto make_aabb = [](const auto &form) {
     using P = std::decay_t<decltype(form)>;
@@ -129,8 +137,8 @@ auto make_pt_converter(const tf::segments<Policy> &form) {
   return make_pt_converter<IntT, RealT>(make_aabb(form));
 }
 
-template <typename IntT = int32, typename RealT = tf::none_t, typename Policy0,
-          typename Policy1>
+template <typename IntT = tf::none_t, typename RealT = tf::none_t,
+          typename Policy0, typename Policy1>
 auto make_pt_converter(const tf::polygons<Policy0> &form0,
                        const tf::polygons<Policy1> &form1) {
   auto make_aabb = [](const auto &form) {
@@ -144,7 +152,7 @@ auto make_pt_converter(const tf::polygons<Policy0> &form0,
       tf::aabb_union(make_aabb(form0), make_aabb(form1)));
 }
 
-template <typename IntT = int32, typename RealT = tf::none_t,
+template <typename IntT = tf::none_t, typename RealT = tf::none_t,
           typename Iterator, std::size_t N>
 auto make_pt_converter(tf::range<Iterator, N> forms) {
   auto make_aabb = [](const auto &form) {

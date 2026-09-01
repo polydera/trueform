@@ -12,10 +12,10 @@
  */
 #pragma once
 
+#include "../core/none.hpp"
 #include "../core/points.hpp"
 #include "../core/views/mapped_range.hpp"
 #include "../exact_coordinate_converter.hpp"
-#include "./int32.hpp"
 #include <utility>
 
 namespace tf {
@@ -32,7 +32,7 @@ auto make_exact_points(
 
 /// @ingroup exact_points
 /// @brief Build a converter from `points` and return (view, converter).
-template <typename IntT = tf::exact::int32, typename Policy>
+template <typename IntT = tf::none_t, typename Policy>
 auto make_exact_points(const tf::points<Policy> &points) {
   auto converter = tf::make_exact_coordinate_converter<IntT>(points);
   auto view = make_exact_points(points, converter);

@@ -162,21 +162,65 @@ private:
       _hi |= (limb_type(1) << (i - 128));
   }
 
+  /// 256 x 64 -> 256 unsigned multiply; the caller guarantees the
+  /// product fits (every use multiplies a quotient-digit estimate that
+  /// is bounded by a remainder already held in 256 bits).
+  static auto _mul_small(const int256 &a, std::uint64_t b) -> int256 {
+    limb_type hi_lo;
+    const limb_type lo = _umul_full(a._lo, limb_type(b), hi_lo);
+    return int256(lo, a._hi * limb_type(b) + hi_lo);
+  }
+
   static auto _unsigned_divmod(const int256 &num, const int256 &den)
       -> std::pair<int256, int256> {
     if (_cmp_unsigned(num, den) < 0)
       return {int256(0), num};
 
-    int256 q(0);
-    int256 r(0);
     const auto nbits = _bit_width(num);
-    for (unsigned k = nbits; k-- > 0;) {
-      r._hi = (r._hi << 1) | (r._lo >> 127);
-      r._lo = (r._lo << 1) | static_cast<limb_type>(_get_bit(num, k));
-      if (_cmp_unsigned(r, den) >= 0) {
-        r = _unsigned_sub(r, den);
-        q._set_bit(k);
+    const auto dbits = _bit_width(den);
+
+    // narrow divisor: schoolbook over 64-bit digits, hardware-backed
+    // 128/64 division per digit
+    if (dbits <= 64) {
+      const auto d = static_cast<std::uint64_t>(den._lo);
+      std::uint64_t digits[4] = {
+          static_cast<std::uint64_t>(num._lo),
+          static_cast<std::uint64_t>(num._lo >> 64),
+          static_cast<std::uint64_t>(num._hi),
+          static_cast<std::uint64_t>(num._hi >> 64)};
+      limb_type rem = 0;
+      for (int i = 4; i-- > 0;) {
+        const limb_type cur = (rem << 64) | digits[i];
+        digits[i] = static_cast<std::uint64_t>(cur / d);
+        rem = cur % d;
       }
+      return {int256(limb_type(digits[0]) | (limb_type(digits[1]) << 64),
+                     limb_type(digits[2]) | (limb_type(digits[3]) << 64)),
+              int256(rem, limb_type(0))};
+    }
+
+    // wide divisor: 32-bit quotient digits, each estimated from the
+    // remainder's and divisor's top bits with an underestimating
+    // denominator, then corrected exactly — the estimate is at most a
+    // few below the true digit, so the correction loop is O(1)
+    const unsigned s = dbits - 64;
+    const auto den_top =
+        static_cast<limb_type>((den >> s)._lo) + limb_type(1);
+    const unsigned n_chunks = (nbits - dbits + 32 + 31) / 32;
+    int256 q(0);
+    int256 r = num >> (32 * n_chunks);
+    for (unsigned c = n_chunks; c-- > 0;) {
+      const auto chunk = static_cast<std::uint64_t>(
+          static_cast<std::uint64_t>((num >> (32 * c))._lo) & 0xffffffffull);
+      r = _unsigned_add(r << 32, int256(limb_type(chunk), limb_type(0)));
+      const limb_type r_top = (r >> s)._lo;
+      auto digit = static_cast<std::uint64_t>(r_top / den_top);
+      r = _unsigned_sub(r, _mul_small(den, digit));
+      while (_cmp_unsigned(r, den) >= 0) {
+        r = _unsigned_sub(r, den);
+        ++digit;
+      }
+      q = _unsigned_add(q << 32, int256(limb_type(digit), limb_type(0)));
     }
     return {q, r};
   }

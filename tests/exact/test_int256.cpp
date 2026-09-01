@@ -10,6 +10,7 @@
  */
 
 #include <catch2/catch_test_macros.hpp>
+#include <random>
 #include <trueform/exact/int128.hpp>
 #include <trueform/exact/int256.hpp>
 
@@ -657,4 +658,51 @@ TEST_CASE("int256 predicate sign agreement with int128", "[int256]") {
   int sign256 = det256.is_zero() ? 0 : (det256.is_negative() ? -1 : 1);
   int sign128 = (det128 == 0) ? 0 : (det128 < 0 ? -1 : 1);
   REQUIRE(sign256 == sign128);
+}
+
+TEST_CASE("int256 divmod: reconstruction oracle across widths and signs",
+          "[int256]") {
+  using tf::exact::int256;
+  std::mt19937_64 rng(20260803);
+  auto random_of_bits = [&](unsigned bits) -> int256 {
+    int256 v(0);
+    for (unsigned produced = 0; produced < bits; produced += 32) {
+      const unsigned c = bits - produced < 32 ? bits - produced : 32;
+      const auto chunk =
+          rng() & ((std::uint64_t(1) << c) - (c == 64 ? 0 : 1));
+      v = (v << c) + int256(chunk);
+    }
+    return v;
+  };
+  for (int it = 0; it < 20000; ++it) {
+    const unsigned nb = 1 + unsigned(rng() % 255);
+    const unsigned db = 1 + unsigned(rng() % nb);
+    auto num = random_of_bits(nb);
+    auto den = random_of_bits(db);
+    if (den == int256(0))
+      den = int256(1);
+    if (rng() & 1)
+      num = -num;
+    if (rng() & 1)
+      den = -den;
+    const auto [q, r] = divmod(num, den);
+    REQUIRE(q * den + r == num);
+    // C++ semantics: remainder carries the dividend's sign, |r| < |den|
+    const auto abs_r = r < int256(0) ? -r : r;
+    const auto abs_den = den < int256(0) ? -den : den;
+    REQUIRE(abs_r < abs_den);
+    if (!(r == int256(0)))
+      REQUIRE((r < int256(0)) == (num < int256(0)));
+  }
+  // the geological shape: degree-3 fraction magnitudes on the int64 ladder
+  for (int it = 0; it < 2000; ++it) {
+    const auto den = random_of_bits(160 + unsigned(rng() % 30));
+    const auto num = random_of_bits(190 + unsigned(rng() % 30));
+    if (den == int256(0))
+      continue;
+    const auto [q, r] = divmod(num, den);
+    REQUIRE(q * den + r == num);
+    REQUIRE(r < den);
+    REQUIRE(!(r < int256(0)));
+  }
 }

@@ -13,7 +13,6 @@
 #pragma once
 
 #include "./orient2d.hpp"
-#include "../intersect/exact/predicate_kernel.hpp"
 
 namespace tf::exact {
 
@@ -31,20 +30,6 @@ auto segments_cross(const pt2<Int> &a, const pt2<Int> &b, const pt2<Int> &c,
       ((o3 > 0 && o4 < 0) || (o3 < 0 && o4 > 0)))
     return true;
   return false;
-}
-
-/// Segment crossing test routed through a `predicate_kernel`; the four
-/// `orient2d_sign` calls pick up the kernel's per-line distance band.
-template <typename Int,
-          typename Kernel = tf::exact::predicate_kernel<Int>>
-auto segments_cross(const pt2<Int> &a, const pt2<Int> &b, const pt2<Int> &c,
-                    const pt2<Int> &d, const Kernel &kernel) -> bool {
-  int o1 = kernel.orient2d_sign(a, b, c);
-  int o2 = kernel.orient2d_sign(a, b, d);
-  int o3 = kernel.orient2d_sign(c, d, a);
-  int o4 = kernel.orient2d_sign(c, d, b);
-  return ((o1 > 0 && o2 < 0) || (o1 < 0 && o2 > 0)) &&
-         ((o3 > 0 && o4 < 0) || (o3 < 0 && o4 > 0));
 }
 
 } // namespace tf::exact
