@@ -1,6 +1,6 @@
 {
   "name": "@polydera/trueform",
-  "version": "0.9.17",
+  "version": "0.10.0",
   "description": "Fast and exact mesh booleans, spatial queries, arrangements, registration, and remeshing — at native speed in the browser and Node.js. WASM-backed NDArrays, sync and async.",
   "type": "module",
   "main": "./dist/index.js",
@@ -59,7 +59,7 @@
     "node": ">=18"
   },
   "devDependencies": {
-    "esbuild": "^0.27.3",
+    "esbuild": "^0.28.2",
     "typescript": "^5.9.3"
   }
 }
