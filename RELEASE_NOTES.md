@@ -1,3 +1,18 @@
+## trueform v0.10.1
+
+Repairs; no API breaks. `orient_faces_consistently` and
+`ensure_positive_orientation` now return whether the surface is
+orientable: every reversal is decided against the input winding and
+applied after the walk, so one call settles every orientable
+manifold-edge component, and a non-orientable component is left
+untouched rather than half-repaired. An integral coordinate type votes
+by face count, its lattice not holding a squared area.
+`euler_characteristic` counts boundary edges correctly — a disk is 1,
+an uncapped tube 0. `fit_similarity_alignment` measures the source
+spread in the same space as its covariance, so a scaled frame no longer
+skews the recovered scale. The VTK wrappers delegate orientation to the
+core and surface its verdict.
+
 ## trueform v0.10.0 — one engine
 
 Real-time geometric processing. Easy to use, robust on real-world data. C++,

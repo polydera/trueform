@@ -33,12 +33,13 @@ All have `build()` method + `make_*()` free function equivalents.
 | `make_non_manifold_edges(polygons)` | polygons | `blocked_buffer<Index, 2>` | Edges shared by 3+ faces |
 | `is_manifold(polygons)` | polygons | `bool` | True if every edge shared by ≤2 faces |
 | `is_closed(polygons)` | polygons | `bool` | True if no boundary edges (watertight) |
+| `euler_characteristic(polygons)` | polygons | `int` | V - E + F, each undirected edge counted once through the manifold edge link's representative, so boundary and non-manifold edges count like interior ones |
 | `connect_edges_to_paths(edges)` | edges | `offset_block_buffer<Index, Index>` | Assemble edges into continuous paths |
 | `make_boundary_paths(polygons)` | polygons | `offset_block_buffer<Index, Index>` | Boundary edges assembled into paths |
 | `find_eulerian_paths(edges, link, ...)` | edges + link | offsets + edge IDs (output params) | Hierholzer's edge-disjoint path decomposition |
 | `label_connected_components(labels, applier)` | label buffer + neighbor callback | `int` (n_components) | Parallel union-find component labeling |
 | `make_manifold_edge_connected_component_labels(polygons)` | polygons | `connected_component_labels<Index>` | Component labeling via manifold edge adjacency |
-| `orient_faces_consistently(polygons)` | polygons | void (modifies in place) | Consistent face orientation via weighted voting |
+| `orient_faces_consistently(polygons)` | polygons | `bool` (modifies in place) | Consistent face orientation via weighted voting (by face count on an integral coordinate type, whose lattice cannot hold a squared area). Every reversal is decided against the input winding and applied after the walk, so one call settles every orientable manifold-edge component; a component whose parity contradicts is left untouched and the call returns `false` |
 
 ### Planar Graph Processing
 
@@ -142,7 +143,7 @@ Dual-tree searches use TBB `task_group` with `parallelism_depth` (default 6). Ca
 | Function | Return | Description |
 |----------|--------|-------------|
 | `fit_rigid_alignment(X, Y)` | `transformation` | SVD-based rigid (Kabsch) or point-to-plane |
-| `fit_similarity_alignment(X, Y)` | `transformation` | Procrustes with uniform scale |
+| `fit_similarity_alignment(X, Y)` | `transformation` | Procrustes with uniform scale; a tagged frame moves both the covariance and the source spread into world space |
 | `fit_knn_alignment(X, Y, state, config)` | `transformation` | Gaussian-weighted k-NN soft correspondence |
 | `fit_obb_alignment(X, Y, sample_size)` | `transformation` | OBB alignment with ambiguity resolution |
 | `fit_icp_alignment(X, Y, state, config)` | `transformation` | Iterative closest point with convergence |
@@ -154,7 +155,7 @@ Dual-tree searches use TBB `task_group` with `parallelism_depth` (default 6). Ca
 | `triangulated<Index>(polygons)` | `polygons_buffer<Index, ..., 3>` | The mesh triangulation tier (`arrangement/mesh/`) read as a mesh — the ONE public triangulation entry: each face triangulated on its own boundary, a shared edge one identity in both, corners in the source winding; a face needing resolution is resolved and MINTS, so the points are the input's then this call's mints. Takes an indexed mesh, a single `tf::polygon`, or a SOUP — a soup is `tf::cleaned` to shared-vertex identity first, so no machinery below the entry ever sees one. `Index` answers two questions: the WIDTH the faces are written in (default: the input's own — ask for `int32_t` when an `int64_t` mesh does not need it) and, for a soup, the NAME of an output whose input carries no index type (default `int`). `tf::return_refused` adds the faces that refused every round, in the INPUT's index type; it takes indexed meshes only, a soup having no face identity that survives the clean |
 | `laplacian_smoothed(points, iters, lambda)` | `points_buffer` | Laplacian smoothing |
 | `taubin_smoothed(points, iters, lambda, kpb)` | `points_buffer` | Volume-preserving smoothing |
-| `ensure_positive_orientation(polygons)` | void (in-place) | Outward-facing normals |
+| `ensure_positive_orientation(polygons)` | `bool` (in-place) | Outward-facing normals; `false` and no volume flip when any component is not orientable |
 | `make_sharp_edges(polygons, angle)` | `blocked_buffer<Index, 2>` | Edges exceeding dihedral threshold |
 | `make_curve_frames(curve, T, N, B)` | void (output params) | Parallel transport frames |
 | `chamfer_error(A, B, outlier_pct)` | `RealT` | Mean nearest-neighbor distance |
