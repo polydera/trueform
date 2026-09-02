@@ -1575,3 +1575,68 @@ TEMPLATE_TEST_CASE("fit_similarity_alignment_scale", "[geometry][alignment]",
         REQUIRE(rms < real_t(1e-3));
     }
 }
+
+// =============================================================================
+// fit_similarity_alignment - a frame only says where the points are
+// =============================================================================
+
+TEMPLATE_TEST_CASE("fit_similarity_alignment_under_frame", "[geometry][alignment]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using real_t = typename TestType::real_type;
+
+    // The linear part of the source frame: a rotation, then a per-axis scale.
+    // The second case is anisotropic, so no single determinant factor can
+    // stand in for measuring the spread where the covariance was measured.
+    for (int variant = 0; variant < 2; ++variant) {
+        const real_t dx = real_t(3);
+        const real_t dy = variant == 0 ? real_t(3) : real_t(0.5);
+        const real_t dz = variant == 0 ? real_t(3) : real_t(2);
+
+        const real_t fa = real_t(0.43);
+        tf::transformation<real_t, 3> T_source;
+        T_source(0, 0) = dx * std::cos(fa); T_source(0, 1) = -dx * std::sin(fa);
+        T_source(0, 2) = real_t(0);         T_source(0, 3) = real_t(7);
+        T_source(1, 0) = dy * std::sin(fa); T_source(1, 1) = dy * std::cos(fa);
+        T_source(1, 2) = real_t(0);         T_source(1, 3) = real_t(-1);
+        T_source(2, 0) = real_t(0);         T_source(2, 1) = real_t(0);
+        T_source(2, 2) = dz;                T_source(2, 3) = real_t(4);
+
+        // The similarity to recover: scale 2.5, a rotation about z, a shift.
+        const real_t scale = real_t(2.5);
+        const real_t sa = real_t(0.9);
+        tf::transformation<real_t, 3> T_true;
+        T_true(0, 0) = scale * std::cos(sa); T_true(0, 1) = -scale * std::sin(sa);
+        T_true(0, 2) = real_t(0);            T_true(0, 3) = real_t(1);
+        T_true(1, 0) = scale * std::sin(sa); T_true(1, 1) = scale * std::cos(sa);
+        T_true(1, 2) = real_t(0);            T_true(1, 3) = real_t(-2);
+        T_true(2, 0) = real_t(0);            T_true(2, 1) = real_t(0);
+        T_true(2, 2) = scale;                T_true(2, 3) = real_t(3);
+
+        const std::size_t n = 64;
+        tf::points_buffer<real_t, 3> X_local, X_world, Y;
+        X_local.allocate(n);
+        X_world.allocate(n);
+        Y.allocate(n);
+        for (std::size_t i = 0; i < n; ++i) {
+            auto t = real_t(i);
+            X_local[i] = tf::point<real_t, 3>{
+                real_t(std::sin(t * 1.7) * 3.0), real_t(std::cos(t * 2.3) * 2.0),
+                real_t(std::sin(t * 0.9 + 1.0) * 4.0)};
+            X_world[i] = tf::transformed(X_local[i], T_source);
+            Y[i] = tf::transformed(X_world[i], T_true);
+        }
+
+        auto tagged = tf::fit_similarity_alignment(
+            X_local.points() | tf::tag(T_source), Y.points());
+        auto plain = tf::fit_similarity_alignment(X_world.points(), Y.points());
+
+        // The frame path must recover the same similarity the world points do.
+        real_t tol = real_t(sizeof(real_t) == 4 ? 1e-2 : 1e-9);
+        REQUIRE(compute_rms_error(X_world.points(), Y.points(), tagged) < tol);
+        for (std::size_t i = 0; i < 3; ++i)
+            for (std::size_t j = 0; j < 4; ++j)
+                REQUIRE(std::abs(tagged(i, j) - plain(i, j)) < tol);
+    }
+}

@@ -22,25 +22,29 @@ namespace tf {
 /// @brief Ensures mesh faces are oriented with outward-pointing normals.
 ///
 /// For closed meshes, orients all faces consistently and ensures the signed
-/// volume is positive (normals point outward).
+/// volume is positive (normals point outward). A surface carrying a
+/// non-orientable component has no outward side, so the volume flip is not
+/// taken; the orientable components are still made consistent.
 ///
 /// @tparam Policy The policy type of the polygons.
 /// @param polygons The mesh to orient (modified in place).
 /// @param is_consistent If true, skips the orient_faces_consistently step.
+/// @return `true` when the mesh is now consistent and positively oriented.
 template <typename Policy>
 auto ensure_positive_orientation(tf::polygons<Policy> &polygons,
-                                 bool is_consistent = false) -> void {
-  if (!is_consistent)
-    tf::orient_faces_consistently(polygons);
+                                 bool is_consistent = false) -> bool {
+  if (!is_consistent && !tf::orient_faces_consistently(polygons))
+    return false;
   auto stripped = tf::make_polygons(polygons.faces(), polygons.points());
   if (tf::signed_volume(stripped) < 0)
     tf::reverse_winding(polygons.faces());
+  return true;
 }
 
 /// @overload
 template <typename Policy>
 auto ensure_positive_orientation(tf::polygons<Policy> &&polygons,
-                                 bool is_consistent = false) -> void {
-  ensure_positive_orientation(polygons, is_consistent);
+                                 bool is_consistent = false) -> bool {
+  return ensure_positive_orientation(polygons, is_consistent);
 }
 } // namespace tf

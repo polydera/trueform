@@ -20,6 +20,7 @@
 #include "../core/svd_of_symmetric.hpp"
 #include "../core/transformation.hpp"
 #include "../core/transformed.hpp"
+#include "../core/transformed_centered_variance.hpp"
 #include "../core/transformed_cross_covariance.hpp"
 #include "../core/vector.hpp"
 
@@ -33,7 +34,8 @@ namespace tf {
 /// using the Procrustes algorithm with scaling.
 ///
 /// If the point sets have frames attached, the alignment is computed
-/// in world space (i.e., with frames applied).
+/// in world space (i.e., with frames applied) - the spread of the source is
+/// measured there too, so a frame that scales does not scale the answer.
 ///
 /// The returned transformation matrix stores [s*R | t] where:
 ///   y ≈ s * R * x + t
@@ -68,19 +70,10 @@ auto fit_similarity_alignment(const tf::points<Policy0> &X_,
   auto cx_world = tf::transformed(cx, tX);
   auto cy_world = tf::transformed(cy, tY);
 
-  // Mean squared distance from the centroid of X — the same 1/n
-  // normalisation cross_covariance_of applies to H, so the scale ratio
-  // below is free of the point count. Rotation-invariant, so computed on
-  // plain points.
-  T sum_sq_X = T(0);
-  for (const auto &x : X) {
-    for (std::size_t d = 0; d < Dims; ++d) {
-      T diff = x[d] - cx[d];
-      sum_sq_X += diff * diff;
-    }
-  }
-  const auto n_points = X.size();
-  sum_sq_X /= T(n_points + (n_points == 0));
+  // Mean squared distance from the centroid of X, in the space H now lives
+  // in — the same 1/n normalisation cross_covariance_of applies to H, so the
+  // scale ratio below is free of the point count.
+  const T sum_sq_X = tf::core::transformed_centered_variance(X, cx, tX);
 
   // HtH = H^T * H
   std::array<std::array<T, Dims>, Dims> HtH{};
