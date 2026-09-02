@@ -14,7 +14,14 @@
 
 #include "../core/algorithm/reduce.hpp"
 #include "../core/polygons.hpp"
+#include "../core/static_size.hpp"
 #include "../core/views/mapped_range.hpp"
+#include "./edge_representation.hpp"
+#include "./face_membership.hpp"
+#include "./manifold_edge_link.hpp"
+#include "./policy/manifold_edge_link.hpp"
+#include <functional>
+#include <type_traits>
 
 namespace tf {
 
@@ -23,11 +30,11 @@ namespace tf {
 ///
 /// The Euler characteristic is defined as V - E + F, where V is the number
 /// of vertices, E is the number of unique edges, and F is the number of
-/// faces. Edges are counted by iterating all face edges and counting only
-/// those where the first vertex index is less than the second, avoiding
-/// double-counting of shared edges on manifold meshes.
+/// faces. Each undirected edge is counted once, by the face the manifold
+/// edge link makes its representative, so boundary and non-manifold edges
+/// count exactly like interior ones.
 ///
-/// Requires a closed manifold mesh. Behavior is undefined otherwise.
+/// Builds manifold edge link internally if not provided via policy.
 ///
 /// @tparam Policy The polygons policy.
 /// @param polygons The polygon collection.
@@ -37,22 +44,30 @@ auto euler_characteristic(const tf::polygons<Policy> &polygons) -> int {
   int V = polygons.points().size();
   int F = polygons.faces().size();
 
-  int E = tf::reduce(
-      tf::make_mapped_range(
-          polygons,
-          [](const auto &polygon) {
-            int count = 0;
-            auto size = polygon.size();
-            decltype(size) prev = size - 1;
-            for (decltype(size) i = 0; i < size; prev = i++) {
-              if (polygon.indices()[prev] < polygon.indices()[i])
-                count++;
-            }
-            return count;
-          }),
-      std::plus<>{}, int{0}, tf::checked);
+  auto count_edges = [](const auto &link) {
+    return tf::reduce(
+        tf::make_mapped_range(tf::make_edge_representation(link),
+                              [](const auto &face_edges) {
+                                int count = 0;
+                                for (bool represents : face_edges)
+                                  count += represents;
+                                return count;
+                              }),
+        std::plus<>{}, int{0}, tf::checked);
+  };
 
-  return V - E + F;
+  if constexpr (tf::has_manifold_edge_link_policy<Policy>)
+    return V - count_edges(polygons.manifold_edge_link()) + F;
+  else {
+    using Index = std::decay_t<decltype(polygons.faces()[0][0])>;
+    tf::face_membership<Index> fm;
+    fm.build(polygons);
+    tf::manifold_edge_link<Index,
+                           tf::static_size_v<decltype(polygons.faces()[0])>>
+        mel;
+    mel.build(polygons.faces(), fm);
+    return V - count_edges(mel) + F;
+  }
 }
 
 } // namespace tf
