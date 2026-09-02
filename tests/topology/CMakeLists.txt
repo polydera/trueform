@@ -19,6 +19,8 @@ add_executable(trueform_topology_tests
   test_cdt_refiner.cpp
   test_make_cdt.cpp
   test_domain_labels.cpp
+  test_face_orientation.cpp
+  test_euler_characteristic.cpp
 )
 
 target_link_libraries(trueform_topology_tests PRIVATE trueform_test_common)
