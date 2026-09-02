@@ -18,9 +18,10 @@ class polydata;
 
 /// @brief Orient faces consistently so adjacent faces have compatible winding.
 /// @param input The polydata (must contain 3D polygons).
+/// @return `true` when every component is orientable and now consistent.
 /// @note Uses flood-fill through manifold edges. Non-manifold edges act as
 /// barriers. The final orientation preserves the majority area within each
-/// region.
-auto orient_faces_consistently(polydata *input) -> void;
+/// region. A component whose parity contradicts is left exactly as it was.
+auto orient_faces_consistently(polydata *input) -> bool;
 
 } // namespace tf::vtk

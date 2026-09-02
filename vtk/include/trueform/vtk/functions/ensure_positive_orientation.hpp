@@ -19,9 +19,11 @@ class polydata;
 /// @brief Ensure faces are oriented with outward-pointing normals.
 /// @param input The polydata (must contain 3D polygons).
 /// @param is_consistent If true, skip consistency step (default: false).
+/// @return `true` when the mesh is now consistent and positively oriented.
 /// @note First orients faces consistently, then flips all if signed volume is
-/// negative.
+/// negative. A surface carrying a non-orientable component has no outward
+/// side, so the volume flip is not taken.
 auto ensure_positive_orientation(polydata *input, bool is_consistent = false)
-    -> void;
+    -> bool;
 
 } // namespace tf::vtk

@@ -16,16 +16,17 @@
 
 namespace tf::vtk {
 
-auto orient_faces_consistently(polydata *input) -> void {
+auto orient_faces_consistently(polydata *input) -> bool {
   if (!input) {
-    return;
+    return false;
   }
 
   auto polygons = input->polygons() |
                   tf::tag(input->manifold_edge_link());
 
-  tf::orient_faces_consistently(polygons);
+  const bool oriented = tf::orient_faces_consistently(polygons);
   input->GetPolys()->Modified();
+  return oriented;
 }
 
 } // namespace tf::vtk
