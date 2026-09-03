@@ -33,14 +33,19 @@ namespace tf::csg::graph {
 /// purpose: a tree-accelerated evaluator can replace the body behind
 /// the same signature, with this as its oracle.
 ///
+/// Solid angle is invariant under a positive scaling of the whole scene,
+/// so queries and sheet may be carried in any common positive multiple of
+/// the `Int` lattice; `Int` states the lattice its differences are widened
+/// on, which the carriage alone cannot say.
+///
 /// @param form    The sheet form (faces + points, frame respected).
 /// @param queries Query points in exact pipeline coordinates.
-/// @param read_point `(vertex id) -> pt3<Int>` — where the sheet's own
+/// @param read_point `(vertex id) -> pt3<Coord>` — where the sheet's own
 ///        vertices stand, which is the placed position once a door ran.
 /// @return One char per query: 1 behind the sheet's normal, else 0.
-template <typename Form, typename Int, typename ReadPoint>
+template <typename Int, typename Form, typename Coord, typename ReadPoint>
 auto winding_side(const Form &form,
-                  const tf::buffer<tf::exact::pt3<Int>> &queries,
+                  const tf::buffer<tf::exact::pt3<Coord>> &queries,
                   const ReadPoint &read_point) -> tf::buffer<char> {
   const std::size_t m = queries.size();
   tf::buffer<char> side;
@@ -53,7 +58,7 @@ auto winding_side(const Form &form,
   for (std::size_t j = 0; j < m; ++j)
     total[j] = 0.0;
 
-  auto exact_point = [&](auto id) -> tf::exact::pt3<Int> {
+  auto exact_point = [&](auto id) -> tf::exact::pt3<Coord> {
     return read_point(id);
   };
 

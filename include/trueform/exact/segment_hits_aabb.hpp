@@ -19,16 +19,17 @@
 namespace tf::exact {
 
 /// @ingroup exact
-/// @brief Exact integer slab test: closed-segment vs closed-AABB.
+/// @brief Exact integer slab test with segment and box carried in one
+///        common positive multiple of the `Int` lattice.
 ///
-/// Per-axis entry/exit parameters `t = (slab - a[i]) / d[i]` are kept
-/// as signed-denominator rationals; cross-axis comparisons reduce to
-/// T2-width cross-multiplications (no division).
-template <typename Int, std::size_t Dims>
-auto segment_hits_aabb(const tf::point<Int, Dims> &a,
-                       const tf::point<Int, Dims> &b,
-                       const tf::point<Int, Dims> &lo,
-                       const tf::point<Int, Dims> &hi) -> bool {
+/// Every comparison is between two of the same rationals, so scaling
+/// segment and box together scales numerators and denominators alike and
+/// the verdict is the unscaled one's.
+template <typename Int, typename Coord, std::size_t Dims>
+auto segment_hits_aabb_scaled(const tf::point<Coord, Dims> &a,
+                              const tf::point<Coord, Dims> &b,
+                              const tf::point<Coord, Dims> &lo,
+                              const tf::point<Coord, Dims> &hi) -> bool {
   using T1 = typename meta<Int>::T1;
   using T2 = typename meta<Int>::T2;
 
@@ -80,6 +81,20 @@ auto segment_hits_aabb(const tf::point<Int, Dims> &a,
         return false;
 
   return true;
+}
+
+/// @ingroup exact
+/// @brief Exact integer slab test: closed-segment vs closed-AABB.
+///
+/// Per-axis entry/exit parameters `t = (slab - a[i]) / d[i]` are kept
+/// as signed-denominator rationals; cross-axis comparisons reduce to
+/// T2-width cross-multiplications (no division).
+template <typename Int, std::size_t Dims>
+auto segment_hits_aabb(const tf::point<Int, Dims> &a,
+                       const tf::point<Int, Dims> &b,
+                       const tf::point<Int, Dims> &lo,
+                       const tf::point<Int, Dims> &hi) -> bool {
+  return segment_hits_aabb_scaled<Int>(a, b, lo, hi);
 }
 
 } // namespace tf::exact

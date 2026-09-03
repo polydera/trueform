@@ -83,11 +83,18 @@ auto orient3d_sos_presorted(const std::array<typename meta<Int>::T1, 3> &a,
   return true;
 }
 
-/// SoS orient3d for 4 vertices. Sorts by ID and applies parity correction.
-/// Returns true if the fourth point is on the positive side of the
-/// oriented plane defined by the first three.
-template <typename Index, typename Int>
-auto orient3d_sos(const vertex<Index, Int> *vs) -> bool {
+/// SoS orient3d of four vertices carried in one common POSITIVE MULTIPLE
+/// of the `Int` lattice, which the caller states by choosing `Int`.
+///
+/// The determinant and every term of the SoS cascade are minors of the
+/// same three translated rows, so a common positive scale multiplies each
+/// by a positive power of itself and leaves every sign — and with it the
+/// verdict — the unscaled points'. That is what lets a point with a
+/// rational coordinate enter exactly: cleared of its denominator it is an
+/// integer row like any other, and the scale it forces on its neighbours
+/// changes nothing.
+template <typename Int, typename Index, typename Coord>
+auto orient3d_sos_scaled(const vertex<Index, Coord> *vs) -> bool {
   using T1 = typename meta<Int>::T1;
   bool odd = false;
   std::array<int, 4> order = {0, 1, 2, 3};
@@ -116,15 +123,26 @@ auto orient3d_sos(const vertex<Index, Int> *vs) -> bool {
   return odd != orient3d_sos_presorted<Int>(a, b, c);
 }
 
+/// SoS orient3d for 4 vertices. Sorts by ID and applies parity correction.
+/// Returns true if the fourth point is on the positive side of the
+/// oriented plane defined by the first three.
+template <typename Index, typename Int>
+auto orient3d_sos(const vertex<Index, Int> *vs) -> bool {
+  return orient3d_sos_scaled<Int>(vs);
+}
+
 template <typename Index, typename Int>
 auto orient3d_sos(const std::array<vertex<Index, Int>, 4> &vs) -> bool {
   return orient3d_sos(vs.data());
 }
 
-/// Exact orient3d volume (signed). Used for barycentric weight computation.
-template <typename Int>
-auto orient3d_value(const pt3<Int> &a, const pt3<Int> &b, const pt3<Int> &c,
-                    const pt3<Int> &d) -> typename meta<Int>::T2 {
+/// Exact orient3d volume (signed) of four points carried in one common
+/// positive multiple of the `Int` lattice. The value scales with the CUBE
+/// of that multiple, so a ratio of two of them is the unscaled ratio.
+template <typename Int, typename Coord>
+auto orient3d_value_scaled(const pt3<Coord> &a, const pt3<Coord> &b,
+                           const pt3<Coord> &c, const pt3<Coord> &d) ->
+    typename meta<Int>::T2 {
   using T1 = typename meta<Int>::T1;
   using T2 = typename meta<Int>::T2;
   T1 ax = T1(b[0]) - a[0], ay = T1(b[1]) - a[1], az = T1(b[2]) - a[2];
@@ -133,6 +151,13 @@ auto orient3d_value(const pt3<Int> &a, const pt3<Int> &b, const pt3<Int> &c,
   return T2(ax) * (T2(by) * cz - T2(bz) * cy) -
          T2(ay) * (T2(bx) * cz - T2(bz) * cx) +
          T2(az) * (T2(bx) * cy - T2(by) * cx);
+}
+
+/// Exact orient3d volume (signed). Used for barycentric weight computation.
+template <typename Int>
+auto orient3d_value(const pt3<Int> &a, const pt3<Int> &b, const pt3<Int> &c,
+                    const pt3<Int> &d) -> typename meta<Int>::T2 {
+  return orient3d_value_scaled<Int>(a, b, c, d);
 }
 
 /// Exact orient3d sign (no SoS). Returns -1, 0, or +1.

@@ -6,6 +6,8 @@ add_executable(trueform_csg_tests
   test_csg_solids.cpp
   test_csg_sheets.cpp
   test_csg_refusal_recovery.cpp
+  test_csg_attached_flap.cpp
+  test_csg_bundle_containment.cpp
   test_csg_domains.cpp
   test_csg_tolerance_ladder.cpp
   test_make_outer_shell.cpp
