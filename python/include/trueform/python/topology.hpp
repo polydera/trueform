@@ -36,6 +36,7 @@ auto register_topology_make_neighborhoods(nanobind::module_ &m) -> void;
 auto register_topology_is_closed(nanobind::module_ &m) -> void;
 auto register_topology_is_manifold(nanobind::module_ &m) -> void;
 auto register_topology_domain_labels(nanobind::module_ &m) -> void;
+auto register_topology_euler_characteristic(nanobind::module_ &m) -> void;
 auto register_topology_make_sidedness_relations(nanobind::module_ &m) -> void;
 
 } // namespace tf::py

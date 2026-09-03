@@ -12,6 +12,7 @@ from typing import Optional, TYPE_CHECKING, Union, Tuple
 
 from .. import _trueform
 from .._dispatch import extract_meta, build_suffix
+from ._validation import validate_alignment_normals
 
 if TYPE_CHECKING:
     from .._spatial.point_cloud import PointCloud
@@ -109,6 +110,10 @@ def fit_knn_alignment(
         raise ValueError(
             "Point-to-plane and normal weighting only supported for 3D point clouds"
         )
+    if normals0 is not None:
+        normals0 = validate_alignment_normals(normals0, c0, "normals0")
+    if normals1 is not None:
+        normals1 = validate_alignment_normals(normals1, c1, "normals1")
 
     suffix = build_suffix(extract_meta(c0))
 

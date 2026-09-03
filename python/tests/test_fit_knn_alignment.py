@@ -431,6 +431,35 @@ def test_fit_knn_alignment_dtype_mismatch():
         tf.fit_knn_alignment(cloud32, cloud64, k=1)
 
 
+
+def test_fit_knn_alignment_short_normals_raise():
+    """Should raise error when a normals array is shorter than its cloud."""
+    rng = np.random.default_rng(42)
+    pts = rng.random((200, 3)).astype(np.float32)
+    normals = np.zeros((5, 3), dtype=np.float32)
+    normals[:, 2] = 1.0
+    full_normals = np.tile(normals[:1], (200, 1))
+
+    with pytest.raises(
+        ValueError,
+        match="Normals count mismatch: normals1 has 5 rows, "
+              "its cloud has 200 points",
+    ):
+        tf.fit_knn_alignment(
+            tf.PointCloud(pts), (tf.PointCloud(pts.copy()), normals)
+        )
+
+    with pytest.raises(
+        ValueError,
+        match="Normals count mismatch: normals0 has 5 rows, "
+              "its cloud has 200 points",
+    ):
+        tf.fit_knn_alignment(
+            (tf.PointCloud(pts), normals),
+            (tf.PointCloud(pts.copy()), full_normals),
+        )
+
+
 # ==============================================================================
 # Main
 # ==============================================================================

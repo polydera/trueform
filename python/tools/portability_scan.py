@@ -93,11 +93,24 @@ for f in sources:
                            "referenced in lambda")
                 break
 
+TEST_NAME_MACRO = re.compile(
+    r"\b(?:TEST_CASE|TEMPLATE_TEST_CASE|TEMPLATE_TEST_CASE_SIG|SECTION|"
+    r"SCENARIO|GIVEN|WHEN|THEN)\s*\(")
+STRING_LITERAL = re.compile(r'"(?:[^"\\\n]|\\.)*"')
+
 for f in glob.glob("tests/**/*.cpp", recursive=True):
-    for i, ln in enumerate(open(f, encoding="utf-8"), 1):
-        if re.search(r"TEST_CASE|SECTION|TEMPLATE_TEST_CASE", ln):
-            if any(ord(c) > 127 for c in ln):
-                bad.append(f"{f}:{i} 10.3: non-ASCII in test name")
+    s = open(f, encoding="utf-8").read()
+    for m in TEST_NAME_MACRO.finditer(s):
+        i, depth = m.end(), 1
+        while i < len(s) and depth:
+            depth += (s[i] == "(") - (s[i] == ")")
+            i += 1
+        # the registered name is the macro's literals, which a wrapped
+        # invocation spreads over several lines
+        if any(ord(c) > 127 for lit in STRING_LITERAL.finditer(s[m.end():i - 1])
+               for c in lit.group(0)):
+            line = s.count("\n", 0, m.start()) + 1
+            bad.append(f"{f}:{line} 10.3: non-ASCII in test name")
 
 for f in sources:
     for i, ln in enumerate(open(f, encoding="utf-8"), 1):

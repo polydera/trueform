@@ -24,6 +24,7 @@ from .connect_edges_to_paths import connect_edges_to_paths
 from .is_closed import is_closed, is_open
 from .is_manifold import is_manifold, is_non_manifold
 from .domain_labels import domain_labels
+from .euler_characteristic import euler_characteristic
 from .sidedness_relations import sidedness_relations
 
 __all__ = [
@@ -47,5 +48,6 @@ __all__ = [
     'is_manifold',
     'is_non_manifold',
     'domain_labels',
+    'euler_characteristic',
     'sidedness_relations',
 ]

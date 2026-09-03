@@ -21,12 +21,14 @@ auto register_csg_graph_int3float3d(nanobind::module_ &m) -> void;
 auto register_csg_graph_int3double3d(nanobind::module_ &m) -> void;
 auto register_csg_graph_int643float3d(nanobind::module_ &m) -> void;
 auto register_csg_graph_int643double3d(nanobind::module_ &m) -> void;
+auto register_csg_graph_intdynfloat3d(nanobind::module_ &m) -> void;
+auto register_csg_graph_intdyndouble3d(nanobind::module_ &m) -> void;
+auto register_csg_graph_int64dynfloat3d(nanobind::module_ &m) -> void;
+auto register_csg_graph_int64dyndouble3d(nanobind::module_ &m) -> void;
 
 auto register_outer_shell_int3float3d(nanobind::module_ &m) -> void;
 auto register_outer_shell_int3double3d(nanobind::module_ &m) -> void;
 auto register_outer_shell_int643float3d(nanobind::module_ &m) -> void;
 auto register_outer_shell_int643double3d(nanobind::module_ &m) -> void;
-
-auto register_csg_boolean(nanobind::module_ &m) -> void;
 
 } // namespace tf::py

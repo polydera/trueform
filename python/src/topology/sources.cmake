@@ -17,6 +17,7 @@ set(MODULE_TOPOLOGY_SOURCES
   ${CMAKE_CURRENT_LIST_DIR}/domain_labels_intdyndouble3d.cpp
   ${CMAKE_CURRENT_LIST_DIR}/domain_labels_int64dynfloat3d.cpp
   ${CMAKE_CURRENT_LIST_DIR}/domain_labels_int64dyndouble3d.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/euler_characteristic.cpp
   ${CMAKE_CURRENT_LIST_DIR}/is_closed.cpp
   ${CMAKE_CURRENT_LIST_DIR}/is_manifold.cpp
   ${CMAKE_CURRENT_LIST_DIR}/label_connected_components.cpp

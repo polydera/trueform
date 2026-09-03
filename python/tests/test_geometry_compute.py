@@ -150,6 +150,45 @@ def create_sphere_mesh(index_dtype, real_dtype, subdivisions=2):
     return tris, verts
 
 
+def create_torus_mesh(index_dtype, real_dtype, major=2.0, minor=0.5, n_u=48, n_v=24):
+    """Create a triangulated torus (major radius around z, outward winding)."""
+    u = np.linspace(0.0, 2.0 * np.pi, n_u, endpoint=False)
+    v = np.linspace(0.0, 2.0 * np.pi, n_v, endpoint=False)
+    uu, vv = np.meshgrid(u, v, indexing="ij")
+    ring = major + minor * np.cos(vv)
+    points = np.stack(
+        [ring * np.cos(uu), ring * np.sin(uu), minor * np.sin(vv)], axis=-1
+    ).reshape(-1, 3).astype(real_dtype)
+    faces = []
+    for i in range(n_u):
+        for j in range(n_v):
+            a = i * n_v + j
+            b = ((i + 1) % n_u) * n_v + j
+            c = i * n_v + (j + 1) % n_v
+            d = ((i + 1) % n_u) * n_v + (j + 1) % n_v
+            faces.append([a, b, d])
+            faces.append([a, d, c])
+    return np.array(faces, dtype=index_dtype), points
+
+
+def create_bumpy_grid_mesh(index_dtype, real_dtype, n=40):
+    """Create a bumpy height-field grid (hills and valleys of mixed shape)."""
+    xs = np.linspace(0.0, 4.0, n)
+    xx, yy = np.meshgrid(xs, xs, indexing="ij")
+    zz = 0.5 * np.sin(2.0 * xx) * np.cos(2.0 * yy) + 0.3 * np.sin(3.0 * xx + 1.0)
+    points = np.stack([xx, yy, zz], axis=-1).reshape(-1, 3).astype(real_dtype)
+    faces = []
+    for i in range(n - 1):
+        for j in range(n - 1):
+            a = i * n + j
+            b = (i + 1) * n + j
+            c = i * n + j + 1
+            d = (i + 1) * n + j + 1
+            faces.append([a, b, d])
+            faces.append([a, d, c])
+    return np.array(faces, dtype=index_dtype), points
+
+
 # ==============================================================================
 # normals Tests
 # ==============================================================================
@@ -436,13 +475,62 @@ def test_shape_index_from_tuple(index_dtype, real_dtype):
 
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)
 def test_shape_index_range(real_dtype):
-    """Test that shape index is in range [-1, 1]."""
+    """Test that shape index is hard-bounded to [-1, 1] on a sphere."""
     faces, points = create_sphere_mesh(np.int32, real_dtype, subdivisions=2)
 
     si = tf.shape_index((faces, points))
 
-    assert np.all(si >= -1.0 - 1e-2)
-    assert np.all(si <= 1.0 + 1e-2)
+    assert np.all(si >= -1.0)
+    assert np.all(si <= 1.0)
+
+
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_shape_index_range_torus(real_dtype):
+    """Test that shape index is hard-bounded to [-1, 1] on a torus."""
+    faces, points = create_torus_mesh(np.int32, real_dtype)
+
+    si = tf.shape_index((faces, points))
+
+    assert np.all(si >= -1.0)
+    assert np.all(si <= 1.0)
+
+
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_shape_index_range_bumpy(real_dtype):
+    """Test that shape index is hard-bounded to [-1, 1] on a bumpy surface."""
+    faces, points = create_bumpy_grid_mesh(np.int32, real_dtype)
+
+    si = tf.shape_index((faces, points))
+
+    assert np.all(si >= -1.0)
+    assert np.all(si <= 1.0)
+
+
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_shape_index_sphere_cap(real_dtype):
+    """Test that a sphere is a spherical cap (S ~ +1) at every vertex."""
+    faces, points = create_sphere_mesh(np.int32, real_dtype, subdivisions=2)
+
+    si = tf.shape_index((faces, points))
+
+    assert si.dtype == real_dtype
+    assert np.all(si > 0.98)
+    assert np.all(si <= 1.0)
+
+
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_shape_index_torus_outer_ring_cap_like(real_dtype):
+    """Test that the torus outer equator is cap-like: S = (2/pi)*atan(1.5)."""
+    major, minor = 2.0, 0.5
+    faces, points = create_torus_mesh(np.int32, real_dtype, major, minor)
+
+    si = tf.shape_index((faces, points))
+
+    outer = np.hypot(points[:, 0], points[:, 1]) > major + minor - 1e-3
+    assert outer.sum() > 0
+    median = np.median(si[outer])
+    assert median > 0.5
+    np.testing.assert_allclose(median, (2.0 / np.pi) * np.arctan(1.5), atol=0.02)
 
 
 @pytest.mark.parametrize("real_dtype", REAL_DTYPES)

@@ -14,4 +14,5 @@ set(HEADERS_SPATIAL
   ${CMAKE_CURRENT_LIST_DIR}/point_cloud.hpp
   ${CMAKE_CURRENT_LIST_DIR}/point_cloud_data.hpp
   ${CMAKE_CURRENT_LIST_DIR}/ray_cast.hpp
+  ${CMAKE_CURRENT_LIST_DIR}/signed_distance.hpp
 )

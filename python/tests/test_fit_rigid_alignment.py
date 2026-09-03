@@ -365,6 +365,72 @@ def test_fit_rigid_alignment_dtype_mismatch():
         tf.fit_rigid_alignment(cloud32, cloud64)
 
 
+def test_fit_rigid_alignment_point_count_mismatch():
+    """Should raise error for mismatched point counts."""
+    pts = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                   dtype=np.float32)
+
+    with pytest.raises(ValueError, match="Point count mismatch"):
+        tf.fit_rigid_alignment(tf.PointCloud(pts), tf.PointCloud(pts[:3]))
+
+
+
+def test_fit_rigid_alignment_short_normals_raise():
+    """Should raise error when a normals array is shorter than its cloud."""
+    rng = np.random.default_rng(42)
+    pts = rng.random((200, 3)).astype(np.float32)
+    normals = np.zeros((3, 3), dtype=np.float32)
+    normals[:, 2] = 1.0
+    full_normals = np.tile(normals[:1], (200, 1))
+
+    with pytest.raises(
+        ValueError,
+        match="Normals count mismatch: normals1 has 3 rows, "
+              "its cloud has 200 points",
+    ):
+        tf.fit_rigid_alignment(
+            tf.PointCloud(pts), (tf.PointCloud(pts.copy()), normals)
+        )
+
+    with pytest.raises(
+        ValueError,
+        match="Normals count mismatch: normals0 has 3 rows, "
+              "its cloud has 200 points",
+    ):
+        tf.fit_rigid_alignment(
+            (tf.PointCloud(pts), normals),
+            (tf.PointCloud(pts.copy()), full_normals),
+        )
+
+
+def test_fit_rigid_alignment_strided_normals_match_contiguous():
+    """A strided normals view gives the same transform as its contiguous copy."""
+    rng = np.random.default_rng(7)
+    pts0 = rng.random((100, 3)).astype(np.float64)
+    pts1 = pts0 + np.array([0.1, -0.2, 0.3])
+    wide = rng.random((100, 6)).astype(np.float64)
+    wide[:, :3] /= np.linalg.norm(wide[:, :3], axis=1, keepdims=True)
+    strided = wide[:, :3]
+    assert not strided.flags["C_CONTIGUOUS"]
+
+    T_strided = tf.fit_rigid_alignment(
+        tf.PointCloud(pts0), (tf.PointCloud(pts1), strided)
+    )
+    T_contiguous = tf.fit_rigid_alignment(
+        tf.PointCloud(pts0), (tf.PointCloud(pts1), np.ascontiguousarray(strided))
+    )
+    np.testing.assert_array_equal(T_strided, T_contiguous)
+
+    T_strided = tf.fit_rigid_alignment(
+        (tf.PointCloud(pts0), strided), (tf.PointCloud(pts1), strided)
+    )
+    T_contiguous = tf.fit_rigid_alignment(
+        (tf.PointCloud(pts0), np.ascontiguousarray(strided)),
+        (tf.PointCloud(pts1), np.ascontiguousarray(strided)),
+    )
+    np.testing.assert_array_equal(T_strided, T_contiguous)
+
+
 # ==============================================================================
 # Main
 # ==============================================================================

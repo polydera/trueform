@@ -11,6 +11,8 @@ from typing import Optional, Tuple, Union
 import numpy as np
 from .. import _trueform
 
+_REGION_LABELS_MAP = {"nesting": 0, "components": 1}
+
 
 def cdt(
     points: np.ndarray,
@@ -19,6 +21,7 @@ def cdt(
     edge_mask: Optional[np.ndarray] = None,
     split_constraints: bool = True,
     return_index_map: bool = False,
+    region_labels: Optional[str] = None,
 ):
     """
     Constrained Delaunay triangulation of 2D points.
@@ -52,6 +55,16 @@ def cdt(
         Requires `edges`.
     return_index_map : bool, optional, keyword-only
         If `True`, also returns the input-to-output point index map.
+    region_labels : str, optional, keyword-only
+        `None` (default) is the interior read: only the interior
+        triangles (odd nesting parity) are returned. `"nesting"` or
+        `"components"` instead returns the whole triangulation — every
+        triangle, region 0 included — together with a per-triangle label:
+        the nesting parity of the walls crossed from outside, or the id
+        of the wall-cut component (0 the hull exterior). Requires
+        `edges`: the labels state which side of the constraint walls a
+        triangle lies on, and without constraints there are no walls to
+        label.
 
     Returns
     -------
@@ -67,6 +80,14 @@ def cdt(
             kept_ids  : (P,) int32 array — input index that survived for
                         each output slot, or `f.size()` for synthetic
                         intersection vertices.
+
+    With `region_labels`:
+        (faces, points, labels) : tuple
+            labels : (K,) int32 array — the region label of each triangle,
+                     in the selected mode; ALL triangles are returned.
+
+    With `region_labels` and `return_index_map`:
+        ((faces, points), labels, (f, kept_ids)) : tuple
     """
     if not isinstance(points, np.ndarray):
         raise TypeError(f"points must be np.ndarray, got {type(points).__name__}")
@@ -80,12 +101,26 @@ def cdt(
         raise TypeError(
             f"points dtype must be float32 or float64, got {points.dtype}"
         )
+    if not points.flags["C_CONTIGUOUS"]:
+        points = np.ascontiguousarray(points)
+
+    if region_labels is not None and region_labels not in _REGION_LABELS_MAP:
+        raise ValueError(
+            "region_labels must be None, 'nesting' or 'components', "
+            f"got {region_labels!r}"
+        )
 
     if edges is None:
         if edge_mask is not None:
             raise ValueError("edge_mask requires edges to be provided")
         if not split_constraints:
             raise ValueError("split_constraints requires edges to be provided")
+        if region_labels is not None:
+            raise ValueError(
+                "region_labels requires edges to be provided: the labels "
+                "state which side of the constraint walls a triangle lies "
+                "on, and without constraints there are no walls to label"
+            )
         if return_index_map:
             return getattr(_trueform.topology, f"make_cdt_{suffix}_with_maps")(points)
         return getattr(_trueform.topology, f"make_cdt_{suffix}")(points)
@@ -94,7 +129,7 @@ def cdt(
         raise TypeError(f"edges must be np.ndarray, got {type(edges).__name__}")
     if edges.ndim != 2 or edges.shape[1] != 2:
         raise ValueError(f"edges must have shape (M, 2), got {edges.shape}")
-    if edges.dtype != np.int32:
+    if edges.dtype != np.int32 or not edges.flags["C_CONTIGUOUS"]:
         edges = np.ascontiguousarray(edges, dtype=np.int32)
 
     if edge_mask is not None:
@@ -107,8 +142,21 @@ def cdt(
                 f"edge_mask must have shape ({edges.shape[0]},), "
                 f"got {edge_mask.shape}"
             )
-        if edge_mask.dtype != np.bool_:
+        if edge_mask.dtype != np.bool_ or not edge_mask.flags["C_CONTIGUOUS"]:
             edge_mask = np.ascontiguousarray(edge_mask, dtype=np.bool_)
+
+    if region_labels is not None:
+        mode = _REGION_LABELS_MAP[region_labels]
+        if return_index_map:
+            func = getattr(
+                _trueform.topology,
+                f"make_cdt_{suffix}_edges_labels_with_maps",
+            )
+        else:
+            func = getattr(
+                _trueform.topology, f"make_cdt_{suffix}_edges_labels"
+            )
+        return func(points, edges, edge_mask, split_constraints, mode)
 
     if return_index_map:
         func = getattr(_trueform.topology, f"make_cdt_{suffix}_edges_with_maps")

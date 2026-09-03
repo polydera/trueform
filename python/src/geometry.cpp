@@ -19,6 +19,7 @@ auto register_geometry_module(nanobind::module_ &m) -> void {
   auto geometry_module = m.def_submodule("geometry", "Geometry operations");
 
   register_fit_rigid_alignment(geometry_module);
+  register_fit_similarity_alignment(geometry_module);
   register_fit_obb_alignment(geometry_module);
   register_fit_knn_alignment(geometry_module);
   register_fit_icp_alignment(geometry_module);

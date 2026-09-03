@@ -12,6 +12,7 @@
  */
 
 #include "trueform/python/spatial/form_prim_dispatch.hpp"
+#include "trueform/python/spatial/signed_distance.hpp"
 #include <trueform/python/spatial/mesh.hpp>
 
 namespace tf::py {
@@ -19,6 +20,9 @@ namespace tf::py {
 auto register_mesh_fp_intdyndouble3d(nanobind::module_ &m) -> void {
   register_form_prim_ops<mesh_wrapper<int, double, tf::dynamic_size, 3>, 3,
                          double>(m, "mesh", "intdyndouble3d");
+  register_mesh_signed_distance<
+      mesh_wrapper<int, double, tf::dynamic_size, 3>, 3, double>(
+      m, "intdyndouble3d");
 }
 
 } // namespace tf::py

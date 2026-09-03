@@ -66,5 +66,14 @@ def shape_index(
     """
     k0, k1 = principal_curvatures(data, k=k, directions=False)
 
-    # S = (2/π) * arctan((k1 + k0) / (k1 - k0))
-    return (2.0 / np.pi) * np.arctan2(k1 + k0, k1 - k0)
+    # S = (2/π) * arctan((k_max + k_min) / (k_max - k_min)); umbilic: sign(k)
+    hi = np.maximum(k0, k1)
+    lo = np.minimum(k0, k1)
+    diff = hi - lo
+    umbilic = diff == 0
+    safe_diff = np.where(umbilic, 1, diff)
+    return np.where(
+        umbilic,
+        np.sign(hi),
+        (2.0 / np.pi) * np.arctan((hi + lo) / safe_diff),
+    )

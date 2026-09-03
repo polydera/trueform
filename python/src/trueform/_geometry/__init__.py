@@ -8,6 +8,7 @@ https://github.com/polydera/trueform
 """
 
 from .fit_rigid_alignment import fit_rigid_alignment
+from .fit_similarity_alignment import fit_similarity_alignment
 from .fit_obb_alignment import fit_obb_alignment
 from .fit_knn_alignment import fit_knn_alignment
 from .fit_icp_alignment import fit_icp_alignment
@@ -31,6 +32,7 @@ from .taubin_smoothed import taubin_smoothed
 
 __all__ = [
     "fit_rigid_alignment",
+    "fit_similarity_alignment",
     "fit_obb_alignment",
     "fit_knn_alignment",
     "fit_icp_alignment",

@@ -19,6 +19,7 @@ from ._core import OffsetBlockedArray, as_offset_blocked
 from ._spatial.ray_cast import ray_cast
 from ._spatial.intersects import intersects
 from ._spatial.distance import distance, distance2
+from ._spatial.signed_distance import signed_distance
 from ._spatial.closest_point import closest_metric_point_pair, closest_metric_point, closest_point_pair
 from ._intersect import intersection_curves, self_intersection_curves
 from ._iso import isocontours, isobands
@@ -26,10 +27,10 @@ from ._arrangement import mesh_arrangements, polygon_arrangements
 from ._csg import CsgGraph, Expr, op, outer_shell, boolean_union, boolean_intersection, boolean_difference
 from ._clean import cleaned
 from ._reindex import reindex_by_ids, reindex_by_mask, reindex_by_ids_on_points, reindex_by_mask_on_points, split_into_components, split_into_domains, concatenated
-from ._topology import cdt, label_connected_components, cell_membership, manifold_edge_link, face_link, vertex_link_edges, vertex_link_faces, k_rings, neighborhoods, boundary_edges, boundary_paths, boundary_curves, non_manifold_edges, orient_faces_consistently, connect_edges_to_paths, is_closed, is_open, is_manifold, is_non_manifold, domain_labels, sidedness_relations
+from ._topology import cdt, label_connected_components, cell_membership, manifold_edge_link, face_link, vertex_link_edges, vertex_link_faces, k_rings, neighborhoods, boundary_edges, boundary_paths, boundary_curves, non_manifold_edges, orient_faces_consistently, connect_edges_to_paths, is_closed, is_open, is_manifold, is_non_manifold, domain_labels, euler_characteristic, sidedness_relations
 from ._spatial import neighbor_search, gather_intersecting_ids, gather_ids_within_distance
 from ._core.transformed import transformed
-from ._geometry import fit_rigid_alignment, fit_obb_alignment, fit_knn_alignment, fit_icp_alignment, chamfer_error, triangulated
+from ._geometry import fit_rigid_alignment, fit_similarity_alignment, fit_obb_alignment, fit_knn_alignment, fit_icp_alignment, chamfer_error, triangulated
 from ._geometry import normals, point_normals, principal_curvatures, shape_index, ensure_positive_orientation
 from ._geometry import make_sphere_mesh, make_cylinder_mesh, make_box_mesh, make_plane_mesh, make_tube_mesh
 from ._geometry import signed_volume, volume, area, mean_edge_length, laplacian_smoothed, taubin_smoothed
@@ -56,6 +57,7 @@ __all__ = [
     'intersects',
     'distance',
     'distance2',
+    'signed_distance',
     'isocontours',
     'isobands',
     'intersection_curves',
@@ -91,6 +93,7 @@ __all__ = [
     'is_manifold',
     'is_non_manifold',
     'domain_labels',
+    'euler_characteristic',
     'sidedness_relations',
     'neighbor_search',
     'gather_intersecting_ids',
@@ -98,6 +101,7 @@ __all__ = [
     'transformed',
     # Geometry
     'fit_rigid_alignment',
+    'fit_similarity_alignment',
     'fit_obb_alignment',
     'fit_knn_alignment',
     'fit_icp_alignment',

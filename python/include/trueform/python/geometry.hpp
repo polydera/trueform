@@ -18,6 +18,8 @@ namespace tf::py {
 
 void register_fit_rigid_alignment(nanobind::module_ &m);
 
+void register_fit_similarity_alignment(nanobind::module_ &m);
+
 void register_fit_obb_alignment(nanobind::module_ &m);
 
 void register_fit_knn_alignment(nanobind::module_ &m);

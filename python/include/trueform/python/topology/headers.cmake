@@ -8,6 +8,7 @@ set(HEADERS_TOPOLOGY
   ${CMAKE_CURRENT_LIST_DIR}/compute_vertex_link.hpp
   ${CMAKE_CURRENT_LIST_DIR}/connect_edges_to_paths.hpp
   ${CMAKE_CURRENT_LIST_DIR}/domain_labels_impl.hpp
+  ${CMAKE_CURRENT_LIST_DIR}/euler_characteristic_impl.hpp
   ${CMAKE_CURRENT_LIST_DIR}/is_closed.hpp
   ${CMAKE_CURRENT_LIST_DIR}/is_manifold.hpp
   ${CMAKE_CURRENT_LIST_DIR}/label_connected_components_impl.hpp

@@ -79,7 +79,7 @@ auto fit_knn_alignment_p2plane_impl(
   auto pts1 = cloud1.make_primitive_range();
   auto n1 = tf::make_unit_vectors<3>(
       tf::make_range(static_cast<RealT *>(normals1.data()),
-                     normals1.shape(0) * 3));
+                     cloud1.size() * 3));
 
   bool has0 = cloud0.has_transformation();
   bool has1 = cloud1.has_transformation();
@@ -125,10 +125,10 @@ auto fit_knn_alignment_weighted_impl(
   auto pts1 = cloud1.make_primitive_range();
   auto n0 = tf::make_unit_vectors<3>(
       tf::make_range(static_cast<RealT *>(normals0.data()),
-                     normals0.shape(0) * 3));
+                     cloud0.size() * 3));
   auto n1 = tf::make_unit_vectors<3>(
       tf::make_range(static_cast<RealT *>(normals1.data()),
-                     normals1.shape(0) * 3));
+                     cloud1.size() * 3));
 
   bool has0 = cloud0.has_transformation();
   bool has1 = cloud1.has_transformation();

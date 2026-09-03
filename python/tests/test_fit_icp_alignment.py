@@ -763,6 +763,35 @@ def test_fit_icp_alignment_normals_require_3d():
         tf.fit_icp_alignment(cloud, (cloud, normals), max_iterations=10)
 
 
+
+def test_fit_icp_alignment_short_normals_raise():
+    """Should raise error when a normals array is shorter than its cloud."""
+    rng = np.random.default_rng(42)
+    pts = rng.random((200, 3)).astype(np.float32)
+    normals = np.zeros((5, 3), dtype=np.float32)
+    normals[:, 2] = 1.0
+    full_normals = np.tile(normals[:1], (200, 1))
+
+    with pytest.raises(
+        ValueError,
+        match="Normals count mismatch: normals1 has 5 rows, "
+              "its cloud has 200 points",
+    ):
+        tf.fit_icp_alignment(
+            tf.PointCloud(pts), (tf.PointCloud(pts.copy()), normals)
+        )
+
+    with pytest.raises(
+        ValueError,
+        match="Normals count mismatch: normals0 has 5 rows, "
+              "its cloud has 200 points",
+    ):
+        tf.fit_icp_alignment(
+            (tf.PointCloud(pts), normals),
+            (tf.PointCloud(pts.copy()), full_normals),
+        )
+
+
 # ==============================================================================
 # Main
 # ==============================================================================

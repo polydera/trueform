@@ -42,6 +42,24 @@ auto register_topology_make_cdt(nanobind::module_ &m) -> void {
         &make_cdt_edges_with_maps_impl<double>, arg("points"), arg("edges"),
         arg("edge_mask").none() = nanobind::none(),
         arg("split_constraints") = true);
+
+  m.def("make_cdt_float_edges_labels", &make_cdt_edges_labels_impl<float>,
+        arg("points"), arg("edges"),
+        arg("edge_mask").none() = nanobind::none(),
+        arg("split_constraints") = true, arg("region_mode") = 0);
+  m.def("make_cdt_double_edges_labels", &make_cdt_edges_labels_impl<double>,
+        arg("points"), arg("edges"),
+        arg("edge_mask").none() = nanobind::none(),
+        arg("split_constraints") = true, arg("region_mode") = 0);
+
+  m.def("make_cdt_float_edges_labels_with_maps",
+        &make_cdt_edges_labels_with_maps_impl<float>, arg("points"),
+        arg("edges"), arg("edge_mask").none() = nanobind::none(),
+        arg("split_constraints") = true, arg("region_mode") = 0);
+  m.def("make_cdt_double_edges_labels_with_maps",
+        &make_cdt_edges_labels_with_maps_impl<double>, arg("points"),
+        arg("edges"), arg("edge_mask").none() = nanobind::none(),
+        arg("split_constraints") = true, arg("region_mode") = 0);
 }
 
 } // namespace tf::py

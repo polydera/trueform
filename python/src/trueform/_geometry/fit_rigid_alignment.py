@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Union, Tuple
 
 from .. import _trueform
 from .._dispatch import extract_meta, build_suffix
+from ._validation import validate_alignment_normals
 
 if TYPE_CHECKING:
     from .._spatial.point_cloud import PointCloud
@@ -90,10 +91,19 @@ def fit_rigid_alignment(
         raise ValueError(
             f"Dtype mismatch: cloud0 has {c0.dtype}, cloud1 has {c1.dtype}"
         )
+    if c0.size != c1.size:
+        raise ValueError(
+            f"Point count mismatch: cloud0 has {c0.size} points, "
+            f"cloud1 has {c1.size}"
+        )
     if (normals0 is not None or normals1 is not None) and c0.dims != 3:
         raise ValueError(
             "Point-to-plane and normal weighting only supported for 3D point clouds"
         )
+    if normals0 is not None:
+        normals0 = validate_alignment_normals(normals0, c0, "normals0")
+    if normals1 is not None:
+        normals1 = validate_alignment_normals(normals1, c1, "normals1")
 
     suffix = build_suffix(extract_meta(c0))
 
