@@ -21,7 +21,8 @@ namespace tf {
 /// @ingroup topology_components
 /// @brief Label edge-connected face components.
 ///
-/// Two faces are in the same component if they share any vertex.
+/// Two faces are in the same component if they share any edge,
+/// non-manifold edges included.
 /// This labels each face with its component index.
 ///
 /// Builds face link internally if not provided via policy.

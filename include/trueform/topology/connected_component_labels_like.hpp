@@ -20,7 +20,7 @@ namespace tf {
 /// @brief CRTP base for connected component labels structures.
 ///
 /// The underlying `Policy` carries the per-element labels container plus
-/// the component count and connectivity rule used to produce them
+/// the component count
 /// (see @ref tf::topology::connected_component_labels_policy).
 ///
 /// Use @ref tf::connected_component_labels for an owning container, or

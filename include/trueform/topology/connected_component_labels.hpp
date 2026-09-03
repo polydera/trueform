@@ -19,9 +19,9 @@ namespace tf {
 /// @ingroup topology_components
 /// @brief Owning container for per-element connected component labels.
 ///
-/// The labels container is the object itself — iterate or index it
-/// directly. Carries `n_components` (total label count) and
-/// `connectivity` (the rule used to produce them) as inherited fields.
+/// Carries `labels` (one label per element of the producer's carrier —
+/// faces for the edge rules, vertices for the vertex rule) and
+/// `n_components` (total label count).
 ///
 /// Build via one of @ref tf::make_manifold_edge_connected_component_labels,
 /// @ref tf::make_edge_connected_component_labels, or

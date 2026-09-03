@@ -3,8 +3,14 @@
  * @brief Tests for connected component labeling functions
  *
  * Tests for:
- * - make_vertex_connected_component_labels
- * - make_edge_connected_component_labels
+ * - make_manifold_edge_connected_component_labels (per-face labels)
+ * - make_edge_connected_component_labels (per-face labels)
+ * - make_vertex_connected_component_labels (per-vertex labels)
+ *
+ * The three rules answer in different carriers and part ways only where a
+ * mesh is non-manifold, so the fixtures that tell them apart are a fan on
+ * one edge and a pinch at one vertex. The label partition is the semantics:
+ * a count alone never states which faces joined.
  *
  * Copyright (c) 2025 Ziga Sajovic, XLAB
  */
@@ -14,7 +20,133 @@
 #include <trueform/trueform.hpp>
 #include "type_traits.hpp"
 #include "topology_generators.hpp"
+#include <cstdint>
 #include <set>
+
+namespace {
+
+/**
+ * @brief Three triangles on the one edge (0, 1) - a non-manifold edge.
+ *
+ *        2                   face 0: (0, 1, 2)   in +y
+ *        |                   face 1: (1, 0, 3)   in -y
+ *   0 ---+--- 1              face 2: (0, 1, 4)   in +z, out of the page
+ *        |
+ *        3
+ */
+template <typename Index, typename Real>
+auto components_three_fins_3d() -> tf::polygons_buffer<Index, Real, 3, 3> {
+    tf::polygons_buffer<Index, Real, 3, 3> mesh;
+    mesh.points_buffer().emplace_back(Real(0), Real(0), Real(0));
+    mesh.points_buffer().emplace_back(Real(1), Real(0), Real(0));
+    mesh.points_buffer().emplace_back(Real(0.5), Real(1), Real(0));
+    mesh.points_buffer().emplace_back(Real(0.5), Real(-1), Real(0));
+    mesh.points_buffer().emplace_back(Real(0.5), Real(0), Real(1));
+    mesh.faces_buffer().emplace_back(Index(0), Index(1), Index(2));
+    mesh.faces_buffer().emplace_back(Index(1), Index(0), Index(3));
+    mesh.faces_buffer().emplace_back(Index(0), Index(1), Index(4));
+    return mesh;
+}
+
+/**
+ * @brief Two triangles meeting at the one vertex 2 - a non-manifold vertex.
+ *
+ *   1           4            face 0: (0, 1, 2)
+ *   | \       / |            face 1: (2, 3, 4)
+ *   |   \   /   |
+ *   |     \/    |            no edge is shared
+ *   0-----2-----3
+ */
+template <typename Index, typename Real>
+auto components_bowtie_3d() -> tf::polygons_buffer<Index, Real, 3, 3> {
+    tf::polygons_buffer<Index, Real, 3, 3> mesh;
+    mesh.points_buffer().emplace_back(Real(-1), Real(0), Real(0));
+    mesh.points_buffer().emplace_back(Real(-1), Real(1), Real(0));
+    mesh.points_buffer().emplace_back(Real(0), Real(0), Real(0));
+    mesh.points_buffer().emplace_back(Real(1), Real(0), Real(0));
+    mesh.points_buffer().emplace_back(Real(1), Real(1), Real(0));
+    mesh.faces_buffer().emplace_back(Index(0), Index(1), Index(2));
+    mesh.faces_buffer().emplace_back(Index(2), Index(3), Index(4));
+    return mesh;
+}
+
+/**
+ * @brief Two triangles on one ordinary edge - manifold everywhere.
+ *
+ *   2-----3                  face 0: (0, 1, 2)
+ *   | \   |                  face 1: (1, 3, 2)
+ *   |   \ |
+ *   0-----1                  the diagonal (1, 2) is the one shared edge
+ */
+template <typename Index, typename Real>
+auto components_manifold_strip_3d() -> tf::polygons_buffer<Index, Real, 3, 3> {
+    tf::polygons_buffer<Index, Real, 3, 3> mesh;
+    mesh.points_buffer().emplace_back(Real(0), Real(0), Real(0));
+    mesh.points_buffer().emplace_back(Real(1), Real(0), Real(0));
+    mesh.points_buffer().emplace_back(Real(0), Real(1), Real(0));
+    mesh.points_buffer().emplace_back(Real(1), Real(1), Real(0));
+    mesh.faces_buffer().emplace_back(Index(0), Index(1), Index(2));
+    mesh.faces_buffer().emplace_back(Index(1), Index(3), Index(2));
+    return mesh;
+}
+
+/**
+ * @brief The manifold strip plus a triangle that touches nothing.
+ *
+ *   2-----3                  6                face 0: (0, 1, 2)
+ *   | \   |                  | \              face 1: (1, 3, 2)
+ *   |   \ |                  |   \            face 2: (4, 5, 6)
+ *   0-----1                  4-----5
+ */
+template <typename Index, typename Real>
+auto components_strip_and_far_triangle_3d()
+    -> tf::polygons_buffer<Index, Real, 3, 3> {
+    auto mesh = components_manifold_strip_3d<Index, Real>();
+    mesh.points_buffer().emplace_back(Real(10), Real(0), Real(0));
+    mesh.points_buffer().emplace_back(Real(11), Real(0), Real(0));
+    mesh.points_buffer().emplace_back(Real(10), Real(1), Real(0));
+    mesh.faces_buffer().emplace_back(Index(4), Index(5), Index(6));
+    return mesh;
+}
+
+/**
+ * @brief One triangle - every edge a boundary edge.
+ *
+ *   2
+ *   | \                      face 0: (0, 1, 2)
+ *   |   \
+ *   0-----1
+ */
+template <typename Index, typename Real>
+auto components_single_triangle_3d()
+    -> tf::polygons_buffer<Index, Real, 3, 3> {
+    tf::polygons_buffer<Index, Real, 3, 3> mesh;
+    mesh.points_buffer().emplace_back(Real(0), Real(0), Real(0));
+    mesh.points_buffer().emplace_back(Real(1), Real(0), Real(0));
+    mesh.points_buffer().emplace_back(Real(0), Real(1), Real(0));
+    mesh.faces_buffer().emplace_back(Index(0), Index(1), Index(2));
+    return mesh;
+}
+
+template <typename Labels>
+auto components_share_one_label(const Labels &components) -> bool {
+    for (decltype(components.labels.size()) i = 1;
+         i < components.labels.size(); ++i)
+        if (components.labels[i] != components.labels[0])
+            return false;
+    return true;
+}
+
+template <typename Labels>
+auto components_labels_all_distinct(const Labels &components) -> bool {
+    std::set<typename Labels::label_type> seen;
+    for (decltype(components.labels.size()) i = 0;
+         i < components.labels.size(); ++i)
+        seen.insert(components.labels[i]);
+    return seen.size() == components.labels.size();
+}
+
+} // namespace
 
 // =============================================================================
 // make_vertex_connected_component_labels - Single Component
@@ -361,4 +493,175 @@ TEMPLATE_TEST_CASE("edge_components_brute_force_verification", "[topology][compo
             REQUIRE(same_component == actually_connected);
         }
     }
+}
+
+// =============================================================================
+// Three fins on one edge - the edge is non-manifold
+// =============================================================================
+
+TEMPLATE_TEST_CASE("connected_components_three_fins_on_one_edge", "[topology][components]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto mesh = components_three_fins_3d<index_t, real_t>();
+
+    auto manifold_edge =
+        tf::make_manifold_edge_connected_component_labels(mesh.polygons());
+    REQUIRE(manifold_edge.labels.size() == 3);
+    CHECK(manifold_edge.n_components == 3);
+    CHECK(components_labels_all_distinct(manifold_edge));
+
+    auto edge = tf::make_edge_connected_component_labels(mesh.polygons());
+    REQUIRE(edge.labels.size() == 3);
+    CHECK(edge.n_components == 1);
+    CHECK(edge.labels[0] == edge.labels[1]);
+    CHECK(edge.labels[1] == edge.labels[2]);
+
+    auto vertex = tf::make_vertex_connected_component_labels(mesh.polygons());
+    REQUIRE(vertex.labels.size() == 5);
+    CHECK(vertex.n_components == 1);
+    CHECK(components_share_one_label(vertex));
+}
+
+// =============================================================================
+// Bowtie - the vertex is non-manifold, no edge is shared
+// =============================================================================
+
+TEMPLATE_TEST_CASE("connected_components_bowtie_pinch", "[topology][components]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto mesh = components_bowtie_3d<index_t, real_t>();
+
+    auto manifold_edge =
+        tf::make_manifold_edge_connected_component_labels(mesh.polygons());
+    REQUIRE(manifold_edge.labels.size() == 2);
+    CHECK(manifold_edge.n_components == 2);
+    CHECK(manifold_edge.labels[0] != manifold_edge.labels[1]);
+
+    auto edge = tf::make_edge_connected_component_labels(mesh.polygons());
+    REQUIRE(edge.labels.size() == 2);
+    CHECK(edge.n_components == 2);
+    CHECK(edge.labels[0] != edge.labels[1]);
+
+    auto vertex = tf::make_vertex_connected_component_labels(mesh.polygons());
+    REQUIRE(vertex.labels.size() == 5);
+    CHECK(vertex.n_components == 1);
+    CHECK(components_share_one_label(vertex));
+}
+
+// =============================================================================
+// Manifold strip - permissiveness only ever joins, so all three agree
+// =============================================================================
+
+TEMPLATE_TEST_CASE("connected_components_manifold_strip_agrees", "[topology][components]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto mesh = components_manifold_strip_3d<index_t, real_t>();
+
+    auto manifold_edge =
+        tf::make_manifold_edge_connected_component_labels(mesh.polygons());
+    REQUIRE(manifold_edge.labels.size() == 2);
+    CHECK(manifold_edge.n_components == 1);
+    CHECK(components_share_one_label(manifold_edge));
+
+    auto edge = tf::make_edge_connected_component_labels(mesh.polygons());
+    REQUIRE(edge.labels.size() == 2);
+    CHECK(edge.n_components == 1);
+    CHECK(components_share_one_label(edge));
+
+    auto vertex = tf::make_vertex_connected_component_labels(mesh.polygons());
+    REQUIRE(vertex.labels.size() == 4);
+    CHECK(vertex.n_components == 1);
+    CHECK(components_share_one_label(vertex));
+}
+
+// =============================================================================
+// Disjoint pieces - two components, each producer counting its own carrier
+// =============================================================================
+
+TEMPLATE_TEST_CASE("connected_components_disjoint_pieces", "[topology][components]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto mesh = components_strip_and_far_triangle_3d<index_t, real_t>();
+
+    auto manifold_edge =
+        tf::make_manifold_edge_connected_component_labels(mesh.polygons());
+    REQUIRE(manifold_edge.labels.size() == 3);
+    CHECK(manifold_edge.n_components == 2);
+    CHECK(manifold_edge.labels[0] == manifold_edge.labels[1]);
+    CHECK(manifold_edge.labels[2] != manifold_edge.labels[0]);
+
+    auto edge = tf::make_edge_connected_component_labels(mesh.polygons());
+    REQUIRE(edge.labels.size() == 3);
+    CHECK(edge.n_components == 2);
+    CHECK(edge.labels[0] == edge.labels[1]);
+    CHECK(edge.labels[2] != edge.labels[0]);
+
+    auto vertex = tf::make_vertex_connected_component_labels(mesh.polygons());
+    REQUIRE(vertex.labels.size() == 7);
+    CHECK(vertex.n_components == 2);
+    for (index_t i = 1; i < 4; ++i)
+        CHECK(vertex.labels[i] == vertex.labels[0]);
+    for (index_t i = 5; i < 7; ++i)
+        CHECK(vertex.labels[i] == vertex.labels[4]);
+    CHECK(vertex.labels[4] != vertex.labels[0]);
+}
+
+// =============================================================================
+// One triangle, and no triangle at all
+// =============================================================================
+
+TEMPLATE_TEST_CASE("connected_components_boundary_and_empty", "[topology][components]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto triangle = components_single_triangle_3d<index_t, real_t>();
+
+    auto manifold_edge =
+        tf::make_manifold_edge_connected_component_labels(triangle.polygons());
+    REQUIRE(manifold_edge.labels.size() == 1);
+    CHECK(manifold_edge.n_components == 1);
+
+    auto edge = tf::make_edge_connected_component_labels(triangle.polygons());
+    REQUIRE(edge.labels.size() == 1);
+    CHECK(edge.n_components == 1);
+
+    auto vertex = tf::make_vertex_connected_component_labels(triangle.polygons());
+    REQUIRE(vertex.labels.size() == 3);
+    CHECK(vertex.n_components == 1);
+    CHECK(components_share_one_label(vertex));
+
+    tf::polygons_buffer<index_t, real_t, 3, 3> empty;
+
+    auto empty_manifold_edge =
+        tf::make_manifold_edge_connected_component_labels(empty.polygons());
+    CHECK(empty_manifold_edge.labels.size() == 0);
+    CHECK(empty_manifold_edge.n_components == 0);
+
+    auto empty_edge = tf::make_edge_connected_component_labels(empty.polygons());
+    CHECK(empty_edge.labels.size() == 0);
+    CHECK(empty_edge.n_components == 0);
+
+    auto empty_vertex =
+        tf::make_vertex_connected_component_labels(empty.polygons());
+    CHECK(empty_vertex.labels.size() == 0);
+    CHECK(empty_vertex.n_components == 0);
 }

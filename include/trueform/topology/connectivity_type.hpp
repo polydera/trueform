@@ -18,10 +18,11 @@ namespace tf {
 /// @brief Connectivity types for mesh traversal and component labeling.
 ///
 /// Determines how mesh elements are considered connected:
-/// - manifold_edge: connected only through manifold edges (separates at
-///   boundaries and non-manifold edges)
-/// - edge: connected through any shared edge (ignores non-manifold status)
-/// - vertex: connected through any shared vertex (most permissive)
+/// - manifold_edge: faces connect only through manifold (2-face) edges,
+///   so boundaries and non-manifold edges separate
+/// - edge: faces connect through any shared edge, non-manifold included
+/// - vertex: vertices connect through any shared edge; the labels live on
+///   vertices, not faces
 ///
 /// @see tf::label_connected_components()
 /// @see tf::make_vertex_connected_component_labels()
@@ -30,7 +31,7 @@ namespace tf {
 enum class connectivity_type {
   manifold_edge,  ///< Connect only through manifold (2-face) edges.
   edge,           ///< Connect through any shared edge.
-  vertex          ///< Connect through any shared vertex.
+  vertex          ///< Label vertices, joined through any shared edge.
 };
 
 } // namespace tf
