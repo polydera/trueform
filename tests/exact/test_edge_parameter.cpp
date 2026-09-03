@@ -184,7 +184,7 @@ TEST_CASE("edge_parameter: dyadic materialization lands on the fraction",
 }
 
 TEST_CASE("edge_parameter: la's crossing construction IS the emission's "
-          "fraction — the junction twin is unrepresentable",
+          "fraction - the junction twin is unrepresentable",
           "[exact][edge_parameter]") {
   // The geological junction, reduced: edge e4 lies IN the wall plane;
   // the (5,10) seam is the line wall ∩ horizon. The seam crossing e4,
