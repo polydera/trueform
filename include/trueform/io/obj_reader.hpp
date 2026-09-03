@@ -13,7 +13,6 @@
 #pragma once
 
 #include "file/mapped_file.hpp"
-#include "obj/load_obj_file.hpp"
 #include "obj/obj_execution_tuning.hpp"
 #include "obj/read_complete_obj.hpp"
 #include "obj/read_dynamic_obj.hpp"
@@ -39,15 +38,14 @@ namespace tf::io {
 /// @brief Reader for position-only and complete ASCII OBJ data.
 class obj_reader {
 public:
+  /// @pre The file is not modified for the duration of the read.
   template <typename Index, typename RealT, std::size_t Dims>
   auto read(std::string_view path, tf::points_buffer<RealT, Dims> &points,
             tf::offset_block_buffer<Index, Index> &faces) -> bool {
-    tf::buffer<char> data;
-    if (!obj::load_obj_file(path, data))
+    tf::io::mapped_file file(path);
+    if (!file)
       return false;
-    return obj::read_dynamic_obj(
-        tf::make_range(static_cast<const char *>(data.begin()), data.size()),
-        points, faces);
+    return read(tf::make_range(file.data(), file.size()), points, faces);
   }
 
   template <typename Index, typename RealT, std::size_t Dims>
@@ -77,19 +75,19 @@ public:
     return obj::read_fixed_obj_parallel(data, points, faces);
   }
 
-  template <typename Index, typename RealT>
-  auto read(std::string_view path, tf::obj_file<Index, RealT> &output) -> bool {
-    tf::buffer<char> data;
-    if (!obj::load_obj_file(path, data))
+  /// @pre The file is not modified for the duration of the read.
+  template <typename Index, typename RealT, std::size_t Ngon>
+  auto read(std::string_view path, tf::obj_file<Index, RealT, Ngon> &output)
+      -> bool {
+    tf::io::mapped_file file(path);
+    if (!file)
       return false;
-    return obj::read_complete_obj(
-        tf::make_range(static_cast<const char *>(data.begin()), data.size()),
-        output);
+    return read(tf::make_range(file.data(), file.size()), output);
   }
 
-  template <typename Index, typename RealT>
+  template <typename Index, typename RealT, std::size_t Ngon>
   auto read(tf::range<const char *, tf::dynamic_size> data,
-            tf::obj_file<Index, RealT> &output) -> bool {
+            tf::obj_file<Index, RealT, Ngon> &output) -> bool {
     return obj::read_complete_obj(data, output);
   }
 };

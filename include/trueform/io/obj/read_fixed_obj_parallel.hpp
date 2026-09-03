@@ -17,6 +17,7 @@
 #include "make_obj_line_partitions.hpp"
 #include "obj_partition_count.hpp"
 #include "parse_fixed_obj_partition.hpp"
+#include "validate_obj_face_corners.hpp"
 
 #include "../../core/blocked_buffer.hpp"
 #include "../../core/buffer.hpp"
@@ -80,7 +81,11 @@ auto read_fixed_obj_parallel(tf::range<const char *, tf::dynamic_size> input,
         faces_base + face_offsets[partition], counts[partition].faces));
   });
 
-  if (std::find(valid.begin(), valid.end(), 0) == valid.end())
+  if (std::find(valid.begin(), valid.end(), 0) == valid.end() &&
+      validate_obj_face_corners(
+          tf::make_range(faces.data_buffer().begin() + faces_base * Ngon,
+                         faces.data_buffer().end()),
+          points.size()))
     return true;
   points.clear();
   faces.clear();

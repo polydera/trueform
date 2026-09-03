@@ -428,3 +428,108 @@ TEST_CASE("read_obj<3, int, double> Ngon-first preserves double precision",
                                  tf::polygons_buffer<int, double, 3, 3>>);
     REQUIRE(polygons.points().front()[0] == 1.0000000000000002);
 }
+
+TEST_CASE("read_obj dynamic: a dropped short face does not shift later faces",
+          "[io][read_obj][dynamic]") {
+    auto path = temp_obj_path();
+    {
+        std::ofstream f(path);
+        f << "v 0 0 0\nv 1 0 0\nv 0 1 0\nv 1 1 0\n";
+        f << "f 1 2 3\n";
+        f << "f 1 2\n"; // too few corners: dropped
+        f << "f 2 4 3\n";
+    }
+    read_obj_temp_file_cleanup cleanup{path};
+
+    auto polygons = tf::read_obj(path.string());
+    REQUIRE(polygons.faces().size() == 2);
+    REQUIRE(polygons.faces()[0].size() == 3);
+    REQUIRE(polygons.faces()[1].size() == 3);
+    REQUIRE(polygons.faces()[0][0] == 0);
+    REQUIRE(polygons.faces()[0][1] == 1);
+    REQUIRE(polygons.faces()[0][2] == 2);
+    REQUIRE(polygons.faces()[1][0] == 1);
+    REQUIRE(polygons.faces()[1][1] == 3);
+    REQUIRE(polygons.faces()[1][2] == 2);
+}
+
+// =============================================================================
+// Out-of-range vertex indices
+// =============================================================================
+
+namespace {
+
+auto oob_index_triangle_obj(int n_positions) -> std::string {
+    std::string s;
+    for (int i = 0; i < n_positions; ++i)
+        s += "v " + std::to_string(i) + " 0 0\n";
+    for (int i = 0; i + 2 < n_positions; i += 3)
+        s += "f " + std::to_string(i + 1) + " " + std::to_string(i + 2) + " " +
+             std::to_string(i + 3) + "\n";
+    s += "f 1 2 999999999\n";
+    return s;
+}
+
+} // namespace
+
+TEST_CASE("read_obj dynamic: an out-of-range vertex index returns empty",
+          "[io][read_obj][dynamic][error]") {
+    auto path = temp_obj_path();
+    {
+        std::ofstream f(path);
+        f << "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 999999\n";
+    }
+    read_obj_temp_file_cleanup cleanup{path};
+
+    auto polygons = tf::read_obj(path.string());
+    REQUIRE(polygons.faces().size() == 0);
+    REQUIRE(polygons.points().size() == 0);
+}
+
+TEST_CASE("read_obj dynamic: an out-of-range vertex index returns empty "
+          "across partitions",
+          "[io][read_obj][dynamic][error]") {
+    auto path = temp_obj_path();
+    auto s = oob_index_triangle_obj(90000);
+    REQUIRE(s.size() > 4 * 256 * 1024);
+    {
+        std::ofstream f(path);
+        f << s;
+    }
+    read_obj_temp_file_cleanup cleanup{path};
+
+    auto polygons = tf::read_obj(path.string());
+    REQUIRE(polygons.faces().size() == 0);
+    REQUIRE(polygons.points().size() == 0);
+}
+
+TEST_CASE("read_obj<3>: an out-of-range vertex index returns empty",
+          "[io][read_obj][error]") {
+    auto path = temp_obj_path();
+    {
+        std::ofstream f(path);
+        f << "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 999999\n";
+    }
+    read_obj_temp_file_cleanup cleanup{path};
+
+    auto polygons = tf::read_obj<int, 3>(path.string());
+    REQUIRE(polygons.faces().size() == 0);
+    REQUIRE(polygons.points().size() == 0);
+}
+
+TEST_CASE("read_obj<3>: an out-of-range vertex index returns empty across "
+          "partitions",
+          "[io][read_obj][error]") {
+    auto path = temp_obj_path();
+    auto s = oob_index_triangle_obj(90000);
+    REQUIRE(s.size() > 4 * 256 * 1024);
+    {
+        std::ofstream f(path);
+        f << s;
+    }
+    read_obj_temp_file_cleanup cleanup{path};
+
+    auto polygons = tf::read_obj<int, 3>(path.string());
+    REQUIRE(polygons.faces().size() == 0);
+    REQUIRE(polygons.points().size() == 0);
+}

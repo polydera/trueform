@@ -8,6 +8,7 @@
 
 #include <atomic>
 #include <catch2/catch_test_macros.hpp>
+#include <cmath>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -592,4 +593,539 @@ TEST_CASE("round-trip: write then read complete works through banner",
   REQUIRE(find_pt(f, 0, 0, 0) >= 0);
   REQUIRE(find_pt(f, 1, 0, 0) >= 0);
   REQUIRE(find_pt(f, 0, 1, 0) >= 0);
+}
+
+// =============================================================================
+// Line partitions: files large enough for the reader to split them
+// =============================================================================
+
+namespace {
+
+// `obj_execution_tuning::target_partition_bytes` is 256 KiB, so a file of a
+// few megabytes is read as many independent line partitions.
+auto complete_position_block(int n) -> std::string {
+  std::string s;
+  for (int i = 0; i < n; ++i)
+    s += "v " + std::to_string(i) + " " + std::to_string(i % 7) + " 0\n";
+  return s;
+}
+
+// The tests below write faces over three consecutive positions, so corner k
+// of face i must come back as the position the file wrote at 3i + k.
+auto complete_faces_name_their_positions(const tf::obj_file<int> &f) -> bool {
+  auto faces = f.polygons.faces();
+  auto points = f.polygons.points();
+  for (std::size_t i = 0; i < faces.size(); ++i) {
+    auto face = faces[i];
+    if (face.size() != 3)
+      return false;
+    for (std::size_t k = 0; k < 3; ++k) {
+      auto expected = static_cast<float>(3 * i + k);
+      auto point = points[face[k]];
+      if (point[0] != expected || point[1] != std::fmod(expected, 7.0f))
+        return false;
+    }
+  }
+  return true;
+}
+
+} // namespace
+
+TEST_CASE("partitions: groups keep their faces across line partitions",
+          "[io][read_obj][complete][groups][partitions]") {
+  const int n = 90000;
+  const int per_group = 3750;
+  auto p = temp_path(".obj");
+  cleanup g{p};
+  std::string s = complete_position_block(n);
+  int face = 0;
+  for (int i = 0; i + 2 < n; i += 3) {
+    if (face % per_group == 0)
+      s += "g grp_" + std::to_string(face / per_group) + "\n";
+    ++face;
+    s += "f " + std::to_string(i + 1) + " " + std::to_string(i + 2) + " " +
+         std::to_string(i + 3) + "\n";
+  }
+  REQUIRE(s.size() > 4 * 256 * 1024);
+  write_text(p, s);
+
+  auto f = tf::read_obj(p.string(), tf::complete);
+  REQUIRE(f.polygons.faces().size() == static_cast<std::size_t>(face));
+  REQUIRE(f.group_names.size() == static_cast<std::size_t>(face / per_group));
+  REQUIRE(f.group_names.front() == "grp_0");
+  REQUIRE(f.group_names.back() ==
+          "grp_" + std::to_string(face / per_group - 1));
+  REQUIRE(f.face_groups.size() == static_cast<std::size_t>(face));
+  bool labelled = true;
+  for (int i = 0; i < face; ++i)
+    labelled = labelled && f.face_groups[i] == i / per_group;
+  REQUIRE(labelled);
+  REQUIRE(complete_faces_name_their_positions(f));
+}
+
+TEST_CASE("partitions: one late group leaves every earlier face on default",
+          "[io][read_obj][complete][groups][partitions]") {
+  const int n = 90000;
+  const int before = 10;
+  auto p = temp_path(".obj");
+  cleanup g{p};
+  std::string s = complete_position_block(n);
+  int face = 0;
+  for (int i = 0; i + 2 < n; i += 3) {
+    if (face == before)
+      s += "g late\n";
+    ++face;
+    s += "f " + std::to_string(i + 1) + " " + std::to_string(i + 2) + " " +
+         std::to_string(i + 3) + "\n";
+  }
+  REQUIRE(s.size() > 4 * 256 * 1024);
+  write_text(p, s);
+
+  auto f = tf::read_obj(p.string(), tf::complete);
+  REQUIRE(f.group_names.size() == 2);
+  REQUIRE(f.group_names[0] == "default");
+  REQUIRE(f.group_names[1] == "late");
+  bool labelled = true;
+  for (int i = 0; i < face; ++i)
+    labelled = labelled && f.face_groups[i] == (i < before ? 0 : 1);
+  REQUIRE(labelled);
+}
+
+TEST_CASE("partitions: objects and groups carry independently",
+          "[io][read_obj][complete][groups][partitions]") {
+  const int n = 90000;
+  const int per_object = 9000;
+  const int per_group = 1500;
+  auto p = temp_path(".obj");
+  cleanup g{p};
+  std::string s = complete_position_block(n);
+  int face = 0;
+  for (int i = 0; i + 2 < n; i += 3) {
+    if (face % per_object == 0)
+      s += "o obj_" + std::to_string(face / per_object) + "\n";
+    if (face % per_group == 0)
+      s += "g grp_" + std::to_string(face / per_group) + "\n";
+    ++face;
+    s += "f " + std::to_string(i + 1) + " " + std::to_string(i + 2) + " " +
+         std::to_string(i + 3) + "\n";
+  }
+  write_text(p, s);
+
+  auto f = tf::read_obj(p.string(), tf::complete);
+  REQUIRE(f.object_names.size() ==
+          static_cast<std::size_t>((face + per_object - 1) / per_object));
+  REQUIRE(f.group_names.size() ==
+          static_cast<std::size_t>((face + per_group - 1) / per_group));
+  bool labelled = true;
+  for (int i = 0; i < face; ++i)
+    labelled = labelled && f.face_objects[i] == i / per_object &&
+               f.face_groups[i] == i / per_group;
+  REQUIRE(labelled);
+}
+
+TEST_CASE("partitions: attribute seams split vertices and stay aligned",
+          "[io][read_obj][complete][dedup][partitions]") {
+  // Position v is named with attribute 2v and 2v+1, so it becomes two output
+  // vertices whose texture and normal must agree on which one they came from.
+  const int n = 20000;
+  auto p = temp_path(".obj");
+  cleanup g{p};
+  std::string s = complete_position_block(n);
+  for (int a = 0; a < 2 * n; ++a)
+    s += "vt " + std::to_string(a) + " 0\n";
+  for (int a = 0; a < 2 * n; ++a)
+    s += "vn " + std::to_string(a) + " 0 1\n";
+  for (int i = 0; i + 2 < n; ++i) {
+    s += "f";
+    for (int k = 0; k < 3; ++k) {
+      int v = i + k;
+      int a = 1 + 2 * v + (i % 2);
+      s += " " + std::to_string(v + 1) + "/" + std::to_string(a) + "/" +
+           std::to_string(a);
+    }
+    s += "\n";
+  }
+  REQUIRE(s.size() > 4 * 256 * 1024);
+  write_text(p, s);
+
+  auto f = tf::read_obj(p.string(), tf::complete);
+  REQUIRE(f.polygons.points().size() > static_cast<std::size_t>(n));
+  REQUIRE(f.normals.size() == f.polygons.points().size());
+  REQUIRE(f.textures.size() == f.polygons.points().size());
+  bool aligned = true;
+  for (std::size_t k = 0; k < f.polygons.points().size(); ++k) {
+    auto attribute = static_cast<int>(f.textures[k][0]);
+    aligned = aligned && f.normals[k][0] == f.textures[k][0] &&
+              f.polygons.points()[k][0] == static_cast<float>(attribute / 2);
+  }
+  REQUIRE(aligned);
+}
+
+TEST_CASE("partitions: the face mode may be stated by a later partition",
+          "[io][read_obj][complete][partitions]") {
+  const int n = 60000;
+  auto p = temp_path(".obj");
+  cleanup g{p};
+  std::string s = complete_position_block(n);
+  for (int i = 0; i < n; ++i)
+    s += "vn 0 0 1\n";
+  for (int i = 0; i + 2 < n; i += 3) {
+    s += "f";
+    for (int k = 0; k < 3; ++k) {
+      auto v = std::to_string(i + 1 + k);
+      s += " " + v + "//" + v;
+    }
+    s += "\n";
+  }
+  REQUIRE(s.size() > 4 * 256 * 1024);
+  write_text(p, s);
+
+  auto f = tf::read_obj(p.string(), tf::complete);
+  REQUIRE(f.polygons.points().size() == static_cast<std::size_t>(n));
+  REQUIRE(f.normals.size() == static_cast<std::size_t>(n));
+  REQUIRE(f.textures.size() == 0);
+  REQUIRE(complete_faces_name_their_positions(f));
+}
+
+TEST_CASE("partitions: a face mode change across partitions returns empty",
+          "[io][read_obj][complete][error][partitions]") {
+  const int n = 90000;
+  auto p = temp_path(".obj");
+  cleanup g{p};
+  std::string s = complete_position_block(n);
+  for (int i = 0; i < n; ++i)
+    s += "vt 0.5 0.5\n";
+  for (int i = 0; i + 2 < n; i += 3) {
+    const bool textured = i > n / 2;
+    s += "f";
+    for (int k = 0; k < 3; ++k) {
+      auto v = std::to_string(i + 1 + k);
+      s += " " + v + (textured ? "/" + v : "");
+    }
+    s += "\n";
+  }
+  write_text(p, s);
+
+  auto f = tf::read_obj(p.string(), tf::complete);
+  REQUIRE(f.polygons.points().size() == 0);
+  REQUIRE(f.polygons.faces().size() == 0);
+}
+
+TEST_CASE("partitions: mixed arity faces keep their spans",
+          "[io][read_obj][complete][ngon][partitions]") {
+  const int n = 90000;
+  auto p = temp_path(".obj");
+  cleanup g{p};
+  std::string s = complete_position_block(n);
+  int face = 0;
+  for (int i = 0; i + 6 < n; i += 6) {
+    int arity = 3 + face % 4;
+    s += "f";
+    for (int k = 0; k < arity; ++k)
+      s += " " + std::to_string(i + 1 + k);
+    s += "\n";
+    ++face;
+  }
+  REQUIRE(s.size() > 4 * 256 * 1024);
+  write_text(p, s);
+
+  auto f = tf::read_obj(p.string(), tf::complete);
+  REQUIRE(f.polygons.faces().size() == static_cast<std::size_t>(face));
+  bool spanned = true;
+  for (int i = 0; i < face; ++i)
+    spanned = spanned && f.polygons.faces()[i].size() ==
+                             static_cast<std::size_t>(3 + i % 4);
+  REQUIRE(spanned);
+}
+
+TEST_CASE("complete: positions no face names are dropped",
+          "[io][read_obj][complete][dedup]") {
+  auto p = temp_path(".obj");
+  cleanup g{p};
+  write_text(p, "v 0 0 0\nv 9 9 9\nv 1 0 0\nv 8 8 8\nv 0 1 0\nf 1 3 5\n");
+  auto f = tf::read_obj(p.string(), tf::complete);
+  REQUIRE(f.polygons.points().size() == 3);
+  REQUIRE(find_pt(f, 9, 9, 9) == -1);
+  REQUIRE(find_pt(f, 8, 8, 8) == -1);
+  REQUIRE(find_pt(f, 0, 0, 0) >= 0);
+  REQUIRE(find_pt(f, 1, 0, 0) >= 0);
+  REQUIRE(find_pt(f, 0, 1, 0) >= 0);
+}
+
+TEST_CASE("complete: a face token the parser refuses returns empty",
+          "[io][read_obj][complete][error]") {
+  auto p = temp_path(".obj");
+  cleanup g{p};
+  write_text(p, "v 0 0 0\nv 1 0 0\nv 0 1 0\nf /1 2 3\n");
+  REQUIRE(tf::read_obj(p.string(), tf::complete).polygons.points().size() == 0);
+  write_text(p, "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1a/2 3 4\n");
+  REQUIRE(tf::read_obj(p.string(), tf::complete).polygons.points().size() == 0);
+  write_text(p, "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1/\n");
+  REQUIRE(tf::read_obj(p.string(), tf::complete).polygons.points().size() == 0);
+  write_text(p, "v 0 0 0\nv 1 0 0\nv 0 1 0\nf # only a comment\n");
+  REQUIRE(tf::read_obj(p.string(), tf::complete).polygons.points().size() == 0);
+}
+
+// =============================================================================
+// Cross-reader agreement: the three entries on one file
+// =============================================================================
+
+namespace {
+
+// Every position is named by a face, so the complete read's deduplicated
+// vertices are the file's positions in file order and the three readers can be
+// compared corner for corner.
+auto cross_triangle_obj(int n_positions) -> std::string {
+  std::string s;
+  for (int i = 0; i < n_positions; ++i)
+    s += "v " + std::to_string(i) + " " + std::to_string(i % 7) + " " +
+         std::to_string(i % 3) + "\n";
+  for (int i = 0; i + 2 < n_positions; i += 3)
+    s += "f " + std::to_string(i + 1) + " " + std::to_string(i + 2) + " " +
+         std::to_string(i + 3) + "\n";
+  return s;
+}
+
+template <typename A, typename B>
+auto cross_same_points(const A &left, const B &right) -> bool {
+  if (left.size() != right.size())
+    return false;
+  for (std::size_t i = 0; i < left.size(); ++i)
+    for (std::size_t k = 0; k < 3; ++k)
+      if (left[i][k] != right[i][k])
+        return false;
+  return true;
+}
+
+} // namespace
+
+TEST_CASE("cross: the positions-only and complete reads agree on geometry",
+          "[io][read_obj][complete][cross]") {
+  const int n = 90000;
+  auto p = temp_path(".obj");
+  cleanup g{p};
+  auto s = cross_triangle_obj(n);
+  REQUIRE(s.size() > 4 * 256 * 1024);
+  write_text(p, s);
+
+  auto dynamic_mesh = tf::read_obj(p.string());
+  auto complete_mesh = tf::read_obj(p.string(), tf::complete);
+
+  REQUIRE(cross_same_points(dynamic_mesh.points(),
+                            complete_mesh.polygons.points()));
+  REQUIRE(dynamic_mesh.faces().size() == complete_mesh.polygons.faces().size());
+  bool same_faces = true;
+  for (std::size_t i = 0; i < dynamic_mesh.faces().size(); ++i) {
+    auto left = dynamic_mesh.faces()[i];
+    auto right = complete_mesh.polygons.faces()[i];
+    same_faces = same_faces && left.size() == right.size();
+    if (!same_faces)
+      break;
+    for (std::size_t k = 0; k < left.size(); ++k)
+      same_faces = same_faces && left[k] == right[k];
+  }
+  REQUIRE(same_faces);
+}
+
+TEST_CASE("cross: the fixed-arity and positions-only reads agree on triangles",
+          "[io][read_obj][cross]") {
+  const int n = 90000;
+  auto p = temp_path(".obj");
+  cleanup g{p};
+  auto s = cross_triangle_obj(n);
+  REQUIRE(s.size() > 4 * 256 * 1024);
+  write_text(p, s);
+
+  auto fixed_mesh = tf::read_obj<int, 3>(p.string());
+  auto dynamic_mesh = tf::read_obj(p.string());
+
+  REQUIRE(cross_same_points(fixed_mesh.points(), dynamic_mesh.points()));
+  REQUIRE(fixed_mesh.faces().size() == dynamic_mesh.faces().size());
+  bool same_faces = true;
+  for (std::size_t i = 0; i < fixed_mesh.faces().size(); ++i) {
+    auto left = fixed_mesh.faces()[i];
+    auto right = dynamic_mesh.faces()[i];
+    same_faces = same_faces && right.size() == 3;
+    if (!same_faces)
+      break;
+    for (std::size_t k = 0; k < 3; ++k)
+      same_faces = same_faces && left[k] == right[k];
+  }
+  REQUIRE(same_faces);
+}
+
+TEST_CASE("cross: a face with too few corners is dropped by one reader and "
+          "refused by the others",
+          "[io][read_obj][complete][cross][error]") {
+  auto p = temp_path(".obj");
+  cleanup g{p};
+  write_text(p, "v 0 0 0\nv 1 0 0\nv 0 1 0\nv 1 1 0\n"
+                "f 1 2 3\n"
+                "f 1 2\n"
+                "f 2 4 3\n");
+
+  // The mixed-arity read drops the short face and keeps the rest.
+  auto dynamic_mesh = tf::read_obj(p.string());
+  REQUIRE(dynamic_mesh.faces().size() == 2);
+  REQUIRE(dynamic_mesh.faces()[1][0] == 1);
+  REQUIRE(dynamic_mesh.faces()[1][1] == 3);
+  REQUIRE(dynamic_mesh.faces()[1][2] == 2);
+
+  // The complete read refuses the file outright.
+  auto complete_mesh = tf::read_obj(p.string(), tf::complete);
+  REQUIRE(complete_mesh.polygons.faces().size() == 0);
+  REQUIRE(complete_mesh.polygons.points().size() == 0);
+
+  // The fixed-arity read refuses it too: the face is not an `Ngon`.
+  auto fixed_mesh = tf::read_obj<int, 3>(p.string());
+  REQUIRE(fixed_mesh.faces().size() == 0);
+}
+
+TEST_CASE("cross: an out-of-range vertex index is refused by all three "
+          "readers",
+          "[io][read_obj][complete][cross][error]") {
+  auto p = temp_path(".obj");
+  cleanup g{p};
+  write_text(p, "v 0 0 0\nv 1 0 0\nv 0 1 0\n"
+                "f 1 2 3\n"
+                "f 1 2 999999\n");
+
+  auto dynamic_mesh = tf::read_obj(p.string());
+  REQUIRE(dynamic_mesh.faces().size() == 0);
+  REQUIRE(dynamic_mesh.points().size() == 0);
+
+  auto fixed_mesh = tf::read_obj<int, 3>(p.string());
+  REQUIRE(fixed_mesh.faces().size() == 0);
+  REQUIRE(fixed_mesh.points().size() == 0);
+
+  auto complete_mesh = tf::read_obj(p.string(), tf::complete);
+  REQUIRE(complete_mesh.polygons.faces().size() == 0);
+  REQUIRE(complete_mesh.polygons.points().size() == 0);
+}
+
+// =============================================================================
+// Stated arity: read_obj<Ngon>(path, tf::complete)
+// =============================================================================
+
+namespace {
+
+// An attributed all-triangle file with groups and objects, larger than the
+// reader's partition target.
+auto arity_attributed_obj(int n_positions) -> std::string {
+  std::string s;
+  for (int i = 0; i < n_positions; ++i)
+    s += "v " + std::to_string(i) + " " + std::to_string(i % 7) + " 0\n";
+  for (int i = 0; i < n_positions; ++i)
+    s += "vt " + std::to_string(i % 977) + " 0\n";
+  for (int i = 0; i < n_positions; ++i)
+    s += "vn " + std::to_string(i % 13) + " 0 1\n";
+  int face = 0;
+  for (int i = 0; i + 2 < n_positions; i += 3) {
+    if (face % 4000 == 0) {
+      s += "o obj_" + std::to_string(face / 4000) + "\n";
+      s += "g grp_" + std::to_string(face / 4000) + "\n";
+    }
+    ++face;
+    s += "f";
+    for (int k = 0; k < 3; ++k) {
+      auto v = std::to_string(i + 1 + k);
+      s += " " + v + "/" + v + "/" + v;
+    }
+    s += "\n";
+  }
+  return s;
+}
+
+} // namespace
+
+TEST_CASE("arity: a stated arity reads what the mixed-size read reads",
+          "[io][read_obj][complete][arity][partitions]") {
+  const int n = 60000;
+  auto p = temp_path(".obj");
+  cleanup g{p};
+  auto s = arity_attributed_obj(n);
+  REQUIRE(s.size() > 4 * 256 * 1024);
+  write_text(p, s);
+
+  auto mixed = tf::read_obj(p.string(), tf::complete);
+  auto fixed = tf::read_obj<3>(p.string(), tf::complete);
+  static_assert(std::is_same_v<decltype(fixed), tf::obj_file<int, float, 3>>);
+
+  REQUIRE(fixed.polygons.points().size() == mixed.polygons.points().size());
+  REQUIRE(fixed.polygons.faces().size() == mixed.polygons.faces().size());
+  REQUIRE(fixed.normals.size() == mixed.normals.size());
+  REQUIRE(fixed.textures.size() == mixed.textures.size());
+  REQUIRE(fixed.group_names == mixed.group_names);
+  REQUIRE(fixed.object_names == mixed.object_names);
+
+  bool same_vertices = true;
+  for (std::size_t i = 0; i < mixed.polygons.points().size(); ++i) {
+    for (std::size_t k = 0; k < 3; ++k)
+      same_vertices = same_vertices && fixed.polygons.points()[i][k] ==
+                                           mixed.polygons.points()[i][k] &&
+                      fixed.normals[i][k] == mixed.normals[i][k];
+    for (std::size_t k = 0; k < 2; ++k)
+      same_vertices =
+          same_vertices && fixed.textures[i][k] == mixed.textures[i][k];
+  }
+  REQUIRE(same_vertices);
+
+  bool same_faces = true;
+  for (std::size_t i = 0; i < mixed.polygons.faces().size(); ++i) {
+    auto left = fixed.polygons.faces()[i];
+    auto right = mixed.polygons.faces()[i];
+    same_faces = same_faces && right.size() == 3 &&
+                 fixed.face_groups[i] == mixed.face_groups[i] &&
+                 fixed.face_objects[i] == mixed.face_objects[i];
+    if (!same_faces)
+      break;
+    for (std::size_t k = 0; k < 3; ++k)
+      same_faces = same_faces && left[k] == right[k];
+  }
+  REQUIRE(same_faces);
+}
+
+TEST_CASE("arity: a face of another size refuses the read",
+          "[io][read_obj][complete][arity][error]") {
+  auto p = temp_path(".obj");
+  cleanup g{p};
+  write_text(p, "v 0 0 0\nv 1 0 0\nv 1 1 0\nv 0 1 0\n"
+                "f 1 2 3\n"
+                "f 1 2 3 4\n");
+  auto fixed = tf::read_obj<3>(p.string(), tf::complete);
+  REQUIRE(fixed.polygons.faces().size() == 0);
+  REQUIRE(fixed.polygons.points().size() == 0);
+
+  // The mixed-size read takes the same file.
+  auto mixed = tf::read_obj(p.string(), tf::complete);
+  REQUIRE(mixed.polygons.faces().size() == 2);
+}
+
+TEST_CASE("arity: a quad file read as quads",
+          "[io][read_obj][complete][arity]") {
+  auto p = temp_path(".obj");
+  cleanup g{p};
+  write_text(p, "v 0 0 0\nv 1 0 0\nv 1 1 0\nv 0 1 0\nf 1 2 3 4\n");
+  auto quads = tf::read_obj<4>(p.string(), tf::complete);
+  REQUIRE(quads.polygons.faces().size() == 1);
+  REQUIRE(quads.polygons.points().size() == 4);
+}
+
+TEST_CASE("arity: the Index-first and Ngon-first forms agree",
+          "[io][read_obj][complete][arity][api]") {
+  auto p = temp_path(".obj");
+  cleanup g{p};
+  write_text(p, "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n");
+  auto a = tf::read_obj<int64_t, 3>(p.string(), tf::complete);
+  static_assert(std::is_same_v<decltype(a), tf::obj_file<int64_t, float, 3>>);
+  auto b = tf::read_obj<3, int64_t>(p.string(), tf::complete);
+  static_assert(std::is_same_v<decltype(b), tf::obj_file<int64_t, float, 3>>);
+  REQUIRE(a.polygons.faces().size() == 1);
+  REQUIRE(b.polygons.faces().size() == 1);
+
+  std::string data = "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n";
+  auto c = tf::read_obj<3>(tf::make_range(data.data(), data.size()),
+                           tf::complete);
+  static_assert(std::is_same_v<decltype(c), tf::obj_file<int, float, 3>>);
+  REQUIRE(c.polygons.faces().size() == 1);
 }

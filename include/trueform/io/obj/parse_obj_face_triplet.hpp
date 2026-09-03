@@ -20,8 +20,10 @@
 
 namespace tf::io::obj {
 
+/// @brief Parses one face corner, refusing any that does not reference what
+/// the file's first face stated.
 inline auto parse_obj_face_triplet(const char *&cursor, const char *end,
-                                   obj_face_mode &mode,
+                                   obj_face_mode mode,
                                    std::array<int, 3> &output) -> bool {
   int vertex = 0;
   int texture = 0;
@@ -64,9 +66,7 @@ inline auto parse_obj_face_triplet(const char *&cursor, const char *end,
                         : has_texture && !has_normal ? obj_face_mode::v_vt
                         : !has_texture && has_normal ? obj_face_mode::v_vn
                                                      : obj_face_mode::v_vt_vn;
-  if (mode == obj_face_mode::unknown)
-    mode = observed;
-  else if (mode != observed)
+  if (mode != observed)
     return false;
 
   output[0] = vertex - 1;

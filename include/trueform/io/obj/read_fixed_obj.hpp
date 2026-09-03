@@ -16,6 +16,7 @@
 #include "parse_obj_scalars.hpp"
 #include "skip_obj_line.hpp"
 #include "skip_obj_whitespace.hpp"
+#include "validate_obj_face_corners.hpp"
 
 #include "../../core/blocked_buffer.hpp"
 #include "../../core/points_buffer.hpp"
@@ -36,6 +37,7 @@ auto read_fixed_obj(tf::range<const char *, tf::dynamic_size> data,
 
   auto *cursor = data.begin();
   const auto *end = data.end();
+  const auto corner_base = faces.size() * Ngon;
   const auto estimate = data.size() / 28;
   points.reserve(points.size() + estimate);
   faces.reserve(faces.size() + estimate);
@@ -90,7 +92,14 @@ auto read_fixed_obj(tf::range<const char *, tf::dynamic_size> data,
     }
     cursor = skip_obj_line(cursor, end);
   }
-  return true;
+  if (validate_obj_face_corners(
+          tf::make_range(faces.data_buffer().begin() + corner_base,
+                         faces.data_buffer().end()),
+          points.size()))
+    return true;
+  points.clear();
+  faces.clear();
+  return false;
 }
 
 } // namespace tf::io::obj

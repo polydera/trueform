@@ -30,6 +30,8 @@ namespace tf {
 ///
 /// Converts one-based OBJ indices to zero-based indices. Normals and texture
 /// coordinates are ignored.
+///
+/// @pre The file must not be modified for the duration of the read.
 template <typename Index = int, typename Real = float>
 auto read_obj(std::string_view path)
     -> tf::polygons_buffer<Index, Real, 3, tf::dynamic_size> {
@@ -126,6 +128,7 @@ auto read_obj(tf::range<char *, tf::dynamic_size> data)
 /// distinct normal or texture references becomes a distinct output vertex.
 /// The first face fixes whether subsequent references use positions, textures,
 /// normals, or both textures and normals.
+/// The file must not be modified for the duration of the read.
 template <typename Index = int, typename Real = float>
 auto read_obj(std::string_view path, tf::complete_t)
     -> tf::obj_file<Index, Real> {
@@ -134,6 +137,31 @@ auto read_obj(std::string_view path, tf::complete_t)
   if (!reader.read(path, output))
     return {};
   return output;
+}
+
+/// @ingroup io
+/// @brief Read complete OBJ data with fixed-size polygons from a file.
+///
+/// Every face must have exactly `Ngon` corners; a file where one does not
+/// returns an empty `obj_file`.
+/// The file must not be modified for the duration of the read.
+template <typename Index, std::size_t Ngon, typename Real = float>
+auto read_obj(std::string_view path, tf::complete_t)
+    -> tf::obj_file<Index, Real, Ngon> {
+  tf::obj_file<Index, Real, Ngon> output;
+  tf::io::obj_reader reader;
+  if (!reader.read(path, output))
+    return {};
+  return output;
+}
+
+/// @ingroup io
+/// @brief Read complete OBJ data with `Ngon` as the first template argument.
+/// @overload
+template <std::size_t Ngon, typename Index = int, typename Real = float>
+auto read_obj(std::string_view path, tf::complete_t)
+    -> tf::obj_file<Index, Real, Ngon> {
+  return read_obj<Index, Ngon, Real>(path, tf::complete);
 }
 
 /// @ingroup io
@@ -149,6 +177,26 @@ auto read_obj(tf::range<const char *, tf::dynamic_size> data, tf::complete_t)
   return output;
 }
 
+/// @ingroup io
+/// @brief Read complete OBJ data with fixed-size polygons from memory.
+/// @overload
+template <typename Index, std::size_t Ngon, typename Real = float>
+auto read_obj(tf::range<const char *, tf::dynamic_size> data, tf::complete_t)
+    -> tf::obj_file<Index, Real, Ngon> {
+  tf::obj_file<Index, Real, Ngon> output;
+  tf::io::obj_reader reader;
+  if (!reader.read(data, output))
+    return {};
+  return output;
+}
+
+/// @overload
+template <std::size_t Ngon, typename Index = int, typename Real = float>
+auto read_obj(tf::range<const char *, tf::dynamic_size> data, tf::complete_t)
+    -> tf::obj_file<Index, Real, Ngon> {
+  return read_obj<Index, Ngon, Real>(data, tf::complete);
+}
+
 /// @overload
 template <typename Index = int, typename Real = float>
 auto read_obj(tf::range<char *, tf::dynamic_size> data, tf::complete_t)
@@ -156,6 +204,22 @@ auto read_obj(tf::range<char *, tf::dynamic_size> data, tf::complete_t)
   return read_obj<Index, Real>(
       tf::make_range(static_cast<const char *>(data.begin()), data.size()),
       tf::complete);
+}
+
+/// @overload
+template <typename Index, std::size_t Ngon, typename Real = float>
+auto read_obj(tf::range<char *, tf::dynamic_size> data, tf::complete_t)
+    -> tf::obj_file<Index, Real, Ngon> {
+  return read_obj<Index, Ngon, Real>(
+      tf::make_range(static_cast<const char *>(data.begin()), data.size()),
+      tf::complete);
+}
+
+/// @overload
+template <std::size_t Ngon, typename Index = int, typename Real = float>
+auto read_obj(tf::range<char *, tf::dynamic_size> data, tf::complete_t)
+    -> tf::obj_file<Index, Real, Ngon> {
+  return read_obj<Index, Ngon, Real>(data, tf::complete);
 }
 
 } // namespace tf
