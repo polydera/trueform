@@ -61,9 +61,11 @@
 #include "./topology/compute_unduplicated_faces_mask.hpp" // IWYU pragma: export
 #include "./topology/connected_component_labels.hpp" // IWYU pragma: export
 #include "./topology/domain_labels.hpp"              // IWYU pragma: export
+#include "./topology/cdt_config.hpp"                  // IWYU pragma: export
 #include "./topology/cdt_refine_config.hpp"           // IWYU pragma: export
 #include "./topology/cdt_refiner.hpp"                 // IWYU pragma: export
 #include "./topology/cdt_region_mode.hpp"             // IWYU pragma: export
+#include "./topology/return_region_labels.hpp"        // IWYU pragma: export
 #include "./topology/constrained_delaunay_triangulator.hpp" // IWYU pragma: export
 #include "./topology/unconstrained_delaunay_triangulator.hpp" // IWYU pragma: export
 #include "./topology/make_cdt.hpp"                   // IWYU pragma: export

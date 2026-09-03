@@ -12,12 +12,16 @@
  */
 #pragma once
 #include "../../core/algorithm/compose_index_maps.hpp"
+#include "../../core/algorithm/parallel_copy.hpp"
+#include "../../core/buffer.hpp"
 #include "../../core/edges.hpp"
 #include "../../core/points.hpp"
 #include "../../core/polygons.hpp"
+#include "../../core/polygons_buffer.hpp"
 #include "../../core/views/mapped_range.hpp"
 #include "../../reindex/by_mask.hpp"
 #include "../../reindex/return_index_map.hpp"
+#include "../cdt_config.hpp"
 #include "../cdt_region_mode.hpp"
 #include "../constrained_delaunay_triangulator.hpp"
 #include "./delaunay_execution_policy.hpp"
@@ -26,35 +30,57 @@
 
 namespace tf::topology::cdt {
 
-/// Build the retained tier and materialize the inside triangles. Public
-/// `make_cdt` overloads own type deduction; this operation owns the one
+/// Build the retained tier and materialize the result. Public `make_cdt`
+/// overloads own type deduction; this operation owns the one
 /// arrays-to-arrays implementation shared by every constrained overload.
-template <bool ReturnIndexMap, typename Index, typename Coord, typename Int,
-          typename PointsPolicy, typename EdgesPolicy, typename... BuildArgs>
+/// `ReturnRegionLabels` selects the unfiltered triangulation plus its
+/// per-triangle labels built in `config.regions` mode; the default path
+/// reads the same labels' nesting parity to keep the interior triangles.
+template <bool ReturnIndexMap, bool ReturnRegionLabels, typename Index,
+          typename Coord, typename Int, typename PointsPolicy,
+          typename EdgesPolicy, typename... BuildArgs>
 auto make_constrained_delaunay(const tf::points<PointsPolicy> &points,
                                const tf::edges<EdgesPolicy> &edges,
+                               tf::cdt_config config,
                                BuildArgs &&...build_args) {
   tf::constrained_delaunay_triangulator<
       Index, Coord, Int, tf::topology::cdt::parallel_delaunay_execution_policy>
       triangulator;
   triangulator.build(points, edges, static_cast<BuildArgs &&>(build_args)...,
-                     tf::cdt_region_mode::nesting);
+                     config.split_constraints,
+                     ReturnRegionLabels ? config.regions
+                                        : tf::cdt_region_mode::nesting);
 
   auto polygons =
       tf::make_polygons(triangulator.faces(), triangulator.converted_points());
-  auto interior = tf::make_mapped_range(
-      triangulator.region_labels(), [](auto label) { return label % 2 == 1; });
 
-  if constexpr (ReturnIndexMap) {
-    auto reindexed =
-        tf::reindexed_by_mask<Index>(polygons, interior, tf::return_index_map);
-    auto &point_index_map = std::get<2>(reindexed);
-    auto composed =
-        tf::compose_index_maps(triangulator.index_map(), point_index_map);
-    return std::make_pair(std::move(std::get<0>(reindexed)),
-                          std::move(composed));
+  if constexpr (ReturnRegionLabels) {
+    auto out = tf::make_polygons_buffer(polygons);
+    tf::buffer<Index> labels;
+    labels.allocate(triangulator.region_labels().size());
+    tf::parallel_copy(triangulator.region_labels(), labels);
+    if constexpr (ReturnIndexMap) {
+      return std::make_tuple(std::move(out), std::move(labels),
+                             std::move(triangulator.index_map()));
+    } else {
+      return std::make_pair(std::move(out), std::move(labels));
+    }
   } else {
-    return tf::reindexed_by_mask<Index>(polygons, interior);
+    auto interior =
+        tf::make_mapped_range(triangulator.region_labels(),
+                              [](auto label) { return label % 2 == 1; });
+
+    if constexpr (ReturnIndexMap) {
+      auto reindexed = tf::reindexed_by_mask<Index>(polygons, interior,
+                                                    tf::return_index_map);
+      auto &point_index_map = std::get<2>(reindexed);
+      auto composed =
+          tf::compose_index_maps(triangulator.index_map(), point_index_map);
+      return std::make_pair(std::move(std::get<0>(reindexed)),
+                            std::move(composed));
+    } else {
+      return tf::reindexed_by_mask<Index>(polygons, interior);
+    }
   }
 }
 
