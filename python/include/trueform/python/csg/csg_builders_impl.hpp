@@ -21,15 +21,6 @@
 
 namespace tf::py {
 
-template <typename Form0, typename Form1>
-auto build_pair_csg_graph(const Form0 &form0, const Form1 &form1,
-                          tf::range<const int *, tf::dynamic_size> sheets,
-                          tf::arrangement_config config)
-    -> pair_csg_graph_t<Form0, Form1> {
-  return tf::csg::csg_graph_over<tf::none_t>(
-      build_pair_arrangement(form0, form1, config), sheets);
-}
-
 template <typename Forms>
 auto build_range_csg_graph(Forms forms,
                            tf::range<const int *, tf::dynamic_size> sheets,

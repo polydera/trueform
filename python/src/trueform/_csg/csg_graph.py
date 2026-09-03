@@ -42,8 +42,11 @@ class CsgGraph:
     Parameters
     ----------
     meshes : list of Mesh
-        Two or more closed 3D triangle meshes (triangulate n-gon meshes
-        first). All must share index and real dtypes.
+        One or more closed 3D meshes, all triangle or all dynamic (a
+        mixed set needs one representation before the build). All must
+        share index and real dtypes. A single mesh is
+        its own self arrangement: its self-intersections are the whole
+        cut, and ``domains()`` classifies its overlap pockets.
     sheets : list of int, optional
         Indices of operands declared as oriented open sheets: they cut
         volumes through the same algebra without enclosing one.
@@ -84,8 +87,8 @@ class CsgGraph:
         within: bool = False,
         triangulation: str = "cdt",
     ):
-        if len(meshes) < 2:
-            raise ValueError("CsgGraph needs at least two meshes")
+        if not meshes:
+            raise ValueError("CsgGraph needs at least one mesh")
         meta = extract_meta(meshes[0])
         for m in meshes:
             m_meta = extract_meta(m)
@@ -97,10 +100,16 @@ class CsgGraph:
                 raise ValueError(
                     "all meshes must share index dtype, real dtype, and dims"
                 )
-            if m.is_dynamic:
+            if not m.is_dynamic and m.ngon != 3:
                 raise ValueError(
-                    "CsgGraph takes triangle meshes; call triangulated() on "
-                    "n-gon meshes first"
+                    "CsgGraph takes triangle or dynamic meshes; call "
+                    "triangulated() on fixed n-gon meshes first"
+                )
+            if m_meta.ngon != meta.ngon:
+                raise ValueError(
+                    "CsgGraph operands must be all triangle or all dynamic; "
+                    "convert the triangle operands to dynamic faces (or "
+                    "triangulated() the dynamic ones) first"
                 )
         if meta.dims != 3:
             raise ValueError("CsgGraph requires 3D meshes")
@@ -124,6 +133,7 @@ class CsgGraph:
             mode_int |= _WITHIN
 
         self._forms = list(meshes)
+        self._is_dynamic = meshes[0].is_dynamic
         self._sheets = tuple(sheet_list)
         self._mode = mode
         self._tolerance = tolerance
@@ -145,6 +155,13 @@ class CsgGraph:
             tolerance,
             _TRIANGULATION_MAP[triangulation],
         )
+
+    def _wrap_mesh(self, mesh_pair):
+        """Native dynamic faces cross as (offsets, data); rewrap them."""
+        if not self._is_dynamic:
+            return mesh_pair
+        (offsets, data), points = mesh_pair
+        return OffsetBlockedArray(offsets, data), points
 
     # -- remembered construction state (no native calls) -----------------
     @property
@@ -197,6 +214,26 @@ class CsgGraph:
         """
         (off, data), pts = self._wrapper.intersection_curves()
         return OffsetBlockedArray(off, data), pts
+
+    def outer_shell(self):
+        """
+        The outer shell of the arrangement: the boundary between the
+        unbounded universe and everything the operands enclose, oriented
+        outward.
+
+        Structural read — no expression, no options. Internal structure
+        (overlap membranes, buried faces, enclosed cavities) has the same
+        domain on both sides and never reaches the boundary; open
+        fragments bound no volume and cannot survive into the shell.
+
+        Returns
+        -------
+        (faces, points) : tuple
+            The shell mesh, in the graph's index and real dtypes;
+            ``faces`` is an ndarray for a triangle graph, an
+            :class:`OffsetBlockedArray` for a dynamic one.
+        """
+        return self._wrap_mesh(self._wrapper.outer_shell())
 
     # -- queries ----------------------------------------------------------
     def _selection_tags(self, selection):
@@ -255,8 +292,9 @@ class CsgGraph:
 
         Returns
         -------
-        (faces, points) : tuple of np.ndarray
-            The result mesh.
+        (faces, points) : tuple
+            The result mesh; ``faces`` is an ndarray for a triangle
+            graph, an :class:`OffsetBlockedArray` for a dynamic one.
         tag_labels, face_labels : np.ndarray
             Only when ``return_source_ids=True``.
         index_map : MeshIndexMap
@@ -271,7 +309,7 @@ class CsgGraph:
         if return_index_map:
             (mesh, ptl, pl, ftl, fl, (pf_off, pf_data), uncut, n_op, n_tags,
              n_out) = self._wrapper.mesh_with_index_map(program, tags, kind)
-            return mesh, MeshIndexMap(
+            return self._wrap_mesh(mesh), MeshIndexMap(
                 point_tag_labels=ptl, point_labels=pl, face_tag_labels=ftl,
                 face_labels=fl,
                 point_f=OffsetBlockedArray(pf_off, pf_data),
@@ -279,8 +317,10 @@ class CsgGraph:
                 n_original_points=n_op,
                 n_tags=n_tags, n_output_points=n_out)
         if return_source_ids:
-            return self._wrapper.mesh_with_labels(program, tags, kind)
-        return self._wrapper.mesh(program, tags, kind)
+            mesh, tag_labels, face_labels = self._wrapper.mesh_with_labels(
+                program, tags, kind)
+            return self._wrap_mesh(mesh), tag_labels, face_labels
+        return self._wrap_mesh(self._wrapper.mesh(program, tags, kind))
 
     def domains(
         self,
@@ -305,10 +345,12 @@ class CsgGraph:
             contributed; ``None`` (default) emits every operand's. The kept
             domains are unchanged — only whose surface reaches the output.
         exclude_outer_shell : bool, default True
-            Drop the unbounded outside domain.
+            Drop every domain no operand claims — the unbounded outside
+            among them.
         ignore_open_fragments : bool, default True
-            Fuse open fragments (fins, damage) instead of letting them
-            partition volumes.
+            Fuse the open regions a sheet's dangling parts bound back into
+            their surroundings. Sheets only: a volume's open fragments are
+            always fused, before any read.
         return_source_ids : bool, default False
             Also return per-cell face provenance as two OffsetBlockedArrays
             parallel to the cell list.
@@ -342,7 +384,7 @@ class CsgGraph:
              inclusion) = (
                 self._wrapper.domains_with_index_map(program, config, tags)
             )
-            return cells, ids, DomainsIndexMap(
+            return [self._wrap_mesh(c) for c in cells], ids, DomainsIndexMap(
                 face_tag_blocks=OffsetBlockedArray(ft_off, ft_data),
                 face_blocks=OffsetBlockedArray(f_off, f_data),
                 point_tag_blocks=OffsetBlockedArray(pt_off, pt_data),
@@ -354,13 +396,13 @@ class CsgGraph:
                 self._wrapper.domains_with_labels(program, config, tags)
             )
             return (
-                cells,
+                [self._wrap_mesh(c) for c in cells],
                 ids,
                 OffsetBlockedArray(t_off, t_data),
                 OffsetBlockedArray(f_off, f_data),
             )
         cells, ids = self._wrapper.domains(program, config, tags)
-        return cells, ids
+        return [self._wrap_mesh(c) for c in cells], ids
 
     def __repr__(self):
         return (

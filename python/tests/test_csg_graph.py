@@ -157,6 +157,29 @@ def test_domains_partition():
         assert len(tb) == len(f)
 
 
+def test_one_mesh_graph_classifies_self_overlap():
+    # Two overlapping cubes concatenated into one soup: the single
+    # operand is its own self arrangement.
+    a = make_box((0, 0, 0))
+    b = make_box((0.5, 0.5, 0.5))
+    faces = np.vstack([a.faces, b.faces + len(a.points)]).astype(np.int32)
+    points = np.vstack([a.points, b.points]).astype(np.float32)
+    soup = tf.Mesh(faces, points)
+
+    graph = tf.CsgGraph([soup])
+    cells, ids = graph.domains()
+    # A-minus-overlap, B-minus-overlap, overlap
+    assert len(cells) == 3
+    for f, p in cells:
+        assert is_closed(f)
+    vols = sorted(abs(signed_volume(f, p)) for f, p in cells)
+    assert np.allclose(vols, [0.125, 0.875, 0.875], atol=1e-6)
+
+    mesh_faces, mesh_points = graph.mesh()
+    assert len(mesh_faces) > len(faces)
+    assert mesh_points.dtype == np.float32
+
+
 @pytest.mark.parametrize("triangulation", ["cdt", "refined_cdt"])
 def test_triangulation_types(triangulation):
     a = make_box((0, 0, 0))
@@ -537,7 +560,7 @@ def test_input_validation():
     a = make_box((0, 0, 0))
     b64 = make_box((0.4, 0.3, 0.2), real_dtype=np.float64)
     with pytest.raises(ValueError):
-        tf.CsgGraph([a])
+        tf.CsgGraph([])
     with pytest.raises(ValueError):
         tf.CsgGraph([a, b64])
     with pytest.raises(ValueError):

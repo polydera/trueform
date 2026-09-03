@@ -93,6 +93,40 @@ def test_outer_shell_rejects_non_mesh():
         tf.outer_shell((faces, points))
 
 
+def _cube_mesh(center):
+    c = np.asarray(center, dtype=np.float32)
+    points = np.array(
+        [[x, y, z] for x in (-0.5, 0.5) for y in (-0.5, 0.5)
+         for z in (-0.5, 0.5)],
+        dtype=np.float32,
+    ) + c
+    faces = np.array(
+        [[0, 1, 3], [0, 3, 2], [4, 6, 7], [4, 7, 5], [0, 4, 5], [0, 5, 1],
+         [2, 3, 7], [2, 7, 6], [0, 2, 6], [0, 6, 4], [1, 5, 7], [1, 7, 3]],
+        dtype=np.int32,
+    )
+    return tf.Mesh(faces, points)
+
+
+def test_graph_outer_shell_matches_union():
+    # The graph's own shell read: on two overlapping cubes it is the
+    # boundary of their union.
+    a = _cube_mesh((0.0, 0.0, 0.0))
+    b = _cube_mesh((0.5, 0.5, 0.5))
+    graph = tf.CsgGraph([a, b])
+
+    faces, points = graph.outer_shell()
+    assert faces.dtype == np.int32
+    assert points.dtype == np.float32
+    _assert_closed(faces)
+
+    union = tf.Mesh(*graph.mesh(tf.op(0) | tf.op(1)))
+    assert tf.signed_volume(tf.Mesh(faces, points)) == pytest.approx(
+        tf.signed_volume(union), rel=1e-6)
+    assert tf.signed_volume(tf.Mesh(faces, points)) == pytest.approx(
+        1.875, rel=1e-5)
+
+
 # ==============================================================================
 # Main runner
 # ==============================================================================

@@ -15,8 +15,9 @@
 
 namespace tf::py {
 
-auto register_csg_graph_int3float3d(nanobind::module_ &m) -> void {
-  register_csg_graph<int, float, 3>(m, "CsgGraph_int3float3d");
+auto register_csg_graph_int64dynfloat3d(nanobind::module_ &m) -> void {
+  register_csg_graph<std::int64_t, float, tf::dynamic_size>(
+      m, "CsgGraph_int64dynfloat3d");
 }
 
 } // namespace tf::py

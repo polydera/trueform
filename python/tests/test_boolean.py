@@ -504,6 +504,32 @@ def test_mixed_mesh_types(index_dtype, dtype):
     np.testing.assert_allclose(result_volume, expected_volume, rtol=0.01)
 
 
+@pytest.mark.parametrize("dtype", REAL_DTYPES)
+def test_mixed_mesh_types_with_transformation(dtype):
+    """A transformed operand survives the mixed-pair normalization: the
+    triangle mesh is rebuilt as dynamic AND widened, carrying its frame."""
+    faces1, points1 = tf.make_box_mesh(1.0, 1.0, 1.0, dtype=dtype,
+                                       index_dtype=np.int32)
+    tri = prepare_mesh(make_mesh(faces1, points1, 'triangle'))
+    T = np.eye(4, dtype=dtype)
+    T[0, 3] = 0.5
+    tri.transformation = T
+
+    faces2, points2 = tf.make_box_mesh(1.0, 1.0, 1.0, dtype=dtype,
+                                       index_dtype=np.int64)
+    dyn = prepare_mesh(make_mesh(faces2, points2, 'dynamic'))
+
+    (union_faces, union_points), labels, _fl = tf.boolean_union(tri, dyn)
+    assert isinstance(union_faces, tf.OffsetBlockedArray)
+    assert union_faces.dtype == np.dtype(np.int64)
+    np.testing.assert_allclose(
+        tf.volume((union_faces, union_points)), 1.5, rtol=0.01)
+
+    (inter_faces, inter_points), _l, _f = tf.boolean_intersection(tri, dyn)
+    np.testing.assert_allclose(
+        tf.volume((inter_faces, inter_points)), 0.5, rtol=0.01)
+
+
 # ==============================================================================
 # Test 7: Error Handling
 # ==============================================================================

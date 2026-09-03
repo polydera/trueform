@@ -21,28 +21,14 @@
 #include <trueform/csg/csg_graph.hpp>
 #include <trueform/arrangement/arrangement_config.hpp>
 #include <trueform/arrangement/arrangement_graph.hpp>
-#include <trueform/arrangement/policy/arrangement_pair_policy.hpp>
 #include <trueform/arrangement/policy/arrangement_range_policy.hpp>
 
 namespace tf::py {
-
-template <typename Form0, typename Form1>
-using pair_csg_graph_t =
-    tf::csg_graph<tf::arrangement::arrangement_pair_policy<Form0, tf::none_t,
-                                                           Form1, tf::none_t>,
-                  tf::none_t, tf::arrangement_graph>;
 
 template <typename Forms>
 using range_csg_graph_t =
     tf::csg_graph<tf::arrangement::arrangement_range_policy<Forms, tf::none_t>,
                   tf::none_t, tf::arrangement_graph>;
-
-/// Two operands, possibly of different types.
-template <typename Form0, typename Form1>
-auto build_pair_csg_graph(const Form0 &form0, const Form1 &form1,
-                          tf::range<const int *, tf::dynamic_size> sheets,
-                          tf::arrangement_config config)
-    -> pair_csg_graph_t<Form0, Form1>;
 
 /// N operands. The graph stores the range, so the forms behind it must
 /// outlive the graph.

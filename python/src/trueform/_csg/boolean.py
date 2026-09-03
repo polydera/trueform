@@ -9,25 +9,21 @@ https://github.com/polydera/trueform
 
 import numpy as np
 from typing import Optional, Sequence, Tuple, Union
-from .. import _trueform
 from .._spatial import Mesh
-from .._core import OffsetBlockedArray
-from .._dispatch import extract_meta, build_suffix_pair, canonicalize_index_order
+from .._core import OffsetBlockedArray, as_offset_blocked
+from .csg_graph import CsgGraph
+from .expr import op
 
 
-# Operation type constants (map to C++ tf::boolean_op enum)
-_OP_UNION = 0  # boolean_op::merge
-_OP_INTERSECTION = 1  # boolean_op::intersection
-_OP_DIFFERENCE = 2  # boolean_op::left_difference
-_OP_RIGHT_DIFFERENCE = 3  # boolean_op::right_difference
+_OP_UNION = 0
+_OP_INTERSECTION = 1
+_OP_DIFFERENCE = 2
 
-# Swapping the operands to match an implemented index-type ordering swaps
-# what the operation means. Union and intersection are symmetric; a
-# difference has to change sides with them.
-_OP_SWAPPED = {
-    _OP_UNION: _OP_UNION,
-    _OP_INTERSECTION: _OP_INTERSECTION,
-    _OP_DIFFERENCE: _OP_RIGHT_DIFFERENCE,
+# The graph expression each pairwise operation answers.
+_OP_EXPR = {
+    _OP_UNION: lambda: op(0) | op(1),
+    _OP_INTERSECTION: lambda: op(0) & op(1),
+    _OP_DIFFERENCE: lambda: op(0) - op(1),
 }
 
 
@@ -226,7 +222,8 @@ def _boolean_impl(mesh0, mesh1, op_int, return_curves, sheets=None):
     """
     Internal implementation for boolean operations.
 
-    Handles validation, index type symmetry, and dispatching to C++.
+    Validates the pair, normalizes it to one representation, and answers
+    the operation as a CsgGraph expression.
     """
 
     # 1. VALIDATE INPUTS ARE MESH OBJECTS
@@ -269,60 +266,57 @@ def _boolean_impl(mesh0, mesh1, op_int, return_curves, sheets=None):
             f"Convert both meshes to the same dtype (float32 or float64)."
         )
 
-    # 5. HANDLE INDEX TYPE SYMMETRY
-    # C++ only implements: int×int, int×int64, int64×int64
-    # If we have int64×int, swap to int×int64
+    # 5. VALIDATE SHEETS
     sheet_ids = [int(s) for s in (sheets or ())]
     for s in sheet_ids:
         if s not in (0, 1):
             raise ValueError(f"sheets must contain operand ids 0 or 1, got {s}")
 
-    mesh0, mesh1, swapped = canonicalize_index_order(mesh0, mesh1)
-    if swapped:
-        op_int = _OP_SWAPPED[op_int]
-        sheet_ids = [1 - s for s in sheet_ids]
+    # 6. COMPOSE THROUGH THE GRAPH
+    # The graph takes a homogeneous operand set, so a mixed pair is
+    # normalized to one representation first: triangle faces re-expressed
+    # as dynamic blocks, a narrower index dtype widened to int64. Both are
+    # a faces-representation copy; points and transformations carry over.
+    mesh0, mesh1 = _normalized_pair(mesh0, mesh1)
+    graph = CsgGraph([mesh0, mesh1], sheets=sheet_ids)
+    (faces, points), tag_labels, face_labels = graph.mesh(
+        _OP_EXPR[op_int](), return_source_ids=True)
+    labels = tag_labels.astype(np.int8)
 
-    # 6. BUILD SUFFIX FOR C++ FUNCTION
-    meta0 = extract_meta(mesh0)
-    meta1 = extract_meta(mesh1)
-    suffix = build_suffix_pair(meta0, meta1)
-
-    # Determine if result will be dynamic (if either input is dynamic)
-    result_is_dynamic = mesh0.is_dynamic or mesh1.is_dynamic
-
-    # 7. DISPATCH TO C++
     if return_curves:
-        func_name = f"boolean_curves_mesh_mesh_{suffix}"
-        (result_faces, result_points), labels, face_labels, ((paths_offsets, paths_data), curve_points) = getattr(
-            _trueform.csg, func_name
-        )(mesh0._wrapper, mesh1._wrapper, op_int, sheet_ids)
+        paths, curve_points = graph.intersection_curves()
+        return (faces, points), labels, face_labels, (paths, curve_points)
+    return (faces, points), labels, face_labels
 
-        # 8. HANDLE LABEL SWAPPING
-        # CRITICAL: If we swapped meshes, flip labels (0↔1)
-        if swapped:
-            labels = 1 - labels
 
-        # Wrap result faces in OffsetBlockedArray if dynamic
-        if result_is_dynamic:
-            result_faces = OffsetBlockedArray(result_faces[0], result_faces[1])
+def _carrying_transformation(mesh, source):
+    if source.transformation is not None:
+        mesh.transformation = source.transformation
+    return mesh
 
-        # Wrap paths in OffsetBlockedArray
-        paths = OffsetBlockedArray(paths_offsets, paths_data)
 
-        return (result_faces, result_points), labels, face_labels, (paths, curve_points)
+def _as_dynamic(mesh):
+    """The same mesh with triangle faces re-expressed as dynamic blocks."""
+    return _carrying_transformation(
+        Mesh(as_offset_blocked(mesh.faces), mesh.points), mesh)
+
+
+def _widened(mesh):
+    """The same mesh with its faces widened to int64."""
+    if mesh.is_dynamic:
+        faces = OffsetBlockedArray(mesh.faces.offsets.astype(np.int64),
+                                   mesh.faces.data.astype(np.int64))
     else:
-        func_name = f"boolean_mesh_mesh_{suffix}"
-        (result_faces, result_points), labels, face_labels = getattr(_trueform.csg, func_name)(
-            mesh0._wrapper, mesh1._wrapper, op_int, sheet_ids
-        )
+        faces = mesh.faces.astype(np.int64)
+    return _carrying_transformation(Mesh(faces, mesh.points), mesh)
 
-        # 8. HANDLE LABEL SWAPPING
-        # CRITICAL: If we swapped meshes, flip labels (0↔1)
-        if swapped:
-            labels = 1 - labels
 
-        # Wrap result faces in OffsetBlockedArray if dynamic
-        if result_is_dynamic:
-            result_faces = OffsetBlockedArray(result_faces[0], result_faces[1])
-
-        return (result_faces, result_points), labels, face_labels
+def _normalized_pair(mesh0, mesh1):
+    if mesh0.is_dynamic != mesh1.is_dynamic:
+        mesh0 = mesh0 if mesh0.is_dynamic else _as_dynamic(mesh0)
+        mesh1 = mesh1 if mesh1.is_dynamic else _as_dynamic(mesh1)
+    if mesh0.faces.dtype != mesh1.faces.dtype:
+        wide = np.dtype(np.int64)
+        mesh0 = mesh0 if mesh0.faces.dtype == wide else _widened(mesh0)
+        mesh1 = mesh1 if mesh1.faces.dtype == wide else _widened(mesh1)
+    return mesh0, mesh1

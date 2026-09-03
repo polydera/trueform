@@ -31,10 +31,12 @@
 #include <trueform/csg/make_csg_domains.hpp>
 #include <trueform/csg/make_csg_mesh.hpp>
 #include <trueform/csg/make_intersection_curves.hpp>
+#include <trueform/csg/make_outer_shell.hpp>
 #include <trueform/intersect/intersect_config.hpp>
 #include <trueform/topology/domain_config.hpp>
 #include <trueform/topology/triangulation_type.hpp>
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <stdexcept>
@@ -115,10 +117,11 @@ inline auto decode_selection(const std::vector<int> &program,
 /// over them, and the tf::csg_graph built once at construction. The
 /// Python facade holds the user-facing state (forms list, sheets,
 /// config); only evaluation methods and created_points cross here.
-template <typename Index, typename RealT> class csg_graph_wrapper {
-  using wrapper_t = mesh_wrapper<Index, RealT, 3, 3>;
-  using form_type = form_t<Index, RealT, 3, 3>;
-  using forms_type = forms_range_t<Index, RealT, 3, 3>;
+template <typename Index, typename RealT, std::size_t Ngon>
+class csg_graph_wrapper {
+  using wrapper_t = mesh_wrapper<Index, RealT, Ngon, 3>;
+  using form_type = form_t<Index, RealT, Ngon, 3>;
+  using forms_type = forms_range_t<Index, RealT, Ngon, 3>;
   using graph_t = range_csg_graph_t<forms_type>;
 
   static auto make_forms(std::vector<wrapper_t> &wrappers)
@@ -160,6 +163,11 @@ public:
     auto [paths, pts] = make_numpy_array(std::move(curves));
     return nanobind::make_tuple(
         nanobind::make_tuple(paths.first, paths.second), std::move(pts));
+  }
+
+  auto outer_shell() {
+    auto shell = tf::make_outer_shell(_graph);
+    return make_numpy_array(std::move(shell));
   }
 
   auto mesh(const std::vector<int> &program,
@@ -288,10 +296,10 @@ private:
   graph_t _graph;
 };
 
-template <typename Index, typename RealT>
+template <typename Index, typename RealT, std::size_t Ngon>
 auto register_csg_graph(nanobind::module_ &m, const char *name) -> void {
-  using G = csg_graph_wrapper<Index, RealT>;
-  using W = mesh_wrapper<Index, RealT, 3, 3>;
+  using G = csg_graph_wrapper<Index, RealT, Ngon>;
+  using W = mesh_wrapper<Index, RealT, Ngon, 3>;
   nanobind::class_<G>(m, name)
       .def(nanobind::init<std::vector<W>, std::vector<int>, int, double,
                           int>(),
@@ -300,6 +308,7 @@ auto register_csg_graph(nanobind::module_ &m, const char *name) -> void {
            nanobind::arg("triangulation"))
       .def("created_points", &G::created_points)
       .def("intersection_curves", &G::intersection_curves)
+      .def("outer_shell", &G::outer_shell)
       .def("mesh", &G::mesh, nanobind::arg("program"),
            nanobind::arg("selection").none() = nanobind::none(),
            nanobind::arg("kind") = 0)
