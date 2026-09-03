@@ -55,8 +55,11 @@ Check your own C++ against this list before presenting it:
 - every parallel loop runs at the largest independent carrier through a house
   primitive — the parallel width is the carrier count, never the operand, tag,
   or form count;
-- sorts move compact records by value; they do not sort indices compared
-  through an indirect lookup into another array;
+- a sort whose record is compact moves the records by value. Sorting ids
+  whose comparator reads through another array is the normal pattern when
+  the sorted ids are themselves the product — consumed as
+  `tf::make_indirect_range(ids, range)` — or the record is too heavy to
+  move; it is a defect only where a compact by-value record was available;
 - no fact has two producers. When a refactor turns a member into a parameter,
   the member stays the authority and every call site passes it;
 - local state structs carried by a parallel primitive are value-initialized;

@@ -1,3 +1,48 @@
+## trueform v0.10.2
+
+The OBJ readers are parallel — all of them. The general reader drops from
+44.5 ms to 6.5 ms on a million-triangle dragon, at parity with the
+fixed-arity reader; the complete reader (normals, uvs, groups) from 76.3 ms
+to 8.3 ms, and it can now state its arity — `read_obj<3>(path, tf::complete)`
+— shedding the face tokenization and the offset table when the faces are
+known triangles. The readers are held to each other on one file by committed
+fixtures, a dropped malformed face no longer shifts the spans of the faces
+after it, and the path overloads memory-map, so the file must not change
+during the read.
+
+`make_cdt` grew a config and a labels read. `tf::cdt_config{split_constraints,
+regions}` is implicitly constructible from either member, so every existing
+call stands; `tf::return_region_labels` returns the whole triangulation with
+a label per face — `nesting` (the even-odd parity of region walls) or
+`components` (the id of each wall-cut region, 0 the hull exterior) — region
+zero included, because a map with the exterior erased cannot tell a hole from
+an absence. Python: `tf.cdt(..., region_labels="nesting"|"components")`.
+
+The Python layer catches up to the engine. `CsgGraph` takes one mesh (its
+self arrangement) and takes dynamic meshes; the pairwise booleans are now
+three expressions over the graph — byte-identical results, one compiled
+pipeline, a smaller wheel that builds faster than before the feature
+existed. New entries: `fit_similarity_alignment`, `euler_characteristic`,
+`signed_distance` (single point or a batched `tf.Point`, negative inside),
+and `graph.outer_shell()`, the shell read that no longer rebuilds a second
+arrangement when you already hold the graph. `shape_index` keeps its
+documented [-1, 1] contract — it previously escaped toward ±2 — and the
+cdt entry normalizes non-contiguous inputs instead of misreading them.
+
+Bundle containment is now decided by theorems instead of vertices. The
+classification's parity cast seeds from a triangle's interior — stated
+exactly, as the corner sum over its denominator, never materialized — so
+a seed can no longer sit on another carrier and the answer no longer
+depends on input face order. A cut face states its domain transition
+like a whole one, so a body floating in the overlap of two solids is
+contained by the overlap, not double-counted; and ray parity carries its
+far term, so a region a sheet leaves unbounded contains exactly what it
+should.
+
+The three connected-component rules — manifold-edge, any-edge, vertex — now
+carry hand-built fixtures pinning their exact label partitions, and their
+docs state each rule's carrier.
+
 ## trueform v0.10.1
 
 Repairs; no API breaks. `orient_faces_consistently` and
