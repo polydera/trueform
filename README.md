@@ -1,4 +1,4 @@
-# trueform — The STL for Geometry
+# trueform — The CSG Engine
 
 [![Tests](https://github.com/polydera/trueform/actions/workflows/tests.yml/badge.svg)](https://github.com/polydera/trueform/actions/workflows/tests.yml)
 [![Docs](https://github.com/polydera/trueform/actions/workflows/generate-docs.yml/badge.svg)](https://github.com/polydera/trueform/actions/workflows/generate-docs.yml)
@@ -240,7 +240,7 @@ If you use trueform in your work, please cite:
 
 ```bibtex
 @software{trueform2025,
-    title={trueform: the STL for Geometry},
+    title={trueform: the CSG Engine},
     author={Sajovic, {\v{Z}}iga and {et al.}},
     organization={Polydera},
     year={2025},

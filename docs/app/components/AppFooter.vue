@@ -11,7 +11,7 @@ const { footer } = useAppConfig()
             <NuxtImg src="/tf.png" class="brand-footer__mark" />
             <span>trueform</span>
           </NuxtLink>
-          <p>The STL for Geometry.</p>
+          <p>The CSG Engine.</p>
           <p class="brand-footer__polydera">By Polydera.</p>
         </div>
 

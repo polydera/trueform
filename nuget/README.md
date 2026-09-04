@@ -1,4 +1,4 @@
-# trueform — The STL for Geometry
+# trueform — The CSG Engine
 
 Fast and exact mesh booleans, spatial queries, arrangements, registration, and remeshing. Composable algorithms on your data — zero-copy views, reusable spatial trees, first-class topology. Header-only C++17, parallel via oneTBB.
 

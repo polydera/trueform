@@ -142,7 +142,7 @@ See [CONTRIBUTING.md](https://github.com/polydera/trueform/blob/main/CONTRIBUTIN
 
 ```bibtex
 @software{trueform2025,
-    title={trueform: the STL for Geometry},
+    title={trueform: the CSG Engine},
     author={Sajovic, {\v{Z}}iga and {et al.}},
     organization={Polydera},
     year={2025},
