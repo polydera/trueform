@@ -1,3 +1,14 @@
+## trueform v0.10.3
+
+The vendored mimalloc is 3.5.1, built with large pages off. Upstream turned
+them on by default in 3.1.6, pooling 64-512 KiB blocks — the size of most of
+the engine's buffers — into shared 4 MiB pages that a partially used
+per-thread heap cannot purge, so a long-lived multi-threaded process retains
+them without bound: 200 repeated graph builds on 16 threads held 324 MB of
+footprint where the same loop now plateaus at 156 MB, at the same wall time.
+A mimalloc found through `TF_USE_SYSTEM_MIMALLOC` needs
+`MI_ENABLE_LARGE_PAGES=0` for the same reason.
+
 ## trueform v0.10.2
 
 The OBJ readers are parallel — all of them. The general reader drops from

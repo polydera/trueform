@@ -66,6 +66,10 @@ if(TF_USE_MIMALLOC)
       "MI_BUILD_STATIC ON"
       "MI_BUILD_OBJECT OFF"
       "MI_BUILD_TESTS OFF"
+      # large pages pool the 64-512 KiB blocks into shared 4 MiB pages that a
+      # partially used per-thread heap cannot purge, so a long-lived
+      # multi-threaded process retains them without bound
+      "MI_EXTRA_CPPDEFS MI_ENABLE_LARGE_PAGES=0"
     )
     set(CPM_USE_LOCAL_PACKAGES ${TF_USE_SYSTEM_LIBS})
   endif()

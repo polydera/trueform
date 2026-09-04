@@ -51,7 +51,9 @@ option(TF_ENABLE_IPO              "Enable Interprocedural Optimization (LTO)." O
 #   TF_USE_MIMALLOC        master on/off. OFF => operator new/delete backend,
 #                          no dependency, no TF_WITH_MIMALLOC define, no link.
 #                          (auto-forced OFF under ASan and TypeScript, below.)
-#   TF_USE_SYSTEM_MIMALLOC find the user's mimalloc (must be MI_OVERRIDE=OFF)
+#   TF_USE_SYSTEM_MIMALLOC find the user's mimalloc (must be MI_OVERRIDE=OFF,
+#                          and MI_ENABLE_LARGE_PAGES=0 or it retains memory
+#                          without bound in a long-lived multi-threaded process)
 #                          instead of fetching+vendoring our own. Only meaningful
 #                          when TF_USE_MIMALLOC is ON.
 # Everything downstream (define, link, fetch/find, license, installed-config
@@ -93,7 +95,7 @@ set(TF_TBB_VERSION "2022.3.0" CACHE STRING
 set(TF_NANOBIND_VERSION "2.0.0" CACHE STRING
         "Version of nanobind to fetch for Python builds.")
 
-set(TF_MIMALLOC_VERSION "3.3.2" CACHE STRING
+set(TF_MIMALLOC_VERSION "3.5.1" CACHE STRING
         "Version (git tag without 'v') of mimalloc to fetch when not found on the system.")
 
 # ==============================================================================
