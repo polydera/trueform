@@ -40,6 +40,7 @@ set(BINDING_TOP_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/src/remesh.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/spatial.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/topology.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/volume.cpp
 )
 
 # Per-module binding sources
@@ -56,6 +57,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/src/remesh/sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/spatial/sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/topology/sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/util/sources.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/volume/sources.cmake)
 
 set(BINDING_SOURCES
   ${BINDING_TOP_SOURCES}
@@ -72,6 +74,7 @@ set(BINDING_SOURCES
   ${MODULE_SPATIAL_SOURCES}
   ${MODULE_TOPOLOGY_SOURCES}
   ${MODULE_UTIL_SOURCES}
+  ${MODULE_VOLUME_SOURCES}
 )
 
 # Binding headers

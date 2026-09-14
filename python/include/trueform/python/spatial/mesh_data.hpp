@@ -15,6 +15,7 @@
 #include "../core/offset_blocked_array.hpp"
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
 #include <trueform/core/offset_block_buffer.hpp>
@@ -27,6 +28,7 @@
 #include <trueform/python/util/make_numpy_array.hpp>
 #include <trueform/spatial/aabb_tree.hpp>
 #include <trueform/spatial/tree_config.hpp>
+#include <trueform/spatial/winding_moments.hpp>
 #include <trueform/topology/face_link.hpp>
 #include <trueform/topology/face_membership.hpp>
 #include <trueform/topology/manifold_edge_link.hpp>
@@ -73,6 +75,13 @@ public:
   auto build_tree() -> void {
     if (!_tree || _tree_modified) {
       do_build_tree();
+    }
+  }
+
+  auto build_winding_moments() -> void {
+    build_tree();
+    if (!_winding_moments || _winding_moments_modified) {
+      do_build_winding_moments();
     }
   }
 
@@ -123,6 +132,13 @@ public:
     return *_tree;
   }
 
+  // A moment row mirrors a tree node row, so this cache is native and opaque:
+  // there is nothing to hand to Python that means anything without the tree.
+  auto winding_moments() -> tf::winding_moments<RealT> & {
+    build_winding_moments();
+    return *_winding_moments;
+  }
+
   auto face_membership() {
     build_face_membership();
     return tf::make_face_membership_like(_face_membership_array->make_range());
@@ -155,6 +171,10 @@ public:
 
   // Has checks
   auto has_tree() const -> bool { return _tree != nullptr && !_tree_modified; }
+
+  auto has_winding_moments() const -> bool {
+    return _winding_moments != nullptr && !_winding_moments_modified;
+  }
 
   auto has_face_membership() const -> bool {
     return _face_membership_array != nullptr && !_face_membership_modified;
@@ -372,6 +392,7 @@ public:
 
   auto mark_modified() -> void {
     _tree_modified = true;
+    _winding_moments_modified = true;
     _face_membership_modified = true;
     _manifold_edge_link_modified = true;
     _face_link_modified = true;
@@ -388,6 +409,17 @@ private:
     auto polys = make_primitive_range();
     *_tree = tf::aabb_tree<Index, RealT, Dims>(polys, tf::config_tree(4, 12));
     _tree_modified = false;
+  }
+
+  auto do_build_winding_moments() -> void {
+    if constexpr (Dims == 3) {
+      if (!_winding_moments)
+        _winding_moments = std::make_unique<tf::winding_moments<RealT>>();
+      _winding_moments->build(tree(), make_primitive_range());
+      _winding_moments_modified = false;
+    } else {
+      throw std::invalid_argument("winding moments require a 3D mesh");
+    }
   }
 
   auto do_build_face_membership() -> void {
@@ -525,6 +557,7 @@ private:
   nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>
       _points_array;
   std::unique_ptr<tf::aabb_tree<Index, RealT, Dims>> _tree;
+  std::unique_ptr<tf::winding_moments<RealT>> _winding_moments;
   std::unique_ptr<tf::py::offset_blocked_array_wrapper<Index, Index>>
       _face_membership_array;
   std::unique_ptr<
@@ -541,6 +574,7 @@ private:
       nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>>
       _point_normals_array;
   bool _tree_modified = false;
+  bool _winding_moments_modified = false;
   bool _face_membership_modified = false;
   bool _manifold_edge_link_modified = false;
   bool _face_link_modified = false;
@@ -585,6 +619,13 @@ public:
   auto build_tree() -> void {
     if (!_tree || _tree_modified) {
       do_build_tree();
+    }
+  }
+
+  auto build_winding_moments() -> void {
+    build_tree();
+    if (!_winding_moments || _winding_moments_modified) {
+      do_build_winding_moments();
     }
   }
 
@@ -635,6 +676,13 @@ public:
     return *_tree;
   }
 
+  // A moment row mirrors a tree node row, so this cache is native and opaque:
+  // there is nothing to hand to Python that means anything without the tree.
+  auto winding_moments() -> tf::winding_moments<RealT> & {
+    build_winding_moments();
+    return *_winding_moments;
+  }
+
   auto face_membership() {
     build_face_membership();
     return tf::make_face_membership_like(_face_membership_array->make_range());
@@ -667,6 +715,10 @@ public:
 
   // Has checks
   auto has_tree() const -> bool { return _tree != nullptr && !_tree_modified; }
+
+  auto has_winding_moments() const -> bool {
+    return _winding_moments != nullptr && !_winding_moments_modified;
+  }
 
   auto has_face_membership() const -> bool {
     return _face_membership_array != nullptr && !_face_membership_modified;
@@ -901,6 +953,7 @@ public:
 
   auto mark_modified() -> void {
     _tree_modified = true;
+    _winding_moments_modified = true;
     _face_membership_modified = true;
     _manifold_edge_link_modified = true;
     _face_link_modified = true;
@@ -917,6 +970,17 @@ private:
     auto polys = make_primitive_range();
     *_tree = tf::aabb_tree<Index, RealT, Dims>(polys, tf::config_tree(4, 12));
     _tree_modified = false;
+  }
+
+  auto do_build_winding_moments() -> void {
+    if constexpr (Dims == 3) {
+      if (!_winding_moments)
+        _winding_moments = std::make_unique<tf::winding_moments<RealT>>();
+      _winding_moments->build(tree(), make_primitive_range());
+      _winding_moments_modified = false;
+    } else {
+      throw std::invalid_argument("winding moments require a 3D mesh");
+    }
   }
 
   auto do_build_face_membership() -> void {
@@ -1071,6 +1135,7 @@ private:
   nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>
       _points_array;
   std::unique_ptr<tf::aabb_tree<Index, RealT, Dims>> _tree;
+  std::unique_ptr<tf::winding_moments<RealT>> _winding_moments;
   std::unique_ptr<tf::py::offset_blocked_array_wrapper<Index, Index>>
       _face_membership_array;
   std::unique_ptr<tf::py::offset_blocked_array_wrapper<Index, Index>>
@@ -1086,6 +1151,7 @@ private:
       nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>>
       _point_normals_array;
   bool _tree_modified = false;
+  bool _winding_moments_modified = false;
   bool _face_membership_modified = false;
   bool _manifold_edge_link_modified = false;
   bool _face_link_modified = false;

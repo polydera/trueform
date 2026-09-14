@@ -23,6 +23,10 @@ namespace tf::py {
            nanobind::ndarray<nanobind::numpy, RealT, nanobind::shape<-1, Dims>>>()) \
       .def("build_tree", &mesh_wrapper<Index, RealT, Ngon, Dims>::build_tree)  \
       .def("has_tree", &mesh_wrapper<Index, RealT, Ngon, Dims>::has_tree)      \
+      .def("build_winding_moments",                                            \
+           &mesh_wrapper<Index, RealT, Ngon, Dims>::build_winding_moments)     \
+      .def("has_winding_moments",                                              \
+           &mesh_wrapper<Index, RealT, Ngon, Dims>::has_winding_moments)       \
       .def("build_face_membership",                                            \
            &mesh_wrapper<Index, RealT, Ngon, Dims>::build_face_membership)     \
       .def("has_face_membership",                                              \
@@ -106,6 +110,10 @@ namespace tf::py {
            &mesh_wrapper<Index, RealT, tf::dynamic_size, Dims>::build_tree)    \
       .def("has_tree",                                                         \
            &mesh_wrapper<Index, RealT, tf::dynamic_size, Dims>::has_tree)      \
+      .def("build_winding_moments",                                            \
+           &mesh_wrapper<Index, RealT, tf::dynamic_size, Dims>::build_winding_moments) \
+      .def("has_winding_moments",                                              \
+           &mesh_wrapper<Index, RealT, tf::dynamic_size, Dims>::has_winding_moments) \
       .def("build_face_membership",                                            \
            &mesh_wrapper<Index, RealT, tf::dynamic_size, Dims>::build_face_membership) \
       .def("has_face_membership",                                              \

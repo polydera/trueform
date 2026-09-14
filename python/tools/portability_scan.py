@@ -16,8 +16,21 @@ Checks:
   10.3  non-ASCII characters in Catch2 TEST_CASE/SECTION names
   M_*   POSIX math macros (M_PI etc.) -- not standard C++, absent on
         MSVC without _USE_MATH_DEFINES. Use tf::pi<T> / tf::two_pi<T>.
+  10.4  'near'/'far' identifiers -- empty macros from minwindef.h in
+        any TU a Windows header reaches (NOMINMAX does not cover them)
+  10.5  a default-capture ([&]/[=]) generic lambda decomposing one of
+        its own parameters (the zip shape) -- MSVC loses the enclosing
+        scope after the structured binding and every implicitly
+        captured local goes undeclared, by value as much as by
+        reference. List what the body reads in the capture list;
+        capture-less lambdas are fine too
   intrinsics: __int128 / __uint128 / __builtin_* outside tf::exact
         and vendored external code
+
+Review-time rule the scan cannot check textually: inside a GENERIC
+lambda, do not read a captured local named like a namespace-scope tf
+template (frame, points, tree, buffer, range...) -- MSVC's template-time
+lookup finds the template (C2955). Name frame_of results 'pose'.
 
 10.2 (structured-binding default captures) needs real scope analysis to
 avoid drowning in same-scope false positives; until then it stays a
@@ -115,9 +128,35 @@ for f in glob.glob("tests/**/*.cpp", recursive=True):
 for f in sources:
     for i, ln in enumerate(open(f, encoding="utf-8"), 1):
         code = ln.split("//")[0]
-        if re.search(r"(?:^|[\s(,])(?:near|far)\s*[=(]", code):
+        if re.search(r"(?:^|[\s(,])(?:near|far)\s*[=(\[;,)]", code):
             bad.append(f"{f}:{i} 10.4: 'near'/'far' identifier "
                        "(windows.h macro)")
+
+LAMBDA_INTRO = re.compile(r"(?<![\w\)\]&])(\[[^\]\n]*\])\s*\(")
+DEFAULT_CAPTURE = re.compile(r"^\[\s*[&=]\s*(?:\]|,)")
+GENERIC_PARAM = re.compile(r"\bauto\b\s*&{0,2}\s*(\w+)")
+DECOMPOSED = re.compile(r"\bauto\b\s*&{0,2}\s*\[[^\]\n]*\]\s*=\s*(\w+)\b")
+for f in sources:
+    file_lines = open(f, encoding="utf-8").read().split("\n")
+    for i, ln in enumerate(file_lines):
+        for m in LAMBDA_INTRO.finditer(ln):
+            if not DEFAULT_CAPTURE.match(m.group(1)):
+                continue
+            # the window opens on the introducer's line, so m's offsets
+            # into that line are offsets into the window
+            window = "\n".join(file_lines[i:i + 7])
+            j, depth = m.end(), 1
+            while j < len(window) and depth:
+                depth += (window[j] == "(") - (window[j] == ")")
+                j += 1
+            names = set(GENERIC_PARAM.findall(window[m.end():j - 1]))
+            hit = next((d.group(1) for d in DECOMPOSED.finditer(window[j:])
+                        if d.group(1) in names), None)
+            if hit:
+                bad.append(f"{f}:{i + 1} 10.5: default-capture generic lambda "
+                           f"decomposes '{hit}' -- MSVC loses the enclosing "
+                           "scope after the binding; list what the body reads "
+                           "in the capture list")
 
 baseline_path = os.path.join(os.path.dirname(__file__),
                              "portability_baseline.txt")

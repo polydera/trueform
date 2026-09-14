@@ -19,6 +19,7 @@
 #include <nanobind/stl/optional.h>
 #include <optional>
 #include <trueform/core/transformation_view.hpp>
+#include <trueform/spatial/winding_moments.hpp>
 
 namespace tf::py {
 
@@ -52,6 +53,7 @@ public:
 
   // Build methods (idempotent - only build if needed)
   auto build_tree() -> void { _data->build_tree(); }
+  auto build_winding_moments() -> void { _data->build_winding_moments(); }
   auto build_face_membership() -> void { _data->build_face_membership(); }
   auto build_face_link() -> void { _data->build_face_link(); }
   auto build_vertex_link() -> void { _data->build_vertex_link(); }
@@ -61,6 +63,9 @@ public:
 
   // Getters (auto-build if needed)
   auto tree() -> tf::aabb_tree<Index, RealT, Dims> & { return _data->tree(); }
+  auto winding_moments() -> tf::winding_moments<RealT> & {
+    return _data->winding_moments();
+  }
   auto face_membership() { return _data->face_membership(); }
   auto face_link() { return _data->face_link(); }
   auto vertex_link() { return _data->vertex_link(); }
@@ -70,6 +75,9 @@ public:
 
   // Has checks
   auto has_tree() const -> bool { return _data->has_tree(); }
+  auto has_winding_moments() const -> bool {
+    return _data->has_winding_moments();
+  }
   auto has_face_membership() const -> bool {
     return _data->has_face_membership();
   }
@@ -252,6 +260,7 @@ public:
 
   // Build methods (idempotent - only build if needed)
   auto build_tree() -> void { _data->build_tree(); }
+  auto build_winding_moments() -> void { _data->build_winding_moments(); }
   auto build_face_membership() -> void { _data->build_face_membership(); }
   auto build_face_link() -> void { _data->build_face_link(); }
   auto build_vertex_link() -> void { _data->build_vertex_link(); }
@@ -261,6 +270,9 @@ public:
 
   // Getters (auto-build if needed)
   auto tree() -> tf::aabb_tree<Index, RealT, Dims> & { return _data->tree(); }
+  auto winding_moments() -> tf::winding_moments<RealT> & {
+    return _data->winding_moments();
+  }
   auto face_membership() { return _data->face_membership(); }
   auto face_link() { return _data->face_link(); }
   auto vertex_link() { return _data->vertex_link(); }
@@ -270,6 +282,9 @@ public:
 
   // Has checks
   auto has_tree() const -> bool { return _data->has_tree(); }
+  auto has_winding_moments() const -> bool {
+    return _data->has_winding_moments();
+  }
   auto has_face_membership() const -> bool {
     return _data->has_face_membership();
   }

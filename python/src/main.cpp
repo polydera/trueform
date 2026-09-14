@@ -24,6 +24,7 @@
 #include "trueform/python/remesh.hpp"
 #include "trueform/python/spatial.hpp"
 #include "trueform/python/topology.hpp"
+#include "trueform/python/volume.hpp"
 
 namespace nb = nanobind;
 
@@ -47,4 +48,5 @@ NB_MODULE(_trueform, m) {
   tf::py::register_remesh(m);
   tf::py::register_spatial_module(m);
   tf::py::register_topology(m);
+  tf::py::register_volume(m);
 }

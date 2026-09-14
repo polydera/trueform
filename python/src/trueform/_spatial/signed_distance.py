@@ -20,10 +20,11 @@ def signed_distance(obj0: Any, obj1: Any):
     Compute the signed distance between a mesh surface and a point query.
 
     The magnitude is the Euclidean distance to the closest point on the
-    surface; the sign follows the pseudonormal convention (Baerentzen &
-    Aanes): negative inside the surface, positive outside. Either argument
-    order is accepted. Supports batch queries: a batched Point or an
-    ``(N, 3)`` array broadcasts to per-point results.
+    surface; the sign is the generalized winding number (Barill et al., fast
+    winding numbers): negative inside the surface, positive outside, and
+    robust on open meshes and soups. Either argument order is accepted.
+    Supports batch queries: a batched Point or an ``(N, 3)`` array broadcasts
+    to per-point results.
 
     Parameters
     ----------

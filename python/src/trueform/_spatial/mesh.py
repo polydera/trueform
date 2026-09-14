@@ -343,6 +343,22 @@ class Mesh:
         """
         self._wrapper.build_tree()
 
+    def build_winding_moments(self) -> None:
+        """
+        Build the winding moments of the spatial tree.
+
+        The moments mirror the tree's nodes, so they are built over the tree
+        and invalidated with it. They are what `signed_distance` signs by.
+
+        Raises
+        ------
+        ValueError
+            If mesh is 2D (winding moments only supported for 3D meshes).
+        """
+        if self.dims != 3:
+            raise ValueError("Winding moments only supported for 3D meshes")
+        self._wrapper.build_winding_moments()
+
     def build_face_membership(self) -> None:
         """
         Build the face membership structure.

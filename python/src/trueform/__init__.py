@@ -35,9 +35,10 @@ from ._geometry import normals, point_normals, principal_curvatures, shape_index
 from ._geometry import make_sphere_mesh, make_cylinder_mesh, make_box_mesh, make_plane_mesh, make_tube_mesh
 from ._geometry import signed_volume, volume, area, mean_edge_length, laplacian_smoothed, taubin_smoothed
 from ._remesh import decimated, isotropic_remeshed, simplified
+from ._volume import Volume, isosurface, mesh_sdf, resampled_volume, sphere_sdf, volume_boolean, volume_slice_contours
 
 # IO functions
-from ._io import read_stl, write_stl, read_obj, write_obj
+from ._io import read_stl, write_stl, read_obj, write_obj, read_nifti, read_nifti_header, write_nifti, NiftiHeader
 
 # Primitives
 from ._primitives import Primitive, PrimitiveType, Point, Segment, Triangle, Polygon, AABB, Ray, Line, Plane
@@ -127,7 +128,19 @@ __all__ = [
     'decimated',
     'isotropic_remeshed',
     'simplified',
+    # Volume
+    'Volume',
+    'isosurface',
+    'mesh_sdf',
+    'sphere_sdf',
+    'resampled_volume',
+    'volume_boolean',
+    'volume_slice_contours',
     # IO
+    'read_nifti',
+    'read_nifti_header',
+    'write_nifti',
+    'NiftiHeader',
     'read_stl',
     'write_stl',
     'read_obj',
