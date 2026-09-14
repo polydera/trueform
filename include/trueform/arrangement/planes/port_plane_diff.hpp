@@ -186,7 +186,7 @@ auto port_plane_diff(
     named_groups.erase_till_end(
         std::unique(named_groups.begin(), named_groups.end()));
   }
-  // THE OWNERSHIP LAW: a plane this wave ports for the first time names no
+  // The ownership law: a plane this wave ports for the first time names no
   // group an earlier wave took — taking a group took every carrier of it
   if (tf::parallel_contains(
           tf::make_range(named_groups),
@@ -194,7 +194,7 @@ auto port_plane_diff(
           tf::checked))
     return false;
 
-  // EVERY fallible extent is proven before ANY publication — false must
+  // every fallible extent is proven before any publication — false must
   // leave the tier, the ticket, and the router exactly as they arrived
   auto &local_defs = local_tables.defs();
   auto &local_def_offsets = local_tables.def_offsets();

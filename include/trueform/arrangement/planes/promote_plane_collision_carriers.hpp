@@ -30,7 +30,7 @@
 
 namespace tf::arrangement {
 
-/// CORE. Whether one endpoint names a PROBED identity: a created identity and
+/// Whether one endpoint names a PROBED identity: a created identity and
 /// nothing else, found in the ascending probe by one binary search.
 template <typename Index>
 auto probes_plane_identity(const tf::buffer<Index> &standing_probe,

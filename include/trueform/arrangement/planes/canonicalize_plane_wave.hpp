@@ -208,7 +208,7 @@ auto canonicalize_plane_wave(
       standing.erase_till_end(std::unique(standing.begin(), standing.end()));
     }
   }
-  // THE OWNERSHIP LAW: a probed identity on a row still the world's means a
+  // The ownership law: a probed identity on a row still the world's means a
   // group the wave never took — a state the arrangement cannot be in, because
   // the promotion swept the same probe before the port and took every group
   // it named, with every carrier
@@ -381,7 +381,7 @@ auto canonicalize_plane_wave(
       },
       tf::checked);
   class_offsets.push_back(Index(records.size()));
-  // groups fuse; instances never do — a true repeat is the WHOLE identity
+  // groups fuse; instances never do — a true repeat is the whole identity
   const auto same_instance = [](const def_t &x, const def_t &y) {
     return same_plane_piece_definition_instance(x, y) && x.flags == y.flags;
   };

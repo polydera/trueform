@@ -28,7 +28,7 @@
 
 namespace tf::arrangement {
 
-/// CORE. One plane's triangulation input, read straight off the prepared
+/// One plane's triangulation input, read straight off the prepared
 /// records: the distinct endpoints of its edge block are its point
 /// table (a sort, not a map), every definition is one constraint, and
 /// a boundary definition states its own member — so a stack's parity

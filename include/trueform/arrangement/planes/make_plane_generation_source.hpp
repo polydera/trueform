@@ -183,16 +183,16 @@ auto make_plane_generation_source(
     };
     if (from_current) {
       const auto source = current_plane_ticket[std::size_t(global)];
-      // a block of this arrangement's tier states rows in the FLAT row space:
-      // AN UNCHANGED GROUP STAYS THE WORLD'S, so the row itself says which
-      // table holds the parent
+      // a block of this arrangement's tier states rows in the flat row
+      // space, and an unchanged group stays the world's, so the row itself
+      // says which table holds the parent
       emit(current.plane_edges(source), true);
     } else {
       emit(immutable.plane_edges(global), false);
     }
   };
 
-  // THE PLANE IS THE BLOCK: its records are stated once, and the offsets the
+  // The plane is the block: its records are stated once, and the offsets the
   // aggregation builds are the plane CSR itself. A carrier space of none still
   // states its one offset.
   auto &plane_offsets = output.edges().offsets_buffer();

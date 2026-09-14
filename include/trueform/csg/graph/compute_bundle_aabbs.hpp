@@ -68,7 +68,7 @@ auto compute_bundle_aabbs(
   if (n_tags == Index(0))
     return bboxes;
 
-  // THE BUNDLE AXIS IS GLOBAL AND A BLOCK TOUCHES A RUN OF IT. A block-local
+  // The bundle axis is global and a block touches a run of it. A block-local
   // dense array over it makes every block pay for every bundle in the
   // arrangement — and on the branch where a bundle IS a component
   // (@ref tf::csg::graph::make_arrangement_descriptor with no fans) that axis

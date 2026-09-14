@@ -13,6 +13,7 @@
 
 #include "csg_builders.hpp"
 
+#include <trueform/arrangement/arrangement_config.hpp>
 #include <trueform/arrangement/mesh_arrangement_index_map.hpp>
 #include <trueform/core/buffer.hpp>
 #include <trueform/core/memory.hpp>
@@ -111,14 +112,17 @@ using form_index_t =
 
 /// The public pairwise wrapper, compiled once per operand combination. The
 /// mesh is the pair graph's own, so the arity is the pair's, not either
-/// operand's.
+/// operand's. The arrangement config is the call's: an operand that carries
+/// its own self-intersections states `tf::intersect_mode::within` here, since
+/// a pair graph implies it for neither side.
 template <typename Form0, typename Form1>
 using boolean_result_t =
     std::tuple<csg_mesh_t<pair_csg_graph_t<Form0, Form1>>,
                tf::buffer<std::int8_t>, tf::buffer<form_index_t<Form0>>>;
 
 template <typename Form0, typename Form1>
-auto boolean_of(const Form0 &form0, const Form1 &form1, tf::boolean_op op)
+auto boolean_of(const Form0 &form0, const Form1 &form1, tf::boolean_op op,
+                tf::arrangement_config config = {})
     -> boolean_result_t<Form0, Form1>;
 
 template <typename Form0, typename Form1>

@@ -151,14 +151,14 @@ auto advance_plane_wave(
       [&](Index birth) { return topology[std::size_t(birth)].parameter; },
       tf::checked);
 
-  // THE CANDIDATE ENDPOINTS a new name may land on. The births barrier
-  // accepted only because EVERY proposal names a root, so the candidate set
+  // The candidate endpoints a new name may land on: the births barrier
+  // accepted only because every proposal names a root, so the candidate set
   // is the proposals' own edges; they are deduped as the identities they
   // are, in the flat vertex currency, never as the edges that mention them.
   //
   // The undeduped table stays: `topology_offsets` groups the proposals by
   // class, so it also states, per class, the endpoints of the constraints
-  // THAT class splits — which is what a landing is decided against.
+  // that class splits — which is what a landing is decided against.
   tf::buffer<Index> proposal_ends;
   proposal_ends.allocate(topology.size() * 2);
   tf::parallel_for_each(
@@ -193,10 +193,10 @@ auto advance_plane_wave(
       tf::checked);
   const auto class_base = Index(class_t.size());
   const auto created_base = Index(created_class.size());
-  // The created extent BEFORE this wave's own mints, stated once. A cut at
+  // The created extent before this wave's own mints, stated once. A cut at
   // or above it is an identity this wave minted, and a fresh identity
   // appears in no standing row, so the canonicalize sweeps only for the
-  // cuts below it: too high costs sweep work, too low MISSES a standing
+  // cuts below it: too high costs sweep work, too low misses a standing
   // collision.
   const auto created_mint_base = base_created + created_base;
   tf::buffer<Index> delta_created_class;
@@ -211,7 +211,7 @@ auto advance_plane_wave(
       evidence.welds, merges, delta_merges, candidate_points, topology_offsets,
       proposal_ends, created_class, created_base);
 
-  // A proposal reads the identity of its OWN class: the two carriers were
+  // A proposal reads the identity of its own class: the two carriers were
   // stated in one breath and closed on one key, so class position is the
   // join, and an unnamed class is an election that did not finish.
   if (tf::parallel_contains(
@@ -222,12 +222,12 @@ auto advance_plane_wave(
           tf::checked))
     return plane_wave_result::unsupported;
 
-  // THE WAVE'S TABLE: the standing rewrites plus its own, closed once, so
+  // The wave's table: the standing rewrites plus its own, closed once, so
   // one search answers what any identity of this arrangement speaks now.
   tf::buffer<std::array<Index, 3>> wave_merges = merges;
   tf::core::append(delta_merges, wave_merges);
   tf::intersect::graph::close_plane_merges<Index>(wave_merges);
-  // THE RETIRED DELTA — the wave's own changed set, flat and ascending by
+  // The retired delta — the wave's own changed set, flat and ascending by
   // construction: the rows are sorted by source inside each kind, and the
   // created kind lifts past the whole original space.
   tf::buffer<Index> retired;
@@ -256,9 +256,9 @@ auto advance_plane_wave(
   if (split_edge.size() == 0 && retired.size() == 0)
     return plane_wave_result::exhausted;
 
-  // THE ENTRANCE'S TRIGGER, stated where the splits are ordered and the
-  // pieces are not yet proposed: the roots still the WORLD'S that cut an
-  // ORIGINAL SIDE, and the ORIGINALS this wave retires. A world group holds
+  // The entrance's trigger, stated where the splits are ordered and the
+  // pieces are not yet proposed: the roots still the world's that cut an
+  // original side, and the originals this wave retires. A world group holds
   // only the faces the cut world named, so such a split reaches faces that
   // own no row anywhere, and a retired original reaches its whole ring; the
   // caller that can promote them is handed the round back untouched. The
@@ -286,8 +286,8 @@ auto advance_plane_wave(
   const auto plane_of_face = [&world](Index face) {
     return world.plane_of_face(face);
   };
-  // THE COLLISION PROBE, built once for the wave: a key this wave states
-  // can equal a standing one only through a PRE-EXISTING identity — a cut
+  // The collision probe, built once for the wave: a key this wave states
+  // can equal a standing one only through a pre-existing identity — a cut
   // or a merge target below the mint base — and an identity the wave
   // itself mints appears in no standing row.
   tf::buffer<Index> standing_probe;
@@ -320,10 +320,10 @@ auto advance_plane_wave(
                          frontier, taken) ||
       (split_edge.size() != 0 && frontier.size() == 0))
     return plane_wave_result::unsupported;
-  // THE OWNERSHIP LAW, and the whole reason the frontier is a RING: a group
-  // whose statement CHANGES goes local and takes every carrier of it in the
-  // same wave. AN UNCHANGED GROUP STAYS THE WORLD'S, VERBATIM, FOR BOTH
-  // CARRIERS, so it drags nobody, and a plane the wave never touched keeps
+  // The ownership law, and the whole reason the frontier is a ring: a
+  // group whose statement changes goes local and takes every carrier of
+  // it in the same wave; an unchanged group stays the world's (grain law
+  // 3), so it drags nobody, and a plane the wave never touched keeps
   // reading — and publishing — exactly what it always did.
   promote_plane_collision_carriers(world.tables(), local_tables, plane_ticket,
                                    standing_probe, plane_of_face, frontier,
@@ -371,7 +371,7 @@ auto advance_plane_wave(
                                     local_tables, plane_ticket, piece_layout,
                                     piece_proposals, carrier_planes))
       return incomplete;
-    // The composed transaction preflights every later fallible extent BEFORE
+    // The composed transaction preflights every later fallible extent before
     // the canonicalize publishes: a commit refusal after a successful fuse
     // would leave retired roots beside standing carrier blocks. The bound is
     // conservative — every carrier block rewritten whole plus every proposal
@@ -405,7 +405,7 @@ auto advance_plane_wave(
                                   local_tables, plane_ticket))
       return incomplete;
 
-    // A REFUSED plane keeps no triangulation, so the rows the substitution
+    // A refused plane keeps no triangulation, so the rows the substitution
     // rewrote are a constraint set it has never read: the weld's "a survivor
     // keeps its product" leaves it with none, and the coincidence the merge
     // retired may be the very collision it refused on.
@@ -420,7 +420,7 @@ auto advance_plane_wave(
           },
           tf::checked);
 
-    // THE ROUND'S FRONTIER is the carriers whose constraint set changed: the
+    // The round's frontier is the carriers whose constraint set changed: the
     // split parents', the ones a retirement rebuilt, and the refusals a
     // substitution reached. A surviving weld changed identities alone, so its
     // carriers keep their triangulations.

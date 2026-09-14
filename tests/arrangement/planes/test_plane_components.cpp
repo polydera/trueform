@@ -663,16 +663,16 @@ TEMPLATE_TEST_CASE("plane components: one shared spine fences, equal depth "
   using Real = typename components_real_of<Int>::type;
 
   // ONE mesh edge carrying four faces: the form's own non-manifold edge. The
-  // four coplanar plates pool into two cells, so only TWO live incidences meet
-  // there and no fan stands; the depth reads two on both sides — the edge's
-  // own face count is the only fence.
+  // four coplanar plates pool into two cells, so only TWO live incidences
+  // meet there — but the edge link's non-manifold bit is a fan site in its
+  // own right: the radial ring owns the sectors around a non-manifold side,
+  // whatever the live count reads.
   const auto spine = components_measure<Int, Real>(shared_spine<Real>(), true);
   CHECK(spine.n_components == 2);
   CHECK(spine.sizes == std::vector<components_index_t>{2, 2});
-  CHECK(spine.n_fans == 0);
-  CHECK(spine.n_quiet == 1);
-  // RED FIRST: fans alone fence nothing here.
-  CHECK(spine.fans_only == 1);
+  CHECK(spine.n_fans == 1);
+  CHECK(spine.n_quiet == 0);
+  CHECK(spine.fans_only == 2);
   CHECK(spine.unfenced == 1);
 
   // The same four plates welded merely coincident: every mesh edge keeps two
@@ -837,20 +837,21 @@ TEMPLATE_TEST_CASE("plane components: the mesh's own edge count fences what "
   // pair pools, so the cell reaching the edge is covered twice on both sides:
   // the edge reads two live incidences and two equal depths, and both the
   // count and the depth are blind. Only the form's own edge link, which
-  // states FOUR faces on that edge, fences it. The smaller pages' rims are
-  // the depth borders — two sides each, each split by the cut, eight pieces —
-  // and with the edge they are the nine quiet fences; the six cut pieces are
-  // the fans; nothing joins.
+  // states FOUR faces on that edge, names it — and a non-manifold side is a
+  // fan site, so with the six cut pieces it makes seven fans. The smaller
+  // pages' rims are the depth borders — two sides each, each split by the
+  // cut, eight pieces — the eight quiet fences.
   const auto doubled =
       components_measure<Int, Real>(crossed_pages<Real>(true), false);
   CHECK(doubled.n_cells == 11);
   CHECK(doubled.n_components == 11);
-  CHECK(doubled.n_fans == 6);
+  CHECK(doubled.n_fans == 7);
   CHECK(doubled.n_crowded == 6);
-  CHECK(doubled.n_quiet == 9);
-  // With the quiet fences switched off the edge crosses again, exactly as the
-  // crease does, and the two planes' near ground is one.
-  CHECK(doubled.fans_only == 4);
+  CHECK(doubled.n_quiet == 8);
+  // The fan keeps the edge fenced with the quiet fences switched off — one
+  // more component than the crease's counterfactual, the two planes' near
+  // ground kept apart by the ring's own site.
+  CHECK(doubled.fans_only == 5);
   CHECK(doubled.unfenced == 1);
 
   // Both scenes answer the same with the within flag on: the pages pool and

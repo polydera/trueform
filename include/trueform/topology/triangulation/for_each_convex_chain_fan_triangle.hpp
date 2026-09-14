@@ -16,7 +16,7 @@
 
 namespace tf::topology {
 
-/// CORE. THE FAN OF A CONVEX RUN of a cyclic chain: the run's first identity
+/// The fan of a convex run of a cyclic chain: the run's first identity
 /// is the apex, and every consecutive pair after it closes one triangle. The
 /// run keeps the chain's own direction, so the fan turns the way the chain
 /// does.

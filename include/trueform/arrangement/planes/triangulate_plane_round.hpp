@@ -164,7 +164,7 @@ auto triangulate_plane_round(
         local.census.constraints += local.bnd.size();
         if (pooled)
           ++local.census.stacks;
-        // THE CONVEX FAMILY: a carrier whose constraint set is one simple
+        // The convex family: a carrier whose constraint set is one simple
         // ring it can prove convex answers with the fan, and no triangulation
         // is built. A stack is answered per member and a refined carrier is
         // owed interior points, so neither is one of the family.

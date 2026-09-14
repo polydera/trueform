@@ -177,16 +177,13 @@ auto order_plane_recovery_splits(
             verdict[i] = verdict_on_endpoint;
             continue;
           }
-          // THE ABSOLUTE: A SPLIT THIS TIER DEMANDED IS NEVER DROPPED IN
-          // SILENCE. The only cut that may leave its piece's span is the
-          // piece's own END, and the branch above has already answered every
-          // one of those BY IDENTITY. So a cut arriving here is a statement
-          // the tables would lose, and it cannot exist: measured 0 over the
-          // t=0, 1e-6 and 1e-9 corpora, both domain regressions, the whole
-          // suite and the 1e-4 scenes that drive the wave hardest, while the
-          // endpoint answer above fires 1 to 129 times in the same runs. The
-          // census keeps counting it so a release build still states the
-          // loss it would otherwise take in silence.
+          // A split this tier demanded is never dropped in silence. The
+          // only cut that may leave its piece's span is the piece's own
+          // end, and the branch above answered every one of those by
+          // identity — so a cut arriving here is a statement the tables
+          // would lose, and it cannot exist. The census keeps counting
+          // it so a release build still states the loss it would
+          // otherwise take in silence.
           assert(proposal.parameter > Param(0) && proposal.parameter < whole);
           if (proposal.parameter <= Param(0) || proposal.parameter >= whole) {
             verdict[i] = verdict_out_of_span;

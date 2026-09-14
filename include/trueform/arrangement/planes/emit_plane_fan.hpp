@@ -24,7 +24,7 @@
 
 namespace tf::arrangement {
 
-/// CORE. Emit one carrier of the convex family, over the ring its predicate
+/// Emit one carrier of the convex family, over the ring its predicate
 /// found. Emitting the ring IS the source winding, so the only orientation
 /// question is the one the predicate already answered.
 ///

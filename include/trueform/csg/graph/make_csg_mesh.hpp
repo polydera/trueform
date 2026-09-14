@@ -65,7 +65,7 @@ auto make_csg_mesh(
   auto apply_to_polygons = arrangement.apply_to_form();
   const auto &created_pts = arrangement.created_points();
 
-  // ---- Stages 1 + 2: partition + vertex remap. ----------------------
+  // Stages 1 + 2: partition + vertex remap.
   auto pids = make_csg_partition(arrangement, labels, chosen_sides, tag_mask);
   auto map_data = make_csg_map_data<Index>(arrangement, pids,
                                            apply_to_polygons);
@@ -76,7 +76,7 @@ auto make_csg_mesh(
     return map_data.map_vertex(tag, v);
   };
 
-  // ---- Stage 3: gather selected triangles per (form, label). --------
+  // Stage 3: gather selected triangles per (form, label).
   auto exposed_tris = arrangement.global().exposed_tris();
   auto exposed_descriptors = arrangement.global().exposed_descriptors();
   auto triangle_slots = arrangement.triangle_slots();
@@ -110,12 +110,12 @@ auto make_csg_mesh(
     tg.wait();
   }
 
-  // ---- Optional provenance: per output face, tag_labels (which input form)
+  // Optional provenance: per output face, tag_labels (which input form)
   // and face_labels (original face id within that form). Built here from the
-  // partition/triangulation results already in hand, in the SAME stream order
+  // partition/triangulation results already in hand, in the same stream order
   // the mesh is assembled below (per form t: uncut fwd, uncut rev, tri fwd,
   // tri rev). Winding reversal on side-0 streams flips vertices within a face,
-  // not the face order, so the labels ignore it. --------------------------
+  // not the face order, so the labels ignore it.
   tf::buffer<Index> tag_labels;
   tf::buffer<Index> face_labels;
   if constexpr (WantLabels) {
@@ -145,9 +145,9 @@ auto make_csg_mesh(
     }
   }
 
-  // ---- Stage 4: per-form remapped face range view. Welds never reach
+  // Stage 4: per-form remapped face range view. Welds never reach
   // here: a retired original's ring is promoted into the stream, so no
-  // selected uncut face references anything the map does not know. ----
+  // selected uncut face references anything the map does not know.
   auto original_maps = tf::make_offset_block_range(map_data.point_offsets,
                                                    map_data.original_map);
   // The uncut-face view's type follows the form's, so it is delivered to
@@ -167,7 +167,7 @@ auto make_csg_mesh(
     });
   };
 
-  // ---- Stage 6: points buffer (shared by both output-arity paths). --
+  // Stage 6: points buffer (shared by both output-arity paths).
   const Index total_pts =
       map_data.total_original_points + map_data.total_created_points;
   tf::points_buffer<RealOut, 3> pts_buf;
@@ -179,12 +179,12 @@ auto make_csg_mesh(
         tg, n_tags, apply_to_polygons, map_data, created_pts, reader, pts_buf);
   };
 
-  // ---- Stage 5: assemble output faces. Uncut faces keep their own arity;
+  // Stage 5: assemble output faces. Uncut faces keep their own arity;
   // only cut loops are triangles. Per form the four streams stay (uncut-fwd,
   // uncut-rev, tri-fwd, tri-rev); side-0 streams are reversed. The output
   // buffer type follows the input arity: all-triangle input stays a fast
   // `blocked<3>`; a non-triangle (or mixed) input materialises a dynamic
-  // offset-block so each face keeps its vertex count. -----------------------
+  // offset-block so each face keeps its vertex count.
 
   // Stream descriptor: (forward src, size, reverse?, tag, uncut?) emitted in
   // output order. The one statement of that order — the uncut-face ranges

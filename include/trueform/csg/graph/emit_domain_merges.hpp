@@ -46,7 +46,10 @@ namespace tf::csg::graph {
 /// @param labels          Per exposed triangle: its component.
 /// @param exposed_of_row  Arrangement row -> exposed triangle; an
 ///                        occurrence names a row, the partition names
-///                        the stream.
+///                        the stream. An uncut sheet's occurrence is
+///                        negative — `-(component + 1)` — and states
+///                        its component directly, since no stream row
+///                        names it.
 template <typename Index, typename Labels, typename ExposedOfRow>
 void emit_domain_merges(const Labels &labels,
                         const tf::csg::graph::plane_radial_fans<Index> &fans,
@@ -82,22 +85,33 @@ void emit_domain_merges(const Labels &labels,
           auto next_dirs = dirs_view[std::size_t(first + rn)];
 
           for (std::size_t a = 0; a < page.size(); ++a) {
-            const Index Fa = exposed_of_row[std::size_t(page[a] / Index(3))];
-            if (Fa == Index(-1))
-              continue; // an occurrence the exposure did not carry
+            const auto row_a = page[a];
+            Index frag_a;
+            if (row_a < Index(0)) {
+              frag_a = Index(-row_a - 1);
+            } else {
+              const Index Fa = exposed_of_row[std::size_t(row_a / Index(3))];
+              if (Fa == Index(-1))
+                continue; // an occurrence the exposure did not carry
+              frag_a = labels[Fa];
+            }
             // Sides come from the occurrence's own traversal direction —
             // a slit carrier's two pages take opposite sides, which a
             // per-carrier containment test cannot express.
             const Index sa = page_dirs[a] ? Index(0) : Index(1);
-            const Index frag_a = labels[Fa];
 
             for (std::size_t b = 0; b < next.size(); ++b) {
-              const Index Fb = exposed_of_row[std::size_t(next[b] / Index(3))];
-              if (Fb == Index(-1))
-                continue;
-              const Index sb =
-                  (next_dirs[b] ? Index(0) : Index(1)) ^ Index(1);
-              const Index frag_b = labels[Fb];
+              const auto row_b = next[b];
+              Index frag_b;
+              if (row_b < Index(0)) {
+                frag_b = Index(-row_b - 1);
+              } else {
+                const Index Fb = exposed_of_row[std::size_t(row_b / Index(3))];
+                if (Fb == Index(-1))
+                  continue;
+                frag_b = labels[Fb];
+              }
+              const Index sb = (next_dirs[b] ? Index(0) : Index(1)) ^ Index(1);
               const Index node_a = 2 * frag_a + sa;
               const Index node_b = 2 * frag_b + sb;
               std::array<Index, 2> p = {std::min(node_a, node_b),
@@ -115,7 +129,7 @@ void emit_domain_merges(const Labels &labels,
           }
         }
       },
-          local_state_t{});
+      local_state_t{});
 
   tbb::parallel_sort(merges.begin(), merges.end());
   merges.erase_till_end(std::unique(merges.begin(), merges.end()));

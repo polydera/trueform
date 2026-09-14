@@ -150,8 +150,6 @@ public:
   static constexpr Index crossing_name_kind = 5;
   static constexpr Index refinement_name_kind = 6;
 
-  // ---- THE PRODUCT ----
-
   /// Every triangle of the arrangement, contiguous per plane and inside
   /// a plane contiguous per member. A corner is a FLAT identity:
   /// `< n_flat_points()` an original vertex in the tags' flat space,
@@ -192,10 +190,9 @@ public:
   /// The local block each plane's definitions resolve through, `-1` for a
   /// plane that still reads the world. Empty while every plane does.
   auto plane_tickets() const { return tf::make_range(_plane_ticket); }
-  /// One local plane block's definitions, in key order, each read from the
-  /// tier that owns it: AN UNCHANGED GROUP STAYS THE WORLD'S, VERBATIM, FOR
-  /// BOTH CARRIERS, so a block this arrangement holds still names the world's
-  /// own rows for every group no wave changed.
+  /// One local plane block's definitions, in key order, each read from
+  /// the tier that owns it (grain law 3): a block this arrangement holds
+  /// still names the world's own rows for every group no wave changed.
   template <typename Immutable>
   auto current_plane_defs(const Immutable &immutable, Index block) const {
     const auto world_defs = immutable.edge_defs();
@@ -676,8 +673,8 @@ private:
       _refinement_census.ring_boundary_splits =
           mapped_splits.size() - initial.splits.size();
     }
-    // THE PROMOTION BARRIER: the pre-step above holds the base value and its
-    // base extents; the wave below reads the promoted one.
+    // the pre-step above holds the base value and its base extents; the
+    // wave below reads the promoted one
     World promoted_world(world, _promoted_descriptors, _promoted_frames,
                                _promoted_orientations);
     if (!apply_refinement_wave(promoted_world, mapped_splits,
@@ -782,21 +779,16 @@ private:
     refusals.allocate_and_initialize(std::size_t(world.n_planes()), Index(0));
     const auto close_frontier = [&](const plane_round_evidence<Index, Int> &ev,
                                     plane_round_result result) {
-      // A refusing carrier does not always argue toward an answer. Two of its
-      // statements can undo each other — an identity minted one round and
-      // merged away the next — and then the wave states something NEW every
-      // round while the carrier's constraint set returns to itself, so no
-      // progress test can see the loop. A budget on the carrier's OWN refusals
-      // is what sees it instead: a carrier that recovers spends at most two,
-      // and eight stands far enough above that, and above every scene coarser
-      // than the supported envelope, that the budget cannot cut a live carrier
-      // short.
+      // Two statements of one carrier can undo each other — a mint one
+      // round, its merge the next — so the wave progresses while the
+      // carrier's constraint set returns to itself and no progress test
+      // sees the loop. Only a budget on the carrier's own refusals does:
+      // a carrier that recovers spends at most two, so eight cannot cut
+      // a live one short.
       constexpr std::size_t refusal_budget = 8;
-      // A carrier that spends it leaves the wave. It is already published as a
-      // failure — @ref tf::arrangement::update_plane_failures states that every
-      // round it refuses — so the spend publishes nothing and only drops the
-      // stale product a carrier that produced BEFORE it began refusing still
-      // holds, exactly as the no-progress guard does for the same reason.
+      // The spend publishes nothing — every refusing round is already in
+      // the failed set — it only drops the stale product of a carrier
+      // that produced before it began refusing.
       for (const auto plane : ev.refused)
         if (++refusals[std::size_t(plane)] == Index(refusal_budget)) {
           retire_stalled_plane<Index, Int>(world, plane, _arena);
@@ -811,11 +803,10 @@ private:
       frontier.erase_till_end(frontier.begin() + std::ptrdiff_t(kept));
       return frontier.size() == 0 ? plane_round_result::done : result;
     };
-    // THE ENTRANCE'S ASK: the wave states which of its roots are still the
-    // world's and cut an original side, and which originals it retires; this
-    // answers whether a face they reach is one no tier of this arrangement
-    // has named yet. A world that holds every face states no source mesh, and
-    // neither this nor the branch it feeds is compiled.
+    // The entrance's ask: which roots are still the world's and cut an
+    // original side, and which originals are retired — whether a reached
+    // face is one no tier has named yet. A world that holds every face
+    // states no source mesh, and none of this is compiled.
     tf::buffer<Index> entrants;
     plane_wave_answered<Index> answered;
     // the lambda is stated for every world, so the branch a world with no
@@ -848,23 +839,17 @@ private:
                                exact_point, name_point, _failed, _census,
                                frontier, entrance);
     };
-    // THE BARRIER: a round that saw something on a world with no group space
-    // makes one, states the extent for the first time, and hands its carriers
-    // back to the loop. What that round saw is not translated — it is seen
-    // again, against the real tables.
-    //
-    // THE WAVE ENTRANCE IS THAT SENTENCE with "no group space" replaced by "a
-    // split reaching a face the cut world never named": the round is handed
-    // back unconsumed, the faces are promoted, and the same evidence is seen
-    // again against the promoted tables.
+    // The barrier: a round that saw something on a world with no group
+    // space makes one and hands its carriers back — what it saw is not
+    // translated, it is seen again against the real tables. The wave
+    // entrance is the same sentence with "no group space" replaced by "a
+    // split reaching a face the cut world never named".
     auto round = plane_round_result::retry;
     if (!close_plane_lazy_round(world, evidence, _immutable_canon_extent,
                                 _census, frontier))
       round = close_round(planes, evidence);
-    // THE ENTRANCE EXISTS ONLY WHERE A SOURCE MESH DOES, so a world that
-    // holds every face compiles none of it — not the trigger, not the
-    // promotion, and not this branch. What it answers with is a round like
-    // any other: its refusals are charged and its frontier is filtered.
+    // What the entrance answers with is a round like any other: its
+    // refusals are charged and its frontier is filtered.
     const auto take_entrance = [&](plane_round_result result) {
       if constexpr (std::is_same<ApplyToForm, tf::none_t>::value) {
         return result;
@@ -877,18 +862,13 @@ private:
       }
     };
     round = close_frontier(evidence, take_entrance(round));
-    // THE NO-PROGRESS GUARD. A wave advances by STATING something a table
-    // keeps: a new identity, a merge, or a smaller frontier. A round that
-    // states none of the three has restated what the tables already hold.
-    //
-    // ONE such round is not the end — a wave legitimately rebuilds without
-    // producing and then produces. THE BUDGET IS MEASURED, not chosen: over
-    // the whole green ladder (exact, 1e-6 and 1e-9 harnesses) the longest
-    // run of no-progress rounds a wave RECOVERS from is 1, while a carrier
-    // trading one restated split forever runs 46,270. Eight rounds sits
-    // eight times above everything observed to recover and three orders
-    // below the cycle, so the guard cannot cut a live wave short and cannot
-    // fail to catch a dead one.
+    // A wave advances by stating something a table keeps: a new
+    // identity, a merge, or a smaller frontier; a round stating none of
+    // the three has restated what the tables already hold. One such
+    // round is legitimate rebuilding. The budget of eight is measured,
+    // not chosen — far above every recovery observed, far below a
+    // restating cycle — so the guard cannot cut a live wave short and
+    // cannot fail to catch a dead one.
     constexpr std::size_t no_progress_budget = 8;
     auto stated_created = _created_class.size();
     auto stated_merges = _merges.size();
@@ -922,10 +902,9 @@ private:
       else
         stalled_run = 0;
       if (stalled_run == no_progress_budget) {
-        // the planes still refusing are ALREADY published — close_plane_round
-        // states the failed set through its one producer every round — so the
-        // guard publishes nothing and only drops the stale product a stalled
-        // carrier still holds
+        // the refusing planes are already in the failed set, so the
+        // guard publishes nothing and only drops the stale product a
+        // stalled carrier still holds
         for (const auto plane : frontier)
           retire_stalled_plane<Index, Int>(world, plane, _arena);
         _census.stalled_planes += frontier.size();
@@ -940,21 +919,20 @@ private:
     return round;
   }
 
-  /// THE WAVE ENTRANCE: promote the source faces a round's world-tier splits
-  /// reached, seat their sides in this arrangement's own tier, and hand the
-  /// loop a frontier that carries them.
+  /// The wave entrance: promote the source faces a round's world-tier
+  /// splits reached, seat their sides in this tier, and hand the loop a
+  /// frontier that carries them.
   ///
-  /// THE ENTRANT GETS A NEW SPAN in the local tables — every edge that is its
-  /// alone. The ONE row that cannot go there is the SHARED edge: its
-  /// canonical group already exists — the neighbour's instance and the wave's
-  /// split live on it, the group IS the cross-face join, and a second group
-  /// for one wall is the twin-wall defect — so that row JOINS the existing
-  /// group as one more instance, riding the port that takes it.
+  /// The entrant gets a new span in the local tables — every edge that is
+  /// its alone. The one row that cannot go there is the shared edge: its
+  /// canonical group already exists and is the cross-face join — a second
+  /// group for one wall is the twin-wall defect — so that row joins the
+  /// existing group as one more instance.
   ///
-  /// A face enters WHOLE, so a face holding one side this tier cannot seat is
-  /// DECLINED. Both answers are recorded, because either way the face states
-  /// its sides somewhere the world's own span cannot see, and the discovery
-  /// must never offer it again — that record is also what ends the entrance.
+  /// A face enters whole, so one holding a side this tier cannot seat is
+  /// declined. Both answers are recorded: either way the face states its
+  /// sides somewhere the world's own span cannot see, and the discovery
+  /// must never offer it again — that record is what ends the entrance.
   template <typename World, typename GetBasePoint, typename GetOriginalPoint,
             typename ApplyToForm>
   auto enter_wave_entrants(World &world,
@@ -978,10 +956,9 @@ private:
       state_plane_weld_entrant_side<Index>(world, world.vertex_offsets(),
                                            parent, output);
     };
-    // AT THIS MOMENT ONLY THE WORLD'S SPLITS ARE APPLIED to the group the
-    // shared side names — the wave has ordered its own and stated none — so
-    // the entrant's side lifts through exactly the pieces its neighbour's
-    // instance holds, and the existing lift is already the right one.
+    // At this moment only the world's splits are applied to the group
+    // the shared side names, so the entrant's side lifts through exactly
+    // the pieces its neighbour's instance holds.
     const auto state_entrant_tables = [&](const auto &faces) {
       make_plane_weld_entrant_tables<Index, Int>(
           faces, world.n_faces(), _merges, world.vertex_offsets(),
@@ -1008,10 +985,9 @@ private:
     // in this tier, a decline states that this tier cannot
     for (const auto entrant : entrants)
       answered.answer(world.face_offsets(), entrant);
-    // THE ROUND IS HANDED BACK EITHER WAY, so its frontier is the one every
-    // discarded round states: the carriers that saw something. They state it
-    // again, and with every face now answered for the entrance does not fire
-    // twice on it.
+    // The round is handed back either way, so its frontier is the one
+    // every discarded round states: the carriers that saw something.
+    // With every face now answered for, the entrance cannot fire twice.
     state_plane_round_frontier(evidence, frontier);
     if (seated.size() == 0)
       return plane_round_result::retry;
@@ -1034,10 +1010,10 @@ private:
     tf::core::append(descriptors, _promoted_descriptors);
     tf::core::append(frames, _promoted_frames);
     tf::core::append(orientations, _promoted_orientations);
-    // THE COMPOSITION RULE: the promotion constructor reads its base
+    // The promotion constructor reads its base
     // extents off the value it is handed, never off that value's current
-    // ones, so appending to the three buffers and rebuilding FROM THE VALUE
-    // IN HAND composes. Layering one promoted value on another would
+    // ones, so appending to the three buffers and rebuilding from the
+    // value in hand composes. Layering one promoted value on another would
     // restate an extent that is already frozen.
     world = World(world, _promoted_descriptors, _promoted_frames,
                   _promoted_orientations);
@@ -1075,8 +1051,8 @@ private:
                                    _face_range);
       _census.triangles = _triangles.size();
     }
-    // THE PIECE SPACE IS ONE REQUEST'S PRODUCT: unasked, no slot carries a
-    // ticket and no definition span is owed one
+    // the piece space is one request's product: unasked, no slot carries
+    // a ticket and no definition span is owed one
     if (_record_arrangement && _plane_ticket.size() != 0 &&
         !publish_plane_final_pieces(world, _local_tables, _group_router,
                                     _plane_ticket, _vertex_offsets,

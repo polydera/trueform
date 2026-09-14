@@ -80,7 +80,7 @@ auto compute_arrangement_domain_volumes(
   contributions.allocate(static_cast<std::size_t>(n_components));
   tf::parallel_fill(contributions, AccumT(0));
 
-  // THE COMPONENT AXIS IS GLOBAL AND A BLOCK TOUCHES A RUN OF IT, so the
+  // The component axis is global and a block touches a run of it, so the
   // block carries only the components it names. Sums are exact integers, so
   // the order they are added in cannot change a volume.
   using local_t = tf::sparse_block_accumulator<Index, AccumT>;

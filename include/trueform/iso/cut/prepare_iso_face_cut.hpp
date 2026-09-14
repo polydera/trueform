@@ -25,7 +25,7 @@
 
 namespace tf::iso {
 
-/// CORE. One cut face's triangulation input. The boundary chain is the face's
+/// One cut face's triangulation input. The boundary chain is the face's
 /// corners with the field's hits in parametric order along each edge, lifted to
 /// the flat identity space, and it names each identity exactly once — so the
 /// chain IS the point table, its position IS the local index, and its edges are

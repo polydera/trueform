@@ -89,7 +89,7 @@ auto make_csg_domains(const Arrangement &arrangement, const Labels &labels,
 
   const Index n_kept = part.n_kept;
 
-  // ---- Stages 1 + 2: domain partition + global vertex remap. --------
+  // Stages 1 + 2: domain partition + global vertex remap.
   // `pids` is consumed only by the map-data build (it decides which faces /
   // loops contribute vertices to the global space); the soup below keys on
   // `part.side_label` directly, not on the per-label lists.
@@ -103,7 +103,7 @@ auto make_csg_domains(const Arrangement &arrangement, const Labels &labels,
     return map_data.map_vertex(tag, v);
   };
 
-  // ---- Stage 4: global points buffer (same layout as make_csg_mesh). -
+  // Stage 4: global points buffer (same layout as make_csg_mesh).
   const Index total_pts =
       map_data.total_original_points + map_data.total_created_points;
   tf::points_buffer<RealOut, 3> pts_buf;
@@ -133,13 +133,13 @@ auto make_csg_domains(const Arrangement &arrangement, const Labels &labels,
             [off = map_data.original_offsets[t]](Index x) { return x + off; }));
   };
 
-  // ---- Stage 5a: build the output triangle soup (global vertex space,
+  // Stage 5a: build the output triangle soup (global vertex space,
   // winding baked) + per-triangle dense-domain label. Each surface face / cut
-  // loop is visited ONCE. `side_label[2c+s]` is the dense kept domain the
+  // loop is visited once. `side_label[2c+s]` is the dense kept domain the
   // component's side `s` bounds, or -1. Side 1 (forward) keeps the stored
   // winding; side 0 (reverse) flips it so the cell's normals face outward. A
-  // cut loop's stored triangles go to both kept sides. (One task per form —
-  // never per (form, domain).) ---------------------------------------------
+  // cut loop's stored triangles go to both kept sides. One task per form —
+  // never per (form, domain).
   using labels_t = Labels;
 
   // Coincident faces always cut, so the stream covers every stack (see
@@ -331,9 +331,9 @@ auto make_csg_domains(const Arrangement &arrangement, const Labels &labels,
     tg.wait();
   }
 
-  // ---- Stage 5b: split the soup exactly like tf::split_into_domains —
+  // Stage 5b: split the soup exactly like tf::split_into_domains —
   // sort triangle ids by domain, bucket via compute_offsets, then emit
-  // each domain with a reused point_map + watermark. -----------------------
+  // each domain with a reused point_map + watermark.
   tf::buffer<Index> tri_ids;
   tri_ids.allocate(static_cast<std::size_t>(n_tris));
   tf::parallel_iota(tri_ids, Index(0));
@@ -400,11 +400,11 @@ auto make_csg_domains(const Arrangement &arrangement, const Labels &labels,
   if constexpr (WantLabels)
     build_provenance(tag_soup, orig_soup, tri_ids, offsets);
   } else {
-    // ---- Dynamic-arity path (non-triangle input). Build a (face, domain)
+    // Dynamic-arity path (non-triangle input). Build a (face, domain)
     // soup where uncut faces keep their arity and cut loops are triangles,
-    // then split per domain into dynamic-size cells. The soup is built PER TAG
-    // in parallel (offset-block faces + dom) and concatenated — same
-    // parallelism as the triangle path. -------------------------------------
+    // then split per domain into dynamic-size cells. The soup is built per
+    // tag in parallel and concatenated — same parallelism as the triangle
+    // path.
     tf::core::std_vector<tf::offset_block_buffer<Index, Index>> soup_t(n_tags);
     tf::core::std_vector<tf::buffer<Index>> dom_t(n_tags);
     tf::core::std_vector<tf::buffer<Index>> tag_t(n_tags);

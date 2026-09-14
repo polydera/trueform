@@ -69,7 +69,7 @@ template <typename Index> struct plane_edge_def {
   std::uint8_t flags;
 };
 
-/// CORE. The boundary definition one side of one face states: its two corners
+/// The boundary definition one side of one face states: its two corners
 /// in key order, covering the original edge WHOLE, with
 /// @ref tf::intersect::graph::plane_edge_reversed_flag when the emission order
 /// is the other one. The caller owns what the row is called (`id`), the group

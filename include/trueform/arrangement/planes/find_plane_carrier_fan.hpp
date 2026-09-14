@@ -32,7 +32,7 @@ template <typename Index> struct plane_carrier_fan {
   bool reversed = false;
 };
 
-/// CORE. THE CONVEX FAMILY'S PREDICATE, stated once, on the PREPARED
+/// The convex family's predicate, stated once, on the PREPARED
 /// constraint set — which is the one place both world states have already
 /// resolved their carrier to the same thing.
 ///

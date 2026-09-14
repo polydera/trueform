@@ -21,7 +21,7 @@
 
 namespace tf::arrangement {
 
-/// CORE. The stock kernel: one build per plane over the prepared constraint
+/// The stock kernel: one build per plane over the prepared constraint
 /// set, its coincident constraints repaired after the fact — a collision the
 /// aliases promote to a boundary re-enters the regions this same build holds.
 template <typename Local>

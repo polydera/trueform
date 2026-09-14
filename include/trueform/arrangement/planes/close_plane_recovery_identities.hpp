@@ -239,7 +239,7 @@ auto close_plane_recovery_identities(
   elect_plane_identity_components(keys, relations, mint_class, mint_original,
                                   parent, target_of_root, merges);
 
-  // THE ELECTION'S ANSWER, read where each kind of class keeps it. An already
+  // The election's answer, read where each kind of class keeps it. An already
   // named class speaks an existing created identity, and what the election did
   // to one of those is exactly what it just published in `merges`. A fresh
   // class keys as `{1, cls}`, so the sorted key array is a permutation of the

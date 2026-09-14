@@ -17,7 +17,7 @@
 
 namespace tf::arrangement {
 
-/// CORE. The 2-cell a triangulation face sits in: everything a walk that never
+/// The 2-cell a triangulation face sits in: everything a walk that never
 /// crosses a constraint reaches inside this plane. The arrangement's own
 /// boundaries are the constraints, so a cell is one of the plane's faces of
 /// the arrangement and a filler diagonal never leaves the one it was cut in.
@@ -57,7 +57,7 @@ auto label_plane_cells(Local &local, const Mesh &mesh) -> void {
   }
 }
 
-/// CORE. The cell a triangle came out of, over the same selection emission
+/// The cell a triangle came out of, over the same selection emission
 /// walked. The gate is the build's answer, so a plane nobody asked about runs
 /// the emit loop it always ran.
 template <typename Index, typename Local, typename Mesh>
@@ -69,7 +69,7 @@ auto record_single_plane_cells(Local &local, const Mesh &mesh) -> void {
       local.cell_of.push_back(local.face_cell[t]);
 }
 
-/// CORE. A stack's members share one triangulation, so each member carries its
+/// A stack's members share one triangulation, so each member carries its
 /// own copy of the cells its coverage kept — the same cell, stated once per
 /// covering member. The member-major stream IS that selection, in that order.
 template <typename Index, typename Local, typename Mesh>

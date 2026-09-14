@@ -17,7 +17,7 @@
 
 namespace tf::arrangement {
 
-/// CORE. A pooled carrier's emission stream, member-major.
+/// A pooled carrier's emission stream, member-major.
 ///
 /// Counts plus one prefix over the coverage give each member a disjoint run of
 /// the triangles it emits, filled by one ascending pass, so the run IS the

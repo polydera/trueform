@@ -17,37 +17,52 @@
 #include "../../arrangement/planes/plane_arrangement.hpp"
 #include "../../arrangement/planes/plane_arrangement_face.hpp"
 #include "../../core/algorithm/block_reduce_sequenced_aggregate.hpp"
+#include "../../core/algorithm/generic_generate.hpp"
 #include "../../core/buffer.hpp"
+#include "../../core/checked.hpp"
+#include "../../core/none.hpp"
 #include "../../core/offset_block_buffer.hpp"
 #include "../../core/reallocate.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "../../exact/det2_sign.hpp"
 #include "../../exact/dot_sign.hpp"
 #include "../../exact/meta.hpp"
+#include "../../exact/plane_support.hpp"
 #include "../../intersect/graph/face_descriptor.hpp"
+#include "../../intersect/graph/plane_edge_def.hpp"
 #include "../../intersect/graph/plane_edge_radial_authority.hpp"
+#include "../../topology/directed_edge_id_in_face.hpp"
+#include "../../topology/manifold_edge_peer.hpp"
 #include "./make_plane_triangle_faces.hpp"
+#include "./triangle_component_labels.hpp"
 #include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <tuple>
+#include <type_traits>
 
 namespace tf::csg::graph {
 
-/// The radial fans of the arrangement: one fan per fan piece, its pages
-/// in radial order around the edge.
+/// The radial fans of the arrangement: one fan per ring around a
+/// non-manifold or seam edge, its pages in radial order around the edge.
 ///
-/// A PAGE is one carrier plane on one of its two sides — the half-plane
-/// the sectors meet at — and it carries every live occurrence sitting on
+/// A PAGE is one carrier on one of its two sides — the half-plane the
+/// sectors meet at — and it carries every live occurrence sitting on
 /// it, so triangulation multiplicity and stack depth cost the ring
-/// nothing. `pieces[k]` is the k-th fan's piece ticket and
-/// `[page_offsets[k], page_offsets[k + 1])` its pages, radially sorted;
-/// `rows[p]` is page `p`'s occurrence rows (`triangle * 3 + slot`) and
-/// `dirs` walks in lockstep with the row data — 1 when the occurrence
-/// traverses the edge in its canonical key order. Every fan piece has a
-/// fan, whatever its size: a two-page fan closes its curves and divides
-/// like any other.
+/// nothing. A ring holds BOTH STATES of a sheet: a cut sheet's pages
+/// come from the plane world, and an uncut sheet presents itself as a
+/// carrier of its own — its exact supported normal, in its own winding
+/// — so one radial order sorts them together. `pieces[k]` is the k-th
+/// fan's piece ticket, `-1` for a ring on a source edge no piece names
+/// (every sheet uncut); `[page_offsets[k], page_offsets[k + 1])` are its
+/// pages, radially sorted. `rows[p]` is page `p`'s occurrence rows: a
+/// cut occurrence is `triangle * 3 + slot`, an uncut sheet is
+/// `-(component + 1)` — its surface component, stated directly, since
+/// no stream row names it. `dirs` walks in lockstep with the row data —
+/// 1 when the occurrence traverses the edge in the ring's canonical
+/// order. Every fan piece has a fan, whatever its size: a two-page fan
+/// closes its curves and divides like any other.
 ///
 /// `n_refused` counts the fans whose own definitions named no single carrier
 /// line (@ref tf::intersect::graph::make_plane_edge_radial_authority) — an
@@ -82,15 +97,29 @@ template <typename Index> struct plane_radial_fans {
 /// the overwhelming majority of fans never ask for it. A piece whose
 /// definitions name no single line refuses, and only there does the ring come
 /// off the pages' coordinates.
-template <typename Index, typename Int, typename Immutable,
-          typename GetMeshPoint, typename ApplyToFace>
+///
+/// THE UNCUT SHEETS. A non-manifold boundary definition names its source
+/// directed side `(tag_other, object_other, side)`; the side's edge, read
+/// through the form's own faces, names every incident face, and a face the
+/// surface labels still own (`polygon_labels != none`) is a sheet the cut
+/// world never saw. It joins the ring as `(supported normal, +1, traversal
+/// against the piece's key order)` — the same triple a carrier states — and
+/// a face whose support is a line states no half-plane and is skipped, as a
+/// collapsed face is in the cut world. A source edge NO piece names — its
+/// representative marked in the form's `manifold_edge_link`, every incident
+/// face uncut — is a ring carrier of its own, ordered about the edge's own
+/// lattice line.
+template <typename Index, typename Int, typename Immutable, typename Labels,
+          typename GetMeshPoint, typename ApplyToFace, typename ApplyToForm>
 auto make_plane_radial_fans(
     const tf::arrangement::plane_arrangement<Index, Int> &arrangement,
     const Immutable &immutable,
     const tf::arrangement::plane_piece_incidence<Index> &incidence,
-    const tf::arrangement::plane_piece_fences &fences,
-    const GetMeshPoint &get_mesh_point, const ApplyToFace &apply_to_face)
+    const tf::arrangement::plane_piece_fences &fences, const Labels &labels,
+    const GetMeshPoint &get_mesh_point, const ApplyToFace &apply_to_face,
+    const ApplyToForm &apply_to_form, Index n_tags)
     -> plane_radial_fans<Index> {
+  constexpr bool with_uncut = !std::is_same_v<Labels, tf::none_t>;
   using T1 = typename tf::exact::meta<Int>::T1;
   using T2 = typename tf::exact::meta<Int>::T2;
   using nvec = std::array<T2, 3>;
@@ -98,18 +127,16 @@ auto make_plane_radial_fans(
   plane_radial_fans<Index> out;
   out.page_offsets.push_back(Index(0));
   out.rows.offsets_buffer().push_back(Index(0));
-  if (std::none_of(fences.fan.begin(), fences.fan.end(),
-                   [](char fan) { return fan != char(0); }))
-    return out;
+  const bool any_fan = std::any_of(fences.fan.begin(), fences.fan.end(),
+                                   [](char fan) { return fan != char(0); });
 
   const auto coplanar_of = arrangement.coplanar_of();
   const auto triangles = arrangement.triangles();
   const auto face_of = make_plane_triangle_faces(arrangement);
 
   const auto get_base_point = [&](std::int16_t tag, Index id) {
-    return tag < std::int16_t(0)
-               ? immutable.point_of(id, get_mesh_point)
-               : get_mesh_point(int(tag), id);
+    return tag < std::int16_t(0) ? immutable.point_of(id, get_mesh_point)
+                                 : get_mesh_point(int(tag), id);
   };
   const auto base_created = immutable.n_created_points();
   const auto endpoint = [&](std::int16_t tag, Index id) {
@@ -127,8 +154,8 @@ auto make_plane_radial_fans(
                                                               immutable, face);
   };
 
-  // THE CARRIER ANSWERS EVERY GEOMETRIC QUESTION ABOUT ITS MEMBERS. A
-  // member's stored winding IS the sign of its normal against its
+  // The carrier answers every geometric question about its members: a
+  // member's stored winding is the sign of its normal against its
   // carrier's, so an occurrence's side is that winding turned by the walk
   // direction, and the page's wedge is the carrier's own normal on that
   // side. Nothing here reconstructs a normal from a face.
@@ -149,10 +176,10 @@ auto make_plane_radial_fans(
   const auto sign_t2 = [](const T2 &v) -> int {
     return (v > 0) ? 1 : (v < 0) ? -1 : 0;
   };
-  // THE SENSE OF TWO WEDGES A TURN HAS PROVEN PARALLEL: one is a multiple
-  // of the other, so the sign of one shared component's product IS the sign
-  // of their dot — read on the component that carries them, which a degree
-  // four dot cannot be formed to answer.
+  // The sense of two wedges a turn has proven parallel: one is a multiple
+  // of the other, so the sign of one shared component's product is the
+  // sign of their dot — which a degree-four dot cannot be formed to
+  // answer.
   const auto same_sense = [&](const nvec &a, const nvec &b) -> int {
     const auto magnitude = [](const T2 &v) { return v < T2(0) ? -v : v; };
     std::size_t c = 0;
@@ -169,8 +196,43 @@ auto make_plane_radial_fans(
     return v[0] == 0 && v[1] == 0 && v[2] == 0;
   };
 
+  // the turn is one component of the wedges' cross — degree four, no
+  // rung on the ladder — but that component is a determinant, so its
+  // sign is read without the product being formed
+  const auto radial_sort = [&](auto &pages, int axis, int d_sign) {
+    const auto k0 = std::size_t((axis + 1) % 3);
+    const auto k1 = std::size_t((axis + 2) % 3);
+    const auto ccw = [&](const nvec &a, const nvec &b) -> int {
+      return tf::exact::det2_sign<Int>(a[k0], b[k1], a[k1], b[k0]) * d_sign;
+    };
+    const nvec ref = pages[0].wedge;
+    const auto angle_class = [&](const nvec &w) -> int {
+      const int c = ccw(ref, w);
+      if (c > 0)
+        return 1;
+      if (c < 0)
+        return 3;
+      return same_sense(ref, w) > 0 ? 0 : 2;
+    };
+    std::sort(pages.begin(), pages.end(), [&](const auto &a, const auto &b) {
+      const int ka = angle_class(a.wedge);
+      const int kb = angle_class(b.wedge);
+      if (ka != kb)
+        return ka < kb;
+      if (ka == 1 || ka == 3) {
+        const int c = ccw(a.wedge, b.wedge);
+        if (c != 0)
+          return c > 0;
+      }
+      return std::tie(a.plane, a.side) < std::tie(b.plane, b.side);
+    });
+  };
+
   /// One live occurrence: the row that states it, the face it came out
   /// of, and the page it sits on — its carrier plane and the side of it.
+  /// An uncut sheet is its own carrier: its plane is a ring-local ticket
+  /// `-(ordinal + 1)` into the ring's normal table, and its row states
+  /// the surface component directly, `-(component + 1)`.
   struct occurrence_t {
     Index plane;
     Index face;
@@ -193,10 +255,17 @@ auto make_plane_radial_fans(
     tf::buffer<char> dirs;
     tf::buffer<occurrence_t> occurrences;
     tf::buffer<page_t> pages;
+    tf::buffer<nvec> uncut_normals;
+    tf::buffer<std::array<Index, 3>> nm_sides;
+    tf::buffer<std::array<Index, 2>> uncut_seen;
     Index refusals = 0;
   };
 
-  // THE ILL-POSED PIECE'S RING. Several carrier lines welded into one
+  const auto negate = [](const nvec &v) -> nvec {
+    return {T2(-v[0]), T2(-v[1]), T2(-v[2])};
+  };
+
+  // The ill-posed piece's ring: several carrier lines welded into one
   // canonical identity leave the piece with no line of its own, so the turn
   // is taken from the pages themselves: the cross of the first two
   // independent wedges, turned to the order the resolved endpoints stand in.
@@ -205,10 +274,10 @@ auto make_plane_radial_fans(
   // ladder, and the dot against it reads its operands past the width its
   // own contract states: on a carrier standing at the lattice's full span
   // both leave their type. A ring read off the piece's own endpoints is
-  // exact and needs neither, and it is NOT what this states — it moves
+  // exact and needs neither, and it is not what this states — it moves
   // corpus pairs in both directions, so it is an open question, not a fix.
-  const auto pages_ring =
-      [&](const tf::buffer<page_t> &pages, const auto &reference)
+  const auto pages_ring = [&](const tf::buffer<page_t> &pages,
+                              const auto &reference)
       -> tf::intersect::graph::plane_edge_radial_authority {
     tf::intersect::graph::plane_edge_radial_authority ring;
     nvec d{T2(0), T2(0), T2(0)};
@@ -245,8 +314,8 @@ auto make_plane_radial_fans(
       local.pieces.push_back(piece);
 
       // the piece's canonical pair, in the stream's flat language
-      const auto &reference =
-          arrangement.piece_definitions(immutable, piece)[0];
+      const auto definitions = arrangement.piece_definitions(immutable, piece);
+      const auto &reference = definitions[0];
       const auto va =
           arrangement.flat_of(reference.point_tag_0, reference.point_0);
 
@@ -263,6 +332,85 @@ auto make_plane_radial_fans(
                                                            immutable, face),
              face, row, dir, side_of(face, dir)});
       }
+
+      // A non-manifold boundary definition names its
+      // source side; the side's own corners, turned by the reversed
+      // flag, state the piece's key order as a source vertex pair —
+      // split-invariant, since a sub-piece re-flips the bit with its
+      // key — so an uncut incident face's traversal bit is stated in
+      // the same language as a cut occurrence's.
+      constexpr bool ring_uncut = !std::is_same_v<Labels, tf::none_t>;
+      if constexpr (ring_uncut) {
+        local.uncut_normals.clear();
+        local.nm_sides.clear();
+        local.uncut_seen.clear();
+        for (const auto &def : definitions) {
+          if (def.side < std::int16_t(0) ||
+              (def.flags &
+               tf::intersect::graph::plane_edge_non_manifold_flag) == 0)
+            continue;
+          Index ka = Index(-1);
+          Index kb = Index(-1);
+          apply_to_face(int(def.tag_other), def.object_other,
+                        [&](const auto &corners) {
+                          const auto n = corners.size();
+                          if (std::size_t(def.side) >= n)
+                            return;
+                          ka = Index(corners[std::size_t(def.side)]);
+                          kb = Index(corners[(std::size_t(def.side) + 1) % n]);
+                        });
+          if (ka == Index(-1) || ka == kb)
+            continue;
+          if ((def.flags & tf::intersect::graph::plane_edge_reversed_flag) != 0)
+            std::swap(ka, kb);
+          const std::array<Index, 3> stated{
+              Index(def.tag_other), ka < kb ? ka : kb, ka < kb ? kb : ka};
+          bool named = false;
+          for (const auto &seen : local.nm_sides)
+            named = named || seen == stated;
+          if (named)
+            continue;
+          local.nm_sides.push_back(stated);
+          const auto tag = Index(def.tag_other);
+          auto poly_labels = labels.polygon_labels(tag);
+          apply_to_form(tag, [&](const auto &form) {
+            const auto faces_t = form.faces();
+            auto &&fm = form.face_membership();
+            for (const auto f2 : fm[ka]) {
+              const auto face2 = faces_t[f2];
+              const auto sz = Index(face2.size());
+              const bool along =
+                  tf::directed_edge_id_in_face(ka, kb, face2) != sz;
+              if (!along && tf::directed_edge_id_in_face(kb, ka, face2) == sz)
+                continue;
+              if (poly_labels[std::size_t(f2)] ==
+                  triangle_component_labels<Index>::none_label)
+                continue;
+              const std::array<Index, 2> sheet{tag, Index(f2)};
+              bool present = false;
+              for (const auto &seen : local.uncut_seen)
+                present = present || seen == sheet;
+              if (present)
+                continue;
+              local.uncut_seen.push_back(sheet);
+              tf::exact::plane_support<Int> support;
+              for (std::size_t c = 0; c < std::size_t(face2.size()); ++c) {
+                support.offer(get_mesh_point(int(tag), Index(face2[c])));
+                if (support.size == 3)
+                  break;
+              }
+              if (support.size != 3)
+                continue; // a line states no half-plane
+              const auto ordinal = Index(local.uncut_normals.size());
+              local.uncut_normals.push_back(support.normal);
+              local.occurrences.push_back(
+                  {Index(-(ordinal + 1)), Index(f2),
+                   Index(-(poly_labels[std::size_t(f2)] + 1)), char(along),
+                   static_cast<signed char>(along ? 1 : -1)});
+            }
+          });
+        }
+      }
       // a carrier stands on both sides of the piece, so the page is
       // (plane, side) and the sort that groups it is the only one
       std::sort(local.occurrences.begin(), local.occurrences.end(),
@@ -278,11 +426,17 @@ auto make_plane_radial_fans(
                local.occurrences[end].plane == local.occurrences[begin].plane &&
                local.occurrences[end].side == local.occurrences[begin].side)
           ++end;
-        local.pages.push_back({wedge_of(local.occurrences[begin].plane,
-                                        local.occurrences[begin].side),
-                               local.occurrences[begin].plane, Index(begin),
-                               Index(end - begin),
-                               local.occurrences[begin].side});
+        const occurrence_t &first = local.occurrences[begin];
+        nvec wedge;
+        if ((first.plane) < Index(0)) {
+          wedge = local.uncut_normals[std::size_t(-first.plane) - 1];
+          if (first.side < 0)
+            wedge = negate(wedge);
+        } else {
+          wedge = wedge_of(first.plane, first.side);
+        }
+        local.pages.push_back(
+            {wedge, first.plane, Index(begin), Index(end - begin), first.side});
         begin = end;
       }
 
@@ -311,39 +465,7 @@ auto make_plane_radial_fans(
                              std::tie(b.plane, b.side);
                     });
         } else {
-          const auto k0 = std::size_t((ring.axis + 1) % 3);
-          const auto k1 = std::size_t((ring.axis + 2) % 3);
-          const int d_sign = ring.sign;
-          // the turn is ONE component of the wedges' cross, which is degree
-          // four and has no rung on the ladder — but that component IS a
-          // determinant, so its sign is read without the product being formed
-          const auto ccw = [&](const nvec &a, const nvec &b) -> int {
-            return tf::exact::det2_sign<Int>(a[k0], b[k1], a[k1], b[k0]) *
-                   d_sign;
-          };
-          const nvec ref = local.pages[0].wedge;
-          const auto angle_class = [&](const nvec &w) -> int {
-            const int c = ccw(ref, w);
-            if (c > 0)
-              return 1;
-            if (c < 0)
-              return 3;
-            return same_sense(ref, w) > 0 ? 0 : 2;
-          };
-          std::sort(local.pages.begin(), local.pages.end(),
-                    [&](const page_t &a, const page_t &b) {
-                      const int ka = angle_class(a.wedge);
-                      const int kb = angle_class(b.wedge);
-                      if (ka != kb)
-                        return ka < kb;
-                      if (ka == 1 || ka == 3) {
-                        const int c = ccw(a.wedge, b.wedge);
-                        if (c != 0)
-                          return c > 0;
-                      }
-                      return std::tie(a.plane, a.side) <
-                             std::tie(b.plane, b.side);
-                    });
+          radial_sort(local.pages, ring.axis, ring.sign);
         }
       }
 
@@ -371,10 +493,132 @@ auto make_plane_radial_fans(
     result.n_refused += local.refusals;
   };
 
-  tf::blocked_reduce_sequenced_aggregate(
-      tf::make_sequence_range(Index(fences.fan.size())), out, local_t{}, task,
-      aggregate);
+  if (any_fan)
+    tf::blocked_reduce_sequenced_aggregate(
+        tf::make_sequence_range(Index(fences.fan.size())), out, local_t{}, task,
+        aggregate);
+
+  // The edge-grain carriers: source non-manifold sides no piece names.
+  // The link already marks one representative per non-manifold edge, so
+  // the discovery is one comparison per side of every face; a sheet of
+  // the edge in the cut world means its defs put every ring of the edge
+  // under the piece tier, so only the all-uncut edge rings here.
+  if constexpr (with_uncut) {
+    struct uncut_sheet_t {
+      nvec normal;
+      Index label;
+      char dir;
+    };
+    tf::buffer<std::array<Index, 2>> representatives;
+    tf::buffer<uncut_sheet_t> sheets;
+    tf::buffer<page_t> pages;
+    for (Index tag = 0; tag < n_tags; ++tag) {
+      auto poly_labels = labels.polygon_labels(tag);
+      apply_to_form(tag, [&](const auto &form) {
+        const auto faces_t = form.faces();
+        auto &&mel = form.manifold_edge_link();
+        auto &&fm = form.face_membership();
+        representatives.clear();
+        tf::generic_generate(
+            tf::make_sequence_range(Index(faces_t.size())), representatives,
+            [&](Index f, tf::buffer<std::array<Index, 2>> &found) {
+              const auto peers = mel[f];
+              for (Index s = 0; s < Index(peers.size()); ++s)
+                if (peers[std::size_t(s)].face_peer ==
+                    tf::manifold_edge_peer<Index>::non_manifold_representative)
+                  found.push_back({f, s});
+            },
+            tf::checked);
+        for (const auto &rep : representatives) {
+          const auto face = faces_t[rep[0]];
+          const auto n = Index(face.size());
+          const auto i = Index(face[std::size_t(rep[1])]);
+          const auto j = Index(face[std::size_t((rep[1] + 1) % n)]);
+          if (i == j)
+            continue;
+          sheets.clear();
+          bool any_cut = false;
+          for (const auto f2 : fm[i]) {
+            const auto face2 = faces_t[f2];
+            const auto sz = Index(face2.size());
+            const bool along = tf::directed_edge_id_in_face(i, j, face2) != sz;
+            if (!along && tf::directed_edge_id_in_face(j, i, face2) == sz)
+              continue;
+            if (poly_labels[std::size_t(f2)] ==
+                triangle_component_labels<Index>::none_label) {
+              any_cut = true;
+              break;
+            }
+            tf::exact::plane_support<Int> support;
+            for (std::size_t c = 0; c < std::size_t(face2.size()); ++c) {
+              support.offer(get_mesh_point(int(tag), Index(face2[c])));
+              if (support.size == 3)
+                break;
+            }
+            if (support.size != 3)
+              continue; // a line states no half-plane
+            sheets.push_back({support.normal,
+                              Index(poly_labels[std::size_t(f2)]),
+                              char(along)});
+          }
+          if (any_cut)
+            continue;
+          const auto pi = get_mesh_point(int(tag), i);
+          const auto pj = get_mesh_point(int(tag), j);
+          const std::array<T1, 3> line{T1(pj[0]) - pi[0], T1(pj[1]) - pi[1],
+                                       T1(pj[2]) - pi[2]};
+          const auto magnitude = [](const T1 &value) {
+            return value < T1(0) ? T1(-value) : value;
+          };
+          int axis = 0;
+          for (int c = 1; c < 3; ++c)
+            if (magnitude(line[std::size_t(c)]) >
+                magnitude(line[std::size_t(axis)]))
+              axis = c;
+          if (line[std::size_t(axis)] == T1(0))
+            continue;
+          const int d_sign = line[std::size_t(axis)] > T1(0) ? 1 : -1;
+          pages.clear();
+          for (std::size_t k = 0; k < sheets.size(); ++k) {
+            const auto &sheet = sheets[k];
+            pages.push_back({sheet.dir ? sheet.normal : negate(sheet.normal),
+                             Index(-(Index(k) + 1)), Index(k), Index(1),
+                             static_cast<signed char>(sheet.dir ? 1 : -1)});
+          }
+          if (pages.size() >= 3)
+            radial_sort(pages, axis, d_sign);
+          out.pieces.push_back(Index(-1));
+          out.page_offsets.push_back(
+              out.page_offsets[out.page_offsets.size() - 1] +
+              Index(pages.size()));
+          auto &offsets = out.rows.offsets_buffer();
+          for (const auto &page : pages) {
+            offsets.push_back(offsets[offsets.size() - 1] + Index(1));
+            out.rows.data_buffer().push_back(
+                Index(-(sheets[std::size_t(page.begin)].label + 1)));
+            out.dirs.push_back(sheets[std::size_t(page.begin)].dir);
+          }
+        }
+      });
+    }
+  }
   return out;
+}
+
+/// The cut tier's fans alone — no surface labels in hand, so no uncut
+/// sheets and no edge-grain carriers: the arrangement's own read.
+template <typename Index, typename Int, typename Immutable,
+          typename GetMeshPoint, typename ApplyToFace>
+auto make_plane_radial_fans(
+    const tf::arrangement::plane_arrangement<Index, Int> &arrangement,
+    const Immutable &immutable,
+    const tf::arrangement::plane_piece_incidence<Index> &incidence,
+    const tf::arrangement::plane_piece_fences &fences,
+    const GetMeshPoint &get_mesh_point, const ApplyToFace &apply_to_face)
+    -> plane_radial_fans<Index> {
+  return make_plane_radial_fans<Index, Int>(arrangement, immutable, incidence,
+                                            fences, tf::none, get_mesh_point,
+                                            apply_to_face, tf::none, Index(0));
 }
 
 } // namespace tf::csg::graph

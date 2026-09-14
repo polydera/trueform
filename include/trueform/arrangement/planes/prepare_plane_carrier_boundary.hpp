@@ -20,7 +20,7 @@
 
 namespace tf::arrangement {
 
-/// CORE. One carrier's triangulation input, read off THE FACE IT IS.
+/// One carrier's triangulation input, read off THE FACE IT IS.
 ///
 /// A world that has not materialized its definition tier has stated nothing
 /// about a carrier but its own boundary, so the face's corners ARE the
@@ -76,8 +76,8 @@ auto prepare_plane_carrier_boundary(const World &world,
   local.cons_row.clear();
 
   // Every side is a boundary statement of the carrier's only member, so the
-  // side index IS the ordinal. A SIDE STATED TWICE IS THE MESH FOLDING ONTO
-  // ITSELF AND ITS WALL CANCELS — the repeated-boundary law a canon-major
+  // side index is the ordinal. A side stated twice is the mesh folding
+  // onto itself and its wall cancels — the repeated-boundary law a canon-major
   // block carries as a run's parity toggle, carried here as the toggle
   // itself, since equal pairs are what a canonical order would have made
   // adjacent. The group space is the tier's, and an unmaterialized tier

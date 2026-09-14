@@ -17,15 +17,19 @@ using dyn = form_t<std::int64_t, double, tf::dynamic_size>;
 } // namespace
 
 template boolean_result_t<tri, tri>
-boolean_of<tri, tri>(const tri &, const tri &, tf::boolean_op);
+boolean_of<tri, tri>(const tri &, const tri &, tf::boolean_op,
+                      tf::arrangement_config);
 
 template boolean_result_t<tri, dyn>
-boolean_of<tri, dyn>(const tri &, const dyn &, tf::boolean_op);
+boolean_of<tri, dyn>(const tri &, const dyn &, tf::boolean_op,
+                      tf::arrangement_config);
 
 template boolean_result_t<dyn, tri>
-boolean_of<dyn, tri>(const dyn &, const tri &, tf::boolean_op);
+boolean_of<dyn, tri>(const dyn &, const tri &, tf::boolean_op,
+                      tf::arrangement_config);
 
 template boolean_result_t<dyn, dyn>
-boolean_of<dyn, dyn>(const dyn &, const dyn &, tf::boolean_op);
+boolean_of<dyn, dyn>(const dyn &, const dyn &, tf::boolean_op,
+                      tf::arrangement_config);
 
 } // namespace tf::test

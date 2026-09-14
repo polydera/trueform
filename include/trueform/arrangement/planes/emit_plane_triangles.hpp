@@ -35,7 +35,7 @@
 
 namespace tf::arrangement {
 
-/// CORE. The piece a slot names is the constraint the plane's own table
+/// The piece a slot names is the constraint the plane's own table
 /// states. Two inputs may cover one edge; the producers name different members
 /// of that coincidence class, so the class's standing owner answers for all.
 template <typename Index, typename Local, typename Mesh>
@@ -55,7 +55,7 @@ auto emit_plane_slots(const Local &local, const Mesh &mesh, Index triangle,
   return slots;
 }
 
-/// CORE. Where each corner of one emitted triangle sits on the emitting
+/// Where each corner of one emitted triangle sits on the emitting
 /// member's own polygon, read off the point table the member's own sides
 /// state.
 template <typename Index, typename Local, typename Triangle>
@@ -72,7 +72,7 @@ auto emit_plane_subs(const Local &local, const Triangle &triangle)
   return subs;
 }
 
-/// CORE. Every corner of the stock kernel's triangulation must be one of the
+/// Every corner of the stock kernel's triangulation must be one of the
 /// identities the plane was prepared with.
 template <typename Index, typename Local>
 auto plane_corners_are_named(const Local &local) -> bool {
@@ -82,7 +82,7 @@ auto plane_corners_are_named(const Local &local) -> bool {
   return true;
 }
 
-/// CORE. A lone member's plane: everything the triangulation kept inside the
+/// A lone member's plane: everything the triangulation kept inside the
 /// face boundary, in the face's own winding. Region 0 is the hull
 /// exterior and the only thing dropped.
 template <typename Index, typename Int, typename Local, typename Mesh,
@@ -122,7 +122,7 @@ auto emit_single_plane(Local &local, const Mesh &mesh,
     record_single_plane_cells<Index>(local, mesh);
 }
 
-/// CORE. A coplanar stack: ONE triangulation, so agreement between members
+/// A coplanar stack: ONE triangulation, so agreement between members
 /// is by construction and the only question is who covers what. Each
 /// region elects the minimal-tag covering member; every other covering
 /// member emits a duplicate pointing at the survivor.
@@ -209,7 +209,7 @@ auto emit_plane_stack(const World &world, Index plane, Local &local,
   return true;
 }
 
-/// CORE. Emit one prepared plane from the triangulation that built it. A
+/// Emit one prepared plane from the triangulation that built it. A
 /// refined mesh carries interior points no input names: each takes a
 /// PLANE-LOCAL ticket at its first corner and states its exact position once.
 /// The plane is the identity's carrier, so a later round that rebuilds the

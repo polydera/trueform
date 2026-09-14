@@ -35,23 +35,19 @@
 
 namespace tf::arrangement {
 
-/// Seat a round's promoted faces in this arrangement's own tier.
+/// Seat a round's promoted faces in this arrangement's own tier, per the
+/// entrance law: a shared-edge row joins its standing group as one more
+/// instance — appended at the span's tail, sorted last, every other
+/// position untouched, no correspondence table — landing through
+/// @ref tf::arrangement::port_plane_diff, because the port is the
+/// operation that moves a group from the world tier to this one.
 ///
-/// THE ENTRANT GETS A NEW SPAN in the local tables — every edge that is its
-/// alone. The ONE row that cannot go there is the SHARED edge: its canonical
-/// group already exists, the group IS the cross-face join, and a second group
-/// for one wall is the twin-wall defect. That row JOINS the existing group as
-/// one more instance — appended at the span's tail, sorted last, every other
-/// position untouched, and no correspondence table. The rider is that one
-/// row; @ref tf::arrangement::port_plane_diff is where it lands, because the
-/// port is the operation that moves a group from the world tier to this one.
-///
-/// So the order is the whole algorithm: the shared sides name the groups the
-/// port TAKES and ride them in; the sides that name nothing found local
-/// groups of their own after it; and each promoted face's block is then its
-/// rows in KEY order, which is the invariant every block consumer indexes by.
-/// A promoted plane must hold a local ticket — the world tables end at the
-/// world's own carriers — so the ticket space grows with the faces.
+/// So the order is the whole algorithm: the shared sides name the groups
+/// the port takes and ride them in; the sides that name nothing found
+/// local groups after it; and each promoted face's block is then its rows
+/// in key order, the invariant every block consumer indexes by. A promoted
+/// plane must hold a local ticket — the world tables end at the world's
+/// own carriers — so the ticket space grows with the faces.
 ///
 /// Every group the entrants name must be seatable: `route_of` states that,
 /// and a caller states only faces @ref
@@ -85,7 +81,7 @@ auto seat_plane_wave_entrants(
     tf::parallel_fill(group_router, Index(-1));
   }
 
-  // THE RIDERS, carried by value in the span's own order: provenance then
+  // The riders, carried by value in the span's own order: provenance then
   // flags, which is what the port appends them under and what every later
   // search of a span assumes.
   struct rider_t {
@@ -151,7 +147,7 @@ auto seat_plane_wave_entrants(
                                 })))
     return false;
 
-  // THE ROW EACH ENTRANT DEFINITION SURVIVES AS: a rider is the tail of the
+  // The row each entrant definition survives as: a rider is the tail of the
   // span the port just minted, at its own rank inside the run.
   tf::buffer<Index> seat;
   seat.allocate_and_initialize(entrant_defs.size(), Index(-1));
@@ -191,7 +187,7 @@ auto seat_plane_wave_entrants(
     local_tables.n_canon() = mint + Index(1);
   }
 
-  // THE PROMOTED PLANE MUST HOLD A LOCAL TICKET: the world tables end at the
+  // The promoted plane must hold a local ticket: the world tables end at the
   // world's own carriers, so a suffix plane reading `-1` names nothing
   const auto n_planes =
       std::size_t(entrant_plane_base) + std::size_t(n_entrant_planes);

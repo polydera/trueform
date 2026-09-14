@@ -146,7 +146,7 @@ auto gather_plane_diff(
     return at != retired.end() && *at == flat;
   };
   if (retired.size() != 0) {
-    // THE RING, dense in the plane space it indexes: workers state the same
+    // The ring, dense in the plane space it indexes: workers state the same
     // value into it, which is the whole write. A world that names no
     // carriers builds none and every plane reads its block, as before.
     tf::buffer<char> dirty;

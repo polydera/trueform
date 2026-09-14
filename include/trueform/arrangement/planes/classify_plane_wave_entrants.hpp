@@ -25,16 +25,11 @@
 
 namespace tf::arrangement {
 
-/// A promoted face's side that JOINS a standing group instead of founding
-/// one, and the route by which it joins.
-///
-/// THE ENTRANT GETS A NEW SPAN in the local tables — every edge that is its
-/// alone. The ONE row that cannot go there is the SHARED edge: its canonical
-/// group already exists — the neighbour's instance and the wave's split live
-/// on it, the group IS the cross-face join, and a second group for one wall
-/// is the twin-wall defect. That row therefore joins the existing group as
-/// one more instance. The rider is that one row, and everything below is the
-/// four routes one row can take, not four mechanisms.
+/// A promoted face's side that joins a standing group instead of founding
+/// one, and the route by which it joins. The rider is the shared-edge row
+/// of the entrance law (@ref tf::arrangement::plane_arrangement's wave
+/// entrance), and everything below is the four routes one row can take,
+/// not four mechanisms.
 /// The key names no group the world holds: the row founds a local group of
 /// its own, with nothing to join.
 inline constexpr int plane_wave_entrant_fresh = 0;

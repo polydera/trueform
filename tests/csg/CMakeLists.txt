@@ -10,6 +10,7 @@ add_executable(trueform_csg_tests
   test_csg_bundle_containment.cpp
   test_csg_domains.cpp
   test_csg_tolerance_ladder.cpp
+  test_nonmanifold_edge_rings.cpp
   test_make_outer_shell.cpp
   test_selection.cpp
   test_triangulated_csg.cpp

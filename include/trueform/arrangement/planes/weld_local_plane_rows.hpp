@@ -165,7 +165,7 @@ auto weld_local_plane_rows(
     return true;
   }
 
-  // a weld touches a group WHOLE: every instance states the same key, so the
+  // a weld touches a group whole: every instance states the same key, so the
   // rows name groups and the groups are the grain
   tf::buffer<Index> touched;
   touched.allocate(weld_row_data.size());
@@ -247,7 +247,7 @@ auto weld_local_plane_rows(
       tf::parallel_contains(tf::make_range(weld_planes), unported,
                             tf::checked))
     return false;
-  // ONE OWNER PER BLOCK: a carrier of a retired group is rebuilt, and only the
+  // one owner per block: a carrier of a retired group is rebuilt, and only the
   // carriers no rebuild reaches are ordered in place
   tf::buffer<Index> ordered_planes;
   tf::sequenced_generate(

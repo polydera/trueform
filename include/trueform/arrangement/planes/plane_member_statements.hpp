@@ -37,7 +37,7 @@ template <typename Index> struct plane_member_statement {
   char parity;
 };
 
-/// CORE. Add one statement to the row being built at `begin`. Rows stay
+/// Add one statement to the row being built at `begin`. Rows stay
 /// ascending in member, so the flood's walk across a wall is a merge; a member
 /// RESTATING the row toggles its wall — the mesh folding onto one carrier
 /// cancels — and the first side it names is the one it keeps.
@@ -61,7 +61,7 @@ auto state_plane_member_statement(
   statements[at] = {member, row, side, parity};
 }
 
-/// CORE. The same statements by MEMBER. Counts plus one prefix put each
+/// The same statements by MEMBER. Counts plus one prefix put each
 /// member's own boundary in a disjoint run, ascending in row, which is the
 /// order the point subs are elected in.
 template <typename Index>

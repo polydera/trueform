@@ -22,7 +22,7 @@
 
 namespace tf::iso {
 
-/// CORE. The state a scalar field cut almost always leaves: ONE chord, both
+/// The state a scalar field cut almost always leaves: ONE chord, both
 /// ends on the boundary chain. The chord separates the chain into two runs,
 /// and those runs closed by the chord ARE the two pieces — no triangulation
 /// has to discover them. The chain is the point table, so the chord already

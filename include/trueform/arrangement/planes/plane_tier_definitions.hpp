@@ -23,7 +23,7 @@
 
 namespace tf::arrangement {
 
-/// CORE. Whether every ticket names a tier that can answer it: a block this
+/// Whether every ticket names a tier that can answer it: a block this
 /// arrangement's local tier holds, or the world tier by `-1` — which a plane
 /// past the world's own carriers has no right to name.
 template <typename Index>

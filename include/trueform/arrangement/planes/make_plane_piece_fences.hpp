@@ -57,27 +57,28 @@ struct plane_piece_fences {
 
 /// A piece fences for exactly three reasons, and nothing else:
 ///
-/// FAN — planes meet here and a radial pairing stands. TWO independent facts
-/// say so, and this tier is where they are read together: an instance states
-/// the SEAM (@ref tf::intersect::graph::plane_edge_fan_flag), or MORE THAN
-/// TWO live cell incidences meet at the piece. The seam is an input fact like
-/// the non-manifold bit — a second operand touches here, which at incidence
-/// two no count can see, and its two pages divide trivially. The incidence is
-/// the arrangement's own: past two the radial order has something to decide,
-/// whatever named the piece. It counts OCCURRENCES — a cell reaching the
-/// piece from both sides states two of them, and a coplanar duplicate states
-/// none, its survivor already carrying their shared cell, so a stack's depth
-/// never inflates the count.
+/// FAN — sheets meet here and a radial pairing stands. THREE independent
+/// facts say so, and this tier is where they are read together: an instance
+/// states the SEAM (@ref tf::intersect::graph::plane_edge_fan_flag), the
+/// instance carries the mesh's own NON-MANIFOLD edge
+/// (@ref tf::intersect::graph::plane_edge_non_manifold_flag), or MORE THAN
+/// TWO live cell incidences meet at the piece. The seam is an input fact
+/// like the non-manifold bit — a second operand touches here, which at
+/// incidence two no count can see, and its two pages divide trivially. The
+/// non-manifold bit admits the ring even when its sheets are not all cut:
+/// the ring gathers the uncut sheets itself, so the live count cannot be
+/// the gate. The incidence is the arrangement's own: past two the radial
+/// order has something to decide, whatever named the piece. It counts
+/// OCCURRENCES — a cell reaching the piece from both sides states two of
+/// them, and a coplanar duplicate states none, its survivor already
+/// carrying their shared cell, so a stack's depth never inflates the count.
 ///
-/// The other two fence quietly — no fan stands there. The mesh's own
-/// NON-MANIFOLD edge, an input fact the form's edge link states and the
-/// instances carry (@ref tf::intersect::graph::plane_edge_non_manifold_flag),
-/// where no single continuation exists. A border between DEPTHS: the number
-/// of sheets covering the ground changes across the piece — the one fact the
-/// live count cannot carry, since it is the dead members that differ. Equal
-/// depth is ground continuing, and continuing ground is CROSSABLE — what the
-/// component flood may join. A piece no cell names is dead and fences
-/// nothing.
+/// The last fences quietly — no fan stands there. A border between DEPTHS:
+/// the number of sheets covering the ground changes across the piece — the
+/// one fact the live count cannot carry, since it is the dead members that
+/// differ. Equal depth is ground continuing, and continuing ground is
+/// CROSSABLE — what the component flood may join. A piece no cell names is
+/// dead and fences nothing.
 template <typename Index, typename Int, typename Immutable>
 auto make_plane_piece_fences(const plane_arrangement<Index, Int> &arrangement,
                              const Immutable &immutable,
@@ -112,8 +113,7 @@ auto make_plane_piece_fences(const plane_arrangement<Index, Int> &arrangement,
         Index previous = Index(-1);
         for (const auto row : rows) {
           const auto triangle = row / Index(3);
-          live +=
-              Index(coplanar_of[std::size_t(triangle)] == Index(-1));
+          live += Index(coplanar_of[std::size_t(triangle)] == Index(-1));
           if (triangle == previous)
             continue;
           previous = triangle;
@@ -124,25 +124,17 @@ auto make_plane_piece_fences(const plane_arrangement<Index, Int> &arrangement,
           fences.crossable[std::size_t(piece)] = char(0);
           return;
         }
-        bool non_manifold = false;
         for (const auto &definition :
              arrangement.piece_definitions(immutable, piece)) {
           if ((definition.flags &
-               tf::intersect::graph::plane_edge_fan_flag) != 0) {
+               (tf::intersect::graph::plane_edge_fan_flag |
+                tf::intersect::graph::plane_edge_non_manifold_flag)) != 0) {
             fences.fan[std::size_t(piece)] = char(1);
             fences.crossable[std::size_t(piece)] = char(0);
             return;
           }
-          non_manifold =
-              non_manifold ||
-              (definition.flags &
-               tf::intersect::graph::plane_edge_non_manifold_flag) != 0;
         }
         fences.fan[std::size_t(piece)] = char(0);
-        if (non_manifold) {
-          fences.crossable[std::size_t(piece)] = char(0);
-          return;
-        }
         fences.crossable[std::size_t(piece)] =
             char(!plane_piece_depth_varies(local.depth_cells));
       },

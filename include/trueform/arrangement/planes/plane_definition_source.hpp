@@ -27,7 +27,7 @@ template <typename Index, typename Int> struct plane_definition_source {
   bool immutable;
 };
 
-/// CORE. Whether one plane still reads the world tier. The ticket is the whole
+/// Whether one plane still reads the world tier. The ticket is the whole
 /// fact, and a tier holding no block at all states it for every plane.
 template <typename Index>
 auto plane_reads_world_tier(const tf::buffer<Index> &plane_ticket, Index plane)
@@ -36,7 +36,7 @@ auto plane_reads_world_tier(const tf::buffer<Index> &plane_ticket, Index plane)
          plane_ticket[std::size_t(plane)] == Index(-1);
 }
 
-/// CORE. The plane space a ticket answers in: its own extent once this
+/// The plane space a ticket answers in: its own extent once this
 /// arrangement states one, and the world's carriers before that.
 template <typename Index, typename Int>
 auto plane_ticket_space(
@@ -46,7 +46,7 @@ auto plane_ticket_space(
                                   : plane_ticket.size();
 }
 
-/// CORE. The tier one plane's BLOCK lives in — the world's while its ticket is
+/// The tier one plane's BLOCK lives in — the world's while its ticket is
 /// `-1`, this arrangement's otherwise. The rows inside it name their own tier:
 /// AN UNCHANGED GROUP STAYS THE WORLD'S, VERBATIM, FOR BOTH CARRIERS, so a
 /// block this arrangement holds still names the world's own rows for every
@@ -74,7 +74,7 @@ auto find_plane_definition_source(
                                       plane_ticket, plane);
 }
 
-/// CORE. One plane's constraint count, read off the tier that answers it.
+/// One plane's constraint count, read off the tier that answers it.
 template <typename Index, typename Int, typename World>
 auto plane_definition_edge_count(
     const World &world,

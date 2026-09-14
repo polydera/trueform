@@ -168,7 +168,7 @@ auto commit_plane_wave_blocks(
                ? std::size_t(found - losers.begin())
                : n_losers;
   };
-  // the winner's span is ascending by the WHOLE oriented instance —
+  // the winner's span is ascending by the whole oriented instance —
   // provenance then flags, because A->B and B->A on one key are two facts —
   // so one search states which of its rows supersedes a retired one
   const auto winner_row =
@@ -302,7 +302,7 @@ auto commit_plane_wave_blocks(
       block_local_t{});
   // The reserved extent was one row per slot; the blocks close up over the
   // rows their sets actually name. The kept rows move to a destination OF
-  // THEIR OWN: a block whose predecessors dropped rows starts before its own
+  // their own: a block whose predecessors dropped rows starts before its own
   // source, so closing up in place would let it write over rows the block
   // before it has not read yet.
   for (std::size_t at = 0; at < carrier_planes.size(); ++at)

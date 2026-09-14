@@ -171,8 +171,8 @@ auto make_csg_domains(const tf::csg_graph<Policy, Int, Arrangement> &graph) {
       graph, csg::csg_domains_default_config);
 }
 
-// ---- return_source_ids overloads: additionally return per-cell provenance
-// as two offset_block_buffers parallel to `cells` --------------------------
+// return_source_ids overloads: additionally return per-cell provenance
+// as two offset_block_buffers parallel to `cells`:
 //   tag_blocks[k][j]  = the input form of cell k's face j
 //   face_blocks[k][j] = the original face id within that form
 // Returns (cells, ids, tag_blocks, face_blocks).
@@ -226,7 +226,7 @@ auto make_csg_domains(const tf::csg_graph<Policy, Int, Arrangement> &graph,
       graph, csg::csg_domains_default_config, tf::return_source_ids);
 }
 
-// ---- return_index_map overloads: bundle the per-cell (tag, face) and
+// return_index_map overloads: bundle the per-cell (tag, face) and
 // (tag, point) provenance into a tf::csg_domains_index_map ------------------
 // Returns (cells, ids, index_map).
 

@@ -29,7 +29,7 @@
 
 namespace tf::arrangement {
 
-/// CORE. Materialize once, at the ownership boundary: the planes in order, so
+/// Materialize once, at the ownership boundary: the planes in order, so
 /// every range is a prefix of the walk.
 ///
 /// A round aggregates its task blocks in input order, so a build that visited
@@ -72,7 +72,7 @@ auto materialize_plane_products(
         arena_is_product && cop[0] == cop_base[std::size_t(p)];
     cop_base[std::size_t(p) + 1] = cop_base[std::size_t(p)] + (cop[1] - cop[0]);
   }
-  // THE INTERIOR IDENTITIES ARE MINTED HERE, over what the arena finally
+  // The interior identities are minted here, over what the arena finally
   // holds: a plane a later round rebuilt replaced its own points, so nothing
   // is named that no triangle stands on. Plane order makes it deterministic.
   tf::buffer<Index> stn_base;

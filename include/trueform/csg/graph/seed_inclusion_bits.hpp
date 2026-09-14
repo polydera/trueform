@@ -48,29 +48,16 @@
 namespace tf::csg::graph {
 
 /// @ingroup csg_graph_internals
-/// @brief Seed per-bundle outer-env inclusion bits AND per-bundle nesting
-///        merges from a single per-bundle raycast (one walk, two reductions).
+/// @brief One exact segment cast per bundle, reduced two ways: per-form
+///        parity into `inc.bits[outer_env(bi)]`, and nesting merges that
+///        repair the false split between contact-free nested shells (the
+///        implicit-arrangement analogue of
+///        @ref tf::topology::domains::make_nesting_merges).
 ///
-/// Each disconnected bundle's seed is segment-cast to a far point against
-/// per-form AABB trees (`tf::search` with exact `segment_hits_aabb` at
-/// every BV node, exact `triangle_segment_intersect_point_sos` at leaves).
-/// That cast is reduced two ways:
-///   1. **bits** — per-form parity into `inc.bits[outer_env(bi)]`. Each
-///      bundle's outer-shell is the most-negative-volume incident domain;
-///      the globally most-negative is `null_seed`, anchored at zero bits.
-///   2. **nesting** (`out_nesting_merges`) — from each hit's two adjacent
-///      domains + squared seed-distance, the closest domain the parity
-///      rule places the seed inside is its physical container;
-///      `(outer_env[bi], that_domain)` is
-///      emitted as a `domain_of_side` merge that repairs the false split
-///      the arrangement leaves between two contact-free nested shells (the
-///      implicit-arrangement analogue of
-///      @ref tf::topology::domains::make_nesting_merges). No extra cast.
-///
-/// Sheet forms (`is_sheet_tag`) are side-classified via the generalized
-/// winding number (@ref tf::csg::graph::winding_side) instead of raycast;
-/// they never enclose, so they contribute no nesting merge. Single-bundle
-/// inputs return before any nesting work.
+/// A bundle's outer env is its most-negative-volume incident domain; the
+/// globally most negative is `null_seed`, anchored at zero bits. Sheet
+/// forms are side-classified by @ref tf::csg::graph::winding_side instead
+/// of the cast and never enclose, so they contribute no nesting merge.
 template <typename Index, typename Int, typename Arrangement,
           typename ApplyToForm, typename Real, std::size_t Dims, typename VolT,
           typename GetMeshPoint>
@@ -97,9 +84,8 @@ auto seed_inclusion_bits(
     Index b_inner;
     Index domain;
     T2 dist_sq;
-    /// The domain on the far end's side of the crossing that emitted
-    /// this record. The farthest crossing of a cast states where the far
-    /// point itself lies, which is the term ray parity needs.
+    /// The domain past the crossing; at the farthest crossing it is where
+    /// the far point itself lies — the term ray parity needs.
     Index beyond;
     auto operator<(const hit_t &o) const -> bool {
       if (b_inner != o.b_inner)
@@ -154,11 +140,8 @@ auto seed_inclusion_bits(
   if (n_bundles == Index(1))
     return seeds;
 
-  // A bundle's own envelope is the region its shell separates the rest of
-  // the scene from, so it never contains what sits inside that shell. The
-  // census still records it — the far end's domain is read off the
-  // farthest crossing, whichever side it lands on — but it is no
-  // candidate.
+  // a bundle's own envelope never contains what sits inside its shell:
+  // the census still records it, but it is no candidate
   tf::buffer<char> is_shell;
   is_shell.allocate(static_cast<std::size_t>(n_domains));
   tf::parallel_fill(is_shell, char(0));
@@ -166,10 +149,8 @@ auto seed_inclusion_bits(
     if (outer_env[b] >= Index(0))
       is_shell[outer_env[b]] = char(1);
 
-  // SoS id partition: originals [0, n_orig_total), createds
-  // [n_orig_total, +n_created), per-bundle seeds above, far point last.
-  // The stream's original ids ARE the flat ids, so the flat space is
-  // the original partition verbatim.
+  // SoS id partition: originals, createds, per-bundle seeds, far point —
+  // the stream's original ids are already the flat ids
   auto voffs = tf::make_range(arrangement.vertex_offsets());
   const auto &created = arrangement.created_points();
   const Index n_orig_total = voffs[voffs.size() - 1];
@@ -177,16 +158,11 @@ auto seed_inclusion_bits(
   const Index seed_id_base = n_orig_total + n_created;
   const Index far_id = seed_id_base + n_bundles;
 
-  // THE SEED IS AN INTERIOR POINT OF ONE OF THE BUNDLE'S OWN TRIANGLES,
-  // stated as the sum of that triangle's three corners over a denominator
-  // of three and never materialized. A corner lies on every carrier that
-  // meets there, so the side question a parity cast asks of it has no
-  // answer and SoS answers it from the input's own vertex order; the
-  // interior of a triangle the arrangement left whole lies on that
-  // triangle's carrier and on no other. Every other point the cast
-  // compares is multiplied by the same denominator, which clears it
-  // exactly: every verdict, and the order of several crossings of one
-  // segment, are the unscaled scene's.
+  // The seed is a triangle's interior point, stated as its corner sum
+  // over a denominator of three and never materialized: a corner lies on
+  // every carrier meeting there, an interior point on exactly one. Every
+  // point the cast compares is scaled by the same denominator, so every
+  // verdict is the unscaled scene's.
   const T1 seed_den = T1(3);
   auto scaled = [&](const IntPt &p) -> WidePt {
     return WidePt{T1(p[0]) * seed_den, T1(p[1]) * seed_den,
@@ -241,11 +217,9 @@ auto seed_inclusion_bits(
     return pooled[slots[e]] ? Index(-1) : tri_tags[e];
   };
 
-  // Seed triangle per bundle: sequential walk that early-terminates as
-  // soon as every bundle has any one triangle recorded. An uncut face is
-  // whole, so its own first fan triangle — the one the cast tests that
-  // face through — carries the interior; a cut face is read through the
-  // pieces the arrangement cut it into.
+  // An uncut face is whole, so its first fan triangle — the one the cast
+  // tests that face through — carries the interior; a cut face is read
+  // through its pieces.
   Index seeds_remaining = n_bundles;
   for (Index t = Index(0); t < n_tags && seeds_remaining > 0; ++t)
     apply_to_form(t, [&](const auto &form) {
@@ -284,9 +258,9 @@ auto seed_inclusion_bits(
     --seeds_remaining;
   }
 
-  // THE CAST'S BOXES ARE THE INPUT'S; ITS HITS ARE THE PLACED MESH'S. A
-  // pruned hit flips a parity bit and misclassifies a whole domain, so
-  // every box the cast prunes against grows by the door's motion bound.
+  // The cast's boxes are the input's, its hits the placed mesh's: a
+  // pruned hit flips a parity bit, so every box grows by the door's
+  // motion bound.
   const Int reach = get_mesh_point.motion_bound;
   tf::buffer<bbox_t> form_bv;
   form_bv.allocate(static_cast<std::size_t>(n_tags));
@@ -330,13 +304,11 @@ auto seed_inclusion_bits(
     }
   }
 
-  // A casting bundle must not parity-count its own surface. Uncut own
-  // faces are skipped by component label in the cast callback; a CUT
-  // face carries `none_label` there, so its bundle comes from its
-  // triangles — every piece of a face lies on one original surface,
-  // hence one bundle.
-  // (tag, face) -> exposed slot: exposure is tag-major, object-dense,
-  // so the prefix of per-tag face counts is the slot base
+  // A casting bundle must not parity-count its own surface; a cut face
+  // carries `none_label`, so its bundle comes from its triangles — every
+  // piece of a face lies on one original surface, hence one bundle.
+  // Exposure is tag-major and object-dense, so the prefix of per-tag
+  // face counts is the slot base.
   tf::buffer<Index> face_slot_offsets;
   face_slot_offsets.push_back(Index(0));
   for (Index t = Index(0); t < n_tags; ++t)
@@ -364,8 +336,7 @@ auto seed_inclusion_bits(
                   static_cast<std::size_t>(n_tags));
   tf::parallel_fill(parity, char(0));
 
-  // Sheet batches: one winding pass per sheet classifies every bundle
-  // that needs it; group `t` only touches parity column `t`.
+  // group `t` only touches parity column `t`
   if (sheet_pairs.size() > 0) {
     tbb::parallel_sort(sheet_pairs.begin(), sheet_pairs.end(),
                        [](const auto &a, const auto &b) {
@@ -398,13 +369,10 @@ auto seed_inclusion_bits(
     });
   }
 
-  // THE CENSUS IS COMPLETE OR IT IS NOT A CENSUS. A cut face carries no
-  // component of its own, but the arrangement cut it into pieces that
-  // do, and the segment crossed exactly one of them: run the same
-  // predicate against the face's own pieces to name it. The scan is one
-  // segment test per piece of that face, paid per cut hit on the
-  // per-bundle path. A dead piece shares its survivor's space, so the
-  // labelled one is the answer wherever both report.
+  // A cut face carries no component of its own, but the segment crossed
+  // exactly one of its pieces: the same predicate against them names it.
+  // A dead piece shares its survivor's space, so the labelled one is the
+  // answer wherever both report.
   auto crossed_piece_component = [&](Index tag, Index face_id,
                                      const WideVert &seed_v,
                                      const WideVert &far_v) -> Index {
@@ -427,9 +395,6 @@ auto seed_inclusion_bits(
     return labels_t::none_label;
   };
 
-  // One cast, two reductions: per-form parity (the bits) AND nesting
-  // hits (each crossing's two adjacent domains, which side of it the
-  // seed is on, and the squared seed-distance).
   tf::buffer<hit_t> nesting_hits;
   tf::generic_generate(
       tf::make_range(candidates), nesting_hits,
@@ -501,10 +466,8 @@ auto seed_inclusion_bits(
                         desc.domain_of_side[2 * c2 + 0] !=
                             desc.domain_of_side[2 * c2 + 1];
                     if (states) {
-                      // A component's side 1 is the side its faces are
-                      // wound away from, which is the side orient3d_sos
-                      // calls positive; the segment crosses the triangle,
-                      // so the far end is on the other one.
+                      // side 1 is the side the faces are wound away from
+                      // — the side orient3d_sos calls positive
                       const std::array<WideVert, 4> plane{v0, va, vb, seed_v};
                       const bool seed_on_side1 =
                           tf::exact::orient3d_sos_scaled<Int>(plane.data());
@@ -563,73 +526,88 @@ auto seed_inclusion_bits(
     record_seed(outer_env[bi]);
   }
 
-  // ---- Nesting reduction over the hits the cast already produced. ----
-  // RAY PARITY STATES A DIFFERENCE, NOT A MEMBERSHIP: crossing the
-  // boundary of D an odd number of times says the segment's two ends
-  // disagree about D, so `seed in D` is `odd(D) XOR far in D`. Reading
-  // odd as membership assumes the far end is outside every domain, and
-  // a sheet is an infinite splitter — the far end lies in one of the
-  // unbounded regions it cuts the outside into, and that region reads
-  // odd from anywhere inside. The far end lies in exactly one domain,
-  // so the missing term is one identity: the domain beyond the
-  // farthest crossing this bundle's cast made.
+  // Ray parity states a difference, not a membership: `seed in D` is
+  // `odd(D) XOR far in D`, and a sheet makes the far end lie inside an
+  // unbounded region that reads odd — so the missing term is the domain
+  // beyond the farthest crossing. A distance tie between records is
+  // settled on the named domain's exact volume, which every run agrees
+  // on; equal-volume distinct domains would need the ray to graze a
+  // shared feature of two congruent domains.
   tf::buffer<Index> far_domain;
   far_domain.allocate(static_cast<std::size_t>(n_bundles));
   tf::parallel_fill(far_domain, Index(-1));
   {
     tf::buffer<T2> far_dist;
     far_dist.allocate(static_cast<std::size_t>(n_bundles));
-    for (const auto &h : nesting_hits)
-      if (far_domain[h.b_inner] == Index(-1) ||
-          far_dist[h.b_inner] < h.dist_sq) {
+    for (const auto &h : nesting_hits) {
+      const Index standing = far_domain[h.b_inner];
+      if (standing == Index(-1) || far_dist[h.b_inner] < h.dist_sq) {
         far_dist[h.b_inner] = h.dist_sq;
         far_domain[h.b_inner] = h.beyond;
+      } else if (far_dist[h.b_inner] == h.dist_sq &&
+                 domain_volumes[h.beyond] < domain_volumes[standing]) {
+        far_domain[h.b_inner] = h.beyond;
       }
+    }
   }
 
   tbb::parallel_sort(nesting_hits.begin(), nesting_hits.end());
 
+  // One crossing states one distance for both domains it separates, so
+  // distance cannot rank a wall's two sides: the seed stands on the near
+  // side — the side the record does not name as beyond — and a near tie
+  // between distinct walls falls to least volume.
+  struct landing_t {
+    T2 dist_sq;
+    Index domain;
+    char near_side;
+  };
+  const auto closer = [&](const landing_t &a, const landing_t &b) -> bool {
+    if (a.dist_sq != b.dist_sq)
+      return a.dist_sq < b.dist_sq;
+    if (a.near_side != b.near_side)
+      return a.near_side != char(0);
+    return domain_volumes[a.domain] < domain_volumes[b.domain];
+  };
+
   tf::buffer<Index> chosen_target;
   chosen_target.allocate(static_cast<std::size_t>(n_bundles));
   tf::parallel_fill(chosen_target, Index(-1));
-  tf::buffer<T2> best_dist_sq; // read only where chosen_target[bi] != -1
-  best_dist_sq.allocate(static_cast<std::size_t>(n_bundles));
+  tf::buffer<landing_t> best; // read only where chosen_target[bi] != -1
+  best.allocate(static_cast<std::size_t>(n_bundles));
 
   for (auto it = nesting_hits.begin(); it != nesting_hits.end();) {
     const Index bi = it->b_inner;
     const Index d = it->domain;
+    const T2 closest = it->dist_sq; // groups are sorted by dist_sq
     auto group_end = it;
     std::size_t cnt = 0;
+    char near_side = char(0);
     while (group_end != nesting_hits.end() && group_end->b_inner == bi &&
            group_end->domain == d) {
+      if (group_end->dist_sq == closest && group_end->beyond != d)
+        near_side = char(1);
       ++cnt;
       ++group_end;
     }
-    const T2 closest = it->dist_sq; // groups are sorted by dist_sq
     if (!is_shell[d] && ((cnt & 1u) == 1u) != (d == far_domain[bi])) {
-      if (chosen_target[bi] == Index(-1) || closest < best_dist_sq[bi]) {
-        best_dist_sq[bi] = closest;
+      const landing_t landing{closest, d, near_side};
+      if (chosen_target[bi] == Index(-1) || closer(landing, best[bi])) {
+        best[bi] = landing;
         chosen_target[bi] = d;
       }
     }
     it = group_end;
   }
 
-  // A SHEET IS AN INFINITE SPLITTER, and a sheet never enters the cast:
-  // it is side-classified by winding instead, so a bundle alone in one of
-  // the unbounded regions a sheet cuts the outside into crosses nothing
-  // and its census comes back empty. The regions differ by which side of
-  // the sheet they are on and by nothing else, and the winding pass
-  // already asked exactly that of this bundle's seed. The walls that
-  // state the split are the sheet components whose two sides are both
-  // unbounded; each drops the side its own winding puts the seed away
-  // from, and a single survivor is the landing.
-  // Which domains are the outside is structural, not metric: a domain's
-  // signed volume is the Gauss sum of its boundary, and an open sheet's
-  // is whatever the origin makes it, so an unbounded region can carry
-  // either sign. The outside is ONE region of space that only a sheet can
-  // divide -- a volume's surface bounds what lies behind it -- so it is
-  // the universe together with whatever a sheet separates from it.
+  // A bundle alone in an unbounded region a sheet cuts off crosses
+  // nothing, so its census is empty — but the regions differ only by
+  // sheet side, which the winding pass already asked. Each wall whose
+  // two sides are both unbounded drops the side the winding puts the
+  // seed away from; a single survivor is the landing. Which domains are
+  // the outside is structural, not metric — an unbounded region's signed
+  // volume can carry either sign — so the outside is the universe plus
+  // whatever a sheet separates from it.
   tf::buffer<char> is_outside;
   is_outside.allocate(static_cast<std::size_t>(n_domains));
   tf::parallel_fill(is_outside, char(0));
@@ -681,8 +659,7 @@ auto seed_inclusion_bits(
         if (d != d0 && d != d1)
           continue;
         bordered = true;
-        // winding_side's bit is 1 behind the sheet's normal, and a
-        // component's side 1 is the side its faces are wound away from.
+        // winding_side's bit is 1 behind the sheet's normal
         const bool behind =
             parity[static_cast<std::size_t>(bi) *
                        static_cast<std::size_t>(n_tags) +
@@ -702,11 +679,9 @@ auto seed_inclusion_bits(
     const Index d_in = outer_env[bi];
     if (d_in == Index(-1))
       continue;
-    // No enclosing domain means the bundle's envelope reaches infinity.
-    // Which unbounded region it reaches is the sheets' answer where they
-    // state one, and the global outside where they do not.
-    // The winding is an answer only where one was asked: a bundle the
-    // cast skipped carries no side bits to read.
+    // No enclosing domain means the envelope reaches infinity; which
+    // unbounded region is the sheets' answer where they state one. A
+    // bundle the cast skipped carries no side bits to read.
     const bool cast = seed_set[bi] && d_in != null_seed;
     const Index d_out =
         chosen_target[bi] != Index(-1)              ? chosen_target[bi]

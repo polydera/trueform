@@ -14,8 +14,6 @@
 #include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
-#include "../../core/checked.hpp"
-#include "../../core/views/enumerate.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "../../topology/domains/build_domain_of_side.hpp"
 #include "../../topology/domains/make_bundle_labels.hpp"
@@ -121,44 +119,17 @@ auto make_arrangement_descriptor(
 
   out.fans = tf::csg::graph::make_plane_radial_fans<Index, Int>(
       arrangement.arrangement(), arrangement.world(),
-      arrangement.piece_incidence(), arrangement.piece_fences(),
-      get_mesh_point, apply_to_face);
+      arrangement.piece_incidence(), arrangement.piece_fences(), labels,
+      get_mesh_point, apply_to_face, arrangement.apply_to_form(), n_tags);
   const auto n_fans = out.fans.pieces.size();
-
-  if (n_fans == 0) {
-    // No non-manifold incidences → every closed component has its
-    // two sides as distinct domains; open components self-merge via
-    // boundary pairs. Every component is its own bundle.
-    tf::buffer<std::array<Index, 2>> merges;
-    emit_open_merges(merges);
-    out.n_domains = tf::topology::domains::build_domain_of_side(
-        merges, n_components, out.domain_of_side);
-
-    out.bundle_of_component.allocate(static_cast<std::size_t>(n_components));
-    tf::parallel_for_each(
-        tf::enumerate(out.bundle_of_component),
-        [](auto t) {
-          auto &&[i, b] = t;
-          b = Index(i);
-        },
-        tf::checked);
-    out.n_bundles = n_components;
-    std::tie(out.tag_of_component, out.bundle_to_tags) =
-        tf::csg::graph::compute_bundle_tag_index(
-            labels, n_tags, labels.triangle_labels(),
-            arrangement.triangle_tags(), out.bundle_of_component,
-            out.n_bundles);
-    return out;
-  }
 
   // One fan already is one 1-cell, so every admitted fan's wedge
   // relations enter the partition and nothing is elected or discarded.
   out.valid.allocate(static_cast<std::size_t>(n_fans));
   out.n_invalid_fans = 0;
   for (std::size_t fan = 0; fan < n_fans; ++fan) {
-    const auto stands = out.fans.page_offsets[fan + 1] -
-                            out.fans.page_offsets[fan] >=
-                        Index(2);
+    const auto stands =
+        out.fans.page_offsets[fan + 1] - out.fans.page_offsets[fan] >= Index(2);
     out.valid[fan] = char(stands);
     out.n_invalid_fans += Index(!stands);
   }

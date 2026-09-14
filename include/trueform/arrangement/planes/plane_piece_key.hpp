@@ -46,7 +46,7 @@ auto plane_piece_key(const Definition &definition) -> std::array<Index, 4> {
           Index(definition.point_tag_1), definition.point_1};
 }
 
-/// CORE. Restate the rows `[begin, end)` of one plane block in KEY order.
+/// Restate the rows `[begin, end)` of one plane block in KEY order.
 ///
 /// The block's consumers binary-search it by key — the finalize active branch,
 /// the cleanliness oracle — and mint order is not key order once created-first

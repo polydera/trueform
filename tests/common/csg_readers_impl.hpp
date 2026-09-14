@@ -80,9 +80,10 @@ auto csg_domains_of(const Graph &graph, const tf::csg::selection_t &selection,
 }
 
 template <typename Form0, typename Form1>
-auto boolean_of(const Form0 &form0, const Form1 &form1, tf::boolean_op op)
+auto boolean_of(const Form0 &form0, const Form1 &form1, tf::boolean_op op,
+                tf::arrangement_config config)
     -> boolean_result_t<Form0, Form1> {
-  return tf::make_boolean<tf::none_t>(form0, form1, op);
+  return tf::make_boolean<tf::none_t>(form0, form1, op, config);
 }
 
 template <typename Form0, typename Form1>

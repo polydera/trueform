@@ -16,7 +16,7 @@
 
 namespace tf::iso {
 
-/// CORE. The band one piece of a cut face lies in, and the only producer of
+/// The band one piece of a cut face lies in, and the only producer of
 /// that fact for either state the cut splits into.
 ///
 /// A piece lies strictly inside one band, so the first corner that is an

@@ -93,7 +93,7 @@ auto finalize_plane_piece_tickets(
             }
           }
         };
-        // THE OWNERSHIP LAW: an immutable plane names no group this
+        // The ownership law: an immutable plane names no group this
         // arrangement took — taking a group took every carrier of it — so an
         // untouched carrier's slots already carry their final immutable ids,
         // and there is nothing to resolve

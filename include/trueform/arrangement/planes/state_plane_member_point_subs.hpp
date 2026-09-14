@@ -20,7 +20,7 @@
 
 namespace tf::arrangement {
 
-/// CORE. Where ONE point sits on ONE member's polygon, given a side that
+/// Where ONE point sits on ONE member's polygon, given a side that
 /// member states through it.
 ///
 /// The member's own sides are the whole authority: a point an own-side
@@ -51,7 +51,7 @@ auto elect_plane_point_sub(Index point, short side,
   sub = {short(hi == lo + short(1) ? hi : lo), tf::topo_type::vertex};
 }
 
-/// CORE. A lone carrier's whole point table: its one member states a side per
+/// A lone carrier's whole point table: its one member states a side per
 /// constraint, so the constraints ARE the walk.
 template <typename Index>
 auto state_plane_point_subs(const tf::buffer<Index> &cons,
@@ -73,7 +73,7 @@ auto state_plane_point_subs(const tf::buffer<Index> &cons,
   }
 }
 
-/// CORE. One member of a stack, on the table the previous member left: the
+/// One member of a stack, on the table the previous member left: the
 /// statements are the member's OWN rows, ascending, so the walk costs its own
 /// boundary and the reset costs what that boundary stated.
 template <typename Index, typename Statements>

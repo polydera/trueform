@@ -27,7 +27,7 @@
 
 namespace tf::iso {
 
-/// CORE. The kept pieces' triangles in band-major order. Every piece's block
+/// The kept pieces' triangles in band-major order. Every piece's block
 /// length is known before a triangle moves, so counts and ONE prefix give each
 /// piece an exact disjoint range and the stream is written straight into it.
 ///

@@ -18,7 +18,7 @@
 
 namespace tf::arrangement {
 
-/// CORE. Resolve one immutable canonical group through the router: `-1` while
+/// Resolve one immutable canonical group through the router: `-1` while
 /// the immutable group is still the authority, `-2` when a wave RETIRED the
 /// root, and its current local group otherwise.
 ///

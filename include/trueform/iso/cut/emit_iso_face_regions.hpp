@@ -85,7 +85,7 @@ auto iso_cdt_orientation(const Faces &faces, const Points &points) -> int {
   return 0;
 }
 
-/// CORE. Read one cut face's triangulation back into the flat identity space
+/// Read one cut face's triangulation back into the flat identity space
 /// and publish its regions.
 ///
 /// Every output point an input reached takes the MINIMAL flat identity that
