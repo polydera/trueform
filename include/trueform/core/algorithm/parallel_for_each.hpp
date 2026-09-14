@@ -83,6 +83,43 @@ auto parallel_for_each(Range &&r, Func &&f, tf::grain_t grain) -> void {
 }
 
 /// @ingroup core_algorithms
+/// @brief Applies a function to each element with per-task state and a minimum
+/// chunk size.
+///
+/// The two knobs together: each task receives a copy of `state` and a run of
+/// at least `grain.value` consecutive elements, which is what lets the state
+/// carry facts shared by neighboring elements.
+///
+/// @tparam Range A range type supporting `begin()` and `end()`.
+/// @tparam Func A callable taking an element reference and state.
+/// @tparam State The per-task state type (copied per task).
+/// @param r The range to iterate over.
+/// @param f The function to apply, signature `f(element, state)`.
+/// @param state The initial state copied to each task.
+/// @param grain Minimum number of consecutive elements per task.
+///
+/// @see @ref parallel_for_each
+template <typename Range, typename Func, typename State>
+auto parallel_for_each(Range &&r, Func &&f, State state, tf::grain_t grain)
+    -> void {
+  auto first = r.begin();
+  auto last = r.end();
+  using Iterator = decltype(first);
+  tbb::parallel_for(tbb::blocked_range<Iterator>(first, last, grain.value),
+                    [&state, f = static_cast<Func &&>(f)](
+                        const tbb::blocked_range<Iterator> &range) {
+                      auto l_state = state;
+                      for (Iterator it = range.begin(); it != range.end();
+                           ++it) {
+                        if constexpr (std::is_integral<Iterator>::value)
+                          f(it, l_state);
+                        else
+                          f(*it, l_state);
+                      }
+                    });
+}
+
+/// @ingroup core_algorithms
 /// @brief Applies a function to each element with per-task state.
 ///
 /// Each parallel task receives a copy of `state`, enabling reusable block-local

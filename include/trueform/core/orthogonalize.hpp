@@ -25,6 +25,8 @@ namespace tf {
 /// forms a proper orthonormal basis. This corrects numerical drift
 /// that can accumulate when composing transformations.
 ///
+/// A column with no length has no direction to keep, so it is left at zero.
+///
 /// @param T The transformation to orthogonalize (modified in-place).
 template <std::size_t Dims, typename Policy>
 auto orthogonalize(transformation_like<Dims, Policy> &T) -> void {
@@ -36,6 +38,7 @@ auto orthogonalize(transformation_like<Dims, Policy> &T) -> void {
     // Column 0: normalize
     Scalar len0 = tf::sqrt(T(0, 0) * T(0, 0) + T(1, 0) * T(1, 0) +
                            T(2, 0) * T(2, 0));
+    len0 += (len0 == 0);
     T(0, 0) /= len0;
     T(1, 0) /= len0;
     T(2, 0) /= len0;
@@ -47,6 +50,7 @@ auto orthogonalize(transformation_like<Dims, Policy> &T) -> void {
     T(2, 1) -= dot01 * T(2, 0);
     Scalar len1 = tf::sqrt(T(0, 1) * T(0, 1) + T(1, 1) * T(1, 1) +
                            T(2, 1) * T(2, 1));
+    len1 += (len1 == 0);
     T(0, 1) /= len1;
     T(1, 1) /= len1;
     T(2, 1) /= len1;
@@ -58,6 +62,7 @@ auto orthogonalize(transformation_like<Dims, Policy> &T) -> void {
   } else if constexpr (Dims == 2) {
     // Column 0: normalize
     Scalar len0 = tf::sqrt(T(0, 0) * T(0, 0) + T(1, 0) * T(1, 0));
+    len0 += (len0 == 0);
     T(0, 0) /= len0;
     T(1, 0) /= len0;
 
@@ -73,6 +78,8 @@ auto orthogonalize(transformation_like<Dims, Policy> &T) -> void {
 /// Uses Gram-Schmidt orthonormalization to ensure the rotation part
 /// forms a proper orthonormal basis. This corrects numerical drift
 /// that can accumulate when composing transformations.
+///
+/// A column with no length has no direction to keep, so it is left at zero.
 ///
 /// @param T The transformation to orthogonalize.
 /// @return A new transformation with orthonormalized rotation.

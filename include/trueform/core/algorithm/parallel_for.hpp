@@ -13,6 +13,7 @@
 #pragma once
 #include "../checked.hpp"
 #include "tbb/parallel_for.h"
+#include <cstddef>
 
 namespace tf {
 template <typename Iterator, typename Func>
@@ -23,6 +24,22 @@ auto parallel_for(Iterator first, Iterator last, Func &&f) -> void {
         f(range.begin(), range.end());
       });
 }
+
+/// @ingroup core_algorithms
+/// @brief Executes a parallel for loop over `[first, last)`, with checked
+/// execution.
+///
+/// The serial path is the whole span in one call, so the subrange bounds keep
+/// the type they were given.
+template <typename Iterator, typename Func>
+auto parallel_for(Iterator first, Iterator last, Func &&f, tf::checked_t c)
+    -> void {
+  if (std::size_t(last - first) < c.serial_below)
+    f(first, last);
+  else
+    parallel_for(first, last, static_cast<Func &&>(f));
+}
+
 /// @ingroup core_algorithms
 /// @brief Executes a parallel for loop over a container-like range.
 ///

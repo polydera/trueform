@@ -117,105 +117,50 @@ auto closest_point_parametric(const tf::ray_like<Dims, Policy0> &ray0,
   const auto &p1 = ray1.origin;
   const auto &d1 = ray1.direction;
 
-  auto [status, t0_raw, t1_raw] = tf::core::line_line_check_full(ray0, ray1);
+  const auto [status, t0, t1] = tf::core::line_line_check_full(ray0, ray1);
 
-  RealT t0 = t0_raw;
-  RealT t1 = t1_raw;
-
-  switch (status) {
-  case tf::intersect_status::non_parallel: {
-    // t0, t1 = closest points on infinite lines.
-    // Now clamp to rays (t >= 0) in a consistent way.
-
-    if (t0 >= RealT(0) && t1 >= RealT(0)) {
-      return {t0, t1};
-    }
-
-    // Both behind: closest are the origins.
-    if (t0 < RealT(0) && t1 < RealT(0)) {
-      return {RealT(0), RealT(0)};
-    }
-
-    // One behind, one valid: clamp the behind one to 0 and reproject the other.
-
-    if (t0 < RealT(0)) {
-      t0 = RealT(0);
-      const auto w = p0 - p1;
-      const auto d1_dot = tf::dot(d1, d1);
-      if (d1_dot > RealT(0)) {
-        t1 = tf::dot(w, d1) / d1_dot; // projection of p0 onto ray1
-        if (t1 < RealT(0))
-          t1 = RealT(0);
-      } else {
-        t1 = RealT(0);
-      }
-      return {t0, t1};
-    }
-
-    // t1 < 0
-    t1 = RealT(0);
-    {
-      const auto w = p1 - p0;
-      const auto d0_dot = tf::dot(d0, d0);
-      if (d0_dot > RealT(0)) {
-        t0 = tf::dot(w, d0) / d0_dot; // projection of p1 onto ray0
-        if (t0 < RealT(0))
-          t0 = RealT(0);
-      } else {
-        t0 = RealT(0);
-      }
-    }
+  // The infinite-line minimum remains the constrained minimum when both
+  // parameters are feasible.
+  if (status == tf::intersect_status::non_parallel && t0 >= RealT(0) &&
+      t1 >= RealT(0))
     return {t0, t1};
-  }
 
-  case tf::intersect_status::parallel: {
-    // Parallel, non-colinear.
-    // Minimal segment is between one origin and the other ray.
+  const RealT d0_dot = tf::dot(d0, d0);
+  const RealT d1_dot = tf::dot(d1, d1);
 
-    t0 = RealT(0);
+  auto point0 = [&](RealT parameter) { return p0 + parameter * d0; };
+  auto point1 = [&](RealT parameter) { return p1 + parameter * d1; };
+  auto distance2 = [&](RealT parameter0, RealT parameter1) {
+    return (point0(parameter0) - point1(parameter1)).length2();
+  };
+  auto clamp_ray = [](RealT parameter) {
+    return std::max(RealT(0), parameter);
+  };
 
-    const auto w = p0 - p1;
-    const auto d1_dot = tf::dot(d1, d1);
-
-    if (d1_dot > RealT(0)) {
-      t1 = tf::dot(w, d1) / d1_dot; // projection of p0 onto ray1
-      if (t1 < RealT(0))
-        t1 = RealT(0);
-    } else {
-      t1 = RealT(0);
+  RealT best_t0 = RealT(0);
+  RealT best_t1 = RealT(0);
+  auto best_distance2 = std::numeric_limits<RealT>::max();
+  auto consider = [&](RealT parameter0, RealT parameter1) {
+    const auto candidate_distance2 = distance2(parameter0, parameter1);
+    if (candidate_distance2 < best_distance2) {
+      best_distance2 = candidate_distance2;
+      best_t0 = parameter0;
+      best_t1 = parameter1;
     }
+  };
 
-    return {t0, t1};
-  }
+  // If the unconstrained minimum is infeasible, a convex minimum over the
+  // ray/ray quadrant lies on one of its two boundaries. Minimize exactly on
+  // both boundaries, also covering parallel, collinear, and degenerate rays.
+  const RealT p0_on_ray1 =
+      d1_dot > RealT(0) ? tf::dot(p0 - p1, d1) / d1_dot : RealT(0);
+  consider(RealT(0), clamp_ray(p0_on_ray1));
 
-  case tf::intersect_status::colinear: {
-    // Colinear rays: closest distance is 0; choose a canonical pair.
-    // Reduce to 1D along ray0.
+  const RealT p1_on_ray0 =
+      d0_dot > RealT(0) ? tf::dot(p1 - p0, d0) / d0_dot : RealT(0);
+  consider(clamp_ray(p1_on_ray0), RealT(0));
 
-    const auto d0_dot = tf::dot(d0, d0);
-    if (d0_dot == RealT(0)) {
-      // Degenerate ray0: fall back to both at origins.
-      return {RealT(0), RealT(0)};
-    }
-
-    const RealT u1_on_0 = tf::dot(p1 - p0, d0) / d0_dot;
-
-    if (u1_on_0 >= RealT(0)) {
-      // ray1.origin lies "in front of" ray0 along d0:
-      // take that shared point as closest: p1 vs ray0(u1_on_0).
-      t0 = u1_on_0;
-      t1 = RealT(0);
-      return {t0, t1};
-    }
-
-    // ray1.origin is "behind" ray0 start: closest is at p0.
-    // (either p0 vs p1, or they share origin; both give t0=t1=0)
-    return {RealT(0), RealT(0)};
-  }
-
-  default:
-    return {RealT(0), RealT(0)};
-  }
+  return {best_t0, best_t1};
 }
 
 /// @ingroup core_queries
@@ -319,101 +264,62 @@ auto closest_point_parametric(const tf::ray_like<Dims, Policy> &ray,
   const auto &ro = ray.origin;
   const auto &rd = ray.direction;
 
-  auto line1 = tf::make_line_between_points(segment[0], segment[1]);
+  const auto line1 = tf::make_line_between_points(segment[0], segment[1]);
   const auto &s0 = segment[0];
-  const auto  sd = segment[1] - segment[0];
+  const auto sd = segment[1] - segment[0];
 
-  auto [status, t0_raw, t1_raw] = tf::core::line_line_check_full(ray, line1);
+  const auto [status, t0, t1] = tf::core::line_line_check_full(ray, line1);
+
+  // The infinite-line minimum remains the constrained minimum when it lies on
+  // both the ray and the segment.
+  if (status == tf::intersect_status::non_parallel && t0 >= RealT(0) &&
+      t1 >= RealT(0) && t1 <= RealT(1))
+    return {t0, t1};
 
   const RealT rd2 = tf::dot(rd, rd);
   const RealT sd2 = tf::dot(sd, sd);
 
-  auto clamp01 = [](RealT v) {
-    return v < RealT(0) ? RealT(0) : (v > RealT(1) ? RealT(1) : v);
+  auto clamp_ray = [](RealT parameter) {
+    return std::max(RealT(0), parameter);
+  };
+  auto clamp_segment = [](RealT parameter) {
+    return std::clamp(parameter, RealT(0), RealT(1));
+  };
+  auto point0 = [&](RealT parameter) { return ro + parameter * rd; };
+  auto point1 = [&](RealT parameter) { return s0 + parameter * sd; };
+  auto distance2 = [&](RealT parameter0, RealT parameter1) {
+    return (point0(parameter0) - point1(parameter1)).length2();
   };
 
-  switch (status) {
-  case tf::intersect_status::non_parallel: {
-    RealT t0 = t0_raw;
-    RealT t1 = t1_raw;
-
-    // If closest points on infinite lines already lie on ray + segment, done.
-    if (t0 >= RealT(0) && t1 >= RealT(0) && t1 <= RealT(1))
-      return {t0, t1};
-
-    // Ray side behind origin -> clamp ray to origin, project that to segment.
-    if (t0 < RealT(0)) {
-      t0 = RealT(0);
-      if (sd2 > RealT(0)) {
-        const auto proj = tf::dot(ro - s0, sd) / sd2;
-        t1 = clamp01(proj);
-      } else {
-        t1 = RealT(0); // degenerate segment
-      }
-      return {t0, t1};
+  RealT best_t0 = RealT(0);
+  RealT best_t1 = RealT(0);
+  auto best_distance2 = std::numeric_limits<RealT>::max();
+  auto consider = [&](RealT parameter0, RealT parameter1) {
+    const auto candidate_distance2 = distance2(parameter0, parameter1);
+    if (candidate_distance2 < best_distance2) {
+      best_distance2 = candidate_distance2;
+      best_t0 = parameter0;
+      best_t1 = parameter1;
     }
+  };
 
-    // Ray ok, segment param out of range -> clamp segment, reproject to ray.
-    t1 = clamp01(t1);
-    if (rd2 > RealT(0)) {
-      const auto q = s0 + t1 * sd;
-      t0 = tf::dot(q - ro, rd) / rd2;
-      if (t0 < RealT(0))
-        t0 = RealT(0);
-    } else {
-      t0 = RealT(0); // degenerate ray dir
-    }
-    return {t0, t1};
-  }
+  // Otherwise the convex minimum lies on one of the three boundaries: the ray
+  // origin or either segment endpoint. Minimize on each boundary and compare
+  // actual squared distances; zero-length directions naturally reduce to
+  // point candidates.
+  const RealT ro_on_segment =
+      sd2 > RealT(0) ? tf::dot(ro - s0, sd) / sd2 : RealT(0);
+  consider(RealT(0), clamp_segment(ro_on_segment));
 
-  case tf::intersect_status::parallel: {
-    // Parallel (non-colinear): closest is ray origin vs segment.
-    RealT t0 = RealT(0);
-    RealT t1 = RealT(0);
-    if (sd2 > RealT(0)) {
-      const auto proj = tf::dot(ro - s0, sd) / sd2;
-      t1 = clamp01(proj);
-    }
-    return {t0, t1};
-  }
+  const RealT s0_on_ray =
+      rd2 > RealT(0) ? tf::dot(segment[0] - ro, rd) / rd2 : RealT(0);
+  consider(clamp_ray(s0_on_ray), RealT(0));
 
-  case tf::intersect_status::colinear: {
-    // Colinear: both lie on same line. Handle with 1D params along rd.
-    if (rd2 == RealT(0) || sd2 == RealT(0)) {
-      // Degenerate ray or segment: nothing smarter to do.
-      return {RealT(0), RealT(0)};
-    }
+  const RealT s1_on_ray =
+      rd2 > RealT(0) ? tf::dot(segment[1] - ro, rd) / rd2 : RealT(0);
+  consider(clamp_ray(s1_on_ray), RealT(1));
 
-    // Parameters of segment endpoints along the ray direction.
-    const RealT a0 = tf::dot(s0 - ro, rd) / rd2;
-    const RealT a1 = tf::dot(segment[1] - ro, rd) / rd2;
-    const RealT lo = std::min(a0, a1);
-    const RealT hi = std::max(a0, a1);
-
-    if (hi < RealT(0)) {
-      // Whole segment is behind ray origin.
-      // Closest point: origin vs closer endpoint (larger param).
-      RealT t0 = RealT(0);
-      RealT t1 = (a0 > a1) ? RealT(0) : RealT(1);
-      return {t0, t1};
-    }
-
-    // There is overlap or at least one endpoint at/after ray start.
-    // Intersection of ray [0, +inf) with segment [lo, hi] is:
-    //   [max(0, lo), hi], which is non-empty since hi >= 0.
-    RealT t0 = std::max(RealT(0), lo);
-    if (t0 > hi) t0 = hi; // safety, though shouldn't trigger here.
-
-    // Map t0 (along ray) back to segment param t1.
-    // Note: a0,a1 are params of endpoints; (a1 - a0) != 0 since sd2 > 0.
-    const RealT t1 = clamp01((t0 - a0) / (a1 - a0));
-
-    return {t0, t1};
-  }
-
-  default:
-    return {RealT(0), RealT(0)};
-  }
+  return {best_t0, best_t1};
 }
 
 /// @ingroup core_queries

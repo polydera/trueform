@@ -501,7 +501,7 @@ auto closest_metric_point_pair_impl(const tf::polygon<Dims, Policy0> &poly,
   auto best = closest_metric_point_pair(poly, seg1[0]);
   std::size_t size = poly.size();
   std::size_t prev = size - 1;
-  for (std::size_t i = 1; i < size; prev = i++) {
+  for (std::size_t i = 0; i < size; prev = i++) {
     auto seg = tf::make_segment_between_points(poly[prev], poly[i]);
     best = min(best, closest_metric_point_pair(seg, seg1));
   }

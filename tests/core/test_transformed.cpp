@@ -10,6 +10,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <trueform/core.hpp>
 #include <cmath>
+#include <cstddef>
 
 // =============================================================================
 // Helper functions
@@ -27,6 +28,31 @@ auto vectors_approx_equal(const T0& a, const T1& b, real_t tol = real_t(1e-5)) -
     for (std::size_t i = 0; i < Dims; ++i) {
         if (!approx_equal(a[i], b[i], tol))
             return false;
+    }
+    return true;
+}
+
+template <std::size_t Dims, typename real_t>
+auto orthogonalize_result_is_finite(const tf::transformation<real_t, Dims>& T) -> bool
+{
+    for (std::size_t i = 0; i < Dims; ++i) {
+        for (std::size_t j = 0; j <= Dims; ++j) {
+            if (!std::isfinite(T(i, j)))
+                return false;
+        }
+    }
+    return true;
+}
+
+template <std::size_t Dims, typename real_t>
+auto orthogonalize_transforms_equal(const tf::transformation<real_t, Dims>& a,
+                                    const tf::transformation<real_t, Dims>& b) -> bool
+{
+    for (std::size_t i = 0; i < Dims; ++i) {
+        for (std::size_t j = 0; j <= Dims; ++j) {
+            if (!(a(i, j) == b(i, j)))
+                return false;
+        }
     }
     return true;
 }
@@ -528,4 +554,110 @@ TEMPLATE_TEST_CASE("transformed_segment", "[core][transformed]",
     // Second point rotated from (1,0,0) to (0,1,0)
     REQUIRE(approx_equal(p1[0], real_t(0)));
     REQUIRE(approx_equal(p1[1], real_t(1)));
+}
+
+// =============================================================================
+// orthogonalize - degenerate columns
+// =============================================================================
+
+TEMPLATE_TEST_CASE("orthogonalize_zero_column", "[core][transformed][orthogonalize]",
+    float, double)
+{
+    using real_t = TestType;
+
+    const auto set_3d = [](tf::transformation<real_t, 3>& T,
+                           const real_t (&column0)[3], const real_t (&column1)[3]) {
+        for (std::size_t i = 0; i < 3; ++i) {
+            T(i, 0) = column0[i];
+            T(i, 1) = column1[i];
+            T(i, 2) = real_t(0);
+            T(i, 3) = real_t(0);
+        }
+    };
+
+    // A column with no length: nothing to normalize against.
+    {
+        const real_t column0[3] = {real_t(0), real_t(0), real_t(0)};
+        const real_t column1[3] = {real_t(0), real_t(1), real_t(0)};
+        tf::transformation<real_t, 3> T;
+        set_3d(T, column0, column1);
+        tf::orthogonalize(T);
+        REQUIRE(orthogonalize_result_is_finite<3>(T));
+        for (std::size_t i = 0; i < 3; ++i)
+            REQUIRE(T(i, 0) == real_t(0));
+    }
+
+    // A second column parallel to the first: the projection empties it.
+    {
+        const real_t column0[3] = {real_t(1), real_t(0), real_t(0)};
+        const real_t column1[3] = {real_t(2), real_t(0), real_t(0)};
+        tf::transformation<real_t, 3> T;
+        set_3d(T, column0, column1);
+        tf::orthogonalize(T);
+        REQUIRE(orthogonalize_result_is_finite<3>(T));
+        for (std::size_t i = 0; i < 3; ++i)
+            REQUIRE(T(i, 1) == real_t(0));
+    }
+
+    // Every column empty.
+    {
+        const real_t column0[3] = {real_t(0), real_t(0), real_t(0)};
+        const real_t column1[3] = {real_t(0), real_t(0), real_t(0)};
+        tf::transformation<real_t, 3> T;
+        set_3d(T, column0, column1);
+        tf::orthogonalize(T);
+        REQUIRE(orthogonalize_result_is_finite<3>(T));
+    }
+
+    // The 2D basis rests on its single column.
+    {
+        tf::transformation<real_t, 2> T;
+        for (std::size_t i = 0; i < 2; ++i) {
+            T(i, 0) = real_t(0);
+            T(i, 1) = real_t(0);
+            T(i, 2) = real_t(0);
+        }
+        tf::orthogonalize(T);
+        REQUIRE(orthogonalize_result_is_finite<2>(T));
+    }
+}
+
+TEMPLATE_TEST_CASE("orthogonalize_keeps_an_exact_basis", "[core][transformed][orthogonalize]",
+    float, double)
+{
+    using real_t = TestType;
+
+    // Columns already exactly unit and exactly orthogonal, so every length is
+    // exactly one and the walk must hand the basis back bit for bit.
+    tf::transformation<real_t, 3> T;
+    for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 4; ++j)
+            T(i, j) = real_t(0);
+    T(1, 0) = real_t(1);
+    T(2, 1) = real_t(1);
+    T(0, 2) = real_t(1);
+    T(0, 3) = real_t(7);
+    T(1, 3) = real_t(-3);
+    T(2, 3) = real_t(0.5);
+
+    const auto expected = T;
+    tf::orthogonalize(T);
+    REQUIRE(orthogonalize_transforms_equal<3>(T, expected));
+
+    // A rotation the walk must leave orthonormal.
+    auto rotated = tf::make_rotation(tf::deg(real_t(30)), tf::axis<1>);
+    const auto before = rotated;
+    tf::orthogonalize(rotated);
+    REQUIRE(orthogonalize_result_is_finite<3>(rotated));
+    for (std::size_t i = 0; i < 3; ++i) {
+        for (std::size_t j = 0; j < 3; ++j) {
+            real_t dot = real_t(0);
+            for (std::size_t k = 0; k < 3; ++k)
+                dot += rotated(k, i) * rotated(k, j);
+            REQUIRE(approx_equal(dot, i == j ? real_t(1) : real_t(0)));
+        }
+    }
+    for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j)
+            REQUIRE(approx_equal(rotated(i, j), before(i, j)));
 }

@@ -26,8 +26,12 @@ auto generate_offset_blocks(
     const Range &input_data, tf::buffer<Index> &offsets, Buffer &data,
     const F &fill_block_f,
     std::size_t n_tasks = std::thread::hardware_concurrency() * 5) {
-  if (!input_data.size())
+  // no input is the empty structure, whose offsets are empty too; a reused
+  // buffer must not keep the fences of the build before it
+  if (!input_data.size()) {
+    offsets.allocate(0);
     return;
+  }
   offsets.allocate(input_data.size() + 1);
   offsets[0] = 0;
   std::size_t current_i = 1;
@@ -69,8 +73,10 @@ auto generate_offset_blocks(const Range &input_data,
                             const F &fill_block_f, tf::checked_t c) {
   if (std::size_t(input_data.size()) >= c.serial_below)
     return generate_offset_blocks(input_data, offsets, data, fill_block_f);
-  if (!input_data.size())
+  if (!input_data.size()) {
+    offsets.allocate(0);
     return;
+  }
   offsets.allocate(input_data.size() + 1);
   offsets[0] = 0;
   const auto base = tf::core::size(data);
