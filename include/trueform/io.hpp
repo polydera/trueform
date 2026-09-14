@@ -16,8 +16,12 @@
  *  File I/O operations for reading and writing mesh data.
  */
 
+#include "./io/file/gzip.hpp"        // IWYU pragma: export
 #include "./io/file/mapped_file.hpp" // IWYU pragma: export
-#include "./io/read_obj.hpp"  // IWYU pragma: export
-#include "./io/read_stl.hpp"  // IWYU pragma: export
-#include "./io/write_obj.hpp" // IWYU pragma: export
-#include "./io/write_stl.hpp" // IWYU pragma: export
+#include "./io/nifti_file.hpp"       // IWYU pragma: export
+#include "./io/read_nifti.hpp"       // IWYU pragma: export
+#include "./io/read_obj.hpp"         // IWYU pragma: export
+#include "./io/read_stl.hpp"         // IWYU pragma: export
+#include "./io/write_nifti.hpp"      // IWYU pragma: export
+#include "./io/write_obj.hpp"        // IWYU pragma: export
+#include "./io/write_stl.hpp"        // IWYU pragma: export
