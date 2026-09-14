@@ -24,11 +24,14 @@ namespace tf {
 /// @brief Fit a rigid transformation using k-nearest neighbor correspondences.
 ///
 /// For each point in X, finds the k nearest neighbors in Y and computes a
-/// weighted correspondence point. The weights use a Gaussian kernel:
+/// weighted correspondence point. The weights use a Gaussian kernel read
+/// against the nearest neighbor, which therefore weighs 1:
 ///
-///   weight_j = exp(-dist_j² / (2σ²))
+///   weight_j = exp(-(dist_j² - dist_0²) / (2σ²))
 ///
 /// where σ defaults to the distance of the k-th neighbor (adaptive scaling).
+/// The anchor cancels under normalization, so σ may be arbitrarily small: at
+/// a vanishing width the correspondence is the nearest neighbor itself.
 ///
 /// If Y has normals attached (via `tf::tag_normals`), uses point-to-plane
 /// error metric which converges faster in ICP loops. Otherwise uses

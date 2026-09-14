@@ -18,6 +18,9 @@
 #include <trueform/trueform.hpp>
 #include "type_traits.hpp"
 #include <cmath>
+#include <cstddef>
+#include <limits>
+#include <type_traits>
 
 namespace {
 
@@ -36,6 +39,59 @@ auto compute_rms_error(const PointsA& A, const PointsB& B, const Transform& T) {
         sum_sq += dx*dx + dy*dy + dz*dz;
     }
     return std::sqrt(sum_sq / real_t(A.size()));
+}
+
+/**
+ * @brief A deterministic open point cloud in 2 or 3 dimensions
+ */
+template <typename Real, std::size_t Dims>
+auto knn_sample_cloud(std::size_t count) -> tf::points_buffer<Real, Dims> {
+    tf::points_buffer<Real, Dims> out;
+    out.allocate(count);
+    for (std::size_t i = 0; i < count; ++i) {
+        auto t = Real(i);
+        out[i][0] = Real(std::sin(t * 1.7) * 3.0);
+        out[i][1] = Real(std::cos(t * 2.3) * 2.0);
+        if constexpr (Dims == 3)
+            out[i][2] = Real(std::sin(t * 0.9 + 1.0) * 4.0);
+    }
+    return out;
+}
+
+/**
+ * @brief Repeat every point of a cloud, so every neighbor is coincident
+ */
+template <typename Real, std::size_t Dims>
+auto knn_repeated_cloud(const tf::points_buffer<Real, Dims>& in,
+                        std::size_t repeats) -> tf::points_buffer<Real, Dims> {
+    tf::points_buffer<Real, Dims> out;
+    out.allocate(in.size() * repeats);
+    std::size_t w = 0;
+    for (std::size_t i = 0; i < in.size(); ++i)
+        for (std::size_t r = 0; r < repeats; ++r)
+            out[w++] = in[i];
+    return out;
+}
+
+/**
+ * @brief True when every entry is finite and the linear part is orthonormal
+ */
+template <std::size_t Dims, typename Transform>
+auto knn_transform_is_rigid(const Transform& T) -> bool {
+    using real_t = std::decay_t<decltype(T(0, 0))>;
+    for (std::size_t i = 0; i < Dims; ++i)
+        for (std::size_t j = 0; j <= Dims; ++j)
+            if (!std::isfinite(T(i, j)))
+                return false;
+    for (std::size_t i = 0; i < Dims; ++i)
+        for (std::size_t j = 0; j < Dims; ++j) {
+            real_t dot = real_t(0);
+            for (std::size_t k = 0; k < Dims; ++k)
+                dot += T(i, k) * T(j, k);
+            if (std::abs(dot - (i == j ? real_t(1) : real_t(0))) > real_t(1e-3))
+                return false;
+        }
+    return true;
 }
 
 } // anonymous namespace
@@ -301,6 +357,197 @@ TEMPLATE_TEST_CASE("fit_knn_alignment_basic", "[geometry][alignment]",
     real_t chamfer_after = tf::chamfer_error(source.points() | tf::tag(T_iter), target_with_tree);
 
     REQUIRE(chamfer_after < chamfer_before);
+}
+
+// =============================================================================
+// fit_knn_alignment - Degenerate kernel widths (point-to-point)
+// =============================================================================
+
+TEMPLATE_TEST_CASE("fit_knn_alignment_degenerate_kernel_width", "[geometry][alignment][knn]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    // Below this width every Gaussian weight of a separated correspondence
+    // underflows to zero; a delta width of exactly zero is the same statement.
+    const float underflowing = std::sqrt(std::numeric_limits<float>::min());
+
+    const auto check_dims = [&](auto dimension) {
+        constexpr std::size_t Dims = decltype(dimension)::value;
+
+        auto source = knn_sample_cloud<real_t, Dims>(120);
+        auto target = knn_sample_cloud<real_t, Dims>(120);
+        for (std::size_t i = 0; i < target.size(); ++i)
+            for (std::size_t d = 0; d < Dims; ++d)
+                target[i][d] += real_t(0.05);
+
+        tf::aabb_tree<index_t, real_t, Dims> tree(target.points(), tf::config_tree(4, 4));
+        auto target_with_tree = target.points() | tf::tag(tree);
+
+        for (float sigma : {underflowing, 0.f}) {
+            for (float outlier : {0.f, 0.2f}) {
+                tf::knn_alignment_config config;
+                config.k = 5;
+                config.sigma = sigma;
+                config.outlier_proportion = outlier;
+
+                auto T = tf::fit_knn_alignment(source.points(), target_with_tree, config);
+                REQUIRE(knn_transform_is_rigid<Dims>(T));
+            }
+        }
+
+        // A vanishing width is the nearest-neighbor limit of the kernel, so the
+        // soft correspondence must agree with the single-neighbor fit.
+        tf::knn_alignment_config vanishing;
+        vanishing.k = 5;
+        vanishing.sigma = underflowing;
+        auto T_soft = tf::fit_knn_alignment(source.points(), target_with_tree, vanishing);
+        auto T_single = tf::fit_knn_alignment(source.points(), target_with_tree, {1});
+        for (std::size_t i = 0; i < Dims; ++i)
+            for (std::size_t j = 0; j <= Dims; ++j)
+                REQUIRE(std::abs(T_soft(i, j) - T_single(i, j)) < real_t(1e-4));
+
+        // Coincident neighbors leave the adaptive width at zero as well.
+        auto duplicates = knn_repeated_cloud(source, 5);
+        tf::aabb_tree<index_t, real_t, Dims> duplicate_tree(duplicates.points(),
+                                                            tf::config_tree(4, 4));
+        auto duplicates_with_tree = duplicates.points() | tf::tag(duplicate_tree);
+
+        for (float sigma : {-1.f, 0.f}) {
+            tf::knn_alignment_config config;
+            config.k = 5;
+            config.sigma = sigma;
+
+            auto T = tf::fit_knn_alignment(source.points(), duplicates_with_tree, config);
+            REQUIRE(knn_transform_is_rigid<Dims>(T));
+        }
+    };
+
+    check_dims(std::integral_constant<std::size_t, 2>{});
+    check_dims(std::integral_constant<std::size_t, 3>{});
+}
+
+// =============================================================================
+// fit_knn_alignment - Degenerate kernel widths (point-to-plane)
+// =============================================================================
+
+TEMPLATE_TEST_CASE("fit_knn_alignment_degenerate_kernel_width_point_to_plane",
+    "[geometry][alignment][knn]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto sphere = tf::make_sphere_mesh<index_t>(real_t(1), 20, 20);
+    auto target_normals = tf::compute_point_normals(sphere.polygons());
+
+    tf::points_buffer<real_t, 3> source;
+    source.allocate(sphere.points().size());
+    for (decltype(sphere.points().size()) i = 0; i < sphere.points().size(); ++i)
+        source[i] = sphere.points()[i] + tf::vector<real_t, 3>{real_t(0.05), real_t(0.05), real_t(0)};
+
+    tf::aabb_tree<index_t, real_t, 3> tree(sphere.points(), tf::config_tree(4, 4));
+    auto target_with_normals = sphere.points() | tf::tag(tree) | tf::tag_normals(target_normals);
+
+    const float underflowing = std::sqrt(std::numeric_limits<float>::min());
+
+    for (float sigma : {underflowing, 0.f}) {
+        for (float outlier : {0.f, 0.2f}) {
+            tf::knn_alignment_config config;
+            config.k = 5;
+            config.sigma = sigma;
+            config.outlier_proportion = outlier;
+
+            auto T = tf::fit_knn_alignment(source.points(), target_with_normals, config);
+            REQUIRE(knn_transform_is_rigid<3>(T));
+        }
+    }
+}
+
+// =============================================================================
+// fit_icp_alignment - Degenerate kernel widths reach ICP through fit_knn
+// =============================================================================
+
+TEMPLATE_TEST_CASE("fit_icp_alignment_degenerate_kernel_width", "[geometry][alignment][icp][knn]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    // ICP hands its own k and sigma straight to fit_knn_alignment on every
+    // iteration and accumulates the iterate unconditionally, so a non-finite
+    // correspondence poisons the delta for the rest of the run.
+    const float underflowing = std::sqrt(std::numeric_limits<float>::min());
+
+    const auto check_dims = [&](auto dimension) {
+        constexpr std::size_t Dims = decltype(dimension)::value;
+
+        auto source = knn_sample_cloud<real_t, Dims>(200);
+        auto target = knn_sample_cloud<real_t, Dims>(200);
+        for (std::size_t i = 0; i < target.size(); ++i)
+            for (std::size_t d = 0; d < Dims; ++d)
+                target[i][d] += real_t(0.05);
+
+        tf::aabb_tree<index_t, real_t, Dims> tree(target.points(), tf::config_tree(4, 4));
+        auto target_with_tree = target.points() | tf::tag(tree);
+
+        for (float sigma : {underflowing, 0.f}) {
+            tf::icp_config config;
+            config.k = 5;
+            config.sigma = sigma;
+            config.max_iterations = 20;
+
+            auto T = tf::fit_icp_alignment(source.points(), target_with_tree, config);
+            REQUIRE(knn_transform_is_rigid<Dims>(T));
+
+            // A vanishing width is nearest-neighbor ICP, which recovers the shift.
+            for (std::size_t i = 0; i < Dims; ++i)
+                REQUIRE(std::abs(T(i, Dims) - real_t(0.05)) < real_t(1e-2));
+        }
+    };
+
+    check_dims(std::integral_constant<std::size_t, 2>{});
+    check_dims(std::integral_constant<std::size_t, 3>{});
+}
+
+TEMPLATE_TEST_CASE("fit_icp_alignment_degenerate_kernel_width_point_to_plane",
+    "[geometry][alignment][icp][knn]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto sphere = tf::make_sphere_mesh<index_t>(real_t(1), 20, 20);
+    auto target_normals = tf::compute_point_normals(sphere.polygons());
+
+    const auto shift = tf::vector<real_t, 3>{real_t(0.05), real_t(0.05), real_t(0)};
+    tf::points_buffer<real_t, 3> source;
+    source.allocate(sphere.points().size());
+    for (decltype(sphere.points().size()) i = 0; i < sphere.points().size(); ++i)
+        source[i] = sphere.points()[i] + shift;
+
+    tf::aabb_tree<index_t, real_t, 3> tree(sphere.points(), tf::config_tree(4, 4));
+    auto target_with_normals = sphere.points() | tf::tag(tree) | tf::tag_normals(target_normals);
+
+    const float underflowing = std::sqrt(std::numeric_limits<float>::min());
+
+    for (float sigma : {underflowing, 0.f}) {
+        tf::icp_config config;
+        config.k = 5;
+        config.sigma = sigma;
+        config.max_iterations = 20;
+
+        auto T = tf::fit_icp_alignment(source.points(), target_with_normals, config);
+        REQUIRE(knn_transform_is_rigid<3>(T));
+
+        for (std::size_t i = 0; i < 3; ++i)
+            REQUIRE(std::abs(T(i, 3) + shift[i]) < real_t(1e-2));
+    }
 }
 
 // =============================================================================

@@ -30,6 +30,7 @@ struct knn_alignment_config {
 
   /// Gaussian kernel width for soft correspondences.
   /// If negative, uses the k-th neighbor distance (adaptive scaling).
+  /// Zero is the delta kernel: the correspondence is the nearest neighbor.
   float sigma = -1.f;
 
   /// Proportion of worst correspondences to reject (0 to 1).

@@ -26,9 +26,8 @@
 #include "../knn_alignment_config.hpp"
 #include "../knn_alignment_state.hpp"
 #include "./fit_rigid_alignment_point_to_plane.hpp"
+#include "./knn_correspondence_weight.hpp"
 #include "tbb/parallel_sort.h"
-
-#include <cmath>
 
 namespace tf::geometry {
 
@@ -92,12 +91,14 @@ auto fit_knn_alignment_point_to_plane(
           tf::neighbor_search(Y, tf::transformed(x, tf::frame_of(X)), knn);
 
           auto sig = sigma < 0 ? knn.metric() : sigma * sigma;
+          const T nearest = knn.empty() ? T(0) : T(knn.begin()->metric());
           out_pt = tf::zero;
           tf::vector<T, Dims> normal_sum = tf::zero;
           T w = 0;
 
           for (const auto &neighbor : knn) {
-            auto l_w = std::exp(-neighbor.metric() / (T(2) * sig));
+            auto l_w =
+                knn_correspondence_weight<T>(neighbor.metric(), nearest, sig);
             w += l_w;
             out_pt += neighbor.info.point.as_vector_view() * l_w;
             normal_sum += Y_normals[neighbor.element] * l_w;
@@ -201,12 +202,14 @@ auto fit_knn_alignment_point_to_plane(
           tf::neighbor_search(Y, query, knn);
 
           auto sig = sigma < 0 ? knn.metric() : sigma * sigma;
+          const T nearest = knn.empty() ? T(0) : T(knn.begin()->metric());
           tf::point<T, Dims> weighted_pt = tf::zero;
           tf::vector<T, Dims> normal_sum = tf::zero;
           T w = 0;
 
           for (const auto &neighbor : knn) {
-            auto l_w = std::exp(-neighbor.metric() / (T(2) * sig));
+            auto l_w =
+                knn_correspondence_weight<T>(neighbor.metric(), nearest, sig);
             w += l_w;
             weighted_pt += neighbor.info.point.as_vector_view() * l_w;
             normal_sum += Y_normals[neighbor.element] * l_w;
