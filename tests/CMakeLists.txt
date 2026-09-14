@@ -34,6 +34,7 @@ add_subdirectory(clean)
 add_subdirectory(reindex)
 add_subdirectory(remesh)
 add_subdirectory(io)
+add_subdirectory(volume)
 
 set(TF_TEST_TARGETS
   trueform_core_tests
@@ -50,6 +51,7 @@ set(TF_TEST_TARGETS
   trueform_reindex_tests
   trueform_remesh_tests
   trueform_io_tests
+  trueform_volume_tests
 )
 
 # A merged translation unit must not outgrow the suite's longest single

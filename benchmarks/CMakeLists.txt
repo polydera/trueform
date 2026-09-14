@@ -21,6 +21,29 @@ configure_file(
 )
 
 # ==============================================================================
+# Volume targets
+#
+# Registered before the optional competitor setup below, so that building or
+# running them never waits on those fetches.
+# ==============================================================================
+find_package(TBB CONFIG REQUIRED)
+
+set(VOLUME_BENCHMARK_TARGETS
+    bench_isosurface
+    check_isosurface
+    eval_isosurface
+)
+
+foreach(_volume_target ${VOLUME_BENCHMARK_TARGETS})
+    add_executable(${_volume_target} volume/${_volume_target}.cpp)
+    target_include_directories(${_volume_target} PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+    target_link_libraries(${_volume_target} PRIVATE TBB::tbb)
+    target_compile_options(${_volume_target} PRIVATE
+        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Wpedantic>)
+endforeach()
+
+# ==============================================================================
 # External Libraries
 # ==============================================================================
 include(FetchContent)
@@ -49,10 +72,8 @@ message(STATUS "  - Boost")
 find_package(Boost CONFIG REQUIRED)
 message(STATUS "    Boost: Found (version ${Boost_VERSION})")
 
-# TBB
-message(STATUS "  - TBB")
-find_package(TBB CONFIG REQUIRED)
-message(STATUS "    TBB: found, version: ${TBB_VERSION}")
+# TBB (already found above for the volume targets)
+message(STATUS "  - TBB: found, version: ${TBB_VERSION}")
 
 # OpenMP
 message(STATUS "  - OpenMP")
@@ -507,6 +528,8 @@ if(HAVE_VTK)
         io-read_stl-vtk
     )
 endif()
+
+list(APPEND BENCHMARK_TARGETS ${VOLUME_BENCHMARK_TARGETS})
 
 list(LENGTH BENCHMARK_TARGETS NUM_BENCHMARKS)
 message(STATUS "Creating 'benchmarks' target with ${NUM_BENCHMARKS} executables")
