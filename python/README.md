@@ -101,6 +101,10 @@ pip install vtk  # for interactive examples
 python vtk/collision.py mesh.stl
 ```
 
+## PyVista Integration
+
+Booleans, intersection curves, repairs, and isocontours on PyVista meshes through a `.trueform` accessor. `pip install pyvista-trueform` — see [pyvista-trueform](https://github.com/polydera/pyvista-trueform).
+
 ## Blender Integration
 
 Cached meshes with automatic dirty-tracking for live preview add-ons. See [Blender docs](https://trueform.polydera.com/py/blender).

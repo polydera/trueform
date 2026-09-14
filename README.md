@@ -58,6 +58,7 @@ Install-Package polydera.trueform
 ## Integrations
 
 - **[Python](https://trueform.polydera.com/py/getting-started)** — NumPy in, NumPy out
+- **[PyVista](https://github.com/polydera/pyvista-trueform)** — trueform's CSG engine behind a `.trueform` accessor on PyVista meshes
 - **[TypeScript](https://trueform.polydera.com/ts/getting-started)** — NDArrays in, NDArrays out. Browser and Node.js.
 - **[VTK](https://trueform.polydera.com/cpp/vtk)** — Filters and functions that integrate with VTK pipelines
 - **[Blender](https://trueform.polydera.com/py/blender)** — Cached meshes with automatic updates for live preview

@@ -1,3 +1,86 @@
+## trueform v0.10.4
+
+Two new tiers — the volume module and the compiled C++ facade — plus fast
+winding numbers, NIfTI IO, and non-manifold edges sectored in every state.
+
+### The volume module
+
+**A volume is a sampled function.** `tf::volume_buffer<T, Coord = T,
+Dims = 3>` stores samples of one type on a grid of another — int16 CT
+counts keep their millimetre float spacing without widening a sample.
+Generators (`make_sphere_sdf`, `make_mesh_sdf`), field CSG
+(`make_boolean` on two volumes), one regrid (`make_resampled_volume`),
+plane slicing (`make_volume_slice`), and extraction: `make_isosurface`
+— Flying Edges, measured 1.8x VTK's triangle-identical, or sharp dual
+contouring — and `make_isocontours` on a 2D grid or a slice plane.
+Python carries the same surface over zero-copy NumPy in five dtypes,
+with `Volume.transformation` mirroring `Mesh`.
+
+**`make_mesh_sdf` signs exactly.** The magnitude is the
+nearest-surface distance; the sign is exact crossing parity on the
+integer lattice, winding-counted — an inverted shell inverts its
+field, nested shells stay solid — at measured zero cost.
+`mesh_sdf_config{banded, k}` measures a band around the surface
+exactly and sweeps the far field with a seeded distance transform:
+10-45x at routine grids. A mesh that does not carry a spatial tree
+gets one built for the call.
+
+**Volumes take a pose.** `vol | tf::tag(frame)`: emitting entries emit
+in world space, reflection-safe, and the boolean's general path
+resamples both operands through their poses onto the union grid. Out
+of an operand's domain is outside its solid.
+
+### The compiled C++ facade
+
+**`trueform/cpp` is the library precompiled.** One archive over an
+explicit type matrix; `tf::cpp::mesh` assembles views and a stamped
+structure cache, build verbs state when a cost is paid, and the module
+surface — spatial queries including `signed_distance`, booleans,
+remesh, IO — runs with no template instantiation at the call site,
+sync and async. A VTK mesh source wraps it. Off by default
+(`TF_BUILD_CPP=ON`).
+
+### Winding numbers
+
+**`tf::make_winding_moments` + `tf::winding_number`.** Generalized
+winding numbers (Barill et al.) as a tree policy: per-node moments to
+Taylor order two ride the existing BVH — the precompute is ~5x
+libigl's, 15x marginal beside an already-built tree — and queries
+answer at parity accuracy. `tf::signed_distance` on a winding-tagged
+form signs by w > 0.5: the graceful answer for soups and open meshes.
+Both binding tiers route their signed distance through it, the moments
+cached beside the tree.
+
+### NIfTI
+
+**`read_nifti` / `write_nifti`** — NIfTI-1, `.nii` and `.nii.gz`
+(vendored miniz), a memory-mapped one-pass parse (~19 ms for a 256 MiB
+CT), the file's affine split canonically into grid and pose. CRC
+validation runs the hardware CRC32 path over parallel pieces: a 131 MB
+compressed read drops 42%.
+
+### One ring for a non-manifold edge
+
+**Non-manifold edges are sectored in every state** — cut, uncut, or
+mixed sheets around one edge get one radially ordered ring.
+`make_outer_shell` is idempotent on pinched inputs, `make_csg_domains`
+emits one bundle per body, and domain counts match the mesh-tier
+oracle.
+
+### Behavior changes
+
+- Python `tf.signed_distance` signs by the generalized winding number
+  instead of the pseudonormal — robust on open meshes and soups; the
+  sign is a float test, not an exact predicate. It no longer builds
+  `face_membership`/`manifold_edge_link` as a side effect.
+- The volume boolean reads an operand's out-of-domain samples as the
+  far-outside sentinel — absence is outside the solid — where
+  mismatched unposed grids previously clamped to the edge; its
+  empty-operand algebra is op-correct (an empty A in a difference
+  yields empty, not B).
+- Volume isovalues are stated in the call's deciding type (doubles at
+  the boundary); Python `sphere_sdf(dtype=None)` emits float32.
+
 ## trueform v0.10.3
 
 The vendored mimalloc is 3.5.1, built with large pages off. Upstream turned
