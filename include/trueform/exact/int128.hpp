@@ -16,13 +16,16 @@
 #include <type_traits>
 #include <utility>
 
-#if defined(_MSC_VER) && defined(_M_X64)
+#if defined(_MSC_VER)
 #include <intrin.h>
 #endif
 
 namespace tf::exact {
 
-#if defined(_MSC_VER)
+/// TF_FORCE_INT128_FALLBACK compiles the portable classes below on a
+/// compiler that has a native 128-bit type, so their arithmetic can be
+/// tested and measured where it is not otherwise reachable.
+#if defined(_MSC_VER) || defined(TF_FORCE_INT128_FALLBACK)
 
 class int128;
 
@@ -65,50 +68,90 @@ private:
 #endif
   }
 
-  static constexpr auto _bit_width64(limb_type v) noexcept -> unsigned {
+  static auto _bit_width64(limb_type v) noexcept -> unsigned {
+#if defined(__GNUC__) || defined(__clang__)
+    return 64u - static_cast<unsigned>(__builtin_clzll(v));
+#elif defined(_MSC_VER) && (defined(_M_X64) || defined(_M_ARM64))
+    unsigned long index;
+    _BitScanReverse64(&index, v);
+    return static_cast<unsigned>(index) + 1u;
+#else
     unsigned n = 0;
-    while (v != 0) {
+    while ((v >>= 1) != 0)
       ++n;
-      v >>= 1;
-    }
-    return n;
+    return n + 1u;
+#endif
   }
 
-  static constexpr auto _bit_width(const uint128 &v) noexcept -> unsigned {
+  static auto _bit_width(const uint128 &v) noexcept -> unsigned {
     if (v._hi != 0)
       return 64u + _bit_width64(v._hi);
-    return _bit_width64(v._lo);
+    if (v._lo != 0)
+      return _bit_width64(v._lo);
+    return 0;
   }
 
-  static constexpr auto _get_bit(const uint128 &v, unsigned bit) noexcept
-      -> bool {
-    return bit < 64 ? ((v._lo >> bit) & 1u) != 0
-                    : ((v._hi >> (bit - 64)) & 1u) != 0;
+  /// 128 x 64 -> 128 unsigned multiply; the caller guarantees the product
+  /// fits (every use multiplies a quotient-digit estimate that is bounded
+  /// by a remainder already held in 128 bits).
+  static auto _mul_small(const uint128 &a, limb_type b) noexcept -> uint128 {
+    limb_type hi_lo;
+    const auto lo = _umul64(a._lo, b, hi_lo);
+    return uint128(lo, a._hi * b + hi_lo);
   }
 
-  constexpr auto _set_bit(unsigned bit) noexcept -> void {
-    if (bit < 64)
-      _lo |= limb_type(1) << bit;
-    else
-      _hi |= limb_type(1) << (bit - 64);
-  }
-
-  static auto _divmod(uint128 num, uint128 den) noexcept
+  static auto _divmod(const uint128 &num, const uint128 &den) noexcept
       -> std::pair<uint128, uint128> {
     if (num < den)
       return {uint128(0), num};
 
-    uint128 q(0);
-    uint128 r(0);
-    const auto bits = _bit_width(num);
-    for (unsigned bit = bits; bit-- > 0;) {
-      r <<= 1;
-      if (_get_bit(num, bit))
-        r._lo |= 1;
-      if (r >= den) {
-        r -= den;
-        q._set_bit(bit);
+    const auto nbits = _bit_width(num);
+    const auto dbits = _bit_width(den);
+
+    // narrow divisor: schoolbook over 32-bit digits, hardware-backed
+    // 64/32 division per digit
+    if (dbits <= 32) {
+      const auto d = static_cast<limb_type>(static_cast<std::uint32_t>(den._lo));
+      std::uint32_t digits[4] = {
+          static_cast<std::uint32_t>(num._lo),
+          static_cast<std::uint32_t>(num._lo >> 32),
+          static_cast<std::uint32_t>(num._hi),
+          static_cast<std::uint32_t>(num._hi >> 32)};
+      limb_type rem = 0;
+      for (int i = 4; i-- > 0;) {
+        const limb_type cur = (rem << 32) | digits[i];
+        digits[i] = static_cast<std::uint32_t>(cur / d);
+        rem = cur % d;
       }
+      return {uint128(limb_type(digits[0]) | (limb_type(digits[1]) << 32),
+                      limb_type(digits[2]) | (limb_type(digits[3]) << 32)),
+              uint128(rem, 0)};
+    }
+
+    // wide divisor: 32-bit quotient digits, each estimated from the
+    // remainder's and divisor's top bits with an underestimating
+    // denominator, then corrected exactly — the estimate is at most a
+    // few below the true digit, so the correction loop is O(1).
+    // The chunk count's own margin keeps the shifted remainder inside the
+    // width: the first partial dividend holds at most dbits - 32 bits, so a
+    // later round's `r << 32` needs dbits + 32, and a third round exists
+    // only when nbits is at least dbits + 33.
+    const unsigned s = dbits - 32;
+    const auto den_top = static_cast<limb_type>(den >> s) + 1;
+    const unsigned n_chunks = (nbits - dbits + 32 + 31) / 32;
+    uint128 q(0);
+    uint128 r = num >> (32 * n_chunks);
+    for (unsigned c = n_chunks; c-- > 0;) {
+      const auto chunk =
+          static_cast<limb_type>(num >> (32 * c)) & 0xffffffffull;
+      r = (r << 32) + uint128(chunk);
+      auto digit = static_cast<limb_type>(r >> s) / den_top;
+      r -= _mul_small(den, digit);
+      while (r >= den) {
+        r -= den;
+        ++digit;
+      }
+      q = (q << 32) + uint128(digit);
     }
     return {q, r};
   }

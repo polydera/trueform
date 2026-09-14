@@ -38,7 +38,7 @@ auto dyadic_ratio(typename tf::exact::meta<Int>::T2 numerator,
     return param_t(0);
   if (denominator <= numerator)
     return param_t(scale);
-  return param_t((numerator * scale + denominator / T2(2)) / denominator);
+  return param_t((numerator * scale + (denominator >> 1)) / denominator);
 }
 
 } // namespace tf::exact

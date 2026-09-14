@@ -347,6 +347,49 @@ TEST_CASE("int256 divmod algebraic identity", "[int256]") {
     }
 }
 
+TEST_CASE("int256 divmod answers the most negative value", "[int256]") {
+  // 2^255 is the one magnitude whose top bit is the sign bit. Shifted as a
+  // signed value it reads as -1, every quotient-digit estimate collapses to
+  // zero, and the exact-correction loop is left walking the quotient one
+  // divisor at a time — so these cases answer at all only because the
+  // magnitude is shifted logically.
+  const auto min = make256(0, 0, 0, 0x8000000000000000ull);
+  const auto magnitude = [](const I256 &v) { return v.is_negative() ? -v : v; };
+
+  REQUIRE(min.is_negative());
+  REQUIRE(-min == min);
+  REQUIRE(min + I256(1) == -(make256(~0ull, ~0ull, ~0ull,
+                                     0x7fffffffffffffffull)));
+
+  const auto [q_pow, r_pow] = divmod(min, I256(I128(1) << 100));
+  REQUIRE(r_pow.is_zero());
+  REQUIRE(q_pow == -(I256(1) << 155));
+  REQUIRE(q_pow * I256(I128(1) << 100) + r_pow == min);
+
+  // the narrow-divisor path
+  const auto [q_narrow, r_narrow] = divmod(min, I256(7));
+  REQUIRE(q_narrow * I256(7) + r_narrow == min);
+  REQUIRE(magnitude(r_narrow) < I256(7));
+  REQUIRE(r_narrow.is_negative());
+
+  // the wide-divisor path, whose estimate reads the shifted magnitude
+  const auto den = make256(1, 0x1234567800000000ull, 0, 0);
+  const auto [q_wide, r_wide] = divmod(min, den);
+  REQUIRE(q_wide * den + r_wide == min);
+  REQUIRE(magnitude(r_wide) < magnitude(den));
+
+  REQUIRE(divmod(min, min).first == I256(1));
+  REQUIRE(divmod(min, min).second.is_zero());
+  REQUIRE(divmod(min, I256(1)).first == min);
+  REQUIRE(divmod(min, I256(2)).first == -(I256(1) << 254));
+  // the wrap the type shares with every two's-complement division
+  REQUIRE(divmod(min, I256(-1)).first == min);
+
+  const auto [q_near, r_near] = divmod(min + I256(1), I256(I128(1) << 100));
+  REQUIRE(q_near == -((I256(1) << 155) - I256(1)));
+  REQUIRE(q_near * I256(I128(1) << 100) + r_near == min + I256(1));
+}
+
 TEST_CASE("int256 hardcoded div", "[int256]") {
   auto full_pos = make256(0x123456789ABCDEF0ull, 0xFEDCBA9876543210ull,
                           0x1111111111111111ull, 0x2222222222222222ull);

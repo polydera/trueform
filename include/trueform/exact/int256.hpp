@@ -18,7 +18,7 @@
 #include <type_traits>
 #include <utility>
 
-#if defined(_MSC_VER) && defined(_M_X64)
+#if defined(_MSC_VER)
 #include <intrin.h>
 #endif
 
@@ -149,17 +149,19 @@ private:
     return 0;
   }
 
-  static constexpr auto _get_bit(const int256 &v, unsigned i) -> bool {
-    if (i < 128)
-      return ((v._lo >> i) & limb_type(1)) != 0;
-    return ((v._hi >> (i - 128)) & limb_type(1)) != 0;
-  }
-
-  constexpr auto _set_bit(unsigned i) -> void {
-    if (i < 128)
-      _lo |= (limb_type(1) << i);
-    else
-      _hi |= (limb_type(1) << (i - 128));
+  /// `_unsigned_divmod` works on MAGNITUDES, and one magnitude — 2^255,
+  /// what `_abs` returns for the most negative value — carries the sign
+  /// bit; the signed shift would sign-extend it, collapse the
+  /// quotient-digit estimate to zero, and leave the exact-correction loop
+  /// walking the quotient one divisor at a time.
+  static auto _logical_shr(const int256 &a, unsigned s) -> int256 {
+    if (s >= 256)
+      return int256(0);
+    if (s == 0)
+      return a;
+    if (s >= 128)
+      return int256(a._hi >> (s - 128), limb_type(0));
+    return int256((a._lo >> s) | (a._hi << (128 - s)), a._hi >> s);
   }
 
   /// 256 x 64 -> 256 unsigned multiply; the caller guarantees the
@@ -205,15 +207,16 @@ private:
     // few below the true digit, so the correction loop is O(1)
     const unsigned s = dbits - 64;
     const auto den_top =
-        static_cast<limb_type>((den >> s)._lo) + limb_type(1);
+        static_cast<limb_type>(_logical_shr(den, s)._lo) + limb_type(1);
     const unsigned n_chunks = (nbits - dbits + 32 + 31) / 32;
     int256 q(0);
-    int256 r = num >> (32 * n_chunks);
+    int256 r = _logical_shr(num, 32 * n_chunks);
     for (unsigned c = n_chunks; c-- > 0;) {
       const auto chunk = static_cast<std::uint64_t>(
-          static_cast<std::uint64_t>((num >> (32 * c))._lo) & 0xffffffffull);
+          static_cast<std::uint64_t>(_logical_shr(num, 32 * c)._lo) &
+          0xffffffffull);
       r = _unsigned_add(r << 32, int256(limb_type(chunk), limb_type(0)));
-      const limb_type r_top = (r >> s)._lo;
+      const limb_type r_top = _logical_shr(r, s)._lo;
       auto digit = static_cast<std::uint64_t>(r_top / den_top);
       r = _unsigned_sub(r, _mul_small(den, digit));
       while (_cmp_unsigned(r, den) >= 0) {

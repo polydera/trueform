@@ -48,7 +48,7 @@ auto rebase_parameter(typename tf::exact::meta<Int>::param_type local,
   if (local < param_t(0) || denominator <= T2(0))
     return param_t(-1);
   const T2 offset = (T2(t1) - T2(t0)) * T2(local);
-  const T2 half = denominator / T2(2);
+  const T2 half = denominator >> 1;
   return param_t(T2(t0) +
                  (offset < T2(0) ? offset - half : offset + half) / denominator);
 }

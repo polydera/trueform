@@ -21,6 +21,12 @@
  * and two forms whose corner names agree and therefore land on ONE integer —
  * the weld the contract promises is identity and not proximity.
  *
+ * The POOLED scene is two walls of two triangles each, standing at different
+ * heights with a further corner pushed off, so the operands arrive as four
+ * exact planes and no plane. Afterwards they are one plane and one canonical
+ * NAME, standing on original vertices that did not move — and at a band of
+ * zero the whole tier is inert and the reader is the plain converter.
+ *
  * Copyright (c) 2026 Ziga Sajovic, XLAB
  */
 
@@ -46,8 +52,11 @@
 #include <trueform/exact/door/round_div.hpp>
 #include <trueform/exact/door/round_to_wide.hpp>
 #include <trueform/exact/door/wide_dot.hpp>
+#include <trueform/exact/canonical_plane.hpp>
 #include <trueform/exact/input_lattice.hpp>
 #include <trueform/exact/meta.hpp>
+#include <trueform/exact/orient3d.hpp>
+#include <trueform/exact/plane_support.hpp>
 #include <trueform/exact/resolve_int_type.hpp>
 #include <trueform/exact/vertex_converter.hpp>
 #include <trueform/geometry/make_box_mesh.hpp>
@@ -222,6 +231,36 @@ auto tilted_wall_mesh() -> tf::polygons_buffer<index_t, RealType, 3, 3> {
   mesh.faces_buffer().emplace_back(0, 1, 2);
   mesh.faces_buffer().emplace_back(0, 2, 3);
   return mesh;
+}
+
+/// A quad of two triangles spanning `[x0, x1] x [0, 1]`, standing at `lift`
+/// with its far corner pushed a further `tilt` off it.
+///
+/// Its two triangles state DIFFERENT exact planes whenever `tilt` is not
+/// zero, so a wall of this shape is not planar to begin with — which is the
+/// premise the pooled fixture below rests on.
+template <typename RealType>
+auto pooled_wall_mesh(RealType x0, RealType x1, RealType lift, RealType tilt)
+    -> tf::polygons_buffer<index_t, RealType, 3, 3> {
+  tf::polygons_buffer<index_t, RealType, 3, 3> mesh;
+  mesh.points_buffer().emplace_back(x0, RealType(0), lift);
+  mesh.points_buffer().emplace_back(x1, RealType(0), lift);
+  mesh.points_buffer().emplace_back(x1, RealType(1), lift + tilt);
+  mesh.points_buffer().emplace_back(x0, RealType(1), lift);
+  mesh.faces_buffer().emplace_back(0, 1, 2);
+  mesh.faces_buffer().emplace_back(0, 2, 3);
+  return mesh;
+}
+
+/// The exact plane four lattice points stand on, or a support short of three
+/// when they state no plane at all.
+template <typename Int, typename Placed>
+auto pooled_plane_of(const Placed &placed, std::size_t from)
+    -> tf::exact::plane_support<Int> {
+  tf::exact::plane_support<Int> support;
+  for (std::size_t k = from; k < from + 4; ++k)
+    support.offer(placed[k]);
+  return support;
 }
 
 /// The band the generic-direction scene is driven at, per lattice. A band is
@@ -499,6 +538,12 @@ TEMPLATE_TEST_CASE("door: a generic direction is placed on every lattice",
   // The tilted quad's four: one name each, so rank 1 states the answer, and
   // the four land on ONE plane of the direction's own grid — which is what
   // keeps a coplanar group coplanar.
+  //
+  // The PUBLISHED point is not asserted against the cascade's here, because
+  // rank 1 reads the partition: a flat vertex whose name committed to a
+  // pooled exact plane is placed on THAT plane. What the table owes such a
+  // vertex is the one-T law and the coplanarity, and both are asserted
+  // below, on the table itself.
   lattice_wider_t height(0);
   std::array<lattice_wide_t, 3> name{};
   for (index_t flat = index_t(8); flat < index_t(12); ++flat) {
@@ -507,7 +552,11 @@ TEMPLATE_TEST_CASE("door: a generic direction is placed on every lattice",
     const std::array<lattice_wide_t, 3> at{lattice_wide_t(placement.point[0]),
                                            lattice_wide_t(placement.point[1]),
                                            lattice_wide_t(placement.point[2])};
-    REQUIRE(placement.point == placed[std::size_t(flat)]);
+    const auto &published = placed[std::size_t(flat)];
+    const std::array<lattice_wide_t, 3> stands{lattice_wide_t(published[0]),
+                                               lattice_wide_t(published[1]),
+                                               lattice_wide_t(published[2])};
+    REQUIRE(tf::exact::door::admits_placement(original, stands, tolerance));
     REQUIRE(tf::exact::door::admits_placement(original, at, tolerance));
     REQUIRE(placement.rank == 1);
     REQUIRE(candidates.size() == 1);
@@ -525,6 +574,11 @@ TEMPLATE_TEST_CASE("door: a generic direction is placed on every lattice",
       tf::exact::door::plane_step<lattice_int_t>(name,
                                                     lattice_wide_t(tolerance));
   REQUIRE(height % lattice_wider_t(step) == lattice_wider_t(0));
+
+  // and the four the table published are coplanar exactly, whichever plane
+  // they were placed on
+  REQUIRE(tf::exact::orient3d_sign<lattice_int_t>(placed[8], placed[9],
+                                                  placed[10], placed[11]) == 0);
 }
 
 TEMPLATE_TEST_CASE("door: a doubled wall becomes one, and the door says so",
@@ -553,6 +607,101 @@ TEMPLATE_TEST_CASE("door: a wall vertex stands on its own plane and does "
     REQUIRE(placed[i][2] == lattice_int_t(0));
 }
 
+TEMPLATE_TEST_CASE("door: two banded walls of four planes become one plane",
+                   "[exact][door][pool]", float, double) {
+  using lattice_int_t = tf::exact::resolve_int_type<tf::none_t, TestType>;
+  const auto tilt = TestType(5e-7);
+  const auto lift = TestType(6e-5);
+  const double tolerance = 1e-4;
+
+  scene_t<TestType> scene;
+  scene.add(pooled_wall_mesh<TestType>(TestType(0), TestType(0.4),
+                                       TestType(0), tilt));
+  scene.add(pooled_wall_mesh<TestType>(TestType(0.6), TestType(1), lift, tilt));
+  scene.build(tolerance);
+
+  REQUIRE(scene.lattice.tolerance_int() > lattice_int_t(0));
+  const auto placed = scene.lattice.placed_points();
+  REQUIRE(placed.size() == 8);
+
+  const auto &converter = scene.lattice.converter();
+  tf::buffer<tf::point<lattice_int_t, 3>> input;
+  for (index_t tag = 0; tag < index_t(2); ++tag) {
+    const auto form = scene.operands[std::size_t(tag)]->form();
+    const auto frame = tf::frame_of(form);
+    const auto points = form.points();
+    for (index_t id = 0; id < index_t(points.size()); ++id)
+      input.push_back(converter.convert(tf::transformed(points[id], frame)));
+  }
+  REQUIRE(input.size() == 8);
+
+  // THE PREMISE: the four faces are four planes and the input is not one.
+  // Asked of the converter alone, which is where the operands stand before
+  // the door moves anything.
+  int off_plane = 0;
+  for (std::size_t k = 3; k < input.size(); ++k)
+    off_plane += tf::exact::orient3d_sign<lattice_int_t>(input[0], input[1],
+                                                         input[2], input[k]) !=
+                         0
+                     ? 1
+                     : 0;
+  REQUIRE(off_plane > 0);
+
+  // BOTH WAYS: every placed vertex stands on the plane the other wall's own
+  // corners state, and on the plane its own do.
+  const auto first = pooled_plane_of<lattice_int_t>(placed, 0);
+  const auto second = pooled_plane_of<lattice_int_t>(placed, 4);
+  REQUIRE(first.size == 3);
+  REQUIRE(second.size == 3);
+  for (std::size_t k = 0; k < placed.size(); ++k) {
+    REQUIRE(tf::exact::orient3d_sign<lattice_int_t>(
+                first.point[0], first.point[1], first.point[2], placed[k]) == 0);
+    REQUIRE(tf::exact::orient3d_sign<lattice_int_t>(second.point[0],
+                                                    second.point[1],
+                                                    second.point[2],
+                                                    placed[k]) == 0);
+  }
+
+  // and the two walls carry ONE plane NAME, which is the fact the arrangement
+  // reads: coplanarity through a shared canonical quadruple, not proximity
+  REQUIRE(tf::exact::make_canonical_plane<lattice_int_t>(first) ==
+          tf::exact::make_canonical_plane<lattice_int_t>(second));
+
+  // AND IT IS THE OPERANDS' OWN PLANE. What the walls came to rest on stands
+  // on original vertices that did not move at all, which no grid plane can
+  // promise — and at int32, where the door's naming pitch and the chart's are
+  // the same number, it is the whole of what the partition changed here.
+  int unmoved = 0;
+  for (std::size_t k = 0; k < placed.size(); ++k)
+    unmoved += placed[k] == input[k] ? 1 : 0;
+  REQUIRE(unmoved >= 3);
+}
+
+TEMPLATE_TEST_CASE("door: the pooled scene is byte-inert at a zero band",
+                   "[exact][door][pool]", float, double) {
+  using lattice_int_t = tf::exact::resolve_int_type<tf::none_t, TestType>;
+  scene_t<TestType> scene;
+  scene.add(pooled_wall_mesh<TestType>(TestType(0), TestType(0.4), TestType(0),
+                                       TestType(3e-7)));
+  scene.add(pooled_wall_mesh<TestType>(TestType(0.6), TestType(1),
+                                       TestType(6e-5), TestType(3e-7)));
+  scene.build(0.0);
+
+  REQUIRE(scene.lattice.tolerance_int() == lattice_int_t(0));
+  REQUIRE(scene.lattice.placed_points().size() == 0);
+
+  const auto reader = scene.lattice.reader(scene.apply_to_form());
+  const auto &converter = scene.lattice.converter();
+  for (index_t tag = 0; tag < index_t(2); ++tag) {
+    const auto form = scene.operands[std::size_t(tag)]->form();
+    const auto frame = tf::frame_of(form);
+    const auto points = form.points();
+    for (index_t id = 0; id < index_t(points.size()); ++id)
+      REQUIRE(reader(int(tag), id) ==
+              converter.convert(tf::transformed(points[id], frame)));
+  }
+}
+
 TEST_CASE("door: two forms whose corner names agree land on one integer",
           "[exact][door]") {
   const real_t scatter = real_t(1e-5);
@@ -572,3 +721,4 @@ TEST_CASE("door: two forms whose corner names agree land on one integer",
         ++welds;
   REQUIRE(welds == index_t(1));
 }
+

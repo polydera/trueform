@@ -12,12 +12,17 @@
  */
 #pragma once
 
+#include "../core/blocked_buffer.hpp"
 #include "../core/buffer.hpp"
 #include "../core/none.hpp"
 #include "../core/point.hpp"
 #include "../core/range.hpp"
 #include "./door/place_vertices.hpp"
 #include "./door/placement_tables.hpp"
+#include "./door/pool/discovery_resolution.hpp"
+#include "./door/pool/exact_lane.hpp"
+#include "./door/pool/gather_input_corners.hpp"
+#include "./door/pool/pool_input_planes.hpp"
 #include "./input_lattice_reader.hpp"
 #include "./resolve_int_type.hpp"
 #include "./vertex_converter.hpp"
@@ -34,9 +39,13 @@ namespace tf::exact {
 /// a vertex `(tag, id)` by one integer, and — when a tolerance is given
 /// — the table the door placed every vertex into.
 ///
-/// Each original vertex moves at most the tolerance, to a lattice
-/// vertex; the arrangement is then the exact arrangement of the moved
-/// mesh, computed at zero. A tolerance of zero is the identity: no
+/// Under a band the input is POOLED, THEN PLACED: faces whose quantized
+/// directions agree pool onto one exact plane, and each original vertex
+/// moves at most the tolerance, to a lattice vertex — its pool's
+/// committed plane where its own name joined one, the planes its faces
+/// state otherwise. The arrangement is then the exact arrangement of
+/// the moved mesh, computed at zero, and nothing is promised of the
+/// output. A tolerance of zero is the identity: nothing is pooled, no
 /// table is built, no face is read, no normal is taken, and the view is
 /// the plain converter.
 template <typename Index, typename RealType,
@@ -82,13 +91,45 @@ public:
     tf::exact::door::placement_tables<Index, Int, RealType> tables;
     tables.build(_converter, apply_to_form, n_tags, _vertex_offsets,
                  face_offsets, _tolerance_int);
-    tf::exact::door::place_vertices(tables, _tolerance_int, _placed);
+    // The partition states which exact planes the input's faces give up for
+    // which others, before a single vertex is placed, so rank 1 aims at a
+    // pooled wall instead of at each face's own rounded tangent.
+    //
+    // A lattice with no arithmetic lane has no certificate to judge a pool
+    // by, so its door is the cascade alone.
+    tf::exact::door::pool::input_pools<Int> pools;
+    if constexpr (tf::exact::door::pool::has_exact_lane<Int>) {
+      tf::blocked_buffer<Index, 3> corners;
+      if (tf::exact::door::pool::gather_input_corners(
+              apply_to_form, n_tags, _vertex_offsets, face_offsets, corners))
+        tf::exact::door::pool::pool_input_planes(
+            tables, corners, _tolerance_int,
+            tf::exact::door::pool::pool_discovery_resolution<Int>(
+                _tolerance_int),
+            pools);
+#ifdef TF_POOL_CENSUS
+      _election = pools.election;
+      _certificate = pools.certificate;
+#endif
+    }
+    tf::exact::door::place_vertices(tables, pools, _tolerance_int, _placed);
   }
 
   auto converter() const -> const converter_type & { return _converter; }
   auto n_tags() const -> Index { return _n_tags; }
   /// The door's band in lattice units; zero when no door ran.
   auto tolerance_int() const -> Int { return _tolerance_int; }
+#ifdef TF_POOL_CENSUS
+  /// The partition's own account of what it committed and what it spent.
+  /// Nothing below the door reads either census; they are the surface a gate
+  /// measures the pass on, so they exist only where the gate asked for them.
+  auto election() const -> const tf::exact::door::pool::election_census & {
+    return _election;
+  }
+  auto certificate() const -> const tf::exact::door::pool::certificate_census & {
+    return _certificate;
+  }
+#endif
   auto vertex_offsets() const -> const tf::buffer<Index> & {
     return _vertex_offsets;
   }
@@ -131,6 +172,10 @@ private:
   tf::buffer<tf::point<Int, 3>> _placed;
   Index _n_tags = Index(0);
   Int _tolerance_int = Int(0);
+#ifdef TF_POOL_CENSUS
+  tf::exact::door::pool::election_census _election;
+  tf::exact::door::pool::certificate_census _certificate;
+#endif
 };
 
 } // namespace tf::exact
