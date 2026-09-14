@@ -6,6 +6,7 @@ add_executable(trueform_spatial_tests
   test_gather_ids.cpp
   test_mod_tree.cpp
   test_mod_tree_queries.cpp
+  test_winding_number.cpp
 )
 
 target_link_libraries(trueform_spatial_tests PRIVATE trueform_test_common)

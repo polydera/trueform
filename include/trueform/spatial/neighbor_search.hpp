@@ -57,7 +57,7 @@ auto neighbor_search(const tf::form<Dims, Policy0> &form,
 ///
 /// @param form The spatial form to query.
 /// @param obj The query point.
-/// @param radius Maximum search radius (squared distance).
+/// @param radius Maximum search radius (linear distance).
 /// @return Result containing the nearest primitive, or invalid if none within radius.
 template <std::size_t Dims, typename Policy0, typename Policy1>
 auto neighbor_search(const tf::form<Dims, Policy0> &form,

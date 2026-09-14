@@ -12,12 +12,12 @@
 */
 #pragma once
 
-#include "./external/miniselect/floyd_rivest_select.h"
-#include "./external/miniselect/heap_select.h"
-#include "./external/miniselect/median_of_3_random.h"
-#include "./external/miniselect/median_of_medians.h"
-#include "./external/miniselect/median_of_ninthers.h"
-#include "./external/miniselect/pdqselect.h"
+#include "../core/external/miniselect/floyd_rivest_select.h"
+#include "../core/external/miniselect/heap_select.h"
+#include "../core/external/miniselect/median_of_3_random.h"
+#include "../core/external/miniselect/median_of_medians.h"
+#include "../core/external/miniselect/median_of_ninthers.h"
+#include "../core/external/miniselect/pdqselect.h"
 
 namespace tf {
 

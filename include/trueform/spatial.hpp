@@ -1,15 +1,15 @@
 /*
-* Copyright (c) 2025 XLAB
-* All rights reserved.
-*
-* This file is part of trueform (trueform.polydera.com)
-*
-* Licensed for noncommercial use under the PolyForm Noncommercial
-* License 1.0.0.
-* Commercial licensing available via info@polydera.com.
-*
-* Author: Žiga Sajovic
-*/
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
 #pragma once
 
 /** @defgroup spatial Spatial Module
@@ -23,7 +23,8 @@
 
 /** @defgroup spatial_queries Spatial Queries
  *  @ingroup spatial
- *  Distance, intersection, neighbor search, ray casting, and custom search operations.
+ *  Distance, intersection, neighbor search, ray casting, and custom search
+ * operations.
  */
 
 /** @defgroup spatial_results Result Types
@@ -72,3 +73,5 @@
 #include "./spatial/tree_metric_info.hpp"      // IWYU pragma: export
 #include "./spatial/tree_metric_info_pair.hpp" // IWYU pragma: export
 #include "./spatial/tree_ray_info.hpp"         // IWYU pragma: export
+#include "./spatial/winding_moments.hpp"       // IWYU pragma: export
+#include "./spatial/winding_number.hpp"        // IWYU pragma: export
