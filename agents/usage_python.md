@@ -354,6 +354,10 @@ faces, points = tf.read_stl("model.stl")
 faces, points = tf.read_obj("model.obj")
 tf.write_stl((faces, points), "output.stl")
 tf.write_obj((faces, points), "output.obj")
+
+info = tf.read_nifti_header("ct.nii.gz")   # tf.NiftiHeader: dims, spacing, dtype, posed, ...
+scan = tf.read_nifti("ct.nii.gz")          # tf.Volume in the file's own dtype, posed when it is
+tf.write_nifti(scan, "out.nii.gz")
 ```
 
 ---

@@ -714,10 +714,13 @@ order with their corners in the stream's vertex language.
   placed table the door (`exact/door/`) computed: every original vertex
   moved at most the band onto a lattice point of the planes its own
   incident faces state (the meet of three, the line of two, its own
-  tangent plane, each admitted by the certificate `admits_placement`),
-  after which the pipeline runs exactly at zero on the moved mesh. At
-  tolerance zero no table exists and nothing of the door executes. The
-  door gives positions only; identity is the gate's.
+  tangent plane, each admitted by the certificate `admits_placement`) —
+  or, where the pool tier (`exact/door/pool/`) committed one for it, onto
+  the exact plane a run of same-direction faces gave up their own planes
+  for, a vertex reaching it by the same one-band solve — after which the
+  pipeline runs exactly at zero on the moved mesh. At tolerance zero no
+  table exists and nothing of the door executes. The door gives positions
+  only; identity is the gate's.
   `tf::exact::input_lattice_reader` is the ONE reader of an original's
   position (the placed table when there is one, the converter otherwise),
   and every tier reads originals through it.

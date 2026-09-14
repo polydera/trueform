@@ -662,3 +662,15 @@ The library is developed on clang/AppleClang but must build on MSVC (Windows CI)
 3. **ASCII-only in Catch2 `TEST_CASE` / `SECTION` names.** ctest's test-name parsing chokes on non-ASCII (`→`, `×`, `°`, accented letters) on Windows. Keep registered test names ASCII; UTF-8 is fine in comments and code.
 
 4. **No `M_PI` / `M_*` math macros.** They need `_USE_MATH_DEFINES` before `<cmath>` on MSVC. Use `tf::pi<T>` and the other `tf::` constants.
+
+5. **No `near`/`far` identifiers.** minwindef.h defines both as empty macros in any TU a Windows header reaches, and `NOMINMAX` does not cover them; the declaration preprocesses away and the parse shreds downstream.
+
+6. **A generic lambda that decomposes a parameter names its captures.** After `auto &&[a, b] = pair` in a generic lambda body, MSVC loses the enclosing scope and every implicitly captured local reads as undeclared (C2065) — by value as much as by reference, so taking the pair by value is no cure. List what the body reads: `[&winding, &polygons, &pose, beta2](auto pair)`. Capture-less is equally fine.
+   ```cpp
+   [&](auto pair) { auto &&[a, b] = pair; use(scale); };        // BAD on MSVC
+   [&scale](auto pair) { auto &&[a, b] = pair; use(scale); };   // OK
+   ```
+
+7. **Inside a generic lambda, never read a captured local named like a namespace-scope `tf` template** (`frame`, `points`, `tree`, `buffer`, `range`, ...). MSVC's template-time lookup finds the template (C2955). Name `frame_of` results `pose`.
+
+`python/tools/portability_scan.py` checks 1, 3-6 mechanically and is a ratchet against its baseline; run it from the repo root before landing any C++ change. Rule 7 stays review-time.

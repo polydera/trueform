@@ -213,10 +213,17 @@ carries state through its parallel primitive.
 
 ## Timeless code and comments
 
-- Prefer self-documenting names and structure. Do not comment code that already
-  states its purpose clearly.
-- Comments explain only a non-obvious reason, invariant, ownership rule, or
-  contract. They do not narrate the implementation.
+- The code itself is the prose. Names, structure, and flow are chosen so a
+  reader follows the mechanism as sentences — that is why identifiers carry
+  the house vocabulary. A comment exists only where the prose cannot say it.
+- One fact, one place. The owning header states a module's laws once. A
+  function's doc states only the contract it alone owns — one to three lines,
+  never a restatement of the owner's. An internal whose signature says
+  everything says nothing.
+- Bodies are silent except a non-obvious reason, invariant, or ownership rule
+  that lives nowhere else. No narration, no emphasis capitals, no banner
+  blocks. A ported algorithm's source citation lives once, in the owning
+  header.
 - Names, branches, structure, and comments describe only the present mechanism
   and contract. Git history and task records own how code was developed,
   replaced, benchmarked, or debugged.

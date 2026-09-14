@@ -105,6 +105,8 @@ Build: `tree.build(primitives, config_tree(inner_size, leaf_size))`
 | `gather_self_ids(form, pred, out)` | form + predicate | output iterator | Self-intersecting ID pairs |
 | `search(form, check_bv, apply)` | form + callbacks | `bool` | Generic tree traversal |
 | `search_self(form, check_bvs, apply)` | form + callbacks | `bool` | Self-intersection traversal |
+| `make_winding_moments(tree, polygons)` | built tree + its polygons | `winding_moments<RealT>` | Per-node winding expansion to Taylor order two — dipole, mixed second moment, and the quadrupole third-moment tier — folded into four-lane child blocks; tag beside the tree |
+| `winding_number(form, point[, config])` / `(form, points, out[, config])` | form with tree + winding moments | `double` / fills `out` | Generalized winding number, far nodes by the folded order-two expansion, near leaves exact; `winding_config{beta = 2}`. A winding-tagged form also switches `signed_distance`'s sign to `w > 0.5` and then needs only the tree |
 
 ### Result Types
 - `tree_metric_info<Index, Info>` — element ID + metric info, `operator bool()` for validity
@@ -321,9 +323,14 @@ field crossings rather than by polygon intersections. Umbrella
 ## 8. exact/
 
 ### Integer Types
-`int32` (std), `int64` (std), `int128` (compiler-specific), `int256` (custom)
+`int32` (std), `int64` (std), `int128` (compiler-specific), `int256` (custom),
+`int512` (custom)
 
 `meta<Int>`: `T0` = self, `T1` = double width, `T2` = quadruple width
+
+`int512` is past the `meta` ladder and has one consumer: the product rung the
+door's plane pooling stands on at the int64 lattice
+(`tf::exact::door::pool::exact_lane`), as `int256` is at int32.
 
 ### Predicates
 
@@ -352,8 +359,12 @@ field crossings rather than by polygon intersections. Umbrella
   operand stands on the lattice, built once over the union of the operands:
   the shared converter, the flat vertex space that names `(tag, id)` by one
   integer, and — when a tolerance is given — the table the door
-  (`exact/door/`) placed every vertex into. A tolerance of zero is the
-  identity: no table, no face read, the plain converter
+  (`exact/door/`) placed every vertex into. Under a band the door first POOLS
+  (`exact/door/pool/`): faces whose quantized directions agree commit one
+  exact plane through their own original vertices, and a vertex whose name
+  joined a pool is placed on that plane instead of on its own faces'. A
+  tolerance of zero is the identity: no pool, no table, no face read, the
+  plain converter
 - `input_lattice_reader<Index, RealT, Int, ApplyToForm>` — the one reader of an
   original vertex's position, bound to the caller's own forms: `(tag, id)` or a
   flat id answers from the placed table when there is one and from the
@@ -405,10 +416,80 @@ All `reindexed_*` functions have `return_index_map` variants.
 | `read_obj(path)` | `polygons_buffer<int, float, 3, dynamic_size>` | ASCII OBJ (1-based → 0-based indices) |
 | `read_obj<3>(path)` | `polygons_buffer<int, float, 3, 3>` | OBJ with fixed triangle faces |
 | `write_obj(polygons, path)` | `bool` | ASCII OBJ (parallel two-pass write) |
+| `read_nifti<T>(path)` | `nifti_file<T>` | NIfTI-1 volume, `.nii` or `.nii.gz` (vendored miniz): `volume_buffer<T, float, 3>` + the frame the file's affine states + `posed` + `nifti_status`. `T` defaults to float; the file's dtype converts through one cast, `scl` scaling applied. The read splits the file's one affine canonically — spacing and axis-aligned translation onto the grid, orientation into the frame |
+| `read_nifti_header(path)` | `nifti_header_info` | The file's facts (dtype, dims, spacing, posed, scl) without its samples; a gzipped file inflates only its head |
+| `write_nifti(vol[, frame], path)` | `bool` | NIfTI-1 out, gzip by `.gz` extension; samples in their own type, the grid and frame composed into the sform |
 
 Memory buffer variants accept `range<const char*, dynamic_size>` for in-memory parsing.
 
-## 12. csg/
+## 12. volume/
+
+A dense scalar field on a regular axis-aligned grid: its carrier, the
+generators that fill one, the CSG that combines two, the plane it slices onto,
+and the geometry its level set names. Umbrella `trueform/volume.hpp`; the
+machinery is `tf::volume_detail` under `volume/impl/`. A grid of three axes is
+a voxel grid, one of two a pixel grid, and a SLICE of a 3D field IS a 2D one —
+nothing but the axis count differs.
+
+### The carrier
+
+| Type | Purpose |
+|------|---------|
+| `volume<Policy>` | The samples range wrapped in the grid that names them, a `tf::form` like points and polygons. A volume is a sampled function, so the type answers TWO questions — `sample_type` (the codomain: what was measured) and `coordinate_type` (the domain: where samples stand) — the same by default and stated or factory-deduced apart (int16 CT samples on a float millimetre grid). The AXIS COUNT is deduced through `tf::coordinate_dims_v` from the grid policy (`volume_detail::grid<Range, Coord, Dims>`, `volume/impl/grid.hpp`), never stated by a reader. `dims`, `spacing`, `origin`, `voxel_count`, `linear_index`, `operator()`, `point_at<Real>` — each taking one integer per axis or the `std::array` of them; built by `make_volume(samples, dims, spacing, origin)`. World placement is a tagged frame (`vol \| tf::tag(frame)`): the geometry-emitting entries emit through it — a reflecting frame keeps the outward winding — and positional inputs stay local-space |
+| `volume_buffer<T, Coord = T, Dims = 3>` | Owns the samples in `T` — any arithmetic scalar, int16/uint16/uint8 included — on a `Coord` grid, payload first and coordinates second as `polygons_buffer` orders them; `volume()` yields the view. `make_volume_buffer<OCT>(view)` copies one: OCT stated decides both types, unstated preserves both |
+
+Samples are stored with the first axis varying fastest:
+`x + dims[0] * (y + dims[1] * z)`. An entry CONSTRAINS on the axis count
+through the trait, never through a parameter — `make_isosurface` asserts three,
+`make_isocontours`' grid overload two, `make_mesh_sdf` three (the parity
+sign is a closed surface's), while `make_boolean` and `make_sphere_sdf` hold at
+either.
+
+### The type a call decides in
+
+An entry that takes a volume resolves `OutputCoordinateType` through
+`tf::resolved_output_real_t` against that volume's COORDINATE type, so an
+unstated request is the grid's — which is the samples' type in the
+same-by-default case, and the floating domain type for an integer-sampled
+field. `make_mesh_sdf` takes no volume and resolves against the MESH's
+coordinate type; `make_sphere_sdf` has no OCT slot at all — its `T` is the
+field's type outright. An entry that also names an index type takes `Index`
+FIRST and `OCT` second (`make_isosurface<Index, OCT>`,
+`make_isocontours<Index, OCT>`), as core's own geometry entries do; one
+with no index slot takes `OCT` alone. That resolved type is the ONE type the
+call decides and emits in, and `tf::volume_detail::field_value` is the one cast
+between a stored sample and it — which is what keeps the classifier and the
+crossing that follows it on the same number, and a crossing parameter inside
+`[0, 1]`.
+`volume_detail::field_samples` is its pointer-carrying form, held by the passes
+the deciding type has to travel through.
+
+| Function | Return | Description |
+|----------|--------|-------------|
+| `make_isosurface<Index, OCT>(vol[, iso][, config])` | `polygons_buffer<Index, RealOut, 3, 3>` | The level set as a welded indexed triangle mesh; a corner is inside when `sample < iso`, so an SDF winds outward |
+| `isosurface_config` | — | `{isosurface_method method, bool refine, double stabilizer}`, implicitly constructible from an `isosurface_method` |
+| `isosurface_method` | — | `flying_edges` (a vertex per crossing grid edge; any field) or `dual_contouring` (a vertex per surface component of a cell, fitted to the crossings; a distance-like field) |
+| `make_sphere_sdf<T>(dims, spacing, origin, center, radius)` | `volume_buffer<T, T, Dims>` | The analytic sphere field; Dims-generic, a 2D `dims` stating a disc |
+| `make_mesh_sdf<OCT>(polygons, dims, spacing, origin[, config])` | `volume_buffer<RealOut>` | Nearest-distance magnitude, sign by exact crossing parity on the lattice (negative inside by winding); closed surface, needs only the tree — a tagged one is used, a missing one is built for the call — in the frame the form states. `mesh_sdf_config{mesh_sdf_mode::banded, band}` measures a band and sweeps the far field |
+| `make_boolean<OCT>(a, b, op)` | `volume_buffer<RealOut, RealOut, Dims>` | The library's `make_boolean`, type-distinguished on volume carriers and `volume_boolean_op{union_, intersection, difference}`. The combine happens on one shared grid: matched grids AND matched poses combine samplewise (a POSED call returns `(buffer, pose)` — the shared pose kept); anything else resamples onto the world-space union of the domains at the finer LOCAL spacing through `make_resampled_volume` and returns identity pose. Out of an operand's domain is outside its solid: every operand reads the far-outside sentinel past its own box. Pose equality is exact matrix equality in the deciding type. An empty operand is the empty set and the algebra answers for it. Refuses unsigned samples and non-floating deciding types. Dims-generic: the algebra is the field's |
+| `make_isocontours<Index, OCT>(grid_2d, isovalue-or-range)` | `curves_buffer<Index, RealOut, 2>` | The level set of a 2D volume, connected into polylines — core's isocontours product, one dimension down |
+| `make_isocontours<Index, OCT>(vol, plane_origin, u, v, dims2, spacing2, isovalues)` | `curves_buffer<Index, RealOut, 3>` | The slice-then-contour composition plus the lift back into the volume's frame, and the one producer of that lifted product |
+| `make_resampled_volume<OCT>(vol, dims, spacing, origin)` | `volume_buffer<RealOut, RealOut, Dims>` | The one regrid: multilinear at each target node, clamp-to-edge untagged; a POSED volume resamples through its frame's inverse with out-of-domain nodes at the far-outside sentinel. Two reads, two contracts: `make_boolean`'s general path — mismatched grids or poses — consumes the POSED one for every operand, an untagged one through the identity |
+| `make_volume_slice<OCT>(vol, plane_origin, u, v, dims2, spacing2)` | `volume_buffer<RealOut, RealOut, 2>` | The 3D field multilinearly resampled onto an oriented plane — a volume one dimension down; nodes outside the box take a sentinel above the field maximum |
+
+### The extractors (`volume/impl/`, `tf::volume_detail`)
+
+| Symbol | Purpose |
+|--------|---------|
+| `classify_x_edges<Real>(vol, iso, ...)` | The x-edge classification both extractors stand on: a 2-bit case per edge, each row's crossing count and trim |
+| `flying_edges<Index, Real>(vol, iso)` | Flying Edges 3D: classify, count, one serial row prefix, generate — the welded mesh directly |
+| `flying_edges_2d<Index>(grid_2d, iso, points, segments)` | Its planar sibling, behind `make_isocontours`; the product is welded points plus the segments over them |
+| `dual_contouring<Index, Real>` | The DC builder on the same chassis: one vertex per surface component, arcs given identity so the surface is manifold by construction, and an optional refit of feature vertices to the planes the samples state. `record_polygons` / `record_refit_provenance` / `record_pass_times` are requests a consumer makes before the build |
+| `marching_cubes<Index, Real>(vol, iso)` | The reference baseline, retained; same surface, orientation and output shape |
+
+---
+
+## 13. csg/
 
 Build one arrangement of N operands, answer arbitrarily many boolean
 expressions against it. This supersedes chained `make_boolean` calls for
