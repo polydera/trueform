@@ -119,6 +119,20 @@ vtk_module_autoinit(
 
 target_compile_options(trueform_vtk PRIVATE -Wall -Wextra -Wpedantic -Wno-extra-semi)
 
+# The mesh source reads a polydata through the compiled facade, so it is built
+# only where that facade is -- and it is a test, so it is built only where the
+# tests are.
+if(TARGET tf::trueform_cpp AND TF_BUILD_TESTS)
+  add_executable(trueform_vtk_mesh_source tests/mesh_source.cpp)
+  target_compile_features(trueform_vtk_mesh_source PRIVATE cxx_std_17)
+  target_link_libraries(trueform_vtk_mesh_source
+    PRIVATE tf::vtk tf::trueform_cpp Catch2::Catch2WithMain)
+  target_compile_options(trueform_vtk_mesh_source PRIVATE
+    -Wall -Wextra -Wpedantic)
+  add_test(NAME cpp::vtk::mesh_source COMMAND trueform_vtk_mesh_source)
+  set_tests_properties(cpp::vtk::mesh_source PROPERTIES LABELS "cpp-vtk")
+endif()
+
 if(TF_BUILD_VTK_EXAMPLES)
   add_subdirectory(examples)
 endif()
@@ -135,10 +149,18 @@ install(TARGETS trueform_vtk
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
-# Install headers
-install(DIRECTORY include/
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-)
+# Install headers. The cpp tier reads a polydata through the compiled facade,
+# so it ships only where that facade does.
+if(TARGET tf::trueform_cpp)
+  install(DIRECTORY include/
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  )
+else()
+  install(DIRECTORY include/
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    REGEX "/trueform/vtk/cpp(/|\\.hpp$)" EXCLUDE
+  )
+endif()
 
 # Install CMake config
 install(EXPORT trueformVtkTargets

@@ -1,0 +1,22 @@
+/*
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
+#include "csg_graph_impl.hpp"
+#include "csg_graph_instantiations.hpp"
+
+#include <cstdint>
+
+namespace tf::cpp {
+
+TF_CPP_INSTANTIATE_CSG(std::int64_t, float);
+
+} // namespace tf::cpp

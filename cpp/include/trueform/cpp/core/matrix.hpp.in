@@ -1,0 +1,105 @@
+/*
+ * Copyright (c) 2025 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
+#pragma once
+// Generated from matrix.hpp.in by cmake/TrueformCppMatrix.cmake.
+//
+// The built matrix, stated once. An iteration macro per combination shape is
+// what every extern-template list is written against, so the archive's
+// contents and the declarations of them are one statement rather than two;
+// the traits are the same fact for the compiler, so a carrier outside the
+// matrix is refused where it is named instead of at the link.
+
+#include "trueform/core/static_size.hpp"
+
+#include <cstddef>
+
+#define TF_CPP_MATRIX_FOR_EACH_REAL(M)@TF_CPP_MATRIX_FOR_EACH_REAL@
+#define TF_CPP_MATRIX_FOR_EACH_INDEX(M)@TF_CPP_MATRIX_FOR_EACH_INDEX@
+#define TF_CPP_MATRIX_FOR_EACH_DIMS(M)@TF_CPP_MATRIX_FOR_EACH_DIMS@
+#define TF_CPP_MATRIX_FOR_EACH_NGON(M)@TF_CPP_MATRIX_FOR_EACH_NGON@
+#define TF_CPP_MATRIX_FOR_EACH_NGON_PAIR(M)@TF_CPP_MATRIX_FOR_EACH_NGON_PAIR@
+#define TF_CPP_MATRIX_FOR_EACH_REAL_DIMS(M)@TF_CPP_MATRIX_FOR_EACH_REAL_DIMS@
+#define TF_CPP_MATRIX_FOR_EACH_REAL_NGON(M)@TF_CPP_MATRIX_FOR_EACH_REAL_NGON@
+#define TF_CPP_MATRIX_FOR_EACH_REAL_PAIR(M)@TF_CPP_MATRIX_FOR_EACH_REAL_PAIR@
+#define TF_CPP_MATRIX_FOR_EACH_REAL_PAIR_DIMS(M)@TF_CPP_MATRIX_FOR_EACH_REAL_PAIR_DIMS@
+#define TF_CPP_MATRIX_FOR_EACH_REAL_INDEX_REAL_DIMS(M)@TF_CPP_MATRIX_FOR_EACH_REAL_INDEX_REAL_DIMS@
+#define TF_CPP_MATRIX_FOR_EACH_REAL_INDEX_REAL_DIMS_NGON(M)@TF_CPP_MATRIX_FOR_EACH_REAL_INDEX_REAL_DIMS_NGON@
+#define TF_CPP_MATRIX_FOR_EACH_INDEX_PAIR(M)@TF_CPP_MATRIX_FOR_EACH_INDEX_PAIR@
+#define TF_CPP_MATRIX_FOR_EACH_INDEX_NGON(M)@TF_CPP_MATRIX_FOR_EACH_INDEX_NGON@
+#define TF_CPP_MATRIX_FOR_EACH_INDEX_PAIR_NGON(M)@TF_CPP_MATRIX_FOR_EACH_INDEX_PAIR_NGON@
+#define TF_CPP_MATRIX_FOR_EACH_INDEX_PAIR_NGON_PAIR(M)@TF_CPP_MATRIX_FOR_EACH_INDEX_PAIR_NGON_PAIR@
+#define TF_CPP_MATRIX_FOR_EACH_INDEX_REAL(M)@TF_CPP_MATRIX_FOR_EACH_INDEX_REAL@
+#define TF_CPP_MATRIX_FOR_EACH_INDEX_REAL_DIMS(M)@TF_CPP_MATRIX_FOR_EACH_INDEX_REAL_DIMS@
+#define TF_CPP_MATRIX_FOR_EACH_INDEX_REAL_NGON(M)@TF_CPP_MATRIX_FOR_EACH_INDEX_REAL_NGON@
+#define TF_CPP_MATRIX_FOR_EACH_INDEX_REAL_NGON_PAIR(M)@TF_CPP_MATRIX_FOR_EACH_INDEX_REAL_NGON_PAIR@
+#define TF_CPP_MATRIX_FOR_EACH_INDEX_REAL_DIMS_NGON(M)@TF_CPP_MATRIX_FOR_EACH_INDEX_REAL_DIMS_NGON@
+#define TF_CPP_MATRIX_FOR_EACH_INDEX_REAL_INDEX(M)@TF_CPP_MATRIX_FOR_EACH_INDEX_REAL_INDEX@
+#define TF_CPP_MATRIX_FOR_EACH_INDEX_REAL_INDEX_NGON_PAIR(M)@TF_CPP_MATRIX_FOR_EACH_INDEX_REAL_INDEX_NGON_PAIR@
+#define TF_CPP_MATRIX_FOR_EACH_INDEX_REAL_DIMS_INDEX_REAL(M)@TF_CPP_MATRIX_FOR_EACH_INDEX_REAL_DIMS_INDEX_REAL@
+#define TF_CPP_MATRIX_FOR_EACH_INDEX_REAL_DIMS_INDEX_REAL_NGON_PAIR(M)@TF_CPP_MATRIX_FOR_EACH_INDEX_REAL_DIMS_INDEX_REAL_NGON_PAIR@
+
+/// A fact tied to ONE type rather than iterated over an axis is a flag: an
+/// STL states float by the format's own definition, a cross-index shard serves
+/// a second index only when the matrix carries it, and an entry whose carrier
+/// is a mixed mesh exists only where that layout is carried.
+#define TF_CPP_MATRIX_HAS_FLOAT @TF_CPP_MATRIX_HAS_FLOAT@
+#define TF_CPP_MATRIX_HAS_DOUBLE @TF_CPP_MATRIX_HAS_DOUBLE@
+#define TF_CPP_MATRIX_HAS_INT32 @TF_CPP_MATRIX_HAS_INT32@
+#define TF_CPP_MATRIX_HAS_INT64 @TF_CPP_MATRIX_HAS_INT64@
+#define TF_CPP_MATRIX_HAS_2D @TF_CPP_MATRIX_HAS_2D@
+#define TF_CPP_MATRIX_HAS_3D @TF_CPP_MATRIX_HAS_3D@
+#define TF_CPP_MATRIX_HAS_DYNAMIC @TF_CPP_MATRIX_HAS_DYNAMIC@
+
+namespace tf::cpp {
+
+/// The coordinate types the layer has kernels for, whatever this build carries.
+template <typename Real> inline constexpr bool matrix_knows_real_v = false;
+@TF_CPP_MATRIX_KNOWS_REAL@
+
+template <typename Real> inline constexpr bool matrix_has_real_v = false;
+@TF_CPP_MATRIX_HAS_REAL@
+
+/// A coordinate type the layer has no kernel for is refused where it always
+/// was -- by the entry, so a detection idiom still sees a substitution failure
+/// rather than a hard error. A carrier refuses only what the layer KNOWS and
+/// this build left out.
+template <typename Real>
+inline constexpr bool matrix_carries_real_v =
+    matrix_has_real_v<Real> || !matrix_knows_real_v<Real>;
+
+template <typename Index> inline constexpr bool matrix_has_index_v = false;
+@TF_CPP_MATRIX_HAS_INDEX@
+
+template <std::size_t Dims> inline constexpr bool matrix_has_dims_v = false;
+@TF_CPP_MATRIX_HAS_DIMS@
+
+/// The face layouts this build carries. The vocabulary is closed -- a mesh is
+/// triangles or it is mixed -- so a layout the carrier already refused never
+/// reaches this trait. Triangles are always carried: they are the arity every
+/// result the layer mints states.
+template <std::size_t Ngon> inline constexpr bool matrix_has_ngon_v = false;
+@TF_CPP_MATRIX_HAS_NGON@
+
+/// What a carrier states about itself before anything else.
+template <typename Index, typename Real, std::size_t Dims>
+inline constexpr bool matrix_carries_v = matrix_has_index_v<Index>
+    &&matrix_carries_real_v<Real> &&matrix_has_dims_v<Dims>;
+
+/// A carrier that names no index of its own -- a point cloud, whose structures
+/// are int32 by construction, and a runtime primitive, which is coordinates --
+/// states the two axes it has.
+template <typename Real, std::size_t Dims>
+inline constexpr bool matrix_carries_points_v =
+    matrix_carries_real_v<Real> &&matrix_has_dims_v<Dims>;
+
+} // namespace tf::cpp

@@ -1,0 +1,10 @@
+tf_cpp_add_shards(
+  split_components_float_int32_2d.cpp
+  split_components_float_int32_3d.cpp
+  split_components_float_int64_2d.cpp
+  split_components_float_int64_3d.cpp
+  split_components_double_int32_2d.cpp
+  split_components_double_int32_3d.cpp
+  split_components_double_int64_2d.cpp
+  split_components_double_int64_3d.cpp
+)

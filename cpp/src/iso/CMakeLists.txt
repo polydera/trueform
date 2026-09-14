@@ -1,0 +1,10 @@
+tf_cpp_add_shards(
+  isobands_float_int32_3d.cpp
+  isobands_float_int64_3d.cpp
+  isobands_double_int32_3d.cpp
+  isobands_double_int64_3d.cpp
+  isocontours_float_int32_3d.cpp
+  isocontours_float_int64_3d.cpp
+  isocontours_double_int32_3d.cpp
+  isocontours_double_int64_3d.cpp
+)

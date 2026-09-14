@@ -254,6 +254,7 @@ class BuildVerifier:
             "-B", str(self.build_dir),
             f"-DCMAKE_INSTALL_PREFIX={self.install_prefix}",
             "-DCMAKE_BUILD_TYPE=Release",
+            "-DTF_BUILD_CPP=ON",
             "-DTF_BUILD_EXAMPLES=ON",
             "-DTF_BUILD_TESTS=ON",
         ]
@@ -263,6 +264,7 @@ class BuildVerifier:
             cmake_args.extend([
                 "-DTF_BUILD_VTK_INTEGRATION=ON",
                 "-DTF_BUILD_VTK_EXAMPLES=ON",
+                "-DTF_BUILD_CPP_VTK_EXAMPLES=ON",
             ])
 
         try:
@@ -287,11 +289,11 @@ class BuildVerifier:
 
     def build_tests(self) -> bool:
         try:
-            self._cmake_build("trueform_tests")
-            return self.record_result("trueform_tests", True)
+            self._cmake_build("trueform_all_tests")
+            return self.record_result("trueform_all_tests", True)
         except subprocess.CalledProcessError as e:
             return self.record_result(
-                "trueform_tests", False, e.stdout if e.stdout else str(e)
+                "trueform_all_tests", False, e.stdout if e.stdout else str(e)
             )
 
     def build_vtk(self) -> bool:
@@ -310,6 +312,17 @@ class BuildVerifier:
         except subprocess.CalledProcessError as e:
             return self.record_result(
                 "trueform_vtk_examples", False, e.stdout if e.stdout else str(e)
+            )
+
+    def build_cpp_vtk_examples(self) -> bool:
+        try:
+            self._cmake_build("trueform_cpp_vtk_examples")
+            return self.record_result("trueform_cpp_vtk_examples", True)
+        except subprocess.CalledProcessError as e:
+            return self.record_result(
+                "trueform_cpp_vtk_examples",
+                False,
+                e.stdout if e.stdout else str(e),
             )
 
     # =========================================================================
@@ -464,6 +477,37 @@ class BuildVerifier:
         except subprocess.CalledProcessError as e:
             return self.record_result(
                 "Run test executable", False, e.stdout if e.stdout else str(e)
+            )
+
+    # =========================================================================
+    # Build the facade examples against the install
+    # =========================================================================
+    def build_cpp_examples(self) -> bool:
+        examples_dir = self.clone_dir / "cpp" / "examples"
+        examples_build_dir = self.work_dir / "cpp-examples-build"
+        examples_build_dir.mkdir(parents=True, exist_ok=True)
+
+        cmake_args = [
+            "cmake",
+            "-S", str(examples_dir),
+            "-B", str(examples_build_dir),
+            f"-DCMAKE_PREFIX_PATH={self.install_prefix}",
+            "-DCMAKE_BUILD_TYPE=Release",
+        ]
+        if self.toolchain_file:
+            cmake_args.append(f"-DCMAKE_TOOLCHAIN_FILE={self.toolchain_file}")
+
+        try:
+            self.run_cmd(cmake_args, cwd=examples_build_dir)
+            self.run_cmd(
+                ["cmake", "--build", str(examples_build_dir), "--parallel",
+                 str(self._get_parallel_jobs())],
+                cwd=examples_build_dir,
+            )
+            return self.record_result("cpp examples", True)
+        except subprocess.CalledProcessError as e:
+            return self.record_result(
+                "cpp examples", False, e.stdout if e.stdout else str(e)
             )
 
     # =========================================================================
@@ -684,15 +728,19 @@ int main() {
         if skip_vtk:
             print_skip("trueform_vtk", "skipped by user")
             print_skip("trueform_vtk_examples", "skipped by user")
+            print_skip("trueform_cpp_vtk_examples", "skipped by user")
         else:
             vtk_ok = self.build_vtk()
             if vtk_ok:
                 if skip_examples:
                     print_skip("trueform_vtk_examples", "skipped by user")
+                    print_skip("trueform_cpp_vtk_examples", "skipped by user")
                 else:
                     self.build_vtk_examples()
+                    self.build_cpp_vtk_examples()
             else:
                 print_skip("trueform_vtk_examples", "VTK build failed")
+                print_skip("trueform_cpp_vtk_examples", "VTK build failed")
 
         wheel_ok = False
         if skip_python:
@@ -733,6 +781,13 @@ int main() {
 
         print_step("Test find_package")
         self.test_find_package()
+
+        if skip_examples:
+            print_step("Build cpp examples")
+            print_skip("cpp examples", "skipped by user")
+        else:
+            print_step("Build cpp examples")
+            self.build_cpp_examples()
 
         if skip_vtk:
             print_step("Test find_package (vtk)")
@@ -843,15 +898,19 @@ def run_build_cpp_only(
         if skip_vtk:
             print_skip("trueform_vtk", "skipped by user")
             print_skip("trueform_vtk_examples", "skipped by user")
+            print_skip("trueform_cpp_vtk_examples", "skipped by user")
         else:
             vtk_ok = verifier.build_vtk()
             if vtk_ok:
                 if skip_examples:
                     print_skip("trueform_vtk_examples", "skipped by user")
+                    print_skip("trueform_cpp_vtk_examples", "skipped by user")
                 else:
                     verifier.build_vtk_examples()
+                    verifier.build_cpp_vtk_examples()
             else:
                 print_skip("trueform_vtk_examples", "VTK build failed")
+                print_skip("trueform_cpp_vtk_examples", "VTK build failed")
 
         print_step("Install")
         if not verifier.install_cmake():
@@ -869,6 +928,13 @@ def run_build_cpp_only(
 
         print_step("Test find_package")
         verifier.test_find_package()
+
+        if skip_examples:
+            print_step("Build cpp examples")
+            print_skip("cpp examples", "skipped by user")
+        else:
+            print_step("Build cpp examples")
+            verifier.build_cpp_examples()
 
         if skip_vtk:
             print_step("Test find_package (vtk)")

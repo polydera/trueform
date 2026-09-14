@@ -12,6 +12,10 @@
 */
 #pragma once
 
+/// The `cpp` tier -- `trueform/vtk/cpp.hpp` -- is not exported here: it stands
+/// on the compiled C++ facade rather than on the header-only library, and this
+/// umbrella states what `tf::vtk` itself links against.
+
 #include "./vtk/core.hpp"      // IWYU pragma: export
 #include "./vtk/filters.hpp"   // IWYU pragma: export
 #include "./vtk/functions.hpp" // IWYU pragma: export

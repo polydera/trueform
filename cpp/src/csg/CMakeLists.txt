@@ -1,0 +1,18 @@
+tf_cpp_add_shards(
+  csg_graph_float_int32_3d.cpp
+  csg_graph_float_int64_3d.cpp
+  csg_graph_double_int32_3d.cpp
+  csg_graph_double_int64_3d.cpp
+  outer_shell_float_int32_3d.cpp
+  outer_shell_float_int64_3d.cpp
+  outer_shell_double_int32_3d.cpp
+  outer_shell_double_int64_3d.cpp
+  boolean_float_int32_int32_3d.cpp
+  boolean_float_int32_int64_3d.cpp
+  boolean_float_int64_int32_3d.cpp
+  boolean_float_int64_int64_3d.cpp
+  boolean_double_int32_int32_3d.cpp
+  boolean_double_int32_int64_3d.cpp
+  boolean_double_int64_int32_3d.cpp
+  boolean_double_int64_int64_3d.cpp
+)

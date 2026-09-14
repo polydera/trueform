@@ -1,0 +1,22 @@
+tf_cpp_add_shards(
+  clean_points_float_2d.cpp
+  clean_points_float_3d.cpp
+  clean_points_double_2d.cpp
+  clean_points_double_3d.cpp
+  clean_forms_float_int32_2d.cpp
+  clean_forms_float_int32_3d.cpp
+  clean_forms_float_int64_2d.cpp
+  clean_forms_float_int64_3d.cpp
+  clean_forms_double_int32_2d.cpp
+  clean_forms_double_int32_3d.cpp
+  clean_forms_double_int64_2d.cpp
+  clean_forms_double_int64_3d.cpp
+  clean_soups_float_int32_2d.cpp
+  clean_soups_float_int32_3d.cpp
+  clean_soups_float_int64_2d.cpp
+  clean_soups_float_int64_3d.cpp
+  clean_soups_double_int32_2d.cpp
+  clean_soups_double_int32_3d.cpp
+  clean_soups_double_int64_2d.cpp
+  clean_soups_double_int64_3d.cpp
+)

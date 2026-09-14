@@ -19,7 +19,7 @@ endif()
 # ==============================================================================
 # Project Configuration
 # ==============================================================================
-project(trueform VERSION 0.10.3 LANGUAGES CXX)
+project(trueform VERSION 0.10.4 LANGUAGES CXX)
 
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.hpp.in
@@ -37,13 +37,18 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Options & Variables
 # ==============================================================================
 include(CMakeDependentOption)
+include(GNUInstallDirs)
 
 # 1. Build features
+option(TF_BUILD_CPP               "Build the standalone C++ facade." OFF)
 option(TF_BUILD_PYTHON            "Build Python bindings." OFF)
 option(TF_BUILD_TYPESCRIPT        "Build TypeScript/WASM bindings." OFF)
 option(TF_BUILD_BENCHMARKS        "Build benchmarks." OFF)
+option(TF_BUILD_CPP_BENCHMARKS    "Build focused standalone C++ facade benchmarks." OFF)
 option(TF_BUILD_EXAMPLES          "Build examples." OFF)
+option(TF_BUILD_CPP_VTK_EXAMPLES  "Build interactive public-facade VTK examples." OFF)
 option(TF_BUILD_VTK_INTEGRATION   "Build trueform VTK integration." OFF)
+option(TF_BUILD_TESTS             "Build test targets." OFF)
 option(TF_ENABLE_ASAN             "Enable Address Sanitizer" OFF)
 option(TF_USE_SYSTEM_LIBS         "Use system installed libraries where possible." ON)
 option(TF_ENABLE_IPO              "Enable Interprocedural Optimization (LTO)." OFF)
@@ -78,13 +83,22 @@ if(TF_BUILD_TYPESCRIPT)
   if(NOT EMSCRIPTEN)
     message(FATAL_ERROR "TF_BUILD_TYPESCRIPT requires Emscripten. Configure with: emcmake cmake ...")
   endif()
-  set(TF_BUILD_PYTHON          OFF CACHE BOOL "" FORCE)
-  set(TF_BUILD_BENCHMARKS      OFF CACHE BOOL "" FORCE)
-  set(TF_BUILD_EXAMPLES        OFF CACHE BOOL "" FORCE)
-  set(TF_BUILD_VTK_INTEGRATION OFF CACHE BOOL "" FORCE)
-  set(TF_BUILD_TESTS           OFF CACHE BOOL "" FORCE)
-  set(TF_ENABLE_ASAN           OFF CACHE BOOL "" FORCE)
-  set(TF_USE_SYSTEM_LIBS       OFF CACHE BOOL "" FORCE)
+  set(TF_BUILD_CPP              OFF CACHE BOOL "" FORCE)
+  set(TF_BUILD_PYTHON           OFF CACHE BOOL "" FORCE)
+  set(TF_BUILD_BENCHMARKS       OFF CACHE BOOL "" FORCE)
+  set(TF_BUILD_CPP_BENCHMARKS   OFF CACHE BOOL "" FORCE)
+  set(TF_BUILD_EXAMPLES         OFF CACHE BOOL "" FORCE)
+  set(TF_BUILD_CPP_VTK_EXAMPLES OFF CACHE BOOL "" FORCE)
+  set(TF_BUILD_VTK_INTEGRATION  OFF CACHE BOOL "" FORCE)
+  set(TF_BUILD_TESTS            OFF CACHE BOOL "" FORCE)
+  set(TF_ENABLE_ASAN            OFF CACHE BOOL "" FORCE)
+  set(TF_USE_SYSTEM_LIBS        OFF CACHE BOOL "" FORCE)
+endif()
+
+# Testing must be enabled at the root for `ctest --test-dir <build>` to see the
+# suites, and before any subdirectory registers one.
+if(TF_BUILD_TESTS)
+  enable_testing()
 endif()
 
 
@@ -160,6 +174,10 @@ target_include_directories(trueform INTERFACE
 # ==============================================================================
 # Subdirectories
 # ==============================================================================
+if(TF_BUILD_CPP OR TF_BUILD_CPP_VTK_EXAMPLES OR TF_BUILD_CPP_BENCHMARKS)
+  add_subdirectory(cpp)
+endif()
+
 if(TF_BUILD_EXAMPLES)
   add_subdirectory(examples)
 endif()
@@ -182,7 +200,6 @@ endif()
 # ==============================================================================
 # Installation & Packaging
 # ==============================================================================
-include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
 # 1. Install the library target and export the set
@@ -250,11 +267,11 @@ if(TF_BUILD_PYTHON)
 endif()
 
 # Tests
-option(TF_BUILD_TESTS "Build test targets." OFF)
 if(TF_BUILD_TESTS)
-  # Testing must be enabled at the root for `ctest --test-dir <build>` to see
-  # the suites; enabled only in tests/, the root emits no CTestTestfile and
-  # ctest reports an empty run from a fully built tree.
-  enable_testing()
   add_subdirectory(tests)
+
+  add_custom_target(trueform_all_tests DEPENDS trueform_tests)
+  if(TARGET trueform_cpp_tests)
+    add_dependencies(trueform_all_tests trueform_cpp_tests)
+  endif()
 endif()

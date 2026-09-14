@@ -25,6 +25,9 @@ jobs:
       - name: Build and test
         run: python3 -m verify --cpp-only --skip-vtk --skip-examples
 
+      - name: Verify installed C++ package consumer
+        run: bash cpp/tests/installed_consumer/verify.sh "$RUNNER_TEMP/trueform-installed-consumer"
+
   test-python:
     name: Python Tests
     runs-on: trueform-linux

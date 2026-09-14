@@ -1,0 +1,18 @@
+tf_cpp_add_shards(
+  graph_builders_float_int32_int32_3d.cpp
+  graph_builders_float_int32_int64_3d.cpp
+  graph_builders_float_int64_int32_3d.cpp
+  graph_builders_float_int64_int64_3d.cpp
+  graph_builders_double_int32_int32_3d.cpp
+  graph_builders_double_int32_int64_3d.cpp
+  graph_builders_double_int64_int32_3d.cpp
+  graph_builders_double_int64_int64_3d.cpp
+  arrangements_mesh_float_int32_3d.cpp
+  arrangements_mesh_float_int64_3d.cpp
+  arrangements_mesh_double_int32_3d.cpp
+  arrangements_mesh_double_int64_3d.cpp
+  arrangements_polygon_float_int32_3d.cpp
+  arrangements_polygon_float_int64_3d.cpp
+  arrangements_polygon_double_int32_3d.cpp
+  arrangements_polygon_double_int64_3d.cpp
+)
