@@ -17,6 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Tree hygiene
+        run: python3 python/tools/tree_hygiene.py
+
       - name: Set compiler env
         run: |
           echo "CC=clang" >> $GITHUB_ENV

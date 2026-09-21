@@ -49,3 +49,45 @@ tasks.md
 todo.md
 tests/Testing/
 docs/superpowers/
+
+# Working documents live outside the tree — process is never committed.
+# The root is a closed set: a document or stray source at the root is a
+# working file unless named below; python/tools/tree_hygiene.py holds the
+# same law in CI over everything git tracks.
+/experimentation/
+/*.pdf
+/*.md
+/*.txt
+/*.stl
+/*.obj
+/*.py
+/*.cpp
+/*.hpp
+!/AGENTS.md
+!/CLAUDE.md
+!/COMMERCIAL.md
+!/CONTRIBUTING.md
+!/README.md
+!/RELEASE_NOTES.md
+!/CMakeLists.txt
+/dist*/
+/build*/
+/wheel*/
+/wheelhouse*/
+/plans/
+/scripts/
+/rewrite_snapshot_*/
+/quarantine_*/
+/web-demo*/
+/graph-net/
+/rocscience-test/
+/test-dir/
+/trueform-bpy/
+/trueform_tests/
+/article_drafts/
+/compile_commands.json
+/cpm-package-lock.cmake
+/protect*.json
+*.bak
+/.codex/
+/.clangd
